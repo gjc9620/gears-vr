@@ -81,4 +81,8 @@ DirectLevel 地图 URL 实测启动失败，WER 记录访问异常 c0000005、RV
 手柄 Start 暂停实测打开暂停菜单，镜头时间停止；再次 Start 恢复后时间继续推进。
 区分用户观察和工具直接观测，不仅凭命令行宣布全部行为已被机器验证。
 
+随后实时头动测试保存了 focused=false 的 5,988 条场景视图记录，
+CameraCache 时间戳均持续变化，补上失焦仍更新的机器证据。
+见 docs/14-live-head-camera-test.md；调试参数没有取消头动接入对游戏焦点的要求。
+
 原始研究输出位于 analysis/focus-pause/（Git 忽略），没有保存到游戏文件。

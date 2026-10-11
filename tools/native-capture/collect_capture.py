@@ -61,7 +61,7 @@ def main():
             summary['non_test_present_calls']=sum(bool(int(r['valid'])&32) for r in items)
             summary['failed_present_calls']=sum(int(r['result'],16)>=0x80000000 for r in items)
         summaries.append(summary)
-    test_mode='six_axis_sweep' if 'sweep_enabled=1' in status else ('yaw_wobble' if 'wobble_enabled=1' in status else 'read_only')
+    test_mode='live_head' if 'live_head_enabled=1' in status else ('six_axis_sweep' if 'sweep_enabled=1' in status else ('yaw_wobble' if 'wobble_enabled=1' in status else 'read_only'))
     report=dict(status=status.strip(),samples=len(rows),groups=summaries,test_mode=test_mode,
         caveat='Present and Present1 may nest; do not add their counts. Focus gaps and menu pauses are not VM stalls. View edits depend on the recorded test_mode.')
     if rows and 'yaw_delta' in rows[0]:
