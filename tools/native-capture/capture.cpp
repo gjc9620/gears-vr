@@ -17,6 +17,10 @@ struct Vec {float x,y,z;};
 struct Rot {int pitch,yaw,roll;};
 using SceneFn=void*(__fastcall*)(void*,void*,Vec*,Rot*,void*,void*);
 using EventFn=void(__fastcall*)(void*,Vec*,Rot*);
+using FamilyFn=void(__fastcall*)(void*,void*);
+FamilyFn original_family{};
+bool family_diagnostics{};
+void* family_target{};
 using PresentFn=HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain*,UINT,UINT);
 using Present1Fn=HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1*,UINT,UINT,const DXGI_PRESENT_PARAMETERS*);
 using ExecuteFn=void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);
@@ -69,10 +73,13 @@ struct Record {
     Vec source_position,translation_delta;
     Rot source_rotation,rotation_delta;
     std::array<float,32> matrices;
+    uintptr_t family_address{},family_array{};
+    int family_count{},family_capacity{};
+    std::array<uintptr_t,4> family_views{};
 };
 std::array<Record,8192> ring{};
 size_t read_index{},write_index{};
-unsigned long long emitted[6]{};
+unsigned long long emitted[8]{};
 void* scene_target{}; void* event_target{}; void* present_target{}; void* present1_target{};
 HANDLE stop_event{};
 wchar_t directory[MAX_PATH]{};
@@ -239,6 +246,23 @@ void enqueue(const Record& value) {
     else ++dropped;
     ReleaseSRWLockExclusive(&queue_lock);
 }
+void inspect_family(Record& record,void* family){
+    record.family_address=reinterpret_cast<uintptr_t>(family);
+    struct Header{uintptr_t data;int count,capacity;} header{};
+    if(!safe_copy(&header,family,sizeof(header)))return;
+    record.family_array=header.data;record.family_count=header.count;record.family_capacity=header.capacity;
+    // Capacity is allocator slack, not the number of pointers we read. UE
+    // arrays can reserve more than sixteen slots while holding one view.
+    if(header.count<0 || header.count>4 || header.capacity<header.count || header.capacity>1024 || (header.count && (!header.data || header.data%8)))return;
+    if(header.count && !safe_copy(record.family_views.data(),reinterpret_cast<void*>(header.data),size_t(header.count)*8))return;
+    record.family_array=header.data;record.family_count=header.count;record.family_capacity=header.capacity;record.valid|=128;
+}
+void __fastcall hook_family(void* canvas,void* family){
+    Scope scope;auto record=start_record(7,canvas,_ReturnAddress());
+    inspect_family(record,family);
+    original_family(canvas,family);
+    record.duration=now()-record.time;enqueue(record);
+}
 void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation,void* viewport,void* drawer) {
     Scope scope;auto record=start_record(1,local,_ReturnAddress());
     void* saved_local=scene_local;Rot* saved_rotation=scene_rotation;int saved_delta=scene_delta;
@@ -246,6 +270,7 @@ void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation
     scene_local=local;scene_rotation=rotation;scene_delta=0;
     scene_phase=0;scene_translation={};scene_rotation_delta={};
     void* result=original_scene(local,family,position,rotation,viewport,drawer);
+    if(family_diagnostics)inspect_family(record,family);
     record.duration=now()-record.time;record.result=reinterpret_cast<uintptr_t>(result);
     if(safe_copy(&record.position,position,sizeof(Vec))) record.valid|=1;
     if(safe_copy(&record.rotation,rotation,sizeof(Rot))) record.valid|=2;
@@ -377,9 +402,11 @@ void flush(FILE* file) {
                 r.source_rotation.pitch,r.source_rotation.yaw,r.source_rotation.roll,
                 r.translation_delta.x,r.translation_delta.y,r.translation_delta.z,
                 r.rotation_delta.pitch,r.rotation_delta.yaw,r.rotation_delta.roll);
-            fprintf(file,",%u,%llu,0x%llx,0x%llx,0x%llx,%u,%u,%u,%u,%u,%u,%u,%u\n",r.pose_status,r.pose_sequence,
+            fprintf(file,",%u,%llu,0x%llx,0x%llx,0x%llx,%u,%u,%u,%u,%u,%u,%u,%u",r.pose_status,r.pose_sequence,
                 static_cast<unsigned long long>(r.gpu_device),static_cast<unsigned long long>(r.gpu_buffer),static_cast<unsigned long long>(r.gpu_window),
                 r.queue_type,r.command_count,r.buffer_index,r.buffer_count,r.width,r.height,r.format,r.swap_flags);
+            fprintf(file,",0x%llx,0x%llx,%d,%d",static_cast<unsigned long long>(r.family_address),static_cast<unsigned long long>(r.family_array),r.family_count,r.family_capacity);
+            for(auto view:r.family_views)fprintf(file,",0x%llx",static_cast<unsigned long long>(view));fprintf(file,"\n");
         }
         fflush(file);
     }
@@ -435,7 +462,8 @@ DWORD WINAPI worker(void*) {
     sweep_enabled=GetPrivateProfileIntW(L"Capture",L"sweep",0,ini)==1;
     live_enabled=GetPrivateProfileIntW(L"Capture",L"live_head",0,ini)==1;
     gpu_diagnostics=GetPrivateProfileIntW(L"Capture",L"gpu_diagnostics",0,ini)==1;
-    if(int(wobble_enabled)+int(sweep_enabled)+int(live_enabled)+int(gpu_diagnostics)>1) {fprintf(status,"rejected: mutually exclusive capture modes\n");fclose(status);return 3;}
+    family_diagnostics=GetPrivateProfileIntW(L"Capture",L"family_diagnostics",0,ini)==1;
+    if(int(wobble_enabled)+int(sweep_enabled)+int(live_enabled)+int(gpu_diagnostics)+int(family_diagnostics)>1) {fprintf(status,"rejected: mutually exclusive capture modes\n");fclose(status);return 3;}
     if(live_enabled) {
         if(!live_bridge.open(GetCurrentProcessId(),false)){fprintf(status,"rejected: pose producer unavailable\n");fclose(status);return 3;}
         live_gate.arm(true);
@@ -452,11 +480,16 @@ DWORD WINAPI worker(void*) {
        !safe_copy(bytes,event_target,sizeof(event_bytes)) || memcmp(bytes,event_bytes,sizeof(event_bytes))) {
         fprintf(status,"rejected: candidate prologue mismatch\n");fclose(status);return 4;
     }
+    if(family_diagnostics){
+        family_target=reinterpret_cast<void*>(base+0x3a148c);
+        const unsigned char signature[]={0x48,0x89,0x5c,0x24,0x08,0x48,0x89,0x74,0x24,0x18,0x55};
+        if(!safe_copy(bytes,family_target,sizeof(signature)) || memcmp(bytes,signature,sizeof(signature))){fprintf(status,"rejected: family candidate prologue mismatch\n");fclose(status);return 4;}
+    }
     FILE* file{};_wfopen_s(&file,csv,L"w");
     if(!file) {fclose(status);return 5;}
     fprintf(file,"kind,thread,focused,valid,qpc,duration_qpc,object,result,caller_rva,x,y,z,pitch,yaw,roll,camera_timestamp,source_yaw,yaw_delta,cache_yaw,test_state");
     for(unsigned i=0;i<32;++i) fprintf(file,",matrix%u",i);
-    fprintf(file,",pose_phase,source_x,source_y,source_z,source_pitch,source_rot_yaw,source_roll,delta_x,delta_y,delta_z,delta_pitch,delta_rot_yaw,delta_roll,pose_status,pose_sequence,gpu_device,gpu_buffer,gpu_window,queue_type,command_count,buffer_index,buffer_count,width,height,format,swap_flags\n");fflush(file);
+    fprintf(file,",pose_phase,source_x,source_y,source_z,source_pitch,source_rot_yaw,source_roll,delta_x,delta_y,delta_z,delta_pitch,delta_rot_yaw,delta_roll,pose_status,pose_sequence,gpu_device,gpu_buffer,gpu_window,queue_type,command_count,buffer_index,buffer_count,width,height,format,swap_flags,family_address,family_array,family_count,family_capacity,family_view0,family_view1,family_view2,family_view3\n");fflush(file);
     LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);
     qpc_frequency=frequency.QuadPart;
     fprintf(status,"qpc_frequency=%lld\n",frequency.QuadPart);
@@ -464,10 +497,12 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"sweep_enabled=%d rotation_degrees=1.5 translation_units=2 baseline_seconds=3 axis_seconds=4 total_seconds=27\n",sweep_enabled);
     fprintf(status,"live_head_enabled=%d rotation_limit_degrees=5 translation_limit_units=2 max_age_ms=100 F8=abort F9=recenter\n",live_enabled);
     fprintf(status,"gpu_diagnostics=%d\n",gpu_diagnostics);
+    fprintf(status,"family_diagnostics=%d candidate_rva=0x3a148c\n",family_diagnostics);
     MH_STATUS init=MH_Initialize();
     fprintf(status,"minhook_initialize=%s\n",MH_StatusToString(init));
     bool ok=init==MH_OK && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
         && install(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event));
+    if(ok && family_diagnostics)ok=install(family_target,reinterpret_cast<void*>(hook_family),reinterpret_cast<void**>(&original_family));
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     fprintf(status,"present_hooks_created=%d\n",graphics);
@@ -492,6 +527,7 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"stopped disable_status=%d active=%u dropped=%llu scene=%llu event=%llu present=%llu present1=%llu execute=%llu\n",
         disabled,active.load(),dropped.load(),emitted[1],emitted[2],emitted[3],emitted[4],emitted[5]);
     fprintf(status,"wobble_final_state=%u\n",wobble_state.load());
+    fprintf(status,"family_calls=%llu\n",emitted[7]);
     diagnostic_status=nullptr;fclose(file);fclose(status);if(stop_event) CloseHandle(stop_event);stop_event=nullptr;
     return disabled==MH_OK?0:7;
 }
@@ -499,6 +535,12 @@ DWORD WINAPI worker(void*) {
 __declspec(noinline) void fake_event(void* pc,Vec* p,Rot* r) {p->x+=static_cast<float>(reinterpret_cast<uintptr_t>(pc));r->yaw+=7;}
 struct FakeView {char prefix[0x70];float matrices[32];};
 FakeView fake_view{};
+unsigned family_forward_count{};
+void* expected_test_family{};
+__declspec(noinline) void fake_family(void* canvas,void* family){
+    if(canvas==reinterpret_cast<void*>(1) && family==expected_test_family)++family_forward_count;
+    else family_forward_count+=100;
+}
 bool arguments_good{};
 __declspec(noinline) void* fake_scene(void* lp,void* family,Vec* p,Rot* r,void* vp,void* drawer) {
     arguments_good=lp==reinterpret_cast<void*>(1) && family==reinterpret_cast<void*>(2) && vp==reinterpret_cast<void*>(3) && drawer==reinterpret_cast<void*>(4);
@@ -513,6 +555,23 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureStart(void*) {
     wchar_t* slash=wcsrchr(path,L'\\');if(!slash) return ERROR_BAD_PATHNAME;*slash=0;wcscpy_s(directory,path);
     HANDLE thread=CreateThread(nullptr,0,worker,nullptr,0,nullptr);
     if(!thread) return GetLastError();CloseHandle(thread);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFamilyCheck(void*) {
+    uintptr_t views[]={reinterpret_cast<uintptr_t>(&fake_view),reinterpret_cast<uintptr_t>(&fake_view)+16};
+    struct Header{uintptr_t data;int count,capacity;} header{reinterpret_cast<uintptr_t>(views),2,2};
+    expected_test_family=&header;unsigned char before[32],after[32];
+    if(!safe_copy(before,reinterpret_cast<void*>(fake_family),32) || MH_Initialize()!=MH_OK)return 70;
+    if(!install(reinterpret_cast<void*>(fake_family),reinterpret_cast<void*>(hook_family),reinterpret_cast<void**>(&original_family)))return 71;
+    recording=true;if(MH_ApplyQueued()!=MH_OK)return 72;
+    FamilyFn volatile invoke=fake_family;invoke(reinterpret_cast<void*>(1),&header);
+    recording=false;if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK)return 73;
+    if(!safe_copy(after,reinterpret_cast<void*>(fake_family),32) || memcmp(before,after,32) || active.load() || family_forward_count!=1 || write_index!=1)return 74;
+    const auto& record=ring[0];
+    if(record.kind!=7 || !(record.valid&128) || record.family_count!=2 || record.family_views[0]!=views[0] || record.family_views[1]!=views[1] || record.family_address!=reinterpret_cast<uintptr_t>(&header))return 75;
+    Record invalid{};header.count=5;header.capacity=5;inspect_family(invalid,&header);if(invalid.valid&128)return 76;
+    header.count=2;header.capacity=1;inspect_family(invalid,&header);if(invalid.valid&128)return 77;
+    header.count=1;header.capacity=1;header.data=8;inspect_family(invalid,&header);if(invalid.valid&128)return 78;
+    return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureSelfTest(void*) {
     base=0;expected_local=1;expected_pc=5;

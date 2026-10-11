@@ -37,7 +37,7 @@ def main():
         key=(int(row['kind']),row['object'],int(row['thread']),int(row['focused']))
         groups[key].append(row)
     summaries=[]
-    labels={1:'scene_view',2:'player_view_event',3:'present',4:'present1',5:'execute_command_lists'}
+    labels={1:'scene_view',2:'player_view_event',3:'present',4:'present1',5:'execute_command_lists',7:'family_submission_candidate'}
     for (kind,obj,thread,focus),items in groups.items():
         items.sort(key=lambda r:int(r['qpc']))
         intervals=[(int(items[i]['qpc'])-int(items[i-1]['qpc']))*1000/frequency for i in range(1,len(items))]

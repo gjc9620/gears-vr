@@ -57,12 +57,12 @@ int consume(DWORD pid,unsigned expected,const wchar_t* output){
         if(blit)gpu_barrier(commands.Get(),converted.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_RENDER_TARGET);
         else gpu_barrier(commands.Get(),receiver.texture.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COMMON);
         gpu_check(commands->Close(),"close copy");ID3D12CommandList* lists[]={commands.Get()};gpu.queue->ExecuteCommandLists(1,lists);
-        receiver.acknowledge(gpu.queue.Get());gpu_check(gpu.queue->Signal(fence.Get(),frames+1),"local fence");
-        ULONGLONG wait_deadline=GetTickCount64()+3000;
-        while(fence->GetCompletedValue()<frames+1 && GetTickCount64()<wait_deadline)Sleep(1);
-        if(fence->GetCompletedValue()<frames+1 || fence->GetCompletedValue()==~UINT64(0)){
-            buffer.Detach();commands.Detach();allocator.Detach();fence.Detach();converted.Detach();blit.release();throw std::runtime_error("Consumer fence timeout/device removed");
-        }
+        try{
+            receiver.acknowledge(gpu.queue.Get());gpu_check(gpu.queue->Signal(fence.Get(),frames+1),"local fence");
+            ULONGLONG wait_deadline=GetTickCount64()+3000;
+            while(fence->GetCompletedValue()<frames+1 && GetTickCount64()<wait_deadline)Sleep(1);
+            if(fence->GetCompletedValue()<frames+1 || fence->GetCompletedValue()==~UINT64(0))throw std::runtime_error("Consumer fence timeout/device removed");
+        }catch(...){buffer.Detach();commands.Detach();allocator.Detach();fence.Detach();converted.Detach();blit.release();gpu.queue.Detach();gpu.device.Detach();throw;}
         unsigned char* data{};D3D12_RANGE range{0,static_cast<SIZE_T>(bytes)};gpu_check(buffer->Map(0,&range,reinterpret_cast<void**>(&data)),"map verification");
         unsigned out_width=expected?receiver.width:(receiver.width<640?receiver.width:640);
         unsigned out_height=static_cast<unsigned>(UINT64(receiver.height)*out_width/receiver.width);
@@ -102,12 +102,15 @@ void produce(DXGI_FORMAT format){
         gpu_barrier(commands.Get(),source.Get(),D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_RENDER_TARGET);
         float color[]={float(serial%8+1)*.1f,.5f,.75f,1.f};commands->ClearRenderTargetView(rtv->GetCPUDescriptorHandleForHeapStart(),color,0,nullptr);
         gpu_barrier(commands.Get(),source.Get(),D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PRESENT);gpu_check(commands->Close(),"clear close");
-        ID3D12CommandList* lists[]={commands.Get()};gpu.queue->ExecuteCommandLists(1,lists);gpu_check(gpu.queue->Signal(clear_fence.Get(),serial),"clear signal");
-        ULONGLONG deadline=GetTickCount64()+5000;
-        while(publisher.frames<serial && GetTickCount64()<deadline){publisher.capture(chain.Get());Sleep(1);}
-        if(publisher.frames!=serial)throw std::runtime_error("GPU producer stalled");
-        while(clear_fence->GetCompletedValue()<serial && GetTickCount64()<deadline)Sleep(1);
-        if(clear_fence->GetCompletedValue()<serial)throw std::runtime_error("Clear fence timeout");
+        ID3D12CommandList* lists[]={commands.Get()};gpu.queue->ExecuteCommandLists(1,lists);
+        try{
+            gpu_check(gpu.queue->Signal(clear_fence.Get(),serial),"clear signal");
+            ULONGLONG deadline=GetTickCount64()+5000;
+            while(publisher.frames<serial && GetTickCount64()<deadline){publisher.capture(chain.Get());Sleep(1);}
+            while(clear_fence->GetCompletedValue()<serial && GetTickCount64()<deadline)Sleep(1);
+            if(clear_fence->GetCompletedValue()<serial || clear_fence->GetCompletedValue()==~UINT64(0))throw std::runtime_error("Clear fence timeout/device removed");
+        }catch(...){source.Detach();rtv.Detach();commands.Detach();allocator.Detach();clear_fence.Detach();chain.Detach();gpu.queue.Detach();gpu.device.Detach();CloseHandle(child.hProcess);throw;}
+        if(publisher.frames!=serial){CloseHandle(child.hProcess);throw std::runtime_error("GPU producer stalled");}
     }
     DWORD wait=WaitForSingleObject(child.hProcess,10000),code=1;if(wait==WAIT_OBJECT_0)GetExitCodeProcess(child.hProcess,&code);CloseHandle(child.hProcess);
     publisher.poll();bool released=publisher.close();

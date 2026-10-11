@@ -70,6 +70,7 @@ def main():
     mode.add_argument('--sweep',action='store_true',help='Run pitch/yaw/roll and three tiny render-only translations')
     mode.add_argument('--live-head',action='store_true',help='Bounded real-headset test (requires verified pose producer)')
     mode.add_argument('--gpu-diagnostics',action='store_true',help='Observe swapchain metadata and ExecuteCommandLists, without GPU copies')
+    mode.add_argument('--family-diagnostics',action='store_true',help='Observe bounded view arrays at the candidate render-family submission')
     args=parser.parse_args()
     if pathlib.Path(args.dll_name).name!=args.dll_name or not args.dll_name.lower().endswith('.dll'):
         raise RuntimeError('DLL name must be a basename ending in .dll')
@@ -78,6 +79,7 @@ def main():
     if not dll.is_file() or not test.is_file():raise RuntimeError('Build capture DLL and self-test first')
     subprocess.run([str(test),str(dll)],check=True)
     if args.gpu_diagnostics: subprocess.run([str(test),str(dll),'--gpu'],check=True)
+    if args.family_diagnostics: subprocess.run([str(test),str(dll),'--family'],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
     try:camera=r.resolve()
@@ -94,6 +96,7 @@ def main():
         # Verify exact target prologues before any remote allocation or load.
         signatures={0x15cf08:bytes.fromhex('488bc45356574154415541564157'),
                     0x15c968:bytes.fromhex('488bc4488958084889681048897018')}
+        if args.family_diagnostics: signatures[0x3a148c]=bytes.fromhex('48895c2408488974241855')
         r=Resolver(args.pid,profile)
         try:
             refreshed=r.resolve()
@@ -106,6 +109,7 @@ def main():
         yaw_address=int(camera['pov_address'],16)+int(camera['offsets']['Rotation'],16)+4
         config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\nsweep={int(args.sweep)}\nlive_head={int(args.live_head)}\n"
         config+=f'gpu_diagnostics={int(args.gpu_diagnostics)}\n'
+        config+=f'family_diagnostics={int(args.family_diagnostics)}\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.

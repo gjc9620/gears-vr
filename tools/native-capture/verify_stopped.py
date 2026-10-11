@@ -38,6 +38,7 @@ def main():
         loaded = modules(resolver.p.handle)
         camera = {0x15cf08: bytes.fromhex('488bc45356574154415541564157'),
                   0x15c968: bytes.fromhex('488bc4488958084889681048897018')}
+        camera[0x3a148c]=bytes.fromhex('48895c2408488974241855')
         for target in targets:
             rva = target - resolver.base
             if rva in camera:

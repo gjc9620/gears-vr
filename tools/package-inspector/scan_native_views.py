@@ -17,7 +17,10 @@ def main():
     parser.add_argument('--output', type=pathlib.Path, required=True)
     parser.add_argument('--slots', type=int, default=256, choices=(256, 512, 1024))
     parser.add_argument('--entry-rva', action='append', default=[], help='Also decode an explicitly selected ordinary-code RVA')
+    parser.add_argument('--max-instructions', type=int, default=1600, choices=range(100,10001), help='Bound per entry, including explicitly selected entries')
+    parser.add_argument('--skip-vtables', action='store_true', help='Decode only explicitly selected entries')
     args = parser.parse_args()
+    if args.skip_vtables and not args.entry_rva: parser.error('Explicit entries are required when skipping vtables')
     profile = json.loads(pathlib.Path(__file__).with_name('reloaded-profile.json').read_text())
     resolver = Resolver(args.pid, profile)
     try:
@@ -41,7 +44,8 @@ def main():
         cache_pov = int(camera['offsets']['CameraCache'], 16) + int(camera['offsets']['POV'], 16)
         offsets.update(cache_pov + int(camera['offsets'][key], 16) for key in ('Location', 'Rotation', 'FOV'))
         graphs = {}
-        def graph(entry, limit=1600):
+        def graph(entry, limit=None):
+            if limit is None: limit=args.max_instructions
             if entry in graphs:
                 return graphs[entry]
             seen = {}
@@ -86,7 +90,7 @@ def main():
         slot_records = []
         # Bounded window; adjacent vtables may occur before the window ends.
         # Slot membership beyond the actual class table is deliberately unproven.
-        for kind, key in [('camera', 'camera_address'), ('controller', 'controller_address'), ('local_player', 'local_player_address')]:
+        for kind, key in ([] if args.skip_vtables else [('camera', 'camera_address'), ('controller', 'controller_address'), ('local_player', 'local_player_address')]):
             obj = int(camera[key], 16)
             table = resolver.u64(obj)
             slots = struct.unpack('<'+'Q'*args.slots, resolver.read(table, args.slots*8))
@@ -105,7 +109,7 @@ def main():
             if not code(entry):
                 raise RuntimeError('Explicit entry outside ordinary executable sections')
             explicit.append(graph(entry))
-        result = dict(pid=args.pid, camera=camera, tables=tables, slots=slot_records, explicit_entries=explicit, scanned_unique_entries=len(graphs),
+        result = dict(pid=args.pid, camera=camera, max_instructions=args.max_instructions, skipped_vtables=args.skip_vtables, tables=tables, slots=slot_records, explicit_entries=explicit, scanned_unique_entries=len(graphs),
                       entry_summaries=[{k:v for k,v in g.items() if k not in ('instructions','calls','hits')} for g in graphs.values()],
                       searched_displacements=[hex(v) for v in sorted(offsets)], candidates=candidates,
                       caveat='Offset matches and fixed vtable windows are heuristic leads; no runtime invocation or register provenance proved.')

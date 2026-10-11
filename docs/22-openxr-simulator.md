@@ -38,6 +38,22 @@ $pythonExe = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependenci
 
 封装入口 `run_simulator.py --seconds 8` 已独立运行通过：574 条位姿记录，退出 0。
 
+## 自动位姿与合成图接口
+
+Meta XR Operator v207 已通过官方 CLI 装到 `tools/third-party/metavr/state/tools/meta-xr-operator`。仅在 `run_simulator.py --operator` 子进程开启 OpenXR API layer；没有注册 Codex 全局 MCP。测试脚本通过 localhost:8720 MCP 初始化、发送 initialized 通知，并确认应用名为 GearsVR Pose Probe 后调用接口。拒绝操作已存在的其他 XR 服务。
+
+`simulator_motion_test.py` 会运行 30 秒，依次设置 ±10 cm 左右 / 前后、±5 cm 上下和 ±10° yaw，回中，保存左右眼最终 compositor 图，核对 CSV 的三轴平移和 yaw 范围。全部是人工设置的模拟位姿；XR Operator 返回 valid=true、tracked=false，现有 PoseGate 不会将其视作真实跟踪，不为测试绕过游戏头动保护。
+
+第一次自动测试捕获到服务先于会话就绪，首次设置被拒绝；模拟器清理也异常退出，因此测试失败，没有计为通过。脚本现等待有效会话，识别顶层及内容块错误，结束时关闭 MCP 会话。修正后 `sim-motion-20261012-032340.json` 测试通过：220 个不同姿态、全部目标范围出现、左右眼合成图保存成功、程序退出 0。不将这一次成功认定为已修复所有 runtime 清理异常。
+
+游戏面板组合测试 `sim-motion-20261012-032640.json`（PID 40888）也通过：1,194 次 GPU 复制、2,149 次 quad 提交、位姿范围核对通过、退出 0。人工检查最终左右眼 compositor 图，黑底中的二维面板确实为石柱、走廊和烛光关卡。面板偏小且当前为诊断布局，不评价 VR 视野或舒适度。此测试的头部变化仍为模拟输入，未控制游戏镜头。
+
+```powershell
+& $pythonExe tools/openxr-probe/simulator_motion_test.py
+# 新游戏 GPU 通道进入关卡后，同样检查游戏二维面板：
+& $pythonExe tools/openxr-probe/simulator_motion_test.py --gpu-game
+```
+
 ## 尚未证明
 
 当前是双眼可见的同一二维面板，完整立体场景尚未渲染；实时头动与显示通路仍为分开的原型。模拟器 CLI 的 MP4 录制尝试返回当前 runtime 不支持，未产出录像。早期无图层测试曾在 runtime 清理阶段异常退出，随后 batch 配置的图层测试正常结束；不把配置改变单独认定为已证明根因。

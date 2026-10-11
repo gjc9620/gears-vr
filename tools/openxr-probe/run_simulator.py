@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--seconds', type=int, default=12, choices=range(3, 61))
     parser.add_argument('--gpu-game', action='store_true')
     parser.add_argument('--gpu-snapshot', action='store_true')
+    parser.add_argument('--operator', action='store_true', help='Enable the locally installed diagnostic API layer for this child only')
     args = parser.parse_args()
     if args.gpu_snapshot and (not args.gpu_game or args.seconds < 12):
         parser.error('Snapshot requires --gpu-game and at least 12 seconds')
@@ -40,6 +41,12 @@ def main():
     target.write_text(json.dumps(config, indent=2), encoding='utf-8')
     env = os.environ.copy()
     env['META_XRSIM_CONFIG_JSON'] = str(target)
+    if args.operator:
+        layer = ROOT / 'tools/third-party/metavr/state/tools/meta-xr-operator/meta-xr-operator-standalone-public/windows'
+        for name in ('XrApiLayer_METAX_operator.json', 'XrApiLayer_METAX_operator.dll'):
+            if not (layer / name).is_file(): parser.error(f'Missing diagnostic layer: {layer / name}')
+        env['XR_API_LAYER_PATH'] = str(layer)
+        env['XR_ENABLE_API_LAYERS'] = 'XR_APILAYER_METAX_operator'
     command = [sys.executable, str(pathlib.Path(__file__).with_name('run_pose.py')),
                '--seconds', str(args.seconds), '--runtime', str(manifest)]
     command.append('--gpu-game' if args.gpu_game else '--render')
