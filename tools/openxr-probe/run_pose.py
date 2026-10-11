@@ -48,9 +48,11 @@ def main():
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--runtime', type=pathlib.Path)
     parser.add_argument('--bridge-pid', type=int, help='Publish poses to the bounded native-camera test')
+    parser.add_argument('--game-screen',action='store_true',help='Display only the game HWND as a mono diagnostic panel')
     args = parser.parse_args()
     if args.bridge_pid and (args.bridge_pid<=0 or not args.render): parser.error('Bridge requires a positive target PID and --render')
     if not args.bridge_pid and args.seconds>60: parser.error('Standalone diagnostics are limited to 60 seconds')
+    if args.game_screen and (args.render or args.bridge_pid): parser.error('Game screen is a separate display test')
     env = os.environ.copy()
     if args.runtime:
         if not args.runtime.is_file(): parser.error('Runtime manifest not found')
@@ -63,11 +65,19 @@ def main():
     command = [str(pathlib.Path(__file__).parent / 'build/OpenXRPoseProbe.exe'), str(args.seconds), str(output)]
     if args.render: command.append('--render')
     if args.bridge_pid: command.extend(['--bridge-pid',str(args.bridge_pid)])
+    game_target=None
+    if args.game_screen:
+        sys.path.insert(0,str(ROOT/'tools/game-io'))
+        from game_io import game_window
+        pid,hwnd=game_window()
+        game_target={'pid':pid,'hwnd':hwnd}
+        command.extend(['--game-window',str(hwnd),str(pid)])
     timeout = args.seconds + 20
     report = {'csv': str(output), 'stdout': str(stdout), 'stderr': str(stderr),
               'runtime_override': env.get('XR_RUNTIME_JSON'), 'render_pattern': args.render,
               'timeout_seconds': timeout}
     report['bridge_pid']=args.bridge_pid
+    report['game_screen_target']=game_target
     # Files prevent unbounded runtime messages consuming model context or RAM.
     with stdout.open('wb') as out, stderr.open('wb') as err:
         try:
@@ -80,6 +90,13 @@ def main():
     if output.is_file():
         try: report['pose_summary'] = summarize(output)
         except (ValueError, KeyError) as error: report['csv_error'] = str(error)
+    if stdout.is_file():
+        with stdout.open('rb') as stream:
+            stream.seek(max(0,stdout.stat().st_size-32768))
+            for line in stream.read().decode('utf-8',errors='replace').splitlines():
+                try: counters=json.loads(line)
+                except ValueError: continue
+                if isinstance(counters,dict) and 'game_quad_layers' in counters: report['game_screen_summary']=counters
     stem.with_suffix('.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps(report, indent=2))
     return 0 if report.get('exit_code') == 0 and not report.get('csv_error') else 1

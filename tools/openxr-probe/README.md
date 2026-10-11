@@ -70,3 +70,12 @@ EndFrame 提交一个含两眼的 projection layer。这个测试验证资源和
 
 参考：[OpenXR D3D12 图像状态规范](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XR_KHR_D3D12_enable-swapchain-image-state.html)、
 [Khronos 官方 SDK 示例](https://github.com/KhronosGroup/OpenXR-SDK-Source/tree/main/src/tests/hello_xr)。
+# 游戏窗口显示模式
+
+`run_pose.py --seconds 30 --game-screen --runtime <VDXR manifest>` 在独立进程
+持续采集经过路径核验的游戏 HWND，以 960×540、目标约 15Hz 更新到 OpenXR
+二维面板。仅传游戏窗口，不传整个桌面；本轮不驱动游戏视点，不是立体场景渲染。
+首帧保存采集 PPM 和 swapchain GPU 回读 PPM，并逐像素核验。
+此模式与 --render / --bridge-pid 互斥，默认仍保留原有位姿诊断行为。
+验证及限制见 docs/15-game-screen-display.md。
+

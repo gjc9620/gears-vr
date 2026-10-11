@@ -1,6 +1,6 @@
 # GearsVR 研究原型
 
-目标是为 Gears of War: Reloaded 实现双目立体画面和 6DoF 头部跟踪。当前成果是摄像机定位工具、原生函数调用采集工具与研究记录，尚未实现 VR 渲染或头部跟踪。
+目标是为 Gears of War: Reloaded 实现双目立体画面和 6DoF 头部跟踪，最终交付可部署版本。当前已验证受限真实头动控制原生游戏视点，正在验证游戏画面进入头显；完整 VR Mod 尚未完成。
 
 - [新手流程与学习路线](docs/00-roadmap-and-learning.md)
 - [摄像机定位证据](docs/02-camera-analysis.md)
@@ -12,13 +12,18 @@
 - [采图与手柄验证记录](docs/07-game-io-validation.md)
 - [OpenXR 独立会话与提交验证](docs/08-openxr-independent-validation.md)
 - [六轴原生视点验证](docs/09-six-axis-render-validation.md)
+- [VR 交互方案记录（待实现）](docs/10-vr-interaction-design.md)
+- [真实头显连接验证](docs/11-headset-connection-validation.md)
+- [实时头动接入验证](docs/14-live-head-camera-test.md)
+- [游戏窗口进入头显的显示原型](docs/15-game-screen-display.md)
+- [最终部署交付目标](docs/16-deployment-target.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
 
 摄像机定位器通过 EXE 版本哈希、模块 RVA、运行时反射元数据和对象关系识别当前玩家摄像机。已在两次游戏启动以及一次检查点重载中验证。工具不会把旧进程中的堆地址当作新进程地址使用。
 
-原生视点的三轴旋转和三轴平移已通过当前关卡的受控微扰记录验证，测试结束后视图恢复基线。独立 OpenXR 会话及左右眼测试图提交成功，但头部数据始终是默认姿态，尚未验证真实头显运动。坐标转换和数据有效性检查已离线测试，尚未接入游戏；真实脚本 VM 停顿、游戏双眼渲染与完整 6DoF 仍待实现。
+原生视点的三轴旋转和三轴平移已通过当前关卡的受控微扰记录验证。Quest 3 / VDXR 真实头动及测试图显示已验证；受限头动已接入游戏临时渲染视点，停止后入口恢复。游戏窗口图像的 OpenXR 二维面板提交已通过 GPU 像素回读和 30 秒实测，用户确认关卡画面连续、颜色正常。真实脚本 VM 停顿、第一人称锚点、游戏双眼渲染与完整 6DoF 仍待实现。
 
 ## 仓库边界
 
