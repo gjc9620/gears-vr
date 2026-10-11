@@ -62,3 +62,23 @@
 正常启动仍观察到 Contacting Gears of War services 等待；在线服务等待没有全部消除。
 DirectLevel 地图 URL 实测启动失败，WER 记录访问异常 c0000005、RVA 0x38b239；
 保留为明确的实验选项，不用于自动调试。恢复时选择不重置设置，再通过正常标题菜单进关卡成功。
+
+## 失焦自动暂停（2026-10-12）
+
+原生普通代码中的 RVA 0x1e3f28 函数（运行时异常展开表给出边界）在
+0x1e41ab 读取 UTF-16 启动参数名 NOPAUSEUNFOCUS；参数匹配结果存入 ebx，
+0x1e41ea test ebx / jne 0x1e4286 跳过 ConditionalOutOfFocusPauseGame
+命令构造与执行块。命令字符串引用位于 0x1e4255。
+包脚本中的 WarPC.ConditionalOutOfFocusPauseGame / OutOfFocusPauseGame
+调用 PauseGame；未找到对应的序列化 INI 配置开关。
+
+因此调试启动器默认添加 -NoPauseUnfocus，不修改此处机器码或脚本字节。
+若需要恢复默认失焦暂停，使用 Start-DebugGame.ps1 -PauseOnUnfocus；
+参数每次启动生效。普通手动启动 EXE 不会自动继承调试启动器参数。
+本轮正常关闭旧游戏 PID 43660，启动 PID 28720，进程命令行确认带此参数。
+用户随后确认失焦自动暂停已经关闭。工具读取到游戏仍运行；但读取时游戏已经重新
+获得焦点，所以此次没有保存 focused=false 与镜头时间推进同时出现的机器证据。
+手柄 Start 暂停实测打开暂停菜单，镜头时间停止；再次 Start 恢复后时间继续推进。
+区分用户观察和工具直接观测，不仅凭命令行宣布全部行为已被机器验证。
+
+原始研究输出位于 analysis/focus-pause/（Git 忽略），没有保存到游戏文件。

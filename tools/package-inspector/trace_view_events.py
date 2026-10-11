@@ -19,12 +19,14 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--pid',type=int,required=True)
     parser.add_argument('--output',type=pathlib.Path,required=True)
+    parser.add_argument('--name',action='append',help='Exact reflected name to investigate (repeatable)')
     args=parser.parse_args()
     profile=json.loads(pathlib.Path(__file__).with_name('reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
     try:
         camera=r.resolve()
         wanted={'GetPlayerViewPoint','GetCameraViewPoint','CalcSceneView','Draw','FillCameraCache'}
+        if args.name: wanted=set(args.name)
         names={}
         unreadable_names=[]
         for index,pointer in enumerate(r.name_pointers):

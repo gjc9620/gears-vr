@@ -8,7 +8,7 @@ class Inspect
 {
     static int Main(string[] args)
     {
-        if (args.Length != 2) { Console.Error.WriteLine("Usage: Inspect.exe package output-directory"); return 2; }
+        if (args.Length != 2 && args.Length != 3) { Console.Error.WriteLine("Usage: Inspect.exe package output-directory [reference-path-regex]"); return 2; }
         Directory.CreateDirectory(args[1]);
         try
         {
@@ -39,6 +39,7 @@ class Inspect
                     index.WriteLine("{0}\t{1}\t{2}", (int)obj, cls, path);
                     bool candidate = cls == "Class" && Regex.IsMatch(path, "Camera|PlayerController|LocalPlayer|Viewport", RegexOptions.IgnoreCase);
                     candidate |= cls == "Function" && Regex.IsMatch(path, "(WarPlayerCamera|Camera)\\.|GetPlayerViewPoint|CalcCamera|UpdateCamera", RegexOptions.IgnoreCase);
+                    if (args.Length == 3) candidate = Regex.IsMatch(path, args[2], RegexOptions.IgnoreCase);
                     if (!candidate) continue;
                     try
                     {
