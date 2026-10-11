@@ -20,15 +20,20 @@ def main():
     parser.add_argument('--seconds', type=int, default=60, choices=range(10, 181))
     parser.add_argument('--readback', action='store_true', help='One asynchronous GPU screenshot after 15 seconds')
     parser.add_argument('--manual-readback', action='store_true', help='Wait for request_readback.py instead of taking a startup screenshot')
+    parser.add_argument('--gpu-share', action='store_true', help='Publish bounded continuous frames to one same-adapter GPU consumer')
     parser.add_argument('--build-dir', type=pathlib.Path, default=pathlib.Path(__file__).with_name('build-binding'))
     args = parser.parse_args()
     if args.manual_readback:
         args.readback = True
+    if args.gpu_share and args.readback:
+        parser.error('GPU sharing and one-shot readback are separate tests')
     build = args.build_dir.resolve()
     dll = build / 'GearsGpuBinding.dll'
     subprocess.run([str(build / 'BindingSelfTest.exe'), str(dll)], check=True)
     if args.readback:
         subprocess.run([str(build / 'BindingSelfTest.exe'), str(dll), '--readback'], check=True)
+    if args.gpu_share:
+        subprocess.run([str(build / 'GpuShareTest.exe')], check=True)
     closed = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command',
         "if (Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue) {exit 1} else {exit 0}"], capture_output=True)
     if closed.returncode:
@@ -46,7 +51,7 @@ def main():
     pe.close()
     if args.readback and args.seconds<20:
         raise RuntimeError('Readback requires at least 20 seconds')
-    (build / 'binding.ini').write_text(f'[Binding]\nseconds={args.seconds}\nreadback={int(args.readback)}\nmanual={int(args.manual_readback)}\n', encoding='utf-16')
+    (build / 'binding.ini').write_text(f'[Binding]\nseconds={args.seconds}\nreadback={int(args.readback)}\nmanual={int(args.manual_readback)}\nshare={int(args.gpu_share)}\n', encoding='utf-16')
     subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-File',
                     str(ROOT / 'tools/debug-launch/Start-DebugGame.ps1')], check=True)
     # Locate the fresh process by image name. The existing launcher is kept as

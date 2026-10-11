@@ -35,6 +35,7 @@ def main():
     report = dict(pid=args.pid, stopped=records[-1], bindings=bindings, presents=presents, entry_checks=[], confirmed=[])
     report['readback'] = next((item for item in records if item['event'] == 'readback'), None)
     report['resources'] = next((item for item in records if item['event'] == 'resources'), None)
+    report['gpu_share'] = next((item for item in records if item['event'] == 'gpu_share'), None)
     process = Process(args.pid)
     try:
         loaded = modules(process.handle)
@@ -64,7 +65,8 @@ def main():
     report['entries_restored'] = len(entries) == 4 and all(item['matches'] for item in report['entry_checks'])
     report['binding_confirmed'] = bool(report['confirmed'])
     report['limitation'] = ('Creation and Present canonical COM identity match proves observed queue binding. '
-        + ('One GPU back-buffer copy was saved; this does not establish continuous capture, stereo, gameplay content or HDR color accuracy. '
+        + ('GPU shared frames were published; consumer and headset evidence must be checked separately. '
+           if report['gpu_share'] else 'One GPU back-buffer copy was saved; this does not establish continuous capture, stereo, gameplay content or HDR color accuracy. '
            if report['readback'] and report['readback']['saved'] else 'No saved GPU back-buffer copy is confirmed. ')
         + 'Addresses are specific to this process.')
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -79,6 +81,7 @@ def main():
     if (not report['entries_restored'] or not report['stopped']['restored']
         or not report['binding_confirmed']
         or (report['readback'] is not None and not report['readback']['saved'])
+        or (report['gpu_share'] is not None and (report['gpu_share']['state']!=2 or not report['gpu_share']['published'] or report['gpu_share']['hr']!='0x00000000'))
         or (report['resources'] is not None and not report['resources']['released'])):
         raise SystemExit(1)
 

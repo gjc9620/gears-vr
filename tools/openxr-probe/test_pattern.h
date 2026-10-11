@@ -41,7 +41,7 @@ public:
     TestPattern(ID3D12Device* d,ID3D12CommandQueue* q,const std::string& output_prefix):device(d),queue(q),prefix(output_prefix) {
         uint32_t count{};xr_check(xrEnumerateSwapchainFormats(session,0,&count,nullptr),"enumerate formats");
         std::vector<int64_t> formats(count);xr_check(xrEnumerateSwapchainFormats(session,count,&count,formats.data()),"read formats");
-        for(auto candidate:{DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM})
+        for(auto candidate:{DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,DXGI_FORMAT_B8G8R8A8_UNORM_SRGB})
             if(std::find(formats.begin(),formats.end(),int64_t(candidate))!=formats.end()) {format=candidate;break;}
         if(!format)throw std::runtime_error("No 8-bit diagnostic swapchain format");
         for(auto& eye:eyes) {
@@ -104,7 +104,8 @@ public:
                 fprintf(file,"P6\n%u %u\n255\n",width,height);uint64_t hash=14695981039346656037ULL;
                 for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x) {
                     const auto* p=pixels+size_t(y)*layout.Footprint.RowPitch+x*4;
-                    unsigned char rgb[3]={p[format==DXGI_FORMAT_B8G8R8A8_UNORM?2:0],p[1],p[format==DXGI_FORMAT_B8G8R8A8_UNORM?0:2]};
+                    bool bgra=format==DXGI_FORMAT_B8G8R8A8_UNORM || format==DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+                    unsigned char rgb[3]={p[bgra?2:0],p[1],p[bgra?0:2]};
                     fwrite(rgb,1,3,file);for(auto value:rgb)hash=(hash^value)*1099511628211ULL;
                 }
                 fclose(file);D3D12_RANGE written{0,0};readback->Unmap(0,&written);checksums[e]=hash;saved[e]=true;

@@ -10,6 +10,7 @@
 #include <share.h>
 #include "MinHook.h"
 #include "gpu_readback.h"
+#include "../vr-common/gpu_share.h"
 
 namespace {
 using LegacyFn=HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory*,IUnknown*,DXGI_SWAP_CHAIN_DESC*,IDXGISwapChain**);
@@ -26,6 +27,8 @@ struct Seen {uintptr_t chain,window;unsigned count;};
 std::array<Binding,64> bindings{};std::array<Seen,64> seen{};
 unsigned binding_count{},seen_count{};
 OneShotReadback readback;
+gears_vr::GpuPublisher gpu_publisher;
+bool gpu_share_enabled{};
 bool readback_enabled{};
 bool manual_readback{};
 std::atomic<bool> readback_requested{};
@@ -45,9 +48,12 @@ void remember(unsigned method,IUnknown* input,IDXGISwapChain* chain,void* caller
     record.queue_type=queue->GetDesc().Type;record.method=method;record.caller=reinterpret_cast<uintptr_t>(caller);record.qpc=now();
     if(SUCCEEDED(queue->GetDevice(IID_PPV_ARGS(&device)))){record.device=identity(device);device->Release();}
     if(SUCCEEDED(chain->GetDesc(&desc))){record.window=reinterpret_cast<uintptr_t>(desc.OutputWindow);record.width=desc.BufferDesc.Width;record.height=desc.BufferDesc.Height;record.format=desc.BufferDesc.Format;}
-    if(readback_enabled && record.queue_type==0 && record.window && record.width>=640){
+    if((readback_enabled || gpu_share_enabled) && record.queue_type==0 && record.window && record.width>=640){
         DWORD owner{};GetWindowThreadProcessId(reinterpret_cast<HWND>(record.window),&owner);
-        if(owner==GetCurrentProcessId())readback.bind(queue,chain);
+        if(owner==GetCurrentProcessId()){
+            if(readback_enabled)readback.bind(queue,chain);
+            if(gpu_share_enabled)gpu_publisher.bind(queue,chain);
+        }
     }
     queue->Release();
     if(!TryAcquireSRWLockExclusive(&lock)){++dropped;return;}
@@ -69,6 +75,7 @@ HRESULT STDMETHODCALLTYPE on_composition(IDXGIFactory2* factory,IUnknown* input,
 HRESULT STDMETHODCALLTYPE on_present(IDXGISwapChain* chain,UINT interval,UINT flags){
     Scope scope;
     if(recording && !(flags&DXGI_PRESENT_TEST)){
+        if(gpu_share_enabled)gpu_publisher.capture(chain);
         if(readback_enabled && (!manual_readback || readback_requested))readback.capture(chain,manual_readback?0:15000);
         uintptr_t id=identity(chain);DXGI_SWAP_CHAIN_DESC desc{};chain->GetDesc(&desc);
         if(TryAcquireSRWLockExclusive(&lock)){
@@ -135,6 +142,8 @@ DWORD WINAPI worker(void*){
     swprintf_s(ini,L"%s\\binding.ini",path);unsigned seconds=GetPrivateProfileIntW(L"Binding",L"seconds",60,ini);
     readback_enabled=GetPrivateProfileIntW(L"Binding",L"readback",0,ini)==1;
     manual_readback=GetPrivateProfileIntW(L"Binding",L"manual",0,ini)==1;
+    gpu_share_enabled=GetPrivateProfileIntW(L"Binding",L"share",0,ini)==1;
+    if(gpu_share_enabled && readback_enabled)return 14;
     if(seconds<10 || seconds>180 || !valid_game())return 10;
     wchar_t output[MAX_PATH];swprintf_s(output,L"%s\\binding-%lu.jsonl",path,GetCurrentProcessId());
     FILE* file=_wfsopen(output,L"w",_SH_DENYNO);if(!file)return 11;
@@ -149,6 +158,8 @@ DWORD WINAPI worker(void*){
     wchar_t image[MAX_PATH];swprintf_s(image,L"%s\\gpu-%lu.ppm",path,GetCurrentProcessId());bool saved=false;
     if(ok){ULONGLONG deadline=GetTickCount64()+seconds*1000ull;while(GetTickCount64()<deadline && !(GetAsyncKeyState(VK_F8)&0x8000)){
         if(request_event && WaitForSingleObject(request_event,0)==WAIT_OBJECT_0)readback_requested=true;
+        if(gpu_share_enabled && gpu_publisher.state==1)gpu_publisher.prepare();
+        if(gpu_share_enabled)gpu_publisher.poll();
         if(readback_enabled && readback.state==1)readback.prepare();
         if(readback_enabled && !saved && readback.state==6)saved=readback.save(image);
         Sleep(20);
@@ -167,6 +178,14 @@ DWORD WINAPI worker(void*){
         fprintf(file,"{\"event\":\"readback\",\"state\":%u,\"saved\":%s,\"width\":%u,\"height\":%u,\"format\":%u,\"buffer_index\":%u,\"hr\":\"0x%08lx\"}\n",readback.state.load(),saved?"true":"false",readback.width,readback.height,readback.format,readback.index,static_cast<unsigned long>(readback.failure));
     }
     bool released=readback.release();
+    if(gpu_share_enabled){
+        // close() retains possibly in-flight resources if the fence has not
+        // completed. Give the final submission time to finish before closing.
+        gpu_publisher.drain(5000);
+        auto share_state=gpu_publisher.state.load();auto share_error=gpu_publisher.failure();
+        bool share_released=gpu_publisher.close();released=released && share_released;
+        fprintf(file,"{\"event\":\"gpu_share\",\"state\":%u,\"published\":%u,\"busy_skips\":%u,\"hr\":\"0x%08lx\",\"resources_released\":%s}\n",share_state,gpu_publisher.frames.load(),gpu_publisher.busy.load(),static_cast<unsigned long>(share_error),share_released?"true":"false");
+    }
     fprintf(file,"{\"event\":\"resources\",\"released\":%s}\n",released?"true":"false");
     AcquireSRWLockExclusive(&lock);
     for(unsigned i=0;i<binding_count;++i){const auto& b=bindings[i];

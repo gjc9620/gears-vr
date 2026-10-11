@@ -31,6 +31,7 @@ void dx_check(HRESULT result, const char* action) {
 }
 #include "test_pattern.h"
 #include "game_screen.h"
+#include "game_gpu_screen.h"
 void cleanup() {
     if(view_space) xrDestroySpace(view_space);
     if(local) xrDestroySpace(local);
@@ -39,16 +40,20 @@ void cleanup() {
 }
 int main(int argc, char** argv) {
     if(argc<3) {fprintf(stderr,"Usage: OpenXRPoseProbe SECONDS OUTPUT.csv [--render] [--bridge-pid PID]\n");return 2;}
-    bool test_render=false;DWORD bridge_pid=0,game_pid=0;HWND game_window=nullptr;
+    bool test_render=false;DWORD bridge_pid=0,game_pid=0,gpu_pid=0;HWND game_window=nullptr;const char* gpu_snapshot=nullptr;
     for(int i=3;i<argc;++i) {
         if(!strcmp(argv[i],"--render"))test_render=true;
         else if(!strcmp(argv[i],"--bridge-pid") && i+1<argc)bridge_pid=strtoul(argv[++i],nullptr,10);
+        else if(!strcmp(argv[i],"--gpu-game-pid") && i+1<argc)gpu_pid=strtoul(argv[++i],nullptr,10);
+        else if(!strcmp(argv[i],"--gpu-snapshot") && i+1<argc)gpu_snapshot=argv[++i];
         else if(!strcmp(argv[i],"--game-window") && i+2<argc){game_window=reinterpret_cast<HWND>(_strtoui64(argv[++i],nullptr,0));game_pid=strtoul(argv[++i],nullptr,10);}
         else return 2;
     }
     int seconds=atoi(argv[1]);
     if(seconds<3 || seconds>(bridge_pid?180:60) || (bridge_pid && !test_render)) return 2;
     if(game_window && (test_render || bridge_pid || !game_pid))return 2;
+    if(gpu_pid && (test_render || bridge_pid || game_window))return 2;
+    if(gpu_snapshot && !gpu_pid)return 2;
     if(game_window){SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);winrt::init_apartment(winrt::apartment_type::multi_threaded);}
     gears_vr::PoseBridge bridge;
     if(bridge_pid && !bridge.open(bridge_pid,true)){fprintf(stderr,"Pose bridge creation rejected\n");return 2;}
@@ -78,6 +83,9 @@ int main(int argc, char** argv) {
         XrGraphicsBindingD3D12KHR binding{XR_TYPE_GRAPHICS_BINDING_D3D12_KHR};binding.device=device.Get();binding.queue=queue.Get();
         XrSessionCreateInfo session_create{XR_TYPE_SESSION_CREATE_INFO};session_create.next=&binding;session_create.systemId=system;
         xr_check(xrCreateSession(instance,&session_create,&session),"xrCreateSession");
+        uint32_t format_count{};xr_check(xrEnumerateSwapchainFormats(session,0,&format_count,nullptr),"diagnostic format count");
+        std::vector<int64_t> session_formats(format_count);xr_check(xrEnumerateSwapchainFormats(session,format_count,&format_count,session_formats.data()),"diagnostic formats");
+        printf("{\"swapchain_formats\":[");for(uint32_t i=0;i<format_count;++i)printf("%s%lld",i?",":"",session_formats[i]);printf("]}\n");fflush(stdout);
         XrReferenceSpaceCreateInfo space{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};space.poseInReferenceSpace.orientation.w=1;
         space.referenceSpaceType=XR_REFERENCE_SPACE_TYPE_LOCAL;xr_check(xrCreateReferenceSpace(session,&space,&local),"LOCAL space");
         space.referenceSpaceType=XR_REFERENCE_SPACE_TYPE_VIEW;xr_check(xrCreateReferenceSpace(session,&space,&view_space),"VIEW space");
@@ -85,6 +93,8 @@ int main(int argc, char** argv) {
         if(test_render)pattern=std::make_unique<TestPattern>(device.Get(),queue.Get(),argv[2]);
         std::unique_ptr<GameScreen> screen;
         if(game_window)screen=std::make_unique<GameScreen>(device.Get(),queue.Get(),game_window,game_pid,argv[2]);
+        std::unique_ptr<GameGpuScreen> gpu_screen;
+        if(gpu_pid)gpu_screen=std::make_unique<GameGpuScreen>(device.Get(),queue.Get(),gpu_pid,gpu_snapshot);
         unsigned frames=0,valid=0,tracked=0,render=0,focused=0;XrSessionState state=XR_SESSION_STATE_UNKNOWN;
         auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(seconds);
         bool exiting=false;
@@ -127,6 +137,7 @@ int main(int argc, char** argv) {
             XrCompositionLayerQuad quad{XR_TYPE_COMPOSITION_LAYER_QUAD};
             const XrCompositionLayerBaseHeader* game_layers[]={reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad)};
             if(screen && frame.shouldRender && screen->render(quad)){end.layerCount=1;end.layers=game_layers;}
+            if(gpu_screen && frame.shouldRender && gpu_screen->render(quad)){end.layerCount=1;end.layers=game_layers;}
             if(pattern && frame.shouldRender && view_count==2 && (view_state.viewStateFlags&3)==3) {
                 pattern->render(views,projection_views);projection.space=local;projection.viewCount=2;projection.views=projection_views;
                 end.layerCount=1;end.layers=layers;
@@ -158,7 +169,10 @@ int main(int argc, char** argv) {
                frames,valid,tracked,render,focused,int(state),pattern?pattern->rendered:0,
                pattern?pattern->checksums[0]:0,pattern?pattern->checksums[1]:0);
         if(screen)printf("{\"game_quad_layers\":%u,\"game_texture_uploads\":%u,\"game_image_changes\":%u,\"first_source_hash\":%llu,\"last_source_hash\":%llu,\"gpu_pixels_verified\":%s,\"stereo_scene_rendering\":false}\n",screen->rendered,screen->uploads,screen->changes,screen->first_hash,screen->last_hash,screen->gpu_pixels_verified?"true":"false");
+        if(gpu_screen)printf("{\"gpu_game_quad_layers\":%u,\"gpu_game_copies\":%u,\"per_frame_cpu_readback\":false,\"stereo_scene_rendering\":false}\n",gpu_screen->rendered,gpu_screen->copies);
         bool display_ok=!screen || (screen->rendered && screen->gpu_pixels_verified);
+        display_ok=display_ok && (!gpu_screen || (gpu_screen->rendered && gpu_screen->copies));
+        gpu_screen.reset();
         screen.reset();
         pattern.reset();
         cleanup();fclose(csv);return frames && display_ok?0:1;

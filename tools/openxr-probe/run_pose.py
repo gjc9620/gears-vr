@@ -49,10 +49,14 @@ def main():
     parser.add_argument('--runtime', type=pathlib.Path)
     parser.add_argument('--bridge-pid', type=int, help='Publish poses to the bounded native-camera test')
     parser.add_argument('--game-screen',action='store_true',help='Display only the game HWND as a mono diagnostic panel')
+    parser.add_argument('--gpu-game',action='store_true',help='Display native shared GPU frames as a mono diagnostic panel')
+    parser.add_argument('--gpu-snapshot',action='store_true',help='Save one XR GPU image after 10 seconds; requires --gpu-game')
     args = parser.parse_args()
     if args.bridge_pid and (args.bridge_pid<=0 or not args.render): parser.error('Bridge requires a positive target PID and --render')
     if not args.bridge_pid and args.seconds>60: parser.error('Standalone diagnostics are limited to 60 seconds')
     if args.game_screen and (args.render or args.bridge_pid): parser.error('Game screen is a separate display test')
+    if args.gpu_game and (args.game_screen or args.render or args.bridge_pid): parser.error('GPU game is a separate display test')
+    if args.gpu_snapshot and (not args.gpu_game or args.seconds<12): parser.error('Snapshot requires GPU game and at least 12 seconds')
     env = os.environ.copy()
     if args.runtime:
         if not args.runtime.is_file(): parser.error('Runtime manifest not found')
@@ -64,20 +68,25 @@ def main():
     stdout, stderr = stem.with_suffix('.stdout.txt'), stem.with_suffix('.stderr.txt')
     command = [str(pathlib.Path(__file__).parent / 'build/OpenXRPoseProbe.exe'), str(args.seconds), str(output)]
     if args.render: command.append('--render')
+    snapshot=pathlib.Path(str(output)+'-gpu.ppm') if args.gpu_snapshot else None
+    if snapshot: command.extend(['--gpu-snapshot',str(snapshot)])
     if args.bridge_pid: command.extend(['--bridge-pid',str(args.bridge_pid)])
     game_target=None
-    if args.game_screen:
+    if args.game_screen or args.gpu_game:
         sys.path.insert(0,str(ROOT/'tools/game-io'))
         from game_io import game_window
         pid,hwnd=game_window()
         game_target={'pid':pid,'hwnd':hwnd}
-        command.extend(['--game-window',str(hwnd),str(pid)])
+        if args.gpu_game: command.extend(['--gpu-game-pid',str(pid)])
+        else: command.extend(['--game-window',str(hwnd),str(pid)])
     timeout = args.seconds + 20
     report = {'csv': str(output), 'stdout': str(stdout), 'stderr': str(stderr),
               'runtime_override': env.get('XR_RUNTIME_JSON'), 'render_pattern': args.render,
               'timeout_seconds': timeout}
     report['bridge_pid']=args.bridge_pid
     report['game_screen_target']=game_target
+    report['native_gpu_game']=args.gpu_game
+    report['gpu_snapshot_requested']=args.gpu_snapshot
     # Files prevent unbounded runtime messages consuming model context or RAM.
     with stdout.open('wb') as out, stderr.open('wb') as err:
         try:
@@ -90,6 +99,7 @@ def main():
     if output.is_file():
         try: report['pose_summary'] = summarize(output)
         except (ValueError, KeyError) as error: report['csv_error'] = str(error)
+    if snapshot: report['gpu_snapshot_saved']=snapshot.is_file();report['gpu_snapshot_path']=str(snapshot)
     if stdout.is_file():
         with stdout.open('rb') as stream:
             stream.seek(max(0,stdout.stat().st_size-32768))
@@ -97,9 +107,11 @@ def main():
                 try: counters=json.loads(line)
                 except ValueError: continue
                 if isinstance(counters,dict) and 'game_quad_layers' in counters: report['game_screen_summary']=counters
+                if isinstance(counters,dict) and 'gpu_game_quad_layers' in counters: report['gpu_game_summary']=counters
+                if isinstance(counters,dict) and 'swapchain_formats' in counters: report['swapchain_formats']=counters['swapchain_formats']
     stem.with_suffix('.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps(report, indent=2))
-    return 0 if report.get('exit_code') == 0 and not report.get('csv_error') else 1
+    return 0 if report.get('exit_code') == 0 and not report.get('csv_error') and (not snapshot or report['gpu_snapshot_saved']) else 1
 
 
 if __name__ == '__main__': sys.exit(main())

@@ -21,6 +21,8 @@
 - [第一人称 Mod 安装与恢复](docs/18-first-person-mod-install.md)
 - [第一人称 Mod 晃动与后坐力细查](docs/19-first-person-motion-and-recoil.md)
 - [原生 GPU 队列绑定与单帧回读](docs/20-native-gpu-binding-and-readback.md)
+- [原生连续 GPU 画面共享](docs/21-native-gpu-sharing.md)
+- [不戴头显的 OpenXR 自动验证](docs/22-openxr-simulator.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果

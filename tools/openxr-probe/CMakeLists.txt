@@ -17,6 +17,7 @@ target_compile_definitions(OpenXRPoseProbe PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX 
 target_compile_options(OpenXRPoseProbe PRIVATE /W4 /EHsc)
 set_property(TARGET OpenXRPoseProbe PROPERTY CXX_STANDARD 20)
 target_link_libraries(OpenXRPoseProbe PRIVATE d3d11 dwmapi windowsapp ole32)
+target_link_libraries(OpenXRPoseProbe PRIVATE d3dcompiler)
 add_executable(PoseMathTest ../vr-common/pose_math_test.cpp)
 target_compile_options(PoseMathTest PRIVATE /W4 /EHsc)
 add_executable(PoseGateTest ../vr-common/pose_gate_test.cpp)
