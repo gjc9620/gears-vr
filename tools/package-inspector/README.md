@@ -40,3 +40,13 @@ foreach ($name in @('Engine', 'WarfareGame')) {
 ```
 
 工具会先核对目标 EXE 哈希并重新定位当前摄像机，再读取代码。所有候选只是静态数据流线索；不采集调用频率，不写入，不注入。详细证据和局限见 `docs/03-native-camera-analysis.md`。`native-view-candidates.json` 与自动摄像机定位配置分开，尚未经动态 hook 验证。
+
+## 人物移动与镜头数据关联验证
+
+`sample_resolved_camera.py` 每次重新定位摄像机，同时读取 LocalPlayer.LastViewLocation，记录游戏是否拥有前台焦点。开始条件是游戏已获得焦点且 CameraCache 时间开始更新；默认等待上限 120 秒，采样 35 秒。无需自动操作游戏窗口，玩家自行恢复游戏并走动、转镜头。
+
+```powershell
+& $pythonExe 'J:\gearsVr\tools\package-inspector\sample_resolved_camera.py' --pid 32532 --seconds 35 --wait-for-focus 120 --output 'J:\gearsVr\analysis\runtime\camera-movement-validation.csv'
+```
+
+CSV 和摘要 JSON 留在本地分析目录。失去焦点的样本不会计入位置、旋转及误差摘要；原生 LastViewLocation 与 CameraCache 可能位于不同帧，误差不是严格同步的比较。这个实验验证数据关联，不验证原生函数调用频率、人物自动控制或 VR 位姿修改。
