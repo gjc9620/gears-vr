@@ -50,3 +50,21 @@ foreach ($name in @('Engine', 'WarfareGame')) {
 ```
 
 CSV 和摘要 JSON 留在本地分析目录。失去焦点的样本不会计入位置、旋转及误差摘要；原生 LastViewLocation 与 CameraCache 可能位于不同帧，误差不是严格同步的比较。这个实验验证数据关联，不验证原生函数调用频率、人物自动控制或 VR 位姿修改。
+
+## 对比第一人称包与 Ghidra 连接
+
+ExportInventory.cs 使用同一 net48 UELib，只读生成 export 位置、尺寸、SHA256、
+对象标志及名字表。对原版和 Mod 的解压副本分别运行，结果命名为
+analysis/first-person/original-Engine.tsv、mod-Engine.tsv 等。
+编译时使用 Framework64/v4.0.30319/csc.exe，引用 Eliot.UELib.dll。
+
+compare_export_inventories.py --output <JSON> 分类全部 export 差异与偏移修正候选；
+compare_default_properties.py --output <JSON> 读取属性差异。
+二者默认读取 analysis/first-person。后者可加 --include-class AnimSequence
+--include-class SkeletalMesh，但不解码原生模型几何或动画曲线。
+解压输出不能指向游戏目录。完整证据和局限见 docs/12-first-person-mod-analysis.md。
+
+ghidra_mcp_probe.py --output <JSON> 通过官方默认 http://127.0.0.1:8080/mcp
+做有限时只读协议发现：initialize、tools/list、ghidra://programs。
+不调用编辑工具、不导入程序、不修改 Codex 配置。服务未启动时返回失败；
+配置步骤见 docs/13-ghidra-mcp-setup.md。
