@@ -17,9 +17,23 @@ def summarize(path):
     keys = ('head_x', 'head_y', 'head_z', 'qx', 'qy', 'qz', 'qw')
     poses = [tuple(float(r[k]) for k in keys) for r in rows]
     finite = [p for p in poses if all(math.isfinite(v) for v in p)]
+    tracked = [(int(r['head_flags']) & 15) == 15 for r in rows]
+    non_default_tracked = sum(ok and p != (0, 0, 0, 0, 0, 0, 1)
+                              and all(math.isfinite(v) for v in p)
+                              for ok, p in zip(tracked, poses))
+    longest_untracked = 0
+    run_start = None
+    for row, ok in zip(rows, tracked):
+        stamp = int(row['predicted_time'])
+        if not ok:
+            if run_start is None: run_start = stamp
+            longest_untracked = max(longest_untracked, stamp - run_start)
+        else: run_start = None
     return {
         'frames': len(rows), 'finite_poses': len(finite),
-        'fully_valid_and_tracked': sum((int(r['head_flags']) & 15) == 15 for r in rows),
+        'fully_valid_and_tracked': sum(tracked),
+        'non_default_tracked_frames': non_default_tracked,
+        'longest_untracked_seconds': round(longest_untracked / 1e9, 3),
         'unique_head_poses': len(set(finite)),
         'head_ranges': {k: [min(p[i] for p in finite), max(p[i] for p in finite)]
                         for i, k in enumerate(keys)} if finite else {},
