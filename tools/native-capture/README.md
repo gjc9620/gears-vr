@@ -1,5 +1,11 @@
 # 原生视图调用采集原型
 
+新增 `--live-head` 受限实时头动测试，与其他视点测试互斥；需先启动带
+`--render --bridge-pid <游戏PID>` 的 OpenXR 位姿生产者。仅在已有 Quest 3
+真实头动验证后用于接入测试，旋转限制每轴 ±5°、平移长度 2 单位，
+100ms 过期、失焦或跟踪丢失返回原视点；F8 中止，F9 回中。
+使用独立 build-live/GearsCaptureLive.dll；说明和证据见 docs/14-live-head-camera-test.md。
+
 这一工具在当前游戏进程里加载我们编写的 DLL，并临时 Hook 原生候选入口。它会改写函数入口，不属于纯只读调查；它保留原函数参数、返回值和视点数据，不加入位姿变换。
 
 不加 `--wobble` 时上述采集行为保持不变。加 `--wobble` 开启受限的渲染 yaw 测试：只在匹配的当前玩家场景调用中改写临时旋转输出，最大 1.5°，基线 3 秒后摆动 12 秒，再停止；失去焦点会终止。CSV 增加 source_yaw、yaw_delta、cache_yaw、test_state，valid 的 64 位标志表示非零偏移已施加。游戏内验证见 `docs/05-render-yaw-wobble-validation.md`。

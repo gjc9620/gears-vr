@@ -68,6 +68,7 @@ def main():
     mode=parser.add_mutually_exclusive_group()
     mode.add_argument('--wobble',action='store_true',help='Enable the gated 1.5-degree render-only yaw test')
     mode.add_argument('--sweep',action='store_true',help='Run pitch/yaw/roll and three tiny render-only translations')
+    mode.add_argument('--live-head',action='store_true',help='Bounded real-headset test (requires verified pose producer)')
     args=parser.parse_args()
     if pathlib.Path(args.dll_name).name!=args.dll_name or not args.dll_name.lower().endswith('.dll'):
         raise RuntimeError('DLL name must be a basename ending in .dll')
@@ -101,7 +102,7 @@ def main():
         finally:r.p.close()
         config='[Capture]\n'+f'pid={args.pid}\nseconds={args.seconds}\n'+f"local_player={camera['local_player_address']}\ncontroller={camera['controller_address']}\ntimestamp={camera['timestamp_address']}\n"
         yaw_address=int(camera['pov_address'],16)+int(camera['offsets']['Rotation'],16)+4
-        config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\nsweep={int(args.sweep)}\n"
+        config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\nsweep={int(args.sweep)}\nlive_head={int(args.live_head)}\n"
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.

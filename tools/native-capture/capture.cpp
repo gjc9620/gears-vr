@@ -10,6 +10,7 @@
 #include <cstring>
 #include <cmath>
 #include "MinHook.h"
+#include "../vr-common/pose_bridge.h"
 
 namespace {
 struct Vec {float x,y,z;};
@@ -25,6 +26,13 @@ uintptr_t base{},expected_local{},expected_pc{},camera_cache{};
 uintptr_t expected_camera{},camera_yaw{};
 bool wobble_enabled{},self_testing{};
 bool sweep_enabled{};
+bool live_enabled{};
+gears_vr::PoseBridge live_bridge;
+gears_vr::PoseGate live_gate;
+SRWLOCK live_lock=SRWLOCK_INIT;
+thread_local unsigned live_status{};
+thread_local unsigned long long live_sequence{};
+std::atomic<bool> live_aborted{false};
 double selftest_elapsed=4;
 uintptr_t allowed_caller=0x15d0ca;
 long long qpc_frequency{};
@@ -50,6 +58,8 @@ struct Record {
     int source_yaw,yaw_delta,cache_yaw;
     unsigned test_state;
     unsigned pose_phase;
+    unsigned pose_status;
+    unsigned long long pose_sequence;
     Vec source_position,translation_delta;
     Rot source_rotation,rotation_delta;
     std::array<float,32> matrices;
@@ -178,6 +188,44 @@ Record start_record(unsigned kind,void* object,void* caller) {
     r.object=reinterpret_cast<uintptr_t>(object);r.caller=reinterpret_cast<uintptr_t>(caller)-base;
     return r;
 }
+void apply_live(Record& record,void* pc,Vec* position,Rot* rotation) {
+    if(!live_enabled || !recording.load() || reinterpret_cast<uintptr_t>(pc)!=expected_pc ||
+       reinterpret_cast<uintptr_t>(scene_local)!=expected_local || scene_rotation!=rotation || record.caller!=allowed_caller)return;
+    if(!TryAcquireSRWLockExclusive(&live_lock))return;
+    struct Unlock {~Unlock(){ReleaseSRWLockExclusive(&live_lock);}} unlock;
+    Vec p{};Rot r{};
+    if(!safe_copy(&p,position,sizeof(p)) || !safe_copy(&r,rotation,sizeof(r)))return;
+    record.source_position=p;record.source_rotation=r;
+    uintptr_t link{};
+    bool linked=self_testing || (safe_copy(&link,reinterpret_cast<void*>(expected_local+0x68),8) && link==expected_pc &&
+        safe_copy(&link,reinterpret_cast<void*>(expected_pc+0x37c),8) && link==expected_camera);
+    if(GetAsyncKeyState(VK_F8)&0x8000)live_aborted=true;
+    if(GetAsyncKeyState(VK_F9)&0x8000)live_gate.recenter();
+    if(live_aborted)live_gate.arm(false);
+    gears_vr::PoseSample sample{};live_bridge.read(sample);
+    const double unit=6.283185307179586/65536;
+    gears_vr::Viewpoint clean{{p.x,p.y,p.z},{r.pitch*unit,r.yaw*unit,r.roll*unit}};
+    auto result=live_gate.update(clean,sample,gears_vr::monotonic_ns(),(record.focused || self_testing) && linked);
+    record.pose_status=live_status=static_cast<unsigned>(result.status);
+    record.pose_sequence=live_sequence=sample.sequence;
+    if(result.status!=gears_vr::PoseStatus::applied)return;
+    auto output=gears_vr::bounded_view(clean,result.view);
+    Vec next_p{static_cast<float>(output.position.x),static_cast<float>(output.position.y),static_cast<float>(output.position.z)};
+    Rot delta{gears_vr::to_rotator_units(output.rotation.pitch-clean.rotation.pitch),
+        gears_vr::to_rotator_units(output.rotation.yaw-clean.rotation.yaw),gears_vr::to_rotator_units(output.rotation.roll-clean.rotation.roll)};
+    auto add=[](int a,int b){unsigned bits=static_cast<unsigned>(a)+static_cast<unsigned>(b);int value;memcpy(&value,&bits,4);return value;};
+    Rot next_r{add(r.pitch,delta.pitch),add(r.yaw,delta.yaw),add(r.roll,delta.roll)};
+    SIZE_T written{};
+    if(!WriteProcessMemory(GetCurrentProcess(),position,&next_p,sizeof(next_p),&written) || written!=sizeof(next_p) ||
+       !WriteProcessMemory(GetCurrentProcess(),rotation,&next_r,sizeof(next_r),&written) || written!=sizeof(next_r)) {
+        live_aborted=true;return;
+    }
+    scene_translation=record.translation_delta={next_p.x-p.x,next_p.y-p.y,next_p.z-p.z};
+    scene_rotation_delta=record.rotation_delta=delta;
+    record.source_yaw=r.yaw;record.yaw_delta=scene_delta=delta.yaw;
+    record.pose_phase=scene_phase=8;
+    record.valid|=64;
+}
 void enqueue(const Record& value) {
     if(!recording.load(std::memory_order_relaxed)) return;
     if(!TryAcquireSRWLockExclusive(&queue_lock)) {++dropped;return;}
@@ -202,6 +250,7 @@ void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation
     if(scene_delta) record.valid|=64;
     if(camera_yaw) safe_copy(&record.cache_yaw,reinterpret_cast<void*>(camera_yaw),4);
     record.pose_phase=scene_phase;record.translation_delta=scene_translation;record.rotation_delta=scene_rotation_delta;
+    if(live_enabled){record.pose_status=live_status;record.pose_sequence=live_sequence;}
     record.source_position={record.position.x-scene_translation.x,record.position.y-scene_translation.y,record.position.z-scene_translation.z};
     record.source_rotation={record.rotation.pitch-scene_rotation_delta.pitch,record.rotation.yaw-scene_rotation_delta.yaw,record.rotation.roll-scene_rotation_delta.roll};
     if(scene_rotation_delta.pitch || scene_rotation_delta.yaw || scene_rotation_delta.roll ||
@@ -216,6 +265,7 @@ void __fastcall hook_event(void* pc,Vec* position,Rot* rotation) {
     record.duration=now()-record.time;
     apply_wobble(record,pc,rotation);
     apply_sweep(record,pc,position,rotation);
+    apply_live(record,pc,position,rotation);
     if(safe_copy(&record.position,position,sizeof(Vec))) record.valid|=1;
     if(safe_copy(&record.rotation,rotation,sizeof(Rot))) record.valid|=2;
     if(record.object==expected_pc) record.valid|=16;
@@ -287,7 +337,7 @@ void flush(FILE* file) {
                 r.source_rotation.pitch,r.source_rotation.yaw,r.source_rotation.roll,
                 r.translation_delta.x,r.translation_delta.y,r.translation_delta.z,
                 r.rotation_delta.pitch,r.rotation_delta.yaw,r.rotation_delta.roll);
-            fputc('\n',file);
+            fprintf(file,",%u,%llu\n",r.pose_status,r.pose_sequence);
         }
         fflush(file);
     }
@@ -335,7 +385,12 @@ DWORD WINAPI worker(void*) {
     expected_camera=ini_address(ini,L"camera");camera_yaw=ini_address(ini,L"camera_yaw");
     wobble_enabled=GetPrivateProfileIntW(L"Capture",L"wobble",0,ini)==1;
     sweep_enabled=GetPrivateProfileIntW(L"Capture",L"sweep",0,ini)==1;
-    if(wobble_enabled && sweep_enabled) {fprintf(status,"rejected: mutually exclusive camera tests\n");fclose(status);return 3;}
+    live_enabled=GetPrivateProfileIntW(L"Capture",L"live_head",0,ini)==1;
+    if(int(wobble_enabled)+int(sweep_enabled)+int(live_enabled)>1) {fprintf(status,"rejected: mutually exclusive camera tests\n");fclose(status);return 3;}
+    if(live_enabled) {
+        if(!live_bridge.open(GetCurrentProcessId(),false)){fprintf(status,"rejected: pose producer unavailable\n");fclose(status);return 3;}
+        live_gate.arm(true);
+    }
     uintptr_t linked{};
     if(!expected_local || !expected_pc || !safe_copy(&linked,reinterpret_cast<void*>(expected_local+0x68),8) || linked!=expected_pc) {
         fprintf(status,"rejected: local player/controller link mismatch\n");fclose(status);return 3;
@@ -352,12 +407,13 @@ DWORD WINAPI worker(void*) {
     if(!file) {fclose(status);return 5;}
     fprintf(file,"kind,thread,focused,valid,qpc,duration_qpc,object,result,caller_rva,x,y,z,pitch,yaw,roll,camera_timestamp,source_yaw,yaw_delta,cache_yaw,test_state");
     for(unsigned i=0;i<32;++i) fprintf(file,",matrix%u",i);
-    fprintf(file,",pose_phase,source_x,source_y,source_z,source_pitch,source_rot_yaw,source_roll,delta_x,delta_y,delta_z,delta_pitch,delta_rot_yaw,delta_roll\n");fflush(file);
+    fprintf(file,",pose_phase,source_x,source_y,source_z,source_pitch,source_rot_yaw,source_roll,delta_x,delta_y,delta_z,delta_pitch,delta_rot_yaw,delta_roll,pose_status,pose_sequence\n");fflush(file);
     LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);
     qpc_frequency=frequency.QuadPart;
     fprintf(status,"qpc_frequency=%lld\n",frequency.QuadPart);
     fprintf(status,"wobble_enabled=%d amplitude_degrees=1.5 baseline_seconds=3 wave_seconds=12\n",wobble_enabled);
     fprintf(status,"sweep_enabled=%d rotation_degrees=1.5 translation_units=2 baseline_seconds=3 axis_seconds=4 total_seconds=27\n",sweep_enabled);
+    fprintf(status,"live_head_enabled=%d rotation_limit_degrees=5 translation_limit_units=2 max_age_ms=100 F8=abort F9=recenter\n",live_enabled);
     MH_STATUS init=MH_Initialize();
     fprintf(status,"minhook_initialize=%s\n",MH_StatusToString(init));
     bool ok=init==MH_OK && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
@@ -459,6 +515,37 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureSelfTest(void*) {
     invoke(reinterpret_cast<void*>(1),reinterpret_cast<void*>(2),&end_p,&end_r,reinterpret_cast<void*>(3),reinterpret_cast<void*>(4));
     if(wobble_state!=2 || end_p.x!=6 || end_r.pitch!=4 || end_r.yaw!=12 || end_r.roll!=6)return 28;
     recording=false;if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK)return 29;
+    // Real shared-memory producer/consumer through the hooked matching caller.
+    sweep_enabled=false;live_enabled=true;live_gate.arm(true);
+    gears_vr::PoseBridge producer,duplicate;
+    if(!producer.open(GetCurrentProcessId(),true) || duplicate.open(GetCurrentProcessId(),true) ||
+       !live_bridge.open(GetCurrentProcessId(),false))return 30;
+    gears_vr::PoseSample sample{{{0,0,0},{0,0,0,1}},1,gears_vr::monotonic_ns(),15,true};
+    if(!producer.publish(sample))return 31;
+    recording=true;
+    if(MH_QueueEnableHook(reinterpret_cast<void*>(fake_scene))!=MH_OK ||
+       MH_QueueEnableHook(reinterpret_cast<void*>(fake_event))!=MH_OK || MH_ApplyQueued()!=MH_OK)return 32;
+    Vec live_p{1,2,3};Rot live_r{4,5,6};
+    invoke(reinterpret_cast<void*>(1),reinterpret_cast<void*>(2),&live_p,&live_r,reinterpret_cast<void*>(3),reinterpret_cast<void*>(4));
+    if(live_p.x!=6 || live_r.yaw!=12 || live_status!=static_cast<unsigned>(gears_vr::PoseStatus::recentered))return 33;
+    sample.sequence++;sample.received_ns=gears_vr::monotonic_ns();sample.head.position.x=.2;
+    sample.head.orientation={0,std::sin(.2),0,std::cos(.2)};
+    if(!producer.publish(sample))return 34;
+    Vec moved_p{1,2,3};Rot moved_r{4,5,6};
+    invoke(reinterpret_cast<void*>(1),reinterpret_cast<void*>(2),&moved_p,&moved_r,reinterpret_cast<void*>(3),reinterpret_cast<void*>(4));
+    const auto& live_record=ring[(write_index-1)%ring.size()];
+    double length=std::sqrt(live_record.translation_delta.x*live_record.translation_delta.x+
+        live_record.translation_delta.y*live_record.translation_delta.y+live_record.translation_delta.z*live_record.translation_delta.z);
+    if(live_status!=static_cast<unsigned>(gears_vr::PoseStatus::applied) || length<1.99 || length>2.001 ||
+       std::abs(live_record.rotation_delta.yaw)>911 || std::abs(live_record.rotation_delta.yaw)<909)return 35;
+    sample.sequence++;sample.received_ns=gears_vr::monotonic_ns()-200000000;
+    if(!producer.publish(sample))return 36;
+    Vec stale_p{1,2,3};Rot stale_r{4,5,6};
+    invoke(reinterpret_cast<void*>(1),reinterpret_cast<void*>(2),&stale_p,&stale_r,reinterpret_cast<void*>(3),reinterpret_cast<void*>(4));
+    if(stale_p.x!=6 || stale_p.y!=2 || stale_r.yaw!=12 ||
+       live_status!=static_cast<unsigned>(gears_vr::PoseStatus::stale))return 37;
+    recording=false;live_enabled=false;live_bridge.close();
+    if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK)return 38;
     return 0;
 }
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {

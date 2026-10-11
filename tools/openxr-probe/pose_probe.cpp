@@ -12,6 +12,7 @@
 #include <thread>
 #include <stdexcept>
 #include <string>
+#include "../vr-common/pose_bridge.h"
 
 using Microsoft::WRL::ComPtr;
 XrInstance instance = XR_NULL_HANDLE;
@@ -36,11 +37,17 @@ void cleanup() {
     if(instance) xrDestroyInstance(instance);
 }
 int main(int argc, char** argv) {
-    if(argc!=3 && argc!=4) {fprintf(stderr,"Usage: OpenXRPoseProbe SECONDS OUTPUT.csv [--render]\n");return 2;}
-    bool test_render=argc==4 && !strcmp(argv[3],"--render");
-    if(argc==4 && !test_render)return 2;
+    if(argc<3) {fprintf(stderr,"Usage: OpenXRPoseProbe SECONDS OUTPUT.csv [--render] [--bridge-pid PID]\n");return 2;}
+    bool test_render=false;DWORD bridge_pid=0;
+    for(int i=3;i<argc;++i) {
+        if(!strcmp(argv[i],"--render"))test_render=true;
+        else if(!strcmp(argv[i],"--bridge-pid") && i+1<argc)bridge_pid=strtoul(argv[++i],nullptr,10);
+        else return 2;
+    }
     int seconds=atoi(argv[1]);
-    if(seconds<3 || seconds>60) return 2;
+    if(seconds<3 || seconds>(bridge_pid?180:60) || (bridge_pid && !test_render)) return 2;
+    gears_vr::PoseBridge bridge;
+    if(bridge_pid && !bridge.open(bridge_pid,true)){fprintf(stderr,"Pose bridge creation rejected\n");return 2;}
     FILE* csv{};fopen_s(&csv,argv[2],"w");
     if(!csv) return 2;
     fprintf(csv,"frame,predicted_time,session_state,should_render,view_flags,head_flags,head_x,head_y,head_z,qx,qy,qz,qw,left_x,left_y,left_z,right_x,right_y,right_z,left_angle_left,left_angle_right,left_angle_up,left_angle_down\n");
@@ -100,6 +107,13 @@ int main(int argc, char** argv) {
             XrViewState view_state{XR_TYPE_VIEW_STATE};XrView views[2]={{XR_TYPE_VIEW},{XR_TYPE_VIEW}};uint32_t view_count=0;
             xr_check(xrLocateViews(session,&locate,&view_state,2,&view_count,views),"xrLocateViews");
             XrSpaceLocation head{XR_TYPE_SPACE_LOCATION};xr_check(xrLocateSpace(view_space,local,frame.predictedDisplayTime,&head),"xrLocateSpace");
+            if(bridge_pid) {
+                const auto& p=head.pose;
+                gears_vr::PoseSample sample{{{p.position.x,p.position.y,p.position.z},
+                    {p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w}},
+                    frames+1,gears_vr::monotonic_ns(),head.locationFlags,state==XR_SESSION_STATE_FOCUSED};
+                bridge.publish(sample);
+            }
             XrFrameEndInfo end{XR_TYPE_FRAME_END_INFO};end.displayTime=frame.predictedDisplayTime;end.environmentBlendMode=XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
             XrCompositionLayerProjectionView projection_views[2];
             XrCompositionLayerProjection projection{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
@@ -119,6 +133,7 @@ int main(int argc, char** argv) {
                 left.fov.angleLeft,left.fov.angleRight,left.fov.angleUp,left.fov.angleDown);
             if(frames%60==0)fflush(csv);
         }
+        if(bridge_pid)bridge.publish({});
         if(running) {
             xr_check(xrRequestExitSession(session),"xrRequestExitSession");
             auto stop_deadline=std::chrono::steady_clock::now()+std::chrono::seconds(2);
