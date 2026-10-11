@@ -10,7 +10,7 @@ import json
 import pathlib
 import time
 from PIL import Image
-from game_io import game_window, snapshot, interrupted, GAME
+from game_io import game_window, snapshot, interrupted, GAME, user
 from confirm_window import main as confirm
 
 ROOT=pathlib.Path(__file__).resolve().parents[2]
@@ -47,6 +47,14 @@ def main():
         while step<len(ORDER):
             if time.monotonic()>deadline or interrupted():raise RuntimeError('Menu deadline/stop reached')
             if game_window()!=target:raise RuntimeError('Game process/window changed')
+            if user.IsIconic(target[1]):
+                # Restore only the already verified game HWND. Capture cannot
+                # acquire a minimized window; foreground activation is optional.
+                user.ShowWindow(target[1],9)
+                stable=0
+                log.append({'expected':ORDER[step],'restored_minimized_window':True})
+                time.sleep(.4)
+                continue
             shot=snapshot('menu-'+str(time.time_ns()),640)
             if shot['pid']!=target[0] or shot['source_width']!=1920 or shot['source_height']!=1080:raise RuntimeError('Game target/resolution changed')
             current=pixels(shot['image']);ranked=sorted((score(current,ref),name) for name,ref in references.items())

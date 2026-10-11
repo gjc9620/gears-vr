@@ -70,6 +70,16 @@ CSV 的 valid 是位标志：1=位置读取成功，2=旋转读取成功，4=矩
 
 回调只保存记录到有界队列，文件写入由工作线程完成。队列满或锁竞争时丢弃记录并计数，避免等待日志锁阻塞游戏。输出统计必须结合 dropped 数量解释，记录不是无损追踪。
 
+## 集合提交诊断与早期跳板预留
+
+`--family-diagnostics` 只读取原生集合提交参数，记录最多四个视图指针；与视点改写、GPU 诊断模式互斥。先正常关闭已有游戏，再运行 `launch_reserve.py` 启动新游戏并预留相机和集合入口跳板。预留不启用 Hook，入口字节由 DLL 和外部读取分别核验。进入关卡后使用：
+
+```powershell
+& $pythonExe 'J:\gearsVr\tools\native-capture\start_capture.py' --pid <当前PID> --seconds 20 --family-diagnostics --use-reserved --build-dir 'J:\gearsVr\tools\native-capture\build-family' --dll-name GearsCaptureFamily.dll
+```
+
+此时重新定位当前摄像机，复核版本、对象与入口，再开始短时采样。完成后先运行 `verify_stopped.py`，再用 `analyze_family.py --capture <JSON> --restored <恢复JSON> --output <结果JSON>` 检查同线程的前序玩家视图与提交数组元素是否对应。当前实测及局限见 `docs/23-render-family-investigation.md`。预留或采样失败均不支持在同一 DLL 重试，需正常退出游戏后重新开始。
+
 ## 停止和边界
 
 完成后可用 `verify_stopped.py --pid 当前PID --status 采集.status.txt --output 恢复检查.json` 独立读取入口进行核对。仅接受匹配 PID 的 clean stopped 状态；相机使用运行时版本签名，系统图形模块使用磁盘字节并应用重定位。检查不写内存、不卸载 DLL，仅覆盖已记录入口。新增 GPU 模式的结果和下一步见 `docs/17-native-gpu-observation.md`。

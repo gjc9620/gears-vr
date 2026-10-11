@@ -21,6 +21,9 @@ using FamilyFn=void(__fastcall*)(void*,void*);
 FamilyFn original_family{};
 bool family_diagnostics{};
 void* family_target{};
+bool reservation_ready{};
+std::atomic<unsigned> reservation_started{0};
+HANDLE reservation_event{};
 using PresentFn=HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain*,UINT,UINT);
 using Present1Fn=HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1*,UINT,UINT,const DXGI_PRESENT_PARAMETERS*);
 using ExecuteFn=void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);
@@ -413,6 +416,8 @@ void flush(FILE* file) {
 }
 bool install(void* target,void* detour,void** original) {
     MH_STATUS created=MH_CreateHook(target,detour,original);
+    if(created==MH_ERROR_ALREADY_CREATED && reservation_ready && *original &&
+       (target==scene_target || target==event_target || target==family_target))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
     return created==MH_OK && queued==MH_OK;
@@ -500,7 +505,7 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"family_diagnostics=%d candidate_rva=0x3a148c\n",family_diagnostics);
     MH_STATUS init=MH_Initialize();
     fprintf(status,"minhook_initialize=%s\n",MH_StatusToString(init));
-    bool ok=init==MH_OK && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
+    bool ok=(init==MH_OK || (reservation_ready && init==MH_ERROR_ALREADY_INITIALIZED)) && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
         && install(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event));
     if(ok && family_diagnostics)ok=install(family_target,reinterpret_cast<void*>(hook_family),reinterpret_cast<void**>(&original_family));
     bool graphics=ok && present_hooks();
@@ -555,6 +560,32 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureStart(void*) {
     wchar_t* slash=wcsrchr(path,L'\\');if(!slash) return ERROR_BAD_PATHNAME;*slash=0;wcscpy_s(directory,path);
     HANDLE thread=CreateThread(nullptr,0,worker,nullptr,0,nullptr);
     if(!thread) return GetLastError();CloseHandle(thread);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
+    // Create trampolines before level loading fills nearby address space.
+    // MH_CreateHook alone does not patch or enable the game entry points.
+    if(reservation_started.exchange(1) || started.load())return ERROR_ALREADY_EXISTS;
+    if(!hash_matches())return ERROR_REVISION_MISMATCH;
+    base=reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    scene_target=reinterpret_cast<void*>(base+0x15cf08);event_target=reinterpret_cast<void*>(base+0x15c968);family_target=reinterpret_cast<void*>(base+0x3a148c);
+    const unsigned char a[]={0x48,0x8b,0xc4,0x53,0x56,0x57,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57};
+    const unsigned char b[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x08,0x48,0x89,0x68,0x10,0x48,0x89,0x70,0x18};
+    const unsigned char c[]={0x48,0x89,0x5c,0x24,0x08,0x48,0x89,0x74,0x24,0x18,0x55};
+    unsigned char read[16];
+    if(!safe_copy(read,scene_target,sizeof(a)) || memcmp(read,a,sizeof(a)) ||
+       !safe_copy(read,event_target,sizeof(b)) || memcmp(read,b,sizeof(b)) ||
+       !safe_copy(read,family_target,sizeof(c)) || memcmp(read,c,sizeof(c)))return ERROR_INVALID_DATA;
+    if(MH_Initialize()!=MH_OK)return ERROR_INVALID_STATE;
+    if(MH_CreateHook(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))!=MH_OK ||
+       MH_CreateHook(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event))!=MH_OK ||
+       MH_CreateHook(family_target,reinterpret_cast<void*>(hook_family),reinterpret_cast<void**>(&original_family))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
+    // Independently re-read the entries to confirm reservation left them alone.
+    if(!safe_copy(read,scene_target,sizeof(a)) || memcmp(read,a,sizeof(a)) ||
+       !safe_copy(read,event_target,sizeof(b)) || memcmp(read,b,sizeof(b)) ||
+       !safe_copy(read,family_target,sizeof(c)) || memcmp(read,c,sizeof(c)))return ERROR_INVALID_DATA;
+    wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Capture.Reserved.%lu",GetCurrentProcessId());
+    reservation_event=CreateEventW(nullptr,TRUE,TRUE,name);
+    if(!reservation_event)return GetLastError();reservation_ready=true;return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFamilyCheck(void*) {
     uintptr_t views[]={reinterpret_cast<uintptr_t>(&fake_view),reinterpret_cast<uintptr_t>(&fake_view)+16};
