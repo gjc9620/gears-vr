@@ -56,7 +56,15 @@ def main():
                 time.sleep(.4)
                 continue
             shot=snapshot('menu-'+str(time.time_ns()),640)
-            if shot['pid']!=target[0] or shot['source_width']!=1920 or shot['source_height']!=1080:raise RuntimeError('Game target/resolution changed')
+            if shot['pid']!=target[0]:raise RuntimeError('Game target changed')
+            if shot['source_width']!=1920 or shot['source_height']!=1080:
+                # Startup may briefly use a different client size. Never send
+                # input until the reviewed resolution is restored; deadline
+                # still bounds incompatible permanent settings.
+                stable=0
+                log.append({'expected':ORDER[step],'image':shot['image'],'waiting_for_resolution':[shot['source_width'],shot['source_height']]})
+                time.sleep(.4)
+                continue
             current=pixels(shot['image']);ranked=sorted((score(current,ref),name) for name,ref in references.items())
             best,name=ranked[0];margin=ranked[1][0]-best
             accepted=name==ORDER[step] and best<12 and margin>12 and not shot.get('possibly_blank')

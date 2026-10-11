@@ -19,6 +19,10 @@ using SceneFn=void*(__fastcall*)(void*,void*,Vec*,Rot*,void*,void*);
 using EventFn=void(__fastcall*)(void*,Vec*,Rot*);
 using FamilyFn=void(__fastcall*)(void*,void*);
 FamilyFn original_family{};
+using CloneFn=void*(__fastcall*)(void*,void*);
+CloneFn original_clone{};
+void* clone_target{};
+thread_local void* submitting_family{};
 bool family_diagnostics{};
 void* family_target{};
 bool reservation_ready{};
@@ -79,10 +83,12 @@ struct Record {
     uintptr_t family_address{},family_array{};
     int family_count{},family_capacity{};
     std::array<uintptr_t,4> family_views{};
+    uintptr_t clone_source{},clone_owner{};
+    std::array<float,32> source_matrices{};
 };
 std::array<Record,8192> ring{};
 size_t read_index{},write_index{};
-unsigned long long emitted[8]{};
+unsigned long long emitted[9]{};
 void* scene_target{}; void* event_target{}; void* present_target{}; void* present1_target{};
 HANDLE stop_event{};
 wchar_t directory[MAX_PATH]{};
@@ -263,8 +269,27 @@ void inspect_family(Record& record,void* family){
 void __fastcall hook_family(void* canvas,void* family){
     Scope scope;auto record=start_record(7,canvas,_ReturnAddress());
     inspect_family(record,family);
+    void* previous=submitting_family;submitting_family=family;
     original_family(canvas,family);
+    submitting_family=previous;
     record.duration=now()-record.time;enqueue(record);
+}
+void* __fastcall hook_clone(void* destination,void* source){
+    Scope scope;auto record=start_record(8,destination,_ReturnAddress());
+    bool observe=submitting_family!=nullptr;
+    if(observe){
+        inspect_family(record,submitting_family);
+        record.clone_source=reinterpret_cast<uintptr_t>(source);
+        if(source && safe_copy(record.source_matrices.data(),reinterpret_cast<char*>(source)+0x70,128))record.valid|=256;
+    }
+    void* result=original_clone(destination,source);
+    if(observe){
+        record.result=reinterpret_cast<uintptr_t>(result);
+        if(destination && safe_copy(record.matrices.data(),reinterpret_cast<char*>(destination)+0x70,128))record.valid|=512;
+        if(safe_copy(&record.clone_owner,destination,8))record.valid|=1024;
+        record.duration=now()-record.time;enqueue(record);
+    }
+    return result;
 }
 void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation,void* viewport,void* drawer) {
     Scope scope;auto record=start_record(1,local,_ReturnAddress());
@@ -409,7 +434,9 @@ void flush(FILE* file) {
                 static_cast<unsigned long long>(r.gpu_device),static_cast<unsigned long long>(r.gpu_buffer),static_cast<unsigned long long>(r.gpu_window),
                 r.queue_type,r.command_count,r.buffer_index,r.buffer_count,r.width,r.height,r.format,r.swap_flags);
             fprintf(file,",0x%llx,0x%llx,%d,%d",static_cast<unsigned long long>(r.family_address),static_cast<unsigned long long>(r.family_array),r.family_count,r.family_capacity);
-            for(auto view:r.family_views)fprintf(file,",0x%llx",static_cast<unsigned long long>(view));fprintf(file,"\n");
+            for(auto view:r.family_views)fprintf(file,",0x%llx",static_cast<unsigned long long>(view));
+            fprintf(file,",0x%llx,0x%llx",static_cast<unsigned long long>(r.clone_source),static_cast<unsigned long long>(r.clone_owner));
+            for(float value:r.source_matrices)fprintf(file,",%.9g",value);fprintf(file,"\n");
         }
         fflush(file);
     }
@@ -417,7 +444,7 @@ void flush(FILE* file) {
 bool install(void* target,void* detour,void** original) {
     MH_STATUS created=MH_CreateHook(target,detour,original);
     if(created==MH_ERROR_ALREADY_CREATED && reservation_ready && *original &&
-       (target==scene_target || target==event_target || target==family_target))created=MH_OK;
+       (target==scene_target || target==event_target || target==family_target || target==clone_target))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
     return created==MH_OK && queued==MH_OK;
@@ -489,12 +516,16 @@ DWORD WINAPI worker(void*) {
         family_target=reinterpret_cast<void*>(base+0x3a148c);
         const unsigned char signature[]={0x48,0x89,0x5c,0x24,0x08,0x48,0x89,0x74,0x24,0x18,0x55};
         if(!safe_copy(bytes,family_target,sizeof(signature)) || memcmp(bytes,signature,sizeof(signature))){fprintf(status,"rejected: family candidate prologue mismatch\n");fclose(status);return 4;}
+        clone_target=reinterpret_cast<void*>(base+0x193d50);
+        const unsigned char clone_signature[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x68,0x18,0x48,0x89,0x70,0x20};
+        if(!safe_copy(bytes,clone_target,sizeof(clone_signature)) || memcmp(bytes,clone_signature,sizeof(clone_signature))){fprintf(status,"rejected: clone candidate prologue mismatch\n");fclose(status);return 4;}
     }
     FILE* file{};_wfopen_s(&file,csv,L"w");
     if(!file) {fclose(status);return 5;}
     fprintf(file,"kind,thread,focused,valid,qpc,duration_qpc,object,result,caller_rva,x,y,z,pitch,yaw,roll,camera_timestamp,source_yaw,yaw_delta,cache_yaw,test_state");
     for(unsigned i=0;i<32;++i) fprintf(file,",matrix%u",i);
-    fprintf(file,",pose_phase,source_x,source_y,source_z,source_pitch,source_rot_yaw,source_roll,delta_x,delta_y,delta_z,delta_pitch,delta_rot_yaw,delta_roll,pose_status,pose_sequence,gpu_device,gpu_buffer,gpu_window,queue_type,command_count,buffer_index,buffer_count,width,height,format,swap_flags,family_address,family_array,family_count,family_capacity,family_view0,family_view1,family_view2,family_view3\n");fflush(file);
+    fprintf(file,",pose_phase,source_x,source_y,source_z,source_pitch,source_rot_yaw,source_roll,delta_x,delta_y,delta_z,delta_pitch,delta_rot_yaw,delta_roll,pose_status,pose_sequence,gpu_device,gpu_buffer,gpu_window,queue_type,command_count,buffer_index,buffer_count,width,height,format,swap_flags,family_address,family_array,family_count,family_capacity,family_view0,family_view1,family_view2,family_view3,clone_source,clone_owner");
+    for(unsigned i=0;i<32;++i)fprintf(file,",source_matrix%u",i);fprintf(file,"\n");fflush(file);
     LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);
     qpc_frequency=frequency.QuadPart;
     fprintf(status,"qpc_frequency=%lld\n",frequency.QuadPart);
@@ -508,6 +539,7 @@ DWORD WINAPI worker(void*) {
     bool ok=(init==MH_OK || (reservation_ready && init==MH_ERROR_ALREADY_INITIALIZED)) && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
         && install(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event));
     if(ok && family_diagnostics)ok=install(family_target,reinterpret_cast<void*>(hook_family),reinterpret_cast<void**>(&original_family));
+    if(ok && family_diagnostics)ok=install(clone_target,reinterpret_cast<void*>(hook_clone),reinterpret_cast<void**>(&original_clone));
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     fprintf(status,"present_hooks_created=%d\n",graphics);
@@ -540,6 +572,10 @@ DWORD WINAPI worker(void*) {
 __declspec(noinline) void fake_event(void* pc,Vec* p,Rot* r) {p->x+=static_cast<float>(reinterpret_cast<uintptr_t>(pc));r->yaw+=7;}
 struct FakeView {char prefix[0x70];float matrices[32];};
 FakeView fake_view{};
+unsigned clone_forward_count{};
+__declspec(noinline) void* fake_clone(void* destination,void* source){
+    ++clone_forward_count;memcpy(destination,source,sizeof(FakeView));return destination;
+}
 unsigned family_forward_count{};
 void* expected_test_family{};
 __declspec(noinline) void fake_family(void* canvas,void* family){
@@ -568,21 +604,26 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
     if(!hash_matches())return ERROR_REVISION_MISMATCH;
     base=reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     scene_target=reinterpret_cast<void*>(base+0x15cf08);event_target=reinterpret_cast<void*>(base+0x15c968);family_target=reinterpret_cast<void*>(base+0x3a148c);
+    clone_target=reinterpret_cast<void*>(base+0x193d50);
     const unsigned char a[]={0x48,0x8b,0xc4,0x53,0x56,0x57,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57};
     const unsigned char b[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x08,0x48,0x89,0x68,0x10,0x48,0x89,0x70,0x18};
     const unsigned char c[]={0x48,0x89,0x5c,0x24,0x08,0x48,0x89,0x74,0x24,0x18,0x55};
+    const unsigned char d[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x68,0x18,0x48,0x89,0x70,0x20};
     unsigned char read[16];
     if(!safe_copy(read,scene_target,sizeof(a)) || memcmp(read,a,sizeof(a)) ||
        !safe_copy(read,event_target,sizeof(b)) || memcmp(read,b,sizeof(b)) ||
-       !safe_copy(read,family_target,sizeof(c)) || memcmp(read,c,sizeof(c)))return ERROR_INVALID_DATA;
+       !safe_copy(read,family_target,sizeof(c)) || memcmp(read,c,sizeof(c)) ||
+       !safe_copy(read,clone_target,sizeof(d)) || memcmp(read,d,sizeof(d)))return ERROR_INVALID_DATA;
     if(MH_Initialize()!=MH_OK)return ERROR_INVALID_STATE;
     if(MH_CreateHook(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))!=MH_OK ||
        MH_CreateHook(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event))!=MH_OK ||
-       MH_CreateHook(family_target,reinterpret_cast<void*>(hook_family),reinterpret_cast<void**>(&original_family))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
+       MH_CreateHook(family_target,reinterpret_cast<void*>(hook_family),reinterpret_cast<void**>(&original_family))!=MH_OK ||
+       MH_CreateHook(clone_target,reinterpret_cast<void*>(hook_clone),reinterpret_cast<void**>(&original_clone))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
     // Independently re-read the entries to confirm reservation left them alone.
     if(!safe_copy(read,scene_target,sizeof(a)) || memcmp(read,a,sizeof(a)) ||
        !safe_copy(read,event_target,sizeof(b)) || memcmp(read,b,sizeof(b)) ||
-       !safe_copy(read,family_target,sizeof(c)) || memcmp(read,c,sizeof(c)))return ERROR_INVALID_DATA;
+       !safe_copy(read,family_target,sizeof(c)) || memcmp(read,c,sizeof(c)) ||
+       !safe_copy(read,clone_target,sizeof(d)) || memcmp(read,d,sizeof(d)))return ERROR_INVALID_DATA;
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Capture.Reserved.%lu",GetCurrentProcessId());
     reservation_event=CreateEventW(nullptr,TRUE,TRUE,name);
     if(!reservation_event)return GetLastError();reservation_ready=true;return 0;
@@ -602,6 +643,25 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFamilyCheck(void*) {
     Record invalid{};header.count=5;header.capacity=5;inspect_family(invalid,&header);if(invalid.valid&128)return 76;
     header.count=2;header.capacity=1;inspect_family(invalid,&header);if(invalid.valid&128)return 77;
     header.count=1;header.capacity=1;header.data=8;inspect_family(invalid,&header);if(invalid.valid&128)return 78;
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureCloneCheck(void*) {
+    FakeView source{},destination{};uintptr_t owner=0x12345678;
+    memcpy(source.prefix,&owner,8);for(unsigned i=0;i<32;++i)source.matrices[i]=float(i)+.25f;
+    uintptr_t views[]={reinterpret_cast<uintptr_t>(&source)};
+    struct Header{uintptr_t data;int count,capacity;} header{reinterpret_cast<uintptr_t>(views),1,17};
+    unsigned char before[32],after[32];
+    if(!safe_copy(before,reinterpret_cast<void*>(fake_clone),32) || MH_Initialize()!=MH_OK)return 80;
+    if(!install(reinterpret_cast<void*>(fake_clone),reinterpret_cast<void*>(hook_clone),reinterpret_cast<void**>(&original_clone)))return 81;
+    recording=true;if(MH_ApplyQueued()!=MH_OK)return 82;
+    submitting_family=&header;CloneFn volatile invoke=fake_clone;void* result=invoke(&destination,&source);submitting_family=nullptr;
+    // Unrelated calls must forward but must not generate a family observation.
+    invoke(&destination,&source);
+    recording=false;if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK)return 83;
+    if(!safe_copy(after,reinterpret_cast<void*>(fake_clone),32) || memcmp(before,after,32) || active.load() || clone_forward_count!=2 || write_index!=1)return 84;
+    const auto& record=ring[0];
+    if(result!=&destination || record.kind!=8 || record.object!=reinterpret_cast<uintptr_t>(&destination) || record.result!=record.object || record.clone_source!=views[0] || record.clone_owner!=owner || record.valid!=(128|256|512|1024))return 85;
+    if(memcmp(record.matrices.data(),source.matrices,128) || memcmp(record.source_matrices.data(),source.matrices,128) || memcmp(&source,&destination,sizeof(source)))return 86;
     return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureSelfTest(void*) {

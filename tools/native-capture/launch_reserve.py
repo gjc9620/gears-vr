@@ -22,7 +22,7 @@ def main():
     args=parser.parse_args()
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
     build=args.build_dir.resolve();dll=build/args.dll_name
-    for mode in ([],['--family']):subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
+    for mode in ([],['--family'],['--clone']):subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
     result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',"if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"],capture_output=True)
     if result.returncode:raise RuntimeError('Existing game must exit normally first')
     exe=ROOT/'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
@@ -65,7 +65,7 @@ def main():
         event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.Reserved.{pid}')
         if not event:raise RuntimeError('Reservation event absent')
         k.CloseHandle(event)
-        signatures={0x15cf08:bytes.fromhex('488bc45356574154415541564157'),0x15c968:bytes.fromhex('488bc4488958084889681048897018'),0x3a148c:bytes.fromhex('48895c2408488974241855')}
+        signatures={0x15cf08:bytes.fromhex('488bc45356574154415541564157'),0x15c968:bytes.fromhex('488bc4488958084889681048897018'),0x3a148c:bytes.fromhex('48895c2408488974241855'),0x193d50:bytes.fromhex('488bc4488958104889681848897020')}
         read_only=Process(pid)
         try:
             entries=[{'rva':hex(offset),'matches':read_only.read(loaded['gowde-steam.exe'][0]+offset,len(value))==value} for offset,value in signatures.items()]

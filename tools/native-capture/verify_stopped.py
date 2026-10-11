@@ -29,7 +29,7 @@ def main():
     if f'capturing pid={args.pid} ' not in status or 'stopped disable_status=0 active=0' not in status:
         raise RuntimeError('Matching PID and clean stopped status required')
     targets = [int(value, 16) for value in re.findall(r'hook_target=([0-9A-Fa-f]+) create=MH_OK queue=MH_OK', status)]
-    if not 2 <= len(targets) <= 5:
+    if not 2 <= len(targets) <= 6:
         raise RuntimeError('Unexpected hook target inventory')
     resolver = Resolver(args.pid, json.loads((ROOT / 'tools/package-inspector/reloaded-profile.json').read_text()))
     checks = []
@@ -39,6 +39,7 @@ def main():
         camera = {0x15cf08: bytes.fromhex('488bc45356574154415541564157'),
                   0x15c968: bytes.fromhex('488bc4488958084889681048897018')}
         camera[0x3a148c]=bytes.fromhex('48895c2408488974241855')
+        camera[0x193d50]=bytes.fromhex('488bc4488958104889681848897020')
         for target in targets:
             rva = target - resolver.base
             if rva in camera:

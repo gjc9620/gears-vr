@@ -24,6 +24,7 @@
 - [原生连续 GPU 画面共享](docs/21-native-gpu-sharing.md)
 - [不戴头显的 OpenXR 自动验证](docs/22-openxr-simulator.md)
 - [场景视图集合提交调查](docs/23-render-family-investigation.md)
+- [渲染视图副本动态验证](docs/24-render-view-copy-validation.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果

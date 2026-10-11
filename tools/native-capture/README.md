@@ -80,6 +80,8 @@ CSV 的 valid 是位标志：1=位置读取成功，2=旋转读取成功，4=矩
 
 此时重新定位当前摄像机，复核版本、对象与入口，再开始短时采样。完成后先运行 `verify_stopped.py`，再用 `analyze_family.py --capture <JSON> --restored <恢复JSON> --output <结果JSON>` 检查同线程的前序玩家视图与提交数组元素是否对应。当前实测及局限见 `docs/23-render-family-investigation.md`。预留或采样失败均不支持在同一 DLL 重试，需正常退出游戏后重新开始。
 
+新增副本观察构建位于 `build-clone/GearsCaptureClone.dll`，启动预留和采样都要指向同一构建目录及 DLL 名。它还预留 / 核验 0x193d50 复制入口，kind=8 记录构造前后矩阵和所属集合；六处入口可由恢复工具独立核验。注入前追加 `--clone` ABI 自测，采集后使用 `analyze_clone.py --capture <JSON> --restored <恢复JSON> --output <结果JSON>`，结果与范围见 `docs/24-render-view-copy-validation.md`。旧构建缺少新自测导出时应重新构建，不能直接用于此模式。
+
 ## 停止和边界
 
 完成后可用 `verify_stopped.py --pid 当前PID --status 采集.status.txt --output 恢复检查.json` 独立读取入口进行核对。仅接受匹配 PID 的 clean stopped 状态；相机使用运行时版本签名，系统图形模块使用磁盘字节并应用重定位。检查不写内存、不卸载 DLL，仅覆盖已记录入口。新增 GPU 模式的结果和下一步见 `docs/17-native-gpu-observation.md`。

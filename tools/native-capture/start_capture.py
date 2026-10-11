@@ -81,6 +81,7 @@ def main():
     subprocess.run([str(test),str(dll)],check=True)
     if args.gpu_diagnostics: subprocess.run([str(test),str(dll),'--gpu'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--family'],check=True)
+    if args.family_diagnostics: subprocess.run([str(test),str(dll),'--clone'],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
     try:camera=r.resolve()
@@ -104,6 +105,7 @@ def main():
         signatures={0x15cf08:bytes.fromhex('488bc45356574154415541564157'),
                     0x15c968:bytes.fromhex('488bc4488958084889681048897018')}
         if args.family_diagnostics: signatures[0x3a148c]=bytes.fromhex('48895c2408488974241855')
+        if args.family_diagnostics: signatures[0x193d50]=bytes.fromhex('488bc4488958104889681848897020')
         r=Resolver(args.pid,profile)
         try:
             refreshed=r.resolve()
