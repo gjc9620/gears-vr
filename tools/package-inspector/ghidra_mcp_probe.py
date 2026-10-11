@@ -1,6 +1,7 @@
 """Bounded read-only MCP discovery against Ghidra's documented loopback endpoint.
 
-No tool calls, program edits, imports, analysis jobs or Codex configuration edits.
+Optional bounded read-only decompilation; no program edits, imports, analysis jobs
+or Codex configuration edits.
 """
 import argparse
 import json
@@ -8,7 +9,7 @@ import pathlib
 import urllib.request
 
 
-def probe(port):
+def probe(port, inspect_addresses=()):
     url = f'http://127.0.0.1:{port}/mcp'
     headers = {'Content-Type':'application/json','Accept':'application/json, text/event-stream'}
     counter = 0
@@ -20,7 +21,7 @@ def probe(port):
         if params is not None: message['params']=params
         if not notification: message['id']=counter
         call = urllib.request.Request(url,json.dumps(message).encode(),headers,method='POST')
-        with urllib.request.urlopen(call,timeout=5) as response:
+        with urllib.request.urlopen(call,timeout=35 if method=='tools/call' else 5) as response:
             session=response.headers.get('Mcp-Session-Id')
             if session: headers['Mcp-Session-Id']=session
             if notification: return None
@@ -46,23 +47,49 @@ def probe(port):
     request('notifications/initialized',notification=True)
     tools=request('tools/list')
     programs=request('resources/read',{'uri':'ghidra://programs'})
+    inspections=[]
+    blocks=None
+    if inspect_addresses:
+        available={item['name']:item for item in tools.get('tools',[])}
+        if 'inspect' not in available: raise RuntimeError('Server has no inspect tool')
+        blocks=request('tools/call',{'name':'memory','arguments':{
+            'file_name':'GOWDE-Steam.exe','action':'list_blocks','page_size':20}})
+        for address in inspect_addresses:
+            result=request('tools/call',{'name':'inspect','arguments':{
+                'file_name':'GOWDE-Steam.exe','action':'decompile','address':address,
+                'timeout':25,'max_lines':200}})
+            entry={'address':address,'result':result}
+            if result.get('isError'):
+                entry['bytes']=request('tools/call',{'name':'memory','arguments':{
+                    'file_name':'GOWDE-Steam.exe','action':'read','address':address,
+                    'length':64,'format':'hex'}})
+            inspections.append(entry)
     return {'status':'connected','endpoint':url,'initialize':initialized,
-        'tools':tools,'programs':programs}
+        'tools':tools,'programs':programs,'blocks':blocks,'inspections':inspections}
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8080)
     parser.add_argument('--output',type=pathlib.Path,required=True)
+    parser.add_argument('--inspect-address',action='append',default=[],
+        help='Read-only decompile of a hex virtual address in GOWDE-Steam.exe (max 4)')
     args=parser.parse_args()
     if not 1024<=args.port<=65535: parser.error('Invalid port')
-    try: report=probe(args.port)
+    if len(args.inspect_address)>4: parser.error('At most four addresses per request')
+    try:
+        for address in args.inspect_address: int(address,16)
+    except ValueError: parser.error('Addresses must be hexadecimal')
+    try: report=probe(args.port,args.inspect_address)
     except Exception as error: report={'status':'unavailable','error':str(error)}
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(report,indent=2),encoding='utf-8')
     print(json.dumps({'status':report['status'],'error':report.get('error'),
         'tools':[t['name'] for t in report.get('tools',{}).get('tools',[])],
         'programs':report.get('programs'),'output':str(args.output)},indent=2))
+    for entry in report.get('inspections',[]):
+        print(json.dumps({'address':entry['address'],
+            'decompile_error':entry['result'].get('isError',False)}))
     return 0 if report['status']=='connected' else 1
 
 
