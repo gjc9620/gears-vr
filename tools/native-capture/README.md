@@ -4,6 +4,16 @@
 
 不加 `--wobble` 时上述采集行为保持不变。加 `--wobble` 开启受限的渲染 yaw 测试：只在匹配的当前玩家场景调用中改写临时旋转输出，最大 1.5°，基线 3 秒后摆动 12 秒，再停止；失去焦点会终止。CSV 增加 source_yaw、yaw_delta、cache_yaw、test_state，valid 的 64 位标志表示非零偏移已施加。游戏内验证见 `docs/05-render-yaw-wobble-validation.md`。
 
+新增互斥的 `--sweep` 模式：3 秒基线，然后依次用 4 秒正弦波测试 pitch、yaw、roll、
+水平镜头前方、水平镜头右方、世界向上。旋转上限 ±1.5°，平移上限 ±2 游戏单位。
+共 27 秒后恢复干净视点。不是实时头显跟踪；尚未校准游戏单位与米的比例。
+CSV 的 pose_phase=0 基线，1–6 对应六轴，7 恢复；额外记录源视点和全部偏移。
+仍只修改最终视图读取的临时输出，不改 CameraCache 或人物位置。
+
+```powershell
+& $pythonExe 'J:\gearsVr\tools\native-capture\start_capture.py' --pid <当前游戏PID> --seconds 45 --sweep --build-dir 'J:\gearsVr\tools\native-capture\build-sweep'
+```
+
 ## 依赖和构建
 
 使用现有 Visual Studio x64 C++ 工具链及 Windows SDK。当前 `build.bat` 指向本机 `E:\vs`。第三方 [MinHook 官方项目](https://github.com/TsudaKageyu/minhook) 使用 v1.3.4，commit `c3fcafdc10146beb5919319d0683e44e3c30d537`；其源码位于忽略目录 `tools/third-party/minhook`。第三方源码和所有构建产物不提交到本仓库。
@@ -17,9 +27,18 @@
 
 当前游戏内旧 DLL 会阻止覆盖构建产物。可用 `build.bat build-next` 在独立目录构建并自测；启动器和收集器接受 `--build-dir` 指向该目录。新构建仍需要新游戏进程，不能在已有采集 DLL 的进程中替换。源码增强版自测还核验停止后的入口字节和原函数再次执行。
 
+诊断重试可使用 `build.bat build-next GearsCaptureNext` 和启动器的
+`--dll-name GearsCaptureNext.dll`。已有同名 DLL 或活动采集一律拒绝；
+不同名称也必须通过玩家与入口原始字节核验。这用于失败安装后的受限诊断重试，
+不替换/卸载旧 DLL，不支持同时采集。常规测试仍优先新游戏进程。
+
+本机碎片化地址空间导致原版 MinHook 1 GiB 搜索分配失败；CMake 校验源码标记后
+生成保留许可证的 buffer.c 副本，将范围扩大到 1.5 GiB，保留 rel32 距离余量。
+原第三方源码保持不变。实际失败与重试证据见 `docs/09-six-axis-render-validation.md`。
+
 ## 使用
 
-启动游戏并进入单人关卡，切回聊天使游戏自动暂停。关闭上次游戏进程后才能接入新一轮采集：同一进程已有采集 DLL 时启动器会拒绝重复加载。先通过摄像机定位器确认当前进程和版本，再执行：
+启动游戏并进入单人关卡，切回聊天使游戏自动暂停。常规新一轮采集先关闭上次游戏进程；同名采集 DLL 拒绝重复加载。先通过摄像机定位器确认当前进程和版本，再执行：
 
 ```powershell
 $pythonExe = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
@@ -48,6 +67,9 @@ CSV 的 valid 是位标志：1=位置读取成功，2=旋转读取成功，4=矩
 
 时间到后自动撤销 Hook 入口补丁、关闭日志。DLL 和 trampoline 留在进程中，直到游戏退出，避免正在返回或延迟执行的代码访问已经释放的地址。不会自动卸载 DLL。停止失败会写入状态，不能将失败状态解释为补丁已经撤销。
 
-也可由工具设置 `Local\GearsVR.Capture.Stop.<PID>` 命名事件提前停止。当前版本不提供重复启停或在同一游戏进程里替换 DLL 的功能。
+也可由工具设置 `Local\GearsVR.Capture.Stop.<PID>` 命名事件提前停止。当前版本不提供同一 DLL 重复启停或在同一游戏进程里替换 DLL 的功能。
+
+完成 sweep 后用 `analyze_sweep.py <CSV> --output <JSON>` 复核六轴变化、调用者、
+焦点、矩阵和恢复阶段。程序不会读取或写入游戏。当前成功记录见上述六轴报告。
 
 每帧的额外记录有运行开销，独立自测通过也不能保证未知游戏分支一定安全。动态成功只证明实际观察到的路径；菜单 / 焦点暂停不等于 VM 卡顿，采集不验证立体渲染、6DoF 或摄像机改写效果。

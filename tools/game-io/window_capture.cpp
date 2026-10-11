@@ -99,13 +99,17 @@ int wmain(int argc, wchar_t** argv) {
             std::lock_guard<std::mutex> lock(state->mutex);
             try {
                 auto latest = sender.TryGetNextFrame();
-                if (latest && ++state->received >= 2 && !state->frame) {
+                // Static dialogs may produce just one frame. Keep the latest
+                // available frame instead of requiring a second frame forever.
+                if (latest) {
+                    ++state->received;
                     state->frame = latest; SetEvent(state->ready.get());
                 }
             } catch (hresult_error const&) { /* Pool may have closed. */ }
         });
         session.StartCapture();
         DWORD wait = WaitForSingleObject(state->ready.get(), 5000);
+        if(wait==WAIT_OBJECT_0)Sleep(50);
         session.Close(); pool.FrameArrived(token);
         Direct3D11CaptureFrame captured{nullptr};
         { std::lock_guard<std::mutex> lock(state->mutex); captured = state->frame; }

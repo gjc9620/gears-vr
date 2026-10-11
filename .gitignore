@@ -12,6 +12,7 @@
 /tools/third-party/
 /tools/native-capture/build*/
 /tools/game-io/build*/
+/tools/openxr-probe/build*/
 /tools/game-io/deps/
 **/__pycache__/
 *.pyc

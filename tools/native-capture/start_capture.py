@@ -64,9 +64,14 @@ def main():
     parser.add_argument('--pid',type=int,required=True)
     parser.add_argument('--seconds',type=int,default=90,choices=range(10,181))
     parser.add_argument('--build-dir',type=pathlib.Path,default=pathlib.Path(__file__).with_name('build'))
-    parser.add_argument('--wobble',action='store_true',help='Enable the gated 1.5-degree render-only yaw test')
+    parser.add_argument('--dll-name',default='GearsCapture.dll',help='Name of an independently built diagnostic DLL')
+    mode=parser.add_mutually_exclusive_group()
+    mode.add_argument('--wobble',action='store_true',help='Enable the gated 1.5-degree render-only yaw test')
+    mode.add_argument('--sweep',action='store_true',help='Run pitch/yaw/roll and three tiny render-only translations')
     args=parser.parse_args()
-    dll=args.build_dir.resolve()/'GearsCapture.dll'
+    if pathlib.Path(args.dll_name).name!=args.dll_name or not args.dll_name.lower().endswith('.dll'):
+        raise RuntimeError('DLL name must be a basename ending in .dll')
+    dll=args.build_dir.resolve()/args.dll_name
     test=dll.with_name('CaptureSelfTest.exe')
     if not dll.is_file() or not test.is_file():raise RuntimeError('Build capture DLL and self-test first')
     subprocess.run([str(test),str(dll)],check=True)
@@ -80,6 +85,9 @@ def main():
     try:
         loaded=modules(handle)
         if dll.name.lower() in loaded:raise RuntimeError('Capture DLL already loaded; restart game before a new capture build/run')
+        active_event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.Stop.{args.pid}')
+        if active_event:
+            k.CloseHandle(active_event);raise RuntimeError('Another capture is active; overlapping instrumentation rejected')
         # Verify exact target prologues before any remote allocation or load.
         signatures={0x15cf08:bytes.fromhex('488bc45356574154415541564157'),
                     0x15c968:bytes.fromhex('488bc4488958084889681048897018')}
@@ -93,7 +101,7 @@ def main():
         finally:r.p.close()
         config='[Capture]\n'+f'pid={args.pid}\nseconds={args.seconds}\n'+f"local_player={camera['local_player_address']}\ncontroller={camera['controller_address']}\ntimestamp={camera['timestamp_address']}\n"
         yaw_address=int(camera['pov_address'],16)+int(camera['offsets']['Rotation'],16)+4
-        config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\n"
+        config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\nsweep={int(args.sweep)}\n"
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.
