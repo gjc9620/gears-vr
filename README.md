@@ -7,6 +7,7 @@
 - [原生摄像机分析](docs/03-native-camera-analysis.md)
 - [原生调用验证结果](docs/04-native-capture-validation.md)
 - [渲染朝向改写验证](docs/05-render-yaw-wobble-validation.md)
+- [快捷调试启动与恢复](docs/06-debug-startup.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
