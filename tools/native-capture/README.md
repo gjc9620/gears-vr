@@ -2,6 +2,8 @@
 
 这一工具在当前游戏进程里加载我们编写的 DLL，并临时 Hook 原生候选入口。它会改写函数入口，不属于纯只读调查；它保留原函数参数、返回值和视点数据，不加入位姿变换。
 
+不加 `--wobble` 时上述采集行为保持不变。加 `--wobble` 开启受限的渲染 yaw 测试：只在匹配的当前玩家场景调用中改写临时旋转输出，最大 1.5°，基线 3 秒后摆动 12 秒，再停止；失去焦点会终止。CSV 增加 source_yaw、yaw_delta、cache_yaw、test_state，valid 的 64 位标志表示非零偏移已施加。游戏内验证见 `docs/05-render-yaw-wobble-validation.md`。
+
 ## 依赖和构建
 
 使用现有 Visual Studio x64 C++ 工具链及 Windows SDK。当前 `build.bat` 指向本机 `E:\vs`。第三方 [MinHook 官方项目](https://github.com/TsudaKageyu/minhook) 使用 v1.3.4，commit `c3fcafdc10146beb5919319d0683e44e3c30d537`；其源码位于忽略目录 `tools/third-party/minhook`。第三方源码和所有构建产物不提交到本仓库。

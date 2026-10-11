@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cwchar>
 #include <cstring>
+#include <cmath>
 #include "MinHook.h"
 
 namespace {
@@ -21,6 +22,17 @@ SceneFn original_scene{}; EventFn original_event{};
 PresentFn original_present{}; Present1Fn original_present1{};
 HMODULE own_module{};
 uintptr_t base{},expected_local{},expected_pc{},camera_cache{};
+uintptr_t expected_camera{},camera_yaw{};
+bool wobble_enabled{},self_testing{};
+uintptr_t allowed_caller=0x15d0ca;
+long long qpc_frequency{};
+std::atomic<long long> wobble_start{0};
+std::atomic<unsigned> wobble_state{0}; // 0 waiting, 1 running, 2 complete, 3 aborted
+thread_local void* scene_local{};
+thread_local Rot* scene_rotation{};
+thread_local int scene_delta{};
+thread_local float observed_stamp{};
+thread_local bool stamp_known{};
 std::atomic<unsigned> active{0},started{0};
 std::atomic<unsigned long long> dropped{0};
 std::atomic<bool> recording{false};
@@ -30,6 +42,8 @@ struct Record {
     long long time,duration;
     uintptr_t object,result,caller;
     Vec position; Rot rotation; float camera_time;
+    int source_yaw,yaw_delta,cache_yaw;
+    unsigned test_state;
     std::array<float,32> matrices;
 };
 std::array<Record,8192> ring{};
@@ -47,6 +61,53 @@ unsigned foreground() {
     DWORD pid{};GetWindowThreadProcessId(GetForegroundWindow(),&pid);return pid==GetCurrentProcessId();
 }
 struct Scope {Scope(){++active;} ~Scope(){--active;}};
+int offset_at(double seconds) {
+    if(seconds<3 || seconds>=15) return 0;
+    return static_cast<int>(std::lround((1.5*65536.0/360.0)*std::sin((seconds-3)*6.283185307179586/4.0)));
+}
+void apply_wobble(Record& record,void* pc,Rot* rotation) {
+    Rot raw{};
+    if(!safe_copy(&raw,rotation,sizeof(raw))) return;
+    record.source_yaw=raw.yaw;
+    if(!wobble_enabled || !recording.load() || reinterpret_cast<uintptr_t>(pc)!=expected_pc ||
+       reinterpret_cast<uintptr_t>(scene_local)!=expected_local || scene_rotation!=rotation || record.caller!=allowed_caller) return;
+    unsigned state=wobble_state.load();
+    if(state>=2) {record.test_state=state;return;}
+    float stamp{};
+    bool readable=camera_cache && safe_copy(&stamp,reinterpret_cast<void*>(camera_cache),4);
+    bool advancing=readable && stamp_known && stamp!=observed_stamp;
+    if(readable) {observed_stamp=stamp;stamp_known=true;}
+    if(!self_testing && !record.focused) {
+        if(state==1) wobble_state=3;
+        record.test_state=wobble_state.load();return;
+    }
+    if(!self_testing) {
+        uintptr_t linked{};
+        if(!safe_copy(&linked,reinterpret_cast<void*>(expected_local+0x68),8) || linked!=expected_pc ||
+           !safe_copy(&linked,reinterpret_cast<void*>(expected_pc+0x37c),8) || linked!=expected_camera) {
+            wobble_state=3;record.test_state=3;return;
+        }
+    }
+    long long origin=wobble_start.load();
+    if(!origin && (self_testing || advancing)) {
+        long long zero=0;
+        wobble_start.compare_exchange_strong(zero,record.time);
+        origin=wobble_start.load();wobble_state=1;
+    }
+    if(!origin) return;
+    double elapsed=self_testing?4.0:static_cast<double>(record.time-origin)/qpc_frequency;
+    if(elapsed>=15) {wobble_state=2;record.test_state=2;return;}
+    int delta=offset_at(elapsed);
+    if(delta) {
+        unsigned bits=static_cast<unsigned>(raw.yaw)+static_cast<unsigned>(delta);
+        int yaw{};memcpy(&yaw,&bits,4);
+        SIZE_T written{};
+        if(WriteProcessMemory(GetCurrentProcess(),reinterpret_cast<char*>(rotation)+4,&yaw,4,&written) && written==4) {
+            record.yaw_delta=delta;record.valid|=64;scene_delta=delta;
+        } else wobble_state=3;
+    }
+    record.test_state=wobble_state.load();
+}
 Record start_record(unsigned kind,void* object,void* caller) {
     Record r{};r.kind=kind;r.thread=GetCurrentThreadId();r.time=now();r.focused=foreground();
     r.object=reinterpret_cast<uintptr_t>(object);r.caller=reinterpret_cast<uintptr_t>(caller)-base;
@@ -61,6 +122,8 @@ void enqueue(const Record& value) {
 }
 void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation,void* viewport,void* drawer) {
     Scope scope;auto record=start_record(1,local,_ReturnAddress());
+    void* saved_local=scene_local;Rot* saved_rotation=scene_rotation;int saved_delta=scene_delta;
+    scene_local=local;scene_rotation=rotation;scene_delta=0;
     void* result=original_scene(local,family,position,rotation,viewport,drawer);
     record.duration=now()-record.time;record.result=reinterpret_cast<uintptr_t>(result);
     if(safe_copy(&record.position,position,sizeof(Vec))) record.valid|=1;
@@ -68,12 +131,17 @@ void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation
     if(result && safe_copy(record.matrices.data(),reinterpret_cast<char*>(result)+0x70,128)) record.valid|=4;
     if(camera_cache && safe_copy(&record.camera_time,reinterpret_cast<void*>(camera_cache),4)) record.valid|=8;
     if(record.object==expected_local) record.valid|=16;
+    record.yaw_delta=scene_delta;record.source_yaw=record.rotation.yaw-scene_delta;record.test_state=wobble_state.load();
+    if(scene_delta) record.valid|=64;
+    if(camera_yaw) safe_copy(&record.cache_yaw,reinterpret_cast<void*>(camera_yaw),4);
+    scene_local=saved_local;scene_rotation=saved_rotation;scene_delta=saved_delta;
     enqueue(record);return result;
 }
 void __fastcall hook_event(void* pc,Vec* position,Rot* rotation) {
     Scope scope;auto record=start_record(2,pc,_ReturnAddress());
     original_event(pc,position,rotation);
     record.duration=now()-record.time;
+    apply_wobble(record,pc,rotation);
     if(safe_copy(&record.position,position,sizeof(Vec))) record.valid|=1;
     if(safe_copy(&record.rotation,rotation,sizeof(Rot))) record.valid|=2;
     if(record.object==expected_pc) record.valid|=16;
@@ -138,6 +206,7 @@ void flush(FILE* file) {
                 static_cast<unsigned long long>(r.object),static_cast<unsigned long long>(r.result),
                 static_cast<unsigned long long>(r.caller),r.position.x,r.position.y,r.position.z,
                 r.rotation.pitch,r.rotation.yaw,r.rotation.roll,r.camera_time);
+            fprintf(file,",%d,%d,%d,%u",r.source_yaw,r.yaw_delta,r.cache_yaw,r.test_state);
             for(float value:r.matrices) fprintf(file,",%.9g",value);
             fputc('\n',file);
         }
@@ -180,6 +249,8 @@ DWORD WINAPI worker(void*) {
     base=reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     expected_local=ini_address(ini,L"local_player");expected_pc=ini_address(ini,L"controller");
     camera_cache=ini_address(ini,L"timestamp");
+    expected_camera=ini_address(ini,L"camera");camera_yaw=ini_address(ini,L"camera_yaw");
+    wobble_enabled=GetPrivateProfileIntW(L"Capture",L"wobble",0,ini)==1;
     uintptr_t linked{};
     if(!expected_local || !expected_pc || !safe_copy(&linked,reinterpret_cast<void*>(expected_local+0x68),8) || linked!=expected_pc) {
         fprintf(status,"rejected: local player/controller link mismatch\n");fclose(status);return 3;
@@ -194,10 +265,12 @@ DWORD WINAPI worker(void*) {
     }
     FILE* file{};_wfopen_s(&file,csv,L"w");
     if(!file) {fclose(status);return 5;}
-    fprintf(file,"kind,thread,focused,valid,qpc,duration_qpc,object,result,caller_rva,x,y,z,pitch,yaw,roll,camera_timestamp");
+    fprintf(file,"kind,thread,focused,valid,qpc,duration_qpc,object,result,caller_rva,x,y,z,pitch,yaw,roll,camera_timestamp,source_yaw,yaw_delta,cache_yaw,test_state");
     for(unsigned i=0;i<32;++i) fprintf(file,",matrix%u",i);fputc('\n',file);fflush(file);
     LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);
+    qpc_frequency=frequency.QuadPart;
     fprintf(status,"qpc_frequency=%lld\n",frequency.QuadPart);
+    fprintf(status,"wobble_enabled=%d amplitude_degrees=1.5 baseline_seconds=3 wave_seconds=12\n",wobble_enabled);
     MH_STATUS init=MH_Initialize();
     bool ok=init==MH_OK && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
         && install(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event));
@@ -222,6 +295,7 @@ DWORD WINAPI worker(void*) {
     flush(file);
     fprintf(status,"stopped disable_status=%d active=%u dropped=%llu scene=%llu event=%llu present=%llu present1=%llu\n",
         disabled,active.load(),dropped.load(),emitted[1],emitted[2],emitted[3],emitted[4]);
+    fprintf(status,"wobble_final_state=%u\n",wobble_state.load());
     fclose(file);fclose(status);if(stop_event) CloseHandle(stop_event);stop_event=nullptr;
     return disabled==MH_OK?0:7;
 }
@@ -266,6 +340,18 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureSelfTest(void*) {
     Vec p2{1,2,3};Rot r2{4,5,6};
     if(invoke(reinterpret_cast<void*>(1),reinterpret_cast<void*>(2),&p2,&r2,reinterpret_cast<void*>(3),reinterpret_cast<void*>(4))!=&fake_view ||
        p2.x!=6 || r2.yaw!=12 || write_index!=2) return 18;
+    // Apply only through a matching scene context/caller; a standalone event
+    // must retain its original yaw, and disabling hooks must restore behavior.
+    allowed_caller=ring[0].caller;self_testing=true;wobble_enabled=true;recording=true;
+    if(MH_QueueEnableHook(reinterpret_cast<void*>(fake_scene))!=MH_OK ||
+       MH_QueueEnableHook(reinterpret_cast<void*>(fake_event))!=MH_OK || MH_ApplyQueued()!=MH_OK) return 19;
+    Vec p3{1,2,3};Rot r3{4,5,6};
+    invoke(reinterpret_cast<void*>(1),reinterpret_cast<void*>(2),&p3,&r3,reinterpret_cast<void*>(3),reinterpret_cast<void*>(4));
+    if(r3.yaw!=12+offset_at(4) || p3.x!=6 || ring[3].yaw_delta!=offset_at(4)) return 20;
+    Vec p4{1,2,3};Rot r4{4,5,6};fake_event(reinterpret_cast<void*>(5),&p4,&r4);
+    if(r4.yaw!=12 || ring[4].yaw_delta!=0) return 21;
+    recording=false;if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK) return 22;
+    if(offset_at(2)!=0 || offset_at(15)!=0 || offset_at(4)<=0 || offset_at(6)>=0) return 23;
     return 0;
 }
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {

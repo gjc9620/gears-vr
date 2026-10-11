@@ -64,6 +64,7 @@ def main():
     parser.add_argument('--pid',type=int,required=True)
     parser.add_argument('--seconds',type=int,default=90,choices=range(10,181))
     parser.add_argument('--build-dir',type=pathlib.Path,default=pathlib.Path(__file__).with_name('build'))
+    parser.add_argument('--wobble',action='store_true',help='Enable the gated 1.5-degree render-only yaw test')
     args=parser.parse_args()
     dll=args.build_dir.resolve()/'GearsCapture.dll'
     test=dll.with_name('CaptureSelfTest.exe')
@@ -91,6 +92,8 @@ def main():
                 if r.read(r.base+offset,len(signature))!=signature:raise RuntimeError('Target prologue differs; instrumentation rejected')
         finally:r.p.close()
         config='[Capture]\n'+f'pid={args.pid}\nseconds={args.seconds}\n'+f"local_player={camera['local_player_address']}\ncontroller={camera['controller_address']}\ntimestamp={camera['timestamp_address']}\n"
+        yaw_address=int(camera['pov_address'],16)+int(camera['offsets']['Rotation'],16)+4
+        config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\n"
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.

@@ -63,6 +63,22 @@ def main():
         summaries.append(summary)
     report=dict(status=status.strip(),samples=len(rows),groups=summaries,
         caveat='Present and Present1 may nest; do not add their counts. Focus gaps and menu pauses are not VM stalls. No view edits were applied.')
+    if rows and 'yaw_delta' in rows[0]:
+        applied=[r for r in rows if int(r['valid'])&64]
+        events=[r for r in rows if r['kind']=='2' and int(r['valid'])&64]
+        views=[r for r in rows if r['kind']=='1' and int(r['valid'])&64]
+        other_events=[r for r in rows if r['kind']=='2' and r['caller_rva']!='0x15d0ca']
+        report['wobble']=dict(applied_event_calls=len(events),applied_scene_calls=len(views),
+            applied_event_callers=dict(collections.Counter(r['caller_rva'] for r in events)),
+            affected_other_event_calls=sum(bool(int(r['valid'])&64) for r in other_events),
+            modified_unfocused_calls=sum(r['focused']=='0' for r in applied),
+            delta_range_ru=[min(int(r['yaw_delta']) for r in applied),max(int(r['yaw_delta']) for r in applied)] if applied else None,
+            unique_source_yaws=len({r['source_yaw'] for r in events}),
+            unique_cache_yaws_in_modified_views=len({r['cache_yaw'] for r in views}),
+            unique_modified_view_matrices=len({tuple(r[f'matrix{i}'] for i in range(32)) for r in views}),
+            event_delta_mismatches=sum(int(r['yaw'])-int(r['source_yaw'])!=int(r['yaw_delta']) for r in events))
+        if 'wobble_enabled=1' in status:
+            report['caveat']='Render-only yaw outputs were deliberately modified. No player-controller/cache rotation writes were requested; cache values require correlation. Present counts are not one-to-one frame proof.'
     args.output.write_text(json.dumps(report,indent=2),encoding='utf-8')
     print(json.dumps(report,indent=2))
 

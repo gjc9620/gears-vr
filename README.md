@@ -6,13 +6,14 @@
 - [摄像机定位证据](docs/02-camera-analysis.md)
 - [原生摄像机分析](docs/03-native-camera-analysis.md)
 - [原生调用验证结果](docs/04-native-capture-validation.md)
+- [渲染朝向改写验证](docs/05-render-yaw-wobble-validation.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
 
 摄像机定位器通过 EXE 版本哈希、模块 RVA、运行时反射元数据和对象关系识别当前玩家摄像机。已在两次游戏启动以及一次检查点重载中验证。工具不会把旧进程中的堆地址当作新进程地址使用。
 
-已经通过临时 Hook 观察到原生场景视图函数为当前玩家生成视图矩阵、投影矩阵和视图对象，记录到了调用频率、线程和 DXGI Present；采集后入口已恢复。下一步是受控的微小角度改写测试。尚未验证真实脚本 VM 停顿、双眼渲染或 6DoF。
+已经通过临时 Hook 验证原生视图构建，并用约 ±1.5° 的受控 yaw 摆动验证修改确实影响画面，同时摄像机缓存 yaw 保持不变；停止后入口已恢复。下一步是独立验证 OpenXR 运行时与头显位姿，再接入渲染朝向。尚未验证真实脚本 VM 停顿、双眼渲染或 6DoF。
 
 ## 仓库边界
 
