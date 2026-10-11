@@ -1,0 +1,24 @@
+# Only maintain our source and written findings at the workspace root.
+/*
+!/.gitignore
+!/README.md
+!/docs/
+!/tools/
+
+# Third-party packages and local builds under our tools directory.
+/tools/package-inspector/python-libs/
+/tools/package-inspector/uelib-1.12.0/
+/tools/package-inspector/unsafe/
+**/__pycache__/
+*.pyc
+*.pyo
+*.exe
+*.dll
+*.zip
+*.7z
+*.pdb
+*.obj
+*.log
+
+# Game/package derivatives, runtime snapshots and disassembly stay local.
+/analysis/
