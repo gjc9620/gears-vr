@@ -9,6 +9,8 @@
 /tools/package-inspector/python-libs/
 /tools/package-inspector/uelib-1.12.0/
 /tools/package-inspector/unsafe/
+/tools/third-party/
+/tools/native-capture/build*/
 **/__pycache__/
 *.pyc
 *.pyo

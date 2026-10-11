@@ -1,0 +1,51 @@
+# 原生视图调用采集原型
+
+这一工具在当前游戏进程里加载我们编写的 DLL，并临时 Hook 原生候选入口。它会改写函数入口，不属于纯只读调查；它保留原函数参数、返回值和视点数据，不加入位姿变换。
+
+## 依赖和构建
+
+使用现有 Visual Studio x64 C++ 工具链及 Windows SDK。当前 `build.bat` 指向本机 `E:\vs`。第三方 [MinHook 官方项目](https://github.com/TsudaKageyu/minhook) 使用 v1.3.4，commit `c3fcafdc10146beb5919319d0683e44e3c30d537`；其源码位于忽略目录 `tools/third-party/minhook`。第三方源码和所有构建产物不提交到本仓库。
+
+```powershell
+& 'J:\gearsVr\tools\native-capture\build.bat'
+& 'J:\gearsVr\tools\native-capture\build\CaptureSelfTest.exe' 'J:\gearsVr\tools\native-capture\build\GearsCapture.dll'
+```
+
+独立测试通过真实 MinHook trampoline 调用测试函数，检查六个参数、原函数产生的输出和返回指针、事件嵌套记录，以及采集到的 32 个矩阵元素。它验证 Hook 的转发机制；不能代替游戏 ABI 验证。
+
+当前游戏内旧 DLL 会阻止覆盖构建产物。可用 `build.bat build-next` 在独立目录构建并自测；启动器和收集器接受 `--build-dir` 指向该目录。新构建仍需要新游戏进程，不能在已有采集 DLL 的进程中替换。源码增强版自测还核验停止后的入口字节和原函数再次执行。
+
+## 使用
+
+启动游戏并进入单人关卡，切回聊天使游戏自动暂停。关闭上次游戏进程后才能接入新一轮采集：同一进程已有采集 DLL 时启动器会拒绝重复加载。先通过摄像机定位器确认当前进程和版本，再执行：
+
+```powershell
+$pythonExe = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+& $pythonExe 'J:\gearsVr\tools\native-capture\start_capture.py' --pid 32532 --seconds 120
+```
+
+启动器每次运行独立自测，再核对游戏哈希、当前对象关系和目标入口字节。DLL 内部另做哈希、PID、LocalPlayer.Actor 链接及入口字节验证，拒绝未知游戏版本或已被其他工具改写的入口。此版本没有通用配置化 Hook 目标，候选入口来自我们自己的反汇编调查。
+
+开始后按明确安排切回游戏进行短测试。采集时间从 Hook 启用时开始，包含准备和暂停时间，不会等待游戏焦点。当前日志文件在采集期间可能被 CRT 锁定；启动器使用采集信号确认启动，结束后再读取完整文件。
+
+```powershell
+& $pythonExe 'J:\gearsVr\tools\native-capture\collect_capture.py' --output 'J:\gearsVr\analysis\runtime\native-capture-1.json'
+```
+
+## 记录内容
+
+- 场景视图候选 `0x15cf08`：时间、线程、调用者、玩家对象、原函数返回的视图指针、位置、旋转，以及视图矩阵 / 投影矩阵候选。
+- 玩家视点事件包装函数 `0x15c968`：时间、线程、调用者、控制器及原函数的两个输出。
+- DXGI Present / Present1：提交对象、时间、线程、返回 HRESULT 和是否属于测试调用。使用无窗口的临时 D3D12 composition swapchain 找到方法入口；没有调用临时 swapchain 的 Present。
+
+CSV 的 valid 是位标志：1=位置读取成功，2=旋转读取成功，4=矩阵读取成功，8=CameraCache 时间读取成功，16=对象与初始解析玩家匹配，32=非 DXGI_PRESENT_TEST 调用。不同类别只使用适用位。相同数值不代表已证明矩阵坐标约定；Present 与 Present1 可能嵌套，不应把计数相加当帧数。
+
+回调只保存记录到有界队列，文件写入由工作线程完成。队列满或锁竞争时丢弃记录并计数，避免等待日志锁阻塞游戏。输出统计必须结合 dropped 数量解释，记录不是无损追踪。
+
+## 停止和边界
+
+时间到后自动撤销 Hook 入口补丁、关闭日志。DLL 和 trampoline 留在进程中，直到游戏退出，避免正在返回或延迟执行的代码访问已经释放的地址。不会自动卸载 DLL。停止失败会写入状态，不能将失败状态解释为补丁已经撤销。
+
+也可由工具设置 `Local\GearsVR.Capture.Stop.<PID>` 命名事件提前停止。当前版本不提供重复启停或在同一游戏进程里替换 DLL 的功能。
+
+每帧的额外记录有运行开销，独立自测通过也不能保证未知游戏分支一定安全。动态成功只证明实际观察到的路径；菜单 / 焦点暂停不等于 VM 卡顿，采集不验证立体渲染、6DoF 或摄像机改写效果。

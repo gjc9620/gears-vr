@@ -1,0 +1,70 @@
+"""Collect a completed capture, group call data, and report its limits."""
+import argparse
+import collections
+import csv
+import json
+import math
+import pathlib
+import shutil
+import statistics
+import time
+
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--output',type=pathlib.Path,required=True)
+    parser.add_argument('--timeout',type=float,default=180)
+    parser.add_argument('--build-dir',type=pathlib.Path,default=pathlib.Path(__file__).with_name('build'))
+    args=parser.parse_args()
+    build=args.build_dir.resolve()
+    deadline=time.monotonic()+args.timeout
+    while True:
+        try:
+            status=(build/'capture-status.txt').read_text()
+        except (PermissionError,FileNotFoundError):
+            status=''
+        if 'stopped disable_status=' in status:break
+        if 'rejected:' in status or 'hook installation failed' in status:raise RuntimeError(status)
+        if time.monotonic()>=deadline:raise RuntimeError('Capture not confirmed stopped; inspect game/session before proceeding')
+        time.sleep(.5)
+    args.output.parent.mkdir(parents=True,exist_ok=True)
+    shutil.copyfile(build/'capture.csv',args.output.with_suffix('.csv'))
+    args.output.with_suffix('.status.txt').write_text(status)
+    frequency=int(next(line.split('=')[1] for line in status.splitlines() if line.startswith('qpc_frequency=')))
+    rows=list(csv.DictReader(args.output.with_suffix('.csv').open()))
+    groups=collections.defaultdict(list)
+    for row in rows:
+        key=(int(row['kind']),row['object'],int(row['thread']),int(row['focused']))
+        groups[key].append(row)
+    summaries=[]
+    labels={1:'scene_view',2:'player_view_event',3:'present',4:'present1'}
+    for (kind,obj,thread,focus),items in groups.items():
+        items.sort(key=lambda r:int(r['qpc']))
+        intervals=[(int(items[i]['qpc'])-int(items[i-1]['qpc']))*1000/frequency for i in range(1,len(items))]
+        valid=[r for r in items if int(r['valid'])&3==3]
+        summary=dict(kind=labels[kind],object=obj,thread=thread,focused=bool(focus),calls=len(items),
+            interval_median_ms=statistics.median(intervals) if intervals else None,
+            largest_interval_ms=max(intervals) if intervals else None,
+            duration_median_ms=statistics.median(int(r['duration_qpc'])*1000/frequency for r in items),
+            matching_expected_player_calls=sum(bool(int(r['valid'])&16) for r in items),
+            callers=dict(collections.Counter(r['caller_rva'] for r in items)))
+        if valid:
+            summary['unique_positions']=len({(r['x'],r['y'],r['z']) for r in valid})
+            summary['unique_rotations']=len({(r['pitch'],r['yaw'],r['roll']) for r in valid})
+        if kind==1:
+            matrices=[r for r in items if int(r['valid'])&4]
+            summary['matrix_samples']=len(matrices)
+            summary['finite_matrix_samples']=sum(all(math.isfinite(float(r[f'matrix{i}'])) for i in range(32)) for r in matrices)
+            summary['unique_matrices']=len({tuple(r[f'matrix{i}'] for i in range(32)) for r in matrices})
+            summary['unique_camera_timestamps']=len({r['camera_timestamp'] for r in items if int(r['valid'])&8})
+        if kind in (3,4):
+            summary['non_test_present_calls']=sum(bool(int(r['valid'])&32) for r in items)
+            summary['failed_present_calls']=sum(int(r['result'],16)>=0x80000000 for r in items)
+        summaries.append(summary)
+    report=dict(status=status.strip(),samples=len(rows),groups=summaries,
+        caveat='Present and Present1 may nest; do not add their counts. Focus gaps and menu pauses are not VM stalls. No view edits were applied.')
+    args.output.write_text(json.dumps(report,indent=2),encoding='utf-8')
+    print(json.dumps(report,indent=2))
+
+
+if __name__=='__main__':main()
