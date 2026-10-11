@@ -39,3 +39,7 @@
 
 原始日志、CSV、GPU 回读图像均在 Git 忽略的 `analysis/openxr/`。
 工具见 `tools/openxr-probe/README.md`。
+
+后续 Quest 3 / VDXR 实际头动与头显端显示已经验证，见
+`docs/11-headset-connection-validation.md`。本页前述默认姿态和未观察显示的
+限制描述的是较早的 KRVR 实验；不能据此推断 Quest 3 的后续测试也失败。

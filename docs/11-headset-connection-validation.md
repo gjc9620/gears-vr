@@ -30,3 +30,31 @@ TRACKED 标志在这轮仍完整，说明本机运行时会对默认姿态报告
 用户随后选择改用 Quest 3；等待连接方式和准备状态后，用其对应运行时重新验证。
 已找到本机 Virtual Desktop 的 VDXR 和 J:/Steam 下的 SteamVR manifest。
 后续可用测试子进程的 --runtime 参数选择，无需修改全局 OpenXR 注册表。
+
+## Quest 3 / Virtual Desktop：已验证
+
+2026-10-11 22:59–23:03，通过测试子进程的 XR_RUNTIME_JSON 使用
+VirtualDesktopXR 1.0.10。系统默认运行时仍为 KRVR，未改注册表。
+连接前查询返回 XR_ERROR_FORM_FACTOR_UNAVAILABLE；用户在头显里连接
+Virtual Desktop 后，系统查询成功，名称 Meta Quest 3。
+推荐每眼 3072×3264，旋转/位置跟踪支持均为 true；测试仍仅用 512×512。
+
+第一轮 30 秒：3547 帧，全部跟踪且全部位姿不同，但 shouldRender 仅 971 帧，
+FOCUSED 970 帧。用户要求再测，未把这轮作为显示验收。
+
+第二轮 30 秒：3585 帧，全部位姿有限、完整 VALID/TRACKED、非默认且不同；
+3585 帧 shouldRender，3584 帧 FOCUSED，3585 个 projection layer 提交。
+按 predictedDisplayTime 统计约 30.021 秒、119.38 次位姿采样/秒。
+这不是实际头显显示帧率测量，也不是原始传感器采样率。
+
+头部坐标范围（米）：X [-0.07862,0.07314]、Y [-0.12833,0.05069]、
+Z [-0.05759,0.13615]。相对首帧最大旋转约 69.36°，左右眼间距约 66.61mm。
+GPU 回读左右图像校验和与前述测试相同。
+
+用户确认“看到了，完成动作，画面连续”，随后补充“没有问题”。
+因此通过独立头部旋转/平移输入与头显端测试图显示验收。
+未严格验证逐轴符号、游戏尺度或虚拟场景深度；游戏位姿接入、第一人称位置、
+真实双眼场景渲染仍待实现。
+
+第二轮原始证据：analysis/openxr/pose-20261011-230207-719422.csv 及对应日志、
+左右眼 GPU 回读；确认统计为 quest3-confirmed-validation.json。均保留本机，Git 忽略。
