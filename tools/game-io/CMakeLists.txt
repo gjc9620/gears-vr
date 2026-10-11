@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.20)
+project(GearsWindowCapture LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+add_executable(WindowCapture window_capture.cpp)
+target_compile_definitions(WindowCapture PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(WindowCapture PRIVATE /W4 /EHsc)
+target_link_libraries(WindowCapture PRIVATE d3d11 dxgi dwmapi windowsapp windowscodecs ole32)

@@ -8,6 +8,8 @@
 - [原生调用验证结果](docs/04-native-capture-validation.md)
 - [渲染朝向改写验证](docs/05-render-yaw-wobble-validation.md)
 - [快捷调试启动与恢复](docs/06-debug-startup.md)
+- [低消耗半自动采图与手柄工具](tools/game-io/README.md)
+- [采图与手柄验证记录](docs/07-game-io-validation.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果

@@ -11,6 +11,8 @@
 /tools/package-inspector/unsafe/
 /tools/third-party/
 /tools/native-capture/build*/
+/tools/game-io/build*/
+/tools/game-io/deps/
 **/__pycache__/
 *.pyc
 *.pyo
