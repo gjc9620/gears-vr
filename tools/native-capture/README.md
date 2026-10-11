@@ -44,7 +44,7 @@ CSV 的 pose_phase=0 基线，1–6 对应六轴，7 恢复；额外记录源视
 
 ## 使用
 
-启动游戏并进入单人关卡，切回聊天使游戏自动暂停。常规新一轮采集先关闭上次游戏进程；同名采集 DLL 拒绝重复加载。先通过摄像机定位器确认当前进程和版本，再执行：
+启动游戏并进入单人关卡。调试启动器默认使用 `-NoPauseUnfocus`，切回聊天仍可继续渲染；需要暂停时手动操作。常规新一轮采集先关闭上次游戏进程；同名采集 DLL 拒绝重复加载。先通过摄像机定位器确认当前进程和版本，再执行：
 
 ```powershell
 $pythonExe = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
@@ -64,12 +64,15 @@ $pythonExe = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependenci
 - 场景视图候选 `0x15cf08`：时间、线程、调用者、玩家对象、原函数返回的视图指针、位置、旋转，以及视图矩阵 / 投影矩阵候选。
 - 玩家视点事件包装函数 `0x15c968`：时间、线程、调用者、控制器及原函数的两个输出。
 - DXGI Present / Present1：提交对象、时间、线程、返回 HRESULT 和是否属于测试调用。使用无窗口的临时 D3D12 composition swapchain 找到方法入口；没有调用临时 swapchain 的 Present。
+- 可选 `--gpu-diagnostics`：交换链 HWND、尺寸、格式、缓冲索引及资源 / 设备接口地址；ExecuteCommandLists 的队列、类型、设备与列表数量。只记录元数据，不复制 GPU 资源。模式与相机改写互斥，自测额外实际提交一个空命令列表。valid 128=设备接口读取成功，256=当前后缓冲资源读取成功；地址不是跨重启标识，也不证明交换链与队列绑定。
 
 CSV 的 valid 是位标志：1=位置读取成功，2=旋转读取成功，4=矩阵读取成功，8=CameraCache 时间读取成功，16=对象与初始解析玩家匹配，32=非 DXGI_PRESENT_TEST 调用。不同类别只使用适用位。相同数值不代表已证明矩阵坐标约定；Present 与 Present1 可能嵌套，不应把计数相加当帧数。
 
 回调只保存记录到有界队列，文件写入由工作线程完成。队列满或锁竞争时丢弃记录并计数，避免等待日志锁阻塞游戏。输出统计必须结合 dropped 数量解释，记录不是无损追踪。
 
 ## 停止和边界
+
+完成后可用 `verify_stopped.py --pid 当前PID --status 采集.status.txt --output 恢复检查.json` 独立读取入口进行核对。仅接受匹配 PID 的 clean stopped 状态；相机使用运行时版本签名，系统图形模块使用磁盘字节并应用重定位。检查不写内存、不卸载 DLL，仅覆盖已记录入口。新增 GPU 模式的结果和下一步见 `docs/17-native-gpu-observation.md`。
 
 时间到后自动撤销 Hook 入口补丁、关闭日志。DLL 和 trampoline 留在进程中，直到游戏退出，避免正在返回或延迟执行的代码访问已经释放的地址。不会自动卸载 DLL。停止失败会写入状态，不能将失败状态解释为补丁已经撤销。
 

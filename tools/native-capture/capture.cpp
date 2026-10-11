@@ -19,8 +19,12 @@ using SceneFn=void*(__fastcall*)(void*,void*,Vec*,Rot*,void*,void*);
 using EventFn=void(__fastcall*)(void*,Vec*,Rot*);
 using PresentFn=HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain*,UINT,UINT);
 using Present1Fn=HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain1*,UINT,UINT,const DXGI_PRESENT_PARAMETERS*);
+using ExecuteFn=void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);
 SceneFn original_scene{}; EventFn original_event{};
 PresentFn original_present{}; Present1Fn original_present1{};
+ExecuteFn original_execute{};
+bool gpu_diagnostics{};
+void* execute_target{};
 HMODULE own_module{};
 uintptr_t base{},expected_local{},expected_pc{},camera_cache{};
 uintptr_t expected_camera{},camera_yaw{};
@@ -60,13 +64,15 @@ struct Record {
     unsigned pose_phase;
     unsigned pose_status;
     unsigned long long pose_sequence;
+    uintptr_t gpu_device,gpu_buffer,gpu_window;
+    unsigned queue_type,command_count,buffer_index,buffer_count,width,height,format,swap_flags;
     Vec source_position,translation_delta;
     Rot source_rotation,rotation_delta;
     std::array<float,32> matrices;
 };
 std::array<Record,8192> ring{};
 size_t read_index{},write_index{};
-unsigned long long emitted[5]{};
+unsigned long long emitted[6]{};
 void* scene_target{}; void* event_target{}; void* present_target{}; void* present1_target{};
 HANDLE stop_event{};
 wchar_t directory[MAX_PATH]{};
@@ -271,8 +277,41 @@ void __fastcall hook_event(void* pc,Vec* position,Rot* rotation) {
     if(record.object==expected_pc) record.valid|=16;
     enqueue(record);
 }
+void inspect_swapchain(Record& record,IDXGISwapChain* chain) {
+    if(!gpu_diagnostics || !recording.load())return;
+    DXGI_SWAP_CHAIN_DESC desc{};
+    if(SUCCEEDED(chain->GetDesc(&desc))) {
+        record.width=desc.BufferDesc.Width;record.height=desc.BufferDesc.Height;
+        record.format=desc.BufferDesc.Format;record.buffer_count=desc.BufferCount;record.swap_flags=desc.Flags;
+        record.gpu_window=reinterpret_cast<uintptr_t>(desc.OutputWindow);
+    }
+    ID3D12Device* device{};
+    if(SUCCEEDED(chain->GetDevice(IID_PPV_ARGS(&device)))) {
+        record.gpu_device=reinterpret_cast<uintptr_t>(device);device->Release();record.valid|=128;
+    }
+    IDXGISwapChain3* current{};
+    if(SUCCEEDED(chain->QueryInterface(IID_PPV_ARGS(&current)))) {
+        record.buffer_index=current->GetCurrentBackBufferIndex();current->Release();
+        ID3D12Resource* buffer{};
+        if(SUCCEEDED(chain->GetBuffer(record.buffer_index,IID_PPV_ARGS(&buffer)))) {
+            record.gpu_buffer=reinterpret_cast<uintptr_t>(buffer);buffer->Release();record.valid|=256;
+        }
+    }
+}
+void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* lists) {
+    Scope scope;auto record=start_record(5,queue,_ReturnAddress());
+    if(gpu_diagnostics && recording.load()) {
+        record.queue_type=queue->GetDesc().Type;record.command_count=count;
+        ID3D12Device* device{};
+        if(SUCCEEDED(queue->GetDevice(IID_PPV_ARGS(&device)))) {
+            record.gpu_device=reinterpret_cast<uintptr_t>(device);device->Release();record.valid|=128;
+        }
+    }
+    original_execute(queue,count,lists);record.duration=now()-record.time;enqueue(record);
+}
 HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT flags) {
     Scope scope;auto record=start_record(3,chain,_ReturnAddress());
+    inspect_swapchain(record,chain);
     HRESULT result=original_present(chain,interval,flags);
     record.duration=now()-record.time;record.result=static_cast<unsigned long>(result);
     if(!(flags&DXGI_PRESENT_TEST)) record.valid|=32;
@@ -280,6 +319,7 @@ HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT 
 }
 HRESULT STDMETHODCALLTYPE hook_present1(IDXGISwapChain1* chain,UINT interval,UINT flags,const DXGI_PRESENT_PARAMETERS* params) {
     Scope scope;auto record=start_record(4,chain,_ReturnAddress());
+    inspect_swapchain(record,chain);
     HRESULT result=original_present1(chain,interval,flags,params);
     record.duration=now()-record.time;record.result=static_cast<unsigned long>(result);
     if(!(flags&DXGI_PRESENT_TEST)) record.valid|=32;
@@ -337,7 +377,9 @@ void flush(FILE* file) {
                 r.source_rotation.pitch,r.source_rotation.yaw,r.source_rotation.roll,
                 r.translation_delta.x,r.translation_delta.y,r.translation_delta.z,
                 r.rotation_delta.pitch,r.rotation_delta.yaw,r.rotation_delta.roll);
-            fprintf(file,",%u,%llu\n",r.pose_status,r.pose_sequence);
+            fprintf(file,",%u,%llu,0x%llx,0x%llx,0x%llx,%u,%u,%u,%u,%u,%u,%u,%u\n",r.pose_status,r.pose_sequence,
+                static_cast<unsigned long long>(r.gpu_device),static_cast<unsigned long long>(r.gpu_buffer),static_cast<unsigned long long>(r.gpu_window),
+                r.queue_type,r.command_count,r.buffer_index,r.buffer_count,r.width,r.height,r.format,r.swap_flags);
         }
         fflush(file);
     }
@@ -355,6 +397,11 @@ bool present_hooks() {
        SUCCEEDED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)))) {
         D3D12_COMMAND_QUEUE_DESC q{};
         if(SUCCEEDED(device->CreateCommandQueue(&q,IID_PPV_ARGS(&queue)))) {
+            bool execute_ok=true;
+            if(gpu_diagnostics) {
+                execute_target=(*reinterpret_cast<void***>(queue))[10];
+                execute_ok=install(execute_target,reinterpret_cast<void*>(hook_execute),reinterpret_cast<void**>(&original_execute));
+            }
             DXGI_SWAP_CHAIN_DESC1 desc{};desc.Width=16;desc.Height=16;desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;
             desc.SampleDesc.Count=1;desc.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;desc.BufferCount=2;
             desc.SwapEffect=DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;desc.AlphaMode=DXGI_ALPHA_MODE_PREMULTIPLIED;
@@ -364,6 +411,7 @@ bool present_hooks() {
                 success=install(present_target,reinterpret_cast<void*>(hook_present),reinterpret_cast<void**>(&original_present));
                 if(present1_target!=present_target)
                     success=install(present1_target,reinterpret_cast<void*>(hook_present1),reinterpret_cast<void**>(&original_present1)) && success;
+                success=success && execute_ok;
             }
         }
     }
@@ -386,7 +434,8 @@ DWORD WINAPI worker(void*) {
     wobble_enabled=GetPrivateProfileIntW(L"Capture",L"wobble",0,ini)==1;
     sweep_enabled=GetPrivateProfileIntW(L"Capture",L"sweep",0,ini)==1;
     live_enabled=GetPrivateProfileIntW(L"Capture",L"live_head",0,ini)==1;
-    if(int(wobble_enabled)+int(sweep_enabled)+int(live_enabled)>1) {fprintf(status,"rejected: mutually exclusive camera tests\n");fclose(status);return 3;}
+    gpu_diagnostics=GetPrivateProfileIntW(L"Capture",L"gpu_diagnostics",0,ini)==1;
+    if(int(wobble_enabled)+int(sweep_enabled)+int(live_enabled)+int(gpu_diagnostics)>1) {fprintf(status,"rejected: mutually exclusive capture modes\n");fclose(status);return 3;}
     if(live_enabled) {
         if(!live_bridge.open(GetCurrentProcessId(),false)){fprintf(status,"rejected: pose producer unavailable\n");fclose(status);return 3;}
         live_gate.arm(true);
@@ -407,18 +456,20 @@ DWORD WINAPI worker(void*) {
     if(!file) {fclose(status);return 5;}
     fprintf(file,"kind,thread,focused,valid,qpc,duration_qpc,object,result,caller_rva,x,y,z,pitch,yaw,roll,camera_timestamp,source_yaw,yaw_delta,cache_yaw,test_state");
     for(unsigned i=0;i<32;++i) fprintf(file,",matrix%u",i);
-    fprintf(file,",pose_phase,source_x,source_y,source_z,source_pitch,source_rot_yaw,source_roll,delta_x,delta_y,delta_z,delta_pitch,delta_rot_yaw,delta_roll,pose_status,pose_sequence\n");fflush(file);
+    fprintf(file,",pose_phase,source_x,source_y,source_z,source_pitch,source_rot_yaw,source_roll,delta_x,delta_y,delta_z,delta_pitch,delta_rot_yaw,delta_roll,pose_status,pose_sequence,gpu_device,gpu_buffer,gpu_window,queue_type,command_count,buffer_index,buffer_count,width,height,format,swap_flags\n");fflush(file);
     LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);
     qpc_frequency=frequency.QuadPart;
     fprintf(status,"qpc_frequency=%lld\n",frequency.QuadPart);
     fprintf(status,"wobble_enabled=%d amplitude_degrees=1.5 baseline_seconds=3 wave_seconds=12\n",wobble_enabled);
     fprintf(status,"sweep_enabled=%d rotation_degrees=1.5 translation_units=2 baseline_seconds=3 axis_seconds=4 total_seconds=27\n",sweep_enabled);
     fprintf(status,"live_head_enabled=%d rotation_limit_degrees=5 translation_limit_units=2 max_age_ms=100 F8=abort F9=recenter\n",live_enabled);
+    fprintf(status,"gpu_diagnostics=%d\n",gpu_diagnostics);
     MH_STATUS init=MH_Initialize();
     fprintf(status,"minhook_initialize=%s\n",MH_StatusToString(init));
     bool ok=init==MH_OK && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
         && install(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event));
     bool graphics=ok && present_hooks();
+    if(gpu_diagnostics && !graphics)ok=false;
     fprintf(status,"present_hooks_created=%d\n",graphics);
     if(ok) {recording=true;MH_STATUS applied=MH_ApplyQueued();fprintf(status,"minhook_apply=%s\n",MH_StatusToString(applied));ok=applied==MH_OK;}
     if(!ok) {
@@ -438,8 +489,8 @@ DWORD WINAPI worker(void*) {
     recording=false;
     for(unsigned i=0;i<100 && active.load();++i) Sleep(10);
     flush(file);
-    fprintf(status,"stopped disable_status=%d active=%u dropped=%llu scene=%llu event=%llu present=%llu present1=%llu\n",
-        disabled,active.load(),dropped.load(),emitted[1],emitted[2],emitted[3],emitted[4]);
+    fprintf(status,"stopped disable_status=%d active=%u dropped=%llu scene=%llu event=%llu present=%llu present1=%llu execute=%llu\n",
+        disabled,active.load(),dropped.load(),emitted[1],emitted[2],emitted[3],emitted[4],emitted[5]);
     fprintf(status,"wobble_final_state=%u\n",wobble_state.load());
     diagnostic_status=nullptr;fclose(file);fclose(status);if(stop_event) CloseHandle(stop_event);stop_event=nullptr;
     return disabled==MH_OK?0:7;
@@ -547,6 +598,38 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureSelfTest(void*) {
     recording=false;live_enabled=false;live_bridge.close();
     if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK)return 38;
     return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
+    gpu_diagnostics=true;
+    if(MH_Initialize()!=MH_OK || !present_hooks())return 50;
+    unsigned char before[32],after[32];
+    if(!safe_copy(before,execute_target,32))return 51;
+    ID3D12Device* device{};ID3D12CommandQueue* queue{};ID3D12CommandAllocator* allocator{};
+    ID3D12GraphicsCommandList* list{};ID3D12Fence* fence{};
+    DWORD result=0;HANDLE event{};D3D12_COMMAND_QUEUE_DESC desc{};
+    if(FAILED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device))) ||
+       FAILED(device->CreateCommandQueue(&desc,IID_PPV_ARGS(&queue))) ||
+       FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator))) ||
+       FAILED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator,nullptr,IID_PPV_ARGS(&list))) ||
+       FAILED(list->Close()) || FAILED(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence))))result=52;
+    if(!result) {
+        recording=true;if(MH_ApplyQueued()!=MH_OK)result=53;
+        if(!result) {
+            ID3D12CommandList* lists[]={list};queue->ExecuteCommandLists(1,lists);
+            event=CreateEventW(nullptr,FALSE,FALSE,nullptr);
+            if(!event || FAILED(queue->Signal(fence,1)) || FAILED(fence->SetEventOnCompletion(1,event)) ||
+               WaitForSingleObject(event,5000)!=WAIT_OBJECT_0)result=54;
+            if(!result && (write_index!=1 || ring[0].kind!=5 || ring[0].object!=reinterpret_cast<uintptr_t>(queue) ||
+               ring[0].gpu_device!=reinterpret_cast<uintptr_t>(device) || ring[0].queue_type!=D3D12_COMMAND_LIST_TYPE_DIRECT ||
+               ring[0].command_count!=1 || !(ring[0].valid&128)))result=55;
+        }
+    }
+    if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK && !result)result=56;
+    recording=false;
+    if(!result && (!safe_copy(after,execute_target,32) || memcmp(before,after,32)))result=57;
+    if(event)CloseHandle(event);if(fence)fence->Release();if(list)list->Release();
+    if(allocator)allocator->Release();if(queue)queue->Release();if(device)device->Release();
+    return result;
 }
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {
     // Keep CRT thread notifications enabled for the statically linked runtime.

@@ -69,6 +69,7 @@ def main():
     mode.add_argument('--wobble',action='store_true',help='Enable the gated 1.5-degree render-only yaw test')
     mode.add_argument('--sweep',action='store_true',help='Run pitch/yaw/roll and three tiny render-only translations')
     mode.add_argument('--live-head',action='store_true',help='Bounded real-headset test (requires verified pose producer)')
+    mode.add_argument('--gpu-diagnostics',action='store_true',help='Observe swapchain metadata and ExecuteCommandLists, without GPU copies')
     args=parser.parse_args()
     if pathlib.Path(args.dll_name).name!=args.dll_name or not args.dll_name.lower().endswith('.dll'):
         raise RuntimeError('DLL name must be a basename ending in .dll')
@@ -76,6 +77,7 @@ def main():
     test=dll.with_name('CaptureSelfTest.exe')
     if not dll.is_file() or not test.is_file():raise RuntimeError('Build capture DLL and self-test first')
     subprocess.run([str(test),str(dll)],check=True)
+    if args.gpu_diagnostics: subprocess.run([str(test),str(dll),'--gpu'],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
     try:camera=r.resolve()
@@ -103,6 +105,7 @@ def main():
         config='[Capture]\n'+f'pid={args.pid}\nseconds={args.seconds}\n'+f"local_player={camera['local_player_address']}\ncontroller={camera['controller_address']}\ntimestamp={camera['timestamp_address']}\n"
         yaw_address=int(camera['pov_address'],16)+int(camera['offsets']['Rotation'],16)+4
         config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\nsweep={int(args.sweep)}\nlive_head={int(args.live_head)}\n"
+        config+=f'gpu_diagnostics={int(args.gpu_diagnostics)}\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.

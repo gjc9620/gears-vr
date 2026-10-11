@@ -37,7 +37,7 @@ def main():
         key=(int(row['kind']),row['object'],int(row['thread']),int(row['focused']))
         groups[key].append(row)
     summaries=[]
-    labels={1:'scene_view',2:'player_view_event',3:'present',4:'present1'}
+    labels={1:'scene_view',2:'player_view_event',3:'present',4:'present1',5:'execute_command_lists'}
     for (kind,obj,thread,focus),items in groups.items():
         items.sort(key=lambda r:int(r['qpc']))
         intervals=[(int(items[i]['qpc'])-int(items[i-1]['qpc']))*1000/frequency for i in range(1,len(items))]
@@ -60,8 +60,11 @@ def main():
         if kind in (3,4):
             summary['non_test_present_calls']=sum(bool(int(r['valid'])&32) for r in items)
             summary['failed_present_calls']=sum(int(r['result'],16)>=0x80000000 for r in items)
+        if kind in (3,4,5) and 'gpu_device' in items[0]:
+            keys=['gpu_device','queue_type','command_count'] if kind==5 else ['gpu_device','gpu_buffer','gpu_window','buffer_index','buffer_count','width','height','format','swap_flags']
+            summary['gpu_metadata']={key:dict(collections.Counter(r[key] for r in items)) for key in keys}
         summaries.append(summary)
-    test_mode='live_head' if 'live_head_enabled=1' in status else ('six_axis_sweep' if 'sweep_enabled=1' in status else ('yaw_wobble' if 'wobble_enabled=1' in status else 'read_only'))
+    test_mode='gpu_diagnostics' if 'gpu_diagnostics=1' in status else ('live_head' if 'live_head_enabled=1' in status else ('six_axis_sweep' if 'sweep_enabled=1' in status else ('yaw_wobble' if 'wobble_enabled=1' in status else 'read_only')))
     report=dict(status=status.strip(),samples=len(rows),groups=summaries,test_mode=test_mode,
         caveat='Present and Present1 may nest; do not add their counts. Focus gaps and menu pauses are not VM stalls. View edits depend on the recorded test_mode.')
     if rows and 'yaw_delta' in rows[0]:

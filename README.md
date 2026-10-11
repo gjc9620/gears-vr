@@ -1,6 +1,6 @@
 # GearsVR 研究原型
 
-目标是为 Gears of War: Reloaded 实现双目立体画面和 6DoF 头部跟踪，最终交付可部署版本。当前已验证受限真实头动控制原生游戏视点，正在验证游戏画面进入头显；完整 VR Mod 尚未完成。
+目标是为 Gears of War: Reloaded 实现双目立体画面和 6DoF 头部跟踪，最终交付可部署版本。当前已验证受限真实头动控制原生游戏视点，以及游戏窗口画面进入头显的二维面板；正在调查原生 GPU 渲染路径，完整 VR Mod 尚未完成。
 
 - [新手流程与学习路线](docs/00-roadmap-and-learning.md)
 - [摄像机定位证据](docs/02-camera-analysis.md)
@@ -17,6 +17,7 @@
 - [实时头动接入验证](docs/14-live-head-camera-test.md)
 - [游戏窗口进入头显的显示原型](docs/15-game-screen-display.md)
 - [最终部署交付目标](docs/16-deployment-target.md)
+- [游戏原生 GPU 渲染对象观察](docs/17-native-gpu-observation.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
