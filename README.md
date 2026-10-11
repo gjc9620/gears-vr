@@ -19,6 +19,7 @@
 - [最终部署交付目标](docs/16-deployment-target.md)
 - [游戏原生 GPU 渲染对象观察](docs/17-native-gpu-observation.md)
 - [第一人称 Mod 安装与恢复](docs/18-first-person-mod-install.md)
+- [第一人称 Mod 晃动与后坐力细查](docs/19-first-person-motion-and-recoil.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
