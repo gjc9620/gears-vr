@@ -5,6 +5,7 @@ import json
 import os
 import pathlib
 import subprocess
+import sys
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser()
 parser.add_argument('--runtime', type=pathlib.Path)
@@ -26,3 +27,4 @@ except subprocess.TimeoutExpired:
 name = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') + '.json'
 (folder / name).write_text(json.dumps(report, indent=2), encoding='utf-8')
 print(json.dumps(report, indent=2))
+sys.exit(0 if report.get('exit_code') == 0 and not report.get('error') else 1)
