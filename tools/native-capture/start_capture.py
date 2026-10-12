@@ -78,8 +78,9 @@ def main():
     mode.add_argument('--constructor-state',action='store_true',help='Once, reconstruct an unsubmitted view with independent native state, destroying the view before ordinary state release')
     mode.add_argument('--constructor-eye',action='store_true',help='Once, reconstruct an unsubmitted independent-state view shifted one synthetic game unit right')
     mode.add_argument('--renderer-pair',action='store_true',help='Once, construct/destroy an unsubmitted two-view native renderer; never consume or enqueue it')
+    mode.add_argument('--submit-pair',action='store_true',help='Once, submit two half-width synthetic eye views through the ordinary renderer path')
     args=parser.parse_args()
-    args.constructor_eye=args.constructor_eye or args.renderer_pair
+    args.constructor_eye=args.constructor_eye or args.renderer_pair or args.submit_pair
     args.constructor_state=args.constructor_state or args.constructor_eye
     args.shadow_constructor=args.shadow_constructor or args.constructor_state
     args.shadow_state=args.shadow_state or args.constructor_state
@@ -101,6 +102,7 @@ def main():
     if args.shadow_constructor: subprocess.run([str(dll.with_name('SourceViewArgsTest.exe'))],check=True)
     if args.constructor_eye: subprocess.run([str(dll.with_name('SourceEyeArgsTest.exe'))],check=True)
     if args.renderer_pair: subprocess.run([str(dll.with_name('TwoViewRendererShadowTest.exe'))],check=True)
+    if args.submit_pair: subprocess.run([str(dll.with_name('SplitSourceViewsTest.exe'))],check=True)
     if args.shadow_state: subprocess.run([str(test),str(dll),'--state'],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
@@ -159,6 +161,7 @@ def main():
         config+=f'constructor_state={int(args.constructor_state)}\n'
         config+=f'constructor_eye={int(args.constructor_eye)}\n'
         config+=f'renderer_pair={int(args.renderer_pair)}\n'
+        config+=f'submit_pair={int(args.submit_pair)}\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.
