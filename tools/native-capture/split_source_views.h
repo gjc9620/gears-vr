@@ -7,7 +7,7 @@ struct API {gears_shadow::Allocate allocate;gears_source_args::Constructor const
     gears_shadow::Destroy destroy;gears_shadow::Free free;gears_shadow::Read read;};
 struct Result {void* views[2]{};unsigned checks{},rejection{};bool cleanup_safe{},quarantined{};
     gears_source_args::Snapshot inputs[2]{};};
-inline Result create(API api,void* family,void* source,void* right_state) {
+inline Result create(API api,void* family,void* source,void* right_state,bool output_bounds=false,bool preserve_geometry=false) {
     Result result{};gears_source_args::Snapshot original{};
     if(!api.read(original.bytes.data(),source,original.bytes.size()) || original.pointer(0)!=family ||
        !original.pointer(8) || !right_state || right_state==original.pointer(8) ||
@@ -17,17 +17,22 @@ inline Result create(API api,void* family,void* source,void* right_state) {
     if(original.value<int>(0x3f4)!=0 || original.value<int>(0x408)!=0){result.rejection=2;return result;}
     float x=original.value<float>(0x48),y=original.value<float>(0x4c);
     float width=original.value<float>(0x50),height=original.value<float>(0x54);
+    if(output_bounds) {
+        x=static_cast<float>(original.value<int>(0x58));y=static_cast<float>(original.value<int>(0x5c));
+        width=static_cast<float>(original.value<int>(0x60));height=static_cast<float>(original.value<int>(0x64));
+    }
     if(!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(width) || !std::isfinite(height) ||
        x<0 || y<0 || x+width>8192 || y+height>8192 || std::floor(x)!=x || std::floor(y)!=y ||
        width<64 || width>8192 || height<64 || height>8192 || std::floor(width)!=width ||
        std::floor(height)!=height || std::fmod(width,2.f)!=0){result.rejection=3;return result;}
     result.inputs[0]=original;result.inputs[1]=original;
     for(unsigned i=0;i<2;++i) {
+        if(preserve_geometry)continue; // Controls isolate reconstruction/multi-view processing from geometry.
         gears_eye_args::Result shift{};
         if(!gears_eye_args::shift_right(result.inputs[i],i?1.f:-1.f,shift)){result.rejection=4;return result;}
         float half=width*.5f,left=x+(i?half:0.f);
-        memcpy(result.inputs[i].bytes.data()+0x48,&left,4);
-        memcpy(result.inputs[i].bytes.data()+0x50,&half,4);
+        float rectangle[]={left,y,half,height};
+        memcpy(result.inputs[i].bytes.data()+0x48,rectangle,16);
     }
     result.checks|=1;
     for(unsigned i=0;i<2;++i)result.views[i]=api.allocate(0x430,8);

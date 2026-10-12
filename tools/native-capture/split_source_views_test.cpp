@@ -44,7 +44,16 @@ int main() {
     if(result.checks!=63 || result.inputs[0].value<float>(0x48)!=640 ||
        result.inputs[1].value<float>(0x48)!=960 || result.inputs[0].value<float>(0x50)!=320 ||
        result.inputs[1].value<float>(0x4c)!=360 || !gears_split_sources::release(api,result))return 8;
+    int output_rectangle[]={0,0,1920,1080};memcpy(source+0x58,output_rectangle,16);
+    result=gears_split_sources::create(api,family,source,reinterpret_cast<void*>(0x2000),true);
+    if(result.checks!=63 || result.inputs[0].value<float>(0x48)!=0 ||
+       result.inputs[1].value<float>(0x48)!=960 || result.inputs[0].value<float>(0x50)!=960 ||
+       result.inputs[1].value<float>(0x4c)!=0 || result.inputs[1].value<float>(0x54)!=1080 ||
+       !gears_split_sources::release(api,result))return 10;
     memcpy(source+0x48,rectangle,16);
+    result=gears_split_sources::create(api,family,source,reinterpret_cast<void*>(0x2000),false,true);
+    if(result.checks!=63 || memcmp(result.inputs[0].bytes.data(),source,sizeof(source)) ||
+       memcmp(result.inputs[1].bytes.data(),source,sizeof(source)) || !gears_split_sources::release(api,result))return 11;
     unsigned freed_before_partial=frees;
     allocation_limit=allocations+1;result=run();allocation_limit=100;
     if(result.views[0] || result.views[1] || result.cleanup_safe || frees!=freed_before_partial+1)return 3;

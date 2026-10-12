@@ -44,6 +44,8 @@
 - [两视图原生渲染对象的构造验证](docs/41-two-view-renderer-construction-validation.md)
 - [单帧双视图进入原生渲染通路](docs/42-single-frame-two-view-submission.md)
 - [持续双视图与实际画面问题](docs/43-bounded-two-view-rendering-and-pixel-failure.md)
+- [区域追踪与单视图对照](docs/44-view-rectangles-and-single-view-control.md)
+- [DLSS 对照与右侧黑屏](docs/45-upscaler-control-and-missing-right-view.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果

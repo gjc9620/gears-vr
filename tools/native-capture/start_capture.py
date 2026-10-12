@@ -80,8 +80,16 @@ def main():
     mode.add_argument('--renderer-pair',action='store_true',help='Once, construct/destroy an unsubmitted two-view native renderer; never consume or enqueue it')
     mode.add_argument('--submit-pair',action='store_true',help='Once, submit two half-width synthetic eye views through the ordinary renderer path')
     parser.add_argument('--submit-pair-seconds',type=int,default=0,choices=range(0,61),help='With --submit-pair, sustain pairs for at most sixty seconds with a shared independent right state')
+    parser.add_argument('--submit-output-bounds',action='store_true',help='Use original integer output bounds instead of already scaled source floats for the diagnostic split')
+    parser.add_argument('--submit-mono-control',action='store_true',help='Submit only one reconstructed original view, with no shift or resize, to isolate constructor effects')
+    parser.add_argument('--submit-mono-independent-state',action='store_true',help='With --submit-mono-control, submit the view using the newly created state instead of the game state')
+    parser.add_argument('--submit-duplicate-control',action='store_true',help='Submit two full original rectangles with no eye shift, to isolate multi-view processing from split geometry')
     args=parser.parse_args()
     if args.submit_pair_seconds and not args.submit_pair:parser.error('--submit-pair-seconds requires --submit-pair')
+    if args.submit_output_bounds and not args.submit_pair:parser.error('--submit-output-bounds requires --submit-pair')
+    if args.submit_mono_control and (not args.submit_pair or args.submit_output_bounds):parser.error('Mono control requires --submit-pair and unchanged source bounds')
+    if args.submit_mono_independent_state and not args.submit_mono_control:parser.error('Independent mono state requires --submit-mono-control')
+    if args.submit_duplicate_control and (not args.submit_pair or args.submit_output_bounds or args.submit_mono_control):parser.error('Duplicate control requires exclusive unchanged two-view mode')
     if args.submit_pair_seconds and args.seconds<args.submit_pair_seconds+10:parser.error('Capture duration must leave ten seconds beyond the sustained trial for startup and cleanup')
     args.constructor_eye=args.constructor_eye or args.renderer_pair or args.submit_pair
     args.constructor_state=args.constructor_state or args.constructor_eye
@@ -167,6 +175,10 @@ def main():
         config+=f'renderer_pair={int(args.renderer_pair)}\n'
         config+=f'submit_pair={int(args.submit_pair)}\n'
         config+=f'submit_pair_seconds={args.submit_pair_seconds}\n'
+        config+=f'submit_output_bounds={int(args.submit_output_bounds)}\n'
+        config+=f'submit_mono_control={int(args.submit_mono_control)}\n'
+        config+=f'submit_mono_independent_state={int(args.submit_mono_independent_state)}\n'
+        config+=f'submit_duplicate_control={int(args.submit_duplicate_control)}\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.
