@@ -37,6 +37,7 @@
 - [完整源视图构造参数与调用脚手架](docs/34-source-constructor-argument-map.md)
 - [完整源视图构造的原生验证](docs/35-full-source-constructor-validation.md)
 - [独立状态与完整源视图构造的组合验证](docs/36-independent-state-source-constructor.md)
+- [眼位输入准备与四分量参数调查](docs/37-eye-input-preparation.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
