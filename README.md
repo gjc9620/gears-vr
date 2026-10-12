@@ -51,6 +51,7 @@
 - [窗口最终输出的原生调用路径](docs/48-final-output-call-path.md)
 - [左右视图的最终处理对象](docs/49-per-view-output-objects.md)
 - [最终输出调用与区域参数](docs/50-final-output-quad-parameters.md)
+- [RenderDoc 接入与单帧实测](docs/51-renderdoc-capture-compatibility.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果

@@ -1,0 +1,6 @@
+LIBRARY renderdoc.dll
+EXPORTS
+RENDERDOC_AllocArrayMem
+RENDERDOC_FreeArrayMem
+RENDERDOC_CreateTargetControl
+RENDERDOC_EnumerateRemoteTargets
