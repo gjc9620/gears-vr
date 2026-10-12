@@ -84,7 +84,9 @@ def main():
     parser.add_argument('--submit-mono-control',action='store_true',help='Submit only one reconstructed original view, with no shift or resize, to isolate constructor effects')
     parser.add_argument('--submit-mono-independent-state',action='store_true',help='With --submit-mono-control, submit the view using the newly created state instead of the game state')
     parser.add_argument('--submit-duplicate-control',action='store_true',help='Submit two full original rectangles with no eye shift, to isolate multi-view processing from split geometry')
+    parser.add_argument('--viewport-diagnostics',action='store_true',help='Read-only D3D12 viewport/scissor/direct-draw counters; no ExecuteIndirect coverage')
     args=parser.parse_args()
+    args.gpu_diagnostics=args.gpu_diagnostics or args.viewport_diagnostics
     if args.submit_pair_seconds and not args.submit_pair:parser.error('--submit-pair-seconds requires --submit-pair')
     if args.submit_output_bounds and not args.submit_pair:parser.error('--submit-output-bounds requires --submit-pair')
     if args.submit_mono_control and (not args.submit_pair or args.submit_output_bounds):parser.error('Mono control requires --submit-pair and unchanged source bounds')
@@ -104,6 +106,9 @@ def main():
     if not dll.is_file() or not test.is_file():raise RuntimeError('Build capture DLL and self-test first')
     subprocess.run([str(test),str(dll)],check=True)
     if args.gpu_diagnostics: subprocess.run([str(test),str(dll),'--gpu'],check=True)
+    if args.viewport_diagnostics:
+        subprocess.run([str(dll.with_name('GpuViewportStatsTest.exe'))],check=True)
+        subprocess.run([str(test),str(dll),'--viewport'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--family'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--clone'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--renderer'],check=True)
@@ -166,6 +171,7 @@ def main():
         yaw_address=int(camera['pov_address'],16)+int(camera['offsets']['Rotation'],16)+4
         config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\nsweep={int(args.sweep)}\nlive_head={int(args.live_head)}\n"
         config+=f'gpu_diagnostics={int(args.gpu_diagnostics)}\n'
+        config+=f'viewport_diagnostics={int(args.viewport_diagnostics)}\n'
         config+=f'family_diagnostics={int(args.family_diagnostics)}\n'
         config+=f'shadow_view={int(args.shadow_view)}\n'
         config+=f'shadow_state={int(args.shadow_state)}\n'

@@ -18,6 +18,7 @@
 #include "two_view_renderer_shadow.h"
 #include "split_source_views.h"
 #include "submitted_view_lifetime.h"
+#include "gpu_viewport_stats.h"
 
 namespace {
 struct Vec {float x,y,z;};
@@ -103,6 +104,17 @@ SceneFn original_scene{}; EventFn original_event{};
 PresentFn original_present{}; Present1Fn original_present1{};
 ExecuteFn original_execute{};
 bool gpu_diagnostics{};
+bool viewport_diagnostics{};
+thread_local bool trial_draw_scope{};
+gears_viewport::Tracker viewport_stats;
+using ResetListFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*,ID3D12PipelineState*);
+using ViewportsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_VIEWPORT*);
+using ScissorsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_RECT*);
+using DrawFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,UINT,UINT,UINT);
+using DrawIndexedFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,UINT,UINT,INT,UINT);
+ResetListFn original_reset_list{};ViewportsFn original_viewports{};ScissorsFn original_scissors{};
+DrawFn original_draw{};DrawIndexedFn original_draw_indexed{};
+std::array<void*,5> viewport_targets{};
 void* execute_target{};
 HMODULE own_module{};
 uintptr_t base{},expected_local{},expected_pc{},camera_cache{};
@@ -498,7 +510,9 @@ void __fastcall hook_consume(void* renderer){
     if(submit_pair_enabled && (submit_pair_seconds?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
         reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load())){++submit_consumed;record.test_state=77;}
     void* saved=consuming_renderer;consuming_renderer=renderer;
+      bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
     original_consume(renderer);
+      trial_draw_scope=saved_draw_scope;
     consuming_renderer=saved;
     // The original consumer can free renderer. Only our local record is used
     // after it returns; never dereference the game object here.
@@ -841,6 +855,59 @@ bool install(void* target,void* detour,void** original) {
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
     return created==MH_OK && queued==MH_OK;
 }
+HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
+    Scope scope;HRESULT result=original_reset_list(list,allocator,state);
+    if(recording.load()&&SUCCEEDED(result))viewport_stats.reset(reinterpret_cast<uintptr_t>(list));
+    return result;
+}
+void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count,const D3D12_VIEWPORT* values) {
+    Scope scope;
+    if(recording.load()) {
+        D3D12_VIEWPORT value{};unsigned category=gears_viewport::unknown;
+        if(count==1&&safe_copy(&value,values,sizeof(value)))category=gears_viewport::classify(value.TopLeftX,value.TopLeftY,value.Width,value.Height);
+        else if(count>1)category=gears_viewport::other;
+        viewport_stats.set(reinterpret_cast<uintptr_t>(list),category,false,
+            {value.TopLeftX,value.TopLeftY,value.Width,value.Height});
+    }
+    original_viewports(list,count,values);
+}
+void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RECT* values) {
+    Scope scope;
+    if(recording.load()) {
+        D3D12_RECT value{};unsigned category=gears_viewport::unknown;
+        if(count==1&&safe_copy(&value,values,sizeof(value)))category=gears_viewport::classify(static_cast<float>(value.left),static_cast<float>(value.top),
+            static_cast<float>(static_cast<int64_t>(value.right)-value.left),static_cast<float>(static_cast<int64_t>(value.bottom)-value.top));
+        else if(count>1)category=gears_viewport::other;
+        viewport_stats.set(reinterpret_cast<uintptr_t>(list),category,true,
+            {static_cast<float>(value.left),static_cast<float>(value.top),
+             static_cast<float>(static_cast<int64_t>(value.right)-value.left),
+             static_cast<float>(static_cast<int64_t>(value.bottom)-value.top)});
+    }
+    original_scissors(list,count,values);
+}
+void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,UINT instances,UINT start,UINT first_instance) {
+    Scope scope;if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
+    original_draw(list,vertices,instances,start,first_instance);
+}
+void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
+    Scope scope;if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
+    original_draw_indexed(list,indices,instances,start,vertex,first_instance);
+}
+bool viewport_hooks(ID3D12Device* device) {
+    ID3D12CommandAllocator* allocator{};ID3D12GraphicsCommandList* list{};bool success=false;
+    if(SUCCEEDED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)))&&
+       SUCCEEDED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator,nullptr,IID_PPV_ARGS(&list)))) {
+        void** table=*reinterpret_cast<void***>(list);
+        viewport_targets={table[10],table[21],table[22],table[12],table[13]};
+        success=install(viewport_targets[0],reinterpret_cast<void*>(hook_reset_list),reinterpret_cast<void**>(&original_reset_list));
+        success=install(viewport_targets[1],reinterpret_cast<void*>(hook_viewports),reinterpret_cast<void**>(&original_viewports))&&success;
+        success=install(viewport_targets[2],reinterpret_cast<void*>(hook_scissors),reinterpret_cast<void**>(&original_scissors))&&success;
+        success=install(viewport_targets[3],reinterpret_cast<void*>(hook_draw),reinterpret_cast<void**>(&original_draw))&&success;
+        success=install(viewport_targets[4],reinterpret_cast<void*>(hook_draw_indexed),reinterpret_cast<void**>(&original_draw_indexed))&&success;
+        list->Close();
+    }
+    if(list)list->Release();if(allocator)allocator->Release();return success;
+}
 bool present_hooks() {
     IDXGIFactory2* factory{};ID3D12Device* device{};ID3D12CommandQueue* queue{};IDXGISwapChain1* chain{};
     bool success=false;
@@ -849,9 +916,10 @@ bool present_hooks() {
         D3D12_COMMAND_QUEUE_DESC q{};
         if(SUCCEEDED(device->CreateCommandQueue(&q,IID_PPV_ARGS(&queue)))) {
             bool execute_ok=true;
+              if(viewport_diagnostics)execute_ok=viewport_hooks(device);
             if(gpu_diagnostics) {
                 execute_target=(*reinterpret_cast<void***>(queue))[10];
-                execute_ok=install(execute_target,reinterpret_cast<void*>(hook_execute),reinterpret_cast<void**>(&original_execute));
+                  execute_ok=install(execute_target,reinterpret_cast<void*>(hook_execute),reinterpret_cast<void**>(&original_execute))&&execute_ok;
             }
             DXGI_SWAP_CHAIN_DESC1 desc{};desc.Width=16;desc.Height=16;desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;
             desc.SampleDesc.Count=1;desc.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;desc.BufferCount=2;
@@ -886,6 +954,8 @@ DWORD WINAPI worker(void*) {
     sweep_enabled=GetPrivateProfileIntW(L"Capture",L"sweep",0,ini)==1;
     live_enabled=GetPrivateProfileIntW(L"Capture",L"live_head",0,ini)==1;
     gpu_diagnostics=GetPrivateProfileIntW(L"Capture",L"gpu_diagnostics",0,ini)==1;
+      viewport_diagnostics=GetPrivateProfileIntW(L"Capture",L"viewport_diagnostics",0,ini)==1;
+      if(viewport_diagnostics&&!gpu_diagnostics){fclose(status);return 4;}
     family_diagnostics=GetPrivateProfileIntW(L"Capture",L"family_diagnostics",0,ini)==1;
     shadow_view_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_view",0,ini)==1;
     constructor_shadow_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_constructor",0,ini)==1;
@@ -911,7 +981,8 @@ DWORD WINAPI worker(void*) {
     if(shadow_state_enabled && (!family_diagnostics || (shadow_view_enabled && !constructor_state_enabled))){fprintf(status,"rejected: shadow state requires exclusive family diagnostics\n");fclose(status);return 3;}
     if(constructor_state_enabled && !shadow_state_enabled){fprintf(status,"rejected: independent constructor state requires lifetime observation\n");fclose(status);return 3;}
     if(shadow_view_enabled && !family_diagnostics){fprintf(status,"rejected: shadow copy requires family diagnostics\n");fclose(status);return 3;}
-    if(int(wobble_enabled)+int(sweep_enabled)+int(live_enabled)+int(gpu_diagnostics)+int(family_diagnostics)>1) {fprintf(status,"rejected: mutually exclusive capture modes\n");fclose(status);return 3;}
+    unsigned observer_overlap=viewport_diagnostics&&submit_pair_enabled&&gpu_diagnostics&&family_diagnostics?1:0;
+    if(int(wobble_enabled)+int(sweep_enabled)+int(live_enabled)+int(gpu_diagnostics)+int(family_diagnostics)-observer_overlap>1) {fprintf(status,"rejected: mutually exclusive capture modes\n");fclose(status);return 3;}
     if(live_enabled) {
         if(!live_bridge.open(GetCurrentProcessId(),false)){fprintf(status,"rejected: pose producer unavailable\n");fclose(status);return 3;}
         live_gate.arm(true);
@@ -1032,7 +1103,19 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"wobble_final_state=%u\n",wobble_state.load());
     fprintf(status,"family_calls=%llu\n",emitted[7]);
     fprintf(status,"renderer_consume_calls=%llu renderer_destroy_calls=%llu\n",emitted[10],emitted[11]);
-    fprintf(status,"renderer_prepare_calls=%llu\n",emitted[12]);
+      fprintf(status,"renderer_prepare_calls=%llu\n",emitted[12]);
+      if(viewport_diagnostics) {
+          auto stats=viewport_stats.snapshot();
+          fprintf(status,"gpu_viewport resets=%llu viewports=%llu scissors=%llu overflow=%llu untracked_draws=%llu\n",
+              stats.resets,stats.viewports,stats.scissors,stats.overflow,stats.untracked_draws);
+          for(unsigned phase=0;phase<3;++phase)for(unsigned viewport=0;viewport<5;++viewport)for(unsigned scissor=0;scissor<5;++scissor)
+              if(stats.draws[phase][viewport][scissor])fprintf(status,"gpu_draw phase=%u viewport=%u scissor=%u calls=%llu\n",phase,viewport,scissor,stats.draws[phase][viewport][scissor]);
+          fprintf(status,"gpu_rect_overflow=%llu\n",stats.rect_overflow);
+          for(const auto& entry:stats.trial_rects)if(entry.calls)
+              fprintf(status,"gpu_trial_rect viewport=(%.9g,%.9g,%.9g,%.9g) scissor=(%.9g,%.9g,%.9g,%.9g) calls=%llu\n",
+                  entry.viewport.x,entry.viewport.y,entry.viewport.width,entry.viewport.height,
+                  entry.scissor.x,entry.scissor.y,entry.scissor.width,entry.scissor.height,entry.calls);
+      }
     unsigned shadow_state=shadow_attempted.load();
     const auto completed_shadow=shadow_state==2?shadow_result:gears_shadow::Result{};
     fprintf(status,"shadow_view_enabled=%d attempted=%u stage=%u checks=%u nonempty_arrays=%u source=0x%llx temporary=0x%llx\n",
@@ -1412,6 +1495,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
     if(MH_Initialize()!=MH_OK || !present_hooks())return 50;
     unsigned char before[32],after[32];
     if(!safe_copy(before,execute_target,32))return 51;
+    std::array<std::array<unsigned char,32>,5> viewport_before{};
+    if(viewport_diagnostics)for(unsigned i=0;i<5;++i)if(!safe_copy(viewport_before[i].data(),viewport_targets[i],32))return 58;
     ID3D12Device* device{};ID3D12CommandQueue* queue{};ID3D12CommandAllocator* allocator{};
     ID3D12GraphicsCommandList* list{};ID3D12Fence* fence{};
     DWORD result=0;HANDLE event{};D3D12_COMMAND_QUEUE_DESC desc{};
@@ -1422,6 +1507,16 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
        FAILED(list->Close()) || FAILED(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence))))result=52;
     if(!result) {
         recording=true;if(MH_ApplyQueued()!=MH_OK)result=53;
+        if(!result&&viewport_diagnostics) {
+            if(FAILED(list->Reset(allocator,nullptr)))result=59;
+            else {
+                D3D12_VIEWPORT viewport{960,0,960,1080,0,1};D3D12_RECT scissor{960,0,1920,1080};
+                list->RSSetViewports(1,&viewport);list->RSSetScissorRects(1,&scissor);
+                if(FAILED(list->Close()))result=60;
+                auto stats=viewport_stats.snapshot();
+                if(stats.resets!=1||stats.viewports!=1||stats.scissors!=1||stats.overflow)result=61;
+            }
+        }
         if(!result) {
             ID3D12CommandList* lists[]={list};queue->ExecuteCommandLists(1,lists);
             event=CreateEventW(nullptr,FALSE,FALSE,nullptr);
@@ -1435,9 +1530,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
     if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK && !result)result=56;
     recording=false;
     if(!result && (!safe_copy(after,execute_target,32) || memcmp(before,after,32)))result=57;
+    if(!result&&viewport_diagnostics)for(unsigned i=0;i<5;++i)
+        if(!safe_copy(after,viewport_targets[i],32)||memcmp(after,viewport_before[i].data(),32))result=62;
     if(event)CloseHandle(event);if(fence)fence->Release();if(list)list->Release();
     if(allocator)allocator->Release();if(queue)queue->Release();if(device)device->Release();
     return result;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureViewportCheck(void*) {
+    viewport_diagnostics=true;return GearsCaptureGPUCheck(nullptr);
 }
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {
     // Keep CRT thread notifications enabled for the statically linked runtime.

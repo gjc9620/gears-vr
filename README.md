@@ -46,6 +46,7 @@
 - [持续双视图与实际画面问题](docs/43-bounded-two-view-rendering-and-pixel-failure.md)
 - [区域追踪与单视图对照](docs/44-view-rectangles-and-single-view-control.md)
 - [DLSS 对照与右侧黑屏](docs/45-upscaler-control-and-missing-right-view.md)
+- [GPU 绘制区域与裁剪证据](docs/46-gpu-viewport-and-scissor-evidence.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
