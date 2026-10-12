@@ -76,7 +76,9 @@ def main():
     mode.add_argument('--shadow-state',action='store_true',help='Once, create independent view state and observe its ordinary deferred deleting wrapper')
     mode.add_argument('--shadow-constructor',action='store_true',help='Once, reconstruct an unsubmitted source view from candidate full-constructor arguments, retaining the original state')
     mode.add_argument('--constructor-state',action='store_true',help='Once, reconstruct an unsubmitted view with independent native state, destroying the view before ordinary state release')
+    mode.add_argument('--constructor-eye',action='store_true',help='Once, reconstruct an unsubmitted independent-state view shifted one synthetic game unit right')
     args=parser.parse_args()
+    args.constructor_state=args.constructor_state or args.constructor_eye
     args.shadow_constructor=args.shadow_constructor or args.constructor_state
     args.shadow_state=args.shadow_state or args.constructor_state
     args.shadow_view=args.shadow_view or args.shadow_constructor
@@ -95,6 +97,7 @@ def main():
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--prepare'],check=True)
     if args.shadow_view: subprocess.run([str(dll.with_name('SourceViewShadowTest.exe'))],check=True)
     if args.shadow_constructor: subprocess.run([str(dll.with_name('SourceViewArgsTest.exe'))],check=True)
+    if args.constructor_eye: subprocess.run([str(dll.with_name('SourceEyeArgsTest.exe'))],check=True)
     if args.shadow_state: subprocess.run([str(test),str(dll),'--state'],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
@@ -151,6 +154,7 @@ def main():
         config+=f'shadow_state={int(args.shadow_state)}\n'
         config+=f'shadow_constructor={int(args.shadow_constructor)}\n'
         config+=f'constructor_state={int(args.constructor_state)}\n'
+        config+=f'constructor_eye={int(args.constructor_eye)}\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.

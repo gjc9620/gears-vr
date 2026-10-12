@@ -18,6 +18,7 @@ def analyze(status, restored, independent=False):
     enabled, finite = map(int, match.group(1, 2))
     error = float(match.group(3))
     report['checks'].update({
+        'unchanged_eye_mode': 'constructor_eye_enabled=1' not in status,
         'expected_state_mode': ('constructor_state_enabled=1' in status) == independent,
         'full_constructor_enabled': enabled == 1,
         'seven_derived_blocks_finite': finite == 1,

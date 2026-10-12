@@ -14,6 +14,7 @@
 #include "../vr-common/pose_bridge.h"
 #include "source_view_shadow.h"
 #include "native_source_view_args.h"
+#include "source_eye_args.h"
 
 namespace {
 struct Vec {float x,y,z;};
@@ -44,6 +45,10 @@ gears_shadow::API shadow_api{};
 gears_shadow::Result shadow_result{};
 bool constructor_shadow_enabled{};
 bool constructor_state_enabled{};
+bool constructor_eye_enabled{};
+std::array<float,32> constructor_eye_matrices{};
+unsigned constructor_eye_shifted{},constructor_combined_valid{};
+double constructor_combined_relative_error{};
 gears_source_args::Constructor source_constructor{};
 unsigned constructor_derived_finite{};
 double constructor_derived_error{};
@@ -309,12 +314,29 @@ void* __fastcall construct_from_snapshot(void* destination,void* source) {
     gears_source_args::Snapshot input{};
     if(!safe_copy(input.bytes.data(),source,input.bytes.size()))return nullptr;
     if(input.value<float>(0x50)<=0 || input.value<float>(0x54)<=0)return nullptr;
+    if(constructor_eye_enabled) {
+        gears_eye_args::Result shifted{};
+        if(!gears_eye_args::shift_right(input,1.f,shifted))return nullptr;
+        constructor_eye_shifted=1;
+        memcpy(constructor_eye_matrices.data(),input.bytes.data()+0x70,128);
+    }
     void* state=constructor_state_enabled?reinterpret_cast<void*>(state_temporary.load()):input.pointer(8);
     if(constructor_state_enabled && (!state || state_created.load()!=1))return nullptr;
     void* result=input.invoke(source_constructor,destination,input.pointer(0),state);
     gears_source_args::Snapshot output{};
     if(result==destination && safe_copy(output.bytes.data(),destination,output.bytes.size())) {
         constructor_derived_finite=1;
+        if(constructor_eye_enabled) {
+            constructor_combined_valid=1;
+            for(unsigned row=0;row<4;++row)for(unsigned col=0;col<4;++col) {
+                double expected=0;
+                for(unsigned k=0;k<4;++k)expected+=double(input.value<float>(0x70+16*row+4*k))*input.value<float>(0xb0+16*k+4*col);
+                float actual=output.value<float>(0x2b0+16*row+4*col);
+                if(!std::isfinite(expected) || !std::isfinite(actual))constructor_combined_valid=0;
+                else constructor_combined_relative_error=(std::max)(constructor_combined_relative_error,
+                    std::fabs(double(actual)-expected)/(1.+std::fabs(expected)));
+            }
+        }
         // Known initialized matrix blocks; exclude the owned map at +0x140,
         // padding and fields whose initialization has not been established.
         for(size_t offset:{size_t(0x160),size_t(0x1a0),size_t(0x1e0),size_t(0x220),size_t(0x260),size_t(0x2b0),size_t(0x2f0)})
@@ -374,7 +396,8 @@ void __fastcall hook_family(void* canvas,void* family){
                     if(ready)state_created=1;
                 }
             }
-            if(ready)shadow_result=gears_shadow::run(shadow_api,family,reinterpret_cast<void*>(record.family_views[0]),expected_state);
+            if(ready)shadow_result=gears_shadow::run(shadow_api,family,reinterpret_cast<void*>(record.family_views[0]),expected_state,
+                constructor_eye_enabled?constructor_eye_matrices.data():nullptr,constructor_eye_enabled);
             // Only release the independent state after its view has been safely
             // destroyed, or when no view was allocated. A quarantined view
             // retains its state until process exit; never free beneath it.
@@ -682,6 +705,8 @@ DWORD WINAPI worker(void*) {
     shadow_view_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_view",0,ini)==1;
     constructor_shadow_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_constructor",0,ini)==1;
     constructor_state_enabled=GetPrivateProfileIntW(L"Capture",L"constructor_state",0,ini)==1;
+    constructor_eye_enabled=GetPrivateProfileIntW(L"Capture",L"constructor_eye",0,ini)==1;
+    if(constructor_eye_enabled && !constructor_state_enabled){fprintf(status,"rejected: eye requires independent constructor state\n");fclose(status);return 3;}
     if(constructor_state_enabled && !constructor_shadow_enabled){fprintf(status,"rejected: independent constructor state requires full constructor mode\n");fclose(status);return 3;}
     if(constructor_shadow_enabled && !shadow_view_enabled){fprintf(status,"rejected: constructor requires shadow view mode\n");fclose(status);return 3;}
     shadow_state_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_state",0,ini)==1;
@@ -818,6 +843,9 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"constructor_shadow_enabled=%d derived_finite=%u derived_max_error=%.9g\n",constructor_shadow_enabled,
         shadow_state==2?constructor_derived_finite:0,shadow_state==2?constructor_derived_error:0.);
     fprintf(status,"constructor_state_enabled=%d\n",constructor_state_enabled);
+    fprintf(status,"constructor_eye_enabled=%d shifted=%u combined_valid=%u combined_relative_error=%.9g\n",constructor_eye_enabled,
+        shadow_state==2?constructor_eye_shifted:0,shadow_state==2?constructor_combined_valid:0,
+        shadow_state==2?constructor_combined_relative_error:0.);
     unsigned state_done=state_destroyed.load();
     fprintf(status,"shadow_state_enabled=%d attempted=%u created=%u release_returned=%u destroyed=%u original_preserved=%u flags=%u thread=%u caller=0x%llx temporary=0x%llx\n",
         shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),

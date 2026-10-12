@@ -23,7 +23,8 @@ struct Result {
 template<class T> T field(const unsigned char* bytes,size_t offset) {
     T value{};memcpy(&value,bytes+offset,sizeof(value));return value;
 }
-inline Result run(API api,void* family,void* source,uintptr_t expected_state=0) {
+inline Result run(API api,void* family,void* source,uintptr_t expected_state=0,
+                  const void* expected_matrices=nullptr,bool shifted_planes=false) {
     Result r{};r.source=reinterpret_cast<uintptr_t>(source);
     std::array<unsigned char,view_size> before{},copied{},after{};
     Header original{};
@@ -51,7 +52,7 @@ inline Result run(API api,void* family,void* source,uintptr_t expected_state=0) 
     void* returned=api.copy(destination,source);r.checks|=2;
     bool cleanup_safe=returned==destination && api.read(copied.data(),destination,copied.size());
     if(cleanup_safe) {
-        if(!memcmp(before.data()+0x70,copied.data()+0x70,128))r.checks|=4;
+        if(!memcmp(expected_matrices?expected_matrices:before.data()+0x70,copied.data()+0x70,128))r.checks|=4;
         const uintptr_t state=expected_state?expected_state:field<uintptr_t>(before.data(),8);
         if(field<uintptr_t>(before.data(),0)==field<uintptr_t>(copied.data(),0) &&
            field<uintptr_t>(copied.data(),8)==state &&
@@ -73,8 +74,12 @@ inline Result run(API api,void* family,void* source,uintptr_t expected_state=0) 
                 ++r.nonempty_arrays;
                 size_t size=size_t(s.count)*strides[i];
                 if(!d.data || !api.read(a.data(),reinterpret_cast<void*>(s.data),size) ||
-                   !api.read(b.data(),reinterpret_cast<void*>(d.data),size) ||
-                   memcmp(a.data(),b.data(),size))independent=false;
+                   !api.read(b.data(),reinterpret_cast<void*>(d.data),size))independent=false;
+                else if(shifted_planes && i<2) {
+                    // A translated view has different geometry coefficients.
+                    // Check finite four-float elements, not original equality.
+                    for(size_t j=0;j<size;j+=4)if(!std::isfinite(field<float>(b.data(),j)))independent=false;
+                } else if(memcmp(a.data(),b.data(),size))independent=false;
             }
         }
         if(independent)r.checks|=16;

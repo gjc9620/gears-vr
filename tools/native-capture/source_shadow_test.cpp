@@ -4,6 +4,7 @@
 namespace {
 unsigned allocated{},copied{},destroyed{},freed{},references=1;
 bool fail_allocate{},corrupt_matrix{},shallow_array{};
+bool altered_plane{},nonfinite_plane{};
 void* freed_address{};
 uintptr_t replacement_state{};
 bool read(void* out,const void* from,size_t size) {
@@ -25,6 +26,9 @@ void* __fastcall copy(void* out,void* source) {
             void* elements=HeapAlloc(GetProcessHeap(),0,size_t(h.count)*strides[i]);
             if(!elements)ExitProcess(90);
             memcpy(elements,reinterpret_cast<void*>(h.data),size_t(h.count)*strides[i]);
+            if(i==0 && (altered_plane || nonfinite_plane)) {
+                float coefficient=nonfinite_plane?NAN:2.f;memcpy(elements,&coefficient,4);
+            }
             h.data=reinterpret_cast<uintptr_t>(elements);h.capacity=h.count;
             memcpy(static_cast<unsigned char*>(out)+offsets[i],&h,sizeof(h));
         }
@@ -86,5 +90,18 @@ int main() {
     // A replacement pointer is accepted only when explicitly expected.
     result=gears_shadow::run(api,&family,source);
     if(result.stage!=7 || (result.checks&8) || !(result.checks&32) || references!=1 || freed!=5)return 9;
+    replacement_state=0;
+    float expected_matrices[32];memcpy(expected_matrices,source+0x70,sizeof(expected_matrices));expected_matrices[0]=42;
+    corrupt_matrix=true;altered_plane=true;
+    result=gears_shadow::run(api,&family,source,0,expected_matrices,true);
+    if(result.stage!=6 || result.checks!=255 || references!=1)return 10;
+    // Nonfinite shifted geometry and finite-but-unexpected original geometry
+    // must both fail, while retaining the normal cleanup guarantee.
+    nonfinite_plane=true;
+    result=gears_shadow::run(api,&family,source,0,expected_matrices,true);
+    if(result.stage!=7 || (result.checks&16) || !(result.checks&32) || references!=1)return 11;
+    nonfinite_plane=false;
+    result=gears_shadow::run(api,&family,source,0,expected_matrices,false);
+    if(result.stage!=7 || (result.checks&16) || !(result.checks&32) || references!=1)return 12;
     printf("Source shadow: deep copy, balanced resources, mismatch cleanup, allocation failure and guards passed\n");return 0;
 }
