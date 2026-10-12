@@ -72,7 +72,9 @@ def main():
     mode.add_argument('--live-head',action='store_true',help='Bounded real-headset test (requires verified pose producer)')
     mode.add_argument('--gpu-diagnostics',action='store_true',help='Observe swapchain metadata and ExecuteCommandLists, without GPU copies')
     mode.add_argument('--family-diagnostics',action='store_true',help='Observe bounded view arrays at the candidate render-family submission')
+    mode.add_argument('--shadow-view',action='store_true',help='Once, construct and destroy an unsubmitted native source-view copy on the game thread')
     args=parser.parse_args()
+    args.family_diagnostics=args.family_diagnostics or args.shadow_view
     if pathlib.Path(args.dll_name).name!=args.dll_name or not args.dll_name.lower().endswith('.dll'):
         raise RuntimeError('DLL name must be a basename ending in .dll')
     dll=args.build_dir.resolve()/args.dll_name
@@ -85,6 +87,7 @@ def main():
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--renderer'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--lifetime'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--prepare'],check=True)
+    if args.shadow_view: subprocess.run([str(dll.with_name('SourceViewShadowTest.exe'))],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
     try:camera=r.resolve()
@@ -113,6 +116,11 @@ def main():
         if args.family_diagnostics: signatures[0x15a80c]=bytes.fromhex('48895c241055488bec4883ec70')
         if args.family_diagnostics: signatures[0x15a974]=bytes.fromhex('40534883ec20488bd9')
         if args.family_diagnostics: signatures[0x1fc060]=bytes.fromhex('488bc44889581048897018574154')
+        if args.shadow_view:
+            signatures.update({0x1c03c8:bytes.fromhex('48895c240848896c2410488974241857'),
+                0x194454:bytes.fromhex('48895c241848894c2408565741564883'),
+                0x15ca7c:bytes.fromhex('48895c2408574883ec20488bf9488b89'),
+                0x53ea50:bytes.fromhex('e9abe8b9ff')})
         r=Resolver(args.pid,profile)
         try:
             refreshed=r.resolve()
@@ -126,6 +134,7 @@ def main():
         config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\nsweep={int(args.sweep)}\nlive_head={int(args.live_head)}\n"
         config+=f'gpu_diagnostics={int(args.gpu_diagnostics)}\n'
         config+=f'family_diagnostics={int(args.family_diagnostics)}\n'
+        config+=f'shadow_view={int(args.shadow_view)}\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.

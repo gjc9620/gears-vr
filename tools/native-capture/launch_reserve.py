@@ -19,10 +19,12 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--build-dir',type=pathlib.Path,default=ROOT/'tools/native-capture/build-prepare')
     parser.add_argument('--dll-name',default='GearsCapturePrepare.dll')
+    parser.add_argument('--check-shadow-copy',action='store_true',help='Require the bounded source-view copy self-test before startup; does not enable the experiment')
     args=parser.parse_args()
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
     build=args.build_dir.resolve();dll=build/args.dll_name
     for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime'],['--prepare']):subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
+    if args.check_shadow_copy:subprocess.run([str(build/'SourceViewShadowTest.exe')],check=True)
     result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',"if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"],capture_output=True)
     if result.returncode:raise RuntimeError('Existing game must exit normally first')
     exe=ROOT/'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'

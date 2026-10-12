@@ -11,6 +11,7 @@
 #include <cmath>
 #include "MinHook.h"
 #include "../vr-common/pose_bridge.h"
+#include "source_view_shadow.h"
 
 namespace {
 struct Vec {float x,y,z;};
@@ -35,6 +36,10 @@ ConsumeFn original_prepare{};
 void* prepare_target{};
 thread_local void* consuming_renderer{};
 bool family_diagnostics{};
+bool shadow_view_enabled{};
+std::atomic<unsigned> shadow_attempted{0};
+gears_shadow::API shadow_api{};
+gears_shadow::Result shadow_result{};
 void* family_target{};
 bool reservation_ready{};
 std::atomic<unsigned> reservation_started{0};
@@ -283,6 +288,13 @@ void inspect_family(Record& record,void* family){
 void __fastcall hook_family(void* canvas,void* family){
     Scope scope;auto record=start_record(7,canvas,_ReturnAddress());
     inspect_family(record,family);
+    if(shadow_view_enabled && recording.load() && record.caller==0x2c8909 && (record.valid&128) && record.family_count==1) {
+        unsigned expected=0;
+        if(shadow_attempted.compare_exchange_strong(expected,1)) {
+            shadow_result=gears_shadow::run(shadow_api,family,reinterpret_cast<void*>(record.family_views[0]));
+            shadow_attempted.store(2);
+        }
+    }
     void* previous=submitting_family;submitting_family=family;
     original_family(canvas,family);
     submitting_family=previous;
@@ -576,6 +588,8 @@ DWORD WINAPI worker(void*) {
     live_enabled=GetPrivateProfileIntW(L"Capture",L"live_head",0,ini)==1;
     gpu_diagnostics=GetPrivateProfileIntW(L"Capture",L"gpu_diagnostics",0,ini)==1;
     family_diagnostics=GetPrivateProfileIntW(L"Capture",L"family_diagnostics",0,ini)==1;
+    shadow_view_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_view",0,ini)==1;
+    if(shadow_view_enabled && !family_diagnostics){fprintf(status,"rejected: shadow copy requires family diagnostics\n");fclose(status);return 3;}
     if(int(wobble_enabled)+int(sweep_enabled)+int(live_enabled)+int(gpu_diagnostics)+int(family_diagnostics)>1) {fprintf(status,"rejected: mutually exclusive capture modes\n");fclose(status);return 3;}
     if(live_enabled) {
         if(!live_bridge.open(GetCurrentProcessId(),false)){fprintf(status,"rejected: pose producer unavailable\n");fclose(status);return 3;}
@@ -611,6 +625,19 @@ DWORD WINAPI worker(void*) {
         prepare_target=reinterpret_cast<void*>(base+0x1fc060);
         const unsigned char signature_prepare[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x70,0x18,0x57,0x41,0x54};
         if(!safe_copy(bytes,prepare_target,sizeof(signature_prepare)) || memcmp(bytes,signature_prepare,sizeof(signature_prepare))){fprintf(status,"rejected: preparation prologue mismatch\n");fclose(status);return 4;}
+    }
+    if(shadow_view_enabled) {
+        struct Gate {uintptr_t rva;unsigned char bytes[16];unsigned size;};
+        const Gate gates[]={
+            {0x1c03c8,{0x48,0x89,0x5c,0x24,0x08,0x48,0x89,0x6c,0x24,0x10,0x48,0x89,0x74,0x24,0x18,0x57},16},
+            {0x194454,{0x48,0x89,0x5c,0x24,0x18,0x48,0x89,0x4c,0x24,0x08,0x56,0x57,0x41,0x56,0x48,0x83},16},
+            {0x15ca7c,{0x48,0x89,0x5c,0x24,0x08,0x57,0x48,0x83,0xec,0x20,0x48,0x8b,0xf9,0x48,0x8b,0x89},16},
+            {0x53ea50,{0xe9,0xab,0xe8,0xb9,0xff},5}};
+        for(const auto& gate:gates)if(!safe_copy(bytes,reinterpret_cast<void*>(base+gate.rva),gate.size) || memcmp(bytes,gate.bytes,gate.size)) {
+            fprintf(status,"rejected: source copy lifetime signature mismatch rva=0x%llx\n",static_cast<unsigned long long>(gate.rva));fclose(status);return 4;
+        }
+        shadow_api={reinterpret_cast<gears_shadow::Allocate>(base+0x1c03c8),reinterpret_cast<gears_shadow::Copy>(base+0x194454),
+            reinterpret_cast<gears_shadow::Destroy>(base+0x15ca7c),reinterpret_cast<gears_shadow::Free>(base+0x53ea50),safe_copy};
     }
     FILE* file{};_wfopen_s(&file,csv,L"w");
     if(!file) {fclose(status);return 5;}
@@ -664,6 +691,11 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"family_calls=%llu\n",emitted[7]);
     fprintf(status,"renderer_consume_calls=%llu renderer_destroy_calls=%llu\n",emitted[10],emitted[11]);
     fprintf(status,"renderer_prepare_calls=%llu\n",emitted[12]);
+    unsigned shadow_state=shadow_attempted.load();
+    const auto completed_shadow=shadow_state==2?shadow_result:gears_shadow::Result{};
+    fprintf(status,"shadow_view_enabled=%d attempted=%u stage=%u checks=%u nonempty_arrays=%u source=0x%llx temporary=0x%llx\n",
+        shadow_view_enabled,shadow_state,completed_shadow.stage,completed_shadow.checks,completed_shadow.nonempty_arrays,
+        static_cast<unsigned long long>(completed_shadow.source),static_cast<unsigned long long>(completed_shadow.temporary));
     diagnostic_status=nullptr;fclose(file);fclose(status);if(stop_event) CloseHandle(stop_event);stop_event=nullptr;
     return disabled==MH_OK?0:7;
 }
