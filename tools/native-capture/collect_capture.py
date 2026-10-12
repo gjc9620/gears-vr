@@ -44,6 +44,7 @@ def main():
     labels[9]='renderer_constructor_candidate'
     labels[10]='renderer_consume_candidate'
     labels[11]='renderer_destroy_candidate'
+    labels[12]='renderer_prepare_candidate'
     for (kind,obj,thread,focus),items in groups.items():
         items.sort(key=lambda r:int(r['qpc']))
         intervals=[(int(items[i]['qpc'])-int(items[i-1]['qpc']))*1000/frequency for i in range(1,len(items))]

@@ -31,6 +31,9 @@ using DestroyRendererFn=void*(__fastcall*)(void*);
 ConsumeFn original_consume{};
 DestroyRendererFn original_destroy_renderer{};
 void* consume_target{};void* destroy_renderer_target{};
+ConsumeFn original_prepare{};
+void* prepare_target{};
+thread_local void* consuming_renderer{};
 bool family_diagnostics{};
 void* family_target{};
 bool reservation_ready{};
@@ -99,7 +102,7 @@ struct Record {
 };
 std::array<Record,8192> ring{};
 size_t read_index{},write_index{};
-unsigned long long emitted[12]{};
+unsigned long long emitted[13]{};
 void* scene_target{}; void* event_target{}; void* present_target{}; void* present1_target{};
 HANDLE stop_event{};
 wchar_t directory[MAX_PATH]{};
@@ -317,10 +320,29 @@ void inspect_completed_renderer(Record& record,void* destination){
 void __fastcall hook_consume(void* renderer){
     Scope scope;auto record=start_record(10,renderer,_ReturnAddress());
     inspect_completed_renderer(record,renderer);
+    void* saved=consuming_renderer;consuming_renderer=renderer;
     original_consume(renderer);
+    consuming_renderer=saved;
     // The original consumer can free renderer. Only our local record is used
     // after it returns; never dereference the game object here.
     record.duration=now()-record.time;enqueue(record);
+}
+void __fastcall hook_prepare(void* renderer){
+    Scope scope;bool observe=renderer && renderer==consuming_renderer;
+    auto record=start_record(12,renderer,_ReturnAddress());
+    if(observe){
+        Record before{};inspect_completed_renderer(before,renderer);
+        record.clone_source=before.family_views[0];
+        record.source_matrices=before.matrices;
+        if(before.valid&512)record.valid|=256;
+        if(safe_copy(&record.renderer_sources[0],reinterpret_cast<void*>(record.clone_source+8),8))record.valid|=8192;
+    }
+    original_prepare(renderer);
+    if(observe){
+        inspect_completed_renderer(record,renderer);
+        if(safe_copy(&record.renderer_sources[1],reinterpret_cast<void*>(record.family_views[0]+8),8))record.valid|=16384;
+        record.duration=now()-record.time;enqueue(record);
+    }
 }
 void* __fastcall hook_destroy_renderer(void* renderer){
     Scope scope;auto record=start_record(11,renderer,_ReturnAddress());
@@ -503,7 +525,7 @@ void flush(FILE* file) {
 bool install(void* target,void* detour,void** original) {
     MH_STATUS created=MH_CreateHook(target,detour,original);
     if(created==MH_ERROR_ALREADY_CREATED && reservation_ready && *original &&
-       (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target))created=MH_OK;
+       (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
     return created==MH_OK && queued==MH_OK;
@@ -586,6 +608,9 @@ DWORD WINAPI worker(void*) {
         const unsigned char signature_destroy[]={0x40,0x53,0x48,0x83,0xec,0x20,0x48,0x8b,0xd9};
         if(!safe_copy(bytes,consume_target,sizeof(signature_consume)) || memcmp(bytes,signature_consume,sizeof(signature_consume)) ||
            !safe_copy(bytes,destroy_renderer_target,sizeof(signature_destroy)) || memcmp(bytes,signature_destroy,sizeof(signature_destroy))){fprintf(status,"rejected: consume/destruction prologue mismatch\n");fclose(status);return 4;}
+        prepare_target=reinterpret_cast<void*>(base+0x1fc060);
+        const unsigned char signature_prepare[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x70,0x18,0x57,0x41,0x54};
+        if(!safe_copy(bytes,prepare_target,sizeof(signature_prepare)) || memcmp(bytes,signature_prepare,sizeof(signature_prepare))){fprintf(status,"rejected: preparation prologue mismatch\n");fclose(status);return 4;}
     }
     FILE* file{};_wfopen_s(&file,csv,L"w");
     if(!file) {fclose(status);return 5;}
@@ -611,6 +636,7 @@ DWORD WINAPI worker(void*) {
     if(ok && family_diagnostics)ok=install(renderer_target,reinterpret_cast<void*>(hook_renderer),reinterpret_cast<void**>(&original_renderer));
     if(ok && family_diagnostics)ok=install(consume_target,reinterpret_cast<void*>(hook_consume),reinterpret_cast<void**>(&original_consume)) &&
         install(destroy_renderer_target,reinterpret_cast<void*>(hook_destroy_renderer),reinterpret_cast<void**>(&original_destroy_renderer));
+    if(ok && family_diagnostics)ok=install(prepare_target,reinterpret_cast<void*>(hook_prepare),reinterpret_cast<void**>(&original_prepare));
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     fprintf(status,"present_hooks_created=%d\n",graphics);
@@ -637,6 +663,7 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"wobble_final_state=%u\n",wobble_state.load());
     fprintf(status,"family_calls=%llu\n",emitted[7]);
     fprintf(status,"renderer_consume_calls=%llu renderer_destroy_calls=%llu\n",emitted[10],emitted[11]);
+    fprintf(status,"renderer_prepare_calls=%llu\n",emitted[12]);
     diagnostic_status=nullptr;fclose(file);fclose(status);if(stop_event) CloseHandle(stop_event);stop_event=nullptr;
     return disabled==MH_OK?0:7;
 }
@@ -655,6 +682,14 @@ __declspec(noinline) void fake_consume(void* renderer){
 }
 FakeView fake_rendered_view{};
 uintptr_t fake_rendered_pointer{};
+unsigned prepare_forward_count{};
+__declspec(noinline) void fake_prepare(void* renderer){
+    ++prepare_forward_count;
+    uintptr_t view{};memcpy(&view,reinterpret_cast<char*>(renderer)+0x68,8);
+    float x=.125f,y=-.25f;uintptr_t state=0x2222;
+    memcpy(reinterpret_cast<void*>(view+0xd0),&x,4);memcpy(reinterpret_cast<void*>(view+0xd4),&y,4);
+    memcpy(reinterpret_cast<void*>(view+8),&state,8);
+}
 __declspec(noinline) void* fake_renderer(void* destination,void* family,void* canvas,void* transform){
     renderer_forward_count+=canvas==reinterpret_cast<void*>(5) && transform==reinterpret_cast<void*>(6)?1:100;
     uintptr_t array{};memcpy(&array,family,8);uintptr_t source{};memcpy(&source,reinterpret_cast<void*>(array),8);
@@ -705,6 +740,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
     const unsigned char d[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x68,0x18,0x48,0x89,0x70,0x20};
     const unsigned char e[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x18,0x48,0x89,0x70,0x20,0x57,0x41,0x54};
     const unsigned char f[]={0x48,0x89,0x5c,0x24,0x10,0x55,0x48,0x8b,0xec,0x48,0x83,0xec,0x70};
+    prepare_target=reinterpret_cast<void*>(base+0x1fc060);
+    const unsigned char h[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x70,0x18,0x57,0x41,0x54};
     const unsigned char g[]={0x40,0x53,0x48,0x83,0xec,0x20,0x48,0x8b,0xd9};
     unsigned char read[16];
     if(!safe_copy(read,scene_target,sizeof(a)) || memcmp(read,a,sizeof(a)) ||
@@ -713,7 +750,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
        !safe_copy(read,clone_target,sizeof(d)) || memcmp(read,d,sizeof(d)) ||
        !safe_copy(read,renderer_target,sizeof(e)) || memcmp(read,e,sizeof(e)) ||
        !safe_copy(read,consume_target,sizeof(f)) || memcmp(read,f,sizeof(f)) ||
-       !safe_copy(read,destroy_renderer_target,sizeof(g)) || memcmp(read,g,sizeof(g)))return ERROR_INVALID_DATA;
+       !safe_copy(read,destroy_renderer_target,sizeof(g)) || memcmp(read,g,sizeof(g)) ||
+       !safe_copy(read,prepare_target,sizeof(h)) || memcmp(read,h,sizeof(h)))return ERROR_INVALID_DATA;
     if(MH_Initialize()!=MH_OK)return ERROR_INVALID_STATE;
     if(MH_CreateHook(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))!=MH_OK ||
        MH_CreateHook(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event))!=MH_OK ||
@@ -721,7 +759,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
        MH_CreateHook(clone_target,reinterpret_cast<void*>(hook_clone),reinterpret_cast<void**>(&original_clone))!=MH_OK ||
        MH_CreateHook(renderer_target,reinterpret_cast<void*>(hook_renderer),reinterpret_cast<void**>(&original_renderer))!=MH_OK ||
        MH_CreateHook(consume_target,reinterpret_cast<void*>(hook_consume),reinterpret_cast<void**>(&original_consume))!=MH_OK ||
-       MH_CreateHook(destroy_renderer_target,reinterpret_cast<void*>(hook_destroy_renderer),reinterpret_cast<void**>(&original_destroy_renderer))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
+       MH_CreateHook(destroy_renderer_target,reinterpret_cast<void*>(hook_destroy_renderer),reinterpret_cast<void**>(&original_destroy_renderer))!=MH_OK ||
+       MH_CreateHook(prepare_target,reinterpret_cast<void*>(hook_prepare),reinterpret_cast<void**>(&original_prepare))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
     // Independently re-read the entries to confirm reservation left them alone.
     if(!safe_copy(read,scene_target,sizeof(a)) || memcmp(read,a,sizeof(a)) ||
        !safe_copy(read,event_target,sizeof(b)) || memcmp(read,b,sizeof(b)) ||
@@ -729,7 +768,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
        !safe_copy(read,clone_target,sizeof(d)) || memcmp(read,d,sizeof(d)) ||
        !safe_copy(read,renderer_target,sizeof(e)) || memcmp(read,e,sizeof(e)) ||
        !safe_copy(read,consume_target,sizeof(f)) || memcmp(read,f,sizeof(f)) ||
-       !safe_copy(read,destroy_renderer_target,sizeof(g)) || memcmp(read,g,sizeof(g)))return ERROR_INVALID_DATA;
+       !safe_copy(read,destroy_renderer_target,sizeof(g)) || memcmp(read,g,sizeof(g)) ||
+       !safe_copy(read,prepare_target,sizeof(h)) || memcmp(read,h,sizeof(h)))return ERROR_INVALID_DATA;
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Capture.Reserved.%lu",GetCurrentProcessId());
     reservation_event=CreateEventW(nullptr,TRUE,TRUE,name);
     if(!reservation_event)return GetLastError();reservation_ready=true;return 0;
@@ -809,6 +849,25 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureLifetimeCheck(void*) {
         if(r.object!=reinterpret_cast<uintptr_t>(destination) || r.valid!=(128|512|1024|4096) || r.family_views[0]!=fake_rendered_pointer || r.clone_owner!=reinterpret_cast<uintptr_t>(destination)+8 || memcmp(r.matrices.data(),source.matrices,128))return 108;
     }
     if(ring[0].result!=reinterpret_cast<uintptr_t>(destination))return 109;
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrepareCheck(void*) {
+    FakeView source{};for(unsigned i=0;i<32;++i)source.matrices[i]=float(i)+.5f;
+    uintptr_t initial_state=0x1111;memcpy(source.prefix+8,&initial_state,8);
+    uintptr_t views[]={reinterpret_cast<uintptr_t>(&source)};
+    struct Header{uintptr_t data;int count,capacity;} header{reinterpret_cast<uintptr_t>(views),1,17};
+    alignas(8) unsigned char destination[0x140]{};fake_renderer(destination,&header,reinterpret_cast<void*>(5),reinterpret_cast<void*>(6));
+    unsigned char before[32],after[32];
+    if(!safe_copy(before,reinterpret_cast<void*>(fake_prepare),32) || MH_Initialize()!=MH_OK)return 110;
+    if(!install(reinterpret_cast<void*>(fake_prepare),reinterpret_cast<void*>(hook_prepare),reinterpret_cast<void**>(&original_prepare)))return 111;
+    recording=true;if(MH_ApplyQueued()!=MH_OK)return 112;
+    consuming_renderer=destination;ConsumeFn volatile invoke=fake_prepare;invoke(destination);consuming_renderer=nullptr;
+    invoke(destination);recording=false;if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK)return 113;
+    if(!safe_copy(after,reinterpret_cast<void*>(fake_prepare),32) || memcmp(before,after,32) || active.load() || prepare_forward_count!=2 || write_index!=1)return 114;
+    const auto& r=ring[0];
+    if(r.kind!=12 || r.object!=reinterpret_cast<uintptr_t>(destination) || r.clone_source!=r.family_views[0] || r.valid!=(128|256|512|1024|4096|8192|16384) || r.renderer_sources[0]!=0x1111 || r.renderer_sources[1]!=0x2222)return 115;
+    if(memcmp(r.source_matrices.data(),source.matrices,128) || r.matrices[24]!=.125f || r.matrices[25]!=-.25f)return 116;
+    for(unsigned i=0;i<32;++i)if(i!=24 && i!=25 && r.matrices[i]!=source.matrices[i])return 117;
     return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureSelfTest(void*) {

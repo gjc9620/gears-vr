@@ -17,12 +17,12 @@ from runtime_probe import Process
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--build-dir',type=pathlib.Path,default=ROOT/'tools/native-capture/build-lifetime')
-    parser.add_argument('--dll-name',default='GearsCaptureLifetime.dll')
+    parser.add_argument('--build-dir',type=pathlib.Path,default=ROOT/'tools/native-capture/build-prepare')
+    parser.add_argument('--dll-name',default='GearsCapturePrepare.dll')
     args=parser.parse_args()
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
     build=args.build_dir.resolve();dll=build/args.dll_name
-    for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime']):subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
+    for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime'],['--prepare']):subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
     result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',"if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"],capture_output=True)
     if result.returncode:raise RuntimeError('Existing game must exit normally first')
     exe=ROOT/'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
@@ -69,6 +69,7 @@ def main():
         signatures[0x116250]=bytes.fromhex('488bc44889581848897020574154')
         signatures[0x15a80c]=bytes.fromhex('48895c241055488bec4883ec70')
         signatures[0x15a974]=bytes.fromhex('40534883ec20488bd9')
+        signatures[0x1fc060]=bytes.fromhex('488bc44889581048897018574154')
         read_only=Process(pid)
         try:
             entries=[{'rva':hex(offset),'matches':read_only.read(loaded['gowde-steam.exe'][0]+offset,len(value))==value} for offset,value in signatures.items()]

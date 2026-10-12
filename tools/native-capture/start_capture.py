@@ -84,6 +84,7 @@ def main():
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--clone'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--renderer'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--lifetime'],check=True)
+    if args.family_diagnostics: subprocess.run([str(test),str(dll),'--prepare'],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
     try:camera=r.resolve()
@@ -111,6 +112,7 @@ def main():
         if args.family_diagnostics: signatures[0x116250]=bytes.fromhex('488bc44889581848897020574154')
         if args.family_diagnostics: signatures[0x15a80c]=bytes.fromhex('48895c241055488bec4883ec70')
         if args.family_diagnostics: signatures[0x15a974]=bytes.fromhex('40534883ec20488bd9')
+        if args.family_diagnostics: signatures[0x1fc060]=bytes.fromhex('488bc44889581048897018574154')
         r=Resolver(args.pid,profile)
         try:
             refreshed=r.resolve()

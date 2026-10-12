@@ -88,6 +88,8 @@ CSV 的 valid 是位标志：1=位置读取成功，2=旋转读取成功，4=矩
 
 ## 停止和边界
 
+最新默认构建更新为 `build-prepare/GearsCapturePrepare.dll`，使用 `build.bat build-prepare GearsCapturePrepare`。新增 0x1fc060 前后观察（kind=12）和 `--prepare` 自测；当前源码要求六项相关自测，历史构建不能直接复用。上面的采样命令应改用这个目录及 DLL。停止工具现在核验八处原生、两处 DXGI 入口。使用 `analyze_prepare.py --capture <JSON> --restored <恢复JSON> --output <结果JSON>` 检查准备与消费、释放的嵌套关系，见文档 28。
+
 完成后可用 `verify_stopped.py --pid 当前PID --status 采集.status.txt --output 恢复检查.json` 独立读取入口进行核对。仅接受匹配 PID 的 clean stopped 状态；相机使用运行时版本签名，系统图形模块使用磁盘字节并应用重定位。检查不写内存、不卸载 DLL，仅覆盖已记录入口。新增 GPU 模式的结果和下一步见 `docs/17-native-gpu-observation.md`。
 
 时间到后自动撤销 Hook 入口补丁、关闭日志。DLL 和 trampoline 留在进程中，直到游戏退出，避免正在返回或延迟执行的代码访问已经释放的地址。不会自动卸载 DLL。停止失败会写入状态，不能将失败状态解释为补丁已经撤销。
