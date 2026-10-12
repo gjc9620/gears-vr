@@ -27,6 +27,7 @@
 - [渲染视图副本动态验证](docs/24-render-view-copy-validation.md)
 - [完整渲染对象构造与原版对照](docs/25-renderer-construction-validation.md)
 - [渲染线程消费与视图生命周期](docs/26-renderer-consumption-and-lifetime.md)
+- [矩阵准备与历史数据调查](docs/27-render-matrix-preparation-leads.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
