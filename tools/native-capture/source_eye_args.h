@@ -19,10 +19,13 @@ inline bool shift_right(gears_source_args::Snapshot& input,float units,Result& r
     Result computed{};
     float shifted=m[12]-units;
     if(!std::isfinite(shifted))return false;
+    const float represented=m[12]-shifted;
+    // Reject float quantization that would silently erase a requested eye gap.
+    if(units!=0.f && (shifted==m[12] || std::fabs(represented-units)>std::fabs(units)*.01f))return false;
     for(unsigned i=0;i<3;++i) {
         double position=0;for(unsigned k=0;k<3;++k)position-=double(m[12+k])*m[4*i+k];
         computed.before[i]=float(position);
-        computed.world_delta[i]=units*m[4*i];
+        computed.world_delta[i]=represented*m[4*i];
         computed.after[i]=computed.before[i]+computed.world_delta[i];
         if(!std::isfinite(computed.before[i]) || !std::isfinite(computed.after[i]))return false;
     }
