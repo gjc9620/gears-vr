@@ -40,6 +40,7 @@
 - [眼位输入准备与四分量参数调查](docs/37-eye-input-preparation.md)
 - [未提交偏移眼位的原生验证](docs/38-native-unsubmitted-eye-validation.md)
 - [主线进度与下一次验收](docs/39-mainline-progress-and-acceptance.md)
+- [双视图渲染器的对象边界](docs/40-two-view-renderer-boundary.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
