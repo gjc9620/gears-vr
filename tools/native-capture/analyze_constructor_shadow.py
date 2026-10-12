@@ -7,7 +7,7 @@ import re
 from analyze_shadow_view import analyze as analyze_shadow
 
 
-def analyze(status, restored):
+def analyze(status, restored, independent=False):
     report = analyze_shadow(status, restored)
     lines = [s for s in status.splitlines() if s.startswith('constructor_shadow_enabled=')]
     if len(lines) != 1:
@@ -18,6 +18,7 @@ def analyze(status, restored):
     enabled, finite = map(int, match.group(1, 2))
     error = float(match.group(3))
     report['checks'].update({
+        'expected_state_mode': ('constructor_state_enabled=1' in status) == independent,
         'full_constructor_enabled': enabled == 1,
         'seven_derived_blocks_finite': finite == 1,
         'derived_blocks_match': math.isfinite(error) and 0 <= error <= 1e-5,
@@ -26,7 +27,7 @@ def analyze(status, restored):
     report['constructor'] = {'enabled': enabled, 'finite': finite, 'max_error': error,
                              'blocks': ['0x160', '0x1a0', '0x1e0', '0x220', '0x260', '0x2b0', '0x2f0']}
     report['limits'] = [
-        'One unsubmitted reconstruction using unchanged matrices, dimensions and associated state.',
+        'One unsubmitted reconstruction using unchanged matrices and dimensions.',
         'Static single-player scope; no head motion or independent eye history validated here.',
         'Only seven derived matrix blocks and four known arrays compared; not complete object equivalence.',
         'No stereo rendering, GPU completion or OpenXR eye projection demonstrated.',

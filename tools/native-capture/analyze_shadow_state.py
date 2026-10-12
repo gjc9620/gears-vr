@@ -6,11 +6,7 @@ import pathlib
 import re
 
 
-def main():
-    p=argparse.ArgumentParser(description=__doc__)
-    for key in ('capture','restored','output'):p.add_argument('--'+key,type=pathlib.Path,required=True)
-    a=p.parse_args();status=a.capture.with_suffix('.status.txt').read_text()
-    restored=json.loads(a.restored.read_text())
+def analyze(status, restored, csv_path):
     lines=[s for s in status.splitlines() if s.startswith('shadow_state_enabled=')]
     if len(lines)!=1:raise RuntimeError('One state diagnostic summary required')
     fields={key:int(value,0) for key,value in re.findall(r'(\w+)=(0x[0-9a-fA-F]+|\d+)',lines[0])}
@@ -18,7 +14,7 @@ def main():
     if set(fields)!=required:raise RuntimeError('Unexpected state diagnostic fields')
     pid=re.search(r'^capturing pid=(\d+) ',status,re.MULTILINE)
     family_threads=set();present_threads=set();present_count=0;present_failures=0
-    with a.capture.with_suffix('.csv').open(newline='') as stream:
+    with csv_path.open(newline='') as stream:
         for row in csv.DictReader(stream):
             if row['kind']=='7':family_threads.add(int(row['thread']))
             if row['kind'] in ('3','4'):
@@ -41,6 +37,14 @@ def main():
         'limits':['One state created and released without rendering it.',
             'Deleting wrapper completion and flags are observed; freed storage is not reread.',
             'No per-eye GPU history use, long-session stability, or general GPU completion claim.']}
+    return report
+
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    for key in ('capture','restored','output'):p.add_argument('--'+key,type=pathlib.Path,required=True)
+    a=p.parse_args()
+    report=analyze(a.capture.with_suffix('.status.txt').read_text(),json.loads(a.restored.read_text()),a.capture.with_suffix('.csv'))
     a.output.write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report))
     if not report['passed']:raise SystemExit(1)
 

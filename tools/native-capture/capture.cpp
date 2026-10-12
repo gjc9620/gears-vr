@@ -43,6 +43,7 @@ std::atomic<unsigned> shadow_attempted{0};
 gears_shadow::API shadow_api{};
 gears_shadow::Result shadow_result{};
 bool constructor_shadow_enabled{};
+bool constructor_state_enabled{};
 gears_source_args::Constructor source_constructor{};
 unsigned constructor_derived_finite{};
 double constructor_derived_error{};
@@ -308,7 +309,9 @@ void* __fastcall construct_from_snapshot(void* destination,void* source) {
     gears_source_args::Snapshot input{};
     if(!safe_copy(input.bytes.data(),source,input.bytes.size()))return nullptr;
     if(input.value<float>(0x50)<=0 || input.value<float>(0x54)<=0)return nullptr;
-    void* result=input.invoke(source_constructor,destination,input.pointer(0),input.pointer(8));
+    void* state=constructor_state_enabled?reinterpret_cast<void*>(state_temporary.load()):input.pointer(8);
+    if(constructor_state_enabled && (!state || state_created.load()!=1))return nullptr;
+    void* result=input.invoke(source_constructor,destination,input.pointer(0),state);
     gears_source_args::Snapshot output{};
     if(result==destination && safe_copy(output.bytes.data(),destination,output.bytes.size())) {
         constructor_derived_finite=1;
@@ -324,7 +327,7 @@ void* __fastcall construct_from_snapshot(void* destination,void* source) {
     return result;
 }
 void try_shadow_state(const Record& record) {
-    if(!shadow_state_enabled || !recording.load() || record.caller!=0x2c8909 ||
+    if(!shadow_state_enabled || constructor_state_enabled || !recording.load() || record.caller!=0x2c8909 ||
        !(record.valid&128) || record.family_count!=1)return;
     unsigned expected=0;if(!state_attempted.compare_exchange_strong(expected,1))return;
     uintptr_t original_state{};
@@ -359,7 +362,27 @@ void __fastcall hook_family(void* canvas,void* family){
     if(shadow_view_enabled && recording.load() && record.caller==0x2c8909 && (record.valid&128) && record.family_count==1) {
         unsigned expected=0;
         if(shadow_attempted.compare_exchange_strong(expected,1)) {
-            shadow_result=gears_shadow::run(shadow_api,family,reinterpret_cast<void*>(record.family_views[0]));
+            uintptr_t expected_state=0,original_state=0;
+            bool ready=true;
+            if(constructor_state_enabled) {
+                state_attempted=1;
+                ready=safe_copy(&original_state,reinterpret_cast<void*>(record.family_views[0]+8),8) && original_state;
+                if(ready) {
+                    void* state=state_factory();uintptr_t table{};
+                    expected_state=reinterpret_cast<uintptr_t>(state);state_temporary=expected_state;
+                    ready=state && expected_state!=original_state && safe_copy(&table,state,8) && table==state_expected_table;
+                    if(ready)state_created=1;
+                }
+            }
+            if(ready)shadow_result=gears_shadow::run(shadow_api,family,reinterpret_cast<void*>(record.family_views[0]),expected_state);
+            // Only release the independent state after its view has been safely
+            // destroyed, or when no view was allocated. A quarantined view
+            // retains its state until process exit; never free beneath it.
+            if(constructor_state_enabled && ready && (!shadow_result.temporary || (shadow_result.checks&32))) {
+                state_release(reinterpret_cast<void*>(expected_state));state_release_returned=1;
+                uintptr_t unchanged{};
+                if(safe_copy(&unchanged,reinterpret_cast<void*>(record.family_views[0]+8),8) && unchanged==original_state)state_original_preserved=1;
+            }
             shadow_attempted.store(2);
         }
     }
@@ -658,9 +681,12 @@ DWORD WINAPI worker(void*) {
     family_diagnostics=GetPrivateProfileIntW(L"Capture",L"family_diagnostics",0,ini)==1;
     shadow_view_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_view",0,ini)==1;
     constructor_shadow_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_constructor",0,ini)==1;
+    constructor_state_enabled=GetPrivateProfileIntW(L"Capture",L"constructor_state",0,ini)==1;
+    if(constructor_state_enabled && !constructor_shadow_enabled){fprintf(status,"rejected: independent constructor state requires full constructor mode\n");fclose(status);return 3;}
     if(constructor_shadow_enabled && !shadow_view_enabled){fprintf(status,"rejected: constructor requires shadow view mode\n");fclose(status);return 3;}
     shadow_state_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_state",0,ini)==1;
-    if(shadow_state_enabled && (!family_diagnostics || shadow_view_enabled)){fprintf(status,"rejected: shadow state requires exclusive family diagnostics\n");fclose(status);return 3;}
+    if(shadow_state_enabled && (!family_diagnostics || (shadow_view_enabled && !constructor_state_enabled))){fprintf(status,"rejected: shadow state requires exclusive family diagnostics\n");fclose(status);return 3;}
+    if(constructor_state_enabled && !shadow_state_enabled){fprintf(status,"rejected: independent constructor state requires lifetime observation\n");fclose(status);return 3;}
     if(shadow_view_enabled && !family_diagnostics){fprintf(status,"rejected: shadow copy requires family diagnostics\n");fclose(status);return 3;}
     if(int(wobble_enabled)+int(sweep_enabled)+int(live_enabled)+int(gpu_diagnostics)+int(family_diagnostics)>1) {fprintf(status,"rejected: mutually exclusive capture modes\n");fclose(status);return 3;}
     if(live_enabled) {
@@ -791,6 +817,7 @@ DWORD WINAPI worker(void*) {
         static_cast<unsigned long long>(completed_shadow.source),static_cast<unsigned long long>(completed_shadow.temporary));
     fprintf(status,"constructor_shadow_enabled=%d derived_finite=%u derived_max_error=%.9g\n",constructor_shadow_enabled,
         shadow_state==2?constructor_derived_finite:0,shadow_state==2?constructor_derived_error:0.);
+    fprintf(status,"constructor_state_enabled=%d\n",constructor_state_enabled);
     unsigned state_done=state_destroyed.load();
     fprintf(status,"shadow_state_enabled=%d attempted=%u created=%u release_returned=%u destroyed=%u original_preserved=%u flags=%u thread=%u caller=0x%llx temporary=0x%llx\n",
         shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),

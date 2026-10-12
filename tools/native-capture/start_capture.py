@@ -75,7 +75,10 @@ def main():
     mode.add_argument('--shadow-view',action='store_true',help='Once, construct and destroy an unsubmitted native source-view copy on the game thread')
     mode.add_argument('--shadow-state',action='store_true',help='Once, create independent view state and observe its ordinary deferred deleting wrapper')
     mode.add_argument('--shadow-constructor',action='store_true',help='Once, reconstruct an unsubmitted source view from candidate full-constructor arguments, retaining the original state')
+    mode.add_argument('--constructor-state',action='store_true',help='Once, reconstruct an unsubmitted view with independent native state, destroying the view before ordinary state release')
     args=parser.parse_args()
+    args.shadow_constructor=args.shadow_constructor or args.constructor_state
+    args.shadow_state=args.shadow_state or args.constructor_state
     args.shadow_view=args.shadow_view or args.shadow_constructor
     args.family_diagnostics=args.family_diagnostics or args.shadow_view or args.shadow_state
     if pathlib.Path(args.dll_name).name!=args.dll_name or not args.dll_name.lower().endswith('.dll'):
@@ -147,6 +150,7 @@ def main():
         config+=f'shadow_view={int(args.shadow_view)}\n'
         config+=f'shadow_state={int(args.shadow_state)}\n'
         config+=f'shadow_constructor={int(args.shadow_constructor)}\n'
+        config+=f'constructor_state={int(args.constructor_state)}\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.

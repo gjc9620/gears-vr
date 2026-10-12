@@ -36,6 +36,7 @@
 - [独立视图状态的原生生命周期验证](docs/33-independent-view-state-validation.md)
 - [完整源视图构造参数与调用脚手架](docs/34-source-constructor-argument-map.md)
 - [完整源视图构造的原生验证](docs/35-full-source-constructor-validation.md)
+- [独立状态与完整源视图构造的组合验证](docs/36-independent-state-source-constructor.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果

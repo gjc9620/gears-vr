@@ -23,7 +23,7 @@ struct Result {
 template<class T> T field(const unsigned char* bytes,size_t offset) {
     T value{};memcpy(&value,bytes+offset,sizeof(value));return value;
 }
-inline Result run(API api,void* family,void* source) {
+inline Result run(API api,void* family,void* source,uintptr_t expected_state=0) {
     Result r{};r.source=reinterpret_cast<uintptr_t>(source);
     std::array<unsigned char,view_size> before{},copied{},after{};
     Header original{};
@@ -52,7 +52,9 @@ inline Result run(API api,void* family,void* source) {
     bool cleanup_safe=returned==destination && api.read(copied.data(),destination,copied.size());
     if(cleanup_safe) {
         if(!memcmp(before.data()+0x70,copied.data()+0x70,128))r.checks|=4;
-        if(!memcmp(before.data(),copied.data(),16) &&
+        const uintptr_t state=expected_state?expected_state:field<uintptr_t>(before.data(),8);
+        if(field<uintptr_t>(before.data(),0)==field<uintptr_t>(copied.data(),0) &&
+           field<uintptr_t>(copied.data(),8)==state &&
            field<uintptr_t>(before.data(),0x418)==field<uintptr_t>(copied.data(),0x418))r.checks|=8;
         if(field<uintptr_t>(before.data(),0x418)!=field<uintptr_t>(copied.data(),0x418))cleanup_safe=false;
         uintptr_t source_buckets=field<uintptr_t>(before.data(),0x14c);

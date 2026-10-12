@@ -5,6 +5,7 @@ namespace {
 unsigned allocated{},copied{},destroyed{},freed{},references=1;
 bool fail_allocate{},corrupt_matrix{},shallow_array{};
 void* freed_address{};
+uintptr_t replacement_state{};
 bool read(void* out,const void* from,size_t size) {
     if(from==freed_address)return false;
     SIZE_T got{};return from && ReadProcessMemory(GetCurrentProcess(),from,out,size,&got) && got==size;
@@ -15,6 +16,7 @@ void* __fastcall allocate(unsigned size,unsigned align) {
 }
 void* __fastcall copy(void* out,void* source) {
     ++copied;memcpy(out,source,0x430);
+    if(replacement_state)memcpy(static_cast<unsigned char*>(out)+8,&replacement_state,8);
     constexpr size_t offsets[]={0x380,0x390,0x3ec,0x400};
     constexpr size_t strides[]={16,16,8,8};
     for(unsigned i=0;i<4;++i) {
@@ -77,5 +79,12 @@ int main() {
     gears_shadow::Header invalid{1,257,257};memcpy(source+0x380,&invalid,sizeof(invalid));
     result=gears_shadow::run(api,&family,source);
     if(result.stage!=4 || allocated!=3)return 7;
+    gears_shadow::Header valid{reinterpret_cast<uintptr_t>(elements),2,4};memcpy(source+0x380,&valid,sizeof(valid));
+    replacement_state=0x3000;
+    result=gears_shadow::run(api,&family,source,replacement_state);
+    if(result.stage!=6 || result.checks!=255 || references!=1 || freed!=4 || gears_shadow::field<uintptr_t>(source,8)!=0)return 8;
+    // A replacement pointer is accepted only when explicitly expected.
+    result=gears_shadow::run(api,&family,source);
+    if(result.stage!=7 || (result.checks&8) || !(result.checks&32) || references!=1 || freed!=5)return 9;
     printf("Source shadow: deep copy, balanced resources, mismatch cleanup, allocation failure and guards passed\n");return 0;
 }
