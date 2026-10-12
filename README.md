@@ -41,6 +41,7 @@
 - [未提交偏移眼位的原生验证](docs/38-native-unsubmitted-eye-validation.md)
 - [主线进度与下一次验收](docs/39-mainline-progress-and-acceptance.md)
 - [双视图渲染器的对象边界](docs/40-two-view-renderer-boundary.md)
+- [两视图原生渲染对象的构造验证](docs/41-two-view-renderer-construction-validation.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果

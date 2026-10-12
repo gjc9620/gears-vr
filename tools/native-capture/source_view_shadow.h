@@ -13,6 +13,7 @@ using Copy=void*(__fastcall*)(void*,void*);
 using Destroy=void(__fastcall*)(void*);
 using Free=void(__fastcall*)(void*,unsigned);
 using Read=bool(*)(void*,const void*,size_t);
+using Probe=bool(*)(void*,void*);
 struct API {Allocate allocate;Copy copy;Destroy destroy;Free free;Read read;};
 struct Header {uintptr_t data;int count,capacity;};
 static_assert(sizeof(Header)==16);
@@ -24,7 +25,7 @@ template<class T> T field(const unsigned char* bytes,size_t offset) {
     T value{};memcpy(&value,bytes+offset,sizeof(value));return value;
 }
 inline Result run(API api,void* family,void* source,uintptr_t expected_state=0,
-                  const void* expected_matrices=nullptr,bool shifted_planes=false) {
+                  const void* expected_matrices=nullptr,bool shifted_planes=false,Probe probe=nullptr) {
     Result r{};r.source=reinterpret_cast<uintptr_t>(source);
     std::array<unsigned char,view_size> before{},copied{},after{};
     Header original{};
@@ -88,6 +89,7 @@ inline Result run(API api,void* family,void* source,uintptr_t expected_state=0,
     // cannot: destroying it could free the original view's storage. Quarantine
     // that one allocation until process exit, report failure and never retry.
     // Never read destination after free: pooled pages may remain readable.
+    if(cleanup_safe && probe && (r.checks&31)==31)cleanup_safe=probe(family,destination);
     if(cleanup_safe){api.destroy(destination);api.free(destination,unsigned(view_size));r.checks|=32;}
     if(api.read(after.data(),source,after.size()) && before==after)r.checks|=64;
     Header final{};uintptr_t final_first{};

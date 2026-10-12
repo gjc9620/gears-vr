@@ -15,6 +15,7 @@
 #include "source_view_shadow.h"
 #include "native_source_view_args.h"
 #include "source_eye_args.h"
+#include "two_view_renderer_shadow.h"
 
 namespace {
 struct Vec {float x,y,z;};
@@ -46,6 +47,11 @@ gears_shadow::Result shadow_result{};
 bool constructor_shadow_enabled{};
 bool constructor_state_enabled{};
 bool constructor_eye_enabled{};
+bool renderer_pair_enabled{};
+gears_pair_shadow::Result renderer_pair_result{};
+thread_local bool unsubmitted_renderer{};
+thread_local void* pair_canvas{};
+thread_local void* pair_transform{};
 std::array<float,32> constructor_eye_matrices{};
 unsigned constructor_eye_shifted{},constructor_combined_valid{};
 double constructor_combined_relative_error{};
@@ -377,11 +383,15 @@ void* __fastcall hook_state_delete(void* state,unsigned flags) {
     if(observe)++state_destroyed;
     return result;
 }
-void __fastcall hook_family(void* canvas,void* family){
-    Scope scope;auto record=start_record(7,canvas,_ReturnAddress());
-    inspect_family(record,family);
-    try_shadow_state(record);
-    if(shadow_view_enabled && recording.load() && record.caller==0x2c8909 && (record.valid&128) && record.family_count==1) {
+bool probe_renderer_pair(void* family,void* view) {
+    unsubmitted_renderer=true;
+    renderer_pair_result=gears_pair_shadow::run({shadow_api.allocate,original_renderer,original_destroy_renderer,safe_copy},
+        family,view,pair_canvas,pair_transform);
+    unsubmitted_renderer=false;
+    return !renderer_pair_result.retain_inputs;
+}
+void run_source_shadow(const Record& record,void* family) {
+    if(shadow_view_enabled && recording.load() && (record.valid&128) && record.family_count==1) {
         unsigned expected=0;
         if(shadow_attempted.compare_exchange_strong(expected,1)) {
             uintptr_t expected_state=0,original_state=0;
@@ -397,7 +407,8 @@ void __fastcall hook_family(void* canvas,void* family){
                 }
             }
             if(ready)shadow_result=gears_shadow::run(shadow_api,family,reinterpret_cast<void*>(record.family_views[0]),expected_state,
-                constructor_eye_enabled?constructor_eye_matrices.data():nullptr,constructor_eye_enabled);
+                constructor_eye_enabled?constructor_eye_matrices.data():nullptr,constructor_eye_enabled,
+                renderer_pair_enabled?probe_renderer_pair:nullptr);
             // Only release the independent state after its view has been safely
             // destroyed, or when no view was allocated. A quarantined view
             // retains its state until process exit; never free beneath it.
@@ -409,6 +420,12 @@ void __fastcall hook_family(void* canvas,void* family){
             shadow_attempted.store(2);
         }
     }
+}
+void __fastcall hook_family(void* canvas,void* family){
+    Scope scope;auto record=start_record(7,canvas,_ReturnAddress());
+    inspect_family(record,family);
+    try_shadow_state(record);
+    if(!renderer_pair_enabled && record.caller==0x2c8909)run_source_shadow(record,family);
     void* previous=submitting_family;submitting_family=family;
     original_family(canvas,family);
     submitting_family=previous;
@@ -416,7 +433,7 @@ void __fastcall hook_family(void* canvas,void* family){
 }
 void* __fastcall hook_clone(void* destination,void* source){
     Scope scope;auto record=start_record(8,destination,_ReturnAddress());
-    bool observe=submitting_family!=nullptr;
+    bool observe=submitting_family!=nullptr && !unsubmitted_renderer;
     if(observe){
         inspect_family(record,submitting_family);
         record.clone_source=reinterpret_cast<uintptr_t>(source);
@@ -482,6 +499,11 @@ void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void*
     bool observe=submitting_family!=nullptr;
     if(observe){
         Record input{};inspect_family(input,family);
+        if(renderer_pair_enabled && family==submitting_family && record.caller==0x3a1595) {
+            pair_canvas=canvas;pair_transform=transform;
+            run_source_shadow(input,family);
+            pair_canvas=nullptr;pair_transform=nullptr;
+        }
         record.renderer_input_family=reinterpret_cast<uintptr_t>(family);
         record.renderer_sources=input.family_views;
         if(input.valid&128)record.valid|=2048;
@@ -706,6 +728,8 @@ DWORD WINAPI worker(void*) {
     constructor_shadow_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_constructor",0,ini)==1;
     constructor_state_enabled=GetPrivateProfileIntW(L"Capture",L"constructor_state",0,ini)==1;
     constructor_eye_enabled=GetPrivateProfileIntW(L"Capture",L"constructor_eye",0,ini)==1;
+    renderer_pair_enabled=GetPrivateProfileIntW(L"Capture",L"renderer_pair",0,ini)==1;
+    if(renderer_pair_enabled && !constructor_eye_enabled){fprintf(status,"rejected: renderer pair requires independent shifted eye\n");fclose(status);return 3;}
     if(constructor_eye_enabled && !constructor_state_enabled){fprintf(status,"rejected: eye requires independent constructor state\n");fclose(status);return 3;}
     if(constructor_state_enabled && !constructor_shadow_enabled){fprintf(status,"rejected: independent constructor state requires full constructor mode\n");fclose(status);return 3;}
     if(constructor_shadow_enabled && !shadow_view_enabled){fprintf(status,"rejected: constructor requires shadow view mode\n");fclose(status);return 3;}
@@ -843,6 +867,9 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"constructor_shadow_enabled=%d derived_finite=%u derived_max_error=%.9g\n",constructor_shadow_enabled,
         shadow_state==2?constructor_derived_finite:0,shadow_state==2?constructor_derived_error:0.);
     fprintf(status,"constructor_state_enabled=%d\n",constructor_state_enabled);
+    const auto pair_result=shadow_state==2?renderer_pair_result:gears_pair_shadow::Result{};
+    fprintf(status,"renderer_pair_enabled=%d checks=%u renderer=0x%llx retained=%d\n",renderer_pair_enabled,pair_result.checks,
+        static_cast<unsigned long long>(pair_result.renderer),pair_result.retain_inputs);
     fprintf(status,"constructor_eye_enabled=%d shifted=%u combined_valid=%u combined_relative_error=%.9g\n",constructor_eye_enabled,
         shadow_state==2?constructor_eye_shifted:0,shadow_state==2?constructor_combined_valid:0,
         shadow_state==2?constructor_combined_relative_error:0.);
