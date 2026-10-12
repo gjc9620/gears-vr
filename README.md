@@ -33,6 +33,7 @@
 - [第二视图构造与对象边界调查](docs/30-second-view-construction-leads.md)
 - [未提交源视图副本的原生验证](docs/31-source-view-shadow-validation.md)
 - [关联状态的创建、历史数据与释放调查](docs/32-view-state-construction-and-release.md)
+- [独立视图状态的原生生命周期验证](docs/33-independent-view-state-validation.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果

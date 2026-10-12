@@ -40,6 +40,19 @@ bool shadow_view_enabled{};
 std::atomic<unsigned> shadow_attempted{0};
 gears_shadow::API shadow_api{};
 gears_shadow::Result shadow_result{};
+using StateFactoryFn=void*(__fastcall*)();
+using StateDeleteFn=void*(__fastcall*)(void*,unsigned);
+StateFactoryFn state_factory{};
+ConsumeFn state_release{};
+StateDeleteFn original_state_delete{};
+void* state_delete_target{};
+uintptr_t state_expected_table{};
+bool shadow_state_enabled{};
+std::atomic<unsigned> state_attempted{0},state_created{0},state_release_returned{0},state_destroyed{0};
+std::atomic<unsigned> state_delete_entered{0},state_original_preserved{0};
+std::atomic<uintptr_t> state_temporary{0};
+unsigned state_delete_flags{},state_delete_thread{};
+uintptr_t state_delete_caller{};
 void* family_target{};
 bool reservation_ready{};
 std::atomic<unsigned> reservation_started{0};
@@ -285,9 +298,39 @@ void inspect_family(Record& record,void* family){
     if(header.count && !safe_copy(record.family_views.data(),reinterpret_cast<void*>(header.data),size_t(header.count)*8))return;
     record.family_array=header.data;record.family_count=header.count;record.family_capacity=header.capacity;record.valid|=128;
 }
+void try_shadow_state(const Record& record) {
+    if(!shadow_state_enabled || !recording.load() || record.caller!=0x2c8909 ||
+       !(record.valid&128) || record.family_count!=1)return;
+    unsigned expected=0;if(!state_attempted.compare_exchange_strong(expected,1))return;
+    uintptr_t original_state{};
+    if(!safe_copy(&original_state,reinterpret_cast<void*>(record.family_views[0]+8),8) || !original_state)return;
+    void* temporary=state_factory();uintptr_t table{};
+    state_temporary.store(reinterpret_cast<uintptr_t>(temporary));
+    if(!temporary || reinterpret_cast<uintptr_t>(temporary)==original_state ||
+       !safe_copy(&table,temporary,8) || table!=state_expected_table)return;
+    state_created=1;
+    // The ordinary virtual release wrapper queues resource release and deferred
+    // deletion when required. Do not manually call the destructor/free here.
+    state_release(temporary);state_release_returned=1;
+    uintptr_t unchanged{};
+    if(safe_copy(&unchanged,reinterpret_cast<void*>(record.family_views[0]+8),8) && unchanged==original_state)state_original_preserved=1;
+}
+void* __fastcall hook_state_delete(void* state,unsigned flags) {
+    Scope scope;
+    unsigned expected=0;
+    const bool observe=reinterpret_cast<uintptr_t>(state)==state_temporary.load() && state_created.load()==1 &&
+        state_delete_entered.compare_exchange_strong(expected,1);
+    if(observe){state_delete_flags=flags;state_delete_thread=GetCurrentThreadId();state_delete_caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;}
+    void* result=original_state_delete(state,flags);
+    // The deleting wrapper has already released the storage. Only keep numeric
+    // identities and completion metadata; never inspect this object afterward.
+    if(observe)++state_destroyed;
+    return result;
+}
 void __fastcall hook_family(void* canvas,void* family){
     Scope scope;auto record=start_record(7,canvas,_ReturnAddress());
     inspect_family(record,family);
+    try_shadow_state(record);
     if(shadow_view_enabled && recording.load() && record.caller==0x2c8909 && (record.valid&128) && record.family_count==1) {
         unsigned expected=0;
         if(shadow_attempted.compare_exchange_strong(expected,1)) {
@@ -537,7 +580,7 @@ void flush(FILE* file) {
 bool install(void* target,void* detour,void** original) {
     MH_STATUS created=MH_CreateHook(target,detour,original);
     if(created==MH_ERROR_ALREADY_CREATED && reservation_ready && *original &&
-       (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target))created=MH_OK;
+         (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
     return created==MH_OK && queued==MH_OK;
@@ -589,6 +632,8 @@ DWORD WINAPI worker(void*) {
     gpu_diagnostics=GetPrivateProfileIntW(L"Capture",L"gpu_diagnostics",0,ini)==1;
     family_diagnostics=GetPrivateProfileIntW(L"Capture",L"family_diagnostics",0,ini)==1;
     shadow_view_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_view",0,ini)==1;
+    shadow_state_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_state",0,ini)==1;
+    if(shadow_state_enabled && (!family_diagnostics || shadow_view_enabled)){fprintf(status,"rejected: shadow state requires exclusive family diagnostics\n");fclose(status);return 3;}
     if(shadow_view_enabled && !family_diagnostics){fprintf(status,"rejected: shadow copy requires family diagnostics\n");fclose(status);return 3;}
     if(int(wobble_enabled)+int(sweep_enabled)+int(live_enabled)+int(gpu_diagnostics)+int(family_diagnostics)>1) {fprintf(status,"rejected: mutually exclusive capture modes\n");fclose(status);return 3;}
     if(live_enabled) {
@@ -639,6 +684,18 @@ DWORD WINAPI worker(void*) {
         shadow_api={reinterpret_cast<gears_shadow::Allocate>(base+0x1c03c8),reinterpret_cast<gears_shadow::Copy>(base+0x194454),
             reinterpret_cast<gears_shadow::Destroy>(base+0x15ca7c),reinterpret_cast<gears_shadow::Free>(base+0x53ea50),safe_copy};
     }
+    if(shadow_state_enabled) {
+        const unsigned char factory_bytes[]={0x48,0x83,0xec,0x28,0xba,0x08,0,0,0,0xb9,0x80,0x02,0,0};
+        const unsigned char release_bytes[]={0x40,0x53,0x48,0x83,0xec,0x20,0x48,0x8b,0xc1,0x48,0x8d,0x51,0x1c,0x48,0x8b,0xd9};
+        const unsigned char delete_bytes[]={0x48,0x89,0x5c,0x24,0x08,0x57,0x48,0x83,0xec,0x20,0x8b,0xda,0x48,0x8b,0xf9};
+        state_factory=reinterpret_cast<StateFactoryFn>(base+0x33bdd4);state_release=reinterpret_cast<ConsumeFn>(base+0x4ce80c);
+        state_delete_target=reinterpret_cast<void*>(base+0x33bc70);state_expected_table=base+0x1353918;
+        if(!safe_copy(bytes,reinterpret_cast<void*>(state_factory),sizeof(factory_bytes)) || memcmp(bytes,factory_bytes,sizeof(factory_bytes)) ||
+           !safe_copy(bytes,reinterpret_cast<void*>(state_release),sizeof(release_bytes)) || memcmp(bytes,release_bytes,sizeof(release_bytes)) ||
+           !safe_copy(bytes,state_delete_target,sizeof(delete_bytes)) || memcmp(bytes,delete_bytes,sizeof(delete_bytes))) {
+            fprintf(status,"rejected: view state lifetime signature mismatch\n");fclose(status);return 4;
+        }
+    }
     FILE* file{};_wfopen_s(&file,csv,L"w");
     if(!file) {fclose(status);return 5;}
     fprintf(file,"kind,thread,focused,valid,qpc,duration_qpc,object,result,caller_rva,x,y,z,pitch,yaw,roll,camera_timestamp,source_yaw,yaw_delta,cache_yaw,test_state");
@@ -664,6 +721,7 @@ DWORD WINAPI worker(void*) {
     if(ok && family_diagnostics)ok=install(consume_target,reinterpret_cast<void*>(hook_consume),reinterpret_cast<void**>(&original_consume)) &&
         install(destroy_renderer_target,reinterpret_cast<void*>(hook_destroy_renderer),reinterpret_cast<void**>(&original_destroy_renderer));
     if(ok && family_diagnostics)ok=install(prepare_target,reinterpret_cast<void*>(hook_prepare),reinterpret_cast<void**>(&original_prepare));
+    if(ok && shadow_state_enabled)ok=install(state_delete_target,reinterpret_cast<void*>(hook_state_delete),reinterpret_cast<void**>(&original_state_delete));
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     fprintf(status,"present_hooks_created=%d\n",graphics);
@@ -696,6 +754,11 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"shadow_view_enabled=%d attempted=%u stage=%u checks=%u nonempty_arrays=%u source=0x%llx temporary=0x%llx\n",
         shadow_view_enabled,shadow_state,completed_shadow.stage,completed_shadow.checks,completed_shadow.nonempty_arrays,
         static_cast<unsigned long long>(completed_shadow.source),static_cast<unsigned long long>(completed_shadow.temporary));
+    unsigned state_done=state_destroyed.load();
+    fprintf(status,"shadow_state_enabled=%d attempted=%u created=%u release_returned=%u destroyed=%u original_preserved=%u flags=%u thread=%u caller=0x%llx temporary=0x%llx\n",
+        shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),
+        state_done?state_delete_flags:0,state_done?state_delete_thread:0,
+        static_cast<unsigned long long>(state_done?state_delete_caller:0),static_cast<unsigned long long>(state_temporary.load()));
     diagnostic_status=nullptr;fclose(file);fclose(status);if(stop_event) CloseHandle(stop_event);stop_event=nullptr;
     return disabled==MH_OK?0:7;
 }
@@ -742,6 +805,20 @@ __declspec(noinline) void fake_family(void* canvas,void* family){
     else family_forward_count+=100;
 }
 bool arguments_good{};
+unsigned fake_state_factory_calls{},fake_state_release_calls{},fake_state_delete_calls{};
+void* fake_state_pending{};
+__declspec(noinline) void* fake_state_factory() {
+    ++fake_state_factory_calls;
+    void* value=VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE);
+    if(value)memcpy(value,&state_expected_table,8);return value;
+}
+__declspec(noinline) void fake_state_release(void* value) {++fake_state_release_calls;fake_state_pending=value;}
+__declspec(noinline) void* fake_state_delete(void* value,unsigned flags) {
+    ++fake_state_delete_calls;if(flags&1)VirtualFree(value,0,MEM_RELEASE);return value;
+}
+DWORD WINAPI fake_state_queue(void* value) {
+    StateDeleteFn volatile invoke=fake_state_delete;return invoke(value,1)==value?0:1;
+}
 __declspec(noinline) void* fake_scene(void* lp,void* family,Vec* p,Rot* r,void* vp,void* drawer) {
     arguments_good=lp==reinterpret_cast<void*>(1) && family==reinterpret_cast<void*>(2) && vp==reinterpret_cast<void*>(3) && drawer==reinterpret_cast<void*>(4);
     fake_event(reinterpret_cast<void*>(5),p,r);
@@ -775,6 +852,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
     prepare_target=reinterpret_cast<void*>(base+0x1fc060);
     const unsigned char h[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x70,0x18,0x57,0x41,0x54};
     const unsigned char g[]={0x40,0x53,0x48,0x83,0xec,0x20,0x48,0x8b,0xd9};
+    state_delete_target=reinterpret_cast<void*>(base+0x33bc70);
+    const unsigned char j[]={0x48,0x89,0x5c,0x24,0x08,0x57,0x48,0x83,0xec,0x20,0x8b,0xda,0x48,0x8b,0xf9};
     unsigned char read[16];
     if(!safe_copy(read,scene_target,sizeof(a)) || memcmp(read,a,sizeof(a)) ||
        !safe_copy(read,event_target,sizeof(b)) || memcmp(read,b,sizeof(b)) ||
@@ -783,7 +862,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
        !safe_copy(read,renderer_target,sizeof(e)) || memcmp(read,e,sizeof(e)) ||
        !safe_copy(read,consume_target,sizeof(f)) || memcmp(read,f,sizeof(f)) ||
        !safe_copy(read,destroy_renderer_target,sizeof(g)) || memcmp(read,g,sizeof(g)) ||
-       !safe_copy(read,prepare_target,sizeof(h)) || memcmp(read,h,sizeof(h)))return ERROR_INVALID_DATA;
+       !safe_copy(read,prepare_target,sizeof(h)) || memcmp(read,h,sizeof(h)) ||
+       !safe_copy(read,state_delete_target,sizeof(j)) || memcmp(read,j,sizeof(j)))return ERROR_INVALID_DATA;
     if(MH_Initialize()!=MH_OK)return ERROR_INVALID_STATE;
     if(MH_CreateHook(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))!=MH_OK ||
        MH_CreateHook(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event))!=MH_OK ||
@@ -792,7 +872,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
        MH_CreateHook(renderer_target,reinterpret_cast<void*>(hook_renderer),reinterpret_cast<void**>(&original_renderer))!=MH_OK ||
        MH_CreateHook(consume_target,reinterpret_cast<void*>(hook_consume),reinterpret_cast<void**>(&original_consume))!=MH_OK ||
        MH_CreateHook(destroy_renderer_target,reinterpret_cast<void*>(hook_destroy_renderer),reinterpret_cast<void**>(&original_destroy_renderer))!=MH_OK ||
-       MH_CreateHook(prepare_target,reinterpret_cast<void*>(hook_prepare),reinterpret_cast<void**>(&original_prepare))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
+       MH_CreateHook(prepare_target,reinterpret_cast<void*>(hook_prepare),reinterpret_cast<void**>(&original_prepare))!=MH_OK ||
+       MH_CreateHook(state_delete_target,reinterpret_cast<void*>(hook_state_delete),reinterpret_cast<void**>(&original_state_delete))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
     // Independently re-read the entries to confirm reservation left them alone.
     if(!safe_copy(read,scene_target,sizeof(a)) || memcmp(read,a,sizeof(a)) ||
        !safe_copy(read,event_target,sizeof(b)) || memcmp(read,b,sizeof(b)) ||
@@ -801,7 +882,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
        !safe_copy(read,renderer_target,sizeof(e)) || memcmp(read,e,sizeof(e)) ||
        !safe_copy(read,consume_target,sizeof(f)) || memcmp(read,f,sizeof(f)) ||
        !safe_copy(read,destroy_renderer_target,sizeof(g)) || memcmp(read,g,sizeof(g)) ||
-       !safe_copy(read,prepare_target,sizeof(h)) || memcmp(read,h,sizeof(h)))return ERROR_INVALID_DATA;
+       !safe_copy(read,prepare_target,sizeof(h)) || memcmp(read,h,sizeof(h)) ||
+       !safe_copy(read,state_delete_target,sizeof(j)) || memcmp(read,j,sizeof(j)))return ERROR_INVALID_DATA;
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Capture.Reserved.%lu",GetCurrentProcessId());
     reservation_event=CreateEventW(nullptr,TRUE,TRUE,name);
     if(!reservation_event)return GetLastError();reservation_ready=true;return 0;
@@ -900,6 +982,28 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrepareCheck(void*) {
     if(r.kind!=12 || r.object!=reinterpret_cast<uintptr_t>(destination) || r.clone_source!=r.family_views[0] || r.valid!=(128|256|512|1024|4096|8192|16384) || r.renderer_sources[0]!=0x1111 || r.renderer_sources[1]!=0x2222)return 115;
     if(memcmp(r.source_matrices.data(),source.matrices,128) || r.matrices[24]!=.125f || r.matrices[25]!=-.25f)return 116;
     for(unsigned i=0;i<32;++i)if(i!=24 && i!=25 && r.matrices[i]!=source.matrices[i])return 117;
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureStateCheck(void*) {
+    FakeView source{};uintptr_t prior=0x1111;memcpy(source.prefix+8,&prior,8);
+    Record record{};record.caller=0x2c8909;record.valid=128;record.family_count=1;
+    record.family_views[0]=reinterpret_cast<uintptr_t>(&source);
+    state_factory=fake_state_factory;state_release=fake_state_release;state_expected_table=0x12345678;
+    unsigned char before[32],after[32];
+    if(!safe_copy(before,reinterpret_cast<void*>(fake_state_delete),32) || MH_Initialize()!=MH_OK)return 120;
+    if(!install(reinterpret_cast<void*>(fake_state_delete),reinterpret_cast<void*>(hook_state_delete),reinterpret_cast<void**>(&original_state_delete)))return 121;
+    recording=true;shadow_state_enabled=true;if(MH_ApplyQueued()!=MH_OK)return 122;
+    // Wrong context/count must not allocate; the eligible context acts once.
+    record.family_count=2;try_shadow_state(record);record.family_count=1;
+    record.caller=0;try_shadow_state(record);record.caller=0x2c8909;
+    try_shadow_state(record);try_shadow_state(record);
+    if(fake_state_factory_calls!=1 || fake_state_release_calls!=1 || state_created!=1 || state_release_returned!=1 || state_original_preserved!=1 || state_destroyed || !fake_state_pending)return 123;
+    HANDLE thread=CreateThread(nullptr,0,fake_state_queue,fake_state_pending,0,nullptr);if(!thread)return 124;
+    DWORD waited=WaitForSingleObject(thread,5000),exit_code{};GetExitCodeThread(thread,&exit_code);CloseHandle(thread);
+    if(waited!=WAIT_OBJECT_0 || exit_code || fake_state_delete_calls!=1 || state_destroyed!=1 || state_delete_flags!=1 || state_delete_thread==GetCurrentThreadId())return 125;
+    if(safe_copy(after,fake_state_pending,8))return 126;
+    recording=false;shadow_state_enabled=false;
+    if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK || !safe_copy(after,reinterpret_cast<void*>(fake_state_delete),32) || memcmp(before,after,32) || active.load())return 127;
     return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureSelfTest(void*) {
