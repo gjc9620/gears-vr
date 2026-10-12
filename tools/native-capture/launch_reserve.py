@@ -32,6 +32,7 @@ def main():
     if args.check_shadow_copy:subprocess.run([str(build/'SourceViewShadowTest.exe')],check=True)
     if args.check_shadow_state:subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--state'],check=True)
     if args.prime_targets:
+        subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--quad'],check=True)
         subprocess.run([str(build/'GpuViewportStatsTest.exe')],check=True)
         subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--viewport'],check=True)
         subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--prime'],check=True)
@@ -88,6 +89,7 @@ def main():
         signatures[0x15a80c]=bytes.fromhex('48895c241055488bec4883ec70')
         signatures[0x15a974]=bytes.fromhex('40534883ec20488bd9')
         signatures[0x1fc060]=bytes.fromhex('488bc44889581048897018574154')
+        signatures[0x1af42c]=bytes.fromhex('488bc4488958084889701048897818')
         if args.check_shadow_state:signatures[0x33bc70]=bytes.fromhex('48895c2408574883ec208bda488bf9')
         read_only=Process(pid)
         try:

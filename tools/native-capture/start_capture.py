@@ -111,6 +111,7 @@ def main():
     subprocess.run([str(test),str(dll)],check=True)
     if args.gpu_diagnostics: subprocess.run([str(test),str(dll),'--gpu'],check=True)
     if args.viewport_diagnostics:
+        subprocess.run([str(test),str(dll),'--quad'],check=True)
         subprocess.run([str(dll.with_name('GpuViewportStatsTest.exe'))],check=True)
         subprocess.run([str(test),str(dll),'--viewport'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--family'],check=True)
@@ -162,6 +163,7 @@ def main():
         if args.family_diagnostics: signatures[0x15a80c]=bytes.fromhex('48895c241055488bec4883ec70')
         if args.family_diagnostics: signatures[0x15a974]=bytes.fromhex('40534883ec20488bd9')
         if args.family_diagnostics: signatures[0x1fc060]=bytes.fromhex('488bc44889581048897018574154')
+        if args.viewport_diagnostics: signatures[0x1af42c]=bytes.fromhex('488bc4488958084889701048897818')
         if args.shadow_view:
             signatures.update({0x1c03c8:bytes.fromhex('48895c240848896c2410488974241857'),
                 0x194454:bytes.fromhex('48895c241848894c2408565741564883'),

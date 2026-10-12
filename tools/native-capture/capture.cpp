@@ -119,6 +119,11 @@ struct PostView {uintptr_t view{},array{};int count{},capacity{};unsigned valid{
     std::array<float,4> source{};std::array<int,4> target{};std::array<PostNode,16> nodes{};};
 struct PostSnapshot {uintptr_t renderer{};unsigned view_count{};std::array<PostView,2> views{};};
 std::array<PostSnapshot,4> output_post_snapshots{};
+using QuadFn=void(__fastcall*)(float,float,float,float,float,float,float,float,unsigned,unsigned,unsigned,unsigned);
+QuadFn original_quad{};void* quad_target{};
+struct QuadTrace {uintptr_t caller{};std::array<float,8> rectangles{};std::array<unsigned,4> dimensions{};uint64_t calls{};};
+std::array<QuadTrace,64> quad_traces{};
+std::mutex quad_mutex;uint64_t quad_overflow{};
 using ResetListFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*,ID3D12PipelineState*);
 using ViewportsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_VIEWPORT*);
 using ScissorsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_RECT*);
@@ -873,7 +878,7 @@ void flush(FILE* file) {
 bool install(void* target,void* detour,void** original) {
     MH_STATUS created=MH_CreateHook(target,detour,original);
     if(created==MH_ERROR_ALREADY_CREATED && *original &&
-         ((reservation_ready && (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target)) ||
+         ((reservation_ready && (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target || target==quad_target)) ||
           (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
@@ -933,6 +938,18 @@ void observe_output_post(unsigned attempt){
                safe_copy(&node.flags,reinterpret_cast<void*>(node.object+8),4))node.valid=1;
         }
     }
+}
+void __fastcall hook_quad(float x,float y,float width,float height,float u,float v,float uw,float vh,
+    unsigned target_width,unsigned target_height,unsigned texture_width,unsigned texture_height){
+    Scope scope;uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
+    if(recording.load()&&viewport_diagnostics&&trial_draw_scope&&(self_testing||(caller>=0xd82f58&&caller<0xd83db9))){
+        QuadTrace value{caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height},1};
+        bool saved=false;std::lock_guard<std::mutex> lock(quad_mutex);
+        for(auto& entry:quad_traces){if(!entry.calls){entry=value;saved=true;break;}
+            if(entry.caller==value.caller&&entry.rectangles==value.rectangles&&entry.dimensions==value.dimensions){++entry.calls;saved=true;break;}}
+        if(!saved)++quad_overflow;
+    }
+    original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);
 }
 void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
     if(!trial_draw_scope||output_stack_attempts.load()>=64)return;
@@ -1122,6 +1139,7 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: executable hash/name or PID mismatch\n");fclose(status);return 2;
     }
     base=reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    quad_target=reinterpret_cast<void*>(base+0x1af42c);
     expected_local=ini_address(ini,L"local_player");expected_pc=ini_address(ini,L"controller");
     camera_cache=ini_address(ini,L"timestamp");
     expected_camera=ini_address(ini,L"camera");camera_yaw=ini_address(ini,L"camera_yaw");
@@ -1197,6 +1215,8 @@ DWORD WINAPI worker(void*) {
         const unsigned char signature_prepare[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x70,0x18,0x57,0x41,0x54};
         if(!safe_copy(bytes,prepare_target,sizeof(signature_prepare)) || memcmp(bytes,signature_prepare,sizeof(signature_prepare))){fprintf(status,"rejected: preparation prologue mismatch\n");fclose(status);return 4;}
     }
+    if(viewport_diagnostics){const unsigned char signature_quad[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x08,0x48,0x89,0x70,0x10,0x48,0x89,0x78,0x18};
+        if(!safe_copy(bytes,quad_target,sizeof(signature_quad))||memcmp(bytes,signature_quad,sizeof(signature_quad))){fprintf(status,"rejected: quad prologue mismatch\n");fclose(status);return 4;}}
     if(shadow_view_enabled) {
         struct Gate {uintptr_t rva;unsigned char bytes[16];unsigned size;};
         const Gate gates[]={
@@ -1256,6 +1276,7 @@ DWORD WINAPI worker(void*) {
         install(destroy_renderer_target,reinterpret_cast<void*>(hook_destroy_renderer),reinterpret_cast<void**>(&original_destroy_renderer));
     if(ok && family_diagnostics)ok=install(prepare_target,reinterpret_cast<void*>(hook_prepare),reinterpret_cast<void**>(&original_prepare));
     if(ok && shadow_state_enabled)ok=install(state_delete_target,reinterpret_cast<void*>(hook_state_delete),reinterpret_cast<void**>(&original_state_delete));
+    if(ok && viewport_diagnostics)ok=install(quad_target,reinterpret_cast<void*>(hook_quad),reinterpret_cast<void**>(&original_quad));
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     fprintf(status,"present_hooks_created=%d\n",graphics);
@@ -1306,6 +1327,11 @@ DWORD WINAPI worker(void*) {
                   entry.viewport,entry.targets,static_cast<unsigned long long>(entry.target.resource),entry.target.width,
                   entry.target.height,entry.target.format,entry.target.mip,entry.calls);
           fprintf(status,"submit_background=%u\n",submit_background);
+          fprintf(status,"gpu_output_quad_overflow=%llu limit=64\n",quad_overflow);
+          for(const auto& entry:quad_traces)if(entry.calls)fprintf(status,
+              "gpu_output_quad caller=%llx dest=%.9g,%.9g,%.9g,%.9g source=%.9g,%.9g,%.9g,%.9g target_dimensions=%u,%u texture_dimensions=%u,%u calls=%llu\n",
+              static_cast<unsigned long long>(entry.caller),entry.rectangles[0],entry.rectangles[1],entry.rectangles[2],entry.rectangles[3],
+              entry.rectangles[4],entry.rectangles[5],entry.rectangles[6],entry.rectangles[7],entry.dimensions[0],entry.dimensions[1],entry.dimensions[2],entry.dimensions[3],entry.calls);
           fprintf(status,"gpu_output_stack_attempts=%u limit=64 slots=8 frames=24\n",output_stack_attempts.load());
           for(unsigned i=0;i<output_post_snapshots.size();++i){const auto& sample=output_post_snapshots[i];if(!sample.renderer)continue;
               fprintf(status,"gpu_output_post index=%u renderer=%llx view_count=%u nodes_limit=16\n",i,
@@ -1481,6 +1507,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
        !safe_copy(read,prepare_target,sizeof(h)) || memcmp(read,h,sizeof(h)) ||
        !safe_copy(read,state_delete_target,sizeof(j)) || memcmp(read,j,sizeof(j)))return ERROR_INVALID_DATA;
     if(MH_Initialize()!=MH_OK)return ERROR_INVALID_STATE;
+    quad_target=reinterpret_cast<void*>(base+0x1af42c);
+    const unsigned char quad_signature[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x08,0x48,0x89,0x70,0x10,0x48,0x89,0x78,0x18};
+    if(!safe_copy(read,quad_target,sizeof(quad_signature))||memcmp(read,quad_signature,sizeof(quad_signature)))return ERROR_INVALID_DATA;
+    if(MH_CreateHook(quad_target,reinterpret_cast<void*>(hook_quad),reinterpret_cast<void**>(&original_quad))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
+    if(!safe_copy(read,quad_target,sizeof(quad_signature))||memcmp(read,quad_signature,sizeof(quad_signature)))return ERROR_INVALID_DATA;
     if(MH_CreateHook(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))!=MH_OK ||
        MH_CreateHook(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event))!=MH_OK ||
        MH_CreateHook(family_target,reinterpret_cast<void*>(hook_family),reinterpret_cast<void**>(&original_family))!=MH_OK ||
@@ -1507,6 +1538,30 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureTargetPrime(void*) {
     if(!reservation_ready||started.load())return ERROR_INVALID_STATE;
     return begin_target_prime();
+}
+namespace {
+QuadTrace fake_quad_last{};unsigned fake_quad_calls{};
+__declspec(noinline) void __fastcall fake_quad(float x,float y,float w,float h,float u,float v,float uw,float vh,
+    unsigned tw,unsigned th,unsigned sw,unsigned sh){
+    fake_quad_last={0,{x,y,w,h,u,v,uw,vh},{tw,th,sw,sh},0};++fake_quad_calls;
+}
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureQuadCheck(void*) {
+    unsigned char before[32]{},after[32]{};
+    if(!safe_copy(before,reinterpret_cast<void*>(fake_quad),32)||MH_Initialize()!=MH_OK)return 130;
+    if(!install(reinterpret_cast<void*>(fake_quad),reinterpret_cast<void*>(hook_quad),reinterpret_cast<void**>(&original_quad)))return 131;
+    recording=true;viewport_diagnostics=true;self_testing=true;trial_draw_scope=true;
+    if(MH_ApplyQueued()!=MH_OK)return 132;
+    QuadFn volatile invoke=fake_quad;
+    invoke(1.25f,2.5f,3.75f,4.25f,5.5f,6.75f,7.25f,8.5f,901,1002,1103,1204);
+    if(fake_quad_calls!=1||fake_quad_last.rectangles!=std::array<float,8>{1.25f,2.5f,3.75f,4.25f,5.5f,6.75f,7.25f,8.5f}||
+       fake_quad_last.dimensions!=std::array<unsigned,4>{901,1002,1103,1204}||quad_traces[0].calls!=1||
+       quad_traces[0].rectangles!=fake_quad_last.rectangles||quad_traces[0].dimensions!=fake_quad_last.dimensions)return 133;
+    trial_draw_scope=false;invoke(-1,-2,-3,-4,-5,-6,-7,-8,11,12,13,14);
+    if(fake_quad_calls!=2||fake_quad_last.rectangles[7]!=-8||fake_quad_last.dimensions[3]!=14||quad_traces[0].calls!=1||quad_traces[1].calls)return 134;
+    recording=false;if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK)return 135;
+    if(!safe_copy(after,reinterpret_cast<void*>(fake_quad),32)||memcmp(before,after,32)||active.load())return 136;
+    return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFamilyCheck(void*) {
     uintptr_t views[]={reinterpret_cast<uintptr_t>(&fake_view),reinterpret_cast<uintptr_t>(&fake_view)+16};

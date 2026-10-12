@@ -50,6 +50,7 @@
 - [颜色目标与窗口后备缓冲对应](docs/47-render-target-and-backbuffer-evidence.md)
 - [窗口最终输出的原生调用路径](docs/48-final-output-call-path.md)
 - [左右视图的最终处理对象](docs/49-per-view-output-objects.md)
+- [最终输出调用与区域参数](docs/50-final-output-quad-parameters.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
