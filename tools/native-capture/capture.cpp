@@ -17,6 +17,7 @@
 #include "source_eye_args.h"
 #include "two_view_renderer_shadow.h"
 #include "split_source_views.h"
+#include "submitted_view_lifetime.h"
 
 namespace {
 struct Vec {float x,y,z;};
@@ -52,9 +53,13 @@ bool renderer_pair_enabled{};
 bool submit_pair_enabled{};
 std::atomic<unsigned> submit_attempted{0},submit_consumed{0},submit_prepared{0},submit_destroyed{0};
 std::atomic<uintptr_t> submit_root{0};
-unsigned submit_owned_verified{},submit_sources_released{},submit_original_preserved{};
+std::atomic<unsigned> submit_owned_verified{0},submit_sources_released{0},submit_original_preserved{0};
 unsigned submit_source_checks{},submit_rejection{};
 std::array<float,4> submit_rectangle{};
+unsigned submit_pair_seconds{};
+gears_submitted::Lifetime submitted_lifetime;
+std::atomic<unsigned> submit_total{0},submit_retained{0},submit_skipped{0};
+LONGLONG submit_deadline{},submit_not_before{};
 gears_pair_shadow::Result renderer_pair_result{};
 thread_local bool unsubmitted_renderer{};
 thread_local void* pair_canvas{};
@@ -470,7 +475,8 @@ void inspect_completed_renderer(Record& record,void* destination){
 void __fastcall hook_consume(void* renderer){
     Scope scope;auto record=start_record(10,renderer,_ReturnAddress());
     inspect_completed_renderer(record,renderer);
-    if(submit_pair_enabled && reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load())++submit_consumed;
+    if(submit_pair_enabled && (submit_pair_seconds?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
+        reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load()))++submit_consumed;
     void* saved=consuming_renderer;consuming_renderer=renderer;
     original_consume(renderer);
     consuming_renderer=saved;
@@ -491,7 +497,8 @@ void __fastcall hook_prepare(void* renderer){
     original_prepare(renderer);
     if(observe){
         inspect_completed_renderer(record,renderer);
-        if(submit_pair_enabled && reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load()) {
+        if(submit_pair_enabled && (submit_pair_seconds?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
+            reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load())) {
             uintptr_t right_state{};
             if(record.family_count==2 && safe_copy(&right_state,reinterpret_cast<void*>(record.family_views[1]+8),8) && right_state==state_temporary.load())++submit_prepared;
         }
@@ -502,13 +509,15 @@ void __fastcall hook_prepare(void* renderer){
 void* __fastcall hook_destroy_renderer(void* renderer){
     Scope scope;auto record=start_record(11,renderer,_ReturnAddress());
     inspect_completed_renderer(record,renderer);
-    const bool submitted=submit_pair_enabled && submit_attempted.load()==2 && reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load();
+    const bool submitted=submit_pair_enabled && (submit_pair_seconds?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
+        submit_attempted.load()==2 && reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load());
     void* result=original_destroy_renderer(renderer);
     if(submitted) {
-        submit_destroyed=1;
+        ++submit_destroyed;
         // The submitted renderer can use its state until destruction returns.
         // Release on this native thread, never on the collection worker.
-        if(submit_sources_released && state_created.load()==1) {
+        bool release=submit_pair_seconds?submitted_lifetime.retire(reinterpret_cast<uintptr_t>(renderer)):true;
+        if(release && !submit_retained.load() && submit_sources_released && state_created.load()==1) {
             state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
         }
     }
@@ -516,8 +525,20 @@ void* __fastcall hook_destroy_renderer(void* renderer){
     record.duration=now()-record.time;enqueue(record);return result;
 }
 bool try_submit_pair(void* destination,void* family,void* canvas,void* transform,Record& record,void*& returned) {
-    unsigned expected=0;
-    if(!submit_attempted.compare_exchange_strong(expected,1))return false;
+    if(submit_pair_seconds) {
+        if(submitted_lifetime.is_closed())return false;
+        if(!submit_deadline && now()<submit_not_before)return false;
+        if(!submit_deadline && !foreground())return false;
+        if(submit_deadline && (now()>=submit_deadline || !foreground() || (GetAsyncKeyState(VK_F8)&0x8000))) {
+            if(submitted_lifetime.close() && state_created.load() && !submit_retained.load()) {
+                state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
+            }
+            return false;
+        }
+    } else {
+        unsigned expected=0;
+        if(!submit_attempted.compare_exchange_strong(expected,1))return false;
+    }
     alignas(8) std::array<unsigned char,0x60> original_family_bytes{},split_family{},after_family{};
     Record input{};inspect_family(input,family);
     gears_source_args::Snapshot original_source{},after_source{};
@@ -525,19 +546,33 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
        !safe_copy(original_source.bytes.data(),reinterpret_cast<void*>(input.family_views[0]),0x430))return false;
     uintptr_t original_state=reinterpret_cast<uintptr_t>(original_source.pointer(8));
     memcpy(submit_rectangle.data(),original_source.bytes.data()+0x48,16);
-    state_attempted=1;
-    void* state=state_factory();uintptr_t table{};state_temporary=reinterpret_cast<uintptr_t>(state);
-    if(!state || state_temporary.load()==original_state || !safe_copy(&table,state,8) || table!=state_expected_table)return false;
-    state_created=1;
+    void* state=reinterpret_cast<void*>(state_temporary.load());
+    if(!submit_pair_seconds || !state_created.load()) {
+        state_attempted=1;
+        state=state_factory();uintptr_t table{};state_temporary=reinterpret_cast<uintptr_t>(state);
+        if(!state || state_temporary.load()==original_state || !safe_copy(&table,state,8) || table!=state_expected_table) {
+            if(submit_pair_seconds){submit_retained=1;submitted_lifetime.close();}return false;
+        }
+        state_created=1;
+        if(submit_pair_seconds)submit_deadline=now()+static_cast<LONGLONG>(submit_pair_seconds)*qpc_frequency;
+    }
     gears_split_sources::API api{shadow_api.allocate,source_constructor,shadow_api.destroy,shadow_api.free,safe_copy};
     auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state);
     submit_source_checks=sources.checks;submit_rejection=sources.rejection;
     if(sources.checks!=63) {
         bool no_views=!sources.views[0] && !sources.views[1];
-        if(no_views || gears_split_sources::release(api,sources)){state_release(state);state_release_returned=1;}
+        bool cleaned=no_views || gears_split_sources::release(api,sources);
+        if(submit_pair_seconds) {
+            if(!cleaned)submit_retained=1;
+            if(submitted_lifetime.close() && cleaned){state_release(state);state_release_returned=1;}
+        } else if(cleaned){state_release(state);state_release_returned=1;}
         state_original_preserved=safe_copy(after_source.bytes.data(),reinterpret_cast<void*>(input.family_views[0]),0x430) && after_source.bytes==original_source.bytes;
         submit_attempted=3; // Publish a completed rejection, never claim submission.
         return false;
+    }
+    if(submit_pair_seconds && !submitted_lifetime.begin(reinterpret_cast<uintptr_t>(destination))) {
+        if(!gears_split_sources::release(api,sources))submit_retained=1;
+        ++submit_skipped;return false;
     }
     split_family=original_family_bytes;
     uintptr_t pointers[]={reinterpret_cast<uintptr_t>(sources.views[0]),reinterpret_cast<uintptr_t>(sources.views[1])};
@@ -563,12 +598,22 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             safe_copy(rectangle.data(),reinterpret_cast<void*>(built.family_views[i]+0x48),16) &&
             !memcmp(rectangle.data(),sources.inputs[i].bytes.data()+0x48,16);
     }
-    submit_owned_verified=verified;
-    submit_sources_released=gears_split_sources::release(api,sources);
-    submit_original_preserved=safe_copy(after_family.data(),family,0x60) && after_family==original_family_bytes &&
+    bool source_released=gears_split_sources::release(api,sources);
+    bool original_preserved=safe_copy(after_family.data(),family,0x60) && after_family==original_family_bytes &&
         safe_copy(after_source.bytes.data(),reinterpret_cast<void*>(input.family_views[0]),0x430) && after_source.bytes==original_source.bytes;
-    state_original_preserved=submit_original_preserved;
+    bool first=submit_total.load()==0;
+    submit_owned_verified=first?verified:submit_owned_verified && verified;
+    submit_sources_released=first?source_released:submit_sources_released && source_released;
+    submit_original_preserved=first?original_preserved:submit_original_preserved && original_preserved;
+    if(!source_released)submit_retained=1;
+    ++submit_total;
+    state_original_preserved=submit_original_preserved.load();
     submit_attempted=2;
+    if(submit_pair_seconds && (!verified || !source_released || !original_preserved)) {
+        // Stop producing immediately; the registered renderer still owns its
+        // copies and must retire through the native destruction path.
+        submitted_lifetime.close();
+    }
     return true;
 }
 void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void* transform){
@@ -810,6 +855,8 @@ DWORD WINAPI worker(void*) {
     constructor_eye_enabled=GetPrivateProfileIntW(L"Capture",L"constructor_eye",0,ini)==1;
     renderer_pair_enabled=GetPrivateProfileIntW(L"Capture",L"renderer_pair",0,ini)==1;
     submit_pair_enabled=GetPrivateProfileIntW(L"Capture",L"submit_pair",0,ini)==1;
+    submit_pair_seconds=GetPrivateProfileIntW(L"Capture",L"submit_pair_seconds",0,ini);
+    if(submit_pair_seconds>60)return 4;
     if(submit_pair_enabled && (!constructor_eye_enabled || renderer_pair_enabled)){fprintf(status,"rejected: submit pair requires exclusive shifted-eye mode\n");fclose(status);return 3;}
     if(renderer_pair_enabled && !constructor_eye_enabled){fprintf(status,"rejected: renderer pair requires independent shifted eye\n");fclose(status);return 3;}
     if(constructor_eye_enabled && !constructor_state_enabled){fprintf(status,"rejected: eye requires independent constructor state\n");fclose(status);return 3;}
@@ -917,7 +964,7 @@ DWORD WINAPI worker(void*) {
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     fprintf(status,"present_hooks_created=%d\n",graphics);
-    if(ok) {recording=true;MH_STATUS applied=MH_ApplyQueued();fprintf(status,"minhook_apply=%s\n",MH_StatusToString(applied));ok=applied==MH_OK;}
+    if(ok) {submit_not_before=now()+3*qpc_frequency;recording=true;MH_STATUS applied=MH_ApplyQueued();fprintf(status,"minhook_apply=%s\n",MH_StatusToString(applied));ok=applied==MH_OK;}
     if(!ok) {
         recording=false;MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
         fprintf(status,"hook installation failed disable_status=%d active=%u\n",disabled,active.load());
@@ -955,12 +1002,14 @@ DWORD WINAPI worker(void*) {
     const unsigned submit_phase=submit_attempted.load();
     fprintf(status,"submit_pair_enabled=%d attempted=%u root=0x%llx owned=%u sources_released=%u original_preserved=%u consumed=%u prepared=%u destroyed=%u\n",
         submit_pair_enabled,submit_phase,static_cast<unsigned long long>(submit_root.load()),
-        submit_phase==2?submit_owned_verified:0,submit_phase==2?submit_sources_released:0,submit_phase==2?submit_original_preserved:0,
+        submit_phase==2?submit_owned_verified.load():0,submit_phase==2?submit_sources_released.load():0,submit_phase==2?submit_original_preserved.load():0,
         submit_consumed.load(),submit_prepared.load(),submit_destroyed.load());
     fprintf(status,"submit_inputs checks=%u rejection=%u rectangle=%.9g,%.9g,%.9g,%.9g\n",
         submit_phase>=2?submit_source_checks:0,submit_phase>=2?submit_rejection:0,
         submit_phase>=2?submit_rectangle[0]:0.,submit_phase>=2?submit_rectangle[1]:0.,
         submit_phase>=2?submit_rectangle[2]:0.,submit_phase>=2?submit_rectangle[3]:0.);
+    fprintf(status,"submit_lifetime seconds=%u total=%u closed=%d pending=%u retained=%u skipped=%u\n",
+        submit_pair_seconds,submit_total.load(),submitted_lifetime.is_closed(),submitted_lifetime.pending(),submit_retained.load(),submit_skipped.load());
     fprintf(status,"constructor_eye_enabled=%d shifted=%u combined_valid=%u combined_relative_error=%.9g\n",constructor_eye_enabled,
         shadow_state==2?constructor_eye_shifted:0,shadow_state==2?constructor_combined_valid:0,
         shadow_state==2?constructor_combined_relative_error:0.);

@@ -79,7 +79,10 @@ def main():
     mode.add_argument('--constructor-eye',action='store_true',help='Once, reconstruct an unsubmitted independent-state view shifted one synthetic game unit right')
     mode.add_argument('--renderer-pair',action='store_true',help='Once, construct/destroy an unsubmitted two-view native renderer; never consume or enqueue it')
     mode.add_argument('--submit-pair',action='store_true',help='Once, submit two half-width synthetic eye views through the ordinary renderer path')
+    parser.add_argument('--submit-pair-seconds',type=int,default=0,choices=range(0,61),help='With --submit-pair, sustain pairs for at most sixty seconds with a shared independent right state')
     args=parser.parse_args()
+    if args.submit_pair_seconds and not args.submit_pair:parser.error('--submit-pair-seconds requires --submit-pair')
+    if args.submit_pair_seconds and args.seconds<args.submit_pair_seconds+10:parser.error('Capture duration must leave ten seconds beyond the sustained trial for startup and cleanup')
     args.constructor_eye=args.constructor_eye or args.renderer_pair or args.submit_pair
     args.constructor_state=args.constructor_state or args.constructor_eye
     args.shadow_constructor=args.shadow_constructor or args.constructor_state
@@ -103,6 +106,7 @@ def main():
     if args.constructor_eye: subprocess.run([str(dll.with_name('SourceEyeArgsTest.exe'))],check=True)
     if args.renderer_pair: subprocess.run([str(dll.with_name('TwoViewRendererShadowTest.exe'))],check=True)
     if args.submit_pair: subprocess.run([str(dll.with_name('SplitSourceViewsTest.exe'))],check=True)
+    if args.submit_pair_seconds:subprocess.run([str(dll.with_name('SubmittedViewLifetimeTest.exe'))],check=True)
     if args.shadow_state: subprocess.run([str(test),str(dll),'--state'],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
@@ -162,6 +166,7 @@ def main():
         config+=f'constructor_eye={int(args.constructor_eye)}\n'
         config+=f'renderer_pair={int(args.renderer_pair)}\n'
         config+=f'submit_pair={int(args.submit_pair)}\n'
+        config+=f'submit_pair_seconds={args.submit_pair_seconds}\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.
