@@ -81,6 +81,10 @@ public:
         if(auto slot=find(list,true)){slot->targets=count;slot->target_handle=first;}}
     Target lookup(uintptr_t handle){std::lock_guard<std::mutex> lock(mutex);
         auto entry=descriptor(handle,false);return entry?entry->target:Target{};}
+    TargetDraw binding(uintptr_t list){std::lock_guard<std::mutex> lock(mutex);
+        auto slot=find(list,false);if(!slot)return {};
+        auto entry=descriptor(slot->target_handle,false);
+        return {slot->viewport,slot->targets,entry?entry->target:Target{},0};}
     void set(uintptr_t list,unsigned category,bool scissor,Rect rect={}) {std::lock_guard<std::mutex> lock(mutex);
         if(scissor)++data.scissors;else ++data.viewports;
         if(auto slot=find(list,true)){(scissor?slot->scissor:slot->viewport)=category<5?category:unknown;

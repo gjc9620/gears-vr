@@ -108,6 +108,11 @@ bool gpu_diagnostics{};
 bool viewport_diagnostics{};
 thread_local bool trial_draw_scope{};
 gears_viewport::Tracker viewport_stats;
+// Candidate stacks only: resource identities must subsequently match Present buffers.
+struct OutputStack {gears_viewport::Target target{};unsigned kind{},count{};std::array<void*,24> frames{};};
+std::array<OutputStack,8> output_stacks{};
+std::mutex output_stack_mutex;
+std::atomic<unsigned> output_stack_attempts{0};
 using ResetListFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*,ID3D12PipelineState*);
 using ViewportsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_VIEWPORT*);
 using ScissorsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_RECT*);
@@ -898,12 +903,30 @@ void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,
     }
     original_scissors(list,count,values);
 }
+void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
+    if(!trial_draw_scope||output_stack_attempts.load()>=64)return;
+    auto binding=viewport_stats.binding(reinterpret_cast<uintptr_t>(list));
+    if(binding.viewport!=gears_viewport::full||binding.targets!=1||!binding.target.resource||
+       binding.target.width!=1920||binding.target.height!=1080||binding.target.format!=24)return;
+    unsigned attempt=output_stack_attempts.load();
+    do {if(attempt>=64)return;}while(!output_stack_attempts.compare_exchange_weak(attempt,attempt+1));
+    OutputStack value{};value.target=binding.target;value.kind=kind;
+    value.count=CaptureStackBackTrace(0,static_cast<DWORD>(value.frames.size()),value.frames.data(),nullptr);
+    if(!value.count)return;
+    std::lock_guard<std::mutex> lock(output_stack_mutex);
+    for(auto& entry:output_stacks){
+        if(!entry.count){entry=value;return;}
+        if(entry.target==value.target&&entry.kind==value.kind&&entry.count==value.count&&entry.frames==value.frames)return;
+    }
+}
 void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,UINT instances,UINT start,UINT first_instance) {
     Scope scope;if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
+    if(recording.load())observe_output_stack(list,0);
     original_draw(list,vertices,instances,start,first_instance);
 }
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
     Scope scope;if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
+    if(recording.load())observe_output_stack(list,1);
     original_draw_indexed(list,indices,instances,start,vertex,first_instance);
 }
 void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,BOOL single,const D3D12_CPU_DESCRIPTOR_HANDLE* depth) {
@@ -1246,6 +1269,18 @@ DWORD WINAPI worker(void*) {
               fprintf(status,"gpu_trial_target viewport=%u targets=%u resource=%llx width=%llu height=%u format=%u mip=%u calls=%llu\n",
                   entry.viewport,entry.targets,static_cast<unsigned long long>(entry.target.resource),entry.target.width,
                   entry.target.height,entry.target.format,entry.target.mip,entry.calls);
+          fprintf(status,"gpu_output_stack_attempts=%u limit=64 slots=8 frames=24\n",output_stack_attempts.load());
+          for(unsigned i=0;i<output_stacks.size();++i){const auto& entry=output_stacks[i];if(!entry.count)continue;
+              fprintf(status,"gpu_output_stack index=%u resource=%llx kind=%u count=%u\n",i,
+                  static_cast<unsigned long long>(entry.target.resource),entry.kind,entry.count);
+              for(unsigned j=0;j<entry.count;++j){HMODULE module{};wchar_t path[MAX_PATH]{};
+                  if(GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                     reinterpret_cast<LPCWSTR>(entry.frames[j]),&module))GetModuleFileNameW(module,path,MAX_PATH);
+                  const wchar_t* name=wcsrchr(path,L'\\');name=name?name+1:path;
+                  fprintf(status,"gpu_output_frame index=%u frame=%u address=%llx module=%ls rva=%llx\n",i,j,
+                      static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(entry.frames[j])),name,
+                      static_cast<unsigned long long>(module?reinterpret_cast<uintptr_t>(entry.frames[j])-reinterpret_cast<uintptr_t>(module):0));
+              }}
       }
     unsigned shadow_state=shadow_attempted.load();
     const auto completed_shadow=shadow_state==2?shadow_result:gears_shadow::Result{};

@@ -30,6 +30,8 @@ int main(){
     uintptr_t destinations[]{96,128},sources[]{32,64};targets.copy(destinations,sources,2);
     targets.bind(1,1,96);targets.set(1,right,false,right_rect);targets.draw(1,1);
     targets.bind(1,1,128);targets.draw(1,1);targets.draw(1,1);
+    auto binding=targets.binding(1);
+    if(binding.viewport!=right||binding.targets!=1||!(binding.target==large)||targets.binding(999).target.resource)return 16;
     auto output=targets.snapshot();
     if(output.trial_targets[0].calls!=1||!(output.trial_targets[0].target==small)||
        output.trial_targets[1].calls!=2||!(output.trial_targets[1].target==large))return 9;
@@ -37,6 +39,7 @@ int main(){
     if(targets.lookup(96).resource||targets.lookup(128).resource!=large.resource)return 10;
     targets.create(32,large);if(!(targets.lookup(32)==large))return 11;
     targets.reset(1);targets.draw(1,1);output=targets.snapshot();
+    if(targets.binding(1).target.resource||targets.binding(1).targets)return 17;
     if(output.trial_targets[2].targets||output.trial_targets[2].target.resource)return 12;
     targets.reject_copy();if(targets.lookup(128).resource||targets.snapshot().copy_rejected!=1)return 13;
     targets.copy(destinations,sources,129);
