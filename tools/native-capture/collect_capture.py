@@ -15,6 +15,8 @@ def main():
     parser.add_argument('--output',type=pathlib.Path,required=True)
     parser.add_argument('--timeout',type=float,default=180)
     parser.add_argument('--build-dir',type=pathlib.Path,default=pathlib.Path(__file__).with_name('build'))
+    parser.add_argument('--summary',action='store_true',help='Print compact counts; keep the full report on disk')
+    parser.add_argument('--pid',type=int,help='Require completed status from this process, ignoring older runs')
     args=parser.parse_args()
     build=args.build_dir.resolve()
     deadline=time.monotonic()+args.timeout
@@ -23,6 +25,7 @@ def main():
             status=(build/'capture-status.txt').read_text()
         except (PermissionError,FileNotFoundError):
             status=''
+        if args.pid and f'capturing pid={args.pid} ' not in status:status=''
         if 'stopped disable_status=' in status:break
         if 'rejected:' in status or 'hook installation failed' in status:raise RuntimeError(status)
         if time.monotonic()>=deadline:raise RuntimeError('Capture not confirmed stopped; inspect game/session before proceeding')
@@ -38,6 +41,7 @@ def main():
         groups[key].append(row)
     summaries=[]
     labels={1:'scene_view',2:'player_view_event',3:'present',4:'present1',5:'execute_command_lists',7:'family_submission_candidate',8:'render_view_copy_candidate'}
+    labels[9]='renderer_constructor_candidate'
     for (kind,obj,thread,focus),items in groups.items():
         items.sort(key=lambda r:int(r['qpc']))
         intervals=[(int(items[i]['qpc'])-int(items[i-1]['qpc']))*1000/frequency for i in range(1,len(items))]
@@ -85,7 +89,7 @@ def main():
         if 'wobble_enabled=1' in status:
             report['caveat']='Render-only yaw outputs were deliberately modified. No player-controller/cache rotation writes were requested; cache values require correlation. Present counts are not one-to-one frame proof.'
     args.output.write_text(json.dumps(report,indent=2),encoding='utf-8')
-    print(json.dumps(report,indent=2))
+    print(json.dumps({'output':str(args.output),'samples':len(rows),'test_mode':test_mode} if args.summary else report,indent=2))
 
 
 if __name__=='__main__':main()

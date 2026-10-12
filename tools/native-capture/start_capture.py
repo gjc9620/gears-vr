@@ -82,6 +82,7 @@ def main():
     if args.gpu_diagnostics: subprocess.run([str(test),str(dll),'--gpu'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--family'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--clone'],check=True)
+    if args.family_diagnostics: subprocess.run([str(test),str(dll),'--renderer'],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
     try:camera=r.resolve()
@@ -106,6 +107,7 @@ def main():
                     0x15c968:bytes.fromhex('488bc4488958084889681048897018')}
         if args.family_diagnostics: signatures[0x3a148c]=bytes.fromhex('48895c2408488974241855')
         if args.family_diagnostics: signatures[0x193d50]=bytes.fromhex('488bc4488958104889681848897020')
+        if args.family_diagnostics: signatures[0x116250]=bytes.fromhex('488bc44889581848897020574154')
         r=Resolver(args.pid,profile)
         try:
             refreshed=r.resolve()
@@ -145,13 +147,20 @@ def main():
         pe=pefile.PE(str(dll))
         export=next(e for e in pe.DIRECTORY_ENTRY_EXPORT.symbols if e.name==b'GearsCaptureStart')
         if export.forwarder:raise RuntimeError('Unexpected forwarded capture export')
+        status=dll.with_name('capture-status.txt')
+        previous_status_mtime=status.stat().st_mtime_ns if status.exists() else None
         code=remote_call(handle,module_base+export.address,None)
         if code:raise RuntimeError(f'Capture start failed: {code}')
-        status=dll.with_name('capture-status.txt')
         deadline=time.monotonic()+15
         while time.monotonic()<deadline:
+            event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.Stop.{args.pid}')
+            if event:
+                k.CloseHandle(event)
+                print(f'Capture active for PID {args.pid}; status file is readable after capture ends.')
+                return
             try:
-                value=status.read_text(errors='replace') if status.exists() else ''
+                fresh=status.exists() and status.stat().st_mtime_ns!=previous_status_mtime
+                value=status.read_text(errors='replace') if fresh else ''
             except PermissionError:
                 # The CRT status file stays locked until capture ends. This
                 # named event is created only after queued hooks are enabled.
@@ -161,7 +170,7 @@ def main():
                     print(f'Capture active for PID {args.pid}; status file is readable after capture ends.')
                     return
                 value=''
-            if 'capturing pid=' in value:print(value.strip());return
+            if f'capturing pid={args.pid} ' in value:print(value.strip());return
             if 'rejected:' in value or 'failed' in value:raise RuntimeError(value.strip())
             time.sleep(.1)
         raise RuntimeError('Capture start status not confirmed; inspect capture-status.txt before continuing')

@@ -75,12 +75,14 @@ CSV 的 valid 是位标志：1=位置读取成功，2=旋转读取成功，4=矩
 `--family-diagnostics` 只读取原生集合提交参数，记录最多四个视图指针；与视点改写、GPU 诊断模式互斥。先正常关闭已有游戏，再运行 `launch_reserve.py` 启动新游戏并预留相机和集合入口跳板。预留不启用 Hook，入口字节由 DLL 和外部读取分别核验。进入关卡后使用：
 
 ```powershell
-& $pythonExe 'J:\gearsVr\tools\native-capture\start_capture.py' --pid <当前PID> --seconds 20 --family-diagnostics --use-reserved --build-dir 'J:\gearsVr\tools\native-capture\build-family' --dll-name GearsCaptureFamily.dll
+& $pythonExe 'J:\gearsVr\tools\native-capture\start_capture.py' --pid <当前PID> --seconds 20 --family-diagnostics --use-reserved --build-dir 'J:\gearsVr\tools\native-capture\build-renderer' --dll-name GearsCaptureRenderer.dll
 ```
 
 此时重新定位当前摄像机，复核版本、对象与入口，再开始短时采样。完成后先运行 `verify_stopped.py`，再用 `analyze_family.py --capture <JSON> --restored <恢复JSON> --output <结果JSON>` 检查同线程的前序玩家视图与提交数组元素是否对应。当前实测及局限见 `docs/23-render-family-investigation.md`。预留或采样失败均不支持在同一 DLL 重试，需正常退出游戏后重新开始。
 
 新增副本观察构建位于 `build-clone/GearsCaptureClone.dll`，启动预留和采样都要指向同一构建目录及 DLL 名。它还预留 / 核验 0x193d50 复制入口，kind=8 记录构造前后矩阵和所属集合；六处入口可由恢复工具独立核验。注入前追加 `--clone` ABI 自测，采集后使用 `analyze_clone.py --capture <JSON> --restored <恢复JSON> --output <结果JSON>`，结果与范围见 `docs/24-render-view-copy-validation.md`。旧构建缺少新自测导出时应重新构建，不能直接用于此模式。
+
+当前构建为 `build-renderer/GearsCaptureRenderer.dll`，`launch_reserve.py` 默认使用它。相比历史的 family / clone 构建，新增 0x116250 完整构造 Hook、`--renderer` 四参数自测及 kind=9 构造完成结果。当前源码启动器要求所有相关自测导出存在，历史 DLL 不可直接复用；新构建须重启游戏。用 `analyze_renderer.py` 核对副本存储和所属集合。收集时可传 `--pid <当前PID> --summary`，防止误收旧进程日志并缩短终端输出。原版对照结果见 `docs/25-renderer-construction-validation.md`。
 
 ## 停止和边界
 
