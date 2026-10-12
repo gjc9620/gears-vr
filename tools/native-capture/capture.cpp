@@ -4,6 +4,7 @@
 #include <bcrypt.h>
 #include <intrin.h>
 #include <array>
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cwchar>
@@ -12,6 +13,7 @@
 #include "MinHook.h"
 #include "../vr-common/pose_bridge.h"
 #include "source_view_shadow.h"
+#include "native_source_view_args.h"
 
 namespace {
 struct Vec {float x,y,z;};
@@ -40,6 +42,10 @@ bool shadow_view_enabled{};
 std::atomic<unsigned> shadow_attempted{0};
 gears_shadow::API shadow_api{};
 gears_shadow::Result shadow_result{};
+bool constructor_shadow_enabled{};
+gears_source_args::Constructor source_constructor{};
+unsigned constructor_derived_finite{};
+double constructor_derived_error{};
 using StateFactoryFn=void*(__fastcall*)();
 using StateDeleteFn=void*(__fastcall*)(void*,unsigned);
 StateFactoryFn state_factory{};
@@ -297,6 +303,25 @@ void inspect_family(Record& record,void* family){
     if(header.count<0 || header.count>4 || header.capacity<header.count || header.capacity>1024 || (header.count && (!header.data || header.data%8)))return;
     if(header.count && !safe_copy(record.family_views.data(),reinterpret_cast<void*>(header.data),size_t(header.count)*8))return;
     record.family_array=header.data;record.family_count=header.count;record.family_capacity=header.capacity;record.valid|=128;
+}
+void* __fastcall construct_from_snapshot(void* destination,void* source) {
+    gears_source_args::Snapshot input{};
+    if(!safe_copy(input.bytes.data(),source,input.bytes.size()))return nullptr;
+    if(input.value<float>(0x50)<=0 || input.value<float>(0x54)<=0)return nullptr;
+    void* result=input.invoke(source_constructor,destination,input.pointer(0),input.pointer(8));
+    gears_source_args::Snapshot output{};
+    if(result==destination && safe_copy(output.bytes.data(),destination,output.bytes.size())) {
+        constructor_derived_finite=1;
+        // Known initialized matrix blocks; exclude the owned map at +0x140,
+        // padding and fields whose initialization has not been established.
+        for(size_t offset:{size_t(0x160),size_t(0x1a0),size_t(0x1e0),size_t(0x220),size_t(0x260),size_t(0x2b0),size_t(0x2f0)})
+            for(unsigned i=0;i<16;++i) {
+                float a=input.value<float>(offset+4*i),b=output.value<float>(offset+4*i);
+                if(!std::isfinite(a) || !std::isfinite(b))constructor_derived_finite=0;
+                else constructor_derived_error=(std::max)(constructor_derived_error,double(std::fabs(a-b)));
+            }
+    }
+    return result;
 }
 void try_shadow_state(const Record& record) {
     if(!shadow_state_enabled || !recording.load() || record.caller!=0x2c8909 ||
@@ -632,6 +657,8 @@ DWORD WINAPI worker(void*) {
     gpu_diagnostics=GetPrivateProfileIntW(L"Capture",L"gpu_diagnostics",0,ini)==1;
     family_diagnostics=GetPrivateProfileIntW(L"Capture",L"family_diagnostics",0,ini)==1;
     shadow_view_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_view",0,ini)==1;
+    constructor_shadow_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_constructor",0,ini)==1;
+    if(constructor_shadow_enabled && !shadow_view_enabled){fprintf(status,"rejected: constructor requires shadow view mode\n");fclose(status);return 3;}
     shadow_state_enabled=GetPrivateProfileIntW(L"Capture",L"shadow_state",0,ini)==1;
     if(shadow_state_enabled && (!family_diagnostics || shadow_view_enabled)){fprintf(status,"rejected: shadow state requires exclusive family diagnostics\n");fclose(status);return 3;}
     if(shadow_view_enabled && !family_diagnostics){fprintf(status,"rejected: shadow copy requires family diagnostics\n");fclose(status);return 3;}
@@ -683,6 +710,14 @@ DWORD WINAPI worker(void*) {
         }
         shadow_api={reinterpret_cast<gears_shadow::Allocate>(base+0x1c03c8),reinterpret_cast<gears_shadow::Copy>(base+0x194454),
             reinterpret_cast<gears_shadow::Destroy>(base+0x15ca7c),reinterpret_cast<gears_shadow::Free>(base+0x53ea50),safe_copy};
+        if(constructor_shadow_enabled) {
+            const unsigned char signature[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x70,0x18,0x48,0x89,0x78,0x20};
+            source_constructor=reinterpret_cast<gears_source_args::Constructor>(base+0x15e428);
+            if(!safe_copy(bytes,reinterpret_cast<void*>(source_constructor),sizeof(signature)) || memcmp(bytes,signature,sizeof(signature))) {
+                fprintf(status,"rejected: full source constructor signature mismatch\n");fclose(status);return 4;
+            }
+            shadow_api.copy=construct_from_snapshot;
+        }
     }
     if(shadow_state_enabled) {
         const unsigned char factory_bytes[]={0x48,0x83,0xec,0x28,0xba,0x08,0,0,0,0xb9,0x80,0x02,0,0};
@@ -754,6 +789,8 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"shadow_view_enabled=%d attempted=%u stage=%u checks=%u nonempty_arrays=%u source=0x%llx temporary=0x%llx\n",
         shadow_view_enabled,shadow_state,completed_shadow.stage,completed_shadow.checks,completed_shadow.nonempty_arrays,
         static_cast<unsigned long long>(completed_shadow.source),static_cast<unsigned long long>(completed_shadow.temporary));
+    fprintf(status,"constructor_shadow_enabled=%d derived_finite=%u derived_max_error=%.9g\n",constructor_shadow_enabled,
+        shadow_state==2?constructor_derived_finite:0,shadow_state==2?constructor_derived_error:0.);
     unsigned state_done=state_destroyed.load();
     fprintf(status,"shadow_state_enabled=%d attempted=%u created=%u release_returned=%u destroyed=%u original_preserved=%u flags=%u thread=%u caller=0x%llx temporary=0x%llx\n",
         shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),

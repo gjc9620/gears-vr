@@ -74,7 +74,9 @@ def main():
     mode.add_argument('--family-diagnostics',action='store_true',help='Observe bounded view arrays at the candidate render-family submission')
     mode.add_argument('--shadow-view',action='store_true',help='Once, construct and destroy an unsubmitted native source-view copy on the game thread')
     mode.add_argument('--shadow-state',action='store_true',help='Once, create independent view state and observe its ordinary deferred deleting wrapper')
+    mode.add_argument('--shadow-constructor',action='store_true',help='Once, reconstruct an unsubmitted source view from candidate full-constructor arguments, retaining the original state')
     args=parser.parse_args()
+    args.shadow_view=args.shadow_view or args.shadow_constructor
     args.family_diagnostics=args.family_diagnostics or args.shadow_view or args.shadow_state
     if pathlib.Path(args.dll_name).name!=args.dll_name or not args.dll_name.lower().endswith('.dll'):
         raise RuntimeError('DLL name must be a basename ending in .dll')
@@ -89,6 +91,7 @@ def main():
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--lifetime'],check=True)
     if args.family_diagnostics: subprocess.run([str(test),str(dll),'--prepare'],check=True)
     if args.shadow_view: subprocess.run([str(dll.with_name('SourceViewShadowTest.exe'))],check=True)
+    if args.shadow_constructor: subprocess.run([str(dll.with_name('SourceViewArgsTest.exe'))],check=True)
     if args.shadow_state: subprocess.run([str(test),str(dll),'--state'],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     r=Resolver(args.pid,profile)
@@ -127,6 +130,7 @@ def main():
             signatures.update({0x33bdd4:bytes.fromhex('4883ec28ba08000000b980020000'),
                 0x4ce80c:bytes.fromhex('40534883ec20488bc1488d511c488bd9'),
                 0x33bc70:bytes.fromhex('48895c2408574883ec208bda488bf9')})
+        if args.shadow_constructor:signatures[0x15e428]=bytes.fromhex('488bc4488958104889701848897820')
         r=Resolver(args.pid,profile)
         try:
             refreshed=r.resolve()
@@ -142,6 +146,7 @@ def main():
         config+=f'family_diagnostics={int(args.family_diagnostics)}\n'
         config+=f'shadow_view={int(args.shadow_view)}\n'
         config+=f'shadow_state={int(args.shadow_state)}\n'
+        config+=f'shadow_constructor={int(args.shadow_constructor)}\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.
