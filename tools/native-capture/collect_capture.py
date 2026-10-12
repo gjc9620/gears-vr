@@ -42,6 +42,8 @@ def main():
     summaries=[]
     labels={1:'scene_view',2:'player_view_event',3:'present',4:'present1',5:'execute_command_lists',7:'family_submission_candidate',8:'render_view_copy_candidate'}
     labels[9]='renderer_constructor_candidate'
+    labels[10]='renderer_consume_candidate'
+    labels[11]='renderer_destroy_candidate'
     for (kind,obj,thread,focus),items in groups.items():
         items.sort(key=lambda r:int(r['qpc']))
         intervals=[(int(items[i]['qpc'])-int(items[i-1]['qpc']))*1000/frequency for i in range(1,len(items))]
