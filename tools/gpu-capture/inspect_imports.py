@@ -23,7 +23,9 @@ def main():
         loaded = modules(process.handle)
         base, image = loaded['gowde-steam.exe']
         with pefile.PE(str(image), fast_load=True) as pe:
-            imports = pe.OPTIONAL_HEADER.DATA_DIRECTORY[1]
+            disk_imports = pe.OPTIONAL_HEADER.DATA_DIRECTORY[1]
+        with pefile.PE(data=process.read(base, 65536), fast_load=True) as live_pe:
+            imports = live_pe.OPTIONAL_HEADER.DATA_DIRECTORY[1]
         rows = []
         for index in range(min(imports.Size // 20, 512)):
             raw = process.read(base + imports.VirtualAddress + index * 20, 20)
@@ -52,6 +54,8 @@ def main():
                 rows.append(dict(import_dll=name, symbol=symbol, slot=hex(base+thunk_rva+slot*8),
                                  target=hex(target), owners=owners))
         report=dict(pid=args.pid, mode='read-only', imports=rows,
+                    disk_import_directory=dict(rva=hex(disk_imports.VirtualAddress), size=disk_imports.Size),
+                    live_import_directory=dict(rva=hex(imports.VirtualAddress), size=imports.Size),
                     caveat='Static import table only; dynamic device creation is not covered.')
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2), encoding='utf-8')

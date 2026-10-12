@@ -36,3 +36,9 @@ $env:PATH = 'J:\gearsVr\tools\third-party\renderdoc\RenderDoc_1.46_64;' + $env:P
 
 目前结果：smoke 成功；游戏有 RenderDoc 模块和控制连接，但没有注册图形 API，游戏帧捕获尚未成功。
 详见 [实测记录](../../docs/51-renderdoc-capture-compatibility.md)。
+
+后续 [调用指针检查与失败记录](../../docs/52-renderdoc-import-bridge-failure.md)：
+`find_device_calls.py` 分块只读搜索普通图形函数指针与调用点，
+`inspect_smoke_imports.py` 检查本项目 smoke 进程的实际导入地址。
+`probe_import_bridge.py` 会加载本项目检查 DLL，只有自己的导入查询，不改写游戏调用槽；它不是严格只读的外部工具。
+`launch_import_capture.py` 的临时指针替换试验导致启动异常，已禁用直接执行。
