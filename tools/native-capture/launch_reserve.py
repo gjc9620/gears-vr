@@ -1,4 +1,7 @@
-"""Fresh startup: reserve camera/family trampolines without enabling any hook.
+"""Fresh startup: reserve camera/family trampolines without enabling native hooks.
+
+Optional --prime-targets observes three D3D12 descriptor methods for at most
+180 seconds before ordinary capture takes over; it changes no camera parameters.
 
 After level loading, start_capture.py --use-reserved re-resolves the camera and
 performs the ordinary signature/PID/lifecycle checks before actual activation.
@@ -21,12 +24,18 @@ def main():
     parser.add_argument('--dll-name',default='GearsCapturePrepare.dll')
     parser.add_argument('--check-shadow-copy',action='store_true',help='Require the bounded source-view copy self-test before startup; does not enable the experiment')
     parser.add_argument('--check-shadow-state',action='store_true',help='Require the independent state lifecycle self-test before startup')
+    parser.add_argument('--prime-targets',action='store_true',help='Observe RTV creation/copies during loading, bounded to 180 seconds or capture handoff')
     args=parser.parse_args()
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
     build=args.build_dir.resolve();dll=build/args.dll_name
     for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime'],['--prepare']):subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
     if args.check_shadow_copy:subprocess.run([str(build/'SourceViewShadowTest.exe')],check=True)
     if args.check_shadow_state:subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--state'],check=True)
+    if args.prime_targets:
+        subprocess.run([str(build/'GpuViewportStatsTest.exe')],check=True)
+        subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--viewport'],check=True)
+        subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--prime'],check=True)
+        subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--prime-handoff'],check=True)
     result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',"if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"],capture_output=True)
     if result.returncode:raise RuntimeError('Existing game must exit normally first')
     exe=ROOT/'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
@@ -34,7 +43,12 @@ def main():
     if hashlib.sha256(exe.read_bytes()).hexdigest()!=profile['sha256']:raise RuntimeError('Unvalidated game build')
     pe=pefile.PE(str(dll));export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureReserve')
     if export.forwarder:raise RuntimeError('Forwarded reserve export rejected')
-    rva=export.address;pe.close()
+    rva=export.address;prime_rva=None
+    if args.prime_targets:
+        prime_export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureTargetPrime')
+        if prime_export.forwarder:raise RuntimeError('Forwarded prime export rejected')
+        prime_rva=prime_export.address
+    pe.close()
     subprocess.run(['powershell','-NoProfile','-NonInteractive','-File',str(ROOT/'tools/debug-launch/Start-DebugGame.ps1')],check=True)
     handle=None;deadline=time.monotonic()+12
     while time.monotonic()<deadline:
@@ -80,7 +94,14 @@ def main():
             entries=[{'rva':hex(offset),'matches':read_only.read(loaded['gowde-steam.exe'][0]+offset,len(value))==value} for offset,value in signatures.items()]
         finally:read_only.close()
         if not all(x['matches'] for x in entries):raise RuntimeError('Reservation changed an entry; do not activate')
-        report={'pid':pid,'dll':str(dll),'trampolines_reserved':True,'hooks_enabled':False,'independent_entry_checks':entries}
+        if args.prime_targets:
+            code=remote_call(handle,resident[0]+prime_rva,None)
+            if code:raise RuntimeError(f'Target priming failed ({code}); do not activate')
+            prime_event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.TargetPrime.{pid}')
+            if not prime_event:raise RuntimeError('Target priming readiness absent')
+            k.CloseHandle(prime_event)
+        report={'pid':pid,'dll':str(dll),'trampolines_reserved':True,'hooks_enabled':args.prime_targets,
+                'native_hooks_enabled':False,'descriptor_hooks_enabled':3 if args.prime_targets else 0,'independent_entry_checks':entries}
         folder=ROOT/'analysis/runtime';folder.mkdir(parents=True,exist_ok=True)
         (folder/f'reserve-{pid}.json').write_text(json.dumps(report,indent=2))
         print(json.dumps(report))

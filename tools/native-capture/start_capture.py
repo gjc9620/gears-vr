@@ -84,9 +84,11 @@ def main():
     parser.add_argument('--submit-mono-control',action='store_true',help='Submit only one reconstructed original view, with no shift or resize, to isolate constructor effects')
     parser.add_argument('--submit-mono-independent-state',action='store_true',help='With --submit-mono-control, submit the view using the newly created state instead of the game state')
     parser.add_argument('--submit-duplicate-control',action='store_true',help='Submit two full original rectangles with no eye shift, to isolate multi-view processing from split geometry')
-    parser.add_argument('--viewport-diagnostics',action='store_true',help='Read-only D3D12 viewport/scissor/direct-draw counters; no ExecuteIndirect coverage')
+    parser.add_argument('--viewport-diagnostics',action='store_true',help='Observe D3D12 viewport/scissor/direct draws and first RTV metadata; no ExecuteIndirect coverage')
+    parser.add_argument('--require-target-prime',action='store_true',help='Require same-PID bounded descriptor observation before activation')
     args=parser.parse_args()
     args.gpu_diagnostics=args.gpu_diagnostics or args.viewport_diagnostics
+    if args.require_target_prime and not(args.use_reserved and args.viewport_diagnostics):parser.error('Target priming requires reserved viewport diagnostics')
     if args.submit_pair_seconds and not args.submit_pair:parser.error('--submit-pair-seconds requires --submit-pair')
     if args.submit_output_bounds and not args.submit_pair:parser.error('--submit-output-bounds requires --submit-pair')
     if args.submit_mono_control and (not args.submit_pair or args.submit_output_bounds):parser.error('Mono control requires --submit-pair and unchanged source bounds')
@@ -136,6 +138,15 @@ def main():
             event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.Reserved.{args.pid}')
             if not event:raise RuntimeError('Reservation readiness not confirmed')
             k.CloseHandle(event)
+            if args.require_target_prime:
+                prime_status=dll.with_name('target-prime-status.txt').read_text()
+                if f'capturing pid={args.pid} seconds=180' not in prime_status or any(x in prime_status for x in ('stopped','handed_off','prime_setup_failed')):
+                    raise RuntimeError('Matching pending target priming required; restart for another observation')
+                prime_event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.TargetPrime.{args.pid}')
+                if not prime_event:raise RuntimeError('Target priming event absent')
+                try:
+                    if k.WaitForSingleObject(prime_event,0)!=0x102:raise RuntimeError('Target priming already signaled')
+                finally:k.CloseHandle(prime_event)
         elif dll.name.lower() in loaded:raise RuntimeError('Capture DLL already loaded; restart game before a new capture build/run')
         active_event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.Stop.{args.pid}')
         if active_event:

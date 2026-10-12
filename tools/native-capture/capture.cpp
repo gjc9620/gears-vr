@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cwchar>
 #include <cstring>
+#include <share.h>
 #include <cmath>
 #include "MinHook.h"
 #include "../vr-common/pose_bridge.h"
@@ -112,9 +113,20 @@ using ViewportsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const
 using ScissorsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_RECT*);
 using DrawFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,UINT,UINT,UINT);
 using DrawIndexedFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,UINT,UINT,INT,UINT);
+using TargetsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_CPU_DESCRIPTOR_HANDLE*,BOOL,const D3D12_CPU_DESCRIPTOR_HANDLE*);
+using CreateRtvFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,ID3D12Resource*,const D3D12_RENDER_TARGET_VIEW_DESC*,D3D12_CPU_DESCRIPTOR_HANDLE);
+using CopyDescriptorsFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,UINT,const D3D12_CPU_DESCRIPTOR_HANDLE*,const UINT*,UINT,const D3D12_CPU_DESCRIPTOR_HANDLE*,const UINT*,D3D12_DESCRIPTOR_HEAP_TYPE);
+using CopySimpleFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,UINT,D3D12_CPU_DESCRIPTOR_HANDLE,D3D12_CPU_DESCRIPTOR_HANDLE,D3D12_DESCRIPTOR_HEAP_TYPE);
 ResetListFn original_reset_list{};ViewportsFn original_viewports{};ScissorsFn original_scissors{};
 DrawFn original_draw{};DrawIndexedFn original_draw_indexed{};
-std::array<void*,5> viewport_targets{};
+TargetsFn original_targets{};CreateRtvFn original_create_rtv{};CopyDescriptorsFn original_copy_descriptors{};CopySimpleFn original_copy_simple{};
+std::array<void*,9> viewport_targets{};
+std::array<void*,3> prime_targets{};
+std::atomic<bool> prime_recording{},prime_ready{},prime_handoff{},prime_done{};
+std::atomic<unsigned> prime_started{};
+std::mutex prime_mutex;
+HANDLE prime_event{};
+std::array<std::array<unsigned char,32>,3> prime_original_bytes{};
 void* execute_target{};
 HMODULE own_module{};
 uintptr_t base{},expected_local{},expected_pc{},camera_cache{};
@@ -849,8 +861,9 @@ void flush(FILE* file) {
 }
 bool install(void* target,void* detour,void** original) {
     MH_STATUS created=MH_CreateHook(target,detour,original);
-    if(created==MH_ERROR_ALREADY_CREATED && reservation_ready && *original &&
-         (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target))created=MH_OK;
+    if(created==MH_ERROR_ALREADY_CREATED && *original &&
+         ((reservation_ready && (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target)) ||
+          (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
     return created==MH_OK && queued==MH_OK;
@@ -893,17 +906,76 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     Scope scope;if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
     original_draw_indexed(list,indices,instances,start,vertex,first_instance);
 }
+void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,BOOL single,const D3D12_CPU_DESCRIPTOR_HANDLE* depth) {
+    Scope scope;
+    if(recording.load()){D3D12_CPU_DESCRIPTOR_HANDLE first{};
+        if(count)safe_copy(&first,handles,sizeof(first));
+        viewport_stats.bind(reinterpret_cast<uintptr_t>(list),count,first.ptr);}
+    original_targets(list,count,handles,single,depth);
+}
+void STDMETHODCALLTYPE hook_create_rtv(ID3D12Device* device,ID3D12Resource* resource,const D3D12_RENDER_TARGET_VIEW_DESC* view,D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+    Scope scope;original_create_rtv(device,resource,view,handle);
+    if(recording.load()||prime_recording.load()){
+        gears_viewport::Target target{};D3D12_RENDER_TARGET_VIEW_DESC description{};
+        bool valid=!view||safe_copy(&description,view,sizeof(description));
+        unsigned mip=0;
+        if(view&&valid)switch(description.ViewDimension){
+            case D3D12_RTV_DIMENSION_TEXTURE1D:mip=description.Texture1D.MipSlice;break;
+            case D3D12_RTV_DIMENSION_TEXTURE1DARRAY:mip=description.Texture1DArray.MipSlice;break;
+            case D3D12_RTV_DIMENSION_TEXTURE2D:mip=description.Texture2D.MipSlice;break;
+            case D3D12_RTV_DIMENSION_TEXTURE2DARRAY:mip=description.Texture2DArray.MipSlice;break;
+            case D3D12_RTV_DIMENSION_TEXTURE3D:mip=description.Texture3D.MipSlice;break;
+            case D3D12_RTV_DIMENSION_TEXTURE2DMS:case D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY:break;
+            default:valid=false;
+        }
+        if(resource&&valid){auto desc=resource->GetDesc();
+            if(desc.Dimension!=D3D12_RESOURCE_DIMENSION_BUFFER&&mip<desc.MipLevels&&mip<32)
+                target={reinterpret_cast<uintptr_t>(resource),std::max<uint64_t>(1,desc.Width>>mip),
+                    std::max<UINT>(1,desc.Height>>mip),static_cast<unsigned>(view?description.Format:desc.Format),mip};}
+        viewport_stats.create(handle.ptr,target);
+    }
+}
+bool flatten_descriptors(UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* starts,const UINT* sizes,UINT stride,std::array<uintptr_t,128>& output,unsigned& total) {
+    total=0;if(count>output.size())return false;
+    for(UINT i=0;i<count;++i){D3D12_CPU_DESCRIPTOR_HANDLE start{};UINT size=1;
+        if(!safe_copy(&start,starts+i,sizeof(start))||(sizes&&!safe_copy(&size,sizes+i,sizeof(size)))||size>output.size()-total)return false;
+        for(UINT j=0;j<size;++j){uint64_t offset=static_cast<uint64_t>(j)*stride;
+            if(offset>UINTPTR_MAX-start.ptr)return false;output[total++]=start.ptr+static_cast<uintptr_t>(offset);}}
+    return true;
+}
+void STDMETHODCALLTYPE hook_copy_descriptors(ID3D12Device* device,UINT destinations,const D3D12_CPU_DESCRIPTOR_HANDLE* destination_starts,const UINT* destination_sizes,
+    UINT sources,const D3D12_CPU_DESCRIPTOR_HANDLE* source_starts,const UINT* source_sizes,D3D12_DESCRIPTOR_HEAP_TYPE type) {
+    Scope scope;original_copy_descriptors(device,destinations,destination_starts,destination_sizes,sources,source_starts,source_sizes,type);
+    if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> dest{},src{};unsigned dc{},sc{};
+        UINT stride=device->GetDescriptorHandleIncrementSize(type);
+        if(flatten_descriptors(destinations,destination_starts,destination_sizes,stride,dest,dc)&&
+           flatten_descriptors(sources,source_starts,source_sizes,stride,src,sc)&&dc==sc)viewport_stats.copy(dest.data(),src.data(),dc);
+        else viewport_stats.reject_copy();}
+}
+void STDMETHODCALLTYPE hook_copy_simple(ID3D12Device* device,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dest,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type) {
+    Scope scope;original_copy_simple(device,count,dest,src,type);
+    if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> destinations{},sources{};unsigned dc{},sc{};
+        UINT stride=device->GetDescriptorHandleIncrementSize(type);
+        if(flatten_descriptors(1,&dest,&count,stride,destinations,dc)&&flatten_descriptors(1,&src,&count,stride,sources,sc))
+            viewport_stats.copy(destinations.data(),sources.data(),dc);
+        else viewport_stats.reject_copy();}
+}
 bool viewport_hooks(ID3D12Device* device) {
     ID3D12CommandAllocator* allocator{};ID3D12GraphicsCommandList* list{};bool success=false;
     if(SUCCEEDED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)))&&
        SUCCEEDED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator,nullptr,IID_PPV_ARGS(&list)))) {
         void** table=*reinterpret_cast<void***>(list);
-        viewport_targets={table[10],table[21],table[22],table[12],table[13]};
+        void** device_table=*reinterpret_cast<void***>(device);
+        viewport_targets={table[10],table[21],table[22],table[12],table[13],table[46],device_table[20],device_table[23],device_table[24]};
         success=install(viewport_targets[0],reinterpret_cast<void*>(hook_reset_list),reinterpret_cast<void**>(&original_reset_list));
         success=install(viewport_targets[1],reinterpret_cast<void*>(hook_viewports),reinterpret_cast<void**>(&original_viewports))&&success;
         success=install(viewport_targets[2],reinterpret_cast<void*>(hook_scissors),reinterpret_cast<void**>(&original_scissors))&&success;
         success=install(viewport_targets[3],reinterpret_cast<void*>(hook_draw),reinterpret_cast<void**>(&original_draw))&&success;
         success=install(viewport_targets[4],reinterpret_cast<void*>(hook_draw_indexed),reinterpret_cast<void**>(&original_draw_indexed))&&success;
+        success=install(viewport_targets[5],reinterpret_cast<void*>(hook_targets),reinterpret_cast<void**>(&original_targets))&&success;
+        success=install(viewport_targets[6],reinterpret_cast<void*>(hook_create_rtv),reinterpret_cast<void**>(&original_create_rtv))&&success;
+        success=install(viewport_targets[7],reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void**>(&original_copy_descriptors))&&success;
+        success=install(viewport_targets[8],reinterpret_cast<void*>(hook_copy_simple),reinterpret_cast<void**>(&original_copy_simple))&&success;
         list->Close();
     }
     if(list)list->Release();if(allocator)allocator->Release();return success;
@@ -936,6 +1008,54 @@ bool present_hooks() {
     }
     if(chain) chain->Release();if(queue) queue->Release();if(device) device->Release();if(factory) factory->Release();
     return success;
+}
+DWORD WINAPI target_prime_watchdog(void* argument) {
+    FILE* status=static_cast<FILE*>(argument);
+    WaitForSingleObject(prime_event,180000);
+    std::lock_guard<std::mutex> lock(prime_mutex);
+    if(prime_handoff.load()){
+        auto stats=viewport_stats.snapshot();
+        fprintf(status,"handed_off creates=%llu copies=%llu evictions=%llu\n",stats.descriptor_creates,stats.descriptor_copies,stats.descriptor_evictions);
+    }else{
+        prime_recording=false;bool disabled=true;
+        for(auto target:prime_targets){auto result=MH_DisableHook(target);disabled=disabled&&(result==MH_OK||result==MH_ERROR_DISABLED);}
+        ULONGLONG deadline=GetTickCount64()+1000;while(active.load()&&GetTickCount64()<deadline)Sleep(1);
+        bool restored=true;std::array<unsigned char,32> bytes{};
+        for(unsigned i=0;i<prime_targets.size();++i)
+            restored=restored&&safe_copy(bytes.data(),prime_targets[i],bytes.size())&&!memcmp(bytes.data(),prime_original_bytes[i].data(),bytes.size());
+        fprintf(status,"stopped disable_status=%u active=%u entries_match=%u\n",disabled?0:1,active.load(),restored?1:0);
+    }
+    fclose(status);prime_done=true;return 0;
+}
+DWORD begin_target_prime() {
+    std::lock_guard<std::mutex> lock(prime_mutex);
+    if(prime_started.exchange(1)||started.load())return ERROR_ALREADY_EXISTS;
+    wchar_t path[MAX_PATH];GetModuleFileNameW(own_module,path,MAX_PATH);auto slash=wcsrchr(path,L'\\');
+    if(!slash)return ERROR_BAD_PATHNAME;
+    wcscpy_s(slash+1,MAX_PATH-static_cast<size_t>(slash+1-path),L"target-prime-status.txt");
+    FILE* status=_wfsopen(path,L"w",_SH_DENYWR);if(!status)return ERROR_WRITE_FAULT;
+    ID3D12Device* device{};
+    if(FAILED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)))){fclose(status);return ERROR_NOT_SUPPORTED;}
+    auto table=*reinterpret_cast<void***>(device);prime_targets={table[20],table[23],table[24]};device->Release();
+    std::array<void*,3> detours{reinterpret_cast<void*>(hook_create_rtv),reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void*>(hook_copy_simple)};
+    std::array<void**,3> originals{reinterpret_cast<void**>(&original_create_rtv),reinterpret_cast<void**>(&original_copy_descriptors),reinterpret_cast<void**>(&original_copy_simple)};
+    bool ok=true;
+    for(unsigned i=0;i<prime_targets.size();++i){
+        if(!safe_copy(prime_original_bytes[i].data(),prime_targets[i],32)){ok=false;break;}
+        auto created=MH_CreateHook(prime_targets[i],detours[i],originals[i]);
+        auto queued=created==MH_OK?MH_QueueEnableHook(prime_targets[i]):MH_ERROR_NOT_CREATED;
+        fprintf(status,"hook_target=%p create=%s queue=%s\n",prime_targets[i],MH_StatusToString(created),MH_StatusToString(queued));
+        if(created!=MH_OK||queued!=MH_OK){ok=false;break;}
+    }
+    wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Capture.TargetPrime.%lu",GetCurrentProcessId());
+    if(ok)prime_event=CreateEventW(nullptr,TRUE,FALSE,name);
+    ok=ok&&prime_event;
+    if(ok){prime_recording=true;ok=MH_ApplyQueued()==MH_OK;}
+    HANDLE thread{};
+    if(ok){thread=CreateThread(nullptr,0,target_prime_watchdog,status,0,nullptr);ok=thread!=nullptr;}
+    if(!ok){prime_recording=false;for(auto target:prime_targets)MH_DisableHook(target);fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
+    fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=3\n",GetCurrentProcessId());fflush(status);
+    prime_ready=true;CloseHandle(thread);return 0;
 }
 DWORD WINAPI worker(void*) {
     wchar_t ini[MAX_PATH],csv[MAX_PATH],status_path[MAX_PATH];
@@ -1080,7 +1200,12 @@ DWORD WINAPI worker(void*) {
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     fprintf(status,"present_hooks_created=%d\n",graphics);
-    if(ok) {submit_not_before=now()+3*qpc_frequency;recording=true;MH_STATUS applied=MH_ApplyQueued();fprintf(status,"minhook_apply=%s\n",MH_StatusToString(applied));ok=applied==MH_OK;}
+    if(ok) {
+        std::lock_guard<std::mutex> lock(prime_mutex);
+        if(prime_ready.load()){prime_handoff=true;SetEvent(prime_event);}
+        submit_not_before=now()+3*qpc_frequency;recording=true;prime_recording=false;
+        MH_STATUS applied=MH_ApplyQueued();fprintf(status,"minhook_apply=%s\n",MH_StatusToString(applied));ok=applied==MH_OK;
+    }
     if(!ok) {
         recording=false;MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
         fprintf(status,"hook installation failed disable_status=%d active=%u\n",disabled,active.load());
@@ -1115,6 +1240,12 @@ DWORD WINAPI worker(void*) {
               fprintf(status,"gpu_trial_rect viewport=(%.9g,%.9g,%.9g,%.9g) scissor=(%.9g,%.9g,%.9g,%.9g) calls=%llu\n",
                   entry.viewport.x,entry.viewport.y,entry.viewport.width,entry.viewport.height,
                   entry.scissor.x,entry.scissor.y,entry.scissor.width,entry.scissor.height,entry.calls);
+          fprintf(status,"gpu_targets binds=%llu creates=%llu copies=%llu evictions=%llu rejected_copies=%llu histogram_overflow=%llu\n",
+              stats.target_binds,stats.descriptor_creates,stats.descriptor_copies,stats.descriptor_evictions,stats.copy_rejected,stats.target_overflow);
+          for(const auto& entry:stats.trial_targets)if(entry.calls)
+              fprintf(status,"gpu_trial_target viewport=%u targets=%u resource=%llx width=%llu height=%u format=%u mip=%u calls=%llu\n",
+                  entry.viewport,entry.targets,static_cast<unsigned long long>(entry.target.resource),entry.target.width,
+                  entry.target.height,entry.target.format,entry.target.mip,entry.calls);
       }
     unsigned shadow_state=shadow_attempted.load();
     const auto completed_shadow=shadow_state==2?shadow_result:gears_shadow::Result{};
@@ -1286,6 +1417,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Capture.Reserved.%lu",GetCurrentProcessId());
     reservation_event=CreateEventW(nullptr,TRUE,TRUE,name);
     if(!reservation_event)return GetLastError();reservation_ready=true;return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureTargetPrime(void*) {
+    if(!reservation_ready||started.load())return ERROR_INVALID_STATE;
+    return begin_target_prime();
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFamilyCheck(void*) {
     uintptr_t views[]={reinterpret_cast<uintptr_t>(&fake_view),reinterpret_cast<uintptr_t>(&fake_view)+16};
@@ -1492,13 +1627,19 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureSelfTest(void*) {
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
     gpu_diagnostics=true;
-    if(MH_Initialize()!=MH_OK || !present_hooks())return 50;
+    auto initialized=MH_Initialize();
+    if((initialized!=MH_OK&&!(prime_ready.load()&&initialized==MH_ERROR_ALREADY_INITIALIZED))||!present_hooks())return 50;
     unsigned char before[32],after[32];
     if(!safe_copy(before,execute_target,32))return 51;
-    std::array<std::array<unsigned char,32>,5> viewport_before{};
-    if(viewport_diagnostics)for(unsigned i=0;i<5;++i)if(!safe_copy(viewport_before[i].data(),viewport_targets[i],32))return 58;
+    std::array<std::array<unsigned char,32>,9> viewport_before{};
+    if(viewport_diagnostics)for(unsigned i=0;i<viewport_targets.size();++i){
+        auto primed=std::find(prime_targets.begin(),prime_targets.end(),viewport_targets[i]);
+        if(prime_ready.load()&&primed!=prime_targets.end())viewport_before[i]=prime_original_bytes[static_cast<size_t>(primed-prime_targets.begin())];
+        else if(!safe_copy(viewport_before[i].data(),viewport_targets[i],32))return 58;
+    }
     ID3D12Device* device{};ID3D12CommandQueue* queue{};ID3D12CommandAllocator* allocator{};
     ID3D12GraphicsCommandList* list{};ID3D12Fence* fence{};
+    ID3D12Resource* target_texture{};ID3D12DescriptorHeap* target_heap{};
     DWORD result=0;HANDLE event{};D3D12_COMMAND_QUEUE_DESC desc{};
     if(FAILED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device))) ||
        FAILED(device->CreateCommandQueue(&desc,IID_PPV_ARGS(&queue))) ||
@@ -1506,15 +1647,32 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
        FAILED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator,nullptr,IID_PPV_ARGS(&list))) ||
        FAILED(list->Close()) || FAILED(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence))))result=52;
     if(!result) {
-        recording=true;if(MH_ApplyQueued()!=MH_OK)result=53;
+        {std::lock_guard<std::mutex> lock(prime_mutex);
+            if(prime_ready.load()){prime_handoff=true;SetEvent(prime_event);}
+            recording=true;prime_recording=false;if(MH_ApplyQueued()!=MH_OK)result=53;}
         if(!result&&viewport_diagnostics) {
             if(FAILED(list->Reset(allocator,nullptr)))result=59;
             else {
                 D3D12_VIEWPORT viewport{960,0,960,1080,0,1};D3D12_RECT scissor{960,0,1920,1080};
                 list->RSSetViewports(1,&viewport);list->RSSetScissorRects(1,&scissor);
+                D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_DEFAULT;
+                D3D12_RESOURCE_DESC texture{};texture.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;texture.Width=1920;texture.Height=1080;
+                texture.DepthOrArraySize=1;texture.MipLevels=1;texture.Format=DXGI_FORMAT_R8G8B8A8_UNORM;texture.SampleDesc.Count=1;texture.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+                D3D12_DESCRIPTOR_HEAP_DESC handles{};handles.Type=D3D12_DESCRIPTOR_HEAP_TYPE_RTV;handles.NumDescriptors=3;
+                if(FAILED(device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&texture,D3D12_RESOURCE_STATE_RENDER_TARGET,nullptr,IID_PPV_ARGS(&target_texture)))||
+                   FAILED(device->CreateDescriptorHeap(&handles,IID_PPV_ARGS(&target_heap))))result=63;
+                if(!result){auto first=target_heap->GetCPUDescriptorHandleForHeapStart();auto second=first,third=first;
+                    UINT stride=device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);second.ptr+=stride;third.ptr+=2*stride;
+                    device->CreateRenderTargetView(target_texture,nullptr,first);
+                    device->CopyDescriptorsSimple(1,second,first,D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+                    device->CopyDescriptors(1,&third,nullptr,1,&second,nullptr,D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+                    list->OMSetRenderTargets(1,&third,FALSE,nullptr);
+                    auto mapped=viewport_stats.lookup(third.ptr);
+                    if(mapped.resource!=reinterpret_cast<uintptr_t>(target_texture)||mapped.width!=1920||mapped.height!=1080)result=64;
+                }
                 if(FAILED(list->Close()))result=60;
                 auto stats=viewport_stats.snapshot();
-                if(stats.resets!=1||stats.viewports!=1||stats.scissors!=1||stats.overflow)result=61;
+                if(stats.resets!=1||stats.viewports!=1||stats.scissors!=1||stats.overflow||stats.target_binds!=1||stats.descriptor_creates!=1||stats.descriptor_copies!=2||stats.copy_rejected)result=61;
             }
         }
         if(!result) {
@@ -1530,14 +1688,46 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
     if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK && !result)result=56;
     recording=false;
     if(!result && (!safe_copy(after,execute_target,32) || memcmp(before,after,32)))result=57;
-    if(!result&&viewport_diagnostics)for(unsigned i=0;i<5;++i)
+    if(!result&&viewport_diagnostics)for(unsigned i=0;i<viewport_targets.size();++i)
         if(!safe_copy(after,viewport_targets[i],32)||memcmp(after,viewport_before[i].data(),32))result=62;
+    if(target_heap)target_heap->Release();if(target_texture)target_texture->Release();
     if(event)CloseHandle(event);if(fence)fence->Release();if(list)list->Release();
     if(allocator)allocator->Release();if(queue)queue->Release();if(device)device->Release();
     return result;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureViewportCheck(void*) {
     viewport_diagnostics=true;return GearsCaptureGPUCheck(nullptr);
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeCheck(void*) {
+    if(MH_Initialize()!=MH_OK||begin_target_prime())return 65;
+    ID3D12Device* device{};ID3D12Resource* texture{};ID3D12DescriptorHeap* descriptors{};DWORD result=0;
+    D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_DEFAULT;
+    D3D12_RESOURCE_DESC description{};description.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;description.Width=32;description.Height=16;
+    description.DepthOrArraySize=1;description.MipLevels=2;description.Format=DXGI_FORMAT_R8G8B8A8_UNORM;description.SampleDesc.Count=1;description.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    D3D12_DESCRIPTOR_HEAP_DESC handles{};handles.Type=D3D12_DESCRIPTOR_HEAP_TYPE_RTV;handles.NumDescriptors=1;
+    if(FAILED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)))||
+       FAILED(device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&description,D3D12_RESOURCE_STATE_RENDER_TARGET,nullptr,IID_PPV_ARGS(&texture)))||
+       FAILED(device->CreateDescriptorHeap(&handles,IID_PPV_ARGS(&descriptors))))result=66;
+    if(!result){auto handle=descriptors->GetCPUDescriptorHandleForHeapStart();D3D12_RENDER_TARGET_VIEW_DESC view{};
+        view.Format=description.Format;view.ViewDimension=D3D12_RTV_DIMENSION_TEXTURE2D;view.Texture2D.MipSlice=1;
+        device->CreateRenderTargetView(texture,&view,handle);auto mapped=viewport_stats.lookup(handle.ptr);
+        if(mapped.resource!=reinterpret_cast<uintptr_t>(texture)||mapped.width!=16||mapped.height!=8||mapped.mip!=1)result=67;
+    }
+    SetEvent(prime_event);ULONGLONG deadline=GetTickCount64()+5000;
+    while(!prime_done.load()&&GetTickCount64()<deadline)Sleep(1);
+    if(!prime_done.load()||prime_recording.load()||active.load())result=68;
+    std::array<unsigned char,32> bytes{};
+    for(unsigned i=0;i<prime_targets.size();++i)
+        if(!safe_copy(bytes.data(),prime_targets[i],bytes.size())||memcmp(bytes.data(),prime_original_bytes[i].data(),bytes.size()))result=69;
+    if(descriptors)descriptors->Release();if(texture)texture->Release();if(device)device->Release();return result;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeHandoffCheck(void*) {
+    if(MH_Initialize()!=MH_OK||begin_target_prime())return 65;
+    viewport_diagnostics=true;DWORD result=GearsCaptureGPUCheck(nullptr);
+    if(!prime_handoff.load())SetEvent(prime_event);
+    ULONGLONG deadline=GetTickCount64()+5000;while(!prime_done.load()&&GetTickCount64()<deadline)Sleep(1);
+    if(!prime_done.load()||prime_recording.load())result=68;
+    return result;
 }
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {
     // Keep CRT thread notifications enabled for the statically linked runtime.
