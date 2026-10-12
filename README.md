@@ -29,6 +29,7 @@
 - [渲染线程消费与视图生命周期](docs/26-renderer-consumption-and-lifetime.md)
 - [矩阵准备与历史数据调查](docs/27-render-matrix-preparation-leads.md)
 - [渲染准备阶段前后验证](docs/28-render-preparation-validation.md)
+- [左右眼视图计算的离线核对](docs/29-offline-stereo-view-math.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
