@@ -53,6 +53,7 @@ bool constructor_state_enabled{};
 bool constructor_eye_enabled{};
 bool renderer_pair_enabled{};
 bool submit_pair_enabled{};
+bool submit_background{};
 bool submit_output_bounds{};
 bool submit_mono_control{};
 bool submit_mono_independent_state{};
@@ -113,6 +114,11 @@ struct OutputStack {gears_viewport::Target target{};unsigned kind{},count{};std:
 std::array<OutputStack,8> output_stacks{};
 std::mutex output_stack_mutex;
 std::atomic<unsigned> output_stack_attempts{0};
+struct PostNode {uintptr_t object{},table{},function{};unsigned flags{},valid{};};
+struct PostView {uintptr_t view{},array{};int count{},capacity{};unsigned valid{};
+    std::array<float,4> source{};std::array<int,4> target{};std::array<PostNode,16> nodes{};};
+struct PostSnapshot {uintptr_t renderer{};unsigned view_count{};std::array<PostView,2> views{};};
+std::array<PostSnapshot,4> output_post_snapshots{};
 using ResetListFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*,ID3D12PipelineState*);
 using ViewportsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_VIEWPORT*);
 using ScissorsFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_RECT*);
@@ -588,8 +594,8 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     if(submit_pair_seconds) {
         if(submitted_lifetime.is_closed())return false;
         if(!submit_deadline && now()<submit_not_before)return false;
-        if(!submit_deadline && !foreground())return false;
-        if(submit_deadline && (now()>=submit_deadline || !foreground() || (GetAsyncKeyState(VK_F8)&0x8000))) {
+        if(!submit_deadline && !foreground() && !submit_background)return false;
+        if(submit_deadline && (now()>=submit_deadline || (!foreground() && !submit_background) || (GetAsyncKeyState(VK_F8)&0x8000))) {
             if(submitted_lifetime.close() && state_created.load() && !submit_retained.load()) {
                 state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
             }
@@ -903,6 +909,31 @@ void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,
     }
     original_scissors(list,count,values);
 }
+void observe_output_post(unsigned attempt){
+    if(attempt>=output_post_snapshots.size()||!consuming_renderer)return;
+    auto& sample=output_post_snapshots[attempt];sample.renderer=reinterpret_cast<uintptr_t>(consuming_renderer);
+    Record record{};inspect_completed_renderer(record,consuming_renderer);
+    if(!(record.valid&4096)||record.renderer_count!=2||record.family_count!=2)return;
+    sample.view_count=2;
+    for(unsigned eye=0;eye<2;++eye){auto& view=sample.views[eye];
+        view.view=record.renderer_storage+uintptr_t(eye)*0xd30;
+        if(record.family_views[eye]!=view.view)continue;
+        if(safe_copy(view.source.data(),reinterpret_cast<void*>(view.view+0x48),16)&&
+           safe_copy(view.target.data(),reinterpret_cast<void*>(view.view+0x58),16))view.valid|=1;
+        struct Header{uintptr_t data;int count,capacity;} header{};
+        if(!safe_copy(&header,reinterpret_cast<void*>(view.view+0xc84),sizeof(header)))continue;
+        view.array=header.data;view.count=header.count;view.capacity=header.capacity;
+        if(header.count<0||header.capacity<header.count||header.capacity>1024||
+           (header.count&&(!header.data||header.data%8)))continue;
+        view.valid|=2;
+        for(unsigned i=0;i<std::min<unsigned>(static_cast<unsigned>(header.count),view.nodes.size());++i){auto& node=view.nodes[i];
+            if(!safe_copy(&node.object,reinterpret_cast<void*>(header.data+i*8),8)||!node.object)continue;
+            if(safe_copy(&node.table,reinterpret_cast<void*>(node.object),8)&&node.table&&
+               safe_copy(&node.function,reinterpret_cast<void*>(node.table+8),8)&&
+               safe_copy(&node.flags,reinterpret_cast<void*>(node.object+8),4))node.valid=1;
+        }
+    }
+}
 void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
     if(!trial_draw_scope||output_stack_attempts.load()>=64)return;
     auto binding=viewport_stats.binding(reinterpret_cast<uintptr_t>(list));
@@ -910,6 +941,7 @@ void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
        binding.target.width!=1920||binding.target.height!=1080||binding.target.format!=24)return;
     unsigned attempt=output_stack_attempts.load();
     do {if(attempt>=64)return;}while(!output_stack_attempts.compare_exchange_weak(attempt,attempt+1));
+    observe_output_post(attempt);
     OutputStack value{};value.target=binding.target;value.kind=kind;
     value.count=CaptureStackBackTrace(0,static_cast<DWORD>(value.frames.size()),value.frames.data(),nullptr);
     if(!value.count)return;
@@ -1114,6 +1146,10 @@ DWORD WINAPI worker(void*) {
     submit_duplicate_control=GetPrivateProfileIntW(L"Capture",L"submit_duplicate_control",0,ini)==1;
     if(submit_duplicate_control && (submit_mono_control || submit_output_bounds))return 4;
     submit_pair_seconds=GetPrivateProfileIntW(L"Capture",L"submit_pair_seconds",0,ini);
+    submit_background=GetPrivateProfileIntW(L"Capture",L"submit_background",0,ini)!=0;
+    if(submit_background && (!submit_pair_enabled||!viewport_diagnostics||!submit_pair_seconds||submit_pair_seconds>10)){
+        fprintf(status,"rejected: background mode requires bounded viewport pair diagnostics of at most ten seconds\n");fclose(status);return 2;
+    }
     if(submit_pair_seconds>60)return 4;
     if(submit_pair_enabled && (!constructor_eye_enabled || renderer_pair_enabled)){fprintf(status,"rejected: submit pair requires exclusive shifted-eye mode\n");fclose(status);return 3;}
     if(renderer_pair_enabled && !constructor_eye_enabled){fprintf(status,"rejected: renderer pair requires independent shifted eye\n");fclose(status);return 3;}
@@ -1269,7 +1305,22 @@ DWORD WINAPI worker(void*) {
               fprintf(status,"gpu_trial_target viewport=%u targets=%u resource=%llx width=%llu height=%u format=%u mip=%u calls=%llu\n",
                   entry.viewport,entry.targets,static_cast<unsigned long long>(entry.target.resource),entry.target.width,
                   entry.target.height,entry.target.format,entry.target.mip,entry.calls);
+          fprintf(status,"submit_background=%u\n",submit_background);
           fprintf(status,"gpu_output_stack_attempts=%u limit=64 slots=8 frames=24\n",output_stack_attempts.load());
+          for(unsigned i=0;i<output_post_snapshots.size();++i){const auto& sample=output_post_snapshots[i];if(!sample.renderer)continue;
+              fprintf(status,"gpu_output_post index=%u renderer=%llx view_count=%u nodes_limit=16\n",i,
+                  static_cast<unsigned long long>(sample.renderer),sample.view_count);
+              for(unsigned eye=0;eye<sample.view_count;++eye){const auto& view=sample.views[eye];
+                  fprintf(status,"gpu_output_post_view index=%u eye=%u view=%llx valid=%u array=%llx count=%d capacity=%d source=%.9g,%.9g,%.9g,%.9g target=%d,%d,%d,%d\n",
+                      i,eye,static_cast<unsigned long long>(view.view),view.valid,static_cast<unsigned long long>(view.array),view.count,view.capacity,
+                      view.source[0],view.source[1],view.source[2],view.source[3],view.target[0],view.target[1],view.target[2],view.target[3]);
+                  for(unsigned n=0;n<view.nodes.size();++n){const auto& node=view.nodes[n];if(!node.object)continue;
+                      fprintf(status,"gpu_output_post_node index=%u eye=%u node=%u object=%llx table=%llx function=%llx flags=%u valid=%u\n",
+                          i,eye,n,static_cast<unsigned long long>(node.object),static_cast<unsigned long long>(node.table),
+                          static_cast<unsigned long long>(node.function),node.flags,node.valid);
+                  }
+              }
+          }
           for(unsigned i=0;i<output_stacks.size();++i){const auto& entry=output_stacks[i];if(!entry.count)continue;
               fprintf(status,"gpu_output_stack index=%u resource=%llx kind=%u count=%u\n",i,
                   static_cast<unsigned long long>(entry.target.resource),entry.kind,entry.count);

@@ -49,6 +49,7 @@
 - [GPU 绘制区域与裁剪证据](docs/46-gpu-viewport-and-scissor-evidence.md)
 - [颜色目标与窗口后备缓冲对应](docs/47-render-target-and-backbuffer-evidence.md)
 - [窗口最终输出的原生调用路径](docs/48-final-output-call-path.md)
+- [左右视图的最终处理对象](docs/49-per-view-output-objects.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果
