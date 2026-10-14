@@ -3,6 +3,7 @@
 #include <memory>
 #include <thread>
 #include <cstdio>
+#include <vector>
 
 using namespace gears_ui_receipts;
 static gears_ui_batch::Receipt receipt(std::uintptr_t payload,unsigned begin){
@@ -13,24 +14,30 @@ static gears_ui_batch::Receipt receipt(std::uintptr_t payload,unsigned begin){
 }
 static bool same(Claim const& a,Claim const& b){
     if(a.generation!=b.generation||a.payload!=b.payload||a.canvas!=b.canvas||a.fcanvas!=b.fcanvas||a.item!=b.item||
-       a.sort_key!=b.sort_key||a.count!=b.count||a.observed_end!=b.observed_end||a.unknown_vertices!=b.unknown_vertices||a.kind_mask!=b.kind_mask)return false;
+       a.sort_key!=b.sort_key||a.count!=b.count||a.observed_end!=b.observed_end||a.unknown_vertices!=b.unknown_vertices||a.kind_mask!=b.kind_mask||
+       a.vertex_count!=b.vertex_count||bool(a.vertices)!=bool(b.vertices))return false;
+    if(a.vertices&&a.vertices->data!=b.vertices->data)return false;
     for(unsigned i=0;i<entry_capacity;++i){auto const& x=a.entries[i];auto const& y=b.entries[i];
         if(x.kind!=y.kind||x.root_invocation!=y.root_invocation||x.receipt.canvas!=y.receipt.canvas||
            x.receipt.fcanvas!=y.receipt.fcanvas||x.receipt.item!=y.receipt.item||x.receipt.payload!=y.receipt.payload||
-           x.receipt.sort_key!=y.receipt.sort_key||x.receipt.begin!=y.receipt.begin||x.receipt.end!=y.receipt.end||x.receipt.vertices!=y.receipt.vertices)return false;
+           x.receipt.sort_key!=y.receipt.sort_key||x.receipt.begin!=y.receipt.begin||x.receipt.end!=y.receipt.end||x.vertex_offset!=y.vertex_offset||x.source!=y.source)return false;
     }return true;
 }
+static std::shared_ptr<VertexBuffer> no_memory(){return {};}
+static std::shared_ptr<VertexBuffer> throw_no_memory(){throw std::bad_alloc();}
+static std::shared_ptr<VertexBuffer> shared_buffer;
+static std::shared_ptr<VertexBuffer> aliased_memory(){return shared_buffer;}
 int main(){
     auto s=std::make_unique<Store>();Claim out{};out.generation=999;out.payload=0xdead;auto unchanged=out;
     assert(!s->claim(0xdead,out)&&same(out,unchanged));
     auto first=receipt(0x5000,4);assert(s->publish(first,1,17));first.vertices[0][0]=255;
     assert(s->publish(receipt(0x5000,12),3,18));
     assert(s->claim(0x5000,out));assert(out.count==2&&out.observed_end==16&&out.unknown_vertices==8&&out.kind_mask==5);
-    assert(out.entries[0].receipt.vertices[0][0]==4&&out.entries[0].root_invocation==17&&out.entries[1].kind==3);
+    assert(out.vertices->data[out.entries[0].vertex_offset][0]==4&&out.entries[0].root_invocation==17&&out.entries[1].kind==3&&out.vertex_count==8);
     auto detached=out;auto previous_generation=out.generation;
     assert(!s->claim(0x5000,out)&&same(out,detached));
     assert(s->publish(receipt(0x5000,0),2,19));assert(s->claim(0x5000,out)&&out.generation>previous_generation);
-    assert(detached.entries[0].receipt.vertices[0][0]==4&&detached.count==2); // Independent Claim copy.
+    assert(detached.vertices->data[detached.entries[0].vertex_offset][0]==4&&detached.count==2); // Immutable owning Claim copy.
 
     // Metadata mismatch poisons the ENTIRE group. Later valid publication
     // cannot silently restart it before the consumer/retire boundary.
@@ -68,5 +75,48 @@ int main(){
     left.join();right.join();assert(s->claim(0xd000,out)&&out.count==entry_capacity&&out.unknown_vertices==0);
     assert(s->claim(0xe000,out)&&out.count==entry_capacity&&out.kind_mask==2);
     assert(s->stats().capacity_rejected==2&&s->stats().unknown_vertices_seen>=8&&s->stats().active_groups==0);
+    // One 64-glyph range stores 256 vertices as ONE range, not 64 quad entries.
+    std::vector<Vertex> glyphs(256);for(unsigned i=0;i<glyphs.size();++i)glyphs[i].fill(static_cast<unsigned char>(i));
+    auto text=range_metadata(receipt(0xf000,4));text.end=260;
+    assert(s->publish_range(text,glyphs.data(),glyphs.size(),3,1000,Source::CanvasText));
+    glyphs[0][0]=99;assert(s->publish(receipt(0xf000,260),1,1001));
+    assert(s->claim(0xf000,out)&&out.count==2&&out.vertex_count==260&&out.entries[1].vertex_offset==256);
+    assert(out.vertices->data[0][0]==0&&out.vertices->data[255][0]==255&&out.unknown_vertices==4&&out.kind_mask==5);
+    auto full_text=out;assert(s->publish(receipt(0xf000,0),2,1002));assert(s->retire(0xf000));
+    assert(full_text.vertices->data[0][0]==0&&full_text.entries[0].source==Source::CanvasText);
+    for(unsigned atlas=0;atlas<2;++atlas){auto range=text;range.payload=0xf100+atlas;range.item+=atlas;range.begin=0;range.end=256;
+        assert(s->publish_range(range,glyphs.data(),glyphs.size(),3,1100+atlas,Source::CanvasText));}
+    for(unsigned atlas=0;atlas<2;++atlas)assert(s->claim(0xf100+atlas,out)&&out.vertex_count==256&&out.count==1);
+    std::vector<Vertex> maximum(vertex_capacity);auto all=text;all.payload=0xf200;all.begin=0;all.end=unsigned(vertex_capacity);
+    assert(s->publish_range(all,maximum.data(),maximum.size(),3,1200,Source::CanvasText));
+    assert(!s->publish(receipt(0xf200,unsigned(vertex_capacity)),3,1201));
+    before=out;assert(!s->claim(0xf200,out)&&same(out,before));
+    assert(s->publish_range(all,maximum.data(),maximum.size(),3,1202,Source::CanvasText));
+    assert(s->claim(0xf200,out)&&out.vertex_count==vertex_capacity&&out.count==1);
+    auto partial=text;partial.payload=0xf250;partial.begin=0;partial.end=256;
+    assert(s->publish_range(partial,glyphs.data(),glyphs.size(),3,1250,Source::CanvasText));
+    partial.begin=256;partial.end=1280;
+    assert(!s->publish_range(partial,maximum.data(),maximum.size(),3,1251,Source::CanvasText));
+    before=out;assert(!s->claim(0xf250,out)&&same(out,before));
+    auto overlap=text;overlap.payload=0xf300;overlap.begin=0;overlap.end=256;
+    assert(s->publish_range(overlap,glyphs.data(),glyphs.size(),3,1300,Source::CanvasText));
+    assert(!s->publish(receipt(0xf300,4),3,1301));assert(s->retire(0xf300));
+    // Explicit native subtitle provenance permits missing UCanvas; no FCanvas
+    // address is forged into that field and no new semantic kind is invented.
+    auto subtitle=text;subtitle.canvas=0;subtitle.payload=0xf400;subtitle.begin=0;subtitle.end=256;
+    assert(!s->publish_range(subtitle,glyphs.data(),glyphs.size(),3,1400,Source::CanvasText));
+    assert(s->publish_range(subtitle,glyphs.data(),glyphs.size(),3,1401,Source::NativeSubtitle));
+    assert(s->claim(0xf400,out)&&!out.canvas&&out.entries[0].source==Source::NativeSubtitle);
+    assert(s->publish_range(subtitle,glyphs.data(),glyphs.size(),3,1402,Source::NativeSubtitle));
+    auto not_native=subtitle;not_native.canvas=0x1000;not_native.begin=256;not_native.end=512;
+    assert(!s->publish_range(not_native,glyphs.data(),glyphs.size(),3,1403,Source::CanvasText));assert(s->retire(0xf400));
+    for(auto allocator:{no_memory,throw_no_memory}){auto failing=std::make_unique<Store>(allocator);
+        assert(!failing->publish(receipt(0xf500,0),1,1500));assert(failing->stats().allocation_rejected==1&&failing->stats().poisoned_groups==1);
+        assert(!failing->publish(receipt(0xf500,4),1,1501));before=out;
+        assert(!failing->claim(0xf500,out)&&same(out,before));}
+    shared_buffer=std::make_shared<VertexBuffer>();shared_buffer->data[0][0]=73;
+    auto aliased=std::make_unique<Store>(aliased_memory);
+    assert(!aliased->publish(receipt(0xf600,0),1,1600)&&aliased->stats().allocation_rejected==1);
+    assert(shared_buffer->data[0][0]==73);shared_buffer.reset();
     printf("Payload receipts: bounded copy claims, monotonic tokens, gaps, poison tombstones, overflow latch and concurrent publishers passed\n");
 }

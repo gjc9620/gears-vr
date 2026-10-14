@@ -55,17 +55,16 @@ bool validate_ui_payload_content(gears_ui_receipts::Claim const& claim,UiPayload
     gears_ui_batch::detail::Reader<decltype(&safe_copy)> read{safe_copy};
     gears_ui_batch::detail::Array vertices{},after{};
     if(!claim.count||claim.count>claim.entries.size()||!read.field(vertices,claim.payload,0x48)||
-       !gears_ui_batch::detail::valid(vertices,1048576,gears_ui_batch::vertex_stride))return false;
+       !gears_ui_batch::detail::valid(vertices,1048576,gears_ui_batch::vertex_stride)||
+       !gears_ui_indices::detail::claim_valid(claim,claim.payload,unsigned(vertices.count)))return false;
     unsigned covered=0;
     for(size_t i=0;i<claim.count;++i){auto const& entry=claim.entries[i];auto const& receipt=entry.receipt;
-        if(entry.kind<1||entry.kind>3||receipt.end>unsigned(vertices.count)||receipt.begin>receipt.end||receipt.end-receipt.begin!=4)return false;
-        std::array<gears_ui_batch::Vertex,4> copied{};
-        for(unsigned v=0;v<copied.size();++v){uintptr_t address{};
+        const auto length=receipt.end-receipt.begin;
+        for(unsigned v=0;v<length;++v){uintptr_t address{};gears_ui_batch::Vertex copied{};
             if(!gears_ui_batch::detail::add(vertices.data,size_t(receipt.begin+v)*gears_ui_batch::vertex_stride,address)||
-               !read.bytes(copied[v].data(),address,copied[v].size()))return false;
+               !read.bytes(copied.data(),address,copied.size())||copied!=claim.vertices->data[entry.vertex_offset+v])return false;
         }
-        if(copied!=receipt.vertices)return false;
-        covered+=4;context.kind_vertices[entry.kind-1]+=4;context.kind_mask|=1u<<(entry.kind-1);
+        covered+=length;context.kind_vertices[entry.kind-1]+=length;context.kind_mask|=1u<<(entry.kind-1);
         if(!i)context.root_first=entry.root_invocation;
         context.root_last=entry.root_invocation;
     }

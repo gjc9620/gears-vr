@@ -33,15 +33,17 @@ using RawSegment=std::array<unsigned char,36>;
 template<class T> T value(RawSegment const& raw,unsigned offset){T out{};std::memcpy(&out,raw.data()+offset,sizeof(out));return out;}
 inline bool claim_valid(gears_ui_receipts::Claim const& claim,std::uintptr_t payload,unsigned vertex_count){
     if(claim.count>claim.entries.size()||(claim.payload&&claim.payload!=payload))return false;
-    if(!claim.count)return !claim.observed_end&&!claim.unknown_vertices&&!claim.kind_mask;
-    if(!claim.generation||claim.payload!=payload||!claim.canvas||!claim.fcanvas||!claim.item)return false;
-    unsigned previous=0,mask=0;std::uint64_t unknown=0;
+    if(!claim.count)return !claim.observed_end&&!claim.unknown_vertices&&!claim.kind_mask&&!claim.vertex_count&&!claim.vertices;
+    if(!claim.generation||claim.payload!=payload||!claim.fcanvas||!claim.item||!claim.vertices||claim.vertex_count>gears_ui_receipts::vertex_capacity)return false;
+    unsigned previous=0,mask=0,copied=0;std::uint64_t unknown=0;
     for(std::size_t i=0;i<claim.count;++i){auto const& e=claim.entries[i];auto const& r=e.receipt;
-        if(e.kind<1||e.kind>3||!e.root_invocation||r.payload!=payload||r.canvas!=claim.canvas||r.fcanvas!=claim.fcanvas||
-           r.item!=claim.item||r.sort_key!=claim.sort_key||r.end<=r.begin||r.end-r.begin!=4||r.begin<previous||r.end>vertex_count)return false;
+        if(!gears_ui_receipts::provenance_valid(r,e.kind,e.source)||!e.root_invocation||r.payload!=payload||r.canvas!=claim.canvas||r.fcanvas!=claim.fcanvas||
+           r.item!=claim.item||r.sort_key!=claim.sort_key||r.end<=r.begin||(r.end-r.begin)%4||r.begin<previous||r.end>vertex_count||
+           e.vertex_offset!=copied||r.end-r.begin>gears_ui_receipts::vertex_capacity-copied)return false;
+        copied+=r.end-r.begin;
         unknown+=r.begin-previous;previous=r.end;mask|=1u<<(e.kind-1);
     }
-    return claim.observed_end==previous&&claim.unknown_vertices==unknown&&claim.kind_mask==mask;
+    return claim.observed_end==previous&&claim.unknown_vertices==unknown&&claim.kind_mask==mask&&claim.vertex_count==copied;
 }
 inline bool bounded_snapshot(Snapshot const& s){
     if(!s.payload||s.vertex_count>1048576||s.segment_count>segment_capacity||s.total_indices>index_capacity)return false;

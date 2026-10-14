@@ -123,5 +123,20 @@ int main(){
     auto badsnapshot=saved;badsnapshot.segment_count=65;Cursor invalid(badsnapshot);assert(invalid.poisoned()&&!invalid.finish());
     badsnapshot=saved;badsnapshot.total_indices=8193;Cursor too_many(badsnapshot);assert(too_many.poisoned());
     badsnapshot=saved;badsnapshot.segments[0].kind_mask=1;Cursor bad_membership(badsnapshot);assert(bad_membership.poisoned());
+    // A variable-size text range participates in actual-index membership as a
+    // single interval. Neither quad splitting nor 32-entry truncation is used.
+    auto store=std::make_unique<gears_ui_receipts::Store>();std::vector<gears_ui_receipts::Vertex> text_vertices(256);
+    gears_ui_receipts::RangeMetadata text{0x500000,0x500100,0x500200,f.payload,-7,0,256};
+    assert(store->publish_range(text,text_vertices.data(),256,3,2000,gears_ui_receipts::Source::CanvasText));
+    gears_ui_receipts::Claim long_text{};assert(store->claim(f.payload,long_text));
+    Fixture text_indices;text_indices.segment(0,0,255,{0,255,128,128,255,0});
+    assert(capture(text_indices.reader(),text_indices.payload,long_text,out));
+    assert(out.segments[0].known[2]==6&&out.segments[0].unknown==0&&out.segments[0].entry_mask==1);
+    text.canvas=0;assert(store->publish_range(text,text_vertices.data(),256,3,2001,gears_ui_receipts::Source::NativeSubtitle));
+    assert(store->claim(f.payload,long_text)&&capture(text_indices.reader(),text_indices.payload,long_text,out));
+    auto bad_range=long_text;bad_range.entries[0].vertex_offset=1;auto stable=out;
+    assert(!capture(text_indices.reader(),text_indices.payload,bad_range,out)&&same(out,stable));
+    bad_range=long_text;bad_range.vertex_count=255;assert(!capture(text_indices.reader(),text_indices.payload,bad_range,out)&&same(out,stable));
+    bad_range=long_text;bad_range.vertices.reset();assert(!capture(text_indices.reader(),text_indices.payload,bad_range,out)&&same(out,stable));
     printf("Index membership: min-relative/reordered/repeated indices, unknown/mixed references, stable copies, zero draws and fail-closed cursor completion passed\n");
 }

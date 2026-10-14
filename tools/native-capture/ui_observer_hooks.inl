@@ -31,6 +31,7 @@ std::array<UiScopeReject,8> ui_first_scope_reject{};
 std::atomic<uint64_t> ui_vm_calls{},ui_invocation_counter{};
 std::mutex ui_rows_mutex;
 #include "ui_payload_observer.inl"
+#include "ui_text_observer.inl"
 
 void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeContext* selected_out=nullptr){
     if(!ui_observer_enabled||!recording.load()||!ui_invocation.context.kind)return;
@@ -100,7 +101,7 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
 void __fastcall hook_ui_tile(void* self,void* frame,void* result){
     Scope active_scope;gears_ui::ScopeContext selected{};observe_ui_canvas(1,self,frame,&selected);
     gears_ui_batch::Snapshot before{};gears_ui::CanvasSample sample{};
-    const bool eligible=selected.kind&&ui_observer_enabled&&recording.load();
+    const bool eligible=selected.kind&&ui_observer_enabled&&recording.load()&&!ui_text_collect_depth;
     if(eligible)++ui_batch_attempts;
     const bool captured=eligible&&gears_ui::sample_canvas(ui_config,safe_copy,selected,
         reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(frame),sample)&&
@@ -117,7 +118,26 @@ void __fastcall hook_ui_tile(void* self,void* frame,void* result){
     }
 }
 void __fastcall hook_ui_material(void* self,void* frame,void* result){Scope active_scope;observe_ui_canvas(2,self,frame);ui_original[2](self,frame,result);}
-void __fastcall hook_ui_text(void* self,void* frame,void* result){Scope active_scope;observe_ui_canvas(3,self,frame);ui_original[3](self,frame,result);}
+void __fastcall hook_ui_text(void* self,void* frame,void* result){
+    Scope active_scope;gears_ui::ScopeContext selected{};observe_ui_canvas(3,self,frame,&selected);
+    auto& counts=ui_text_counts[0];if(ui_observer_enabled&&recording.load())++counts.calls;
+    const bool eligible=selected.kind&&ui_observer_enabled&&recording.load()&&!ui_text_collect_depth;
+    if(!eligible){ui_original[3](self,frame,result);return;}
+    ++counts.eligible;const auto invocation=++ui_invocation_counter;
+    gears_ui_text_batch::Snapshot before{};gears_ui::CanvasSample sample{};
+    const bool captured=gears_ui::sample_canvas(ui_config,safe_copy,selected,
+        reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(frame),sample)&&
+        gears_ui_text_batch::snapshot_canvas({base},safe_copy,reinterpret_cast<uintptr_t>(self),before);
+    if(!captured)++counts.before_rejected;
+    UiTextCollectScope collecting;
+    ui_original[3](self,frame,result);
+    if(captured&&recording.load()){
+        gears_ui_text_batch::Delta delta{};
+        if(gears_ui_text_batch::delta_canvas({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),delta))
+            publish_ui_text_delta(delta,selected.kind,invocation,gears_ui_receipts::Source::CanvasText,0);
+        else ++counts.delta_rejected;
+    }
+}
 const std::array<UiExec,4> ui_detours{hook_ui_vm,hook_ui_tile,hook_ui_material,hook_ui_text};
 
 bool reserve_ui_hooks(){
@@ -129,7 +149,7 @@ bool reserve_ui_hooks(){
            MH_CreateHook(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]))!=MH_OK||
            !safe_copy(after.data(),ui_targets[i],after.size())||after!=before)return false;
     }
-    if(!reserve_ui_execute())return false;
+    if(!reserve_ui_execute()||!reserve_ui_subtitle())return false;
     ui_reserved=true;return true;
 }
 
@@ -200,6 +220,7 @@ void print_ui_observer(FILE* status,bool disabled){
         ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;
     print_ui_payload_observer(status);
+    print_ui_text_observer(status);
     fprintf(status,"ui_canvas_chain calls=%llu rejected=%llu previous_offset=56 maximum_frames=%u root_identity_required=1\n",
         ui_chain_calls.load(),ui_chain_rejected.load(),gears_ui::canvas_frame_limit);
     if(ui_chain_rejected.load()){auto const& r=ui_first_chain_reject;
