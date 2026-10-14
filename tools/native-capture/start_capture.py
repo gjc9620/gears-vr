@@ -63,6 +63,51 @@ def remote_call(handle,address,parameter):
     finally:k.CloseHandle(thread)
 
 
+def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False):
+    """Read-only, pre-activation acquisition; never retries identity failures.
+
+    A new Resolver.resolve() prepares fresh registries/caches and roles on every
+    attempt. Anchor, UI and the eventual Capture INI all use that same camera.
+    The ten-second deadline rejects late success; synchronous reads themselves
+    cannot be preempted. No new attempt starts beyond the deadline.
+    """
+    from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged
+    deadline=time.monotonic()+10;attempts=3 if ui_observer else 1
+    for attempt in range(attempts):
+        if ui_observer and time.monotonic()>=deadline:
+            raise UIConfigRejected('UI acquisition retry deadline exceeded before activation')
+        try:
+            r=Resolver(pid,profile)
+            try:
+                refreshed=r.resolve()
+                if refreshed['local_player_address']!=camera['local_player_address']:
+                    raise RuntimeError('Local player changed during preparation')
+                if int(refreshed['module_base'],0)!=int(camera['module_base'],0):
+                    raise RuntimeError('Module base changed during preparation')
+                for offset,signature in signatures.items():
+                    if r.read(r.base+offset,len(signature))!=signature:
+                        raise RuntimeError('Target prologue differs; instrumentation rejected')
+                anchor_metadata=None;anchor_section='';ui_metadata=None;ui_section=''
+                if anchor_observer:
+                    from anchor_config import build_anchor_config,anchor_ini,AnchorSamplingRejected
+                    try:certificate,anchor_metadata=build_anchor_config(r,refreshed)
+                    except AnchorSamplingRejected as error:
+                        save_anchor_sampling_failure(dll,pid,error)
+                        raise
+                    anchor_section=anchor_ini(certificate);anchor_metadata['pid']=pid
+                if ui_observer:
+                    ui_certificate,ui_metadata=build_ui_observer_config(r,refreshed)
+                    ui_section=ui_observer_ini(ui_certificate)
+                if ui_observer and time.monotonic()>=deadline:
+                    raise UIConfigRejected('UI acquisition exceeded retry deadline before activation')
+                return refreshed,anchor_metadata,anchor_section,ui_metadata,ui_section
+            finally:r.p.close()
+        except UIRegistryChanged:
+            if attempt+1==attempts or time.monotonic()>=deadline:raise
+            print(f'UI registry changed during preparation; reacquiring all certificates ({attempt+2}/{attempts})',file=sys.stderr)
+            time.sleep((min)(.05,(max)(0,deadline-time.monotonic())))
+
+
 def save_anchor_sampling_failure(dll,pid,error):
     # A failure receipt is unique and never replaces the successful certificate.
     stamp=time.perf_counter_ns()
@@ -288,27 +333,8 @@ def main():
                 0x4ce80c:bytes.fromhex('40534883ec20488bc1488d511c488bd9'),
                 0x33bc70:bytes.fromhex('48895c2408574883ec208bda488bf9')})
         if args.shadow_constructor:signatures[0x15e428]=bytes.fromhex('488bc4488958104889701848897820')
-        anchor_metadata=None;anchor_section='';ui_metadata=None;ui_section=''
-        r=Resolver(args.pid,profile)
-        try:
-            refreshed=r.resolve()
-            if refreshed['local_player_address']!=camera['local_player_address']:
-                raise RuntimeError('Local player changed during preparation')
-            for offset,signature in signatures.items():
-                if r.read(r.base+offset,len(signature))!=signature:raise RuntimeError('Target prologue differs; instrumentation rejected')
-            if args.anchor_observer:
-                from anchor_config import build_anchor_config,anchor_ini,AnchorSamplingRejected
-                try:certificate,anchor_metadata=build_anchor_config(r,camera)
-                except AnchorSamplingRejected as error:
-                    save_anchor_sampling_failure(dll,args.pid,error)
-                    raise
-                anchor_section=anchor_ini(certificate)
-                anchor_metadata['pid']=args.pid
-            if args.ui_observer:
-                from ui_observer_config import build_ui_observer_config,ui_observer_ini
-                ui_certificate,ui_metadata=build_ui_observer_config(r,camera)
-                ui_section=ui_observer_ini(ui_certificate)
-        finally:r.p.close()
+        camera,anchor_metadata,anchor_section,ui_metadata,ui_section=acquire_observer_preparation(
+            args.pid,profile,camera,signatures,dll,anchor_observer=args.anchor_observer,ui_observer=args.ui_observer)
         config='[Capture]\n'+f'pid={args.pid}\nseconds={args.seconds}\n'+f"local_player={camera['local_player_address']}\ncontroller={camera['controller_address']}\ntimestamp={camera['timestamp_address']}\n"
         yaw_address=int(camera['pov_address'],16)+int(camera['offsets']['Rotation'],16)+4
         config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\nsweep={int(args.sweep)}\nlive_head={int(args.live_head)}\n"

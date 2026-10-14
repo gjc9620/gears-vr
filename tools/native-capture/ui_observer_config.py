@@ -28,6 +28,9 @@ CANVAS = {'clip_x':('ClipX','FloatProperty'),'clip_y':('ClipY','FloatProperty'),
 class UIConfigRejected(RuntimeError):
     pass
 
+class UIRegistryChanged(UIConfigRejected):
+    """Only the final concurrent registry-header change permits reacquisition."""
+
 def build_ui_observer_config(resolver, camera):
     r=resolver;p=r.profile;started=time.perf_counter_ns()
     if p.get('sha256')!=GAME_SHA or camera.get('sha256')!=GAME_SHA or camera.get('pid')!=r.pid:
@@ -198,7 +201,7 @@ def build_ui_observer_config(resolver, camera):
     for address,value in checks+links:
         if r.read(address,len(value))!=value:raise UIConfigRejected('UI field/link/entry changed during assembly')
     if r.read(r.names_header,16)!=names_header or r.read(r.objects_header,16)!=objects_header:
-        raise UIConfigRejected('UI registry changed during assembly; reacquire')
+        raise UIRegistryChanged('UI registry changed during assembly; reacquire')
     config=dict(schema=1,pid=r.pid,base=r.base,sha256=GAME_SHA,objects_header=r.objects_header,
                 names_header=r.names_header,layout={key:p[key] for key in LAYOUT},identities=ids,
                 supers=[dict(identity=add(a),parent=b) for a,b in sorted(supers.items())],roles=roles,
