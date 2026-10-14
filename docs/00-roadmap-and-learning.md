@@ -2,6 +2,14 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
+OwnedXr1/2：新增默认关闭的`GEARS_NATIVE_OWNED_XR_PROBE`，最多120个独立scene ticket，禁止legacy Present抢占同一个publisher。独立CPU store保存实际消费时的完整冻结sample，两眼必须一致；消费owned proof后按已认证矩形、allocation generation和状态调用`capture_resource`，同DIRECT队列复制并恢复源状态，明确busy跳帧后才退休CPU ticket。Owner仍保留到进程退出，Canvas没有重定向。
+
+实际PID46980与42588均完成120个独立ticket、119次共享纹理发布（第一帧无consumer而跳过）；**两轮XR projection提交均为0，新独立XR显示尚未通过**。Xr1在接收端读回ticket50/serial24的4096×2048双眼场景，pose序列与发布收据一致，每眼非黑4194304像素；只完成1张XR图像复制，提交前又因时间过期被拒绝。Xr2复制为0。接收端继续使用100ms门限，未提高门限、未把旧图改标为新pose。此结果证明资源共享与接收读回，不证明显示可用。
+
+Xr2的120组同一monotonic时钟测量：pose接收到选定目标中位6.29ms；选定到consumer开始77.66ms（包括native构建与排队，尚未单独测出队列驻留）；consumer开始到左眼final draw62.09ms；双眼final间0.125ms；右眼draw到真实双眼Execute返回0.074ms；Execute返回到可复制边界0.0002ms；共享复制调用0.036ms。pose到发布中位147.10ms/p95 155.33ms，已在producer端超过门限。consumer返回/销毁略早于提交，等待销毁不是本轮瓶颈；上述CPU时间不等于GPU执行时间。下一步拆分native构建和排队、测量scene录制开销，不盲目改复制接口或扩展反编译范围。
+
+两轮均通过39条实验回归；新增检查覆盖真实WARP共享像素/冻结ticket、双眼sample冲突、状态错配，以及owned模式拒绝legacy绑定。另一个关闭owned实验的构建通过6项兼容检查。58入口恢复和正常关闭通过；启动器仍因Owner保留而incomplete。证据`analysis/ui-position-runtime/owned-xr1-46980.audit.json`、`analysis/ui-position-runtime/owned-xr2-42588.audit.json`及`owned-xr2-42588-latency.json`；冻结清单`tools/vr-launcher/manifest-owned-xr1.json`、`manifest-owned-xr2.json`。默认玩家路径未切换为此实验，首版显示/性能验收未完成。
+
 OwnedSequence3 / PID45772：独立 Low 目标首次完成有界连续16个scene ticket（2、4至32），同一4096×2048资源，首尾两次GPU读回均成功；每眼2048×2048、4194304个非黑像素，首尾全图8090295个像素变化。人工读取GPU图像可见两眼不同视角的人物、柱子、地面与远处门口，没有HUD。中间14帧只有提交/状态证据，不能当成逐帧像素检查或持续游玩验收。目标全程为RT(4)，未覆盖游戏侧状态转换。
 
 本轮修正prebirth Present清除全部list历史的问题，保留真实Reset代次和已提交标记，并观察真实CreateCommandList/CreateCommandList1（SDK槽12/51）及88个创建对象的生命周期。混合unknown/duplicate批次即使关联失败，也在原始Execute返回后记录已知成员的真实提交；超容量/不可读成员使实验永久停止，不能经Present恢复。未增加DXGI白名单、未伪造Reset。32项SDK槽断言、17420项FrameLink检查、179项Trial检查及34条回归命令通过。此组合修正后连续实验通过，但不归因于所有历史头显黑屏。58入口独立恢复核验、正常退出通过；Owner与创建对象引用有意保留到进程退出，启动器仍如实incomplete。

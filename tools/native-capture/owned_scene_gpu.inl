@@ -24,10 +24,26 @@ constexpr bool continuous_probe=true;
 #else
 constexpr bool continuous_probe=false;
 #endif
-constexpr unsigned frame_limit=16;
+constexpr unsigned frame_limit=owned_xr_probe?120:16;
 owned_scene_readback::Probe last_readback;
 struct Frame {uint64_t ticket{};unsigned state{};bool copied{};};
 std::array<Frame,frame_limit> consumed_frames{};unsigned consumed_count{};
+gears_vr::StereoTicketStore image_tickets; // Independent of Present's legacy store and retirement.
+struct Publication {uint64_t ticket{},pose{},session{},serial{};unsigned reason{};};
+std::array<Publication,frame_limit> publications{};unsigned publication_count{},published_count{};
+uint64_t retained_images{},duplicate_images{};
+struct Timing {uint64_t ticket{};int64_t selected{},begin{},draw[2]{},submitted{},returned{},destroyed{},ready{},publish_begin{},publish_end{},received{};};
+std::array<Timing,frame_limit> timings{};unsigned timing_count{};
+Timing* timing(uint64_t ticket){for(unsigned i=0;i<timing_count;++i)if(timings[i].ticket==ticket)return &timings[i];return nullptr;}
+void selected(uint64_t ticket){
+ if(!owned_xr_probe||!stereo_gpu_publish)return;
+ if(timing_count<timings.size())timings[timing_count++]={ticket,gears_vr::monotonic_ns()};
+}
+void began(uint64_t ticket){if(auto t=timing(ticket))t->begin=gears_vr::monotonic_ns();}
+void drew(uint64_t ticket,unsigned eye){if(eye<2)if(auto t=timing(ticket))t->draw[eye]=gears_vr::monotonic_ns();}
+void submitted(uint64_t ticket){if(auto t=timing(ticket))if(!t->submitted)t->submitted=gears_vr::monotonic_ns();}
+void returned(uint64_t ticket){if(auto t=timing(ticket))t->returned=gears_vr::monotonic_ns();}
+void destroyed(uint64_t ticket){if(auto t=timing(ticket))t->destroyed=gears_vr::monotonic_ns();}
 struct ExecuteFailure {
  uintptr_t caller{},module{},queue{},missing_list{},missing_reset{},missing_device{};unsigned count{},inside_present{},present_depth{},missing_type{};
  bool previously_certified{};gears_frame_link::Snapshot stats{};
@@ -113,6 +129,54 @@ void activate(){
  if(!queue){fault(6);return;}
  birth_ok=tracker.birth_owned_output({resource,4096,2048},canonical_identity(queue),generation,creation.state,true,true);
  if(!birth_ok)fault(7);
+ if(birth_ok&&owned_xr_probe&&stereo_gpu_publish){
+  StereoPublishBypass bypass;
+  if(stereo_publish_counts.stopped.load()||!stereo_publisher.bind_resource(queue,texture,generation,
+       D3D12_RESOURCE_STATES(creation.state),simulator_operator)){fault(16);return;}
+  ++stereo_publish_counts.bind_requests;
+ }
+}
+void retain_image(){
+ if(!owned_xr_probe||!stereo_gpu_publish||!watching())return;
+ auto const& frame=consuming_frozen_frame;
+ if(!birth_ok||!frame.enabled||!frame.id||frame.id!=consuming_frame_ticket){fault(17);return;}
+ auto result=image_tickets.retain(frame.id,frame.sample,simulator_operator);
+ if(!gears_vr::StereoTicketStore::accepted(result)){fault(17);return;}
+ if(result==gears_vr::TicketRetainResult::retained)++retained_images;else ++duplicate_images;
+}
+bool publish_image(){
+ if(!owned_xr_probe||!stereo_gpu_publish)return true;
+ gears_vr::StereoImageTicket image{};image.id=proof.ticket;
+ if(!image_tickets.lookup(image.id,image.sample,simulator_operator)||proof.owned_generation!=generation||
+    proof.target.resource!=resource||proof.final_state!=creation.state){fault(18);return false;}
+ for(unsigned eye=0;eye<2;++eye){auto r=proof.eyes[eye];
+  image.rect[eye]={static_cast<int>(r.x),static_cast<int>(r.y),static_cast<int>(r.width),static_cast<int>(r.height)};}
+ if(!gears_vr::stereo_image_ticket_valid(image,4096,2048,simulator_operator)||publication_count==publications.size()){
+  fault(18);return false;
+ }
+ gears_vr::GpuCaptureTrace trace{};bool published=false;
+ auto stamp=timing(image.id);if(stamp){stamp->received=image.sample.received_ns;stamp->publish_begin=gears_vr::monotonic_ns();}
+ const auto deadline=stereo_publish_deadline.load();
+ ++stereo_publish_counts.capture_attempts;
+ if(stereo_publish_counts.stopped.load())trace.reason=gears_vr::GpuCaptureReason::native_stopped;
+ else if(deadline&&now()>=deadline)trace.reason=gears_vr::GpuCaptureReason::native_deadline;
+ else {StereoPublishBypass bypass;published=stereo_publisher.capture_resource(texture,generation,
+       D3D12_RESOURCE_STATES(proof.final_state),image,&trace);}
+ if(stamp)stamp->publish_end=gears_vr::monotonic_ns();
+ publications[publication_count++]={image.id,image.sample.sequence,image.sample.session,trace.serial_after,unsigned(trace.reason)};
+ if(published){++published_count;stereo_publish_counts.last_ticket=image.id;}
+ else {
+  ++stereo_publish_counts.capture_skipped;
+  using R=gears_vr::GpuCaptureReason;
+  const bool skip=trace.reason==R::lock_busy||trace.reason==R::no_consumer||trace.reason==R::producer_in_flight||
+   trace.reason==R::consumer_not_done||trace.reason==R::native_stopped||trace.reason==R::native_deadline||
+   (trace.reason==R::not_ready&&(trace.state==1||(trace.state==4&&stereo_publish_counts.stopped.load())));
+  if(!skip){fault(19);return false;}
+ }
+ // capture_resource copied the value or made an explicit no-submit decision.
+ // It owns all GPU copy references and fences independently of this CPU store.
+ if(!image_tickets.retire_through(image.id)){fault(20);return false;}
+ return true;
 }
 void draw(ID3D12GraphicsCommandList* list,uintptr_t target,bool exact,unsigned eye,gears_frame_link::Rect rect,uint64_t ticket){
  if(!watching()||!touches(target))return;
@@ -188,6 +252,7 @@ void copy(bool ready,uint64_t ticket){
  if(!watching()||!birth_ok||!ready||(!continuous_probe&&sealed)||
     (continuous_probe&&consumed_count&&ticket==consumed_frames[consumed_count-1].ticket))return;
  sealed=true;
+ if(auto t=timing(ticket))t->ready=gears_vr::monotonic_ns();
  proof=continuous_probe?tracker.consume_owned_output(resource,generation,canonical_identity(queue),ticket):
   tracker.seal_owned_output(resource,generation,canonical_identity(queue));
  if(!proof.linked||!proof.state_certified||proof.ticket!=ticket){fault(9);return;}
@@ -200,6 +265,7 @@ void copy(bool ready,uint64_t ticket){
   StereoPublishBypass bypass;
   if(!(last?last_readback:readback).queue(texture,queue,D3D12_RESOURCE_STATES(proof.final_state),true,path)){fault(10);return;}
  }
+ if(!publish_image())return;
  if(continuous_probe){
   if(consumed_count==consumed_frames.size()){fault(11);return;}
   consumed_frames[consumed_count++]={ticket,proof.final_state,sample};
@@ -211,6 +277,7 @@ bool can_advance(uint64_t ticket){return continuous_probe&&watching()&&birth_ok&
  consumed_count<frame_limit&&consumed_frames[consumed_count-1].ticket==ticket&&tracker.owned_status().certified;}
 bool state_certified(){return proof.state_certified&&tracker.owned_status().certified;}
 bool pixels_read_back(){return readback.result().completed&&readback.result().saved;}
+bool publication_failed(){return owned_xr_probe&&stereo_gpu_publish&&error;}
 void print(FILE* file){
  auto const& r=readback.result();const auto s=tracker.snapshot();
  fprintf(file,"native_owned_gpu enabled=%u creation_count=%u api=%u initial_state=%u creation_uses=%u prebirth_faults=%u birth_attempts=%u birth_ok=%u barriers=%u unsupported=%u error=%u sealed=%u rejection=%u state_certified=%u final_state=%u copied=%u completed=%u saved=%u read_error=%u read_hr=%08lx resets=%llu executes=%llu unknown_batches=%llu capacity=%u\n",
@@ -236,6 +303,16 @@ void print(FILE* file){
    frame_limit,consumed_count,finished,last.completed,last.saved,unsigned(last.error),last.eyes[0].nonblack,last.eyes[1].nonblack,last.differing_pixels);
   for(unsigned i=0;i<consumed_count;++i)fprintf(file,"native_owned_frame index=%u ticket=%llu state=%u sampled=%u\n",i,consumed_frames[i].ticket,consumed_frames[i].state,consumed_frames[i].copied);
  }
+ if(owned_xr_probe){
+  fprintf(file,"native_owned_xr enabled=%u attempts=%u published=%u retained=%llu duplicates=%llu ticket_store_size=%zu retired_ticket=%llu\n",
+   stereo_gpu_publish,publication_count,published_count,retained_images,duplicate_images,image_tickets.size(),image_tickets.retired_id());
+  for(unsigned i=0;i<publication_count;++i){auto const& p=publications[i];
+   fprintf(file,"native_owned_publication ticket=%llu pose=%llu session=%llu serial=%llu reason=%s\n",p.ticket,p.pose,p.session,p.serial,
+    gears_vr::gpu_capture_reason_name(gears_vr::GpuCaptureReason(p.reason)));}
+  for(unsigned i=0;i<timing_count;++i){auto const& t=timings[i];
+   fprintf(file,"native_owned_timing ticket=%llu received_ns=%lld selected_ns=%lld begin_ns=%lld left_ns=%lld right_ns=%lld submitted_ns=%lld returned_ns=%lld destroyed_ns=%lld ready_ns=%lld publish_begin_ns=%lld publish_end_ns=%lld\n",
+    t.ticket,t.received,t.selected,t.begin,t.draw[0],t.draw[1],t.submitted,t.returned,t.destroyed,t.ready,t.publish_begin,t.publish_end);}
+ }
  for(unsigned i=1;i<api_calls.size();++i)fprintf(file,"native_owned_gpu_api api=%u calls=%llu scoped=%llu\n",i,api_calls[i],api_scoped[i]);
  const char* labels[]={"unspecified","descriptor","clear","indirect","bundle","enhanced","render_pass","alias","uav","unreadable","copy","mrt"};
  for(unsigned i=0;i<unknown_reasons.size();++i)if(unknown_reasons[i])fprintf(file,"native_owned_gpu_unknown reason=%s count=%llu\n",labels[i],unknown_reasons[i]);
@@ -249,6 +326,13 @@ void activate(){}
 void reset(ID3D12GraphicsCommandList*,HRESULT){}
 void present(){}
 void draw(ID3D12GraphicsCommandList*,uintptr_t,bool,unsigned,gears_frame_link::Rect,uint64_t){}
+void retain_image(){}
+void selected(uint64_t){}
+void began(uint64_t){}
+void drew(uint64_t,unsigned){}
+void submitted(uint64_t){}
+void returned(uint64_t){}
+void destroyed(uint64_t){}
 void commit(gears_frame_link::ExecutionToken){}
 gears_frame_link::ExecutionToken prepare(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,uintptr_t=0){return {};}
 void copy(bool,uint64_t){}
@@ -256,6 +340,7 @@ bool can_advance(uint64_t){return false;}
 void poll(){}
 bool state_certified(){return false;}
 bool pixels_read_back(){return false;}
+bool publication_failed(){return false;}
 void print(FILE*){}
 }
 #endif

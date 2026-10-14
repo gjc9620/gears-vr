@@ -5,7 +5,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
 #if !defined(GEARS_NATIVE_OWNED_PIXELS) || !GEARS_NATIVE_OWNED_PIXELS
  (void)input;return ERROR_NOT_SUPPORTED;
 #else
- if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>9)return 2;
+ if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>12)return 2;
+ const bool xr_mode=mode>=10;
  using Microsoft::WRL::ComPtr;
  using namespace owned_scene_gpu;
  if(enabled||tracker.snapshot().reset_calls)return 3;
@@ -24,7 +25,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  owned_original_clear=reinterpret_cast<OwnedClearFn>(lt[48]);original_create_rtv=reinterpret_cast<CreateRtvFn>(dt[20]);
  self_testing=true;recording=true;frame_link_diagnostics=true;enabled=true;
  if(FAILED(list->Close())||FAILED(hook_reset_list(list.Get(),allocator.Get(),nullptr)))return 6;
- if(mode>=8){
+ if(mode==8||mode==9){
   if(!continuous_probe)return ERROR_NOT_SUPPORTED;
   auto receipt=prepare(q.Get(),mode==8?gears_frame_link::Tracker::list_capacity+1:1,nullptr);
   commit(receipt);present(); // No invalid call is sent to the real GPU in this negative test.
@@ -35,7 +36,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  desc.DepthOrArraySize=desc.MipLevels=1;desc.SampleDesc.Count=1;desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
  {
   CreateScope creation_scope;
-  if(mode>=5){
+  if(mode>=5&&mode<=7){
    ComPtr<ID3D12Device8> d8;if(FAILED(device.As(&d8)))return 17;
    auto info=device->GetResourceAllocationInfo(0,1,&desc);D3D12_HEAP_DESC hd{};hd.SizeInBytes=info.SizeInBytes;hd.Alignment=info.Alignment;
    hd.Properties=heap;hd.Flags=D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
@@ -63,7 +64,22 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
  b.Transition={target.Get(),D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE};
  if(mode==1){hook_resource_barrier(list.Get(),1,&b);activate();return !birth_ok&&error==5&&creation.uses==1?0:10;}
+ if(xr_mode){if(!owned_xr_probe)return ERROR_NOT_SUPPORTED;stereo_gpu_publish=true;}
  activate();if(error||!birth_ok)return 11;
+ gears_vr::GpuReceiver receiver;gears_vr::StereoSample image_sample{};
+ if(xr_mode){
+  image_sample.session=17;image_sample.sequence=11;image_sample.received_ns=1000000001;image_sample.predicted_time=2000000001;
+  image_sample.head_flags=image_sample.view_flags=15;image_sample.focused=image_sample.should_render=1;
+  image_sample.head.orientation={};
+  for(unsigned eye=0;eye<2;++eye){image_sample.eyes[eye].pose.orientation={};image_sample.eyes[eye].pose.position.x=eye?.032:-.032;image_sample.eyes[eye].fov={-.8,.7,.75,-.65};}
+  consuming_frozen_frame.enabled=true;consuming_frozen_frame.id=consuming_frame_ticket=2;consuming_frozen_frame.sample=image_sample;
+  retain_image();if(error||retained_images!=1)return 25;
+  if(mode==11)++consuming_frozen_frame.sample.sequence;retain_image();
+  if(mode==11)return error==17&&publication_failed()&&publication_count==0?0:24;
+  if(error||retained_images!=1||duplicate_images!=1)return 25;
+  {StereoPublishBypass bypass;if(!stereo_publisher.prepare())return 26;}
+  try{receiver.open(device.Get(),GetCurrentProcessId());}catch(...){return 27;}
+ }
  const FLOAT color[]{.25f,.5f,.75f,1};owned_hook_clear(list.Get(),handle,color,0,nullptr);
  const auto ref=tracker.current(canonical_identity(list.Get()));
  tracker.draw_final(ref,2,0,{resource,4096,2048},{0,0,2048,2048});
@@ -71,7 +87,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  if(mode==2)use(list.Get(),resource,true); // Copy-like state use must reject.
  if(mode==3)use(list.Get(),resource,false); // Later MRT write contaminates pair.
  if(mode==4)uncertain(); // Unknown descriptor/enhanced/bundle path.
- hook_resource_barrier(list.Get(),1,&b);
+ if(mode!=10)hook_resource_barrier(list.Get(),1,&b);
  if(FAILED(list->Close()))return 12;
  ID3D12CommandList* members[]{list.Get()};auto token=prepare(q.Get(),1,members);
  q->ExecuteCommandLists(1,members);commit(token);
@@ -83,8 +99,25 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  if(done->GetCompletedValue()!=1)return 14;
  if(mode&&mode<5)return !readback.result().queued&&error==(mode==3?9u:8u)?0:15;
  poll();auto const& r=readback.result();
- const bool good=proof.state_certified&&proof.final_state==128&&r.saved&&r.completed&&
+ const bool good=proof.state_certified&&proof.final_state==(mode==10?4u:128u)&&r.saved&&r.completed&&
   r.eyes[0].nonblack==2048ull*2048&&r.eyes[1].nonblack==2048ull*2048&&r.differing_pixels==0;
+ if(xr_mode){
+  if(mode==12){receiver.close();stereo_publisher.mark_stopped();stereo_publisher.close();
+   return error==18&&publication_count==0&&stereo_publisher.frames.load()==0?0:28;}
+  bool received=false;try{received=receiver.acquire(q.Get());}catch(...){return 29;}
+  if(!received||published_count!=1||image_tickets.size()||receiver.ticket().id!=2||
+     !gears_vr::stereo_same(receiver.ticket().sample,image_sample)||receiver.width!=4096||receiver.height!=2048)return 30;
+  owned_scene_readback::Probe shared_pixels;wchar_t shared_path[MAX_PATH]{};
+  swprintf_s(shared_path,L"%s\\owned-shared-%lu.ppm",temp,GetCurrentProcessId());
+  if(!shared_pixels.queue(receiver.texture.Get(),q.Get(),D3D12_RESOURCE_STATE_COMMON,true,shared_path))return 31;
+  try{receiver.acknowledge(q.Get());}catch(...){return 32;}
+  if(FAILED(q->Signal(done.Get(),2)))return 33;
+  const auto until=GetTickCount64()+5000;while(done->GetCompletedValue()<2&&GetTickCount64()<until)Sleep(1);
+  if(done->GetCompletedValue()!=2)return 34;shared_pixels.poll();const auto& pixels=shared_pixels.result();
+  const bool same_pixels=pixels.saved&&pixels.completed&&pixels.eyes[0].hash==r.eyes[0].hash&&pixels.eyes[1].hash==r.eyes[1].hash;
+  receiver.close();stereo_publisher.mark_stopped();const bool drained=stereo_publisher.drain(1000)&&stereo_publisher.close();
+  DeleteFileW(shared_path);if(!same_pixels||!drained)return 35;
+ }
  wchar_t path[MAX_PATH]{};swprintf_s(path,L"%s\\owned-scene-%lu.ppm",directory,GetCurrentProcessId());DeleteFileW(path);
  return good?0:16;
 #endif

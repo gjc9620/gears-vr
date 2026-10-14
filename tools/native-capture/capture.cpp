@@ -78,6 +78,11 @@ bool simulator_operator{};
 bool frame_link_diagnostics{};
 bool stereo_gpu_publish{};
 gears_vr::GpuPublisher stereo_publisher;
+#if defined(GEARS_NATIVE_OWNED_XR_PROBE) && GEARS_NATIVE_OWNED_XR_PROBE
+constexpr bool owned_xr_probe=true;
+#else
+constexpr bool owned_xr_probe=false;
+#endif
 gears_vr::StereoTicketStore stereo_ticket_store;
 uint64_t stereo_window_retained{};
 thread_local gears_submitted::FrameTicket consuming_frozen_frame{};
@@ -425,6 +430,7 @@ bool safe_copy(void* out,const void* from,size_t bytes) {
 #include "native_surface_probe.inl"
 #include "native_owned_probe.inl"
 uintptr_t canonical_identity(IUnknown* object);
+long long now();
 bool verified_stereo_draw(gears_viewport::DrawState const&,FinalEye const&,uintptr_t,unsigned,unsigned,unsigned);
 #include "owned_scene_gpu.inl"
 #include "native_owned_scene.inl"
@@ -662,7 +668,7 @@ bool hold_binding(IDXGISwapChain* chain,ID3D12CommandQueue* queue) {
     chain_identity->Release();queue_identity->Release();return false;
 }
 void bind_stereo_publisher(uintptr_t chain_id,uintptr_t queue_id) {
-    if(!stereo_gpu_publish||stereo_publisher.state.load()!=0||stereo_publish_counts.stopped.load())return;
+    if(owned_xr_probe||!stereo_gpu_publish||stereo_publisher.state.load()!=0||stereo_publish_counts.stopped.load())return;
     std::lock_guard<std::mutex> lock(binding_owner_mutex);
     for(auto& owner:binding_owners)if(reinterpret_cast<uintptr_t>(owner.chain)==chain_id){
         gears_vr::ComPtr<IDXGISwapChain> chain;gears_vr::ComPtr<ID3D12CommandQueue> queue;
@@ -911,7 +917,7 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
     auto result=frame_link.present(resource,inventory_ok?binding.queue:0);
     if(diagnostic){diagnostic->valid|=gears_outage::association;diagnostic->buffer=resource;diagnostic->queue=binding.queue;
         diagnostic->ticket=result.ticket;diagnostic->rejection=result.rejection;diagnostic->linked=result.linked;diagnostic->contaminated=result.contaminated;}
-    if(stereo_gpu_publish&&result.linked&&inventory_ok){
+    if(!owned_xr_probe&&stereo_gpu_publish&&result.linked&&inventory_ok){
         gears_vr::StereoImageTicket image{};image.id=result.ticket;
         if(!stereo_ticket_store.lookup(result.ticket,image.sample,simulator_operator)){++stereo_publish_counts.ticket_missing;}
         else {
@@ -2957,7 +2963,8 @@ DWORD WINAPI worker(void*) {
             if(state_created.load()&&!submit_background&&!foreground())request_session_stop(SessionStop::focus_lost);
             if(stereo_publisher.state.load()==3)request_session_stop(SessionStop::proof_failure);
             stereo_publish_worker_tick();
-            {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);owned_scene_gpu::poll();}
+            {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);owned_scene_gpu::poll();
+                if(owned_scene_gpu::publication_failed())request_session_stop(SessionStop::proof_failure);}
             if(submitted_lifetime.stopping()){
                 if(submitted_lifetime.is_closed()){auto requested=SessionPhase::stop_requested;
                     session_phase.compare_exchange_strong(requested,SessionPhase::native_closed);}
@@ -4163,6 +4170,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFrameLinkCheck(void* t
                        !frame_link.execute(binding.queue,&ref,1))result=176;
                     if(simulator_operator&&stereo_ticket_store.lookup(image_id,copied_sample))result=188;
                     bind_stereo_publisher(canonical_identity(chain),binding.queue);stereo_publish_worker_tick();
+                    if(owned_xr_probe){
+                        // Owned mode must not let a legitimate legacy Present
+                        // claim the fixed publisher binding or publish a frame.
+                        hook_present(chain,0,0);
+                        if(stereo_publisher.state.load()!=0||stereo_publish_counts.prepare_ok.load()||stereo_publisher.frames.load()||
+                           stereo_publish_counts.last_ticket.load()||stereo_ticket_store.size()||stereo_window_retained||
+                           stereo_ticket_store.retired_id()!=image_id)result=190;
+                    }else{
                     if(stereo_publisher.state.load()!=2||stereo_publish_counts.prepare_ok.load()!=1)result=177;
                     try{
                         gears_vr::GpuReceiver receiver;receiver.open(device,GetCurrentProcessId(),simulator_operator);
@@ -4174,6 +4189,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFrameLinkCheck(void* t
                         if(!close_stereo_publisher())result=180;
                         receiver.close();
                     }catch(...){result=181;close_stereo_publisher();}
+                    }
                     // A retained future id survives the consumed window's
                     // boundary; a global newly-created ticket counter is not
                     // a valid retirement frontier.
