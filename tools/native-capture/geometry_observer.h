@@ -22,6 +22,7 @@ uint64_t view_draw_unassigned{},view_draw_overflow{};
 thread_local bool in_final_quad{};
 void observe_engine_view_draw(ID3D12GraphicsCommandList* list,bool indexed,UINT elements,UINT instances){
     if(!recording.load()||!trial_draw_scope||!consuming_renderer)return;
+    gears_render_cost::Scope cost(gears_render_cost::engine_view);
     uintptr_t tls{},context{},view{},views{};int count{};
     // Runtime assembly in 173170 and its callers: GS:[58] -> slot 0,
     // slot+20 -> render context, context+14c0 -> current view. All reads bounded.

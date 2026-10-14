@@ -16,6 +16,7 @@
 #include "../vr-common/stereo_bridge.h"
 #include "../vr-common/gpu_share.h"
 #include "../vr-common/stereo_ticket_store.h"
+#include "render_cost.h"
 #include "source_view_shadow.h"
 #include "native_source_view_args.h"
 #include "source_eye_args.h"
@@ -424,6 +425,7 @@ HANDLE stop_event{};
 wchar_t directory[MAX_PATH]{};
 FILE* diagnostic_status{};
 bool safe_copy(void* out,const void* from,size_t bytes) {
+    gears_render_cost::Scope cost(gears_render_cost::safe_read);
     SIZE_T count{};
     return from && ReadProcessMemory(GetCurrentProcess(),from,out,bytes,&count) && count==bytes;
 }
@@ -753,6 +755,7 @@ HRESULT STDMETHODCALLTYPE hook_create_composition(IDXGIFactory2* factory,IUnknow
     return result;
 }
 std::unique_lock<std::recursive_mutex> frame_lock() {
+    gears_render_cost::Scope cost(gears_render_cost::frame_lock);
     std::unique_lock<std::recursive_mutex> lock(frame_hook_mutex,std::defer_lock);
     bool required=frame_link_diagnostics&&recording.load();
     required=required||native_owned_scene_retained();
@@ -801,6 +804,7 @@ void sample_frame_work(unsigned kind,uintptr_t caller,uintptr_t list,uintptr_t q
 }
 void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances) {
     if(!frame_link_diagnostics || !recording.load())return;
+    gears_render_cost::Scope cost(gears_render_cost::frame_draw);
     if(frame_target_stats.descriptor_capacity_lost()){
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
         owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::descriptor);
@@ -1612,7 +1616,7 @@ void __fastcall hook_consume(void* renderer){
         request_session_stop(SessionStop::proof_failure);
     if(!native_owned_scene_begin(renderer,consume_frame.id))request_session_stop(SessionStop::proof_failure);
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
-    original_consume(renderer);
+    {gears_render_cost::Window cost(owned_scene_gpu::render_cost(consume_frame.id));original_consume(renderer);}
     native_owned_scene_end(renderer,consume_frame.id); // Identity value only; original may have destroyed it.
       trial_draw_scope=saved_draw_scope;
     consuming_renderer=saved;
@@ -2223,6 +2227,7 @@ uintptr_t barrier_identity(IUnknown* object) {
 void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RESOURCE_BARRIER* barriers) {
     if(stereo_publish_bypass){original_resource_barrier(list,count,barriers);return;}
     Scope scope;auto frame_guard=frame_lock();const auto owned=frame_link.owned_status();
+    {gears_render_cost::Scope cost(gears_render_cost::barrier_observation);
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
     if(owned_scene_gpu::watching()){
         if(count>1024||(count&&!barriers))owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::unreadable);
@@ -2255,13 +2260,14 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
             }else fault();
         }
     }
-    original_resource_barrier(list,count,barriers);
+    }original_resource_barrier(list,count,barriers);
 }
 #endif
 #include "owned_scene_gpu_hooks.inl"
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
     if(stereo_publish_bypass)return original_reset_list(list,allocator,state);
     Scope scope;auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
+    gears_render_cost::Scope cost(gears_render_cost::reset_tracking);
     owned_scene_gpu::reset(list,result);
     if(recording.load()&&SUCCEEDED(result))viewport_stats.reset(reinterpret_cast<uintptr_t>(list));
     bool tracking=frame_link_diagnostics&&recording.load();
@@ -2360,6 +2366,7 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
 }
 void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
     if(!trial_draw_scope||output_stack_attempts.load()>=64)return;
+    gears_render_cost::Scope cost(gears_render_cost::output_stack);
     auto binding=viewport_stats.binding(reinterpret_cast<uintptr_t>(list));
     if(binding.viewport!=gears_viewport::full||binding.targets!=1||!binding.target.resource||
        binding.target.width!=1920||binding.target.height!=1080||binding.target.format!=24)return;
@@ -2387,11 +2394,11 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     }
 #endif
     if(gears_viewport::has_draw_work(vertices,instances))observe_frame_draw(list,caller,0,vertices,instances);
-    if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
+    if(recording.load()){gears_render_cost::Scope cost(gears_render_cost::viewport_draw);viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);}
     if(recording.load())observe_output_stack(list,0);
     geometry_draw(list,false,vertices,instances);
     observe_engine_view_draw(list,false,vertices,instances);
-    original_draw(list,vertices,instances,start,first_instance);
+    {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw(list,vertices,instances,start,first_instance);}
 }
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
     Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
@@ -2437,11 +2444,11 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
         }
     }
     if(gears_viewport::has_draw_work(indices,instances))observe_frame_draw(list,caller,1,indices,instances);
-    if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
+    if(recording.load()){gears_render_cost::Scope cost(gears_render_cost::viewport_draw);viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);}
     if(recording.load())observe_output_stack(list,1);
     geometry_draw(list,true,indices,instances);
     observe_engine_view_draw(list,true,indices,instances);
-    original_draw_indexed(list,indices,instances,start,vertex,first_instance);
+    {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw_indexed(list,indices,instances,start,vertex,first_instance);}
 }
 void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,BOOL single,const D3D12_CPU_DESCRIPTOR_HANDLE* depth) {
     Scope scope;auto frame_guard=frame_lock();

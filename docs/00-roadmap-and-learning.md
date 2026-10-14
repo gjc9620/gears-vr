@@ -2,6 +2,8 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
+最新 OwnedCost1/2：[独立双目延迟采样](61-owned-render-latency.md)。两轮各120个owned ticket，XR projection仍为0。已将构建约0.4ms与构建后的约75ms等待区间分开；消费窗口约63ms平均墙钟对21.5ms平均线程CPU，逐draw观察和锁获取不足以解释主要延迟。下一步定位具体等待调用，保留100ms姿态门限。UI启动证书误比较可变对象字段已修复并提交603c98d，16项检查通过。另一次首帧proof_failure已保留，首因未确定；完整首版目标仍未完成。
+
 OwnedXr1/2：新增默认关闭的`GEARS_NATIVE_OWNED_XR_PROBE`，最多120个独立scene ticket，禁止legacy Present抢占同一个publisher。独立CPU store保存实际消费时的完整冻结sample，两眼必须一致；消费owned proof后按已认证矩形、allocation generation和状态调用`capture_resource`，同DIRECT队列复制并恢复源状态，明确busy跳帧后才退休CPU ticket。Owner仍保留到进程退出，Canvas没有重定向。
 
 实际PID46980与42588均完成120个独立ticket、119次共享纹理发布（第一帧无consumer而跳过）；**两轮XR projection提交均为0，新独立XR显示尚未通过**。Xr1在接收端读回ticket50/serial24的4096×2048双眼场景，pose序列与发布收据一致，每眼非黑4194304像素；只完成1张XR图像复制，提交前又因时间过期被拒绝。Xr2复制为0。接收端继续使用100ms门限，未提高门限、未把旧图改标为新pose。此结果证明资源共享与接收读回，不证明显示可用。

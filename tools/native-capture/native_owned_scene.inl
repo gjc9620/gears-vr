@@ -41,6 +41,7 @@ bool native_owned_scene_select(void* renderer,uint64_t ticket,uintptr_t adapter)
 bool native_owned_scene_built(void* renderer,uint64_t ticket,bool verified){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);uintptr_t target{};
  const bool read=safe_copy(&target,static_cast<unsigned char*>(renderer)+0x18,8);
+ owned_scene_gpu::built(ticket);
  return trial.construction(reinterpret_cast<uintptr_t>(renderer),ticket,verified&&read&&healthy(),target);}
 bool native_owned_scene_begin(void* renderer,uint64_t ticket){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);

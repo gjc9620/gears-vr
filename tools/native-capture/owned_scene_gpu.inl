@@ -32,14 +32,26 @@ gears_vr::StereoTicketStore image_tickets; // Independent of Present's legacy st
 struct Publication {uint64_t ticket{},pose{},session{},serial{};unsigned reason{};};
 std::array<Publication,frame_limit> publications{};unsigned publication_count{},published_count{};
 uint64_t retained_images{},duplicate_images{};
-struct Timing {uint64_t ticket{};int64_t selected{},begin{},draw[2]{},submitted{},returned{},destroyed{},ready{},publish_begin{},publish_end{},received{};};
+struct Timing {uint64_t ticket{};int64_t selected{},built{},begin{},draw[2]{},submitted{},returned{},destroyed{},ready{},publish_begin{},publish_end{},received{};
+ gears_render_cost::Record cost{};};
 std::array<Timing,frame_limit> timings{};unsigned timing_count{};
 Timing* timing(uint64_t ticket){for(unsigned i=0;i<timing_count;++i)if(timings[i].ticket==ticket)return &timings[i];return nullptr;}
+gears_render_cost::Record* render_cost(uint64_t ticket){
+#if defined(GEARS_NATIVE_RENDER_COST_PROBE) && GEARS_NATIVE_RENDER_COST_PROBE
+ // The game builder appends timings concurrently with RHI consumption. Only
+ // lookup needs the lock: array storage stays fixed through callback drain.
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ auto t=timing(ticket);return t?&t->cost:nullptr;
+#else
+ return nullptr;
+#endif
+}
 void selected(uint64_t ticket){
  if(!owned_xr_probe||!stereo_gpu_publish)return;
  if(timing_count<timings.size())timings[timing_count++]={ticket,gears_vr::monotonic_ns()};
 }
 void began(uint64_t ticket){if(auto t=timing(ticket))t->begin=gears_vr::monotonic_ns();}
+void built(uint64_t ticket){if(auto t=timing(ticket))t->built=gears_vr::monotonic_ns();}
 void drew(uint64_t ticket,unsigned eye){if(eye<2)if(auto t=timing(ticket))t->draw[eye]=gears_vr::monotonic_ns();}
 void submitted(uint64_t ticket){if(auto t=timing(ticket))if(!t->submitted)t->submitted=gears_vr::monotonic_ns();}
 void returned(uint64_t ticket){if(auto t=timing(ticket))t->returned=gears_vr::monotonic_ns();}
@@ -310,8 +322,16 @@ void print(FILE* file){
    fprintf(file,"native_owned_publication ticket=%llu pose=%llu session=%llu serial=%llu reason=%s\n",p.ticket,p.pose,p.session,p.serial,
     gears_vr::gpu_capture_reason_name(gears_vr::GpuCaptureReason(p.reason)));}
   for(unsigned i=0;i<timing_count;++i){auto const& t=timings[i];
-   fprintf(file,"native_owned_timing ticket=%llu received_ns=%lld selected_ns=%lld begin_ns=%lld left_ns=%lld right_ns=%lld submitted_ns=%lld returned_ns=%lld destroyed_ns=%lld ready_ns=%lld publish_begin_ns=%lld publish_end_ns=%lld\n",
-    t.ticket,t.received,t.selected,t.begin,t.draw[0],t.draw[1],t.submitted,t.returned,t.destroyed,t.ready,t.publish_begin,t.publish_end);}
+   fprintf(file,"native_owned_timing ticket=%llu received_ns=%lld selected_ns=%lld built_ns=%lld begin_ns=%lld left_ns=%lld right_ns=%lld submitted_ns=%lld returned_ns=%lld destroyed_ns=%lld ready_ns=%lld publish_begin_ns=%lld publish_end_ns=%lld\n",
+    t.ticket,t.received,t.selected,t.built,t.begin,t.draw[0],t.draw[1],t.submitted,t.returned,t.destroyed,t.ready,t.publish_begin,t.publish_end);
+#if defined(GEARS_NATIVE_RENDER_COST_PROBE) && GEARS_NATIVE_RENDER_COST_PROBE
+   fprintf(file,"native_owned_cost ticket=%llu total_ticks=%llu",t.ticket,t.cost.total_ticks);
+   const char* names[]={"safe_read","engine_view","output_stack","viewport_draw","frame_draw","reset_tracking","barrier_observation","frame_lock","draw_forward"};
+   for(unsigned k=0;k<gears_render_cost::count;++k)fprintf(file," %s_calls=%llu %s_ticks=%llu",names[k],t.cost.items[k].calls,names[k],t.cost.items[k].ticks);
+   fprintf(file," kernel_100ns=%llu user_100ns=%llu cpu_samples=%llu cpu_failures=%llu\n",
+    t.cost.kernel_100ns,t.cost.user_100ns,t.cost.cpu_samples,t.cost.cpu_failures);
+#endif
+  }
  }
  for(unsigned i=1;i<api_calls.size();++i)fprintf(file,"native_owned_gpu_api api=%u calls=%llu scoped=%llu\n",i,api_calls[i],api_scoped[i]);
  const char* labels[]={"unspecified","descriptor","clear","indirect","bundle","enhanced","render_pass","alias","uav","unreadable","copy","mrt"};
@@ -329,6 +349,8 @@ void draw(ID3D12GraphicsCommandList*,uintptr_t,bool,unsigned,gears_frame_link::R
 void retain_image(){}
 void selected(uint64_t){}
 void began(uint64_t){}
+void built(uint64_t){}
+gears_render_cost::Record* render_cost(uint64_t){return nullptr;}
 void drew(uint64_t,unsigned){}
 void submitted(uint64_t){}
 void returned(uint64_t){}
