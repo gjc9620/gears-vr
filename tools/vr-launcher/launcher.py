@@ -41,12 +41,15 @@ def settings(config,manifest,root=ROOT):
     scale=config.get('stereo_units_per_metre',100)
     if isinstance(scale,bool) or not isinstance(scale,(int,float)) or not math.isfinite(scale) or not 10<=scale<=500:
         raise ValueError('stereo_units_per_metre must be finite and between 10 and 500')
+    if not isinstance(config.get('game_path',manifest['game_path']),str) or not str(config.get('game_path',manifest['game_path'])).strip():
+        raise ValueError('game_path must name an executable file')
     game=rooted(config.get('game_path',manifest['game_path']),root)
-    if game!=rooted(manifest['game_path'],root):
-        raise ValueError('Underlying reservation launcher supports only the manifest game path in this repository')
     return game,float(scale)
 
 def verify_files(manifest,game,root=ROOT):
+    sys.path.insert(0,str(ROOT/'tools/debug-launch'))
+    from game_install import validate_game
+    validate_game(game,root,manifest['game_sha256'])
     checks=((game,manifest['game_sha256']),
         (rooted(manifest['native_build'],root)/manifest['native_dll'],manifest['native_sha256']),
         (rooted(manifest['xr_build'],root)/'OpenXRPoseProbe.exe',manifest['xr_sha256']))
@@ -125,9 +128,10 @@ class Backend:
         result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',
             "Get-CimInstance Win32_Process -Filter 'Name=''GOWDE-Steam.exe''' | Select-Object -ExpandProperty ProcessId"],capture_output=True,text=True,check=True)
         return [int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
-    def reserve(self,manifest,log,owner=None):
+    def reserve(self,manifest,log,owner=None,game_path=None):
         cmd=[sys.executable,str(ROOT/'tools/native-capture/launch_reserve.py'),'--build-dir',str(rooted(manifest['native_build'])),
              '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link']
+        if game_path is not None:cmd+=['--game-path',str(game_path)]
         if owner:
             cmd+=['--prime-owner-pid',str(owner['pid']),'--prime-owner-creation-time',str(owner['creation_time'])]
         result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
@@ -145,6 +149,13 @@ class Backend:
         if owner and (report.get('prime_lifetime')!='owner' or report.get('prime_owner_pid')!=owner['pid'] or
                       report.get('prime_owner_creation_time')!=owner['creation_time']):
             raise RuntimeError('Owned target-prime reservation identity mismatch')
+        selected=rooted(game_path if game_path is not None else manifest['game_path'])
+        accepted=report.get('game_identity')
+        if (not isinstance(accepted,dict) or accepted.get('pid')!=report['pid'] or
+                type(accepted.get('creation_time')) is not int or accepted['creation_time']<=0 or
+                rooted(accepted.get('image',''))!=selected or
+                report.get('game_sha256','').lower()!=manifest['game_sha256'].lower()):
+            raise RuntimeError('Reservation executable identity/hash mismatch')
         return report
     def game_window(self,pid):
         from ctypes import wintypes
@@ -201,6 +212,7 @@ class Backend:
 
 def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sleep,auto_continue=False):
     game,scale=settings(config,manifest)
+    profile=verify_files(manifest,game) # Reject unsupported installs before startup side effects.
     owner=backend.control.identity(os.getpid())
     if not owner:raise RuntimeError('Launcher process identity unavailable')
     ctypes.set_last_error(0)
@@ -213,13 +225,12 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
     try:
         cancel=backend.open_cancel(owner['pid'])
         if backend.game_pids():raise RuntimeError('An existing game process must exit normally before fresh startup')
-        profile=verify_files(manifest,game)
         atomic_json(index,state)
         started=clock();state['phase']='reserving';atomic_json(index,state)
-        reserved=(backend.reserve(manifest,index.with_suffix('.reserve.log'),owner=owner) if owned_prime else
-                  backend.reserve(manifest,index.with_suffix('.reserve.log')))
+        reserved=(backend.reserve(manifest,index.with_suffix('.reserve.log'),owner=owner,game_path=game) if owned_prime else
+                  backend.reserve(manifest,index.with_suffix('.reserve.log'),game_path=game))
         pid=reserved['pid'];identity=backend.control.identity(pid)
-        if not identity or pathlib.Path(identity['image']).resolve()!=game:raise RuntimeError('Reserved game identity mismatch')
+        if not identity or identity!=reserved.get('game_identity') or pathlib.Path(identity['image']).resolve()!=game:raise RuntimeError('Reserved game identity mismatch')
         state.update(phase='waiting_for_level',game_identity=identity,reservation=reserved);atomic_json(index,state)
         def prepare_level(check_live=None):
             if check_live:check_live()

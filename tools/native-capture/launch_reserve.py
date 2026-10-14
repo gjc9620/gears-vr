@@ -9,20 +9,24 @@ performs the ordinary signature/PID/lifecycle checks before actual activation.
 import argparse
 import ctypes as c
 from ctypes import wintypes as w
-import hashlib
 import json
 import pathlib
 import subprocess
 import time
+import sys
 from prime_owner import owner_argument, pending_prime
 from start_capture import k, modules, remote_call, pefile, ROOT
 from runtime_probe import Process
+sys.path.insert(0,str(ROOT/'tools/debug-launch'))
+from game_install import validate_game, debug_command
+from run_stereo_continuous import WindowsControl
 k.SetEvent.argtypes=[w.HANDLE];k.SetEvent.restype=w.BOOL
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--build-dir',type=pathlib.Path,default=ROOT/'tools/native-capture/build-prepare')
+    parser.add_argument('--game-path',type=pathlib.Path,help='Supported installation EXE; defaults to repository installation')
     parser.add_argument('--dll-name',default='GearsCapturePrepare.dll')
     parser.add_argument('--check-shadow-copy',action='store_true',help='Require the bounded source-view copy self-test before startup; does not enable the experiment')
     parser.add_argument('--check-shadow-state',action='store_true',help='Require the independent state lifecycle self-test before startup')
@@ -39,6 +43,8 @@ def main():
         parser.error('Owned priming requires --prime-targets and paired valid PID/FILETIME identity')
     if args.check_frame_link and not args.prime_targets:parser.error('Frame association needs --prime-targets')
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
+    exe=validate_game(args.game_path) # Before self-tests, launch, or startup policy writes.
+    profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     build=args.build_dir.resolve();dll=build/args.dll_name
     for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime'],['--prepare']):subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
     subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--geometry'],check=True)
@@ -59,9 +65,6 @@ def main():
                 subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),mode],check=True)
     result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',"if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"],capture_output=True)
     if result.returncode:raise RuntimeError('Existing game must exit normally first')
-    exe=ROOT/'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
-    profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
-    if hashlib.sha256(exe.read_bytes()).hexdigest()!=profile['sha256']:raise RuntimeError('Unvalidated game build')
     pe=pefile.PE(str(dll));export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureReserve')
     frame_link_capable=any(x.name==b'GearsCaptureFrameLinkCheck' for x in pe.DIRECTORY_ENTRY_EXPORT.symbols)
     if export.forwarder:raise RuntimeError('Forwarded reserve export rejected')
@@ -76,7 +79,7 @@ def main():
         if prime_export.forwarder:raise RuntimeError('Forwarded prime export rejected')
         prime_rva=prime_export.address
     pe.close()
-    subprocess.run(['powershell','-NoProfile','-NonInteractive','-File',str(ROOT/'tools/debug-launch/Start-DebugGame.ps1')],check=True)
+    subprocess.run(debug_command(exe),check=True)
     handle=None;deadline=time.monotonic()+12
     while time.monotonic()<deadline:
         result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',"Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id"],capture_output=True,text=True)
@@ -93,6 +96,10 @@ def main():
     memory=None;finished=False;prime_attempted=False;reported=False
     try:
         if loaded['gowde-steam.exe'][1].resolve()!=exe.resolve():raise RuntimeError('Fresh executable path differs')
+        control=WindowsControl();game_identity=control.identity(pid)
+        if not game_identity or pathlib.Path(game_identity['image']).resolve()!=exe:
+            raise RuntimeError('Fresh process identity differs from selected installation')
+        validate_game(exe) # Recheck selected bytes before any injection.
         if dll.name.lower() in loaded:raise RuntimeError('Reservation DLL already loaded')
         loader=k.GetProcAddress(k.GetModuleHandleW('kernel32.dll'),b'LoadLibraryW');owner=w.HMODULE()
         if not k.GetModuleHandleExW(6,loader,c.byref(owner)):raise c.WinError(c.get_last_error())
@@ -156,7 +163,8 @@ def main():
                 if not pending_prime(prime_status,pid,args.prime_owner_pid,args.prime_owner_creation_time,require_owned=owned):
                     raise RuntimeError('Target priming identity/readiness not confirmed')
             finally:k.CloseHandle(prime_event)
-        report={'pid':pid,'dll':str(dll),'trampolines_reserved':True,'hooks_enabled':args.prime_targets,
+        if control.identity(pid)!=game_identity:raise RuntimeError('Reserved process identity changed')
+        report={'game_identity':game_identity,'game_sha256':profile['sha256'],'pid':pid,'dll':str(dll),'trampolines_reserved':True,'hooks_enabled':args.prime_targets,
                 'first_view_mask_reserved':args.check_mask_control,
                 'native_hooks_enabled':False,'descriptor_hooks_enabled':3 if args.prime_targets else 0,'independent_entry_checks':entries}
         report['factory_hooks_enabled']=3 if args.prime_targets and frame_link_capable else 0

@@ -37,7 +37,9 @@ class FakeBackend:
     def game_pids(self):return [55] if self.existing else []
     def open_cancel(self,pid):return 2
     def cancelled(self,handle):return self.cancel
-    def reserve(self,manifest,log,owner=None):self.reserve_calls+=1;self.prime_owner=owner;return {'pid':55}
+    def reserve(self,manifest,log,owner=None,game_path=None):
+        self.reserve_calls+=1;self.prime_owner=owner;self.selected_path=game_path
+        return {'pid':55,'game_identity':dict(self.game)}
     def game_window(self,pid):return 12345
     def finish_owned_prime(self,manifest,identity,owner):return {'entry_restore_verified':True}
     def player(self,pid,profile):
@@ -64,7 +66,7 @@ class LauncherTests(unittest.TestCase):
 
     def test_reserve_requires_mask_trampoline(self):
         backend=launcher.Backend.__new__(launcher.Backend)
-        report=dict(pid=55,trampolines_reserved=True,hooks_enabled=True,native_hooks_enabled=False,
+        report=dict(pid=55,game_identity=dict(pid=55,creation_time=456,image=str(launcher.rooted(MANIFEST['game_path']))),game_sha256=MANIFEST['game_sha256'],trampolines_reserved=True,hooks_enabled=True,native_hooks_enabled=False,
             first_view_mask_reserved=True,independent_entry_checks=[{'matches':True}])
         with tempfile.TemporaryDirectory() as directory:
             log=pathlib.Path(directory)/'reserve.log'
@@ -74,6 +76,45 @@ class LauncherTests(unittest.TestCase):
             report['first_view_mask_reserved']=False
             with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(report),stderr='')):
                 with self.assertRaisesRegex(RuntimeError,'proof'):backend.reserve(MANIFEST,log)
+
+    def test_custom_path_reaches_reservation_and_identity_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            selected=pathlib.Path(directory)/'Other Install/Binaries_x64/GOWDE-Steam.exe'
+            backend=FakeBackend();backend.game['image']=str(selected.resolve())
+            with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                launcher.start({'game_path':str(selected)},MANIFEST,backend,pathlib.Path(directory)/'index.json',sleep=lambda _:None)
+            self.assertEqual(backend.selected_path,selected.resolve())
+            backend=FakeBackend();original=backend.reserve
+            def changed(*args,**kwargs):
+                value=original(*args,**kwargs);value['game_identity']['creation_time']+=1;return value
+            backend.reserve=changed
+            with self.assertRaisesRegex(RuntimeError,'identity mismatch'):
+                self.start_mock(backend,pathlib.Path(directory)/'wrong.json')
+            backend.runner.run_session.assert_not_called()
+
+    def test_unvalidated_install_has_no_startup_side_effects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend();backend.open_cancel=mock.Mock();index=pathlib.Path(directory)/'index.json'
+            with mock.patch.object(launcher,'verify_files',side_effect=RuntimeError('Unvalidated game build')):
+                with self.assertRaisesRegex(RuntimeError,'Unvalidated'):
+                    launcher.start({'game_path':str(pathlib.Path(directory)/'bad.exe')},MANIFEST,backend,index)
+            backend.open_cancel.assert_not_called();backend.runner.run_session.assert_not_called()
+            self.assertEqual(backend.reserve_calls,0);self.assertFalse(index.exists())
+
+    def test_backend_selected_path_argument_and_report_gate(self):
+        backend=launcher.Backend.__new__(launcher.Backend)
+        selected=launcher.rooted('other path/Binaries_x64/GOWDE-Steam.exe')
+        report=dict(pid=55,game_identity=dict(pid=55,creation_time=456,image=str(selected)),game_sha256=MANIFEST['game_sha256'],
+            trampolines_reserved=True,hooks_enabled=True,native_hooks_enabled=False,first_view_mask_reserved=True,independent_entry_checks=[{'matches':True}])
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(report),stderr='')) as spawn:
+                backend.reserve(MANIFEST,pathlib.Path(directory)/'log',game_path=selected)
+                command=spawn.call_args.args[0];self.assertEqual(command[command.index('--game-path')+1],str(selected))
+            for field,value in (('game_sha256','bad'),('game_identity',dict(pid=55,creation_time=456,image='other.exe'))):
+                bad=dict(report,**{field:value})
+                with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(bad),stderr='')):
+                    with self.assertRaisesRegex(RuntimeError,'identity/hash'):
+                        backend.reserve(MANIFEST,pathlib.Path(directory)/'log',game_path=selected)
 
     def test_empty_cim_inventory_is_normal(self):
         backend=launcher.Backend.__new__(launcher.Backend)
@@ -87,22 +128,30 @@ class LauncherTests(unittest.TestCase):
         for value in (10,100,500):self.assertEqual(launcher.settings({'stereo_units_per_metre':value},MANIFEST)[1],value)
         absolute=str(launcher.rooted(MANIFEST['game_path']))
         self.assertEqual(launcher.settings({'game_path':absolute},MANIFEST)[0],pathlib.Path(absolute))
-        with self.assertRaises(ValueError):launcher.settings({'game_path':'different.exe'},MANIFEST)
+        self.assertEqual(launcher.settings({'game_path':'different.exe'},MANIFEST)[0],launcher.rooted('different.exe'))
+        for invalid in ('',None,123):
+            with self.assertRaises(ValueError):launcher.settings({'game_path':invalid},MANIFEST)
         with self.assertRaises(ValueError):launcher.settings({'unknown':1},MANIFEST)
 
     def test_hashes_and_profile(self):
         with tempfile.TemporaryDirectory() as directory:
             root=pathlib.Path(directory)
-            manifest=dict(MANIFEST,game_path='game.exe',native_build='native',native_dll='capture.dll',xr_build='xr')
+            manifest=dict(MANIFEST,game_path='install/Binaries_x64/GOWDE-Steam.exe',native_build='native',native_dll='capture.dll',xr_build='xr')
             import hashlib
-            for file,key in (('game.exe','game_sha256'),('native/capture.dll','native_sha256'),('xr/OpenXRPoseProbe.exe','xr_sha256')):
+            for file,key in (('install/Binaries_x64/GOWDE-Steam.exe','game_sha256'),('native/capture.dll','native_sha256'),('xr/OpenXRPoseProbe.exe','xr_sha256')):
                 path=root/file;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(file.encode())
                 manifest[key]=hashlib.sha256(path.read_bytes()).hexdigest()
             profile=root/'tools/package-inspector/reloaded-profile.json';profile.parent.mkdir(parents=True)
             profile.write_text(json.dumps({'sha256':manifest['game_sha256']}))
-            launcher.verify_files(manifest,root/'game.exe',root)
+            config=root/'install/WarGame/Config/Steam/Cooked/Coalesced.ini';config.parent.mkdir(parents=True);config.write_bytes(b'known config')
+            import sys
+            sys.path.insert(0,str(launcher.ROOT/'tools/debug-launch'))
+            import game_install
+            with mock.patch.object(game_install,'CONFIG_HASHES',{hashlib.sha256(config.read_bytes()).hexdigest()}):
+                launcher.verify_files(manifest,root/manifest['game_path'],root)
             (root/'native/capture.dll').write_bytes(b'wrong')
-            with self.assertRaisesRegex(RuntimeError,'SHA256'):launcher.verify_files(manifest,root/'game.exe',root)
+            with mock.patch.object(game_install,'CONFIG_HASHES',{hashlib.sha256(config.read_bytes()).hexdigest()}),self.assertRaisesRegex(RuntimeError,'SHA256'):
+                launcher.verify_files(manifest,root/manifest['game_path'],root)
 
     def test_live_pawn_and_menu_rejection(self):
         camera={'controller_address':'0x64','camera_address':'0x400','timestamp_address':'0x500'}
@@ -241,9 +290,9 @@ class LauncherTests(unittest.TestCase):
             backend=FakeBackend();index=pathlib.Path(directory)/'index.json'
             clock=[100.];events=[]
             original_reserve,original_player=backend.reserve,backend.player
-            def reserve(*args):
+            def reserve(*args,**kwargs):
                 events.append('reserve');clock[0]+=3
-                return original_reserve(*args)
+                return original_reserve(*args,**kwargs)
             def navigate(pid,identity,cancel,deadline,log):
                 events.append('navigate')
                 self.assertEqual((pid,identity,cancel),(55,backend.game,2))
