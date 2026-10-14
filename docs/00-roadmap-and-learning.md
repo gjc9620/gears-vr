@@ -2,6 +2,10 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
+OwnedScene1 / PID37624：首次将一个实际 stereo ticket 的 copied-family target 改为持久独立 adapter，并使用固定 Low 边界。ticket2 的两个 2048×2048 视图构造、消费及 renderer 销毁均通过；4096×2048 目标收到两个已核验的最终 draw，关联到同一个 DIRECT 队列的一次真实 Execute 返回，unknown draw 为0，adapter 故障为0。这里只证明原生路径与 D3D12 命令提交，尚未读回纹理像素或认证 GPU 完成。Canvas/字幕没有重定向，XR 继续原有 backbuffer 路线；同轮现有双目运行51.46秒、4625次projection、3802张新图，期间9次stale ticket、最大提交间隔111.481ms，不能称连续零中断。实验有意将 native Owner 保留到游戏退出，原启动器如实返回 incomplete；独立核验40个入口全部恢复，游戏已正常关闭。102项实验状态检查、299项Owner、16201项FrameLink及13项GPU状态模式通过。证据 `analysis/ui-position-runtime/owned-scene1-37624.audit.json`，默认构建关闭该实验，实验清单为 `tools/vr-launcher/manifest-owned-scene1.json`。
+
+独立分辨率下一步：认证该资源的创建/实际提交状态并读回眼图，然后接入 Canvas、XR 发布与镜像、完整退休。不能用这次单帧提交替代持续每眼2K/4K画面或发布验收。
+
 OwnedMetadata1 / PID49524：独立目标 adapter 已摆脱原 viewport 指针的长期持有。复用资料库并核对汇编后，完整校验显示元数据的八段运行时代码及线程查询导入；原生例程通过 adapter 的 gamma 方法读取当前设置。实际游戏 RHI 回调中，Low/High 目标均完成创建、宽高/surface 查询、13 字节显示参数对照及释放，无保留资源。299 项 CPU 检查、13 项 GPU 状态接线测试通过。现有双目同时运行 24.57 秒、2212 次 projection、1825 张新图，启动平面正常交接，40 入口恢复，游戏正常退出。场景/Canvas 尚未使用 adapter，`target_redirected=0`、`gpu_target_rendered=0`；这不是原生每眼 2K/4K 显示验收。证据：`analysis/ui-position-runtime/owned-metadata1-49524.audit.json`；实验清单 `tools/vr-launcher/manifest-owned-metadata1.json`。
 
 同轮加入默认关闭的 owned-output legacy ResourceBarrier 跟踪及 Execute 前准备/后提交接线，WARP 实际提交和同步通过；真实游戏中仅验证安装、旁路及恢复，尚未 birth 独立输出。下一步为 copied-family/Canvas 目标接线、完整 GPU 状态与最终输出边界、排队持有者退休。不可将同步 metadata 探针的空退休条件直接用于场景/UI 队列。

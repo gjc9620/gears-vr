@@ -422,6 +422,9 @@ bool safe_copy(void* out,const void* from,size_t bytes) {
 }
 #include "native_surface_probe.inl"
 #include "native_owned_probe.inl"
+uintptr_t canonical_identity(IUnknown* object);
+bool verified_stereo_draw(gears_viewport::DrawState const&,FinalEye const&,uintptr_t,unsigned,unsigned,unsigned);
+#include "native_owned_scene.inl"
 void trace_rectangle(unsigned index,uintptr_t view) {
     if(!submit_pair_enabled || !view)return;
     unsigned expected=0;if(!rectangle_trace_phases[index].compare_exchange_strong(expected,1))return;
@@ -743,6 +746,7 @@ HRESULT STDMETHODCALLTYPE hook_create_composition(IDXGIFactory2* factory,IUnknow
 std::unique_lock<std::recursive_mutex> frame_lock() {
     std::unique_lock<std::recursive_mutex> lock(frame_hook_mutex,std::defer_lock);
     bool required=frame_link_diagnostics&&recording.load();
+    required=required||native_owned_scene_retained();
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
     required=required||frame_link.owned_status().enabled;
 #endif
@@ -790,6 +794,7 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
     if(!frame_link_diagnostics || !recording.load())return;
     if(frame_target_stats.descriptor_capacity_lost()){frame_link.invalidate();return;}
     auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
+    native_owned_scene_draw(list,binding,caller,kind,elements,instances);
     if(!binding.targets)return; // No render target: no observed color write.
     if(!binding.target.resource){++frame_counts.missing_target;frame_link.invalidate();return;}
     if(!swapchain_bindings.known_buffer(binding.target.resource)){++frame_counts.filtered;return;}
@@ -965,6 +970,7 @@ bool close_stereo_publisher() {
 void write_session_status(bool resources_retained=true,bool entries_restored=false) {
     resources_retained=resources_retained||native_surface_probe_retained();
     resources_retained=resources_retained||native_owned_probe_retained();
+    resources_retained=resources_retained||native_owned_scene_retained();
     if(!continuous_session)return;
     wchar_t path[MAX_PATH];swprintf_s(path,L"%s\\session-status.txt",directory);
     FILE* output=_wfsopen(path,L"w",_SH_DENYWR);
@@ -1579,13 +1585,16 @@ void __fastcall hook_consume(void* renderer){
     auto saved_frozen_frame=consuming_frozen_frame;
     consuming_frame_ticket=frame_link_diagnostics&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(renderer),consume_frame)?consume_frame.id:0;
     consuming_frozen_frame=consume_frame;
-    // An explicitly built probe creates/releases native surfaces on this same
-    // engine callback only. It never changes family targets or GPU bindings.
+    // Allocation probes run only on this RHI callback. The metadata probe
+    // releases immediately; the scene probe retains an owner for a later family.
     if(!self_testing&&continuous_session&&recording.load()&&consume_frame.enabled&&
-       !submitted_lifetime.stopping()&&(!native_surface_probe_tick(consume_frame.id)||!native_owned_probe_tick(consume_frame.id,renderer)))
+       !submitted_lifetime.stopping()&&(!native_surface_probe_tick(consume_frame.id)||!native_owned_probe_tick(consume_frame.id,renderer)||
+       !native_owned_scene_tick(consume_frame.id)))
         request_session_stop(SessionStop::proof_failure);
+    if(!native_owned_scene_begin(renderer,consume_frame.id))request_session_stop(SessionStop::proof_failure);
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
     original_consume(renderer);
+    native_owned_scene_end(renderer,consume_frame.id); // Identity value only; original may have destroyed it.
       trial_draw_scope=saved_draw_scope;
     consuming_renderer=saved;
     consuming_frame_ticket=saved_ticket;
@@ -1638,6 +1647,7 @@ void* __fastcall hook_destroy_renderer(void* renderer){
         submit_attempted.load()==2 && reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load());
     if(submitted)record.test_state=77;
     void* result=original_destroy_renderer(renderer);
+    native_owned_scene_destroyed(renderer); // No dereference after native destruction.
     if(submitted) {
         ++submit_destroyed;
         // The submitted renderer can use its state until destruction returns.
@@ -1752,7 +1762,11 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     if(projection_control){std::lock_guard<std::mutex> lock(projection_mutex);
         projection.phase=gears_projection::phase(projection.pair_qpc,projection_origin?projection_origin:projection.pair_qpc,qpc_frequency);}
     const auto split_begin_qpc=now();
-    auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state,submit_output_bounds,submit_mono_control || submit_duplicate_control,projection_control,projection.phase,stereo_xr?&frame.expected:nullptr);
+    const auto owned_scene_target=(!self_testing&&continuous_session&&stereo_xr&&!projection_control&&
+        !submit_mono_control&&!submit_duplicate_control)?native_owned_scene_candidate():0;
+    const gears_split_sources::FixedOutputBounds owned_bounds{4096,2048};
+    auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state,submit_output_bounds,submit_mono_control || submit_duplicate_control,projection_control,projection.phase,stereo_xr?&frame.expected:nullptr,
+        owned_scene_target?&owned_bounds:nullptr);
     if(projection_control)for(unsigned i=0;i<2;++i)memcpy(projection.expected[i].data(),sources.inputs[i].bytes.data()+0xb0,64);
     submit_source_checks=sources.checks;submit_rejection=sources.rejection;
     if(sources.input_evidence.field140){
@@ -1797,6 +1811,10 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     if(origin_trial_enabled&&!origin_trial.commit(frame.origin.selection,true)){
         ++origin_commit_failed;request_session_stop(SessionStop::proof_failure);}
     split_family=original_family_bytes;
+    if(owned_scene_target){
+        if(!native_owned_scene_select(destination,frame.id,owned_scene_target))request_session_stop(SessionStop::proof_failure);
+        memcpy(split_family.data()+0x10,&owned_scene_target,sizeof(owned_scene_target));
+    }
     if(stereo_xr&&frame.enabled){std::lock_guard<std::mutex> lock(stereo_mutex);auto timestamp=now();
         record_stereo_reference(frame,timestamp);
         if(!stereo_accepted){stereo_first_sample=frame.sample;stereo_reference=frame_reference;stereo_first_qpc=timestamp;stereo_first_ticket=frame.id;}
@@ -1829,6 +1847,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             safe_copy(rectangle.data(),reinterpret_cast<void*>(built.family_views[i]+0x48),16) &&
             !memcmp(rectangle.data(),sources.inputs[source_index].bytes.data()+0x48,16);
     }
+    if(owned_scene_target&&!native_owned_scene_built(destination,frame.id,verified))verified=false;
     projection_observe(0,reinterpret_cast<uintptr_t>(destination),built.family_views,built.family_count,now());
     stereo_observe(0,reinterpret_cast<uintptr_t>(destination),built.family_views,built.family_count,now());
     bool source_released=gears_split_sources::release(api,sources);
@@ -1981,7 +2000,9 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     }
     // Even a failed prepare forwards the game submission exactly once. Only a
     // successful original-call interval may advance owned submitted state.
+    const auto scene_receipt=native_owned_scene_prepare(queue,count,lists);
     original_execute(queue,count,lists);
+    native_owned_scene_commit(scene_receipt);
     if(owned&&owned_token.value&&!frame_link.commit_execute(owned_token))++frame_counts.execute_rejected;
     record.duration=now()-record.time;enqueue(record);
 }
@@ -2619,6 +2640,7 @@ DWORD WINAPI worker(void*) {
     if(reservation_ready&&base!=current_base){fprintf(status,"rejected: reserved module base changed\n");fclose(status);return 2;}
     if(!reservation_ready)base=current_base; // Startup settings hooks read the immutable reserved base.
     initialize_native_owned_probe(true); // hash_matches/PID gate above passed; no probe allocations here.
+    initialize_native_owned_scene(true);
     quad_target=reinterpret_cast<void*>(base+0x1af42c);
     geometry_target=reinterpret_cast<void*>(base+0x13cfcc);
     expected_local=ini_address(ini,L"local_player");expected_pc=ini_address(ini,L"controller");
@@ -2947,6 +2969,7 @@ DWORD WINAPI worker(void*) {
     print_ui_observer(status,disabled==MH_OK);
     print_native_surface_probe(status);
     print_native_owned_probe(status);
+    print_native_owned_scene(status);
     print_graphics_lock_observer(status,disabled==MH_OK);
     print_origin_trial(status,disabled==MH_OK);
     if(!active.load()&&stereo_closed)release_bindings();

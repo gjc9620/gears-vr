@@ -41,7 +41,10 @@ inline bool valid_desc(D3D12_RESOURCE_DESC const& d,unsigned w,unsigned h){
 // slots may borrow it. No RTTI or methods >= +0x30 are supplied.
 // Integration owns a stable Ops and Owner address through process exit. All
 // create/borrow/snapshot/retire operations require its SAME external API-order
-// lock; all queued borrowers are covered by DrainProof, not a getter's duration.
+// lock. After creation publication, getters may run concurrently if integration
+// guarantees NO owner mutation/retirement throughout every borrow (the bounded
+// scene probe retains until process exit). Retirement still requires exclusion
+// of new borrowers and DrainProof, not merely a getter's duration.
 // Destructor never performs COM/native release. Objects must not be automatic
 // callback locals: a native command can keep the adapter pointer after return.
 template<class Ops> class Owner {

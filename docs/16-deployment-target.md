@@ -55,4 +55,6 @@
 
 OwnedMetadata1 进一步在实际游戏验证独立 adapter 的 surface/宽高/显示参数及正常释放，移除了对原 viewport 对象长期存活的依赖。显示参数仍调用已逐段核验的原生逻辑，保留当前 gamma；没有复制原 viewport 析构器。299 项 CPU 检查与 13 项 GPU 状态接线测试通过，现有双目和 40 入口恢复也通过。新纹理尚未进入 scene/Canvas/GPU 绘制，因此独立分辨率仍待完成；实际排队持有与 GPU fence 退休、完整 barrier 覆盖及桌面镜像不能由此探针替代。详见 `analysis/ui-position-runtime/owned-metadata1-49524.audit.json`。
 
+后续 OwnedScene1 已在实际游戏将单个 Low ticket 的 copied-family target 指向该 adapter：两眼固定2048×2048，两个最终 draw 对应4096×2048独立资源，并随同一DIRECT队列一次Execute返回；renderer正常销毁，无adapter故障。当前证据止于命令提交，像素、GPU fence、Canvas及持续输出仍未验证。实验原生引用保留至进程退出，启动器完整清理判断为 incomplete；40入口另行独立核验通过，正常退出游戏完成实验收尾。这一步不改变上述玩家可用分辨率状态。证据 `analysis/ui-position-runtime/owned-scene1-37624.audit.json`。
+
 画面投影继续采用头显返回的每眼非对称 FOV 和位姿，正方形纹理不意味着正方形或对称视场。高分辨率只表示像素预算，AVP 和其他高端头显的兼容性还须分别验证其 PCVR 串流/OpenXR 路径、运行时限制与实际显示，不预先承诺支持。
