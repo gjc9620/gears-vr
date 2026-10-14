@@ -2,6 +2,10 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
+NativeSurface1 / PID34052：首次实际调用游戏自身的颜色目标分配器，在已核验RHI线程/TLS内依次创建4096×2048和8192×4096目标。两档真实GetDesc均为RGBA8/DXGI28、单mip/单slice/单sample、ALLOW_RENDER_TARGET，并通过同线程native引用清空释放；首次ticket即成功，无保留引用或cleanup不确定。独立目标尚未绑定绘制，因此这不是游戏原生2K/4K显示测试。原双目同时运行32.268秒、2907次projection、2416次复制，最大提交间隔29.5934ms，34入口恢复；模拟器及游戏正常退出。代码54d54b6；证据 `analysis/ui-position-runtime/native-surface-live-34052.json`，自测164项、宏关闭无效果和continuous自测通过。
+
+c5f7262已为双眼源构造加入显式Low/High边界，保持原source/family不变并通过CPU回归，尚未在运行时选择该参数。e80aad0贯通玩家指定游戏安装路径的后端及身份检查，仍未完成便携打包。下一步是持有独立native目标、接入copied-family/Canvas目标，并以实际GPU状态和队列顺序发布；新tracker必须先配置再接收列表，不能清空旧tracker计数伪造首次启用。原生最后释放仍须在合法RHI线程，并等相关renderers/UI/GPU持有退休。
+
 首版范围与进度已重新对齐：第三人称同帧双目、可靠6DoF、启动/菜单、整套UI、每眼2K/4K独立渲染、DLSS/DLAA运行时锁定、稳定性及玩家部署，工程估计约45–50%，具体权重/缺口见[部署目标](16-deployment-target.md)。这不是发布验收通过率。UI脚本本轮批量导出2709个候选条目，1093个仅为native声明；另外确认Material UI独立消费路线，以及世界标记不能直接套用普通HUD平面。详见[UI覆盖审计](57-ui-position-and-subtitle-route.md)。本轮未启动游戏或新增视觉验收。
 
 TargetSize2 / PID29184：新诊断版启动、220.366582秒双目和正常停止通过，19830次projection、15033次图像复制，最大提交间隔91.1762ms，34个入口还原。首次4个有效family回调均捕获同一实际target，40个方法前缀及4份vtable字节全部与历史运行代码一致；不是从已过期栈地址猜测目标。该轮启动guard一次成功，不能据此证明PID39208是跨帧竞争。3d88101已增加启动阶段的明确失败分类，仅对其余身份/读取检查都通过的时间戳变化有限重读（最多5次、200ms），渲染回调仍单次检查。证据：`analysis/ui-position-runtime/native-target-size2-binding.json`；游戏已正常关闭。

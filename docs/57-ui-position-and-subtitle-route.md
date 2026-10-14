@@ -23,6 +23,8 @@
 
 Material新证据：20字节render item、112字节payload、36字节绘制记录，queued consumer为 `15a420`（command vtable RVA136c5d8的+8槽，返回36）。它与Tile/Text的208字节payload、48字节顶点不同，不得复用后者布局解析。`159fcc` 的实际GPU绘制/矩阵仍待跟进，本轮没有启用新的运行时修改。
 
+后续定向反编译已追通 `159fcc` 到GPU：每条记录构造四个32字节顶点，位置为float3；非索引路径DrawInstanced返回 `1af345`，索引路径DrawIndexedInstanced返回 `177c4a`，均可复用现有D3D detour，但必须新增精确Material语义/command/target/ticket关联。首次可接单条纯屏幕HUD记录，原consumer调用一次，逐眼重放实际GPU draw；不能将会销毁payload的 `15a420` 调用两次。初始depth state为不测试/不写深度，透明分支仍保留原材质行为。详细指令和限制见 `material-ui-gpu-route-contract.json` / `material-ui-gpu-route-static.json`。目前只有路径证据，尚未启用Material双眼修正。
+
 `WarHUD.DrawHUD` 已反编译到 `UpdateHUDLocators`、`DrawObjectives`、`DrawHealth`、`DrawActions`、`DrawDownedButNotOutTeammates` 等分支。`UpdateHUDLocators` 读取玩家相机、调用locator更新和可见性更新，说明父级PostRender中的内容并非全部固定屏幕UI。当前kind3父scope继承不足以证明适用共同平面；后续须在批量认证屏幕布局scope时排除或单独处理世界相关分支。既有HUD平面试验不等于这项风险已修复。
 
 下一批实施按公共通道推进：先为已知屏幕HUD、准星、世界标记建立明确分类；复用Tile/Text消费端并补Material消费端；补UIScene显示切换；对同一场景帧做逐眼投影，保留文字排版、裁剪与提示时序。没有已认证的一处Hook能直接修正所有UI。全局索引可复用，原生实现只对上述缺口继续定向反编译。
