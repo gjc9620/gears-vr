@@ -36,7 +36,7 @@ struct OverlayDiagnostic {
     ListRef unique_recorded_ref{};
 };
 struct Snapshot {
-    uint64_t reset_calls{},list_overflow{},event_overflow{},target_overflow{},execute_calls{},unknown_batches{},duplicate_batches{},invalid_batches{},metadata_batches{};
+    uint64_t reset_calls{},list_creates{},list_overflow{},event_overflow{},target_overflow{},execute_calls{},unknown_batches{},duplicate_batches{},invalid_batches{},metadata_batches{};
     size_t active_lists{},list_highwater{},event_highwater{};
     bool capacity_bad{};
     uint64_t overlay_recorded{},overlay_executed{},overlay_rejected{};
@@ -320,7 +320,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         if(owned_.enabled||!certified_single_normal_color||!target.resource||!queue||!generation||
            !target.width||target.width%2||!target.height||target.width>8192||target.height>8192||
-           (initial_state!=4&&initial_state!=128)||stats_.active_lists||stats_.reset_calls||stats_.execute_calls||
+           (initial_state!=4&&initial_state!=128)||stats_.active_lists||stats_.reset_calls||stats_.list_creates||stats_.execute_calls||
            maximum_ticket_||window_bad_||capacity_bad_||pending_.active)return false;
         owned_={true,true,target,queue,generation,initial_state};++revision_;return true;
     }
@@ -461,6 +461,21 @@ public:
         slot->valid = true;
         return slot->ref;
     }
+    // Actual successful API creation, not a synthetic Reset. CreateCommandList
+    // returns recording/open; CreateCommandList1 returns closed and requires a
+    // subsequent observed Reset before recording/submission may be associated.
+    // Caller holds the canonical object lifetime against address reuse.
+    ListRef create_success(Identity identity,bool initially_open) {
+        std::lock_guard<std::mutex> lock(mutex_);++stats_.list_creates;++revision_;
+        if(!identity||generation_==UINT64_MAX){window_bad_=true;lose_owned();return {};}
+        List* slot{};
+        for(auto& list:lists_)if(list.ref.identity==identity){slot=&list;break;}
+        if(!slot)for(auto& list:lists_)if(!list.ref.identity){slot=&list;break;}
+        if(!slot){++stats_.list_overflow;capacity_bad_=true;lose_owned();return {};}
+        if(!slot->ref.identity){++stats_.active_lists;if(stats_.active_lists>stats_.list_highwater)stats_.list_highwater=stats_.active_lists;}
+        *slot={};slot->ref={identity,++generation_};slot->valid=initially_open;
+        return slot->ref;
+    }
     bool draw_final(ListRef ref, uint64_t ticket, unsigned eye, Target target, Rect rect) {
         std::lock_guard<std::mutex> lock(mutex_);
         ++revision_;
@@ -488,6 +503,16 @@ public:
             }
         }
         return append(ref, {0, 0, {resource, 0, 0}, {}, false});
+    }
+    // Call only after the original pre-birth Execute returned, under the API
+    // order lock. Even a rejected mixed batch really submitted its known lists.
+    // Preserve that fact without admitting unknown or replacing Reset generations.
+    bool submitted_before_owned_birth(const ListRef* members,size_t count) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(owned_.enabled||pending_.active||!members||!count||count>list_capacity||revision_==UINT64_MAX)return false;
+        ++revision_;
+        for(size_t i=0;i<count;++i)if(auto list=find(members[i]))list->executed=true;
+        return true;
     }
     bool execute(Identity queue, const ListRef* members, size_t count) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -606,6 +631,20 @@ public:
     // preserves sticky capacity faults and ticket retirement; unlike recovery,
     // it permits no old generation or ticket to escape into the next window.
     void retire_present_interval() { (void)present(0,0); }
+    // Pre-birth observation may span many Presents before the independent
+    // allocation exists. Retire association payload, but preserve real Reset
+    // history (including failed/invalid and already-executed generations).
+    // This does not certify unknown lists, recover capacity faults, or alter an
+    // enabled owned output. The integration separately rejects all pre-birth
+    // references to the new allocation; those observations cannot live here.
+    bool retire_before_owned_birth() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(owned_.enabled||pending_.active||revision_==UINT64_MAX)return false;
+        ++revision_;retired_ticket_=maximum_ticket_;candidates_={};
+        for(auto& list:lists_)list.count=0;
+        window_bad_=false;window_rejection_=0;
+        return true;
+    }
     void invalidate_capacity() {
         std::lock_guard<std::mutex> lock(mutex_);++revision_;capacity_bad_=true;lose_owned();
     }

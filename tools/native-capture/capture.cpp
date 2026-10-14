@@ -238,7 +238,7 @@ bool session_status_available{};
 LONGLONG session_started_qpc{};
 struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
-constexpr size_t session_hook_capacity=57,viewport_hook_capacity=27;
+constexpr size_t session_hook_capacity=59,viewport_hook_capacity=29;
 #elif defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
 constexpr size_t session_hook_capacity=40,viewport_hook_capacity=11;
 #else

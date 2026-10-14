@@ -33,8 +33,20 @@ struct ExecuteFailure {
  bool previously_certified{};gears_frame_link::Snapshot stats{};
  wchar_t module_path[MAX_PATH]{};std::array<void*,12> stack{};unsigned stack_count{};
 } execute_failure;
+std::array<IUnknown*,gears_frame_link::Tracker::list_capacity> created_lists{};
+unsigned list_creation_count{},list_creation_closed{};
 void fault(unsigned reason){if(!error)error=reason;tracker.invalidate();}
 bool watching(){return enabled&&!finished&&!error;}
+void list_created(HRESULT hr,void** out,bool open){
+ if(!continuous_probe||!watching()||FAILED(hr))return;
+ IUnknown* object{};IUnknown* identity{};
+ if(!safe_copy(&object,out,sizeof(object))||!object||FAILED(object->QueryInterface(IID_PPV_ARGS(&identity)))){fault(14);return;}
+ for(auto* previous:created_lists)if(previous==identity){identity->Release();fault(14);return;}
+ if(list_creation_count==created_lists.size()){identity->Release();fault(14);return;}
+ created_lists[list_creation_count++]=identity; // Diagnostic lease until process exit; no pointer reuse.
+ if(!open)++list_creation_closed;
+ if(!tracker.create_success(reinterpret_cast<uintptr_t>(identity),open).identity)fault(14);
+}
 struct CreateScope {CreateScope(){++creating;}~CreateScope(){--creating;}};
 void created(ID3D12Device* device,HRESULT hr,void** out,D3D12_RESOURCE_STATES state,unsigned api,bool legacy=true,unsigned layout=0){
  if(!enabled)return;if(api<api_calls.size()){++api_calls[api];if(creating)++api_scoped[api];}
@@ -78,7 +90,9 @@ void reset(ID3D12GraphicsCommandList* list,HRESULT hr){
  if(!watching())return;auto identity=canonical_identity(list);
  if(SUCCEEDED(hr))tracker.reset_success(identity);else tracker.invalidate_list(identity);
 }
-void present(){if(watching()&&!birth_ok)tracker.retire_present_interval();}
+void present(){if(watching()&&!birth_ok){
+ if(continuous_probe)tracker.retire_before_owned_birth();else tracker.retire_present_interval();
+}}
 void activate(){
  if(!watching()||birth_attempts++)return;
  if(!resource||creation.uses||prebirth_faults){fault(5);return;}
@@ -130,11 +144,20 @@ void barrier(ID3D12GraphicsCommandList* list,D3D12_RESOURCE_BARRIER const& b){
   if(!b.UAV.pResource||touches(canonical_identity(b.UAV.pResource)))uncertain(Unknown::uav);
  }else uncertain();
 }
-gears_frame_link::ExecutionToken prepare(ID3D12CommandQueue* q,UINT count,ID3D12CommandList* const* members,uintptr_t caller=0){
- gears_frame_link::ExecutionToken token{};if(!watching())return token;
- std::array<ID3D12CommandList*,gears_frame_link::Tracker::list_capacity> lists{};
+struct Submission {
+ gears_frame_link::ExecutionToken token{};
  std::array<gears_frame_link::ListRef,gears_frame_link::Tracker::list_capacity> refs{};
- if(!count||count>lists.size()||!safe_copy(lists.data(),members,count*sizeof(lists[0]))){tracker.invalidate();return token;}
+ unsigned count{};bool prebirth{};
+};
+Submission prepare(ID3D12CommandQueue* q,UINT count,ID3D12CommandList* const* members,uintptr_t caller=0){
+ Submission receipt{};if(!watching())return receipt;auto& token=receipt.token;
+ std::array<ID3D12CommandList*,gears_frame_link::Tracker::list_capacity> lists{};
+ auto& refs=receipt.refs;
+ if(!count||count>lists.size()||!safe_copy(lists.data(),members,count*sizeof(lists[0]))){
+  // The original is still forwarded. Missing its membership would lose actual
+  // submission history, so a later Present must never recover this probe.
+  if(continuous_probe)fault(15);else tracker.invalidate();return receipt;
+ }
  for(unsigned i=0;i<count;++i)refs[i]=tracker.current(canonical_identity(lists[i]));
  if(birth_ok){
   const bool was_certified=tracker.owned_status().certified;
@@ -153,10 +176,14 @@ gears_frame_link::ExecutionToken prepare(ID3D12CommandQueue* q,UINT count,ID3D12
    f.stack_count=CaptureStackBackTrace(0,static_cast<DWORD>(f.stack.size()),f.stack.data(),nullptr);fault(12);
   }
  }
- else tracker.execute(canonical_identity(q),refs.data(),count);
- return token;
+ else {tracker.execute(canonical_identity(q),refs.data(),count);receipt.prebirth=continuous_probe;receipt.count=count;}
+ return receipt;
 }
-void commit(gears_frame_link::ExecutionToken token){if(watching()&&token.value&&!tracker.commit_execute(token))fault(13);}
+void commit(const Submission& receipt){
+ if(!watching())return;
+ if(receipt.prebirth&&!tracker.submitted_before_owned_birth(receipt.refs.data(),receipt.count))fault(13);
+ if(receipt.token.value&&!tracker.commit_execute(receipt.token))fault(13);
+}
 void copy(bool ready,uint64_t ticket){
  if(!watching()||!birth_ok||!ready||(!continuous_probe&&sealed)||
     (continuous_probe&&consumed_count&&ticket==consumed_frames[consumed_count-1].ticket))return;
@@ -194,6 +221,7 @@ void print(FILE* file){
  fprintf(file,"native_owned_pixels width=%u height=%u left_nonblack=%llu right_nonblack=%llu different=%llu left_hash=%llx right_hash=%llx\n",
   r.width,r.height,r.eyes[0].nonblack,r.eyes[1].nonblack,r.differing_pixels,r.eyes[0].hash,r.eyes[1].hash);
  fprintf(file,"native_owned_gpu_dispatch available=%u match=%u\n",device_dispatch_available,device_dispatch_match);
+ if(continuous_probe)fprintf(file,"native_owned_list_creation count=%u closed=%u tracker_creates=%llu retained_until_exit=1\n",list_creation_count,list_creation_closed,s.list_creates);
  if(execute_failure.count){auto const& f=execute_failure;
   fprintf(file,"native_owned_execute_failure caller=%llx module=%llx rva=%llx queue=%llx count=%u missing_list=%llx previously_certified=%u inside_present=%u present_depth=%u unknown=%llu duplicate=%llu metadata=%llu\n",
    f.caller,f.module,f.caller-f.module,f.queue,f.count,f.missing_list,f.previously_certified,f.inside_present,f.present_depth,

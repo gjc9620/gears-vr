@@ -5,7 +5,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
 #if !defined(GEARS_NATIVE_OWNED_PIXELS) || !GEARS_NATIVE_OWNED_PIXELS
  (void)input;return ERROR_NOT_SUPPORTED;
 #else
- if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>7)return 2;
+ if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>9)return 2;
  using Microsoft::WRL::ComPtr;
  using namespace owned_scene_gpu;
  if(enabled||tracker.snapshot().reset_calls)return 3;
@@ -24,6 +24,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  owned_original_clear=reinterpret_cast<OwnedClearFn>(lt[48]);original_create_rtv=reinterpret_cast<CreateRtvFn>(dt[20]);
  self_testing=true;recording=true;frame_link_diagnostics=true;enabled=true;
  if(FAILED(list->Close())||FAILED(hook_reset_list(list.Get(),allocator.Get(),nullptr)))return 6;
+ if(mode>=8){
+  if(!continuous_probe)return ERROR_NOT_SUPPORTED;
+  auto receipt=prepare(q.Get(),mode==8?gears_frame_link::Tracker::list_capacity+1:1,nullptr);
+  commit(receipt);present(); // No invalid call is sent to the real GPU in this negative test.
+  return error==15&&!watching()&&!birth_ok?0:23;
+ }
  D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_DEFAULT;
  D3D12_RESOURCE_DESC desc{};desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;desc.Width=4096;desc.Height=2048;
  desc.DepthOrArraySize=desc.MipLevels=1;desc.SampleDesc.Count=1;desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;

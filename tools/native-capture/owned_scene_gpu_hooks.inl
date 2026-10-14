@@ -1,5 +1,20 @@
 #pragma once
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+using OwnedCreateListFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device*,UINT,D3D12_COMMAND_LIST_TYPE,ID3D12CommandAllocator*,ID3D12PipelineState*,REFIID,void**);
+using OwnedCreateList1Fn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device4*,UINT,D3D12_COMMAND_LIST_TYPE,D3D12_COMMAND_LIST_FLAGS,REFIID,void**);
+OwnedCreateListFn owned_original_create_list{};OwnedCreateList1Fn owned_original_create_list1{};
+thread_local unsigned owned_list_create_depth{};
+struct OwnedListCreateScope{bool outer;OwnedListCreateScope():outer(owned_list_create_depth++==0){}~OwnedListCreateScope(){--owned_list_create_depth;}};
+HRESULT STDMETHODCALLTYPE owned_hook_create_list(ID3D12Device* d,UINT mask,D3D12_COMMAND_LIST_TYPE type,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state,REFIID iid,void** out){
+ if(stereo_publish_bypass)return owned_original_create_list(d,mask,type,allocator,state,iid,out);
+ Scope scope;auto lock=frame_lock();OwnedListCreateScope creation;auto hr=owned_original_create_list(d,mask,type,allocator,state,iid,out);
+ if(creation.outer)owned_scene_gpu::list_created(hr,out,true);return hr;
+}
+HRESULT STDMETHODCALLTYPE owned_hook_create_list1(ID3D12Device4* d,UINT mask,D3D12_COMMAND_LIST_TYPE type,D3D12_COMMAND_LIST_FLAGS flags,REFIID iid,void** out){
+ if(stereo_publish_bypass)return owned_original_create_list1(d,mask,type,flags,iid,out);
+ Scope scope;auto lock=frame_lock();OwnedListCreateScope creation;auto hr=owned_original_create_list1(d,mask,type,flags,iid,out);
+ if(creation.outer)owned_scene_gpu::list_created(hr,out,false);return hr;
+}
 using OwnedCommittedFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device*,const D3D12_HEAP_PROPERTIES*,D3D12_HEAP_FLAGS,const D3D12_RESOURCE_DESC*,D3D12_RESOURCE_STATES,const D3D12_CLEAR_VALUE*,REFIID,void**);
 using OwnedCommitted1Fn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device4*,const D3D12_HEAP_PROPERTIES*,D3D12_HEAP_FLAGS,const D3D12_RESOURCE_DESC*,D3D12_RESOURCE_STATES,const D3D12_CLEAR_VALUE*,ID3D12ProtectedResourceSession*,REFIID,void**);
 using OwnedCommitted2Fn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device8*,const D3D12_HEAP_PROPERTIES*,D3D12_HEAP_FLAGS,const D3D12_RESOURCE_DESC1*,D3D12_RESOURCE_STATES,const D3D12_CLEAR_VALUE*,ID3D12ProtectedResourceSession*,REFIID,void**);
@@ -129,7 +144,10 @@ bool owned_scene_gpu_install(ID3D12Device* device,ID3D12GraphicsCommandList* lis
   add(23,(*reinterpret_cast<void***>(device10))[77],reinterpret_cast<void*>(owned_hook_placed2),reinterpret_cast<void**>(&owned_original_placed2));
   add(26,(*reinterpret_cast<void***>(device10))[76],reinterpret_cast<void*>(owned_hook_committed3),reinterpret_cast<void**>(&owned_original_committed3));device10->Release();}
  ID3D12Device4* device4{};if(SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&device4)))){
-  add(24,(*reinterpret_cast<void***>(device4))[53],reinterpret_cast<void*>(owned_hook_committed1),reinterpret_cast<void**>(&owned_original_committed1));device4->Release();}
+  add(24,(*reinterpret_cast<void***>(device4))[53],reinterpret_cast<void*>(owned_hook_committed1),reinterpret_cast<void**>(&owned_original_committed1));
+  if(owned_scene_gpu::continuous_probe)add(28,(*reinterpret_cast<void***>(device4))[51],reinterpret_cast<void*>(owned_hook_create_list1),reinterpret_cast<void**>(&owned_original_create_list1));
+  device4->Release();}
+ if(owned_scene_gpu::continuous_probe)add(27,dev[12],reinterpret_cast<void*>(owned_hook_create_list),reinterpret_cast<void**>(&owned_original_create_list));
  return ok;
 }
 #endif

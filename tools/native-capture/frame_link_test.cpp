@@ -772,5 +772,46 @@ int main() {
         CHECK(t->record_owned_barrier_fault(discarded,9));t->reset_success(2); // Real Reset discards recording.
         CHECK(t->consume_owned_output(buffer,9,queue,1).linked);
     }
+    {
+        auto t=std::make_unique<Tracker>();auto open=t->reset_success(1),done=t->reset_success(2);
+        CHECK(t->draw_unknown(open,buffer+1));CHECK(t->draw_unknown(done,buffer+1));CHECK(t->execute(queue,&done,1));
+        auto invalid=t->reset_success(3);t->invalidate_list(3);
+        const auto before=t->snapshot();CHECK(t->retire_before_owned_birth());
+        CHECK(t->current(1).generation==open.generation&&t->current(2).generation==done.generation&&!t->current(3).identity);
+        CHECK(t->snapshot().reset_calls==before.reset_calls&&t->snapshot().active_lists==before.active_lists);
+        CHECK(birth(*t));CHECK(!t->retire_before_owned_birth());
+        CHECK(eye(*t,open,1,0));CHECK(eye(*t,open,1,1));CHECK(submit_owned(*t,&open,1));
+        CHECK(t->consume_owned_output(buffer,9,queue,1).linked);CHECK(!submit_owned(*t,&done,1));
+        CHECK(!t->owned_status().certified); // Prior execution was retained, not converted to a fresh recording.
+    }
+    {
+        auto t=std::make_unique<Tracker>();t->invalidate_capacity();CHECK(t->retire_before_owned_birth());
+        CHECK(t->snapshot().capacity_bad&&!birth(*t));
+    }
+    for(unsigned failure=0;failure<3;++failure){
+        auto t=std::make_unique<Tracker>();auto known=t->reset_success(1);
+        ListRef batch[]{known,failure==1?known:ListRef{99,1}};
+        CHECK(!t->execute(queue,batch,2)); // Original API still submits this rejected batch.
+        ListRef next{};if(failure==2)next=t->reset_success(1); // Reentrant Reset must not mark the new generation.
+        CHECK(t->submitted_before_owned_birth(batch,2));CHECK(!t->current(99).identity);
+        CHECK(t->retire_before_owned_birth());CHECK(birth(*t));
+        CHECK(!t->submitted_before_owned_birth(batch,2)); // Cannot change post-birth history this way.
+        if(failure==2){pair(*t,next);CHECK(submit_owned(*t,&next,1));CHECK(t->consume_owned_output(buffer,9,queue,1).linked);}
+        else {CHECK(!submit_owned(*t,&known,1));CHECK(t->snapshot().duplicate_batches>0);CHECK(!t->owned_status().certified);}
+    }
+    for(bool initially_open:{true,false}){
+        auto t=std::make_unique<Tracker>();auto created=t->create_success(1,initially_open);
+        CHECK(created.identity==1&&t->snapshot().list_creates==1&&t->snapshot().reset_calls==0);
+        CHECK(bool(t->current(1).identity)==initially_open);
+        CHECK(t->retire_before_owned_birth());CHECK(birth(*t));
+        if(initially_open){pair(*t,created);CHECK(submit_owned(*t,&created,1));CHECK(t->consume_owned_output(buffer,9,queue,1).linked);}
+        auto reset=t->reset_success(1);CHECK(reset.generation>created.generation&&t->snapshot().reset_calls==1);
+        pair(*t,reset,2);CHECK(submit_owned(*t,&reset,1));CHECK(t->consume_owned_output(buffer,9,queue,2).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto closed=t->create_success(1,false);
+        CHECK(!t->execute(queue,&closed,1));CHECK(!t->current(1).identity);
+        t->retire_present_interval();CHECK(!t->configure_owned_output({buffer,1920,1080},queue,9,4,true));
+    }
     std::printf("frame_link: %u checks passed\n", checks);
 }

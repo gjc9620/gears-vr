@@ -1,5 +1,7 @@
 # 最终部署交付目标
 
+2026-10-15 OwnedSequence3：独立Low目标完成16个连续scene ticket，首尾GPU读回各为两张2048×2048眼图，内容非黑且有时间变化；34条回归、58入口恢复和正常退出通过。仅验证有界scene输出，Canvas/XR尚未接入此资源，High和长时间游玩未测。Owner及创建列表引用仍保留至进程退出，启动器如实incomplete，不能作为可部署完成。证据`analysis/ui-position-runtime/owned-sequence3-45772.audit.json`；实验清单`tools/vr-launcher/manifest-owned-sequence3.json`，不替换默认发布清单。
+
 2026-10-12 用户明确：最终需要可部署版本。当前 tools 下均为研究原型，
 不能把编译成功的采样工具当作最终 Mod 交付。
 
