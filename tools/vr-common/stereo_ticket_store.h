@@ -5,6 +5,13 @@
 namespace gears_vr {
 enum class TicketRetainResult {retained,duplicate,invalid,stale,conflict,overflow};
 
+// Original game camera plus the actual eye matrices frozen for this ticket.
+// These are independent values: never reconstruct them from a newer pose.
+struct StereoTicketGeometry {
+    StereoMatrix source_view{},source_projection{};
+    StereoMatrices eyes{};
+};
+
 // Single-swapchain bounded CPU provenance store. Contains values, not renderer
 // pointers or bridge references. Store operations allocate no heap memory.
 //
@@ -19,7 +26,7 @@ enum class TicketRetainResult {retained,duplicate,invalid,stale,conflict,overflo
 // checked when the sample was frozen by StereoGate; lookup must also support
 // retaining a completed image for reprojection and never re-reads the bridge.
 class StereoTicketStore {
-    struct Entry {std::uint64_t id{};StereoSample sample{};};
+    struct Entry {std::uint64_t id{};StereoSample sample{};StereoTicketGeometry geometry{};bool has_geometry{};};
     std::array<Entry,128> entries_{};
     mutable std::mutex mutex_;
     std::uint64_t maximum_id_{},retired_id_{};
@@ -27,6 +34,18 @@ class StereoTicketStore {
     static bool valid(StereoSample const& s,bool allow_sim) {
         return s.session&&s.sequence&&s.received_ns>0&&s.focused==1&&s.should_render==1&&
             stereo_tracking_valid(s,allow_sim)&&stereo_geometry_valid(s);
+    }
+    static bool valid(StereoTicketGeometry const& g) {
+        if(!stereo_rigid(g.source_view)||!stereo_projection_supported(g.source_projection))return false;
+        for(unsigned eye=0;eye<2;++eye)
+            if(!stereo_rigid(g.eyes.view[eye])||!stereo_projection_supported(g.eyes.projection[eye]))return false;
+        return true;
+    }
+    static bool same(StereoTicketGeometry const& a,StereoTicketGeometry const& b) {
+        if(a.source_view!=b.source_view||a.source_projection!=b.source_projection)return false;
+        for(unsigned eye=0;eye<2;++eye)
+            if(a.eyes.view[eye]!=b.eyes.view[eye]||a.eyes.projection[eye]!=b.eyes.projection[eye])return false;
+        return true;
     }
 public:
     static constexpr std::size_t capacity=128;
@@ -36,20 +55,24 @@ public:
     static bool accepted(TicketRetainResult result) {
         return result==TicketRetainResult::retained||result==TicketRetainResult::duplicate;
     }
-    TicketRetainResult retain(std::uint64_t id,StereoSample const& sample,bool allow_sim=false) {
+    TicketRetainResult retain(std::uint64_t id,StereoSample const& sample,bool allow_sim=false,
+                              StereoTicketGeometry const* geometry=nullptr) {
         std::lock_guard<std::mutex> lock(mutex_);
-        if(!id||!valid(sample,allow_sim))return TicketRetainResult::invalid;
+        if(!id||!valid(sample,allow_sim)||(geometry&&!valid(*geometry)))return TicketRetainResult::invalid;
         if(id<=retired_id_)return TicketRetainResult::stale;
         Entry* empty{};
         for(auto& entry:entries_) {
-            if(entry.id==id)return stereo_same(entry.sample,sample)?TicketRetainResult::duplicate:TicketRetainResult::conflict;
+            if(entry.id==id)return stereo_same(entry.sample,sample)&&entry.has_geometry==(geometry!=nullptr)&&
+                (!geometry||same(entry.geometry,*geometry))?TicketRetainResult::duplicate:TicketRetainResult::conflict;
             if(!entry.id&&!empty)empty=&entry;
         }
         // Existing retained duplicates may be older than maximum_id_. A new
         // insertion must be newer, even if that old id was never stored.
         if(id<=maximum_id_)return TicketRetainResult::stale;
         if(!empty)return TicketRetainResult::overflow;
-        empty->sample=sample;empty->id=id;maximum_id_=id;++count_;
+        empty->sample=sample;empty->has_geometry=geometry!=nullptr;
+        if(geometry)empty->geometry=*geometry;
+        empty->id=id;maximum_id_=id;++count_;
         return TicketRetainResult::retained;
     }
     bool lookup(std::uint64_t id,StereoSample& sample,bool allow_sim=false) const {
@@ -57,6 +80,15 @@ public:
         if(!id)return false;
         for(auto const& entry:entries_)if(entry.id==id){if(!valid(entry.sample,allow_sim))return false;sample=entry.sample;return true;}
         return false; // Failed lookup leaves the caller's copy unchanged.
+    }
+    bool lookup_geometry(std::uint64_t id,StereoTicketGeometry& geometry,bool allow_sim=false) const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!id)return false;
+        for(auto const& entry:entries_)if(entry.id==id) {
+            if(!entry.has_geometry||!valid(entry.sample,allow_sim)||!valid(entry.geometry))return false;
+            geometry=entry.geometry;return true;
+        }
+        return false; // Missing/retired geometry leaves the caller's copy unchanged.
     }
     bool retire_through(std::uint64_t last_observed_id) {
         std::lock_guard<std::mutex> lock(mutex_);

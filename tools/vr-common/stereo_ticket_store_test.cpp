@@ -14,7 +14,92 @@ static StereoSample fixture() {
     return s;
 }
 #define CHECK(condition) do{if(!(condition)){std::printf("Failed line %d: %s\n",__LINE__,#condition);return __LINE__;}}while(0)
+static StereoTicketGeometry geometry_fixture() {
+    StereoTicketGeometry g{};
+    g.source_view={1,0,0,0,0,1,0,0,0,0,1,0,11,22,33,1};
+    g.source_projection={2,0,0,0,0,3,0,0,.2f,-.1f,1,1,0,0,-.5f,0};
+    for(unsigned eye=0;eye<2;++eye) {
+        g.eyes.view[eye]=g.source_view;g.eyes.view[eye][12]=eye?9.f:13.f;
+        g.eyes.projection[eye]=g.source_projection;g.eyes.projection[eye][8]=eye?-.3f:.4f;
+    }
+    return g;
+}
+static bool same_geometry(StereoTicketGeometry const& a,StereoTicketGeometry const& b) {
+    if(a.source_view!=b.source_view||a.source_projection!=b.source_projection)return false;
+    for(unsigned eye=0;eye<2;++eye)
+        if(a.eyes.view[eye]!=b.eyes.view[eye]||a.eyes.projection[eye]!=b.eyes.projection[eye])return false;
+    return true;
+}
+static int geometry_tests() {
+    auto sample=fixture();auto original=geometry_fixture();auto geometry=original;
+    StereoTicketStore store;StereoTicketGeometry copy=original;copy.source_view[12]=100;
+    auto sentinel=copy;
+    CHECK(!store.lookup_geometry(0,copy)&&same_geometry(copy,sentinel));
+    CHECK(store.retain(1,sample)==TicketRetainResult::retained);
+    CHECK(!store.lookup_geometry(1,copy)&&same_geometry(copy,sentinel));
+    CHECK(store.retain(1,sample,false,&geometry)==TicketRetainResult::conflict); // No upgrade.
+    CHECK(store.retain(2,sample,false,&geometry)==TicketRetainResult::retained);
+    CHECK(store.retain(2,sample,false,&geometry)==TicketRetainResult::duplicate);
+    CHECK(store.retain(2,sample)==TicketRetainResult::conflict); // No downgrade.
+    auto changed_sample=sample;++changed_sample.sequence;
+    CHECK(store.retain(2,changed_sample,false,&geometry)==TicketRetainResult::conflict);
+    // Each independent matrix participates in immutable duplicate identity.
+    for(unsigned matrix=0;matrix<6;++matrix) {
+        auto changed=original;
+        if(matrix==0)changed.source_view[12]+=1;
+        if(matrix==1)changed.source_projection[0]+=1;
+        if(matrix>=2&&matrix<4)changed.eyes.view[matrix-2][12]+=1;
+        if(matrix>=4)changed.eyes.projection[matrix-4][8]+=.1f;
+        CHECK(store.retain(2,sample,false,&changed)==TicketRetainResult::conflict);
+    }
+    // Caller memory and output copies cannot alter the retained geometry.
+    geometry.source_view[12]=777;geometry.eyes.view[1][12]=888;
+    CHECK(store.lookup_geometry(2,copy));
+    CHECK(copy.source_view[12]==11&&copy.eyes.view[0][12]==13&&copy.eyes.view[1][12]==9);
+    CHECK(copy.source_projection[8]==.2f&&copy.eyes.projection[0][8]==.4f&&copy.eyes.projection[1][8]==-.3f);
+    copy.eyes.projection[0][8]=99;CHECK(store.lookup_geometry(2,copy)&&same_geometry(copy,original));
+    for(unsigned invalid=0;invalid<6;++invalid) {
+        auto bad=original;
+        if(invalid==0)bad.source_view[12]=std::numeric_limits<float>::quiet_NaN();
+        if(invalid==1)bad.source_view[0]=2;
+        if(invalid==2)bad.source_projection[11]=0;
+        if(invalid==3)bad.eyes.view[0][15]=0;
+        if(invalid==4)bad.eyes.projection[1][14]=std::numeric_limits<float>::infinity();
+        if(invalid==5)bad.eyes.projection[0][3]=1;
+        CHECK(store.retain(3,sample,false,&bad)==TicketRetainResult::invalid);
+        CHECK(store.size()==2&&store.highest_id()==2);
+    }
+    auto future=original;future.source_view[13]=55;
+    CHECK(store.retain(4,sample,false,&original)==TicketRetainResult::retained);
+    CHECK(store.retain(7,sample,false,&future)==TicketRetainResult::retained);
+    CHECK(store.retire_through(4));copy=sentinel;
+    CHECK(!store.lookup_geometry(2,copy)&&same_geometry(copy,sentinel));
+    CHECK(store.lookup_geometry(7,copy)&&copy.source_view[13]==55);
+    CHECK(store.retain(4,sample,false,&original)==TicketRetainResult::stale);
+    CHECK(store.retain(6,sample,false,&original)==TicketRetainResult::stale);
+    CHECK(!store.retire_through(6)&&store.lookup_geometry(7,copy));
+    CHECK(store.retire_through(7));copy=sentinel;
+    CHECK(!store.lookup_geometry(7,copy)&&same_geometry(copy,sentinel));
+    // Capacity and subsequent reuse retire sample and geometry together.
+    StereoTicketStore full;
+    for(std::uint64_t id=1;id<=StereoTicketStore::capacity;++id)
+        CHECK(full.retain(id,sample,false,&original)==TicketRetainResult::retained);
+    CHECK(full.retain(129,sample,false,&future)==TicketRetainResult::overflow);
+    CHECK(full.retain(1,sample,false,&original)==TicketRetainResult::duplicate);
+    CHECK(full.lookup_geometry(128,copy)&&same_geometry(copy,original));
+    CHECK(full.retire_through(64)&&full.retain(129,sample,false,&future)==TicketRetainResult::retained);
+    CHECK(full.lookup_geometry(129,copy)&&same_geometry(copy,future));
+    CHECK(full.retain(130,sample)==TicketRetainResult::retained);copy=sentinel;
+    CHECK(!full.lookup_geometry(130,copy)&&same_geometry(copy,sentinel)); // Reused slot has no old geometry.
+    // The same explicit simulator admission applies to geometry lookups.
+    auto sim=sample;sim.source=StereoSource::MetaOperatorSimulated;sim.head_flags=3;
+    CHECK(store.retain(8,sim,true,&original)==TicketRetainResult::retained);copy=sentinel;
+    CHECK(!store.lookup_geometry(8,copy)&&same_geometry(copy,sentinel));
+    CHECK(store.lookup_geometry(8,copy,true)&&same_geometry(copy,original));
+    return 0;
+}
 int main() {
+    if(auto result=geometry_tests())return result;
     auto simulated=fixture();simulated.source=StereoSource::MetaOperatorSimulated;simulated.head_flags=3;
     StereoTicketStore simulation_store;StereoSample raw_copy{};
     CHECK(simulation_store.retain(1,simulated)==TicketRetainResult::invalid);
@@ -74,16 +159,24 @@ int main() {
     CHECK(full.retire_through(64)&&full.size()==64);
     CHECK(full.lookup(128,copied)&&full.retain(129,sample)==TicketRetainResult::retained);
     // Synchronized value copies while one ordered producer inserts future ids.
-    StereoTicketStore concurrent;CHECK(concurrent.retain(1,sample)==TicketRetainResult::retained);
+    auto frozen=geometry_fixture();
+    StereoTicketStore concurrent;CHECK(concurrent.retain(1,sample,false,&frozen)==TicketRetainResult::retained);
     std::atomic<bool> start{false};std::atomic<unsigned> failures{0};std::array<std::thread,8> readers;
     for(auto& reader:readers)reader=std::thread([&]{while(!start.load())std::this_thread::yield();
-        for(unsigned iteration=0;iteration<3000;++iteration){StereoSample value;
-            if(!concurrent.lookup(1,value)||!stereo_same(value,sample)||concurrent.retain(1,sample)!=TicketRetainResult::duplicate)++failures;}});
+        for(unsigned iteration=0;iteration<3000;++iteration){StereoSample value;StereoTicketGeometry geometry_value;
+            if(!concurrent.lookup(1,value)||!stereo_same(value,sample)||
+               !concurrent.lookup_geometry(1,geometry_value)||!same_geometry(geometry_value,frozen)||
+               concurrent.retain(1,sample,false,&frozen)!=TicketRetainResult::duplicate)++failures;
+            // No retirement occurs here: once the sample is published, geometry
+            // must already be published with it, even during future insertion.
+            const auto future_id=std::uint64_t(iteration%StereoTicketStore::capacity+1);
+            if(concurrent.lookup(future_id,value)&&
+               (!concurrent.lookup_geometry(future_id,geometry_value)||!same_geometry(geometry_value,frozen)))++failures;}});
     start=true;
-    for(std::uint64_t id=2;id<=128;++id)if(concurrent.retain(id,sample)!=TicketRetainResult::retained)++failures;
+    for(std::uint64_t id=2;id<=128;++id)if(concurrent.retain(id,sample,false,&frozen)!=TicketRetainResult::retained)++failures;
     for(auto& reader:readers)reader.join();CHECK(failures==0&&concurrent.size()==128);
     CHECK(concurrent.retire_through(100)&&concurrent.size()==28&&concurrent.lookup(128,copied));
     CHECK(!concurrent.lookup(1,copied)&&concurrent.retain(1,sample)==TicketRetainResult::stale);
-    std::printf("stereo ticket store tests passed: retain/conflict/overflow/boundary/future/replay/concurrency\n");
+    std::printf("stereo ticket store tests passed: sample/geometry/conflict/invalid/overflow/boundary/future/replay/concurrency\n");
     return 0;
 }

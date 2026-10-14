@@ -31,6 +31,7 @@
 #include "ui_observer.h"
 #include "ui_canvas_batch.h"
 #include "ui_payload_receipts.h"
+#include "ui_index_membership.h"
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -648,7 +649,8 @@ void retire_stereo_window() {
 bool retain_stereo_draw() {
     auto const& frame=consuming_frozen_frame;
     if(!frame.enabled||!frame.id||frame.id!=consuming_frame_ticket){++stereo_publish_counts.ticket_missing;frame_link.invalidate();return false;}
-    auto retained=stereo_ticket_store.retain(frame.id,frame.sample,simulator_operator);
+    gears_vr::StereoTicketGeometry geometry{frame.source_view,frame.source_projection,frame.expected};
+    auto retained=stereo_ticket_store.retain(frame.id,frame.sample,simulator_operator,ui_observer_enabled?&geometry:nullptr);
     if(!gears_vr::StereoTicketStore::accepted(retained)){++stereo_publish_counts.ticket_rejected;frame_link.invalidate();return false;}
     if(retained==gears_vr::TicketRetainResult::retained)++stereo_publish_counts.ticket_retains;else ++stereo_publish_counts.ticket_duplicates;
     stereo_window_retained=std::max(stereo_window_retained,frame.id);return true;
@@ -1628,6 +1630,9 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             return false;}
         gears_vr::StereoMatrix view{},projection{};memcpy(view.data(),original_source.bytes.data()+0x70,64);
         memcpy(projection.data(),original_source.bytes.data()+0xb0,64);
+        // The original camera defines Canvas screen placement. Retain its
+        // copied matrices before any experimental origin adjustment.
+        frame.source_view=view;frame.source_projection=projection;
         if(origin_trial_enabled){
             if(!gears_origin_trial::prepare(origin_trial,anchor,reinterpret_cast<uintptr_t>(family),input.family_views[0],
                 expected_local,GetCurrentThreadId(),view,projection,now(),qpc_frequency,frame.origin)){
@@ -2181,6 +2186,9 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
 }
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
     Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
+    // The native segment loop issues zero draws too. Consume its ordinal before
+    // any viewport/work/ticket filters; synthetic eye draws bypass this hook.
+    observe_ui_index_callback(caller,{indices,instances,start,vertex,first_instance});
     if(frame_link_diagnostics&&stereo_gpu_publish&&recording.load()&&!frame_target_stats.descriptor_capacity_lost()&&
        !consuming_renderer&&!consuming_frame_ticket&&
        caller-base==0x172741&&gears_viewport::has_draw_work(indices,instances)){

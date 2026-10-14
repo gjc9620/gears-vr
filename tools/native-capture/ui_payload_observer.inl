@@ -13,6 +13,16 @@ std::atomic<uint64_t> ui_batch_attempts{},ui_batch_before_rejected{},ui_batch_ap
     ui_batch_published{},ui_batch_publish_rejected{},ui_execute_calls{},ui_execute_header_rejected{},
     ui_execute_claims{},ui_execute_content_rejected{},ui_execute_content_matches{},ui_execute_bad_return{},
     ui_gpu_context_calls{},ui_gpu_context_missing{};
+std::atomic<uint64_t> ui_index_capture_ok{},ui_index_capture_rejected{},ui_index_callback_ok{},
+    ui_index_callback_rejected{},ui_index_complete{},ui_index_incomplete{},ui_execute_sequence{};
+struct UiIndexContext {
+    uint64_t execute_sequence{};
+    gears_ui_indices::Snapshot snapshot{};
+    gears_ui_indices::Cursor cursor{};
+    unsigned ordinal{};
+    bool callback_valid{};
+};
+thread_local UiIndexContext* ui_index_context{};
 struct UiPayloadContext {
     uintptr_t command{},payload{};uint64_t generation{},root_first{},root_last{};
     unsigned vertex_count{},receipts{},kind_mask{};std::array<unsigned,3> kind_vertices{};
@@ -21,13 +31,20 @@ struct UiPayloadContext {
 thread_local UiPayloadContext* ui_payload_context{};
 struct UiPayloadRestore {
     UiPayloadContext* saved=ui_payload_context;
+    UiIndexContext* saved_indices=ui_index_context;
     uintptr_t saved_return=ui_execute_entry_return;
-    ~UiPayloadRestore(){ui_payload_context=saved;ui_execute_entry_return=saved_return;}
+    ~UiPayloadRestore(){ui_payload_context=saved;ui_index_context=saved_indices;ui_execute_entry_return=saved_return;}
 };
 struct UiPayloadGpuRow {
     UiPayloadContext context{};uint64_t ticket{};gears_frame_link::ListRef list{};
     gears_frame_link::Target target{};long long qpc{};
     unsigned thread{},indices{},instances{},start{};int vertex{};
+    uint64_t execute_sequence{};
+    gears_ui_indices::Segment segment{};
+    unsigned segment_ordinal{};
+    bool index_callback_matched{},command_completed{};
+    gears_vr::StereoTicketGeometry geometry{};
+    bool geometry_matched{};
 };
 std::array<std::array<UiPayloadGpuRow,24>,8> ui_payload_gpu_rows{};
 std::array<unsigned,8> ui_payload_gpu_counts{};
@@ -62,8 +79,9 @@ bool validate_ui_payload_content(gears_ui_receipts::Claim const& claim,UiPayload
 
 uint32_t __fastcall hook_ui_execute(void* command){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
-    Scope active_scope;UiPayloadRestore restore;ui_payload_context=nullptr;ui_execute_entry_return=0;
+    Scope active_scope;UiPayloadRestore restore;ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
     UiPayloadContext context{};
+    std::unique_ptr<UiIndexContext> index_storage;
     // Empty contexts deliberately shadow a parent, including nested unsupported
     // Execute calls; their GPU work cannot inherit the parent's semantic label.
     if(ui_observer_enabled){
@@ -84,6 +102,14 @@ uint32_t __fastcall hook_ui_execute(void* command){
                    safe_copy(checked.data(),command,checked.size())&&checked==header){
                     context.command=reinterpret_cast<uintptr_t>(command);
                     ++ui_execute_content_matches;ui_payload_context=&context;
+                    index_storage.reset(new(std::nothrow) UiIndexContext{});
+                    if(index_storage&&caller==base+0x19f2f3&&
+                       gears_ui_indices::capture(safe_copy,payload,claim,index_storage->snapshot)&&
+                       safe_copy(checked.data(),command,checked.size())&&checked==header){
+                        index_storage->execute_sequence=++ui_execute_sequence;
+                        index_storage->cursor=gears_ui_indices::Cursor(index_storage->snapshot);
+                        ui_index_context=index_storage.get();++ui_index_capture_ok;
+                    }else ++ui_index_capture_rejected;
                 }else ++ui_execute_content_rejected;
             }
         }
@@ -91,7 +117,27 @@ uint32_t __fastcall hook_ui_execute(void* command){
     // Original owns/destructs the payload. No command/payload reads after return.
     const uint32_t result=ui_original_execute(command);
     if(ui_observer_enabled&&result!=48)++ui_execute_bad_return;
+    // Only our independent value copies remain live. The native command and
+    // payload have already been destroyed and must not be read here.
+    if(ui_index_context){
+        const bool complete=ui_index_context->cursor.finish()&&result==48;
+        if(complete)++ui_index_complete;else ++ui_index_incomplete;
+        std::lock_guard<std::mutex> lock(ui_payload_mutex);
+        for(unsigned k=1;k<ui_payload_gpu_rows.size();++k)
+            for(unsigned i=0;i<ui_payload_gpu_counts[k];++i){auto& row=ui_payload_gpu_rows[k][i];
+                if(row.execute_sequence==ui_index_context->execute_sequence)row.command_completed=complete;}
+    }
     return result;
+}
+
+void observe_ui_index_callback(uintptr_t caller,gears_ui_indices::DrawArgs args){
+    if(!ui_index_context)return;
+    ui_index_context->callback_valid=false;
+    if(caller!=base+0x172741)return;
+    unsigned ordinal{};
+    if(ui_execute_entry_return==base+0x19f2f3&&ui_index_context->cursor.consume(args,ordinal)){
+        ui_index_context->ordinal=ordinal;ui_index_context->callback_valid=true;++ui_index_callback_ok;
+    }else ++ui_index_callback_rejected;
 }
 
 bool reserve_ui_execute(){
@@ -125,7 +171,15 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
     ++ui_payload_gpu_calls[kind];auto& count=ui_payload_gpu_counts[kind];
     if(count>=ui_payload_gpu_rows[kind].size()||(count>=8&&timestamp<ui_payload_next_row[kind]))return;
     ui_payload_next_row[kind]=timestamp+qpc_frequency;
-    ui_payload_gpu_rows[kind][count++]={context,ticket,list,target,timestamp,GetCurrentThreadId(),indices,instances,start,vertex};
+    auto& row=ui_payload_gpu_rows[kind][count++];
+    row={context,ticket,list,target,timestamp,GetCurrentThreadId(),indices,instances,start,vertex};
+    row.geometry_matched=stereo_ticket_store.lookup_geometry(ticket,row.geometry,simulator_operator);
+    if(ui_index_context&&ui_index_context->callback_valid){
+        row.execute_sequence=ui_index_context->execute_sequence;
+        row.segment_ordinal=ui_index_context->ordinal;
+        row.segment=ui_index_context->snapshot.segments[row.segment_ordinal];
+        row.index_callback_matched=true;
+    }
 }
 
 void print_ui_payload_observer(FILE* status){
@@ -135,9 +189,12 @@ void print_ui_payload_observer(FILE* status){
         store.active_groups,store.poisoned_groups,store.disabled?1:0,store.resets);
     fprintf(status,"ui_batch attempts=%llu before_rejected=%llu append_rejected=%llu published=%llu publish_rejected=%llu coordinates_modified=0\n",
         ui_batch_attempts.load(),ui_batch_before_rejected.load(),ui_batch_append_rejected.load(),ui_batch_published.load(),ui_batch_publish_rejected.load());
-    fprintf(status,"ui_payload_execute calls=%llu header_rejected=%llu claims=%llu content_rejected=%llu content_matches=%llu bad_return=%llu gpu_calls=%llu gpu_missing_context=%llu allocation_identity_proven=0 draw_index_membership_proven=0\n",
+    fprintf(status,"ui_payload_execute calls=%llu header_rejected=%llu claims=%llu content_rejected=%llu content_matches=%llu bad_return=%llu gpu_calls=%llu gpu_missing_context=%llu allocation_identity_proven=0 index_membership_requires_per_row=1\n",
         ui_execute_calls.load(),ui_execute_header_rejected.load(),ui_execute_claims.load(),ui_execute_content_rejected.load(),
         ui_execute_content_matches.load(),ui_execute_bad_return.load(),ui_gpu_context_calls.load(),ui_gpu_context_missing.load());
+    fprintf(status,"ui_index_execute capture_ok=%llu capture_rejected=%llu callbacks_ok=%llu callbacks_rejected=%llu completed=%llu incomplete=%llu coordinates_modified=0\n",
+        ui_index_capture_ok.load(),ui_index_capture_rejected.load(),ui_index_callback_ok.load(),ui_index_callback_rejected.load(),
+        ui_index_complete.load(),ui_index_incomplete.load());
     for(unsigned k=1;k<ui_payload_gpu_rows.size();++k){
         fprintf(status,"ui_payload_gpu kind_mask=%u calls=%llu rows=%u\n",k,ui_payload_gpu_calls[k],ui_payload_gpu_counts[k]);
         for(unsigned i=0;i<ui_payload_gpu_counts[k];++i){auto const& r=ui_payload_gpu_rows[k][i];auto const& c=r.context;
@@ -145,6 +202,20 @@ void print_ui_payload_observer(FILE* status){
                 k,i,reinterpret_cast<void*>(c.command),reinterpret_cast<void*>(c.payload),c.generation,c.root_first,c.root_last,c.vertex_count,c.receipts,
                 c.kind_vertices[0],c.kind_vertices[1],c.kind_vertices[2],c.unknown_vertices,r.ticket,reinterpret_cast<void*>(r.list.identity),r.list.generation,
                 reinterpret_cast<void*>(r.target.resource),r.target.width,r.target.height,r.indices,r.instances,r.start,r.vertex,r.qpc,r.thread);
+            if(r.index_callback_matched){auto const& s=r.segment;
+                fprintf(status,"ui_index_gpu_row kind_mask=%u row=%u execute_sequence=%llu ticket=%llu ordinal=%u min_vertex=%d max_vertex=%d indices=%u reticle_indices=%u weapon_indices=%u hud_indices=%u unknown_indices=%u actual_kind_mask=%u entry_mask=%u callback_matched=1 command_completed=%u geometry_matched=%u allocation_identity_proven=0 coordinates_modified=0\n",
+                    k,i,r.execute_sequence,r.ticket,r.segment_ordinal,s.minimum,s.maximum,s.index_count,s.known[0],s.known[1],s.known[2],s.unknown,
+                    s.kind_mask,s.entry_mask,r.command_completed?1:0,r.geometry_matched?1:0);
+            }
+            if(r.geometry_matched&&i<3){
+                const gears_vr::StereoMatrix* matrices[]{&r.geometry.source_view,&r.geometry.source_projection,
+                    &r.geometry.eyes.view[0],&r.geometry.eyes.projection[0],&r.geometry.eyes.view[1],&r.geometry.eyes.projection[1]};
+                for(unsigned m=0;m<6;++m){
+                    fprintf(status,"ui_geometry_row kind_mask=%u row=%u ticket=%llu matrix=%u values=",k,i,r.ticket,m);
+                    for(unsigned n=0;n<16;++n)fprintf(status,n?",%.9g":"%.9g",double((*matrices[m])[n]));
+                    fprintf(status,"\n");
+                }
+            }
         }
     }
 }
