@@ -797,7 +797,7 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
     if(!frame_link_diagnostics || !recording.load())return;
     if(frame_target_stats.descriptor_capacity_lost()){
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
-        owned_scene_gpu::uncertain();
+        owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::descriptor);
 #endif
         frame_link.invalidate();return;}
     auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
@@ -805,7 +805,7 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
     if(!binding.targets)return; // No render target: no observed color write.
     if(!binding.target.resource){
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
-        owned_scene_gpu::uncertain();
+        owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::descriptor);
 #endif
         ++frame_counts.missing_target;frame_link.invalidate();return;}
     if(!swapchain_bindings.known_buffer(binding.target.resource)){++frame_counts.filtered;return;}
@@ -2219,9 +2219,9 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
     Scope scope;auto frame_guard=frame_lock();const auto owned=frame_link.owned_status();
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
     if(owned_scene_gpu::watching()){
-        if(count>1024||(count&&!barriers))owned_scene_gpu::uncertain();
+        if(count>1024||(count&&!barriers))owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::unreadable);
         else for(UINT i=0;i<count;++i){D3D12_RESOURCE_BARRIER b{};
-            if(!safe_copy(&b,barriers+i,sizeof(b))){owned_scene_gpu::uncertain();break;}
+            if(!safe_copy(&b,barriers+i,sizeof(b))){owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::unreadable);break;}
             owned_scene_gpu::barrier(list,b);}
     }
 #endif
@@ -2460,7 +2460,7 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
                     else if(!safe_copy(&handle,handles+i,sizeof(handle))){frame_link.invalidate();break;}
                     auto target=frame_target_stats.lookup(handle.ptr);
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
-                    if(!target.resource)owned_scene_gpu::uncertain();else owned_scene_gpu::use(list,target.resource,false);
+                    if(!target.resource)owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::descriptor);else owned_scene_gpu::use(list,target.resource,false);
 #endif
                     if(!target.resource){++frame_counts.missing_target;frame_link.invalidate();}
                     else if(swapchain_bindings.known_buffer(target.resource)){++frame_counts.unknown;
@@ -2529,9 +2529,9 @@ bool viewport_hooks(ID3D12Device* device) {
         void** device_table=*reinterpret_cast<void***>(device);
         viewport_targets={table[10],table[21],table[22],table[12],table[13],table[46],device_table[20],device_table[23],device_table[24],color_copy_diagnostics?table[16]:nullptr};
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
-        // Local SDK ID3D12GraphicsCommandListVtbl: ResourceBarrier follows
-        // SetPipelineState (23) and precedes ExecuteBundle (25), including IUnknown.
-        viewport_targets[10]=table[24];
+        // SDK C vtable offsets are compile-time checked by D3D12AbiTest.
+        // OMSetStencilRef is 24; SetPipelineState 25; ResourceBarrier 26.
+        viewport_targets[10]=table[26];
 #endif
         success=install(viewport_targets[0],reinterpret_cast<void*>(hook_reset_list),reinterpret_cast<void**>(&original_reset_list));
         success=install(viewport_targets[1],reinterpret_cast<void*>(hook_viewports),reinterpret_cast<void**>(&original_viewports))&&success;

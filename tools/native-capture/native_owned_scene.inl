@@ -72,10 +72,11 @@ void print_native_owned_scene(FILE* file){using namespace gears_owned_scene_live
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
  owned_scene_gpu::poll();owned_scene_gpu::print(file);
  healthy();const auto live=owner.snapshot();
- fprintf(file,"native_owned_scene attempted=%u resource=%llx adapter=%llx born=%llu ticket=%llu renderer=%llx width=%u height=%u built=%u entered=%u returned=%u destroyed=%u draw_mask=%u submitted_mask=%u draws=%llu unknown_draws=%llu submissions=%llu queue=%llx error=%u create_error=%u live_phase=%u live_error=%u adapter_fault=%u retained=%u retention_until_process_exit=1 canvas_redirected=0 gpu_state_certified=0 pixels_verified=0\n",
+ fprintf(file,"native_owned_scene attempted=%u resource=%llx adapter=%llx born=%llu ticket=%llu renderer=%llx width=%u height=%u built=%u entered=%u returned=%u destroyed=%u draw_mask=%u submitted_mask=%u draws=%llu unknown_draws=%llu submissions=%llu queue=%llx error=%u create_error=%u live_phase=%u live_error=%u adapter_fault=%u retained=%u retention_until_process_exit=1 canvas_redirected=0 gpu_state_certified=%u pixels_read_back=%u pixels_verified=0\n",
   attempted?1:0,trial.resource,trial.adapter,trial.born,trial.ticket,trial.renderer,created.width,created.height,
   trial.built?1:0,trial.entered?1:0,trial.returned?1:0,trial.destroyed?1:0,trial.draw_mask,trial.submitted_mask,
-  trial.draws,trial.unknown_draws,trial.submissions,trial.queue,trial.error,unsigned(created.error),unsigned(live.phase),unsigned(live.error),live.adapter_fault?1:0,owner.retained()?1:0);
+  trial.draws,trial.unknown_draws,trial.submissions,trial.queue,trial.error,unsigned(created.error),unsigned(live.phase),unsigned(live.error),live.adapter_fault?1:0,owner.retained()?1:0,
+  owned_scene_gpu::state_certified()?1:0,owned_scene_gpu::pixels_read_back()?1:0);
 }
 #else
 void initialize_native_owned_scene(bool){}

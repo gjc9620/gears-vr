@@ -58,3 +58,7 @@ OwnedMetadata1 进一步在实际游戏验证独立 adapter 的 surface/宽高/�
 后续 OwnedScene1 已在实际游戏将单个 Low ticket 的 copied-family target 指向该 adapter：两眼固定2048×2048，两个最终 draw 对应4096×2048独立资源，并随同一DIRECT队列一次Execute返回；renderer正常销毁，无adapter故障。当前证据止于命令提交，像素、GPU fence、Canvas及持续输出仍未验证。实验原生引用保留至进程退出，启动器完整清理判断为 incomplete；40入口另行独立核验通过，正常退出游戏完成实验收尾。这一步不改变上述玩家可用分辨率状态。证据 `analysis/ui-position-runtime/owned-scene1-37624.audit.json`。
 
 画面投影继续采用头显返回的每眼非对称 FOV 和位姿，正方形纹理不意味着正方形或对称视场。高分辨率只表示像素预算，AVP 和其他高端头显的兼容性还须分别验证其 PCVR 串流/OpenXR 路径、运行时限制与实际显示，不预先承诺支持。
+
+OwnedPixels5已取得实际单帧Low独立目标的GPU读回：4096×2048两眼均有游戏场景及视角差异，实际创建状态、队列提交和读回fence已关联；没有Canvas/HUD，XR仍使用原有输出。持续独立Low/High、中间场景缓冲尺寸、桌面镜像和正常退休仍未完成，不更新玩家可用分辨率或整体工程百分比。56入口恢复并正常退出通过，但实验Owner有意保留到进程退出，启动器仍为incomplete。证据 `analysis/ui-position-runtime/owned-pixels5-40520.audit.json`。
+
+历史状态测试更正：ResourceBarrier接口原误绑槽24，现修正为SDK槽26并加入30项编译期偏移检查；先前“13项GPU状态接线测试”的转换结论已被替代。修正版13项owned-output、8项scene-GPU和WARP像素检查通过，调试层不可用。OwnedPixels5实际目标从创建到读回一直保持RT状态，没有覆盖游戏侧状态转换分支。详见[最新证据与限制](00-roadmap-and-learning.md)。

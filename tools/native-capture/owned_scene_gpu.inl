@@ -9,6 +9,8 @@ struct Creation {uintptr_t resource{},device{};D3D12_RESOURCE_DESC desc{};unsign
 std::array<Creation,8> creations{};
 unsigned creation_count{},error{},prebirth_faults{},barriers{},unsupported{},birth_attempts{};
 std::array<uint64_t,8> api_calls{},api_scoped{};unsigned device_dispatch_available{},device_dispatch_match{};
+enum class Unknown : unsigned { unspecified,descriptor,clear,indirect,bundle,enhanced,render_pass,alias,uav,unreadable,copy,mrt };
+std::array<uint64_t,12> unknown_reasons{};
 thread_local unsigned creating{};
 bool enabled{},finished{},sealed{},birth_ok{};
 uintptr_t resource{};uint64_t generation{};
@@ -91,12 +93,13 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t target,bool exact,unsigned e
  if(exact)tracker.draw_final(ref,ticket,eye,{resource,4096,2048},rect);
  else tracker.draw_unknown(ref,resource);
 }
-void uncertain(){if(!watching()||(!resource&&!creation_count))return;++unsupported;
+void uncertain(Unknown reason=Unknown::unspecified){if(!watching()||(!resource&&!creation_count))return;++unsupported;
+ ++unknown_reasons[unsigned(reason)];
  if(!birth_ok)++prebirth_faults;else fault(8);}
 void use(ID3D12GraphicsCommandList* list,uintptr_t target,bool state_uncertain){
  if(!watching()||!touches(target))return;
  if(!birth_ok){prebirth_use(target);return;}
- if(state_uncertain){uncertain();return;}
+ if(state_uncertain){uncertain(Unknown::copy);return;}
  tracker.draw_unknown(tracker.current(canonical_identity(list)),resource);
 }
 void barrier(ID3D12GraphicsCommandList* list,D3D12_RESOURCE_BARRIER const& b){
@@ -108,9 +111,9 @@ void barrier(ID3D12GraphicsCommandList* list,D3D12_RESOURCE_BARRIER const& b){
    b.Transition.StateBefore,b.Transition.StateAfter,b.Transition.Subresource,b.Flags);
  }else if(b.Type==D3D12_RESOURCE_BARRIER_TYPE_ALIASING){
   if(!b.Aliasing.pResourceBefore||!b.Aliasing.pResourceAfter||touches(canonical_identity(b.Aliasing.pResourceBefore))||
-   touches(canonical_identity(b.Aliasing.pResourceAfter)))uncertain();
+   touches(canonical_identity(b.Aliasing.pResourceAfter)))uncertain(Unknown::alias);
  }else if(b.Type==D3D12_RESOURCE_BARRIER_TYPE_UAV){
-  if(!b.UAV.pResource||touches(canonical_identity(b.UAV.pResource)))uncertain();
+  if(!b.UAV.pResource||touches(canonical_identity(b.UAV.pResource)))uncertain(Unknown::uav);
  }else uncertain();
 }
 gears_frame_link::ExecutionToken prepare(ID3D12CommandQueue* q,UINT count,ID3D12CommandList* const* members){
@@ -134,6 +137,8 @@ void copy(bool ready,uint64_t ticket){
  finished=true;
 }
 void poll(){if(enabled&&finished)readback.poll();}
+bool state_certified(){return proof.state_certified;}
+bool pixels_read_back(){return readback.result().completed&&readback.result().saved;}
 void print(FILE* file){
  auto const& r=readback.result();const auto s=tracker.snapshot();
  fprintf(file,"native_owned_gpu enabled=%u creation_count=%u api=%u initial_state=%u creation_uses=%u prebirth_faults=%u birth_attempts=%u birth_ok=%u barriers=%u unsupported=%u error=%u sealed=%u rejection=%u state_certified=%u final_state=%u copied=%u completed=%u saved=%u read_error=%u read_hr=%08lx resets=%llu executes=%llu unknown_batches=%llu capacity=%u\n",
@@ -145,6 +150,8 @@ void print(FILE* file){
   r.width,r.height,r.eyes[0].nonblack,r.eyes[1].nonblack,r.differing_pixels,r.eyes[0].hash,r.eyes[1].hash);
  fprintf(file,"native_owned_gpu_dispatch available=%u match=%u\n",device_dispatch_available,device_dispatch_match);
  for(unsigned i=1;i<api_calls.size();++i)fprintf(file,"native_owned_gpu_api api=%u calls=%llu scoped=%llu\n",i,api_calls[i],api_scoped[i]);
+ const char* labels[]={"unspecified","descriptor","clear","indirect","bundle","enhanced","render_pass","alias","uav","unreadable","copy","mrt"};
+ for(unsigned i=0;i<unknown_reasons.size();++i)if(unknown_reasons[i])fprintf(file,"native_owned_gpu_unknown reason=%s count=%llu\n",labels[i],unknown_reasons[i]);
 }
 }
 #else
@@ -159,6 +166,8 @@ void commit(gears_frame_link::ExecutionToken){}
 gears_frame_link::ExecutionToken prepare(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*){return {};}
 void copy(bool,uint64_t){}
 void poll(){}
+bool state_certified(){return false;}
+bool pixels_read_back(){return false;}
 void print(FILE*){}
 }
 #endif

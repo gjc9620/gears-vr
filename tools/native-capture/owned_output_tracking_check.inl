@@ -42,7 +42,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedOutputTrackingChe
        FAILED(device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&desc,D3D12_RESOURCE_STATE_RENDER_TARGET,nullptr,IID_PPV_ARGS(&other))))return 13;
     auto table=*reinterpret_cast<void***>(list.Get()),queue_table=*reinterpret_cast<void***>(queue.Get());
     original_reset_list=reinterpret_cast<ResetListFn>(table[10]);
-    original_resource_barrier=mode==0?reinterpret_cast<BarrierFn>(table[24]):owned_test_barrier;
+    original_resource_barrier=mode==0?reinterpret_cast<BarrierFn>(table[26]):owned_test_barrier;
     original_execute=mode==0?reinterpret_cast<ExecuteFn>(queue_table[10]):owned_test_execute;
     self_testing=true;recording=true;frame_link_diagnostics=true;owned_test_mode=mode;owned_test_allocator=allocator.Get();
     if(FAILED(list->Close())||FAILED(hook_reset_list(list.Get(),allocator.Get(),nullptr)))return 14;

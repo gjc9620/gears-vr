@@ -19,7 +19,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)))||
   FAILED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&list))))return 5;
  auto lt=*reinterpret_cast<void***>(list.Get());auto qt=*reinterpret_cast<void***>(q.Get());auto dt=*reinterpret_cast<void***>(device.Get());
- original_reset_list=reinterpret_cast<ResetListFn>(lt[10]);original_resource_barrier=reinterpret_cast<BarrierFn>(lt[24]);
+ original_reset_list=reinterpret_cast<ResetListFn>(lt[10]);original_resource_barrier=reinterpret_cast<BarrierFn>(lt[26]);
  original_execute=reinterpret_cast<ExecuteFn>(qt[10]);owned_original_committed=reinterpret_cast<OwnedCommittedFn>(dt[27]);
  owned_original_clear=reinterpret_cast<OwnedClearFn>(lt[48]);original_create_rtv=reinterpret_cast<CreateRtvFn>(dt[20]);
  self_testing=true;recording=true;frame_link_diagnostics=true;enabled=true;

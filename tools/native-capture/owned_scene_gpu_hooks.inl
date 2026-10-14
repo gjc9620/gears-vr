@@ -50,7 +50,7 @@ HRESULT STDMETHODCALLTYPE owned_hook_committed3(ID3D12Device10* d,const D3D12_HE
 }
 void STDMETHODCALLTYPE owned_hook_enhanced(ID3D12GraphicsCommandList7* list,UINT32 count,const D3D12_BARRIER_GROUP* groups){
  if(stereo_publish_bypass){owned_original_enhanced(list,count,groups);return;}
- Scope scope;auto lock=frame_lock();if(count)owned_scene_gpu::uncertain();owned_original_enhanced(list,count,groups);
+ Scope scope;auto lock=frame_lock();if(count)owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::enhanced);owned_original_enhanced(list,count,groups);
 }
 HRESULT STDMETHODCALLTYPE owned_hook_placed1(ID3D12Device8* d,ID3D12Heap* h,UINT64 offset,const D3D12_RESOURCE_DESC1* desc,D3D12_RESOURCE_STATES state,const D3D12_CLEAR_VALUE* clear,REFIID iid,void** out){
  if(stereo_publish_bypass)return owned_original_placed1(d,h,offset,desc,state,clear,iid,out);
@@ -66,7 +66,7 @@ HRESULT STDMETHODCALLTYPE owned_hook_placed2(ID3D12Device10* d,ID3D12Heap* h,UIN
 void STDMETHODCALLTYPE owned_hook_clear(ID3D12GraphicsCommandList* list,D3D12_CPU_DESCRIPTOR_HANDLE handle,const FLOAT* rgba,UINT count,const D3D12_RECT* rect){
  if(stereo_publish_bypass){owned_original_clear(list,handle,rgba,count,rect);return;}
  Scope scope;auto lock=frame_lock();auto target=frame_target_stats.lookup(handle.ptr);
- if(!target.resource)owned_scene_gpu::uncertain();else owned_scene_gpu::use(list,target.resource,false);
+ if(!target.resource)owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::clear);else owned_scene_gpu::use(list,target.resource,false);
  owned_original_clear(list,handle,rgba,count,rect);
 }
 void STDMETHODCALLTYPE owned_hook_copy(ID3D12GraphicsCommandList* list,ID3D12Resource* dst,ID3D12Resource* src){
@@ -85,11 +85,11 @@ void STDMETHODCALLTYPE owned_hook_discard(ID3D12GraphicsCommandList* list,ID3D12
 }
 void STDMETHODCALLTYPE owned_hook_bundle(ID3D12GraphicsCommandList* list,ID3D12GraphicsCommandList* bundle){
  if(stereo_publish_bypass){owned_original_bundle(list,bundle);return;}
- Scope scope;auto lock=frame_lock();owned_scene_gpu::uncertain();owned_original_bundle(list,bundle);
+ Scope scope;auto lock=frame_lock();owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::bundle);owned_original_bundle(list,bundle);
 }
 void STDMETHODCALLTYPE owned_hook_indirect(ID3D12GraphicsCommandList* list,ID3D12CommandSignature* sig,UINT count,ID3D12Resource* args,UINT64 offset,ID3D12Resource* counts,UINT64 count_offset){
  if(stereo_publish_bypass){owned_original_indirect(list,sig,count,args,offset,counts,count_offset);return;}
- Scope scope;auto lock=frame_lock();if(count)owned_scene_gpu::uncertain();owned_original_indirect(list,sig,count,args,offset,counts,count_offset);
+ Scope scope;auto lock=frame_lock();if(count)owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::indirect);owned_original_indirect(list,sig,count,args,offset,counts,count_offset);
 }
 void STDMETHODCALLTYPE owned_hook_resolve_region(ID3D12GraphicsCommandList1* list,ID3D12Resource* dst,UINT di,UINT x,UINT y,ID3D12Resource* src,UINT si,const D3D12_RECT* rect,DXGI_FORMAT fmt,D3D12_RESOLVE_MODE mode){
  if(stereo_publish_bypass){owned_original_resolve_region(list,dst,di,x,y,src,si,rect,fmt,mode);return;}
@@ -98,7 +98,7 @@ void STDMETHODCALLTYPE owned_hook_resolve_region(ID3D12GraphicsCommandList1* lis
 }
 void STDMETHODCALLTYPE owned_hook_render_pass(ID3D12GraphicsCommandList4* list,UINT count,const D3D12_RENDER_PASS_RENDER_TARGET_DESC* targets,const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC* depth,D3D12_RENDER_PASS_FLAGS flags){
  if(stereo_publish_bypass){owned_original_render_pass(list,count,targets,depth,flags);return;}
- Scope scope;auto lock=frame_lock();owned_scene_gpu::uncertain();owned_original_render_pass(list,count,targets,depth,flags);
+ Scope scope;auto lock=frame_lock();owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::render_pass);owned_original_render_pass(list,count,targets,depth,flags);
 }
 bool owned_scene_gpu_install(ID3D12Device* device,ID3D12GraphicsCommandList* list){
  auto dev=*reinterpret_cast<void***>(device);auto tab=*reinterpret_cast<void***>(list);bool ok=true;

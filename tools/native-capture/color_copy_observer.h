@@ -116,7 +116,7 @@ void STDMETHODCALLTYPE hook_color_copy(ID3D12GraphicsCommandList* list,const D3D
     std::lock_guard<std::recursive_mutex> frame_guard(frame_hook_mutex);
     if(owned_scene_gpu::watching()){
         D3D12_TEXTURE_COPY_LOCATION src{},dst{};
-        if(!safe_copy(&src,source,sizeof(src))||!safe_copy(&dst,destination,sizeof(dst)))owned_scene_gpu::uncertain();
+        if(!safe_copy(&src,source,sizeof(src))||!safe_copy(&dst,destination,sizeof(dst)))owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::unreadable);
         else {owned_scene_gpu::use(list,canonical_identity(src.pResource),true);owned_scene_gpu::use(list,canonical_identity(dst.pResource),true);}
     }
 #endif
