@@ -32,7 +32,7 @@ inline void gpu_barrier(ID3D12GraphicsCommandList* list,ID3D12Resource* resource
 }
 enum class GpuCaptureReason:unsigned {not_attempted,published,not_ready,lock_busy,metadata_invalid,
     ticket_invalid,source_changed,no_consumer,rate_limited,chain_mismatch,device_removed,
-    producer_in_flight,consumer_not_done,api_failure,native_stopped,native_deadline};
+    producer_in_flight,consumer_not_done,api_failure,native_stopped,native_deadline,owned_binding_mismatch};
 enum GpuCaptureValid:unsigned {capture_state_valid=1,capture_serial_valid=2,capture_consumer_valid=4,
     capture_ready_valid=8,capture_done_valid=16,capture_hresult_valid=32};
 struct GpuCaptureTrace {GpuCaptureReason reason{GpuCaptureReason::not_attempted};unsigned valid{},state{};
@@ -40,7 +40,7 @@ struct GpuCaptureTrace {GpuCaptureReason reason{GpuCaptureReason::not_attempted}
 inline const char* gpu_capture_reason_name(GpuCaptureReason reason){
     static const char* names[]={"not_attempted","published","not_ready","lock_busy","metadata_invalid","ticket_invalid",
         "source_changed","no_consumer","rate_limited","chain_mismatch","device_removed","producer_in_flight",
-        "consumer_not_done","api_failure","native_stopped","native_deadline"};
+        "consumer_not_done","api_failure","native_stopped","native_deadline","owned_binding_mismatch"};
     auto i=static_cast<unsigned>(reason);return i<std::size(names)?names[i]:"unknown";
 }
 class GpuPublisher {
@@ -48,6 +48,11 @@ class GpuPublisher {
     ComPtr<ID3D12CommandQueue> queue;
     ComPtr<IDXGISwapChain3> chain;
     ComPtr<ID3D12Resource> texture,source;
+    ComPtr<ID3D12Resource> bound_resource;
+    ComPtr<IUnknown> bound_identity,bound_device_identity;
+    D3D12_RESOURCE_DESC bound_desc{};
+    UINT64 bound_generation{};
+    D3D12_RESOURCE_STATES bound_idle=D3D12_RESOURCE_STATE_COMMON;
     ComPtr<ID3D12CommandAllocator> allocator;
     ComPtr<ID3D12GraphicsCommandList> list;
     ComPtr<ID3D12Fence> ready_fence,done_fence;
@@ -59,7 +64,28 @@ class GpuPublisher {
     bool in_flight=false,initialized=false,allow_simulated_=false;
     HRESULT error=S_OK;
     bool complete(){return ready_fence && ready_fence->GetCompletedValue()!=~UINT64(0) && ready_fence->GetCompletedValue()>=serial;}
-    void detach(){source.Detach();texture.Detach();list.Detach();allocator.Detach();ready_fence.Detach();done_fence.Detach();chain.Detach();queue.Detach();device.Detach();}
+    void detach(){source.Detach();texture.Detach();list.Detach();allocator.Detach();ready_fence.Detach();done_fence.Detach();chain.Detach();queue.Detach();device.Detach();
+        bound_resource.Detach();bound_identity.Detach();bound_device_identity.Detach();}
+    static bool owned_desc_supported(D3D12_RESOURCE_DESC const& d,D3D12_RESOURCE_STATES idle) {
+        if(d.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D||!d.Width||d.Width%2||d.Width>8192||!d.Height||d.Height>8192||
+           d.SampleDesc.Count!=1||d.MipLevels!=1||d.DepthOrArraySize!=1||
+           (d.Format!=DXGI_FORMAT_R10G10B10A2_UNORM&&d.Format!=DXGI_FORMAT_R8G8B8A8_UNORM&&d.Format!=DXGI_FORMAT_B8G8R8A8_UNORM))return false;
+        if(idle==D3D12_RESOURCE_STATE_COMMON)return true;
+        if(idle==D3D12_RESOURCE_STATE_RENDER_TARGET)return (d.Flags&D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)!=0;
+        return idle==D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE&&(d.Flags&D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE)==0;
+    }
+    static bool same_desc(D3D12_RESOURCE_DESC const& a,D3D12_RESOURCE_DESC const& b) {
+        return a.Dimension==b.Dimension&&a.Alignment==b.Alignment&&a.Width==b.Width&&a.Height==b.Height&&
+            a.DepthOrArraySize==b.DepthOrArraySize&&a.MipLevels==b.MipLevels&&a.Format==b.Format&&
+            a.SampleDesc.Count==b.SampleDesc.Count&&a.SampleDesc.Quality==b.SampleDesc.Quality&&a.Layout==b.Layout&&a.Flags==b.Flags;
+    }
+    bool owned_matches(ID3D12Resource* resource,UINT64 generation,D3D12_RESOURCE_STATES idle) const {
+        if(!bound_resource||!resource||generation!=bound_generation||idle!=bound_idle)return false;
+        ComPtr<IUnknown> identity,resource_device_identity;ComPtr<ID3D12Device> resource_device;
+        return SUCCEEDED(resource->QueryInterface(IID_PPV_ARGS(&identity)))&&identity.Get()==bound_identity.Get()&&
+            SUCCEEDED(resource->GetDevice(IID_PPV_ARGS(&resource_device)))&&SUCCEEDED(resource_device.As(&resource_device_identity))&&
+            resource_device_identity.Get()==bound_device_identity.Get()&&same_desc(resource->GetDesc(),bound_desc);
+    }
 public:
     std::atomic<unsigned> frames{0},busy{0},rate_limited{0};
     std::atomic<unsigned> state{0}; // 0 absent,1 bound,2 ready,3 failed,4 stopped
@@ -74,12 +100,35 @@ public:
         }
         ReleaseSRWLockExclusive(&lock);return ok;
     }
+    // The caller certifies actual RHI state and same-queue render/copy ordering.
+    // D3D12 cannot query a resource's current state. COMMON/PRESENT both have
+    // value zero; accepting it is not proof that an arbitrary resource is idle.
+    // One fixed binding per publisher lifetime; no replacement or resize API.
+    bool bind_resource(ID3D12CommandQueue* q,ID3D12Resource* resource,UINT64 generation,
+                      D3D12_RESOURCE_STATES idle,bool allow_sim=false) {
+        if(!q||!resource||!generation||!TryAcquireSRWLockExclusive(&lock))return false;
+        bool ok=false;
+        if(state==0&&q->GetDesc().Type==D3D12_COMMAND_LIST_TYPE_DIRECT) {
+            ComPtr<ID3D12Device> q_device,r_device;ComPtr<IUnknown> q_identity,r_identity,identity;
+            auto desc=resource->GetDesc();
+            if(owned_desc_supported(desc,idle)&&SUCCEEDED(q->GetDevice(IID_PPV_ARGS(&q_device)))&&
+               SUCCEEDED(resource->GetDevice(IID_PPV_ARGS(&r_device)))&&SUCCEEDED(q_device.As(&q_identity))&&
+               SUCCEEDED(r_device.As(&r_identity))&&q_identity.Get()==r_identity.Get()&&
+               SUCCEEDED(resource->QueryInterface(IID_PPV_ARGS(&identity)))) {
+                device=q_device;queue=q;bound_resource=resource;bound_identity=identity;bound_device_identity=q_identity;
+                bound_desc=desc;bound_generation=generation;bound_idle=idle;allow_simulated_=allow_sim;state=1;ok=true;
+            }
+        }
+        ReleaseSRWLockExclusive(&lock);return ok;
+    }
     bool prepare(){
         AcquireSRWLockExclusive(&lock);
         if(state!=1){ReleaseSRWLockExclusive(&lock);return false;}
         bool ok=false;
         try {
-            ComPtr<ID3D12Resource> sample;gpu_check(chain->GetBuffer(0,IID_PPV_ARGS(&sample)),"share sample");
+            ComPtr<ID3D12Resource> sample;
+            if(bound_resource){if(!owned_matches(bound_resource.Get(),bound_generation,bound_idle))throw std::runtime_error("Owned binding changed");sample=bound_resource;}
+            else gpu_check(chain->GetBuffer(0,IID_PPV_ARGS(&sample)),"share sample");
             auto desc=sample->GetDesc();
             if(desc.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D || !desc.Width || desc.Width>8192 || !desc.Height || desc.Height>8192 || desc.SampleDesc.Count!=1 || desc.MipLevels!=1 || desc.DepthOrArraySize!=1 ||
                (desc.Format!=DXGI_FORMAT_R10G10B10A2_UNORM && desc.Format!=DXGI_FORMAT_R8G8B8A8_UNORM && desc.Format!=DXGI_FORMAT_B8G8R8A8_UNORM))throw std::runtime_error("Unsupported shared image");
@@ -112,6 +161,15 @@ public:
     // Render callback: no CPU wait, file I/O, allocations of GPU resources or
     // waits on the consumer queue. Busy slot means skip this frame.
     bool capture(IDXGISwapChain* swap,const StereoImageTicket* ticket=nullptr,GpuCaptureTrace* traceout=nullptr){
+        return capture_impl(swap,nullptr,0,D3D12_RESOURCE_STATE_PRESENT,ticket,traceout);
+    }
+    bool capture_resource(ID3D12Resource* resource,UINT64 generation,D3D12_RESOURCE_STATES idle,
+                          StereoImageTicket const& ticket,GpuCaptureTrace* traceout=nullptr) {
+        return capture_impl(nullptr,resource,generation,idle,&ticket,traceout);
+    }
+private:
+    bool capture_impl(IDXGISwapChain* swap,ID3D12Resource* resource,UINT64 generation,D3D12_RESOURCE_STATES idle,
+                      const StereoImageTicket* ticket,GpuCaptureTrace* traceout){
         if(traceout){*traceout={};traceout->state=state.load();traceout->valid=capture_state_valid;}
         if(state!=2){if(traceout)traceout->reason=GpuCaptureReason::not_ready;return false;}
         if(!TryAcquireSRWLockExclusive(&lock)){if(traceout)traceout->reason=GpuCaptureReason::lock_busy;return false;}
@@ -122,6 +180,10 @@ public:
         do {
             if(state!=2){reason(GpuCaptureReason::not_ready);break;} // mark_stopped may win before lock.
             if(packet->magic!=0x47564731 || packet->version!=3 || packet->size!=sizeof(*packet) || packet->pid!=GetCurrentProcessId() || packet->allow_simulated!=(allow_simulated_?1u:0u)){reason(GpuCaptureReason::metadata_invalid);break;}
+            if(bound_resource){
+                if(swap||!owned_matches(resource,generation,idle)||packet->width!=bound_desc.Width||packet->height!=bound_desc.Height||
+                   packet->format!=static_cast<unsigned>(bound_desc.Format)){reason(GpuCaptureReason::owned_binding_mismatch);break;}
+            }else if(resource||generation||!swap){reason(GpuCaptureReason::owned_binding_mismatch);break;}
             // Copy the caller's frozen ticket once. Validation never selects a
             // newer pose or changes the metadata of a still-owned GPU slot.
             StereoImageTicket frozen=ticket?*ticket:StereoImageTicket{};
@@ -135,9 +197,9 @@ public:
             // stereo tickets use the consumer ack and GPU fences as the only
             // pacing limits, preserving the nonblocking single-slot policy.
             if(!ticket&&GetTickCount64()<next_capture){++rate_limited;reason(GpuCaptureReason::rate_limited);break;}
-            ComPtr<IUnknown> a,b;
-            auto identity_result=chain.As(&a);if(FAILED(identity_result)){reason(GpuCaptureReason::chain_mismatch);break;}
-            identity_result=swap->QueryInterface(IID_PPV_ARGS(&b));if(FAILED(identity_result)||a.Get()!=b.Get()){reason(GpuCaptureReason::chain_mismatch);break;}
+            if(!bound_resource){ComPtr<IUnknown> a,b;
+                auto identity_result=chain.As(&a);if(FAILED(identity_result)){reason(GpuCaptureReason::chain_mismatch);break;}
+                identity_result=swap->QueryInterface(IID_PPV_ARGS(&b));if(FAILED(identity_result)||a.Get()!=b.Get()){reason(GpuCaptureReason::chain_mismatch);break;}}
             if(in_flight && complete()){source.Reset();in_flight=false;}
             auto done=done_fence->GetCompletedValue();
             if(traceout){traceout->done_completed=done;traceout->valid|=capture_done_valid;}
@@ -145,15 +207,17 @@ public:
             auto ready=ready_fence->GetCompletedValue();if(traceout){traceout->ready_completed=ready;traceout->valid|=capture_ready_valid;}
             if(ready==~UINT64(0)){error=DXGI_ERROR_DEVICE_REMOVED;state=3;reason(GpuCaptureReason::device_removed);break;}
             if(in_flight || done<serial){++busy;reason(in_flight?GpuCaptureReason::producer_in_flight:GpuCaptureReason::consumer_not_done);break;}
-            error=chain->GetBuffer(chain->GetCurrentBackBufferIndex(),IID_PPV_ARGS(&source));if(FAILED(error)){state=3;failure(error);break;}
+            if(bound_resource)source=bound_resource;
+            else {error=chain->GetBuffer(chain->GetCurrentBackBufferIndex(),IID_PPV_ARGS(&source));if(FAILED(error)){state=3;failure(error);break;}}
             auto desc=source->GetDesc();
             if(desc.Width!=packet->width || desc.Height!=packet->height || static_cast<unsigned>(desc.Format)!=packet->format){source.Reset();error=E_INVALIDARG;state=3;failure(error);break;}
             error=allocator->Reset();if(SUCCEEDED(error))error=list->Reset(allocator.Get(),nullptr);if(FAILED(error)){state=3;failure(error);break;}
-            gpu_barrier(list.Get(),source.Get(),D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_COPY_SOURCE);
+            const auto source_idle=bound_resource?bound_idle:D3D12_RESOURCE_STATE_PRESENT;
+            gpu_barrier(list.Get(),source.Get(),source_idle,D3D12_RESOURCE_STATE_COPY_SOURCE);
             gpu_barrier(list.Get(),texture.Get(),D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_COPY_DEST);
             list->CopyResource(texture.Get(),source.Get());
             gpu_barrier(list.Get(),texture.Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_COMMON);
-            gpu_barrier(list.Get(),source.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_PRESENT);
+            gpu_barrier(list.Get(),source.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,source_idle);
             error=list->Close();if(FAILED(error)){state=3;failure(error);break;}
             ID3D12CommandList* commands[]={list.Get()};in_flight=true;queue->ExecuteCommandLists(1,commands);
             error=queue->Signal(ready_fence.Get(),++serial);if(FAILED(error)){state=3;failure(error);break;}
@@ -165,6 +229,7 @@ public:
         ReleaseSRWLockExclusive(&lock);
         return published;
     }
+public:
     HRESULT failure()const{return error;}
     // Notify the receiver and prevent new submissions. Keep all resources and
     // shared handles alive until callbacks drain and the producer fence is safe.
@@ -182,7 +247,8 @@ public:
     bool close(){
         if(packet && initialized)InterlockedExchange(&packet->stopped,1);
         bool safe=!in_flight || (SUCCEEDED(error) && complete());
-        if(!safe)detach();else{source.Reset();texture.Reset();list.Reset();allocator.Reset();ready_fence.Reset();done_fence.Reset();chain.Reset();queue.Reset();device.Reset();}
+        if(!safe)detach();else{source.Reset();texture.Reset();list.Reset();allocator.Reset();ready_fence.Reset();done_fence.Reset();chain.Reset();queue.Reset();device.Reset();
+            bound_resource.Reset();bound_identity.Reset();bound_device_identity.Reset();}
         if(packet)UnmapViewOfFile(packet);packet=nullptr;if(map)CloseHandle(map);map=nullptr;
         for(auto& handle:shared){if(handle)CloseHandle(handle);handle=nullptr;}initialized=false;state=4;return safe;
     }
