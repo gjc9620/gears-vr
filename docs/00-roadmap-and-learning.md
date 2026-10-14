@@ -8,6 +8,8 @@ OwnedPixels5 / PID40520：首次从实际游戏独立 Low 目标读回完整4096
 
 下一步：把已读回的单次场景输出推进为有界连续ticket的独立目标输出，保持真实Reset代次与跨帧GPU状态；再接Canvas/UI、XR发布、桌面镜像及完整退休。优先复用现有反编译资料库，仅对具体缺口定向分析。
 
+连续跟踪准备：新增`consume_owned_output`边界，消费已提交帧时保留真实list代次、executed标记及资源状态，拒绝该资源的未提交记录，失证后不允许重新套用创建状态。17351项FrameLink检查含100帧连续状态及重复提交/消费、未来ticket、污染和未完成记录拒绝。WARP模式13通过实际两帧clear/barrier/读回，检查所有RGB像素；eye关联元数据为合成，不能替代游戏场景。模式14验证原始提交后早期失败时六份COM持有保留到进程退出。32条回归命令全部通过，结果在 `analysis/ui-position-runtime/owned-continuation1-tests.json`。该边界尚未接入游戏中的逐帧renderer租约及发布调度，现有实验仍只输出一个owned ticket。
+
 OwnedScene1 / PID37624：首次将一个实际 stereo ticket 的 copied-family target 改为持久独立 adapter，并使用固定 Low 边界。ticket2 的两个 2048×2048 视图构造、消费及 renderer 销毁均通过；4096×2048 目标收到两个已核验的最终 draw，关联到同一个 DIRECT 队列的一次真实 Execute 返回，unknown draw 为0，adapter 故障为0。这里只证明原生路径与 D3D12 命令提交，尚未读回纹理像素或认证 GPU 完成。Canvas/字幕没有重定向，XR 继续原有 backbuffer 路线；同轮现有双目运行51.46秒、4625次projection、3802张新图，期间9次stale ticket、最大提交间隔111.481ms，不能称连续零中断。实验有意将 native Owner 保留到游戏退出，原启动器如实返回 incomplete；独立核验40个入口全部恢复，游戏已正常关闭。102项实验状态检查、299项Owner、16201项FrameLink及13项GPU状态模式通过。证据 `analysis/ui-position-runtime/owned-scene1-37624.audit.json`，默认构建关闭该实验，实验清单为 `tools/vr-launcher/manifest-owned-scene1.json`。
 
 独立分辨率下一步：认证该资源的创建/实际提交状态并读回眼图，然后接入 Canvas、XR 发布与镜像、完整退休。不能用这次单帧提交替代持续每眼2K/4K画面或发布验收。

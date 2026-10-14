@@ -42,7 +42,7 @@ struct Snapshot {
     uint64_t overlay_recorded{},overlay_executed{},overlay_rejected{};
     uint64_t unknown_coalesced{};
     uint64_t overlay_from_executed_recorded{},overlay_from_executed_executed{};
-    uint64_t owned_births{},owned_birth_discarded_events{},owned_birth_discarded_candidates{};
+    uint64_t owned_births{},owned_birth_discarded_events{},owned_birth_discarded_candidates{},owned_consumed_frames{};
     uint64_t overlay_local_queries{},overlay_executed_queries{},overlay_no_executed_queries{},
         overlay_invalid_list_queries{},overlay_window_rejected_queries{},overlay_capacity_queries{},
         overlay_polluted_queries{},overlay_ticket_queries{},overlay_target_queries{},overlay_incompatible_queries{};
@@ -511,9 +511,7 @@ public:
         return !window_bad_ && !capacity_bad_;
     }
 private:
-    Result seal_locked(Identity backbuffer, Identity verified_swapchain_queue,bool owned_seal=false) {
-        if(pending_.active)lose_owned();
-        ++revision_;
+    Result result_locked(Identity backbuffer, Identity verified_swapchain_queue,bool owned_seal) const {
         Result result{};
         result.rejection = window_rejection_ | (window_bad_ ? metadata_lost : 0u) | (capacity_bad_ ? capacity : 0u);
         for (const auto& candidate : candidates_) if (candidate.target.resource == backbuffer && backbuffer) {
@@ -538,6 +536,12 @@ private:
             result.state_certified=result.linked&&owned_.certified;
         }
         if (!result.ticket) result.rejection |= missing_pair;
+        return result;
+    }
+    Result seal_locked(Identity backbuffer, Identity verified_swapchain_queue,bool owned_seal=false) {
+        if(pending_.active)lose_owned();
+        ++revision_;
+        auto result=result_locked(backbuffer,verified_swapchain_queue,owned_seal);
         retired_ticket_ = maximum_ticket_;
         candidates_ = {};
         window_bad_ = false;
@@ -557,6 +561,40 @@ public:
         if(!owned_.enabled||resource!=owned_.target.resource||generation!=owned_.generation||verified_queue!=owned_.queue){
             lose_owned();return seal_locked(0,0,true);}
         return seal_locked(resource,verified_queue,true);
+    }
+    // Continuous owned output: caller has finished ALL intended contributors to
+    // this ticket (including queued UI when enabled), under the same API-order
+    // lock. It must enqueue publication/copy before admitting the next writer.
+    // This proves CPU submission order, not GPU completion or borrower lifetime.
+    // Unlike Present/seal, retain actual Reset generations, executed markers and
+    // the certified submitted state. Never re-seed state from creation each frame.
+    // Reject unfinished recordings to this resource; do not discard them to make
+    // a frame appear complete. Failure is terminal for this output generation.
+    Result consume_owned_output(Identity resource,uint64_t generation,Identity verified_queue,uint64_t ticket) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto result=result_locked(resource,verified_queue,true);
+        if(!owned_.enabled||!owned_.certified||resource!=owned_.target.resource||
+           generation!=owned_.generation||verified_queue!=owned_.queue||pending_.active)
+            result.rejection|=owned_state_lost;
+        if(!ticket||ticket<=retired_ticket_||ticket!=result.ticket||ticket!=maximum_ticket_)
+            result.rejection|=ticket_conflict;
+        for(auto const& candidate:candidates_)if(candidate.target.resource&&candidate.target.resource!=resource)
+            result.rejection|=target_conflict;
+        for(auto const& list:lists_)if(list.count&&!list.executed){
+            for(size_t i=0;i<list.count;++i)if(list.events[i].target.resource==resource)
+                result.rejection|=metadata_lost;
+        }
+        if(revision_==UINT64_MAX||stats_.owned_consumed_frames==UINT64_MAX)result.rejection|=capacity;
+        if(!result.linked||result.rejection){
+            result.linked=false;result.state_certified=false;lose_owned();return result;
+        }
+        // Executed recordings cannot be submitted again without a real Reset.
+        // Their association payload is consumed, but identity/generation/flags
+        // stay intact. Unsubmitted unrelated recordings remain untouched.
+        for(auto& list:lists_)if(list.executed)list.count=0;
+        candidates_={};retired_ticket_=ticket;
+        ++revision_;++stats_.owned_consumed_frames;
+        return result;
     }
     void invalidate() {
         std::lock_guard<std::mutex> lock(mutex_);

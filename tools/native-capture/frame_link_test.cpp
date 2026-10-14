@@ -718,5 +718,59 @@ int main() {
         CHECK(t->commit_execute(token));CHECK(t->seal_owned_output(buffer,9,queue).linked); // Pending output untouched.
         CHECK(!birth(*t)); // No replacement even after successful seal.
     }
+    // Continuous consumption keeps real list history and submitted resource
+    // state. Synthetic API ordering here; actual GPU checks live separately.
+    {
+        auto t=std::make_unique<Tracker>();configure(*t,128);
+        auto open=t->reset_success(2);CHECK(t->draw_unknown(open,buffer+1));
+        for(uint64_t ticket=1;ticket<=100;++ticket){
+            auto ref=t->reset_success(1);CHECK(t->record_transition(ref,buffer,9,128,4));
+            pair(*t,ref,ticket);CHECK(t->record_transition(ref,buffer,9,4,128));
+            CHECK(submit_owned(*t,&ref,1));auto before=t->snapshot();
+            auto result=t->consume_owned_output(buffer,9,queue,ticket);
+            CHECK(result.linked&&result.state_certified&&result.ticket==ticket&&result.final_state==128);
+            CHECK(t->current(ref.identity).generation==ref.generation);
+            CHECK(t->current(open.identity).generation==open.generation);
+            CHECK(t->snapshot().reset_calls==before.reset_calls&&t->snapshot().active_lists==2);
+            CHECK(t->owned_status().certified&&t->owned_status().state==128);
+        }
+        CHECK(t->snapshot().owned_consumed_frames==100);
+        CHECK(submit_owned(*t,&open,1)); // Unrelated unsubmitted recording survived all 100 frames.
+        auto next=t->reset_success(2);CHECK(t->record_transition(next,buffer,9,128,4));pair(*t,next,101);
+        CHECK(submit_owned(*t,&next,1));CHECK(t->consume_owned_output(buffer,9,queue,101).linked);
+    }
+    for(unsigned fault=0;fault<13;++fault){
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);
+        CHECK(submit_owned(*t,&ref,1));auto open=t->reset_success(2);
+        if(fault==0)CHECK(t->record_transition(open,buffer,9,4,128)); // Recorded but not submitted.
+        if(fault==1)CHECK(t->draw_unknown(open,buffer));
+        if(fault==2)pair(*t,open,2); // Later ticket must never be silently discarded.
+        if(fault==3){ExecutionToken token{};CHECK(t->prepare_execute(queue,&open,1,token));}
+        if(fault==4)t->invalidate_capacity();
+        if(fault==5)t->invalidate_list(open.identity);
+        if(fault==6){CHECK(t->draw_unknown(open,buffer));CHECK(submit_owned(*t,&open,1));}
+        if(fault==7){CHECK(t->record_transition(open,buffer,9,4,1024));CHECK(submit_owned(*t,&open,1));}
+        const auto before=t->snapshot();
+        auto result=t->consume_owned_output(fault==8?buffer+1:buffer,fault==9?10:9,fault==10?queue+1:queue,
+                                            fault==11?0:fault==12?2:1);
+        CHECK(!result.linked&&!result.state_certified&&!t->owned_status().certified);
+        CHECK(t->snapshot().owned_consumed_frames==0&&t->snapshot().reset_calls==before.reset_calls);
+        CHECK(t->current(ref.identity).generation==ref.generation); // Failure did not erase executed history.
+        CHECK(!t->birth_owned_output({buffer,1920,1080},queue,10,4,true,true));
+    }
+    for(unsigned misuse=0;misuse<3;++misuse){
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);
+        CHECK(submit_owned(*t,&ref,1));CHECK(t->consume_owned_output(buffer,9,queue,1).linked);
+        if(misuse==0)CHECK(!submit_owned(*t,&ref,1)); // Executed marker must survive consumption.
+        if(misuse==1)CHECK(!t->consume_owned_output(buffer,9,queue,1).linked); // No duplicate publication proof.
+        if(misuse==2){auto next=t->reset_success(1);CHECK(!eye(*t,next,1,0));CHECK(!submit_owned(*t,&next,1));}
+        CHECK(!t->owned_status().certified);
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);
+        CHECK(submit_owned(*t,&ref,1));auto discarded=t->reset_success(2);
+        CHECK(t->record_owned_barrier_fault(discarded,9));t->reset_success(2); // Real Reset discards recording.
+        CHECK(t->consume_owned_output(buffer,9,queue,1).linked);
+    }
     std::printf("frame_link: %u checks passed\n", checks);
 }
