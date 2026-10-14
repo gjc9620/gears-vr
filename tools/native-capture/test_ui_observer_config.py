@@ -138,6 +138,59 @@ class UIObserverConfigTests(unittest.TestCase):
         for address_name,offset in (('hud',0x230),('pawn',0x230),('pc',0x41c)):
             r=Fixture();r.put(getattr(r,address_name)+offset,bytes(8))
             with self.assertRaises(UIConfigRejected):build_ui_observer_config(r,r.camera)
+    def test_mutable_nonidentity_snapshot_bytes_allowed(self):
+        r=Fixture();original=r.read;hits=0
+        def read(address,size):
+            nonlocal hits
+            raw=original(address,size)
+            if address==r.pawn and size==0x60:
+                hits+=1;raw=bytearray(raw)
+                for offset in (0x18,0x58):raw[offset]^=hits&1
+                return bytes(raw)
+            return raw
+        r.read=read
+        config,_=build_ui_observer_config(r,r.camera)
+        self.assertGreater(hits,2)
+        self.assertEqual(config['identities'][config['roles']['pawn']]['address'],r.pawn)
+    def test_each_identity_field_changed_between_snapshots_rejected(self):
+        for offset in (8,64,72,76,80):
+            with self.subTest(offset=offset):
+                r=Fixture();original=r.read;hits=0
+                def read(address,size):
+                    nonlocal hits
+                    raw=original(address,size)
+                    if address==r.pawn and size==0x60:
+                        hits+=1;raw=bytearray(raw);raw[offset]^=hits&1
+                        return bytes(raw)
+                    return raw
+                r.read=read
+                with self.assertRaisesRegex(UIConfigRejected,'identity read changed'):
+                    build_ui_observer_config(r,r.camera)
+    def test_registry_slot_changed_after_identity_snapshots_rejected(self):
+        r=Fixture();original=r.read;hits=0
+        def read(address,size):
+            nonlocal hits
+            raw=original(address,size)
+            if address==r.pawn and size==0x60:
+                hits+=1
+                # First read is the discovery hint; the next two are fresh().
+                if hits==3:r.put(r.od+r.objects.index(r.pawn)*8,bytes(8))
+            return raw
+        r.read=read
+        with self.assertRaisesRegex(UIConfigRejected,'registry slot'):
+            build_ui_observer_config(r,r.camera)
+    def test_role_reference_changed_after_capture_rejected(self):
+        r=Fixture();original=r.read;link=r.pc+0x41c;hits=0
+        def read(address,size):
+            nonlocal hits
+            raw=original(address,size)
+            if address==link and size==8:
+                hits+=1
+                if hits==1:r.put(link,struct.pack('<Q',r.inventory))
+            return raw
+        r.read=read
+        with self.assertRaisesRegex(UIConfigRejected,'field/link/entry changed'):
+            build_ui_observer_config(r,r.camera)
     def test_empty_oversized_and_unreadable_script_rejected(self):
         for header in (struct.pack('<Qii',0,3,3),struct.pack('<Qii',0x800000,131073,131073),struct.pack('<Qii',0x900000,3,3)):
             r=Fixture();r.put(r.function_addresses['WarHUD','DrawWeaponCrosshair']+0x8c,header)

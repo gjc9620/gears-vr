@@ -44,9 +44,18 @@ def build_ui_observer_config(resolver, camera):
         raise UIConfigRejected('Invalid UI registry headers')
     def fresh(address):
         if not address:raise UIConfigRejected('Null UI object')
-        raw=stable(address,0x60);index=struct.unpack_from('<I',raw,p['object_internal_index'])[0]
+        def identity_fields(raw):
+            return (struct.unpack_from('<I',raw,p['object_internal_index'])[0],
+                    *struct.unpack_from('<II',raw,p['object_name']),
+                    struct.unpack_from('<Q',raw,p['object_class'])[0],
+                    struct.unpack_from('<Q',raw,p['object_outer'])[0])
+        # Object flags/state outside these fields may change during play. Keep
+        # two complete snapshots, but compare only the certified identity tuple.
+        fields=identity_fields(r.read(address,0x60))
+        if identity_fields(r.read(address,0x60))!=fields:
+            raise UIConfigRejected('UI object identity read changed')
+        index,ni,number,cls,outer=fields
         if index>=oc or r.u64(objects+index*8)!=address:raise UIConfigRejected('UI object registry slot mismatch')
-        ni,number=struct.unpack_from('<II',raw,p['object_name'])
         if ni>=nc:raise UIConfigRejected('UI name index outside registry')
         entry=r.u64(names+ni*8)
         if not entry or r.u32(entry+p['name_entry_index'])!=ni:raise UIConfigRejected('UI name registry identity mismatch')
@@ -57,8 +66,7 @@ def build_ui_observer_config(resolver, camera):
         if not name or any(c in name for c in '\r\n\0='):
             raise UIConfigRejected('Invalid UI certificate name')
         return dict(address=address,internal_index=index,name_index=ni,number=number,name=name,
-                    cls=struct.unpack_from('<Q',raw,p['object_class'])[0],
-                    outer=struct.unpack_from('<Q',raw,p['object_outer'])[0])
+                    cls=cls,outer=outer)
     ids=[];by_address={};supers={};checks=[]
     def add(address):
         item=fresh(address)
