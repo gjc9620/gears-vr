@@ -23,6 +23,7 @@
 #include "split_source_views.h"
 #include "submitted_view_lifetime.h"
 #include "continuous_owner.h"
+#include "target_prime_owner.h"
 #include "gpu_viewport_stats.h"
 #include "frame_link.h"
 #include "outage_trace.h"
@@ -307,6 +308,15 @@ std::atomic<bool> prime_recording{},prime_ready{},prime_handoff{},prime_done{};
 std::atomic<unsigned> prime_started{};
 std::mutex prime_mutex;
 HANDLE prime_event{};
+gears_session::Owner prime_owner;
+DWORD prime_owner_pid{};
+std::uint64_t prime_owner_creation_time{};
+bool prime_owner_allows_handoff(bool continuous,DWORD pid,std::uint64_t created) {
+    return !prime_done.load()&&prime_event&&WaitForSingleObject(prime_event,0)==WAIT_TIMEOUT&&
+        (!prime_owner.handle||(continuous&&
+        gears_prime::same_owner(prime_owner_pid,prime_owner_creation_time,pid,created)&&
+        prime_owner.state()==gears_session::OwnerState::alive));
+}
 std::array<std::array<unsigned char,32>,6> prime_original_bytes{};
 using CreateSwapChainFn=HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory*,IUnknown*,DXGI_SWAP_CHAIN_DESC*,IDXGISwapChain**);
 using CreateHwndFn=HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory2*,IUnknown*,HWND,const DXGI_SWAP_CHAIN_DESC1*,const DXGI_SWAP_CHAIN_FULLSCREEN_DESC*,IDXGIOutput*,IDXGISwapChain1**);
@@ -2335,7 +2345,8 @@ bool present_hooks() {
 }
 DWORD WINAPI target_prime_watchdog(void* argument) {
     FILE* status=static_cast<FILE*>(argument);
-    WaitForSingleObject(prime_event,180000);
+    HANDLE waits[]{prime_event,prime_owner.handle};
+    DWORD waited=prime_owner.handle?WaitForMultipleObjects(2,waits,FALSE,INFINITE):WaitForSingleObject(prime_event,180000);
     std::lock_guard<std::mutex> lock(prime_mutex);
     if(prime_handoff.load()){
         auto stats=viewport_stats.snapshot();
@@ -2347,14 +2358,22 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
         bool restored=true;std::array<unsigned char,32> bytes{};
         for(unsigned i=0;i<prime_targets.size();++i)
             restored=restored&&safe_copy(bytes.data(),prime_targets[i],bytes.size())&&!memcmp(bytes.data(),prime_original_bytes[i].data(),bytes.size());
-        fprintf(status,"stopped disable_status=%u active=%u entries_match=%u\n",disabled?0:1,active.load(),restored?1:0);
+        const char* reason=waited==WAIT_TIMEOUT?"timeout":waited==WAIT_OBJECT_0?"cancel":
+            waited==WAIT_OBJECT_0+1?"owner_exited":"owner_error";
+        fprintf(status,"stopped reason=%s disable_status=%u active=%u entries_match=%u\n",reason,disabled?0:1,active.load(),restored?1:0);
     }
     if(!prime_handoff.load()&&!active.load())release_bindings();
     fclose(status);prime_done=true;return 0;
 }
-DWORD begin_target_prime() {
+DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullptr) {
     std::lock_guard<std::mutex> lock(prime_mutex);
+    if(prime_started.load()||started.load())return ERROR_ALREADY_EXISTS;
+    struct FailedOwnerCleanup {~FailedOwnerCleanup(){if(!prime_ready.load()&&prime_owner.handle){
+        CloseHandle(prime_owner.handle);prime_owner.handle=nullptr;prime_owner_pid=0;prime_owner_creation_time=0;}}} owner_cleanup;
+    if(owner_argument&&(!gears_prime::valid(*owner_argument)||
+       !prime_owner.open(owner_argument->pid,owner_argument->creation_time)))return ERROR_INVALID_PARAMETER;
     if(prime_started.exchange(1)||started.load())return ERROR_ALREADY_EXISTS;
+    if(owner_argument){prime_owner_pid=owner_argument->pid;prime_owner_creation_time=owner_argument->creation_time;}
     wchar_t path[MAX_PATH];GetModuleFileNameW(own_module,path,MAX_PATH);auto slash=wcsrchr(path,L'\\');
     if(!slash)return ERROR_BAD_PATHNAME;
     wcscpy_s(slash+1,MAX_PATH-static_cast<size_t>(slash+1-path),L"target-prime-status.txt");
@@ -2381,11 +2400,13 @@ DWORD begin_target_prime() {
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Capture.TargetPrime.%lu",GetCurrentProcessId());
     if(ok)prime_event=CreateEventW(nullptr,TRUE,FALSE,name);
     ok=ok&&prime_event;
+    if(ok&&prime_owner.handle)ok=prime_owner.state()==gears_session::OwnerState::alive;
     if(ok){prime_recording=true;ok=MH_ApplyQueued()==MH_OK;}
     HANDLE thread{};
     if(ok){thread=CreateThread(nullptr,0,target_prime_watchdog,status,0,nullptr);ok=thread!=nullptr;}
     if(!ok){prime_recording=false;for(auto target:prime_targets)MH_DisableHook(target);fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
-    fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId());fflush(status);
+    if(prime_owner.handle)fprintf(status,"capturing pid=%lu lifetime=owner owner_pid=%lu owner_creation_time=%llu native_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId(),prime_owner_pid,static_cast<unsigned long long>(prime_owner_creation_time));
+    else fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId());fflush(status);
     prime_ready=true;CloseHandle(thread);return 0;
 }
 DWORD WINAPI worker(void*) {
@@ -2433,7 +2454,8 @@ DWORD WINAPI worker(void*) {
         if(!gears_session::decimal(owner_pid,MAXDWORD,parsed_pid)||
            !gears_session::decimal(owner_created,(std::numeric_limits<std::uint64_t>::max)(),parsed_created)||
            !continuous_owner.open(static_cast<DWORD>(parsed_pid),parsed_created)){
-            fprintf(status,"rejected: continuous owner identity invalid native_hooks_enabled=0 capture_activated=0 prime_watchdog_retained=%u prime_watchdog_seconds=180\n",prime_ready.load()?1:0);
+            if(prime_owner.handle)fprintf(status,"rejected: continuous owner identity invalid native_hooks_enabled=0 capture_activated=0 prime_watchdog_retained=%u prime_watchdog_lifetime=owner owner_pid=%lu owner_creation_time=%llu\n",prime_ready.load()?1:0,prime_owner_pid,static_cast<unsigned long long>(prime_owner_creation_time));
+            else fprintf(status,"rejected: continuous owner identity invalid native_hooks_enabled=0 capture_activated=0 prime_watchdog_retained=%u prime_watchdog_seconds=180\n",prime_ready.load()?1:0);
             fclose(status);return 2;
         }
         session_owner_pid=static_cast<DWORD>(parsed_pid);session_owner_creation_time=parsed_created;
@@ -2633,9 +2655,14 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"present_hooks_created=%d\n",graphics);
     if(ok) {
         std::lock_guard<std::mutex> lock(prime_mutex);
-        if(prime_ready.load()){prime_handoff=true;SetEvent(prime_event);}
+        if(prime_ready.load()&&!prime_owner_allows_handoff(continuous_session,session_owner_pid,session_owner_creation_time)){
+            fprintf(status,"rejected: target prime owner or pending state invalid\n");ok=false;
+        }
+        if(ok&&prime_ready.load()){prime_handoff=true;SetEvent(prime_event);}
+        if(ok){
         submit_not_before=now()+3*qpc_frequency;recording=true;prime_recording=false;
         MH_STATUS applied=MH_ApplyQueued();fprintf(status,"minhook_apply=%s\n",MH_StatusToString(applied));ok=applied==MH_OK;
+        }
     }
     if(!ok) {
         recording=false;MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
@@ -3085,6 +3112,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserveFirstViewMask(v
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureTargetPrime(void*) {
     if(!reservation_ready||started.load())return ERROR_INVALID_STATE;
     return begin_target_prime();
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureTargetPrimeOwned(void* argument) {
+    if(!reservation_ready||started.load())return ERROR_INVALID_STATE;
+    gears_prime::OwnerArgument copied{};
+    if(!argument||!safe_copy(&copied,argument,sizeof(copied)))return ERROR_INVALID_PARAMETER;
+    return begin_target_prime(&copied);
 }
 namespace {
 QuadTrace fake_quad_last{};unsigned fake_quad_calls{};
@@ -3923,6 +3956,60 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeHandoffCheck(void
     if(!prime_handoff.load())SetEvent(prime_event);
     ULONGLONG deadline=GetTickCount64()+5000;while(!prime_done.load()&&GetTickCount64()<deadline)Sleep(1);
     if(!prime_done.load()||prime_recording.load())result=68;
+    return result;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeOwnedCheck(void* argument) {
+    DWORD mode{};if(!safe_copy(&mode,argument,sizeof(mode))||mode>2)return 220;
+    FILETIME created{},exited{},kernel{},user{};
+    if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user))return 221;
+    gears_prime::OwnerArgument identity{24,1,GetCurrentProcessId(),0,gears_session::creation_time(created)};
+    auto wrong=identity;wrong.creation_time++;
+    if(begin_target_prime(&wrong)!=ERROR_INVALID_PARAMETER||prime_started.load()||prime_owner.handle||prime_recording.load())return 222;
+    wrong=identity;wrong.version=2;
+    if(begin_target_prime(&wrong)!=ERROR_INVALID_PARAMETER||prime_started.load())return 223;
+    HANDLE child_event{};PROCESS_INFORMATION child{};
+    if(mode==1){
+        wchar_t event_name[128]{};swprintf_s(event_name,L"Local\\GearsVR.PrimeOwnerSelfTest.%lu",GetCurrentProcessId());
+        child_event=CreateEventW(nullptr,TRUE,FALSE,event_name);if(!child_event)return 224;
+        wchar_t executable[MAX_PATH]{};GetModuleFileNameW(nullptr,executable,MAX_PATH);
+        wchar_t command[MAX_PATH+200]{};swprintf_s(command,L"\"%s\" --prime-owner-child \"%s\"",executable,event_name);
+        STARTUPINFOW startup{};startup.cb=sizeof(startup);
+        if(!CreateProcessW(nullptr,command,nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,nullptr,&startup,&child)){
+            CloseHandle(child_event);return 225;
+        }
+        CloseHandle(child.hThread);
+        if(!GetProcessTimes(child.hProcess,&created,&exited,&kernel,&user)){
+            SetEvent(child_event);CloseHandle(child_event);CloseHandle(child.hProcess);return 226;
+        }
+        identity.pid=child.dwProcessId;identity.creation_time=gears_session::creation_time(created);
+    }
+    DWORD result=0;
+    if(MH_Initialize()!=MH_OK||begin_target_prime(&identity))result=227;
+    if(!result){
+        std::lock_guard<std::mutex> lock(prime_mutex);
+        if(!prime_owner_allows_handoff(true,identity.pid,identity.creation_time)||
+           prime_owner_allows_handoff(false,identity.pid,identity.creation_time)||
+           prime_owner_allows_handoff(true,identity.pid,identity.creation_time+1))result=228;
+    }
+    if(!result&&begin_target_prime(&identity)!=ERROR_ALREADY_EXISTS)result=229;
+    if(!result&&mode==2){viewport_diagnostics=true;result=GearsCaptureGPUCheck(nullptr);
+        if(!prime_handoff.load())result=230;
+    }
+    if(mode==1)SetEvent(child_event);
+    else if(prime_event&&!prime_handoff.load()){
+        std::lock_guard<std::mutex> lock(prime_mutex);SetEvent(prime_event);
+        if(prime_owner_allows_handoff(true,identity.pid,identity.creation_time))result=235;
+    }
+    ULONGLONG deadline=GetTickCount64()+5000;
+    while(!prime_done.load()&&GetTickCount64()<deadline)Sleep(1);
+    if(!prime_done.load()||prime_recording.load()||active.load())result=231;
+    std::array<unsigned char,32> bytes{};
+    for(unsigned i=0;i<prime_targets.size();++i)
+        if(!safe_copy(bytes.data(),prime_targets[i],bytes.size())||bytes!=prime_original_bytes[i])result=232;
+    if(mode==1){if(WaitForSingleObject(child.hProcess,5000)!=WAIT_OBJECT_0||
+        prime_owner.state()!=gears_session::OwnerState::exited)result=233;
+        CloseHandle(child_event);CloseHandle(child.hProcess);}
+    if(mode==2&&prime_event){SetEvent(prime_event);if(active.load())result=234;}
     return result;
 }
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {

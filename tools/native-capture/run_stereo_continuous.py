@@ -109,6 +109,8 @@ def xr_command(args,csv_path,owner):
     command=[str(args.xr_build_dir.resolve()/'OpenXRPoseProbe.exe'),'0',str(csv_path),
             '--stereo-game-pid',str(args.pid),'--continuous-session',
             '--owner-pid',str(owner['pid']),'--owner-creation-time',str(owner['creation_time'])]
+    if getattr(args,'startup_menu_window',0):
+        command+=['--startup-menu-window',str(args.startup_menu_window),str(args.pid)]
     for name in ('outage_diagnostics','shutdown_diagnostics'):
         if getattr(args,name,False):command.append('--'+name.replace('_','-'))
     if getattr(args,'origin_trial',False) or getattr(args,'image_ticket_diagnostics',False):command.append('--image-ticket-diagnostics')
@@ -118,6 +120,15 @@ def xr_command(args,csv_path,owner):
 def native_owner_matches(status,owner):
     return bool(status and owner and status.get('owner_pid')==str(owner['pid'])
                 and status.get('owner_creation_time')==str(owner['creation_time']))
+
+
+def startup_panel_submitted(path):
+    for line in path.read_text(encoding='utf-8',errors='replace').splitlines():
+        try:value=json.loads(line)
+        except ValueError:continue
+        if (isinstance(value,dict) and value.get('startup_menu_first_frame') is True
+                and value.get('end_frame_succeeded') is True and value.get('panel_counts_as_stereo') is False):return True
+    return False
 
 
 def read_session_status(path,pid,floor):
@@ -149,7 +160,14 @@ def continuous_passed(state):
     owner=state.get('owner_identity',{})
     watched=state.get('continuous_owner_evidence',{})
     native=state.get('native_status',{})
+    menu=state.get('startup_menu_evidence',{})
+    handoff=state.get('startup_menu_handoff',{})
+    startup_ok=not state.get('startup_menu_enabled') or (
+        state.get('startup_panel_submitted') is True and menu.get('stereo_handoff') is True
+        and menu.get('startup_quad_layers',0)>0 and handoff.get('end_frame_succeeded') is True
+        and handoff.get('ticketed_projection_rendered') is True and handoff.get('one_way') is True)
     return bool(state.get('native_cleanup_verified') and state.get('entry_restore_verified')
+                and startup_ok
                 and owner and watched.get('owner_pid')==owner.get('pid')
                 and watched.get('owner_creation_time')==owner.get('creation_time') and watched.get('owner_lost') is False
                 and native.get('owner_exit_observed')=='0' and native.get('owner_error_observed')=='0'
@@ -239,7 +257,7 @@ def cleanup_owned_xr(child,owned_pid,game_pid,timeout,control,state):
         state['xr_exit_code']=child.returncode
 
 
-def run_session(args,control=None,on_report=None,cancel_requested=None):
+def run_session(args,control=None,on_report=None,cancel_requested=None,before_native_activation=None):
     control=control or WindowsControl()
     lock=control.owner_lock(args.pid)
     token=uuid.uuid4().hex
@@ -254,6 +272,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None):
            'origin_trial_enabled':bool(getattr(args,'origin_trial',False)),
            'image_ticket_diagnostics_enabled':bool(getattr(args,'origin_trial',False) or getattr(args,'image_ticket_diagnostics',False)),
            'shutdown_diagnostics_enabled':bool(getattr(args,'shutdown_diagnostics',False)),
+           'startup_menu_enabled':bool(getattr(args,'startup_menu_window',0)),
            'owner_identity':None,'game_identity':None,
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
@@ -284,13 +303,26 @@ def run_session(args,control=None,on_report=None,cancel_requested=None):
                     if cancel_requested and cancel_requested():raise StartupCancelled()
                     path=prefix.with_suffix('.csv')
                     rows=complete_csv_rows(path) if path.exists() else []
-                    if len(rows)>=30 and all(r.get('stereo_published')=='1' and r.get('session_state')=='5'
+                    panel_ready=not state['startup_menu_enabled'] or startup_panel_submitted(out_path)
+                    if panel_ready and len(rows)>=30 and all(r.get('stereo_published')=='1' and r.get('session_state')=='5'
                         and r.get('should_render')=='1' and int(r.get('head_flags') or 0)&15==15
                         and int(r.get('view_flags') or 0)&15==15 and r.get('stereo_source')=='0' for r in rows[-20:]):
-                        state['preflight_frames']=len(rows);break
+                        state['preflight_frames']=len(rows)
+                        if state['startup_menu_enabled']:state['startup_panel_submitted']=True
+                        break
                     checked_identity(control,state['game_identity'])
                     time.sleep(.1)
-                else:raise RuntimeError('Strict focused XR source0 preflight failed; native remains inactive')
+                else:raise RuntimeError('Strict focused XR source0 or startup panel preflight failed; native remains inactive')
+                if before_native_activation:
+                    state['phase']='awaiting_level';write_state(state_path,state)
+                    def ensure_startup_live():
+                        if cancel_requested and cancel_requested():raise StartupCancelled()
+                        checked_identity(control,state['game_identity'])
+                        if child.poll() is not None:raise RuntimeError('XR exited while waiting for the level')
+                    ensure_startup_live()
+                    before_native_activation(ensure_startup_live)
+                    ensure_startup_live()
+                    state['phase']='starting';write_state(state_path,state)
                 checked_identity(control,state['game_identity'])
                 if cancel_requested and cancel_requested():raise StartupCancelled()
                 activation_attempted=True
@@ -363,6 +395,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None):
                 state['simulation_not_physical_tracking']=value.get('simulation_not_physical_tracking') is True
             if isinstance(value,dict) and value.get('session_exit_evidence'):state['session_exit_evidence']=value
             if isinstance(value,dict) and value.get('continuous_owner_evidence'):state['continuous_owner_evidence']=value
+            if isinstance(value,dict) and value.get('startup_menu_evidence'):state['startup_menu_evidence']=value
+            if isinstance(value,dict) and value.get('startup_menu_handoff'):state['startup_menu_handoff']=value
         state['passed']=continuous_passed(state)
         # Cancellation before native activation is a control result, not proof
         # of stereo output. The launcher still owns startup-prime verification.

@@ -34,7 +34,7 @@ def rooted(value,root=ROOT):
 def settings(config,manifest,root=ROOT):
     if set(config)-{'game_path','stereo_units_per_metre'}:raise ValueError('Unknown configuration field')
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
-    if any(type(manifest.get(key,False)) is not bool for key in SESSION_OPTIONS):
+    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu')):
         raise ValueError('Manifest session options must be boolean')
     scale=config.get('stereo_units_per_metre',100)
     if isinstance(scale,bool) or not isinstance(scale,(int,float)) or not math.isfinite(scale) or not 10<=scale<=500:
@@ -123,9 +123,11 @@ class Backend:
         result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',
             "Get-CimInstance Win32_Process -Filter 'Name=''GOWDE-Steam.exe''' | Select-Object -ExpandProperty ProcessId"],capture_output=True,text=True,check=True)
         return [int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
-    def reserve(self,manifest,log):
+    def reserve(self,manifest,log,owner=None):
         cmd=[sys.executable,str(ROOT/'tools/native-capture/launch_reserve.py'),'--build-dir',str(rooted(manifest['native_build'])),
              '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link']
+        if owner:
+            cmd+=['--prime-owner-pid',str(owner['pid']),'--prime-owner-creation-time',str(owner['creation_time'])]
         result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
         log.write_text(result.stdout+'\n'+result.stderr,encoding='utf-8')
         if result.returncode:raise RuntimeError('Fresh reservation failed; no retry: '+str(log))
@@ -138,15 +140,62 @@ class Backend:
         report=reports[0]
         if not report.get('hooks_enabled') or report.get('native_hooks_enabled') or not report.get('first_view_mask_reserved') or not all(x['matches'] for x in report['independent_entry_checks']):
             raise RuntimeError('Reservation proof rejected')
+        if owner and (report.get('prime_lifetime')!='owner' or report.get('prime_owner_pid')!=owner['pid'] or
+                      report.get('prime_owner_creation_time')!=owner['creation_time']):
+            raise RuntimeError('Owned target-prime reservation identity mismatch')
         return report
+    def game_window(self,pid):
+        from ctypes import wintypes
+        user=ctypes.WinDLL('user32',use_last_error=True)
+        callback=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
+        user.EnumWindows.argtypes=[callback,wintypes.LPARAM];user.EnumWindows.restype=wintypes.BOOL
+        user.IsWindowVisible.argtypes=[wintypes.HWND];user.IsWindowVisible.restype=wintypes.BOOL
+        user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
+        user.GetClientRect.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.RECT)]
+        windows=[]
+        @callback
+        def visit(hwnd,_):
+            actual=wintypes.DWORD();user.GetWindowThreadProcessId(hwnd,ctypes.byref(actual))
+            rect=wintypes.RECT()
+            if (actual.value==pid and user.IsWindowVisible(hwnd) and user.GetClientRect(hwnd,ctypes.byref(rect))
+                    and rect.right>=640 and rect.bottom>=360):windows.append(int(hwnd))
+            return True
+        if not user.EnumWindows(visit,0):raise ctypes.WinError(ctypes.get_last_error())
+        if len(windows)>1:raise RuntimeError('Multiple game windows; cannot select startup panel')
+        return windows[0] if windows else None
+    def finish_owned_prime(self,manifest,identity,owner):
+        if self.control.identity(identity['pid']) is None:return {'game_exited':True}
+        self.runner.checked_identity(self.control,identity)
+        path=rooted(manifest['native_build'])/'target-prime-status.txt'
+        text=path.read_text()
+        captures=[line for line in text.splitlines() if line.startswith('capturing ')]
+        fields=dict(token.split('=',1) for token in captures[0].split()[1:] if '=' in token) if len(captures)==1 else {}
+        required={'pid':str(identity['pid']),'lifetime':'owner','owner_pid':str(owner['pid']),
+                  'owner_creation_time':str(owner['creation_time'])}
+        if any(fields.get(key)!=value for key,value in required.items()):raise RuntimeError('Prime cleanup identity mismatch')
+        if any(line.startswith('handed_off ') for line in text.splitlines()):return {'handed_off':True}
+        if not self.control.signal(f"Local\\GearsVR.Capture.TargetPrime.{identity['pid']}"):
+            raise RuntimeError('Owned prime cancellation event absent')
+        deadline=time.monotonic()+15
+        while time.monotonic()<deadline:
+            self.runner.checked_identity(self.control,identity)
+            text=path.read_text()
+            stops=[line for line in text.splitlines() if line.startswith('stopped ')]
+            if stops:
+                fields=dict(token.split('=',1) for token in stops[-1].split()[1:] if '=' in token)
+                if any(fields.get(key)!=value for key,value in {'disable_status':'0','active':'0','entries_match':'1'}.items()):
+                    raise RuntimeError('Owned prime cleanup did not restore all entries')
+                return {'cancelled':True,'entry_restore_verified':True}
+            time.sleep(.05)
+        raise TimeoutError('Owned prime restoration is still pending')
     def player(self,pid,profile):
         resolver=self.Resolver(pid,profile)
         try:return possessed_player(resolver,resolver.resolve())
         finally:resolver.p.close()
-    def navigate(self,pid,identity,cancel,deadline,log):
+    def navigate(self,pid,identity,cancel,deadline,log,check_live=None):
         sys.path.insert(0,str(HERE))
         from menu_navigation import navigate
-        return navigate(pid,identity,self,cancel,deadline,log)
+        return navigate(pid,identity,self,cancel,deadline,log,check_live=check_live)
 
 def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sleep,auto_continue=False):
     game,scale=settings(config,manifest)
@@ -158,48 +207,64 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
     if ctypes.get_last_error()==183:
         backend.control.k.CloseHandle(lock);raise RuntimeError('Another repository launcher is active')
     state={'schema':1,'kind':'repository_vr_launcher','owner_identity':owner,'phase':'preflight','passed':False,'native_activated':False}
-    cancel=None
+    cancel=None;identity=None;owned_prime=manifest.get('startup_menu',False)
     try:
         cancel=backend.open_cancel(owner['pid'])
         if backend.game_pids():raise RuntimeError('An existing game process must exit normally before fresh startup')
         profile=verify_files(manifest,game)
         atomic_json(index,state)
         started=clock();state['phase']='reserving';atomic_json(index,state)
-        reserved=backend.reserve(manifest,index.with_suffix('.reserve.log'))
+        reserved=(backend.reserve(manifest,index.with_suffix('.reserve.log'),owner=owner) if owned_prime else
+                  backend.reserve(manifest,index.with_suffix('.reserve.log')))
         pid=reserved['pid'];identity=backend.control.identity(pid)
         if not identity or pathlib.Path(identity['image']).resolve()!=game:raise RuntimeError('Reserved game identity mismatch')
         state.update(phase='waiting_for_level',game_identity=identity,reservation=reserved);atomic_json(index,state)
-        if auto_continue:
-            sys.path.insert(0,str(HERE))
-            from menu_navigation import NavigationCancelled
-            state.update(phase='navigating_menu');atomic_json(index,state)
-            try:
-                state['menu_navigation']=backend.navigate(pid,identity,cancel,started+120,index.with_suffix('.menu.jsonl'))
-                if not state['menu_navigation'].get('loading_requested'):
-                    raise RuntimeError('Menu navigation did not request level loading')
-            except NavigationCancelled:
-                state.update(phase='cancelled_before_activation',native_activated=False,prime_watchdog_pending=True)
-                atomic_json(index,state);return 0
-            state['phase']='waiting_for_level';atomic_json(index,state)
-        previous=None;last_error='No possessed player observed'
-        # Starting before reserve is conservative: never extend its 180s prime lifetime.
-        # Keep 60s for XR preflight and the existing activation/prime checks.
-        while clock()-started<120:
-            if backend.cancelled(cancel):
-                state.update(phase='cancelled_before_activation',native_activated=False,prime_watchdog_pending=True)
-                atomic_json(index,state);return 0
-            if backend.control.identity(pid)!=identity:raise RuntimeError('Reserved game exited or changed')
-            try:current=backend.player(pid,profile)
-            except (RuntimeError,OSError,ValueError) as error:current=None;last_error=str(error)
-            if clock()-started>=120:
-                raise TimeoutError('Player discovery exceeded the conservative prime deadline; no activation or retry; wait for prime watchdog')
-            if stable_player(current,previous):break
-            previous=current;sleep(.5)
-        else:raise TimeoutError('No stable possessed level player before prime deadline; no activation/retry; existing prime watchdog must restore: '+last_error)
-        state['level_player']=current;atomic_json(index,state)
+        def prepare_level(check_live=None):
+            if check_live:check_live()
+            if auto_continue:
+                sys.path.insert(0,str(HERE))
+                from menu_navigation import NavigationCancelled
+                state.update(phase='navigating_menu');atomic_json(index,state)
+                try:
+                    navigation_deadline=clock()+60 if owned_prime else started+120
+                    navigation_guards={'check_live':check_live} if check_live else {}
+                    state['menu_navigation']=backend.navigate(pid,identity,cancel,navigation_deadline,index.with_suffix('.menu.jsonl'),**navigation_guards)
+                    if not state['menu_navigation'].get('loading_requested'):
+                        raise RuntimeError('Menu navigation did not request level loading')
+                except NavigationCancelled:return None
+                state['phase']='waiting_for_level';atomic_json(index,state)
+            previous=None;last_error='No possessed player observed'
+            # Legacy reservations retain the 120/180-second boundary. Owned prime
+            # is tied to this launcher process, so a player may stay in menus.
+            while owned_prime or clock()-started<120:
+                if check_live:check_live()
+                if backend.cancelled(cancel):return None
+                if backend.control.identity(pid)!=identity:raise RuntimeError('Reserved game exited or changed')
+                try:current=backend.player(pid,profile)
+                except (RuntimeError,OSError,ValueError) as error:current=None;last_error=str(error)
+                if not owned_prime and clock()-started>=120:
+                    raise TimeoutError('Player discovery exceeded the conservative prime deadline; no activation or retry; wait for prime watchdog')
+                if stable_player(current,previous):break
+                previous=current;sleep(.5)
+            else:raise TimeoutError('No stable possessed level player before prime deadline; no activation/retry; existing prime watchdog must restore: '+last_error)
+            state['level_player']=current;atomic_json(index,state);return current
+        if not owned_prime and prepare_level() is None:
+            state.update(phase='cancelled_before_activation',native_activated=False,prime_watchdog_pending=True)
+            atomic_json(index,state);return 0
         args=SimpleNamespace(pid=pid,build_dir=rooted(manifest['native_build']),dll_name=manifest['native_dll'],
             xr_build_dir=rooted(manifest['xr_build']),stereo_units_per_metre=scale,startup_timeout=45.,cleanup_timeout=35.)
         for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
+        if owned_prime:
+            deadline=clock()+30
+            while clock()<deadline:
+                if backend.cancelled(cancel):
+                    state.update(phase='cancelled_before_activation',native_activated=False)
+                    atomic_json(index,state);return 0
+                if backend.control.identity(pid)!=identity:raise RuntimeError('Reserved game exited or changed')
+                hwnd=backend.game_window(pid)
+                if hwnd:args.startup_menu_window=hwnd;break
+                sleep(.1)
+            else:raise TimeoutError('Game window unavailable for startup VR panel')
         def on_report(path,reported_owner,reported_game):
             report=pathlib.Path(path).resolve()
             if report.parent!=(ROOT/'analysis/runtime').resolve() or reported_owner!=owner or reported_game!=identity:
@@ -208,22 +273,39 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
             state.pop('native_activated',None) # The owned runner report is authoritative after handoff.
             state.update(session_report=str(report),session_id=original['session_id'],phase='session_owned')
             atomic_json(index,state)
-        code=backend.runner.run_session(args,backend.control,on_report=on_report,cancel_requested=lambda:backend.cancelled(cancel))
+        extra={}
+        if owned_prime:
+            def before_activation(check_live):
+                if prepare_level(check_live) is None:raise backend.runner.StartupCancelled()
+            extra['before_native_activation']=before_activation
+        code=backend.runner.run_session(args,backend.control,on_report=on_report,cancel_requested=lambda:backend.cancelled(cancel),**extra)
         report=json.loads(pathlib.Path(state['session_report']).read_text()) if state.get('session_report') else {}
         cancelled=report.get('phase')=='cancelled' and report.get('startup_cancelled') is True
         passed=code==0 and report.get('passed') is True
         state.update(phase='cancelled_before_activation' if cancelled else 'finished' if passed else 'incomplete',
             passed=passed,control_exit_code=code,native_activated=report.get('native_started',False))
-        if cancelled:state['prime_watchdog_pending']=True
+        if cancelled:state['prime_watchdog_pending']=not owned_prime
         atomic_json(index,state)
         return code
     except Exception as error:
         state.update(phase='incomplete',error=repr(error),no_automatic_retry=True,
-            recovery='Game remains running. Before activation, wait for the existing 180-second prime watchdog; exit the game normally before retry.')
+            recovery=('Owned prime is cancelled during cleanup; inspect prime_cleanup before normal game exit/retry.' if owned_prime else
+                      'Game remains running. Before activation, wait for the existing 180-second prime watchdog; exit the game normally before retry.'))
         atomic_json(index,state);raise
     finally:
-        if cancel:backend.control.k.CloseHandle(cancel)
-        backend.control.k.CloseHandle(lock)
+        try:
+            if owned_prime and identity:
+                try:
+                    state['prime_cleanup']=backend.finish_owned_prime(manifest,identity,owner)
+                    state['prime_watchdog_pending']=False
+                except Exception as error:
+                    state.update(prime_cleanup_error=repr(error),prime_watchdog_pending=True,passed=False)
+                    atomic_json(index,state)
+                    raise
+                atomic_json(index,state)
+        finally:
+            if cancel:backend.control.k.CloseHandle(cancel)
+            backend.control.k.CloseHandle(lock)
 
 def stop(backend,index=INDEX):
     state=json.loads(index.read_text())
@@ -245,7 +327,7 @@ def stop(backend,index=INDEX):
     # Cover XR preflight before the native stop event exists; runner consumes this callback.
     backend.runner.checked_identity(backend.control,state['owner_identity'])
     if not backend.control.signal(cancel_name(state['owner_identity']['pid'])):raise RuntimeError('Launcher cancellation event absent')
-    if original.get('phase')=='starting':
+    if original.get('phase') in ('starting','awaiting_level'):
         print('Session startup cancellation requested; owner will perform cleanup without activating new native work.')
         return 0
     return backend.runner.request_stop(report,95.,backend.control)

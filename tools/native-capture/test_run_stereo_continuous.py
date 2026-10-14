@@ -220,7 +220,7 @@ class ContinuousTests(unittest.TestCase):
             self.assertIsNone(runner.read_session_status(path,124,0))
             self.assertEqual(runner.read_session_status(path,123,0)['phase'],'stopped')
 
-    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False):
+    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True):
         with tempfile.TemporaryDirectory() as folder:
             root=pathlib.Path(folder);build=root/'native';build.mkdir()
             (build/'capture-status.txt').write_text('capturing pid=123 stopped disable_status=0 active=0')
@@ -230,6 +230,7 @@ class ContinuousTests(unittest.TestCase):
             if diagnostics:args.outage_diagnostics=True;args.shutdown_diagnostics=True
             if origin_trial:args.origin_trial=True;args.anchor_observer=True
             if image_ticket_diagnostics:args.image_ticket_diagnostics=True
+            if startup_menu:args.startup_menu_window=789
             control=Control();child=mock.Mock(pid=456,returncode=0)
             child.poll.return_value=0 if early_exit else None
             child.wait.side_effect=[subprocess.TimeoutExpired('xr',1),0] if xr_timeout else [0]
@@ -243,6 +244,10 @@ class ContinuousTests(unittest.TestCase):
                 self.assertEqual(len(reports),1)
                 pathlib.Path(command[2]).write_text('stereo_published,session_state,should_render,head_flags,view_flags,stereo_source\n'+'1,5,1,15,15,0\n'*60)
                 stdout.write(json.dumps(evidence)+'\n')
+                if startup_menu and panel_submitted:
+                    stdout.write(json.dumps(dict(startup_menu_first_frame=True,end_frame_succeeded=True,panel_counts_as_stereo=False))+'\n')
+                    stdout.write(json.dumps(dict(startup_menu_handoff=True,end_frame_succeeded=True,ticketed_projection_rendered=True,one_way=True))+'\n')
+                    stdout.write(json.dumps(dict(startup_menu_evidence=True,stereo_handoff=True,startup_quad_layers=10))+'\n')
                 stdout.write(json.dumps(dict(continuous_owner_evidence=True,owner_pid=os.getpid(),owner_creation_time=identity(os.getpid())['creation_time'],owner_lost=False))+'\n')
                 stdout.flush();return child
             def native(command,**kwargs):
@@ -258,7 +263,8 @@ class ContinuousTests(unittest.TestCase):
             with mock.patch.object(runner,'ROOT',root),mock.patch.object(runner.subprocess,'Popen',side_effect=spawn) as popen, \
                  mock.patch.object(runner.subprocess,'run',side_effect=native) as native_run, \
                  mock.patch.object(runner,'read_session_status',side_effect=stages),contextlib.redirect_stdout(io.StringIO()):
-                code=runner.run_session(args,control,on_report=report,cancel_requested=cancelled if cancel_at else None)
+                code=runner.run_session(args,control,on_report=report,cancel_requested=cancelled if cancel_at else None,
+                                        before_native_activation=startup_callback)
             state=json.loads(next((root/'analysis/runtime').glob('*.json')).read_text())
             return code,state,popen.call_args,native_run,control,child
 
@@ -284,6 +290,34 @@ class ContinuousTests(unittest.TestCase):
         self.assertIn('--outage-diagnostics',spawn.args[0]);self.assertIn('--shutdown-diagnostics',spawn.args[0])
         self.assertIn('--outage-diagnostics',native.call_args_list[0].args[0])
         self.assertNotIn('--shutdown-diagnostics',native.call_args_list[0].args[0])
+
+    def test_level_callback_runs_under_live_xr_before_native_activation(self):
+        callbacks=[]
+        def ready(check_live):
+            check_live();callbacks.append('ready')
+        code,state,spawn,native,control,child=self.run_mock(startup_callback=ready)
+        self.assertEqual(code,0);self.assertEqual(callbacks,['ready']);self.assertTrue(state['native_started'])
+
+    def test_startup_menu_requires_actual_panel_submission_before_native(self):
+        for submitted in (True,False):
+            with self.subTest(submitted=submitted):
+                callback=mock.Mock()
+                code,state,spawn,native,control,child=self.run_mock(startup_menu=True,panel_submitted=submitted,startup_callback=callback)
+                self.assertEqual(code,0 if submitted else 1)
+                self.assertEqual(state.get('startup_panel_submitted',False),submitted)
+                self.assertIn('--startup-menu-window',spawn.args[0])
+                if submitted:callback.assert_called_once()
+                else:callback.assert_not_called();native.assert_not_called()
+
+    def test_menu_cancellation_or_failure_never_activates_native(self):
+        for error,expected in ((runner.StartupCancelled(),0),(RuntimeError('menu unavailable'),1)):
+            def failure(check_live):
+                check_live();raise error
+            with self.subTest(error=type(error).__name__):
+                code,state,spawn,native,control,child=self.run_mock(startup_callback=failure)
+                self.assertEqual(code,expected);native.assert_not_called();self.assertFalse(state['native_started'])
+                self.assertFalse(state['passed']);child.terminate.assert_not_called()
+                self.assertEqual(control.signals,['Local\\GearsVR.XR.Stop.123'])
 
     def test_native_incomplete_and_xr_timeout_cannot_pass(self):
         for options in ({'clean':False},{'xr_timeout':True},{'early_exit':True}):
@@ -330,6 +364,13 @@ class ContinuousTests(unittest.TestCase):
                    continuous_session_evidence=dict(orderly_stop=True,shutdown_completed=True,structural_failure=False,
                                                     submitted_frames=1,scene_copies=1))
         self.assertTrue(runner.continuous_passed(state))
+        startup=dict(state,startup_menu_enabled=True,startup_panel_submitted=True,
+            startup_menu_evidence=dict(stereo_handoff=True,startup_quad_layers=1),
+            startup_menu_handoff=dict(end_frame_succeeded=True,ticketed_projection_rendered=True,one_way=True))
+        self.assertTrue(runner.continuous_passed(startup))
+        for missing in ('startup_panel_submitted','startup_menu_evidence','startup_menu_handoff'):
+            changed=dict(startup);changed.pop(missing)
+            self.assertFalse(runner.continuous_passed(changed),missing)
         for field,value in [('orderly_stop',False),('shutdown_completed',False),('structural_failure',True),('scene_copies',0)]:
             changed=dict(state,continuous_session_evidence=dict(state['continuous_session_evidence'],**{field:value}))
             self.assertFalse(runner.continuous_passed(changed),field)

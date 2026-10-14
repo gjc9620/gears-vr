@@ -37,7 +37,9 @@ class FakeBackend:
     def game_pids(self):return [55] if self.existing else []
     def open_cancel(self,pid):return 2
     def cancelled(self,handle):return self.cancel
-    def reserve(self,manifest,log):self.reserve_calls+=1;return {'pid':55}
+    def reserve(self,manifest,log,owner=None):self.reserve_calls+=1;self.prime_owner=owner;return {'pid':55}
+    def game_window(self,pid):return 12345
+    def finish_owned_prime(self,manifest,identity,owner):return {'entry_restore_verified':True}
     def player(self,pid,profile):
         if not self.ready:raise RuntimeError('Menu has no Pawn')
         self.samples+=1
@@ -141,6 +143,46 @@ class LauncherTests(unittest.TestCase):
             self.assertIs(backend.runner.run_session.call_args.args[1],backend.control)
             self.assertTrue(callable(backend.runner.run_session.call_args.kwargs['on_report']))
             backend.runner.run_session.assert_called_once()
+
+    def test_startup_menu_opens_xr_before_waiting_for_player_without_legacy_deadline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend();index=pathlib.Path(directory)/'index.json';ticks=[0.];events=[]
+            def run(args,control,**kwargs):
+                events.append('xr');self.assertEqual(backend.samples,0)
+                self.assertEqual(args.startup_menu_window,12345)
+                ticks[0]=240. # An owned menu session is not bounded by legacy prime.
+                kwargs['before_native_activation'](lambda:events.append('guard'))
+                self.assertEqual(backend.samples,2);events.append('activate');return 0
+            backend.runner.run_session=mock.Mock(side_effect=run)
+            with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                self.assertEqual(launcher.start({},dict(MANIFEST,startup_menu=True),backend,index,
+                    clock=lambda:ticks[0],sleep=lambda seconds:None),0)
+            self.assertEqual(events[0],'xr');self.assertEqual(events[-1],'activate')
+            self.assertEqual(backend.prime_owner,backend.owner)
+            self.assertTrue(json.loads(index.read_text())['prime_cleanup']['entry_restore_verified'])
+
+    def test_startup_menu_guard_failure_prevents_player_resolution_and_cleans_prime(self):
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend();index=pathlib.Path(directory)/'index.json'
+            backend.finish_owned_prime=mock.Mock(return_value={'entry_restore_verified':True})
+            def run(args,control,**kwargs):
+                def failed():raise RuntimeError('XR exited')
+                kwargs['before_native_activation'](failed)
+            backend.runner.run_session=mock.Mock(side_effect=run)
+            with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                with self.assertRaisesRegex(RuntimeError,'XR exited'):
+                    launcher.start({},dict(MANIFEST,startup_menu=True),backend,index)
+            self.assertEqual(backend.samples,0);backend.finish_owned_prime.assert_called_once()
+            self.assertEqual(backend.control.k.CloseHandle.call_count,2)
+
+    def test_prime_cleanup_failure_still_closes_launcher_handles(self):
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend(cancel=True);index=pathlib.Path(directory)/'index.json'
+            backend.finish_owned_prime=mock.Mock(side_effect=RuntimeError('Restore pending'))
+            with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                with self.assertRaisesRegex(RuntimeError,'Restore pending'):
+                    launcher.start({},dict(MANIFEST,startup_menu=True),backend,index)
+            self.assertEqual(backend.control.k.CloseHandle.call_count,2)
 
     def test_cancel_before_activation_keeps_watchdog(self):
         with tempfile.TemporaryDirectory() as directory:

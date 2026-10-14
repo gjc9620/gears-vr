@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from prime_owner import pending_prime
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools/package-inspector'))
 sys.path.insert(0,str(ROOT/'tools/package-inspector/python-libs'))
@@ -244,7 +245,7 @@ def main():
                 k.CloseHandle(event)
             if args.require_target_prime:
                 prime_status=dll.with_name('target-prime-status.txt').read_text()
-                if f'capturing pid={args.pid} seconds=180' not in prime_status or any(x in prime_status for x in ('stopped','handed_off','prime_setup_failed')):
+                if not pending_prime(prime_status,args.pid,args.continuous_owner_pid,args.continuous_owner_creation_time):
                     raise RuntimeError('Matching pending target priming required; restart for another observation')
                 prime_event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.TargetPrime.{args.pid}')
                 if not prime_event:raise RuntimeError('Target priming event absent')

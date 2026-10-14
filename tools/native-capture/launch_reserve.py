@@ -14,8 +14,10 @@ import json
 import pathlib
 import subprocess
 import time
+from prime_owner import owner_argument, pending_prime
 from start_capture import k, modules, remote_call, pefile, ROOT
 from runtime_probe import Process
+k.SetEvent.argtypes=[w.HANDLE];k.SetEvent.restype=w.BOOL
 
 
 def main():
@@ -25,9 +27,16 @@ def main():
     parser.add_argument('--check-shadow-copy',action='store_true',help='Require the bounded source-view copy self-test before startup; does not enable the experiment')
     parser.add_argument('--check-shadow-state',action='store_true',help='Require the independent state lifecycle self-test before startup')
     parser.add_argument('--prime-targets',action='store_true',help='Observe RTV creation/copies during loading, bounded to 180 seconds or capture handoff')
+    parser.add_argument('--prime-owner-pid',type=int)
+    parser.add_argument('--prime-owner-creation-time',type=int)
     parser.add_argument('--check-mask-control',action='store_true',help='Self-test and reserve the optional first-view mask trampoline without enabling it; requires a DLL with that export')
     parser.add_argument('--check-frame-link',action='store_true',help='Require frame-association self-tests and startup target/binding priming')
     args=parser.parse_args()
+    owned=args.prime_owner_pid is not None or args.prime_owner_creation_time is not None
+    if owned and (not args.prime_targets or args.prime_owner_pid is None or
+                  not 0<args.prime_owner_pid<=0xffffffff or args.prime_owner_creation_time is None or
+                  not 0<args.prime_owner_creation_time<=0xffffffffffffffff):
+        parser.error('Owned priming requires --prime-targets and paired valid PID/FILETIME identity')
     if args.check_frame_link and not args.prime_targets:parser.error('Frame association needs --prime-targets')
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
     build=args.build_dir.resolve();dll=build/args.dll_name
@@ -45,6 +54,9 @@ def main():
         subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--viewport'],check=True)
         subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--prime'],check=True)
         subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--prime-handoff'],check=True)
+        if owned:
+            for mode in ('--prime-owned-cancel','--prime-owned-exit','--prime-owned-handoff'):
+                subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),mode],check=True)
     result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',"if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"],capture_output=True)
     if result.returncode:raise RuntimeError('Existing game must exit normally first')
     exe=ROOT/'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
@@ -59,7 +71,8 @@ def main():
         if mask_export.forwarder:raise RuntimeError('Forwarded mask reserve export rejected')
         mask_rva=mask_export.address
     if args.prime_targets:
-        prime_export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureTargetPrime')
+        prime_name=b'GearsCaptureTargetPrimeOwned' if owned else b'GearsCaptureTargetPrime'
+        prime_export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==prime_name)
         if prime_export.forwarder:raise RuntimeError('Forwarded prime export rejected')
         prime_rva=prime_export.address
     pe.close()
@@ -77,7 +90,7 @@ def main():
                 k.CloseHandle(handle);handle=None
         time.sleep(.05)
     if not handle:raise RuntimeError('Fresh loader dependencies not ready')
-    memory=None;finished=False
+    memory=None;finished=False;prime_attempted=False;reported=False
     try:
         if loaded['gowde-steam.exe'][1].resolve()!=exe.resolve():raise RuntimeError('Fresh executable path differs')
         if dll.name.lower() in loaded:raise RuntimeError('Reservation DLL already loaded')
@@ -120,19 +133,46 @@ def main():
         finally:read_only.close()
         if not all(x['matches'] for x in entries):raise RuntimeError('Reservation changed an entry; do not activate')
         if args.prime_targets:
-            code=remote_call(handle,resident[0]+prime_rva,None)
+            prime_memory=None;prime_finished=False
+            try:
+                if owned:
+                    argument=owner_argument(args.prime_owner_pid,args.prime_owner_creation_time)
+                    prime_memory=k.VirtualAllocEx(handle,None,len(argument),0x3000,0x04)
+                    if not prime_memory:raise c.WinError(c.get_last_error())
+                    written=c.c_size_t();argument_buffer=c.create_string_buffer(argument)
+                    if not k.WriteProcessMemory(handle,prime_memory,argument_buffer,len(argument),c.byref(written)) or written.value!=len(argument):
+                        raise c.WinError(c.get_last_error())
+                prime_attempted=True
+                code=remote_call(handle,resident[0]+prime_rva,prime_memory)
+                prime_finished=True
+            finally:
+                if prime_memory and prime_finished:k.VirtualFreeEx(handle,prime_memory,0,0x8000)
             if code:raise RuntimeError(f'Target priming failed ({code}); do not activate')
             prime_event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.TargetPrime.{pid}')
             if not prime_event:raise RuntimeError('Target priming readiness absent')
-            k.CloseHandle(prime_event)
+            try:
+                if k.WaitForSingleObject(prime_event,0)!=0x102:raise RuntimeError('Target priming already closed')
+                prime_status=dll.with_name('target-prime-status.txt').read_text()
+                if not pending_prime(prime_status,pid,args.prime_owner_pid,args.prime_owner_creation_time,require_owned=owned):
+                    raise RuntimeError('Target priming identity/readiness not confirmed')
+            finally:k.CloseHandle(prime_event)
         report={'pid':pid,'dll':str(dll),'trampolines_reserved':True,'hooks_enabled':args.prime_targets,
                 'first_view_mask_reserved':args.check_mask_control,
                 'native_hooks_enabled':False,'descriptor_hooks_enabled':3 if args.prime_targets else 0,'independent_entry_checks':entries}
         report['factory_hooks_enabled']=3 if args.prime_targets and frame_link_capable else 0
+        if args.prime_targets:
+            report['prime_lifetime']='owner' if owned else '180_seconds'
+            if owned:report.update(prime_owner_pid=args.prime_owner_pid,prime_owner_creation_time=args.prime_owner_creation_time)
         folder=ROOT/'analysis/runtime';folder.mkdir(parents=True,exist_ok=True)
         (folder/f'reserve-{pid}.json').write_text(json.dumps(report,indent=2))
         print(json.dumps(report))
+        reported=True
     finally:
+        if owned and prime_attempted and not reported:
+            cancel=k.OpenEventW(0x2,False,f'Local\\GearsVR.Capture.TargetPrime.{pid}')
+            if cancel:
+                try:k.SetEvent(cancel)
+                finally:k.CloseHandle(cancel)
         if memory and finished:k.VirtualFreeEx(handle,memory,0,0x8000)
         k.CloseHandle(handle)
 

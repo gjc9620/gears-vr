@@ -85,14 +85,17 @@ def navigate_core(pid, game_identity, deadline, log_path, *, reader_factory,
                 reader.close()
 
 
-def navigate(pid, game_identity, backend, cancel, deadline, log_path):
+def navigate(pid, game_identity, backend, cancel, deadline, log_path, check_live=None):
     """Live adapters are imported only on explicit launcher invocation."""
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'game-io'))
     from menu_state import MenuReader
     import game_io
     from menu_control import send_confirm
+    def interrupted():
+        if check_live:check_live()
+        return backend.cancelled(cancel) or game_io.interrupted()
     return navigate_core(pid, game_identity, deadline, log_path,
                          reader_factory=lambda: MenuReader(pid), window=game_io.game_window,
                          send=send_confirm,
-                         interrupted=lambda: backend.cancelled(cancel) or game_io.interrupted(),
+                         interrupted=interrupted,
                          identity=backend.control.identity)
