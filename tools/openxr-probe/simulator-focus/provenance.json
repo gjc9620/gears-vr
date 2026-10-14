@@ -1,0 +1,53 @@
+{
+  "source_repository_head": "8de34575bfb823254297663aaf4997bc27da0ef8",
+  "baseline_note": "Tracked inputs were clean before edits. Before hashes record canonical HEAD blob bytes plus the reconstructed core.autocrlf=true CRLF checkout; no physical pre-edit hash was captured. New files did not exist.",
+  "files": [
+    {
+      "path": "CMakeLists.txt",
+      "after_sha256": "8197e2151a36c64ce4881495ec57bb8a997b99c976686db95ff04c231323ac9e",
+      "after_crlf_count": 104,
+      "after_lf_count": 104,
+      "before_git_blob_sha256": "b1a309ac35a01e6ee889849eaddfdbd262f9dfaa485e1cf63f4b0dc274ca2a9b",
+      "before_crlf_checkout_sha256": "7f8b99113ef61c213bad0bb7ca12ef153436f6c7b88c90ddc51ca6096c73e6f9"
+    },
+    {
+      "path": "src/runtime.cpp",
+      "after_sha256": "cb6161e920623a7eac7a58a186bfed2c83957a1e115f20b2c2a70a38337e5803",
+      "after_crlf_count": 8124,
+      "after_lf_count": 8124,
+      "before_git_blob_sha256": "092ddcd410bade8037ebd175456287009315eb58d1bed546d9c7fcd4aecfbbe5",
+      "before_crlf_checkout_sha256": "faf42fb790ca2d0a6e5711973bbbdcfbd816dccfdc8cc18cf27fd1e43e1c7b71"
+    },
+    {
+      "path": "src/focus_policy.h",
+      "after_sha256": "48ff6e44adf5ebe94df1dbb032b34011c146139b97ebcc8b13d50dc2f6b9b5e3",
+      "after_crlf_count": 0,
+      "after_lf_count": 28
+    },
+    {
+      "path": "tests/focus_policy_tests.cpp",
+      "after_sha256": "644b010a07be2c5191f5c848f98ed84ba28a61be370c3da63c0a9e9f1d8fe481",
+      "after_crlf_count": 0,
+      "after_lf_count": 39
+    }
+  ],
+  "vulkan_headers": {
+    "repository": "https://github.com/KhronosGroup/Vulkan-Headers.git",
+    "tag": "v1.3.290",
+    "commit": "b379292b2ab6df5771ba9870d53cf8b2c9295daf"
+  },
+  "built_dll": {
+    "path": "J:\\gearsVr\\OpenXR-Simulator-Source\\bin\\openxr_simulator.dll",
+    "sha256": "779baaac2106660f8d958ae89a2f9094cb1cb5c2441e56cd9ff97fe403ebe71d"
+  },
+  "unchanged_deployed_dll": {
+    "path": "J:\\gearsVr\\OpenXR-Simulator-v1.5.0-win64\\openxr_simulator.dll",
+    "sha256": "4b80eb1d85e3c61bfebd7dc5076086d1c74f53806530dac1a86f21d8f903bded"
+  },
+  "tests": {
+    "ctest": "3/3 passed",
+    "focus_policy": "82 checks, 0 failures"
+  },
+  "patch_sha256": "01a5e70de281eb2cd5297b12fccf9f81abe12825867bceec15b604180518ddcd",
+  "patch_validation": "Apply recreates all four edited files after LF normalization; reverse restores tracked HEAD content after LF normalization and removes new files in isolated patch-check repository."
+}
