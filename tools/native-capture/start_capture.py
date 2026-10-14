@@ -135,9 +135,12 @@ def main():
     parser.add_argument('--frame-link-diagnostics',action='store_true',help='Read-only paired final-draw/list/queue/backbuffer association; requires reserved target priming')
     parser.add_argument('--anchor-observer','--anchor-diagnostics',dest='anchor_observer',action='store_true',help='Read-only reflected Pawn/eye anchor diagnostics; requires stereo XR frame association')
     parser.add_argument('--origin-trial',action='store_true',help='Explicit experimental origin A/B/A; requires anchor observer, continuous session and stereo GPU publication')
+    parser.add_argument('--ui-observer',action='store_true',help='Observe registered reticle/HUD Canvas calls without changing coordinates')
     parser.add_argument('--outage-diagnostics',action='store_true',help='Record a bounded missing-image window in the existing stereo publication path; disabled by default')
     args=parser.parse_args()
     configure_anchor_options(args,parser)
+    if args.ui_observer and not (args.anchor_observer and args.continuous_session):
+        parser.error('UI observer requires continuous stereo with anchor observer')
     args.gpu_diagnostics=args.gpu_diagnostics or args.viewport_diagnostics
     if args.continuous_session:
         if (args.continuous_owner_pid is None or not 0<args.continuous_owner_pid<=0xffffffff
@@ -280,7 +283,7 @@ def main():
                 0x4ce80c:bytes.fromhex('40534883ec20488bc1488d511c488bd9'),
                 0x33bc70:bytes.fromhex('48895c2408574883ec208bda488bf9')})
         if args.shadow_constructor:signatures[0x15e428]=bytes.fromhex('488bc4488958104889701848897820')
-        anchor_metadata=None;anchor_section=''
+        anchor_metadata=None;anchor_section='';ui_metadata=None;ui_section=''
         r=Resolver(args.pid,profile)
         try:
             refreshed=r.resolve()
@@ -296,6 +299,10 @@ def main():
                     raise
                 anchor_section=anchor_ini(certificate)
                 anchor_metadata['pid']=args.pid
+            if args.ui_observer:
+                from ui_observer_config import build_ui_observer_config,ui_observer_ini
+                ui_certificate,ui_metadata=build_ui_observer_config(r,camera)
+                ui_section=ui_observer_ini(ui_certificate)
         finally:r.p.close()
         config='[Capture]\n'+f'pid={args.pid}\nseconds={args.seconds}\n'+f"local_player={camera['local_player_address']}\ncontroller={camera['controller_address']}\ntimestamp={camera['timestamp_address']}\n"
         yaw_address=int(camera['pov_address'],16)+int(camera['offsets']['Rotation'],16)+4
@@ -305,6 +312,7 @@ def main():
         config+=f'frame_link_diagnostics={int(args.frame_link_diagnostics)}\n'
         config+=f'outage_diagnostics={int(args.outage_diagnostics)}\n'
         config+=f'anchor_observer={int(args.anchor_observer)}\n'
+        config+=f'ui_observer={int(args.ui_observer)}\n'
         config+=f'origin_trial={int(getattr(args,"origin_trial",False))}\n'
         config+=f'stereo_gpu_publish={int(args.stereo_gpu_publish)}\n'
         config+=f'simulator_operator={int(args.simulator_operator)}\n'
@@ -334,6 +342,9 @@ def main():
         config+=f'submit_mono_independent_state={int(args.submit_mono_independent_state)}\n'
         config+=f'submit_duplicate_control={int(args.submit_duplicate_control)}\n'
         config+=anchor_section
+        config+=ui_section
+        if ui_metadata is not None:
+            dll.with_name('ui-observer-config.json').write_text(json.dumps(ui_metadata,indent=2,allow_nan=False)+'\n',encoding='utf-8')
         if anchor_metadata is not None:
             dll.with_name('anchor-observer-config.json').write_text(json.dumps(anchor_metadata,indent=2,allow_nan=False)+'\n',encoding='utf-8')
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')

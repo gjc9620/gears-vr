@@ -28,6 +28,7 @@
 #include "frame_link.h"
 #include "outage_trace.h"
 #include "anchor_observer.h"
+#include "ui_observer.h"
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -607,6 +608,7 @@ unsigned foreground() {
     DWORD pid{};GetWindowThreadProcessId(GetForegroundWindow(),&pid);return pid==GetCurrentProcessId();
 }
 struct Scope {Scope(){++active;} ~Scope(){--active;}};
+#include "ui_observer_hooks.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
     if(!object || FAILED(object->QueryInterface(IID_PPV_ARGS(&identity))))return 0;
@@ -2042,7 +2044,8 @@ bool install(void* target,void* detour,void** original) {
     MH_STATUS created=MH_CreateHook(target,detour,original);
     if(created==MH_ERROR_ALREADY_CREATED && *original &&
          ((reservation_ready && (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target || target==quad_target || target==geometry_target || (first_view_mask_reserved && target==first_view_mask_target))) ||
-          (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())))created=MH_OK;
+          (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())||
+          (ui_reserved&&std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end())))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
     return created==MH_OK && queued==MH_OK;
@@ -2477,6 +2480,9 @@ DWORD WINAPI worker(void*) {
     anchor_observer_enabled=GetPrivateProfileIntW(L"Capture",L"anchor_observer",0,ini)==1;
     if(anchor_observer_enabled&&(!family_diagnostics||!stereo_xr||!frame_link_diagnostics||!load_anchor_config(ini))){
         fprintf(status,"rejected: anchor observer requires stereo frame-link family diagnostics and fresh reflection certificate\n");fclose(status);return 2;}
+    ui_observer_enabled=GetPrivateProfileIntW(L"Capture",L"ui_observer",0,ini)==1;
+    if(ui_observer_enabled&&(!ui_reserved||!continuous_session||!anchor_observer_enabled||!load_ui_config(ini))){
+        fprintf(status,"rejected: UI observer requires reserved entries, continuous stereo and fresh UI identities\n");fclose(status);return 2;}
     origin_trial_enabled=GetPrivateProfileIntW(L"Capture",L"origin_trial",0,ini)==1;
     if(origin_trial_enabled&&(!anchor_observer_enabled||!continuous_session||!stereo_gpu_publish)){
         fprintf(status,"rejected: origin trial requires continuous stereo GPU and exact anchor observer\n");fclose(status);return 2;}
@@ -2647,6 +2653,8 @@ DWORD WINAPI worker(void*) {
     if(ok && viewport_diagnostics)ok=install(geometry_target,reinterpret_cast<void*>(hook_geometry),reinterpret_cast<void**>(&original_geometry));
     if(ok && viewport_diagnostics)ok=install(quad_target,reinterpret_cast<void*>(hook_quad),reinterpret_cast<void**>(&original_quad));
     if(ok && first_view_mask_hook_enabled())ok=install(first_view_mask_target,reinterpret_cast<void*>(hook_first_view_mask),reinterpret_cast<void**>(&original_first_view_mask));
+    if(ok&&ui_observer_enabled)for(unsigned i=0;i<4&&ok;++i)
+        ok=install(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]));
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     if(ok)ok=create_quad_source_events();
@@ -2728,6 +2736,7 @@ DWORD WINAPI worker(void*) {
     print_frame_link(status);
     print_outage(status,disabled==MH_OK);
     print_anchor(status,disabled==MH_OK);
+    print_ui_observer(status,disabled==MH_OK);
     print_origin_trial(status,disabled==MH_OK);
     if(!active.load()&&stereo_closed)release_bindings();
     if(continuous_session){
@@ -3063,6 +3072,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
        !safe_copy(read,prepare_target,sizeof(h)) || memcmp(read,h,sizeof(h)) ||
        !safe_copy(read,state_delete_target,sizeof(j)) || memcmp(read,j,sizeof(j)))return ERROR_INVALID_DATA;
     if(MH_Initialize()!=MH_OK)return ERROR_INVALID_STATE;
+    if(!reserve_ui_hooks())return ERROR_NOT_ENOUGH_MEMORY;
     quad_target=reinterpret_cast<void*>(base+0x1af42c);
     geometry_target=reinterpret_cast<void*>(base+0x13cfcc);
     const unsigned char quad_signature[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x08,0x48,0x89,0x70,0x10,0x48,0x89,0x78,0x18};

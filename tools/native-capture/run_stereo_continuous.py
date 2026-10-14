@@ -102,6 +102,7 @@ def native_command(args,owner):
     if getattr(args,'outage_diagnostics',False):command.append('--outage-diagnostics')
     if getattr(args,'anchor_observer',False):command.append('--anchor-observer')
     if getattr(args,'origin_trial',False):command.append('--origin-trial')
+    if getattr(args,'ui_observer',False):command.append('--ui-observer')
     return command
 
 
@@ -273,6 +274,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'image_ticket_diagnostics_enabled':bool(getattr(args,'origin_trial',False) or getattr(args,'image_ticket_diagnostics',False)),
            'shutdown_diagnostics_enabled':bool(getattr(args,'shutdown_diagnostics',False)),
            'startup_menu_enabled':bool(getattr(args,'startup_menu_window',0)),
+           'ui_observer_enabled':bool(getattr(args,'ui_observer',False)),
            'owner_identity':None,'game_identity':None,
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
