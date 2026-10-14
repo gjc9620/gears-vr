@@ -5,6 +5,7 @@ System-module entries use their on-disk PE bytes with DIR64 relocations applied.
 No remote calls, writes or DLL unloads are performed.
 """
 import argparse
+import hashlib
 import json
 import pathlib
 import re
@@ -33,7 +34,7 @@ def main():
     # optionally the Material consumer, three graphics settings callbacks, and
     # the UIOptionList selection transaction and optional ResourceBarrier entry.
     # ResourceBarrier uses the existing system-module PE/relocation verification.
-    if not 2 <= len(targets) <= 59 or len(set(targets))!=len(targets):
+    if not 2 <= len(targets) <= 60 or len(set(targets))!=len(targets):
         raise RuntimeError('Unexpected hook target inventory')
     resolver = Resolver(args.pid, json.loads((ROOT / 'tools/package-inspector/reloaded-profile.json').read_text()))
     checks = []
@@ -65,6 +66,16 @@ def main():
         camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
+            if rva == 0x2b59f4:
+                # Optional resize observer: verify both known function chunks,
+                # independently of its own pre-install hash/status assertion.
+                expected_hash = 'caaeccd655338a64bccd980b7844e39f05550bdbd33fd1d2e93f11cb3b220f59'
+                current = resolver.read(target, 0x124) + resolver.read(resolver.base + 0x8ef386, 0x48)
+                current_hash = hashlib.sha256(current).hexdigest()
+                checks.append(dict(target=hex(target), source='artifact 1 runtime snapshot full known chunks',
+                                   bytes_checked=len(current), expected_sha256=expected_hash,
+                                   actual_sha256=current_hash, matches=current_hash == expected_hash))
+                continue
             if rva in camera:
                 expected = camera[rva]
                 source = 'validated runtime camera signature'

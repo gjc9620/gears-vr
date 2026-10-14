@@ -17,6 +17,7 @@
 #include "../vr-common/gpu_share.h"
 #include "../vr-common/stereo_ticket_store.h"
 #include "render_cost.h"
+#include "resource_resize_probe.h"
 #include "source_view_shadow.h"
 #include "native_source_view_args.h"
 #include "source_eye_args.h"
@@ -248,7 +249,9 @@ thread_local unsigned session_build_depth{};
 bool session_status_available{};
 LONGLONG session_started_qpc{};
 struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
-#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+#if defined(GEARS_NATIVE_RESIZE_PROBE) && GEARS_NATIVE_RESIZE_PROBE
+constexpr size_t session_hook_capacity=60,viewport_hook_capacity=29;
+#elif defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
 constexpr size_t session_hook_capacity=59,viewport_hook_capacity=29;
 #elif defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
 constexpr size_t session_hook_capacity=40,viewport_hook_capacity=11;
@@ -2237,6 +2240,7 @@ bool session_hooks_restored() {
         if(!safe_copy(bytes.data(),prime_targets[i],bytes.size())||bytes!=prime_original_bytes[i])return false;}
     return true;
 }
+#include "resource_resize_probe.inl"
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
 uintptr_t barrier_identity(IUnknown* object) {
     __try{return canonical_identity(object);}
@@ -2944,6 +2948,7 @@ DWORD WINAPI worker(void*) {
     if(ok&&ui_observer_enabled)ok=install(ui_material_execute_target,reinterpret_cast<void*>(hook_ui_material_execute),reinterpret_cast<void**>(&ui_original_material_execute));
 #endif
     if(ok&&continuous_session)ok=enable_graphics_lock_observer();
+    if(ok)ok=enable_resource_resize_probe(status);
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     if(ok)ok=create_quad_source_events();
@@ -3034,6 +3039,7 @@ DWORD WINAPI worker(void*) {
     print_native_surface_probe(status);
     print_native_owned_probe(status);
     print_native_owned_scene(status);
+    print_resource_resize_probe(status);
     print_graphics_lock_observer(status,disabled==MH_OK);
     print_origin_trial(status,disabled==MH_OK);
     if(!active.load()&&stereo_closed)release_bindings();
@@ -4347,6 +4353,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeOwnedCheck(void* 
 }
 #include "owned_output_tracking_check.inl"
 #include "owned_scene_gpu_check.inl"
+#include "resource_resize_probe_check.inl"
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {
     // Keep CRT thread notifications enabled for the statically linked runtime.
     if(reason==DLL_PROCESS_ATTACH) own_module=module;

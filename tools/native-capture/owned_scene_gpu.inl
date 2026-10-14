@@ -77,6 +77,7 @@ void list_created(HRESULT hr,void** out,bool open){
 }
 struct CreateScope {CreateScope(){++creating;}~CreateScope(){--creating;}};
 void created(ID3D12Device* device,HRESULT hr,void** out,D3D12_RESOURCE_STATES state,unsigned api,bool legacy=true,unsigned layout=0){
+ gears_resize_probe::created(api,hr);
  if(!enabled)return;if(api<api_calls.size()){++api_calls[api];if(creating)++api_scoped[api];}
  if(!creating||FAILED(hr))return;
  IUnknown* object{};ID3D12Resource* value{};
