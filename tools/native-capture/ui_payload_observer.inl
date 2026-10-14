@@ -1,5 +1,5 @@
-// Read-only candidate transport observation. Included by ui_observer_hooks.inl.
-// A content match is not an allocator identity or an indexed-draw membership proof.
+// Candidate transport and opt-in HUD viewport control. Source vertices stay
+// unchanged; control additionally requires certified native segment callbacks.
 using UiExecute=uint32_t(__fastcall*)(void*);
 UiExecute ui_original_execute{};void* ui_execute_target{};
 uintptr_t ui_execute_observer_begin{},ui_execute_observer_end{};
@@ -15,6 +15,9 @@ std::atomic<uint64_t> ui_batch_attempts{},ui_batch_before_rejected{},ui_batch_ap
     ui_gpu_context_calls{},ui_gpu_context_missing{};
 std::atomic<uint64_t> ui_index_capture_ok{},ui_index_capture_rejected{},ui_index_callback_ok{},
     ui_index_callback_rejected{},ui_index_complete{},ui_index_incomplete{},ui_execute_sequence{};
+struct UiHudCounts {std::atomic<uint64_t> considered{},missing_context{},reticle_excluded{},unknown_or_mixed{},
+    ticket_missing{},projection_rejected{},planned{},applied{};} ui_hud_counts;
+std::atomic<bool> ui_hud_sequence_fault{};
 struct UiIndexContext {
     uint64_t execute_sequence{};
     gears_ui_indices::Snapshot snapshot{};
@@ -45,6 +48,8 @@ struct UiPayloadGpuRow {
     bool index_callback_matched{},command_completed{};
     gears_vr::StereoTicketGeometry geometry{};
     bool geometry_matched{};
+    bool hud_plane_applied{};
+    gears_viewport::OverlayPlan hud_plan{};
 };
 std::array<std::array<UiPayloadGpuRow,24>,8> ui_payload_gpu_rows{};
 std::array<unsigned,8> ui_payload_gpu_counts{};
@@ -121,6 +126,7 @@ uint32_t __fastcall hook_ui_execute(void* command){
     if(ui_index_context){
         const bool complete=ui_index_context->cursor.finish()&&result==48;
         if(complete)++ui_index_complete;else ++ui_index_incomplete;
+        if(!complete&&ui_hud_plane_enabled)ui_hud_sequence_fault=true;
         std::lock_guard<std::mutex> lock(ui_payload_mutex);
         for(unsigned k=1;k<ui_payload_gpu_rows.size();++k)
             for(unsigned i=0;i<ui_payload_gpu_counts[k];++i){auto& row=ui_payload_gpu_rows[k][i];
@@ -136,7 +142,27 @@ void observe_ui_index_callback(uintptr_t caller,gears_ui_indices::DrawArgs args)
     unsigned ordinal{};
     if(ui_execute_entry_return==base+0x19f2f3&&ui_index_context->cursor.consume(args,ordinal)){
         ui_index_context->ordinal=ordinal;ui_index_context->callback_valid=true;++ui_index_callback_ok;
-    }else ++ui_index_callback_rejected;
+    }else {++ui_index_callback_rejected;if(ui_hud_plane_enabled)ui_hud_sequence_fault=true;}
+}
+
+bool prepare_ui_hud_overlay(uint64_t ticket,gears_viewport::DrawState const& saved,
+        unsigned width,unsigned height,gears_viewport::OverlayPlan& out){
+    if(!ui_hud_plane_enabled||ui_hud_sequence_fault.load())return false;
+    ++ui_hud_counts.considered;
+    if(!ui_payload_context||!ui_index_context||!ui_index_context->callback_valid||
+       ui_index_context->snapshot.payload!=ui_payload_context->payload||
+       ui_index_context->snapshot.generation!=ui_payload_context->generation){++ui_hud_counts.missing_context;return false;}
+    const auto& segment=ui_index_context->snapshot.segments[ui_index_context->ordinal];
+    // Weapon UI and ordinary HUD share one head-locked plane. Reticle indices
+    // require a world target and cannot inherit a fixed HUD depth.
+    if(segment.kind_mask==1&&!segment.unknown){++ui_hud_counts.reticle_excluded;return false;}
+    if(!segment.index_count||segment.unknown||!segment.kind_mask||(segment.kind_mask&~6u)){
+        ++ui_hud_counts.unknown_or_mixed;return false;}
+    gears_vr::StereoSample sample{};
+    if(!stereo_ticket_store.lookup(ticket,sample,simulator_operator)){++ui_hud_counts.ticket_missing;return false;}
+    gears_viewport::OverlayPlan corrected{};
+    if(!gears_ui_hud::plan(saved,width,height,sample,corrected)){++ui_hud_counts.projection_rejected;return false;}
+    out=corrected;++ui_hud_counts.planned;return true;
 }
 
 bool reserve_ui_execute(){
@@ -160,9 +186,11 @@ bool ui_observed_overlay_chain(const uintptr_t* addresses,size_t count){
 }
 
 void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears_frame_link::Target target,
-        unsigned indices,unsigned instances,unsigned start,int vertex){
+        unsigned indices,unsigned instances,unsigned start,int vertex,bool hud_applied=false,
+        gears_viewport::OverlayPlan const* hud_plan=nullptr){
     if(!ui_observer_enabled||!recording.load())return;
     ++ui_gpu_context_calls;
+    if(hud_applied)++ui_hud_counts.applied;
     if(!ui_payload_context||!ticket){++ui_gpu_context_missing;return;}
     const auto& context=*ui_payload_context;const auto kind=context.kind_mask;
     if(!kind||kind>=ui_payload_gpu_rows.size()){++ui_gpu_context_missing;return;}
@@ -173,6 +201,7 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
     auto& row=ui_payload_gpu_rows[kind][count++];
     row={context,ticket,list,target,timestamp,GetCurrentThreadId(),indices,instances,start,vertex};
     row.geometry_matched=stereo_ticket_store.lookup_geometry(ticket,row.geometry,simulator_operator);
+    row.hud_plane_applied=hud_applied;if(hud_plan)row.hud_plan=*hud_plan;
     if(ui_index_context&&ui_index_context->callback_valid){
         row.execute_sequence=ui_index_context->execute_sequence;
         row.segment_ordinal=ui_index_context->ordinal;
@@ -186,23 +215,27 @@ void print_ui_payload_observer(FILE* status){
     fprintf(status,"ui_payload_store published=%llu rejected=%llu capacity_rejected=%llu groups_poisoned=%llu claimed=%llu poison_claimed=%llu active_groups=%zu poisoned_groups=%zu disabled=%u resets=%llu\n",
         store.published,store.rejected,store.capacity_rejected,store.groups_poisoned,store.claimed,store.poison_claimed,
         store.active_groups,store.poisoned_groups,store.disabled?1:0,store.resets);
-    fprintf(status,"ui_batch attempts=%llu before_rejected=%llu append_rejected=%llu published=%llu publish_rejected=%llu coordinates_modified=0\n",
+    fprintf(status,"ui_batch attempts=%llu before_rejected=%llu append_rejected=%llu published=%llu publish_rejected=%llu source_vertices_modified=0\n",
         ui_batch_attempts.load(),ui_batch_before_rejected.load(),ui_batch_append_rejected.load(),ui_batch_published.load(),ui_batch_publish_rejected.load());
     fprintf(status,"ui_payload_execute calls=%llu header_rejected=%llu claims=%llu content_rejected=%llu content_matches=%llu bad_return=%llu gpu_calls=%llu gpu_missing_context=%llu allocation_identity_proven=0 index_membership_requires_per_row=1\n",
         ui_execute_calls.load(),ui_execute_header_rejected.load(),ui_execute_claims.load(),ui_execute_content_rejected.load(),
         ui_execute_content_matches.load(),ui_execute_bad_return.load(),ui_gpu_context_calls.load(),ui_gpu_context_missing.load());
-    fprintf(status,"ui_index_execute capture_ok=%llu capture_rejected=%llu callbacks_ok=%llu callbacks_rejected=%llu completed=%llu incomplete=%llu coordinates_modified=0\n",
+    fprintf(status,"ui_index_execute capture_ok=%llu capture_rejected=%llu callbacks_ok=%llu callbacks_rejected=%llu completed=%llu incomplete=%llu source_vertices_modified=0\n",
         ui_index_capture_ok.load(),ui_index_capture_rejected.load(),ui_index_callback_ok.load(),ui_index_callback_rejected.load(),
         ui_index_complete.load(),ui_index_incomplete.load());
+    fprintf(status,"ui_hud_plane enabled=%u horizontal_fov_degrees=70 depth_metres=2 considered=%llu missing_context=%llu reticle_excluded=%llu unknown_or_mixed=%llu ticket_missing=%llu projection_rejected=%llu planned=%llu applied=%llu sequence_fault=%u source_vertices_modified=0\n",
+        ui_hud_plane_enabled?1:0,ui_hud_counts.considered.load(),ui_hud_counts.missing_context.load(),ui_hud_counts.reticle_excluded.load(),
+        ui_hud_counts.unknown_or_mixed.load(),ui_hud_counts.ticket_missing.load(),ui_hud_counts.projection_rejected.load(),
+        ui_hud_counts.planned.load(),ui_hud_counts.applied.load(),ui_hud_sequence_fault.load()?1:0);
     for(unsigned k=1;k<ui_payload_gpu_rows.size();++k){
         fprintf(status,"ui_payload_gpu kind_mask=%u calls=%llu rows=%u\n",k,ui_payload_gpu_calls[k],ui_payload_gpu_counts[k]);
         for(unsigned i=0;i<ui_payload_gpu_counts[k];++i){auto const& r=ui_payload_gpu_rows[k][i];auto const& c=r.context;
-            fprintf(status,"ui_payload_gpu_row kind_mask=%u row=%u command=%p payload=%p candidate_generation=%llu root_first=%llu root_last=%llu vertices=%u receipts=%u reticle_vertices=%u weapon_vertices=%u hud_vertices=%u unknown_vertices=%llu ticket=%llu list=%p list_generation=%llu target=%p target_width=%u target_height=%u indices=%u instances=%u start_index=%u base_vertex=%d qpc=%lld thread=%u content_matched_at_execute=1 coordinates_modified=0\n",
+            fprintf(status,"ui_payload_gpu_row kind_mask=%u row=%u command=%p payload=%p candidate_generation=%llu root_first=%llu root_last=%llu vertices=%u receipts=%u reticle_vertices=%u weapon_vertices=%u hud_vertices=%u unknown_vertices=%llu ticket=%llu list=%p list_generation=%llu target=%p target_width=%u target_height=%u indices=%u instances=%u start_index=%u base_vertex=%d qpc=%lld thread=%u content_matched_at_execute=1 source_vertices_modified=0\n",
                 k,i,reinterpret_cast<void*>(c.command),reinterpret_cast<void*>(c.payload),c.generation,c.root_first,c.root_last,c.vertex_count,c.receipts,
                 c.kind_vertices[0],c.kind_vertices[1],c.kind_vertices[2],c.unknown_vertices,r.ticket,reinterpret_cast<void*>(r.list.identity),r.list.generation,
                 reinterpret_cast<void*>(r.target.resource),r.target.width,r.target.height,r.indices,r.instances,r.start,r.vertex,r.qpc,r.thread);
             if(r.index_callback_matched){auto const& s=r.segment;
-                fprintf(status,"ui_index_gpu_row kind_mask=%u row=%u execute_sequence=%llu ticket=%llu ordinal=%u min_vertex=%d max_vertex=%d indices=%u reticle_indices=%u weapon_indices=%u hud_indices=%u unknown_indices=%u actual_kind_mask=%u entry_mask=%u callback_matched=1 command_completed=%u geometry_matched=%u allocation_identity_proven=0 coordinates_modified=0\n",
+                fprintf(status,"ui_index_gpu_row kind_mask=%u row=%u execute_sequence=%llu ticket=%llu ordinal=%u min_vertex=%d max_vertex=%d indices=%u reticle_indices=%u weapon_indices=%u hud_indices=%u unknown_indices=%u actual_kind_mask=%u entry_mask=%u callback_matched=1 command_completed=%u geometry_matched=%u allocation_identity_proven=0 source_vertices_modified=0\n",
                     k,i,r.execute_sequence,r.ticket,r.segment_ordinal,s.minimum,s.maximum,s.index_count,s.known[0],s.known[1],s.known[2],s.unknown,
                     s.kind_mask,s.entry_mask,r.command_completed?1:0,r.geometry_matched?1:0);
             }
@@ -213,6 +246,12 @@ void print_ui_payload_observer(FILE* status){
                     fprintf(status,"ui_geometry_row kind_mask=%u row=%u ticket=%llu matrix=%u values=",k,i,r.ticket,m);
                     for(unsigned n=0;n<16;++n)fprintf(status,n?",%.9g":"%.9g",double((*matrices[m])[n]));
                     fprintf(status,"\n");
+                }
+            }
+            if(r.hud_plane_applied){
+                for(unsigned e=0;e<2;++e){auto const& v=r.hud_plan.viewports[e];auto const& s=r.hud_plan.scissors[e];
+                    fprintf(status,"ui_hud_plane_row kind_mask=%u row=%u ticket=%llu eye=%u viewport=%.9g,%.9g,%.9g,%.9g scissor=%.9g,%.9g,%.9g,%.9g applied=1\n",
+                        k,i,r.ticket,e,v.x,v.y,v.width,v.height,s.x,s.y,s.width,s.height);
                 }
             }
         }

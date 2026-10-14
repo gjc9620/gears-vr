@@ -46,6 +46,22 @@ class FakeBackend:
         return dict(pawn='0x200',controller='0x100',camera='0x400',level='0x300',timestamp=float(self.samples))
 
 class LauncherTests(unittest.TestCase):
+    def test_hud_plane_manifest_dependencies_fail_before_reservation(self):
+        for ui,anchor in ((False,False),(True,False),(False,True)):
+            manifest=dict(MANIFEST,ui_hud_plane=True,ui_observer=ui,anchor_observer=anchor)
+            with tempfile.TemporaryDirectory() as directory:
+                backend=FakeBackend();index=pathlib.Path(directory)/'index.json'
+                with self.assertRaisesRegex(ValueError,'HUD plane'):
+                    launcher.start({},manifest,backend,index)
+                self.assertEqual(backend.reserve_calls,0)
+                backend.runner.run_session.assert_not_called();self.assertFalse(index.exists())
+
+    def test_hud_plane_missing_manifest_option_remains_off(self):
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend()
+            self.start_mock(backend,pathlib.Path(directory)/'index.json',sleep=lambda seconds:None)
+            self.assertFalse(backend.runner.run_session.call_args.args[0].ui_hud_plane)
+
     def test_reserve_requires_mask_trampoline(self):
         backend=launcher.Backend.__new__(launcher.Backend)
         report=dict(pid=55,trampolines_reserved=True,hooks_enabled=True,native_hooks_enabled=False,

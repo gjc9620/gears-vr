@@ -35,6 +35,35 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_hud_plane_cli_default_dependencies_and_native_only_forwarding(self):
+        base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
+        with mock.patch.object(runner,'run_session',return_value=0) as run:
+            runner.main(base);self.assertFalse(run.call_args.args[0].ui_hud_plane)
+            for extra in ([],['--ui-observer'],['--anchor-observer']):
+                run.reset_mock()
+                with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):
+                    runner.main(base+['--ui-hud-plane',*extra])
+                run.assert_not_called()
+            runner.main(base+['--ui-hud-plane','--ui-observer','--anchor-observer'])
+            args=run.call_args.args[0]
+            native=runner.native_command(args,identity(100))
+            for flag in ('--ui-hud-plane','--ui-observer','--anchor-observer','--continuous-session'):
+                self.assertEqual(native.count(flag),1)
+            self.assertNotIn('--ui-hud-plane',runner.xr_command(args,pathlib.Path('capture.csv'),identity(100)))
+
+    def test_hud_plane_direct_runner_rejects_before_lock_or_spawn(self):
+        for ui,anchor in ((False,False),(True,False),(False,True)):
+            args=types.SimpleNamespace(ui_hud_plane=True,ui_observer=ui,anchor_observer=anchor)
+            control=mock.Mock()
+            with mock.patch.object(runner,'WindowsControl') as create,mock.patch.object(runner.subprocess,'Popen') as spawn:
+                with self.assertRaisesRegex(ValueError,'HUD plane'):runner.run_session(args,control)
+                control.owner_lock.assert_not_called();create.assert_not_called();spawn.assert_not_called()
+
+    def test_hud_plane_report_defaults_and_explicit_enable(self):
+        for enabled in (False,True):
+            _,state,_,_,_,_=self.run_mock(ui_hud_plane=enabled)
+            self.assertEqual(state['ui_hud_plane_enabled'],enabled)
+
     def test_xr_image_ticket_evidence_explicit_or_origin_only(self):
         args=types.SimpleNamespace(pid=123,build_dir=pathlib.Path('native'),dll_name='Continuous.dll',
             xr_build_dir=pathlib.Path('xr'),stereo_units_per_metre=100)
@@ -220,7 +249,7 @@ class ContinuousTests(unittest.TestCase):
             self.assertIsNone(runner.read_session_status(path,124,0))
             self.assertEqual(runner.read_session_status(path,123,0)['phase'],'stopped')
 
-    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True):
+    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False):
         with tempfile.TemporaryDirectory() as folder:
             root=pathlib.Path(folder);build=root/'native';build.mkdir()
             (build/'capture-status.txt').write_text('capturing pid=123 stopped disable_status=0 active=0')
@@ -230,6 +259,7 @@ class ContinuousTests(unittest.TestCase):
             if diagnostics:args.outage_diagnostics=True;args.shutdown_diagnostics=True
             if origin_trial:args.origin_trial=True;args.anchor_observer=True
             if image_ticket_diagnostics:args.image_ticket_diagnostics=True
+            if ui_hud_plane:args.ui_hud_plane=True;args.ui_observer=True;args.anchor_observer=True
             if startup_menu:args.startup_menu_window=789
             control=Control();child=mock.Mock(pid=456,returncode=0)
             child.poll.return_value=0 if early_exit else None

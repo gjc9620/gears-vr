@@ -69,7 +69,7 @@ bool reserve_ui_subtitle(){
 }
 void print_ui_text_observer(FILE* status){
     for(unsigned i=0;i<ui_text_counts.size();++i){auto const& c=ui_text_counts[i];
-        fprintf(status,"ui_text_ranges source=%u calls=%llu eligible=%llu before_rejected=%llu delta_rejected=%llu empty=%llu published_calls=%llu published_ranges=%llu published_vertices=%llu publish_rejected=%llu coordinates_modified=0 subtitle_pixels_verified=0\n",
+        fprintf(status,"ui_text_ranges source=%u calls=%llu eligible=%llu before_rejected=%llu delta_rejected=%llu empty=%llu published_calls=%llu published_ranges=%llu published_vertices=%llu publish_rejected=%llu source_vertices_modified=0 subtitle_pixels_verified=0\n",
             i,c.calls.load(),c.eligible.load(),c.before_rejected.load(),c.delta_rejected.load(),c.empty.load(),
             c.published_calls.load(),c.published_ranges.load(),c.published_vertices.load(),c.publish_rejected.load());
     }

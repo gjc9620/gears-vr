@@ -13,6 +13,34 @@ import run_stereo_continuous as continuous
 
 
 class AnchorStartTests(unittest.TestCase):
+    def test_hud_plane_dependencies_reject_before_option_mutation(self):
+        parser=mock.Mock();parser.error.side_effect=ValueError
+        base=dict(ui_hud_plane=True,ui_observer=True,anchor_observer=True,continuous_session=True,
+                  stereo_xr=True,frame_link_diagnostics=True,family_diagnostics=False)
+        for dependency in ('ui_observer','anchor_observer','continuous_session'):
+            args=types.SimpleNamespace(**dict(base,**{dependency:False}))
+            with self.subTest(dependency=dependency),self.assertRaises(ValueError):
+                start.configure_anchor_options(args,parser)
+            self.assertIn('HUD plane',parser.error.call_args.args[0])
+            self.assertFalse(args.family_diagnostics)
+
+    def test_hud_plane_cli_default_and_forwarding_without_native_launch(self):
+        args=types.SimpleNamespace(pid=1,build_dir=pathlib.Path('missing-hud-plane-test-build'),
+            dll_name='Missing.dll',stereo_units_per_metre=100,ui_observer=True,anchor_observer=True)
+        for enabled in (False,True):
+            args.ui_hud_plane=enabled
+            argv=continuous.native_command(args,{'pid':100,'creation_time':1000})[2:]
+            with mock.patch.object(sys,'argv',['start_capture.py',*argv]),mock.patch.object(start,'configure_anchor_options',wraps=start.configure_anchor_options) as configure,mock.patch.object(start.subprocess,'run') as launch:
+                with self.assertRaisesRegex(RuntimeError,'Build capture DLL'):start.main()
+                self.assertEqual(configure.call_args.args[0].ui_hud_plane,enabled)
+                launch.assert_not_called()
+
+    def test_hud_plane_alone_cli_rejects_before_write_or_launch(self):
+        argv=['start_capture.py','--pid','1','--build-dir','missing','--dll-name','Missing.dll','--ui-hud-plane']
+        with mock.patch.object(sys,'argv',argv),mock.patch.object(pathlib.Path,'write_text') as write,mock.patch.object(start.subprocess,'run') as launch,contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):start.main()
+            write.assert_not_called();launch.assert_not_called()
+
     def test_origin_trial_default_off_and_each_explicit_dependency_required(self):
         parser=mock.Mock();parser.error.side_effect=ValueError
         args=types.SimpleNamespace(anchor_observer=False,stereo_xr=False,frame_link_diagnostics=False,family_diagnostics=False)

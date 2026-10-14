@@ -33,6 +33,7 @@
 #include "ui_canvas_text_batch.h"
 #include "ui_payload_receipts.h"
 #include "ui_index_membership.h"
+#include "ui_hud_plan.h"
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -2205,13 +2206,14 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             std::array<uintptr_t,12> addresses{};for(unsigned i=0;i<count;++i)addresses[i]=reinterpret_cast<uintptr_t>(stack[i]);
             if(pair.linked&&plan.valid&&(gears_viewport::overlay_caller_chain(addresses.data(),count,base)||
                 ui_observed_overlay_chain(addresses.data(),count))){
-                observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex);
+                const bool hud_plane=prepare_ui_hud_overlay(pair.ticket,saved,target.width,target.height,plan);
                 auto viewport=[&](gears_viewport::Rect r,float minimum,float maximum){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,minimum,maximum};original_viewports(list,1,&v);};
                 auto scissor=[&](gears_viewport::Rect r){D3D12_RECT s{static_cast<LONG>(r.x),static_cast<LONG>(r.y),static_cast<LONG>(r.x+r.width),static_cast<LONG>(r.y+r.height)};original_scissors(list,1,&s);};
                 unsigned mask=0;
                 try {mask=gears_viewport::replay_overlay(saved,plan,viewport,scissor,[&](unsigned){original_draw_indexed(list,indices,instances,start,vertex,first_instance);});}
                 catch(...){frame_link.invalidate();throw;}
                 frame_link.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask);
+                observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,hud_plane&&mask==3,hud_plane?&plan:nullptr);
                 return;
             }
         }
@@ -2496,6 +2498,9 @@ DWORD WINAPI worker(void*) {
     ui_observer_enabled=GetPrivateProfileIntW(L"Capture",L"ui_observer",0,ini)==1;
     if(ui_observer_enabled&&(!ui_reserved||!continuous_session||!anchor_observer_enabled||!load_ui_config(ini))){
         fprintf(status,"rejected: UI observer requires reserved entries, continuous stereo and fresh UI identities\n");fclose(status);return 2;}
+    ui_hud_plane_enabled=GetPrivateProfileIntW(L"Capture",L"ui_hud_plane",0,ini)==1;
+    if(ui_hud_plane_enabled&&(!ui_observer_enabled||!continuous_session||!stereo_gpu_publish)){
+        fprintf(status,"rejected: HUD plane requires continuous stereo publication and authenticated UI ranges\n");fclose(status);return 2;}
     origin_trial_enabled=GetPrivateProfileIntW(L"Capture",L"origin_trial",0,ini)==1;
     if(origin_trial_enabled&&(!anchor_observer_enabled||!continuous_session||!stereo_gpu_publish)){
         fprintf(status,"rejected: origin trial requires continuous stereo GPU and exact anchor observer\n");fclose(status);return 2;}

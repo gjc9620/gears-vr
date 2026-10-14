@@ -1,6 +1,6 @@
 // Included inside capture.cpp's anonymous namespace, after Scope/safe_copy.
 // Observation only: original VM/Canvas arguments and draw counts are preserved.
-bool ui_observer_enabled{},ui_reserved{};
+bool ui_observer_enabled{},ui_reserved{},ui_hud_plane_enabled{};
 gears_ui::Config ui_config;
 using UiExec=void(__fastcall*)(void*,void*,void*);
 std::array<UiExec,4> ui_original{};
@@ -216,8 +216,8 @@ bool load_ui_config(const wchar_t* ini){
         gears_ui::validate(c,safe_copy);
 }
 void print_ui_observer(FILE* status,bool disabled){
-    fprintf(status,"ui_observer enabled=%u available=%u coordinates_modified=0 vm_calls=%llu qpc_frequency=%lld\n",
-        ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_vm_calls.load(),qpc_frequency);
+    fprintf(status,"ui_observer enabled=%u available=%u source_vertices_modified=0 hud_plane_enabled=%u vm_calls=%llu qpc_frequency=%lld\n",
+        ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_hud_plane_enabled?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;
     print_ui_payload_observer(status);
     print_ui_text_observer(status);

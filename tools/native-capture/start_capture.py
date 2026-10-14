@@ -79,6 +79,10 @@ def save_anchor_sampling_failure(dll,pid,error):
 
 
 def configure_anchor_options(args,parser):
+    if getattr(args,'ui_hud_plane',False) and not (
+            getattr(args,'ui_observer',False) and getattr(args,'anchor_observer',False)
+            and getattr(args,'continuous_session',False)):
+        parser.error('HUD plane requires --ui-observer, --anchor-observer and --continuous-session')
     if getattr(args,'origin_trial',False) and not (
             getattr(args,'anchor_observer',False) and getattr(args,'continuous_session',False)
             and getattr(args,'stereo_gpu_publish',False)):
@@ -136,6 +140,7 @@ def main():
     parser.add_argument('--anchor-observer','--anchor-diagnostics',dest='anchor_observer',action='store_true',help='Read-only reflected Pawn/eye anchor diagnostics; requires stereo XR frame association')
     parser.add_argument('--origin-trial',action='store_true',help='Explicit experimental origin A/B/A; requires anchor observer, continuous session and stereo GPU publication')
     parser.add_argument('--ui-observer',action='store_true',help='Observe registered reticle/HUD Canvas calls without changing coordinates')
+    parser.add_argument('--ui-hud-plane',action='store_true',help='Experimental HUD plane; requires UI observer, anchor observer and continuous session')
     parser.add_argument('--outage-diagnostics',action='store_true',help='Record a bounded missing-image window in the existing stereo publication path; disabled by default')
     args=parser.parse_args()
     configure_anchor_options(args,parser)
@@ -313,6 +318,7 @@ def main():
         config+=f'outage_diagnostics={int(args.outage_diagnostics)}\n'
         config+=f'anchor_observer={int(args.anchor_observer)}\n'
         config+=f'ui_observer={int(args.ui_observer)}\n'
+        config+=f'ui_hud_plane={int(getattr(args,"ui_hud_plane",False))}\n'
         config+=f'origin_trial={int(getattr(args,"origin_trial",False))}\n'
         config+=f'stereo_gpu_publish={int(args.stereo_gpu_publish)}\n'
         config+=f'simulator_operator={int(args.simulator_operator)}\n'

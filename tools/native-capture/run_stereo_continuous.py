@@ -90,7 +90,16 @@ def checked_identity(control,expected,allow_exited=False):
     return True
 
 
+def validate_ui_hud_plane(args):
+    # Every run_session path is continuous; direct callers must validate before
+    # creating the owner lock, writing reports, or launching either process.
+    if getattr(args,'ui_hud_plane',False) and not (
+            getattr(args,'ui_observer',False) and getattr(args,'anchor_observer',False)):
+        raise ValueError('HUD plane requires --ui-observer and --anchor-observer in a continuous session')
+
+
 def native_command(args,owner):
+    validate_ui_hud_plane(args)
     command=[sys.executable,str(ROOT/'tools/native-capture/start_capture.py'),'--pid',str(args.pid),
             '--build-dir',str(args.build_dir.resolve()),'--dll-name',args.dll_name,'--use-reserved',
             '--continuous-session','--continuous-owner-pid',str(owner['pid']),
@@ -103,6 +112,7 @@ def native_command(args,owner):
     if getattr(args,'anchor_observer',False):command.append('--anchor-observer')
     if getattr(args,'origin_trial',False):command.append('--origin-trial')
     if getattr(args,'ui_observer',False):command.append('--ui-observer')
+    if getattr(args,'ui_hud_plane',False):command.append('--ui-hud-plane')
     return command
 
 
@@ -259,6 +269,7 @@ def cleanup_owned_xr(child,owned_pid,game_pid,timeout,control,state):
 
 
 def run_session(args,control=None,on_report=None,cancel_requested=None,before_native_activation=None):
+    validate_ui_hud_plane(args)
     control=control or WindowsControl()
     lock=control.owner_lock(args.pid)
     token=uuid.uuid4().hex
@@ -275,6 +286,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'shutdown_diagnostics_enabled':bool(getattr(args,'shutdown_diagnostics',False)),
            'startup_menu_enabled':bool(getattr(args,'startup_menu_window',0)),
            'ui_observer_enabled':bool(getattr(args,'ui_observer',False)),
+           'ui_hud_plane_enabled':bool(getattr(args,'ui_hud_plane',False)),
            'owner_identity':None,'game_identity':None,
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
@@ -427,6 +439,8 @@ def main(argv=None):
     start.add_argument('--cleanup-timeout',type=float,default=35.)
     start.add_argument('--anchor-observer','--anchor-diagnostics',dest='anchor_observer',action='store_true')
     start.add_argument('--origin-trial',action='store_true')
+    start.add_argument('--ui-observer',action='store_true')
+    start.add_argument('--ui-hud-plane',action='store_true')
     start.add_argument('--image-ticket-diagnostics',action='store_true')
     start.add_argument('--outage-diagnostics',action='store_true')
     start.add_argument('--shutdown-diagnostics',action='store_true')
@@ -442,6 +456,8 @@ def main(argv=None):
     if args.command=='recenter':return request_recenter(args.session.resolve())
     if args.pid<=0 or args.startup_timeout<=0 or args.cleanup_timeout<=0:parser.error('PID and deadlines must be positive')
     if args.origin_trial and not args.anchor_observer:parser.error('Origin trial requires --anchor-observer')
+    try:validate_ui_hud_plane(args)
+    except ValueError as error:parser.error(str(error))
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
     if not 10<=args.stereo_units_per_metre<=500:parser.error('Provisional scale must be between 10 and 500')
     return run_session(args)

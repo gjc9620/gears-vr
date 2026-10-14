@@ -15,7 +15,7 @@ from types import SimpleNamespace
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 HERE=pathlib.Path(__file__).resolve().parent
 INDEX=ROOT/'analysis/runtime/vr-launcher-session.json'
-SESSION_OPTIONS=('anchor_observer','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer')
+SESSION_OPTIONS=('anchor_observer','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane')
 
 def atomic_json(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -36,6 +36,8 @@ def settings(config,manifest,root=ROOT):
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
     if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu')):
         raise ValueError('Manifest session options must be boolean')
+    if manifest.get('ui_hud_plane',False) and not (manifest.get('ui_observer',False) and manifest.get('anchor_observer',False)):
+        raise ValueError('HUD plane requires UI observer and anchor observer in the continuous launcher')
     scale=config.get('stereo_units_per_metre',100)
     if isinstance(scale,bool) or not isinstance(scale,(int,float)) or not math.isfinite(scale) or not 10<=scale<=500:
         raise ValueError('stereo_units_per_metre must be finite and between 10 and 500')
