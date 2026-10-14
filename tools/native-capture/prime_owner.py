@@ -21,3 +21,16 @@ def pending_prime(status,pid,owner_pid=None,owner_creation_time=None,require_own
                 fields.get('owner_pid')==str(owner_pid) and
                 fields.get('owner_creation_time')==str(owner_creation_time))
     return not require_owned and fields.get('seconds')=='180' and 'lifetime' not in fields
+
+
+def graphics_prime_count(status, required=False):
+    """Require the requested policy, without treating arbitrary native hooks as safe."""
+    captures=[line for line in status.splitlines() if line.startswith('capturing ')]
+    if len(captures)!=1:raise RuntimeError('Expected one target-prime capture record')
+    fields=dict(token.split('=',1) for token in captures[0].split()[1:] if '=' in token)
+    expected='3' if required else '0'
+    if (fields.get('native_hooks_enabled')!=expected or
+            fields.get('graphics_hooks_enabled','0')!=expected or fields.get('scene_hooks_enabled','0')!='0'):
+        raise RuntimeError('Target-prime graphics policy differs from requested manifest')
+    if required and fields.get('lifetime')!='owner':raise RuntimeError('Startup graphics lock requires owned lifetime')
+    return int(expected)

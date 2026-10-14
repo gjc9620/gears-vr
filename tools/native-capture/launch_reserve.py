@@ -14,7 +14,7 @@ import pathlib
 import subprocess
 import time
 import sys
-from prime_owner import owner_argument, pending_prime
+from prime_owner import owner_argument, pending_prime, graphics_prime_count
 from start_capture import k, modules, remote_call, pefile, ROOT
 from runtime_probe import Process
 sys.path.insert(0,str(ROOT/'tools/debug-launch'))
@@ -33,6 +33,7 @@ def main():
     parser.add_argument('--prime-targets',action='store_true',help='Observe RTV creation/copies during loading, bounded to 180 seconds or capture handoff')
     parser.add_argument('--prime-owner-pid',type=int)
     parser.add_argument('--prime-owner-creation-time',type=int)
+    parser.add_argument('--graphics-startup-lock',action='store_true',help='Require three certified graphics settings hooks during owned priming')
     parser.add_argument('--check-mask-control',action='store_true',help='Self-test and reserve the optional first-view mask trampoline without enabling it; requires a DLL with that export')
     parser.add_argument('--check-frame-link',action='store_true',help='Require frame-association self-tests and startup target/binding priming')
     args=parser.parse_args()
@@ -42,6 +43,7 @@ def main():
                   not 0<args.prime_owner_creation_time<=0xffffffffffffffff):
         parser.error('Owned priming requires --prime-targets and paired valid PID/FILETIME identity')
     if args.check_frame_link and not args.prime_targets:parser.error('Frame association needs --prime-targets')
+    if args.graphics_startup_lock and not owned:parser.error('Startup graphics lock requires owned priming')
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
     exe=validate_game(args.game_path) # Before self-tests, launch, or startup policy writes.
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
@@ -139,6 +141,7 @@ def main():
             entries=[{'rva':hex(offset),'matches':read_only.read(loaded['gowde-steam.exe'][0]+offset,len(value))==value} for offset,value in signatures.items()]
         finally:read_only.close()
         if not all(x['matches'] for x in entries):raise RuntimeError('Reservation changed an entry; do not activate')
+        graphics_hooks=0
         if args.prime_targets:
             prime_memory=None;prime_finished=False
             try:
@@ -162,11 +165,13 @@ def main():
                 prime_status=dll.with_name('target-prime-status.txt').read_text()
                 if not pending_prime(prime_status,pid,args.prime_owner_pid,args.prime_owner_creation_time,require_owned=owned):
                     raise RuntimeError('Target priming identity/readiness not confirmed')
+                graphics_hooks=graphics_prime_count(prime_status,args.graphics_startup_lock)
             finally:k.CloseHandle(prime_event)
         if control.identity(pid)!=game_identity:raise RuntimeError('Reserved process identity changed')
         report={'game_identity':game_identity,'game_sha256':profile['sha256'],'pid':pid,'dll':str(dll),'trampolines_reserved':True,'hooks_enabled':args.prime_targets,
                 'first_view_mask_reserved':args.check_mask_control,
-                'native_hooks_enabled':False,'descriptor_hooks_enabled':3 if args.prime_targets else 0,'independent_entry_checks':entries}
+                'native_hooks_enabled':bool(graphics_hooks),'graphics_hooks_enabled':graphics_hooks,'scene_hooks_enabled':False,
+                'descriptor_hooks_enabled':3 if args.prime_targets else 0,'independent_entry_checks':entries}
         report['factory_hooks_enabled']=3 if args.prime_targets and frame_link_capable else 0
         if args.prime_targets:
             report['prime_lifetime']='owner' if owned else '180_seconds'

@@ -1,6 +1,6 @@
 # DLSS/DLAA 运行时锁：实际设置调用链
 
-2026-10-15。目标是首版运行期间禁止重新启用未经测试的DLSS/DLAA，同时保留其他设置的正常应用。启动INI关闭已存在；GraphicsLock1现已通过continuous阶段实际启用请求测试，仍缺关卡前保护和菜单标签修正。
+2026-10-15。目标是首版运行期间禁止重新启用未经测试的DLSS/DLAA，同时保留其他设置的正常应用。启动INI关闭已存在；GraphicsLock1通过continuous阶段实际启用请求测试，GraphicsStartup1/2补齐关卡前保护及一次实际交接。菜单标签修正和锁启用后的其他设置回归仍未完成。
 
 ## 实际游戏证据
 
@@ -36,4 +36,24 @@ PID53840，`manifest-graphics-lock1.json`，DLL SHA256 `611b5c2e6f9c58ed43486519
 
 ## 剩余工作
 
-把锁的生命周期覆盖到进入关卡前，补齐owned-prime取消、失败及恢复路径。菜单暂存值需要沿已认证选择/Apply事务与真实刷新接口恢复，不能盲写控件；现有setter成功返回不会自动重置该值。补测锁启用后其他设置仍可应用，以及不同缩放选择。当前仅覆盖一个已激活continuous会话和DLAA档位请求，尚不作为首版完整锁定。
+菜单暂存值需要沿已认证选择/Apply事务与真实刷新接口恢复，不能盲写控件；现有setter成功返回不会自动重置该值。补测锁启用后其他设置仍可应用，以及尚未覆盖的缩放选择。启动取消和一次关卡交接已通过，但实际故障分支与direct分支尚未完整覆盖，尚不作为首版完整锁定。
+
+## GraphicsStartup1/2：启动菜单保护与交接
+
+默认OFF的`GEARS_GRAPHICS_STARTUP_LOCK`要求runtime lock及observer同时开启。启动器还要求owned startup-menu生命周期；普通未预留游戏入口的CPU prime fixture保持原有行为。真实启动在预留并认证三个原生入口后启用图形设置锁，scene Hook仍为0。prime watchdog负责交接前取消，continuous worker接管后继续使用相同三个Hook；原始字节进入38入口恢复记录，不把已经跳转的入口作为原始字节保存。
+
+fault计数和session ownership以顺序一致原子操作交接，确保并发故障要么阻止交接，要么触发continuous停止。启动器在菜单导航及关卡等待时检查对应PID的prime event，防止保护已取消后仍无限等待。取消先禁用Hook，再最多等待10秒让活动回调返回；仍有活动回调时保留资源并拒绝报告清理成功。独立只读审查确认此前交接竞争已封闭，但这不是所有并发交错的实际游戏故障注入测试。
+
+Startup1 DLL SHA256 `5c57fb45a55ad71f63a35a225909a80bd6394057e459662a35b19e4484e451c3`，PID50260，尚未进入关卡。通过菜单反射状态和普通手柄输入选择NVIDIA DLSS 3.5 / Quality并确认；3次mode3请求被阻止，faults=0。取消后disable_status=0、active=0、entries_match=1，独立认证原入口后normal/alternate=0、ScreenPercentage/FINAL=100、factor=1。XR只有26978次启动平面、没有projection或场景复制，因此这不是立体渲染测试。退出前通过菜单恢复NONE/NATIVE并重新打开确认。旧的取消后立即读回曾因异步清理尚未结束而拒绝入口校验；终态后读回成功，不能把早读失败记作恢复失败。
+
+实际缩放列表为index0 Quality、1 Balanced、2 Performance、3 Ultra Performance、4 Native(DLAA)。试验最初把从4向左一次误当Quality，标签检查及时拒绝，随后按真实标签选择0才应用。这说明读取语义值比固定按键次数可靠；重新打开的AA缓存仍为3，也说明菜单暂存值不等于实际生效值。
+
+同一Startup1的PID32568已进入关卡，但在native启动前ABI自测返回33，尚未激活场景Hook。启动保护取消、入口恢复通过。旧自测先发布带时间戳样本再安装Hook，存在安装耗时使样本过期的可能；旧日志没有status/age，未证明此次失败必然由过期造成。Startup2将初始样本发布移到Hook安装完成后，并增加失败时status/age/位置/旋转输出；生产100毫秒有效期和显式过期测试保持不变。
+
+Startup2 DLL SHA256 `963efc35399824bdb4c1bbb6d14893e6d12faa31e16ba52acc818853c77560af`，PID52996。状态导航5次操作请求加载，Pawn/Controller/Camera确认就绪后ABI自测通过、prime handed_off。XR记录2813次启动平面后成功提交带ticket的projection。关卡双目运行167.357912秒、15063次projection、12438张新图，最大提交间隔54.0254ms；collector/commit分别18602/18601次、faults=0。该轮menuBlocked=0，没有重复DLSS选择试验。正常停止、38入口恢复、独立设置读回、XR对象销毁及游戏正常关闭全部通过；不代表真头显验收、无卡顿或字幕显示通过。
+
+构建与验证：Startup1/2全目标构建成功；Startup2普通ABI及continuous CPU测试通过，实际启动又执行既有自测集合。Python prime-owner 4项、launcher 34项通过，覆盖Hook数量/归属、manifest约束、prime event缺失/已停止/查询错误。owned-prime CPU取消/owner退出/交接验证的是6个系统Hook，不能冒称它们直接测试了游戏三个图形入口。
+
+证据：`analysis/runtime/graphics-startup1-50260-prime-status.txt`、`graphics-startup1-after-cancel-complete.json`、`graphics-startup1-32568-prime-status.txt`；`analysis/graphics-lock/graphics-startup2-52996.audit.json`、`analysis/runtime/continuous-stereo-52996-20261015-031630-9d9e33c2.*`、`graphics-startup2-after-stop.json`、`graphics-startup2-normal-close.json`。本轮没有用截图导航；已有启动配置自动保存一次原分辨率GPU图，本次未用它作视觉结论。
+
+缓存修正的只读线索：PID50260活跃AA控件绑定`<WarfareGameResources:Antialiasing>`，BindingIndex=0；解析后的datastore中`SelectedAntialiasingSetting`为IntProperty、offset0x200、当前值3。实际反射发现RefreshSubscriberValue/SaveSubscriberValue NativeFunc分别RVA46a248/b72e8c，元数据及入口双读一致。证据保存在`analysis/graphics-lock/startup1-ui-reflection-50260.json`；调用ABI和正确刷新事务尚未证明，不能仅凭字段偏移直接写入或调用。

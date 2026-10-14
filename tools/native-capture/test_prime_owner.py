@@ -1,9 +1,20 @@
 import struct
 import unittest
-from prime_owner import owner_argument,pending_prime
+from prime_owner import owner_argument,pending_prime,graphics_prime_count
 
 
 class PrimeOwnerTests(unittest.TestCase):
+    def test_graphics_policy_requires_exact_owned_inventory(self):
+        status='capturing pid=12 lifetime=owner native_hooks_enabled=3 graphics_hooks_enabled=3 scene_hooks_enabled=0'
+        self.assertEqual(graphics_prime_count(status,True),3)
+        with self.assertRaises(RuntimeError):graphics_prime_count(status,False)
+        for changed in (status.replace('=3','=2'),status.replace('scene_hooks_enabled=0','scene_hooks_enabled=1'),
+                        status.replace('lifetime=owner','seconds=180'),status+'\n'+status):
+            with self.assertRaises(RuntimeError):graphics_prime_count(changed,True)
+        legacy='capturing pid=12 seconds=180 native_hooks_enabled=0'
+        self.assertEqual(graphics_prime_count(legacy),0)
+        with self.assertRaises(RuntimeError):graphics_prime_count(legacy,True)
+
     def test_argument_layout_and_limits(self):
         self.assertEqual(struct.unpack('<IIIIQ',owner_argument(7,2**64-1)),(24,1,7,0,2**64-1))
         for pid,created in ((0,1),(2**32,1),(1,0),(1,2**64)):

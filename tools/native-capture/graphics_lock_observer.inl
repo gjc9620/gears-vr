@@ -8,8 +8,8 @@
 bool hash_matches();
 #endif
 
-// Reserve creates inactive trampolines. Optional runtime policy protects only
-// continuous-session callbacks; this does not cover menus before activation.
+// Reserve creates inactive trampolines. Startup policy, when selected, is owned
+// by the target-prime watchdog until the continuous worker accepts handoff.
 bool install(void*,void*,void**);
 #if defined(GEARS_GRAPHICS_LOCK_OBSERVER) && GEARS_GRAPHICS_LOCK_OBSERVER
 namespace graphics_observer {
@@ -32,6 +32,7 @@ namespace runtime {
 using Failure=gears_graphics_runtime::Failure;
 gears_graphics_lock::routes::Context context{};
 std::atomic<bool> armed{};
+std::atomic<bool> startup{},session_owned{};
 std::atomic<uint64_t> menu_blocked{},normal_cleared{},command_cleared{},faults{};
 struct Fault {Failure reason{};unsigned policy_reason{},route_status{};DWORD thread{};uintptr_t caller{},window{};};
 Fault first_fault{};std::atomic<unsigned> fault_phase{};
@@ -62,7 +63,9 @@ bool cas_self_test(){alignas(4) uint32_t values[3]{77,1,88};Cas cas{reinterpret_
 void fault(Failure reason,uintptr_t caller=0,uintptr_t window=0,unsigned policy=0,unsigned status=0){
  ++faults;unsigned expected=0;
  if(fault_phase.compare_exchange_strong(expected,1)){first_fault={reason,policy,status,GetCurrentThreadId(),caller,window};fault_phase.store(2,std::memory_order_release);}
- request_session_stop(SessionStop::proof_failure);
+ if(startup.load(std::memory_order_acquire)&&!session_owned.load()){
+  if(prime_event)SetEvent(prime_event);
+ }else request_session_stop(SessionStop::proof_failure);
 }
 gears_graphics_lock::routes::Call call(uintptr_t caller){return {GetCurrentThreadId(),caller>=base?caller-base:0};}
 void decision(gears_graphics_lock::routes::Decision const& d,uintptr_t caller){
@@ -86,6 +89,12 @@ void readback(uintptr_t caller){Read read;uint32_t normal{},alternate{};
 }
 }
 #endif
+bool observing(){
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ if(runtime::startup.load(std::memory_order_acquire))return true;
+#endif
+ return recording.load();
+}
 Fields fields(uintptr_t settings){Fields f{};
  if(settings&&safe_copy(&f.vtable,reinterpret_cast<void*>(settings),8))f.mask|=1;
  if(settings&&safe_copy(&f.normal,reinterpret_cast<void*>(settings+0x3c8),4))f.mask|=2;
@@ -107,7 +116,7 @@ Row* begin(unsigned kind,void* argument,uintptr_t caller,int32_t mode=0){
    if(safe_copy(r.caller_after.data(),reinterpret_cast<void*>(caller),32))r.read_mask|=4;
   }}return &r;}
 uint32_t menu_dispatch(void* settings,int32_t mode,uintptr_t caller){Scope scope;
- Row* row=recording.load()?begin(0,settings,caller,mode):nullptr;
+ Row* row=observing()?begin(0,settings,caller,mode):nullptr;
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
  if(runtime::armed.load(std::memory_order_acquire)){runtime::Read read;
   auto d=gears_graphics_lock::routes::menu_before(runtime::context,reinterpret_cast<uintptr_t>(settings),mode,runtime::call(caller),read);
@@ -124,7 +133,7 @@ struct CollectorScope {
  ~CollectorScope(){depth=saved_depth;current_settings=saved_settings;}
 };
 uint64_t collector_dispatch(void* settings,uintptr_t caller){Scope scope;CollectorScope collector_scope(settings);
- Row* row=recording.load()?begin(1,settings,caller):nullptr;
+ Row* row=observing()?begin(1,settings,caller):nullptr;
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
  if(runtime::armed.load(std::memory_order_acquire)){runtime::Read read;auto local=runtime::context;
   runtime::Cas cas{local.policy.admission.singleton+0x3c8};local.policy.normal_write_authorized=runtime::writable4(cas.allowed);
@@ -139,7 +148,7 @@ uint64_t collector_dispatch(void* settings,uintptr_t caller){Scope scope;Collect
  return result;}
 uint64_t __fastcall collector_hook(void* settings){return collector_dispatch(settings,reinterpret_cast<uintptr_t>(_ReturnAddress()));}
 uint32_t commit_dispatch(void* command,uintptr_t caller){Scope scope;
- Row* row=recording.load()?begin(2,command,caller):nullptr;
+ Row* row=observing()?begin(2,command,caller):nullptr;
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
  const bool locking=runtime::armed.load(std::memory_order_acquire);
  if(locking){runtime::Read read;auto local=runtime::context;auto c=runtime::call(caller);uintptr_t failed{};
@@ -177,11 +186,69 @@ bool reserve_graphics_lock_observer(){using namespace graphics_observer;
  reserved=true;return true;}
 bool graphics_lock_observer_reserved_target(void* target){using namespace graphics_observer;
  return reserved&&std::find(targets.begin(),targets.end(),target)!=targets.end();}
+bool graphics_lock_primed_bytes(void* target,std::array<unsigned char,32>& bytes){
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ using namespace graphics_observer;
+ if(runtime::startup.load(std::memory_order_acquire))for(unsigned i=0;i<3;++i)
+  if(target==targets[i]){bytes=gears_graphics_lock::entries[i].bytes;return true;}
+#endif
+ return false;
+}
+unsigned graphics_lock_prime_count(){
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ return graphics_observer::runtime::startup.load(std::memory_order_acquire)?3:0;
+#else
+ return 0;
+#endif
+}
+bool begin_graphics_lock_prime(FILE* status,bool owned){
+#if defined(GEARS_GRAPHICS_STARTUP_LOCK) && GEARS_GRAPHICS_STARTUP_LOCK
+ using namespace graphics_observer;
+ // CPU descriptor-prime tests have no reserved game entries. Production owned
+ // priming always follows GearsCaptureReserve and its executable certification.
+ if(!owned||!reservation_ready)return true;
+ if(!reserved||!runtime::admit()){
+  if(runtime::fault_phase.load(std::memory_order_acquire)==2){auto const& f=runtime::first_fault;
+   fprintf(status,"graphics_prime_admission rejected=1 reason=%u policy_reason=%u window=0x%llx\n",unsigned(f.reason),f.policy_reason,f.window);}
+  return false;}
+ runtime::startup.store(true,std::memory_order_release);
+ for(auto target:targets)if(MH_QueueEnableHook(target)!=MH_OK)return false;
+ fprintf(status,"graphics_prime_admission admitted=1 hooks=3\n");
+#else
+ (void)status;(void)owned;
+#endif
+ return true;
+}
+bool disable_graphics_lock_prime(){
+ if(!graphics_lock_prime_count())return true;
+ bool ok=true;for(auto target:graphics_observer::targets){
+  auto queued=MH_QueueDisableHook(target);auto disabled=MH_DisableHook(target);
+  ok=(queued==MH_OK&&(disabled==MH_OK||disabled==MH_ERROR_DISABLED))&&ok;}
+ return ok;
+}
+bool graphics_lock_prime_restored(){
+ if(!graphics_lock_prime_count())return true;
+ std::array<unsigned char,32> bytes{};
+ for(unsigned i=0;i<3;++i)if(!safe_copy(bytes.data(),graphics_observer::targets[i],32)||
+  bytes!=gears_graphics_lock::entries[i].bytes)return false;
+ return true;
+}
+bool graphics_lock_accept_handoff(){
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ // SC ownership/latch ordering: a concurrent fault is either consumed here or
+ // observes session_owned and requests continuous stop itself.
+ graphics_observer::runtime::session_owned.store(true);
+ if(graphics_observer::runtime::faults.load()){
+  request_session_stop(SessionStop::proof_failure);return false;}
+#endif
+ return true;
+}
 bool enable_graphics_lock_observer(){using namespace graphics_observer;
  if(!continuous_session)return true;
  if(!reserved&&!reserve_graphics_lock_observer())return false;
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
- if(!runtime::admit()){
+ if(runtime::armed.load(std::memory_order_acquire))runtime::readback(0);
+ if(runtime::faults.load()||(!runtime::armed.load(std::memory_order_acquire)&&!runtime::admit())){
   if(diagnostic_status&&runtime::fault_phase.load(std::memory_order_acquire)==2){auto const& f=runtime::first_fault;
    fprintf(diagnostic_status,"graphics_runtime_lock_admission rejected=1 reason=%u policy_reason=%u failed_window_rva=0x%llx\n",unsigned(f.reason),f.policy_reason,f.window);}
   return false;}
@@ -190,15 +257,15 @@ bool enable_graphics_lock_observer(){using namespace graphics_observer;
   install(targets[1],reinterpret_cast<void*>(collector_hook),reinterpret_cast<void**>(&collector_original))&&
   install(targets[2],reinterpret_cast<void*>(commit_hook),reinterpret_cast<void**>(&commit_original));}
 void print_graphics_lock_observer(FILE* file,bool disabled){using namespace graphics_observer;
- unsigned observe_only=1,effective=0;
+ unsigned observe_only=1,effective=0,startup=graphics_lock_prime_count()?1:0;
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
  observe_only=0;
  effective=runtime::armed.load()&&!runtime::faults.load()?1:0;
 #endif
- fprintf(file,"graphics_lock_observer enabled=1 observe_only=%u lock_effective=%u startup_before_level=0 stopped_safe=%u fields_bits=vtable:1,normal:2,alternate:4,queueflag:8,selector_thread:16 command_bits=extent192:1,caller_before32:2,caller_after32:4\n",observe_only,effective,disabled&&!active.load()?1:0);
+ fprintf(file,"graphics_lock_observer enabled=1 observe_only=%u lock_effective=%u startup_before_level=%u stopped_safe=%u fields_bits=vtable:1,normal:2,alternate:4,queueflag:8,selector_thread:16 command_bits=extent192:1,caller_before32:2,caller_after32:4\n",observe_only,effective,startup,disabled&&!active.load()?1:0);
  if(!disabled||active.load())return;
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
- fprintf(file,"graphics_runtime_lock enabled=1 continuous_only=1 startup_before_level=0 admitted=%u protected=%u effective=%u menuBlocked=%llu normalCleared=%llu commandCleared=%llu faults=%llu actual_toggle_verified=0\n",
+ fprintf(file,"graphics_runtime_lock enabled=1 continuous_only=%u startup_before_level=%u admitted=%u protected=%u effective=%u menuBlocked=%llu normalCleared=%llu commandCleared=%llu faults=%llu actual_toggle_verified=0\n",startup?0:1,startup,
   runtime::armed.load()?1:0,runtime::armed.load()?1:0,runtime::armed.load()&&!runtime::faults.load()?1:0,
   runtime::menu_blocked.load(),runtime::normal_cleared.load(),runtime::command_cleared.load(),runtime::faults.load());
  if(runtime::fault_phase.load(std::memory_order_acquire)==2){auto const& f=runtime::first_fault;
@@ -301,6 +368,12 @@ bool graphics_lock_observer_self_test(){using namespace graphics_observer;
 #else
 bool reserve_graphics_lock_observer(){return true;}
 bool graphics_lock_observer_reserved_target(void*){return false;}
+bool graphics_lock_primed_bytes(void*,std::array<unsigned char,32>&){return false;}
+unsigned graphics_lock_prime_count(){return 0;}
+bool begin_graphics_lock_prime(FILE*,bool){return true;}
+bool disable_graphics_lock_prime(){return true;}
+bool graphics_lock_prime_restored(){return true;}
+bool graphics_lock_accept_handoff(){return true;}
 bool enable_graphics_lock_observer(){return true;}
 void print_graphics_lock_observer(FILE*,bool){}
 bool graphics_lock_observer_self_test(){return true;}

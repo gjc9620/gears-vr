@@ -2,6 +2,10 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
+GraphicsStartup2 / PID52996 已完成启动菜单保护→关卡双目交接：2813次启动平面后进入带ticket的projection，关卡运行167.36秒、15063次projection、12438张新图，正常停止并恢复38入口。此前Startup1 / PID50260在主菜单实际请求DLSS Quality，3次请求被阻止，取消后入口及原生缩放读回正常。Startup2本轮没有重新选择DLSS；菜单缓存标签、锁开启后其他设置回归仍待完成。启动前姿态自测曾返回33，已把新鲜样本发布移到Hook安装后，运行时过期保护不变；旧失败没有年龄日志，不能宣称根因已证明。详见[设置调用链](61-graphics-runtime-lock.md)。
+
+自动操作优先使用游戏状态：现有菜单反射读取器获取scene、focus、输入阻塞及确认框文字，导航器在输入前后检查状态，关卡就绪由Pawn/Controller/Camera等对象确认。未知状态先查知识库和已有证据，仅补必要的定向逆向。截图保留给黑屏、UI位置和字幕实际像素等视觉验证；菜单状态、原生设置生效、GPU图像和真头显体验分别记录，避免把“控件显示正常”当成“VR画面正确”。
+
 GraphicsLock1 / PID53840 已启用continuous阶段DLSS/DLAA运行时锁：实际菜单选择NVIDIA DLSS 3.5、NATIVE (DLAA)并确认，3次mode3请求被阻止，normal/alternate保持0，6685次collector/commit无策略故障。95.20秒、8566次projection、6320张新图，正常停止及38入口恢复通过。重开菜单仍显示缓存DLSS，菜单标签修正及关卡前保护仍未完成；不能宣称发布锁定已全部完成。详见[设置调用链](61-graphics-runtime-lock.md)。
 
 字幕已有非空几何证据：PID53760/46520分别发布559/65次字幕文字调用，但现有原始截图未截到对白，不能宣布字幕显示通过。GraphicsLock1已保留实际索引对应的字幕source/root与GPU ticket、list generation及命令完成状态；CPU验证通过，PID53840本轮未命中字幕GPU样本。指定字幕ticket的采图仍待接入，普通快照event只请求下一张图，不能当作同帧证明。

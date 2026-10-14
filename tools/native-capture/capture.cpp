@@ -2118,6 +2118,7 @@ bool install(void* target,void* detour,void** original) {
         auto& entry=session_hook_entries[session_hook_entry_count];entry.target=target;
         auto primed=std::find(prime_targets.begin(),prime_targets.end(),target);
         if(prime_ready.load()&&primed!=prime_targets.end())entry.bytes=prime_original_bytes[static_cast<size_t>(primed-prime_targets.begin())];
+        else if(graphics_lock_primed_bytes(target,entry.bytes)){}
         else if(!safe_copy(entry.bytes.data(),target,entry.bytes.size()))return false;
         ++session_hook_entry_count;
     }
@@ -2467,15 +2468,18 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
         auto stats=viewport_stats.snapshot();
         fprintf(status,"handed_off creates=%llu copies=%llu evictions=%llu\n",stats.descriptor_creates,stats.descriptor_copies,stats.descriptor_evictions);
     }else{
-        prime_recording=false;bool disabled=true;
+        prime_recording=false;bool disabled=disable_graphics_lock_prime();
         for(auto target:prime_targets){auto result=MH_DisableHook(target);disabled=disabled&&(result==MH_OK||result==MH_ERROR_DISABLED);}
-        ULONGLONG deadline=GetTickCount64()+1000;while(active.load()&&GetTickCount64()<deadline)Sleep(1);
-        bool restored=true;std::array<unsigned char,32> bytes{};
+        // Apply can still be inside a native collector/commit when cancellation
+        // arrives. Leave time for it to return within the launcher's 15s cleanup.
+        ULONGLONG deadline=GetTickCount64()+10000;while(active.load()&&GetTickCount64()<deadline)Sleep(1);
+        bool restored=graphics_lock_prime_restored();std::array<unsigned char,32> bytes{};
         for(unsigned i=0;i<prime_targets.size();++i)
             restored=restored&&safe_copy(bytes.data(),prime_targets[i],bytes.size())&&!memcmp(bytes.data(),prime_original_bytes[i].data(),bytes.size());
         const char* reason=waited==WAIT_TIMEOUT?"timeout":waited==WAIT_OBJECT_0?"cancel":
             waited==WAIT_OBJECT_0+1?"owner_exited":"owner_error";
         fprintf(status,"stopped reason=%s disable_status=%u active=%u entries_match=%u\n",reason,disabled?0:1,active.load(),restored?1:0);
+        print_graphics_lock_observer(status,disabled);
     }
     if(!prime_handoff.load()&&!active.load())release_bindings();
     fclose(status);prime_done=true;return 0;
@@ -2516,11 +2520,12 @@ DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullpt
     if(ok)prime_event=CreateEventW(nullptr,TRUE,FALSE,name);
     ok=ok&&prime_event;
     if(ok&&prime_owner.handle)ok=prime_owner.state()==gears_session::OwnerState::alive;
+    if(ok)ok=begin_graphics_lock_prime(status,prime_owner.handle!=nullptr);
     if(ok){prime_recording=true;ok=MH_ApplyQueued()==MH_OK;}
     HANDLE thread{};
     if(ok){thread=CreateThread(nullptr,0,target_prime_watchdog,status,0,nullptr);ok=thread!=nullptr;}
-    if(!ok){prime_recording=false;for(auto target:prime_targets)MH_DisableHook(target);fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
-    if(prime_owner.handle)fprintf(status,"capturing pid=%lu lifetime=owner owner_pid=%lu owner_creation_time=%llu native_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId(),prime_owner_pid,static_cast<unsigned long long>(prime_owner_creation_time));
+    if(!ok){prime_recording=false;disable_graphics_lock_prime();for(auto target:prime_targets){MH_QueueDisableHook(target);MH_DisableHook(target);}fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
+    if(prime_owner.handle)fprintf(status,"capturing pid=%lu lifetime=owner owner_pid=%lu owner_creation_time=%llu native_hooks_enabled=%u graphics_hooks_enabled=%u scene_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId(),prime_owner_pid,static_cast<unsigned long long>(prime_owner_creation_time),graphics_lock_prime_count(),graphics_lock_prime_count());
     else fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId());fflush(status);
     prime_ready=true;CloseHandle(thread);return 0;
 }
@@ -2534,7 +2539,9 @@ DWORD WINAPI worker(void*) {
     if(!hash_matches() || ini_address(ini,L"pid")!=GetCurrentProcessId()) {
         fprintf(status,"rejected: executable hash/name or PID mismatch\n");fclose(status);return 2;
     }
-    base=reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    const auto current_base=reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    if(reservation_ready&&base!=current_base){fprintf(status,"rejected: reserved module base changed\n");fclose(status);return 2;}
+    if(!reservation_ready)base=current_base; // Startup settings hooks read the immutable reserved base.
     quad_target=reinterpret_cast<void*>(base+0x1af42c);
     geometry_target=reinterpret_cast<void*>(base+0x13cfcc);
     expected_local=ini_address(ini,L"local_player");expected_pc=ini_address(ini,L"controller");
@@ -2787,7 +2794,10 @@ DWORD WINAPI worker(void*) {
         if(prime_ready.load()&&!prime_owner_allows_handoff(continuous_session,session_owner_pid,session_owner_creation_time)){
             fprintf(status,"rejected: target prime owner or pending state invalid\n");ok=false;
         }
-        if(ok&&prime_ready.load()){prime_handoff=true;SetEvent(prime_event);}
+        if(ok&&prime_ready.load()){
+            ok=graphics_lock_accept_handoff();
+            if(ok){prime_handoff=true;SetEvent(prime_event);}
+        }
         if(ok){
         submit_not_before=now()+3*qpc_frequency;recording=true;prime_recording=false;
         MH_STATUS applied=MH_ApplyQueued();fprintf(status,"minhook_apply=%s\n",MH_StatusToString(applied));ok=applied==MH_OK;
@@ -3700,14 +3710,19 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureSelfTest(void*) {
     gears_vr::PoseBridge producer,duplicate;
     if(!producer.open(GetCurrentProcessId(),true) || duplicate.open(GetCurrentProcessId(),true) ||
        !live_bridge.open(GetCurrentProcessId(),false))return 30;
-    gears_vr::PoseSample sample{{{0,0,0},{0,0,0,1}},1,gears_vr::monotonic_ns(),15,true};
-    if(!producer.publish(sample))return 31;
+    gears_vr::PoseSample sample{{{0,0,0},{0,0,0,1}},1,0,15,true};
     recording=true;
     if(MH_QueueEnableHook(reinterpret_cast<void*>(fake_scene))!=MH_OK ||
        MH_QueueEnableHook(reinterpret_cast<void*>(fake_event))!=MH_OK || MH_ApplyQueued()!=MH_OK)return 32;
+    // Hook application can suspend/enumerate many threads under game load. Test
+    // fresh pose consumption after setup, rather than timing that setup as pose age.
+    sample.received_ns=gears_vr::monotonic_ns();
+    if(!producer.publish(sample))return 31;
     Vec live_p{1,2,3};Rot live_r{4,5,6};
     invoke(reinterpret_cast<void*>(1),reinterpret_cast<void*>(2),&live_p,&live_r,reinterpret_cast<void*>(3),reinterpret_cast<void*>(4));
-    if(live_p.x!=6 || live_r.yaw!=12 || live_status!=static_cast<unsigned>(gears_vr::PoseStatus::recentered))return 33;
+    if(live_p.x!=6 || live_r.yaw!=12 || live_status!=static_cast<unsigned>(gears_vr::PoseStatus::recentered)){
+        printf("Live self-test initial status=%u age_ns=%llu x=%.9g yaw=%d\n",live_status,
+            static_cast<unsigned long long>(gears_vr::monotonic_ns()-sample.received_ns),live_p.x,live_r.yaw);return 33;}
     sample.sequence++;sample.received_ns=gears_vr::monotonic_ns();sample.head.position.x=.2;
     sample.head.orientation={0,std::sin(.2),0,std::cos(.2)};
     if(!producer.publish(sample))return 34;

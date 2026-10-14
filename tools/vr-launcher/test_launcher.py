@@ -48,6 +48,41 @@ class FakeBackend:
         return dict(pawn='0x200',controller='0x100',camera='0x400',level='0x300',timestamp=float(self.samples))
 
 class LauncherTests(unittest.TestCase):
+    def test_startup_policy_event_failure_does_not_admit_handoff(self):
+        backend=launcher.Backend.__new__(launcher.Backend)
+        backend.runner=SimpleNamespace(checked_identity=mock.Mock())
+        backend.control=SimpleNamespace(k=SimpleNamespace(OpenEventW=mock.Mock(return_value=9),
+            WaitForSingleObject=mock.Mock(return_value=258),CloseHandle=mock.Mock()))
+        backend.require_prime_active({'pid':55})
+        backend.control.k.CloseHandle.assert_called_once_with(9)
+        for result in (0,0xffffffff):
+            backend.control.k.WaitForSingleObject.return_value=result
+            with self.assertRaisesRegex(RuntimeError,'stopped before handoff'):backend.require_prime_active({'pid':55})
+        backend.control.k.OpenEventW.return_value=0
+        with self.assertRaisesRegex(RuntimeError,'event absent'):backend.require_prime_active({'pid':55})
+
+    def test_graphics_startup_lock_requires_owned_lifetime(self):
+        with self.assertRaisesRegex(ValueError,'owned startup'):
+            launcher.settings({},dict(MANIFEST,graphics_startup_lock=True,startup_menu=False))
+
+    def test_reservation_admits_only_requested_graphics_hooks(self):
+        backend=launcher.Backend.__new__(launcher.Backend)
+        owner=dict(pid=7,creation_time=8)
+        manifest=dict(MANIFEST,graphics_startup_lock=True,startup_menu=True)
+        report=dict(pid=55,game_identity=dict(pid=55,creation_time=456,image=str(launcher.rooted(MANIFEST['game_path']))),
+            game_sha256=MANIFEST['game_sha256'],trampolines_reserved=True,hooks_enabled=True,native_hooks_enabled=True,
+            graphics_hooks_enabled=3,scene_hooks_enabled=False,first_view_mask_reserved=True,
+            independent_entry_checks=[{'matches':True}],prime_lifetime='owner',prime_owner_pid=7,prime_owner_creation_time=8)
+        with tempfile.TemporaryDirectory() as directory:
+            log=pathlib.Path(directory)/'reserve.log'
+            with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(report),stderr='')) as spawn:
+                self.assertEqual(backend.reserve(manifest,log,owner=owner)['graphics_hooks_enabled'],3)
+                self.assertIn('--graphics-startup-lock',spawn.call_args.args[0])
+                with self.assertRaisesRegex(RuntimeError,'proof'):backend.reserve(MANIFEST,log)
+            report['scene_hooks_enabled']=True
+            with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(report),stderr='')):
+                with self.assertRaisesRegex(RuntimeError,'proof'):backend.reserve(manifest,log,owner=owner)
+
     def test_hud_plane_manifest_dependencies_fail_before_reservation(self):
         for ui,anchor in ((False,False),(True,False),(False,True)):
             manifest=dict(MANIFEST,ui_hud_plane=True,ui_observer=ui,anchor_observer=anchor)

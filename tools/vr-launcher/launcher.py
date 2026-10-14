@@ -34,8 +34,10 @@ def rooted(value,root=ROOT):
 def settings(config,manifest,root=ROOT):
     if set(config)-{'game_path','stereo_units_per_metre'}:raise ValueError('Unknown configuration field')
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
-    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu')):
+    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','graphics_startup_lock')):
         raise ValueError('Manifest session options must be boolean')
+    if manifest.get('graphics_startup_lock',False) and not manifest.get('startup_menu',False):
+        raise ValueError('Startup graphics lock requires owned startup menu lifecycle')
     if manifest.get('ui_hud_plane',False) and not (manifest.get('ui_observer',False) and manifest.get('anchor_observer',False)):
         raise ValueError('HUD plane requires UI observer and anchor observer in the continuous launcher')
     scale=config.get('stereo_units_per_metre',100)
@@ -134,6 +136,7 @@ class Backend:
         if game_path is not None:cmd+=['--game-path',str(game_path)]
         if owner:
             cmd+=['--prime-owner-pid',str(owner['pid']),'--prime-owner-creation-time',str(owner['creation_time'])]
+        if manifest.get('graphics_startup_lock',False):cmd+=['--graphics-startup-lock']
         result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
         log.write_text(result.stdout+'\n'+result.stderr,encoding='utf-8')
         if result.returncode:raise RuntimeError('Fresh reservation failed; no retry: '+str(log))
@@ -144,7 +147,10 @@ class Backend:
             if isinstance(value,dict) and value.get('trampolines_reserved'):reports.append(value)
         if len(reports)!=1:raise RuntimeError('Reservation did not return one accepted PID')
         report=reports[0]
-        if not report.get('hooks_enabled') or report.get('native_hooks_enabled') or not report.get('first_view_mask_reserved') or not all(x['matches'] for x in report['independent_entry_checks']):
+        graphics_required=manifest.get('graphics_startup_lock',False)
+        if (not report.get('hooks_enabled') or report.get('native_hooks_enabled')!=graphics_required or
+                report.get('graphics_hooks_enabled',0)!=(3 if graphics_required else 0) or report.get('scene_hooks_enabled',False) or
+                not report.get('first_view_mask_reserved') or not all(x['matches'] for x in report['independent_entry_checks'])):
             raise RuntimeError('Reservation proof rejected')
         if owner and (report.get('prime_lifetime')!='owner' or report.get('prime_owner_pid')!=owner['pid'] or
                       report.get('prime_owner_creation_time')!=owner['creation_time']):
@@ -201,6 +207,14 @@ class Backend:
                 return {'cancelled':True,'entry_restore_verified':True}
             time.sleep(.05)
         raise TimeoutError('Owned prime restoration is still pending')
+    def require_prime_active(self,identity):
+        self.runner.checked_identity(self.control,identity)
+        handle=self.control.k.OpenEventW(0x100000,False,f"Local\\GearsVR.Capture.TargetPrime.{identity['pid']}")
+        if not handle:raise RuntimeError('Startup graphics protection event absent')
+        try:
+            if self.control.k.WaitForSingleObject(handle,0)!=258:
+                raise RuntimeError('Startup graphics protection stopped before handoff')
+        finally:self.control.k.CloseHandle(handle)
     def player(self,pid,profile):
         resolver=self.Resolver(pid,profile)
         try:return possessed_player(resolver,resolver.resolve())
@@ -233,14 +247,17 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         if not identity or identity!=reserved.get('game_identity') or pathlib.Path(identity['image']).resolve()!=game:raise RuntimeError('Reserved game identity mismatch')
         state.update(phase='waiting_for_level',game_identity=identity,reservation=reserved);atomic_json(index,state)
         def prepare_level(check_live=None):
-            if check_live:check_live()
+            def check_startup():
+                if check_live:check_live()
+                if manifest.get('graphics_startup_lock',False):backend.require_prime_active(identity)
+            check_startup()
             if auto_continue:
                 sys.path.insert(0,str(HERE))
                 from menu_navigation import NavigationCancelled
                 state.update(phase='navigating_menu');atomic_json(index,state)
                 try:
                     navigation_deadline=clock()+60 if owned_prime else started+120
-                    navigation_guards={'check_live':check_live} if check_live else {}
+                    navigation_guards={'check_live':check_startup} if check_live or manifest.get('graphics_startup_lock',False) else {}
                     state['menu_navigation']=backend.navigate(pid,identity,cancel,navigation_deadline,index.with_suffix('.menu.jsonl'),**navigation_guards)
                     if not state['menu_navigation'].get('loading_requested'):
                         raise RuntimeError('Menu navigation did not request level loading')
@@ -250,7 +267,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
             # Legacy reservations retain the 120/180-second boundary. Owned prime
             # is tied to this launcher process, so a player may stay in menus.
             while owned_prime or clock()-started<120:
-                if check_live:check_live()
+                check_startup()
                 if backend.cancelled(cancel):return None
                 if backend.control.identity(pid)!=identity:raise RuntimeError('Reserved game exited or changed')
                 try:current=backend.player(pid,profile)
