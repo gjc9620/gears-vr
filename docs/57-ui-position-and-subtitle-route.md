@@ -187,3 +187,11 @@ e5ede89 / UiHudPlane1 / PID46800 首次启用独立 70°、2 米 head-locked HUD
 Pixels2 的快照日志在acknowledge之前读取serial，记录的是上一次已确认图像；图像及ticket有效，serial不能用于同帧关联。Pixels3修正为ack成功、GPU fence完成后读取，并增加保存完成的单调时钟时间。PID424 / `manifest-ui-pixels3.json` 实际采到3张完整图，均与image-ticket日志的ticket及serial匹配；其中两张保存时间落在开镜、切枪动作期间。该轮5667次projection、4137张新图，正常停止及35入口恢复通过。首张Pixels1原实现是在保存时读取serial，未受Pixels2这一回归影响。三轮审核文件为各session前缀加`.ui-pixels-audit.json`。
 
 下一项先校正纯准星segment的原游戏屏幕中心方向，使用同ticket冻结矩阵，以无限远方向投射到每眼后平移viewport；保持原图形尺寸。该方案不等同于近处命中点、枪口偏移或真实弹着点修复。字幕仍需有对白的实际glyph样本，普通PostRender语义也不能自动推广到所有世界标记。
+
+## UiReticle1：原游戏方向修正已通过像素核对
+
+`manifest-ui-reticle1.json` / PID47092 首次开启默认OFF的 `GEARS_UI_RETICLE_DIRECTION`。仅当当前原生segment索引全部属于同一次Tile准星调用、独立顶点副本位置有限且z=0/w=1、包围盒居中误差不超过1像素且宽高各小于画布1/3时启用；额外准星/整屏瞄准镜/混合/未知批次不自动接管。Extent在原consumer调用前按实际索引保存为值，之后不读取已销毁payload。使用实际overlay ticket的source view/projection及双眼矩阵，以w=0映射屏幕中心方向，只平移viewport，裁剪scissor并恢复原状态。
+
+实际458次准星计划及双眼draw通过，居中/矩阵/投影拒绝均0，其他HUD 2134次平面修正，sequence_fault=0。10775次projection、8012张新图，正常停止、35入口恢复及游戏正常关闭。原图开镜ticket650/serial643与XR记录吻合；阈值提取的准星白色像素框中心由基线(959.5,1079.5)/(2879.5,1079.5)，移动到(1192.5,884.5)/(2646.5,884.5)，与计算位置(1192.812,885.062)/(2647.188,885.062)在像素栅格范围内一致。四个白色像素框均为60×104像素，原图同时能直接看见正常准星形状。
+
+CPU测试以 `/W4 /WX /UNDEBUG` 编译，覆盖非对称FOV、旋转、平移不影响方向、索引归属、混合来源/多个root拒绝、失败不修改输出；HUD与索引回归、continuous ABI自测通过。代码已只读审查。DLL SHA256 `185161b70a9fa00ce755644f014382fef269d46ab00e558897d7053eafdd4ef4`，证据 `analysis/runtime/ui-reticle1-47092.audit.json` 和原始GPU图。这证实当前场景FOV方向偏移的修正，不证明近处命中收敛、枪口弹着点、所有武器/菜单/字幕或真实头显体验。

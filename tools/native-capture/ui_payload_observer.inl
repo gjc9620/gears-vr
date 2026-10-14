@@ -18,12 +18,19 @@ std::atomic<uint64_t> ui_index_capture_ok{},ui_index_capture_rejected{},ui_index
 struct UiHudCounts {std::atomic<uint64_t> considered{},missing_context{},reticle_excluded{},unknown_or_mixed{},
     ticket_missing{},projection_rejected{},planned{},applied{};} ui_hud_counts;
 std::atomic<bool> ui_hud_sequence_fault{};
+#if defined(GEARS_UI_RETICLE_DIRECTION) && GEARS_UI_RETICLE_DIRECTION
+constexpr bool ui_reticle_direction_enabled=true;
+#else
+constexpr bool ui_reticle_direction_enabled=false;
+#endif
+struct UiReticleCounts {std::atomic<uint64_t> considered{},center_rejected{},geometry_missing{},projection_rejected{},planned{},applied{};} ui_reticle_counts;
 struct UiIndexContext {
     uint64_t execute_sequence{};
     gears_ui_indices::Snapshot snapshot{};
     gears_ui_indices::Cursor cursor{};
     unsigned ordinal{};
     bool callback_valid{};
+    std::array<gears_ui_reticle::Extent,gears_ui_indices::segment_capacity> reticle_extents{};
 };
 thread_local UiIndexContext* ui_index_context{};
 struct UiPayloadContext {
@@ -50,6 +57,8 @@ struct UiPayloadGpuRow {
     bool geometry_matched{};
     bool hud_plane_applied{};
     gears_viewport::OverlayPlan hud_plan{};
+    bool reticle_direction_applied{};
+    gears_viewport::OverlayPlan reticle_plan{};
 };
 std::array<std::array<UiPayloadGpuRow,24>,8> ui_payload_gpu_rows{};
 std::array<unsigned,8> ui_payload_gpu_counts{};
@@ -112,6 +121,9 @@ uint32_t __fastcall hook_ui_execute(void* command){
                        safe_copy(checked.data(),command,checked.size())&&checked==header){
                         index_storage->execute_sequence=++ui_execute_sequence;
                         index_storage->cursor=gears_ui_indices::Cursor(index_storage->snapshot);
+                        if(ui_reticle_direction_enabled&&(context.kind_mask&1u))
+                            for(unsigned i=0;i<index_storage->snapshot.segment_count;++i)
+                                gears_ui_reticle::capture_extent(claim,index_storage->snapshot,i,index_storage->reticle_extents[i]);
                         ui_index_context=index_storage.get();++ui_index_capture_ok;
                     }else ++ui_index_capture_rejected;
                 }else ++ui_execute_content_rejected;
@@ -143,6 +155,27 @@ void observe_ui_index_callback(uintptr_t caller,gears_ui_indices::DrawArgs args)
     if(ui_execute_entry_return==base+0x19f2f3&&ui_index_context->cursor.consume(args,ordinal)){
         ui_index_context->ordinal=ordinal;ui_index_context->callback_valid=true;++ui_index_callback_ok;
     }else {++ui_index_callback_rejected;if(ui_hud_plane_enabled)ui_hud_sequence_fault=true;}
+}
+
+bool prepare_ui_reticle_overlay(uint64_t ticket,gears_viewport::DrawState const& saved,
+        unsigned width,unsigned height,gears_viewport::OverlayPlan& out){
+    if(!ui_reticle_direction_enabled||!ui_hud_plane_enabled||ui_hud_sequence_fault.load()||
+       !ui_payload_context||!ui_index_context||!ui_index_context->callback_valid||
+       ui_index_context->snapshot.payload!=ui_payload_context->payload||
+       ui_index_context->snapshot.generation!=ui_payload_context->generation)return false;
+    const auto ordinal=ui_index_context->ordinal;
+    const auto& segment=ui_index_context->snapshot.segments[ordinal];
+    if(segment.kind_mask!=1||segment.unknown||!segment.index_count)return false;
+    ++ui_reticle_counts.considered;
+    if(!gears_ui_reticle::centered(ui_index_context->reticle_extents[ordinal],width,height)){
+        ++ui_reticle_counts.center_rejected;return false;}
+    gears_vr::StereoTicketGeometry geometry{};
+    if(!stereo_ticket_store.lookup_geometry(ticket,geometry,simulator_operator)){
+        ++ui_reticle_counts.geometry_missing;return false;}
+    gears_viewport::OverlayPlan corrected{};
+    if(!gears_ui_reticle::plan(saved,width,height,geometry,corrected)){
+        ++ui_reticle_counts.projection_rejected;return false;}
+    out=corrected;++ui_reticle_counts.planned;return true;
 }
 
 bool prepare_ui_hud_overlay(uint64_t ticket,gears_viewport::DrawState const& saved,
@@ -187,10 +220,12 @@ bool ui_observed_overlay_chain(const uintptr_t* addresses,size_t count){
 
 void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears_frame_link::Target target,
         unsigned indices,unsigned instances,unsigned start,int vertex,bool hud_applied=false,
-        gears_viewport::OverlayPlan const* hud_plan=nullptr){
+        gears_viewport::OverlayPlan const* hud_plan=nullptr,bool reticle_applied=false,
+        gears_viewport::OverlayPlan const* reticle_plan=nullptr){
     if(!ui_observer_enabled||!recording.load())return;
     ++ui_gpu_context_calls;
     if(hud_applied)++ui_hud_counts.applied;
+    if(reticle_applied)++ui_reticle_counts.applied;
     if(!ui_payload_context||!ticket){++ui_gpu_context_missing;return;}
     const auto& context=*ui_payload_context;const auto kind=context.kind_mask;
     if(!kind||kind>=ui_payload_gpu_rows.size()){++ui_gpu_context_missing;return;}
@@ -202,6 +237,7 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
     row={context,ticket,list,target,timestamp,GetCurrentThreadId(),indices,instances,start,vertex};
     row.geometry_matched=stereo_ticket_store.lookup_geometry(ticket,row.geometry,simulator_operator);
     row.hud_plane_applied=hud_applied;if(hud_plan)row.hud_plan=*hud_plan;
+    row.reticle_direction_applied=reticle_applied;if(reticle_plan)row.reticle_plan=*reticle_plan;
     if(ui_index_context&&ui_index_context->callback_valid){
         row.execute_sequence=ui_index_context->execute_sequence;
         row.segment_ordinal=ui_index_context->ordinal;
@@ -211,6 +247,9 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
 }
 
 void print_ui_payload_observer(FILE* status){
+    fprintf(status,"ui_reticle_direction enabled=%u considered=%llu center_rejected=%llu geometry_missing=%llu projection_rejected=%llu planned=%llu applied=%llu finite_hit_proven=0 source_vertices_modified=0\n",
+        ui_reticle_direction_enabled?1:0,ui_reticle_counts.considered.load(),ui_reticle_counts.center_rejected.load(),
+        ui_reticle_counts.geometry_missing.load(),ui_reticle_counts.projection_rejected.load(),ui_reticle_counts.planned.load(),ui_reticle_counts.applied.load());
     const auto store=ui_payload_store.stats();
     fprintf(status,"ui_payload_store published=%llu rejected=%llu capacity_rejected=%llu groups_poisoned=%llu claimed=%llu poison_claimed=%llu active_groups=%zu poisoned_groups=%zu disabled=%u resets=%llu\n",
         store.published,store.rejected,store.capacity_rejected,store.groups_poisoned,store.claimed,store.poison_claimed,
@@ -251,6 +290,12 @@ void print_ui_payload_observer(FILE* status){
             if(r.hud_plane_applied){
                 for(unsigned e=0;e<2;++e){auto const& v=r.hud_plan.viewports[e];auto const& s=r.hud_plan.scissors[e];
                     fprintf(status,"ui_hud_plane_row kind_mask=%u row=%u ticket=%llu eye=%u viewport=%.9g,%.9g,%.9g,%.9g scissor=%.9g,%.9g,%.9g,%.9g applied=1\n",
+                        k,i,r.ticket,e,v.x,v.y,v.width,v.height,s.x,s.y,s.width,s.height);
+                }
+            }
+            if(r.reticle_direction_applied){
+                for(unsigned e=0;e<2;++e){auto const& v=r.reticle_plan.viewports[e];auto const& s=r.reticle_plan.scissors[e];
+                    fprintf(status,"ui_reticle_direction_row kind_mask=%u row=%u ticket=%llu eye=%u viewport=%.9g,%.9g,%.9g,%.9g scissor=%.9g,%.9g,%.9g,%.9g applied=1\n",
                         k,i,r.ticket,e,v.x,v.y,v.width,v.height,s.x,s.y,s.width,s.height);
                 }
             }

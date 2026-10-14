@@ -34,6 +34,7 @@
 #include "ui_payload_receipts.h"
 #include "ui_index_membership.h"
 #include "ui_hud_plan.h"
+#include "ui_reticle_direction_plan.h"
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -2298,14 +2299,16 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             std::array<uintptr_t,12> addresses{};for(unsigned i=0;i<count;++i)addresses[i]=reinterpret_cast<uintptr_t>(stack[i]);
             if(pair.linked&&plan.valid&&(gears_viewport::overlay_caller_chain(addresses.data(),count,base)||
                 ui_observed_overlay_chain(addresses.data(),count))){
-                const bool hud_plane=prepare_ui_hud_overlay(pair.ticket,saved,target.width,target.height,plan);
+                const bool reticle_direction=prepare_ui_reticle_overlay(pair.ticket,saved,target.width,target.height,plan);
+                const bool hud_plane=!reticle_direction&&prepare_ui_hud_overlay(pair.ticket,saved,target.width,target.height,plan);
                 auto viewport=[&](gears_viewport::Rect r,float minimum,float maximum){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,minimum,maximum};original_viewports(list,1,&v);};
                 auto scissor=[&](gears_viewport::Rect r){D3D12_RECT s{static_cast<LONG>(r.x),static_cast<LONG>(r.y),static_cast<LONG>(r.x+r.width),static_cast<LONG>(r.y+r.height)};original_scissors(list,1,&s);};
                 unsigned mask=0;
                 try {mask=gears_viewport::replay_overlay(saved,plan,viewport,scissor,[&](unsigned){original_draw_indexed(list,indices,instances,start,vertex,first_instance);});}
                 catch(...){frame_link.invalidate();throw;}
                 frame_link.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask);
-                observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,hud_plane&&mask==3,hud_plane?&plan:nullptr);
+                observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,hud_plane&&mask==3,hud_plane?&plan:nullptr,
+                    reticle_direction&&mask==3,reticle_direction?&plan:nullptr);
                 return;
             }
         }

@@ -2,6 +2,8 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
+最新 UiReticle1 / PID47092：居中准星已按同ticket原游戏方向投影到每眼，458次修正均成功。原始GPU像素确认两眼准星由图像中心移动至计算位置，白色图形边界保持60×104像素；10775次projection、8012张新图，正常停止及35入口恢复通过。使用实验清单 `tools/vr-launcher/manifest-ui-reticle1.json`，默认构建关闭该选项。当前解决非对称FOV方向偏移；近处真实命中点、字幕/更多UI及真头显体验仍未通过。此条取代下方历史记录中“准星尚未修改”的当前状态。
+
 UiPixels3 / PID424：已支持有界按需原分辨率GPU快照，开镜与切枪两张截图的实际ticket/serial及保存时间均核验。换枪图标/数字和弹药HUD可见，两眼平移与HUD平面预测一致；准星仍在各眼图像中心，非对称FOV方向偏移尚未修正。5667次projection、4137张新图，正常停止及35入口恢复通过。Material观察器本轮未命中，不能据此宣布该路线已验收；字幕亦未覆盖。详见[UI定位进展](57-ui-position-and-subtitle-route.md)。独立目标持有/adapter与tracker出生契约已加入CPU测试，尚未绑定到游戏场景；每眼2K/4K仍属待实现。
 
 NativeSurface1 / PID34052：首次实际调用游戏自身的颜色目标分配器，在已核验RHI线程/TLS内依次创建4096×2048和8192×4096目标。两档真实GetDesc均为RGBA8/DXGI28、单mip/单slice/单sample、ALLOW_RENDER_TARGET，并通过同线程native引用清空释放；首次ticket即成功，无保留引用或cleanup不确定。独立目标尚未绑定绘制，因此这不是游戏原生2K/4K显示测试。原双目同时运行32.268秒、2907次projection、2416次复制，最大提交间隔29.5934ms，34入口恢复；模拟器及游戏正常退出。代码54d54b6；证据 `analysis/ui-position-runtime/native-surface-live-34052.json`，自测164项、宏关闭无效果和continuous自测通过。
