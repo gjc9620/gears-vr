@@ -1,6 +1,6 @@
 # DLSS/DLAA 运行时锁：实际设置调用链
 
-2026-10-15。目标是首版运行期间禁止重新启用未经测试的DLSS/DLAA，同时保留其他设置的正常应用。启动INI关闭已存在；本记录的观察版尚未修改设置，不计为锁定完成。
+2026-10-15。目标是首版运行期间禁止重新启用未经测试的DLSS/DLAA，同时保留其他设置的正常应用。启动INI关闭已存在；GraphicsLock1现已通过continuous阶段实际启用请求测试，仍缺关卡前保护和菜单标签修正。
 
 ## 实际游戏证据
 
@@ -22,8 +22,18 @@
 
 证据：`analysis/graphics-lock/graphics-observer1-46520.audit.json`、`analysis/runtime/continuous-stereo-46520-20261015-021439-a72cff7f.*`、同目录`graphics-observer1-options-*`和`graphics-observer1-after-stop.json`。源码后续把collector TLS恢复改为RAII，并增加嵌套/异常恢复CPU自测；冻结Observer1不包含此收尾改进。
 
-## 接下来的实际修改
+## GraphicsLock1：实际启用请求测试
 
-结合排队dispatcher静态指令与真实线程选择字段，认证每次queued调用，复用现有graphics_lock/routes策略：在已认证menu拒绝mode3、collector仅清normal+3c8、commit仅清既有命令+78，保留原命令地址、其余payload、原collector/commit调用及返回值。任何身份或写入失败撤销锁有效声明并安全停止VR。
+默认OFF的`GEARS_GRAPHICS_RUNTIME_LOCK`要求observer启用，复用相同三个入口及38入口恢复路径。在启用前校验游戏哈希、原入口、singleton/vtable、dispatcher四段字节、初始normal/alternate为0及normal可写页。queued回调逐次校验当前selector线程、queueflag和精确callsite，direct回调要求已认证collector TLS作用域。仅允许精确字段四字节CAS 1→0，不改变页保护；命令仍由原函数消费，保留原始返回值及192字节步长。故障请求既有安全停止并将effective置0。启用发生在continuous阶段，不能代表启动菜单保护。
 
-还需把锁的生命周期覆盖到进入关卡前的菜单，并实测用户重新选择DLSS/DLAA时生效字段持续为0、其他设置仍可应用。当前观察只覆盖已激活continuous会话，不能作为首版完整锁定。
+PID53840，`manifest-graphics-lock1.json`，DLL SHA256 `611b5c2e6f9c58ed43486519e025918f80dba3710513241ed70187a47b550571`。实际菜单通过状态读取和普通手柄输入，从NONE选到NVIDIA DLSS 3.5、NATIVE (DLAA)，Apply并在确认框接受。3次mode3均被拦截，前后normal/alternate为0；collector/commit各6685次，faults=0，normalCleared/commandCleared均0，因为菜单边界已阻止置1。menu行的`original_rax=1`此时是Mod合成成功值，不是原函数执行结果。
+
+重新进入图形菜单仍显示index3及DLAA标签，因此原测试脚本的“重开应回NONE”断言失败。停止VR后独立读回重新认证原入口字节，normal/alternate仍0，ScreenPercentage/FINAL=100，factor=1；AA quality=4只是质量字段，不能据此认定DLAA启用。这轮证明引擎效果锁关闭，同时暴露菜单暂存标签未刷新。不能仅以菜单显示判断锁是否生效，也不能将标签缺口隐去。
+
+会话95.1983617秒、8566次projection、6320张新图，最大提交间隔73.6923ms，正常停止及38入口还原；XR销毁、游戏正常关闭。关闭前通过菜单恢复NONE并重新打开确认。全部构建目标及22组CPU测试通过，包括生产dispatch的mode3绕过、其他模式原调用一次、collector原始RAX、commit192返回、其他188字节不变和CAS边界；仍未实际覆盖normal/command从1清0或direct分支。
+
+证据：`analysis/runtime/graphics-lock1-menu-aa3.json`、`graphics-lock1-after-stop.json`、`graphics-lock1-menu-restore.json`、`continuous-stereo-53840-20261015-023856-06129087.*`，测试日志`analysis/graphics-lock/graphics-lock1-test.txt`。本次操作未使用截图控制菜单。
+
+## 剩余工作
+
+把锁的生命周期覆盖到进入关卡前，补齐owned-prime取消、失败及恢复路径。菜单暂存值需要沿已认证选择/Apply事务与真实刷新接口恢复，不能盲写控件；现有setter成功返回不会自动重置该值。补测锁启用后其他设置仍可应用，以及不同缩放选择。当前仅覆盖一个已激活continuous会话和DLAA档位请求，尚不作为首版完整锁定。

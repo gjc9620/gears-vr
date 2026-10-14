@@ -2,9 +2,9 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
-GraphicsObserver1 / PID46520 已取得三个设置入口的真实回调：菜单 Apply 在游戏线程调用，collector 每帧收集，另一个渲染线程在 RVA19f2f3 消费192字节命令，返回192；实际线程与引擎 selector 相符。运行406.42秒、36422次projection、26848张新图，正常停止及38入口恢复通过。这是只读观察，DLSS/DLAA运行时锁仍未启用；详见[设置调用链](61-graphics-runtime-lock.md)。
+GraphicsLock1 / PID53840 已启用continuous阶段DLSS/DLAA运行时锁：实际菜单选择NVIDIA DLSS 3.5、NATIVE (DLAA)并确认，3次mode3请求被阻止，normal/alternate保持0，6685次collector/commit无策略故障。95.20秒、8566次projection、6320张新图，正常停止及38入口恢复通过。重开菜单仍显示缓存DLSS，菜单标签修正及关卡前保护仍未完成；不能宣称发布锁定已全部完成。详见[设置调用链](61-graphics-runtime-lock.md)。
 
-字幕已有非空几何证据：PID53760/46520分别发布559/65次字幕文字调用，但现有原始截图未截到对白，不能宣布字幕显示通过。消费上下文目前没有保留字幕source，无法把统计直接归于某个GPU ticket；后续需在实际字幕消费时精准采图。两轮已正常关闭游戏。
+字幕已有非空几何证据：PID53760/46520分别发布559/65次字幕文字调用，但现有原始截图未截到对白，不能宣布字幕显示通过。GraphicsLock1已保留实际索引对应的字幕source/root与GPU ticket、list generation及命令完成状态；CPU验证通过，PID53840本轮未命中字幕GPU样本。指定字幕ticket的采图仍待接入，普通快照event只请求下一张图，不能当作同帧证明。
 
 最新 UiReticle1 / PID47092：居中准星已按同ticket原游戏方向投影到每眼，458次修正均成功。原始GPU像素确认两眼准星由图像中心移动至计算位置，白色图形边界保持60×104像素；10775次projection、8012张新图，正常停止及35入口恢复通过。使用实验清单 `tools/vr-launcher/manifest-ui-reticle1.json`，默认构建关闭该选项。当前解决非对称FOV方向偏移；近处真实命中点、字幕/更多UI及真头显体验仍未通过。此条取代下方历史记录中“准星尚未修改”的当前状态。
 

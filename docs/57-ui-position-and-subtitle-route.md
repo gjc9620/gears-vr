@@ -202,4 +202,8 @@ PID53760正常推进开始房间、走廊及庭院入口，运行727.19秒、652
 
 完整3840×2160的6张快照未截到对白。晚期只读队列观察器在源getter/selector字节与历史快照匹配后，通过getter的RIP相对寻址取得global RVA1c7dbc8；稳定的manager header为count=0/capacity=0。该观察比进入走廊晚约181秒，不能由此否定此前非空glyph。随后PID46520在移动前开启60秒watch，仍采到空队列；该轮停止日志却有65个非空字幕调用、129段、2820顶点，说明当前队列时序与截图覆盖仍不足。实际画面还显示玩家在庭院门边进入掩体，不能把发送前进键当作已经通过该位置。
 
-现有GPU receipt上下文仅保留HUD kind，丢弃了原NativeSubtitle source；因此不能拿任意kind4行当作字幕ticket。下一项最小改动是将source/root_invocation保留到已认证索引上下文，并在实际字幕成员对应overlay ticket时请求原始快照。无需扩大逆向或新增原生hook。证据：`analysis/runtime/continuous-stereo-53760-20261015-015852-f4f5fcfa.*`、`continuous-stereo-46520-20261015-021439-a72cff7f.*`、`subtitle1-queue-walk.jsonl`、`subtitle2-queue-walk.jsonl`。
+当时GPU receipt上下文仅保留HUD kind，丢弃了原NativeSubtitle source，不能拿任意kind4行当作字幕ticket。证据：`analysis/runtime/continuous-stereo-53760-20261015-015852-f4f5fcfa.*`、`continuous-stereo-46520-20261015-021439-a72cff7f.*`、`subtitle1-queue-walk.jsonl`、`subtitle2-queue-walk.jsonl`。
+
+GraphicsLock1已增加`ui_segment_sources.h`，按真实复制索引保留source/root范围，拒绝混合、未知、过期代次及索引不匹配；独立16条字幕GPU记录保留ticket、list generation、execute sequence、QPC和双眼replay/命令完成状态。`UiSegmentSourcesTest`以/W4 /WX编译并通过，未增加原生hook或修改顶点。PID53840本轮菜单测试字幕GPU calls/rows均0，尚未取得真实字幕GPU命中，不能据此宣称可见性通过。
+
+现有快照event没有指定ticket，GPU done fence仅为复用ack。后续精准采图应将已提交的字幕list与Present发布的相同ticket关联，接收端只保存指定ticket/session；越过则明确miss，不能自动用下一帧冒充。最后仍需检查文字像素与双眼位置。

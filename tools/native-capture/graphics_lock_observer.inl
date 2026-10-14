@@ -1,8 +1,15 @@
 #pragma once
 #include "graphics_lock.h"
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+#if !defined(GEARS_GRAPHICS_LOCK_OBSERVER) || !GEARS_GRAPHICS_LOCK_OBSERVER
+#error GEARS_GRAPHICS_RUNTIME_LOCK requires GEARS_GRAPHICS_LOCK_OBSERVER
+#endif
+#include "graphics_runtime_contract.h"
+bool hash_matches();
+#endif
 
-// Continuous-session observation only. Reserve creates inactive trampolines;
-// this experiment deliberately does not cover menus before level activation.
+// Reserve creates inactive trampolines. Optional runtime policy protects only
+// continuous-session callbacks; this does not cover menus before activation.
 bool install(void*,void*,void**);
 #if defined(GEARS_GRAPHICS_LOCK_OBSERVER) && GEARS_GRAPHICS_LOCK_OBSERVER
 namespace graphics_observer {
@@ -20,6 +27,65 @@ struct Row {DWORD thread{};uintptr_t caller{},settings{},collector_settings{},co
 std::array<std::array<Row,32>,3> rows{};
 std::array<std::atomic<unsigned>,3> counts{};
 std::array<std::atomic<uint64_t>,3> calls{};
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+namespace runtime {
+using Failure=gears_graphics_runtime::Failure;
+gears_graphics_lock::routes::Context context{};
+std::atomic<bool> armed{};
+std::atomic<uint64_t> menu_blocked{},normal_cleared{},command_cleared{},faults{};
+struct Fault {Failure reason{};unsigned policy_reason{},route_status{};DWORD thread{};uintptr_t caller{},window{};};
+Fault first_fault{};std::atomic<unsigned> fault_phase{};
+struct Read {bool operator()(uintptr_t address,void* out,size_t size){return safe_copy(out,reinterpret_cast<void*>(address),size);}};
+bool writable4(uintptr_t address){MEMORY_BASIC_INFORMATION region{};
+ if(!address||address%4||VirtualQuery(reinterpret_cast<void*>(address),&region,sizeof(region))!=sizeof(region)||
+    region.State!=MEM_COMMIT||(region.Protect&(PAGE_GUARD|PAGE_NOACCESS)))return false;
+ const DWORD p=region.Protect&0xff;
+ if(p!=PAGE_READWRITE&&p!=PAGE_WRITECOPY&&p!=PAGE_EXECUTE_READWRITE&&p!=PAGE_EXECUTE_WRITECOPY)return false;
+ const auto start=reinterpret_cast<uintptr_t>(region.BaseAddress);
+ return address>=start&&region.RegionSize>=4&&address-start<=region.RegionSize-4;
+}
+// The writer accepts one exact policy location; executable/page protection is
+// never changed. The engine's original calls still own resource transitions.
+struct Cas {uintptr_t allowed{};
+ bool operator()(uintptr_t address,uint32_t expected,uint32_t replacement){
+  if(address!=allowed||expected!=1||replacement||!writable4(address))return false;
+  __try{return InterlockedCompareExchange(reinterpret_cast<volatile LONG*>(address),0,1)==1;}
+  __except(EXCEPTION_EXECUTE_HANDLER){return false;}}
+};
+bool cas_self_test(){alignas(4) uint32_t values[3]{77,1,88};Cas cas{reinterpret_cast<uintptr_t>(&values[1])};
+ bool valid=!cas(reinterpret_cast<uintptr_t>(&values[0]),1,0)&&!cas(cas.allowed,2,0)&&
+  cas(cas.allowed,1,0)&&values[0]==77&&values[1]==0&&values[2]==88&&!cas(cas.allowed,1,0);
+ void* readonly=VirtualAlloc(nullptr,4096,MEM_RESERVE|MEM_COMMIT,PAGE_READONLY);
+ if(!readonly)return false;Cas rejected{reinterpret_cast<uintptr_t>(readonly)};
+ valid=valid&&!writable4(rejected.allowed)&&!rejected(rejected.allowed,1,0);
+ VirtualFree(readonly,0,MEM_RELEASE);return valid;}
+void fault(Failure reason,uintptr_t caller=0,uintptr_t window=0,unsigned policy=0,unsigned status=0){
+ ++faults;unsigned expected=0;
+ if(fault_phase.compare_exchange_strong(expected,1)){first_fault={reason,policy,status,GetCurrentThreadId(),caller,window};fault_phase.store(2,std::memory_order_release);}
+ request_session_stop(SessionStop::proof_failure);
+}
+gears_graphics_lock::routes::Call call(uintptr_t caller){return {GetCurrentThreadId(),caller>=base?caller-base:0};}
+void decision(gears_graphics_lock::routes::Decision const& d,uintptr_t caller){
+ if(d.status!=gears_graphics_lock::routes::Status::admitted&&d.status!=gears_graphics_lock::routes::Status::other_mode)
+  fault(Failure::route,caller,0,unsigned(d.result.reason),unsigned(d.status));
+}
+bool admit(){Read read;context={};
+ context.policy.admission=gears_graphics_lock::admit(base,hash_matches(),read);
+ if(!context.policy.admission.valid()){fault(Failure::admission,0,0,unsigned(context.policy.admission.reason));return false;}
+ uintptr_t failed{};if(!gears_graphics_runtime::bytes(base,read,failed)){fault(Failure::dispatcher_bytes,0,failed);return false;}
+ uint32_t normal{},alternate{};
+ if(!gears_graphics_lock::read_value(read,context.policy.admission.singleton+0x3c8,normal)||
+    !gears_graphics_lock::read_value(read,context.policy.admission.singleton+0x56c,alternate)||normal||alternate){fault(Failure::initial_state);return false;}
+ if(!writable4(context.policy.admission.singleton+0x3c8)){fault(Failure::normal_region);return false;}
+ context.policy.enabled=true;context.policy.normal_write_authorized=true;
+ armed.store(true,std::memory_order_release);return true;
+}
+void readback(uintptr_t caller){Read read;uint32_t normal{},alternate{};
+ if(!gears_graphics_lock::read_value(read,context.policy.admission.singleton+0x3c8,normal)||
+    !gears_graphics_lock::read_value(read,context.policy.admission.singleton+0x56c,alternate)||normal||alternate)fault(Failure::readback,caller);
+}
+}
+#endif
 Fields fields(uintptr_t settings){Fields f{};
  if(settings&&safe_copy(&f.vtable,reinterpret_cast<void*>(settings),8))f.mask|=1;
  if(settings&&safe_copy(&f.normal,reinterpret_cast<void*>(settings+0x3c8),4))f.mask|=2;
@@ -40,26 +106,65 @@ Row* begin(unsigned kind,void* argument,uintptr_t caller,int32_t mode=0){
    if(caller>=32&&safe_copy(r.caller_before.data(),reinterpret_cast<void*>(caller-32),32))r.read_mask|=2;
    if(safe_copy(r.caller_after.data(),reinterpret_cast<void*>(caller),32))r.read_mask|=4;
   }}return &r;}
-uint32_t __fastcall menu_hook(void* settings,int32_t mode){Scope scope;
- Row* row=recording.load()?begin(0,settings,reinterpret_cast<uintptr_t>(_ReturnAddress()),mode):nullptr;
+uint32_t menu_dispatch(void* settings,int32_t mode,uintptr_t caller){Scope scope;
+ Row* row=recording.load()?begin(0,settings,caller,mode):nullptr;
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ if(runtime::armed.load(std::memory_order_acquire)){runtime::Read read;
+  auto d=gears_graphics_lock::routes::menu_before(runtime::context,reinterpret_cast<uintptr_t>(settings),mode,runtime::call(caller),read);
+  runtime::decision(d,caller);
+  if(d.result.bypass_original){++runtime::menu_blocked;if(row){row->result=1;row->after=fields(row->settings);}return 1;}}
+#endif
  const uint32_t result=menu_original(settings,mode);
  if(row){row->result=result;row->after=fields(row->settings);}return result;}
+uint32_t __fastcall menu_hook(void* settings,int32_t mode){return menu_dispatch(settings,mode,reinterpret_cast<uintptr_t>(_ReturnAddress()));}
 struct CollectorScope {
  const uintptr_t saved_settings=current_settings;const unsigned saved_depth=depth;
  explicit CollectorScope(void* settings){current_settings=reinterpret_cast<uintptr_t>(settings);
   depth=saved_depth==UINT_MAX?UINT_MAX:saved_depth+1;}
  ~CollectorScope(){depth=saved_depth;current_settings=saved_settings;}
 };
-uint64_t __fastcall collector_hook(void* settings){Scope scope;CollectorScope collector_scope(settings);
- Row* row=recording.load()?begin(1,settings,reinterpret_cast<uintptr_t>(_ReturnAddress())):nullptr;
+uint64_t collector_dispatch(void* settings,uintptr_t caller){Scope scope;CollectorScope collector_scope(settings);
+ Row* row=recording.load()?begin(1,settings,caller):nullptr;
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ if(runtime::armed.load(std::memory_order_acquire)){runtime::Read read;auto local=runtime::context;
+  runtime::Cas cas{local.policy.admission.singleton+0x3c8};local.policy.normal_write_authorized=runtime::writable4(cas.allowed);
+  auto d=gears_graphics_lock::routes::collector_before(local,reinterpret_cast<uintptr_t>(settings),runtime::call(caller),read,cas);
+  runtime::decision(d,caller);if(d.result.modified)++runtime::normal_cleared;
+  gears_graphics_lock::routes::CollectorScope lock_scope(d);
+  const uint64_t result=collector_original(settings);
+  if(row){row->result=result;row->after=fields(row->settings);}return result;}
+#endif
  const uint64_t result=collector_original(settings);
  if(row){row->result=result;row->after=fields(row->settings);}
  return result;}
-uint32_t __fastcall commit_hook(void* command){Scope scope;
- Row* row=recording.load()?begin(2,command,reinterpret_cast<uintptr_t>(_ReturnAddress())):nullptr;
+uint64_t __fastcall collector_hook(void* settings){return collector_dispatch(settings,reinterpret_cast<uintptr_t>(_ReturnAddress()));}
+uint32_t commit_dispatch(void* command,uintptr_t caller){Scope scope;
+ Row* row=recording.load()?begin(2,command,caller):nullptr;
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ const bool locking=runtime::armed.load(std::memory_order_acquire);
+ if(locking){runtime::Read read;auto local=runtime::context;auto c=runtime::call(caller);uintptr_t failed{};
+  bool admitted=true;
+  if(c.return_rva!=0x2ad008){const auto failure=gears_graphics_runtime::queued(base,c,read,failed);
+   admitted=failure==runtime::Failure::none;
+   if(!admitted)runtime::fault(failure,caller,failed);
+   else local.queued[0]={true,c.thread,c.return_rva};}
+  unsigned char extent[192]{};const auto address=reinterpret_cast<uintptr_t>(command);
+  if(admitted){uintptr_t vt{},entry{};local.policy.command_layout_verified=read(address,extent,sizeof(extent));
+   if(local.policy.command_layout_verified){memcpy(&vt,extent,8);
+    local.policy.command_layout_verified=vt==local.policy.admission.command_vtable&&
+     read(vt+8,&entry,8)&&entry==base+gears_graphics_lock::commit_rva;}
+   local.policy.command_write_authorized=address<=UINTPTR_MAX-0x78&&runtime::writable4(address+0x78);
+   runtime::Cas cas{address<=UINTPTR_MAX-0x78?address+0x78:0};
+   auto d=gears_graphics_lock::routes::commit_before(local,address,c,read,cas);runtime::decision(d,caller);
+   if(d.result.modified)++runtime::command_cleared;}}
+#endif
  const uint32_t result=commit_original(command);
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ if(locking){if(result!=192)runtime::fault(runtime::Failure::return_stride,caller);runtime::readback(caller);}
+#endif
  // Command/view/payload may already be retired: read only fixed singleton after.
  if(row){row->result=result;row->after=fields(row->settings);}return result;}
+uint32_t __fastcall commit_hook(void* command){return commit_dispatch(command,reinterpret_cast<uintptr_t>(_ReturnAddress()));}
 }
 bool reserve_graphics_lock_observer(){using namespace graphics_observer;
  if(reserved)return true;
@@ -75,12 +180,31 @@ bool graphics_lock_observer_reserved_target(void* target){using namespace graphi
 bool enable_graphics_lock_observer(){using namespace graphics_observer;
  if(!continuous_session)return true;
  if(!reserved&&!reserve_graphics_lock_observer())return false;
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ if(!runtime::admit()){
+  if(diagnostic_status&&runtime::fault_phase.load(std::memory_order_acquire)==2){auto const& f=runtime::first_fault;
+   fprintf(diagnostic_status,"graphics_runtime_lock_admission rejected=1 reason=%u policy_reason=%u failed_window_rva=0x%llx\n",unsigned(f.reason),f.policy_reason,f.window);}
+  return false;}
+#endif
  return install(targets[0],reinterpret_cast<void*>(menu_hook),reinterpret_cast<void**>(&menu_original))&&
   install(targets[1],reinterpret_cast<void*>(collector_hook),reinterpret_cast<void**>(&collector_original))&&
   install(targets[2],reinterpret_cast<void*>(commit_hook),reinterpret_cast<void**>(&commit_original));}
 void print_graphics_lock_observer(FILE* file,bool disabled){using namespace graphics_observer;
- fprintf(file,"graphics_lock_observer enabled=1 observe_only=1 lock_effective=0 startup_before_level=0 stopped_safe=%u fields_bits=vtable:1,normal:2,alternate:4,queueflag:8,selector_thread:16 command_bits=extent192:1,caller_before32:2,caller_after32:4\n",disabled&&!active.load()?1:0);
+ unsigned observe_only=1,effective=0;
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ observe_only=0;
+ effective=runtime::armed.load()&&!runtime::faults.load()?1:0;
+#endif
+ fprintf(file,"graphics_lock_observer enabled=1 observe_only=%u lock_effective=%u startup_before_level=0 stopped_safe=%u fields_bits=vtable:1,normal:2,alternate:4,queueflag:8,selector_thread:16 command_bits=extent192:1,caller_before32:2,caller_after32:4\n",observe_only,effective,disabled&&!active.load()?1:0);
  if(!disabled||active.load())return;
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ fprintf(file,"graphics_runtime_lock enabled=1 continuous_only=1 startup_before_level=0 admitted=%u protected=%u effective=%u menuBlocked=%llu normalCleared=%llu commandCleared=%llu faults=%llu actual_toggle_verified=0\n",
+  runtime::armed.load()?1:0,runtime::armed.load()?1:0,runtime::armed.load()&&!runtime::faults.load()?1:0,
+  runtime::menu_blocked.load(),runtime::normal_cleared.load(),runtime::command_cleared.load(),runtime::faults.load());
+ if(runtime::fault_phase.load(std::memory_order_acquire)==2){auto const& f=runtime::first_fault;
+  fprintf(file,"graphics_runtime_lock_fault reason=%u policy_reason=%u route_status=%u thread=%lu caller=0x%llx failed_window_rva=0x%llx\n",
+   unsigned(f.reason),f.policy_reason,f.route_status,f.thread,f.caller,f.window);}
+#endif
  auto rva=[](uintptr_t value){return value>=base?value-base:0;};
  for(unsigned kind=0;kind<3;++kind){fprintf(file,"graphics_lock_observer_kind kind=%u calls=%llu rows=%u\n",kind,calls[kind].load(),counts[kind].load());
   for(unsigned i=0;i<counts[kind].load();++i){auto const& r=rows[kind][i];
@@ -101,6 +225,40 @@ uint32_t __fastcall test_commit(void* command){++test_commit_calls;memset(comman
 uint64_t __fastcall test_collector(void*){++test_collector_calls;const uint32_t enabled=1;memcpy(test_command.data()+0x78,&enabled,4);
  if(commit_hook(test_command.data())!=192)return 0;return 0x12345678abcdef01ull;}
 uint64_t __fastcall test_collector_throw(void*){throw 17;}
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+std::array<unsigned char,192> runtime_test_command{},runtime_test_expected{};
+unsigned runtime_test_collectors{},runtime_test_commits{};bool runtime_test_opaque{};
+uint32_t __fastcall runtime_test_commit(void* command){++runtime_test_commits;
+ runtime_test_opaque=runtime_test_opaque&&!memcmp(command,runtime_test_expected.data(),192);return 192;}
+uint64_t __fastcall runtime_test_collector(void* settings){++runtime_test_collectors;uint32_t normal{};
+ memcpy(&normal,reinterpret_cast<unsigned char*>(settings)+0x3c8,4);
+ runtime_test_opaque=runtime_test_opaque&&!normal&&commit_dispatch(runtime_test_command.data(),base+0x2ad008)==192;
+ return 0x12345678abcdef01ull;}
+bool runtime_dispatch_self_test(){
+ const auto saved_context=runtime::context;const auto saved_menu=menu_original;
+ const auto saved_collector=collector_original;const auto saved_commit=commit_original;
+ const bool saved_recording=recording.load();recording=false;
+ alignas(8) std::array<unsigned char,0x574> settings{};uintptr_t settings_vt=0x11223344;
+ std::array<uintptr_t,2> command_vt{0,base+gears_graphics_lock::commit_rva};
+ memcpy(settings.data(),&settings_vt,8);runtime_test_command.fill(0x5a);
+ const auto vt=reinterpret_cast<uintptr_t>(command_vt.data());memcpy(runtime_test_command.data(),&vt,8);
+ const uint32_t one=1,zero=0;memcpy(runtime_test_command.data()+0x78,&one,4);
+ runtime_test_expected=runtime_test_command;memcpy(runtime_test_expected.data()+0x78,&zero,4);
+ runtime::context={};runtime::context.policy.enabled=true;runtime::context.policy.normal_write_authorized=true;
+ runtime::context.policy.admission={gears_graphics_lock::Reason::applied,base,reinterpret_cast<uintptr_t>(settings.data()),settings_vt,vt};
+ menu_original=test_menu;collector_original=runtime_test_collector;commit_original=runtime_test_commit;
+ runtime_test_opaque=true;runtime::armed=true;
+ bool valid=menu_dispatch(settings.data(),3,base+0x28047a)==1&&test_menu_calls==0;
+ valid=menu_dispatch(settings.data(),0,base+0x28047a)==17&&test_menu_calls==1&&valid;
+ memcpy(settings.data()+0x3c8,&one,4);
+ valid=collector_dispatch(settings.data(),base+0x1f9a9b)==0x12345678abcdef01ull&&valid;
+ valid=valid&&runtime_test_collectors==1&&runtime_test_commits==1&&runtime_test_opaque&&
+  runtime::menu_blocked==1&&runtime::normal_cleared==1&&runtime::command_cleared==1&&runtime::faults==0&&!active.load();
+ runtime::armed=false;runtime::context=saved_context;runtime::menu_blocked=0;runtime::normal_cleared=0;runtime::command_cleared=0;runtime::faults=0;
+ runtime::fault_phase=0;runtime::first_fault={};test_menu_calls=runtime_test_collectors=runtime_test_commits=0;
+ menu_original=saved_menu;collector_original=saved_collector;commit_original=saved_commit;recording=saved_recording;return valid;
+}
+#endif
 bool test_nested_scope_valid{};
 uint64_t __fastcall test_collector_nested(void* settings){
  // Use the production wrapper recursively with a distinct non-dereferenced
@@ -113,6 +271,9 @@ uint64_t __fastcall test_collector_nested(void* settings){
 }
 }
 bool graphics_lock_observer_self_test(){using namespace graphics_observer;
+#if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
+ if(!runtime::cas_self_test()||!runtime_dispatch_self_test())return false;
+#endif
  // CPU callbacks only; no game entry hooks/objects. Test through the production
  // wrappers, including raw RAX, nested scope and destroyed-command snapshot.
  const auto saved_menu=menu_original;const auto saved_collector=collector_original;const auto saved_commit=commit_original;

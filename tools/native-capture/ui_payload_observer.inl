@@ -1,5 +1,6 @@
 // Candidate transport and opt-in HUD viewport control. Source vertices stay
 // unchanged; control additionally requires certified native segment callbacks.
+#include "ui_segment_sources.h"
 using UiExecute=uint32_t(__fastcall*)(void*);
 UiExecute ui_original_execute{};void* ui_execute_target{};
 uintptr_t ui_execute_observer_begin{},ui_execute_observer_end{};
@@ -31,6 +32,7 @@ struct UiIndexContext {
     unsigned ordinal{};
     bool callback_valid{};
     std::array<gears_ui_reticle::Extent,gears_ui_indices::segment_capacity> reticle_extents{};
+    std::array<gears_ui_sources::Summary,gears_ui_indices::segment_capacity> sources{};
 };
 thread_local UiIndexContext* ui_index_context{};
 struct UiPayloadContext {
@@ -64,6 +66,14 @@ std::array<std::array<UiPayloadGpuRow,24>,8> ui_payload_gpu_rows{};
 std::array<unsigned,8> ui_payload_gpu_counts{};
 std::array<long long,8> ui_payload_next_row{};
 std::array<uint64_t,8> ui_payload_gpu_calls{};
+struct UiSubtitleGpuRow {
+    gears_ui_sources::Summary source{};uint64_t execute_sequence{},ticket{};
+    gears_frame_link::ListRef list{};gears_frame_link::Target target{};
+    long long qpc{};unsigned thread{};bool hud_applied{},command_completed{};
+};
+std::array<UiSubtitleGpuRow,16> ui_subtitle_gpu_rows{};
+unsigned ui_subtitle_gpu_count{};uint64_t ui_subtitle_gpu_calls{},ui_subtitle_gpu_dropped{};
+long long ui_subtitle_gpu_next{};
 
 bool validate_ui_payload_content(gears_ui_receipts::Claim const& claim,UiPayloadContext& context){
     gears_ui_batch::detail::Reader<decltype(&safe_copy)> read{safe_copy};
@@ -124,6 +134,8 @@ uint32_t __fastcall hook_ui_execute(void* command){
                         if(ui_reticle_direction_enabled&&(context.kind_mask&1u))
                             for(unsigned i=0;i<index_storage->snapshot.segment_count;++i)
                                 gears_ui_reticle::capture_extent(claim,index_storage->snapshot,i,index_storage->reticle_extents[i]);
+                        for(unsigned i=0;i<index_storage->snapshot.segment_count;++i)
+                            gears_ui_sources::capture(claim,index_storage->snapshot,i,index_storage->sources[i]);
                         ui_index_context=index_storage.get();++ui_index_capture_ok;
                     }else ++ui_index_capture_rejected;
                 }else ++ui_execute_content_rejected;
@@ -140,6 +152,9 @@ uint32_t __fastcall hook_ui_execute(void* command){
         if(complete)++ui_index_complete;else ++ui_index_incomplete;
         if(!complete&&ui_hud_plane_enabled)ui_hud_sequence_fault=true;
         std::lock_guard<std::mutex> lock(ui_payload_mutex);
+        for(unsigned i=0;i<ui_subtitle_gpu_count;++i)
+            if(ui_subtitle_gpu_rows[i].execute_sequence==ui_index_context->execute_sequence)
+                ui_subtitle_gpu_rows[i].command_completed=complete;
         for(unsigned k=1;k<ui_payload_gpu_rows.size();++k)
             for(unsigned i=0;i<ui_payload_gpu_counts[k];++i){auto& row=ui_payload_gpu_rows[k][i];
                 if(row.execute_sequence==ui_index_context->execute_sequence)row.command_completed=complete;}
@@ -230,6 +245,26 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
     const auto& context=*ui_payload_context;const auto kind=context.kind_mask;
     if(!kind||kind>=ui_payload_gpu_rows.size()){++ui_gpu_context_missing;return;}
     const auto timestamp=now();std::lock_guard<std::mutex> lock(ui_payload_mutex);
+    // This function's sole caller is after normal replay_overlay return: valid
+    // plan executes both eyes or throws before this observer. This proves API
+    // replay completion, not subtitle pixels, visibility or whole Execute exit.
+    if(ui_index_context&&ui_index_context->callback_valid&&
+       ui_index_context->snapshot.payload==context.payload&&
+       ui_index_context->snapshot.generation==context.generation&&
+       ui_index_context->ordinal<ui_index_context->snapshot.segment_count){
+        const auto ordinal=ui_index_context->ordinal;const auto& source=ui_index_context->sources[ordinal];
+        const auto& segment=ui_index_context->snapshot.segments[ordinal];
+        if(gears_ui_sources::native_subtitle(source,context.payload,context.generation,ordinal)&&
+           indices==segment.expected.index_count&&instances==segment.expected.instance_count&&
+           start==segment.expected.start_index&&vertex==segment.expected.base_vertex){
+            ++ui_subtitle_gpu_calls;
+            if(ui_subtitle_gpu_count<ui_subtitle_gpu_rows.size()&&
+               (ui_subtitle_gpu_count<4||timestamp>=ui_subtitle_gpu_next)){
+                ui_subtitle_gpu_rows[ui_subtitle_gpu_count++]={source,ui_index_context->execute_sequence,ticket,list,target,timestamp,GetCurrentThreadId(),hud_applied,false};
+                ui_subtitle_gpu_next=timestamp+qpc_frequency;
+            }else ++ui_subtitle_gpu_dropped;
+        }
+    }
     ++ui_payload_gpu_calls[kind];auto& count=ui_payload_gpu_counts[kind];
     if(count>=ui_payload_gpu_rows[kind].size()||(count>=8&&timestamp<ui_payload_next_row[kind]))return;
     ui_payload_next_row[kind]=timestamp+qpc_frequency;
@@ -247,6 +282,11 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
 }
 
 void print_ui_payload_observer(FILE* status){
+    fprintf(status,"ui_subtitle_gpu calls=%llu rows=%u dropped=%llu source_is_actual_index_membership=1 pixel_visibility_proven=0\n",ui_subtitle_gpu_calls,ui_subtitle_gpu_count,ui_subtitle_gpu_dropped);
+    for(unsigned i=0;i<ui_subtitle_gpu_count;++i){auto const& row=ui_subtitle_gpu_rows[i];auto const& source=row.source;
+        fprintf(status,"ui_subtitle_gpu_row row=%u payload=%p candidate_generation=%llu ordinal=%u source_mask=%u native_indices=%u unknown=%u native_root_min=%llu native_root_max=%llu execute_sequence=%llu ticket=%llu list=%p list_generation=%llu target=%p width=%u height=%u qpc=%lld thread=%u hud_applied=%u overlay_completed_mask=3 command_completed=%u pixel_visibility_proven=0 allocation_identity_proven=0\n",
+            i,reinterpret_cast<void*>(source.payload),source.generation,source.ordinal,source.source_mask,source.native_indices,source.unknown,source.native_root_min,source.native_root_max,row.execute_sequence,row.ticket,reinterpret_cast<void*>(row.list.identity),row.list.generation,reinterpret_cast<void*>(row.target.resource),row.target.width,row.target.height,row.qpc,row.thread,row.hud_applied?1:0,row.command_completed?1:0);
+    }
     fprintf(status,"ui_reticle_direction enabled=%u considered=%llu center_rejected=%llu geometry_missing=%llu projection_rejected=%llu planned=%llu applied=%llu finite_hit_proven=0 source_vertices_modified=0\n",
         ui_reticle_direction_enabled?1:0,ui_reticle_counts.considered.load(),ui_reticle_counts.center_rejected.load(),
         ui_reticle_counts.geometry_missing.load(),ui_reticle_counts.projection_rejected.load(),ui_reticle_counts.planned.load(),ui_reticle_counts.applied.load());
