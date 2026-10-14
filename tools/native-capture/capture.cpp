@@ -156,6 +156,18 @@ struct AnchorStateTransition {gears_anchor::Identity pawn{};uintptr_t source{},o
     long long qpc{};unsigned thread{},read_mask{};};
 std::array<AnchorStateTransition,16> anchor_state_transitions{};
 std::atomic<unsigned> anchor_state_transition_count{0};
+// Four accepted live-family observations only. Pointer consistency is not an
+// ownership/lifetime assertion; all bytes are copied before original_family.
+struct AnchorTargetSnapshot {
+    uintptr_t family{},source{},canvas{},target{},target_after{},vtable{},vtable_after{};
+    long long qpc{};unsigned thread{},read_mask{},method_mask{};bool consistent{};
+    std::array<unsigned char,96> target_bytes{};
+    std::array<unsigned char,64> canvas_bytes{};
+    std::array<uintptr_t,10> methods{};
+    std::array<std::array<unsigned char,16>,10> prefixes{};
+};
+std::array<AnchorTargetSnapshot,4> anchor_target_snapshots{};
+std::atomic<unsigned> anchor_target_snapshot_count{0};
 thread_local gears_anchor::Identity anchor_last_state_pawn{};
 thread_local uintptr_t anchor_last_observed_right_state{};
 std::array<std::array<std::atomic<unsigned long long>,gears_anchor::reason_count>,3> anchor_reasons{};
@@ -984,6 +996,26 @@ void print_anchor(FILE* status,bool hooks_disabled){
         fprintf(status,"anchor_state_transition index=%u qpc=%lld thread=%u pawn=%llx pawn_index=%u pawn_name_index=%u pawn_number=%u pawn_class=%llx pawn_outer=%llx source=%llx original_state=%llx right_state=%llx right_table=%llx read_mask=%u\n",
             i,r.qpc,r.thread,r.pawn.address,r.pawn.index,r.pawn.name_index,r.pawn.number,r.pawn.cls,r.pawn.outer,
             r.source,r.original_state,r.right_state,r.right_table,r.read_mask);}
+    unsigned image_size{};IMAGE_DOS_HEADER dos{};IMAGE_NT_HEADERS64 nt{};
+    if(safe_copy(&dos,reinterpret_cast<void*>(base),sizeof(dos))&&dos.e_magic==IMAGE_DOS_SIGNATURE&&
+       dos.e_lfanew>0&&dos.e_lfanew<0x100000&&base<=UINTPTR_MAX-unsigned(dos.e_lfanew)&&
+       safe_copy(&nt,reinterpret_cast<void*>(base+unsigned(dos.e_lfanew)),sizeof(nt))&&nt.Signature==IMAGE_NT_SIGNATURE)
+        image_size=nt.OptionalHeader.SizeOfImage;
+    fprintf(status,"anchor_target_snapshot capacity=4 rows=%u game_base=%llx game_size=%u virtual_calls=0 writes=0 ownership_proven=0 full_payload_consistency_proven=0\n",
+        anchor_target_snapshot_count.load(),base,image_size);
+    auto bytes=[&](const char* label,const auto& value){fprintf(status," %s=",label);for(auto byte:value)fprintf(status,"%02x",unsigned(byte));};
+    for(unsigned i=0;i<anchor_target_snapshot_count.load();++i){auto const& row=anchor_target_snapshots[i];
+        fprintf(status,"anchor_target_row index=%u family=%llx source=%llx canvas=%llx target=%llx target_after=%llx vtable=%llx vtable_after=%llx qpc=%lld thread=%u read_mask=%u method_mask=%u pointer_consistent=%u read_bits=family_target:1,target_bytes:2,vtable:4,vtable_slots:8,canvas:16,family_target_after:32,vtable_after:64,target_header_match:128\n",
+            i,row.family,row.source,row.canvas,row.target,row.target_after,row.vtable,row.vtable_after,row.qpc,row.thread,row.read_mask,row.method_mask,row.consistent?1:0);
+        fprintf(status,"anchor_target_bytes index=%u",i);bytes("target96",row.target_bytes);bytes("canvas64",row.canvas_bytes);fprintf(status,"\n");
+        fprintf(status,"anchor_target_vtable index=%u bytes80=",i);
+        const auto* table_bytes=reinterpret_cast<const unsigned char*>(row.methods.data());
+        for(unsigned j=0;j<80;++j)fprintf(status,"%02x",unsigned(table_bytes[j]));fprintf(status,"\n");
+        for(unsigned method=0;method<row.methods.size();++method){auto address=row.methods[method];
+            bool in_game=image_size&&address>=base&&address-base<image_size;
+            fprintf(status,"anchor_target_method index=%u slot=%u address=%llx in_game=%u rva=%llx prefix_read=%u",i,method,address,in_game?1:0,in_game?address-base:0,(row.method_mask>>method)&1);
+            bytes("prefix16",row.prefixes[method]);fprintf(status,"\n");}
+    }
 }
 void print_origin_trial(FILE* status,bool hooks_disabled){
     if(!origin_trial_enabled){fprintf(status,"origin_trial enabled=0\n");return;}
@@ -1431,6 +1463,26 @@ bool anchor_key(gears_anchor::Key& key,gears_anchor::Anchor& anchor,uintptr_t fa
     }
     return valid;
 }
+void anchor_target_snapshot(void* canvas,void* family,gears_anchor::Receipt const& receipt) {
+    unsigned index=anchor_target_snapshot_count.load();
+    while(index<anchor_target_snapshots.size()&&!anchor_target_snapshot_count.compare_exchange_weak(index,index+1)){}
+    if(index>=anchor_target_snapshots.size())return;
+    auto& row=anchor_target_snapshots[index];row.family=reinterpret_cast<uintptr_t>(family);
+    row.canvas=reinterpret_cast<uintptr_t>(canvas);row.source=receipt.key.source;
+    row.qpc=receipt.family_qpc;row.thread=GetCurrentThreadId();
+    if(row.family&&row.family<=UINTPTR_MAX-0x10&&safe_copy(&row.target,reinterpret_cast<void*>(row.family+0x10),8))row.read_mask|=1;
+    if(row.target&&row.target<=UINTPTR_MAX-row.target_bytes.size()&&safe_copy(row.target_bytes.data(),reinterpret_cast<void*>(row.target),row.target_bytes.size()))row.read_mask|=2;
+    if(safe_copy(&row.vtable,reinterpret_cast<void*>(row.target),8))row.read_mask|=4;
+    if(row.vtable&&row.vtable<=UINTPTR_MAX-sizeof(row.methods)&&safe_copy(row.methods.data(),reinterpret_cast<void*>(row.vtable),sizeof(row.methods)))row.read_mask|=8;
+    if(row.canvas&&row.canvas<=UINTPTR_MAX-row.canvas_bytes.size()&&safe_copy(row.canvas_bytes.data(),canvas,row.canvas_bytes.size()))row.read_mask|=16;
+    if(row.read_mask&8)for(unsigned i=0;i<row.methods.size();++i){auto address=row.methods[i];
+        if(address&&address<=UINTPTR_MAX-16&&safe_copy(row.prefixes[i].data(),reinterpret_cast<void*>(address),16))row.method_mask|=1u<<i;}
+    if(row.family&&row.family<=UINTPTR_MAX-0x10&&safe_copy(&row.target_after,reinterpret_cast<void*>(row.family+0x10),8))row.read_mask|=32;
+    if(safe_copy(&row.vtable_after,reinterpret_cast<void*>(row.target_after),8))row.read_mask|=64;
+    uintptr_t copied_table{};memcpy(&copied_table,row.target_bytes.data(),8);
+    if((row.read_mask&6)==6&&copied_table==row.vtable)row.read_mask|=128;
+    row.consistent=(row.read_mask&239)==239&&row.target&&row.target==row.target_after&&row.vtable&&row.vtable==row.vtable_after;
+}
 void __fastcall hook_family(void* canvas,void* family){
     Scope scope;auto record=start_record(7,canvas,_ReturnAddress());
     inspect_family(record,family);
@@ -1440,6 +1492,7 @@ void __fastcall hook_family(void* canvas,void* family){
         bool valid=anchor_key(key,anchor,reinterpret_cast<uintptr_t>(family),record.family_views[0],expected_local,1);
         anchor_scope.emplace(anchor_context,key,anchor,GetCurrentThreadId(),record.time,valid,record.family_count,record.caller);
         anchor_note(1,anchor_scope->reason,anchor_scope->receipt());
+        if(anchor_scope->reason==gears_anchor::accepted)anchor_target_snapshot(canvas,family,anchor_scope->receipt());
     }
     if(record.caller==0x2c8909 && record.family_count==1)trace_rectangle(1,record.family_views[0]);
     try_shadow_state(record);
