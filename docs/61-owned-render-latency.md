@@ -94,3 +94,15 @@ PID4368（creation FILETIME `134364947388686134`）用默认关闭的 `GEARS_NAT
 120个ticket均发布，XR复制/投影仍0；姿态到发布中位149.112ms，owned消费总时长中位63.785ms，其中resize本体约50ms。这已证实资源尺寸往返与主要消费等待相伴；接下来用保留足够大资源的最小对照修改验证因果及画面正确性，不放宽100ms规则。首尾每眼4194304像素均非黑且两眼不同，仍不代表正确投影/UI/头显体验完成。
 
 探针与既有回归共41项通过，包括真实MinHook包裹的假函数参数/RAX、4096槽溢出后继续转发、线程隔离、嵌套计数及入口恢复。新增入口纳入独立停止验证（完整364字节SHA），59个入口全部通过，随后正常关闭游戏。默认玩家清单未改，状态仍incomplete（资源按实验设计保留至退出）。原始记录和审计：`analysis/ui-position-runtime/owned-resize1-4368-resize.json`、`owned-resize1-4368.audit.json`；清单`tools/vr-launcher/manifest-owned-resize1.json`。运行时数据及缓存继续留在ignored目录。
+
+## Reuse1：等待下降，但画面回归，尚不可发布
+
+默认关闭的`GEARS_NATIVE_RESIZE_REUSE`仅锁定首次已登记Low owned消费所用对象与线程，拒绝其他线程/对象、未知尺寸及非零原生mode。首次请求把资源保留为4096×2160，此后仅对原桌面3840×2160与Low 4096×2048请求取已有容量的逐维最大值。没有写全局mode、改视图矩形、改投影或放宽100ms。记录槽满后仍执行相同策略和原始调用；独立假函数测试覆盖该路径。41项回归与关闭功能的6项兼容检查通过。
+
+PID51936（creation `134364951814739390`）首次owned调用创建172次资源、耗时48.069ms；后续119次owned和346次legacy调用均不再创建资源，resize中位0.0003ms。构建完成到消费开始中位从77.244ms降至12.287ms；姿态到发布从149.112ms降至33.500ms，p95为40.811ms，启动最大值仍165.855ms。120个ticket中119次发布，XR复制118次、投影层提交336次；重复提交同一有效图像不等于新增独立场景。保持原时效规则。
+
+**本实验画面不合格。** 首尾GPU读回显示首帧右眼接近纯黑，末帧右眼明显偏暗；Resize1对照没有该现象。现有`nonblack`实际只统计任意RGB字节非零，即使非常暗或近乎常色也会满足，不能把4194304个非零像素当作画面通过。小尺寸直接像素预览已保存在`owned-reuse1-51936-eyes-preview.png`和对照`owned-resize1-4368-eyes-preview.png`。
+
+现有遮罩日志提供具体线索：Reuse1出现240次`view_union_mask_rejected reason=rectangles`，正好对应两眼owned消费的遮罩次数；旧验证器要求视图高度等于资源高度，2048视图/2160资源被拒绝。Resize1相同位置240次均接受。下一步保留容量复用，只在已登记owned消费范围允许两眼相同、有效且不超过资源的高度，继续验证viewport、水平并集、调用者与原始浮点参数，并重新采样。不能仅凭这些拒绝就宣布回归已修好。
+
+59个入口恢复通过并正常退出。XR快照控制请求失败，消息为`Snapshot control unavailable in this XR build`，未取得该项XR快照；原生首尾读回独立成功。模拟器MCP返回2048×2048的左右image rect和非对称FOV，不能替代真实头显。状态仍incomplete；连续投影仅覆盖约3.7秒，停止前的长间隔包含120ticket实验上限后的等待，尚不属于持续运行验收。证据`owned-reuse1-51936-resize.json`、`owned-reuse1-51936.audit.json`、`owned-reuse1-watch.json`，均在analysis下。

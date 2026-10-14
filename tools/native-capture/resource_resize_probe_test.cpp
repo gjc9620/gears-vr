@@ -20,5 +20,23 @@ int main(){
   buffer.finish(second);assert(buffer.ready[1].load());
  }
  assert(!current);buffer.finish(first);assert(buffer.ready[0]&&buffer.attempts==3);
+ Capacity capacity;Snapshot old{};old.valid=255;old.width=3840;old.height=2160;
+ uint32_t w=3840,h=2160;
+ assert(capacity.choose(1,2,false,old,w,h)==0&&!capacity.object);
+ w=4096;h=2048;assert(capacity.choose(1,2,true,old,w,h)==2&&w==4096&&h==2160);
+ old.width=w;old.height=h;w=3840;h=2160;
+ assert(capacity.choose(1,2,false,old,w,h)==2&&w==4096&&h==2160);
+ w=4096;h=2048;assert(capacity.choose(1,2,true,old,w,h)==2&&h==2160);
+ w=3840;h=2160;assert(capacity.choose(7,2,false,old,w,h)==4&&w==3840);
+ assert(capacity.choose(1,7,false,old,w,h)==4&&w==3840);
+ assert(capacity.choose(1,2,true,old,w,h)==5&&w==3840);
+ old.config[0]=1;assert(capacity.choose(1,2,false,old,w,h)==3&&w==3840);
+ old.config[0]=0;old.valid=0;assert(capacity.choose(1,2,false,old,w,h)==3&&w==3840);
+ old.valid=255;w=0;assert(capacity.choose(1,2,false,old,w,h)==3&&w==0);
+ w=9000;assert(capacity.choose(1,2,false,old,w,h)==3&&w==9000);
+ w=1920;h=1080;assert(capacity.choose(1,2,false,old,w,h)==5&&w==1920&&h==1080);
+ PinnedCapacity pin;old.width=3840;old.height=2160;w=4096;h=2048;
+ assert(pin.choose(1,2,true,old,w,h)==2&&pin.owner==2);
+ std::thread different([&]{uint32_t x=4096,y=2048;assert(pin.choose(9,3,true,old,x,y)==4&&x==4096&&y==2048);});different.join();
  puts("resize probe bounded records, thread isolation, nesting and overflow PASS");return 0;
 }
