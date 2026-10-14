@@ -35,6 +35,22 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_snapshot_only_signals_enabled_live_owned_xr(self):
+        state=dict(schema=1,kind='continuous_strict_stereo',phase='running',gpu_snapshot_requested=True,
+                   owner_identity=identity(100),game_identity=identity(123),xr_identity=identity(200))
+        with tempfile.TemporaryDirectory() as directory:
+            path=pathlib.Path(directory)/'session.json';path.write_text(json.dumps(state))
+            control=Control()
+            with contextlib.redirect_stdout(io.StringIO()):self.assertEqual(runner.request_snapshot(path,control),0)
+            self.assertEqual(control.signals,['Local\\GearsVR.XR.Snapshot.200'])
+            for key,value in (('phase','stopped'),('gpu_snapshot_requested',False)):
+                path.write_text(json.dumps(dict(state,**{key:value})));control.signals.clear()
+                with self.assertRaises(RuntimeError):runner.request_snapshot(path,control)
+                self.assertEqual(control.signals,[])
+            bad=dict(state,xr_identity=dict(identity(200),creation_time=1));path.write_text(json.dumps(bad));control.signals.clear()
+            with self.assertRaises(RuntimeError):runner.request_snapshot(path,control)
+            self.assertEqual(control.signals,[])
+
     def test_hud_plane_cli_default_dependencies_and_native_only_forwarding(self):
         base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
         with mock.patch.object(runner,'run_session',return_value=0) as run:

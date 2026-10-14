@@ -125,6 +125,7 @@ def xr_command(args,csv_path,owner):
     for name in ('outage_diagnostics','shutdown_diagnostics'):
         if getattr(args,name,False):command.append('--'+name.replace('_','-'))
     if getattr(args,'origin_trial',False) or getattr(args,'image_ticket_diagnostics',False):command.append('--image-ticket-diagnostics')
+    if getattr(args,'gpu_snapshot',False):command+=['--gpu-snapshot',str(csv_path.with_suffix('.gpu.ppm'))]
     return command
 
 
@@ -228,6 +229,21 @@ def request_recenter(path,control=None):
     return 0
 
 
+def request_snapshot(path,control=None):
+    """One diagnostic GPU readback from an explicitly enabled, live XR owner."""
+    control=control or WindowsControl()
+    state=json.loads(path.read_text(encoding='utf-8'))
+    if (state.get('schema')!=1 or state.get('kind')!='continuous_strict_stereo' or
+            state.get('phase')!='running' or state.get('gpu_snapshot_requested') is not True):
+        raise RuntimeError('Snapshot requires a running session launched with --gpu-snapshot')
+    for key in ('owner_identity','game_identity','xr_identity'):checked_identity(control,state[key])
+    xr_pid=state['xr_identity']['pid']
+    if not control.signal(f'Local\\GearsVR.XR.Snapshot.{xr_pid}'):
+        raise RuntimeError('Snapshot control unavailable in this XR build')
+    print(json.dumps({'gpu_snapshot':'requested','xr_pid':xr_pid,'saved_verified':False}),flush=True)
+    return 0
+
+
 def cleanup_owned_xr(child,owned_pid,game_pid,timeout,control,state):
     """Use the retained Popen handle; PID lookup races with orderly exit."""
     state['xr_cleanup_actions']=[]
@@ -287,6 +303,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'startup_menu_enabled':bool(getattr(args,'startup_menu_window',0)),
            'ui_observer_enabled':bool(getattr(args,'ui_observer',False)),
            'ui_hud_plane_enabled':bool(getattr(args,'ui_hud_plane',False)),
+           'gpu_snapshot_requested':bool(getattr(args,'gpu_snapshot',False)),
            'owner_identity':None,'game_identity':None,
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
@@ -442,6 +459,7 @@ def main(argv=None):
     start.add_argument('--ui-observer',action='store_true')
     start.add_argument('--ui-hud-plane',action='store_true')
     start.add_argument('--image-ticket-diagnostics',action='store_true')
+    start.add_argument('--gpu-snapshot',action='store_true',help='Enable bounded original-resolution GPU snapshots: one automatic, additional captures via snapshot command')
     start.add_argument('--outage-diagnostics',action='store_true')
     start.add_argument('--shutdown-diagnostics',action='store_true')
     stop=commands.add_parser('stop')
@@ -449,11 +467,14 @@ def main(argv=None):
     stop.add_argument('--timeout',type=float,default=95.)
     recenter=commands.add_parser('recenter')
     recenter.add_argument('--session',type=pathlib.Path,required=True)
+    snapshot=commands.add_parser('snapshot')
+    snapshot.add_argument('--session',type=pathlib.Path,required=True)
     args=parser.parse_args(argv)
     if args.command=='stop':
         if args.timeout<=0:parser.error('Stop deadline must be positive')
         return request_stop(args.session.resolve(),args.timeout)
     if args.command=='recenter':return request_recenter(args.session.resolve())
+    if args.command=='snapshot':return request_snapshot(args.session.resolve())
     if args.pid<=0 or args.startup_timeout<=0 or args.cleanup_timeout<=0:parser.error('PID and deadlines must be positive')
     if args.origin_trial and not args.anchor_observer:parser.error('Origin trial requires --anchor-observer')
     try:validate_ui_hud_plane(args)

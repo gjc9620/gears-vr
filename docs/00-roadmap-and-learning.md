@@ -2,6 +2,8 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
+UiPixels3 / PID424：已支持有界按需原分辨率GPU快照，开镜与切枪两张截图的实际ticket/serial及保存时间均核验。换枪图标/数字和弹药HUD可见，两眼平移与HUD平面预测一致；准星仍在各眼图像中心，非对称FOV方向偏移尚未修正。5667次projection、4137张新图，正常停止及35入口恢复通过。Material观察器本轮未命中，不能据此宣布该路线已验收；字幕亦未覆盖。详见[UI定位进展](57-ui-position-and-subtitle-route.md)。独立目标持有/adapter与tracker出生契约已加入CPU测试，尚未绑定到游戏场景；每眼2K/4K仍属待实现。
+
 NativeSurface1 / PID34052：首次实际调用游戏自身的颜色目标分配器，在已核验RHI线程/TLS内依次创建4096×2048和8192×4096目标。两档真实GetDesc均为RGBA8/DXGI28、单mip/单slice/单sample、ALLOW_RENDER_TARGET，并通过同线程native引用清空释放；首次ticket即成功，无保留引用或cleanup不确定。独立目标尚未绑定绘制，因此这不是游戏原生2K/4K显示测试。原双目同时运行32.268秒、2907次projection、2416次复制，最大提交间隔29.5934ms，34入口恢复；模拟器及游戏正常退出。代码54d54b6；证据 `analysis/ui-position-runtime/native-surface-live-34052.json`，自测164项、宏关闭无效果和continuous自测通过。
 
 c5f7262已为双眼源构造加入显式Low/High边界，保持原source/family不变并通过CPU回归，尚未在运行时选择该参数。e80aad0贯通玩家指定游戏安装路径的后端及身份检查，仍未完成便携打包。下一步是持有独立native目标、接入copied-family/Canvas目标，并以实际GPU状态和队列顺序发布；新tracker必须先配置再接收列表，不能清空旧tracker计数伪造首次启用。原生最后释放仍须在合法RHI线程，并等相关renderers/UI/GPU持有退休。

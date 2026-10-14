@@ -177,3 +177,13 @@ e5ede89 / UiHudPlane1 / PID46800 首次启用独立 70°、2 米 head-locked HUD
 截图限制已查明：MCP D3D12截图读取模拟器窗口预览RT（本轮1734×257），随后压到1280×189；Fill Window模式将完整眼图压扁进预览，并非原始1920×2160眼图读取。截图不足以证明HUD消失；不能将这种预览变形归因于游戏投影。单眼MCP也只裁切预览，不能恢复丢失像素。后续需尺寸正常的预览或原始GPU读回才能判断小字体位置。
 
 准星缓存赋值的纯辅助模块已加入 `crosshair_assignment.h`，验证 execLet 的精确字节码、属性/owner 链、原调用后完成的 Vector 复制，包括同值赋值。独立 CPU 测试通过；尚未安装赋值 hook，也没有与玩家 tick/实际场景 ticket 关联，不能据此声称瞄准点已经修复。
+
+## 原始 GPU 像素与 Material 路由（2026-10-15）
+
+`manifest-ui-material1.json` / PID51800 增加默认关闭的 Material UI 消费观察器（第35个入口）。只检查有界追加、不可变payload副本和实际消费回调，不修改材质顶点或GPU状态。本轮已发送开镜、切枪，6574次projection、5036张新图，正常停止及35入口恢复通过；Tile/Text路径有准星、换枪、HUD样本，Material计数全部为0。因此当前样本应沿Tile/Text处理，不能宣称整个游戏不使用Material，或已完成该分支的运行时验证。
+
+原始GPU快照现在保留完整3840×2160 SBS像素，可在明确开启诊断的会话内按需请求，每次会话最多8张。PID22904 / Pixels2 首次在操作期间成功保存独立文件，清楚看见开镜准星、弹药HUD及换枪图标/数字。换枪与弹药两个区域的亮色像素匹配均在右眼局部偏移(-493,0)附近最佳，与本次HUD平面预测(-493.356,0)一致；这只是当前场景的像素证据，不代表所有UI/真头显体验已通过。图像与量化记录：`analysis/runtime/ui-pixels2-ui-alignment.json`、同轮`.gpu.ppm.1.ppm`。准星仍处于每眼图像中心，未应用非对称FOV下原游戏方向的投影修正。
+
+Pixels2 的快照日志在acknowledge之前读取serial，记录的是上一次已确认图像；图像及ticket有效，serial不能用于同帧关联。Pixels3修正为ack成功、GPU fence完成后读取，并增加保存完成的单调时钟时间。PID424 / `manifest-ui-pixels3.json` 实际采到3张完整图，均与image-ticket日志的ticket及serial匹配；其中两张保存时间落在开镜、切枪动作期间。该轮5667次projection、4137张新图，正常停止及35入口恢复通过。首张Pixels1原实现是在保存时读取serial，未受Pixels2这一回归影响。三轮审核文件为各session前缀加`.ui-pixels-audit.json`。
+
+下一项先校正纯准星segment的原游戏屏幕中心方向，使用同ticket冻结矩阵，以无限远方向投射到每眼后平移viewport；保持原图形尺寸。该方案不等同于近处命中点、枪口偏移或真实弹着点修复。字幕仍需有对白的实际glyph样本，普通PostRender语义也不能自动推广到所有世界标记。

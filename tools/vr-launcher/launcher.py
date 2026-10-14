@@ -15,7 +15,7 @@ from types import SimpleNamespace
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 HERE=pathlib.Path(__file__).resolve().parent
 INDEX=ROOT/'analysis/runtime/vr-launcher-session.json'
-SESSION_OPTIONS=('anchor_observer','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane')
+SESSION_OPTIONS=('anchor_observer','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','gpu_snapshot')
 
 def atomic_json(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)

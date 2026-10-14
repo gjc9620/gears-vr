@@ -59,24 +59,45 @@ class GameGpuScreen {
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT snapshot_layout{};
     UINT64 snapshot_bytes=0;
     std::string snapshot_path;
+    HANDLE snapshot_event{};
+    static constexpr unsigned snapshot_limit=8; // Explicit diagnostic only, bounded disk usage.
+    unsigned snapshot_count{};
+    bool snapshot_auto_taken{};
+    uint64_t snapshot_ticket{},snapshot_source_serial{};
     std::chrono::steady_clock::time_point snapshot_after=std::chrono::steady_clock::now()+std::chrono::seconds(10);
     void save_snapshot(){
         void* mapped{};D3D12_RANGE range{0,size_t(snapshot_bytes)};
         dx_check(snapshot_buffer->Map(0,&range,&mapped),"GPU snapshot map");
         const auto* data=static_cast<const unsigned char*>(mapped)+snapshot_layout.Offset;
         auto format=snapshot_layout.Footprint.Format;
-        unsigned width=std::min(receiver->width,640u),height=unsigned(uint64_t(receiver->height)*width/receiver->width);
+        // Preserve original pixels for UI placement/legibility checks. The GPU
+        // copy already contains the complete image; a 640-wide thumbnail hid
+        // glyphs and made it impossible to distinguish missing from tiny HUD.
+        const unsigned width=receiver->width,height=receiver->height;
         std::vector<unsigned char> rgb(size_t(width)*height*3);
         for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x){
-            const auto* p=data+size_t(uint64_t(y)*receiver->height/height)*snapshot_layout.Footprint.RowPitch+size_t(uint64_t(x)*receiver->width/width)*4;
+            const auto* p=data+size_t(y)*snapshot_layout.Footprint.RowPitch+size_t(x)*4;
             auto* out=rgb.data()+(size_t(y)*width+x)*3;
             if(format==DXGI_FORMAT_R10G10B10A2_UNORM){uint32_t value{};memcpy(&value,p,4);for(unsigned c=0;c<3;++c)out[c]=static_cast<unsigned char>(((value>>(c*10))&1023)*255/1023);}
             else {bool bgra=format==DXGI_FORMAT_B8G8R8A8_UNORM || format==DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;out[0]=p[bgra?2:0];out[1]=p[1];out[2]=p[bgra?0:2];}
         }
         D3D12_RANGE written{0,0};snapshot_buffer->Unmap(0,&written);
-        FILE* file{};fopen_s(&file,snapshot_path.c_str(),"wb");if(!file)throw std::runtime_error("GPU snapshot file unavailable");
-        fprintf(file,"P6\n%u %u\n255\n",width,height);auto count=fwrite(rgb.data(),1,rgb.size(),file);fclose(file);
-        if(count!=rgb.size())throw std::runtime_error("GPU snapshot write incomplete");
+        const auto path=snapshot_count?snapshot_path+"."+std::to_string(snapshot_count)+".ppm":snapshot_path;
+        // CREATE_NEW is atomic: never truncate a previous diagnostic, even if
+        // another writer races this save. A partial failed file is retained.
+        HANDLE file=CreateFileA(path.c_str(),GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr);
+        if(file==INVALID_HANDLE_VALUE)throw std::runtime_error("GPU snapshot file unavailable or already exists");
+        char header[96]{};const int length=sprintf_s(header,"P6\n%u %u\n255\n",width,height);
+        DWORD header_written{},pixels_written{};
+        const bool complete=length>0&&WriteFile(file,header,DWORD(length),&header_written,nullptr)&&header_written==DWORD(length)&&
+            rgb.size()<=MAXDWORD&&WriteFile(file,rgb.data(),DWORD(rgb.size()),&pixels_written,nullptr)&&pixels_written==rgb.size();
+        const bool closed=CloseHandle(file)!=FALSE;
+        if(!complete||!closed)throw std::runtime_error("GPU snapshot write incomplete");
+        const auto saved_ns=gears_vr::monotonic_ns();
+        printf("{\"gpu_snapshot_size\":[%u,%u],\"source_format\":%u,\"snapshot_index\":%u,\"snapshot_limit\":%u,\"ticket\":%llu,\"source_serial\":%llu,\"saved_monotonic_ns\":%lld,\"resized\":false}\n",
+               width,height,unsigned(format),snapshot_count,snapshot_limit,static_cast<unsigned long long>(snapshot_ticket),
+               static_cast<unsigned long long>(snapshot_source_serial),static_cast<long long>(saved_ns));fflush(stdout);
+        ++snapshot_count;
         snapshot_saved=true;snapshot_buffer.Reset();
     }
 public:
@@ -115,9 +136,16 @@ public:
         dx_check(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&commands)),"GPU game commands");dx_check(commands->Close(),"GPU game initial close");
         dx_check(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)),"GPU game fence");event=CreateEventW(nullptr,FALSE,FALSE,nullptr);
         if(!event)throw std::runtime_error("GPU game fence event unavailable");
-        }catch(...){for(auto& eye:eyes)if(eye.chain){xrDestroySwapchain(eye.chain);eye.chain=XR_NULL_HANDLE;}if(event){CloseHandle(event);event=nullptr;}throw;}
+        if(!snapshot_path.empty()){
+            wchar_t name[96]{};swprintf_s(name,L"Local\\GearsVR.XR.Snapshot.%lu",GetCurrentProcessId());
+            SetLastError(0);snapshot_event=CreateEventW(nullptr,FALSE,FALSE,name);
+            if(!snapshot_event||GetLastError()==ERROR_ALREADY_EXISTS)throw std::runtime_error("GPU snapshot request event unavailable or already exists");
+        }
+        }catch(...){for(auto& eye:eyes)if(eye.chain){xrDestroySwapchain(eye.chain);eye.chain=XR_NULL_HANDLE;}if(event){CloseHandle(event);event=nullptr;}if(snapshot_event){CloseHandle(snapshot_event);snapshot_event=nullptr;}throw;}
     }
     ~GameGpuScreen(){
+        // Request event has no GPU/fence dependency; close even on unsafe GPU teardown.
+        if(snapshot_event){CloseHandle(snapshot_event);snapshot_event=nullptr;}
         if(in_flight && fence && xr_image_work_complete(fence->GetCompletedValue(),serial))in_flight=false;
         bool unsafe=in_flight;
         if(!unsafe)for(auto& eye:eyes)if(eye.acquired) {
@@ -190,7 +218,22 @@ public:
                 }
             }
             gears_vr::gpu_barrier(commands.Get(),receiver->texture.Get(),source_state,D3D12_RESOURCE_STATE_COMMON);
-            if(!snapshot_path.empty() && !snapshot_saved && now>=snapshot_after){
+            bool requested=false;
+            if(snapshot_event){
+                // Poll only after admitting/acquiring a valid new image. Auto
+                // reset coalesces requests; no cached-image or per-frame readback.
+                const auto request=WaitForSingleObject(snapshot_event,0);
+                if(request!=WAIT_OBJECT_0&&request!=WAIT_TIMEOUT)throw std::runtime_error("GPU snapshot request wait failed");
+                requested=request==WAIT_OBJECT_0;
+            }
+            const bool automatic=!snapshot_path.empty()&&!snapshot_auto_taken&&now>=snapshot_after;
+            if((requested||automatic)&&snapshot_count>=snapshot_limit){
+                if(requested){printf("{\"gpu_snapshot_request_rejected\":true,\"snapshot_limit\":%u}\n",snapshot_limit);fflush(stdout);}
+                snapshot_auto_taken=true;
+            }
+            if((requested||automatic)&&snapshot_count<snapshot_limit){
+                if(automatic)snapshot_auto_taken=true;
+                snapshot_ticket=receiver->ticket().id;
                 // Diagnostic output remains full SBS, independent of eye chain layout.
                 auto* image=stereo?receiver->texture.Get():destinations[0];auto desc=image->GetDesc();device->GetCopyableFootprints(&desc,0,1,0,&snapshot_layout,nullptr,nullptr,&snapshot_bytes);
                 D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_READBACK;
@@ -209,7 +252,13 @@ public:
             if(fence->GetCompletedValue()<serial){dx_check(fence->SetEventOnCompletion(serial,event),"GPU game fence event");if(WaitForSingleObject(event,3000)!=WAIT_OBJECT_0)throw std::runtime_error("GPU game fence timeout");}
             if(!xr_image_work_complete(fence->GetCompletedValue(),serial))throw std::runtime_error("GPU game completion unconfirmed after fence wait");
             in_flight=false;
-            if(snapshot_buffer)save_snapshot();
+            if(snapshot_buffer){
+                // sequence() is the last acknowledged producer serial. Read it
+                // only after this image's successful acknowledge; no next
+                // acquire can intervene on this render thread. Ticket remains
+                // the value frozen when this readback copy was recorded.
+                snapshot_source_serial=receiver->sequence();save_snapshot();
+            }
             for(unsigned i=0;i<count;++i) {
                 auto& eye=eyes[i];XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
                 xr_check(xrReleaseSwapchainImage(eye.chain,&release),"GPU game release");eye.acquired=eye.waited=false;
