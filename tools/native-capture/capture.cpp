@@ -2014,7 +2014,7 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     // Even a failed prepare forwards the game submission exactly once. Only a
     // successful original-call interval may advance owned submitted state.
     const auto scene_receipt=native_owned_scene_prepare(queue,count,lists);
-    const auto scene_gpu_token=owned_scene_gpu::prepare(queue,count,lists);
+    const auto scene_gpu_token=owned_scene_gpu::prepare(queue,count,lists,reinterpret_cast<uintptr_t>(_ReturnAddress()));
     original_execute(queue,count,lists);
     owned_scene_gpu::commit(scene_gpu_token);
     native_owned_scene_commit(scene_receipt);

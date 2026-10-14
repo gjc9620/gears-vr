@@ -30,7 +30,11 @@ bool native_owned_scene_tick(uint64_t ticket){using namespace gears_owned_scene_
   trial.error=9;return false;}return true;
 }
 uintptr_t native_owned_scene_candidate(){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return trial.candidate()?trial.adapter:0;}
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ if(trial.complete()&&healthy()&&owned_scene_gpu::can_advance(trial.ticket)){
+  if(!trial.advance(trial.ticket,true)){trial.error=12;return 0;}
+ }
+ return healthy()&&trial.candidate()?trial.adapter:0;}
 bool native_owned_scene_select(void* renderer,uint64_t ticket,uintptr_t adapter){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return trial.select(reinterpret_cast<uintptr_t>(renderer),ticket,adapter);}
 bool native_owned_scene_built(void* renderer,uint64_t ticket,bool verified){using namespace gears_owned_scene_live;

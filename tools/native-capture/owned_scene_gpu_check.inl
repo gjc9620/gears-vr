@@ -75,7 +75,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  ComPtr<ID3D12Fence> done;if(FAILED(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&done)))||FAILED(q->Signal(done.Get(),1)))return 13;
  const auto deadline=GetTickCount64()+5000;while(done->GetCompletedValue()<1&&GetTickCount64()<deadline)Sleep(1);
  if(done->GetCompletedValue()!=1)return 14;
- if(mode&&mode<5)return !readback.result().queued&&(error==8||error==9)?0:15;
+ if(mode&&mode<5)return !readback.result().queued&&error==(mode==3?9u:8u)?0:15;
  poll();auto const& r=readback.result();
  const bool good=proof.state_certified&&proof.final_state==128&&r.saved&&r.completed&&
   r.eyes[0].nonblack==2048ull*2048&&r.eyes[1].nonblack==2048ull*2048&&r.differing_pixels==0;

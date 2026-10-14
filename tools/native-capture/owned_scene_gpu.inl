@@ -19,6 +19,20 @@ ID3D12CommandQueue* queue{}; // Retained for this process-lifetime diagnostic.
 Creation creation{};
 gears_frame_link::Result proof{};
 owned_scene_readback::Probe readback;
+#if defined(GEARS_NATIVE_OWNED_CONTINUOUS_PROBE) && GEARS_NATIVE_OWNED_CONTINUOUS_PROBE
+constexpr bool continuous_probe=true;
+#else
+constexpr bool continuous_probe=false;
+#endif
+constexpr unsigned frame_limit=16;
+owned_scene_readback::Probe last_readback;
+struct Frame {uint64_t ticket{};unsigned state{};bool copied{};};
+std::array<Frame,frame_limit> consumed_frames{};unsigned consumed_count{};
+struct ExecuteFailure {
+ uintptr_t caller{},module{},queue{},missing_list{},missing_reset{},missing_device{};unsigned count{},inside_present{},present_depth{},missing_type{};
+ bool previously_certified{};gears_frame_link::Snapshot stats{};
+ wchar_t module_path[MAX_PATH]{};std::array<void*,12> stack{};unsigned stack_count{};
+} execute_failure;
 void fault(unsigned reason){if(!error)error=reason;tracker.invalidate();}
 bool watching(){return enabled&&!finished&&!error;}
 struct CreateScope {CreateScope(){++creating;}~CreateScope(){--creating;}};
@@ -116,39 +130,84 @@ void barrier(ID3D12GraphicsCommandList* list,D3D12_RESOURCE_BARRIER const& b){
   if(!b.UAV.pResource||touches(canonical_identity(b.UAV.pResource)))uncertain(Unknown::uav);
  }else uncertain();
 }
-gears_frame_link::ExecutionToken prepare(ID3D12CommandQueue* q,UINT count,ID3D12CommandList* const* members){
+gears_frame_link::ExecutionToken prepare(ID3D12CommandQueue* q,UINT count,ID3D12CommandList* const* members,uintptr_t caller=0){
  gears_frame_link::ExecutionToken token{};if(!watching())return token;
  std::array<ID3D12CommandList*,gears_frame_link::Tracker::list_capacity> lists{};
  std::array<gears_frame_link::ListRef,gears_frame_link::Tracker::list_capacity> refs{};
  if(!count||count>lists.size()||!safe_copy(lists.data(),members,count*sizeof(lists[0]))){tracker.invalidate();return token;}
  for(unsigned i=0;i<count;++i)refs[i]=tracker.current(canonical_identity(lists[i]));
- if(birth_ok)tracker.prepare_execute(canonical_identity(q),refs.data(),count,token);
+ if(birth_ok){
+  const bool was_certified=tracker.owned_status().certified;
+  if(!tracker.prepare_execute(canonical_identity(q),refs.data(),count,token)){
+   auto& f=execute_failure;f.caller=caller;f.queue=canonical_identity(q);f.count=count;f.previously_certified=was_certified;
+   f.inside_present=frame_inside_original_present;f.present_depth=frame_present_depth;f.stats=tracker.snapshot();
+   for(unsigned i=0;i<count;++i)if(!refs[i].identity){
+    f.missing_list=canonical_identity(lists[i]);f.missing_type=lists[i]->GetType();
+    ID3D12GraphicsCommandList* missing{};if(SUCCEEDED(lists[i]->QueryInterface(IID_PPV_ARGS(&missing)))){
+     f.missing_reset=reinterpret_cast<uintptr_t>((*reinterpret_cast<void***>(missing))[10]);missing->Release();}
+    ID3D12Device* d{};if(SUCCEEDED(lists[i]->GetDevice(IID_PPV_ARGS(&d)))){f.missing_device=canonical_identity(d);d->Release();}
+    break;
+   }
+   HMODULE module{};if(caller&&GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+    reinterpret_cast<LPCWSTR>(caller),&module)){f.module=reinterpret_cast<uintptr_t>(module);GetModuleFileNameW(module,f.module_path,MAX_PATH);}
+   f.stack_count=CaptureStackBackTrace(0,static_cast<DWORD>(f.stack.size()),f.stack.data(),nullptr);fault(12);
+  }
+ }
  else tracker.execute(canonical_identity(q),refs.data(),count);
  return token;
 }
-void commit(gears_frame_link::ExecutionToken token){if(watching()&&token.value)tracker.commit_execute(token);}
+void commit(gears_frame_link::ExecutionToken token){if(watching()&&token.value&&!tracker.commit_execute(token))fault(13);}
 void copy(bool ready,uint64_t ticket){
- if(!watching()||!birth_ok||!ready||sealed)return;sealed=true;
- proof=tracker.seal_owned_output(resource,generation,canonical_identity(queue));
+ if(!watching()||!birth_ok||!ready||(!continuous_probe&&sealed)||
+    (continuous_probe&&consumed_count&&ticket==consumed_frames[consumed_count-1].ticket))return;
+ sealed=true;
+ proof=continuous_probe?tracker.consume_owned_output(resource,generation,canonical_identity(queue),ticket):
+  tracker.seal_owned_output(resource,generation,canonical_identity(queue));
  if(!proof.linked||!proof.state_certified||proof.ticket!=ticket){fault(9);return;}
- wchar_t path[MAX_PATH]{};swprintf_s(path,L"%s\\owned-scene-%lu.ppm",directory,GetCurrentProcessId());
- StereoPublishBypass bypass;
- readback.queue(texture,queue,D3D12_RESOURCE_STATES(proof.final_state),true,path);
- finished=true;
+ const bool last=continuous_probe&&consumed_count+1==frame_limit;
+ const bool sample=!continuous_probe||!consumed_count||last;
+ if(sample){
+  wchar_t path[MAX_PATH]{};
+  if(last)swprintf_s(path,L"%s\\owned-scene-%lu-last.ppm",directory,GetCurrentProcessId());
+  else swprintf_s(path,L"%s\\owned-scene-%lu.ppm",directory,GetCurrentProcessId());
+  StereoPublishBypass bypass;
+  if(!(last?last_readback:readback).queue(texture,queue,D3D12_RESOURCE_STATES(proof.final_state),true,path)){fault(10);return;}
+ }
+ if(continuous_probe){
+  if(consumed_count==consumed_frames.size()){fault(11);return;}
+  consumed_frames[consumed_count++]={ticket,proof.final_state,sample};
+ }
+ finished=!continuous_probe||last;
 }
-void poll(){if(enabled&&finished)readback.poll();}
-bool state_certified(){return proof.state_certified;}
+void poll(){if(enabled){readback.poll();last_readback.poll();}}
+bool can_advance(uint64_t ticket){return continuous_probe&&watching()&&birth_ok&&consumed_count&&
+ consumed_count<frame_limit&&consumed_frames[consumed_count-1].ticket==ticket&&tracker.owned_status().certified;}
+bool state_certified(){return proof.state_certified&&tracker.owned_status().certified;}
 bool pixels_read_back(){return readback.result().completed&&readback.result().saved;}
 void print(FILE* file){
  auto const& r=readback.result();const auto s=tracker.snapshot();
  fprintf(file,"native_owned_gpu enabled=%u creation_count=%u api=%u initial_state=%u creation_uses=%u prebirth_faults=%u birth_attempts=%u birth_ok=%u barriers=%u unsupported=%u error=%u sealed=%u rejection=%u state_certified=%u final_state=%u copied=%u completed=%u saved=%u read_error=%u read_hr=%08lx resets=%llu executes=%llu unknown_batches=%llu capacity=%u\n",
  enabled,creation_count,creation.api,creation.state,creation.uses,prebirth_faults,birth_attempts,birth_ok,barriers,unsupported,error,sealed,
- proof.rejection,proof.state_certified,proof.final_state,r.queued,r.completed,r.saved,unsigned(r.error),r.hr,s.reset_calls,s.execute_calls,s.unknown_batches,s.capacity_bad);
+ proof.rejection,state_certified(),proof.final_state,r.queued,r.completed,r.saved,unsigned(r.error),r.hr,s.reset_calls,s.execute_calls,s.unknown_batches,s.capacity_bad);
  fprintf(file,"native_owned_gpu_creation legacy=%u layout=%u resource=%llx device=%llx format=%u flags=%u\n",
   creation.legacy,creation.layout,creation.resource,creation.device,unsigned(creation.desc.Format),unsigned(creation.desc.Flags));
  fprintf(file,"native_owned_pixels width=%u height=%u left_nonblack=%llu right_nonblack=%llu different=%llu left_hash=%llx right_hash=%llx\n",
   r.width,r.height,r.eyes[0].nonblack,r.eyes[1].nonblack,r.differing_pixels,r.eyes[0].hash,r.eyes[1].hash);
  fprintf(file,"native_owned_gpu_dispatch available=%u match=%u\n",device_dispatch_available,device_dispatch_match);
+ if(execute_failure.count){auto const& f=execute_failure;
+  fprintf(file,"native_owned_execute_failure caller=%llx module=%llx rva=%llx queue=%llx count=%u missing_list=%llx previously_certified=%u inside_present=%u present_depth=%u unknown=%llu duplicate=%llu metadata=%llu\n",
+   f.caller,f.module,f.caller-f.module,f.queue,f.count,f.missing_list,f.previously_certified,f.inside_present,f.present_depth,
+   f.stats.unknown_batches,f.stats.duplicate_batches,f.stats.metadata_batches);
+  fprintf(file,"native_owned_execute_module path=%ls\n",f.module_path);
+  fprintf(file,"native_owned_execute_missing type=%u device=%llx reset=%llx installed_reset=%p reset_dispatch_matches=%u\n",
+   f.missing_type,f.missing_device,f.missing_reset,viewport_targets[0],f.missing_reset==reinterpret_cast<uintptr_t>(viewport_targets[0]));
+  for(unsigned i=0;i<f.stack_count;++i)fprintf(file,"native_owned_execute_stack index=%u address=%p\n",i,f.stack[i]);
+ }
+ if(continuous_probe){const auto& last=last_readback.result();
+  fprintf(file,"native_owned_continuous limit=%u consumed=%u finished=%u last_completed=%u last_saved=%u last_error=%u last_left_nonblack=%llu last_right_nonblack=%llu last_different=%llu\n",
+   frame_limit,consumed_count,finished,last.completed,last.saved,unsigned(last.error),last.eyes[0].nonblack,last.eyes[1].nonblack,last.differing_pixels);
+  for(unsigned i=0;i<consumed_count;++i)fprintf(file,"native_owned_frame index=%u ticket=%llu state=%u sampled=%u\n",i,consumed_frames[i].ticket,consumed_frames[i].state,consumed_frames[i].copied);
+ }
  for(unsigned i=1;i<api_calls.size();++i)fprintf(file,"native_owned_gpu_api api=%u calls=%llu scoped=%llu\n",i,api_calls[i],api_scoped[i]);
  const char* labels[]={"unspecified","descriptor","clear","indirect","bundle","enhanced","render_pass","alias","uav","unreadable","copy","mrt"};
  for(unsigned i=0;i<unknown_reasons.size();++i)if(unknown_reasons[i])fprintf(file,"native_owned_gpu_unknown reason=%s count=%llu\n",labels[i],unknown_reasons[i]);
@@ -163,8 +222,9 @@ void reset(ID3D12GraphicsCommandList*,HRESULT){}
 void present(){}
 void draw(ID3D12GraphicsCommandList*,uintptr_t,bool,unsigned,gears_frame_link::Rect,uint64_t){}
 void commit(gears_frame_link::ExecutionToken){}
-gears_frame_link::ExecutionToken prepare(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*){return {};}
+gears_frame_link::ExecutionToken prepare(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,uintptr_t=0){return {};}
 void copy(bool,uint64_t){}
+bool can_advance(uint64_t){return false;}
 void poll(){}
 bool state_certified(){return false;}
 bool pixels_read_back(){return false;}

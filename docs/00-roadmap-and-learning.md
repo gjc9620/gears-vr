@@ -2,6 +2,8 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
+OwnedSequence1/2：已接入默认关闭、16个ticket上限的连续scene实验，使用同一Owner、逐ticket收据及首尾读回；179项Trial检查和32条回归命令通过。两轮实际游戏均只完成第一个owned ticket（首帧PPM保存），尚未完成连续独立输出。Sequence2 / PID53952的首次失证来自`dxgi.dll+0x20da2`在原始Present内部提交的DIRECT list：当前tracker无该list有效代次，device与owned目标相同，Reset实现与已装hook相同，故停止放行下一帧。此证据不表示该list实际访问了owned纹理，也不能归因于历史头显黑屏；下一步核对其在资源创建前的真实Execute返回/Reset及持有期，不按caller放白名单或伪造Reset。Sequence1的`state_certified`曾仅显示首帧缓存proof，Sequence2已改为当前认证状态，实际为0。两轮均独立核验56入口恢复、正常关闭游戏；Owner保留到退出，启动器仍如实incomplete。证据 `analysis/ui-position-runtime/owned-sequence2-53952.audit.json`，清单 `tools/vr-launcher/manifest-owned-sequence2.json`。Canvas/XR仍走旧目标，首版进度估计不变。
+
 OwnedPixels5 / PID40520：首次从实际游戏独立 Low 目标读回完整4096×2048 GPU图像，两张2048×2048眼图均可见人物和场景，视角不同；每眼4194304个非黑像素，4186986个对应像素不同。实际CreateCommittedResource1创建状态为RENDER_TARGET(4)，单个ticket2的两个最终draw由同一DIRECT队列提交，renderer返回并销毁，读回fence完成，状态恢复为4，无未知操作或adapter故障。这是单个场景ticket的像素证据，不是持续独立分辨率、完整中间scene-color/depth尺寸验证或真头显验收。Canvas仍未重定向，XR仍走旧backbuffer路径；本轮旧路径有23次stale ticket，最大提交间隔267.3858ms，不能称稳定性通过。Owner有意保留到进程退出，启动器如实返回incomplete；56入口独立恢复核验通过，游戏正常关闭。证据 `analysis/ui-position-runtime/owned-pixels5-40520.audit.json`；默认关闭该实验，清单 `tools/vr-launcher/manifest-owned-pixels5.json`。
 
 重要更正：早期owned-output观察器把ResourceBarrier接到了vtable槽24（实际为OMSetStencilRef），正确槽为26。OwnedPixels4将9次prebirth未知操作分类后发现此错误；这些记录不能作为游戏屏障错误的证据。OwnedPixels1–4及以下历史“13项GPU状态接线测试通过”不能证明真实ResourceBarrier转换，相关状态结论已被本段替代，原始记录保留。生产入口及两组集成检查已修正；新增30项SDK编译期槽位断言作为DLL构建依赖，修正版13项owned-output与8项scene-GPU模式及WARP读回通过。调试层不可用，断言与直接调用wrapper测试也不单独证明安装后的拦截覆盖。实际OwnedPixels5目标没有游戏侧transition，状态证明使用观测到的初始RT状态及无污染提交，不能声称它已运行验证游戏侧转换分支。

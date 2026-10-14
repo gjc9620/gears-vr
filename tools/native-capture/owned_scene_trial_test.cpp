@@ -34,5 +34,21 @@ int main(){
   auto inner=t.prepare(401,true,&m,1);auto current=[](uintptr_t id){return ListRef{id,1};};
   CHECK(t.commit(inner,current));CHECK(!t.commit(outer,current));CHECK(t.queue==401&&t.error==5&&t.submissions==1);}
  {auto t=selected();for(uintptr_t i=1;i<=9;++i)t.draw(100,{i,1},8,0,true);CHECK(t.error==4);}
+ for(unsigned missing=0;missing<8;++missing){auto t=selected();ListRef m{10,1};
+  t.draw(100,m,8,0,true);t.draw(100,m,8,1,true);auto receipt=t.prepare(400,true,&m,1);
+  CHECK(t.commit(receipt,[](uintptr_t id){return ListRef{id,1};}));t.end(300,8);t.retire(300);CHECK(t.complete());
+  if(missing==0)t.returned=false;if(missing==1)t.destroyed=false;if(missing==2)t.unknown_draws=1;
+  if(missing==3)t.submitted_mask=1;if(missing==4)t.draws=3;if(missing==5)t.error=1;
+  CHECK(!t.advance(missing==6?9:8,missing!=7));CHECK(t.ticket==8&&!t.completed);
+ }
+ {auto t=selected();ListRef m{10,1};t.draw(100,m,8,0,true);t.draw(100,m,8,1,true);
+  auto old=t.prepare(400,true,&m,1);CHECK(t.commit(old,[](uintptr_t id){return ListRef{id,1};}));
+  t.end(300,8);t.retire(300);CHECK(t.advance(8,true));
+  CHECK(t.candidate()&&t.completed==1&&t.last_ticket==8&&t.born==7&&t.resource==100&&t.adapter==200);
+  CHECK(!t.select(300,8,200));CHECK(t.select(300,9,200)); // Same address, a new ticket.
+  CHECK(t.construction(300,9,true,200));CHECK(t.begin(300,9));
+  t.draw(100,m,9,0,true);t.draw(100,m,9,1,true);
+  CHECK(!t.commit(old,[](uintptr_t id){return ListRef{id,1};}));CHECK(t.error==11&&!t.submitted_mask);
+ }
  std::printf("Owned scene trial: %u checks passed; no GPU completion assertion\n",checks);
 }
