@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "startup_menu": true,
+  "anchor_observer": true,
+  "ui_observer": true,
+  "outage_diagnostics": true,
+  "image_ticket_diagnostics": true,
+  "shutdown_diagnostics": true,
+  "game_path": "Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe",
+  "game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+  "native_build": "tools/native-capture/build-ui-hud-plane1",
+  "native_dll": "GearsCaptureUiHudPlane1.dll",
+  "native_sha256": "43ede3e9367666b571ac7d52e38b07c7dccc3c215eb8783d8b76c1f0f471f1f3",
+  "xr_build": "tools/openxr-probe/build-eye-chains1",
+  "xr_sha256": "08dc8f0054a6497d16ee12db90cb8112985f825fc302279d318b1d698df99e69",
+  "ui_hud_plane": true
+}

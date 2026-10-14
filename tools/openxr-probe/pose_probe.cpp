@@ -271,6 +271,28 @@ int main(int argc, char** argv) {
             throw std::runtime_error("Synthetic input requires verified Meta simulator runtime and loaded Operator layer");
         XrSystemGetInfo system_info{XR_TYPE_SYSTEM_GET_INFO};system_info.formFactor=XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
         XrSystemId system{};xr_check(xrGetSystem(instance,&system_info,&system),"xrGetSystem");
+        gears_eye_chain::Limits stereo_limits{};
+        if(stereo_game_pid) {
+            XrSystemProperties system_properties{XR_TYPE_SYSTEM_PROPERTIES};
+            xr_check(xrGetSystemProperties(instance,system,&system_properties),"stereo system size limits");
+            stereo_limits.system_width=system_properties.graphicsProperties.maxSwapchainImageWidth;
+            stereo_limits.system_height=system_properties.graphicsProperties.maxSwapchainImageHeight;
+            uint32_t count{};
+            xr_check(xrEnumerateViewConfigurationViews(instance,system,XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,0,&count,nullptr),"stereo view size count");
+            if(count!=2)throw std::runtime_error("Stereo eye chains require exactly two runtime views");
+            std::array<XrViewConfigurationView,2> configurations{{{XR_TYPE_VIEW_CONFIGURATION_VIEW},{XR_TYPE_VIEW_CONFIGURATION_VIEW}}};
+            xr_check(xrEnumerateViewConfigurationViews(instance,system,XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,2,&count,configurations.data()),"stereo view size limits");
+            if(count!=2)throw std::runtime_error("Stereo runtime view count changed");
+            for(unsigned eye=0;eye<2;++eye) {
+                stereo_limits.view_width[eye]=configurations[eye].maxImageRectWidth;
+                stereo_limits.view_height[eye]=configurations[eye].maxImageRectHeight;
+                stereo_limits.view_samples[eye]=configurations[eye].maxSwapchainSampleCount;
+                printf("{\"xr_eye_limits\":%u,\"recommended\":[%u,%u],\"maximum\":[%u,%u],\"system_maximum\":[%u,%u]}\n",eye,
+                       configurations[eye].recommendedImageRectWidth,configurations[eye].recommendedImageRectHeight,
+                       stereo_limits.view_width[eye],stereo_limits.view_height[eye],stereo_limits.system_width,stereo_limits.system_height);
+            }
+            fflush(stdout);
+        }
         PFN_xrGetD3D12GraphicsRequirementsKHR requirements_fn{};
         xr_check(xrGetInstanceProcAddr(instance,"xrGetD3D12GraphicsRequirementsKHR",reinterpret_cast<PFN_xrVoidFunction*>(&requirements_fn)),"requirements function");
         XrGraphicsRequirementsD3D12KHR requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_D3D12_KHR};
@@ -401,7 +423,7 @@ int main(int argc, char** argv) {
                     const bool ready=GameGpuScreen::producer_ready(stereo_game_pid,&readiness,simulator_operator);
                     if(readiness==ProjectionStatus::producer_structure_invalid)projection_evidence.record(readiness,gears_vr::monotonic_ns());
                     if(ready)
-                        stereo_screen.reset(new GameGpuScreen(device.Get(),queue.Get(),stereo_game_pid,gpu_snapshot,simulator_operator));
+                        stereo_screen.reset(new GameGpuScreen(device.Get(),queue.Get(),stereo_game_pid,gpu_snapshot,simulator_operator,&stereo_limits));
                 }
                 if(stereo_image_shown)end.layerCount=0;
                 ProjectionStatus result;
