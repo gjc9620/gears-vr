@@ -140,3 +140,11 @@ PID37184在稳定尺寸下完成3秒开镜和3秒切枪，双眼截图均有场�
 实际GPU回调发生在顶点上传之后。完整位置修正需要每眼独立VB副本或已认证的GPU变换；不能在回调中改原CPU数组并期待已上传顶点变化。顶点stride48，位置float4在0..0f，UV/颜色/hitproxy与padding需保留；每眼VB需跟踪并恢复原IA绑定，GPU fence完成前不能释放。普通HUD与整组文字使用共同平面；准星需关联原游戏实际目标/赋值时序，不用过期命中缓存。
 
 另需在有对白的场景验证真实字幕glyph和双眼位置。窗口resize恢复不能只清掉拒绝标志：绑定、共享纹理、接收端图像与frame ticket都需要新的资源代次及有序交接。现有固定尺寸版本会停止新图，当前不宣称具备缩放恢复能力。定向计划见 `analysis/resize-recovery/architecture-plan.json`。DLSS/DLAA的三个引擎拦截点与菜单Apply返回规则已核对，仍未启用运行时锁定，不能把启动INI关闭当作完整锁。
+
+## HUD 平面控制首次运行（2026-10-14）
+
+e5ede89 / UiHudPlane1 / PID46800 首次启用独立 70°、2 米 head-locked HUD 平面。模拟器运行 791.65065 秒，71243 次 projection、54971 次复制，最大提交间隔 68.5128ms；2984 次计划和实际双眼 overlay，sequence_fault=0，34 个入口恢复且游戏正常关闭。1492 段文字被覆盖；原生字幕 55393 次均无 glyph，准星没有样本。
+
+两张操作期间截图均能看见双眼场景，但没有清楚可见的换枪 UI/文字；不能仅凭 applied 计数宣布视觉修正成功。已记录 0.1 米水平/0.08 米前后平移及 yaw/pitch/roll 非零的模拟器姿态，场景随之变化；HUD 可见性、平面位置及实际字幕仍需定向调查。证据 `analysis/runtime/ui-hud-plane1-46800.audit.json`，不计为真头显验收。
+
+准星缓存赋值的纯辅助模块已加入 `crosshair_assignment.h`，验证 execLet 的精确字节码、属性/owner 链、原调用后完成的 Vector 复制，包括同值赋值。独立 CPU 测试通过；尚未安装赋值 hook，也没有与玩家 tick/实际场景 ticket 关联，不能据此声称瞄准点已经修复。
