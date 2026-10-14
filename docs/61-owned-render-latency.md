@@ -38,3 +38,15 @@ Cost2 同时用 `GetThreadTimes` 记录该线程的用户态和内核态累计�
 下一轮先保留首次停止的同QPC时间和调用点，定位偶发启动后停止；再对渲染线程等待调用做有界采样，用真实调用栈将约42ms平均非CPU执行时间关联到具体分支。仅在有对应证据后修改同步或队列策略，并复测同ticket图像/姿态与100ms限制。缓存函数必须与汇编、调用上下文及当前运行字节交叉验证，不从静态文本宣称GPU等待根因。
 
 每个实验构建通过39条既有回归；关闭owned/profiling的独立兼容构建通过6项检查。原始状态、时间序列、像素统计、失败记录与哈希审计位于被忽略的`analysis/ui-position-runtime/owned-cost1-49468.audit.json`、`owned-cost2-48432.audit.json`、`owned-cost1-53792-startup-failure.json`、`owned-cost2-48296-failure.json`。清单为`tools/vr-launcher/manifest-owned-cost1.json`和`manifest-owned-cost2.json`。这些结果没有完成首版发布目标。
+
+## Wait1：停止来源与关闭菜单捕获的对照
+
+首次成功的停止请求现在保存同一QPC时钟的时间、线程和源码位置，后续请求不能覆盖；状态输出以release/acquire标志区分记录是否完整。连续会话自测覆盖首次记录和拒绝覆盖。可选成本记录增加消费线程ID及线程变化计数，默认关闭成本探针时不采样。
+
+Wait1 / PID51032临时关闭startup_menu及对应启动/菜单graphics保护（运行时graphics保护仍在），用于排查启动面板WGC捕获是否造成延迟。实验与正常启动还存在prime和XR启动顺序差异，不能当成严格单变量因果证明。默认玩家清单未变。
+
+120个owned ticket、119次发布；首尾每眼2048×2048均非黑，XR copies/projection仍为0。构建完成→消费开始中位75.092ms，消费开始→左眼final draw为61.674ms，姿态接收→发布为143.336ms。与菜单开启的Cost1/2接近，本轮未支持菜单捕获是主要延迟来源。frame_lock累计中位3.780ms，不能解释整个消费窗口。
+
+该轮首次停止明确来自测试控制事件，QPC=`1012316415632`、频率10000000、线程28352、冻结Wait1源码`capture.cpp:2985`。58个入口恢复通过，游戏正常退出。因Owner/list资源保留策略，启动器仍报告incomplete；不把主动停止或首尾像素检查当完整生命周期/头显验收。审计：`analysis/ui-position-runtime/owned-wait1-menuoff-51032.audit.json`。
+
+系统WPR录制尝试因Windows权限失败（`0xc5585011`, “Failed to enable the policy to profile system performance.”）；前后均确认无录制会话，未生成ETL，也未改权限。接下来使用有界、进程内线程身份匹配的外部线程栈采样，并以QPC对应已有owned消费窗口；诊断暂停造成的时间扰动必须单独报告。

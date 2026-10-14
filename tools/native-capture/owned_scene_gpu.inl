@@ -328,8 +328,8 @@ void print(FILE* file){
    fprintf(file,"native_owned_cost ticket=%llu total_ticks=%llu",t.ticket,t.cost.total_ticks);
    const char* names[]={"safe_read","engine_view","output_stack","viewport_draw","frame_draw","reset_tracking","barrier_observation","frame_lock","draw_forward"};
    for(unsigned k=0;k<gears_render_cost::count;++k)fprintf(file," %s_calls=%llu %s_ticks=%llu",names[k],t.cost.items[k].calls,names[k],t.cost.items[k].ticks);
-   fprintf(file," kernel_100ns=%llu user_100ns=%llu cpu_samples=%llu cpu_failures=%llu\n",
-    t.cost.kernel_100ns,t.cost.user_100ns,t.cost.cpu_samples,t.cost.cpu_failures);
+   fprintf(file," kernel_100ns=%llu user_100ns=%llu cpu_samples=%llu cpu_failures=%llu thread=%lu thread_changes=%u\n",
+    t.cost.kernel_100ns,t.cost.user_100ns,t.cost.cpu_samples,t.cost.cpu_failures,t.cost.thread,t.cost.thread_changes);
 #endif
   }
  }

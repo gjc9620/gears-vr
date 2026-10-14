@@ -235,6 +235,11 @@ std::atomic<bool> session_owner_exit_observed{},session_owner_error_observed{};
 std::atomic<SessionPhase> session_phase{SessionPhase::running};
 std::atomic<SessionStop> session_reason{SessionStop::none};
 std::atomic<ULONGLONG> session_stop_tick{};
+std::atomic<LONGLONG> session_stop_qpc{};
+std::atomic<DWORD> session_stop_thread{};
+std::atomic<unsigned> session_stop_source_line{};
+std::atomic<const char*> session_stop_source_file{"none"};
+std::atomic<bool> session_stop_recorded{};
 std::atomic<bool> session_cleanup_timeout{};
 std::atomic<unsigned> session_native_services{};
 std::atomic<unsigned> session_cancelled_builds{};
@@ -447,14 +452,21 @@ void trace_rectangle(unsigned index,uintptr_t view) {
     rectangle_trace_phases[index]=read?2:3;
 }
 long long now() {LARGE_INTEGER value;QueryPerformanceCounter(&value);return value.QuadPart;}
-void request_session_stop(SessionStop reason) {
+void request_session_stop_at(SessionStop reason,const char* source_file,unsigned source_line) {
     if(!continuous_session)return;
     auto running=SessionPhase::running;
     if(!session_phase.compare_exchange_strong(running,SessionPhase::stop_requested))return;
     session_reason=reason;session_stop_tick=GetTickCount64();
+    session_stop_qpc=now();session_stop_thread=GetCurrentThreadId();
+    session_stop_source_file=source_file;session_stop_source_line=source_line;
+    // Publish the complete first-request record. __FILE__ has static lifetime;
+    // later requests lose the phase CAS and cannot overwrite these fields.
+    session_stop_recorded.store(true,std::memory_order_release);
     // The Lifetime mutex serializes this barrier with begin. It grants no claim.
     submitted_lifetime.request_stop();
 }
+// Covers every later call and .inl include, including graphics_lock_observer.
+#define request_session_stop(reason) request_session_stop_at((reason),__FILE__,__LINE__)
 void observe_session_owner(gears_session::OwnerState state) {
     if(state==gears_session::OwnerState::exited){session_owner_exit_observed=true;request_session_stop(SessionStop::owner_exited);}
     else if(state==gears_session::OwnerState::error){session_owner_error_observed=true;request_session_stop(SessionStop::owner_error);}
@@ -1001,6 +1013,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     const char* phases[]={"running","stop_requested","native_closed","draining","stopped"};
     const char* reasons[]={"none","event","f8","focus_lost","proof_failure","owner_exited","owner_error"};
     auto phase=session_phase.load();auto reason=session_reason.load();
+    const bool stop_recorded=session_stop_recorded.load(std::memory_order_acquire);
     const char* label=session_cleanup_timeout.load()&&phase!=SessionPhase::stopped?"incomplete":phases[static_cast<unsigned>(phase)];
     fprintf(output,"continuous_session=1 pid=%lu started_qpc=%lld phase=%s phase_code=%u reason=%s reason_code=%u stop_tick=%llu closed=%d pending=%u state_created=%u release_returned=%u state_destroyed=%u state_flags=%u retained=%u active=%u publisher_stopped=%u drain_ok=%u close_ok=%u cleanup_timeout=%u resources_retained=%u entries_restored=%u native_services=%u cancelled_builds=%u published=%u simulator_operator=%d csv_enabled=0 ",
         GetCurrentProcessId(),session_started_qpc,label,static_cast<unsigned>(phase),reasons[static_cast<unsigned>(reason)],static_cast<unsigned>(reason),
@@ -1008,6 +1021,11 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         state_destroyed.load()?state_delete_flags:0,submit_retained.load(),active.load(),stereo_publish_counts.stopped.load(),
         stereo_publish_counts.drain_ok.load(),stereo_publish_counts.close_ok.load(),session_cleanup_timeout.load()?1:0,
         resources_retained?1:0,entries_restored?1:0,session_native_services.load(),session_cancelled_builds.load(),stereo_publisher.frames.load(),simulator_operator);
+    fprintf(output,"profile_consume_thread=%lu ",gears_render_cost::first_thread.load(std::memory_order_relaxed));
+    fprintf(output,"stop_recorded=%u stop_qpc=%lld stop_qpc_frequency=%lld stop_thread=%lu stop_source_file=%s stop_source_line=%u ",
+        stop_recorded?1:0,stop_recorded?session_stop_qpc.load():0,qpc_frequency,
+        stop_recorded?session_stop_thread.load():0,stop_recorded?session_stop_source_file.load():"none",
+        stop_recorded?session_stop_source_line.load():0);
     fprintf(output,"recenter_requests=%llu reference_generation=%llu heading_deferred=%llu ",stereo_recenter_requests.load(),stereo_reference_generation.load(),stereo_heading_deferred.load());
     fprintf(output,"anchor_submission_required=%u anchor_submission_matched=%llu anchor_submission_rejected=%llu ",
         anchor_observer_enabled?1:0,anchor_submission_matched.load(),anchor_submission_rejected.load());
@@ -3201,11 +3219,20 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*)
     {
         std::lock_guard<std::recursive_mutex> native_lock(session_native_mutex);
         SessionBuildScope building;
+        const auto first_stop_before=now();const unsigned first_stop_line=__LINE__+1;
         request_session_stop(SessionStop::event);
+        const auto first_stop_after=now(),first_stop_qpc=session_stop_qpc.load();
+        const auto first_stop_tick=session_stop_tick.load();const auto first_stop_thread=session_stop_thread.load();
+        const auto first_stop_file=session_stop_source_file.load();const auto first_stop_source_line=session_stop_source_line.load();
         observe_session_owner(gears_session::owner_wait_state(WAIT_OBJECT_0)); // Evidence survives an earlier first stop reason.
         observe_session_owner(gears_session::owner_wait_state(WAIT_FAILED));
         if(session_reason.load()!=SessionStop::event||!session_owner_exit_observed.load()||!session_owner_error_observed.load()||
            submitted_lifetime.is_closed()||continuous_test_release_calls)error=213;
+        if(!session_stop_recorded.load()||first_stop_qpc<=0||first_stop_qpc<first_stop_before||first_stop_qpc>first_stop_after||
+           first_stop_thread!=GetCurrentThreadId()||!first_stop_tick||!first_stop_file||strcmp(first_stop_file,__FILE__)||
+           first_stop_source_line!=first_stop_line||session_stop_qpc.load()!=first_stop_qpc||session_stop_tick.load()!=first_stop_tick||
+           session_stop_thread.load()!=first_stop_thread||session_stop_source_file.load()!=first_stop_file||
+           session_stop_source_line.load()!=first_stop_source_line)error=213;
         service_session_stop_native(); // Reentrant construction must defer close.
         stereo_publish_worker_tick(); // Mark absent publisher stopped, no GPU work.
         session_stop_tick=GetTickCount64()-30001;
