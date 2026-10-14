@@ -237,7 +237,9 @@ thread_local unsigned session_build_depth{};
 bool session_status_available{};
 LONGLONG session_started_qpc{};
 struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
-#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+constexpr size_t session_hook_capacity=57,viewport_hook_capacity=27;
+#elif defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
 constexpr size_t session_hook_capacity=40,viewport_hook_capacity=11;
 #else
 constexpr size_t session_hook_capacity=39,viewport_hook_capacity=10;
@@ -424,6 +426,7 @@ bool safe_copy(void* out,const void* from,size_t bytes) {
 #include "native_owned_probe.inl"
 uintptr_t canonical_identity(IUnknown* object);
 bool verified_stereo_draw(gears_viewport::DrawState const&,FinalEye const&,uintptr_t,unsigned,unsigned,unsigned);
+#include "owned_scene_gpu.inl"
 #include "native_owned_scene.inl"
 void trace_rectangle(unsigned index,uintptr_t view) {
     if(!submit_pair_enabled || !view)return;
@@ -792,11 +795,19 @@ void sample_frame_work(unsigned kind,uintptr_t caller,uintptr_t list,uintptr_t q
 }
 void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances) {
     if(!frame_link_diagnostics || !recording.load())return;
-    if(frame_target_stats.descriptor_capacity_lost()){frame_link.invalidate();return;}
+    if(frame_target_stats.descriptor_capacity_lost()){
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+        owned_scene_gpu::uncertain();
+#endif
+        frame_link.invalidate();return;}
     auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
     native_owned_scene_draw(list,binding,caller,kind,elements,instances);
     if(!binding.targets)return; // No render target: no observed color write.
-    if(!binding.target.resource){++frame_counts.missing_target;frame_link.invalidate();return;}
+    if(!binding.target.resource){
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+        owned_scene_gpu::uncertain();
+#endif
+        ++frame_counts.missing_target;frame_link.invalidate();return;}
     if(!swapchain_bindings.known_buffer(binding.target.resource)){++frame_counts.filtered;return;}
     ++frame_counts.draws;
     auto stats=frame_buffer_count(binding.target.resource);if(stats)++stats->draws;
@@ -861,6 +872,7 @@ void outage_finish(gears_outage::Sample& sample,long long timestamp,HRESULT resu
 }
 void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample* diagnostic=nullptr) {
     if(!frame_link_diagnostics || !recording.load())return;
+    owned_scene_gpu::present();
     auto identity=canonical_identity(chain);auto binding=swapchain_bindings.registered(identity);
     if(!binding.chain){++frame_counts.unbound;frame_link.invalidate();frame_link.present(0,0);retire_stereo_window();frame_target_stats.clear_bindings();
         if(outage_diagnostics.load())outage_draws={};return;}
@@ -937,6 +949,7 @@ void retire_original_present_interval() {
     // acquire the ordering lock only after this retirement completes. This is
     // not recovery: lost capacity remains sticky, and future work needs Reset.
     frame_link.retire_present_interval();
+    owned_scene_gpu::present();
     retire_stereo_window();
     if(frame_target_stats.clear_bindings())frame_link.invalidate_capacity();
     if(outage_diagnostics.load())outage_draws={}; // Isolated original-Present work cannot become next-frame evidence.
@@ -2001,7 +2014,9 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     // Even a failed prepare forwards the game submission exactly once. Only a
     // successful original-call interval may advance owned submitted state.
     const auto scene_receipt=native_owned_scene_prepare(queue,count,lists);
+    const auto scene_gpu_token=owned_scene_gpu::prepare(queue,count,lists);
     original_execute(queue,count,lists);
+    owned_scene_gpu::commit(scene_gpu_token);
     native_owned_scene_commit(scene_receipt);
     if(owned&&owned_token.value&&!frame_link.commit_execute(owned_token))++frame_counts.execute_rejected;
     record.duration=now()-record.time;enqueue(record);
@@ -2202,6 +2217,14 @@ uintptr_t barrier_identity(IUnknown* object) {
 void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RESOURCE_BARRIER* barriers) {
     if(stereo_publish_bypass){original_resource_barrier(list,count,barriers);return;}
     Scope scope;auto frame_guard=frame_lock();const auto owned=frame_link.owned_status();
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+    if(owned_scene_gpu::watching()){
+        if(count>1024||(count&&!barriers))owned_scene_gpu::uncertain();
+        else for(UINT i=0;i<count;++i){D3D12_RESOURCE_BARRIER b{};
+            if(!safe_copy(&b,barriers+i,sizeof(b))){owned_scene_gpu::uncertain();break;}
+            owned_scene_gpu::barrier(list,b);}
+    }
+#endif
     if(owned.enabled){
         const auto ref=frame_link.current(barrier_identity(list));
         auto fault=[&](){frame_link.record_owned_barrier_fault(ref,owned.generation);};
@@ -2229,9 +2252,11 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
     original_resource_barrier(list,count,barriers);
 }
 #endif
+#include "owned_scene_gpu_hooks.inl"
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
     if(stereo_publish_bypass)return original_reset_list(list,allocator,state);
     Scope scope;auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
+    owned_scene_gpu::reset(list,result);
     if(recording.load()&&SUCCEEDED(result))viewport_stats.reset(reinterpret_cast<uintptr_t>(list));
     bool tracking=frame_link_diagnostics&&recording.load();
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
@@ -2434,6 +2459,9 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
                         if(!stride||offset>UINTPTR_MAX-first.ptr){frame_link.invalidate();break;}handle.ptr=first.ptr+static_cast<uintptr_t>(offset);}
                     else if(!safe_copy(&handle,handles+i,sizeof(handle))){frame_link.invalidate();break;}
                     auto target=frame_target_stats.lookup(handle.ptr);
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+                    if(!target.resource)owned_scene_gpu::uncertain();else owned_scene_gpu::use(list,target.resource,false);
+#endif
                     if(!target.resource){++frame_counts.missing_target;frame_link.invalidate();}
                     else if(swapchain_bindings.known_buffer(target.resource)){++frame_counts.unknown;
                         frame_link.draw_unknown(frame_link.current(canonical_identity(list)),target.resource);}
@@ -2517,6 +2545,9 @@ bool viewport_hooks(ID3D12Device* device) {
         if(color_copy_diagnostics)success=install(viewport_targets[9],reinterpret_cast<void*>(hook_color_copy),reinterpret_cast<void**>(&original_color_copy))&&success;
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
         success=install(viewport_targets[10],reinterpret_cast<void*>(hook_resource_barrier),reinterpret_cast<void**>(&original_resource_barrier))&&success;
+#endif
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+        success=owned_scene_gpu_install(device,list)&&success;
 #endif
         list->Close();
     }
@@ -2926,6 +2957,7 @@ DWORD WINAPI worker(void*) {
             if(state_created.load()&&!submit_background&&!foreground())request_session_stop(SessionStop::focus_lost);
             if(stereo_publisher.state.load()==3)request_session_stop(SessionStop::proof_failure);
             stereo_publish_worker_tick();
+            {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);owned_scene_gpu::poll();}
             if(submitted_lifetime.stopping()){
                 if(submitted_lifetime.is_closed()){auto requested=SessionPhase::stop_requested;
                     session_phase.compare_exchange_strong(requested,SessionPhase::native_closed);}
@@ -4264,6 +4296,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeOwnedCheck(void* 
     return result;
 }
 #include "owned_output_tracking_check.inl"
+#include "owned_scene_gpu_check.inl"
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {
     // Keep CRT thread notifications enabled for the statically linked runtime.
     if(reason==DLL_PROCESS_ATTACH) own_module=module;

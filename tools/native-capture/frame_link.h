@@ -328,8 +328,10 @@ public:
     // Caller must hold the SAME API-order lock used across Reset, recording,
     // original Execute + commit and Present. No original Execute may be in
     // flight (legacy execute() cannot itself detect that external interval).
-    // The newly allocated native owner/resource has NEVER been exposed to the
-    // engine or recorded/submitted GPU commands. Its canonical identity, native
+    // The newly allocated native owner/resource has NEVER been referenced by
+    // recorded/submitted GPU commands. CPU-only adapter metadata queries may
+    // precede birth, provided the caller observes and rejects every GPU use.
+    // Its canonical identity, native
     // placement lifetime, DIRECT queue, descriptor and RT/PSR creation state are
     // externally certified; a reused address alone proves none of these facts.
     // Both proof flags are mandatory. This is not recovery or replacement.

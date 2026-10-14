@@ -13,13 +13,19 @@ bool healthy(){const auto live=owner.snapshot();
  return !trial.error;
 }
 }
-void initialize_native_owned_scene(bool image_verified){gears_owned_scene_live::image_verified=image_verified;}
+void initialize_native_owned_scene(bool image_verified){gears_owned_scene_live::image_verified=image_verified;
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+ owned_scene_gpu::enabled=image_verified;
+#endif
+}
 bool native_owned_scene_tick(uint64_t ticket){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
  if(attempted)return !trial.error;attempted=true;
  ops=std::make_unique<gears_native_owned::NativeOps>(base,safe_copy,image_verified);
+ owned_scene_gpu::CreateScope scope;
  const bool ok=owner.create_on_rhi(*ops,gears_native_owned::Quality::low,ticket);created=owner.snapshot();
  if(!ok){trial.error=8;return false;}
+ owned_scene_gpu::accept(owner.borrow_resource(),ticket);
  if(!trial.ready(canonical_identity(owner.borrow_resource()),reinterpret_cast<uintptr_t>(owner.borrow_adapter()),ticket)){
   trial.error=9;return false;}return true;
 }
@@ -32,11 +38,15 @@ bool native_owned_scene_built(void* renderer,uint64_t ticket,bool verified){usin
  const bool read=safe_copy(&target,static_cast<unsigned char*>(renderer)+0x18,8);
  return trial.construction(reinterpret_cast<uintptr_t>(renderer),ticket,verified&&read&&healthy(),target);}
 bool native_owned_scene_begin(void* renderer,uint64_t ticket){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return healthy()&&trial.begin(reinterpret_cast<uintptr_t>(renderer),ticket);}
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ const bool ok=healthy()&&trial.begin(reinterpret_cast<uintptr_t>(renderer),ticket);
+ if(ok&&trial.renderer==reinterpret_cast<uintptr_t>(renderer)&&trial.ticket==ticket)owned_scene_gpu::activate();return ok;}
+void native_owned_scene_copy(){using namespace gears_owned_scene_live;
+ owned_scene_gpu::copy(healthy()&&trial.returned&&trial.destroyed&&trial.submitted_mask==3&&!trial.unknown_draws,trial.ticket);}
 void native_owned_scene_end(void* renderer,uint64_t ticket){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);trial.end(reinterpret_cast<uintptr_t>(renderer),ticket);healthy();}
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);trial.end(reinterpret_cast<uintptr_t>(renderer),ticket);native_owned_scene_copy();}
 void native_owned_scene_destroyed(void* renderer){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);trial.retire(reinterpret_cast<uintptr_t>(renderer));}
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);trial.retire(reinterpret_cast<uintptr_t>(renderer));native_owned_scene_copy();}
 void native_owned_scene_draw(ID3D12GraphicsCommandList* list,gears_viewport::TargetDraw const& binding,
  uintptr_t caller,unsigned kind,unsigned elements,unsigned instances){using namespace gears_owned_scene_live;
  if(!trial.resource||binding.target.resource!=trial.resource)return;
@@ -44,6 +54,7 @@ void native_owned_scene_draw(ID3D12GraphicsCommandList* list,gears_viewport::Tar
   binding.target.width==4096&&binding.target.height==2048&&verified_stereo_draw(
    frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list)),final_eye,caller,kind,elements,instances);
  trial.draw(binding.target.resource,frame_link.current(canonical_identity(list)),consuming_frame_ticket,final_eye.eye,exact);
+ owned_scene_gpu::draw(list,binding.target.resource,exact,final_eye.eye,final_eye.rect,consuming_frame_ticket);
 }
 gears_owned_scene::Receipt native_owned_scene_prepare(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* members){
  using namespace gears_owned_scene_live;if(!trial.ticket||trial.error)return {};
@@ -54,11 +65,12 @@ gears_owned_scene::Receipt native_owned_scene_prepare(ID3D12CommandQueue* queue,
  return trial.prepare(canonical_identity(queue),queue->GetDesc().Type==D3D12_COMMAND_LIST_TYPE_DIRECT,refs.data(),count);
 }
 void native_owned_scene_commit(gears_owned_scene::Receipt const& receipt){using namespace gears_owned_scene_live;
- trial.commit(receipt,[](uintptr_t identity){return frame_link.current(identity);});}
+ trial.commit(receipt,[](uintptr_t identity){return frame_link.current(identity);});native_owned_scene_copy();}
 bool native_owned_scene_retained(){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return attempted&&owner.retained();}
 void print_native_owned_scene(FILE* file){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ owned_scene_gpu::poll();owned_scene_gpu::print(file);
  healthy();const auto live=owner.snapshot();
  fprintf(file,"native_owned_scene attempted=%u resource=%llx adapter=%llx born=%llu ticket=%llu renderer=%llx width=%u height=%u built=%u entered=%u returned=%u destroyed=%u draw_mask=%u submitted_mask=%u draws=%llu unknown_draws=%llu submissions=%llu queue=%llx error=%u create_error=%u live_phase=%u live_error=%u adapter_fault=%u retained=%u retention_until_process_exit=1 canvas_redirected=0 gpu_state_certified=0 pixels_verified=0\n",
   attempted?1:0,trial.resource,trial.adapter,trial.born,trial.ticket,trial.renderer,created.width,created.height,

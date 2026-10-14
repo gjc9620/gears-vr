@@ -33,7 +33,7 @@ def main():
     # optionally the Material consumer, three graphics settings callbacks, and
     # the UIOptionList selection transaction and optional ResourceBarrier entry.
     # ResourceBarrier uses the existing system-module PE/relocation verification.
-    if not 2 <= len(targets) <= 40 or len(set(targets))!=len(targets):
+    if not 2 <= len(targets) <= 57 or len(set(targets))!=len(targets):
         raise RuntimeError('Unexpected hook target inventory')
     resolver = Resolver(args.pid, json.loads((ROOT / 'tools/package-inspector/reloaded-profile.json').read_text()))
     checks = []

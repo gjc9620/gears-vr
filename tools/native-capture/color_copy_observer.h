@@ -111,7 +111,16 @@ void observe_color_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY
 void STDMETHODCALLTYPE hook_color_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,UINT x,UINT y,UINT z,
     const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box){
     if(stereo_publish_bypass){original_color_copy(list,destination,x,y,z,source,box);return;}
-    Scope scope;observe_color_copy(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
+    Scope scope;
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+    std::lock_guard<std::recursive_mutex> frame_guard(frame_hook_mutex);
+    if(owned_scene_gpu::watching()){
+        D3D12_TEXTURE_COPY_LOCATION src{},dst{};
+        if(!safe_copy(&src,source,sizeof(src))||!safe_copy(&dst,destination,sizeof(dst)))owned_scene_gpu::uncertain();
+        else {owned_scene_gpu::use(list,canonical_identity(src.pResource),true);owned_scene_gpu::use(list,canonical_identity(dst.pResource),true);}
+    }
+#endif
+    observe_color_copy(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     original_color_copy(list,destination,x,y,z,source,box);
 }
 void print_color_copy(FILE* file){
