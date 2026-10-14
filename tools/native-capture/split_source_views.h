@@ -10,6 +10,9 @@
 namespace gears_split_sources {
 struct API {gears_shadow::Allocate allocate;gears_source_args::Constructor construct;
     gears_shadow::Destroy destroy;gears_shadow::Free free;gears_shadow::Read read;};
+// Constructor geometry only. Selecting/allocating an independent engine output
+// target belongs to the caller; this does not modify the family or source.
+struct FixedOutputBounds {std::uint32_t width{},height{};};
 enum InputFailure:unsigned {read_failed=1,family_mismatch=2,missing_original_state=4,
     missing_right_state=8,aliased_state=16,field140_nonzero=32,field418_nonzero=64};
 struct InputEvidence {bool read_succeeded{};unsigned failure_mask{};
@@ -26,8 +29,11 @@ inline bool map_outside_view(gears_source_map::Snapshot const& map,std::uintptr_
 }
 inline Result create(API api,void* family,void* source,void* right_state,bool output_bounds=false,bool preserve_geometry=false,
     bool projection_control=false,gears_projection::Phase phase=gears_projection::Phase::a1,
-    const gears_vr::StereoMatrices* stereo=nullptr) {
+    const gears_vr::StereoMatrices* stereo=nullptr,const FixedOutputBounds* fixed_output=nullptr) {
     Result result{};gears_source_args::Snapshot original{};
+    const auto fixed=fixed_output?*fixed_output:FixedOutputBounds{};
+    if(fixed_output&&(!stereo||!((fixed.width==4096&&fixed.height==2048)||(fixed.width==8192&&fixed.height==4096)))){
+        result.rejection=13;return result;}
     if(stereo && (projection_control || preserve_geometry)){result.rejection=11;return result;}
     if(stereo)for(unsigned i=0;i<2;++i)for(unsigned j=0;j<16;++j)
         if(!std::isfinite(stereo->view[i][j]) || !std::isfinite(stereo->projection[i][j])){result.rejection=12;return result;}
@@ -74,6 +80,9 @@ inline Result create(API api,void* family,void* source,void* right_state,bool ou
         x=static_cast<float>(original.value<int>(0x58));y=static_cast<float>(original.value<int>(0x5c));
         width=static_cast<float>(original.value<int>(0x60));height=static_cast<float>(original.value<int>(0x64));
     }
+    // A fixed stereo profile does not inherit game/window origins or dimensions.
+    // Only the local constructor arguments change; every source byte is retained.
+    if(fixed_output){x=y=0;width=float(fixed.width);height=float(fixed.height);}
     if(!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(width) || !std::isfinite(height) ||
        x<0 || y<0 || x+width>8192 || y+height>8192 || std::floor(x)!=x || std::floor(y)!=y ||
        width<64 || width>8192 || height<64 || height>8192 || std::floor(width)!=width ||

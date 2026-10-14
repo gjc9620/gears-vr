@@ -225,6 +225,48 @@ int main() {
     custom.projection[1][8]=INFINITY;
     result=gears_split_sources::create(api,family,source,reinterpret_cast<void*>(0x2000),false,false,false,Phase::a1,&custom);
     if(result.rejection!=12 || allocations!=allocated_before)return 30;
+    // Fixed constructor bounds use an explicit SBS profile, never the current
+    // game source rectangle. Neither family nor any source byte is modified.
+    custom=frozen_custom;
+    std::array<unsigned char,sizeof(family)> family_before{};memcpy(family_before.data(),family,sizeof(family));
+    for(auto fixed: {FixedOutputBounds{4096,2048},FixedOutputBounds{8192,4096}}){
+        memcpy(source,untouched.data(),sizeof(source));
+        const float game_rectangle[]={37,19,1919,1079};memcpy(source+0x48,game_rectangle,16);
+        const int game_output[]={11,7,2559,1439};memcpy(source+0x58,game_output,16);
+        std::array<unsigned char,0x430> saved{};memcpy(saved.data(),source,sizeof(source));
+        result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,false,false,Phase::a1,&custom,&fixed);
+        if(result.checks!=63||memcmp(source,saved.data(),sizeof(source))||memcmp(family,family_before.data(),sizeof(family)))return 54;
+        const float n=float(fixed.height);
+        for(unsigned i=0;i<2;++i){const std::array<float,4> expected{float(i)*n,0,n,n};
+            if(memcmp(result.inputs[i].bytes.data()+0x48,expected.data(),16)||
+               memcmp(static_cast<unsigned char*>(result.views[i])+0x48,expected.data(),16)||
+               memcmp(result.inputs[i].bytes.data()+0x70,custom.view[i].data(),64)||
+               memcmp(result.inputs[i].bytes.data()+0xb0,custom.projection[i].data(),64))return 55;
+            auto protected_input=result.inputs[i];memcpy(protected_input.bytes.data()+0x48,saved.data()+0x48,16);
+            memcpy(protected_input.bytes.data()+0x70,saved.data()+0x70,128);
+            if(protected_input.bytes!=saved)return 56;
+        }
+        if(!release(api,result))return 57;
+    }
+    memcpy(source,untouched.data(),sizeof(source));
+    const auto fixed_allocations=allocations,fixed_constructs=constructs;
+    for(auto invalid:{FixedOutputBounds{0,0},FixedOutputBounds{2048,2048},FixedOutputBounds{4096,4096},
+        FixedOutputBounds{8192,2048},FixedOutputBounds{4095,2048},FixedOutputBounds{UINT32_MAX,4096}}){
+        result=create(api,family,source,reinterpret_cast<void*>(0x2000),false,false,false,Phase::a1,&custom,&invalid);
+        if(result.rejection!=13||result.checks||result.views[0]||result.views[1]||allocations!=fixed_allocations||constructs!=fixed_constructs||
+           memcmp(source,untouched.data(),sizeof(source)))return 58;
+    }
+    const FixedOutputBounds low{4096,2048};
+    result=create(api,family,source,reinterpret_cast<void*>(0x2000),false,false,false,Phase::a1,nullptr,&low);
+    if(result.rejection!=13||allocations!=fixed_allocations||constructs!=fixed_constructs)return 59;
+    result=create(api,family,source,reinterpret_cast<void*>(0x2000),false,true,false,Phase::a1,&custom,&low);
+    if(result.rejection!=11||allocations!=fixed_allocations)return 60;
+    result=create(api,family,source,reinterpret_cast<void*>(0x2000),false,false,true,Phase::b,&custom,&low);
+    if(result.rejection!=11||allocations!=fixed_allocations)return 61;
+    // Explicit nullptr is exactly the default legacy geometry/matrix path.
+    result=create(api,family,source,reinterpret_cast<void*>(0x2000),false,false,false,Phase::a1,&custom,nullptr);
+    if(result.checks!=63||result.inputs[0].value<float>(0x50)!=960||result.inputs[0].value<float>(0x54)!=1080||
+       result.inputs[1].value<float>(0x48)!=960||memcmp(source,untouched.data(),sizeof(source))||!release(api,result))return 62;
     unsigned freed_before_partial=frees;
     allocation_limit=allocations+1;result=run();allocation_limit=100;
     if(result.views[0] || result.views[1] || result.cleanup_safe || frees!=freed_before_partial+1)return 3;
@@ -308,6 +350,20 @@ int main() {
         // current source's deliberately aliased interior bucket pointer.
         clear_fixture_maps();for(void* pointer:result.views)free_view(pointer,0x430);
     }
+    // Fixed bounds retain the existing nonempty-map deep-copy certificate.
+    begin_map_case(MapMode::normal,2);
+    std::array<unsigned char,0x430> fixed_source{};memcpy(fixed_source.data(),source,sizeof(source));
+    auto fixed_map_before=std::make_unique<gears_source_map::Snapshot>();
+    if(!gears_source_map::read(read,reinterpret_cast<uintptr_t>(source)+0x140,*fixed_map_before))return 63;
+    result=create(api,family,source,reinterpret_cast<void*>(0x2000),false,false,false,Phase::a1,&custom,&low);
+    if(result.checks!=63||result.map_checks!=63||result.map_nodes!=2||memcmp(source,fixed_source.data(),sizeof(source)))return 64;
+    for(unsigned i=0;i<2;++i){auto cloned_map=std::make_unique<gears_source_map::Snapshot>();
+        if(!gears_source_map::read(read,reinterpret_cast<uintptr_t>(result.views[i])+0x140,*cloned_map)||
+           !gears_source_map::same_contents(*fixed_map_before,*cloned_map)||!gears_source_map::independent(*fixed_map_before,*cloned_map)||
+           result.inputs[i].value<float>(0x48)!=float(i*2048)||result.inputs[i].value<float>(0x50)!=2048||
+           result.inputs[i].value<float>(0x54)!=2048)return 65;
+    }
+    if(!release(api,result))return 66;
     clear_fixture_maps();map_test_enabled=false;
     if(map_nodes_allocated!=map_nodes_freed||map_buckets_allocated!=map_buckets_freed)return 50;
     printf("Split sources: first-guard evidence, map copy/independence/after ownership+read failure/source mutation, rectangles and quarantine passed\n");return 0;
