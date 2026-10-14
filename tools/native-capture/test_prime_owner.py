@@ -4,6 +4,13 @@ from prime_owner import owner_argument,pending_prime,graphics_prime_count
 
 
 class PrimeOwnerTests(unittest.TestCase):
+    def test_menu_lock_inventory_is_explicit(self):
+        status='capturing pid=12 lifetime=owner native_hooks_enabled=4 graphics_hooks_enabled=4 scene_hooks_enabled=0'
+        self.assertEqual(graphics_prime_count(status,True,True),4)
+        with self.assertRaises(RuntimeError):graphics_prime_count(status,True,False)
+        with self.assertRaises(RuntimeError):graphics_prime_count(status.replace('=4','=3'),True,True)
+        with self.assertRaises(RuntimeError):graphics_prime_count(status,False,True)
+
     def test_graphics_policy_requires_exact_owned_inventory(self):
         status='capturing pid=12 lifetime=owner native_hooks_enabled=3 graphics_hooks_enabled=3 scene_hooks_enabled=0'
         self.assertEqual(graphics_prime_count(status,True),3)

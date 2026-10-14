@@ -23,12 +23,13 @@ def pending_prime(status,pid,owner_pid=None,owner_creation_time=None,require_own
     return not require_owned and fields.get('seconds')=='180' and 'lifetime' not in fields
 
 
-def graphics_prime_count(status, required=False):
+def graphics_prime_count(status, required=False, menu_lock=False):
     """Require the requested policy, without treating arbitrary native hooks as safe."""
+    if menu_lock and not required:raise RuntimeError('Menu lock requires startup graphics protection')
     captures=[line for line in status.splitlines() if line.startswith('capturing ')]
     if len(captures)!=1:raise RuntimeError('Expected one target-prime capture record')
     fields=dict(token.split('=',1) for token in captures[0].split()[1:] if '=' in token)
-    expected='3' if required else '0'
+    expected='4' if menu_lock else '3' if required else '0'
     if (fields.get('native_hooks_enabled')!=expected or
             fields.get('graphics_hooks_enabled','0')!=expected or fields.get('scene_hooks_enabled','0')!='0'):
         raise RuntimeError('Target-prime graphics policy differs from requested manifest')

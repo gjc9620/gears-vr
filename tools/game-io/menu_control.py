@@ -24,6 +24,39 @@ INITIALIZING_ERRORS = frozenset((
     'Expected one registered GameUISceneClient; found 0',
     'Invalid name array header', 'Invalid object array header',
 ))
+REGISTRY_IDENTITY_CHANGED = 'Object registry identity changed'
+
+
+def reader_process_identity(reader):
+    """Bind the reader's existing process handle to a PID and creation FILETIME."""
+    import ctypes as c
+    from ctypes import wintypes as w
+    kernel = c.WinDLL('kernel32', use_last_error=True)
+    kernel.GetProcessId.argtypes, kernel.GetProcessId.restype = [w.HANDLE], w.DWORD
+    kernel.GetProcessTimes.argtypes = [w.HANDLE, *([c.POINTER(w.FILETIME)] * 4)]
+    kernel.GetProcessTimes.restype = w.BOOL
+    handle, stamps = reader.r.p.handle, [w.FILETIME() for _ in range(4)]
+    pid = kernel.GetProcessId(handle)
+    if not pid or not kernel.GetProcessTimes(handle, *(c.byref(stamp) for stamp in stamps)):
+        raise c.WinError(c.get_last_error())
+    creation = (stamps[0].dwHighDateTime << 32) | stamps[0].dwLowDateTime
+    if not creation:
+        raise RuntimeError('Invalid game creation identity')
+    return pid, creation
+
+
+def wait_for_replacement(factory, identity, window, interrupted, *, expected_identity, **kwargs):
+    """Revalidate each fresh handle before accepting a rediscovered registry/client."""
+    def matching_factory():
+        reader = factory()
+        try:
+            if identity(reader) != expected_identity:
+                raise RuntimeError('Game process creation identity changed')
+        except Exception:
+            reader.close()
+            raise
+        return reader
+    return wait_for_reader(matching_factory, window, interrupted, **kwargs)
 
 
 def wait_for_reader(factory, window, interrupted, *, target, deadline,
@@ -101,8 +134,13 @@ def fingerprint(state):
 
 def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
             max_actions=5, emit=lambda event: None, now=time.monotonic, sleep=time.sleep,
-            target=None, deadline=None):
-    """Injectable polling controller. Successful confirmation is not level readiness."""
+            target=None, deadline=None, recover_reader=None):
+    """Injectable polling controller. Successful confirmation is not level readiness.
+
+    Optional recovery replaces the source used by read_state and returns a reader
+    wait reason. It runs only for the recognized stale registry identity error;
+    its failures propagate, and recovery never preserves snapshot stability.
+    """
     if seconds <= 0 or max_actions < 1:
         raise ValueError('seconds and max-actions must be positive')
     target = window() if target is None else target
@@ -132,6 +170,11 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
             if message != last_error:
                 emit(dict(event='read_error', error=message))
             last_error, last, stable_since = message, None, None
+            if (recover_reader is not None and type(error) is RuntimeError
+                    and str(error) == REGISTRY_IDENTITY_CHANGED):
+                reason = recover_reader()
+                if reason != 'ready':
+                    return finish(reason)
             sleep(min(.15, max(0, deadline - now())))
             continue
         if current != last:
@@ -144,6 +187,11 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
             except Exception as error:
                 emit(dict(event='read_error', error=type(error).__name__ + ': ' + str(error)))
                 last, stable_since = None, None
+                if (recover_reader is not None and type(error) is RuntimeError
+                        and str(error) == REGISTRY_IDENTITY_CHANGED):
+                    reason = recover_reader()
+                    if reason != 'ready':
+                        return finish(reason)
                 sleep(min(.15, max(0, deadline - now())))
                 continue
             if fingerprint(before) != current or not allowed(before, pid):
@@ -223,9 +271,22 @@ def main():
                               level_ready=False, pid=args.pid)
                 emit(dict(event='finished', **result))
             else:
-                result = control(reader.sample, send_confirm, game_window, interrupted,
+                identity = reader_process_identity(reader)
+                if identity[0] != args.pid:
+                    raise RuntimeError('Reader process PID mismatch')
+                def recover_reader():
+                    nonlocal reader
+                    replacement, reason = wait_for_replacement(
+                        lambda: MenuReader(args.pid), reader_process_identity, game_window, interrupted,
+                        expected_identity=identity, target=target, deadline=deadline, emit=emit)
+                    if replacement is not None:
+                        previous, reader = reader, replacement
+                        previous.close()
+                        emit(dict(event='reader_reacquired', pid=identity[0], creation_time=identity[1]))
+                    return reason
+                result = control(lambda: reader.sample(), send_confirm, game_window, interrupted,
                                  pid=args.pid, seconds=args.seconds, max_actions=args.max_actions,
-                                 emit=emit, target=target, deadline=deadline)
+                                 emit=emit, target=target, deadline=deadline, recover_reader=recover_reader)
         except Exception as error:
             emit(dict(event='error', error=type(error).__name__ + ': ' + str(error)))
             result = dict(reason='error', loading_requested=False, level_ready=False)

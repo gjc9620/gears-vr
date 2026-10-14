@@ -1,7 +1,8 @@
 """Pure offline control-policy tests; no reader/process/input is imported."""
 import copy
 import unittest
-from menu_control import control, allowed, fingerprint, ONLINE_TITLE, ONLINE_MESSAGE, wait_for_reader
+from menu_control import (control, allowed, fingerprint, ONLINE_TITLE, ONLINE_MESSAGE,
+                          wait_for_reader, wait_for_replacement, REGISTRY_IDENTITY_CHANGED)
 
 
 def state(continuing=False):
@@ -315,6 +316,122 @@ class InitializationTests(unittest.TestCase):
             return self.target if calls[0] == 1 else (123, 999)
         self.assertEqual(self.wait(lambda: self, window=window)[1], 'window_changed')
         self.assertEqual(self.closed, 2)
+
+
+class ReaderRecoveryTests(unittest.TestCase):
+    class Reader:
+        def __init__(self, value, identity=(123, 1000)):
+            self.value, self.identity, self.closed = value, identity, False
+            self.stale = False
+
+        def sample(self):
+            if self.stale:
+                raise RuntimeError(REGISTRY_IDENTITY_CHANGED)
+            return copy.deepcopy(self.value)
+
+        def close(self):
+            self.closed = True
+
+    def test_relocation_recovers_after_sent_action_and_restarts_stability(self):
+        original, replacement = self.Reader(state()), self.Reader(state(True))
+        current, recoveries = [original], []
+        def send(*_):
+            current[0].stale = True
+        def recover():
+            fresh, reason = wait_for_replacement(
+                lambda: replacement, lambda reader: reader.identity,
+                lambda: (123, 456), lambda: False, expected_identity=original.identity,
+                target=(123, 456), deadline=10, now=lambda: 0)
+            current[0].close()
+            current[0] = fresh
+            recoveries.append(reason)
+            return reason
+        result, _, actions = ControllerTests().run_control(
+            lambda: current[0].sample(), send, recover_reader=recover)
+        self.assertEqual(result['reason'], 'loading_requested')
+        self.assertEqual(recoveries, ['ready'])
+        self.assertTrue(original.closed)
+        self.assertEqual(len(actions), 2)
+        self.assertGreaterEqual(actions[1][0] - actions[0][0], .9)
+
+    def test_relocation_does_not_retry_already_sent_choice(self):
+        original, replacement = self.Reader(state()), self.Reader(state())
+        current = [original]
+        def recover():
+            original.close()
+            current[0] = replacement
+            return 'ready'
+        result, _, actions = ControllerTests().run_control(
+            lambda: current[0].sample(), lambda *_: setattr(original, 'stale', True),
+            recover_reader=recover)
+        self.assertEqual(result['reason'], 'timeout')
+        self.assertEqual(len(actions), 1)
+
+    def test_preaction_relocation_requires_new_stability_period(self):
+        calls, recoveries = [0], []
+        def read():
+            calls[0] += 1
+            if calls[0] == 6:
+                raise RuntimeError(REGISTRY_IDENTITY_CHANGED)
+            return state()
+        result, _, actions = ControllerTests().run_control(
+            read, recover_reader=lambda: recoveries.append(True) or 'ready')
+        self.assertEqual(len(recoveries), 1)
+        self.assertEqual(len(actions), 1)
+        self.assertGreaterEqual(actions[0][0], 1.35)
+
+    def test_same_pid_new_creation_rejected_and_candidate_closed(self):
+        replacement = self.Reader(state(True), identity=(123, 1001))
+        def recover():
+            return wait_for_replacement(
+                lambda: replacement, lambda reader: reader.identity,
+                lambda: (123, 456), lambda: False, expected_identity=(123, 1000),
+                target=(123, 456), deadline=10, now=lambda: 0)[1]
+        def read():
+            raise RuntimeError(REGISTRY_IDENTITY_CHANGED)
+        with self.assertRaisesRegex(RuntimeError, 'Game process creation identity changed'):
+            ControllerTests().run_control(read, recover_reader=recover)
+        self.assertTrue(replacement.closed)
+
+    def test_unknown_sample_error_does_not_reacquire(self):
+        def read():
+            raise RuntimeError('UI interaction backlink mismatch')
+        def recover():
+            self.fail('Only the exact registry identity error may reacquire')
+        result, _, actions = ControllerTests().run_control(read, recover_reader=recover)
+        self.assertEqual(result['reason'], 'timeout')
+        self.assertFalse(actions)
+
+    def test_replacement_failure_is_not_swallowed_by_polling(self):
+        def read():
+            raise RuntimeError(REGISTRY_IDENTITY_CHANGED)
+        def recover():
+            def factory():
+                raise RuntimeError('Executable hash differs from validated build; re-discover offsets')
+            return wait_for_replacement(
+                factory, lambda reader: reader.identity,
+                lambda: (123, 456), lambda: False, expected_identity=(123, 1000),
+                target=(123, 456), deadline=10, now=lambda: 0)[1]
+        with self.assertRaisesRegex(RuntimeError, 'Executable hash differs'):
+            ControllerTests().run_control(read, recover_reader=recover)
+
+    def test_recovery_focus_stop_and_deadline_keep_original_guards(self):
+        for reason in ('interrupted', 'window_changed', 'timeout'):
+            with self.subTest(reason=reason):
+                def factory():
+                    self.fail('Stopped recovery must not construct another reader')
+                def recover():
+                    return wait_for_replacement(
+                        factory, lambda reader: reader.identity,
+                        lambda: (123, 999) if reason == 'window_changed' else (123, 456),
+                        lambda: reason == 'interrupted', expected_identity=(123, 1000),
+                        target=(123, 456), deadline=0 if reason == 'timeout' else 10,
+                        now=lambda: 0)[1]
+                def read():
+                    raise RuntimeError(REGISTRY_IDENTITY_CHANGED)
+                result, _, actions = ControllerTests().run_control(read, recover_reader=recover)
+                self.assertEqual(result['reason'], reason)
+                self.assertFalse(actions)
 
 
 if __name__ == '__main__':

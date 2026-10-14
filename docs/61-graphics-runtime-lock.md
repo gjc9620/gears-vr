@@ -1,6 +1,6 @@
 # DLSS/DLAA 运行时锁：实际设置调用链
 
-2026-10-15。目标是首版运行期间禁止重新启用未经测试的DLSS/DLAA，同时保留其他设置的正常应用。启动INI关闭已存在；GraphicsLock1通过continuous阶段实际启用请求测试，GraphicsStartup1/2补齐关卡前保护及一次实际交接。菜单标签修正和锁启用后的其他设置回归仍未完成。
+2026-10-15。目标是首版运行期间禁止重新启用未经测试的DLSS/DLAA，同时保留其他设置的正常应用。启动INI关闭已存在；GraphicsLock1通过continuous阶段实际启用请求测试，GraphicsStartup1/2补齐关卡前保护及实际交接；GraphicsMenu1补齐普通列表选择的缓存修正和其他设置回归。预设批量赋值等路径仍未完整覆盖。
 
 ## 实际游戏证据
 
@@ -36,7 +36,7 @@ PID53840，`manifest-graphics-lock1.json`，DLL SHA256 `611b5c2e6f9c58ed43486519
 
 ## 剩余工作
 
-菜单暂存值需要沿已认证选择/Apply事务与真实刷新接口恢复，不能盲写控件；现有setter成功返回不会自动重置该值。补测锁启用后其他设置仍可应用，以及尚未覆盖的缩放选择。启动取消和一次关卡交接已通过，但实际故障分支与direct分支尚未完整覆盖，尚不作为首版完整锁定。
+GraphicsMenu1已在实际列表选择事务中阻止新的DLSS暂存值，普通AA左右切换和各向异性过滤回归见下节。预设批量赋值、已有缓存3的迁移、尚未覆盖的缩放选择仍须区分；不能把普通选择路径通过等同于所有菜单写入路径已覆盖。实际故障分支与direct分支尚未完整覆盖，尚不作为首版完整锁定。
 
 ## GraphicsStartup1/2：启动菜单保护与交接
 
@@ -57,3 +57,23 @@ Startup2 DLL SHA256 `963efc35399824bdb4c1bbb6d14893e6d12faa31e16ba52acc818853c77
 证据：`analysis/runtime/graphics-startup1-50260-prime-status.txt`、`graphics-startup1-after-cancel-complete.json`、`graphics-startup1-32568-prime-status.txt`；`analysis/graphics-lock/graphics-startup2-52996.audit.json`、`analysis/runtime/continuous-stereo-52996-20261015-031630-9d9e33c2.*`、`graphics-startup2-after-stop.json`、`graphics-startup2-normal-close.json`。本轮没有用截图导航；已有启动配置自动保存一次原分辨率GPU图，本次未用它作视觉结论。
 
 缓存修正的只读线索：PID50260活跃AA控件绑定`<WarfareGameResources:Antialiasing>`，BindingIndex=0；解析后的datastore中`SelectedAntialiasingSetting`为IntProperty、offset0x200、当前值3。实际反射发现RefreshSubscriberValue/SaveSubscriberValue NativeFunc分别RVA46a248/b72e8c，元数据及入口双读一致。证据保存在`analysis/graphics-lock/startup1-ui-reflection-50260.json`；调用ABI和正确刷新事务尚未证明，不能仅凭字段偏移直接写入或调用。
+
+## GraphicsMenu1：真实列表控件的选择事务
+
+上节两项NativeFunc的归属在PID51076已纠正：它们属于`UIOptionButton`，不是实际AA控件的基类。实际继承关系为`WarUIListButton → UIOptionList → UIOptionListBase → UIObject`，subscriber接口在对象+0x4dc。对应Refresh/Save exec thunk为RVAb6d41c/b730b4；它们经接口派发，不能当作普通setter直接调用。旧46a248/b72e8c使用+0x508接口的事实没有错，但不适用于这个控件。
+
+当前列表的SetCurrentIndex vtable槽0x590指向RVAc7f63c。汇编确认RCX=this、EDX=index；函数校验范围后写this+0x5d8，再调用原通知路径。Next(c7fedc)/Prev(c80104)全部修改分支都经同一槽派发。PID51076对这三个完整连续函数分别413/251/204字节读回，SHA256与历史代码节对应字节一致；不是仅凭前32字节推断整个函数。原IDA数据库哈希前后均为66d17edbf21bf81f0fe5cf740111e738a0308ac9228f7576fe39f460baad1813；只在私有副本导出汇编，已关闭自有lease。伪代码复用知识库缓存。
+
+默认OFF的`GEARS_GRAPHICS_MENU_LOCK`要求startup/runtime lock。reserve先对SetCurrentIndex完整413字节做SHA256认证，再预留第四个Hook。回调只对请求index3、已注册的WarUIListButton、精确AA对象名、PenderGraphicsSettings祖先、binding0、subscriber/interface回指、完整markup及已注册datastore匹配时，保留当前0..2选择；若当前已是3则通过原函数选择0。原函数调用一次，不直接写控件或datastore，不伪造FFrame。这里的scene祖先检查是归属检查，不宣称证明该scene在屏幕最前；已初始化的同名设置scene也受相同策略约束。
+
+第四入口沿用owned-prime取消与continuous交接，完整会话ledger容量及独立恢复验证更新为39，并加入运行时入口签名。日志`row.after`仅是原通知返回后的诊断读数，不代替独立对象身份与菜单读取。构建初次遇到Windows `interface`宏与变量名冲突，重命名后全目标构建通过；尚未运行游戏的失败构建日志仍保留。新CPU fixture覆盖对象/名字注册表、继承归属、绑定、索引及只读拒绝边界；ordinary/continuous自测、5项prime-owner及34项launcher测试通过。
+
+实际PID51304，DLL SHA256 `01c4a1dadd9a8f74666ae1cd6133ca89749b9b11350d0e3ed0e23490a2052314`。AA初值NONE(0)，向左后仍0；向右依次1(FXAA)、2(FSR)、2，第三次不能进入DLSS。随后正常恢复0、应用、确认、重新进入，仍为NONE/NATIVE。测试期间没有应用FXAA/FSR，不宣称它们的VR兼容性已通过。各向异性过滤4x→8x→4x、4x→16x(index3)→4x均通过应用及重新打开检查，说明其他控件的index3未被错误拦截；最终INI为MaxAnisotropy=4、DLSS=False。
+
+证据：`analysis/graphics-lock/menu-cache1-code-live.json`、`menu-cache1-ida/`；`analysis/runtime/menu-cache1-inherited-interfaces.json`、`menu-cache1-increment-interfaces.json`、`graphics-menu1-selection.json`、`graphics-menu1-other-setting.json`、`graphics-menu1-other-index3.json`。返回主菜单首次脚本误期待“无改动也弹Apply确认”，状态检查在实际DeltaOptions安全停止；随后按真实分支继续，没有重复盲按。
+
+同一PID51304从主菜单继续到关卡，prime的4个图形入口成功交给continuous。111604次启动平面提交后接续带ticket的projection；关卡双目29.1003676秒、2620次projection、2134张新图，最大提交间隔52.2144ms。选择回调24次、阻止2次（0向左请求3保持0；2向右请求3保持2），collector/commit各441395次，faults=0。停止、独立39入口字节检查、XR对象销毁及正常关闭游戏通过；停止后重新认证原入口，normal/alternate=0、ScreenPercentage/FINAL=100、factor=1。本轮菜单调试停留较长，累计collector计数不可当作关卡帧数；不宣称高分辨率、真头显或字幕像素已验收。
+
+菜单锁OFF、启动/运行时锁ON的三入口分支在独立新构建目录编译通过（`analysis/graphics-lock/menu-off1-build.log`），未改写冻结的实际测试DLL；该项仅为编译回归，不是新增运行测试。
+
+导航时旧MenuReader在DeltaMainMenu→DeltaCampaignType后报告`Object registry identity changed`，同一reader持续失败直到45秒超时。新建只读reader确认当前已是单人游戏菜单后，按状态继续到Continue，未重新发送Campaign动作。相关证据保留在`graphics-menu1-continue2.continue.jsonl`和`graphics-menu1-continue3.json`；这不是游戏崩溃或native交接失败。最终汇总：`analysis/graphics-lock/graphics-menu1-51304.audit.json`、`analysis/runtime/continuous-stereo-51304-20261015-033702-c6e3b30f.*`、`graphics-menu1-after-stop.json`及`graphics-menu1-normal-close.json`。

@@ -34,10 +34,12 @@ def rooted(value,root=ROOT):
 def settings(config,manifest,root=ROOT):
     if set(config)-{'game_path','stereo_units_per_metre'}:raise ValueError('Unknown configuration field')
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
-    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','graphics_startup_lock')):
+    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','graphics_startup_lock','graphics_menu_lock')):
         raise ValueError('Manifest session options must be boolean')
     if manifest.get('graphics_startup_lock',False) and not manifest.get('startup_menu',False):
         raise ValueError('Startup graphics lock requires owned startup menu lifecycle')
+    if manifest.get('graphics_menu_lock',False) and not manifest.get('graphics_startup_lock',False):
+        raise ValueError('Menu lock requires startup graphics protection')
     if manifest.get('ui_hud_plane',False) and not (manifest.get('ui_observer',False) and manifest.get('anchor_observer',False)):
         raise ValueError('HUD plane requires UI observer and anchor observer in the continuous launcher')
     scale=config.get('stereo_units_per_metre',100)
@@ -137,6 +139,7 @@ class Backend:
         if owner:
             cmd+=['--prime-owner-pid',str(owner['pid']),'--prime-owner-creation-time',str(owner['creation_time'])]
         if manifest.get('graphics_startup_lock',False):cmd+=['--graphics-startup-lock']
+        if manifest.get('graphics_menu_lock',False):cmd+=['--graphics-menu-lock']
         result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
         log.write_text(result.stdout+'\n'+result.stderr,encoding='utf-8')
         if result.returncode:raise RuntimeError('Fresh reservation failed; no retry: '+str(log))
@@ -148,8 +151,9 @@ class Backend:
         if len(reports)!=1:raise RuntimeError('Reservation did not return one accepted PID')
         report=reports[0]
         graphics_required=manifest.get('graphics_startup_lock',False)
+        graphics_count=4 if manifest.get('graphics_menu_lock',False) else 3 if graphics_required else 0
         if (not report.get('hooks_enabled') or report.get('native_hooks_enabled')!=graphics_required or
-                report.get('graphics_hooks_enabled',0)!=(3 if graphics_required else 0) or report.get('scene_hooks_enabled',False) or
+                report.get('graphics_hooks_enabled',0)!=graphics_count or report.get('scene_hooks_enabled',False) or
                 not report.get('first_view_mask_reserved') or not all(x['matches'] for x in report['independent_entry_checks'])):
             raise RuntimeError('Reservation proof rejected')
         if owner and (report.get('prime_lifetime')!='owner' or report.get('prime_owner_pid')!=owner['pid'] or

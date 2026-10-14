@@ -1,5 +1,6 @@
 #pragma once
 #include "graphics_lock.h"
+#include "graphics_menu_lock.h"
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
 #if !defined(GEARS_GRAPHICS_LOCK_OBSERVER) || !GEARS_GRAPHICS_LOCK_OBSERVER
 #error GEARS_GRAPHICS_RUNTIME_LOCK requires GEARS_GRAPHICS_LOCK_OBSERVER
@@ -17,7 +18,16 @@ using Menu=uint32_t (__fastcall*)(void*,int32_t);
 using Collector=uint64_t (__fastcall*)(void*); // Raw machine RAX; no recovered C++ return claim.
 using Commit=uint32_t (__fastcall*)(void*);
 Menu menu_original{};Collector collector_original{};Commit commit_original{};
-std::array<void*,3> targets{};bool reserved{};
+#if defined(GEARS_GRAPHICS_MENU_LOCK) && GEARS_GRAPHICS_MENU_LOCK
+inline constexpr unsigned target_count=4;
+#else
+inline constexpr unsigned target_count=3;
+#endif
+std::array<void*,target_count> targets{};bool reserved{};
+gears_graphics_lock::Entry const& target_entry(unsigned i){
+ static const gears_graphics_lock::Entry selection{gears_graphics_menu::set_index_rva,gears_graphics_menu::entry_bytes};
+ return i<3?gears_graphics_lock::entries[i]:selection;
+}
 thread_local unsigned depth{};thread_local uintptr_t current_settings{};
 struct Fields {uintptr_t vtable{};uint32_t normal{},alternate{},queueflag{},selector_thread{},mask{};};
 struct Row {DWORD thread{};uintptr_t caller{},settings{},collector_settings{},command{},command_vtable{};
@@ -174,29 +184,61 @@ uint32_t commit_dispatch(void* command,uintptr_t caller){Scope scope;
  // Command/view/payload may already be retired: read only fixed singleton after.
  if(row){row->result=result;row->after=fields(row->settings);}return result;}
 uint32_t __fastcall commit_hook(void* command){return commit_dispatch(command,reinterpret_cast<uintptr_t>(_ReturnAddress()));}
+#if defined(GEARS_GRAPHICS_MENU_LOCK) && GEARS_GRAPHICS_MENU_LOCK
+using Select=void (__fastcall*)(void*,int32_t);
+Select select_original{};
+std::atomic<uint64_t> selection_calls{},selection_blocked{};
+struct SelectionRow {uintptr_t object{},caller{};DWORD thread{};int32_t before{},requested{},forward{},after{};};
+std::array<SelectionRow,16> selection_rows{};std::atomic<unsigned> selection_count{};
+bool certify_selection(){
+ std::array<unsigned char,gears_graphics_menu::set_index_size> bytes{};
+ if(!safe_copy(bytes.data(),reinterpret_cast<void*>(base+gears_graphics_menu::set_index_rva),bytes.size()))return false;
+ BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};unsigned char digest[32]{};
+ bool ok=BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0;
+ if(ok)ok=BCryptCreateHash(algorithm,&hash,nullptr,0,nullptr,0,0)>=0;
+ if(ok)ok=BCryptHashData(hash,bytes.data(),static_cast<ULONG>(bytes.size()),0)>=0;
+ if(ok)ok=BCryptFinishHash(hash,digest,32,0)>=0;
+ if(hash)BCryptDestroyHash(hash);if(algorithm)BCryptCloseAlgorithmProvider(algorithm,0);
+ char text[65]{};for(unsigned i=0;i<32;++i)sprintf_s(text+2*i,3,"%02x",digest[i]);
+ return ok&&!strcmp(text,gears_graphics_menu::set_index_sha256);
+}
+void __fastcall select_hook(void* object,int32_t index){Scope scope;++selection_calls;
+ runtime::Read read;const auto choice=gears_graphics_menu::select(read,base,reinterpret_cast<uintptr_t>(object),index);
+ SelectionRow* row=nullptr;
+ if(choice.matched){++selection_blocked;unsigned slot=selection_count.fetch_add(1);
+  if(slot<selection_rows.size()){row=&selection_rows[slot];*row={reinterpret_cast<uintptr_t>(object),
+   reinterpret_cast<uintptr_t>(_ReturnAddress()),GetCurrentThreadId(),choice.before,index,choice.forward,-1};}}
+ select_original(object,choice.forward);
+ if(row)safe_copy(&row->after,reinterpret_cast<const unsigned char*>(object)+0x5d8,4);
+}
+#endif
 }
 bool reserve_graphics_lock_observer(){using namespace graphics_observer;
  if(reserved)return true;
- for(unsigned i=0;i<3;++i){auto const& e=gears_graphics_lock::entries[i];targets[i]=reinterpret_cast<void*>(base+e.rva);
+ for(unsigned i=0;i<target_count;++i){auto const& e=target_entry(i);targets[i]=reinterpret_cast<void*>(base+e.rva);
   std::array<unsigned char,32> actual{};if(!safe_copy(actual.data(),targets[i],32)||actual!=e.bytes)return false;}
- std::array<void*,3> detours{reinterpret_cast<void*>(menu_hook),reinterpret_cast<void*>(collector_hook),reinterpret_cast<void*>(commit_hook)};
- std::array<void**,3> originals{reinterpret_cast<void**>(&menu_original),reinterpret_cast<void**>(&collector_original),reinterpret_cast<void**>(&commit_original)};
- for(unsigned i=0;i<3;++i){if(MH_CreateHook(targets[i],detours[i],originals[i])!=MH_OK)return false;
-  std::array<unsigned char,32> after{};if(!safe_copy(after.data(),targets[i],32)||after!=gears_graphics_lock::entries[i].bytes)return false;}
+ std::array<void*,target_count> detours{reinterpret_cast<void*>(menu_hook),reinterpret_cast<void*>(collector_hook),reinterpret_cast<void*>(commit_hook)};
+ std::array<void**,target_count> originals{reinterpret_cast<void**>(&menu_original),reinterpret_cast<void**>(&collector_original),reinterpret_cast<void**>(&commit_original)};
+#if defined(GEARS_GRAPHICS_MENU_LOCK) && GEARS_GRAPHICS_MENU_LOCK
+ if(!certify_selection())return false;
+ detours[3]=reinterpret_cast<void*>(select_hook);originals[3]=reinterpret_cast<void**>(&select_original);
+#endif
+ for(unsigned i=0;i<target_count;++i){if(MH_CreateHook(targets[i],detours[i],originals[i])!=MH_OK)return false;
+  std::array<unsigned char,32> after{};if(!safe_copy(after.data(),targets[i],32)||after!=target_entry(i).bytes)return false;}
  reserved=true;return true;}
 bool graphics_lock_observer_reserved_target(void* target){using namespace graphics_observer;
  return reserved&&std::find(targets.begin(),targets.end(),target)!=targets.end();}
 bool graphics_lock_primed_bytes(void* target,std::array<unsigned char,32>& bytes){
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
  using namespace graphics_observer;
- if(runtime::startup.load(std::memory_order_acquire))for(unsigned i=0;i<3;++i)
-  if(target==targets[i]){bytes=gears_graphics_lock::entries[i].bytes;return true;}
+ if(runtime::startup.load(std::memory_order_acquire))for(unsigned i=0;i<target_count;++i)
+  if(target==targets[i]){bytes=target_entry(i).bytes;return true;}
 #endif
  return false;
 }
 unsigned graphics_lock_prime_count(){
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
- return graphics_observer::runtime::startup.load(std::memory_order_acquire)?3:0;
+ return graphics_observer::runtime::startup.load(std::memory_order_acquire)?graphics_observer::target_count:0;
 #else
  return 0;
 #endif
@@ -213,7 +255,7 @@ bool begin_graphics_lock_prime(FILE* status,bool owned){
   return false;}
  runtime::startup.store(true,std::memory_order_release);
  for(auto target:targets)if(MH_QueueEnableHook(target)!=MH_OK)return false;
- fprintf(status,"graphics_prime_admission admitted=1 hooks=3\n");
+ fprintf(status,"graphics_prime_admission admitted=1 hooks=%u\n",target_count);
 #else
  (void)status;(void)owned;
 #endif
@@ -229,8 +271,8 @@ bool disable_graphics_lock_prime(){
 bool graphics_lock_prime_restored(){
  if(!graphics_lock_prime_count())return true;
  std::array<unsigned char,32> bytes{};
- for(unsigned i=0;i<3;++i)if(!safe_copy(bytes.data(),graphics_observer::targets[i],32)||
-  bytes!=gears_graphics_lock::entries[i].bytes)return false;
+ for(unsigned i=0;i<graphics_observer::target_count;++i)if(!safe_copy(bytes.data(),graphics_observer::targets[i],32)||
+  bytes!=graphics_observer::target_entry(i).bytes)return false;
  return true;
 }
 bool graphics_lock_accept_handoff(){
@@ -253,9 +295,13 @@ bool enable_graphics_lock_observer(){using namespace graphics_observer;
    fprintf(diagnostic_status,"graphics_runtime_lock_admission rejected=1 reason=%u policy_reason=%u failed_window_rva=0x%llx\n",unsigned(f.reason),f.policy_reason,f.window);}
   return false;}
 #endif
- return install(targets[0],reinterpret_cast<void*>(menu_hook),reinterpret_cast<void**>(&menu_original))&&
+ bool ok=install(targets[0],reinterpret_cast<void*>(menu_hook),reinterpret_cast<void**>(&menu_original))&&
   install(targets[1],reinterpret_cast<void*>(collector_hook),reinterpret_cast<void**>(&collector_original))&&
-  install(targets[2],reinterpret_cast<void*>(commit_hook),reinterpret_cast<void**>(&commit_original));}
+  install(targets[2],reinterpret_cast<void*>(commit_hook),reinterpret_cast<void**>(&commit_original));
+#if defined(GEARS_GRAPHICS_MENU_LOCK) && GEARS_GRAPHICS_MENU_LOCK
+ ok=ok&&install(targets[3],reinterpret_cast<void*>(select_hook),reinterpret_cast<void**>(&select_original));
+#endif
+ return ok;}
 void print_graphics_lock_observer(FILE* file,bool disabled){using namespace graphics_observer;
  unsigned observe_only=1,effective=0,startup=graphics_lock_prime_count()?1:0;
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
@@ -264,6 +310,12 @@ void print_graphics_lock_observer(FILE* file,bool disabled){using namespace grap
 #endif
  fprintf(file,"graphics_lock_observer enabled=1 observe_only=%u lock_effective=%u startup_before_level=%u stopped_safe=%u fields_bits=vtable:1,normal:2,alternate:4,queueflag:8,selector_thread:16 command_bits=extent192:1,caller_before32:2,caller_after32:4\n",observe_only,effective,startup,disabled&&!active.load()?1:0);
  if(!disabled||active.load())return;
+#if defined(GEARS_GRAPHICS_MENU_LOCK) && GEARS_GRAPHICS_MENU_LOCK
+ fprintf(file,"graphics_menu_lock calls=%llu blocked=%llu rows=%u\n",selection_calls.load(),selection_blocked.load(),(std::min)(selection_count.load(),unsigned(selection_rows.size())));
+ for(unsigned i=0;i<(std::min)(selection_count.load(),unsigned(selection_rows.size()));++i){auto const& r=selection_rows[i];
+  fprintf(file,"graphics_menu_lock_row object=0x%llx caller_rva=0x%llx thread=%lu before=%d requested=%d forward=%d after=%d\n",
+   r.object,r.caller>=base?r.caller-base:0,r.thread,r.before,r.requested,r.forward,r.after);}
+#endif
 #if defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK
  fprintf(file,"graphics_runtime_lock enabled=1 continuous_only=%u startup_before_level=%u admitted=%u protected=%u effective=%u menuBlocked=%llu normalCleared=%llu commandCleared=%llu faults=%llu actual_toggle_verified=0\n",startup?0:1,startup,
   runtime::armed.load()?1:0,runtime::armed.load()?1:0,runtime::armed.load()&&!runtime::faults.load()?1:0,

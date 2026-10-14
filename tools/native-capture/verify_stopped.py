@@ -30,9 +30,9 @@ def main():
         raise RuntimeError('Matching PID and clean stopped status required')
     targets = [int(value, 16) for value in re.findall(r'hook_target=([0-9A-Fa-f]+) create=MH_OK queue=MH_OK', status)]
     # UI observer adds four VM/Canvas entries, Canvas/subtitle consumers, and
-    # optionally the independently queued Material consumer and three read-only
-    # graphics settings callbacks.
-    if not 2 <= len(targets) <= 38 or len(set(targets))!=len(targets):
+    # optionally the Material consumer, three graphics settings callbacks, and
+    # the UIOptionList selection transaction. Native signatures use runtime bytes.
+    if not 2 <= len(targets) <= 39 or len(set(targets))!=len(targets):
         raise RuntimeError('Unexpected hook target inventory')
     resolver = Resolver(args.pid, json.loads((ROOT / 'tools/package-inspector/reloaded-profile.json').read_text()))
     checks = []
@@ -61,6 +61,7 @@ def main():
         camera[0x280da4]=bytes.fromhex('33c041b801000000448981140300008981d4020000898180030000488981c803')
         camera[0x2ac894]=bytes.fromhex('488bc4488958104889701848897820554154415541564157488da8f8feffff48')
         camera[0xff6f4]=bytes.fromhex('488bc44889581048896818488970205741544155415641574883ec308b590c48')
+        camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
             if rva in camera:

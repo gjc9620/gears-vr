@@ -64,6 +64,8 @@ class LauncherTests(unittest.TestCase):
     def test_graphics_startup_lock_requires_owned_lifetime(self):
         with self.assertRaisesRegex(ValueError,'owned startup'):
             launcher.settings({},dict(MANIFEST,graphics_startup_lock=True,startup_menu=False))
+        with self.assertRaisesRegex(ValueError,'requires startup'):
+            launcher.settings({},dict(MANIFEST,graphics_menu_lock=True))
 
     def test_reservation_admits_only_requested_graphics_hooks(self):
         backend=launcher.Backend.__new__(launcher.Backend)
@@ -79,6 +81,11 @@ class LauncherTests(unittest.TestCase):
                 self.assertEqual(backend.reserve(manifest,log,owner=owner)['graphics_hooks_enabled'],3)
                 self.assertIn('--graphics-startup-lock',spawn.call_args.args[0])
                 with self.assertRaisesRegex(RuntimeError,'proof'):backend.reserve(MANIFEST,log)
+            report['graphics_hooks_enabled']=4
+            with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(report),stderr='')) as spawn:
+                self.assertEqual(backend.reserve(dict(manifest,graphics_menu_lock=True),log,owner=owner)['graphics_hooks_enabled'],4)
+                self.assertIn('--graphics-menu-lock',spawn.call_args.args[0])
+                with self.assertRaisesRegex(RuntimeError,'proof'):backend.reserve(manifest,log,owner=owner)
             report['scene_hooks_enabled']=True
             with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(report),stderr='')):
                 with self.assertRaisesRegex(RuntimeError,'proof'):backend.reserve(manifest,log,owner=owner)

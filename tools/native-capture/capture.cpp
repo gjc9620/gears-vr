@@ -237,7 +237,7 @@ thread_local unsigned session_build_depth{};
 bool session_status_available{};
 LONGLONG session_started_qpc{};
 struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
-std::array<SessionHookEntry,38> session_hook_entries{};
+std::array<SessionHookEntry,39> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<unsigned> submit_total{0},submit_retained{0},submit_skipped{0};
