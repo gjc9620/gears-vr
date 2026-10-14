@@ -115,6 +115,28 @@ UiObserver4 / PID26980 未完成该路由的实测验证：Win+0实际切回游�
 
 较小的方向方案是将同 ticket 的原游戏视图中心射线分别投影到双眼，作为“原游戏视图方向准星”。这能避免不对称FOV下硬放两眼图像中心导致的方向分离，但不提供近处收敛、枪口偏移或辅助瞄准后的真实弹着点；原视图方向与实际瞄准仍须核对。普通HUD应独立使用共同布局平面，不跟随命中缓存。
 
+## UiObserver6/7：索引、冻结矩阵与整段文字
+
+`ui_index_membership.h` 在 Execute 入场保存当前36字节segment和uint32索引副本。成员由 `minimum + index` 判定，不用上传区间的交集替代。最多64个segment、8192个索引；零draw也按原生循环推进，核对完整五个DrawIndexed参数，原调用结束后确认数量。原生1720a0的静态循环已核实每segment按序产生一个172741回调；相同参数本身不是可区分的身份，不搜索相同数量的后续segment。大数组使用有界heap，失败只丢弃观察。所有完成检查只读自己的副本，不读原调用已经析构的payload。
+
+场景构建时保存原游戏view/projection和实际双眼矩阵，随后在同一Draw/Present顺序锁内随ticket原子保留、退休。UI只查询实际overlay_pair的ticket，不取latest pose；缺失/冲突不会升级为成功。`ui_plane_projection.h` 的纯数学测试涵盖原相机姿态、非对称FOV、深度视差与转头后的projective mapping。一般情况下viewport缩放平移不能精确表达整个平面；这个helper尚未修改GPU。
+
+UiObserver6 / PID14964取得1736个完整索引序列，但用户随后说明自己用FancyZones调整了窗口，缓冲从3840×2160变为3842×2005且换了资源。固定尺寸检查因此拒绝，overlay和UI矩阵样本均为0，最长提交间隔185455.2ms。常规收尾passed不代表显示通过。焦点一直有效、33入口恢复且正常关闭。最初把尺寸变化归因于Win+0不准确，用户说明为此次根因证据；报告保留为负实验 `analysis/runtime/ui-observer6-14964.audit.json`。
+
+UiObserver7为文字新增整段range receipt，保留原quad适配。每payload最多32段、1024顶点，使用独立有界heap副本；长文字不会按32个glyph截断。现有DrawText包装函数围绕一次原调用捕获全部item的新增范围，支持多字体纹理和重分配；嵌套Tile/Text不重复记录。字幕在精确入口2a4370、caller return2c9375单独收集direct FCanvas，原RAX、rectangle与排版不变。多atlas调用在共同锁内全部发布，否则整次丢弃对应payload候选；失败不改变原文字。
+
+PID37184在稳定尺寸下完成3秒开镜和3秒切枪，双眼截图均有场景、图标和换枪文字。实际结果：
+
+- 持续206.034605秒，18546次投影提交、14081张场景新图，最大提交间隔17.8515ms；本轮无尺寸变化、inactive拒绝0。
+- 5301个Tile追加区间，以及1112段文字、13344个文字顶点，生产/读取/发布拒绝0，容器无溢出或遗留。
+- 2650个消费者全部内容匹配，2650个索引序列完成，2650组overlay实际执行，均无拒绝；gpu_missing_context=0。保留的UI行全部关联到对应ticket的冻结几何。
+- 字幕入口14497次均得到空delta；该场景没有字幕glyph，不能以入口命中声明字幕显示已验证。
+- 正常停止、XR收尾与34个入口恢复通过，游戏正常关闭。12组相关CPU测试及continuous ABI自测通过。
+
+清单为 `tools/vr-launcher/manifest-ui-observer7.json`，DLL SHA256 `58438c20230469061974701ee97266a74a6c364c6bd3c69e4235734df13121c0`；证据前缀 `analysis/runtime/continuous-stereo-37184-20261014-213300-8d5d594c`，摘要 `ui-observer7-37184.audit.json`。代码检查点341a800（索引/矩阵）、6aaff64（整段文字/字幕）。本轮仍未修改坐标，也不是物理头显测试；一个场景没有unknown/mixed不证明全游戏均如此。
+
 ## 下一步
 
-已取得开镜和切枪语义到消费者/实际ticket的候选关联。下一步按已确认的36字节triangle segment和索引数组核实每次draw的成员；每个原始172741回调都须推进对应序号，包括零draw和未关联ticket，不按相同数量猜批次。GPU回调时顶点已上传，不能在此改CPU数组并期待现有GPU内容改变。对证明单一语义的批次可研究逐眼GPU变换；混合批次需要分别处理顶点。普通文字与字幕另补路径，随后用同一场景对照位置修正，不再扩大无目标观察范围。
+实际GPU回调发生在顶点上传之后。完整位置修正需要每眼独立VB副本或已认证的GPU变换；不能在回调中改原CPU数组并期待已上传顶点变化。顶点stride48，位置float4在0..0f，UV/颜色/hitproxy与padding需保留；每眼VB需跟踪并恢复原IA绑定，GPU fence完成前不能释放。普通HUD与整组文字使用共同平面；准星需关联原游戏实际目标/赋值时序，不用过期命中缓存。
+
+另需在有对白的场景验证真实字幕glyph和双眼位置。窗口resize恢复不能只清掉拒绝标志：绑定、共享纹理、接收端图像与frame ticket都需要新的资源代次及有序交接。现有固定尺寸版本会停止新图，当前不宣称具备缩放恢复能力。定向计划见 `analysis/resize-recovery/architecture-plan.json`。DLSS/DLAA的三个引擎拦截点与菜单Apply返回规则已核对，仍未启用运行时锁定，不能把启动INI关闭当作完整锁。
