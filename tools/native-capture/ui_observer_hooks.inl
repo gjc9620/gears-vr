@@ -30,8 +30,9 @@ struct UiScopeReject {uintptr_t self{},frame{},object{},code{};long long qpc{};u
 std::array<UiScopeReject,8> ui_first_scope_reject{};
 std::atomic<uint64_t> ui_vm_calls{},ui_invocation_counter{};
 std::mutex ui_rows_mutex;
+#include "ui_payload_observer.inl"
 
-void observe_ui_canvas(unsigned draw,void* canvas,void* frame){
+void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeContext* selected_out=nullptr){
     if(!ui_observer_enabled||!recording.load()||!ui_invocation.context.kind)return;
     if(draw<1||draw>3)return;
     ++ui_chain_calls;
@@ -47,6 +48,7 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame){
         }return;
     }
     const auto kind=selected.kind;if(kind<1||kind>3||selected.scope_index>=ui_canvas_scopes.size())return;
+    if(selected_out)*selected_out=selected;
     ++ui_canvas_scopes[selected.scope_index];
     const unsigned bucket=(kind-1)*3+draw-1;
     const auto calls=++ui_calls[bucket];const auto timestamp=now();
@@ -95,7 +97,25 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
     }
     ui_original[0](self,frame,result);
 }
-void __fastcall hook_ui_tile(void* self,void* frame,void* result){Scope active_scope;observe_ui_canvas(1,self,frame);ui_original[1](self,frame,result);}
+void __fastcall hook_ui_tile(void* self,void* frame,void* result){
+    Scope active_scope;gears_ui::ScopeContext selected{};observe_ui_canvas(1,self,frame,&selected);
+    gears_ui_batch::Snapshot before{};gears_ui::CanvasSample sample{};
+    const bool eligible=selected.kind&&ui_observer_enabled&&recording.load();
+    if(eligible)++ui_batch_attempts;
+    const bool captured=eligible&&gears_ui::sample_canvas(ui_config,safe_copy,selected,
+        reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(frame),sample)&&
+        gears_ui_batch::snapshot({base},safe_copy,reinterpret_cast<uintptr_t>(self),before);
+    if(eligible&&!captured)++ui_batch_before_rejected;
+    ui_original[1](self,frame,result);
+    if(captured&&recording.load()){
+        gears_ui_batch::Receipt receipt{};
+        if(gears_ui_batch::appended_quad({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),receipt)){
+            std::lock_guard<std::mutex> lock(ui_payload_mutex);
+            if(ui_payload_store.publish(receipt,selected.kind,ui_invocation.sequence))++ui_batch_published;
+            else ++ui_batch_publish_rejected;
+        }else ++ui_batch_append_rejected;
+    }
+}
 void __fastcall hook_ui_material(void* self,void* frame,void* result){Scope active_scope;observe_ui_canvas(2,self,frame);ui_original[2](self,frame,result);}
 void __fastcall hook_ui_text(void* self,void* frame,void* result){Scope active_scope;observe_ui_canvas(3,self,frame);ui_original[3](self,frame,result);}
 const std::array<UiExec,4> ui_detours{hook_ui_vm,hook_ui_tile,hook_ui_material,hook_ui_text};
@@ -109,6 +129,7 @@ bool reserve_ui_hooks(){
            MH_CreateHook(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]))!=MH_OK||
            !safe_copy(after.data(),ui_targets[i],after.size())||after!=before)return false;
     }
+    if(!reserve_ui_execute())return false;
     ui_reserved=true;return true;
 }
 
@@ -178,6 +199,7 @@ void print_ui_observer(FILE* status,bool disabled){
     fprintf(status,"ui_observer enabled=%u available=%u coordinates_modified=0 vm_calls=%llu qpc_frequency=%lld\n",
         ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;
+    print_ui_payload_observer(status);
     fprintf(status,"ui_canvas_chain calls=%llu rejected=%llu previous_offset=56 maximum_frames=%u root_identity_required=1\n",
         ui_chain_calls.load(),ui_chain_rejected.load(),gears_ui::canvas_frame_limit);
     if(ui_chain_rejected.load()){auto const& r=ui_first_chain_reject;

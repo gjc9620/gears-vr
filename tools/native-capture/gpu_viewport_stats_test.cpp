@@ -89,6 +89,12 @@ int main(){
     uintptr_t stack[]{0x140172741,0x14019e753,0x14019f2f3};
     if(!overlay_caller_chain(stack,3,0x140000000)||overlay_caller_chain(stack,2,0x140000000))return 32;
     stack[1]++;if(overlay_caller_chain(stack,3,0x140000000))return 33;
+    uintptr_t observed_stack[]{0x140172741,0x14019e753,0x70000080,0x14019f2f3};
+    auto observed_ok=[&](uintptr_t entry){return overlay_observed_caller_chain(observed_stack,4,0x140000000,entry,0x70000000,0x70000100);};
+    if(!observed_ok(0x14019f2f3)||observed_ok(0x14019f2f4)||overlay_caller_chain(observed_stack,4,0x140000000))return 36;
+    observed_stack[2]=0x70000100;if(observed_ok(0x14019f2f3))return 37;
+    observed_stack[2]=0x70000080;observed_stack[3]++;if(observed_ok(0x14019f2f3))return 38;
+    observed_stack[3]--;observed_stack[1]++;if(observed_ok(0x14019f2f3))return 39;
     Tracker depths;depths.reset(123);depths.set(123,other,false,saved.viewport,1,true,.2f,.8f);
     depths.set(123,other,true,saved.scissor);auto state=depths.draw_state(123);
     if(!state.depth_known||state.min_depth!=.2f||state.max_depth!=.8f)return 34;

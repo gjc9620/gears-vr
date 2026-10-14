@@ -29,6 +29,8 @@
 #include "outage_trace.h"
 #include "anchor_observer.h"
 #include "ui_observer.h"
+#include "ui_canvas_batch.h"
+#include "ui_payload_receipts.h"
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -219,7 +221,7 @@ thread_local unsigned session_build_depth{};
 bool session_status_available{};
 LONGLONG session_started_qpc{};
 struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
-std::array<SessionHookEntry,32> session_hook_entries{};
+std::array<SessionHookEntry,33> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<unsigned> submit_total{0},submit_retained{0},submit_skipped{0};
@@ -2045,7 +2047,7 @@ bool install(void* target,void* detour,void** original) {
     if(created==MH_ERROR_ALREADY_CREATED && *original &&
          ((reservation_ready && (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target || target==quad_target || target==geometry_target || (first_view_mask_reserved && target==first_view_mask_target))) ||
           (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())||
-          (ui_reserved&&std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end())))created=MH_OK;
+          (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target))))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
     return created==MH_OK && queued==MH_OK;
@@ -2192,7 +2194,9 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             auto plan=gears_viewport::overlay_plan(saved,target.width,target.height);
             std::array<void*,12> stack{};const unsigned count=pair.linked&&plan.valid?CaptureStackBackTrace(0,static_cast<DWORD>(stack.size()),stack.data(),nullptr):0;
             std::array<uintptr_t,12> addresses{};for(unsigned i=0;i<count;++i)addresses[i]=reinterpret_cast<uintptr_t>(stack[i]);
-            if(pair.linked&&plan.valid&&gears_viewport::overlay_caller_chain(addresses.data(),count,base)){
+            if(pair.linked&&plan.valid&&(gears_viewport::overlay_caller_chain(addresses.data(),count,base)||
+                ui_observed_overlay_chain(addresses.data(),count))){
+                observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex);
                 auto viewport=[&](gears_viewport::Rect r,float minimum,float maximum){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,minimum,maximum};original_viewports(list,1,&v);};
                 auto scissor=[&](gears_viewport::Rect r){D3D12_RECT s{static_cast<LONG>(r.x),static_cast<LONG>(r.y),static_cast<LONG>(r.x+r.width),static_cast<LONG>(r.y+r.height)};original_scissors(list,1,&s);};
                 unsigned mask=0;
@@ -2655,6 +2659,7 @@ DWORD WINAPI worker(void*) {
     if(ok && first_view_mask_hook_enabled())ok=install(first_view_mask_target,reinterpret_cast<void*>(hook_first_view_mask),reinterpret_cast<void**>(&original_first_view_mask));
     if(ok&&ui_observer_enabled)for(unsigned i=0;i<4&&ok;++i)
         ok=install(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]));
+    if(ok&&ui_observer_enabled)ok=install(ui_execute_target,reinterpret_cast<void*>(hook_ui_execute),reinterpret_cast<void**>(&ui_original_execute));
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     if(ok)ok=create_quad_source_events();

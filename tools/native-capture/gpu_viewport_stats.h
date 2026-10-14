@@ -46,6 +46,16 @@ inline bool overlay_caller_chain(const std::uintptr_t* frames,std::size_t count,
         frames[i+1]-base==0x19e753&&frames[i+2]-base==0x19f2f3)return true;
     return false;
 }
+// The opt-in Execute observer inserts exactly one owned function frame between
+// the renderer and the original dispatcher. The caller supplies its authenticated
+// current TLS entry return and the observer's PE unwind-function bounds.
+inline bool overlay_observed_caller_chain(const std::uintptr_t* frames,std::size_t count,std::uintptr_t base,
+        std::uintptr_t entry_return,std::uintptr_t observer_begin,std::uintptr_t observer_end) {
+    if(!frames||!base||entry_return-base!=0x19f2f3||!observer_begin||observer_end<=observer_begin)return false;
+    for(std::size_t i=0;i+3<count;++i)if(frames[i]-base==0x172741&&frames[i+1]-base==0x19e753&&
+        frames[i+2]>=observer_begin&&frames[i+2]<observer_end&&frames[i+3]==entry_return)return true;
+    return false;
+}
 template<class Viewport,class Scissor,class Draw>
 unsigned replay_overlay(DrawState const& saved,OverlayPlan const& plan,Viewport viewport,Scissor scissor,Draw draw) {
     if(!plan.valid)return 0;
