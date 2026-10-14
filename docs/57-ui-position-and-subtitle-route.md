@@ -2,6 +2,31 @@
 
 2026-10-14。首版要求是三项均可用；用户明确“歪”指位置偏离瞄准点，图形形状正常。本页记录诊断结果，不表示位置修复已经完成。
 
+## 2026-10-15：整套 UI 盘点与批量修正范围
+
+首版 UI 范围已扩展到菜单/暂停、弹药/主动换弹、交互/教程提示、任务/队友/救援标记、死亡重试、章节检查点和过场文字，仍包括准星、换枪与真实对白字幕。完整交付清单和工程进度见[部署目标](16-deployment-target.md)。
+
+复用现有 `Inspect.exe` 对解压副本批量导出两个脚本包中的UI候选函数：WarfareGame 1705个、156个owner；Engine 1004个、129个owner。2709个候选全部产生文件，导出异常日志为空；其中1093个只是native声明，1010个文件包含未解析的 `__NFUN_*` token，888个含 `@NULL` 类型占位，故不能称为完整原始源码或2709个已理解功能。选择范围由精确正则保存，不覆盖全部游戏包/界面资源，也不以名字证明实际执行。全部衍生代码仅留本地，不加入发布包或Git。
+
+证据：`analysis/ui-v1-script-audit/manifest.json` 保存包与逐文件SHA256、选择范围和限制；`selection-regex.txt`、`summarize.py` 和包导出目录可复核。原生入口审计为 `analysis/ui-position-runtime/ui-coverage-audit.json`。
+
+| 路线 | 当前证据 | 批量修正边界 |
+| --- | --- | --- |
+| 启动菜单 | WGC窗口画面→XR平面 | 当前只覆盖首次双目接续前；暂停/返回菜单不能自动沿用 |
+| Tile/Icon | `1d52b4 → 1bc05c → 19e64c → 172741`，已有真实索引/ticket证据 | 普通屏幕HUD可共用布局平面；不能据PostRender父scope覆盖所有子项 |
+| Canvas文字 | `2482b8 → 1bd880 → 19e64c`，已有整段、多atlas范围 | 与父UI语义一致；世界标记中的文字不直接变成固定屏幕文字 |
+| 对白字幕 | `2a4370 → 2470ac → 246c58 → 1bd880` | 原生入口已采集，实测尚无真实glyph；仍需对白场景 |
+| MaterialTile | `3a4d3c → 3a5548 → 3a514c → 15a420 → 159fcc` | **独立通道**，现有Material包装只有观察，没有Tile/Text receipt覆盖 |
+| 任务/队友等世界标记 | `UpdateHUDLocators`依赖相机位置和对象可见性；部分投影入口已定位 | 世界锚点、绘制scope、对应帧和逐眼投影仍须认证 |
+| 暂停/设置UIScene | 类型和状态已知 | 实际native绘制入口、目标与合成顺序未认证 |
+| 受伤等后处理 | 世界最终输出路线已知 | 不能将整段后处理按平面HUD处理 |
+
+Material新证据：20字节render item、112字节payload、36字节绘制记录，queued consumer为 `15a420`（command vtable RVA136c5d8的+8槽，返回36）。它与Tile/Text的208字节payload、48字节顶点不同，不得复用后者布局解析。`159fcc` 的实际GPU绘制/矩阵仍待跟进，本轮没有启用新的运行时修改。
+
+`WarHUD.DrawHUD` 已反编译到 `UpdateHUDLocators`、`DrawObjectives`、`DrawHealth`、`DrawActions`、`DrawDownedButNotOutTeammates` 等分支。`UpdateHUDLocators` 读取玩家相机、调用locator更新和可见性更新，说明父级PostRender中的内容并非全部固定屏幕UI。当前kind3父scope继承不足以证明适用共同平面；后续须在批量认证屏幕布局scope时排除或单独处理世界相关分支。既有HUD平面试验不等于这项风险已修复。
+
+下一批实施按公共通道推进：先为已知屏幕HUD、准星、世界标记建立明确分类；复用Tile/Text消费端并补Material消费端；补UIScene显示切换；对同一场景帧做逐眼投影，保留文字排版、裁剪与提示时序。没有已认证的一处Hook能直接修正所有UI。全局索引可复用，原生实现只对上述缺口继续定向反编译。
+
 ## 已确认的绘制层次
 
 原 `172741 → 19e753 → 19f2f3` Canvas GPU 路线将同一几何分别绘制到左右半宽 viewport/scissor，不使用两眼视图矩阵或 FOV 重算 UI 坐标。它让 UI 出现在两眼，并未解决准星与实际游戏瞄准方向的对应。

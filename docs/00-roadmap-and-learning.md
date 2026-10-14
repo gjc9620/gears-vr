@@ -2,6 +2,8 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
+首版范围与进度已重新对齐：第三人称同帧双目、可靠6DoF、启动/菜单、整套UI、每眼2K/4K独立渲染、DLSS/DLAA运行时锁定、稳定性及玩家部署，工程估计约45–50%，具体权重/缺口见[部署目标](16-deployment-target.md)。这不是发布验收通过率。UI脚本本轮批量导出2709个候选条目，1093个仅为native声明；另外确认Material UI独立消费路线，以及世界标记不能直接套用普通HUD平面。详见[UI覆盖审计](57-ui-position-and-subtitle-route.md)。本轮未启动游戏或新增视觉验收。
+
 TargetSize2 / PID29184：新诊断版启动、220.366582秒双目和正常停止通过，19830次projection、15033次图像复制，最大提交间隔91.1762ms，34个入口还原。首次4个有效family回调均捕获同一实际target，40个方法前缀及4份vtable字节全部与历史运行代码一致；不是从已过期栈地址猜测目标。该轮启动guard一次成功，不能据此证明PID39208是跨帧竞争。3d88101已增加启动阶段的明确失败分类，仅对其余身份/读取检查都通过的时间戳变化有限重读（最多5次、200ms），渲染回调仍单次检查。证据：`analysis/ui-position-runtime/native-target-size2-binding.json`；游戏已正常关闭。
 
 独立目标的具体接口已定位：实际target vtable RVA1706880，+8返回surface引用地址，+10/+18读取宽高，+20/+28为显示元数据。原target是0x510字节viewport对象的+8子接口，原析构会释放整个viewport，不能复制到小型adapter。世界普通最终输出和postprocess会使用family中的target；nativeFCanvas的target在+8，48字节queued command的target在+20，两者不是同一布局。native surface强引用及COM纹理提取路径已查明，但完整接口边界、创建参数和输出资源最后的实际GPU状态仍须核对；当前仍未改变游戏原生渲染分辨率。
