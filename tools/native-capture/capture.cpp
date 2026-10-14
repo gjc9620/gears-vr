@@ -237,7 +237,7 @@ thread_local unsigned session_build_depth{};
 bool session_status_available{};
 LONGLONG session_started_qpc{};
 struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
-std::array<SessionHookEntry,35> session_hook_entries{};
+std::array<SessionHookEntry,38> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<unsigned> submit_total{0},submit_retained{0},submit_skipped{0};
@@ -627,6 +627,7 @@ unsigned foreground() {
     DWORD pid{};GetWindowThreadProcessId(GetForegroundWindow(),&pid);return pid==GetCurrentProcessId();
 }
 struct Scope {Scope(){++active;} ~Scope(){--active;}};
+#include "graphics_lock_observer.inl"
 #include "ui_observer_hooks.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
@@ -2124,6 +2125,7 @@ bool install(void* target,void* detour,void** original) {
     if(created==MH_ERROR_ALREADY_CREATED && *original &&
          ((reservation_ready && (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target || target==quad_target || target==geometry_target || (first_view_mask_reserved && target==first_view_mask_target))) ||
           (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())||
+          graphics_lock_observer_reserved_target(target)||
           (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target||target==ui_subtitle_target
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
              ||target==ui_material_execute_target
@@ -2773,6 +2775,7 @@ DWORD WINAPI worker(void*) {
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ok&&ui_observer_enabled)ok=install(ui_material_execute_target,reinterpret_cast<void*>(hook_ui_material_execute),reinterpret_cast<void**>(&ui_original_material_execute));
 #endif
+    if(ok&&continuous_session)ok=enable_graphics_lock_observer();
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     if(ok)ok=create_quad_source_events();
@@ -2856,6 +2859,7 @@ DWORD WINAPI worker(void*) {
     print_anchor(status,disabled==MH_OK);
     print_ui_observer(status,disabled==MH_OK);
     print_native_surface_probe(status);
+    print_graphics_lock_observer(status,disabled==MH_OK);
     print_origin_trial(status,disabled==MH_OK);
     if(!active.load()&&stereo_closed)release_bindings();
     if(continuous_session){
@@ -3013,6 +3017,7 @@ void __fastcall fake_continuous_release(void*){
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*) {
     // CPU-only: actual production stop/native destroy helpers with fake native
     // destructor/state release. No D3D device, GPU commands or XR session.
+    if(!graphics_lock_observer_self_test())return 240;
     continuous_session=true;stereo_gpu_publish=true;submit_pair_enabled=true;
     std::uint64_t parsed{};FILETIME created{},exited{},kernel{},user{};
     if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user))return 210;
@@ -3192,6 +3197,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
        !safe_copy(read,state_delete_target,sizeof(j)) || memcmp(read,j,sizeof(j)))return ERROR_INVALID_DATA;
     if(MH_Initialize()!=MH_OK)return ERROR_INVALID_STATE;
     if(!reserve_ui_hooks())return ERROR_NOT_ENOUGH_MEMORY;
+    if(!reserve_graphics_lock_observer())return ERROR_INVALID_DATA;
     quad_target=reinterpret_cast<void*>(base+0x1af42c);
     geometry_target=reinterpret_cast<void*>(base+0x13cfcc);
     const unsigned char quad_signature[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x08,0x48,0x89,0x70,0x10,0x48,0x89,0x78,0x18};

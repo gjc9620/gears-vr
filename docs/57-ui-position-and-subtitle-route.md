@@ -195,3 +195,11 @@ Pixels2 的快照日志在acknowledge之前读取serial，记录的是上一次�
 实际458次准星计划及双眼draw通过，居中/矩阵/投影拒绝均0，其他HUD 2134次平面修正，sequence_fault=0。10775次projection、8012张新图，正常停止、35入口恢复及游戏正常关闭。原图开镜ticket650/serial643与XR记录吻合；阈值提取的准星白色像素框中心由基线(959.5,1079.5)/(2879.5,1079.5)，移动到(1192.5,884.5)/(2646.5,884.5)，与计算位置(1192.812,885.062)/(2647.188,885.062)在像素栅格范围内一致。四个白色像素框均为60×104像素，原图同时能直接看见正常准星形状。
 
 CPU测试以 `/W4 /WX /UNDEBUG` 编译，覆盖非对称FOV、旋转、平移不影响方向、索引归属、混合来源/多个root拒绝、失败不修改输出；HUD与索引回归、continuous ABI自测通过。代码已只读审查。DLL SHA256 `185161b70a9fa00ce755644f014382fef269d46ab00e558897d7053eafdd4ef4`，证据 `analysis/runtime/ui-reticle1-47092.audit.json` 和原始GPU图。这证实当前场景FOV方向偏移的修正，不证明近处命中收敛、枪口弹着点、所有武器/菜单/字幕或真实头显体验。
+
+## 首次非空字幕生产记录（2026-10-15）
+
+PID53760正常推进开始房间、走廊及庭院入口，运行727.19秒、65225次projection、45428张新图，正常停止与35入口恢复。字幕统计桶source=1（receipt枚举为NativeSubtitle=2）首次取得559个非空调用、1845段、110312顶点；生产没有delta或publish拒绝。这里是精确2a4370入口内的文字追加证据，不是文字像素已显示。
+
+完整3840×2160的6张快照未截到对白。晚期只读队列观察器在源getter/selector字节与历史快照匹配后，通过getter的RIP相对寻址取得global RVA1c7dbc8；稳定的manager header为count=0/capacity=0。该观察比进入走廊晚约181秒，不能由此否定此前非空glyph。随后PID46520在移动前开启60秒watch，仍采到空队列；该轮停止日志却有65个非空字幕调用、129段、2820顶点，说明当前队列时序与截图覆盖仍不足。实际画面还显示玩家在庭院门边进入掩体，不能把发送前进键当作已经通过该位置。
+
+现有GPU receipt上下文仅保留HUD kind，丢弃了原NativeSubtitle source；因此不能拿任意kind4行当作字幕ticket。下一项最小改动是将source/root_invocation保留到已认证索引上下文，并在实际字幕成员对应overlay ticket时请求原始快照。无需扩大逆向或新增原生hook。证据：`analysis/runtime/continuous-stereo-53760-20261015-015852-f4f5fcfa.*`、`continuous-stereo-46520-20261015-021439-a72cff7f.*`、`subtitle1-queue-walk.jsonl`、`subtitle2-queue-walk.jsonl`。
