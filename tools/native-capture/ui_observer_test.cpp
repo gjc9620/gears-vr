@@ -71,7 +71,71 @@ struct Fixture {
         m.put(address+c.object_name,c.identities[cls].name_index);m.put(address+c.object_class,c.identities[cls].address);m.put(0x2000+index*8,address);}
     void set_frame(unsigned scope,std::uintptr_t object){m.put(frame+0x18,c.identities[c.scopes[scope].function].address);m.put(frame+0x20,object);m.put(frame+0x28,c.scopes[scope].script);}
 };
+void test_canvas_ancestry(){
+    Fixture f;auto read=[&](void* out,const void* address,std::size_t size){return f.m.read(out,address,size);};
+    auto& root_function=f.c.identities[f.c.scopes[0].function];
+    root_function.name={};std::wcscpy(root_function.name.data(),L"PostRender");
+    f.rewrite(f.c.scopes[0].function);f.c.scopes[0].kind=3;
+    gears_ui::ScopeContext root{};
+    assert(gears_ui::match_scope(f.c,read,f.c.identities[f.c.role_hud].address,f.frame,root));
+    auto set=[&](std::uintptr_t address,std::uintptr_t node,std::uintptr_t object,std::uintptr_t code,std::uintptr_t previous){
+        f.m.block(address,64);f.m.put(address+0x18,node);f.m.put(address+0x20,object);
+        f.m.put(address+0x28,code);f.m.put(address+0x38,previous);
+    };
+    const std::uintptr_t child=0x930000,helper=0x940000;
+    auto reset=[&]{
+        f.set_frame(0,root.object);f.m.put(f.frame+0x38,std::uintptr_t(0));
+        set(child,f.c.identities[f.c.scopes[1].function].address,f.weapon,f.c.scopes[1].script+4,f.frame);
+        set(helper,0xde00,f.canvas,0xdead,child);
+    };
+    reset();
+    gears_ui::ScopeContext out{};std::uintptr_t matched{};unsigned depth=99;
+    // Direct current caller is the root; no artificial child invocation.
+    assert(gears_ui::classify_canvas_scope(f.c,read,root,f.frame,f.frame,out,matched));
+    assert(out.kind==3&&out.function==root.function&&matched==f.frame);
+    // Helper -> weapon scope -> HUD root: Frame.Object is the weapon, not Canvas.
+    assert(gears_ui::classify_canvas_scope(f.c,read,root,f.frame,helper,out,matched,&depth));
+    assert(out.scope_index==1&&out.object==f.weapon&&out.kind==1&&matched==child&&depth==1);
+    assert(gears_ui::classify_canvas_scope(f.c,read,root,f.frame,child,out,matched)&&matched==child);
+    f.m.put(helper+0x38,f.frame);
+    assert(gears_ui::classify_canvas_scope(f.c,read,root,f.frame,helper,out,matched)&&matched==f.frame);
+    // The root instruction pointer legitimately advances after VM entry.
+    f.m.put(f.frame+0x28,f.c.scopes[0].script+8);
+    assert(gears_ui::classify_canvas_scope(f.c,read,root,f.frame,helper,out,matched)&&out.code==f.c.scopes[0].script+8);
+    auto reject=[&](gears_ui::ScopeContext context,std::uintptr_t start){
+        out={99,98,97,96,95};matched=94;depth=93;
+        assert(!gears_ui::classify_canvas_scope(f.c,read,context,f.frame,start,out,matched,&depth));
+        assert(out.kind==99&&out.scope_index==98&&out.function==97&&out.object==96&&out.code==95&&matched==94&&depth==93);
+    };
+    // A recognized but invalid child blocks parent attribution.
+    reset();f.m.put(child+0x20,f.canvas);reject(root,helper);
+    reset();f.m.put(child+0x28,f.c.scopes[1].script+32);reject(root,helper);
+    reset();auto child_function=f.c.identities[f.c.scopes[1].function].address;
+    f.m.put(child_function+f.c.object_name,unsigned(999));reject(root,helper);f.rewrite(f.c.scopes[1].function);
+    reset();f.m.put(child_function+0x8c,gears_ui::Registry{f.c.scopes[1].script+8,32,32});reject(root,helper);
+    f.m.put(child_function+0x8c,gears_ui::Registry{f.c.scopes[1].script,32,32});
+    reset();f.m.put(child+0x38,helper);reject(root,helper); // cycle
+    reset();f.m.put(helper+0x38,std::uintptr_t(0));reject(root,helper); // missing root
+    reset();f.m.put(helper+0x38,std::uintptr_t(0xdead00));reject(root,helper); // read failure
+    reset();reject(root,helper+1); // unaligned frame
+    reset();f.m.put(f.frame+0x20,f.weapon);reject(root,helper); // mutated root
+    reset();f.m.put(f.frame+0x18,std::uintptr_t(0xde00));reject(root,helper);
+    reset();f.m.put(f.frame+0x28,f.c.scopes[0].script+32);reject(root,helper);
+    reset();auto forged=root;forged.object=f.weapon;reject(forged,helper);
+    forged=root;forged.code=f.c.scopes[0].script+32;reject(forged,helper);
+    // Fixed work bound, including the root, even when all helpers are unknown.
+    reset();for(unsigned i=0;i<gears_ui::canvas_frame_limit;++i){auto a=std::uintptr_t(0x950000+i*0x100);
+        set(a,0xde00,f.canvas,0xdead,i+1==gears_ui::canvas_frame_limit?f.frame:a+0x100);}
+    reject(root,0x950000); // twelve helpers plus root exceed the limit
+    f.m.reads=0;
+    assert(gears_ui::classify_canvas_scope(f.c,read,root,f.frame,0x950100,out,matched)&&matched==f.frame);
+    assert(f.m.reads<200); // Unknown frames add only two fixed-size reads each.
+    out={99,98,97,96,95};matched=94;
+    assert(!gears_ui::classify_canvas_scope(f.c,[](void*,const void*,std::size_t){return false;},root,f.frame,f.frame,out,matched));
+    assert(out.kind==99&&out.function==97&&matched==94);
+}
 int main(){
+    test_canvas_ancestry();
     Fixture f;auto read=[&](void* out,const void* address,std::size_t size){return f.m.read(out,address,size);};
     assert(gears_ui::validate(f.c,read));gears_ui::ScopeContext scope{};
     auto padded=f.c.identities[f.c.role_hud].name;padded[4]=L'X';padded[5]=L'Y';
@@ -119,5 +183,5 @@ int main(){
     assert(gears_ui::match_scope(f.c,read,parent.object,f.frame,scope));
     assert(gears_ui::sample_canvas(f.c,read,scope,f.canvas,f.frame,sample));
     assert(!gears_ui::sample_canvas(f.c,[](void*,const void*,std::size_t){return false;},scope,f.canvas,f.frame,sample));
-    printf("UI observer: registry/owner/script bounds, Canvas caller frame, finite scalars, read failure and nested restore passed\n");
+    printf("UI observer: authenticated Canvas ancestry, registry/owner/script bounds, finite scalars and nested restore passed\n");
 }

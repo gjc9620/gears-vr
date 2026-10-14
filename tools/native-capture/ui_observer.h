@@ -185,6 +185,49 @@ template<class Read> bool match_scope(Config const& c,Read read,std::uintptr_t s
         out={s.kind,i,node,self,code};return true;
     }return false; // Caller retains any enclosing TLS scope on an unmatched call.
 }
+// Nested script calls execute an inline opcode loop in module+0x1d6f30,
+// bypassing the shared VM binding. Its FFrame stores PreviousFrame at +0x38.
+// Canvas wrappers receive that script caller frame. Authenticate the whole
+// bounded ancestry through the active VM root before committing a child scope.
+inline constexpr unsigned canvas_frame_limit=12;
+template<class Read> bool classify_canvas_scope(Config const& c,Read read,ScopeContext const& root,
+    std::uintptr_t root_frame,std::uintptr_t canvas_frame,ScopeContext& out,std::uintptr_t& matched_frame,unsigned* matched_depth=nullptr){
+    if(!root_frame||!canvas_frame||root.scope_index>=c.scope_count||c.scope_count>c.scopes.size()||
+       !c.identity_count||c.identity_count>c.identities.size())return false;
+    const auto& configured=c.scopes[root.scope_index];
+    if(configured.function>=c.identity_count||root.kind!=configured.kind||
+       root.function!=c.identities[configured.function].address||root.code<configured.script||
+       root.code-configured.script>=configured.size)return false;
+    Reader<Read> r{read};std::array<std::uintptr_t,canvas_frame_limit> visited{};
+    ScopeContext selected{};std::uintptr_t selected_frame{};unsigned selected_depth{};
+    for(unsigned depth=0;depth<canvas_frame_limit;++depth){
+        if(!canvas_frame||(canvas_frame&7))return false;
+        for(unsigned i=0;i<depth;++i)if(visited[i]==canvas_frame)return false;
+        visited[depth]=canvas_frame;
+        std::array<std::uintptr_t,3> fields{}; // Node, Object, Code; never Locals.
+        if(!r.field(fields,canvas_frame,0x18)||!fields[0]||!fields[1]||!fields[2])return false;
+        bool recognized=false;
+        for(unsigned i=0;i<c.scope_count;++i){
+            if(c.scopes[i].function>=c.identity_count)return false;
+            if(fields[0]==c.identities[c.scopes[i].function].address){recognized=true;break;}
+        }
+        ScopeContext current{};
+        if(recognized){
+            if(!match_scope(c,read,fields[1],canvas_frame,current)||current.function!=fields[0]||
+               current.object!=fields[1]||current.code!=fields[2])return false;
+            if(!selected_frame){selected=current;selected_frame=canvas_frame;selected_depth=depth;}
+        }
+        if(canvas_frame==root_frame){
+            // Code advances after entry. Require the same authenticated root
+            // identity and an in-range current Code, not equality to entry Code.
+            if(!recognized||current.kind!=root.kind||current.scope_index!=root.scope_index||
+               current.function!=root.function||current.object!=root.object)return false;
+            out=selected;matched_frame=selected_frame;if(matched_depth)*matched_depth=selected_depth;return true;
+        }
+        if(!r.field(canvas_frame,canvas_frame,0x38))return false;
+    }
+    return false;
+}
 template<class Read> bool sample_canvas(Config const& c,Read read,ScopeContext const& scope,std::uintptr_t canvas,std::uintptr_t frame,CanvasSample& out){
     Reader<Read> r{read};std::uintptr_t cls{};
     if(!quick_environment(c,r)||scope.scope_index>=c.scope_count)return false;

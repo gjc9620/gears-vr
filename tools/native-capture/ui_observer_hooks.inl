@@ -5,7 +5,7 @@ gears_ui::Config ui_config;
 using UiExec=void(__fastcall*)(void*,void*,void*);
 std::array<UiExec,4> ui_original{};
 std::array<void*,4> ui_targets{};
-struct UiInvocation {gears_ui::ScopeContext context{};uint64_t sequence{};long long entered{};};
+struct UiInvocation {gears_ui::ScopeContext context{};uintptr_t frame{};uint64_t sequence{};long long entered{};};
 thread_local UiInvocation ui_invocation;
 struct UiInvocationRestore {
     UiInvocation saved=ui_invocation;
@@ -14,6 +14,7 @@ struct UiInvocationRestore {
 struct UiRow {
     gears_ui::CanvasSample sample{};
     uint64_t invocation{},calls{},latest_built_ticket{};
+    uintptr_t root_frame{},matched_frame{};unsigned matched_depth{};
     long long scope_qpc{},qpc{};unsigned thread{},draw{};
 };
 std::array<std::array<UiRow,48>,9> ui_rows{};
@@ -21,6 +22,10 @@ std::array<unsigned,9> ui_row_counts{};
 std::array<long long,9> ui_next_sample{};
 std::array<std::atomic<uint64_t>,9> ui_calls{},ui_rejected{},ui_dropped{};
 std::array<std::atomic<uint64_t>,8> ui_scopes{},ui_scope_rejected{};
+std::array<std::atomic<uint64_t>,8> ui_canvas_scopes{};
+std::atomic<uint64_t> ui_chain_calls{},ui_chain_rejected{};
+struct UiChainReject {uintptr_t root_frame{},frame{},node{},object{},code{},previous{};long long qpc{};unsigned draw{};};
+UiChainReject ui_first_chain_reject;
 struct UiScopeReject {uintptr_t self{},frame{},object{},code{};long long qpc{};unsigned thread{};};
 std::array<UiScopeReject,8> ui_first_scope_reject{};
 std::atomic<uint64_t> ui_vm_calls{},ui_invocation_counter{};
@@ -28,8 +33,21 @@ std::mutex ui_rows_mutex;
 
 void observe_ui_canvas(unsigned draw,void* canvas,void* frame){
     if(!ui_observer_enabled||!recording.load()||!ui_invocation.context.kind)return;
-    const auto kind=ui_invocation.context.kind;
-    if(kind>3||draw<1||draw>3)return;
+    if(draw<1||draw>3)return;
+    ++ui_chain_calls;
+    gears_ui::ScopeContext selected{};uintptr_t matched_frame{};unsigned matched_depth{};
+    if(!gears_ui::classify_canvas_scope(ui_config,safe_copy,ui_invocation.context,
+            ui_invocation.frame,reinterpret_cast<uintptr_t>(frame),selected,matched_frame,&matched_depth)){
+        if(ui_chain_rejected.fetch_add(1)==0){auto& r=ui_first_chain_reject;
+            r.root_frame=ui_invocation.frame;r.frame=reinterpret_cast<uintptr_t>(frame);r.qpc=now();r.draw=draw;
+            if(frame){safe_copy(&r.node,static_cast<unsigned char*>(frame)+0x18,8);
+                safe_copy(&r.object,static_cast<unsigned char*>(frame)+0x20,8);
+                safe_copy(&r.code,static_cast<unsigned char*>(frame)+0x28,8);
+                safe_copy(&r.previous,static_cast<unsigned char*>(frame)+0x38,8);}
+        }return;
+    }
+    const auto kind=selected.kind;if(kind<1||kind>3||selected.scope_index>=ui_canvas_scopes.size())return;
+    ++ui_canvas_scopes[selected.scope_index];
     const unsigned bucket=(kind-1)*3+draw-1;
     const auto calls=++ui_calls[bucket];const auto timestamp=now();
     {
@@ -39,11 +57,12 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame){
         ui_next_sample[bucket]=timestamp+qpc_frequency/2;
     }
     UiRow row{};
-    if(!gears_ui::sample_canvas(ui_config,safe_copy,ui_invocation.context,
+    if(!gears_ui::sample_canvas(ui_config,safe_copy,selected,
             reinterpret_cast<uintptr_t>(canvas),reinterpret_cast<uintptr_t>(frame),row.sample)){
         ++ui_rejected[bucket];return;
     }
     row.invocation=ui_invocation.sequence;row.scope_qpc=ui_invocation.entered;
+    row.root_frame=ui_invocation.frame;row.matched_frame=matched_frame;row.matched_depth=matched_depth;
     row.qpc=timestamp;row.thread=GetCurrentThreadId();row.draw=draw;row.calls=calls;
     // A temporal hint only. This does not associate a Canvas draw with a GPU ticket.
     row.latest_built_ticket=stereo_ticket_counter.load();
@@ -61,7 +80,7 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
                 gears_ui::ScopeContext context{};
                 if(gears_ui::match_scope(ui_config,safe_copy,reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(frame),context)){
                     ++ui_scopes[i];UiInvocationRestore restore;
-                    ui_invocation={context,++ui_invocation_counter,now()};
+                    ui_invocation={context,reinterpret_cast<uintptr_t>(frame),++ui_invocation_counter,now()};
                     ui_original[0](self,frame,result);return;
                 }
                 if(ui_scope_rejected[i].fetch_add(1)==0){auto& row=ui_first_scope_reject[i];
@@ -107,7 +126,7 @@ bool load_ui_config(const wchar_t* ini){
     if(!load(L"schema",schema)||schema!=1||!load(L"pid",pid)||pid!=GetCurrentProcessId()||
        wcscmp(sha,L"bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4"))return false;
     const std::pair<const wchar_t*,unsigned> layout[]={{L"frame_node",0x18},{L"frame_object",0x20},
-        {L"frame_code",0x28},{L"frame_locals",0x30},{L"function_script",0x8c},{L"function_entry",0x114}};
+        {L"frame_code",0x28},{L"frame_locals",0x30},{L"frame_previous",0x38},{L"function_script",0x8c},{L"function_entry",0x114}};
     for(auto const& value:layout){unsigned actual{};if(!load(value.first,actual)||actual!=value.second)return false;}
     auto& c=ui_config;
 #define UI_WIDEN_(s) L##s
@@ -159,6 +178,14 @@ void print_ui_observer(FILE* status,bool disabled){
     fprintf(status,"ui_observer enabled=%u available=%u coordinates_modified=0 vm_calls=%llu qpc_frequency=%lld\n",
         ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;
+    fprintf(status,"ui_canvas_chain calls=%llu rejected=%llu previous_offset=56 maximum_frames=%u root_identity_required=1\n",
+        ui_chain_calls.load(),ui_chain_rejected.load(),gears_ui::canvas_frame_limit);
+    if(ui_chain_rejected.load()){auto const& r=ui_first_chain_reject;
+        fprintf(status,"ui_canvas_chain_first_reject root_frame=%p frame=%p node=%p object=%p code=%p previous=%p qpc=%lld draw=%u\n",
+            reinterpret_cast<void*>(r.root_frame),reinterpret_cast<void*>(r.frame),reinterpret_cast<void*>(r.node),reinterpret_cast<void*>(r.object),
+            reinterpret_cast<void*>(r.code),reinterpret_cast<void*>(r.previous),r.qpc,r.draw);}
+    for(unsigned i=0;i<ui_config.scope_count;++i)fprintf(status,"ui_canvas_scope index=%u kind=%u calls=%llu calls_are_not_script_invocations=1\n",
+        i,ui_config.scopes[i].kind,ui_canvas_scopes[i].load());
     for(unsigned i=0;i<ui_config.scope_count;++i)fprintf(status,"ui_scope index=%u kind=%u function=%p accepted=%llu rejected=%llu\n",
         i,ui_config.scopes[i].kind,reinterpret_cast<void*>(ui_config.identities[ui_config.scopes[i].function].address),ui_scopes[i].load(),ui_scope_rejected[i].load());
     for(unsigned i=0;i<ui_config.scope_count;++i)if(ui_scope_rejected[i].load()){auto const& r=ui_first_scope_reject[i];
@@ -167,11 +194,12 @@ void print_ui_observer(FILE* status,bool disabled){
     for(unsigned i=0;i<9;++i){
         fprintf(status,"ui_canvas bucket=%u kind=%u draw=%u calls=%llu rejected=%llu rows=%u dropped=%llu\n",i,i/3+1,i%3+1,ui_calls[i].load(),ui_rejected[i].load(),ui_row_counts[i],ui_dropped[i].load());
         for(unsigned j=0;j<ui_row_counts[i];++j){auto const& r=ui_rows[i][j];auto const& s=r.sample;
-            fprintf(status,"ui_canvas_row bucket=%u row=%u invocation=%llu scope=%u function=%p object=%p canvas=%p frame_node=%p frame_object=%p frame_code=%p controller=%p pawn=%p hud=%p inventory=%p hud_canvas=%p scope_qpc=%lld qpc=%lld thread=%u draw=%u calls=%llu latest_built_ticket_hint=%llu ticket_association_verified=0 clip_x=%.9g clip_y=%.9g cur_x=%.9g cur_y=%.9g org_x=%.9g org_y=%.9g size_x=%d size_y=%d\n",
+            fprintf(status,"ui_canvas_row bucket=%u row=%u root_invocation=%llu scope=%u function=%p object=%p canvas=%p frame_node=%p frame_object=%p frame_code=%p controller=%p pawn=%p hud=%p inventory=%p hud_canvas=%p scope_qpc=%lld qpc=%lld thread=%u draw=%u calls=%llu latest_built_ticket_hint=%llu ticket_association_verified=0 clip_x=%.9g clip_y=%.9g cur_x=%.9g cur_y=%.9g org_x=%.9g org_y=%.9g size_x=%d size_y=%d root_frame=%p matched_frame=%p matched_depth=%u\n",
                 i,j,r.invocation,s.scope.scope_index,reinterpret_cast<void*>(s.scope.function),reinterpret_cast<void*>(s.scope.object),reinterpret_cast<void*>(s.canvas),
                 reinterpret_cast<void*>(s.frame_node),reinterpret_cast<void*>(s.frame_object),reinterpret_cast<void*>(s.frame_code),reinterpret_cast<void*>(s.controller),reinterpret_cast<void*>(s.pawn),
                 reinterpret_cast<void*>(s.hud),reinterpret_cast<void*>(s.inventory),reinterpret_cast<void*>(s.hud_canvas),r.scope_qpc,r.qpc,r.thread,r.draw,r.calls,r.latest_built_ticket,
-                s.clip_x,s.clip_y,s.cur_x,s.cur_y,s.org_x,s.org_y,s.size_x,s.size_y);
+                s.clip_x,s.clip_y,s.cur_x,s.cur_y,s.org_x,s.org_y,s.size_x,s.size_y,
+                reinterpret_cast<void*>(r.root_frame),reinterpret_cast<void*>(r.matched_frame),r.matched_depth);
         }
     }
 }

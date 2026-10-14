@@ -195,7 +195,7 @@ def build_ui_observer_config(resolver, camera):
                 names_header=r.names_header,layout={key:p[key] for key in LAYOUT},identities=ids,
                 supers=[dict(identity=add(a),parent=b) for a,b in sorted(supers.items())],roles=roles,
                 fields=fields,field_ids=field_ids,scopes=scopes,bindings=bindings,
-                frame_node=0x18,frame_object=0x20,frame_code=0x28,frame_locals=0x30,
+                frame_node=0x18,frame_object=0x20,frame_code=0x28,frame_locals=0x30,frame_previous=0x38,
                 function_script=0x8c,function_entry=0x114)
     validate_ui_observer_config(config)
     text=ui_observer_ini(config)
@@ -257,14 +257,14 @@ def validate_ui_observer_config(c):
             expected={'tile':'DrawTile','material':'DrawMaterialTile','text':'DrawText'}[label]
             if ids[index]['name']!=expected or ids[index]['outer']!=ids[c['roles']['canvas_class']]['address']:
                 raise UIConfigRejected('UI native binding identity mismatch')
-    for key,value in {'frame_node':0x18,'frame_object':0x20,'frame_code':0x28,'frame_locals':0x30,'function_script':0x8c,'function_entry':0x114}.items():
+    for key,value in {'frame_node':0x18,'frame_object':0x20,'frame_code':0x28,'frame_locals':0x30,'frame_previous':0x38,'function_script':0x8c,'function_entry':0x114}.items():
         if c[key]!=value:raise UIConfigRejected('UI frame/script layout mismatch')
     return c
 
 def ui_observer_ini(config):
     """Simple bounded flat fields; hexadecimal bytes, decimal identity records."""
     c=validate_ui_observer_config(config);rows=['[UIObserver]','schema=1']
-    for key in ('pid','base','sha256','objects_header','names_header','frame_node','frame_object','frame_code','frame_locals','function_script','function_entry'):
+    for key in ('pid','base','sha256','objects_header','names_header','frame_node','frame_object','frame_code','frame_locals','frame_previous','function_script','function_entry'):
         rows.append(f'{key}={c[key]}')
     for key,value in c['layout'].items():rows.append(f'{key}={value}')
     rows.append(f"identity_count={len(c['identities'])}")

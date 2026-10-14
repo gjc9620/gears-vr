@@ -105,6 +105,8 @@ class UIObserverConfigTests(unittest.TestCase):
         self.assertNotIn('role_weapon=',text);self.assertIn('role_canvas_class=',text)
         self.assertNotIn('objects_data=',text)
         self.assertEqual(config['frame_node'],0x18);self.assertEqual(config['frame_code'],0x28)
+        self.assertEqual(config['frame_previous'],0x38)
+        self.assertIn('frame_previous=56\n',ui_observer_ini(config))
         self.assertEqual(len({s['function'] for s in config['scopes']}),7)
         for scope,(owner,name,kind) in zip(config['scopes'],SCOPES):
             self.assertEqual(config['identities'][scope['owner']]['name'],owner)
