@@ -50,3 +50,29 @@ Wait1 / PID51032临时关闭startup_menu及对应启动/菜单graphics保护（�
 该轮首次停止明确来自测试控制事件，QPC=`1012316415632`、频率10000000、线程28352、冻结Wait1源码`capture.cpp:2985`。58个入口恢复通过，游戏正常退出。因Owner/list资源保留策略，启动器仍报告incomplete；不把主动停止或首尾像素检查当完整生命周期/头显验收。审计：`analysis/ui-position-runtime/owned-wait1-menuoff-51032.audit.json`。
 
 系统WPR录制尝试因Windows权限失败（`0xc5585011`, “Failed to enable the policy to profile system performance.”）；前后均确认无录制会话，未生成ETL，也未改权限。接下来使用有界、进程内线程身份匹配的外部线程栈采样，并以QPC对应已有owned消费窗口；诊断暂停造成的时间扰动必须单独报告。
+
+## Wait2：实际消费线程栈
+
+PID51812完成120个owned ticket、119次发布，XR copies/projection仍为0；姿态接收→发布中位149.355ms。58个入口恢复通过，随后正常关闭。采样器只操作状态中公布的消费线程53460，持有匹配PID/creation的进程与线程句柄，先冻结有限栈字节，恢复线程后再用StackWalk64展开，禁止扫描原始栈猜调用链。
+
+8秒记录257次有效快照，全部恢复；101次采集区间完整落在同线程的owned begin→returned窗口内，其中60次栈顶为`win32u!NtGdiDdDDIWaitForSynchronizationObjectFromCpu`，向上连续四个D3D12Core帧。另有分配、驻留和引擎/Mod锁等待样本。此证据支持主要消费等待候选是图形同步；它不能单独确定等待的fence、GPU负载或游戏调用者，也不能把采样次数直接当GPU执行时长。相应[官方DDI文档](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/d3dkmthk/nf-d3dkmthk-d3dkmtwaitforsynchronizationobjectfromcpu)描述CPU等待monitored fence的接口语义，未提供本游戏的根因。
+
+Suspend→复制→Resume的调用区间总计10.6284ms，中位0.0324ms、最大0.505ms；这仍会扰动时序。最初128次元数据读取预算截断了上游栈，不能把其尾部当作真正调用链起点。后续采样器扩大恢复线程后的元数据读取预算至1024次/2MiB，并记录符号位移；无PDB时最近的导出名不等于内部函数名，模块RVA才是后续资料库定位依据。没有安装工具、提权或网络下载符号。
+
+独立采样器通过Sleep线程调用链、错误身份拒绝、连续恢复和已有暂停计数保持自测。原始帧、同钟关联和像素审计：`owned-wait2-51812-thread.jsonl`、`owned-wait2-51812-stacks.json`、`owned-wait2-51812.audit.json`，均在ignored的`analysis/ui-position-runtime/`。
+
+该轮之前PID41632在主scene激活前遇到`UI registry changed during assembly`。已保存失败记录、确认prime入口恢复并正常退出。仅该最终注册表并发变化现在允许最多3次、10秒预算的完整read-only准备重采集，每次使用新Resolver和一致的camera/anchor/UI/INI；其他身份、字节或anchor拒绝不重试，超时结果不接纳。7项专用测试及既有UI/启动策略共31项通过。PID51812成功经过新准备流程，但没有声称该次实际触发了重试。记录：`owned-wait2-41632-startup-failure.json`。
+
+## 深栈：定位到尺寸比较后的资源重建
+
+同一冻结Wait2 DLL的PID50924再次完成120个ticket、120次发布，XR提交仍为0。新的8秒采样257次全部恢复，102次完整位于owned消费窗口内；58次停在`win32u+6084`，距真实导出`NtGdiDdDDIWaitForSynchronizationObjectFromCpu`仅0x14。采集调用区间总计10.0152ms、中位0.0322ms、最大0.1921ms。58个入口恢复通过，游戏正常退出。
+
+18个完全相同的已展开等待栈包含：`21bc96 → 21da6b → 21d412 → 21c747 → 1598bd → 159572 → 227507 → 2b643e → 2b5b13 → 119137 → 15a943`（列的是返回地址，方向为内层到调用者）。这些等待并非只凭静态代码猜测；它们实际落在owned消费窗口。较浅的驱动分配栈也经过同一个资源创建返回点，但尚未测量每次调用的资源描述符或分辨率。
+
+资料库映射上述关键返回点到函数`1593c4/15974c/21bbd0/224ca8/2b59f4/2b6408`，在PID50924停止Hook后读取其全部已知chunks，六个函数SHA256均与历史快照一致。保持PID/creation/module base/快照SHA分开记录。原始证据：`owned-wait2-deep-50924-callers.json`、`owned-wait2-deep-50924-stacks.json`、`owned-wait2-deep-50924.audit.json`。
+
+只在原IDA库的私有副本中导出`2b59f4`和`2b6408`共107条汇编。`2b59f4`的入口将RCX保存为对象、EDX保存为请求宽度、R8D保存为请求高度，比较对象`+F8/+FC`。普通分支尺寸不同会经过`2b5234`再调用`2b6408`；后者执行若干虚调用，实际栈的`2b643e`对应vtable+8调用返回，与`224ca8`大规模资源初始化路径相连。此函数还有配置变化比较，不能把所有重建都归因于尺寸变化。
+
+IDA库字节与快照一致，但显示文本中的部分RIP全局地址不等于原始指令计算值。必须使用已保存原始字节的`next RIP + signed disp32`；例如模式标志正确RVA为`1b98b6c`。缓存伪代码、IDA显示地址和该标志的名称/用途不能直接当作可写配置，本轮没有修改该全局变量。汇编与计算结果：`owned-wait2-resize-disasm.json`。私有库lease已关闭；原库SHA仍为`66d17edbf21bf81f0fe5cf740111e738a0308ac9228f7576fe39f460baad1813`。
+
+**下一轮最小实验**：仅在已验证入口有界记录对象身份、旧/请求/返回后的宽高、owned或legacy来源、配置比较状态、重建用时及资源创建计数，确认是否在不同目标尺寸之间反复切换。若成立，再设计保持足够大资源或按视图复用资源的最小修改；保持原始视图矩形、投影、同ticket姿态和100ms规则，并复测两眼像素。当前只能将“分辨率切换造成资源重建抖动”列为有依据的假设，尚未通过尺寸序列或修改后对照确认。
