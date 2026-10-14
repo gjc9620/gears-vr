@@ -95,8 +95,20 @@ inline bool scene_binding_matches(PawnBinding const& before,Anchor const& after)
     return equal_identity(before.pawn,after.pawn_identity)&&before.pawn.address==after.pawn&&
         before.controller==after.controller&&before.camera==after.camera&&before.level==after.level;
 }
-template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std::uint32_t& stamp){
-    auto bytes=[&](void* dest,std::uintptr_t address,std::size_t size){return address&&read(dest,reinterpret_cast<const void*>(address),size);};
+enum class GuardReason {success,strict_validation,initial_binding,final_binding,read_failure,
+    strict_timestamp_changed,final_timestamp_changed,deadline,attempt_limit};
+enum class GuardStage {initial_binding,strict_validation,final_binding,final_timestamp};
+struct GuardDiagnostic {GuardReason reason{GuardReason::strict_validation};GuardStage stage{GuardStage::strict_validation};
+    std::uint32_t before_stamp{},strict_after_stamp{},final_stamp{};bool timestamp_only{};};
+inline const char* guard_reason_name(GuardReason reason){static const char* names[]={"success","strict_validation","initial_binding",
+    "final_binding","read_failure","strict_timestamp_changed","final_timestamp_changed","deadline","attempt_limit"};
+    const auto i=unsigned(reason);return i<std::size(names)?names[i]:"unknown";}
+inline const char* guard_stage_name(GuardStage stage){static const char* names[]={"initial_binding","strict_validation","final_binding","final_timestamp"};
+    const auto i=unsigned(stage);return i<std::size(names)?names[i]:"unknown";}
+template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std::uint32_t& stamp,GuardDiagnostic* diagnostic=nullptr){
+    if(diagnostic)*diagnostic={};
+    auto bytes=[&](void* dest,std::uintptr_t address,std::size_t size){const bool ok=address&&read(dest,reinterpret_cast<const void*>(address),size);
+        if(!ok&&diagnostic)diagnostic->reason=GuardReason::read_failure;return ok;};
     Registry objects{},names{};
     auto registry=[&](Registry& h,std::uintptr_t address){return bytes(&h,address,sizeof(h))&&h.data&&h.count>1000&&h.count<=h.capacity&&h.capacity<4000000;};
     if(!c.identity_count||c.identity_count>c.identities.size()||!registry(objects,c.objects_header)||!registry(names,c.names_header))return false;
@@ -114,6 +126,7 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
     for(unsigned n=0;n<16&&outer;++n){if(outer==level){inlevel=true;break;}auto id=identity(outer);if(!id)break;outer=id->outer;}
     if(!inlevel)return false;
     std::uint32_t before{};float time{};if(!bytes(&before,camera+c.camera_timestamp,4))return false;
+    if(diagnostic)diagnostic->before_stamp=before;
     std::memcpy(&time,&before,4);if(!std::isfinite(time))return false;
     auto verify_identities=[&](){for(unsigned i=0;i<c.identity_count;++i){auto const& id=c.identities[i];std::array<unsigned char,96> raw{};
         if(id.index>=unsigned(objects.count)||id.name_index>=unsigned(names.count)||!bytes(raw.data(),id.address,raw.size()))return false;
@@ -142,21 +155,59 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
     Registry afterobjects{},afternames{};std::uint32_t after{};
     if(!verify_identities()||!registry(afterobjects,c.objects_header)||!registry(afternames,c.names_header)||
         std::memcmp(&objects,&afterobjects,sizeof(objects))||std::memcmp(&names,&afternames,sizeof(names))||
-        !bytes(&after,camera+c.camera_timestamp,4)||before!=after||!links())return false;
+        !bytes(&after,camera+c.camera_timestamp,4))return false;
+    if(diagnostic)diagnostic->strict_after_stamp=after;
+    // Complete non-timestamp checks before declaring a retryable time race.
+    if(!links())return false;
+    if(before!=after){if(diagnostic){diagnostic->reason=GuardReason::strict_timestamp_changed;diagnostic->timestamp_only=true;}return false;}
     // Registry growth between observations is legal. A change inside this
     // finite bracket rejects this observation only; the next reads fresh headers.
-    out=anchor;stamp=before;return true;
+    out=anchor;stamp=before;if(diagnostic)diagnostic->reason=GuardReason::success;return true;
 }
-template<class Read> bool guard(Config const& startup,Read read,Anchor& out,std::uint32_t& stamp){
-    PawnBinding binding{};if(!capture_pawn_binding(startup,read,binding))return false;
+template<class Read> bool guard(Config const& startup,Read read,Anchor& out,std::uint32_t& stamp,GuardDiagnostic* diagnostic=nullptr){
+    GuardDiagnostic result{};result.reason=GuardReason::initial_binding;result.stage=GuardStage::initial_binding;
+    auto finish=[&](bool ok){if(diagnostic)*diagnostic=result;return ok;};
+    auto checked_read=[&](void* dest,const void* source,std::size_t size){const bool ok=read(dest,source,size);
+        if(!ok)result.reason=GuardReason::read_failure;return ok;};
+    PawnBinding binding{};if(!capture_pawn_binding(startup,checked_read,binding))return finish(false);
     Config candidate=startup;candidate.identities[candidate.role_pawn]=binding.pawn;
     Anchor anchor{};std::uint32_t observed{};
-    if(!strict_guard(candidate,read,anchor,observed))return false;
-    PawnBinding final{};if(!capture_pawn_binding(startup,read,final)||!equal_binding(binding,final))return false;
+    GuardDiagnostic strict{};
+    const bool strict_ok=strict_guard(candidate,read,anchor,observed,&strict);result=strict;
+    if(!strict_ok&&(!diagnostic||!strict.timestamp_only))return finish(false);
+    // Complete the outer identity bracket even after a strict timestamp race.
+    result.stage=GuardStage::final_binding;result.reason=GuardReason::final_binding;result.timestamp_only=false;
+    PawnBinding final{};if(!capture_pawn_binding(startup,checked_read,final)||!equal_binding(binding,final))return finish(false);
     std::uint32_t final_stamp{};
+    result.stage=GuardStage::final_timestamp;result.reason=GuardReason::final_binding;
     if(binding.camera>(std::numeric_limits<std::uintptr_t>::max)()-startup.camera_timestamp||
-        !read(&final_stamp,reinterpret_cast<const void*>(binding.camera+startup.camera_timestamp),4)||final_stamp!=observed)return false;
-    out=anchor;stamp=observed;return true;
+        !checked_read(&final_stamp,reinterpret_cast<const void*>(binding.camera+startup.camera_timestamp),4))return finish(false);
+    result.final_stamp=final_stamp;
+    if(!strict_ok){result.reason=GuardReason::strict_timestamp_changed;result.stage=GuardStage::strict_validation;result.timestamp_only=true;return finish(false);}
+    if(final_stamp!=observed){result.reason=GuardReason::final_timestamp_changed;result.timestamp_only=true;return finish(false);}
+    out=anchor;stamp=observed;result.reason=GuardReason::success;return finish(true);
+}
+struct BoundedGuardDiagnostic {unsigned attempts{};std::uint64_t elapsed_ms{};GuardReason reason{GuardReason::deadline};GuardDiagnostic last{};};
+// Startup-only. Render guards remain single attempts. Reject even a late success
+// without committing outputs. Injectable clock/sleep keep CPU tests deterministic.
+template<class Read,class Now,class Wait> bool bounded_guard(Config const& c,Read read,Now now_ms,Wait wait_ms,
+    Anchor& out,std::uint32_t& stamp,BoundedGuardDiagnostic* diagnostic=nullptr) {
+    constexpr unsigned maximum_attempts=5,budget_ms=200,pause_ms=20;
+    BoundedGuardDiagnostic result{};const std::uint64_t started=now_ms();
+    auto elapsed=[&](){const std::uint64_t now=now_ms();result.elapsed_ms=now>=started?now-started:budget_ms;return result.elapsed_ms;};
+    auto finish=[&](bool ok){if(diagnostic)*diagnostic=result;return ok;};
+    for(unsigned i=0;i<maximum_attempts;++i){
+        if(elapsed()>=budget_ms){result.reason=GuardReason::deadline;return finish(false);}
+        Anchor candidate{};std::uint32_t observed{};++result.attempts;
+        const bool valid=guard(c,read,candidate,observed,&result.last);
+        if(elapsed()>=budget_ms){result.reason=GuardReason::deadline;return finish(false);}
+        result.reason=result.last.reason;
+        if(valid){out=candidate;stamp=observed;return finish(true);}
+        if(!result.last.timestamp_only)return finish(false);
+        if(i+1==maximum_attempts){result.reason=GuardReason::attempt_limit;return finish(false);}
+        wait_ms(unsigned((std::min)(std::uint64_t(pause_ms),std::uint64_t(budget_ms)-result.elapsed_ms)));
+    }
+    return finish(false);
 }
 struct Receipt {Key key{};Anchor anchor{};std::uint64_t invocation{};std::uint32_t thread{};
     std::int64_t scene_qpc{},family_qpc{},renderer_qpc{};

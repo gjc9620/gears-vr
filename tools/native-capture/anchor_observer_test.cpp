@@ -176,5 +176,71 @@ int main(){
     // refused rather than accepting a replacement solely by its pointer.
     mem=stable_memory;put(pc+120,pawn);put(camera+128,pawn);put(pawn+16,1u);
     CHECK(!guard(cfg,read,anchor,stamp));
-    std::printf("anchor scope/one-use/nested restore/cross-thread/ambiguity/view64/submission128/fresh-scope recovery/projection observation/registry growth/bracket CPU tests passed\n");return 0;
+    // Startup retries only a timestamp race whose complete identity bracket
+    // passed. Inject camera changes at exact reads, not generic false returns.
+    mem=stable_memory;put(camera+140,1.f);
+    std::uint64_t milliseconds=0;unsigned sleeps=0,stamp_reads=0;
+    auto clock=[&](){return milliseconds;};auto pause=[&](unsigned ms){milliseconds+=ms;++sleeps;};
+    BoundedGuardDiagnostic diagnostic{};GuardDiagnostic single{};
+    Anchor sentinel{};sentinel.pawn=123456;sentinel.location={9,8,7};const std::uint32_t sentinel_stamp=99;
+    auto unchanged=[&](){return equal_anchor(anchor,sentinel)&&stamp==sentinel_stamp;};
+    auto reset=[&](){mem=stable_memory;put(camera+140,1.f);milliseconds=0;sleeps=stamp_reads=0;anchor=sentinel;stamp=sentinel_stamp;};
+    reset();auto race_once=[&](void* dest,const void* ptr,std::size_t size){
+        if(reinterpret_cast<uintptr_t>(ptr)==camera+140&&++stamp_reads==2)put(camera+140,2.f);
+        return read(dest,ptr,size);};
+    CHECK(bounded_guard(cfg,race_once,clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==2&&sleeps==1&&diagnostic.reason==GuardReason::success&&anchor.pawn==new_pawn);
+    reset();CHECK(!guard(cfg,race_once,anchor,stamp,&single));
+    CHECK(single.reason==GuardReason::strict_timestamp_changed&&single.timestamp_only&&single.before_stamp!=single.strict_after_stamp&&unchanged());
+    reset();auto final_race=[&](void* dest,const void* ptr,std::size_t size){
+        if(reinterpret_cast<uintptr_t>(ptr)==camera+140&&++stamp_reads==3)put(camera+140,2.f);
+        return read(dest,ptr,size);};
+    CHECK(!guard(cfg,final_race,anchor,stamp,&single));
+    CHECK(single.reason==GuardReason::final_timestamp_changed&&single.before_stamp==single.strict_after_stamp&&single.final_stamp!=single.before_stamp&&unchanged());
+    reset();CHECK(bounded_guard(cfg,final_race,clock,pause,anchor,stamp,&diagnostic)&&diagnostic.attempts==2);
+    reset();auto constant_race=[&](void* dest,const void* ptr,std::size_t size){
+        if(reinterpret_cast<uintptr_t>(ptr)==camera+140&&++stamp_reads%3==2)put(camera+140,float(stamp_reads));
+        return read(dest,ptr,size);};
+    CHECK(!bounded_guard(cfg,constant_race,clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==5&&sleeps==4&&diagnostic.reason==GuardReason::attempt_limit&&unchanged());
+    reset();auto invalidate_during_pause=[&](unsigned ms){milliseconds+=ms;++sleeps;put(pc+24,uintptr_t(123));};
+    CHECK(!bounded_guard(cfg,race_once,clock,invalidate_during_pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==2&&sleeps==1&&diagnostic.reason==GuardReason::strict_validation&&unchanged());
+    reset();put(new_pawn+24,uintptr_t(123));CHECK(!bounded_guard(cfg,read,clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==1&&!sleeps&&diagnostic.reason==GuardReason::initial_binding&&unchanged());
+    reset();put(pc+24,uintptr_t(123));CHECK(!bounded_guard(cfg,read,clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==1&&!sleeps&&diagnostic.reason==GuardReason::strict_validation&&unchanged());
+    reset();auto hard_read=[&](void* dest,const void* ptr,std::size_t size){
+        if(reinterpret_cast<uintptr_t>(ptr)==new_pawn+140)return false;return read(dest,ptr,size);};
+    CHECK(!bounded_guard(cfg,hard_read,clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==1&&!sleeps&&diagnostic.reason==GuardReason::read_failure&&diagnostic.last.stage==GuardStage::strict_validation&&unchanged());
+    reset();auto initial_read_fail=[&](void* dest,const void* ptr,std::size_t size){
+        if(reinterpret_cast<uintptr_t>(ptr)==cfg.objects_header)return false;return read(dest,ptr,size);};
+    CHECK(!bounded_guard(cfg,initial_read_fail,clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==1&&!sleeps&&diagnostic.reason==GuardReason::read_failure&&diagnostic.last.stage==GuardStage::initial_binding&&unchanged());
+    reset();unsigned final_headers=0;auto final_read_fail=[&](void* dest,const void* ptr,std::size_t size){
+        if(reinterpret_cast<uintptr_t>(ptr)==new_pawn&&size==96&&++final_headers==5)return false;return race_once(dest,ptr,size);};
+    CHECK(!bounded_guard(cfg,final_read_fail,clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==1&&!sleeps&&diagnostic.reason==GuardReason::read_failure&&diagnostic.last.stage==GuardStage::final_binding&&unchanged());
+    reset();auto identity_and_time=[&](void* dest,const void* ptr,std::size_t size){
+        if(reinterpret_cast<uintptr_t>(ptr)==camera+140&&++stamp_reads==2){put(camera+140,2.f);put(new_pawn+16,new_number+1);}
+        return read(dest,ptr,size);};
+    CHECK(!bounded_guard(cfg,identity_and_time,clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==1&&!sleeps&&diagnostic.reason==GuardReason::final_binding&&!diagnostic.last.timestamp_only&&unchanged());
+    reset();auto link_and_time=[&](void* dest,const void* ptr,std::size_t size){
+        if(reinterpret_cast<uintptr_t>(ptr)==camera+140&&++stamp_reads==2){put(camera+140,2.f);put(new_pawn+120,uintptr_t(123));}
+        return read(dest,ptr,size);};
+    CHECK(!bounded_guard(cfg,link_and_time,clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==1&&!sleeps&&diagnostic.reason==GuardReason::strict_validation&&!diagnostic.last.timestamp_only&&unchanged());
+    reset();unsigned clock_calls=0;auto late_clock=[&]()->std::uint64_t{return ++clock_calls>=3?200:0;};
+    CHECK(!bounded_guard(cfg,read,late_clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==1&&diagnostic.reason==GuardReason::deadline&&diagnostic.last.reason==GuardReason::success&&unchanged());
+    reset();auto over_budget_pause=[&](unsigned){milliseconds=200;++sleeps;};
+    CHECK(!bounded_guard(cfg,constant_race,clock,over_budget_pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==1&&diagnostic.reason==GuardReason::deadline&&sleeps==1&&unchanged());
+    reset();auto slow_race=[&](void* dest,const void* ptr,std::size_t size){auto ok=constant_race(dest,ptr,size);
+        if(reinterpret_cast<uintptr_t>(ptr)==camera+140&&stamp_reads%3==0)milliseconds+=80;return ok;};
+    CHECK(!bounded_guard(cfg,slow_race,clock,pause,anchor,stamp,&diagnostic));
+    CHECK(diagnostic.attempts==2&&diagnostic.reason==GuardReason::deadline&&unchanged());
+    std::printf("anchor scope/binding/submission and bounded startup timestamp-race diagnostics CPU tests passed\n");return 0;
 }

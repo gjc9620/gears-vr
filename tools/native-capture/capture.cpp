@@ -2052,10 +2052,19 @@ bool load_anchor_config(const wchar_t* ini){
         for(unsigned j=0;j<i;++j)if(c.identities[j].address==id.address)return false;
     }
     gears_anchor::Anchor a{};std::uint32_t stamp{};
-    return c.role_local<c.identity_count&&c.role_controller<c.identity_count&&c.role_camera<c.identity_count&&
+    const bool expected_identity=c.role_local<c.identity_count&&c.role_controller<c.identity_count&&c.role_camera<c.identity_count&&
         c.identities[c.role_local].address==expected_local&&c.identities[c.role_controller].address==expected_pc&&
-        c.identities[c.role_camera].address==expected_camera&&expected_camera+c.camera_timestamp==camera_cache&&
-        gears_anchor::guard(c,safe_copy,a,stamp);
+        c.identities[c.role_camera].address==expected_camera&&expected_camera+c.camera_timestamp==camera_cache;
+    gears_anchor::BoundedGuardDiagnostic guard_diagnostic{};
+    const bool admitted=expected_identity&&gears_anchor::bounded_guard(c,safe_copy,
+        [](){return std::uint64_t(GetTickCount64());},[](unsigned milliseconds){Sleep(milliseconds);},a,stamp,&guard_diagnostic);
+    if(diagnostic_status){auto const& last=guard_diagnostic.last;
+        fprintf(diagnostic_status,"anchor_startup_guard expected_identity=%u admitted=%u attempts=%u elapsed_ms=%llu reason=%s last_reason=%s stage=%s before_stamp=%u strict_after_stamp=%u final_stamp=%u timestamp_only=%u\n",
+            expected_identity?1:0,admitted?1:0,guard_diagnostic.attempts,static_cast<unsigned long long>(guard_diagnostic.elapsed_ms),
+            expected_identity?gears_anchor::guard_reason_name(guard_diagnostic.reason):"not_attempted",
+            gears_anchor::guard_reason_name(last.reason),gears_anchor::guard_stage_name(last.stage),last.before_stamp,last.strict_after_stamp,last.final_stamp,last.timestamp_only?1:0);
+        fflush(diagnostic_status);}
+    return admitted;
 }
 void flush(FILE* file,unsigned max_batches=0) {
     std::array<Record,128> batch;
