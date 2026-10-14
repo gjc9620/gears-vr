@@ -13,6 +13,8 @@ def analyze(status,restored,csv_path):
     mode=fields(status,'submit_view_count=') if 'submit_view_count=' in status else {'submit_view_count':2}
     view_count=mode.get('submit_view_count');marker=mode.get('submit_event_marker')
     total=lifetime.get('total',0)
+    seconds=lifetime.get('seconds',0)
+    bounded_policy=1<=seconds<=60 or (seconds==120 and lifetime.get('trial_seconds')==120 and lifetime.get('validated_union')==1)
     counts={kind:0 for kind in ('9','10','11','12')}
     first_constructor=None;last_constructor=0;last_pair=0;last_single=0
     focused=0;present_count=0;present_failures=0
@@ -40,7 +42,7 @@ def analyze(status,restored,csv_path):
         'present_success':present_count>=100 and present_failures==0}
     checks['recognized_trial_mode']=view_count in (1,2) and (view_count==2 or marker==77)
     checks.update({'completed_submission':trial.get('attempted')==2 and all(trial.get(key)==1 for key in ('owned','sources_released','original_preserved')),
-        'bounded_duration':1<=lifetime.get('seconds',0)<=60 and lifetime['seconds']-.5<=span<=lifetime['seconds']+.2,
+        'bounded_duration':bounded_policy and seconds-.5<=span<=seconds+.2,
         'multiple_pairs':total>=10,
         'all_submitted_objects_retired':all(trial.get(key)==total for key in ('consumed','prepared','destroyed')),
         'production_closed_and_pool_empty':lifetime.get('closed')==1 and lifetime.get('pending')==0,

@@ -9,6 +9,8 @@ if (Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue | Where-Object
     throw 'Exit the current game first; this launcher does not terminate it.'
 }
 $python = 'C:/Users/11/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+& $python (Join-Path $PSScriptRoot 'graphics_policy.py') apply
+if ($LASTEXITCODE -ne 0) { throw 'DLSS OFF startup policy failed.' }
 & $python (Join-Path $PSScriptRoot 'configure_startup.py') apply
 if ($LASTEXITCODE -ne 0) { throw 'Startup config validation failed.' }
 $launchArguments = @()

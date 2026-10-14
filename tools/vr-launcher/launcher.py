@@ -1,0 +1,317 @@
+"""Repository stereo launcher with optional verified menu navigation."""
+import argparse
+import ctypes
+import hashlib
+import json
+import math
+import os
+import pathlib
+import subprocess
+import struct
+import sys
+import time
+from types import SimpleNamespace
+
+ROOT=pathlib.Path(__file__).resolve().parents[2]
+HERE=pathlib.Path(__file__).resolve().parent
+INDEX=ROOT/'analysis/runtime/vr-launcher-session.json'
+SESSION_OPTIONS=('anchor_observer','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics')
+
+def atomic_json(path,value):
+    path.parent.mkdir(parents=True,exist_ok=True)
+    temp=path.with_name(path.name+'.tmp')
+    temp.write_text(json.dumps(value,indent=2),encoding='utf-8')
+    for attempt in range(6):
+        try:os.replace(temp,path);return
+        except PermissionError:
+            if attempt==5:raise
+            time.sleep(.02)
+
+def rooted(value,root=ROOT):
+    path=pathlib.Path(value)
+    return (root/path).resolve() if not path.is_absolute() else path.resolve()
+
+def settings(config,manifest,root=ROOT):
+    if set(config)-{'game_path','stereo_units_per_metre'}:raise ValueError('Unknown configuration field')
+    if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
+    if any(type(manifest.get(key,False)) is not bool for key in SESSION_OPTIONS):
+        raise ValueError('Manifest session options must be boolean')
+    scale=config.get('stereo_units_per_metre',100)
+    if isinstance(scale,bool) or not isinstance(scale,(int,float)) or not math.isfinite(scale) or not 10<=scale<=500:
+        raise ValueError('stereo_units_per_metre must be finite and between 10 and 500')
+    game=rooted(config.get('game_path',manifest['game_path']),root)
+    if game!=rooted(manifest['game_path'],root):
+        raise ValueError('Underlying reservation launcher supports only the manifest game path in this repository')
+    return game,float(scale)
+
+def verify_files(manifest,game,root=ROOT):
+    checks=((game,manifest['game_sha256']),
+        (rooted(manifest['native_build'],root)/manifest['native_dll'],manifest['native_sha256']),
+        (rooted(manifest['xr_build'],root)/'OpenXRPoseProbe.exe',manifest['xr_sha256']))
+    for path,expected in checks:
+        if hashlib.sha256(path.read_bytes()).hexdigest().lower()!=expected.lower():
+            raise RuntimeError('Manifest SHA256 mismatch: '+str(path))
+    profile=json.loads((root/'tools/package-inspector/reloaded-profile.json').read_text())
+    if profile['sha256'].lower()!=manifest['game_sha256'].lower():raise RuntimeError('Resolver profile differs from manifest')
+    return profile
+
+def registered(resolver,address):
+    obj=resolver.identity(address)
+    if not obj or obj['internal_index']>=len(resolver.object_pointers) or resolver.object_pointers[obj['internal_index']]!=address:
+        raise RuntimeError('Player object registry mismatch')
+    if obj['name'].startswith('Default__'):raise RuntimeError('Default object is not a live player')
+    return obj
+
+def possessed_player(resolver,camera):
+    """Reflect live possession; a plausible menu camera alone is insufficient."""
+    pc=int(camera['controller_address'],16);controller=registered(resolver,pc)
+    pawn_prop=resolver.property(controller['cls'],'Pawn',True)
+    if pawn_prop['type']!='ObjectProperty':raise RuntimeError('Unsupported Pawn property type')
+    pawn=resolver.u64(pc+pawn_prop['offset'])
+    if not pawn:raise RuntimeError('Waiting for a possessed level pawn')
+    obj=registered(resolver,pawn)
+    cls=obj['cls'];seen=set();war_pawn=False
+    while cls and cls not in seen and len(seen)<128:
+        seen.add(cls)
+        if resolver.identity(cls)['name']=='WarPawn':war_pawn=True;break
+        cls=resolver.u64(cls+resolver.profile['field_super'])
+    if not war_pawn:raise RuntimeError('Possessed pawn is not a WarPawn subclass')
+    backlink=resolver.property(obj['cls'],'Controller',True)
+    if backlink['type']!='ObjectProperty' or resolver.u64(pawn+backlink['offset'])!=pc:
+        raise RuntimeError('Pawn/controller possession mismatch')
+    outer=obj['outer'];seen=set();level=0
+    while outer and outer not in seen and len(seen)<128:
+        seen.add(outer);owner=registered(resolver,outer)
+        if resolver.class_name(owner)=='Level':level=outer;break
+        outer=owner['outer']
+    if not level:raise RuntimeError('Pawn has no registered level owner')
+    if resolver.u64(pc+pawn_prop['offset'])!=pawn or resolver.u64(pawn+backlink['offset'])!=pc:
+        raise RuntimeError('Possession changed during discovery')
+    stamp=struct.unpack('<f',resolver.read(int(camera['timestamp_address'],16),4))[0]
+    if not math.isfinite(stamp):raise RuntimeError('Invalid camera timestamp')
+    return {'pawn':hex(pawn),'controller':hex(pc),'camera':camera['camera_address'],'level':hex(level),'timestamp':stamp}
+
+def stable_player(current,previous):
+    return bool(current and previous and current['timestamp']>previous['timestamp'] and
+        all(current[key]==previous[key] for key in ('pawn','controller','camera','level')))
+
+def cancel_name(pid):return 'Local\\GearsVR.RepositoryLauncher.Stop.'+str(pid)
+
+class Backend:
+    def __init__(self):
+        sys.path.insert(0,str(ROOT/'tools/native-capture'));sys.path.insert(0,str(ROOT/'tools/package-inspector'))
+        import run_stereo_continuous
+        from resolve_camera import Resolver
+        self.runner=run_stereo_continuous;self.Resolver=Resolver;self.control=self.runner.WindowsControl()
+        from ctypes import wintypes
+        self.control.k.CreateEventW.argtypes=[ctypes.c_void_p,wintypes.BOOL,wintypes.BOOL,wintypes.LPCWSTR]
+        self.control.k.CreateEventW.restype=wintypes.HANDLE
+        self.control.k.WaitForSingleObject.argtypes=[wintypes.HANDLE,wintypes.DWORD]
+        self.control.k.WaitForSingleObject.restype=wintypes.DWORD
+    def open_cancel(self,pid):
+        ctypes.set_last_error(0)
+        handle=self.control.k.CreateEventW(None,True,False,cancel_name(pid))
+        error=ctypes.get_last_error()
+        if not handle:raise ctypes.WinError(error)
+        if error==183:self.control.k.CloseHandle(handle);raise RuntimeError('Startup stop event already exists')
+        return handle
+    def cancelled(self,handle):
+        result=self.control.k.WaitForSingleObject(handle,0)
+        if result not in (0,258):raise RuntimeError('Startup stop wait failed')
+        return result==0
+    def game_pids(self):
+        result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',
+            "Get-CimInstance Win32_Process -Filter 'Name=''GOWDE-Steam.exe''' | Select-Object -ExpandProperty ProcessId"],capture_output=True,text=True,check=True)
+        return [int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
+    def reserve(self,manifest,log):
+        cmd=[sys.executable,str(ROOT/'tools/native-capture/launch_reserve.py'),'--build-dir',str(rooted(manifest['native_build'])),
+             '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link']
+        result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
+        log.write_text(result.stdout+'\n'+result.stderr,encoding='utf-8')
+        if result.returncode:raise RuntimeError('Fresh reservation failed; no retry: '+str(log))
+        reports=[]
+        for line in result.stdout.splitlines():
+            try:value=json.loads(line)
+            except ValueError:continue
+            if isinstance(value,dict) and value.get('trampolines_reserved'):reports.append(value)
+        if len(reports)!=1:raise RuntimeError('Reservation did not return one accepted PID')
+        report=reports[0]
+        if not report.get('hooks_enabled') or report.get('native_hooks_enabled') or not report.get('first_view_mask_reserved') or not all(x['matches'] for x in report['independent_entry_checks']):
+            raise RuntimeError('Reservation proof rejected')
+        return report
+    def player(self,pid,profile):
+        resolver=self.Resolver(pid,profile)
+        try:return possessed_player(resolver,resolver.resolve())
+        finally:resolver.p.close()
+    def navigate(self,pid,identity,cancel,deadline,log):
+        sys.path.insert(0,str(HERE))
+        from menu_navigation import navigate
+        return navigate(pid,identity,self,cancel,deadline,log)
+
+def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sleep,auto_continue=False):
+    game,scale=settings(config,manifest)
+    owner=backend.control.identity(os.getpid())
+    if not owner:raise RuntimeError('Launcher process identity unavailable')
+    ctypes.set_last_error(0)
+    lock=backend.control.k.CreateMutexW(None,False,'Local\\GearsVR.RepositoryLauncher.Owner')
+    if not lock:raise ctypes.WinError(ctypes.get_last_error())
+    if ctypes.get_last_error()==183:
+        backend.control.k.CloseHandle(lock);raise RuntimeError('Another repository launcher is active')
+    state={'schema':1,'kind':'repository_vr_launcher','owner_identity':owner,'phase':'preflight','passed':False,'native_activated':False}
+    cancel=None
+    try:
+        cancel=backend.open_cancel(owner['pid'])
+        if backend.game_pids():raise RuntimeError('An existing game process must exit normally before fresh startup')
+        profile=verify_files(manifest,game)
+        atomic_json(index,state)
+        started=clock();state['phase']='reserving';atomic_json(index,state)
+        reserved=backend.reserve(manifest,index.with_suffix('.reserve.log'))
+        pid=reserved['pid'];identity=backend.control.identity(pid)
+        if not identity or pathlib.Path(identity['image']).resolve()!=game:raise RuntimeError('Reserved game identity mismatch')
+        state.update(phase='waiting_for_level',game_identity=identity,reservation=reserved);atomic_json(index,state)
+        if auto_continue:
+            sys.path.insert(0,str(HERE))
+            from menu_navigation import NavigationCancelled
+            state.update(phase='navigating_menu');atomic_json(index,state)
+            try:
+                state['menu_navigation']=backend.navigate(pid,identity,cancel,started+120,index.with_suffix('.menu.jsonl'))
+                if not state['menu_navigation'].get('loading_requested'):
+                    raise RuntimeError('Menu navigation did not request level loading')
+            except NavigationCancelled:
+                state.update(phase='cancelled_before_activation',native_activated=False,prime_watchdog_pending=True)
+                atomic_json(index,state);return 0
+            state['phase']='waiting_for_level';atomic_json(index,state)
+        previous=None;last_error='No possessed player observed'
+        # Starting before reserve is conservative: never extend its 180s prime lifetime.
+        # Keep 60s for XR preflight and the existing activation/prime checks.
+        while clock()-started<120:
+            if backend.cancelled(cancel):
+                state.update(phase='cancelled_before_activation',native_activated=False,prime_watchdog_pending=True)
+                atomic_json(index,state);return 0
+            if backend.control.identity(pid)!=identity:raise RuntimeError('Reserved game exited or changed')
+            try:current=backend.player(pid,profile)
+            except (RuntimeError,OSError,ValueError) as error:current=None;last_error=str(error)
+            if clock()-started>=120:
+                raise TimeoutError('Player discovery exceeded the conservative prime deadline; no activation or retry; wait for prime watchdog')
+            if stable_player(current,previous):break
+            previous=current;sleep(.5)
+        else:raise TimeoutError('No stable possessed level player before prime deadline; no activation/retry; existing prime watchdog must restore: '+last_error)
+        state['level_player']=current;atomic_json(index,state)
+        args=SimpleNamespace(pid=pid,build_dir=rooted(manifest['native_build']),dll_name=manifest['native_dll'],
+            xr_build_dir=rooted(manifest['xr_build']),stereo_units_per_metre=scale,startup_timeout=45.,cleanup_timeout=35.)
+        for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
+        def on_report(path,reported_owner,reported_game):
+            report=pathlib.Path(path).resolve()
+            if report.parent!=(ROOT/'analysis/runtime').resolve() or reported_owner!=owner or reported_game!=identity:
+                raise RuntimeError('Runner report identity mismatch')
+            original=json.loads(report.read_text())
+            state.pop('native_activated',None) # The owned runner report is authoritative after handoff.
+            state.update(session_report=str(report),session_id=original['session_id'],phase='session_owned')
+            atomic_json(index,state)
+        code=backend.runner.run_session(args,backend.control,on_report=on_report,cancel_requested=lambda:backend.cancelled(cancel))
+        report=json.loads(pathlib.Path(state['session_report']).read_text()) if state.get('session_report') else {}
+        cancelled=report.get('phase')=='cancelled' and report.get('startup_cancelled') is True
+        passed=code==0 and report.get('passed') is True
+        state.update(phase='cancelled_before_activation' if cancelled else 'finished' if passed else 'incomplete',
+            passed=passed,control_exit_code=code,native_activated=report.get('native_started',False))
+        if cancelled:state['prime_watchdog_pending']=True
+        atomic_json(index,state)
+        return code
+    except Exception as error:
+        state.update(phase='incomplete',error=repr(error),no_automatic_retry=True,
+            recovery='Game remains running. Before activation, wait for the existing 180-second prime watchdog; exit the game normally before retry.')
+        atomic_json(index,state);raise
+    finally:
+        if cancel:backend.control.k.CloseHandle(cancel)
+        backend.control.k.CloseHandle(lock)
+
+def stop(backend,index=INDEX):
+    state=json.loads(index.read_text())
+    if state.get('schema')!=1 or state.get('kind')!='repository_vr_launcher':
+        raise RuntimeError('No indexed continuous session; inspect launcher status, do not guess a PID')
+    if not state.get('session_report'):
+        if state.get('phase') not in ('preflight','reserving','navigating_menu','waiting_for_level'):
+            raise RuntimeError('No active startup or indexed continuous session')
+        backend.runner.checked_identity(backend.control,state['owner_identity'])
+        if not backend.control.signal(cancel_name(state['owner_identity']['pid'])):raise RuntimeError('Startup owner stop event absent')
+        print('Startup cancellation requested; no game is terminated; priming restores through its watchdog.')
+        return 0
+    report=pathlib.Path(state['session_report']).resolve()
+    original=json.loads(report.read_text())
+    if original.get('session_id')!=state.get('session_id') or original.get('owner_identity')!=state.get('owner_identity'):
+        raise RuntimeError('Indexed owner session identity mismatch')
+    if original.get('phase') in ('stopped','incomplete','cancelled'):
+        return backend.runner.request_stop(report,95.,backend.control)
+    # Cover XR preflight before the native stop event exists; runner consumes this callback.
+    backend.runner.checked_identity(backend.control,state['owner_identity'])
+    if not backend.control.signal(cancel_name(state['owner_identity']['pid'])):raise RuntimeError('Launcher cancellation event absent')
+    if original.get('phase')=='starting':
+        print('Session startup cancellation requested; owner will perform cleanup without activating new native work.')
+        return 0
+    return backend.runner.request_stop(report,95.,backend.control)
+
+def indexed_session(index):
+    state=json.loads(index.read_text())
+    if state.get('schema')!=1 or state.get('kind')!='repository_vr_launcher' or not state.get('session_report'):
+        raise RuntimeError('No indexed continuous session')
+    path=pathlib.Path(state['session_report']).resolve();session=json.loads(path.read_text())
+    if (session.get('schema')!=1 or session.get('kind')!='continuous_strict_stereo' or
+        session.get('session_id')!=state.get('session_id') or session.get('owner_identity')!=state.get('owner_identity') or
+        session.get('game_identity')!=state.get('game_identity')):
+        raise RuntimeError('Indexed session owner/game association mismatch')
+    return state,path,session
+
+def current_native_status(backend,session):
+    command=session.get('native_command',[])
+    try:build=pathlib.Path(command[command.index('--build-dir')+1]).resolve()
+    except (ValueError,IndexError):raise RuntimeError('Indexed native command has no build directory')
+    fields=backend.runner.read_session_status(build/'session-status.txt',session['game_identity']['pid'],0)
+    if (not fields or not backend.runner.native_owner_matches(fields,session['owner_identity']) or
+        fields.get('started_qpc')!=str(session.get('native_started_qpc'))):
+        raise RuntimeError('Current native status belongs to a different or unverified session')
+    return fields
+
+def recenter(backend,index=INDEX):
+    state,path,session=indexed_session(index)
+    if session.get('phase')!='running':raise RuntimeError('Recenter requires the indexed session to be running')
+    # Keep the same owner process and game creation identity, not merely a PID.
+    for identity in ('owner_identity','game_identity','xr_identity'):
+        backend.runner.checked_identity(backend.control,session[identity])
+    current_native_status(backend,session)
+    result=backend.runner.request_recenter(path,backend.control)
+    print(json.dumps({'recenter':'requested','applied_verified':False}),flush=True)
+    return result
+
+def status(backend,index=INDEX):
+    state=json.loads(index.read_text());result={'launcher':state,'reference_generation':None,'native_status_matched':False}
+    if state.get('session_report'):
+        try:
+            _,_,session=indexed_session(index)
+            result['session_phase']=session.get('phase')
+            fields=current_native_status(backend,session)
+            result.update(native_status_matched=True,native_phase=fields.get('phase'),
+                reference_generation=int(fields['reference_generation']) if 'reference_generation' in fields else None,
+                recenter_requests=int(fields['recenter_requests']) if 'recenter_requests' in fields else None)
+        except (RuntimeError,OSError,ValueError,KeyError) as error:result['status_error']=str(error)
+    print(json.dumps(result,indent=2));return result
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('command',choices=('start','stop','status','recenter'))
+    parser.add_argument('--config',type=pathlib.Path,default=HERE/'config.json')
+    parser.add_argument('--manifest',type=pathlib.Path,default=HERE/'manifest.json')
+    parser.add_argument('--runtime',type=pathlib.Path,help='Child-process OpenXR manifest override; no registry change')
+    parser.add_argument('--auto-continue',action='store_true',help='Navigate the verified menu path into the existing campaign')
+    args=parser.parse_args()
+    try:
+        backend=Backend()
+        if args.command=='status':status(backend);return 0
+        if args.command=='stop':return stop(backend)
+        if args.command=='recenter':return recenter(backend)
+        if args.runtime:
+            runtime=args.runtime.resolve()
+            if not runtime.is_file():raise RuntimeError('OpenXR runtime manifest does not exist')
+            os.environ['XR_RUNTIME_JSON']=str(runtime)
+        return start(json.loads(args.config.read_text()),json.loads(args.manifest.read_text()),backend,auto_continue=args.auto_continue)
+    except Exception as error:print(str(error),file=sys.stderr);return 1
+
+if __name__=='__main__':raise SystemExit(main())

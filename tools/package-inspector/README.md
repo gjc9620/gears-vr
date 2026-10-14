@@ -68,3 +68,45 @@ ghidra_mcp_probe.py --output <JSON> 通过官方默认 http://127.0.0.1:8080/mcp
 做有限时只读协议发现：initialize、tools/list、ghidra://programs。
 不调用编辑工具、不导入程序、不修改 Codex 配置。服务未启动时返回失败；
 配置步骤见 docs/13-ghidra-mcp-setup.md。
+
+## 独立运行时代码快照与定向反编译
+
+若 MCP 中磁盘 EXE 的字节与已核验运行时代码不符，先建立单独分析数据集。
+`snapshot_render_code.py` 只用 QUERY/READ 权限，核验版本与运行时注册表，
+读取普通的非写入映像节，跳过 `.themida`、`.boot` 及后部辅助节。
+每个块连续读取两次一致才保存，并输出地址、SHA256 和十处入口的磁盘对照。
+输出不是可运行 EXE；不包含堆中的场景状态，也不是全进程原子快照。
+
+```powershell
+$py = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+# PID 使用本次正常启动的游戏；输出必须是 analysis/ghidra 下尚不存在的目录。
+& $py tools/package-inspector/snapshot_render_code.py --pid <PID> --output J:/gearsVr/analysis/ghidra/render-<PID>
+```
+
+运行 `DecompileRenderSnapshot.java` 时只在单独的 Ghidra headless 项目导入
+快照主代码节，使用 `-noanalysis`。脚本依据 sections.tsv 映射其他节，定义十个
+目标入口及场景总入口的一层直接被调用者，最多 80 个。每函数反编译超时 20 秒；
+输出 `.c`、`.asm`、`index.tsv`，逐项保留失败状态。不会分析整个 EXE。
+
+下面为本轮已经成功运行的数据集命令；复现新快照时替换路径、项目名，并依据
+manifest.json 指定实际代码节及其地址。已有项目可用 `-process section_1000.bin`
+替代 `-import ... -loader ... -processor ... -cspec ...`，不要在原磁盘 EXE 项目运行。
+
+```powershell
+& 'J:\gearsVr\ghidra_12.1.4_PUBLIC_20260921\ghidra_12.1.4_PUBLIC\support\analyzeHeadless.bat' `
+  'J:\gearsVr\analysis\ghidra\runtime-project' render-16812 `
+  -import 'J:\gearsVr\analysis\ghidra\render-16812-verified\section_1000.bin' `
+  -loader BinaryLoader -loader-baseAddr 0x140001000 `
+  -processor x86:LE:64:default -cspec windows -noanalysis `
+  -scriptPath 'J:\gearsVr\tools\package-inspector' `
+  -postScript DecompileRenderSnapshot.java 'J:\gearsVr\analysis\ghidra\render-16812-verified'
+```
+
+已存在的项目不要重复 `-import`。伪代码参数、返回类型和结构体名称需要与汇编
+及运行时证据核对；反编译成功不证明该路径实际执行或产生 GPU 像素。
+MCP 仍服务当前 GUI 打开的项目；headless 项目不会自动替换其当前程序。
+
+已有 runtime 项目的少量追加入口可用 `DecompileSnapshotTargets.java`：
+headless 参数使用 `-process section_1000.bin -noanalysis -readOnly`，postScript 参数为
+输出目录及 1–16 个完整地址。脚本拒绝非 executable 节以及已有函数内部的错误入口；
+返回地址应先确定所属函数，不能直接当成入口。它导出伪代码、汇编和成功/失败索引。

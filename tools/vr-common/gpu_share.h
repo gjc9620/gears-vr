@@ -7,16 +7,18 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include "stereo_image_ticket.h"
 
 namespace gears_vr {
 using Microsoft::WRL::ComPtr;
 // One GPU slot. Producer never overwrites it until the consumer's GPU fence
 // acknowledges the previous sequence. Both devices must use the same adapter.
 struct alignas(8) GpuPacket {
-    unsigned magic,version,size,pid,width,height,format;
+    unsigned magic,version,size,pid,width,height,format,allow_simulated;
     LUID adapter;
     volatile LONG ready,stopped,consumer;
     alignas(8) volatile LONG64 sequence;
+    StereoImageTicket ticket;
 };
 inline std::wstring gpu_name(DWORD pid,const wchar_t* suffix){
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Gpu.%lu.%s",pid,suffix);return name;
@@ -27,6 +29,19 @@ inline void gpu_check(HRESULT result,const char* action){
 inline void gpu_barrier(ID3D12GraphicsCommandList* list,ID3D12Resource* resource,D3D12_RESOURCE_STATES before,D3D12_RESOURCE_STATES after){
     D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;b.Transition.pResource=resource;
     b.Transition.Subresource=D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;b.Transition.StateBefore=before;b.Transition.StateAfter=after;list->ResourceBarrier(1,&b);
+}
+enum class GpuCaptureReason:unsigned {not_attempted,published,not_ready,lock_busy,metadata_invalid,
+    ticket_invalid,source_changed,no_consumer,rate_limited,chain_mismatch,device_removed,
+    producer_in_flight,consumer_not_done,api_failure,native_stopped,native_deadline};
+enum GpuCaptureValid:unsigned {capture_state_valid=1,capture_serial_valid=2,capture_consumer_valid=4,
+    capture_ready_valid=8,capture_done_valid=16,capture_hresult_valid=32};
+struct GpuCaptureTrace {GpuCaptureReason reason{GpuCaptureReason::not_attempted};unsigned valid{},state{};
+    UINT64 serial_before{},serial_after{},ready_completed{},done_completed{};LONG consumer{};HRESULT result{};};
+inline const char* gpu_capture_reason_name(GpuCaptureReason reason){
+    static const char* names[]={"not_attempted","published","not_ready","lock_busy","metadata_invalid","ticket_invalid",
+        "source_changed","no_consumer","rate_limited","chain_mismatch","device_removed","producer_in_flight",
+        "consumer_not_done","api_failure","native_stopped","native_deadline"};
+    auto i=static_cast<unsigned>(reason);return i<std::size(names)?names[i]:"unknown";
 }
 class GpuPublisher {
     ComPtr<ID3D12Device> device;
@@ -41,21 +56,21 @@ class GpuPublisher {
     SRWLOCK lock=SRWLOCK_INIT;
     UINT64 serial=0;
     ULONGLONG next_capture=0;
-    bool in_flight=false,initialized=false;
+    bool in_flight=false,initialized=false,allow_simulated_=false;
     HRESULT error=S_OK;
     bool complete(){return ready_fence && ready_fence->GetCompletedValue()!=~UINT64(0) && ready_fence->GetCompletedValue()>=serial;}
     void detach(){source.Detach();texture.Detach();list.Detach();allocator.Detach();ready_fence.Detach();done_fence.Detach();chain.Detach();queue.Detach();device.Detach();}
 public:
-    std::atomic<unsigned> frames{0},busy{0};
+    std::atomic<unsigned> frames{0},busy{0},rate_limited{0};
     std::atomic<unsigned> state{0}; // 0 absent,1 bound,2 ready,3 failed,4 stopped
     GpuPublisher()=default;
     GpuPublisher(GpuPublisher const&)=delete;
     ~GpuPublisher(){close();}
-    bool bind(ID3D12CommandQueue* q,IDXGISwapChain* swap){
+    bool bind(ID3D12CommandQueue* q,IDXGISwapChain* swap,bool allow_sim=false){
         if(!TryAcquireSRWLockExclusive(&lock))return false;
         bool ok=false;
         if(state==0 && SUCCEEDED(swap->QueryInterface(IID_PPV_ARGS(&chain))) && SUCCEEDED(q->GetDevice(IID_PPV_ARGS(&device)))){
-            queue=q;state=1;ok=true;
+            queue=q;allow_simulated_=allow_sim;state=1;ok=true;
         }
         ReleaseSRWLockExclusive(&lock);return ok;
     }
@@ -82,7 +97,8 @@ public:
             if(!map || GetLastError()==ERROR_ALREADY_EXISTS)throw std::runtime_error("GPU metadata already exists or cannot be created");
             packet=static_cast<GpuPacket*>(MapViewOfFile(map,FILE_MAP_ALL_ACCESS,0,0,sizeof(GpuPacket)));
             if(!packet)throw std::runtime_error("GPU metadata map failed");
-            memset(packet,0,sizeof(*packet));packet->magic=0x47564731;packet->version=1;packet->size=sizeof(*packet);packet->pid=pid;
+            memset(packet,0,sizeof(*packet));packet->magic=0x47564731;packet->version=3;packet->size=sizeof(*packet);packet->pid=pid;
+            packet->allow_simulated=allow_simulated_?1:0;
             packet->width=static_cast<unsigned>(desc.Width);packet->height=desc.Height;packet->format=desc.Format;packet->adapter=device->GetAdapterLuid();
             initialized=true;state=2;InterlockedExchange(&packet->ready,1);ok=true;
         }catch(...){error=E_FAIL;state=3;}
@@ -95,33 +111,69 @@ public:
     }
     // Render callback: no CPU wait, file I/O, allocations of GPU resources or
     // waits on the consumer queue. Busy slot means skip this frame.
-    void capture(IDXGISwapChain* swap){
-        if(state!=2 || !TryAcquireSRWLockExclusive(&lock))return;
+    bool capture(IDXGISwapChain* swap,const StereoImageTicket* ticket=nullptr,GpuCaptureTrace* traceout=nullptr){
+        if(traceout){*traceout={};traceout->state=state.load();traceout->valid=capture_state_valid;}
+        if(state!=2){if(traceout)traceout->reason=GpuCaptureReason::not_ready;return false;}
+        if(!TryAcquireSRWLockExclusive(&lock)){if(traceout)traceout->reason=GpuCaptureReason::lock_busy;return false;}
+        bool published=false;
+        if(traceout){traceout->state=state.load();traceout->serial_before=traceout->serial_after=serial;traceout->valid|=capture_serial_valid;}
+        auto reason=[&](GpuCaptureReason why){if(traceout)traceout->reason=why;};
+        auto failure=[&](HRESULT hr){if(traceout){traceout->result=hr;traceout->valid|=capture_hresult_valid;}reason(GpuCaptureReason::api_failure);};
         do {
-            if(!InterlockedCompareExchange(&packet->consumer,0,0) || GetTickCount64()<next_capture)break;
+            if(state!=2){reason(GpuCaptureReason::not_ready);break;} // mark_stopped may win before lock.
+            if(packet->magic!=0x47564731 || packet->version!=3 || packet->size!=sizeof(*packet) || packet->pid!=GetCurrentProcessId() || packet->allow_simulated!=(allow_simulated_?1u:0u)){reason(GpuCaptureReason::metadata_invalid);break;}
+            // Copy the caller's frozen ticket once. Validation never selects a
+            // newer pose or changes the metadata of a still-owned GPU slot.
+            StereoImageTicket frozen=ticket?*ticket:StereoImageTicket{};
+            if(allow_simulated_&&!ticket){reason(GpuCaptureReason::ticket_invalid);break;}
+            if(ticket && !stereo_image_ticket_valid(frozen,packet->width,packet->height,allow_simulated_)){reason(GpuCaptureReason::ticket_invalid);break;}
+            if(serial&&frozen.id&&packet->ticket.id&&frozen.sample.source!=packet->ticket.sample.source){reason(GpuCaptureReason::source_changed);break;}
+            auto consumer=InterlockedCompareExchange(&packet->consumer,0,0);
+            if(traceout){traceout->consumer=consumer;traceout->valid|=capture_consumer_valid;}
+            if(!consumer){reason(GpuCaptureReason::no_consumer);break;}
+            // Legacy diagnostic quad images keep their fixed rate cap. Frozen
+            // stereo tickets use the consumer ack and GPU fences as the only
+            // pacing limits, preserving the nonblocking single-slot policy.
+            if(!ticket&&GetTickCount64()<next_capture){++rate_limited;reason(GpuCaptureReason::rate_limited);break;}
             ComPtr<IUnknown> a,b;
-            if(FAILED(chain.As(&a)) || FAILED(swap->QueryInterface(IID_PPV_ARGS(&b))) || a.Get()!=b.Get())break;
+            auto identity_result=chain.As(&a);if(FAILED(identity_result)){reason(GpuCaptureReason::chain_mismatch);break;}
+            identity_result=swap->QueryInterface(IID_PPV_ARGS(&b));if(FAILED(identity_result)||a.Get()!=b.Get()){reason(GpuCaptureReason::chain_mismatch);break;}
             if(in_flight && complete()){source.Reset();in_flight=false;}
             auto done=done_fence->GetCompletedValue();
-            if(done==~UINT64(0) || ready_fence->GetCompletedValue()==~UINT64(0)){error=DXGI_ERROR_DEVICE_REMOVED;state=3;break;}
-            if(in_flight || done<serial){++busy;break;}
-            error=chain->GetBuffer(chain->GetCurrentBackBufferIndex(),IID_PPV_ARGS(&source));if(FAILED(error)){state=3;break;}
+            if(traceout){traceout->done_completed=done;traceout->valid|=capture_done_valid;}
+            if(done==~UINT64(0)){error=DXGI_ERROR_DEVICE_REMOVED;state=3;reason(GpuCaptureReason::device_removed);break;}
+            auto ready=ready_fence->GetCompletedValue();if(traceout){traceout->ready_completed=ready;traceout->valid|=capture_ready_valid;}
+            if(ready==~UINT64(0)){error=DXGI_ERROR_DEVICE_REMOVED;state=3;reason(GpuCaptureReason::device_removed);break;}
+            if(in_flight || done<serial){++busy;reason(in_flight?GpuCaptureReason::producer_in_flight:GpuCaptureReason::consumer_not_done);break;}
+            error=chain->GetBuffer(chain->GetCurrentBackBufferIndex(),IID_PPV_ARGS(&source));if(FAILED(error)){state=3;failure(error);break;}
             auto desc=source->GetDesc();
-            if(desc.Width!=packet->width || desc.Height!=packet->height || static_cast<unsigned>(desc.Format)!=packet->format){source.Reset();error=E_INVALIDARG;state=3;break;}
-            error=allocator->Reset();if(SUCCEEDED(error))error=list->Reset(allocator.Get(),nullptr);if(FAILED(error)){state=3;break;}
+            if(desc.Width!=packet->width || desc.Height!=packet->height || static_cast<unsigned>(desc.Format)!=packet->format){source.Reset();error=E_INVALIDARG;state=3;failure(error);break;}
+            error=allocator->Reset();if(SUCCEEDED(error))error=list->Reset(allocator.Get(),nullptr);if(FAILED(error)){state=3;failure(error);break;}
             gpu_barrier(list.Get(),source.Get(),D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_COPY_SOURCE);
             gpu_barrier(list.Get(),texture.Get(),D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_COPY_DEST);
             list->CopyResource(texture.Get(),source.Get());
             gpu_barrier(list.Get(),texture.Get(),D3D12_RESOURCE_STATE_COPY_DEST,D3D12_RESOURCE_STATE_COMMON);
             gpu_barrier(list.Get(),source.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_PRESENT);
-            error=list->Close();if(FAILED(error)){state=3;break;}
+            error=list->Close();if(FAILED(error)){state=3;failure(error);break;}
             ID3D12CommandList* commands[]={list.Get()};in_flight=true;queue->ExecuteCommandLists(1,commands);
-            error=queue->Signal(ready_fence.Get(),++serial);if(FAILED(error)){state=3;break;}
+            error=queue->Signal(ready_fence.Get(),++serial);if(FAILED(error)){state=3;failure(error);break;}
+            packet->ticket=frozen;
             InterlockedExchange64(&packet->sequence,static_cast<LONG64>(serial));next_capture=GetTickCount64()+16;++frames;
+            published=true;reason(GpuCaptureReason::published);
         }while(false);
+        if(traceout){traceout->serial_after=serial;traceout->state=state.load();}
         ReleaseSRWLockExclusive(&lock);
+        return published;
     }
     HRESULT failure()const{return error;}
+    // Notify the receiver and prevent new submissions. Keep all resources and
+    // shared handles alive until callbacks drain and the producer fence is safe.
+    void mark_stopped(){
+        AcquireSRWLockExclusive(&lock);
+        if(packet&&initialized)InterlockedExchange(&packet->stopped,1);
+        state=4;
+        ReleaseSRWLockExclusive(&lock);
+    }
     bool drain(unsigned timeout_ms){
         ULONGLONG deadline=GetTickCount64()+timeout_ms;
         do{poll();if(!in_flight)return true;Sleep(1);}while(GetTickCount64()<deadline);
@@ -136,20 +188,22 @@ public:
     }
 };
 class GpuReceiver {
-    HANDLE map{};GpuPacket* packet{};bool claimed=false;
+    HANDLE map{};GpuPacket* packet{};bool claimed=false,allow_simulated_=false;
     ComPtr<ID3D12Fence> ready_fence,done_fence;
     UINT64 pending=0,last=0;
+    StereoImageTicket ticket_{};
 public:
     ComPtr<ID3D12Resource> texture;
     unsigned width{},height{};DXGI_FORMAT format{};DWORD producer_pid{};
     GpuReceiver()=default;GpuReceiver(GpuReceiver const&)=delete;
     ~GpuReceiver(){close();}
-    void open(ID3D12Device* device,DWORD pid){
+    void open(ID3D12Device* device,DWORD pid,bool allow_sim=false){
         if(packet)throw std::runtime_error("GPU receiver already open");
+        allow_simulated_=allow_sim;
         map=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,gpu_name(pid,L"metadata").c_str());
         if(!map)throw std::runtime_error("GPU producer metadata unavailable");
         packet=static_cast<GpuPacket*>(MapViewOfFile(map,FILE_MAP_ALL_ACCESS,0,0,sizeof(GpuPacket)));
-        if(!packet || InterlockedCompareExchange(&packet->ready,0,0)!=1 || packet->magic!=0x47564731 || packet->version!=1 || packet->size!=sizeof(*packet) || packet->pid!=pid || InterlockedCompareExchange(&packet->stopped,0,0))throw std::runtime_error("GPU metadata rejected");
+        if(!packet || InterlockedCompareExchange(&packet->ready,0,0)!=1 || packet->magic!=0x47564731 || packet->version!=3 || packet->size!=sizeof(*packet) || packet->pid!=pid || packet->allow_simulated!=(allow_simulated_?1u:0u) || InterlockedCompareExchange(&packet->stopped,0,0))throw std::runtime_error("GPU metadata rejected");
         LUID luid=device->GetAdapterLuid();if(memcmp(&luid,&packet->adapter,sizeof(luid)))throw std::runtime_error("GPU adapter differs from producer");
         if(InterlockedCompareExchange(&packet->consumer,static_cast<LONG>(GetCurrentProcessId()),0))throw std::runtime_error("GPU slot already has a consumer");
         claimed=true;producer_pid=pid;
@@ -165,16 +219,27 @@ public:
     }
     bool acquire(ID3D12CommandQueue* queue){
         if(!packet || pending || InterlockedCompareExchange(&packet->stopped,0,0))return false;
+        if(packet->magic!=0x47564731 || packet->version!=3 || packet->size!=sizeof(*packet) || packet->allow_simulated!=(allow_simulated_?1u:0u) ||
+           packet->pid!=producer_pid || packet->width!=width || packet->height!=height || packet->format!=static_cast<unsigned>(format))
+            throw std::runtime_error("GPU metadata changed or version rejected");
         auto serial=static_cast<UINT64>(InterlockedCompareExchange64(&packet->sequence,0,0));
         if(!serial || serial<=last)return false;
+        // Until acknowledge's GPU fence completes the producer cannot reuse
+        // this slot. The interlocked sequence publishes the preceding ticket.
+        StereoImageTicket frozen=packet->ticket;
+        if(frozen.id?!stereo_image_ticket_valid(frozen,width,height,allow_simulated_):(allow_simulated_||!stereo_image_ticket_empty(frozen)))throw std::runtime_error("GPU stereo ticket rejected");
+        if(ticket_.id&&frozen.id&&ticket_.sample.source!=frozen.sample.source)throw std::runtime_error("GPU stereo source changed");
         if(ready_fence->GetCompletedValue()==~UINT64(0))throw std::runtime_error("Producer device removed");
-        gpu_check(queue->Wait(ready_fence.Get(),serial),"wait producer fence");pending=serial;return true;
+        gpu_check(queue->Wait(ready_fence.Get(),serial),"wait producer fence");ticket_=frozen;pending=serial;return true;
     }
     void acknowledge(ID3D12CommandQueue* queue){
         if(!pending)throw std::runtime_error("No GPU frame acquired");
         gpu_check(queue->Signal(done_fence.Get(),pending),"acknowledge GPU frame");last=pending;pending=0;
     }
     UINT64 sequence()const{return last;}
+    // Private immutable snapshot of the acquired image; ack keeps it available
+    // for reuse/reprojection. Replaced only by the next successful acquire.
+    StereoImageTicket const& ticket()const{return ticket_;}
     bool stopped()const{return !packet || InterlockedCompareExchange(&packet->stopped,0,0)!=0;}
     void close(){
         // Keep the single-consumer claim until producer exit. A replacement

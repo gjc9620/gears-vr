@@ -53,6 +53,10 @@
 - [最终输出调用与区域参数](docs/50-final-output-quad-parameters.md)
 - [RenderDoc 接入与单帧实测](docs/51-renderdoc-capture-compatibility.md)
 - [RenderDoc 调用指针检查与失败记录](docs/52-renderdoc-import-bridge-failure.md)
+- [双目诊断转向与运行时 Ghidra 分析](docs/53-render-diagnosis-and-runtime-ghidra.md)
+- [渲染架构复审与局部几何观察的边界](docs/54-render-route-review-and-geometry-limits.md)
+- [PIX 原版路径对照与定点回读前置条件](docs/55-pix-baseline-and-targeted-readback.md)
+- [最终输入绑定与实际绘制路径](docs/56-final-input-binding-and-observed-draw-path.md)
 - [调查工具使用说明](tools/package-inspector/README.md)
 
 ## 当前验证结果

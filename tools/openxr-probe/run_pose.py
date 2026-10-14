@@ -48,15 +48,20 @@ def main():
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--runtime', type=pathlib.Path)
     parser.add_argument('--bridge-pid', type=int, help='Publish poses to the bounded native-camera test')
+    parser.add_argument('--stereo-bridge-pid', type=int, help='Publish immutable paired views to the native stereo test')
+    parser.add_argument('--build-dir',type=pathlib.Path,default=pathlib.Path(__file__).parent/'build')
     parser.add_argument('--game-screen',action='store_true',help='Display only the game HWND as a mono diagnostic panel')
     parser.add_argument('--gpu-game',action='store_true',help='Display native shared GPU frames as a mono diagnostic panel')
+    parser.add_argument('--stereo-game',action='store_true',help='Publish paired views and display only GPU images carrying the same session render ticket')
     parser.add_argument('--gpu-snapshot',action='store_true',help='Save one XR GPU image after 10 seconds; requires --gpu-game')
     args = parser.parse_args()
     if args.bridge_pid and (args.bridge_pid<=0 or not args.render): parser.error('Bridge requires a positive target PID and --render')
+    if args.stereo_bridge_pid and (args.stereo_bridge_pid<=0 or not args.render or args.bridge_pid or args.gpu_game or args.game_screen or args.stereo_game): parser.error('Stereo bridge requires a positive target PID and the separate render-pattern mode')
     if not args.bridge_pid and args.seconds>60: parser.error('Standalone diagnostics are limited to 60 seconds')
     if args.game_screen and (args.render or args.bridge_pid): parser.error('Game screen is a separate display test')
     if args.gpu_game and (args.game_screen or args.render or args.bridge_pid): parser.error('GPU game is a separate display test')
-    if args.gpu_snapshot and (not args.gpu_game or args.seconds<12): parser.error('Snapshot requires GPU game and at least 12 seconds')
+    if args.stereo_game and (args.gpu_game or args.game_screen or args.render or args.bridge_pid): parser.error('Stereo game is a separate display mode')
+    if args.gpu_snapshot and (not (args.gpu_game or args.stereo_game) or args.seconds<12): parser.error('Snapshot requires GPU game and at least 12 seconds')
     env = os.environ.copy()
     if args.runtime:
         if not args.runtime.is_file(): parser.error('Runtime manifest not found')
@@ -66,26 +71,30 @@ def main():
     stem = folder / ('pose-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f'))
     output = stem.with_suffix('.csv')
     stdout, stderr = stem.with_suffix('.stdout.txt'), stem.with_suffix('.stderr.txt')
-    command = [str(pathlib.Path(__file__).parent / 'build/OpenXRPoseProbe.exe'), str(args.seconds), str(output)]
+    command = [str(args.build_dir.resolve() / 'OpenXRPoseProbe.exe'), str(args.seconds), str(output)]
     if args.render: command.append('--render')
     snapshot=pathlib.Path(str(output)+'-gpu.ppm') if args.gpu_snapshot else None
     if snapshot: command.extend(['--gpu-snapshot',str(snapshot)])
     if args.bridge_pid: command.extend(['--bridge-pid',str(args.bridge_pid)])
+    if args.stereo_bridge_pid: command.extend(['--stereo-bridge-pid',str(args.stereo_bridge_pid)])
     game_target=None
-    if args.game_screen or args.gpu_game:
+    if args.game_screen or args.gpu_game or args.stereo_game:
         sys.path.insert(0,str(ROOT/'tools/game-io'))
         from game_io import game_window
         pid,hwnd=game_window()
         game_target={'pid':pid,'hwnd':hwnd}
-        if args.gpu_game: command.extend(['--gpu-game-pid',str(pid)])
+        if args.stereo_game: command.extend(['--stereo-game-pid',str(pid)])
+        elif args.gpu_game: command.extend(['--gpu-game-pid',str(pid)])
         else: command.extend(['--game-window',str(hwnd),str(pid)])
     timeout = args.seconds + 20
     report = {'csv': str(output), 'stdout': str(stdout), 'stderr': str(stderr),
               'runtime_override': env.get('XR_RUNTIME_JSON'), 'render_pattern': args.render,
               'timeout_seconds': timeout}
     report['bridge_pid']=args.bridge_pid
+    report['stereo_bridge_pid']=args.stereo_bridge_pid
     report['game_screen_target']=game_target
     report['native_gpu_game']=args.gpu_game
+    report['native_stereo_game']=args.stereo_game
     report['gpu_snapshot_requested']=args.gpu_snapshot
     # Files prevent unbounded runtime messages consuming model context or RAM.
     with stdout.open('wb') as out, stderr.open('wb') as err:
@@ -109,9 +118,18 @@ def main():
                 if isinstance(counters,dict) and 'game_quad_layers' in counters: report['game_screen_summary']=counters
                 if isinstance(counters,dict) and 'gpu_game_quad_layers' in counters: report['gpu_game_summary']=counters
                 if isinstance(counters,dict) and 'swapchain_formats' in counters: report['swapchain_formats']=counters['swapchain_formats']
+                if isinstance(counters,dict) and 'stereo_bridge_session' in counters: report['stereo_bridge_summary']=counters
+                if isinstance(counters,dict) and 'stereo_game_projection_layers' in counters: report['stereo_game_summary']=counters
+                if isinstance(counters,dict) and 'stereo_submission_evidence' in counters: report['stereo_submission_evidence']=counters
+                if isinstance(counters,dict) and 'stereo_projection_rejection' in counters: report.setdefault('stereo_projection_rejections',[]).append(counters)
+                if isinstance(counters,dict) and 'unsafe_xr_teardown' in counters: report['unsafe_xr_teardown']=bool(counters['unsafe_xr_teardown'])
+    if args.stereo_game:
+        evidence=report.get('stereo_submission_evidence',{})
+        report['stereo_coverage_passed']=bool(evidence.get('sustained_submission_passed') and not evidence.get('structural_failure') and
+                                            not report.get('unsafe_xr_teardown') and report.get('exit_code')==0)
     stem.with_suffix('.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps(report, indent=2))
-    return 0 if report.get('exit_code') == 0 and not report.get('csv_error') and (not snapshot or report['gpu_snapshot_saved']) else 1
+    return 0 if report.get('exit_code') == 0 and not report.get('csv_error') and not report.get('unsafe_xr_teardown') and (not args.stereo_game or report['stereo_coverage_passed']) and (not snapshot or report['gpu_snapshot_saved']) else 1
 
 
 if __name__ == '__main__': sys.exit(main())

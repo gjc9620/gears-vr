@@ -13,13 +13,24 @@
 #include <cmath>
 #include "MinHook.h"
 #include "../vr-common/pose_bridge.h"
+#include "../vr-common/stereo_bridge.h"
+#include "../vr-common/gpu_share.h"
+#include "../vr-common/stereo_ticket_store.h"
 #include "source_view_shadow.h"
 #include "native_source_view_args.h"
 #include "source_eye_args.h"
 #include "two_view_renderer_shadow.h"
 #include "split_source_views.h"
 #include "submitted_view_lifetime.h"
+#include "continuous_owner.h"
 #include "gpu_viewport_stats.h"
+#include "frame_link.h"
+#include "outage_trace.h"
+#include "anchor_observer.h"
+#include <limits>
+#include <memory>
+#include <type_traits>
+#include "swapchain_binding_observer.h"
 
 namespace {
 struct Vec {float x,y,z;};
@@ -53,6 +64,118 @@ bool constructor_state_enabled{};
 bool constructor_eye_enabled{};
 bool renderer_pair_enabled{};
 bool submit_pair_enabled{};
+bool projection_control{};
+bool stereo_xr{};
+bool simulator_operator{};
+bool frame_link_diagnostics{};
+bool stereo_gpu_publish{};
+gears_vr::GpuPublisher stereo_publisher;
+gears_vr::StereoTicketStore stereo_ticket_store;
+uint64_t stereo_window_retained{};
+thread_local gears_submitted::FrameTicket consuming_frozen_frame{};
+thread_local unsigned stereo_publish_bypass{};
+struct StereoPublishBypass {StereoPublishBypass(){++stereo_publish_bypass;}~StereoPublishBypass(){--stereo_publish_bypass;}};
+std::atomic<LONGLONG> stereo_publish_deadline{};
+struct StereoPublishCounts {
+    std::atomic<uint64_t> bind_requests{},prepare_ok{},prepare_failed{},ticket_retains{},ticket_duplicates{},ticket_rejected{},ticket_missing{},rect_rejected{},capture_attempts{},capture_skipped{},last_ticket{};
+    std::atomic<unsigned> stopped{},drain_ok{},close_ok{};
+} stereo_publish_counts;
+gears_frame_link::Tracker frame_link;
+gears_swapchain_binding::Observer swapchain_bindings;
+struct BindingOwner {IUnknown* chain{};IUnknown* queue{};};
+std::array<BindingOwner,8> binding_owners{};
+std::mutex binding_owner_mutex;
+std::recursive_mutex frame_hook_mutex;
+thread_local uint64_t consuming_frame_ticket{};
+struct FinalEye {bool valid{}; unsigned eye{}; gears_frame_link::Rect rect{}; unsigned width{},height{};};
+FinalEye classify_final_eye(uintptr_t caller,uint64_t ticket,float x,float y,float width,float height,unsigned target_width,unsigned target_height) {
+    bool exact=(caller==0xd83b1c||caller==0xd808d8)&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
+        std::isfinite(y)&&std::isfinite(width)&&std::isfinite(height)&&y==0&&height==float(target_height)&&
+        width==float(target_width/2)&&(x==0||x==float(target_width/2));
+    if(!exact)return {};
+    return {true,x==0?0u:1u,{x==0?0u:target_width/2,0,target_width/2,target_height},target_width,target_height};
+}
+thread_local FinalEye final_eye{};
+struct FrameLinkCounters {
+    std::atomic<uint64_t> resets{},reset_failed{},draws{},filtered{},unknown{},missing_target{},missing_ticket{},bad_quad{},
+        executes{},execute_rejected{},presents{},linked{},contaminated{},present_failed{},tests{},unbound{},changed{},last_ticket{};
+    std::array<std::atomic<uint64_t>,12> rejection{};
+};
+FrameLinkCounters frame_counts;
+struct ExecuteQueueCount {
+    uintptr_t identity{};unsigned type{};uint64_t calls{},members{},unknown_members{},rejected{};
+    uint64_t post_anchor_calls{},post_anchor_unknown{};
+    std::array<uintptr_t,16> first_unknown{};unsigned first_unknown_count{};
+};
+std::array<ExecuteQueueCount,16> frame_queues{};
+std::array<uintptr_t,4096> frame_unique_lists{};
+uint64_t frame_unique_list_overflow{},frame_unique_queue_overflow{};
+unsigned frame_unique_list_count{};
+bool frame_trial_anchored{};
+struct FrameReadFailure {unsigned stage{},index{};HRESULT result{};};
+FrameReadFailure frame_first_read_failure;
+void frame_read_failure(unsigned stage,unsigned index,HRESULT result){
+    if(!frame_first_read_failure.stage)frame_first_read_failure={stage,index,result};
+}
+struct FrameBufferCount {std::atomic<uintptr_t> resource{};std::atomic<uint64_t> draws{},left{},right{},unknown{},presents{},linked{},contaminated{};};
+std::array<FrameBufferCount,32> frame_buffers{};
+FrameBufferCount* frame_buffer_count(uintptr_t resource) {
+    if(!resource)return nullptr;
+    for(auto& entry:frame_buffers)if(entry.resource.load()==resource)return &entry;
+    for(auto& entry:frame_buffers){uintptr_t empty{};if(entry.resource.compare_exchange_strong(empty,resource))return &entry;}
+    frame_link.invalidate();return nullptr;
+}
+double stereo_units_per_metre=100;
+gears_vr::StereoBridge stereo_bridge;
+gears_vr::StereoGate stereo_gate;
+std::mutex stereo_mutex;
+std::atomic<bool> outage_diagnostics{false};
+gears_outage::ActivitySnapshot outage_built;
+gears_outage::Window outage_window;
+bool anchor_observer_enabled=false;
+std::atomic<unsigned long long> anchor_submission_matched{0},anchor_submission_rejected{0};
+std::array<std::atomic<unsigned long long>,3> anchor_pawn_reassociated_guards{};
+bool origin_trial_enabled=false;
+gears_origin_trial::Trial origin_trial;
+std::atomic<unsigned long long> origin_prepare_failed{0},origin_commit_failed{0};
+gears_anchor::Config anchor_config;
+thread_local gears_anchor::Context anchor_context;
+struct AnchorRow {gears_anchor::Receipt receipt{};uintptr_t renderer{};unsigned long long ticket{};unsigned stage{},reason{};};
+std::array<AnchorRow,64> anchor_rows{};
+std::array<AnchorRow,16> anchor_rejects{};
+std::atomic<unsigned> anchor_row_count{0},anchor_reject_count{0};
+// Bounded observational state identities; no ViewState lifetime/compatibility assertion.
+struct AnchorStateTransition {gears_anchor::Identity pawn{};uintptr_t source{},original_state{},right_state{},right_table{};
+    long long qpc{};unsigned thread{},read_mask{};};
+std::array<AnchorStateTransition,16> anchor_state_transitions{};
+std::atomic<unsigned> anchor_state_transition_count{0};
+thread_local gears_anchor::Identity anchor_last_state_pawn{};
+thread_local uintptr_t anchor_last_observed_right_state{};
+std::array<std::array<std::atomic<unsigned long long>,gears_anchor::reason_count>,3> anchor_reasons{};
+std::atomic<long long> anchor_first_renderer{0},anchor_last_renderer{0},anchor_next_sample{0};
+std::atomic<unsigned long long> anchor_sampled_out{0},anchor_capacity_dropped{0};
+std::atomic<long long> anchor_dropped_first{0},anchor_dropped_last{0};
+std::array<std::atomic<unsigned long long>,3> anchor_guard_calls{};
+std::array<std::atomic<long long>,3> anchor_guard_min{LLONG_MAX,LLONG_MAX,LLONG_MAX},anchor_guard_max{};
+std::array<gears_outage::Activity,2> outage_draws{}; // Existing frame_hook_mutex only.
+std::array<unsigned long long,11> stereo_rejections{};
+unsigned long long stereo_accepted{};
+std::atomic<std::uint64_t> stereo_ticket_counter{0};
+std::uint64_t stereo_first_ticket{},stereo_last_ticket{};
+gears_vr::StereoSample stereo_first_sample{},stereo_last_sample{};
+gears_vr::Pose stereo_reference{};
+HANDLE stereo_recenter_event{};
+bool stereo_recenter_key_down{};
+std::atomic<unsigned long long> stereo_recenter_requests{},stereo_heading_deferred{},stereo_reference_generation{};
+struct StereoReferenceEvent {
+    std::uint64_t generation{},ticket{},session{},sequence{};
+    long long qpc{},received_ns{};
+    gears_vr::Pose reference{};
+};
+std::array<StereoReferenceEvent,32> stereo_reference_events{};
+std::uint64_t stereo_reference_event_count{};
+StereoReferenceEvent stereo_latest_reference{};
+long long stereo_first_qpc{},stereo_last_qpc{};
 bool submit_background{};
 bool submit_output_bounds{};
 bool submit_mono_control{};
@@ -63,8 +186,39 @@ std::atomic<unsigned> submit_attempted{0},submit_consumed{0},submit_prepared{0},
 std::atomic<uintptr_t> submit_root{0};
 std::atomic<unsigned> submit_owned_verified{0},submit_sources_released{0},submit_original_preserved{0};
 unsigned submit_source_checks{},submit_rejection{};
+struct SplitFailure {
+    gears_split_sources::InputEvidence input{};
+    uintptr_t before_owner{},before_state{},before140{},before418{};
+    long long begin_qpc{},end_qpc{};
+    unsigned rejection{},checks{};
+};
+SplitFailure first_split_failure;
+std::atomic<unsigned> split_failure_phase{0};
+std::atomic<uint64_t> source_map_candidates{},source_map_accepted{},source_map_rejected{};
+std::atomic<unsigned> source_map_max_nodes{},source_map_last_checks{};
 std::array<float,4> submit_rectangle{};
 unsigned submit_pair_seconds{};
+unsigned trial_seconds{30};
+bool continuous_session{};
+bool submit_session_enabled(){return continuous_session||submit_pair_seconds!=0;}
+enum class SessionPhase:unsigned {running,stop_requested,native_closed,draining,stopped};
+enum class SessionStop:unsigned {none,event,f8,focus_lost,proof_failure,owner_exited,owner_error};
+DWORD session_owner_pid{};
+std::uint64_t session_owner_creation_time{};
+std::atomic<bool> session_owner_exit_observed{},session_owner_error_observed{};
+std::atomic<SessionPhase> session_phase{SessionPhase::running};
+std::atomic<SessionStop> session_reason{SessionStop::none};
+std::atomic<ULONGLONG> session_stop_tick{};
+std::atomic<bool> session_cleanup_timeout{};
+std::atomic<unsigned> session_native_services{};
+std::atomic<unsigned> session_cancelled_builds{};
+std::recursive_mutex session_native_mutex;
+thread_local unsigned session_build_depth{};
+bool session_status_available{};
+LONGLONG session_started_qpc{};
+struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
+std::array<SessionHookEntry,32> session_hook_entries{};
+unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<unsigned> submit_total{0},submit_retained{0},submit_skipped{0};
 LONGLONG submit_deadline{},submit_not_before{};
@@ -107,8 +261,19 @@ PresentFn original_present{}; Present1Fn original_present1{};
 ExecuteFn original_execute{};
 bool gpu_diagnostics{};
 bool viewport_diagnostics{};
+bool color_copy_diagnostics{};
 thread_local bool trial_draw_scope{};
 gears_viewport::Tracker viewport_stats;
+// Preserve original diagnostic interface addresses; frame association owns a
+// separate descriptor/binding map with canonical IUnknown resource identities.
+gears_viewport::Tracker frame_target_stats;
+thread_local unsigned frame_present_depth{};
+thread_local bool frame_inside_original_present{};
+struct FramePresentScope {
+    bool observe{};
+    FramePresentScope(){observe=frame_present_depth++==0;}
+    ~FramePresentScope(){--frame_present_depth;}
+};
 // Candidate stacks only: resource identities must subsequently match Present buffers.
 struct OutputStack {gears_viewport::Target target{};unsigned kind{},count{};std::array<void*,24> frames{};};
 std::array<OutputStack,8> output_stacks{};
@@ -136,18 +301,25 @@ using CopySimpleFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,UINT,D3D12_CPU_DESCRIP
 ResetListFn original_reset_list{};ViewportsFn original_viewports{};ScissorsFn original_scissors{};
 DrawFn original_draw{};DrawIndexedFn original_draw_indexed{};
 TargetsFn original_targets{};CreateRtvFn original_create_rtv{};CopyDescriptorsFn original_copy_descriptors{};CopySimpleFn original_copy_simple{};
-std::array<void*,9> viewport_targets{};
-std::array<void*,3> prime_targets{};
+std::array<void*,10> viewport_targets{};
+std::array<void*,6> prime_targets{};
 std::atomic<bool> prime_recording{},prime_ready{},prime_handoff{},prime_done{};
 std::atomic<unsigned> prime_started{};
 std::mutex prime_mutex;
 HANDLE prime_event{};
-std::array<std::array<unsigned char,32>,3> prime_original_bytes{};
+std::array<std::array<unsigned char,32>,6> prime_original_bytes{};
+using CreateSwapChainFn=HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory*,IUnknown*,DXGI_SWAP_CHAIN_DESC*,IDXGISwapChain**);
+using CreateHwndFn=HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory2*,IUnknown*,HWND,const DXGI_SWAP_CHAIN_DESC1*,const DXGI_SWAP_CHAIN_FULLSCREEN_DESC*,IDXGIOutput*,IDXGISwapChain1**);
+using CreateCompositionFn=HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory2*,IUnknown*,const DXGI_SWAP_CHAIN_DESC1*,IDXGIOutput*,IDXGISwapChain1**);
+CreateSwapChainFn original_create_swapchain{};
+CreateHwndFn original_create_hwnd{};
+CreateCompositionFn original_create_composition{};
 void* execute_target{};
 HMODULE own_module{};
 uintptr_t base{},expected_local{},expected_pc{},camera_cache{};
 uintptr_t expected_camera{},camera_yaw{};
 bool wobble_enabled{},self_testing{};
+HANDLE frame_test_waiting{}; // CPU self-test handshake, never set in a capture session.
 bool sweep_enabled{};
 bool live_enabled{};
 gears_vr::PoseBridge live_bridge;
@@ -196,6 +368,8 @@ struct Record {
     uintptr_t renderer_input_family{},renderer_storage{};
     int renderer_count{},renderer_capacity{};
     std::array<uintptr_t,4> renderer_sources{};
+    std::uint64_t stereo_ticket{},stereo_head_flags{},stereo_view_flags{},stereo_reference_generation{};
+    unsigned stereo_source{};
 };
 std::array<Record,8192> ring{};
 size_t read_index{},write_index{};
@@ -219,10 +393,712 @@ void trace_rectangle(unsigned index,uintptr_t view) {
     rectangle_trace_phases[index]=read?2:3;
 }
 long long now() {LARGE_INTEGER value;QueryPerformanceCounter(&value);return value.QuadPart;}
+void request_session_stop(SessionStop reason) {
+    if(!continuous_session)return;
+    auto running=SessionPhase::running;
+    if(!session_phase.compare_exchange_strong(running,SessionPhase::stop_requested))return;
+    session_reason=reason;session_stop_tick=GetTickCount64();
+    // The Lifetime mutex serializes this barrier with begin. It grants no claim.
+    submitted_lifetime.request_stop();
+}
+void observe_session_owner(gears_session::OwnerState state) {
+    if(state==gears_session::OwnerState::exited){session_owner_exit_observed=true;request_session_stop(SessionStop::owner_exited);}
+    else if(state==gears_session::OwnerState::error){session_owner_error_observed=true;request_session_stop(SessionStop::owner_error);}
+}
+void release_session_state_claim(bool claim) {
+    if(claim&&state_created.load()==1&&!submit_retained.load()) {
+        state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
+    }
+}
+void service_session_stop_native() {
+    if(!continuous_session||session_build_depth||!submitted_lifetime.stopping())return;
+    std::lock_guard<std::recursive_mutex> lock(session_native_mutex);
+    ++session_native_services;
+    release_session_state_claim(submitted_lifetime.close());
+    auto requested=SessionPhase::stop_requested;
+    session_phase.compare_exchange_strong(requested,SessionPhase::native_closed);
+}
+struct SessionBuildScope {
+    bool enabled{continuous_session};
+    SessionBuildScope(){if(enabled)++session_build_depth;}
+    ~SessionBuildScope(){if(enabled){--session_build_depth;service_session_stop_native();}}
+};
+bool session_native_cleanup_ready() {
+    return submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&
+        (!state_created.load()||(state_release_returned.load()==1&&state_destroyed.load()==1&&(state_delete_flags&1)));
+}
+bool session_cleanup_expired() {
+    auto tick=session_stop_tick.load();return tick&&GetTickCount64()-tick>=30000;
+}
+std::mutex projection_mutex;
+long long projection_origin{};
+unsigned projection_rejected{};
+struct ProjectionAggregate {unsigned long long count{},mismatch{};long long first{},last{},pair_first{},pair_last{};
+    std::array<std::array<float,16>,2> expected{},effective{};
+    std::array<float,2> residual_min{},residual_max{},residual9_min{},residual9_max{};};
+std::array<std::array<ProjectionAggregate,4>,5> projection_aggregates{};
+void projection_observe(unsigned stage,uintptr_t renderer,const std::array<uintptr_t,4>& views,int count,long long timestamp) {
+    if(!projection_control)return;
+    gears_projection::Metadata metadata{};
+    if(!submitted_lifetime.projection(renderer,metadata))return;
+    std::array<std::array<float,16>,2> effective{};
+    bool matching=count==2;
+    for(unsigned i=0;i<2;++i){
+        matching=safe_copy(effective[i].data(),reinterpret_cast<void*>(views[i]+0xb0),64) && matching;
+        matching=gears_projection::matches(effective[i],metadata.expected[i],stage==3) && matching;
+    }
+    std::lock_guard<std::mutex> lock(projection_mutex);
+    auto& a=projection_aggregates[static_cast<unsigned>(metadata.phase)][stage];
+    for(unsigned i=0;i<2;++i){float r=effective[i][8]-metadata.expected[i][8],r9=effective[i][9]-metadata.expected[i][9];
+        if(!a.count){a.residual_min[i]=a.residual_max[i]=r;a.residual9_min[i]=a.residual9_max[i]=r9;}
+        else {a.residual_min[i]=std::min(a.residual_min[i],r);a.residual_max[i]=std::max(a.residual_max[i],r);
+            a.residual9_min[i]=std::min(a.residual9_min[i],r9);a.residual9_max[i]=std::max(a.residual9_max[i],r9);}}
+    if(!a.count){a.first=timestamp;a.pair_first=metadata.pair_qpc;}
+    a.first=std::min(a.first,timestamp);a.pair_first=std::min(a.pair_first,metadata.pair_qpc);
+    a.last=std::max(a.last,timestamp);a.pair_last=std::max(a.pair_last,metadata.pair_qpc);
+    ++a.count;if(!matching)++a.mismatch;
+    a.expected=metadata.expected;a.effective=effective;
+}
+void print_projection(FILE* file) {
+    if(!projection_control)return;
+    std::lock_guard<std::mutex> lock(projection_mutex);
+    fprintf(file,"projection_control enabled=1 origin_qpc=%lld frequency=%lld rejected=%u\n",projection_origin,qpc_frequency,projection_rejected);
+    const char* phases[]={"A1","B","A2","C","A3"};const char* stages[]={"built","consume_before","prepare_before","prepare_after"};
+    for(unsigned p=0;p<5;++p)for(unsigned s=0;s<4;++s){const auto& a=projection_aggregates[p][s];
+        fprintf(file,"projection_phase phase=%s stage=%s count=%llu mismatch=%llu first_qpc=%lld last_qpc=%lld pair_first_qpc=%lld pair_last_qpc=%lld",
+            phases[p],stages[s],a.count,a.mismatch,a.first,a.last,a.pair_first,a.pair_last);
+        for(unsigned i=0;i<2;++i)fprintf(file," expected_%s_p00=%.9g expected_%s_p8=%.9g expected_%s_p9=%.9g effective_%s_p00=%.9g effective_%s_p8=%.9g effective_%s_p9=%.9g residual_%s_p8_min=%.9g residual_%s_p8_max=%.9g residual_%s_p9_min=%.9g residual_%s_p9_max=%.9g",
+            i?"r":"l",a.expected[i][0],i?"r":"l",a.expected[i][8],i?"r":"l",a.expected[i][9],
+            i?"r":"l",a.effective[i][0],i?"r":"l",a.effective[i][8],i?"r":"l",a.effective[i][9],
+            i?"r":"l",a.residual_min[i],i?"r":"l",a.residual_max[i],i?"r":"l",a.residual9_min[i],i?"r":"l",a.residual9_max[i]);
+        fprintf(file,"\n");}
+}
+struct StereoAggregate {unsigned long long count{},mismatch{},sequence_first{},sequence_last{},ticket_first{},ticket_last{};
+    long long first{},last{};double view_error_max{};
+    std::array<float,2> residual8_min{},residual8_max{},residual9_min{},residual9_max{};};
+std::array<StereoAggregate,4> stereo_aggregates{};
+struct OriginStage {long long qpc{};unsigned reads{};bool matching{};gears_vr::StereoMatrices actual{};};
+struct OriginRow {gears_submitted::FrameTicket frame{};std::array<OriginStage,4> stages{};unsigned mask{};};
+std::array<std::array<OriginRow,12>,3> origin_rows{};
+std::array<unsigned,3> origin_row_counts{};
+std::array<long long,3> origin_next_sample{};
+std::array<std::array<unsigned long long,4>,3> origin_stage_counts{},origin_stage_mismatches{};
+unsigned long long origin_duplicate_stages{};
+void stereo_observe(unsigned stage,uintptr_t renderer,const std::array<uintptr_t,4>& views,int count,long long timestamp) {
+    if(!stereo_xr)return;
+    gears_submitted::FrameTicket ticket{};
+    if(!submitted_lifetime.frame(renderer,ticket))return;
+    bool matching=count==2;double error_max{};std::array<float,2> r8{},r9{};OriginStage observation{};
+    observation.qpc=timestamp;
+    for(unsigned i=0;i<2;++i){auto& view=observation.actual.view[i];auto& projection=observation.actual.projection[i];
+        bool view_read=safe_copy(view.data(),reinterpret_cast<void*>(views[i]+0x70),64);
+        bool projection_read=safe_copy(projection.data(),reinterpret_cast<void*>(views[i]+0xb0),64);
+        if(view_read)observation.reads|=1u<<i;if(projection_read)observation.reads|=4u<<i;
+        matching=view_read&&projection_read&&matching;
+        for(unsigned j=0;j<16;++j){matching=matching && std::isfinite(view[j]) && view[j]==ticket.expected.view[i][j];
+            if(std::isfinite(view[j]))error_max=std::max(error_max,std::abs(double(view[j])-ticket.expected.view[i][j]));
+            else error_max=INFINITY;}
+        matching=gears_projection::matches(projection,ticket.expected.projection[i],stage==3) && matching;
+        r8[i]=projection[8]-ticket.expected.projection[i][8];r9[i]=projection[9]-ticket.expected.projection[i][9];
+    }
+    std::lock_guard<std::mutex> lock(stereo_mutex);auto& a=stereo_aggregates[stage];
+    if(!a.count){a.first=a.last=timestamp;a.sequence_first=a.sequence_last=ticket.sample.sequence;
+        a.ticket_first=a.ticket_last=ticket.id;
+        a.residual8_min=a.residual8_max=r8;a.residual9_min=a.residual9_max=r9;}
+    a.first=std::min(a.first,timestamp);a.last=std::max(a.last,timestamp);
+    a.sequence_first=std::min(a.sequence_first,ticket.sample.sequence);a.sequence_last=std::max(a.sequence_last,ticket.sample.sequence);
+    a.ticket_first=std::min(a.ticket_first,ticket.id);a.ticket_last=std::max(a.ticket_last,ticket.id);
+    a.view_error_max=std::max(a.view_error_max,error_max);
+    for(unsigned i=0;i<2;++i){a.residual8_min[i]=std::min(a.residual8_min[i],r8[i]);a.residual8_max[i]=std::max(a.residual8_max[i],r8[i]);
+        a.residual9_min[i]=std::min(a.residual9_min[i],r9[i]);a.residual9_max[i]=std::max(a.residual9_max[i],r9[i]);}
+    ++a.count;if(!matching)++a.mismatch;
+    if(origin_trial_enabled&&ticket.origin.enabled){
+        auto phase=static_cast<unsigned>(ticket.origin.selection.phase);
+        if(phase<3&&stage<4){
+            ++origin_stage_counts[phase][stage];if(!matching)++origin_stage_mismatches[phase][stage];
+            OriginRow* row=nullptr;
+            for(unsigned i=0;i<origin_row_counts[phase];++i)if(origin_rows[phase][i].frame.id==ticket.id)row=&origin_rows[phase][i];
+            if(!row&&stage==0&&origin_row_counts[phase]<origin_rows[phase].size()&&timestamp>=origin_next_sample[phase]){
+                row=&origin_rows[phase][origin_row_counts[phase]++];row->frame=ticket;origin_next_sample[phase]=timestamp+qpc_frequency;}
+            if(row){if(row->mask&(1u<<stage))++origin_duplicate_stages;
+                else {observation.matching=matching;row->stages[stage]=observation;row->mask|=1u<<stage;}}
+        }
+    }
+    if(stage==0&&outage_diagnostics.load())outage_built.write({ticket.id,a.count,ticket.sample.sequence,timestamp,ticket.sample.received_ns});
+}
+void print_stereo_pose(FILE* file,const gears_vr::Pose& pose) {
+    fprintf(file," position=%.17g,%.17g,%.17g orientation=%.17g,%.17g,%.17g,%.17g",pose.position.x,pose.position.y,pose.position.z,
+        pose.orientation.x,pose.orientation.y,pose.orientation.z,pose.orientation.w);
+}
+unsigned foreground();
+bool create_stereo_recenter_event() {
+    if(!stereo_xr)return true;
+    wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Stereo.Recenter.%lu",GetCurrentProcessId());
+    HANDLE event=CreateEventW(nullptr,FALSE,FALSE,name);
+    if(!event)return false;
+    if(GetLastError()==ERROR_ALREADY_EXISTS){CloseHandle(event);return false;}
+    stereo_recenter_event=event;return true;
+}
+void close_stereo_recenter_event() {
+    // A failed hook installation may still have a callback in flight. Retain
+    // the handle until process exit in that failure case, never race a wait.
+    if(stereo_recenter_event&&!active.load()){CloseHandle(stereo_recenter_event);stereo_recenter_event=nullptr;}
+}
+void poll_stereo_recenter() {
+    // Called under stereo_mutex, once before freezing a pair. No worker or
+    // receiver can alter the reference of an already constructed ticket.
+    if(!stereo_recenter_event)return;
+    const bool key_down=foreground()&&(GetAsyncKeyState(VK_F9)&0x8000)!=0;
+    const bool key_edge=key_down&&!stereo_recenter_key_down;stereo_recenter_key_down=key_down;
+    const DWORD event=WaitForSingleObject(stereo_recenter_event,0);
+    if(key_edge||event==WAIT_OBJECT_0){++stereo_recenter_requests;stereo_gate.request_recenter();}
+    if(event!=WAIT_TIMEOUT&&event!=WAIT_OBJECT_0&&continuous_session)request_session_stop(SessionStop::proof_failure);
+}
+void record_stereo_reference(const gears_submitted::FrameTicket& frame,long long timestamp) {
+    if(frame.reference_generation==stereo_reference_generation.load())return;
+    StereoReferenceEvent event{frame.reference_generation,frame.id,frame.sample.session,frame.sample.sequence,
+        timestamp,frame.sample.received_ns,frame.reference};
+    if(stereo_reference_event_count<stereo_reference_events.size())stereo_reference_events[stereo_reference_event_count]=event;
+    ++stereo_reference_event_count;stereo_latest_reference=event;stereo_reference_generation=event.generation;
+}
+void print_stereo(FILE* file) {
+    if(!stereo_xr)return;
+    std::lock_guard<std::mutex> lock(stereo_mutex);
+    fprintf(file,"stereo_xr enabled=1 units_per_metre=%.9g accepted=%llu first_qpc=%lld last_qpc=%lld first_sequence=%llu last_sequence=%llu first_ticket=%llu last_ticket=%llu gpu_published=%u simulator_operator=%d mode=%s\n",
+        stereo_units_per_metre,stereo_accepted,stereo_first_qpc,stereo_last_qpc,stereo_first_sample.sequence,stereo_last_sample.sequence,stereo_first_ticket,stereo_last_ticket,stereo_publisher.frames.load(),simulator_operator,simulator_operator?"simulated":"real");
+    const char* reasons[]={"accepted","initial","untracked","inactive","stale","replayed","session_changed","invalid","bridge_read","matrix","heading_unavailable"};
+    for(unsigned i=0;i<stereo_rejections.size();++i)fprintf(file,"stereo_rejection reason=%s count=%llu\n",reasons[i],stereo_rejections[i]);
+    fprintf(file,"stereo_recenter policy=local_y_up_heading requests=%llu committed_generation=%llu heading_deferred=%llu reference_events=%llu event_limit=%zu\n",
+        stereo_recenter_requests.load(),stereo_reference_generation.load(),stereo_heading_deferred.load(),stereo_reference_event_count,stereo_reference_events.size());
+    auto print_reference=[&](const char* edge,const StereoReferenceEvent& event){
+        fprintf(file,"stereo_reference_event edge=%s generation=%llu ticket=%llu session=%llu sequence=%llu qpc=%lld received_ns=%lld",
+            edge,event.generation,event.ticket,event.session,event.sequence,event.qpc,event.received_ns);
+        print_stereo_pose(file,event.reference);fprintf(file,"\n");};
+    for(size_t i=0;i<(std::min)(std::uint64_t(stereo_reference_events.size()),stereo_reference_event_count);++i)
+        print_reference("retained",stereo_reference_events[i]);
+    if(stereo_reference_event_count)print_reference("latest",stereo_latest_reference);
+    if(stereo_accepted){fprintf(file,"stereo_reference");print_stereo_pose(file,stereo_reference);fprintf(file,"\n");
+        const gears_vr::StereoSample* samples[]={&stereo_first_sample,&stereo_last_sample};
+        for(unsigned k=0;k<2;++k){const auto& sample=*samples[k];
+            fprintf(file,"stereo_sample edge=%s session=%llu sequence=%llu received_ns=%lld predicted_time=%lld head_flags=%llu view_flags=%llu focused=%u should_render=%u source=%u ipd_metres=%.9g",
+                k?"last":"first",sample.session,sample.sequence,sample.received_ns,sample.predicted_time,sample.head_flags,sample.view_flags,sample.focused,sample.should_render,
+                static_cast<unsigned>(sample.source),gears_vr::stereo_distance(sample.eyes[0].pose.position,sample.eyes[1].pose.position));print_stereo_pose(file,sample.head);fprintf(file,"\n");
+            for(unsigned i=0;i<2;++i){auto f=sample.eyes[i].fov;fprintf(file,"stereo_eye edge=%s eye=%u",k?"last":"first",i);
+                print_stereo_pose(file,sample.eyes[i].pose);fprintf(file," fov=%.9g,%.9g,%.9g,%.9g\n",f.left,f.right,f.up,f.down);}}
+    }
+    const char* stages[]={"built","consume_before","prepare_before","prepare_after"};
+    for(unsigned s=0;s<4;++s){const auto& a=stereo_aggregates[s];
+        fprintf(file,"stereo_stage stage=%s count=%llu mismatch=%llu first_qpc=%lld last_qpc=%lld sequence_first=%llu sequence_last=%llu ticket_first=%llu ticket_last=%llu view_error_max=%.9g",
+            stages[s],a.count,a.mismatch,a.first,a.last,a.sequence_first,a.sequence_last,a.ticket_first,a.ticket_last,a.view_error_max);
+        for(unsigned i=0;i<2;++i)fprintf(file," residual_%s_p8_min=%.9g residual_%s_p8_max=%.9g residual_%s_p9_min=%.9g residual_%s_p9_max=%.9g",
+            i?"r":"l",a.residual8_min[i],i?"r":"l",a.residual8_max[i],i?"r":"l",a.residual9_min[i],i?"r":"l",a.residual9_max[i]);fprintf(file,"\n");}
+}
 unsigned foreground() {
     DWORD pid{};GetWindowThreadProcessId(GetForegroundWindow(),&pid);return pid==GetCurrentProcessId();
 }
 struct Scope {Scope(){++active;} ~Scope(){--active;}};
+uintptr_t canonical_identity(IUnknown* object) {
+    IUnknown* identity{};
+    if(!object || FAILED(object->QueryInterface(IID_PPV_ARGS(&identity))))return 0;
+    auto value=reinterpret_cast<uintptr_t>(identity);identity->Release();return value;
+}
+bool hold_binding(IDXGISwapChain* chain,ID3D12CommandQueue* queue) {
+    IUnknown* chain_identity{};IUnknown* queue_identity{};
+    if(FAILED(chain->QueryInterface(IID_PPV_ARGS(&chain_identity)))||FAILED(queue->QueryInterface(IID_PPV_ARGS(&queue_identity)))) {
+        if(chain_identity)chain_identity->Release();if(queue_identity)queue_identity->Release();return false;
+    }
+    std::lock_guard<std::mutex> lock(binding_owner_mutex);
+    for(auto& owner:binding_owners)if(owner.chain==chain_identity){bool same=owner.queue==queue_identity;
+        chain_identity->Release();queue_identity->Release();return same;}
+    for(auto& owner:binding_owners)if(!owner.chain){owner={chain_identity,queue_identity};return true;}
+    chain_identity->Release();queue_identity->Release();return false;
+}
+void bind_stereo_publisher(uintptr_t chain_id,uintptr_t queue_id) {
+    if(!stereo_gpu_publish||stereo_publisher.state.load()!=0||stereo_publish_counts.stopped.load())return;
+    std::lock_guard<std::mutex> lock(binding_owner_mutex);
+    for(auto& owner:binding_owners)if(reinterpret_cast<uintptr_t>(owner.chain)==chain_id){
+        gears_vr::ComPtr<IDXGISwapChain> chain;gears_vr::ComPtr<ID3D12CommandQueue> queue;
+        if(!owner.queue||reinterpret_cast<uintptr_t>(owner.queue)!=queue_id||FAILED(owner.chain->QueryInterface(IID_PPV_ARGS(&chain)))||
+           FAILED(owner.queue->QueryInterface(IID_PPV_ARGS(&queue)))){frame_link.invalidate();return;}
+        StereoPublishBypass bypass;
+        if(stereo_publisher.bind(queue.Get(),chain.Get(),simulator_operator))++stereo_publish_counts.bind_requests;
+        return;
+    }
+    frame_link.invalidate();
+}
+void retire_stereo_window() {
+    if(!stereo_gpu_publish)return;
+    if(!stereo_ticket_store.retire_through(stereo_window_retained)){++stereo_publish_counts.ticket_rejected;frame_link.invalidate();}
+    stereo_window_retained=0;
+}
+bool retain_stereo_draw() {
+    auto const& frame=consuming_frozen_frame;
+    if(!frame.enabled||!frame.id||frame.id!=consuming_frame_ticket){++stereo_publish_counts.ticket_missing;frame_link.invalidate();return false;}
+    auto retained=stereo_ticket_store.retain(frame.id,frame.sample,simulator_operator);
+    if(!gears_vr::StereoTicketStore::accepted(retained)){++stereo_publish_counts.ticket_rejected;frame_link.invalidate();return false;}
+    if(retained==gears_vr::TicketRetainResult::retained)++stereo_publish_counts.ticket_retains;else ++stereo_publish_counts.ticket_duplicates;
+    stereo_window_retained=std::max(stereo_window_retained,frame.id);return true;
+}
+bool verified_stereo_draw(gears_viewport::DrawState const& state,FinalEye const& eye,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances) {
+    auto const& v=state.viewport;auto const& s=state.scissor;
+    return eye.valid&&caller==base+0x1af92b&&kind==1&&elements==6&&instances==1&&state.tracked&&state.viewport_count==1&&state.scissor_count==1&&
+        v.x==0&&v.y==0&&v.width==float(eye.width)&&v.height==float(eye.height)&&
+        std::isfinite(s.x)&&std::isfinite(s.y)&&std::isfinite(s.width)&&std::isfinite(s.height)&&s.width>0&&s.height>0&&
+        s.x<=float(eye.rect.x)&&s.y<=float(eye.rect.y)&&double(s.x)+s.width>=double(eye.rect.x)+eye.rect.width&&
+        double(s.y)+s.height>=double(eye.rect.y)+eye.rect.height;
+}
+void release_bindings() {
+    // Call only after all hooks are disabled and callbacks have drained. Holding
+    // chain/queue identities prevents reuse; buffers are NEVER held long term.
+    std::lock_guard<std::mutex> lock(binding_owner_mutex);
+    for(auto& owner:binding_owners){if(owner.chain)owner.chain->Release();if(owner.queue)owner.queue->Release();owner={};}
+}
+void frame_seen_list(uintptr_t identity) {
+    if(!identity)return;
+    auto bucket=((identity>>4)^(identity>>17))%frame_unique_lists.size();
+    for(size_t probe=0;probe<frame_unique_lists.size();++probe){auto& entry=frame_unique_lists[(bucket+probe)%frame_unique_lists.size()];
+        if(entry==identity)return;if(!entry){entry=identity;++frame_unique_list_count;return;}}
+    ++frame_unique_list_overflow;
+}
+void remember_swapchain(unsigned method,IUnknown* input,IDXGISwapChain* chain) {
+    if(!(prime_recording.load() || (frame_link_diagnostics && recording.load())) || !input || !chain)return;
+    ID3D12CommandQueue* queue{};DXGI_SWAP_CHAIN_DESC desc{};
+    if(FAILED(input->QueryInterface(IID_PPV_ARGS(&queue))))return;
+    if(FAILED(chain->GetDesc(&desc))){queue->Release();return;}
+    DWORD owner{};if(desc.OutputWindow)GetWindowThreadProcessId(desc.OutputWindow,&owner);
+    auto chain_id=canonical_identity(chain);
+    gears_swapchain_binding::Binding binding{chain_id,canonical_identity(queue),reinterpret_cast<uintptr_t>(desc.OutputWindow),
+        desc.BufferDesc.Width,desc.BufferDesc.Height,method};
+    bool accepted=swapchain_bindings.bind(binding,owner==GetCurrentProcessId(),queue->GetDesc().Type==D3D12_COMMAND_LIST_TYPE_DIRECT);
+    if(accepted&&!hold_binding(chain,queue)){swapchain_bindings.invalidate();accepted=false;}
+    queue->Release();
+    if(!accepted)return;
+    if(!desc.BufferCount || desc.BufferCount>16){swapchain_bindings.invalidate();return;}
+    for(unsigned i=0;i<desc.BufferCount;++i){ID3D12Resource* buffer{};
+        if(FAILED(chain->GetBuffer(i,IID_PPV_ARGS(&buffer)))){swapchain_bindings.invalidate();break;}
+        auto resource=canonical_identity(buffer);buffer->Release();
+        if(!swapchain_bindings.buffer(chain_id,resource,i)){swapchain_bindings.invalidate();break;}
+    }
+}
+HRESULT STDMETHODCALLTYPE hook_create_swapchain(IDXGIFactory* factory,IUnknown* input,DXGI_SWAP_CHAIN_DESC* desc,IDXGISwapChain** out) {
+    Scope scope;auto result=original_create_swapchain(factory,input,desc,out);
+    IDXGISwapChain* chain{};if(SUCCEEDED(result)&&out&&safe_copy(&chain,out,sizeof(chain)))remember_swapchain(1,input,chain);
+    return result;
+}
+HRESULT STDMETHODCALLTYPE hook_create_hwnd(IDXGIFactory2* factory,IUnknown* input,HWND window,const DXGI_SWAP_CHAIN_DESC1* desc,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* full,IDXGIOutput* restrict_output,IDXGISwapChain1** out) {
+    Scope scope;auto result=original_create_hwnd(factory,input,window,desc,full,restrict_output,out);
+    IDXGISwapChain1* chain{};if(SUCCEEDED(result)&&out&&safe_copy(&chain,out,sizeof(chain)))remember_swapchain(2,input,chain);
+    return result;
+}
+HRESULT STDMETHODCALLTYPE hook_create_composition(IDXGIFactory2* factory,IUnknown* input,const DXGI_SWAP_CHAIN_DESC1* desc,
+    IDXGIOutput* restrict_output,IDXGISwapChain1** out) {
+    Scope scope;auto result=original_create_composition(factory,input,desc,restrict_output,out);
+    IDXGISwapChain1* chain{};if(SUCCEEDED(result)&&out&&safe_copy(&chain,out,sizeof(chain)))remember_swapchain(3,input,chain);
+    return result;
+}
+std::unique_lock<std::recursive_mutex> frame_lock() {
+    std::unique_lock<std::recursive_mutex> lock(frame_hook_mutex,std::defer_lock);
+    if(frame_link_diagnostics&&recording.load()){
+        if(self_testing&&frame_test_waiting)SetEvent(frame_test_waiting);
+        lock.lock();
+    }
+    return lock;
+}
+struct FrameWorkSample {
+    unsigned kind{},present_depth{},inside_present{},inside_consume{},ticket_present{},draw_kind{},elements{},instances{},targets{};
+    uintptr_t caller{},list{},queue{};gears_viewport::Target target{};gears_viewport::DrawState rectangles{};
+    uint64_t calls{};long long first_qpc{};unsigned stack_count{};std::array<void*,24> stack{};
+};
+std::array<FrameWorkSample,64> frame_work_samples{};
+uint64_t frame_work_sample_overflow{};unsigned frame_work_stacks{};
+std::array<uint64_t,4> frame_work_partition_dropped{};
+std::array<unsigned,4> frame_work_partition_stacks{};
+void sample_frame_work(unsigned kind,uintptr_t caller,uintptr_t list,uintptr_t queue,
+    gears_viewport::TargetDraw binding,gears_viewport::DrawState rectangles,unsigned draw_kind,unsigned elements,unsigned instances) {
+    if(!frame_trial_anchored)return;
+    FrameWorkSample value{};value.kind=kind;value.caller=caller;value.list=list;value.queue=queue;
+    value.present_depth=frame_present_depth;value.inside_present=frame_inside_original_present?1:0;
+    value.inside_consume=consuming_renderer?1:0;value.ticket_present=consuming_frame_ticket?1:0;
+    value.target=binding.target;value.targets=binding.targets;value.rectangles=rectangles;
+    value.draw_kind=draw_kind;value.elements=elements;value.instances=instances;value.calls=1;
+    // Preserve room for later pause/UI draw routes after noisy unknown Execute.
+    // Same-class matching is unchanged; total storage and stack budget stay fixed.
+    const unsigned partition=kind==2?0:kind==1?1:value.ticket_present?2:3;
+    constexpr unsigned starts[]={0,8,12,44},ends[]={8,12,44,64},stack_limits[]={1,0,9,6};
+    FrameWorkSample* empty{};
+    for(unsigned i=starts[partition];i<ends[partition];++i){auto& entry=frame_work_samples[i];if(!entry.calls){if(!empty)empty=&entry;continue;}
+        if(entry.kind==value.kind&&entry.caller==value.caller&&entry.queue==value.queue&&
+           (kind!=2||entry.list==value.list)&&entry.present_depth==value.present_depth&&entry.inside_present==value.inside_present&&
+           entry.inside_consume==value.inside_consume&&entry.ticket_present==value.ticket_present&&entry.target==value.target&&
+           entry.targets==value.targets&&entry.draw_kind==value.draw_kind&&entry.elements==value.elements&&entry.instances==value.instances&&
+           entry.rectangles.tracked==rectangles.tracked&&entry.rectangles.viewport==rectangles.viewport&&entry.rectangles.scissor==rectangles.scissor&&
+           entry.rectangles.viewport_count==rectangles.viewport_count&&entry.rectangles.scissor_count==rectangles.scissor_count){++entry.calls;return;}}
+    if(!empty){++frame_work_sample_overflow;++frame_work_partition_dropped[partition];return;}
+    value.first_qpc=now();
+    if(frame_work_partition_stacks[partition]<stack_limits[partition]){++frame_work_stacks;++frame_work_partition_stacks[partition];value.stack_count=CaptureStackBackTrace(0,static_cast<DWORD>(value.stack.size()),value.stack.data(),nullptr);}
+    *empty=value;
+}
+void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances) {
+    if(!frame_link_diagnostics || !recording.load())return;
+    if(frame_target_stats.descriptor_capacity_lost()){frame_link.invalidate();return;}
+    auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
+    if(!binding.targets)return; // No render target: no observed color write.
+    if(!binding.target.resource){++frame_counts.missing_target;frame_link.invalidate();return;}
+    if(!swapchain_bindings.known_buffer(binding.target.resource)){++frame_counts.filtered;return;}
+    ++frame_counts.draws;
+    auto stats=frame_buffer_count(binding.target.resource);if(stats)++stats->draws;
+    auto ref=frame_link.current(canonical_identity(list));
+    bool exact=final_eye.valid && consuming_frame_ticket && binding.targets==1 && !binding.target.mip &&
+        binding.target.width==final_eye.width && binding.target.height==final_eye.height;
+    if(exact&&stereo_gpu_publish){
+        if(!verified_stereo_draw(frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list)),final_eye,caller,kind,elements,instances)){
+            ++stereo_publish_counts.rect_rejected;frame_link.invalidate();return;}
+        if(!retain_stereo_draw())return;
+    }
+    sample_frame_work(exact?1:0,caller,reinterpret_cast<uintptr_t>(list),0,binding,
+        frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list)),kind,elements,instances);
+    if(exact){if(stats){if(final_eye.eye)++stats->right;else ++stats->left;}
+        if(outage_diagnostics.load()&&final_eye.eye<2){auto& latest=outage_draws[final_eye.eye];
+            latest={consuming_frame_ticket,latest.count+1,consuming_frozen_frame.sample.sequence,now(),consuming_frozen_frame.sample.received_ns};}
+        frame_link.draw_final(ref,consuming_frame_ticket,final_eye.eye,
+        {binding.target.resource,final_eye.width,final_eye.height},final_eye.rect);}
+    else {++frame_counts.unknown;if(!consuming_frame_ticket)++frame_counts.missing_ticket;
+        if(stats)++stats->unknown;
+        frame_link.draw_unknown(ref,binding.target.resource);}
+}
+void observe_frame_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* members,uintptr_t caller) {
+    if(!frame_link_diagnostics || !recording.load())return;
+    ++frame_counts.executes;
+    auto queue_id=canonical_identity(queue);ExecuteQueueCount* stats{};ExecuteQueueCount* empty{};
+    for(auto& entry:frame_queues){if(entry.identity==queue_id&&queue_id)stats=&entry;if(!entry.identity&&!empty)empty=&entry;}
+    if(!stats&&empty&&queue_id){stats=empty;stats->identity=queue_id;stats->type=queue->GetDesc().Type;}
+    if(!stats)++frame_unique_queue_overflow;else {++stats->calls;stats->members+=count;if(frame_trial_anchored)++stats->post_anchor_calls;}
+    std::array<ID3D12CommandList*,gears_frame_link::Tracker::list_capacity> lists{};
+    std::array<gears_frame_link::ListRef,gears_frame_link::Tracker::list_capacity> refs{};
+    if(!count || count>lists.size() || !safe_copy(lists.data(),members,size_t(count)*sizeof(lists[0]))) {
+        ++frame_counts.execute_rejected;if(stats)++stats->rejected;
+        frame_link.execute(queue_id,nullptr,count);return;
+    }
+    for(unsigned i=0;i<count;++i){auto identity=canonical_identity(lists[i]);frame_seen_list(identity);refs[i]=frame_link.current(identity);
+        if(!refs[i].generation)sample_frame_work(2,caller,identity,queue_id,
+            frame_target_stats.binding(reinterpret_cast<uintptr_t>(lists[i])),frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(lists[i])),0,count,0);
+        if(stats&&!refs[i].generation){++stats->unknown_members;
+            if(frame_trial_anchored)++stats->post_anchor_unknown;
+            bool saved=false;for(unsigned j=0;j<stats->first_unknown_count;++j)if(stats->first_unknown[j]==identity)saved=true;
+            if(!saved&&stats->first_unknown_count<stats->first_unknown.size())stats->first_unknown[stats->first_unknown_count++]=identity;}}
+    if(!frame_link.execute(queue_id,refs.data(),count)){++frame_counts.execute_rejected;if(stats)++stats->rejected;}
+}
+void outage_begin(gears_outage::Sample& sample,long long timestamp) {
+    sample.enter_qpc=timestamp;sample.pub_before=stereo_publisher.frames.load();
+    if(outage_built.read(sample.built_pre))sample.valid|=gears_outage::built_before;
+    sample.draw=outage_draws;
+    if(sample.draw[0].count)sample.valid|=gears_outage::left_draw;
+    if(sample.draw[1].count)sample.valid|=gears_outage::right_draw;
+}
+void outage_finish(gears_outage::Sample& sample,long long timestamp,HRESULT result) {
+    sample.original_end_qpc=timestamp;sample.present_result=result;sample.valid|=gears_outage::present_return;
+    sample.pub_after=stereo_publisher.frames.load();
+    if(outage_built.read(sample.built_post))sample.valid|=gears_outage::built_after;
+    outage_window.observe(sample); // Existing outer frame lock still owned even if recording turned off.
+}
+void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample* diagnostic=nullptr) {
+    if(!frame_link_diagnostics || !recording.load())return;
+    auto identity=canonical_identity(chain);auto binding=swapchain_bindings.registered(identity);
+    if(!binding.chain){++frame_counts.unbound;frame_link.invalidate();frame_link.present(0,0);retire_stereo_window();frame_target_stats.clear_bindings();
+        if(outage_diagnostics.load())outage_draws={};return;}
+    ++frame_counts.presents;if(flags&DXGI_PRESENT_TEST){++frame_counts.tests;
+        frame_link.invalidate();frame_link.present(0,0);retire_stereo_window();frame_target_stats.clear_bindings();
+        if(outage_diagnostics.load())outage_draws={};return;}
+    DXGI_SWAP_CHAIN_DESC desc{};std::array<uintptr_t,16> resources{};auto desc_result=chain->GetDesc(&desc);bool valid=SUCCEEDED(desc_result);
+    if(!valid)frame_read_failure(1,0,desc_result);
+    valid=valid&&desc.BufferCount&&desc.BufferCount<=resources.size();
+    if(!desc.BufferCount||desc.BufferCount>resources.size())frame_read_failure(2,desc.BufferCount,E_INVALIDARG);
+    if(valid)for(unsigned i=0;i<desc.BufferCount;++i){ID3D12Resource* buffer{};
+        auto buffer_result=chain->GetBuffer(i,IID_PPV_ARGS(&buffer));
+        if(FAILED(buffer_result)){frame_read_failure(3,i,buffer_result);valid=false;break;}
+        resources[i]=canonical_identity(buffer);buffer->Release();if(!resources[i]){frame_read_failure(4,i,S_OK);valid=false;break;}
+    }
+    bool anchored=false;
+    if(valid&&!binding.anchored&&!(flags&DXGI_PRESENT_TEST)) {
+        anchored=swapchain_bindings.anchor(identity,desc.BufferDesc.Width,desc.BufferDesc.Height,resources.data(),desc.BufferCount);
+        if(anchored){frame_trial_anchored=true;frame_link.invalidate_all();retire_stereo_window();frame_target_stats.clear_bindings();}
+    }
+    bool compared=anchored||swapchain_bindings.unchanged(identity,desc.BufferDesc.Width,desc.BufferDesc.Height,resources.data(),desc.BufferCount);
+    bool inventory_ok=valid&&compared;
+    if(inventory_ok)bind_stereo_publisher(identity,binding.queue);
+    if(!inventory_ok) {
+        ++frame_counts.changed;swapchain_bindings.invalidate();frame_link.invalidate();
+    }
+    uintptr_t resource{};IDXGISwapChain3* current{};
+    auto current_result=valid?chain->QueryInterface(IID_PPV_ARGS(&current)):E_FAIL;
+    if(valid&&SUCCEEDED(current_result)) {
+        auto index=current->GetCurrentBackBufferIndex();current->Release();
+        if(index<desc.BufferCount)resource=resources[index];else frame_read_failure(6,index,E_INVALIDARG);
+    }
+    else if(valid)frame_read_failure(5,0,current_result);
+    if(!resource || flags&DXGI_PRESENT_TEST)frame_link.invalidate();
+    if(frame_target_stats.clear_bindings()||frame_target_stats.descriptor_capacity_lost())frame_link.invalidate();
+    auto result=frame_link.present(resource,inventory_ok?binding.queue:0);
+    if(diagnostic){diagnostic->valid|=gears_outage::association;diagnostic->buffer=resource;diagnostic->queue=binding.queue;
+        diagnostic->ticket=result.ticket;diagnostic->rejection=result.rejection;diagnostic->linked=result.linked;diagnostic->contaminated=result.contaminated;}
+    if(stereo_gpu_publish&&result.linked&&inventory_ok){
+        gears_vr::StereoImageTicket image{};image.id=result.ticket;
+        if(!stereo_ticket_store.lookup(result.ticket,image.sample,simulator_operator)){++stereo_publish_counts.ticket_missing;}
+        else {
+            if(diagnostic){diagnostic->valid|=gears_outage::image_sample;diagnostic->image_session=image.sample.session;
+                diagnostic->image_sequence=image.sample.sequence;diagnostic->image_received_ns=image.sample.received_ns;}
+            for(unsigned eye=0;eye<2;++eye){auto r=result.eyes[eye];image.rect[eye]={static_cast<int>(r.x),static_cast<int>(r.y),static_cast<int>(r.width),static_cast<int>(r.height)};}
+            ++stereo_publish_counts.capture_attempts;StereoPublishBypass bypass;
+            auto deadline=stereo_publish_deadline.load();
+            gears_vr::GpuCaptureTrace capture_trace{};bool captured=false;
+            if(!stereo_publish_counts.stopped.load()){
+                if(!deadline||now()<deadline){
+                    captured=stereo_publisher.capture(chain,&image,diagnostic?&capture_trace:nullptr);
+                    if(diagnostic)diagnostic->valid|=gears_outage::capture_called;
+                }else capture_trace.reason=gears_vr::GpuCaptureReason::native_deadline;
+            }else capture_trace.reason=gears_vr::GpuCaptureReason::native_stopped;
+            if(captured)stereo_publish_counts.last_ticket=result.ticket;else ++stereo_publish_counts.capture_skipped;
+            if(diagnostic){diagnostic->capture_reason=static_cast<unsigned>(capture_trace.reason);diagnostic->capture_valid=capture_trace.valid;
+                diagnostic->capture_state=capture_trace.state;diagnostic->consumer=static_cast<unsigned>(capture_trace.consumer);
+                diagnostic->serial_before=capture_trace.serial_before;diagnostic->serial_after=capture_trace.serial_after;
+                diagnostic->ready_completed=capture_trace.ready_completed;diagnostic->done_completed=capture_trace.done_completed;
+                diagnostic->capture_result=capture_trace.result;
+                if(captured){diagnostic->published=true;diagnostic->published_qpc=now();diagnostic->valid|=gears_outage::publication;}}
+        }
+    }
+    retire_stereo_window();
+    if(auto stats=frame_buffer_count(resource)){++stats->presents;if(result.linked)++stats->linked;if(result.contaminated)++stats->contaminated;}
+    if(result.linked){++frame_counts.linked;frame_counts.last_ticket=result.ticket;}
+    if(result.contaminated)++frame_counts.contaminated;
+    for(unsigned i=0;i<frame_counts.rejection.size();++i)if(result.rejection&(1u<<i))++frame_counts.rejection[i];
+    if(outage_diagnostics.load())outage_draws={}; // Same pre-original consume boundary as Tracker::present.
+}
+void retire_original_present_interval() {
+    // The outer Present hook still owns frame_hook_mutex here. Reentrant work
+    // from original Present is an isolated observation interval; other threads
+    // acquire the ordering lock only after this retirement completes. This is
+    // not recovery: lost capacity remains sticky, and future work needs Reset.
+    frame_link.retire_present_interval();
+    retire_stereo_window();
+    if(frame_target_stats.clear_bindings())frame_link.invalidate_capacity();
+    if(outage_diagnostics.load())outage_draws={}; // Isolated original-Present work cannot become next-frame evidence.
+}
+void stereo_publish_worker_tick() {
+    if(!stereo_gpu_publish)return;
+    if(continuous_session&&submitted_lifetime.stopping()&&!stereo_publish_counts.stopped.load()){
+        stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;
+    }
+    auto deadline=stereo_publish_deadline.load();
+    if(!stereo_publish_counts.stopped.load()&&((deadline&&now()>=deadline)||
+        (submitted_lifetime.is_closed()&&!submitted_lifetime.pending()))){
+        stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;
+    }
+    StereoPublishBypass bypass;
+    if(!stereo_publish_counts.stopped.load()&&stereo_publisher.state.load()==1){
+        if(stereo_publisher.prepare())++stereo_publish_counts.prepare_ok;else ++stereo_publish_counts.prepare_failed;
+    }
+    stereo_publisher.poll();
+}
+bool close_stereo_publisher() {
+    if(!stereo_gpu_publish)return true;
+    stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;
+    if(active.load())return false; // Retain all ownership if callbacks did not drain.
+    StereoPublishBypass bypass;
+    bool drained=stereo_publisher.drain(1000);stereo_publish_counts.drain_ok=drained?1:0;
+    if(continuous_session&&!drained)return false; // Keep ownership for a later drain attempt.
+    bool closed=stereo_publisher.close();stereo_publish_counts.close_ok=closed?1:0;
+    return drained&&closed;
+}
+void write_session_status(bool resources_retained=true,bool entries_restored=false) {
+    if(!continuous_session)return;
+    wchar_t path[MAX_PATH];swprintf_s(path,L"%s\\session-status.txt",directory);
+    FILE* output=_wfsopen(path,L"w",_SH_DENYWR);
+    if(!output){session_status_available=false;return;}
+    const char* phases[]={"running","stop_requested","native_closed","draining","stopped"};
+    const char* reasons[]={"none","event","f8","focus_lost","proof_failure","owner_exited","owner_error"};
+    auto phase=session_phase.load();auto reason=session_reason.load();
+    const char* label=session_cleanup_timeout.load()&&phase!=SessionPhase::stopped?"incomplete":phases[static_cast<unsigned>(phase)];
+    fprintf(output,"continuous_session=1 pid=%lu started_qpc=%lld phase=%s phase_code=%u reason=%s reason_code=%u stop_tick=%llu closed=%d pending=%u state_created=%u release_returned=%u state_destroyed=%u state_flags=%u retained=%u active=%u publisher_stopped=%u drain_ok=%u close_ok=%u cleanup_timeout=%u resources_retained=%u entries_restored=%u native_services=%u cancelled_builds=%u published=%u simulator_operator=%d csv_enabled=0 ",
+        GetCurrentProcessId(),session_started_qpc,label,static_cast<unsigned>(phase),reasons[static_cast<unsigned>(reason)],static_cast<unsigned>(reason),
+        session_stop_tick.load(),submitted_lifetime.is_closed(),submitted_lifetime.pending(),state_created.load(),state_release_returned.load(),state_destroyed.load(),
+        state_destroyed.load()?state_delete_flags:0,submit_retained.load(),active.load(),stereo_publish_counts.stopped.load(),
+        stereo_publish_counts.drain_ok.load(),stereo_publish_counts.close_ok.load(),session_cleanup_timeout.load()?1:0,
+        resources_retained?1:0,entries_restored?1:0,session_native_services.load(),session_cancelled_builds.load(),stereo_publisher.frames.load(),simulator_operator);
+    fprintf(output,"recenter_requests=%llu reference_generation=%llu heading_deferred=%llu ",stereo_recenter_requests.load(),stereo_reference_generation.load(),stereo_heading_deferred.load());
+    fprintf(output,"anchor_submission_required=%u anchor_submission_matched=%llu anchor_submission_rejected=%llu ",
+        anchor_observer_enabled?1:0,anchor_submission_matched.load(),anchor_submission_rejected.load());
+    fprintf(output,"owner_pid=%lu owner_creation_time=%llu stop_reason=%s owner_exit_observed=%u owner_error_observed=%u complete=1\n",session_owner_pid,
+        static_cast<unsigned long long>(session_owner_creation_time),reasons[static_cast<unsigned>(reason)],
+        session_owner_exit_observed.load()?1:0,session_owner_error_observed.load()?1:0);
+    session_status_available=fflush(output)==0;fclose(output);
+}
+void print_anchor(FILE* status,bool hooks_disabled){
+    fprintf(status,"anchor_submission_guard required=%u matched=%llu rejected=%llu policy=skip_unassociated_candidate\n",
+        anchor_observer_enabled?1:0,anchor_submission_matched.load(),anchor_submission_rejected.load());
+    if(!anchor_observer_enabled){fprintf(status,"anchor_observer enabled=0\n");return;}
+    fprintf(status,"anchor_pawn_policy same_level_only=1 same_class_outer=1 startup_config_immutable=1 full_pawn_signature=1 scene_prepost_identity=1 absolute_uobject_serial_verified=0 accepted_reassociated_guard_scene=%llu accepted_reassociated_guard_family=%llu accepted_reassociated_guard_renderer=%llu\n",
+        anchor_pawn_reassociated_guards[0].load(),anchor_pawn_reassociated_guards[1].load(),anchor_pawn_reassociated_guards[2].load());
+    if(recording.load()||active.load()||!hooks_disabled){fprintf(status,"anchor_observer enabled=1 available=0 active=%u hooks_disabled=%u\n",active.load(),hooks_disabled?1:0);return;}
+    fprintf(status,"anchor_observer enabled=1 available=1 schema=1 capacity=64 rows=%u reject_capacity=16 reject_rows=%u identity_count=%u accepted_scene=%llu accepted_family=%llu accepted_renderer=%llu first_renderer_qpc=%lld last_renderer_qpc=%lld sampled_out=%llu capacity_dropped=%llu dropped_first_qpc=%lld dropped_last_qpc=%lld qpc_frequency=%lld atomic_engine_snapshot=0 renderer_alignment_verified=0 origin_modified=%u source_view_bytes_matched=64 projection_bytes_observed=64 sample_policy=first4_then_1s\n",
+        std::min<unsigned>(anchor_row_count.load(),64),std::min<unsigned>(anchor_reject_count.load(),16),anchor_config.identity_count,
+        anchor_reasons[0][0].load(),anchor_reasons[1][0].load(),anchor_reasons[2][0].load(),anchor_first_renderer.load(),anchor_last_renderer.load(),
+        anchor_sampled_out.load(),anchor_capacity_dropped.load(),anchor_dropped_first.load(),anchor_dropped_last.load(),qpc_frequency,
+        origin_trial_enabled&&origin_stage_counts[1][0]?1:0);
+    const char* stages[]={"scene","family","renderer"};
+    for(unsigned stage=0;stage<3;++stage)fprintf(status,"anchor_guard stage=%s calls=%llu min_qpc=%lld max_qpc=%lld\n",stages[stage],anchor_guard_calls[stage].load(),anchor_guard_calls[stage].load()?anchor_guard_min[stage].load():0,anchor_guard_max[stage].load());
+    for(unsigned stage=0;stage<3;++stage)for(unsigned reason=0;reason<gears_anchor::reason_count;++reason)
+        fprintf(status,"anchor_reason stage=%s reason=%s count=%llu\n",stages[stage],gears_anchor::reason_name(reason),anchor_reasons[stage][reason].load());
+    auto print=[&](AnchorRow const& row,const char* scope,unsigned index){auto const& r=row.receipt;auto const& a=r.anchor;
+        fprintf(status,"anchor_row scope=%s index=%u stage=%s reason=%s scene_invocation=%llu thread=%u local=%llx family=%llx source=%llx source_owner=%llx pawn=%llx controller=%llx camera=%llx level=%llx scene_qpc=%lld family_qpc=%lld renderer_qpc=%lld camera_stamp_bits=%u location_x=%.9g location_y=%.9g location_z=%.9g eye_height=%.9g base_eye_height=%.9g candidate_x=%.9g candidate_y=%.9g candidate_z=%.9g renderer=%llx registered_ticket=%llu",
+            scope,index,stages[row.stage],gears_anchor::reason_name(row.reason),r.invocation,r.thread,r.key.local,r.key.family,r.key.source,r.key.owner,
+            a.pawn,a.controller,a.camera,a.level,r.scene_qpc,r.family_qpc,r.renderer_qpc,r.key.stamp,a.location[0],a.location[1],a.location[2],
+            a.eye_height,a.base_eye_height,a.location[0],a.location[1],a.location[2]+a.eye_height,row.renderer,row.ticket);
+        const std::array<unsigned char,128>* matrices[]={&r.key.matrices,&r.family_matrices,&r.renderer_matrices};
+        const char* labels[]={"scene_matrix","family_matrix","renderer_matrix"};
+        for(unsigned stage=0;stage<3;++stage){fprintf(status," %s=",labels[stage]);for(unsigned j=0;j<32;++j){float value{};memcpy(&value,matrices[stage]->data()+4*j,4);fprintf(status,"%s%.9g",j?",":"",value);}}
+        fprintf(status,"\n");};
+    for(unsigned i=0;i<std::min<unsigned>(anchor_row_count.load(),64);++i)print(anchor_rows[i],"sampled",i);
+    for(unsigned i=0;i<std::min<unsigned>(anchor_reject_count.load(),16);++i)print(anchor_rejects[i],"first_rejections",i);
+    fprintf(status,"anchor_state_observer capacity=16 rows=%u dropped=%u policy=first_pawn_or_right_state_transition_per_thread phase=renderer_guard_before_submit lifetime_verified=0\n",
+        std::min<unsigned>(anchor_state_transition_count.load(),16),anchor_state_transition_count.load()>16?anchor_state_transition_count.load()-16:0);
+    for(unsigned i=0;i<std::min<unsigned>(anchor_state_transition_count.load(),16);++i){auto const& r=anchor_state_transitions[i];
+        fprintf(status,"anchor_state_transition index=%u qpc=%lld thread=%u pawn=%llx pawn_index=%u pawn_name_index=%u pawn_number=%u pawn_class=%llx pawn_outer=%llx source=%llx original_state=%llx right_state=%llx right_table=%llx read_mask=%u\n",
+            i,r.qpc,r.thread,r.pawn.address,r.pawn.index,r.pawn.name_index,r.pawn.number,r.pawn.cls,r.pawn.outer,
+            r.source,r.original_state,r.right_state,r.right_table,r.read_mask);}
+}
+void print_origin_trial(FILE* status,bool hooks_disabled){
+    if(!origin_trial_enabled){fprintf(status,"origin_trial enabled=0\n");return;}
+    if(recording.load()||active.load()||!hooks_disabled){fprintf(status,"origin_trial enabled=1 available=0\n");return;}
+    std::lock_guard<std::mutex> lock(stereo_mutex);
+    fprintf(status,"origin_trial enabled=1 available=1 schema=1 epoch_qpc=%lld frequency=%lld prepare_failed=%llu commit_failed=%llu duplicate_stages=%llu capacity_per_phase=12 sample_period_seconds=1 original_source_write_intended=0\n",
+        origin_trial.epoch_qpc(),qpc_frequency,origin_prepare_failed.load(),origin_commit_failed.load(),origin_duplicate_stages);
+    auto matrix=[&](const char* name,const void* bytes){fprintf(status," %s=",name);
+        for(unsigned j=0;j<16;++j){float v{};memcpy(&v,static_cast<const unsigned char*>(bytes)+4*j,4);fprintf(status,"%s%.9g",j?",":"",v);}};
+    const char* phases[]={"A1","B","A2"};const char* stages[]={"built","consume_before","prepare_before","prepare_after"};
+    for(unsigned p=0;p<3;++p){
+        for(unsigned s=0;s<4;++s)fprintf(status,"origin_count phase=%s stage=%s count=%llu mismatch=%llu\n",
+            phases[p],stages[s],origin_stage_counts[p][s],origin_stage_mismatches[p][s]);
+        for(unsigned i=0;i<origin_row_counts[p];++i){auto const& row=origin_rows[p][i];auto const& f=row.frame;
+            auto const& r=f.origin.receipt;auto const& a=r.anchor;auto const& sample=f.sample;
+            fprintf(status,"origin_row phase=%s ticket=%llu selection_qpc=%lld mask=%u invocation=%llu thread=%u scene_qpc=%lld family_qpc=%lld renderer_qpc=%lld family=0x%llx source=0x%llx owner=0x%llx local=0x%llx pawn=0x%llx controller=0x%llx camera=0x%llx level=0x%llx stamp=%u location=%.9g,%.9g,%.9g eye_height=%.9g base_eye_height=%.9g candidate=%.9g,%.9g,%.9g generation=%llu session=%llu sequence=%llu received_ns=%lld predicted_time=%lld sample_source=%u head_flags=%llu view_flags=%llu focused=%u should_render=%u units_per_metre=%.17g",
+                phases[p],f.id,f.origin.selection.phase_qpc,row.mask,r.invocation,r.thread,r.scene_qpc,r.family_qpc,r.renderer_qpc,
+                r.key.family,r.key.source,r.key.owner,r.key.local,a.pawn,a.controller,a.camera,a.level,r.key.stamp,
+                a.location[0],a.location[1],a.location[2],a.eye_height,a.base_eye_height,a.location[0],a.location[1],a.location[2]+a.eye_height,
+                f.reference_generation,sample.session,sample.sequence,sample.received_ns,sample.predicted_time,static_cast<unsigned>(sample.source),
+                sample.head_flags,sample.view_flags,sample.focused,sample.should_render,stereo_units_per_metre);
+            matrix("scene_view",r.key.matrices.data());matrix("family_view",r.family_matrices.data());
+            matrix("original_view",r.renderer_matrices.data());matrix("original_projection",r.renderer_matrices.data()+64);
+            matrix("base_view",f.origin.base.data());fprintf(status,"\n");
+            const gears_vr::Pose* poses[]={&f.reference,&sample.head,&sample.eyes[0].pose,&sample.eyes[1].pose};
+            const char* kinds[]={"reference","head","left","right"};
+            for(unsigned k=0;k<4;++k){fprintf(status,"origin_pose ticket=%llu kind=%s",f.id,kinds[k]);print_stereo_pose(status,*poses[k]);
+        if(k>=2){auto v=sample.eyes[k-2].fov;fprintf(status," fov=%.17g,%.17g,%.17g,%.17g",v.left,v.right,v.up,v.down);}fprintf(status,"\n");}
+            for(unsigned eye=0;eye<2;++eye){fprintf(status,"origin_expected ticket=%llu eye=%u",f.id,eye);
+                matrix("view",f.expected.view[eye].data());matrix("projection",f.expected.projection[eye].data());fprintf(status,"\n");}
+            for(unsigned s=0;s<4;++s)if(row.mask&(1u<<s))for(unsigned eye=0;eye<2;++eye){auto const& observed=row.stages[s];
+                fprintf(status,"origin_actual ticket=%llu stage=%s eye=%u qpc=%lld reads=%u matching=%u",f.id,stages[s],eye,observed.qpc,observed.reads,observed.matching?1:0);
+                matrix("view",observed.actual.view[eye].data());matrix("projection",observed.actual.projection[eye].data());fprintf(status,"\n");}
+        }
+    }
+}
+void print_outage(FILE* status,bool hooks_disabled) {
+    if(!outage_diagnostics.load()){fprintf(status,"outage_trace enabled=0\n");return;}
+    // Scope covers the whole callback, including post-original observations.
+    // Never read non-atomic Window storage while a callback might still own it.
+    if(recording.load()||active.load()||!hooks_disabled){
+        fprintf(status,"outage_trace enabled=1 available=0 unavailable_active_callbacks=%u hooks_disabled=%u\n",active.load(),hooks_disabled?1:0);return;}
+    fprintf(status,"outage_trace enabled=1 available=1 qpc_frequency=%lld threshold_ms=100 capacity=256 rows=%u triggered=%u finished=%u trigger_mask=%u end=%u first_window_only=1\n",
+        outage_window.frequency(),outage_window.count(),outage_window.triggered()?1:0,outage_window.finished()?1:0,outage_window.trigger(),outage_window.end());
+    fprintf(status,"outage_schema validbits=association:1,built_pre:2,built_post:4,left_draw:8,right_draw:16,capture_called:32,image_sample:64,publication:128,present_return:256 capture_validbits=state:1,serial:2,consumer:4,ready:8,done:16,hresult:32 draw_scope=pre_original_current_interval built_count=cumulative trigger2=last_publication_to_original_end_age\n");
+    for(unsigned i=0;i<outage_window.count();++i){auto const& a=outage_window.at(i);
+        fprintf(status,"outage_row index=%u valid=%u enter_qpc=%lld original_begin_qpc=%lld original_end_qpc=%lld present_result=%ld previous_publish_qpc=%lld published_qpc=%lld published=%u pub_before=%llu pub_after=%llu buffer=%p queue=%p ticket=%llu reject=%u linked=%u contaminated=%u image_session=%llu image_sequence=%llu image_received_ns=%lld capture_reason=%s capture_valid=%u capture_state=%u capture_result=%ld consumer=%u serial_before=%llu serial_after=%llu ready_completed=%llu done_completed=%llu",
+            i,a.valid,a.enter_qpc,a.original_begin_qpc,a.original_end_qpc,static_cast<long>(a.present_result),a.previous_publish_qpc,a.published_qpc,a.published?1:0,a.pub_before,a.pub_after,reinterpret_cast<void*>(a.buffer),reinterpret_cast<void*>(a.queue),a.ticket,a.rejection,a.linked?1:0,a.contaminated?1:0,a.image_session,a.image_sequence,a.image_received_ns,
+            gears_vr::gpu_capture_reason_name(static_cast<gears_vr::GpuCaptureReason>(a.capture_reason)),a.capture_valid,a.capture_state,static_cast<long>(a.capture_result),a.consumer,a.serial_before,a.serial_after,a.ready_completed,a.done_completed);
+        auto activity=[&](const char* name,gears_outage::Activity const& b){fprintf(status," %s_ticket=%llu %s_count=%llu %s_sequence=%llu %s_qpc=%lld %s_received_ns=%lld",name,b.ticket,name,b.count,name,b.sequence,name,b.qpc,name,b.received_ns);};
+        activity("built_pre",a.built_pre);activity("built_post",a.built_post);activity("left_draw",a.draw[0]);activity("right_draw",a.draw[1]);fprintf(status,"\n");
+    }
+}
+
+void print_frame_link(FILE* status) {
+    if(!frame_link_diagnostics)return;
+    if(stereo_gpu_publish)fprintf(status,"stereo_gpu_publish enabled=1 state=%u published=%u busy=%u rate_limited=%u bind_requests=%llu prepare_ok=%llu prepare_failed=%llu ticket_retains=%llu ticket_duplicates=%llu ticket_rejected=%llu ticket_missing=%llu rect_rejected=%llu capture_attempts=%llu capture_skipped=%llu stopped=%u drain_ok=%u close_ok=%u retired_id=%llu pending_tickets=%zu last_ticket=%llu simulator_operator=%d\n",
+        stereo_publisher.state.load(),stereo_publisher.frames.load(),stereo_publisher.busy.load(),stereo_publisher.rate_limited.load(),stereo_publish_counts.bind_requests.load(),
+        stereo_publish_counts.prepare_ok.load(),stereo_publish_counts.prepare_failed.load(),stereo_publish_counts.ticket_retains.load(),
+        stereo_publish_counts.ticket_duplicates.load(),stereo_publish_counts.ticket_rejected.load(),stereo_publish_counts.ticket_missing.load(),
+        stereo_publish_counts.rect_rejected.load(),stereo_publish_counts.capture_attempts.load(),stereo_publish_counts.capture_skipped.load(),
+        stereo_publish_counts.stopped.load(),stereo_publish_counts.drain_ok.load(),stereo_publish_counts.close_ok.load(),
+        stereo_ticket_store.retired_id(),stereo_ticket_store.size(),stereo_publish_counts.last_ticket.load(),simulator_operator);
+    auto bindings=swapchain_bindings.snapshot();
+    auto overlay_stats=frame_link.snapshot();
+    fprintf(status,"frame_link_unknown_coalesced count=%llu adjacent_same_target_only=1 unknown_rejection_preserved=1\n",overlay_stats.unknown_coalesced);
+    fprintf(status,"frame_link_overlay recorded=%llu executed=%llu rejected=%llu single_event_pair=1 coordinates_live_verified=0\n",
+        overlay_stats.overlay_recorded,overlay_stats.overlay_executed,overlay_stats.overlay_rejected);
+    fprintf(status,"frame_link_overlay_source local_queries=%llu executed_queries=%llu executed_recorded=%llu executed_submitted=%llu no_executed=%llu invalid_list=%llu window_rejected=%llu capacity=%llu polluted=%llu ticket=%llu target=%llu incompatible_list=%llu\n",
+        overlay_stats.overlay_local_queries,overlay_stats.overlay_executed_queries,overlay_stats.overlay_from_executed_recorded,
+        overlay_stats.overlay_from_executed_executed,overlay_stats.overlay_no_executed_queries,overlay_stats.overlay_invalid_list_queries,
+        overlay_stats.overlay_window_rejected_queries,overlay_stats.overlay_capacity_queries,overlay_stats.overlay_polluted_queries,
+        overlay_stats.overlay_ticket_queries,overlay_stats.overlay_target_queries,overlay_stats.overlay_incompatible_queries);
+    for(size_t i=0;i<overlay_stats.overlay_no_executed_snapshot_count;++i){auto const& row=overlay_stats.overlay_no_executed_snapshots[i];
+        fprintf(status,"frame_link_overlay_missing index=%zu list=%llx generation=%llu target=%llx size=%u,%u maximum_ticket=%llu retired_ticket=%llu executed_mask=%u executed_ticket=%llu executed_queue=%llx other_complete_recorded_lists=%u unique_list=%llx unique_generation=%llu unique_ticket=%llu\n",
+            i,row.current.identity,row.current.generation,row.target.resource,row.target.width,row.target.height,row.maximum_ticket,row.retired_ticket,
+            row.executed_mask,row.executed_ticket,row.executed_queue,row.other_complete_recorded_lists,
+            row.unique_recorded_ref.identity,row.unique_recorded_ref.generation,row.unique_recorded_ticket);}
+    fprintf(status,"frame_link enabled=1 resets=%llu reset_failed=%llu draws=%llu filtered=%llu unknown=%llu missing_target=%llu missing_ticket=%llu bad_quad=%llu executes=%llu execute_rejected=%llu presents=%llu linked=%llu contaminated=%llu present_failed=%llu tests=%llu unbound=%llu changed=%llu last_ticket=%llu gpu_published=%u pixels_proven=0 completion_proven=%u clear_copy_indirect_observed=0 resize_destroy_observed=0 fixed_size_only=1\n",
+        frame_counts.resets.load(),frame_counts.reset_failed.load(),frame_counts.draws.load(),frame_counts.filtered.load(),frame_counts.unknown.load(),
+        frame_counts.missing_target.load(),frame_counts.missing_ticket.load(),frame_counts.bad_quad.load(),frame_counts.executes.load(),frame_counts.execute_rejected.load(),
+        frame_counts.presents.load(),frame_counts.linked.load(),frame_counts.contaminated.load(),frame_counts.present_failed.load(),frame_counts.tests.load(),
+        frame_counts.unbound.load(),frame_counts.changed.load(),frame_counts.last_ticket.load(),stereo_publisher.frames.load(),
+        stereo_gpu_publish&&stereo_publisher.frames.load()&&stereo_publish_counts.drain_ok.load()?1:0);
+    fprintf(status,"frame_link_binding accepted=%llu excluded=%llu conflicts=%llu overflow=%llu buffers=%llu changed=%llu anchors=%llu rejected=%u chain_queue_refs_held=1 backbuffer_refs_held=0\n",
+        bindings.accepted,bindings.excluded,bindings.conflicts,bindings.overflow,bindings.buffers,bindings.changed,bindings.anchors,bindings.rejected?1:0);
+    auto tracker=frame_link.snapshot();auto target_tracker=frame_target_stats.snapshot();
+    fprintf(status,"frame_link_capacity list_limit=%zu list_highwater=%zu active_lists=%zu event_limit=%zu event_highwater=%zu list_overflow=%llu event_overflow=%llu target_overflow=%llu sticky=%u target_binding_overflow=%llu descriptor_evictions=%llu descriptor_capacity_bad=%u\n",
+        gears_frame_link::Tracker::list_capacity,tracker.list_highwater,tracker.active_lists,gears_frame_link::Tracker::events_per_list,tracker.event_highwater,
+        tracker.list_overflow,tracker.event_overflow,tracker.target_overflow,tracker.capacity_bad?1:0,target_tracker.overflow,target_tracker.descriptor_evictions,frame_target_stats.descriptor_capacity_lost()?1:0);
+    fprintf(status,"frame_link_execute_batches unknown=%llu duplicate=%llu invalid=%llu metadata=%llu\n",
+        tracker.unknown_batches,tracker.duplicate_batches,tracker.invalid_batches,tracker.metadata_batches);
+    const gears_swapchain_binding::Comparison details[]={swapchain_bindings.first_comparison(),swapchain_bindings.first_failure()};
+    for(unsigned d=0;d<2;++d){const auto& detail=details[d];if(!detail.recorded)continue;
+        fprintf(status,"frame_link_compare kind=%s anchor=%u chain=%llx reason_mask=%u expected_size=%u,%u actual_size=%u,%u expected_count=%u actual_count=%u reason_bits=invalid:1,dimensions:2,count:4,identity:8,missing_binding:16,rejected:32\n",
+            d?"first_failure":"first",detail.anchor?1:0,static_cast<unsigned long long>(detail.chain),detail.reason,
+            detail.expected_width,detail.expected_height,detail.actual_width,detail.actual_height,detail.expected_count,detail.actual_count);
+        for(unsigned i=0;i<detail.expected.size()&&(i<detail.expected_count||i<detail.actual_count);++i)
+            fprintf(status,"frame_link_compare_buffer kind=%s index=%u expected=%llx actual=%llx\n",d?"first_failure":"first",i,
+                static_cast<unsigned long long>(detail.expected[i]),static_cast<unsigned long long>(detail.actual[i]));
+    }
+    if(!active.load()){
+        fprintf(status,"frame_link_work_inventory sample_limit=%zu stack_limit=16 samples_overflow=%llu stacks=%u game_base=%llx kind_bits=unknown_draw:0,final_draw:1,unknown_execute:2 post_anchor_only=1 rectangles_observed_only=1\n",
+            frame_work_samples.size(),frame_work_sample_overflow,frame_work_stacks,static_cast<unsigned long long>(base));
+        for(unsigned p=0;p<4;++p)fprintf(status,"frame_link_work_partition partition=%u dropped=%llu stacks=%u layout=unknown_execute:8/1,final_draw:4/0,ticket_draw:32/9,no_ticket_draw:20/6\n",
+            p,frame_work_partition_dropped[p],frame_work_partition_stacks[p]);
+        for(unsigned i=0;i<frame_work_samples.size();++i){const auto& entry=frame_work_samples[i];if(!entry.calls)continue;
+            fprintf(status,"frame_link_work sample=%u kind=%u calls=%llu first_qpc=%lld caller=%llx caller_rva=%llx first_list=%llx queue=%llx present_depth=%u inside_original_present=%u inside_consume=%u ticket_present=%u draw_kind=%u elements_or_batch_count=%u instances=%u targets=%u resource=%llx target_size=%llu,%u tracked_rects=%u viewport_count=%u viewport=%.9g,%.9g,%.9g,%.9g scissor_count=%u scissor=%.9g,%.9g,%.9g,%.9g stack_count=%u\n",
+                i,entry.kind,entry.calls,entry.first_qpc,static_cast<unsigned long long>(entry.caller),static_cast<unsigned long long>(entry.caller-base),
+                static_cast<unsigned long long>(entry.list),static_cast<unsigned long long>(entry.queue),entry.present_depth,entry.inside_present,
+                entry.inside_consume,entry.ticket_present,entry.draw_kind,entry.elements,entry.instances,entry.targets,
+                static_cast<unsigned long long>(entry.target.resource),entry.target.width,entry.target.height,entry.rectangles.tracked?1:0,
+                entry.rectangles.viewport_count,entry.rectangles.viewport.x,entry.rectangles.viewport.y,entry.rectangles.viewport.width,entry.rectangles.viewport.height,
+                entry.rectangles.scissor_count,entry.rectangles.scissor.x,entry.rectangles.scissor.y,entry.rectangles.scissor.width,entry.rectangles.scissor.height,entry.stack_count);
+            for(unsigned s=0;s<entry.stack_count;++s)fprintf(status,"frame_link_work_stack sample=%u index=%u address=%llx\n",
+                i,s,static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(entry.stack[s])));
+        }
+        if(frame_first_read_failure.stage)fprintf(status,"frame_link_read_failure stage=%u index=%u hr=%08lx stages=desc:1,count:2,getbuffer:3,canonical_identity_zero:4,swapchain3_qi:5,current_index:6\n",
+            frame_first_read_failure.stage,frame_first_read_failure.index,static_cast<unsigned long>(frame_first_read_failure.result));
+        fprintf(status,"frame_link_inventory unique_lists_lower_bound=%u list_identity_capacity=%zu list_overflow_observations=%llu queue_identity_capacity=%zu queue_overflow_observations=%llu\n",
+            frame_unique_list_count,frame_unique_lists.size(),frame_unique_list_overflow,frame_queues.size(),frame_unique_queue_overflow);
+        for(const auto& entry:frame_queues)if(entry.identity){fprintf(status,"frame_link_queue identity=%llx type=%u calls=%llu members=%llu unknown_members=%llu rejected=%llu post_anchor_calls=%llu post_anchor_unknown=%llu\n",
+            static_cast<unsigned long long>(entry.identity),entry.type,entry.calls,entry.members,entry.unknown_members,entry.rejected,entry.post_anchor_calls,entry.post_anchor_unknown);
+            for(unsigned i=0;i<entry.first_unknown_count;++i)fprintf(status,"frame_link_unknown_member queue=%llx sample=%u identity=%llx\n",
+                static_cast<unsigned long long>(entry.identity),i,static_cast<unsigned long long>(entry.first_unknown[i]));}
+    }
+    const char* names[]={"missing_pair","metadata_lost","capacity","queue_conflict","ticket_conflict","target_conflict","duplicate_eye","polluted","unknown_list","duplicate_execute","bad_rectangle","stale_ticket"};
+    for(unsigned i=0;i<frame_counts.rejection.size();++i)fprintf(status,"frame_link_rejection reason=%s count=%llu\n",names[i],frame_counts.rejection[i].load());
+    for(const auto& entry:frame_buffers)if(entry.resource.load())fprintf(status,
+        "frame_link_backbuffer resource=%llx draws=%llu left=%llu right=%llu unknown=%llu presents=%llu linked=%llu contaminated=%llu\n",
+        static_cast<unsigned long long>(entry.resource.load()),entry.draws.load(),entry.left.load(),entry.right.load(),entry.unknown.load(),
+        entry.presents.load(),entry.linked.load(),entry.contaminated.load());
+}
 int offset_at(double seconds) {
     if(seconds<3 || seconds>=15) return 0;
     return static_cast<int>(std::lround((1.5*65536.0/360.0)*std::sin((seconds-3)*6.283185307179586/4.0)));
@@ -371,6 +1247,7 @@ void apply_live(Record& record,void* pc,Vec* position,Rot* rotation) {
 }
 void enqueue(const Record& value) {
     if(!recording.load(std::memory_order_relaxed)) return;
+    if(continuous_session)return; // Proof observers remain active; only per-frame CSV is suppressed.
     if(!TryAcquireSRWLockExclusive(&queue_lock)) {++dropped;return;}
     if(write_index-read_index<ring.size()) ring[write_index++%ring.size()]=value;
     else ++dropped;
@@ -492,9 +1369,60 @@ void run_source_shadow(const Record& record,void* family) {
         }
     }
 }
+void anchor_note(unsigned stage,gears_anchor::Reason reason,gears_anchor::Receipt const& receipt={},uintptr_t renderer=0,unsigned long long ticket=0){
+    ++anchor_reasons[stage][reason];
+    if(reason!=gears_anchor::accepted){auto index=anchor_reject_count.fetch_add(1);
+        if(index<anchor_rejects.size())anchor_rejects[index]={receipt,renderer,ticket,stage,reason};return;}
+    if(stage!=2)return;
+    auto qpc=receipt.renderer_qpc;long long zero=0;anchor_first_renderer.compare_exchange_strong(zero,qpc);anchor_last_renderer=qpc;
+    auto next=anchor_next_sample.load();auto count=anchor_row_count.load();
+    if(count>=4&&(qpc<next||!anchor_next_sample.compare_exchange_strong(next,qpc+qpc_frequency))){++anchor_sampled_out;return;}
+    if(count<4)anchor_next_sample=qpc+qpc_frequency;
+    auto index=anchor_row_count.fetch_add(1);
+    if(index<anchor_rows.size())anchor_rows[index]={receipt,renderer,ticket,stage,reason};
+    else {++anchor_capacity_dropped;zero=0;anchor_dropped_first.compare_exchange_strong(zero,qpc);anchor_dropped_last=qpc;}
+}
+bool anchor_key(gears_anchor::Key& key,gears_anchor::Anchor& anchor,uintptr_t family,uintptr_t source,uintptr_t local,unsigned stage){
+    const auto guard_started=now();
+    struct Timer {long long started;unsigned stage;~Timer(){auto duration=now()-started;++anchor_guard_calls[stage];
+        auto value=anchor_guard_min[stage].load();while(duration<value&&!anchor_guard_min[stage].compare_exchange_weak(value,duration)){}
+        value=anchor_guard_max[stage].load();while(duration>value&&!anchor_guard_max[stage].compare_exchange_weak(value,duration)){}
+    }} timer{guard_started,stage};
+    key.family=family;key.source=source;key.local=local;
+    if(anchor_config.role_camera>=anchor_config.identity_count)return false;
+    std::uint32_t before{};auto camera=anchor_config.identities[anchor_config.role_camera].address;
+    if(!safe_copy(&before,reinterpret_cast<void*>(camera+anchor_config.camera_timestamp),4))return false;
+    if(!family||!source||!safe_copy(&key.owner,reinterpret_cast<void*>(source),8)||
+        !safe_copy(key.matrices.data(),reinterpret_cast<void*>(source+0x70),128))return false;
+    for(unsigned i=0;i<32;++i){float value{};memcpy(&value,key.matrices.data()+i*4,4);if(!std::isfinite(value))return false;}
+    const bool valid=gears_anchor::guard(anchor_config,safe_copy,anchor,key.stamp)&&before==key.stamp&&local==expected_local&&key.owner==family;
+    if(valid&&stage<3&&anchor.pawn!=anchor_config.identities[anchor_config.role_pawn].address)++anchor_pawn_reassociated_guards[stage];
+    const auto observed_right_state=state_temporary.load();
+    if(valid&&stage==2&&(!gears_anchor::equal_identity(anchor_last_state_pawn,anchor.pawn_identity)||
+        observed_right_state!=anchor_last_observed_right_state)){
+        anchor_last_state_pawn=anchor.pawn_identity;
+        anchor_last_observed_right_state=observed_right_state;
+        const auto index=anchor_state_transition_count.fetch_add(1);
+        if(index<anchor_state_transitions.size()){
+            AnchorStateTransition row{};row.pawn=anchor.pawn_identity;row.source=source;row.qpc=now();row.thread=GetCurrentThreadId();
+            if(source<=UINTPTR_MAX-8&&safe_copy(&row.original_state,reinterpret_cast<void*>(source+8),8))row.read_mask|=1;
+            row.right_state=observed_right_state;
+            if(row.right_state&&safe_copy(&row.right_table,reinterpret_cast<void*>(row.right_state),8))row.read_mask|=2;
+            anchor_state_transitions[index]=row;
+        }
+    }
+    return valid;
+}
 void __fastcall hook_family(void* canvas,void* family){
     Scope scope;auto record=start_record(7,canvas,_ReturnAddress());
     inspect_family(record,family);
+    std::optional<gears_anchor::Context::FamilyScope> anchor_scope;
+    if(anchor_observer_enabled&&recording.load()){
+        gears_anchor::Key key{};gears_anchor::Anchor anchor{};
+        bool valid=anchor_key(key,anchor,reinterpret_cast<uintptr_t>(family),record.family_views[0],expected_local,1);
+        anchor_scope.emplace(anchor_context,key,anchor,GetCurrentThreadId(),record.time,valid,record.family_count,record.caller);
+        anchor_note(1,anchor_scope->reason,anchor_scope->receipt());
+    }
     if(record.caller==0x2c8909 && record.family_count==1)trace_rectangle(1,record.family_views[0]);
     try_shadow_state(record);
     if(!renderer_pair_enabled && !submit_pair_enabled && record.caller==0x2c8909)run_source_shadow(record,family);
@@ -520,8 +1448,20 @@ void* __fastcall hook_clone(void* destination,void* source){
     }
     return result;
 }
+#include "geometry_observer.h"
+#include "resource_identity_observer.h"
+#include "final_input_observer.h"
+#include "quad_source_control.h"
+#include "color_copy_observer.h"
+#include "first_view_mask_control.h"
+
 void inspect_completed_renderer(Record& record,void* destination){
     if(!destination)return;
+    if(stereo_xr){gears_submitted::FrameTicket frozen{};
+        if(submitted_lifetime.frame(reinterpret_cast<uintptr_t>(destination),frozen)&&frozen.enabled){
+            record.stereo_ticket=frozen.id;record.stereo_source=static_cast<unsigned>(frozen.sample.source);
+            record.stereo_head_flags=frozen.sample.head_flags;record.stereo_view_flags=frozen.sample.view_flags;
+            record.stereo_reference_generation=frozen.reference_generation;}}
     inspect_family(record,reinterpret_cast<char*>(destination)+8);
     struct Header{uintptr_t data;int count,capacity;} storage{};
     if(safe_copy(&storage,reinterpret_cast<char*>(destination)+0x68,sizeof(storage))){
@@ -535,13 +1475,21 @@ void inspect_completed_renderer(Record& record,void* destination){
 void __fastcall hook_consume(void* renderer){
     Scope scope;auto record=start_record(10,renderer,_ReturnAddress());
     inspect_completed_renderer(record,renderer);
-    if(submit_pair_enabled && (submit_pair_seconds?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
+    if(submit_pair_enabled && (submit_session_enabled()?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
         reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load())){++submit_consumed;record.test_state=77;}
+    projection_observe(1,reinterpret_cast<uintptr_t>(renderer),record.family_views,record.family_count,record.time);
+    stereo_observe(1,reinterpret_cast<uintptr_t>(renderer),record.family_views,record.family_count,record.time);
     void* saved=consuming_renderer;consuming_renderer=renderer;
+    auto saved_ticket=consuming_frame_ticket;gears_submitted::FrameTicket consume_frame{};
+    auto saved_frozen_frame=consuming_frozen_frame;
+    consuming_frame_ticket=frame_link_diagnostics&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(renderer),consume_frame)?consume_frame.id:0;
+    consuming_frozen_frame=consume_frame;
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
     original_consume(renderer);
       trial_draw_scope=saved_draw_scope;
     consuming_renderer=saved;
+    consuming_frame_ticket=saved_ticket;
+    consuming_frozen_frame=saved_frozen_frame;
     // The original consumer can free renderer. Only our local record is used
     // after it returns; never dereference the game object here.
     record.duration=now()-record.time;enqueue(record);
@@ -551,7 +1499,9 @@ void __fastcall hook_prepare(void* renderer){
     auto record=start_record(12,renderer,_ReturnAddress());
     if(observe){
         Record before{};inspect_completed_renderer(before,renderer);
-        if(submit_pair_enabled && before.family_count==(submit_mono_control?1:2) && (submit_pair_seconds?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
+        projection_observe(2,reinterpret_cast<uintptr_t>(renderer),before.family_views,before.family_count,now());
+        stereo_observe(2,reinterpret_cast<uintptr_t>(renderer),before.family_views,before.family_count,now());
+        if(submit_pair_enabled && before.family_count==(submit_mono_control?1:2) && (submit_session_enabled()?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
             reinterpret_cast<uintptr_t>(renderer)==submit_root.load())) {
             trace_rectangle(6,before.family_views[0]);trace_rectangle(7,before.family_views[1]);
         }
@@ -563,7 +1513,7 @@ void __fastcall hook_prepare(void* renderer){
     original_prepare(renderer);
     if(observe){
         inspect_completed_renderer(record,renderer);
-        if(submit_pair_enabled && (submit_pair_seconds?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
+        if(submit_pair_enabled && (submit_session_enabled()?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
             reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load())) {
             uintptr_t right_state{};
             unsigned index=submit_mono_control?0:1;
@@ -571,6 +1521,8 @@ void __fastcall hook_prepare(void* renderer){
             if(record.family_count==(submit_mono_control?1:2) && safe_copy(&right_state,reinterpret_cast<void*>(record.family_views[index]+8),8) && right_state==expected_state)++submit_prepared;
             record.test_state=77;
             trace_rectangle(8,record.family_views[0]);trace_rectangle(9,record.family_views[1]);
+            projection_observe(3,reinterpret_cast<uintptr_t>(renderer),record.family_views,record.family_count,now());
+            stereo_observe(3,reinterpret_cast<uintptr_t>(renderer),record.family_views,record.family_count,now());
         }
         if(safe_copy(&record.renderer_sources[1],reinterpret_cast<void*>(record.family_views[0]+8),8))record.valid|=16384;
         record.duration=now()-record.time;enqueue(record);
@@ -578,8 +1530,11 @@ void __fastcall hook_prepare(void* renderer){
 }
 void* __fastcall hook_destroy_renderer(void* renderer){
     Scope scope;auto record=start_record(11,renderer,_ReturnAddress());
+    std::unique_lock<std::recursive_mutex> session_lock(session_native_mutex,std::defer_lock);
+    if(continuous_session)session_lock.lock();
+    service_session_stop_native();
     inspect_completed_renderer(record,renderer);
-    const bool submitted=submit_pair_enabled && (submit_pair_seconds?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
+    const bool submitted=submit_pair_enabled && (submit_session_enabled()?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
         submit_attempted.load()==2 && reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load());
     if(submitted)record.test_state=77;
     void* result=original_destroy_renderer(renderer);
@@ -587,7 +1542,7 @@ void* __fastcall hook_destroy_renderer(void* renderer){
         ++submit_destroyed;
         // The submitted renderer can use its state until destruction returns.
         // Release on this native thread, never on the collection worker.
-        bool release=submit_pair_seconds?submitted_lifetime.retire(reinterpret_cast<uintptr_t>(renderer)):true;
+        bool release=submit_session_enabled()?submitted_lifetime.retire(reinterpret_cast<uintptr_t>(renderer)):true;
         if(release && !submit_retained.load() && submit_sources_released && state_created.load()==1) {
             state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
         }
@@ -595,11 +1550,19 @@ void* __fastcall hook_destroy_renderer(void* renderer){
     record.result=reinterpret_cast<uintptr_t>(result);
     record.duration=now()-record.time;enqueue(record);return result;
 }
-bool try_submit_pair(void* destination,void* family,void* canvas,void* transform,Record& record,void*& returned) {
-    if(submit_pair_seconds) {
+bool try_submit_pair(void* destination,void* family,void* canvas,void* transform,Record& record,void*& returned,
+    gears_anchor::Receipt const* anchor=nullptr) {
+    std::unique_lock<std::recursive_mutex> session_lock(session_native_mutex,std::defer_lock);
+    if(continuous_session)session_lock.lock();
+    if(continuous_session){
+        if((GetAsyncKeyState(VK_F8)&0x8000))request_session_stop(SessionStop::f8);
+        if(state_created.load()&&!foreground()&&!submit_background)request_session_stop(SessionStop::focus_lost);
+        service_session_stop_native();
+    }
+    if(submit_session_enabled()) {
         if(submitted_lifetime.is_closed())return false;
-        if(!submit_deadline && now()<submit_not_before)return false;
-        if(!submit_deadline && !foreground() && !submit_background)return false;
+        if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && now()<submit_not_before)return false;
+        if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && !foreground() && !submit_background)return false;
         if(submit_deadline && (now()>=submit_deadline || (!foreground() && !submit_background) || (GetAsyncKeyState(VK_F8)&0x8000))) {
             if(submitted_lifetime.close() && state_created.load() && !submit_retained.load()) {
                 state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
@@ -610,45 +1573,132 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         unsigned expected=0;
         if(!submit_attempted.compare_exchange_strong(expected,1))return false;
     }
+    // An observer rejection must not silently turn into an unbound stereo
+    // candidate. Missing/changed receipts skip this candidate only: an engine
+    // pause or a finite observation race can recover on a fresh invocation.
+    auto reject_anchor_submission=[&](){
+        ++anchor_submission_rejected;
+        if(origin_trial_enabled){++origin_prepare_failed;request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
+        return false;
+    };
+    if(anchor_observer_enabled&&!anchor)return reject_anchor_submission();
+    SessionBuildScope build_scope;
     alignas(8) std::array<unsigned char,0x60> original_family_bytes{},split_family{},after_family{};
     Record input{};inspect_family(input,family);
     gears_source_args::Snapshot original_source{},after_source{};
     if(!(input.valid&128) || input.family_count!=1 || !safe_copy(original_family_bytes.data(),family,0x60) ||
-       !safe_copy(original_source.bytes.data(),reinterpret_cast<void*>(input.family_views[0]),0x430))return false;
+       !safe_copy(original_source.bytes.data(),reinterpret_cast<void*>(input.family_views[0]),0x430)){
+        if(anchor_observer_enabled)return reject_anchor_submission();
+        return false;}
+    if(anchor_observer_enabled){
+        // Bind to the bytes actually used below, after copying the source.
+        // No independent view state or renderer has been allocated yet.
+        if(!gears_anchor::submission_matches(anchor,reinterpret_cast<uintptr_t>(family),input.family_views[0],
+            expected_local,GetCurrentThreadId(),original_source.bytes.data()+0x70,now()))return reject_anchor_submission();
+        ++anchor_submission_matched;
+    }
     uintptr_t original_state=reinterpret_cast<uintptr_t>(original_source.pointer(8));
+    gears_submitted::FrameTicket frame{};gears_vr::Pose frame_reference{};
+    frame.enabled=frame_link_diagnostics;
+    if(stereo_xr){
+        // Read once per attempted pair; both constructors and all later stages
+        // use this frozen ticket, never a second live sample.
+        std::lock_guard<std::mutex> lock(stereo_mutex);gears_vr::StereoSample sample{};
+        poll_stereo_recenter();
+        if(!stereo_bridge.read(sample)){++stereo_rejections[8];return false;}
+        auto result=stereo_gate.update(sample,gears_vr::monotonic_ns(),simulator_operator);
+        if(result.heading_deferred)++stereo_heading_deferred;
+        if(!result){++stereo_rejections[static_cast<unsigned>(result.status)];
+            if(continuous_session&&(result.status==gears_vr::StereoStatus::session_changed||result.status==gears_vr::StereoStatus::invalid)){
+                request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
+            return false;}
+        gears_vr::StereoMatrix view{},projection{};memcpy(view.data(),original_source.bytes.data()+0x70,64);
+        memcpy(projection.data(),original_source.bytes.data()+0xb0,64);
+        if(origin_trial_enabled){
+            if(!gears_origin_trial::prepare(origin_trial,anchor,reinterpret_cast<uintptr_t>(family),input.family_views[0],
+                expected_local,GetCurrentThreadId(),view,projection,now(),qpc_frequency,frame.origin)){
+                ++origin_prepare_failed;request_session_stop(SessionStop::proof_failure);service_session_stop_native();return false;}
+            view=frame.origin.base;
+        }
+        if(!gears_vr::stereo_matrices(view,projection,result.reference,result.sample,stereo_units_per_metre,frame.expected,simulator_operator)){
+            ++stereo_rejections[9];
+            if(origin_trial_enabled){request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
+            return false;}
+        frame.enabled=true;frame.sample=result.sample;frame_reference=result.reference;
+        frame.reference_generation=result.reference_generation;frame.reference=result.reference;
+    }
     submit_original_state=original_state;
     trace_rectangle(2,input.family_views[0]);
     memcpy(submit_rectangle.data(),original_source.bytes.data()+0x48,16);
     void* state=reinterpret_cast<void*>(state_temporary.load());
-    if(!submit_pair_seconds || !state_created.load()) {
+    if(!submit_session_enabled() || !state_created.load()) {
         state_attempted=1;
         state=state_factory();uintptr_t table{};state_temporary=reinterpret_cast<uintptr_t>(state);
         if(!state || state_temporary.load()==original_state || !safe_copy(&table,state,8) || table!=state_expected_table) {
-            if(submit_pair_seconds){submit_retained=1;submitted_lifetime.close();}return false;
+            if(submit_session_enabled()){submit_retained=1;
+                if(continuous_session){request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
+                else submitted_lifetime.close();}return false;
         }
         state_created=1;
-        if(submit_pair_seconds)submit_deadline=now()+static_cast<LONGLONG>(submit_pair_seconds)*qpc_frequency;
+        if(submit_pair_seconds){submit_deadline=now()+static_cast<LONGLONG>(submit_pair_seconds)*qpc_frequency;
+            if(stereo_gpu_publish)stereo_publish_deadline.store(submit_deadline);}
     }
     gears_split_sources::API api{shadow_api.allocate,source_constructor,shadow_api.destroy,shadow_api.free,safe_copy};
-    auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state,submit_output_bounds,submit_mono_control || submit_duplicate_control);
+    // Freeze once before either constructor. Registration commits the first origin.
+    gears_projection::Metadata projection{};projection.enabled=projection_control;projection.pair_qpc=now();
+    if(projection_control){std::lock_guard<std::mutex> lock(projection_mutex);
+        projection.phase=gears_projection::phase(projection.pair_qpc,projection_origin?projection_origin:projection.pair_qpc,qpc_frequency);}
+    const auto split_begin_qpc=now();
+    auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state,submit_output_bounds,submit_mono_control || submit_duplicate_control,projection_control,projection.phase,stereo_xr?&frame.expected:nullptr);
+    if(projection_control)for(unsigned i=0;i<2;++i)memcpy(projection.expected[i].data(),sources.inputs[i].bytes.data()+0xb0,64);
     submit_source_checks=sources.checks;submit_rejection=sources.rejection;
+    if(sources.input_evidence.field140){
+        ++source_map_candidates;source_map_last_checks=sources.map_checks;
+        auto maximum=source_map_max_nodes.load();
+        while(maximum<sources.map_nodes&&!source_map_max_nodes.compare_exchange_weak(maximum,sources.map_nodes)){}
+        if(sources.checks==63&&sources.map_checks==63)++source_map_accepted;else ++source_map_rejected;
+    }
     if(sources.checks!=63) {
+        unsigned empty=0;
+        if(split_failure_phase.compare_exchange_strong(empty,1)){
+            first_split_failure={sources.input_evidence,
+                reinterpret_cast<uintptr_t>(original_source.pointer(0)),reinterpret_cast<uintptr_t>(original_source.pointer(8)),
+                reinterpret_cast<uintptr_t>(original_source.pointer(0x140)),reinterpret_cast<uintptr_t>(original_source.pointer(0x418)),
+                split_begin_qpc,now(),sources.rejection,sources.checks};
+            split_failure_phase.store(2);
+        }
+        if(projection_control){std::lock_guard<std::mutex> lock(projection_mutex);++projection_rejected;}
         bool no_views=!sources.views[0] && !sources.views[1];
         bool cleaned=no_views || gears_split_sources::release(api,sources);
-        if(submit_pair_seconds) {
+        if(submit_session_enabled()) {
             if(!cleaned)submit_retained=1;
-            if(submitted_lifetime.close() && cleaned){state_release(state);state_release_returned=1;}
+            if(continuous_session){request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
+            else if(submitted_lifetime.close() && cleaned){state_release(state);state_release_returned=1;}
         } else if(cleaned){state_release(state);state_release_returned=1;}
         state_original_preserved=safe_copy(after_source.bytes.data(),reinterpret_cast<void*>(input.family_views[0]),0x430) && after_source.bytes==original_source.bytes;
         submit_attempted=3; // Publish a completed rejection, never claim submission.
         return false;
     }
     trace_rectangle(3,reinterpret_cast<uintptr_t>(sources.views[0]));trace_rectangle(4,reinterpret_cast<uintptr_t>(sources.views[1]));
-    if(submit_pair_seconds && !submitted_lifetime.begin(reinterpret_cast<uintptr_t>(destination))) {
+    if(frame.enabled)frame.id=++stereo_ticket_counter;
+    if(submit_session_enabled() && !submitted_lifetime.begin(reinterpret_cast<uintptr_t>(destination),projection,frame)) {
         if(!gears_split_sources::release(api,sources))submit_retained=1;
-        ++submit_skipped;return false;
+        if(continuous_session){++session_cancelled_builds;
+            if(!submitted_lifetime.stopping())request_session_stop(SessionStop::proof_failure);
+            service_session_stop_native();}
+        else ++submit_skipped;
+        return false;
     }
+    // Admission owns the ticket now. Even an impossible commit failure must
+    // finish constructing this renderer so its normal retirement can drain it.
+    if(origin_trial_enabled&&!origin_trial.commit(frame.origin.selection,true)){
+        ++origin_commit_failed;request_session_stop(SessionStop::proof_failure);}
     split_family=original_family_bytes;
+    if(stereo_xr&&frame.enabled){std::lock_guard<std::mutex> lock(stereo_mutex);auto timestamp=now();
+        record_stereo_reference(frame,timestamp);
+        if(!stereo_accepted){stereo_first_sample=frame.sample;stereo_reference=frame_reference;stereo_first_qpc=timestamp;stereo_first_ticket=frame.id;}
+        ++stereo_accepted;stereo_last_sample=frame.sample;stereo_last_qpc=timestamp;stereo_last_ticket=frame.id;}
+    if(projection_control){std::lock_guard<std::mutex> lock(projection_mutex);if(!projection_origin)projection_origin=projection.pair_qpc;}
     uintptr_t pointers[]={reinterpret_cast<uintptr_t>(sources.views[0]),reinterpret_cast<uintptr_t>(sources.views[1])};
       if(submit_mono_independent_state)pointers[0]=pointers[1];
     int count=submit_mono_control?1:2;
@@ -676,6 +1726,8 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             safe_copy(rectangle.data(),reinterpret_cast<void*>(built.family_views[i]+0x48),16) &&
             !memcmp(rectangle.data(),sources.inputs[source_index].bytes.data()+0x48,16);
     }
+    projection_observe(0,reinterpret_cast<uintptr_t>(destination),built.family_views,built.family_count,now());
+    stereo_observe(0,reinterpret_cast<uintptr_t>(destination),built.family_views,built.family_count,now());
     bool source_released=gears_split_sources::release(api,sources);
     bool original_preserved=safe_copy(after_family.data(),family,0x60) && after_family==original_family_bytes &&
         safe_copy(after_source.bytes.data(),reinterpret_cast<void*>(input.family_views[0]),0x430) && after_source.bytes==original_source.bytes;
@@ -687,15 +1739,25 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     ++submit_total;
     state_original_preserved=submit_original_preserved.load();
     submit_attempted=2;
-    if(submit_pair_seconds && (!verified || !source_released || !original_preserved)) {
+    if(submit_session_enabled() && (!verified || !source_released || !original_preserved)) {
         // Stop producing immediately; the registered renderer still owns its
         // copies and must retire through the native destruction path.
-        submitted_lifetime.close();
+        if(continuous_session){request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
+        else submitted_lifetime.close();
     }
     return true;
 }
 void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void* transform){
     Scope scope;auto record=start_record(9,destination,_ReturnAddress());
+    service_session_stop_native();
+    gears_anchor::Receipt associated_anchor{};bool anchor_associated=false;
+    if(anchor_observer_enabled&&recording.load()){
+        Record input{};inspect_family(input,family);gears_anchor::Key key{};gears_anchor::Anchor anchor{};
+        bool valid=anchor_key(key,anchor,reinterpret_cast<uintptr_t>(family),input.family_views[0],expected_local,2);
+        auto reason=anchor_context.consume(key,anchor,GetCurrentThreadId(),record.time,valid,input.family_count,record.caller,associated_anchor);
+        anchor_associated=reason==gears_anchor::accepted;
+        if(!anchor_associated)anchor_note(2,reason,associated_anchor,reinterpret_cast<uintptr_t>(destination));
+    }
     bool observe=submitting_family!=nullptr;
     if(observe){
         Record input{};inspect_family(input,family);
@@ -712,9 +1774,12 @@ void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void*
     }
     void* result=nullptr;
     bool handled=submit_pair_enabled && observe && family==submitting_family && record.caller==0x3a1595 && recording.load() &&
-        try_submit_pair(destination,family,canvas,transform,record,result);
+        try_submit_pair(destination,family,canvas,transform,record,result,anchor_associated?&associated_anchor:nullptr);
     if(!handled)result=original_renderer(destination,family,canvas,transform);
     if(handled)record.test_state=77;
+    if(anchor_associated){gears_submitted::FrameTicket frame{};
+        auto registered=handled&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(destination),frame);
+        anchor_note(2,gears_anchor::accepted,associated_anchor,reinterpret_cast<uintptr_t>(destination),registered?frame.id:0);}
     if(observe){
         record.result=reinterpret_cast<uintptr_t>(result);
         inspect_completed_renderer(record,destination);
@@ -724,11 +1789,23 @@ void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void*
 }
 void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation,void* viewport,void* drawer) {
     Scope scope;auto record=start_record(1,local,_ReturnAddress());
+    const bool anchor_observing=anchor_observer_enabled&&recording.load();
+    gears_anchor::PawnBinding pawn_before_scene{};
+    const bool pawn_before_valid=anchor_observing&&
+        gears_anchor::capture_pawn_binding(anchor_config,safe_copy,pawn_before_scene);
+    struct AnchorSceneScope {bool enabled;explicit AnchorSceneScope(bool e):enabled(e){if(e)anchor_context.begin_scene();}
+        ~AnchorSceneScope(){if(enabled)anchor_context.end_scene();}} anchor_scene(anchor_observing);
     void* saved_local=scene_local;Rot* saved_rotation=scene_rotation;int saved_delta=scene_delta;
     unsigned saved_phase=scene_phase;Vec saved_translation=scene_translation;Rot saved_rotation_delta=scene_rotation_delta;
     scene_local=local;scene_rotation=rotation;scene_delta=0;
     scene_phase=0;scene_translation={};scene_rotation_delta={};
     void* result=original_scene(local,family,position,rotation,viewport,drawer);
+    if(anchor_observing){gears_anchor::Receipt receipt{};receipt.invocation=++anchor_context.sequence;
+        receipt.thread=GetCurrentThreadId();receipt.scene_qpc=now();
+        auto reason=pawn_before_valid&&anchor_key(receipt.key,receipt.anchor,reinterpret_cast<uintptr_t>(family),reinterpret_cast<uintptr_t>(result),reinterpret_cast<uintptr_t>(local),0)&&
+            gears_anchor::scene_binding_matches(pawn_before_scene,receipt.anchor)?
+            anchor_context.offer(receipt):gears_anchor::identity_failed;
+        if(reason!=gears_anchor::accepted)anchor_context.discard();anchor_note(0,reason,receipt);}
     if(record.object==expected_local)trace_rectangle(0,reinterpret_cast<uintptr_t>(result));
     if(family_diagnostics)inspect_family(record,family);
     record.duration=now()-record.time;record.result=reinterpret_cast<uintptr_t>(result);
@@ -784,7 +1861,9 @@ void inspect_swapchain(Record& record,IDXGISwapChain* chain) {
     }
 }
 void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* lists) {
-    Scope scope;auto record=start_record(5,queue,_ReturnAddress());
+    if(stereo_publish_bypass){original_execute(queue,count,lists);return;}
+    Scope scope;auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
+    observe_frame_execute(queue,count,lists,reinterpret_cast<uintptr_t>(_ReturnAddress()));
     if(gpu_diagnostics && recording.load()) {
         record.queue_type=queue->GetDesc().Type;record.command_count=count;
         ID3D12Device* device{};
@@ -795,17 +1874,41 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     original_execute(queue,count,lists);record.duration=now()-record.time;enqueue(record);
 }
 HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT flags) {
-    Scope scope;auto record=start_record(3,chain,_ReturnAddress());
+    Scope scope;auto frame_guard=frame_lock();
+    FramePresentScope frame_present;
+    auto record=start_record(3,chain,_ReturnAddress());
     inspect_swapchain(record,chain);
+    bool frame_interval=frame_present.observe&&frame_guard.owns_lock();
+    std::optional<gears_outage::Sample> diagnostic;
+    if(frame_interval&&outage_diagnostics.load()){diagnostic.emplace();outage_begin(*diagnostic,record.time);}
+    if(frame_interval)observe_frame_present(chain,flags,diagnostic?&*diagnostic:nullptr);
+    auto saved_inside_present=frame_inside_original_present;frame_inside_original_present=true;
+    if(diagnostic)diagnostic->original_begin_qpc=now();
     HRESULT result=original_present(chain,interval,flags);
+    if(diagnostic)outage_finish(*diagnostic,now(),result);
+    frame_inside_original_present=saved_inside_present;
+    if(frame_interval)retire_original_present_interval();
+    if(frame_present.observe&&frame_link_diagnostics&&recording.load()&&FAILED(result))++frame_counts.present_failed;
     record.duration=now()-record.time;record.result=static_cast<unsigned long>(result);
     if(!(flags&DXGI_PRESENT_TEST)) record.valid|=32;
     enqueue(record);return result;
 }
 HRESULT STDMETHODCALLTYPE hook_present1(IDXGISwapChain1* chain,UINT interval,UINT flags,const DXGI_PRESENT_PARAMETERS* params) {
-    Scope scope;auto record=start_record(4,chain,_ReturnAddress());
+    Scope scope;auto frame_guard=frame_lock();
+    FramePresentScope frame_present;
+    auto record=start_record(4,chain,_ReturnAddress());
     inspect_swapchain(record,chain);
+    bool frame_interval=frame_present.observe&&frame_guard.owns_lock();
+    std::optional<gears_outage::Sample> diagnostic;
+    if(frame_interval&&outage_diagnostics.load()){diagnostic.emplace();outage_begin(*diagnostic,record.time);}
+    if(frame_interval)observe_frame_present(chain,flags,diagnostic?&*diagnostic:nullptr);
+    auto saved_inside_present=frame_inside_original_present;frame_inside_original_present=true;
+    if(diagnostic)diagnostic->original_begin_qpc=now();
     HRESULT result=original_present1(chain,interval,flags,params);
+    if(diagnostic)outage_finish(*diagnostic,now(),result);
+    frame_inside_original_present=saved_inside_present;
+    if(frame_interval)retire_original_present_interval();
+    if(frame_present.observe&&frame_link_diagnostics&&recording.load()&&FAILED(result))++frame_counts.present_failed;
     record.duration=now()-record.time;record.result=static_cast<unsigned long>(result);
     if(!(flags&DXGI_PRESENT_TEST)) record.valid|=32;
     enqueue(record);return result;
@@ -840,9 +1943,50 @@ uintptr_t ini_address(const wchar_t* ini,const wchar_t* key) {
     wchar_t value[64];GetPrivateProfileStringW(L"Capture",key,L"0",value,64,ini);
     return _wcstoui64(value,nullptr,0);
 }
-void flush(FILE* file) {
+bool load_anchor_config(const wchar_t* ini){
+    auto number=[&](const wchar_t* key,unsigned long long& out){wchar_t value[64]{};
+        GetPrivateProfileStringW(L"AnchorObserver",key,L"",value,64,ini);wchar_t* end{};
+        if(!*value||*value==L'-'||*value==L'+')return false;out=_wcstoui64(value,&end,0);return end&&!*end;};
+    auto load=[&](const wchar_t* key,auto& field){unsigned long long value{};if(!number(key,value)||value>static_cast<unsigned long long>(std::numeric_limits<std::remove_reference_t<decltype(field)>>::max()))return false;
+        field=static_cast<std::remove_reference_t<decltype(field)>>(value);return true;};
+    unsigned schema{};if(!load(L"schema",schema)||schema!=1)return false;
+    auto& c=anchor_config;
+#define ANCHOR_WIDEN_(text) L##text
+#define ANCHOR_WIDEN(text) ANCHOR_WIDEN_(text)
+#define ANCHOR_LOAD(field) if(!load(ANCHOR_WIDEN(#field),c.field))return false
+    ANCHOR_LOAD(objects_header);ANCHOR_LOAD(names_header);ANCHOR_LOAD(identity_count);
+    ANCHOR_LOAD(object_internal_index);ANCHOR_LOAD(object_name);ANCHOR_LOAD(object_class);ANCHOR_LOAD(object_outer);
+    ANCHOR_LOAD(field_super);ANCHOR_LOAD(name_entry_index);ANCHOR_LOAD(name_entry_text);
+    ANCHOR_LOAD(role_controller);ANCHOR_LOAD(role_local);ANCHOR_LOAD(role_camera);ANCHOR_LOAD(role_pawn);ANCHOR_LOAD(role_level);
+    ANCHOR_LOAD(controller_pawn);ANCHOR_LOAD(pawn_controller);ANCHOR_LOAD(pawn_location);ANCHOR_LOAD(pawn_rotation);ANCHOR_LOAD(controller_rotation);
+    ANCHOR_LOAD(eye_height);ANCHOR_LOAD(base_eye_height);ANCHOR_LOAD(player_camera);ANCHOR_LOAD(pc_owner);ANCHOR_LOAD(player);
+    ANCHOR_LOAD(camera_view_target);ANCHOR_LOAD(camera_timestamp);ANCHOR_LOAD(camera_pov);
+#undef ANCHOR_LOAD
+#undef ANCHOR_WIDEN
+#undef ANCHOR_WIDEN_
+    if(!c.identity_count||c.identity_count>128||c.object_internal_index>92||c.object_name>88||c.object_class>88||c.object_outer>88)return false;
+    const unsigned offsets[]={c.field_super,c.name_entry_index,c.name_entry_text,c.controller_pawn,c.pawn_controller,c.pawn_location,
+        c.pawn_rotation,c.controller_rotation,c.eye_height,c.base_eye_height,c.player_camera,c.pc_owner,c.player,c.camera_view_target,c.camera_timestamp,c.camera_pov};
+    for(auto offset:offsets)if(offset>=0x10000)return false;
+    for(unsigned i=0;i<c.identity_count;++i){auto& id=c.identities[i];wchar_t key[64]{};
+        auto identity_field=[&](const wchar_t* label,auto& field){swprintf_s(key,L"id%u_%s",i,label);return load(key,field);};
+        if(!identity_field(L"address",id.address)||!identity_field(L"index",id.index)||!identity_field(L"name_index",id.name_index)||
+            !identity_field(L"number",id.number)||!identity_field(L"cls",id.cls)||!identity_field(L"outer",id.outer)||
+            !identity_field(L"check_super",id.check_super)||!identity_field(L"super",id.super)||id.check_super>1)return false;
+        swprintf_s(key,L"id%u_name",i);wchar_t name[65]{};auto length=GetPrivateProfileStringW(L"AnchorObserver",key,L"",name,65,ini);
+        if(!length||length>=64||!id.address||!id.cls)return false;std::copy(name,name+length+1,id.name.begin());
+        for(unsigned j=0;j<i;++j)if(c.identities[j].address==id.address)return false;
+    }
+    gears_anchor::Anchor a{};std::uint32_t stamp{};
+    return c.role_local<c.identity_count&&c.role_controller<c.identity_count&&c.role_camera<c.identity_count&&
+        c.identities[c.role_local].address==expected_local&&c.identities[c.role_controller].address==expected_pc&&
+        c.identities[c.role_camera].address==expected_camera&&expected_camera+c.camera_timestamp==camera_cache&&
+        gears_anchor::guard(c,safe_copy,a,stamp);
+}
+void flush(FILE* file,unsigned max_batches=0) {
     std::array<Record,128> batch;
-    for(;;) {
+    unsigned batches=0;
+    for(;!max_batches||batches<max_batches;++batches) {
         AcquireSRWLockExclusive(&queue_lock);
         size_t count=0;
         while(read_index<write_index && count<batch.size()) batch[count++]=ring[read_index++%ring.size()];
@@ -870,38 +2014,66 @@ void flush(FILE* file) {
             fprintf(file,",0x%llx,0x%llx",static_cast<unsigned long long>(r.clone_source),static_cast<unsigned long long>(r.clone_owner));
             for(float value:r.source_matrices)fprintf(file,",%.9g",value);
             fprintf(file,",0x%llx,0x%llx,%d,%d",static_cast<unsigned long long>(r.renderer_input_family),static_cast<unsigned long long>(r.renderer_storage),r.renderer_count,r.renderer_capacity);
-            for(auto view:r.renderer_sources)fprintf(file,",0x%llx",static_cast<unsigned long long>(view));fprintf(file,"\n");
+            for(auto view:r.renderer_sources)fprintf(file,",0x%llx",static_cast<unsigned long long>(view));
+            fprintf(file,",%llu,%u,%llu,%llu,%llu\n",r.stereo_ticket,r.stereo_source,r.stereo_head_flags,r.stereo_view_flags,r.stereo_reference_generation);
         }
         fflush(file);
     }
 }
 bool install(void* target,void* detour,void** original) {
+    if(continuous_session){
+        if(session_hook_entry_count==session_hook_entries.size())return false;
+        auto& entry=session_hook_entries[session_hook_entry_count];entry.target=target;
+        auto primed=std::find(prime_targets.begin(),prime_targets.end(),target);
+        if(prime_ready.load()&&primed!=prime_targets.end())entry.bytes=prime_original_bytes[static_cast<size_t>(primed-prime_targets.begin())];
+        else if(!safe_copy(entry.bytes.data(),target,entry.bytes.size()))return false;
+        ++session_hook_entry_count;
+    }
     MH_STATUS created=MH_CreateHook(target,detour,original);
     if(created==MH_ERROR_ALREADY_CREATED && *original &&
-         ((reservation_ready && (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target || target==quad_target)) ||
+         ((reservation_ready && (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target || target==quad_target || target==geometry_target || (first_view_mask_reserved && target==first_view_mask_target))) ||
           (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
     return created==MH_OK && queued==MH_OK;
 }
+bool session_hooks_restored() {
+    if(active.load())return false;
+    for(unsigned i=0;i<session_hook_entry_count;++i){std::array<unsigned char,32> bytes{};
+        if(!safe_copy(bytes.data(),session_hook_entries[i].target,bytes.size())||bytes!=session_hook_entries[i].bytes)return false;}
+    if(prime_ready.load())for(unsigned i=0;i<prime_targets.size();++i){std::array<unsigned char,32> bytes{};
+        if(!safe_copy(bytes.data(),prime_targets[i],bytes.size())||bytes!=prime_original_bytes[i])return false;}
+    return true;
+}
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
-    Scope scope;HRESULT result=original_reset_list(list,allocator,state);
+    if(stereo_publish_bypass)return original_reset_list(list,allocator,state);
+    Scope scope;auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
     if(recording.load()&&SUCCEEDED(result))viewport_stats.reset(reinterpret_cast<uintptr_t>(list));
+    if(frame_link_diagnostics&&recording.load()) {
+        auto identity=canonical_identity(list);
+        frame_seen_list(identity);
+        if(SUCCEEDED(result)){++frame_counts.resets;frame_link.reset_success(identity);
+            if(!frame_target_stats.reset(reinterpret_cast<uintptr_t>(list)))frame_link.invalidate();}
+        else {++frame_counts.reset_failed;frame_link.invalidate_list(identity);}
+    }
     return result;
 }
 void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count,const D3D12_VIEWPORT* values) {
-    Scope scope;
+    Scope scope;auto frame_guard=frame_lock();
     if(recording.load()) {
         D3D12_VIEWPORT value{};unsigned category=gears_viewport::unknown;
-        if(count==1&&safe_copy(&value,values,sizeof(value)))category=gears_viewport::classify(value.TopLeftX,value.TopLeftY,value.Width,value.Height);
+        const bool known=count==1&&safe_copy(&value,values,sizeof(value));
+        if(known)category=gears_viewport::classify(value.TopLeftX,value.TopLeftY,value.Width,value.Height);
         else if(count>1)category=gears_viewport::other;
         viewport_stats.set(reinterpret_cast<uintptr_t>(list),category,false,
-            {value.TopLeftX,value.TopLeftY,value.Width,value.Height});
+            {value.TopLeftX,value.TopLeftY,value.Width,value.Height},count,known,value.MinDepth,value.MaxDepth);
+        if(frame_link_diagnostics)frame_target_stats.set(reinterpret_cast<uintptr_t>(list),category,false,
+            {value.TopLeftX,value.TopLeftY,value.Width,value.Height},count,known,value.MinDepth,value.MaxDepth);
     }
     original_viewports(list,count,values);
 }
 void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RECT* values) {
-    Scope scope;
+    Scope scope;auto frame_guard=frame_lock();
     if(recording.load()) {
         D3D12_RECT value{};unsigned category=gears_viewport::unknown;
         if(count==1&&safe_copy(&value,values,sizeof(value)))category=gears_viewport::classify(static_cast<float>(value.left),static_cast<float>(value.top),
@@ -911,6 +2083,9 @@ void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,
             {static_cast<float>(value.left),static_cast<float>(value.top),
              static_cast<float>(static_cast<int64_t>(value.right)-value.left),
              static_cast<float>(static_cast<int64_t>(value.bottom)-value.top)});
+        if(frame_link_diagnostics)frame_target_stats.set(reinterpret_cast<uintptr_t>(list),category,true,
+            {static_cast<float>(value.left),static_cast<float>(value.top),
+             static_cast<float>(static_cast<int64_t>(value.right)-value.left),static_cast<float>(static_cast<int64_t>(value.bottom)-value.top)},count);
     }
     original_scissors(list,count,values);
 }
@@ -942,14 +2117,27 @@ void observe_output_post(unsigned attempt){
 void __fastcall hook_quad(float x,float y,float width,float height,float u,float v,float uw,float vh,
     unsigned target_width,unsigned target_height,unsigned texture_width,unsigned texture_height){
     Scope scope;uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
-    if(recording.load()&&viewport_diagnostics&&trial_draw_scope&&(self_testing||(caller>=0xd82f58&&caller<0xd83db9))){
+    if((caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8)observe_final_inputs();
+    gears_quad_source::Args original_args{{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height}};
+    gears_quad_source::Decision control;
+    if(quad_source_control_enabled()){control=prepare_quad_source_control(original_args,caller);u=control.forwarded.rectangle[4];}
+    if(recording.load()&&viewport_diagnostics&&trial_draw_scope&&(self_testing||(caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8)){
         QuadTrace value{caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height},1};
         bool saved=false;std::lock_guard<std::mutex> lock(quad_mutex);
         for(auto& entry:quad_traces){if(!entry.calls){entry=value;saved=true;break;}
             if(entry.caller==value.caller&&entry.rectangles==value.rectangles&&entry.dimensions==value.dimensions){++entry.calls;saved=true;break;}}
         if(!saved)++quad_overflow;
     }
+    bool previous=in_final_quad;in_final_quad=previous||(caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8;
+    auto saved_eye=final_eye;final_eye={};
+    if(frame_link_diagnostics&&recording.load()&&(caller==0xd83b1c||caller==0xd808d8)) {
+        final_eye=classify_final_eye(caller,consuming_frame_ticket,x,y,width,height,target_width,target_height);
+        if(!final_eye.valid)++frame_counts.bad_quad;
+    }
     original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);
+    final_eye=saved_eye;
+    in_final_quad=previous;
+    if(quad_source_control_enabled())complete_quad_source_control(original_args,control);
 }
 void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
     if(!trial_draw_scope||output_stack_attempts.load()>=64)return;
@@ -969,24 +2157,79 @@ void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
     }
 }
 void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,UINT instances,UINT start,UINT first_instance) {
-    Scope scope;if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
+    Scope scope;auto frame_guard=frame_lock();if(gears_viewport::has_draw_work(vertices,instances))observe_frame_draw(list,reinterpret_cast<uintptr_t>(_ReturnAddress()),0,vertices,instances);
+    if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
     if(recording.load())observe_output_stack(list,0);
+    geometry_draw(list,false,vertices,instances);
+    observe_engine_view_draw(list,false,vertices,instances);
     original_draw(list,vertices,instances,start,first_instance);
 }
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
-    Scope scope;if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
+    Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
+    if(frame_link_diagnostics&&stereo_gpu_publish&&recording.load()&&!frame_target_stats.descriptor_capacity_lost()&&
+       !consuming_renderer&&!consuming_frame_ticket&&
+       caller-base==0x172741&&gears_viewport::has_draw_work(indices,instances)){
+        auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
+        auto saved=frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
+        auto ref=frame_link.current(canonical_identity(list));
+        if(binding.targets==1&&binding.target.mip==0&&binding.target.width<=8192&&
+           swapchain_bindings.known_buffer(binding.target.resource)){
+            gears_frame_link::Target target{binding.target.resource,static_cast<unsigned>(binding.target.width),binding.target.height};
+            auto pair=frame_link.overlay_pair(ref,target);
+            auto plan=gears_viewport::overlay_plan(saved,target.width,target.height);
+            std::array<void*,12> stack{};const unsigned count=pair.linked&&plan.valid?CaptureStackBackTrace(0,static_cast<DWORD>(stack.size()),stack.data(),nullptr):0;
+            std::array<uintptr_t,12> addresses{};for(unsigned i=0;i<count;++i)addresses[i]=reinterpret_cast<uintptr_t>(stack[i]);
+            if(pair.linked&&plan.valid&&gears_viewport::overlay_caller_chain(addresses.data(),count,base)){
+                auto viewport=[&](gears_viewport::Rect r,float minimum,float maximum){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,minimum,maximum};original_viewports(list,1,&v);};
+                auto scissor=[&](gears_viewport::Rect r){D3D12_RECT s{static_cast<LONG>(r.x),static_cast<LONG>(r.y),static_cast<LONG>(r.x+r.width),static_cast<LONG>(r.y+r.height)};original_scissors(list,1,&s);};
+                unsigned mask=0;
+                try {mask=gears_viewport::replay_overlay(saved,plan,viewport,scissor,[&](unsigned){original_draw_indexed(list,indices,instances,start,vertex,first_instance);});}
+                catch(...){frame_link.invalidate();throw;}
+                frame_link.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask);
+                return;
+            }
+        }
+    }
+    if(gears_viewport::has_draw_work(indices,instances))observe_frame_draw(list,caller,1,indices,instances);
+    if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
     if(recording.load())observe_output_stack(list,1);
+    geometry_draw(list,true,indices,instances);
+    observe_engine_view_draw(list,true,indices,instances);
     original_draw_indexed(list,indices,instances,start,vertex,first_instance);
 }
 void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,BOOL single,const D3D12_CPU_DESCRIPTOR_HANDLE* depth) {
-    Scope scope;
+    Scope scope;auto frame_guard=frame_lock();
     if(recording.load()){D3D12_CPU_DESCRIPTOR_HANDLE first{};
         if(count)safe_copy(&first,handles,sizeof(first));
         viewport_stats.bind(reinterpret_cast<uintptr_t>(list),count,first.ptr);}
+    if(frame_link_diagnostics&&recording.load()){D3D12_CPU_DESCRIPTOR_HANDLE first{};
+        if(count&&!safe_copy(&first,handles,sizeof(first)))frame_link.invalidate();
+        if(!frame_target_stats.bind(reinterpret_cast<uintptr_t>(list),count,first.ptr))frame_link.invalidate();
+        // Existing diagnostic state stores only the first RTV. Conservatively
+        // mark any other verified backbuffer in an MRT bind as an unknown write,
+        // so a later Draw cannot evade contamination by targeting a non-first RTV.
+        // This may reject a bind without a Draw; it cannot establish a false link.
+        if(count>1){
+            if(count>D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)frame_link.invalidate();
+            else {ID3D12Device* device{};UINT stride{};
+                if(single){if(SUCCEEDED(list->GetDevice(IID_PPV_ARGS(&device)))){stride=device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);device->Release();}
+                    if(!stride)frame_link.invalidate();}
+                for(UINT i=1;i<count;++i){D3D12_CPU_DESCRIPTOR_HANDLE handle{};
+                    if(single){uint64_t offset=uint64_t(i)*stride;
+                        if(!stride||offset>UINTPTR_MAX-first.ptr){frame_link.invalidate();break;}handle.ptr=first.ptr+static_cast<uintptr_t>(offset);}
+                    else if(!safe_copy(&handle,handles+i,sizeof(handle))){frame_link.invalidate();break;}
+                    auto target=frame_target_stats.lookup(handle.ptr);
+                    if(!target.resource){++frame_counts.missing_target;frame_link.invalidate();}
+                    else if(swapchain_bindings.known_buffer(target.resource)){++frame_counts.unknown;
+                        frame_link.draw_unknown(frame_link.current(canonical_identity(list)),target.resource);}
+                }
+            }
+        }
+    }
     original_targets(list,count,handles,single,depth);
 }
 void STDMETHODCALLTYPE hook_create_rtv(ID3D12Device* device,ID3D12Resource* resource,const D3D12_RENDER_TARGET_VIEW_DESC* view,D3D12_CPU_DESCRIPTOR_HANDLE handle) {
-    Scope scope;original_create_rtv(device,resource,view,handle);
+    Scope scope;auto frame_guard=frame_lock();original_create_rtv(device,resource,view,handle);
     if(recording.load()||prime_recording.load()){
         gears_viewport::Target target{};D3D12_RENDER_TARGET_VIEW_DESC description{};
         bool valid=!view||safe_copy(&description,view,sizeof(description));
@@ -1005,6 +2248,9 @@ void STDMETHODCALLTYPE hook_create_rtv(ID3D12Device* device,ID3D12Resource* reso
                 target={reinterpret_cast<uintptr_t>(resource),std::max<uint64_t>(1,desc.Width>>mip),
                     std::max<UINT>(1,desc.Height>>mip),static_cast<unsigned>(view?description.Format:desc.Format),mip};}
         viewport_stats.create(handle.ptr,target);
+        if(recording.load()||prime_recording.load()){auto canonical_target=target;
+            canonical_target.resource=target.resource?canonical_identity(resource):0;
+            frame_target_stats.create(handle.ptr,canonical_target);}
     }
 }
 bool flatten_descriptors(UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* starts,const UINT* sizes,UINT stride,std::array<uintptr_t,128>& output,unsigned& total) {
@@ -1017,20 +2263,20 @@ bool flatten_descriptors(UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* starts,co
 }
 void STDMETHODCALLTYPE hook_copy_descriptors(ID3D12Device* device,UINT destinations,const D3D12_CPU_DESCRIPTOR_HANDLE* destination_starts,const UINT* destination_sizes,
     UINT sources,const D3D12_CPU_DESCRIPTOR_HANDLE* source_starts,const UINT* source_sizes,D3D12_DESCRIPTOR_HEAP_TYPE type) {
-    Scope scope;original_copy_descriptors(device,destinations,destination_starts,destination_sizes,sources,source_starts,source_sizes,type);
+    Scope scope;auto frame_guard=frame_lock();original_copy_descriptors(device,destinations,destination_starts,destination_sizes,sources,source_starts,source_sizes,type);
     if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> dest{},src{};unsigned dc{},sc{};
         UINT stride=device->GetDescriptorHandleIncrementSize(type);
         if(flatten_descriptors(destinations,destination_starts,destination_sizes,stride,dest,dc)&&
-           flatten_descriptors(sources,source_starts,source_sizes,stride,src,sc)&&dc==sc)viewport_stats.copy(dest.data(),src.data(),dc);
-        else viewport_stats.reject_copy();}
+           flatten_descriptors(sources,source_starts,source_sizes,stride,src,sc)&&dc==sc){viewport_stats.copy(dest.data(),src.data(),dc);frame_target_stats.copy(dest.data(),src.data(),dc);}
+        else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
 }
 void STDMETHODCALLTYPE hook_copy_simple(ID3D12Device* device,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dest,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type) {
-    Scope scope;original_copy_simple(device,count,dest,src,type);
+    Scope scope;auto frame_guard=frame_lock();original_copy_simple(device,count,dest,src,type);
     if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> destinations{},sources{};unsigned dc{},sc{};
         UINT stride=device->GetDescriptorHandleIncrementSize(type);
         if(flatten_descriptors(1,&dest,&count,stride,destinations,dc)&&flatten_descriptors(1,&src,&count,stride,sources,sc))
-            viewport_stats.copy(destinations.data(),sources.data(),dc);
-        else viewport_stats.reject_copy();}
+            {viewport_stats.copy(destinations.data(),sources.data(),dc);frame_target_stats.copy(destinations.data(),sources.data(),dc);}
+        else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
 }
 bool viewport_hooks(ID3D12Device* device) {
     ID3D12CommandAllocator* allocator{};ID3D12GraphicsCommandList* list{};bool success=false;
@@ -1038,7 +2284,7 @@ bool viewport_hooks(ID3D12Device* device) {
        SUCCEEDED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator,nullptr,IID_PPV_ARGS(&list)))) {
         void** table=*reinterpret_cast<void***>(list);
         void** device_table=*reinterpret_cast<void***>(device);
-        viewport_targets={table[10],table[21],table[22],table[12],table[13],table[46],device_table[20],device_table[23],device_table[24]};
+        viewport_targets={table[10],table[21],table[22],table[12],table[13],table[46],device_table[20],device_table[23],device_table[24],color_copy_diagnostics?table[16]:nullptr};
         success=install(viewport_targets[0],reinterpret_cast<void*>(hook_reset_list),reinterpret_cast<void**>(&original_reset_list));
         success=install(viewport_targets[1],reinterpret_cast<void*>(hook_viewports),reinterpret_cast<void**>(&original_viewports))&&success;
         success=install(viewport_targets[2],reinterpret_cast<void*>(hook_scissors),reinterpret_cast<void**>(&original_scissors))&&success;
@@ -1048,6 +2294,7 @@ bool viewport_hooks(ID3D12Device* device) {
         success=install(viewport_targets[6],reinterpret_cast<void*>(hook_create_rtv),reinterpret_cast<void**>(&original_create_rtv))&&success;
         success=install(viewport_targets[7],reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void**>(&original_copy_descriptors))&&success;
         success=install(viewport_targets[8],reinterpret_cast<void*>(hook_copy_simple),reinterpret_cast<void**>(&original_copy_simple))&&success;
+        if(color_copy_diagnostics)success=install(viewport_targets[9],reinterpret_cast<void*>(hook_color_copy),reinterpret_cast<void**>(&original_color_copy))&&success;
         list->Close();
     }
     if(list)list->Release();if(allocator)allocator->Release();return success;
@@ -1055,6 +2302,11 @@ bool viewport_hooks(ID3D12Device* device) {
 bool present_hooks() {
     IDXGIFactory2* factory{};ID3D12Device* device{};ID3D12CommandQueue* queue{};IDXGISwapChain1* chain{};
     bool success=false;
+    if(prime_ready.load()) {
+        if(!install(prime_targets[3],reinterpret_cast<void*>(hook_create_swapchain),reinterpret_cast<void**>(&original_create_swapchain)) ||
+           !install(prime_targets[4],reinterpret_cast<void*>(hook_create_hwnd),reinterpret_cast<void**>(&original_create_hwnd)) ||
+           !install(prime_targets[5],reinterpret_cast<void*>(hook_create_composition),reinterpret_cast<void**>(&original_create_composition)))return false;
+    }
     if(SUCCEEDED(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory))) &&
        SUCCEEDED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)))) {
         D3D12_COMMAND_QUEUE_DESC q{};
@@ -1097,6 +2349,7 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
             restored=restored&&safe_copy(bytes.data(),prime_targets[i],bytes.size())&&!memcmp(bytes.data(),prime_original_bytes[i].data(),bytes.size());
         fprintf(status,"stopped disable_status=%u active=%u entries_match=%u\n",disabled?0:1,active.load(),restored?1:0);
     }
+    if(!prime_handoff.load()&&!active.load())release_bindings();
     fclose(status);prime_done=true;return 0;
 }
 DWORD begin_target_prime() {
@@ -1106,17 +2359,23 @@ DWORD begin_target_prime() {
     if(!slash)return ERROR_BAD_PATHNAME;
     wcscpy_s(slash+1,MAX_PATH-static_cast<size_t>(slash+1-path),L"target-prime-status.txt");
     FILE* status=_wfsopen(path,L"w",_SH_DENYWR);if(!status)return ERROR_WRITE_FAULT;
-    ID3D12Device* device{};
+    ID3D12Device* device{};IDXGIFactory2* factory{};
     if(FAILED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)))){fclose(status);return ERROR_NOT_SUPPORTED;}
-    auto table=*reinterpret_cast<void***>(device);prime_targets={table[20],table[23],table[24]};device->Release();
-    std::array<void*,3> detours{reinterpret_cast<void*>(hook_create_rtv),reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void*>(hook_copy_simple)};
-    std::array<void**,3> originals{reinterpret_cast<void**>(&original_create_rtv),reinterpret_cast<void**>(&original_copy_descriptors),reinterpret_cast<void**>(&original_copy_simple)};
+    if(FAILED(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)))){device->Release();fclose(status);return ERROR_NOT_SUPPORTED;}
+    auto table=*reinterpret_cast<void***>(device);auto factory_table=*reinterpret_cast<void***>(factory);
+    prime_targets={table[20],table[23],table[24],factory_table[10],factory_table[15],factory_table[24]};device->Release();factory->Release();
+    std::array<void*,6> detours{reinterpret_cast<void*>(hook_create_rtv),reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void*>(hook_copy_simple),
+        reinterpret_cast<void*>(hook_create_swapchain),reinterpret_cast<void*>(hook_create_hwnd),reinterpret_cast<void*>(hook_create_composition)};
+    std::array<void**,6> originals{reinterpret_cast<void**>(&original_create_rtv),reinterpret_cast<void**>(&original_copy_descriptors),reinterpret_cast<void**>(&original_copy_simple),
+        reinterpret_cast<void**>(&original_create_swapchain),reinterpret_cast<void**>(&original_create_hwnd),reinterpret_cast<void**>(&original_create_composition)};
     bool ok=true;
     for(unsigned i=0;i<prime_targets.size();++i){
         if(!safe_copy(prime_original_bytes[i].data(),prime_targets[i],32)){ok=false;break;}
         auto created=MH_CreateHook(prime_targets[i],detours[i],originals[i]);
         auto queued=created==MH_OK?MH_QueueEnableHook(prime_targets[i]):MH_ERROR_NOT_CREATED;
         fprintf(status,"hook_target=%p create=%s queue=%s\n",prime_targets[i],MH_StatusToString(created),MH_StatusToString(queued));
+        fprintf(status,"prime_entry target=%p before=",prime_targets[i]);
+        for(auto byte:prime_original_bytes[i])fprintf(status,"%02x",byte);fprintf(status,"\n");
         if(created!=MH_OK||queued!=MH_OK){ok=false;break;}
     }
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Capture.TargetPrime.%lu",GetCurrentProcessId());
@@ -1126,10 +2385,11 @@ DWORD begin_target_prime() {
     HANDLE thread{};
     if(ok){thread=CreateThread(nullptr,0,target_prime_watchdog,status,0,nullptr);ok=thread!=nullptr;}
     if(!ok){prime_recording=false;for(auto target:prime_targets)MH_DisableHook(target);fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
-    fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=3\n",GetCurrentProcessId());fflush(status);
+    fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId());fflush(status);
     prime_ready=true;CloseHandle(thread);return 0;
 }
 DWORD WINAPI worker(void*) {
+    gears_session::Owner continuous_owner; // Retain the process object through all cleanup and early returns.
     wchar_t ini[MAX_PATH],csv[MAX_PATH],status_path[MAX_PATH];
     path_for(ini,L"capture.ini");path_for(csv,L"capture.csv");path_for(status_path,L"capture-status.txt");
     FILE* status{};_wfopen_s(&status,status_path,L"w");
@@ -1140,6 +2400,7 @@ DWORD WINAPI worker(void*) {
     }
     base=reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     quad_target=reinterpret_cast<void*>(base+0x1af42c);
+    geometry_target=reinterpret_cast<void*>(base+0x13cfcc);
     expected_local=ini_address(ini,L"local_player");expected_pc=ini_address(ini,L"controller");
     camera_cache=ini_address(ini,L"timestamp");
     expected_camera=ini_address(ini,L"camera");camera_yaw=ini_address(ini,L"camera_yaw");
@@ -1164,11 +2425,86 @@ DWORD WINAPI worker(void*) {
     submit_duplicate_control=GetPrivateProfileIntW(L"Capture",L"submit_duplicate_control",0,ini)==1;
     if(submit_duplicate_control && (submit_mono_control || submit_output_bounds))return 4;
     submit_pair_seconds=GetPrivateProfileIntW(L"Capture",L"submit_pair_seconds",0,ini);
-    submit_background=GetPrivateProfileIntW(L"Capture",L"submit_background",0,ini)!=0;
-    if(submit_background && (!submit_pair_enabled||!viewport_diagnostics||!submit_pair_seconds||submit_pair_seconds>10)){
-        fprintf(status,"rejected: background mode requires bounded viewport pair diagnostics of at most ten seconds\n");fclose(status);return 2;
+    continuous_session=GetPrivateProfileIntW(L"Capture",L"continuous_session",0,ini)==1;
+    if(continuous_session){
+        wchar_t owner_pid[64]{},owner_created[64]{};std::uint64_t parsed_pid{},parsed_created{};
+        GetPrivateProfileStringW(L"Capture",L"continuous_owner_pid",L"",owner_pid,64,ini);
+        GetPrivateProfileStringW(L"Capture",L"continuous_owner_creation_time",L"",owner_created,64,ini);
+        if(!gears_session::decimal(owner_pid,MAXDWORD,parsed_pid)||
+           !gears_session::decimal(owner_created,(std::numeric_limits<std::uint64_t>::max)(),parsed_created)||
+           !continuous_owner.open(static_cast<DWORD>(parsed_pid),parsed_created)){
+            fprintf(status,"rejected: continuous owner identity invalid native_hooks_enabled=0 capture_activated=0 prime_watchdog_retained=%u prime_watchdog_seconds=180\n",prime_ready.load()?1:0);
+            fclose(status);return 2;
+        }
+        session_owner_pid=static_cast<DWORD>(parsed_pid);session_owner_creation_time=parsed_created;
+        fprintf(status,"continuous_owner_verified=1 owner_pid=%lu owner_creation_time=%llu\n",session_owner_pid,
+            static_cast<unsigned long long>(session_owner_creation_time));
     }
-    if(submit_pair_seconds>60)return 4;
+    trial_seconds=GetPrivateProfileIntW(L"Capture",L"trial_seconds",30,ini);
+    submit_background=GetPrivateProfileIntW(L"Capture",L"submit_background",0,ini)!=0;
+    quad_left_source_control=GetPrivateProfileIntW(L"Capture",L"quad_left_source_control",0,ini)==1;
+    quad_right_source_control=GetPrivateProfileIntW(L"Capture",L"quad_right_source_control",0,ini)==1;
+    color_copy_diagnostics=GetPrivateProfileIntW(L"Capture",L"color_copy_diagnostics",0,ini)==1;
+    first_view_mask_control=GetPrivateProfileIntW(L"Capture",L"first_view_mask_control",0,ini)==1;
+    view_union_mask_fix=GetPrivateProfileIntW(L"Capture",L"view_union_mask_fix",0,ini)==1;
+    projection_control=GetPrivateProfileIntW(L"Capture",L"projection_control",0,ini)==1;
+    stereo_xr=GetPrivateProfileIntW(L"Capture",L"stereo_xr",0,ini)==1;
+    simulator_operator=GetPrivateProfileIntW(L"Capture",L"simulator_operator",0,ini)==1;
+    frame_link_diagnostics=GetPrivateProfileIntW(L"Capture",L"frame_link_diagnostics",0,ini)==1;
+    stereo_gpu_publish=GetPrivateProfileIntW(L"Capture",L"stereo_gpu_publish",0,ini)==1;
+    anchor_observer_enabled=GetPrivateProfileIntW(L"Capture",L"anchor_observer",0,ini)==1;
+    if(anchor_observer_enabled&&(!family_diagnostics||!stereo_xr||!frame_link_diagnostics||!load_anchor_config(ini))){
+        fprintf(status,"rejected: anchor observer requires stereo frame-link family diagnostics and fresh reflection certificate\n");fclose(status);return 2;}
+    origin_trial_enabled=GetPrivateProfileIntW(L"Capture",L"origin_trial",0,ini)==1;
+    if(origin_trial_enabled&&(!anchor_observer_enabled||!continuous_session||!stereo_gpu_publish)){
+        fprintf(status,"rejected: origin trial requires continuous stereo GPU and exact anchor observer\n");fclose(status);return 2;}
+    outage_diagnostics=GetPrivateProfileIntW(L"Capture",L"outage_diagnostics",0,ini)==1;
+    if(outage_diagnostics.load()&&(!stereo_xr||!stereo_gpu_publish||!frame_link_diagnostics)){
+        fprintf(status,"rejected: outage diagnostics requires stereo XR GPU frame-link\n");fclose(status);return 2;}
+    if(continuous_session&&(!stereo_xr||!stereo_gpu_publish||!frame_link_diagnostics||!view_union_mask_fix||
+       submit_pair_seconds||projection_control||simulator_operator||submit_mono_control||submit_mono_independent_state||
+       submit_duplicate_control||quad_source_control_enabled()||first_view_mask_control)){
+        fprintf(status,"rejected: continuous session requires exclusive real stereo GPU union with pair seconds zero\n");fclose(status);return 2;}
+    if(simulator_operator&&(!stereo_xr||!stereo_gpu_publish||!frame_link_diagnostics||!view_union_mask_fix)){
+        fprintf(status,"rejected: simulator operator requires stereo XR, GPU publication, frame link and validated union\n");fclose(status);return 2;}
+    if((trial_seconds!=30&&trial_seconds!=120)||(trial_seconds==120&&!view_union_mask_fix)){
+        fprintf(status,"rejected: trial seconds must be 30 or 120; 120 requires validated view union\n");fclose(status);return 2;}
+    if(stereo_gpu_publish&&(!stereo_xr||!frame_link_diagnostics||!view_union_mask_fix||(!continuous_session&&submit_pair_seconds!=trial_seconds))){
+        fprintf(status,"rejected: stereo GPU publish requires XR, frame link and validated bounded union\n");fclose(status);return 2;}
+    if(frame_link_diagnostics&&(!view_union_mask_fix||!prime_ready.load()||prime_done.load()||(!continuous_session&&submit_pair_seconds!=trial_seconds)||!submit_pair_enabled||!submit_output_bounds)) {
+        fprintf(status,"rejected: frame link requires bounded view union pair and active target/factory prime\n");fclose(status);return 2;
+    }
+    if(stereo_xr){wchar_t scale[64]{};GetPrivateProfileStringW(L"Capture",L"stereo_units_per_metre",L"100",scale,64,ini);
+        wchar_t* end{};stereo_units_per_metre=wcstod(scale,&end);
+        if(end==scale || *end || !std::isfinite(stereo_units_per_metre) || stereo_units_per_metre<10 || stereo_units_per_metre>500 ||
+           !view_union_mask_fix || projection_control || live_enabled){fprintf(status,"rejected: stereo XR requires exclusive view union pair and valid scale\n");fclose(status);return 2;}}
+    if(projection_control && (!view_union_mask_fix||trial_seconds!=30)){fprintf(status,"rejected: projection control requires thirty-second view union mask fix\n");fclose(status);return 2;}
+    if(view_union_mask_fix&&(!submit_pair_enabled||!submit_output_bounds||!viewport_diagnostics||(!continuous_session&&submit_pair_seconds!=trial_seconds)||
+       submit_mono_control||submit_mono_independent_state||submit_duplicate_control||quad_source_control_enabled()||first_view_mask_control)){
+        fprintf(status,"rejected: view union mask fix requires exclusive bounded split pair with output bounds and viewport diagnostics\n");fclose(status);return 2;
+    }
+    if(first_view_mask_control&&(!submit_pair_enabled||!submit_output_bounds||!viewport_diagnostics||submit_pair_seconds!=10||
+       submit_mono_control||submit_mono_independent_state||submit_duplicate_control||quad_source_control_enabled())){
+        fprintf(status,"rejected: first view mask control requires exclusive ten-second split pair with output bounds and viewport diagnostics\n");fclose(status);return 2;
+    }
+    if(first_view_mask_hook_enabled()&&reservation_ready&&!first_view_mask_reserved){
+        fprintf(status,"rejected: first view mask trampoline was not reserved at startup\n");fclose(status);return 2;
+    }
+    if(color_copy_diagnostics&&(!submit_pair_enabled||!viewport_diagnostics||quad_source_control_enabled())){
+        fprintf(status,"rejected: color copy diagnostics require viewport pair without quad source control\n");fclose(status);return 2;
+    }
+    if(quad_left_source_control&&quad_right_source_control){
+        fprintf(status,"rejected: quad source control modes are mutually exclusive\n");fclose(status);return 2;
+    }
+    if(quad_source_control_enabled()&&(!submit_pair_enabled||!submit_output_bounds||!viewport_diagnostics||submit_pair_seconds!=10||
+       submit_mono_control||submit_mono_independent_state||submit_duplicate_control)){
+        fprintf(status,"rejected: quad source control requires exclusive ten-second split pair with output bounds and viewport diagnostics\n");fclose(status);return 2;
+    }
+    if(submit_background && !continuous_session && (!submit_pair_enabled||!viewport_diagnostics||!submit_pair_seconds||
+       (submit_pair_seconds>10&&!(view_union_mask_fix&&submit_pair_seconds==trial_seconds)))){
+        fprintf(status,"rejected: background mode requires one-to-ten-second viewport pair diagnostics or validated bounded view union fix\n");fclose(status);return 2;
+    }
+    if(submit_pair_seconds>60&&!(trial_seconds==120&&view_union_mask_fix&&submit_pair_seconds==120))return 4;
     if(submit_pair_enabled && (!constructor_eye_enabled || renderer_pair_enabled)){fprintf(status,"rejected: submit pair requires exclusive shifted-eye mode\n");fclose(status);return 3;}
     if(renderer_pair_enabled && !constructor_eye_enabled){fprintf(status,"rejected: renderer pair requires independent shifted eye\n");fclose(status);return 3;}
     if(constructor_eye_enabled && !constructor_state_enabled){fprintf(status,"rejected: eye requires independent constructor state\n");fclose(status);return 3;}
@@ -1184,6 +2520,7 @@ DWORD WINAPI worker(void*) {
         if(!live_bridge.open(GetCurrentProcessId(),false)){fprintf(status,"rejected: pose producer unavailable\n");fclose(status);return 3;}
         live_gate.arm(true);
     }
+    if(stereo_xr && !stereo_bridge.open(GetCurrentProcessId(),false)){fprintf(status,"rejected: stereo XR producer unavailable\n");fclose(status);return 3;}
     uintptr_t linked{};
     if(!expected_local || !expected_pc || !safe_copy(&linked,reinterpret_cast<void*>(expected_local+0x68),8) || linked!=expected_pc) {
         fprintf(status,"rejected: local player/controller link mismatch\n");fclose(status);return 3;
@@ -1192,6 +2529,13 @@ DWORD WINAPI worker(void*) {
     const unsigned char scene_bytes[]={0x48,0x8b,0xc4,0x53,0x56,0x57,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57};
     const unsigned char event_bytes[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x08,0x48,0x89,0x68,0x10,0x48,0x89,0x70,0x18};
     unsigned char bytes[16]{};
+    if(first_view_mask_hook_enabled()){
+        first_view_mask_target=reinterpret_cast<void*>(base+0x2a7e48);
+        if(!safe_copy(bytes,first_view_mask_target,sizeof(first_view_mask_signature))||memcmp(bytes,first_view_mask_signature,sizeof(first_view_mask_signature))||
+           !safe_copy(bytes,reinterpret_cast<void*>(base+0x119bdd),sizeof(first_view_mask_call_signature))||memcmp(bytes,first_view_mask_call_signature,sizeof(first_view_mask_call_signature))){
+            fprintf(status,"rejected: first view mask entry/call signature mismatch\n");fclose(status);return 4;
+        }
+    }
     if(!safe_copy(bytes,scene_target,sizeof(scene_bytes)) || memcmp(bytes,scene_bytes,sizeof(scene_bytes)) ||
        !safe_copy(bytes,event_target,sizeof(event_bytes)) || memcmp(bytes,event_bytes,sizeof(event_bytes))) {
         fprintf(status,"rejected: candidate prologue mismatch\n");fclose(status);return 4;
@@ -1215,6 +2559,7 @@ DWORD WINAPI worker(void*) {
         const unsigned char signature_prepare[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x70,0x18,0x57,0x41,0x54};
         if(!safe_copy(bytes,prepare_target,sizeof(signature_prepare)) || memcmp(bytes,signature_prepare,sizeof(signature_prepare))){fprintf(status,"rejected: preparation prologue mismatch\n");fclose(status);return 4;}
     }
+    if(viewport_diagnostics && (!safe_copy(bytes,geometry_target,sizeof(geometry_signature))||memcmp(bytes,geometry_signature,sizeof(geometry_signature)))){fprintf(status,"rejected: geometry prologue mismatch\n");fclose(status);return 4;}
     if(viewport_diagnostics){const unsigned char signature_quad[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x08,0x48,0x89,0x70,0x10,0x48,0x89,0x78,0x18};
         if(!safe_copy(bytes,quad_target,sizeof(signature_quad))||memcmp(bytes,signature_quad,sizeof(signature_quad))){fprintf(status,"rejected: quad prologue mismatch\n");fclose(status);return 4;}}
     if(shadow_view_enabled) {
@@ -1250,15 +2595,16 @@ DWORD WINAPI worker(void*) {
             fprintf(status,"rejected: view state lifetime signature mismatch\n");fclose(status);return 4;
         }
     }
-    FILE* file{};_wfopen_s(&file,csv,L"w");
+    FILE* file=_wfsopen(csv,L"w",_SH_DENYWR);
     if(!file) {fclose(status);return 5;}
     fprintf(file,"kind,thread,focused,valid,qpc,duration_qpc,object,result,caller_rva,x,y,z,pitch,yaw,roll,camera_timestamp,source_yaw,yaw_delta,cache_yaw,test_state");
     for(unsigned i=0;i<32;++i) fprintf(file,",matrix%u",i);
     fprintf(file,",pose_phase,source_x,source_y,source_z,source_pitch,source_rot_yaw,source_roll,delta_x,delta_y,delta_z,delta_pitch,delta_rot_yaw,delta_roll,pose_status,pose_sequence,gpu_device,gpu_buffer,gpu_window,queue_type,command_count,buffer_index,buffer_count,width,height,format,swap_flags,family_address,family_array,family_count,family_capacity,family_view0,family_view1,family_view2,family_view3,clone_source,clone_owner");
     for(unsigned i=0;i<32;++i)fprintf(file,",source_matrix%u",i);
-    fprintf(file,",renderer_input_family,renderer_storage,renderer_count,renderer_capacity,renderer_source0,renderer_source1,renderer_source2,renderer_source3\n");fflush(file);
+    fprintf(file,",renderer_input_family,renderer_storage,renderer_count,renderer_capacity,renderer_source0,renderer_source1,renderer_source2,renderer_source3,stereo_ticket,stereo_source,stereo_head_flags,stereo_view_flags,stereo_reference_generation\n");fflush(file);
     LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);
     qpc_frequency=frequency.QuadPart;
+    if(outage_diagnostics.load()){outage_window.reset(qpc_frequency);outage_draws={};}
     fprintf(status,"qpc_frequency=%lld\n",frequency.QuadPart);
     fprintf(status,"wobble_enabled=%d amplitude_degrees=1.5 baseline_seconds=3 wave_seconds=12\n",wobble_enabled);
     fprintf(status,"sweep_enabled=%d rotation_degrees=1.5 translation_units=2 baseline_seconds=3 axis_seconds=4 total_seconds=27\n",sweep_enabled);
@@ -1276,9 +2622,14 @@ DWORD WINAPI worker(void*) {
         install(destroy_renderer_target,reinterpret_cast<void*>(hook_destroy_renderer),reinterpret_cast<void**>(&original_destroy_renderer));
     if(ok && family_diagnostics)ok=install(prepare_target,reinterpret_cast<void*>(hook_prepare),reinterpret_cast<void**>(&original_prepare));
     if(ok && shadow_state_enabled)ok=install(state_delete_target,reinterpret_cast<void*>(hook_state_delete),reinterpret_cast<void**>(&original_state_delete));
+    if(ok && viewport_diagnostics)ok=install(geometry_target,reinterpret_cast<void*>(hook_geometry),reinterpret_cast<void**>(&original_geometry));
     if(ok && viewport_diagnostics)ok=install(quad_target,reinterpret_cast<void*>(hook_quad),reinterpret_cast<void**>(&original_quad));
+    if(ok && first_view_mask_hook_enabled())ok=install(first_view_mask_target,reinterpret_cast<void*>(hook_first_view_mask),reinterpret_cast<void**>(&original_first_view_mask));
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
+    if(ok)ok=create_quad_source_events();
+    if(ok)ok=create_first_view_mask_events();
+    if(ok)ok=create_stereo_recenter_event();
     fprintf(status,"present_hooks_created=%d\n",graphics);
     if(ok) {
         std::lock_guard<std::mutex> lock(prime_mutex);
@@ -1288,6 +2639,9 @@ DWORD WINAPI worker(void*) {
     }
     if(!ok) {
         recording=false;MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
+        close_quad_source_events();
+        close_first_view_mask_events();
+        close_stereo_recenter_event();
         fprintf(status,"hook installation failed disable_status=%d active=%u\n",disabled,active.load());
         diagnostic_status=nullptr;fclose(file);fclose(status);return 6;
     }
@@ -1296,15 +2650,67 @@ DWORD WINAPI worker(void*) {
     const unsigned seconds=GetPrivateProfileIntW(L"Capture",L"seconds",90,ini);
     fprintf(status,"capturing pid=%lu seconds=%u\n",GetCurrentProcessId(),seconds);fflush(status);
     const ULONGLONG deadline=GetTickCount64()+static_cast<ULONGLONG>(seconds)*1000;
-    while(GetTickCount64()<deadline && (!stop_event || WaitForSingleObject(stop_event,20)!=WAIT_OBJECT_0)) {flush(file);if(!stop_event) Sleep(20);}
+    if(continuous_session){
+        session_started_qpc=now();write_session_status();
+        if(!session_status_available||!stop_event)request_session_stop(SessionStop::proof_failure);
+        ULONGLONG next_status=0;
+        for(;;){
+            observe_session_owner(continuous_owner.state());
+            if(stop_event&&WaitForSingleObject(stop_event,0)==WAIT_OBJECT_0)request_session_stop(SessionStop::event);
+            if(GetAsyncKeyState(VK_F8)&0x8000)request_session_stop(SessionStop::f8);
+            if(state_created.load()&&!submit_background&&!foreground())request_session_stop(SessionStop::focus_lost);
+            if(stereo_publisher.state.load()==3)request_session_stop(SessionStop::proof_failure);
+            stereo_publish_worker_tick();
+            if(submitted_lifetime.stopping()){
+                if(submitted_lifetime.is_closed()){auto requested=SessionPhase::stop_requested;
+                    session_phase.compare_exchange_strong(requested,SessionPhase::native_closed);}
+                if(session_native_cleanup_ready())break;
+                if(session_cleanup_expired())session_cleanup_timeout=true;
+            }
+            if(GetTickCount64()>=next_status){write_session_status();next_status=GetTickCount64()+1000;}
+            flush(file,4);Sleep(20);
+        }
+        session_phase=SessionPhase::draining;write_session_status();
+    }else while(GetTickCount64()<deadline && (!stop_event || WaitForSingleObject(stop_event,20)!=WAIT_OBJECT_0)) {
+        stereo_publish_worker_tick();
+        flush(file,4);refresh_quad_source_events();refresh_first_view_mask_events();if(!stop_event) Sleep(20);
+    }
     // Disable entry patches; leave the DLL and trampolines resident so delayed
     // in-flight execution can never jump into freed code.
     MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
     recording=false;
     for(unsigned i=0;i<100 && active.load();++i) Sleep(10);
+    if(continuous_session)while(active.load()){
+        if(session_cleanup_expired())session_cleanup_timeout=true;
+        write_session_status();Sleep(100);
+    }
+    if(continuous_session)while(disabled!=MH_OK||!session_hooks_restored()){
+        if(session_cleanup_expired())session_cleanup_timeout=true;
+        write_session_status();Sleep(100);disabled=MH_DisableHook(MH_ALL_HOOKS);
+    }
+    close_quad_source_events();
+    close_first_view_mask_events();
     flush(file);
     fprintf(status,"stopped disable_status=%d active=%u dropped=%llu scene=%llu event=%llu present=%llu present1=%llu execute=%llu\n",
         disabled,active.load(),dropped.load(),emitted[1],emitted[2],emitted[3],emitted[4],emitted[5]);
+    bool stereo_closed=close_stereo_publisher();
+    if(continuous_session)while(!stereo_closed){
+        if(session_cleanup_expired())session_cleanup_timeout=true;
+        write_session_status();Sleep(100);stereo_closed=close_stereo_publisher();
+    }
+    print_frame_link(status);
+    print_outage(status,disabled==MH_OK);
+    print_anchor(status,disabled==MH_OK);
+    print_origin_trial(status,disabled==MH_OK);
+    if(!active.load()&&stereo_closed)release_bindings();
+    if(continuous_session){
+        {std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);retire_stereo_window();}
+    }
+    if(prime_ready.load())for(unsigned i=0;i<prime_targets.size();++i){std::array<unsigned char,32> bytes{};
+        bool restored=!active.load()&&safe_copy(bytes.data(),prime_targets[i],bytes.size())&&bytes==prime_original_bytes[i];
+        fprintf(status,"prime_entry target=%p restored=%u before=",prime_targets[i],restored?1:0);
+        for(auto byte:prime_original_bytes[i])fprintf(status,"%02x",byte);fprintf(status,"\n");
+    }
     fprintf(status,"wobble_final_state=%u\n",wobble_state.load());
     fprintf(status,"family_calls=%llu\n",emitted[7]);
     fprintf(status,"renderer_consume_calls=%llu renderer_destroy_calls=%llu\n",emitted[10],emitted[11]);
@@ -1327,6 +2733,14 @@ DWORD WINAPI worker(void*) {
                   entry.viewport,entry.targets,static_cast<unsigned long long>(entry.target.resource),entry.target.width,
                   entry.target.height,entry.target.format,entry.target.mip,entry.calls);
           fprintf(status,"submit_background=%u\n",submit_background);
+          print_geometry(status);
+          print_final_inputs(status);
+          print_quad_source_control(status);
+          print_color_copy(status);
+          print_first_view_mask(status);
+          print_view_union_mask(status);
+          print_projection(status);
+          print_stereo(status);
           fprintf(status,"gpu_output_quad_overflow=%llu limit=64\n",quad_overflow);
           for(const auto& entry:quad_traces)if(entry.calls)fprintf(status,
               "gpu_output_quad caller=%llx dest=%.9g,%.9g,%.9g,%.9g source=%.9g,%.9g,%.9g,%.9g target_dimensions=%u,%u texture_dimensions=%u,%u calls=%llu\n",
@@ -1379,8 +2793,16 @@ DWORD WINAPI worker(void*) {
         submit_phase>=2?submit_source_checks:0,submit_phase>=2?submit_rejection:0,
         submit_phase>=2?submit_rectangle[0]:0.,submit_phase>=2?submit_rectangle[1]:0.,
         submit_phase>=2?submit_rectangle[2]:0.,submit_phase>=2?submit_rectangle[3]:0.);
-    fprintf(status,"submit_lifetime seconds=%u total=%u closed=%d pending=%u retained=%u skipped=%u\n",
-        submit_pair_seconds,submit_total.load(),submitted_lifetime.is_closed(),submitted_lifetime.pending(),submit_retained.load(),submit_skipped.load());
+    fprintf(status,"submit_lifetime seconds=%u total=%u closed=%d pending=%u retained=%u skipped=%u trial_seconds=%u validated_union=%d\n",
+        submit_pair_seconds,submit_total.load(),submitted_lifetime.is_closed(),submitted_lifetime.pending(),submit_retained.load(),submit_skipped.load(),trial_seconds,view_union_mask_fix);
+    fprintf(status,"source_map_validation candidates=%llu accepted=%llu rejected=%llu max_nodes=%u last_checks=%u supported_nonempty=1 max_supported_nodes=%u map_check_bits=input:1,left:2,right:4,independent:8,contents:16,source_unchanged:32\n",
+        source_map_candidates.load(),source_map_accepted.load(),source_map_rejected.load(),source_map_max_nodes.load(),source_map_last_checks.load(),gears_source_map::max_nodes);
+    if(split_failure_phase.load()==2){
+        auto const& f=first_split_failure;auto const& e=f.input;
+        fprintf(status,"split_input_failure available=1 rejection=%u checks=%u read_succeeded=%u failure_mask=%u family=%llx source=%llx observed_family=%llx original_state=%llx right_state=%llx field140=%llx field418=%llx before_owner=%llx before_state=%llx before140=%llx before418=%llx begin_qpc=%lld end_qpc=%lld reason_bits=read_failed:1,family_mismatch:2,missing_original_state:4,missing_right_state:8,aliased_state:16,field140_nonzero:32,field418_nonzero:64\n",
+            f.rejection,f.checks,e.read_succeeded?1:0,e.failure_mask,e.family,e.source,e.observed_family,e.original_state,e.right_state,
+            e.field140,e.field418,f.before_owner,f.before_state,f.before140,f.before418,f.begin_qpc,f.end_qpc);
+    }
     fprintf(status,"submit_output_bounds=%d\n",submit_output_bounds);
     fprintf(status,"submit_view_count=%u submit_event_marker=77\n",submit_mono_control?1:2);
     fprintf(status,"submit_duplicate_control=%d\n",submit_duplicate_control);
@@ -1401,7 +2823,13 @@ DWORD WINAPI worker(void*) {
         shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),
         state_done?state_delete_flags:0,state_done?state_delete_thread:0,
         static_cast<unsigned long long>(state_done?state_delete_caller:0),static_cast<unsigned long long>(state_temporary.load()));
-    diagnostic_status=nullptr;fclose(file);fclose(status);if(stop_event) CloseHandle(stop_event);stop_event=nullptr;
+    stereo_bridge.close();
+    diagnostic_status=nullptr;fclose(file);fclose(status);
+    // Terminal publication promises the complete, formerly exclusive report is readable.
+    if(continuous_session){observe_session_owner(continuous_owner.state());session_phase=SessionPhase::stopped;
+        write_session_status(false,disabled==MH_OK&&session_hooks_restored());}
+    close_stereo_recenter_event();
+    if(stop_event) CloseHandle(stop_event);stop_event=nullptr;
     return disabled==MH_OK?0:7;
 }
 // Test real trampoline execution and six-argument forwarding before injection.
@@ -1413,6 +2841,107 @@ unsigned renderer_forward_count{};
 unsigned consume_forward_count{},destroy_forward_count{};
 __declspec(noinline) void* fake_destroy_renderer(void* renderer){
     ++destroy_forward_count;VirtualFree(renderer,0,MEM_RELEASE);return renderer;
+}
+bool continuous_test_destroy_returned{},continuous_test_release_order_bad{};
+unsigned continuous_test_release_calls{};
+DWORD continuous_test_release_thread{};
+std::atomic<unsigned> continuous_test_executes{};
+void STDMETHODCALLTYPE fake_continuous_execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*){++continuous_test_executes;}
+void* __fastcall fake_continuous_destroy(void* renderer){
+    VirtualFree(renderer,0,MEM_RELEASE);continuous_test_destroy_returned=true;return renderer;
+}
+void __fastcall fake_continuous_release(void*){
+    if(!continuous_test_destroy_returned)continuous_test_release_order_bad=true;
+    ++continuous_test_release_calls;continuous_test_release_thread=GetCurrentThreadId();
+    state_delete_flags=1;state_destroyed=1;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*) {
+    // CPU-only: actual production stop/native destroy helpers with fake native
+    // destructor/state release. No D3D device, GPU commands or XR session.
+    continuous_session=true;stereo_gpu_publish=true;submit_pair_enabled=true;
+    std::uint64_t parsed{};FILETIME created{},exited{},kernel{},user{};
+    if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user))return 210;
+    auto identity=gears_session::creation_time(created);
+    gears_session::Owner owner,wrong_owner;
+    if(!owner.open(GetCurrentProcessId(),identity)||owner.state()!=gears_session::OwnerState::alive||
+       wrong_owner.open(GetCurrentProcessId(),identity+1)||wrong_owner.open(0,identity)||
+       !gears_session::decimal(L"4294967295",MAXDWORD,parsed)||parsed!=MAXDWORD||
+       gears_session::decimal(L"4294967296",MAXDWORD,parsed)||
+       gears_session::decimal(L"18446744073709551616",(std::numeric_limits<std::uint64_t>::max)(),parsed)||
+       gears_session::decimal(L"-1",MAXDWORD,parsed)||gears_session::decimal(L"12x",MAXDWORD,parsed)||
+       gears_session::decimal(L"0",MAXDWORD,parsed)||
+       gears_session::owner_wait_state(WAIT_FAILED)!=gears_session::OwnerState::error)return 211;
+    observe_session_owner(owner.state());
+    if(submitted_lifetime.stopping()||session_phase.load()!=SessionPhase::running)return 212;
+    if(!submit_session_enabled()||submit_pair_seconds)return 190;
+    state_created=1;state_temporary=1;submit_sources_released=1;
+    state_release=fake_continuous_release;original_destroy_renderer=fake_continuous_destroy;
+    void* renderer=VirtualAlloc(nullptr,4096,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE);
+    if(!renderer||!submitted_lifetime.begin(reinterpret_cast<uintptr_t>(renderer)))return 191;
+    HANDLE ready=CreateEventW(nullptr,TRUE,FALSE,nullptr),done=CreateEventW(nullptr,TRUE,FALSE,nullptr);
+    HANDLE events[]={ready,done};HANDLE thread{};DWORD error=0;
+    if(!ready||!done)return 192;
+    {
+        std::lock_guard<std::recursive_mutex> native_lock(session_native_mutex);
+        SessionBuildScope building;
+        request_session_stop(SessionStop::event);
+        observe_session_owner(gears_session::owner_wait_state(WAIT_OBJECT_0)); // Evidence survives an earlier first stop reason.
+        observe_session_owner(gears_session::owner_wait_state(WAIT_FAILED));
+        if(session_reason.load()!=SessionStop::event||!session_owner_exit_observed.load()||!session_owner_error_observed.load()||
+           submitted_lifetime.is_closed()||continuous_test_release_calls)error=213;
+        service_session_stop_native(); // Reentrant construction must defer close.
+        stereo_publish_worker_tick(); // Mark absent publisher stopped, no GPU work.
+        session_stop_tick=GetTickCount64()-30001;
+        if(session_cleanup_expired())session_cleanup_timeout=true;
+        if(!submitted_lifetime.stopping()||submitted_lifetime.is_closed()||session_native_cleanup_ready()||
+           submitted_lifetime.begin(2)||continuous_test_release_calls||!session_cleanup_timeout.load()||
+           !stereo_publish_counts.stopped.load())error=193;
+        thread=CreateThread(nullptr,0,[](void* value)->DWORD{
+            auto handles=static_cast<HANDLE*>(value);Scope scope;SetEvent(handles[0]);
+            service_session_stop_native();SetEvent(handles[1]);return 0;
+        },events,0,nullptr);
+        if(!thread||WaitForSingleObject(ready,1000)!=WAIT_OBJECT_0||WaitForSingleObject(done,0)!=WAIT_TIMEOUT)error=194;
+    }
+    if(thread&&WaitForSingleObject(thread,1000)!=WAIT_OBJECT_0)error=195;
+    if(thread)CloseHandle(thread);CloseHandle(ready);CloseHandle(done);
+    if(!submitted_lifetime.is_closed()||submitted_lifetime.pending()!=1||continuous_test_release_calls||session_native_cleanup_ready())error=196;
+    hook_destroy_renderer(renderer);service_session_stop_native();service_session_stop_native();
+    if(!continuous_test_destroy_returned||continuous_test_release_order_bad||continuous_test_release_calls!=1||
+       continuous_test_release_thread!=GetCurrentThreadId()||!session_native_cleanup_ready()||submitted_lifetime.pending()||active.load())error=197;
+    // A detour blocked before acquiring the frame mutex must already be active.
+    auto saved_execute=original_execute;original_execute=fake_continuous_execute;
+    frame_link_diagnostics=true;self_testing=true;recording=true;
+    frame_test_waiting=CreateEventW(nullptr,TRUE,FALSE,nullptr);HANDLE blocked{};
+    if(!frame_test_waiting)return 205;
+    {
+        std::lock_guard<std::recursive_mutex> frame_guard(frame_hook_mutex);
+        blocked=CreateThread(nullptr,0,[](void*)->DWORD{hook_execute(nullptr,0,nullptr);return 0;},nullptr,0,nullptr);
+        if(!blocked||WaitForSingleObject(frame_test_waiting,1000)!=WAIT_OBJECT_0||active.load()!=1||continuous_test_executes.load())error=206;
+        recording=false;
+        if(!active.load()||session_hooks_restored())error=207;
+    }
+    if(blocked&&WaitForSingleObject(blocked,1000)!=WAIT_OBJECT_0)error=208;
+    if(blocked)CloseHandle(blocked);CloseHandle(frame_test_waiting);frame_test_waiting=nullptr;
+    original_execute=saved_execute;frame_link_diagnostics=false;self_testing=false;
+    if(active.load()||continuous_test_executes.load()!=1)error=209;
+    // CSV suppression must not turn off the proof-recording switch.
+    recording=true;Record row{};auto before=write_index;enqueue(row);
+    if(write_index!=before||!recording.load())error=198;
+    recording=false;continuous_session=false;
+    if(submit_session_enabled())error=199;
+    submit_pair_seconds=30;if(!submit_session_enabled())error=200;
+    submit_pair_seconds=120;if(!submit_session_enabled())error=201;
+    submit_pair_seconds=0;
+    FILE* output{};
+    if(tmpfile_s(&output)||!output)return 202;
+    recording=true;auto first=read_index;
+    for(unsigned i=0;i<300;++i)enqueue(row);
+    flush(output,1);
+    if(read_index!=first+128||write_index-read_index!=172)error=203;
+    flush(output);recording=false;fclose(output);
+    if(read_index!=write_index)error=204;
+    printf("Continuous CPU stop: admission, paused timeout retention, construction/reentrant barrier, native destructor then single release, CSV/proof separation passed\n");
+    return error;
 }
 __declspec(noinline) void fake_consume(void* renderer){
     fake_destroy_renderer(renderer);++consume_forward_count;
@@ -1508,8 +3037,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
        !safe_copy(read,state_delete_target,sizeof(j)) || memcmp(read,j,sizeof(j)))return ERROR_INVALID_DATA;
     if(MH_Initialize()!=MH_OK)return ERROR_INVALID_STATE;
     quad_target=reinterpret_cast<void*>(base+0x1af42c);
+    geometry_target=reinterpret_cast<void*>(base+0x13cfcc);
     const unsigned char quad_signature[]={0x48,0x8b,0xc4,0x48,0x89,0x58,0x08,0x48,0x89,0x70,0x10,0x48,0x89,0x78,0x18};
     if(!safe_copy(read,quad_target,sizeof(quad_signature))||memcmp(read,quad_signature,sizeof(quad_signature)))return ERROR_INVALID_DATA;
+    if(!safe_copy(read,geometry_target,sizeof(geometry_signature))||memcmp(read,geometry_signature,sizeof(geometry_signature)))return ERROR_INVALID_DATA;
+    if(MH_CreateHook(geometry_target,reinterpret_cast<void*>(hook_geometry),reinterpret_cast<void**>(&original_geometry))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
+    if(!safe_copy(read,geometry_target,sizeof(geometry_signature))||memcmp(read,geometry_signature,sizeof(geometry_signature)))return ERROR_INVALID_DATA;
     if(MH_CreateHook(quad_target,reinterpret_cast<void*>(hook_quad),reinterpret_cast<void**>(&original_quad))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
     if(!safe_copy(read,quad_target,sizeof(quad_signature))||memcmp(read,quad_signature,sizeof(quad_signature)))return ERROR_INVALID_DATA;
     if(MH_CreateHook(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))!=MH_OK ||
@@ -1535,6 +3068,20 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserve(void*) {
     reservation_event=CreateEventW(nullptr,TRUE,TRUE,name);
     if(!reservation_event)return GetLastError();reservation_ready=true;return 0;
 }
+// Optional reserve keeps older DLL launch paths compatible. Never enables the hook.
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureReserveFirstViewMask(void*) {
+    if(!reservation_ready||started.load()||first_view_mask_reserved)return ERROR_INVALID_STATE;
+    if(!hash_matches())return ERROR_REVISION_MISMATCH;
+    first_view_mask_target=reinterpret_cast<void*>(base+0x2a7e48);
+    unsigned char before[32]{},after[32]{},call[5]{};
+    if(!safe_copy(before,first_view_mask_target,32)||memcmp(before,first_view_mask_signature,sizeof(first_view_mask_signature))||
+       !safe_copy(call,reinterpret_cast<void*>(base+0x119bdd),5)||memcmp(call,first_view_mask_call_signature,5))return ERROR_INVALID_DATA;
+    if(MH_CreateHook(first_view_mask_target,reinterpret_cast<void*>(hook_first_view_mask),reinterpret_cast<void**>(&original_first_view_mask))!=MH_OK)return ERROR_NOT_ENOUGH_MEMORY;
+    if(!safe_copy(after,first_view_mask_target,32)||memcmp(before,after,32))return ERROR_INVALID_DATA;
+    wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Capture.FirstViewMaskReserved.%lu",GetCurrentProcessId());
+    first_view_mask_reserved_event=CreateEventW(nullptr,TRUE,TRUE,name);
+    if(!first_view_mask_reserved_event)return GetLastError();first_view_mask_reserved=true;return 0;
+}
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureTargetPrime(void*) {
     if(!reservation_ready||started.load())return ERROR_INVALID_STATE;
     return begin_target_prime();
@@ -1545,8 +3092,255 @@ __declspec(noinline) void __fastcall fake_quad(float x,float y,float w,float h,f
     unsigned tw,unsigned th,unsigned sw,unsigned sh){
     fake_quad_last={0,{x,y,w,h,u,v,uw,vh},{tw,th,sw,sh},0};++fake_quad_calls;
 }
+bool quad_source_forwarding_test(){
+    using namespace gears_quad_source;
+    Args right{{960,0,960,1080,960,0,960,1080},{1920,1080,1920,1080}};
+    auto left=right;left.rectangle[0]=left.rectangle[4]=0;
+    QuadFn volatile invoke=fake_quad;
+    for(unsigned source=left_source;source<=right_source;++source){
+        const Gate valid{true,true,true,true,true,0xd83b1c,0x1000,source==left_source?0x1d30U:0x1000U,2,2,source};
+        for(unsigned i=0;i<8;++i){auto args=source==left_source?right:left;auto gate=valid;long long origin=10000,tick=14000;
+            switch(i){case 0:gate.enabled=false;break;case 1:tick=12999;break;case 2:break;
+            case 3:tick=16000;break;case 4:tick=20000;break;
+            case 5:gate.current=source==left_source?0x1000:0x1d30;args=source==left_source?left:right;break;
+            case 6:++gate.caller;break;case 7:++args.dimensions[2];break;}
+            const auto decision=decide(args,gate,tick,1000,origin);auto expected=args;
+            if(i==2)expected.rectangle[4]=source==left_source?0.f:960.f;
+            // Mirror hook_quad's twelve-argument forwarding and exercise its real
+            // Windows x64 float/stack ABI with a noinline target.
+            const auto& r=args.rectangle;const auto& d=args.dimensions;
+            invoke(r[0],r[1],r[2],r[3],decision.forwarded.rectangle[4],r[5],r[6],r[7],d[0],d[1],d[2],d[3]);
+            if(fake_quad_last.rectangles!=expected.rectangle||fake_quad_last.dimensions!=expected.dimensions||
+               fake_quad_calls!=source*8+i+1)return false;
+        }
+    }
+    fake_quad_calls=0;fake_quad_last={};return true;
+}
+}
+namespace {
+void* geometry_expected_renderer{};void* geometry_expected_view{};
+unsigned geometry_expected_stage{},geometry_expected_mode{},geometry_fake_calls{};bool geometry_fake_valid=true;
+__declspec(noinline) unsigned __fastcall fake_geometry(void* renderer,void* view,unsigned stage,unsigned mode){
+    ++geometry_fake_calls;
+    geometry_fake_valid=geometry_fake_valid&&renderer==geometry_expected_renderer&&view==geometry_expected_view&&
+        stage==geometry_expected_stage&&mode==geometry_expected_mode;
+    geometry_draw(nullptr,true,9,2);geometry_draw(nullptr,false,6,1);
+    return 0xc0ffee17U;
+}
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGeometryCheck(void*) {
+    if(!final_input_decoder_test())return 152;
+    unsigned char before[32]{},after[32]{};
+    if(!safe_copy(before,reinterpret_cast<void*>(fake_geometry),32)||MH_Initialize()!=MH_OK)return 140;
+    if(!install(reinterpret_cast<void*>(fake_geometry),reinterpret_cast<void*>(hook_geometry),reinterpret_cast<void**>(&original_geometry)))return 141;
+    std::array<unsigned char,0x80> renderer{};std::array<unsigned char,0x1a60> views{};
+    struct Header{uintptr_t data;int count,capacity;} header{reinterpret_cast<uintptr_t>(views.data()),2,2};
+    memcpy(renderer.data()+0x68,&header,sizeof(header));
+    uintptr_t list_values[3]={1,2,3};Header list{reinterpret_cast<uintptr_t>(list_values),3,3};
+    memcpy(views.data()+0xd30+0x570+2*0x10,&list,sizeof(list));
+    const auto clean_views=views;
+    geometry_expected_renderer=renderer.data();geometry_expected_view=views.data()+0xd30;
+    geometry_expected_stage=2;geometry_expected_mode=1;
+    consuming_renderer=renderer.data();recording=true;viewport_diagnostics=true;trial_draw_scope=true;
+    if(MH_ApplyQueued()!=MH_OK)return 142;
+    GeometryFn volatile invoke=fake_geometry;
+    if(invoke(renderer.data(),geometry_expected_view,2,1)!=0xc0ffee17U)return 143;
+    auto& entry=geometry_traces[0];
+    if(entry.eye!=1||entry.stage!=2||entry.mode!=1||entry.calls!=1||entry.count!=3||entry.valid!=15||
+       entry.draws!=1||entry.indexed!=1||entry.elements!=24||current_geometry||!geometry_fake_valid)return 144;
+    // No trial scope: original still runs, but no geometry evidence is recorded.
+    trial_draw_scope=false;
+    if(invoke(renderer.data(),geometry_expected_view,2,1)!=0xc0ffee17U||entry.calls!=1)return 145;
+    // Misaligned view fails closed without changing original call/return.
+    trial_draw_scope=true;geometry_expected_view=views.data()+1;
+    if(invoke(renderer.data(),geometry_expected_view,2,1)!=0xc0ffee17U||geometry_rejected!=1||entry.calls!=1)return 146;
+    geometry_expected_view=views.data();geometry_expected_stage=0;geometry_expected_mode=0;
+    if(invoke(renderer.data(),geometry_expected_view,0,0)!=0xc0ffee17U||geometry_traces[1].empty_lists!=1)return 147;
+    if(views!=clean_views||geometry_fake_calls!=4||!geometry_fake_valid||current_geometry)return 148;
+    recording=false;trial_draw_scope=false;consuming_renderer=nullptr;
+    if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK)return 149;
+    if(!safe_copy(after,reinterpret_cast<void*>(fake_geometry),32)||memcmp(before,after,32)||active.load())return 150;
+    if(invoke(renderer.data(),geometry_expected_view,0,0)!=0xc0ffee17U||geometry_fake_calls!=5)return 151;
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureResourceIdentityCheck(void*) {
+    return resource_identity_test()?0:153;
+}
+namespace {
+struct ColorCopyCall {ID3D12GraphicsCommandList* list{};const D3D12_TEXTURE_COPY_LOCATION* destination{};
+    UINT x{},y{},z{};const D3D12_TEXTURE_COPY_LOCATION* source{};const D3D12_BOX* box{};};
+ColorCopyCall color_copy_last{};unsigned color_copy_forwarded{};
+__declspec(noinline) void STDMETHODCALLTYPE fake_color_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,
+    UINT x,UINT y,UINT z,const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box){
+    color_copy_last={list,destination,x,y,z,source,box};++color_copy_forwarded;
+}
+}
+namespace {
+uint32_t first_view_mask_fake_bits{};unsigned first_view_mask_fake_calls{};
+__declspec(noinline) void __fastcall fake_first_view_mask(float value){
+    memcpy(&first_view_mask_fake_bits,&value,sizeof(value));++first_view_mask_fake_calls;
+}
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFirstViewMaskCheck(void*) {
+    using namespace gears_first_view_mask;
+    if(!self_test())return 180;
+    unsigned char before[32]{},after[32]{};
+    if(!safe_copy(before,reinterpret_cast<void*>(fake_first_view_mask),32)||MH_Initialize()!=MH_OK||
+       !install(reinterpret_cast<void*>(fake_first_view_mask),reinterpret_cast<void*>(hook_first_view_mask),reinterpret_cast<void**>(&original_first_view_mask)))return 181;
+    if(MH_ApplyQueued()!=MH_OK)return 182;
+    LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);qpc_frequency=frequency.QuadPart;
+    FirstViewMaskFn volatile invoke=fake_first_view_mask;
+    const Gate valid{true,true,true,true,true,0x119be2};const auto sample=valid_test_snapshot();long long origin=10000;
+    const long long ticks[]={12999,13000,15999,16000,19999,20000};
+    // Pure guard decisions feed an actual x64 float call through MinHook and
+    // the production hook/trampoline. No production caller/structure bypass.
+    for(unsigned i=0;i<6;++i){const auto decision=decide(0,valid,sample,ticks[i],1000,origin);
+        const auto calls=first_view_mask_fake_calls;invoke(decision.forwarded);
+        if(first_view_mask_fake_calls!=calls+1||first_view_mask_fake_bits!=((i==1||i==2)?0x3f800000U:0U))return 183;
+    }
+    const uint32_t patterns[]={0,0x80000000U,0xc0100000U,0x3f900000U,0x7fc12345U,0x7f800000U};
+    first_view_mask_control=true;recording=true;viewport_diagnostics=true;trial_draw_scope=true;
+    consuming_renderer=reinterpret_cast<void*>(1); // Must be ignored at the wrong return address.
+    for(auto bits:patterns){float value{};memcpy(&value,&bits,4);
+        const auto decision=decide(value,valid,sample,14000,1000,origin);
+        uint32_t effective{};memcpy(&effective,&decision.forwarded,4);
+        if(effective!=(bits?bits:0x3f800000U)||decision.modified!=(bits==0))return 184;
+        const auto calls=first_view_mask_fake_calls;invoke(value);
+        if(first_view_mask_fake_calls!=calls+1||first_view_mask_fake_bits!=bits||first_view_mask_origin)return 185;
+    }
+    Snapshot invalid{};if(collect_first_view_mask(1,1,invalid)||invalid.readable)return 186;
+    if(!create_first_view_mask_events())return 187;
+    // An expired clock must reset a formerly signalled phase, including when
+    // no more eligible native calls arrive during capture shutdown.
+    {std::lock_guard<std::mutex> lock(first_view_mask_mutex);first_view_mask_origin=now()-11*qpc_frequency;
+        SetEvent(first_view_mask_events[1]);first_view_mask_event_phase=gears_quad_source::b;}
+    refresh_first_view_mask_events();
+    for(auto event:first_view_mask_events)if(WaitForSingleObject(event,0)!=WAIT_TIMEOUT)return 188;
+    close_first_view_mask_events();for(auto event:first_view_mask_events)if(event)return 189;
+    first_view_mask_control=false;recording=false;trial_draw_scope=false;consuming_renderer=nullptr;
+    if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK||!safe_copy(after,reinterpret_cast<void*>(fake_first_view_mask),32)||memcmp(before,after,32)||active.load())return 190;
+    const auto calls=first_view_mask_fake_calls;invoke(.25f);
+    if(first_view_mask_fake_calls!=calls+1||first_view_mask_fake_bits!=0x3e800000U)return 191;
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureViewUnionMaskCheck(void*) {
+    using namespace gears_view_union_mask;
+    if(!self_test()||!lifetime_boundary_self_test())return 200;
+    unsigned char before[32]{},after[32]{};
+    if(!safe_copy(before,reinterpret_cast<void*>(fake_first_view_mask),32)||MH_Initialize()!=MH_OK||
+       !install(reinterpret_cast<void*>(fake_first_view_mask),reinterpret_cast<void*>(hook_first_view_mask),reinterpret_cast<void**>(&original_first_view_mask)))return 201;
+    if(MH_ApplyQueued()!=MH_OK)return 202;
+    LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);qpc_frequency=frequency.QuadPart;
+    FirstViewMaskFn volatile invoke=fake_first_view_mask;
+    const Gate valid{true,true,true,true,true,0x119be2};long long origin=10000;
+    const std::array<int,4> geometries[]={{1920,1080,960,960},{1919,1079,959,960},{1920,1080,640,960}};
+    for(const auto& geometry:geometries){const auto sample=sample_for(geometry[0],geometry[1],geometry[2],geometry[3]);
+        const auto input=boundary(static_cast<float>(geometry[2]),static_cast<float>(geometry[0]));
+        const auto decision=decide_union(input,valid,sample,20000,1000,origin);const auto calls=first_view_mask_fake_calls;
+        invoke(decision.forwarded);
+        if(decision.rejection||first_view_mask_fake_calls!=calls+1||first_view_mask_fake_bits!=bits(decision.union_t))return 203;
+    }
+    const auto sample=sample_for(1920,1080,960,960);
+    // A complete tracked consumer remains corrected across producer expiry.
+    for(auto tick:{39999LL,40000LL,40001LL}){const auto decision=decide_union(0,valid,sample,tick,1000,origin);invoke(decision.forwarded);
+        if(first_view_mask_fake_bits!=0x3f800000U)return 204;}
+    view_union_mask_fix=true;recording=true;viewport_diagnostics=true;trial_draw_scope=true;consuming_renderer=reinterpret_cast<void*>(1);
+    const uint32_t patterns[]={0,0x80000000U,0xc0100000U,0x3f900000U,0x7fc12345U,0x7f800000U};
+    for(auto raw:patterns){float value{};memcpy(&value,&raw,4);const auto calls=first_view_mask_fake_calls;invoke(value);
+        if(first_view_mask_fake_calls!=calls+1||first_view_mask_fake_bits!=raw||view_union_mask_origin)return 205;}
+    if(view_union_mask_trace.calls!=6||view_union_mask_trace.rejected!=6||view_union_mask_trace.accepted||view_union_mask_trace.modified||
+       view_union_mask_trace.reasons[gears_view_union_mask::caller]!=6)return 206;
+    // Detailed geometry capacity cannot truncate accepted/modified totals.
+    for(unsigned i=0;i<17;++i){auto s=sample_for(1920+i,1080,960,960+i);const auto input=boundary(960.f,static_cast<float>(1920+i));
+        auto decision=decide_union(input,valid,s,20000,1000,origin);complete_view_union_mask(input,decision,s);}
+    if(view_union_mask_trace.calls!=23||view_union_mask_trace.accepted!=17||view_union_mask_trace.modified!=17||
+       view_union_mask_trace.rejected!=6||view_union_mask_trace.overflow!=1||!view_union_mask_trace.first||view_union_mask_trace.last<view_union_mask_trace.first)return 207;
+    view_union_mask_fix=false;recording=false;trial_draw_scope=false;consuming_renderer=nullptr;
+    if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK||!safe_copy(after,reinterpret_cast<void*>(fake_first_view_mask),32)||memcmp(before,after,32)||active.load())return 208;
+    const auto calls=first_view_mask_fake_calls;invoke(.25f);
+    if(first_view_mask_fake_calls!=calls+1||first_view_mask_fake_bits!=0x3e800000U)return 209;
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureColorCopyCheck(void*) {
+    ID3D12Device* device{};ID3D12Resource* source_resource{};ID3D12Resource* destination_resource{};
+    if(FAILED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device))))return 160;
+    D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_DEFAULT;
+    D3D12_RESOURCE_DESC description{};description.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;description.Width=16;description.Height=8;
+    description.DepthOrArraySize=1;description.MipLevels=1;description.Format=DXGI_FORMAT_R8G8B8A8_UNORM;description.SampleDesc.Count=1;
+    if(FAILED(device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&description,D3D12_RESOURCE_STATE_COPY_SOURCE,nullptr,IID_PPV_ARGS(&source_resource)))||
+       FAILED(device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&description,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&destination_resource))))return 161;
+    alignas(8) std::array<unsigned char,0x90> source_engine{},destination_engine{};
+    alignas(8) std::array<unsigned char,0x140> source_texture{},destination_texture{};
+    alignas(8) std::array<unsigned char,0x20> owner{};
+    alignas(8) std::array<unsigned char,0x70> bound{};
+    alignas(8) std::array<unsigned char,0x80> renderer{};
+    alignas(8) std::array<unsigned char,0x1a60> views{};
+    auto pointer=[](auto& bytes,size_t offset,uintptr_t value){memcpy(bytes.data()+offset,&value,8);};
+    pointer(source_engine,0,base+0x133ecf8);pointer(destination_engine,0,base+0x133ecf8);
+    pointer(source_engine,0xc,reinterpret_cast<uintptr_t>(source_resource));pointer(destination_engine,0xc,reinterpret_cast<uintptr_t>(destination_resource));
+    pointer(owner,0xc,reinterpret_cast<uintptr_t>(source_engine.data()));pointer(source_texture,0xc,reinterpret_cast<uintptr_t>(owner.data()));
+    pointer(bound,0,base+0x1667bb8);pointer(bound,0x60,reinterpret_cast<uintptr_t>(destination_engine.data()));
+    pointer(destination_texture,0x38,reinterpret_cast<uintptr_t>(bound.data()));
+    uintptr_t source_public=reinterpret_cast<uintptr_t>(source_texture.data())+0x13c,destination_public=reinterpret_cast<uintptr_t>(destination_texture.data())+0x13c;
+    color_copy_test_source_global=reinterpret_cast<uintptr_t>(&source_public);color_copy_test_destination_global=reinterpret_cast<uintptr_t>(&destination_public);
+    struct Header {uintptr_t data;int count,capacity;} header{reinterpret_cast<uintptr_t>(views.data()),2,2};memcpy(renderer.data()+0x68,&header,sizeof(header));
+    ColorCopyLinks links{};
+    if(!color_copy_links(color_copy_test_source_global,color_copy_test_destination_global,links)||
+       links.source!=reinterpret_cast<uintptr_t>(source_resource)||links.destination!=reinterpret_cast<uintptr_t>(destination_resource))return 162;
+    D3D12_TEXTURE_COPY_LOCATION src{},dst{};src.pResource=source_resource;dst.pResource=destination_resource;
+    src.Type=dst.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;src.SubresourceIndex=7;dst.SubresourceIndex=9;
+    D3D12_BOX box{1,2,3,4,5,6};const auto clean_source=src,clean_destination=dst;const auto clean_box=box;
+    unsigned char before[32]{},after[32]{};
+    if(!safe_copy(before,reinterpret_cast<void*>(fake_color_copy),32)||MH_Initialize()!=MH_OK||
+       !install(reinterpret_cast<void*>(fake_color_copy),reinterpret_cast<void*>(hook_color_copy),reinterpret_cast<void**>(&original_color_copy)))return 163;
+    color_copy_diagnostics=true;viewport_diagnostics=true;self_testing=true;recording=true;trial_draw_scope=true;consuming_renderer=renderer.data();
+    if(MH_ApplyQueued()!=MH_OK)return 164;
+    ColorCopyFn volatile invoke=fake_color_copy;auto* list=reinterpret_cast<ID3D12GraphicsCommandList*>(0x12345678);
+    auto call=[&](const D3D12_TEXTURE_COPY_LOCATION* destination,const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* bounds){
+        const auto previous=color_copy_forwarded;invoke(list,destination,11,13,17,source,bounds);
+        return color_copy_forwarded==previous+1&&color_copy_last.list==list&&color_copy_last.destination==destination&&
+            color_copy_last.x==11&&color_copy_last.y==13&&color_copy_last.z==17&&color_copy_last.source==source&&color_copy_last.box==bounds;
+    };
+    if(!call(&dst,&src,nullptr)||!call(&dst,&src,&box))return 165;
+    bool found_null=false,found_box=false;uint64_t recorded{};
+    for(const auto& e:color_copy_traces)if(e.calls){recorded+=e.calls;
+        if(e.source_subresource!=7||e.destination_subresource!=9||e.relation!=3||e.xyz!=std::array<unsigned,3>{11,13,17})return 166;
+        found_null|=!e.has_box;found_box|=e.has_box&&e.box==std::array<unsigned,6>{1,2,3,4,5,6};
+    }
+    if(recorded!=2||!found_null||!found_box)return 167;
+    auto other_src=src,other_dst=dst;other_src.pResource=reinterpret_cast<ID3D12Resource*>(0x43210000);other_dst.pResource=reinterpret_cast<ID3D12Resource*>(0x43220000);
+    if(!call(&other_dst,&other_src,&box)||color_copy_unrelated!=1)return 168;
+    if(!call(reinterpret_cast<const D3D12_TEXTURE_COPY_LOCATION*>(1),&src,&box)||color_copy_args_rejected!=1)return 169;
+    const auto old_global=color_copy_test_destination_global;color_copy_test_destination_global=1;
+    if(!call(&dst,&src,&box)||color_copy_links_rejected!=1)return 170;
+    color_copy_test_destination_global=old_global;
+    if(!call(&other_dst,&src,nullptr)||!call(&dst,&other_src,nullptr))return 171;
+    ColorCopyTrace decoded{};auto placed=src;placed.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+    placed.PlacedFootprint.Offset=512;placed.PlacedFootprint.Footprint={DXGI_FORMAT_R8G8B8A8_UNORM,16,8,1,256};
+    if(decode_color_copy(links,&dst,0,0,0,&placed,nullptr,decoded)||decoded.source_subresource!=UINT_MAX||
+       decoded.source_footprint.Offset!=512||decoded.source_footprint.Footprint.RowPitch!=256)return 172;
+    const auto attempts=color_copy_attempts;trial_draw_scope=false;
+    if(!call(&dst,&src,&box)||color_copy_attempts!=attempts)return 173;
+    if(memcmp(&src,&clean_source,sizeof(src))||memcmp(&dst,&clean_destination,sizeof(dst))||memcmp(&box,&clean_box,sizeof(box)))return 174;
+    recording=false;trial_draw_scope=false;consuming_renderer=nullptr;self_testing=false;color_copy_diagnostics=false;
+    if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK||!safe_copy(after,reinterpret_cast<void*>(fake_color_copy),32)||memcmp(before,after,32)||active.load())return 175;
+    if(!call(&dst,&src,nullptr)||color_copy_attempts!=attempts)return 176;
+    // Different command lists merge; classification still counts every call
+    // after the bounded detailed trace fills up.
+    color_copy_traces={};color_copy_overflow=color_copy_matched=color_copy_full_subresource_pair=0;
+    color_copy_partial_or_other_pair=color_copy_source_only=color_copy_destination_only=0;
+    ColorCopyTrace aggregate{};aggregate.relation=3;aggregate.list=0x1000;
+    record_color_copy(aggregate);aggregate.list=0x2000;record_color_copy(aggregate);
+    if(color_copy_traces[0].calls!=2||color_copy_traces[0].list!=0x1000||color_copy_traces[1].calls)return 177;
+    for(unsigned i=1;i<40;++i){aggregate.caller=i;record_color_copy(aggregate);}
+    aggregate.has_box=true;record_color_copy(aggregate);
+    aggregate.relation=1;record_color_copy(aggregate);aggregate.relation=2;record_color_copy(aggregate);
+    if(color_copy_matched!=44||color_copy_full_subresource_pair!=41||color_copy_partial_or_other_pair!=1||
+       color_copy_source_only!=1||color_copy_destination_only!=1||color_copy_overflow!=11)return 178;
+    source_resource->Release();destination_resource->Release();device->Release();return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureQuadCheck(void*) {
+    if(!gears_quad_source::self_test()||!quad_source_forwarding_test())return 137;
     unsigned char before[32]{},after[32]{};
     if(!safe_copy(before,reinterpret_cast<void*>(fake_quad),32)||MH_Initialize()!=MH_OK)return 130;
     if(!install(reinterpret_cast<void*>(fake_quad),reinterpret_cast<void*>(hook_quad),reinterpret_cast<void**>(&original_quad)))return 131;
@@ -1772,8 +3566,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
     if((initialized!=MH_OK&&!(prime_ready.load()&&initialized==MH_ERROR_ALREADY_INITIALIZED))||!present_hooks())return 50;
     unsigned char before[32],after[32];
     if(!safe_copy(before,execute_target,32))return 51;
-    std::array<std::array<unsigned char,32>,9> viewport_before{};
+    std::array<std::array<unsigned char,32>,10> viewport_before{};
     if(viewport_diagnostics)for(unsigned i=0;i<viewport_targets.size();++i){
+        if(!viewport_targets[i])continue;
         auto primed=std::find(prime_targets.begin(),prime_targets.end(),viewport_targets[i]);
         if(prime_ready.load()&&primed!=prime_targets.end())viewport_before[i]=prime_original_bytes[static_cast<size_t>(primed-prime_targets.begin())];
         else if(!safe_copy(viewport_before[i].data(),viewport_targets[i],32))return 58;
@@ -1830,7 +3625,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
     recording=false;
     if(!result && (!safe_copy(after,execute_target,32) || memcmp(before,after,32)))result=57;
     if(!result&&viewport_diagnostics)for(unsigned i=0;i<viewport_targets.size();++i)
-        if(!safe_copy(after,viewport_targets[i],32)||memcmp(after,viewport_before[i].data(),32))result=62;
+        if(viewport_targets[i]&&(!safe_copy(after,viewport_targets[i],32)||memcmp(after,viewport_before[i].data(),32)))result=62;
     if(target_heap)target_heap->Release();if(target_texture)target_texture->Release();
     if(event)CloseHandle(event);if(fence)fence->Release();if(list)list->Release();
     if(allocator)allocator->Release();if(queue)queue->Release();if(device)device->Release();
@@ -1838,6 +3633,266 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureViewportCheck(void*) {
     viewport_diagnostics=true;return GearsCaptureGPUCheck(nullptr);
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureColorCopySystemCheck(void*) {
+    color_copy_diagnostics=true;viewport_diagnostics=true;return GearsCaptureGPUCheck(nullptr);
+}
+struct FrameIntervalFixture {
+    ID3D12CommandQueue* queue{};ID3D12CommandList* list{};uintptr_t resource{};
+    uint64_t ticket{};gears_frame_link::ListRef recorded{};
+    bool context_ok{true},fill_capacity{},fill_bindings{},cross_thread{};
+    HRESULT result{E_FAIL};HANDLE ready{},done{},thread{};
+} frame_interval_fixture;
+std::atomic<unsigned> fake_frame_execute_forwarded{};
+void STDMETHODCALLTYPE fake_frame_execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*) {++fake_frame_execute_forwarded;}
+unsigned fake_frame_reset_forwarded{};
+HRESULT STDMETHODCALLTYPE fake_frame_reset(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*,ID3D12PipelineState*) {++fake_frame_reset_forwarded;return S_OK;}
+DWORD WINAPI fake_frame_external_execute(void*) {
+    auto& fixture=frame_interval_fixture;SetEvent(fixture.ready);
+    ID3D12CommandList* members[]{fixture.list};hook_execute(fixture.queue,1,members);
+    SetEvent(fixture.done);return 0;
+}
+HRESULT STDMETHODCALLTYPE fake_frame_present(IDXGISwapChain*,UINT,UINT) {
+    auto& fixture=frame_interval_fixture;if(!fixture.queue)return E_FAIL;
+    fixture.context_ok=fixture.context_ok&&frame_inside_original_present&&frame_present_depth!=0;
+    ID3D12CommandList* members[]{fixture.list};
+    // Emulate DXGI's unobserved-list Execute through the actual Execute hook.
+    hook_execute(fixture.queue,1,members);
+    auto identity=canonical_identity(fixture.list);
+    fixture.recorded=frame_link.reset_success(identity);
+    frame_target_stats.reset(reinterpret_cast<uintptr_t>(fixture.list));
+    frame_target_stats.create(32,{fixture.resource,640,480,28,0});
+    frame_target_stats.bind(reinterpret_cast<uintptr_t>(fixture.list),1,32);
+    frame_link.draw_final(fixture.recorded,fixture.ticket,0,{fixture.resource,640,480},{0,0,320,480});
+    frame_link.draw_final(fixture.recorded,fixture.ticket,1,{fixture.resource,640,480},{320,0,320,480});
+    hook_execute(fixture.queue,1,members);
+    if(fixture.fill_capacity)for(uintptr_t i=1;i<=gears_frame_link::Tracker::list_capacity+1;++i)frame_link.reset_success(i);
+    if(fixture.fill_bindings)for(uintptr_t i=1;i<=257;++i)frame_target_stats.reset(i);
+    if(fixture.cross_thread){
+        fixture.thread=CreateThread(nullptr,0,fake_frame_external_execute,nullptr,0,nullptr);
+        fixture.context_ok=fixture.context_ok&&fixture.thread&&WaitForSingleObject(fixture.ready,5000)==WAIT_OBJECT_0&&
+            WaitForSingleObject(fixture.done,0)==WAIT_TIMEOUT;
+    }
+    return fixture.result;
+}
+HRESULT STDMETHODCALLTYPE fake_frame_present1(IDXGISwapChain1* chain,UINT interval,UINT flags,const DXGI_PRESENT_PARAMETERS*) {
+    auto result=hook_present(chain,interval,flags);
+    if(frame_interval_fixture.queue)frame_interval_fixture.context_ok=frame_interval_fixture.context_ok&&
+        frame_inside_original_present&&frame_link.current(canonical_identity(frame_interval_fixture.list)).generation==frame_interval_fixture.recorded.generation;
+    return result;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFrameLinkCheck(void* test_mode) {
+    // Explicit ABI mode1 verifies simulated provenance through the same Draw,
+    // ticket store, publisher and GPU receiver path; nullptr keeps real defaults.
+    simulator_operator=test_mode==reinterpret_cast<void*>(1);
+    // CPU association and factory identity checks, followed by a local GPU copy
+    // through the production hook path. This test uses no game or XR session.
+    auto left=classify_final_eye(0xd83b1c,1,0,0,320,480,640,480);
+    auto right=classify_final_eye(0xd83b1c,1,320,0,320,480,640,480);
+    if(!left.valid||left.eye||!right.valid||right.eye!=1||classify_final_eye(0xd83b1d,1,0,0,320,480,640,480).valid||
+       classify_final_eye(0xd83b1c,0,0,0,320,480,640,480).valid||classify_final_eye(0xd83b1c,1,.5f,0,320,480,640,480).valid||
+       !classify_final_eye(0xd808d8,1,0,0,320,480,640,480).valid||
+       classify_final_eye(0xd808d8,1,0,0,640,480,640,480).valid||
+       classify_final_eye(0xd808d8,0,0,0,320,480,640,480).valid)return 140;
+    gears_submitted::FrameTicket synthetic{},copied{};synthetic.enabled=true;synthetic.id=1;
+    // This 64-slot fixture is large; the production lifetime already lives in
+    // static storage. Keep it off the GPU hook test's nested thread stack.
+    auto lifetime=std::make_unique<gears_submitted::Lifetime>();
+    if(!lifetime->begin(1,{},synthetic)||!lifetime->frame(1,copied)||copied.id!=1||copied.sample.sequence)return 141;
+    if(MH_Initialize()!=MH_OK||begin_target_prime())return 142;
+    IDXGIFactory2* factory{};ID3D12Device* device{};ID3D12CommandQueue* queue{};
+    IDXGISwapChain1* chain{};IDXGISwapChain1* composition{};IDXGISwapChain* legacy{};
+    HWND window=CreateWindowExW(0,L"STATIC",L"Frame link ABI test",WS_POPUP,0,0,640,480,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
+    HWND legacy_window=CreateWindowExW(0,L"STATIC",L"Frame link legacy ABI test",WS_POPUP,0,0,640,480,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);
+    DWORD result{};D3D12_COMMAND_QUEUE_DESC queue_desc{};
+    if(!window||!legacy_window||FAILED(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)))||FAILED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)))||
+       FAILED(device->CreateCommandQueue(&queue_desc,IID_PPV_ARGS(&queue))))result=143;
+    DXGI_SWAP_CHAIN_DESC1 desc{};desc.Width=640;desc.Height=480;desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count=1;desc.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;desc.BufferCount=2;desc.SwapEffect=DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    if(!result&&FAILED(factory->CreateSwapChainForHwnd(queue,window,&desc,nullptr,nullptr,&chain)))result=144;
+    if(!result){
+        auto binding=swapchain_bindings.lookup(canonical_identity(chain));ID3D12Resource* buffer{};
+        if(binding.queue!=canonical_identity(queue)||binding.method!=2||FAILED(chain->GetBuffer(0,IID_PPV_ARGS(&buffer))))result=145;
+        if(!result){auto identity=canonical_identity(buffer);buffer->Release();
+            if(!swapchain_bindings.known_buffer(identity))result=146;
+            frame_link_diagnostics=true;recording=true;
+            observe_frame_present(chain,0); // Baseline anchor consumes pretrial work.
+            if(swapchain_bindings.snapshot().anchors!=1||frame_counts.linked.load())result=159;
+            auto list=frame_link.reset_success(1);
+            if(!frame_link.draw_final(list,1,0,{identity,640,480},left.rect)||!frame_link.draw_final(list,1,1,{identity,640,480},right.rect)||
+               !frame_link.execute(binding.queue,&list,1))result=147;
+            observe_frame_present(chain,0);
+            if(frame_counts.linked.load()!=1||frame_counts.last_ticket.load()!=1)result=148;
+            observe_frame_present(chain,0);if(frame_counts.linked.load()!=1)result=149;
+            auto next=frame_link.reset_success(1);
+            if(!frame_link.draw_final(next,2,0,{identity,640,480},left.rect)||!frame_link.draw_final(next,2,1,{identity,640,480},right.rect)||
+               !frame_link.execute(binding.queue,&next,1))result=156;
+            auto saved_present=original_present;auto saved_present1=original_present1;
+            original_present=fake_frame_present;original_present1=fake_frame_present1;
+            if(hook_present1(chain,0,0,nullptr)!=E_FAIL||frame_counts.linked.load()!=2||frame_counts.presents.load()!=4||
+               frame_counts.present_failed.load()!=1||frame_present_depth)result=157;
+            original_present=saved_present;original_present1=saved_present1;
+            // A failed original Present has consumed the ticket and cannot replay.
+            observe_frame_present(chain,0);if(frame_counts.linked.load()!=2)result=158;
+            // Exercise the actual Present/Present1 and Execute hooks with fake
+            // original calls. No GPU submission is made by these fixtures.
+            ID3D12CommandAllocator* interval_allocator{};ID3D12GraphicsCommandList* interval_list{};
+            if(FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&interval_allocator)))||
+               FAILED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,interval_allocator,nullptr,IID_PPV_ARGS(&interval_list))))result=160;
+            if(!result){
+                interval_list->Close();auto saved_execute=original_execute;
+                original_execute=fake_frame_execute;original_present=fake_frame_present;original_present1=fake_frame_present1;
+                frame_interval_fixture.queue=queue;frame_interval_fixture.list=interval_list;frame_interval_fixture.resource=identity;
+                uint64_t ticket=10;
+                auto pair_for_test=[&](uint64_t id){auto ref=frame_link.reset_success(1);
+                    return frame_link.draw_final(ref,id,0,{identity,640,480},left.rect)&&
+                        frame_link.draw_final(ref,id,1,{identity,640,480},right.rect)&&frame_link.execute(binding.queue,&ref,1);};
+                for(unsigned scenario=0;scenario<4&&!result;++scenario){
+                    bool nested=scenario&1,test=scenario&2;auto linked_before=frame_counts.linked.load();
+                    if(!pair_for_test(++ticket)){result=161;break;}
+                    frame_interval_fixture.ticket=++ticket;frame_interval_fixture.result=nested?E_FAIL:S_OK;
+                    auto flags=test?DXGI_PRESENT_TEST:0;
+                    auto hr=nested?hook_present1(chain,0,flags,nullptr):hook_present(chain,0,flags);
+                    auto list_id=canonical_identity(interval_list);
+                    if(hr!=frame_interval_fixture.result||!frame_interval_fixture.context_ok||frame_present_depth||frame_inside_original_present||
+                       frame_counts.linked.load()!=linked_before+(test?0:1)||frame_link.current(list_id).generation||
+                       frame_target_stats.binding(reinterpret_cast<uintptr_t>(interval_list)).targets||frame_link.snapshot().active_lists)result=162;
+                    // Neither an interval generation nor its ticket can escape.
+                    if(frame_link.execute(binding.queue,&frame_interval_fixture.recorded,1))result=163;
+                    observe_frame_present(chain,0);
+                    auto fresh=frame_link.reset_success(1);
+                    if(frame_link.draw_final(fresh,frame_interval_fixture.ticket,0,{identity,640,480},left.rect))result=164;
+                    observe_frame_present(chain,0);
+                    linked_before=frame_counts.linked.load();
+                    if(!pair_for_test(++ticket))result=165;
+                    frame_interval_fixture.ticket=++ticket;
+                    hook_present(chain,0,0);
+                    if(frame_counts.linked.load()!=linked_before+1)result=166;
+                }
+                // Unknown Execute outside original Present still rejects game
+                // candidates; the boundary is not a global unknown-list filter.
+                ID3D12CommandList* members[]{interval_list};auto linked_before=frame_counts.linked.load();
+                hook_execute(queue,1,members);if(pair_for_test(++ticket))result=167;
+                frame_interval_fixture.ticket=++ticket;hook_present(chain,0,0);
+                if(frame_counts.linked.load()!=linked_before)result=168;
+                // Cross-thread Execute waits until the outer hook retires its
+                // interval, then enters the next window and must reject there.
+                frame_interval_fixture.ready=CreateEventW(nullptr,TRUE,FALSE,nullptr);
+                frame_interval_fixture.done=CreateEventW(nullptr,TRUE,FALSE,nullptr);
+                frame_interval_fixture.cross_thread=true;frame_interval_fixture.ticket=++ticket;
+                hook_present(chain,0,0);frame_interval_fixture.cross_thread=false;
+                if(!frame_interval_fixture.thread||WaitForSingleObject(frame_interval_fixture.done,5000)!=WAIT_OBJECT_0||
+                   WaitForSingleObject(frame_interval_fixture.thread,5000)!=WAIT_OBJECT_0||!frame_interval_fixture.context_ok)result=169;
+                if(frame_interval_fixture.thread)CloseHandle(frame_interval_fixture.thread);
+                if(frame_interval_fixture.ready)CloseHandle(frame_interval_fixture.ready);
+                if(frame_interval_fixture.done)CloseHandle(frame_interval_fixture.done);
+                if(pair_for_test(++ticket))result=170;
+                frame_interval_fixture.ticket=++ticket;hook_present(chain,0,0);
+                // List/event capacity faults survive interval retirement. OM
+                // overflow is propagated before the next frame can be linked.
+                for(unsigned mode=0;mode<2;++mode){
+                    frame_interval_fixture.fill_capacity=mode==0;frame_interval_fixture.fill_bindings=mode==1;
+                    frame_interval_fixture.ticket=++ticket;hook_present(chain,0,0);
+                    if(!frame_link.snapshot().capacity_bad||pair_for_test(++ticket))result=171;
+                    frame_interval_fixture.fill_capacity=frame_interval_fixture.fill_bindings=false;
+                    frame_interval_fixture.ticket=++ticket;hook_present(chain,0,0);
+                    if(!frame_link.snapshot().capacity_bad)result=172;
+                    frame_link.invalidate_all();observe_frame_present(chain,0);
+                }
+                frame_interval_fixture={};original_execute=saved_execute;
+                if(!result){
+                    auto bypass_executes=frame_counts.executes.load();auto bypass_resets=frame_counts.resets.load();
+                    auto forwarded_execute=fake_frame_execute_forwarded.load();auto forwarded_reset=fake_frame_reset_forwarded;
+                    auto saved_reset=original_reset_list;auto saved_copy=original_color_copy;auto forwarded_copy=color_copy_forwarded;
+                    original_execute=fake_frame_execute;original_reset_list=fake_frame_reset;original_color_copy=fake_color_copy;
+                    {StereoPublishBypass bypass;
+                        hook_execute(queue,1,members);hook_reset_list(interval_list,interval_allocator,nullptr);
+                        hook_color_copy(interval_list,nullptr,0,0,0,nullptr,nullptr);}
+                    original_execute=saved_execute;original_reset_list=saved_reset;original_color_copy=saved_copy;
+                    if(stereo_publish_bypass||frame_counts.executes.load()!=bypass_executes||frame_counts.resets.load()!=bypass_resets||
+                       fake_frame_execute_forwarded.load()!=forwarded_execute+1||fake_frame_reset_forwarded!=forwarded_reset+1||
+                       color_copy_forwarded!=forwarded_copy+1)result=185;
+                    // Native publish integration: the exact production Draw
+                    // observer retains a frozen value, the real owner binds,
+                    // worker prepare creates resources, and pre-Present copy
+                    // publishes that same ticket to an actual GPU receiver.
+                    stereo_gpu_publish=true;uint64_t image_id=++ticket;
+                    gears_vr::StereoSample frozen{};frozen.session=777;frozen.sequence=1;frozen.received_ns=1000000000;
+                    frozen.predicted_time=2000000000;frozen.head_flags=frozen.view_flags=15;frozen.focused=frozen.should_render=1;
+                    if(simulator_operator){frozen.source=gears_vr::StereoSource::MetaOperatorSimulated;frozen.head_flags=3;}
+                    frozen.head.orientation={};
+                    for(unsigned eye=0;eye<2;++eye){frozen.eyes[eye].pose.orientation={};frozen.eyes[eye].pose.position.x=eye?.032:-.032;
+                        frozen.eyes[eye].fov={-.8,.7,.75,-.65};}
+                    gears_vr::StereoGate test_gate;
+                    if(!test_gate.update(frozen,frozen.received_ns,simulator_operator))result=186;
+                    if(simulator_operator){gears_vr::StereoGate strict_gate;
+                        if(strict_gate.update(frozen,frozen.received_ns))result=187;}
+                    consuming_frozen_frame.enabled=true;consuming_frozen_frame.id=image_id;consuming_frozen_frame.sample=frozen;
+                    consuming_frame_ticket=image_id;
+                    auto raw_list=reinterpret_cast<uintptr_t>(interval_list);auto ref=frame_link.reset_success(canonical_identity(interval_list));
+                    frame_target_stats.reset(raw_list);frame_target_stats.create(32,{identity,640,480,28,0});frame_target_stats.bind(raw_list,1,32);
+                    frame_target_stats.set(raw_list,gears_viewport::other,false,{0,0,640,480});
+                    frame_target_stats.set(raw_list,gears_viewport::other,true,{0,0,16384,16384});
+                    final_eye=left;observe_frame_draw(interval_list,base+0x1af92b,1,6,1);
+                    final_eye=right;observe_frame_draw(interval_list,base+0x1af92b,1,6,1);final_eye={};
+                    auto rectangles=frame_target_stats.draw_state(raw_list);
+                    if(!verified_stereo_draw(rectangles,left,base+0x1af92b,1,6,1))result=173;
+                    rectangles.viewport.width=320;
+                    if(verified_stereo_draw(rectangles,left,base+0x1af92b,1,6,1))result=174;
+                    rectangles=frame_target_stats.draw_state(raw_list);rectangles.scissor.width=320;
+                    if(verified_stereo_draw(rectangles,right,base+0x1af92b,1,6,1)||
+                       verified_stereo_draw(frame_target_stats.draw_state(raw_list),left,base+0x1af92b,0,6,1))result=175;
+                    gears_vr::StereoSample copied_sample{};
+                    if(!stereo_ticket_store.lookup(image_id,copied_sample,simulator_operator)||!gears_vr::stereo_same(frozen,copied_sample)||
+                       !frame_link.execute(binding.queue,&ref,1))result=176;
+                    if(simulator_operator&&stereo_ticket_store.lookup(image_id,copied_sample))result=188;
+                    bind_stereo_publisher(canonical_identity(chain),binding.queue);stereo_publish_worker_tick();
+                    if(stereo_publisher.state.load()!=2||stereo_publish_counts.prepare_ok.load()!=1)result=177;
+                    try{
+                        gears_vr::GpuReceiver receiver;receiver.open(device,GetCurrentProcessId(),simulator_operator);
+                        hook_present(chain,0,0);
+                        if(stereo_publisher.frames.load()!=1||stereo_publish_counts.last_ticket.load()!=image_id||
+                           stereo_ticket_store.size()||stereo_window_retained||stereo_ticket_store.retired_id()!=image_id)result=178;
+                        if(!receiver.acquire(queue)||receiver.ticket().id!=image_id||!gears_vr::stereo_same(receiver.ticket().sample,frozen))result=179;
+                        else receiver.acknowledge(queue);
+                        if(!close_stereo_publisher())result=180;
+                        receiver.close();
+                    }catch(...){result=181;close_stereo_publisher();}
+                    // A retained future id survives the consumed window's
+                    // boundary; a global newly-created ticket counter is not
+                    // a valid retirement frontier.
+                    consuming_frozen_frame.id=++ticket;consuming_frame_ticket=ticket;
+                    if(!retain_stereo_draw())result=182;
+                    auto boundary=stereo_window_retained;stereo_window_retained=0;
+                    if(!gears_vr::StereoTicketStore::accepted(stereo_ticket_store.retain(++ticket,frozen,simulator_operator)))result=183;
+                    stereo_window_retained=boundary;retire_stereo_window();
+                    if(!stereo_ticket_store.lookup(ticket,copied_sample,simulator_operator))result=184;
+                    stereo_window_retained=ticket;retire_stereo_window();
+                    consuming_frozen_frame={};consuming_frame_ticket=0;stereo_gpu_publish=false;
+                }
+                original_present=saved_present;original_present1=saved_present1;
+            }
+            if(interval_list)interval_list->Release();if(interval_allocator)interval_allocator->Release();
+            recording=false;
+        }
+    }
+    DXGI_SWAP_CHAIN_DESC old_desc{};old_desc.BufferDesc.Width=640;old_desc.BufferDesc.Height=480;
+    old_desc.BufferDesc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;old_desc.SampleDesc.Count=1;old_desc.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    old_desc.BufferCount=2;old_desc.OutputWindow=legacy_window;old_desc.Windowed=TRUE;old_desc.SwapEffect=DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    if(!result&&FAILED(factory->CreateSwapChain(queue,&old_desc,&legacy)))result=150;
+    if(!result&&swapchain_bindings.lookup(canonical_identity(legacy)).method!=1)result=151;
+    desc.Width=16;desc.Height=16;desc.SwapEffect=DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;desc.AlphaMode=DXGI_ALPHA_MODE_PREMULTIPLIED;
+    if(!result&&FAILED(factory->CreateSwapChainForComposition(queue,&desc,nullptr,&composition)))result=152;
+    if(!result&&(swapchain_bindings.lookup(canonical_identity(composition)).chain||!swapchain_bindings.snapshot().excluded))result=153;
+    SetEvent(prime_event);ULONGLONG deadline=GetTickCount64()+5000;
+    while(!prime_done.load()&&GetTickCount64()<deadline)Sleep(1);
+    if(!prime_done.load()||active.load()||prime_recording.load())result=154;
+    std::array<unsigned char,32> bytes{};
+    for(unsigned i=0;i<prime_targets.size();++i)
+        if(!safe_copy(bytes.data(),prime_targets[i],bytes.size())||bytes!=prime_original_bytes[i])result=155;
+    if(composition)composition->Release();if(legacy)legacy->Release();if(chain)chain->Release();
+    if(queue)queue->Release();if(device)device->Release();if(factory)factory->Release();if(window)DestroyWindow(window);if(legacy_window)DestroyWindow(legacy_window);
+    return result;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeCheck(void*) {
     if(MH_Initialize()!=MH_OK||begin_target_prime())return 65;

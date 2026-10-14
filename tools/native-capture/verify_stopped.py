@@ -29,7 +29,8 @@ def main():
     if f'capturing pid={args.pid} ' not in status or 'stopped disable_status=0 active=0' not in status:
         raise RuntimeError('Matching PID and clean stopped status required')
     targets = [int(value, 16) for value in re.findall(r'hook_target=([0-9A-Fa-f]+) create=MH_OK queue=MH_OK', status)]
-    if not 2 <= len(targets) <= 22 or len(set(targets))!=len(targets):
+    # Frame-link builds add three DXGI factory observers to the 25 existing entries.
+    if not 2 <= len(targets) <= 28 or len(set(targets))!=len(targets):
         raise RuntimeError('Unexpected hook target inventory')
     resolver = Resolver(args.pid, json.loads((ROOT / 'tools/package-inspector/reloaded-profile.json').read_text()))
     checks = []
@@ -45,7 +46,9 @@ def main():
         camera[0x15a974]=bytes.fromhex('40534883ec20488bd9')
         camera[0x1fc060]=bytes.fromhex('488bc44889581048897018574154')
         camera[0x33bc70]=bytes.fromhex('48895c2408574883ec208bda488bf9')
+        camera[0x13cfcc]=bytes.fromhex('44894c242048894c240855535657')
         camera[0x1af42c]=bytes.fromhex('488bc4488958084889701048897818')
+        camera[0x2a7e48]=bytes.fromhex('488bc448895808488970104889781855')
         for target in targets:
             rva = target - resolver.base
             if rva in camera:

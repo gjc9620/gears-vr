@@ -1,7 +1,7 @@
 """Fresh startup: reserve camera/family trampolines without enabling native hooks.
 
-Optional --prime-targets observes three D3D12 descriptor methods for at most
-180 seconds before ordinary capture takes over; it changes no camera parameters.
+Optional --prime-targets observes D3D12 descriptors and, in frame-link builds,
+DXGI swapchain/queue bindings for at most 180 seconds before capture handoff.
 
 After level loading, start_capture.py --use-reserved re-resolves the camera and
 performs the ordinary signature/PID/lifecycle checks before actual activation.
@@ -25,12 +25,20 @@ def main():
     parser.add_argument('--check-shadow-copy',action='store_true',help='Require the bounded source-view copy self-test before startup; does not enable the experiment')
     parser.add_argument('--check-shadow-state',action='store_true',help='Require the independent state lifecycle self-test before startup')
     parser.add_argument('--prime-targets',action='store_true',help='Observe RTV creation/copies during loading, bounded to 180 seconds or capture handoff')
+    parser.add_argument('--check-mask-control',action='store_true',help='Self-test and reserve the optional first-view mask trampoline without enabling it; requires a DLL with that export')
+    parser.add_argument('--check-frame-link',action='store_true',help='Require frame-association self-tests and startup target/binding priming')
     args=parser.parse_args()
+    if args.check_frame_link and not args.prime_targets:parser.error('Frame association needs --prime-targets')
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
     build=args.build_dir.resolve();dll=build/args.dll_name
     for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime'],['--prepare']):subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
+    subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--geometry'],check=True)
     if args.check_shadow_copy:subprocess.run([str(build/'SourceViewShadowTest.exe')],check=True)
     if args.check_shadow_state:subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--state'],check=True)
+    if args.check_mask_control:subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--first-view-mask'],check=True)
+    if args.check_frame_link:
+        subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--frame-link'],check=True)
+        subprocess.run([str(build/'FrameLinkTest.exe')],check=True)
     if args.prime_targets:
         subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--quad'],check=True)
         subprocess.run([str(build/'GpuViewportStatsTest.exe')],check=True)
@@ -43,8 +51,13 @@ def main():
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     if hashlib.sha256(exe.read_bytes()).hexdigest()!=profile['sha256']:raise RuntimeError('Unvalidated game build')
     pe=pefile.PE(str(dll));export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureReserve')
+    frame_link_capable=any(x.name==b'GearsCaptureFrameLinkCheck' for x in pe.DIRECTORY_ENTRY_EXPORT.symbols)
     if export.forwarder:raise RuntimeError('Forwarded reserve export rejected')
-    rva=export.address;prime_rva=None
+    rva=export.address;prime_rva=None;mask_rva=None
+    if args.check_mask_control:
+        mask_export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureReserveFirstViewMask')
+        if mask_export.forwarder:raise RuntimeError('Forwarded mask reserve export rejected')
+        mask_rva=mask_export.address
     if args.prime_targets:
         prime_export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureTargetPrime')
         if prime_export.forwarder:raise RuntimeError('Forwarded prime export rejected')
@@ -84,12 +97,22 @@ def main():
         event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.Reserved.{pid}')
         if not event:raise RuntimeError('Reservation event absent')
         k.CloseHandle(event)
+        if args.check_mask_control:
+            code=remote_call(handle,resident[0]+mask_rva,None)
+            if code:raise RuntimeError(f'Mask reservation failed ({code}); no activation requested')
+            event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.FirstViewMaskReserved.{pid}')
+            if not event:raise RuntimeError('Mask reservation event absent')
+            k.CloseHandle(event)
         signatures={0x15cf08:bytes.fromhex('488bc45356574154415541564157'),0x15c968:bytes.fromhex('488bc4488958084889681048897018'),0x3a148c:bytes.fromhex('48895c2408488974241855'),0x193d50:bytes.fromhex('488bc4488958104889681848897020')}
         signatures[0x116250]=bytes.fromhex('488bc44889581848897020574154')
         signatures[0x15a80c]=bytes.fromhex('48895c241055488bec4883ec70')
         signatures[0x15a974]=bytes.fromhex('40534883ec20488bd9')
         signatures[0x1fc060]=bytes.fromhex('488bc44889581048897018574154')
+        signatures[0x13cfcc]=bytes.fromhex('44894c242048894c240855535657')
         signatures[0x1af42c]=bytes.fromhex('488bc4488958084889701048897818')
+        if args.check_mask_control:
+            signatures[0x2a7e48]=bytes.fromhex('488bc448895808488970104889781855')
+            signatures[0x119bdd]=bytes.fromhex('e866e21800')
         if args.check_shadow_state:signatures[0x33bc70]=bytes.fromhex('48895c2408574883ec208bda488bf9')
         read_only=Process(pid)
         try:
@@ -103,7 +126,9 @@ def main():
             if not prime_event:raise RuntimeError('Target priming readiness absent')
             k.CloseHandle(prime_event)
         report={'pid':pid,'dll':str(dll),'trampolines_reserved':True,'hooks_enabled':args.prime_targets,
+                'first_view_mask_reserved':args.check_mask_control,
                 'native_hooks_enabled':False,'descriptor_hooks_enabled':3 if args.prime_targets else 0,'independent_entry_checks':entries}
+        report['factory_hooks_enabled']=3 if args.prime_targets and frame_link_capable else 0
         folder=ROOT/'analysis/runtime';folder.mkdir(parents=True,exist_ok=True)
         (folder/f'reserve-{pid}.json').write_text(json.dumps(report,indent=2))
         print(json.dumps(report))

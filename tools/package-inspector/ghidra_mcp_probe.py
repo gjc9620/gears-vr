@@ -9,7 +9,7 @@ import pathlib
 import urllib.request
 
 
-def probe(port, inspect_addresses=()):
+def probe(port, inspect_addresses=(), program='GOWDE-Steam.exe', search_text=None, start_line=1):
     url = f'http://127.0.0.1:{port}/mcp'
     headers = {'Content-Type':'application/json','Accept':'application/json, text/event-stream'}
     counter = 0
@@ -53,34 +53,42 @@ def probe(port, inspect_addresses=()):
         available={item['name']:item for item in tools.get('tools',[])}
         if 'inspect' not in available: raise RuntimeError('Server has no inspect tool')
         blocks=request('tools/call',{'name':'memory','arguments':{
-            'file_name':'GOWDE-Steam.exe','action':'list_blocks','page_size':20}})
+            'file_name':program,'action':'list_blocks','page_size':20}})
         for address in inspect_addresses:
+            options={'search_text':search_text,'context_lines':3,'max_matches':10} if search_text else {}
             result=request('tools/call',{'name':'inspect','arguments':{
-                'file_name':'GOWDE-Steam.exe','action':'decompile','address':address,
-                'timeout':25,'max_lines':200}})
+                'file_name':program,'action':'decompile','address':address,
+                'timeout':25,'max_lines':200,'start_line':start_line,**options}})
             entry={'address':address,'result':result}
-            if result.get('isError'):
-                entry['bytes']=request('tools/call',{'name':'memory','arguments':{
-                    'file_name':'GOWDE-Steam.exe','action':'read','address':address,
-                    'length':64,'format':'hex'}})
+            # Read even when decompilation succeeds: target identity is checked
+            # against the validated snapshot rather than inferred from a name.
+            entry['bytes']=request('tools/call',{'name':'memory','arguments':{
+                'file_name':program,'action':'read','address':address,
+                'length':64,'format':'hex'}})
             inspections.append(entry)
     return {'status':'connected','endpoint':url,'initialize':initialized,
-        'tools':tools,'programs':programs,'blocks':blocks,'inspections':inspections}
+        'tools':tools,'programs':programs,'inspected_program':program,
+        'blocks':blocks,'inspections':inspections}
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port',type=int,default=8080)
     parser.add_argument('--output',type=pathlib.Path,required=True)
+    parser.add_argument('--program',default='GOWDE-Steam.exe',
+        help='Exact open program name returned by ghidra://programs')
+    parser.add_argument('--search-text',help='Bounded literal search within each decompiled function')
+    parser.add_argument('--start-line',type=int,default=1,help='One-based first decompiled line; returns at most 200')
     parser.add_argument('--inspect-address',action='append',default=[],
-        help='Read-only decompile of a hex virtual address in GOWDE-Steam.exe (max 4)')
+        help='Read-only decompile and 64-byte check of a hex virtual address (max 4)')
     args=parser.parse_args()
     if not 1024<=args.port<=65535: parser.error('Invalid port')
     if len(args.inspect_address)>4: parser.error('At most four addresses per request')
+    if args.start_line<1: parser.error('start-line must be positive')
     try:
         for address in args.inspect_address: int(address,16)
     except ValueError: parser.error('Addresses must be hexadecimal')
-    try: report=probe(args.port,args.inspect_address)
+    try: report=probe(args.port,args.inspect_address,args.program,args.search_text,args.start_line)
     except Exception as error: report={'status':'unavailable','error':str(error)}
     args.output.parent.mkdir(parents=True,exist_ok=True)
     args.output.write_text(json.dumps(report,indent=2),encoding='utf-8')

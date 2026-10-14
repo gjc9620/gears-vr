@@ -1,5 +1,23 @@
 # GhidraMCP 连接准备
 
+## 当前状态：运行时程序已打开并可分析
+
+2026-10-13 23:44 更新：用户已打开 `render-16812.gpr` 中的 `section_1000.bin`，并完成自动分析。MCP 程序列表确认原始 EXE 与运行时程序同时打开；显式使用 `--program section_1000.bin` 可成功反编译 `1401665dc`、`1401b4ca0`，两处 64 字节均与已验证运行时快照一致。此前的目标内容不匹配问题已解决，无须再次导入或重复全程序分析。
+
+本轮通过只读 MCP 进一步分析颜色目标创建、复制/解析、资源状态与首视图宽度分支。工具目录仍未暴露原生 Ghidra 方法，继续使用现有协议探针。`--start-line` 可分段读取，`--search-text` 可返回最多十处文本匹配和上下文，避免反复导出整个大型函数。原始 EXE 项目未覆盖、函数未重命名。
+
+证据：`analysis/first-person/ghidra-followup-discovery.json`、`ghidra-runtime-binding-check.json`，以及 `ghidra-runtime-*.json`。渲染结论与动态对照见 [文档 56](56-final-input-binding-and-observed-draw-path.md)。
+
+## 先前连接记录
+
+2026-10-13 20:23 复核：用户重新启用后，loopback MCP 的 initialize、tools/list 和程序列表读取成功，返回 14 个工具。本轮原生工具目录仍未暴露 Ghidra 方法，因此通过现有只读协议探针调用；不要把协议可用与当前会话原生工具加载混同。
+
+当前 GUI 打开 `gears:/GOWDE-Steam.exe`。`1401665dc`、`1401b4ca0` 两个绑定函数仍无法反编译，读取的 64 字节分别与经过验证的运行时快照不同。连接成功没有消除程序内容不匹配。下一步在 Ghidra 的 File → Open Project 打开 `J:\gearsVr\analysis\ghidra\runtime-project\render-16812.gpr`，再双击 `section_1000.bin`；不要向原始 EXE 项目覆盖运行时字节。程序列表确认新目标后，可用 `--program section_1000.bin --inspect-address 1401665dc` 定向检查。已有 headless 导出可继续使用，不必等待 GUI 切换。
+
+探针现支持 `--program`，并在反编译成功或失败时都读取 64 字节以校验目标身份。记录：`analysis/first-person/ghidra-mcp-connected-binding-check-20261013.json` 与 `ghidra-mcp-connected-byte-comparison.json`。一次 GhidraGo 尝试未把快照打开到现有 CodeBrowser；它启动的空项目实例和等待助手已关闭，原用户实例保留。
+
+2026-10-13 更新：本会话已暴露并成功调用原生 Ghidra MCP 工具。原项目中的磁盘字节与运行时代码不同，直接反编译仍失败；已建立独立运行时快照项目，定向反编译 80 个函数中 79 个成功。具体限制、调用链与复现见 [诊断报告](53-render-diagnosis-and-runtime-ghidra.md)。下面为早期配置记录。
+
 本机扩展为 themixednuts 的 GhidraMCP 0.8.0，extension.properties 目标版本 12.1；
 运行的是 Ghidra 12.1.4。扩展已安装在用户 AppData/Roaming/ghidra 中。
 当前会话没有向助手暴露原生 Ghidra MCP 工具，因此另外准备了只读协议发现脚本。

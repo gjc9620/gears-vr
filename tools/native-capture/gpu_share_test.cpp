@@ -5,6 +5,7 @@
 #include <cmath>
 #include <memory>
 #include <d3d12sdklayers.h>
+#include <limits>
 using namespace gears_vr;
 struct Gpu {
     ComPtr<IDXGIFactory4> factory;ComPtr<ID3D12Device> device;ComPtr<ID3D12CommandQueue> queue;
@@ -19,10 +20,25 @@ struct Gpu {
         }
     }
 };
-int consume(DWORD pid,unsigned expected,const wchar_t* output){
-    Gpu gpu;GpuReceiver receiver;receiver.open(gpu.device.Get(),pid);
+StereoImageTicket test_ticket(unsigned serial,unsigned width,unsigned height,bool allow_sim=false){
+    StereoImageTicket t{};t.id=1000+serial;auto& s=t.sample;
+    s.session=777;s.sequence=serial;s.received_ns=1000000000LL+serial;s.predicted_time=2000000000LL+serial;
+    s.head_flags=s.view_flags=15;s.focused=s.should_render=1;s.head.orientation={};s.head.position.x=serial*.01;
+    if(allow_sim){s.source=StereoSource::MetaOperatorSimulated;s.head_flags=3;}
+    for(unsigned i=0;i<2;++i){s.eyes[i].pose.orientation={};s.eyes[i].pose.position.x=s.head.position.x+(i?.032:-.032);
+        s.eyes[i].fov={-.8,.7,.75,-.65};}
+    t.rect[0]={0,0,static_cast<int>(width/2),static_cast<int>(height)};
+    t.rect[1]={static_cast<int>(width/2),0,static_cast<int>(width-width/2),static_cast<int>(height)};return t;
+}
+bool same_ticket(StereoImageTicket const& a,StereoImageTicket const& b){
+    if(a.id!=b.id||!stereo_same(a.sample,b.sample))return false;
+    for(unsigned i=0;i<2;++i)if(a.rect[i].x!=b.rect[i].x||a.rect[i].y!=b.rect[i].y||a.rect[i].width!=b.rect[i].width||a.rect[i].height!=b.rect[i].height)return false;
+    return true;
+}
+int consume(DWORD pid,unsigned expected,const wchar_t* output,bool stereo=false,bool allow_sim=false){
+    Gpu gpu;GpuReceiver receiver;receiver.open(gpu.device.Get(),pid,allow_sim);
     // A second consumer must be rejected, including in the same process.
-    if(expected){bool rejected=false;try{GpuReceiver duplicate;duplicate.open(gpu.device.Get(),pid);}catch(...){rejected=true;}if(!rejected)throw std::runtime_error("Duplicate consumer accepted");}
+    if(expected){bool rejected=false;try{GpuReceiver duplicate;duplicate.open(gpu.device.Get(),pid,allow_sim);}catch(...){rejected=true;}if(!rejected)throw std::runtime_error("Duplicate consumer accepted");}
     ComPtr<ID3D12Resource> buffer;ComPtr<ID3D12CommandAllocator> allocator;ComPtr<ID3D12GraphicsCommandList> commands;
     ComPtr<ID3D12Fence> fence;D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};UINT64 bytes{};
     ComPtr<ID3D12Resource> converted;std::unique_ptr<GpuBlit> blit;auto desc=receiver.texture->GetDesc();
@@ -44,7 +60,11 @@ int consume(DWORD pid,unsigned expected,const wchar_t* output){
     ULONGLONG deadline=GetTickCount64()+(expected?15000:20000);
     while(GetTickCount64()<deadline && !receiver.stopped() && (!expected || frames<expected)){
         if(!receiver.acquire(gpu.queue.Get())){Sleep(1);continue;}
+        auto acquired_ticket=receiver.ticket();
+        if(expected && (stereo?!same_ticket(acquired_ticket,test_ticket(frames+1,receiver.width,receiver.height,allow_sim)):!stereo_image_ticket_empty(acquired_ticket)))
+            throw std::runtime_error("Ticket does not match the acquired frame sequence");
         if(expected && !frames)Sleep(150); // Slow reader: producer must skip.
+        if(!same_ticket(receiver.ticket(),acquired_ticket))throw std::runtime_error("Busy producer changed private acquired ticket");
         gpu_check(allocator->Reset(),"allocator reset");gpu_check(commands->Reset(allocator.Get(),nullptr),"commands reset");
         if(blit){
             gpu_barrier(commands.Get(),receiver.texture.Get(),D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -59,6 +79,7 @@ int consume(DWORD pid,unsigned expected,const wchar_t* output){
         gpu_check(commands->Close(),"close copy");ID3D12CommandList* lists[]={commands.Get()};gpu.queue->ExecuteCommandLists(1,lists);
         try{
             receiver.acknowledge(gpu.queue.Get());gpu_check(gpu.queue->Signal(fence.Get(),frames+1),"local fence");
+            if(!same_ticket(receiver.ticket(),acquired_ticket))throw std::runtime_error("Ack cleared or changed acquired ticket");
             ULONGLONG wait_deadline=GetTickCount64()+3000;
             while(fence->GetCompletedValue()<frames+1 && GetTickCount64()<wait_deadline)Sleep(1);
             if(fence->GetCompletedValue()<frames+1 || fence->GetCompletedValue()==~UINT64(0))throw std::runtime_error("Consumer fence timeout/device removed");
@@ -68,6 +89,7 @@ int consume(DWORD pid,unsigned expected,const wchar_t* output){
         unsigned out_height=static_cast<unsigned>(UINT64(receiver.height)*out_width/receiver.width);
         std::vector<unsigned char> rgb(static_cast<size_t>(out_width)*out_height*3);UINT64 hash=14695981039346656037ull;bool matches=true;
         int expected_rgb[]={static_cast<int>(std::lround((receiver.sequence()%8+1)*.1*255)),128,191};
+        if(stereo && expected && receiver.ticket().sample.sequence!=receiver.sequence())throw std::runtime_error("Image and ticket GPU sequence differ");
         for(unsigned y=0;y<out_height;++y)for(unsigned x=0;x<out_width;++x){
             auto* p=data+footprint.Offset+static_cast<size_t>(UINT64(y)*receiver.height/out_height)*footprint.Footprint.RowPitch+static_cast<size_t>(UINT64(x)*receiver.width/out_width)*4;
             auto* out=rgb.data()+(static_cast<size_t>(y)*out_width+x)*3;
@@ -83,12 +105,27 @@ int consume(DWORD pid,unsigned expected,const wchar_t* output){
     gpu.verify();printf("{\"received\":%u,\"changes\":%u,\"width\":%u,\"height\":%u,\"format\":%u,\"last_sequence\":%llu,\"known_pixels_verified\":%s}\n",frames,changes,receiver.width,receiver.height,receiver.format,receiver.sequence(),expected?"true":"false");
     return expected?(frames==expected && changes==expected-1?0:1):(frames>=10?0:1);
 }
-void produce(DXGI_FORMAT format){
+void produce(DXGI_FORMAT format,bool stereo=false,bool allow_sim=false){
     Gpu gpu;ComPtr<IDXGISwapChain1> chain;DXGI_SWAP_CHAIN_DESC1 desc{};desc.Width=19;desc.Height=13;desc.Format=format;desc.SampleDesc.Count=1;desc.BufferCount=2;
     desc.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;desc.SwapEffect=DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;desc.AlphaMode=DXGI_ALPHA_MODE_PREMULTIPLIED;
     gpu_check(gpu.factory->CreateSwapChainForComposition(gpu.queue.Get(),&desc,nullptr,&chain),"test swapchain");GpuPublisher publisher;
-    if(!publisher.bind(gpu.queue.Get(),chain.Get()) || !publisher.prepare())throw std::runtime_error("Publisher setup failed");
-    wchar_t exe[32768];GetModuleFileNameW(nullptr,exe,32768);std::wstring command=L"\""+std::wstring(exe)+L"\" --consume "+std::to_wstring(GetCurrentProcessId())+L" 12";
+    if(!publisher.bind(gpu.queue.Get(),chain.Get(),allow_sim) || !publisher.prepare())throw std::runtime_error("Publisher setup failed");
+    HANDLE metadata_map=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,gpu_name(GetCurrentProcessId(),L"metadata").c_str());
+    auto* metadata=metadata_map?static_cast<GpuPacket*>(MapViewOfFile(metadata_map,FILE_MAP_ALL_ACCESS,0,0,sizeof(GpuPacket))):nullptr;
+    if(!metadata)throw std::runtime_error("Test metadata map unavailable");
+    // Reject both legacy versions, bad sizes and changed policy before claiming.
+    for(unsigned corrupt=0;corrupt<4;++corrupt){
+        auto version=metadata->version,size=metadata->size,policy=metadata->allow_simulated;
+        if(corrupt==0)metadata->version=1;if(corrupt==1)metadata->version=2;
+        if(corrupt==2)metadata->size=56;if(corrupt==3)metadata->allow_simulated=2;
+        bool rejected=false;try{GpuReceiver old;old.open(gpu.device.Get(),GetCurrentProcessId(),allow_sim);}catch(...){rejected=true;}
+        if(publisher.capture(chain.Get()))throw std::runtime_error("Producer accepted mismatched protocol");
+        metadata->version=version;metadata->size=size;metadata->allow_simulated=policy;
+        if(!rejected)throw std::runtime_error("Receiver accepted v1/wrong-size packet");
+    }
+    bool policy_rejected=false;try{GpuReceiver mismatched;mismatched.open(gpu.device.Get(),GetCurrentProcessId(),!allow_sim);}catch(...){policy_rejected=true;}
+    if(!policy_rejected)throw std::runtime_error("Receiver silently accepted different simulation policy");
+    wchar_t exe[32768];GetModuleFileNameW(nullptr,exe,32768);std::wstring command=L"\""+std::wstring(exe)+L"\" --consume "+std::to_wstring(GetCurrentProcessId())+L" 12"+(allow_sim?L" --simulated":stereo?L" --stereo":L"");
     STARTUPINFOW startup{};startup.cb=sizeof(startup);PROCESS_INFORMATION child{};
     if(!CreateProcessW(nullptr,command.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,nullptr,&startup,&child))throw std::runtime_error("Test consumer launch failed");
     CloseHandle(child.hThread);
@@ -97,6 +134,22 @@ void produce(DXGI_FORMAT format){
     ComPtr<ID3D12CommandAllocator> allocator;ComPtr<ID3D12GraphicsCommandList> commands;gpu_check(gpu.device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)),"clear allocator");
     gpu_check(gpu.device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&commands)),"clear list");gpu_check(commands->Close(),"clear initial close");
     ComPtr<ID3D12Fence> clear_fence;gpu_check(gpu.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&clear_fence)),"clear fence");
+    ULONGLONG consumer_deadline=GetTickCount64()+5000;
+    while(!InterlockedCompareExchange(&metadata->consumer,0,0)&&GetTickCount64()<consumer_deadline)Sleep(1);
+    if(!InterlockedCompareExchange(&metadata->consumer,0,0))throw std::runtime_error("Consumer did not claim slot");
+    // Geometry/session rejection must occur without queueing or publishing.
+    for(unsigned failure=0;failure<13;++failure){auto invalid=test_ticket(1,desc.Width,desc.Height,allow_sim);
+        if(failure==0)++invalid.rect[1].x;if(failure==1)--invalid.rect[1].width;
+        if(failure==2)invalid.rect[0].width=-1;if(failure==3)invalid.sample.head.position.x=std::numeric_limits<double>::quiet_NaN();
+        if(failure==4)invalid.sample.session=0;if(failure==5)invalid.sample.sequence=0;
+        if(failure==6)invalid.sample.view_flags=7;if(failure==7)invalid.sample.focused=0;if(failure==8)invalid.id=0;
+        if(failure==9)invalid.sample.source=static_cast<StereoSource>(99);
+        if(failure==10)invalid.sample.head_flags=1;if(failure==11)invalid.sample.view_flags=3;
+        if(failure==12){invalid.sample.source=allow_sim?StereoSource::RuntimeTracked:StereoSource::MetaOperatorSimulated;invalid.sample.head_flags=3;}
+        if(publisher.capture(chain.Get(),&invalid)||publisher.frames||InterlockedCompareExchange64(&metadata->sequence,0,0)||!stereo_image_ticket_empty(metadata->ticket))
+            throw std::runtime_error("Invalid stereo ticket altered published slot");
+    }
+    unsigned busy_ticket_checks=0,trace_success=0,trace_busy=0;
     for(unsigned serial=1;serial<=12;++serial){
         gpu_check(allocator->Reset(),"clear reset");gpu_check(commands->Reset(allocator.Get(),nullptr),"clear command reset");
         gpu_barrier(commands.Get(),source.Get(),D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -106,24 +159,71 @@ void produce(DXGI_FORMAT format){
         try{
             gpu_check(gpu.queue->Signal(clear_fence.Get(),serial),"clear signal");
             ULONGLONG deadline=GetTickCount64()+5000;
-            while(publisher.frames<serial && GetTickCount64()<deadline){publisher.capture(chain.Get());Sleep(1);}
+            auto ticket=test_ticket(serial,desc.Width,desc.Height,allow_sim);
+            if(allow_sim&&serial>1){
+                auto previous_sequence=InterlockedCompareExchange64(&metadata->sequence,0,0);auto previous_ticket=metadata->ticket;
+                auto wrong_source=ticket;wrong_source.sample.source=StereoSource::RuntimeTracked;wrong_source.sample.head_flags=15;
+                if(publisher.capture(chain.Get(),&wrong_source)||InterlockedCompareExchange64(&metadata->sequence,0,0)!=previous_sequence||!same_ticket(metadata->ticket,previous_ticket))
+                    throw std::runtime_error("Source switch altered the frozen GPU slot");
+            }
+            while(publisher.frames<serial && GetTickCount64()<deadline){
+                auto previous_sequence=InterlockedCompareExchange64(&metadata->sequence,0,0);auto previous_ticket=metadata->ticket;
+                GpuCaptureTrace trace{};bool tracing=(serial%2)==0;
+                bool published=publisher.capture(chain.Get(),stereo?&ticket:nullptr,tracing?&trace:nullptr);
+                if(tracing){
+                    if(published){++trace_success;
+                        const unsigned expected=capture_state_valid|capture_serial_valid|capture_consumer_valid|capture_ready_valid|capture_done_valid;
+                        if(trace.reason!=GpuCaptureReason::published||(trace.valid&expected)!=expected||trace.serial_after!=serial||trace.serial_before+1!=trace.serial_after||trace.state!=2)
+                            throw std::runtime_error("Successful capture trace inconsistent");
+                    }else if(trace.reason==GpuCaptureReason::producer_in_flight||trace.reason==GpuCaptureReason::consumer_not_done){++trace_busy;
+                        if((trace.valid&(capture_serial_valid|capture_ready_valid|capture_done_valid))!=(capture_serial_valid|capture_ready_valid|capture_done_valid)||trace.serial_before!=trace.serial_after)
+                            throw std::runtime_error("Busy capture trace inconsistent");
+                    }else if(trace.reason!=GpuCaptureReason::rate_limited)throw std::runtime_error("Unexpected capture trace rejection");
+                }
+                if(!published && (InterlockedCompareExchange64(&metadata->sequence,0,0)!=previous_sequence||!same_ticket(metadata->ticket,previous_ticket)))
+                    throw std::runtime_error("Busy slot replaced prior sequence/ticket");
+                if(!published && previous_sequence)++busy_ticket_checks;
+                if(published && (InterlockedCompareExchange64(&metadata->sequence,0,0)!=serial ||
+                    (stereo?!same_ticket(metadata->ticket,ticket):!stereo_image_ticket_empty(metadata->ticket))))
+                    throw std::runtime_error("Published ticket does not identify the copied image");
+                Sleep(1);
+            }
             while(clear_fence->GetCompletedValue()<serial && GetTickCount64()<deadline)Sleep(1);
             if(clear_fence->GetCompletedValue()<serial || clear_fence->GetCompletedValue()==~UINT64(0))throw std::runtime_error("Clear fence timeout/device removed");
         }catch(...){source.Detach();rtv.Detach();commands.Detach();allocator.Detach();clear_fence.Detach();chain.Detach();gpu.queue.Detach();gpu.device.Detach();CloseHandle(child.hProcess);throw;}
         if(publisher.frames!=serial){CloseHandle(child.hProcess);throw std::runtime_error("GPU producer stalled");}
     }
     DWORD wait=WaitForSingleObject(child.hProcess,10000),code=1;if(wait==WAIT_OBJECT_0)GetExitCodeProcess(child.hProcess,&code);CloseHandle(child.hProcess);
+    // Stop notification forbids further captures while preserving the shared
+    // slot and handles until the producer's GPU work is drained and closed.
+    auto stopped_sequence=InterlockedCompareExchange64(&metadata->sequence,0,0);auto stopped_ticket=metadata->ticket;
+    publisher.mark_stopped();publisher.mark_stopped();
+    if(publisher.state!=4||!InterlockedCompareExchange(&metadata->stopped,0,0)||publisher.capture(chain.Get())||
+       InterlockedCompareExchange64(&metadata->sequence,0,0)!=stopped_sequence||!same_ticket(metadata->ticket,stopped_ticket))
+        throw std::runtime_error("Stopped producer submitted work or changed the retained slot");
+    if(!publisher.drain(1000))throw std::runtime_error("Stopped producer failed to drain");
+    UnmapViewOfFile(metadata);CloseHandle(metadata_map);
     publisher.poll();bool released=publisher.close();
     gpu.verify();
-    printf("{\"format\":%u,\"published\":%u,\"busy_skips\":%u,\"consumer_exit\":%lu,\"resources_released\":%s}\n",format,publisher.frames.load(),publisher.busy.load(),code,released?"true":"false");
+    printf("{\"format\":%u,\"published\":%u,\"busy_skips\":%u,\"rate_limited\":%u,\"consumer_exit\":%lu,\"resources_released\":%s}\n",format,publisher.frames.load(),publisher.busy.load(),publisher.rate_limited.load(),code,released?"true":"false");
+    if(stereo?publisher.rate_limited.load()!=0:publisher.rate_limited.load()==0)throw std::runtime_error("Stereo/legacy pacing policy violated");
     if(code || !released || !publisher.busy)throw std::runtime_error("Cross-process GPU self-test failed");
+    if(trace_success!=6||!trace_busy)throw std::runtime_error("Trace/null success and busy branches not exercised");
+    printf("{\"trace_success\":%u,\"trace_busy\":%u,\"null_success\":6}\n",trace_success,trace_busy);
+    if(!busy_ticket_checks)throw std::runtime_error("Busy ticket preservation not exercised");
+    printf("{\"stereo_tickets\":%s,\"simulated_source\":%s,\"invalid_ticket_cases\":13,\"busy_ticket_checks\":%u}\n",stereo?"true":"false",allow_sim?"true":"false",busy_ticket_checks);
 }
 int wmain(int argc,wchar_t** argv){
     try{
         ComPtr<ID3D12Debug> debug;bool validation=SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)));if(validation)debug->EnableDebugLayer();
         printf("{\"d3d12_debug_layer\":%s}\n",validation?"true":"false");
-        if(argc>=4 && !wcscmp(argv[1],L"--consume"))return consume(wcstoul(argv[2],nullptr,10),wcstoul(argv[3],nullptr,10),argc>4?argv[4]:nullptr);
+        if(argc>=4 && !wcscmp(argv[1],L"--consume")){
+            bool simulated=argc>4&&!wcscmp(argv[4],L"--simulated");bool stereo=simulated||(argc>4&&!wcscmp(argv[4],L"--stereo"));
+            return consume(wcstoul(argv[2],nullptr,10),wcstoul(argv[3],nullptr,10),argc>4&&!stereo?argv[4]:nullptr,stereo,simulated);}
+        if(argc==2&&!wcscmp(argv[1],L"--trace-stereo")){produce(DXGI_FORMAT_R8G8B8A8_UNORM,true);return 0;}
         if(argc!=1)return 2;
-        produce(DXGI_FORMAT_R8G8B8A8_UNORM);produce(DXGI_FORMAT_R10G10B10A2_UNORM);return 0;
+        produce(DXGI_FORMAT_R8G8B8A8_UNORM);produce(DXGI_FORMAT_R10G10B10A2_UNORM);
+        produce(DXGI_FORMAT_R8G8B8A8_UNORM,true);produce(DXGI_FORMAT_R10G10B10A2_UNORM,true);
+        produce(DXGI_FORMAT_R8G8B8A8_UNORM,true,true);produce(DXGI_FORMAT_R10G10B10A2_UNORM,true,true);return 0;
     }catch(std::exception const& e){fprintf(stderr,"%s\n",e.what());return 1;}
 }
