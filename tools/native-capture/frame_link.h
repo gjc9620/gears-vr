@@ -42,6 +42,7 @@ struct Snapshot {
     uint64_t overlay_recorded{},overlay_executed{},overlay_rejected{};
     uint64_t unknown_coalesced{};
     uint64_t overlay_from_executed_recorded{},overlay_from_executed_executed{};
+    uint64_t owned_births{},owned_birth_discarded_events{},owned_birth_discarded_candidates{};
     uint64_t overlay_local_queries{},overlay_executed_queries{},overlay_no_executed_queries{},
         overlay_invalid_list_queries{},overlay_window_rejected_queries{},overlay_capacity_queries{},
         overlay_polluted_queries{},overlay_ticket_queries{},overlay_target_queries{},overlay_incompatible_queries{};
@@ -321,6 +322,46 @@ public:
            !target.width||target.width%2||!target.height||target.width>8192||target.height>8192||
            (initial_state!=4&&initial_state!=128)||stats_.active_lists||stats_.reset_calls||stats_.execute_calls||
            maximum_ticket_||window_bad_||capacity_bad_||pending_.active)return false;
+        owned_={true,true,target,queue,generation,initial_state};++revision_;return true;
+    }
+    // Explicit resource-creation boundary for a tracker with real Reset history.
+    // Caller must hold the SAME API-order lock used across Reset, recording,
+    // original Execute + commit and Present. No original Execute may be in
+    // flight (legacy execute() cannot itself detect that external interval).
+    // The newly allocated native owner/resource has NEVER been exposed to the
+    // engine or recorded/submitted GPU commands. Its canonical identity, native
+    // placement lifetime, DIRECT queue, descriptor and RT/PSR creation state are
+    // externally certified; a reused address alone proves none of these facts.
+    // Both proof flags are mandatory. This is not recovery or replacement.
+    // Discard only association metadata predating birth, not actual GPU work.
+    // Preserve every list's real generation, validity and executed marker:
+    // existing unsubmitted lists may continue without inventing a Reset; already
+    // executed lists still require a real Reset. Old tickets are retired and the
+    // caller must begin a strictly newer frozen ticket for this output.
+    bool birth_owned_output(Target target,Identity queue,uint64_t generation,uint32_t initial_state,
+                            bool certified_single_normal_color,bool certified_unexposed_ordered_birth) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(owned_.enabled||!certified_single_normal_color||!certified_unexposed_ordered_birth||
+           !target.resource||!queue||!generation||!target.width||target.width%2||!target.height||
+           target.width>8192||target.height>8192||(initial_state!=4&&initial_state!=128)||
+           window_bad_||capacity_bad_||pending_.active||revision_==UINT64_MAX)return false;
+        // Detect contradictions to the birth proof before modifying anything.
+        uint64_t discarded_events{},discarded_candidates{};
+        for(auto const& list:lists_){
+            for(size_t i=0;i<list.count;++i){
+                if(list.events[i].target.resource==target.resource)return false;
+                ++discarded_events;
+            }
+        }
+        for(auto const& candidate:candidates_)if(candidate.target.resource){
+            if(candidate.target.resource==target.resource)return false;
+            ++discarded_candidates;
+        }
+        for(auto& list:lists_)list.count=0;
+        candidates_={};retired_ticket_=maximum_ticket_;
+        stats_.owned_births=1;
+        stats_.owned_birth_discarded_events=discarded_events; // Event records, not multiplicity/GPU draws.
+        stats_.owned_birth_discarded_candidates=discarded_candidates;
         owned_={true,true,target,queue,generation,initial_state};++revision_;return true;
     }
     OwnedStatus owned_status(){std::lock_guard<std::mutex> lock(mutex_);return owned_;}

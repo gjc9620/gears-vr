@@ -236,7 +236,7 @@ thread_local unsigned session_build_depth{};
 bool session_status_available{};
 LONGLONG session_started_qpc{};
 struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
-std::array<SessionHookEntry,34> session_hook_entries{};
+std::array<SessionHookEntry,35> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<unsigned> submit_total{0},submit_retained{0},submit_skipped{0};
@@ -2123,7 +2123,11 @@ bool install(void* target,void* detour,void** original) {
     if(created==MH_ERROR_ALREADY_CREATED && *original &&
          ((reservation_ready && (target==scene_target || target==event_target || target==family_target || target==clone_target || target==renderer_target || target==consume_target || target==destroy_renderer_target || target==prepare_target || target==state_delete_target || target==quad_target || target==geometry_target || (first_view_mask_reserved && target==first_view_mask_target))) ||
           (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())||
-          (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target||target==ui_subtitle_target))))created=MH_OK;
+          (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target||target==ui_subtitle_target
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+             ||target==ui_material_execute_target
+#endif
+          ))))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
     if(diagnostic_status)fprintf(diagnostic_status,"hook_target=%p create=%s queue=%s\n",target,MH_StatusToString(created),MH_StatusToString(queued));
     return created==MH_OK && queued==MH_OK;
@@ -2248,7 +2252,17 @@ void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
     }
 }
 void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,UINT instances,UINT start,UINT first_instance) {
-    Scope scope;auto frame_guard=frame_lock();if(gears_viewport::has_draw_work(vertices,instances))observe_frame_draw(list,reinterpret_cast<uintptr_t>(_ReturnAddress()),0,vertices,instances);
+    Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+    if(ui_material_context&&recording.load()){
+        const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
+        gears_frame_link::Target target{};
+        if(binding.targets==1&&!binding.target.mip&&binding.target.width<=8192&&!frame_target_stats.descriptor_capacity_lost())
+            target={binding.target.resource,static_cast<unsigned>(binding.target.width),binding.target.height};
+        observe_ui_material_gpu(caller,frame_link.current(canonical_identity(list)),target,{false,vertices,instances,start,first_instance,0});
+    }
+#endif
+    if(gears_viewport::has_draw_work(vertices,instances))observe_frame_draw(list,caller,0,vertices,instances);
     if(recording.load())viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);
     if(recording.load())observe_output_stack(list,0);
     geometry_draw(list,false,vertices,instances);
@@ -2257,6 +2271,15 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
 }
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
     Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+    if(ui_material_context&&recording.load()){
+        const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
+        gears_frame_link::Target target{};
+        if(binding.targets==1&&!binding.target.mip&&binding.target.width<=8192&&!frame_target_stats.descriptor_capacity_lost())
+            target={binding.target.resource,static_cast<unsigned>(binding.target.width),binding.target.height};
+        observe_ui_material_gpu(caller,frame_link.current(canonical_identity(list)),target,{true,indices,instances,start,first_instance,vertex});
+    }
+#endif
     // The native segment loop issues zero draws too. Consume its ordinal before
     // any viewport/work/ticket filters; synthetic eye draws bypass this hook.
     observe_ui_index_callback(caller,{indices,instances,start,vertex,first_instance});
@@ -2744,6 +2767,9 @@ DWORD WINAPI worker(void*) {
         ok=install(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]));
     if(ok&&ui_observer_enabled)ok=install(ui_execute_target,reinterpret_cast<void*>(hook_ui_execute),reinterpret_cast<void**>(&ui_original_execute));
     if(ok&&ui_observer_enabled)ok=install(ui_subtitle_target,reinterpret_cast<void*>(hook_ui_subtitle),reinterpret_cast<void**>(&ui_original_subtitle));
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+    if(ok&&ui_observer_enabled)ok=install(ui_material_execute_target,reinterpret_cast<void*>(hook_ui_material_execute),reinterpret_cast<void**>(&ui_original_material_execute));
+#endif
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     if(ok)ok=create_quad_source_events();

@@ -32,6 +32,9 @@ std::atomic<uint64_t> ui_vm_calls{},ui_invocation_counter{};
 std::mutex ui_rows_mutex;
 #include "ui_payload_observer.inl"
 #include "ui_text_observer.inl"
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+#include "ui_material_observer.inl"
+#endif
 
 void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeContext* selected_out=nullptr){
     if(!ui_observer_enabled||!recording.load()||!ui_invocation.context.kind)return;
@@ -117,7 +120,17 @@ void __fastcall hook_ui_tile(void* self,void* frame,void* result){
         }else ++ui_batch_append_rejected;
     }
 }
-void __fastcall hook_ui_material(void* self,void* frame,void* result){Scope active_scope;observe_ui_canvas(2,self,frame);ui_original[2](self,frame,result);}
+void __fastcall hook_ui_material(void* self,void* frame,void* result){
+    Scope active_scope;gears_ui::ScopeContext selected{};observe_ui_canvas(2,self,frame,&selected);
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+    gears_ui_material::Before before{};
+    const bool captured=ui_material_before(self,before);
+#endif
+    ui_original[2](self,frame,result);
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+    if(captured&&recording.load())ui_material_after(before,selected.kind,ui_invocation.sequence);
+#endif
+}
 void __fastcall hook_ui_text(void* self,void* frame,void* result){
     Scope active_scope;gears_ui::ScopeContext selected{};observe_ui_canvas(3,self,frame,&selected);
     auto& counts=ui_text_counts[0];if(ui_observer_enabled&&recording.load())++counts.calls;
@@ -150,6 +163,9 @@ bool reserve_ui_hooks(){
            !safe_copy(after.data(),ui_targets[i],after.size())||after!=before)return false;
     }
     if(!reserve_ui_execute()||!reserve_ui_subtitle())return false;
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+    if(!reserve_ui_material_execute())return false;
+#endif
     ui_reserved=true;return true;
 }
 
@@ -221,6 +237,9 @@ void print_ui_observer(FILE* status,bool disabled){
     if(!ui_observer_enabled||!disabled||active.load())return;
     print_ui_payload_observer(status);
     print_ui_text_observer(status);
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+    print_ui_material_observer(status);
+#endif
     fprintf(status,"ui_canvas_chain calls=%llu rejected=%llu previous_offset=56 maximum_frames=%u root_identity_required=1\n",
         ui_chain_calls.load(),ui_chain_rejected.load(),gears_ui::canvas_frame_limit);
     if(ui_chain_rejected.load()){auto const& r=ui_first_chain_reject;

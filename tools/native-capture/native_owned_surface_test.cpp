@@ -1,0 +1,114 @@
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include "native_owned_surface.inl"
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+using namespace gears_native_owned;
+static unsigned checks;
+#define CHECK(x) do{++checks;if(!(x)){std::fprintf(stderr,"line %u: %s\n",__LINE__,#x);std::exit(1);}}while(0)
+struct Mock {
+ uintptr_t module=0x140000000,original=0x900000,s=0x20013c,l=0x300000,r=0x400000,d=0x500000;
+ unsigned creates{},clears{},width{},height{},releases{};DWORD tid=42;
+ bool ready=true,code_ok=true,metadata_ok=true,chain_ok=true,create_ok=true,create_zero{},create_wrong_return{},
+      desc_ok=true,device_ok=true,acquire_ok=true,clear_ok=true,gamma_ok=true,color_ok=true;
+ uintptr_t release_fault{},tls_block=0x600000,context=0x700000;
+ std::vector<unsigned> order;
+ DWORD thread(){return tid;}
+ bool tls(uintptr_t& b,uintptr_t& c){b=tls_block;c=context;return ready;}
+ bool certify(uintptr_t& failed){failed=code_ok?0:0x15abc8;return code_ok;}
+ bool read(void* out,uintptr_t address,size_t n){
+  if(address==module+0x1706880&&n==48){uintptr_t entries[6]{};
+   for(unsigned i=0;i<6;++i)entries[i]=module+original_slots[i];if(!metadata_ok)++entries[5];memcpy(out,entries,n);return true;}
+  uint64_t value{};
+  if(address==original)value=module+0x1706880;
+  else if(address==s-0x13c)value=module+0x133a180;
+  else if(address==s-0x134)value=1;
+  else if(address==s-0x130)value=chain_ok?l:0;
+  else if(address==l)value=module+0x133cc28;
+  else if(address==l+0xc)value=r;
+  else if(address==r)value=module+0x133ecf8;
+  else if(address==r+0xc)value=d;
+  else return false;memcpy(out,&value,n);return true;
+ }
+ bool create(uintptr_t c,uint64_t& slot,unsigned w,unsigned h,uintptr_t& returned){CHECK(c==context);
+  ++creates;width=w;height=h;order.push_back(1);slot=create_zero?0:s;
+  returned=create_wrong_return?0:reinterpret_cast<uintptr_t>(&slot);return create_ok;}
+ bool acquire(uintptr_t raw,uintptr_t& held){CHECK(raw==d);order.push_back(2);held=acquire_ok?d:0;return acquire_ok;}
+ bool describe(uintptr_t raw,D3D12_RESOURCE_DESC& desc){CHECK(raw==d);order.push_back(3);desc={};
+  desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;desc.Width=width;desc.Height=height;
+  desc.DepthOrArraySize=1;desc.MipLevels=1;desc.Format=desc_ok?DXGI_FORMAT_R8G8B8A8_UNORM:DXGI_FORMAT_UNKNOWN;
+  desc.SampleDesc.Count=1;desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;return true;}
+ bool device(uintptr_t raw,uintptr_t& dev){CHECK(raw==d);order.push_back(4);dev=device_ok?0x800000:0;return device_ok;}
+ bool release_com(uintptr_t raw){++releases;order.push_back(raw==0x800000?5:6);return raw!=release_fault;}
+ bool clear(uint64_t& slot){CHECK(slot==s);++clears;order.push_back(7);slot=0;return clear_ok;}
+ bool gamma(uintptr_t self,float& value){CHECK(self==original);value=2.2f;return gamma_ok;}
+ bool color(uintptr_t self,void* out,uintptr_t& returned){CHECK(self==original);unsigned char bytes[13]{};
+  for(unsigned i=0;i<13;++i)bytes[i]=static_cast<unsigned char>(i);memcpy(out,bytes,color_ok?13:4);
+  returned=reinterpret_cast<uintptr_t>(out);return color_ok;}
+};
+using TestOwner=Owner<Mock>;
+static DrainProof drain(uint64_t generation=9){return {generation,true,true,true,true,true,true};}
+static bool create(TestOwner& owner,Mock& ops,Quality quality=Quality::low){return owner.create_on_rhi(ops,quality,9,ops.original,true);}
+int main(){
+ static_assert(!std::is_copy_constructible<TestOwner>::value&&!std::is_move_constructible<TestOwner>::value,"stable owner");
+ for(Quality quality:{Quality::low,Quality::high}){Mock ops;TestOwner owner;CHECK(create(owner,ops,quality));
+  CHECK(ops.width==(quality==Quality::low?4096u:8192u)&&ops.height==(quality==Quality::low?2048u:4096u));
+  CHECK(owner.retained()&&!ops.releases&&!ops.clears);auto* a=owner.borrow_adapter();CHECK(a);
+  using Getter=const uint64_t* (__fastcall*)(TestOwner::Adapter*);using Dimension=uint32_t (__fastcall*)(TestOwner::Adapter*);
+  using Gamma=float (__fastcall*)(TestOwner::Adapter*);using Color=void* (__fastcall*)(TestOwner::Adapter*,void*);
+  const auto* ref=reinterpret_cast<Getter>(a->vtable[1])(a);CHECK(*ref==ops.s);CHECK(ref==reinterpret_cast<Getter>(a->vtable[1])(a));
+  CHECK(reinterpret_cast<Dimension>(a->vtable[2])(a)==ops.width);CHECK(reinterpret_cast<Dimension>(a->vtable[3])(a)==ops.height);
+  CHECK(reinterpret_cast<Gamma>(a->vtable[4])(a)==2.2f);unsigned char color[16];memset(color,0xff,16);
+  CHECK(reinterpret_cast<Color>(a->vtable[5])(a,color)==color);CHECK(color[12]==12&&color[13]==255&&color[15]==255);
+  CHECK(owner.borrow_resource()==reinterpret_cast<ID3D12Resource*>(ops.d));CHECK(!create(owner,ops));
+  CHECK(owner.retire_on_rhi(drain()));CHECK(!owner.retained());CHECK(*ref==0);CHECK(!owner.borrow_adapter());
+  CHECK(owner.retire_on_rhi(drain()));CHECK(ops.creates==1&&ops.clears==1&&ops.releases==2);
+  CHECK(ops.order==std::vector<unsigned>({1,2,3,4,5,6,7}));}
+ {Mock ops;TestOwner owner;ops.ready=false;CHECK(!create(owner,ops));CHECK(owner.snapshot().phase==Phase::empty);CHECK(!ops.creates);
+  ops.ready=true;CHECK(create(owner,ops));CHECK(owner.retire_on_rhi(drain()));}
+ for(unsigned invalid=0;invalid<4;++invalid){Mock ops;TestOwner owner;
+  CHECK(!owner.create_on_rhi(ops,invalid==0?static_cast<Quality>(99):Quality::low,invalid==1?0:9,invalid==2?0:ops.original,invalid!=3));
+  CHECK(!ops.creates&&!owner.retained());}
+ for(unsigned missing=0;missing<7;++missing){Mock ops;TestOwner owner;CHECK(create(owner,ops));auto proof=drain();
+  if(missing==0)proof.generation=10;if(missing==1)proof.new_submissions_disabled=false;
+  if(missing==2)proof.renderers_retired=false;if(missing==3)proof.canvas_commands_retired=false;
+  if(missing==4)proof.producer_cpu_access_retired=false;if(missing==5)proof.gpu_fence_completed=false;
+  if(missing==6)proof.original_target_still_live=false;
+  CHECK(!owner.retire_on_rhi(proof));CHECK(owner.retained()&&!ops.releases&&!ops.clears);
+  CHECK(owner.retire_on_rhi(drain()));}
+ {Mock ops;TestOwner owner;CHECK(create(owner,ops));ops.tid=43;CHECK(!owner.retire_on_rhi(drain()));CHECK(!ops.releases);
+  ops.tid=42;CHECK(owner.retire_on_rhi(drain()));}
+ {Mock ops;TestOwner owner;CHECK(create(owner,ops));++ops.context;CHECK(!owner.retire_on_rhi(drain()));CHECK(!ops.releases);
+  --ops.context;CHECK(owner.retire_on_rhi(drain()));}
+ {Mock ops;TestOwner owner;CHECK(create(owner,ops));ops.code_ok=false;CHECK(!owner.retire_on_rhi(drain()));
+  CHECK(!ops.releases&&!ops.clears&&owner.retained());}
+ for(unsigned fault=0;fault<8;++fault){Mock ops;TestOwner owner;
+  if(fault==0)ops.code_ok=false;if(fault==1)ops.metadata_ok=false;if(fault==2)ops.chain_ok=false;
+  if(fault==3){ops.create_ok=false;ops.create_zero=true;}if(fault==4)ops.create_wrong_return=true;
+  if(fault==5)ops.acquire_ok=false;if(fault==6)ops.desc_ok=false;if(fault==7)ops.device_ok=false;
+  CHECK(!create(owner,ops));CHECK(!owner.borrow_adapter());CHECK(!ops.clears&&!ops.releases);
+  if(fault>=2)CHECK(owner.retained());if(fault==3||fault==5||fault==7)CHECK(owner.snapshot().cleanup_uncertain);
+  if(fault==5||fault==7){CHECK(!owner.retire_on_rhi(drain()));CHECK(!ops.clears&&!ops.releases);}}
+ {Mock ops;TestOwner owner;ops.desc_ok=false;CHECK(!create(owner,ops));CHECK(owner.retained());
+  CHECK(owner.retire_on_rhi(drain()));CHECK(!owner.retained()&&ops.clears==1&&ops.releases==1);}
+ for(uintptr_t failed:{uintptr_t(0x800000),uintptr_t(0x500000)}){Mock ops;TestOwner owner;CHECK(create(owner,ops));ops.release_fault=failed;
+  CHECK(!owner.retire_on_rhi(drain()));CHECK(owner.retained()&&!ops.clears);CHECK(owner.snapshot().cleanup_uncertain);
+  auto releases=ops.releases;CHECK(!owner.retire_on_rhi(drain()));CHECK(ops.releases==releases);}
+ {Mock ops;TestOwner owner;CHECK(create(owner,ops));ops.clear_ok=false;CHECK(!owner.retire_on_rhi(drain()));
+  CHECK(owner.retained()&&owner.snapshot().cleanup_uncertain&&owner.snapshot().surface==ops.s);}
+ {Mock ops;TestOwner owner;CHECK(create(owner,ops));auto* a=owner.borrow_adapter();
+  using Dtor=void* (__fastcall*)(TestOwner::Adapter*,unsigned);CHECK(reinterpret_cast<Dtor>(a->vtable[0])(a,1)==a);
+  CHECK(owner.snapshot().adapter_fault&&owner.retained());CHECK(!owner.retire_on_rhi(drain()));CHECK(!ops.clears&&!ops.releases);}
+ {Mock ops;TestOwner owner;CHECK(create(owner,ops));auto* a=owner.borrow_adapter();ops.metadata_ok=false;
+  using Gamma=float (__fastcall*)(TestOwner::Adapter*);CHECK(reinterpret_cast<Gamma>(a->vtable[4])(a)==1.f);
+  CHECK(owner.snapshot().adapter_fault);CHECK(!owner.retire_on_rhi(drain()));CHECK(owner.retained());}
+ {Mock ops;TestOwner owner;CHECK(create(owner,ops));auto* a=owner.borrow_adapter();ops.color_ok=false;
+  using Color=void* (__fastcall*)(TestOwner::Adapter*,void*);unsigned char bytes[16];memset(bytes,0xff,16);
+  CHECK(reinterpret_cast<Color>(a->vtable[5])(a,bytes)==bytes);CHECK(owner.snapshot().adapter_fault);
+  float values[3]{};memcpy(values,bytes,12);CHECK(values[0]==1.f&&values[1]==1.f&&values[2]==1.f);
+  CHECK(bytes[12]==2&&bytes[13]==255&&bytes[14]==255&&bytes[15]==255);
+  CHECK(!owner.retire_on_rhi(drain()));CHECK(!ops.clears&&!ops.releases);}
+ {Mock ops;{TestOwner owner;CHECK(create(owner,ops));}CHECK(!ops.clears&&!ops.releases);}
+ std::printf("native owned surface: %u CPU checks passed\n",checks);
+}

@@ -630,5 +630,93 @@ int main() {
         auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);CHECK(!t->execute(queue,&ref,1));
         CHECK(!t->owned_status().certified); // Owned mode cannot shortcut the original-call boundary.
     }
+    // Native resource birth occurs after real legacy tracking has started.
+    // These external proof flags simulate an unexposed allocation under the
+    // caller's API-order lock, never pretend that the helper proves that fact.
+    const auto birth=[](Tracker& t,unsigned state=4){
+        return t.birth_owned_output({buffer,1920,1080},queue,9,state,true,true);};
+    {
+        auto t=std::make_unique<Tracker>();auto open=t->reset_success(1),done=t->reset_success(2);
+        CHECK(eye(*t,done,68,0,buffer+1));CHECK(eye(*t,done,68,1,buffer+1));
+        CHECK(t->execute(queue,&done,1));
+        CHECK(eye(*t,open,70,0,buffer+2));CHECK(eye(*t,open,70,1,buffer+2));
+        auto before=t->snapshot();CHECK(before.reset_calls==2&&before.execute_calls==1&&before.active_lists==2);
+        CHECK(!t->configure_owned_output({buffer,1920,1080},queue,9,4,true));
+        CHECK(birth(*t));auto after=t->snapshot();
+        CHECK(after.reset_calls==before.reset_calls&&after.execute_calls==before.execute_calls&&after.active_lists==before.active_lists);
+        CHECK(after.list_highwater==before.list_highwater&&after.event_highwater==before.event_highwater);
+        CHECK(after.owned_births==1&&after.owned_birth_discarded_events==4&&after.owned_birth_discarded_candidates==1);
+        CHECK(t->current(open.identity).generation==open.generation&&t->current(done.identity).generation==done.generation);
+        CHECK(!t->recorded_pair(open,{buffer+2,1920,1080}).linked); // No old association survives.
+        pair(*t,open,71);CHECK(t->record_transition(open,buffer,9,4,128));
+        CHECK(submit_owned(*t,&open,1));auto result=t->seal_owned_output(buffer,9,queue);
+        CHECK(result.linked&&result.ticket==71&&result.final_state==128&&result.state_certified);
+        CHECK(t->snapshot().reset_calls==2); // Continued the actual open list, no fabricated Reset.
+        auto next=t->reset_success(1);CHECK(next.generation>done.generation&&next.generation>open.generation);
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto done=t->reset_success(1);
+        CHECK(t->execute(queue,&done,1));CHECK(birth(*t));
+        ExecutionToken unchanged{123};CHECK(!t->prepare_execute(queue,&done,1,unchanged));CHECK(unchanged.value==123);
+        CHECK(t->snapshot().duplicate_batches==1); // Birth must not reset the real executed marker.
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto ref=t->reset_success(1);
+        CHECK(eye(*t,ref,5,0,buffer+1));CHECK(birth(*t));
+        CHECK(!eye(*t,ref,5,0)); // Birth retires pre-existing recorded tickets too.
+        CHECK(t->snapshot().reset_calls==1);
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto ref=t->reset_success(1);
+        t->retire_present_interval();CHECK(birth(*t,128));
+        CHECK(!t->current(ref.identity).identity); // Already retired lists are not resurrected.
+        auto next=t->reset_success(1);CHECK(next.generation>ref.generation);
+        CHECK(t->record_transition(next,buffer,9,128,4));pair(*t,next,1);
+        CHECK(submit_owned(*t,&next,1));CHECK(t->seal_owned_output(buffer,9,queue).linked);
+    }
+    for(unsigned invalid=0;invalid<11;++invalid){
+        auto t=std::make_unique<Tracker>();auto ref=t->reset_success(1);
+        CHECK(eye(*t,ref,3,0,buffer+1));CHECK(eye(*t,ref,3,1,buffer+1));
+        auto target=Target{buffer,1920,1080};auto q=queue;uint64_t generation=9;unsigned state=4;
+        bool normal=true,boundary=true;
+        if(invalid==0)normal=false;if(invalid==1)boundary=false;if(invalid==2)target.resource=0;
+        if(invalid==3)q=0;if(invalid==4)generation=0;if(invalid==5)state=0;
+        if(invalid==6)target.width=1921;if(invalid==7)target.height=0;
+        if(invalid==8)target.width=8194;if(invalid==9)target.height=8193;
+        if(invalid==10)target.resource=buffer+1; // Actual prior use contradicts claimed birth.
+        CHECK(!t->birth_owned_output(target,q,generation,state,normal,boundary));
+        CHECK(!t->owned_status().enabled&&t->snapshot().owned_births==0);
+        CHECK(t->current(1).generation==ref.generation&&t->snapshot().reset_calls==1);
+        CHECK(t->recorded_pair(ref,{buffer+1,1920,1080}).linked);
+        CHECK(t->execute(queue,&ref,1));CHECK(t->present(buffer+1,queue).linked); // Failure left legacy work intact.
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto ref=t->reset_success(1);pair(*t,ref);
+        CHECK(t->execute(queue,&ref,1));t->reset_success(1);CHECK(!birth(*t));
+        CHECK(t->present(buffer,queue).linked); // Existing executed candidate is a birth contradiction.
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto ref=t->reset_success(1);
+        for(size_t i=0;i<Tracker::events_per_list;++i)CHECK(t->draw_unknown(ref,1000+i));
+        CHECK(!t->draw_unknown(ref,2000));const auto before=t->snapshot();CHECK(!birth(*t));
+        CHECK(t->snapshot().event_overflow==before.event_overflow&&t->snapshot().capacity_bad);
+        CHECK(t->current(1).generation==ref.generation&&t->snapshot().reset_calls==1);
+    }
+    for(unsigned invalid=0;invalid<3;++invalid){
+        auto t=std::make_unique<Tracker>();auto ref=t->reset_success(1);
+        if(invalid==0)t->invalidate();
+        if(invalid==1)t->invalidate_capacity();
+        if(invalid==2)t->invalidate_list(ref.identity);
+        const auto before=t->snapshot();CHECK(!birth(*t));auto after=t->snapshot();
+        CHECK(!t->owned_status().enabled&&after.reset_calls==before.reset_calls&&after.capacity_bad==before.capacity_bad);
+        CHECK(after.owned_births==0); // No recovery from loss of coverage at a creation boundary.
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);
+        ExecutionToken token{};CHECK(t->prepare_execute(queue,&ref,1,token));
+        CHECK(!t->birth_owned_output({buffer+1,1920,1080},queue,10,4,true,true));
+        CHECK(t->commit_execute(token));CHECK(t->seal_owned_output(buffer,9,queue).linked); // Pending output untouched.
+        CHECK(!birth(*t)); // No replacement even after successful seal.
+    }
     std::printf("frame_link: %u checks passed\n", checks);
 }
