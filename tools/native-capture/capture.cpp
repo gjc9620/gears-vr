@@ -410,6 +410,7 @@ bool safe_copy(void* out,const void* from,size_t bytes) {
     SIZE_T count{};
     return from && ReadProcessMemory(GetCurrentProcess(),from,out,bytes,&count) && count==bytes;
 }
+#include "native_surface_probe.inl"
 void trace_rectangle(unsigned index,uintptr_t view) {
     if(!submit_pair_enabled || !view)return;
     unsigned expected=0;if(!rectangle_trace_phases[index].compare_exchange_strong(expected,1))return;
@@ -941,6 +942,7 @@ bool close_stereo_publisher() {
     return drained&&closed;
 }
 void write_session_status(bool resources_retained=true,bool entries_restored=false) {
+    resources_retained=resources_retained||native_surface_probe_retained();
     if(!continuous_session)return;
     wchar_t path[MAX_PATH];swprintf_s(path,L"%s\\session-status.txt",directory);
     FILE* output=_wfsopen(path,L"w",_SH_DENYWR);
@@ -1555,6 +1557,11 @@ void __fastcall hook_consume(void* renderer){
     auto saved_frozen_frame=consuming_frozen_frame;
     consuming_frame_ticket=frame_link_diagnostics&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(renderer),consume_frame)?consume_frame.id:0;
     consuming_frozen_frame=consume_frame;
+    // An explicitly built probe creates/releases native surfaces on this same
+    // engine callback only. It never changes family targets or GPU bindings.
+    if(!self_testing&&continuous_session&&recording.load()&&consume_frame.enabled&&
+       !submitted_lifetime.stopping()&&!native_surface_probe_tick(consume_frame.id))
+        request_session_stop(SessionStop::proof_failure);
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
     original_consume(renderer);
       trial_draw_scope=saved_draw_scope;
@@ -2819,6 +2826,7 @@ DWORD WINAPI worker(void*) {
     print_outage(status,disabled==MH_OK);
     print_anchor(status,disabled==MH_OK);
     print_ui_observer(status,disabled==MH_OK);
+    print_native_surface_probe(status);
     print_origin_trial(status,disabled==MH_OK);
     if(!active.load()&&stereo_closed)release_bindings();
     if(continuous_session){
