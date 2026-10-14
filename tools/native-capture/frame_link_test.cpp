@@ -520,5 +520,115 @@ int main() {
         auto next=t->reset_success(1);pair(*t,next,2);
         CHECK(t->execute(queue,&next,1));CHECK(t->present(buffer,queue).linked);
     }
+    // One fixed owned resource; state recording is distinct from actual queue
+    // submission. These CPU tests simulate original Execute returning between
+    // prepare and commit, never claim GPU completion or native state discovery.
+    const auto configure=[](Tracker& t,unsigned initial=4){CHECK(t.configure_owned_output({buffer,1920,1080},queue,9,initial,true));};
+    const auto submit_owned=[](Tracker& t,const ListRef* members,size_t count){ExecutionToken token{};
+        if(!t.prepare_execute(queue,members,count,token))return false;
+        // Caller forwards original Execute exactly once here under its order lock.
+        return t.commit_execute(token);};
+    {
+        auto t=std::make_unique<Tracker>();auto ref=t->reset_success(1);(void)ref;
+        t->present(0,0);CHECK(!t->configure_owned_output({buffer,1920,1080},queue,9,4,true));
+        CHECK(!t->owned_status().enabled); // Even an emptied prior tracking window is not an activation boundary.
+    }
+    {
+        auto t=std::make_unique<Tracker>();
+        CHECK(!t->configure_owned_output({buffer,1920,1080},queue,0,4,true));
+        CHECK(!t->configure_owned_output({buffer,1920,1080},queue,9,0,true));
+        CHECK(!t->configure_owned_output({buffer,1920,1080},queue,9,4,false));
+        configure(*t,128);CHECK(!t->configure_owned_output({buffer+1,1920,1080},queue,10,4,true));
+        auto b=t->reset_success(2),a=t->reset_success(1); // Record order differs from execution order.
+        CHECK(eye(*t,b,1,1));CHECK(t->record_transition(b,buffer,9,4,128,UINT32_MAX));
+        CHECK(t->record_transition(a,buffer,9,128,4,0));CHECK(eye(*t,a,1,0));
+        CHECK(t->owned_status().state==128&&t->owned_status().certified);
+        ListRef members[]={a,b};ExecutionToken token{};CHECK(t->prepare_execute(queue,members,2,token));
+        CHECK(t->owned_status().state==128);CHECK(t->commit_execute(token));
+        auto result=t->seal_owned_output(buffer,9,queue);
+        CHECK(result.linked&&result.state_certified&&result.ticket==1&&result.source_queue==queue&&result.owned_generation==9&&result.final_state==128);
+        CHECK(t->owned_status().certified&&t->owned_status().state==128);
+        auto next=t->reset_success(1);CHECK(t->record_transition(next,buffer,9,128,4));pair(*t,next,2);
+        CHECK(t->record_transition(next,buffer,9,4,128));CHECK(submit_owned(*t,&next,1));
+        CHECK(t->seal_owned_output(buffer,9,queue).linked);CHECK(t->owned_status().state==128);
+        t->retire_present_interval();CHECK(t->owned_status().certified&&t->owned_status().state==128);
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);
+        CHECK(t->record_owned_barrier_fault(ref,9));CHECK(t->owned_status().certified&&t->owned_status().state==4);
+        ref=t->reset_success(1); // Unsubmitted unsupported recording was discarded.
+        pair(*t,ref);CHECK(submit_owned(*t,&ref,1));CHECK(t->seal_owned_output(buffer,9,queue).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t,128);auto a=t->reset_success(1),b=t->reset_success(2);
+        CHECK(t->record_transition(a,buffer,9,128,4));CHECK(eye(*t,a,1,0));CHECK(eye(*t,b,1,1));
+        CHECK(t->record_transition(b,buffer,9,4,128));ListRef reversed[]={b,a};ExecutionToken token{};
+        CHECK(!t->prepare_execute(queue,reversed,2,token));CHECK(!t->owned_status().certified); // Actual batch order governs state.
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);
+        CHECK(t->record_transition(ref,buffer,9,4,128,0,1));CHECK(!t->recorded_pair(ref,{buffer,1920,1080}).linked);
+        CHECK(t->owned_status().certified); // Recording alone never changes submitted state.
+    }
+    for(unsigned fault=0;fault<10;++fault){auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);
+        if(fault==0)CHECK(t->record_transition(ref,buffer,9,128,4)); // Actual before must match.
+        if(fault==1)CHECK(t->record_transition(ref,buffer,9,4,128,1)); // Multi-subresource unsupported.
+        if(fault==2)CHECK(t->record_transition(ref,buffer,9,4,128,0,1)); // BEGIN split.
+        if(fault==3)CHECK(t->record_transition(ref,buffer,9,4,128,0,2)); // END split.
+        if(fault==4)CHECK(t->record_transition(ref,buffer,10,4,128));
+        if(fault==5)CHECK(t->record_transition(ref,buffer+1,9,4,128));
+        if(fault==6)CHECK(t->record_transition(ref,buffer,9,4,8)); // UAV unsupported.
+        if(fault==7)CHECK(t->record_owned_barrier_fault(ref,9)); // Aliasing/wildcard/unknown coverage.
+        if(fault==8)CHECK(t->record_transition(ref,buffer,9,4,128|64)); // Uncertified combined read flags.
+        if(fault==9)CHECK(t->record_transition(ref,buffer,9,4,16)); // Depth texture state unsupported.
+        CHECK(t->owned_status().certified&&t->owned_status().state==4);
+        ExecutionToken untouched{123};CHECK(!t->prepare_execute(queue,&ref,1,untouched));CHECK(untouched.value==123);
+        CHECK(!t->owned_status().certified&&t->owned_status().state==4);
+        CHECK(!t->seal_owned_output(buffer,9,queue).linked);
+        t->invalidate_all();CHECK(!t->owned_status().certified);CHECK(!t->configure_owned_output({buffer,1920,1080},queue,10,4,true));
+    }
+    for(unsigned fault=0;fault<8;++fault){auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);ExecutionToken token{};
+        if(fault==0){CHECK(!t->prepare_execute(queue+1,&ref,1,token));}
+        if(fault==1){ListRef repeated[]={ref,ref};CHECK(!t->prepare_execute(queue,repeated,2,token));}
+        if(fault==2){auto stale=ref;t->reset_success(1);CHECK(!t->prepare_execute(queue,&stale,1,token));}
+        if(fault==3){CHECK(t->prepare_execute(queue,&ref,1,token));CHECK(!t->commit_execute({token.value+1}));}
+        if(fault==4){CHECK(t->prepare_execute(queue,&ref,1,token));t->reset_success(1);CHECK(!t->commit_execute(token));}
+        if(fault==5){CHECK(t->prepare_execute(queue,&ref,1,token));CHECK(t->record_transition(ref,buffer,9,4,128));CHECK(!t->commit_execute(token));}
+        if(fault==6){CHECK(t->prepare_execute(queue,&ref,1,token));ExecutionToken again{};CHECK(!t->prepare_execute(queue,&ref,1,again));CHECK(!t->commit_execute(token));}
+        if(fault==7){CHECK(t->prepare_execute(queue,&ref,1,token));CHECK(t->commit_execute(token));CHECK(!t->commit_execute(token));}
+        CHECK(!t->owned_status().certified);CHECK(!t->seal_owned_output(buffer,9,queue).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t,128);auto ref=t->reset_success(1);pair(*t,ref);
+        CHECK(!submit_owned(*t,&ref,1));CHECK(!t->owned_status().certified); // Final writes require RT at their event position.
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);
+        CHECK(eye(*t,ref,1,0,buffer,1280,720));CHECK(eye(*t,ref,1,1,buffer,1280,720));
+        CHECK(!submit_owned(*t,&ref,1));CHECK(!t->seal_owned_output(buffer,9,queue).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);CHECK(eye(*t,ref,1,0));
+        CHECK(submit_owned(*t,&ref,1));auto r=t->seal_owned_output(buffer,9,queue);CHECK(!r.linked&&!r.state_certified);
+        CHECK(t->owned_status().certified); // Missing content pair does not fabricate state failure.
+        ref=t->reset_success(1);pair(*t,ref,2);CHECK(submit_owned(*t,&ref,1));CHECK(t->seal_owned_output(buffer,9,queue).linked);
+    }
+    for(unsigned failure=0;failure<3;++failure){auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);CHECK(submit_owned(*t,&ref,1));
+        CHECK(!t->seal_owned_output(failure==0?buffer+1:buffer,failure==1?10:9,failure==2?queue+1:queue).linked);CHECK(!t->owned_status().certified);}
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);
+        for(size_t i=2;i<Tracker::events_per_list;++i)CHECK(t->record_transition(ref,buffer,9,4,4));
+        CHECK(!t->record_transition(ref,buffer,9,4,128));CHECK(!submit_owned(*t,&ref,1));CHECK(!t->owned_status().certified);
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);CHECK(submit_owned(*t,&ref,1));
+        auto ui=t->reset_success(2);auto p=t->overlay_pair(ui,{buffer,1920,1080});CHECK(p.linked&&p.from_executed);
+        CHECK(t->draw_overlay_pair(ui,1,{buffer,1920,1080},p.eyes,3));CHECK(t->record_transition(ui,buffer,9,4,128));
+        CHECK(submit_owned(*t,&ui,1));auto result=t->seal_owned_output(buffer,9,queue);CHECK(result.linked&&result.final_state==128);
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);pair(*t,ref);CHECK(!t->execute(queue,&ref,1));
+        CHECK(!t->owned_status().certified); // Owned mode cannot shortcut the original-call boundary.
+    }
     std::printf("frame_link: %u checks passed\n", checks);
 }

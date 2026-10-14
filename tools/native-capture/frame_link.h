@@ -14,7 +14,7 @@ enum Rejection : uint32_t {
     missing_pair = 1, metadata_lost = 2, capacity = 4, queue_conflict = 8,
     ticket_conflict = 16, target_conflict = 32, duplicate_eye = 64,
     polluted = 128, unknown_list = 256, duplicate_execute = 512,
-    bad_rectangle = 1024, stale_ticket = 2048
+    bad_rectangle = 1024, stale_ticket = 2048, owned_state_lost = 4096
 };
 struct Result {
     bool linked{};
@@ -25,7 +25,10 @@ struct Result {
     uint32_t rejection{};
     bool from_executed{};
     Identity source_queue{};
+    uint64_t owned_generation{};uint32_t final_state{};bool state_certified{};
 };
+struct ExecutionToken {uint64_t value{};};
+struct OwnedStatus {bool enabled{},certified{};Target target{};Identity queue{};uint64_t generation{};uint32_t state{};};
 struct OverlayDiagnostic {
     ListRef current{};Target target{};uint64_t maximum_ticket{},retired_ticket{};
     unsigned executed_mask{},other_complete_recorded_lists{};
@@ -48,7 +51,8 @@ struct Snapshot {
 
 // Conditional CPU association only: no pixel or GPU completion proof. Caller must
 // supply stable canonical COM identities, actual ExecuteCommandLists members and
-// a queue verified to belong to the swapchain. Call reset_success ONLY after a
+// a queue verified to belong to the swapchain or configured owned output.
+// Call reset_success ONLY after a
 // successful Reset. Draw rectangles are actual output rectangles, not source UVs.
 // Clear/copy/indirect/bundle writes are NOT covered unless caller observes them
 // through draw_unknown. Lost metadata must call invalidate(), never be skipped.
@@ -61,6 +65,10 @@ struct Snapshot {
 // work from other threads cannot enter the interval and then be discarded.
 // All APIs are synchronized; caller must preserve actual API ordering when hooks
 // run concurrently. No COM calls, reference ownership, heap allocation or eviction.
+// Owned mode tracks explicit legacy barriers for exactly one normal texture.
+// Caller owns native placement lifetime and certifies creation state, direct
+// queue, complete barrier/write coverage and absence of implicit-state ambiguity.
+// It must record_owned_barrier_fault for unsupported alias/UAV/enhanced coverage.
 class Tracker {
 public:
     static constexpr size_t list_capacity = 512;
@@ -69,7 +77,8 @@ public:
 private:
     struct Event { uint64_t ticket{}; unsigned eye{}; Target target{}; Rect rect{}; bool final{};
         bool overlay{};std::array<Rect,2> overlay_rects{};unsigned completed_mask{};uint64_t multiplicity{1};
-        bool from_executed{};Identity expected_queue{}; };
+        bool from_executed{};Identity expected_queue{};
+        unsigned state_kind{};uint64_t output_generation{};uint32_t before{},after{},subresource{},flags{}; };
     struct List {
         ListRef ref{};
         bool valid{}, executed{};
@@ -92,6 +101,33 @@ private:
     bool window_bad_{}, capacity_bad_{};
     uint32_t window_rejection_{};
     Snapshot stats_{};
+    OwnedStatus owned_{};
+    uint64_t revision_{},execution_sequence_{};
+    struct Pending {bool active{};uint64_t token{},revision{};Identity queue{};size_t count{};uint32_t state{};
+        std::array<ListRef,list_capacity> members{};} pending_{};
+    void lose_owned(){if(owned_.enabled){owned_.certified=false;window_bad_=true;window_rejection_|=owned_state_lost;}pending_.active=false;}
+    static bool color_state(uint32_t state){return state==0||state==4||state==128||state==1024||state==2048||state==4096||state==8192;}
+    bool transition_supported(Event const& event) const {
+        return event.state_kind==1&&event.target.resource==owned_.target.resource&&event.output_generation==owned_.generation&&
+            !event.flags&&(event.subresource==0||event.subresource==UINT32_MAX)&&color_state(event.before)&&color_state(event.after);
+    }
+    bool validate_members(Identity queue,const ListRef* members,size_t count) {
+        if(!queue||!members||!count||count>list_capacity){++stats_.invalid_batches;window_bad_=true;return false;}
+        for(size_t i=0;i<count;++i){auto list=find(members[i]);
+            if(!list||list->executed){if(!list)++stats_.unknown_batches;else ++stats_.duplicate_batches;
+                window_bad_=true;window_rejection_|=!list?unknown_list:duplicate_execute;return false;}
+            for(size_t j=0;j<i;++j)if(members[j].identity==members[i].identity){++stats_.duplicate_batches;
+                window_bad_=true;window_rejection_|=duplicate_execute;return false;}}
+        return true;
+    }
+    bool apply_state(Event const& event,uint32_t& state) const {
+        if(!event.state_kind){
+            if(event.target.resource!=owned_.target.resource||(!event.final&&!event.overlay))return true;
+            return state==4&&event.target.width==owned_.target.width&&event.target.height==owned_.target.height;
+        }
+        if(!transition_supported(event)||event.before!=state)return false;
+        state=event.after;return true;
+    }
     List* find(ListRef ref) {
         for (auto& list : lists_)
             if (list.ref.identity == ref.identity && list.ref.generation == ref.generation && list.valid)
@@ -103,6 +139,7 @@ private:
         if (!list || list->executed) { window_bad_ = true; window_rejection_ |= unknown_list; return false; }
         if (list->count == events_per_list) { ++stats_.event_overflow;capacity_bad_ = true; return false; }
         list->events[list->count++] = event;
+        ++revision_;
         if(list->count>stats_.event_highwater)stats_.event_highwater=list->count;
         return true;
     }
@@ -127,11 +164,12 @@ private:
     }
     Result recorded_pair_locked(ListRef ref,Target target) {
         Result result{};auto list=find(ref);
-        if(!list||list->executed||window_bad_||capacity_bad_||
+        if(!list||list->executed||window_bad_||capacity_bad_||(owned_.enabled&&!owned_.certified)||
             stats_.overlay_recorded==std::numeric_limits<uint64_t>::max())return result;
         unsigned mask=0;bool bad=false;
         for(unsigned i=0;i<list->count;++i){auto const& e=list->events[i];
             if(e.target.resource!=target.resource)continue;
+            if(e.state_kind){if(!transition_supported(e))bad=true;continue;}
             if(e.overlay){if(mask!=3||e.ticket!=result.ticket||e.completed_mask!=3||
                 e.target.width!=target.width||e.target.height!=target.height||
                 !valid_eye(0,target,e.overlay_rects[0])||!valid_eye(1,target,e.overlay_rects[1]))bad=true;}
@@ -202,6 +240,7 @@ private:
         // An executed-world continuation cannot contain any speculative world
         // writes, unknown writes or another target, even before its first UI draw.
         for(unsigned i=0;i<list->count;++i){auto const& e=list->events[i];
+            if(e.state_kind&&transition_supported(e))continue;
             if(!same_overlay(e,candidate->ticket,target,candidate->eyes,3,true,candidate->queue)){
                 if(diagnostic)++stats_.overlay_incompatible_queries;result.rejection=polluted;return result;}
         }
@@ -213,6 +252,7 @@ private:
         if(diagnostic)++stats_.overlay_executed_queries;return result;
     }
     void submit(Identity queue, const Event& event) {
+        if(event.state_kind)return; // State is staged/committed separately in this same event order.
         if (!event.target.resource) { window_bad_ = true; return; }
         Candidate* candidate{};
         Candidate* empty{};
@@ -270,6 +310,64 @@ private:
         candidate->mask |= 1u << event.eye;
     }
 public:
+    // Caller supplies canonical identities, DIRECT queue proof and a certified
+    // creation state for one normal single-subresource color texture. Never seed
+    // from an engine cache. Configure BEFORE tracking is enabled / any Reset or
+    // Execute is observed. Actual RHI allocation/activation ordering belongs to
+    // integration, not this helper. One generation; no recovery/replacement API.
+    bool configure_owned_output(Target target,Identity queue,uint64_t generation,uint32_t initial_state,bool certified_single_normal_color) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(owned_.enabled||!certified_single_normal_color||!target.resource||!queue||!generation||
+           !target.width||target.width%2||!target.height||target.width>8192||target.height>8192||
+           (initial_state!=4&&initial_state!=128)||stats_.active_lists||stats_.reset_calls||stats_.execute_calls||
+           maximum_ticket_||window_bad_||capacity_bad_||pending_.active)return false;
+        owned_={true,true,target,queue,generation,initial_state};++revision_;return true;
+    }
+    OwnedStatus owned_status(){std::lock_guard<std::mutex> lock(mutex_);return owned_;}
+    // Record, never advance submitted state. Invalid split/subresource/state
+    // events become certification failures only if this recording is submitted.
+    bool record_transition(ListRef ref,Identity resource,uint64_t generation,uint32_t before,uint32_t after,
+        uint32_t subresource=UINT32_MAX,uint32_t flags=0) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!owned_.enabled)return false;
+        Event event{};event.target.resource=resource;event.state_kind=1;event.output_generation=generation;
+        event.before=before;event.after=after;event.subresource=subresource;event.flags=flags;
+        return append(ref,event);
+    }
+    // Alias (including wildcard), UAV, enhanced/unknown coverage: no guessing.
+    bool record_owned_barrier_fault(ListRef ref,uint64_t generation) {
+        std::lock_guard<std::mutex> lock(mutex_);if(!owned_.enabled)return false;
+        Event event{};event.target.resource=owned_.target.resource;event.state_kind=2;event.output_generation=generation;
+        return append(ref,event);
+    }
+    // Under the caller's existing API-order lock: prepare, forward the ORIGINAL
+    // ExecuteCommandLists exactly once, then commit before unlocking. This is
+    // submitted queue order, not GPU completion. No GPU waits are performed.
+    bool prepare_execute(Identity queue,const ListRef* members,size_t count,ExecutionToken& out) {
+        std::lock_guard<std::mutex> lock(mutex_);++stats_.execute_calls;
+        if(!owned_.enabled)return false;
+        if(pending_.active||!owned_.certified||queue!=owned_.queue||window_bad_||capacity_bad_||
+           execution_sequence_==UINT64_MAX||!validate_members(queue,members,count)){lose_owned();return false;}
+        auto state=owned_.state;
+        for(size_t i=0;i<count;++i){auto list=find(members[i]);
+            for(size_t j=0;j<list->count;++j)if(!apply_state(list->events[j],state)){lose_owned();return false;}}
+        pending_={};pending_.active=true;pending_.token=++execution_sequence_;pending_.revision=revision_;
+        pending_.queue=queue;pending_.count=count;pending_.state=state;
+        for(size_t i=0;i<count;++i)pending_.members[i]=members[i];
+        out.value=pending_.token;return true;
+    }
+    bool commit_execute(ExecutionToken token) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!owned_.enabled||!owned_.certified||!pending_.active||token.value!=pending_.token||
+           revision_!=pending_.revision||window_bad_||capacity_bad_){lose_owned();return false;}
+        // Revalidate membership against Reset/reentrant changes, and apply the
+        // same retained event values after the real queue submission returned.
+        if(!validate_members(pending_.queue,pending_.members.data(),pending_.count)){lose_owned();return false;}
+        for(size_t i=0;i<pending_.count;++i){auto list=find(pending_.members[i]);list->executed=true;
+            for(size_t j=0;j<list->count;++j)submit(pending_.queue,list->events[j]);}
+        owned_.state=pending_.state;pending_.active=false;++revision_;
+        if(window_bad_||capacity_bad_){++stats_.metadata_batches;lose_owned();return false;}return true;
+    }
     Result recorded_pair(ListRef ref,Target target) {
         std::lock_guard<std::mutex> lock(mutex_);return recorded_pair_locked(ref,target);
     }
@@ -289,7 +387,7 @@ public:
         if(stats_.overlay_recorded==std::numeric_limits<uint64_t>::max()||
             (merge&&list->events[list->count-1].multiplicity==std::numeric_limits<uint64_t>::max())){
             checked_add(stats_.overlay_rejected,1);capacity_bad_=true;window_bad_=true;window_rejection_|=capacity;return false;}
-        if(merge){++list->events[list->count-1].multiplicity;++stats_.overlay_recorded;
+        if(merge){++revision_;++list->events[list->count-1].multiplicity;++stats_.overlay_recorded;
             if(pair.from_executed)++stats_.overlay_from_executed_recorded;return true;}
         Event event{};event.ticket=ticket;event.target=target;event.overlay=true;event.overlay_rects=rects;event.completed_mask=completed_mask;
         event.from_executed=pair.from_executed;event.expected_queue=pair.source_queue;
@@ -304,6 +402,7 @@ public:
     ListRef reset_success(Identity identity) {
         std::lock_guard<std::mutex> lock(mutex_);
         ++stats_.reset_calls;
+        ++revision_;
         if (!identity || generation_ == std::numeric_limits<uint64_t>::max()) {
             window_bad_ = true; return {};
         }
@@ -321,6 +420,7 @@ public:
     }
     bool draw_final(ListRef ref, uint64_t ticket, unsigned eye, Target target, Rect rect) {
         std::lock_guard<std::mutex> lock(mutex_);
+        ++revision_;
         if (ticket > maximum_ticket_) maximum_ticket_ = ticket;
         if (!ticket || ticket <= retired_ticket_ || !valid_eye(eye, target, rect)) {
             window_bad_ = true; window_rejection_ |= (!ticket || ticket <= retired_ticket_) ? stale_ticket : bad_rectangle; return false;
@@ -336,12 +436,12 @@ public:
             // Repeated unknown writes to the same target have the same rejection
             // effect. Keep their position relative to eyes/overlays/other targets.
             // In particular, never turn an unknown write into an accepted overlay.
-            if(!previous.final&&!previous.overlay&&previous.target.resource==resource){
+            if(!previous.final&&!previous.overlay&&!previous.state_kind&&previous.target.resource==resource){
                 if(previous.multiplicity==std::numeric_limits<uint64_t>::max()||
                     stats_.unknown_coalesced==std::numeric_limits<uint64_t>::max()){
                     capacity_bad_=true;return false;
                 }
-                ++previous.multiplicity;++stats_.unknown_coalesced;return true;
+                ++revision_;++previous.multiplicity;++stats_.unknown_coalesced;return true;
             }
         }
         return append(ref, {0, 0, {resource, 0, 0}, {}, false});
@@ -349,6 +449,7 @@ public:
     bool execute(Identity queue, const ListRef* members, size_t count) {
         std::lock_guard<std::mutex> lock(mutex_);
         ++stats_.execute_calls;
+        if(owned_.enabled){lose_owned();return false;} // Owned integration must use prepare/original/commit.
         if (!queue || !members || !count || count > list_capacity) { ++stats_.invalid_batches;window_bad_ = true; return false; }
         // Validate entire batch before submission, including repeated members.
         for (size_t i = 0; i < count; ++i) {
@@ -366,13 +467,16 @@ public:
         if(window_bad_||capacity_bad_)++stats_.metadata_batches;
         return !window_bad_ && !capacity_bad_;
     }
-    Result present(Identity backbuffer, Identity verified_swapchain_queue) {
-        std::lock_guard<std::mutex> lock(mutex_);
+private:
+    Result seal_locked(Identity backbuffer, Identity verified_swapchain_queue,bool owned_seal=false) {
+        if(pending_.active)lose_owned();
+        ++revision_;
         Result result{};
         result.rejection = window_rejection_ | (window_bad_ ? metadata_lost : 0u) | (capacity_bad_ ? capacity : 0u);
         for (const auto& candidate : candidates_) if (candidate.target.resource == backbuffer && backbuffer) {
             result.ticket = candidate.ticket;
             result.target = candidate.target;
+            result.source_queue=candidate.queue;
             result.eyes = candidate.eyes;
             result.contaminated = candidate.contaminated;
             result.rejection |= candidate.rejection;
@@ -381,6 +485,14 @@ public:
             if (!verified_swapchain_queue || candidate.queue != verified_swapchain_queue) result.rejection |= queue_conflict;
             result.linked = !window_bad_ && !capacity_bad_ && !candidate.rejected && candidate.mask == 3 &&
                 verified_swapchain_queue && candidate.queue == verified_swapchain_queue;
+        }
+        if(owned_.enabled){
+            result.owned_generation=owned_.generation;result.final_state=owned_.state;
+            if(!owned_seal||!owned_.certified||backbuffer!=owned_.target.resource||verified_swapchain_queue!=owned_.queue||
+               (owned_.state!=0&&owned_.state!=4&&owned_.state!=128)){
+                result.linked=false;result.rejection|=owned_state_lost;
+            }
+            result.state_certified=result.linked&&owned_.certified;
         }
         if (!result.ticket) result.rejection |= missing_pair;
         retired_ticket_ = maximum_ticket_;
@@ -393,19 +505,32 @@ public:
         // Capacity faults remain sticky until explicit invalidate_all recovery.
         return result;
     }
+public:
+    Result present(Identity backbuffer,Identity verified_swapchain_queue) {
+        std::lock_guard<std::mutex> lock(mutex_);return seal_locked(backbuffer,verified_swapchain_queue);
+    }
+    Result seal_owned_output(Identity resource,uint64_t generation,Identity verified_queue) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!owned_.enabled||resource!=owned_.target.resource||generation!=owned_.generation||verified_queue!=owned_.queue){
+            lose_owned();return seal_locked(0,0,true);}
+        return seal_locked(resource,verified_queue,true);
+    }
     void invalidate() {
         std::lock_guard<std::mutex> lock(mutex_);
+        ++revision_;
         window_bad_ = true;
+        lose_owned();
     }
     // Discard only work recorded since the pre-Present consume boundary. This
     // preserves sticky capacity faults and ticket retirement; unlike recovery,
     // it permits no old generation or ticket to escape into the next window.
     void retire_present_interval() { (void)present(0,0); }
     void invalidate_capacity() {
-        std::lock_guard<std::mutex> lock(mutex_);capacity_bad_=true;
+        std::lock_guard<std::mutex> lock(mutex_);++revision_;capacity_bad_=true;lose_owned();
     }
     void invalidate_list(Identity identity) {
         std::lock_guard<std::mutex> lock(mutex_);
+        ++revision_;lose_owned();
         for (auto& list : lists_) if (list.ref.identity == identity) list.valid = false;
         window_bad_ = true;
     }
@@ -413,6 +538,7 @@ public:
     // Resets and newer tickets. The next present is intentionally rejected.
     void invalidate_all() {
         std::lock_guard<std::mutex> lock(mutex_);
+        ++revision_;lose_owned();
         for(auto& list:lists_)list={};
         candidates_ = {};
         retired_ticket_ = maximum_ticket_;
