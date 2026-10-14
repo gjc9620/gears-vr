@@ -15,11 +15,11 @@ enum class Error:unsigned {none,invalid_config,tls_pending,code_identity,metadat
 struct DrainProof {
  uint64_t generation{};
  bool new_submissions_disabled{},renderers_retired{},canvas_commands_retired{},
-      producer_cpu_access_retired{},gpu_fence_completed{},original_target_still_live{};
+      producer_cpu_access_retired{},gpu_fence_completed{};
 };
 struct Snapshot {
  Phase phase{};Error error{};uint64_t generation{},surface{};
- uintptr_t resource{},device{},original{},failed_window{};unsigned width{},height{};
+ uintptr_t resource{},device{},failed_window{};unsigned width{},height{};
  DWORD creation_thread{};bool cleanup_uncertain{},adapter_fault{};
 };
 struct Chain {uintptr_t owner{},location{},resource{},d3d{};};
@@ -39,14 +39,6 @@ inline bool valid_desc(D3D12_RESOURCE_DESC const& d,unsigned w,unsigned h){
 }
 // This prefix is not a full interface census. Only paths proved to use these six
 // slots may borrow it. No RTTI or methods >= +0x30 are supplied.
-static constexpr uintptr_t original_slots[6]={0x857dc8,0x514980,0x515f40,0x514a80,0x117700,0x1161d8};
-template<class Ops> bool metadata_identity(Ops& ops,uintptr_t original){
- uintptr_t vt{},slots[6]{};
- if(!original||!ops.read(&vt,original,8)||vt!=ops.module+0x1706880||!ops.read(slots,vt,sizeof(slots)))return false;
- for(unsigned i=0;i<6;++i)if(slots[i]!=ops.module+original_slots[i])return false;
- return true;
-}
-
 // Integration owns a stable Ops and Owner address through process exit. All
 // create/borrow/snapshot/retire operations require its SAME external API-order
 // lock; all queued borrowers are covered by DrainProof, not a getter's duration.
@@ -56,7 +48,7 @@ template<class Ops> class Owner {
 public:
  struct Adapter {const uintptr_t* vtable;Owner* owner;};
 private:
- Ops* ops_{};uint64_t surface_{};uintptr_t com_{},device_{},original_{},tls_{},context_{},failed_window_{};
+ Ops* ops_{};uint64_t surface_{};uintptr_t com_{},device_{},tls_{},context_{},failed_window_{};
  Chain chain_{};uint64_t generation_{};DWORD thread_{};unsigned width_{},height_{};
  bool trusted_surface_{},trusted_com_{},trusted_device_{},uncertain_{};
  std::atomic<Phase> phase_{Phase::empty};std::atomic<Error> error_{Error::none};
@@ -84,13 +76,15 @@ private:
  static uint32_t __fastcall width(Adapter* self){return self->owner->width_;}
  static uint32_t __fastcall height(Adapter* self){return self->owner->height_;}
  static float __fastcall gamma(Adapter* self){auto& o=*self->owner;Callback guard(o);float value=1.f;
-  if(!o.callable()||!metadata_identity(*o.ops_,o.original_)||!o.ops_->gamma(o.original_,value))o.callback_fault(Error::metadata_call);
+  if(!o.callable()||!o.ops_->gamma(value))o.callback_fault(Error::metadata_call);
   return value;}
  static void* __fastcall color(Adapter* self,void* out16){auto& o=*self->owner;Callback guard(o);uintptr_t returned{};
   if(!out16){o.callback_fault(Error::metadata_call);return out16;}
   unsigned char temporary[16]{};
-  const bool valid=o.callable()&&metadata_identity(*o.ops_,o.original_)&&
-   o.ops_->color(o.original_,temporary,returned)&&returned==reinterpret_cast<uintptr_t>(temporary);
+  // The certified native routine can call only this adapter's virtual+20.
+  // It reads current engine settings without retaining the desktop target.
+  const bool valid=o.callable()&&o.ops_->color(reinterpret_cast<uintptr_t>(self),temporary,returned)&&
+   returned==reinterpret_cast<uintptr_t>(temporary)&&o.callable();
   if(!valid){
    // Retained 1161d8/1161a4 enum2 branch writes (1,1,1) + byte2.
    // A native exception can partially write temporary, never caller storage.
@@ -104,18 +98,17 @@ public:
  Owner()=default;~Owner()=default; // Deliberate retention; no worker cleanup.
  Owner(Owner const&)=delete;Owner& operator=(Owner const&)=delete;
  Owner(Owner&&)=delete;Owner& operator=(Owner&&)=delete;
- // original_lifetime_proved is an integration-held lifetime lease, not pointer
- // readability or vtable equality. There is no proved target AddRef API.
- bool create_on_rhi(Ops& ops,Quality quality,uint64_t generation,uintptr_t original,bool original_lifetime_proved){
+ // Metadata executes against this persistent adapter. No original target lease
+ // is invented from pointer readability; the owner stores no viewport pointer.
+ bool create_on_rhi(Ops& ops,Quality quality,uint64_t generation){
   if(phase_.load()!=Phase::empty)return false;
-  if((quality!=Quality::low&&quality!=Quality::high)||!generation||!original||!original_lifetime_proved)
+  if((quality!=Quality::low&&quality!=Quality::high)||!generation)
    return fail(Error::invalid_config);
   uintptr_t block{},context{};if(!ops.tls(block,context)||!block||!context){error_=Error::tls_pending;return false;}
-  ops_=&ops;tls_=block;context_=context;thread_=ops.thread();original_=original;generation_=generation;
+  ops_=&ops;tls_=block;context_=context;thread_=ops.thread();generation_=generation;
   width_=quality==Quality::low?4096:8192;height_=quality==Quality::low?2048:4096;
   phase_=Phase::creating;error_=Error::none;
   if(!ops.certify(failed_window_))return fail(Error::code_identity);
-  if(!metadata_identity(ops,original))return fail(Error::metadata_identity);
   if(!same_tls())return fail(Error::wrong_thread);
   uintptr_t returned{};
   if(!ops.create(context_,surface_,width_,height_,returned)){uncertain_=true;return fail(Error::create_call);}
@@ -137,7 +130,7 @@ public:
   // Tokens/counts must be derived from actual retirement/fences by integration.
   if(proof.generation!=generation_||!proof.new_submissions_disabled||!proof.renderers_retired||
      !proof.canvas_commands_retired||!proof.producer_cpu_access_retired||!proof.gpu_fence_completed||
-     !proof.original_target_still_live||callbacks_.load()){error_=Error::missing_drain;return false;}
+     callbacks_.load()){error_=Error::missing_drain;return false;}
   if(!same_tls()){error_=Error::wrong_thread;return false;}
   if(uncertain_||adapter_fault_.load())return false;
   Chain again{};
@@ -154,7 +147,7 @@ public:
   error_=Error::none;phase_.store(Phase::released,std::memory_order_release);return true;
  }
  bool retained()const{return surface_||com_||device_||uncertain_;}
- Snapshot snapshot()const{return {phase_.load(),error_.load(),generation_,surface_,com_,device_,original_,failed_window_,
+ Snapshot snapshot()const{return {phase_.load(),error_.load(),generation_,surface_,com_,device_,failed_window_,
   width_,height_,thread_,uncertain_,adapter_fault_.load()};}
 };
 static_assert(sizeof(void*)==8,"Certified Win64 ABI only");

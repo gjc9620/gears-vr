@@ -1,5 +1,6 @@
 #pragma once
 #include "native_owned_surface.h"
+#include "native_metadata_contract.h"
 #include <intrin.h>
 
 namespace gears_native_owned {
@@ -60,26 +61,15 @@ struct NativeOps {
  bool clear(uint64_t& slot){using Fn=uint64_t* (__fastcall*)(uint64_t*,uint64_t);
   __try{return reinterpret_cast<Fn>(module+0x1592a4)(&slot,0)==&slot&&slot==0;}
   __except(EXCEPTION_EXECUTE_HANDLER){return false;}}
- bool gamma(uintptr_t self,float& value){using Fn=float (__fastcall*)(void*);
-  __try{value=reinterpret_cast<Fn>(module+0x117700)(reinterpret_cast<void*>(self));return true;}
+ bool gamma(float& value){using Fn=float (__fastcall*)();
+  __try{value=reinterpret_cast<Fn>(module+0x117700)();return true;}
   __except(EXCEPTION_EXECUTE_HANDLER){return false;}}
  bool color(uintptr_t self,void* out16,uintptr_t& returned){using Fn=void* (__fastcall*)(void*,void*);
   __try{returned=reinterpret_cast<uintptr_t>(reinterpret_cast<Fn>(module+0x1161d8)(reinterpret_cast<void*>(self),out16));return true;}
   __except(EXCEPTION_EXECUTE_HANDLER){return false;}}
 };
 inline bool NativeOps::certify_metadata(uintptr_t& failed){
- struct Window{uintptr_t rva;const char* hex;};
- static constexpr Window windows[]={
-  {0x117700,"488b05498cb001488b888c040000c5fa10416cc340534883ec20488bd9e82200"},
-  {0x1161d8,"48895c2408574883ec30488bda488bf9e83f10000084c00f85aff07800e84286"},
-  {0x1161a4,"88510c80fa020f83dcf07800c5fa100500105f01c5fa5ecac5f25905700f5f01"},
-  {0x11722c,"4883ec28833d7992b001007409e80605000085c07515e8f575feff8b88540400"}
- };
- for(auto const& w:windows){unsigned char expected[32]{},actual[32]{};
-  for(unsigned i=0;i<32;++i){const char a=w.hex[2*i],b=w.hex[2*i+1];
-   const unsigned hi=a<='9'?unsigned(a-'0'):unsigned(a-'a'+10),lo=b<='9'?unsigned(b-'0'):unsigned(b-'a'+10);
-   expected[i]=static_cast<unsigned char>((hi<<4)|lo);}
-  if(!read(actual,module+w.rva,32)||memcmp(actual,expected,32)){failed=w.rva;return false;}}
- return true;
+ return gears_native_metadata::certify([&](void* out,uintptr_t address,size_t size){return read(out,address,size);},
+  module,reinterpret_cast<uintptr_t>(&GetCurrentThreadId),failed);
 }
 } // namespace gears_native_owned

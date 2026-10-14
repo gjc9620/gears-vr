@@ -2,6 +2,10 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
+OwnedMetadata1 / PID49524：独立目标 adapter 已摆脱原 viewport 指针的长期持有。复用资料库并核对汇编后，完整校验显示元数据的八段运行时代码及线程查询导入；原生例程通过 adapter 的 gamma 方法读取当前设置。实际游戏 RHI 回调中，Low/High 目标均完成创建、宽高/surface 查询、13 字节显示参数对照及释放，无保留资源。299 项 CPU 检查、13 项 GPU 状态接线测试通过。现有双目同时运行 24.57 秒、2212 次 projection、1825 张新图，启动平面正常交接，40 入口恢复，游戏正常退出。场景/Canvas 尚未使用 adapter，`target_redirected=0`、`gpu_target_rendered=0`；这不是原生每眼 2K/4K 显示验收。证据：`analysis/ui-position-runtime/owned-metadata1-49524.audit.json`；实验清单 `tools/vr-launcher/manifest-owned-metadata1.json`。
+
+同轮加入默认关闭的 owned-output legacy ResourceBarrier 跟踪及 Execute 前准备/后提交接线，WARP 实际提交和同步通过；真实游戏中仅验证安装、旁路及恢复，尚未 birth 独立输出。下一步为 copied-family/Canvas 目标接线、完整 GPU 状态与最终输出边界、排队持有者退休。不可将同步 metadata 探针的空退休条件直接用于场景/UI 队列。
+
 GraphicsMenu1 / PID51304 已在真实AA列表选择事务中阻止DLSS缓存值；其他控件的index3仍可正常选择，各向异性过滤8x/16x应用与重开均通过，最终恢复4x。同一进程从启动菜单接续关卡双目29.10秒、2620次projection、2134张新图，正常停止、39入口恢复及原生DLSS关闭读回通过，游戏已正常关闭。预设批量赋值仍未覆盖，不能将普通选择路径等同于完整发布锁。状态导航遇到对象表变动时已通过新reader继续；控制器补充同PID/创建时间核验的定向恢复，57项离线菜单测试通过，自动恢复补丁尚未实际运行验证。详见[设置调用链](61-graphics-runtime-lock.md)。
 
 GraphicsStartup2 / PID52996 已完成启动菜单保护→关卡双目交接：2813次启动平面后进入带ticket的projection，关卡运行167.36秒、15063次projection、12438张新图，正常停止并恢复38入口。此前Startup1 / PID50260在主菜单实际请求DLSS Quality，3次请求被阻止，取消后入口及原生缩放读回正常。Startup2本轮没有重新选择DLSS；菜单缓存标签、锁开启后其他设置回归仍待完成。启动前姿态自测曾返回33，已把新鲜样本发布移到Hook安装后，运行时过期保护不变；旧失败没有年龄日志，不能宣称根因已证明。详见[设置调用链](61-graphics-runtime-lock.md)。

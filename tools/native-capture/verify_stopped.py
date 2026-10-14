@@ -31,8 +31,9 @@ def main():
     targets = [int(value, 16) for value in re.findall(r'hook_target=([0-9A-Fa-f]+) create=MH_OK queue=MH_OK', status)]
     # UI observer adds four VM/Canvas entries, Canvas/subtitle consumers, and
     # optionally the Material consumer, three graphics settings callbacks, and
-    # the UIOptionList selection transaction. Native signatures use runtime bytes.
-    if not 2 <= len(targets) <= 39 or len(set(targets))!=len(targets):
+    # the UIOptionList selection transaction and optional ResourceBarrier entry.
+    # ResourceBarrier uses the existing system-module PE/relocation verification.
+    if not 2 <= len(targets) <= 40 or len(set(targets))!=len(targets):
         raise RuntimeError('Unexpected hook target inventory')
     resolver = Resolver(args.pid, json.loads((ROOT / 'tools/package-inspector/reloaded-profile.json').read_text()))
     checks = []

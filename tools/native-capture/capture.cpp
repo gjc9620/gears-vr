@@ -237,7 +237,12 @@ thread_local unsigned session_build_depth{};
 bool session_status_available{};
 LONGLONG session_started_qpc{};
 struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
-std::array<SessionHookEntry,39> session_hook_entries{};
+#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+constexpr size_t session_hook_capacity=40,viewport_hook_capacity=11;
+#else
+constexpr size_t session_hook_capacity=39,viewport_hook_capacity=10;
+#endif
+std::array<SessionHookEntry,session_hook_capacity> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<unsigned> submit_total{0},submit_retained{0},submit_skipped{0};
@@ -321,7 +326,11 @@ using CopySimpleFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,UINT,D3D12_CPU_DESCRIP
 ResetListFn original_reset_list{};ViewportsFn original_viewports{};ScissorsFn original_scissors{};
 DrawFn original_draw{};DrawIndexedFn original_draw_indexed{};
 TargetsFn original_targets{};CreateRtvFn original_create_rtv{};CopyDescriptorsFn original_copy_descriptors{};CopySimpleFn original_copy_simple{};
-std::array<void*,10> viewport_targets{};
+std::array<void*,viewport_hook_capacity> viewport_targets{};
+#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+using BarrierFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_RESOURCE_BARRIER*);
+BarrierFn original_resource_barrier{};
+#endif
 std::array<void*,6> prime_targets{};
 std::atomic<bool> prime_recording{},prime_ready{},prime_handoff{},prime_done{};
 std::atomic<unsigned> prime_started{};
@@ -412,6 +421,7 @@ bool safe_copy(void* out,const void* from,size_t bytes) {
     return from && ReadProcessMemory(GetCurrentProcess(),from,out,bytes,&count) && count==bytes;
 }
 #include "native_surface_probe.inl"
+#include "native_owned_probe.inl"
 void trace_rectangle(unsigned index,uintptr_t view) {
     if(!submit_pair_enabled || !view)return;
     unsigned expected=0;if(!rectangle_trace_phases[index].compare_exchange_strong(expected,1))return;
@@ -732,7 +742,11 @@ HRESULT STDMETHODCALLTYPE hook_create_composition(IDXGIFactory2* factory,IUnknow
 }
 std::unique_lock<std::recursive_mutex> frame_lock() {
     std::unique_lock<std::recursive_mutex> lock(frame_hook_mutex,std::defer_lock);
-    if(frame_link_diagnostics&&recording.load()){
+    bool required=frame_link_diagnostics&&recording.load();
+#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+    required=required||frame_link.owned_status().enabled;
+#endif
+    if(required){
         if(self_testing&&frame_test_waiting)SetEvent(frame_test_waiting);
         lock.lock();
     }
@@ -800,8 +814,9 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
         if(stats)++stats->unknown;
         frame_link.draw_unknown(ref,binding.target.resource);}
 }
-void observe_frame_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* members,uintptr_t caller) {
-    if(!frame_link_diagnostics || !recording.load())return;
+void observe_frame_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* members,uintptr_t caller,
+                           gears_frame_link::ExecutionToken* owned_token=nullptr) {
+    if(!owned_token&&(!frame_link_diagnostics || !recording.load()))return;
     ++frame_counts.executes;
     auto queue_id=canonical_identity(queue);ExecuteQueueCount* stats{};ExecuteQueueCount* empty{};
     for(auto& entry:frame_queues){if(entry.identity==queue_id&&queue_id)stats=&entry;if(!entry.identity&&!empty)empty=&entry;}
@@ -811,7 +826,9 @@ void observe_frame_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandLis
     std::array<gears_frame_link::ListRef,gears_frame_link::Tracker::list_capacity> refs{};
     if(!count || count>lists.size() || !safe_copy(lists.data(),members,size_t(count)*sizeof(lists[0]))) {
         ++frame_counts.execute_rejected;if(stats)++stats->rejected;
-        frame_link.execute(queue_id,nullptr,count);return;
+        if(owned_token)frame_link.prepare_execute(queue_id,nullptr,count,*owned_token);
+        else frame_link.execute(queue_id,nullptr,count);
+        return;
     }
     for(unsigned i=0;i<count;++i){auto identity=canonical_identity(lists[i]);frame_seen_list(identity);refs[i]=frame_link.current(identity);
         if(!refs[i].generation)sample_frame_work(2,caller,identity,queue_id,
@@ -820,7 +837,9 @@ void observe_frame_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandLis
             if(frame_trial_anchored)++stats->post_anchor_unknown;
             bool saved=false;for(unsigned j=0;j<stats->first_unknown_count;++j)if(stats->first_unknown[j]==identity)saved=true;
             if(!saved&&stats->first_unknown_count<stats->first_unknown.size())stats->first_unknown[stats->first_unknown_count++]=identity;}}
-    if(!frame_link.execute(queue_id,refs.data(),count)){++frame_counts.execute_rejected;if(stats)++stats->rejected;}
+    const bool accepted=owned_token?frame_link.prepare_execute(queue_id,refs.data(),count,*owned_token):
+        frame_link.execute(queue_id,refs.data(),count);
+    if(!accepted){++frame_counts.execute_rejected;if(stats)++stats->rejected;}
 }
 void outage_begin(gears_outage::Sample& sample,long long timestamp) {
     sample.enter_qpc=timestamp;sample.pub_before=stereo_publisher.frames.load();
@@ -945,6 +964,7 @@ bool close_stereo_publisher() {
 }
 void write_session_status(bool resources_retained=true,bool entries_restored=false) {
     resources_retained=resources_retained||native_surface_probe_retained();
+    resources_retained=resources_retained||native_owned_probe_retained();
     if(!continuous_session)return;
     wchar_t path[MAX_PATH];swprintf_s(path,L"%s\\session-status.txt",directory);
     FILE* output=_wfsopen(path,L"w",_SH_DENYWR);
@@ -1562,7 +1582,7 @@ void __fastcall hook_consume(void* renderer){
     // An explicitly built probe creates/releases native surfaces on this same
     // engine callback only. It never changes family targets or GPU bindings.
     if(!self_testing&&continuous_session&&recording.load()&&consume_frame.enabled&&
-       !submitted_lifetime.stopping()&&!native_surface_probe_tick(consume_frame.id))
+       !submitted_lifetime.stopping()&&(!native_surface_probe_tick(consume_frame.id)||!native_owned_probe_tick(consume_frame.id,renderer)))
         request_session_stop(SessionStop::proof_failure);
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
     original_consume(renderer);
@@ -1946,7 +1966,12 @@ void inspect_swapchain(Record& record,IDXGISwapChain* chain) {
 void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* lists) {
     if(stereo_publish_bypass){original_execute(queue,count,lists);return;}
     Scope scope;auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
-    observe_frame_execute(queue,count,lists,reinterpret_cast<uintptr_t>(_ReturnAddress()));
+    gears_frame_link::ExecutionToken owned_token{};
+    gears_frame_link::ExecutionToken* owned=nullptr;
+#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+    if(frame_link.owned_status().enabled)owned=&owned_token;
+#endif
+    observe_frame_execute(queue,count,lists,reinterpret_cast<uintptr_t>(_ReturnAddress()),owned);
     if(gpu_diagnostics && recording.load()) {
         record.queue_type=queue->GetDesc().Type;record.command_count=count;
         ID3D12Device* device{};
@@ -1954,7 +1979,11 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
             record.gpu_device=reinterpret_cast<uintptr_t>(device);device->Release();record.valid|=128;
         }
     }
-    original_execute(queue,count,lists);record.duration=now()-record.time;enqueue(record);
+    // Even a failed prepare forwards the game submission exactly once. Only a
+    // successful original-call interval may advance owned submitted state.
+    original_execute(queue,count,lists);
+    if(owned&&owned_token.value&&!frame_link.commit_execute(owned_token))++frame_counts.execute_rejected;
+    record.duration=now()-record.time;enqueue(record);
 }
 HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT flags) {
     Scope scope;auto frame_guard=frame_lock();
@@ -2144,11 +2173,50 @@ bool session_hooks_restored() {
         if(!safe_copy(bytes.data(),prime_targets[i],bytes.size())||bytes!=prime_original_bytes[i])return false;}
     return true;
 }
+#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+uintptr_t barrier_identity(IUnknown* object) {
+    __try{return canonical_identity(object);}
+    __except(EXCEPTION_EXECUTE_HANDLER){return 0;}
+}
+void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RESOURCE_BARRIER* barriers) {
+    if(stereo_publish_bypass){original_resource_barrier(list,count,barriers);return;}
+    Scope scope;auto frame_guard=frame_lock();const auto owned=frame_link.owned_status();
+    if(owned.enabled){
+        const auto ref=frame_link.current(barrier_identity(list));
+        auto fault=[&](){frame_link.record_owned_barrier_fault(ref,owned.generation);};
+        // Bounded acquisition; no guessed state if a batch cannot be inspected.
+        if(count>1024||(count&&!barriers))fault();
+        else for(UINT i=0;i<count;++i){
+            D3D12_RESOURCE_BARRIER b{};
+            if(!safe_copy(&b,barriers+i,sizeof(b))){fault();break;}
+            if(b.Type==D3D12_RESOURCE_BARRIER_TYPE_TRANSITION){
+                auto resource=barrier_identity(b.Transition.pResource);
+                if(!resource)fault();
+                else if(resource==owned.target.resource)
+                    frame_link.record_transition(ref,resource,owned.generation,b.Transition.StateBefore,
+                        b.Transition.StateAfter,b.Transition.Subresource,b.Flags);
+            }else if(b.Type==D3D12_RESOURCE_BARRIER_TYPE_ALIASING){
+                auto before=barrier_identity(b.Aliasing.pResourceBefore),after=barrier_identity(b.Aliasing.pResourceAfter);
+                // Null is a wildcard, not proof that this allocation is absent.
+                if(!before||!after||before==owned.target.resource||after==owned.target.resource)fault();
+            }else if(b.Type==D3D12_RESOURCE_BARRIER_TYPE_UAV){
+                auto resource=barrier_identity(b.UAV.pResource);
+                if(!resource||resource==owned.target.resource)fault();
+            }else fault();
+        }
+    }
+    original_resource_barrier(list,count,barriers);
+}
+#endif
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
     if(stereo_publish_bypass)return original_reset_list(list,allocator,state);
     Scope scope;auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
     if(recording.load()&&SUCCEEDED(result))viewport_stats.reset(reinterpret_cast<uintptr_t>(list));
-    if(frame_link_diagnostics&&recording.load()) {
+    bool tracking=frame_link_diagnostics&&recording.load();
+#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+    tracking=tracking||frame_link.owned_status().enabled;
+#endif
+    if(tracking) {
         auto identity=canonical_identity(list);
         frame_seen_list(identity);
         if(SUCCEEDED(result)){++frame_counts.resets;frame_link.reset_success(identity);
@@ -2411,6 +2479,11 @@ bool viewport_hooks(ID3D12Device* device) {
         void** table=*reinterpret_cast<void***>(list);
         void** device_table=*reinterpret_cast<void***>(device);
         viewport_targets={table[10],table[21],table[22],table[12],table[13],table[46],device_table[20],device_table[23],device_table[24],color_copy_diagnostics?table[16]:nullptr};
+#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+        // Local SDK ID3D12GraphicsCommandListVtbl: ResourceBarrier follows
+        // SetPipelineState (23) and precedes ExecuteBundle (25), including IUnknown.
+        viewport_targets[10]=table[24];
+#endif
         success=install(viewport_targets[0],reinterpret_cast<void*>(hook_reset_list),reinterpret_cast<void**>(&original_reset_list));
         success=install(viewport_targets[1],reinterpret_cast<void*>(hook_viewports),reinterpret_cast<void**>(&original_viewports))&&success;
         success=install(viewport_targets[2],reinterpret_cast<void*>(hook_scissors),reinterpret_cast<void**>(&original_scissors))&&success;
@@ -2421,6 +2494,9 @@ bool viewport_hooks(ID3D12Device* device) {
         success=install(viewport_targets[7],reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void**>(&original_copy_descriptors))&&success;
         success=install(viewport_targets[8],reinterpret_cast<void*>(hook_copy_simple),reinterpret_cast<void**>(&original_copy_simple))&&success;
         if(color_copy_diagnostics)success=install(viewport_targets[9],reinterpret_cast<void*>(hook_color_copy),reinterpret_cast<void**>(&original_color_copy))&&success;
+#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+        success=install(viewport_targets[10],reinterpret_cast<void*>(hook_resource_barrier),reinterpret_cast<void**>(&original_resource_barrier))&&success;
+#endif
         list->Close();
     }
     if(list)list->Release();if(allocator)allocator->Release();return success;
@@ -2542,6 +2618,7 @@ DWORD WINAPI worker(void*) {
     const auto current_base=reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
     if(reservation_ready&&base!=current_base){fprintf(status,"rejected: reserved module base changed\n");fclose(status);return 2;}
     if(!reservation_ready)base=current_base; // Startup settings hooks read the immutable reserved base.
+    initialize_native_owned_probe(true); // hash_matches/PID gate above passed; no probe allocations here.
     quad_target=reinterpret_cast<void*>(base+0x1af42c);
     geometry_target=reinterpret_cast<void*>(base+0x13cfcc);
     expected_local=ini_address(ini,L"local_player");expected_pc=ini_address(ini,L"controller");
@@ -2869,6 +2946,7 @@ DWORD WINAPI worker(void*) {
     print_anchor(status,disabled==MH_OK);
     print_ui_observer(status,disabled==MH_OK);
     print_native_surface_probe(status);
+    print_native_owned_probe(status);
     print_graphics_lock_observer(status,disabled==MH_OK);
     print_origin_trial(status,disabled==MH_OK);
     if(!active.load()&&stereo_closed)release_bindings();
@@ -3749,7 +3827,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
     if((initialized!=MH_OK&&!(prime_ready.load()&&initialized==MH_ERROR_ALREADY_INITIALIZED))||!present_hooks())return 50;
     unsigned char before[32],after[32];
     if(!safe_copy(before,execute_target,32))return 51;
-    std::array<std::array<unsigned char,32>,10> viewport_before{};
+    std::array<std::array<unsigned char,32>,viewport_hook_capacity> viewport_before{};
     if(viewport_diagnostics)for(unsigned i=0;i<viewport_targets.size();++i){
         if(!viewport_targets[i])continue;
         auto primed=std::find(prime_targets.begin(),prime_targets.end(),viewport_targets[i]);
@@ -4162,6 +4240,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeOwnedCheck(void* 
     if(mode==2&&prime_event){SetEvent(prime_event);if(active.load())result=234;}
     return result;
 }
+#include "owned_output_tracking_check.inl"
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {
     // Keep CRT thread notifications enabled for the statically linked runtime.
     if(reason==DLL_PROCESS_ATTACH) own_module=module;
