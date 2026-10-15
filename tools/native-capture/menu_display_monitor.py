@@ -8,6 +8,31 @@ import time
 
 PACKET = struct.Struct('<IIIIQQQQQQ')
 UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU = range(4)
+PAUSE_SETTINGS = frozenset(('DeltaPause-Options', 'DeltaGameConfiguration', 'DeltaVideoSettings',
+                            'PenderGraphicsSettings', 'DeltaAudioVideoSettings', 'DeltaInputSettings'))
+
+
+def pause_settings(sample, top):
+    name = top.get('tag')
+    if (not isinstance(name, str) or name not in PAUSE_SETTINGS or top.get('name') != name or top.get('cls') != 'WarUIScene'
+            or type(top.get('input_mode')) is not int or top['input_mode'] != 1):
+        return False
+    scenes = sample.get('active_scenes')
+    if not isinstance(scenes, list) or not scenes or not isinstance(scenes[-1], dict):
+        return False
+    last = scenes[-1]
+    if (not isinstance(top.get('address'), str) or not top['address'] or
+            type(last.get('input_mode')) is not int or
+            any(top.get(key) != last.get(key) for key in ('address', 'name', 'cls', 'input_mode'))):
+        return False
+    def context(scene, expected):
+        return (isinstance(scene, dict) and scene.get('name') == expected and
+                scene.get('cls') == 'WarUIScene' and type(scene.get('input_mode')) is int and scene['input_mode'] == 1)
+    pause_seen = False
+    for scene in scenes[:-1]:
+        if context(scene, 'DeltaPause-Campaign-Host'):pause_seen = True
+        if pause_seen and context(scene, 'DeltaPause-Options') and name != 'DeltaPause-Options':return True
+    return pause_seen and name == 'DeltaPause-Options'
 
 
 def classify(sample):
@@ -27,6 +52,9 @@ def classify(sample):
     if (player == 0 and type(top.get('input_mode')) is int and
             (top.get('tag'), top.get('cls'), top.get('input_mode')) ==
             ('DeltaPause-Campaign-Host', 'WarUIScene', 1)):
+        return PAUSE_MENU
+    # Only observed settings scenes under their ordered campaign Pause context.
+    if player == 0 and pause_settings(sample, top):
         return PAUSE_MENU
     # This persistent nonmodal scene was observed atop gameplay; it is not
     # sufficient to render stereo. Native identity and XR ticket gates still apply.

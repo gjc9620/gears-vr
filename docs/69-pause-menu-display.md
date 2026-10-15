@@ -49,3 +49,21 @@ quiet9k 的 game6680 出现暗画面时，实际显示 Pause / Resume Game，而
 ## 9m 暂停/恢复复验
 
 修正quiet启动器的开关引用（见文档68）后，game35136的同一后台运行中：认证GAMEPLAY→一次Escape→认证Pause/共同菜单quad→认证Resume的一次Enter→新票据投影。恢复后30秒60次状态均为后台GAMEPLAY，未再自动进入Pause；WorldInfo.Pauser为空且游戏时间推进。此轮无需截图或抢回焦点。证据见 `analysis/runtime/pause-menu9m-{open,resume}.json`、`unfocus9m-after-resume.json` 与 `continuous-stereo-35136-20261016-011605-c5356ffd.stdout.txt`。
+
+## 9t：设置子菜单空白与受上下文约束的分类修复
+
+9t（game37956，创建FILETIME `134365618036683799`）用新增 `MenuReader.sample(include_tree=True)` 在同一复读范围中枚举 Pause 子树，实际找到 `LBtnOptionsSingle`。枚举默认关闭，不增加生产monitor的读取量；检查节点/深度上限、Children/StateStack所有权、焦点成员与完整复读。
+
+只发送有身份及稳定焦点守卫的后台方向键、Enter与Escape，实际进入设置首页、游戏、显示、画质、声音及输入设置，未改动设置值。对应top依次为 `DeltaPause-Options`、`DeltaGameConfiguration`、`DeltaVideoSettings`、`PenderGraphicsSettings`、`DeltaAudioVideoSettings`、`DeltaInputSettings`，均为WarUIScene、input_mode1、player0、block0。所有子菜单的ActiveScenes都保留有序的Pause→Options上下文。证据 `analysis/runtime/menu9t-*-tree.json`、`menu9t-gameconfig-state.json`、`menu9t-options-tour.json`；tour前后foreground相同，未激活游戏。
+
+旧分类器将这些子菜单一直标为UNKNOWN；XR7已从Pause进入待恢复状态，因而既不提交菜单quad也不提交projection。9t末次模拟器状态 `lastLayerCount=0`，XR日志有19369次 `menu_recovery_pending`，这是本次设置页空白的直接软件路径，不推广为此前所有游戏黑屏的根因。结束时原生清理和入口恢复成功、XR退出0，再正常WM_CLOSE游戏。
+
+修复只把上述六个精确菜单映射为既有PAUSE_MENU=3，不改变协议或XR二进制。设置首页要求活动栈中存在准确Campaign Host Pause祖先，其余五页还要求后续Options祖先；top必须与栈末项的地址、name、class、input_mode一致，name等于tag。保留原共同守卫，陌生子菜单、缺失/乱序上下文、不同玩家及不一致采样仍拒绝。16项分类/发布测试通过；实际修复后显示测试另记。键位绑定、主菜单设置及其他尚未观察页面尚未扩展。
+
+## 9u：六类设置页及返回双目的实际复测
+
+9u（game35824/创建FILETIME `134365626163166846`、owner34088、XR16128，`continuous-stereo-35824-20261016-023038-8b6ff376`）加载修复后，完成Pause→设置首页→上述五个设置子页→各自返回→Pause→Resume。`menu9u-options-tour.json`记录18次稳定状态、17次有守卫的后台按键及18次显示核对，每次要求菜单packet身份、时限、mode3、最新monitor菜单名均对应，并要求模拟器相同XR进程的新鲜状态有1个提交层；全程foreground为同一窗口3348328。未改设置值。
+
+一次最终模拟器画面核对显示两眼为相同的完整设置面板。XR日志记录各次共同面板成功提交；Resume后记录 `menu_display_recovered` 与真实新票据projection，模拟器projection计数重新推进。首个Escape尝试遇到EHole提示界面，守卫拒绝且未发输入；待其自然结束后才在认证GAMEPLAY发送。这不计为一次菜单导航失败或重复输入。
+
+本次修复消除了这六类页面持续无层输出的问题。菜单切换时仍观察到短暂UNKNOWN（包括读注册表失效和过渡中不满足分类条件），会暂时不提交菜单层；不宣称切换无闪烁、所有UI已覆盖或已完成真头显验收。模拟器 `MISSING_PROJECTION_LAYER` 累计值包含正常菜单quad阶段，不能直接作为黑屏次数。此次仍使用冻结Native9/XR7，未提升默认清单。

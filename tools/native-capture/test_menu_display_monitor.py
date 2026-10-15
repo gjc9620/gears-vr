@@ -2,6 +2,7 @@ import pathlib
 import tempfile
 import unittest
 import json
+import copy
 from unittest.mock import patch
 from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU
 
@@ -19,6 +20,15 @@ def pause_sample():
                 focused_leaf=dict(name='LBtnResumeSingle', cls='UILabelButton'))
 
 
+SETTINGS = ('DeltaPause-Options', 'DeltaGameConfiguration', 'DeltaVideoSettings',
+            'PenderGraphicsSettings', 'DeltaAudioVideoSettings', 'DeltaInputSettings')
+def settings_sample(name):
+    names = ['DeltaPause-Campaign-Host', 'DeltaPause-Options']
+    if name != 'DeltaPause-Options':names.append(name)
+    scenes = [dict(name=n,cls='WarUIScene',input_mode=1,address=hex(0x100+i)) for i,n in enumerate(names)]
+    return dict(pause_sample(),active_scenes=scenes,top=dict(scenes[-1],tag=name))
+
+
 class Reader:
     closed=False
     def sample(self):return sample()
@@ -26,6 +36,57 @@ class Reader:
 
 
 class Tests(unittest.TestCase):
+    def test_observed_pause_settings_with_ordered_context(self):
+        for name in SETTINGS:
+            with self.subTest(name=name):
+                state=settings_sample(name)
+                self.assertEqual(classify(state),PAUSE_MENU)
+                for focused in (None,dict(name='AnotherSetting',cls='UILabelButton')):
+                    self.assertEqual(classify(dict(state,focused_leaf=focused)),PAUSE_MENU)
+
+    def test_settings_reject_missing_or_reordered_campaign_context(self):
+        for name in SETTINGS:
+            base=settings_sample(name)
+            variants=[[],base['active_scenes'][1:],None]
+            if name != 'DeltaPause-Options':
+                variants += [[base['active_scenes'][0],base['active_scenes'][-1]],
+                             [base['active_scenes'][1],base['active_scenes'][0],base['active_scenes'][-1]]]
+            for scenes in variants:
+                with self.subTest(name=name,scenes=scenes):
+                    self.assertEqual(classify(dict(base,active_scenes=scenes)),UNKNOWN)
+            for index in range(len(base['active_scenes'])-1):
+                for key,value in (('name','UnknownMenu'),('cls','AnotherScene'),('input_mode',True),('input_mode',2)):
+                    state=copy.deepcopy(base);state['active_scenes'][index][key]=value
+                    self.assertEqual(classify(state),UNKNOWN)
+
+    def test_settings_reject_top_mismatch_unknown_names_and_common_failures(self):
+        for name in SETTINGS:
+            base=settings_sample(name)
+            for key,value in (('address','0x999'),('address',None),('name','OtherMenu'),('tag',name+'Extra'),
+                              ('cls','OtherScene'),('input_mode',True),('input_mode',2)):
+                with self.subTest(name=name,key=key,value=value):
+                    state=copy.deepcopy(base);state['top'][key]=value
+                    self.assertEqual(classify(state),UNKNOWN)
+            state=copy.deepcopy(base);state['active_scenes'][-1]['input_mode']=True
+            self.assertEqual(classify(state),UNKNOWN)
+            for key,value in (('player_index',1),('player_index',-1),('player_index',False),
+                              ('input_block_count',1),('read_only',False),('consistent_reread',False)):
+                self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN)
+        self.assertEqual(classify(settings_sample('DeltaUnknownSettings')),UNKNOWN)
+
+    def test_settings_publish_pause_then_resume_with_new_sequence(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();reader.sample=lambda:settings_sample('DeltaVideoSettings')
+            m=self.monitor(path,reader)
+            try:
+                m.poll();first=PACKET.unpack(path.read_bytes())
+                reader.sample=lambda:sample(False);m.clock=lambda:200;m.poll()
+                second=PACKET.unpack(path.read_bytes())
+                self.assertEqual((first[3],first[-2],first[-1]),(PAUSE_MENU,1,100))
+                self.assertEqual((second[3],second[-2],second[-1]),(GAMEPLAY,2,200))
+                self.assertEqual(first[:3]+first[4:8],second[:3]+second[4:8])
+            finally:m.close()
+
     def test_pause_exact_scene_independent_of_focus_selection(self):
         self.assertEqual((UNKNOWN,GAMEPLAY,DEATH_MENU,PAUSE_MENU),(0,1,2,3))
         self.assertEqual(classify(pause_sample()), PAUSE_MENU)
