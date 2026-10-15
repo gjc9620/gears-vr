@@ -5,10 +5,10 @@
 #include "eye_chain_policy.h"
 
 enum class ProjectionStatus {submitted,producer_stopped,producer_unavailable,waiting_image,current_inactive,current_untracked,
-    reference_space_changed,empty_ticket,session_mismatch,ticket_flags,ticket_geometry,stale_ticket,image_rectangle,session_lost,producer_structure_invalid,probe_failure,menu_requested,menu_recovery_pending,reference_epoch_pending,count};
+    reference_space_changed,empty_ticket,session_mismatch,ticket_flags,ticket_geometry,stale_ticket,image_rectangle,session_lost,producer_structure_invalid,probe_failure,menu_requested,menu_recovery_pending,reference_epoch_pending,source_reconfiguration,count};
 inline const char* projection_status_name(ProjectionStatus status){
     static const char* names[]={"submitted","producer_stopped","producer_unavailable","waiting_image","current_inactive","current_untracked",
-        "reference_space_changed","empty_ticket","session_mismatch","ticket_flags","ticket_geometry","stale_ticket","image_rectangle","session_lost","producer_structure_invalid","probe_failure","menu_requested","menu_recovery_pending","reference_epoch_pending"};
+        "reference_space_changed","empty_ticket","session_mismatch","ticket_flags","ticket_geometry","stale_ticket","image_rectangle","session_lost","producer_structure_invalid","probe_failure","menu_requested","menu_recovery_pending","reference_epoch_pending","source_reconfiguration"};
     return names[static_cast<unsigned>(status)];
 }
 inline bool xr_image_work_complete(uint64_t completed,uint64_t target){return target && completed!=~uint64_t(0) && completed>=target;}
@@ -109,6 +109,7 @@ public:
                   gears_eye_chain::Limits const* stereo_limits=nullptr):allow_simulated(simulated),stereo(stereo_limits!=nullptr),device(d),queue(q),snapshot_path(snapshot?snapshot:""){
         try{
         receiver->open(d,pid,allow_simulated);
+        if(receiver->generation()>1&&!snapshot_path.empty())snapshot_path+=".g"+std::to_string(receiver->generation());
         if(stereo&&!gears_eye_chain::make_plan(receiver->width,receiver->height,*stereo_limits,eye_plan))
             throw std::runtime_error("Stereo source exceeds advertised XR per-eye/system size or sample limits");
         uint32_t count{};xr_check(xrEnumerateSwapchainFormats(session,0,&count,nullptr),"GPU game formats");
@@ -277,6 +278,20 @@ public:
         quad.subImage.swapchain=eyes[0].chain;quad.subImage.imageRect.extent={int32_t(receiver->width),int32_t(receiver->height)};++rendered;return true;
     }
     bool producer_stopped() const{return receiver->stopped();}
+    bool reconfiguring()const{return receiver->reconfiguring();}
+    std::uint64_t resource_generation()const{return receiver->generation();}
+    bool retire_for_resize(){
+        if(!reconfiguring()||in_flight)return false;
+        if(serial&&!xr_image_work_complete(fence->GetCompletedValue(),serial))return false;
+        for(auto const& eye:eyes)if(eye.acquired)return false;
+        // Called on the XR render thread before the next submission. Destroying
+        // each retired eye chain also lets the runtime finish its own use.
+        for(auto& eye:eyes)if(eye.chain){
+            xr_check(xrDestroySwapchain(eye.chain),"retire resized eye chain");
+            eye.chain=XR_NULL_HANDLE;eye.images.clear();eye.blit.reset();
+        }
+        current=false;return receiver->release_for_resize();
+    }
     // Same render thread only; local retained snapshot, no shared-memory/GPU
     // operation. sequence() is the acknowledged producer serial, not our fence.
     outage_diagnostics::ImageSnapshot diagnostic_snapshot() const noexcept {
@@ -290,10 +305,12 @@ public:
         return out;
     }
     bool render_projection(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status,int64_t minimum_sample_ns=0,uint64_t space_epoch=1,int64_t space_change_time=0){
+        if(reconfiguring()){status=ProjectionStatus::source_reconfiguration;return false;}
         if(!stereo)throw std::runtime_error("Projection requires admitted stereo eye chains");
         if(receiver->stopped()){status=ProjectionStatus::producer_stopped;return false;}
         status=ProjectionStatus::waiting_image;
         if(!update_image(expected_session,&status))return false;
+        if(reconfiguring()){status=ProjectionStatus::source_reconfiguration;return false;}
         const auto& ticket=receiver->ticket();const auto& sample=ticket.sample;
         const auto now=gears_vr::monotonic_ns();
         status=projection_ticket_status(ticket,receiver->width,receiver->height,expected_session,now,allow_simulated,space_epoch,space_change_time);

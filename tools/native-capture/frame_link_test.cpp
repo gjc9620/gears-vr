@@ -249,6 +249,88 @@ int main() {
         CHECK(observer.registered(1).queue==2&&observer.lookup(1).queue==0);
     }
     {
+        gears_swapchain_binding::Observer observer;
+        CHECK(observer.bind({1,2,3,1920,1080,2},true,true));
+        CHECK(observer.bind({4,5,6,1280,720,2},true,true));
+        CHECK(observer.buffer(1,100,0)&&observer.buffer(1,101,1)&&observer.buffer(4,400,0));
+        const uintptr_t first[]{100,101},second[]{200,201};
+        CHECK(observer.registered(1).generation==1);
+        CHECK(observer.begin_resize(1));
+        CHECK(observer.registered(1).generation==2&&observer.registered(1).resizing);
+        CHECK(!observer.known_buffer(100)&&!observer.lookup(1).chain);
+        CHECK(observer.known_buffer(400)&&observer.lookup(4).queue==5);
+        CHECK(!observer.unchanged(1,1920,1080,first,2));
+        CHECK(!observer.snapshot().rejected); // Pending comparison is not a hard fault.
+        CHECK(observer.complete_resize(1,3840,2160,second,2,true));
+        CHECK(observer.lookup(1).generation==2&&observer.lookup(1).width==3840);
+        CHECK(observer.known_buffer(200)&&observer.known_buffer(201)&&!observer.known_buffer(100)&&!observer.known_buffer(101));
+        CHECK(observer.known_buffer(400)&&observer.unchanged(1,3840,2160,second,2));
+        CHECK(observer.begin_resize(1));
+        CHECK(!observer.complete_resize(1,0,0,nullptr,0,false));
+        CHECK(observer.registered(1).needs_revalidation&&!observer.lookup(1).chain&&!observer.known_buffer(200));
+        CHECK(!observer.unchanged(1,1920,1080,first,2)); // Failed resize never admits replacement resources.
+        CHECK(observer.unchanged(1,3840,2160,second,2));
+        CHECK(observer.known_buffer(200)&&observer.lookup(1).generation==3&&!observer.snapshot().rejected);
+        CHECK(observer.begin_resize(1)&&observer.complete_resize(1,3840,2160,second,2,false));
+        CHECK(observer.lookup(1).generation==4&&observer.known_buffer(200));
+        CHECK(observer.begin_resize(1)&&!observer.complete_resize(1,0,0,nullptr,0,false));
+        CHECK(observer.begin_resize(1)&&observer.complete_resize(1,1920,1080,first,2,true)); // A failed API may itself be retried.
+        CHECK(observer.lookup(1).generation==6&&observer.known_buffer(100)&&!observer.known_buffer(200));
+    }
+    {
+        // Separate chains can resize concurrently and complete in either order.
+        gears_swapchain_binding::Observer observer;
+        CHECK(observer.bind({1,2,3,1920,1080,2},true,true)&&observer.bind({4,5,6,1920,1080,2},true,true));
+        CHECK(observer.buffer(1,100,0)&&observer.buffer(4,400,0));
+        CHECK(observer.begin_resize(1)&&observer.begin_resize(4));
+        const uintptr_t a[]{200},b[]{500};
+        CHECK(observer.complete_resize(4,1280,720,b,1,true));
+        CHECK(observer.known_buffer(500)&&!observer.known_buffer(100));
+        CHECK(observer.complete_resize(1,1280,720,a,1,true));
+        CHECK(observer.lookup(1).generation==2&&observer.lookup(4).generation==2);
+        CHECK(!observer.begin_resize(999)&&observer.known_buffer(200));
+    }
+    {
+        for(unsigned fault=0;fault<6;++fault){
+            gears_swapchain_binding::Observer observer;
+            CHECK(observer.bind({1,2,3,1920,1080,2},true,true));CHECK(observer.buffer(1,100,0));
+            const uintptr_t valid[]{200},duplicate[]{200,200};
+            if(fault==0){CHECK(observer.begin_resize(1));CHECK(!observer.begin_resize(1));}
+            if(fault==1)CHECK(!observer.complete_resize(1,1920,1080,valid,1,true));
+            if(fault==2){CHECK(observer.begin_resize(1));CHECK(!observer.complete_resize(1,1920,1080,duplicate,2,true));}
+            if(fault==3){CHECK(observer.begin_resize(1));CHECK(!observer.complete_resize(1,1920,1080,valid,17,true));}
+            if(fault==4){CHECK(observer.bind({4,5,6,1920,1080,2},true,true));CHECK(observer.buffer(4,200,0));
+                CHECK(observer.begin_resize(1));CHECK(!observer.complete_resize(1,1920,1080,valid,1,true));}
+            if(fault==5){CHECK(observer.begin_resize(1)&&observer.complete_resize(1,1920,1080,valid,1,true));
+                CHECK(!observer.complete_resize(1,1920,1080,valid,1,true));}
+            CHECK(observer.snapshot().rejected&&!observer.lookup(1).chain&&!observer.known_buffer(100));
+            CHECK(!observer.begin_resize(1)); // Protocol, alias and capacity faults remain sticky.
+        }
+    }
+    {
+        gears_swapchain_binding::Observer observer;
+        for(uintptr_t chain=1;chain<=3;++chain)CHECK(observer.bind({chain,20,30,1920,1080,2},true,true));
+        std::array<uintptr_t,16> inventory{};
+        for(uintptr_t chain=1;chain<=2;++chain){
+            for(unsigned i=0;i<inventory.size();++i)inventory[i]=chain*100+i;
+            CHECK(observer.begin_resize(chain)&&observer.complete_resize(chain,1920,1080,inventory.data(),16,true));
+        }
+        CHECK(observer.snapshot().buffers==32&&observer.begin_resize(3));
+        const uintptr_t extra[]{999};CHECK(!observer.complete_resize(3,1920,1080,extra,1,true));
+        CHECK(observer.snapshot().overflow==1&&!observer.lookup(1).chain&&!observer.known_buffer(100));
+    }
+    {
+        gears_swapchain_binding::Observer observer;
+        CHECK(observer.bind({1,2,3,1920,1080,2},true,true));CHECK(observer.buffer(1,100,0));
+        const uintptr_t invalid[]{0},valid[]{200};
+        CHECK(observer.begin_resize(1)&&!observer.complete_resize(1,1920,1080,invalid,1,true));
+        CHECK(!observer.lookup(1).chain&&!observer.known_buffer(100));
+        CHECK(!observer.unchanged(1,1920,1080,valid,1));
+        CHECK(observer.begin_resize(1)&&observer.complete_resize(1,1920,1080,valid,1,true));
+        CHECK(observer.known_buffer(200)&&!observer.snapshot().rejected);
+        observer.invalidate();CHECK(!observer.begin_resize(1)&&!observer.known_buffer(200));
+    }
+    {
         auto storage=std::make_unique<Tracker>();auto& t=*storage;
         uint64_t last_generation{};
         // More lifetime identities than capacity, but each consumed window is

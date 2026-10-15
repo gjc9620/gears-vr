@@ -225,6 +225,11 @@ def configure_anchor_options(args,parser):
 
 def main():
     command_started=time.monotonic()
+    command_started_ns=time.perf_counter_ns()
+    def preparation_timing(stage,started_ns):
+        finished=time.perf_counter_ns()
+        print(json.dumps({'native_prepare_stage':stage,'elapsed_ms':(finished-started_ns)/1000000,
+            'since_command_start_ms':(finished-command_started_ns)/1000000,'clock':'perf_counter_ns'}),flush=True)
     parser=argparse.ArgumentParser()
     parser.add_argument('--pid',type=int,required=True)
     parser.add_argument('--seconds',type=int,default=90,choices=range(10,181))
@@ -328,6 +333,7 @@ def main():
     dll=args.build_dir.resolve()/args.dll_name
     test=dll.with_name('CaptureSelfTest.exe')
     if not dll.is_file() or not test.is_file():raise RuntimeError('Build capture DLL and self-test first')
+    selftests_started=time.perf_counter_ns()
     subprocess.run([str(test),str(dll)],check=True)
     if args.gpu_diagnostics: subprocess.run([str(test),str(dll),'--gpu'],check=True)
     if args.first_view_mask_control:subprocess.run([str(test),str(dll),'--first-view-mask'],check=True)
@@ -363,6 +369,7 @@ def main():
     if args.submit_pair: subprocess.run([str(dll.with_name('SplitSourceViewsTest.exe'))],check=True)
     if args.submit_pair_seconds or args.continuous_session:subprocess.run([str(dll.with_name('SubmittedViewLifetimeTest.exe'))],check=True)
     if args.shadow_state: subprocess.run([str(test),str(dll),'--state'],check=True)
+    preparation_timing('self_tests_total',selftests_started)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     check_preparation=preparation_live_guard(args.pid,args.continuous_owner_pid,args.continuous_owner_creation_time)
     # One shared read-only budget. Reserve time within the runner's 90 seconds
@@ -375,7 +382,10 @@ def main():
         if args.continuous_session and args.anchor_observer:
             return wait_camera_preparation(acquire,check_preparation,preparation_deadline,failure_receipt=failed_preparation)
         check_preparation();value=acquire();check_preparation();return value
+    first_resolve_started=time.perf_counter_ns()
     camera=prepare(lambda:resolve_camera_once(args.pid,profile))
+    preparation_timing('first_resolve_including_retry',first_resolve_started)
+    certificates_started=time.perf_counter_ns()
     handle=k.OpenProcess(0x43a,False,args.pid)
     if not handle:raise c.WinError(c.get_last_error())
     remote_memory=None;loader_finished=False
@@ -433,6 +443,8 @@ def main():
             record_anchor_failure=not(args.continuous_session and args.anchor_observer),
             preparation_deadline=preparation_deadline,check_live=check_preparation))
         check_preparation()
+        preparation_timing('certificate_acquisition_including_retry',certificates_started)
+        activation_started=time.perf_counter_ns()
         config='[Capture]\n'+f'pid={args.pid}\nseconds={args.seconds}\n'+f"local_player={camera['local_player_address']}\ncontroller={camera['controller_address']}\ntimestamp={camera['timestamp_address']}\n"
         yaw_address=int(camera['pov_address'],16)+int(camera['offsets']['Rotation'],16)+4
         config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\nsweep={int(args.sweep)}\nlive_head={int(args.live_head)}\n"
@@ -514,6 +526,7 @@ def main():
             event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.Stop.{args.pid}')
             if event:
                 k.CloseHandle(event)
+                preparation_timing('activation_until_confirmed',activation_started)
                 print(f'Capture active for PID {args.pid}; status file is readable after capture ends.')
                 return
             try:
@@ -525,10 +538,13 @@ def main():
                 event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.Stop.{args.pid}')
                 if event:
                     k.CloseHandle(event)
+                    preparation_timing('activation_until_confirmed',activation_started)
                     print(f'Capture active for PID {args.pid}; status file is readable after capture ends.')
                     return
                 value=''
-            if f'capturing pid={args.pid} ' in value:print(value.strip());return
+            if f'capturing pid={args.pid} ' in value:
+                preparation_timing('activation_until_confirmed',activation_started)
+                print(value.strip());return
             if 'rejected:' in value or 'failed' in value:raise RuntimeError(value.strip())
             time.sleep(.1)
         raise RuntimeError('Capture start status not confirmed; inspect capture-status.txt before continuing')

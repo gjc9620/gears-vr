@@ -213,6 +213,150 @@ void produce(DXGI_FORMAT format,bool stereo=false,bool allow_sim=false){
     if(!busy_ticket_checks)throw std::runtime_error("Busy ticket preservation not exercised");
     printf("{\"stereo_tickets\":%s,\"simulated_source\":%s,\"invalid_ticket_cases\":13,\"busy_ticket_checks\":%u}\n",stereo?"true":"false",allow_sim?"true":"false",busy_ticket_checks);
 }
+static unsigned resize_checks{};
+static void resize_check(bool value,const char* message){++resize_checks;if(!value)throw std::runtime_error(message);}
+struct ResizeGpuWork {
+    Gpu& gpu;ComPtr<ID3D12CommandAllocator> allocator;ComPtr<ID3D12GraphicsCommandList> list;
+    ComPtr<ID3D12Fence> fence;UINT64 serial{};
+    explicit ResizeGpuWork(Gpu& value):gpu(value){
+        gpu_check(gpu.device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)),"resize allocator");
+        gpu_check(gpu.device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&list)),"resize list");
+        gpu_check(list->Close(),"resize initial close");gpu_check(gpu.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)),"resize local fence");
+    }
+    void finish(){
+        gpu_check(gpu.queue->Signal(fence.Get(),++serial),"resize finish signal");const auto deadline=GetTickCount64()+5000;
+        while(fence->GetCompletedValue()<serial&&GetTickCount64()<deadline)Sleep(1);
+        resize_check(fence->GetCompletedValue()!=~UINT64(0)&&fence->GetCompletedValue()>=serial,"resize GPU completion timeout");
+    }
+    void begin(){finish();gpu_check(allocator->Reset(),"resize allocator reset");gpu_check(list->Reset(allocator.Get(),nullptr),"resize list reset");}
+    void execute(){gpu_check(list->Close(),"resize list close");ID3D12CommandList* lists[]{list.Get()};gpu.queue->ExecuteCommandLists(1,lists);}
+};
+void resize_transport_test(){
+    // Separate endpoint queues, opening the actual shared resource/fences on
+    // the receiving endpoint. D3D12 may return the same adapter device singleton
+    // in one process; this still performs a GPU transfer and readback, not a mock.
+    Gpu producer,consumer;ResizeGpuWork writer(producer),reader(consumer);
+    ComPtr<IDXGISwapChain1> chain;DXGI_SWAP_CHAIN_DESC1 desc{};desc.Width=640;desc.Height=360;
+    desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;desc.SampleDesc.Count=1;desc.BufferCount=2;
+    desc.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;desc.SwapEffect=DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;desc.AlphaMode=DXGI_ALPHA_MODE_PREMULTIPLIED;
+    gpu_check(producer.factory->CreateSwapChainForComposition(producer.queue.Get(),&desc,nullptr,&chain),"resize test chain");
+    ComPtr<IDXGISwapChain3> current;gpu_check(chain.As(&current),"resize chain3");
+    GpuPublisher publisher;GpuReceiver receiver;
+    resize_check(publisher.bind(producer.queue.Get(),chain.Get())&&publisher.prepare(),"resize publisher initial prepare");
+    receiver.open(consumer.device.Get(),GetCurrentProcessId());
+    resize_check(receiver.generation()==1&&receiver.width==640&&receiver.height==360,"resize initial generation/dimensions");
+    auto fill=[&](float value){
+        ComPtr<ID3D12Resource> source;gpu_check(chain->GetBuffer(current->GetCurrentBackBufferIndex(),IID_PPV_ARGS(&source)),"resize source");
+        const auto d=source->GetDesc();ComPtr<ID3D12DescriptorHeap> heap;D3D12_DESCRIPTOR_HEAP_DESC h{};h.Type=D3D12_DESCRIPTOR_HEAP_TYPE_RTV;h.NumDescriptors=1;
+        gpu_check(producer.device->CreateDescriptorHeap(&h,IID_PPV_ARGS(&heap)),"resize RTV heap");const auto handle=heap->GetCPUDescriptorHandleForHeapStart();
+        producer.device->CreateRenderTargetView(source.Get(),nullptr,handle);writer.begin();
+        gpu_barrier(writer.list.Get(),source.Get(),D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_RENDER_TARGET);
+        const float left[]{value,.25f,.5f,1},right[]{.125f,.75f,value,1};
+        const D3D12_RECT a{0,0,LONG(d.Width/2),LONG(d.Height)},b{LONG(d.Width/2),0,LONG(d.Width),LONG(d.Height)};
+        writer.list->ClearRenderTargetView(handle,left,1,&a);writer.list->ClearRenderTargetView(handle,right,1,&b);
+        gpu_barrier(writer.list.Get(),source.Get(),D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PRESENT);
+        writer.execute();writer.finish(); // Local source/RTV references end before ResizeBuffers.
+        writer.begin();gpu_check(writer.list->Close(),"retire resize source recording");
+    };
+    auto publish=[&](unsigned id,float value){
+        fill(value);auto ticket=test_ticket(id,receiver.width,receiver.height);
+        const auto deadline=GetTickCount64()+5000;bool captured=false;
+        while(!captured&&GetTickCount64()<deadline){captured=publisher.capture(chain.Get(),&ticket);if(!captured)Sleep(1);}
+        resize_check(captured,"resize image publish failed");return ticket;
+    };
+    auto read=[&](StereoImageTicket const& expected,float value,bool begin_resize_while_reading){
+        resize_check(receiver.acquire(consumer.queue.Get()),"resize image acquire failed");
+        resize_check(same_ticket(receiver.ticket(),expected),"resize ticket/rectangle belongs to another image");
+        auto d=receiver.texture->GetDesc();D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout{};UINT64 bytes{};
+        consumer.device->GetCopyableFootprints(&d,0,1,0,&layout,nullptr,nullptr,&bytes);
+        ComPtr<ID3D12Resource> readback;D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_READBACK;
+        D3D12_RESOURCE_DESC buffer{};buffer.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;buffer.Width=bytes;buffer.Height=1;
+        buffer.DepthOrArraySize=1;buffer.MipLevels=1;buffer.SampleDesc.Count=1;buffer.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        gpu_check(consumer.device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&buffer,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&readback)),"resize readback");
+        reader.begin();gpu_barrier(reader.list.Get(),receiver.texture.Get(),D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_COPY_SOURCE);
+        D3D12_TEXTURE_COPY_LOCATION to{},from{};to.pResource=readback.Get();to.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;to.PlacedFootprint=layout;
+        from.pResource=receiver.texture.Get();from.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;reader.list->CopyTextureRegion(&to,0,0,0,&from,nullptr);
+        gpu_barrier(reader.list.Get(),receiver.texture.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COMMON);
+        ComPtr<ID3D12Fence> gate;bool began=true,pending_protected=true,done_protected=true;
+        if(begin_resize_while_reading){
+            gpu_check(consumer.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&gate)),"resize reader gate");
+            gpu_check(consumer.queue->Wait(gate.Get(),1),"stall resize reader");
+            began=publisher.begin_resize(chain.Get());pending_protected=!receiver.release_for_resize();
+        }
+        try{
+            reader.execute();receiver.acknowledge(consumer.queue.Get());
+            if(gate){done_protected=!receiver.release_for_resize();gpu_check(gate->Signal(1),"resume resize reader");}
+            reader.finish();
+        }catch(...){if(gate)gate->Signal(1);reader.finish();throw;}
+        resize_check(began&&pending_protected&&done_protected,"resize released consumer before acquired/ack GPU work completed");
+        void* mapped{};D3D12_RANGE range{0,SIZE_T(bytes)};gpu_check(readback->Map(0,&range,&mapped),"resize readback map");
+        bool matched=true;
+        for(unsigned y=0;y<d.Height;++y)for(unsigned x=0;x<d.Width;++x){
+            const auto* p=static_cast<unsigned char*>(mapped)+layout.Offset+size_t(y)*layout.Footprint.RowPitch+x*4;
+            const float color[]{x<d.Width/2?value:.125f,x<d.Width/2?.25f:.75f,x<d.Width/2?.5f:value,1};
+            for(unsigned c=0;c<4;++c)if(std::abs(int(p[c])-int(std::lround(color[c]*255)))>1)matched=false;
+        }
+        D3D12_RANGE empty{};readback->Unmap(0,&empty);resize_check(matched,"resize shared GPU pixels stale or wrong extent");
+        reader.begin();gpu_check(reader.list->Close(),"retire resize consumer recording");
+    };
+    auto rebuild=[&](unsigned width,unsigned height,bool fail,bool already_begun){
+        const auto previous=receiver.generation();
+        const unsigned old_width=receiver.width,old_height=receiver.height;
+        if(!already_begun)resize_check(publisher.begin_resize(chain.Get()),"resize begin rejected");
+        resize_check(receiver.reconfiguring()&&!receiver.stopped(),"resize notification must not terminate receiver");
+        resize_check(!receiver.acquire(consumer.queue.Get()),"resize admitted old image");
+        auto blocked=test_ticket(99,receiver.width,receiver.height);resize_check(!publisher.capture(chain.Get(),&blocked),"resize producer submitted during transition");
+        resize_check(publisher.drain(1000),"resize producer source did not drain");
+        ComPtr<ID3D12Resource> held;
+        if(fail)gpu_check(chain->GetBuffer(0,IID_PPV_ARGS(&held)),"hold buffer for controlled resize failure");
+        const auto resized=chain->ResizeBuffers(2,width,height,desc.Format,0);
+        held.Reset();publisher.end_resize();
+        resize_check(fail?FAILED(resized):SUCCEEDED(resized),"actual DXGI resize outcome differed");
+        resize_check(receiver.release_for_resize(),"drained resize receiver did not release claim");
+        const auto deadline=GetTickCount64()+2000;
+        while(publisher.state==5&&GetTickCount64()<deadline){publisher.poll();Sleep(1);}
+        resize_check(publisher.state==1,"resize handoff stuck after consumer released an unread/latest slot");
+        resize_check(publisher.prepare(),"resize publisher rebuild failed");
+        // Reopen through the public API on the same drained receiver. Its old
+        // serial/ticket must not suppress the new generation starting at one.
+        receiver.open(consumer.device.Get(),GetCurrentProcessId());
+        resize_check(receiver.generation()==previous+1&&receiver.width==(fail?old_width:width)&&receiver.height==(fail?old_height:height),"resize generation/dimensions not replaced");
+        resize_check(receiver.sequence()==0&&stereo_image_ticket_empty(receiver.ticket()),"resize receiver retained prior generation history");
+        resize_check(!receiver.acquire(consumer.queue.Get()),"new generation fabricated a frame before publication");
+    };
+    read(publish(1,.15f),.15f,false);read(publish(2,.30f),.30f,true);
+    rebuild(1280,720,false,true);
+    auto wrong=test_ticket(3,640,360);resize_check(!publisher.capture(chain.Get(),&wrong),"old-sized ticket admitted to resized image");
+    read(publish(3,.45f),.45f,false);
+    (void)publish(4,.60f); // Intentionally unacquired: nobody can ack this slot after ready becomes 2.
+    rebuild(640,360,false,false);
+    read(publish(5,.75f),.75f,false);
+    rebuild(1280,720,true,false); // Real failed ResizeBuffers, original 640x360 extent remains valid.
+    read(publish(6,.90f),.90f,false);
+    {
+        const auto previous=receiver.generation();
+        resize_check(publisher.begin_resize(chain.Get())&&publisher.drain(1000),"consecutive resize first begin/drain");
+        gpu_check(chain->ResizeBuffers(2,1280,720,desc.Format,0),"consecutive resize first DXGI call");
+        publisher.end_resize();resize_check(receiver.release_for_resize(),"consecutive resize consumer retirement");
+        publisher.poll();resize_check(publisher.state==1,"consecutive resize first poll did not reserve rebuild");
+        // Deliberately skip prepare: the publisher still owns consumer==-1.
+        // A second real resize must preserve that ownership rather than wait
+        // forever for a nonexistent consumer to clear it back to zero.
+        resize_check(publisher.begin_resize(chain.Get())&&publisher.drain(1000),"consecutive resize second begin/drain");
+        gpu_check(chain->ResizeBuffers(2,640,360,desc.Format,0),"consecutive resize second DXGI call");
+        publisher.end_resize();publisher.poll();
+        resize_check(publisher.state==1&&publisher.prepare(),"consecutive resize lost publisher rebuild reservation");
+        receiver.open(consumer.device.Get(),GetCurrentProcessId());
+        // Only the final inventory was published, so one transport generation
+        // is committed even though DXGI completed two resize boundaries.
+        resize_check(receiver.generation()==previous+1&&receiver.width==640&&receiver.height==360,"consecutive resize final generation/extent");
+        resize_check(receiver.sequence()==0&&stereo_image_ticket_empty(receiver.ticket())&&!receiver.acquire(consumer.queue.Get()),"consecutive resize retained an old image");
+        read(publish(7,.65f),.65f,false);
+    }
+    publisher.mark_stopped();resize_check(publisher.drain(1000)&&publisher.close(),"resize final publisher close failed");
+    receiver.close();producer.verify();consumer.verify();
+    printf("{\"resize_transport\":true,\"checks\":%u,\"sizes\":\"640x360->1280x720->640x360\",\"failed_resize_rebuilt\":true,\"pixels_and_tickets_verified\":true,\"unacquired_slot_retired\":true,\"consumer_gpu_done_required\":true,\"consecutive_resize_before_prepare\":true}\n",resize_checks);
+}
 int wmain(int argc,wchar_t** argv){
     try{
         ComPtr<ID3D12Debug> debug;bool validation=SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)));if(validation)debug->EnableDebugLayer();
@@ -221,9 +365,10 @@ int wmain(int argc,wchar_t** argv){
             bool simulated=argc>4&&!wcscmp(argv[4],L"--simulated");bool stereo=simulated||(argc>4&&!wcscmp(argv[4],L"--stereo"));
             return consume(wcstoul(argv[2],nullptr,10),wcstoul(argv[3],nullptr,10),argc>4&&!stereo?argv[4]:nullptr,stereo,simulated);}
         if(argc==2&&!wcscmp(argv[1],L"--trace-stereo")){produce(DXGI_FORMAT_R8G8B8A8_UNORM,true);return 0;}
+        if(argc==2&&!wcscmp(argv[1],L"--resize")){resize_transport_test();return 0;}
         if(argc!=1)return 2;
         produce(DXGI_FORMAT_R8G8B8A8_UNORM);produce(DXGI_FORMAT_R10G10B10A2_UNORM);
         produce(DXGI_FORMAT_R8G8B8A8_UNORM,true);produce(DXGI_FORMAT_R10G10B10A2_UNORM,true);
-        produce(DXGI_FORMAT_R8G8B8A8_UNORM,true,true);produce(DXGI_FORMAT_R10G10B10A2_UNORM,true,true);return 0;
+        produce(DXGI_FORMAT_R8G8B8A8_UNORM,true,true);produce(DXGI_FORMAT_R10G10B10A2_UNORM,true,true);resize_transport_test();return 0;
     }catch(std::exception const& e){fprintf(stderr,"%s\n",e.what());return 1;}
 }

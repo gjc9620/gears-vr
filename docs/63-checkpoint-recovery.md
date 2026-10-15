@@ -19,8 +19,20 @@
 
 冻结日志确认另一个直接缺陷：swapchain首次从3840×2160变1920×1080时，buffer对象也重建。库存观察器永久rejected，`changed=10918`是后续拒绝次数，非resize次数；共享纹理和XR眼纹理仍只支持初始大小。不能以进程运行或模拟器FOCUSED宣称画面恢复。退出时native资源排空、hook恢复、XR退出完成。
 
+## Resize恢复增量（GameRecovery2 / SpaceRecovery2）
+
+DXGI ResizeBuffers/ResizeBuffers1边界现已更新库存代次、退休旧票据，并以consumer显式释放握手重建GPU共享资源和两条XR眼交换链。GPU包版本5。失败resize重新验证旧库存；连续resize保留同一publisher的重建保留权。实际GPU测试覆盖升降尺寸、失败调用、未消费末帧和连续重建；17个验证命令全部通过，报告`analysis/runtime/game-recovery2-validation.json`。
+
+实际PID12832，`continuous-stereo-12832-20261015-175419-4048fc7e.*`：1080p同进程确认重载检查点后继续提交。精确client尺寸1920×1080→1280×720→1920×1080→3840×2160分别出现资源代次3/5/7的成功xrEndFrame；前两次新代首次提交距窗口操作约121/150毫秒，4K约1.112秒。8次底层resize成功，库存changed/rejected均0，所有GPU重建prepare成功。原生排空、hook恢复、XR退出通过。此记录仍不是稳定性通过：后续VISIBLE状态被错误当作inactive导致持续不提交；用户同时报告反复短闪黑。
+
+闪黑的独立证据：首个短缺帧期间，旧ticket年龄由90毫秒增长到590毫秒，被100毫秒年龄门槛逐帧拒绝；新图像到达立即恢复。持续黑屏期间CSV为XR_SESSION_STATE_VISIBLE(4)、shouldRender=1，现有双目门控却仅接受FOCUSED(5)。不得把这些当作resize失败，亦不得宣称第①或第④项已全部解决。
+
+另一个限制：PID23276用非标准窗口client尺寸5094×2809、1894×1009时，游戏原生双目仍按1920×1080输出，新增最终缩放draw在consume之外且无ticket。重建成功但没有认证的最终输出，需定向追踪该缩放输入；不能给它补最新票据。
+
+首入延迟目前仍约17秒native准备；已新增自测、首次resolve、证书获取、激活四段一次性计时，尚未优化。玩家默认与GUI仍未切换到本实验构建。
+
 ## 下一步
 
-在DXGI resize边界完成缓冲区代次更换、旧票据退休、共享GPU资源握手与XR眼纹理重建，再重复同进程检查点测试。尚未证明VDXR原点事件在真实头显上恢复；第二至四项修复与视觉验收仍待完成。
+修复VISIBLE渲染门控和短缺帧的有效图像保留，再重复稳定性与检查点测试。尚未证明VDXR原点事件在真实头显上恢复；第二至四项修复与视觉验收仍待完成。
 
 参考：[OpenXR参考空间变化事件](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrEventDataReferenceSpaceChangePending.html)、[DXGI ResizeBuffers资源释放要求](https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers)。

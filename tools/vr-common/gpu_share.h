@@ -11,7 +11,8 @@
 
 namespace gears_vr {
 using Microsoft::WRL::ComPtr;
-inline constexpr unsigned gpu_packet_version=4;
+inline constexpr unsigned gpu_packet_version=5;
+struct GpuOpeningDeferred:std::runtime_error {GpuOpeningDeferred():std::runtime_error("GPU source is being reconfigured"){};};
 // One GPU slot. Producer never overwrites it until the consumer's GPU fence
 // acknowledges the previous sequence. Both devices must use the same adapter.
 struct alignas(8) GpuPacket {
@@ -19,6 +20,7 @@ struct alignas(8) GpuPacket {
     LUID adapter;
     volatile LONG ready,stopped,consumer;
     alignas(8) volatile LONG64 sequence;
+    std::uint64_t generation;
     StereoImageTicket ticket;
 };
 inline std::wstring gpu_name(DWORD pid,const wchar_t* suffix){
@@ -63,6 +65,8 @@ class GpuPublisher {
     UINT64 serial=0;
     ULONGLONG next_capture=0;
     bool in_flight=false,initialized=false,allow_simulated_=false;
+    bool resize_active=false,rebuild_claimed_=false;
+    std::uint64_t generation_=0;
     HRESULT error=S_OK;
     bool complete(){return ready_fence && ready_fence->GetCompletedValue()!=~UINT64(0) && ready_fence->GetCompletedValue()>=serial;}
     void detach(){source.Detach();texture.Detach();list.Detach();allocator.Detach();ready_fence.Detach();done_fence.Detach();chain.Detach();queue.Detach();device.Detach();
@@ -89,7 +93,7 @@ class GpuPublisher {
     }
 public:
     std::atomic<unsigned> frames{0},busy{0},rate_limited{0};
-    std::atomic<unsigned> state{0}; // 0 absent,1 bound,2 ready,3 failed,4 stopped
+    std::atomic<unsigned> state{0}; // 0 absent,1 bound,2 ready,3 failed,4 stopped,5 resizing
     GpuPublisher()=default;
     GpuPublisher(GpuPublisher const&)=delete;
     ~GpuPublisher(){close();}
@@ -124,7 +128,7 @@ public:
     }
     bool prepare(){
         AcquireSRWLockExclusive(&lock);
-        if(state!=1){ReleaseSRWLockExclusive(&lock);return false;}
+        if(state!=1||resize_active){ReleaseSRWLockExclusive(&lock);return false;}
         bool ok=false;
         try {
             ComPtr<ID3D12Resource> sample;
@@ -143,22 +147,56 @@ public:
             DWORD pid=GetCurrentProcessId();
             ID3D12DeviceChild* objects[]={texture.Get(),ready_fence.Get(),done_fence.Get()};const wchar_t* names[]={L"texture",L"ready",L"done"};
             for(unsigned i=0;i<3;++i)gpu_check(device->CreateSharedHandle(objects[i],nullptr,GENERIC_ALL,gpu_name(pid,names[i]).c_str(),&shared[i]),"create shared handle");
-            map=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(GpuPacket),gpu_name(pid,L"metadata").c_str());
-            if(!map || GetLastError()==ERROR_ALREADY_EXISTS)throw std::runtime_error("GPU metadata already exists or cannot be created");
-            packet=static_cast<GpuPacket*>(MapViewOfFile(map,FILE_MAP_ALL_ACCESS,0,0,sizeof(GpuPacket)));
-            if(!packet)throw std::runtime_error("GPU metadata map failed");
+            if(!map){
+                map=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(GpuPacket),gpu_name(pid,L"metadata").c_str());
+                if(!map || GetLastError()==ERROR_ALREADY_EXISTS)throw std::runtime_error("GPU metadata already exists or cannot be created");
+                packet=static_cast<GpuPacket*>(MapViewOfFile(map,FILE_MAP_ALL_ACCESS,0,0,sizeof(GpuPacket)));
+                if(!packet)throw std::runtime_error("GPU metadata map failed");
+            }
+            if(generation_==~std::uint64_t(0))throw std::runtime_error("GPU generation exhausted");
             memset(packet,0,sizeof(*packet));packet->magic=0x47564731;packet->version=gpu_packet_version;packet->size=sizeof(*packet);packet->pid=pid;packet->ticket=StereoImageTicket{};
+            packet->generation=++generation_;serial=0;
             packet->allow_simulated=allow_simulated_?1:0;
             packet->width=static_cast<unsigned>(desc.Width);packet->height=desc.Height;packet->format=desc.Format;packet->adapter=device->GetAdapterLuid();
-            initialized=true;state=2;InterlockedExchange(&packet->ready,1);ok=true;
+            initialized=true;state=2;InterlockedExchange(&packet->ready,1);rebuild_claimed_=false;ok=true;
         }catch(...){error=E_FAIL;state=3;}
         ReleaseSRWLockExclusive(&lock);return ok;
     }
     void poll(){
         AcquireSRWLockExclusive(&lock);
         if(in_flight && complete()){source.Reset();in_flight=false;}
+        if(state==5&&!resize_active&&!in_flight&&
+           (rebuild_claimed_||!packet||InterlockedCompareExchange(&packet->consumer,-1,0)==0)){
+            // A second resize can occur after retirement but before prepare.
+            // Keep our reservation across that boundary; never adopt an
+            // unexplained -1 from shared memory as an owned reservation.
+            rebuild_claimed_=packet!=nullptr;
+            // ready==2 keeps new receivers out. The previous consumer releases
+            // its claim only after its GPU work and eye swapchains are retired.
+            // The final slot may never have been acquired. After explicit
+            // consumer retirement it needs no acknowledge; producer completion
+            // plus the released consumer claim proves both queues are done.
+            // -1 reserves the slot against a receiver that observed ready==1
+            // immediately before begin_resize. prepare publishes consumer=0 last.
+            source.Reset();texture.Reset();list.Reset();allocator.Reset();ready_fence.Reset();done_fence.Reset();
+            for(auto& handle:shared){if(handle)CloseHandle(handle);handle=nullptr;}
+            initialized=false;state=1;
+        }
         ReleaseSRWLockExclusive(&lock);
     }
+    // Called around the actual DXGI resize, outside ordinary Present work.
+    // Shared metadata survives; no old image may be admitted while ready==2.
+    bool begin_resize(IDXGISwapChain* swap){
+        AcquireSRWLockExclusive(&lock);bool ok=false;
+        ComPtr<IDXGISwapChain3> candidate;
+        if(!bound_resource&&!resize_active&&state!=3&&state!=4&&swap&&
+           (state==0||(SUCCEEDED(swap->QueryInterface(IID_PPV_ARGS(&candidate)))&&candidate.Get()==chain.Get()))){
+            resize_active=true;ok=true;
+            if(state!=0){state=5;if(packet)InterlockedExchange(&packet->ready,2);}
+        }
+        ReleaseSRWLockExclusive(&lock);return ok;
+    }
+    void end_resize(){AcquireSRWLockExclusive(&lock);resize_active=false;ReleaseSRWLockExclusive(&lock);}
     // Render callback: no CPU wait, file I/O, allocations of GPU resources or
     // waits on the consumer queue. Busy slot means skip this frame.
     bool capture(IDXGISwapChain* swap,const StereoImageTicket* ticket=nullptr,GpuCaptureTrace* traceout=nullptr){
@@ -251,13 +289,14 @@ public:
         if(!safe)detach();else{source.Reset();texture.Reset();list.Reset();allocator.Reset();ready_fence.Reset();done_fence.Reset();chain.Reset();queue.Reset();device.Reset();
             bound_resource.Reset();bound_identity.Reset();bound_device_identity.Reset();}
         if(packet)UnmapViewOfFile(packet);packet=nullptr;if(map)CloseHandle(map);map=nullptr;
-        for(auto& handle:shared){if(handle)CloseHandle(handle);handle=nullptr;}initialized=false;state=4;return safe;
+        for(auto& handle:shared){if(handle)CloseHandle(handle);handle=nullptr;}initialized=false;rebuild_claimed_=false;state=4;return safe;
     }
 };
 class GpuReceiver {
     HANDLE map{};GpuPacket* packet{};bool claimed=false,allow_simulated_=false;
     ComPtr<ID3D12Fence> ready_fence,done_fence;
     UINT64 pending=0,last=0;
+    std::uint64_t generation_{};
     StereoImageTicket ticket_{};
 public:
     ComPtr<ID3D12Resource> texture;
@@ -270,10 +309,19 @@ public:
         map=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,gpu_name(pid,L"metadata").c_str());
         if(!map)throw std::runtime_error("GPU producer metadata unavailable");
         packet=static_cast<GpuPacket*>(MapViewOfFile(map,FILE_MAP_ALL_ACCESS,0,0,sizeof(GpuPacket)));
-        if(!packet || InterlockedCompareExchange(&packet->ready,0,0)!=1 || packet->magic!=0x47564731 || packet->version!=gpu_packet_version || packet->size!=sizeof(*packet) || packet->pid!=pid || packet->allow_simulated!=(allow_simulated_?1u:0u) || InterlockedCompareExchange(&packet->stopped,0,0))throw std::runtime_error("GPU metadata rejected");
+        if(!packet)throw std::runtime_error("GPU metadata rejected");
+        if(InterlockedCompareExchange(&packet->ready,0,0)!=1)throw GpuOpeningDeferred();
+        if(packet->magic!=0x47564731 || packet->version!=gpu_packet_version || packet->size!=sizeof(*packet) || packet->pid!=pid || packet->allow_simulated!=(allow_simulated_?1u:0u) || InterlockedCompareExchange(&packet->stopped,0,0))throw std::runtime_error("GPU metadata rejected");
         LUID luid=device->GetAdapterLuid();if(memcmp(&luid,&packet->adapter,sizeof(luid)))throw std::runtime_error("GPU adapter differs from producer");
-        if(InterlockedCompareExchange(&packet->consumer,static_cast<LONG>(GetCurrentProcessId()),0))throw std::runtime_error("GPU slot already has a consumer");
+        generation_=packet->generation;
+        const auto prior=InterlockedCompareExchange(&packet->consumer,static_cast<LONG>(GetCurrentProcessId()),0);
+        if(prior==-1)throw GpuOpeningDeferred();
+        if(prior)throw std::runtime_error("GPU slot already has a consumer");
+        if(InterlockedCompareExchange(&packet->ready,0,0)!=1||generation_!=packet->generation){
+            InterlockedCompareExchange(&packet->consumer,0,static_cast<LONG>(GetCurrentProcessId()));throw GpuOpeningDeferred();
+        }
         claimed=true;producer_pid=pid;
+        if(!generation_)throw std::runtime_error("GPU generation missing");
         auto open_object=[&](const wchar_t* name,REFIID iid,void** out){
             HANDLE handle{};gpu_check(device->OpenSharedHandleByName(gpu_name(pid,name).c_str(),GENERIC_ALL,&handle),"open GPU handle name");
             HRESULT result=device->OpenSharedHandle(handle,iid,out);CloseHandle(handle);gpu_check(result,"open GPU object");
@@ -285,9 +333,9 @@ public:
         if(desc.Width!=width || desc.Height!=height || desc.Format!=format || !width || !height)throw std::runtime_error("Shared texture metadata differs");
     }
     bool acquire(ID3D12CommandQueue* queue){
-        if(!packet || pending || InterlockedCompareExchange(&packet->stopped,0,0))return false;
+        if(!packet || pending || InterlockedCompareExchange(&packet->stopped,0,0)||InterlockedCompareExchange(&packet->ready,0,0)!=1)return false;
         if(packet->magic!=0x47564731 || packet->version!=gpu_packet_version || packet->size!=sizeof(*packet) || packet->allow_simulated!=(allow_simulated_?1u:0u) ||
-           packet->pid!=producer_pid || packet->width!=width || packet->height!=height || packet->format!=static_cast<unsigned>(format))
+           packet->pid!=producer_pid || packet->generation!=generation_ || packet->width!=width || packet->height!=height || packet->format!=static_cast<unsigned>(format))
             throw std::runtime_error("GPU metadata changed or version rejected");
         auto serial=static_cast<UINT64>(InterlockedCompareExchange64(&packet->sequence,0,0));
         if(!serial || serial<=last)return false;
@@ -308,6 +356,19 @@ public:
     // for reuse/reprojection. Replaced only by the next successful acquire.
     StereoImageTicket const& ticket()const{return ticket_;}
     bool stopped()const{return !packet || InterlockedCompareExchange(&packet->stopped,0,0)!=0;}
+    bool reconfiguring()const{return packet&&!stopped()&&InterlockedCompareExchange(&packet->ready,0,0)==2;}
+    std::uint64_t generation()const{return generation_;}
+    bool release_for_resize(){
+        if(!reconfiguring()||pending||!claimed)return false;
+        const auto done=done_fence?done_fence->GetCompletedValue():0;
+        if(last&&(done==~UINT64(0)||done<last))return false;
+        texture.Reset();ready_fence.Reset();done_fence.Reset();
+        // Only this explicit, drained handoff permits another consumer to open.
+        InterlockedCompareExchange(&packet->consumer,0,static_cast<LONG>(GetCurrentProcessId()));
+        UnmapViewOfFile(packet);packet=nullptr;CloseHandle(map);map=nullptr;claimed=false;
+        last=pending=0;ticket_={};generation_=0;producer_pid=0;
+        return true;
+    }
     void close(){
         // Keep the single-consumer claim until producer exit. A replacement
         // consumer must not race commands from the previous process.

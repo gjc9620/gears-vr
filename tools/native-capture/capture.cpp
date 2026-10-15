@@ -278,7 +278,12 @@ constexpr size_t session_hook_capacity=session_hook_base_capacity+2;
 #else
 constexpr size_t session_hook_capacity=session_hook_base_capacity;
 #endif
-std::array<SessionHookEntry,session_hook_capacity> session_hook_entries{};
+#if defined(GEARS_GAME_RESOLUTION) && GEARS_GAME_RESOLUTION
+constexpr unsigned game_resize_hooks=2;
+#else
+constexpr unsigned game_resize_hooks=0;
+#endif
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<unsigned> submit_total{0},submit_retained{0},submit_skipped{0};
@@ -936,6 +941,7 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
     auto identity=canonical_identity(chain);auto binding=swapchain_bindings.registered(identity);
     if(!binding.chain){++frame_counts.unbound;frame_link.invalidate();frame_link.present(0,0);retire_stereo_window();frame_target_stats.clear_bindings();
         if(outage_diagnostics.load())outage_draws={};return;}
+    if(binding.resizing){frame_link.invalidate_all();retire_stereo_window();frame_target_stats.clear_bindings();return;}
     ++frame_counts.presents;if(flags&DXGI_PRESENT_TEST){++frame_counts.tests;
         frame_link.invalidate();frame_link.present(0,0);retire_stereo_window();frame_target_stats.clear_bindings();
         if(outage_diagnostics.load())outage_draws={};return;}
@@ -1234,12 +1240,12 @@ void print_frame_link(FILE* status) {
             i,row.current.identity,row.current.generation,row.target.resource,row.target.width,row.target.height,row.maximum_ticket,row.retired_ticket,
             row.executed_mask,row.executed_ticket,row.executed_queue,row.other_complete_recorded_lists,
             row.unique_recorded_ref.identity,row.unique_recorded_ref.generation,row.unique_recorded_ticket);}
-    fprintf(status,"frame_link enabled=1 resets=%llu reset_failed=%llu draws=%llu filtered=%llu unknown=%llu missing_target=%llu missing_ticket=%llu bad_quad=%llu executes=%llu execute_rejected=%llu presents=%llu linked=%llu contaminated=%llu present_failed=%llu tests=%llu unbound=%llu changed=%llu last_ticket=%llu gpu_published=%u pixels_proven=0 completion_proven=%u clear_copy_indirect_observed=0 resize_destroy_observed=0 fixed_size_only=1\n",
+    fprintf(status,"frame_link enabled=1 resets=%llu reset_failed=%llu draws=%llu filtered=%llu unknown=%llu missing_target=%llu missing_ticket=%llu bad_quad=%llu executes=%llu execute_rejected=%llu presents=%llu linked=%llu contaminated=%llu present_failed=%llu tests=%llu unbound=%llu changed=%llu last_ticket=%llu gpu_published=%u pixels_proven=0 completion_proven=%u clear_copy_indirect_observed=0 resize_hooks_enabled=%u destroy_observed=0 fixed_size_only=%u\n",
         frame_counts.resets.load(),frame_counts.reset_failed.load(),frame_counts.draws.load(),frame_counts.filtered.load(),frame_counts.unknown.load(),
         frame_counts.missing_target.load(),frame_counts.missing_ticket.load(),frame_counts.bad_quad.load(),frame_counts.executes.load(),frame_counts.execute_rejected.load(),
         frame_counts.presents.load(),frame_counts.linked.load(),frame_counts.contaminated.load(),frame_counts.present_failed.load(),frame_counts.tests.load(),
         frame_counts.unbound.load(),frame_counts.changed.load(),frame_counts.last_ticket.load(),stereo_publisher.frames.load(),
-        stereo_gpu_publish&&stereo_publisher.frames.load()&&stereo_publish_counts.drain_ok.load()?1:0);
+        stereo_gpu_publish&&stereo_publisher.frames.load()&&stereo_publish_counts.drain_ok.load()?1:0,game_resize_hooks?1:0,game_resize_hooks?0:1);
     fprintf(status,"frame_link_binding accepted=%llu excluded=%llu conflicts=%llu overflow=%llu buffers=%llu changed=%llu anchors=%llu rejected=%u chain_queue_refs_held=1 backbuffer_refs_held=0\n",
         bindings.accepted,bindings.excluded,bindings.conflicts,bindings.overflow,bindings.buffers,bindings.changed,bindings.anchors,bindings.rejected?1:0);
     auto tracker=frame_link.snapshot();auto target_tracker=frame_target_stats.snapshot();
@@ -2824,6 +2830,7 @@ bool viewport_hooks(ID3D12Device* device) {
     }
     if(list)list->Release();if(allocator)allocator->Release();return success;
 }
+#include "swapchain_resize.inl"
 bool present_hooks() {
     IDXGIFactory2* factory{};ID3D12Device* device{};ID3D12CommandQueue* queue{};IDXGISwapChain1* chain{};
     bool success=false;
@@ -2851,6 +2858,9 @@ bool present_hooks() {
                 success=install(present_target,reinterpret_cast<void*>(hook_present),reinterpret_cast<void**>(&original_present));
                 if(present1_target!=present_target)
                     success=install(present1_target,reinterpret_cast<void*>(hook_present1),reinterpret_cast<void**>(&original_present1)) && success;
+#if defined(GEARS_GAME_RESOLUTION) && GEARS_GAME_RESOLUTION
+                success=game_resize::install_hooks(chain)&&success;
+#endif
                 success=success && execute_ok;
             }
         }
@@ -3284,6 +3294,10 @@ DWORD WINAPI worker(void*) {
     print_native_owned_probe(status);
     print_native_owned_scene(status);
     print_resource_resize_probe(status);
+#if defined(GEARS_GAME_RESOLUTION) && GEARS_GAME_RESOLUTION
+    fprintf(status,"game_resolution_resize calls=%u completed=%u failed=%u rejected=%u drain_failed=%u\n",
+        game_resize::calls.load(),game_resize::completed.load(),game_resize::failed.load(),game_resize::rejected.load(),game_resize::drain_failed.load());
+#endif
     print_graphics_lock_observer(status,disabled==MH_OK);
     print_origin_trial(status,disabled==MH_OK);
     if(!active.load()&&stereo_closed)release_bindings();
