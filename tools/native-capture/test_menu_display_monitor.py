@@ -5,7 +5,7 @@ import json
 import copy
 import sys
 from unittest.mock import patch
-from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU
+from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU
 
 
 def sample(death=True):
@@ -19,6 +19,24 @@ def pause_sample():
     return dict(sample(), top=dict(name='DeltaPause-Campaign-Host', tag='DeltaPause-Campaign-Host',
                                   cls='WarUIScene', input_mode=1),
                 focused_leaf=dict(name='LBtnResumeSingle', cls='UILabelButton'))
+
+
+def main_menu_sample():
+    root=dict(address='0x3f78a8dd0', name='DeltaMainMenu', number=2,
+              cls='WarUIScene_MainMenu', outer='0x1438a180', input_mode=4)
+    return dict(sample(), top=dict(root,tag='DeltaMainMenu',tag_number=0), active_scenes=[root])
+
+
+def campaign_menu_sample(continue_game=False):
+    state=main_menu_sample()
+    campaign_type=dict(state['active_scenes'][0],name='DeltaCampaignType',
+                       cls='WarUIScene_CampaignType',address='0x1631a44ae0')
+    state['active_scenes'].append(campaign_type)
+    if continue_game:
+        state['active_scenes'].append(dict(campaign_type,name='DeltaCampaignMenu_ContinueGame',
+            cls='WarUIScene_Campaign',address='0x1632ba2380'))
+    state['top']=dict(state['active_scenes'][-1],tag=state['active_scenes'][-1]['name'],tag_number=0)
+    return state
 
 
 SETTINGS = ('DeltaPause-Options', 'DeltaGameConfiguration', 'DeltaVideoSettings',
@@ -47,6 +65,135 @@ class Reader:
 
 
 class Tests(unittest.TestCase):
+    def test_campaign_descendants_require_exact_ordered_observed_chain(self):
+        for continued in (False,True):
+            base=campaign_menu_sample(continued)
+            self.assertEqual(classify(base),MAIN_MENU)
+            for key,value in (('input_block_count',2),('player_index',-1),('player_index',False),
+                              ('read_only',False),('consistent_reread',False)):
+                self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN)
+            for index in range(len(base['active_scenes'])):
+                state=copy.deepcopy(base);state['active_scenes'].pop(index)
+                self.assertEqual(classify(state),UNKNOWN)
+                for key,value in (('name','UnknownSettings'),('cls','WarUIScene'),('input_mode',1),
+                                  ('input_mode',True),('input_mode',4.0)):
+                    state=copy.deepcopy(base);state['active_scenes'][index][key]=value
+                    self.assertEqual(classify(state),UNKNOWN)
+            for key,value in (('tag','DeltaCampaignMenu_NewGame'),('number',99),('outer','0x999'),
+                              ('address','0x999'),('name','DeltaCampaignTypeExtra'),('input_mode',4.0)):
+                state=copy.deepcopy(base);state['top'][key]=value
+                self.assertEqual(classify(state),UNKNOWN)
+            state=copy.deepcopy(base);state['active_scenes'].reverse()
+            self.assertEqual(classify(state),UNKNOWN)
+            state=copy.deepcopy(base);state['active_scenes'].insert(-1,dict(name='UnknownSettings'))
+            self.assertEqual(classify(state),UNKNOWN)
+        state=campaign_menu_sample(True)
+        state['active_scenes'][:2]=reversed(state['active_scenes'][:2])
+        self.assertEqual(classify(state),UNKNOWN)
+
+    @unittest.skipUnless((pathlib.Path(__file__).resolve().parents[2]/
+        'analysis/runtime/world6-main-continue.jsonl').exists(),'local actual-game evidence unavailable')
+    def test_saved_actual_campaign_states_allow_observed_block_transition(self):
+        evidence=pathlib.Path(__file__).resolve().parents[2]/'analysis/runtime/world6-main-continue.jsonl'
+        admitted=set()
+        for line in evidence.read_text(encoding='utf-8').splitlines():
+            state=json.loads(line).get('state')
+            if state is None:continue
+            self.assertIn(state['input_block_count'],(0,1))
+            self.assertEqual(classify(state),MAIN_MENU)
+            admitted.add(state['top']['tag'])
+        self.assertEqual(admitted,{'DeltaMainMenu','DeltaCampaignType','DeltaCampaignMenu_ContinueGame'})
+
+    def test_main_menu_exact_root_is_explicit_display_choice(self):
+        self.assertEqual(MAIN_MENU,4)
+        state=main_menu_sample()
+        self.assertEqual(classify(state),MAIN_MENU)
+        # Focus does not certify source format or identify the scene root.
+        for focus in (None,dict(name='OptionsButton',cls='UIButtonIgnoreStart')):
+            self.assertEqual(classify(dict(state,focused_leaf=focus)),MAIN_MENU)
+
+    def test_main_menu_rejects_inconsistent_root_identity_and_guards(self):
+        base=main_menu_sample()
+        for key,value in (('player_index',-1),('player_index',1),('player_index',False),
+                          ('input_block_count',2),('input_block_count',True),('input_block_count',0.0),
+                          ('read_only',False),('consistent_reread',False)):
+            self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN)
+        for key,value in (('tag','DeltaMainMenuExtra'),('name','DeltaPause-Options'),('cls','WarUIScene'),
+                          ('input_mode',1),('input_mode',True),('input_mode',4.0),('address','0x999'),
+                          ('address',None),('number',3),('number',True),('outer','0x999'),('outer',None)):
+            state=copy.deepcopy(base);state['top'][key]=value
+            self.assertEqual(classify(state),UNKNOWN,(key,value))
+        for key in ('address','name','cls','input_mode','number','outer'):
+            state=copy.deepcopy(base);state['active_scenes'][-1].pop(key)
+            self.assertEqual(classify(state),UNKNOWN,key)
+        state=copy.deepcopy(base);state['active_scenes'][-1]['number']=True
+        self.assertEqual(classify(state),UNKNOWN)
+        for scenes in (None,[],[None],[dict(name='DeltaMainMenu')]):
+            self.assertEqual(classify(dict(base,active_scenes=scenes)),UNKNOWN)
+        state=copy.deepcopy(base);state['active_scenes'].append(dict(name='DeltaVideoSettings'))
+        self.assertEqual(classify(state),UNKNOWN) # Unobserved descendants are not admitted.
+        for top in (None,{},'DeltaMainMenu'):
+            self.assertEqual(classify(dict(base,top=top)),UNKNOWN)
+
+    def test_block_one_main_menu_display_requires_authenticated_stack_and_does_not_allow_input(self):
+        with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
+            from menu_control import allowed
+        for base in (main_menu_sample(),campaign_menu_sample(),campaign_menu_sample(True)):
+            for blocked in (0,1):
+                self.assertEqual(classify(dict(base,input_block_count=blocked)),MAIN_MENU)
+            for blocked in (False,True,0.0,1.0,-1,2,None,'1'):
+                self.assertEqual(classify(dict(base,input_block_count=blocked)),UNKNOWN)
+            blocked_state=dict(base,input_block_count=1)
+            self.assertFalse(allowed(blocked_state,11))
+            for index in range(len(base['active_scenes'])):
+                for key,value in (('name','UnknownSettings'),('cls','OtherScene'),('input_mode',1)):
+                    state=copy.deepcopy(blocked_state);state['active_scenes'][index][key]=value
+                    self.assertEqual(classify(state),UNKNOWN)
+                state=copy.deepcopy(blocked_state);state['active_scenes'].pop(index)
+                self.assertEqual(classify(state),UNKNOWN)
+            for key,value in (('address','0x999'),('number',99),('outer','0x999'),('tag','UnknownSettings')):
+                state=copy.deepcopy(blocked_state);state['top'][key]=value
+                self.assertEqual(classify(state),UNKNOWN)
+            if len(base['active_scenes'])>1:
+                state=copy.deepcopy(blocked_state);state['active_scenes'].reverse()
+                self.assertEqual(classify(state),UNKNOWN)
+        for state in (sample(),sample(False),settings_sample('UnknownSettings')):
+            self.assertEqual(classify(dict(state,input_block_count=1)),UNKNOWN)
+
+    @unittest.skipUnless(all((pathlib.Path(__file__).resolve().parents[2]/'analysis/runtime'/name).exists()
+        for name in ('mainmenu8-enter-campaign.json','mainmenu8-enter-single.json')),
+        'local actual-game evidence unavailable')
+    def test_saved_actual_mainmenu8_transitions_keep_display_during_block_one(self):
+        def states(value):
+            if isinstance(value,dict):
+                if isinstance(value.get('top'),dict):yield value
+                for item in value.values():yield from states(item)
+            elif isinstance(value,list):
+                for item in value:yield from states(item)
+        observed_blocks=set();observed_scenes=set()
+        for name in ('mainmenu8-enter-campaign.json','mainmenu8-enter-single.json'):
+            path=pathlib.Path(__file__).resolve().parents[2]/'analysis/runtime'/name
+            samples=list(states(json.loads(path.read_text(encoding='utf-8'))))
+            self.assertTrue(samples)
+            for state in samples:
+                self.assertEqual(classify(state),MAIN_MENU)
+                observed_blocks.add(state['input_block_count']);observed_scenes.add(state['top']['tag'])
+        self.assertEqual(observed_blocks,{0,1})
+        self.assertEqual(observed_scenes,{'DeltaMainMenu','DeltaCampaignType','DeltaCampaignMenu_ContinueGame'})
+
+    def test_main_menu_publication_uses_fresh_observations_across_unknown_and_gameplay(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+            try:
+                for sequence,(now,state,mode) in enumerate(((100,main_menu_sample(),MAIN_MENU),
+                        (200,main_menu_sample(),MAIN_MENU),
+                        (300,dict(main_menu_sample(),consistent_reread=False),UNKNOWN),
+                        (400,sample(False),GAMEPLAY),(500,main_menu_sample(),MAIN_MENU)),1):
+                    reader.sample=lambda state=state:state;m.clock=lambda now=now:now;m.poll()
+                    packet=PACKET.unpack(path.read_bytes())
+                    self.assertEqual(packet,(0x47564d31,1,64,mode,11,22,33,44,sequence,now))
+            finally:m.close()
+
     def test_exact_pause_return_prompt_is_display_only(self):
         state=return_confirmation_sample()
         for blocked in (0,1):self.assertEqual(classify(dict(state,input_block_count=blocked)),PAUSE_MENU)

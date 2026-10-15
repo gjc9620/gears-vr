@@ -180,6 +180,9 @@ public:
         if(pool)try{for(unsigned i=0;i<2;++i){auto pending=pool.TryGetNextFrame();if(!pending)break;pending.Close();}}
         catch(winrt::hresult_error const&){if(!recover_window)throw;}
     }
+    std::int64_t menu_started()const{return menu_epoch.started();}
+    std::int64_t menu_captured()const{return menu_epoch.captured();}
+    std::uintptr_t window_identity()const{return reinterpret_cast<std::uintptr_t>(hwnd);}
     bool menu_fresh()const{return !startup||menu_epoch.fresh(menu_capture_qpc_ticks());}
     bool update() {
         try{return update_frame();}catch(winrt::hresult_error const&){if(!startup)throw;return false;}
@@ -198,6 +201,7 @@ public:
         if(startup&&(unsigned(content.Width)!=pool_width||unsigned(content.Height)!=pool_height)){
             // Close the outstanding frame before Recreate. No callback mutex is
             // held while the pool replaces its buffers on the capture thread.
+            ++generation_;menu_epoch.begin(menu_capture_qpc_ticks());state->discard();
             frame.Close();pool.Recreate(capture_device,
                 winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized,2,content);
             pool_width=content.Width;pool_height=content.Height;return false;
@@ -214,6 +218,8 @@ public:
                 frame.Close();throw std::runtime_error("Unexpected game aspect ratio after resize");}
             source_width=client.right;source_height=client.bottom;width=fitted_width;height=fitted_height;
             pixels.resize(size_t(width)*height*4);staging=nullptr;
+            ++generation_;menu_epoch.begin(menu_capture_qpc_ticks());state->discard();
+            frame.Close();return false;
         }
         if(client.right!=LONG(source_width) || client.bottom!=LONG(source_height) ||
            left+client.right>content.Width || top+client.bottom>content.Height ||
@@ -305,6 +311,25 @@ public:
         if(!event)throw std::runtime_error("Game fence event unavailable");
     }
     ~GameScreen(){if(chain)xrDestroySwapchain(chain);if(event)CloseHandle(event);}
+    struct WindowSnapshot {
+        uint64_t generation{},hwnd{};std::int64_t epoch_100ns{},captured_100ns{};
+        unsigned width{},height{},uploads{};uint64_t hash{};
+    };
+    WindowSnapshot window_snapshot()const{return {source.generation(),uint64_t(source.window_identity()),
+        source.menu_started(),source.menu_captured(),source.width,source.height,uploads,last_hash};}
+    // Bounded source evidence only; submitted compositor pixels are checked separately.
+    void save_source_preview(std::string const& path)const{
+        const unsigned width=std::min(640u,source.width);
+        const unsigned height=std::max(1u,unsigned(uint64_t(source.height)*width/source.width));
+        FILE* output{};fopen_s(&output,path.c_str(),"wb");if(!output)return;
+        fprintf(output,"P6\n%u %u\n255\n",width,height);
+        for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x){
+            const auto* pixel=source.pixels.data()+
+                (size_t(uint64_t(y)*source.height/height)*source.width+size_t(uint64_t(x)*source.width/width))*4;
+            const unsigned char rgb[]={pixel[2],pixel[1],pixel[0]};fwrite(rgb,1,3,output);
+        }
+        fclose(output);
+    }
     // Same XR render thread as render(); leaves GPU objects/fence ownership intact.
     void begin_menu_epoch(){
         if(!startup)return;current=false;next_capture={};source.begin_menu_epoch();

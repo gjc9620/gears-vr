@@ -11,15 +11,16 @@ public:
     bool observe(gears_menu::Mode mode,std::int64_t now){
         if(!reversible_||!enabled_||cancelled_||mode==mode_)return false;
         mode_=mode;
-        if(mode==gears_menu::Mode::death_menu||mode==gears_menu::Mode::pause_menu){
+        if(mode==gears_menu::Mode::death_menu||mode==gears_menu::Mode::pause_menu||mode==gears_menu::Mode::main_menu){
             resume_required_=true;resume_after_=now;return true;}
         if(resume_required_)resume_after_=now;
         return false;
     }
     bool show_panel() const {return enabled_&&!cancelled_&&
-        (mode_==gears_menu::Mode::death_menu||(!handed_off_&&!resume_required_));}
+        (mode_==gears_menu::Mode::death_menu||mode_==gears_menu::Mode::main_menu||(!handed_off_&&!resume_required_));}
     bool show_eye_menu()const{return enabled_&&!cancelled_&&mode_==gears_menu::Mode::pause_menu;}
     bool allow_projection()const{return !cancelled_&&mode_!=gears_menu::Mode::death_menu&&mode_!=gears_menu::Mode::pause_menu&&
+        mode_!=gears_menu::Mode::main_menu&&
         (!resume_required_||mode_==gears_menu::Mode::gameplay);}
     std::int64_t minimum_sample_ns()const{return resume_required_?resume_after_:0;}
     bool projection_rendered(bool success) {

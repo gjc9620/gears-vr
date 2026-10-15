@@ -14,5 +14,7 @@ public:
     bool accept(std::int64_t captured,std::int64_t now){
         if(!eligible(captured,now))return false;captured_=captured;return true;
     }
+    std::int64_t started()const{return epoch_;}
+    std::int64_t captured()const{return captured_;}
     bool fresh(std::int64_t now)const{return eligible(captured_,now);}
 };

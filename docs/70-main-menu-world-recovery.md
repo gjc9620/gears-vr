@@ -107,3 +107,25 @@ WorldRecovery6保留上一节SHA，配套ABI7 probe SHA仍为`7af3b8a2ed38b0c76c
 测试：native-capture相关Python103项通过，含自动调度16项、生产adapter4项、启用前依赖与SHA门禁；launcher40项通过并检查manifest SHA传递。Astra Medium定向复查事务归属、超时与迟到回执；静态审查不当作runtime验收。
 
 仍缺主菜单/死亡/无有效anchor的独立正确图像源、全部黑屏/CG/闪烁覆盖、全部UI/字幕/准星和真头显验收、长期多世界循环及发布默认提升。自动亮点不对称累计248次、最长29采样，不能宣称闪烁已解决；主菜单/加载期0 layer和暂停非projection不作为世界projection失败。当前定期只读扫描复用完整Resolver，后续可降低稳定场景开销，实际提交证书不能放宽。
+
+## 第五批：主菜单使用独立窗口镜像面板
+
+新增私有XR MainMenu8，SHA `22053c9590f570b86a09d49fb73a6e898272febdc54f1c42d766f8b2336b790f`，配套冻结Native6。ignored清单`analysis/runtime/main-menu8-manifest.json`；没有提升仓库默认。
+
+此前拟新增native mono图像认证。此次采用明确的完整客户端窗口镜像合约：只对正面认证的主菜单状态使用WGC，作为双眼共同2D quad；不猜测原生mono、不由缺失双目票据推导画面布局，也不计作stereo/projection。若实际窗口仍有SBS污染或不可读菜单，仍算失败。现有唯一native GPU receiver继续poll、ACK及资源退休，不增加争用消费者。
+
+owner Mode4只认证DeltaMainMenu，以及已有实际证据的相邻有序MainMenu→CampaignType→ContinueGame链。要求完整top/stack身份匹配、只读一致性及player0；最终源码允许这些精确状态在整数block0/1时显示，输入控制仍要求block0。其他主菜单子页面和未知状态不放行。每次进入/重新进入清旧WGC邮箱，捕获时间须严格晚于新epoch且不超过一秒；进程creation、HWND、客户端裁剪、已完成GPU上传及XR swapchain所有权保持原有检查。池或客户端尺寸变化立即推进source generation并清资格，等待新匹配帧；上传等待后再次验证owner租约，发现变化立即观察并退休旧模式，避免ABA重入漏掉epoch。
+
+MainMenu8实际试验A：游戏37608 / creation134365718566835821，owner36768 / creation134365718504571872，XR7620；会话`continuous-stereo-37608-20261016-050429-d592c665.json`。退出至主菜单后first_frame的capture_epoch100ns=384099998181、captured100ns=384100383472，尺寸1920×1080，xrEndFrame成功。保存640px实际WGC源及一次模拟器共同面板图像检查：完整菜单，无持续SBS污染；准确键盘状态记录确认Campaign→Versus→Campaign及进入两层战役选择。最终主菜单quad累计21648，不当作世界projection。
+
+A另做最小化/不激活恢复，layer0→layer1。尺寸试验工具最初处于DPI虚拟化环境，所谓逻辑1600×900实际使backbuffer变为3200×1801，逻辑原尺寸恢复实际为1920×1081；已改用DPI aware读回并恢复1920×1080。WGC最终恢复菜单，但之后新world代次2虽提交、场景计数增长，GPU发布仍停在菜单前1709，XR投影未恢复。Astra定向复核确认：最后成功GPU发布QPC384087046098早于菜单384099997336，不能把累计published或新epoch_submit当作新GPU图像。capture_attempts/linked/ticket_retains同样未再前进；bad_quad1827缺少时序，尚不能直接指认根因。
+
+A停止：native_cleanup_verified、entry_restore_verified均true，XR资源销毁/shutdown完成，但XR exit1、会话incomplete，不能写成全流程通过。随后B不再resize仍以1081高度启动且无第一张GPU发布；查实游戏把StartupResolutionY=1081持久化到用户配置。正常停止/关闭B后，完整备份到ignored `mainmenu8-before-resolution-restore.ini`，仅恢复该值1080，保留其他用户设置。A/B关闭证据`mainmenu8-close.json`、`mainmenu8b-close.json`。这不是奇数高度问题已修复。
+
+最小下一项native实验：在classify_final_eye完整半屏覆盖和observe_frame_draw目标尺寸相等门禁处记录有界首批拒绝，包含world/resource代次、quad caller/矩形、RTV/实际buffer/final_eye尺寸和ticket。精确physical1920×1080→1920×1081→1920×1080对照；先要求linked/capture_attempts/published推进，再判断XR。不得放宽完整画面门禁或继续盲改纹理参数。
+
+源码测试：native-capture相关Python110项通过，含菜单29项及真实状态fixture；MainMenu8的StartupPanelPolicyTest、MenuDisplayStateTest、MenuCaptureEpochTest、CaptureFrameMailboxTest、StartupCaptureSizeTest分别退出0。图像证据、状态和异常均留在ignored analysis；未知菜单/加载、全部CG/UI、任意窗口尺寸、长期循环和真头显验收仍缺。
+
+恢复1080p后的C/D同进程对照：游戏44016 / creation134365725804385987，owner36360 / creation134365725741140634，XR42020；会话`continuous-stereo-44016-20261016-051632-ed74bfd9.json`。加载最终block0/1分类器，不resize，连续两轮Pause→MainMenu→CampaignType→ContinueGame→gameplay→Pause，自动world1→2→3。每轮均有新GPU发布推进和成功的`menu_display_recovered`/ticketed projection handoff，epoch分别2、4；第二轮恢复时published4335。owner日志在这些已认证菜单转换中维持Mode4，没有此前仅block1触发的UNKNOWN；仍有其他场景读取SnapshotChanged暂态，不代表所有闪烁解决。
+
+C/D证据`mainmenu8{c,d}-cycle.json`、`mainmenu8-two-cycles-evidence.json`及完整menu/stdout/world日志。最终main_menu_quad_layers2496，菜单recoveries2；native_cleanup_verified、entry_restore_verified均true，XR exit0、会话stopped/passed；`mainmenu8c-close.json`记录身份校验后正常关闭游戏。退出后确认用户配置StartupResolutionX/Y仍为1920/1080。此次正常路径通过不能覆盖A/B已复现的1081尺寸失败，也不等于所有菜单和真头显验收。

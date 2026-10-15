@@ -7,7 +7,8 @@
 | 入口 | Native / XR | 定位 |
 | --- | --- | --- |
 | `tools/vr-launcher/manifest.json` | GameRecovery8 / SpaceRecovery3 | 已冻结的仓库默认清单 |
-| `manifest-game-recovery9-window3.json` | GameRecovery9 / SpaceRecovery7 | 实时剧情相机、窗口恢复和共同 Pause 菜单面板的候选组合；未提升默认 |
+| `manifest-game-recovery9-window3.json` | GameRecovery9 / SpaceRecovery7 | 实时剧情相机、窗口恢复和共同 Pause 菜单面板的历史候选；未提升默认 |
+| ignored `analysis/runtime/main-menu8-manifest.json` | WorldRecovery6 / MainMenu8 | 自动世界恢复及主菜单共同窗口面板；1080p两轮循环通过，1081高度失败，未提升默认 |
 
 以清单内路径和 SHA256 为准。更新 Python 分类器不会改变冻结 DLL/EXE 的版本；后续诊断构建也不自动成为玩家默认。模拟器交换链编号修复的 quiet2 与游戏静默启动器 quiet6 是另外两项组件，不能与上述 Native/XR 编号混用理解。
 
@@ -33,7 +34,7 @@
 
 分类修复已把这六类精确菜单纳入既有PAUSE_MENU=3：要求准确的Pause→Options活动栈上下文及top/栈末项一致，陌生页面仍拒绝。9u实际逐页进入、返回，最终设置画面两眼相同，Resume后新票据双目恢复。随后修正UI槽复用缓存、一次有界快照重取，并允许已认证菜单在block1输入阻塞期间继续显示；输入控制及GAMEPLAY恢复仍要求block0。9w正式链路19次状态/显示核对通过，100秒观察覆盖该菜单路径及Resume，未采到零层输出；不代表全部菜单、所有闪烁或真头显已验收。主菜单设置、键位绑定及其他未观察页面仍待采样与认证。见文档69。
 
-9w进一步复现“同进程退出到主菜单→继续游戏”失败：旧controller/camera/level证书失效。后续WorldRecovery5实际通过显式prepare/commit，验证旧候选失效拒绝、新Prepare不继承旧Commit、最终停止完整释放和入口恢复。WorldRecovery6现已接入后台自动检测/调度，实际同进程连续两次主菜单→继续游戏均自行prepare/commit，generation1→2→3，恢复新世界projection，停止清理与入口恢复通过；默认候选未提升。无玩家anchor时主菜单的独立正确输出源仍缺，不把这次自动交接通过当成完整菜单或长期稳定验收，详见文档70。
+9w进一步复现“同进程退出到主菜单→继续游戏”失败：旧controller/camera/level证书失效。后续WorldRecovery5实际通过显式prepare/commit，验证旧候选失效拒绝、新Prepare不继承旧Commit、最终停止完整释放和入口恢复。WorldRecovery6现已接入后台自动检测/调度，实际同进程连续两次主菜单→继续游戏均自行prepare/commit，generation1→2→3，恢复新世界projection，停止清理与入口恢复通过；默认候选未提升。后续MainMenu8以独立WGC完整窗口作为共同二维面板，认证主菜单及两层战役选择；恢复1080p后两次完整循环均恢复新world projection，清理通过。窗口试验得到1081高度时则复现原生GPU发布停止，尚未修复；其他子菜单、加载期和长期稳定验收仍缺，详见文档70。
 
 ## V1仍需完成的验收
 

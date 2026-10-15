@@ -7,7 +7,7 @@ import sys
 import time
 
 PACKET = struct.Struct('<IIIIQQQQQQ')
-UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU = range(4)
+UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU = range(5)
 PAUSE_SETTINGS = frozenset(('DeltaPause-Options', 'DeltaGameConfiguration', 'DeltaVideoSettings',
                             'PenderGraphicsSettings', 'DeltaAudioVideoSettings', 'DeltaInputSettings'))
 
@@ -52,11 +52,34 @@ def pause_return_confirmation(sample, top):
     return scenes is not None and any(scene_context(scene, 'DeltaPause-Campaign-Host') for scene in scenes[:-1])
 
 
+def main_menu(sample, top):
+    # Observed campaign chain only: explicit whole-window 2D mirror, never a
+    # claim about source image format. Other pages need separate evidence.
+    chain = [('DeltaMainMenu', 'WarUIScene_MainMenu'),
+             ('DeltaCampaignType', 'WarUIScene_CampaignType'),
+             ('DeltaCampaignMenu_ContinueGame', 'WarUIScene_Campaign')]
+    name = top.get('tag')
+    depth = next((i+1 for i, (scene_name, _) in enumerate(chain) if scene_name == name), 0)
+    if not depth:
+        return False
+    scenes = active_top(sample, top)
+    if scenes is None or len(scenes) < depth:return False
+    for scene, (scene_name, cls) in zip(scenes[-depth:], chain[:depth]):
+        if (not isinstance(scene, dict) or scene.get('name') != scene_name or scene.get('cls') != cls or
+                type(scene.get('input_mode')) is not int or scene['input_mode'] != 4):
+            return False
+    if top.get('name') != name or type(top.get('input_mode')) is not int:return False
+    return (type(top.get('number')) is int and top['number'] >= 0 and
+            isinstance(top.get('outer'), str) and bool(top['outer']) and
+            type(scenes[-1].get('number')) is int and
+            all(top.get(key) == scenes[-1].get(key) for key in ('number', 'outer')))
+
+
 def classify(sample):
     if sample.get('consistent_reread') is not True or sample.get('read_only') is not True:
         return UNKNOWN
     blocked = sample.get('input_block_count')
-    # The observed block1 transition permits only an authenticated Pause panel.
+    # The observed block1 transition permits only authenticated Pause or main-menu display.
     # It is not input permission or gameplay/death-menu recovery permission.
     if type(blocked) is not int or blocked not in (0, 1):
         return UNKNOWN
@@ -66,6 +89,9 @@ def classify(sample):
     if type(player) is not int:
         return UNKNOWN
     top = sample.get('top') or {}
+    if not isinstance(top, dict):return UNKNOWN
+    if player == 0 and main_menu(sample, top):
+        return MAIN_MENU
     if blocked == 0 and player == 0 and (top.get('tag'), top.get('cls'), top.get('input_mode')) == ('DeltaGameover', 'WarUIScene', 1):
         return DEATH_MENU
     # Exact observed campaign-host Pause only. Selection can change within the

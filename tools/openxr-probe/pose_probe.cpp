@@ -381,6 +381,7 @@ int main(int argc, char** argv) {
         StartupPanelPolicy startup_panel(startup_window!=nullptr,menu_state_file!=nullptr);
         MenuDisplayReader menu_display(menu_state_file,stereo_game_pid,menu_game_creation,continuous_owner_pid,continuous_owner_creation);
         unsigned menu_quad_layers=0,menu_entries=0,menu_recoveries=0;
+        unsigned main_menu_quad_layers=0,last_main_menu_entry=0,main_menu_snapshots=0;
         unsigned eye_menu_quad_layers=0,last_eye_menu_entry=0;
         unsigned startup_quad_layers=0;
         std::unique_ptr<GameGpuScreen,shutdown_diagnostics::DeleteMarker<GameGpuScreen>> gpu_screen{nullptr,{"gpu_screen_reset_enter","gpu_screen_reset_completed"}};
@@ -482,16 +483,26 @@ int main(int argc, char** argv) {
             bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false,eye_menu_queued=false;
             const auto menu_now=gears_vr::monotonic_ns();
             const auto menu_mode=menu_display.poll(menu_now);
-            if(startup_panel.observe(menu_mode,menu_now)){
-                if(menu_mode==gears_menu::Mode::death_menu&&startup_screen)startup_screen->begin_menu_epoch();
+            const auto observe_menu=[&](gears_menu::Mode mode,std::int64_t observed){
+                if(!startup_panel.observe(mode,observed))return;
+                if((mode==gears_menu::Mode::death_menu||mode==gears_menu::Mode::main_menu)&&startup_screen)
+                    startup_screen->begin_menu_epoch();
                 ++menu_entries;
                 printf("{\"menu_display_enter\":true,\"epoch\":%u,\"mode\":\"%s\",\"observed_ns\":%lld}\n",
-                    menu_entries,menu_mode==gears_menu::Mode::pause_menu?"pause_menu":"death_menu",menu_now);fflush(stdout);
-            }
+                    menu_entries,mode==gears_menu::Mode::pause_menu?"pause_menu":
+                        (mode==gears_menu::Mode::main_menu?"main_menu":"death_menu"),observed);fflush(stdout);
+            };
+            observe_menu(menu_mode,menu_now);
             unsigned outage_copies_before=(diagnostic_outage||diagnostic_image_tickets)&&stereo_screen?stereo_screen->copies:0;
             if(screen && frame.shouldRender && screen->render(quad)){end.layerCount=1;end.layers=game_layers;}
             if(startup_panel.show_panel()&&startup_screen&&frame.shouldRender&&startup_screen->render(quad)){
-                startup_quad_queued=true;end.layerCount=1;end.layers=game_layers;
+                // WGC upload may wait for a GPU fence. Authorization must still
+                // be fresh at submission; never extend an owner's display lease.
+                const auto after_capture=gears_vr::monotonic_ns();
+                const auto authorized=menu_display.poll(after_capture);
+                if(!menu_state_file||menu_mode==gears_menu::Mode::unknown||authorized==menu_mode){
+                    startup_quad_queued=true;end.layerCount=1;end.layers=game_layers;
+                }else observe_menu(authorized,after_capture);
             }
             if(gpu_screen && frame.shouldRender && gpu_screen->render(quad)){end.layerCount=1;end.layers=game_layers;}
             if(pattern && !stereo_image_shown && frame.shouldRender && view_count==2 && (view_state.viewStateFlags&3)==3) {
@@ -527,7 +538,7 @@ int main(int argc, char** argv) {
                 if(stereo_space_changed&&!continuous_session)result=ProjectionStatus::reference_space_changed;
                 else if(stereo_screen&&stereo_screen->reconfiguring())result=ProjectionStatus::source_reconfiguration;
                 else if(stereo_screen&&stereo_screen->producer_stopped())result=ProjectionStatus::producer_stopped;
-                else if(!startup_panel.allow_projection()&&!startup_panel.show_eye_menu())result=menu_mode==gears_menu::Mode::death_menu?ProjectionStatus::menu_requested:ProjectionStatus::menu_recovery_pending;
+                else if(!startup_panel.allow_projection()&&!startup_panel.show_eye_menu())result=(menu_mode==gears_menu::Mode::death_menu||menu_mode==gears_menu::Mode::main_menu)?ProjectionStatus::menu_requested:ProjectionStatus::menu_recovery_pending;
                 else result=projection_current_status(frame.shouldRender,projection_session_visible(state),view_count,head.locationFlags,view_state.viewStateFlags,simulator_operator);
                 bool submitted=false;
                 if(result==ProjectionStatus::submitted){
@@ -571,6 +582,19 @@ int main(int argc, char** argv) {
             }
             if(startup_quad_queued&&end.layerCount&&end.layers==game_layers){
                 ++startup_quad_layers;
+                if(menu_mode==gears_menu::Mode::main_menu){
+                    ++main_menu_quad_layers;
+                    if(last_main_menu_entry!=menu_entries){
+                        last_main_menu_entry=menu_entries;const auto image=startup_screen->window_snapshot();
+                        printf("{\"main_menu_first_frame\":true,\"epoch\":%u,\"source\":\"wgc_full_client\",\"owner_sequence\":%llu,\"capture_epoch_100ns\":%lld,\"captured_100ns\":%lld,\"source_generation\":%llu,\"hwnd\":%llu,\"extent\":[%u,%u],\"source_hash\":%llu,\"end_frame_succeeded\":true,\"both_eyes_common_panel\":true,\"panel_counts_as_stereo\":false}\n",
+                            menu_entries,menu_display.sequence(),image.epoch_100ns,image.captured_100ns,
+                            image.generation,image.hwnd,image.width,image.height,image.hash);fflush(stdout);
+                        if(gpu_snapshot&&main_menu_snapshots<2){
+                            ++main_menu_snapshots;
+                            startup_screen->save_source_preview(std::string(argv[2])+"-main-menu-"+std::to_string(menu_entries)+".ppm");
+                        }
+                    }
+                }
                 if(menu_mode==gears_menu::Mode::death_menu){++menu_quad_layers;
                     if(menu_quad_layers==1){printf("{\"death_menu_first_frame\":true,\"end_frame_succeeded\":true,\"panel_counts_as_stereo\":false}\n");fflush(stdout);}}
                 if(startup_quad_layers==1){printf("{\"startup_menu_first_frame\":true,\"end_frame_succeeded\":true,\"panel_counts_as_stereo\":false}\n");fflush(stdout);}
@@ -664,6 +688,7 @@ int main(int argc, char** argv) {
         bool display_ok=!screen || (screen->rendered && screen->gpu_pixels_verified);
         if(startup_window)printf("{\"startup_menu_evidence\":true,\"startup_quad_layers\":%u,\"stereo_handoff\":%s,\"panel_counts_as_stereo\":false}\n",startup_quad_layers,stereo_image_shown?"true":"false");
         if(menu_state_file)printf("{\"menu_recovery_evidence\":true,\"entries\":%u,\"quad_layers\":%u,\"recoveries\":%u,\"panel_counts_as_stereo\":false}\n",menu_entries,menu_quad_layers,menu_recoveries);
+        if(menu_state_file)printf("{\"main_menu_evidence\":true,\"quad_layers\":%u,\"source\":\"wgc_full_client\",\"panel_counts_as_stereo\":false}\n",main_menu_quad_layers);
         if(menu_state_file)printf("{\"eye_menu_evidence\":true,\"quad_layers\":%u,\"source_eye\":0,\"both_eyes_common_panel\":true,\"panel_counts_as_stereo\":false}\n",eye_menu_quad_layers);
         display_ok=display_ok && (!gpu_screen || (gpu_screen->rendered && gpu_screen->copies));
         const auto scene_copies=retired_stereo_copies+(stereo_screen?stereo_screen->copies:0);

@@ -18,6 +18,7 @@ public:
             if(!matches)throw std::runtime_error("Menu display game identity changed");
         }
     }
+    std::uint64_t sequence()const{return cached_.sequence;}
     gears_menu::Mode poll(std::uint64_t now){
         if(path_.empty())return gears_menu::Mode::unknown;
         if(now>=next_){
