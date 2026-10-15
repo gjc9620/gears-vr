@@ -65,6 +65,12 @@ std::array<IUnknown*,gears_frame_link::Tracker::list_capacity> created_lists{};
 unsigned list_creation_count{},list_creation_closed{};
 void fault(unsigned reason){if(!error)error=reason;tracker.invalidate();}
 bool watching(){return enabled&&!finished&&!error;}
+// Scene submission and GPU state proof must name the same observed generation.
+// Present retires the legacy tracker independently of this owned target. Once
+// observation stops, retained generations are historical, not current evidence.
+gears_frame_link::ListRef list_ref(uintptr_t identity){
+ return watching()?tracker.current(identity):gears_frame_link::ListRef{};
+}
 void list_created(HRESULT hr,void** out,bool open){
  if(!continuous_probe||!watching()||FAILED(hr))return;
  IUnknown* object{};IUnknown* identity{};
@@ -342,6 +348,7 @@ void print(FILE* file){
 #else
 namespace owned_scene_gpu {
 struct CreateScope{};
+gears_frame_link::ListRef list_ref(uintptr_t identity){return frame_link.current(identity);}
 void accept(ID3D12Resource*,uint64_t){}
 void activate(){}
 void reset(ID3D12GraphicsCommandList*,HRESULT){}

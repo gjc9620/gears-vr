@@ -61,7 +61,7 @@ void native_owned_scene_draw(ID3D12GraphicsCommandList* list,gears_viewport::Tar
  const bool exact=final_eye.valid&&binding.targets==1&&!binding.target.mip&&final_eye.width==4096&&final_eye.height==2048&&
   binding.target.width==4096&&binding.target.height==2048&&verified_stereo_draw(
    frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list)),final_eye,caller,kind,elements,instances);
- trial.draw(binding.target.resource,frame_link.current(canonical_identity(list)),consuming_frame_ticket,final_eye.eye,exact);
+ trial.draw(binding.target.resource,owned_scene_gpu::list_ref(canonical_identity(list)),consuming_frame_ticket,final_eye.eye,exact);
  if(exact){owned_scene_gpu::retain_image();owned_scene_gpu::drew(consuming_frame_ticket,final_eye.eye);}
  owned_scene_gpu::draw(list,binding.target.resource,exact,final_eye.eye,final_eye.rect,consuming_frame_ticket);
 }
@@ -70,11 +70,11 @@ gears_owned_scene::Receipt native_owned_scene_prepare(ID3D12CommandQueue* queue,
  std::array<ID3D12CommandList*,gears_frame_link::Tracker::list_capacity> lists{};
  std::array<gears_frame_link::ListRef,gears_frame_link::Tracker::list_capacity> refs{};
  if(!count||count>lists.size()||!safe_copy(lists.data(),members,count*sizeof(lists[0])))return {};
- for(unsigned i=0;i<count;++i)refs[i]=frame_link.current(canonical_identity(lists[i]));
+ for(unsigned i=0;i<count;++i)refs[i]=owned_scene_gpu::list_ref(canonical_identity(lists[i]));
  return trial.prepare(canonical_identity(queue),queue->GetDesc().Type==D3D12_COMMAND_LIST_TYPE_DIRECT,refs.data(),count);
 }
 void native_owned_scene_commit(gears_owned_scene::Receipt const& receipt){using namespace gears_owned_scene_live;
- trial.commit(receipt,[](uintptr_t identity){return frame_link.current(identity);});
+ trial.commit(receipt,[](uintptr_t identity){return owned_scene_gpu::list_ref(identity);});
  if(trial.submitted_mask==3)owned_scene_gpu::submitted(trial.ticket);native_owned_scene_copy();}
 bool native_owned_scene_retained(){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return attempted&&owner.retained();}

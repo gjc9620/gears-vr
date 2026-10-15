@@ -120,3 +120,19 @@ PID51936（creation `134364951814739390`）首次owned调用创建172次资源�
 首次运行PID31640提前保护停止，没有有效GPU发布；最后Trial error3、两次draw均未形成有效提交。首次stop位置已记录为`capture.cpp:1637`的`native_owned_scene_begin`失败，但可能晚于最初错误状态写入，不能据此认定根因。该类GPU跟踪初始失败仍是后续稳定性任务，不能被第二次成功掩盖。记录`owned-reuse2-31640-early-stop.json`及原始状态；两次均独立验证59个入口恢复并正常退出。
 
 成功对照证据为`owned-reuse2-10100.audit.json`、`owned-reuse2-10100-resize.json`、`owned-reuse2-10100-eye-quality.json`及`owned-reuse2-10100-eyes-preview.png`；都在ignored的`analysis/ui-position-runtime/`。新版不再重复请求已知不可用的XR快照控制，只使用成功的原生首尾读回。清单为`tools/vr-launcher/manifest-owned-reuse2.json`。
+
+## Refs1：统一场景提交与GPU状态证明的命令表代次
+
+源代码确认一个生命周期冲突：`native_owned_scene`的Draw、prepare、commit原先使用全局`frame_link.current`，而owned GPU证明使用自己的`tracker`。桌面Present清空前者的全部命令表槽；连续owned模式的prebirth Present只清理负载，保留真实Reset/创建代次。实际CreateCommandList观察也只登记到owned tracker。于是合法的owned命令表可以在Trial中成为缺失引用，触发error3。PID31640的两次精确Draw、draw_mask=0/error3与此一致，但当次未记录最初缺失引用，不能把它的全部失败路径追认为已证实。
+
+三处Trial查找现统一通过`owned_scene_gpu::list_ref`使用owned tracker；编译关闭owned pixels时仍使用旧记录。没有制造Reset、放宽GPU状态或时效检查。新增WARP模式13–17覆盖真实Reset后跨Present保留、首次创建的打开列表、关闭创建拒绝、失败Reset拒绝，以及prepare/commit之间代次变化拒绝。测试直接调用生产Draw/prepare/commit入口，使用合成场景元数据；没有native Owner，因此成功CPU receipt后的copy guard应单独报error10且不排队读回。它证明接线与代次约束，不证明GPU场景完成。
+
+冻结构建`build-owned-refs1/GearsCaptureOwnedRefs1.dll`通过47项回归。另以scene开启、pixels关闭编译`build-owned-refs-compat1`，7项兼容检查通过，覆盖旧记录回退分支的编译及既有功能。结果保存在`analysis/ui-position-runtime/owned-refs1-tests.json`和`owned-refs-compat1-tests.json`；实际游戏结果另记。
+
+Refs1实测PID42992（creation `134364973661445312`）完成120个ticket和120次发布，XR copies118、projection layers339，Trial/GPU error均0，59入口恢复通过并正常退出。接收姿态→发布中位33.791ms、p95 40.343ms；首次扩容172次资源创建，其后本路径不再重建。首尾编码亮度右/左比0.902/0.859，无近黑眼；这里只检查像素统计，没有新增真头显或完整UI验收。证据`owned-refs1-42992.audit.json`、`owned-refs1-42992-resize.json`、`owned-refs1-42992-eye-quality.json`。
+
+停止后的状态又暴露一个边界：120帧观察上限达到后，owned tracker不再接收Reset，但仍保留旧代次，Trial继续以它们计数，最终同一个Trial的submissions变为181。这不是181次新增VR场景或有效GPU提交证明。Refs2进一步要求`list_ref`只在`watching()`时返回引用，finished、disabled或error均返回空；新增模式18直接验证三种停用状态不能从生产prepare生成receipt。此改动保留真实Reset约束，避免用历史记录冒充当前命令表证据。
+
+Refs2冻结构建通过48项回归。实测PID28552（creation `134364976714124190`）完成120个ticket，119次发布，首个ticket因`no_consumer`明确跳过，XR copies118、projection layers342；Trial/GPU error均0。停止后的最后Trial仍为draws2/submissions1，旧代次重复计数未再出现。姿态接收→发布中位34.478ms、p95 39.828ms、最大162.194ms；首尾编码亮度右/左比0.908/0.866，无近黑眼。59入口恢复全部通过，随后正常关闭游戏。证据`owned-refs2-28552.audit.json`、`owned-refs2-28552-eye-quality.json`，冻结清单`tools/vr-launcher/manifest-owned-refs2.json`。
+
+两次修正后的启动通过不能替代长时间/多次启动稳定性结论，也不能追认为历史所有黑屏的根因。仍为120帧实验，资源与命令表引用保留至退出，launcher状态按设计为incomplete，默认玩家清单未改。下一步优先把连续渲染与有界诊断记录分开，解决当前实验上限和资源生命周期，再推进High与UI；不再扩展全游戏资料库。

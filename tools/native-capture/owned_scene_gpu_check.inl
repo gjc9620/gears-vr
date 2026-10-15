@@ -5,8 +5,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
 #if !defined(GEARS_NATIVE_OWNED_PIXELS) || !GEARS_NATIVE_OWNED_PIXELS
  (void)input;return ERROR_NOT_SUPPORTED;
 #else
- if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>12)return 2;
- const bool xr_mode=mode>=10;
+ if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>18)return 2;
+ const bool xr_mode=mode>=10&&mode<=12;
  using Microsoft::WRL::ComPtr;
  using namespace owned_scene_gpu;
  if(enabled||tracker.snapshot().reset_calls)return 3;
@@ -25,6 +25,69 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  owned_original_clear=reinterpret_cast<OwnedClearFn>(lt[48]);original_create_rtv=reinterpret_cast<CreateRtvFn>(dt[20]);
  self_testing=true;recording=true;frame_link_diagnostics=true;enabled=true;
  if(FAILED(list->Close())||FAILED(hook_reset_list(list.Get(),allocator.Get(),nullptr)))return 6;
+ if(mode>=13){
+#if defined(GEARS_NATIVE_OWNED_SCENE_PROBE) && GEARS_NATIVE_OWNED_SCENE_PROBE
+  if(!continuous_probe)return ERROR_NOT_SUPPORTED;
+  // Real WARP list lifetime, synthetic scene metadata. Exercise production
+  // Draw/prepare/commit wiring; no scene resource or native Owner is created.
+  ComPtr<ID3D12GraphicsCommandList> created_list;
+  auto* observed=list.Get();
+  if(mode==14||mode==15){
+   if(FAILED(list->Close()))return 53; // One recording list per allocator.
+   if(mode==14){
+    if(FAILED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&created_list))))return 40;
+   }else{
+    ComPtr<ID3D12Device4> d4;if(FAILED(device.As(&d4))||
+     FAILED(d4->CreateCommandList1(0,D3D12_COMMAND_LIST_TYPE_DIRECT,D3D12_COMMAND_LIST_FLAG_NONE,IID_PPV_ARGS(&created_list))))return 41;
+   }
+   void* output=created_list.Get();list_created(S_OK,&output,mode==14);observed=created_list.Get();
+   if(error)return 42;
+  }
+  const auto identity=canonical_identity(observed);
+  if(mode==13&&!frame_link.current(identity).identity)return 43;
+  if(mode==16)reset(observed,E_FAIL); // Inject failed-Reset observation; never submit it.
+  frame_link.retire_present_interval();present();
+  if(frame_link.current(identity).identity)return 44;
+  auto& t=gears_owned_scene_live::trial;
+  if(!t.ready(100,200,1)||!t.select(300,2,200)||!t.construction(300,2,true,200)||!t.begin(300,2))return 45;
+  const auto ref=list_ref(identity);
+  const auto raw_list=reinterpret_cast<uintptr_t>(observed);
+  frame_target_stats.reset(raw_list);
+  frame_target_stats.set(raw_list,gears_viewport::other,false,{0,0,4096,2048});
+  frame_target_stats.set(raw_list,gears_viewport::other,true,{0,0,4096,2048});
+  gears_viewport::TargetDraw binding{};binding.targets=1;binding.target={100,4096,2048,28,0};
+  consuming_frame_ticket=2;
+  for(unsigned eye=0;eye<2;++eye){
+   final_eye={true,eye,{eye*2048,0,2048,2048},4096,2048};
+   native_owned_scene_draw(observed,binding,base+0x1af92b,1,6,1);
+  }
+  final_eye={};
+  if(mode==15||mode==16)return !ref.identity&&t.error==3&&!t.draw_mask?0:46;
+  if(!ref.identity||!ref.generation||t.error||t.draw_mask!=3)return 47;
+  ID3D12CommandList* members[]{observed};
+  const auto receipt=native_owned_scene_prepare(q.Get(),1,members);
+  if(receipt.count!=1)return 48;
+  if(mode==18){
+   for(unsigned state=0;state<3;++state){
+    finished=state==0;enabled=state!=1;error=state==2?1:0;
+    if(list_ref(identity).identity||native_owned_scene_prepare(q.Get(),1,members).count)return 54;
+   }
+   return !t.submitted_mask&&!t.submissions?0:55;
+  }
+  if(mode==17){
+   if(FAILED(observed->Close())||FAILED(hook_reset_list(observed,allocator.Get(),nullptr)))return 49;
+   native_owned_scene_commit(receipt);
+   return !t.submitted_mask&&!t.submissions?0:50;
+  }
+  native_owned_scene_commit(receipt);
+  // commit's subsequent copy guard correctly rejects the absent native Owner
+  // (error 10). The CPU receipt must have committed before that separate guard.
+  return t.submitted_mask==3&&t.submissions==1&&t.queue==canonical_identity(q.Get())&&
+   t.error==10&&!readback.result().queued?0:51;
+#else
+  return ERROR_NOT_SUPPORTED;
+#endif
+ }
  if(mode==8||mode==9){
   if(!continuous_probe)return ERROR_NOT_SUPPORTED;
   auto receipt=prepare(q.Get(),mode==8?gears_frame_link::Tracker::list_capacity+1:1,nullptr);
