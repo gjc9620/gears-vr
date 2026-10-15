@@ -308,3 +308,17 @@ Route2同时取得普通UI的具体拒绝：ticket2701、caller172741、正确�
 下一修复：owned路径使用独立的录制期绑定状态，同步Reset/RS/OM和启动阶段descriptor create/copy，保留descriptor来源，不随Present清空；提交后只回收该批closed列表的CPU绑定，保留owned GPU tracker的generation/执行证据和其他正在录制的列表。必须继续拒绝真实并发容量不足、缺Reset和未知来源。字幕INI已有 `Subtitles=True`，但脚本另从profile setting ID40设置运行时开关；后续需从实际菜单/profile状态核对，不能仅凭INI假定已开启。
 
 本轮编译、ledger 1,877 checks、Material/ViewPlane测试和DLL ABI/family检查通过，启动器要求的附加自测也通过；功能关闭分支编译通过。证据：`analysis/ui-position-runtime/owned-material-route1-a-38532.audit.json`、`owned-material-route2-44700.audit.json`，视觉审阅 `owned-material-route2-44700-review.png`。实验清单单独保存；默认玩家清单不变。V1仍未完成。
+
+## 2026-10-15：独立录制绑定、持续 UI 与对白字幕
+
+owned pixels 路径新增严格录制期绑定表。只有观察到成功 Reset 或首次 open creation 才能建立记录；viewport/scissor/OM 不隐式补建未知列表。使用 canonical COM identity，接收 priming 阶段 RTV 创建/复制，保留 descriptor 来源，不随桌面 Present 清空。原 Execute 返回并完成提交登记后，只退休该批实际成员的 CPU 绑定；其他正在录制的列表和 GPU generation/执行证明保留。Scene、普通 UI、Material、Clear 和 MRT 检查均读取独立来源。真实并发 256 槽耗尽继续明确拒绝。未开启 pixels 的旧 scene-only 路线保持原有跟踪。
+
+严格生命周期测试覆盖 1024 个顺序列表、并行保留另一录制、提交后禁止隐式重建、Reset 恢复、descriptor 保留和第 257 个并发列表拒绝。完整构建、相关 CPU 测试、DLL family/frame-link 自测以及默认关闭分支编译通过。
+
+- Binding1 / PID33460：2913 对 owned 场景，独立绑定 overflow=0；没有触发 UI，输入因焦点校验失败停止。XR 退出等待超时，不能算完整持续或退出验收。
+- Binding1-b / PID32724：3158 对 owned 场景；3565 个普通 UI 命令及双眼重绘、348 次 Material 生产/执行/完成/上传/双眼重绘，UI faults=0、绑定 overflow=0、descriptor loss=0。没有在 UI 完成前发布。按计划 130 秒测试窗口停止，但最后计数停滞，XR 最大提交间隔 38188.837ms；不能称全程流畅。
+- 字幕 ticket3024、3036 各有同票据 glyph/提交/fence/读回记录，均保存成功。直接查看 ticket3024 的双眼图像，两眼均可见对白“Kim: Who's next!”及武器 HUD；这只证明该帧字幕可见，未验证所有字幕、字号舒适度或真头显表现。
+
+两轮停止后均独立核验 63 项入口恢复，并正常关闭游戏；native owner 仍保留至游戏退出，launcher 的 cleanup 状态均为 incomplete。第二轮 XR 自身关闭完成，未强制清理 XR。用户另报告桌面两幅画面频繁交替，现有采样没有直接捕获该现象；原因未确定，不归因于全部历史黑屏。
+
+冻结清单为 `manifest-owned-binding1.json`、`manifest-owned-binding1-b.json`，共用未重建的 `build-owned-binding1`。审计及源文件/DLL哈希位于 `analysis/ui-position-runtime/owned-binding1-33460.audit.json`、`owned-binding1-b-32724.audit.json`；图像审阅为 `owned-binding1-b-subtitle-review.png`。接下来先关联 anchor identity 拒绝、停止发布和实际状态变化，再完善资源退出、菜单、High、跨关卡及真头显验收。V1仍未完成。

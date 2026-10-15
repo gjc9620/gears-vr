@@ -80,8 +80,8 @@ HRESULT STDMETHODCALLTYPE owned_hook_placed2(ID3D12Device10* d,ID3D12Heap* h,UIN
 }
 void STDMETHODCALLTYPE owned_hook_clear(ID3D12GraphicsCommandList* list,D3D12_CPU_DESCRIPTOR_HANDLE handle,const FLOAT* rgba,UINT count,const D3D12_RECT* rect){
  if(stereo_publish_bypass){owned_original_clear(list,handle,rgba,count,rect);return;}
- Scope scope;auto lock=frame_lock();auto target=frame_target_stats.lookup(handle.ptr);
- if(!target.resource)owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::clear);else owned_scene_gpu::use(list,target.resource,false);
+ Scope scope;auto lock=frame_lock();auto target=owned_target_stats.lookup(handle.ptr);
+ if(!target.resource||owned_target_stats.descriptor_capacity_lost())owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::clear);else owned_scene_gpu::use(list,target.resource,false);
  owned_original_clear(list,handle,rgba,count,rect);
 }
 void STDMETHODCALLTYPE owned_hook_copy(ID3D12GraphicsCommandList* list,ID3D12Resource* dst,ID3D12Resource* src){

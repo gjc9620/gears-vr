@@ -3,8 +3,8 @@ namespace owned_material {
 // the exact command list. Actual OM/ticket identity is checked independently.
 bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::DrawArgs args){
  auto& c=*ui_material_context;if(!c.owned_ticket||c.owned_failed)return false;
- const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
- const auto saved=frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
+ const auto binding=owned_target_stats.binding(canonical_identity(list));
+ const auto saved=owned_target_stats.draw_state(canonical_identity(list));
  const auto ref=owned_scene_gpu::list_ref(canonical_identity(list));
  const gears_frame_link::Target target{c.owned_resource,4096,2048};
  const auto pair=owned_scene_gpu::tracker.overlay_pair(ref,target);
@@ -27,7 +27,7 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
     !safe_copy(&topology,reinterpret_cast<void*>(u->native_context+0x578),4)||topology!=5||
     !gears_ui_material::capture_quad({base},safe_copy,c.consumer,quad)||quad.source!=u->quad.source||quad.vertices!=u->quad.vertices||
     !gears_ui_material::classify_draw({base},c.consumer,quad,caller,args,candidate)||args.indexed)return reject_draw(25);
- if(frame_target_stats.descriptor_capacity_lost()||binding.targets!=1||binding.target.mip||
+ if(owned_target_stats.descriptor_capacity_lost()||binding.targets!=1||binding.target.mip||
     binding.target.resource!=target.resource||binding.target.width!=target.width||binding.target.height!=target.height||
     !pair.linked||pair.ticket!=c.owned_ticket)return reject_draw(27);
  if(!gears_ui_material::material_view_plane(safe_copy,c.consumer,plane,&reject))return reject_draw(40+unsigned(reject));

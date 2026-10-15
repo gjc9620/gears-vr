@@ -1,7 +1,38 @@
 #include "gpu_viewport_stats.h"
 #include <limits>
 #include <cstdio>
+#include <memory>
+static int strict_lifecycle_tests(){
+    using namespace gears_viewport;
+    auto storage=std::make_unique<Tracker>(true);auto& t=*storage;
+    const Target target{123,1920,1080,28,0};const Rect rectangle{0,0,1920,1080};
+    t.create(32,target);
+    if(t.set(1,full,false,rectangle)||t.set(1,full,true,rectangle)||t.bind(1,1,32)||t.draw_state(1).tracked)return 40;
+    if(t.retire(1)||t.retire(0)||t.reset(0)||t.snapshot().overflow)return 41;
+    // Keep an unrelated recording alive throughout 1024 submit/retire cycles.
+    if(!t.reset(7)||!t.set(7,full,false,rectangle,1,true,.1f,.9f)||!t.set(7,full,true,rectangle)||!t.bind(7,1,32))return 42;
+    for(uintptr_t list=100;list<1124;++list){
+        if(!t.reset(list)||!t.set(list,full,false,rectangle)||!t.bind(list,1,32)||!t.retire(list))return 43;
+        if(t.draw_state(list).tracked||t.set(list,full,false,rectangle)||t.bind(list,1,32))return 44;
+        auto other=t.draw_state(7);
+        if(!other.tracked||!(other.viewport==rectangle)||!other.depth_known||other.min_depth!=.1f||other.max_depth!=.9f||!(t.binding(7).target==target))return 45;
+    }
+    if(t.snapshot().overflow||!(t.lookup(32)==target))return 46;
+    if(!t.retire(7)||t.draw_state(7).tracked||t.binding(7).targets||t.set(7,full,true,rectangle)||t.bind(7,1,32))return 47;
+    if(!t.reset(7)||!t.set(7,full,false,rectangle)||!t.bind(7,1,32)||!(t.binding(7).target==target))return 48;
+    uintptr_t dest=64,src=32;t.copy(&dest,&src,1);
+    if(!t.retire(7)||!t.reset(8)||!t.bind(8,1,64)||!(t.binding(8).target==target))return 49;
+    if(!t.retire(8))return 50;
+    // Capacity concerns simultaneous recordings, not historical list identities.
+    for(uintptr_t list=1;list<=256;++list)if(!t.reset(list))return 51;
+    if(t.reset(257)||t.snapshot().overflow!=1||t.draw_state(257).tracked)return 52;
+    if(t.set(257,full,false,rectangle)||t.bind(257,1,32)||t.snapshot().overflow!=1)return 53;
+    if(!t.retire(128)||!t.reset(257)||!t.set(257,full,false,rectangle)||!t.bind(257,1,32))return 54;
+    if(!t.draw_state(129).tracked||t.draw_state(128).tracked||!(t.lookup(64)==target))return 55;
+    return 0;
+}
 int main(){
+    if(int error=strict_lifecycle_tests())return error;
     using namespace gears_viewport;
     if(classify(0,0,1920,1080)!=full||classify(0,0,960,1080)!=left||classify(960,0,960,1080)!=right)return 1;
     if(classify(0,0,640,360)!=other||classify(0,0,0,1080)!=unknown||

@@ -69,9 +69,11 @@ void native_owned_scene_destroyed(void* renderer){using namespace gears_owned_sc
 void native_owned_scene_draw(ID3D12GraphicsCommandList* list,gears_viewport::TargetDraw const& binding,
  uintptr_t caller,unsigned kind,unsigned elements,unsigned instances){using namespace gears_owned_scene_live;
  if(!trial.resource||binding.target.resource!=trial.resource)return;
+ const auto state=owned_bindings_enabled?owned_target_stats.draw_state(canonical_identity(list)):
+  frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
  const bool exact=final_eye.valid&&binding.targets==1&&!binding.target.mip&&final_eye.width==4096&&final_eye.height==2048&&
   binding.target.width==4096&&binding.target.height==2048&&verified_stereo_draw(
-   frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list)),final_eye,caller,kind,elements,instances);
+   state,final_eye,caller,kind,elements,instances);
  trial.draw(binding.target.resource,owned_scene_gpu::list_ref(canonical_identity(list)),consuming_frame_ticket,final_eye.eye,exact);
  if(exact){owned_scene_gpu::retain_image();owned_scene_gpu::drew(consuming_frame_ticket,final_eye.eye);}
  owned_scene_gpu::draw(list,binding.target.resource,exact,final_eye.eye,final_eye.rect,consuming_frame_ticket);
@@ -92,6 +94,9 @@ bool native_owned_scene_retained(){using namespace gears_owned_scene_live;
 void print_native_owned_scene(FILE* file){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
  owned_scene_gpu::poll();owned_scene_gpu::print(file);
+ const auto bindings=owned_target_stats.snapshot();
+ fprintf(file,"owned_bindings strict=1 resets=%llu overflow=%llu descriptor_evictions=%llu descriptor_lost=%u\n",
+  bindings.resets,bindings.overflow,bindings.descriptor_evictions,owned_target_stats.descriptor_capacity_lost()?1:0);
  healthy();const auto live=owner.snapshot();
  fprintf(file,"native_owned_scene attempted=%u resource=%llx adapter=%llx born=%llu ticket=%llu renderer=%llx width=%u height=%u built=%u entered=%u returned=%u destroyed=%u draw_mask=%u submitted_mask=%u draws=%llu unknown_draws=%llu submissions=%llu queue=%llx error=%u create_error=%u live_phase=%u live_error=%u adapter_fault=%u retained=%u retention_until_process_exit=1 canvas_redirected=0 gpu_state_certified=%u pixels_read_back=%u pixels_verified=0\n",
   attempted?1:0,trial.resource,trial.adapter,trial.born,trial.ticket,trial.renderer,created.width,created.height,

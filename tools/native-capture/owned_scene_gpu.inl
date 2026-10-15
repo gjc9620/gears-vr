@@ -147,9 +147,14 @@ gears_frame_link::ListRef list_ref(uintptr_t identity){
  return watching()?tracker.current(identity):gears_frame_link::ListRef{};
 }
 void list_created(HRESULT hr,void** out,bool open){
- if(!continuous_probe||!watching()||FAILED(hr))return;
+ if(FAILED(hr))return;
+ const bool bindings=owned_bindings_enabled&&(recording.load()||prime_recording.load());
+ const bool proof=continuous_probe&&watching();if(!bindings&&!proof)return;
  IUnknown* object{};IUnknown* identity{};
  if(!safe_copy(&object,out,sizeof(object))||!object||FAILED(object->QueryInterface(IID_PPV_ARGS(&identity)))){fault(14);return;}
+ if(bindings){if(open)owned_target_stats.reset(reinterpret_cast<uintptr_t>(identity));
+  else owned_target_stats.retire(reinterpret_cast<uintptr_t>(identity));}
+ if(!proof){identity->Release();return;}
  for(auto* previous:created_lists)if(previous==identity){identity->Release();fault(14);return;}
  if(list_creation_count==created_lists.size()){identity->Release();fault(14);return;}
  created_lists[list_creation_count++]=identity; // Diagnostic lease until process exit; no pointer reuse.

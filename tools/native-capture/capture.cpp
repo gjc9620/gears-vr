@@ -318,6 +318,14 @@ gears_viewport::Tracker viewport_stats;
 // Preserve original diagnostic interface addresses; frame association owns a
 // separate descriptor/binding map with canonical IUnknown resource identities.
 gears_viewport::Tracker frame_target_stats;
+// Owned recordings may cross desktop Present. Retire only submitted members;
+// a new recording requires an observed Reset (or initial open creation).
+gears_viewport::Tracker owned_target_stats{true};
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+constexpr bool owned_bindings_enabled=true;
+#else
+constexpr bool owned_bindings_enabled=false;
+#endif
 thread_local unsigned frame_present_depth{};
 thread_local bool frame_inside_original_present{};
 struct FramePresentScope {
@@ -785,6 +793,7 @@ std::unique_lock<std::recursive_mutex> frame_lock() {
     gears_render_cost::Scope cost(gears_render_cost::frame_lock);
     std::unique_lock<std::recursive_mutex> lock(frame_hook_mutex,std::defer_lock);
     bool required=frame_link_diagnostics&&recording.load();
+    required=required||(owned_bindings_enabled&&prime_recording.load());
     required=required||native_owned_scene_retained();
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
     required=required||frame_link.owned_status().enabled;
@@ -830,20 +839,24 @@ void sample_frame_work(unsigned kind,uintptr_t caller,uintptr_t list,uintptr_t q
     *empty=value;
 }
 void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances) {
-    if(!frame_link_diagnostics || !recording.load())return;
+    if(!recording.load())return;
     gears_render_cost::Scope cost(gears_render_cost::frame_draw);
-    if(frame_target_stats.descriptor_capacity_lost()){
+    if(owned_bindings_enabled){
+        const auto identity=canonical_identity(list);
+        const auto binding=owned_target_stats.binding(identity);
+        const bool known=!owned_target_stats.descriptor_capacity_lost()&&
+            owned_target_stats.draw_state(identity).tracked&&(!binding.targets||binding.target.resource);
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
-        owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::descriptor);
+        if(!known)owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::descriptor);
 #endif
-        frame_link.invalidate();return;}
+        if(known)native_owned_scene_draw(list,binding,caller,kind,elements,instances);
+    }
+    if(!frame_link_diagnostics)return;
+    if(frame_target_stats.descriptor_capacity_lost()){frame_link.invalidate();return;}
     auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
-    native_owned_scene_draw(list,binding,caller,kind,elements,instances);
+    if(!owned_bindings_enabled)native_owned_scene_draw(list,binding,caller,kind,elements,instances);
     if(!binding.targets)return; // No render target: no observed color write.
     if(!binding.target.resource){
-#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
-        owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::descriptor);
-#endif
         ++frame_counts.missing_target;frame_link.invalidate();return;}
     if(!swapchain_bindings.known_buffer(binding.target.resource)){++frame_counts.filtered;return;}
     ++frame_counts.draws;
@@ -2075,10 +2088,18 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     // successful original-call interval may advance owned submitted state.
     const auto scene_receipt=native_owned_scene_prepare(queue,count,lists);
     const auto scene_gpu_token=owned_scene_gpu::prepare(queue,count,lists,reinterpret_cast<uintptr_t>(_ReturnAddress()));
+    // Snapshot the original submission membership before forwarding. This is
+    // CPU binding retirement only; GPU generations and execution proof remain.
+    std::array<ID3D12CommandList*,gears_frame_link::Tracker::list_capacity> binding_lists{};
+    std::array<uintptr_t,gears_frame_link::Tracker::list_capacity> binding_ids{};
+    const bool retire_bindings=owned_bindings_enabled&&(recording.load()||prime_recording.load())&&
+        count&&count<=binding_lists.size()&&safe_copy(binding_lists.data(),lists,count*sizeof(binding_lists[0]));
+    if(retire_bindings)for(unsigned i=0;i<count;++i)binding_ids[i]=canonical_identity(binding_lists[i]);
     original_execute(queue,count,lists);
     owned_scene_gpu::commit(scene_gpu_token);
     native_owned_scene_commit(scene_receipt);
     if(owned&&owned_token.value&&!frame_link.commit_execute(owned_token))++frame_counts.execute_rejected;
+    if(retire_bindings)for(unsigned i=0;i<count;++i)owned_target_stats.retire(binding_ids[i]);
     record.duration=now()-record.time;enqueue(record);
 }
 HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT flags) {
@@ -2332,6 +2353,10 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
     Scope scope;auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
     gears_render_cost::Scope cost(gears_render_cost::reset_tracking);
     owned_scene_gpu::reset(list,result);
+    if(owned_bindings_enabled&&(recording.load()||prime_recording.load())){
+        const auto identity=canonical_identity(list);
+        if(SUCCEEDED(result))owned_target_stats.reset(identity);else owned_target_stats.retire(identity);
+    }
     if(recording.load()&&SUCCEEDED(result))viewport_stats.reset(reinterpret_cast<uintptr_t>(list));
     bool tracking=frame_link_diagnostics&&recording.load();
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
@@ -2348,7 +2373,7 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
 }
 void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count,const D3D12_VIEWPORT* values) {
     Scope scope;auto frame_guard=frame_lock();
-    if(recording.load()) {
+    if(recording.load()||(owned_bindings_enabled&&prime_recording.load())) {
         D3D12_VIEWPORT value{};unsigned category=gears_viewport::unknown;
         const bool known=count==1&&safe_copy(&value,values,sizeof(value));
         if(known)category=gears_viewport::classify(value.TopLeftX,value.TopLeftY,value.Width,value.Height);
@@ -2357,12 +2382,14 @@ void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count
             {value.TopLeftX,value.TopLeftY,value.Width,value.Height},count,known,value.MinDepth,value.MaxDepth);
         if(frame_link_diagnostics)frame_target_stats.set(reinterpret_cast<uintptr_t>(list),category,false,
             {value.TopLeftX,value.TopLeftY,value.Width,value.Height},count,known,value.MinDepth,value.MaxDepth);
+        if(owned_bindings_enabled)owned_target_stats.set(canonical_identity(list),category,false,
+            {value.TopLeftX,value.TopLeftY,value.Width,value.Height},count,known,value.MinDepth,value.MaxDepth);
     }
     original_viewports(list,count,values);
 }
 void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RECT* values) {
     Scope scope;auto frame_guard=frame_lock();
-    if(recording.load()) {
+    if(recording.load()||(owned_bindings_enabled&&prime_recording.load())) {
         D3D12_RECT value{};unsigned category=gears_viewport::unknown;
         if(count==1&&safe_copy(&value,values,sizeof(value)))category=gears_viewport::classify(static_cast<float>(value.left),static_cast<float>(value.top),
             static_cast<float>(static_cast<int64_t>(value.right)-value.left),static_cast<float>(static_cast<int64_t>(value.bottom)-value.top));
@@ -2372,6 +2399,9 @@ void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,
              static_cast<float>(static_cast<int64_t>(value.right)-value.left),
              static_cast<float>(static_cast<int64_t>(value.bottom)-value.top)});
         if(frame_link_diagnostics)frame_target_stats.set(reinterpret_cast<uintptr_t>(list),category,true,
+            {static_cast<float>(value.left),static_cast<float>(value.top),
+             static_cast<float>(static_cast<int64_t>(value.right)-value.left),static_cast<float>(static_cast<int64_t>(value.bottom)-value.top)},count);
+        if(owned_bindings_enabled)owned_target_stats.set(canonical_identity(list),category,true,
             {static_cast<float>(value.left),static_cast<float>(value.top),
              static_cast<float>(static_cast<int64_t>(value.right)-value.left),static_cast<float>(static_cast<int64_t>(value.bottom)-value.top)},count);
     }
@@ -2489,8 +2519,8 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
 #if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
     if(recording.load()&&owned_ui_live::route.ticket&&gears_viewport::has_draw_work(indices,instances)){
         const auto route=owned_ui_live::route;
-        const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
-        const auto saved=frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
+        const auto binding=owned_target_stats.binding(canonical_identity(list));
+        const auto saved=owned_target_stats.draw_state(canonical_identity(list));
         const auto ref=owned_scene_gpu::list_ref(canonical_identity(list));
         const gears_frame_link::Target target{route.resource,4096,2048};
         const auto pair=owned_scene_gpu::tracker.overlay_pair(ref,target);
@@ -2499,7 +2529,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
         for(unsigned i=0;i<count;++i)addresses[i]=reinterpret_cast<uintptr_t>(stack[i]);
         gears_viewport::OverlayPlan plan{};
         const bool chain=ui_observed_overlay_chain(addresses.data(),count);
-        const bool admitted=caller==base+0x172741&&!frame_target_stats.descriptor_capacity_lost()&&
+        const bool admitted=caller==base+0x172741&&!owned_target_stats.descriptor_capacity_lost()&&
             binding.targets==1&&!binding.target.mip&&binding.target.resource==route.resource&&
             binding.target.width==target.width&&binding.target.height==target.height&&
             pair.linked&&pair.ticket==route.ticket&&chain;
@@ -2532,7 +2562,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
         }
         owned_ui_live::reject_draw({route.ticket,pair.ticket,caller-base,binding.target.resource,route.resource,
             unsigned(admitted)|(unsigned(chain)<<1)|(unsigned(pair.linked)<<2)|(unsigned(sample_found)<<3)|
-            (unsigned(frame_target_stats.descriptor_capacity_lost())<<4)|(unsigned(binding.targets)<<8)|
+            (unsigned(owned_target_stats.descriptor_capacity_lost())<<4)|(unsigned(binding.targets)<<8)|
             (unsigned(binding.target.mip)<<16),unsigned(binding.target.width),binding.target.height,saved});
         owned_ui_live::fault(route.ticket,9);
     }
@@ -2578,26 +2608,37 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
     if(recording.load()){D3D12_CPU_DESCRIPTOR_HANDLE first{};
         if(count)safe_copy(&first,handles,sizeof(first));
         viewport_stats.bind(reinterpret_cast<uintptr_t>(list),count,first.ptr);}
-    if(frame_link_diagnostics&&recording.load()){D3D12_CPU_DESCRIPTOR_HANDLE first{};
-        if(count&&!safe_copy(&first,handles,sizeof(first)))frame_link.invalidate();
-        if(!frame_target_stats.bind(reinterpret_cast<uintptr_t>(list),count,first.ptr))frame_link.invalidate();
+    const bool legacy=frame_link_diagnostics&&recording.load();
+    const bool owned=owned_bindings_enabled&&(recording.load()||prime_recording.load());
+    if(legacy||owned){D3D12_CPU_DESCRIPTOR_HANDLE first{};
+        auto reject=[&](){if(legacy)frame_link.invalidate();
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+            if(owned)owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::descriptor);
+#endif
+        };
+        if(count&&!safe_copy(&first,handles,sizeof(first)))reject();
+        if(legacy&&!frame_target_stats.bind(reinterpret_cast<uintptr_t>(list),count,first.ptr))frame_link.invalidate();
+        if(owned)owned_target_stats.bind(canonical_identity(list),count,first.ptr);
         // Existing diagnostic state stores only the first RTV. Conservatively
         // mark any other verified backbuffer in an MRT bind as an unknown write,
         // so a later Draw cannot evade contamination by targeting a non-first RTV.
         // This may reject a bind without a Draw; it cannot establish a false link.
         if(count>1){
-            if(count>D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)frame_link.invalidate();
+            if(count>D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)reject();
             else {ID3D12Device* device{};UINT stride{};
                 if(single){if(SUCCEEDED(list->GetDevice(IID_PPV_ARGS(&device)))){stride=device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);device->Release();}
-                    if(!stride)frame_link.invalidate();}
+                    if(!stride)reject();}
                 for(UINT i=1;i<count;++i){D3D12_CPU_DESCRIPTOR_HANDLE handle{};
                     if(single){uint64_t offset=uint64_t(i)*stride;
-                        if(!stride||offset>UINTPTR_MAX-first.ptr){frame_link.invalidate();break;}handle.ptr=first.ptr+static_cast<uintptr_t>(offset);}
-                    else if(!safe_copy(&handle,handles+i,sizeof(handle))){frame_link.invalidate();break;}
-                    auto target=frame_target_stats.lookup(handle.ptr);
+                        if(!stride||offset>UINTPTR_MAX-first.ptr){reject();break;}handle.ptr=first.ptr+static_cast<uintptr_t>(offset);}
+                    else if(!safe_copy(&handle,handles+i,sizeof(handle))){reject();break;}
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
-                    if(!target.resource)owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::descriptor);else owned_scene_gpu::use(list,target.resource,false);
+                    if(owned){const auto target=owned_target_stats.lookup(handle.ptr);
+                        if(!target.resource||owned_target_stats.descriptor_capacity_lost())owned_scene_gpu::uncertain(owned_scene_gpu::Unknown::descriptor);
+                        else owned_scene_gpu::use(list,target.resource,false);}
 #endif
+                    if(!legacy)continue;
+                    auto target=frame_target_stats.lookup(handle.ptr);
                     if(!target.resource){++frame_counts.missing_target;frame_link.invalidate();}
                     else if(swapchain_bindings.known_buffer(target.resource)){++frame_counts.unknown;
                         frame_link.draw_unknown(frame_link.current(canonical_identity(list)),target.resource);}
@@ -2629,7 +2670,8 @@ void STDMETHODCALLTYPE hook_create_rtv(ID3D12Device* device,ID3D12Resource* reso
         viewport_stats.create(handle.ptr,target);
         if(recording.load()||prime_recording.load()){auto canonical_target=target;
             canonical_target.resource=target.resource?canonical_identity(resource):0;
-            frame_target_stats.create(handle.ptr,canonical_target);}
+            frame_target_stats.create(handle.ptr,canonical_target);
+            if(owned_bindings_enabled)owned_target_stats.create(handle.ptr,canonical_target);}
     }
 }
 bool flatten_descriptors(UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* starts,const UINT* sizes,UINT stride,std::array<uintptr_t,128>& output,unsigned& total) {
@@ -2646,16 +2688,18 @@ void STDMETHODCALLTYPE hook_copy_descriptors(ID3D12Device* device,UINT destinati
     if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> dest{},src{};unsigned dc{},sc{};
         UINT stride=device->GetDescriptorHandleIncrementSize(type);
         if(flatten_descriptors(destinations,destination_starts,destination_sizes,stride,dest,dc)&&
-           flatten_descriptors(sources,source_starts,source_sizes,stride,src,sc)&&dc==sc){viewport_stats.copy(dest.data(),src.data(),dc);frame_target_stats.copy(dest.data(),src.data(),dc);}
-        else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
+           flatten_descriptors(sources,source_starts,source_sizes,stride,src,sc)&&dc==sc){viewport_stats.copy(dest.data(),src.data(),dc);frame_target_stats.copy(dest.data(),src.data(),dc);
+            if(owned_bindings_enabled)owned_target_stats.copy(dest.data(),src.data(),dc);}
+        else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(owned_bindings_enabled)owned_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
 }
 void STDMETHODCALLTYPE hook_copy_simple(ID3D12Device* device,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dest,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type) {
     Scope scope;auto frame_guard=frame_lock();original_copy_simple(device,count,dest,src,type);
     if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> destinations{},sources{};unsigned dc{},sc{};
         UINT stride=device->GetDescriptorHandleIncrementSize(type);
         if(flatten_descriptors(1,&dest,&count,stride,destinations,dc)&&flatten_descriptors(1,&src,&count,stride,sources,sc))
-            {viewport_stats.copy(destinations.data(),sources.data(),dc);frame_target_stats.copy(destinations.data(),sources.data(),dc);}
-        else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
+            {viewport_stats.copy(destinations.data(),sources.data(),dc);frame_target_stats.copy(destinations.data(),sources.data(),dc);
+                if(owned_bindings_enabled)owned_target_stats.copy(destinations.data(),sources.data(),dc);}
+        else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(owned_bindings_enabled)owned_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
 }
 bool viewport_hooks(ID3D12Device* device) {
     ID3D12CommandAllocator* allocator{};ID3D12GraphicsCommandList* list{};bool success=false;

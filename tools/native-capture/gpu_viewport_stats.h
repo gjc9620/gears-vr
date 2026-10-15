@@ -95,6 +95,7 @@ class Tracker {
     Snapshot data{};
     uint64_t cleared_binding_overflow{};
     bool descriptor_capacity_lost_{};
+    const bool strict_lifecycle_;
     std::mutex mutex;
     Descriptor* descriptor(uintptr_t handle,bool insert) {
         if(!handle)return nullptr;
@@ -115,6 +116,13 @@ class Tracker {
         return nullptr;
     }
 public:
+    // Strict callers announce a successful Reset (or observed initially open
+    // creation) with reset(). RS/OM calls cannot create a recording implicitly.
+    explicit Tracker(bool strict_lifecycle=false):strict_lifecycle_(strict_lifecycle){}
+    // CPU recording state only. Submitted proof/GPU lifetimes belong to the
+    // caller; descriptors are independent and survive list retirement.
+    bool retire(uintptr_t list){std::lock_guard<std::mutex> lock(mutex);
+        if(auto slot=find(list,false)){*slot={};return true;}return false;}
     // A consuming observer may retire a whole recording window while keeping
     // descriptor provenance from startup priming. The legacy tracker never calls this.
     bool clear_bindings(){std::lock_guard<std::mutex> lock(mutex);slots={};
@@ -136,7 +144,7 @@ public:
     }
     void reject_copy(){std::lock_guard<std::mutex> lock(mutex);++data.copy_rejected;for(auto& entry:descriptors)entry={};}
     bool bind(uintptr_t list,unsigned count,uintptr_t first) {std::lock_guard<std::mutex> lock(mutex);++data.target_binds;
-        if(auto slot=find(list,true)){slot->targets=count;slot->target={};
+        if(auto slot=find(list,!strict_lifecycle_)){slot->targets=count;slot->target={};
             // OMSetRenderTargets consumes CPU RTV descriptors at the bind call.
             // Later descriptor overwrites do not change this recorded binding.
             if(count)if(auto entry=descriptor(first,false))slot->target=entry->target;
@@ -148,12 +156,12 @@ public:
         return {slot->viewport,slot->targets,slot->target,0};}
     DrawState draw_state(uintptr_t list){std::lock_guard<std::mutex> lock(mutex);auto slot=find(list,false);
         return slot?DrawState{true,slot->viewport_rect,slot->scissor_rect,slot->viewport_count,slot->scissor_count,slot->depth_known,slot->min_depth,slot->max_depth}:DrawState{};}
-    void set(uintptr_t list,unsigned category,bool scissor,Rect rect={},unsigned count=1,bool depth_known=false,float min_depth=0,float max_depth=0) {std::lock_guard<std::mutex> lock(mutex);
+    bool set(uintptr_t list,unsigned category,bool scissor,Rect rect={},unsigned count=1,bool depth_known=false,float min_depth=0,float max_depth=0) {std::lock_guard<std::mutex> lock(mutex);
         if(scissor)++data.scissors;else ++data.viewports;
-        if(auto slot=find(list,true)){(scissor?slot->scissor:slot->viewport)=category<5?category:unknown;
+        if(auto slot=find(list,!strict_lifecycle_)){(scissor?slot->scissor:slot->viewport)=category<5?category:unknown;
             (scissor?slot->scissor_count:slot->viewport_count)=count;
             (scissor?slot->scissor_rect:slot->viewport_rect)=rect;
-            if(!scissor){slot->depth_known=depth_known;slot->min_depth=min_depth;slot->max_depth=max_depth;}}}
+            if(!scissor){slot->depth_known=depth_known;slot->min_depth=min_depth;slot->max_depth=max_depth;}return true;}return false;}
     void draw(uintptr_t list,unsigned phase) {std::lock_guard<std::mutex> lock(mutex);
         auto slot=find(list,false);if(!slot){++data.untracked_draws;return;}
         ++data.draws[phase<3?phase:0][slot->viewport][slot->scissor];
