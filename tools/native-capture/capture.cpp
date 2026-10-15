@@ -135,6 +135,8 @@ struct FinalEyeInventory {
 } final_eye_inventory;
 void print_late_quad(FILE* status);
 void observe_late_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
+void print_backbuffer_copies(FILE* status);
+void observe_backbuffer_copy_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 struct FrameLinkCounters {
     std::atomic<uint64_t> resets{},reset_failed{},draws{},filtered{},unknown{},missing_target{},missing_ticket{},bad_quad{},
         executes{},execute_rejected{},presents{},linked{},contaminated{},present_failed{},tests{},unbound{},changed{},last_ticket{};
@@ -1026,8 +1028,9 @@ void observe_frame_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandLis
             if(frame_trial_anchored)++stats->post_anchor_unknown;
             bool saved=false;for(unsigned j=0;j<stats->first_unknown_count;++j)if(stats->first_unknown[j]==identity)saved=true;
             if(!saved&&stats->first_unknown_count<stats->first_unknown.size())stats->first_unknown[stats->first_unknown_count++]=identity;}}
-    if(frame_link_diagnostics&&recording.load())for(unsigned i=0;i<count;++i)
+    if(frame_link_diagnostics&&recording.load())for(unsigned i=0;i<count;++i){
         observe_late_execute(queue_id,refs[i],frame_counts.executes.load(),i);
+        observe_backbuffer_copy_execute(queue_id,refs[i],frame_counts.executes.load(),i);}
     const bool accepted=owned_token?frame_link.prepare_execute(queue_id,refs.data(),count,*owned_token):
         frame_link.execute(queue_id,refs.data(),count);
     if(!accepted){++frame_counts.execute_rejected;if(stats)++stats->rejected;}
@@ -1383,6 +1386,7 @@ void print_frame_link(FILE* status) {
     if(!frame_link_diagnostics)return;
     std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
     print_late_quad(status);
+    print_backbuffer_copies(status);
     fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
         final_eye_failures.size,gears_final_eye_diagnostics::Recorder::capacity,gears_final_eye_diagnostics::Recorder::per_epoch,final_eye_failures.dropped);
     for(unsigned i=0;i<final_eye_failures.size;++i){const auto& r=final_eye_failures.rows[i];const auto& g=r.geometry;
@@ -1855,6 +1859,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "geometry_observer.h"
 #include "resource_identity_observer.h"
 #include "late_quad_observer.inl"
+#include "backbuffer_copy_observer.inl"
 #include "final_input_observer.h"
 #include "quad_source_control.h"
 #include "color_copy_observer.h"

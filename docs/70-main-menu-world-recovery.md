@@ -161,3 +161,13 @@ Native9 SHA `a89d967280d6bd95e1c628cd663c55dbb3eef6f1d96dab145ca49aaf970c6160`�
 被拒绝RTV为`3ddadf2b0`、1920×1080，handle`79d38b0`；来源是观察到的CreateRTV serial369、cached inventory epoch2、live接口`3ddadf2e0`，无copy lineage，之后在inventory3持续用于两眼。说明不是仅沿用启动期创建记录；它在第一次resize后的观察期被实际传给CreateRTV，且不同于两张已核对的1081后缓冲。仍未证明第二次resize后的存活、像素或最终传递。下一步扩展已有CopyTextureRegion观察，绕开旧global-color-pair筛选，针对当前后缓冲或该拒绝目标记录实际调用参数与实时描述符；不得查询已保存的旧COM地址，不新增捕获注入或放宽门禁。
 
 GpuViewportStatsTest、FinalEyeDiagnosticsTest、frame-link/continuous自测及实际reserve链通过。最终native清理、入口恢复、XR shutdown/对象销毁通过，但XR exit1、会话incomplete，不能称显示通过；正常WM_CLOSE退出，备份`world9-config-after-test.ini`后恢复用户StartupResolutionY=1080。原始证据为`world9-rect-experiment.json`、会话native-status及`world9-close.json`。默认清单未改，真头显验收未做。
+
+## 第九批：排除已观察CopyTextureRegion路径，转查真实backbuffer绘制
+
+Native10 SHA `3a47376665306802c4f167f7361143a1dd03b416d57f64ce98da9a267926e03e`，XR仍为MainMenu8。已有CopyTextureRegion Hook在旧consumer/global-color筛选之前增加有界观察，只对当前API实际资源参数查询canonical身份；匹配当前buffer或已有拒绝目标时才在新行查询GetDesc，全部接口在转发前释放。候选ticket只作上下文，Execute仍明确是CPU原调用前记录。无新Hook或接受条件变化。
+
+会话`continuous-stereo-27784-20261016-060633-8a09973b.json`，game27784 / creation134365755813869714，owner36844。相同尺寸及world1→2对照仍失败：published216→280后保持，projection260后保持。新观察total84063、unmatched84063、invalid0、rows0、dropped0；不能推导通过此API将拒绝目标传到当前后缓冲。它只排除已观察的CopyTextureRegion关联，不排除其他API或未知shader路径。
+
+现有outage_sources已有更直接的后续线索：gap0 first_unknown draw在QPC421018854368写入实际当前backbuffer `16033795e0`、1920×1081，caller`1401af92b`、indexed6/instance1，list`160302b090`、generation109262；无ticket或已认证Material。该图元生成函数也用于已知quad，但本轮只筛选历史caller2b11a0的late观察仍为0。因此下一步应把已有quad作用域扩展为“实际当前backbuffer上的未认证quad”，记录真实quad caller及当前绑定输入；不是继续猜新caller或放宽门禁。若没有quad作用域则再查相应直接调用路径。源内容、采样及同帧归属仍须验证。
+
+BackbufferCopyDiagnosticsTest及color-copy/color-copy-system/continuous自测、完整reserve链通过。最终native_cleanup_verified、entry_restore_verified及XR shutdown/objects_destroyed均true，但XR exit1、会话incomplete；显示未通过。正常WM_CLOSE关闭游戏，备份`world10-config-after-test.ini`后恢复StartupResolutionY=1080；证据`world10-rect-experiment.json`、会话native-status、`world10-close.json`。未提升默认或宣布所有黑屏根因。
