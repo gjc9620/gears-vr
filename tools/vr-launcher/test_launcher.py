@@ -10,7 +10,9 @@ from unittest import mock
 
 SPEC=importlib.util.spec_from_file_location('vr_launcher',pathlib.Path(__file__).with_name('launcher.py'))
 launcher=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(launcher)
-MANIFEST=json.loads(pathlib.Path(__file__).with_name('manifest.json').read_text())
+# Legacy fixtures intentionally exercise omitted options. The player default
+# enables startup menus and graphics protection and is tested separately below.
+MANIFEST=json.loads(pathlib.Path(__file__).with_name('manifest-legacy-continuous3.json').read_text())
 
 class FakeResolver:
     def __init__(self):
@@ -48,6 +50,18 @@ class FakeBackend:
         return dict(pawn='0x200',controller='0x100',camera='0x400',level='0x300',timestamp=float(self.samples))
 
 class LauncherTests(unittest.TestCase):
+    def test_player_default_uses_game_resolution_and_graphics_protection(self):
+        directory=pathlib.Path(__file__).parent
+        current=json.loads((directory/'manifest.json').read_text())
+        self.assertEqual(current,json.loads((directory/'manifest-game-resolution.json').read_text()))
+        launcher.settings({},current)
+        self.assertEqual(current['native_dll'],'GearsCaptureGameResolution1.dll')
+        for key in ('startup_menu','graphics_startup_lock','graphics_menu_lock','menu_recovery','ui_hud_plane'):
+            self.assertTrue(current[key])
+        for tier in ('low','high'):
+            with self.assertRaisesRegex(ValueError,'Unknown configuration'):
+                launcher.settings({'vr_quality':tier},current)
+
     def test_startup_policy_event_failure_does_not_admit_handoff(self):
         backend=launcher.Backend.__new__(launcher.Backend)
         backend.runner=SimpleNamespace(checked_identity=mock.Mock())

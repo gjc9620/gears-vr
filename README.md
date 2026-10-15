@@ -1,6 +1,8 @@
 # GearsVR 研究原型
 
-目标是为 Gears of War: Reloaded 交付第三人称同帧双目 VR Mod，包含 6DoF 头部跟踪、菜单和游戏 UI。当前同帧双目已经过真实头显游玩，启动菜单到关卡的同一 OpenXR 会话切换已在模拟器验证；准星、换枪 UI、字幕、位置追踪体验、运行时 DLSS 锁定及便携发布包仍未完成。
+目标是为 Gears of War: Reloaded 交付第三人称同帧双目 VR Mod，包含 6DoF 头部跟踪、菜单和游戏 UI。旧版已获真实头显游玩反馈；后续 UI、准星、字幕和 DLSS/DLAA 保护已有分项实现与证据，完整首版回归及便携发布包仍未完成。
+
+2026-10-15 玩家测试入口已按要求撤下 Low/High 固定分辨率，改用游戏输出尺寸。双击本机仓库根目录 `GearsVR Launcher.exe`，选择模拟器或系统 OpenXR Runtime，点击“启动 VR”后自行进入关卡。“停止 VR”正常停止会话，不自动结束测试或强杀游戏。1920×1080 游戏输出对应每眼 960×1080；更改游戏分辨率后请重启游戏和 VR。新组合已通过编译及离线检查，闪烁是否消失待用户实测。参见[启动器说明](tools/vr-launcher/ui/README.md)和[当前构建记录](docs/62-game-resolution-launcher.md)。
 
 - [新手流程与学习路线](docs/00-roadmap-and-learning.md)
 - [摄像机定位证据](docs/02-camera-analysis.md)

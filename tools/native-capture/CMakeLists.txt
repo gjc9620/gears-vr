@@ -167,6 +167,24 @@ if(GEARS_DESKTOP_MIRROR)
     target_compile_definitions(GearsCapture PRIVATE GEARS_DESKTOP_MIRROR=1)
     target_link_libraries(GearsCapture PRIVATE d3dcompiler)
 endif()
+# Player test build: use the game's existing output and its real dimensions.
+# Reject a reused experimental cache instead of silently allocating Low targets.
+option(GEARS_GAME_RESOLUTION "Require game-resolution rendering without fixed owned targets" OFF)
+if(GEARS_GAME_RESOLUTION)
+    foreach(FIXED_OPTION IN ITEMS GEARS_NATIVE_SURFACE_PROBE GEARS_NATIVE_OWNED_PROBE
+            GEARS_NATIVE_OWNED_SCENE_PROBE GEARS_NATIVE_OWNED_PIXELS
+            GEARS_NATIVE_OWNED_CONTINUOUS_PROBE GEARS_NATIVE_OWNED_XR_PROBE
+            GEARS_NATIVE_OWNED_SUSTAINED GEARS_NATIVE_RENDER_COST_PROBE
+            GEARS_NATIVE_RESIZE_PROBE GEARS_NATIVE_RESIZE_REUSE GEARS_OWNED_OUTPUT_TRACKING
+            GEARS_OWNED_UI_ROUTE_PROBE GEARS_OWNED_UI_BATCH GEARS_OWNED_UI_MATERIAL
+            GEARS_OWNED_SUBTITLE_PIXELS GEARS_DESKTOP_MIRROR)
+        if(${FIXED_OPTION})
+            message(FATAL_ERROR "GEARS_GAME_RESOLUTION cannot enable ${FIXED_OPTION}")
+        endif()
+    endforeach()
+    target_compile_definitions(GearsCapture PRIVATE GEARS_GAME_RESOLUTION=1)
+    message(STATUS "VR output: game resolution, each SBS eye uses half the game width")
+endif()
 add_executable(GpuMirrorTest gpu_mirror_test.cpp)
 target_link_libraries(GpuMirrorTest PRIVATE d3d12 dxgi d3dcompiler)
 target_compile_definitions(GpuMirrorTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)

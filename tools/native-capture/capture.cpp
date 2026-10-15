@@ -3388,6 +3388,9 @@ DWORD WINAPI worker(void*) {
             e.field140,e.field418,f.before_owner,f.before_state,f.before140,f.before418,f.begin_qpc,f.end_qpc);
     }
     fprintf(status,"submit_output_bounds=%d\n",submit_output_bounds);
+#ifdef GEARS_GAME_RESOLUTION
+    fprintf(status,"resolution_source=game\n");
+#endif
     fprintf(status,"submit_view_count=%u submit_event_marker=77\n",submit_mono_control?1:2);
     fprintf(status,"submit_duplicate_control=%d\n",submit_duplicate_control);
     fprintf(status,"submit_mono_independent_state=%d\n",submit_mono_independent_state);
