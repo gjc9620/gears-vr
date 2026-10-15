@@ -36,6 +36,13 @@ background-controller helper against the game PID. The bootstrap PID is distinct
 Unset the option to use the existing initial-show hint. No global registry/runtime
 setting is changed.
 
+The command builder leaves simple arguments such as `-NoPauseUnfocus` unquoted.
+The game's raw command parser accepts only end-of-string, space or tab after a
+switch, so surrounding that switch with quotes disables it even though Windows
+argv parsing succeeds. Arguments that need quotes still use Windows backslash
+escaping. `QuietCommandLineTest` checks the exact raw switch and argv round trips;
+the actual game must additionally verify its internal command line and behavior.
+
 Build with the existing MSVC x64 toolchain and CMake; MinHook is the existing
 `tools/third-party/minhook` dependency. Use a new build directory after changes.
 The native fixture runs offscreen and exits, while observing creation, delayed

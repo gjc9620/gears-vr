@@ -67,3 +67,27 @@ SpaceRecovery5在枚举交换链时就检查所有实际D3D12纹理尺寸，并�
 本轮屏幕内容检查处于暂停菜单，存在左右背景差异；菜单路由继续单独调查，不把成功投影写成场景/菜单完整验收。前台记录仍可能包含人工操作，不由最后输入时戳推断具体输入内容或宣称完全静默。GUI及SimulatorVR入口已改用quiet2，GUI编译、自测通过；默认原生/桥接清单保持不变。
 
 SpaceRecovery6另增加两眼交换链handle重复拒绝，构造清理只保留一次所有权；编译及CPU检查通过，9k实际运行的仍为SpaceRecovery5，未热替换。该实验构建SHA256 `5ad83e2be9ee708358e152480f428d5673e685414506abc2efd11f4322733251`。所有运行记录与截图仍留在ignored analysis。
+
+## quiet6：修正 NoPauseUnfocus 的引号
+
+用户确认前台记录曾包含手动切换，因此不由9j/9k事件直接推断自动抢焦点；随后明确实测失焦仍会暂停。后台手柄补丁只处理控制器焦点过滤，不能代替自动暂停策略。
+
+9l（PID35456/创建FILETIME `134365563390630203`）确实收到 `-NoPauseUnfocus` 启动参数，但只读验证游戏内部命令行是 `"-NoPauseUnfocus"`，包含首尾引号。quiet5的 `early_launch.cpp` 无条件给每个参数包引号。知识库找到tick函数RVA `0x1e3f28` 的开关检查与 `ConditionalOutOfFocusPauseGame` 调用；整个3064字节函数在历史快照和本次进程均匹配SHA256 `f31e4dc62da150887df414dda7028e8ac4177295438d559e0d57a8afdcbe26e9`。
+
+解析函数RVA `0xc2f44`（含独立chunk `0x899626..0x89967c`）只接受关键字后为NUL、空格或tab；末尾双引号不满足条件。`0x245124` 的汇编确认只识别空格/tab。条件跳转 `0x1e41ec` 在开关有效时跳过专用失焦暂停路径，未涉及主动暂停入口。原始快照的伪代码/汇编文本有raw-loader数据地址偏差，因此运行期地址由指令的RIP相对位移计算：内部命令行 `base+0x1cdc190`、开关字面值 `base+0x15ace58`，不直接照搬伪代码常数。
+
+quiet6仅修正命令行构造：非空且没有空格/tab/双引号的参数保持原样，需引用的参数继续正确转义。不修改游戏参数解析器、暂停分支、全局焦点或磁盘EXE。新 `QuietCommandLineTest` 对照原始开关文本并通过Windows argv往返边界测试；编译、CTest和非激活窗口fixture均通过，fixture没有所属前台事件。游戏实际对照另记，不将fixture当成游戏验收。
+
+证据：ignored `analysis/ida/unfocus-pause-20261016/`、`analysis/runtime/unfocus-pause-35456-read.json`、`quiet-startup6-fixture.json`。IDA只使用原库的私有副本，持有lease已关闭。
+
+### quiet6 实际游戏对照
+
+9m使用同一Native9/XR7/quiet2，仅启动器改为quiet6。game35136（创建FILETIME `134365581446475980`）、owner41452、XR41552。内部命令行变为裸 `-NoPauseUnfocus`；tick、参数解析函数的两个chunks及空白判断函数均与历史快照字节完全相同，证明未通过暂停代码补丁改变行为。新启动器SHA256 `15cffb4832a473f621125f0057be87eb59ae2357eaaea3b347cf91c9aec4c5bd`，策略DLL SHA256 `3bcc353553deeb2f5245bd2e6e9b193160f2e97956e9b3573e4cd6dfad89ec19`。
+
+初始30秒观察游戏始终在前台，故不算后台通过。协调线程随后只将认证游戏窗口最小化、再无激活恢复，未调用激活API；前台实际从game35136移至XR41552，游戏窗口位置/尺寸恢复原值。随后30秒60次观察全部为后台GAMEPLAY，Pause/UNKNOWN/错误均0，native published6660→8159。
+
+同一后台进程经认证状态后发送一次Escape，正常打开Pause并提交共同菜单quad；随后在认证Resume按钮上发送一次Enter，正常恢复投影。恢复后再观察30秒，60次全部后台GAMEPLAY，Pause/UNKNOWN/错误均0，published11848→13348。额外只读反射WorldInfo：Pauser持续为空，TimeSeconds在约1秒内从335.571716推进到336.571808；未仅以渲染帧增加认定游戏时间在运行。
+
+这支持quiet5错误引用开关是本轮失焦暂停的原因，quiet6修正有效；不扩大到所有版本/模式。无人值守9m启动观察仍记录一次游戏进入前台，静默启动问题没有因此解决，quiet策略仍为显式实验启用。观察器结束不停止连续会话。
+
+证据：ignored `unfocus-pause-35136-read.json`、`unfocus9m-observe.json`、`unfocus9m-focus-loss.json`、`unfocus9m-background.json`、`pause-menu9m-open.json`、`pause-menu9m-resume.json`、`unfocus9m-after-resume.json`、`unfocus9m-world-tick.json`，均位于 `analysis/runtime/`；会话前缀 `continuous-stereo-35136-20261016-011605-c5356ffd`。

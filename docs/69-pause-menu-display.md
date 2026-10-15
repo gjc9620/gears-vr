@@ -45,3 +45,7 @@ quiet9k 的 game6680 出现暗画面时，实际显示 Pause / Resume Game，而
 协调线程尝试打开菜单前的状态守卫发现游戏已经Pause，因此没有发送Escape；随后只在认证Resume按钮后发送一次后台Enter（`pause-menu9l-open.json`、`pause-menu9l-resume.json`）。日志确认返回投影，但很快再次Pause；临时采样器的旧registry失效，生产monitor重建reader后识别到新Pause对象，未把这一段当成持续gameplay通过。用户随后明确反馈失焦仍自动暂停，下一项针对失焦暂停路径调查。
 
 模拟器检测器的 `MISSING_PROJECTION_LAYER` 在本轮包含有意提交菜单quad的阶段，不能将累计值直接当成黑屏次数。上述画面检查只有一次截图；其余检查依据menu状态、票据、xrEndFrame及进程身份日志。
+
+## 9m 暂停/恢复复验
+
+修正quiet启动器的开关引用（见文档68）后，game35136的同一后台运行中：认证GAMEPLAY→一次Escape→认证Pause/共同菜单quad→认证Resume的一次Enter→新票据投影。恢复后30秒60次状态均为后台GAMEPLAY，未再自动进入Pause；WorldInfo.Pauser为空且游戏时间推进。此轮无需截图或抢回焦点。证据见 `analysis/runtime/pause-menu9m-{open,resume}.json`、`unfocus9m-after-resume.json` 与 `continuous-stereo-35136-20261016-011605-c5356ffd.stdout.txt`。

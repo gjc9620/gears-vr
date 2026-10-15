@@ -7,19 +7,11 @@
 #include <string>
 #include <vector>
 #include "quiet_startup.h"
+#include "command_line.h"
 
 namespace fs=std::filesystem;
 void require(bool ok,const char* operation) {
     if(!ok)throw std::runtime_error(std::string(operation)+" error="+std::to_string(GetLastError()));
-}
-std::wstring quote(const std::wstring& value) {
-    std::wstring result=L"\"";size_t slashes{};
-    for(wchar_t ch:value) {
-        if(ch==L'\\'){++slashes;continue;}
-        result.append(slashes*(ch==L'"'?2:1),L'\\');slashes=0;
-        if(ch==L'"')result+=L'\\';result+=ch;
-    }
-    result.append(slashes*2,L'\\');return result+L'"';
 }
 struct OwnedChild {
     PROCESS_INFORMATION process{};bool attached{},pending{},released{};
@@ -116,8 +108,8 @@ int wmain(int argc,wchar_t** argv) {
     try {
         if(argc<3)throw std::runtime_error("Usage: GearsEarlyLaunch.exe EXE policy.dll [game arguments]");
         const fs::path exe=fs::canonical(argv[1]),dll=fs::canonical(argv[2]);
-        std::wstring command=quote(exe.wstring());
-        for(int i=3;i<argc;++i)command+=L" "+quote(argv[i]);
+        std::wstring command=gears_quiet::quote_argument(exe.wstring());
+        for(int i=3;i<argc;++i)command+=L" "+gears_quiet::quote_argument(argv[i]);
         OwnedChild child;STARTUPINFOW start{};start.cb=sizeof(start);
         start.dwFlags=STARTF_USESHOWWINDOW;start.wShowWindow=SW_SHOWNOACTIVATE;
         require(CreateProcessW(exe.c_str(),command.data(),nullptr,nullptr,FALSE,
