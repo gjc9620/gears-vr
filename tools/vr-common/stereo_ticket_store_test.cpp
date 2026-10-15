@@ -98,7 +98,32 @@ static int geometry_tests() {
     CHECK(store.lookup_geometry(8,copy,true)&&same_geometry(copy,original));
     return 0;
 }
+static int visible_tests() {
+    StereoTicketStore store;auto visible=fixture();visible.focused=0;visible.visible=1;
+    const auto geometry=geometry_fixture();StereoSample copy{};StereoTicketGeometry geometry_copy{};
+    CHECK(store.retain(1,visible,false,&geometry)==TicketRetainResult::retained);
+    CHECK(store.retain(1,visible,false,&geometry)==TicketRetainResult::duplicate);
+    CHECK(store.lookup(1,copy)&&stereo_same(copy,visible)&&copy.focused==0&&copy.visible==1);
+    CHECK(store.lookup_geometry(1,geometry_copy)&&same_geometry(geometry_copy,geometry));
+    auto focused=visible;focused.focused=1;
+    CHECK(store.retain(1,focused,false,&geometry)==TicketRetainResult::conflict);
+    focused.visible=0;
+    CHECK(store.retain(1,focused,false,&geometry)==TicketRetainResult::conflict);
+    CHECK(store.retain(2,focused)==TicketRetainResult::retained);
+    // Invalid or hidden samples cannot replace an admitted visible ticket.
+    for(unsigned invalid=0;invalid<4;++invalid){auto bad=visible;
+        if(invalid==0)bad.visible=0;if(invalid==1)bad.visible=2;
+        if(invalid==2)bad.focused=2;if(invalid==3)bad.should_render=0;
+        CHECK(store.retain(3,bad)==TicketRetainResult::invalid);
+        CHECK(store.lookup(1,copy)&&stereo_same(copy,visible));
+        CHECK(store.size()==2&&store.highest_id()==2);
+    }
+    CHECK(store.retire_through(1));
+    CHECK(!store.lookup(1,copy)&&store.lookup(2,copy)&&stereo_same(copy,focused));
+    return 0;
+}
 int main() {
+    if(auto result=visible_tests())return result;
     if(auto result=geometry_tests())return result;
     auto simulated=fixture();simulated.source=StereoSource::MetaOperatorSimulated;simulated.head_flags=3;
     StereoTicketStore simulation_store;StereoSample raw_copy{};

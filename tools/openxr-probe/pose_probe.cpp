@@ -146,6 +146,22 @@ int projection_receiver_self_test(){
     bool old_rejected=!GameGpuScreen::producer_ready(pid,&readiness)&&readiness==ProjectionStatus::producer_structure_invalid;
     UnmapViewOfFile(packet);CloseHandle(mapping);
     if(!ready||!old_rejected)return 35;
+    if(!projection_session_visible(XR_SESSION_STATE_VISIBLE)||!projection_session_visible(XR_SESSION_STATE_FOCUSED)||
+       projection_session_visible(XR_SESSION_STATE_SYNCHRONIZED)||projection_session_visible(XR_SESSION_STATE_STOPPING))return 36;
+    changed=t;changed.sample.focused=0;changed.sample.visible=1;
+    if(projection_ticket_status(changed,1920,1080,7,1000000000)!=good)return 37;
+    changed.sample.visible=0;
+    if(projection_ticket_status(changed,1920,1080,7,1000000000)!=ProjectionStatus::ticket_flags)return 38;
+    // Continuous cached images preserve their rendered poses; only their age
+    // budget differs. Invalid session/origin/rects never gain a grace period.
+    auto cached=t;
+    if(projection_ticket_status(cached,1920,1080,7,1600000000,false,1,0,projection_retained_image_max_age)!=good||
+       projection_ticket_status(cached,1920,1080,7,3000000000,false,1,0,projection_retained_image_max_age)!=good||
+       projection_ticket_status(cached,1920,1080,7,3000000001,false,1,0,projection_retained_image_max_age)!=ProjectionStatus::stale_ticket)return 39;
+    if(projection_ticket_status(cached,1920,1080,8,1600000000,false,1,0,projection_retained_image_max_age)!=ProjectionStatus::session_mismatch||
+       projection_ticket_status(cached,1920,1080,7,1600000000,false,2,0,projection_retained_image_max_age)!=ProjectionStatus::reference_epoch_pending)return 40;
+    cached.rect[1].x=0;
+    if(projection_ticket_status(cached,1920,1080,7,1600000000,false,1,0,projection_retained_image_max_age)!=ProjectionStatus::image_rectangle)return 41;
     printf("projection receiver CPU gate/age/rect/epoch/coverage/stop/structural checks passed; no XR session opened\n");return 0;
 }
 int runtime_info(){
@@ -361,6 +377,7 @@ int main(int argc, char** argv) {
         bool stereo_image_shown=false;
         auto stereo_retry=std::chrono::steady_clock::now();
         unsigned retired_stereo_copies{},retired_stereo_projections{},source_rebuilds{};
+        unsigned retired_retained_projections{},retired_late_images{};
         unsigned frames=0,valid=0,tracked=0,render=0,focused=0;XrSessionState state=XR_SESSION_STATE_UNKNOWN;
         auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(seconds);
         auto next_csv=std::chrono::steady_clock::now();
@@ -435,7 +452,8 @@ int main(int argc, char** argv) {
                 stereo_sample.source=simulator_operator?gears_vr::StereoSource::MetaOperatorSimulated:gears_vr::StereoSource::RuntimeTracked;
                 stereo_sample.received_ns=gears_vr::monotonic_ns();stereo_sample.predicted_time=frame.predictedDisplayTime;
                 stereo_sample.head_flags=head.locationFlags;stereo_sample.view_flags=view_count==2?view_state.viewStateFlags:0;
-                stereo_sample.focused=state==XR_SESSION_STATE_FOCUSED;stereo_sample.should_render=frame.shouldRender;
+                stereo_sample.focused=state==XR_SESSION_STATE_FOCUSED;
+                stereo_sample.visible=projection_session_visible(state);stereo_sample.should_render=frame.shouldRender;
                 stereo_sample.head=pose(head.pose);
                 for(unsigned i=0;i<2;++i){const auto& f=views[i].fov;
                     stereo_sample.eyes[i]={pose(views[i].pose),{f.angleLeft,f.angleRight,f.angleUp,f.angleDown}};}
@@ -456,7 +474,7 @@ int main(int argc, char** argv) {
                 startup_screen->begin_menu_epoch();++menu_entries;
                 printf("{\"menu_display_enter\":true,\"epoch\":%u,\"mode\":\"death_menu\",\"observed_ns\":%lld}\n",menu_entries,menu_now);fflush(stdout);
             }
-            const unsigned outage_copies_before=(diagnostic_outage||diagnostic_image_tickets)&&stereo_screen?stereo_screen->copies:0;
+            unsigned outage_copies_before=(diagnostic_outage||diagnostic_image_tickets)&&stereo_screen?stereo_screen->copies:0;
             if(screen && frame.shouldRender && screen->render(quad)){end.layerCount=1;end.layers=game_layers;}
             if(startup_panel.show_panel()&&startup_screen&&frame.shouldRender&&startup_screen->render(quad)){
                 startup_quad_queued=true;end.layerCount=1;end.layers=game_layers;
@@ -473,6 +491,8 @@ int main(int argc, char** argv) {
                     if(stereo_screen->retire_for_resize()){
                         retired_stereo_copies+=stereo_screen->copies;
                         retired_stereo_projections+=stereo_screen->projection_rendered;
+                        retired_retained_projections+=stereo_screen->retained_projections;
+                        retired_late_images+=stereo_screen->rejected_late_images;
                         stereo_screen.reset();stereo_retry=current;++source_rebuilds;
                         printf("{\"stereo_source_retired\":true,\"resource_generation\":%llu,\"rebuilds\":%u}\n",generation,source_rebuilds);fflush(stdout);
                     }
@@ -483,7 +503,7 @@ int main(int argc, char** argv) {
                     const bool ready=GameGpuScreen::producer_ready(stereo_game_pid,&readiness,simulator_operator);
                     if(readiness==ProjectionStatus::producer_structure_invalid)projection_evidence.record(readiness,gears_vr::monotonic_ns());
                     if(ready){
-                        try{stereo_screen.reset(new GameGpuScreen(device.Get(),queue.Get(),stereo_game_pid,gpu_snapshot,simulator_operator,&stereo_limits));}
+                        try{stereo_screen.reset(new GameGpuScreen(device.Get(),queue.Get(),stereo_game_pid,gpu_snapshot,simulator_operator,&stereo_limits,continuous_session));}
                         catch(gears_vr::GpuOpeningDeferred const&){} // Resize won the consumer-claim race; retry after retirement.
                     }
                 }
@@ -493,11 +513,12 @@ int main(int argc, char** argv) {
                 else if(stereo_screen&&stereo_screen->reconfiguring())result=ProjectionStatus::source_reconfiguration;
                 else if(stereo_screen&&stereo_screen->producer_stopped())result=ProjectionStatus::producer_stopped;
                 else if(!startup_panel.allow_projection())result=menu_mode==gears_menu::Mode::death_menu?ProjectionStatus::menu_requested:ProjectionStatus::menu_recovery_pending;
-                else result=projection_current_status(frame.shouldRender,state==XR_SESSION_STATE_FOCUSED,view_count,head.locationFlags,view_state.viewStateFlags,simulator_operator);
+                else result=projection_current_status(frame.shouldRender,projection_session_visible(state),view_count,head.locationFlags,view_state.viewStateFlags,simulator_operator);
                 bool submitted=false;
                 if(result==ProjectionStatus::submitted){
                     if(!stereo_screen)result=ProjectionStatus::producer_unavailable;
-                    else {outage_render_attempted=true;submitted=stereo_screen->render_projection(projection,projection_views,stereo_session,result,startup_panel.minimum_sample_ns(),space_epoch.epoch(),space_epoch.last_change_time());}
+                    else {outage_render_attempted=true;outage_copies_before=stereo_screen->copies;
+                        submitted=stereo_screen->render_projection(projection,projection_views,stereo_session,result,startup_panel.minimum_sample_ns(),space_epoch.epoch(),space_epoch.last_change_time());}
                 }
                 projection_frame_status=result;
                 if(submitted){
@@ -603,6 +624,10 @@ int main(int argc, char** argv) {
             stereo_session,stereo_published,stereo_publish_skipped,stereo_space_changed?"true":"false",stereo_screen&&stereo_screen->projection_rendered?"true":"false");
         if(stereo_game_pid)printf("{\"stereo_game_projection_layers\":%u,\"stereo_game_copies\":%u,\"matching_render_ticket_required\":true}\n",
             retired_stereo_projections+(stereo_screen?stereo_screen->projection_rendered:0),retired_stereo_copies+(stereo_screen?stereo_screen->copies:0));
+        if(stereo_game_pid)printf("{\"image_continuity_evidence\":true,\"continuous_mode\":%s,\"retained_over_100ms\":%u,\"late_images_rejected\":%u,\"new_image_max_age_ns\":%lld,\"retained_max_age_ns\":%lld,\"original_render_pose_preserved\":true}\n",
+            continuous_session?"true":"false",retired_retained_projections+(stereo_screen?stereo_screen->retained_projections:0),
+            retired_late_images+(stereo_screen?stereo_screen->rejected_late_images:0),
+            continuous_session?projection_new_image_max_age:100000000,continuous_session?projection_retained_image_max_age:100000000);
         if(stereo_game_pid)printf("{\"reference_epoch_evidence\":true,\"current_epoch\":%llu,\"last_submitted_epoch\":%llu,\"current_epoch_submitted\":%s}\n",
             space_epoch.epoch(),last_submitted_space_epoch,last_submitted_space_epoch==space_epoch.epoch()?"true":"false");
         if(stereo_game_pid)printf("{\"source_rebuild_evidence\":true,\"rebuilds\":%u,\"last_submitted_generation\":%llu,\"current_generation\":%llu,\"current_generation_submitted\":%s}\n",

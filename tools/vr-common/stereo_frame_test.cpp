@@ -1,4 +1,5 @@
 #include "stereo_bridge.h"
+#include "stereo_image_ticket.h"
 #include <cstdio>
 #include <limits>
 #include <thread>
@@ -147,6 +148,37 @@ static int heading_tests(){
 }
 int main(){
     if(auto failure=heading_tests())return failure;
+    {
+        StereoGate visibility_gate;auto visible=sample();visible.focused=0;visible.visible=1;
+        CHECK(stereo_render_active(visible));
+        auto first_visible=visibility_gate.update(visible,visible.received_ns);
+        CHECK(first_visible&&first_visible.sample.focused==0&&first_visible.sample.visible==1);
+        CHECK(visibility_gate.update(visible,visible.received_ns+100000000));
+        CHECK(visibility_gate.update(visible,visible.received_ns+100000001).status==StereoStatus::stale);
+        auto changed_visible=visible;changed_visible.visible=0;
+        CHECK(!stereo_same(visible,changed_visible));
+        CHECK(visibility_gate.update(changed_visible,changed_visible.received_ns).status==StereoStatus::replayed);
+        auto focused=visible;++focused.sequence;++focused.received_ns;++focused.predicted_time;focused.focused=1;focused.visible=0;
+        auto focused_result=visibility_gate.update(focused,focused.received_ns);
+        CHECK(focused_result&&focused_result.reference_generation==first_visible.reference_generation);
+        auto hidden=focused;++hidden.sequence;++hidden.received_ns;++hidden.predicted_time;hidden.focused=0;
+        CHECK(!stereo_render_active(hidden)&&visibility_gate.update(hidden,hidden.received_ns).status==StereoStatus::inactive);
+        auto resumed=hidden;++resumed.sequence;++resumed.received_ns;++resumed.predicted_time;resumed.visible=1;
+        CHECK(visibility_gate.update(resumed,resumed.received_ns));
+        auto no_render=resumed;++no_render.sequence;no_render.should_render=0;
+        CHECK(!stereo_render_active(no_render)&&visibility_gate.update(no_render,no_render.received_ns).status==StereoStatus::inactive);
+        StereoImageTicket ticket{};ticket.id=1;ticket.sample=visible;ticket.rect[0]={0,0,320,360};ticket.rect[1]={320,0,320,360};
+        CHECK(stereo_image_ticket_valid(ticket,640,360));
+        ticket.sample=no_render;CHECK(!stereo_image_ticket_valid(ticket,640,360));
+        for(unsigned flag=0;flag<3;++flag)for(auto invalid:{2u,(std::numeric_limits<std::uint32_t>::max)()}){
+            auto bad=visible;
+            if(flag==0)bad.focused=invalid;if(flag==1)bad.visible=invalid;if(flag==2)bad.should_render=invalid;
+            CHECK(!stereo_render_active(bad));StereoGate rejected;
+            CHECK(rejected.update(bad,bad.received_ns).status==StereoStatus::inactive);
+            ticket.sample=bad;CHECK(!stereo_image_ticket_valid(ticket,640,360));
+        }
+        CHECK(StereoBridgePacket{}.version==4);
+    }
     StereoSample zero{};CHECK(zero.head.orientation.w==0&&zero.eyes[0].pose.orientation.w==0);
     CHECK(zero.source==StereoSource::RuntimeTracked);
     auto simulated=sample();simulated.source=StereoSource::MetaOperatorSimulated;simulated.head_flags=3;
@@ -253,8 +285,8 @@ int main(){
     HANDLE mapping=OpenFileMappingW(FILE_MAP_WRITE,FALSE,map_name);CHECK(mapping);
     auto packet=static_cast<StereoBridgePacket*>(MapViewOfFile(mapping,FILE_MAP_WRITE,0,0,sizeof(StereoBridgePacket)));CHECK(packet);
     auto original=*packet;
-    for(unsigned corrupt=0;corrupt<6;++corrupt){*packet=original;if(corrupt==0)packet->magic=0;if(corrupt==1)packet->version=1;if(corrupt==2)--packet->size;if(corrupt==3)++packet->target_pid;if(corrupt==4)++packet->frequency;
-        if(corrupt==5)packet->sample.source=static_cast<StereoSource>(99);CHECK(!reader.read(received));}
+    for(unsigned corrupt=0;corrupt<7;++corrupt){*packet=original;if(corrupt==0)packet->magic=0;if(corrupt==1)packet->version=1;if(corrupt==2)--packet->size;if(corrupt==3)++packet->target_pid;if(corrupt==4)++packet->frequency;
+        if(corrupt==5)packet->sample.source=static_cast<StereoSource>(99);if(corrupt==6)packet->version=3;CHECK(!reader.read(received));}
     *packet=original;CHECK(producer.publish(simulated));CHECK(reader.read(received)&&stereo_same(received,simulated)&&received.head_flags==3);
     CHECK(!producer.publish(wrong_source));CHECK(producer.publish(s));
     *packet=original;HANDLE lock=OpenMutexW(SYNCHRONIZE|MUTEX_MODIFY_STATE,FALSE,mutex_name);CHECK(lock);

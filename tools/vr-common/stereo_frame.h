@@ -25,7 +25,12 @@ struct StereoSample {
     StereoEye eyes[2]{};
     // Changes only when the runtime's LOCAL origin change takes effect.
     std::uint64_t space_epoch{1};
+    std::uint32_t visible{}; // Runtime visibility; focused remains input-focus evidence.
 };
+inline bool stereo_render_active(StereoSample const& sample) {
+    return sample.focused<=1&&sample.visible<=1&&sample.should_render==1&&
+        (sample.focused==1||sample.visible==1);
+}
 inline bool stereo_tracking_valid(StereoSample const& sample,bool allow_sim=false) {
     if(!stereo_source_allowed(sample.source,allow_sim)||(sample.view_flags&15)!=15)return false;
     const std::uint64_t required=sample.source==StereoSource::MetaOperatorSimulated?3:15;
@@ -66,7 +71,7 @@ inline bool stereo_same_pose(Pose const& a,Pose const& b) {
 inline bool stereo_same(StereoSample const& a,StereoSample const& b) {
     if(a.source!=b.source||a.session!=b.session||a.sequence!=b.sequence||a.space_epoch!=b.space_epoch||a.received_ns!=b.received_ns||
        a.predicted_time!=b.predicted_time||a.head_flags!=b.head_flags||a.view_flags!=b.view_flags||
-       a.focused!=b.focused||a.should_render!=b.should_render||!stereo_same_pose(a.head,b.head))return false;
+       a.focused!=b.focused||a.visible!=b.visible||a.should_render!=b.should_render||!stereo_same_pose(a.head,b.head))return false;
     for(unsigned i=0;i<2;++i) {
         auto x=a.eyes[i].fov,y=b.eyes[i].fov;
         if(!stereo_same_pose(a.eyes[i].pose,b.eyes[i].pose)||x.left!=y.left||x.right!=y.right||x.up!=y.up||x.down!=y.down)return false;
@@ -101,7 +106,7 @@ public:
             return reject(StereoStatus::replayed);
         if(last_&&(s.received_ns<last_->received_ns||s.predicted_time<last_->predicted_time))
             return reject(StereoStatus::replayed);
-        if(s.focused!=1||s.should_render!=1)return reject(StereoStatus::inactive);
+        if(!stereo_render_active(s))return reject(StereoStatus::inactive);
         if(!stereo_tracking_valid(s,allow_sim))return reject(StereoStatus::untracked);
         if(now_ns<=0||s.received_ns<=0||s.received_ns>now_ns||now_ns-s.received_ns>100000000)
             return reject(StereoStatus::stale);

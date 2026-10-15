@@ -37,7 +37,7 @@ namespace GearsVrUi {
         internal static string Arguments(string root, string command, string runtime) {
             string result = Quote(Path.Combine(root, "tools", "vr-launcher", "launcher.py")) + " " + command;
             if (command == "start") {
-                result += " --manifest " + Quote(Path.Combine(root, "tools", "vr-launcher", "manifest-game-resolution.json"));
+                result += " --manifest " + Quote(Path.Combine(root, "tools", "vr-launcher", "manifest.json"));
                 if (!String.IsNullOrEmpty(runtime)) result += " --runtime " + Quote(runtime);
             }
             return result;
@@ -203,8 +203,8 @@ namespace GearsVrUi {
             try {
                 string path = game.Text.Trim(); string resolved = Path.IsPathRooted(path) ? path : Path.Combine(root, path);
                 if (!File.Exists(resolved)) throw new IOException("游戏程序不存在，请选择正确路径。");
-                string manifest = Path.Combine(root, "tools", "vr-launcher", "manifest-game-resolution.json");
-                if (!File.Exists(manifest)) throw new IOException("缺少 manifest-game-resolution.json，请先完成此实验构建。");
+                string manifest = Path.Combine(root, "tools", "vr-launcher", "manifest.json");
+                if (!File.Exists(manifest)) throw new IOException("缺少 manifest.json，请先完成此实验构建。");
                 string selectedRuntime = runtimeMode.SelectedIndex == 0 ? runtime.Text.Trim() : null;
                 if (selectedRuntime != null && !Path.IsPathRooted(selectedRuntime)) selectedRuntime = Path.GetFullPath(Path.Combine(root, selectedRuntime));
                 if (selectedRuntime != null && !File.Exists(selectedRuntime)) throw new IOException("模拟器 manifest 不存在，请浏览选择 JSON 文件。");

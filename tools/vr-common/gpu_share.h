@@ -11,7 +11,7 @@
 
 namespace gears_vr {
 using Microsoft::WRL::ComPtr;
-inline constexpr unsigned gpu_packet_version=5;
+inline constexpr unsigned gpu_packet_version=6;
 struct GpuOpeningDeferred:std::runtime_error {GpuOpeningDeferred():std::runtime_error("GPU source is being reconfigured"){};};
 // One GPU slot. Producer never overwrites it until the consumer's GPU fence
 // acknowledges the previous sequence. Both devices must use the same adapter.

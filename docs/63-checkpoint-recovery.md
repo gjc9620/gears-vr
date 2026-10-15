@@ -31,8 +31,24 @@ DXGI ResizeBuffers/ResizeBuffers1边界现已更新库存代次、退休旧票�
 
 首入延迟目前仍约17秒native准备；已新增自测、首次resolve、证书获取、激活四段一次性计时，尚未优化。玩家默认与GUI仍未切换到本实验构建。
 
+## 可见状态与短缺帧修复（GameRecovery3 / SpaceRecovery3）
+
+双目渲染现在接受VISIBLE和FOCUSED；focused仍表示输入焦点，新增visible字段用于显示许可，shouldRender和追踪校验继续保留。协议配套为StereoBridge 4、GPU共享包6。
+
+持续模式接收完成的新图像时允许最多1秒年龄，已完整复制的图像可保留最多2秒。每次提交仍使用该图像原始渲染姿态/FOV，并重新检查session、空间代次、菜单恢复时间和眼区；不得把新头部姿态贴到旧像素上。新图像仅因过期被拒绝时可继续使用有效旧图；结构错误仍失效。原生新相机样本的100毫秒门槛不变。这只缓解短缺帧，不解决长时间没有新场景输出。
+
+17个本地验证命令通过（`analysis/runtime/game-recovery3-validation.json`）；随后补充的VISIBLE ticket-store测试通过。Launcher 39项、准备阶段12项通过，GUI重新构建并通过自测。冻结DLL SHA256 `ce00b4e1c3b682c64e9d198b0e34cba850a1b1fe73589f3ffd9b7c54bda7d983`，XR SHA256 `86d0b092a6f32e97f52dfb44f814a06cbb53c0bf7b203ff605bd2e38a611868f`。
+
+实际游戏PID11236，`continuous-stereo-11236-20261015-183342-4e82a424.*`：定向WM_ACTIVATE让自有模拟器预览报告VISIBLE后，actual XR CSV为state=4、shouldRender=1，native持续发布且全程inactive=0。稳定段累计5856次projection，无启动后缺layer记录。同进程1080p检查点重载继续出图，但存在一次缺layer；不能宣称完全无闪黑。精确client切4K和回1080p后，新资源代次3/5首次成功提交距操作约160/159毫秒。4次resize成功、5次prepare成功，库存changed/rejected均0。
+
+4K仍有未解决缺口：最后新ticket6497的样本时间679615352700ns，下一新ticket6977为690448683100ns，约10.8秒没有可用新图像。保留时间耗尽后，XR最长提交缺口8.878秒，随后恢复。原生累计污染帧1836、missing-pair495、metadata-lost27、unknown-list13；只是候选原因，现有早期库存无法把具体HUD draw与该缺口关联。全程发布7410，短缺帧保留提交3113、late-images-rejected=0。正常停止时资源排空、hook恢复和XR退出通过；整体测试因长缺口未通过。
+
+首次接入距runner开始37.839秒。native准备14.931秒中，自测4.235秒、首次resolve0.852秒、证书获取9.369秒（4次尝试，其中3次非Pawn）、激活0.365秒。尚未优化此延迟。
+
+当前`manifest.json`与`manifest-game-recovery3.json`一致，GUI及SimulatorVR.ps1统一使用它；保留game-resolution清单回滚。仍按游戏分辨率、锁定DLSS/DLAA。它是实验检查点，不是可发布的完成版。无真头显验收。
+
 ## 下一步
 
-修复VISIBLE渲染门控和短缺帧的有效图像保留，再重复稳定性与检查点测试。尚未证明VDXR原点事件在真实头显上恢复；第二至四项修复与视觉验收仍待完成。
+定向记录4K长缺帧窗口内的未知HUD绘制，修复关联来源；不放宽未知draw接纳或无限延长旧图保留。继续第①项恢复/延迟及第②、③项准星/HUD，CG切换仍待处理。尚未证明VDXR原点事件在真实头显上恢复。
 
-参考：[OpenXR参考空间变化事件](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrEventDataReferenceSpaceChangePending.html)、[DXGI ResizeBuffers资源释放要求](https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers)。
+参考：[OpenXR会话可见与输入焦点状态](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrSessionState.html)、[OpenXR参考空间变化事件](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrEventDataReferenceSpaceChangePending.html)、[DXGI ResizeBuffers资源释放要求](https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers)。

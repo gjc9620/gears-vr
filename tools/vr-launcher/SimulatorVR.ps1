@@ -19,5 +19,5 @@ $runtimeDirectory = Join-Path $repositoryRoot 'analysis/runtime'
 [IO.Directory]::CreateDirectory($runtimeDirectory) | Out-Null
 $runtimeOutput = Join-Path $runtimeDirectory 'launcher-simulator-absolute.json'
 [IO.File]::WriteAllText($runtimeOutput, ($runtimeConfig | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
-& $Python $launcherPath start --manifest (Join-Path $PSScriptRoot 'manifest-game-resolution.json') --runtime $runtimeOutput
+& $Python $launcherPath start --manifest (Join-Path $PSScriptRoot 'manifest.json') --runtime $runtimeOutput
 exit $LASTEXITCODE

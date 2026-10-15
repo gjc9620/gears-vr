@@ -1,8 +1,8 @@
 # 仓库内统一入口
 
-2026-10-15 当前玩家入口：仓库根目录 `GearsVR Launcher.exe`（[源码与构建](ui/README.md)）。`manifest.json` 与 `manifest-game-resolution.json` 均指向新建的 GameResolution1 native 与 MenuRecovery1 XR；旧默认另存为 `manifest-legacy-continuous3.json`。Low/High 已撤下，游戏 1920×1080 输出分为两个 960×1080 眼区，3840×2160 分为两个 1920×2160 眼区。没有运行中切换档位或自动改变游戏分辨率；改分辨率后请正常退出，再重新启动。
+2026-10-15 当前玩家入口：仓库根目录 `GearsVR Launcher.exe`（[源码与构建](ui/README.md)）。GUI与脚本统一使用`manifest.json`，现与`manifest-game-recovery3.json`相同，对应GameRecovery3 native / SpaceRecovery3 XR。原GameResolution1仍保留在`manifest-game-resolution.json`以供回滚。Low/High已撤下，1920×1080输出分为两个960×1080眼区，3840×2160分为两个1920×2160眼区。
 
-GUI 支持模拟器／系统 Runtime、启动、停止、状态和日志。`SimulatorVR.ps1 start` 同样使用新清单，手动进入关卡，不再自动导航。主菜单即建立 XR 平面显示，进入关卡后交接立体；保留 DLSS/DLAA 启动／运行时／菜单保护、HUD 平面与准星方向修正。运行不限时；正常停止后重新开启 VR 需先退出游戏。编译和离线检查已通过，当前组合仍待用户实测，不将旧构建的成功记录视为新构建验收。构建哈希和范围见[记录](../../docs/62-game-resolution-launcher.md)。
+GUI支持模拟器／系统Runtime、启动、停止、状态和日志。`SimulatorVR.ps1 start`手动进入关卡，不自动导航。主菜单建立XR平面显示，进入关卡后交接立体；保留DLSS/DLAA保护、HUD平面与准星方向修正。运行不限时；正常停止后重新开启VR需先退出游戏。当前加入缓冲重建恢复、VISIBLE状态渲染及短缺帧重投影；模拟器1080p检查点恢复已有证据，4K长缺帧、手枪准星、HUD与CG仍待修复，不是完成版。构建哈希与限制见[修正记录](../../docs/63-checkpoint-recovery.md)。
 
 以下为历史实验和接口记录；旧段落的“默认未切换”、自动导航与启动时限，以各实验构建为范围，当前入口以上述说明为准。
 

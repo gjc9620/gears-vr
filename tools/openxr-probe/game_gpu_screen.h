@@ -13,20 +13,25 @@ inline const char* projection_status_name(ProjectionStatus status){
 }
 inline bool xr_image_work_complete(uint64_t completed,uint64_t target){return target && completed!=~uint64_t(0) && completed>=target;}
 inline bool xr_image_wait_succeeded(XrResult result){return result==XR_SUCCESS;}
-inline ProjectionStatus projection_current_status(bool should_render,bool focused,unsigned count,uint64_t head_flags,uint64_t view_flags,bool simulated=false){
-    if(!should_render||!focused)return ProjectionStatus::current_inactive;
+inline bool projection_session_visible(XrSessionState state){
+    return state==XR_SESSION_STATE_VISIBLE||state==XR_SESSION_STATE_FOCUSED;
+}
+inline ProjectionStatus projection_current_status(bool should_render,bool visible,unsigned count,uint64_t head_flags,uint64_t view_flags,bool simulated=false){
+    if(!should_render||!visible)return ProjectionStatus::current_inactive;
     const uint64_t required_head=simulated?3:15;
     if(count!=2||(head_flags&required_head)!=required_head||(view_flags&15)!=15)return ProjectionStatus::current_untracked;
     return ProjectionStatus::submitted;
 }
-inline ProjectionStatus projection_ticket_status(const gears_vr::StereoImageTicket& ticket,unsigned width,unsigned height,uint64_t session_id,int64_t now,bool simulated=false,uint64_t space_epoch=0,int64_t change_time=0){
+inline constexpr int64_t projection_new_image_max_age=1000000000;
+inline constexpr int64_t projection_retained_image_max_age=2000000000;
+inline ProjectionStatus projection_ticket_status(const gears_vr::StereoImageTicket& ticket,unsigned width,unsigned height,uint64_t session_id,int64_t now,bool simulated=false,uint64_t space_epoch=0,int64_t change_time=0,int64_t maximum_age=100000000){
     auto const& sample=ticket.sample;
     if(!ticket.id||!sample.sequence||!sample.space_epoch)return ProjectionStatus::empty_ticket;
     if(sample.session!=session_id)return ProjectionStatus::session_mismatch;
     const auto expected_source=simulated?gears_vr::StereoSource::MetaOperatorSimulated:gears_vr::StereoSource::RuntimeTracked;
-    if(sample.focused!=1||sample.should_render!=1||sample.source!=expected_source||!gears_vr::stereo_tracking_valid(sample,simulated))return ProjectionStatus::ticket_flags;
+    if(!gears_vr::stereo_render_active(sample)||sample.source!=expected_source||!gears_vr::stereo_tracking_valid(sample,simulated))return ProjectionStatus::ticket_flags;
     if(!gears_vr::stereo_geometry_valid(sample))return ProjectionStatus::ticket_geometry;
-    if(now<=0||sample.received_ns<=0||sample.received_ns>now||now-sample.received_ns>100000000)return ProjectionStatus::stale_ticket;
+    if(maximum_age<=0||now<=0||sample.received_ns<=0||sample.received_ns>now||now-sample.received_ns>maximum_age)return ProjectionStatus::stale_ticket;
     if(space_epoch&&(sample.space_epoch!=space_epoch||sample.predicted_time<change_time))return ProjectionStatus::reference_epoch_pending;
     if(!width||!height||width%2||width>8192||height>8192)return ProjectionStatus::image_rectangle;
     for(unsigned i=0;i<2;++i){auto r=ticket.rect[i];
@@ -56,6 +61,11 @@ class GameGpuScreen {
     HANDLE event{};UINT64 serial=0;
     std::chrono::steady_clock::time_point last_frame{};
     bool current=false,in_flight=false;
+    bool retain_stereo_image{};
+    // Only commit after both eye copies complete and their XR images release.
+    // A newer receiver ticket can be rejected without changing these pixels.
+    gears_vr::StereoImageTicket copied_ticket{};
+    uint64_t copied_sequence{};
     ComPtr<ID3D12Resource> snapshot_buffer;
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT snapshot_layout{};
     UINT64 snapshot_bytes=0;
@@ -103,10 +113,10 @@ class GameGpuScreen {
     }
 public:
     unsigned rendered=0,copies=0;
-    unsigned projection_rendered=0;
+    unsigned projection_rendered=0,retained_projections=0,rejected_late_images=0;
     bool snapshot_saved=false;
     GameGpuScreen(ID3D12Device* d,ID3D12CommandQueue* q,DWORD pid,const char* snapshot=nullptr,bool simulated=false,
-                  gears_eye_chain::Limits const* stereo_limits=nullptr):allow_simulated(simulated),stereo(stereo_limits!=nullptr),device(d),queue(q),snapshot_path(snapshot?snapshot:""){
+                  gears_eye_chain::Limits const* stereo_limits=nullptr,bool retain_image=false):allow_simulated(simulated),stereo(stereo_limits!=nullptr),device(d),queue(q),retain_stereo_image(retain_image),snapshot_path(snapshot?snapshot:""){
         try{
         receiver->open(d,pid,allow_simulated);
         if(receiver->generation()>1&&!snapshot_path.empty())snapshot_path+=".g"+std::to_string(receiver->generation());
@@ -171,18 +181,25 @@ public:
         bool ready=packet&&packet->magic==0x47564731&&packet->version==gears_vr::gpu_packet_version&&packet->size==sizeof(*packet)&&packet->pid==pid&&packet->allow_simulated==unsigned(simulated)&&packet->ready==1&&!packet->stopped;
         if(packet)UnmapViewOfFile(packet);CloseHandle(mapping);return ready;
     }
-    bool update_image(uint64_t expected_session=0,ProjectionStatus* status=nullptr){
+    bool update_image(uint64_t expected_session=0,ProjectionStatus* status=nullptr,uint64_t space_epoch=0,int64_t change_time=0,int64_t minimum_sample_ns=0){
         if(receiver->stopped())return false;
         auto now=std::chrono::steady_clock::now();
         if(receiver->acquire(queue.Get())){
             if(stereo) {
                 const auto& ticket=receiver->ticket();
-                auto validity=projection_ticket_status(ticket,receiver->width,receiver->height,expected_session,gears_vr::monotonic_ns(),allow_simulated);
+                auto validity=projection_ticket_status(ticket,receiver->width,receiver->height,expected_session,gears_vr::monotonic_ns(),allow_simulated,space_epoch,change_time,
+                    retain_stereo_image?projection_new_image_max_age:100000000);
                 if(validity==ProjectionStatus::submitted&&!gears_eye_chain::ticket_crops_match(eye_plan,ticket))validity=ProjectionStatus::image_rectangle;
+                if(validity==ProjectionStatus::submitted&&ticket.sample.received_ns<=minimum_sample_ns)validity=ProjectionStatus::menu_recovery_pending;
                 if(validity!=ProjectionStatus::submitted) {
-                    // No copy/acquire was performed. Complete the producer ack
-                    // and discard cached-image eligibility for the new ticket.
-                    receiver->acknowledge(queue.Get());current=false;if(status)*status=validity;return false;
+                    receiver->acknowledge(queue.Get());if(status)*status=validity;
+                    if(retain_stereo_image&&validity==ProjectionStatus::stale_ticket){
+                        ++rejected_late_images;
+                        // render_projection must still validate the original
+                        // copied ticket's age, session, origin and menu epoch.
+                        return current;
+                    }
+                    current=false;return false;
                 }
             }
             std::array<ID3D12Resource*,2> destinations{};
@@ -265,9 +282,10 @@ public:
                 auto& eye=eyes[i];XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
                 xr_check(xrReleaseSwapchainImage(eye.chain,&release),"GPU game release");eye.acquired=eye.waited=false;
             }
+            copied_ticket=receiver->ticket();copied_sequence=receiver->sequence();
             ++copies;current=true;last_frame=now;
         }
-        if(!current || now-last_frame>std::chrono::seconds(1))return false;
+        if(!current || now-last_frame>std::chrono::seconds(retain_stereo_image?2:1))return false;
         return true;
     }
     bool render(XrCompositionLayerQuad& quad){
@@ -296,8 +314,8 @@ public:
     // operation. sequence() is the acknowledged producer serial, not our fence.
     outage_diagnostics::ImageSnapshot diagnostic_snapshot() const noexcept {
         outage_diagnostics::ImageSnapshot out;
-        out.receiver_valid=true;out.copies=copies;out.acquired_serial=receiver->sequence();
-        const auto& ticket=receiver->ticket();const auto& sample=ticket.sample;
+        out.receiver_valid=true;out.copies=copies;out.acquired_serial=copied_sequence;
+        const auto& ticket=copied_ticket;const auto& sample=ticket.sample;
         out.ticket_valid=ticket.id!=0&&sample.sequence!=0;
         if(out.ticket_valid){out.ticket_id=ticket.id;out.session=sample.session;out.sequence=sample.sequence;
             out.received_ns=sample.received_ns;out.source=unsigned(sample.source);
@@ -309,11 +327,13 @@ public:
         if(!stereo)throw std::runtime_error("Projection requires admitted stereo eye chains");
         if(receiver->stopped()){status=ProjectionStatus::producer_stopped;return false;}
         status=ProjectionStatus::waiting_image;
-        if(!update_image(expected_session,&status))return false;
+        const auto copies_before=copies;
+        if(!update_image(expected_session,&status,space_epoch,space_change_time,minimum_sample_ns))return false;
         if(reconfiguring()){status=ProjectionStatus::source_reconfiguration;return false;}
-        const auto& ticket=receiver->ticket();const auto& sample=ticket.sample;
+        const auto& ticket=copied_ticket;const auto& sample=ticket.sample;
         const auto now=gears_vr::monotonic_ns();
-        status=projection_ticket_status(ticket,receiver->width,receiver->height,expected_session,now,allow_simulated,space_epoch,space_change_time);
+        status=projection_ticket_status(ticket,receiver->width,receiver->height,expected_session,now,allow_simulated,space_epoch,space_change_time,
+            retain_stereo_image?projection_retained_image_max_age:100000000);
         if(status!=ProjectionStatus::submitted)return false;
         if(sample.received_ns<=minimum_sample_ns){status=ProjectionStatus::menu_recovery_pending;return false;}
         for(unsigned i=0;i<2;++i){
@@ -325,6 +345,7 @@ public:
             view.subImage.swapchain=eyes[i].chain;view.subImage.imageRect={{0,0},{rect.width,rect.height}};
         }
         layer={XR_TYPE_COMPOSITION_LAYER_PROJECTION};layer.space=local;layer.viewCount=2;layer.views=views;
+        if(copies==copies_before&&now-sample.received_ns>100000000)++retained_projections;
         ++projection_rendered;return true;
     }
 };

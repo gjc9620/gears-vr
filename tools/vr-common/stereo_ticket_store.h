@@ -32,7 +32,7 @@ class StereoTicketStore {
     std::uint64_t maximum_id_{},retired_id_{};
     std::size_t count_{};
     static bool valid(StereoSample const& s,bool allow_sim) {
-        return s.session&&s.sequence&&s.space_epoch&&s.received_ns>0&&s.focused==1&&s.should_render==1&&
+        return s.session&&s.sequence&&s.space_epoch&&s.received_ns>0&&stereo_render_active(s)&&
             stereo_tracking_valid(s,allow_sim)&&stereo_geometry_valid(s);
     }
     static bool valid(StereoTicketGeometry const& g) {

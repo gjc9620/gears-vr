@@ -11,7 +11,7 @@ Start-Process '.\GearsVR Launcher.exe'
 
 选择游戏 EXE、模拟器或系统 OpenXR Runtime，然后启动。游戏路径写入现有 `tools/vr-launcher/config.json`，保留其他字段。模拟器默认使用 `analysis/runtime/simulator-focus1/openxr_simulator.json`；系统选项让子进程使用系统 Runtime，清除继承的 `XR_RUNTIME_JSON`，不修改注册表。
 
-启动调用 `launcher.py start --manifest tools/vr-launcher/manifest-game-resolution.json`，不会传入自动导航或结束计时参数。此清单及本机对应构建已准备好，仍依赖本仓库工具和 Python，不是便携发布包。跟随游戏当前分辨率；DLSS / DLAA 已禁用，由原生启动、运行时及菜单锁保持。没有 Low/High 选项，不修改游戏分辨率。1920×1080 游戏输出对应每眼 960×1080；3840×2160 对应每眼 1920×2160。改分辨率后请正常退出游戏，再用启动器启动；此版本不承诺运行中重建眼图。
+启动调用 `launcher.py start --manifest tools/vr-launcher/manifest.json`，不会传入自动导航或结束计时参数。当前清单为GameRecovery3 / SpaceRecovery3实验版，仍依赖本仓库工具和Python，不是便携发布包。跟随游戏当前分辨率；DLSS / DLAA由启动、运行时及菜单锁禁用。没有Low/High选项。1920×1080输出对应每眼960×1080；3840×2160对应每眼1920×2160。此版加入缓冲重建恢复、VISIBLE状态渲染及最多2秒有效旧图像重投影。1080p检查点恢复与4K重建已有模拟器证据；4K仍出现长时间无新眼图、非标准窗口尺寸的最终缩放路径仍未覆盖，尚未完成稳定性验收。范围见[修正记录](../../../docs/63-checkpoint-recovery.md)。
 
 Python 按 `GEARSVR_PYTHON`、当前用户 `.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`、PATH 中的 `py.exe` / `python.exe` / `python3.exe` 顺序探测。可通过 `GEARSVR_PYTHON` 指定完整路径。探测取得 `sys.executable` 后直接启动该 Python，确保跟踪的进程就是实际 owner。后台命令隐藏窗口，异步读取标准输出和错误。
 
