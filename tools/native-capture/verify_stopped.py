@@ -34,7 +34,8 @@ def main():
     # optionally the Material consumer, three graphics settings callbacks, and
     # the UIOptionList selection transaction and optional ResourceBarrier entry.
     # ResourceBarrier uses the existing system-module PE/relocation verification.
-    if not 2 <= len(targets) <= 60 or len(set(targets))!=len(targets):
+    # The optional owned UI association observer adds Flush and batch producer.
+    if not 2 <= len(targets) <= 62 or len(set(targets))!=len(targets):
         raise RuntimeError('Unexpected hook target inventory')
     resolver = Resolver(args.pid, json.loads((ROOT / 'tools/package-inspector/reloaded-profile.json').read_text()))
     checks = []
@@ -60,12 +61,21 @@ def main():
         camera[0x19e64c]=bytes.fromhex('488bc44889581048896818565741574883ec50c5f82970d8488bd9488b492841')
         camera[0x2a4370]=bytes.fromhex('48895c24084889742410574883ec30488b05cabf9701498bd8488bfa488bf148')
         camera[0x15a420]=bytes.fromhex('488bc4488958104889681848897020574883ec70488bd9488d4808e808feffff')
+        camera[0x117430]=bytes.fromhex('488bc448895810555657415441554156')
         camera[0x280da4]=bytes.fromhex('33c041b801000000448981140300008981d4020000898180030000488981c803')
         camera[0x2ac894]=bytes.fromhex('488bc4488958104889701848897820554154415541564157488da8f8feffff48')
         camera[0xff6f4]=bytes.fromhex('488bc44889581048896818488970205741544155415641574883ec308b590c48')
         camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
+            if rva == 0x1172c4:
+                expected_hash = '2b491eda062a05982825387297016a4433ce4668f6ab65774bc7271159b7f356'
+                current = resolver.read(target, 0x11742f - 0x1172c4)
+                actual_hash = hashlib.sha256(current).hexdigest()
+                checks.append(dict(target=hex(target), source='artifact 1 runtime snapshot flush range',
+                                   bytes_checked=len(current), expected_sha256=expected_hash,
+                                   actual_sha256=actual_hash, matches=actual_hash == expected_hash))
+                continue
             if rva == 0x2b59f4:
                 # Optional resize observer: verify both known function chunks,
                 # independently of its own pre-install hash/status assertion.

@@ -103,6 +103,7 @@ bool validate_ui_payload_content(gears_ui_receipts::Claim const& claim,UiPayload
 uint32_t __fastcall hook_ui_execute(void* command){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     Scope active_scope;UiPayloadRestore restore;ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
+    const auto owned_receipt=owned_ui_live::execute_begin(command);
     UiPayloadContext context{};
     std::unique_ptr<UiIndexContext> index_storage;
     // Empty contexts deliberately shadow a parent, including nested unsupported
@@ -144,6 +145,7 @@ uint32_t __fastcall hook_ui_execute(void* command){
     }
     // Original owns/destructs the payload. No command/payload reads after return.
     const uint32_t result=ui_original_execute(command);
+    owned_ui_live::execute_end(owned_receipt,result);
     if(ui_observer_enabled&&result!=48)++ui_execute_bad_return;
     // Only our independent value copies remain live. The native command and
     // payload have already been destroyed and must not be read here.

@@ -251,13 +251,18 @@ bool session_status_available{};
 LONGLONG session_started_qpc{};
 struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
 #if defined(GEARS_NATIVE_RESIZE_PROBE) && GEARS_NATIVE_RESIZE_PROBE
-constexpr size_t session_hook_capacity=60,viewport_hook_capacity=29;
+constexpr size_t session_hook_base_capacity=60,viewport_hook_capacity=29;
 #elif defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
-constexpr size_t session_hook_capacity=59,viewport_hook_capacity=29;
+constexpr size_t session_hook_base_capacity=59,viewport_hook_capacity=29;
 #elif defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
-constexpr size_t session_hook_capacity=40,viewport_hook_capacity=11;
+constexpr size_t session_hook_base_capacity=40,viewport_hook_capacity=11;
 #else
-constexpr size_t session_hook_capacity=39,viewport_hook_capacity=10;
+constexpr size_t session_hook_base_capacity=39,viewport_hook_capacity=10;
+#endif
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+constexpr size_t session_hook_capacity=session_hook_base_capacity+2;
+#else
+constexpr size_t session_hook_capacity=session_hook_base_capacity;
 #endif
 std::array<SessionHookEntry,session_hook_capacity> session_hook_entries{};
 unsigned session_hook_entry_count{};
@@ -442,6 +447,7 @@ bool safe_copy(void* out,const void* from,size_t bytes) {
 #include "native_owned_probe.inl"
 uintptr_t canonical_identity(IUnknown* object);
 long long now();
+void owned_ui_published(uint64_t ticket);
 bool verified_stereo_draw(gears_viewport::DrawState const&,FinalEye const&,uintptr_t,unsigned,unsigned,unsigned);
 #include "owned_scene_gpu.inl"
 #include "native_owned_scene.inl"
@@ -1573,6 +1579,7 @@ void __fastcall hook_family(void* canvas,void* family){
     if(record.caller==0x2c8909 && record.family_count==1)trace_rectangle(1,record.family_views[0]);
     try_shadow_state(record);
     if(!renderer_pair_enabled && !submit_pair_enabled && record.caller==0x2c8909)run_source_shadow(record,family);
+    owned_ui_live::FamilyScope ui_family(canvas,family,anchor_scope&&anchor_scope->reason==gears_anchor::accepted);
     void* previous=submitting_family;submitting_family=family;
     original_family(canvas,family);
     submitting_family=previous;
@@ -1862,6 +1869,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     split_family=original_family_bytes;
     if(owned_scene_target){
         if(!native_owned_scene_select(destination,frame.id,owned_scene_target))request_session_stop(SessionStop::proof_failure);
+        else owned_ui_live::selected(frame.id);
         memcpy(split_family.data()+0x10,&owned_scene_target,sizeof(owned_scene_target));
     }
     if(stereo_xr&&frame.enabled){std::lock_guard<std::mutex> lock(stereo_mutex);auto timestamp=now();
@@ -1878,6 +1886,9 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     memcpy(record.source_matrices.data(),sources.inputs[0].bytes.data()+0x70,128);
     submit_root=reinterpret_cast<uintptr_t>(destination);
     void* previous=submitting_family;submitting_family=split_family.data();
+    // This constructor argument is loaded from FCanvas+0x18 by the family
+    // caller. It is not the FCanvas pointer received by hook_family; an owned
+    // Canvas target must not be substituted here based on the parameter name.
     returned=original_renderer(destination,split_family.data(),canvas,transform);
     submitting_family=previous;
     Record built{};inspect_completed_renderer(built,destination);
@@ -2231,6 +2242,9 @@ bool install(void* target,void* detour,void** original) {
           (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target||target==ui_subtitle_target
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
              ||target==ui_material_execute_target
+#endif
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+             ||target==owned_ui_live::flush_target||target==owned_ui_live::produce_target
 #endif
           ))))created=MH_OK;
     MH_STATUS queued=created==MH_OK?MH_QueueEnableHook(target):MH_ERROR_NOT_CREATED;
@@ -2949,6 +2963,10 @@ DWORD WINAPI worker(void*) {
         ok=install(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]));
     if(ok&&ui_observer_enabled)ok=install(ui_execute_target,reinterpret_cast<void*>(hook_ui_execute),reinterpret_cast<void**>(&ui_original_execute));
     if(ok&&ui_observer_enabled)ok=install(ui_subtitle_target,reinterpret_cast<void*>(hook_ui_subtitle),reinterpret_cast<void**>(&ui_original_subtitle));
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+    if(ok&&ui_observer_enabled)ok=install(owned_ui_live::flush_target,reinterpret_cast<void*>(owned_ui_live::hook_flush),reinterpret_cast<void**>(&owned_ui_live::original_flush))&&
+        install(owned_ui_live::produce_target,reinterpret_cast<void*>(owned_ui_live::hook_produce),reinterpret_cast<void**>(&owned_ui_live::original_produce));
+#endif
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ok&&ui_observer_enabled)ok=install(ui_material_execute_target,reinterpret_cast<void*>(hook_ui_material_execute),reinterpret_cast<void**>(&ui_original_material_execute));
 #endif

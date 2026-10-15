@@ -212,8 +212,25 @@ GraphicsLock1已增加`ui_segment_sources.h`，按真实复制索引保留source
 
 Sustain1、Menu1、Reload1已验证独立Low场景持续输出和部分状态切换，但不能沿用上面的旧backbuffer UI验收结论。当前源代码有三个明确断点：
 
-1. `capture.cpp::hook_family`接收Canvas；`try_submit_pair`只把copied family的`+0x10`场景目标换成owned adapter，传给`original_renderer`的Canvas仍是原对象。Canvas目标和异步持有关系尚未证明，`native_owned_scene`状态明确为`canvas_redirected=0`。不能直接改共享Canvas并假定另一个renderer不再使用它。
+1. `capture.cpp::hook_family`接收FCanvas；`try_submit_pair`只把copied family的`+0x10`场景目标换成owned adapter。后续汇编核对确认，renderer第三参数虽然命名为canvas，实际是从FCanvas+0x18加载的值，不是FCanvas对象本身，不能替换为owned adapter。Canvas目标和异步持有关系需要独立验证，`native_owned_scene`状态明确为`canvas_redirected=0`。
 2. `hook_draw_indexed`的双眼UI replay要求目标是已知swapchain buffer，再用`frame_link.overlay_pair`取关联。owned场景使用独立tracker和`image_tickets`；现有HUD/准星规划却查询`stereo_ticket_store`。仅放宽buffer判断会缺少同ticket的命令表代次、目标、队列和冻结姿态/几何关联，不能作为修复。
 3. `native_owned_scene_copy`在场景消费返回、renderer销毁及两个世界视图提交后即可发布。若Canvas稍后消费，必须先取得该ticket的Canvas结束及真实命令提交边界，或明确的同ticket无UI证据，再复制/发布和推进ticket。当前Trial要求恰好两个世界draw；UI应独立记作overlay，不能混入世界draw计数或把未知写入当成成功。
 
 下一步定向复用资料库中的family `0x3a148c`、renderer `0x116250`、已观察UI execute `0x19e64c`及其调用上下文，确认Canvas目标持有、排队与结束边界，再实现独立目标UI关联。以上来自当前Mod源代码审查，不等于新的原生反编译结论或GPU证据。先解决关联/时序，再做准星、换枪UI、菜单、字幕像素验证；保持已有票据身份和姿态时效约束。
+
+## 2026-10-15：Canvas到场景票据的定向运行验证
+
+复用完整资料库与既有汇编，仅补查Flush和析构调用片段，没有重新批量反编译。历史快照SHA256 `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`、模块基址0x140000000；仍与磁盘EXE区分。IDA在`analysis/ui-position-runtime/owned-ui1-ida/snapshot.i64`副本工作，lease已关闭，原库SHA256保持`66d17edbf21bf81f0fe5cf740111e738a0308ac9228f7576fe39f460baad1813`。
+
+确定的ABI/字段关系：family入口RCX为FCanvas；FCanvas+4是目标接口，+0xc是可选目标；batch producer `0x117430(item,FCanvas)`把item+8的payload交给48字节命令，命令+8是payload、+0x20/+0x28是目标。`0x19e64c(command)`返回48并释放payload。Flush `0x1172c4(FCanvas)`通过item虚表分派；析构中的Flush返回地址为0x2a6b9f。Reload1的四份运行记录也确认FCanvas+4等于原family+0x10。证据为`owned-ui1-static-contract.json`及该目录的逐字节校验汇编；偏移不是跨版本通用定义。
+
+新增可选`GEARS_OWNED_UI_ROUTE_PROBE`，只观察Flush/producer两处入口，复用既有Execute观察器；不更换目标、不改变原始调用次数或发布条件。固定容量ledger按Canvas、线程、明确选中的ticket关联；payload在生产前登记、转交后检查清空、Execute返回后只使用值拷贝。闭合后仍保留待执行/待提交记录，重复payload、错目标、旧ID和容量耗尽拒绝关联。
+
+Ui1首次安装失败：新增两处Hook时漏改resize编译分支的容量，安装在应用队列前拒绝，未取得运行证据；已修复为各基础容量加2，失败构建与清单保留。Ui2 SHA256 `2f8c3c64537b9b6548150706093af76bd2e35869ea85eb65e49a9ff8601047d9`随后进行了两轮模拟器测试：
+
+- PID52888：40.092秒、1,364个owned场景、1,362次发布、1,360次XR复制。Canvas关联与析构闭合各1,364次，但生产/执行均0，首32个Flush样本为空。首32个空UI场景均在消费前闭合，不能把“发布过早”宣布为故障根因。独立入口恢复检查被协调器提前关闭游戏打断，没有独立恢复通过结论；游戏正常退出。
+- PID38236：通过内存状态确认进入`DeltaPause-Campaign-Host`、焦点`LBtnResumeSingle`，随后Esc恢复。40.134秒、1,280个owned场景、1,279次发布、1,277次XR复制；11,187个关联UI批次的生产/转交/执行/完成数一致，失败、错目标、payload冲突、容量溢出均0；全部1,280个cycle闭合并回收。另有11,168个producer不在选中Canvas scope中，其Execute没有关联，明确不算成功批次。61处入口独立核验全匹配后游戏正常退出，无强杀。
+
+这证明了本场景暂停菜单的CPU批次归属，不是独立输出UI像素或位置验收。Ui2只保留首32个cycle，恰好全为空，未保存后续非空批次的逐cycle时序；不能从汇总推断它们都先于/晚于发布。源码随后增加全程时序计数和独立首32个非空cycle保存，Ui3仅编译/CPU测试，尚未实机运行。ledger测试1,569项通过；FrameLink、payload、index、owned scene与ABI相关回归通过。
+
+运行审计：`analysis/ui-position-runtime/owned-ui2-52888.audit.json`、`owned-ui2-menu-38236.audit.json`。静态、运行证据及脚本均留在ignored的analysis。默认玩家清单不变，native资源仍保留到进程退出，launcher的incomplete没有消除。下一项实现是把关联批次导向owned目标、接入owned tracker的双眼overlay与同ticket姿态/几何，并把Canvas闭合、全部关联Execute完成及真实GPU提交作为复制前置条件；Material及其他未认证路由不能自动纳入。之后再分别核对准星、换枪提示、菜单、字幕像素。

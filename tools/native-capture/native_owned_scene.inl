@@ -48,7 +48,14 @@ bool native_owned_scene_begin(void* renderer,uint64_t ticket){using namespace ge
  const bool ok=healthy()&&trial.begin(reinterpret_cast<uintptr_t>(renderer),ticket);
  if(ok&&trial.renderer==reinterpret_cast<uintptr_t>(renderer)&&trial.ticket==ticket){owned_scene_gpu::began(ticket);owned_scene_gpu::activate();}return ok;}
 void native_owned_scene_copy(){using namespace gears_owned_scene_live;
- owned_scene_gpu::copy(healthy()&&trial.returned&&trial.destroyed&&trial.submitted_mask==3&&!trial.unknown_draws,trial.ticket);}
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+ const auto consumed_before=owned_scene_gpu::consumed_count;
+#endif
+ owned_scene_gpu::copy(healthy()&&trial.returned&&trial.destroyed&&trial.submitted_mask==3&&!trial.unknown_draws,trial.ticket);
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+ if(owned_scene_gpu::consumed_count>consumed_before)owned_ui_published(trial.ticket);
+#endif
+}
 bool native_owned_scene_consuming(void* renderer,uint64_t ticket){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
  return trial.resource&&!trial.error&&trial.entered&&!trial.returned&&ticket&&

@@ -30,6 +30,7 @@ struct UiScopeReject {uintptr_t self{},frame{},object{},code{};long long qpc{};u
 std::array<UiScopeReject,8> ui_first_scope_reject{};
 std::atomic<uint64_t> ui_vm_calls{},ui_invocation_counter{};
 std::mutex ui_rows_mutex;
+#include "owned_ui_observer.inl"
 #include "ui_payload_observer.inl"
 #include "ui_text_observer.inl"
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
@@ -163,6 +164,9 @@ bool reserve_ui_hooks(){
            !safe_copy(after.data(),ui_targets[i],after.size())||after!=before)return false;
     }
     if(!reserve_ui_execute()||!reserve_ui_subtitle())return false;
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+    if(!owned_ui_live::reserve())return false;
+#endif
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(!reserve_ui_material_execute())return false;
 #endif
@@ -235,6 +239,9 @@ void print_ui_observer(FILE* status,bool disabled){
     fprintf(status,"ui_observer enabled=%u available=%u source_vertices_modified=0 hud_plane_enabled=%u vm_calls=%llu qpc_frequency=%lld\n",
         ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_hud_plane_enabled?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+    owned_ui_live::print(status);
+#endif
     print_ui_payload_observer(status);
     print_ui_text_observer(status);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
