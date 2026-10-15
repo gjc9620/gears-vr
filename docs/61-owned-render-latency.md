@@ -106,3 +106,17 @@ PID51936（creation `134364951814739390`）首次owned调用创建172次资源�
 现有遮罩日志提供具体线索：Reuse1出现240次`view_union_mask_rejected reason=rectangles`，正好对应两眼owned消费的遮罩次数；旧验证器要求视图高度等于资源高度，2048视图/2160资源被拒绝。Resize1相同位置240次均接受。下一步保留容量复用，只在已登记owned消费范围允许两眼相同、有效且不超过资源的高度，继续验证viewport、水平并集、调用者与原始浮点参数，并重新采样。不能仅凭这些拒绝就宣布回归已修好。
 
 59个入口恢复通过并正常退出。XR快照控制请求失败，消息为`Snapshot control unavailable in this XR build`，未取得该项XR快照；原生首尾读回独立成功。模拟器MCP返回2048×2048的左右image rect和非对称FOV，不能替代真实头显。状态仍incomplete；连续投影仅覆盖约3.7秒，停止前的长间隔包含120ticket实验上限后的等待，尚不属于持续运行验收。证据`owned-reuse1-51936-resize.json`、`owned-reuse1-51936.audit.json`、`owned-reuse1-watch.json`，均在analysis下。
+
+## Reuse2：容量复用与双眼遮罩协同通过120帧对照
+
+遮罩修正增加默认关闭的高度留白许可，仅由开启容量复用且正在消费已登记owned ticket的调用传入。仍要求两个视图同一高度、顶部为0、正尺寸且不超过资源，source/target严格一致，水平相邻且并集不越界；保留实际全资源viewport、调用者、命令表、时钟及输入浮点位模式校验。默认调用仍只接受满高视图。42项回归包括新高度留白和越界/不等高/错viewport/错source拒绝测试。关闭owned/resize功能的最终独立兼容构建通过6项既有检查及额外的view-union-mask检查，共7项；记录`owned-reuse-compat1-all-tests.json`。
+
+同一冻结构建的第二次运行PID10100（creation `134364957955025158`）完成120个owned ticket和120次发布；XR复制118次、投影层提交333次，仍要求匹配render ticket和100ms。姿态接收到发布中位33.489ms、p95 38.649ms、最大155.709ms（启动不能保证全部及时）。仅首次扩容创建172次资源，其后owned和legacy请求不再经过本路径创建资源。调用本体中位0.0003ms。
+
+日志确认所有240次4096×2048双眼区域/4096×2160资源的遮罩都接受并转发`t=1`，`rectangles`拒绝为0；剩余19次scope拒绝发生在未获授权的消费范围，不改参数。首尾原生GPU图像均显示完整左右场景，右眼近黑回归消失。编码RGB加权亮度右/左平均比为0.898/0.872，与Resize1基线0.889/0.892接近；Reuse1回归样本为0.008/0.257。这些统计不是线性光亮度测量，也不是几何或真实头显验收。首尾图像已经直接查看，未以非零像素数代替图像检查。
+
+该改动同时减少尺寸往返重建并恢复对应的双眼遮罩修正，支持当前独立Low通道的两个相连问题已在本次有界对照中解决。仍不是持续运行、High、完整UI、切关/重连或真头显验收。默认玩家清单仍未切换，资源/命令表诊断引用仍保留到进程退出。
+
+首次运行PID31640提前保护停止，没有有效GPU发布；最后Trial error3、两次draw均未形成有效提交。首次stop位置已记录为`capture.cpp:1637`的`native_owned_scene_begin`失败，但可能晚于最初错误状态写入，不能据此认定根因。该类GPU跟踪初始失败仍是后续稳定性任务，不能被第二次成功掩盖。记录`owned-reuse2-31640-early-stop.json`及原始状态；两次均独立验证59个入口恢复并正常退出。
+
+成功对照证据为`owned-reuse2-10100.audit.json`、`owned-reuse2-10100-resize.json`、`owned-reuse2-10100-eye-quality.json`及`owned-reuse2-10100-eyes-preview.png`；都在ignored的`analysis/ui-position-runtime/`。新版不再重复请求已知不可用的XR快照控制，只使用成功的原生首尾读回。清单为`tools/vr-launcher/manifest-owned-reuse2.json`。

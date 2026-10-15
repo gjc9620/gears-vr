@@ -1,5 +1,6 @@
 // A bounded, same-family horizontal view-union correction. This deliberately
-// accepts only integer, unscaled, adjacent full-height source/target rectangles.
+// accepts only integer, unscaled, adjacent source/target rectangles. Height
+// padding is opt-in for a certified owned consumer, never a generic fallback.
 namespace gears_view_union_mask {
 using Snapshot=gears_first_view_mask::Snapshot;
 using Gate=gears_first_view_mask::Gate;
@@ -13,7 +14,7 @@ float boundary(float extent,float width){
     // would be an inappropriate validator for the incoming float ABI.
     const float doubled=extent+extent;const float ratio=doubled/width;return ratio-1.f;
 }
-Decision decide_union(float value,const Gate& gate,const Snapshot& sample,long long tick,long long frequency,long long& origin){
+Decision decide_union(float value,const Gate& gate,const Snapshot& sample,long long tick,long long frequency,long long& origin,bool owned_height_padding=false){
     Decision result;result.forwarded=value;
     if(!gate.enabled)return result;
     result.rejection=scope;if(!gate.recording||!gate.diagnostics||!gate.trial||!gate.renderer)return result;
@@ -27,7 +28,8 @@ Decision decide_union(float value,const Gate& gate,const Snapshot& sample,long l
     for(unsigned eye=0;eye<2;++eye){const auto& target=sample.target[eye];const auto& source=sample.source[eye];
         // The dimension cap guarantees these integers and sums convert to
         // float exactly. Avoid converting untrusted NaN/overflowing floats.
-        if(target[0]<0||target[1]!=0||target[2]<=0||target[3]!=static_cast<int>(height)||
+        const auto effective_height=owned_height_padding?sample.target[0][3]:static_cast<int>(height);
+        if(target[0]<0||target[1]!=0||target[2]<=0||effective_height<=0||effective_height>static_cast<int>(height)||target[3]!=effective_height||
            int64_t(target[0])+target[2]>width)return result;
         for(unsigned i=0;i<4;++i)if(!std::isfinite(source[i])||source[i]!=static_cast<float>(target[i]))return result;
     }
@@ -70,6 +72,23 @@ bool self_test(){
     }
     auto sample=sample_for(1920,1080,960,960);
     if(origin!=10000)return false;
+    auto padded=sample_for(4096,2160,2048,2048);
+    for(unsigned eye=0;eye<2;++eye){padded.target[eye][3]=2048;padded.source[eye][3]=2048;}
+    if(decide_union(0,valid,padded,20000,1000,origin).rejection!=rectangles)return false;
+    const auto padding=decide_union(0,valid,padded,20000,1000,origin,true);
+    if(padding.rejection||!padding.modified||padding.forwarded!=1.f)return false;
+    for(unsigned i=0;i<8;++i){auto s=padded;
+        switch(i){case 0:s.target[1][3]=2047;s.source[1][3]=2047;break;
+        case 1:for(unsigned e=0;e<2;++e){s.target[e][3]=2161;s.source[e][3]=2161;}break;
+        case 2:for(unsigned e=0;e<2;++e){s.target[e][3]=0;s.source[e][3]=0;}break;
+        case 3:s.target[0][1]=1;s.source[0][1]=1;break;
+        case 4:s.source[0][3]=2047;break;
+        case 5:s.viewport[3]=2048;break;
+        case 6:s.target[1][0]=2049;s.source[1][0]=2049;break;
+        case 7:for(unsigned e=0;e<2;++e){s.target[e][3]=-1;s.source[e][3]=-1;}break;}
+        const auto d=decide_union(0,valid,s,20000,1000,origin,true);
+        if(!d.rejection||d.modified||d.forwarded!=0.f)return false;
+    }
     for(auto tick:{39999LL,40000LL,40001LL,55000LL}){
         const auto result=decide_union(0,valid,sample,tick,1000,origin);
         if(result.rejection||!result.modified||result.forwarded!=1.f)return false;
