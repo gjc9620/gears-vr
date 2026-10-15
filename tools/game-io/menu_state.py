@@ -90,6 +90,7 @@ class MenuReader:
             if len(candidates) != 1:
                 raise RuntimeError('Expected one registered GameUISceneClient; found '+str(len(candidates)))
             self.client = candidates[0]
+            self.client_identity = dict(registered(self.r, self.client))
         except Exception:
             self.close()
             raise
@@ -214,7 +215,40 @@ class MenuReader:
             raise RuntimeError('Missing dialog labels')
         return texts
 
+    def force_registry_refresh(self):
+        """One bounded inventory refresh, retaining the originally proven client."""
+        r = self.r
+        headers = {prefix:r.read(getattr(r,prefix+'_header'),16) for prefix in ('names','objects')}
+        inventories = {}
+        for prefix,raw in headers.items():
+            data,count,capacity = struct.unpack('<Qii',raw)
+            if not data or not 1000<count<=capacity<4000000:
+                raise RuntimeError('Invalid forced registry header')
+            inventories[prefix] = (data,count,capacity,struct.unpack('<'+'Q'*count,r.read(data,count*8)))
+        for prefix,(data,count,capacity,pointers) in inventories.items():
+            singular = 'name' if prefix=='names' else 'object'
+            setattr(r,prefix+'_data',data)
+            setattr(r,singular+'_count',count)
+            setattr(r,singular+'_capacity',capacity)
+            setattr(r,singular+'_pointers',pointers)
+        r.names_cache.clear();r.ident_cache.clear();self.properties.clear()
+        if r.name(0)!='None':raise RuntimeError('Forced registry zero name changed')
+        if dict(registered(r,self.client))!=self.client_identity:
+            raise RuntimeError('Scene client identity changed during registry refresh')
+        if any(r.read(getattr(r,prefix+'_header'),16)!=raw for prefix,raw in headers.items()):
+            raise RuntimeError('Registry header changed during forced refresh')
+
     def sample(self, *, include_tree=False):
+        try:
+            return self._sample_once(include_tree=include_tree)
+        except RuntimeError as error:
+            if type(error) is not RuntimeError or str(error)!='Object registry identity changed':raise
+        # _sample_once has restored r.read and discarded its failed ledger.
+        # Neither preparation, client discovery nor an outer retry is repeated.
+        self.force_registry_refresh()
+        return self._sample_once(include_tree=include_tree)
+
+    def _sample_once(self, *, include_tree=False):
         self.refresh()
         r = self.r
         original_read = r.read

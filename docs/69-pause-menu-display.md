@@ -67,3 +67,13 @@ quiet9k 的 game6680 出现暗画面时，实际显示 Pause / Resume Game，而
 一次最终模拟器画面核对显示两眼为相同的完整设置面板。XR日志记录各次共同面板成功提交；Resume后记录 `menu_display_recovered` 与真实新票据projection，模拟器projection计数重新推进。首个Escape尝试遇到EHole提示界面，守卫拒绝且未发输入；待其自然结束后才在认证GAMEPLAY发送。这不计为一次菜单导航失败或重复输入。
 
 本次修复消除了这六类页面持续无层输出的问题。菜单切换时仍观察到短暂UNKNOWN（包括读注册表失效和过渡中不满足分类条件），会暂时不提交菜单层；不宣称切换无闪烁、所有UI已覆盖或已完成真头显验收。模拟器 `MISSING_PROJECTION_LAYER` 累计值包含正常菜单quad阶段，不能直接作为黑屏次数。此次仍使用冻结Native9/XR7，未提升默认清单。
+
+9u随后在后台自然进入DeltaGameover；认证btnCheckpoint后发送一次Enter，日志记录death_menu面板及读取检查点后的 `menu_display_recovered` / 新票据projection。之后仍可再次进入Pause。该轮没有重启游戏或原生双目服务，见 `menu9u-death-checkpoint.json`；只增加本条实际覆盖，不代表所有死亡/加载路径均通过。
+
+## 同址同数量注册表中的槽复用
+
+9u只读探针实际记录到UI对象槽181779从缓存0变成当前 `DeltaButtonBar` 地址 `0x26e89e0`，但objects头仍完全相同：data=16869228544、count=258886、capacity=309766。原reader仅在data/count改变时刷新指针库存，所以对新对象重复抛 `Object registry identity changed`。三次失败后，同一reader重取names/objects库存、清缓存并核验原client身份，约8.994毫秒恢复完整Pause快照；未重新prepare或全局扫描client。证据 `analysis/runtime/menu9u-cache-probe2.json` 和同名脚本。
+
+据此，`sample()`仅对精确类型RuntimeError及精确上述消息增加一次有界刷新：核验两张registry头与有界指针库存，清名称/对象/属性缓存，要求初始化保存的client完整身份不变，再重新执行全部快照、关系与复读检查。失败快照丢弃；第二次失败直接交回原monitor重建路径，不放宽UNKNOWN显示、也不延长旧图像许可。69项reader/控制与16项monitor测试通过；实际自动恢复结果另记。
+
+在同一9u游戏进程中，用新reader再进入Options，实际槽258760同样在头部不变时从缓存0成为 `DeltaPause-Options` 地址 `0x115ed9000`。此次由生产 `sample()` 自动调用一次刷新（9.372毫秒），60次观察没有对外采样异常，无手动缓存干预；完整输出见 `menu9u-cache-probe3.json`。这是新reader对真实游戏的验证，9u原owner已加载的旧reader模块未热替换。另观察到正常转场中 `input_block_count` 从1回0：此条件仍会触发原显示分类UNKNOWN，不能把这一剩余空白全部归于注册槽缓存，也尚未放宽输入阻塞守卫。

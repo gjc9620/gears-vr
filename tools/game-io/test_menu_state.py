@@ -1,6 +1,7 @@
 """Offline menu reader tests; no process handles or input are created."""
 import struct
 import unittest
+from unittest import mock
 
 from menu_state import MenuReader, registered, read_root_source_text, DialogStorageChanged
 
@@ -250,6 +251,94 @@ class MenuStateTests(unittest.TestCase):
     def test_nonzero_player_is_reported_not_accepted_as_zero(self):
         self.r.scalar(0x1000, 'LastPlayerIndex', 'IntProperty', 1, '<i')
         self.assertEqual(self.reader.sample()['player_index'], 1)
+
+
+class RegistryRecoveryTests(unittest.TestCase):
+    def setUp(self):
+        MenuStateTests.setUp(self)
+        self.reader.client_identity=dict(self.r.identities[self.reader.client])
+        self.r.names_header,self.r.names_data=0x8200,0x400000
+        self.r.name_count=self.r.name_capacity=1001
+        self.r.name_pointers=(0,)*1001
+        self.r.names_cache={'stale':'must clear'}
+        self.r.put(self.r.names_header,struct.pack('<Qii',self.r.names_data,1001,1001))
+        self.r.put(self.r.names_data,bytes(1001*8))
+        pointers=self.r.object_pointers+[0]*(1001-len(self.r.object_pointers))
+        self.r.object_pointers=pointers
+        self.r.object_count=self.r.object_capacity=1001
+        self.r.put(self.r.objects_header,struct.pack('<Qii',self.r.objects_data,1001,1001))
+        self.r.put(self.r.objects_data,struct.pack('<'+'Q'*1001,*pointers))
+        self.r.name=lambda index:'None' if index==0 else 'MainMenu'
+        self.r.prepare=mock.Mock(side_effect=AssertionError('Must not repeat prepare'))
+        self.slot=self.r.identities[0x2000]['internal_index']
+        # Stable registry headers, stale cached zero, valid current live slot.
+        self.r.object_pointers[self.slot]=0
+
+    def test_same_header_slot_replacement_recovers_without_prepare_or_client_scan(self):
+        before={p:self.r.read(getattr(self.r,p+'_header'),16) for p in ('names','objects')}
+        with mock.patch.object(self.reader,'force_registry_refresh',wraps=self.reader.force_registry_refresh) as forced,\
+             mock.patch.object(self.r,'identity',wraps=self.r.identity) as identities:
+            result=self.reader.sample(include_tree=True)
+            forced.assert_called_once()
+            self.assertLess(identities.call_count,100)  # Inventory is not scanned object-by-object.
+        self.assertTrue(result['consistent_reread'])
+        self.assertEqual(result['focused_leaf']['address'],'0x2000')
+        self.assertEqual(len(result['tree']),2)
+        self.assertEqual(self.r.object_pointers[self.slot],0x2000)
+        self.assertNotIn('stale',self.r.names_cache)
+        self.r.prepare.assert_not_called()
+        self.assertEqual(before,{p:self.r.read(getattr(self.r,p+'_header'),16) for p in before})
+        self.assertEqual(self.r.read.__func__,FakeResolver.read)
+
+    def test_real_live_slot_mismatch_still_rejected_after_one_refresh(self):
+        self.r.put(self.r.objects_data+self.slot*8,struct.pack('<Q',0xdead))
+        with mock.patch.object(self.reader,'force_registry_refresh',wraps=self.reader.force_registry_refresh) as forced:
+            with self.assertRaisesRegex(RuntimeError,'Object registry identity changed'):
+                self.reader.sample()
+            forced.assert_called_once()
+        self.r.prepare.assert_not_called()
+
+    def test_original_client_identity_must_remain_unchanged(self):
+        self.r.identities[self.reader.client]['number']+=1
+        with self.assertRaisesRegex(RuntimeError,'Scene client identity changed'):
+            self.reader.sample()
+
+    def test_force_refresh_rejects_changed_or_invalid_headers(self):
+        self.r.change_on_second_read=(self.r.names_header,16)
+        with self.assertRaisesRegex(RuntimeError,'Registry header changed during forced refresh'):
+            self.reader.sample()
+        self.setUp()
+        self.r.put(self.r.names_header,struct.pack('<Qii',self.r.names_data,1000,1001))
+        with self.assertRaisesRegex(RuntimeError,'Invalid forced registry header'):
+            self.reader.sample()
+
+    def test_retry_still_rejects_changed_snapshot_values(self):
+        original=self.reader.force_registry_refresh
+        def refresh():
+            original()
+            self.r.read_counts.clear()
+            offset=self.r.props['WarUIInteraction','BlockUIInputSemaphore']['offset']
+            self.r.change_on_second_read=(0x4000+offset,4)
+        with mock.patch.object(self.reader,'force_registry_refresh',side_effect=refresh) as forced:
+            with self.assertRaisesRegex(RuntimeError,'UI changed before snapshot verification'):
+                self.reader.sample()
+            forced.assert_called_once()
+        self.assertEqual(self.r.read.__func__,FakeResolver.read)
+
+    def test_only_exact_runtime_error_gets_one_retry(self):
+        class DifferentFailure(RuntimeError):pass
+        for error in (DifferentFailure('Object registry identity changed'),
+                      RuntimeError('Object registry identity changed: unknown'),
+                      RuntimeError('Live object registry slot changed'),ValueError('Object registry identity changed')):
+            with self.subTest(error=error),mock.patch.object(self.reader,'_sample_once',side_effect=error),\
+                 mock.patch.object(self.reader,'force_registry_refresh') as forced:
+                with self.assertRaises(type(error)):self.reader.sample()
+                forced.assert_not_called()
+        exact=RuntimeError('Object registry identity changed')
+        with mock.patch.object(self.reader,'_sample_once',side_effect=exact) as sampled,\
+             mock.patch.object(self.reader,'force_registry_refresh') as forced:
+            with self.assertRaises(RuntimeError):self.reader.sample()
+            self.assertEqual(sampled.call_count,2);forced.assert_called_once()
 
 
 class DialogTextTests(unittest.TestCase):
