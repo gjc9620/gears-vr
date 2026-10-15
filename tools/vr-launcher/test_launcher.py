@@ -315,6 +315,32 @@ class LauncherTests(unittest.TestCase):
             with self.subTest(key=key),self.assertRaisesRegex(ValueError,'boolean'):
                 launcher.settings({},dict(MANIFEST,**{key:'true'}))
 
+    def test_hud_size_config_capability_range_and_legacy_tuple(self):
+        capable=dict(MANIFEST,hud_size_control=True,ui_hud_plane=True,ui_observer=True,anchor_observer=True)
+        self.assertIsNone(launcher.hud_horizontal_fov({},MANIFEST))
+        self.assertEqual(len(launcher.settings({},MANIFEST)),2)
+        self.assertEqual(launcher.hud_horizontal_fov({},capable),65.)
+        for value in (45,65.25,100):
+            self.assertEqual(launcher.hud_horizontal_fov({'hud_horizontal_fov_degrees':value},capable),float(value))
+        for value in (True,False,None,'65',float('nan'),float('inf'),44.99,100.01):
+            with self.subTest(value=value),self.assertRaises(ValueError):
+                launcher.settings({'hud_horizontal_fov_degrees':value},capable)
+        for manifest in (MANIFEST,dict(capable,ui_hud_plane=False),dict(capable,hud_size_control='true')):
+            with self.assertRaises(ValueError):launcher.settings({'hud_horizontal_fov_degrees':65},manifest)
+        with self.assertRaises(ValueError):launcher.settings({},dict(MANIFEST,hud_size_control=1))
+
+    def test_hud_size_reaches_runner_only_for_capable_manifest(self):
+        capable=dict(MANIFEST,hud_size_control=True,ui_hud_plane=True,ui_observer=True,anchor_observer=True)
+        for manifest,config,expected in ((MANIFEST,{},None),(capable,{},65.),
+                                         (capable,{'hud_horizontal_fov_degrees':62.5},62.5)):
+            with tempfile.TemporaryDirectory() as directory:
+                backend=FakeBackend()
+                with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                    launcher.start(config,manifest,backend,pathlib.Path(directory)/'index.json',sleep=lambda seconds:None)
+                args=backend.runner.run_session.call_args.args[0]
+                self.assertEqual(getattr(args,'hud_horizontal_fov_degrees',None),expected)
+                if expected is None:self.assertFalse(hasattr(args,'hud_horizontal_fov_degrees'))
+
     def test_preview_session_options_reach_runner(self):
         with tempfile.TemporaryDirectory() as directory:
             backend=FakeBackend()

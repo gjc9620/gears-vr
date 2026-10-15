@@ -28,6 +28,10 @@ Native14 SHA256 `7c6d7461219a579939cf5f2f6973d8a8b6f0348724383a2bbc40dd89f035cd4
 
 开关确实同时作用两路：ON Material hud_draws492、ordinary0；OFF ordinary300、hud0。ON的非开镜与开镜面板均缩小内移，OFF两态均显示完整相邻的054和图标。原尺寸最近邻裁切进一步确认ON的数字仍在小面板旁，不能把960像素预览的难以辨认误报为删除/裁切或Native14分离。已记录HUD viewport451.14×268.56相对普通单眼960×1080约为水平47%、垂直25%，足以解释文字压成少量像素；55°在当前低分辨率路径的可读性仍需调整或真头显确认。此对照没有证明Native13所有瞬态分离均不存在，也没有验收所有换枪/字幕。默认清单未提升，不以关闭HUD变换替代用户要求的缩小、集中与可读布局。
 
+### 可调角宽源码候选
+
+后续Native15源码默认65°，相比原70°温和缩小，深度保持2米。单一运行参数同时用于batch、Material及日志；显式配置 `hud_horizontal_fov_degrees` 仅在清单声明 `hud_size_control=true` 且HUD平面启用时接受，范围45–100°。旧配置和旧清单继续原调用链，不静默丢弃用户给旧DLL的显式设置。launcher→runner→start_capture→INI已贯通；native有界十进制解析拒绝非法值后才允许激活。102项Python与几何/解析测试通过，记录 `hud-size-plan-validation.json`；冻结13/14 DLL不变。此项仍需新构建实际显示验证，启动器图形界面尚无调整控件，不作头显舒适度结论。
+
 ## 复现：GameRecovery7，2026-10-15
 
 实际游戏 PID24112（`continuous-stereo-24112-20261015-195606-390abba0.*`）通过对象/类身份与双向关系复读确认从 `Weap_AssaultRifle` 切到 `Weap_COGPistol`。两次正常手柄开镜各3秒，首轮采样的相机FOV由80变为45。没有修改游戏武器或相机内存。游戏EXE SHA256沿用清单中的 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`。

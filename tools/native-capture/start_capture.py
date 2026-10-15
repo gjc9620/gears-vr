@@ -254,7 +254,19 @@ def save_anchor_sampling_failure(dll,pid,error,*,preparation_failures=None,prepa
     return path
 
 
+def hud_size_ini(args):
+    value=getattr(args,'hud_horizontal_fov_degrees',None)
+    if value is not None:
+        if not getattr(args,'ui_hud_plane',False):raise ValueError('HUD size requires --ui-hud-plane')
+        if isinstance(value,bool) or not isinstance(value,(int,float)) or not 45<=value<=100 or not math.isfinite(value):
+            raise ValueError('hud_horizontal_fov_degrees must be finite and between 45 and 100')
+        return f'ui_hud_horizontal_fov_degrees={value:.17g}\n'
+    return ''
+
+
 def configure_anchor_options(args,parser):
+    try:hud_size_ini(args)
+    except ValueError as error:parser.error(str(error))
     if getattr(args,'cinematic_camera',False) and (not args.anchor_observer or getattr(args,'origin_trial',False)):
         parser.error('Cinematic camera requires --anchor-observer and cannot use the Pawn origin trial')
     if getattr(args,'ui_hud_plane',False) and not (
@@ -326,6 +338,7 @@ def main():
     parser.add_argument('--cinematic-camera',action='store_true',help='Accept certified cinematic CameraActor targets sharing the controlled WorldInfo while preserving Pawn possession')
     parser.add_argument('--ui-observer',action='store_true',help='Observe registered reticle/HUD Canvas calls without changing coordinates')
     parser.add_argument('--ui-hud-plane',action='store_true',help='Experimental HUD plane; requires UI observer, anchor observer and continuous session')
+    parser.add_argument('--hud-horizontal-fov-degrees',type=float)
     parser.add_argument('--outage-diagnostics',action='store_true',help='Record a bounded missing-image window in the existing stereo publication path; disabled by default')
     args=parser.parse_args()
     configure_anchor_options(args,parser)
@@ -483,6 +496,7 @@ def main():
         config+=f'anchor_observer={int(args.anchor_observer)}\n'
         config+=f'ui_observer={int(args.ui_observer)}\n'
         config+=f'ui_hud_plane={int(getattr(args,"ui_hud_plane",False))}\n'
+        config+=hud_size_ini(args)
         config+=f'origin_trial={int(getattr(args,"origin_trial",False))}\n'
         config+=f'stereo_gpu_publish={int(args.stereo_gpu_publish)}\n'
         config+=f'simulator_operator={int(args.simulator_operator)}\n'

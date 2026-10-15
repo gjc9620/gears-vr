@@ -32,7 +32,7 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
     gears_viewport::OverlayPlan plan{};gears_vr::StereoSample sample{};
     if(!stereo_ticket_store.lookup(pair.ticket,sample,simulator_operator))return reject(6);
     if(kind==gears_game_material::Plan::ordinary)plan=gears_viewport::overlay_plan(saved,target.width,target.height);
-    else {gears_ui_hud::Parameters parameters{};parameters.source_aspect=plane.aspect;
+    else {const auto parameters=gears_ui_hud::for_source(ui_hud_parameters,plane.aspect);
         if(!gears_ui_hud::plan(saved,target.width,target.height,sample,plan,parameters))return reject(7);}
     if(!plan.valid)return reject(7);
     auto viewport=[&](gears_viewport::Rect r,float a,float b){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,a,b};original_viewports(list,1,&v);};

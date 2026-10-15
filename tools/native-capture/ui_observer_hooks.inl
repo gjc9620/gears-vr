@@ -1,6 +1,7 @@
 // Included inside capture.cpp's anonymous namespace, after Scope/safe_copy.
 // Observation only: original VM/Canvas arguments and draw counts are preserved.
 bool ui_observer_enabled{},ui_reserved{},ui_hud_plane_enabled{};
+gears_ui_hud::Parameters ui_hud_parameters{};
 gears_ui::Config ui_config;
 #include "ui_runtime_binding.h"
 std::mutex ui_binding_mutex;

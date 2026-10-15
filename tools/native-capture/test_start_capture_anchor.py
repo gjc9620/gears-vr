@@ -13,6 +13,21 @@ import run_stereo_continuous as continuous
 
 
 class AnchorStartTests(unittest.TestCase):
+    def test_hud_size_ini_and_independent_cli_rejection(self):
+        self.assertEqual(start.hud_size_ini(types.SimpleNamespace()),'')
+        for value in (45,62.5,100):
+            self.assertEqual(start.hud_size_ini(types.SimpleNamespace(ui_hud_plane=True,hud_horizontal_fov_degrees=value)),
+                             f'ui_hud_horizontal_fov_degrees={value:.17g}\n')
+        for enabled,value in ((False,65),(True,True),(True,float('nan')),(True,44),(True,101)):
+            with self.assertRaises(ValueError):
+                start.hud_size_ini(types.SimpleNamespace(ui_hud_plane=enabled,hud_horizontal_fov_degrees=value))
+        for extra in (['--hud-horizontal-fov-degrees','65'],
+                      ['--ui-hud-plane','--hud-horizontal-fov-degrees','nan'],
+                      ['--ui-hud-plane','--hud-horizontal-fov-degrees','101']):
+            with mock.patch.object(sys,'argv',['start_capture.py','--pid','1',*extra]),mock.patch.object(pathlib.Path,'write_text') as write,mock.patch.object(start.subprocess,'run') as launch,contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):start.main()
+                write.assert_not_called();launch.assert_not_called()
+
     def test_ui_changed_read_reacquires_complete_preparation(self):
         import anchor_config as anchor
         import ui_observer_config as ui
@@ -218,10 +233,14 @@ class AnchorStartTests(unittest.TestCase):
             dll_name='Missing.dll',stereo_units_per_metre=100,ui_observer=True,anchor_observer=True)
         for enabled in (False,True):
             args.ui_hud_plane=enabled
+            args.hud_horizontal_fov_degrees=62.5 if enabled else None
             argv=continuous.native_command(args,{'pid':100,'creation_time':1000})[2:]
             with mock.patch.object(sys,'argv',['start_capture.py',*argv]),mock.patch.object(start,'configure_anchor_options',wraps=start.configure_anchor_options) as configure,mock.patch.object(start.subprocess,'run') as launch:
                 with self.assertRaisesRegex(RuntimeError,'Build capture DLL'):start.main()
                 self.assertEqual(configure.call_args.args[0].ui_hud_plane,enabled)
+                parsed=configure.call_args.args[0]
+                self.assertEqual(parsed.hud_horizontal_fov_degrees,args.hud_horizontal_fov_degrees)
+                self.assertEqual(start.hud_size_ini(parsed),'ui_hud_horizontal_fov_degrees=62.5\n' if enabled else '')
                 launch.assert_not_called()
 
     def test_hud_plane_alone_cli_rejects_before_write_or_launch(self):

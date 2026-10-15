@@ -31,8 +31,22 @@ def rooted(value,root=ROOT):
     path=pathlib.Path(value)
     return (root/path).resolve() if not path.is_absolute() else path.resolve()
 
+def hud_horizontal_fov(config,manifest):
+    supported=manifest.get('hud_size_control',False)
+    if type(supported) is not bool:raise ValueError('Manifest hud_size_control must be boolean')
+    explicit='hud_horizontal_fov_degrees' in config
+    if explicit and not supported:raise ValueError('Manifest does not support hud_size_control')
+    if explicit and not manifest.get('ui_hud_plane',False):raise ValueError('HUD size requires ui_hud_plane')
+    if not explicit and not (supported and manifest.get('ui_hud_plane',False)):return None
+    value=config.get('hud_horizontal_fov_degrees',65.)
+    if isinstance(value,bool) or not isinstance(value,(int,float)) or not 45<=value<=100 or not math.isfinite(value):
+        raise ValueError('hud_horizontal_fov_degrees must be finite and between 45 and 100')
+    return float(value)
+
+
 def settings(config,manifest,root=ROOT):
-    if set(config)-{'game_path','stereo_units_per_metre'}:raise ValueError('Unknown configuration field')
+    if set(config)-{'game_path','stereo_units_per_metre','hud_horizontal_fov_degrees'}:raise ValueError('Unknown configuration field')
+    hud_horizontal_fov(config,manifest)
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
     if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','graphics_startup_lock','graphics_menu_lock')):
         raise ValueError('Manifest session options must be boolean')
@@ -320,6 +334,8 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
             xr_build_dir=rooted(manifest['xr_build']),stereo_units_per_metre=scale,startup_timeout=45.,cleanup_timeout=35.,
             native_expected_sha256=manifest['native_sha256'])
         for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
+        hud_fov=hud_horizontal_fov(config,manifest)
+        if hud_fov is not None:args.hud_horizontal_fov_degrees=hud_fov
         if owned_prime:
             deadline=clock()+30
             while clock()<deadline:

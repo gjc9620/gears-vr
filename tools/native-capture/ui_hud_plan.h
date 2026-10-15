@@ -1,9 +1,31 @@
 #pragma once
 #include "gpu_viewport_stats.h"
 #include "../vr-common/stereo_frame.h"
+#include <cwchar>
+#include <cerrno>
+#include <cstdlib>
 
 namespace gears_ui_hud {
-struct Parameters {double horizontal_fov_degrees=55,depth_metres=2,source_aspect=0;};
+struct Parameters {double horizontal_fov_degrees=65,depth_metres=2,source_aspect=0;};
+inline Parameters for_source(Parameters parameters,double aspect){parameters.source_aspect=aspect;return parameters;}
+// Strict bounded decimal parsing for the optional native INI value. Preserve
+// the destination on error; no whitespace, hex, special values or suffixes.
+inline bool parse_horizontal_fov(wchar_t const* text,double& out){
+    if(!text)return false;
+    unsigned length=0;while(length<63&&text[length])++length;if(!length||length==63)return false;
+    auto p=text;if(*p==L'+'||*p==L'-')++p;
+    unsigned digits=0;while(*p>=L'0'&&*p<=L'9'){++digits;++p;}
+    if(*p==L'.'){++p;while(*p>=L'0'&&*p<=L'9'){++digits;++p;}}
+    if(!digits)return false;
+    if(*p==L'e'||*p==L'E'){
+        ++p;if(*p==L'+'||*p==L'-')++p;unsigned exponent=0;
+        while(*p>=L'0'&&*p<=L'9'){++exponent;++p;}if(!exponent)return false;
+    }
+    if(*p)return false;
+    errno=0;wchar_t* end{};const double value=std::wcstod(text,&end);
+    if(errno||*end||!std::isfinite(value)||value<45||value>100)return false;
+    out=value;return true;
+}
 // Deliberate head-locked panel, independent of game camera/ADS projection.
 // Admission of pure ordinary HUD/weapon/subtitle draws belongs to the caller.
 // This geometry neither places a reticle target nor proves sample freshness.

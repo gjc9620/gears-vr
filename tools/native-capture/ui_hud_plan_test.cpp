@@ -12,7 +12,7 @@ static void near(double a,double b,double tolerance=.0002){assert(std::abs(a-b)<
 // Independent frustum interpolation oracle: panel point in eye coordinates,
 // then directly interpolate between frustum tangent boundaries.
 static void oracle(StereoSample const& s,unsigned eye,double x,double y,
-    gears_viewport::OverlayPlan const& p, double depth=2,double hfov=55) {
+    gears_viewport::OverlayPlan const& p, double depth=2,double hfov=65) {
     const double half=depth*std::tan(hfov*pi/360);
     const double px=(2*x/1920-1)*half,py=(1-2*y/1080)*half*1080/1920;
     const auto inv=transpose(rotation_matrix(s.head.orientation));
@@ -30,6 +30,25 @@ static void reject(gears_viewport::DrawState const& d,StereoSample const&s,gears
     const auto before=out;assert(!gears_ui_hud::plan(d,1920,1080,s,out,args));assert(same(out,before));
 }
 int main(){auto s=sample();auto saved=state();gears_viewport::OverlayPlan p{};
+    assert(gears_ui_hud::Parameters{}.horizontal_fov_degrees==65);
+    double parsed=65;
+    const gears_ui_hud::Parameters configured{58.5,2,0};
+    const auto batch=gears_ui_hud::for_source(configured,16./9);
+    const auto material=gears_ui_hud::for_source(configured,16./9);
+    assert(batch.horizontal_fov_degrees==58.5&&material.horizontal_fov_degrees==batch.horizontal_fov_degrees);
+    assert(batch.depth_metres==2&&material.depth_metres==2&&configured.source_aspect==0);
+    gears_viewport::OverlayPlan batch_plan{},material_plan{};
+    assert(gears_ui_hud::plan(saved,1920,1080,s,batch_plan,batch));
+    assert(gears_ui_hud::plan(saved,1920,1080,s,material_plan,material));assert(same(batch_plan,material_plan));
+    for(unsigned eye=0;eye<2;++eye)for(double x:{0.,960.,1920.})for(double y:{0.,540.,1080.}){
+        oracle(s,eye,x,y,batch_plan,2,58.5);oracle(s,eye,x,y,material_plan,2,58.5);
+    }
+    for(auto text:{L"45",L"100",L"65.25",L"6.5e1"})assert(gears_ui_hud::parse_horizontal_fov(text,parsed));
+    for(auto text:{L"",L"true",L"nan",L"inf",L"44.99",L"100.01",L"65junk",L" 65",L"65 ",L"0x41",L"6e",L"1e9999"}){
+        parsed=65;assert(!gears_ui_hud::parse_horizontal_fov(text,parsed)&&parsed==65);
+    }
+    wchar_t too_long[64];for(auto& ch:too_long)ch=L'0';too_long[63]=0;
+    assert(!gears_ui_hud::parse_horizontal_fov(nullptr,parsed));assert(!gears_ui_hud::parse_horizontal_fov(too_long,parsed));
     assert(gears_ui_hud::plan(saved,1920,1080,s,p));
     for(unsigned i=0;i<2;++i)for(double x:{0.,384.,960.,1920.})for(double y:{0.,216.,540.,1080.})oracle(s,i,x,y,p);
     // Center is no longer each-eye pixel center with this asymmetric FOV.
@@ -40,7 +59,7 @@ int main(){auto s=sample();auto saved=state();gears_viewport::OverlayPlan p{};
     // edge inward. Check the asymmetric eye frusta, not pixel-center symmetry.
     gears_viewport::OverlayPlan previous{};
     assert(gears_ui_hud::plan(saved,1920,1080,s,previous,{70,2}));
-    const double shrink=std::tan(55*pi/360)/std::tan(70*pi/360);
+    const double shrink=std::tan(65*pi/360)/std::tan(70*pi/360);
     for(unsigned eye=0;eye<2;++eye){auto v=p.viewports[eye];auto old=previous.viewports[eye];
         near(v.x+v.width/2,old.x+old.width/2);near(v.y+v.height/2,old.y+old.height/2);
         near(v.width,old.width*shrink);near(v.height,old.height*shrink);

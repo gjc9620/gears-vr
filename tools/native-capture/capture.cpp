@@ -2841,8 +2841,8 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
         if(admitted){
             reticle=prepare_ui_reticle_overlay(route.ticket,saved,target.width,target.height,plan);
             if(!reticle){
-                gears_vr::StereoSample sample{};gears_ui_hud::Parameters parameters{};
-                parameters.source_aspect=ui_source_aspect();
+                gears_vr::StereoSample sample{};
+                const auto parameters=gears_ui_hud::for_source(ui_hud_parameters,ui_source_aspect());
                 // Menu glyphs lack semantic sidecar labels but are still exact
                 // Canvas members. Use the same ticket's head-locked panel.
                 sample_found=ui_ticket_sample(route.ticket,sample);
@@ -3243,6 +3243,16 @@ DWORD WINAPI worker(void*) {
     if(ui_observer_enabled&&(!ui_reserved||!continuous_session||!anchor_observer_enabled||!load_ui_config(ini))){
         fprintf(status,"rejected: UI observer requires reserved entries, continuous stereo and fresh UI identities\n");fclose(status);return 2;}
     ui_hud_plane_enabled=GetPrivateProfileIntW(L"Capture",L"ui_hud_plane",0,ini)==1;
+    ui_hud_parameters=gears_ui_hud::Parameters{};
+    wchar_t hud_fov_text[64]{};
+    const auto hud_fov_length=GetPrivateProfileStringW(L"Capture",L"ui_hud_horizontal_fov_degrees",L"__absent__",hud_fov_text,64,ini);
+    // A literal sentinel must still be rejected as an explicit invalid value.
+    wchar_t hud_fov_presence[64]{};
+    GetPrivateProfileStringW(L"Capture",L"ui_hud_horizontal_fov_degrees",L"__missing__",hud_fov_presence,64,ini);
+    const bool hud_fov_explicit=std::wcscmp(hud_fov_text,L"__absent__")!=0||std::wcscmp(hud_fov_presence,L"__missing__")!=0;
+    if(hud_fov_explicit&&(!ui_hud_plane_enabled||hud_fov_length>=63||
+       !gears_ui_hud::parse_horizontal_fov(hud_fov_text,ui_hud_parameters.horizontal_fov_degrees))){
+        fprintf(status,"rejected: HUD horizontal FOV requires enabled HUD plane and a finite decimal in 45..100\n");fclose(status);return 2;}
     if(ui_hud_plane_enabled&&(!ui_observer_enabled||!continuous_session||!stereo_gpu_publish)){
         fprintf(status,"rejected: HUD plane requires continuous stereo publication and authenticated UI ranges\n");fclose(status);return 2;}
     origin_trial_enabled=GetPrivateProfileIntW(L"Capture",L"origin_trial",0,ini)==1;

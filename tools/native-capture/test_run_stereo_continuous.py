@@ -35,6 +35,23 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_hud_size_cli_validation_and_native_forwarding(self):
+        base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
+        hud=['--ui-hud-plane','--ui-observer','--anchor-observer']
+        with mock.patch.object(runner,'run_session',return_value=0) as run:
+            for extra in (['--hud-horizontal-fov-degrees','65'],
+                          *[hud+['--hud-horizontal-fov-degrees',v] for v in ('nan','inf','44.99','100.01','true')]):
+                run.reset_mock()
+                with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):runner.main(base+extra)
+                run.assert_not_called()
+            runner.main(base+hud+['--hud-horizontal-fov-degrees','62.5'])
+            args=run.call_args.args[0]
+            command=runner.native_command(args,identity(100))
+            self.assertEqual(command[command.index('--hud-horizontal-fov-degrees')+1],'62.5')
+            self.assertNotIn('--hud-horizontal-fov-degrees',runner.xr_command(args,pathlib.Path('x.csv'),identity(100)))
+            args.hud_horizontal_fov_degrees=True
+            with self.assertRaises(ValueError):runner.native_command(args,identity(100))
+
     def test_quiet_environment_is_child_only_and_keeps_runtime_selection(self):
         parent={'XR_RUNTIME_JSON':'chosen-runtime.json','PATH':'test-path'}
         child=runner.xr_environment(parent)
