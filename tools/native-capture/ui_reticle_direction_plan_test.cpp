@@ -79,5 +79,24 @@ int main(){auto g=geometry();auto s=state();gears_viewport::OverlayPlan p{};
     bad=g;bad.source_projection[3]=1;reject(bad);bad=g;bad.eyes.view[0][3]=1;reject(bad);
     auto invalid=s;invalid.viewport_count=2;reject(g,invalid);invalid=s;invalid.scissor.width=0;reject(g,invalid);
     invalid=s;invalid.scissor={0,0,10,10};reject(asym,invalid); // Shifted clip empty.
+    auto owned=s;owned.viewport={0,0,4096,2048};owned.scissor=owned.viewport;
+    const double source_aspect=3840./2160;
+    assert(gears_ui_reticle::plan(owned,4096,2048,g,p,source_aspect));
+    for(unsigned eye=0;eye<2;++eye){auto v=p.viewports[eye];auto clip=p.scissors[eye];
+        near(v.x,eye*2048.);near(v.y,448);near(v.width,2048);near(v.height,1152);
+        near(v.y+v.height/2,1024);near(v.width*20/3840,v.height*20/2160);
+        near(clip.y,448);near(clip.height,1152);}
+    auto clip_owned=owned;clip_owned.scissor={100,201,1000,601};
+    assert(gears_ui_reticle::plan(clip_owned,4096,2048,asym,p,source_aspect));
+    for(unsigned eye=0;eye<2;++eye){auto v=p.viewports[eye];auto clip=p.scissors[eye];
+        const double top=(std::max)(0.,double(v.y)+double(v.height)*201/2048);
+        const double bottom=(std::min)(2048.,double(v.y)+double(v.height)*802/2048);
+        near(clip.y,std::floor(top),0);near(clip.y+clip.height,std::ceil(bottom),0);
+        assert(clip.x>=eye*2048&&clip.x+clip.width<=(eye+1)*2048&&clip.y>=0&&clip.y+clip.height<=2048);}
+    // A tall source panel clips to the target without changing its affine map.
+    assert(gears_ui_reticle::plan(owned,4096,2048,g,p,.5));near(p.viewports[0].y,-1024);near(p.viewports[0].height,4096);
+    near(p.scissors[0].y,0);near(p.scissors[0].height,2048);
+    for(double invalid_aspect:{-1.,std::numeric_limits<double>::infinity(),std::numeric_limits<double>::quiet_NaN(),1e-300}){
+        const auto old=p;assert(!gears_ui_reticle::plan(owned,4096,2048,g,p,invalid_aspect));assert(same(p,old));}
     std::puts("ui_reticle_direction_plan tests passed");
 }

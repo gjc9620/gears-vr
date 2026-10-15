@@ -4,13 +4,15 @@
 #include <mutex>
 
 namespace gears_owned_ui {
-// Observation only: CPU lifecycle/order evidence, never GPU or safety authority.
+// CPU lifecycle/order gate only. GPU submission and resource identity must be
+// certified independently before publication; readiness alone is insufficient.
 struct Cycle {
  uint64_t ticket{};uintptr_t canvas{},target{},thread{},caller{};
  int64_t bind_qpc{},first_production_qpc{},last_completion_qpc{},closure_qpc{},publication_qpc{};
- uint64_t flushes{},produced{},transferred{},completed{},failed{};
- bool closed{},published{},published_before_completion{},published_before_closure{},ambiguous_payload{};
+ uint64_t flushes{},expected_batches{},produced{},transferred{},completed{},failed{};
+ bool closed{},published{},published_before_completion{},published_before_closure{},ambiguous_payload{},invalid{};
 };
+struct Execution {uint64_t id{},ticket{};uintptr_t canvas{},target{},payload{};};
 struct Counters {
  uint64_t bound{},flushes{},produced{},transferred{},executed{},completed{},failed{},closed{},published{},retired{};
  uint64_t consumed_before_completion{},consumed_before_closure{},retired_with_payload{},retired_empty{};
@@ -71,6 +73,33 @@ public:
   if(!c||c->closed)return reject(counts_.stale_rejected);
   c->closed=true;c->closure_qpc=qpc;++counts_.closed;order_flags(*c);retire(*c);return true;
  }
+ // CPU completion gate only. Inventory includes every native item dispatch;
+ // unsupported or missing receipts therefore cannot make this gate complete.
+ bool expect(uint64_t ticket,uint64_t batch_count){
+  std::lock_guard<std::mutex> lock(mutex_);auto c=cycle(ticket);
+  if(!c)return reject(counts_.stale_rejected);
+  if(c->closed||c->published||!c->flushes||c->invalid){c->invalid=true;return reject(counts_.stale_rejected);}
+  if(batch_count>UINT64_MAX-c->expected_batches){c->invalid=true;return reject(counts_.capacity_rejected);}
+  c->expected_batches+=batch_count;return true;
+ }
+ bool invalidate(uint64_t ticket){
+  std::lock_guard<std::mutex> lock(mutex_);auto c=cycle(ticket);
+  if(!c)return reject(counts_.stale_rejected);c->invalid=true;return true;
+ }
+ bool ready(uint64_t ticket)const{
+  std::lock_guard<std::mutex> lock(mutex_);
+  for(auto const& c:cycles_)if(ticket&&c.ticket==ticket)return !c.published&&c.closed&&!c.invalid&&!c.ambiguous_payload&&!c.failed&&
+   c.produced==c.expected_batches&&c.transferred==c.produced&&c.completed==c.produced;
+  return false;
+ }
+ bool execution(uint64_t id,Execution& out)const{
+  std::lock_guard<std::mutex> lock(mutex_);out={};
+  for(auto const& r:receipts_)if(id&&r.id==id&&r.executing&&!r.completed&&!r.ambiguous)
+   for(auto const& c:cycles_)if(c.ticket==r.ticket&&!c.invalid&&!c.ambiguous_payload){
+    out={r.id,r.ticket,c.canvas,c.target,r.payload};return true;
+   }
+  return false;
+ }
  uint64_t produce(uint64_t ticket,uintptr_t payload,int64_t qpc){
   std::lock_guard<std::mutex> lock(mutex_);auto c=cycle(ticket);
   if(!c||c->closed||!c->flushes){reject(counts_.stale_rejected);return 0;}
@@ -88,8 +117,9 @@ public:
  }
  bool transferred(uint64_t id,bool cleared){
   std::lock_guard<std::mutex> lock(mutex_);auto r=receipt(id);
-  if(!r||r->transferred)return reject(counts_.stale_rejected);
-  if(!cleared)return reject(counts_.transfer_rejected);
+  if(!r)return reject(counts_.stale_rejected);
+  if(r->transferred){if(auto c=cycle(r->ticket))c->invalid=true;return reject(counts_.stale_rejected);}
+  if(!cleared){if(auto c=cycle(r->ticket))c->invalid=true;return reject(counts_.transfer_rejected);}
   auto c=cycle(r->ticket);if(!c)return reject(counts_.stale_rejected);
   r->transferred=true;++c->transferred;++counts_.transferred;retire(*c);return true;
  }
@@ -99,13 +129,17 @@ public:
    if(match){reject(counts_.payload_rejected);return 0;}match=&r;
   }
   if(match&&match->ambiguous){reject(counts_.payload_rejected);return 0;}
-  if(!match||match->executing||match->completed){reject(counts_.stale_rejected);return 0;}
+  if(!match||match->executing||match->completed){
+   if(match)if(auto c=cycle(match->ticket))c->invalid=true;
+   reject(counts_.stale_rejected);return 0;
+  }
   auto c=cycle(match->ticket);if(!c||!target||c->target!=target){reject(counts_.target_rejected);return 0;}
   match->executing=true;++counts_.executed;return match->id;
  }
  bool complete(uint64_t id,bool ok,int64_t qpc){
   std::lock_guard<std::mutex> lock(mutex_);auto r=receipt(id);
-  if(!r||!r->executing||r->completed)return reject(counts_.stale_rejected);
+  if(!r)return reject(counts_.stale_rejected);
+  if(!r->executing||r->completed){if(auto c=cycle(r->ticket))c->invalid=true;return reject(counts_.stale_rejected);}
   auto c=cycle(r->ticket);if(!c)return reject(counts_.stale_rejected);
   r->completed=true;++c->completed;++counts_.completed;
   if(c->completed==1||qpc>c->last_completion_qpc)c->last_completion_qpc=qpc;

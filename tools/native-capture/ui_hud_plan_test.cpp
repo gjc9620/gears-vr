@@ -85,5 +85,20 @@ int main(){auto s=sample();auto saved=state();gears_viewport::OverlayPlan p{};
     assert(gears_viewport::replay_overlay(saved,p,[&](auto r,float a,float b){last_view=r;last_min=a;last_max=b;},
         [&](auto r){last_clip=r;},[&](unsigned){++draws;})==3);
     assert(draws==2&&last_view==saved.viewport&&last_clip==saved.scissor&&last_min==.2f&&last_max==.8f);
+    // 3840x2160 Canvas normalized into a 4096x2048 owned output.
+    auto owned=saved;owned.viewport={0,0,4096,2048};owned.scissor=owned.viewport;
+    const double source_aspect=3840./2160;gears_viewport::OverlayPlan aspect{};
+    assert(gears_ui_hud::plan(owned,4096,2048,symmetric,aspect,{70,2,source_aspect}));
+    for(unsigned eye=0;eye<2;++eye){auto v=aspect.viewports[eye];
+        near(v.width/v.height,source_aspect);near(v.y+v.height/2,1024);
+        // Equal 20-pixel Canvas extents remain square after normalization.
+        near(v.width*20/3840,v.height*20/2160);
+        auto c=aspect.scissors[eye];assert(c.x>=eye*2048&&c.x+c.width<=(eye+1)*2048&&c.y>=0&&c.y+c.height<=2048);}
+    owned.scissor={101,203,701,401};assert(gears_ui_hud::plan(owned,4096,2048,symmetric,aspect,{70,2,source_aspect}));
+    for(unsigned eye=0;eye<2;++eye){auto v=aspect.viewports[eye];auto c=aspect.scissors[eye];
+        near(c.y,std::floor(double(v.y)+double(v.height)*203/2048),0);
+        near(c.y+c.height,std::ceil(double(v.y)+double(v.height)*604/2048),0);}
+    for(double invalid_aspect:{-1.,std::numeric_limits<double>::infinity(),std::numeric_limits<double>::quiet_NaN()}){
+        const auto old=aspect;assert(!gears_ui_hud::plan(owned,4096,2048,symmetric,aspect,{70,2,invalid_aspect}));assert(same(aspect,old));}
     std::cout<<"UiHudPlanTest passed\n";
 }

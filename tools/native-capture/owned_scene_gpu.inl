@@ -175,7 +175,8 @@ void retain_image(){
  if(!owned_xr_probe||!stereo_gpu_publish||!watching())return;
  auto const& frame=consuming_frozen_frame;
  if(!birth_ok||!frame.enabled||!frame.id||frame.id!=consuming_frame_ticket){fault(17);return;}
- auto result=image_tickets.retain(frame.id,frame.sample,simulator_operator);
+ gears_vr::StereoTicketGeometry geometry{frame.source_view,frame.source_projection,frame.expected};
+ auto result=image_tickets.retain(frame.id,frame.sample,simulator_operator,&geometry);
  if(!gears_vr::StereoTicketStore::accepted(result)){fault(17);return;}
  if(result==gears_vr::TicketRetainResult::retained)++retained_images;else ++duplicate_images;
 }
@@ -289,6 +290,11 @@ void commit(const Submission& receipt){
 void copy(bool ready,uint64_t ticket){
  if(!watching()||!birth_ok||!ready||(!continuous_probe&&sealed)||
     (continuous_probe&&consumed_count&&ticket==last_consumed_ticket))return;
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+ // CPU Execute can finish before its D3D list is submitted. Wait without
+ // consuming certification; actual commit and consume still verify GPU order.
+ if(tracker.has_unsubmitted_owned_events(resource))return;
+#endif
  sealed=true;
  if(auto t=timing(ticket))t->ready=gears_vr::monotonic_ns();
  proof=continuous_probe?tracker.consume_owned_output(resource,generation,canonical_identity(queue),ticket):

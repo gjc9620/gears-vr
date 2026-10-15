@@ -51,7 +51,7 @@ void native_owned_scene_copy(){using namespace gears_owned_scene_live;
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
  const auto consumed_before=owned_scene_gpu::consumed_count;
 #endif
- owned_scene_gpu::copy(healthy()&&trial.returned&&trial.destroyed&&trial.submitted_mask==3&&!trial.unknown_draws,trial.ticket);
+ owned_scene_gpu::copy(healthy()&&trial.returned&&trial.destroyed&&trial.submitted_mask==3&&!trial.unknown_draws&&owned_ui_ready(trial.ticket),trial.ticket);
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
  if(owned_scene_gpu::consumed_count>consumed_before)owned_ui_published(trial.ticket);
 #endif

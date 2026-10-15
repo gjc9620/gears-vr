@@ -813,5 +813,35 @@ int main() {
         CHECK(!t->execute(queue,&closed,1));CHECK(!t->current(1).identity);
         t->retire_present_interval();CHECK(!t->configure_owned_output({buffer,1920,1080},queue,9,4,true));
     }
+    {
+        auto t=std::make_unique<Tracker>();CHECK(!t->has_unsubmitted_owned_events(buffer));configure(*t);
+        auto world=t->reset_success(1);pair(*t,world);CHECK(t->has_unsubmitted_owned_events(buffer));
+        CHECK(submit_owned(*t,&world,1));CHECK(!t->has_unsubmitted_owned_events(buffer));
+        auto unrelated=t->reset_success(3);CHECK(t->draw_unknown(unrelated,buffer+1));
+        CHECK(!t->has_unsubmitted_owned_events(buffer));CHECK(!t->has_unsubmitted_owned_events(buffer+1));
+        CHECK(!t->has_unsubmitted_owned_events(0));
+        auto ui=t->reset_success(2);auto p=t->overlay_pair(ui,{buffer,1920,1080});CHECK(p.linked);
+        CHECK(t->draw_overlay_pair(ui,1,{buffer,1920,1080},p.eyes,3));
+        const auto before=t->snapshot();const auto owned_before=t->owned_status();
+        for(unsigned i=0;i<3;++i)CHECK(t->has_unsubmitted_owned_events(buffer));
+        CHECK(!t->has_unsubmitted_owned_events(buffer+1));
+        CHECK(t->snapshot().owned_consumed_frames==before.owned_consumed_frames);
+        CHECK(t->snapshot().execute_calls==before.execute_calls&&t->snapshot().overlay_recorded==before.overlay_recorded);
+        CHECK(t->owned_status().certified==owned_before.certified&&t->owned_status().state==owned_before.state);
+        ExecutionToken token{};CHECK(t->prepare_execute(queue,&ui,1,token));
+        CHECK(t->has_unsubmitted_owned_events(buffer));CHECK(!t->has_unsubmitted_owned_events(buffer+1));
+        CHECK(t->commit_execute(token));CHECK(!t->has_unsubmitted_owned_events(buffer));
+        // Pending submission itself must block consumption even when its only
+        // recorded events name another resource.
+        CHECK(t->prepare_execute(queue,&unrelated,1,token));CHECK(t->has_unsubmitted_owned_events(buffer));
+        CHECK(t->commit_execute(token));CHECK(!t->has_unsubmitted_owned_events(buffer));
+        auto result=t->consume_owned_output(buffer,9,queue,1);CHECK(result.linked&&result.state_certified);
+        CHECK(!t->has_unsubmitted_owned_events(buffer));
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);auto ref=t->reset_success(1);
+        CHECK(t->record_transition(ref,buffer,9,4,4));CHECK(t->has_unsubmitted_owned_events(buffer));
+        t->reset_success(1);CHECK(!t->has_unsubmitted_owned_events(buffer)); // Real Reset discards recording.
+    }
     std::printf("frame_link: %u checks passed\n", checks);
 }

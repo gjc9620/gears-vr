@@ -234,3 +234,22 @@ Ui1首次安装失败：新增两处Hook时漏改resize编译分支的容量，�
 这证明了本场景暂停菜单的CPU批次归属，不是独立输出UI像素或位置验收。Ui2只保留首32个cycle，恰好全为空，未保存后续非空批次的逐cycle时序；不能从汇总推断它们都先于/晚于发布。源码随后增加全程时序计数和独立首32个非空cycle保存，Ui3仅编译/CPU测试，尚未实机运行。ledger测试1,569项通过；FrameLink、payload、index、owned scene与ABI相关回归通过。
 
 运行审计：`analysis/ui-position-runtime/owned-ui2-52888.audit.json`、`owned-ui2-menu-38236.audit.json`。静态、运行证据及脚本均留在ignored的analysis。默认玩家清单不变，native资源仍保留到进程退出，launcher的incomplete没有消除。下一项实现是把关联批次导向owned目标、接入owned tracker的双眼overlay与同ticket姿态/几何，并把Canvas闭合、全部关联Execute完成及真实GPU提交作为复制前置条件；Material及其他未认证路由不能自动纳入。之后再分别核对准星、换枪提示、菜单、字幕像素。
+
+## 2026-10-15：暂停菜单已绘入独立双眼输出
+
+增加默认关闭的 `GEARS_OWNED_UI_BATCH`，依赖 owned UI 关联和 owned XR。先查询知识库的 Execute `0x19e64c`，复用已保存汇编，无新增 IDA 会话。安装前校验当前进程两个完整函数块 `19e64c..19e791`、`8bee1e..8beec0`，合并 SHA256 必须为 `1b804155ae4801e5c554227420cf988fb994138d305d6d11c349295410f8be25`。这把目标替换限定在已检查的运行代码，不能沿用到其他游戏版本。
+
+执行关联批次时在栈上复制48字节命令，仅替换 `+0x20` 目标；原 FCanvas、原排队命令和 payload 不改写。原 Execute 恰好调用一次并释放原 payload。绘制时用 owned tracker 的同 ticket、命令表代次和资源关联，执行左右眼 overlay；UI 不计作第三个世界 draw。owned 图像票据同时保存原镜头矩阵及双眼几何，准星和普通 UI 不再查询旧 backbuffer 票据仓库。
+
+发布必须同时满足：本 Canvas 已析构闭合、完整 Flush 清单的所有支持批次已转交且 Execute 完成、世界双眼已提交，以及相关 D3D 录制已真实提交。GPU 等待查询不消费或破坏 tracker 证明，随后仍执行原有资源/队列/状态检查。等待时不再创建未关联的 backbuffer 双目副本。当前仅接通已认证 batch；Material/未知项触发实验路径停止，不视为修复完成。
+
+HUD 增加独立源宽高比，方形单眼输出仍保持原 Canvas 的16:9形状；准星规划也支持源像素比例并保留原屏幕中心方向算法。无语义标签的菜单 batch 使用同票据的70度、2米头锁定面板。有限距离命中、所有武器和 canted-eye 支持没有因此获得验证。
+
+- Route1，PID25320，DLL SHA256 `67e4ccdbae25417f6bb4c5651ec61c6e9e16d81353e6b8e29aba50a2c6f615d4`：40.918秒，1,307个owned场景、1,306次发布、1,303次XR复制、3,675次projection；10,963个批次完成双眼重绘。打开暂停菜单后返回关卡；667个非空cycle，提前发布和路由错误均0。该构建的 `observed_only=1` 是旧日志文字错误，实际 `owned_ui_batch enabled=1`；后续已修正。
+- Route2，PID47320，DLL SHA256 `78973d4a5addeb0386d34a55afc1fed8eefae1bec097b7f03860e25ef0e1184f`：加入等待期间不创建额外双目副本，保持暂停菜单至停止。70.978秒，3,116个owned场景、3,114次发布、3,111次XR复制、6,382次projection，最大提交间隔55.694ms；48,279个批次完成双眼重绘，2,414个非空cycle，提前发布、错目标、路由故障和未知世界draw均0。
+
+两轮都通过61处入口独立恢复核验，然后正常关闭游戏，无强杀。Route2的第1,800个owned场景（ticket1801）保存GPU fence完成后的4096×2048原图。直接查看可见左右眼都有暂停菜单选项、任务标题及底部提示，字形没有明显拉伸。图像与场景状态相互印证；它只证明该次暂停菜单可见，不代表全UI或真头显舒适度验收。
+
+证据：`analysis/ui-position-runtime/owned-ui-route1-menu-25320.audit.json`、`owned-ui-route2-menu-47320.audit.json`；原图 `tools/native-capture/build-owned-ui-route2/owned-scene-47320-late.ppm`，审阅缩图在 `analysis/ui-position-runtime/owned-ui-route2-47320-menu-review.png`。所有衍生资料和构建均被忽略，不加入发布包。
+
+FrameLink 17,455项、ledger 1,665项、owned scene 179项及HUD/准星比例、viewport恢复、Capture ABI/family测试通过。Route2运行后的源码另补齐Execute非48返回时立即停止，原先已阻止发布但只等待超时；Route3用于编译该差异，不能把Route2运行记录当作Route3真机验收。默认玩家清单不变，资源仍保留到进程退出，部署退出流程尚未完成。下一步是使用相同owned路径分别验证开镜准星、换枪和字幕，随后处理其他菜单/Material路径。

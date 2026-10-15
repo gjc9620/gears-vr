@@ -41,5 +41,34 @@ int main(){
   CHECK(s.counts.retired==41&&s.counts.retired_empty==40&&s.counts.retired_with_payload==1);
   CHECK(s.counts.consumed_before_completion==1&&s.counts.consumed_before_closure==1);
   CHECK(!l.close(41,10));CHECK(l.snapshot().counts.consumed_before_completion==1);}
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,0));CHECK(!l.ready(1));
+  CHECK(l.close(1,3));CHECK(l.ready(1));CHECK(l.published(1,4));CHECK(!l.ready(1));}
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));auto id=l.produce(1,100,3);
+  CHECK(l.transferred(id,true));CHECK(l.close(1,4));CHECK(!l.ready(1));
+  gears_owned_ui::Execution e;CHECK(!l.execution(id,e)&&!e.id);CHECK(!l.execution(id+1,e));
+  CHECK(l.execute(100,20,5)==id);CHECK(l.execution(id,e));
+  CHECK(e.id==id&&e.ticket==1&&e.canvas==10&&e.target==20&&e.payload==100);
+  CHECK(!l.ready(1));CHECK(l.complete(id,true,6));CHECK(!l.execution(id,e)&&!e.id);CHECK(l.ready(1));
+  CHECK(l.invalidate(1));CHECK(!l.ready(1));CHECK(l.published(1,7));CHECK(!l.execution(id,e));}
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));auto id=l.produce(1,100,3);
+  CHECK(l.execute(100,20,4)==id);CHECK(l.complete(id,true,5));CHECK(l.close(1,6));CHECK(!l.ready(1));
+  CHECK(l.transferred(id,true));CHECK(l.ready(1));CHECK(!l.transferred(id,true));CHECK(!l.ready(1));}
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));CHECK(l.expect(1,1));
+  auto id=l.produce(1,100,3);CHECK(l.transferred(id,true));CHECK(l.execute(100,20,4)==id);CHECK(l.complete(id,true,5));
+  CHECK(l.close(1,6));CHECK(!l.ready(1));CHECK(l.snapshot().active[0].expected_batches==2);}
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,UINT64_MAX));CHECK(!l.expect(1,1));
+  CHECK(l.snapshot().active[0].invalid);CHECK(l.close(1,3));CHECK(!l.ready(1));}
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;CHECK(l.bind(1,10,20,30,1));CHECK(!l.expect(1,0));
+  CHECK(l.snapshot().active[0].invalid);CHECK(!l.ready(1));CHECK(!l.expect(99,0));CHECK(!l.invalidate(99));}
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,0));CHECK(l.close(1,3));CHECK(l.ready(1));
+  CHECK(!l.expect(1,0));CHECK(!l.ready(1));}
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));auto id=l.produce(1,100,3);
+  CHECK(!l.transferred(id,false));CHECK(l.transferred(id,true));CHECK(l.execute(100,20,4)==id);
+  gears_owned_ui::Execution e;CHECK(!l.execution(id,e));CHECK(l.complete(id,true,5));CHECK(l.close(1,6));CHECK(!l.ready(1));}
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));auto id=l.produce(1,100,3);
+  CHECK(l.transferred(id,true));CHECK(l.execute(100,20,4)==id);CHECK(l.complete(id,false,5));CHECK(l.close(1,6));CHECK(!l.ready(1));}
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));auto id=l.produce(1,100,3);
+  CHECK(l.execute(100,20,4)==id);CHECK(l.invalidate(1));gears_owned_ui::Execution e;CHECK(!l.execution(id,e));
+  CHECK(l.complete(id,true,5));CHECK(l.transferred(id,true));CHECK(l.close(1,6));CHECK(!l.ready(1));}
  std::printf("owned UI ledger: %u checks passed\n",checks);
 }

@@ -54,11 +54,12 @@ inline bool centered(Extent const& extent,unsigned width,unsigned height){
 // viewport and the SAME actual ticket/target. This only projects the original
 // game screen-center infinite-distance direction; no weapon aim/hit is proved.
 // Translation of any camera has no effect. Shape/size and original depth remain
-// unchanged; only viewport origins and corresponding clipped scissors move.
+// unchanged unless source_aspect requests source-pixel shape preservation on an
+// output with another aspect. Scissors follow the same affine map.
 inline bool plan(gears_viewport::DrawState const& saved,unsigned full_width,unsigned full_height,
-                 gears_vr::StereoTicketGeometry const& geometry,gears_viewport::OverlayPlan& out){
+                 gears_vr::StereoTicketGeometry const& geometry,gears_viewport::OverlayPlan& out,double source_aspect=0){
     auto result=gears_viewport::overlay_plan(saved,full_width,full_height);
-    if(!result.valid||!gears_vr::stereo_rigid(geometry.source_view)||
+    if(!result.valid||!std::isfinite(source_aspect)||source_aspect<0||!gears_vr::stereo_rigid(geometry.source_view)||
        !gears_vr::stereo_projection_supported(geometry.source_projection))return false;
     double inverse[3][3]{};
     if(!gears_vr::ui_plane_detail::inverse_rotation(geometry.source_view,inverse))return false;
@@ -86,6 +87,12 @@ inline bool plan(gears_viewport::DrawState const& saved,unsigned full_width,unsi
         auto& viewport=result.viewports[eye];auto& scissor=result.scissors[eye];
         const double origin=eye*eye_width;
         const double dx=eye_width*nx/2,dy=-double(full_height)*ny/2;
+        if(source_aspect){
+            const double height=eye_width/source_aspect;
+            if(!std::isfinite(height)||height<=0||height>32767)return false;
+            viewport.y=float((double(full_height)-height)/2);viewport.height=float(height);
+            if(!std::isfinite(viewport.height)||viewport.height<=0)return false;
+        }
         viewport.x=float(double(viewport.x)+dx);viewport.y=float(double(viewport.y)+dy);
         for(double value:{double(viewport.x),double(viewport.y),double(viewport.x)+viewport.width,double(viewport.y)+viewport.height})
             if(!std::isfinite(value)||value<-32768||value>32767)return false;
@@ -93,8 +100,9 @@ inline bool plan(gears_viewport::DrawState const& saved,unsigned full_width,unsi
         const double tx=double(viewport.x)-origin,ty=viewport.y;
         const double l=(std::max)(origin,double(scissor.x)+tx);
         const double r=(std::min)(origin+eye_width,double(scissor.x)+scissor.width+tx);
-        const double t=(std::max)(0.,double(scissor.y)+ty);
-        const double b=(std::min)(double(full_height),double(scissor.y)+scissor.height+ty);
+        const double scale=double(viewport.height)/full_height;
+        const double t=(std::max)(0.,double(scissor.y)*scale+ty);
+        const double b=(std::min)(double(full_height),(double(scissor.y)+scissor.height)*scale+ty);
         if(!(r>l&&b>t))return false;
         scissor={float(std::floor(l)),float(std::floor(t)),float(std::ceil(r)-std::floor(l)),float(std::ceil(b)-std::floor(t))};
     }

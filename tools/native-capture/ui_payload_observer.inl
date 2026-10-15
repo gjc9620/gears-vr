@@ -104,6 +104,9 @@ uint32_t __fastcall hook_ui_execute(void* command){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     Scope active_scope;UiPayloadRestore restore;ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
     const auto owned_receipt=owned_ui_live::execute_begin(command);
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    owned_ui_live::CommandScope owned_command(owned_receipt,command,caller);
+#endif
     UiPayloadContext context{};
     std::unique_ptr<UiIndexContext> index_storage;
     // Empty contexts deliberately shadow a parent, including nested unsupported
@@ -144,7 +147,11 @@ uint32_t __fastcall hook_ui_execute(void* command){
         }
     }
     // Original owns/destructs the payload. No command/payload reads after return.
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    const uint32_t result=ui_original_execute(owned_command.argument);
+#else
     const uint32_t result=ui_original_execute(command);
+#endif
     owned_ui_live::execute_end(owned_receipt,result);
     if(ui_observer_enabled&&result!=48)++ui_execute_bad_return;
     // Only our independent value copies remain live. The native command and
@@ -174,6 +181,26 @@ void observe_ui_index_callback(uintptr_t caller,gears_ui_indices::DrawArgs args)
     }else {++ui_index_callback_rejected;if(ui_hud_plane_enabled)ui_hud_sequence_fault=true;}
 }
 
+bool ui_ticket_geometry(uint64_t ticket,gears_vr::StereoTicketGeometry& geometry){
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    if(owned_ui_live::route.ticket)return owned_ui_live::route.ticket==ticket&&
+        owned_scene_gpu::image_tickets.lookup_geometry(ticket,geometry,simulator_operator);
+#endif
+    return stereo_ticket_store.lookup_geometry(ticket,geometry,simulator_operator);
+}
+bool ui_ticket_sample(uint64_t ticket,gears_vr::StereoSample& sample){
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    if(owned_ui_live::route.ticket)return owned_ui_live::route.ticket==ticket&&
+        owned_scene_gpu::image_tickets.lookup(ticket,sample,simulator_operator);
+#endif
+    return stereo_ticket_store.lookup(ticket,sample,simulator_operator);
+}
+double ui_source_aspect(){
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    if(owned_ui_live::route.ticket)return double(owned_ui_live::route.source_width)/owned_ui_live::route.source_height;
+#endif
+    return 0;
+}
 bool prepare_ui_reticle_overlay(uint64_t ticket,gears_viewport::DrawState const& saved,
         unsigned width,unsigned height,gears_viewport::OverlayPlan& out){
     if(!ui_reticle_direction_enabled||!ui_hud_plane_enabled||ui_hud_sequence_fault.load()||
@@ -184,13 +211,17 @@ bool prepare_ui_reticle_overlay(uint64_t ticket,gears_viewport::DrawState const&
     const auto& segment=ui_index_context->snapshot.segments[ordinal];
     if(segment.kind_mask!=1||segment.unknown||!segment.index_count)return false;
     ++ui_reticle_counts.considered;
-    if(!gears_ui_reticle::centered(ui_index_context->reticle_extents[ordinal],width,height)){
+    unsigned source_width=width,source_height=height;
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    if(owned_ui_live::route.ticket){source_width=owned_ui_live::route.source_width;source_height=owned_ui_live::route.source_height;}
+#endif
+    if(!gears_ui_reticle::centered(ui_index_context->reticle_extents[ordinal],source_width,source_height)){
         ++ui_reticle_counts.center_rejected;return false;}
     gears_vr::StereoTicketGeometry geometry{};
-    if(!stereo_ticket_store.lookup_geometry(ticket,geometry,simulator_operator)){
+    if(!ui_ticket_geometry(ticket,geometry)){
         ++ui_reticle_counts.geometry_missing;return false;}
     gears_viewport::OverlayPlan corrected{};
-    if(!gears_ui_reticle::plan(saved,width,height,geometry,corrected)){
+    if(!gears_ui_reticle::plan(saved,width,height,geometry,corrected,ui_source_aspect())){
         ++ui_reticle_counts.projection_rejected;return false;}
     out=corrected;++ui_reticle_counts.planned;return true;
 }
@@ -209,9 +240,10 @@ bool prepare_ui_hud_overlay(uint64_t ticket,gears_viewport::DrawState const& sav
     if(!segment.index_count||segment.unknown||!segment.kind_mask||(segment.kind_mask&~6u)){
         ++ui_hud_counts.unknown_or_mixed;return false;}
     gears_vr::StereoSample sample{};
-    if(!stereo_ticket_store.lookup(ticket,sample,simulator_operator)){++ui_hud_counts.ticket_missing;return false;}
+    if(!ui_ticket_sample(ticket,sample)){++ui_hud_counts.ticket_missing;return false;}
     gears_viewport::OverlayPlan corrected{};
-    if(!gears_ui_hud::plan(saved,width,height,sample,corrected)){++ui_hud_counts.projection_rejected;return false;}
+    gears_ui_hud::Parameters parameters{};parameters.source_aspect=ui_source_aspect();
+    if(!gears_ui_hud::plan(saved,width,height,sample,corrected,parameters)){++ui_hud_counts.projection_rejected;return false;}
     out=corrected;++ui_hud_counts.planned;return true;
 }
 
@@ -272,7 +304,7 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
     ui_payload_next_row[kind]=timestamp+qpc_frequency;
     auto& row=ui_payload_gpu_rows[kind][count++];
     row={context,ticket,list,target,timestamp,GetCurrentThreadId(),indices,instances,start,vertex};
-    row.geometry_matched=stereo_ticket_store.lookup_geometry(ticket,row.geometry,simulator_operator);
+    row.geometry_matched=ui_ticket_geometry(ticket,row.geometry);
     row.hud_plane_applied=hud_applied;if(hud_plan)row.hud_plan=*hud_plan;
     row.reticle_direction_applied=reticle_applied;if(reticle_plan)row.reticle_plan=*reticle_plan;
     if(ui_index_context&&ui_index_context->callback_valid){

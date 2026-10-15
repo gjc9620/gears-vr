@@ -3,7 +3,7 @@
 #include "../vr-common/stereo_frame.h"
 
 namespace gears_ui_hud {
-struct Parameters {double horizontal_fov_degrees=70,depth_metres=2;};
+struct Parameters {double horizontal_fov_degrees=70,depth_metres=2,source_aspect=0;};
 // Deliberate head-locked panel, independent of game camera/ADS projection.
 // Admission of pure ordinary HUD/weapon/subtitle draws belongs to the caller.
 // This geometry neither places a reticle target nor proves sample freshness.
@@ -12,10 +12,11 @@ inline bool plan(gears_viewport::DrawState const& saved,unsigned full_width,unsi
     if(!gears_viewport::overlay_plan(saved,full_width,full_height).valid||
        !gears_vr::stereo_geometry_valid(frozen)||
        !std::isfinite(parameters.horizontal_fov_degrees)||parameters.horizontal_fov_degrees<=0||
-       parameters.horizontal_fov_degrees>=179||!std::isfinite(parameters.depth_metres)||parameters.depth_metres<=0)return false;
+       parameters.horizontal_fov_degrees>=179||!std::isfinite(parameters.depth_metres)||parameters.depth_metres<=0||
+       !std::isfinite(parameters.source_aspect)||parameters.source_aspect<0)return false;
     const double depth=parameters.depth_metres;
     const double tx=std::tan(parameters.horizontal_fov_degrees*3.14159265358979323846/360);
-    const double ty=tx*double(full_height)/full_width;
+    const double ty=parameters.source_aspect?tx/parameters.source_aspect:tx*double(full_height)/full_width;
     if(!std::isfinite(tx)||!std::isfinite(ty)||tx<=0||ty<=0)return false;
     const auto head_q=gears_vr::normalized(frozen.head.orientation);
     const auto head_rotation=gears_vr::rotation_matrix(head_q);

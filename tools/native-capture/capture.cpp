@@ -448,6 +448,7 @@ bool safe_copy(void* out,const void* from,size_t bytes) {
 uintptr_t canonical_identity(IUnknown* object);
 long long now();
 void owned_ui_published(uint64_t ticket);
+bool owned_ui_ready(uint64_t ticket);
 bool verified_stereo_draw(gears_viewport::DrawState const&,FinalEye const&,uintptr_t,unsigned,unsigned,unsigned);
 #include "owned_scene_gpu.inl"
 #include "native_owned_scene.inl"
@@ -1820,6 +1821,14 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     const auto split_begin_qpc=now();
     const auto owned_scene_target=(!self_testing&&continuous_session&&stereo_xr&&!projection_control&&
         !submit_mono_control&&!submit_duplicate_control)?native_owned_scene_candidate():0;
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    if(!self_testing&&!owned_scene_target){
+        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        // One owned frame at a time. While its Canvas is pending, forward the
+        // ordinary native scene instead of building an unbound stereo clone.
+        if(gears_owned_scene_live::trial.ticket)return false;
+    }
+#endif
     const gears_split_sources::FixedOutputBounds owned_bounds{4096,2048};
     auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state,submit_output_bounds,submit_mono_control || submit_duplicate_control,projection_control,projection.phase,stereo_xr?&frame.expected:nullptr,
         owned_scene_target?&owned_bounds:nullptr);
@@ -2077,6 +2086,9 @@ HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT 
     std::optional<gears_outage::Sample> diagnostic;
     if(frame_interval&&outage_diagnostics.load()){diagnostic.emplace();outage_begin(*diagnostic,record.time);}
     if(frame_interval)observe_frame_present(chain,flags,diagnostic?&*diagnostic:nullptr);
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    if(frame_interval&&recording.load()&&!(flags&DXGI_PRESENT_TEST))native_owned_scene_copy();
+#endif
     auto saved_inside_present=frame_inside_original_present;frame_inside_original_present=true;
     if(diagnostic)diagnostic->original_begin_qpc=now();
     HRESULT result=original_present(chain,interval,flags);
@@ -2097,6 +2109,9 @@ HRESULT STDMETHODCALLTYPE hook_present1(IDXGISwapChain1* chain,UINT interval,UIN
     std::optional<gears_outage::Sample> diagnostic;
     if(frame_interval&&outage_diagnostics.load()){diagnostic.emplace();outage_begin(*diagnostic,record.time);}
     if(frame_interval)observe_frame_present(chain,flags,diagnostic?&*diagnostic:nullptr);
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    if(frame_interval&&recording.load()&&!(flags&DXGI_PRESENT_TEST))native_owned_scene_copy();
+#endif
     auto saved_inside_present=frame_inside_original_present;frame_inside_original_present=true;
     if(diagnostic)diagnostic->original_begin_qpc=now();
     HRESULT result=original_present1(chain,interval,flags,params);
@@ -2455,6 +2470,49 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     // The native segment loop issues zero draws too. Consume its ordinal before
     // any viewport/work/ticket filters; synthetic eye draws bypass this hook.
     observe_ui_index_callback(caller,{indices,instances,start,vertex,first_instance});
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    if(recording.load()&&owned_ui_live::route.ticket&&gears_viewport::has_draw_work(indices,instances)){
+        const auto route=owned_ui_live::route;
+        const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
+        const auto saved=frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
+        const auto ref=owned_scene_gpu::list_ref(canonical_identity(list));
+        const gears_frame_link::Target target{route.resource,4096,2048};
+        const auto pair=owned_scene_gpu::tracker.overlay_pair(ref,target);
+        std::array<void*,12> stack{};std::array<uintptr_t,12> addresses{};
+        const auto count=CaptureStackBackTrace(0,static_cast<DWORD>(stack.size()),stack.data(),nullptr);
+        for(unsigned i=0;i<count;++i)addresses[i]=reinterpret_cast<uintptr_t>(stack[i]);
+        gears_viewport::OverlayPlan plan{};
+        const bool admitted=caller==base+0x172741&&!frame_target_stats.descriptor_capacity_lost()&&
+            binding.targets==1&&!binding.target.mip&&binding.target.resource==route.resource&&
+            binding.target.width==target.width&&binding.target.height==target.height&&
+            pair.linked&&pair.ticket==route.ticket&&ui_observed_overlay_chain(addresses.data(),count);
+        bool reticle=false,plane=false;
+        if(admitted){
+            reticle=prepare_ui_reticle_overlay(route.ticket,saved,target.width,target.height,plan);
+            if(!reticle){
+                gears_vr::StereoSample sample{};gears_ui_hud::Parameters parameters{};
+                parameters.source_aspect=ui_source_aspect();
+                // Menu glyphs lack semantic sidecar labels but are still exact
+                // Canvas members. Use the same ticket's head-locked panel.
+                plane=ui_ticket_sample(route.ticket,sample)&&
+                    gears_ui_hud::plan(saved,target.width,target.height,sample,plan,parameters);
+            }
+        }
+        if(admitted&&(reticle||plane)){
+            auto viewport=[&](gears_viewport::Rect r,float a,float b){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,a,b};original_viewports(list,1,&v);};
+            auto scissor=[&](gears_viewport::Rect r){D3D12_RECT s{LONG(r.x),LONG(r.y),LONG(r.x+r.width),LONG(r.y+r.height)};original_scissors(list,1,&s);};
+            unsigned mask{};
+            try {mask=gears_viewport::replay_overlay(saved,plan,viewport,scissor,[&](unsigned){original_draw_indexed(list,indices,instances,start,vertex,first_instance);});}
+            catch(...){owned_ui_live::fault(route.ticket,10);throw;}
+            owned_scene_gpu::tracker.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask);
+            ++owned_ui_live::route_draws;
+            if(reticle)++owned_ui_live::route_reticle_draws;else ++owned_ui_live::route_plane_draws;
+            observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,plane,&plan,reticle,&plan);
+            return; // Overlay work is not an extra world-geometry draw.
+        }
+        owned_ui_live::fault(route.ticket,9);
+    }
+#endif
     if(frame_link_diagnostics&&stereo_gpu_publish&&recording.load()&&!frame_target_stats.descriptor_capacity_lost()&&
        !consuming_renderer&&!consuming_frame_ticket&&
        caller-base==0x172741&&gears_viewport::has_draw_work(indices,instances)){

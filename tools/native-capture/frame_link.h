@@ -367,6 +367,17 @@ public:
         owned_={true,true,target,queue,generation,initial_state};++revision_;return true;
     }
     OwnedStatus owned_status(){std::lock_guard<std::mutex> lock(mutex_);return owned_;}
+    // Waiting hint only; never consumes evidence or changes certification.
+    // Any active submission prevents consumption, even with unrelated members.
+    // Caller must retain the API-order lock through its later consume decision.
+    bool has_unsubmitted_owned_events(Identity resource) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!resource||!owned_.enabled||resource!=owned_.target.resource)return false;
+        if(pending_.active)return true;
+        for(auto const& list:lists_)if(!list.executed)
+            for(size_t i=0;i<list.count;++i)if(list.events[i].target.resource==resource)return true;
+        return false;
+    }
     // Record, never advance submitted state. Invalid split/subresource/state
     // events become certification failures only if this recording is submitted.
     bool record_transition(ListRef ref,Identity resource,uint64_t generation,uint32_t before,uint32_t after,
