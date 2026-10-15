@@ -26,4 +26,18 @@ int main(){
     reversible.cancel();assert(!reversible.show_panel()&&!reversible.allow_projection());
     StartupPanelPolicy legacy(true);
     assert(!legacy.observe(Mode::death_menu,100)&&legacy.allow_projection());
+    StartupPanelPolicy pause(true,true);
+    assert(pause.observe(Mode::pause_menu,500));
+    assert(pause.show_eye_menu()&&!pause.show_panel()&&!pause.allow_projection());
+    assert(!pause.projection_rendered(true)); // A menu is never a stereo handoff.
+    assert(!pause.observe(Mode::pause_menu,600)&&pause.minimum_sample_ns()==500);
+    assert(!pause.observe(Mode::unknown,700));
+    assert(!pause.show_eye_menu()&&!pause.show_panel()&&!pause.allow_projection());
+    assert(!pause.observe(Mode::gameplay,800)&&pause.minimum_sample_ns()==800);
+    assert(!pause.projection_rendered(false)&&pause.minimum_sample_ns()==800);
+    assert(pause.projection_rendered(true)&&pause.minimum_sample_ns()==0&&pause.allow_projection());
+    assert(pause.observe(Mode::pause_menu,900));
+    assert(pause.observe(Mode::death_menu,1000)&&pause.show_panel()&&!pause.show_eye_menu());
+    assert(pause.observe(Mode::pause_menu,1100)&&!pause.show_panel()&&pause.show_eye_menu());
+    pause.cancel();assert(!pause.show_eye_menu()&&!pause.allow_projection());
 }

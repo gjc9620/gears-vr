@@ -3,6 +3,7 @@
 #include "../vr-common/gpu_blit.h"
 #include "outage_diagnostics.h"
 #include "eye_chain_policy.h"
+#include "menu_eye_panel.h"
 
 enum class ProjectionStatus {submitted,producer_stopped,producer_unavailable,waiting_image,current_inactive,current_untracked,
     reference_space_changed,empty_ticket,session_mismatch,ticket_flags,ticket_geometry,stale_ticket,image_rectangle,session_lost,producer_structure_invalid,probe_failure,menu_requested,menu_recovery_pending,reference_epoch_pending,source_reconfiguration,count};
@@ -346,12 +347,12 @@ public:
             out.head_flags=sample.head_flags;out.view_flags=sample.view_flags;}
         return out;
     }
-    bool render_projection(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status,int64_t minimum_sample_ns=0,uint64_t space_epoch=1,int64_t space_change_time=0){
+private:
+    bool prepare_ticketed_image(uint64_t expected_session,ProjectionStatus& status,int64_t minimum_sample_ns,uint64_t space_epoch,int64_t space_change_time){
         if(reconfiguring()){status=ProjectionStatus::source_reconfiguration;return false;}
-        if(!stereo)throw std::runtime_error("Projection requires admitted stereo eye chains");
+        if(!stereo)throw std::runtime_error("Ticketed display requires admitted stereo eye chains");
         if(receiver->stopped()){status=ProjectionStatus::producer_stopped;return false;}
         status=ProjectionStatus::waiting_image;
-        const auto copies_before=copies;
         if(!update_image(expected_session,&status,space_epoch,space_change_time,minimum_sample_ns))return false;
         if(reconfiguring()){status=ProjectionStatus::source_reconfiguration;return false;}
         const auto& ticket=copied_ticket;const auto& sample=ticket.sample;
@@ -360,6 +361,29 @@ public:
             retain_stereo_image?projection_retained_image_max_age:100000000);
         if(status!=ProjectionStatus::submitted)return false;
         if(sample.received_ns<=minimum_sample_ns){status=ProjectionStatus::menu_recovery_pending;return false;}
+        return true;
+    }
+public:
+    bool render_eye_menu(XrCompositionLayerQuad& quad,uint64_t expected_session,ProjectionStatus& status,int64_t menu_enter_ns,uint64_t space_epoch,int64_t space_change_time){
+        // Only the explicit pause-menu branch calls this. It is a common 2D
+        // panel from one completed eye, never a projection or a second consumer.
+        if(menu_enter_ns<=0){status=ProjectionStatus::menu_recovery_pending;return false;}
+        if(!prepare_ticketed_image(expected_session,status,menu_enter_ns,space_epoch,space_change_time))return false;
+        gears_menu_panel::Plan plan{};
+        if(!gears_menu_panel::make_plan(receiver->width,receiver->height,plan)){
+            status=ProjectionStatus::image_rectangle;return false;}
+        quad={XR_TYPE_COMPOSITION_LAYER_QUAD};quad.space=view_space;quad.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
+        quad.pose.orientation.w=1;quad.pose.position.z=-2;
+        quad.size={plan.metres_width,plan.metres_height};
+        quad.subImage.swapchain=eyes[0].chain;
+        quad.subImage.imageRect={{plan.x,plan.y},{plan.width,plan.height}};
+        return true;
+    }
+    bool render_projection(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status,int64_t minimum_sample_ns=0,uint64_t space_epoch=1,int64_t space_change_time=0){
+        const auto copies_before=copies;
+        if(!prepare_ticketed_image(expected_session,status,minimum_sample_ns,space_epoch,space_change_time))return false;
+        const auto& ticket=copied_ticket;const auto& sample=ticket.sample;
+        const auto now=gears_vr::monotonic_ns();
         for(unsigned i=0;i<2;++i){
             const auto& rect=ticket.rect[i];const auto& eye=sample.eyes[i];
             auto& view=views[i];view={XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW};

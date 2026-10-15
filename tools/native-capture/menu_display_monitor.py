@@ -7,7 +7,7 @@ import sys
 import time
 
 PACKET = struct.Struct('<IIIIQQQQQQ')
-UNKNOWN, GAMEPLAY, DEATH_MENU = range(3)
+UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU = range(4)
 
 
 def classify(sample):
@@ -22,6 +22,12 @@ def classify(sample):
     top = sample.get('top') or {}
     if player == 0 and (top.get('tag'), top.get('cls'), top.get('input_mode')) == ('DeltaGameover', 'WarUIScene', 1):
         return DEATH_MENU
+    # Exact observed campaign-host Pause only. Selection can change within the
+    # same modal scene, so a particular focused option is not its identity.
+    if (player == 0 and type(top.get('input_mode')) is int and
+            (top.get('tag'), top.get('cls'), top.get('input_mode')) ==
+            ('DeltaPause-Campaign-Host', 'WarUIScene', 1)):
+        return PAUSE_MENU
     # This persistent nonmodal scene was observed atop gameplay; it is not
     # sufficient to render stereo. Native identity and XR ticket gates still apply.
     if player in (-1, 0) and (top.get('name'), top.get('cls'), top.get('input_mode')) == (

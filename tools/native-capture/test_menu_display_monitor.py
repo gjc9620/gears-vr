@@ -3,7 +3,7 @@ import tempfile
 import unittest
 import json
 from unittest.mock import patch
-from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, UNKNOWN, GAMEPLAY, DEATH_MENU
+from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU
 
 
 def sample(death=True):
@@ -13,6 +13,12 @@ def sample(death=True):
                          cls='WarUIScene' if death else 'WarUIScene_CrossplayInvitePopUp', input_mode=1 if death else 2))
 
 
+def pause_sample():
+    return dict(sample(), top=dict(name='DeltaPause-Campaign-Host', tag='DeltaPause-Campaign-Host',
+                                  cls='WarUIScene', input_mode=1),
+                focused_leaf=dict(name='LBtnResumeSingle', cls='UILabelButton'))
+
+
 class Reader:
     closed=False
     def sample(self):return sample()
@@ -20,6 +26,50 @@ class Reader:
 
 
 class Tests(unittest.TestCase):
+    def test_pause_exact_scene_independent_of_focus_selection(self):
+        self.assertEqual((UNKNOWN,GAMEPLAY,DEATH_MENU,PAUSE_MENU),(0,1,2,3))
+        self.assertEqual(classify(pause_sample()), PAUSE_MENU)
+        for focus in (dict(name='DifferentOption',cls='UILabelButton'), None, {}):
+            with self.subTest(focus=focus):
+                self.assertEqual(classify(dict(pause_sample(),focused_leaf=focus)), PAUSE_MENU)
+        state=pause_sample();state.pop('focused_leaf')
+        self.assertEqual(classify(state), PAUSE_MENU)
+
+    def test_pause_rejects_unverified_scene_variants_and_invalid_common_guards(self):
+        for key,value in (('tag','DeltaPause-Campaign-HostExtra'),('tag','DeltaPause-Campaign-Client'),
+                          ('tag','DeltaPause-Campaign-Host-Options'),('tag',None),
+                          ('cls','WarUIScene_Pause'),('cls','WarUIScene_CrossplayInvitePopUp'),
+                          ('input_mode',0),('input_mode',2),('input_mode',True),
+                          ('input_mode',1.0),('input_mode','1')):
+            with self.subTest(key=key,value=value):
+                state=pause_sample();state['top'][key]=value
+                self.assertEqual(classify(state),UNKNOWN)
+        for key,value in (('player_index',-1),('player_index',1),('player_index',None),
+                          ('player_index',False),('player_index',0.0),('player_index','0'),
+                          ('read_only',False),('consistent_reread',False),('input_block_count',1)):
+            with self.subTest(key=key,value=value):
+                self.assertEqual(classify(dict(pause_sample(),**{key:value})),UNKNOWN)
+        for top in (None,{}):
+            self.assertEqual(classify(dict(pause_sample(),top=top)),UNKNOWN)
+
+    def test_pause_publication_and_gameplay_resume_have_fresh_sequence_and_time(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();reader.sample=pause_sample
+            m=self.monitor(path,reader)
+            try:
+                m.poll();pause=PACKET.unpack(path.read_bytes())
+                self.assertEqual(pause,(0x47564d31,1,64,PAUSE_MENU,11,22,33,44,1,100))
+                reader.sample=lambda:sample(False);m.clock=lambda:200;m.poll()
+                resumed=PACKET.unpack(path.read_bytes())
+                self.assertEqual(resumed[:3],pause[:3])
+                self.assertEqual(resumed[4:8],pause[4:8])
+                self.assertEqual((resumed[3],resumed[-2],resumed[-1]),(GAMEPLAY,2,200))
+                reader.sample=pause_sample;m.clock=lambda:300;m.poll()
+                self.assertEqual(PACKET.unpack(path.read_bytes())[-2:],(3,300))
+                rows=[json.loads(line) for line in path.with_suffix('.jsonl').read_text().splitlines()]
+                self.assertEqual([row['mode'] for row in rows],[PAUSE_MENU,GAMEPLAY,PAUSE_MENU])
+            finally:m.close()
+
     def test_semantic_gates(self):
         self.assertEqual(classify(sample()), DEATH_MENU)
         self.assertEqual(classify(sample(False)), GAMEPLAY)
