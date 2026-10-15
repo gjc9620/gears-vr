@@ -228,6 +228,9 @@ void activate(){
  if(!queue){fault(6);return;}
  birth_ok=tracker.birth_owned_output({resource,4096,2048},canonical_identity(queue),generation,creation.state,true,true);
  if(!birth_ok)fault(7);
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+ if(birth_ok){StereoPublishBypass bypass;desktop_mirror.bind(queue,texture,generation);}
+#endif
  if(birth_ok&&owned_xr_probe&&stereo_gpu_publish){
   StereoPublishBypass bypass;
   if(stereo_publish_counts.stopped.load()||!stereo_publisher.bind_resource(queue,texture,generation,
@@ -256,6 +259,11 @@ bool publish_image(){
   fault(18);return false;
  }
  gears_vr::GpuCaptureTrace trace{};bool published=false;
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+ // This proof includes all required UI and its actual queue submission. Take
+ // an independent snapshot before allowing the next owned target writer.
+ {StereoPublishBypass bypass;desktop_mirror.capture(texture,generation,image.id,image.sample.received_ns,D3D12_RESOURCE_STATES(proof.final_state));}
+#endif
  auto stamp=timing(image.id);if(stamp){stamp->received=image.sample.received_ns;stamp->publish_begin=gears_vr::monotonic_ns();}
  const auto deadline=stereo_publish_deadline.load();
  ++stereo_publish_counts.capture_attempts;

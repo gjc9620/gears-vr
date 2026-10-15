@@ -15,6 +15,9 @@
 #include "../vr-common/pose_bridge.h"
 #include "../vr-common/stereo_bridge.h"
 #include "../vr-common/gpu_share.h"
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+#include "../vr-common/gpu_mirror.h"
+#endif
 #include "../vr-common/stereo_ticket_store.h"
 #include "render_cost.h"
 #include "resource_resize_probe.h"
@@ -81,6 +84,10 @@ bool simulator_operator{};
 bool frame_link_diagnostics{};
 bool stereo_gpu_publish{};
 gears_vr::GpuPublisher stereo_publisher;
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+gears_vr::DesktopMirror desktop_mirror;
+std::atomic<unsigned long long> mirror_inventory_rejected{},mirror_present1_full{};
+#endif
 #if defined(GEARS_NATIVE_OWNED_XR_PROBE) && GEARS_NATIVE_OWNED_XR_PROBE
 constexpr bool owned_xr_probe=true;
 #else
@@ -1018,6 +1025,11 @@ void stereo_publish_worker_tick() {
         stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;
     }
     StereoPublishBypass bypass;
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+    const auto mirror_state=desktop_mirror.status().state;
+    if(!stereo_publish_counts.stopped.load()&&mirror_state==1)desktop_mirror.prepare();
+    if(mirror_state==3)desktop_mirror.poll();
+#endif
     if(!stereo_publish_counts.stopped.load()&&stereo_publisher.state.load()==1){
         if(stereo_publisher.prepare())++stereo_publish_counts.prepare_ok;else ++stereo_publish_counts.prepare_failed;
     }
@@ -1028,9 +1040,17 @@ bool close_stereo_publisher() {
     stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;
     if(active.load())return false; // Retain all ownership if callbacks did not drain.
     StereoPublishBypass bypass;
-    bool drained=stereo_publisher.drain(1000);stereo_publish_counts.drain_ok=drained?1:0;
+    bool drained=stereo_publisher.drain(1000);
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+    const bool mirror_drained=desktop_mirror.drain(1000);drained=drained&&mirror_drained;
+#endif
+    stereo_publish_counts.drain_ok=drained?1:0;
     if(continuous_session&&!drained)return false; // Keep ownership for a later drain attempt.
-    bool closed=stereo_publisher.close();stereo_publish_counts.close_ok=closed?1:0;
+    bool closed=stereo_publisher.close();
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+    closed=desktop_mirror.close(1000)&&closed;
+#endif
+    stereo_publish_counts.close_ok=closed?1:0;
     return drained&&closed;
 }
 void write_session_status(bool resources_retained=true,bool entries_restored=false) {
@@ -1054,6 +1074,11 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         resources_retained?1:0,entries_restored?1:0,session_native_services.load(),session_cancelled_builds.load(),stereo_publisher.frames.load(),simulator_operator);
     fprintf(output,"profile_consume_thread=%lu ",gears_render_cost::first_thread.load(std::memory_order_relaxed));
     owned_scene_gpu::print_progress(output);
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+    const auto mirror=desktop_mirror.status();
+    fprintf(output,"mirror_state=%u mirror_captures=%llu mirror_presents=%llu mirror_stale=%llu mirror_busy=%llu mirror_inventory_rejected=%llu mirror_timeouts=%llu mirror_reason=%u mirror_held=%u mirror_format=%u ",
+        mirror.state,mirror.captures,mirror.presents,mirror.stale,mirror.busy,mirror_inventory_rejected.load(),mirror.timeouts,static_cast<unsigned>(mirror.reason),mirror.destination_held?1:0,mirror.destination_format);
+#endif
     fprintf(output,"stop_recorded=%u stop_qpc=%lld stop_qpc_frequency=%lld stop_thread=%lu stop_source_file=%s stop_source_line=%u ",
         stop_recorded?1:0,stop_recorded?session_stop_qpc.load():0,qpc_frequency,
         stop_recorded?session_stop_thread.load():0,stop_recorded?session_stop_source_file.load():"none",
@@ -1189,6 +1214,12 @@ void print_frame_link(FILE* status) {
         stereo_publish_counts.stopped.load(),stereo_publish_counts.drain_ok.load(),stereo_publish_counts.close_ok.load(),
         stereo_ticket_store.retired_id(),stereo_ticket_store.size(),stereo_publish_counts.last_ticket.load(),simulator_operator);
     auto bindings=swapchain_bindings.snapshot();
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+    const auto mirror=desktop_mirror.status();
+    fprintf(status,"desktop_mirror enabled=1 state=%u captures=%llu presents=%llu busy=%llu stale=%llu rejected=%llu inventory_rejected=%llu present1_full=%llu ticket=%llu received_ns=%lld wait_ns=%llu max_wait_ns=%llu timeouts=%llu error=%lx unsafe=%u synchronous_present=1 destination_format=%u\n",
+        mirror.state,mirror.captures,mirror.presents,mirror.busy,mirror.stale,mirror.rejected,mirror_inventory_rejected.load(),mirror_present1_full.load(),
+        mirror.ticket,mirror.received_ns,mirror.wait_ns,mirror.max_wait_ns,mirror.timeouts,static_cast<unsigned long>(mirror.error),mirror.unsafe?1:0,mirror.destination_format);
+#endif
     auto overlay_stats=frame_link.snapshot();
     fprintf(status,"frame_link_unknown_coalesced count=%llu adjacent_same_target_only=1 unknown_rejection_preserved=1\n",overlay_stats.unknown_coalesced);
     fprintf(status,"frame_link_overlay recorded=%llu executed=%llu rejected=%llu single_event_pair=1 coordinates_live_verified=0\n",
@@ -2114,6 +2145,42 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     if(retire_bindings)for(unsigned i=0;i<count;++i)owned_target_stats.retire(binding_ids[i]);
     record.duration=now()-record.time;enqueue(record);
 }
+bool desktop_mirror_present(IDXGISwapChain* chain,UINT flags){
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+    if(!recording.load()||!stereo_gpu_publish||stereo_publish_counts.stopped.load()||
+       (flags&(DXGI_PRESENT_TEST|DXGI_PRESENT_DO_NOT_WAIT)))return false;
+    const auto identity=canonical_identity(chain);const auto binding=swapchain_bindings.lookup(identity);
+    if(!binding.chain||!owned_scene_gpu::queue||binding.queue!=canonical_identity(owned_scene_gpu::queue)){
+        ++mirror_inventory_rejected;return false;
+    }
+    DXGI_SWAP_CHAIN_DESC desc{};std::array<uintptr_t,16> resources{};
+    if(FAILED(chain->GetDesc(&desc))||!desc.BufferCount||desc.BufferCount>resources.size()){
+        ++mirror_inventory_rejected;return false;
+    }
+    for(unsigned i=0;i<desc.BufferCount;++i){gears_vr::ComPtr<ID3D12Resource> buffer;
+        if(FAILED(chain->GetBuffer(i,IID_PPV_ARGS(&buffer)))){++mirror_inventory_rejected;return false;}
+        resources[i]=canonical_identity(buffer.Get());
+    }
+    if(!swapchain_bindings.unchanged(identity,desc.BufferDesc.Width,desc.BufferDesc.Height,resources.data(),desc.BufferCount)){
+        ++mirror_inventory_rejected;return false;
+    }
+    gears_vr::ComPtr<IDXGISwapChain3> current;gears_vr::ComPtr<ID3D12Resource> buffer;
+    if(FAILED(chain->QueryInterface(IID_PPV_ARGS(&current)))){++mirror_inventory_rejected;return false;}
+    const auto index=current->GetCurrentBackBufferIndex();
+    if(index>=desc.BufferCount||FAILED(chain->GetBuffer(index,IID_PPV_ARGS(&buffer)))||canonical_identity(buffer.Get())!=resources[index]){
+        ++mirror_inventory_rejected;return false;
+    }
+    // The game is about to call Present on this queue. D3D12's documented
+    // Present contract requires this backbuffer in PRESENT/COMMON here.
+    // The isolated mirror restores that state and finishes before returning,
+    // so success retains no backbuffer reference across a later ResizeBuffers.
+    // On timeout the worker releases that reference only after fence completion.
+    StereoPublishBypass bypass;
+    return desktop_mirror.present(buffer.Get(),owned_scene_gpu::queue,gears_vr::monotonic_ns());
+#else
+    (void)chain;(void)flags;return false;
+#endif
+}
 HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT flags) {
     Scope scope;auto frame_guard=frame_lock();
     FramePresentScope frame_present;
@@ -2127,6 +2194,7 @@ HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT 
     if(frame_interval&&recording.load()&&!(flags&DXGI_PRESENT_TEST))native_owned_scene_copy();
 #endif
     auto saved_inside_present=frame_inside_original_present;frame_inside_original_present=true;
+    if(frame_interval)desktop_mirror_present(chain,flags);
     if(diagnostic)diagnostic->original_begin_qpc=now();
     HRESULT result=original_present(chain,interval,flags);
     if(diagnostic)outage_finish(*diagnostic,now(),result);
@@ -2150,8 +2218,13 @@ HRESULT STDMETHODCALLTYPE hook_present1(IDXGISwapChain1* chain,UINT interval,UIN
     if(frame_interval&&recording.load()&&!(flags&DXGI_PRESENT_TEST))native_owned_scene_copy();
 #endif
     auto saved_inside_present=frame_inside_original_present;frame_inside_original_present=true;
+    DXGI_PRESENT_PARAMETERS full_update{};
+    const bool mirrored=frame_interval&&desktop_mirror_present(chain,flags);
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+    if(mirrored)++mirror_present1_full;
+#endif
     if(diagnostic)diagnostic->original_begin_qpc=now();
-    HRESULT result=original_present1(chain,interval,flags,params);
+    HRESULT result=original_present1(chain,interval,flags,mirrored?&full_update:params);
     if(diagnostic)outage_finish(*diagnostic,now(),result);
     frame_inside_original_present=saved_inside_present;
     if(frame_interval)retire_original_present_interval();
@@ -2384,6 +2457,7 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
     return result;
 }
 void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count,const D3D12_VIEWPORT* values) {
+    if(stereo_publish_bypass){original_viewports(list,count,values);return;}
     Scope scope;auto frame_guard=frame_lock();
     if(recording.load()||(owned_bindings_enabled&&prime_recording.load())) {
         D3D12_VIEWPORT value{};unsigned category=gears_viewport::unknown;
@@ -2400,6 +2474,7 @@ void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count
     original_viewports(list,count,values);
 }
 void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RECT* values) {
+    if(stereo_publish_bypass){original_scissors(list,count,values);return;}
     Scope scope;auto frame_guard=frame_lock();
     if(recording.load()||(owned_bindings_enabled&&prime_recording.load())) {
         D3D12_RECT value{};unsigned category=gears_viewport::unknown;
@@ -2491,6 +2566,7 @@ void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
 #include "owned_material_draw.inl"
 #endif
 void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,UINT instances,UINT start,UINT first_instance) {
+    if(stereo_publish_bypass){original_draw(list,vertices,instances,start,first_instance);return;}
     Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
@@ -2512,6 +2588,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw(list,vertices,instances,start,first_instance);}
 }
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
+    if(stereo_publish_bypass){original_draw_indexed(list,indices,instances,start,vertex,first_instance);return;}
     Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
@@ -2616,6 +2693,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw_indexed(list,indices,instances,start,vertex,first_instance);}
 }
 void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,BOOL single,const D3D12_CPU_DESCRIPTOR_HANDLE* depth) {
+    if(stereo_publish_bypass){original_targets(list,count,handles,single,depth);return;}
     Scope scope;auto frame_guard=frame_lock();
     if(recording.load()){D3D12_CPU_DESCRIPTOR_HANDLE first{};
         if(count)safe_copy(&first,handles,sizeof(first));
@@ -2661,6 +2739,7 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
     original_targets(list,count,handles,single,depth);
 }
 void STDMETHODCALLTYPE hook_create_rtv(ID3D12Device* device,ID3D12Resource* resource,const D3D12_RENDER_TARGET_VIEW_DESC* view,D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+    if(stereo_publish_bypass){original_create_rtv(device,resource,view,handle);return;}
     Scope scope;auto frame_guard=frame_lock();original_create_rtv(device,resource,view,handle);
     if(recording.load()||prime_recording.load()){
         gears_viewport::Target target{};D3D12_RENDER_TARGET_VIEW_DESC description{};
@@ -4340,6 +4419,28 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFrameLinkCheck(void* t
                     if(stereo_publish_bypass||frame_counts.executes.load()!=bypass_executes||frame_counts.resets.load()!=bypass_resets||
                        fake_frame_execute_forwarded.load()!=forwarded_execute+1||fake_frame_reset_forwarded!=forwarded_reset+1||
                        color_copy_forwarded!=forwarded_copy+1)result=185;
+                    // A mirror uses graphics operations as well as copying.
+                    // They must forward exactly once without touching native
+                    // UI contexts or dereferencing its deliberately fake inputs.
+                    static std::array<unsigned,6> mirror_forwarded{};mirror_forwarded={};
+                    const auto saved_viewports=original_viewports;const auto saved_scissors=original_scissors;
+                    const auto saved_draw=original_draw;const auto saved_indexed=original_draw_indexed;
+                    const auto saved_targets=original_targets;const auto saved_rtv=original_create_rtv;
+                    original_viewports=[](ID3D12GraphicsCommandList*,UINT,const D3D12_VIEWPORT*){++mirror_forwarded[0];};
+                    original_scissors=[](ID3D12GraphicsCommandList*,UINT,const D3D12_RECT*){++mirror_forwarded[1];};
+                    original_draw=[](ID3D12GraphicsCommandList*,UINT,UINT,UINT,UINT){++mirror_forwarded[2];};
+                    original_draw_indexed=[](ID3D12GraphicsCommandList*,UINT,UINT,UINT,INT,UINT){++mirror_forwarded[3];};
+                    original_targets=[](ID3D12GraphicsCommandList*,UINT,const D3D12_CPU_DESCRIPTOR_HANDLE*,BOOL,const D3D12_CPU_DESCRIPTOR_HANDLE*){++mirror_forwarded[4];};
+                    original_create_rtv=[](ID3D12Device*,ID3D12Resource*,const D3D12_RENDER_TARGET_VIEW_DESC*,D3D12_CPU_DESCRIPTOR_HANDLE){++mirror_forwarded[5];};
+                    {StereoPublishBypass bypass;
+                        hook_viewports(nullptr,1,reinterpret_cast<const D3D12_VIEWPORT*>(1));
+                        hook_scissors(nullptr,1,reinterpret_cast<const D3D12_RECT*>(1));
+                        hook_draw(nullptr,3,1,0,0);hook_draw_indexed(nullptr,3,1,0,0,0);
+                        hook_targets(nullptr,1,reinterpret_cast<const D3D12_CPU_DESCRIPTOR_HANDLE*>(1),FALSE,nullptr);
+                        hook_create_rtv(nullptr,reinterpret_cast<ID3D12Resource*>(1),nullptr,{1});}
+                    original_viewports=saved_viewports;original_scissors=saved_scissors;original_draw=saved_draw;
+                    original_draw_indexed=saved_indexed;original_targets=saved_targets;original_create_rtv=saved_rtv;
+                    for(auto count:mirror_forwarded)if(count!=1)result=186;
                     // Native publish integration: the exact production Draw
                     // observer retains a frozen value, the real owner binds,
                     // worker prepare creates resources, and pre-Present copy

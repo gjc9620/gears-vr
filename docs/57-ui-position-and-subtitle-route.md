@@ -340,3 +340,19 @@ XR可保留窗口捕获用于返回菜单。进入菜单时清空旧图并建立
 菜单时间/协议/状态机、XR接收与退出等8个C++检查通过，Python菜单观察4项、continuous runner36项、launcher35项通过。实际 `MenuRecovery1 / PID22156` 使用冻结Binding2 native及新 `build-menu-recovery1` XR：启动面板2933次后自动接续，261.105秒内8097个owned场景、7475次普通UI、499次Material；owned绑定overflow=0、UI/Material故障=0。XR复制8089张、projection提交23433次，最大间隔112.4373ms，不宣称全程无卡顿。老backbuffer绑定表仍记录73次overflow，不与新owned绑定表混为一谈。
 
 本轮正常移动后没有发生死亡，`entries=0/quad_layers=0/recoveries=0`，因此没有证明实际死亡菜单或检查点恢复已经成功，未提升其验收状态。XR正常关闭，63个入口全部恢复，游戏正常关闭；native资源仍保留到游戏退出，启动器仍为incomplete。清单 `manifest-menu-recovery1.json`，审计 `analysis/ui-position-runtime/menu-recovery1-22156.audit.json`；默认玩家清单未改变。下一轮须实际覆盖死亡菜单和恢复，同时继续处理桌面镜像与释放缺口。
+
+## 2026-10-15：桌面独立左眼镜像及仍未解决的闪烁报告
+
+新增默认关闭的 `GEARS_DESKTOP_MIRROR`。在 owned 场景、关联 UI 和实际队列提交都满足发布条件时，向独立快照复制完整 SBS，恢复源状态；Present 前仅将快照左眼等比画入已认证的当前 swapchain buffer，两侧留黑。绑定同一 DIRECT 队列，私有 GPU 指令绕过原生观察器，未增加 Hook 入口。Present 使用 D3D12 文档规定的 PRESENT/COMMON 状态契约，不宣称新加了独立的 backbuffer 状态跟踪。Present1 成功后要求整帧更新。
+
+当前版本同步等待镜像 draw fence 完成，成功返回前释放 backbuffer 引用。等待上限一秒；超时后关闭镜像绘制，但 worker 继续非阻塞查询 fence，完成后释放目标引用。continuous 停机先排空，再关闭；未确认完成时保留资源供重试，不能先永久 Detach 后无限重试 close。独立测试实际阻塞队列并覆盖恢复路径。
+
+Mirror1 / PID33548 取得918份镜像快照，但桌面绘制为0，目标校验拒绝。运行记录的桌面 RTV 格式为24（R10G10B10A2_UNORM），超出初版四种8位格式；Mirror2增加10位目的格式，源仍限定已支持的8位格式。这里只保持 SDR 数值，不包含 HDR/PQ 或色域转换认证。Mirror1 同时因 owner 的 PermissionError 提前停止，约24.10秒、917张XR复制；监测脚本当时以普通文件读取打开 menu.bin，与 atomic replace 存在共享删除冲突的可能，未取得异常调用栈，原因保留为推断。
+
+菜单观察器现仅在发布阶段捕获 OSError，保留原包及原采样时间，下次 poll 重新采样再原子替换；失败及恢复去重记录，不原地覆盖或把旧包标成新鲜，游戏身份改变仍抛异常。7项 Python 测试覆盖文件被占用、恢复、首次发布失败、清理与身份变化。正式 XR reader 已使用 FILE_SHARE_DELETE；新监测脚本改读变化日志，避免自己阻挡替换。
+
+Mirror2 / PID25668 保留用户设置的1920×1080桌面，owned资源仍为4096×2048，即每眼2048²。实际运行111.039秒，5,056次镜像快照、10,106次桌面镜像绘制，目的格式24；busy=0、timeout=0、unsafe=0。CPU fence等待平均0.1542ms，最大2.7639ms；不等于完整GPU耗时。XR复制5,052张、projection提交9,988次、最大提交间隔55.92ms。345次inventory拒绝集中在启动阶段，运行采样中计数不再增长；时效拒绝5次，仍保留100ms门限。普通UI和Material本轮均未出现，不借此复验UI。
+
+四张640×360窗口采样均为完整单眼画面、左右黑边。模拟器保存22帧滚动证据，目视审阅其中6帧未见明显交替；这只能说明这段样本，不能否定用户报告的桌面及模拟器左眼闪烁。初始原始GPU图与后续模拟器预览均见右眼明显较暗，原因尚未确定，不能把整套双眼显示验收判为通过。下一步应比较连续源眼图、同帧姿态/FOV、渲染状态与合成预览，定位曝光/后处理或其他眼间差异；这些是待验证方向。
+
+独立WARP最终运行5,330项检查通过，覆盖RGBA/BGRA、sRGB、10位目的格式、黑边、快照独立性、源状态恢复、忙跳过、超时及恢复。测试环境D3D12 Debug Layer不可用，已显式输出该限制；早先辅助报告“Debug Layer无错误”不能作为调试层通过证据。相关CPU、DLL ABI/family/frame-link测试通过，关闭功能分支编译及frame-link自测通过。两轮63处入口独立核验恢复后正常关闭游戏，无强杀；native Owner仍保留至进程退出，launcher仍incomplete，默认玩家清单未切换。审计：`analysis/ui-position-runtime/owned-mirror1-33548.audit.json`、`owned-mirror2-25668.audit.json`。模拟器事件目录：`%LOCALAPPDATA%/OpenXR-Simulator/flicker_incidents/session_33872/incident_9026`。
