@@ -1,6 +1,6 @@
 # 仓库内统一入口
 
-2026-10-15 当前玩家入口：仓库根目录 `GearsVR Launcher.exe`（[源码与构建](ui/README.md)）。GUI与脚本统一使用`manifest.json`，现与`manifest-game-recovery5.json`相同，对应GameRecovery5 native / SpaceRecovery3 XR。原GameResolution1仍保留在`manifest-game-resolution.json`以供回滚。Low/High已撤下，1920×1080输出分为两个960×1080眼区，3840×2160分为两个1920×2160眼区。
+2026-10-15 当前玩家入口：仓库根目录 `GearsVR Launcher.exe`（[源码与构建](ui/README.md)）。GUI与脚本统一使用`manifest.json`，现与`manifest-game-recovery7.json`相同，对应GameRecovery7 native / SpaceRecovery3 XR。Recovery5及原GameResolution1独立清单保留回滚。Low/High已撤下，1920×1080输出分为两个960×1080眼区，3840×2160分为两个1920×2160眼区。新版恢复同关卡重载后的UI角色绑定；仍有约0.87秒的最长实测提交间隔，准星/HUD尺寸/CG仍待完成。
 
 GUI支持模拟器／系统Runtime、启动、停止、状态和日志。`SimulatorVR.ps1 start`手动进入关卡，不自动导航。主菜单建立XR平面显示，进入关卡后交接立体；保留DLSS/DLAA保护、HUD平面与准星方向修正。运行不限时；正常停止后重新开启VR需先退出游戏。当前加入缓冲重建恢复、VISIBLE状态渲染、短缺帧图像保留和认证Material双眼绘制。150秒模拟器测试覆盖1080p→4K、同进程检查点重载→1080p，历史59秒长黑屏未复现，但仍有最长0.734秒提交间隔，整体连续性标准未通过；准星、HUD与CG仍待完成，也未做本版真头显验收。构建哈希与限制见[修正记录](../../docs/63-checkpoint-recovery.md)。
 

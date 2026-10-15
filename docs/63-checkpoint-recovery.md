@@ -85,6 +85,10 @@ GameRecovery6 / PID29844完成同进程两次检查点重载、中途4K及回108
 
 独立UI dev编译及针对性CPU检查通过。冻结Recovery6、Recovery7分别通过12项本地检查；Recovery6首次误用self-test参数`--owned-prime-handoff`返回2，改用实际支持的`--prime-owned-handoff`后通过，原失败记录保留，未当作实现故障。Recovery7 DLL SHA256 `964ec52a8a23c3b9b22e2a13dd5845e3ba78c667eead6ec1a8f03757f5127aa7`，XR保持SpaceRecovery3。此处不宣称准星深度、HUD尺寸或字幕实机验收已完成。
 
+Recovery7 / PID26920再次完成两次同进程检查点重载、1080p→4K→1080p。新Pawn UI重关联4339次、scope获取5637次拒绝0；排队绑定28430次通过，pending/retired均0、changed9，结束拒绝4、timestamp竞态11。Tile HUD实际调整10571次且`sequence_fault=0`，Material HUD双眼绘制1259次，未降为kind0。四次resize均成功，库存changed=0，污染18帧。XR提交11866次、复制5338张，跨度133.540秒，最长提交间隔866.434毫秒；短缺帧仍在，report保持incomplete。清理、42入口恢复及XR退出通过，游戏正常关闭。摘要`analysis/runtime/game-recovery7-audit.json`。
+
+当前玩家`manifest.json`更新到Recovery7，Recovery5/6独立清单与冻结DLL保留。没有更改HUD的70°/2米参数，也没有宣布准星已融合或CG已支持。已在连续两轮实际测试覆盖同进程重复重载及UI绑定恢复；剩余开场CameraActor仍用启动平面过渡，短黑屏按后续稳定性/CG路线继续处理。
+
 ## 下一步
 
 ### 首入等待的相机身份（PID4776）
@@ -93,6 +97,6 @@ GameRecovery5保持二进制不变，只在只读anchor失败记录中保存非P
 
 启动平面已经提交，约36.275秒首次成功projection；进入持续双目后的短观察段13.247秒、1195次提交，最大间隔24.13毫秒。原生清理、42个入口恢复和XR退出通过，游戏正常关闭。该短观察不覆盖CG切换及完整稳定性验收。失败证据仅作诊断，未改变接纳条件；25项anchor及12项启动准备测试通过。
 
-继续第①项首次接入延迟/切换短缺帧，随后第②项手枪准星和第③项HUD。UI语义证书在同关卡换Pawn后重绑定是后续覆盖所需；CG/加载状态仍需专门显示策略。不放宽未知draw接纳或无限延长旧图保留。尚未证明VDXR原点事件在真实头显上恢复。
+接下来按用户顺序进入第②项手枪准星：先自动开镜/切手枪确认实际scope和双眼位置，再接入有当次赋值及场景时序证据的有限距离瞄准点；现有w=0无限远方向不等于真实命中点。随后第③项HUD缩小、字幕，及第④项CG/加载显示和短缺帧。第①项同进程重载已多次恢复；首次接入等待的CameraActor身份已确认，未消除全部启动延迟。不放宽未知draw接纳或无限延长旧图保留。尚未证明VDXR原点事件在真实头显上恢复。
 
 参考：[OpenXR会话可见与输入焦点状态](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrSessionState.html)、[OpenXR参考空间变化事件](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrEventDataReferenceSpaceChangePending.html)、[DXGI ResizeBuffers资源释放要求](https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers)。

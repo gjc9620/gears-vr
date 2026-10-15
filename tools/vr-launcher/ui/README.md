@@ -11,7 +11,7 @@ Start-Process '.\GearsVR Launcher.exe'
 
 选择游戏 EXE、模拟器或系统 OpenXR Runtime，然后启动。游戏路径写入现有 `tools/vr-launcher/config.json`，保留其他字段。模拟器默认使用 `analysis/runtime/simulator-focus1/openxr_simulator.json`；系统选项让子进程使用系统 Runtime，清除继承的 `XR_RUNTIME_JSON`，不修改注册表。
 
-启动调用 `launcher.py start --manifest tools/vr-launcher/manifest.json`，不会传入自动导航或结束计时参数。当前清单为GameRecovery5 / SpaceRecovery3实验版，仍依赖本仓库工具和Python，不是便携发布包。跟随游戏当前分辨率；DLSS / DLAA由启动、运行时及菜单锁禁用。没有Low/High选项。1920×1080输出对应每眼960×1080；3840×2160对应每眼1920×2160。此版加入缓冲重建恢复、VISIBLE状态渲染、最多2秒有效旧图像保留和认证Material双眼绘制。150秒模拟器测试覆盖4K与同进程检查点恢复，历史59秒长黑屏未复现；仍有最长0.734秒提交间隔，非标准窗口尺寸的最终缩放路径仍未覆盖，尚未完成稳定性或真头显验收。范围见[修正记录](../../../docs/63-checkpoint-recovery.md)。
+启动调用 `launcher.py start --manifest tools/vr-launcher/manifest.json`，不会传入自动导航或结束计时参数。当前清单为GameRecovery7 / SpaceRecovery3实验版，仍依赖本仓库工具和Python，不是便携发布包。跟随游戏当前分辨率；DLSS / DLAA由启动、运行时及菜单锁禁用。没有Low/High选项。1920×1080输出对应每眼960×1080；3840×2160对应每眼1920×2160。此版加入缓冲重建恢复、VISIBLE状态渲染、最多2秒有效旧图像保留、认证Material双眼绘制和重载后UI角色绑定恢复。连续两轮模拟器实测覆盖4K及两次同进程检查点重载，HUD调整可继续生效；仍有约0.87秒最长提交间隔，准星、HUD尺寸和CG仍待完善，非标准窗口尺寸最终缩放仍未覆盖。尚未完成稳定性或真头显验收。范围见[修正记录](../../../docs/63-checkpoint-recovery.md)。
 
 Python 按 `GEARSVR_PYTHON`、当前用户 `.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`、PATH 中的 `py.exe` / `python.exe` / `python3.exe` 顺序探测。可通过 `GEARSVR_PYTHON` 指定完整路径。探测取得 `sys.executable` 后直接启动该 Python，确保跟踪的进程就是实际 owner。后台命令隐藏窗口，异步读取标准输出和错误。
 
