@@ -222,8 +222,26 @@ class Backend:
                 raise RuntimeError('Startup graphics protection stopped before handoff')
         finally:self.control.k.CloseHandle(handle)
     def player(self,pid,profile):
+        from anchor_config import LiveRegistryAnchorSampler
         resolver=self.Resolver(pid,profile)
-        try:return possessed_player(resolver,resolver.resolve())
+        try:
+            sampler=LiveRegistryAnchorSampler(resolver)
+            if sampler.view_target is None:
+                raise RuntimeError('Waiting for readable Camera.ViewTarget.Target')
+            current=sampler.guard()
+            for role in ('pawn','controller','camera','local_player','level','outer_chain','view_target'):
+                if current[role]!=sampler.initial[role]:
+                    raise RuntimeError('Anchor relationship changed during player discovery: '+role)
+            # Use the sampler's one resolved camera chain, never a second resolve
+            # whose identities might belong to a different transition frame.
+            for role,key in (('controller','controller_address'),('camera','camera_address'),('local_player','local_player_address')):
+                if current[role]['address']!=int(sampler.resolved[key],16):
+                    raise RuntimeError('Resolved camera relationship changed: '+role)
+            if current['view_target']!=current['pawn']['address']:
+                raise RuntimeError('Camera view target is not controlled Pawn')
+            stamp=struct.unpack('<f',bytes.fromhex(current['timestamp_raw']))[0]
+            if not math.isfinite(stamp):raise RuntimeError('Invalid camera timestamp')
+            return {**{role:hex(current[role]['address']) for role in ('pawn','controller','camera','level')},'timestamp':stamp}
         finally:resolver.p.close()
     def navigate(self,pid,identity,cancel,deadline,log,check_live=None):
         sys.path.insert(0,str(HERE))
@@ -280,7 +298,14 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
                 except (RuntimeError,OSError,ValueError) as error:current=None;last_error=str(error)
                 if not owned_prime and clock()-started>=120:
                     raise TimeoutError('Player discovery exceeded the conservative prime deadline; no activation or retry; wait for prime watchdog')
-                if stable_player(current,previous):break
+                if stable_player(current,previous):
+                    state.pop('waiting_for_level_reason',None)
+                    print(json.dumps({'level_player_ready':True}),flush=True)
+                    break
+                reason=last_error if current is None else 'Waiting for the same guarded player/camera with an advancing timestamp'
+                if state.get('waiting_for_level_reason')!=reason:
+                    state['waiting_for_level_reason']=reason;atomic_json(index,state)
+                    print(json.dumps({'waiting_for_level':reason}),flush=True)
                 previous=current;sleep(.5)
             else:raise TimeoutError('No stable possessed level player before prime deadline; no activation/retry; existing prime watchdog must restore: '+last_error)
             state['level_player']=current;atomic_json(index,state);return current

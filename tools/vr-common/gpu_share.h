@@ -11,6 +11,7 @@
 
 namespace gears_vr {
 using Microsoft::WRL::ComPtr;
+inline constexpr unsigned gpu_packet_version=4;
 // One GPU slot. Producer never overwrites it until the consumer's GPU fence
 // acknowledges the previous sequence. Both devices must use the same adapter.
 struct alignas(8) GpuPacket {
@@ -146,7 +147,7 @@ public:
             if(!map || GetLastError()==ERROR_ALREADY_EXISTS)throw std::runtime_error("GPU metadata already exists or cannot be created");
             packet=static_cast<GpuPacket*>(MapViewOfFile(map,FILE_MAP_ALL_ACCESS,0,0,sizeof(GpuPacket)));
             if(!packet)throw std::runtime_error("GPU metadata map failed");
-            memset(packet,0,sizeof(*packet));packet->magic=0x47564731;packet->version=3;packet->size=sizeof(*packet);packet->pid=pid;
+            memset(packet,0,sizeof(*packet));packet->magic=0x47564731;packet->version=gpu_packet_version;packet->size=sizeof(*packet);packet->pid=pid;packet->ticket=StereoImageTicket{};
             packet->allow_simulated=allow_simulated_?1:0;
             packet->width=static_cast<unsigned>(desc.Width);packet->height=desc.Height;packet->format=desc.Format;packet->adapter=device->GetAdapterLuid();
             initialized=true;state=2;InterlockedExchange(&packet->ready,1);ok=true;
@@ -179,7 +180,7 @@ private:
         auto failure=[&](HRESULT hr){if(traceout){traceout->result=hr;traceout->valid|=capture_hresult_valid;}reason(GpuCaptureReason::api_failure);};
         do {
             if(state!=2){reason(GpuCaptureReason::not_ready);break;} // mark_stopped may win before lock.
-            if(packet->magic!=0x47564731 || packet->version!=3 || packet->size!=sizeof(*packet) || packet->pid!=GetCurrentProcessId() || packet->allow_simulated!=(allow_simulated_?1u:0u)){reason(GpuCaptureReason::metadata_invalid);break;}
+            if(packet->magic!=0x47564731 || packet->version!=gpu_packet_version || packet->size!=sizeof(*packet) || packet->pid!=GetCurrentProcessId() || packet->allow_simulated!=(allow_simulated_?1u:0u)){reason(GpuCaptureReason::metadata_invalid);break;}
             if(bound_resource){
                 if(swap||!owned_matches(resource,generation,idle)||packet->width!=bound_desc.Width||packet->height!=bound_desc.Height||
                    packet->format!=static_cast<unsigned>(bound_desc.Format)){reason(GpuCaptureReason::owned_binding_mismatch);break;}
@@ -269,7 +270,7 @@ public:
         map=OpenFileMappingW(FILE_MAP_ALL_ACCESS,FALSE,gpu_name(pid,L"metadata").c_str());
         if(!map)throw std::runtime_error("GPU producer metadata unavailable");
         packet=static_cast<GpuPacket*>(MapViewOfFile(map,FILE_MAP_ALL_ACCESS,0,0,sizeof(GpuPacket)));
-        if(!packet || InterlockedCompareExchange(&packet->ready,0,0)!=1 || packet->magic!=0x47564731 || packet->version!=3 || packet->size!=sizeof(*packet) || packet->pid!=pid || packet->allow_simulated!=(allow_simulated_?1u:0u) || InterlockedCompareExchange(&packet->stopped,0,0))throw std::runtime_error("GPU metadata rejected");
+        if(!packet || InterlockedCompareExchange(&packet->ready,0,0)!=1 || packet->magic!=0x47564731 || packet->version!=gpu_packet_version || packet->size!=sizeof(*packet) || packet->pid!=pid || packet->allow_simulated!=(allow_simulated_?1u:0u) || InterlockedCompareExchange(&packet->stopped,0,0))throw std::runtime_error("GPU metadata rejected");
         LUID luid=device->GetAdapterLuid();if(memcmp(&luid,&packet->adapter,sizeof(luid)))throw std::runtime_error("GPU adapter differs from producer");
         if(InterlockedCompareExchange(&packet->consumer,static_cast<LONG>(GetCurrentProcessId()),0))throw std::runtime_error("GPU slot already has a consumer");
         claimed=true;producer_pid=pid;
@@ -285,7 +286,7 @@ public:
     }
     bool acquire(ID3D12CommandQueue* queue){
         if(!packet || pending || InterlockedCompareExchange(&packet->stopped,0,0))return false;
-        if(packet->magic!=0x47564731 || packet->version!=3 || packet->size!=sizeof(*packet) || packet->allow_simulated!=(allow_simulated_?1u:0u) ||
+        if(packet->magic!=0x47564731 || packet->version!=gpu_packet_version || packet->size!=sizeof(*packet) || packet->allow_simulated!=(allow_simulated_?1u:0u) ||
            packet->pid!=producer_pid || packet->width!=width || packet->height!=height || packet->format!=static_cast<unsigned>(format))
             throw std::runtime_error("GPU metadata changed or version rejected");
         auto serial=static_cast<UINT64>(InterlockedCompareExchange64(&packet->sequence,0,0));

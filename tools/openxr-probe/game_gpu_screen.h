@@ -5,10 +5,10 @@
 #include "eye_chain_policy.h"
 
 enum class ProjectionStatus {submitted,producer_stopped,producer_unavailable,waiting_image,current_inactive,current_untracked,
-    reference_space_changed,empty_ticket,session_mismatch,ticket_flags,ticket_geometry,stale_ticket,image_rectangle,session_lost,producer_structure_invalid,probe_failure,menu_requested,menu_recovery_pending,count};
+    reference_space_changed,empty_ticket,session_mismatch,ticket_flags,ticket_geometry,stale_ticket,image_rectangle,session_lost,producer_structure_invalid,probe_failure,menu_requested,menu_recovery_pending,reference_epoch_pending,count};
 inline const char* projection_status_name(ProjectionStatus status){
     static const char* names[]={"submitted","producer_stopped","producer_unavailable","waiting_image","current_inactive","current_untracked",
-        "reference_space_changed","empty_ticket","session_mismatch","ticket_flags","ticket_geometry","stale_ticket","image_rectangle","session_lost","producer_structure_invalid","probe_failure","menu_requested","menu_recovery_pending"};
+        "reference_space_changed","empty_ticket","session_mismatch","ticket_flags","ticket_geometry","stale_ticket","image_rectangle","session_lost","producer_structure_invalid","probe_failure","menu_requested","menu_recovery_pending","reference_epoch_pending"};
     return names[static_cast<unsigned>(status)];
 }
 inline bool xr_image_work_complete(uint64_t completed,uint64_t target){return target && completed!=~uint64_t(0) && completed>=target;}
@@ -19,14 +19,15 @@ inline ProjectionStatus projection_current_status(bool should_render,bool focuse
     if(count!=2||(head_flags&required_head)!=required_head||(view_flags&15)!=15)return ProjectionStatus::current_untracked;
     return ProjectionStatus::submitted;
 }
-inline ProjectionStatus projection_ticket_status(const gears_vr::StereoImageTicket& ticket,unsigned width,unsigned height,uint64_t session_id,int64_t now,bool simulated=false){
+inline ProjectionStatus projection_ticket_status(const gears_vr::StereoImageTicket& ticket,unsigned width,unsigned height,uint64_t session_id,int64_t now,bool simulated=false,uint64_t space_epoch=0,int64_t change_time=0){
     auto const& sample=ticket.sample;
-    if(!ticket.id||!sample.sequence)return ProjectionStatus::empty_ticket;
+    if(!ticket.id||!sample.sequence||!sample.space_epoch)return ProjectionStatus::empty_ticket;
     if(sample.session!=session_id)return ProjectionStatus::session_mismatch;
     const auto expected_source=simulated?gears_vr::StereoSource::MetaOperatorSimulated:gears_vr::StereoSource::RuntimeTracked;
     if(sample.focused!=1||sample.should_render!=1||sample.source!=expected_source||!gears_vr::stereo_tracking_valid(sample,simulated))return ProjectionStatus::ticket_flags;
     if(!gears_vr::stereo_geometry_valid(sample))return ProjectionStatus::ticket_geometry;
     if(now<=0||sample.received_ns<=0||sample.received_ns>now||now-sample.received_ns>100000000)return ProjectionStatus::stale_ticket;
+    if(space_epoch&&(sample.space_epoch!=space_epoch||sample.predicted_time<change_time))return ProjectionStatus::reference_epoch_pending;
     if(!width||!height||width%2||width>8192||height>8192)return ProjectionStatus::image_rectangle;
     for(unsigned i=0;i<2;++i){auto r=ticket.rect[i];
         if(r.x!=int32_t(i*width/2)||r.y!=0||r.width!=int32_t(width/2)||r.height!=int32_t(height))return ProjectionStatus::image_rectangle;}
@@ -165,8 +166,8 @@ public:
         HANDLE mapping=OpenFileMappingW(FILE_MAP_READ,FALSE,gears_vr::gpu_name(pid,L"metadata").c_str());
         if(!mapping)return false;
         auto* packet=static_cast<const gears_vr::GpuPacket*>(MapViewOfFile(mapping,FILE_MAP_READ,0,0,sizeof(gears_vr::GpuPacket)));
-        if(status && packet && packet->ready==1 && (packet->magic!=0x47564731||packet->version!=3||packet->size!=sizeof(*packet)||packet->pid!=pid||packet->allow_simulated!=unsigned(simulated)))*status=ProjectionStatus::producer_structure_invalid;
-        bool ready=packet&&packet->magic==0x47564731&&packet->version==3&&packet->size==sizeof(*packet)&&packet->pid==pid&&packet->allow_simulated==unsigned(simulated)&&packet->ready==1&&!packet->stopped;
+        if(status && packet && packet->ready==1 && (packet->magic!=0x47564731||packet->version!=gears_vr::gpu_packet_version||packet->size!=sizeof(*packet)||packet->pid!=pid||packet->allow_simulated!=unsigned(simulated)))*status=ProjectionStatus::producer_structure_invalid;
+        bool ready=packet&&packet->magic==0x47564731&&packet->version==gears_vr::gpu_packet_version&&packet->size==sizeof(*packet)&&packet->pid==pid&&packet->allow_simulated==unsigned(simulated)&&packet->ready==1&&!packet->stopped;
         if(packet)UnmapViewOfFile(packet);CloseHandle(mapping);return ready;
     }
     bool update_image(uint64_t expected_session=0,ProjectionStatus* status=nullptr){
@@ -288,14 +289,14 @@ public:
             out.head_flags=sample.head_flags;out.view_flags=sample.view_flags;}
         return out;
     }
-    bool render_projection(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status,int64_t minimum_sample_ns=0){
+    bool render_projection(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status,int64_t minimum_sample_ns=0,uint64_t space_epoch=1,int64_t space_change_time=0){
         if(!stereo)throw std::runtime_error("Projection requires admitted stereo eye chains");
         if(receiver->stopped()){status=ProjectionStatus::producer_stopped;return false;}
         status=ProjectionStatus::waiting_image;
         if(!update_image(expected_session,&status))return false;
         const auto& ticket=receiver->ticket();const auto& sample=ticket.sample;
         const auto now=gears_vr::monotonic_ns();
-        status=projection_ticket_status(ticket,receiver->width,receiver->height,expected_session,now,allow_simulated);
+        status=projection_ticket_status(ticket,receiver->width,receiver->height,expected_session,now,allow_simulated,space_epoch,space_change_time);
         if(status!=ProjectionStatus::submitted)return false;
         if(sample.received_ns<=minimum_sample_ns){status=ProjectionStatus::menu_recovery_pending;return false;}
         for(unsigned i=0;i<2;++i){

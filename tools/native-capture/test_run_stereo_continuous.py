@@ -274,7 +274,7 @@ class ContinuousTests(unittest.TestCase):
             self.assertIsNone(runner.read_session_status(path,124,0))
             self.assertEqual(runner.read_session_status(path,123,0)['phase'],'stopped')
 
-    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False):
+    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False):
         with tempfile.TemporaryDirectory() as folder:
             root=pathlib.Path(folder);build=root/'native';build.mkdir()
             (build/'capture-status.txt').write_text('capturing pid=123 stopped disable_status=0 active=0')
@@ -308,6 +308,11 @@ class ContinuousTests(unittest.TestCase):
             def native(command,**kwargs):
                 if command[1].endswith('verify_stopped.py'):
                     pathlib.Path(command[-1]).write_text(json.dumps({'all_match':True}))
+                elif first_stereo:
+                    path=next((root/'analysis/runtime').glob('*.stdout.txt'))
+                    with path.open('a') as stream:
+                        stream.write(json.dumps(dict(reference_epoch_first_projection=True,space_epoch=1,end_frame_succeeded=True,
+                            monotonic_ns=runner.time.perf_counter_ns()))+'\n')
                 return types.SimpleNamespace(returncode=0)
             stages=[dict(terminal(),phase='running'),dict(terminal(),phase='stop_requested'),terminal('stopped' if clean else 'incomplete')]
             checks=0
@@ -337,6 +342,37 @@ class ContinuousTests(unittest.TestCase):
                 (native.call_args_list[0].args[0],'--continuous-owner-pid','--continuous-owner-creation-time')]:
             self.assertEqual(command[command.index(pid_flag)+1],str(os.getpid()))
             self.assertEqual(command[command.index(time_flag)+1],str(identity(os.getpid())['creation_time']))
+
+    def test_startup_stage_timings_distinguish_running_from_first_stereo(self):
+        _,state,*_=self.run_mock()
+        timing=state['startup_timings']
+        self.assertEqual(set(timing),{'xr_preflight','native_prepare','native_running'})
+        self.assertNotIn('first_stereo_submission',timing)
+        elapsed=[timing[key]['since_runner_start_ms'] for key in timing]
+        self.assertEqual(elapsed,sorted(elapsed))
+        for stage in timing.values():
+            self.assertGreaterEqual(stage['elapsed_ms'],0)
+            self.assertTrue(stage['timing_is_runner_observation'])
+        callbacks=[]
+        _,state,*_=self.run_mock(startup_menu=True,startup_callback=lambda live:(live(),callbacks.append(True)),first_stereo=True)
+        self.assertEqual(callbacks,[True])
+        self.assertEqual(set(state['startup_timings']),{'xr_preflight','camera_ready','native_prepare','native_running','first_stereo_submission'})
+        self.assertIn('successful xrEndFrame',state['startup_timings']['first_stereo_submission']['evidence'])
+        self.assertFalse(state['startup_timings']['first_stereo_submission']['timing_is_runner_observation'])
+        self.assertGreaterEqual(state['startup_timings']['first_stereo_submission']['runner_observation_delay_ms'],0)
+
+    def test_first_stereo_timing_uses_only_successful_existing_marker(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=pathlib.Path(folder)/'stdout.txt'
+            self.assertFalse(runner.first_stereo_submitted(path))
+            good=dict(reference_epoch_first_projection=True,space_epoch=1,end_frame_succeeded=True,monotonic_ns=123)
+            for key,value in (('reference_epoch_first_projection',False),('space_epoch',2),('end_frame_succeeded',False),('monotonic_ns',0)):
+                path.write_text('partial output\n'+json.dumps(dict(good,**{key:value}))+'\n')
+                self.assertFalse(runner.first_stereo_submitted(path),key)
+            path.write_text(json.dumps({'continuous_running':True})+'\n'+json.dumps(good)+'\n')
+            self.assertEqual(runner.first_stereo_submitted(path),good)
+            with mock.patch.object(pathlib.Path,'read_text',side_effect=PermissionError('busy')):
+                self.assertFalse(runner.first_stereo_submitted(path))
 
     def test_diagnostics_enabled_report_and_commands(self):
         code,state,spawn,native,control,child=self.run_mock(diagnostics=True)

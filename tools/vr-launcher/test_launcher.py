@@ -50,6 +50,68 @@ class FakeBackend:
         return dict(pawn='0x200',controller='0x100',camera='0x400',level='0x300',timestamp=float(self.samples))
 
 class LauncherTests(unittest.TestCase):
+    def test_backend_player_requires_full_anchor_guard_and_closes_reader(self):
+        backend=launcher.Backend.__new__(launcher.Backend)
+        resolver=SimpleNamespace(p=SimpleNamespace(close=mock.Mock()),resolve=mock.Mock())
+        backend.Resolver=mock.Mock(return_value=resolver)
+        guard={role:{'address':address} for role,address in
+               (('pawn',200),('controller',100),('camera',400),('local_player',500),('level',300))}
+        guard.update(outer_chain=[{'address':300}],view_target=200,timestamp_raw=struct.pack('<f',2.).hex())
+        sampler=SimpleNamespace(view_target=408,initial=guard,resolved=dict(controller_address='0x64',
+            camera_address='0x190',local_player_address='0x1f4'),guard=mock.Mock(return_value=dict(guard)))
+        factory=mock.Mock(return_value=sampler)
+        with mock.patch.dict('sys.modules',{'anchor_config':SimpleNamespace(LiveRegistryAnchorSampler=factory)}):
+            self.assertEqual(backend.player(55,{}),dict(pawn='0xc8',controller='0x64',camera='0x190',level='0x12c',timestamp=2.))
+            factory.assert_called_once_with(resolver);sampler.guard.assert_called_once()
+            resolver.resolve.assert_not_called();resolver.p.close.assert_called_once()
+            for changed in ('camera','view_target'):
+                sampler.guard.return_value=dict(guard,**{changed:({'address':401} if changed=='camera' else 201)})
+                with self.assertRaisesRegex(RuntimeError,'relationship changed'):backend.player(55,{})
+            sampler.view_target=None
+            with self.assertRaisesRegex(RuntimeError,'readable Camera.ViewTarget'):backend.player(55,{})
+            factory.side_effect=RuntimeError('Camera view target is not controlled Pawn')
+            with self.assertRaisesRegex(RuntimeError,'not controlled Pawn'):backend.player(55,{})
+            self.assertEqual(resolver.p.close.call_count,5)
+
+    def test_owned_waits_for_camera_target_then_two_fresh_samples(self):
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend();index=pathlib.Path(directory)/'index.json';observations=[]
+            original=backend.player;attempts=[0]
+            def player(*args):
+                attempts[0]+=1
+                if attempts[0]<=2:raise RuntimeError('Camera view target is not controlled Pawn')
+                return original(*args)
+            backend.player=player
+            def run(args,control,**kwargs):
+                kwargs['before_native_activation'](lambda:None)
+                self.assertEqual(attempts[0],4)
+                self.assertNotIn('waiting_for_level_reason',json.loads(index.read_text()))
+                return 0
+            backend.runner.run_session=mock.Mock(side_effect=run)
+            def pause(_):observations.append(json.loads(index.read_text())['waiting_for_level_reason'])
+            with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0),mock.patch('builtins.print') as printed:
+                launcher.start({},dict(MANIFEST,startup_menu=True),backend,index,clock=lambda:999.,sleep=pause)
+            self.assertEqual(observations[:2],['Camera view target is not controlled Pawn']*2)
+            reasons=[json.loads(call.args[0]) for call in printed.call_args_list]
+            self.assertEqual(sum(row.get('waiting_for_level')=='Camera view target is not controlled Pawn' for row in reasons),1)
+
+    def test_owned_camera_wait_can_be_cancelled_without_activation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend();index=pathlib.Path(directory)/'index.json';activated=[]
+            backend.player=mock.Mock(side_effect=RuntimeError('Camera/controller/local-player relationship changed'))
+            class Cancelled(RuntimeError):pass
+            backend.runner.StartupCancelled=Cancelled
+            def run(args,control,**kwargs):
+                kwargs['before_native_activation'](lambda:None);activated.append(True);return 0
+            backend.runner.run_session=mock.Mock(side_effect=run)
+            def pause(_):
+                self.assertIn('relationship changed',json.loads(index.read_text())['waiting_for_level_reason'])
+                backend.cancel=True
+            with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                with self.assertRaises(Cancelled):
+                    launcher.start({},dict(MANIFEST,startup_menu=True),backend,index,clock=lambda:999.,sleep=pause)
+            self.assertEqual(activated,[]);backend.player.assert_called_once()
+
     def test_player_default_uses_game_resolution_and_graphics_protection(self):
         directory=pathlib.Path(__file__).parent
         current=json.loads((directory/'manifest.json').read_text())

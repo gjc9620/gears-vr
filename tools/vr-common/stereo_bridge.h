@@ -5,7 +5,7 @@
 
 namespace gears_vr {
 struct StereoBridgePacket {
-    unsigned magic=0x47565331,version=2,size=sizeof(StereoBridgePacket),target_pid{};
+    unsigned magic=0x47565331,version=3,size=sizeof(StereoBridgePacket),target_pid{};
     long long frequency{};
     StereoSample sample{};
 };
@@ -14,7 +14,7 @@ class StereoBridge {
     bool packet_valid(StereoBridgePacket const& p) const {
         LARGE_INTEGER frequency{};
         return QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0&&
-            p.magic==0x47565331&&p.version==2&&p.size==sizeof(p)&&p.target_pid==pid_&&p.frequency==frequency.QuadPart&&stereo_source_known(p.sample.source);
+            p.magic==0x47565331&&p.version==3&&p.size==sizeof(p)&&p.target_pid==pid_&&p.frequency==frequency.QuadPart&&stereo_source_known(p.sample.source);
     }
 public:
     StereoBridge()=default;

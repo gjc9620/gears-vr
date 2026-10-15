@@ -23,6 +23,8 @@ struct StereoSample {
     std::uint32_t focused{},should_render{};
     Pose head{{},{0,0,0,0}};
     StereoEye eyes[2]{};
+    // Changes only when the runtime's LOCAL origin change takes effect.
+    std::uint64_t space_epoch{1};
 };
 inline bool stereo_tracking_valid(StereoSample const& sample,bool allow_sim=false) {
     if(!stereo_source_allowed(sample.source,allow_sim)||(sample.view_flags&15)!=15)return false;
@@ -62,7 +64,7 @@ inline bool stereo_same_pose(Pose const& a,Pose const& b) {
         a.orientation.z==b.orientation.z&&a.orientation.w==b.orientation.w;
 }
 inline bool stereo_same(StereoSample const& a,StereoSample const& b) {
-    if(a.source!=b.source||a.session!=b.session||a.sequence!=b.sequence||a.received_ns!=b.received_ns||
+    if(a.source!=b.source||a.session!=b.session||a.sequence!=b.sequence||a.space_epoch!=b.space_epoch||a.received_ns!=b.received_ns||
        a.predicted_time!=b.predicted_time||a.head_flags!=b.head_flags||a.view_flags!=b.view_flags||
        a.focused!=b.focused||a.should_render!=b.should_render||!stereo_same_pose(a.head,b.head))return false;
     for(unsigned i=0;i<2;++i) {
@@ -93,7 +95,8 @@ public:
             result.reference_generation=reference_generation_;return result;};
         if(last_&&s.session!=last_->session)return reject(StereoStatus::session_changed);
         if(!stereo_source_allowed(s.source,allow_sim)||(last_&&s.source!=last_->source))return reject(StereoStatus::invalid);
-        if(!s.session||!s.sequence)return reject(StereoStatus::invalid);
+        if(!s.session||!s.sequence||!s.space_epoch)return reject(StereoStatus::invalid);
+        if(last_&&s.space_epoch<last_->space_epoch)return reject(StereoStatus::replayed);
         if(last_&&(s.sequence<last_->sequence||(s.sequence==last_->sequence&&!stereo_same(s,*last_))))
             return reject(StereoStatus::replayed);
         if(last_&&(s.received_ns<last_->received_ns||s.predicted_time<last_->predicted_time))
@@ -103,12 +106,14 @@ public:
         if(now_ns<=0||s.received_ns<=0||s.received_ns>now_ns||now_ns-s.received_ns>100000000)
             return reject(StereoStatus::stale);
         if(!stereo_geometry_valid(s))return reject(StereoStatus::invalid);
+        const bool new_space=last_&&s.space_epoch!=last_->space_epoch;
+        if(new_space)reference_.reset(); // No old-origin reference survives this boundary.
         bool first=!reference_,recentered=false,deferred=false;
         last_=s; // Even an unavailable initial heading cannot erase replay guards.
         if(first||recenter_pending_){
             Pose heading{};
             if(stereo_heading_reference(s.head,heading)){
-                reference_=heading;++reference_generation_;recentered=!first;
+                reference_=heading;++reference_generation_;recentered=!first||new_space;
                 // A request before initialization is satisfied by generation1.
                 recenter_pending_=false;
             }else deferred=true;

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "startup_menu": true,
+  "anchor_observer": true,
+  "ui_observer": true,
+  "outage_diagnostics": true,
+  "image_ticket_diagnostics": true,
+  "shutdown_diagnostics": true,
+  "game_path": "Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe",
+  "game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+  "native_build": "tools/native-capture/build-game-recovery1",
+  "native_dll": "GearsCaptureGameRecovery1.dll",
+  "native_sha256": "8805d0b6aeb345030d8ff03995b3487ed937c42f3db067fd3aeeaac18950dd48",
+  "xr_build": "tools/openxr-probe/build-space-recovery1",
+  "xr_sha256": "c45d20e6f683d0b5edcedaf2bd1fd3253d7e319c1f880dc2e70c4e31a1040872",
+  "ui_hud_plane": true,
+  "gpu_snapshot": true,
+  "graphics_startup_lock": true,
+  "graphics_menu_lock": true,
+  "menu_recovery": true
+}

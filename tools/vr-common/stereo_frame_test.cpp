@@ -185,6 +185,22 @@ int main(){
     CHECK(!gate.update(changed,changed.received_ns-1));
     auto session=changed;session.session=22;CHECK(gate.update(session,session.received_ns).status==StereoStatus::session_changed);
     gate.reset();CHECK(gate.update(session,session.received_ns).status==StereoStatus::initial);
+    // LOCAL-origin changes preserve session/replay guards, replacing the head reference.
+    StereoGate origin_gate;CHECK(origin_gate.update(s,s.received_ns));
+    auto origin=s;origin.space_epoch=2;origin.sequence=2;++origin.predicted_time;++origin.received_ns;
+    origin.head.position={2,1,3};
+    auto invalid_origin=origin;invalid_origin.head_flags=0;
+    CHECK(origin_gate.update(invalid_origin,invalid_origin.received_ns).status==StereoStatus::untracked);
+    auto origin_result=origin_gate.update(origin,origin.received_ns);
+    CHECK(origin_result&&origin_result.recentered&&origin_result.reference_generation==2);
+    CHECK(origin_result.reference.position.x==2&&origin_result.reference.position.y==1&&origin_result.reference.position.z==3);
+    CHECK(origin_gate.update(origin,origin.received_ns).reference_generation==2);
+    auto old_origin=origin;old_origin.space_epoch=1;old_origin.sequence=3;
+    CHECK(origin_gate.update(old_origin,old_origin.received_ns).status==StereoStatus::replayed);
+    old_origin=origin;old_origin.space_epoch=3; // New epoch cannot reuse a sequence.
+    CHECK(origin_gate.update(old_origin,old_origin.received_ns).status==StereoStatus::replayed);
+    old_origin.sequence=3;old_origin.space_epoch=0;
+    CHECK(origin_gate.update(old_origin,old_origin.received_ns).status==StereoStatus::invalid);
     for(unsigned failure=0;failure<8;++failure){StereoGate g;auto bad=s;
         if(failure==0)bad.head.orientation.w=2;
         if(failure==1)bad.eyes[1].pose.position.x=std::numeric_limits<double>::quiet_NaN();

@@ -63,7 +63,88 @@ def remote_call(handle,address,parameter):
     finally:k.CloseHandle(thread)
 
 
-def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False):
+def camera_preparation_transient(error):
+    # Exact known transition failures only. Schema, code, certificate identity,
+    # process identity and unknown memory errors remain hard rejections.
+    reason=str(error)
+    if reason in {
+        'Camera view target is not controlled Pawn',
+        'Controlled Pawn changed; re-resolve required',
+        'Pawn.Controller reciprocal link mismatch',
+        'Camera/controller/local-player relationship changed',
+        'Pawn/controller pointer changed at bracket boundary',
+        'Camera/controller/player pointer changed at bracket boundary',
+        'View target changed at bracket boundary',
+        'Camera relationship changed during discovery; retry',
+        'Registry reallocated during discovery; retry',
+        'Expected one local camera, found 0; no address accepted',
+        'Cross-frame camera timestamp during identity checks',
+    }:return True
+    if reason.startswith('Anchor camera changed during startup: '):return True
+    # The strict sampler's initial construction reads Controller.Pawn before
+    # it can build a certificate; a transient unpossessed Pawn is null here.
+    return reason=='Null object pointer' and getattr(error,'evidence',{}).get('stage')=='initial'
+
+
+def wait_camera_preparation(acquire,check_live,deadline,*,clock=time.monotonic,sleep=time.sleep,failure_receipt=None):
+    """Retry read-only discovery only; caller must not include activation."""
+    previous_reason=None;attempts=0;failures=0;last_error=None
+    try:
+        while True:
+            check_live()
+            if clock()>=deadline:raise TimeoutError('Camera preparation deadline before activation: '+str(previous_reason))
+            attempts+=1
+            try:value=acquire()
+            except RuntimeError as error:
+                failures+=1;last_error=error
+                if failures==1 and failure_receipt:failure_receipt(error,failures,'first')
+                if not camera_preparation_transient(error):raise
+                check_live()
+                reason=str(error)
+                if reason!=previous_reason:
+                    print(json.dumps({'native_preparation_waiting_for_camera':reason}),flush=True)
+                    previous_reason=reason
+                remaining=deadline-clock()
+                if remaining<=0:raise TimeoutError('Camera preparation deadline before activation: '+reason) from error
+                sleep(min(.5,remaining));continue
+            check_live()
+            if clock()>=deadline:raise TimeoutError('Camera preparation completed after deadline; native remains inactive')
+            if attempts>1:print(json.dumps({'native_preparation_camera_ready':True,'attempts':attempts}),flush=True)
+            return value
+    finally:
+        if failures>1 and failure_receipt:failure_receipt(last_error,failures,'last')
+
+
+def preparation_live_guard(pid,owner_pid=None,owner_creation_time=None):
+    from run_stereo_continuous import WindowsControl
+    control=WindowsControl();game=control.identity(pid)
+    if not game:raise RuntimeError('Game exited before camera preparation')
+    def check():
+        if control.identity(pid)!=game:raise RuntimeError('Game process identity changed during camera preparation')
+        if owner_pid is not None:
+            owner=control.identity(owner_pid)
+            if not owner or owner['creation_time']!=owner_creation_time:
+                raise RuntimeError('Owner exited or changed during camera preparation')
+            c.set_last_error(0)
+            event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.RepositoryLauncher.Stop.{owner_pid}')
+            if not event and c.get_last_error() not in (0,2):raise c.WinError(c.get_last_error())
+            if event:
+                try:
+                    status=k.WaitForSingleObject(event,0)
+                    if status==0:raise RuntimeError('Owner cancelled camera preparation before activation')
+                    if status!=0x102:raise RuntimeError('Owner cancellation event wait failed')
+                finally:k.CloseHandle(event)
+    check();return check
+
+
+def resolve_camera_once(pid,profile):
+    resolver=Resolver(pid,profile)
+    try:return resolver.resolve()
+    finally:resolver.p.close()
+
+
+def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False,
+                                 record_anchor_failure=True,preparation_deadline=None,check_live=None):
     """Read-only, pre-activation acquisition; never retries identity failures.
 
     A new Resolver.resolve() prepares fresh registries/caches and roles on every
@@ -73,7 +154,9 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
     """
     from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged
     deadline=time.monotonic()+10;attempts=3 if ui_observer else 1
+    if preparation_deadline is not None:deadline=min(deadline,preparation_deadline)
     for attempt in range(attempts):
+        if check_live:check_live()
         if ui_observer and time.monotonic()>=deadline:
             raise UIConfigRejected('UI acquisition retry deadline exceeded before activation')
         try:
@@ -92,7 +175,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                     from anchor_config import build_anchor_config,anchor_ini,AnchorSamplingRejected
                     try:certificate,anchor_metadata=build_anchor_config(r,refreshed)
                     except AnchorSamplingRejected as error:
-                        save_anchor_sampling_failure(dll,pid,error)
+                        if record_anchor_failure:save_anchor_sampling_failure(dll,pid,error)
                         raise
                     anchor_section=anchor_ini(certificate);anchor_metadata['pid']=pid
                 if ui_observer:
@@ -100,6 +183,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                     ui_section=ui_observer_ini(ui_certificate)
                 if ui_observer and time.monotonic()>=deadline:
                     raise UIConfigRejected('UI acquisition exceeded retry deadline before activation')
+                if check_live:check_live()
                 return refreshed,anchor_metadata,anchor_section,ui_metadata,ui_section
             finally:r.p.close()
         except UIRegistryChanged:
@@ -108,7 +192,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
             time.sleep((min)(.05,(max)(0,deadline-time.monotonic())))
 
 
-def save_anchor_sampling_failure(dll,pid,error):
+def save_anchor_sampling_failure(dll,pid,error,*,preparation_failures=None,preparation_receipt=None):
     # A failure receipt is unique and never replaces the successful certificate.
     stamp=time.perf_counter_ns()
     path=dll.with_name(f'anchor-observer-config-failed-{pid}-{stamp}.json')
@@ -118,6 +202,7 @@ def save_anchor_sampling_failure(dll,pid,error):
     report['failure_stage']=error.evidence.get('stage','sample')
     report['guard_acquisitions']=error.evidence.get('guard_acquisitions',[])
     report['strict_guard_attempts']=error.evidence.get('strict_guard_attempts',0)
+    if preparation_failures is not None:report.update(preparation_failures=preparation_failures,preparation_receipt=preparation_receipt)
     with path.open('x',encoding='utf-8') as output:json.dump(report,output,indent=2,allow_nan=False)
     print(f'Anchor observer acquisition failure receipt: {path}',file=sys.stderr)
     return path
@@ -139,6 +224,7 @@ def configure_anchor_options(args,parser):
 
 
 def main():
+    command_started=time.monotonic()
     parser=argparse.ArgumentParser()
     parser.add_argument('--pid',type=int,required=True)
     parser.add_argument('--seconds',type=int,default=90,choices=range(10,181))
@@ -278,9 +364,18 @@ def main():
     if args.submit_pair_seconds or args.continuous_session:subprocess.run([str(dll.with_name('SubmittedViewLifetimeTest.exe'))],check=True)
     if args.shadow_state: subprocess.run([str(test),str(dll),'--state'],check=True)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
-    r=Resolver(args.pid,profile)
-    try:camera=r.resolve()
-    finally:r.p.close()
+    check_preparation=preparation_live_guard(args.pid,args.continuous_owner_pid,args.continuous_owner_creation_time)
+    # One shared read-only budget. Reserve time within the runner's 90 seconds
+    # for existing remote-call/status limits; self-tests are never rerun/skipped.
+    preparation_deadline=min(time.monotonic()+60,command_started+(55 if args.use_reserved else 40))
+    def failed_preparation(error,failures,position):
+        if hasattr(error,'evidence'):
+            save_anchor_sampling_failure(dll,args.pid,error,preparation_failures=failures,preparation_receipt=position)
+    def prepare(acquire):
+        if args.continuous_session and args.anchor_observer:
+            return wait_camera_preparation(acquire,check_preparation,preparation_deadline,failure_receipt=failed_preparation)
+        check_preparation();value=acquire();check_preparation();return value
+    camera=prepare(lambda:resolve_camera_once(args.pid,profile))
     handle=k.OpenProcess(0x43a,False,args.pid)
     if not handle:raise c.WinError(c.get_last_error())
     remote_memory=None;loader_finished=False
@@ -333,8 +428,11 @@ def main():
                 0x4ce80c:bytes.fromhex('40534883ec20488bc1488d511c488bd9'),
                 0x33bc70:bytes.fromhex('48895c2408574883ec208bda488bf9')})
         if args.shadow_constructor:signatures[0x15e428]=bytes.fromhex('488bc4488958104889701848897820')
-        camera,anchor_metadata,anchor_section,ui_metadata,ui_section=acquire_observer_preparation(
-            args.pid,profile,camera,signatures,dll,anchor_observer=args.anchor_observer,ui_observer=args.ui_observer)
+        camera,anchor_metadata,anchor_section,ui_metadata,ui_section=prepare(lambda:acquire_observer_preparation(
+            args.pid,profile,camera,signatures,dll,anchor_observer=args.anchor_observer,ui_observer=args.ui_observer,
+            record_anchor_failure=not(args.continuous_session and args.anchor_observer),
+            preparation_deadline=preparation_deadline,check_live=check_preparation))
+        check_preparation()
         config='[Capture]\n'+f'pid={args.pid}\nseconds={args.seconds}\n'+f"local_player={camera['local_player_address']}\ncontroller={camera['controller_address']}\ntimestamp={camera['timestamp_address']}\n"
         yaw_address=int(camera['pov_address'],16)+int(camera['offsets']['Rotation'],16)+4
         config+=f"camera={camera['camera_address']}\ncamera_yaw={yaw_address:#x}\nwobble={int(args.wobble)}\nsweep={int(args.sweep)}\nlive_head={int(args.live_head)}\n"
@@ -380,6 +478,7 @@ def main():
         if anchor_metadata is not None:
             dll.with_name('anchor-observer-config.json').write_text(json.dumps(anchor_metadata,indent=2,allow_nan=False)+'\n',encoding='utf-8')
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
+        check_preparation()
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
         # actual containing module, then relocate by that module's remote base.
         if not args.use_reserved:
@@ -407,6 +506,7 @@ def main():
         if export.forwarder:raise RuntimeError('Unexpected forwarded capture export')
         status=dll.with_name('capture-status.txt')
         previous_status_mtime=status.stat().st_mtime_ns if status.exists() else None
+        check_preparation()
         code=remote_call(handle,module_base+export.address,None)
         if code:raise RuntimeError(f'Capture start failed: {code}')
         deadline=time.monotonic()+15

@@ -146,6 +146,20 @@ def startup_panel_submitted(path):
     return False
 
 
+def first_stereo_submitted(path):
+    """Existing XR marker is emitted after successful xrEndFrame, not running."""
+    try:lines=path.read_text(encoding='utf-8',errors='replace').splitlines()
+    except OSError:return None # Diagnostic acquisition must not stop VR.
+    for line in lines:
+        try:value=json.loads(line)
+        except ValueError:continue
+        if (isinstance(value,dict) and value.get('reference_epoch_first_projection') is True
+                and type(value.get('space_epoch')) is int and value['space_epoch']==1
+                and value.get('end_frame_succeeded') is True
+                and type(value.get('monotonic_ns')) is int and value['monotonic_ns']>0):return value
+    return None
+
+
 def read_session_status(path,pid,floor):
     try:
         if path.stat().st_mtime_ns<=floor:return None
@@ -288,6 +302,7 @@ def cleanup_owned_xr(child,owned_pid,game_pid,timeout,control,state):
 
 
 def run_session(args,control=None,on_report=None,cancel_requested=None,before_native_activation=None):
+    timing_origin=time.perf_counter_ns()
     validate_ui_hud_plane(args)
     control=control or WindowsControl()
     lock=control.owner_lock(args.pid)
@@ -314,6 +329,21 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
     out_path=prefix.with_suffix('.stdout.txt');err_path=prefix.with_suffix('.stderr.txt')
+    state['startup_timings']={}
+    def stage_completed(name,started,evidence,actual_ns=None):
+        if name in state['startup_timings']:return
+        observed=time.perf_counter_ns()
+        measured=observed if actual_ns is None else actual_ns
+        entry={'elapsed_ms':(measured-started)/1000000,'since_runner_start_ms':(measured-timing_origin)/1000000,
+               'evidence':evidence,'clock':'Windows QPC / perf_counter_ns','timing_is_runner_observation':actual_ns is None}
+        if actual_ns is not None:entry.update(xr_monotonic_ns=actual_ns,runner_observation_delay_ms=(observed-actual_ns)/1000000)
+        state['startup_timings'][name]=entry;write_state(state_path,state)
+        print(json.dumps({'startup_stage':name,**entry}),flush=True)
+    def observe_first_stereo(started):
+        if 'first_stereo_submission' in state['startup_timings']:return
+        marker=first_stereo_submitted(out_path)
+        if marker and started<=marker['monotonic_ns']<=time.perf_counter_ns():
+            stage_completed('first_stereo_submission',started,'XR epoch1 actual projection successful xrEndFrame marker',marker['monotonic_ns'])
     try:
         state['owner_identity']=control.identity(os.getpid());state['game_identity']=control.identity(args.pid)
         floor=native_status.stat().st_mtime_ns if native_status.exists() else 0
@@ -330,6 +360,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             try:
                 if cancel_requested and cancel_requested():raise StartupCancelled()
                 # No Operator layer or pose calls are added to this strict mode.
+                xr_started=time.perf_counter_ns()
                 child=subprocess.Popen(state['xr_command'],stdout=out,stderr=err)
                 state['xr_owned_pid']=child.pid
                 state['xr_identity']=control.identity(child.pid)
@@ -350,8 +381,10 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     checked_identity(control,state['game_identity'])
                     time.sleep(.1)
                 else:raise RuntimeError('Strict focused XR source0 or startup panel preflight failed; native remains inactive')
+                stage_completed('xr_preflight',xr_started,'strict focused source0 CSV and required startup panel')
                 if before_native_activation:
                     state['phase']='awaiting_level';write_state(state_path,state)
+                    camera_started=time.perf_counter_ns()
                     def ensure_startup_live():
                         if cancel_requested and cancel_requested():raise StartupCancelled()
                         checked_identity(control,state['game_identity'])
@@ -359,14 +392,18 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     ensure_startup_live()
                     before_native_activation(ensure_startup_live)
                     ensure_startup_live()
+                    stage_completed('camera_ready',camera_started,'before_native_activation callback returned and startup remained live')
                     state['phase']='starting';write_state(state_path,state)
                 checked_identity(control,state['game_identity'])
                 if cancel_requested and cancel_requested():raise StartupCancelled()
+                native_started=time.perf_counter_ns()
                 activation_attempted=True
                 with prefix.with_suffix('.native-start.log').open('w') as log:
                     result=subprocess.run(state['native_command'],stdout=log,stderr=subprocess.STDOUT,timeout=90)
                 if result.returncode:raise RuntimeError('Native activation failed; seeking cleanup without retry')
+                stage_completed('native_prepare',native_started,'native preparation command exited 0; does not prove a stereo frame')
                 state['native_started']=True
+                running_wait_started=time.perf_counter_ns()
                 deadline=time.monotonic()+15
                 while time.monotonic()<deadline:
                     status=read_session_status(native_status,args.pid,floor)
@@ -378,12 +415,15 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     if child.poll() is not None:raise RuntimeError('XR exited during native startup')
                     time.sleep(.1)
                 else:raise TimeoutError('Fresh native running status absent')
+                stage_completed('native_running',running_wait_started,'fresh running status with matching owner; does not prove a stereo frame')
                 state['phase']='running';state['native_status']=status;state['native_started_qpc']=status['started_qpc'];write_state(state_path,state)
                 print(json.dumps({'continuous_running':True,'session_report':str(state_path)}),flush=True)
+                observe_first_stereo(native_started)
                 if getattr(args,'menu_recovery',False):
                     from menu_display_monitor import MenuDisplayMonitor
                     menu_monitor=MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity)
                 while child.poll() is None:
+                    observe_first_stereo(native_started)
                     if cancel_requested and cancel_requested():
                         state['stop_requested_by']='launcher_cancel';break
                     status=read_session_status(native_status,args.pid,floor)
@@ -430,6 +470,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         state['native_cleanup_verified']=False
                 if child:
                     cleanup_owned_xr(child,state['xr_owned_pid'],args.pid,args.cleanup_timeout,control,state)
+        if activation_attempted:observe_first_stereo(native_started)
         collect_xr_evidence(out_path,state)
         for line in out_path.read_text(encoding='utf-8',errors='replace').splitlines():
             try:value=json.loads(line)

@@ -118,6 +118,8 @@ int main() {
     StereoImageTicket image{};image.id=1;image.sample=simulated;
     image.rect[0]={0,0,320,360};image.rect[1]={320,0,320,360};
     CHECK(!stereo_image_ticket_valid(image,640,360));CHECK(stereo_image_ticket_valid(image,640,360,true));
+    image.sample.space_epoch=0;CHECK(!stereo_image_ticket_valid(image,640,360,true));
+    image.sample=simulated;
     CHECK(image.sample.head_flags==3);
     image.sample.source=static_cast<StereoSource>(99);CHECK(!stereo_image_ticket_valid(image,640,360,true));
     image.sample=simulated;image.sample.head_flags=1;CHECK(!stereo_image_ticket_valid(image,640,360,true));

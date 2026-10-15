@@ -16,6 +16,7 @@
 #include <stdexcept>
 #include <string>
 #include "../vr-common/pose_bridge.h"
+#include "reference_space_epoch.h"
 #include "../vr-common/stereo_bridge.h"
 #include "continuous_session.h"
 #include "shutdown_diagnostics.h"
@@ -124,7 +125,28 @@ int projection_receiver_self_test(){
        projection_current_status(true,true,2,3,3,true)!=ProjectionStatus::current_untracked)return 27;
     changed.sample.source=static_cast<gears_vr::StereoSource>(2);
     if(projection_ticket_status(changed,1920,1080,7,1000000000,true)!=ProjectionStatus::ticket_flags)return 28;
-    printf("projection receiver CPU gate/age/rect/coverage/stop/structural checks passed; no XR session opened\n");return 0;
+    changed=t;changed.sample.predicted_time=100;
+    if(projection_ticket_status(changed,1920,1080,7,1000000000,false,2,100)!=ProjectionStatus::reference_epoch_pending)return 29;
+    changed.sample.space_epoch=2;
+    if(projection_ticket_status(changed,1920,1080,7,1000000000,false,2,101)!=ProjectionStatus::reference_epoch_pending)return 30;
+    if(projection_ticket_status(changed,1920,1080,7,1000000000,false,2,100)!=good)return 31;
+    ProjectionEvidence transition;transition.record(ProjectionStatus::reference_epoch_pending,1);transition.record(good,2);
+    if(transition.structural_failure)return 32;
+    // Exercise the live readiness mapping too: gate-only tests cannot detect
+    // a receiver still checking the preceding GPU packet ABI version.
+    auto pid=GetCurrentProcessId();
+    HANDLE mapping=CreateFileMappingW(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,sizeof(gears_vr::GpuPacket),gears_vr::gpu_name(pid,L"metadata").c_str());
+    if(!mapping||GetLastError()==ERROR_ALREADY_EXISTS)return 33;
+    auto* packet=static_cast<gears_vr::GpuPacket*>(MapViewOfFile(mapping,FILE_MAP_WRITE,0,0,sizeof(gears_vr::GpuPacket)));
+    if(!packet){CloseHandle(mapping);return 34;}
+    *packet={};packet->magic=0x47564731;packet->version=gears_vr::gpu_packet_version;packet->size=sizeof(*packet);packet->pid=pid;packet->ready=1;
+    auto readiness=ProjectionStatus::producer_unavailable;
+    bool ready=GameGpuScreen::producer_ready(pid,&readiness);
+    packet->version=gears_vr::gpu_packet_version-1;
+    bool old_rejected=!GameGpuScreen::producer_ready(pid,&readiness)&&readiness==ProjectionStatus::producer_structure_invalid;
+    UnmapViewOfFile(packet);CloseHandle(mapping);
+    if(!ready||!old_rejected)return 35;
+    printf("projection receiver CPU gate/age/rect/epoch/coverage/stop/structural checks passed; no XR session opened\n");return 0;
 }
 int runtime_info(){
     try {
@@ -249,6 +271,8 @@ int main(int argc, char** argv) {
     const uint64_t stereo_session=static_cast<uint64_t>(gears_vr::monotonic_ns());
     uint64_t stereo_published=0,stereo_publish_skipped=0;
     bool stereo_space_changed=false;
+    gears_xr::ReferenceSpaceEpoch space_epoch;
+    std::uint64_t last_submitted_space_epoch{};
     // Permit the bounded runner to read flushed readiness rows while sampling.
     FILE* csv=_fsopen(argv[2],"w",_SH_DENYWR);
     if(!csv) return 2;
@@ -364,13 +388,14 @@ int main(int argc, char** argv) {
                     if(stereo_game_pid)projection_evidence.record(ProjectionStatus::session_lost,gears_vr::monotonic_ns());}
                 else if(event.type==XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING && stereo_pid){
                     const auto* change=reinterpret_cast<const XrEventDataReferenceSpaceChangePending*>(&event);
-                    if(change->referenceSpaceType==XR_REFERENCE_SPACE_TYPE_LOCAL){
-                        // Stop this bounded trial's stream before a recenter can
-                        // mix two reference frames under one immutable ticket.
-                        stereo_space_changed=true;stereo_bridge.publish({});
-                        if(continuous_session){stop_reason="reference_space_changed";exiting=true;
-                            projection_evidence.record(ProjectionStatus::reference_space_changed,gears_vr::monotonic_ns());}
-                        fprintf(stderr,"stereo_reference_space_changed=1 stream_invalidated=1\n");
+                    if(change->session==session&&change->referenceSpaceType==XR_REFERENCE_SPACE_TYPE_LOCAL){
+                        // Apply at changeTime and wait for an image rendered
+                        // using that explicit reference-space epoch.
+                        stereo_space_changed=true;
+                        if(continuous_session){
+                            if(!space_epoch.enqueue(change->changeTime))throw std::runtime_error("Reference-space event queue rejected");
+                            fprintf(stderr,"reference_space_pending change_time=%lld pose_valid=%u\n",change->changeTime,change->poseValid);
+                        }else {stereo_bridge.publish({});fprintf(stderr,"stereo_reference_space_changed=1 stream_invalidated=1\n");}
                     }
                 }
                 event={XR_TYPE_EVENT_DATA_BUFFER};
@@ -380,6 +405,12 @@ int main(int argc, char** argv) {
             if(!running) {std::this_thread::sleep_for(std::chrono::milliseconds(10));continue;}
             XrFrameWaitInfo wait{XR_TYPE_FRAME_WAIT_INFO};XrFrameState frame{XR_TYPE_FRAME_STATE};
             xr_check(xrWaitFrame(session,&wait,&frame),"xrWaitFrame");
+            if(continuous_session&&stereo_pid){
+                if(space_epoch.advance(frame.predictedDisplayTime)){
+                    printf("{\"reference_space_rebased\":true,\"space_epoch\":%llu,\"change_time\":%lld}\n",space_epoch.epoch(),space_epoch.last_change_time());fflush(stdout);
+                }
+                if(space_epoch.advance_rejected())throw std::runtime_error("Reference-space frame time rejected");
+            }
             XrFrameBeginInfo begin{XR_TYPE_FRAME_BEGIN_INFO};xr_check(xrBeginFrame(session,&begin),"xrBeginFrame");
             XrViewLocateInfo locate{XR_TYPE_VIEW_LOCATE_INFO};locate.viewConfigurationType=XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
             locate.displayTime=frame.predictedDisplayTime;locate.space=local;
@@ -394,10 +425,11 @@ int main(int argc, char** argv) {
                 bridge.publish(sample);
             }
             gears_vr::StereoSample stereo_sample{};bool stereo_sent=false;
-            if(stereo_pid && !stereo_space_changed){
+            if(stereo_pid && (!stereo_space_changed||continuous_session)){
                 auto pose=[](const XrPosef& p){return gears_vr::Pose{{p.position.x,p.position.y,p.position.z},
                     {p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w}};};
                 stereo_sample.session=stereo_session;stereo_sample.sequence=frames+1;
+                stereo_sample.space_epoch=space_epoch.epoch();
                 stereo_sample.source=simulator_operator?gears_vr::StereoSource::MetaOperatorSimulated:gears_vr::StereoSource::RuntimeTracked;
                 stereo_sample.received_ns=gears_vr::monotonic_ns();stereo_sample.predicted_time=frame.predictedDisplayTime;
                 stereo_sample.head_flags=head.locationFlags;stereo_sample.view_flags=view_count==2?view_state.viewStateFlags:0;
@@ -444,14 +476,14 @@ int main(int argc, char** argv) {
                 }
                 if(stereo_image_shown&&!startup_quad_queued)end.layerCount=0;
                 ProjectionStatus result;
-                if(stereo_space_changed)result=ProjectionStatus::reference_space_changed;
+                if(stereo_space_changed&&!continuous_session)result=ProjectionStatus::reference_space_changed;
                 else if(stereo_screen&&stereo_screen->producer_stopped())result=ProjectionStatus::producer_stopped;
                 else if(!startup_panel.allow_projection())result=menu_mode==gears_menu::Mode::death_menu?ProjectionStatus::menu_requested:ProjectionStatus::menu_recovery_pending;
                 else result=projection_current_status(frame.shouldRender,state==XR_SESSION_STATE_FOCUSED,view_count,head.locationFlags,view_state.viewStateFlags,simulator_operator);
                 bool submitted=false;
                 if(result==ProjectionStatus::submitted){
                     if(!stereo_screen)result=ProjectionStatus::producer_unavailable;
-                    else {outage_render_attempted=true;submitted=stereo_screen->render_projection(projection,projection_views,stereo_session,result,startup_panel.minimum_sample_ns());}
+                    else {outage_render_attempted=true;submitted=stereo_screen->render_projection(projection,projection_views,stereo_session,result,startup_panel.minimum_sample_ns(),space_epoch.epoch(),space_epoch.last_change_time());}
                 }
                 projection_frame_status=result;
                 if(submitted){
@@ -459,6 +491,12 @@ int main(int argc, char** argv) {
                 }
             }
             const auto ended=xrEndFrame(session,&end);xr_check(ended,"xrEndFrame");
+            if(stereo_game_pid&&ended==XR_SUCCESS&&projection_frame_status==ProjectionStatus::submitted&&
+               end.layerCount==1&&end.layers==layers&&last_submitted_space_epoch!=space_epoch.epoch()){
+                last_submitted_space_epoch=space_epoch.epoch();
+                printf("{\"reference_epoch_first_projection\":true,\"space_epoch\":%llu,\"end_frame_succeeded\":true,\"monotonic_ns\":%lld}\n",
+                    last_submitted_space_epoch,gears_vr::monotonic_ns());fflush(stdout);
+            }
             if(startup_handoff_queued){
                 const bool recovering=startup_panel.minimum_sample_ns()!=0;
                 stereo_image_shown=true;
@@ -549,6 +587,8 @@ int main(int argc, char** argv) {
             stereo_session,stereo_published,stereo_publish_skipped,stereo_space_changed?"true":"false",stereo_screen&&stereo_screen->projection_rendered?"true":"false");
         if(stereo_game_pid)printf("{\"stereo_game_projection_layers\":%u,\"stereo_game_copies\":%u,\"matching_render_ticket_required\":true}\n",
             stereo_screen?stereo_screen->projection_rendered:0,stereo_screen?stereo_screen->copies:0);
+        if(stereo_game_pid)printf("{\"reference_epoch_evidence\":true,\"current_epoch\":%llu,\"last_submitted_epoch\":%llu,\"current_epoch_submitted\":%s}\n",
+            space_epoch.epoch(),last_submitted_space_epoch,last_submitted_space_epoch==space_epoch.epoch()?"true":"false");
         if(stereo_game_pid&&!continuous_session)projection_evidence.print();
         bool display_ok=!screen || (screen->rendered && screen->gpu_pixels_verified);
         if(startup_window)printf("{\"startup_menu_evidence\":true,\"startup_quad_layers\":%u,\"stereo_handoff\":%s,\"panel_counts_as_stereo\":false}\n",startup_quad_layers,stereo_image_shown?"true":"false");
@@ -556,7 +596,8 @@ int main(int argc, char** argv) {
         display_ok=display_ok && (!gpu_screen || (gpu_screen->rendered && gpu_screen->copies));
         const auto scene_copies=stereo_screen?stereo_screen->copies:0;
         display_ok=display_ok && (!stereo_game_pid || (stereo_screen && stereo_screen->projection_rendered && scene_copies &&
-            (continuous_session?!projection_evidence.structural_failure:projection_evidence.sustained()) && !stereo_space_changed));
+            last_submitted_space_epoch==space_epoch.epoch()&&
+            (continuous_session?!projection_evidence.structural_failure:projection_evidence.sustained()&&!stereo_space_changed)));
         stereo_screen.reset();
         startup_screen.reset();
         gpu_screen.reset();

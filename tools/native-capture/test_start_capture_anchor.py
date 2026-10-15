@@ -13,6 +13,80 @@ import run_stereo_continuous as continuous
 
 
 class AnchorStartTests(unittest.TestCase):
+    def test_camera_transition_reacquires_all_certificates_without_activation(self):
+        import anchor_config as anchor
+        import ui_observer_config as ui
+        resolvers=[];ticks=[0.];failures=mock.Mock()
+        def resolver(pid,profile):
+            r=types.SimpleNamespace(base=0x1000,p=types.SimpleNamespace(close=mock.Mock()),read=mock.Mock(return_value=b'ok'))
+            r.resolve=mock.Mock(return_value=dict(local_player_address='0x1',module_base='0x1000',camera_address='camera'+str(len(resolvers)+1)))
+            resolvers.append(r);return r
+        def anchored(r,camera):
+            if len(resolvers)<3:raise anchor.AnchorSamplingRejected('Camera view target is not controlled Pawn',{'stage':'initial'})
+            return {'camera':camera['camera_address']},{'camera':camera['camera_address']}
+        def pause(seconds):ticks[0]+=seconds
+        baseline=dict(local_player_address='0x1',module_base='0x1000')
+        with mock.patch.object(start,'Resolver',side_effect=resolver),mock.patch.object(anchor,'build_anchor_config',side_effect=anchored),\
+             mock.patch.object(anchor,'anchor_ini',side_effect=lambda value:'anchor:'+value['camera']),\
+             mock.patch.object(ui,'build_ui_observer_config',side_effect=lambda r,c:({'camera':c['camera_address']},{'camera':c['camera_address']})),\
+             mock.patch.object(ui,'ui_observer_ini',side_effect=lambda value:'ui:'+value['camera']),\
+             mock.patch.object(start,'save_anchor_sampling_failure') as saved,mock.patch.object(start,'remote_call') as remote,\
+             mock.patch.object(start.subprocess,'run') as launched,contextlib.redirect_stdout(io.StringIO()):
+            value=start.wait_camera_preparation(lambda:start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),
+                anchor_observer=True,ui_observer=True,record_anchor_failure=False),lambda:None,60,
+                clock=lambda:ticks[0],sleep=pause,failure_receipt=failures)
+            saved.assert_not_called();remote.assert_not_called();launched.assert_not_called()
+        self.assertEqual((value[0]['camera_address'],value[1]['camera'],value[3]['camera']),('camera3',)*3)
+        self.assertEqual((value[2],value[4]),('anchor:camera3','ui:camera3'))
+        self.assertEqual(len(resolvers),3)
+        for r in resolvers:r.p.close.assert_called_once();r.resolve.assert_called_once();r.read.assert_called_once()
+        self.assertEqual([(call.args[1],call.args[2]) for call in failures.call_args_list],[(1,'first'),(2,'last')])
+
+    def test_camera_wait_is_bounded_and_never_retries_hard_failures(self):
+        ticks=[0.];acquire=mock.Mock(side_effect=RuntimeError('Camera view target is not controlled Pawn'))
+        def pause(seconds):ticks[0]+=seconds
+        receipts=mock.Mock();output=io.StringIO()
+        with contextlib.redirect_stdout(output),self.assertRaisesRegex(TimeoutError,'deadline'):
+            start.wait_camera_preparation(acquire,lambda:None,2,clock=lambda:ticks[0],sleep=pause,failure_receipt=receipts)
+        self.assertEqual(acquire.call_count,4)
+        self.assertEqual(receipts.call_count,2)
+        self.assertEqual(receipts.call_args.args[1:],(4,'last'))
+        self.assertEqual(len(output.getvalue().splitlines()),1)
+        for reason in ('Target prologue differs; instrumentation rejected','Local player changed during preparation','Identity changed during certificate assembly'):
+            acquire=mock.Mock(side_effect=RuntimeError(reason))
+            with self.assertRaisesRegex(RuntimeError,reason):start.wait_camera_preparation(acquire,lambda:None,60,clock=lambda:0)
+            acquire.assert_called_once()
+        ticks[0]=0
+        def late():ticks[0]=61;return 'late certificate'
+        with self.assertRaisesRegex(TimeoutError,'after deadline'):
+            start.wait_camera_preparation(late,lambda:None,60,clock=lambda:ticks[0])
+
+    def test_camera_wait_cancellation_or_exit_prevents_another_attempt(self):
+        for message in ('Owner cancelled camera preparation before activation','Game process identity changed during camera preparation'):
+            acquire=mock.Mock(side_effect=RuntimeError('Camera view target is not controlled Pawn'))
+            check=mock.Mock(side_effect=[None,RuntimeError(message)])
+            with self.assertRaisesRegex(RuntimeError,message):start.wait_camera_preparation(acquire,check,60,clock=lambda:0)
+            acquire.assert_called_once()
+        acquire=mock.Mock()
+        with self.assertRaisesRegex(RuntimeError,'cancelled'):
+            start.wait_camera_preparation(acquire,mock.Mock(side_effect=RuntimeError('cancelled')),60,clock=lambda:0)
+        acquire.assert_not_called()
+
+    def test_preparation_live_guard_checks_identity_owner_and_existing_cancel_event(self):
+        game={'pid':1,'creation_time':2};owner={'pid':3,'creation_time':4};live={1:game,3:owner}
+        control=types.SimpleNamespace(identity=lambda pid:live.get(pid))
+        with mock.patch.object(continuous,'WindowsControl',return_value=control),\
+             mock.patch.object(start.k,'OpenEventW',return_value=9),mock.patch.object(start.k,'WaitForSingleObject',return_value=0x102) as waited,\
+             mock.patch.object(start.k,'CloseHandle') as closed:
+            check=start.preparation_live_guard(1,3,4)
+            closed.assert_called_once_with(9)
+            waited.return_value=0
+            with self.assertRaisesRegex(RuntimeError,'cancelled'):check()
+            waited.return_value=0x102;live[3]=dict(owner,creation_time=5)
+            with self.assertRaisesRegex(RuntimeError,'Owner exited or changed'):check()
+            live[3]=owner;live[1]=dict(game,creation_time=6)
+            with self.assertRaisesRegex(RuntimeError,'Game process identity changed'):check()
+
     def test_hud_plane_dependencies_reject_before_option_mutation(self):
         parser=mock.Mock();parser.error.side_effect=ValueError
         base=dict(ui_hud_plane=True,ui_observer=True,anchor_observer=True,continuous_session=True,
