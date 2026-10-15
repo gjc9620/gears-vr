@@ -207,3 +207,13 @@ PID53760正常推进开始房间、走廊及庭院入口，运行727.19秒、652
 GraphicsLock1已增加`ui_segment_sources.h`，按真实复制索引保留source/root范围，拒绝混合、未知、过期代次及索引不匹配；独立16条字幕GPU记录保留ticket、list generation、execute sequence、QPC和双眼replay/命令完成状态。`UiSegmentSourcesTest`以/W4 /WX编译并通过，未增加原生hook或修改顶点。PID53840本轮菜单测试字幕GPU calls/rows均0，尚未取得真实字幕GPU命中，不能据此宣称可见性通过。
 
 现有快照event没有指定ticket，GPU done fence仅为复用ack。后续精准采图应将已提交的字幕list与Present发布的相同ticket关联，接收端只保存指定ticket/session；越过则明确miss，不能自动用下一帧冒充。最后仍需检查文字像素与双眼位置。
+
+## 2026-10-15：独立输出尚未接通Canvas/UI
+
+Sustain1、Menu1、Reload1已验证独立Low场景持续输出和部分状态切换，但不能沿用上面的旧backbuffer UI验收结论。当前源代码有三个明确断点：
+
+1. `capture.cpp::hook_family`接收Canvas；`try_submit_pair`只把copied family的`+0x10`场景目标换成owned adapter，传给`original_renderer`的Canvas仍是原对象。Canvas目标和异步持有关系尚未证明，`native_owned_scene`状态明确为`canvas_redirected=0`。不能直接改共享Canvas并假定另一个renderer不再使用它。
+2. `hook_draw_indexed`的双眼UI replay要求目标是已知swapchain buffer，再用`frame_link.overlay_pair`取关联。owned场景使用独立tracker和`image_tickets`；现有HUD/准星规划却查询`stereo_ticket_store`。仅放宽buffer判断会缺少同ticket的命令表代次、目标、队列和冻结姿态/几何关联，不能作为修复。
+3. `native_owned_scene_copy`在场景消费返回、renderer销毁及两个世界视图提交后即可发布。若Canvas稍后消费，必须先取得该ticket的Canvas结束及真实命令提交边界，或明确的同ticket无UI证据，再复制/发布和推进ticket。当前Trial要求恰好两个世界draw；UI应独立记作overlay，不能混入世界draw计数或把未知写入当成成功。
+
+下一步定向复用资料库中的family `0x3a148c`、renderer `0x116250`、已观察UI execute `0x19e64c`及其调用上下文，确认Canvas目标持有、排队与结束边界，再实现独立目标UI关联。以上来自当前Mod源代码审查，不等于新的原生反编译结论或GPU证据。先解决关联/时序，再做准星、换枪UI、菜单、字幕像素验证；保持已有票据身份和姿态时效约束。

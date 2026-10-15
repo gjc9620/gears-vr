@@ -1,6 +1,6 @@
 # 独立双目输出延迟：CPU 采样与下一步
 
-最新进展为文末的Sustain1和Menu1：独立Low路径已通过90秒持续输出及240.91秒含一次暂停/恢复的实际游戏模拟器运行。下列Cost阶段XR零提交属于历史结果，不代表当前状态；菜单像素、关卡重载、High及新路径真头显验收仍未完成。
+最新进展为文末的Sustain1、Menu1和Reload1：独立Low路径已通过持续输出、暂停/恢复和一次同关卡检查点重载的实际游戏模拟器运行。下列Cost阶段XR零提交属于历史结果，不代表当前状态；菜单像素、跨关卡替换、High及新路径真头显验收仍未完成。
 
 2026-10-15。OwnedCost1 / PID49468、OwnedCost2 / PID48432。默认玩家清单没有切换到实验版本。
 
@@ -170,3 +170,17 @@ resize观察共6594次，4096槽之后溢出2498次，渲染继续。第1800帧�
 本轮确认一次暂停/恢复没有使观察到的双目发布停止，不证明菜单已经正确显示在VR中。没有采集暂停菜单GPU像素，没有重载检查点、修改游戏存档或做真头显测试。下一步先取得重载按钮和确认框的实际状态，再验证重载期间对象替换及图像恢复；菜单、字幕与其他HUD仍需接入独立输出并验证像素。
 
 原始资料及操作脚本留在ignored的`analysis/`：`ui-position-runtime/owned-menu1-39376.audit.json`包含输入前后状态、进程身份、发布计数、恢复/退出与文件哈希；对应`*-level.json`、`*-pause.json`、`*-paused.json`、`*-resume.json`保存状态证据，`runtime/owned-menu1-39376-watch.json`保存带身份的时间线。本轮运行未使用截图或Computer Use。
+
+## Reload1：检查点重载后的Pawn重新关联
+
+复用Sustain1冻结构建，清单`tools/vr-launcher/manifest-owned-reload1.json`，没有新增native Hook。游戏PID34448（creation `134364993357610630`），XR PID28256。只读菜单状态确认暂停场景的`LBtnChapterSingle`绑定`<Strings:WarfareGame.PauseMenu.LoadCheckpoint>`；确认框Title/MessageText分别为`<Strings:WarfareGame.Generic.ConfirmCheckPointLoad_Title>`和`<Strings:WarfareGame.Generic.ConfirmCheckPointLoad>`。这些是UIString源绑定文本，不是已经展开的英文标签。
+
+窗口输入按“Escape→下移焦点→确认重载按钮→确认对话框”各一次执行，每步核对进程创建身份、HWND、稳定重读状态与输入阻塞。确认框的焦点仅有Enabled场景本身，缓存`UIScene_Confirmation.CustomInputKey`提示Enter可走PlayerAccepted；仅对本次精确Title/MessageText和父暂停场景使用该单次确认例外，没有放宽启动导航器的通用规则。操作不依赖截图。
+
+实际身份采样证明Pawn从`0x7ce1e680` / index169250 / number2更换为`0x8d88b380` / index223287 / number3；class `0x1902c7c0`和outer/Level `0x8204b920`相同。Controller、Camera、LocalPlayer与Level身份保持不变，相机ViewTarget转到新Pawn。前后各5次一致性采样均通过。原生`anchor_state_transition`记录新Pawn，scene/family/renderer重新关联接受计数分别为9503/9113/9113，submission rejected为0。此证据覆盖已有同class、同outer、同Level策略，不验证跨Level、Controller或Camera替换。
+
+299.993158秒会话完成9896个owned ticket、9894次发布、9891次XR复制、26745次projection层提交；重载确认前后发布计数5216→5344→5401→5495，后续继续至结束。150个带进程身份的运行状态样本owned_error均0，最终Trial/GPU error均0、draws2/submissions1，115个命令表身份未达到512上限。最大XR提交间隔2133.8918ms，不能宣称重载无中断。59入口独立恢复核验通过，游戏正常关闭。Owner及列表引用仍保留到进程退出，launcher仍为incomplete。
+
+本轮未取得重载后完整双眼像素：唯一一次模拟器截图的预览尺寸是1734×14，返回的窄条图像不用于画面验收；模拟器日志PID与会话XR身份一致，但身份关联不能补偿缺失像素。首/120/1800帧固定读回均早于重载，不能当作重载后图像证据。未做真头显测试。
+
+审计：`analysis/ui-position-runtime/owned-reload1-34448.audit.json`，包含进程身份、前后玩家关系、原生重新关联、UI输入收据、计数与文件哈希；原始采样、脚本、状态时间线均留在ignored的`analysis/`。下一项实现优先解决独立目标Canvas/UI的关联与发布时序，见[UI路线](57-ui-position-and-subtitle-route.md)；跨关卡重新认证仍是首版缺口。
