@@ -214,7 +214,7 @@ class MenuReader:
             raise RuntimeError('Missing dialog labels')
         return texts
 
-    def sample(self):
+    def sample(self, *, include_tree=False):
         self.refresh()
         r = self.r
         original_read = r.read
@@ -245,6 +245,7 @@ class MenuReader:
             result = dict(pid=r.pid, client=hex(self.client), active_scenes=summary,
                           input_block_count=blocked, top=None, focus_chain=[], focused_leaf=None,
                           read_only=True, player_index=None)
+            if include_tree:result['tree'] = []
             if scenes:
                 top = registered(r, scenes[-1])
                 if self.pointer(top, 'SceneClient') != self.client:
@@ -274,6 +275,30 @@ class MenuReader:
                             raise RuntimeError('Focused child outside parent tree')
                     current = child
                 result['focused_leaf'] = result['focus_chain'][-1] if result['focus_chain'] else None
+                if include_tree:
+                    # Optional inventory shares this snapshot's observed reads
+                    # and final verification. No extra reads in the default path.
+                    visited = set()
+                    def visit(address, parent, depth):
+                        if address in visited:raise RuntimeError('UI tree cycle/duplicate child')
+                        if len(visited)>=128 or depth>16:raise RuntimeError('UI tree node/depth limit')
+                        visited.add(address)
+                        obj = registered(r, address)
+                        if parent is not None and obj['outer']!=parent:
+                            raise RuntimeError('UI tree child owner mismatch')
+                        states = []
+                        for state_address in self.objects(obj, 'StateStack'):
+                            state = registered(r, state_address)
+                            if state['outer']!=address:raise RuntimeError('UI state owner mismatch')
+                            states.append(r.class_name(state))
+                        children = self.objects(obj, 'Children')
+                        focused = self.focus(obj)
+                        if focused and (focused not in children or registered(r, focused)['outer']!=address):
+                            raise RuntimeError('Focused child outside parent tree')
+                        result['tree'].append(dict(describe(r, address),parent=hex(parent) if parent is not None else None,
+                                                  depth=depth,states=states,focus_child=hex(focused) if focused else None))
+                        for child in children:visit(child,address,depth+1)
+                    visit(top['address'],None,1)
                 if result['top']['tag'] == 'WarfareConfirmation' and r.class_name(top) == 'UIScene_Confirmation':
                     result['dialog_text'] = self.dialog_text(top)
             # Re-acquire current source strings; obsolete wrapping allocations are
@@ -301,16 +326,17 @@ def main():
     parser.add_argument('--pid', type=int, required=True)
     parser.add_argument('--out', type=Path)
     parser.add_argument('--samples', type=int, default=1)
+    parser.add_argument('--tree', action='store_true', help='Include bounded, consistently re-read top Children tree')
     args = parser.parse_args()
     reader = MenuReader(args.pid)
     results = []
     try:
         for _ in range(max(1, min(args.samples, 100))):
             began = time.perf_counter()
-            value = reader.sample()
+            value = reader.sample(include_tree=args.tree)
             value['sample_ms'] = round((time.perf_counter()-began)*1000, 3)
             results.append(value)
-            print(json.dumps(compact_state(value)), flush=True)
+            print(json.dumps(value if args.tree else compact_state(value)), flush=True)
             if args.samples > 1:
                 time.sleep(.1)
     finally:

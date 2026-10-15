@@ -121,6 +121,72 @@ class MenuStateTests(unittest.TestCase):
         # Focus on actual sample validation; no OS APIs or registry enumeration.
         self.reader.refresh = lambda: None
 
+    def add_tree_widget(self,address,parent,name='Branch'):
+        self.r.object(address,name,'Widget',parent)
+        self.r.array(address,'Children',[])
+        self.r.array(address,'StateStack',[])
+        self.r.array(address,'FocusControls',[],'StructProperty')
+
+    def test_optional_tree_includes_unfocused_descendants_without_default_reads(self):
+        self.add_tree_widget(0xa000,0x1000,'OptionsCandidate')
+        self.add_tree_widget(0xb000,0xa000,'NestedCandidate')
+        self.r.array(0x1000,'Children',[0x2000,0xa000])
+        self.r.array(0xa000,'Children',[0xb000])
+        self.r.object(0xc000,'Disabled','UIState_Disabled',0xa000)
+        self.r.array(0xa000,'StateStack',[0xc000])
+        self.assertNotIn('tree',self.reader.sample())
+        off_path=(0xa000+self.r.props['Widget','StateStack']['offset'],16)
+        self.assertNotIn(off_path,self.r.read_counts)
+        result=self.reader.sample(include_tree=True)
+        self.assertTrue(result['consistent_reread'])
+        rows=result['tree']
+        self.assertEqual([r['name'] for r in rows],['Menu','Button','OptionsCandidate','NestedCandidate'])
+        self.assertEqual(rows[0]['parent'],None)
+        self.assertEqual(rows[0]['focus_child'],'0x2000')
+        self.assertEqual((rows[2]['parent'],rows[2]['states']),('0x1000',['UIState_Disabled']))
+        self.assertEqual((rows[3]['parent'],rows[3]['depth']),('0xa000',3))
+
+    def test_unfocused_tree_changes_rejected_by_final_reread(self):
+        self.add_tree_widget(0xa000,0x1000)
+        self.r.array(0x1000,'Children',[0x2000,0xa000])
+        offset=self.r.props['Widget','Children']['offset']
+        self.r.change_on_second_read=(0xa000+offset,16)
+        with self.assertRaisesRegex(RuntimeError,'UI changed before snapshot verification'):
+            self.reader.sample(include_tree=True)
+        self.assertEqual(self.r.read.__func__,FakeResolver.read)
+
+    def test_unfocused_tree_rejects_bad_ownership_focus_and_cycles(self):
+        for failure in ('outer','state_outer','focus_membership','cycle','duplicate'):
+            with self.subTest(failure=failure):
+                self.setUp();self.add_tree_widget(0xa000,0x1000)
+                self.r.array(0x1000,'Children',[0x2000,0xa000])
+                if failure=='outer':self.r.identities[0xa000]['outer']=0x3000
+                elif failure=='state_outer':self.r.array(0xa000,'StateStack',[0x6000])
+                elif failure=='focus_membership':self.r.array(0xa000,'FocusControls',[0x2000],'StructProperty')
+                elif failure=='cycle':self.r.array(0xa000,'Children',[0x1000])
+                else:self.r.array(0xa000,'Children',[0x2000])
+                with self.assertRaises(RuntimeError):self.reader.sample(include_tree=True)
+
+    def test_tree_node_and_depth_boundaries(self):
+        for nodes in (128,129):
+            with self.subTest(nodes=nodes):
+                self.setUp();children=[0x2000]
+                for i in range(nodes-2):
+                    address=0x100000+i*0x1000;self.add_tree_widget(address,0x1000);children.append(address)
+                self.r.array(0x1000,'Children',children)
+                if nodes==128:self.assertEqual(len(self.reader.sample(include_tree=True)['tree']),128)
+                else:
+                    with self.assertRaisesRegex(RuntimeError,'node/depth limit'):self.reader.sample(include_tree=True)
+        for depth in (16,17):
+            with self.subTest(depth=depth):
+                self.setUp();parent=0x1000
+                for i in range(depth-1):
+                    address=0x100000+i*0x1000;self.add_tree_widget(address,parent)
+                    self.r.array(parent,'Children',([0x2000] if parent==0x1000 else [])+[address]);parent=address
+                if depth==16:self.assertEqual(max(r['depth'] for r in self.reader.sample(include_tree=True)['tree']),16)
+                else:
+                    with self.assertRaisesRegex(RuntimeError,'node/depth limit'):self.reader.sample(include_tree=True)
+
     def test_valid_focus_chain_and_restore_read_method(self):
         result = self.reader.sample()
         self.assertEqual(result['top']['name'], 'Menu')
