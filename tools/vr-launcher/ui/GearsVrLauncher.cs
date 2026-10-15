@@ -11,13 +11,14 @@ using System.Windows.Forms;
 namespace GearsVrUi {
     static class Program {
         [STAThread] static int Main(string[] args) {
+            bool selfTest = args.Length == 1 && args[0] == "--self-test";
             try {
                 string root = FindRoot(AppDomain.CurrentDomain.BaseDirectory);
-                if (args.Length == 1 && args[0] == "--self-test") return SelfTest(root);
+                if (selfTest) return SelfTest(root);
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new Launcher(root)); return 0;
-            } catch (Exception e) { MessageBox.Show(e.Message, "Gears VR 启动失败"); return 1; }
+            } catch (Exception e) { if (selfTest) Console.Error.WriteLine(e); else MessageBox.Show(e.Message, "Gears VR 启动失败"); return 1; }
         }
         internal static string FindRoot(string start) {
             for (DirectoryInfo d = new DirectoryInfo(start); d != null; d = d.Parent)
@@ -46,7 +47,28 @@ namespace GearsVrUi {
             return new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(File.ReadAllText(path));
         }
         internal static void SaveGame(string path, string game) {
+            SaveOptions(path, game, false, 65);
+        }
+        internal static bool SupportsHudSize(Dictionary<string, object> manifest) {
+            object value;
+            if (!manifest.TryGetValue("hud_size_control", out value)) return false;
+            if (!(value is bool)) throw new InvalidDataException("manifest 的 hud_size_control 必须是布尔值。");
+            return (bool)value;
+        }
+        internal static decimal HudSize(Dictionary<string, object> config) {
+            object value;
+            if (!config.TryGetValue("hud_horizontal_fov_degrees", out value)) return 65;
+            if (!(value is int || value is long || value is decimal || value is double || value is float))
+                throw new InvalidDataException("HUD 大小必须是 45–100° 的数字。");
+            double number = Convert.ToDouble(value);
+            if (Double.IsNaN(number) || Double.IsInfinity(number) || number < 45 || number > 100)
+                throw new InvalidDataException("HUD 大小必须在 45–100° 之间。");
+            return Convert.ToDecimal(value);
+        }
+        internal static void SaveOptions(string path, string game, bool hudSupported, decimal hudSize) {
+            if (hudSupported && (hudSize < 45 || hudSize > 100)) throw new ArgumentOutOfRangeException("hudSize");
             var config = ReadConfig(path); config["game_path"] = game;
+            if (hudSupported) config["hud_horizontal_fov_degrees"] = hudSize;
             string temporary = path + ".ui.tmp";
             try {
                 File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(config), new UTF8Encoding(false));
@@ -89,10 +111,34 @@ namespace GearsVrUi {
                 SaveGame(temp, "C:\\game path\\game.exe"); var config = ReadConfig(temp);
                 if (!config.ContainsKey("extra") || Convert.ToInt32(config["stereo_units_per_metre"]) != 100 ||
                     Convert.ToString(config["game_path"]) != "C:\\game path\\game.exe") return 6;
+                if (config.ContainsKey("hud_horizontal_fov_degrees") || HudSize(config) != 65) return 8;
+                if (SupportsHudSize(new Dictionary<string, object>()) || SupportsHudSize(new Dictionary<string, object>{{"hud_size_control", false}}) ||
+                    !SupportsHudSize(new Dictionary<string, object>{{"hud_size_control", true}})) return 9;
+                foreach (object invalid in new object[]{"true", 1, null}) {
+                    try { SupportsHudSize(new Dictionary<string, object>{{"hud_size_control", invalid}}); return 10; }
+                    catch (InvalidDataException) { }
+                }
+                SaveOptions(temp, "new-game", true, 62.5m); config = ReadConfig(temp);
+                if (HudSize(config) != 62.5m || Convert.ToString(config["game_path"]) != "new-game" ||
+                    !((Dictionary<string, object>)config["extra"]).ContainsKey("keep") || Convert.ToInt32(config["stereo_units_per_metre"]) != 100) return 11;
+                SaveGame(temp, "other-game"); if (HudSize(ReadConfig(temp)) != 62.5m) return 12;
+                foreach (decimal size in new decimal[]{45, 100}) { SaveOptions(temp, "game", true, size); if (HudSize(ReadConfig(temp)) != size) return 13; }
+                foreach (decimal size in new decimal[]{44.9m, 100.1m}) {
+                    string before = File.ReadAllText(temp);
+                    try { SaveOptions(temp, "bad", true, size); return 14; } catch (ArgumentOutOfRangeException) { }
+                    if (File.ReadAllText(temp) != before) return 15;
+                }
+                foreach (object invalid in new object[]{true, "65", null, Double.NaN, Double.PositiveInfinity, 44.9, 100.1}) {
+                    try { HudSize(new Dictionary<string, object>{{"hud_horizontal_fov_degrees", invalid}}); return 16; }
+                    catch (InvalidDataException) { }
+                }
+                File.WriteAllText(temp, "{\"game_path\":\"old\",\"unknown\":42}");
+                SaveOptions(temp, "legacy", false, 65); config = ReadConfig(temp);
+                if (config.ContainsKey("hud_horizontal_fov_degrees") || Convert.ToInt32(config["unknown"]) != 42) return 17;
             } finally { File.Delete(temp); }
             var python = Python.Find();
             File.WriteAllText(Path.Combine(root, "analysis", "vr-launcher-ui", "self-test.txt"),
-                "PASS: repository, quoting, start/stop arguments, phase parsing, config preservation, owner identity handshake, Python probe\r\nPython: " + python.File);
+                "PASS: repository, quoting, start/stop arguments, phase parsing, config preservation, HUD capability/range/save/readback/legacy behavior, owner identity handshake, Python probe\r\nPython: " + python.File);
             return 0;
         }
     }
@@ -140,6 +186,8 @@ namespace GearsVrUi {
         ComboBox runtimeMode = new ComboBox();
         Button start = new Button(), stop = new Button(), status = new Button(), browseGame = new Button(), browseRuntime = new Button();
         Label state = new Label();
+        NumericUpDown hudSize = new NumericUpDown { Minimum = 45, Maximum = 100, Value = 65, DecimalPlaces = 2, Increment = 1, Width = 85 };
+        bool hudSupported;
         Process owner;
         int ownerPid; long ownerCreation;
         volatile bool stopRequested;
@@ -149,12 +197,15 @@ namespace GearsVrUi {
             root = repository; config = Path.Combine(root, "tools", "vr-launcher", "config.json");
             logPath = Path.Combine(root, "analysis", "runtime", "vr-launcher-ui.log");
             Directory.CreateDirectory(Path.GetDirectoryName(logPath));
+            hudSupported = Program.SupportsHudSize(Program.ReadConfig(Path.Combine(root, "tools", "vr-launcher", "manifest.json")));
             Text = "Gears VR 实验启动器 v0.1"; ClientSize = new Size(820, 570); MinimumSize = new Size(740, 520);
             Font = new Font("Microsoft YaHei UI", 9F); StartPosition = FormStartPosition.CenterScreen;
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 3, RowCount = 8 };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 3, RowCount = 9 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
-            for (int i = 1; i < 6; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+            for (int i = 1; i < 4; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, hudSupported ? 38 : 0));
+            for (int i = 5; i < 7; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
             var info = new Label { Text = "实验版本 · 跟随游戏当前分辨率渲染\r\nDLSS / DLAA 已禁用。手动进入关卡；不会自动结束测试。", Dock = DockStyle.Fill };
             layout.Controls.Add(info, 0, 0); layout.SetColumnSpan(info, 3);
@@ -166,17 +217,24 @@ namespace GearsVrUi {
             layout.Controls.Add(new Label { Text = "模拟器文件", AutoSize = true }, 0, 3); runtime.Dock = DockStyle.Fill; layout.Controls.Add(runtime, 1, 3);
             browseRuntime.Text = "浏览…"; layout.Controls.Add(browseRuntime, 2, 3);
             runtime.Text = Path.Combine(root, "analysis", "runtime", "simulator-quiet2", "openxr_simulator.json");
+            if (hudSupported) {
+                layout.Controls.Add(new Label { Text = "HUD 大小", AutoSize = true }, 0, 4);
+                var hud = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
+                hud.Controls.Add(hudSize);
+                hud.Controls.Add(new Label { Text = "°  调大更易读 / 调小更集中；下次启动生效", AutoSize = true, Padding = new Padding(0, 5, 0, 0) });
+                layout.Controls.Add(hud, 1, 4); layout.SetColumnSpan(hud, 2);
+            }
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill };
             start.Text = "启动 VR"; stop.Text = "停止 VR"; status.Text = "查看状态";
             var logs = new Button { Text = "打开日志", AutoSize = true };
             foreach (var button in new[] { start, stop, status, logs }) { button.AutoSize = true; buttons.Controls.Add(button); }
-            layout.Controls.Add(buttons, 0, 4); layout.SetColumnSpan(buttons, 3);
-            state.Text = "就绪"; state.Dock = DockStyle.Fill; layout.Controls.Add(state, 0, 5); layout.SetColumnSpan(state, 3);
+            layout.Controls.Add(buttons, 0, 5); layout.SetColumnSpan(buttons, 3);
+            state.Text = "就绪"; state.Dock = DockStyle.Fill; layout.Controls.Add(state, 0, 6); layout.SetColumnSpan(state, 3);
             output.Multiline = true; output.ReadOnly = true; output.ScrollBars = ScrollBars.Both; output.WordWrap = false; output.Dock = DockStyle.Fill;
-            layout.Controls.Add(output, 0, 6); layout.SetColumnSpan(output, 3);
+            layout.Controls.Add(output, 0, 7); layout.SetColumnSpan(output, 3);
             var footer = new Label { Text = "停止仅请求现有启动器正常清理，不强制关闭游戏。", Dock = DockStyle.Fill };
-            layout.Controls.Add(footer, 0, 7); layout.SetColumnSpan(footer, 3); Controls.Add(layout);
-            try { game.Text = Convert.ToString(Program.ReadConfig(config)["game_path"]); } catch (Exception e) { Log("读取配置失败：" + e.Message); }
+            layout.Controls.Add(footer, 0, 8); layout.SetColumnSpan(footer, 3); Controls.Add(layout);
+            try { var saved = Program.ReadConfig(config); game.Text = Convert.ToString(saved["game_path"]); if (hudSupported) hudSize.Value = Program.HudSize(saved); } catch (Exception e) { Log("读取配置失败：" + e.Message); }
             browseGame.Click += delegate { using (var dialog = new OpenFileDialog { Filter = "游戏程序 (*.exe)|*.exe" }) if (dialog.ShowDialog(this) == DialogResult.OK) game.Text = dialog.FileName; };
             browseRuntime.Click += delegate { using (var dialog = new OpenFileDialog { Filter = "OpenXR manifest (*.json)|*.json" }) if (dialog.ShowDialog(this) == DialogResult.OK) runtime.Text = dialog.FileName; };
             runtimeMode.SelectedIndexChanged += delegate { UpdateButtons(); };
@@ -196,6 +254,7 @@ namespace GearsVrUi {
             bool busy = starting || owner != null;
             start.Enabled = !busy && !stopping; stop.Enabled = !stopping;
             game.Enabled = browseGame.Enabled = runtimeMode.Enabled = !busy;
+            hudSize.Enabled = !busy;
             runtime.Enabled = browseRuntime.Enabled = !busy && runtimeMode.SelectedIndex == 0;
         }
         async Task StartVr() {
@@ -208,7 +267,9 @@ namespace GearsVrUi {
                 string selectedRuntime = runtimeMode.SelectedIndex == 0 ? runtime.Text.Trim() : null;
                 if (selectedRuntime != null && !Path.IsPathRooted(selectedRuntime)) selectedRuntime = Path.GetFullPath(Path.Combine(root, selectedRuntime));
                 if (selectedRuntime != null && !File.Exists(selectedRuntime)) throw new IOException("模拟器 manifest 不存在，请浏览选择 JSON 文件。");
-                Program.SaveGame(config, path); stopRequested = false; starting = true; UpdateButtons(); state.Text = "启动中：请手动进入游戏关卡";
+                bool currentHudSupport = Program.SupportsHudSize(Program.ReadConfig(manifest));
+                if (currentHudSupport != hudSupported) throw new IOException("启动清单能力已变化，请重新打开启动器。");
+                Program.SaveOptions(config, path, hudSupported, hudSize.Value); stopRequested = false; starting = true; UpdateButtons(); state.Text = "启动中：请手动进入游戏关卡";
                 int result = await Command("start", selectedRuntime);
                 if (result < 0) state.Text = "启动失败，请查看下方日志";
             } catch (Exception e) { Log(e.Message); state.Text = "启动失败：" + e.Message; }
