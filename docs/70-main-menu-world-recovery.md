@@ -183,3 +183,19 @@ late row8/9定位真实caller `9a7377`：目标quad(0,0,1920,1081)，source(-0,-
 下一步只围绕caller9a7377查资料库/具体函数及其采样、shader设置，验证当前版本字节后设计显式source→destination关联；不能用同ticket的两次普通draw_final冒充跨资源传递。CPU pre-original Execute字段、ticket0及尚未验证内容保持原标注。
 
 LateQuadDiagnosticsTest、quad/continuous自测及实际reserve链通过；最终native清理/入口恢复、XR shutdown/对象销毁通过，但XR exit1、会话incomplete。正常WM_CLOSE关闭游戏，备份`world11-config-after-test.ini`后恢复用户StartupResolutionY=1080。默认未提升，未作真头显或GPU抓帧验收。
+
+## 第十一批：显式呈现关联恢复新画面
+
+Native12 SHA `6475080bb23e0e45f9d989a2c2a2d7c8f382a84b0dd1c2d37346c9e16f56fe94`，XR仍为MainMenu8。私有构建开启`GEARS_FINAL_OUTPUT_TRANSFER`，CMake默认OFF；没有提升玩家默认清单。
+
+现已定位函数RVA9a6d88及lookup helper9a6aa8/9a6adc。启动时逐段实时核验1827/49/49字节SHA，三者均匹配历史artifact1。缓存伪代码中的数据地址比native xref低0x1000，未据其字面值读取全局shader字段。静态及实际几何支持居中图像呈现，但未解码shader bytecode或sampler；此项限制保留，不将CPU门禁当作完整GPU证明。
+
+实现为Tracker专门的同命令列表`draw_transfer(source,destination)`事件：源须先有当前完整、无污染的双眼，Execute按事件顺序显式移到目标；普通draw_final仍不准同ticket跨资源。支持源上的既有overlay、目标后续overlay及已执行目标的UI延续；未知源/目标写入、跨队列、旧代次、重复/链式传递、partial pair和owned模式拒绝。只读endpoint查询覆盖另一命令列表对已传递源的写入。原生仅对已核验caller9a7377、indexed6/instance1、单输入、当前buffer、单RTV/mip0、实时R10G10B10A2单采样源及完整viewport/scissor启用；本轮范围为同宽、目标高度等于源或多一像素，严格核对居中UV。非当前buffer的final-eye也须通过原有矩形/调用者/票据校验；已记录端点的后续Draw及实际CopyTextureRegion目标写入会污染，其他场景RT保持原有快速过滤。clear/indirect等未完整观测的限制不被隐藏。
+
+会话`continuous-stereo-15856-20261016-062734-392a32f6.json`，game15856 / creation134365768425995984，owner35536 / creation134365768361929342，XR20428。同一对照：baseline published221；物理1081阶段491；恢复物理1080阶段738；Resume后1072、projection251→593；主菜单继续进入world2后published2125、projection1203，所有阶段末layer1。两次实际resize仍为1081，已不靠“物理恢复即GPU恢复”的错误假设。自动世界交接generation1→2通过。
+
+图像：`.gpu.ppm.g3`为1920×1081的新GPU资源输出，两份完整暂停菜单可见；缩略图`world12-g3-preview.png`。后续模拟器自动历史`session_20428/incident_16193/frame16182_preview.bmp`可见双眼游戏场景，低分辨率检查副本`world12-before-death-preview.png`；这不是高质量像素比较或完整UI/头显验收。额外MCP frame-info/stereo验证并发请求长期未返回，已终止该诊断cell，没有重启游戏；等待期间角色实际死亡，owner菜单记录DeltaGameover，后续共同面板不计projection，不将死亡阶段累计缺projection数误报为修复失败。没有取得该工具的立体验证PASS。
+
+最终transfer accepted4566、source_draws10014，published4860、pending tickets0、rect_rejected0；pair_rejected50340包含无当前完整双目的菜单/死亡阶段，不等同有4566个已验证shader帧。list/event/target及descriptor容量故障均0。FinalTransferPolicyTest、FrameLinkTest17990检查、continuous/frame-link/color-copy及完整reserve链通过。正常停止passed=true，native清理/入口恢复true、XR exit0、shutdown/对象销毁完成；随后WM_CLOSE正常关闭，配置备份`world12-config-after-test.ini`并恢复1080。
+
+该实际运行修复了此次额外呈现路径导致的发布停滞，不推广为任意aspect/resize、全部CG/视频、全部UI、6DoF或真头显验收完成。下一步验证常用4K路径回归、继续收敛其余V1缺口，再决定默认构建提升。

@@ -137,6 +137,11 @@ void print_late_quad(FILE* status);
 void observe_late_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 void print_backbuffer_copies(FILE* status);
 void observe_backbuffer_copy_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
+namespace final_transfer_live {
+bool enabled();bool tracks(gears_frame_link::ListRef,uintptr_t);
+bool observe(ID3D12GraphicsCommandList*,uintptr_t,unsigned,unsigned,unsigned,gears_viewport::TargetDraw const&,gears_frame_link::ListRef);
+void record_source_draw();void print(FILE*);
+}
 struct FrameLinkCounters {
     std::atomic<uint64_t> resets{},reset_failed{},draws{},filtered{},unknown{},missing_target{},missing_ticket{},bad_quad{},
         executes{},execute_rejected{},presents{},linked{},contaminated{},present_failed{},tests{},unbound{},changed{},last_ticket{};
@@ -964,12 +969,19 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
     if(!binding.targets){diagnostic_failure(128);return;} // No render target: no observed color write.
     if(!binding.target.resource){
         diagnostic_failure(256);++frame_counts.missing_target;frame_link.invalidate();return;}
-    if(!swapchain_bindings.known_buffer(binding.target.resource)){diagnostic_failure(512);++frame_counts.filtered;return;}
-    ++frame_counts.draws;
-    auto stats=frame_buffer_count(binding.target.resource);if(stats)++stats->draws;
-    auto ref=frame_link.current(canonical_identity(list));
+    const bool known_buffer=swapchain_bindings.known_buffer(binding.target.resource);
     bool exact=final_eye.valid && consuming_frame_ticket && binding.targets==1 && !binding.target.mip &&
         binding.target.width==final_eye.width && binding.target.height==final_eye.height;
+    // The authenticated source path uses only a single-mip R10G10B10A2 target.
+    // Keep unrelated scene draws on the original cheap rejection path.
+    if(!known_buffer&&(!final_transfer_live::enabled()||binding.target.format!=24||binding.target.mip)){
+        diagnostic_failure(512);++frame_counts.filtered;return;}
+    auto ref=frame_link.current(canonical_identity(list));
+    if(!known_buffer&&!exact&&!final_transfer_live::tracks(ref,binding.target.resource)){
+        diagnostic_failure(512);++frame_counts.filtered;return;}
+    ++frame_counts.draws;
+    auto stats=frame_buffer_count(binding.target.resource);if(stats)++stats->draws;
+    if(known_buffer&&final_transfer_live::observe(list,caller,kind,elements,instances,binding,ref))return;
     if(!exact)record_final_eye_failure(2,(!final_eye.valid?1u:0u)|(!consuming_frame_ticket?2u:0u)|
         (binding.targets!=1?4u:0u)|(binding.target.mip?8u:0u)|
         (binding.target.width!=final_eye.width?16u:0u)|(binding.target.height!=final_eye.height?32u:0u),
@@ -979,6 +991,7 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
             record_final_eye_failure(2,1024,caller-base,reinterpret_cast<uintptr_t>(list),binding,ref);
             ++stereo_publish_counts.rect_rejected;frame_link.invalidate();return;}
         if(!retain_stereo_draw())return;
+        if(!known_buffer)final_transfer_live::record_source_draw();
     }
     sample_frame_work(exact?1:0,caller,reinterpret_cast<uintptr_t>(list),0,binding,
         frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list)),kind,elements,instances);
@@ -1387,6 +1400,7 @@ void print_frame_link(FILE* status) {
     std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
     print_late_quad(status);
     print_backbuffer_copies(status);
+    final_transfer_live::print(status);
     fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
         final_eye_failures.size,gears_final_eye_diagnostics::Recorder::capacity,gears_final_eye_diagnostics::Recorder::per_epoch,final_eye_failures.dropped);
     for(unsigned i=0;i<final_eye_failures.size;++i){const auto& r=final_eye_failures.rows[i];const auto& g=r.geometry;
@@ -1859,6 +1873,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "geometry_observer.h"
 #include "resource_identity_observer.h"
 #include "late_quad_observer.inl"
+#include "final_transfer_live.inl"
 #include "backbuffer_copy_observer.inl"
 #include "final_input_observer.h"
 #include "quad_source_control.h"
@@ -2863,7 +2878,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
         auto saved=frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
         auto ref=frame_link.current(canonical_identity(list));
         if(binding.targets==1&&binding.target.mip==0&&binding.target.width<=8192&&
-           swapchain_bindings.known_buffer(binding.target.resource)){
+           (swapchain_bindings.known_buffer(binding.target.resource)||final_transfer_live::tracks(ref,binding.target.resource))){
             gears_frame_link::Target target{binding.target.resource,static_cast<unsigned>(binding.target.width),binding.target.height};
             auto pair=frame_link.overlay_pair(ref,target);
             auto plan=gears_viewport::overlay_plan(saved,target.width,target.height);
@@ -3420,6 +3435,7 @@ DWORD WINAPI worker(void*) {
 #endif
     if(ok&&continuous_session)ok=enable_graphics_lock_observer();
     if(ok)ok=enable_resource_resize_probe(status);
+    if(ok)ok=final_transfer_live::enable(status);
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     if(ok)ok=create_quad_source_events();

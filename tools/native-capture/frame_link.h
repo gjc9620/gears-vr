@@ -80,6 +80,7 @@ private:
     struct Event { uint64_t ticket{}; unsigned eye{}; Target target{}; Rect rect{}; bool final{};
         bool overlay{};std::array<Rect,2> overlay_rects{};unsigned completed_mask{};uint64_t multiplicity{1};
         bool from_executed{};Identity expected_queue{};
+        bool transfer{};Target transfer_source{};
         unsigned state_kind{};uint64_t output_generation{};uint32_t before{},after{},subresource{},flags{}; };
     struct List {
         ListRef ref{};
@@ -96,6 +97,7 @@ private:
         unsigned mask{};
         bool rejected{}, contaminated{};
         uint32_t rejection{};
+        Identity transfer_source{};
     };
     std::array<List, list_capacity> lists_{};
     std::array<Candidate, target_capacity> candidates_{};
@@ -171,12 +173,35 @@ private:
         if(!amount||amount>std::numeric_limits<uint64_t>::max()-value)return false;
         value+=amount;return true;
     }
-    Result recorded_pair_locked(ListRef ref,Target target) {
+    Result recorded_pair_locked(ListRef ref,Target target,size_t end=events_per_list) {
         Result result{};auto list=find(ref);
         if(!list||list->executed||window_bad_||capacity_bad_||(owned_.enabled&&!owned_.certified)||
             stats_.overlay_recorded==std::numeric_limits<uint64_t>::max())return result;
+        const size_t count=list->count<end?list->count:end;
+        // Exactly one explicit transfer per recording. Its source must have a
+        // complete local pair BEFORE the transfer, never an executed fallback.
+        for(size_t i=0;i<count;++i)if(list->events[i].transfer){
+            auto const& transfer=list->events[i];
+            if(target.resource==transfer.transfer_source.resource)return result;
+            if(target.resource!=transfer.target.resource)continue;
+            auto source=recorded_pair_locked(ref,transfer.transfer_source,i);
+            if(!source.linked||source.ticket!=transfer.ticket||target.width!=transfer.target.width||
+               target.height!=transfer.target.height)return result;
+            for(size_t j=0;j<count;++j){auto const& e=list->events[j];
+                if(j==i)continue;
+                if(j<i&&e.target.resource==target.resource)return result;
+                if(j>i&&(e.target.resource==transfer.transfer_source.resource||e.transfer))return result;
+                if(j>i&&e.target.resource==target.resource&&
+                   !same_overlay(e,transfer.ticket,target,transfer.overlay_rects,3))return result;
+                if(e.final&&e.ticket==transfer.ticket&&e.target.resource!=transfer.transfer_source.resource)return result;
+            }
+            for(auto const& candidate:candidates_)if(candidate.target.resource==target.resource)return result;
+            const bool merge=count&&same_overlay(list->events[count-1],transfer.ticket,target,transfer.overlay_rects,3);
+            if((count==events_per_list&&!merge)||(merge&&list->events[count-1].multiplicity==UINT64_MAX))return result;
+            result.linked=true;result.ticket=transfer.ticket;result.target=target;result.eyes=transfer.overlay_rects;return result;
+        }
         unsigned mask=0;bool bad=false;
-        for(unsigned i=0;i<list->count;++i){auto const& e=list->events[i];
+        for(unsigned i=0;i<count;++i){auto const& e=list->events[i];
             if(e.target.resource!=target.resource)continue;
             if(e.state_kind){if(!transition_supported(e))bad=true;continue;}
             if(e.overlay){if(mask!=3||e.ticket!=result.ticket||e.completed_mask!=3||
@@ -190,17 +215,17 @@ private:
                 if(mask&(1u<<e.eye))bad=true;mask|=1u<<e.eye;result.eyes[e.eye]=e.rect;}
         }
         // A ticket cannot own another output target in the same recording.
-        for(unsigned i=0;i<list->count;++i){auto const& e=list->events[i];
+        for(unsigned i=0;i<count;++i){auto const& e=list->events[i];
             if(e.final&&e.ticket==result.ticket&&e.target.resource!=target.resource)bad=true;}
         for(auto const& candidate:candidates_)if(candidate.target.resource==target.resource&&
             (candidate.rejected||candidate.contaminated||candidate.ticket!=result.ticket||
              candidate.target.width!=target.width||candidate.target.height!=target.height))bad=true;
-        if(list->count&&same_overlay(list->events[list->count-1],result.ticket,target,result.eyes,3)&&
-            list->events[list->count-1].multiplicity==std::numeric_limits<uint64_t>::max())bad=true;
+        if(count&&same_overlay(list->events[count-1],result.ticket,target,result.eyes,3)&&
+            list->events[count-1].multiplicity==std::numeric_limits<uint64_t>::max())bad=true;
         // A full list admits replay only if the next exact pair can merge into
         // its last event. Never mutate GPU work first and discover capacity later.
-        if(list->count==events_per_list&&
-            !same_overlay(list->events[list->count-1],result.ticket,target,result.eyes,3))bad=true;
+        if(count==events_per_list&&
+            !same_overlay(list->events[count-1],result.ticket,target,result.eyes,3))bad=true;
         result.linked=mask==3&&!bad;return result;
     }
     void no_executed_snapshot(ListRef ref,Target target,Candidate const* candidate) {
@@ -263,9 +288,35 @@ private:
     void submit(Identity queue, const Event& event) {
         if(event.state_kind)return; // State is staged/committed separately in this same event order.
         if (!event.target.resource) { window_bad_ = true; return; }
+        if(event.transfer){
+            Candidate* source{};bool destination_used=false;
+            for(auto& value:candidates_){
+                if(value.target.resource==event.transfer_source.resource)source=&value;
+                if(value.target.resource==event.target.resource)destination_used=true;
+            }
+            uint32_t rejection=0;
+            if(owned_.enabled||destination_used)rejection|=target_conflict;
+            if(!source||source->mask!=3)rejection|=missing_pair;
+            if(source){
+                if(source->queue!=queue)rejection|=queue_conflict;
+                if(source->ticket!=event.ticket||event.ticket<=retired_ticket_)rejection|=ticket_conflict;
+                if(source->transfer_source||source->target.width!=event.transfer_source.width||
+                   source->target.height!=event.transfer_source.height)rejection|=target_conflict;
+                if(source->rejected||source->contaminated)rejection|=polluted;
+            }
+            // Unknown destination writes are never silently reclassified as
+            // this transfer, even when recorded before its full-image draw.
+            for(auto const& list:lists_)if(list.executed)for(size_t i=0;i<list.count;++i){auto const& e=list.events[i];
+                if(e.target.resource==event.target.resource&&!e.final&&!e.overlay&&!e.transfer&&!e.state_kind)rejection|=polluted;
+            }
+            if(rejection){window_bad_=true;window_rejection_|=rejection;return;}
+            source->transfer_source=source->target.resource;source->target=event.target;source->eyes=event.overlay_rects;
+            return;
+        }
         Candidate* candidate{};
         Candidate* empty{};
         for (auto& value : candidates_) {
+            if(value.transfer_source==event.target.resource){value.rejected=value.contaminated=true;value.rejection|=polluted;}
             if (value.target.resource == event.target.resource) candidate = &value;
             if (!value.target.resource && !empty) empty = &value;
             // One ticket cannot name two actual output resources.
@@ -527,6 +578,48 @@ public:
         }
         return append(ref, {ticket, eye, target, rect, true});
     }
+    // Recording-only query for selectively observing later writes. A partial
+    // pair counts; this is not permission to publish or replay an overlay.
+    bool has_recorded_target(ListRef ref,Identity resource) {
+        std::lock_guard<std::mutex> lock(mutex_);auto list=find(ref);
+        if(!resource||!list||list->executed)return false;
+        for(size_t i=0;i<list->count;++i){auto const& e=list->events[i];
+            if((e.final&&e.target.resource==resource)||(e.transfer&&
+                (e.target.resource==resource||e.transfer_source.resource==resource)))return true;
+        }
+        return false;
+    }
+    // Executed transfers remain relevant to writes recorded on another list
+    // until this association window is retired. No resource pointer is borrowed.
+    bool has_transfer_endpoint(Identity resource) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!resource||owned_.enabled)return false;
+        for(auto const& candidate:candidates_)if(candidate.transfer_source&&
+            (candidate.transfer_source==resource||candidate.target.resource==resource))return true;
+        return false;
+    }
+    // Opt-in CPU provenance edge. Caller certifies the native pass samples this
+    // exact source and maps its full stereo image to these destination halves.
+    // No shader, sampling, resource state or GPU completion proof is inferred.
+    // Both source eyes must precede this draw in the SAME recording generation.
+    bool draw_transfer(ListRef ref,Target source,Target destination) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto reject=[&](uint32_t reason){window_bad_=true;window_rejection_|=reason;return false;};
+        if(owned_.enabled)return reject(owned_state_lost);
+        auto list=find(ref);
+        if(!list||list->executed)return reject(unknown_list);
+        if(source.resource==destination.resource||!valid_eye(0,source,{0,0,source.width/2,source.height})||
+           !valid_eye(0,destination,{0,0,destination.width/2,destination.height}))return reject(bad_rectangle);
+        for(size_t i=0;i<list->count;++i){auto const& e=list->events[i];
+            if(e.transfer||e.target.resource==destination.resource)return reject(target_conflict);
+        }
+        auto pair=recorded_pair_locked(ref,source);
+        if(!pair.linked||!pair.ticket||pair.ticket!=maximum_ticket_)return reject(missing_pair|ticket_conflict);
+        Event event{};event.transfer=true;event.ticket=pair.ticket;event.target=destination;event.transfer_source=source;
+        event.overlay_rects={Rect{0,0,destination.width/2,destination.height},
+            Rect{destination.width/2,0,destination.width/2,destination.height}};
+        return append(ref,event);
+    }
     bool draw_unknown(ListRef ref, Identity resource) {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!resource) { window_bad_ = true; return false; }
@@ -536,7 +629,7 @@ public:
             // Repeated unknown writes to the same target have the same rejection
             // effect. Keep their position relative to eyes/overlays/other targets.
             // In particular, never turn an unknown write into an accepted overlay.
-            if(!previous.final&&!previous.overlay&&!previous.state_kind&&previous.target.resource==resource){
+            if(!previous.final&&!previous.overlay&&!previous.transfer&&!previous.state_kind&&previous.target.resource==resource){
                 if(previous.multiplicity==std::numeric_limits<uint64_t>::max()||
                     stats_.unknown_coalesced==std::numeric_limits<uint64_t>::max()){
                     capacity_bad_=true;return false;

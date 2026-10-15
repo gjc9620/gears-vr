@@ -1012,5 +1012,135 @@ int main() {
         CHECK(t->commit_execute(token));CHECK(t->consume_owned_output(buffer,9,queue,1).linked);
         CHECK(!t->advance_world_epoch(1,2));
     }
+    {
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);
+        CHECK(!t->has_recorded_target(a,buffer));CHECK(t->draw_unknown(a,buffer+2));
+        CHECK(!t->has_recorded_target(a,buffer+2));CHECK(eye(*t,a,1,0));
+        CHECK(t->has_recorded_target(a,buffer));CHECK(!t->has_recorded_target(a,0));
+        CHECK(eye(*t,a,1,1));CHECK(t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));
+        CHECK(t->has_recorded_target(a,buffer)&&t->has_recorded_target(a,buffer+1));
+        CHECK(t->execute(queue,&a,1));CHECK(!t->has_recorded_target(a,buffer));
+        CHECK(t->present(buffer+1,queue).linked);
+        auto b=t->reset_success(1);CHECK(!t->has_recorded_target(a,buffer));CHECK(!t->has_recorded_target(b,buffer));
+        pair(*t,b,2);CHECK(t->advance_world_epoch(1,2));CHECK(!t->has_recorded_target(b,buffer));
+    }
+    for(unsigned retirement=0;retirement<3;++retirement){
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);pair(*t,a);
+        CHECK(!t->has_transfer_endpoint(buffer));CHECK(!t->has_transfer_endpoint(0));
+        CHECK(t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));
+        CHECK(!t->has_transfer_endpoint(buffer+1));CHECK(t->execute(queue,&a,1));
+        CHECK(t->has_transfer_endpoint(buffer)&&t->has_transfer_endpoint(buffer+1));
+        CHECK(!t->has_transfer_endpoint(buffer+2)&&!t->has_transfer_endpoint(0));
+        auto b=t->reset_success(2);CHECK(!t->has_recorded_target(b,buffer));
+        if(t->has_transfer_endpoint(buffer))CHECK(t->draw_unknown(b,buffer));
+        CHECK(t->execute(queue,&b,1));
+        if(retirement==0)CHECK(!t->present(buffer+1,queue).linked);
+        else if(retirement==1)t->invalidate_all();
+        else CHECK(t->advance_world_epoch(1,2));
+        CHECK(!t->has_transfer_endpoint(buffer)&&!t->has_transfer_endpoint(buffer+1));
+    }
+    // Explicit same-recording image transfer preserves the ticket through UI
+    // before and after the move, including later submitted UI continuations.
+    for(bool continuation:{false,true}){
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);pair(*t,a);
+        Target source{buffer,1920,1080},dest{buffer+1,1920,1081};
+        auto before=t->overlay_pair(a,source);CHECK(before.linked);
+        CHECK(t->draw_overlay_pair(a,1,source,before.eyes,3));
+        CHECK(t->draw_transfer(a,source,dest));
+        CHECK(!t->overlay_pair(a,source).linked);
+        auto after=t->overlay_pair(a,dest);CHECK(after.linked&&after.ticket==1&&!after.from_executed);
+        CHECK(after.eyes[0].height==1081&&after.eyes[1].x==960);
+        CHECK(t->draw_overlay_pair(a,1,dest,after.eyes,3));
+        CHECK(t->execute(queue,&a,1));
+        if(continuation){auto ui=t->reset_success(2);auto p=t->overlay_pair(ui,dest);
+            CHECK(p.linked&&p.from_executed&&p.ticket==1);
+            CHECK(t->draw_overlay_pair(ui,1,dest,p.eyes,3));CHECK(t->execute(queue,&ui,1));}
+        auto result=t->present(dest.resource,queue);CHECK(result.linked&&result.ticket==1&&result.target.height==1081);
+    }
+    // Incomplete/local-generation/geometry/ownership admission failures.
+    for(unsigned mode=0;mode<10;++mode){
+        auto t=std::make_unique<Tracker>();if(mode==9)CHECK(t->configure_owned_output({buffer,1920,1080},queue,1,4,true));
+        auto a=t->reset_success(1);CHECK(eye(*t,a,1,0));if(mode!=0)CHECK(eye(*t,a,1,1));
+        Target source{buffer,1920,1080},dest{buffer+1,1920,1081};
+        if(mode==1)CHECK(t->draw_unknown(a,buffer));
+        if(mode==2)CHECK(t->draw_unknown(a,buffer+1));
+        if(mode==3)t->reset_success(1);
+        if(mode==4)CHECK(t->advance_world_epoch(1,2));
+        if(mode==5)dest.width=1919;
+        if(mode==6)dest.height=0;
+        if(mode==7)source.height=1079;
+        if(mode==8)dest.resource=source.resource;
+        CHECK(!t->draw_transfer(a,source,dest));CHECK(!t->present(dest.resource,queue).linked);
+    }
+    // The source may not be borrowed from a different recording, even if it
+    // has already executed and would qualify for an ordinary UI continuation.
+    for(bool submitted:{false,true}){
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);pair(*t,a);
+        if(submitted)CHECK(t->execute(queue,&a,1));auto b=t->reset_success(2);
+        CHECK(!t->draw_transfer(b,{buffer,1920,1080},{buffer+1,1920,1081}));
+        CHECK(!t->present(buffer+1,queue).linked);
+    }
+    for(unsigned mode=0;mode<9;++mode){
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);pair(*t,a);
+        CHECK(t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));
+        if(mode==0)CHECK(!t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));
+        if(mode==1)CHECK(!t->draw_transfer(a,{buffer+1,1920,1081},{buffer+2,1920,1081}));
+        if(mode==2)CHECK(!t->draw_transfer(a,{buffer,1920,1080},{buffer+2,1920,1081}));
+        if(mode==3||mode==4)CHECK(t->draw_unknown(a,buffer+(mode==4)));
+        if(mode==5){t->reset_success(1);CHECK(!t->execute(queue,&a,1));}
+        else if(mode==6){CHECK(t->advance_world_epoch(1,2));CHECK(!t->execute(queue,&a,1));}
+        else {t->execute(queue,&a,1);if(mode==7)CHECK(!t->execute(queue,&a,1));}
+        CHECK(!t->present(buffer+1,mode==8?queue+1:queue).linked);
+    }
+    // Source writes after the transfer, including another submitted list,
+    // invalidate the moved pair instead of resurrecting the old source.
+    for(bool destination:{false,true}){
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);pair(*t,a);
+        CHECK(t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));CHECK(t->execute(queue,&a,1));
+        auto b=t->reset_success(2);CHECK(t->draw_unknown(b,buffer+destination));t->execute(queue,&b,1);
+        CHECK(!t->present(buffer+1,queue).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);CHECK(eye(*t,a,1,0));
+        CHECK(t->draw_unknown(a,buffer));CHECK(eye(*t,a,1,1));
+        CHECK(!t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));
+        CHECK(!t->present(buffer+1,queue).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto earlier=t->reset_success(2);
+        CHECK(t->draw_unknown(earlier,buffer+1));CHECK(t->execute(queue,&earlier,1));
+        auto a=t->reset_success(1);pair(*t,a);
+        CHECK(t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));
+        CHECK(!t->execute(queue,&a,1));CHECK(!t->present(buffer+1,queue).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);pair(*t,a);
+        CHECK(t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));CHECK(t->execute(queue,&a,1));
+        CHECK(t->present(buffer+1,queue).linked);auto b=t->reset_success(1);
+        CHECK(!eye(*t,b,1,0));CHECK(!t->draw_transfer(b,{buffer,1920,1080},{buffer+1,1920,1081}));
+        CHECK(!t->present(buffer+1,queue).linked);
+    }
+    // A full event list can still merge an exact destination overlay. Its
+    // prefix source query must not mistake the full suffix for source overflow.
+    {
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);pair(*t,a);
+        CHECK(t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));
+        for(unsigned i=3;i<Tracker::events_per_list-1;++i)CHECK(t->draw_unknown(a,1000+i));
+        auto p=t->overlay_pair(a,{buffer+1,1920,1081});CHECK(p.linked);
+        CHECK(t->draw_overlay_pair(a,1,p.target,p.eyes,3));CHECK(t->overlay_pair(a,p.target).linked);
+        CHECK(t->draw_overlay_pair(a,1,p.target,p.eyes,3));CHECK(t->execute(queue,&a,1));
+        CHECK(t->present(buffer+1,queue).linked);
+    }
+    // Ordinary finals still cannot assign one ticket to two output resources.
+    {
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);pair(*t,a);
+        CHECK(t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));
+        CHECK(eye(*t,a,1,0,buffer+2));CHECK(!t->execute(queue,&a,1));CHECK(!t->present(buffer+1,queue).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto a=t->reset_success(1);pair(*t,a);
+        for(unsigned i=2;i<Tracker::events_per_list;++i)CHECK(t->draw_unknown(a,1000+i));
+        CHECK(!t->draw_transfer(a,{buffer,1920,1080},{buffer+1,1920,1081}));CHECK(!t->present(buffer+1,queue).linked);
+    }
     std::printf("frame_link: %u checks passed\n", checks);
 }

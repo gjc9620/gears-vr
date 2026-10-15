@@ -9,6 +9,7 @@
 | `tools/vr-launcher/manifest.json` | GameRecovery8 / SpaceRecovery3 | 已冻结的仓库默认清单 |
 | `manifest-game-recovery9-window3.json` | GameRecovery9 / SpaceRecovery7 | 实时剧情相机、窗口恢复和共同 Pause 菜单面板的历史候选；未提升默认 |
 | ignored `analysis/runtime/main-menu8-manifest.json` | WorldRecovery6 / MainMenu8 | 自动世界恢复及主菜单共同窗口面板；1080p两轮循环通过，1081高度失败，未提升默认 |
+| ignored `analysis/runtime/world-recovery12-manifest.json` | WorldRecovery12 / MainMenu8 | 显式关联额外呈现pass；1081尺寸、Resume及主菜单继续至world2实际恢复新图像并正常清理，未提升默认 |
 
 以清单内路径和 SHA256 为准。更新 Python 分类器不会改变冻结 DLL/EXE 的版本；后续诊断构建也不自动成为玩家默认。模拟器交换链编号修复的 quiet2 与游戏静默启动器 quiet6 是另外两项组件，不能与上述 Native/XR 编号混用理解。
 
@@ -26,7 +27,7 @@
 | 暂停与恢复 | XR7用已完成复制的左眼图像作为双眼共同2D菜单面板，按source aspect还原普通Canvas比例；菜单不计为stereo/projection成功。实际Pause→Resume后由新票据恢复投影，9m后台持续观察通过。 |
 | 启动与后台输入 | 有GUI、版本校验、owner停止握手与清理流程；后台手柄已有实际移动对照。quiet6修正裸 `-NoPauseUnfocus` 后，真实失焦及Resume后各30秒后台采样保持GAMEPLAY。启动自动抢焦点仍未完全解决，诊断不等于修复。 |
 
-具体证据与失败轮分别保留于文档63–69；`61-owned-render-latency.md` 的固定Low路径及更早零提交结果属于历史阶段，不能代替当前游戏分辨率路径的结果。
+具体证据与失败轮分别保留于文档63–70；Native12修复了额外图像呈现pass未关联造成的一次尺寸变化停图，限同宽和0/1像素高度差，其他缩放、完整UI及真头显仍待验收。`61-owned-render-latency.md` 的固定Low路径及更早零提交结果属于历史阶段，不能代替当前游戏分辨率路径的结果。
 
 ## 当前菜单缺口：9t与9u
 
