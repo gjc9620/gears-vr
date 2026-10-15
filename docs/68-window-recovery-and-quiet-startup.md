@@ -45,3 +45,13 @@ SpaceRecovery4 将菜单捕获所绑定的进程和 HWND 分开。只有带启�
 quiet5 小程序实际检查通过：ANSI/Unicode创建、父子/owned窗口、隐藏/最小化/恢复、延后激活和置顶请求，窗口可见且未保留新增的 NOACTIVATE 位；全过程未记录所属前台事件，首尾前台 HWND 相同。缺失 DLL 在创建前拒绝；无效策略的已创建进程实际退出。适配器和后台控制相关27项 Python 测试通过。该结果尚不是游戏、人工点击或 Alt-Tab 验收；当前只通过显式 `--quiet-build` 或子进程环境 `GEARSVR_QUIET_STARTUP_BUILD` 启用。
 
 冻结构建 `build-quiet5`：启动器 SHA256 `2f1f125ebd50ea30de22b45c0542dd635fecc493913daf8d51f57a91850a7e60`，策略 DLL SHA256 `74a5ff4abab225035e3cfcd55ba2f7160ed7b1e9f458a98d778ac0c62e951782`。实际事件/时间线与失败清理证据在 ignored `analysis/runtime/quiet-startup5-*.json`。游戏启动观察须覆盖 EXE 入口之前的 TLS/DLL 初始化，不将“安装成功”当成“从未抢焦点”。
+
+## 9j实际启动失败与交换链编号冲突
+
+2026-10-16复核：PID34196、创建FILETIME `134365531792435533` 的quiet5启动报告确认入口已恢复、调试器已脱离、策略已安装且入口前可见窗口为0。但90秒观察记录到2次游戏前台事件、2880次采样中1482次游戏位于前台，不能通过不抢焦点验收。观察器没有停止游戏；前台事件尚未区分人工切换与自动激活。后续查询显示八个user32入口仍跳转到该策略DLL，确实拦截过ShowWindow 3次、SetForegroundWindow 1次、SetWindowPos 3次、CreateWindowExW 1次；“Hook安装失效”暂无证据。
+
+这一会话的VR失败已有单独的运行时原因：模拟器日志 `openxr_simulator.32756.log` 依次记录菜单交换链2（1920×764）、替换菜单交换链3（1920×1080）、销毁2，随后两个960×1080眼交换链均再次返回3。模拟器按 `g_swapchains.size()+2` 分配编号，并未检查emplace结果；删除较小编号后发生冲突，枚举返回了仍存活的菜单纹理。Native源1920×1080且resize计数全部0，published=1；XR因尺寸检查失败而停止，submitted_frames=0。该证据解释本轮退出，不能泛化成之前所有黑屏的原因。
+
+SpaceRecovery5在枚举交换链时就检查所有实际D3D12纹理尺寸，并在异常时输出眼/图像索引、交换链、请求与实际尺寸；取得图像后的原检查仍保留。没有修改渲染尺寸、缩放策略或放宽保护。模拟器编号修正另存quiet2，并保留quiet1作为失败对照；实际集成结果另行记录。默认原生/桥接清单仍未提升。
+
+证据：ignored `analysis/runtime/quiet-game9j.json`、`quiet9j-policy-query.json`、`continuous-stereo-34196-20261015-235320-d2080fda.*`。查询仅调用已加载策略的状态导出，没有重新安装Hook或改动焦点。

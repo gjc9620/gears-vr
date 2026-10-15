@@ -4,6 +4,12 @@ This is an opt-in Windows x64 startup policy. It has passed the small native
 fixture, but has not yet passed actual-game startup or manual activation tests.
 It does not replace the current player default.
 
+The first actual-game observation (9j) recorded two foreground events even though
+all eight API hooks remained installed; manual versus automatic activation was
+not attributed. VR separately stopped because the simulator reused an existing
+swapchain handle after a menu resize. See `docs/68-window-recovery-and-quiet-startup.md`;
+neither issue is covered by the fixture's passing result.
+
 `GearsEarlyLaunch.exe EXE GearsQuietStartup.dll [arguments]` creates a new owned
 child under a temporary debugger, restores its one-byte entry breakpoint, holds
 the initial thread, and detaches before loading the policy. Only that new child

@@ -76,6 +76,21 @@ class GameGpuScreen {
     bool snapshot_auto_taken{};
     uint64_t snapshot_ticket{},snapshot_source_serial{};
     std::chrono::steady_clock::time_point snapshot_after=std::chrono::steady_clock::now()+std::chrono::seconds(10);
+    void require_eye_dimensions(unsigned eye_index,unsigned image_index,const char* stage) const {
+        const auto& eye=eyes.at(eye_index);
+        auto* texture=eye.images.at(image_index).texture;
+        const unsigned width=stereo?eye_plan.eye_width:receiver->width;
+        if(!texture)throw std::runtime_error("XR returned a null D3D12 swapchain image");
+        const auto desc=texture->GetDesc();
+        if(desc.Width==width&&desc.Height==receiver->height)return;
+        // Log the actual resource, not only the requested swapchain dimensions.
+        // A runtime may erroneously alias another live chain after a menu resize.
+        fprintf(stderr,"{\"xr_image_dimension_mismatch\":true,\"stage\":\"%s\",\"eye\":%u,\"image_index\":%u,\"chain\":\"%p\",\"expected\":[%u,%u],\"actual\":[%llu,%u],\"format\":%u,\"array_size\":%u,\"samples\":%u}\n",
+                stage,eye_index,image_index,reinterpret_cast<void*>(eye.chain),width,receiver->height,
+                static_cast<unsigned long long>(desc.Width),desc.Height,unsigned(desc.Format),unsigned(desc.DepthOrArraySize),desc.SampleDesc.Count);
+        fflush(stderr);
+        throw std::runtime_error("XR image dimensions differ from exact crop");
+    }
     void save_snapshot(){
         void* mapped{};D3D12_RANGE range{0,size_t(snapshot_bytes)};
         dx_check(snapshot_buffer->Map(0,&range,&mapped),"GPU snapshot map");
@@ -139,8 +154,12 @@ public:
             create.format=format;create.width=stereo?eye_plan.eye_width:receiver->width;
             create.height=receiver->height;create.sampleCount=1;create.faceCount=1;create.arraySize=1;create.mipCount=1;
             xr_check(xrCreateSwapchain(session,&create,&eye.chain),"GPU game swapchain");
-            xr_check(xrEnumerateSwapchainImages(eye.chain,0,&count,nullptr),"GPU game images");eye.images.resize(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});
+            xr_check(xrEnumerateSwapchainImages(eye.chain,0,&count,nullptr),"GPU game images");
+            if(!count)throw std::runtime_error("Empty GPU game swapchain");
+            eye.images.resize(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});
             xr_check(xrEnumerateSwapchainImages(eye.chain,count,&count,reinterpret_cast<XrSwapchainImageBaseHeader*>(eye.images.data())),"GPU game images read");
+            if(count!=eye.images.size())throw std::runtime_error("GPU game swapchain image count changed during enumeration");
+            for(unsigned image_index=0;image_index<count;++image_index)require_eye_dimensions(i,image_index,"enumeration");
         }
         printf("{\"gpu_source_size\":[%u,%u],\"xr_image_size\":[%u,%u],\"xr_eye_chains\":%u,\"pixel_exact_crop\":%s,\"native_size_decoupled\":false}\n",
                receiver->width,receiver->height,stereo?eye_plan.eye_width:receiver->width,receiver->height,stereo?2u:1u,stereo?"true":"false");fflush(stdout);
@@ -213,9 +232,7 @@ public:
                 if(!xr_image_wait_succeeded(waited))throw std::runtime_error(waited==XR_TIMEOUT_EXPIRED?
                     "GPU game swapchain wait timeout; image not written or released":"GPU game swapchain wait did not succeed; image not written or released");
                 eye.waited=true;destinations[i]=eye.images.at(index).texture;
-                const auto desc=destinations[i]->GetDesc();
-                if(desc.Width!=(stereo?eye_plan.eye_width:receiver->width)||desc.Height!=receiver->height)
-                    throw std::runtime_error("XR image dimensions differ from exact crop");
+                require_eye_dimensions(i,index,"acquire");
             }
             dx_check(allocator->Reset(),"GPU game reset");dx_check(commands->Reset(allocator.Get(),nullptr),"GPU game commands reset");
             const auto source_state=eyes[0].blit?D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE:D3D12_RESOURCE_STATE_COPY_SOURCE;
