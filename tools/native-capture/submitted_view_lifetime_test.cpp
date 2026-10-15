@@ -4,9 +4,9 @@
 #include <cstdio>
 #include <memory>
 int main() {
-    // Eight independent 64-frame stores exceed the default Windows stack as
+    // Independent 64-frame stores exceed the default Windows stack as
     // frame certificates grow. Production owns its store outside this stack.
-    auto stores=std::make_unique<gears_submitted::Lifetime[]>(8);
+    auto stores=std::make_unique<gears_submitted::Lifetime[]>(12);
     auto& life=stores[0];
     if(life.begin(0) || !life.begin(1) || life.begin(1) || !life.begin(2))return 1;
     if(life.close() || life.begin(3) || life.retire(99) || life.retire(1))return 2;
@@ -58,6 +58,32 @@ int main() {
     std::thread c(produce,1),d(produce,2);
     racing.request_stop();stopping_done=true;c.join();d.join();
     if(bad_admission||racing.pending()||racing.is_closed()||!racing.close()||racing.close())return 23;
-    printf("Submitted lifetime: bounded pool, concurrent retire, stop admission barrier and native-only release claim passed\n");
+    auto& recover=stores[8];
+    if(!recover.begin(10))return 24;
+    auto q=recover.quiesce_close(1);
+    if(!q.accepted||q.release_claim||recover.begin(11)||recover.confirm_destroyed(q.token).owner||recover.reopen({&recover,1}))return 25;
+    auto repeated=recover.quiesce_close(1);
+    if(!repeated.accepted||repeated.release_claim||repeated.token.generation!=q.token.generation)return 37;
+    if(!recover.retire(10)||recover.retire(10))return 26;
+    if(recover.quiesce_close(1).release_claim||recover.reopen({&recover,1}))return 38;
+    auto snap=recover.snapshot();
+    if(snap.generation!=1||snap.pending||!snap.claimed||!snap.quiescing||snap.destruction_confirmed)return 27;
+    auto done=recover.confirm_destroyed(q.token);
+    if(!done.owner||recover.confirm_destroyed(q.token).owner||!recover.reopen(done)||recover.reopen(done))return 28;
+    if(recover.quiesce_close(1).accepted||recover.confirm_destroyed(q.token).owner||!recover.begin(10))return 29;
+    auto q2=recover.quiesce_close(2);
+    if(!q2.accepted||q2.release_claim||!recover.retire(10)||recover.reopen(done))return 30;
+    auto done2=recover.confirm_destroyed(q2.token);
+    if(!done2.owner||!recover.reopen(done2)||recover.snapshot().generation!=3)return 31;
+    auto& terminal=stores[9];auto tq=terminal.quiesce_close(1);
+    if(!tq.accepted||!tq.release_claim)return 32;
+    auto td=terminal.confirm_destroyed(tq.token);terminal.request_stop();
+    if(terminal.reopen(td)||terminal.quiesce_close(1).accepted)return 33;
+    auto& permanent=stores[10];auto pq=permanent.quiesce_close(1);
+    auto pd=permanent.confirm_destroyed(pq.token);
+    if(permanent.close()||permanent.reopen(pd)||permanent.quiesce_close(1).accepted)return 34;
+    auto& closed=stores[11];if(!closed.close()||closed.quiesce_close(1).accepted||closed.reopen({&closed,1}))return 35;
+    if(recover.confirm_destroyed(tq.token).owner||recover.reopen(td))return 36;
+    printf("Submitted lifetime: bounded pool, concurrent retirement, permanent stop and generation-bound recovery passed\n");
     return 0;
 }

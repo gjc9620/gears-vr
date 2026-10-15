@@ -17,10 +17,38 @@ class Lifetime {
     std::array<uintptr_t,64> roots{};
     std::array<gears_projection::Metadata,64> projections{};
     std::array<FrameTicket,64> frames{};
-    bool closed{},claimed{},stop_requested{};
+    bool closed{},claimed{},stop_requested{},permanent_closed{},quiescing{},destruction_confirmed{};
+    std::uint64_t generation_{1};
     unsigned count{};
     bool claim() {if(closed && !count && !claimed){claimed=true;return true;}return false;}
 public:
+    struct QuiesceToken {Lifetime const* owner{};std::uint64_t generation{};};
+    struct DestroyedToken {Lifetime const* owner{};std::uint64_t generation{};};
+    struct QuiesceResult {bool accepted{},release_claim{};QuiesceToken token{};};
+    struct Snapshot {std::uint64_t generation{};unsigned pending{};bool closed{},claimed{},stop_requested{},permanent_closed{},quiescing{},destruction_confirmed{};};
+    Snapshot snapshot(){std::lock_guard<std::mutex> lock(mutex);
+        return {generation_,count,closed,claimed,stop_requested,permanent_closed,quiescing,destruction_confirmed};}
+    // Native caller executes a returned release claim, just as with retire().
+    QuiesceResult quiesce_close(std::uint64_t expected_generation){
+        std::lock_guard<std::mutex> lock(mutex);
+        if(expected_generation!=generation_||stop_requested||permanent_closed||generation_==UINT64_MAX)return {};
+        closed=true;quiescing=true;return {true,claim(),{this,generation_}};
+    }
+    // Explicit caller assertion: native state release AND destructor completed.
+    // The store cannot observe that external lifecycle. Never call on request
+    // or release-return alone. This method itself performs no native cleanup.
+    DestroyedToken confirm_destroyed(QuiesceToken token){
+        std::lock_guard<std::mutex> lock(mutex);
+        if(token.owner!=this||token.generation!=generation_||!quiescing||!closed||count||!claimed||
+           stop_requested||permanent_closed||destruction_confirmed)return {};
+        destruction_confirmed=true;return {this,generation_};
+    }
+    bool reopen(DestroyedToken token){
+        std::lock_guard<std::mutex> lock(mutex);
+        if(token.owner!=this||token.generation!=generation_||!quiescing||!closed||count||!claimed||
+           !destruction_confirmed||stop_requested||permanent_closed||generation_==UINT64_MAX)return false;
+        ++generation_;closed=claimed=quiescing=destruction_confirmed=false;return true;
+    }
     bool begin(uintptr_t root,const gears_projection::Metadata& projection={},const FrameTicket& frame={}) {
         std::lock_guard<std::mutex> lock(mutex);
         if(!root || closed || stop_requested || count==roots.size())return false;
@@ -50,7 +78,7 @@ public:
         if(root)for(unsigned i=0;i<roots.size();++i)if(roots[i]==root){out=frames[i];return out.enabled;}
         out={};return false;
     }
-    bool close() {std::lock_guard<std::mutex> lock(mutex);closed=true;return claim();}
+    bool close() {std::lock_guard<std::mutex> lock(mutex);permanent_closed=true;closed=true;return claim();}
     // Worker-safe admission barrier. Only native close/retire can grant release.
     void request_stop() {std::lock_guard<std::mutex> lock(mutex);stop_requested=true;}
     bool stopping() {std::lock_guard<std::mutex> lock(mutex);return stop_requested;}

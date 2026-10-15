@@ -94,6 +94,9 @@ static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
         require(publisher.capture_resource(retained_source,7,idle,supplied,&trace),"owned publication");
         require(trace.reason==GpuCaptureReason::published,"capture trace");supplied.sample.head.position.x=900;supplied.id=999;
         require(gpu.finish(),"producer copy complete");publisher.poll();
+        GpuIdleSnapshot idle_before{};
+        require(!publisher.try_idle(idle_before)&&idle_before.valid&&idle_before.serial==frame&&
+            idle_before.ready_completed>=frame&&idle_before.done_completed<frame,"producer drain falsely proved receiver idle");
         require(receiver.acquire(gpu.queue.Get())&&same_ticket(receiver.ticket(),expected),"private copied ticket");
         auto busy_ticket=ticket(frame+10);require(!publisher.capture_resource(retained_source,7,idle,busy_ticket,&trace)&&
             trace.reason==GpuCaptureReason::consumer_not_done&&same_ticket(receiver.ticket(),expected)&&same_ticket(metadata.packet->ticket,expected),"busy overwrote ticket");
@@ -107,9 +110,16 @@ static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
             if(p[0]!=(white_pixel||red_pixel?255:0)||p[1]!=(white_pixel?255:0)||p[2]!=(white_pixel||!red_pixel?255:0)||p[3]!=255)pixels=false;}
         D3D12_RANGE empty{};readback->Unmap(0,&empty);require(pixels,"full two-eye native pixels differ");
         receiver.acknowledge(gpu.queue.Get());require(gpu.finish(),"consumer ACK");require(same_ticket(receiver.ticket(),expected),"ACK changed private ticket");
+        GpuIdleSnapshot idle_after{};require(publisher.try_idle(idle_after)&&idle_after.serial==frame&&
+            idle_after.generation==idle_before.generation,"acknowledged slot not observed idle");
+        auto removed=idle_after;removed.ready_completed=~std::uint64_t(0);require(!gpu_idle_complete(removed),"removed ready fence accepted");
+        removed=idle_after;removed.done_completed=~std::uint64_t(0);require(!gpu_idle_complete(removed),"removed done fence accepted");
+        auto changing=idle_after;changing.reconfiguring=true;require(!gpu_idle_complete(changing),"resizing slot accepted idle");
+        changing=idle_after;changing.in_flight=true;require(!gpu_idle_complete(changing),"in-flight slot accepted idle");
     }
     const auto sequence=metadata.packet->sequence;const auto frozen=metadata.packet->ticket;
     publisher.mark_stopped();require(!publisher.capture_resource(retained_source,7,idle,ticket(3))&&metadata.packet->sequence==sequence&&same_ticket(metadata.packet->ticket,frozen),"stop mutated image slot");
+    GpuIdleSnapshot stopped{};require(!publisher.try_idle(stopped),"stopped publisher accepted as resumable idle");
     require(publisher.drain(1000),"producer drain");receiver.close();require(publisher.close(),"producer close");gpu.verify();
     printf("{\"owned_idle_state\":%u,\"frames\":2,\"two_eye_pixels_verified\":true,\"private_ticket_verified\":true}\n",unsigned(idle));
 }

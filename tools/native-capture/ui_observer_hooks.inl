@@ -239,7 +239,7 @@ bool reserve_ui_hooks(){
     ui_reserved=true;return true;
 }
 
-bool load_ui_config(const wchar_t* ini){
+bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t controller,uintptr_t camera){
     auto load=[&](const wchar_t* key,auto& out){
         wchar_t text[64]{};GetPrivateProfileStringW(L"UIObserver",key,L"",text,64,ini);
         if(!*text||*text==L'-'||*text==L'+')return false;
@@ -255,7 +255,7 @@ bool load_ui_config(const wchar_t* ini){
     const std::pair<const wchar_t*,unsigned> layout[]={{L"frame_node",0x18},{L"frame_object",0x20},
         {L"frame_code",0x28},{L"frame_locals",0x30},{L"frame_previous",0x38},{L"function_script",0x8c},{L"function_entry",0x114}};
     for(auto const& value:layout){unsigned actual{};if(!load(value.first,actual)||actual!=value.second)return false;}
-    auto& c=ui_config;
+    gears_ui::Config c{};
 #define UI_WIDEN_(s) L##s
 #define UI_WIDEN(s) UI_WIDEN_(s)
 #define UI_LOAD(field) if(!load(UI_WIDEN(#field),c.field))return false;
@@ -297,9 +297,15 @@ bool load_ui_config(const wchar_t* ini){
         for(unsigned j=0;j<16;++j){wchar_t expected[3]{};swprintf_s(expected,L"%02x",gears_ui::binding_bytes[i][j]);
             if(hex[j*2]!=expected[0]||hex[j*2+1]!=expected[1])return false;b.bytes[j]=gears_ui::binding_bytes[i][j];}
     }
-    return c.role_controller<c.identity_count&&c.role_camera<c.identity_count&&
-        c.identities[c.role_controller].address==expected_pc&&c.identities[c.role_camera].address==expected_camera&&
-        gears_ui::validate(c,safe_copy);
+    if(!(c.role_controller<c.identity_count&&c.role_camera<c.identity_count&&
+        c.identities[c.role_controller].address==controller&&c.identities[c.role_camera].address==camera&&
+        gears_ui::validate(c,safe_copy)))return false;
+    output=c;return true;
+}
+bool load_ui_config(const wchar_t* ini){
+    gears_ui::Config candidate{};
+    if(!parse_ui_config(ini,candidate,expected_pc,expected_camera))return false;
+    ui_config=candidate;return true;
 }
 void print_ui_observer(FILE* status,bool disabled){
     fprintf(status,"ui_observer enabled=%u available=%u source_vertices_modified=0 hud_plane_enabled=%u vm_calls=%llu qpc_frequency=%lld\n",

@@ -40,6 +40,18 @@ enum GpuCaptureValid:unsigned {capture_state_valid=1,capture_serial_valid=2,capt
     capture_ready_valid=8,capture_done_valid=16,capture_hresult_valid=32};
 struct GpuCaptureTrace {GpuCaptureReason reason{GpuCaptureReason::not_attempted};unsigned valid{},state{};
     UINT64 serial_before{},serial_after{},ready_completed{},done_completed{};LONG consumer{};HRESULT result{};};
+// A nonblocking observation, not an admission lock or permission to overwrite.
+// World handoff must stop new publications and recheck this snapshot at commit.
+struct GpuIdleSnapshot {
+    bool valid{},in_flight{},reconfiguring{};
+    unsigned state{};LONG consumer{};HRESULT result{};
+    std::uint64_t generation{},serial{},ready_completed{},done_completed{};
+};
+inline bool gpu_idle_complete(GpuIdleSnapshot const& s){
+    return s.valid&&s.state==2&&!s.in_flight&&!s.reconfiguring&&SUCCEEDED(s.result)&&s.generation&&s.consumer>=0&&
+        s.ready_completed!=~std::uint64_t(0)&&s.done_completed!=~std::uint64_t(0)&&
+        s.ready_completed>=s.serial&&s.done_completed>=s.serial;
+}
 inline const char* gpu_capture_reason_name(GpuCaptureReason reason){
     static const char* names[]={"not_attempted","published","not_ready","lock_busy","metadata_invalid","ticket_invalid",
         "source_changed","no_consumer","rate_limited","chain_mismatch","device_removed","producer_in_flight",
@@ -270,6 +282,19 @@ private:
     }
 public:
     HRESULT failure()const{return error;}
+    bool try_idle(GpuIdleSnapshot& out){
+        if(!TryAcquireSRWLockExclusive(&lock))return false;
+        GpuIdleSnapshot candidate{};
+        candidate.state=state.load();candidate.result=error;candidate.in_flight=in_flight;
+        candidate.reconfiguring=resize_active||rebuild_claimed_;candidate.generation=generation_;candidate.serial=serial;
+        if(initialized&&packet&&ready_fence&&done_fence){
+            candidate.consumer=InterlockedCompareExchange(&packet->consumer,0,0);
+            candidate.ready_completed=ready_fence->GetCompletedValue();candidate.done_completed=done_fence->GetCompletedValue();
+            candidate.valid=packet->generation==generation_;
+        }
+        out=candidate;const bool idle=gpu_idle_complete(candidate);
+        ReleaseSRWLockExclusive(&lock);return idle;
+    }
     // Notify the receiver and prevent new submissions. Keep all resources and
     // shared handles alive until callbacks drain and the producer fence is safe.
     void mark_stopped(){
