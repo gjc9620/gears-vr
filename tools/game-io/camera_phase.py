@@ -1,9 +1,10 @@
 """Read-only camera-route evidence; no input, hooks or display authorization.
 
-CameraActor is not synonymous with a cinematic. Bool storage is recorded raw;
-no bit mask or native BoolProperty layout is inferred by this diagnostic.
+CameraActor is not synonymous with a cinematic. Cinematic mode is decoded only
+while the reflected BoolProperty route and verified native code still match.
 """
 import argparse
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -108,7 +109,24 @@ class CameraPhaseReader:
             pawn_object, target_object = describe(pawn), describe(target)
             style, number = struct.unpack('<II', r.read(self.camera + self.fields['style']['offset'], 8))
             style_name = r.name(style)
-            storage = r.read(self.controller + self.fields['cinematic_storage']['offset'], 4).hex()
+            storage = r.read(self.controller + self.fields['cinematic_storage']['offset'], 4)
+            # Read/copy semantics independently checked in IDA and against live
+            # code bytes (docs/65). This is observation, never display authority.
+            prop = self.fields['cinematic_storage']['address']
+            vtable = r.u64(prop)
+            if (r.u64(r.base + 0x1b86280 + 0x2d * 8) != r.base + 0x1d6ea4 or
+                    r.u64(vtable + 0x2a0) != r.base + 0x1daba0 or
+                    r.u32(prop + 0x70) != 1 or r.u32(prop + 0x74) != 4):
+                raise RuntimeError('Unsupported cinematic BoolProperty route/layout')
+            for rva, size, digest in (
+                    (0x1d6ea4, 127, 'b71e2f794b38111292c497fa82c685f18a50822c44857853bb46acb6ad88609e'),
+                    (0x1daba0, 25, 'f4c26fb034bd7529efd10838092da31c9745e7b66f56cd054e793a1957a2915f')):
+                if hashlib.sha256(r.read(r.base + rva, size)).hexdigest() != digest:
+                    raise RuntimeError('Cinematic BoolProperty native code changed')
+            mask = r.u32(prop + 0xd0)
+            if not mask or mask & (mask - 1):
+                raise RuntimeError('Unsupported cinematic BoolProperty mask')
+            cinematic = bool(int.from_bytes(storage, 'little') & mask)
             stamp = struct.unpack('<f', r.read(int(self.resolved['timestamp_address'], 16), 4))[0]
             if not math.isfinite(stamp):
                 raise RuntimeError('Invalid camera timestamp')
@@ -122,8 +140,9 @@ class CameraPhaseReader:
                 observed_ns=began, finished_ns=ended, camera_timestamp=stamp,
                 camera=self.camera, controller=self.controller, pawn=pawn_object,
                 view_target=target_object, target_is_pawn=bool(pawn and target == pawn),
-                camera_style=[style_name, number], cinematic_storage_raw=storage,
-                cinematic_bool_decoded=False, atomic_engine_snapshot=False)
+                camera_style=[style_name, number], cinematic_storage_raw=storage.hex(),
+                cinematic_mask=mask, cinematic_mode=cinematic,
+                cinematic_bool_decoded=True, atomic_engine_snapshot=False)
         finally:
             r.read = original
             r.name = original_name
