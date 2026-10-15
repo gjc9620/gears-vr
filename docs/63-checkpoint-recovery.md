@@ -91,6 +91,8 @@ Recovery7 / PID26920再次完成两次同进程检查点重载、1080p→4K→10
 
 ## 下一步
 
+后续核对发现，旧runner的incomplete还可能来自接续模式判定错误：它要求one_way=true，而启用菜单恢复的XR明确为false。该退出报告条件已按实际配置修正，见[退出报告说明](64-reticle-and-ui-capacity.md)。本页原始运行报告与间隔测量保留；不能仅凭旧incomplete标签认定发生了黑帧，也不能用报告修正否定实测长间隔。
+
 ### 首入等待的相机身份（PID4776）
 
 GameRecovery5保持二进制不变，只在只读anchor失败记录中保存非Pawn目标的完整对象/类身份与末次重读结果。实际`continuous-stereo-4776-20261015-191911-0fc4a160.*`，首次和末次拒绝均为同一`CameraActor_1`（类`CameraActor`），相机时间戳约8.85至13.73秒，`consistent_read=true`。因此该轮确实在等待独立CameraActor过渡，不能解释成左右眼重叠或GPU出图故障，也不能未经验证直接取消Pawn约束。

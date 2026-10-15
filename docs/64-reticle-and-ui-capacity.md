@@ -30,3 +30,23 @@ GameRecovery8 / PID29060（`continuous-stereo-29060-20261015-200432-eee3ef86.*`�
 XR提交1864次、复制868张、跨度20.680秒、最大间隔22.159毫秒。原生清理、42处入口恢复及XR退出完成，正常关闭游戏。report仍为incomplete，不借短段结果宣布CG/加载黑屏修复。早先PID17932在只读菜单复读变化时测试主动中止，未执行切枪；脚本现仅对这类临时读竞争重试，不重复输入操作。错误日志保留。
 
 玩家`manifest.json`提升为Recovery8；Recovery7与更早冻结清单保留回滚。源码、清单与结论提交Git；测试图像、对象地址和日志仅留在ignored的analysis。下一步确认换枪菜单和字幕在持续运行/重载后仍保持UI布局，并继续有限距离瞄准与CG/加载显示缺口。
+
+## 重载、换枪及字幕图像复核
+
+同一冻结Recovery8 / PID11748（`continuous-stereo-11748-20261015-200929-b0879391.*`）完成手枪开镜、换枪界面、四步状态认证的检查点重载、再次选择手枪开镜。复读确认重载后的Pawn及武器对象更换；旧调用语义不重新标到新对象。
+
+- 准星应用148次，三类拒绝均0；重载后的ticket2610/2650/2694仍有双眼方向校正记录，ticket2610同时保存GPU原图。
+- 批次published=18653、claimed=8327，容量拒绝、poison、disabled均0；当前Pawn重关联1392次。2次结束绑定拒绝、3次时间戳竞态保持原有限定，不影响后续恢复。
+- HUD面板应用6982次、sequence_fault=0；kind2换枪绘制972次。ticket819图像两眼均见中心区域换枪图标/文字。
+- 原生字幕绘制442次；重载后ticket2610图像两眼均可读到同一句英文对白。只验收此样本，不推广为所有字幕/语言/菜单均完成。
+- XR提交6403次、复制2903张，跨度71.112秒、最大提交间隔22.303毫秒；并非新游戏图像每22毫秒必然更新。原生清理、42入口恢复和XR销毁完成，游戏及本次输入服务正常关闭。
+
+GPU审阅图`ui-recovery8-selector-reload-review.png`、1:1字幕裁切`ui-recovery8-subtitle-review.png`、汇总`reticle-ui-recovery8-audit.json`均在ignored的`analysis/runtime/`。HUD当前恢复原有70°/2米配置，尚未另行调小参数或改为世界固定；本次没有真头显舒适度验收。
+
+## 退出报告判定修正
+
+上述短段虽然清理成功且XR exit=0，旧协调脚本仍给出incomplete。核对`continuous_passed`发现它要求启动接续`one_way=true`；启用菜单恢复的XR正确报告`one_way=false`，因此被旧条件误拒绝。这是报告判定错误，与实际短黑帧分别处理。
+
+脚本现保存启动时`menu_recovery_enabled`，按配置要求对应的接续模式。可逆模式还必须有实际`menu_recovery_evidence=true`及`panel_counts_as_stereo=false`；真正提交双目、成功xrEndFrame、owner身份、原生恢复及XR正常退出条件均保留。39项runner测试通过，含模式错配、证据缺失、把平面算立体、结构失败和退出失败的拒绝用例。
+
+三个原报告保持原样。离线只重放退出谓词，并从各自原始`xr_command`的`--menu-state-file`恢复启动配置，结果均通过；审计文件保存原报告SHA256。这不把旧报告冒充新运行，也不消除已测得的加载间隔或CG风险。新的启动配置记录与谓词已由测试验证，尚未再为这一纯报告修正重启游戏。

@@ -472,6 +472,29 @@ class ContinuousTests(unittest.TestCase):
         for flag in ('owner_exit_observed','owner_error_observed'):
             self.assertFalse(runner.continuous_passed(dict(state,native_status=dict(terminal(),**{flag:'1'}))))
 
+    def test_recoverable_menu_handoff_requires_configured_mode_and_runtime_evidence(self):
+        state=dict(native_cleanup_verified=True,entry_restore_verified=True,xr_exit_code=0,
+            owner_identity=identity(123),native_status=terminal(),
+            continuous_owner_evidence=dict(owner_pid=123,owner_creation_time=1230,owner_lost=False),
+            continuous_session_evidence=dict(orderly_stop=True,shutdown_completed=True,structural_failure=False,
+                                             submitted_frames=10,scene_copies=3),
+            startup_menu_enabled=True,menu_recovery_enabled=True,startup_panel_submitted=True,
+            startup_menu_evidence=dict(stereo_handoff=True,startup_quad_layers=4),
+            startup_menu_handoff=dict(end_frame_succeeded=True,ticketed_projection_rendered=True,one_way=False),
+            menu_recovery_evidence=dict(menu_recovery_evidence=True,panel_counts_as_stereo=False))
+        self.assertTrue(runner.continuous_passed(state))
+        for field,value in [('menu_recovery_enabled',False),('menu_recovery_enabled',1),
+                            ('startup_menu_enabled',False),('menu_recovery_evidence',{}),
+                            ('xr_exit_code',1),('native_cleanup_verified',False)]:
+            self.assertFalse(runner.continuous_passed(dict(state,**{field:value})),field)
+        for field in ('end_frame_succeeded','ticketed_projection_rendered','one_way'):
+            changed=dict(state['startup_menu_handoff']);changed[field]=not changed[field]
+            self.assertFalse(runner.continuous_passed(dict(state,startup_menu_handoff=changed)),field)
+        bad=dict(state['menu_recovery_evidence'],panel_counts_as_stereo=True)
+        self.assertFalse(runner.continuous_passed(dict(state,menu_recovery_evidence=bad)))
+        failed=dict(state['continuous_session_evidence'],structural_failure=True)
+        self.assertFalse(runner.continuous_passed(dict(state,continuous_session_evidence=failed)))
+
     def test_native_owner_matches_requires_pid_and_creation(self):
         owner=identity(os.getpid())
         self.assertTrue(runner.native_owner_matches(terminal(),owner))

@@ -191,10 +191,17 @@ def continuous_passed(state):
     native=state.get('native_status',{})
     menu=state.get('startup_menu_evidence',{})
     handoff=state.get('startup_menu_handoff',{})
-    startup_ok=not state.get('startup_menu_enabled') or (
-        state.get('startup_panel_submitted') is True and menu.get('stereo_handoff') is True
+    recovery=state.get('menu_recovery_enabled',False)
+    recovery_evidence=state.get('menu_recovery_evidence',{})
+    handoff_mode_ok=(recovery is False and handoff.get('one_way') is True) or (
+        recovery is True and handoff.get('one_way') is False
+        and recovery_evidence.get('menu_recovery_evidence') is True
+        and recovery_evidence.get('panel_counts_as_stereo') is False)
+    startup_ok=(not state.get('startup_menu_enabled') and recovery is False) or (
+        state.get('startup_menu_enabled') is True
+        and state.get('startup_panel_submitted') is True and menu.get('stereo_handoff') is True
         and menu.get('startup_quad_layers',0)>0 and handoff.get('end_frame_succeeded') is True
-        and handoff.get('ticketed_projection_rendered') is True and handoff.get('one_way') is True)
+        and handoff.get('ticketed_projection_rendered') is True and handoff_mode_ok)
     return bool(state.get('native_cleanup_verified') and state.get('entry_restore_verified')
                 and startup_ok
                 and owner and watched.get('owner_pid')==owner.get('pid')
@@ -319,6 +326,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'image_ticket_diagnostics_enabled':bool(getattr(args,'origin_trial',False) or getattr(args,'image_ticket_diagnostics',False)),
            'shutdown_diagnostics_enabled':bool(getattr(args,'shutdown_diagnostics',False)),
            'startup_menu_enabled':bool(getattr(args,'startup_menu_window',0)),
+           'menu_recovery_enabled':bool(getattr(args,'menu_recovery',False)),
            'ui_observer_enabled':bool(getattr(args,'ui_observer',False)),
            'ui_hud_plane_enabled':bool(getattr(args,'ui_hud_plane',False)),
            'gpu_snapshot_requested':bool(getattr(args,'gpu_snapshot',False)),
