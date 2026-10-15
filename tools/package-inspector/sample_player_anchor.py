@@ -18,8 +18,9 @@ class AnchorRejected(RuntimeError):
 
 
 class AnchorSampler:
-    def __init__(self,resolver,*,prepared_camera=None):
+    def __init__(self,resolver,*,prepared_camera=None,target_validator=None):
         self.r=resolver
+        self.target_validator=target_validator
         # Explicit discovery hint from this Resolver's same preparation attempt.
         # It replaces discovery only; fresh identities/links, guard and sampling
         # below still run. It is not an expected-camera acceptance certificate.
@@ -133,7 +134,10 @@ class AnchorSampler:
             r.u64(self.controller+int(offsets['Player'],16))!=self.local):
             raise AnchorRejected('Camera/controller/local-player relationship changed')
         target=r.u64(self.view_target) if self.view_target is not None else None
-        if target is not None and target!=self.pawn:
+        target_proof=None
+        if self.target_validator is not None:
+            target_proof=self.target_validator(self,target,pawn,level)
+        if self.target_validator is None and target is not None and target!=self.pawn:
             error=AnchorRejected('Camera view target is not controlled Pawn')
             # Bounded failure-only evidence; it never admits a non-Pawn camera.
             observation={'diagnostic_only':True,'target':target,'pawn':self.pawn,
@@ -166,9 +170,16 @@ class AnchorSampler:
             raise AnchorRejected('Camera/controller/player pointer changed at bracket boundary')
         if self.view_target is not None and r.u64(self.view_target)!=target:
             raise AnchorRejected('View target changed at bracket boundary')
-        return {'pawn':pawn,'controller':controller,'camera':camera,'local_player':local,'level':level,
+        if self.target_validator is not None:
+            if self.target_validator(self,target,pawn,level)!=target_proof:
+                raise AnchorRejected('Cinematic target changed during identity checks')
+            if r.read(self.stamp,4)!=stamp_raw:
+                raise AnchorRejected('Cross-frame camera timestamp during identity checks')
+        result={'pawn':pawn,'controller':controller,'camera':camera,'local_player':local,'level':level,
                 'outer_chain':outer_chain,'view_target':target,'timestamp_raw':stamp_raw.hex(),
                 'objects_header':objects.hex(),'names_header':names.hex()}
+        if self.target_validator is not None:result['target_proof']=target_proof
+        return result
 
     def sample(self):
         record={'started_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),

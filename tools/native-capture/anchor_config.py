@@ -23,13 +23,20 @@ def _header(resolver, address):
 
 class LiveRegistryAnchorSampler(AnchorSampler):
     """Refresh live registry bounds; count growth alone does not reject identity."""
-    def __init__(self,resolver,clock_ns=None,*,prepared_camera=None):
+    def __init__(self,resolver,clock_ns=None,*,prepared_camera=None,cinematic_camera=False):
         # Base construction invokes self.guard before it creates metadata.
         self.guard_acquisitions=[];self.guard_stage='initial'
         self.guard_clock_ns=clock_ns or time.perf_counter_ns
         self.sample_guard_index=None
+        self.cinematic_contract=None
+        def validate_target(sampler,target,pawn,level):
+            if self.cinematic_contract is None:
+                from cinematic_anchor import CinematicTargetCertificate
+                self.cinematic_contract=CinematicTargetCertificate(sampler)
+            return self.cinematic_contract.target(sampler,target,pawn,level)
         started=self.guard_clock_ns()
-        try:super().__init__(resolver,prepared_camera=prepared_camera)
+        try:super().__init__(resolver,prepared_camera=prepared_camera,
+                             target_validator=validate_target if cinematic_camera else None)
         except AnchorSamplingRejected:raise
         except Exception as error:
             raise AnchorSamplingRejected(str(error),self.failure_evidence('initial',error,started)) from error
@@ -215,8 +222,8 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
     raise AnchorSamplingRejected(last_reason,evidence)
 
 
-def build_anchor_config(resolver, expected_camera=None, *, prepared_camera=None):
-    sampler=LiveRegistryAnchorSampler(resolver,prepared_camera=prepared_camera)
+def build_anchor_config(resolver, expected_camera=None, *, prepared_camera=None,cinematic_camera=False):
+    sampler=LiveRegistryAnchorSampler(resolver,prepared_camera=prepared_camera,cinematic_camera=cinematic_camera)
     started=time.perf_counter_ns()
     try:return _assemble_anchor_config(sampler,resolver,expected_camera)
     except AnchorSamplingRejected:raise
@@ -250,6 +257,18 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
         return index
     roles={role:add(before[role]['address']) for role in ROLES}
     for identity in before['outer_chain']:add(identity['address'])
+    contract=getattr(sampler,'cinematic_contract',None)
+    cinematic=None
+    if contract is not None:
+        cinematic=dict(module_base=resolver.base,
+            role_cinematic_property=add(contract.property['address']),
+            role_camera_actor_class=add(contract.camera_class['address']),
+            cinematic_offset=contract.offset,cinematic_mask=contract.mask,
+            role_world_info_property=add(contract.world_property['address']),
+            role_world_info=add(contract.world_info['address']),world_info_offset=contract.world_offset)
+        # CameraActor is a class role without a static instance in this table;
+        # class-of-object closure alone would leave its own Super uncertified.
+        for address in contract.identities:add(address,address in contract.supers)
     # Certify every object's actual class and bounded superclass chain, including
     # metaclass identities. Native rechecks the slots, FNames, class/outer/super.
     cursor=0
@@ -269,6 +288,7 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
     sampler.guard_stage='assembly_after'
     after=sampler.guard()
     stable_keys=(*ROLES,'outer_chain','view_target')
+    if cinematic is not None:stable_keys+=('target_proof',)
     if any(before[key]!=after[key] for key in stable_keys):
         raise AnchorRejected('Possession/identity changed during certificate assembly')
     sampler.guard_stage='final_identity_validation'
@@ -286,6 +306,7 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
     # copied from guessed executable-relative structures.
     config={'schema':1,'objects_header':resolver.objects_header,'names_header':resolver.names_header,
             'layout':layout,'roles':roles,'fields':fields,'identities':identities}
+    if cinematic is not None:config.update(schema=2,cinematic=cinematic)
     metadata={'schema':1,'config':config,'sampler':sampler.metadata,'sample':sample,
               'sample_acquisition':acquisition,
               'guard_acquisitions':sampler.guard_acquisitions,
@@ -301,7 +322,9 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
 
 def validate_anchor_config(config):
     expected={'schema','objects_header','names_header','layout','roles','fields','identities'}
-    if set(config)!=expected or type(config['schema']) is not int or config['schema']!=1:raise AnchorRejected('Unsupported observer schema')
+    schema=config.get('schema')
+    if schema==2:expected.add('cinematic')
+    if set(config)!=expected or type(schema) is not int or schema not in (1,2):raise AnchorRejected('Unsupported observer schema')
     def integer(value,label,limit,positive=False):
         if isinstance(value,bool) or not isinstance(value,int) or not (int(positive)<=value<limit):
             raise AnchorRejected('Invalid observer integer: '+label)
@@ -334,13 +357,59 @@ def validate_anchor_config(config):
     for role,index in config['roles'].items():
         integer(index,role,len(ids));name=ids[index]['name']
         if name.startswith('Default__'):raise AnchorRejected('Default object observer role')
+    if schema==2:
+        cine=config['cinematic']
+        if not isinstance(cine,dict) or set(cine)!={'module_base','role_cinematic_property','role_camera_actor_class','cinematic_offset','cinematic_mask','role_world_info_property','role_world_info','world_info_offset'}:
+            raise AnchorRejected('Missing cinematic certificate')
+        integer(cine['module_base'],'module_base',(1<<64)-0x1b863f0,True)
+        integer(cine['cinematic_offset'],'cinematic_offset',0xfffd)
+        integer(cine['world_info_offset'],'world_info_offset',0xfff9)
+        integer(cine['role_world_info'],'role_world_info',len(ids))
+        integer(cine['cinematic_mask'],'cinematic_mask',1<<32,True)
+        if cine['cinematic_mask']&(cine['cinematic_mask']-1):raise AnchorRejected('Cinematic mask must be one bit')
+        for key,name in (('role_cinematic_property','bCinematicMode'),('role_camera_actor_class','CameraActor'),('role_world_info_property','WorldInfo')):
+            integer(cine[key],key,len(ids))
+            if ids[cine[key]]['name']!=name or ids[cine[key]]['number']:
+                raise AnchorRejected('Cinematic role identity mismatch')
+        by_address={i['address']:i for i in ids}
+        prop=ids[cine['role_cinematic_property']];actor=ids[cine['role_camera_actor_class']]
+        if (by_address[prop['cls']]['name']!='BoolProperty' or by_address[actor['cls']]['name']!='Class' or
+                prop['outer'] not in by_address):raise AnchorRejected('Cinematic class/owner mismatch')
+        cls=ids[config['roles']['controller']]['cls'];seen=set()
+        while cls and cls!=prop['outer']:
+            if cls in seen or cls not in by_address or not by_address[cls]['check_super']:
+                raise AnchorRejected('Invalid cinematic owner chain')
+            seen.add(cls);cls=by_address[cls]['super']
+        if cls!=prop['outer']:raise AnchorRejected('Cinematic property not inherited by controller')
+        world_prop=ids[cine['role_world_info_property']];world=ids[cine['role_world_info']]
+        if (by_address[world_prop['cls']]['name']!='ObjectProperty' or
+                by_address.get(world_prop['outer'],{}).get('name')!='Actor' or
+                world['name'].startswith('Default__') or world['outer']!=ids[config['roles']['level']]['address']):
+            raise AnchorRejected('Cinematic WorldInfo certificate mismatch')
+        def certified_ancestry(start,expected):
+            seen=set();current=start
+            while current:
+                item=by_address.get(current)
+                if current in seen or len(seen)>=64 or not item or not item['check_super']:
+                    raise AnchorRejected('Incomplete cinematic class ancestry')
+                if expected(item):return True
+                seen.add(current);current=item['super']
+            return False
+        for cls in (ids[config['roles']['controller']]['cls'],ids[config['roles']['pawn']]['cls'],actor['address']):
+            if not certified_ancestry(cls,lambda item:item['address']==world_prop['outer']):
+                raise AnchorRejected('Cinematic actor does not inherit WorldInfo owner')
+        if not certified_ancestry(world['cls'],lambda item:item['name']=='WorldInfo'):
+            raise AnchorRejected('Cinematic world object is not WorldInfo')
     return config
 
 
 def anchor_ini(config):
     """Bounded numeric schema with already-validated, newline-free UTF16 names."""
     validate_anchor_config(config)
-    rows=['[AnchorObserver]','schema=1']
+    rows=['[AnchorObserver]',f"schema={config['schema']}"]
+    if config['schema']==2:
+        rows.append('cinematic_enabled=1')
+        rows.extend(f'{key}={value}' for key,value in config['cinematic'].items())
     for key in ('objects_header','names_header'):rows.append(f'{key}={config[key]:#x}')
     for key,value in config['layout'].items():rows.append(f'{key}={value}')
     rows.append(f"identity_count={len(config['identities'])}")

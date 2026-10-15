@@ -115,14 +115,22 @@ class LauncherTests(unittest.TestCase):
     def test_player_default_uses_game_resolution_and_graphics_protection(self):
         directory=pathlib.Path(__file__).parent
         current=json.loads((directory/'manifest.json').read_text())
-        self.assertEqual(current,json.loads((directory/'manifest-game-recovery5.json').read_text()))
+        self.assertEqual(current,json.loads((directory/'manifest-game-recovery8.json').read_text()))
         launcher.settings({},current)
-        self.assertEqual(current['native_dll'],'GearsCaptureGameRecovery5.dll')
+        self.assertEqual(current['native_dll'],'GearsCaptureGameRecovery8.dll')
         for key in ('startup_menu','graphics_startup_lock','graphics_menu_lock','menu_recovery','ui_hud_plane'):
             self.assertTrue(current[key])
         for tier in ('low','high'):
             with self.assertRaisesRegex(ValueError,'Unknown configuration'):
                 launcher.settings({'vr_quality':tier},current)
+
+    def test_cinematic_target_option_requires_anchor_and_boolean(self):
+        for value in (1,'true',None):
+            with self.assertRaisesRegex(ValueError,'boolean'):
+                launcher.settings({},dict(MANIFEST,anchor_observer=True,cinematic_camera=value))
+        with self.assertRaisesRegex(ValueError,'requires anchor'):
+            launcher.settings({},dict(MANIFEST,anchor_observer=False,cinematic_camera=True))
+        launcher.settings({},dict(MANIFEST,anchor_observer=True,cinematic_camera=True))
 
     def test_startup_policy_event_failure_does_not_admit_handoff(self):
         backend=launcher.Backend.__new__(launcher.Backend)

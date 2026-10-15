@@ -13,6 +13,33 @@ import run_stereo_continuous as continuous
 
 
 class AnchorStartTests(unittest.TestCase):
+    def test_exhausted_timestamp_only_samples_retry_but_identity_change_does_not(self):
+        import copy
+        from anchor_config import AnchorSamplingRejected
+        reason='Cross-frame or identity/pointer change during measurement'
+        guard={k:k for k in ('controller','local_player','camera','pawn','level','outer_chain','view_target','target_proof')}
+        before=dict(guard,timestamp_raw='00000000');after=dict(guard,timestamp_raw='0000803f')
+        raw=dict(rejection=reason,guard_before=before,guard_after=after)
+        evidence=dict(stage='sample',attempts=[dict(raw_rejection=raw)])
+        self.assertTrue(start.camera_preparation_transient(AnchorSamplingRejected(reason,evidence)))
+        for key in guard:
+            changed=copy.deepcopy(evidence);changed['attempts'][0]['raw_rejection']['guard_after'][key]='changed'
+            self.assertFalse(start.camera_preparation_transient(AnchorSamplingRejected(reason,changed)))
+        self.assertFalse(start.camera_preparation_transient(RuntimeError(reason)))
+
+    def test_cinematic_camera_policy_and_command_forwarding(self):
+        parser=mock.Mock();parser.error.side_effect=ValueError
+        args=types.SimpleNamespace(pid=1,build_dir=pathlib.Path('unused'),dll_name='Missing.dll',
+            stereo_units_per_metre=100,anchor_observer=True,cinematic_camera=True,
+            stereo_xr=True,frame_link_diagnostics=True,origin_trial=False)
+        start.configure_anchor_options(args,parser)
+        command=continuous.native_command(args,{'pid':100,'creation_time':1000})
+        self.assertIn('--cinematic-camera',command)
+        for anchor,origin in ((False,False),(True,True)):
+            args.anchor_observer=anchor;args.origin_trial=origin
+            with self.assertRaises(ValueError):start.configure_anchor_options(args,parser)
+            with self.assertRaises(ValueError):continuous.native_command(args,{'pid':100,'creation_time':1000})
+
     def test_camera_transition_reacquires_all_certificates_without_activation(self):
         import anchor_config as anchor
         import ui_observer_config as ui

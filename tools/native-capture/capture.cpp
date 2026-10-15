@@ -1137,6 +1137,7 @@ void print_anchor(FILE* status,bool hooks_disabled){
     if(!anchor_observer_enabled){fprintf(status,"anchor_observer enabled=0\n");return;}
     fprintf(status,"anchor_pawn_policy same_level_only=1 same_class_outer=1 startup_config_immutable=1 full_pawn_signature=1 scene_prepost_identity=1 absolute_uobject_serial_verified=0 accepted_reassociated_guard_scene=%llu accepted_reassociated_guard_family=%llu accepted_reassociated_guard_renderer=%llu\n",
         anchor_pawn_reassociated_guards[0].load(),anchor_pawn_reassociated_guards[1].load(),anchor_pawn_reassociated_guards[2].load());
+    fprintf(status,"anchor_camera_policy cinematic_enabled=%u target_requires_cinematic_mode=1 target_exact_camera_actor=1 target_same_world_info=1 target_registered_level=1 possession_remains_pawn=1\n",anchor_config.cinematic_enabled?1:0);
     if(recording.load()||active.load()||!hooks_disabled){fprintf(status,"anchor_observer enabled=1 available=0 active=%u hooks_disabled=%u\n",active.load(),hooks_disabled?1:0);return;}
     fprintf(status,"anchor_observer enabled=1 available=1 schema=1 capacity=64 rows=%u reject_capacity=16 reject_rows=%u identity_count=%u accepted_scene=%llu accepted_family=%llu accepted_renderer=%llu first_renderer_qpc=%lld last_renderer_qpc=%lld sampled_out=%llu capacity_dropped=%llu dropped_first_qpc=%lld dropped_last_qpc=%lld qpc_frequency=%lld atomic_engine_snapshot=0 renderer_alignment_verified=0 origin_modified=%u source_view_bytes_matched=64 projection_bytes_observed=64 sample_policy=first4_then_1s\n",
         std::min<unsigned>(anchor_row_count.load(),64),std::min<unsigned>(anchor_reject_count.load(),16),anchor_config.identity_count,
@@ -1152,6 +1153,10 @@ void print_anchor(FILE* status,bool hooks_disabled){
             scope,index,stages[row.stage],gears_anchor::reason_name(row.reason),r.invocation,r.thread,r.key.local,r.key.family,r.key.source,r.key.owner,
             a.pawn,a.controller,a.camera,a.level,r.scene_qpc,r.family_qpc,r.renderer_qpc,r.key.stamp,a.location[0],a.location[1],a.location[2],
             a.eye_height,a.base_eye_height,a.location[0],a.location[1],a.location[2]+a.eye_height,row.renderer,row.ticket);
+        fprintf(status," cinematic=%u target=%llx target_index=%u target_name_index=%u target_number=%u target_class=%llx target_outer=%llx",
+            a.cinematic?1:0,a.target_identity.address,a.target_identity.index,a.target_identity.name_index,
+            a.target_identity.number,a.target_identity.cls,a.target_identity.outer);
+        fprintf(status," target_level=%llx target_level_index=%u",a.target_level_identity.address,a.target_level_identity.index);
         const std::array<unsigned char,128>* matrices[]={&r.key.matrices,&r.family_matrices,&r.renderer_matrices};
         const char* labels[]={"scene_matrix","family_matrix","renderer_matrix"};
         for(unsigned stage=0;stage<3;++stage){fprintf(status," %s=",labels[stage]);for(unsigned j=0;j<32;++j){float value{};memcpy(&value,matrices[stage]->data()+4*j,4);fprintf(status,"%s%.9g",j?",":"",value);}}
@@ -2338,8 +2343,9 @@ bool load_anchor_config(const wchar_t* ini){
         if(!*value||*value==L'-'||*value==L'+')return false;out=_wcstoui64(value,&end,0);return end&&!*end;};
     auto load=[&](const wchar_t* key,auto& field){unsigned long long value{};if(!number(key,value)||value>static_cast<unsigned long long>(std::numeric_limits<std::remove_reference_t<decltype(field)>>::max()))return false;
         field=static_cast<std::remove_reference_t<decltype(field)>>(value);return true;};
-    unsigned schema{};if(!load(L"schema",schema)||schema!=1)return false;
+    unsigned schema{};if(!load(L"schema",schema)||(schema!=1&&schema!=2))return false;
     auto& c=anchor_config;
+    c.cinematic_enabled=false;
 #define ANCHOR_WIDEN_(text) L##text
 #define ANCHOR_WIDEN(text) ANCHOR_WIDEN_(text)
 #define ANCHOR_LOAD(field) if(!load(ANCHOR_WIDEN(#field),c.field))return false
@@ -2350,6 +2356,12 @@ bool load_anchor_config(const wchar_t* ini){
     ANCHOR_LOAD(controller_pawn);ANCHOR_LOAD(pawn_controller);ANCHOR_LOAD(pawn_location);ANCHOR_LOAD(pawn_rotation);ANCHOR_LOAD(controller_rotation);
     ANCHOR_LOAD(eye_height);ANCHOR_LOAD(base_eye_height);ANCHOR_LOAD(player_camera);ANCHOR_LOAD(pc_owner);ANCHOR_LOAD(player);
     ANCHOR_LOAD(camera_view_target);ANCHOR_LOAD(camera_timestamp);ANCHOR_LOAD(camera_pov);
+    if(schema==2){unsigned enabled{};if(!load(L"cinematic_enabled",enabled)||enabled!=1)return false;
+        ANCHOR_LOAD(module_base);ANCHOR_LOAD(role_cinematic_property);ANCHOR_LOAD(role_camera_actor_class);
+        ANCHOR_LOAD(cinematic_offset);ANCHOR_LOAD(cinematic_mask);
+        ANCHOR_LOAD(role_world_info_property);ANCHOR_LOAD(role_world_info);ANCHOR_LOAD(world_info_offset);
+        if(c.module_base!=reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr))||c.cinematic_offset>0xfffc)return false;
+        c.cinematic_enabled=true;}
 #undef ANCHOR_LOAD
 #undef ANCHOR_WIDEN
 #undef ANCHOR_WIDEN_

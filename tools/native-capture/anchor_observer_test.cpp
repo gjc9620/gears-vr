@@ -7,7 +7,189 @@ using namespace gears_anchor;
 static Receipt receipt(){Receipt r{};r.key.local=1;r.key.family=r.key.owner=2;r.key.source=3;r.key.stamp=4;
     r.anchor.pawn=5;r.anchor.location={1,2,3};r.anchor.eye_height=4;r.invocation=1;r.thread=7;r.scene_qpc=10;return r;}
 static Reason offer(Context& c,Receipt r){c.begin_scene();auto why=c.offer(r);c.end_scene();return why;}
+static int cinematic_tests(){
+    std::vector<unsigned char> mem(300000);
+    const uintptr_t module=0x140000000,vtable=module+0x2000000,native_slot=module+cinematic_gnatives_rva+0x2d*8,accessor_slot=vtable+0x2a0;
+    uintptr_t native=module+cinematic_bool_native_rva,accessor=module+cinematic_bool_accessor_rva;
+    auto put=[&](uintptr_t address,auto const& value){std::memcpy(mem.data()+address,&value,sizeof(value));};
+    auto read=[&](void* dest,void const* source,size_t size){const auto address=reinterpret_cast<uintptr_t>(source);
+        if(size==8&&(address==native_slot||address==accessor_slot)){const auto value=address==native_slot?native:accessor;std::memcpy(dest,&value,8);return true;}
+        if(address>mem.size()||size>mem.size()-address)return false;std::memcpy(dest,mem.data()+address,size);return true;};
+    Config cfg{};cfg.objects_header=100;cfg.names_header=200;cfg.identity_count=19;
+    cfg.object_internal_index=8;cfg.object_name=12;cfg.object_class=24;cfg.object_outer=32;cfg.field_super=96;
+    cfg.name_entry_index=0;cfg.name_entry_text=8;cfg.role_controller=0;cfg.role_local=1;cfg.role_camera=2;cfg.role_pawn=3;cfg.role_level=4;
+    cfg.controller_pawn=120;cfg.pawn_controller=120;cfg.player_camera=128;cfg.pc_owner=120;cfg.player=136;
+    cfg.camera_view_target=128;cfg.camera_timestamp=140;cfg.pawn_location=140;cfg.eye_height=152;cfg.base_eye_height=156;
+    cfg.cinematic_enabled=true;cfg.role_cinematic_property=13;cfg.role_camera_actor_class=12;cfg.cinematic_offset=0x180;cfg.cinematic_mask=0x20;
+    cfg.module_base=0x140000000;cfg.role_world_info_property=16;cfg.role_world_info=17;cfg.world_info_offset=0xd0;
+    Registry objects{1000,2001,2100},names{20000,2001,2100};put(100,objects);put(200,names);
+    const wchar_t* labels[]={L"PC",L"Local",L"Camera",L"Pawn",L"LevelObj",L"WarLocalPlayer",L"WarPlayerCamera",L"WarPawn",L"Level",L"Class",L"BoolProperty",L"PlayerController",L"CameraActor",L"bCinematicMode",L"Actor",L"ObjectProperty",L"WorldInfo",L"WorldInfo_0",L"WorldInfo"};
+    for(unsigned i=0;i<cfg.identity_count;++i){auto& id=cfg.identities[i];id.address=0x10000+i*0x200;id.index=id.name_index=i;
+        id.cls=0x10000+(i==0?11:i==1?5:i==2?6:i==3?7:i==4?8:i==13?10:i==16?15:i==17?18:9)*0x200;
+        id.outer=i==3?cfg.identities[0].address+4*0x200:i==13?0x10000+11*0x200:i==16?0x10000+14*0x200:i==17?0x10000+4*0x200:0;
+        id.check_super=(i>=5&&i<=12)||i==14||i==15||i==18;
+        if(i==7||i==11||i==12||i==18)id.super=0x10000+14*0x200;std::copy_n(labels[i],std::wcslen(labels[i])+1,id.name.begin());
+        put(id.address+8,id.index);put(id.address+12,id.name_index);put(id.address+24,id.cls);put(id.address+32,id.outer);
+        if(id.check_super)put(id.address+cfg.field_super,id.super);
+        put(objects.data+i*8,id.address);const auto entry=uintptr_t(0x18000+i*0x200);put(names.data+i*8,entry);put(entry,id.name_index);put(entry+8,id.name);
+    }
+    const auto pc=cfg.identities[0].address,local=cfg.identities[1].address,camera=cfg.identities[2].address,pawn=cfg.identities[3].address,level=cfg.identities[4].address;
+    const auto property=cfg.identities[13].address,target=uintptr_t(0x20000),entry=uintptr_t(0x21000);const unsigned target_index=100,target_name=101;
+    put(pc+120,pawn);put(pawn+120,pc);put(pc+128,camera);put(camera+120,pc);put(pc+136,local);put(camera+128,target);
+    put(camera+140,1.f);put(pawn+140,std::array<float,3>{1,2,3});put(pawn+152,4.f);put(pawn+156,5.f);
+    put(property+0x70,1u);put(property+0x74,4u);put(property+0x94,cfg.cinematic_offset);put(property+0xd0,cfg.cinematic_mask);put(pc+cfg.cinematic_offset,cfg.cinematic_mask);
+    put(property,vtable);
+    put(target+8,target_index);put(target+12,target_name);put(target+24,cfg.identities[12].address);put(target+32,level);
+    put(objects.data+target_index*8,target);put(names.data+target_name*8,entry);put(entry,target_name);
+    std::array<wchar_t,64> target_text{};std::copy_n(L"CineCamera",11,target_text.begin());put(entry+8,target_text);
+    const auto world_property=cfg.identities[16].address,world=cfg.identities[17].address;
+    put(world_property+0x70,1u);put(world_property+0x74,8u);put(world_property+0x94,cfg.world_info_offset);
+    put(pc+cfg.world_info_offset,world);put(pawn+cfg.world_info_offset,world);put(target+cfg.world_info_offset,world);
+    const auto baseline=mem;const auto initial=cfg;
+    Anchor anchor{};uint32_t stamp{};PawnBinding binding{};
+    CHECK(guard(cfg,read,anchor,stamp)&&anchor.cinematic&&anchor.pawn==pawn&&anchor.target_identity.address==target);
+    CHECK(capture_pawn_binding(cfg,read,binding)&&scene_binding_matches(binding,anchor));
+    // NameEntry storage after the first NUL is not part of UObject identity.
+    auto trailing_text=target_text;std::fill(trailing_text.begin()+11,trailing_text.end(),L'x');put(entry+8,trailing_text);
+    Anchor normalized{};CHECK(guard(cfg,read,normalized,stamp)&&equal_anchor(anchor,normalized));
+    CHECK(normalized.target_identity.name==target_text);
+    PawnBinding normalized_binding{};CHECK(capture_pawn_binding(cfg,read,normalized_binding)&&equal_binding(binding,normalized_binding));
+    trailing_text.back()=L'y';put(entry+8,trailing_text);
+    CHECK(guard(cfg,read,normalized,stamp)&&equal_anchor(anchor,normalized));
+    // Even irrelevant trailing storage must be stable across one raw read pair.
+    bool changed_tail=false;auto changing_tail=[&](void* dest,void const* source,size_t size){const auto address=reinterpret_cast<uintptr_t>(source);const bool ok=read(dest,source,size);
+        if(!changed_tail&&address==entry+8&&size==sizeof(trailing_text)){changed_tail=true;trailing_text.back()=L'z';put(entry+8,trailing_text);}return ok;};
+    CHECK(!guard(cfg,changing_tail,normalized,stamp)&&changed_tail);
+    mem=baseline;
+    // Streaming CameraActor Levels may differ, but must share the certified WorldInfo.
+    const uintptr_t streamed_level=0x23000,streamed_entry=0x24000;const unsigned streamed_index=104,streamed_name=105;
+    put(streamed_level+8,streamed_index);put(streamed_level+12,streamed_name);put(streamed_level+24,cfg.identities[8].address);
+    put(objects.data+streamed_index*8,streamed_level);put(names.data+streamed_name*8,streamed_entry);put(streamed_entry,streamed_name);
+    auto streamed_text=target_text;streamed_text.fill(0);std::copy_n(L"PersistentLevel",16,streamed_text.begin());put(streamed_entry+8,streamed_text);
+    put(target+32,streamed_level);
+    CHECK(guard(cfg,read,normalized,stamp)&&normalized.target_level_identity.address==streamed_level);
+    CHECK(capture_pawn_binding(cfg,read,normalized_binding)&&scene_binding_matches(normalized_binding,normalized));
+    CHECK(!equal_anchor(anchor,normalized)&&!equal_binding(binding,normalized_binding));
+    const auto streamed_baseline=mem;
+    for(unsigned fault=0;fault<12;++fault){mem=streamed_baseline;
+        if(fault==0)put(target+cfg.world_info_offset,uintptr_t(world+8));
+        if(fault==1)put(pc+cfg.world_info_offset,uintptr_t(0));
+        if(fault==2)put(pawn+cfg.world_info_offset,uintptr_t(0));
+        if(fault==3)put(streamed_level+24,cfg.identities[12].address);
+        if(fault==4)put(objects.data+streamed_index*8,uintptr_t(0));
+        if(fault==5)put(streamed_entry,streamed_name+1);
+        if(fault==6)put(world_property+0x70,2u);
+        if(fault==7)put(world_property+0x74,4u);
+        if(fault==8)put(world_property+0x94,cfg.world_info_offset+8);
+        if(fault==9)put(world+32,streamed_level);
+        if(fault==10)put(world+24,cfg.identities[12].address);
+        if(fault==11){auto text=streamed_text;std::copy_n(L"Default__Level",15,text.begin());put(streamed_entry+8,text);}
+        CHECK(!guard(cfg,read,normalized,stamp));
+    }
+    for(unsigned fault=0;fault<4;++fault){mem=streamed_baseline;bool mutated=false;
+        auto changing_world=[&](void* dest,void const* source,size_t size){const auto address=reinterpret_cast<uintptr_t>(source);const bool ok=read(dest,source,size);
+            if(!mutated&&address==streamed_level&&size==96){mutated=true;
+                if(fault==0)put(streamed_level+16,1u);
+                if(fault==1)put(target+cfg.world_info_offset,uintptr_t(0));
+                if(fault==2)put(pc+cfg.world_info_offset,uintptr_t(0));
+                if(fault==3)put(world_property+0x74,4u);}
+            return ok;};
+        CHECK(!guard(cfg,changing_world,normalized,stamp)&&mutated);
+    }
+    for(unsigned fault=0;fault<6;++fault){mem=streamed_baseline;cfg=initial;
+        if(fault==0)cfg.role_world_info_property=128;
+        if(fault==1)cfg.role_world_info=128;
+        if(fault==2)cfg.role_world_info_property=cfg.role_cinematic_property;
+        if(fault==3)cfg.role_world_info=cfg.role_controller;
+        if(fault==4){cfg.identities[7].super=0;put(cfg.identities[7].address+cfg.field_super,uintptr_t(0));}
+        if(fault==5){cfg.identities[12].super=0;put(cfg.identities[12].address+cfg.field_super,uintptr_t(0));}
+        CHECK(!guard(cfg,read,normalized,stamp));
+    }
+    cfg=initial;
+    mem=baseline;
+    auto changed=anchor;changed.target_identity.number++;CHECK(!equal_anchor(anchor,changed)&&!scene_binding_matches(binding,changed));
+    changed=anchor;changed.cinematic=false;CHECK(!equal_anchor(anchor,changed)&&!scene_binding_matches(binding,changed));
+    auto changed_binding=binding;changed_binding.target_identity.number++;CHECK(!equal_binding(binding,changed_binding));
+    changed_binding=binding;changed_binding.cinematic=false;CHECK(!equal_binding(binding,changed_binding));
+    for(unsigned fault=0;fault<33;++fault){mem=baseline;cfg=initial;
+        if(fault==0)cfg.cinematic_enabled=false;
+        if(fault==1)put(pc+cfg.cinematic_offset,0u);
+        if(fault==2)cfg.cinematic_mask=0;
+        if(fault==3)cfg.cinematic_mask=3;
+        if(fault==4)put(target+24,cfg.identities[6].address);
+        if(fault==5)put(target+32,uintptr_t(level+0x100));
+        if(fault==6)put(camera+128,uintptr_t(0));
+        if(fault==7)put(pc+120,uintptr_t(0));
+        if(fault==8)put(pawn+120,local);
+        if(fault==9)put(camera+120,local);
+        if(fault==10)put(pc+136,pawn);
+        if(fault==11)put(pc+128,pawn);
+        if(fault==12)put(property+0x94,cfg.cinematic_offset+4);
+        if(fault==13)put(property+0x70,2u);
+        if(fault==14)put(property+0x74,1u);
+        if(fault==15)put(property+0xd0,cfg.cinematic_mask<<1);
+        if(fault==16)put(property+24,cfg.identities[9].address);
+        if(fault==17)cfg.identities[13].outer=cfg.identities[12].address;
+        if(fault==18)cfg.role_cinematic_property=128;
+        if(fault==19)cfg.role_camera_actor_class=128;
+        if(fault==20)put(target+8,unsigned(objects.count));
+        if(fault==21)put(target+12,unsigned(names.count));
+        if(fault==22)put(objects.data+target_index*8,pawn);
+        if(fault==23)put(entry,target_name+1);
+        if(fault==24){auto text=target_text;std::copy_n(L"Default__CameraActor",20,text.begin());put(entry+8,text);}
+        if(fault==25)cfg.module_base=0;
+        if(fault==26)put(cfg.identities[12].address+24,uintptr_t(123));
+        if(fault==27)cfg.role_cinematic_property=cfg.role_camera_actor_class;
+        if(fault==28)cfg.identities[13].name.fill(L'x');
+        if(fault==29)cfg.role_camera_actor_class=10;
+        if(fault==30)cfg.identities[10].cls=cfg.identities[11].address;
+        if(fault==31)put(property+8,100u);
+        if(fault==32)put(property,uintptr_t(0));
+        auto sentinel=anchor;const auto old_stamp=stamp;
+        CHECK(!guard(cfg,read,anchor,stamp)&&equal_anchor(sentinel,anchor)&&old_stamp==stamp);
+    }
+    mem=baseline;cfg=initial;++native;CHECK(!guard(cfg,read,anchor,stamp));--native;
+    ++accessor;CHECK(!guard(cfg,read,anchor,stamp));--accessor;
+    bool other_bit=false;auto unrelated_flag=[&](void* dest,void const* source,size_t size){const auto address=reinterpret_cast<uintptr_t>(source);const bool ok=read(dest,source,size);
+        if(address==pc+cfg.cinematic_offset&&!other_bit){other_bit=true;put(address,cfg.cinematic_mask|1u);}return ok;};
+    CHECK(guard(cfg,unrelated_flag,anchor,stamp)&&anchor.cinematic); // Other packed bools are not this flag.
+    mem=baseline;cfg=initial;put(camera+128,pawn);put(pc+cfg.cinematic_offset,0u);
+    CHECK(guard(cfg,read,anchor,stamp)&&!anchor.cinematic&&anchor.pawn==pawn&&anchor.target_identity.address==pawn);
+    CHECK(equal_identity(anchor.target_level_identity,cfg.identities[cfg.role_level]));
+    put(pawn+cfg.world_info_offset,uintptr_t(0));CHECK(!guard(cfg,read,anchor,stamp));put(pawn+cfg.world_info_offset,world);
+    put(pc+cfg.world_info_offset,uintptr_t(0));CHECK(!guard(cfg,read,anchor,stamp));put(pc+cfg.world_info_offset,world);
+    put(pc+cfg.cinematic_offset,cfg.cinematic_mask);CHECK(guard(cfg,read,anchor,stamp)&&anchor.cinematic&&anchor.target_identity.address==pawn);
+    // The optional configuration never changes the old disabled Pawn route.
+    cfg.cinematic_enabled=false;CHECK(guard(cfg,read,anchor,stamp)&&!anchor.cinematic&&!anchor.target_identity.address);
+    for(unsigned fault=0;fault<4;++fault){mem=baseline;cfg=initial;unsigned reads=0;
+        auto changing=[&](void* dest,void const* source,size_t size){const auto address=reinterpret_cast<uintptr_t>(source);const bool ok=read(dest,source,size);
+            if(address==target&&size==96&&++reads==1){
+                if(fault==0)put(target+16,1u);
+                if(fault==1)put(camera+128,pawn);
+                if(fault==2)put(pc+cfg.cinematic_offset,0u);
+                if(fault==3)put(names.data+target_name*8,entry+0x100);
+            }return ok;};
+        CHECK(!guard(cfg,changing,anchor,stamp));
+    }
+    mem=baseline;cfg=initial;
+    const auto other_target=uintptr_t(0x22000);const unsigned other_index=102;
+    std::memcpy(mem.data()+other_target,mem.data()+target,96);put(other_target+8,other_index);put(other_target+16,1u);put(objects.data+other_index*8,other_target);put(other_target+cfg.world_info_offset,world);
+    CHECK(guard(cfg,read,anchor,stamp));CHECK(capture_pawn_binding(cfg,read,binding));
+    put(camera+128,other_target);CHECK(guard(cfg,read,changed,stamp)&&changed.target_identity.address==other_target);
+    CHECK(!equal_anchor(anchor,changed)&&!scene_binding_matches(binding,changed));
+    // Initial binding A -> a fully stable strict observation B -> final A must
+    // not mix a B anchor into an A scene association.
+    put(camera+128,target);bool entered=false,restored=false;unsigned other_headers=0;
+    auto changing_between=[&](void* dest,void const* source,size_t size){const auto address=reinterpret_cast<uintptr_t>(source);const bool ok=read(dest,source,size);
+        if(!entered&&address==camera+140){entered=true;put(camera+128,other_target);}
+        if(address==other_target&&size==96)++other_headers;
+        if(!restored&&other_headers==4&&address==camera+128&&size==8){restored=true;put(camera+128,target);}
+        return ok;};
+    CHECK(!guard(cfg,changing_between,anchor,stamp)&&entered&&restored);
+    return 0;
+}
 int main(){
+    if(auto failure=cinematic_tests())return failure;
     Context c;auto r=receipt();Receipt output{};
     CHECK(c.consume(r.key,r.anchor,7,30,true,1,0x3a1595,output)==no_receipt);
     CHECK(offer(c,r)==accepted);

@@ -91,6 +91,8 @@ def checked_identity(control,expected,allow_exited=False):
 
 
 def validate_ui_hud_plane(args):
+    if getattr(args,'cinematic_camera',False) and (not getattr(args,'anchor_observer',False) or getattr(args,'origin_trial',False)):
+        raise ValueError('Cinematic camera requires anchor observer and cannot use the Pawn origin trial')
     # Every run_session path is continuous; direct callers must validate before
     # creating the owner lock, writing reports, or launching either process.
     if getattr(args,'ui_hud_plane',False) and not (
@@ -110,6 +112,7 @@ def native_command(args,owner):
             '--frame-link-diagnostics','--require-target-prime','--stereo-gpu-publish']
     if getattr(args,'outage_diagnostics',False):command.append('--outage-diagnostics')
     if getattr(args,'anchor_observer',False):command.append('--anchor-observer')
+    if getattr(args,'cinematic_camera',False):command.append('--cinematic-camera')
     if getattr(args,'origin_trial',False):command.append('--origin-trial')
     if getattr(args,'ui_observer',False):command.append('--ui-observer')
     if getattr(args,'ui_hud_plane',False):command.append('--ui-hud-plane')
@@ -322,6 +325,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'physical_tracking_verified':False,
            'outage_diagnostics_enabled':bool(getattr(args,'outage_diagnostics',False)),
            'anchor_observer_enabled':bool(getattr(args,'anchor_observer',False)),
+           'cinematic_camera_enabled':bool(getattr(args,'cinematic_camera',False)),
            'origin_trial_enabled':bool(getattr(args,'origin_trial',False)),
            'image_ticket_diagnostics_enabled':bool(getattr(args,'origin_trial',False) or getattr(args,'image_ticket_diagnostics',False)),
            'shutdown_diagnostics_enabled':bool(getattr(args,'shutdown_diagnostics',False)),
@@ -519,6 +523,7 @@ def main(argv=None):
     start.add_argument('--cleanup-timeout',type=float,default=35.)
     start.add_argument('--anchor-observer','--anchor-diagnostics',dest='anchor_observer',action='store_true')
     start.add_argument('--origin-trial',action='store_true')
+    start.add_argument('--cinematic-camera',action='store_true')
     start.add_argument('--ui-observer',action='store_true')
     start.add_argument('--ui-hud-plane',action='store_true')
     start.add_argument('--image-ticket-diagnostics',action='store_true')

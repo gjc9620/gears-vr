@@ -75,12 +75,22 @@ def camera_preparation_transient(error):
         'Pawn/controller pointer changed at bracket boundary',
         'Camera/controller/player pointer changed at bracket boundary',
         'View target changed at bracket boundary',
+        'Cinematic target changed during identity checks',
         'Camera relationship changed during discovery; retry',
         'Registry reallocated during discovery; retry',
         'Expected one local camera, found 0; no address accepted',
         'Cross-frame camera timestamp during identity checks',
     }:return True
     if reason.startswith('Anchor camera changed during startup: '):return True
+    if reason=='Cross-frame or identity/pointer change during measurement':
+        # Retry discovery only when every exhausted sample was independently
+        # classified as timestamp/registry growth with stable full identities.
+        # The message alone also covers real identity changes and is not enough.
+        from anchor_config import _temporary_sample_rejection
+        evidence=getattr(error,'evidence',{})
+        attempts=evidence.get('attempts',[]) if evidence.get('stage')=='sample' else []
+        return bool(attempts) and all(isinstance(a.get('raw_rejection'),dict) and
+            _temporary_sample_rejection(a['raw_rejection']) is not None for a in attempts)
     # The strict sampler's initial construction reads Controller.Pawn before
     # it can build a certificate; a transient unpossessed Pawn is null here.
     return reason=='Null object pointer' and getattr(error,'evidence',{}).get('stage')=='initial'
@@ -143,7 +153,7 @@ def resolve_camera_once(pid,profile):
     finally:resolver.p.close()
 
 
-def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False,
+def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False,cinematic_camera=False,
                                  record_anchor_failure=True,preparation_deadline=None,check_live=None):
     """Read-only, pre-activation acquisition; never retries identity failures.
 
@@ -173,7 +183,8 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                 anchor_metadata=None;anchor_section='';ui_metadata=None;ui_section=''
                 if anchor_observer:
                     from anchor_config import build_anchor_config,anchor_ini,AnchorSamplingRejected
-                    try:certificate,anchor_metadata=build_anchor_config(r,refreshed,prepared_camera=refreshed)
+                    try:certificate,anchor_metadata=build_anchor_config(r,refreshed,prepared_camera=refreshed,
+                        **({'cinematic_camera':True} if cinematic_camera else {}))
                     except AnchorSamplingRejected as error:
                         if record_anchor_failure:save_anchor_sampling_failure(dll,pid,error)
                         raise
@@ -209,6 +220,8 @@ def save_anchor_sampling_failure(dll,pid,error,*,preparation_failures=None,prepa
 
 
 def configure_anchor_options(args,parser):
+    if getattr(args,'cinematic_camera',False) and (not args.anchor_observer or getattr(args,'origin_trial',False)):
+        parser.error('Cinematic camera requires --anchor-observer and cannot use the Pawn origin trial')
     if getattr(args,'ui_hud_plane',False) and not (
             getattr(args,'ui_observer',False) and getattr(args,'anchor_observer',False)
             and getattr(args,'continuous_session',False)):
@@ -275,6 +288,7 @@ def main():
     parser.add_argument('--frame-link-diagnostics',action='store_true',help='Read-only paired final-draw/list/queue/backbuffer association; requires reserved target priming')
     parser.add_argument('--anchor-observer','--anchor-diagnostics',dest='anchor_observer',action='store_true',help='Read-only reflected Pawn/eye anchor diagnostics; requires stereo XR frame association')
     parser.add_argument('--origin-trial',action='store_true',help='Explicit experimental origin A/B/A; requires anchor observer, continuous session and stereo GPU publication')
+    parser.add_argument('--cinematic-camera',action='store_true',help='Accept certified cinematic CameraActor targets sharing the controlled WorldInfo while preserving Pawn possession')
     parser.add_argument('--ui-observer',action='store_true',help='Observe registered reticle/HUD Canvas calls without changing coordinates')
     parser.add_argument('--ui-hud-plane',action='store_true',help='Experimental HUD plane; requires UI observer, anchor observer and continuous session')
     parser.add_argument('--outage-diagnostics',action='store_true',help='Record a bounded missing-image window in the existing stereo publication path; disabled by default')
@@ -440,6 +454,7 @@ def main():
         if args.shadow_constructor:signatures[0x15e428]=bytes.fromhex('488bc4488958104889701848897820')
         camera,anchor_metadata,anchor_section,ui_metadata,ui_section=prepare(lambda:acquire_observer_preparation(
             args.pid,profile,camera,signatures,dll,anchor_observer=args.anchor_observer,ui_observer=args.ui_observer,
+            cinematic_camera=args.cinematic_camera,
             record_anchor_failure=not(args.continuous_session and args.anchor_observer),
             preparation_deadline=preparation_deadline,check_live=check_preparation))
         check_preparation()
