@@ -92,3 +92,11 @@ GPU审阅图`ui-recovery8-selector-reload-review.png`、1:1字幕裁切`ui-recov
 脚本现保存启动时`menu_recovery_enabled`，按配置要求对应的接续模式。可逆模式还必须有实际`menu_recovery_evidence=true`及`panel_counts_as_stereo=false`；真正提交双目、成功xrEndFrame、owner身份、原生恢复及XR正常退出条件均保留。39项runner测试通过，含模式错配、证据缺失、把平面算立体、结构失败和退出失败的拒绝用例。
 
 三个原报告保持原样。离线只重放退出谓词，并从各自原始`xr_command`的`--menu-state-file`恢复启动配置，结果均通过；审计文件保存原报告SHA256。这不把旧报告冒充新运行，也不消除已测得的加载间隔或CG风险。新的启动配置记录与谓词已由测试验证，尚未再为这一纯报告修正重启游戏。
+
+## Native16：准星实际赋值观察器（尚未取得运行验收）
+
+新增默认编译关闭、运行显式启用的观察器。启动时以当前进程重新解析控制器、Pawn、武器、脚本及两个 PlayerTick 根函数；仅在已认证 Tick 的调用链内观察既有 execLet 赋值，原函数调用一次并保留返回值，不额外调用瞄准查询、不修改准星坐标。证据按线程和世界代次封存，后续场景入口仅消费一次；这只检验调用时序，不证明相机等价或渲染 ticket 关联。
+
+Native16 DLL SHA256：`2d57625433b04799636a94df5254c2921b137503935bcb59c1915103be827b43`。赋值状态机、配置加载、帧关联、UI 与恢复相关原生测试及三个 CaptureSelfTest 模式通过；启动器43、持续会话43、启动配置21项 Python 测试通过。观察开销以 QPC 记录，单观察段超过5ms时停止诊断，不能视为纯 CPU 时间或整 Tick 总开销上限。
+
+2026-10-16 的 `continuous-stereo-40604-20261016-075634-79fc35f0` 在原生观察器激活前收到取消信号：`native_started=false`，XR orderly stop / shutdown_completed=true。未捕获实际准星赋值，未改变玩家默认清单，未宣布有限距离准星修复。下一步仍是取得实际执行及场景关联证据，再决定显示修改。

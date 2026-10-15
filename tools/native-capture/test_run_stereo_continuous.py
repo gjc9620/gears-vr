@@ -35,6 +35,21 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_crosshair_assignment_dependency_and_forwarding(self):
+        base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
+        flag='--crosshair-assignment-observer'
+        with mock.patch.object(runner,'run_session',return_value=0) as run:
+            runner.main(base);self.assertFalse(run.call_args.args[0].crosshair_assignment_observer)
+            self.assertNotIn(flag,runner.native_command(run.call_args.args[0],identity(100)))
+            for extra in ([],['--ui-observer'],['--anchor-observer'],['--ui-observer','--anchor-observer','--origin-trial']):
+                run.reset_mock()
+                with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):runner.main(base+[flag,*extra])
+                run.assert_not_called()
+            runner.main(base+[flag,'--ui-observer','--anchor-observer'])
+            args=run.call_args.args[0]
+            self.assertEqual(runner.native_command(args,identity(100)).count(flag),1)
+            self.assertNotIn(flag,runner.xr_command(args,pathlib.Path('x.csv'),identity(100)))
+
     def test_hud_size_cli_validation_and_native_forwarding(self):
         base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
         hud=['--ui-hud-plane','--ui-observer','--anchor-observer']

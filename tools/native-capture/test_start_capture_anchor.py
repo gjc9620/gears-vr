@@ -13,6 +13,93 @@ import run_stereo_continuous as continuous
 
 
 class AnchorStartTests(unittest.TestCase):
+    def test_crosshair_assignment_dependencies_and_cli_forwarding(self):
+        parser=mock.Mock();parser.error.side_effect=ValueError
+        base=dict(crosshair_assignment_observer=True,ui_observer=True,anchor_observer=True,
+                  continuous_session=True,origin_trial=False,stereo_xr=True,frame_link_diagnostics=True)
+        for changes in ({'ui_observer':False},{'anchor_observer':False},{'continuous_session':False},{'origin_trial':True}):
+            with self.assertRaises(ValueError):
+                start.configure_anchor_options(types.SimpleNamespace(**dict(base,**changes)),parser)
+            self.assertIn('Crosshair assignment',parser.error.call_args.args[0])
+        args=types.SimpleNamespace(pid=1,build_dir=pathlib.Path('missing-crosshair-build'),dll_name='Missing.dll',
+                                  stereo_units_per_metre=100,**base)
+        argv=continuous.native_command(args,{'pid':100,'creation_time':1000})[2:]
+        with mock.patch.object(sys,'argv',['start_capture.py',*argv]),mock.patch.object(start,'configure_anchor_options',wraps=start.configure_anchor_options) as configure,mock.patch.object(start.subprocess,'run') as launch:
+            with self.assertRaisesRegex(RuntimeError,'Build capture DLL'):start.main()
+            self.assertTrue(configure.call_args.args[0].crosshair_assignment_observer);launch.assert_not_called()
+
+    def test_crosshair_assignment_uses_same_fresh_resolver_and_five_returns(self):
+        import anchor_config as anchor
+        import ui_observer_config as ui
+        import crosshair_assignment_config as assignment
+        baseline=dict(local_player_address='0x1',module_base='0x1000')
+        r=mock.Mock();r.base=0x1000;r.read.return_value=b'ok';r.resolve.return_value=dict(baseline,fresh=True)
+        certificate={'fresh_certificate':True}
+        with mock.patch.object(start,'Resolver',return_value=r),mock.patch.object(anchor,'build_anchor_config',return_value=({},{})),mock.patch.object(anchor,'anchor_ini',return_value='anchor\n'),mock.patch.object(ui,'build_ui_observer_config',return_value=({},{'existing':'kept'})) as ui_build,mock.patch.object(ui,'ui_observer_ini',return_value='ui\n'),mock.patch.object(assignment,'build_crosshair_assignment_config',return_value=certificate) as build,mock.patch.object(assignment,'crosshair_assignment_ini',return_value='assignment\n') as ini,mock.patch.object(start.time,'monotonic',return_value=0):
+            result=start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),anchor_observer=True,ui_observer=True,crosshair_assignment_observer=True)
+            build.assert_called_once_with(r,result[0],include_tick_roots=True)
+            self.assertIs(ui_build.call_args.args[1],result[0]);ini.assert_called_once_with(certificate)
+            build.reset_mock();ini.reset_mock();ui_build.return_value=({},{'legacy':True})
+            legacy=start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),anchor_observer=True,ui_observer=True)
+            build.assert_not_called();ini.assert_not_called();self.assertEqual(len(legacy),5)
+            self.assertNotIn('crosshair_assignment',legacy[3]);self.assertEqual(legacy[4],'ui\n')
+        self.assertEqual(len(result),5);self.assertIs(result[0],r.resolve.return_value)
+        self.assertEqual(result[4],'ui\nassignment\n');self.assertIs(result[3]['crosshair_assignment'],certificate)
+        self.assertEqual(result[3]['existing'],'kept');self.assertEqual(r.p.close.call_count,2)
+
+    def test_crosshair_certificate_failure_stops_before_ini_or_activation(self):
+        import crosshair_assignment_config as assignment
+        import anchor_config as anchor
+        import ui_observer_config as ui
+        with tempfile.TemporaryDirectory() as directory:
+            build=pathlib.Path(directory);dll=build/'Mock.dll'
+            dll.write_bytes(b'fixture');(build/'CaptureSelfTest.exe').write_bytes(b'fixture')
+            (build/'target-prime-status.txt').write_text('fixture')
+            args=types.SimpleNamespace(pid=1,build_dir=build,dll_name=dll.name,stereo_units_per_metre=100,
+                crosshair_assignment_observer=True,ui_observer=True,anchor_observer=True)
+            argv=continuous.native_command(args,{'pid':100,'creation_time':1000})[2:]
+            error=assignment.CrosshairConfigRejected('Unknown crosshair certificate identity')
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(mock.patch.object(sys,'argv',['start_capture.py',*argv]))
+                stack.enter_context(mock.patch.object(start.subprocess,'run'))
+                stack.enter_context(mock.patch.object(start,'preparation_live_guard',return_value=lambda:None))
+                camera=dict(local_player_address='0x1',module_base='0x1000',controller_address='0x2',
+                    timestamp_address='0x3',camera_address='0x4',pov_address='0x200',offsets={'Rotation':'0x10'})
+                stack.enter_context(mock.patch.object(start,'resolve_camera_once',return_value=camera))
+                resolver=mock.Mock();resolver.base=0x1000;resolver.resolve.return_value=camera;resolver.read.return_value=b'ok'
+                stack.enter_context(mock.patch.object(start,'Resolver',return_value=resolver))
+                stack.enter_context(mock.patch.object(start,'observer_signatures',return_value={1:b'ok'}))
+                stack.enter_context(mock.patch.object(anchor,'build_anchor_config',return_value=({},{})))
+                stack.enter_context(mock.patch.object(anchor,'anchor_ini',return_value='anchor\n'))
+                stack.enter_context(mock.patch.object(ui,'build_ui_observer_config',return_value=({},{})))
+                stack.enter_context(mock.patch.object(ui,'ui_observer_ini',return_value='ui\n'))
+                builder=stack.enter_context(mock.patch.object(assignment,'build_crosshair_assignment_config',side_effect=error))
+                stack.enter_context(mock.patch.object(start,'modules',return_value={dll.name.lower():(0x1000,dll)}))
+                stack.enter_context(mock.patch.object(start,'pending_prime',return_value=True))
+                native=stack.enter_context(mock.patch.object(start,'k'))
+                native.OpenProcess.return_value=1;native.OpenEventW.side_effect=[1,1,1,0];native.WaitForSingleObject.return_value=0x102
+                remote=stack.enter_context(mock.patch.object(start,'remote_call'))
+                with contextlib.redirect_stdout(io.StringIO()),self.assertRaises(assignment.CrosshairConfigRejected):start.main()
+                builder.assert_called_once_with(resolver,camera,include_tick_roots=True)
+                resolver.p.close.assert_called_once()
+                remote.assert_not_called();native.VirtualAllocEx.assert_not_called();native.WriteProcessMemory.assert_not_called()
+                self.assertFalse((build/'capture.ini').exists());self.assertFalse((build/'ui-observer-config.json').exists())
+                # A successful fresh certificate reaches the actual Capture INI;
+                # stop the mock immediately after writing, before any activation.
+                def stop_after_config():
+                    if (build/'capture.ini').exists():raise RuntimeError('test stops before activation')
+                stack.enter_context(mock.patch.object(start,'preparation_live_guard',return_value=stop_after_config))
+                stack.enter_context(mock.patch.object(assignment,'crosshair_assignment_ini',return_value='[CrosshairAssignment]\nschema=1\n'))
+                builder.side_effect=None;builder.return_value={'fresh_certificate':True}
+                native.OpenEventW.side_effect=[1,1,1,0]
+                with contextlib.redirect_stdout(io.StringIO()),self.assertRaisesRegex(RuntimeError,'test stops before activation'):start.main()
+                config=(build/'capture.ini').read_text(encoding='utf-16')
+                self.assertIn('\ncrosshair_assignment_observer=1\n',config)
+                self.assertIn('[CrosshairAssignment]\nschema=1\n',config)
+                metadata=json.loads((build/'ui-observer-config.json').read_text())
+                self.assertEqual(metadata['crosshair_assignment'],{'fresh_certificate':True})
+                remote.assert_not_called();native.VirtualAllocEx.assert_not_called();native.WriteProcessMemory.assert_not_called()
+
     def test_hud_size_ini_and_independent_cli_rejection(self):
         self.assertEqual(start.hud_size_ini(types.SimpleNamespace()),'')
         for value in (45,62.5,100):

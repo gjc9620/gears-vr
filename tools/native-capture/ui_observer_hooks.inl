@@ -3,6 +3,7 @@
 bool ui_observer_enabled{},ui_reserved{},ui_hud_plane_enabled{};
 gears_ui_hud::Parameters ui_hud_parameters{};
 gears_ui::Config ui_config;
+#include "crosshair_assignment_live.inl"
 #include "ui_runtime_binding.h"
 std::mutex ui_binding_mutex;
 gears_ui_binding::Receipts ui_binding_receipts;
@@ -172,6 +173,7 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeCon
 }
 void __fastcall hook_ui_vm(void* self,void* frame,void* result){
     Scope active_scope;if(!active_scope.world()){ui_original[0](self,frame,result);return;}
+    crosshair_live::TickScope crosshair_tick(self,frame);
     if(ui_observer_enabled&&recording.load()){
         ++ui_vm_calls;uintptr_t node{};
         if(frame&&safe_copy(&node,static_cast<unsigned char*>(frame)+0x18,sizeof(node))){

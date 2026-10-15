@@ -315,6 +315,12 @@ class LauncherTests(unittest.TestCase):
             with self.subTest(key=key),self.assertRaisesRegex(ValueError,'boolean'):
                 launcher.settings({},dict(MANIFEST,**{key:'true'}))
 
+    def test_crosshair_assignment_requires_observers(self):
+        for ui,anchor in ((False,False),(True,False),(False,True)):
+            with self.assertRaisesRegex(ValueError,'Crosshair assignment'):
+                launcher.settings({},dict(MANIFEST,crosshair_assignment_observer=True,ui_observer=ui,anchor_observer=anchor))
+        launcher.settings({},dict(MANIFEST,crosshair_assignment_observer=True,ui_observer=True,anchor_observer=True))
+
     def test_hud_size_config_capability_range_and_legacy_tuple(self):
         capable=dict(MANIFEST,hud_size_control=True,ui_hud_plane=True,ui_observer=True,anchor_observer=True)
         self.assertIsNone(launcher.hud_horizontal_fov({},MANIFEST))

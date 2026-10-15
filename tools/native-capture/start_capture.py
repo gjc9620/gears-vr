@@ -182,7 +182,8 @@ def resolve_camera_once(pid,profile):
 
 
 def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False,cinematic_camera=False,
-                                 record_anchor_failure=True,preparation_deadline=None,check_live=None,entry_reader=None):
+                                 record_anchor_failure=True,preparation_deadline=None,check_live=None,entry_reader=None,
+                                 crosshair_assignment_observer=False):
     """Read-only, pre-activation acquisition; never retries identity failures.
 
     A new Resolver.resolve() prepares fresh registries/caches and roles on every
@@ -191,6 +192,8 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
     cannot be preempted. No new attempt starts beyond the deadline.
     """
     from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged
+    if crosshair_assignment_observer and not (anchor_observer and ui_observer):
+        raise ValueError('Crosshair assignment observer requires UI/anchor observers')
     deadline=time.monotonic()+10;attempts=3 if ui_observer else 1
     if preparation_deadline is not None:deadline=min(deadline,preparation_deadline)
     for attempt in range(attempts):
@@ -222,6 +225,11 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                     ui_certificate,ui_metadata=build_ui_observer_config(r,refreshed,
                         **({'entry_reader':entry_reader} if entry_reader is not None else {}))
                     ui_section=ui_observer_ini(ui_certificate)
+                    if crosshair_assignment_observer:
+                        from crosshair_assignment_config import build_crosshair_assignment_config,crosshair_assignment_ini
+                        assignment=build_crosshair_assignment_config(r,refreshed,include_tick_roots=True)
+                        ui_section+=crosshair_assignment_ini(assignment)
+                        ui_metadata['crosshair_assignment']=assignment
                 if ui_observer and time.monotonic()>=deadline:
                     raise UIConfigRejected('UI acquisition exceeded retry deadline before activation')
                 if check_live:check_live()
@@ -265,6 +273,9 @@ def hud_size_ini(args):
 
 
 def configure_anchor_options(args,parser):
+    if getattr(args,'crosshair_assignment_observer',False) and (not all(
+            getattr(args,key,False) for key in ('ui_observer','anchor_observer','continuous_session')) or getattr(args,'origin_trial',False)):
+        parser.error('Crosshair assignment observer requires continuous UI/anchor observers and cannot use origin trial')
     try:hud_size_ini(args)
     except ValueError as error:parser.error(str(error))
     if getattr(args,'cinematic_camera',False) and (not args.anchor_observer or getattr(args,'origin_trial',False)):
@@ -338,6 +349,7 @@ def main():
     parser.add_argument('--cinematic-camera',action='store_true',help='Accept certified cinematic CameraActor targets sharing the controlled WorldInfo while preserving Pawn possession')
     parser.add_argument('--ui-observer',action='store_true',help='Observe registered reticle/HUD Canvas calls without changing coordinates')
     parser.add_argument('--ui-hud-plane',action='store_true',help='Experimental HUD plane; requires UI observer, anchor observer and continuous session')
+    parser.add_argument('--crosshair-assignment-observer',action='store_true',help='Observe certified crosshair assignments; no reticle correction')
     parser.add_argument('--hud-horizontal-fov-degrees',type=float)
     parser.add_argument('--outage-diagnostics',action='store_true',help='Record a bounded missing-image window in the existing stereo publication path; disabled by default')
     args=parser.parse_args()
@@ -482,7 +494,8 @@ def main():
             args.pid,profile,camera,signatures,dll,anchor_observer=args.anchor_observer,ui_observer=args.ui_observer,
             cinematic_camera=args.cinematic_camera,
             record_anchor_failure=not(args.continuous_session and args.anchor_observer),
-            preparation_deadline=preparation_deadline,check_live=check_preparation))
+            preparation_deadline=preparation_deadline,check_live=check_preparation,
+            **({'crosshair_assignment_observer':True} if args.crosshair_assignment_observer else {})))
         check_preparation()
         preparation_timing('certificate_acquisition_including_retry',certificates_started)
         activation_started=time.perf_counter_ns()
@@ -495,6 +508,7 @@ def main():
         config+=f'outage_diagnostics={int(args.outage_diagnostics)}\n'
         config+=f'anchor_observer={int(args.anchor_observer)}\n'
         config+=f'ui_observer={int(args.ui_observer)}\n'
+        config+=f'crosshair_assignment_observer={int(args.crosshair_assignment_observer)}\n'
         config+=f'ui_hud_plane={int(getattr(args,"ui_hud_plane",False))}\n'
         config+=hud_size_ini(args)
         config+=f'origin_trial={int(getattr(args,"origin_trial",False))}\n'

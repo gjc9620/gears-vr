@@ -40,6 +40,11 @@
 #include "world_rebind_metadata.h"
 #include "world_epoch_gate.h"
 #include "ui_observer.h"
+#include <exception>
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+#include "crosshair_assignment_config_loader.h"
+#include "crosshair_tick_evidence.h"
+#endif
 #include "ui_canvas_batch.h"
 #include "ui_canvas_text_batch.h"
 #include "ui_payload_receipts.h"
@@ -2251,6 +2256,7 @@ void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void*
 }
 void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation,void* viewport,void* drawer) {
     Scope scope;if(!scope.world())return original_scene(local,family,position,rotation,viewport,drawer);service_session_stop_native();auto record=start_record(1,local,_ReturnAddress());
+    crosshair_live::scene(local);
     const bool anchor_observing=anchor_observer_enabled&&recording.load();
     gears_anchor::PawnBinding pawn_before_scene{};
     gears_anchor::PawnBindingDiagnostic pawn_diagnostic{};
@@ -2551,6 +2557,9 @@ bool install(void* target,void* detour,void** original) {
           (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())||
           graphics_lock_observer_reserved_target(target)||
           (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target||target==ui_subtitle_target
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+             ||target==crosshair_live::target
+#endif
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
              ||target==ui_material_execute_target
 #if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
@@ -3242,6 +3251,10 @@ DWORD WINAPI worker(void*) {
     ui_observer_enabled=GetPrivateProfileIntW(L"Capture",L"ui_observer",0,ini)==1;
     if(ui_observer_enabled&&(!ui_reserved||!continuous_session||!anchor_observer_enabled||!load_ui_config(ini))){
         fprintf(status,"rejected: UI observer requires reserved entries, continuous stereo and fresh UI identities\n");fclose(status);return 2;}
+    crosshair_live::enabled=GetPrivateProfileIntW(L"Capture",L"crosshair_assignment_observer",0,ini)==1;
+    if(crosshair_live::enabled&&(!ui_observer_enabled||!anchor_observer_enabled||!continuous_session||
+       GetPrivateProfileIntW(L"Capture",L"origin_trial",0,ini)!=0||!crosshair_live::load(ini))){
+        fprintf(status,"rejected: crosshair observer requires compiled support and fresh assignment/tick bindings\n");fclose(status);return 2;}
     ui_hud_plane_enabled=GetPrivateProfileIntW(L"Capture",L"ui_hud_plane",0,ini)==1;
     ui_hud_parameters=gears_ui_hud::Parameters{};
     wchar_t hud_fov_text[64]{};
@@ -3427,6 +3440,9 @@ DWORD WINAPI worker(void*) {
     if(ok && first_view_mask_hook_enabled())ok=install(first_view_mask_target,reinterpret_cast<void*>(hook_first_view_mask),reinterpret_cast<void**>(&original_first_view_mask));
     if(ok&&ui_observer_enabled)for(unsigned i=0;i<4&&ok;++i)
         ok=install(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]));
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    if(ok&&crosshair_live::enabled)ok=install(crosshair_live::target,reinterpret_cast<void*>(crosshair_live::hook),reinterpret_cast<void**>(&crosshair_live::original));
+#endif
     if(ok&&ui_observer_enabled)ok=install(ui_execute_target,reinterpret_cast<void*>(hook_ui_execute),reinterpret_cast<void**>(&ui_original_execute));
     if(ok&&ui_observer_enabled)ok=install(ui_subtitle_target,reinterpret_cast<void*>(hook_ui_subtitle),reinterpret_cast<void**>(&ui_original_subtitle));
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
@@ -3538,6 +3554,7 @@ DWORD WINAPI worker(void*) {
     print_outage(status,disabled==MH_OK);
     print_anchor(status,disabled==MH_OK);
     print_ui_observer(status,disabled==MH_OK);
+    crosshair_live::print(status);
     print_native_surface_probe(status);
     print_native_owned_probe(status);
     print_native_owned_scene(status);
