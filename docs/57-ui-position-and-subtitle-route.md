@@ -281,3 +281,15 @@ Route7 / PID49384使用修正后的只读条件，10次Material生产/claim/Exec
 两轮停止后均通过61处入口独立恢复，再正常关闭游戏。Route6/7清单、源文件和DLL哈希分别冻结；CPU Material测试与DLL ABI通过，功能关闭分支编译通过。摘要 `analysis/ui-position-runtime/owned-ui-route6-material-36168-material.audit.json`、`owned-ui-route7-material-49384-material.audit.json`，字节证据 `material-flag-mask-bytes.json`。没有新开IDA库、重建全量语料或截图导航。
 
 下一步围绕Material producer `3a514c`、consumer `15a420`已有合同，补齐当前真实目标/上传IA/Canvas完成与owned ticket关联，并保留consumer一次调用和原资源生命周期；不能沿用Tile命令`+0x20`替换，因为Material该偏移是flags，逻辑目标在独立SceneView所属family中。完成该路径后再继续对白字幕和其他UI验证。
+
+## 2026-10-15：Material 生命周期基础与定向构造验证
+
+owned UI ledger 已区分 Batch 与 Material，分别核对预期数量、生产、转交、执行和完成。Material 必须在 producer 关联时明确给出预期逻辑目标，consumer 不能反向决定目标；旧的 `transferred(true)` 只证明 Batch 清空，不能用于 Material。新增 `MaterialDispatched` 只表示生产路径完成转交，不表示 GPU 绘制成功。类型间共用 payload 唯一性检查，地址复用、错类型、错目标、重复完成和失败均不能使 ticket 可发布；允许同步 consumer 先完成、producer 后返回的顺序。现有普通批次调用保持兼容。
+
+复用资料库命中后，只在私有 IDA 副本中补取 producer、上传函数和两个构造函数的相关汇编范围，逐指令对照历史 blob SHA256 `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`。确认 `11739b` 将原 FCanvas 作为 RDX 调用 item producer；`3a514c` 读取其 `+4` 逻辑目标、`+18` 模式和 `+20` 代理，Material payload 在转交后没有 Batch 的清空约定。`3a574c→15e428` 将目标宽高写入 view `+50/+54`，将原 identity view 矩阵和 payload 保存的矩阵分别原样复制至 `+70` 和 `+b0`。这是构造数据流证据，不等于最终 shader/viewport 或实际 OM 绑定已认证。
+
+原始 `3a52e3` 指令字节 `48 8d 05 86 47 75 01` 按 RIP 求值得到矩阵 RVA `1af9a70`；该 raw IDB 的显示标签为 `1af8a70`，不能据显示文字改动实际地址。证据保存在忽略目录 `analysis/ui-position-runtime/owned-material1-ida/material-producer-upload.json`、`material-view-ctor.json`。工作副本 lease 已关闭，复制来源 IDB 的 SHA256 前后保持 `b47742b1c7d0d97201432d395283c853571193f1fdaffd3ed9c6e290b71ae55fb`。
+
+新建 `build-owned-material-ledger1` 编译通过，ledger 实跑 1,877 checks，Material 测试及 DLL ABI/family 自测均通过。未启动游戏，不借用之前构建的运行记录作为本次 GPU 验证。
+
+此提交只准备类型化生命周期，尚未启用 Material 输出路由；现有清单仍会阻止未支持的 Material 发布。接下来将 producer 的目标/票据关联接入 consumer，并用实际绘制目标和矩阵验证决定最小双眼绘制改动，随后继续字幕路径。没有将静态资料库覆盖率当作 V1 完成率。

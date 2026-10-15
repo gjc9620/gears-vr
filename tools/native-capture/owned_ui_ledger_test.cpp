@@ -5,8 +5,10 @@
 unsigned checks{};
 #define CHECK(x) do{++checks;if(!(x)){std::fprintf(stderr,"line %d: %s\n",__LINE__,#x);std::exit(1);}}while(0)
 using gears_owned_ui::Ledger;
+using gears_owned_ui::Kind;
+using gears_owned_ui::TransferProof;
 void bind(Ledger& l,uint64_t ticket=1){CHECK(l.bind(ticket,10,20,30,1));CHECK(l.begin_flush(10,20,30,40,2)==ticket);}
-int main(){
+void legacy_cases(){
  {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);auto id=l.produce(1,100,3);CHECK(id);CHECK(l.transferred(id,true));CHECK(l.published(1,4));
   CHECK(l.close(1,5));CHECK(l.snapshot().active_count==1);CHECK(l.execute(100,20,6)==id);CHECK(l.complete(id,true,7));
   auto s=l.snapshot();CHECK(!s.active_count&&s.retained_count==1&&s.counts.retired==1);
@@ -70,5 +72,70 @@ int main(){
  {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));auto id=l.produce(1,100,3);
   CHECK(l.execute(100,20,4)==id);CHECK(l.invalidate(1));gears_owned_ui::Execution e;CHECK(!l.execution(id,e));
   CHECK(l.complete(id,true,5));CHECK(l.transferred(id,true));CHECK(l.close(1,6));CHECK(!l.ready(1));}
+}
+void material_cases(){
+ // Material may execute and free its payload before producer return. Its
+ // dispatch proof deliberately does not require the Batch item-clear contract.
+ for(bool early:{false,true}){
+  auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);
+  CHECK(l.expect(1,1));CHECK(l.expect(1,1,Kind::Material));
+  auto batch=l.produce(1,100,3);auto material=l.produce(1,101,3,Kind::Material,21);CHECK(batch&&material);
+  CHECK(l.transferred(batch,true));CHECK(l.execute(100,20,4)==batch);CHECK(l.complete(batch,true,5));
+  if(!early)CHECK(l.transferred(material,TransferProof::MaterialDispatched));
+  CHECK(l.execute(101,21,6,Kind::Material)==material);
+  gears_owned_ui::Execution e{};CHECK(l.execution(material,e));
+  CHECK(e.kind==Kind::Material&&e.target==21&&e.canvas==10&&e.ticket==1&&e.payload==101);
+  CHECK(l.complete(material,true,7,Kind::Material));CHECK(l.close(1,8));
+  CHECK(l.ready(1)==!early);
+  if(early){CHECK(l.transferred(material,TransferProof::MaterialDispatched));CHECK(l.ready(1));}
+  auto c=l.snapshot().active[0];CHECK(c.produced==2&&c.transferred==2&&c.completed==2&&c.expected_batches==2);
+  for(auto const& k:c.by_kind)CHECK(k.expected==1&&k.produced==1&&k.transferred==1&&k.executed==1&&k.completed==1&&!k.failed);
+  CHECK(l.published(1,9));CHECK(l.snapshot().active_count==0);
+ }
+ // Equal aggregate counts cannot replace a missing receipt of another kind.
+ {
+  auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));CHECK(l.expect(1,1,Kind::Material));
+  for(uintptr_t payload:{100u,101u}){auto id=l.produce(1,payload,3);CHECK(id);CHECK(l.transferred(id,true));CHECK(l.execute(payload,20,4)==id);CHECK(l.complete(id,true,5));}
+  CHECK(l.close(1,6));CHECK(!l.ready(1));
+  auto c=l.snapshot().active[0];CHECK(c.produced==c.expected_batches&&c.completed==c.produced);
+ }
+ // Payload uniqueness spans kinds and completed-but-not-retired receipts.
+ for(bool old_material:{false,true})for(bool completed:{false,true}){
+  auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);
+  auto old_kind=old_material?Kind::Material:Kind::Batch;auto new_kind=old_material?Kind::Batch:Kind::Material;
+  auto id=l.produce(1,100,3,old_kind,21);CHECK(id);CHECK(l.expect(1,1,old_kind));
+  if(completed){CHECK(l.execute(100,21,4,old_kind)==id);CHECK(l.complete(id,true,5,old_kind));}
+  CHECK(l.close(1,6));bind(l,2);CHECK(!l.produce(2,100,7,new_kind,22));
+  auto s=l.snapshot();CHECK(s.active_count==2&&s.active[0].ambiguous_payload&&s.active[1].ambiguous_payload);
+  CHECK(!l.ready(1)&&!l.ready(2));CHECK(!l.execute(100,21,8,old_kind));
+ }
+ // Wrong consumer kind/target, wrong proof, failure, and duplicate lifecycle
+ // events never make the CPU completion gate ready.
+ for(unsigned misuse=0;misuse<9;++misuse){
+  auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1,Kind::Material));
+  auto id=l.produce(1,100,3,Kind::Material,21);CHECK(id);
+  if(misuse==0)CHECK(!l.execute(100,21,4));
+  if(misuse==1)CHECK(!l.execute(100,20,4,Kind::Material));
+  if(misuse==2)CHECK(!l.transferred(id,true)); // Legacy bool is Batch only.
+  if(misuse==3)CHECK(!l.transferred(id,TransferProof::Rejected));
+  CHECK(l.execute(100,21,5,Kind::Material)==id);
+  if(misuse==4)CHECK(!l.complete(id,true,6));
+  CHECK(l.complete(id,misuse!=5,7,Kind::Material));
+  CHECK(l.transferred(id,TransferProof::MaterialDispatched));
+  if(misuse==6)CHECK(!l.transferred(id,TransferProof::MaterialDispatched));
+  if(misuse==7)CHECK(!l.complete(id,true,8,Kind::Material));
+  if(misuse==8)CHECK(!l.execute(100,21,8,Kind::Material));
+  CHECK(l.close(1,9));CHECK(!l.ready(1));
+  auto c=l.snapshot().active[0];CHECK(misuse==5?c.failed==1&&c.by_kind[1].failed==1:c.invalid);
+ }
+ {
+  auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1,Kind::Material));
+  CHECK(!l.produce(1,100,3,Kind::Material));CHECK(l.snapshot().active[0].invalid); // Explicit producer target mandatory.
+ }
+ {
+  auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);auto id=l.produce(1,100,3);CHECK(id);
+  CHECK(!l.transferred(id,TransferProof::MaterialDispatched));CHECK(l.snapshot().active[0].invalid);
+ }
  std::printf("owned UI ledger: %u checks passed\n",checks);
 }
+int main(){legacy_cases();material_cases();}
