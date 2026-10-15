@@ -35,6 +35,8 @@
 #include "outage_sources.h"
 #include "anchor_observer.h"
 #include "anchor_config_loader.h"
+#include "hook_entry_attestation.h"
+#include "world_rebind_metadata.h"
 #include "ui_observer.h"
 #include "ui_canvas_batch.h"
 #include "ui_canvas_text_batch.h"
@@ -169,6 +171,7 @@ bool origin_trial_enabled=false;
 gears_origin_trial::Trial origin_trial;
 std::atomic<unsigned long long> origin_prepare_failed{0},origin_commit_failed{0};
 gears_anchor::Config anchor_config;
+std::atomic<uint64_t> world_candidate_generation{},world_prepare_requests{},world_prepare_rejected{};
 thread_local gears_anchor::Context anchor_context;
 struct AnchorRow {gears_anchor::Receipt receipt{};uintptr_t renderer{};unsigned long long ticket{};unsigned stage{},reason{};};
 std::array<AnchorRow,64> anchor_rows{};
@@ -266,7 +269,7 @@ std::recursive_mutex session_native_mutex;
 thread_local unsigned session_build_depth{};
 bool session_status_available{};
 LONGLONG session_started_qpc{};
-struct SessionHookEntry{void* target{};std::array<unsigned char,32> bytes{};};
+struct SessionHookEntry{void* target{};void* detour{};std::array<unsigned char,32> bytes{};};
 #if defined(GEARS_NATIVE_RESIZE_PROBE) && GEARS_NATIVE_RESIZE_PROBE
 constexpr size_t session_hook_base_capacity=60,viewport_hook_capacity=29;
 #elif defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
@@ -714,6 +717,7 @@ unsigned foreground() {
 }
 struct Scope {Scope(){++active;} ~Scope(){--active;}};
 #include "graphics_lock_observer.inl"
+bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "ui_observer_hooks.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
@@ -1127,6 +1131,9 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"recenter_requests=%llu reference_generation=%llu heading_deferred=%llu ",stereo_recenter_requests.load(),stereo_reference_generation.load(),stereo_heading_deferred.load());
     fprintf(output,"anchor_submission_required=%u anchor_submission_matched=%llu anchor_submission_rejected=%llu ",
         anchor_observer_enabled?1:0,anchor_submission_matched.load(),anchor_submission_rejected.load());
+    fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu ",
+        static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
+        static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()));
     fprintf(output,"owner_pid=%lu owner_creation_time=%llu stop_reason=%s owner_exit_observed=%u owner_error_observed=%u complete=1\n",session_owner_pid,
         static_cast<unsigned long long>(session_owner_creation_time),reasons[static_cast<unsigned>(reason)],
         session_owner_exit_observed.load()?1:0,session_owner_error_observed.load()?1:0);
@@ -2399,7 +2406,7 @@ void flush(FILE* file,unsigned max_batches=0) {
 bool install(void* target,void* detour,void** original) {
     if(continuous_session){
         if(session_hook_entry_count==session_hook_entries.size())return false;
-        auto& entry=session_hook_entries[session_hook_entry_count];entry.target=target;
+        auto& entry=session_hook_entries[session_hook_entry_count];entry.target=target;entry.detour=detour;
         auto primed=std::find(prime_targets.begin(),prime_targets.end(),target);
         if(prime_ready.load()&&primed!=prime_targets.end())entry.bytes=prime_original_bytes[static_cast<size_t>(primed-prime_targets.begin())];
         else if(graphics_lock_primed_bytes(target,entry.bytes)){}
@@ -2437,6 +2444,8 @@ bool session_hooks_restored() {
         if(!safe_copy(bytes.data(),prime_targets[i],bytes.size())||bytes!=prime_original_bytes[i])return false;}
     return true;
 }
+#include "hook_entry_manifest.inl"
+#include "world_rebind_prepare.inl"
 #include "resource_resize_probe.inl"
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
 uintptr_t barrier_identity(IUnknown* object) {
@@ -3278,6 +3287,8 @@ DWORD WINAPI worker(void*) {
         if(ok){
         submit_not_before=now()+3*qpc_frequency;recording=true;prime_recording=false;
         MH_STATUS applied=MH_ApplyQueued();fprintf(status,"minhook_apply=%s\n",MH_StatusToString(applied));ok=applied==MH_OK;
+        if(ok&&continuous_session&&!seal_session_hook_manifest(status))
+            fprintf(status,"hook_entry_manifest available=0 recovery_certificate_unavailable=1\n");
         }
     }
     if(!ok) {
@@ -3295,6 +3306,7 @@ DWORD WINAPI worker(void*) {
     const ULONGLONG deadline=GetTickCount64()+static_cast<ULONGLONG>(seconds)*1000;
     if(continuous_session){
         session_started_qpc=now();write_session_status();
+        WorldRebindPrepareRequest world_rebind_request;
         if(!session_status_available||!stop_event)request_session_stop(SessionStop::proof_failure);
         ULONGLONG next_status=0;
         for(;;){
@@ -3304,6 +3316,7 @@ DWORD WINAPI worker(void*) {
             if(state_created.load()&&!submit_background&&!foreground())request_session_stop(SessionStop::focus_lost);
             if(stereo_publisher.state.load()==3)request_session_stop(SessionStop::proof_failure);
             stereo_publish_worker_tick();
+            world_rebind_request.poll(status);
             {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);owned_scene_gpu::poll();
                 if(owned_scene_gpu::publication_failed())request_session_stop(SessionStop::proof_failure);}
             if(submitted_lifetime.stopping()){

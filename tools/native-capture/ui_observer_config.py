@@ -31,7 +31,7 @@ class UIConfigRejected(RuntimeError):
 class UIRegistryChanged(UIConfigRejected):
     """Only the final concurrent registry-header change permits reacquisition."""
 
-def build_ui_observer_config(resolver, camera):
+def build_ui_observer_config(resolver, camera, *, entry_reader=None):
     r=resolver;p=r.profile;started=time.perf_counter_ns()
     if p.get('sha256')!=GAME_SHA or camera.get('sha256')!=GAME_SHA or camera.get('pid')!=r.pid:
         raise UIConfigRejected('UI observer requires the validated current game build/PID')
@@ -40,6 +40,12 @@ def build_ui_observer_config(resolver, camera):
     def stable(address,size):
         value=r.read(address,size)
         if r.read(address,size)!=value:raise UIConfigRejected('UI certificate read changed')
+        return value
+    def read_entry(address,size):
+        return entry_reader(address,size,r.read) if entry_reader is not None else r.read(address,size)
+    def stable_entry(address,size):
+        value=read_entry(address,size)
+        if read_entry(address,size)!=value:raise UIConfigRejected('UI certificate read changed')
         return value
     names_header=stable(r.names_header,16);objects_header=stable(r.objects_header,16)
     names,nc,ncap=struct.unpack('<Qii',names_header);objects,oc,ocap=struct.unpack('<Qii',objects_header)
@@ -70,7 +76,7 @@ def build_ui_observer_config(resolver, camera):
             raise UIConfigRejected('Invalid UI certificate name')
         return dict(address=address,internal_index=index,name_index=ni,number=number,name=name,
                     cls=cls,outer=outer)
-    ids=[];by_address={};supers={};checks=[]
+    ids=[];by_address={};supers={};checks=[];entry_checks=[]
     def add(address):
         item=fresh(address)
         if address in by_address:
@@ -158,9 +164,9 @@ def build_ui_observer_config(resolver, camera):
     def binding(label,address):
         expected_rva,expected=BINDINGS[label]
         if address!=r.base+expected_rva:raise UIConfigRejected('UI binding RVA mismatch: '+label)
-        raw=stable(address,16)
+        raw=stable_entry(address,16)
         if raw.hex()!=expected:raise UIConfigRejected('UI entry bytes mismatch: '+label)
-        bindings[label]=dict(rva=expected_rva,bytes=raw.hex());checks.append((address,raw))
+        bindings[label]=dict(rva=expected_rva,bytes=raw.hex());entry_checks.append((address,raw))
     for owner,name,kind in SCOPES:
         item=function(owner,name);address=item['address']
         entry=stable(address+0x114,8)
@@ -200,6 +206,8 @@ def build_ui_observer_config(resolver, camera):
         if r.u64(address+p['field_super'])!=parent:raise UIConfigRejected('UI superclass changed')
     for address,value in checks+links:
         if r.read(address,len(value))!=value:raise UIConfigRejected('UI field/link/entry changed during assembly')
+    for address,value in entry_checks:
+        if read_entry(address,len(value))!=value:raise UIConfigRejected('UI field/link/entry changed during assembly')
     if r.read(r.names_header,16)!=names_header or r.read(r.objects_header,16)!=objects_header:
         raise UIRegistryChanged('UI registry changed during assembly; reacquire')
     config=dict(schema=1,pid=r.pid,base=r.base,sha256=GAME_SHA,objects_header=r.objects_header,

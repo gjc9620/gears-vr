@@ -11,7 +11,7 @@
 
 namespace gears_vr {
 using Microsoft::WRL::ComPtr;
-inline constexpr unsigned gpu_packet_version=6;
+inline constexpr unsigned gpu_packet_version=7;
 struct GpuOpeningDeferred:std::runtime_error {GpuOpeningDeferred():std::runtime_error("GPU source is being reconfigured"){};};
 // One GPU slot. Producer never overwrites it until the consumer's GPU fence
 // acknowledges the previous sequence. Both devices must use the same adapter.
@@ -22,7 +22,27 @@ struct alignas(8) GpuPacket {
     alignas(8) volatile LONG64 sequence;
     std::uint64_t generation;
     StereoImageTicket ticket;
+    volatile LONG world_revision,world_quiescing;
+    alignas(8) volatile LONG64 world_generation,world_minimum_sample_ns;
 };
+struct WorldState {bool valid{};std::uint64_t generation{};bool quiescing{};std::int64_t minimum_sample_ns{};};
+inline bool gpu_world_image_current(WorldState const& world,std::uint64_t acquired_generation,std::int64_t sample_ns){
+    return world.valid&&!world.quiescing&&world.generation&&acquired_generation==world.generation&&sample_ns>world.minimum_sample_ns;
+}
+// Bounded seqlock snapshot fails closed during a concurrent world commit.
+inline WorldState gpu_world_state(GpuPacket* packet){
+    if(!packet)return {};
+    for(unsigned attempt=0;attempt<4;++attempt){
+        const LONG revision=InterlockedCompareExchange(&packet->world_revision,0,0);if(revision&1)continue;
+        WorldState out{};out.generation=static_cast<std::uint64_t>(InterlockedCompareExchange64(&packet->world_generation,0,0));
+        const LONG quiescing=InterlockedCompareExchange(&packet->world_quiescing,0,0);out.quiescing=quiescing!=0;
+        out.minimum_sample_ns=InterlockedCompareExchange64(&packet->world_minimum_sample_ns,0,0);
+        if(revision!=InterlockedCompareExchange(&packet->world_revision,0,0))continue;
+        out.valid=packet->magic==0x47564731&&packet->version==gpu_packet_version&&packet->size==sizeof(*packet)&&out.generation&&out.minimum_sample_ns>=0&&(quiescing==0||quiescing==1);
+        return out;
+    }
+    return {};
+}
 inline std::wstring gpu_name(DWORD pid,const wchar_t* suffix){
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Gpu.%lu.%s",pid,suffix);return name;
 }
@@ -35,7 +55,7 @@ inline void gpu_barrier(ID3D12GraphicsCommandList* list,ID3D12Resource* resource
 }
 enum class GpuCaptureReason:unsigned {not_attempted,published,not_ready,lock_busy,metadata_invalid,
     ticket_invalid,source_changed,no_consumer,rate_limited,chain_mismatch,device_removed,
-    producer_in_flight,consumer_not_done,api_failure,native_stopped,native_deadline,owned_binding_mismatch};
+    producer_in_flight,consumer_not_done,api_failure,native_stopped,native_deadline,owned_binding_mismatch,world_quiescing};
 enum GpuCaptureValid:unsigned {capture_state_valid=1,capture_serial_valid=2,capture_consumer_valid=4,
     capture_ready_valid=8,capture_done_valid=16,capture_hresult_valid=32};
 struct GpuCaptureTrace {GpuCaptureReason reason{GpuCaptureReason::not_attempted};unsigned valid{},state{};
@@ -55,7 +75,7 @@ inline bool gpu_idle_complete(GpuIdleSnapshot const& s){
 inline const char* gpu_capture_reason_name(GpuCaptureReason reason){
     static const char* names[]={"not_attempted","published","not_ready","lock_busy","metadata_invalid","ticket_invalid",
         "source_changed","no_consumer","rate_limited","chain_mismatch","device_removed","producer_in_flight",
-        "consumer_not_done","api_failure","native_stopped","native_deadline","owned_binding_mismatch"};
+        "consumer_not_done","api_failure","native_stopped","native_deadline","owned_binding_mismatch","world_quiescing"};
     auto i=static_cast<unsigned>(reason);return i<std::size(names)?names[i]:"unknown";
 }
 class GpuPublisher {
@@ -78,7 +98,9 @@ class GpuPublisher {
     ULONGLONG next_capture=0;
     bool in_flight=false,initialized=false,allow_simulated_=false;
     bool resize_active=false,rebuild_claimed_=false;
-    std::uint64_t generation_=0;
+    std::uint64_t generation_=0,world_generation_=1;
+    std::int64_t world_minimum_sample_ns_=0;
+    bool world_quiescing_=false;
     HRESULT error=S_OK;
     bool complete(){return ready_fence && ready_fence->GetCompletedValue()!=~UINT64(0) && ready_fence->GetCompletedValue()>=serial;}
     void detach(){source.Detach();texture.Detach();list.Detach();allocator.Detach();ready_fence.Detach();done_fence.Detach();chain.Detach();queue.Detach();device.Detach();
@@ -168,6 +190,7 @@ public:
             if(generation_==~std::uint64_t(0))throw std::runtime_error("GPU generation exhausted");
             memset(packet,0,sizeof(*packet));packet->magic=0x47564731;packet->version=gpu_packet_version;packet->size=sizeof(*packet);packet->pid=pid;packet->ticket=StereoImageTicket{};
             packet->generation=++generation_;serial=0;
+            packet->world_generation=static_cast<LONG64>(world_generation_);packet->world_minimum_sample_ns=world_minimum_sample_ns_;packet->world_quiescing=world_quiescing_?1:0;
             packet->allow_simulated=allow_simulated_?1:0;
             packet->width=static_cast<unsigned>(desc.Width);packet->height=desc.Height;packet->format=desc.Format;packet->adapter=device->GetAdapterLuid();
             initialized=true;state=2;InterlockedExchange(&packet->ready,1);rebuild_claimed_=false;ok=true;
@@ -231,6 +254,7 @@ private:
         do {
             if(state!=2){reason(GpuCaptureReason::not_ready);break;} // mark_stopped may win before lock.
             if(packet->magic!=0x47564731 || packet->version!=gpu_packet_version || packet->size!=sizeof(*packet) || packet->pid!=GetCurrentProcessId() || packet->allow_simulated!=(allow_simulated_?1u:0u)){reason(GpuCaptureReason::metadata_invalid);break;}
+            if(world_quiescing_){reason(GpuCaptureReason::world_quiescing);break;}
             if(bound_resource){
                 if(swap||!owned_matches(resource,generation,idle)||packet->width!=bound_desc.Width||packet->height!=bound_desc.Height||
                    packet->format!=static_cast<unsigned>(bound_desc.Format)){reason(GpuCaptureReason::owned_binding_mismatch);break;}
@@ -282,18 +306,39 @@ private:
     }
 public:
     HRESULT failure()const{return error;}
-    bool try_idle(GpuIdleSnapshot& out){
-        if(!TryAcquireSRWLockExclusive(&lock))return false;
-        GpuIdleSnapshot candidate{};
-        candidate.state=state.load();candidate.result=error;candidate.in_flight=in_flight;
+private:
+    GpuIdleSnapshot idle_locked() const {
+        GpuIdleSnapshot candidate{};candidate.state=state.load();candidate.result=error;candidate.in_flight=in_flight;
         candidate.reconfiguring=resize_active||rebuild_claimed_;candidate.generation=generation_;candidate.serial=serial;
         if(initialized&&packet&&ready_fence&&done_fence){
             candidate.consumer=InterlockedCompareExchange(&packet->consumer,0,0);
-            candidate.ready_completed=ready_fence->GetCompletedValue();candidate.done_completed=done_fence->GetCompletedValue();
-            candidate.valid=packet->generation==generation_;
+            candidate.ready_completed=ready_fence->GetCompletedValue();candidate.done_completed=done_fence->GetCompletedValue();candidate.valid=packet->generation==generation_;
         }
-        out=candidate;const bool idle=gpu_idle_complete(candidate);
-        ReleaseSRWLockExclusive(&lock);return idle;
+        return candidate;
+    }
+public:
+    bool try_idle(GpuIdleSnapshot& out){
+        if(!TryAcquireSRWLockExclusive(&lock))return false;
+        out=idle_locked();const bool idle=gpu_idle_complete(out);ReleaseSRWLockExclusive(&lock);return idle;
+    }
+    // Admission barrier shares capture's lock. A failed commit never reopens it.
+    bool begin_world_rebind(std::uint64_t expected){
+        if(!TryAcquireSRWLockExclusive(&lock))return false;
+        const bool ok=expected&&expected==world_generation_&&initialized&&packet&&state==2&&!resize_active&&!rebuild_claimed_;
+        if(ok){InterlockedIncrement(&packet->world_revision);world_quiescing_=true;InterlockedExchange(&packet->world_quiescing,1);InterlockedIncrement(&packet->world_revision);}
+        ReleaseSRWLockExclusive(&lock);return ok;
+    }
+    // Both queues must finish the existing slot; resource identity and serial
+    // survive this handoff. Caller polls ordinary producer completion first.
+    bool commit_world_rebind(std::uint64_t expected,std::uint64_t next,std::int64_t minimum_ns){
+        if(!TryAcquireSRWLockExclusive(&lock))return false;
+        const bool ok=world_quiescing_&&expected&&expected==world_generation_&&expected!=~std::uint64_t(0)&&next==expected+1&&minimum_ns>0&&gpu_idle_complete(idle_locked());
+        if(ok){
+            InterlockedIncrement(&packet->world_revision);world_generation_=next;world_minimum_sample_ns_=minimum_ns;
+            InterlockedExchange64(&packet->world_generation,static_cast<LONG64>(next));InterlockedExchange64(&packet->world_minimum_sample_ns,minimum_ns);
+            world_quiescing_=false;InterlockedExchange(&packet->world_quiescing,0);InterlockedIncrement(&packet->world_revision);
+        }
+        ReleaseSRWLockExclusive(&lock);return ok;
     }
     // Notify the receiver and prevent new submissions. Keep all resources and
     // shared handles alive until callbacks drain and the producer fence is safe.
@@ -321,7 +366,7 @@ class GpuReceiver {
     HANDLE map{};GpuPacket* packet{};bool claimed=false,allow_simulated_=false;
     ComPtr<ID3D12Fence> ready_fence,done_fence;
     UINT64 pending=0,last=0;
-    std::uint64_t generation_{};
+    std::uint64_t generation_{},acquired_world_generation_{};
     StereoImageTicket ticket_{};
 public:
     ComPtr<ID3D12Resource> texture;
@@ -370,7 +415,8 @@ public:
         if(frozen.id?!stereo_image_ticket_valid(frozen,width,height,allow_simulated_):(allow_simulated_||!stereo_image_ticket_empty(frozen)))throw std::runtime_error("GPU stereo ticket rejected");
         if(ticket_.id&&frozen.id&&ticket_.sample.source!=frozen.sample.source)throw std::runtime_error("GPU stereo source changed");
         if(ready_fence->GetCompletedValue()==~UINT64(0))throw std::runtime_error("Producer device removed");
-        gpu_check(queue->Wait(ready_fence.Get(),serial),"wait producer fence");ticket_=frozen;pending=serial;return true;
+        const auto world=world_state();if(!world.valid)return false;
+        gpu_check(queue->Wait(ready_fence.Get(),serial),"wait producer fence");ticket_=frozen;pending=serial;acquired_world_generation_=world.generation;return true;
     }
     void acknowledge(ID3D12CommandQueue* queue){
         if(!pending)throw std::runtime_error("No GPU frame acquired");
@@ -383,6 +429,8 @@ public:
     bool stopped()const{return !packet || InterlockedCompareExchange(&packet->stopped,0,0)!=0;}
     bool reconfiguring()const{return packet&&!stopped()&&InterlockedCompareExchange(&packet->ready,0,0)==2;}
     std::uint64_t generation()const{return generation_;}
+    WorldState world_state()const{return gpu_world_state(packet);}
+    std::uint64_t acquired_world_generation()const{return acquired_world_generation_;}
     bool release_for_resize(){
         if(!reconfiguring()||pending||!claimed)return false;
         const auto done=done_fence?done_fence->GetCompletedValue():0;
@@ -391,7 +439,7 @@ public:
         // Only this explicit, drained handoff permits another consumer to open.
         InterlockedCompareExchange(&packet->consumer,0,static_cast<LONG>(GetCurrentProcessId()));
         UnmapViewOfFile(packet);packet=nullptr;CloseHandle(map);map=nullptr;claimed=false;
-        last=pending=0;ticket_={};generation_=0;producer_pid=0;
+        last=pending=0;ticket_={};generation_=acquired_world_generation_=0;producer_pid=0;
         return true;
     }
     void close(){

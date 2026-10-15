@@ -239,7 +239,7 @@ bool reserve_ui_hooks(){
     ui_reserved=true;return true;
 }
 
-bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t controller,uintptr_t camera){
+bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t controller,uintptr_t camera,bool attested_entries=false){
     auto load=[&](const wchar_t* key,auto& out){
         wchar_t text[64]{};GetPrivateProfileStringW(L"UIObserver",key,L"",text,64,ini);
         if(!*text||*text==L'-'||*text==L'+')return false;
@@ -298,8 +298,14 @@ bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t contr
             if(hex[j*2]!=expected[0]||hex[j*2+1]!=expected[1])return false;b.bytes[j]=gears_ui::binding_bytes[i][j];}
     }
     if(!(c.role_controller<c.identity_count&&c.role_camera<c.identity_count&&
-        c.identities[c.role_controller].address==controller&&c.identities[c.role_camera].address==camera&&
-        gears_ui::validate(c,safe_copy)))return false;
+        c.identities[c.role_controller].address==controller&&c.identities[c.role_camera].address==camera))return false;
+    // Data/registry/property/script reads always remain actual memory. Only
+    // these four explicit entry checks may use authenticated original bytes.
+    if(!gears_ui::validate(c,safe_copy,!attested_entries))return false;
+    if(attested_entries)for(auto const& binding:c.bindings){std::array<unsigned char,16> actual{};
+        if(binding.rva>UINTPTR_MAX-c.base||!read_attested_hook_entry(actual.data(),
+                reinterpret_cast<void const*>(c.base+binding.rva),actual.size())||actual!=binding.bytes)return false;
+    }
     output=c;return true;
 }
 bool load_ui_config(const wchar_t* ini){

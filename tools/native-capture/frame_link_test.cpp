@@ -956,5 +956,59 @@ int main() {
         if(recreate)t->create_success(1,true);else t->reset_success(1);
         CHECK(birth(*t));CHECK(t->owned_status().certified);
     }
+    // A world boundary retires association without manufacturing Reset history.
+    for(bool recreate:{false,true}){
+        auto t=std::make_unique<Tracker>();auto old=t->reset_success(1);pair(*t,old,10);
+        auto before=t->snapshot();CHECK(t->advance_world_epoch(1,2));
+        CHECK(t->world_epoch()==2&&t->snapshot().world_epoch==2);
+        CHECK(t->current(1).generation==old.generation);
+        CHECK(t->snapshot().active_lists==before.active_lists&&t->snapshot().reset_calls==before.reset_calls);
+        CHECK(!t->advance_world_epoch(1,2)&&!t->advance_world_epoch(2,2)&&!t->advance_world_epoch(2,4));
+        CHECK(!t->advance_world_epoch(UINT64_MAX,0));
+        CHECK(!t->overlay_pair(old,{buffer,1920,1080}).linked);
+        CHECK(!t->execute(queue,&old,1)); // Recorded before switch, executed after.
+        CHECK(!t->present(buffer,queue).linked);
+        CHECK(!t->current(1).identity); // Present kept its existing seal semantics.
+        CHECK(!t->execute(queue,&old,1)); // Erased old generation stays unknown.
+        CHECK(!t->present(buffer,queue).linked);
+        auto fresh=recreate?t->create_success(1,true):t->reset_success(1);
+        CHECK(fresh.generation>old.generation);pair(*t,fresh,11);
+        CHECK(t->execute(queue,&fresh,1));CHECK(t->present(buffer,queue).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto old=t->reset_success(1);pair(*t,old,20);
+        CHECK(t->execute(queue,&old,1));CHECK(t->advance_world_epoch(1,2));
+        CHECK(!t->present(buffer,queue).linked); // Previous candidate cannot survive.
+        auto fresh=t->reset_success(1);CHECK(!eye(*t,fresh,20,0));
+        CHECK((t->present(buffer,queue).rejection&stale_ticket)!=0);
+        auto late=t->reset_success(2);CHECK(t->advance_world_epoch(2,3));
+        CHECK(!eye(*t,late,21,0)); // Old list cannot record a new-world ticket.
+        CHECK(!t->draw_unknown(late,buffer));CHECK(!t->present(buffer,queue).linked);
+        auto current=t->reset_success(2);pair(*t,current,22);
+        CHECK(t->execute(queue,&current,1));CHECK(t->present(buffer,queue).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();auto old=t->create_success(1,true);pair(*t,old,30);
+        CHECK(t->advance_world_epoch(1,2));
+        auto fresh=t->reset_success(1);CHECK(fresh.generation>old.generation);
+        pair(*t,fresh,31);CHECK(t->execute(queue,&fresh,1));CHECK(t->present(buffer,queue).linked);
+        auto closed=t->create_success(2,false);CHECK(t->advance_world_epoch(2,3));
+        CHECK(!t->execute(queue,&closed,1));CHECK(!t->present(buffer,queue).linked);
+    }
+    {
+        auto t=std::make_unique<Tracker>();t->invalidate_capacity();
+        CHECK(t->advance_world_epoch(1,2));CHECK(t->snapshot().capacity_bad);
+        auto fresh=t->reset_success(1);pair(*t,fresh);
+        CHECK(!t->execute(queue,&fresh,1));CHECK((t->present(buffer,queue).rejection&capacity)!=0);
+    }
+    {
+        auto t=std::make_unique<Tracker>();configure(*t);
+        CHECK(!t->advance_world_epoch(1,2));CHECK(t->world_epoch()==1&&t->owned_status().certified);
+        auto ref=t->reset_success(1);pair(*t,ref);ExecutionToken token{};
+        CHECK(t->prepare_execute(queue,&ref,1,token));
+        CHECK(!t->advance_world_epoch(1,2)); // Refusal must not disturb pending transaction.
+        CHECK(t->commit_execute(token));CHECK(t->consume_owned_output(buffer,9,queue,1).linked);
+        CHECK(!t->advance_world_epoch(1,2));
+    }
     std::printf("frame_link: %u checks passed\n", checks);
 }

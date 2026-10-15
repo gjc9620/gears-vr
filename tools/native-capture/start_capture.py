@@ -154,7 +154,7 @@ def resolve_camera_once(pid,profile):
 
 
 def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False,cinematic_camera=False,
-                                 record_anchor_failure=True,preparation_deadline=None,check_live=None):
+                                 record_anchor_failure=True,preparation_deadline=None,check_live=None,entry_reader=None):
     """Read-only, pre-activation acquisition; never retries identity failures.
 
     A new Resolver.resolve() prepares fresh registries/caches and roles on every
@@ -178,7 +178,8 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                 if int(refreshed['module_base'],0)!=int(camera['module_base'],0):
                     raise RuntimeError('Module base changed during preparation')
                 for offset,signature in signatures.items():
-                    if r.read(r.base+offset,len(signature))!=signature:
+                    raw=entry_reader(r.base+offset,len(signature),r.read) if entry_reader is not None else r.read(r.base+offset,len(signature))
+                    if raw!=signature:
                         raise RuntimeError('Target prologue differs; instrumentation rejected')
                 anchor_metadata=None;anchor_section='';ui_metadata=None;ui_section=''
                 if anchor_observer:
@@ -190,7 +191,8 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                         raise
                     anchor_section=anchor_ini(certificate);anchor_metadata['pid']=pid
                 if ui_observer:
-                    ui_certificate,ui_metadata=build_ui_observer_config(r,refreshed)
+                    ui_certificate,ui_metadata=build_ui_observer_config(r,refreshed,
+                        **({'entry_reader':entry_reader} if entry_reader is not None else {}))
                     ui_section=ui_observer_ini(ui_certificate)
                 if ui_observer and time.monotonic()>=deadline:
                     raise UIConfigRejected('UI acquisition exceeded retry deadline before activation')

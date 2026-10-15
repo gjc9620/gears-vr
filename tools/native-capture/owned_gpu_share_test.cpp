@@ -117,13 +117,53 @@ static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
         auto changing=idle_after;changing.reconfiguring=true;require(!gpu_idle_complete(changing),"resizing slot accepted idle");
         changing=idle_after;changing.in_flight=true;require(!gpu_idle_complete(changing),"in-flight slot accepted idle");
     }
+    const auto resource_generation=receiver.generation();
+    require(receiver.world_state().valid&&receiver.world_state().generation==1&&!receiver.world_state().quiescing,"initial world");
+    require(!publisher.begin_world_rebind(0)&&!publisher.begin_world_rebind(2)&&!publisher.commit_world_rebind(1,2,100),"invalid world begin/commit");
+    require(publisher.capture_resource(retained_source,7,idle,ticket(3)),"final old-world publication");
+    require(gpu.finish(),"old-world producer completion");publisher.poll();
+    require(publisher.begin_world_rebind(1),"world begin");
+    const auto old_sequence=metadata.packet->sequence;const auto old_ticket=metadata.packet->ticket;GpuCaptureTrace quiesced{};
+    require(!publisher.capture_resource(retained_source,7,idle,ticket(4),&quiesced)&&quiesced.reason==GpuCaptureReason::world_quiescing&&
+        metadata.packet->sequence==old_sequence&&same_ticket(metadata.packet->ticket,old_ticket),"quiescence mutated slot");
+    require(!publisher.commit_world_rebind(1,2,1000000003),"unacquired old slot committed");
+    require(receiver.acquire(gpu.queue.Get())&&receiver.acquired_world_generation()==1,"old slot acquire during quiescence");
+    require(!gpu_world_image_current(receiver.world_state(),receiver.acquired_world_generation(),receiver.ticket().sample.received_ns),"quiescing slot displayable");
+    require(!publisher.commit_world_rebind(1,2,1000000003),"pending old slot committed");
+    receiver.acknowledge(gpu.queue.Get());require(gpu.finish(),"old-world ACK");
+    require(!publisher.commit_world_rebind(1,3,1000000003)&&!publisher.commit_world_rebind(1,2,0)&&!publisher.commit_world_rebind(2,3,1000000003)&&
+        receiver.world_state().quiescing,"invalid commit reopened world");
+    require(publisher.commit_world_rebind(1,2,1000000003),"drained world commit");
+    auto world=receiver.world_state();require(world.valid&&world.generation==2&&!world.quiescing&&world.minimum_sample_ns==1000000003,"committed world metadata");
+    require(receiver.generation()==resource_generation&&metadata.packet->sequence==old_sequence&&receiver.sequence()==UINT64(old_sequence),"commit reset GPU identity or serial");
+    require(!receiver.acquire(gpu.queue.Get())&&!gpu_world_image_current(world,receiver.acquired_world_generation(),receiver.ticket().sample.received_ns),"old ACK became new-world image");
+    require(!gpu_world_image_current(world,2,1000000003)&&!gpu_world_image_current({},2,1000000004),"minimum or invalid world accepted");
+    require(publisher.capture_resource(retained_source,7,idle,ticket(4)),"new-world publication");
+    require(gpu.finish(),"new-world producer completion");publisher.poll();
+    require(receiver.acquire(gpu.queue.Get())&&receiver.acquired_world_generation()==2&&
+        gpu_world_image_current(receiver.world_state(),receiver.acquired_world_generation(),receiver.ticket().sample.received_ns),"new-world image rejected");
+    receiver.acknowledge(gpu.queue.Get());require(gpu.finish(),"new-world ACK");
     const auto sequence=metadata.packet->sequence;const auto frozen=metadata.packet->ticket;
     publisher.mark_stopped();require(!publisher.capture_resource(retained_source,7,idle,ticket(3))&&metadata.packet->sequence==sequence&&same_ticket(metadata.packet->ticket,frozen),"stop mutated image slot");
     GpuIdleSnapshot stopped{};require(!publisher.try_idle(stopped),"stopped publisher accepted as resumable idle");
     require(publisher.drain(1000),"producer drain");receiver.close();require(publisher.close(),"producer close");gpu.verify();
-    printf("{\"owned_idle_state\":%u,\"frames\":2,\"two_eye_pixels_verified\":true,\"private_ticket_verified\":true}\n",unsigned(idle));
+    printf("{\"owned_idle_state\":%u,\"frames\":4,\"world_handoff_verified\":true,\"two_eye_pixels_verified\":true,\"private_ticket_verified\":true}\n",unsigned(idle));
+}
+static void world_epoch_policy(){
+    GpuPacket packet{};packet.magic=0x47564731;packet.version=gpu_packet_version;packet.size=sizeof(packet);packet.world_generation=1;
+    require(!gpu_world_state(nullptr).valid,"null world valid");
+    auto world=gpu_world_state(&packet);require(world.valid&&world.generation==1&&!world.quiescing&&world.minimum_sample_ns==0,"initial epoch snapshot");
+    require(!gpu_world_image_current(world,0,1)&&!gpu_world_image_current(world,2,1)&&!gpu_world_image_current(world,1,0),"wrong epoch or nonpositive sample accepted");
+    packet.world_revision=1;require(!gpu_world_state(&packet).valid,"in-progress epoch snapshot accepted");packet.world_revision=2;
+    packet.world_quiescing=2;require(!gpu_world_state(&packet).valid,"invalid quiescing state accepted");packet.world_quiescing=1;
+    world=gpu_world_state(&packet);require(world.valid&&world.quiescing&&!gpu_world_image_current(world,1,1),"quiescing epoch displayable");
+    packet.world_quiescing=0;packet.world_generation=0;require(!gpu_world_state(&packet).valid,"zero world epoch valid");packet.world_generation=2;
+    packet.world_minimum_sample_ns=-1;require(!gpu_world_state(&packet).valid,"negative world minimum valid");packet.world_minimum_sample_ns=10;
+    world=gpu_world_state(&packet);require(!gpu_world_image_current(world,2,10)&&gpu_world_image_current(world,2,11),"world boundary not exclusive");
+    packet.version=gpu_packet_version-1;require(!gpu_world_state(&packet).valid,"old world ABI accepted");
 }
 int main(){try{
+    world_epoch_policy();
     ComPtr<ID3D12Debug> debug;const bool enabled=SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)));if(enabled)debug->EnableDebugLayer();
     printf("{\"debug_layer\":%s}\n",enabled?"true":"false");GPU gpu;rejects(gpu);
     for(auto state:{D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE})exercise(gpu,state);

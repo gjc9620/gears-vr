@@ -36,6 +36,7 @@ struct OverlayDiagnostic {
     ListRef unique_recorded_ref{};
 };
 struct Snapshot {
+    uint64_t world_epoch{1};
     uint64_t reset_calls{},list_creates{},list_overflow{},event_overflow{},target_overflow{},execute_calls{},unknown_batches{},duplicate_batches{},invalid_batches{},metadata_batches{};
     size_t active_lists{},list_highwater{},event_highwater{};
     bool capacity_bad{};
@@ -82,6 +83,7 @@ private:
         unsigned state_kind{};uint64_t output_generation{};uint32_t before{},after{},subresource{},flags{}; };
     struct List {
         ListRef ref{};
+        uint64_t world_epoch{};
         bool valid{}, executed{};
         size_t count{};
         std::array<Event, events_per_list> events{};
@@ -99,6 +101,7 @@ private:
     std::array<Candidate, target_capacity> candidates_{};
     std::mutex mutex_;
     uint64_t generation_{}, maximum_ticket_{}, retired_ticket_{};
+    uint64_t world_epoch_{1};
     bool window_bad_{}, capacity_bad_{};
     uint32_t window_rejection_{};
     Snapshot stats_{};
@@ -136,7 +139,7 @@ private:
     }
     List* find(ListRef ref) {
         for (auto& list : lists_)
-            if (list.ref.identity == ref.identity && list.ref.generation == ref.generation && list.valid)
+            if (list.ref.identity == ref.identity && list.ref.generation == ref.generation && list.valid && list.world_epoch==world_epoch_)
                 return &list;
         return nullptr;
     }
@@ -458,6 +461,21 @@ public:
         for (const auto& list : lists_) if (list.valid && list.ref.identity == identity) return list.ref;
         return {};
     }
+    uint64_t world_epoch(){std::lock_guard<std::mutex> lock(mutex_);return world_epoch_;}
+    // CPU association retirement only, never a GPU drain certificate. Caller
+    // orders this boundary against actual recording/submission. No waits for
+    // engine work: the mutex protects only bounded in-memory bookkeeping.
+    // Keep real list identities/generations, including unsubmitted recordings;
+    // find() excludes their old epoch until a genuine Reset/Create is observed.
+    bool advance_world_epoch(uint64_t expected,uint64_t next){
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(expected!=world_epoch_||expected==UINT64_MAX||next!=expected+1||
+           owned_.enabled||pending_.active||revision_==UINT64_MAX)return false;
+        ++revision_;world_epoch_=next;retired_ticket_=maximum_ticket_;
+        candidates_={};window_bad_=false;window_rejection_=0;
+        // capacity_bad_ is deliberately sticky across world transitions.
+        return true;
+    }
     ListRef reset_success(Identity identity) {
         std::lock_guard<std::mutex> lock(mutex_);
         ++stats_.reset_calls;
@@ -475,6 +493,7 @@ public:
         // remain copied in candidates. Generation IDs are never reused.
         *slot = {};
         slot->ref = {identity, ++generation_};
+        slot->world_epoch=world_epoch_;
         slot->valid = true;
         return slot->ref;
     }
@@ -491,7 +510,7 @@ public:
         if(!slot){++stats_.list_overflow;capacity_bad_=true;lose_owned();return {};}
         if(!slot->ref.identity){++stats_.active_lists;if(stats_.active_lists>stats_.list_highwater)stats_.list_highwater=stats_.active_lists;}
         discard_recording(*slot);
-        *slot={};slot->ref={identity,++generation_};slot->valid=initially_open;
+        *slot={};slot->ref={identity,++generation_};slot->valid=initially_open;slot->world_epoch=world_epoch_;
         return slot->ref;
     }
     bool draw_final(ListRef ref, uint64_t ticket, unsigned eye, Target target, Rect rect) {
@@ -684,6 +703,6 @@ public:
         window_bad_ = true;
         stats_.active_lists=0;
     }
-    Snapshot snapshot(){std::lock_guard<std::mutex> lock(mutex_);auto value=stats_;value.capacity_bad=capacity_bad_;return value;}
+    Snapshot snapshot(){std::lock_guard<std::mutex> lock(mutex_);auto value=stats_;value.capacity_bad=capacity_bad_;value.world_epoch=world_epoch_;return value;}
 };
 } // namespace gears_frame_link

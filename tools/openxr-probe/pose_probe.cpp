@@ -521,6 +521,7 @@ int main(int argc, char** argv) {
                         catch(gears_vr::GpuOpeningDeferred const&){} // Resize won the consumer-claim race; retry after retirement.
                     }
                 }
+                if(stereo_screen)stereo_screen->poll_world_handoff();
                 if(stereo_image_shown&&!startup_quad_queued)end.layerCount=0;
                 ProjectionStatus result;
                 if(stereo_space_changed&&!continuous_session)result=ProjectionStatus::reference_space_changed;

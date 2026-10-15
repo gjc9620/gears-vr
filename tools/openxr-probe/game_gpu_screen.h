@@ -66,7 +66,7 @@ class GameGpuScreen {
     // Only commit after both eye copies complete and their XR images release.
     // A newer receiver ticket can be rejected without changing these pixels.
     gears_vr::StereoImageTicket copied_ticket{};
-    uint64_t copied_sequence{};
+    uint64_t copied_sequence{},copied_world_generation{},observed_world_generation{};
     ComPtr<ID3D12Resource> snapshot_buffer;
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT snapshot_layout{};
     UINT64 snapshot_bytes=0;
@@ -208,10 +208,34 @@ public:
         bool ready=packet&&packet->magic==0x47564731&&packet->version==gears_vr::gpu_packet_version&&packet->size==sizeof(*packet)&&packet->pid==pid&&packet->allow_simulated==unsigned(simulated)&&packet->ready==1&&!packet->stopped;
         if(packet)UnmapViewOfFile(packet);CloseHandle(mapping);return ready;
     }
+    // Poll on every XR frame, even when policy disables projection. Use this
+    // receiver to drain the old slot without acquiring an XR image or copying.
+    bool poll_world_handoff(){
+        const auto world=receiver->world_state();
+        const bool changed=world.valid&&observed_world_generation!=world.generation;
+        if(changed)observed_world_generation=world.generation;
+        if(!world.valid||world.quiescing||changed){current=false;copied_ticket={};copied_sequence=0;copied_world_generation=0;}
+        if(!world.valid||world.quiescing){
+            // Submitted work retains its fence, resources and XR ownership.
+            // Only the existing completion path may retire that work.
+            if(world.valid&&!in_flight){
+                bool owned=false;for(auto const& eye:eyes)owned|=eye.acquired;
+                if(!owned&&receiver->acquire(queue.Get()))receiver->acknowledge(queue.Get());
+            }
+            return false;
+        }
+        return true;
+    }
     bool update_image(uint64_t expected_session=0,ProjectionStatus* status=nullptr,uint64_t space_epoch=0,int64_t change_time=0,int64_t minimum_sample_ns=0){
-        if(receiver->stopped())return false;
+        if(!poll_world_handoff()){if(status)*status=ProjectionStatus::source_reconfiguration;return false;}
+        if(receiver->stopped()||in_flight)return false;
         auto now=std::chrono::steady_clock::now();
         if(receiver->acquire(queue.Get())){
+            const auto world=receiver->world_state();
+            if(!world.valid||world.quiescing||receiver->acquired_world_generation()!=world.generation||
+               ((stereo||world.minimum_sample_ns>0)&&!gears_vr::gpu_world_image_current(world,receiver->acquired_world_generation(),receiver->ticket().sample.received_ns))){
+                receiver->acknowledge(queue.Get());current=false;if(status)*status=ProjectionStatus::source_reconfiguration;return false;
+            }
             if(stereo) {
                 const auto& ticket=receiver->ticket();
                 auto validity=projection_ticket_status(ticket,receiver->width,receiver->height,expected_session,gears_vr::monotonic_ns(),allow_simulated,space_epoch,change_time,
@@ -307,9 +331,11 @@ public:
                 auto& eye=eyes[i];XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
                 xr_check(xrReleaseSwapchainImage(eye.chain,&release),"GPU game release");eye.acquired=eye.waited=false;
             }
-            copied_ticket=receiver->ticket();copied_sequence=receiver->sequence();
+            copied_ticket=receiver->ticket();copied_sequence=receiver->sequence();copied_world_generation=receiver->acquired_world_generation();
             ++copies;current=true;last_frame=now;
         }
+        const auto world=receiver->world_state();
+        if(!world.valid||world.quiescing||copied_world_generation!=world.generation||(stereo&&copied_ticket.sample.received_ns<=world.minimum_sample_ns))current=false;
         if(!current || now-last_frame>std::chrono::seconds(retain_stereo_image?2:1))return false;
         return true;
     }
@@ -356,6 +382,9 @@ private:
         if(!update_image(expected_session,&status,space_epoch,space_change_time,minimum_sample_ns))return false;
         if(reconfiguring()){status=ProjectionStatus::source_reconfiguration;return false;}
         const auto& ticket=copied_ticket;const auto& sample=ticket.sample;
+        if(!gears_vr::gpu_world_image_current(receiver->world_state(),copied_world_generation,sample.received_ns)){
+            current=false;status=ProjectionStatus::source_reconfiguration;return false;
+        }
         const auto now=gears_vr::monotonic_ns();
         status=projection_ticket_status(ticket,receiver->width,receiver->height,expected_session,now,allow_simulated,space_epoch,space_change_time,
             retain_stereo_image?projection_retained_image_max_age:100000000);
