@@ -177,35 +177,72 @@ def validate_action(data):
 
 def perform(pad, vg, data):
     seconds, buttons, axes, triggers = validate_action(data)
-    pid, hwnd = game_window()
+    background = data.get('background', False)
     wait = float(data.get('wait_focus', 0))
     if not math.isfinite(wait) or not 0 <= wait <= 60:
         raise ValueError('Focus wait must be 0..60 seconds')
-    deadline = time.monotonic() + wait
-    while not focused(hwnd):
-        if time.monotonic() >= deadline or interrupted():
-            raise RuntimeError('Game lacks focus; no input sent')
-        time.sleep(0.05)
-        if game_window() != (pid, hwnd):
-            raise RuntimeError('Game restarted while waiting')
-    pad.reset()
-    for button in buttons:
-        pad.press_button(getattr(vg.XUSB_BUTTON, 'XUSB_GAMEPAD_' + BUTTON_NAMES[button]))
-    pad.left_joystick_float(*axes['left'])
-    pad.right_joystick_float(*axes['right'])
-    pad.left_trigger_float(triggers[0]); pad.right_trigger_float(triggers[1])
-    began = time.monotonic()
+    staged = False
     try:
-        if not focused(hwnd) or interrupted():
-            raise RuntimeError('Focus lost before input')
+        pid, hwnd = game_window()
+        if background:
+            expected_pid, creation = data.get('pid'), data.get('creation_time')
+            if (type(expected_pid) is not int or expected_pid <= 0 or
+                    type(creation) is not int or creation <= 0):
+                raise ValueError('Background action requires exact --pid and --creation-time')
+            if wait:
+                raise ValueError('Background action cannot use --wait-focus')
+            if pid != expected_pid:
+                raise RuntimeError('Background action PID does not match game window')
+            if interrupted():
+                raise RuntimeError('Input stopped on stop request')
+            import background_input
+            # Status verifies the complete certified function and executable;
+            # this path never enables or restores a patch.
+            status = background_input.change(pid, 'status', expected_creation=creation)
+            identity = status['identity']
+            if (status['state'] != 'enabled' or identity['pid'] != pid or
+                    identity['creation_time'] != creation):
+                raise RuntimeError('Background input is not verified enabled for this process')
+            control = background_input.WindowsControl()
+
+        def guard():
+            if interrupted():
+                raise RuntimeError('Input stopped on stop request')
+            if background:
+                if game_window() != (pid, hwnd) or control.identity(pid) != identity:
+                    raise RuntimeError('Game identity changed during background action')
+            elif not focused(hwnd):
+                raise RuntimeError('Input stopped on focus loss or stop request')
+
+        if not background:
+            deadline = time.monotonic() + wait
+            while not focused(hwnd):
+                if time.monotonic() >= deadline or interrupted():
+                    raise RuntimeError('Game lacks focus; no input sent')
+                time.sleep(0.05)
+                if game_window() != (pid, hwnd):
+                    raise RuntimeError('Game restarted while waiting')
+        staged = True
+        pad.reset()
+        for button in buttons:
+            pad.press_button(getattr(vg.XUSB_BUTTON, 'XUSB_GAMEPAD_' + BUTTON_NAMES[button]))
+        pad.left_joystick_float(*axes['left'])
+        pad.right_joystick_float(*axes['right'])
+        pad.left_trigger_float(triggers[0]); pad.right_trigger_float(triggers[1])
+        guard()
+        began = time.monotonic()
         pad.update()
         while time.monotonic() - began < seconds:
-            if not focused(hwnd) or interrupted():
-                raise RuntimeError('Input stopped on focus loss or stop request')
+            guard()
             time.sleep(0.01)
+        guard()
     finally:
-        pad.reset(); pad.update()
-    return {'pid': pid, 'input_seconds': round(time.monotonic() - began, 3), 'neutral_after': True}
+        if background or staged:
+            pad.reset(); pad.update()
+    result = {'pid': pid, 'input_seconds': round(time.monotonic() - began, 3), 'neutral_after': True}
+    if background:
+        result.update(background=True, creation_time=creation)
+    return result
 
 
 def serve():
@@ -232,6 +269,7 @@ def serve():
     controller_slot = index.value if code == 0x20000000 else None
     atomic_json(STATE / 'server.json', {'pid': os.getpid(), 'started_at': datetime.datetime.now().isoformat(),
                                       'controller': 'virtual Xbox 360', 'xinput_slot': controller_slot,
+                                      'capabilities': ['background_action_v1'],
                                       'state': 'ready'})
     try:
         while not interrupted():
@@ -291,8 +329,13 @@ def main():
     parser.add_argument('--lt', type=float, default=0)
     parser.add_argument('--rt', type=float, default=0)
     parser.add_argument('--wait-focus', type=float, default=0)
+    parser.add_argument('--background', action='store_true', help='Opt in to verified background controller action')
+    parser.add_argument('--pid', type=int, help='Exact game PID for background action')
+    parser.add_argument('--creation-time', type=int, help='Exact game creation FILETIME for background action')
     parser.add_argument('--no-capture', action='store_true')
     args = parser.parse_args()
+    if args.background and (args.command != 'action' or not args.pid or not args.creation_time or args.wait_focus):
+        parser.error('--background requires action, --pid and --creation-time, without --wait-focus')
     if args.command == 'serve':
         serve(); return
     if args.command == 'stop':
@@ -300,6 +343,8 @@ def main():
     if not (STATE / 'server.json').exists():
         raise RuntimeError('Start Start-GameIO.ps1 first')
     service = json.loads((STATE / 'server.json').read_text())
+    if args.background and 'background_action_v1' not in service.get('capabilities', []):
+        raise RuntimeError('Service does not support background action; stop and restart Start-GameIO.ps1')
     handle = kernel.OpenProcess(0x1000, False, service['pid'])
     if not handle:
         raise RuntimeError('Service is not running; start Start-GameIO.ps1')
