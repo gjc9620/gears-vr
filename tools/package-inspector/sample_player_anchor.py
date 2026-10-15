@@ -129,7 +129,26 @@ class AnchorSampler:
             r.u64(self.controller+int(offsets['Player'],16))!=self.local):
             raise AnchorRejected('Camera/controller/local-player relationship changed')
         target=r.u64(self.view_target) if self.view_target is not None else None
-        if target is not None and target!=self.pawn:raise AnchorRejected('Camera view target is not controlled Pawn')
+        if target is not None and target!=self.pawn:
+            error=AnchorRejected('Camera view target is not controlled Pawn')
+            # Bounded failure-only evidence; it never admits a non-Pawn camera.
+            observation={'diagnostic_only':True,'target':target,'pawn':self.pawn,
+                         'camera':self.camera,'controller':self.controller,
+                         'timestamp_raw':stamp_raw.hex(),'consistent_read':False}
+            try:
+                if target:
+                    identity=self.fresh(target);cls=self.fresh(identity['cls'])
+                    observation.update(target_identity=identity,target_class=cls)
+                    identity_stable=self.fresh(target)==identity and self.fresh(identity['cls'])==cls
+                else:identity_stable=True
+                observation['consistent_read']=bool(identity_stable and r.u64(self.view_target)==target
+                    and self.pointer(self.controller,'controller_pawn')==self.pawn
+                    and r.read(self.stamp,4)==stamp_raw and r.read(r.objects_header,16)==objects
+                    and r.read(r.names_header,16)==names)
+            except (RuntimeError,OSError,ValueError,struct.error) as diagnostic_error:
+                observation['read_error']=str(diagnostic_error)
+            error.camera_observation=observation
+            raise error
         if not math.isfinite(struct.unpack('<f',stamp_raw)[0]):raise AnchorRejected('Nonfinite camera timestamp')
         if r.read(self.stamp,4)!=stamp_raw:raise AnchorRejected('Cross-frame camera timestamp during identity checks')
         # Recheck links after the ending timestamp read as well: a possession

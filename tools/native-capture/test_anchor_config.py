@@ -25,6 +25,25 @@ class Fixture(MemoryResolver):
 
 
 class AnchorConfigTests(unittest.TestCase):
+    def test_nonpawn_failure_retains_bounded_target_identity_without_accepting(self):
+        r=Fixture();r.put(0x30500,struct.pack('<Q',0x10000))
+        with self.assertRaisesRegex(AnchorSamplingRejected,'not controlled Pawn') as failure:
+            build_anchor_config(r)
+        attempts=failure.exception.evidence['guard_acquisitions'][0]['attempts']
+        self.assertEqual(len(attempts),1);self.assertFalse(attempts[0]['retryable'])
+        observation=attempts[0]['camera_observation']
+        self.assertTrue(observation['diagnostic_only']);self.assertTrue(observation['consistent_read'])
+        self.assertEqual(observation['target'],0x10000)
+        self.assertEqual(observation['target_identity']['address'],0x10000)
+        self.assertEqual(observation['target_class']['name'],'WarPC')
+
+    def test_unreadable_nonpawn_diagnostic_preserves_original_rejection(self):
+        r=Fixture();r.put(0x30500,struct.pack('<Q',0xdeadbeef))
+        with self.assertRaisesRegex(AnchorSamplingRejected,'not controlled Pawn') as failure:
+            build_anchor_config(r)
+        observation=failure.exception.evidence['guard_acquisitions'][0]['attempts'][0]['camera_observation']
+        self.assertFalse(observation['consistent_read']);self.assertIn('read_error',observation)
+
     def test_first_strict_cross_frame_failure_then_independent_stable_sample(self):
         r=Fixture();sampler=LiveRegistryAnchorSampler(r)
         r.timestamp_reads=0;r.timestamp_changes=True

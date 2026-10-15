@@ -73,6 +73,8 @@ class LiveRegistryAnchorSampler(AnchorSampler):
                 'exception_type':type(error).__name__ if error is not None else None,
                 'exception_repr':repr(error) if error is not None else None,
                 'raw_guard':value if error is None else None})
+            if error is not None and hasattr(error,'camera_observation'):
+                evidence['attempts'][-1]['camera_observation']=error.camera_observation
             last_error=error
             # Never admit even a successful strict bracket after the deadline.
             if finished>deadline:reason='Anchor guard acquisition deadline exceeded';break

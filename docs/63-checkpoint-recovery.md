@@ -77,6 +77,12 @@ GameRecovery5冻结编译和13项检查通过，清单`manifest-game-recovery5.j
 
 ## 下一步
 
+### 首入等待的相机身份（PID4776）
+
+GameRecovery5保持二进制不变，只在只读anchor失败记录中保存非Pawn目标的完整对象/类身份与末次重读结果。实际`continuous-stereo-4776-20261015-191911-0fc4a160.*`，首次和末次拒绝均为同一`CameraActor_1`（类`CameraActor`），相机时间戳约8.85至13.73秒，`consistent_read=true`。因此该轮确实在等待独立CameraActor过渡，不能解释成左右眼重叠或GPU出图故障，也不能未经验证直接取消Pawn约束。
+
+启动平面已经提交，约36.275秒首次成功projection；进入持续双目后的短观察段13.247秒、1195次提交，最大间隔24.13毫秒。原生清理、42个入口恢复和XR退出通过，游戏正常关闭。该短观察不覆盖CG切换及完整稳定性验收。失败证据仅作诊断，未改变接纳条件；25项anchor及12项启动准备测试通过。
+
 继续第①项首次接入延迟/切换短缺帧，随后第②项手枪准星和第③项HUD。UI语义证书在同关卡换Pawn后重绑定是后续覆盖所需；CG/加载状态仍需专门显示策略。不放宽未知draw接纳或无限延长旧图保留。尚未证明VDXR原点事件在真实头显上恢复。
 
 参考：[OpenXR会话可见与输入焦点状态](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrSessionState.html)、[OpenXR参考空间变化事件](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrEventDataReferenceSpaceChangePending.html)、[DXGI ResizeBuffers资源释放要求](https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers)。
