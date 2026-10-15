@@ -5,8 +5,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
 #if !defined(GEARS_NATIVE_OWNED_PIXELS) || !GEARS_NATIVE_OWNED_PIXELS
  (void)input;return ERROR_NOT_SUPPORTED;
 #else
- if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>18)return 2;
- const bool xr_mode=mode>=10&&mode<=12;
+ if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>19)return 2;
+ const bool xr_mode=(mode>=10&&mode<=12)||mode==19;
+ if(mode==19&&!owned_scene_gpu::sustained)return ERROR_NOT_SUPPORTED;
  using Microsoft::WRL::ComPtr;
  using namespace owned_scene_gpu;
  if(enabled||tracker.snapshot().reset_calls)return 3;
@@ -25,7 +26,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  owned_original_clear=reinterpret_cast<OwnedClearFn>(lt[48]);original_create_rtv=reinterpret_cast<CreateRtvFn>(dt[20]);
  self_testing=true;recording=true;frame_link_diagnostics=true;enabled=true;
  if(FAILED(list->Close())||FAILED(hook_reset_list(list.Get(),allocator.Get(),nullptr)))return 6;
- if(mode>=13){
+ if(mode>=13&&mode<=18){
 #if defined(GEARS_NATIVE_OWNED_SCENE_PROBE) && GEARS_NATIVE_OWNED_SCENE_PROBE
   if(!continuous_probe)return ERROR_NOT_SUPPORTED;
   // Real WARP list lifetime, synthetic scene metadata. Exercise production
@@ -50,6 +51,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   if(frame_link.current(identity).identity)return 44;
   auto& t=gears_owned_scene_live::trial;
   if(!t.ready(100,200,1)||!t.select(300,2,200)||!t.construction(300,2,true,200)||!t.begin(300,2))return 45;
+  if(!native_owned_scene_consuming(reinterpret_cast<void*>(300),2)||
+     native_owned_scene_consuming(reinterpret_cast<void*>(301),2)||
+     native_owned_scene_consuming(reinterpret_cast<void*>(300),3))return 56;
   const auto ref=list_ref(identity);
   const auto raw_list=reinterpret_cast<uintptr_t>(observed);
   frame_target_stats.reset(raw_list);
@@ -136,6 +140,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   image_sample.head.orientation={};
   for(unsigned eye=0;eye<2;++eye){image_sample.eyes[eye].pose.orientation={};image_sample.eyes[eye].pose.position.x=eye?.032:-.032;image_sample.eyes[eye].fov={-.8,.7,.75,-.65};}
   consuming_frozen_frame.enabled=true;consuming_frozen_frame.id=consuming_frame_ticket=2;consuming_frozen_frame.sample=image_sample;
+  selected(2);built(2);began(2);
   retain_image();if(error||retained_images!=1)return 25;
   if(mode==11)++consuming_frozen_frame.sample.sequence;retain_image();
   if(mode==11)return error==17&&publication_failed()&&publication_count==0?0:24;
@@ -150,7 +155,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  if(mode==2)use(list.Get(),resource,true); // Copy-like state use must reject.
  if(mode==3)use(list.Get(),resource,false); // Later MRT write contaminates pair.
  if(mode==4)uncertain(); // Unknown descriptor/enhanced/bundle path.
- if(mode!=10)hook_resource_barrier(list.Get(),1,&b);
+ if(mode!=10&&mode!=19)hook_resource_barrier(list.Get(),1,&b);
  if(FAILED(list->Close()))return 12;
  ID3D12CommandList* members[]{list.Get()};auto token=prepare(q.Get(),1,members);
  q->ExecuteCommandLists(1,members);commit(token);
@@ -162,7 +167,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  if(done->GetCompletedValue()!=1)return 14;
  if(mode&&mode<5)return !readback.result().queued&&error==(mode==3?9u:8u)?0:15;
  poll();auto const& r=readback.result();
- const bool good=proof.state_certified&&proof.final_state==(mode==10?4u:128u)&&r.saved&&r.completed&&
+ const bool good=proof.state_certified&&proof.final_state==((mode==10||mode==19)?4u:128u)&&r.saved&&r.completed&&
   r.eyes[0].nonblack==2048ull*2048&&r.eyes[1].nonblack==2048ull*2048&&r.differing_pixels==0;
  if(xr_mode){
   if(mode==12){receiver.close();stereo_publisher.mark_stopped();stereo_publisher.close();
@@ -178,6 +183,43 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   const auto until=GetTickCount64()+5000;while(done->GetCompletedValue()<2&&GetTickCount64()<until)Sleep(1);
   if(done->GetCompletedValue()!=2)return 34;shared_pixels.poll();const auto& pixels=shared_pixels.result();
   const bool same_pixels=pixels.saved&&pixels.completed&&pixels.eyes[0].hash==r.eyes[0].hash&&pixels.eyes[1].hash==r.eyes[1].hash;
+  if(mode==19){
+   // Cross both fixed history capacities using real WARP clears, ordered
+   // submissions, shared image copies and receiver acknowledgements. Only
+   // paired scene-draw metadata is synthetic; no game/headset claim follows.
+   auto* first_cost=render_cost(2);UINT64 fence_value=2;
+   auto wait_gpu=[&](){
+    if(FAILED(q->Signal(done.Get(),++fence_value)))return false;
+    const auto until=GetTickCount64()+5000;
+    while(done->GetCompletedValue()<fence_value&&GetTickCount64()<until)Sleep(1);
+    return done->GetCompletedValue()==fence_value;
+   };
+   for(uint64_t iteration=0;iteration<256;++iteration){
+    const auto ticket=iteration+3;
+    if(FAILED(allocator->Reset())||FAILED(hook_reset_list(list.Get(),allocator.Get(),nullptr)))return 60;
+    consuming_frozen_frame.id=consuming_frame_ticket=ticket;
+    consuming_frozen_frame.sample.sequence=12+iteration;
+    selected(ticket);built(ticket);began(ticket);retain_image();
+    owned_hook_clear(list.Get(),handle,color,0,nullptr);
+    const auto ref=list_ref(canonical_identity(list.Get()));
+    tracker.draw_final(ref,ticket,0,{resource,4096,2048},{0,0,2048,2048});
+    tracker.draw_final(ref,ticket,1,{resource,4096,2048},{2048,0,2048,2048});
+    if(FAILED(list->Close()))return 61;
+    const auto token=prepare(q.Get(),1,members);q->ExecuteCommandLists(1,members);commit(token);
+    submitted(ticket);returned(ticket);destroyed(ticket);copy(true,ticket);
+    if(error||finished||consumed_count!=iteration+2||last_consumed_ticket!=ticket||!can_advance(ticket))return 62;
+    if(!wait_gpu())return 63;
+    try{if(!receiver.acquire(q.Get())||receiver.ticket().id!=ticket||
+        !gears_vr::stereo_same(receiver.ticket().sample,consuming_frozen_frame.sample))return 64;
+        receiver.acknowledge(q.Get());}catch(...){return 65;}
+    if(!wait_gpu())return 66;poll();
+   }
+   if(consumed_count!=257||publication_attempts!=257||published_count!=257||stored_frames!=frame_limit||
+      publication_count!=frame_limit||timing_count!=frame_limit||latest_completed_timing.ticket!=258||
+      latest_timing.ticket!=258||latest_cost_profiled||render_cost(258)||render_cost(2)!=first_cost||
+      !last_readback.result().saved||image_tickets.size()||!watching())return 67;
+   wchar_t checkpoint[MAX_PATH]{};swprintf_s(checkpoint,L"%s\\owned-scene-%lu-last.ppm",directory,GetCurrentProcessId());DeleteFileW(checkpoint);
+  }
   receiver.close();stereo_publisher.mark_stopped();const bool drained=stereo_publisher.drain(1000)&&stereo_publisher.close();
   DeleteFileW(shared_path);if(!same_pixels||!drained)return 35;
  }

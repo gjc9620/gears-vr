@@ -49,6 +49,10 @@ bool native_owned_scene_begin(void* renderer,uint64_t ticket){using namespace ge
  if(ok&&trial.renderer==reinterpret_cast<uintptr_t>(renderer)&&trial.ticket==ticket){owned_scene_gpu::began(ticket);owned_scene_gpu::activate();}return ok;}
 void native_owned_scene_copy(){using namespace gears_owned_scene_live;
  owned_scene_gpu::copy(healthy()&&trial.returned&&trial.destroyed&&trial.submitted_mask==3&&!trial.unknown_draws,trial.ticket);}
+bool native_owned_scene_consuming(void* renderer,uint64_t ticket){using namespace gears_owned_scene_live;
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ return trial.resource&&!trial.error&&trial.entered&&!trial.returned&&ticket&&
+  trial.ticket==ticket&&trial.renderer==reinterpret_cast<uintptr_t>(renderer);}
 void native_owned_scene_end(void* renderer,uint64_t ticket){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);trial.end(reinterpret_cast<uintptr_t>(renderer),ticket);
  if(trial.renderer==reinterpret_cast<uintptr_t>(renderer)&&trial.ticket==ticket)owned_scene_gpu::returned(ticket);native_owned_scene_copy();}
@@ -95,6 +99,7 @@ uintptr_t native_owned_scene_candidate(){return 0;}
 bool native_owned_scene_select(void*,uint64_t,uintptr_t){return false;}
 bool native_owned_scene_built(void*,uint64_t,bool){return true;}
 bool native_owned_scene_begin(void*,uint64_t){return true;}
+bool native_owned_scene_consuming(void*,uint64_t){return false;}
 void native_owned_scene_end(void*,uint64_t){}
 void native_owned_scene_destroyed(void*){}
 void native_owned_scene_draw(ID3D12GraphicsCommandList*,gears_viewport::TargetDraw const&,uintptr_t,unsigned,unsigned,unsigned){}

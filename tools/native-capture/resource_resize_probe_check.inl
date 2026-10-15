@@ -29,12 +29,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureResizeProbeCheck(void*
  // The standalone fixture has no game globals. Supply a readable zero mode
  // at the same relative address without pointing at or changing a game object.
  uint32_t fixture_mode{};base=reinterpret_cast<uintptr_t>(&fixture_mode)-globals[0];
- consuming_renderer=object.data();consuming_frame_ticket=1;gears_render_cost::Record cost{};
- {gears_render_cost::Window owned(&cost);
+ consuming_renderer=object.data();consuming_frame_ticket=1;consuming_owned_scene=true;
+ {gears_render_cost::Window no_profile(nullptr); // Profiling exhausted; ownership remains explicit.
   auto result=fake_resource_resize(object.data(),4096,2048);
   if(result!=(0x97531fed00000000ull^(uint64_t(4096)<<32)^2160)||dims[0]!=4096||dims[1]!=2160)error=9;
  }
- consuming_renderer=nullptr;consuming_frame_ticket=0;
+ consuming_renderer=nullptr;consuming_frame_ticket=0;consuming_owned_scene=false;
  if(fake_resource_resize(object.data(),3840,2160)!=(0x97531fed00000000ull^(uint64_t(4096)<<32)^2160))error=10;
  expected_calls+=2;
 #endif

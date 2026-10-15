@@ -137,7 +137,7 @@ void __fastcall hook_first_view_mask(float value){
         gears_view_union_mask::Decision union_decision;
         bool owned_height_padding=false;
 #if defined(GEARS_NATIVE_RESIZE_REUSE) && GEARS_NATIVE_RESIZE_REUSE
-        owned_height_padding=gears_render_cost::current&&consuming_frame_ticket&&consuming_renderer;
+        owned_height_padding=consuming_owned_scene&&consuming_frame_ticket&&consuming_renderer;
 #endif
         {std::lock_guard<std::mutex> lock(view_union_mask_mutex);union_decision=gears_view_union_mask::decide_union(value,gate,sample,now(),qpc_frequency,view_union_mask_origin,owned_height_padding);}
         original_first_view_mask(union_decision.forwarded);

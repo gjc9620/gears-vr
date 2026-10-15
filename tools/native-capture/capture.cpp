@@ -64,6 +64,7 @@ void* consume_target{};void* destroy_renderer_target{};
 ConsumeFn original_prepare{};
 void* prepare_target{};
 thread_local void* consuming_renderer{};
+thread_local bool consuming_owned_scene{};
 bool family_diagnostics{};
 bool shadow_view_enabled{};
 std::atomic<unsigned> shadow_attempted{0};
@@ -1025,6 +1026,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         stereo_publish_counts.drain_ok.load(),stereo_publish_counts.close_ok.load(),session_cleanup_timeout.load()?1:0,
         resources_retained?1:0,entries_restored?1:0,session_native_services.load(),session_cancelled_builds.load(),stereo_publisher.frames.load(),simulator_operator);
     fprintf(output,"profile_consume_thread=%lu ",gears_render_cost::first_thread.load(std::memory_order_relaxed));
+    owned_scene_gpu::print_progress(output);
     fprintf(output,"stop_recorded=%u stop_qpc=%lld stop_qpc_frequency=%lld stop_thread=%lu stop_source_file=%s stop_source_line=%u ",
         stop_recorded?1:0,stop_recorded?session_stop_qpc.load():0,qpc_frequency,
         stop_recorded?session_stop_thread.load():0,stop_recorded?session_stop_source_file.load():"none",
@@ -1636,9 +1638,12 @@ void __fastcall hook_consume(void* renderer){
        !native_owned_scene_tick(consume_frame.id)))
         request_session_stop(SessionStop::proof_failure);
     if(!native_owned_scene_begin(renderer,consume_frame.id))request_session_stop(SessionStop::proof_failure);
+    const bool saved_owned_scene=consuming_owned_scene;
+    consuming_owned_scene=native_owned_scene_consuming(renderer,consume_frame.id);
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
     {gears_render_cost::Window cost(owned_scene_gpu::render_cost(consume_frame.id));original_consume(renderer);}
     native_owned_scene_end(renderer,consume_frame.id); // Identity value only; original may have destroyed it.
+    consuming_owned_scene=saved_owned_scene;
       trial_draw_scope=saved_draw_scope;
     consuming_renderer=saved;
     consuming_frame_ticket=saved_ticket;

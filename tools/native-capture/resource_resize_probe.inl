@@ -28,7 +28,7 @@ uintptr_t __fastcall hook(void* object,uint32_t width,uint32_t height){
  // Even overflow isolates nested calls from their parent's API counters.
  gears_resize_probe::Window window(row);
  const auto before=(row||reuse)?snapshot(object):gears_resize_probe::Snapshot{};
- const auto thread=GetCurrentThreadId();const bool owned=gears_render_cost::current&&consuming_frame_ticket&&consuming_renderer;
+ const auto thread=GetCurrentThreadId();const bool owned=consuming_owned_scene&&consuming_frame_ticket&&consuming_renderer;
  auto forward_width=width,forward_height=height;unsigned policy{};
 #if defined(GEARS_NATIVE_RESIZE_REUSE) && GEARS_NATIVE_RESIZE_REUSE
  policy=capacity.choose(reinterpret_cast<uintptr_t>(object),thread,owned,before,forward_width,forward_height);

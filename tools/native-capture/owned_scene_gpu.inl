@@ -25,23 +25,38 @@ constexpr bool continuous_probe=true;
 constexpr bool continuous_probe=false;
 #endif
 constexpr unsigned frame_limit=owned_xr_probe?120:16;
+#if defined(GEARS_NATIVE_OWNED_SUSTAINED) && GEARS_NATIVE_OWNED_SUSTAINED
+constexpr bool sustained=true;
+#else
+constexpr bool sustained=false;
+#endif
 owned_scene_readback::Probe last_readback;
+owned_scene_readback::Probe late_readback;
+constexpr uint64_t late_sample_frame=1800;
+uint64_t late_sample_ticket{};
 struct Frame {uint64_t ticket{};unsigned state{};bool copied{};};
-std::array<Frame,frame_limit> consumed_frames{};unsigned consumed_count{};
+std::array<Frame,frame_limit> consumed_frames{};unsigned stored_frames{};
+uint64_t consumed_count{},last_consumed_ticket{};
 gears_vr::StereoTicketStore image_tickets; // Independent of Present's legacy store and retirement.
 struct Publication {uint64_t ticket{},pose{},session{},serial{};unsigned reason{};};
-std::array<Publication,frame_limit> publications{};unsigned publication_count{},published_count{};
+std::array<Publication,frame_limit> publications{};unsigned publication_count{};
+uint64_t publication_attempts{},published_count{};Publication latest_publication{};
 uint64_t retained_images{},duplicate_images{};
 struct Timing {uint64_t ticket{};int64_t selected{},built{},begin{},draw[2]{},submitted{},returned{},destroyed{},ready{},publish_begin{},publish_end{},received{};
  gears_render_cost::Record cost{};};
 std::array<Timing,frame_limit> timings{};unsigned timing_count{};
-Timing* timing(uint64_t ticket){for(unsigned i=0;i<timing_count;++i)if(timings[i].ticket==ticket)return &timings[i];return nullptr;}
+Timing latest_timing{},latest_completed_timing{};
+bool latest_cost_profiled{};
+Timing* timing(uint64_t ticket){for(unsigned i=0;i<timing_count;++i)if(timings[i].ticket==ticket)return &timings[i];
+ return ticket&&latest_timing.ticket==ticket?&latest_timing:nullptr;}
 gears_render_cost::Record* render_cost(uint64_t ticket){
 #if defined(GEARS_NATIVE_RENDER_COST_PROBE) && GEARS_NATIVE_RENDER_COST_PROBE
  // The game builder appends timings concurrently with RHI consumption. Only
  // lookup needs the lock: array storage stays fixed through callback drain.
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
- auto t=timing(ticket);return t?&t->cost:nullptr;
+ // Only immutable-address, never-recycled first-window records are borrowed by
+ // Window/Scope. The rolling latest timestamp record is never exposed to them.
+ auto t=timing(ticket);return t&&t!=&latest_timing?&t->cost:nullptr;
 #else
  return nullptr;
 #endif
@@ -49,6 +64,7 @@ gears_render_cost::Record* render_cost(uint64_t ticket){
 void selected(uint64_t ticket){
  if(!owned_xr_probe||!stereo_gpu_publish)return;
  if(timing_count<timings.size())timings[timing_count++]={ticket,gears_vr::monotonic_ns()};
+ else if(sustained)latest_timing={ticket,gears_vr::monotonic_ns()};
 }
 void began(uint64_t ticket){if(auto t=timing(ticket))t->begin=gears_vr::monotonic_ns();}
 void built(uint64_t ticket){if(auto t=timing(ticket))t->built=gears_vr::monotonic_ns();}
@@ -170,7 +186,8 @@ bool publish_image(){
     proof.target.resource!=resource||proof.final_state!=creation.state){fault(18);return false;}
  for(unsigned eye=0;eye<2;++eye){auto r=proof.eyes[eye];
   image.rect[eye]={static_cast<int>(r.x),static_cast<int>(r.y),static_cast<int>(r.width),static_cast<int>(r.height)};}
- if(!gears_vr::stereo_image_ticket_valid(image,4096,2048,simulator_operator)||publication_count==publications.size()){
+ if(!gears_vr::stereo_image_ticket_valid(image,4096,2048,simulator_operator)||
+    (!sustained&&publication_count==publications.size())||publication_attempts==UINT64_MAX){
   fault(18);return false;
  }
  gears_vr::GpuCaptureTrace trace{};bool published=false;
@@ -181,8 +198,10 @@ bool publish_image(){
  else if(deadline&&now()>=deadline)trace.reason=gears_vr::GpuCaptureReason::native_deadline;
  else {StereoPublishBypass bypass;published=stereo_publisher.capture_resource(texture,generation,
        D3D12_RESOURCE_STATES(proof.final_state),image,&trace);}
- if(stamp)stamp->publish_end=gears_vr::monotonic_ns();
- publications[publication_count++]={image.id,image.sample.sequence,image.sample.session,trace.serial_after,unsigned(trace.reason)};
+ if(stamp){stamp->publish_end=gears_vr::monotonic_ns();latest_completed_timing=*stamp;latest_cost_profiled=stamp!=&latest_timing;}
+ latest_publication={image.id,image.sample.sequence,image.sample.session,trace.serial_after,unsigned(trace.reason)};
+ ++publication_attempts;
+ if(publication_count<publications.size())publications[publication_count++]=latest_publication;
  if(published){++published_count;stereo_publish_counts.last_ticket=image.id;}
  else {
   ++stereo_publish_counts.capture_skipped;
@@ -269,34 +288,43 @@ void commit(const Submission& receipt){
 }
 void copy(bool ready,uint64_t ticket){
  if(!watching()||!birth_ok||!ready||(!continuous_probe&&sealed)||
-    (continuous_probe&&consumed_count&&ticket==consumed_frames[consumed_count-1].ticket))return;
+    (continuous_probe&&consumed_count&&ticket==last_consumed_ticket))return;
  sealed=true;
  if(auto t=timing(ticket))t->ready=gears_vr::monotonic_ns();
  proof=continuous_probe?tracker.consume_owned_output(resource,generation,canonical_identity(queue),ticket):
   tracker.seal_owned_output(resource,generation,canonical_identity(queue));
  if(!proof.linked||!proof.state_certified||proof.ticket!=ticket){fault(9);return;}
  const bool last=continuous_probe&&consumed_count+1==frame_limit;
- const bool sample=!continuous_probe||!consumed_count||last;
+ const bool late=sustained&&consumed_count+1==late_sample_frame;
+ const bool sample=!continuous_probe||!consumed_count||last||late;
  if(sample){
   wchar_t path[MAX_PATH]{};
-  if(last)swprintf_s(path,L"%s\\owned-scene-%lu-last.ppm",directory,GetCurrentProcessId());
+  if(late)swprintf_s(path,L"%s\\owned-scene-%lu-late.ppm",directory,GetCurrentProcessId());
+  else if(last)swprintf_s(path,L"%s\\owned-scene-%lu-last.ppm",directory,GetCurrentProcessId());
   else swprintf_s(path,L"%s\\owned-scene-%lu.ppm",directory,GetCurrentProcessId());
   StereoPublishBypass bypass;
-  if(!(last?last_readback:readback).queue(texture,queue,D3D12_RESOURCE_STATES(proof.final_state),true,path)){fault(10);return;}
+  if(!(late?late_readback:last?last_readback:readback).queue(texture,queue,D3D12_RESOURCE_STATES(proof.final_state),true,path)){fault(10);return;}
+  if(late)late_sample_ticket=ticket;
  }
  if(!publish_image())return;
  if(continuous_probe){
-  if(consumed_count==consumed_frames.size()){fault(11);return;}
-  consumed_frames[consumed_count++]={ticket,proof.final_state,sample};
+  if((!sustained&&stored_frames==consumed_frames.size())||consumed_count==UINT64_MAX){fault(11);return;}
+  if(stored_frames<consumed_frames.size())consumed_frames[stored_frames++]={ticket,proof.final_state,sample};
+  ++consumed_count;last_consumed_ticket=ticket;
  }
- finished=!continuous_probe||last;
+ finished=!continuous_probe||(!sustained&&last);
 }
-void poll(){if(enabled){readback.poll();last_readback.poll();}}
+void poll(){if(enabled){readback.poll();last_readback.poll();late_readback.poll();}}
 bool can_advance(uint64_t ticket){return continuous_probe&&watching()&&birth_ok&&consumed_count&&
- consumed_count<frame_limit&&consumed_frames[consumed_count-1].ticket==ticket&&tracker.owned_status().certified;}
+ (sustained||consumed_count<frame_limit)&&last_consumed_ticket==ticket&&tracker.owned_status().certified;}
 bool state_certified(){return proof.state_certified&&tracker.owned_status().certified;}
 bool pixels_read_back(){return readback.result().completed&&readback.result().saved;}
 bool publication_failed(){return owned_xr_probe&&stereo_gpu_publish&&error;}
+void print_progress(FILE* file){
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ fprintf(file,"owned_sustained=%u owned_consumed=%llu owned_last_ticket=%llu owned_published=%llu owned_error=%u owned_stored_frames=%u ",
+  sustained,consumed_count,last_consumed_ticket,published_count,error,stored_frames);
+}
 void print(FILE* file){
  auto const& r=readback.result();const auto s=tracker.snapshot();
  fprintf(file,"native_owned_gpu enabled=%u creation_count=%u api=%u initial_state=%u creation_uses=%u prebirth_faults=%u birth_attempts=%u birth_ok=%u barriers=%u unsupported=%u error=%u sealed=%u rejection=%u state_certified=%u final_state=%u copied=%u completed=%u saved=%u read_error=%u read_hr=%08lx resets=%llu executes=%llu unknown_batches=%llu capacity=%u\n",
@@ -318,13 +346,22 @@ void print(FILE* file){
   for(unsigned i=0;i<f.stack_count;++i)fprintf(file,"native_owned_execute_stack index=%u address=%p\n",i,f.stack[i]);
  }
  if(continuous_probe){const auto& last=last_readback.result();
-  fprintf(file,"native_owned_continuous limit=%u consumed=%u finished=%u last_completed=%u last_saved=%u last_error=%u last_left_nonblack=%llu last_right_nonblack=%llu last_different=%llu\n",
-   frame_limit,consumed_count,finished,last.completed,last.saved,unsigned(last.error),last.eyes[0].nonblack,last.eyes[1].nonblack,last.differing_pixels);
-  for(unsigned i=0;i<consumed_count;++i)fprintf(file,"native_owned_frame index=%u ticket=%llu state=%u sampled=%u\n",i,consumed_frames[i].ticket,consumed_frames[i].state,consumed_frames[i].copied);
+  fprintf(file,"native_owned_continuous limit=%u consumed=%llu finished=%u last_completed=%u last_saved=%u last_error=%u last_left_nonblack=%llu last_right_nonblack=%llu last_different=%llu sustained=%u stored_frames=%u last_ticket=%llu checkpoint_frame=%u\n",
+   sustained?0:frame_limit,consumed_count,finished,last.completed,last.saved,unsigned(last.error),last.eyes[0].nonblack,last.eyes[1].nonblack,last.differing_pixels,
+   sustained,stored_frames,last_consumed_ticket,frame_limit);
+  const auto& late=late_readback.result();
+  fprintf(file,"native_owned_late ticket=%llu sample_frame=%llu completed=%u saved=%u error=%u left_nonblack=%llu right_nonblack=%llu\n",
+   late_sample_ticket,late_sample_frame,late.completed,late.saved,unsigned(late.error),late.eyes[0].nonblack,late.eyes[1].nonblack);
+  for(unsigned i=0;i<stored_frames;++i)fprintf(file,"native_owned_frame index=%u ticket=%llu state=%u sampled=%u\n",i,consumed_frames[i].ticket,consumed_frames[i].state,consumed_frames[i].copied);
  }
  if(owned_xr_probe){
-  fprintf(file,"native_owned_xr enabled=%u attempts=%u published=%u retained=%llu duplicates=%llu ticket_store_size=%zu retired_ticket=%llu\n",
-   stereo_gpu_publish,publication_count,published_count,retained_images,duplicate_images,image_tickets.size(),image_tickets.retired_id());
+  fprintf(file,"native_owned_xr enabled=%u attempts=%llu published=%llu retained=%llu duplicates=%llu ticket_store_size=%zu retired_ticket=%llu stored_publications=%u\n",
+   stereo_gpu_publish,publication_attempts,published_count,retained_images,duplicate_images,image_tickets.size(),image_tickets.retired_id(),publication_count);
+  const auto& latest=latest_completed_timing;
+  fprintf(file,"native_owned_latest ticket=%llu pose=%llu reason=%s received_ns=%lld selected_ns=%lld begin_ns=%lld ready_ns=%lld publish_begin_ns=%lld publish_end_ns=%lld cost_profiled=%u\n",
+   latest_publication.ticket,latest_publication.pose,gears_vr::gpu_capture_reason_name(gears_vr::GpuCaptureReason(latest_publication.reason)),
+   latest.received,latest.selected,latest.begin,latest.ready,latest.publish_begin,latest.publish_end,
+   latest_cost_profiled?1:0);
   for(unsigned i=0;i<publication_count;++i){auto const& p=publications[i];
    fprintf(file,"native_owned_publication ticket=%llu pose=%llu session=%llu serial=%llu reason=%s\n",p.ticket,p.pose,p.session,p.serial,
     gears_vr::gpu_capture_reason_name(gears_vr::GpuCaptureReason(p.reason)));}
@@ -371,6 +408,7 @@ void poll(){}
 bool state_certified(){return false;}
 bool pixels_read_back(){return false;}
 bool publication_failed(){return false;}
+void print_progress(FILE*){}
 void print(FILE*){}
 }
 #endif
