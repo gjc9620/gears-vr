@@ -897,11 +897,13 @@ void record_final_eye_failure(unsigned stage,unsigned reason,uintptr_t caller=0,
     auto& g=row.geometry;g.stage=stage;g.reason=reason;g.quad=final_eye_candidate;g.draw_caller=caller;
     g.resource=binding.target.resource;g.target_width=binding.target.width;g.target_height=binding.target.height;
     g.targets=binding.targets;g.mip=binding.target.mip;g.format=binding.target.format;
+    g.provenance=frame_target_stats.binding_provenance(list);
     g.eye_valid=final_eye.valid;g.eye=final_eye.eye;g.eye_width=final_eye.width;g.eye_height=final_eye.height;
     g.eye_rect={final_eye.rect.x,final_eye.rect.y,final_eye.rect.width,final_eye.rect.height};
     row.first_qpc=now();row.list=list;row.list_generation=ref.generation;row.inventory_qpc=final_eye_inventory.qpc;
     row.present_width=final_eye_inventory.width;row.present_height=final_eye_inventory.height;
     row.present_count=final_eye_inventory.count;row.present_valid=final_eye_inventory.valid;
+    row.present_resources=final_eye_inventory.resources;
     final_eye_failures.record(row);
 }
 struct FrameWorkSample {
@@ -1389,7 +1391,13 @@ void print_frame_link(FILE* status) {
             static_cast<unsigned long long>(g.quad.caller),g.quad.ticket,r.last_ticket,g.quad.rect[0],g.quad.rect[1],g.quad.rect[2],g.quad.rect[3],g.quad.width,g.quad.height,
             static_cast<unsigned long long>(g.draw_caller),static_cast<unsigned long long>(r.list),r.list_generation,static_cast<unsigned long long>(g.resource),g.target_width,g.target_height,
             g.targets,g.mip,g.format,g.eye_valid?1u:0u,g.eye,g.eye_width,g.eye_height,g.eye_rect[0],g.eye_rect[1],g.eye_rect[2],g.eye_rect[3],
-            r.present_width,r.present_height,r.present_count,r.present_valid?1u:0u,r.inventory_qpc);}
+            r.present_width,r.present_height,r.present_count,r.present_valid?1u:0u,r.inventory_qpc);
+        const auto& p=g.provenance;const auto& t=p.trace;
+        fprintf(status,"final_eye_descriptor row=%u bind_handle=%llx write_serial=%llu origin_create_serial=%llu create_epoch=%llu last_write_epoch=%llu copy_source_handle=%llx source_write_serial=%llu creation_live=%llx descriptor_source=om_bind_snapshot desc_source=tracked_create_not_fresh_query descriptor_epoch_source=cached_present_inventory_may_lag_resize coalescing=create_origin_not_copy_serial reason512_means=not_current_known_buffer present_resources=",
+            i,static_cast<unsigned long long>(p.handle),t.write_serial,t.origin_create_serial,t.create_epoch,t.last_write_epoch,
+            static_cast<unsigned long long>(t.copy_source_handle),t.source_write_serial,static_cast<unsigned long long>(t.creation_live));
+        for(unsigned j=0;j<r.present_resources.size();++j)fprintf(status,"%s%llx",j?",":"",static_cast<unsigned long long>(r.present_resources[j]));
+        fprintf(status,"\n");}
     if(stereo_gpu_publish)fprintf(status,"stereo_gpu_publish enabled=1 state=%u published=%u busy=%u rate_limited=%u bind_requests=%llu prepare_ok=%llu prepare_failed=%llu ticket_retains=%llu ticket_duplicates=%llu ticket_rejected=%llu ticket_missing=%llu rect_rejected=%llu capture_attempts=%llu capture_skipped=%llu stopped=%u drain_ok=%u close_ok=%u retired_id=%llu pending_tickets=%zu last_ticket=%llu simulator_operator=%d\n",
         stereo_publisher.state.load(),stereo_publisher.frames.load(),stereo_publisher.busy.load(),stereo_publisher.rate_limited.load(),stereo_publish_counts.bind_requests.load(),
         stereo_publish_counts.prepare_ok.load(),stereo_publish_counts.prepare_failed.load(),stereo_publish_counts.ticket_retains.load(),
@@ -2932,6 +2940,8 @@ void STDMETHODCALLTYPE hook_create_rtv(ID3D12Device* device,ID3D12Resource* reso
     Scope scope;auto frame_guard=frame_lock();original_create_rtv(device,resource,view,handle);
     if(recording.load()||prime_recording.load()){
         gears_viewport::Target target{};D3D12_RENDER_TARGET_VIEW_DESC description{};
+        std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+        const auto descriptor_epoch=final_eye_inventory.epoch;
         bool valid=!view||safe_copy(&description,view,sizeof(description));
         unsigned mip=0;
         if(view&&valid)switch(description.ViewDimension){
@@ -2947,11 +2957,11 @@ void STDMETHODCALLTYPE hook_create_rtv(ID3D12Device* device,ID3D12Resource* reso
             if(desc.Dimension!=D3D12_RESOURCE_DIMENSION_BUFFER&&mip<desc.MipLevels&&mip<32)
                 target={reinterpret_cast<uintptr_t>(resource),std::max<uint64_t>(1,desc.Width>>mip),
                     std::max<UINT>(1,desc.Height>>mip),static_cast<unsigned>(view?description.Format:desc.Format),mip};}
-        viewport_stats.create(handle.ptr,target);
+        viewport_stats.create(handle.ptr,target,descriptor_epoch,reinterpret_cast<uintptr_t>(resource));
         if(recording.load()||prime_recording.load()){auto canonical_target=target;
             canonical_target.resource=target.resource?canonical_identity(resource):0;
-            frame_target_stats.create(handle.ptr,canonical_target);
-            if(owned_bindings_enabled)owned_target_stats.create(handle.ptr,canonical_target);}
+            frame_target_stats.create(handle.ptr,canonical_target,descriptor_epoch,reinterpret_cast<uintptr_t>(resource));
+            if(owned_bindings_enabled)owned_target_stats.create(handle.ptr,canonical_target,descriptor_epoch,reinterpret_cast<uintptr_t>(resource));}
     }
 }
 bool flatten_descriptors(UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* starts,const UINT* sizes,UINT stride,std::array<uintptr_t,128>& output,unsigned& total) {
@@ -2966,19 +2976,23 @@ void STDMETHODCALLTYPE hook_copy_descriptors(ID3D12Device* device,UINT destinati
     UINT sources,const D3D12_CPU_DESCRIPTOR_HANDLE* source_starts,const UINT* source_sizes,D3D12_DESCRIPTOR_HEAP_TYPE type) {
     Scope scope;auto frame_guard=frame_lock();original_copy_descriptors(device,destinations,destination_starts,destination_sizes,sources,source_starts,source_sizes,type);
     if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> dest{},src{};unsigned dc{},sc{};
+        std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+        const auto descriptor_epoch=final_eye_inventory.epoch;
         UINT stride=device->GetDescriptorHandleIncrementSize(type);
         if(flatten_descriptors(destinations,destination_starts,destination_sizes,stride,dest,dc)&&
-           flatten_descriptors(sources,source_starts,source_sizes,stride,src,sc)&&dc==sc){viewport_stats.copy(dest.data(),src.data(),dc);frame_target_stats.copy(dest.data(),src.data(),dc);
-            if(owned_bindings_enabled)owned_target_stats.copy(dest.data(),src.data(),dc);}
+           flatten_descriptors(sources,source_starts,source_sizes,stride,src,sc)&&dc==sc){viewport_stats.copy(dest.data(),src.data(),dc,descriptor_epoch);frame_target_stats.copy(dest.data(),src.data(),dc,descriptor_epoch);
+            if(owned_bindings_enabled)owned_target_stats.copy(dest.data(),src.data(),dc,descriptor_epoch);}
         else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(owned_bindings_enabled)owned_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
 }
 void STDMETHODCALLTYPE hook_copy_simple(ID3D12Device* device,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dest,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type) {
     Scope scope;auto frame_guard=frame_lock();original_copy_simple(device,count,dest,src,type);
     if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> destinations{},sources{};unsigned dc{},sc{};
+        std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+        const auto descriptor_epoch=final_eye_inventory.epoch;
         UINT stride=device->GetDescriptorHandleIncrementSize(type);
         if(flatten_descriptors(1,&dest,&count,stride,destinations,dc)&&flatten_descriptors(1,&src,&count,stride,sources,sc))
-            {viewport_stats.copy(destinations.data(),sources.data(),dc);frame_target_stats.copy(destinations.data(),sources.data(),dc);
-                if(owned_bindings_enabled)owned_target_stats.copy(destinations.data(),sources.data(),dc);}
+            {viewport_stats.copy(destinations.data(),sources.data(),dc,descriptor_epoch);frame_target_stats.copy(destinations.data(),sources.data(),dc,descriptor_epoch);
+                if(owned_bindings_enabled)owned_target_stats.copy(destinations.data(),sources.data(),dc,descriptor_epoch);}
         else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(owned_bindings_enabled)owned_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
 }
 bool viewport_hooks(ID3D12Device* device) {
@@ -3500,6 +3514,7 @@ DWORD WINAPI worker(void*) {
 #if defined(GEARS_GAME_RESOLUTION) && GEARS_GAME_RESOLUTION
     fprintf(status,"game_resolution_resize calls=%u completed=%u failed=%u rejected=%u drain_failed=%u\n",
         game_resize::calls.load(),game_resize::completed.load(),game_resize::failed.load(),game_resize::rejected.load(),game_resize::drain_failed.load());
+    game_resize::print(status);
 #endif
     print_graphics_lock_observer(status,disabled==MH_OK);
     print_origin_trial(status,disabled==MH_OK);

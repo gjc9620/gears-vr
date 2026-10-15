@@ -19,6 +19,21 @@ struct Target {
     bool operator==(const Target& b) const {return resource==b.resource&&width==b.width&&height==b.height&&format==b.format&&mip==b.mip;}
 };
 struct TargetDraw {unsigned viewport{},targets{};Target target{};uint64_t calls{};};
+// Orthogonal CPU descriptor provenance. These fields never affect Target
+// equality, draw classification or acceptance.
+struct DescriptorTrace {
+    uint64_t write_serial{},origin_create_serial{},create_epoch{},last_write_epoch{};
+    uintptr_t copy_source_handle{},creation_live{};uint64_t source_write_serial{};
+    bool operator==(DescriptorTrace const& b)const{
+        return write_serial==b.write_serial&&origin_create_serial==b.origin_create_serial&&create_epoch==b.create_epoch&&
+            last_write_epoch==b.last_write_epoch&&copy_source_handle==b.copy_source_handle&&creation_live==b.creation_live&&
+            source_write_serial==b.source_write_serial;
+    }
+};
+struct BindingProvenance {
+    uintptr_t handle{};DescriptorTrace trace{};
+    bool operator==(BindingProvenance const& b)const{return handle==b.handle&&trace==b.trace;}
+};
 struct DrawState {bool tracked{};Rect viewport{},scissor{};unsigned viewport_count{},scissor_count{};
     bool depth_known{};float min_depth{},max_depth{};};
 struct OverlayPlan {bool valid{};std::array<Rect,2> viewports{},scissors{};};
@@ -88,13 +103,14 @@ struct Snapshot {
 };
 class Tracker {
     struct Slot {uintptr_t list{};unsigned viewport{},scissor{};Rect viewport_rect{},scissor_rect{};Target target{};unsigned targets{},viewport_count{},scissor_count{};
-        bool depth_known{};float min_depth{},max_depth{};};
-    struct Descriptor {uintptr_t handle{};Target target{};};
+        bool depth_known{};float min_depth{},max_depth{};BindingProvenance provenance{};};
+    struct Descriptor {uintptr_t handle{};Target target{};DescriptorTrace trace{};};
     std::array<Slot,256> slots{};
     std::array<Descriptor,4096> descriptors{};
     Snapshot data{};
     uint64_t cleared_binding_overflow{};
     bool descriptor_capacity_lost_{};
+    uint64_t descriptor_write_serial_{};
     const bool strict_lifecycle_;
     std::mutex mutex;
     Descriptor* descriptor(uintptr_t handle,bool insert) {
@@ -105,7 +121,7 @@ class Tracker {
             if(entry.handle==handle)return &entry;if(!entry.handle&&!empty)empty=&entry;}
         if(!insert)return nullptr;
         if(!empty){empty=&descriptors[bucket];++data.descriptor_evictions;descriptor_capacity_lost_=true;}
-        *empty={handle,{}};return empty;
+        *empty={handle,{},{}};return empty;
     }
     Slot* find(uintptr_t list,bool insert) {
         if(!list)return nullptr;
@@ -131,29 +147,36 @@ public:
     // recover evicted startup metadata merely by clearing command-list bindings.
     bool descriptor_capacity_lost(){std::lock_guard<std::mutex> lock(mutex);return descriptor_capacity_lost_;}
     bool reset(uintptr_t list) {std::lock_guard<std::mutex> lock(mutex);++data.resets;
-        if(auto slot=find(list,true)){slot->viewport=slot->scissor=unknown;slot->viewport_rect=slot->scissor_rect={};slot->target={};slot->targets=slot->viewport_count=slot->scissor_count=0;slot->depth_known=false;slot->min_depth=slot->max_depth=0;return true;}return false;}
-    void create(uintptr_t handle,Target target) {std::lock_guard<std::mutex> lock(mutex);++data.descriptor_creates;
-        if(auto entry=descriptor(handle,true))entry->target=target;}
+        if(auto slot=find(list,true)){slot->viewport=slot->scissor=unknown;slot->viewport_rect=slot->scissor_rect={};slot->target={};slot->provenance={};slot->targets=slot->viewport_count=slot->scissor_count=0;slot->depth_known=false;slot->min_depth=slot->max_depth=0;return true;}return false;}
+    void create(uintptr_t handle,Target target,uint64_t epoch=0,uintptr_t creation_live=0) {
+        std::lock_guard<std::mutex> lock(mutex);++data.descriptor_creates;const auto serial=++descriptor_write_serial_;
+        if(auto entry=descriptor(handle,true)){entry->target=target;entry->trace={serial,serial,epoch,epoch,0,creation_live,0};}}
     // Snapshot all sources before assigning destinations. Unknown sources clear old metadata.
-    void copy(const uintptr_t* destinations,const uintptr_t* sources,unsigned count) {
-        std::lock_guard<std::mutex> lock(mutex);std::array<Target,128> values{};
+    void copy(const uintptr_t* destinations,const uintptr_t* sources,unsigned count,uint64_t epoch=0) {
+        std::lock_guard<std::mutex> lock(mutex);std::array<Descriptor,128> values{};
         if(count>values.size()){++data.copy_rejected;for(auto& entry:descriptors)entry={};return;}
         data.descriptor_copies+=count;
-        for(unsigned i=0;i<count;++i)if(auto entry=descriptor(sources[i],false))values[i]=entry->target;
-        for(unsigned i=0;i<count;++i)if(auto entry=descriptor(destinations[i],true))entry->target=values[i];
+        for(unsigned i=0;i<count;++i)if(auto entry=descriptor(sources[i],false))values[i]=*entry;
+        for(unsigned i=0;i<count;++i){const auto serial=++descriptor_write_serial_;
+            if(auto entry=descriptor(destinations[i],true)){entry->target=values[i].target;entry->trace={};
+                if(values[i].trace.write_serial){entry->trace=values[i].trace;entry->trace.write_serial=serial;
+                    entry->trace.last_write_epoch=epoch;entry->trace.copy_source_handle=sources[i];
+                    entry->trace.source_write_serial=values[i].trace.write_serial;}}}
     }
     void reject_copy(){std::lock_guard<std::mutex> lock(mutex);++data.copy_rejected;for(auto& entry:descriptors)entry={};}
     bool bind(uintptr_t list,unsigned count,uintptr_t first) {std::lock_guard<std::mutex> lock(mutex);++data.target_binds;
-        if(auto slot=find(list,!strict_lifecycle_)){slot->targets=count;slot->target={};
+        if(auto slot=find(list,!strict_lifecycle_)){slot->targets=count;slot->target={};slot->provenance={count?first:0,{}};
             // OMSetRenderTargets consumes CPU RTV descriptors at the bind call.
             // Later descriptor overwrites do not change this recorded binding.
-            if(count)if(auto entry=descriptor(first,false))slot->target=entry->target;
+            if(count)if(auto entry=descriptor(first,false)){slot->target=entry->target;slot->provenance.trace=entry->trace;}
             return true;}return false;}
     Target lookup(uintptr_t handle){std::lock_guard<std::mutex> lock(mutex);
         auto entry=descriptor(handle,false);return entry?entry->target:Target{};}
     TargetDraw binding(uintptr_t list){std::lock_guard<std::mutex> lock(mutex);
         auto slot=find(list,false);if(!slot)return {};
         return {slot->viewport,slot->targets,slot->target,0};}
+    BindingProvenance binding_provenance(uintptr_t list){std::lock_guard<std::mutex> lock(mutex);
+        auto slot=find(list,false);return slot?slot->provenance:BindingProvenance{};}
     DrawState draw_state(uintptr_t list){std::lock_guard<std::mutex> lock(mutex);auto slot=find(list,false);
         return slot?DrawState{true,slot->viewport_rect,slot->scissor_rect,slot->viewport_count,slot->scissor_count,slot->depth_known,slot->min_depth,slot->max_depth}:DrawState{};}
     bool set(uintptr_t list,unsigned category,bool scissor,Rect rect={},unsigned count=1,bool depth_known=false,float min_depth=0,float max_depth=0) {std::lock_guard<std::mutex> lock(mutex);

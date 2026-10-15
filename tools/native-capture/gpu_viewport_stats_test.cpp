@@ -37,7 +37,8 @@ int main(){
     if(classify(0,0,1920,1080)!=full||classify(0,0,960,1080)!=left||classify(960,0,960,1080)!=right)return 1;
     if(classify(0,0,640,360)!=other||classify(0,0,0,1080)!=unknown||
        classify(std::numeric_limits<float>::quiet_NaN(),0,960,1080)!=unknown)return 2;
-    Tracker tracker;tracker.draw(42,1);tracker.set(42,right,false);tracker.set(42,left,true);tracker.draw(42,1);
+    auto tracker_storage=std::make_unique<Tracker>();auto& tracker=*tracker_storage;
+    tracker.draw(42,1);tracker.set(42,right,false);tracker.set(42,left,true);tracker.draw(42,1);
     auto sample=tracker.snapshot();
     // A right viewport with a left scissor is distinct from a matching right draw.
     if(sample.untracked_draws!=1||sample.draws[1][right][left]!=1||sample.draws[1][right][right])return 3;
@@ -45,7 +46,7 @@ int main(){
     if(tracker.snapshot().draws[2][unknown][unknown]!=1)return 4;
     for(uintptr_t i=100;i<356;++i)tracker.reset(i);
     if(tracker.snapshot().overflow!=1)return 5;
-    Tracker rectangles;
+    auto rectangle_storage=std::make_unique<Tracker>();auto& rectangles=*rectangle_storage;
     Rect right_rect{960,0,960,1080},wide_scissor{0,0,32767,32767};
     rectangles.set(1,right,false,right_rect);rectangles.set(1,other,true,wide_scissor);
     auto observed=rectangles.draw_state(1);
@@ -60,7 +61,8 @@ int main(){
     if(rectangles.snapshot().trial_rects[1].calls!=1||rectangles.snapshot().trial_rects[1].viewport.width!=0)return 7;
     for(unsigned i=0;i<64;++i){rectangles.set(1,other,false,{float(i),0,10,10});rectangles.draw(1,1);}
     if(rectangles.snapshot().rect_overflow!=2)return 8;
-    Tracker targets;Target small{123,960,1080,28,0},large{456,1920,1080,28,0};
+    auto target_storage=std::make_unique<Tracker>();auto& targets=*target_storage;
+    Target small{123,960,1080,28,0},large{456,1920,1080,28,0};
     targets.create(32,small);targets.create(64,large);
     uintptr_t destinations[]{96,128},sources[]{32,64};targets.copy(destinations,sources,2);
     targets.bind(1,1,96);targets.set(1,right,false,right_rect);targets.draw(1,1);
@@ -126,9 +128,39 @@ int main(){
     observed_stack[2]=0x70000100;if(observed_ok(0x14019f2f3))return 37;
     observed_stack[2]=0x70000080;observed_stack[3]++;if(observed_ok(0x14019f2f3))return 38;
     observed_stack[3]--;observed_stack[1]++;if(observed_ok(0x14019f2f3))return 39;
-    Tracker depths;depths.reset(123);depths.set(123,other,false,saved.viewport,1,true,.2f,.8f);
+    auto depth_storage=std::make_unique<Tracker>();auto& depths=*depth_storage;
+    depths.reset(123);depths.set(123,other,false,saved.viewport,1,true,.2f,.8f);
     depths.set(123,other,true,saved.scissor);auto state=depths.draw_state(123);
     if(!state.depth_known||state.min_depth!=.2f||state.max_depth!=.8f)return 34;
     depths.reset(123);if(depths.draw_state(123).depth_known)return 35;
-    puts("GPU stats and overlay bounds/depth/state restoration/stack checks passed");return 0;
+    // Provenance snapshots survive descriptor overwrites; target equality and
+    // tracking policy remain unchanged. Copy sources must be captured together.
+    auto provenance_storage=std::make_unique<Tracker>();auto& provenance=*provenance_storage;
+    provenance.create(32,small,7,0x111);provenance.bind(1,1,32);
+    const auto first=provenance.binding_provenance(1);
+    if(first.handle!=32||first.trace.write_serial!=1||first.trace.origin_create_serial!=1||
+       first.trace.create_epoch!=7||first.trace.last_write_epoch!=7||first.trace.creation_live!=0x111)return 40;
+    provenance.create(32,large,8,0x222);
+    if(!(provenance.binding_provenance(1)==first)||!(provenance.binding(1).target==small))return 41;
+    provenance.create(64,small,9,0x333);
+    uintptr_t overlap_dest[]{64,96},overlap_src[]{32,64};provenance.copy(overlap_dest,overlap_src,2,10);
+    provenance.bind(2,1,64);provenance.bind(3,1,96);
+    auto copy1=provenance.binding_provenance(2),copy2=provenance.binding_provenance(3);
+    if(!(provenance.binding(2).target==large)||!(provenance.binding(3).target==small)||
+       copy1.trace.write_serial!=4||copy1.trace.origin_create_serial!=2||copy1.trace.create_epoch!=8||copy1.trace.last_write_epoch!=10||
+       copy1.trace.copy_source_handle!=32||copy1.trace.source_write_serial!=2||copy1.trace.creation_live!=0x222||
+       copy2.trace.write_serial!=5||copy2.trace.origin_create_serial!=3||copy2.trace.source_write_serial!=3||
+       copy2.trace.copy_source_handle!=64||copy2.trace.creation_live!=0x333)return 42;
+    uintptr_t absent=999;provenance.copy(overlap_dest,&absent,1,11);provenance.bind(4,1,64);
+    if(provenance.binding(4).target.resource||provenance.binding_provenance(4).trace.write_serial||
+       provenance.binding_provenance(4).handle!=64||!(provenance.binding_provenance(2)==copy1))return 43;
+    provenance.reset(2);if(provenance.binding_provenance(2).handle||provenance.binding_provenance(2).trace.write_serial)return 44;
+    provenance.reject_copy();provenance.bind(2,1,96);
+    if(provenance.binding_provenance(2).trace.write_serial||!(provenance.binding_provenance(3)==copy2))return 45;
+    provenance.clear_bindings();if(provenance.binding_provenance(3).handle)return 46;
+    provenance.create(32,large,12);provenance.bind(3,1,32);
+    if(provenance.binding_provenance(3).trace.write_serial!=7)return 47;
+    provenance.retire(3);if(provenance.binding_provenance(3).handle)return 48;
+    provenance.bind(4,0,64);if(provenance.binding_provenance(4).handle)return 49;
+    puts("GPU stats and overlay bounds/depth/state restoration/stack/provenance checks passed");return 0;
 }

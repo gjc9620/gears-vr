@@ -151,3 +151,13 @@ Native8 SHA `5658892fd2ff84d4b82584b23fe10840c267ad40d690c4852472b275083647f5`�
 更关键的反证：拒绝记录中的资源`3dfe88dd0`在较早的实际Present outage记录中也出现过。故第六批称其“中间RTV”只可视为当时假设，尚未确证。RTV宽高来自CreateRTV时保存的映射，不是拒绝时重新查询；同地址不能证明同资源生命周期。两次ResizeBuffers均成功并更新当前inventory，后续Present changed0，而map未记录创建/复制epoch。下一项先记录resize请求/实际尺寸、实时buffer描述符及OM所消费的RTV映射来源，再区分旧映射、地址复用与真正的独立渲染目标；暂停传递路径实现。
 
 LateQuadDiagnosticsTest及continuous/quad/input-resource自测通过，完整启动reserve自测链通过。最终native_cleanup_verified、entry_restore_verified及XR shutdown/objects_destroyed均true，但XR exit1、会话incomplete；显示缺口未修复。正常WM_CLOSE关闭游戏并备份`world8-config-after-test.ini`，恢复StartupResolutionY=1080；没有获取前台焦点。未提升默认，也没有真头显或GPU抓帧验收。
+
+## 第八批：实时resize尺寸与RTV来源
+
+Native9 SHA `a89d967280d6bd95e1c628cd663c55dbb3eef6f1d96dab145ca49aaf970c6160`，XR仍为MainMenu8。增加八笔resize实时请求/结果和临时GetBuffer/GetDesc记录，不保留资源引用；RTV映射独立记录创建/复制serial、来源及OM绑定时快照，不改变Target比较或接受策略。descriptor epoch来自缓存Present，明确可能落后于resize；重复复制按创建来源合并，不因递增copy serial占满首批采样。
+
+会话`continuous-stereo-43032-20261016-055824-1cb552b0.json`，game43032 / creation134365750921580875，owner6896 / creation134365750859423196。原对照再次world1→2，published217→266后保持，projection239后保持。两笔实际ResizeBuffers请求均为1920×1081，并非第二笔恢复1080；两笔S_OK，实时buffer GetDesc也均1920×1081。客户端恢复1080不能等同游戏请求或GPU尺寸恢复。两笔新buffer canonical分别为`3ddae0f60/3ddae05d0`，第二笔index交换，不能据相同地址推断跨resize生命周期不变。
+
+被拒绝RTV为`3ddadf2b0`、1920×1080，handle`79d38b0`；来源是观察到的CreateRTV serial369、cached inventory epoch2、live接口`3ddadf2e0`，无copy lineage，之后在inventory3持续用于两眼。说明不是仅沿用启动期创建记录；它在第一次resize后的观察期被实际传给CreateRTV，且不同于两张已核对的1081后缓冲。仍未证明第二次resize后的存活、像素或最终传递。下一步扩展已有CopyTextureRegion观察，绕开旧global-color-pair筛选，针对当前后缓冲或该拒绝目标记录实际调用参数与实时描述符；不得查询已保存的旧COM地址，不新增捕获注入或放宽门禁。
+
+GpuViewportStatsTest、FinalEyeDiagnosticsTest、frame-link/continuous自测及实际reserve链通过。最终native清理、入口恢复、XR shutdown/对象销毁通过，但XR exit1、会话incomplete，不能称显示通过；正常WM_CLOSE退出，备份`world9-config-after-test.ini`后恢复用户StartupResolutionY=1080。原始证据为`world9-rect-experiment.json`、会话native-status及`world9-close.json`。默认清单未改，真头显验收未做。

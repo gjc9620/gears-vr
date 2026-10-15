@@ -19,5 +19,14 @@ int main(){
     ++row.epoch.world;recorder.record(row);assert(recorder.size==32&&recorder.dropped==3);
     row=recorder.rows[0];row.first_qpc=30;recorder.record(row);
     assert(recorder.rows[0].count==3&&recorder.rows[0].last_qpc==30&&recorder.dropped==3);
+    Recorder provenance;row={};row.geometry.quad.ticket=1;row.geometry.provenance={32,{1,1,7,7,0,123,0}};
+    row.present_resources[0]=456;provenance.record(row);row.present_resources[0]=789;
+    provenance.record(row);assert(provenance.size==1&&provenance.rows[0].present_resources[0]==456);
+    // Repetitive copies coalesce without losing their first serial snapshot.
+    row.geometry.provenance.trace.write_serial=2;row.geometry.provenance.trace.source_write_serial=99;
+    provenance.record(row);assert(provenance.size==1&&provenance.rows[0].count==3&&
+        provenance.rows[0].geometry.provenance.trace.write_serial==1&&provenance.rows[0].geometry.provenance.trace.source_write_serial==0);
+    row.geometry.provenance.trace.origin_create_serial=2;provenance.record(row);assert(provenance.size==2);
+    row.geometry.provenance.trace.create_epoch=8;provenance.record(row);assert(provenance.size==3);
     std::puts("final eye diagnostics bounds, coalescing and epoch sampling passed");
 }
