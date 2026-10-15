@@ -38,6 +38,49 @@ struct Frame {uint64_t ticket{};unsigned state{};bool copied{};};
 std::array<Frame,frame_limit> consumed_frames{};unsigned stored_frames{};
 uint64_t consumed_count{},last_consumed_ticket{};
 gears_vr::StereoTicketStore image_tickets; // Independent of Present's legacy store and retirement.
+#if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
+struct SubtitleSample {
+ uint64_t ticket{},session{},sequence{},output_generation{},execute{},root_first{},root_last{};
+ gears_frame_link::ListRef list{};gears_frame_link::Target target{};
+ int64_t received_ns{};unsigned ordinal{};bool queued{},missed{};
+};
+std::array<SubtitleSample,3> subtitle_samples{};
+std::array<owned_scene_readback::Probe,3> subtitle_readbacks{};
+unsigned subtitle_sample_count{};
+// Called only from the authenticated owned overlay callback under frame_hook_mutex.
+// Keep values only. No native command/payload is borrowed past Execute return.
+void subtitle_candidate(uint64_t ticket,uint64_t execute,gears_frame_link::ListRef list,
+ gears_frame_link::Target target,unsigned ordinal,uint64_t root_first,uint64_t root_last){
+ if(subtitle_sample_count==subtitle_samples.size()||!ticket||!execute||!list.identity||!list.generation||
+    target.resource!=resource||!root_first||root_last<root_first)return;
+ gears_vr::StereoSample sample{};
+ if(!image_tickets.lookup(ticket,sample,simulator_operator))return;
+ if(subtitle_sample_count){const auto& previous=subtitle_samples[subtitle_sample_count-1];
+  if((!previous.queued&&!previous.missed)||ticket<=previous.ticket||
+     (sample.session==previous.session&&sample.received_ns-previous.received_ns<500000000))return;
+ }
+ auto& row=subtitle_samples[subtitle_sample_count++];
+ row.ticket=ticket;row.session=sample.session;row.sequence=sample.sequence;row.received_ns=sample.received_ns;
+ row.output_generation=generation;row.execute=execute;row.list=list;row.target=target;row.ordinal=ordinal;
+ row.root_first=root_first;row.root_last=root_last;
+}
+bool copy_subtitle(uint64_t ticket){
+ for(unsigned i=0;i<subtitle_sample_count;++i){auto& row=subtitle_samples[i];
+  if(row.queued||row.missed||row.ticket>ticket)continue;
+  if(row.ticket<ticket){row.missed=true;continue;}
+  gears_vr::StereoSample sample{};
+  if(row.output_generation!=generation||row.target.resource!=proof.target.resource||proof.ticket!=row.ticket||
+     !image_tickets.lookup(ticket,sample,simulator_operator)||sample.session!=row.session||sample.sequence!=row.sequence)return false;
+  wchar_t path[MAX_PATH]{};swprintf_s(path,L"%s\\owned-subtitle-%lu-%u-ticket-%llu.ppm",directory,GetCurrentProcessId(),i,ticket);
+  // Exact queue position: all required UI has completed and submitted, and the
+  // owned proof has consumed this ticket. Queue before allowing the next writer.
+  StereoPublishBypass bypass;
+  row.queued=subtitle_readbacks[i].queue(texture,queue,D3D12_RESOURCE_STATES(proof.final_state),true,path);
+  if(!row.queued)return false;
+ }
+ return true;
+}
+#endif
 struct Publication {uint64_t ticket{},pose{},session{},serial{};unsigned reason{};};
 std::array<Publication,frame_limit> publications{};unsigned publication_count{};
 uint64_t publication_attempts{},published_count{};Publication latest_publication{};
@@ -300,6 +343,9 @@ void copy(bool ready,uint64_t ticket){
  proof=continuous_probe?tracker.consume_owned_output(resource,generation,canonical_identity(queue),ticket):
   tracker.seal_owned_output(resource,generation,canonical_identity(queue));
  if(!proof.linked||!proof.state_certified||proof.ticket!=ticket){fault(9);return;}
+#if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
+ if(!copy_subtitle(ticket)){fault(21);return;}
+#endif
  const bool last=continuous_probe&&consumed_count+1==frame_limit;
  const bool late=sustained&&consumed_count+1==late_sample_frame;
  const bool sample=!continuous_probe||!consumed_count||last||late;
@@ -320,7 +366,11 @@ void copy(bool ready,uint64_t ticket){
  }
  finished=!continuous_probe||(!sustained&&last);
 }
-void poll(){if(enabled){readback.poll();last_readback.poll();late_readback.poll();}}
+void poll(){if(enabled){readback.poll();last_readback.poll();late_readback.poll();
+#if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
+ for(unsigned i=0;i<subtitle_sample_count;++i)subtitle_readbacks[i].poll();
+#endif
+}}
 bool can_advance(uint64_t ticket){return continuous_probe&&watching()&&birth_ok&&consumed_count&&
  (sustained||consumed_count<frame_limit)&&last_consumed_ticket==ticket&&tracker.owned_status().certified;}
 bool state_certified(){return proof.state_certified&&tracker.owned_status().certified;}
@@ -328,10 +378,22 @@ bool pixels_read_back(){return readback.result().completed&&readback.result().sa
 bool publication_failed(){return owned_xr_probe&&stereo_gpu_publish&&error;}
 void print_progress(FILE* file){
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+#if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
+ unsigned saved{};for(unsigned i=0;i<subtitle_sample_count;++i)if(subtitle_readbacks[i].result().saved)++saved;
+ fprintf(file,"owned_subtitle_candidates=%u owned_subtitle_saved=%u ",subtitle_sample_count,saved);
+#endif
  fprintf(file,"owned_sustained=%u owned_consumed=%llu owned_last_ticket=%llu owned_published=%llu owned_error=%u owned_stored_frames=%u ",
   sustained,consumed_count,last_consumed_ticket,published_count,error,stored_frames);
 }
 void print(FILE* file){
+#if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
+ fprintf(file,"owned_subtitle_samples count=%u capacity=3 headset_verified=0\n",subtitle_sample_count);
+ for(unsigned i=0;i<subtitle_sample_count;++i){const auto& row=subtitle_samples[i];const auto& pixels=subtitle_readbacks[i].result();
+  fprintf(file,"owned_subtitle_sample index=%u ticket=%llu session=%llu pose=%llu generation=%llu execute=%llu list=%llx list_generation=%llu target=%llx ordinal=%u root_first=%llu root_last=%llu queued=%u missed=%u completed=%u saved=%u error=%u\n",
+   i,row.ticket,row.session,row.sequence,row.output_generation,row.execute,row.list.identity,row.list.generation,row.target.resource,row.ordinal,
+   row.root_first,row.root_last,row.queued,row.missed,pixels.completed,pixels.saved,unsigned(pixels.error));
+ }
+#endif
  auto const& r=readback.result();const auto s=tracker.snapshot();
  fprintf(file,"native_owned_gpu enabled=%u creation_count=%u api=%u initial_state=%u creation_uses=%u prebirth_faults=%u birth_attempts=%u birth_ok=%u barriers=%u unsupported=%u error=%u sealed=%u rejection=%u state_certified=%u final_state=%u copied=%u completed=%u saved=%u read_error=%u read_hr=%08lx resets=%llu executes=%llu unknown_batches=%llu capacity=%u\n",
  enabled,creation_count,creation.api,creation.state,creation.uses,prebirth_faults,birth_attempts,birth_ok,barriers,unsupported,error,sealed,

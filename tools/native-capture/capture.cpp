@@ -2504,7 +2504,9 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             unsigned mask{};
             try {mask=gears_viewport::replay_overlay(saved,plan,viewport,scissor,[&](unsigned){original_draw_indexed(list,indices,instances,start,vertex,first_instance);});}
             catch(...){owned_ui_live::fault(route.ticket,10);throw;}
-            owned_scene_gpu::tracker.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask);
+            if(!owned_scene_gpu::tracker.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask)){
+                owned_ui_live::fault(route.ticket,11);return;
+            }
             ++owned_ui_live::route_draws;
             if(reticle)++owned_ui_live::route_reticle_draws;else ++owned_ui_live::route_plane_draws;
             observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,plane,&plan,reticle,&plan);

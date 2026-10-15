@@ -253,3 +253,19 @@ HUD 增加独立源宽高比，方形单眼输出仍保持原 Canvas 的16:9形�
 证据：`analysis/ui-position-runtime/owned-ui-route1-menu-25320.audit.json`、`owned-ui-route2-menu-47320.audit.json`；原图 `tools/native-capture/build-owned-ui-route2/owned-scene-47320-late.ppm`，审阅缩图在 `analysis/ui-position-runtime/owned-ui-route2-47320-menu-review.png`。所有衍生资料和构建均被忽略，不加入发布包。
 
 FrameLink 17,455项、ledger 1,665项、owned scene 179项及HUD/准星比例、viewport恢复、Capture ABI/family测试通过。Route2运行后的源码另补齐Execute非48返回时立即停止，原先已阻止发布但只等待超时；Route3用于编译该差异，不能把Route2运行记录当作Route3真机验收。默认玩家清单不变，资源仍保留到进程退出，部署退出流程尚未完成。下一步是使用相同owned路径分别验证开镜准星、换枪和字幕，随后处理其他菜单/Material路径。
+
+## 2026-10-15：独立输出的开镜、换枪画面与字幕测试边界
+
+Route3 / PID50132 / `manifest-owned-ui-route3-ads.json` 已实际运行40.107秒，3,605次projection、1,739次XR新图复制，最大提交间隔55.429ms。1,743个Canvas cycle全部闭合回收，其中314个非空；1,768个批次完成双眼重绘，普通平面1,480、准星288，路由故障与提前消费均0。3,540个索引上下文全部完成，无sequence fault。61处入口独立恢复通过后正常关闭游戏。
+
+通过原生菜单状态确认在关卡内，以用户指定Win+0聚焦，虚拟手柄分别开镜和显示换枪菜单，每段3秒，结束均恢复中性。接收端原始GPU图ticket719、887分别落在两个操作期间；4096×2048原图中双眼均可见准星、换枪图标/文字及弹药HUD，形状初步正常。摘要 `analysis/ui-position-runtime/owned-ui-route3-ads-50132.audit.json`，缩图 `owned-ui-route3-ads-50132-review.png`。本轮没有字幕，不能据此推广到对白；准星仍是屏幕中心方向修正，不是有限距离弹着点验证，也不是头显验收。
+
+随后增加默认关闭的 `GEARS_OWNED_SUBTITLE_PIXELS`。只有真实索引归属为NativeSubtitle的owned双眼draw才登记候选；最多3份，按ticket/session/pose sequence/资源代次严格匹配，在完整UI提交认证后、下一次写入前，向同一DIRECT队列排入读回。文件仅在GPU fence完成后保存，过期候选明确miss，不以随后图像替代。这是原生owned纹理证据，不能单独证明XR接收或头显可见性。
+
+同轮修复两个完整性缺口：未提交的owned overlay若被命令列表Reset或重新Create丢弃，tracker失去发布认证；已提交列表和无关资源不受影响。语义索引cursor必须先finish，owned ledger才允许完成，不能在后续发现序列失败前把ticket置为可发布。不存在语义context的普通菜单batch仍可走已有认证路径。FrameLink新增覆盖后17,529项通过，ledger 1,665项、索引membership、owned scene和Capture ABI/family相关检查通过。
+
+Route4 / PID51376 的字幕路线是失败实验：脚本由菜单状态和camera telemetry控制短距离移动，进入走廊后owned UI first_fault=2，保护停止；2,162个场景在此前消费，字幕候选0。该构建的首32份Flush样本均为空，不能进一步区分清单读取失败、Material/未知类型或ledger拒绝。没有证据将此归因于字幕本身或先前全部黑屏。61处入口恢复通过，随后正常关闭。负实验摘要 `analysis/ui-position-runtime/owned-ui-route4-subtitle-51376.audit.json`。后续构建只补存第一份失败清单及具体拒绝原因，继续定位实际阻断，未放宽发布门槛。
+
+Route5 / PID50488复现并缩小原因：首次拒绝ticket2748、caller RVA1167f4，清单读取成功，total=4、batch=3、material=1、other=0，reason=2明确为未支持Material，而非读取/未知类型/ledger拒绝。此前2,746个场景发布，1,728个普通批次双眼重绘；3,474个索引序列完整，字幕仍0。已有Material观察器实际published=9、claims=8、content_rejected=0、bad_return=0，但gpu_candidates=0、gpu_rejected=8，缺口位于quad或draw参数认证，尚不能称为Material已正确绘制。61处入口恢复、游戏正常关闭，负实验见 `owned-ui-route5-subtitle-50488.audit.json`。Route5及功能关闭的默认分支均编译通过。
+
+资料库命中ui-05及既有Material静态合同，无需重新全量分析或打开IDA。该路径使用独立36字节命令、112字节payload与32字节GPU顶点，不能套用普通Canvas批次的48字节命令或顶点解释。下一项先记录现有8次GPU拒绝的具体参数/步骤，并核对真实IA、目标和同ticket关系，继续保持未认证Material阻断发布；字幕视觉验收仍未完成。

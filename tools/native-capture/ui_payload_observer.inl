@@ -152,12 +152,15 @@ uint32_t __fastcall hook_ui_execute(void* command){
 #else
     const uint32_t result=ui_original_execute(command);
 #endif
-    owned_ui_live::execute_end(owned_receipt,result);
+    // Semantic contexts must finish before the owned ledger can make this
+    // ticket ready for publication. Unlabelled batches have no such cursor.
+    const bool sequence_complete=!ui_index_context||ui_index_context->cursor.finish();
+    owned_ui_live::execute_end(owned_receipt,result,sequence_complete);
     if(ui_observer_enabled&&result!=48)++ui_execute_bad_return;
     // Only our independent value copies remain live. The native command and
     // payload have already been destroyed and must not be read here.
     if(ui_index_context){
-        const bool complete=ui_index_context->cursor.finish()&&result==48;
+        const bool complete=sequence_complete&&result==48;
         if(complete)++ui_index_complete;else ++ui_index_incomplete;
         if(!complete&&ui_hud_plane_enabled)ui_hud_sequence_fault=true;
         std::lock_guard<std::mutex> lock(ui_payload_mutex);
@@ -292,6 +295,11 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
            indices==segment.expected.index_count&&instances==segment.expected.instance_count&&
            start==segment.expected.start_index&&vertex==segment.expected.base_vertex){
             ++ui_subtitle_gpu_calls;
+#if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
+            if(owned_ui_live::route.ticket==ticket&&hud_applied)
+                owned_scene_gpu::subtitle_candidate(ticket,ui_index_context->execute_sequence,list,target,ordinal,
+                    source.native_root_min,source.native_root_max);
+#endif
             if(ui_subtitle_gpu_count<ui_subtitle_gpu_rows.size()&&
                (ui_subtitle_gpu_count<4||timestamp>=ui_subtitle_gpu_next)){
                 ui_subtitle_gpu_rows[ui_subtitle_gpu_count++]={source,ui_index_context->execute_sequence,ticket,list,target,timestamp,GetCurrentThreadId(),hud_applied,false};

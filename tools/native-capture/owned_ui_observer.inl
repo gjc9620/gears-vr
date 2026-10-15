@@ -46,8 +46,9 @@ void selected(uint64_t ticket){
  if(!ui_observer_enabled||!recording.load()||!family.canvas||
     !ledger.bind(ticket,family.canvas,family.target,family.thread,now()))fault(ticket,1);
 }
-struct FlushRow {uint64_t ticket{};uintptr_t canvas{},target{},caller{};unsigned total{},batch{},material{},other{},read_ok{};};
+struct FlushRow {uint64_t ticket{};uintptr_t canvas{},target{},caller{},first_other_table{};unsigned total{},batch{},material{},other{},read_ok{};};
 std::array<FlushRow,32> flush_rows{};unsigned flush_rows_count{};std::mutex flush_rows_mutex;
+FlushRow rejected_flush{};unsigned rejected_flush_reason{};
 FlushRow inventory(FlushContext const& context,uintptr_t caller){
  FlushRow row{};row.ticket=context.ticket;row.canvas=context.canvas;row.target=context.target;row.caller=caller;
  gears_ui_batch::detail::Reader<decltype(&safe_copy)> read{safe_copy};gears_ui_batch::detail::Array elements{};
@@ -56,7 +57,8 @@ FlushRow inventory(FlushContext const& context,uintptr_t caller){
   if(!read.field(items,elements.data,size_t(i)*20+4)||!gears_ui_batch::detail::valid(items,65536,8)||items.count>512)return row;
   for(int j=0;j<items.count;++j){uintptr_t item{},table{};
    if(++row.total>4096||!read.field(item,items.data,size_t(j)*8)||!read.field(table,item,0))return row;
-   if(table==base+0x133cc98)++row.batch;else if(table==base+0x136c5f0)++row.material;else ++row.other;
+   if(table==base+0x133cc98)++row.batch;else if(table==base+0x136c5f0)++row.material;
+   else {++row.other;if(!row.first_other_table)row.first_other_table=table;}
   }
  }
  row.read_ok=1;return row;
@@ -66,7 +68,10 @@ void sample_flush(FlushContext const& context,uintptr_t caller){
  if(!routing&&flush_rows_count==flush_rows.size())return;
  const auto row=inventory(context,caller);
  if(flush_rows_count<flush_rows.size())flush_rows[flush_rows_count++]=row;
- if(routing&&(!row.read_ok||row.material||row.other||!ledger.expect(context.ticket,row.batch)))fault(context.ticket,2);
+ if(routing){
+  const unsigned reason=!row.read_ok?1:row.material?2:row.other?3:!ledger.expect(context.ticket,row.batch)?4:0;
+  if(reason){if(!rejected_flush_reason){rejected_flush=row;rejected_flush_reason=reason;}fault(context.ticket,2);}
+ }
 }
 uintptr_t __fastcall hook_flush(void* canvas){
  Scope active_scope;const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
@@ -111,10 +116,10 @@ uint64_t execute_begin(void* command){
   ++read_rejected;return 0;}
  auto id=ledger.execute(header[1],header[4],now());if(!id)++execute_unassociated;return id;
 }
-void execute_end(uint64_t id,uint32_t result){
+void execute_end(uint64_t id,uint32_t result,bool sequence_complete){
  if(!id)return;gears_owned_ui::Execution e{};ledger.execution(id,e);
- const bool recorded=ledger.complete(id,result==48,now());
- if(result!=48||!recorded)fault(e.ticket,6);
+ const bool recorded=ledger.complete(id,result==48&&sequence_complete,now());
+ if(result!=48||!sequence_complete||!recorded)fault(e.ticket,6);
 }
 #if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
 struct Route {uint64_t ticket{},receipt{};uintptr_t resource{};unsigned source_width{},source_height{};};
@@ -193,6 +198,10 @@ void print(FILE* file){
  for(unsigned i=0;i<s.active_count;++i)cycle(s.active[i],0);
  for(unsigned i=0;i<s.retained_nonempty_count;++i)cycle(s.retained_nonempty[i],2);
  std::lock_guard<std::mutex> lock(flush_rows_mutex);
+ if(rejected_flush_reason){const auto& r=rejected_flush;
+  fprintf(file,"owned_ui_flush_rejected reason=%u ticket=%llu canvas=%llx target=%llx caller=%llx total=%u batch=%u material=%u other=%u read_ok=%u first_other_table=%llx module_base=%llx\n",
+   rejected_flush_reason,r.ticket,r.canvas,r.target,r.caller,r.total,r.batch,r.material,r.other,r.read_ok,r.first_other_table,base);
+ }
  for(unsigned i=0;i<flush_rows_count;++i){const auto& r=flush_rows[i];
   fprintf(file,"owned_ui_flush ticket=%llu canvas=%llx target=%llx caller=%llx total=%u batch=%u material=%u other=%u read_ok=%u\n",
    r.ticket,r.canvas,r.target,r.caller,r.total,r.batch,r.material,r.other,r.read_ok);
@@ -206,7 +215,7 @@ namespace owned_ui_live {
 struct FamilyScope {FamilyScope(void*,void*,bool){}};
 void selected(uint64_t){}
 uint64_t execute_begin(void*){return 0;}
-void execute_end(uint64_t,uint32_t){}
+void execute_end(uint64_t,uint32_t,bool){}
 }
 void owned_ui_published(uint64_t){}
 bool owned_ui_ready(uint64_t){return true;}

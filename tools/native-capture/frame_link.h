@@ -107,6 +107,11 @@ private:
     struct Pending {bool active{};uint64_t token{},revision{};Identity queue{};size_t count{};uint32_t state{};
         std::array<ListRef,list_capacity> members{};} pending_{};
     void lose_owned(){if(owned_.enabled){owned_.certified=false;window_bad_=true;window_rejection_|=owned_state_lost;}pending_.active=false;}
+    void discard_recording(List const& list){
+        if(!owned_.enabled||list.executed)return;
+        for(size_t i=0;i<list.count;++i)
+            if(list.events[i].overlay&&list.events[i].target.resource==owned_.target.resource){lose_owned();return;}
+    }
     static bool color_state(uint32_t state){return state==0||state==4||state==128||state==1024||state==2048||state==4096||state==8192;}
     bool transition_supported(Event const& event) const {
         return event.state_kind==1&&event.target.resource==owned_.target.resource&&event.output_generation==owned_.generation&&
@@ -465,6 +470,7 @@ public:
         if (!slot) for (auto& list : lists_) if (!list.ref.identity) { slot = &list; break; }
         if (!slot) { ++stats_.list_overflow;capacity_bad_ = true; return {}; }
         if(!slot->ref.identity){++stats_.active_lists;if(stats_.active_lists>stats_.list_highwater)stats_.list_highwater=stats_.active_lists;}
+        discard_recording(*slot);
         // Reset discards unsubmitted old recording, while already submitted events
         // remain copied in candidates. Generation IDs are never reused.
         *slot = {};
@@ -484,6 +490,7 @@ public:
         if(!slot)for(auto& list:lists_)if(!list.ref.identity){slot=&list;break;}
         if(!slot){++stats_.list_overflow;capacity_bad_=true;lose_owned();return {};}
         if(!slot->ref.identity){++stats_.active_lists;if(stats_.active_lists>stats_.list_highwater)stats_.list_highwater=stats_.active_lists;}
+        discard_recording(*slot);
         *slot={};slot->ref={identity,++generation_};slot->valid=initially_open;
         return slot->ref;
     }

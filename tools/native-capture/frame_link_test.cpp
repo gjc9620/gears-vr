@@ -843,5 +843,36 @@ int main() {
         CHECK(t->record_transition(ref,buffer,9,4,4));CHECK(t->has_unsubmitted_owned_events(buffer));
         t->reset_success(1);CHECK(!t->has_unsubmitted_owned_events(buffer)); // Real Reset discards recording.
     }
+    for(bool recreate:{false,true})for(bool committed:{false,true}) {
+        auto t=std::make_unique<Tracker>();configure(*t);
+        auto world=t->reset_success(1);pair(*t,world);CHECK(submit_owned(*t,&world,1));
+        auto ui=t->reset_success(2);auto p=t->overlay_pair(ui,{buffer,1920,1080});CHECK(p.linked);
+        CHECK(t->draw_overlay_pair(ui,1,{buffer,1920,1080},p.eyes,3));
+        if(committed)CHECK(submit_owned(*t,&ui,1));
+        auto next=recreate?t->create_success(2,true):t->reset_success(2);
+        CHECK(next.generation>ui.generation);
+        CHECK(!t->has_unsubmitted_owned_events(buffer));
+        auto result=t->consume_owned_output(buffer,9,queue,1);
+        CHECK(result.linked==committed&&result.state_certified==committed);
+        CHECK(t->owned_status().certified==committed);
+    }
+    // Discarding unrelated overlays must not lose owned certification.
+    for(bool recreate:{false,true}) {
+        auto t=std::make_unique<Tracker>();configure(*t);
+        auto world=t->reset_success(1);pair(*t,world);CHECK(submit_owned(*t,&world,1));
+        auto other=t->reset_success(2);CHECK(eye(*t,other,1,0,buffer+1));CHECK(eye(*t,other,1,1,buffer+1));
+        auto p=t->overlay_pair(other,{buffer+1,1920,1080});CHECK(p.linked);
+        CHECK(t->draw_overlay_pair(other,1,{buffer+1,1920,1080},p.eyes,3));
+        if(recreate)t->create_success(2,true);else t->reset_success(2);
+        CHECK(t->owned_status().certified);CHECK(t->consume_owned_output(buffer,9,queue,1).linked);
+    }
+    // Before output birth, overlays remain ordinary discardable recordings.
+    for(bool recreate:{false,true}) {
+        auto t=std::make_unique<Tracker>();auto ref=t->reset_success(1);pair(*t,ref);
+        auto p=t->overlay_pair(ref,{buffer,1920,1080});CHECK(p.linked);
+        CHECK(t->draw_overlay_pair(ref,1,{buffer,1920,1080},p.eyes,3));
+        if(recreate)t->create_success(1,true);else t->reset_success(1);
+        CHECK(birth(*t));CHECK(t->owned_status().certified);
+    }
     std::printf("frame_link: %u checks passed\n", checks);
 }
