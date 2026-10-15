@@ -93,6 +93,12 @@ def checked_identity(control,expected,allow_exited=False):
 def validate_ui_hud_plane(args):
     if getattr(args,'cinematic_camera',False) and (not getattr(args,'anchor_observer',False) or getattr(args,'origin_trial',False)):
         raise ValueError('Cinematic camera requires anchor observer and cannot use the Pawn origin trial')
+    if getattr(args,'world_recovery',False):
+        if not all(getattr(args,key,False) for key in ('anchor_observer','ui_observer','cinematic_camera')):
+            raise ValueError('World recovery requires anchor/UI observers and cinematic camera')
+        digest=getattr(args,'native_expected_sha256',None)
+        if not isinstance(digest,str) or len(digest)!=64 or any(ch not in '0123456789abcdef' for ch in digest):
+            raise ValueError('World recovery requires trusted native manifest SHA256')
     # Every run_session path is continuous; direct callers must validate before
     # creating the owner lock, writing reports, or launching either process.
     if getattr(args,'ui_hud_plane',False) and not (
@@ -336,6 +342,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'image_ticket_diagnostics_enabled':bool(getattr(args,'origin_trial',False) or getattr(args,'image_ticket_diagnostics',False)),
            'shutdown_diagnostics_enabled':bool(getattr(args,'shutdown_diagnostics',False)),
            'startup_menu_enabled':bool(getattr(args,'startup_menu_window',0)),
+           'world_recovery_enabled':bool(getattr(args,'world_recovery',False)),
            'menu_recovery_enabled':bool(getattr(args,'menu_recovery',False)),
            'ui_observer_enabled':bool(getattr(args,'ui_observer',False)),
            'ui_hud_plane_enabled':bool(getattr(args,'ui_hud_plane',False)),
@@ -343,7 +350,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'owner_identity':None,'game_identity':None,
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
-    child=None;activation_attempted=False;menu_monitor=None
+    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
     out_path=prefix.with_suffix('.stdout.txt');err_path=prefix.with_suffix('.stderr.txt')
@@ -441,6 +448,16 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 if getattr(args,'menu_recovery',False):
                     from menu_display_monitor import MenuDisplayMonitor
                     menu_monitor=MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity)
+                if getattr(args,'world_recovery',False):
+                    from world_rebind_runtime import RuntimePreparation
+                    from world_rebind_monitor import WorldRebindMonitor
+                    adapter=RuntimePreparation(args.build_dir,args.dll_name,args.native_expected_sha256,
+                        state['game_identity'],state['owner_identity'])
+                    world_log=prefix.with_suffix('.world.jsonl').open('w',encoding='utf-8')
+                    world_monitor=WorldRebindMonitor(game=state['game_identity'],owner=state['owner_identity'],
+                        started_qpc=state['native_started_qpc'],baseline=adapter.baseline,observe=adapter.observe,
+                        prepare=adapter.prepare,signal=control.signal,identity=control.identity,enabled=True,
+                        probe_interval=2.0)
                 while child.poll() is None:
                     observe_first_stereo(native_started)
                     if cancel_requested and cancel_requested():
@@ -449,6 +466,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     if status and status.get('phase')!='running':break
                     checked_identity(control,state['game_identity'])
                     if menu_monitor:menu_monitor.poll()
+                    if world_monitor:
+                        for event in world_monitor.poll(status,menu_monitor.last[0] if menu_monitor and menu_monitor.last else None):
+                            world_log.write(json.dumps(dict(observed_ns=time.perf_counter_ns(),**event))+'\n');world_log.flush()
                     time.sleep(.25)
             except StartupCancelled:
                 state['stop_requested_by']='startup_cancel'
@@ -457,6 +477,10 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             except Exception as error:
                 state['error']=repr(error)
             finally:
+                if world_monitor:
+                    try:world_monitor.close()
+                    except Exception as error:state['world_monitor_close_error']=repr(error)
+                if world_log:world_log.close()
                 if menu_monitor:
                     try:menu_monitor.close()
                     except Exception as error:state['menu_monitor_close_error']=repr(error)
@@ -529,6 +553,8 @@ def main(argv=None):
     start.add_argument('--startup-timeout',type=float,default=45.)
     start.add_argument('--cleanup-timeout',type=float,default=35.)
     start.add_argument('--anchor-observer','--anchor-diagnostics',dest='anchor_observer',action='store_true')
+    start.add_argument('--world-recovery',action='store_true')
+    start.add_argument('--native-expected-sha256',help='Expected DLL SHA256 from trusted launch manifest; required for world recovery')
     start.add_argument('--origin-trial',action='store_true')
     start.add_argument('--cinematic-camera',action='store_true')
     start.add_argument('--ui-observer',action='store_true')

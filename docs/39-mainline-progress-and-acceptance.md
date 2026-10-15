@@ -33,7 +33,7 @@
 
 分类修复已把这六类精确菜单纳入既有PAUSE_MENU=3：要求准确的Pause→Options活动栈上下文及top/栈末项一致，陌生页面仍拒绝。9u实际逐页进入、返回，最终设置画面两眼相同，Resume后新票据双目恢复。随后修正UI槽复用缓存、一次有界快照重取，并允许已认证菜单在block1输入阻塞期间继续显示；输入控制及GAMEPLAY恢复仍要求block0。9w正式链路19次状态/显示核对通过，100秒观察覆盖该菜单路径及Resume，未采到零层输出；不代表全部菜单、所有闪烁或真头显已验收。主菜单设置、键位绑定及其他未观察页面仍待采样与认证。见文档69。
 
-9w进一步复现“同进程退出到主菜单→继续游戏”失败：旧controller/camera/level证书失效。后续WorldRecovery5实际通过显式prepare/commit：同关卡完整退休并重建ViewState后generation1→2；返回主菜单再继续后，controller/camera均替换，新证书提交generation2→3并恢复实际projection及两眼非黑场景。还验证旧候选失效拒绝、新Prepare不继承旧Commit、最终停止完整释放和入口恢复。此为人工脚本触发的核心恢复路径；启动器自动检测/调度尚未接入，默认候选未提升。无玩家anchor时主菜单的独立正确输出源仍缺，不把这次核心交接通过当成完整菜单或长期稳定验收，详见文档70。
+9w进一步复现“同进程退出到主菜单→继续游戏”失败：旧controller/camera/level证书失效。后续WorldRecovery5实际通过显式prepare/commit，验证旧候选失效拒绝、新Prepare不继承旧Commit、最终停止完整释放和入口恢复。WorldRecovery6现已接入后台自动检测/调度，实际同进程连续两次主菜单→继续游戏均自行prepare/commit，generation1→2→3，恢复新世界projection，停止清理与入口恢复通过；默认候选未提升。无玩家anchor时主菜单的独立正确输出源仍缺，不把这次自动交接通过当成完整菜单或长期稳定验收，详见文档70。
 
 ## V1仍需完成的验收
 

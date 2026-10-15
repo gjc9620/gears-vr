@@ -147,6 +147,34 @@ def preparation_live_guard(pid,owner_pid=None,owner_creation_time=None):
     check();return check
 
 
+def observer_signatures(args):
+    """Exact original entry signatures shared by startup and live rebind."""
+    signatures={0x15cf08:bytes.fromhex('488bc45356574154415541564157'),
+                0x15c968:bytes.fromhex('488bc4488958084889681048897018')}
+    if args.family_diagnostics: signatures[0x3a148c]=bytes.fromhex('48895c2408488974241855')
+    if args.family_diagnostics: signatures[0x193d50]=bytes.fromhex('488bc4488958104889681848897020')
+    if args.family_diagnostics: signatures[0x116250]=bytes.fromhex('488bc44889581848897020574154')
+    if args.family_diagnostics: signatures[0x15a80c]=bytes.fromhex('48895c241055488bec4883ec70')
+    if args.family_diagnostics: signatures[0x15a974]=bytes.fromhex('40534883ec20488bd9')
+    if args.family_diagnostics: signatures[0x1fc060]=bytes.fromhex('488bc44889581048897018574154')
+    if args.viewport_diagnostics: signatures[0x13cfcc]=bytes.fromhex('44894c242048894c240855535657')
+    if args.viewport_diagnostics: signatures[0x1af42c]=bytes.fromhex('488bc4488958084889701048897818')
+    if args.first_view_mask_control or args.view_union_mask_fix:
+        signatures[0x2a7e48]=bytes.fromhex('488bc448895808488970104889781855')
+        signatures[0x119bdd]=bytes.fromhex('e866e21800')
+    if args.shadow_view:
+        signatures.update({0x1c03c8:bytes.fromhex('48895c240848896c2410488974241857'),
+            0x194454:bytes.fromhex('48895c241848894c2408565741564883'),
+            0x15ca7c:bytes.fromhex('48895c2408574883ec20488bf9488b89'),
+            0x53ea50:bytes.fromhex('e9abe8b9ff')})
+    if args.shadow_state:
+        signatures.update({0x33bdd4:bytes.fromhex('4883ec28ba08000000b980020000'),
+            0x4ce80c:bytes.fromhex('40534883ec20488bc1488d511c488bd9'),
+            0x33bc70:bytes.fromhex('48895c2408574883ec208bda488bf9')})
+    if args.shadow_constructor:signatures[0x15e428]=bytes.fromhex('488bc4488958104889701848897820')
+    return signatures
+
+
 def resolve_camera_once(pid,profile):
     resolver=Resolver(pid,profile)
     try:return resolver.resolve()
@@ -436,29 +464,7 @@ def main():
         if active_event:
             k.CloseHandle(active_event);raise RuntimeError('Another capture is active; overlapping instrumentation rejected')
         # Verify exact target prologues before any remote allocation or load.
-        signatures={0x15cf08:bytes.fromhex('488bc45356574154415541564157'),
-                    0x15c968:bytes.fromhex('488bc4488958084889681048897018')}
-        if args.family_diagnostics: signatures[0x3a148c]=bytes.fromhex('48895c2408488974241855')
-        if args.family_diagnostics: signatures[0x193d50]=bytes.fromhex('488bc4488958104889681848897020')
-        if args.family_diagnostics: signatures[0x116250]=bytes.fromhex('488bc44889581848897020574154')
-        if args.family_diagnostics: signatures[0x15a80c]=bytes.fromhex('48895c241055488bec4883ec70')
-        if args.family_diagnostics: signatures[0x15a974]=bytes.fromhex('40534883ec20488bd9')
-        if args.family_diagnostics: signatures[0x1fc060]=bytes.fromhex('488bc44889581048897018574154')
-        if args.viewport_diagnostics: signatures[0x13cfcc]=bytes.fromhex('44894c242048894c240855535657')
-        if args.viewport_diagnostics: signatures[0x1af42c]=bytes.fromhex('488bc4488958084889701048897818')
-        if args.first_view_mask_control or args.view_union_mask_fix:
-            signatures[0x2a7e48]=bytes.fromhex('488bc448895808488970104889781855')
-            signatures[0x119bdd]=bytes.fromhex('e866e21800')
-        if args.shadow_view:
-            signatures.update({0x1c03c8:bytes.fromhex('48895c240848896c2410488974241857'),
-                0x194454:bytes.fromhex('48895c241848894c2408565741564883'),
-                0x15ca7c:bytes.fromhex('48895c2408574883ec20488bf9488b89'),
-                0x53ea50:bytes.fromhex('e9abe8b9ff')})
-        if args.shadow_state:
-            signatures.update({0x33bdd4:bytes.fromhex('4883ec28ba08000000b980020000'),
-                0x4ce80c:bytes.fromhex('40534883ec20488bc1488d511c488bd9'),
-                0x33bc70:bytes.fromhex('48895c2408574883ec208bda488bf9')})
-        if args.shadow_constructor:signatures[0x15e428]=bytes.fromhex('488bc4488958104889701848897820')
+        signatures=observer_signatures(args)
         camera,anchor_metadata,anchor_section,ui_metadata,ui_section=prepare(lambda:acquire_observer_preparation(
             args.pid,profile,camera,signatures,dll,anchor_observer=args.anchor_observer,ui_observer=args.ui_observer,
             cinematic_camera=args.cinematic_camera,

@@ -86,3 +86,24 @@ WorldRecovery5（未提升默认）Native SHA `a98aab5665022ec02cfa28b39358ae160
 当前剩余的直接工作是owner自动检测真实对象换代、后台重取证书、等待prepare回执并发起对应Commit，以及失败重试/取消和长期循环测试。主菜单、死亡/无有效anchor时的独立画面源也仍须完成。上述显式触发路径与安全交接已经实际运行，但第一版整体、自动恢复和全部黑屏问题仍未完成。
 
 收尾时保留graphics helper的原独立策略，closed窗口也不能绕过已有DLSS锁。它们不读world配置；策略故障造成的并发永久stop按终止竞争处理：Lifetime拒绝reopen或禁止下一pair，提交不恢复session stop状态。此增量在独立WorldRecovery6构建及continuous/frame-link/Lifetime自测通过，Native SHA `a0d31de8c7bbcd1954144d0ce8e68d8657f7f71991187c6e7d6435427b56435b`；未将Native5 live测试冒充Native6的运行证据。后续自动恢复联调采用新私有构建，默认冻结入口继续保持。
+
+## 第四批：owner自动调度与两轮真实世界切换通过
+
+WorldRecovery6保留上一节SHA，配套ABI7 probe SHA仍为`7af3b8a2ed38b0c76c69fbc224745e2142e45960547c54c9bf02300068c238a0`。本轮使用ignored `analysis/runtime/world-recovery6-auto-manifest.json` 显式启用`world_recovery`；默认manifest未修改。游戏PID29076 / creation134365706165849066，owner36996 / creation134365706101596446，XR29296。会话`continuous-stereo-29076-20261016-044349-775fe236.json`。
+
+实现：
+
+- `world_rebind_monitor.py`使用一个异步只读worker，不在owner菜单轮询中等待证书。稳定LocalPlayer保持一致，必须有当前可认证Pawn；controller/camera/level/WorldInfo任一完整身份变化才准备新包。单纯Pawn换代继续使用已有native同世界重新关联路径。死亡、null Pawn、拒绝计数不构成世界重建授权。native缺少supported字段时不工作。
+- `world_rebind_runtime.py`复用原Resolver及完整anchor/UI/cinematic builder，关闭所有RPM/attestation句柄；原入口签名改为共享函数，常量不变。expected DLL SHA来自已验证启动manifest。包名绑定game creation、下一代及native请求计数，独占发布。
+- owner检查完整进程身份、started_qpc和native回执，只对自己的request发送Prepare/Commit。成功发送的Prepare不盲目重发；超时保留事务以核对迟到回执。发布后必须返回receipt，取消不能丢失已存在包。accepted Prepare随后Commit，最终新鲜度由native实际退休之后验证；phase4允许重新认证当前世界，即使等于旧baseline。无法证明归属的冲突停止自动调度并保留证据，不猜测代次或覆盖包。
+- 可选manifest/CLI入口要求anchor/UI/cinematic及可信native SHA；清理先取消并join worker，再走原native停止/入口恢复和XR退出。自动调度未加入输入或窗口激活动作。测试菜单动作仍按既有精确状态认证后PostMessage，不请求焦点。
+
+实际测试：初次双目运行后暂停，经已认证退出流程返回主菜单，再以既有三次确认继续游戏；自动request1将generation1→2。再次完整退出/继续，自动request2将generation2→3。两轮没有手工发送WorldRebind事件，也未重启owner/game/XR。controller依次为`0x8df92ae0`、`0x24e92ae0`、`0x1617dd2ae0`；camera依次为`0x124ef6d60`、`0x3e368a6c0`、`0x152542740`。
+
+日志Prepare→generation提交的owner观察耗时约3.04秒、3.29秒，不含此前扫描、加载及完整证书获取。第二轮本代submit至少241；模拟器projectionSubmissions从2710增至3750，consecutiveMissingProjection0、layer1，两眼均值约0.345/0.307。证据为会话`.world.jsonl`、`world6-main-continue{,2}.jsonl`、`world6-{confirm-return,confirm2-return,new-world-pause,second-world-pause}.json`、`world6-xr-cycles.json`与构建目录两份世界包。
+
+最终正常停止：generation3、commits2、published7602、本代submit1572，pending/active/retained0，release/destructor/flags、drain/close/entries_restored均1，resources_retained0、cleanup_timeout0；会话passed、native_cleanup_verified、entry_restore_verified均true，XR exit0，无worker清理异常。身份校验WM_CLOSE正常退出游戏，证据`world-recovery6-close.json`。
+
+测试：native-capture相关Python103项通过，含自动调度16项、生产adapter4项、启用前依赖与SHA门禁；launcher40项通过并检查manifest SHA传递。Astra Medium定向复查事务归属、超时与迟到回执；静态审查不当作runtime验收。
+
+仍缺主菜单/死亡/无有效anchor的独立正确图像源、全部黑屏/CG/闪烁覆盖、全部UI/字幕/准星和真头显验收、长期多世界循环及发布默认提升。自动亮点不对称累计248次、最长29采样，不能宣称闪烁已解决；主菜单/加载期0 layer和暂停非projection不作为世界projection失败。当前定期只读扫描复用完整Resolver，后续可降低稳定场景开销，实际提交证书不能放宽。

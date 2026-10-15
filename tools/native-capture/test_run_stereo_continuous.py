@@ -52,6 +52,17 @@ class ContinuousTests(unittest.TestCase):
         args.startup_menu_window=0
         with self.assertRaisesRegex(ValueError,'requires startup'):runner.xr_command(args,pathlib.Path('capture.csv'),identity(100))
 
+    def test_world_recovery_requires_full_observers_and_trusted_digest_before_lock(self):
+        args=types.SimpleNamespace(world_recovery=True,anchor_observer=True,ui_observer=True,
+                                  cinematic_camera=True,native_expected_sha256='a'*64)
+        runner.validate_ui_hud_plane(args)
+        for key,value in (('anchor_observer',False),('ui_observer',False),('cinematic_camera',False),
+                          ('native_expected_sha256','')):
+            bad=types.SimpleNamespace(**{**vars(args),key:value})
+            control=mock.Mock()
+            with self.assertRaises(ValueError):runner.run_session(bad,control)
+            control.owner_lock.assert_not_called()
+
     def test_snapshot_only_signals_enabled_live_owned_xr(self):
         state=dict(schema=1,kind='continuous_strict_stereo',phase='running',gpu_snapshot_requested=True,
                    owner_identity=identity(100),game_identity=identity(123),xr_identity=identity(200))

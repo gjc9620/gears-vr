@@ -323,6 +323,7 @@ class LauncherTests(unittest.TestCase):
                 launcher.start({},manifest,backend,pathlib.Path(directory)/'index.json',sleep=lambda seconds:None)
             args=backend.runner.run_session.call_args.args[0]
             self.assertTrue(all(getattr(args,key) is True for key in launcher.SESSION_OPTIONS))
+            self.assertEqual(args.native_expected_sha256,manifest['native_sha256'])
 
     def test_menu_recovery_requires_startup_capture(self):
         with self.assertRaisesRegex(ValueError,'Menu recovery requires'):

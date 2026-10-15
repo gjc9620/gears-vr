@@ -15,7 +15,7 @@ from types import SimpleNamespace
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 HERE=pathlib.Path(__file__).resolve().parent
 INDEX=ROOT/'analysis/runtime/vr-launcher-session.json'
-SESSION_OPTIONS=('anchor_observer','cinematic_camera','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','gpu_snapshot','menu_recovery')
+SESSION_OPTIONS=('anchor_observer','cinematic_camera','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','gpu_snapshot','menu_recovery','world_recovery')
 
 def atomic_json(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -44,6 +44,8 @@ def settings(config,manifest,root=ROOT):
         raise ValueError('Menu lock requires startup graphics protection')
     if manifest.get('ui_hud_plane',False) and not (manifest.get('ui_observer',False) and manifest.get('anchor_observer',False)):
         raise ValueError('HUD plane requires UI observer and anchor observer in the continuous launcher')
+    if manifest.get('world_recovery',False) and not all(manifest.get(key,False) for key in ('anchor_observer','ui_observer','cinematic_camera')):
+        raise ValueError('World recovery requires anchor/UI observers and cinematic camera')
     if manifest.get('cinematic_camera',False) and not manifest.get('anchor_observer',False):
         raise ValueError('Cinematic camera requires anchor observer')
     scale=config.get('stereo_units_per_metre',100)
@@ -315,7 +317,8 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
             state.update(phase='cancelled_before_activation',native_activated=False,prime_watchdog_pending=True)
             atomic_json(index,state);return 0
         args=SimpleNamespace(pid=pid,build_dir=rooted(manifest['native_build']),dll_name=manifest['native_dll'],
-            xr_build_dir=rooted(manifest['xr_build']),stereo_units_per_metre=scale,startup_timeout=45.,cleanup_timeout=35.)
+            xr_build_dir=rooted(manifest['xr_build']),stereo_units_per_metre=scale,startup_timeout=45.,cleanup_timeout=35.,
+            native_expected_sha256=manifest['native_sha256'])
         for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
         if owned_prime:
             deadline=clock()+30
