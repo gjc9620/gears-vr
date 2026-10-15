@@ -1,6 +1,11 @@
 #include "late_quad_diagnostics.h"
 #include <cassert>
 int main(){
+    using gears_late_quad::observe_target;
+    assert(observe_target(0x1234,true,false,0));assert(observe_target(0x1234,true,false,9));
+    assert(observe_target(0x1234,true,true,0));assert(!observe_target(0x1234,true,true,9));
+    assert(!observe_target(0x1234,false,false,0));assert(!observe_target(0x1234,false,true,9));
+    assert(observe_target(0x2b11a0,false,true,9));
     struct Payload {unsigned queries{};};
     gears_late_quad::Recorder<Payload> recorder;
     gears_late_quad::Epoch epoch{1,1,9};gears_late_quad::Key key{};
@@ -22,5 +27,8 @@ int main(){
     key.args[4]=.5f;assert(changes.admit(epoch,key,0,4));
     key.dimensions[3]=1081;assert(changes.admit(epoch,key,0,5));
     key.objects[3]=7;assert(changes.admit(epoch,key,0,6));
+    key.quad_caller=0xd83b1c;assert(changes.admit(epoch,key,0,7));
+    key.quad_caller=0x2c1234;assert(changes.admit(epoch,key,0,8));
+    assert(changes.size==8&&changes.rows[6].key.quad_caller==0xd83b1c&&changes.rows[7].key.quad_caller==0x2c1234);
     return 0;
 }

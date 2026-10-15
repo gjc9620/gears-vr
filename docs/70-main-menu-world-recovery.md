@@ -171,3 +171,15 @@ Native10 SHA `3a47376665306802c4f167f7361143a1dd03b416d57f64ce98da9a267926e03e`�
 现有outage_sources已有更直接的后续线索：gap0 first_unknown draw在QPC421018854368写入实际当前backbuffer `16033795e0`、1920×1081，caller`1401af92b`、indexed6/instance1，list`160302b090`、generation109262；无ticket或已认证Material。该图元生成函数也用于已知quad，但本轮只筛选历史caller2b11a0的late观察仍为0。因此下一步应把已有quad作用域扩展为“实际当前backbuffer上的未认证quad”，记录真实quad caller及当前绑定输入；不是继续猜新caller或放宽门禁。若没有quad作用域则再查相应直接调用路径。源内容、采样及同帧归属仍须验证。
 
 BackbufferCopyDiagnosticsTest及color-copy/color-copy-system/continuous自测、完整reserve链通过。最终native_cleanup_verified、entry_restore_verified及XR shutdown/objects_destroyed均true，但XR exit1、会话incomplete；显示未通过。正常WM_CLOSE关闭游戏，备份`world10-config-after-test.ini`后恢复StartupResolutionY=1080；证据`world10-rect-experiment.json`、会话native-status、`world10-close.json`。未提升默认或宣布所有黑屏根因。
+
+## 第十批：定位实际后缓冲quad与实时输入身份
+
+Native11 SHA `aaeeba4499732d54128e4e72c91f573f2b5282dfeb11b5424c3aaf46ef4ccca7`，XR仍为MainMenu8。所有已有quad Hook作用域携带真实caller，但只对当前已认证buffer上的未分类quad（及旧历史caller例外）读取TLS/查询输入。8行/epoch、32行总限额和新行才查询资源保持不变，不改变渲染或接受条件。
+
+会话`continuous-stereo-37612-20261016-061336-9309a636.json`，game37612 / creation134365760038375735，owner38716。此次缩短为baseline→物理1081→恢复物理1080，不再重复世界切换。published219→283后保持、projection242后保持；最终脚本多余的“再暂停”因已在DeltaPause页面被状态校验拒绝，未发送该键，不把脚本标作完整通过。尺寸三阶段证据有效，保存于`world11-rect-experiment.json`及stderr。
+
+late row8/9定位真实caller `9a7377`：目标quad(0,0,1920,1081)，source(-0,-0.5,1920,1081)，target dimensions1920×1081、texture dimensions1920×1080；当前backbuffer单RTV、indexed6/instance1、全尺寸viewport。slot0当前绑定资源native接口`164e6a4b70`、canonical`164e6a4b40`，实时GetDesc1920×1080，恰好等于positive-eye拒绝记录中的RTV。首个左眼拒绝QPC425224789976，后缓冲quad425224793269；两者同raw list`164e1a3b70`、generation105995。另一buffer也重复该源。明确找到同一记录窗口的源/目标传递候选，不再是猜测地址或保存的旧COM值；仍不是shader语义、提交完成或GPU像素认证。
+
+下一步只围绕caller9a7377查资料库/具体函数及其采样、shader设置，验证当前版本字节后设计显式source→destination关联；不能用同ticket的两次普通draw_final冒充跨资源传递。CPU pre-original Execute字段、ticket0及尚未验证内容保持原标注。
+
+LateQuadDiagnosticsTest、quad/continuous自测及实际reserve链通过；最终native清理/入口恢复、XR shutdown/对象销毁通过，但XR exit1、会话incomplete。正常WM_CLOSE关闭游戏，备份`world11-config-after-test.ini`后恢复用户StartupResolutionY=1080。默认未提升，未作真头显或GPU抓帧验收。

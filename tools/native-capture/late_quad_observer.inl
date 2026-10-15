@@ -1,8 +1,9 @@
-// Included after resource_identity_observer.h. CPU observations only. The caller
-// RVA is a historical hypothesis, not a live attestation of final output.
+// Included after resource_identity_observer.h. CPU observations inside any quad
+// reaching a current backbuffer without classified final-eye/ticket context.
+// Historical 2b11a0 remains a diagnostic exception, not an output attestation.
 #include "late_quad_diagnostics.h"
 struct LateQuadCandidate {
-    bool active{};std::array<float,8> args{};std::array<unsigned,4> dimensions{};unsigned draws{};
+    bool active{};std::array<float,8> args{};std::array<unsigned,4> dimensions{};uintptr_t caller{};unsigned draws{};
 };
 thread_local LateQuadCandidate late_quad_candidate{};
 struct LateQuadPayload {
@@ -27,11 +28,14 @@ void observe_late_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned
     // Always acquire here, as the final-eye diagnostic recorder does.
     std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
     ++late_quad_candidate.draws;
-    gears_late_quad::Key key{};key.args=late_quad_candidate.args;key.dimensions=late_quad_candidate.dimensions;
-    key.draw_caller=caller>=base?caller-base:caller;key.kind=kind;key.elements=elements;key.instances=instances;
     const auto raw=reinterpret_cast<uintptr_t>(list);const auto binding=frame_target_stats.binding(raw);
+    const bool known=swapchain_bindings.known_buffer(binding.target.resource);
+    if(!gears_late_quad::observe_target(late_quad_candidate.caller,known,final_eye.valid,consuming_frame_ticket))return;
+    gears_late_quad::Key key{};key.args=late_quad_candidate.args;key.dimensions=late_quad_candidate.dimensions;
+    key.quad_caller=late_quad_candidate.caller;
+    key.draw_caller=caller>=base?caller-base:caller;key.kind=kind;key.elements=elements;key.instances=instances;
     key.target=binding.target;key.targets=binding.targets;key.rectangles=frame_target_stats.draw_state(raw);
-    key.known_buffer=swapchain_bindings.known_buffer(key.target.resource);
+    key.known_buffer=known;
     key.descriptor_capacity_lost=frame_target_stats.descriptor_capacity_lost();
     // Fresh same-call TLS reads, including outside consuming_renderer scope.
     uintptr_t tls{};unsigned char count{};
@@ -55,11 +59,11 @@ void observe_late_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned
         query_bound_resource(key.objects[slot],p.sources[slot]);
 }
 void print_late_quad(FILE* file){
-    fprintf(file,"late_quad_summary caller=2b11a0 caller_source=historical_hypothesis calls=%llu without_draw=%llu rows=%u limit=32 per_epoch_limit=8 dropped=%llu cpu_only=1 pixels_verified=0 resource_queries=new_rows_only execute_source=cpu_pre_original submission_completed=0\n",
+    fprintf(file,"late_quad_summary scope=all_hook_quads calls=%llu without_draw=%llu without_draw_means=no_intercepted_draw_in_quad admission=current_known_buffer_without_classified_final_eye_ticket historical_caller_exception=2b11a0 rows=%u limit=32 per_epoch_limit=8 dropped=%llu cpu_only=1 pixels_verified=0 resource_queries=new_rows_only execute_source=cpu_pre_original submission_completed=0\n",
         late_quad_calls,late_quad_without_draw,late_quads.size,late_quads.dropped);
     for(unsigned i=0;i<late_quads.size;++i){const auto& r=late_quads.rows[i];const auto& k=r.key;const auto& p=r.payload;
-        fprintf(file,"late_quad row=%u world=%llu inventory_epoch=%llu chain=%llx count=%llu first_qpc=%lld last_qpc=%lld ticket=%llu last_ticket=%llu args=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g dimensions=%u,%u,%u,%u context=%llx read_mask=%u slot_count=%u bound_objects=",
-            i,r.epoch.world,r.epoch.inventory,static_cast<unsigned long long>(r.epoch.chain),r.count,r.first_qpc,r.last_qpc,p.ticket,r.last_ticket,
+        fprintf(file,"late_quad row=%u world=%llu inventory_epoch=%llu chain=%llx count=%llu first_qpc=%lld last_qpc=%lld ticket=%llu last_ticket=%llu quad_caller=%llx args=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g dimensions=%u,%u,%u,%u context=%llx read_mask=%u slot_count=%u bound_objects=",
+            i,r.epoch.world,r.epoch.inventory,static_cast<unsigned long long>(r.epoch.chain),r.count,r.first_qpc,r.last_qpc,p.ticket,r.last_ticket,static_cast<unsigned long long>(k.quad_caller),
             k.args[0],k.args[1],k.args[2],k.args[3],k.args[4],k.args[5],k.args[6],k.args[7],
             k.dimensions[0],k.dimensions[1],k.dimensions[2],k.dimensions[3],static_cast<unsigned long long>(k.context),k.read_mask,k.slot_count);
         for(unsigned s=0;s<std::min(k.slot_count,32u);++s)fprintf(file,"%s%llx",s?",":"",static_cast<unsigned long long>(k.objects[s]));

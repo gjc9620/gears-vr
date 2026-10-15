@@ -6,19 +6,23 @@
 
 // Pure bounded observation storage. Caller serializes access; no acceptance gates.
 namespace gears_late_quad {
+// Recorder admission only; this does not classify or authorize a final draw.
+inline bool observe_target(uintptr_t quad_caller,bool known_buffer,bool final_eye_valid,uint64_t ticket){
+    return quad_caller==0x2b11a0||(known_buffer&&!(final_eye_valid&&ticket));
+}
 struct Epoch {
     uint64_t world{},inventory{};uintptr_t chain{};
     bool operator==(Epoch const& b)const{return world==b.world&&inventory==b.inventory&&chain==b.chain;}
 };
 struct Key {
     std::array<float,8> args{};std::array<unsigned,4> dimensions{};
-    uintptr_t context{},draw_caller{};unsigned read_mask{},slot_count{},kind{},elements{},instances{},targets{};
+    uintptr_t context{},quad_caller{},draw_caller{};unsigned read_mask{},slot_count{},kind{},elements{},instances{},targets{};
     std::array<uintptr_t,32> objects{};
     gears_viewport::Target target{};gears_viewport::DrawState rectangles{};
     bool known_buffer{},descriptor_capacity_lost{};
     bool operator==(Key const& b)const{
         return std::memcmp(args.data(),b.args.data(),sizeof(args))==0&&dimensions==b.dimensions&&context==b.context&&
-            draw_caller==b.draw_caller&&read_mask==b.read_mask&&slot_count==b.slot_count&&kind==b.kind&&
+            quad_caller==b.quad_caller&&draw_caller==b.draw_caller&&read_mask==b.read_mask&&slot_count==b.slot_count&&kind==b.kind&&
             elements==b.elements&&instances==b.instances&&targets==b.targets&&objects==b.objects&&target==b.target&&
             rectangles.tracked==b.rectangles.tracked&&rectangles.viewport==b.rectangles.viewport&&
             rectangles.scissor==b.rectangles.scissor&&rectangles.viewport_count==b.rectangles.viewport_count&&

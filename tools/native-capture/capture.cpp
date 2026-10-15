@@ -2720,8 +2720,8 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
         if(!final_eye.valid)record_final_eye_failure(1,1u|(!consuming_frame_ticket?2u:0u));
     }
     const auto saved_late=late_quad_candidate;late_quad_candidate={};
-    if(frame_link_diagnostics&&recording.load()&&caller==0x2b11a0){
-        late_quad_candidate={true,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height}};
+    if(frame_link_diagnostics&&recording.load()){
+        late_quad_candidate={true,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height},caller};
         std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);++late_quad_calls;
     }
     original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);
