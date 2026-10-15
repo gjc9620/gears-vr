@@ -356,3 +356,5 @@ Mirror2 / PID25668 保留用户设置的1920×1080桌面，owned资源仍为4096
 四张640×360窗口采样均为完整单眼画面、左右黑边。模拟器保存22帧滚动证据，目视审阅其中6帧未见明显交替；这只能说明这段样本，不能否定用户报告的桌面及模拟器左眼闪烁。初始原始GPU图与后续模拟器预览均见右眼明显较暗，原因尚未确定，不能把整套双眼显示验收判为通过。下一步应比较连续源眼图、同帧姿态/FOV、渲染状态与合成预览，定位曝光/后处理或其他眼间差异；这些是待验证方向。
 
 独立WARP最终运行5,330项检查通过，覆盖RGBA/BGRA、sRGB、10位目的格式、黑边、快照独立性、源状态恢复、忙跳过、超时及恢复。测试环境D3D12 Debug Layer不可用，已显式输出该限制；早先辅助报告“Debug Layer无错误”不能作为调试层通过证据。相关CPU、DLL ABI/family/frame-link测试通过，关闭功能分支编译及frame-link自测通过。两轮63处入口独立核验恢复后正常关闭游戏，无强杀；native Owner仍保留至进程退出，launcher仍incomplete，默认玩家清单未切换。审计：`analysis/ui-position-runtime/owned-mirror1-33548.audit.json`、`owned-mirror2-25668.audit.json`。模拟器事件目录：`%LOCALAPPDATA%/OpenXR-Simulator/flicker_incidents/session_33872/incident_9026`。
+
+进一步比较同一进程的原生owned读回：ticket2两眼灰度均值约27.16/24.97；ticket121和1801均为左约29.4、右约9.2。后两张之间，左眼365,252像素改变，右眼只有41/4,194,304像素改变且最大通道差1。模拟器22帧采样的右眼像素完全相同，左眼仍有细微变化。这把“右眼几乎不更新/亮度异常”的疑点推进到原生输出阶段，但不证明具体原因，也不等于已解释用户报告的左眼闪烁。原图左右分别占据4096×2048纹理的两个2048²区域，未见两张完整画面简单叠在同一区；上游采样串眼、共享历史/渲染状态仍待查。证据为 `analysis/ui-position-runtime/owned-mirror2-temporal-measurement.json`、`owned-mirror2-eye-change.json` 和源图哈希。下一最小实验可在模拟器提供相同双眼FOV及零IPD，核对实际消费矩阵后比较连续眼图，区分视角差异与右眼更新路径；完成后恢复配置。
