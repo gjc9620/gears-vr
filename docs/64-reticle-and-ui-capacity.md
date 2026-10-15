@@ -20,6 +20,8 @@ Native13已独立编译，DLL SHA256 `f6f12ccf16015470bf7e0b19b7593fec7e8da606bd
 
 HUD55°应用6021次、sequence_fault0，准星应用101次、三类拒绝0；批次容量拒绝/poison0，kind2 Canvas查询1945次，原生文字source1发布176次。这些计数不等于换枪或字幕像素验收。此次请求的selector快照实际未见完整换枪图标组，重载后的快照未见字幕；ADS快照中弹药图标与数值布局仍有可疑分离，需与原版/关闭HUD变换对照，尚不认定为新引入的问题或通过全部UI验收。证据 `world13-ui-scenario.stdout.txt` 与同会话GPU原图均留在ignored analysis。
 
+对照准备还修正了源码开关不一致：Material路径现在与indexed batch共同受ui_hud_plane_enabled控制；关闭时已认证kind2/3使用普通双眼overlay，kind0始终ordinary，kind1/陌生值仍拒绝，原有证书与原调用次数保持限定。GameUiMaterialTest的两态分类及原生命周期/恢复检查通过；冻结Native13 DLL未改变，该变更待Native14实际ON/OFF对照。不能把此开关修正等同弹药布局根因已确定。
+
 ## 复现：GameRecovery7，2026-10-15
 
 实际游戏 PID24112（`continuous-stereo-24112-20261015-195606-390abba0.*`）通过对象/类身份与双向关系复读确认从 `Weap_AssaultRifle` 切到 `Weap_COGPistol`。两次正常手柄开镜各3秒，首轮采样的相机FOV由80变为45。没有修改游戏武器或相机内存。游戏EXE SHA256沿用清单中的 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`。

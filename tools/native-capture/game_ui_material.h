@@ -3,7 +3,9 @@
 #include <limits>
 namespace gears_game_material {
 enum class Plan {reject,ordinary,hud};
-inline Plan plan_kind(unsigned kind){return kind==0?Plan::ordinary:(kind==2||kind==3?Plan::hud:Plan::reject);}
+inline Plan plan_kind(unsigned kind,bool hud_plane_enabled=true){
+    return kind==0?Plan::ordinary:(kind==2||kind==3?(hud_plane_enabled?Plan::hud:Plan::ordinary):Plan::reject);
+}
 struct UploadCertificate {std::uintptr_t context{},native_context{};gears_ui_material::Quad quad{};};
 inline bool upload_matches(UploadCertificate const& u,std::uintptr_t context,std::uintptr_t list,std::uintptr_t native_list,
                            unsigned stride,unsigned topology,gears_ui_material::Quad const& quad){

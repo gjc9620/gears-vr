@@ -8,7 +8,7 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
     diagnostic.target=binding.target.resource;diagnostic.width=unsigned(binding.target.width);diagnostic.height=binding.target.height;
     auto reject=[&](unsigned reason){current->bad=true;++rejected;++reject_reasons[reason];
         if(!first_rejects[reason].reason){diagnostic.reason=reason;first_rejects[reason]=diagnostic;}return false;};
-    const auto kind=gears_game_material::plan_kind(c.consumer.receipt.kind);
+    const auto kind=gears_game_material::plan_kind(c.consumer.receipt.kind,ui_hud_plane_enabled);
     if(kind==gears_game_material::Plan::reject||!u||args.indexed)return reject(1);
     uintptr_t wrapper{},native_list{};unsigned stride{},topology{};
     gears_ui_material::Quad quad{};gears_ui_material::Candidate candidate{};

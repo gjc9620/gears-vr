@@ -6,6 +6,14 @@ using namespace gears_game_material;
 #define CHECK(x) do{if(!(x)){std::printf("failed line %d: %s\n",__LINE__,#x);return __LINE__;}}while(0)
 int main(){
     CHECK(plan_kind(0)==Plan::ordinary&&plan_kind(1)==Plan::reject&&plan_kind(2)==Plan::hud&&plan_kind(3)==Plan::hud&&plan_kind(4)==Plan::reject);
+    for(bool hud_plane_enabled:{false,true}){
+        CHECK(plan_kind(0,hud_plane_enabled)==Plan::ordinary);
+        CHECK(plan_kind(2,hud_plane_enabled)==(hud_plane_enabled?Plan::hud:Plan::ordinary));
+        CHECK(plan_kind(3,hud_plane_enabled)==(hud_plane_enabled?Plan::hud:Plan::ordinary));
+        CHECK(plan_kind(1,hud_plane_enabled)==Plan::reject);
+        CHECK(plan_kind(4,hud_plane_enabled)==Plan::reject);
+        CHECK(plan_kind(std::numeric_limits<unsigned>::max(),hud_plane_enabled)==Plan::reject);
+    }
     UploadCertificate u{};u.context=11;u.native_context=12;u.quad.source=13;
     auto q=u.quad;
     CHECK(upload_matches(u,11,14,14,32,5,q));
