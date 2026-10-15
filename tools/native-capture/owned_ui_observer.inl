@@ -10,8 +10,17 @@ constexpr bool routing=true;
 #else
 constexpr bool routing=false;
 #endif
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+constexpr bool material_routing=true;
+#else
+constexpr bool material_routing=false;
+#endif
 std::atomic<uint64_t> route_commands{},route_draws{},route_faults{},route_plane_draws{},route_reticle_draws{};
 std::atomic<unsigned> first_route_fault{};
+struct DrawRejection {uint64_t ticket{},pair_ticket{};uintptr_t caller{},actual{},expected{};unsigned flags{},width{},height{};
+ gears_viewport::DrawState state{};};
+DrawRejection first_draw_rejection{};std::mutex draw_rejection_mutex;
+void reject_draw(DrawRejection const& row){std::lock_guard<std::mutex> lock(draw_rejection_mutex);if(!first_draw_rejection.ticket)first_draw_rejection=row;}
 void fault(uint64_t ticket,unsigned reason){
  if(!routing)return;
  ledger.invalidate(ticket);++route_faults;unsigned empty{};first_route_fault.compare_exchange_strong(empty,reason);
@@ -69,7 +78,9 @@ void sample_flush(FlushContext const& context,uintptr_t caller){
  const auto row=inventory(context,caller);
  if(flush_rows_count<flush_rows.size())flush_rows[flush_rows_count++]=row;
  if(routing){
-  const unsigned reason=!row.read_ok?1:row.material?2:row.other?3:!ledger.expect(context.ticket,row.batch)?4:0;
+  const unsigned reason=!row.read_ok?1:row.material&&!material_routing?2:row.other?3:
+   !ledger.expect(context.ticket,row.batch)?4:
+   material_routing&&!ledger.expect(context.ticket,row.material,gears_owned_ui::Kind::Material)?4:0;
   if(reason){if(!rejected_flush_reason){rejected_flush=row;rejected_flush_reason=reason;}fault(context.ticket,2);}
  }
 }
@@ -180,6 +191,10 @@ bool reserve(){
   safe_copy(checked.data(),produce_target,16)&&!memcmp(checked.data(),produce_bytes,16);
 }
 void print(FILE* file){
+ {std::lock_guard<std::mutex> lock(draw_rejection_mutex);const auto& r=first_draw_rejection;if(r.ticket){const auto& s=r.state;
+  fprintf(file,"owned_ui_draw_rejected ticket=%llu pair=%llu caller=%llx actual=%llx expected=%llx width=%u height=%u flags=%u tracked=%u vp_count=%u sc_count=%u depth_known=%u depth=%.9g,%.9g viewport=%.9g,%.9g,%.9g,%.9g scissor=%.9g,%.9g,%.9g,%.9g\n",
+   r.ticket,r.pair_ticket,r.caller,r.actual,r.expected,r.width,r.height,r.flags,s.tracked,s.viewport_count,s.scissor_count,s.depth_known,s.min_depth,s.max_depth,
+   s.viewport.x,s.viewport.y,s.viewport.width,s.viewport.height,s.scissor.x,s.scissor.y,s.scissor.width,s.scissor.height);}}
  fprintf(file,"owned_ui_batch enabled=%u commands=%llu draws=%llu plane=%llu reticle=%llu faults=%llu first_fault=%u\n",
   routing,route_commands.load(),route_draws.load(),route_plane_draws.load(),route_reticle_draws.load(),route_faults.load(),first_route_fault.load());
  const auto s=ledger.snapshot();const auto& c=s.counts;

@@ -1,8 +1,8 @@
-// Opt-in diagnostic only. Include after ui_payload_observer.inl and before
-// ui_observer_hooks.inl. Root integrates the existing Canvas/GPU wrappers.
+// Material observation, with a separately gated owned output route. Included
+// after ui_payload_observer.inl; observer candidates alone never permit replay.
 #include "ui_material_batch.h"
 UiExecute ui_original_material_execute{};void* ui_material_execute_target{};
-struct UiMaterialEntry {gears_ui_material::Receipt receipt{};uint64_t invocation{};bool occupied{},poisoned{};};
+struct UiMaterialEntry {gears_ui_material::Receipt receipt{};uint64_t invocation{};bool occupied{},poisoned{};uint64_t owned_receipt{},owned_ticket{};};
 std::array<UiMaterialEntry,32> ui_material_entries{};
 std::mutex ui_material_mutex;
 std::atomic<uint64_t> ui_material_sequence{},ui_material_published{},ui_material_rejected{},ui_material_execute_calls{},ui_material_claimed{},ui_material_content_rejected{},ui_material_bad_return{},ui_material_gpu_candidates{},ui_material_gpu_rejected{};
@@ -11,9 +11,13 @@ struct UiMaterialRejectRow {uintptr_t command{},payload{};unsigned mode{},flags{
 std::array<UiMaterialRejectRow,4> ui_material_reject_rows{};unsigned ui_material_reject_count{};
 struct UiMaterialAppendReject {uintptr_t item{};unsigned flags{},read_mask{};int count{},capacity{};bool recorded{};} ui_material_append_reject;
 bool ui_material_disabled{};
-struct UiMaterialContext {gears_ui_material::Consumer consumer{};uint64_t invocation{},sequence{};unsigned gpu_calls{};};
+struct UiMaterialContext {gears_ui_material::Consumer consumer{};uint64_t invocation{},sequence{};unsigned gpu_calls{};
+ uint64_t owned_receipt{},owned_ticket{};uintptr_t owned_resource{};unsigned owned_draws{};bool owned_failed{};};
 thread_local UiMaterialContext* ui_material_context{};
 struct UiMaterialRestore {UiMaterialContext* saved=ui_material_context;~UiMaterialRestore(){ui_material_context=saved;}};
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+#include "owned_material_route.inl"
+#endif
 void complete_ui_material_rows(uint64_t sequence,bool complete);
 bool ui_material_before(void* canvas,gears_ui_material::Before& out){
  ++ui_material_before_attempts;const bool ok=ui_observer_enabled&&recording.load()&&gears_ui_material::snapshot_before({base},safe_copy,reinterpret_cast<uintptr_t>(canvas),out);if(!ok)++ui_material_before_rejected;return ok;
@@ -68,12 +72,21 @@ uint32_t __fastcall hook_ui_material_execute(void* command){
    }else {++ui_material_content_rejected;record_ui_material_content_reject(reinterpret_cast<uintptr_t>(command));}
   }
  }
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+ owned_material::begin(context,claimed);
+#endif
  const auto result=ui_original_material_execute(command); // Exactly once.
  // Native payload/view may already be destroyed. Only the copied context is used.
  if(ui_material_context){const bool complete=gears_ui_material::finish_consumer(context.consumer,result);if(!complete)++ui_material_bad_return;complete_ui_material_rows(context.sequence,complete);}
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+ owned_material::end(context,result);
+#endif
  return result;
 }
 bool reserve_ui_material_execute(){
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+ if(!owned_material::reserve())return false;
+#endif
  ui_material_execute_target=reinterpret_cast<void*>(base+0x15a420);
  uintptr_t entry{};std::array<unsigned char,32> after{};
  return gears_ui_material::validate_binding({base},safe_copy)&&
@@ -113,6 +126,9 @@ void observe_ui_material_gpu(uintptr_t caller,gears_frame_link::ListRef ref,gear
  ui_material_rows[ui_material_row_count++]={context.invocation,pair.ticket,context.sequence,caller,candidate.payload,candidate.target,ref.identity,target.resource,quad.source,context.consumer.command,candidate.kind,context.gpu_calls,args.indexed,false};
 }
 void print_ui_material_observer(FILE* status){
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+ owned_material::print(status);
+#endif
  std::lock_guard<std::mutex> lock(ui_material_mutex);
  fprintf(status,"ui_material_before attempts=%llu rejected=%llu\n",ui_material_before_attempts.load(),ui_material_before_rejected.load());
  // quad_step: 0=passed, 1=mesh_read, 2=metadata, 3=vertex_read,

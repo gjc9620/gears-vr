@@ -293,3 +293,18 @@ owned UI ledger 已区分 Batch 与 Material，分别核对预期数量、生产
 新建 `build-owned-material-ledger1` 编译通过，ledger 实跑 1,877 checks，Material 测试及 DLL ABI/family 自测均通过。未启动游戏，不借用之前构建的运行记录作为本次 GPU 验证。
 
 此提交只准备类型化生命周期，尚未启用 Material 输出路由；现有清单仍会阻止未支持的 Material 发布。接下来将 producer 的目标/票据关联接入 consumer，并用实际绘制目标和矩阵验证决定最小双眼绘制改动，随后继续字幕路径。没有将静态资料库覆盖率当作 V1 完成率。
+
+## 2026-10-15：Material 已进入实际双目输出，下一阻断是绑定跟踪生命周期
+
+新增默认关闭的 `GEARS_OWNED_UI_MATERIAL`，要求 owned Batch 和 Material observer。producer `3a514c` 将原 FCanvas/逻辑目标与 typed receipt 关联；consumer `15a420` 仍执行一次并按原流程销毁 view/payload。未改原生目标指针或矩阵。只对同票据、实际 OM 已绑定 owned 4096×2048 纹理的非索引 Material quad 执行双眼 viewport/scissor 重绘；原状态随后恢复。仍不支持任意 indexed/world/projective Material。
+
+独立 upload scope 核对 `1af054` 的 context、拓扑1、2 primitives、32字节stride及确切128字节quad来源；Draw处再核对同一context的实际命令列表、stride32、拓扑5和quad内容。producer和上传到draw范围均在安装前进行历史字节SHA256比对。ViewPlane只认证原SceneView的identity view、原矩阵逐字节复制一致、有限标准Canvas XY/W映射及最多1源像素偏移，不改源数据。GPU目标/命令列表代次/票据证据仍分别检查。独立复核确认5参数upload ABI及原函数调用次数，修复了局部 `simulator_operator` 遮蔽；首轮实际全局开关也是0，因此该修正没有冒称改变首轮结果。
+
+- Route1-a / PID38532：40次Material生产、执行、完成、原生上传及双眼重绘均通过，Material faults=0。2,635个owned场景消费，普通Batch first_fault=9终止后续发布，字幕候选0。首次独立恢复工具尚未认识新增两项，拒绝63项清单；补充两个完整范围的独立哈希核验后63处全部匹配，正常关闭，无强杀。更早Route1启动尝试仅因新目录缺配套测试EXE失败，未启动游戏；已补齐启动器所需测试目标。
+- Route2 / PID44700：20次Material完整生命周期及双眼重绘通过，Material faults=0；2,699个owned场景消费，1,589个普通批次双眼重绘。ticket2236在UI完成和GPU提交后对同一纹理读回，fence完成后保存4096×2048原图；直接查看左右眼均有武器HUD、字形无明显拉伸。它证明该帧的双眼UI可见，不证明所有Material分支、字幕或头显验收。63项独立恢复核验后正常关闭。
+
+Route2同时取得普通UI的具体拒绝：ticket2701、caller172741、正确调用链，但 `tracked=0`、实际目标和viewport/scissor均无记录；`frame_link_capacity` 中 `target_binding_overflow=96`，list highwater268超过旧绑定表256槽。旧 `frame_target_stats` 还随Present清空，而owned输出可跨越该边界。不能把缺失观察数据解释为实际GPU目标为null，也不能将此认作此前所有黑屏的唯一根因。
+
+下一修复：owned路径使用独立的录制期绑定状态，同步Reset/RS/OM和启动阶段descriptor create/copy，保留descriptor来源，不随Present清空；提交后只回收该批closed列表的CPU绑定，保留owned GPU tracker的generation/执行证据和其他正在录制的列表。必须继续拒绝真实并发容量不足、缺Reset和未知来源。字幕INI已有 `Subtitles=True`，但脚本另从profile setting ID40设置运行时开关；后续需从实际菜单/profile状态核对，不能仅凭INI假定已开启。
+
+本轮编译、ledger 1,877 checks、Material/ViewPlane测试和DLL ABI/family检查通过，启动器要求的附加自测也通过；功能关闭分支编译通过。证据：`analysis/ui-position-runtime/owned-material-route1-a-38532.audit.json`、`owned-material-route2-44700.audit.json`，视觉审阅 `owned-material-route2-44700-review.png`。实验清单单独保存；默认玩家清单不变。V1仍未完成。

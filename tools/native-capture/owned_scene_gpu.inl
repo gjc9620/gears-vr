@@ -32,6 +32,10 @@ constexpr bool sustained=false;
 #endif
 owned_scene_readback::Probe last_readback;
 owned_scene_readback::Probe late_readback;
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+owned_scene_readback::Probe material_readback;uint64_t material_sample_ticket{};bool material_sample_queued{},material_sample_missed{};
+void material_candidate(uint64_t ticket){if(!material_sample_ticket)material_sample_ticket=ticket;}
+#endif
 constexpr uint64_t late_sample_frame=1800;
 uint64_t late_sample_ticket{};
 struct Frame {uint64_t ticket{};unsigned state{};bool copied{};};
@@ -65,6 +69,18 @@ void subtitle_candidate(uint64_t ticket,uint64_t execute,gears_frame_link::ListR
  row.root_first=root_first;row.root_last=root_last;
 }
 bool copy_subtitle(uint64_t ticket){
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+ if(material_sample_ticket&&!material_sample_queued&&!material_sample_missed){
+  if(ticket>material_sample_ticket)material_sample_missed=true;
+  else if(ticket==material_sample_ticket){
+   if(proof.ticket!=ticket||proof.target.resource!=resource)return false;
+   wchar_t path[MAX_PATH]{};swprintf_s(path,L"%s\\owned-material-%lu-ticket-%llu.ppm",directory,GetCurrentProcessId(),ticket);
+   StereoPublishBypass bypass;
+   material_sample_queued=material_readback.queue(texture,queue,D3D12_RESOURCE_STATES(proof.final_state),true,path);
+   if(!material_sample_queued)return false;
+  }
+ }
+#endif
  for(unsigned i=0;i<subtitle_sample_count;++i){auto& row=subtitle_samples[i];
   if(row.queued||row.missed||row.ticket>ticket)continue;
   if(row.ticket<ticket){row.missed=true;continue;}
@@ -367,6 +383,9 @@ void copy(bool ready,uint64_t ticket){
  finished=!continuous_probe||(!sustained&&last);
 }
 void poll(){if(enabled){readback.poll();last_readback.poll();late_readback.poll();
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+ material_readback.poll();
+#endif
 #if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
  for(unsigned i=0;i<subtitle_sample_count;++i)subtitle_readbacks[i].poll();
 #endif
@@ -386,6 +405,12 @@ void print_progress(FILE* file){
   sustained,consumed_count,last_consumed_ticket,published_count,error,stored_frames);
 }
 void print(FILE* file){
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+ const auto& material_pixels=material_readback.result();
+ fprintf(file,"owned_material_sample ticket=%llu queued=%u missed=%u completed=%u saved=%u error=%u width=%u height=%u\n",
+  material_sample_ticket,material_sample_queued,material_sample_missed,material_pixels.completed,material_pixels.saved,
+  unsigned(material_pixels.error),material_pixels.width,material_pixels.height);
+#endif
 #if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
  fprintf(file,"owned_subtitle_samples count=%u capacity=3 headset_verified=0\n",subtitle_sample_count);
  for(unsigned i=0;i<subtitle_sample_count;++i){const auto& row=subtitle_samples[i];const auto& pixels=subtitle_readbacks[i].result();

@@ -2,8 +2,8 @@
 #include "ui_canvas_batch.h"
 #include <cmath>
 
-// Read-only candidate proof. No GPU IA, ticket, allocator epoch or projection
-// claim is made here. The caller executes native original exactly once.
+// Read-only native candidates and an explicit z=0 Canvas projection check.
+// No GPU IA, ticket or allocator epoch proof. Native originals run once.
 namespace gears_ui_material {
 struct Config {std::uintptr_t base{};};
 namespace d=gears_ui_batch::detail;
@@ -11,6 +11,40 @@ inline constexpr unsigned item_bound=128;
 struct Before {std::uintptr_t canvas{},fcanvas{};std::int32_t key{};unsigned count{};std::array<std::uintptr_t,item_bound> items{};};
 struct Receipt {std::uintptr_t canvas{},fcanvas{},item{},payload{},proxy{};std::int32_t key{};unsigned kind{};std::array<unsigned char,80> transform{};std::array<unsigned char,36> record{};};
 struct Consumer {Receipt receipt{};std::uintptr_t command{},view{},family{},target{};};
+struct ViewPlane {float source_width{},source_height{},aspect{};};
+enum class ViewPlaneReject : unsigned { none,read,extent,copy,nonfinite,identity,xy_w,scale,offset,changed };
+// UE row-vector convention. Certifies only the copied native view's z=0 XY/W
+// mapping; no IA, shader, OM target, ticket, or GPU visibility proof is supplied.
+// Call while the native view is live, before original consumer destruction.
+template<class Read> bool material_view_plane(Read read,Consumer const& s,ViewPlane& out,ViewPlaneReject* rejection=nullptr){
+ d::Reader<Read> r{read};std::array<float,4> rect{},rect_after{};
+ std::array<float,16> view{},projection{},view_after{},projection_after{};
+ auto fail=[&](ViewPlaneReject reason){if(rejection)*rejection=reason;return false;};
+ if(!s.view||!r.field(rect,s.view,0x48)||!r.field(view,s.view,0x70)||!r.field(projection,s.view,0xb0))return fail(ViewPlaneReject::read);
+ for(float f:rect)if(!std::isfinite(f))return fail(ViewPlaneReject::extent);
+ const double x=rect[0],y=rect[1],width=rect[2],height=rect[3];
+ if(width<=0||height<=0||width>16384||height>16384||std::abs(x)>16384||std::abs(y)>16384||
+    !std::isfinite(rect[2]/rect[3])||rect[2]/rect[3]<=0)return fail(ViewPlaneReject::extent);
+ if(std::memcmp(projection.data(),s.receipt.transform.data(),64))return fail(ViewPlaneReject::copy);
+ for(unsigned i=0;i<16;++i){
+  if(!std::isfinite(view[i])||!std::isfinite(projection[i]))return fail(ViewPlaneReject::nonfinite);
+  if(view[i]!=(i%5==0?1.0f:0.0f))return fail(ViewPlaneReject::identity);
+ }
+ // At z=0, row 2 cannot influence XY/W. Finite Z coefficients remain native.
+ if(projection[1]!=0||projection[4]!=0||projection[3]!=0||projection[7]!=0||projection[15]!=1)return fail(ViewPlaneReject::xy_w);
+ // Tiny arithmetic tolerance only, never a one-pixel scale/rotation allowance.
+ if(std::abs(double(projection[0])*width-2)>1e-5||std::abs(double(projection[5])*height+2)>1e-5)return fail(ViewPlaneReject::scale);
+ const double left=x*projection[0]+projection[12],right=(x+width)*projection[0]+projection[12];
+ const double top=y*projection[5]+projection[13],bottom=(y+height)*projection[5]+projection[13];
+ // Both ends must be within one source pixel, including half-pixel bias.
+ const double pixel_limit=1.0+2e-7*(width+height); // Float matrix rounding only.
+ if(std::abs(left+1)*width/2>pixel_limit||std::abs(right-1)*width/2>pixel_limit||
+    std::abs(top-1)*height/2>pixel_limit||std::abs(bottom+1)*height/2>pixel_limit)return fail(ViewPlaneReject::offset);
+ if(!r.field(rect_after,s.view,0x48)||!r.field(view_after,s.view,0x70)||!r.field(projection_after,s.view,0xb0)||
+    std::memcmp(rect.data(),rect_after.data(),sizeof(rect))||std::memcmp(view.data(),view_after.data(),sizeof(view))||
+    std::memcmp(projection.data(),projection_after.data(),sizeof(projection)))return fail(ViewPlaneReject::changed);
+ out={rect[2],rect[3],rect[2]/rect[3]};if(rejection)*rejection=ViewPlaneReject::none;return true;
+}
 struct Quad {std::uintptr_t source{},index_data{};std::array<std::array<unsigned char,32>,4> vertices{};};
 struct QuadDiagnostic {
  unsigned step{},stride{},first{},primitives{},minimum{},maximum{};std::uint16_t flags{};

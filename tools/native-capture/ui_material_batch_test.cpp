@@ -3,6 +3,7 @@
 #include <map>
 #include <vector>
 #include <cstdio>
+#include <limits>
 using namespace gears_ui_material;
 struct Memory {
  std::map<std::uintptr_t,std::vector<unsigned char>> blocks;
@@ -30,7 +31,67 @@ struct Fixture {
  }
  auto read(){return [this](void* out,void const* p,std::size_t n){return m.read(out,p,n);};}
 };
-int main(){Fixture f;Quad q{};assert(capture_quad(f.c,f.read(),f.consumer,q));Candidate candidate{};
+void view_plane_tests(){
+ const auto configure=[](Fixture& f,float width=1920,float height=1080,float x=0,float y=0,float bias_x=0,float bias_y=0){
+  std::array<float,16> identity{},p{};for(unsigned i=0;i<16;i+=5)identity[i]=1;
+  p[0]=2/width;p[5]=-2/height;p[10]=0.5f;p[14]=0.25f;p[15]=1;
+  p[12]=-1-x*p[0]+bias_x*2/width;p[13]=1-y*p[5]-bias_y*2/height;
+  f.m.put(f.consumer.view+0x48,std::array<float,4>{x,y,width,height});f.m.put(f.consumer.view+0x70,identity);f.m.put(f.consumer.view+0xb0,p);
+  std::memcpy(f.consumer.receipt.transform.data(),p.data(),64);
+ };
+ const auto put_projection=[](Fixture& f,unsigned element,float value){
+  f.m.put(f.consumer.view+0xb0+element*4,value);std::memcpy(f.consumer.receipt.transform.data()+element*4,&value,4);
+ };
+ ViewPlane out{};ViewPlaneReject reason{};
+ Fixture standard;configure(standard);assert(material_view_plane(standard.read(),standard.consumer,out,&reason));
+ assert(out.source_width==1920&&out.source_height==1080&&std::abs(out.aspect-1920.0f/1080)<1e-6f&&reason==ViewPlaneReject::none);
+ Fixture maximum;configure(maximum,16384,16384,16384,16384,1,-1);
+ assert(material_view_plane(maximum.read(),maximum.consumer,out,&reason)&&out.aspect==1);
+ for(float bias:{-1.0f,-0.5f,0.0f,0.5f,1.0f}){
+  Fixture shifted;configure(shifted,1920,1080,3,4,bias,bias);
+  assert(material_view_plane(shifted.read(),shifted.consumer,out,&reason));
+ }
+ // Z-only terms cannot change z=0 XY/W; preserve them without modification.
+ Fixture z;configure(z);for(unsigned element:{2u,6u,8u,9u,10u,11u,14u})put_projection(z,element,0.37f);
+ assert(material_view_plane(z.read(),z.consumer,out,&reason));
+ // Every rejection leaves the caller's successful output untouched.
+ const ViewPlane sentinel{7,8,9};
+ for(unsigned misuse=0;misuse<16;++misuse){
+  Fixture f;configure(f);out=sentinel;
+  const float nan=std::numeric_limits<float>::quiet_NaN();
+  if(misuse==0)f.consumer.view=0;
+  if(misuse==1)f.m.blocks.erase(f.consumer.view);
+  if(misuse==2)f.m.put(f.consumer.view+0x50,0.0f);
+  if(misuse==3)f.m.put(f.consumer.view+0x54,-1.0f);
+  if(misuse==4)f.m.put(f.consumer.view+0x50,16385.0f);
+  if(misuse==5)f.m.put(f.consumer.view+0x48,nan);
+  if(misuse==6)f.consumer.receipt.transform[0]^=1;
+  if(misuse==7)put_projection(f,10,nan);
+  if(misuse==8)f.m.put(f.consumer.view+0x70,2.0f);
+  if(misuse==9)put_projection(f,1,0.001f); // XY rotation/shear.
+  if(misuse==10)put_projection(f,4,0.001f);
+  if(misuse==11)put_projection(f,3,0.001f); // XY-dependent W.
+  if(misuse==12)put_projection(f,7,0.001f);
+  if(misuse==13)put_projection(f,15,2.0f);
+  if(misuse==14)put_projection(f,0,(2.0f+2.0f/1920)/1920); // One-pixel scale error is not translation bias.
+  if(misuse==15)configure(f,1920,1080,0,0,1.01f,0);
+  assert(!material_view_plane(f.read(),f.consumer,out,&reason));
+  const auto expected=misuse<2?ViewPlaneReject::read:misuse<6?ViewPlaneReject::extent:
+   misuse==6?ViewPlaneReject::copy:misuse==7?ViewPlaneReject::nonfinite:misuse==8?ViewPlaneReject::identity:
+   misuse<14?ViewPlaneReject::xy_w:misuse==14?ViewPlaneReject::scale:ViewPlaneReject::offset;
+  assert(reason==expected&&out.source_width==7&&out.source_height==8&&out.aspect==9);
+ }
+ Fixture changing;configure(changing);unsigned reads{};
+ auto racing=[&](void* dst,void const* src,std::size_t n){
+  if(++reads==4)changing.m.put(changing.consumer.view+0x50,1919.0f);
+  return changing.m.read(dst,src,n);
+ };
+ out=sentinel;assert(!material_view_plane(racing,changing.consumer,out,&reason)&&reason==ViewPlaneReject::changed&&out.aspect==9);
+ // Source and receipt matrices remain byte-identical after successful reads.
+ std::array<float,16> saved{};assert(standard.m.read(saved.data(),reinterpret_cast<void const*>(standard.consumer.view+0xb0),64));
+ assert(!std::memcmp(saved.data(),standard.consumer.receipt.transform.data(),64));
+}
+int main(){view_plane_tests();Fixture f;Quad q{};assert(capture_quad(f.c,f.read(),f.consumer,q));Candidate candidate{};
  assert(classify_draw(f.c,f.consumer,q,f.c.base+0x1af345,{false,4,1,0,0,0},candidate));
  assert(!classify_draw(f.c,f.consumer,q,f.c.base+0x177c4a,{false,4,1,0,0,0},candidate));
  assert(!classify_draw(f.c,f.consumer,q,f.c.base+0x1af345,{false,6,1,0,0,0},candidate));

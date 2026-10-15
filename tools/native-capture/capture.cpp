@@ -260,7 +260,11 @@ constexpr size_t session_hook_base_capacity=40,viewport_hook_capacity=11;
 constexpr size_t session_hook_base_capacity=39,viewport_hook_capacity=10;
 #endif
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+constexpr size_t session_hook_capacity=session_hook_base_capacity+4;
+#else
 constexpr size_t session_hook_capacity=session_hook_base_capacity+2;
+#endif
 #else
 constexpr size_t session_hook_capacity=session_hook_base_capacity;
 #endif
@@ -2257,6 +2261,9 @@ bool install(void* target,void* detour,void** original) {
           (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target||target==ui_subtitle_target
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
              ||target==ui_material_execute_target
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+             ||target==owned_material::produce_target||target==owned_material::upload_target
+#endif
 #endif
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
              ||target==owned_ui_live::flush_target||target==owned_ui_live::produce_target
@@ -2438,6 +2445,9 @@ void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
         if(entry.target==value.target&&entry.kind==value.kind&&entry.count==value.count&&entry.frames==value.frames)return;
     }
 }
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+#include "owned_material_draw.inl"
+#endif
 void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,UINT instances,UINT start,UINT first_instance) {
     Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
@@ -2447,6 +2457,9 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
         if(binding.targets==1&&!binding.target.mip&&binding.target.width<=8192&&!frame_target_stats.descriptor_capacity_lost())
             target={binding.target.resource,static_cast<unsigned>(binding.target.width),binding.target.height};
         observe_ui_material_gpu(caller,frame_link.current(canonical_identity(list)),target,{false,vertices,instances,start,first_instance,0});
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+        if(owned_material::draw(list,caller,{false,vertices,instances,start,first_instance,0}))return;
+#endif
     }
 #endif
     if(gears_viewport::has_draw_work(vertices,instances))observe_frame_draw(list,caller,0,vertices,instances);
@@ -2465,6 +2478,9 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
         if(binding.targets==1&&!binding.target.mip&&binding.target.width<=8192&&!frame_target_stats.descriptor_capacity_lost())
             target={binding.target.resource,static_cast<unsigned>(binding.target.width),binding.target.height};
         observe_ui_material_gpu(caller,frame_link.current(canonical_identity(list)),target,{true,indices,instances,start,first_instance,vertex});
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+        if(ui_material_context->owned_ticket)owned_material::fail(*ui_material_context,26);
+#endif
     }
 #endif
     // The native segment loop issues zero draws too. Consume its ordinal before
@@ -2482,11 +2498,12 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
         const auto count=CaptureStackBackTrace(0,static_cast<DWORD>(stack.size()),stack.data(),nullptr);
         for(unsigned i=0;i<count;++i)addresses[i]=reinterpret_cast<uintptr_t>(stack[i]);
         gears_viewport::OverlayPlan plan{};
+        const bool chain=ui_observed_overlay_chain(addresses.data(),count);
         const bool admitted=caller==base+0x172741&&!frame_target_stats.descriptor_capacity_lost()&&
             binding.targets==1&&!binding.target.mip&&binding.target.resource==route.resource&&
             binding.target.width==target.width&&binding.target.height==target.height&&
-            pair.linked&&pair.ticket==route.ticket&&ui_observed_overlay_chain(addresses.data(),count);
-        bool reticle=false,plane=false;
+            pair.linked&&pair.ticket==route.ticket&&chain;
+        bool reticle=false,plane=false,sample_found=false;
         if(admitted){
             reticle=prepare_ui_reticle_overlay(route.ticket,saved,target.width,target.height,plan);
             if(!reticle){
@@ -2494,7 +2511,8 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
                 parameters.source_aspect=ui_source_aspect();
                 // Menu glyphs lack semantic sidecar labels but are still exact
                 // Canvas members. Use the same ticket's head-locked panel.
-                plane=ui_ticket_sample(route.ticket,sample)&&
+                sample_found=ui_ticket_sample(route.ticket,sample);
+                plane=sample_found&&
                     gears_ui_hud::plan(saved,target.width,target.height,sample,plan,parameters);
             }
         }
@@ -2512,6 +2530,10 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,plane,&plan,reticle,&plan);
             return; // Overlay work is not an extra world-geometry draw.
         }
+        owned_ui_live::reject_draw({route.ticket,pair.ticket,caller-base,binding.target.resource,route.resource,
+            unsigned(admitted)|(unsigned(chain)<<1)|(unsigned(pair.linked)<<2)|(unsigned(sample_found)<<3)|
+            (unsigned(frame_target_stats.descriptor_capacity_lost())<<4)|(unsigned(binding.targets)<<8)|
+            (unsigned(binding.target.mip)<<16),unsigned(binding.target.width),binding.target.height,saved});
         owned_ui_live::fault(route.ticket,9);
     }
 #endif
@@ -3029,6 +3051,10 @@ DWORD WINAPI worker(void*) {
 #endif
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ok&&ui_observer_enabled)ok=install(ui_material_execute_target,reinterpret_cast<void*>(hook_ui_material_execute),reinterpret_cast<void**>(&ui_original_material_execute));
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+    if(ok&&ui_observer_enabled)ok=install(owned_material::produce_target,reinterpret_cast<void*>(owned_material::hook_produce),reinterpret_cast<void**>(&owned_material::original_produce))&&
+        install(owned_material::upload_target,reinterpret_cast<void*>(owned_material::hook_upload),reinterpret_cast<void**>(&owned_material::original_upload));
+#endif
 #endif
     if(ok&&continuous_session)ok=enable_graphics_lock_observer();
     if(ok)ok=enable_resource_resize_probe(status);
