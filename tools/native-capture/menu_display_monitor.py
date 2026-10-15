@@ -1,5 +1,6 @@
 """Read-only menu observation for reversible XR display; no game control."""
 import os
+import json
 from pathlib import Path
 import struct
 import sys
@@ -34,22 +35,43 @@ class MenuDisplayMonitor:
         self.path, self.game, self.owner = Path(path), game, owner
         self.identity, self.factory, self.reader_identity, self.clock = identity, reader_factory, reader_identity, clock
         self.reader, self.sequence, self.retry_ns, self.last = None, 0, 0, None
+        self.publish_failed = False
         self.log = self.path.with_suffix('.jsonl').open('w', encoding='utf-8')
 
     def publish(self, mode, observed, reason):
-        import json
         self.sequence += 1
         data = PACKET.pack(0x47564d31, 1, PACKET.size, mode,
                            self.game['pid'], self.game['creation_time'], self.owner['pid'],
                            self.owner['creation_time'], self.sequence, observed)
         temporary = self.path.with_suffix('.tmp')
-        temporary.write_bytes(data)
-        os.replace(temporary, self.path)
+        try:
+            temporary.write_bytes(data)
+            os.replace(temporary, self.path)
+        except OSError as error:
+            # Preserve the previous packet and its acquisition timestamp. The
+            # next poll must acquire a new sample before attempting publication.
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+            if not self.publish_failed:
+                self.log.write(json.dumps(dict(event='publish_failed', sequence=self.sequence,
+                    observed_ns=observed, error=type(error).__name__, errno=error.errno,
+                    winerror=getattr(error, 'winerror', None)))+'\n')
+                self.log.flush()
+            self.publish_failed = True
+            return False
+        if self.publish_failed:
+            self.log.write(json.dumps(dict(event='publish_recovered', sequence=self.sequence,
+                                          observed_ns=observed))+'\n')
+            self.log.flush()
+            self.publish_failed = False
         key = mode, reason
         if key != self.last:
             self.log.write(json.dumps(dict(sequence=self.sequence, observed_ns=observed, mode=mode, reason=reason))+'\n')
             self.log.flush()
             self.last = key
+        return True
 
     def poll(self):
         observed = self.clock()  # Begin acquisition, never extend a slow read's lease.

@@ -1,6 +1,8 @@
 import pathlib
 import tempfile
 import unittest
+import json
+from unittest.mock import patch
 from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, UNKNOWN, GAMEPLAY, DEATH_MENU
 
 
@@ -51,5 +53,47 @@ class Tests(unittest.TestCase):
             def fail():raise RuntimeError('changed')
             reader.sample=fail;m.poll();self.assertEqual(PACKET.unpack(path.read_bytes())[3],UNKNOWN)
             m.close()
+
+    def test_replace_failure_preserves_packet_and_recovers_with_new_sample(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+            m.poll();previous=path.read_bytes()
+            with patch('menu_display_monitor.os.replace', side_effect=PermissionError('busy')):
+                m.clock=lambda:200
+                m.poll()
+                self.assertEqual(path.read_bytes(),previous)
+                self.assertFalse(path.with_suffix('.tmp').exists())
+            reader.sample=lambda:sample(False)
+            m.clock=lambda:300
+            m.poll()
+            packet=PACKET.unpack(path.read_bytes())
+            self.assertEqual((packet[3],packet[-1]),(GAMEPLAY,300))
+            events=[json.loads(line).get('event') for line in path.with_suffix('.jsonl').read_text().splitlines()]
+            self.assertEqual(events.count('publish_failed'),1)
+            self.assertEqual(events.count('publish_recovered'),1)
+            m.close()
+
+    def test_initial_failure_is_bounded_and_close_cleans_up(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+            with patch('menu_display_monitor.os.replace', side_effect=PermissionError('busy')):
+                for _ in range(20):m.poll()
+                self.assertFalse(path.exists())
+                m.close()
+            self.assertTrue(reader.closed)
+            self.assertTrue(m.log.closed)
+            self.assertFalse(path.exists())
+            self.assertFalse(path.with_suffix('.tmp').exists())
+            rows=[json.loads(line) for line in path.with_suffix('.jsonl').read_text().splitlines()]
+            self.assertEqual(len(rows),1)
+            self.assertEqual(rows[0]['event'],'publish_failed')
+
+    def test_game_identity_change_still_raises_when_publish_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+            m.identity=lambda pid:None
+            with patch('menu_display_monitor.os.replace', side_effect=PermissionError('busy')):
+                with self.assertRaisesRegex(RuntimeError,'game process changed'):m.poll()
+                m.close()
 
 if __name__=='__main__':unittest.main()
