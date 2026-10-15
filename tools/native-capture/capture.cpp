@@ -160,6 +160,9 @@ struct AnchorRow {gears_anchor::Receipt receipt{};uintptr_t renderer{};unsigned 
 std::array<AnchorRow,64> anchor_rows{};
 std::array<AnchorRow,16> anchor_rejects{};
 std::atomic<unsigned> anchor_row_count{0},anchor_reject_count{0};
+struct AnchorPawnReject {gears_anchor::PawnBindingDiagnostic diagnostic{};long long qpc{};unsigned thread{};};
+std::array<AnchorPawnReject,16> anchor_pawn_rejects{};
+std::atomic<unsigned> anchor_pawn_reject_count{};
 // Bounded observational state identities; no ViewState lifetime/compatibility assertion.
 struct AnchorStateTransition {gears_anchor::Identity pawn{};uintptr_t source{},original_state{},right_state{},right_table{};
     long long qpc{};unsigned thread{},read_mask{};};
@@ -1090,6 +1093,12 @@ void print_anchor(FILE* status,bool hooks_disabled){
         fprintf(status,"\n");};
     for(unsigned i=0;i<std::min<unsigned>(anchor_row_count.load(),64);++i)print(anchor_rows[i],"sampled",i);
     for(unsigned i=0;i<std::min<unsigned>(anchor_reject_count.load(),16);++i)print(anchor_rejects[i],"first_rejections",i);
+    fprintf(status,"anchor_pawn_binding_rejections count=%u stored=%u capacity=16 additional_reads=0\n",
+        anchor_pawn_reject_count.load(),std::min<unsigned>(anchor_pawn_reject_count.load(),16));
+    for(unsigned i=0;i<std::min<unsigned>(anchor_pawn_reject_count.load(),16);++i){const auto& r=anchor_pawn_rejects[i];const auto& d=r.diagnostic;
+        fprintf(status,"anchor_pawn_binding_rejection index=%u qpc=%lld thread=%u stage=%s field=%s address=%llx expected=%llx actual=%llx expected_valid=%u actual_valid=%u\n",
+            i,r.qpc,r.thread,gears_anchor::pawn_binding_stage_name(d.stage),gears_anchor::pawn_binding_field_name(d.field),
+            d.address,d.expected,d.actual,d.expected_valid?1:0,d.actual_valid?1:0);}
     fprintf(status,"anchor_state_observer capacity=16 rows=%u dropped=%u policy=first_pawn_or_right_state_transition_per_thread phase=renderer_guard_before_submit lifetime_verified=0\n",
         std::min<unsigned>(anchor_state_transition_count.load(),16),anchor_state_transition_count.load()>16?anchor_state_transition_count.load()-16:0);
     for(unsigned i=0;i<std::min<unsigned>(anchor_state_transition_count.load(),16);++i){auto const& r=anchor_state_transitions[i];
@@ -1999,8 +2008,11 @@ void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation
     Scope scope;auto record=start_record(1,local,_ReturnAddress());
     const bool anchor_observing=anchor_observer_enabled&&recording.load();
     gears_anchor::PawnBinding pawn_before_scene{};
+    gears_anchor::PawnBindingDiagnostic pawn_diagnostic{};
     const bool pawn_before_valid=anchor_observing&&
-        gears_anchor::capture_pawn_binding(anchor_config,safe_copy,pawn_before_scene);
+        gears_anchor::capture_pawn_binding(anchor_config,safe_copy,pawn_before_scene,&pawn_diagnostic);
+    if(anchor_observing&&!pawn_before_valid){const auto index=anchor_pawn_reject_count.fetch_add(1);
+        if(index<anchor_pawn_rejects.size())anchor_pawn_rejects[index]={pawn_diagnostic,now(),GetCurrentThreadId()};}
     struct AnchorSceneScope {bool enabled;explicit AnchorSceneScope(bool e):enabled(e){if(e)anchor_context.begin_scene();}
         ~AnchorSceneScope(){if(enabled)anchor_context.end_scene();}} anchor_scene(anchor_observing);
     void* saved_local=scene_local;Rot* saved_rotation=scene_rotation;int saved_delta=scene_delta;

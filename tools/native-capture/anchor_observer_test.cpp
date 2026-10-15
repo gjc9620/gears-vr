@@ -134,6 +134,32 @@ int main(){
     // Old Pawn remains registered and readable: it is deliberately not used.
     CHECK(capture_pawn_binding(cfg,read,before_scene));CHECK(scene_binding_matches(before_scene,anchor));
     auto stable_memory=mem;
+    PawnBindingDiagnostic binding_diagnostic{};
+    CHECK(capture_pawn_binding(cfg,read,before_scene,&binding_diagnostic)&&binding_diagnostic.stage==PawnBindingStage::success);
+    CHECK(!std::strcmp(pawn_binding_stage_name(binding_diagnostic.stage),"success"));
+    CHECK(!std::strcmp(pawn_binding_field_name(PawnBindingField::camera_view_target),"camera_view_target"));
+    const PawnBindingField link_fields[]={PawnBindingField::controller_pawn,PawnBindingField::pawn_controller,
+        PawnBindingField::camera_view_target,PawnBindingField::player_camera,PawnBindingField::pc_owner,PawnBindingField::player};
+    const uintptr_t link_addresses[]={pc+120,new_pawn+120,camera+128,pc+128,camera+120,pc+136};
+    const uintptr_t link_expected[]={new_pawn,pc,new_pawn,camera,pc,local};
+    for(unsigned fault=0;fault<8;++fault){
+        mem=stable_memory;
+        const auto address=fault<6?link_addresses[fault]:new_pawn+(fault==6?24:32);
+        const auto expected=fault<6?link_expected[fault]:fault==6?cfg.identities[3].cls:cfg.identities[3].outer;
+        const uintptr_t actual=fault==0?0:fault==2?pawn:expected+256;
+        put(address,actual);auto sentinel=before_scene;
+        CHECK(!capture_pawn_binding(cfg,read,sentinel,&binding_diagnostic)&&equal_binding(sentinel,before_scene));
+        CHECK(binding_diagnostic.stage==(fault==0?PawnBindingStage::pawn:fault<6?PawnBindingStage::links:PawnBindingStage::identity));
+        CHECK(binding_diagnostic.field==(fault<6?link_fields[fault]:fault==6?PawnBindingField::cls:PawnBindingField::outer));
+        CHECK(binding_diagnostic.address==address&&binding_diagnostic.actual_valid&&binding_diagnostic.actual==actual);
+        if(fault)CHECK(binding_diagnostic.expected_valid&&binding_diagnostic.expected==expected);
+        CHECK(!capture_pawn_binding(cfg,read,sentinel));
+    }
+    mem=stable_memory;
+    std::vector<std::pair<uintptr_t,std::size_t>> plain_reads,diagnostic_reads;
+    auto trace=[&](auto& rows){return [&](void* dest,void const* ptr,std::size_t size){rows.emplace_back(reinterpret_cast<uintptr_t>(ptr),size);return read(dest,ptr,size);};};
+    CHECK(capture_pawn_binding(cfg,trace(plain_reads),before_scene));
+    CHECK(capture_pawn_binding(cfg,trace(diagnostic_reads),before_scene,&binding_diagnostic)&&plain_reads==diagnostic_reads);
     put(objects.data+cfg.identities[3].index*8,uintptr_t(0));put(pawn+24,uintptr_t(0));
     CHECK(guard(cfg,read,anchor,stamp)); // Obsolete startup Pawn is no longer certified.
     mem=stable_memory;
@@ -151,7 +177,9 @@ int main(){
         if(fault==10)put(new_pawn+120,uintptr_t(pc+256));
         if(fault==11)put(camera+128,pawn);
         if(fault==12)put(pc+24,uintptr_t(123));
-        CHECK(!guard(cfg,read,anchor,stamp));}
+        CHECK(!guard(cfg,read,anchor,stamp));
+        PawnBinding plain{},diagnosed{};
+        CHECK(capture_pawn_binding(cfg,read,plain)==capture_pawn_binding(cfg,read,diagnosed,&binding_diagnostic));}
     for(unsigned fault=0;fault<3;++fault){mem=stable_memory;auto text=new_name;
         if(fault==0)std::copy_n(L"Default__WarPawn",sizeof(L"Default__WarPawn")/sizeof(wchar_t),text.begin());
         if(fault==1)text.fill(L'x');if(fault==2)text.fill(0);
@@ -162,6 +190,14 @@ int main(){
         if(reinterpret_cast<uintptr_t>(ptr)==new_pawn&&size==96&&++pawn_header_reads==1)put(new_pawn+16,new_number+1);
         return ok;};
     CHECK(!guard(cfg,changing_identity,anchor,stamp));
+    mem=stable_memory;pawn_header_reads=0;
+    CHECK(!capture_pawn_binding(cfg,changing_identity,before_scene,&binding_diagnostic)&&binding_diagnostic.stage==PawnBindingStage::reread_header);
+    mem=stable_memory;pawn_header_reads=0;
+    auto changing_link=[&](void* dest,const void* ptr,std::size_t size){auto ok=read(dest,ptr,size);
+        if(reinterpret_cast<uintptr_t>(ptr)==new_pawn&&size==96&&++pawn_header_reads==2)put(camera+128,pawn);
+        return ok;};
+    CHECK(!capture_pawn_binding(cfg,changing_link,before_scene,&binding_diagnostic)&&binding_diagnostic.stage==PawnBindingStage::reread_links&&
+        binding_diagnostic.field==PawnBindingField::camera_view_target&&binding_diagnostic.expected==new_pawn&&binding_diagnostic.actual==pawn);
     mem=stable_memory;CHECK(guard(cfg,read,anchor,stamp));
     auto changed_identity=anchor;changed_identity.pawn_identity.number++;
     CHECK(!equal_anchor(anchor,changed_identity));CHECK(!scene_binding_matches(before_scene,changed_identity));

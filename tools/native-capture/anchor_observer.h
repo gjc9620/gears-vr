@@ -23,63 +23,123 @@ inline bool equal_identity(Identity const& a,Identity const& b) {
         a.name_index==b.name_index&&a.number==b.number&&a.check_super==b.check_super&&a.name==b.name;
 }
 struct PawnBinding {Identity pawn{};std::uintptr_t controller{},local{},camera{},level{};};
+enum class PawnBindingStage : unsigned {config,registry,pawn,header,identity,object_slot,name_slot,name_entry,name_text,links,
+    reread_header,reread_registry,reread_object_slot,reread_name_slot,reread_name_entry,reread_name_text,reread_links,success};
+enum class PawnBindingField : unsigned {roles,objects,names,controller,local,camera,level,controller_pawn,pawn_controller,
+    camera_view_target,player_camera,pc_owner,player,pawn_header,internal_index,name_index,number,cls,outer,alias,
+    object_slot,name_slot,name_entry_index,name_text,startup_identity};
+struct PawnBindingDiagnostic {PawnBindingStage stage{PawnBindingStage::config};PawnBindingField field{PawnBindingField::roles};
+    std::uintptr_t address{},expected{},actual{};bool expected_valid{},actual_valid{};};
+inline const char* pawn_binding_stage_name(PawnBindingStage stage){
+    static const char* names[]={"config","registry","pawn","header","identity","object_slot","name_slot","name_entry","name_text","links",
+        "reread_header","reread_registry","reread_object_slot","reread_name_slot","reread_name_entry","reread_name_text","reread_links","success"};
+    const auto n=unsigned(stage);return n<sizeof(names)/sizeof(names[0])?names[n]:"unknown";
+}
+inline const char* pawn_binding_field_name(PawnBindingField field){
+    static const char* names[]={"roles","objects","names","controller","local","camera","level","controller_pawn","pawn_controller",
+        "camera_view_target","player_camera","pc_owner","player","pawn_header","internal_index","name_index","number","class","outer","alias",
+        "object_slot","name_slot","name_entry_index","name_text","startup_identity"};
+    const auto n=unsigned(field);return n<sizeof(names)/sizeof(names[0])?names[n]:"unknown";
+}
 inline bool equal_binding(PawnBinding const& a,PawnBinding const& b) {
     return equal_identity(a.pawn,b.pawn)&&a.controller==b.controller&&a.local==b.local&&a.camera==b.camera&&a.level==b.level;
 }
 // This is a narrow same-class/same-outer possession snapshot, not a new Level
 // certificate or an absolute UObject serial/ABA proof. Config stays immutable.
-template<class Read> bool capture_pawn_binding(Config const& c,Read read,PawnBinding& out) {
+template<class Read> bool capture_pawn_binding(Config const& c,Read read,PawnBinding& out,PawnBindingDiagnostic* diagnostic=nullptr) {
+    auto mark=[&](PawnBindingStage stage,PawnBindingField field,std::uintptr_t address=0){
+        if(diagnostic)*diagnostic={stage,field,address};};
+    auto values=[&](std::uintptr_t expected,std::uintptr_t actual){
+        if(diagnostic){diagnostic->expected=expected;diagnostic->actual=actual;diagnostic->expected_valid=diagnostic->actual_valid=true;}};
+    mark(PawnBindingStage::config,PawnBindingField::roles);
     if(!c.identity_count||c.identity_count>c.identities.size()||c.role_pawn>=c.identity_count||
         c.role_controller>=c.identity_count||c.role_local>=c.identity_count||c.role_camera>=c.identity_count||c.role_level>=c.identity_count)return false;
-    auto bytes=[&](void* dest,std::uintptr_t address,std::size_t size){return address&&size&&
-        address<=(std::numeric_limits<std::uintptr_t>::max)()-size&&read(dest,reinterpret_cast<const void*>(address),size);};
-    auto link=[&](std::uintptr_t owner,unsigned offset,std::uintptr_t expected){std::uintptr_t actual{};
+    auto bytes=[&](void* dest,std::uintptr_t address,std::size_t size){
+        if(diagnostic){diagnostic->address=address;diagnostic->actual_valid=false;}
+        const bool ok=address&&size&&address<=(std::numeric_limits<std::uintptr_t>::max)()-size&&read(dest,reinterpret_cast<const void*>(address),size);
+        if(ok&&diagnostic&&(size==4||size==8)){diagnostic->actual=0;std::memcpy(&diagnostic->actual,dest,size);diagnostic->actual_valid=true;}
+        return ok;};
+    auto link=[&](std::uintptr_t owner,unsigned offset,std::uintptr_t expected,PawnBindingStage stage,PawnBindingField field){std::uintptr_t actual{};
+        mark(stage,field);if(diagnostic){diagnostic->expected=expected;diagnostic->expected_valid=true;}
         return owner<=(std::numeric_limits<std::uintptr_t>::max)()-offset&&bytes(&actual,owner+offset,8)&&actual==expected;};
     Registry objects{},names{};
-    auto registry=[&](Registry& r,std::uintptr_t address){return bytes(&r,address,sizeof(r))&&r.data&&r.count>1000&&r.count<=r.capacity&&r.capacity<4000000;};
-    if(!registry(objects,c.objects_header)||!registry(names,c.names_header))return false;
+    auto registry=[&](Registry& r,std::uintptr_t address){
+        if(!bytes(&r,address,sizeof(r)))return false;
+        if(!r.data){values(1,0);return false;}
+        if(r.count<=1000){values(1001,std::uintptr_t(r.count));return false;}
+        if(r.count>r.capacity){values(std::uintptr_t(r.capacity),std::uintptr_t(r.count));return false;}
+        if(r.capacity>=4000000){values(3999999,std::uintptr_t(r.capacity));return false;}return true;};
+    mark(PawnBindingStage::registry,PawnBindingField::objects);if(!registry(objects,c.objects_header))return false;
+    mark(PawnBindingStage::registry,PawnBindingField::names);if(!registry(names,c.names_header))return false;
     PawnBinding value{};value.controller=c.identities[c.role_controller].address;value.local=c.identities[c.role_local].address;
     value.camera=c.identities[c.role_camera].address;value.level=c.identities[c.role_level].address;
-    if(!value.controller||!value.local||!value.camera||!value.level||
-        value.controller>(std::numeric_limits<std::uintptr_t>::max)()-c.controller_pawn||
+    mark(PawnBindingStage::pawn,PawnBindingField::controller);if(!value.controller)return false;
+    mark(PawnBindingStage::pawn,PawnBindingField::local);if(!value.local)return false;
+    mark(PawnBindingStage::pawn,PawnBindingField::camera);if(!value.camera)return false;
+    mark(PawnBindingStage::pawn,PawnBindingField::level);if(!value.level)return false;
+    mark(PawnBindingStage::pawn,PawnBindingField::controller_pawn);
+    if(value.controller>(std::numeric_limits<std::uintptr_t>::max)()-c.controller_pawn||
         !bytes(&value.pawn.address,value.controller+c.controller_pawn,8)||!value.pawn.address)return false;
     auto& id=value.pawn;std::array<unsigned char,96> raw{};
-    if(!bytes(raw.data(),id.address,raw.size()))return false;
+    mark(PawnBindingStage::header,PawnBindingField::pawn_header);if(!bytes(raw.data(),id.address,raw.size()))return false;
     auto field=[&](auto& v,unsigned offset){if(offset>raw.size()||sizeof(v)>raw.size()-offset)return false;
         std::memcpy(&v,raw.data()+offset,sizeof(v));return true;};
-    if(!field(id.index,c.object_internal_index)||!field(id.name_index,c.object_name)||c.object_name>88||
-        !field(id.number,c.object_name+4)||!field(id.cls,c.object_class)||!field(id.outer,c.object_outer)||
-        id.index>=unsigned(objects.count)||id.name_index>=unsigned(names.count)||
-        id.cls!=c.identities[c.role_pawn].cls||id.outer!=c.identities[c.role_pawn].outer)return false;
+    auto identity_field=[&](auto& v,unsigned offset,PawnBindingField f){mark(PawnBindingStage::identity,f);
+        if(id.address<=(std::numeric_limits<std::uintptr_t>::max)()-offset&&diagnostic)diagnostic->address=id.address+offset;
+        return field(v,offset);};
+    if(!identity_field(id.index,c.object_internal_index,PawnBindingField::internal_index)||
+       !identity_field(id.name_index,c.object_name,PawnBindingField::name_index)||c.object_name>88||
+       !identity_field(id.number,c.object_name+4,PawnBindingField::number)||
+       !identity_field(id.cls,c.object_class,PawnBindingField::cls)||!identity_field(id.outer,c.object_outer,PawnBindingField::outer))return false;
+    mark(PawnBindingStage::identity,PawnBindingField::internal_index,id.address+c.object_internal_index);values(unsigned(objects.count)-1,id.index);if(id.index>=unsigned(objects.count))return false;
+    mark(PawnBindingStage::identity,PawnBindingField::name_index,id.address+c.object_name);values(unsigned(names.count)-1,id.name_index);if(id.name_index>=unsigned(names.count))return false;
+    mark(PawnBindingStage::identity,PawnBindingField::cls,id.address+c.object_class);values(c.identities[c.role_pawn].cls,id.cls);if(id.cls!=c.identities[c.role_pawn].cls)return false;
+    mark(PawnBindingStage::identity,PawnBindingField::outer,id.address+c.object_outer);values(c.identities[c.role_pawn].outer,id.outer);if(id.outer!=c.identities[c.role_pawn].outer)return false;
+    mark(PawnBindingStage::identity,PawnBindingField::alias);
     for(unsigned i=0;i<c.identity_count;++i)if(i!=c.role_pawn&&
-        (id.address==c.identities[i].address||id.index==c.identities[i].index))return false;
+        (id.address==c.identities[i].address||id.index==c.identities[i].index)){
+        if(id.address==c.identities[i].address)values(c.identities[i].address,id.address);else values(c.identities[i].index,id.index);return false;}
     auto slot_address=[&](std::uintptr_t data,unsigned index,std::uintptr_t& result){auto offset=std::uintptr_t(index)*8;
         if(data>(std::numeric_limits<std::uintptr_t>::max)()-offset)return false;result=data+offset;return true;};
     std::uintptr_t slot{},entry{},address{};unsigned entry_index{};std::array<wchar_t,64> text{};
-    if(!slot_address(objects.data,id.index,address)||!bytes(&slot,address,8)||slot!=id.address||
-        !slot_address(names.data,id.name_index,address)||!bytes(&entry,address,8)||
-        entry>(std::numeric_limits<std::uintptr_t>::max)()-c.name_entry_index||
-        !bytes(&entry_index,entry+c.name_entry_index,4)||entry_index!=id.name_index||
-        entry>(std::numeric_limits<std::uintptr_t>::max)()-c.name_entry_text||
-        !bytes(text.data(),entry+c.name_entry_text,sizeof(text)))return false;
+    mark(PawnBindingStage::object_slot,PawnBindingField::object_slot);if(diagnostic){diagnostic->expected=id.address;diagnostic->expected_valid=true;}
+    if(!slot_address(objects.data,id.index,address)||!bytes(&slot,address,8)||slot!=id.address)return false;
+    mark(PawnBindingStage::name_slot,PawnBindingField::name_slot);
+    if(!slot_address(names.data,id.name_index,address)||!bytes(&entry,address,8))return false;
+    mark(PawnBindingStage::name_entry,PawnBindingField::name_entry_index);if(diagnostic){diagnostic->expected=id.name_index;diagnostic->expected_valid=true;}
+    if(entry>(std::numeric_limits<std::uintptr_t>::max)()-c.name_entry_index||!bytes(&entry_index,entry+c.name_entry_index,4)||entry_index!=id.name_index)return false;
+    mark(PawnBindingStage::name_text,PawnBindingField::name_text);
+    if(entry>(std::numeric_limits<std::uintptr_t>::max)()-c.name_entry_text||!bytes(text.data(),entry+c.name_entry_text,sizeof(text)))return false;
     unsigned length=0;while(length<text.size()&&text[length])++length;
     if(!length||length==text.size()||!std::wcsncmp(text.data(),L"Default__",9))return false;
     std::copy(text.begin(),text.begin()+length,id.name.begin());
+    mark(PawnBindingStage::identity,PawnBindingField::startup_identity);
     if(id.address==c.identities[c.role_pawn].address&&!equal_identity(id,c.identities[c.role_pawn]))return false;
-    auto links=[&](){return link(value.controller,c.controller_pawn,id.address)&&link(id.address,c.pawn_controller,value.controller)&&
-        link(value.camera,c.camera_view_target,id.address)&&link(value.controller,c.player_camera,value.camera)&&
-        link(value.camera,c.pc_owner,value.controller)&&link(value.controller,c.player,value.local);};
-    if(!links())return false;
+    auto links=[&](PawnBindingStage stage){return link(value.controller,c.controller_pawn,id.address,stage,PawnBindingField::controller_pawn)&&link(id.address,c.pawn_controller,value.controller,stage,PawnBindingField::pawn_controller)&&
+        link(value.camera,c.camera_view_target,id.address,stage,PawnBindingField::camera_view_target)&&link(value.controller,c.player_camera,value.camera,stage,PawnBindingField::player_camera)&&
+        link(value.camera,c.pc_owner,value.controller,stage,PawnBindingField::pc_owner)&&link(value.controller,c.player,value.local,stage,PawnBindingField::player);};
+    if(!links(PawnBindingStage::links))return false;
     std::array<unsigned char,96> after{};Registry objects_after{},names_after{};
-    if(!bytes(after.data(),id.address,after.size())||after!=raw||
-        !registry(objects_after,c.objects_header)||!registry(names_after,c.names_header)||
-        std::memcmp(&objects,&objects_after,sizeof(objects))||std::memcmp(&names,&names_after,sizeof(names))||
-        !slot_address(objects.data,id.index,address)||!bytes(&slot,address,8)||slot!=id.address||
-        !slot_address(names.data,id.name_index,address)||!bytes(&slot,address,8)||slot!=entry||
-        !bytes(&entry_index,entry+c.name_entry_index,4)||entry_index!=id.name_index||
-        !bytes(text.data(),entry+c.name_entry_text,sizeof(text))||!links())return false;
-    for(unsigned i=0;i<=length;++i)if(text[i]!=id.name[i])return false;
-    out=value;return true;
+    auto same_bytes=[&](void const* expected,void const* actual,std::size_t size,std::uintptr_t address){
+        const auto a=static_cast<unsigned char const*>(expected),b=static_cast<unsigned char const*>(actual);
+        for(std::size_t i=0;i<size;++i)if(a[i]!=b[i]){if(diagnostic)diagnostic->address=address+i;values(a[i],b[i]);return false;}return true;};
+    mark(PawnBindingStage::reread_header,PawnBindingField::pawn_header);
+    if(!bytes(after.data(),id.address,after.size())||!same_bytes(raw.data(),after.data(),raw.size(),id.address))return false;
+    mark(PawnBindingStage::reread_registry,PawnBindingField::objects);if(!registry(objects_after,c.objects_header))return false;
+    mark(PawnBindingStage::reread_registry,PawnBindingField::names);if(!registry(names_after,c.names_header))return false;
+    mark(PawnBindingStage::reread_registry,PawnBindingField::objects,c.objects_header);if(!same_bytes(&objects,&objects_after,sizeof(objects),c.objects_header))return false;
+    mark(PawnBindingStage::reread_registry,PawnBindingField::names,c.names_header);if(!same_bytes(&names,&names_after,sizeof(names),c.names_header))return false;
+    mark(PawnBindingStage::reread_object_slot,PawnBindingField::object_slot);if(diagnostic){diagnostic->expected=id.address;diagnostic->expected_valid=true;}
+    if(!slot_address(objects.data,id.index,address)||!bytes(&slot,address,8)||slot!=id.address)return false;
+    mark(PawnBindingStage::reread_name_slot,PawnBindingField::name_slot);if(diagnostic){diagnostic->expected=entry;diagnostic->expected_valid=true;}
+    if(!slot_address(names.data,id.name_index,address)||!bytes(&slot,address,8)||slot!=entry)return false;
+    mark(PawnBindingStage::reread_name_entry,PawnBindingField::name_entry_index);if(diagnostic){diagnostic->expected=id.name_index;diagnostic->expected_valid=true;}
+    if(!bytes(&entry_index,entry+c.name_entry_index,4)||entry_index!=id.name_index)return false;
+    mark(PawnBindingStage::reread_name_text,PawnBindingField::name_text);
+    if(!bytes(text.data(),entry+c.name_entry_text,sizeof(text))||!links(PawnBindingStage::reread_links))return false;
+    mark(PawnBindingStage::reread_name_text,PawnBindingField::name_text,entry+c.name_entry_text);
+    for(unsigned i=0;i<=length;++i)if(text[i]!=id.name[i]){if(diagnostic)diagnostic->address=entry+c.name_entry_text+i*sizeof(wchar_t);values(std::uintptr_t(id.name[i]),std::uintptr_t(text[i]));return false;}
+    out=value;mark(PawnBindingStage::success,PawnBindingField::roles);return true;
 }
 enum Reason:unsigned {accepted=0,no_receipt,nested,ambiguous,source_mismatch,family_mismatch,
     matrix_mismatch,stamp_mismatch,identity_failed,read_failed,multiple_views,caller_mismatch,

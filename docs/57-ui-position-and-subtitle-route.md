@@ -322,3 +322,11 @@ owned pixels 路径新增严格录制期绑定表。只有观察到成功 Reset 
 两轮停止后均独立核验 63 项入口恢复，并正常关闭游戏；native owner 仍保留至游戏退出，launcher 的 cleanup 状态均为 incomplete。第二轮 XR 自身关闭完成，未强制清理 XR。用户另报告桌面两幅画面频繁交替，现有采样没有直接捕获该现象；原因未确定，不归因于全部历史黑屏。
 
 冻结清单为 `manifest-owned-binding1.json`、`manifest-owned-binding1-b.json`，共用未重建的 `build-owned-binding1`。审计及源文件/DLL哈希位于 `analysis/ui-position-runtime/owned-binding1-33460.audit.json`、`owned-binding1-b-32724.audit.json`；图像审阅为 `owned-binding1-b-subtitle-review.png`。接下来先关联 anchor identity 拒绝、停止发布和实际状态变化，再完善资源退出、菜单、High、跨关卡及真头显验收。V1仍未完成。
+
+## 2026-10-15：已复现死亡菜单导致双目停止接续
+
+Binding2 / PID12880 为既有 Pawn 绑定读取增加可选诊断，保留原读取顺序和所有拒绝条件，记录前16次失败；没有增加游戏内存读取或新 Hook。CPU测试覆盖带/不带诊断的读取序列相同、空Pawn、六个关联、class/outer和复核期间变化；冻结构建自测及默认关闭分支编译通过。
+
+实际游戏＋模拟器完成2868对owned场景、2391次普通UI和215次Material，UI故障与绑定溢出均为0。首个拒绝及全部16条保留记录均为 `stage=pawn field=controller_pawn actual=0 actual_valid=1`。独立读取同进程确认 Controller.Pawn 为0，Camera.ViewTarget仍指向原Pawn；随后重新认证的菜单读取确认 `DeltaGameover`、焦点 `btnCheckpoint`、consistent_reread=true。这证明本轮为角色死亡、取消占有后，双目守卫正确拒绝旧玩家场景，但现有一次性启动面板没有恢复显示死亡菜单。不能将它归因于全部历史黑屏或用户报告的桌面交替。
+
+停止后63处入口独立恢复，正常关闭游戏、没有强杀；原生Owner仍保留到进程退出，尚未解决正常退休。审计 `analysis/ui-position-runtime/owned-binding2-12880.audit.json` 保存原始记录与DLL/清单哈希。下一步增加显式、可逆的场景／菜单显示状态，保持原场景身份和姿态时效检查；桌面镜像缺口单独处理。本提交只有诊断，不宣称菜单恢复已经实现。
