@@ -36,6 +36,12 @@ Native14 SHA256 `7c6d7461219a579939cf5f2f6973d8a8b6f0348724383a2bbc40dd89f035cd4
 
 启动器GUI源码也已增加同一角宽控件，仅默认清单声明能力时显示；旧清单保持旧界面、不新增字段，保存保留其他配置。编译及隐藏自测覆盖能力、数值、配置保存/读回和旧行为；未显示GUI窗口。默认发布清单未提升，因此旧默认DLL尚不支持该控件，不将私有15构建测试算作玩家发布完成。
 
+### 当前进程的瞄准赋值证书
+
+新增 `crosshair_assignment_config.py` 从调用者准备的只读Resolver重新解析当前PC/Pawn/weapon、赋值函数、局部字段和类继承，核验精确赋值tokens、GNatives槽、execLet原入口及Vector复制分支；不调用游戏函数或复用历史heap地址。Native15/game29616实际暂停期间构建成功：48个身份、writer脚本5799字节、WarPC.PlayerTick及PlayerDriving.PlayerTick的结构均核验，证书保存在ignored `world15-crosshair-fresh-certificate.json`，带PID/创建时间、会话与来源hash；游戏现已退出，不能复用这份地址授权新进程。
+
+配套INI serializer与 `crosshair_assignment_config_loader.h` 已加入，拥有存储的copy/move重新绑定指针；严格解析失败不改输出。Python相关23项及C++ loader测试通过（CMake目标 `CrosshairAssignmentConfigLoaderTest`，使用Python生成的模拟INI）。这仍只是启动证据；未安装赋值Hook、未证明PlayerTick实际覆盖或assignment→tick→scene时序，未把缓存命中用于当前准星。下一步在现有VM owner内验证tick范围并观察原赋值，保留原调用与返回值，再独立核对同帧source-view关联。
+
 ## 复现：GameRecovery7，2026-10-15
 
 实际游戏 PID24112（`continuous-stereo-24112-20261015-195606-390abba0.*`）通过对象/类身份与双向关系复读确认从 `Weap_AssaultRifle` 切到 `Weap_COGPistol`。两次正常手柄开镜各3秒，首轮采样的相机FOV由80变为45。没有修改游戏武器或相机内存。游戏EXE SHA256沿用清单中的 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`。
