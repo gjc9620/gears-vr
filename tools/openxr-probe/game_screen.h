@@ -11,6 +11,7 @@
 #include <limits>
 #include "startup_capture_size.h"
 #include "menu_capture_epoch.h"
+#include "capture_frame_mailbox.h"
 
 inline std::int64_t menu_capture_qpc_ticks(){
     LARGE_INTEGER counter{},frequency{};
@@ -24,40 +25,123 @@ inline std::int64_t menu_capture_qpc_ticks(){
 // Separate-process HWND-only diagnostic. No game Hook or display capture.
 class GameWindowFrames {
     using Frame=winrt::Windows::Graphics::Capture::Direct3D11CaptureFrame;
-    struct State {std::mutex mutex;Frame latest{nullptr};};
+    using State=CaptureFrameMailbox<Frame>;
     std::shared_ptr<State> state=std::make_shared<State>();
     winrt::com_ptr<ID3D11Device> device;
     winrt::com_ptr<ID3D11DeviceContext> context;
     winrt::com_ptr<ID3D11Texture2D> staging;
     winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool pool{nullptr};
     winrt::Windows::Graphics::Capture::GraphicsCaptureSession capture{nullptr};
+    winrt::Windows::Graphics::Capture::GraphicsCaptureItem item{nullptr};
     winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice capture_device{nullptr};
     unsigned pool_width{},pool_height{};
-    winrt::event_token token{};
+    winrt::event_token token{},closed_token{};
     HWND hwnd{};DWORD pid{};unsigned source_width{},source_height{};
     struct ProcessHandle {HANDLE value{};~ProcessHandle(){if(value)CloseHandle(value);}};
     bool startup=false;ProcessHandle target_process;uint64_t target_creation{};
+    bool recover_window=false;
+    uint64_t generation_=0;
+    std::int64_t next_window_probe=0;
     MenuCaptureEpoch menu_epoch;
-    bool ready_window() const {
-        DWORD actual{};GetWindowThreadProcessId(hwnd,&actual);
-        if(!IsWindow(hwnd)||actual!=pid)throw std::runtime_error("Game HWND/PID identity changed");
+    void require_process()const{
         if(startup){FILETIME created{},exited{},kernel{},user{};
             if(WaitForSingleObject(target_process.value,0)!=WAIT_TIMEOUT||
                !GetProcessTimes(target_process.value,&created,&exited,&kernel,&user)||
                (uint64_t(created.dwHighDateTime)<<32|created.dwLowDateTime)!=target_creation)
                 throw std::runtime_error("Game process identity changed or exited");}
-        return !IsIconic(hwnd);
+    }
+    bool matches(HWND window)const{
+        DWORD actual{};GetWindowThreadProcessId(window,&actual);
+        return IsWindow(window)&&actual==pid;
+    }
+    bool usable(HWND window)const{
+        RECT client{};
+        return matches(window)&&IsWindowVisible(window)&&!IsIconic(window)&&
+            GetClientRect(window,&client)&&client.right>=640&&client.bottom>=360;
+    }
+    void retire_capture()noexcept{
+        // Never hold the callback mutex while Close waits for WGC callbacks.
+        state->retire();
+        try{if(item)item.Closed(closed_token);}catch(winrt::hresult_error const&){}
+        try{if(pool)pool.FrameArrived(token);}catch(winrt::hresult_error const&){}
+        try{if(capture)capture.Close();}catch(winrt::hresult_error const&){}
+        try{if(pool)pool.Close();}catch(winrt::hresult_error const&){}
+        const bool bound=hwnd||capture||pool;
+        capture=nullptr;pool=nullptr;item=nullptr;hwnd=nullptr;staging=nullptr;
+        if(bound)++generation_;
+    }
+    bool open_capture(HWND window){
+        using namespace winrt;
+        using namespace winrt::Windows::Graphics::Capture;
+        using namespace winrt::Windows::Graphics::DirectX;
+        require_process();
+        RECT client{};
+        if(!matches(window)||!GetClientRect(window,&client)||client.right<=0||client.bottom<=0)return false;
+        if(recover_window&&!usable(window))return false;
+        source_width=client.right;source_height=client.bottom;
+        width=std::min(startup?1920u:960u,source_width);height=std::max(1u,unsigned(uint64_t(source_height)*width/source_width));
+        if(height>(startup?2160u:1280u))throw std::runtime_error("Unexpected game aspect ratio");
+        pixels.resize(size_t(width)*height*4);
+        hwnd=window;state=std::make_shared<State>();
+        if(startup)menu_epoch.begin(menu_capture_qpc_ticks());
+        try{
+            auto interop=get_activation_factory<GraphicsCaptureItem,IGraphicsCaptureItemInterop>();
+            check_hresult(interop->CreateForWindow(hwnd,guid_of<GraphicsCaptureItem>(),put_abi(item)));
+            closed_token=item.Closed([shared=state](auto const&,auto const&){shared->mark_closed();});
+            const auto initial_size=item.Size();
+            if(initial_size.Width<=0||initial_size.Height<=0){retire_capture();return false;}
+            pool_width=initial_size.Width;pool_height=initial_size.Height;
+            pool=Direct3D11CaptureFramePool::CreateFreeThreaded(capture_device,DirectXPixelFormat::B8G8R8A8UIntNormalized,2,initial_size);
+            capture=pool.CreateCaptureSession(item);capture.IsCursorCaptureEnabled(false);
+            token=pool.FrameArrived([shared=state](auto const& sender,auto const&) {
+                try{auto frame=sender.TryGetNextFrame();if(frame)shared->publish(std::move(frame));}
+                catch(winrt::hresult_error const&){}
+            });
+            require_process();
+            if(!matches(hwnd)||(recover_window&&!usable(hwnd))){retire_capture();return false;}
+            capture.StartCapture();++generation_;return true;
+        }catch(winrt::hresult_error const& error){
+            const bool transient=recover_window&&(!usable(window)||error.code()==RO_E_CLOSED||
+                error.code()==HRESULT_FROM_WIN32(ERROR_INVALID_WINDOW_HANDLE));
+            retire_capture();require_process();if(transient)return false;throw;
+        }catch(...){retire_capture();throw;}
+    }
+    HWND replacement_window()const{
+        struct Candidates{DWORD pid;HWND window{};unsigned count{};} candidates{pid};
+        const auto visit=[](HWND window,LPARAM param)->BOOL{
+            auto& found=*reinterpret_cast<Candidates*>(param);DWORD actual{};RECT client{};
+            GetWindowThreadProcessId(window,&actual);
+            if(actual==found.pid&&IsWindowVisible(window)&&!IsIconic(window)&&GetClientRect(window,&client)&&
+                client.right>=640&&client.bottom>=360){found.window=window;++found.count;}
+            return TRUE;
+        };
+        if(!EnumWindows(visit,reinterpret_cast<LPARAM>(&candidates)))throw std::runtime_error("Enumerate game windows failed");
+        return candidates.count==1?candidates.window:nullptr;
+    }
+    bool ready_window(){
+        require_process();
+        if(!recover_window){
+            if(!matches(hwnd))throw std::runtime_error("Game HWND/PID identity changed");
+            return !IsIconic(hwnd);
+        }
+        const bool current=capture&&usable(hwnd)&&!state->closed();
+        const auto now=menu_capture_qpc_ticks();
+        if(!current&&(hwnd||capture||pool)){retire_capture();menu_epoch.begin(now);}
+        if(now<next_window_probe)return current;
+        next_window_probe=now+2500000; // 250 ms; never wait on the XR frame thread.
+        const auto candidate=replacement_window();
+        if(current&&candidate==hwnd)return true;
+        if(hwnd||capture||pool){retire_capture();menu_epoch.begin(now);}
+        return candidate&&open_capture(candidate);
     }
 public:
     unsigned width=960,height=540,received=0;
     std::vector<unsigned char> pixels;
-    GameWindowFrames(HWND window,DWORD target_pid,bool startup_panel=false):hwnd(window),pid(target_pid),startup(startup_panel) {
+    GameWindowFrames(HWND window,DWORD target_pid,bool startup_panel=false,uint64_t expected_creation=0):pid(target_pid),startup(startup_panel),recover_window(startup_panel&&expected_creation!=0) {
         using namespace winrt;
         using namespace winrt::Windows::Graphics::Capture;
-        using namespace winrt::Windows::Graphics::DirectX;
         using namespace winrt::Windows::Graphics::DirectX::Direct3D11;
-        DWORD actual{};GetWindowThreadProcessId(hwnd,&actual);
-        if(!IsWindow(hwnd) || actual!=pid || (!startup&&IsIconic(hwnd)))throw std::runtime_error("Game HWND/PID absent or minimized");
+        if(!recover_window&&(!matches(window)||(!startup&&IsIconic(window))))throw std::runtime_error("Game HWND/PID absent or minimized");
         HANDLE process=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION|(startup?SYNCHRONIZE:0),FALSE,pid);
         wchar_t path[32768];DWORD count=32768;
         bool queried=process && QueryFullProcessImageNameW(process,0,path,&count);
@@ -68,43 +152,27 @@ public:
             FILETIME created{},exited{},kernel{},user{};
             if(!target_process.value||!GetProcessTimes(target_process.value,&created,&exited,&kernel,&user)){
                 throw std::runtime_error("Capture game identity unavailable");}
-            target_creation=uint64_t(created.dwHighDateTime)<<32|created.dwLowDateTime;}
+            target_creation=uint64_t(created.dwHighDateTime)<<32|created.dwLowDateTime;
+            if(expected_creation&&target_creation!=expected_creation)throw std::runtime_error("Capture game creation identity mismatch");}
         if(!GraphicsCaptureSession::IsSupported())throw std::runtime_error("WGC unavailable");
-        RECT client{};GetClientRect(hwnd,&client);source_width=client.right;source_height=client.bottom;
-        if(!source_width || !source_height)throw std::runtime_error("Empty game client");
-        width=std::min(startup?1920u:960u,source_width);height=std::max(1u,unsigned(uint64_t(source_height)*width/source_width));
-        if(height>(startup?2160u:1280u))throw std::runtime_error("Unexpected game aspect ratio");
-        pixels.resize(size_t(width)*height*4);
         check_hresult(D3D11CreateDevice(nullptr,D3D_DRIVER_TYPE_HARDWARE,nullptr,D3D11_CREATE_DEVICE_BGRA_SUPPORT,
             nullptr,0,D3D11_SDK_VERSION,device.put(),nullptr,context.put()));
         com_ptr<IInspectable> inspectable;check_hresult(CreateDirect3D11DeviceFromDXGIDevice(device.as<IDXGIDevice>().get(),inspectable.put()));
-        auto interop=get_activation_factory<GraphicsCaptureItem,IGraphicsCaptureItemInterop>();GraphicsCaptureItem item{nullptr};
-        check_hresult(interop->CreateForWindow(hwnd,guid_of<GraphicsCaptureItem>(),put_abi(item)));
-        capture_device=inspectable.as<IDirect3DDevice>();auto initial_size=item.Size();
-        pool_width=initial_size.Width;pool_height=initial_size.Height;
-        pool=Direct3D11CaptureFramePool::CreateFreeThreaded(capture_device,DirectXPixelFormat::B8G8R8A8UIntNormalized,2,initial_size);
-        capture=pool.CreateCaptureSession(item);capture.IsCursorCaptureEnabled(false);
-        token=pool.FrameArrived([shared=state](auto const& sender,auto const&) {
-            std::lock_guard<std::mutex> lock(shared->mutex);
-            try {auto frame=sender.TryGetNextFrame();if(frame){if(shared->latest)shared->latest.Close();shared->latest=frame;}}
-            catch(winrt::hresult_error const&){}
-        });
-        if(startup)menu_epoch.begin(menu_capture_qpc_ticks());
-        capture.StartCapture();
+        capture_device=inspectable.as<IDirect3DDevice>();
+        if(recover_window)ready_window();
+        else if(!open_capture(window))throw std::runtime_error("Game capture window unavailable");
     }
-    ~GameWindowFrames(){
-        if(capture)capture.Close();if(pool){pool.FrameArrived(token);pool.Close();}
-        std::lock_guard<std::mutex> lock(state->mutex);if(state->latest)state->latest.Close();
-    }
-    bool available() const {return ready_window();}
+    ~GameWindowFrames(){retire_capture();}
+    bool available(){return ready_window();}
+    uint64_t generation()const{return generation_;}
     void begin_menu_epoch(){
         if(!startup)return;
         menu_epoch.begin(menu_capture_qpc_ticks());
-        std::lock_guard<std::mutex> lock(state->mutex);
-        if(state->latest){state->latest.Close();state->latest=nullptr;}
+        state->discard();
         // The pool owns two buffers. The timestamp gate also rejects any old
         // buffer whose callback arrives after this bounded drain completes.
-        for(unsigned i=0;i<2;++i){auto pending=pool.TryGetNextFrame();if(!pending)break;pending.Close();}
+        if(pool)try{for(unsigned i=0;i<2;++i){auto pending=pool.TryGetNextFrame();if(!pending)break;pending.Close();}}
+        catch(winrt::hresult_error const&){if(!recover_window)throw;}
     }
     bool menu_fresh()const{return !startup||menu_epoch.fresh(menu_capture_qpc_ticks());}
     bool update() {
@@ -113,7 +181,7 @@ public:
     bool update_frame() {
         using namespace winrt;
         if(!ready_window()){if(startup)return false;throw std::runtime_error("Game window minimized");}
-        Frame frame{nullptr};{std::lock_guard<std::mutex> lock(state->mutex);frame=state->latest;state->latest=nullptr;}
+        Frame frame=state->take();
         if(!frame)return false;
         const std::int64_t captured=startup?frame.SystemRelativeTime().count():0;
         if(startup&&!menu_epoch.eligible(captured,menu_capture_qpc_ticks())){frame.Close();return false;}
@@ -159,6 +227,9 @@ public:
             std::memcpy(pixels.data()+(size_t(y)*width+x)*4,input,4);
         }
         context->Unmap(staging.get(),0);frame.Close();
+        if(recover_window&&(!usable(hwnd)||state->closed())){
+            retire_capture();menu_epoch.begin(menu_capture_qpc_ticks());return false;
+        }
         if(startup&&!menu_epoch.accept(captured,menu_capture_qpc_ticks()))return false;
         ++received;return true;
     }
@@ -180,6 +251,7 @@ class GameScreen {
     std::string prefix;
     std::chrono::steady_clock::time_point next_capture{},last_frame{};
     bool current=false,startup=false;
+    uint64_t source_generation=0;
     unsigned chain_width{},chain_height{};
     void create_display_chain() {
         XrSwapchain next{};
@@ -213,7 +285,8 @@ public:
     unsigned rendered=0,uploads=0,changes=0;
     uint64_t first_hash=0,last_hash=0;
     bool gpu_pixels_verified=false;
-    GameScreen(ID3D12Device* d,ID3D12CommandQueue* q,HWND hwnd,DWORD pid,std::string output,bool startup_panel=false):source(hwnd,pid,startup_panel),device(d),queue(q),prefix(std::move(output)),startup(startup_panel) {
+    GameScreen(ID3D12Device* d,ID3D12CommandQueue* q,HWND hwnd,DWORD pid,std::string output,bool startup_panel=false,uint64_t expected_creation=0):source(hwnd,pid,startup_panel,expected_creation),device(d),queue(q),prefix(std::move(output)),startup(startup_panel) {
+        source_generation=source.generation();
         uint32_t count{};xr_check(xrEnumerateSwapchainFormats(session,0,&count,nullptr),"game formats");
         std::vector<int64_t> formats(count);xr_check(xrEnumerateSwapchainFormats(session,count,&count,formats.data()),"read game formats");
         for(auto candidate:{DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM})
@@ -231,11 +304,20 @@ public:
         if(!startup)return;current=false;next_capture={};source.begin_menu_epoch();
     }
     bool render(XrCompositionLayerQuad& quad) {
-        if(startup&&!source.available())return false;
+        if(startup){
+            const bool available=source.available();
+            if(source_generation!=source.generation()){
+                source_generation=source.generation();current=false;next_capture={};
+            }
+            if(!available){current=false;return false;}
+        }
         auto now=std::chrono::steady_clock::now();
         if(now>=next_capture) {
             next_capture=now+std::chrono::milliseconds(startup?33:67);
             const bool updated=source.update();
+            if(startup&&source_generation!=source.generation()){
+                source_generation=source.generation();current=false;
+            }
             if(startup&&(chain_width!=source.width||chain_height!=source.height)){
                 // A resized client can precede its matching WGC frame. Do not
                 // submit the old swapchain with the new client image extent.
@@ -296,7 +378,12 @@ public:
                 }
             }
         }
-        if(startup&&!source.menu_fresh())current=false;
+        if(startup){
+            // The window may close while the upload waits for its GPU fence.
+            const bool available=source.available();
+            if(!available||source_generation!=source.generation()||!source.menu_fresh())current=false;
+            source_generation=source.generation();
+        }
         if(!current || (!startup&&now-last_frame>std::chrono::seconds(1)))return false;
         quad={XR_TYPE_COMPOSITION_LAYER_QUAD};quad.space=view_space;quad.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
         quad.pose.orientation.w=1;quad.pose.position.z=-2;quad.size={1.6f,1.6f*source.height/source.width};

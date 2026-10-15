@@ -119,6 +119,12 @@ def native_command(args,owner):
     return command
 
 
+def xr_environment(parent):
+    env=dict(parent)
+    env.setdefault('XR_SIMULATOR_NO_ACTIVATE','1')
+    return env
+
+
 def xr_command(args,csv_path,owner):
     command=[str(args.xr_build_dir.resolve()/'OpenXRPoseProbe.exe'),'0',str(csv_path),
             '--stereo-game-pid',str(args.pid),'--continuous-session',
@@ -373,7 +379,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 if cancel_requested and cancel_requested():raise StartupCancelled()
                 # No Operator layer or pose calls are added to this strict mode.
                 xr_started=time.perf_counter_ns()
-                child=subprocess.Popen(state['xr_command'],stdout=out,stderr=err)
+                child=subprocess.Popen(state['xr_command'],stdout=out,stderr=err,
+                    env=xr_environment(os.environ),creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
                 state['xr_owned_pid']=child.pid
                 state['xr_identity']=control.identity(child.pid)
                 if not state['xr_identity']:raise RuntimeError('Owned XR identity could not be established')

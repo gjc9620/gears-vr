@@ -9,7 +9,9 @@ Start-Process '.\GearsVR Launcher.exe'
 
 使用系统已有 .NET Framework 编译器，不安装依赖。构建会执行 `--self-test`，只检查仓库路径、命令参数、状态解析、配置字段保留、owner 身份握手及 Python 可用性，不启动游戏。输出保存在忽略目录 `analysis/vr-launcher-ui/`，并复制到仓库根目录的 `GearsVR Launcher.exe`，可直接双击。
 
-选择游戏 EXE、模拟器或系统 OpenXR Runtime，然后启动。游戏路径写入现有 `tools/vr-launcher/config.json`，保留其他字段。模拟器默认使用 `analysis/runtime/simulator-focus1/openxr_simulator.json`；系统选项让子进程使用系统 Runtime，清除继承的 `XR_RUNTIME_JSON`，不修改注册表。
+选择游戏 EXE、模拟器或系统 OpenXR Runtime，然后启动。游戏路径写入现有 `tools/vr-launcher/config.json`，保留其他字段。模拟器默认使用 `analysis/runtime/simulator-quiet1/openxr_simulator.json`；系统选项让子进程使用系统 Runtime，清除继承的 `XR_RUNTIME_JSON`，不修改注册表。
+
+模拟器预览保持可见，自动启动不获取桌面焦点；用户可以点击它或移到第二屏。正常连续 VR 会话没有自动结束计时，不主动最小化或重新定位预览。共用游戏启动入口复用后台手柄方案；静默方式不等于将游戏最小化。独立模拟器启动观察通过，游戏自行激活的行为仍需实际观察，见文档68。
 
 启动调用 `launcher.py start --manifest tools/vr-launcher/manifest.json`，不会传入自动导航或结束计时参数。当前清单为GameRecovery8 / SpaceRecovery3实验版，仍依赖本仓库工具和Python，不是便携发布包。跟随游戏当前分辨率；DLSS / DLAA由启动、运行时及菜单锁禁用。没有Low/High选项。1920×1080输出对应每眼960×1080；3840×2160对应每眼1920×2160。此版加入缓冲重建恢复、VISIBLE状态渲染、最多2秒有效旧图像保留、认证Material双眼绘制和重载后UI角色绑定恢复。连续两轮模拟器实测覆盖4K及两次同进程检查点重载，HUD调整可继续生效；仍有约0.87秒最长提交间隔，Recovery8另外修复批次表满后的准星/HUD永久失效，已完成实际手枪开镜复测；有限距离瞄准、换枪/字幕完整验收和CG仍待完善，非标准窗口尺寸最终缩放仍未覆盖。尚未完成稳定性或真头显验收。范围见[修正记录](../../../docs/63-checkpoint-recovery.md)。
 

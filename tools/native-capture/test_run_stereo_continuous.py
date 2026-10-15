@@ -35,6 +35,14 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_quiet_environment_is_child_only_and_keeps_runtime_selection(self):
+        parent={'XR_RUNTIME_JSON':'chosen-runtime.json','PATH':'test-path'}
+        child=runner.xr_environment(parent)
+        self.assertEqual(child,{**parent,'XR_SIMULATOR_NO_ACTIVATE':'1'})
+        self.assertNotIn('XR_SIMULATOR_NO_ACTIVATE',parent)
+        self.assertEqual(runner.xr_environment({'XR_SIMULATOR_NO_ACTIVATE':'0'}),
+                         {'XR_SIMULATOR_NO_ACTIVATE':'0'})
+
     def test_menu_recovery_command_is_bound_to_game_creation_and_startup_window(self):
         args=types.SimpleNamespace(pid=123,xr_build_dir=pathlib.Path('xr'),menu_recovery=True,
             startup_menu_window=456,menu_state_file=pathlib.Path('state.menu.bin'),menu_game_creation=789)
@@ -295,7 +303,9 @@ class ContinuousTests(unittest.TestCase):
             def report(path,owner,game):
                 self.assertTrue(path.exists());self.assertEqual(owner,identity(os.getpid()));self.assertEqual(game,identity(123))
                 reports.append(str(path))
-            def spawn(command,stdout,stderr):
+            def spawn(command,stdout,stderr,env,creationflags):
+                self.assertEqual(env['XR_SIMULATOR_NO_ACTIVATE'],os.environ.get('XR_SIMULATOR_NO_ACTIVATE','1'))
+                self.assertEqual(creationflags,getattr(subprocess,'CREATE_NO_WINDOW',0))
                 self.assertEqual(len(reports),1)
                 pathlib.Path(command[2]).write_text('stereo_published,session_state,should_render,head_flags,view_flags,stereo_source\n'+'1,5,1,15,15,0\n'*60)
                 stdout.write(json.dumps(evidence)+'\n')
@@ -335,7 +345,8 @@ class ContinuousTests(unittest.TestCase):
         self.assertEqual(control.signals,['Local\\GearsVR.Capture.Stop.123','Local\\GearsVR.XR.Stop.123'])
         self.assertTrue(control.closed)
         self.assertEqual(spawn.args[0][1],'0');self.assertIn('--continuous-session',spawn.args[0])
-        self.assertNotIn('--simulator-operator',spawn.args[0]);self.assertNotIn('env',spawn.kwargs)
+        self.assertNotIn('--simulator-operator',spawn.args[0])
+        self.assertEqual(set(spawn.kwargs['env'])-set(os.environ),{'XR_SIMULATOR_NO_ACTIVATE'}-set(os.environ))
         self.assertIn('--continuous-session',native.call_args_list[0].args[0])
         self.assertNotIn('--submit-pair-seconds',native.call_args_list[0].args[0])
         for command,pid_flag,time_flag in [(spawn.args[0],'--owner-pid','--owner-creation-time'),

@@ -1,0 +1,15 @@
+{
+  "source_repository_head": "8de34575bfb823254297663aaf4997bc27da0ef8",
+  "required_patch": "tools/openxr-probe/simulator-focus/focus.patch",
+  "required_patch_sha256": "01a5e70de281eb2cd5297b12fccf9f81abe12825867bceec15b604180518ddcd",
+  "quiet_patch_sha256": "5eb125d0dd2fe02d166b634c1fa34ff4a4a7b6023bef5d5afc758fb0f66a126c",
+  "runtime_source_before_lf_sha256": "6a4a487a73ab8ff54d3b8a0355e7d3475a47ada7af343313b5b2a226fc9ecbce",
+  "runtime_source_after_lf_sha256": "266ba40aeff26ae839bfe8adb939d68a170bc7de1eb32197e2b50ac71ded09c7",
+  "compiled_dll_sha256": "86cc8c42a8534c976fbfe347044d6e123b5b30c9a8b106d093058a41a4428a27",
+  "runtime_manifest": "J:\\gearsVr\\analysis\\runtime\\simulator-quiet1\\openxr_simulator.json",
+  "unchanged_original_dll_sha256": "4b80eb1d85e3c61bfebd7dc5076086d1c74f53806530dac1a86f21d8f903bded",
+  "unchanged_focus1_dll_sha256": "779baaac2106660f8d958ae89a2f9094cb1cb5c2441e56cd9ff97fe403ebe71d",
+  "patch_validation": "Forward matches staged runtime.cpp; reverse restores focus-only baseline after LF normalization.",
+  "build": "Private source copy and independent Ninja Release build; local existing Vulkan headers.",
+  "tests": "Existing CTest 3/3 passed; isolated 5.516-second XR startup submitted 445 test-image layers; 532 foreground polls and WinEvent listener saw no owned activation."
+}

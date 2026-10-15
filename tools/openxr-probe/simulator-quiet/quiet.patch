@@ -1,0 +1,65 @@
+--- a/src/runtime.cpp
++++ b/src/runtime.cpp
+@@ -156,6 +156,13 @@
+         simxr::ForceFocusEnabled(std::string_view(value, length));
+ }();
+ 
++// Opt-in automatic preview visibility without changing OS foreground focus.
++// This does not suppress activation from a user's click or keyboard commands.
++static const bool g_noActivate = []() {
++    char value[2]{};
++    return GetEnvironmentVariableA("XR_SIMULATOR_NO_ACTIVATE", value, sizeof(value)) == 1 && value[0] == '1';
++}();
++
+ static void EnsureLogFile() {
+     if (g_LogFile) return;
+     char base[MAX_PATH]{};
+@@ -1347,7 +1354,7 @@
+     AdjustWindowRectEx(&rc, (DWORD)GetWindowLongW(hWnd, GWL_STYLE), GetMenu(hWnd) != nullptr,
+                        (DWORD)GetWindowLongW(hWnd, GWL_EXSTYLE));
+     SetWindowPos(hWnd, nullptr, 0, 0, rc.right - rc.left, rc.bottom - rc.top,
+-                 SWP_NOMOVE | SWP_NOZORDER);
++                 SWP_NOMOVE | SWP_NOZORDER | (g_noActivate ? SWP_NOACTIVATE : 0));
+ }
+ 
+ // Re-shape the window for a new content aspect -- a view mode or layout change, which
+@@ -1815,13 +1822,13 @@
+     if (s.hwnd) return;
+     WNDCLASSW wc{}; wc.lpfnWndProc = WndProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"OpenXR Simulator";
+     RegisterClassW(&wc);
+-    s.hwnd = CreateWindowExW(0, wc.lpszClassName, L"OpenXR Simulator", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
++    s.hwnd = CreateWindowExW(0, wc.lpszClassName, L"OpenXR Simulator", WS_OVERLAPPEDWINDOW | (g_noActivate ? 0 : WS_VISIBLE),
+                              CW_USEDEFAULT, CW_USEDEFAULT, (int)s.previewWidth, (int)s.previewHeight, nullptr, nullptr, wc.hInstance, nullptr);
+     Logf("[SimXR] ensurePreview: hwnd=%p size=%ux%u usesD3D12=%d", s.hwnd, s.previewWidth, s.previewHeight, s.usesD3D12);
+ 
+     // Make sure window is shown and updated
+     if (s.hwnd) {
+-        ShowWindow(s.hwnd, SW_SHOW);
++        ShowWindow(s.hwnd, g_noActivate ? SW_SHOWNOACTIVATE : SW_SHOW);
+         UpdateWindow(s.hwnd);
+ 
+         // Check if window has focus
+@@ -4549,7 +4556,7 @@
+             SetWindowLongPtrW(s.hwnd, GWLP_WNDPROC, (LONG_PTR)rt::WndProc);
+             Log("[SimXR] Updated window WndProc to new DLL address");
+             ui::ApplyDarkTheme(s.hwnd);
+-            ShowWindow(s.hwnd, SW_SHOW);
++            ShowWindow(s.hwnd, g_noActivate ? SW_SHOWNA : SW_SHOW);
+             UpdateWindow(s.hwnd);
+             // Seed clientWidth/Height from the actual current client area
+             RECT cr{};
+@@ -4574,10 +4581,11 @@
+         Log("[SimXR] Failed to create preview window!");
+         return;
+     }
+-    ShowWindow(s.hwnd, SW_SHOW);
++    ShowWindow(s.hwnd, g_noActivate ? SW_SHOWNOACTIVATE : SW_SHOW);
+     UpdateWindow(s.hwnd);
+-    SetForegroundWindow(s.hwnd);
+-    SetWindowPos(s.hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
++    if (!g_noActivate) SetForegroundWindow(s.hwnd);
++    SetWindowPos(s.hwnd, g_noActivate ? nullptr : HWND_TOP, 0, 0, 0, 0,
++                 SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | (g_noActivate ? SWP_NOACTIVATE | SWP_NOZORDER : 0));
+     Logf("[SimXR] Created new preview window: hwnd=%p clientSize=%ux%u",
+          s.hwnd, initialClientW, initialClientH);
+ 

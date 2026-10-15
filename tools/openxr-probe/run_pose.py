@@ -63,6 +63,7 @@ def main():
     if args.stereo_game and (args.gpu_game or args.game_screen or args.render or args.bridge_pid): parser.error('Stereo game is a separate display mode')
     if args.gpu_snapshot and (not (args.gpu_game or args.stereo_game) or args.seconds<12): parser.error('Snapshot requires GPU game and at least 12 seconds')
     env = os.environ.copy()
+    env.setdefault('XR_SIMULATOR_NO_ACTIVATE','1')
     if args.runtime:
         if not args.runtime.is_file(): parser.error('Runtime manifest not found')
         env['XR_RUNTIME_JSON'] = str(args.runtime.resolve())
@@ -99,7 +100,8 @@ def main():
     # Files prevent unbounded runtime messages consuming model context or RAM.
     with stdout.open('wb') as out, stderr.open('wb') as err:
         try:
-            result = subprocess.run(command, env=env, stdout=out, stderr=err, timeout=timeout)
+            result = subprocess.run(command, env=env, stdout=out, stderr=err, timeout=timeout,
+                                    creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
             report['exit_code'] = result.returncode
         except subprocess.TimeoutExpired:
             report['error'] = 'Total deadline exceeded; diagnostic child terminated'
