@@ -27,6 +27,10 @@ class DialogStorageChanged(RuntimeError):
     """A valid source-string acquisition changed while it was being read."""
 
 
+class SnapshotChanged(RuntimeError):
+    """An observed ledger read changed; discard this entire acquisition."""
+
+
 def read_root_source_text(read, nodes_address, base, attempts=3):
     """Acquire one root/source string with a short consistent storage bracket.
 
@@ -242,10 +246,12 @@ class MenuReader:
         try:
             return self._sample_once(include_tree=include_tree)
         except RuntimeError as error:
-            if type(error) is not RuntimeError or str(error)!='Object registry identity changed':raise
-        # _sample_once has restored r.read and discarded its failed ledger.
-        # Neither preparation, client discovery nor an outer retry is repeated.
-        self.force_registry_refresh()
+            registry_changed = type(error) is RuntimeError and str(error)=='Object registry identity changed'
+            if not registry_changed and type(error) is not SnapshotChanged:raise
+        # Both recoverable failures share exactly one retry. _sample_once has
+        # restored r.read and discarded its failed ledger. No new timestamp,
+        # preparation, client discovery or nested retry budget is introduced.
+        if registry_changed:self.force_registry_refresh()
         return self._sample_once(include_tree=include_tree)
 
     def _sample_once(self, *, include_tree=False):
@@ -256,7 +262,7 @@ class MenuReader:
         def observed(address, size):
             value = original_read(address, size)
             if (address, size) in reads and reads[(address, size)] != value:
-                raise RuntimeError('UI changed during snapshot')
+                raise SnapshotChanged('UI changed during snapshot')
             reads[(address, size)] = value
             return value
         r.read = observed
@@ -345,7 +351,7 @@ class MenuReader:
             # Re-read every ordinary sampled value; no assertion of an atomic game lock.
             for (address, size), value in reads.items():
                 if original_read(address, size) != value:
-                    raise RuntimeError(f'UI changed before snapshot verification at {address:#x} size {size}')
+                    raise SnapshotChanged(f'UI changed before snapshot verification at {address:#x} size {size}')
             if registry != original_read(r.objects_header, 16):
                 raise RuntimeError('Registry changed before snapshot verification')
             result['verified_reads'] = len(reads)

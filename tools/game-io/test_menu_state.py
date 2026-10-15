@@ -3,7 +3,7 @@ import struct
 import unittest
 from unittest import mock
 
-from menu_state import MenuReader, registered, read_root_source_text, DialogStorageChanged
+from menu_state import MenuReader, registered, read_root_source_text, DialogStorageChanged, SnapshotChanged
 
 
 class FakeResolver:
@@ -151,10 +151,18 @@ class MenuStateTests(unittest.TestCase):
         self.add_tree_widget(0xa000,0x1000)
         self.r.array(0x1000,'Children',[0x2000,0xa000])
         offset=self.r.props['Widget','Children']['offset']
-        self.r.change_on_second_read=(0xa000+offset,16)
-        with self.assertRaisesRegex(RuntimeError,'UI changed before snapshot verification'):
-            self.reader.sample(include_tree=True)
-        self.assertEqual(self.r.read.__func__,FakeResolver.read)
+        target=(0xa000+offset,16);original=self.r.read
+        def unstable(address,size):
+            raw=original(address,size)
+            if (address,size)==target and self.r.read_counts[target]%2==0:
+                return bytes([raw[0]^1])+raw[1:]
+            return raw
+        self.r.read=unstable
+        with mock.patch.object(self.reader,'_sample_once',wraps=self.reader._sample_once) as sampled:
+            with self.assertRaisesRegex(SnapshotChanged,'UI changed before snapshot verification'):
+                self.reader.sample(include_tree=True)
+            self.assertEqual(sampled.call_count,2)
+        self.assertIs(self.r.read,unstable)
 
     def test_unfocused_tree_rejects_bad_ownership_focus_and_cycles(self):
         for failure in ('outer','state_outer','focus_membership','cycle','duplicate'):
@@ -235,12 +243,43 @@ class MenuStateTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'UI state owner mismatch'):
             self.reader.sample()
 
-    def test_changed_value_reread_rejects_and_restores(self):
+    def test_changed_value_reread_discards_first_snapshot_and_restores(self):
         offset = self.r.props['WarUIInteraction', 'BlockUIInputSemaphore']['offset']
         self.r.change_on_second_read = 0x4000 + offset, 4
-        with self.assertRaisesRegex(RuntimeError, 'UI changed before snapshot verification'):
-            self.reader.sample()
+        with mock.patch.object(self.reader,'_sample_once',wraps=self.reader._sample_once) as sampled,\
+             mock.patch.object(self.reader,'force_registry_refresh') as forced:
+            result=self.reader.sample()
+            self.assertEqual(sampled.call_count,2);forced.assert_not_called()
+        self.assertEqual(result['input_block_count'],1)
+        self.assertTrue(result['consistent_reread'])
         self.assertEqual(self.r.read.__func__, FakeResolver.read)
+
+    def test_during_snapshot_read_race_also_restarts_whole_snapshot(self):
+        self.r.change_on_second_read=(0x2000,0x60)
+        with mock.patch.object(self.reader,'_sample_once',wraps=self.reader._sample_once) as sampled:
+            result=self.reader.sample(include_tree=True)
+            self.assertEqual(sampled.call_count,2)
+        self.assertTrue(result['consistent_reread'])
+        self.assertEqual(len(result['tree']),2)
+        self.assertEqual(self.r.read.__func__,FakeResolver.read)
+
+    def test_snapshot_race_and_registry_race_share_total_two_attempts(self):
+        errors=[SnapshotChanged('UI changed during snapshot'),RuntimeError('Object registry identity changed')]
+        with mock.patch.object(self.reader,'_sample_once',side_effect=errors) as sampled,\
+             mock.patch.object(self.reader,'force_registry_refresh') as forced:
+            with self.assertRaisesRegex(RuntimeError,'Object registry identity changed'):self.reader.sample()
+            self.assertEqual(sampled.call_count,2);forced.assert_not_called()
+        with mock.patch.object(self.reader,'_sample_once',side_effect=list(reversed(errors))) as sampled,\
+             mock.patch.object(self.reader,'force_registry_refresh') as forced:
+            with self.assertRaises(SnapshotChanged):self.reader.sample()
+            self.assertEqual(sampled.call_count,2);forced.assert_called_once()
+
+    def test_snapshot_message_without_exact_type_does_not_retry(self):
+        class OtherSnapshotError(SnapshotChanged):pass
+        for error in (RuntimeError('UI changed during snapshot'),OtherSnapshotError('UI changed during snapshot')):
+            with mock.patch.object(self.reader,'_sample_once',side_effect=error) as sampled:
+                with self.assertRaises(type(error)):self.reader.sample()
+                sampled.assert_called_once()
 
     def test_live_slot_replacement_rejected(self):
         obj = self.r.identities[0x2000]

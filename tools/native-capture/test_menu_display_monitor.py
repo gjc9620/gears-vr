@@ -3,6 +3,7 @@ import tempfile
 import unittest
 import json
 import copy
+import sys
 from unittest.mock import patch
 from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU
 
@@ -36,6 +37,47 @@ class Reader:
 
 
 class Tests(unittest.TestCase):
+    def test_block_one_allows_only_authenticated_pause_family_display(self):
+        for state in [pause_sample()]+[settings_sample(name) for name in SETTINGS]:
+            with self.subTest(top=state['top']['tag']):
+                for blocked in (0,1):
+                    self.assertEqual(classify(dict(state,input_block_count=blocked)),PAUSE_MENU)
+                for blocked in (False,True,0.0,1.0,-1,2,None,'1'):
+                    self.assertEqual(classify(dict(state,input_block_count=blocked)),UNKNOWN)
+        for state in (sample(),sample(False),settings_sample('UnknownSettings')):
+            self.assertEqual(classify(dict(state,input_block_count=1)),UNKNOWN)
+        state=settings_sample('DeltaVideoSettings');state['active_scenes']=state['active_scenes'][1:]
+        self.assertEqual(classify(dict(state,input_block_count=1)),UNKNOWN)
+        for key,value in (('player_index',1),('read_only',False),('consistent_reread',False)):
+            self.assertEqual(classify(dict(pause_sample(),input_block_count=1,**{key:value})),UNKNOWN)
+
+    def test_input_control_remains_blocked_at_one(self):
+        with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
+            from menu_control import allowed
+        leaf=dict(name='CampaignButton',cls='UIButtonIgnoreStart',states=['UIState_Enabled','UIState_Focused'])
+        state=dict(sample(),top=dict(tag='DeltaMainMenu',cls='WarUIScene_MainMenu'),focus_chain=[leaf],focused_leaf=leaf)
+        self.assertTrue(allowed(state,11))
+        self.assertFalse(allowed(dict(state,input_block_count=1),11))
+        self.assertFalse(allowed(dict(pause_sample(),input_block_count=1),11))
+
+    def test_block_transition_publication_keeps_observation_time_and_resume_gate(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+            try:
+                def slow_sample():
+                    m.clock=lambda:150  # A slow/internal retry must not refresh observed_ns.
+                    return dict(pause_sample(),input_block_count=1)
+                reader.sample=slow_sample;m.poll()
+                packet=PACKET.unpack(path.read_bytes())
+                self.assertEqual((packet[3],packet[-2],packet[-1]),(PAUSE_MENU,1,100))
+                for now,state,mode in ((200,pause_sample(),PAUSE_MENU),
+                                       (300,dict(sample(False),input_block_count=1),UNKNOWN),
+                                       (400,sample(False),GAMEPLAY)):
+                    reader.sample=lambda state=state:state;m.clock=lambda now=now:now;m.poll()
+                    packet=PACKET.unpack(path.read_bytes())
+                    self.assertEqual((packet[3],packet[-2],packet[-1]),(mode,now//100,now))
+            finally:m.close()
+
     def test_observed_pause_settings_with_ordered_context(self):
         for name in SETTINGS:
             with self.subTest(name=name):
@@ -70,7 +112,7 @@ class Tests(unittest.TestCase):
             state=copy.deepcopy(base);state['active_scenes'][-1]['input_mode']=True
             self.assertEqual(classify(state),UNKNOWN)
             for key,value in (('player_index',1),('player_index',-1),('player_index',False),
-                              ('input_block_count',1),('read_only',False),('consistent_reread',False)):
+                              ('input_block_count',2),('read_only',False),('consistent_reread',False)):
                 self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN)
         self.assertEqual(classify(settings_sample('DeltaUnknownSettings')),UNKNOWN)
 
@@ -107,7 +149,7 @@ class Tests(unittest.TestCase):
                 self.assertEqual(classify(state),UNKNOWN)
         for key,value in (('player_index',-1),('player_index',1),('player_index',None),
                           ('player_index',False),('player_index',0.0),('player_index','0'),
-                          ('read_only',False),('consistent_reread',False),('input_block_count',1)):
+                          ('read_only',False),('consistent_reread',False),('input_block_count',2)):
             with self.subTest(key=key,value=value):
                 self.assertEqual(classify(dict(pause_sample(),**{key:value})),UNKNOWN)
         for top in (None,{}):

@@ -77,3 +77,17 @@ quiet9k 的 game6680 出现暗画面时，实际显示 Pause / Resume Game，而
 据此，`sample()`仅对精确类型RuntimeError及精确上述消息增加一次有界刷新：核验两张registry头与有界指针库存，清名称/对象/属性缓存，要求初始化保存的client完整身份不变，再重新执行全部快照、关系与复读检查。失败快照丢弃；第二次失败直接交回原monitor重建路径，不放宽UNKNOWN显示、也不延长旧图像许可。69项reader/控制与16项monitor测试通过；实际自动恢复结果另记。
 
 在同一9u游戏进程中，用新reader再进入Options，实际槽258760同样在头部不变时从缓存0成为 `DeltaPause-Options` 地址 `0x115ed9000`。此次由生产 `sample()` 自动调用一次刷新（9.372毫秒），60次观察没有对外采样异常，无手动缓存干预；完整输出见 `menu9u-cache-probe3.json`。这是新reader对真实游戏的验证，9u原owner已加载的旧reader模块未热替换。另观察到正常转场中 `input_block_count` 从1回0：此条件仍会触发原显示分类UNKNOWN，不能把这一剩余空白全部归于注册槽缓存，也尚未放宽输入阻塞守卫。
+
+## 9v基线与进一步减少转场空白
+
+9v（game34876，创建FILETIME `134365639961272269`，`continuous-stereo-34876-20261016-025336-f18c3cc3`）在正式owner中加载库存刷新修复后，再次通过全部六类菜单、18次显示状态核对与返回新票据projection，tour期间foreground不变。未再外抛旧库存错误；首次进入Pause仍因一次完整ledger复读变化走了reader重建。正常清理后WM_CLOSE退出。
+
+`menu9v-layer-observation.json`在100秒内记录11段零层输出，单段约0.516–1.063秒、合计8.782秒。它是模拟器状态采样估计，含3次短暂文件访问失败，不是像素逐帧测量，也未覆盖稍后的Resume。后续观察器改为Windows共享删除读取，减少与原子文件替换的冲突。日志显示设置页间主要UNKNOWN已对应一致采样中的block1转场。
+
+下一修复分两部分：ledger期间/末次复读变化抛专用SnapshotChanged，丢弃整份快照并从头重取一次，与库存刷新共用总计两次采样预算；最初采样时间不延后。仅精确认证的Pause及这六类设置页面允许整数block0或1继续显示共同面板，输入控制、GAMEPLAY恢复和DEATH_MENU仍要求0，其他数值/类型/菜单仍拒绝。已有脚本中的BlockUIInput包含未解析native token，TransitionAnimStart/End仅为native声明，不据此宣称完整还原了转场实现。72项reader/控制与19项monitor测试通过，9w实际复测另记。
+
+## 9w：正式显示链路的转场复测
+
+9w（game12724/创建FILETIME `134365643321455031`、owner36212、XR1500；`continuous-stereo-12724-20261016-025912-293fff89`）加载上述两项修复，在后台完成Pause→设置首页→五个设置子页各自返回→Pause→Resume。19次状态/显示核对、19次有守卫输入通过；返回后又有30次一致UI采样，未自动重入Pause，XR成功提交新票据projection。tour前后foreground均为2955120。
+
+100秒 `menu9w-layer-observation.json` 覆盖本轮菜单路径及Resume，仅记录GAMEPLAY→PAUSE_MENU→GAMEPLAY三次状态，所有采到的模拟器提交层数均为1，未采到零层区间，观察器无读取错误。正式menu日志也未在这些设置页间降为UNKNOWN，XR只有一个Pause epoch，随后成功恢复projection。与9v相比，这条路径的重复菜单层撤销已消除；状态采样不能排除采样间的极短异常，也不等于逐像素测量或真头显验收。未改变冻结Native9/XR7、游戏分辨率或默认发布清单。未认证菜单、预录视频和其他游玩黑屏仍分别待验证。

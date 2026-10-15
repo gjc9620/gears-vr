@@ -36,8 +36,12 @@ def pause_settings(sample, top):
 
 
 def classify(sample):
-    if (sample.get('consistent_reread') is not True or sample.get('read_only') is not True
-            or sample.get('input_block_count') != 0):
+    if sample.get('consistent_reread') is not True or sample.get('read_only') is not True:
+        return UNKNOWN
+    blocked = sample.get('input_block_count')
+    # The observed block1 transition permits only an authenticated Pause panel.
+    # It is not input permission or gameplay/death-menu recovery permission.
+    if type(blocked) is not int or blocked not in (0, 1):
         return UNKNOWN
     # MenuReader reports UIScene.LastPlayerIndex, not a LocalPlayer identity.
     # The persistent nonmodal scene also reports -1 during real gameplay.
@@ -45,7 +49,7 @@ def classify(sample):
     if type(player) is not int:
         return UNKNOWN
     top = sample.get('top') or {}
-    if player == 0 and (top.get('tag'), top.get('cls'), top.get('input_mode')) == ('DeltaGameover', 'WarUIScene', 1):
+    if blocked == 0 and player == 0 and (top.get('tag'), top.get('cls'), top.get('input_mode')) == ('DeltaGameover', 'WarUIScene', 1):
         return DEATH_MENU
     # Exact observed campaign-host Pause only. Selection can change within the
     # same modal scene, so a particular focused option is not its identity.
@@ -58,7 +62,7 @@ def classify(sample):
         return PAUSE_MENU
     # This persistent nonmodal scene was observed atop gameplay; it is not
     # sufficient to render stereo. Native identity and XR ticket gates still apply.
-    if player in (-1, 0) and (top.get('name'), top.get('cls'), top.get('input_mode')) == (
+    if blocked == 0 and player in (-1, 0) and (top.get('name'), top.get('cls'), top.get('input_mode')) == (
             'PenderCrossplayInvitePopUp', 'WarUIScene_CrossplayInvitePopUp', 2):
         return GAMEPLAY
     return UNKNOWN
