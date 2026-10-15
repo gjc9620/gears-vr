@@ -197,9 +197,14 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                 if check_live:check_live()
                 return refreshed,anchor_metadata,anchor_section,ui_metadata,ui_section
             finally:r.p.close()
-        except UIRegistryChanged:
+        except UIConfigRejected as error:
+            # Only stable()'s exact typed double-read mismatch joins the existing
+            # registry retry budget. Identity, schema, code and unknown failures
+            # stay hard rejections; every retry discards this whole Resolver.
+            if not (isinstance(error,UIRegistryChanged) or
+                    (type(error) is UIConfigRejected and str(error)=='UI certificate read changed')):raise
             if attempt+1==attempts or time.monotonic()>=deadline:raise
-            print(f'UI registry changed during preparation; reacquiring all certificates ({attempt+2}/{attempts})',file=sys.stderr)
+            print(f'UI preparation changed ({error}); reacquiring all certificates ({attempt+2}/{attempts})',file=sys.stderr)
             time.sleep((min)(.05,(max)(0,deadline-time.monotonic())))
 
 

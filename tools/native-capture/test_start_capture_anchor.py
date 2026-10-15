@@ -13,6 +13,92 @@ import run_stereo_continuous as continuous
 
 
 class AnchorStartTests(unittest.TestCase):
+    def test_ui_changed_read_reacquires_complete_preparation(self):
+        import anchor_config as anchor
+        import ui_observer_config as ui
+        ticks=[0.];resolvers=[];anchored=[];ui_cameras=[]
+        baseline=dict(local_player_address='0x1',module_base='0x1000')
+        def resolver(pid,profile):
+            r=mock.Mock();r.base=0x1000;r.read.return_value=b'ok'
+            r.resolve.return_value=dict(baseline,camera_address='camera'+str(len(resolvers)+1))
+            resolvers.append(r);return r
+        def build_anchor(r,camera,*,prepared_camera=None):
+            self.assertIs(camera,prepared_camera);self.assertIs(camera,r.resolve.return_value)
+            anchored.append(camera)
+            return {'camera':camera['camera_address']},{'camera':camera['camera_address']}
+        def build_ui(r,camera):
+            self.assertIs(camera,anchored[-1]);ui_cameras.append(camera)
+            if len(ui_cameras)==1:raise ui.UIConfigRejected('UI certificate read changed')
+            return {'camera':camera['camera_address']},{'camera':camera['camera_address']}
+        def pause(seconds):ticks[0]+=seconds
+        with mock.patch.object(start,'Resolver',side_effect=resolver),\
+             mock.patch.object(anchor,'build_anchor_config',side_effect=build_anchor),\
+             mock.patch.object(anchor,'anchor_ini',side_effect=lambda c:'anchor:'+c['camera']),\
+             mock.patch.object(ui,'build_ui_observer_config',side_effect=build_ui),\
+             mock.patch.object(ui,'ui_observer_ini',side_effect=lambda c:'ui:'+c['camera']),\
+             mock.patch.object(start.time,'monotonic',side_effect=lambda:ticks[0]),\
+             mock.patch.object(start,'remote_call') as remote,mock.patch.object(start.subprocess,'run') as launched,\
+             contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
+            value=start.wait_camera_preparation(lambda:start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),
+                anchor_observer=True,ui_observer=True,record_anchor_failure=False,preparation_deadline=2),
+                lambda:None,2,clock=lambda:ticks[0],sleep=pause)
+            remote.assert_not_called();launched.assert_not_called()
+        self.assertEqual(len(resolvers),2)
+        self.assertIsNot(anchored[0],anchored[1])
+        self.assertEqual((value[0]['camera_address'],value[1]['camera'],value[3]['camera']),('camera2',)*3)
+        self.assertEqual((value[2],value[4]),('anchor:camera2','ui:camera2'))
+        for r in resolvers:r.resolve.assert_called_once();r.read.assert_called_once();r.p.close.assert_called_once()
+
+    def test_ui_changed_read_keeps_existing_attempt_and_deadline_limits(self):
+        import ui_observer_config as ui
+        baseline=dict(local_player_address='0x1',module_base='0x1000')
+        for shared_deadline,clock_values,expected_attempts in ((60,None,3),(.5,[0,0,.5],1)):
+            with self.subTest(shared_deadline=shared_deadline):
+                resolvers=[]
+                def resolver(pid,profile):
+                    r=mock.Mock();r.base=0x1000;r.read.return_value=b'ok';r.resolve.return_value=baseline.copy()
+                    resolvers.append(r);return r
+                error=ui.UIConfigRejected('UI certificate read changed')
+                clock=mock.Mock(**({'side_effect':clock_values} if clock_values else {'return_value':0}))
+                with mock.patch.object(start,'Resolver',side_effect=resolver),\
+                     mock.patch.object(ui,'build_ui_observer_config',side_effect=error),\
+                     mock.patch.object(start.time,'monotonic',clock),mock.patch.object(start.time,'sleep') as sleep,\
+                     contextlib.redirect_stderr(io.StringIO()),self.assertRaises(ui.UIConfigRejected) as raised:
+                    start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),
+                        ui_observer=True,preparation_deadline=shared_deadline)
+                self.assertIs(raised.exception,error)
+                self.assertEqual(len(resolvers),expected_attempts)
+                self.assertEqual(sleep.call_count,expected_attempts-1)
+                for r in resolvers:r.p.close.assert_called_once();r.resolve.assert_called_once();r.read.assert_called_once()
+                # Exhaustion must not enter another outer camera retry budget.
+                self.assertFalse(start.camera_preparation_transient(error))
+
+    def test_ui_permanent_rejections_and_untyped_message_are_not_retried(self):
+        import ui_observer_config as ui
+        UIConfigRejected=ui.UIConfigRejected
+        class UnknownUIFailure(UIConfigRejected):pass
+        errors=[UIConfigRejected(reason) for reason in (
+            'Required UI owner class missing','UI entry bytes mismatch: dispatch','UI binding proof mismatch',
+            'UI final identity mismatch','UI certificate read changed: unknown')]
+        errors.append(RuntimeError('UI certificate read changed'))
+        errors.append(UnknownUIFailure('UI certificate read changed'))
+        for error in errors:
+            with self.subTest(error=str(error)):
+                acquire=mock.Mock(side_effect=error);sleep=mock.Mock()
+                with self.assertRaises(type(error)) as raised:
+                    start.wait_camera_preparation(acquire,lambda:None,60,clock=lambda:0,sleep=sleep)
+                self.assertIs(raised.exception,error)
+                acquire.assert_called_once();sleep.assert_not_called()
+                baseline=dict(local_player_address='0x1',module_base='0x1000')
+                r=mock.Mock();r.base=0x1000;r.read.return_value=b'ok';r.resolve.return_value=baseline
+                with mock.patch.object(start,'Resolver',return_value=r),\
+                     mock.patch.object(ui,'build_ui_observer_config',side_effect=error) as builder,\
+                     mock.patch.object(start.time,'monotonic',return_value=0),mock.patch.object(start.time,'sleep') as slept,\
+                     self.assertRaises(type(error)) as raised:
+                    start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),ui_observer=True)
+                self.assertIs(raised.exception,error)
+                builder.assert_called_once();r.resolve.assert_called_once();r.p.close.assert_called_once();slept.assert_not_called()
+
     def test_exhausted_timestamp_only_samples_retry_but_identity_change_does_not(self):
         import copy
         from anchor_config import AnchorSamplingRejected
