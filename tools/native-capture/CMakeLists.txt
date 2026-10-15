@@ -317,6 +317,8 @@ target_compile_options(UiReticleDirectionPlanTest PRIVATE /W4 /WX /EHsc /UNDEBUG
 add_executable(CrosshairAssignmentTest crosshair_assignment_test.cpp)
 target_compile_options(CrosshairAssignmentTest PRIVATE /W4 /EHsc /UNDEBUG)
 add_executable(StereoTransferFixture stereo_transfer_fixture.cpp)
+add_executable(LateQuadDiagnosticsTest late_quad_diagnostics_test.cpp)
+target_compile_options(LateQuadDiagnosticsTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 target_compile_definitions(StereoTransferFixture PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_options(StereoTransferFixture PRIVATE /W4 /EHsc)
 target_link_libraries(StereoTransferFixture PRIVATE d3d12 dxgi)

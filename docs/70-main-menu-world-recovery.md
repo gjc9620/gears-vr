@@ -141,3 +141,13 @@ C/D证据`mainmenu8{c,d}-cycle.json`、`mainmenu8-two-cycles-evidence.json`及�
 下一步先定向追踪中间双目纹理到真实backbuffer的后续传递，记录源身份、映射、实际提交顺序和UI位置。若可证明完整无污染传递，可保留既有backbuffer发布与生命周期；不能直接移除known-buffer门禁，也不能伪造两次draw_final跨资源复用同ticket。直接采用中间资源则另需状态、生命周期、替换和UI证据。既有RenderDoc游戏注入失败路线不重复盲试。
 
 FinalEyeDiagnosticsTest、SubmittedViewLifetimeTest、WorldEpochGateTest及FrameLinkTest（17,700检查）通过；continuous/frame-link/quad自测通过。最终native_cleanup_verified、entry_restore_verified均true，XR shutdown与资源销毁完成，但显示未恢复、XR exit1，会话incomplete；不是全流程通过。身份核验后正常WM_CLOSE退出游戏，没有获取前台焦点。退出后备份配置为`world7-config-after-test.ini`，仅将持久化的StartupResolutionY从1081恢复1080。未进行真头显或GPU抓帧验收。
+
+## 第七批：后处理候选未执行，目标身份需核对描述符来源
+
+Native8 SHA `5658892fd2ff84d4b82584b23fe10840c267ad40d690c4852472b275083647f5`，XR仍为MainMenu8。增加已有quad Hook内caller `2b11a0` 的有界观察：每world/inventory八种几何、全局32行，只有新行查询当前引擎持有的输入资源；没有新Hook、渲染策略或接受条件变化。Execute记录明确只是CPU原调用前观察，不计为GPU完成。
+
+会话`continuous-stereo-12940-20261016-055010-0a86a3a8.json`，game12940 / creation134365745978921889，owner33804 / creation134365745915269729。精确物理1920×1080→1081→1080后再回主菜单继续游戏，world1→2自动提交；published219→278后保持，projection251后保持，layer0。此候选caller的calls/rows均0，因而不能按旧VDXR5调用栈推导本轮存在该缩放传递。实时代码范围RVA2b0c04长度1452、2b12c7长度144与历史PID16812 blob匹配；只认证这些范围，不是全部函数或shader语义。证据`world8-live-byte-attestation.json`。
+
+更关键的反证：拒绝记录中的资源`3dfe88dd0`在较早的实际Present outage记录中也出现过。故第六批称其“中间RTV”只可视为当时假设，尚未确证。RTV宽高来自CreateRTV时保存的映射，不是拒绝时重新查询；同地址不能证明同资源生命周期。两次ResizeBuffers均成功并更新当前inventory，后续Present changed0，而map未记录创建/复制epoch。下一项先记录resize请求/实际尺寸、实时buffer描述符及OM所消费的RTV映射来源，再区分旧映射、地址复用与真正的独立渲染目标；暂停传递路径实现。
+
+LateQuadDiagnosticsTest及continuous/quad/input-resource自测通过，完整启动reserve自测链通过。最终native_cleanup_verified、entry_restore_verified及XR shutdown/objects_destroyed均true，但XR exit1、会话incomplete；显示缺口未修复。正常WM_CLOSE关闭游戏并备份`world8-config-after-test.ini`，恢复StartupResolutionY=1080；没有获取前台焦点。未提升默认，也没有真头显或GPU抓帧验收。

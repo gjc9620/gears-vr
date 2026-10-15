@@ -133,6 +133,8 @@ struct FinalEyeInventory {
     uintptr_t chain{};uint64_t epoch{};long long qpc{};
     unsigned width{},height{},count{};bool valid{};std::array<uintptr_t,16> resources{};
 } final_eye_inventory;
+void print_late_quad(FILE* status);
+void observe_late_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 struct FrameLinkCounters {
     std::atomic<uint64_t> resets{},reset_failed{},draws{},filtered{},unknown{},missing_target{},missing_ticket{},bad_quad{},
         executes{},execute_rejected{},presents{},linked{},contaminated{},present_failed{},tests{},unbound{},changed{},last_ticket{};
@@ -1022,6 +1024,8 @@ void observe_frame_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandLis
             if(frame_trial_anchored)++stats->post_anchor_unknown;
             bool saved=false;for(unsigned j=0;j<stats->first_unknown_count;++j)if(stats->first_unknown[j]==identity)saved=true;
             if(!saved&&stats->first_unknown_count<stats->first_unknown.size())stats->first_unknown[stats->first_unknown_count++]=identity;}}
+    if(frame_link_diagnostics&&recording.load())for(unsigned i=0;i<count;++i)
+        observe_late_execute(queue_id,refs[i],frame_counts.executes.load(),i);
     const bool accepted=owned_token?frame_link.prepare_execute(queue_id,refs.data(),count,*owned_token):
         frame_link.execute(queue_id,refs.data(),count);
     if(!accepted){++frame_counts.execute_rejected;if(stats)++stats->rejected;}
@@ -1376,6 +1380,7 @@ void print_outage(FILE* status,bool hooks_disabled) {
 void print_frame_link(FILE* status) {
     if(!frame_link_diagnostics)return;
     std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+    print_late_quad(status);
     fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
         final_eye_failures.size,gears_final_eye_diagnostics::Recorder::capacity,gears_final_eye_diagnostics::Recorder::per_epoch,final_eye_failures.dropped);
     for(unsigned i=0;i<final_eye_failures.size;++i){const auto& r=final_eye_failures.rows[i];const auto& g=r.geometry;
@@ -1841,6 +1846,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 }
 #include "geometry_observer.h"
 #include "resource_identity_observer.h"
+#include "late_quad_observer.inl"
 #include "final_input_observer.h"
 #include "quad_source_control.h"
 #include "color_copy_observer.h"
@@ -2700,7 +2706,16 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
         if(!final_eye.valid)++frame_counts.bad_quad;
         if(!final_eye.valid)record_final_eye_failure(1,1u|(!consuming_frame_ticket?2u:0u));
     }
+    const auto saved_late=late_quad_candidate;late_quad_candidate={};
+    if(frame_link_diagnostics&&recording.load()&&caller==0x2b11a0){
+        late_quad_candidate={true,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height}};
+        std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);++late_quad_calls;
+    }
     original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);
+    if(late_quad_candidate.active&&!late_quad_candidate.draws){
+        std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);++late_quad_without_draw;
+    }
+    late_quad_candidate=saved_late;
     final_eye=saved_eye;
     final_eye_candidate=saved_candidate;
     in_final_quad=previous;
@@ -2734,6 +2749,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     if(stereo_publish_bypass){original_draw(list,vertices,instances,start,first_instance);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw(list,vertices,instances,start,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     if(outage_diagnostics.load())outage_source_overlay={};
+    observe_late_draw(list,caller,0,vertices,instances);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
         const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
@@ -2760,6 +2776,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     if(stereo_publish_bypass){original_draw_indexed(list,indices,instances,start,vertex,first_instance);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw_indexed(list,indices,instances,start,vertex,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     if(outage_diagnostics.load())outage_source_overlay={};
+    observe_late_draw(list,caller,1,indices,instances);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
         const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
@@ -3110,7 +3127,7 @@ void reset_world_thread_context(){
     const auto sequence=anchor_context.sequence;anchor_context={};anchor_context.sequence=sequence;
     anchor_last_state_pawn={};anchor_last_observed_right_state=0;
     submitting_family=nullptr;consuming_renderer=nullptr;consuming_owned_scene=false;
-    consuming_frame_ticket=0;consuming_frozen_frame={};final_eye={};final_eye_candidate={};outage_source_overlay={};
+    consuming_frame_ticket=0;consuming_frozen_frame={};final_eye={};final_eye_candidate={};late_quad_candidate={};outage_source_overlay={};
     unsubmitted_renderer=false;pair_canvas=pair_transform=nullptr;trial_draw_scope=false;
     scene_local=nullptr;scene_rotation=nullptr;scene_delta=0;scene_phase=0;
     scene_translation={};scene_rotation_delta={};observed_stamp=0;stamp_known=false;

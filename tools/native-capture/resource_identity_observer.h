@@ -1,7 +1,7 @@
 // CPU-side interface/descriptor query, only while the engine owns bound inputs.
 // No copy, barriers, command submission or mutation of resource contents.
 struct ResourceIdentity {
-    uintptr_t native{},resource{};HRESULT result=E_POINTER;
+    uintptr_t native{},resource{},canonical{};HRESULT result=E_POINTER;
     uintptr_t engine_wrapper{};uint32_t engine_state{};unsigned char engine_flags{};bool engine_state_read{};
     D3D12_RESOURCE_DESC desc{};
 };
@@ -23,6 +23,7 @@ void query_native_resource(uintptr_t native,ResourceIdentity& identity){
     identity.result=reinterpret_cast<IUnknown*>(native)->QueryInterface(IID_PPV_ARGS(&resource));
     if(FAILED(identity.result)||!resource)return;
     identity.resource=reinterpret_cast<uintptr_t>(resource);identity.desc=resource->GetDesc();
+    identity.canonical=canonical_identity(resource);
     resource->Release();
 }
 void query_engine_resource(uintptr_t wrapper,ResourceIdentity& identity){
@@ -61,6 +62,7 @@ bool resource_identity_test(){
     if(SUCCEEDED(result)){
         ResourceIdentity identity{};query_native_resource(reinterpret_cast<uintptr_t>(resource),identity);
         ok=identity.result==S_OK&&identity.resource==reinterpret_cast<uintptr_t>(resource)&&
+            identity.canonical&&identity.canonical==canonical_identity(resource)&&
             identity.desc.Width==17&&identity.desc.Height==9&&identity.desc.Format==desc.Format;
         ResourceIdentity rejected{};query_native_resource(1,rejected);ok=ok&&rejected.result==E_INVALIDARG;
         std::array<unsigned char,0x90> wrapper{};uintptr_t table=base+0x133ecf8,native=reinterpret_cast<uintptr_t>(resource);
