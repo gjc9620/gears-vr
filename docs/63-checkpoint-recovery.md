@@ -71,6 +71,8 @@ GameRecovery5冻结编译和13项检查通过，清单`manifest-game-recovery5.j
 
 上一版59.055秒长提交缺口本轮未复现，最大XR提交间隔降为733.834毫秒；仍不满足连续性标准，最终report明确为incomplete，不能称所有黑屏已修复。最长原生发布间隔约2.023秒发生在确认检查点后，含暂时无双眼pair的加载区间；旧图短时保留186次，未发生late-image拒绝。停机时42个入口独立恢复核验通过、native资源排空、XR对象销毁完成，随后正常关闭游戏。无真头显或CG验收。
 
+本轮首次双目距runner开始36.484秒。原生自测4.300秒、首次resolve0.773秒、证书准备11.704秒（5次尝试，明确等待Camera.ViewTarget恢复为受控Pawn）、激活0.364秒。因此首入延迟不能简单归于GPU慢；非Pawn相机阶段的支持/显示策略仍需调查，不能取消anchor关系校验。运行摘要`analysis/runtime/game-recovery5b-audit.json`。
+
 当前`manifest.json`升级为`manifest-game-recovery5.json`，GUI/脚本直接读取它；Recovery3与原GameResolution1清单保留回滚。native SHA256 `eebe351a8de54c363446caa1b0dbfc8f81eabcecf3c8ed3c3633320b2aa98127`，XR仍为SpaceRecovery3。第①项仍需处理首次接入延迟和切换短缺帧；第②/③项准星与HUD以及第④项CG未完成。
 
 ## 下一步
