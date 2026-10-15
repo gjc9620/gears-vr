@@ -269,3 +269,15 @@ Route4 / PID51376 的字幕路线是失败实验：脚本由菜单状态和camer
 Route5 / PID50488复现并缩小原因：首次拒绝ticket2748、caller RVA1167f4，清单读取成功，total=4、batch=3、material=1、other=0，reason=2明确为未支持Material，而非读取/未知类型/ledger拒绝。此前2,746个场景发布，1,728个普通批次双眼重绘；3,474个索引序列完整，字幕仍0。已有Material观察器实际published=9、claims=8、content_rejected=0、bad_return=0，但gpu_candidates=0、gpu_rejected=8，缺口位于quad或draw参数认证，尚不能称为Material已正确绘制。61处入口恢复、游戏正常关闭，负实验见 `owned-ui-route5-subtitle-50488.audit.json`。Route5及功能关闭的默认分支均编译通过。
 
 资料库命中ui-05及既有Material静态合同，无需重新全量分析或打开IDA。该路径使用独立36字节命令、112字节payload与32字节GPU顶点，不能套用普通Canvas批次的48字节命令或顶点解释。下一项先记录现有8次GPU拒绝的具体参数/步骤，并核对真实IA、目标和同ticket关系，继续保持未认证Material阻断发布；字幕视觉验收仍未完成。
+
+## 2026-10-15：Material候选认证的标志位假设已修正
+
+Route6 / PID36168在保持Material阻断的条件下保存首4份GPU拒绝值副本。15个consumer均claim成功且正常返回，GPU候选全部被metadata检查拒绝。保留的4份记录均为非索引DrawInstanced，caller RVA1af345，4顶点/1实例、起始0；stride32、first0、primitives2、min0/max3、proxy和expected_proxy相等。唯一不符旧判断的是flags=9237（0x2415），旧代码要求整个16位字段等于0x411。目标仍是3840×2160原生backbuffer，不能当作owned双眼UI。
+
+复用资料库的`0x14015a248`伪代码和既有汇编，并从SHA256 `911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6`原始历史blob逐字节核对：RVA15a3ca为`25 9d f5 ff ff`（AND EAX,0xfffff59d），15a3d6为`0d 11 04 00 00`（OR EAX,0x411）。等价简化为`(old & 0xf18c) | 0x411`；初始化保留其他位，不能要求全字段相等。实际固定位条件为`(flags & 0x0e73)==0x411`。两段指令现在也进入实际进程的binding校验；新增测试覆盖现场值和16位逐位翻转，源blob验证脚本对全部65,536个低16位值检查等价性。最初手算AND地址偏2字节，由独立字节断言捕获并在Route7运行前修正，没有运行错误地址构建。
+
+Route7 / PID49384使用修正后的只读条件，10次Material生产/claim/Execute正常完成，10个quad/draw候选通过，GPU拒绝0；10条保留行均为kind3、非索引RVA1af345、command_completed=1。所有ticket_candidate仍为0，mutation_allowed=0，IA上传/分配归属及Material投影未认证。owned清单仍拒绝Material，不能把候选通过等同于该UI已经双目显示或首版稳定完成。
+
+两轮停止后均通过61处入口独立恢复，再正常关闭游戏。Route6/7清单、源文件和DLL哈希分别冻结；CPU Material测试与DLL ABI通过，功能关闭分支编译通过。摘要 `analysis/ui-position-runtime/owned-ui-route6-material-36168-material.audit.json`、`owned-ui-route7-material-49384-material.audit.json`，字节证据 `material-flag-mask-bytes.json`。没有新开IDA库、重建全量语料或截图导航。
+
+下一步围绕Material producer `3a514c`、consumer `15a420`已有合同，补齐当前真实目标/上传IA/Canvas完成与owned ticket关联，并保留consumer一次调用和原资源生命周期；不能沿用Tile命令`+0x20`替换，因为Material该偏移是flags，逻辑目标在独立SceneView所属family中。完成该路径后再继续对白字幕和其他UI验证。

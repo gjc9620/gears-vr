@@ -12,12 +12,22 @@ struct Before {std::uintptr_t canvas{},fcanvas{};std::int32_t key{};unsigned cou
 struct Receipt {std::uintptr_t canvas{},fcanvas{},item{},payload{},proxy{};std::int32_t key{};unsigned kind{};std::array<unsigned char,80> transform{};std::array<unsigned char,36> record{};};
 struct Consumer {Receipt receipt{};std::uintptr_t command{},view{},family{},target{};};
 struct Quad {std::uintptr_t source{},index_data{};std::array<std::array<unsigned char,32>,4> vertices{};};
+struct QuadDiagnostic {
+ unsigned step{},stride{},first{},primitives{},minimum{},maximum{};std::uint16_t flags{};
+ std::uintptr_t proxy{},index_data{},source{};
+};
 struct DrawArgs {bool indexed{};unsigned count{},instances{},start{},first_instance{};int base_vertex{};};
 struct Candidate {std::uintptr_t payload{},view{},target{};unsigned kind{};bool indexed{};bool mutation_allowed{};};
 inline constexpr std::array<unsigned char,32> execute_bytes{0x48,0x8b,0xc4,0x48,0x89,0x58,0x10,0x48,0x89,0x68,0x18,0x48,0x89,0x70,0x20,0x57,0x48,0x83,0xec,0x70,0x48,0x8b,0xd9,0x48,0x8d,0x48,0x08,0xe8,0x08,0xfe,0xff,0xff};
 inline constexpr std::array<unsigned char,32> factory_bytes{0x48,0x8b,0xc4,0x48,0x89,0x58,0x08,0x48,0x89,0x70,0x20,0x57,0x48,0x81,0xec,0x30,0x01,0x00,0x00,0xc5,0xf8,0x29,0x70,0xe8,0xc5,0xf8,0x29,0x78,0xd8,0xc5,0x78,0x29};
-template<class Read> bool validate_runtime_binding(Config c,Read read){d::Reader<Read> r{read};std::array<unsigned char,32> b{};std::array<std::uintptr_t,3> table{};
- return c.base&&r.field(b,c.base,0x159fcc)&&b==factory_bytes&&r.field(table,c.base,0x136c5f0)&&table==std::array<std::uintptr_t,3>{c.base+0x3a514c,c.base+0x1ea9e0,c.base+0x1a44e0};}
+inline constexpr std::array<unsigned char,5> mesh_flag_and_bytes{0x25,0x9d,0xf5,0xff,0xff},mesh_flag_or_bytes{0x0d,0x11,0x04,0x00,0x00};
+// Native init computes (old & 0xfffff59d) | 0x411. Only these bits are fixed;
+// the others survive initialization and are not a permission to replay a draw.
+inline constexpr std::uint16_t mesh_fixed_flag_mask=0x0e73,mesh_fixed_flag_value=0x0411;
+template<class Read> bool validate_runtime_binding(Config c,Read read){d::Reader<Read> r{read};std::array<unsigned char,32> b{};std::array<unsigned char,5> mask{},bits{};std::array<std::uintptr_t,3> table{};
+ return c.base&&r.field(b,c.base,0x159fcc)&&b==factory_bytes&&
+  r.field(mask,c.base,0x15a3ca)&&mask==mesh_flag_and_bytes&&r.field(bits,c.base,0x15a3d6)&&bits==mesh_flag_or_bytes&&
+  r.field(table,c.base,0x136c5f0)&&table==std::array<std::uintptr_t,3>{c.base+0x3a514c,c.base+0x1ea9e0,c.base+0x1a44e0};}
 template<class Read> bool validate_binding(Config c,Read read){d::Reader<Read> r{read};std::array<unsigned char,32> a{};return validate_runtime_binding(c,read)&&r.field(a,c.base,0x15a420)&&a==execute_bytes;}
 template<class Read> bool snapshot_before(Config c,Read read,std::uintptr_t canvas,Before& out){
  d::Reader<Read> r{read};Before b{};b.canvas=canvas;d::Array keys{},elements{},items{};std::uintptr_t element{};
@@ -49,14 +59,18 @@ template<class Read> bool begin_consumer(Config c,Read read,Receipt const& recei
  Receipt live=receipt;if(table!=c.base+0x136c5d8||payload!=receipt.payload||mode||flags!=8||!read_payload(read,payload,live)||live.proxy!=receipt.proxy||live.transform!=receipt.transform||live.record!=receipt.record||!r.field(s.family,s.view,0)||!r.field(s.target,s.family,0x10)||!s.target||!r.bytes(after.data(),command,36)||after!=header)return false;
  std::uintptr_t family{},target{};if(!r.field(family,s.view,0)||family!=s.family||!r.field(target,s.family,0x10)||target!=s.target)return false;out=s;return true;
 }
-template<class Read> bool capture_quad(Config c,Read read,Consumer const& s,Quad& out){
+template<class Read> bool capture_quad(Config c,Read read,Consumer const& s,Quad& out,QuadDiagnostic* diagnostic=nullptr){
  d::Reader<Read> r{read};const auto mesh=c.base+0x1ad6980;std::array<unsigned char,0xec> raw{},after{};Quad q{};unsigned stride{},first{},primitives{},minimum{},maximum{};std::uint16_t flags{};std::uintptr_t proxy{};
+ QuadDiagnostic local{};auto& diag=diagnostic?*diagnostic:local;diag={};diag.step=1;
  if(!s.command||!r.bytes(raw.data(),mesh,raw.size()))return false;
  std::memcpy(&q.source,raw.data()+0x10,8);std::memcpy(&stride,raw.data()+0x18,4);std::memcpy(&q.index_data,raw.data()+0x1c,8);std::memcpy(&proxy,raw.data()+0x28,8);std::memcpy(&first,raw.data()+0xd0,4);std::memcpy(&primitives,raw.data()+0xd4,4);std::memcpy(&minimum,raw.data()+0xd8,4);std::memcpy(&maximum,raw.data()+0xdc,4);std::memcpy(&flags,raw.data()+0xe8,2);
- if(stride!=32||first||primitives!=2||minimum||maximum!=3||flags!=0x411||proxy!=s.receipt.proxy||!r.bytes(q.vertices.data(),q.source,128))return false;
+ diag={2,stride,first,primitives,minimum,maximum,flags,proxy,q.index_data,q.source};
+ if(stride!=32||first||primitives!=2||minimum||maximum!=3||(flags&mesh_fixed_flag_mask)!=mesh_fixed_flag_value||proxy!=s.receipt.proxy)return false;
+ diag.step=3;if(!r.bytes(q.vertices.data(),q.source,128))return false;
  float f[8]{};std::memcpy(f,s.receipt.record.data(),32);const float xyuv[4][4]={{f[0]+f[2],f[1],f[4]+f[6],f[5]},{f[0],f[1],f[4],f[5]},{f[0]+f[2],f[1]+f[3],f[4]+f[6],f[5]+f[7]},{f[0],f[1]+f[3],f[4],f[5]+f[7]}};
- for(unsigned i=0;i<4;++i){float v[8]{};std::memcpy(v,q.vertices[i].data(),32);if(v[0]!=xyuv[i][0]||v[1]!=xyuv[i][1]||v[2]!=0||v[6]!=xyuv[i][2]||v[7]!=xyuv[i][3])return false;}
- std::array<std::array<unsigned char,32>,4> checked{};if(!r.bytes(after.data(),mesh,raw.size())||raw!=after||!r.bytes(checked.data(),q.source,128)||checked!=q.vertices)return false;out=q;return true;
+ diag.step=4;for(unsigned i=0;i<4;++i){float v[8]{};std::memcpy(v,q.vertices[i].data(),32);if(v[0]!=xyuv[i][0]||v[1]!=xyuv[i][1]||v[2]!=0||v[6]!=xyuv[i][2]||v[7]!=xyuv[i][3])return false;}
+ std::array<std::array<unsigned char,32>,4> checked{};diag.step=5;if(!r.bytes(after.data(),mesh,raw.size())||raw!=after)return false;
+ diag.step=6;if(!r.bytes(checked.data(),q.source,128)||checked!=q.vertices)return false;out=q;diag.step=0;return true;
 }
 // Native candidate only: indexed GPU IA contents remain an external proof.
 inline bool classify_draw(Config c,Consumer const& s,Quad const& q,std::uintptr_t caller,DrawArgs a,Candidate& out){

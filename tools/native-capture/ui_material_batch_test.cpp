@@ -15,6 +15,7 @@ struct Fixture {
  Fixture(){
   for(auto p:{0x1000,0x2000,0x3000,0x4000,0x5000,0x6000,0x7000,0x8000,0x9000,0xa000,0xb000,0xc000})m.block(p,0x200);
   m.block(c.base+0x15a420,32);m.put(c.base+0x15a420,execute_bytes);m.block(c.base+0x159fcc,32);m.put(c.base+0x159fcc,factory_bytes);
+  m.block(c.base+0x15a3ca,5);m.put(c.base+0x15a3ca,mesh_flag_and_bytes);m.block(c.base+0x15a3d6,5);m.put(c.base+0x15a3d6,mesh_flag_or_bytes);
   m.block(c.base+0x136c5f0,24);m.put(c.base+0x136c5f0,std::array<std::uintptr_t,3>{c.base+0x3a514c,c.base+0x1ea9e0,c.base+0x1a44e0});
   m.put(0x109c,std::uintptr_t(0x2000));m.put(0x2028,d::Array{0x3000,1,1});m.put(0x3000,std::int32_t(7));m.put(0x2048,d::Array{0x4000,1,1});m.put(0x4000,std::int32_t(7));m.put(0x4004,d::Array{});
   assert(snapshot_before(c,read(),0x1000,before));
@@ -46,6 +47,11 @@ int main(){Fixture f;Quad q{};assert(capture_quad(f.c,f.read(),f.consumer,q));Ca
  Fixture patched;patched.m.put(patched.c.base+0x15a420,unsigned(0));assert(!validate_binding(patched.c,patched.read()));assert(begin_consumer(patched.c,patched.read(),patched.receipt,0x9000,out));assert(snapshot_after(patched.c,patched.read(),patched.before,1,sentinel));
  Fixture old;old.m.put(0x4004,d::Array{0x5000,1,2});old.m.put(0x5000,std::uintptr_t(0xd000));Before saved{};assert(snapshot_before(old.c,old.read(),0x1000,saved));old.m.put(0x5008,std::uintptr_t(0x6000));old.m.put(0x4004,d::Array{0x5000,2,2});assert(snapshot_after(old.c,old.read(),saved,3,sentinel));old.m.put(0x5000,std::uintptr_t(0xe000));assert(!snapshot_after(old.c,old.read(),saved,3,sentinel));
  Fixture indexed;indexed.m.put(indexed.c.base+0x1ad6980+0x1c,std::uintptr_t(0x1234));Quad iq{};assert(capture_quad(indexed.c,indexed.read(),indexed.consumer,iq));assert(classify_draw(indexed.c,indexed.consumer,iq,indexed.c.base+0x177c4a,{true,4,1,0,0,0},candidate)&&!candidate.mutation_allowed);
+ Fixture live_flags;live_flags.m.put(live_flags.c.base+0x1ad6980+0xe8,std::uint16_t(0x2415));
+ QuadDiagnostic diagnostic{};assert(capture_quad(live_flags.c,live_flags.read(),live_flags.consumer,iq,&diagnostic)&&diagnostic.step==0&&diagnostic.flags==0x2415);
+ for(unsigned bit=0;bit<16;++bit){const auto value=std::uint16_t(0x2415^(1u<<bit));live_flags.m.put(live_flags.c.base+0x1ad6980+0xe8,value);
+  const bool fixed=(mesh_fixed_flag_mask&(1u<<bit))!=0;assert(capture_quad(live_flags.c,live_flags.read(),live_flags.consumer,iq,&diagnostic)!=fixed);if(fixed)assert(diagnostic.step==2);}
+ live_flags.m.put(live_flags.c.base+0x15a3ca,unsigned(0));assert(!validate_runtime_binding(live_flags.c,live_flags.read()));
  std::puts("ui_material_batch tests passed");
 }
 
