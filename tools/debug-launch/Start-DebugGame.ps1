@@ -1,4 +1,5 @@
-param([switch]$DirectLevel, [switch]$PauseOnUnfocus, [string]$GamePath)
+param([switch]$DirectLevel, [switch]$PauseOnUnfocus, [switch]$Foreground,
+      [switch]$DisableBackgroundInput, [string]$GamePath)
 $ErrorActionPreference = 'Stop'
 $workspace = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $game = Join-Path $workspace 'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded'
@@ -32,6 +33,9 @@ if ($DirectLevel) {
     # Experimental UE3 map URL; does not request resume of an existing checkpoint.
     $launchArguments = @('SP_Prison_P') + $launchArguments
 }
-if ($launchArguments.Count) {
-    Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -ArgumentList $launchArguments
-} else { Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) }
+$launchCommand = @((Join-Path $PSScriptRoot 'background_launch.py'), '--game-path', $exe)
+foreach ($argument in $launchArguments) { $launchCommand += "--game-arg=$argument" }
+if ($Foreground) { $launchCommand += '--foreground' }
+if ($DisableBackgroundInput) { $launchCommand += '--disable-background-input' }
+& $python @launchCommand
+if ($LASTEXITCODE -ne 0) { throw 'Background game launcher failed.' }
