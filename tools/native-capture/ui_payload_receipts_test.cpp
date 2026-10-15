@@ -61,12 +61,21 @@ int main(){
     auto before=out;assert(!s->claim(0x9000,out)&&same(out,before));
     assert(s->publish(receipt(0x9000,0),1,102));assert(s->claim(0x9000,out)&&out.count==1);
 
-    // Tombstones consume slots. Failure to remember a NEW key latches the
-    // whole Store disabled; not even preexisting successful groups may claim.
+    // Saturation drops only the new range. Retained data and tombstones stay
+    // intact; an eventual partial claim cannot label the dropped prefix.
     for(unsigned i=0;i<group_capacity;++i)assert(s->publish(receipt(0xa000+i,0),1,i+1));
-    assert(!s->publish(receipt(0xb000,0),1,100));assert(s->stats().disabled&&s->stats().poisoned_groups==group_capacity);
-    before=out;assert(!s->claim(0xa000,out)&&same(out,before));assert(s->retire(0xa001));
-    assert(!s->publish(receipt(0xb000,4),1,101));assert(!s->publish(receipt(0xa000,4),1,102));
+    assert(!s->publish(receipt(0xb000,0),1,100));assert(!s->stats().disabled&&!s->stats().poisoned_groups);
+    before=out;assert(!s->claim(0xb000,out)&&same(out,before));
+    assert(s->publish(receipt(0xa000,4),1,102)); // Existing key works while full.
+    assert(s->claim(0xa000,out)&&out.count==2&&out.unknown_vertices==0);
+    assert(s->publish(receipt(0xb000,4),1,101));
+    assert(s->claim(0xb000,out)&&out.count==1&&out.entries[0].receipt.begin==4&&out.unknown_vertices==4);
+    assert(s->stats().groups_full==1&&!s->stats().disabled);
+    // Existing poison cannot be resurrected by unrelated saturation/draining.
+    assert(!s->publish(receipt(0xa001,0),1,103));
+    assert(!s->publish(receipt(0xa001,4),1,104));
+    before=out;assert(!s->claim(0xa001,out)&&same(out,before));
+    for(unsigned i=2;i<group_capacity;++i)assert(s->claim(0xa000+i,out)&&out.count==1);
     auto pre_reset_generation=out.generation;s->reset();assert(!s->stats().disabled&&s->stats().active_groups==0);
     assert(s->publish(receipt(0xc000,0),3,200));assert(s->claim(0xc000,out)&&out.generation>pre_reset_generation);
     // Explicit reset is exercised only by this CPU test, never runtime here.
@@ -118,5 +127,5 @@ int main(){
     auto aliased=std::make_unique<Store>(aliased_memory);
     assert(!aliased->publish(receipt(0xf600,0),1,1600)&&aliased->stats().allocation_rejected==1);
     assert(shared_buffer->data[0][0]==73);shared_buffer.reset();
-    printf("Payload receipts: bounded copy claims, monotonic tokens, gaps, poison tombstones, overflow latch and concurrent publishers passed\n");
+    printf("Payload receipts: bounded copy claims, monotonic tokens, gaps, poison tombstones, recoverable saturation and concurrent publishers passed\n");
 }

@@ -51,7 +51,29 @@ static bool same(Snapshot const& a,Snapshot const& b){
            x.index_count!=y.index_count||x.kind_mask!=y.kind_mask||x.entry_mask!=y.entry_mask||x.known!=y.known||x.unknown!=y.unknown||!gears_ui_indices::same(x.expected,y.expected))return false;
     }return true;
 }
+static void saturation_membership(){
+    using namespace gears_ui_receipts;
+    auto store=std::make_unique<Store>();
+    auto publish=[&](std::uintptr_t payload,unsigned begin){gears_ui_batch::Receipt r{};
+        r.payload=payload;r.canvas=0x500000;r.fcanvas=0x500100;r.item=0x500200;
+        r.begin=begin;r.end=begin+4;return store->publish(r,1,77);};
+    for(unsigned i=0;i<group_capacity;++i)assert(publish(0x400000+i,0));
+    Fixture f;assert(!publish(f.payload,0)&&!publish(f.payload,4));
+    Claim omitted{};assert(!store->claim(f.payload,omitted));
+    Claim retained{};assert(store->claim(0x400000,retained));
+    assert(publish(f.payload,8));Claim partial{};assert(store->claim(f.payload,partial));
+    assert(partial.unknown_vertices==8&&partial.generation>retained.generation);
+    f.segment(0,0,11,{0,1,2,2,1,3}); // All dropped prefix.
+    f.segment(1,0,11,{0,8,9});       // Mixed dropped and recorded.
+    f.segment(2,8,11,{0,1,2,2,1,3}); // Only certified suffix.
+    Snapshot out{};assert(capture(f.reader(),f.payload,partial,out));
+    assert(out.segments[0].kind_mask==0&&out.segments[0].unknown==6);
+    assert(out.segments[1].kind_mask==1&&out.segments[1].unknown==1);
+    assert(out.segments[2].kind_mask==1&&out.segments[2].unknown==0&&out.segments[2].known[0]==6);
+    assert(!store->stats().disabled&&store->stats().groups_full==2);
+}
 int main(){
+    saturation_membership();
     Fixture f;f.segment(0,100,111,{11,0,11,4,1,4});f.segment(1,100,111,{});f.segment(2,100,111,{0,1,2});
     auto certified=claim(f.payload);Snapshot out{};assert(capture(f.reader(),f.payload,certified,out));
     assert(out.segment_count==3&&out.total_indices==9&&out.vertex_count==256);

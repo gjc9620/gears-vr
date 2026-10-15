@@ -97,6 +97,6 @@ GameRecovery5保持二进制不变，只在只读anchor失败记录中保存非P
 
 启动平面已经提交，约36.275秒首次成功projection；进入持续双目后的短观察段13.247秒、1195次提交，最大间隔24.13毫秒。原生清理、42个入口恢复和XR退出通过，游戏正常关闭。该短观察不覆盖CG切换及完整稳定性验收。失败证据仅作诊断，未改变接纳条件；25项anchor及12项启动准备测试通过。
 
-接下来按用户顺序进入第②项手枪准星：先自动开镜/切手枪确认实际scope和双眼位置，再接入有当次赋值及场景时序证据的有限距离瞄准点；现有w=0无限远方向不等于真实命中点。随后第③项HUD缩小、字幕，及第④项CG/加载显示和短缺帧。第①项同进程重载已多次恢复；首次接入等待的CameraActor身份已确认，未消除全部启动延迟。不放宽未知draw接纳或无限延长旧图保留。尚未证明VDXR原点事件在真实头显上恢复。
+第②项实际手枪开镜已定位UI批次表满后永久停用，导致准星方向校正和HUD布局失效。Recovery8修复并复测，当前玩家清单已提升；证据及剩余范围见[手枪准星与UI容量](64-reticle-and-ui-capacity.md)。现有w=0无限远方向仍不等于真实命中点。接下来确认第③项换枪UI、字幕，及第④项CG/加载显示和短缺帧。第①项同进程重载已多次恢复；首次接入等待的CameraActor身份已确认，未消除全部启动延迟。不放宽未知draw接纳或无限延长旧图保留。尚未证明VDXR原点事件在真实头显上恢复。
 
 参考：[OpenXR会话可见与输入焦点状态](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrSessionState.html)、[OpenXR参考空间变化事件](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrEventDataReferenceSpaceChangePending.html)、[DXGI ResizeBuffers资源释放要求](https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers)。

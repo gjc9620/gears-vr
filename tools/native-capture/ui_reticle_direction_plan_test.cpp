@@ -21,13 +21,13 @@ static void reject(StereoTicketGeometry const& g,gears_viewport::DrawState s=sta
 }
 struct ExtentFixture {
     gears_ui_receipts::Claim claim{};gears_ui_indices::Snapshot snapshot{};
-    explicit ExtentFixture(unsigned quads=1){gears_ui_receipts::Store store;
+    explicit ExtentFixture(unsigned quads=1){auto store=std::make_unique<gears_ui_receipts::Store>();
         for(unsigned i=0;i<quads;++i){gears_ui_batch::Receipt r{};r.canvas=1;r.fcanvas=2;r.item=3;r.payload=4;r.begin=i*4;r.end=r.begin+4;
             const float x=quads==1?1910.f:(i%2?1920.f:1900.f),y=quads==1?1070.f:(i/2?1080.f:1060.f);
             const float size=20;const float points[4][2]={{x,y},{x+size,y},{x,y+size},{x+size,y+size}};
             for(unsigned j=0;j<4;++j){const float p[4]={points[j][0],points[j][1],0,1};std::memcpy(r.vertices[j].data(),p,16);}
-            assert(store.publish(r,1,77));}
-        assert(store.claim(4,claim));snapshot.payload=4;snapshot.generation=claim.generation;snapshot.vertex_count=quads*4;snapshot.segment_count=1;snapshot.total_indices=quads*6;
+            assert(store->publish(r,1,77));}
+        assert(store->claim(4,claim));snapshot.payload=4;snapshot.generation=claim.generation;snapshot.vertex_count=quads*4;snapshot.segment_count=1;snapshot.total_indices=quads*6;
         auto& segment=snapshot.segments[0];segment.maximum=int(quads*4-1);segment.index_count=quads*6;segment.kind_mask=1;segment.entry_mask=(1u<<quads)-1;segment.known[0]=segment.index_count;segment.expected={segment.index_count,1,0,0,0};
         const unsigned indices[6]={0,1,2,1,3,2};for(unsigned i=0;i<quads;++i)for(unsigned j=0;j<6;++j)snapshot.indices[i*6+j]=snapshot.global_vertices[i*6+j]=i*4+indices[j];
     }

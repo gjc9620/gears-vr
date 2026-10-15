@@ -342,9 +342,9 @@ void print_ui_payload_observer(FILE* status){
         ui_reticle_direction_enabled?1:0,ui_reticle_counts.considered.load(),ui_reticle_counts.center_rejected.load(),
         ui_reticle_counts.geometry_missing.load(),ui_reticle_counts.projection_rejected.load(),ui_reticle_counts.planned.load(),ui_reticle_counts.applied.load());
     const auto store=ui_payload_store.stats();
-    fprintf(status,"ui_payload_store published=%llu rejected=%llu capacity_rejected=%llu groups_poisoned=%llu claimed=%llu poison_claimed=%llu active_groups=%zu poisoned_groups=%zu disabled=%u resets=%llu\n",
+    fprintf(status,"ui_payload_store published=%llu rejected=%llu capacity_rejected=%llu groups_poisoned=%llu claimed=%llu poison_claimed=%llu active_groups=%zu poisoned_groups=%zu disabled=%u resets=%llu groups_full=%llu capacity=%zu\n",
         store.published,store.rejected,store.capacity_rejected,store.groups_poisoned,store.claimed,store.poison_claimed,
-        store.active_groups,store.poisoned_groups,store.disabled?1:0,store.resets);
+        store.active_groups,store.poisoned_groups,store.disabled?1:0,store.resets,store.groups_full,gears_ui_receipts::group_capacity);
     fprintf(status,"ui_batch attempts=%llu before_rejected=%llu append_rejected=%llu published=%llu publish_rejected=%llu source_vertices_modified=0\n",
         ui_batch_attempts.load(),ui_batch_before_rejected.load(),ui_batch_append_rejected.load(),ui_batch_published.load(),ui_batch_publish_rejected.load());
     fprintf(status,"ui_payload_execute calls=%llu header_rejected=%llu claims=%llu content_rejected=%llu content_matches=%llu bad_return=%llu gpu_calls=%llu gpu_missing_context=%llu allocation_identity_proven=0 index_membership_requires_per_row=1\n",

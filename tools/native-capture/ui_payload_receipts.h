@@ -6,7 +6,7 @@
 #include <algorithm>
 
 namespace gears_ui_receipts {
-inline constexpr std::size_t group_capacity=16,entry_capacity=32,vertex_capacity=1024;
+inline constexpr std::size_t group_capacity=64,entry_capacity=32,vertex_capacity=1024;
 using Vertex=gears_ui_batch::Vertex;
 enum class Source : unsigned {Canvas=1,NativeSubtitle=2,CanvasText=3};
 struct RangeMetadata {
@@ -45,7 +45,7 @@ struct Claim {
 };
 struct Stats {
     std::uint64_t publish_attempts{},published{},rejected{},capacity_rejected{},groups_poisoned{},
-        claimed{},poison_claimed{},retired{},resets{},unknown_vertices_seen{},allocation_rejected{};
+        claimed{},poison_claimed{},retired{},resets{},unknown_vertices_seen{},allocation_rejected{},groups_full{};
     std::size_t active_groups{},poisoned_groups{};
     bool disabled{};
 };
@@ -92,7 +92,12 @@ public:
         if(group&&group->poisoned)return reject();
         if(!group){
             for(auto& candidate:groups_)if(!candidate.active){group=&candidate;break;}
-            if(!group||last_generation_==(std::numeric_limits<std::uint64_t>::max)()){
+            // A new key has no retained candidate to invalidate. Drop only this
+            // range when full; never evict another key or clear its tombstone.
+            // A later admitted range records its missing prefix as unknown;
+            // consumers still require actual per-index membership and bytes.
+            if(!group){++stats_.capacity_rejected;++stats_.groups_full;return reject();}
+            if(last_generation_==(std::numeric_limits<std::uint64_t>::max)()){
                 ++stats_.capacity_rejected;disable();return reject();
             }
             group->active=true;auto& c=group->claim;c.generation=++last_generation_;
@@ -127,8 +132,8 @@ public:
         for(auto const& g:groups_)if(g.active){++result.active_groups;if(g.poisoned)++result.poisoned_groups;}
         return result;
     }
-    // Explicit external boundary only. Never implicit eviction/recovery and no
-    // generation rewind. Runtime for the present diagnostic does NOT reset.
+    // Explicit external boundary only. Never implicit eviction/tombstone reset
+    // or generation rewind. Runtime does NOT call this to recover saturation.
     void reset(){std::lock_guard<std::mutex> lock(mutex_);groups_={};stats_.disabled=false;++stats_.resets;}
 };
 }
