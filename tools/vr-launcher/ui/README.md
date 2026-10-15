@@ -9,7 +9,7 @@ Start-Process '.\GearsVR Launcher.exe'
 
 使用系统已有 .NET Framework 编译器，不安装依赖。构建会执行 `--self-test`，只检查仓库路径、命令参数、状态解析、配置字段保留、owner 身份握手及 Python 可用性，不启动游戏。输出保存在忽略目录 `analysis/vr-launcher-ui/`，并复制到仓库根目录的 `GearsVR Launcher.exe`，可直接双击。
 
-选择游戏 EXE、模拟器或系统 OpenXR Runtime，然后启动。游戏路径写入现有 `tools/vr-launcher/config.json`，保留其他字段。模拟器默认使用 `analysis/runtime/simulator-quiet1/openxr_simulator.json`；系统选项让子进程使用系统 Runtime，清除继承的 `XR_RUNTIME_JSON`，不修改注册表。
+选择游戏 EXE、模拟器或系统 OpenXR Runtime，然后启动。游戏路径写入现有 `tools/vr-launcher/config.json`，保留其他字段。模拟器默认使用 `analysis/runtime/simulator-quiet2/openxr_simulator.json`；系统选项让子进程使用系统 Runtime，清除继承的 `XR_RUNTIME_JSON`，不修改注册表。 quiet2 修复菜单交换链重建后编号复用、导致双眼拿到旧菜单纹理的问题；同一重建序列已在实际游戏验证左右眼使用独立新编号并持续投影超过90秒。这项修复不代表所有闪烁或黑屏均已解决。
 
 模拟器预览保持可见，自动启动不获取桌面焦点；用户可以点击它或移到第二屏。正常连续 VR 会话没有自动结束计时，不主动最小化或重新定位预览。共用游戏启动入口复用后台手柄方案；静默方式不等于将游戏最小化。独立模拟器启动观察通过，游戏自行激活的行为仍需实际观察，见文档68。
 

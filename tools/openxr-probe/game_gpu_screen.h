@@ -154,6 +154,13 @@ public:
             create.format=format;create.width=stereo?eye_plan.eye_width:receiver->width;
             create.height=receiver->height;create.sampleCount=1;create.faceCount=1;create.arraySize=1;create.mipCount=1;
             xr_check(xrCreateSwapchain(session,&create,&eye.chain),"GPU game swapchain");
+            if(i && eye.chain==eyes[0].chain) {
+                // A broken runtime can return the first live handle again.
+                // Leave ownership with eye zero so constructor cleanup destroys
+                // it once; never acquire the same chain as two separate eyes.
+                eye.chain=XR_NULL_HANDLE;
+                throw std::runtime_error("XR returned the same swapchain handle for both eyes");
+            }
             xr_check(xrEnumerateSwapchainImages(eye.chain,0,&count,nullptr),"GPU game images");
             if(!count)throw std::runtime_error("Empty GPU game swapchain");
             eye.images.resize(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});

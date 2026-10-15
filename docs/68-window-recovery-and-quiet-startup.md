@@ -55,3 +55,15 @@ quiet5 小程序实际检查通过：ANSI/Unicode创建、父子/owned窗口、�
 SpaceRecovery5在枚举交换链时就检查所有实际D3D12纹理尺寸，并在异常时输出眼/图像索引、交换链、请求与实际尺寸；取得图像后的原检查仍保留。没有修改渲染尺寸、缩放策略或放宽保护。模拟器编号修正另存quiet2，并保留quiet1作为失败对照；实际集成结果另行记录。默认原生/桥接清单仍未提升。
 
 证据：ignored `analysis/runtime/quiet-game9j.json`、`quiet9j-policy-query.json`、`continuous-stereo-34196-20261015-235320-d2080fda.*`。查询仅调用已加载策略的状态导出，没有重新安装Hook或改动焦点。
+
+用户随后确认9j期间曾手动切换游戏，因此上述前台事件不能直接认定为自动抢焦点。该轮缺少明确的事件归因，不判为自动激活失败，也不据此新增焦点Hook；实际静默启动仍待观察。
+
+## quiet2对照测试与9k实际运行
+
+同一独立D3D12测试对照quiet1/quiet2：quiet1的eye_left再次得到handle3，实际三张纹理均与菜单相同（1920×1080、format87），退出码1；quiet2的眼链4/5返回独立960×1080、format24纹理，销毁/重建眼链后编号6/7与新尺寸也正确，退出码0。测试没有BeginSession/EndFrame或预览窗口。另有4项CTest通过。可重放补丁、来源及边界记录在 `tools/openxr-probe/simulator-quiet/swapchain-handles-provenance.json`。
+
+9k使用Native9、SpaceRecovery5、quiet2与quiet5启动策略。PID6680（创建FILETIME `134365543832524611`）、XR35036实际再次走菜单2→替换菜单3→销毁2→眼链4/5；本次成功提交投影。90秒观察结束时owner/game/XR均存活，观察器未停止任何进程。首个实际投影标记在XR运行器开始后31.654秒，初始化延迟仍存在。00:16时记录13349次投影提交，native另一次采样published7641、anchor matched7654/rejected0，说明会话持续，不代表每个画面内容都正确。
+
+本轮屏幕内容检查处于暂停菜单，存在左右背景差异；菜单路由继续单独调查，不把成功投影写成场景/菜单完整验收。前台记录仍可能包含人工操作，不由最后输入时戳推断具体输入内容或宣称完全静默。GUI及SimulatorVR入口已改用quiet2，GUI编译、自测通过；默认原生/桥接清单保持不变。
+
+SpaceRecovery6另增加两眼交换链handle重复拒绝，构造清理只保留一次所有权；编译及CPU检查通过，9k实际运行的仍为SpaceRecovery5，未热替换。该实验构建SHA256 `5ad83e2be9ee708358e152480f428d5673e685414506abc2efd11f4322733251`。所有运行记录与截图仍留在ignored analysis。

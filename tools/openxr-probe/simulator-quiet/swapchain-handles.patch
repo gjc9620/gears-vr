@@ -1,0 +1,247 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -42,11 +42,16 @@
+     src/mcp_integration.h
+     src/projection_timing.h
+     src/focus_policy.h
++    src/swapchain_handles.h
+     src/ui_enhancements.h
+ )
+ 
+ include(CTest)
+ if(BUILD_TESTING)
++    add_executable(swapchain_handles_tests tests/swapchain_handles_tests.cpp)
++    target_include_directories(swapchain_handles_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
++    add_test(NAME swapchain_handles COMMAND swapchain_handles_tests)
++
+     add_executable(focus_policy_tests tests/focus_policy_tests.cpp)
+     target_include_directories(focus_policy_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+     add_test(NAME focus_policy COMMAND focus_policy_tests)
+--- a/src/runtime.cpp
++++ b/src/runtime.cpp
+@@ -116,6 +116,7 @@
+ #include "mcp_integration.h"
+ #include "projection_timing.h"
+ #include "focus_policy.h"
++#include "swapchain_handles.h"
+ #include "ui_enhancements.h"
+ 
+ using Microsoft::WRL::ComPtr;
+@@ -573,6 +574,7 @@
+ static Instance g_instance{};
+ static Session g_session{};
+ static std::unordered_map<XrSwapchain, Swapchain> g_swapchains;
++static simxr::SwapchainHandles g_swapchainHandles;
+ 
+ // Head tracking state for mouse look and WASD movement
+ static XrVector3f g_headPos = {0.0f, 1.7f, 0.0f};  // Start at standing eye height
+@@ -3342,7 +3344,26 @@
+     Log("[SimXR] ============================================");
+     if (!ci || !sc) return XR_ERROR_VALIDATION_FAILURE;
+     rt::Swapchain chain{}; 
+-    chain.handle = (XrSwapchain)(uintptr_t)(rt::g_swapchains.size() + 2);
++    std::uintptr_t handle{};
++    if(!rt::g_swapchainHandles.allocate(handle))return XR_ERROR_LIMIT_REACHED;
++    chain.handle = reinterpret_cast<XrSwapchain>(handle);
++    auto discard_unpublished=[&](){
++        if(chain.isVulkan)vkrt::DestroySwapchainImages(rt::g_session,chain);
++        // OpenGL calls publish before restoring the app context below.
++        if(chain.backend==rt::Swapchain::Backend::OpenGL){
++            for(GLuint texture:chain.imagesGL)if(texture)glDeleteTextures(1,&texture);
++            chain.imagesGL.clear();
++        }
++        chain.images.clear();chain.images12.clear();chain.imageStates12.clear();
++    };
++    auto publish=[&](){
++        try{
++            if(!simxr::InsertSwapchain(rt::g_swapchains,chain.handle,chain)){
++                discard_unpublished();return XR_ERROR_RUNTIME_FAILURE;
++            }
++        }catch(std::bad_alloc const&){discard_unpublished();return XR_ERROR_OUT_OF_MEMORY;}
++        *sc=reinterpret_cast<XrSwapchain>(handle);return XR_SUCCESS;
++    };
+     chain.format = (DXGI_FORMAT)ci->format;  // Store the original requested format
+     chain.width = ci->width; 
+     chain.height = ci->height; 
+@@ -3356,8 +3377,8 @@
+             vkrt::DestroySwapchainImages(rt::g_session, chain);
+             return r;
+         }
+-        rt::g_swapchains.emplace(chain.handle, std::move(chain));
+-        *sc = chain.handle;
++        const XrResult published=publish();
++        if(XR_FAILED(published))return published;
+         Logf("[SimXR] xrCreateSwapchain(Vulkan): sc=%p fmt=%lld %ux%u array=%u samples=%u",
+              *sc, (long long)ci->format, ci->width, ci->height, ci->arraySize, ci->sampleCount);
+         return XR_SUCCESS;
+@@ -3437,8 +3458,8 @@
+             chain.imageStates12.push_back(init);
+             chain.releaseState12 = init;
+         }
+-        rt::g_swapchains.emplace(chain.handle, std::move(chain));
+-        *sc = chain.handle;
++        const XrResult published=publish();
++        if(XR_FAILED(published))return published;
+         Logf("[SimXR] xrCreateSwapchain(D3D12): sc=%p fmt=%d %ux%u array=%u samples=%u", *sc, (int)ci->format, ci->width, ci->height, ci->arraySize, ci->sampleCount);
+         return XR_SUCCESS;
+     }
+@@ -3587,14 +3608,15 @@
+             }
+         }
+ 
++        // Keep the correct GL context current for failed-publication cleanup.
++        const XrResult published=publish();
+         // Restore previous context only if we switched
+         if (contextSwitched) {
+             Log("[SimXR] Restoring previous GL context");
+             wglMakeCurrent(prevDC, prevRC);
+         }
+ 
+-        rt::g_swapchains.emplace(chain.handle, std::move(chain));
+-        *sc = chain.handle;
++        if(XR_FAILED(published))return published;
+         Logf("[SimXR] xrCreateSwapchain(OpenGL): sc=%p fmt=%d %ux%u array=%u imageCount=%u",
+              *sc, (int)ci->format, ci->width, ci->height, ci->arraySize, chain.imageCount);
+         return XR_SUCCESS;
+@@ -3685,8 +3707,8 @@
+         Logf("[SimXR] Created swapchain texture[%u]: %p", i, tex.Get());
+         chain.images.push_back(std::move(tex));
+     }
+-    rt::g_swapchains.emplace(chain.handle, std::move(chain));
+-    *sc = chain.handle;
++    const XrResult published=publish();
++    if(XR_FAILED(published))return published;
+     Logf("[SimXR] xrCreateSwapchain: sc=%p fmt=%d %ux%u array=%u samples=%u", *sc, (int)ci->format, ci->width, ci->height, ci->arraySize, ci->sampleCount);
+     return XR_SUCCESS;
+ }
+--- /dev/null
++++ b/src/swapchain_handles.h
+@@ -0,0 +1,39 @@
++#pragma once
++#include <atomic>
++#include <cstdint>
++#include <limits>
++#include <type_traits>
++#include <utility>
++
++namespace simxr {
++// One runtime-global allocator; never reset on erase, instance or session end.
++// Zero marks exhaustion. Issuing UINTPTR_MAX is allowed, but never wraps to 1/2.
++class SwapchainHandles {
++    std::atomic<std::uintptr_t> next_;
++public:
++    explicit SwapchainHandles(std::uintptr_t first=2) noexcept : next_(first>=2?first:0) {}
++    bool allocate(std::uintptr_t& result) noexcept {
++        auto current=next_.load(std::memory_order_relaxed);
++        while(current) {
++            const auto following=current==(std::numeric_limits<std::uintptr_t>::max)()?0:current+1;
++            if(next_.compare_exchange_weak(current,following,std::memory_order_relaxed)) {
++                result=current;return true;
++            }
++        }
++        return false;
++    }
++};
++
++// Preserve the caller's backend resources on a collision/allocation exception.
++// Allocate an empty map node first: emplace(key,move(candidate)) could consume
++// Vulkan/GL raw handles before a failing node allocation/rehash destroys them.
++// Map access keeps the runtime's existing caller synchronization requirements.
++template<class Map>
++bool InsertSwapchain(Map& map,typename Map::key_type handle,typename Map::mapped_type& candidate) {
++    static_assert(std::is_nothrow_move_assignable_v<typename Map::mapped_type>);
++    const auto inserted=map.try_emplace(handle);
++    if(!inserted.second)return false;
++    inserted.first->second=std::move(candidate);
++    return true;
++}
++}
+--- /dev/null
++++ b/tests/swapchain_handles_tests.cpp
+@@ -0,0 +1,86 @@
++#include "swapchain_handles.h"
++#include <algorithm>
++#include <cstdio>
++#include <memory>
++#include <new>
++#include <thread>
++#include <unordered_map>
++#include <vector>
++
++#define CHECK(value) do{if(!(value)){std::printf("FAILED line %d: %s\n",__LINE__,#value);return 1;}++checks;}while(0)
++struct Resource {unsigned width{},height{};int* live{};
++    Resource(unsigned w,unsigned h,int& count):width(w),height(h),live(&count){++*live;}
++    ~Resource(){--*live;}
++};
++struct Chain {std::unique_ptr<Resource> texture;};
++struct AllocationFailure {int remaining{};};
++template<class T> struct FailingAllocator {
++    using value_type=T;AllocationFailure* failure{};
++    explicit FailingAllocator(AllocationFailure* f=nullptr):failure(f){}
++    template<class U> FailingAllocator(FailingAllocator<U> const& other):failure(other.failure){}
++    T* allocate(std::size_t n){if(failure&&failure->remaining>=0&&failure->remaining--==0)throw std::bad_alloc();
++        return std::allocator<T>{}.allocate(n);}
++    void deallocate(T* p,std::size_t n){std::allocator<T>{}.deallocate(p,n);}
++    template<class U> bool operator==(FailingAllocator<U> const& other)const{return failure==other.failure;}
++    template<class U> bool operator!=(FailingAllocator<U> const& other)const{return !(*this==other);}
++};
++int main(){
++    unsigned checks=0;int live=0;simxr::SwapchainHandles handles;
++    std::unordered_map<std::uintptr_t,Chain> chains;
++    auto create=[&](unsigned width,unsigned height,std::uintptr_t& handle){
++        if(!handles.allocate(handle))return false;
++        Chain candidate;candidate.texture=std::make_unique<Resource>(width,height,live);
++        return simxr::InsertSwapchain(chains,handle,candidate);
++    };
++    std::uintptr_t menu{},replacement{},left{},right{};
++    CHECK(create(1920,764,menu)&&menu==2);
++    CHECK(create(1920,1080,replacement)&&replacement==3);
++    CHECK(chains.erase(menu)==1&&live==1);
++    CHECK(create(960,1080,left)&&left==4);
++    CHECK(create(960,1080,right)&&right==5&&right!=left);
++    CHECK(chains.at(replacement).texture->width==1920&&chains.at(replacement).texture->height==1080);
++    CHECK(chains.at(left).texture->width==960&&chains.at(left).texture->height==1080);
++    CHECK(chains.at(right).texture->width==960&&chains.at(right).texture->height==1080);
++    CHECK(chains.at(left).texture.get()!=chains.at(right).texture.get());
++    // Failed publication must not overwrite the old chain or consume the new
++    // backend allocation, so the caller can run Vulkan/GL-specific cleanup.
++    {Chain duplicate;duplicate.texture=std::make_unique<Resource>(1280,720,live);
++        auto* original=chains.at(replacement).texture.get();
++        CHECK(!simxr::InsertSwapchain(chains,replacement,duplicate));
++        CHECK(duplicate.texture&&duplicate.texture->width==1280&&chains.at(replacement).texture.get()==original);
++        CHECK(live==4);
++    }
++    CHECK(live==3);
++    for(int fail_after=0;fail_after<2;++fail_after){
++        using Entry=std::pair<const std::uintptr_t,Chain>;
++        using Map=std::unordered_map<std::uintptr_t,Chain,std::hash<std::uintptr_t>,std::equal_to<std::uintptr_t>,FailingAllocator<Entry>>;
++        AllocationFailure failure{-1};Map failing(0,std::hash<std::uintptr_t>{},std::equal_to<std::uintptr_t>{},FailingAllocator<Entry>{&failure});
++        // Fill the initial buckets so publication allocates both a node and a
++        // rehash array. Exercise failure at either actual STL allocation.
++        const auto previous_size=failing.bucket_count();
++        for(std::size_t i=0;i<previous_size;++i)failing.try_emplace(100+i);
++        Chain candidate;candidate.texture=std::make_unique<Resource>(640,360,live);bool threw=false;
++        failure.remaining=fail_after;
++        try{simxr::InsertSwapchain(failing,7,candidate);}catch(std::bad_alloc const&){threw=true;}
++        CHECK(threw&&candidate.texture&&candidate.texture->width==640&&live==4&&failing.size()==previous_size);
++        failure.remaining=-1;
++        CHECK(simxr::InsertSwapchain(failing,7,candidate)&&!candidate.texture&&failing.at(7).texture->width==640);
++    }
++    CHECK(live==3);
++    chains.clear();CHECK(live==0);
++    std::uintptr_t next{};CHECK(handles.allocate(next)&&next==6); // No reset on complete teardown.
++    const auto maximum=(std::numeric_limits<std::uintptr_t>::max)();
++    simxr::SwapchainHandles end(maximum-1);
++    CHECK(end.allocate(next)&&next==maximum-1);
++    CHECK(end.allocate(next)&&next==maximum);
++    for(unsigned i=0;i<8;++i)CHECK(!end.allocate(next)&&next==maximum);
++    simxr::SwapchainHandles invalid0(0),invalid1(1);
++    CHECK(!invalid0.allocate(next)&&!invalid1.allocate(next));
++    simxr::SwapchainHandles parallel;std::vector<std::thread> threads;
++    std::vector<std::uintptr_t> allocated(8000);
++    for(unsigned t=0;t<8;++t)threads.emplace_back([&,t](){for(unsigned i=0;i<1000;++i){
++        std::uintptr_t value{};parallel.allocate(value);allocated[t*1000+i]=value;}});
++    for(auto& thread:threads)thread.join();std::sort(allocated.begin(),allocated.end());
++    for(unsigned i=0;i<allocated.size();++i)CHECK(allocated[i]==std::uintptr_t(i)+2);
++    std::printf("swapchain_handles: %u checks passed (menu replacement, dimensions, collision/exception ownership, exhaustion, concurrent IDs)\n",checks);
++}

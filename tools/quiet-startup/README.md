@@ -5,8 +5,9 @@ fixture, but has not yet passed actual-game startup or manual activation tests.
 It does not replace the current player default.
 
 The first actual-game observation (9j) recorded two foreground events even though
-all eight API hooks remained installed; manual versus automatic activation was
-not attributed. VR separately stopped because the simulator reused an existing
+all eight API hooks remained installed. The user subsequently confirmed manually
+switching to the game, so these events do not establish automatic focus stealing.
+VR separately stopped because the simulator reused an existing
 swapchain handle after a menu resize. See `docs/68-window-recovery-and-quiet-startup.md`;
 neither issue is covered by the fixture's passing result.
 

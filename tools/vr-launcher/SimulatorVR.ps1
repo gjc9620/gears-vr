@@ -9,7 +9,7 @@ if ($Action -ne 'start') {
     & $Python $launcherPath $Action
     exit $LASTEXITCODE
 }
-$simulatorFolder = Join-Path $repositoryRoot 'analysis/runtime/simulator-quiet1'
+$simulatorFolder = Join-Path $repositoryRoot 'analysis/runtime/simulator-quiet2'
 $runtimeSource = Join-Path $simulatorFolder 'openxr_simulator.json'
 $runtimeConfig = Get-Content -LiteralPath $runtimeSource -Raw | ConvertFrom-Json
 $runtimeLibrary = [IO.Path]::GetFullPath((Join-Path $simulatorFolder $runtimeConfig.runtime.library_path))

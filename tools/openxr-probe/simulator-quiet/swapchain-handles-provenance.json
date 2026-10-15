@@ -1,0 +1,429 @@
+{
+  "base_quiet_provenance": "tools/openxr-probe/simulator-quiet/provenance.json",
+  "base_quiet_provenance_sha256": "8f93d41327fe7f8441802cf4177b3ccacc4cf837f01b052b0b1b275804a7f2e7",
+  "apply_after": "quiet.patch",
+  "patch": "tools/openxr-probe/simulator-quiet/swapchain-handles.patch",
+  "patch_sha256": "a59f29b1bffd60e278d1c2aac3501100d0e7679afca5924f2fcda47af9343e59",
+  "files": [
+    {
+      "path": "CMakeLists.txt",
+      "before_lf_sha256": "f76285762a2b6a570ec31f7b875b9f0f673225aea0ac0ce66a2a4522c0a330ae",
+      "after_lf_sha256": "f5a43f78d6618a0c18e04c5c46e37a777f159308a6bcce57e22a012287e28291"
+    },
+    {
+      "path": "src/runtime.cpp",
+      "before_lf_sha256": "266ba40aeff26ae839bfe8adb939d68a170bc7de1eb32197e2b50ac71ded09c7",
+      "after_lf_sha256": "e8c77699d18626bfe7d606a725319694840715a3671a60cec945f48e20ff1fb3"
+    },
+    {
+      "path": "src/swapchain_handles.h",
+      "before_lf_sha256": null,
+      "after_lf_sha256": "f1c038296a595c036680a60ef90cd0d6f6cb7b90708957dbdd03b8d637ab6779"
+    },
+    {
+      "path": "tests/swapchain_handles_tests.cpp",
+      "before_lf_sha256": null,
+      "after_lf_sha256": "384e763e7d8ddc014642f44cc325133f29188ea72255f60dd30dcf7d4e18e0a3"
+    }
+  ],
+  "private_source": "analysis/simulator-quiet2-source",
+  "private_build": "analysis/simulator-quiet2-build",
+  "copied_source_directories": [
+    "include",
+    "src",
+    "tests"
+  ],
+  "excluded_copy_directories": [
+    "build",
+    "build-*",
+    "bin",
+    ".git"
+  ],
+  "runtime_manifest": "analysis/runtime/simulator-quiet2/openxr_simulator.json",
+  "compiled_dll_sha256": "760dccf583ef05d2c8dbb2d26f514e91f3a67e21142870afae70da651683432c",
+  "unchanged_quiet1_dll_sha256": "86cc8c42a8534c976fbfe347044d6e123b5b30c9a8b106d093058a41a4428a27",
+  "build": {
+    "generator": "Ninja",
+    "configuration": "Release",
+    "cmake": "E:/CMake/bin/cmake.exe",
+    "compiler": "MSVC 14.51.36231 x64",
+    "vulkan_headers": "analysis/deps/Vulkan-Headers-v1.3.290/include",
+    "installed_dependencies": false,
+    "configure_command": "cmake -S analysis/simulator-quiet2-source -B analysis/simulator-quiet2-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCMAKE_MAKE_PROGRAM=E:/vs/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe -DSIMXR_VULKAN_INCLUDE_DIR=J:/gearsVr/analysis/deps/Vulkan-Headers-v1.3.290/include",
+    "build_command": "cmake --build analysis/simulator-quiet2-build"
+  },
+  "tests": {
+    "ctest": "4/4 passed",
+    "boundary_test": "swapchain_handles: 8031 checks passed (menu replacement, dimensions, collision/exception ownership, exhaustion, concurrent IDs)",
+    "logs": "analysis/runtime/simulator-quiet2-evidence",
+    "gui_or_openxr_started": false
+  },
+  "actual_failure": {
+    "game_pid": 34196,
+    "xr_pid": 32756,
+    "source_log": "analysis/runtime/simulator-quiet2-evidence/openxr_simulator.32756.log",
+    "source_log_sha256": "dadaebeb156b13bf7c60aa3acdf521000b2cbf6ad364b0bcd08dc4dc9dc67bcf",
+    "sequence": [
+      {
+        "line": 157,
+        "text": "[SimXR] xrCreateSwapchain(D3D12): sc=0000000000000002 fmt=87 1920x764 array=1 samples=1"
+      },
+      {
+        "line": 207,
+        "text": "[SimXR] xrCreateSwapchain(D3D12): sc=0000000000000003 fmt=87 1920x1080 array=1 samples=1"
+      },
+      {
+        "line": 210,
+        "text": "[SimXR] xrDestroySwapchain: sc=0000000000000002"
+      },
+      {
+        "line": 257,
+        "text": "[SimXR] xrCreateSwapchain(D3D12): sc=0000000000000003 fmt=24 960x1080 array=1 samples=1"
+      },
+      {
+        "line": 265,
+        "text": "[SimXR] xrCreateSwapchain(D3D12): sc=0000000000000003 fmt=24 960x1080 array=1 samples=1"
+      }
+    ],
+    "conclusion": "The observed menu2 -> replacement3 -> destroy2 -> eye3 -> eye3 sequence exactly matches the size()+2 handle collision; the successful create log records requested dimensions, while enumeration returns the existing menu chain."
+  },
+  "synchronization": "Allocator is atomic and never reset by instance/session teardown; existing map caller synchronization is unchanged. This patch does not make all runtime container operations concurrently safe.",
+  "resource_ownership": "Reserve/default-construct map node before noexcept move; all backend publication failures clean candidate resources. OpenGL failure cleanup runs before restoring its prior context.",
+  "limits": [
+    "Coordinator verified isolated real OpenXR+D3D12 resource/handle old-new comparison. No frame submission, preview, gameplay or headset acceptance is established by that test.",
+    "Allocator persists for the runtime DLL load lifetime; no valid OpenXR handles survive runtime DLL unload.",
+    "Original runtime, quiet1 source/build/deployment and all default manifests remain unchanged."
+  ],
+  "runtime_integration_test": {
+    "source": "tools/openxr-probe/simulator-quiet/swapchain_runtime_test.cpp",
+    "source_sha256": "48b7eee14f9e157c1537385b1368417b29ffb53b1eaf02c343c784c4e19d11f6",
+    "executable": "analysis/simulator-quiet2-runtime-test/SwapchainRuntimeTest.exe",
+    "executable_sha256": "20906ee75596a80dd00b4e2a6a5266a625673bb624f7bd52128890cab19ad25d",
+    "loader_sha256": "66946ea6e9cc2649e299ec412521c5eafe56c635d05055097fe4db81e11932df",
+    "build_log": "analysis/runtime/simulator-quiet2-evidence/runtime-test-build.txt",
+    "compile": "MSVC x64 /std:c++17 /O2 /W4 /WX /EHsc; existing local OpenXR loader; no dependency install",
+    "executed": true,
+    "old_command": "analysis/simulator-quiet2-runtime-test/SwapchainRuntimeTest.exe --runtime analysis/runtime/simulator-quiet1/openxr_simulator.json",
+    "new_command": "analysis/simulator-quiet2-runtime-test/SwapchainRuntimeTest.exe --runtime analysis/runtime/simulator-quiet2/openxr_simulator.json",
+    "contract": "Parent sets XR_RUNTIME_JSON only in isolated child environment; child requires exact OpenXR Simulator Runtime name before session creation. No BeginSession, EndFrame, window creation or input API calls. Real D3D12 textures enumerated and validated; no rendering or presentation.",
+    "executed_by": "coordinating agent; this update only reads saved results",
+    "results": {
+      "old": {
+        "path": "analysis/runtime/simulator-quiet2-evidence/runtime-old.txt",
+        "sha256": "6e31b0416266130ce04e81c7ede7205d1ec0a3dbc6cdeb582ff432ba85af4878",
+        "exit_code": 1,
+        "stages": [
+          {
+            "stage": "menu",
+            "handle": 2,
+            "unique_handle": true,
+            "requested": [
+              1920,
+              764,
+              87
+            ],
+            "images": [
+              {
+                "texture": 1811791325856,
+                "width": 1920,
+                "height": 764,
+                "format": 87,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1812970646016,
+                "width": 1920,
+                "height": 764,
+                "format": 87,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1812970648368,
+                "width": 1920,
+                "height": 764,
+                "format": 87,
+                "aliases_live_texture": false
+              }
+            ]
+          },
+          {
+            "stage": "replacement",
+            "handle": 3,
+            "unique_handle": true,
+            "requested": [
+              1920,
+              1080,
+              87
+            ],
+            "images": [
+              {
+                "texture": 1812970681088,
+                "width": 1920,
+                "height": 1080,
+                "format": 87,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1812970683856,
+                "width": 1920,
+                "height": 1080,
+                "format": 87,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1812970690256,
+                "width": 1920,
+                "height": 1080,
+                "format": 87,
+                "aliases_live_texture": false
+              }
+            ]
+          },
+          {
+            "stage": "eye_left",
+            "handle": 3,
+            "unique_handle": false,
+            "requested": [
+              960,
+              1080,
+              24
+            ],
+            "images": [
+              {
+                "texture": 1812970681088,
+                "width": 1920,
+                "height": 1080,
+                "format": 87,
+                "aliases_live_texture": true
+              },
+              {
+                "texture": 1812970683856,
+                "width": 1920,
+                "height": 1080,
+                "format": 87,
+                "aliases_live_texture": true
+              },
+              {
+                "texture": 1812970690256,
+                "width": 1920,
+                "height": 1080,
+                "format": 87,
+                "aliases_live_texture": true
+              }
+            ]
+          }
+        ],
+        "passed": false
+      },
+      "new": {
+        "path": "analysis/runtime/simulator-quiet2-evidence/runtime-new.txt",
+        "sha256": "4916d95a55ac3ccdd46a19eb82265ec260d7095814d606f3ef940751b4a624ab",
+        "exit_code": 0,
+        "stages": [
+          {
+            "stage": "menu",
+            "handle": 2,
+            "unique_handle": true,
+            "requested": [
+              1920,
+              764,
+              87
+            ],
+            "images": [
+              {
+                "texture": 1467174891616,
+                "width": 1920,
+                "height": 764,
+                "format": 87,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467174896032,
+                "width": 1920,
+                "height": 764,
+                "format": 87,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467174898800,
+                "width": 1920,
+                "height": 764,
+                "format": 87,
+                "aliases_live_texture": false
+              }
+            ]
+          },
+          {
+            "stage": "replacement",
+            "handle": 3,
+            "unique_handle": true,
+            "requested": [
+              1920,
+              1080,
+              87
+            ],
+            "images": [
+              {
+                "texture": 1467174935136,
+                "width": 1920,
+                "height": 1080,
+                "format": 87,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467174937904,
+                "width": 1920,
+                "height": 1080,
+                "format": 87,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467174940672,
+                "width": 1920,
+                "height": 1080,
+                "format": 87,
+                "aliases_live_texture": false
+              }
+            ]
+          },
+          {
+            "stage": "eye_left",
+            "handle": 4,
+            "unique_handle": true,
+            "requested": [
+              960,
+              1080,
+              24
+            ],
+            "images": [
+              {
+                "texture": 1467174891616,
+                "width": 960,
+                "height": 1080,
+                "format": 24,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467174914480,
+                "width": 960,
+                "height": 1080,
+                "format": 24,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467174916832,
+                "width": 960,
+                "height": 1080,
+                "format": 24,
+                "aliases_live_texture": false
+              }
+            ]
+          },
+          {
+            "stage": "eye_right",
+            "handle": 5,
+            "unique_handle": true,
+            "requested": [
+              960,
+              1080,
+              24
+            ],
+            "images": [
+              {
+                "texture": 1467175219488,
+                "width": 960,
+                "height": 1080,
+                "format": 24,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467175221840,
+                "width": 960,
+                "height": 1080,
+                "format": 24,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467175224192,
+                "width": 960,
+                "height": 1080,
+                "format": 24,
+                "aliases_live_texture": false
+              }
+            ]
+          },
+          {
+            "stage": "eye_left_recreated",
+            "handle": 6,
+            "unique_handle": true,
+            "requested": [
+              1280,
+              720,
+              24
+            ],
+            "images": [
+              {
+                "texture": 1467174891616,
+                "width": 1280,
+                "height": 720,
+                "format": 24,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467175213552,
+                "width": 1280,
+                "height": 720,
+                "format": 24,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467175215904,
+                "width": 1280,
+                "height": 720,
+                "format": 24,
+                "aliases_live_texture": false
+              }
+            ]
+          },
+          {
+            "stage": "eye_right_recreated",
+            "handle": 7,
+            "unique_handle": true,
+            "requested": [
+              640,
+              360,
+              24
+            ],
+            "images": [
+              {
+                "texture": 1465961573760,
+                "width": 640,
+                "height": 360,
+                "format": 24,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1467175236240,
+                "width": 640,
+                "height": 360,
+                "format": 24,
+                "aliases_live_texture": false
+              },
+              {
+                "texture": 1465961553680,
+                "width": 640,
+                "height": 360,
+                "format": 24,
+                "aliases_live_texture": false
+              }
+            ]
+          }
+        ],
+        "passed": true
+      }
+    },
+    "result": "Old runtime exits1: eye_left aliases menu handle3 and all three 1920x1080 format87 resources despite request960x1080 format24. Quiet2 exits0: eyes4/5 are960x1080 format24 and distinct; recreated eyes6/7 validate1280x720 and640x360. No BeginSession/EndFrame/preview.",
+    "build_command": "cl /nologo /std:c++17 /EHsc /O2 /W4 /WX /D_CRT_SECURE_NO_WARNINGS /Itools/third-party/openxr-loader/include /Fe:analysis/simulator-quiet2-runtime-test/SwapchainRuntimeTest.exe /Fo:analysis/simulator-quiet2-runtime-test/SwapchainRuntimeTest.obj tools/openxr-probe/simulator-quiet/swapchain_runtime_test.cpp tools/third-party/openxr-loader/x64/lib/openxr_loader.lib d3d12.lib dxgi.lib"
+  },
+  "patch_validation": "Forward git apply --check against quiet1 source and reverse --check against quiet2 source both succeeded; no application to frozen quiet1."
+}

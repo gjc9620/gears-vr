@@ -165,7 +165,7 @@ namespace GearsVrUi {
             layout.Controls.Add(runtimeMode, 1, 2);
             layout.Controls.Add(new Label { Text = "模拟器文件", AutoSize = true }, 0, 3); runtime.Dock = DockStyle.Fill; layout.Controls.Add(runtime, 1, 3);
             browseRuntime.Text = "浏览…"; layout.Controls.Add(browseRuntime, 2, 3);
-            runtime.Text = Path.Combine(root, "analysis", "runtime", "simulator-quiet1", "openxr_simulator.json");
+            runtime.Text = Path.Combine(root, "analysis", "runtime", "simulator-quiet2", "openxr_simulator.json");
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill };
             start.Text = "启动 VR"; stop.Text = "停止 VR"; status.Text = "查看状态";
             var logs = new Button { Text = "打开日志", AutoSize = true };
