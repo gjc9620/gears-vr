@@ -65,8 +65,16 @@ DXGI ResizeBuffers/ResizeBuffers1边界现已更新库存代次、退休旧票�
 
 GameRecovery5冻结编译和13项检查通过，清单`manifest-game-recovery5.json`；不替换默认Recovery3。新增最长gap独立保留，后续短gap不会覆盖它。实际首轮PID17836完成505次Material双眼重绘（均kind3），上传508、3次pair不成立被拒绝；native发布1505，污染5、库存changed/rejected=0、pending Present=0。稳定段模拟器无启动后缺layer事件。测试在切4K前因只读MenuReader发现对象表变化而停止，因此不算完整4K/重载通过；退出完成后正常关闭游戏。诊断控制脚本只在发送任何输入之前，允许该具体读取竞态最多3次新建reader重采样，动作不重试。
 
+### 完整场景复测与当前入口
+
+同一冻结GameRecovery5再次运行PID30400，`continuous-stereo-30400-20261015-190433-c56864c6.*`，自动完成1080p→4K（停留55秒）→同进程检查点重载（停留25秒）→1080p。native发布6724，XR复制6723、projection提交13427，场景提交跨度150.613秒。Material逐眼重绘2305次（kind3 HUD 1925、kind0普通overlay 380），21次pair不成立拒绝，pending Present=0；污染帧从上轮3483降至本轮15（两轮工作量不同，不直接当作性能百分比）。4次resize与5次prepare均成功，库存changed/rejected=0，4K及回1080p新代首次提交距操作约126.6/193.5毫秒。
+
+上一版59.055秒长提交缺口本轮未复现，最大XR提交间隔降为733.834毫秒；仍不满足连续性标准，最终report明确为incomplete，不能称所有黑屏已修复。最长原生发布间隔约2.023秒发生在确认检查点后，含暂时无双眼pair的加载区间；旧图短时保留186次，未发生late-image拒绝。停机时42个入口独立恢复核验通过、native资源排空、XR对象销毁完成，随后正常关闭游戏。无真头显或CG验收。
+
+当前`manifest.json`升级为`manifest-game-recovery5.json`，GUI/脚本直接读取它；Recovery3与原GameResolution1清单保留回滚。native SHA256 `eebe351a8de54c363446caa1b0dbfc8f81eabcecf3c8ed3c3633320b2aa98127`，XR仍为SpaceRecovery3。第①项仍需处理首次接入延迟和切换短缺帧；第②/③项准星与HUD以及第④项CG未完成。
+
 ## 下一步
 
-定向记录4K长缺帧窗口内的未知HUD绘制，修复关联来源；不放宽未知draw接纳或无限延长旧图保留。继续第①项恢复/延迟及第②、③项准星/HUD，CG切换仍待处理。尚未证明VDXR原点事件在真实头显上恢复。
+继续第①项首次接入延迟/切换短缺帧，随后第②项手枪准星和第③项HUD。UI语义证书在同关卡换Pawn后重绑定是后续覆盖所需；CG/加载状态仍需专门显示策略。不放宽未知draw接纳或无限延长旧图保留。尚未证明VDXR原点事件在真实头显上恢复。
 
 参考：[OpenXR会话可见与输入焦点状态](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrSessionState.html)、[OpenXR参考空间变化事件](https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrEventDataReferenceSpaceChangePending.html)、[DXGI ResizeBuffers资源释放要求](https://learn.microsoft.com/en-us/windows/win32/api/dxgi/nf-dxgi-idxgiswapchain-resizebuffers)。

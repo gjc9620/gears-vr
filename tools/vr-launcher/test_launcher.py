@@ -115,9 +115,9 @@ class LauncherTests(unittest.TestCase):
     def test_player_default_uses_game_resolution_and_graphics_protection(self):
         directory=pathlib.Path(__file__).parent
         current=json.loads((directory/'manifest.json').read_text())
-        self.assertEqual(current,json.loads((directory/'manifest-game-recovery3.json').read_text()))
+        self.assertEqual(current,json.loads((directory/'manifest-game-recovery5.json').read_text()))
         launcher.settings({},current)
-        self.assertEqual(current['native_dll'],'GearsCaptureGameRecovery3.dll')
+        self.assertEqual(current['native_dll'],'GearsCaptureGameRecovery5.dll')
         for key in ('startup_menu','graphics_startup_lock','graphics_menu_lock','menu_recovery','ui_hud_plane'):
             self.assertTrue(current[key])
         for tier in ('low','high'):
