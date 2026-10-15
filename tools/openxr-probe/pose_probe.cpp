@@ -22,6 +22,7 @@
 #include "session_exit_state.h"
 #include "image_ticket_diagnostics.h"
 #include "startup_panel_policy.h"
+#include "menu_display_reader.h"
 
 using Microsoft::WRL::ComPtr;
 XrInstance instance = XR_NULL_HANDLE;
@@ -166,11 +167,18 @@ int main(int argc, char** argv) {
     if(argc<3) {fprintf(stderr,"Usage: OpenXRPoseProbe SECONDS OUTPUT.csv [--render] [--bridge-pid PID]\n");return 2;}
     bool test_render=false;DWORD bridge_pid=0,stereo_pid=0,stereo_game_pid=0,game_pid=0,gpu_pid=0;HWND game_window=nullptr;const char* gpu_snapshot=nullptr;
     HWND startup_window=nullptr;DWORD startup_game_pid=0;
+    const char* menu_state_file=nullptr;std::uint64_t menu_game_creation=0;
     unsigned stereo_producer_seconds=30;bool explicit_stereo_duration=false;
     bool simulator_operator=false,continuous_session=false,diagnostic_shutdown=false,diagnostic_outage=false,diagnostic_image_tickets=false;
     DWORD continuous_owner_pid=0;std::uint64_t continuous_owner_creation=0;
     for(int i=3;i<argc;++i) {
         if(!strcmp(argv[i],"--render"))test_render=true;
+        else if(!strcmp(argv[i],"--menu-state-file")&&i+1<argc){if(menu_state_file)return 2;menu_state_file=argv[++i];if(!*menu_state_file)return 2;}
+        else if(!strcmp(argv[i],"--menu-game-creation")&&i+1<argc){
+            if(menu_game_creation)return 2;const char* value=argv[++i];char* end{};errno=0;
+            menu_game_creation=strtoull(value,&end,10);
+            if(*value<'0'||*value>'9'||*end||errno==ERANGE||!menu_game_creation)return 2;
+        }
         else if(!strcmp(argv[i],"--simulator-operator")){if(simulator_operator)return 2;simulator_operator=true;}
         else if(!strcmp(argv[i],"--continuous-session")){if(continuous_session)return 2;continuous_session=true;}
         else if(!strcmp(argv[i],"--shutdown-diagnostics")){if(diagnostic_shutdown)return 2;diagnostic_shutdown=true;}
@@ -229,6 +237,7 @@ int main(int argc, char** argv) {
     if(stereo_pid && (!test_render || bridge_pid || gpu_pid || game_window))return 2;
     if(stereo_game_pid&&stereo_game_pid!=stereo_pid)return 2;
     if(startup_window&&(!continuous_session||!stereo_game_pid||startup_game_pid!=stereo_game_pid||game_window||gpu_pid||bridge_pid))return 2;
+    if((menu_state_file!=nullptr)!=(menu_game_creation!=0)||(menu_state_file&&!startup_window))return 2;
     if(diagnostic_shutdown)shutdown_diagnostics::enable();
     ContinuousSessionControl continuous_control;
     if(continuous_session){try{continuous_control.open(stereo_game_pid,continuous_owner_pid,continuous_owner_creation);}catch(const std::exception& error){fprintf(stderr,"%s\n",error.what());return 2;}}
@@ -317,7 +326,9 @@ int main(int argc, char** argv) {
         if(game_window)screen.reset(new GameScreen(device.Get(),queue.Get(),game_window,game_pid,argv[2]));
         std::unique_ptr<GameScreen,shutdown_diagnostics::DeleteMarker<GameScreen>> startup_screen{nullptr,{"startup_screen_reset_enter","startup_screen_reset_completed"}};
         if(startup_window)startup_screen.reset(new GameScreen(device.Get(),queue.Get(),startup_window,startup_game_pid,argv[2],true));
-        StartupPanelPolicy startup_panel(startup_window!=nullptr);
+        StartupPanelPolicy startup_panel(startup_window!=nullptr,menu_state_file!=nullptr);
+        MenuDisplayReader menu_display(menu_state_file,stereo_game_pid,menu_game_creation,continuous_owner_pid,continuous_owner_creation);
+        unsigned menu_quad_layers=0,menu_entries=0,menu_recoveries=0;
         unsigned startup_quad_layers=0;
         std::unique_ptr<GameGpuScreen,shutdown_diagnostics::DeleteMarker<GameGpuScreen>> gpu_screen{nullptr,{"gpu_screen_reset_enter","gpu_screen_reset_completed"}};
         if(gpu_pid)gpu_screen.reset(new GameGpuScreen(device.Get(),queue.Get(),gpu_pid,gpu_snapshot));
@@ -405,6 +416,12 @@ int main(int argc, char** argv) {
             const XrCompositionLayerBaseHeader* game_layers[]={reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad)};
             ProjectionStatus projection_frame_status=ProjectionStatus::producer_unavailable;
             bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false;
+            const auto menu_now=gears_vr::monotonic_ns();
+            const auto menu_mode=menu_display.poll(menu_now);
+            if(startup_panel.observe(menu_mode,menu_now)&&startup_screen){
+                startup_screen->begin_menu_epoch();++menu_entries;
+                printf("{\"menu_display_enter\":true,\"epoch\":%u,\"mode\":\"death_menu\",\"observed_ns\":%lld}\n",menu_entries,menu_now);fflush(stdout);
+            }
             const unsigned outage_copies_before=(diagnostic_outage||diagnostic_image_tickets)&&stereo_screen?stereo_screen->copies:0;
             if(screen && frame.shouldRender && screen->render(quad)){end.layerCount=1;end.layers=game_layers;}
             if(startup_panel.show_panel()&&startup_screen&&frame.shouldRender&&startup_screen->render(quad)){
@@ -425,32 +442,39 @@ int main(int argc, char** argv) {
                     if(ready)
                         stereo_screen.reset(new GameGpuScreen(device.Get(),queue.Get(),stereo_game_pid,gpu_snapshot,simulator_operator,&stereo_limits));
                 }
-                if(stereo_image_shown)end.layerCount=0;
+                if(stereo_image_shown&&!startup_quad_queued)end.layerCount=0;
                 ProjectionStatus result;
                 if(stereo_space_changed)result=ProjectionStatus::reference_space_changed;
                 else if(stereo_screen&&stereo_screen->producer_stopped())result=ProjectionStatus::producer_stopped;
+                else if(!startup_panel.allow_projection())result=menu_mode==gears_menu::Mode::death_menu?ProjectionStatus::menu_requested:ProjectionStatus::menu_recovery_pending;
                 else result=projection_current_status(frame.shouldRender,state==XR_SESSION_STATE_FOCUSED,view_count,head.locationFlags,view_state.viewStateFlags,simulator_operator);
                 bool submitted=false;
                 if(result==ProjectionStatus::submitted){
                     if(!stereo_screen)result=ProjectionStatus::producer_unavailable;
-                    else {outage_render_attempted=true;submitted=stereo_screen->render_projection(projection,projection_views,stereo_session,result);}
+                    else {outage_render_attempted=true;submitted=stereo_screen->render_projection(projection,projection_views,stereo_session,result,startup_panel.minimum_sample_ns());}
                 }
                 projection_frame_status=result;
                 if(submitted){
-                    stereo_image_shown=true;end.layerCount=1;end.layers=layers;
-                    if(startup_panel.projection_rendered(true)){
-                        startup_screen.reset();
-                        startup_handoff_queued=true;
-                    }
+                    end.layerCount=1;end.layers=layers;startup_handoff_queued=true;
                 }
             }
             const auto ended=xrEndFrame(session,&end);xr_check(ended,"xrEndFrame");
+            if(startup_handoff_queued){
+                const bool recovering=startup_panel.minimum_sample_ns()!=0;
+                stereo_image_shown=true;
+                startup_handoff_queued=startup_panel.projection_rendered(true);
+                if(startup_handoff_queued&&!menu_state_file)startup_screen.reset();
+                if(startup_handoff_queued&&recovering){++menu_recoveries;
+                    printf("{\"menu_display_recovered\":true,\"epoch\":%u,\"end_frame_succeeded\":true}\n",menu_entries);fflush(stdout);}
+            }
             if(startup_quad_queued&&end.layerCount&&end.layers==game_layers){
                 ++startup_quad_layers;
+                if(menu_mode==gears_menu::Mode::death_menu){++menu_quad_layers;
+                    if(menu_quad_layers==1){printf("{\"death_menu_first_frame\":true,\"end_frame_succeeded\":true,\"panel_counts_as_stereo\":false}\n");fflush(stdout);}}
                 if(startup_quad_layers==1){printf("{\"startup_menu_first_frame\":true,\"end_frame_succeeded\":true,\"panel_counts_as_stereo\":false}\n");fflush(stdout);}
             }
             if(startup_handoff_queued){
-                printf("{\"startup_menu_handoff\":true,\"startup_quad_layers\":%u,\"ticketed_projection_rendered\":true,\"end_frame_succeeded\":true,\"one_way\":true}\n",startup_quad_layers);fflush(stdout);
+                printf("{\"startup_menu_handoff\":true,\"startup_quad_layers\":%u,\"ticketed_projection_rendered\":true,\"end_frame_succeeded\":true,\"one_way\":%s}\n",startup_quad_layers,menu_state_file?"false":"true");fflush(stdout);
             }
             if(stereo_game_pid)projection_evidence.record(ended==XR_SUCCESS?projection_frame_status:ProjectionStatus::session_lost,gears_vr::monotonic_ns());
             if(diagnostic_outage||diagnostic_image_tickets){
@@ -528,6 +552,7 @@ int main(int argc, char** argv) {
         if(stereo_game_pid&&!continuous_session)projection_evidence.print();
         bool display_ok=!screen || (screen->rendered && screen->gpu_pixels_verified);
         if(startup_window)printf("{\"startup_menu_evidence\":true,\"startup_quad_layers\":%u,\"stereo_handoff\":%s,\"panel_counts_as_stereo\":false}\n",startup_quad_layers,stereo_image_shown?"true":"false");
+        if(menu_state_file)printf("{\"menu_recovery_evidence\":true,\"entries\":%u,\"quad_layers\":%u,\"recoveries\":%u,\"panel_counts_as_stereo\":false}\n",menu_entries,menu_quad_layers,menu_recoveries);
         display_ok=display_ok && (!gpu_screen || (gpu_screen->rendered && gpu_screen->copies));
         const auto scene_copies=stereo_screen?stereo_screen->copies:0;
         display_ok=display_ok && (!stereo_game_pid || (stereo_screen && stereo_screen->projection_rendered && scene_copies &&

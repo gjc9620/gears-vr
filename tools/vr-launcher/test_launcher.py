@@ -234,11 +234,15 @@ class LauncherTests(unittest.TestCase):
     def test_preview_session_options_reach_runner(self):
         with tempfile.TemporaryDirectory() as directory:
             backend=FakeBackend()
-            manifest=dict(MANIFEST,**{key:True for key in launcher.SESSION_OPTIONS})
+            manifest=dict(MANIFEST,startup_menu=True,**{key:True for key in launcher.SESSION_OPTIONS})
             with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
                 launcher.start({},manifest,backend,pathlib.Path(directory)/'index.json',sleep=lambda seconds:None)
             args=backend.runner.run_session.call_args.args[0]
             self.assertTrue(all(getattr(args,key) is True for key in launcher.SESSION_OPTIONS))
+
+    def test_menu_recovery_requires_startup_capture(self):
+        with self.assertRaisesRegex(ValueError,'Menu recovery requires'):
+            launcher.settings({},dict(MANIFEST,menu_recovery=True,startup_menu=False))
 
     def test_same_process_runner_after_two_samples(self):
         with tempfile.TemporaryDirectory() as directory:

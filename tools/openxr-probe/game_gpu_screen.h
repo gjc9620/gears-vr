@@ -5,10 +5,10 @@
 #include "eye_chain_policy.h"
 
 enum class ProjectionStatus {submitted,producer_stopped,producer_unavailable,waiting_image,current_inactive,current_untracked,
-    reference_space_changed,empty_ticket,session_mismatch,ticket_flags,ticket_geometry,stale_ticket,image_rectangle,session_lost,producer_structure_invalid,probe_failure,count};
+    reference_space_changed,empty_ticket,session_mismatch,ticket_flags,ticket_geometry,stale_ticket,image_rectangle,session_lost,producer_structure_invalid,probe_failure,menu_requested,menu_recovery_pending,count};
 inline const char* projection_status_name(ProjectionStatus status){
     static const char* names[]={"submitted","producer_stopped","producer_unavailable","waiting_image","current_inactive","current_untracked",
-        "reference_space_changed","empty_ticket","session_mismatch","ticket_flags","ticket_geometry","stale_ticket","image_rectangle","session_lost","producer_structure_invalid","probe_failure"};
+        "reference_space_changed","empty_ticket","session_mismatch","ticket_flags","ticket_geometry","stale_ticket","image_rectangle","session_lost","producer_structure_invalid","probe_failure","menu_requested","menu_recovery_pending"};
     return names[static_cast<unsigned>(status)];
 }
 inline bool xr_image_work_complete(uint64_t completed,uint64_t target){return target && completed!=~uint64_t(0) && completed>=target;}
@@ -288,7 +288,7 @@ public:
             out.head_flags=sample.head_flags;out.view_flags=sample.view_flags;}
         return out;
     }
-    bool render_projection(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status){
+    bool render_projection(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status,int64_t minimum_sample_ns=0){
         if(!stereo)throw std::runtime_error("Projection requires admitted stereo eye chains");
         if(receiver->stopped()){status=ProjectionStatus::producer_stopped;return false;}
         status=ProjectionStatus::waiting_image;
@@ -297,6 +297,7 @@ public:
         const auto now=gears_vr::monotonic_ns();
         status=projection_ticket_status(ticket,receiver->width,receiver->height,expected_session,now,allow_simulated);
         if(status!=ProjectionStatus::submitted)return false;
+        if(sample.received_ns<=minimum_sample_ns){status=ProjectionStatus::menu_recovery_pending;return false;}
         for(unsigned i=0;i<2;++i){
             const auto& rect=ticket.rect[i];const auto& eye=sample.eyes[i];
             auto& view=views[i];view={XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW};

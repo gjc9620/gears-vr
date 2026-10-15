@@ -330,3 +330,13 @@ Binding2 / PID12880 为既有 Pawn 绑定读取增加可选诊断，保留原读
 实际游戏＋模拟器完成2868对owned场景、2391次普通UI和215次Material，UI故障与绑定溢出均为0。首个拒绝及全部16条保留记录均为 `stage=pawn field=controller_pawn actual=0 actual_valid=1`。独立读取同进程确认 Controller.Pawn 为0，Camera.ViewTarget仍指向原Pawn；随后重新认证的菜单读取确认 `DeltaGameover`、焦点 `btnCheckpoint`、consistent_reread=true。这证明本轮为角色死亡、取消占有后，双目守卫正确拒绝旧玩家场景，但现有一次性启动面板没有恢复显示死亡菜单。不能将它归因于全部历史黑屏或用户报告的桌面交替。
 
 停止后63处入口独立恢复，正常关闭游戏、没有强杀；原生Owner仍保留到进程退出，尚未解决正常退休。审计 `analysis/ui-position-runtime/owned-binding2-12880.audit.json` 保存原始记录与DLL/清单哈希。下一步增加显式、可逆的场景／菜单显示状态，保持原场景身份和姿态时效检查；桌面镜像缺口单独处理。本提交只有诊断，不宣称菜单恢复已经实现。
+
+## 2026-10-15：可逆死亡菜单显示实现，实际恢复分支尚待覆盖
+
+新增可选 `menu_recovery` 清单项，仅在已有startup_menu生命周期中启用。启动器复用只读 MenuReader，认证同一PID/创建时间、注册UI树及一致复读后，发布带游戏/owner身份、序号及采样起始时间的64字节原子文件。初期只认证 `DeltaGameover/WarUIScene/input_mode=1` 为死亡菜单，已观察的常驻Crossplay场景为恢复候选；未知、采样失败、过期及身份错误不会授权死亡面板。没有修改 native Pawn 守卫或放宽100ms姿态有效期，也没有增加 Hook。
+
+XR可保留窗口捕获用于返回菜单。进入菜单时清空旧图并建立epoch，使用WGC SystemRelativeTime确认真实捕获发生在epoch之后，缓存最多1秒。菜单状态租期1.5秒，进入死亡菜单后必须再次收到有效游戏候选状态、并取得晚于恢复边界的新鲜已认证双目ticket，才在成功xrEndFrame后完成接续。屏幕平面与projection每帧只选择一种；旧startup-only清单仍在首次成功双目后释放窗口捕获。菜单面板不计作立体世界渲染。暂停、其他菜单及跨Level重新认证仍须后续接入。
+
+菜单时间/协议/状态机、XR接收与退出等8个C++检查通过，Python菜单观察4项、continuous runner36项、launcher35项通过。实际 `MenuRecovery1 / PID22156` 使用冻结Binding2 native及新 `build-menu-recovery1` XR：启动面板2933次后自动接续，261.105秒内8097个owned场景、7475次普通UI、499次Material；owned绑定overflow=0、UI/Material故障=0。XR复制8089张、projection提交23433次，最大间隔112.4373ms，不宣称全程无卡顿。老backbuffer绑定表仍记录73次overflow，不与新owned绑定表混为一谈。
+
+本轮正常移动后没有发生死亡，`entries=0/quad_layers=0/recoveries=0`，因此没有证明实际死亡菜单或检查点恢复已经成功，未提升其验收状态。XR正常关闭，63个入口全部恢复，游戏正常关闭；native资源仍保留到游戏退出，启动器仍为incomplete。清单 `manifest-menu-recovery1.json`，审计 `analysis/ui-position-runtime/menu-recovery1-22156.audit.json`；默认玩家清单未改变。下一轮须实际覆盖死亡菜单和恢复，同时继续处理桌面镜像与释放缺口。

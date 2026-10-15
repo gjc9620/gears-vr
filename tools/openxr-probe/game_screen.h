@@ -8,7 +8,18 @@
 #include <winrt/Windows.Graphics.DirectX.h>
 #include <winrt/Windows.Graphics.DirectX.Direct3D11.h>
 #include <mutex>
+#include <limits>
 #include "startup_capture_size.h"
+#include "menu_capture_epoch.h"
+
+inline std::int64_t menu_capture_qpc_ticks(){
+    LARGE_INTEGER counter{},frequency{};
+    if(!QueryPerformanceCounter(&counter)||!QueryPerformanceFrequency(&frequency)||counter.QuadPart<0||frequency.QuadPart<=0)
+        throw std::runtime_error("Menu capture QPC unavailable");
+    const long double ticks=static_cast<long double>(counter.QuadPart)*10000000.0L/frequency.QuadPart;
+    if(ticks>static_cast<long double>((std::numeric_limits<std::int64_t>::max)()))throw std::runtime_error("Menu capture QPC overflow");
+    return static_cast<std::int64_t>(ticks);
+}
 
 // Separate-process HWND-only diagnostic. No game Hook or display capture.
 class GameWindowFrames {
@@ -26,6 +37,7 @@ class GameWindowFrames {
     HWND hwnd{};DWORD pid{};unsigned source_width{},source_height{};
     struct ProcessHandle {HANDLE value{};~ProcessHandle(){if(value)CloseHandle(value);}};
     bool startup=false;ProcessHandle target_process;uint64_t target_creation{};
+    MenuCaptureEpoch menu_epoch;
     bool ready_window() const {
         DWORD actual{};GetWindowThreadProcessId(hwnd,&actual);
         if(!IsWindow(hwnd)||actual!=pid)throw std::runtime_error("Game HWND/PID identity changed");
@@ -77,6 +89,7 @@ public:
             try {auto frame=sender.TryGetNextFrame();if(frame){if(shared->latest)shared->latest.Close();shared->latest=frame;}}
             catch(winrt::hresult_error const&){}
         });
+        if(startup)menu_epoch.begin(menu_capture_qpc_ticks());
         capture.StartCapture();
     }
     ~GameWindowFrames(){
@@ -84,6 +97,16 @@ public:
         std::lock_guard<std::mutex> lock(state->mutex);if(state->latest)state->latest.Close();
     }
     bool available() const {return ready_window();}
+    void begin_menu_epoch(){
+        if(!startup)return;
+        menu_epoch.begin(menu_capture_qpc_ticks());
+        std::lock_guard<std::mutex> lock(state->mutex);
+        if(state->latest){state->latest.Close();state->latest=nullptr;}
+        // The pool owns two buffers. The timestamp gate also rejects any old
+        // buffer whose callback arrives after this bounded drain completes.
+        for(unsigned i=0;i<2;++i){auto pending=pool.TryGetNextFrame();if(!pending)break;pending.Close();}
+    }
+    bool menu_fresh()const{return !startup||menu_epoch.fresh(menu_capture_qpc_ticks());}
     bool update() {
         try{return update_frame();}catch(winrt::hresult_error const&){if(!startup)throw;return false;}
     }
@@ -92,6 +115,8 @@ public:
         if(!ready_window()){if(startup)return false;throw std::runtime_error("Game window minimized");}
         Frame frame{nullptr};{std::lock_guard<std::mutex> lock(state->mutex);frame=state->latest;state->latest=nullptr;}
         if(!frame)return false;
+        const std::int64_t captured=startup?frame.SystemRelativeTime().count():0;
+        if(startup&&!menu_epoch.eligible(captured,menu_capture_qpc_ticks())){frame.Close();return false;}
         auto access=frame.Surface().as<::Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
         com_ptr<ID3D11Texture2D> texture;check_hresult(access->GetInterface(IID_PPV_ARGS(texture.put())));
         D3D11_TEXTURE2D_DESC desc{};texture->GetDesc(&desc);auto content=frame.ContentSize();
@@ -133,7 +158,9 @@ public:
             const auto* input=static_cast<const unsigned char*>(mapped.pData)+size_t(uint64_t(y)*source_height/height)*mapped.RowPitch+size_t(uint64_t(x)*source_width/width)*4;
             std::memcpy(pixels.data()+(size_t(y)*width+x)*4,input,4);
         }
-        context->Unmap(staging.get(),0);frame.Close();++received;return true;
+        context->Unmap(staging.get(),0);frame.Close();
+        if(startup&&!menu_epoch.accept(captured,menu_capture_qpc_ticks()))return false;
+        ++received;return true;
     }
 };
 
@@ -199,6 +226,10 @@ public:
         if(!event)throw std::runtime_error("Game fence event unavailable");
     }
     ~GameScreen(){if(chain)xrDestroySwapchain(chain);if(event)CloseHandle(event);}
+    // Same XR render thread as render(); leaves GPU objects/fence ownership intact.
+    void begin_menu_epoch(){
+        if(!startup)return;current=false;next_capture={};source.begin_menu_epoch();
+    }
     bool render(XrCompositionLayerQuad& quad) {
         if(startup&&!source.available())return false;
         auto now=std::chrono::steady_clock::now();
@@ -265,7 +296,8 @@ public:
                 }
             }
         }
-        if(!current || now-last_frame>std::chrono::seconds(1))return false;
+        if(startup&&!source.menu_fresh())current=false;
+        if(!current || (!startup&&now-last_frame>std::chrono::seconds(1)))return false;
         quad={XR_TYPE_COMPOSITION_LAYER_QUAD};quad.space=view_space;quad.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
         quad.pose.orientation.w=1;quad.pose.position.z=-2;quad.size={1.6f,1.6f*source.height/source.width};
         quad.subImage.swapchain=chain;quad.subImage.imageRect.extent={int32_t(source.width),int32_t(source.height)};

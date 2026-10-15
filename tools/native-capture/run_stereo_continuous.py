@@ -122,6 +122,9 @@ def xr_command(args,csv_path,owner):
             '--owner-pid',str(owner['pid']),'--owner-creation-time',str(owner['creation_time'])]
     if getattr(args,'startup_menu_window',0):
         command+=['--startup-menu-window',str(args.startup_menu_window),str(args.pid)]
+    if getattr(args,'menu_recovery',False):
+        if not getattr(args,'startup_menu_window',0):raise ValueError('Menu recovery requires startup menu window')
+        command+=['--menu-state-file',str(args.menu_state_file),'--menu-game-creation',str(args.menu_game_creation)]
     for name in ('outage_diagnostics','shutdown_diagnostics'):
         if getattr(args,name,False):command.append('--'+name.replace('_','-'))
     if getattr(args,'origin_trial',False) or getattr(args,'image_ticket_diagnostics',False):command.append('--image-ticket-diagnostics')
@@ -307,7 +310,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'owner_identity':None,'game_identity':None,
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
-    child=None;activation_attempted=False
+    child=None;activation_attempted=False;menu_monitor=None
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
     out_path=prefix.with_suffix('.stdout.txt');err_path=prefix.with_suffix('.stderr.txt')
@@ -315,6 +318,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
         state['owner_identity']=control.identity(os.getpid());state['game_identity']=control.identity(args.pid)
         floor=native_status.stat().st_mtime_ns if native_status.exists() else 0
         if not state['game_identity'] or not state['owner_identity']:raise RuntimeError('Live owner/game identity required')
+        if getattr(args,'menu_recovery',False):
+            args.menu_state_file=prefix.with_suffix('.menu.bin');args.menu_game_creation=state['game_identity']['creation_time']
+            state['menu_state_file']=str(args.menu_state_file)
         state['xr_command']=xr_command(args,prefix.with_suffix('.csv'),state['owner_identity'])
         state['native_command']=native_command(args,state['owner_identity'])
         write_state(state_path,state)
@@ -374,12 +380,16 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 else:raise TimeoutError('Fresh native running status absent')
                 state['phase']='running';state['native_status']=status;state['native_started_qpc']=status['started_qpc'];write_state(state_path,state)
                 print(json.dumps({'continuous_running':True,'session_report':str(state_path)}),flush=True)
+                if getattr(args,'menu_recovery',False):
+                    from menu_display_monitor import MenuDisplayMonitor
+                    menu_monitor=MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity)
                 while child.poll() is None:
                     if cancel_requested and cancel_requested():
                         state['stop_requested_by']='launcher_cancel';break
                     status=read_session_status(native_status,args.pid,floor)
                     if status and status.get('phase')!='running':break
                     checked_identity(control,state['game_identity'])
+                    if menu_monitor:menu_monitor.poll()
                     time.sleep(.25)
             except StartupCancelled:
                 state['stop_requested_by']='startup_cancel'
@@ -388,6 +398,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             except Exception as error:
                 state['error']=repr(error)
             finally:
+                if menu_monitor:
+                    try:menu_monitor.close()
+                    except Exception as error:state['menu_monitor_close_error']=repr(error)
                 state['phase']='stopping';write_state(state_path,state)
                 if activation_attempted:
                     try:
@@ -428,6 +441,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             if isinstance(value,dict) and value.get('continuous_owner_evidence'):state['continuous_owner_evidence']=value
             if isinstance(value,dict) and value.get('startup_menu_evidence'):state['startup_menu_evidence']=value
             if isinstance(value,dict) and value.get('startup_menu_handoff'):state['startup_menu_handoff']=value
+            if isinstance(value,dict) and value.get('menu_recovery_evidence'):state['menu_recovery_evidence']=value
         state['passed']=continuous_passed(state)
         # Cancellation before native activation is a control result, not proof
         # of stereo output. The launcher still owns startup-prime verification.

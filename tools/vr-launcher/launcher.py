@@ -15,7 +15,7 @@ from types import SimpleNamespace
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 HERE=pathlib.Path(__file__).resolve().parent
 INDEX=ROOT/'analysis/runtime/vr-launcher-session.json'
-SESSION_OPTIONS=('anchor_observer','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','gpu_snapshot')
+SESSION_OPTIONS=('anchor_observer','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','gpu_snapshot','menu_recovery')
 
 def atomic_json(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -38,6 +38,8 @@ def settings(config,manifest,root=ROOT):
         raise ValueError('Manifest session options must be boolean')
     if manifest.get('graphics_startup_lock',False) and not manifest.get('startup_menu',False):
         raise ValueError('Startup graphics lock requires owned startup menu lifecycle')
+    if manifest.get('menu_recovery',False) and not manifest.get('startup_menu',False):
+        raise ValueError('Menu recovery requires startup menu lifecycle')
     if manifest.get('graphics_menu_lock',False) and not manifest.get('graphics_startup_lock',False):
         raise ValueError('Menu lock requires startup graphics protection')
     if manifest.get('ui_hud_plane',False) and not (manifest.get('ui_observer',False) and manifest.get('anchor_observer',False)):

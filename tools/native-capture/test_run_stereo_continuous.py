@@ -35,6 +35,15 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_menu_recovery_command_is_bound_to_game_creation_and_startup_window(self):
+        args=types.SimpleNamespace(pid=123,xr_build_dir=pathlib.Path('xr'),menu_recovery=True,
+            startup_menu_window=456,menu_state_file=pathlib.Path('state.menu.bin'),menu_game_creation=789)
+        cmd=runner.xr_command(args,pathlib.Path('capture.csv'),identity(100))
+        self.assertEqual(cmd[cmd.index('--menu-game-creation')+1],'789')
+        self.assertEqual(cmd[cmd.index('--menu-state-file')+1],'state.menu.bin')
+        args.startup_menu_window=0
+        with self.assertRaisesRegex(ValueError,'requires startup'):runner.xr_command(args,pathlib.Path('capture.csv'),identity(100))
+
     def test_snapshot_only_signals_enabled_live_owned_xr(self):
         state=dict(schema=1,kind='continuous_strict_stereo',phase='running',gpu_snapshot_requested=True,
                    owner_identity=identity(100),game_identity=identity(123),xr_identity=identity(200))
