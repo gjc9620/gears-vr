@@ -6,6 +6,8 @@
 
 Native13已独立编译，DLL SHA256 `f6f12ccf16015470bf7e0b19b7593fec7e8da606bd1a9a482309798d5945cd21`；UiHudPlanTest、FinalTransferPolicyTest、FrameLinkTest、UiPayloadReceiptsTest、UiObserverTest、GraphicsMenuLockTest、WorldRebindMetadataTest通过，记录在ignored `analysis/runtime/world13-unit-tests.json`。实际游戏与头显显示尚待验证，默认清单未提升。
 
+随后实际游戏会话 `continuous-stereo-42972-20261016-064504-bcc8002c.json` 使用Native13与MainMenu8；运行时状态确认55°、2米，planned/applied均2721、sequence_fault0。4K同世界暂停恢复和尺寸变化后恢复各10秒采样均有持续新图像及projection，正常停止/入口恢复通过。自动GPU快照3840×2160显示两眼暂停页面，不是游玩HUD可读性证据；准星有限深度、换枪和字幕布局仍未由此通过，真头显大小与舒适性待确认。
+
 ## 复现：GameRecovery7，2026-10-15
 
 实际游戏 PID24112（`continuous-stereo-24112-20261015-195606-390abba0.*`）通过对象/类身份与双向关系复读确认从 `Weap_AssaultRifle` 切到 `Weap_COGPistol`。两次正常手柄开镜各3秒，首轮采样的相机FOV由80变为45。没有修改游戏武器或相机内存。游戏EXE SHA256沿用清单中的 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`。

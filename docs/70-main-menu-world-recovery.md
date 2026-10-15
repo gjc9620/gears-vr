@@ -205,3 +205,9 @@ Native12 SHA `6475080bb23e0e45f9d989a2c2a2d7c8f382a84b0dd1c2d37346c9e16f56fe94`�
 同一冻结 Native12 / MainMenu8，会话 `continuous-stereo-14216-20261016-063841-411d73b0.json`，game14216、owner2784。物理客户区3840×2160→2161→2160，暂停菜单阶段published3578→4141持续增长，但共同菜单面板不计双目。恢复游玩的3秒采样published停在4267，模拟器末次layer0；之后日志记录新resource generation的首次projection并恢复，不能把这段短暂空层算作稳定性通过。主菜单→Continue后自动world1→2，新世界采样published5083→5170、projection8849→9108、layer1，说明并非持续无法恢复。
 
 证据 `world12-4k-rect-experiment.json` 及同会话stdout/menu/world/native-status。实验未抢焦点；最终正常停止passed=true，native清理与入口恢复true，XR对象销毁及shutdown完成；身份校验后WM_CLOSE退出游戏。保留测试前后配置，并仅恢复StartupResolutionX/Y到原1920×1080。此轮仍为70° HUD，55°源码候选属于后续Native13；没有头显或完整无闪黑验收。
+
+### Native13 同世界暂停恢复对照
+
+Native13 SHA `f6f12ccf16015470bf7e0b19b7593fec7e8da606bd1a9a482309798d5945cd21`，XR仍MainMenu8；仅HUD55°变化。会话 `continuous-stereo-42972-20261016-064504-bcc8002c.json`，game42972、owner28540。`world13-control-rect-experiment.json` 每200ms采样（native状态自身约1秒更新）：无resize恢复游玩10秒50样本，published440→824、projection374→1261，零层样本0；同world1物理2160→2161→2160后恢复游玩10秒50样本，published1340→1646、projection1604→2490，零层样本0。尺寸变化中的暂停阶段10样本有1个零层，仍保留可见黑闪缺口；采样未发现不代表逐帧零层不存在。
+
+显式transfer accepted1093、policy_rejected0。正常停止passed=true，native清理与入口恢复true，身份校验WM_CLOSE退出。配置前后备份world13-config-before/after-test.ini，仅恢复X/Y到1920×1080。此次未做world重绑，不把暂停或普通菜单共同quad计双目，不提升默认、不作全场景黑屏验收。
