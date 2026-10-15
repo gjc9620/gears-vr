@@ -75,7 +75,10 @@ std::array<UiSubtitleGpuRow,16> ui_subtitle_gpu_rows{};
 unsigned ui_subtitle_gpu_count{};uint64_t ui_subtitle_gpu_calls{},ui_subtitle_gpu_dropped{};
 long long ui_subtitle_gpu_next{};
 
-bool validate_ui_payload_content(gears_ui_receipts::Claim const& claim,UiPayloadContext& context){
+bool validate_ui_payload_content(gears_ui_receipts::Claim const& claim,UiPayloadContext& context,gears_ui_binding::Binding& binding){
+    if(!ui_capture_binding(binding)){++ui_binding_claims[3];return false;}
+    for(size_t i=0;i<claim.count&&i<claim.entries.size();++i)
+        if(!ui_binding_current(claim.entries[i].root_invocation,binding))return false;
     gears_ui_batch::detail::Reader<decltype(&safe_copy)> read{safe_copy};
     gears_ui_batch::detail::Array vertices{},after{};
     if(!claim.count||claim.count>claim.entries.size()||!read.field(vertices,claim.payload,0x48)||
@@ -108,6 +111,8 @@ uint32_t __fastcall hook_ui_execute(void* command){
     owned_ui_live::CommandScope owned_command(owned_receipt,command,caller);
 #endif
     UiPayloadContext context{};
+    gears_ui_binding::Binding consumer_binding{};
+    UiSemanticScope semantic_scope;
     std::unique_ptr<UiIndexContext> index_storage;
     // Empty contexts deliberately shadow a parent, including nested unsupported
     // Execute calls; their GPU work cannot inherit the parent's semantic label.
@@ -125,9 +130,10 @@ uint32_t __fastcall hook_ui_execute(void* command){
             {std::lock_guard<std::mutex> lock(ui_payload_mutex);claimed=ui_payload_store.claim(payload,claim);}
             if(claimed){
                 ++ui_execute_claims;
-                if(recording.load()&&validate_ui_payload_content(claim,context)&&
+                if(recording.load()&&validate_ui_payload_content(claim,context,consumer_binding)&&
                    safe_copy(checked.data(),command,checked.size())&&checked==header){
                     context.command=reinterpret_cast<uintptr_t>(command);
+                    semantic_scope.begin(consumer_binding);
                     ++ui_execute_content_matches;ui_payload_context=&context;
                     index_storage.reset(new(std::nothrow) UiIndexContext{});
                     if(index_storage&&caller==base+0x19f2f3&&
@@ -155,14 +161,17 @@ uint32_t __fastcall hook_ui_execute(void* command){
     // Semantic contexts must finish before the owned ledger can make this
     // ticket ready for publication. Unlabelled batches have no such cursor.
     const bool sequence_complete=!ui_index_context||ui_index_context->cursor.finish();
-    owned_ui_live::execute_end(owned_receipt,result,sequence_complete);
+    const bool binding_complete=semantic_scope.end(sequence_complete&&result==48);
+    owned_ui_live::execute_end(owned_receipt,result,sequence_complete&&binding_complete);
     if(ui_observer_enabled&&result!=48)++ui_execute_bad_return;
     // Only our independent value copies remain live. The native command and
     // payload have already been destroyed and must not be read here.
     if(ui_index_context){
-        const bool complete=sequence_complete&&result==48;
+        const bool complete=binding_complete&&sequence_complete&&result==48;
         if(complete)++ui_index_complete;else ++ui_index_incomplete;
-        if(!complete&&ui_hud_plane_enabled)ui_hud_sequence_fault=true;
+        // A changing live binding rejects only this publication window. Keep
+        // the permanent route fault for malformed GPU sequence/return values.
+        if((!sequence_complete||result!=48)&&ui_hud_plane_enabled)ui_hud_sequence_fault=true;
         std::lock_guard<std::mutex> lock(ui_payload_mutex);
         for(unsigned i=0;i<ui_subtitle_gpu_count;++i)
             if(ui_subtitle_gpu_rows[i].execute_sequence==ui_index_context->execute_sequence)

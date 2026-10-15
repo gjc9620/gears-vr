@@ -75,6 +75,16 @@ GameRecovery5冻结编译和13项检查通过，清单`manifest-game-recovery5.j
 
 当前`manifest.json`升级为`manifest-game-recovery5.json`，GUI/脚本直接读取它；Recovery3与原GameResolution1清单保留回滚。native SHA256 `eebe351a8de54c363446caa1b0dbfc8f81eabcecf3c8ed3c3633320b2aa98127`，XR仍为SpaceRecovery3。第①项仍需处理首次接入延迟和切换短缺帧；第②/③项准星与HUD以及第④项CG未完成。
 
+## UI同关卡重绑定（GameRecovery6/7）
+
+UI静态函数/属性/类证书保留不变。每个匹配的脚本UI入口获取同关卡当前Pawn、HUD、Inventory绑定，校验完整对象/类身份和双向关系，把私有配置冻结到该次调用。嵌套UI复用冻结值，结束后重验。512槽固定receipt账本保留原调用绑定；排队draw消费时只有原绑定已完成且仍有效才保留HUD/准星分类，pending、覆盖或换角色降为已认证普通overlay，不重新标注旧记录。消费结束再次检查，尚未完成的语义窗口不发布；无新增hook。
+
+GameRecovery6 / PID29844完成同进程两次检查点重载、中途4K及回1080p。UI调用获取5469次、拒绝0、新Pawn重关联4108次；排队绑定28915次通过、pending/retired=0、changed=1，结束拒绝3、时间戳竞态4。Material逐眼HUD绘制1842次，未退化为kind0普通overlay。XR提交11943次、复制5185张，跨度134.453秒、最长提交间隔867.687毫秒；仍为incomplete。原生清理、42个入口恢复和XR退出完成，随后正常关闭游戏。证据`analysis/runtime/game-recovery6-audit.json`。
+
+审查及该轮记录发现新增binding失败被合并到`ui_hud_sequence_fault`，造成瞬时换角色/时间戳竞态永久关闭Tile HUD路线（该轮sequence_fault=1）。GameRecovery7修正为只让原有GPU序列/返回值结构错误触发永久fault；binding失败只拒绝当前窗口并保留后续恢复。legacy owned路线同时传递binding失败到其原有严格停止机制；本项目game-resolution配置不启用owned路线，不宣称owned可恢复性已支持。
+
+独立UI dev编译及针对性CPU检查通过。冻结Recovery6、Recovery7分别通过12项本地检查；Recovery6首次误用self-test参数`--owned-prime-handoff`返回2，改用实际支持的`--prime-owned-handoff`后通过，原失败记录保留，未当作实现故障。Recovery7 DLL SHA256 `964ec52a8a23c3b9b22e2a13dd5845e3ba78c667eead6ec1a8f03757f5127aa7`，XR保持SpaceRecovery3。此处不宣称准星深度、HUD尺寸或字幕实机验收已完成。
+
 ## 下一步
 
 ### 首入等待的相机身份（PID4776）

@@ -1007,6 +1007,7 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
 #if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
     if(game_material::block_present())frame_link.invalidate();
 #endif
+    if(ui_semantic_consumer_pending)frame_link.invalidate(); // Nonblocking: semantic consumers have not passed their final identity bracket.
     auto result=frame_link.present(resource,inventory_ok?binding.queue:0);
     if(diagnostic){diagnostic->valid|=gears_outage::association;diagnostic->buffer=resource;diagnostic->queue=binding.queue;
         diagnostic->ticket=result.ticket;diagnostic->rejection=result.rejection;diagnostic->linked=result.linked;diagnostic->contaminated=result.contaminated;}

@@ -1,4 +1,5 @@
 #include "ui_observer.h"
+#include "ui_runtime_binding.h"
 #include <map>
 #include <vector>
 #include <cassert>
@@ -134,7 +135,70 @@ void test_canvas_ancestry(){
     assert(!gears_ui::classify_canvas_scope(f.c,[](void*,const void*,std::size_t){return false;},root,f.frame,f.frame,out,matched));
     assert(out.kind==99&&out.function==97&&matched==94);
 }
+static void test_runtime_binding(){
+    Fixture f;
+    const auto pawn_class=f.add(L"WarPawn",f.class_id),camera_class=f.add(L"WarPlayerCamera",f.class_id),
+        local_class=f.add(L"WarLocalPlayer",f.class_id),level_class=f.add(L"Level",f.class_id);
+    for(auto cls:{pawn_class,camera_class,local_class,level_class}){f.c.identities[cls].check_super=1;f.rewrite(cls);}
+    const auto level=f.add(L"PersistentLevel",level_class),local=f.add(L"LocalPlayer",local_class);
+    f.c.identities[f.c.role_pawn].cls=f.c.identities[pawn_class].address;
+    f.c.identities[f.c.role_pawn].outer=f.c.identities[level].address;f.rewrite(f.c.role_pawn);
+    f.c.identities[f.c.role_camera].cls=f.c.identities[camera_class].address;f.rewrite(f.c.role_camera);
+    f.c.identities[f.c.role_hud].outer=f.c.identities[f.c.role_controller].address;f.rewrite(f.c.role_hud);
+    f.c.identities[f.c.role_inventory].outer=f.c.identities[f.c.role_pawn].address;f.rewrite(f.c.role_inventory);
+    gears_anchor::Config a{};a.objects_header=f.c.objects_header;a.names_header=f.c.names_header;
+    a.identity_count=f.c.identity_count;for(unsigned i=0;i<a.identity_count;++i)a.identities[i]=f.c.identities[i];
+    a.object_internal_index=f.c.object_internal_index;a.object_name=f.c.object_name;a.object_class=f.c.object_class;a.object_outer=f.c.object_outer;
+    a.field_super=f.c.field_super;a.name_entry_index=f.c.name_entry_index;a.name_entry_text=f.c.name_entry_text;
+    a.role_controller=f.c.role_controller;a.role_pawn=f.c.role_pawn;a.role_camera=f.c.role_camera;a.role_local=local;a.role_level=level;
+    a.controller_pawn=f.c.controller_pawn;a.pawn_controller=f.c.pawn_controller;a.player_camera=f.c.player_camera;a.pc_owner=f.c.camera_owner;
+    a.player=0x2e0;a.camera_view_target=0x2e8;a.camera_timestamp=0x2f0;a.pawn_location=0x300;a.eye_height=0x310;a.base_eye_height=0x314;
+    f.link(f.c.role_controller,a.player,local);f.link(f.c.role_camera,a.camera_view_target,f.c.role_pawn);
+    f.m.put(f.c.identities[f.c.role_camera].address+a.camera_timestamp,1.f);
+    const auto startup=f.c;auto read=[&](void* out,const void* address,std::size_t size){return f.m.read(out,address,size);};
+    gears_ui_binding::Binding before{},after{};assert(gears_ui_binding::acquire(startup,a,read,before));
+    gears_ui_binding::Receipts receipts;receipts.begin(7,before);
+    assert(receipts.check(7,before)==gears_ui_binding::ReceiptStatus::pending);
+    receipts.finish(7,true);assert(receipts.check(7,before)==gears_ui_binding::ReceiptStatus::current);
+    const auto pawn=f.add(L"RespawnedPawn",pawn_class,f.c.identities[level].address);
+    const auto inventory=f.add(L"RespawnedInventory",f.inventory_class,f.c.identities[pawn].address);
+    const auto hud=f.add(L"RespawnedHUD",f.hud_class,f.c.identities[f.c.role_controller].address);
+    f.link(f.c.role_controller,f.c.controller_pawn,pawn);f.link(pawn,f.c.pawn_controller,f.c.role_controller);
+    f.link(pawn,f.c.pawn_inventory,inventory);f.link(f.c.role_controller,f.c.controller_hud,hud);
+    f.link(hud,f.c.hud_owner,f.c.role_controller);f.link(f.c.role_camera,a.camera_view_target,pawn);
+    assert(!gears_ui::quick_environment(startup,gears_ui::Reader<decltype(read)>{read}));
+    assert(gears_ui_binding::acquire(startup,a,read,after)&&after.pawn.address==f.c.identities[pawn].address);
+    assert(!gears_ui_binding::same(before,after));assert(receipts.check(7,after)==gears_ui_binding::ReceiptStatus::changed);
+    const auto candidate=gears_ui_binding::config(startup,after);gears_ui::ScopeContext scope{};
+    f.set_frame(0,after.hud.address);assert(gears_ui::match_scope(candidate,read,after.hud.address,f.frame,scope));
+    f.set_frame(1,f.weapon);assert(!gears_ui::match_scope(candidate,read,f.weapon,f.frame,scope));
+    f.m.put(f.weapon+f.c.weapon_instigator,after.pawn.address);assert(gears_ui::match_scope(candidate,read,f.weapon,f.frame,scope));
+    assert(startup.identities[startup.role_pawn].address==before.pawn.address); // Immutable certificate.
+    receipts.begin(8,after);receipts.finish(8,false);assert(receipts.check(8,after)==gears_ui_binding::ReceiptStatus::changed);
+    receipts.begin(519,after);receipts.finish(7,true);assert(receipts.check(7,before)==gears_ui_binding::ReceiptStatus::retired);
+    assert(receipts.check(519,after)==gears_ui_binding::ReceiptStatus::pending);
+    f.m.put(after.hud.address+f.c.hud_owner,std::uintptr_t(0xdead));assert(!gears_ui_binding::acquire(startup,a,read,before));
+    f.link(hud,f.c.hud_owner,f.c.role_controller);
+    f.m.put(after.inventory.address+f.c.object_class,f.c.identities[f.weapon_class].address);assert(!gears_ui_binding::acquire(startup,a,read,before));
+    f.rewrite(inventory);f.m.put(f.c.identities[f.c.role_camera].address+a.camera_view_target,std::uintptr_t(0xdead));
+    assert(!gears_ui_binding::acquire(startup,a,read,before));
+    f.link(f.c.role_camera,a.camera_view_target,pawn);
+    bool switched=false;auto changing=[&](void* out,const void* address,std::size_t size){
+        const bool ok=f.m.read(out,address,size);
+        if(!switched&&reinterpret_cast<std::uintptr_t>(address)==after.hud.address&&size==96){
+            switched=true;f.m.put(f.c.identities[f.c.role_controller].address+f.c.controller_pawn,std::uintptr_t(0xdead));}
+        return ok;
+    };
+    auto unchanged=after;
+    assert(!gears_ui_binding::acquire(startup,a,changing,unchanged)&&switched&&gears_ui_binding::same(unchanged,after));
+    f.link(f.c.role_controller,f.c.controller_pawn,pawn);
+    f.m.put(after.inventory.address+f.c.object_outer,std::uintptr_t(0xdead));
+    assert(!gears_ui_binding::acquire(startup,a,read,before));f.rewrite(inventory);
+    auto mismatched=a;++mismatched.controller_pawn;assert(!gears_ui_binding::acquire(startup,mismatched,read,before));
+    assert(gears_ui_binding::acquire(startup,a,read,before)&&gears_ui_binding::same(before,after));
+}
 int main(){
+    test_runtime_binding();
     test_canvas_ancestry();
     Fixture f;auto read=[&](void* out,const void* address,std::size_t size){return f.m.read(out,address,size);};
     assert(gears_ui::validate(f.c,read));gears_ui::ScopeContext scope{};

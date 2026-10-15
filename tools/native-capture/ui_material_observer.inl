@@ -63,6 +63,7 @@ void ui_material_after(gears_ui_material::Before const& before,unsigned kind,uin
 uint32_t __fastcall hook_ui_material_execute(void* command){
  Scope active_scope;UiMaterialRestore restore;ui_material_context=nullptr;
  UiMaterialContext context{};UiMaterialEntry claimed{};bool have=false;
+ UiSemanticScope semantic_scope;
  if(ui_observer_enabled&&recording.load()){
   ++ui_material_execute_calls;uintptr_t payload{};
   if(command&&safe_copy(&payload,reinterpret_cast<unsigned char*>(command)+16,8)){
@@ -71,6 +72,11 @@ uint32_t __fastcall hook_ui_material_execute(void* command){
   }
   if(have){++ui_material_claimed;
    if(gears_ui_material::begin_consumer({base},safe_copy,claimed.receipt,reinterpret_cast<uintptr_t>(command),context.consumer)){
+    if(claimed.receipt.kind){gears_ui_binding::Binding binding{};
+     const bool bound=ui_capture_binding(binding);if(!bound)++ui_binding_claims[3];
+     if(bound&&ui_binding_current(claimed.invocation,binding))semantic_scope.begin(binding);
+     else context.consumer.receipt.kind=0; // Erase stale/pending semantics; preserve certified ordinary overlay only.
+    }
     context.invocation=claimed.invocation;context.sequence=++ui_material_sequence;ui_material_context=&context;
    }else {++ui_material_content_rejected;record_ui_material_content_reject(reinterpret_cast<uintptr_t>(command));}
   }
@@ -85,6 +91,7 @@ uint32_t __fastcall hook_ui_material_execute(void* command){
  // Native payload/view may already be destroyed. Only the copied context is used.
  bool consumer_complete=false;
  if(ui_material_context){consumer_complete=gears_ui_material::finish_consumer(context.consumer,result);if(!consumer_complete)++ui_material_bad_return;complete_ui_material_rows(context.sequence,consumer_complete);}
+ consumer_complete=semantic_scope.end(consumer_complete);
 #if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
  material_scope.end(consumer_complete);
 #endif

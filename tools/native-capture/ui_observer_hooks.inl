@@ -2,15 +2,66 @@
 // Observation only: original VM/Canvas arguments and draw counts are preserved.
 bool ui_observer_enabled{},ui_reserved{},ui_hud_plane_enabled{};
 gears_ui::Config ui_config;
+#include "ui_runtime_binding.h"
+std::mutex ui_binding_mutex;
+gears_ui_binding::Receipts ui_binding_receipts;
+std::array<std::atomic<uint64_t>,4> ui_binding_claims{};
+std::atomic<uint64_t> ui_binding_acquired{},ui_binding_rejected{},ui_binding_end_rejected{};
+std::atomic<uint64_t> ui_binding_reassociated{};
+std::atomic<uint64_t> ui_binding_timestamp_races{},ui_binding_nested_reused{};
+unsigned ui_semantic_consumer_pending{}; // Existing frame_hook_mutex only.
+bool ui_capture_binding(gears_ui_binding::Binding& binding){
+    if(anchor_observer_enabled){gears_anchor::GuardDiagnostic diagnostic{};
+        const bool valid=gears_ui_binding::acquire(ui_config,anchor_config,safe_copy,binding,&diagnostic);
+        if(!valid&&diagnostic.timestamp_only)++ui_binding_timestamp_races;return valid;}
+    // Legacy configurations without anchor keep their original fixed binding.
+    gears_ui::Reader<decltype(&safe_copy)> read{safe_copy};
+    if(!gears_ui::quick_environment(ui_config,read))return false;
+    binding={ui_config.identities[ui_config.role_pawn],ui_config.identities[ui_config.role_hud],
+        ui_config.identities[ui_config.role_inventory],ui_config.identities[ui_config.role_controller].address,
+        ui_config.identities[ui_config.role_camera].address,0};return true;
+}
+void ui_binding_begin(uint64_t token,gears_ui_binding::Binding const& binding){
+    std::lock_guard<std::mutex> lock(ui_binding_mutex);ui_binding_receipts.begin(token,binding);
+}
+void ui_binding_finish(uint64_t token,bool valid){
+    std::lock_guard<std::mutex> lock(ui_binding_mutex);ui_binding_receipts.finish(token,valid);
+}
+bool ui_binding_current(uint64_t token,gears_ui_binding::Binding const& current){
+    std::lock_guard<std::mutex> lock(ui_binding_mutex);const auto status=ui_binding_receipts.check(token,current);
+    ++ui_binding_claims[unsigned(status)];return status==gears_ui_binding::ReceiptStatus::current;
+}
+struct UiSemanticScope {
+    gears_ui_binding::Binding binding{};bool entered{},finished{};
+    void begin(gears_ui_binding::Binding const& b){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        binding=b;entered=true;++ui_semantic_consumer_pending;}
+    bool end(bool complete){if(!entered||finished)return complete;
+        gears_ui_binding::Binding after{};const bool valid=complete&&ui_capture_binding(after)&&gears_ui_binding::same(binding,after);
+        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);--ui_semantic_consumer_pending;finished=true;
+        if(!valid){++ui_binding_end_rejected;frame_link.invalidate();}return valid;
+    }
+    ~UiSemanticScope(){if(entered&&!finished)end(false);}
+};
 using UiExec=void(__fastcall*)(void*,void*,void*);
 std::array<UiExec,4> ui_original{};
 std::array<void*,4> ui_targets{};
-struct UiInvocation {gears_ui::ScopeContext context{};uintptr_t frame{};uint64_t sequence{};long long entered{};};
+struct UiInvocation {gears_ui::ScopeContext context{};uintptr_t frame{};uint64_t sequence{};long long entered{};
+    gears_ui::Config const* frozen{};gears_ui_binding::Binding binding{};};
 thread_local UiInvocation ui_invocation;
 struct UiInvocationRestore {
     UiInvocation saved=ui_invocation;
     ~UiInvocationRestore(){ui_invocation=saved;}
 };
+gears_ui::Config const& ui_invocation_config(){return ui_invocation.frozen?*ui_invocation.frozen:ui_config;}
+bool ui_invocation_current(){
+    if(!ui_invocation.frozen)return false;const auto& c=*ui_invocation.frozen;
+    gears_ui::Reader<decltype(&safe_copy)> r{safe_copy};gears_ui::Registry objects{},names{};
+    if(!gears_ui::quick_environment(c,r)||!gears_ui::registry(r,c.objects_header,objects)||!gears_ui::registry(r,c.names_header,names)||
+       !gears_ui::fresh_identity(c,r,objects,names,c.identities[c.role_inventory])||
+       !gears_ui::fresh_identity(c,r,objects,names,c.identities[c.role_camera]))return false;
+    uintptr_t target{};return !anchor_observer_enabled||(r.field(target,c.identities[c.role_camera].address,anchor_config.camera_view_target)&&
+        target==ui_invocation.binding.pawn.address);
+}
 struct UiRow {
     gears_ui::CanvasSample sample{};
     uint64_t invocation{},calls{},latest_built_ticket{};
@@ -42,7 +93,7 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeCon
     if(draw<1||draw>3)return;
     ++ui_chain_calls;
     gears_ui::ScopeContext selected{};uintptr_t matched_frame{};unsigned matched_depth{};
-    if(!gears_ui::classify_canvas_scope(ui_config,safe_copy,ui_invocation.context,
+    if(!ui_invocation_current()||!gears_ui::classify_canvas_scope(ui_invocation_config(),safe_copy,ui_invocation.context,
             ui_invocation.frame,reinterpret_cast<uintptr_t>(frame),selected,matched_frame,&matched_depth)){
         if(ui_chain_rejected.fetch_add(1)==0){auto& r=ui_first_chain_reject;
             r.root_frame=ui_invocation.frame;r.frame=reinterpret_cast<uintptr_t>(frame);r.qpc=now();r.draw=draw;
@@ -64,7 +115,7 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeCon
         ui_next_sample[bucket]=timestamp+qpc_frequency/2;
     }
     UiRow row{};
-    if(!gears_ui::sample_canvas(ui_config,safe_copy,selected,
+    if(!gears_ui::sample_canvas(ui_invocation_config(),safe_copy,selected,
             reinterpret_cast<uintptr_t>(canvas),reinterpret_cast<uintptr_t>(frame),row.sample)){
         ++ui_rejected[bucket];return;
     }
@@ -85,11 +136,26 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
             for(unsigned i=0;i<ui_config.scope_count;++i){
                 if(node!=ui_config.identities[ui_config.scopes[i].function].address)continue;
                 gears_ui::ScopeContext context{};
-                if(gears_ui::match_scope(ui_config,safe_copy,reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(frame),context)){
+                gears_ui_binding::Binding binding{};
+                const bool inherited=ui_invocation.frozen&&ui_invocation_current();
+                if(inherited){binding=ui_invocation.binding;++ui_binding_nested_reused;}
+                const bool bound=inherited||ui_capture_binding(binding);
+                std::optional<gears_ui::Config> local_frozen;
+                if(bound&&!inherited)local_frozen.emplace(gears_ui_binding::config(ui_config,binding));
+                const auto& frozen=inherited?*ui_invocation.frozen:(local_frozen?*local_frozen:ui_config);
+                if(bound&&gears_ui::match_scope(frozen,safe_copy,reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(frame),context)){
+                    ++ui_binding_acquired;
+                    if(!gears_anchor::equal_identity(binding.pawn,ui_config.identities[ui_config.role_pawn]))++ui_binding_reassociated;
                     ++ui_scopes[i];UiInvocationRestore restore;
-                    ui_invocation={context,reinterpret_cast<uintptr_t>(frame),++ui_invocation_counter,now()};
-                    ui_original[0](self,frame,result);return;
+                    ui_invocation={context,reinterpret_cast<uintptr_t>(frame),++ui_invocation_counter,now(),&frozen,binding};
+                    const auto token=ui_invocation.sequence;ui_binding_begin(token,binding);
+                    struct Finish {uint64_t token;bool done{};~Finish(){if(!done)ui_binding_finish(token,false);}} finish{token};
+                    ui_original[0](self,frame,result);
+                    gears_ui_binding::Binding after{};
+                    const bool valid=inherited?ui_invocation_current():(ui_capture_binding(after)&&gears_ui_binding::same(binding,after));if(!valid)++ui_binding_end_rejected;
+                    ui_binding_finish(token,valid);finish.done=true;return;
                 }
+                ++ui_binding_rejected;
                 if(ui_scope_rejected[i].fetch_add(1)==0){auto& row=ui_first_scope_reject[i];
                     row.self=reinterpret_cast<uintptr_t>(self);row.frame=reinterpret_cast<uintptr_t>(frame);row.qpc=now();row.thread=GetCurrentThreadId();
                     safe_copy(&row.object,static_cast<unsigned char*>(frame)+0x20,8);
@@ -107,12 +173,12 @@ void __fastcall hook_ui_tile(void* self,void* frame,void* result){
     gears_ui_batch::Snapshot before{};gears_ui::CanvasSample sample{};
     const bool eligible=selected.kind&&ui_observer_enabled&&recording.load()&&!ui_text_collect_depth;
     if(eligible)++ui_batch_attempts;
-    const bool captured=eligible&&gears_ui::sample_canvas(ui_config,safe_copy,selected,
+    const bool captured=eligible&&gears_ui::sample_canvas(ui_invocation_config(),safe_copy,selected,
         reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(frame),sample)&&
         gears_ui_batch::snapshot({base},safe_copy,reinterpret_cast<uintptr_t>(self),before);
     if(eligible&&!captured)++ui_batch_before_rejected;
     ui_original[1](self,frame,result);
-    if(captured&&recording.load()){
+    if(captured&&recording.load()&&ui_invocation_current()){
         gears_ui_batch::Receipt receipt{};
         if(gears_ui_batch::appended_quad({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),receipt)){
             std::lock_guard<std::mutex> lock(ui_payload_mutex);
@@ -129,7 +195,7 @@ void __fastcall hook_ui_material(void* self,void* frame,void* result){
 #endif
     ui_original[2](self,frame,result);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
-    if(captured&&recording.load())ui_material_after(before,selected.kind,ui_invocation.sequence);
+    if(captured&&recording.load())ui_material_after(before,selected.kind&&ui_invocation_current()?selected.kind:0,ui_invocation.sequence);
 #endif
 }
 void __fastcall hook_ui_text(void* self,void* frame,void* result){
@@ -137,15 +203,15 @@ void __fastcall hook_ui_text(void* self,void* frame,void* result){
     auto& counts=ui_text_counts[0];if(ui_observer_enabled&&recording.load())++counts.calls;
     const bool eligible=selected.kind&&ui_observer_enabled&&recording.load()&&!ui_text_collect_depth;
     if(!eligible){ui_original[3](self,frame,result);return;}
-    ++counts.eligible;const auto invocation=++ui_invocation_counter;
+    ++counts.eligible;const auto invocation=ui_invocation.sequence;
     gears_ui_text_batch::Snapshot before{};gears_ui::CanvasSample sample{};
-    const bool captured=gears_ui::sample_canvas(ui_config,safe_copy,selected,
+    const bool captured=gears_ui::sample_canvas(ui_invocation_config(),safe_copy,selected,
         reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(frame),sample)&&
         gears_ui_text_batch::snapshot_canvas({base},safe_copy,reinterpret_cast<uintptr_t>(self),before);
     if(!captured)++counts.before_rejected;
     UiTextCollectScope collecting;
     ui_original[3](self,frame,result);
-    if(captured&&recording.load()){
+    if(captured&&recording.load()&&ui_invocation_current()){
         gears_ui_text_batch::Delta delta{};
         if(gears_ui_text_batch::delta_canvas({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),delta))
             publish_ui_text_delta(delta,selected.kind,invocation,gears_ui_receipts::Source::CanvasText,0);
@@ -239,6 +305,9 @@ void print_ui_observer(FILE* status,bool disabled){
     fprintf(status,"ui_observer enabled=%u available=%u source_vertices_modified=0 hud_plane_enabled=%u vm_calls=%llu qpc_frequency=%lld\n",
         ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_hud_plane_enabled?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;
+    fprintf(status,"ui_runtime_binding acquired=%llu rejected=%llu end_rejected=%llu claim_current=%llu claim_pending=%llu claim_retired=%llu claim_changed=%llu consumer_pending=%u timestamp_races=%llu nested_reused=%llu reassociated=%llu startup_config_immutable=1 same_level_only=1 queued_semantics_never_rebound=1\n",
+        ui_binding_acquired.load(),ui_binding_rejected.load(),ui_binding_end_rejected.load(),ui_binding_claims[0].load(),ui_binding_claims[1].load(),
+        ui_binding_claims[2].load(),ui_binding_claims[3].load(),ui_semantic_consumer_pending,ui_binding_timestamp_races.load(),ui_binding_nested_reused.load(),ui_binding_reassociated.load());
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
     owned_ui_live::print(status);
 #endif

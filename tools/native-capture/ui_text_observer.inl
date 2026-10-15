@@ -46,11 +46,15 @@ uintptr_t __fastcall hook_ui_subtitle(void* manager,void* canvas,int32_t* rectan
         rect[2]>rect[0]&&rect[3]>rect[1]&&rect[0]>=0&&rect[1]>=0&&rect[2]<=16384&&rect[3]<=16384;
     if(!eligible)return ui_original_subtitle(manager,canvas,rectangle);
     ++counts.eligible;const auto invocation=++ui_invocation_counter;
+    gears_ui_binding::Binding binding{};const bool bound=ui_capture_binding(binding);
+    if(bound)ui_binding_begin(invocation,binding);
     const bool captured=gears_ui_text_batch::snapshot_fcanvas({base},safe_copy,reinterpret_cast<uintptr_t>(canvas),before);
     if(!captured)++counts.before_rejected;
     UiTextCollectScope collecting;
     const auto result=ui_original_subtitle(manager,canvas,rectangle);
-    if(captured&&recording.load()){
+    gears_ui_binding::Binding after{};const bool valid=bound&&ui_capture_binding(after)&&gears_ui_binding::same(binding,after);
+    if(bound)ui_binding_finish(invocation,valid);
+    if(captured&&recording.load()&&valid){
         gears_ui_text_batch::Delta delta{};
         if(gears_ui_text_batch::delta_fcanvas({base},safe_copy,before,reinterpret_cast<uintptr_t>(canvas),delta))
             publish_ui_text_delta(delta,3,invocation,gears_ui_receipts::Source::NativeSubtitle,1);
