@@ -199,3 +199,9 @@ Native12 SHA `6475080bb23e0e45f9d989a2c2a2d7c8f382a84b0dd1c2d37346c9e16f56fe94`�
 最终transfer accepted4566、source_draws10014，published4860、pending tickets0、rect_rejected0；pair_rejected50340包含无当前完整双目的菜单/死亡阶段，不等同有4566个已验证shader帧。list/event/target及descriptor容量故障均0。FinalTransferPolicyTest、FrameLinkTest17990检查、continuous/frame-link/color-copy及完整reserve链通过。正常停止passed=true，native清理/入口恢复true、XR exit0、shutdown/对象销毁完成；随后WM_CLOSE正常关闭，配置备份`world12-config-after-test.ini`并恢复1080。
 
 该实际运行修复了此次额外呈现路径导致的发布停滞，不推广为任意aspect/resize、全部CG/视频、全部UI、6DoF或真头显验收完成。下一步验证常用4K路径回归、继续收敛其余V1缺口，再决定默认构建提升。
+
+### Native12 的 4K 回归
+
+同一冻结 Native12 / MainMenu8，会话 `continuous-stereo-14216-20261016-063841-411d73b0.json`，game14216、owner2784。物理客户区3840×2160→2161→2160，暂停菜单阶段published3578→4141持续增长，但共同菜单面板不计双目。恢复游玩的3秒采样published停在4267，模拟器末次layer0；之后日志记录新resource generation的首次projection并恢复，不能把这段短暂空层算作稳定性通过。主菜单→Continue后自动world1→2，新世界采样published5083→5170、projection8849→9108、layer1，说明并非持续无法恢复。
+
+证据 `world12-4k-rect-experiment.json` 及同会话stdout/menu/world/native-status。实验未抢焦点；最终正常停止passed=true，native清理与入口恢复true，XR对象销毁及shutdown完成；身份校验后WM_CLOSE退出游戏。保留测试前后配置，并仅恢复StartupResolutionX/Y到原1920×1080。此轮仍为70° HUD，55°源码候选属于后续Native13；没有头显或完整无闪黑验收。

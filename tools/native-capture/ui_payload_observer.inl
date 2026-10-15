@@ -354,8 +354,9 @@ void print_ui_payload_observer(FILE* status){
     fprintf(status,"ui_index_execute capture_ok=%llu capture_rejected=%llu callbacks_ok=%llu callbacks_rejected=%llu completed=%llu incomplete=%llu source_vertices_modified=0\n",
         ui_index_capture_ok.load(),ui_index_capture_rejected.load(),ui_index_callback_ok.load(),ui_index_callback_rejected.load(),
         ui_index_complete.load(),ui_index_incomplete.load());
-    fprintf(status,"ui_hud_plane enabled=%u horizontal_fov_degrees=70 depth_metres=2 considered=%llu missing_context=%llu reticle_excluded=%llu unknown_or_mixed=%llu ticket_missing=%llu projection_rejected=%llu planned=%llu applied=%llu sequence_fault=%u source_vertices_modified=0\n",
-        ui_hud_plane_enabled?1:0,ui_hud_counts.considered.load(),ui_hud_counts.missing_context.load(),ui_hud_counts.reticle_excluded.load(),
+    const gears_ui_hud::Parameters hud_parameters{};
+    fprintf(status,"ui_hud_plane enabled=%u horizontal_fov_degrees=%.9g depth_metres=%.9g considered=%llu missing_context=%llu reticle_excluded=%llu unknown_or_mixed=%llu ticket_missing=%llu projection_rejected=%llu planned=%llu applied=%llu sequence_fault=%u source_vertices_modified=0\n",
+        ui_hud_plane_enabled?1:0,hud_parameters.horizontal_fov_degrees,hud_parameters.depth_metres,ui_hud_counts.considered.load(),ui_hud_counts.missing_context.load(),ui_hud_counts.reticle_excluded.load(),
         ui_hud_counts.unknown_or_mixed.load(),ui_hud_counts.ticket_missing.load(),ui_hud_counts.projection_rejected.load(),
         ui_hud_counts.planned.load(),ui_hud_counts.applied.load(),ui_hud_sequence_fault.load()?1:0);
     for(unsigned k=1;k<ui_payload_gpu_rows.size();++k){

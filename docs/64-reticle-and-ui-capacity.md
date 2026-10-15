@@ -1,5 +1,11 @@
 # 手枪准星与 UI 批次容量
 
+## 55° HUD 候选（2026-10-16）
+
+源码的共同 HUD 平面从 70° 调小为 55°，深度保持 2 米；批次与 Material 路径继续使用同一默认参数，换枪及字幕沿用现有映射，准星方向校正保持独立。平面中心与双眼视差保持不变，宽高约为原来的 74.35%，使边缘 HUD 向中心收拢；状态日志从实际默认参数输出角度和深度。几何测试核对非对称双眼投影中的中心、收缩比例和边界；这是待 Native13 验证的源码候选，不代表已取得游戏图像或头显可读性验收。正在进行的冻结 Native12 运行仍使用原 70° 配置。
+
+Native13已独立编译，DLL SHA256 `f6f12ccf16015470bf7e0b19b7593fec7e8da606bd1a9a482309798d5945cd21`；UiHudPlanTest、FinalTransferPolicyTest、FrameLinkTest、UiPayloadReceiptsTest、UiObserverTest、GraphicsMenuLockTest、WorldRebindMetadataTest通过，记录在ignored `analysis/runtime/world13-unit-tests.json`。实际游戏与头显显示尚待验证，默认清单未提升。
+
 ## 复现：GameRecovery7，2026-10-15
 
 实际游戏 PID24112（`continuous-stereo-24112-20261015-195606-390abba0.*`）通过对象/类身份与双向关系复读确认从 `Weap_AssaultRifle` 切到 `Weap_COGPistol`。两次正常手柄开镜各3秒，首轮采样的相机FOV由80变为45。没有修改游戏武器或相机内存。游戏EXE SHA256沿用清单中的 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`。

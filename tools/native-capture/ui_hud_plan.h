@@ -3,7 +3,7 @@
 #include "../vr-common/stereo_frame.h"
 
 namespace gears_ui_hud {
-struct Parameters {double horizontal_fov_degrees=70,depth_metres=2,source_aspect=0;};
+struct Parameters {double horizontal_fov_degrees=55,depth_metres=2,source_aspect=0;};
 // Deliberate head-locked panel, independent of game camera/ADS projection.
 // Admission of pure ordinary HUD/weapon/subtitle draws belongs to the caller.
 // This geometry neither places a reticle target nor proves sample freshness.

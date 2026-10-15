@@ -12,7 +12,7 @@ static void near(double a,double b,double tolerance=.0002){assert(std::abs(a-b)<
 // Independent frustum interpolation oracle: panel point in eye coordinates,
 // then directly interpolate between frustum tangent boundaries.
 static void oracle(StereoSample const& s,unsigned eye,double x,double y,
-    gears_viewport::OverlayPlan const& p, double depth=2,double hfov=70) {
+    gears_viewport::OverlayPlan const& p, double depth=2,double hfov=55) {
     const double half=depth*std::tan(hfov*pi/360);
     const double px=(2*x/1920-1)*half,py=(1-2*y/1080)*half*1080/1920;
     const auto inv=transpose(rotation_matrix(s.head.orientation));
@@ -36,6 +36,16 @@ int main(){auto s=sample();auto saved=state();gears_viewport::OverlayPlan p{};
     assert(p.viewports[0].x+p.viewports[0].width/2>480);
     assert(p.viewports[1].x+p.viewports[1].width/2<1440);
     assert(p.viewports[0].y+p.viewports[0].height/2<540);
+    // The smaller panel keeps its spatial center/depth while pulling every
+    // edge inward. Check the asymmetric eye frusta, not pixel-center symmetry.
+    gears_viewport::OverlayPlan previous{};
+    assert(gears_ui_hud::plan(saved,1920,1080,s,previous,{70,2}));
+    const double shrink=std::tan(55*pi/360)/std::tan(70*pi/360);
+    for(unsigned eye=0;eye<2;++eye){auto v=p.viewports[eye];auto old=previous.viewports[eye];
+        near(v.x+v.width/2,old.x+old.width/2);near(v.y+v.height/2,old.y+old.height/2);
+        near(v.width,old.width*shrink);near(v.height,old.height*shrink);
+        assert(v.x>old.x&&v.y>old.y&&v.x+v.width<old.x+old.width&&v.y+v.height<old.y+old.height);
+    }
     auto symmetric=s;for(auto&e:symmetric.eyes)e.fov={-pi/4,pi/4,pi/4,-pi/4};
     gears_viewport::OverlayPlan two{},one{};assert(gears_ui_hud::plan(saved,1920,1080,symmetric,two));
     assert(gears_ui_hud::plan(saved,1920,1080,symmetric,one,{70,1}));
