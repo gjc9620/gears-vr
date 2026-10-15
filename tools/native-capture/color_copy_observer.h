@@ -111,7 +111,7 @@ void observe_color_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY
 void STDMETHODCALLTYPE hook_color_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,UINT x,UINT y,UINT z,
     const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box){
     if(stereo_publish_bypass){original_color_copy(list,destination,x,y,z,source,box);return;}
-    Scope scope;
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_color_copy(list,destination,x,y,z,source,box);}
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
     std::lock_guard<std::recursive_mutex> frame_guard(frame_hook_mutex);
     if(owned_scene_gpu::watching()){

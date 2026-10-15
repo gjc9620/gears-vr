@@ -63,6 +63,7 @@ class Receipts {
     struct Entry {std::uint64_t token{};Binding binding{};bool complete{},valid{};};
     std::array<Entry,512> entries_{};
 public:
+    void retire_all(){entries_={};}
     void begin(std::uint64_t token,Binding const& binding){if(token)entries_[token%entries_.size()]={token,binding,false,false};}
     void finish(std::uint64_t token,bool valid){auto& e=entries_[token%entries_.size()];if(token&&e.token==token){e.complete=true;e.valid=valid;}}
     ReceiptStatus check(std::uint64_t token,Binding const& current)const{

@@ -39,6 +39,20 @@ int main(){
     assert(s->publish(receipt(0x5000,0),2,19));assert(s->claim(0x5000,out)&&out.generation>previous_generation);
     assert(detached.vertices->data[detached.entries[0].vertex_offset][0]==4&&detached.count==2); // Immutable owning Claim copy.
 
+    // World retirement preserves queued keys, even text rollback cannot erase
+    // them. Only consumption permits a later genuine producer at that address.
+    assert(s->publish(receipt(0x5100,0),1,20));
+    s->retire_all();assert(s->stats().poisoned_groups==1);
+    assert(detached.vertices->data[0][0]==4); // Borrowed owning copy unchanged.
+    assert(!s->publish(receipt(0x5100,0),2,21));
+    assert(!s->retire(0x5100)); // Failed multi-atlas rollback keeps tombstone.
+    assert(s->publish(receipt(0x5200,0),3,22)); // Other new world key works.
+    assert(s->claim(0x5200,out));auto fresh_generation=out.generation;
+    auto kept=out;assert(!s->claim(0x5100,out)&&same(out,kept));
+    assert(s->publish(receipt(0x5100,0),2,23));
+    assert(s->claim(0x5100,out)&&out.generation>fresh_generation&&out.entries[0].root_invocation==23);
+    s->retire_all();s->retire_all(); // Empty/idempotent retirement.
+
     // Metadata mismatch poisons the ENTIRE group. Later valid publication
     // cannot silently restart it before the consumer/retire boundary.
     for(unsigned field=0;field<4;++field){assert(s->publish(receipt(0x6000,0),1,1));auto conflict=receipt(0x6000,4);

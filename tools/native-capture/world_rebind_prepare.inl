@@ -1,6 +1,7 @@
 // Worker-side preparation only. No live anchor/config, renderer lifetime, GPU
 // epoch or OpenXR session is changed by accepting an immutable pending bundle.
 struct PreparedWorld {
+    uint64_t request{};
     gears_world_rebind::Metadata metadata{};
     gears_anchor::Config anchor{};
     gears_ui::Config ui{};
@@ -11,7 +12,7 @@ bool same_world_object(gears_anchor::Identity const& a,gears_anchor::Identity co
         a.cls==b.cls&&a.outer==b.outer&&a.name==b.name;
 }
 bool prepare_world_candidate(const wchar_t* ini,PreparedWorld& output){
-    if(!hook_entry_manifest_ready.load()||!anchor_observer_enabled||!ui_observer_enabled||submitted_lifetime.stopping())return false;
+    if(!world_handoff_supported||!hook_entry_manifest_ready.load()||!anchor_observer_enabled||!ui_observer_enabled||submitted_lifetime.stopping())return false;
     FILETIME created{},exited{},kernel{},user{};
     if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user))return false;
     const gears_world_rebind::Expected expected{GetCurrentProcessId(),session_owner_pid,
@@ -42,15 +43,20 @@ bool prepare_world_candidate(const wchar_t* ini,PreparedWorld& output){
     output=*candidate;return true;
 }
 class WorldRebindPrepareRequest {
-    HANDLE event_{};
+    HANDLE event_{},commit_event_{};
 public:
     WorldRebindPrepareRequest(){
         if(!continuous_session||!hook_entry_manifest_ready.load())return;
         wchar_t name[128]{};swprintf_s(name,L"Local\\GearsVR.Capture.WorldRebindPrepare.%lu",GetCurrentProcessId());
         event_=CreateEventW(nullptr,FALSE,FALSE,name);
+        swprintf_s(name,L"Local\\GearsVR.Capture.WorldRebindCommit.%lu",GetCurrentProcessId());
+        commit_event_=CreateEventW(nullptr,FALSE,FALSE,name);
     }
-    ~WorldRebindPrepareRequest(){if(event_)CloseHandle(event_);}
+    ~WorldRebindPrepareRequest(){if(event_)CloseHandle(event_);if(commit_event_)CloseHandle(commit_event_);}
     void poll(FILE* status){
+        if(commit_event_&&WaitForSingleObject(commit_event_,0)==WAIT_OBJECT_0&&pending_world&&!submitted_lifetime.stopping()){
+            world_commit_request=pending_world->request;world_handoff_phase=world_quiesce_requested.load()?2u:1u;
+        }
         if(!event_||WaitForSingleObject(event_,0)!=WAIT_OBJECT_0)return;
         ++world_prepare_requests;
         const auto generation=frame_link.world_epoch();
@@ -58,16 +64,24 @@ public:
             ++world_prepare_rejected;
             fprintf(status,"world_rebind_prepare accepted=0 pending=%u stopping=%u generation=%llu\n",pending_world?1:0,
                 submitted_lifetime.stopping()?1:0,static_cast<unsigned long long>(generation));fflush(status);return;}
-        wchar_t filename[80]{},path[MAX_PATH]{};swprintf_s(filename,L"world-rebind-%llu.ini",static_cast<unsigned long long>(generation+1));path_for(path,filename);
+        FILETIME created{},exited{},kernel{},user{};
+        if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user)){++world_prepare_rejected;return;}
+        wchar_t filename[112]{},path[MAX_PATH]{};swprintf_s(filename,L"world-rebind-%llu-%llu-%llu.ini",
+            static_cast<unsigned long long>(gears_session::creation_time(created)),static_cast<unsigned long long>(generation+1),
+            static_cast<unsigned long long>(world_prepare_requests.load()));path_for(path,filename);
         // Retain a read handle denying writes/deletion across all INI reads.
         HANDLE file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+        if(file==INVALID_HANDLE_VALUE&&GetLastError()==ERROR_FILE_NOT_FOUND&&world_prepare_requests.load()==1){
+            swprintf_s(filename,L"world-rebind-%llu.ini",static_cast<unsigned long long>(generation+1));path_for(path,filename);
+            file=CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+        }
         bool accepted=false;LARGE_INTEGER size{};
         if(file!=INVALID_HANDLE_VALUE){
             unsigned char bom[2]{};DWORD count{};
             if(GetFileSizeEx(file,&size)&&size.QuadPart>2&&size.QuadPart<=2*1024*1024&&
                ReadFile(file,bom,2,&count,nullptr)&&count==2&&bom[0]==0xff&&bom[1]==0xfe){
                 auto candidate=std::make_unique<PreparedWorld>();accepted=prepare_world_candidate(path,*candidate);
-                if(accepted){pending_world=std::move(candidate);world_candidate_generation=pending_world->metadata.generation;}
+                if(accepted){candidate->request=world_prepare_requests.load();pending_world=std::move(candidate);world_candidate_generation=pending_world->metadata.generation;}
             }
             CloseHandle(file);
         }

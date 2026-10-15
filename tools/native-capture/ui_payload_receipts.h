@@ -54,7 +54,7 @@ struct Stats {
 // purity, draw execution or target freshness is established here. Consumer
 // must validate current vertex bytes; Claim has an independent bounded copy.
 class Store {
-    struct Group {bool active{},poisoned{};Claim claim{};std::shared_ptr<VertexBuffer> storage;};
+    struct Group {bool active{},poisoned{},world_retired{};Claim claim{};std::shared_ptr<VertexBuffer> storage;};
     std::array<Group,group_capacity> groups_{};
     std::uint64_t last_generation_{};
     Stats stats_{};
@@ -124,9 +124,12 @@ public:
         Claim candidate=group->claim;*group={};out=candidate;++stats_.claimed;return true;
     }
     bool retire(std::uintptr_t payload){
-        std::lock_guard<std::mutex> lock(mutex_);auto group=find(payload);if(!group)return false;
+        std::lock_guard<std::mutex> lock(mutex_);auto group=find(payload);if(!group||group->world_retired)return false;
         *group={};++stats_.retired;return true;
     }
+    // World boundary: revoke candidates, retaining keys until their consumer.
+    // Detached Claims own immutable bytes; caller must first drain consumers.
+    void retire_all(){std::lock_guard<std::mutex> lock(mutex_);for(auto& g:groups_)if(g.active){poison(g);g.world_retired=true;}}
     Stats stats() const {
         std::lock_guard<std::mutex> lock(mutex_);auto result=stats_;
         for(auto const& g:groups_)if(g.active){++result.active_groups;if(g.poisoned)++result.poisoned_groups;}

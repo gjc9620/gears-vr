@@ -959,6 +959,7 @@ int main() {
     // A world boundary retires association without manufacturing Reset history.
     for(bool recreate:{false,true}){
         auto t=std::make_unique<Tracker>();auto old=t->reset_success(1);pair(*t,old,10);
+        CHECK(t->world_handoff_ready(1,2));CHECK(!t->world_handoff_ready(1,3));
         auto before=t->snapshot();CHECK(t->advance_world_epoch(1,2));
         CHECK(t->world_epoch()==2&&t->snapshot().world_epoch==2);
         CHECK(t->current(1).generation==old.generation);
@@ -1003,6 +1004,7 @@ int main() {
     }
     {
         auto t=std::make_unique<Tracker>();configure(*t);
+        CHECK(!t->world_handoff_ready(1,2));
         CHECK(!t->advance_world_epoch(1,2));CHECK(t->world_epoch()==1&&t->owned_status().certified);
         auto ref=t->reset_success(1);pair(*t,ref);ExecutionToken token{};
         CHECK(t->prepare_execute(queue,&ref,1,token));

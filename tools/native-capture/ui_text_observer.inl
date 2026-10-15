@@ -37,7 +37,7 @@ void publish_ui_text_delta(gears_ui_text_batch::Delta const& delta,unsigned kind
 }
 
 uintptr_t __fastcall hook_ui_subtitle(void* manager,void* canvas,int32_t* rectangle){
-    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope active_scope;
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope active_scope;if(!active_scope.world())return ui_original_subtitle(manager,canvas,rectangle);
     auto& counts=ui_text_counts[1];
     if(ui_observer_enabled&&recording.load())++counts.calls;
     std::array<int32_t,4> rect{};gears_ui_text_batch::Snapshot before{};

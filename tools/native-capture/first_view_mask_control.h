@@ -124,7 +124,7 @@ void close_first_view_mask_events(){
 }
 #include "view_union_mask_fix.h"
 void __fastcall hook_first_view_mask(float value){
-    Scope scope;using namespace gears_first_view_mask;
+    Scope scope;if(!scope.world())return original_first_view_mask(value);using namespace gears_first_view_mask;
     Gate gate{first_view_mask_hook_enabled(),recording.load(),viewport_diagnostics,trial_draw_scope,consuming_renderer!=nullptr,
         reinterpret_cast<uintptr_t>(_ReturnAddress())-base};
     Snapshot sample{};

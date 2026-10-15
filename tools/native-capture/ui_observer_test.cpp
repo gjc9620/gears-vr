@@ -177,6 +177,11 @@ static void test_runtime_binding(){
     receipts.begin(8,after);receipts.finish(8,false);assert(receipts.check(8,after)==gears_ui_binding::ReceiptStatus::changed);
     receipts.begin(519,after);receipts.finish(7,true);assert(receipts.check(7,before)==gears_ui_binding::ReceiptStatus::retired);
     assert(receipts.check(519,after)==gears_ui_binding::ReceiptStatus::pending);
+    receipts.retire_all();receipts.finish(519,true);
+    assert(receipts.check(519,after)==gears_ui_binding::ReceiptStatus::retired);
+    receipts.begin(520,after);receipts.finish(520,true);
+    assert(receipts.check(520,after)==gears_ui_binding::ReceiptStatus::current);
+
     f.m.put(after.hud.address+f.c.hud_owner,std::uintptr_t(0xdead));assert(!gears_ui_binding::acquire(startup,a,read,before));
     f.link(hud,f.c.hud_owner,f.c.role_controller);
     f.m.put(after.inventory.address+f.c.object_class,f.c.identities[f.weapon_class].address);assert(!gears_ui_binding::acquire(startup,a,read,before));

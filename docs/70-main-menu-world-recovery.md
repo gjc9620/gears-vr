@@ -59,3 +59,30 @@ OwnedGpuShareTest在实际D3D12队列上验证三个受支持资源状态、两�
 最终源码另加入session-status中的world generation、candidate generation、prepare请求/拒绝计数，便于owner在不停止游戏的情况下读取prepare回执；该增量在独立WorldRecovery3构建验证，未冒充本轮WorldRecovery2实际游戏证据。
 
 下一步仍是接线：通过非等待Scope admission阻止配置交换与在途旧回调重叠；原生线程完成旧renderer/ViewState退休；GPU quiesce/ACK排空；一次提交新anchor/UI/相机与world generation并退休旧UI/票据；再由新代已完成图像恢复projection。主菜单的独立认证画面源同样仍缺。不能把当前pending接收、GPU接口测试或同关卡运行当成完整主菜单→继续游戏修复。
+
+## 第三批：实际退休、提交与跨世界恢复通过，自动调度未接入
+
+WorldRecovery5（未提升默认）Native SHA `a98aab5665022ec02cfa28b39358ae160f57666f947c82749f46dd61510c272d`，配套probe仍为上一节的ABI7。游戏PID38312 / creation134365691575052088，owner43332 / creation134365691509830360，XR PID4968。会话 `continuous-stereo-38312-20261016-041929-31851f18.json`。WorldRecovery4仅构建/CPU验证，未用作本节live证据；WorldRecovery5实际启动后保持产物冻结。
+
+实现边界：
+
+- Scope使用线程自有RecursiveAdmission，外层持lease，嵌套继承成功/拒绝。普通open读者CAS争用重试，不把争用当作丢弃instrumentation的理由；看到closed立即拒绝，不等待writer。world敏感钩子拒入后透传原调用。GPU拒入在frame锁下标记unknown并覆盖原调用，使其要么先于commit完成，要么污染commit后的窗口。factory、descriptor和resize等不读取world配置的原有观测保留自身锁与资源握手。
+- worker请求GPU quiesce并阻止新pair；scene/family及原有native停止服务边界执行可恢复Lifetime关闭。只有原生线程取得release claim，最后renderer原析构返回后退休，release前CAS记录started。提交要求旧renderer pending0、无retained sources、真实state release返回及deleting destructor完成；未创建state须完全未尝试创建。不能用清容器模拟释放。
+- writer只在零admitted读者时try-close，再try-lock原native/frame/stereo锁；短提交内不做IO、engine调用、GPU等待。重新验证候选，只有精确timestamp-only变化允许暂态重试；失效候选清除并留在安全quiesce，允许新请求重取。每个候选请求单独获得Commit授权，旧授权不能沿用。新包文件名含game creation、下一代及请求序号，拒绝覆盖旧证据。owned实验模式在prepare前拒绝，避免进入不支持的永久等待。
+- GpuPublisher在同一idle锁下执行有界native提交callback，成功后才向XR公布新world；资源generation/serial及XR session/pose时钟不重置。旧tickets、command-list关联和UI资格退休，新ViewState由factory重新创建；累计诊断与本代submit计数分开。TLS仅由所属线程下一次新world外层入口清除，anchor序列保持单调。绝对试验期限不因重建延长。
+- 旧Material及payload保留拒绝墓碑，旧Execute消费后才释放key，binding tokens全退休；已借用Claim不被清空。尚无allocation epoch证据时，不主动解除永不消费的旧墓碑，理论上存在有界槽占满风险；本轮payload末态active/poisoned/capacity_rejected均0，不能推广为无限次世界切换安全。
+
+实际测试按顺序完成：
+
+1. 初次准备时角色已死亡，Pawn为null，完整builder正确拒绝；通过已认证死亡菜单重读检查点并暂停后再测，没有修改认证规则。
+2. 同一关卡：实际prepare/commit将generation1→2、commits1，约4.84秒含完整证书重取后恢复新pair；本代submit20、published1406时确认成功，随后持续增长。证据 `world5-sameworld-success.json`。
+3. 在旧世界先prepare generation3候选，退出到主菜单后才请求Commit。native实际完成旧state释放/析构与GPU排空后拒绝失效候选：generation仍2、phase4、candidate0、closed1、pending0、release/destroyed均1、publisher_stopped0。证据 `world5-old-world-candidate.json`、`world5-stale-reject.json`。
+4. 同一进程从主菜单三次已认证确认进入继续游戏，再暂停。controller从`0x8cfd2ae0`换为`0x3f68f5580`，camera从`0x93d1b380`换为`0x219f60a0`。重新prepare request3/generation3；先观察至少2秒证明Prepare不自动提交，仍保持generation2/phase4/commits1，然后明确Commit。约5.27秒后generation3、commits2、本代submit16、published7023。证据 `world5-new-world-candidate.json`、`world5-new-world-success.json`及相应菜单动作记录。
+5. Resume实际游戏后，模拟器projectionSubmissions从2814增至3478、consecutiveMissingProjection0、layer1；当前新场景左右均值约0.335/0.285。只查看自动incident中一个320×90 preview，确认两眼均有场景；这不是头显舒适度或全部UI验收。自动检测另报15次亮点不对称（最长13采样），仍需后续时序分析，不能宣布所有闪烁已消失。暂停共同quad不计作projection；20秒暂停观察无0 layer，但同样只是有界采样。
+6. 正常停止：generation3、commits2、published15905，pending/active/retained0，release返回/destructor/flags、drain/close/entries_restored均1，resources_retained0、cleanup_timeout0；XR退出0。身份校验后WM_CLOSE正常关闭游戏，未请求前台焦点。证据 `world-recovery5-close.json` 与最终session/capture状态。
+
+测试：Native5启动按现有完整reserve/self-test链执行，continuous自测新增closed GPU Execute仍须等待frame锁的反例；连续停止及frame-link自测通过。RecursiveAdmission覆盖继承拒绝、独立TLS、深度/foreign gate和无writer时八线程全部进入；UI retirement单测通过；FrameLinkTest17,700检查通过；实际GPU三种idle覆盖native callback拒绝时world保持quiescing。debug layer与真头显验收仍缺。
+
+当前剩余的直接工作是owner自动检测真实对象换代、后台重取证书、等待prepare回执并发起对应Commit，以及失败重试/取消和长期循环测试。主菜单、死亡/无有效anchor时的独立画面源也仍须完成。上述显式触发路径与安全交接已经实际运行，但第一版整体、自动恢复和全部黑屏问题仍未完成。
+
+收尾时保留graphics helper的原独立策略，closed窗口也不能绕过已有DLSS锁。它们不读world配置；策略故障造成的并发永久stop按终止竞争处理：Lifetime拒绝reopen或禁止下一pair，提交不恢复session stop状态。此增量在独立WorldRecovery6构建及continuous/frame-link/Lifetime自测通过，Native SHA `a0d31de8c7bbcd1954144d0ce8e68d8657f7f71991187c6e7d6435427b56435b`；未将Native5 live测试冒充Native6的运行证据。后续自动恢复联调采用新私有构建，默认冻结入口继续保持。

@@ -105,7 +105,8 @@ bool validate_ui_payload_content(gears_ui_receipts::Claim const& claim,UiPayload
 
 uint32_t __fastcall hook_ui_execute(void* command){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
-    Scope active_scope;UiPayloadRestore restore;ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
+    Scope active_scope;if(!active_scope.world())return ui_original_execute(command);
+    UiPayloadRestore restore;ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
     const auto owned_receipt=owned_ui_live::execute_begin(command);
 #if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
     owned_ui_live::CommandScope owned_command(owned_receipt,command,caller);

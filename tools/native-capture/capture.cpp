@@ -37,6 +37,7 @@
 #include "anchor_config_loader.h"
 #include "hook_entry_attestation.h"
 #include "world_rebind_metadata.h"
+#include "world_epoch_gate.h"
 #include "ui_observer.h"
 #include "ui_canvas_batch.h"
 #include "ui_canvas_text_batch.h"
@@ -172,6 +173,15 @@ gears_origin_trial::Trial origin_trial;
 std::atomic<unsigned long long> origin_prepare_failed{0},origin_commit_failed{0};
 gears_anchor::Config anchor_config;
 std::atomic<uint64_t> world_candidate_generation{},world_prepare_requests{},world_prepare_rejected{};
+std::atomic<uint64_t> committed_world_generation{1};
+#if (defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE) || (defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING) || (defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS)
+constexpr bool world_handoff_supported=false;
+#else
+constexpr bool world_handoff_supported=true;
+#endif
+gears_world::EpochGate world_gate;
+thread_local gears_world::ThreadState world_thread;
+thread_local uint64_t thread_world_generation{};
 thread_local gears_anchor::Context anchor_context;
 struct AnchorRow {gears_anchor::Receipt receipt{};uintptr_t renderer{};unsigned long long ticket{};unsigned stage{},reason{};};
 std::array<AnchorRow,64> anchor_rows{};
@@ -301,6 +311,11 @@ constexpr unsigned game_material_hooks=0;
 std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
+std::atomic<bool> world_quiesce_requested{};
+gears_submitted::Lifetime::QuiesceToken world_quiesce_token{}; // session_native_mutex
+std::atomic<unsigned> world_handoff_phase{}; // 0 idle, 1 requested, 2 native closed, 3 committed, 4 stale
+std::atomic<uint64_t> world_handoff_commits{},epoch_submit_total{};
+std::atomic<uint64_t> world_commit_request{};
 std::atomic<unsigned> submit_total{0},submit_retained{0},submit_skipped{0};
 LONGLONG submit_deadline{},submit_not_before{};
 struct RectangleTrace {uintptr_t object{};std::array<float,4> source{};std::array<int,4> target{};
@@ -326,6 +341,7 @@ void* state_delete_target{};
 uintptr_t state_expected_table{};
 bool shadow_state_enabled{};
 std::atomic<unsigned> state_attempted{0},state_created{0},state_release_returned{0},state_destroyed{0};
+std::atomic<unsigned> state_release_started{};
 std::atomic<unsigned> state_delete_entered{0},state_original_preserved{0};
 std::atomic<uintptr_t> state_temporary{0};
 unsigned state_delete_flags{},state_delete_thread{};
@@ -526,10 +542,22 @@ void observe_session_owner(gears_session::OwnerState state) {
 }
 void release_session_state_claim(bool claim) {
     if(claim&&state_created.load()==1&&!submit_retained.load()) {
+        unsigned fresh=0;if(!state_release_started.compare_exchange_strong(fresh,1))return;
         state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
     }
 }
+void service_world_quiesce_native(){
+    if(!continuous_session||session_build_depth||!world_quiesce_requested.load()||submitted_lifetime.stopping())return;
+    std::lock_guard<std::recursive_mutex> lock(session_native_mutex);
+    if(submitted_lifetime.stopping()||submit_retained.load()||(state_created.load()&&!submit_sources_released.load()))return;
+    auto result=submitted_lifetime.quiesce_close(committed_world_generation.load());
+    if(!result.accepted)return;
+    world_quiesce_token=result.token;
+    if(world_handoff_phase.load()==1)world_handoff_phase=2;
+    release_session_state_claim(result.release_claim);
+}
 void service_session_stop_native() {
+    service_world_quiesce_native();
     if(!continuous_session||session_build_depth||!submitted_lifetime.stopping())return;
     std::lock_guard<std::recursive_mutex> lock(session_native_mutex);
     ++session_native_services;
@@ -715,7 +743,18 @@ void print_stereo(FILE* file) {
 unsigned foreground() {
     DWORD pid{};GetWindowThreadProcessId(GetForegroundWindow(),&pid);return pid==GetCurrentProcessId();
 }
-struct Scope {Scope(){++active;} ~Scope(){--active;}};
+void reset_world_thread_context();
+// World-independent factory/descriptor/resize observations keep their existing
+// locks. Graphics policy also stays active while closed, preserving DLSS locks;
+// a concurrent permanent policy fault wins via Lifetime's stop/reopen barrier.
+struct Scope {
+    gears_world::RecursiveAdmission admission{world_thread,world_gate};
+    Scope(){++active;if(admission&&world_thread.depth==1){const auto generation=committed_world_generation.load();
+        if(thread_world_generation&&thread_world_generation!=generation)reset_world_thread_context();
+        thread_world_generation=generation;}}
+    ~Scope(){--active;}
+    bool world()const{return bool(admission);}
+};
 #include "graphics_lock_observer.inl"
 bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "ui_observer_hooks.inl"
@@ -1066,7 +1105,7 @@ void stereo_publish_worker_tick() {
     }
     auto deadline=stereo_publish_deadline.load();
     if(!stereo_publish_counts.stopped.load()&&((deadline&&now()>=deadline)||
-        (submitted_lifetime.is_closed()&&!submitted_lifetime.pending()))){
+        (submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submitted_lifetime.snapshot().quiescing))){
         stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;
     }
     StereoPublishBypass bypass;
@@ -1134,6 +1173,10 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu ",
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
         static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()));
+    fprintf(output,"world_handoff_supported=%u world_handoff_phase=%u world_handoff_commits=%llu world_quiesce_requested=%u state_release_started=%u epoch_submit_total=%llu ",
+        world_handoff_supported?1:0,
+        world_handoff_phase.load(),static_cast<unsigned long long>(world_handoff_commits.load()),world_quiesce_requested.load()?1:0,
+        state_release_started.load(),static_cast<unsigned long long>(epoch_submit_total.load()));
     fprintf(output,"owner_pid=%lu owner_creation_time=%llu stop_reason=%s owner_exit_observed=%u owner_error_observed=%u complete=1\n",session_owner_pid,
         static_cast<unsigned long long>(session_owner_creation_time),reasons[static_cast<unsigned>(reason)],
         session_owner_exit_observed.load()?1:0,session_owner_error_observed.load()?1:0);
@@ -1592,7 +1635,7 @@ void try_shadow_state(const Record& record) {
     if(safe_copy(&unchanged,reinterpret_cast<void*>(record.family_views[0]+8),8) && unchanged==original_state)state_original_preserved=1;
 }
 void* __fastcall hook_state_delete(void* state,unsigned flags) {
-    Scope scope;
+    Scope scope;if(!scope.world())return original_state_delete(state,flags);
     unsigned expected=0;
     const bool observe=reinterpret_cast<uintptr_t>(state)==state_temporary.load() && state_created.load()==1 &&
         state_delete_entered.compare_exchange_strong(expected,1);
@@ -1706,7 +1749,7 @@ void anchor_target_snapshot(void* canvas,void* family,gears_anchor::Receipt cons
     row.consistent=(row.read_mask&239)==239&&row.target&&row.target==row.target_after&&row.vtable&&row.vtable==row.vtable_after;
 }
 void __fastcall hook_family(void* canvas,void* family){
-    Scope scope;auto record=start_record(7,canvas,_ReturnAddress());
+    Scope scope;if(!scope.world())return original_family(canvas,family);service_session_stop_native();auto record=start_record(7,canvas,_ReturnAddress());
     inspect_family(record,family);
     std::optional<gears_anchor::Context::FamilyScope> anchor_scope;
     if(anchor_observer_enabled&&recording.load()){
@@ -1726,7 +1769,7 @@ void __fastcall hook_family(void* canvas,void* family){
     record.duration=now()-record.time;enqueue(record);
 }
 void* __fastcall hook_clone(void* destination,void* source){
-    Scope scope;auto record=start_record(8,destination,_ReturnAddress());
+    Scope scope;if(!scope.world())return original_clone(destination,source);auto record=start_record(8,destination,_ReturnAddress());
     bool observe=submitting_family!=nullptr && !unsubmitted_renderer;
     if(observe){
         inspect_family(record,submitting_family);
@@ -1767,7 +1810,7 @@ void inspect_completed_renderer(Record& record,void* destination){
     if(safe_copy(&record.clone_owner,reinterpret_cast<void*>(view),8))record.valid|=1024;
 }
 void __fastcall hook_consume(void* renderer){
-    Scope scope;auto record=start_record(10,renderer,_ReturnAddress());
+    Scope scope;if(!scope.world())return original_consume(renderer);auto record=start_record(10,renderer,_ReturnAddress());
     inspect_completed_renderer(record,renderer);
     if(submit_pair_enabled && (submit_session_enabled()?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
         reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load())){++submit_consumed;record.test_state=77;}
@@ -1800,7 +1843,7 @@ void __fastcall hook_consume(void* renderer){
     record.duration=now()-record.time;enqueue(record);
 }
 void __fastcall hook_prepare(void* renderer){
-    Scope scope;bool observe=renderer && renderer==consuming_renderer;
+    Scope scope;if(!scope.world())return original_prepare(renderer);bool observe=renderer && renderer==consuming_renderer;
     auto record=start_record(12,renderer,_ReturnAddress());
     if(observe){
         Record before{};inspect_completed_renderer(before,renderer);
@@ -1834,7 +1877,7 @@ void __fastcall hook_prepare(void* renderer){
     }
 }
 void* __fastcall hook_destroy_renderer(void* renderer){
-    Scope scope;auto record=start_record(11,renderer,_ReturnAddress());
+    Scope scope;if(!scope.world())return original_destroy_renderer(renderer);auto record=start_record(11,renderer,_ReturnAddress());
     std::unique_lock<std::recursive_mutex> session_lock(session_native_mutex,std::defer_lock);
     if(continuous_session)session_lock.lock();
     service_session_stop_native();
@@ -1850,7 +1893,7 @@ void* __fastcall hook_destroy_renderer(void* renderer){
         // Release on this native thread, never on the collection worker.
         bool release=submit_session_enabled()?submitted_lifetime.retire(reinterpret_cast<uintptr_t>(renderer)):true;
         if(release && !submit_retained.load() && submit_sources_released && state_created.load()==1) {
-            state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
+            release_session_state_claim(true);
         }
     }
     record.result=reinterpret_cast<uintptr_t>(result);
@@ -1866,6 +1909,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         service_session_stop_native();
     }
     if(submit_session_enabled()) {
+        if(world_quiesce_requested.load())return false;
         if(submitted_lifetime.is_closed())return false;
         if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && now()<submit_not_before)return false;
         if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && !foreground() && !submit_background)return false;
@@ -1949,7 +1993,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                 else submitted_lifetime.close();}return false;
         }
         state_created=1;
-        if(submit_pair_seconds){submit_deadline=now()+static_cast<LONGLONG>(submit_pair_seconds)*qpc_frequency;
+        if(submit_pair_seconds&&!submit_deadline){submit_deadline=now()+static_cast<LONGLONG>(submit_pair_seconds)*qpc_frequency;
             if(stereo_gpu_publish)stereo_publish_deadline.store(submit_deadline);}
     }
     gears_split_sources::API api{shadow_api.allocate,source_constructor,shadow_api.destroy,shadow_api.free,safe_copy};
@@ -2061,12 +2105,12 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     bool source_released=gears_split_sources::release(api,sources);
     bool original_preserved=safe_copy(after_family.data(),family,0x60) && after_family==original_family_bytes &&
         safe_copy(after_source.bytes.data(),reinterpret_cast<void*>(input.family_views[0]),0x430) && after_source.bytes==original_source.bytes;
-    bool first=submit_total.load()==0;
+    bool first=epoch_submit_total.load()==0;
     submit_owned_verified=first?verified:submit_owned_verified && verified;
     submit_sources_released=first?source_released:submit_sources_released && source_released;
     submit_original_preserved=first?original_preserved:submit_original_preserved && original_preserved;
     if(!source_released)submit_retained=1;
-    ++submit_total;
+    ++submit_total;++epoch_submit_total;
     state_original_preserved=submit_original_preserved.load();
     submit_attempted=2;
     if(submit_session_enabled() && (!verified || !source_released || !original_preserved)) {
@@ -2078,7 +2122,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     return true;
 }
 void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void* transform){
-    Scope scope;auto record=start_record(9,destination,_ReturnAddress());
+    Scope scope;if(!scope.world())return original_renderer(destination,family,canvas,transform);auto record=start_record(9,destination,_ReturnAddress());
     service_session_stop_native();
     gears_anchor::Receipt associated_anchor{};bool anchor_associated=false;
     if(anchor_observer_enabled&&recording.load()){
@@ -2118,7 +2162,7 @@ void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void*
     return result;
 }
 void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation,void* viewport,void* drawer) {
-    Scope scope;auto record=start_record(1,local,_ReturnAddress());
+    Scope scope;if(!scope.world())return original_scene(local,family,position,rotation,viewport,drawer);service_session_stop_native();auto record=start_record(1,local,_ReturnAddress());
     const bool anchor_observing=anchor_observer_enabled&&recording.load();
     gears_anchor::PawnBinding pawn_before_scene{};
     gears_anchor::PawnBindingDiagnostic pawn_diagnostic{};
@@ -2161,7 +2205,7 @@ void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation
     enqueue(record);return result;
 }
 void __fastcall hook_event(void* pc,Vec* position,Rot* rotation) {
-    Scope scope;auto record=start_record(2,pc,_ReturnAddress());
+    Scope scope;if(!scope.world())return original_event(pc,position,rotation);auto record=start_record(2,pc,_ReturnAddress());
     original_event(pc,position,rotation);
     record.duration=now()-record.time;
     apply_wobble(record,pc,rotation);
@@ -2195,7 +2239,7 @@ void inspect_swapchain(Record& record,IDXGISwapChain* chain) {
 }
 void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* lists) {
     if(stereo_publish_bypass){original_execute(queue,count,lists);return;}
-    Scope scope;auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_execute(queue,count,lists);}auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
     gears_frame_link::ExecutionToken owned_token{};
     gears_frame_link::ExecutionToken* owned=nullptr;
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
@@ -2264,7 +2308,7 @@ bool desktop_mirror_present(IDXGISwapChain* chain,UINT flags){
 #endif
 }
 HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT flags) {
-    Scope scope;auto frame_guard=frame_lock();
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_present(chain,interval,flags);}auto frame_guard=frame_lock();
     FramePresentScope frame_present;
     auto record=start_record(3,chain,_ReturnAddress());
     inspect_swapchain(record,chain);
@@ -2288,7 +2332,7 @@ HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT 
     enqueue(record);return result;
 }
 HRESULT STDMETHODCALLTYPE hook_present1(IDXGISwapChain1* chain,UINT interval,UINT flags,const DXGI_PRESENT_PARAMETERS* params) {
-    Scope scope;auto frame_guard=frame_lock();
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_present1(chain,interval,flags,params);}auto frame_guard=frame_lock();
     FramePresentScope frame_present;
     auto record=start_record(4,chain,_ReturnAddress());
     inspect_swapchain(record,chain);
@@ -2446,6 +2490,7 @@ bool session_hooks_restored() {
 }
 #include "hook_entry_manifest.inl"
 #include "world_rebind_prepare.inl"
+#include "world_rebind_commit.inl"
 #include "resource_resize_probe.inl"
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
 uintptr_t barrier_identity(IUnknown* object) {
@@ -2454,7 +2499,7 @@ uintptr_t barrier_identity(IUnknown* object) {
 }
 void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RESOURCE_BARRIER* barriers) {
     if(stereo_publish_bypass){original_resource_barrier(list,count,barriers);return;}
-    Scope scope;auto frame_guard=frame_lock();const auto owned=frame_link.owned_status();
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_resource_barrier(list,count,barriers);}auto frame_guard=frame_lock();const auto owned=frame_link.owned_status();
     {gears_render_cost::Scope cost(gears_render_cost::barrier_observation);
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
     if(owned_scene_gpu::watching()){
@@ -2494,7 +2539,7 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
 #include "owned_scene_gpu_hooks.inl"
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
     if(stereo_publish_bypass)return original_reset_list(list,allocator,state);
-    Scope scope;auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_reset_list(list,allocator,state);}auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
     gears_render_cost::Scope cost(gears_render_cost::reset_tracking);
     owned_scene_gpu::reset(list,result);
     if(owned_bindings_enabled&&(recording.load()||prime_recording.load())){
@@ -2517,7 +2562,7 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
 }
 void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count,const D3D12_VIEWPORT* values) {
     if(stereo_publish_bypass){original_viewports(list,count,values);return;}
-    Scope scope;auto frame_guard=frame_lock();
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_viewports(list,count,values);}auto frame_guard=frame_lock();
     if(recording.load()||(owned_bindings_enabled&&prime_recording.load())) {
         D3D12_VIEWPORT value{};unsigned category=gears_viewport::unknown;
         const bool known=count==1&&safe_copy(&value,values,sizeof(value));
@@ -2534,7 +2579,7 @@ void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count
 }
 void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RECT* values) {
     if(stereo_publish_bypass){original_scissors(list,count,values);return;}
-    Scope scope;auto frame_guard=frame_lock();
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_scissors(list,count,values);}auto frame_guard=frame_lock();
     if(recording.load()||(owned_bindings_enabled&&prime_recording.load())) {
         D3D12_RECT value{};unsigned category=gears_viewport::unknown;
         if(count==1&&safe_copy(&value,values,sizeof(value)))category=gears_viewport::classify(static_cast<float>(value.left),static_cast<float>(value.top),
@@ -2580,7 +2625,7 @@ void observe_output_post(unsigned attempt){
 }
 void __fastcall hook_quad(float x,float y,float width,float height,float u,float v,float uw,float vh,
     unsigned target_width,unsigned target_height,unsigned texture_width,unsigned texture_height){
-    Scope scope;uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
+    Scope scope;if(!scope.world())return original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
     if((caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8)observe_final_inputs();
     gears_quad_source::Args original_args{{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height}};
     gears_quad_source::Decision control;
@@ -2629,7 +2674,7 @@ void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
 #endif
 void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,UINT instances,UINT start,UINT first_instance) {
     if(stereo_publish_bypass){original_draw(list,vertices,instances,start,first_instance);return;}
-    Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw(list,vertices,instances,start,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     if(outage_diagnostics.load())outage_source_overlay={};
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
@@ -2655,7 +2700,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
 }
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
     if(stereo_publish_bypass){original_draw_indexed(list,indices,instances,start,vertex,first_instance);return;}
-    Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw_indexed(list,indices,instances,start,vertex,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     if(outage_diagnostics.load())outage_source_overlay={};
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
@@ -2763,7 +2808,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
 }
 void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,BOOL single,const D3D12_CPU_DESCRIPTOR_HANDLE* depth) {
     if(stereo_publish_bypass){original_targets(list,count,handles,single,depth);return;}
-    Scope scope;auto frame_guard=frame_lock();
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_targets(list,count,handles,single,depth);}auto frame_guard=frame_lock();
     if(recording.load()){D3D12_CPU_DESCRIPTOR_HANDLE first{};
         if(count)safe_copy(&first,handles,sizeof(first));
         viewport_stats.bind(reinterpret_cast<uintptr_t>(list),count,first.ptr);}
@@ -3000,6 +3045,18 @@ DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullpt
     if(prime_owner.handle)fprintf(status,"capturing pid=%lu lifetime=owner owner_pid=%lu owner_creation_time=%llu native_hooks_enabled=%u graphics_hooks_enabled=%u scene_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId(),prime_owner_pid,static_cast<unsigned long long>(prime_owner_creation_time),graphics_lock_prime_count(),graphics_lock_prime_count());
     else fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId());fflush(status);
     prime_ready=true;CloseHandle(thread);return 0;
+}
+void reset_world_thread_context(){
+    // Called only by the next admitted outer Scope on its own thread. No old
+    // FamilyScope/Restore object can still be alive at this epoch boundary.
+    const auto sequence=anchor_context.sequence;anchor_context={};anchor_context.sequence=sequence;
+    anchor_last_state_pawn={};anchor_last_observed_right_state=0;
+    submitting_family=nullptr;consuming_renderer=nullptr;consuming_owned_scene=false;
+    consuming_frame_ticket=0;consuming_frozen_frame={};final_eye={};outage_source_overlay={};
+    unsubmitted_renderer=false;pair_canvas=pair_transform=nullptr;trial_draw_scope=false;
+    scene_local=nullptr;scene_rotation=nullptr;scene_delta=0;scene_phase=0;
+    scene_translation={};scene_rotation_delta={};observed_stamp=0;stamp_known=false;
+    reset_ui_world_tls();
 }
 DWORD WINAPI worker(void*) {
     gears_session::Owner continuous_owner; // Retain the process object through all cleanup and early returns.
@@ -3317,6 +3374,7 @@ DWORD WINAPI worker(void*) {
             if(stereo_publisher.state.load()==3)request_session_stop(SessionStop::proof_failure);
             stereo_publish_worker_tick();
             world_rebind_request.poll(status);
+            advance_world_handoff(status);
             {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);owned_scene_gpu::poll();
                 if(owned_scene_gpu::publication_failed())request_session_stop(SessionStop::proof_failure);}
             if(submitted_lifetime.stopping()){
@@ -3605,6 +3663,22 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*)
     if(blocked)CloseHandle(blocked);CloseHandle(frame_test_waiting);frame_test_waiting=nullptr;
     original_execute=saved_execute;frame_link_diagnostics=false;self_testing=false;
     if(active.load()||continuous_test_executes.load()!=1)error=209;
+    // Rejected world admission still serializes real GPU forwarding against
+    // Present/commit. A closed gate must not create an invisible Execute gap.
+    gears_world::EpochGate::CloseToken world_closed{};
+    if(!world_gate.try_close(world_closed))return 241;
+    original_execute=fake_continuous_execute;frame_link_diagnostics=true;self_testing=true;recording=true;
+    frame_test_waiting=CreateEventW(nullptr,TRUE,FALSE,nullptr);blocked=nullptr;
+    if(!frame_test_waiting)return 242;
+    {
+        std::lock_guard<std::recursive_mutex> frame_guard(frame_hook_mutex);
+        blocked=CreateThread(nullptr,0,[](void*)->DWORD{hook_execute(nullptr,0,nullptr);return 0;},nullptr,0,nullptr);
+        if(!blocked||WaitForSingleObject(frame_test_waiting,1000)!=WAIT_OBJECT_0||active.load()!=1||continuous_test_executes.load()!=1)error=243;
+    }
+    if(blocked&&WaitForSingleObject(blocked,1000)!=WAIT_OBJECT_0)error=244;
+    if(blocked)CloseHandle(blocked);CloseHandle(frame_test_waiting);frame_test_waiting=nullptr;
+    if(!world_gate.open(world_closed)||active.load()||continuous_test_executes.load()!=2)error=245;
+    original_execute=saved_execute;frame_link_diagnostics=false;self_testing=false;
     // CSV suppression must not turn off the proof-recording switch.
     recording=true;Record row{};auto before=write_index;enqueue(row);
     if(write_index!=before||!recording.load())error=198;

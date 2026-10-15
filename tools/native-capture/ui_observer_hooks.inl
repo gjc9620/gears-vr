@@ -88,6 +88,47 @@ std::mutex ui_rows_mutex;
 #include "ui_material_observer.inl"
 #endif
 
+// Caller closes world admission, drains readers, and holds frame/session locks.
+bool ui_world_handoff_ready(){
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+    return false; // Experimental owned ledgers have no safe world retirement.
+#else
+    if(ui_semantic_consumer_pending)return false;
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+    if(game_material::completion.blocks_present())return false;
+#endif
+    return true;
+#endif
+}
+void retire_ui_world(){
+    {std::lock_guard<std::mutex> lock(ui_binding_mutex);ui_binding_receipts.retire_all();}
+    {std::lock_guard<std::mutex> lock(ui_payload_mutex);ui_payload_store.retire_all();}
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+    {std::lock_guard<std::mutex> lock(ui_material_mutex);
+        for(auto& entry:ui_material_entries)if(entry.occupied)entry.poisoned=true;}
+#endif
+}
+// Only on the owning thread's next outer Scope, after old readers drained.
+void reset_ui_world_tls(){
+    ui_invocation={};ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
+    ui_text_collect_depth=0;
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+    ui_material_context=nullptr;
+#endif
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+    game_material::current=nullptr;game_material::uploading=nullptr;
+#endif
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+    owned_ui_live::family={};owned_ui_live::flushing={};
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    owned_ui_live::route={};
+#endif
+#endif
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+    owned_material::uploading=nullptr;
+#endif
+}
+
 void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeContext* selected_out=nullptr){
     if(!ui_observer_enabled||!recording.load()||!ui_invocation.context.kind)return;
     if(draw<1||draw>3)return;
@@ -129,7 +170,7 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeCon
     else ++ui_dropped[bucket];
 }
 void __fastcall hook_ui_vm(void* self,void* frame,void* result){
-    Scope active_scope;
+    Scope active_scope;if(!active_scope.world()){ui_original[0](self,frame,result);return;}
     if(ui_observer_enabled&&recording.load()){
         ++ui_vm_calls;uintptr_t node{};
         if(frame&&safe_copy(&node,static_cast<unsigned char*>(frame)+0x18,sizeof(node))){
@@ -169,7 +210,8 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
     ui_original[0](self,frame,result);
 }
 void __fastcall hook_ui_tile(void* self,void* frame,void* result){
-    Scope active_scope;gears_ui::ScopeContext selected{};observe_ui_canvas(1,self,frame,&selected);
+    Scope active_scope;if(!active_scope.world()){ui_original[1](self,frame,result);return;}
+    gears_ui::ScopeContext selected{};observe_ui_canvas(1,self,frame,&selected);
     gears_ui_batch::Snapshot before{};gears_ui::CanvasSample sample{};
     const bool eligible=selected.kind&&ui_observer_enabled&&recording.load()&&!ui_text_collect_depth;
     if(eligible)++ui_batch_attempts;
@@ -188,7 +230,8 @@ void __fastcall hook_ui_tile(void* self,void* frame,void* result){
     }
 }
 void __fastcall hook_ui_material(void* self,void* frame,void* result){
-    Scope active_scope;gears_ui::ScopeContext selected{};observe_ui_canvas(2,self,frame,&selected);
+    Scope active_scope;if(!active_scope.world()){ui_original[2](self,frame,result);return;}
+    gears_ui::ScopeContext selected{};observe_ui_canvas(2,self,frame,&selected);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     gears_ui_material::Before before{};
     const bool captured=ui_material_before(self,before);
@@ -199,7 +242,8 @@ void __fastcall hook_ui_material(void* self,void* frame,void* result){
 #endif
 }
 void __fastcall hook_ui_text(void* self,void* frame,void* result){
-    Scope active_scope;gears_ui::ScopeContext selected{};observe_ui_canvas(3,self,frame,&selected);
+    Scope active_scope;if(!active_scope.world()){ui_original[3](self,frame,result);return;}
+    gears_ui::ScopeContext selected{};observe_ui_canvas(3,self,frame,&selected);
     auto& counts=ui_text_counts[0];if(ui_observer_enabled&&recording.load())++counts.calls;
     const bool eligible=selected.kind&&ui_observer_enabled&&recording.load()&&!ui_text_collect_depth;
     if(!eligible){ui_original[3](self,frame,result);return;}

@@ -462,6 +462,11 @@ public:
         return {};
     }
     uint64_t world_epoch(){std::lock_guard<std::mutex> lock(mutex_);return world_epoch_;}
+    bool world_handoff_ready(uint64_t expected,uint64_t next){
+        std::lock_guard<std::mutex> lock(mutex_);
+        return expected==world_epoch_&&expected!=UINT64_MAX&&next==expected+1&&
+            !owned_.enabled&&!pending_.active&&revision_!=UINT64_MAX;
+    }
     // CPU association retirement only, never a GPU drain certificate. Caller
     // orders this boundary against actual recording/submission. No waits for
     // engine work: the mutex protects only bounded in-memory bookkeeping.

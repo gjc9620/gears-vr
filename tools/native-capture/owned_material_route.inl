@@ -15,7 +15,8 @@ thread_local UploadContext* uploading{};
 void fault(uint64_t ticket,unsigned reason){++faults;unsigned empty{};first_fault.compare_exchange_strong(empty,reason);owned_ui_live::fault(ticket,reason);}
 void fail(UiMaterialContext& c,unsigned reason){c.owned_failed=true;fault(c.owned_ticket,reason);}
 uint32_t __fastcall hook_produce(void* item,void* canvas){
- Scope scope;uint64_t receipt{},ticket{};
+ Scope scope;if(!scope.world())return original_produce(item,canvas);
+ uint64_t receipt{},ticket{};
  const auto f=owned_ui_live::flushing;
  if(ui_observer_enabled&&recording.load()&&f.ticket){
   ticket=f.ticket;uintptr_t target{},secondary{},table{},payload{};unsigned flags{};
@@ -59,7 +60,8 @@ void end(UiMaterialContext& c,uint32_t result){
  else ++completed;
 }
 uintptr_t __fastcall hook_upload(void* native_context,unsigned primitive,unsigned primitives,void* vertices,unsigned stride){
- Scope scope;auto saved=uploading;uploading=nullptr;UploadContext u{};
+ Scope scope;if(!scope.world())return original_upload(native_context,primitive,primitives,vertices,stride);
+ auto saved=uploading;uploading=nullptr;UploadContext u{};
  if(ui_material_context&&ui_material_context->owned_ticket&&recording.load()){
   auto& c=*ui_material_context;
   if(primitive==1&&primitives==2&&stride==32&&

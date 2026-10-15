@@ -133,6 +133,9 @@ static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
     receiver.acknowledge(gpu.queue.Get());require(gpu.finish(),"old-world ACK");
     require(!publisher.commit_world_rebind(1,3,1000000003)&&!publisher.commit_world_rebind(1,2,0)&&!publisher.commit_world_rebind(2,3,1000000003)&&
         receiver.world_state().quiescing,"invalid commit reopened world");
+    bool invoked=false;
+    require(!publisher.commit_world_rebind(1,2,1000000003,[&](){invoked=true;return false;})&&invoked&&
+        receiver.world_state().quiescing&&receiver.world_state().generation==1,"failed native commit became visible");
     require(publisher.commit_world_rebind(1,2,1000000003),"drained world commit");
     auto world=receiver.world_state();require(world.valid&&world.generation==2&&!world.quiescing&&world.minimum_sample_ns==1000000003,"committed world metadata");
     require(receiver.generation()==resource_generation&&metadata.packet->sequence==old_sequence&&receiver.sequence()==UINT64(old_sequence),"commit reset GPU identity or serial");

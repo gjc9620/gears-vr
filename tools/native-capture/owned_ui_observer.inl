@@ -85,7 +85,8 @@ void sample_flush(FlushContext const& context,uintptr_t caller){
  }
 }
 uintptr_t __fastcall hook_flush(void* canvas){
- Scope active_scope;const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
+ Scope active_scope;if(!active_scope.world())return original_flush(canvas);
+ const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
  const auto saved=flushing;flushing={};uintptr_t target{},secondary{};
  if(ui_observer_enabled&&recording.load()){
   ++flush_calls;
@@ -105,7 +106,8 @@ uintptr_t __fastcall hook_flush(void* canvas){
  flushing=saved;return result;
 }
 uint32_t __fastcall hook_produce(void* item,void* canvas){
- Scope active_scope;uint64_t id{};uintptr_t payload{},table{},target{},secondary{};
+ Scope active_scope;if(!active_scope.world())return original_produce(item,canvas);
+ uint64_t id{};uintptr_t payload{},table{},target{},secondary{};
  if(ui_observer_enabled&&recording.load()){
   ++producer_calls;
   if(flushing.ticket&&flushing.canvas==reinterpret_cast<uintptr_t>(canvas)&&flushing.thread==GetCurrentThreadId()&&

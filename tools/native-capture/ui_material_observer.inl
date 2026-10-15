@@ -61,7 +61,8 @@ void ui_material_after(gears_ui_material::Before const& before,unsigned kind,uin
  *vacant={receipt,invocation,true,false};++ui_material_published;
 }
 uint32_t __fastcall hook_ui_material_execute(void* command){
- Scope active_scope;UiMaterialRestore restore;ui_material_context=nullptr;
+ Scope active_scope;if(!active_scope.world())return ui_original_material_execute(command);
+ UiMaterialRestore restore;ui_material_context=nullptr;
  UiMaterialContext context{};UiMaterialEntry claimed{};bool have=false;
  UiSemanticScope semantic_scope;
  if(ui_observer_enabled&&recording.load()){

@@ -330,15 +330,21 @@ public:
     }
     // Both queues must finish the existing slot; resource identity and serial
     // survive this handoff. Caller polls ordinary producer completion first.
-    bool commit_world_rebind(std::uint64_t expected,std::uint64_t next,std::int64_t minimum_ns){
+    template<class Commit> bool commit_world_rebind(std::uint64_t expected,std::uint64_t next,std::int64_t minimum_ns,Commit commit){
         if(!TryAcquireSRWLockExclusive(&lock))return false;
-        const bool ok=world_quiescing_&&expected&&expected==world_generation_&&expected!=~std::uint64_t(0)&&next==expected+1&&minimum_ns>0&&gpu_idle_complete(idle_locked());
+        const bool ready=world_quiescing_&&expected&&expected==world_generation_&&expected!=~std::uint64_t(0)&&next==expected+1&&minimum_ns>world_minimum_sample_ns_&&gpu_idle_complete(idle_locked());
+        // The caller's bounded memory commit runs before making the new world
+        // visible to XR. It must not reenter this publisher or invoke GPU APIs.
+        const bool ok=ready&&commit();
         if(ok){
             InterlockedIncrement(&packet->world_revision);world_generation_=next;world_minimum_sample_ns_=minimum_ns;
             InterlockedExchange64(&packet->world_generation,static_cast<LONG64>(next));InterlockedExchange64(&packet->world_minimum_sample_ns,minimum_ns);
             world_quiescing_=false;InterlockedExchange(&packet->world_quiescing,0);InterlockedIncrement(&packet->world_revision);
         }
         ReleaseSRWLockExclusive(&lock);return ok;
+    }
+    bool commit_world_rebind(std::uint64_t expected,std::uint64_t next,std::int64_t minimum_ns){
+        return commit_world_rebind(expected,next,minimum_ns,[](){return true;});
     }
     // Notify the receiver and prevent new submissions. Keep all resources and
     // shared handles alive until callbacks drain and the producer fence is safe.

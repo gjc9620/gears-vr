@@ -57,7 +57,7 @@ void geometry_draw(ID3D12GraphicsCommandList* list,bool indexed,UINT elements,UI
     if(!value.first_target.resource)value.first_target=viewport_stats.binding(reinterpret_cast<uintptr_t>(list)).target;
 }
 unsigned __fastcall hook_geometry(void* renderer,void* view,unsigned stage,unsigned mode) {
-    Scope scope;GeometryTrace value{};bool observe=false;
+    Scope scope;if(!scope.world())return original_geometry(renderer,view,stage,mode);GeometryTrace value{};bool observe=false;
     if(recording.load()&&viewport_diagnostics&&trial_draw_scope&&renderer==consuming_renderer&&stage<4&&mode<2){
         struct Header{uintptr_t data;int count,capacity;} header{};
         auto address=reinterpret_cast<uintptr_t>(view);
