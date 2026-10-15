@@ -2,7 +2,13 @@
 
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
-最新 OwnedCost1/2：[独立双目延迟采样](61-owned-render-latency.md)。两轮各120个owned ticket，XR projection仍为0。已将构建约0.4ms与构建后的约75ms等待区间分开；消费窗口约63ms平均墙钟对21.5ms平均线程CPU，逐draw观察和锁获取不足以解释主要延迟。下一步定位具体等待调用，保留100ms姿态门限。UI启动证书误比较可变对象字段已修复并提交603c98d，16项检查通过。另一次首帧proof_failure已保留，首因未确定；完整首版目标仍未完成。
+最新状态为Sustain1（提交`0a2c464`），详情见[独立双目渲染记录](61-owned-render-latency.md)。独立Low每眼2048×2048已取消120帧实验上限，实际游戏＋模拟器连续90秒完成3106个owned ticket、3105次发布、3101次XR复制与8084次projection层提交。首帧和第1800帧GPU图像均见完整双眼场景；诊断详细历史保持120条。49项回归、7项兼容检查、59个Hook入口恢复及正常退出通过。资源尺寸往返重建、扩容后的右眼遮罩拒绝、Trial与GPU跟踪代次不一致已分别作修正与实测，100ms时效门限没有放宽。
+
+Menu1 / PID39376复用同一冻结Sustain1构建，实际游戏＋模拟器运行240.91秒，完成8309个owned ticket、8307次发布、8304次XR复制和21669次projection层提交。通过只读菜单状态和定向窗口按键完成一次暂停→继续游戏；暂停场景`DeltaPause-Campaign-Host`与`LBtnResumeSingle`焦点均实际确认，恢复后的三次采样显示暂停场景退出且发布计数持续增长。121次运行状态采样owned_error均为0；59个入口恢复、正常退出通过。这次没有读取暂停菜单GPU像素，也没有进行关卡重载或真头显测试，不能当作菜单显示验收。证据为`analysis/ui-position-runtime/owned-menu1-39376.audit.json`。
+
+这证明当前独立Low路径能持续输出并通过一次暂停/恢复状态切换，不代表首版完成。接下来验证关卡重载的生命周期与菜单显示衔接，再推进High每眼4096×4096、游戏分辨率隔离，以及准星、换枪UI、字幕和其他HUD的位置与覆盖。6DoF/FOV、自动进入VR、画质与DLSS锁、部署/恢复仍须按最终构建分别核验。最新独立路径尚未完成真实头显验收；旧头显版本的“效果不错”不能直接用于新路径。native Owner及命令表引用仍保留至进程退出，累计512个命令表身份限制与正常释放协议尚未完成，默认玩家清单未切换。
+
+以下为历史实验记录，其中OwnedXr/OwnedCost阶段的XR零提交结论仅描述当时构建，已由上述后续证据更新。
 
 OwnedXr1/2：新增默认关闭的`GEARS_NATIVE_OWNED_XR_PROBE`，最多120个独立scene ticket，禁止legacy Present抢占同一个publisher。独立CPU store保存实际消费时的完整冻结sample，两眼必须一致；消费owned proof后按已认证矩形、allocation generation和状态调用`capture_resource`，同DIRECT队列复制并恢复源状态，明确busy跳帧后才退休CPU ticket。Owner仍保留到进程退出，Canvas没有重定向。
 

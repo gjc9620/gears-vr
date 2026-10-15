@@ -1,5 +1,7 @@
 # 独立双目输出延迟：CPU 采样与下一步
 
+最新进展为文末的Sustain1和Menu1：独立Low路径已通过90秒持续输出及240.91秒含一次暂停/恢复的实际游戏模拟器运行。下列Cost阶段XR零提交属于历史结果，不代表当前状态；菜单像素、关卡重载、High及新路径真头显验收仍未完成。
+
 2026-10-15。OwnedCost1 / PID49468、OwnedCost2 / PID48432。默认玩家清单没有切换到实验版本。
 
 两轮均完成120个独立 Low scene ticket；前者119次、后者120次共享纹理发布，首尾读回每眼2048×2048且非黑。**两轮 XR 图像复制及 projection 提交仍为0**，独立分辨率通道尚未达到可用状态。未放宽100ms姿态过期门限，也未把旧图像改标为新姿态。
@@ -154,3 +156,17 @@ Sustain1实际游戏PID38544（creation `134364984029291547`）按计划运行90
 resize观察共6594次，4096槽之后溢出2498次，渲染继续。第1800帧（ticket3583）GPU读回完成，首帧和该帧的小尺寸直接像素图均已查看，两眼场景完整、没有右眼遮罩近黑回归；首/120/1800帧编码亮度右/左比为0.901/0.859/0.861。此为静止角色/模拟器的持续输出验证，不包括High、完整UI、重连、切关或真实头显体验。最新时间戳属于停止跳过的尝试，其36.154ms不能当作最后一次成功显示延迟。
 
 59个Hook入口独立恢复核验通过，游戏正常退出。审计为`analysis/ui-position-runtime/owned-sustain1-38544.audit.json`，状态时间线`analysis/runtime/owned-sustain1-38544-watch.json`，首/1800帧预览`owned-sustain1-38544-eyes-preview.png`，冻结清单`tools/vr-launcher/manifest-owned-sustain1.json`。默认玩家清单仍未切换，状态仍因实验资源保留为incomplete；本轮证明移除人为帧数上限后能持续工作，并未宣称第一版完成。
+
+## Menu1：用状态控制暂停与恢复
+
+本轮复用Sustain1冻结DLL（SHA256 `885794b7a012ace1db2cb374f39c0ec7bb622ea95e8f93d306a950f4af6ef9bb`），没有新增渲染Hook或重新编译。游戏PID39376、creation `134364988128243081`，owner PID34692、creation `134364988052852308`；清单为`tools/vr-launcher/manifest-owned-menu1.json`。仅对该进程使用OpenXR Simulator，不切换全局runtime。
+
+先检索资料库，复用`WarHUD.PauseGame/UnPauseGame`导出。脚本资料提示战役主机的暂停资产是通用`WarUIScene`类型的`DeltaPause-Campaign-Host`，关闭委托会走UnPauseGame；这些内容来自WarfareGame.u（SHA256 `91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13`）的UnrealScript导出，不等于原生函数或GPU执行证明。未打开IDA、未做全库扫描，具体菜单标签和焦点由实际进程读取确认。
+
+关卡中的已观察场景栈为HUD_Toast、MessageToast、PenderCrossplayInvitePopUp，后者没有已聚焦按钮，不能把场景名当成需要确认的邀请。核对对象归属、一致重读、PID/创建时间、HWND及运行中的owned发布后，仅发送一次定向Escape。首次读取因新增UI对象导致`Object registry identity changed`拒绝，重新创建同进程reader后读到暂停场景和`LBtnResumeSingle`；没有重复Escape。该焦点链各节点均为Enabled+Focused，输入阻塞为0、玩家索引为0。稳定重读后仅发送一次Enter，三次后续采样均确认暂停场景移出场景栈，发布计数7381→7477→7575→7674。
+
+模拟器实际会话240.9133秒，8309个owned消费ticket、8307次发布、8304次XR复制、21669次projection层提交。121次有效运行状态采样均匹配进程身份且owned_error为0，最终Trial/GPU error为0；92个命令表身份仍低于512上限。最大XR提交间隔100.3443ms，因此不称为全程无间断。按计划停止后59个入口恢复通过，游戏正常关闭；Owner和命令表引用仍保留到退出，launcher按设计为incomplete。
+
+本轮确认一次暂停/恢复没有使观察到的双目发布停止，不证明菜单已经正确显示在VR中。没有采集暂停菜单GPU像素，没有重载检查点、修改游戏存档或做真头显测试。下一步先取得重载按钮和确认框的实际状态，再验证重载期间对象替换及图像恢复；菜单、字幕与其他HUD仍需接入独立输出并验证像素。
+
+原始资料及操作脚本留在ignored的`analysis/`：`ui-position-runtime/owned-menu1-39376.audit.json`包含输入前后状态、进程身份、发布计数、恢复/退出与文件哈希；对应`*-level.json`、`*-pause.json`、`*-paused.json`、`*-resume.json`保存状态证据，`runtime/owned-menu1-39376-watch.json`保存带身份的时间线。本轮运行未使用截图或Computer Use。
