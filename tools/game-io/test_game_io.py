@@ -17,6 +17,12 @@ class FakePad:
 
 
 class InputGuards(unittest.TestCase):
+    def setUp(self):
+        # Unit tests must not read the service's real stop file or physical F8.
+        stop = patch.object(game_io, 'interrupted', return_value=False)
+        stop.start()
+        self.addCleanup(stop.stop)
+
     def test_focus_loss_releases_an_active_stick(self):
         pad = FakePad()
         with patch.object(game_io, 'game_window', return_value=(1, 2)), \
