@@ -11,6 +11,7 @@
 | ignored `analysis/runtime/main-menu8-manifest.json` | WorldRecovery6 / MainMenu8 | 自动世界恢复及主菜单共同窗口面板；1080p两轮循环通过，1081高度失败，未提升默认 |
 | ignored `analysis/runtime/world-recovery12-manifest.json` | WorldRecovery12 / MainMenu8 | 显式关联额外呈现pass；1081尺寸、Resume及主菜单继续至world2实际恢复新图像并正常清理，未提升默认 |
 | ignored `analysis/runtime/world-recovery13-manifest.json` | WorldRecovery13 / MainMenu8 | HUD缩至55°；4K暂停恢复对照及1080p后台手枪/检查点重载通过局部运行检查，仍有尺寸切换短暂空层和ADS UI布局疑点，未提升默认 |
+| ignored `analysis/runtime/world-recovery15-manifest.json` | WorldRecovery15 / MainMenu8 | HUD角宽默认65°、45–100°可调，65.5°实际参数链通过；GUI能力门禁和保存自测通过，尚未真头显复验或提升默认 |
 
 以清单内路径和 SHA256 为准。更新 Python 分类器不会改变冻结 DLL/EXE 的版本；后续诊断构建也不自动成为玩家默认。模拟器交换链编号修复的 quiet2 与游戏静默启动器 quiet6 是另外两项组件，不能与上述 Native/XR 编号混用理解。
 
