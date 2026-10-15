@@ -3,6 +3,8 @@
 #include <fstream>
 #include <filesystem>
 #include <array>
+#include <memory>
+#include <cstring>
 
 int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
     int argc{};wchar_t** argv=CommandLineToArgvW(GetCommandLineW(),&argc);
@@ -78,6 +80,30 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
     const HWND final=GetForegroundWindow();
     const bool same=final==prior && prior!=window&&prior!=ansi&&prior!=owned&&prior!=explicit_style;
     const bool queried=query(&after)==0&&after.installed==1;
+    const auto query_trace=reinterpret_cast<gears_quiet::ReadTrace>(GetProcAddress(policy,"GearsQuietTrace"));
+    auto trace=std::make_unique<gears_quiet::TraceSnapshot>();
+    bool trace_valid=query_trace&&query_trace(trace.get())==ERROR_SUCCESS;
+    bool trace_requested=false;wchar_t trace_option[2]{};
+    trace_requested=GetEnvironmentVariableW(L"GEARSVR_QUIET_TRACE",trace_option,2)==1&&trace_option[0]==L'1';
+    bool trace_null=false,trace_passed=false,trace_blocked=false;unsigned trace_call_mask{};
+    if(trace_valid&&trace_requested){
+        SetActiveWindow(nullptr);SetFocus(nullptr);
+        trace_valid=query_trace(trace.get())==ERROR_SUCCESS&&trace->enabled==1&&trace->version==gears_quiet::trace_abi&&
+            trace->size==sizeof(*trace)&&trace->capacity==gears_quiet::trace_capacity&&trace->completed>0&&trace->busy_skipped==0;
+        for(unsigned i=0;i<trace->completed&&trace_valid;++i){const auto& row=trace->records[i];
+            trace_valid=row.sequence==i+1&&row.call<gears_quiet::trace_call_count&&row.thread!=0&&row.stack_count>0&&
+                row.stack_count<=gears_quiet::trace_stack_capacity&&row.leave_tick>=row.enter_tick;
+            if(row.call<gears_quiet::count)trace_call_mask|=1u<<row.call;
+            trace_passed|=row.suppressed==0;trace_blocked|=row.suppressed==1;
+            trace_null|=(row.call==gears_quiet::active||row.call==gears_quiet::focus)&&row.target==0&&row.suppressed==0;
+        }
+        auto saved=std::make_unique<gears_quiet::TraceSnapshot>(*trace);
+        for(unsigned i=0;i<gears_quiet::trace_capacity+1;++i)ShowWindow(window,SW_SHOWNA);
+        trace_valid=trace_valid&&query_trace(trace.get())==ERROR_SUCCESS&&trace->completed==gears_quiet::trace_capacity&&
+            trace->reserved_count==gears_quiet::trace_capacity&&trace->overflow==1&&trace->busy_skipped==0&&
+            trace_passed&&trace_blocked&&trace_null&&trace_call_mask==((1u<<gears_quiet::count)-1)&&
+            std::memcmp(trace->records,saved->records,saved->completed*sizeof(gears_quiet::TraceRecord))==0;
+    }else if(trace_valid){trace_valid=trace->enabled==0&&trace->completed==0&&trace->reserved_count==0&&trace->overflow==0;}
     if(explicit_style)step("destroy_explicit",[&](){return DestroyWindow(explicit_style);});if(owned)step("destroy_owned",[&](){return DestroyWindow(owned);});
     step("destroy_ansi",[&](){return DestroyWindow(ansi);});step("destroy_window",[&](){return DestroyWindow(window);});
     std::ofstream out(output);
@@ -91,7 +117,10 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
        <<",\"restore_preserved\":"<<restored<<",\"minimize_preserved\":"<<minimize_command
        <<",\"restore_again_preserved\":"<<restored_again<<",\"status_queried\":"<<queried<<",\"suppressed\":[";
     for(unsigned i=0;i<gears_quiet::count;++i){if(i)out<<',';out<<after.suppressed[i];}
-    out<<"],\"windows\":{\"window\":"<<reinterpret_cast<uintptr_t>(window)
+    out<<"],\"trace_requested\":"<<trace_requested<<",\"trace_valid\":"<<trace_valid
+       <<",\"trace_completed\":"<<trace->completed<<",\"trace_overflow\":"<<trace->overflow
+       <<",\"trace_null_passed\":"<<trace_null<<",\"trace_call_mask\":"<<trace_call_mask
+       <<",\"windows\":{\"window\":"<<reinterpret_cast<uintptr_t>(window)
        <<",\"ansi\":"<<reinterpret_cast<uintptr_t>(ansi)<<",\"child\":"<<reinterpret_cast<uintptr_t>(child)
        <<",\"owned\":"<<reinterpret_cast<uintptr_t>(owned)<<",\"explicit\":"<<reinterpret_cast<uintptr_t>(explicit_style)
        <<"},\"timeline_overflow\":"<<timeline_overflow<<",\"timeline\":[";
@@ -101,5 +130,5 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
            <<",\"active\":"<<reinterpret_cast<uintptr_t>(row.active)<<'}';}
     out<<"]}\n";
     return visible&&clickable&&!topmost&&same&&ansi_visible&&ansi_clickable&&parent_child&&parent_hide&&child_restored&&owned_popup&&explicit_preserved&&
-        hidden&&minimized&&restored&&minimize_command&&restored_again&&queried?0:14;
+        hidden&&minimized&&restored&&minimize_command&&restored_again&&queried&&trace_valid?0:14;
 }

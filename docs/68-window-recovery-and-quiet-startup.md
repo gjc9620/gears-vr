@@ -98,8 +98,18 @@ quiet6仅修正命令行构造：非空且没有空格/tab/双引号的参数保
 
 SpaceRecovery8仅在已有 `--shutdown-diagnostics` 开启时增加初始化边界的GetTickCount64及前台HWND/PID，不修改渲染或焦点行为；SHA256 `96765985d77410af2ccefed89622506a914c0f63a7f7616d49b4f1e12a8b4a62`。9n的game34216在D3D12CreateDevice调用区间内进入前台（事件tick25660781），早于XR session与WGC创建。但这只是时间相关，后续对照未支持该API就是原因。
 
-9o在测试子进程环境中通过各层manifest声明的disable_environment关闭5层隐式OpenXR插件；没有改注册表或全局设置。game25576仍进入前台（tick25856343），这次处于WGC初始化区间。独立、不加载OpenXR的D3D12小程序没有改变前台。二者均不能单独定位调用方，也不据此禁用玩家的插件。
+9o在测试子进程环境中通过各层manifest声明的disable_environment请求关闭5层隐式OpenXR插件；没有改注册表或全局设置，未独立保存该轮加载模块复核。game25576仍进入前台（tick25856343），这次处于WGC初始化区间。独立、不加载OpenXR的D3D12小程序没有改变前台。二者均不能单独定位调用方，也不据此禁用玩家的插件。
 
 更小的9p只使用quiet6启动游戏和裸NoPauseUnfocus：没有启动VR、native capture、后台手柄helper，也没有发送菜单输入。game11148（创建FILETIME `134365595413258232`）仍在启动后约21秒进入前台（tick26033531）。因此自动激活不依赖本Mod的双目、OpenXR会话或WGC路径；后续用这个轻量场景定位现有静默策略遗漏，不继续从XR时间相关性推断根因。
 
 证据在ignored `analysis/runtime/quiet-game9n.json`、`quiet-game9o.json`、`quiet-game-only9p.json`、`device-focus9n.txt`及对应连续会话stderr。9n/9o均正常停止VR后以WM_CLOSE退出已认证游戏。诊断构建不提升默认发布清单。
+
+### quiet7 / quiet8：有界调用与消息记录
+
+9p实际检查确认8个user32入口仍指向已加载的quiet策略，不能解释成Hook被移除。quiet7新增显式环境开关 `GEARSVR_QUIET_TRACE=1`，只在内存保留首128条API记录；包括放行、NULL、参数、前后前台/tick及24帧裸栈。快照导出只复制release/acquire已完成槽，不等待、不覆盖旧槽，原Status ABI保持8个计数。quiet8在同一显式开关下增加DefWindowProcW/A的5类激活消息观察，原样转发，默认不开这些诊断Hook。编译、CTest、追踪开/关两次离屏fixture通过；fixture还检查饱和、NULL和历史槽不变。未把fixture等同于游戏通过。
+
+9q（game40344）得到22条完整记录、overflow0/busy0；9r（game40384）得到25条完整记录、overflow0/busy0。前台事件前，ShowWindow、SetWindowPos与SetForegroundWindow均按策略处理，返回时仍为原前台。9r的WM_NCACTIVATE和WM_ACTIVATE抵达默认过程时游戏已经在前台；没有观察到WM_SYSCOMMAND，因此尚不支持“拦截默认恢复消息即可修复”。
+
+9r实际消息栈为游戏RVA `0x27ffa4` 调用 `0x1f9d74` 消息泵，在 `PeekMessageW` 内交付激活消息。64字节消息泵与历史快照完全匹配SHA256 `59e99684e64b44e882a105296235dd855920241b1528ec8a3b33dc17e26a3b24`；通过实际RIP位移读取IAT并匹配user32导出确认PeekMessageW。9q窗口过程RVA `0x1995d0` 的1866字节同样匹配历史SHA256 `f8aaedc4525ad22bcae4c49a237b777f1742f218bc1c53d3ba0803dd12b0a617`。当前Windows的DefWindowProcW转发到NTDLL.NtdllDefWindowProc_W，不能按user32模块范围误认未知函数。
+
+这证明激活消息在取消息时被交付，尚未定位请求来源；不通过过滤WM_ACTIVATE或循环抢回焦点掩盖问题。证据：`quiet9p-policy-query.json`、`focus-trace9q.json`、`focus-trace9r.json`、`focus9q-wndproc-evidence.json`、`focus9r-pump-evidence.json`、`focus9r-startup-imports.json`。quiet8 DLL SHA256 `d24bf2da8bde8017326f540c782eaf2fba119cec4504758b291a3d9246ec17cc`。未修改游戏磁盘代码、未打开新的IDA数据库。

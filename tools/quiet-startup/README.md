@@ -66,3 +66,18 @@ Windows reference: [debug events](https://learn.microsoft.com/en-us/windows/win3
 Development evidence is under ignored `analysis/runtime/quiet-startup*-*.json`.
 No proprietary snapshots, analysis databases or pseudocode belong in this folder
 or in a release package.
+
+For bounded diagnosis only, `GEARSVR_QUIET_TRACE=1` records the first 128 API calls
+in process memory, including suppressed and passed calls, NULL targets, arguments,
+foreground windows/timestamps and raw return addresses. It does not wrap or log
+to disk. `GearsQuietTrace(void*)` copies completed records into a caller-owned
+`TraceSnapshot` (37920 bytes); its independent ABI does not change `Status`.
+Busy slots are skipped and overflow is explicit. Treat the addresses as private
+runtime evidence, not release content.
+
+Tracing additionally observes five activation-related messages through
+DefWindowProcW/A, forwarding them unchanged. These two extra hooks are absent
+when tracing is disabled. Their records describe message delivery, which can
+occur after activation; they do not by themselves identify the requesting API
+or process. Actual game-only tests still reproduce foreground activation while
+all eight policy hooks remain installed. The quiet policy remains experimental.
