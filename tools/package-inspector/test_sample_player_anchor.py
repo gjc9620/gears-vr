@@ -2,6 +2,7 @@
 import copy
 import struct
 import unittest
+from unittest import mock
 import sample_player_anchor as anchor
 
 
@@ -65,6 +66,25 @@ class MemoryResolver:
 
 
 class AnchorTests(unittest.TestCase):
+    def test_prepared_camera_skips_discovery_but_keeps_live_guards(self):
+        r=MemoryResolver();prepared=r.resolve()
+        with mock.patch.object(r,'resolve',side_effect=AssertionError('duplicate discovery')) as resolve:
+            sampler=anchor.AnchorSampler(r,prepared_camera=prepared)
+            self.assertTrue(sampler.sample()['accepted']);resolve.assert_not_called()
+        prepared['offsets']['PlayerCamera']='0x0'
+        self.assertEqual(sampler.resolved['offsets']['PlayerCamera'],'0x37c')
+        for address,value in ((0x10224,0x40000),(0x30224,0x40000),(0x30500,0x40000)):
+            with self.subTest(address=address):
+                r=MemoryResolver();prepared=r.resolve();r.put(address,struct.pack('<Q',value))
+                with mock.patch.object(r,'resolve',side_effect=AssertionError('duplicate discovery')) as resolve:
+                    with self.assertRaises(anchor.AnchorRejected):anchor.AnchorSampler(r,prepared_camera=prepared)
+                    resolve.assert_not_called()
+
+    def test_default_still_discovers(self):
+        r=MemoryResolver()
+        with mock.patch.object(r,'resolve',wraps=r.resolve) as resolve:
+            anchor.AnchorSampler(r);resolve.assert_called_once_with()
+
     def test_consistent_bracket_raw_layout_and_hypothesis_only(self):
         sampler=anchor.AnchorSampler(MemoryResolver());sample=sampler.sample()
         self.assertTrue(sample['accepted']);self.assertEqual(sample['candidate_eye_hypothesis'],[10,20,90])

@@ -23,13 +23,13 @@ def _header(resolver, address):
 
 class LiveRegistryAnchorSampler(AnchorSampler):
     """Refresh live registry bounds; count growth alone does not reject identity."""
-    def __init__(self,resolver,clock_ns=None):
+    def __init__(self,resolver,clock_ns=None,*,prepared_camera=None):
         # Base construction invokes self.guard before it creates metadata.
         self.guard_acquisitions=[];self.guard_stage='initial'
         self.guard_clock_ns=clock_ns or time.perf_counter_ns
         self.sample_guard_index=None
         started=self.guard_clock_ns()
-        try:super().__init__(resolver)
+        try:super().__init__(resolver,prepared_camera=prepared_camera)
         except AnchorSamplingRejected:raise
         except Exception as error:
             raise AnchorSamplingRejected(str(error),self.failure_evidence('initial',error,started)) from error
@@ -215,8 +215,8 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
     raise AnchorSamplingRejected(last_reason,evidence)
 
 
-def build_anchor_config(resolver, expected_camera=None):
-    sampler=LiveRegistryAnchorSampler(resolver)
+def build_anchor_config(resolver, expected_camera=None, *, prepared_camera=None):
+    sampler=LiveRegistryAnchorSampler(resolver,prepared_camera=prepared_camera)
     started=time.perf_counter_ns()
     try:return _assemble_anchor_config(sampler,resolver,expected_camera)
     except AnchorSamplingRejected:raise

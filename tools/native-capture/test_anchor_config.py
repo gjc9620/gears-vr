@@ -25,6 +25,34 @@ class Fixture(MemoryResolver):
 
 
 class AnchorConfigTests(unittest.TestCase):
+    def test_prepared_camera_change_at_final_boundary_still_rejected(self):
+        r=Fixture();prepared=r.resolve();original=LiveRegistryAnchorSampler._strict_guard
+        def changing(sampler):
+            if sampler.guard_acquisitions[-1]['stage']=='final_boundary':
+                r.put(0x30224,struct.pack('<Q',0x40000))
+            return original(sampler)
+        with mock.patch.object(r,'resolve',side_effect=AssertionError('duplicate discovery')) as resolve,\
+             mock.patch.object(LiveRegistryAnchorSampler,'_strict_guard',changing):
+            with self.assertRaises(AnchorSamplingRejected) as failure:
+                build_anchor_config(r,prepared,prepared_camera=prepared)
+            self.assertEqual(failure.exception.evidence['stage'],'final_boundary');resolve.assert_not_called()
+
+    def test_prepared_discovery_keeps_expected_camera_and_final_guards(self):
+        r=Fixture();prepared=r.resolve()
+        with mock.patch.object(r,'resolve',side_effect=AssertionError('duplicate discovery')) as resolve:
+            config,metadata=build_anchor_config(r,prepared,prepared_camera=prepared)
+            self.assertEqual(config['fields']['camera_view_target'],0x500)
+            self.assertTrue(metadata['sample']['accepted']);resolve.assert_not_called()
+        r=Fixture();prepared=r.resolve();expected=dict(prepared,camera_address='0xdead')
+        with mock.patch.object(r,'resolve',side_effect=AssertionError('duplicate discovery')):
+            with self.assertRaisesRegex(AnchorSamplingRejected,'camera changed'):
+                build_anchor_config(r,expected,prepared_camera=prepared)
+        for address in (0x10224,0x30224,0x30500):
+            with self.subTest(address=address):
+                r=Fixture();prepared=r.resolve();r.put(address,struct.pack('<Q',0x40000))
+                with mock.patch.object(r,'resolve',side_effect=AssertionError('duplicate discovery')):
+                    with self.assertRaises(AnchorSamplingRejected):build_anchor_config(r,prepared_camera=prepared)
+
     def test_nonpawn_failure_retains_bounded_target_identity_without_accepting(self):
         r=Fixture();r.put(0x30500,struct.pack('<Q',0x10000))
         with self.assertRaisesRegex(AnchorSamplingRejected,'not controlled Pawn') as failure:

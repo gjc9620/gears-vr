@@ -173,7 +173,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                 anchor_metadata=None;anchor_section='';ui_metadata=None;ui_section=''
                 if anchor_observer:
                     from anchor_config import build_anchor_config,anchor_ini,AnchorSamplingRejected
-                    try:certificate,anchor_metadata=build_anchor_config(r,refreshed)
+                    try:certificate,anchor_metadata=build_anchor_config(r,refreshed,prepared_camera=refreshed)
                     except AnchorSamplingRejected as error:
                         if record_anchor_failure:save_anchor_sampling_failure(dll,pid,error)
                         raise

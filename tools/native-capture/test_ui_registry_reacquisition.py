@@ -20,9 +20,14 @@ class ReacquisitionTests(unittest.TestCase):
             r.read.return_value=b'bytes';self.resolvers.append(r);return r
         self.factory=factory
     def collect(self,builder,*,clock=None,anchor_builder=None):
+        def prepared_anchor(r,c,*,prepared_camera=None):
+            self.assertIs(prepared_camera,c)
+            self.assertIs(prepared_camera,r.resolve.return_value)
+            if anchor_builder is not None:return anchor_builder(r,c)
+            return {'camera':c['camera_address']},{'camera':c['camera_address']}
         with mock.patch.object(start,'Resolver',side_effect=self.factory),mock.patch.object(ui,'build_ui_observer_config',side_effect=builder),\
              mock.patch.object(ui,'ui_observer_ini',side_effect=lambda c:'ui:'+c['camera']),\
-             mock.patch.object(anchor,'build_anchor_config',side_effect=anchor_builder or (lambda r,c:({'camera':c['camera_address']},{'camera':c['camera_address']}))) as anchored,\
+             mock.patch.object(anchor,'build_anchor_config',side_effect=prepared_anchor) as anchored,\
              mock.patch.object(anchor,'anchor_ini',side_effect=lambda c:'anchor:'+c['camera']),\
              mock.patch.object(start.time,'monotonic',**({'side_effect':clock} if clock is not None else {'return_value':0})),\
              mock.patch.object(start.time,'sleep') as slept,contextlib.redirect_stderr(io.StringIO()):

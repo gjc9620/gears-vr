@@ -18,9 +18,13 @@ class AnchorRejected(RuntimeError):
 
 
 class AnchorSampler:
-    def __init__(self,resolver):
+    def __init__(self,resolver,*,prepared_camera=None):
         self.r=resolver
-        self.resolved=resolver.resolve()
+        # Explicit discovery hint from this Resolver's same preparation attempt.
+        # It replaces discovery only; fresh identities/links, guard and sampling
+        # below still run. It is not an expected-camera acceptance certificate.
+        self.resolved=resolver.resolve() if prepared_camera is None else dict(prepared_camera)
+        if prepared_camera is not None:self.resolved['offsets']=dict(prepared_camera['offsets'])
         self.camera=int(self.resolved['camera_address'],16)
         self.controller=int(self.resolved['controller_address'],16)
         self.local=int(self.resolved['local_player_address'],16)

@@ -21,7 +21,9 @@ class AnchorStartTests(unittest.TestCase):
             r=types.SimpleNamespace(base=0x1000,p=types.SimpleNamespace(close=mock.Mock()),read=mock.Mock(return_value=b'ok'))
             r.resolve=mock.Mock(return_value=dict(local_player_address='0x1',module_base='0x1000',camera_address='camera'+str(len(resolvers)+1)))
             resolvers.append(r);return r
-        def anchored(r,camera):
+        def anchored(r,camera,*,prepared_camera=None):
+            self.assertIs(prepared_camera,camera)
+            self.assertIs(prepared_camera,r.resolve.return_value)
             if len(resolvers)<3:raise anchor.AnchorSamplingRejected('Camera view target is not controlled Pawn',{'stage':'initial'})
             return {'camera':camera['camera_address']},{'camera':camera['camera_address']}
         def pause(seconds):ticks[0]+=seconds
