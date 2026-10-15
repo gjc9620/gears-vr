@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <exception>
 
-// Opt-in shutdown-only diagnostics. No logging on frames, no shared ABI change.
+// Opt-in lifecycle diagnostics. No logging on frames, no shared ABI change.
 // Phase names are static literals supplied by the owner. Handler intentionally
 // stays installed through local and CRT destruction after main's return marker.
 namespace shutdown_diagnostics {
@@ -22,13 +22,20 @@ struct Buffer {
     void address(void* p) noexcept {text("0x");auto n=reinterpret_cast<std::uintptr_t>(p);for(int shift=int(sizeof(n)*8)-4;shift>=0;shift-=4)character("0123456789abcdef"[(n>>shift)&15]);}
     void write() noexcept {if(output&&output!=INVALID_HANDLE_VALUE){DWORD written{};WriteFile(output,bytes,size,&written,nullptr);}}
 };
-inline void marker(const char* name,bool result_present=false,std::int64_t result=0) noexcept {
+inline void marker(const char* name,bool result_present=false,std::int64_t result=0,bool window_state=false) noexcept {
     if(!enabled.load(std::memory_order_relaxed))return;
     phase.store(name,std::memory_order_relaxed);
     Buffer b;b.text("shutdown_diag phase=");b.text(name);b.text(" thread=");b.number(GetCurrentThreadId());
+    if(window_state){
+        const auto tick=GetTickCount64();const auto window=GetForegroundWindow();DWORD pid{};
+        if(window)GetWindowThreadProcessId(window,&pid);
+        b.text(" tick_ms=");b.number(tick);b.text(" foreground_hwnd=");b.address(window);
+        b.text(" foreground_pid=");b.number(pid);
+    }
     if(result_present){b.text(" returned_result=");b.signed_number(result);}
     b.character('\n');b.write();
 }
+inline void initialization(const char* name) noexcept {marker(name,false,0,true);}
 [[noreturn]] inline void terminate_handler() noexcept {
     if(terminating.test_and_set(std::memory_order_relaxed))std::abort();
     Buffer b;b.text("shutdown_diag terminate phase=");b.text(phase.load(std::memory_order_relaxed));

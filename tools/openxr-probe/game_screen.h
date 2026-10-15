@@ -12,6 +12,7 @@
 #include "startup_capture_size.h"
 #include "menu_capture_epoch.h"
 #include "capture_frame_mailbox.h"
+#include "shutdown_diagnostics.h"
 
 inline std::int64_t menu_capture_qpc_ticks(){
     LARGE_INTEGER counter{},frequency{};
@@ -86,7 +87,9 @@ class GameWindowFrames {
         if(startup)menu_epoch.begin(menu_capture_qpc_ticks());
         try{
             auto interop=get_activation_factory<GraphicsCaptureItem,IGraphicsCaptureItemInterop>();
+            shutdown_diagnostics::initialization("wgc_create_for_window_enter");
             check_hresult(interop->CreateForWindow(hwnd,guid_of<GraphicsCaptureItem>(),put_abi(item)));
+            shutdown_diagnostics::initialization("wgc_create_for_window_completed");
             closed_token=item.Closed([shared=state](auto const&,auto const&){shared->mark_closed();});
             const auto initial_size=item.Size();
             if(initial_size.Width<=0||initial_size.Height<=0){retire_capture();return false;}
@@ -99,7 +102,10 @@ class GameWindowFrames {
             });
             require_process();
             if(!matches(hwnd)||(recover_window&&!usable(hwnd))){retire_capture();return false;}
-            capture.StartCapture();++generation_;return true;
+            shutdown_diagnostics::initialization("wgc_start_capture_enter");
+            capture.StartCapture();
+            shutdown_diagnostics::initialization("wgc_start_capture_completed");
+            ++generation_;return true;
         }catch(winrt::hresult_error const& error){
             const bool transient=recover_window&&(!usable(window)||error.code()==RO_E_CLOSED||
                 error.code()==HRESULT_FROM_WIN32(ERROR_INVALID_WINDOW_HANDLE));

@@ -91,3 +91,15 @@ quiet6仅修正命令行构造：非空且没有空格/tab/双引号的参数保
 这支持quiet5错误引用开关是本轮失焦暂停的原因，quiet6修正有效；不扩大到所有版本/模式。无人值守9m启动观察仍记录一次游戏进入前台，静默启动问题没有因此解决，quiet策略仍为显式实验启用。观察器结束不停止连续会话。
 
 证据：ignored `unfocus-pause-35136-read.json`、`unfocus9m-observe.json`、`unfocus9m-focus-loss.json`、`unfocus9m-background.json`、`pause-menu9m-open.json`、`pause-menu9m-resume.json`、`unfocus9m-after-resume.json`、`unfocus9m-world-tick.json`，均位于 `analysis/runtime/`；会话前缀 `continuous-stereo-35136-20261016-011605-c5356ffd`。
+
+## 启动前台切换的隔离：9n / 9o / 9p
+
+9m通过正常停止流程结束，连续会话记录约898秒、79369次投影提交；最大提交间隔包含主动Pause实验，不能作为连续帧率结论。最后检测器未新增非对称明暗或预览绘制失败，唯一事件仍是主动Pause的无projection阶段。未扩大为所有CG/检查点/真实头显通过。
+
+SpaceRecovery8仅在已有 `--shutdown-diagnostics` 开启时增加初始化边界的GetTickCount64及前台HWND/PID，不修改渲染或焦点行为；SHA256 `96765985d77410af2ccefed89622506a914c0f63a7f7616d49b4f1e12a8b4a62`。9n的game34216在D3D12CreateDevice调用区间内进入前台（事件tick25660781），早于XR session与WGC创建。但这只是时间相关，后续对照未支持该API就是原因。
+
+9o在测试子进程环境中通过各层manifest声明的disable_environment关闭5层隐式OpenXR插件；没有改注册表或全局设置。game25576仍进入前台（tick25856343），这次处于WGC初始化区间。独立、不加载OpenXR的D3D12小程序没有改变前台。二者均不能单独定位调用方，也不据此禁用玩家的插件。
+
+更小的9p只使用quiet6启动游戏和裸NoPauseUnfocus：没有启动VR、native capture、后台手柄helper，也没有发送菜单输入。game11148（创建FILETIME `134365595413258232`）仍在启动后约21秒进入前台（tick26033531）。因此自动激活不依赖本Mod的双目、OpenXR会话或WGC路径；后续用这个轻量场景定位现有静默策略遗漏，不继续从XR时间相关性推断根因。
+
+证据在ignored `analysis/runtime/quiet-game9n.json`、`quiet-game9o.json`、`quiet-game-only9p.json`、`device-focus9n.txt`及对应连续会话stderr。9n/9o均正常停止VR后以WM_CLOSE退出已认证游戏。诊断构建不提升默认发布清单。

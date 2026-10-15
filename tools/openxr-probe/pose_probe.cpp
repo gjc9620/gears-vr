@@ -311,7 +311,9 @@ int main(int argc, char** argv) {
         strcpy_s(create.applicationInfo.engineName,"GearsVR Research");
         create.applicationInfo.apiVersion=XR_API_VERSION_1_0;
         create.enabledExtensionCount=1;create.enabledExtensionNames=extensions;
+        shutdown_diagnostics::initialization("xr_create_instance_enter");
         xr_check(xrCreateInstance(&create,&instance),"xrCreateInstance");
+        shutdown_diagnostics::initialization("xr_create_instance_completed");
         XrInstanceProperties properties{XR_TYPE_INSTANCE_PROPERTIES};
         xr_check(xrGetInstanceProperties(instance,&properties),"runtime properties");
         simulated_runtime=!strcmp(properties.runtimeName,"OpenXR Simulator Runtime")||!strcmp(properties.runtimeName,"Meta XR Simulator");
@@ -349,12 +351,17 @@ int main(int argc, char** argv) {
         xr_check(requirements_fn(instance,system,&requirements),"D3D12 requirements");
         ComPtr<IDXGIFactory4> factory;dx_check(CreateDXGIFactory1(IID_PPV_ARGS(&factory)),"DXGI factory");
         ComPtr<IDXGIAdapter1> adapter;dx_check(factory->EnumAdapterByLuid(requirements.adapterLuid,IID_PPV_ARGS(&adapter)),"runtime adapter");
-        ComPtr<ID3D12Device> device;dx_check(D3D12CreateDevice(adapter.Get(),requirements.minFeatureLevel,IID_PPV_ARGS(&device)),"D3D12 device");
+        ComPtr<ID3D12Device> device;
+        shutdown_diagnostics::initialization("d3d12_create_device_enter");
+        dx_check(D3D12CreateDevice(adapter.Get(),requirements.minFeatureLevel,IID_PPV_ARGS(&device)),"D3D12 device");
+        shutdown_diagnostics::initialization("d3d12_create_device_completed");
         D3D12_COMMAND_QUEUE_DESC desc{};ComPtr<ID3D12CommandQueue> queue;
         dx_check(device->CreateCommandQueue(&desc,IID_PPV_ARGS(&queue)),"D3D12 queue");
         XrGraphicsBindingD3D12KHR binding{XR_TYPE_GRAPHICS_BINDING_D3D12_KHR};binding.device=device.Get();binding.queue=queue.Get();
         XrSessionCreateInfo session_create{XR_TYPE_SESSION_CREATE_INFO};session_create.next=&binding;session_create.systemId=system;
+        shutdown_diagnostics::initialization("xr_create_session_enter");
         xr_check(xrCreateSession(instance,&session_create,&session),"xrCreateSession");
+        shutdown_diagnostics::initialization("xr_create_session_completed");
         uint32_t format_count{};xr_check(xrEnumerateSwapchainFormats(session,0,&format_count,nullptr),"diagnostic format count");
         std::vector<int64_t> session_formats(format_count);xr_check(xrEnumerateSwapchainFormats(session,format_count,&format_count,session_formats.data()),"diagnostic formats");
         printf("{\"swapchain_formats\":[");for(uint32_t i=0;i<format_count;++i)printf("%s%lld",i?",":"",session_formats[i]);printf("]}\n");fflush(stdout);
@@ -366,7 +373,11 @@ int main(int argc, char** argv) {
         std::unique_ptr<GameScreen,shutdown_diagnostics::DeleteMarker<GameScreen>> screen{nullptr,{"screen_reset_enter","screen_reset_completed"}};
         if(game_window)screen.reset(new GameScreen(device.Get(),queue.Get(),game_window,game_pid,argv[2]));
         std::unique_ptr<GameScreen,shutdown_diagnostics::DeleteMarker<GameScreen>> startup_screen{nullptr,{"startup_screen_reset_enter","startup_screen_reset_completed"}};
-        if(startup_window)startup_screen.reset(new GameScreen(device.Get(),queue.Get(),startup_window,startup_game_pid,argv[2],true,menu_game_creation));
+        if(startup_window){
+            shutdown_diagnostics::initialization("startup_game_screen_enter");
+            startup_screen.reset(new GameScreen(device.Get(),queue.Get(),startup_window,startup_game_pid,argv[2],true,menu_game_creation));
+            shutdown_diagnostics::initialization("startup_game_screen_completed");
+        }
         StartupPanelPolicy startup_panel(startup_window!=nullptr,menu_state_file!=nullptr);
         MenuDisplayReader menu_display(menu_state_file,stereo_game_pid,menu_game_creation,continuous_owner_pid,continuous_owner_creation);
         unsigned menu_quad_layers=0,menu_entries=0,menu_recoveries=0;
