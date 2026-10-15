@@ -91,3 +91,23 @@ quiet9k 的 game6680 出现暗画面时，实际显示 Pause / Resume Game，而
 9w（game12724/创建FILETIME `134365643321455031`、owner36212、XR1500；`continuous-stereo-12724-20261016-025912-293fff89`）加载上述两项修复，在后台完成Pause→设置首页→五个设置子页各自返回→Pause→Resume。19次状态/显示核对、19次有守卫输入通过；返回后又有30次一致UI采样，未自动重入Pause，XR成功提交新票据projection。tour前后foreground均为2955120。
 
 100秒 `menu9w-layer-observation.json` 覆盖本轮菜单路径及Resume，仅记录GAMEPLAY→PAUSE_MENU→GAMEPLAY三次状态，所有采到的模拟器提交层数均为1，未采到零层区间，观察器无读取错误。正式menu日志也未在这些设置页间降为UNKNOWN，XR只有一个Pause epoch，随后成功恢复projection。与9v相比，这条路径的重复菜单层撤销已消除；状态采样不能排除采样间的极短异常，也不等于逐像素测量或真头显验收。未改变冻结Native9/XR7、游戏分辨率或默认发布清单。未认证菜单、预录视频和其他游玩黑屏仍分别待验证。
+
+## 9w：退出确认与主菜单重建的独立缺口
+
+在同一9w进程中，按已认证Pause焦点顺序进入 `LBtnSurrenderSingle`，实际出现 `WarfareConfirmation / UIScene_Confirmation / input_mode1 / player0 / block0`，焦点是仅Enabled的scene根，而非按钮。只读Source文本为 `Title=<Strings:WarfareGame.Generic.ConfirmSurrender_Title>`、`MessageText=<Strings:WarfareGame.Generic.ConfirmSurrender>`；ActiveScenes保留准确的Pause祖先。旧分类UNKNOWN，形成持续菜单空白。证据 `menu9w-return-prompt-tree.json`。现只对该精确对话及Pause上下文复用共同面板，不泛化全部确认框，也不改变按键许可；22项分类/发布测试通过。
+
+已保存的脚本 `UIScene_Confirmation.CustomInputKey` 显式包含Enter→PlayerAccepted分支，但其表达式含未解析native token，不能当成完整语义还原。一次身份、稳定快照、精确文本与scene根焦点核验后发送后台Enter，实际返回DeltaMainMenu；随后用现有菜单控制器的三次认证Enter继续当前存档。`menu9w-confirm-return.json`、`menu9w-main-continue.jsonl`保存真实结果。
+
+关卡重新加载后，UI已回认证GAMEPLAY，但Native9发布计数停在13770，anchor匹配停在67132，拒绝持续增加；终止日志为identity_failed。当前只读比较 `menu9w-anchor-difference.json` 证明旧controller/camera/pawn已失效，旧PersistentLevel地址已复用为CoverLink；WarLocalPlayer仍保持原身份，新相机/控制器已能由现有resolver发现。故此路径需要新world的完整证书重建与安全代次切换，不能以放宽身份或复用旧票据解决。停止时原生清理、入口恢复及XR退出0均通过，再正常WM_CLOSE。
+
+主菜单显示还有另一条独立缺口：当前已交接的XR在UNKNOWN时不显示WGC；主菜单又缺少可用新双目票据。frame_link的“没有关联到双目”不证明源是全幅mono；其CPU关联不覆盖全部clear/copy/indirect/bundle。后续需正面认证菜单输出布局、backbuffer/resource代次及GPU完成边界，才选择全幅菜单或裁剪单眼。Astra Medium只读审查已确认此边界，尚未据此修改GPU协议或声称主菜单恢复完成。
+
+## 9x：确认框文字重建竞争
+
+9x（game41388，`continuous-stereo-41388-20261016-032553-88ad3bb5`）加载确认框分类修复，monitor确实输出mode3并成功提交共同面板。但对话原生Nodes在重建时出现empty、root pointer及text bounds竞争，旧读取器重建导致UNKNOWN/空层；一次模拟器画面核对实际为黑，不能只据分类或首面板日志宣布修好。原生发布持续增长、anchor拒绝0，表明此处不是旧world身份故障。
+
+文字读取增加有限恢复：早期root/vtable/parent/string header无效时先复核对应的源存储边界，只有真实读值变化才在既有三次获取预算中重取；稳定错误继续拒绝。well-formed empty Nodes与确认竞争允许最多两次1毫秒退避，普通路径不睡眠。DialogStorageChanged与ledger/registry恢复共用总计两次完整快照，不延后monitor最初观察时间。
+
+77项reader/控制及22项monitor测试通过。新读取器在9x同一实际确认框25秒内取得244次有效mode3，零采样错误；这验证新读取器，未热替换旧owner。`menu9x-prompt-new-reader-probe.json`保留结果。9x正常停止后清理、入口恢复与XR退出0通过，再正常关闭游戏；完整owner显示复测另记。
+
+9y（game41360/创建FILETIME `134365662104404106`、owner34216、XR进程见会话报告，`continuous-stereo-41360-20261016-033031-dd096d43`）在正式owner中加载新文字读取器，再次后台进入退出确认框。45秒状态观察覆盖Pause→确认框，未采到零层、无观察器错误，正式monitor未出现读取异常或UNKNOWN；一次原子发布权限冲突在下一采样恢复，未过期撤层。一次实际模拟器画面核对，两眼为相同完整确认框。随后精确认证对话发送一次Escape取消，返回Pause，再Resume成功恢复新票据projection；未退出主菜单。证据 `menu9y-prompt-layer-observation.json`、`menu9y-cancel-return.json`、`menu9y-resume.json`。本结论仅覆盖这个退出确认框及取消路径，不等于主菜单或world重建已修复。

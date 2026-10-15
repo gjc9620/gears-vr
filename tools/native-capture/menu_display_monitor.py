@@ -12,27 +12,44 @@ PAUSE_SETTINGS = frozenset(('DeltaPause-Options', 'DeltaGameConfiguration', 'Del
                             'PenderGraphicsSettings', 'DeltaAudioVideoSettings', 'DeltaInputSettings'))
 
 
-def pause_settings(sample, top):
-    name = top.get('tag')
-    if (not isinstance(name, str) or name not in PAUSE_SETTINGS or top.get('name') != name or top.get('cls') != 'WarUIScene'
-            or type(top.get('input_mode')) is not int or top['input_mode'] != 1):
-        return False
+def scene_context(scene, name, cls='WarUIScene'):
+    return (isinstance(scene, dict) and scene.get('name') == name and scene.get('cls') == cls
+            and type(scene.get('input_mode')) is int and scene['input_mode'] == 1)
+
+
+def active_top(sample, top):
     scenes = sample.get('active_scenes')
     if not isinstance(scenes, list) or not scenes or not isinstance(scenes[-1], dict):
-        return False
+        return None
     last = scenes[-1]
     if (not isinstance(top.get('address'), str) or not top['address'] or
             type(last.get('input_mode')) is not int or
             any(top.get(key) != last.get(key) for key in ('address', 'name', 'cls', 'input_mode'))):
-        return False
-    def context(scene, expected):
-        return (isinstance(scene, dict) and scene.get('name') == expected and
-                scene.get('cls') == 'WarUIScene' and type(scene.get('input_mode')) is int and scene['input_mode'] == 1)
+        return None
+    return scenes
+
+
+def pause_settings(sample, top):
+    name = top.get('tag')
+    if not isinstance(name, str) or name not in PAUSE_SETTINGS or not scene_context(top, name):return False
+    scenes = active_top(sample, top)
+    if scenes is None:return False
     pause_seen = False
     for scene in scenes[:-1]:
-        if context(scene, 'DeltaPause-Campaign-Host'):pause_seen = True
-        if pause_seen and context(scene, 'DeltaPause-Options') and name != 'DeltaPause-Options':return True
+        if scene_context(scene, 'DeltaPause-Campaign-Host'):pause_seen = True
+        if pause_seen and scene_context(scene, 'DeltaPause-Options') and name != 'DeltaPause-Options':return True
     return pause_seen and name == 'DeltaPause-Options'
+
+
+def pause_return_confirmation(sample, top):
+    if (top.get('tag') != 'WarfareConfirmation' or
+            not scene_context(top, 'WarfareConfirmation', 'UIScene_Confirmation') or
+            sample.get('dialog_text') != {
+                'Title':'<Strings:WarfareGame.Generic.ConfirmSurrender_Title>',
+                'MessageText':'<Strings:WarfareGame.Generic.ConfirmSurrender>'}):
+        return False
+    scenes = active_top(sample, top)
+    return scenes is not None and any(scene_context(scene, 'DeltaPause-Campaign-Host') for scene in scenes[:-1])
 
 
 def classify(sample):
@@ -59,6 +76,10 @@ def classify(sample):
         return PAUSE_MENU
     # Only observed settings scenes under their ordered campaign Pause context.
     if player == 0 and pause_settings(sample, top):
+        return PAUSE_MENU
+    # Display only: the observed surrender prompt has scene-root focus, not an
+    # authenticated input choice. No generic confirmation/dialog admission.
+    if player == 0 and pause_return_confirmation(sample, top):
         return PAUSE_MENU
     # This persistent nonmodal scene was observed atop gameplay; it is not
     # sufficient to render stereo. Native identity and XR ticket gates still apply.

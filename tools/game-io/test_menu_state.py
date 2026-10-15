@@ -613,8 +613,88 @@ class DialogTextTests(unittest.TestCase):
             if (at,size)==(address,16):
                 calls.append(True);return struct.pack('<Qii',0,0,0)
             return original(at,size)
-        with self.assertRaises(DialogStorageChanged):read_root_source_text(always_empty,address,self.r.base)
+        with mock.patch('menu_state.time.sleep') as slept,self.assertRaises(DialogStorageChanged):
+            read_root_source_text(always_empty,address,self.r.base)
         self.assertEqual(len(calls),3)
+        self.assertEqual(slept.call_args_list,[mock.call(.001),mock.call(.001)])
+
+    def test_invalid_string_header_rechecks_each_storage_link_before_retry(self):
+        for source in ('nodes','root','vtable','parent','string'):
+            with self.subTest(source=source):
+                self.setUp();entry=self.labels['Title'];original=self.r.read;triggered=[]
+                target={'nodes':(self.source_address(),16),'root':(entry['data'],8),
+                        'vtable':(entry['node'],8),'parent':(entry['node']+0x10,8),
+                        'string':(entry['node']+0x18,16)}[source]
+                saved=original(*target)
+                def changing(at,size):
+                    raw=original(at,size)
+                    if (at,size)==(entry['node']+0x18,16) and not triggered:
+                        triggered.append(True)
+                        if source!='string':self.r.put(target[0],bytes([saved[0]^8])+saved[1:])
+                        return struct.pack('<Qii',0,0,0)
+                    return raw
+                def backoff(seconds):self.r.put(target[0],saved)
+                with mock.patch('menu_state.time.sleep',side_effect=backoff) as slept:
+                    self.assertEqual(read_root_source_text(changing,self.source_address(),self.r.base),'Online Service Error')
+                    slept.assert_called_once_with(.001)
+
+    def test_invalid_root_vtable_parent_retry_only_after_a_changed_bracket(self):
+        for field in ('null_root','unaligned_root','vtable','parent'):
+            with self.subTest(field=field):
+                self.setUp();entry=self.labels['Title'];original=self.r.read;triggered=[]
+                target=(entry['data'],8) if field.endswith('root') else (entry['node']+(0x10 if field=='parent' else 0),8)
+                bad=struct.pack('<Q',{'null_root':0,'unaligned_root':3,'vtable':self.r.base+0x123456,'parent':8}[field])
+                def transient(at,size):
+                    if (at,size)==target and not triggered:
+                        triggered.append(True);return bad
+                    return original(at,size)
+                with mock.patch('menu_state.time.sleep') as slept:
+                    self.assertEqual(read_root_source_text(transient,self.source_address(),self.r.base),'Online Service Error')
+                    slept.assert_called_once_with(.001)
+                self.r.put(target[0],bad)
+                with mock.patch('menu_state.time.sleep') as slept,self.assertRaises(RuntimeError) as rejected:
+                    read_root_source_text(original,self.source_address(),self.r.base)
+                self.assertIs(type(rejected.exception),RuntimeError);slept.assert_not_called()
+
+    def test_stable_invalid_string_bounds_never_retry_or_sleep(self):
+        entry=self.labels['Title'];self.r.put(entry['node']+0x18,struct.pack('<Qii',0,0,0))
+        with mock.patch('menu_state.time.sleep') as slept,self.assertRaisesRegex(RuntimeError,'Invalid dialog text bounds') as error:
+            read_root_source_text(self.r.read,self.source_address(),self.r.base)
+        self.assertIs(type(error.exception),RuntimeError);slept.assert_not_called()
+        self.assertEqual(self.r.read_counts[(self.source_address(),16)],2)
+        self.assertEqual(self.r.read_counts[(entry['node']+0x18,16)],2)
+
+    def test_normal_source_acquisition_has_no_backoff(self):
+        with mock.patch('menu_state.time.sleep') as slept:
+            self.assertEqual(read_root_source_text(self.r.read,self.source_address(),self.r.base),'Online Service Error')
+            slept.assert_not_called()
+
+    def test_dialog_storage_race_shares_outer_snapshot_retry_budget(self):
+        self.use_confirmation_sample();original=self.reader._sample_once
+        # First full acquisition exhausts its inner three attempts, then the
+        # second starts afresh and succeeds. No resolver or inventory rebuild.
+        address=self.source_address();read=self.r.read;empty=[0]
+        def temporarily_empty(at,size):
+            if (at,size)==(address,16) and empty[0]<3:
+                empty[0]+=1;return struct.pack('<Qii',0,0,0)
+            return read(at,size)
+        self.r.read=temporarily_empty
+        with mock.patch.object(self.reader,'_sample_once',wraps=original) as sampled,\
+             mock.patch.object(self.reader,'force_registry_refresh') as forced,mock.patch('menu_state.time.sleep') as slept:
+            result=self.reader.sample()
+            self.assertEqual(sampled.call_count,2);forced.assert_not_called()
+            self.assertEqual(slept.call_args_list,[mock.call(.001),mock.call(.001)])
+        self.assertEqual(result['dialog_text']['Title'],'Online Service Error')
+        for errors in ((DialogStorageChanged('empty'),SnapshotChanged('changed')),
+                       (SnapshotChanged('changed'),DialogStorageChanged('empty')),
+                       (DialogStorageChanged('empty'),RuntimeError('Object registry identity changed')),
+                       (RuntimeError('Object registry identity changed'),DialogStorageChanged('empty')),
+                       (DialogStorageChanged('empty'),DialogStorageChanged('empty'))):
+            with mock.patch.object(self.reader,'_sample_once',side_effect=errors) as sampled,\
+                 mock.patch.object(self.reader,'force_registry_refresh') as forced:
+                with self.assertRaises(type(errors[-1])):self.reader.sample()
+                self.assertEqual(sampled.call_count,2)
+                self.assertEqual(forced.call_count,int(type(errors[0]) is RuntimeError))
 
 
 if __name__ == '__main__':

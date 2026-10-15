@@ -30,6 +30,16 @@ def settings_sample(name):
     return dict(pause_sample(),active_scenes=scenes,top=dict(scenes[-1],tag=name))
 
 
+def return_confirmation_sample():
+    root=dict(name='DeltaPause-Campaign-Host',cls='WarUIScene',input_mode=1,address='0x100')
+    prompt=dict(name='WarfareConfirmation',cls='UIScene_Confirmation',input_mode=1,address='0x200')
+    focus=dict(prompt,states=['UIState_Enabled'])
+    return dict(sample(),top=dict(prompt,tag='WarfareConfirmation'),active_scenes=[root,prompt],
+                dialog_text={'Title':'<Strings:WarfareGame.Generic.ConfirmSurrender_Title>',
+                             'MessageText':'<Strings:WarfareGame.Generic.ConfirmSurrender>'},
+                focus_chain=[focus],focused_leaf=focus)
+
+
 class Reader:
     closed=False
     def sample(self):return sample()
@@ -37,6 +47,46 @@ class Reader:
 
 
 class Tests(unittest.TestCase):
+    def test_exact_pause_return_prompt_is_display_only(self):
+        state=return_confirmation_sample()
+        for blocked in (0,1):self.assertEqual(classify(dict(state,input_block_count=blocked)),PAUSE_MENU)
+        self.assertEqual(state['focused_leaf']['states'],['UIState_Enabled'])
+        with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
+            from menu_control import allowed
+        self.assertFalse(allowed(state,11))
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();reader.sample=lambda:state;m=self.monitor(path,reader)
+            try:
+                m.poll();packet=PACKET.unpack(path.read_bytes())
+                self.assertEqual((packet[3],packet[-2],packet[-1]),(PAUSE_MENU,1,100))
+            finally:m.close()
+
+    def test_return_prompt_rejects_other_dialogs_and_contexts(self):
+        base=return_confirmation_sample()
+        for text in (None,{},dict(base['dialog_text'],Title='Exit Game?'),
+                     dict(base['dialog_text'],MessageText='<Strings:WarfareGame.Generic.ConfirmCheckpoint>'),
+                     dict(base['dialog_text'],extra='unreviewed')):
+            self.assertEqual(classify(dict(base,dialog_text=text)),UNKNOWN)
+        for scenes in (None,[],base['active_scenes'][1:],list(reversed(base['active_scenes']))):
+            self.assertEqual(classify(dict(base,active_scenes=scenes)),UNKNOWN)
+        for key,value in (('name','DeltaMainMenu'),('cls','OtherScene'),('input_mode',2),('input_mode',True)):
+            state=copy.deepcopy(base);state['active_scenes'][0][key]=value
+            self.assertEqual(classify(state),UNKNOWN)
+
+    def test_return_prompt_rejects_top_identity_and_common_guard_mismatches(self):
+        base=return_confirmation_sample()
+        for key,value in (('tag','OtherConfirmation'),('name','OtherConfirmation'),('address','0x999'),
+                          ('address',None),('cls','WarUIScene'),('input_mode',2),('input_mode',True)):
+            state=copy.deepcopy(base);state['top'][key]=value
+            self.assertEqual(classify(state),UNKNOWN)
+        for key,value in (('address','0x999'),('name','OtherConfirmation'),('cls','WarUIScene'),('input_mode',True)):
+            state=copy.deepcopy(base);state['active_scenes'][-1][key]=value
+            self.assertEqual(classify(state),UNKNOWN)
+        for key,value in (('player_index',1),('player_index',-1),('player_index',False),('read_only',False),
+                          ('consistent_reread',False),('input_block_count',2),('input_block_count',True),
+                          ('input_block_count',1.0)):
+            self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN)
+
     def test_block_one_allows_only_authenticated_pause_family_display(self):
         for state in [pause_sample()]+[settings_sample(name) for name in SETTINGS]:
             with self.subTest(top=state['top']['tag']):

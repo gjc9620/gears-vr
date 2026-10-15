@@ -37,6 +37,7 @@ def read_root_source_text(read, nodes_address, base, attempts=3):
     UIString.Nodes and its native root are regenerated during line wrapping.
     No storage pointer survives this acquisition; callers compare text semantics
     at the final snapshot boundary while retaining all UObject/scene checks.
+    Default backoff is at most two 1ms sleeps; synchronous reads are not preempted.
     """
     for attempt in range(attempts):
         header = read(nodes_address, 16)
@@ -47,18 +48,39 @@ def read_root_source_text(read, nodes_address, base, attempts=3):
             # A well-formed empty array is a wrapping rebuild, not usable text.
             if attempt + 1 == attempts:
                 raise DialogStorageChanged('Invalid bounded array: Nodes stayed empty within bounded acquisition')
+            time.sleep(.001)
             continue
         root = read(data, 8)
         node = struct.unpack('<Q', root)[0]
         if not node or node % 8:
-            raise RuntimeError('Invalid dialog root pointer')
+            if read(nodes_address,16)==header and read(data,8)==root:
+                raise RuntimeError('Invalid dialog root pointer')
+            if attempt + 1 == attempts:
+                raise DialogStorageChanged('Dialog root storage did not settle within bounded acquisition')
+            time.sleep(.001)
+            continue
         vtable, parent = read(node, 8), read(node + 0x10, 8)
         if struct.unpack('<Q', vtable)[0] - base not in (0x1348780, 0x13a4398) or parent != bytes(8):
-            raise RuntimeError('Unsupported dialog node vtable/parent')
+            changed = (read(nodes_address,16)!=header or read(data,8)!=root or
+                       read(node,8)!=vtable or read(node+0x10,8)!=parent)
+            if not changed:raise RuntimeError('Unsupported dialog node vtable/parent')
+            if attempt + 1 == attempts:
+                raise DialogStorageChanged('Dialog root storage did not settle within bounded acquisition')
+            time.sleep(.001)
+            continue
         string_header = read(node + 0x18, 16)
         pointer, length, string_capacity = struct.unpack('<Qii', string_header)
         if not pointer or pointer % 2 or not 1 <= length <= string_capacity <= 1024:
-            raise RuntimeError('Invalid dialog text bounds')
+            # A native wrap may have retired this otherwise valid root. Check
+            # outer storage first, avoiding further old-node reads if replaced.
+            changed = (read(nodes_address,16)!=header or read(data,8)!=root or
+                       read(node,8)!=vtable or read(node+0x10,8)!=parent or
+                       read(node+0x18,16)!=string_header)
+            if not changed:raise RuntimeError('Invalid dialog text bounds')
+            if attempt + 1 == attempts:
+                raise DialogStorageChanged('Dialog source storage did not settle within bounded acquisition')
+            time.sleep(.001)
+            continue
         raw = read(pointer, length * 2)
         if (read(pointer, length * 2) != raw or
                 read(node + 0x18, 16) != string_header or
@@ -66,6 +88,7 @@ def read_root_source_text(read, nodes_address, base, attempts=3):
                 read(data, 8) != root or read(nodes_address, 16) != header):
             if attempt + 1 == attempts:
                 raise DialogStorageChanged('Dialog source storage did not settle within bounded acquisition')
+            time.sleep(.001)
             continue
         text = raw.decode('utf-16-le')
         if not text.endswith('\0') or '\0' in text[:-1]:
@@ -247,8 +270,8 @@ class MenuReader:
             return self._sample_once(include_tree=include_tree)
         except RuntimeError as error:
             registry_changed = type(error) is RuntimeError and str(error)=='Object registry identity changed'
-            if not registry_changed and type(error) is not SnapshotChanged:raise
-        # Both recoverable failures share exactly one retry. _sample_once has
+            if not registry_changed and type(error) not in (SnapshotChanged,DialogStorageChanged):raise
+        # All recoverable failures share exactly one retry. _sample_once has
         # restored r.read and discarded its failed ledger. No new timestamp,
         # preparation, client discovery or nested retry budget is introduced.
         if registry_changed:self.force_registry_refresh()
