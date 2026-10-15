@@ -129,3 +129,15 @@ A停止：native_cleanup_verified、entry_restore_verified均true，XR资源销�
 恢复1080p后的C/D同进程对照：游戏44016 / creation134365725804385987，owner36360 / creation134365725741140634，XR42020；会话`continuous-stereo-44016-20261016-051632-ed74bfd9.json`。加载最终block0/1分类器，不resize，连续两轮Pause→MainMenu→CampaignType→ContinueGame→gameplay→Pause，自动world1→2→3。每轮均有新GPU发布推进和成功的`menu_display_recovered`/ticketed projection handoff，epoch分别2、4；第二轮恢复时published4335。owner日志在这些已认证菜单转换中维持Mode4，没有此前仅block1触发的UNKNOWN；仍有其他场景读取SnapshotChanged暂态，不代表所有闪烁解决。
 
 C/D证据`mainmenu8{c,d}-cycle.json`、`mainmenu8-two-cycles-evidence.json`及完整menu/stdout/world日志。最终main_menu_quad_layers2496，菜单recoveries2；native_cleanup_verified、entry_restore_verified均true，XR exit0、会话stopped/passed；`mainmenu8c-close.json`记录身份校验后正常关闭游戏。退出后确认用户配置StartupResolutionX/Y仍为1920/1080。此次正常路径通过不能覆盖A/B已复现的1081尺寸失败，也不等于所有菜单和真头显验收。
+
+## 第六批：定位尺寸变化后的图像关联拒绝点
+
+私有Native7 SHA `bae42b29e373de6e0d534ad7681cc2f5117f2adc799f411b0eb818c8e85ad8e3`，继续使用XR MainMenu8；默认入口未提升。新增诊断只记录既有门禁的拒绝，不改变图像接受策略、Hook入口或资源所有权。32行总上限，每个world/resize/inventory epoch最多四种正ticket失败几何；无ticket另限一行，并为正ticket保留容量。相同几何合并计数及首末时间/ticket，避免逐帧日志。
+
+会话`continuous-stereo-31028-20261016-053718-1d6d0c2f.json`，game31028 / creation134365738258728593，owner39884 / creation134365738195811210。使用DPI-aware物理尺寸确认1920×1080→1920×1081→1920×1080，再实际MainMenu→Continue切换至world2。baseline published220/projection480；变化后published274/projection550，恢复客户端尺寸及世界切换后仍停在该值，XR layer0；原生场景提交继续增长。
+
+实际拒绝为stage2/reason512 `not_known_buffer`：带正ticket的左右quad有效，矩形分别(0,0,960,1080)/(960,0,960,1080)，RTV资源`0x3db5906a0`、尺寸1920×1080、单target/mip0/format24；当时缓存的实际Present尺寸1920×1081。world1和world2均复现，最终10行、dropped0。证据`world7-rect-experiment.json`及会话`.native-status.txt`。这是中间RTV不属于交换链后缓冲而被拒绝的运行证据；不证明该资源像素正确、后续缩放传递成立、viewport/scissor验证通过，亦不证明所有黑屏共有此根因。后面的验证器尚未执行，不能把有效quad等同完整GPU认证。
+
+下一步先定向追踪中间双目纹理到真实backbuffer的后续传递，记录源身份、映射、实际提交顺序和UI位置。若可证明完整无污染传递，可保留既有backbuffer发布与生命周期；不能直接移除known-buffer门禁，也不能伪造两次draw_final跨资源复用同ticket。直接采用中间资源则另需状态、生命周期、替换和UI证据。既有RenderDoc游戏注入失败路线不重复盲试。
+
+FinalEyeDiagnosticsTest、SubmittedViewLifetimeTest、WorldEpochGateTest及FrameLinkTest（17,700检查）通过；continuous/frame-link/quad自测通过。最终native_cleanup_verified、entry_restore_verified均true，XR shutdown与资源销毁完成，但显示未恢复、XR exit1，会话incomplete；不是全流程通过。身份核验后正常WM_CLOSE退出游戏，没有获取前台焦点。退出后备份配置为`world7-config-after-test.ini`，仅将持久化的StartupResolutionY从1081恢复1080。未进行真头显或GPU抓帧验收。

@@ -31,6 +31,7 @@
 #include "target_prime_owner.h"
 #include "gpu_viewport_stats.h"
 #include "frame_link.h"
+#include "final_eye_diagnostics.h"
 #include "outage_trace.h"
 #include "outage_sources.h"
 #include "anchor_observer.h"
@@ -124,6 +125,14 @@ FinalEye classify_final_eye(uintptr_t caller,uint64_t ticket,float x,float y,flo
     return {true,x==0?0u:1u,{x==0?0u:target_width/2,0,target_width/2,target_height},target_width,target_height};
 }
 thread_local FinalEye final_eye{};
+thread_local gears_final_eye_diagnostics::Candidate final_eye_candidate{};
+gears_final_eye_diagnostics::Recorder final_eye_failures;
+// Last inventory already read by Present; no diagnostic COM calls or retained
+// resource interfaces. Protected by frame_hook_mutex like Draw/Present.
+struct FinalEyeInventory {
+    uintptr_t chain{};uint64_t epoch{};long long qpc{};
+    unsigned width{},height{},count{};bool valid{};std::array<uintptr_t,16> resources{};
+} final_eye_inventory;
 struct FrameLinkCounters {
     std::atomic<uint64_t> resets{},reset_failed{},draws{},filtered{},unknown{},missing_target{},missing_ticket{},bad_quad{},
         executes{},execute_rejected{},presents{},linked{},contaminated{},present_failed{},tests{},unbound{},changed{},last_ticket{};
@@ -874,6 +883,25 @@ std::unique_lock<std::recursive_mutex> frame_lock() {
     }
     return lock;
 }
+void record_final_eye_failure(unsigned stage,unsigned reason,uintptr_t caller=0,uintptr_t list=0,
+    gears_viewport::TargetDraw binding={},gears_frame_link::ListRef ref={}) {
+    if((stage!=1&&!final_eye_candidate.ticket)||(final_eye_candidate.caller!=0xd83b1c&&final_eye_candidate.caller!=0xd808d8))return;
+    // Keep the diagnostic snapshot safe even if recording was switched off
+    // between hook admission and frame_lock's conditional acquisition.
+    std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+    gears_final_eye_diagnostics::Row row{};
+    const auto registered=swapchain_bindings.registered(final_eye_inventory.chain);
+    row.epoch={committed_world_generation.load(),registered.generation,final_eye_inventory.epoch,final_eye_inventory.chain};
+    auto& g=row.geometry;g.stage=stage;g.reason=reason;g.quad=final_eye_candidate;g.draw_caller=caller;
+    g.resource=binding.target.resource;g.target_width=binding.target.width;g.target_height=binding.target.height;
+    g.targets=binding.targets;g.mip=binding.target.mip;g.format=binding.target.format;
+    g.eye_valid=final_eye.valid;g.eye=final_eye.eye;g.eye_width=final_eye.width;g.eye_height=final_eye.height;
+    g.eye_rect={final_eye.rect.x,final_eye.rect.y,final_eye.rect.width,final_eye.rect.height};
+    row.first_qpc=now();row.list=list;row.list_generation=ref.generation;row.inventory_qpc=final_eye_inventory.qpc;
+    row.present_width=final_eye_inventory.width;row.present_height=final_eye_inventory.height;
+    row.present_count=final_eye_inventory.count;row.present_valid=final_eye_inventory.valid;
+    final_eye_failures.record(row);
+}
 struct FrameWorkSample {
     unsigned kind{},present_depth{},inside_present{},inside_consume{},ticket_present{},draw_kind{},elements{},instances{},targets{};
     uintptr_t caller{},list{},queue{};gears_viewport::Target target{};gears_viewport::DrawState rectangles{};
@@ -922,20 +950,27 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
         if(known)native_owned_scene_draw(list,binding,caller,kind,elements,instances);
     }
     if(!frame_link_diagnostics)return;
-    if(frame_target_stats.descriptor_capacity_lost()){frame_link.invalidate();return;}
     auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
+    auto diagnostic_failure=[&](unsigned reason){if(final_eye_candidate.ticket)record_final_eye_failure(2,reason,caller-base,reinterpret_cast<uintptr_t>(list),
+        binding,frame_link.current(canonical_identity(list)));};
+    if(frame_target_stats.descriptor_capacity_lost()){diagnostic_failure(64);frame_link.invalidate();return;}
     if(!owned_bindings_enabled)native_owned_scene_draw(list,binding,caller,kind,elements,instances);
-    if(!binding.targets)return; // No render target: no observed color write.
+    if(!binding.targets){diagnostic_failure(128);return;} // No render target: no observed color write.
     if(!binding.target.resource){
-        ++frame_counts.missing_target;frame_link.invalidate();return;}
-    if(!swapchain_bindings.known_buffer(binding.target.resource)){++frame_counts.filtered;return;}
+        diagnostic_failure(256);++frame_counts.missing_target;frame_link.invalidate();return;}
+    if(!swapchain_bindings.known_buffer(binding.target.resource)){diagnostic_failure(512);++frame_counts.filtered;return;}
     ++frame_counts.draws;
     auto stats=frame_buffer_count(binding.target.resource);if(stats)++stats->draws;
     auto ref=frame_link.current(canonical_identity(list));
     bool exact=final_eye.valid && consuming_frame_ticket && binding.targets==1 && !binding.target.mip &&
         binding.target.width==final_eye.width && binding.target.height==final_eye.height;
+    if(!exact)record_final_eye_failure(2,(!final_eye.valid?1u:0u)|(!consuming_frame_ticket?2u:0u)|
+        (binding.targets!=1?4u:0u)|(binding.target.mip?8u:0u)|
+        (binding.target.width!=final_eye.width?16u:0u)|(binding.target.height!=final_eye.height?32u:0u),
+        caller-base,reinterpret_cast<uintptr_t>(list),binding,ref);
     if(exact&&stereo_gpu_publish){
         if(!verified_stereo_draw(frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list)),final_eye,caller,kind,elements,instances)){
+            record_final_eye_failure(2,1024,caller-base,reinterpret_cast<uintptr_t>(list),binding,ref);
             ++stereo_publish_counts.rect_rejected;frame_link.invalidate();return;}
         if(!retain_stereo_draw())return;
     }
@@ -1027,6 +1062,15 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
         auto buffer_result=chain->GetBuffer(i,IID_PPV_ARGS(&buffer));
         if(FAILED(buffer_result)){frame_read_failure(3,i,buffer_result);valid=false;break;}
         resources[i]=canonical_identity(buffer);buffer->Release();if(!resources[i]){frame_read_failure(4,i,S_OK);valid=false;break;}
+    }
+    {
+    std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+    if(final_eye_inventory.chain!=identity||final_eye_inventory.width!=desc.BufferDesc.Width||
+       final_eye_inventory.height!=desc.BufferDesc.Height||final_eye_inventory.count!=desc.BufferCount||
+       final_eye_inventory.valid!=valid||final_eye_inventory.resources!=resources)++final_eye_inventory.epoch;
+    final_eye_inventory.chain=identity;final_eye_inventory.qpc=now();final_eye_inventory.width=desc.BufferDesc.Width;
+    final_eye_inventory.height=desc.BufferDesc.Height;final_eye_inventory.count=desc.BufferCount;
+    final_eye_inventory.valid=valid;final_eye_inventory.resources=resources;
     }
     bool anchored=false;
     if(valid&&!binding.anchored&&!(flags&DXGI_PRESENT_TEST)) {
@@ -1331,6 +1375,16 @@ void print_outage(FILE* status,bool hooks_disabled) {
 
 void print_frame_link(FILE* status) {
     if(!frame_link_diagnostics)return;
+    std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+    fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
+        final_eye_failures.size,gears_final_eye_diagnostics::Recorder::capacity,gears_final_eye_diagnostics::Recorder::per_epoch,final_eye_failures.dropped);
+    for(unsigned i=0;i<final_eye_failures.size;++i){const auto& r=final_eye_failures.rows[i];const auto& g=r.geometry;
+        fprintf(status,"final_eye_failure row=%u world=%llu resize_generation=%llu inventory_epoch=%llu chain=%llx stage=%u reason=%u count=%llu first_qpc=%lld last_qpc=%lld quad_caller=%llx ticket=%llu last_ticket=%llu input_rect=%.9g,%.9g,%.9g,%.9g quad_target=%u,%u draw_caller=%llx list=%llx list_generation=%llu rtv_resource=%llx rtv_size=%llu,%u targets=%u mip=%u format=%u eye_valid=%u eye=%u eye_size=%u,%u eye_rect=%u,%u,%u,%u present_size=%u,%u present_count=%u present_valid=%u inventory_qpc=%lld\n",
+            i,r.epoch.world,r.epoch.resize,r.epoch.inventory,static_cast<unsigned long long>(r.epoch.chain),g.stage,g.reason,r.count,r.first_qpc,r.last_qpc,
+            static_cast<unsigned long long>(g.quad.caller),g.quad.ticket,r.last_ticket,g.quad.rect[0],g.quad.rect[1],g.quad.rect[2],g.quad.rect[3],g.quad.width,g.quad.height,
+            static_cast<unsigned long long>(g.draw_caller),static_cast<unsigned long long>(r.list),r.list_generation,static_cast<unsigned long long>(g.resource),g.target_width,g.target_height,
+            g.targets,g.mip,g.format,g.eye_valid?1u:0u,g.eye,g.eye_width,g.eye_height,g.eye_rect[0],g.eye_rect[1],g.eye_rect[2],g.eye_rect[3],
+            r.present_width,r.present_height,r.present_count,r.present_valid?1u:0u,r.inventory_qpc);}
     if(stereo_gpu_publish)fprintf(status,"stereo_gpu_publish enabled=1 state=%u published=%u busy=%u rate_limited=%u bind_requests=%llu prepare_ok=%llu prepare_failed=%llu ticket_retains=%llu ticket_duplicates=%llu ticket_rejected=%llu ticket_missing=%llu rect_rejected=%llu capture_attempts=%llu capture_skipped=%llu stopped=%u drain_ok=%u close_ok=%u retired_id=%llu pending_tickets=%zu last_ticket=%llu simulator_operator=%d\n",
         stereo_publisher.state.load(),stereo_publisher.frames.load(),stereo_publisher.busy.load(),stereo_publisher.rate_limited.load(),stereo_publish_counts.bind_requests.load(),
         stereo_publish_counts.prepare_ok.load(),stereo_publish_counts.prepare_failed.load(),stereo_publish_counts.ticket_retains.load(),
@@ -2639,12 +2693,16 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
     }
     bool previous=in_final_quad;in_final_quad=previous||(caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8;
     auto saved_eye=final_eye;final_eye={};
+    const auto saved_candidate=final_eye_candidate;final_eye_candidate={};
     if(frame_link_diagnostics&&recording.load()&&(caller==0xd83b1c||caller==0xd808d8)) {
+        final_eye_candidate={caller,consuming_frame_ticket,{x,y,width,height},target_width,target_height};
         final_eye=classify_final_eye(caller,consuming_frame_ticket,x,y,width,height,target_width,target_height);
         if(!final_eye.valid)++frame_counts.bad_quad;
+        if(!final_eye.valid)record_final_eye_failure(1,1u|(!consuming_frame_ticket?2u:0u));
     }
     original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);
     final_eye=saved_eye;
+    final_eye_candidate=saved_candidate;
     in_final_quad=previous;
     if(quad_source_control_enabled())complete_quad_source_control(original_args,control);
 }
@@ -3052,7 +3110,7 @@ void reset_world_thread_context(){
     const auto sequence=anchor_context.sequence;anchor_context={};anchor_context.sequence=sequence;
     anchor_last_state_pawn={};anchor_last_observed_right_state=0;
     submitting_family=nullptr;consuming_renderer=nullptr;consuming_owned_scene=false;
-    consuming_frame_ticket=0;consuming_frozen_frame={};final_eye={};outage_source_overlay={};
+    consuming_frame_ticket=0;consuming_frozen_frame={};final_eye={};final_eye_candidate={};outage_source_overlay={};
     unsubmitted_renderer=false;pair_canvas=pair_transform=nullptr;trial_draw_scope=false;
     scene_local=nullptr;scene_rotation=nullptr;scene_delta=0;scene_phase=0;
     scene_translation={};scene_rotation_delta={};observed_stamp=0;stamp_known=false;
