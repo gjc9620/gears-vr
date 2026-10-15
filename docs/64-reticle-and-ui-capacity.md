@@ -8,6 +8,18 @@ Native13已独立编译，DLL SHA256 `f6f12ccf16015470bf7e0b19b7593fec7e8da606bd
 
 随后实际游戏会话 `continuous-stereo-42972-20261016-064504-bcc8002c.json` 使用Native13与MainMenu8；运行时状态确认55°、2米，planned/applied均2721、sequence_fault0。4K同世界暂停恢复和尺寸变化后恢复各10秒采样均有持续新图像及projection，正常停止/入口恢复通过。自动GPU快照3840×2160显示两眼暂停页面，不是游玩HUD可读性证据；准星有限深度、换枪和字幕布局仍未由此通过，真头显大小与舒适性待确认。
 
+### 有限深度准星的下一证据入口
+
+对已有KB脚本的有界复核找到 `WarPC.UpdateHUDActions`：由PlayerTick分支调用，使用原有相机方向/起点执行CalcWeaponFire，并保存LastCrosshairHitLocation。它是非开火瞄准查询候选，优于缓存上一枪命中；但无HUD、特定ActiveAction和烟雾等分支会提前返回，不能凭字段非零或PlayerTick返回推断新鲜。DrawWeaponCrosshair/GOW3自身仍按屏幕中心绘制，没有证明使用此世界坐标。
+
+后续应先观察原查询的实际执行、祖先调用范围和当前world/PC/Pawn/weapon身份，再核对与渲染ticket的关联；不额外调用Trace/GetAdjustedAim、不复用旧命中冒充持续瞄准。共享VM hook会被内联nested脚本绕过，新增函数名单不等于获得返回拦截。上述仅是已有脚本关系，不是新进程运行证据或有限深度准星实现。
+
+### Native13 后台开镜及检查点回归
+
+会话 `continuous-stereo-28908-20261016-065416-4d7e13eb.json`，1080p，同一Native13/MainMenu8。显式后台动作先校验进程PID/FILETIME与已启用手柄补丁，保持原有虚拟控制器；没有Win+0或焦点激活。手枪身份复读及ADS FOV45均确认，四步菜单状态认证重载检查点后Pawn/weapon身份更换，重载后手枪开镜GPU ticket2209仍见两眼场景及准星。最终正常停止passed=true，native清理/入口恢复及XR退出完成；WM_CLOSE关闭游戏，输入服务正常停止。
+
+HUD55°应用6021次、sequence_fault0，准星应用101次、三类拒绝0；批次容量拒绝/poison0，kind2 Canvas查询1945次，原生文字source1发布176次。这些计数不等于换枪或字幕像素验收。此次请求的selector快照实际未见完整换枪图标组，重载后的快照未见字幕；ADS快照中弹药图标与数值布局仍有可疑分离，需与原版/关闭HUD变换对照，尚不认定为新引入的问题或通过全部UI验收。证据 `world13-ui-scenario.stdout.txt` 与同会话GPU原图均留在ignored analysis。
+
 ## 复现：GameRecovery7，2026-10-15
 
 实际游戏 PID24112（`continuous-stereo-24112-20261015-195606-390abba0.*`）通过对象/类身份与双向关系复读确认从 `Weap_AssaultRifle` 切到 `Weap_COGPistol`。两次正常手柄开镜各3秒，首轮采样的相机FOV由80变为45。没有修改游戏武器或相机内存。游戏EXE SHA256沿用清单中的 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`。
