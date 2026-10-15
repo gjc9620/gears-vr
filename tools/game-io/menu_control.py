@@ -1,5 +1,6 @@
 """Confirm precisely reviewed menu choices using bounded, read-only UI snapshots."""
 import argparse
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import time
@@ -132,9 +133,16 @@ def fingerprint(state):
         'player_index', 'input_block_count', 'consistent_reread', 'dialog_text')}, sort_keys=True)
 
 
+@dataclass
+class ControlProgress:
+    """One navigation attempt's dispatch ledger, retained across window rebinding."""
+    attempted: set = field(default_factory=set)
+    actions: int = 0
+
+
 def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
             max_actions=5, emit=lambda event: None, now=time.monotonic, sleep=time.sleep,
-            target=None, deadline=None, recover_reader=None):
+            target=None, deadline=None, recover_reader=None, progress=None):
     """Injectable polling controller. Successful confirmation is not level readiness.
 
     Optional recovery replaces the source used by read_state and returns a reader
@@ -147,11 +155,11 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
     if target[0] != pid:
         raise RuntimeError('Initial game window PID mismatch')
     deadline, stable_since = now() + seconds if deadline is None else deadline, None
-    last, last_error, attempted = None, None, set()
-    actions = 0
+    last, last_error = None, None
+    progress = ControlProgress() if progress is None else progress
 
     def finish(reason):
-        result = dict(reason=reason, actions=actions, loading_requested=reason == 'loading_requested',
+        result = dict(reason=reason, actions=progress.actions, loading_requested=reason == 'loading_requested',
                       level_ready=False, pid=pid)
         emit(dict(event='finished', **result))
         return result
@@ -159,6 +167,8 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
     while now() < deadline:
         if interrupted():
             return finish('interrupted')
+        if progress.actions >= max_actions:
+            return finish('max_actions')
         if window() != target:
             return finish('window_changed')
         try:
@@ -181,7 +191,7 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
             emit(dict(event='state', state=state))
             last, stable_since = current, now()
         key = choice(state)
-        if allowed(state, pid) and key not in attempted and now() - stable_since >= .6:
+        if allowed(state, pid) and key not in progress.attempted and now() - stable_since >= .6:
             try:
                 before = read_state()
             except Exception as error:
@@ -206,18 +216,20 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
             if now() >= deadline:
                 break
             # Reserve before dispatch: even a partially failed send is never retried.
-            attempted.add(key)
+            progress.attempted.add(key)
             emit(dict(event='action_attempt', action=RULES[key], choice=key, target=target))
             try:
                 send_action(RULES[key], target)
             except Exception as error:
+                if interrupted():
+                    return finish('interrupted')
                 emit(dict(event='action_error', error=type(error).__name__ + ': ' + str(error)))
                 return finish('action_error')
-            actions += 1
+            progress.actions += 1
             emit(dict(event='action_sent', action=RULES[key], choice=key))
             if key[2] == 'butContinue':
                 return finish('loading_requested')
-            if actions >= max_actions:
+            if progress.actions >= max_actions:
                 return finish('max_actions')
         sleep(min(.15, max(0, deadline - now())))
     return finish('timeout')

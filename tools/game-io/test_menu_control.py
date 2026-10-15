@@ -2,7 +2,7 @@
 import copy
 import unittest
 from menu_control import (control, allowed, fingerprint, ONLINE_TITLE, ONLINE_MESSAGE,
-                          wait_for_reader, wait_for_replacement, REGISTRY_IDENTITY_CHANGED)
+                          wait_for_reader, wait_for_replacement, REGISTRY_IDENTITY_CHANGED, ControlProgress)
 
 
 def state(continuing=False):
@@ -59,6 +59,27 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(len(actions), 2)
         self.assertGreaterEqual(actions[0][0], .6)
         self.assertGreaterEqual(actions[1][0] - actions[0][0], .6)
+
+    def test_shared_progress_preserves_total_action_limit(self):
+        progress = ControlProgress(actions=4)
+        result, _, actions = self.run_control(state, progress=progress)
+        self.assertEqual(result['reason'], 'max_actions')
+        self.assertEqual(len(actions), 1)
+        result, _, actions = self.run_control(lambda: state(True), progress=progress)
+        self.assertEqual(result['reason'], 'max_actions')
+        self.assertEqual(result['actions'], 5)
+        self.assertFalse(actions)
+
+    def test_partial_dispatch_stays_reserved_in_shared_progress(self):
+        progress = ControlProgress()
+        def partial_send(*_):
+            raise RuntimeError('key release failed')
+        result, _, actions = self.run_control(state, partial_send, progress=progress)
+        self.assertEqual(result['reason'], 'action_error')
+        self.assertEqual(len(actions), 1)
+        result, _, actions = self.run_control(state, progress=progress)
+        self.assertEqual(result['reason'], 'timeout')
+        self.assertFalse(actions)
 
     def test_gates_and_unknown_wait_without_input(self):
         for field, value in [('input_block_count', 1), ('player_index', 1),
