@@ -32,7 +32,7 @@
 
 实验清单 `manifest-game-recovery9.json` 固定该 DLL 与原 SpaceRecovery3；不是当前默认，也不是发布验收通过。PID32900 一轮在用户切换全屏/窗口化时自动导航报找不到窗口，VR会话退出，游戏进程仍在，用户随后手动进入关卡。此轮未接入立体，不应归为游戏闪退或场景黑屏证据。接着一次启动被另一个聊天正在调整的后台启动参数解析阻止，未产生新游戏会话。
 
-目前另一聊天正在使用游戏验证后台真实手柄，本聊天没有接管或关闭其进程。下一步在游戏测试互不干扰时，使用该实验清单重跑已开启 UI 修正的“过场 CameraActor → Pawn → 同进程重载”，对齐原生 target/cinematic 记录、XR 成功提交和实际双眼 GPU 图像。默认 Recovery8 保持不变。
+当时另一聊天正在使用游戏验证后台真实手柄，本聊天没有接管或关闭其进程。该测试结束后，本聊天完成了下述新会话验证。默认 Recovery8 保持不变。
 
 ## 窗口切换：导航恢复的离线修正
 
@@ -41,3 +41,15 @@
 `menu_navigation.navigate_core` 原先只等待首次窗口出现，绑定后短暂缺失或 HWND 改变都会终止启动。现在在同一绝对 deadline 内重新识别已保留进程的窗口；每次查询继续检查 PID/creation identity 与取消信号，关闭旧 reader，重新读取菜单并满足稳定等待。窗口失而复得但 HWND 相同也会清除旧稳定状态。导航动作账本跨重绑保留，避免重复确认和重置总动作上限；发送阶段失败不重试。发送前最后检查中的取消仍按取消处理。
 
 17项导航测试、32项菜单控制测试与40项启动器测试通过，涵盖窗口消失/重建、构造 reader 时换窗、原时限、进程更换、取消、动作去重与部分发送失败。尚未在实际窗口切换中验证。XR 侧 `GameWindowFrames` 仍绑定启动时 HWND，真正销毁旧窗口时会报身份变化；该层恢复未包含在本次修正内。因此不能据此宣布窗口切换造成的 VR 退出已经完整修复，冻结 DLL 和默认清单均未变更。
+
+## 首次实际过场双目与同进程重载证据
+
+后续提交 `9ff8d2a` 加入 SpaceRecovery4 菜单窗口重绑，说明见文档68。实验清单 `manifest-game-recovery9-window1.json` 组合 GameRecovery9、SpaceRecovery4 与 quiet1 模拟器。2026-10-15 23:07 的游戏 PID36340，创建 FILETIME `134365504564396886`；会话 `continuous-stereo-36340-20261015-230749-cfe9a456`，owner PID37740、XR PID10248。后台输入 helper 回报启用成功。
+
+第一张已保存 GPU 图像为 ticket1/source_serial1，1920×1080 SBS。其保存时刻前27.4451ms、后73.0187ms的相机采样均为剧情模式，且完整 ViewTarget 身份相同：CameraActor、number1、index168687。左右半幅平均亮度约72.95/73.10，实际检查图像可见两眼场景与视差。证据支持本次 CameraActor 路线成功输出双目；相机采样与 GPU 保存并非原子事务，不能扩大为所有过场已通过。
+
+随后恢复 Pawn 视角，并通过已校验菜单状态的定向窗口消息在同一进程读取检查点。Pawn 从 number2/index169229 换为 number3/index234523；会话仍运行。重载后另存的 GPU 图像 ticket19723/source_serial19696 两眼平均亮度约88.70/89.83；该张保存时相机采样器已经结束，不附会不存在的相机前后夹测。采样的 native 状态为 published19693、anchor_submission_matched19873、anchor_submission_rejected1、stop_reason=none；一次拒绝的原因尚未归因，不能记作零错误。
+
+首次成功投影提交距连续运行器启动约28.739秒（不是完整游戏启动耗时），启动延迟仍待缩短。用户要求预览持续可见，本会话留在运行状态，未执行最终清理/退出验收。只证明这一次模拟器与 GPU 路线；真头显、预录视频、死亡菜单、实际 HWND 重建及跨关卡长期黑帧仍未全部验证。
+
+原始证据位于 ignored `analysis/runtime/camera-phase9h*.jsonl`、`camera-phase9h-evidence.json` 和该会话的 `.stdout.txt`、`.gpu.ppm*`。这些运行衍生资料不进入发布包。
