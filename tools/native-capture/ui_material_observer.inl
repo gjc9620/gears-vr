@@ -14,6 +14,9 @@ bool ui_material_disabled{};
 struct UiMaterialContext {gears_ui_material::Consumer consumer{};uint64_t invocation{},sequence{};unsigned gpu_calls{};
  uint64_t owned_receipt{},owned_ticket{};uintptr_t owned_resource{};unsigned owned_draws{};bool owned_failed{};};
 thread_local UiMaterialContext* ui_material_context{};
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+#include "game_ui_material_route.inl"
+#endif
 struct UiMaterialRestore {UiMaterialContext* saved=ui_material_context;~UiMaterialRestore(){ui_material_context=saved;}};
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
 #include "owned_material_route.inl"
@@ -75,15 +78,25 @@ uint32_t __fastcall hook_ui_material_execute(void* command){
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
  owned_material::begin(context,claimed);
 #endif
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+ game_material::ConsumerScope material_scope(ui_material_context==&context?&context:nullptr);
+#endif
  const auto result=ui_original_material_execute(command); // Exactly once.
  // Native payload/view may already be destroyed. Only the copied context is used.
- if(ui_material_context){const bool complete=gears_ui_material::finish_consumer(context.consumer,result);if(!complete)++ui_material_bad_return;complete_ui_material_rows(context.sequence,complete);}
+ bool consumer_complete=false;
+ if(ui_material_context){consumer_complete=gears_ui_material::finish_consumer(context.consumer,result);if(!consumer_complete)++ui_material_bad_return;complete_ui_material_rows(context.sequence,consumer_complete);}
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+ material_scope.end(consumer_complete);
+#endif
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
  owned_material::end(context,result);
 #endif
  return result;
 }
 bool reserve_ui_material_execute(){
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+ if(!game_material::reserve())return false;
+#endif
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
  if(!owned_material::reserve())return false;
 #endif
@@ -126,6 +139,9 @@ void observe_ui_material_gpu(uintptr_t caller,gears_frame_link::ListRef ref,gear
  ui_material_rows[ui_material_row_count++]={context.invocation,pair.ticket,context.sequence,caller,candidate.payload,candidate.target,ref.identity,target.resource,quad.source,context.consumer.command,candidate.kind,context.gpu_calls,args.indexed,false};
 }
 void print_ui_material_observer(FILE* status){
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+ game_material::print(status);
+#endif
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
  owned_material::print(status);
 #endif

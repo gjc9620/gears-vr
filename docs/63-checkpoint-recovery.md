@@ -47,6 +47,24 @@ DXGI ResizeBuffers/ResizeBuffers1边界现已更新库存代次、退休旧票�
 
 当前`manifest.json`与`manifest-game-recovery3.json`一致，GUI及SimulatorVR.ps1统一使用它；保留game-resolution清单回滚。仍按游戏分辨率、锁定DLSS/DLAA。它是实验检查点，不是可发布的完成版。无真头显验收。
 
+## 断帧来源实测（GameRecovery4 / SpaceRecovery3）
+
+新增仅在outage诊断开启时工作的固定容量窗口：500毫秒无新发布触发，记录未知draw、Material receipt、既有overlay查询结果和同区间左右眼ticket；不增加图像接纳规则、不在渲染路径分配或写文件。9项针对性检查通过，清单`manifest-game-recovery4.json`独立冻结，默认仍为Recovery3。
+
+实际PID14480，`continuous-stereo-14480-20261015-184923-98084e66.*`：自动1080p→4K、4K检查点重载→1080p。4次resize/5次prepare全部成功；XR复制3540张、累计8821次projection，最长提交缺口59.055秒，整体失败。4K切换后直到打开暂停菜单才首次提交资源代次3；此因果机制尚未确定。正常停止完成，41个入口恢复核验全部通过，游戏正常关闭。
+
+最后保留的三个短gap提供直接来源证据：first_unknown与trigger均有相同的左右眼ticket，Present拒绝位为128（polluted）；首条未知draw来自RVA1af345，4顶点非索引Material，随后172741普通UI查询变成missing_pair。4486个Material producer/consumer/quad候选全部完成；material_kind=0、invocation=0意味着未获得具体脚本HUD分类，不能宣称是准星或换枪UI。当前game-resolution分支只观察这类Material而未逐眼输出，因此这些帧被保守拒绝。
+
+本轮19个gap中的早期记录被环形最后4项覆盖，丢失了最长4K窗口，不能把短gap的具体draw身份直接归于长gap。后续额外保留最长窗口，同时定向补齐Material的上传、IA、正交投影、同目标双眼ticket和consumer完成认证。证据摘要`analysis/runtime/game-recovery4-audit.json`。
+
+另一个后续UI恢复缺口：该运行中anchor已经接受新Pawn（family/renderer各2065次），但PostRender UI scope累计拒绝恰为2065次。`ui_observer.h::quick_environment`仍要求启动时Pawn和Inventory地址。两者高度相关，尚未逐调用配对；需为UI语义证书增加同关卡重绑定，不能用取消身份校验来恢复。它可能导致重载后HUD分类丢失，属于后续UI修复范围。
+
+## 材质双眼输出增量（GameRecovery5 / SpaceRecovery3）
+
+独立默认关闭的`GEARS_GAME_UI_MATERIAL`要求game-resolution和Material观察，仍禁止固定owned目标。只新增已校验完整函数哈希的1af054上传hook，复用实际非索引quad、native list、stride32/topology5、OM backbuffer、同目标完整双眼pair、冻结样本和正交Canvas投影认证。原consumer和上传各执行一次；只重放认证的GPU draw，恢复viewport/scissor。kind0保持普通逐眼overlay，不宣称它是HUD；kind2/3用HUD平面；kind1准星暂不支持。consumer尚未完成时Present拒绝当窗，失败则污染窗口，不阻塞等待；已重放后登记失败不再补原draw。
+
+GameRecovery5冻结编译和13项检查通过，清单`manifest-game-recovery5.json`；不替换默认Recovery3。新增最长gap独立保留，后续短gap不会覆盖它。实际首轮PID17836完成505次Material双眼重绘（均kind3），上传508、3次pair不成立被拒绝；native发布1505，污染5、库存changed/rejected=0、pending Present=0。稳定段模拟器无启动后缺layer事件。测试在切4K前因只读MenuReader发现对象表变化而停止，因此不算完整4K/重载通过；退出完成后正常关闭游戏。诊断控制脚本只在发送任何输入之前，允许该具体读取竞态最多3次新建reader重采样，动作不重试。
+
 ## 下一步
 
 定向记录4K长缺帧窗口内的未知HUD绘制，修复关联来源；不放宽未知draw接纳或无限延长旧图保留。继续第①项恢复/延迟及第②、③项准星/HUD，CG切换仍待处理。尚未证明VDXR原点事件在真实头显上恢复。

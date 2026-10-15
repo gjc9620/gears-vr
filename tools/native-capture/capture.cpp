@@ -32,6 +32,7 @@
 #include "gpu_viewport_stats.h"
 #include "frame_link.h"
 #include "outage_trace.h"
+#include "outage_sources.h"
 #include "anchor_observer.h"
 #include "ui_observer.h"
 #include "ui_canvas_batch.h"
@@ -155,6 +156,11 @@ std::mutex stereo_mutex;
 std::atomic<bool> outage_diagnostics{false};
 gears_outage::ActivitySnapshot outage_built;
 gears_outage::Window outage_window;
+// Same frame_hook_mutex as Draw/Execute/outer Present. TLS contains only this
+// hook call's existing overlay query result; no extra tracker query is issued.
+gears_outage_sources::Recorder outage_sources;
+gears_outage_sources::Interval outage_source_interval;
+thread_local gears_outage_sources::Overlay outage_source_overlay;
 bool anchor_observer_enabled=false;
 std::atomic<unsigned long long> anchor_submission_matched{0},anchor_submission_rejected{0};
 std::array<std::atomic<unsigned long long>,3> anchor_pawn_reassociated_guards{};
@@ -283,7 +289,12 @@ constexpr unsigned game_resize_hooks=2;
 #else
 constexpr unsigned game_resize_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks> session_hook_entries{};
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+constexpr unsigned game_material_hooks=1;
+#else
+constexpr unsigned game_material_hooks=0;
+#endif
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<unsigned> submit_total{0},submit_retained{0},submit_skipped{0};
@@ -892,6 +903,20 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
         frame_link.draw_final(ref,consuming_frame_ticket,final_eye.eye,
         {binding.target.resource,final_eye.width,final_eye.height},final_eye.rect);}
     else {++frame_counts.unknown;if(!consuming_frame_ticket)++frame_counts.missing_ticket;
+        if(outage_diagnostics.load()&&!frame_inside_original_present){
+            gears_outage_sources::Draw draw{};draw.qpc=now();draw.list=canonical_identity(list);
+            draw.generation=ref.generation;draw.target=binding.target.resource;draw.caller=caller;
+            draw.kind=kind;draw.elements=elements;draw.instances=instances;
+            draw.width=static_cast<unsigned>(binding.target.width);draw.height=binding.target.height;
+            draw.overlay=outage_source_overlay;
+#if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
+            if(ui_material_context){const auto& context=*ui_material_context;
+                draw.material_sequence=context.sequence;draw.material_invocation=context.invocation;
+                draw.material_payload=context.consumer.receipt.payload;draw.material_command=context.consumer.command;
+                draw.material_proxy=context.consumer.receipt.proxy;draw.material_kind=context.consumer.receipt.kind;}
+#endif
+            outage_sources.unknown(draw);
+        }
         if(stats)++stats->unknown;
         frame_link.draw_unknown(ref,binding.target.resource);}
 }
@@ -923,6 +948,7 @@ void observe_frame_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandLis
     if(!accepted){++frame_counts.execute_rejected;if(stats)++stats->rejected;}
 }
 void outage_begin(gears_outage::Sample& sample,long long timestamp) {
+    outage_source_interval=outage_sources.begin(timestamp,{outage_draws[0].ticket,outage_draws[1].ticket});
     sample.enter_qpc=timestamp;sample.pub_before=stereo_publisher.frames.load();
     if(outage_built.read(sample.built_pre))sample.valid|=gears_outage::built_before;
     sample.draw=outage_draws;
@@ -934,6 +960,10 @@ void outage_finish(gears_outage::Sample& sample,long long timestamp,HRESULT resu
     sample.pub_after=stereo_publisher.frames.load();
     if(outage_built.read(sample.built_post))sample.valid|=gears_outage::built_after;
     outage_window.observe(sample); // Existing outer frame lock still owned even if recording turned off.
+    outage_source_interval.end_qpc=timestamp;outage_source_interval.published=sample.published;
+    outage_source_interval.published_qpc=sample.published_qpc;outage_source_interval.target=sample.buffer;
+    outage_source_interval.ticket=sample.ticket;outage_source_interval.rejection=sample.rejection;
+    outage_sources.observe(outage_source_interval);
 }
 void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample* diagnostic=nullptr) {
     if(!frame_link_diagnostics || !recording.load())return;
@@ -974,6 +1004,9 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
     else if(valid)frame_read_failure(5,0,current_result);
     if(!resource || flags&DXGI_PRESENT_TEST)frame_link.invalidate();
     if(frame_target_stats.clear_bindings()||frame_target_stats.descriptor_capacity_lost())frame_link.invalidate();
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+    if(game_material::block_present())frame_link.invalidate();
+#endif
     auto result=frame_link.present(resource,inventory_ok?binding.queue:0);
     if(diagnostic){diagnostic->valid|=gears_outage::association;diagnostic->buffer=resource;diagnostic->queue=binding.queue;
         diagnostic->ticket=result.ticket;diagnostic->rejection=result.rejection;diagnostic->linked=result.linked;diagnostic->contaminated=result.contaminated;}
@@ -1198,6 +1231,35 @@ void print_outage(FILE* status,bool hooks_disabled) {
     // Never read non-atomic Window storage while a callback might still own it.
     if(recording.load()||active.load()||!hooks_disabled){
         fprintf(status,"outage_trace enabled=1 available=0 unavailable_active_callbacks=%u hooks_disabled=%u\n",active.load(),hooks_disabled?1:0);return;}
+    fprintf(status,"outage_sources enabled=1 threshold_ms=500 gap_capacity=4 recent_capacity=16 gaps=%u total_gaps=%llu overwritten=%llu original_present_draws_excluded=1 acceptance_unchanged=1 material_receipt_is_candidate_only=1 overlay_flags=queried:1,linked:2,plan:4,chain:8\n",
+        outage_sources.count(),outage_sources.total(),outage_sources.total()-outage_sources.count());
+    auto source_interval=[&](unsigned gap,const char* role,unsigned row,gears_outage_sources::Interval const& interval){
+        fprintf(status,"outage_source_interval gap=%u role=%s row=%u qpc=%lld end_qpc=%lld target=%llx ticket=%llu reject=%u published=%u published_qpc=%lld left_ticket=%llu right_ticket=%llu unknowns=%llu\n",
+            gap,role,row,interval.qpc,interval.end_qpc,static_cast<unsigned long long>(interval.target),interval.ticket,interval.rejection,interval.published?1:0,
+            interval.published_qpc,interval.eye_ticket[0],interval.eye_ticket[1],interval.unknowns);
+        auto draw=[&](const char* kind,gears_outage_sources::Draw const& d){if(!d.qpc)return;
+            fprintf(status,"outage_source_draw gap=%u role=%s row=%u selected=%s qpc=%lld list=%llx generation=%llu target=%llx caller=%llx draw_kind=%u elements=%u instances=%u size=%u,%u material_sequence=%llu material_invocation=%llu material_payload=%llx material_command=%llx material_proxy=%llx material_kind=%u overlay_flags=%u overlay_reject=%u overlay_ticket=%llu\n",
+                gap,role,row,kind,d.qpc,static_cast<unsigned long long>(d.list),d.generation,static_cast<unsigned long long>(d.target),static_cast<unsigned long long>(d.caller),d.kind,d.elements,d.instances,d.width,d.height,
+                d.material_sequence,d.material_invocation,static_cast<unsigned long long>(d.material_payload),static_cast<unsigned long long>(d.material_command),static_cast<unsigned long long>(d.material_proxy),d.material_kind,
+                d.overlay.flags,d.overlay.rejection,d.overlay.ticket);};
+        draw("first",interval.first);draw("material",interval.material);draw("overlay",interval.overlay);
+    };
+    for(unsigned i=0;i<outage_sources.count();++i){const auto& gap=outage_sources.at(i);
+        fprintf(status,"outage_source_gap gap=%u previous_publish_qpc=%lld trigger_qpc=%lld recovered=%u observed_intervals=%llu recent_count=%u\n",
+            i,gap.previous_publish,gap.trigger_qpc,gap.recovered?1:0,gap.intervals,gap.recent_count);
+        if(gap.first_unknown.unknowns)source_interval(i,"first_unknown",0,gap.first_unknown);
+        source_interval(i,"trigger",0,gap.trigger);
+        for(unsigned row=0;row<gap.recent_count;++row)source_interval(i,"recent",row,gap.recent[row]);
+        source_interval(i,"last",0,gap.last);
+    }
+    if(outage_sources.has_longest()){const auto& gap=outage_sources.longest();
+        fprintf(status,"outage_source_longest gap=4 previous_publish_qpc=%lld trigger_qpc=%lld recovered=%u observed_intervals=%llu recent_count=%u\n",
+            gap.previous_publish,gap.trigger_qpc,gap.recovered?1:0,gap.intervals,gap.recent_count);
+        if(gap.first_unknown.unknowns)source_interval(4,"first_unknown",0,gap.first_unknown);
+        source_interval(4,"trigger",0,gap.trigger);
+        for(unsigned row=0;row<gap.recent_count;++row)source_interval(4,"recent",row,gap.recent[row]);
+        source_interval(4,"last",0,gap.last);
+    }
     fprintf(status,"outage_trace enabled=1 available=1 qpc_frequency=%lld threshold_ms=100 capacity=256 rows=%u triggered=%u finished=%u trigger_mask=%u end=%u first_window_only=1\n",
         outage_window.frequency(),outage_window.count(),outage_window.triggered()?1:0,outage_window.finished()?1:0,outage_window.trigger(),outage_window.end());
     fprintf(status,"outage_schema validbits=association:1,built_pre:2,built_post:4,left_draw:8,right_draw:16,capture_called:32,image_sample:64,publication:128,present_return:256 capture_validbits=state:1,serial:2,consumer:4,ready:8,done:16,hresult:32 draw_scope=pre_original_current_interval built_count=cumulative trigger2=last_publication_to_original_end_age\n");
@@ -2373,6 +2435,9 @@ bool install(void* target,void* detour,void** original) {
           (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target||target==ui_subtitle_target
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
              ||target==ui_material_execute_target
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+             ||target==game_material::upload_target
+#endif
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
              ||target==owned_material::produce_target||target==owned_material::upload_target
 #endif
@@ -2571,9 +2636,13 @@ void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
 #include "owned_material_draw.inl"
 #endif
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+#include "game_ui_material_draw.inl"
+#endif
 void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,UINT instances,UINT start,UINT first_instance) {
     if(stereo_publish_bypass){original_draw(list,vertices,instances,start,first_instance);return;}
     Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
+    if(outage_diagnostics.load())outage_source_overlay={};
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
         const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
@@ -2581,6 +2650,9 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
         if(binding.targets==1&&!binding.target.mip&&binding.target.width<=8192&&!frame_target_stats.descriptor_capacity_lost())
             target={binding.target.resource,static_cast<unsigned>(binding.target.width),binding.target.height};
         observe_ui_material_gpu(caller,frame_link.current(canonical_identity(list)),target,{false,vertices,instances,start,first_instance,0});
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+        if(game_material::draw(list,caller,{false,vertices,instances,start,first_instance,0}))return;
+#endif
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
         if(owned_material::draw(list,caller,{false,vertices,instances,start,first_instance,0}))return;
 #endif
@@ -2596,6 +2668,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
     if(stereo_publish_bypass){original_draw_indexed(list,indices,instances,start,vertex,first_instance);return;}
     Scope scope;auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
+    if(outage_diagnostics.load())outage_source_overlay={};
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
         const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
@@ -2675,8 +2748,10 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             auto plan=gears_viewport::overlay_plan(saved,target.width,target.height);
             std::array<void*,12> stack{};const unsigned count=pair.linked&&plan.valid?CaptureStackBackTrace(0,static_cast<DWORD>(stack.size()),stack.data(),nullptr):0;
             std::array<uintptr_t,12> addresses{};for(unsigned i=0;i<count;++i)addresses[i]=reinterpret_cast<uintptr_t>(stack[i]);
-            if(pair.linked&&plan.valid&&(gears_viewport::overlay_caller_chain(addresses.data(),count,base)||
-                ui_observed_overlay_chain(addresses.data(),count))){
+            const bool overlay_chain=pair.linked&&plan.valid&&(gears_viewport::overlay_caller_chain(addresses.data(),count,base)||
+                ui_observed_overlay_chain(addresses.data(),count));
+            if(outage_diagnostics.load())outage_source_overlay={1u|(pair.linked?2u:0u)|(plan.valid?4u:0u)|(overlay_chain?8u:0u),pair.rejection,pair.ticket};
+            if(overlay_chain){
                 const bool reticle_direction=prepare_ui_reticle_overlay(pair.ticket,saved,target.width,target.height,plan);
                 const bool hud_plane=!reticle_direction&&prepare_ui_hud_overlay(pair.ticket,saved,target.width,target.height,plan);
                 auto viewport=[&](gears_viewport::Rect r,float minimum,float maximum){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,minimum,maximum};original_viewports(list,1,&v);};
@@ -3165,7 +3240,7 @@ DWORD WINAPI worker(void*) {
     fprintf(file,",renderer_input_family,renderer_storage,renderer_count,renderer_capacity,renderer_source0,renderer_source1,renderer_source2,renderer_source3,stereo_ticket,stereo_source,stereo_head_flags,stereo_view_flags,stereo_reference_generation\n");fflush(file);
     LARGE_INTEGER frequency;QueryPerformanceFrequency(&frequency);
     qpc_frequency=frequency.QuadPart;
-    if(outage_diagnostics.load()){outage_window.reset(qpc_frequency);outage_draws={};}
+    if(outage_diagnostics.load()){outage_window.reset(qpc_frequency);outage_sources.reset(qpc_frequency);outage_source_interval={};outage_draws={};}
     fprintf(status,"qpc_frequency=%lld\n",frequency.QuadPart);
     fprintf(status,"wobble_enabled=%d amplitude_degrees=1.5 baseline_seconds=3 wave_seconds=12\n",wobble_enabled);
     fprintf(status,"sweep_enabled=%d rotation_degrees=1.5 translation_units=2 baseline_seconds=3 axis_seconds=4 total_seconds=27\n",sweep_enabled);
@@ -3196,6 +3271,9 @@ DWORD WINAPI worker(void*) {
 #endif
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ok&&ui_observer_enabled)ok=install(ui_material_execute_target,reinterpret_cast<void*>(hook_ui_material_execute),reinterpret_cast<void**>(&ui_original_material_execute));
+#if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
+    if(ok&&ui_observer_enabled)ok=install(game_material::upload_target,reinterpret_cast<void*>(game_material::hook_upload),reinterpret_cast<void**>(&game_material::original_upload));
+#endif
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
     if(ok&&ui_observer_enabled)ok=install(owned_material::produce_target,reinterpret_cast<void*>(owned_material::hook_produce),reinterpret_cast<void**>(&owned_material::original_produce))&&
         install(owned_material::upload_target,reinterpret_cast<void*>(owned_material::hook_upload),reinterpret_cast<void**>(&owned_material::original_upload));
