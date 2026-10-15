@@ -28,6 +28,31 @@ class Tests(unittest.TestCase):
         for key in ('tag','cls','input_mode'):
             s=sample();s['top'][key]='unknown';self.assertEqual(classify(s), UNKNOWN)
 
+    def test_nonmodal_last_player_index_is_not_local_player_identity(self):
+        self.assertEqual(classify(dict(sample(False), player_index=-1)), GAMEPLAY)
+        self.assertEqual(classify(dict(sample(), player_index=-1)), UNKNOWN)
+        for value in (-2, 1, None, False, 0.0, '-1'):
+            for death in (False, True):
+                self.assertEqual(classify(dict(sample(death), player_index=value)), UNKNOWN)
+        for key, value in [('consistent_reread', False), ('read_only', False), ('input_block_count', 1)]:
+            self.assertEqual(classify(dict(sample(False), player_index=-1, **{key:value})), UNKNOWN)
+        for key in ('name', 'cls', 'input_mode'):
+            s=dict(sample(False), player_index=-1);s['top'][key]='unknown'
+            self.assertEqual(classify(s), UNKNOWN)
+
+    def test_nonmodal_recovery_packet_uses_new_observation(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+            m.poll()  # Confirmed death menu, then one invalid observation.
+            reader.sample=lambda:dict(sample(False), player_index=None)
+            m.clock=lambda:200;m.poll()
+            self.assertEqual(PACKET.unpack(path.read_bytes())[3], UNKNOWN)
+            reader.sample=lambda:dict(sample(False), player_index=-1)
+            m.clock=lambda:300;m.poll()
+            packet=PACKET.unpack(path.read_bytes())
+            self.assertEqual((packet[3],packet[-2],packet[-1]),(GAMEPLAY,3,300))
+            m.close()
+
     def monitor(self, path, reader, **kwargs):
         game=dict(pid=11,creation_time=22,image='game');owner=dict(pid=33,creation_time=44,image='owner')
         return MenuDisplayMonitor(path,game,owner,lambda pid:game,lambda:reader,

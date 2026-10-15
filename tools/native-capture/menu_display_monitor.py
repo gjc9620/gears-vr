@@ -12,14 +12,19 @@ UNKNOWN, GAMEPLAY, DEATH_MENU = range(3)
 
 def classify(sample):
     if (sample.get('consistent_reread') is not True or sample.get('read_only') is not True
-            or sample.get('player_index') != 0 or sample.get('input_block_count') != 0):
+            or sample.get('input_block_count') != 0):
+        return UNKNOWN
+    # MenuReader reports UIScene.LastPlayerIndex, not a LocalPlayer identity.
+    # The persistent nonmodal scene also reports -1 during real gameplay.
+    player = sample.get('player_index')
+    if type(player) is not int:
         return UNKNOWN
     top = sample.get('top') or {}
-    if (top.get('tag'), top.get('cls'), top.get('input_mode')) == ('DeltaGameover', 'WarUIScene', 1):
+    if player == 0 and (top.get('tag'), top.get('cls'), top.get('input_mode')) == ('DeltaGameover', 'WarUIScene', 1):
         return DEATH_MENU
     # This persistent nonmodal scene was observed atop gameplay; it is not
     # sufficient to render stereo. Native identity and XR ticket gates still apply.
-    if (top.get('name'), top.get('cls'), top.get('input_mode')) == (
+    if player in (-1, 0) and (top.get('name'), top.get('cls'), top.get('input_mode')) == (
             'PenderCrossplayInvitePopUp', 'WarUIScene_CrossplayInvitePopUp', 2):
         return GAMEPLAY
     return UNKNOWN
