@@ -22,6 +22,12 @@ HUD55°应用6021次、sequence_fault0，准星应用101次、三类拒绝0；�
 
 对照准备还修正了源码开关不一致：Material路径现在与indexed batch共同受ui_hud_plane_enabled控制；关闭时已认证kind2/3使用普通双眼overlay，kind0始终ordinary，kind1/陌生值仍拒绝，原有证书与原调用次数保持限定。GameUiMaterialTest的两态分类及原生命周期/恢复检查通过；冻结Native13 DLL未改变，该变更待Native14实际ON/OFF对照。不能把此开关修正等同弹药布局根因已确定。
 
+### Native14 的实际 ON/OFF 对照与像素澄清
+
+Native14 SHA256 `7c6d7461219a579939cf5f2f6973d8a8b6f0348724383a2bbc40dd89f035cd40`，XR仍MainMenu8。ON会话 `continuous-stereo-34228-20261016-070437-60973b2a`、OFF会话 `continuous-stereo-43844-20261016-070612-76ad6dd0`；同1080p、手枪、非开镜FOV80/开镜45，每态3秒。原尺寸GPU快照时间均在对应动作内，身份/FOV复读与正常退出清理通过，汇总 `world14-hud-ab-report.json`。全程后台输入，之后正常关闭两个游戏实例及输入服务。
+
+开关确实同时作用两路：ON Material hud_draws492、ordinary0；OFF ordinary300、hud0。ON的非开镜与开镜面板均缩小内移，OFF两态均显示完整相邻的054和图标。原尺寸最近邻裁切进一步确认ON的数字仍在小面板旁，不能把960像素预览的难以辨认误报为删除/裁切或Native14分离。已记录HUD viewport451.14×268.56相对普通单眼960×1080约为水平47%、垂直25%，足以解释文字压成少量像素；55°在当前低分辨率路径的可读性仍需调整或真头显确认。此对照没有证明Native13所有瞬态分离均不存在，也没有验收所有换枪/字幕。默认清单未提升，不以关闭HUD变换替代用户要求的缩小、集中与可读布局。
+
 ## 复现：GameRecovery7，2026-10-15
 
 实际游戏 PID24112（`continuous-stereo-24112-20261015-195606-390abba0.*`）通过对象/类身份与双向关系复读确认从 `Weap_AssaultRifle` 切到 `Weap_COGPistol`。两次正常手柄开镜各3秒，首轮采样的相机FOV由80变为45。没有修改游戏武器或相机内存。游戏EXE SHA256沿用清单中的 `bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4`。
