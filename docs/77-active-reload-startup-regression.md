@@ -32,6 +32,8 @@
 
 此后约0.46秒发生了检查点世界重绑定的 `source_reconfiguration` 过渡卡，约0.456秒后交回投影；日志明确标为world handoff，而不是仅凭时间相近归因于完美换弹。单张GPU图和抽样CSV均不能排除短暂黑帧，完美换弹黑屏不得标记为全面修复。
 
+逐项核对已有 `image_ticket_row`：第一次R至结果2之间有36次新场景图提交，最大间隔33.6069毫秒；结果2后两秒内有71次，最大间隔466.9989毫秒，正好跨过世界交接。`.world.jsonl` 有prepare／commit请求及generation2完成记录，原生状态也记录一次handoff；分辨率resize调用和轨迹行均为0。因此这次间隔有世界交接证据，没有记录到分辨率重建。事件局部的outage详细行未覆盖此窗口，不能把提交过渡卡等同于逐像素或头显连续性验收。
+
 整轮共2126次原生发布、4843次XR投影、2124次场景复制，world generation=2。最大投影间隔79.064秒包含死亡菜单等待，不能用作游玩帧率。停止后原生清理、入口恢复、XR正常退出通过，游戏仅正常关闭并确认退出。回执 `active-reload37-runtime-audit.json`、`active-reload37-normal-close.json`。
 
 包含Python启动修正的新独立快照 `analysis/release-staging/mounted37-startup2-20261017` 为700文件、43,418,174字节，隔离预检通过；原生／XR文件沿用此前已测试哈希。没有重复运行相同原生自测，也没有将此离线快照称为已发布版本。
