@@ -26,5 +26,6 @@
   "hud_element_scale": 1.2,
   "hud_center_scale": 0.8,
   "native_sha256": "3a669ae8f64567462fc2e31c1cbf37ecb7e7f4fd701b4e3768768b667db16f73",
-  "camera_distance_control": true
+  "camera_distance_control": true,
+  "startup_selftests_prelaunch": true
 }

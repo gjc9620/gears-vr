@@ -155,6 +155,7 @@ def stage(root, python_root, destination, *, manifest_path=None):
    其他头显可选择系统 OpenXR Runtime；此包不含模拟器。
 4. 分辨率在游戏内设置；DLSS / DLAA 保持关闭。手柄在游戏前台正常响应，默认不响应后台输入。
 5. 界面右上角可切换中文 / English。停止时点击“停止 VR”，等待结束后再退出游戏。
+   若有“镜头拉近”选项，可设0–0.5米，下次启动生效；0为原距离。建议先从0.3米试起。
 
 这是待验证的开发候选，不是正式发布版。不包含游戏，请使用受支持的游戏版本。
 
@@ -166,6 +167,7 @@ English
 4. Set resolution in the game. DLSS / DLAA remain disabled. Controller input works with the game in the foreground;
    background controller input is disabled by default.
 5. Choose 中文 / English at the upper right. Click Stop VR and wait for it to finish before exiting the game.
+   If Camera closer is available, choose 0–0.5 metres for the next launch; 0 keeps the original distance. Try 0.3 first.
 
 This is an unvalidated development candidate, not a public release. Game files are not included; a supported game build is required.
 ''', encoding='utf-8')

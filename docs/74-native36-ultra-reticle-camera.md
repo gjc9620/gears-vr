@@ -35,3 +35,15 @@ Native36b源码冻结于dd874f6，目录`analysis/native-source-gameplay36b`，�
 原始状态、日志、图像、构建清单及回执均在ignored `analysis/runtime`。新离线候选`analysis/release-staging/gameplay36-offline-20261017`隔离预检通过：695文件、42673824字节，包含新的camera helper与中英文README；`release_ready=false`，没有做干净玩家机器或真头显部署验收。
 
 下一步仍需：真头显4K／Ultra、开火外圈、更多CG／机枪／载具、完美换弹、长期游玩、卡顿及启动延迟。此次4K修复不证明上述全部完成。
+
+## 同次启动自测复用与开火回归
+
+9824aea把默认连续会话的完整22项自测统一到游戏创建前执行，去除同一次预留／激活重复的命令。一次性凭据由当前成功的预留子进程报告携带，绑定启动器PID／FILETIME、创建后的确切游戏身份、本轮nonce、suite摘要及DLL／全部自测程序哈希；激活消费凭据、核对当前请求的完整suite，并在远程激活前重新核对文件。旧清单／独立命令没有凭据时仍运行完整自测，不使用跨次通过缓存。159项针对性测试通过。包内补齐了原来遗漏的shadow／constructor自测程序及新helper；旧包的单纯模块导入通过不能证明这些可执行文件齐全。
+
+实际会话`continuous-stereo-33008-20261017-035657-b3495207`使用同一Native36 DLL／Borderless1、4K配置、0.3米镜头与显式模拟器。游戏前22项自测和预留独有检查共7318.112ms；关卡就绪后凭据验证15.215ms，`self_tests_total=15.293ms`，不再重复执行约5.5秒自测。原生准备4569.319ms；上一轮14576.799ms的差额还含证书生成重试变化，不能全部归功于自测复用。首次实际projection发生在相机就绪标记后7582.909ms，仍非即时进入VR。凭据文件已消费且不存在，原始成功预留报告另存`gameplay36-prelaunch-reserve.log`。
+
+这轮正常经过两次死亡菜单读取检查点，world generation 1→2→3。前两个控制器请求虽然返回成功，但其中一次实时相机时间不前进、FOV80，不能算有效ADS验收；旧日志没有改写。第三次先等待新generation且有实际场景提交、GAMEPLAY模式，再发送3秒LT／RT，虚拟手柄自动归中；实时相机时间前进。GPU请求图像3为ticket2113／source serial2096、3840×2160，图像显示两眼枪口火光与扩散准星圈，文件`.gpu.ppm.3.ppm`与`gameplay36-ads3-preview.png`。后台实体手柄始终没有启用。
+
+最终原生准星considered／planned／applied各250、center_rejected／geometry_missing／projection_rejected均0；有限点应用248、方向回退2。HUD布局应用6810、回退132，镜头拉近应用2670次、拒绝0。GPU发布2652，busy5，ticket／rectangle拒绝0；XR复制2648、projection提交6512。跨度155.673秒中含死亡菜单，最长projection间隔42.483秒，仍不能当作连续游玩稳定性或物理头显融合／落点准确验收。正常停止、原生清理、入口恢复、XR退出0均通过，之后正常关闭游戏。
+
+启动器实窗确认新增镜头控件完整显示0.30米、VDXR默认路径正确，检查后关闭。自测前移现已在默认及命名Native36清单启用，58项启动器测试通过。新的不可变离线候选`analysis/release-staging/gameplay36-prelaunch-20261017`隔离预检通过（700文件、43408062字节）；又用包内Python独立运行实际22项自测全部通过（9个唯一二进制文件），没有启动游戏。回执`gameplay36-prelaunch-portable-preflight.json`、`gameplay36-prelaunch-packed-selftests.json`，仍为开发候选，不代替干净玩家机器与真头显验收。
