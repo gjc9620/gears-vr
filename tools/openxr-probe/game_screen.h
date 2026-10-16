@@ -73,6 +73,42 @@ class GameWindowFrames {
         return matches(window)&&IsWindowVisible(window)&&!IsIconic(window)&&
             GetClientRect(window,&client)&&client.right>=640&&client.bottom>=360;
     }
+    void request_borderless_access(){
+        using namespace winrt::Windows::Graphics::Capture;
+        // Request once before starting capture, never on the XR recovery path.
+        // Windows retains authority over consent and policy; capture still works
+        // with its indicator if borderless access is unavailable or denied.
+        try{
+            auto access=winrt::try_get_activation_factory<GraphicsCaptureAccess,IGraphicsCaptureAccessStatics>();
+            if(!access){
+                printf("{\"wgc_borderless_access\":\"unsupported\"}\n");
+            }else{
+                const auto status=access.RequestAccessAsync(GraphicsCaptureAccessKind::Borderless).get();
+                printf("{\"wgc_borderless_access_status\":%d}\n",int(status));
+            }
+        }catch(winrt::hresult_error const& error){
+            printf("{\"wgc_borderless_access\":\"failed\",\"hresult\":%ld}\n",long(error.code()));
+        }
+        fflush(stdout);
+    }
+    void configure_capture_border(){
+        using namespace winrt::Windows::Graphics::Capture;
+        try{
+            auto border=capture.try_as<IGraphicsCaptureSession3>();
+            if(!border){
+                printf("{\"wgc_borderless_request\":\"unsupported\"}\n");
+            }else{
+                border.IsBorderRequired(false);
+                // This reports the session preference, not proof that Windows
+                // hides the indicator (policy or another capturer can retain it).
+                printf("{\"wgc_borderless_request\":\"accepted\",\"border_required\":%s,\"visual_verified\":false}\n",
+                    border.IsBorderRequired()?"true":"false");
+            }
+        }catch(winrt::hresult_error const& error){
+            printf("{\"wgc_borderless_request\":\"failed\",\"hresult\":%ld}\n",long(error.code()));
+        }
+        fflush(stdout);
+    }
     bool retire_capture()noexcept{
         // Never hold the callback mutex while Close waits for WGC callbacks.
         pending_frame.discard();
@@ -112,6 +148,7 @@ class GameWindowFrames {
             pool_width=initial_size.Width;pool_height=initial_size.Height;
             pool=Direct3D11CaptureFramePool::CreateFreeThreaded(capture_device,DirectXPixelFormat::B8G8R8A8UIntNormalized,2,initial_size);
             capture=pool.CreateCaptureSession(item);capture.IsCursorCaptureEnabled(false);
+            configure_capture_border();
             token=pool.FrameArrived([shared=state](auto const& sender,auto const&) {
                 try{auto frame=sender.TryGetNextFrame();if(frame)shared->publish(std::move(frame));}
                 catch(winrt::hresult_error const&){}
@@ -183,6 +220,7 @@ public:
             target_creation=uint64_t(created.dwHighDateTime)<<32|created.dwLowDateTime;
             if(expected_creation&&target_creation!=expected_creation)throw std::runtime_error("Capture game creation identity mismatch");}
         if(!GraphicsCaptureSession::IsSupported())throw std::runtime_error("WGC unavailable");
+        request_borderless_access();
         check_hresult(D3D11CreateDevice(nullptr,D3D_DRIVER_TYPE_HARDWARE,nullptr,D3D11_CREATE_DEVICE_BGRA_SUPPORT,
             nullptr,0,D3D11_SDK_VERSION,device.put(),nullptr,context.put()));
         com_ptr<IInspectable> inspectable;check_hresult(CreateDirect3D11DeviceFromDXGIDevice(device.as<IDXGIDevice>().get(),inspectable.put()));
