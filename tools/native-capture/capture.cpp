@@ -4937,8 +4937,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFrameLinkCheck(void* t
                     frame_target_stats.reset(raw_list);frame_target_stats.create(32,{identity,640,480,28,0});frame_target_stats.bind(raw_list,1,32);
                     frame_target_stats.set(raw_list,gears_viewport::other,false,{0,0,640,480});
                     frame_target_stats.set(raw_list,gears_viewport::other,true,{0,0,16384,16384});
+                    // Emulate hook_quad's caller scope as well as its classified
+                    // eye. The production target policy validates both.
+                    const auto saved_test_candidate=final_eye_candidate;
+                    final_eye_candidate={0xd83b1c,image_id,{0,0,320,480},640,480};
                     final_eye=left;observe_frame_draw(interval_list,base+0x1af92b,1,6,1);
+                    final_eye_candidate.rect={320,0,320,480};
                     final_eye=right;observe_frame_draw(interval_list,base+0x1af92b,1,6,1);final_eye={};
+                    final_eye_candidate=saved_test_candidate;
                     auto rectangles=frame_target_stats.draw_state(raw_list);
                     if(!verified_stereo_draw(rectangles,left,base+0x1af92b,1,6,1))result=173;
                     rectangles.viewport.width=320;
