@@ -47,3 +47,14 @@ ignored只读脚本 `analysis/runtime/profile-startup-discovery.py` 包装现有
 停止后原生清理、入口恢复、XR正常退出通过，游戏正常关闭并确认退出。回执 `discovery39-vr-runtime-audit.json`、`discovery39-vr-checkpoint-audit.json`、`discovery39-vr-normal-close.json`。未做新头显、机枪、长时间游玩或所有过场验收。
 
 新独立快照 `analysis/release-staging/mounted37-discovery3-20261017` 包含两项Python启动修正，共700文件、43,419,825字节，隔离预检通过，清单SHA256 `721810195e2a938e2347ee2f06071c5baea84d77bc2d67b0620695cda26b2e11`。原生／XR沿用已验证文件，没有重复编译或重复运行未改动的原生自测；这个快照尚非正式发布。
+
+
+## Crosshair注册表追加与身份变化的区分
+
+2026-10-17，Python构建器仅对objects/names两个准确地址的完整16字节表头接受计数单调增加，要求每次观察均有效且数据地址、容量不变；选择对象仍受首次计数限制。每次与上一次观察比较，增长后回退也拒绝。搬迁、容量变化及有效缩小保留CrosshairRegistryChanged整套重取，短读/无效头和其他身份、属性、链接、脚本、原生入口变化仍硬拒绝；最终非表头错误优先级保留。格式和原生激活端的独立新鲜校验未改动，无持久证书缓存。50项相关测试通过。
+
+只读实测PID39616、creation FILETIME134366607485966944，初次准备并非表头拒绝，而是选中4字节字段在组装时变化，正确硬拒绝。采样观察到名称表57892→57928、地址0x7330000和容量100000不变，但发生在UI阶段，未复现Crosshair阶段的追加拒绝。随后三轮稳定准备成功，未观察到表头增长，因此不能把本轮改动的收益量化。原始头部观察与源码哈希保存在discovery42-header-baseline.json、discovery42-header-second.json；无注入，结束正常关闭。
+
+实际完整VR回归会话continuous-stereo-3932-20261017-054756-ab408251，Caption38/Borderless1未重编译。证书获取2.430秒、原生准备3.988秒、相机就绪至首次双目提交6.956秒；本轮没有证书重试。新3840×2160图像两眼均非黑，原生清理核验和正常关闭游戏通过，回执analysis/runtime/discovery43-vr-audit.json。这是一次启动回归，不是与旧版同条件因果对比，也未覆盖本轮检查点、机枪、长时间或头显验收。
+
+证明边界：上述一致性检查是有限采样，不是原子快照或通用ABA防护。child()的字段链唯一性仍是发现时证据，没有被扩展为最终全链重读；原生激活也不等于重新散列全部脚本。没有据此宣称黑屏根因全部解决。

@@ -63,6 +63,141 @@ class Fixture(UIBase):
 
 
 class CertificateTests(unittest.TestCase):
+    def registry_reads(self, r, header_name, observations):
+        """Supply the initial double read and final read, without real registries."""
+        read=r.read;header=getattr(r,header_name);calls=[]
+        def observing(a,n):
+            if (a,n)==(header,16):
+                calls.append((a,n))
+                return observations[len(calls)-1]
+            return read(a,n)
+        r.read=observing
+        return calls
+
+    def test_registry_count_growth_on_double_and_final_reads(self):
+        for header_name in ('objects_header','names_header'):
+            for counts in ((2000,2100,2100),(2000,2000,2100),(2000,2100,2200)):
+                with self.subTest(header=header_name,counts=counts):
+                    r=Fixture();ptr=r.od if header_name=='objects_header' else r.nd
+                    calls=self.registry_reads(r,header_name,
+                        [struct.pack('<Qii',ptr,count,3000) for count in counts])
+                    c=build_crosshair_assignment_config(r,r.camera,include_tick_roots=True,include_writer_view=True)
+                    self.assertEqual(len(calls),3)
+                    self.assertEqual(c['identities'][c['roles']['weapon']]['address'],r.weapon)
+                    self.assertFalse(c['runtime_coverage_proven'])
+                    validate_crosshair_assignment_config(c)
+
+    def test_registry_growth_keeps_initial_selection_count_bounds(self):
+        for header_name in ('objects_header','names_header'):
+            with self.subTest(header=header_name):
+                r=Fixture();ptr=r.od if header_name=='objects_header' else r.nd
+                if header_name=='objects_header':
+                    r.put(r.weapon+8,struct.pack('<I',2050))
+                    r.put(ptr+2050*8,struct.pack('<Q',r.weapon))
+                else:
+                    r.put(r.weapon+72,struct.pack('<II',2050,0))
+                self.registry_reads(r,header_name,
+                    [struct.pack('<Qii',ptr,count,3000) for count in (2000,2100,2200)])
+                with self.assertRaisesRegex(CrosshairConfigRejected,'Object registry identity mismatch') as raised:
+                    build_crosshair_assignment_config(r,r.camera)
+                self.assertIs(type(raised.exception),CrosshairConfigRejected)
+
+    def test_registry_relocation_capacity_change_and_observed_shrink_are_retryable(self):
+        for header_name in ('objects_header','names_header'):
+            for phase in (1,2):
+                for change in ('pointer','capacity','shrink'):
+                    with self.subTest(header=header_name,phase=phase,change=change):
+                        r=Fixture();ptr=r.od if header_name=='objects_header' else r.nd
+                        initial=struct.pack('<Qii',ptr,2000,3000)
+                        changed=struct.pack('<Qii',ptr+8 if change=='pointer' else ptr,
+                                            1999 if change=='shrink' else 2000,
+                                            3001 if change=='capacity' else 3000)
+                        observations=[initial]*3;observations[phase:]=[changed]*(3-phase)
+                        self.registry_reads(r,header_name,observations)
+                        with self.assertRaises(CrosshairRegistryChanged):
+                            build_crosshair_assignment_config(r,r.camera)
+            for final_count in (2000,2050):
+                with self.subTest(header=header_name,shrink_after_growth=final_count):
+                    r=Fixture();ptr=r.od if header_name=='objects_header' else r.nd
+                    self.registry_reads(r,header_name,
+                        [struct.pack('<Qii',ptr,count,3000) for count in (2000,2100,final_count)])
+                    with self.assertRaises(CrosshairRegistryChanged):
+                        build_crosshair_assignment_config(r,r.camera)
+
+    def test_each_registry_observation_must_be_complete_and_valid(self):
+        for header_name in ('objects_header','names_header'):
+            for phase in range(3):
+                for bad in ('short','null','minimum','negative','over_capacity','capacity_limit'):
+                    with self.subTest(header=header_name,phase=phase,bad=bad):
+                        r=Fixture();ptr=r.od if header_name=='objects_header' else r.nd
+                        good=struct.pack('<Qii',ptr,2000,3000)
+                        invalid=good[:-1] if bad=='short' else struct.pack('<Qii',
+                            0 if bad=='null' else ptr,
+                            {'minimum':1000,'negative':-1,'over_capacity':3001}.get(bad,2000),
+                            4000000 if bad=='capacity_limit' else 3000)
+                        observations=[good]*3;observations[phase]=invalid
+                        self.registry_reads(r,header_name,observations)
+                        with self.assertRaises(CrosshairConfigRejected) as raised:
+                            build_crosshair_assignment_config(r,r.camera)
+                        self.assertIs(type(raised.exception),CrosshairConfigRejected)
+
+    def test_count_growth_exception_does_not_cover_other_16_byte_reads(self):
+        r=Fixture();read=r.read;calls=0
+        def changing(a,n):
+            nonlocal calls
+            if (a,n)==(r.writer+0x8c,16):
+                calls+=1
+                return struct.pack('<Qii',r.script,0x16a7+calls-1,0x1700)
+            return read(a,n)
+        r.read=changing
+        with self.assertRaises(CrosshairConfigRejected) as raised:
+            build_crosshair_assignment_config(r,r.camera)
+        self.assertIs(type(raised.exception),CrosshairConfigRejected)
+        self.assertIn('Certificate double-read changed:',str(raised.exception))
+
+    def test_invalid_final_registry_remains_hard_after_other_registry_change(self):
+        for invalid in (b'\0'*15,struct.pack('<Qii',0,2000,3000)):
+            with self.subTest(invalid=invalid):
+                r=Fixture()
+                self.registry_reads(r,'objects_header',
+                    [struct.pack('<Qii',r.od,2000,3000)]*2+[struct.pack('<Qii',r.od+8,2000,3000)])
+                self.registry_reads(r,'names_header',
+                    [struct.pack('<Qii',r.nd,2000,3000)]*2+[invalid])
+                with self.assertRaises(CrosshairConfigRejected) as raised:
+                    build_crosshair_assignment_config(r,r.camera)
+                self.assertIs(type(raised.exception),CrosshairConfigRejected)
+
+    def test_selected_evidence_mutation_remains_hard_alongside_registry_growth(self):
+        mutations={
+            'identity':lambda r:r.put(r.weapon+80,struct.pack('<Q',r.classes['Object'])),
+            'link':lambda r:r.put(r.pawn+0x440,struct.pack('<Q',r.pc)),
+            'script':lambda r:r.put(r.script+0x359,b'\x00'),
+            'property':lambda r:r.put(r.lhs+0x94,struct.pack('<I',0x1370)),
+            'object_slot':lambda r:r.put(r.od+r.objects.index(r.weapon)*8,bytes(8)),
+            'name_slot':lambda r:r.put(r.nd+r.names['Rifle']*8,bytes(8)),
+            'superclass':lambda r:r.put(r.classes['WarPC']+96,bytes(8)),
+            'native_bytes':lambda r:r.put(r.base+0x1d5efb,b'\x00'),
+            'native_slot':lambda r:r.put(r.base+0x1b86280+0x35*8,bytes(8)),
+            'copy_dispatch':lambda r:r.put(0xb002a8,bytes(8)),
+        }
+        for header_name in ('objects_header','names_header'):
+            for field,mutate in mutations.items():
+                with self.subTest(header=header_name,field=field):
+                    r=Fixture();read=r.read;header=getattr(r,header_name);calls=0
+                    ptr=r.od if header_name=='objects_header' else r.nd
+                    def changing(a,n):
+                        nonlocal calls
+                        if (a,n)==(header,16):
+                            calls+=1
+                            if calls==3:mutate(r)
+                            return struct.pack('<Qii',ptr,2000+100*(calls-1),3000)
+                        return read(a,n)
+                    r.read=changing
+                    with self.assertRaises(CrosshairConfigRejected) as raised:
+                        build_crosshair_assignment_config(r,r.camera)
+                    self.assertIs(type(raised.exception),CrosshairConfigRejected)
+                    self.assertIn('Certificate changed before completion: address=',str(raised.exception))
+
     def test_attested_execlet_entry_is_narrow_and_independently_bracketed(self):
         r=Fixture();original=bytes.fromhex(NATIVE_BYTES[0x1d7ad0]);calls=[]
         r.put(r.base+0x1d7ad0,b'\xe9'+bytes(31))

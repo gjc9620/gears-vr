@@ -30,7 +30,7 @@ class CrosshairConfigRejected(RuntimeError):
 
 
 class CrosshairRegistryChanged(CrosshairConfigRejected):
-    """Only a complete objects/names registry header changed during acquisition."""
+    """A complete objects/names header changed beyond monotonic count growth."""
 
 
 def _require(ok, reason):
@@ -39,7 +39,7 @@ def _require(ok, reason):
 
 
 def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False, entry_reader=None):
-    """Return a JSON-compatible certificate, rejecting any observed mutation.
+    """Certify selected evidence, allowing only bounded registry count growth.
 
 Requires original execLet bytes, read directly at startup or through the
 caller's bound owned-hook attestation capability during world recovery.
@@ -73,11 +73,32 @@ def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
         error = CrosshairRegistryChanged if registry_header(a, n) else CrosshairConfigRejected
         raise error(f'{phase}: address={a:#x} size={n}')
 
+    def registry_parts(value):
+        ptr, count, cap = struct.unpack('<Qii', value)
+        _require(ptr and 1000 < count <= cap < 4000000, 'Invalid registry')
+        return ptr, count, cap
+
+    def registry_append(previous, current):
+        old_ptr, old_count, old_cap = registry_parts(previous)
+        ptr, count, cap = registry_parts(current)
+        return ptr == old_ptr and cap == old_cap and count >= old_count
+
     def stable(a, n):
         _require(type(a) is int and 0 < a < (1 << 64) - n, 'Invalid read range')
         x = r.read(a, n)
         y = r.read(a, n)
         _require(len(x) == n and len(y) == n, f'Incomplete certificate read: address={a:#x} size={n}')
+        if registry_header(a, n):
+            # Validate both complete observations before classifying a change.
+            # Remember the latest count so growth followed by shrink rejects.
+            registry_parts(x); registry_parts(y)
+            if (a, n) in checks and not registry_append(checks[a, n], x):
+                changed(a, n, 'Certificate read changed during assembly')
+            if not registry_append(x, y):
+                changed(a, n, 'Certificate double-read changed')
+            checks[a, n] = y
+            # Selected identities stay bounded by the first observed count.
+            return x
         if y != x:
             changed(a, n, 'Certificate double-read changed')
         if (a, n) in checks:
@@ -90,8 +111,7 @@ def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
         return struct.unpack(fmt, stable(a, struct.calcsize(fmt)))[0]
 
     def registry(a):
-        ptr, count, cap = struct.unpack('<Qii', stable(a, 16))
-        _require(ptr and 1000 < count <= cap < 4000000, 'Invalid registry')
+        ptr, count, _ = registry_parts(stable(a, 16))
         return ptr, count
 
     objects, oc = registry(r.objects_header)
@@ -271,11 +291,11 @@ def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
     for (address, size), value in checks.items():
         final = r.read(address, size)
         _require(len(final) == size, f'Incomplete final certificate read: address={address:#x} size={size}')
-        if final != value:
-            if registry_header(address, size):
+        if registry_header(address, size):
+            if not registry_append(value, final):
                 registry_change = (address, size)
-            else:
-                changed(address, size, 'Certificate changed before completion')
+        elif final != value:
+            changed(address, size, 'Certificate changed before completion')
     # A concurrently observed identity/link/script change always stays a hard
     # rejection, even when an earlier registry header also changed.
     if registry_change:
