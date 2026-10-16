@@ -130,7 +130,10 @@ inline bool plan(gears_viewport::DrawState const& saved,unsigned full_width,unsi
         const double scale=double(viewport.height)/full_height;
         const double t=(std::max)(0.,double(scissor.y)*scale+ty);
         const double b=(std::min)(double(full_height),(double(scissor.y)+scissor.height)*scale+ty);
-        if(!(r>l&&b>t))return false;
+        // Clipping is not a projection failure: retrying an infinite aim here
+        // would give members of one reticle group different viewport maps.
+        // Keep this eye's finite map and draw with an in-eye empty D3D scissor.
+        if(!(r>l&&b>t)){scissor={float(origin),0,0,0};continue;}
         scissor={float(std::floor(l)),float(std::floor(t)),float(std::ceil(r)-std::floor(l)),float(std::ceil(b)-std::floor(t))};
     }
     out=result;return true;

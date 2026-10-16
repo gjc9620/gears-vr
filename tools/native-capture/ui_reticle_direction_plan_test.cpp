@@ -90,6 +90,43 @@ static void finite_tests(){
     near(finite.viewports[0].y,0);near(finite.viewports[1].y,0);
     for(unsigned eye=0;eye<2;++eye){near(finite.viewports[eye].width,infinite.viewports[eye].width);
         near(finite.viewports[eye].height,infinite.viewports[eye].height);}
+    // A draw's clip cannot choose a different projection for the same aim.
+    // These nonempty source clips leave only one eye visible after translation.
+    for(unsigned side=0;side<2;++side){auto clipped=s;
+        clipped.scissor={side?0.f:3800.f,0,40,2160};
+        gears_viewport::OverlayPlan narrow{};
+        assert(gears_ui_reticle::plan(clipped,3840,2160,g,narrow));
+        assert(narrow.viewports==finite.viewports);
+        const unsigned empty_eye=side,visible_eye=1-side;
+        assert((narrow.scissors[empty_eye]==gears_viewport::Rect{float(empty_eye*1920),0,0,0}));
+        assert((narrow.scissors[visible_eye]==gears_viewport::Rect{side?60.f:3760.f,0,20,2160}));
+        // The production replay forwards empty clips, completes both draws,
+        // and restores the original rectangles. D3D conversion keeps zero area.
+        unsigned viewports=0,scissors=0,draws=0;
+        const auto mask=gears_viewport::replay_overlay(clipped,narrow,
+            [&](gears_viewport::Rect r,float minimum,float maximum){
+                assert(r==(viewports<2?narrow.viewports[viewports]:clipped.viewport));
+                assert(minimum==clipped.min_depth&&maximum==clipped.max_depth);++viewports;},
+            [&](gears_viewport::Rect r){
+                assert(r==(scissors<2?narrow.scissors[scissors]:clipped.scissor));
+                if(scissors==empty_eye){const long left=static_cast<long>(r.x),top=static_cast<long>(r.y);
+                    assert(left==static_cast<long>(r.x+r.width)&&top==static_cast<long>(r.y+r.height));}
+                ++scissors;},
+            [&](unsigned eye){assert(eye==draws&&viewports==eye+1&&scissors==eye+1);++draws;});
+        assert(mask==3&&viewports==3&&scissors==3&&draws==2);
+        // An empty first eye must not bypass invalid geometry in the second.
+        if(!side){auto bad=g;bad.eyes.view[1][14]=-3;reject(bad,clipped);}
+    }
+    // Top/bottom clipping may empty both eyes without invalidating the aim.
+    for(unsigned side=0;side<2;++side){auto vertical=g;vertical.finite_aim.point[1]=side?-.125f:.125f;
+        auto clipped=s;clipped.scissor={0,side?2120.f:0.f,3840,40};
+        gears_viewport::OverlayPlan full{},narrow{};
+        assert(gears_ui_reticle::plan(s,3840,2160,vertical,full));
+        assert(gears_ui_reticle::plan(clipped,3840,2160,vertical,narrow));
+        assert(narrow.viewports==full.viewports);
+        for(unsigned eye=0;eye<2;++eye)
+            assert((narrow.scissors[eye]==gears_viewport::Rect{float(eye*1920),0,0,0}));
+    }
     // A common world-origin change moves the point and both camera positions;
     // it must preserve the finite image, including clipped scissors.
     auto shifted=g;const float translation[3]{16,-8,4};
@@ -146,7 +183,14 @@ int main(){auto g=geometry();auto s=state();gears_viewport::OverlayPlan p{};
     bad=g;bad.eyes.projection[1][8]=2;reject(bad); // Direction outside eye bounds.
     bad=g;bad.source_projection[3]=1;reject(bad);bad=g;bad.eyes.view[0][3]=1;reject(bad);
     auto invalid=s;invalid.viewport_count=2;reject(g,invalid);invalid=s;invalid.scissor.width=0;reject(g,invalid);
-    invalid=s;invalid.scissor={0,0,10,10};reject(asym,invalid); // Shifted clip empty.
+    for(auto clip:std::array<gears_viewport::Rect,6>{{{0,0,40,0},{0,0,-1,40},{0,0,40,-1},
+            {3840,0,40,40},{0,2160,40,40},{.5f,0,40,40}}}){
+        invalid=s;invalid.scissor=clip;reject(g,invalid);}
+    invalid=s;invalid.scissor={0,0,10,10};
+    assert(gears_ui_reticle::plan(invalid,3840,2160,asym,p)); // Shifted clip empty.
+    assert(p.viewports==unchanged.viewports);
+    for(unsigned eye=0;eye<2;++eye)
+        assert((p.scissors[eye]==gears_viewport::Rect{float(eye*1920),0,0,0}));
     auto owned=s;owned.viewport={0,0,4096,2048};owned.scissor=owned.viewport;
     const double source_aspect=3840./2160;
     assert(gears_ui_reticle::plan(owned,4096,2048,g,p,source_aspect));
