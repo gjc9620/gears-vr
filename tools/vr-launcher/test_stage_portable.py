@@ -15,6 +15,15 @@ import portable_preflight as preflight
 
 
 class StageTests(unittest.TestCase):
+    def test_packaging_contains_every_generated_continuous_selftest_executable(self):
+        sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'native-capture'))
+        from startup_selftests import continuous_suite,capture_suite
+        suite=continuous_suite()
+        required={row[0] for row in suite}
+        self.assertTrue(required<=set(stage.NATIVE_TESTS))
+        self.assertIn('startup_selftests',stage.PROJECT_MODULES['native-capture'].split())
+        self.assertIn('TwoViewRendererShadowTest.exe',stage.NATIVE_TESTS)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.base = Path(self.temp.name); self.root = self.base / 'source'; self.python = self.base / 'python'
@@ -65,7 +74,7 @@ class StageTests(unittest.TestCase):
     def test_new_runtime_modules_import_only_from_stage_without_repository_fallback(self):
         repository = Path(__file__).resolve().parents[2]
         modules = {'debug-launch': 'tiny_output_recovery', 'game-io': 'movie_state',
-                   'native-capture': 'camera_closer_options'}
+                   'native-capture': 'camera_closer_options startup_selftests'}
         paths = ['tools/vr-launcher/' + name + '.py' for name in ('stage_portable', 'portable_preflight')]
         paths += ['tools/' + folder + '/' + name + '.py' for folder, names in modules.items() for name in names.split()]
         for relative in paths:
@@ -82,7 +91,7 @@ class StageTests(unittest.TestCase):
         result = subprocess.run(command, cwd=self.destination, capture_output=True, text=True, timeout=30,
                                 creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(set(json.loads(result.stdout)), {'tiny_output_recovery', 'movie_state', 'camera_closer_options'})
+        self.assertEqual(set(json.loads(result.stdout)), {'tiny_output_recovery', 'movie_state', 'camera_closer_options','startup_selftests'})
         # Removing a required staged helper must fail instead of finding this
         # developer checkout, an environment path, or a cached imported module.
         (self.destination / 'tools/debug-launch/tiny_output_recovery.py').unlink()

@@ -138,6 +138,8 @@ class AnchorStartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             build=pathlib.Path(directory);dll=build/'Mock.dll'
             dll.write_bytes(b'fixture');(build/'CaptureSelfTest.exe').write_bytes(b'fixture')
+            from startup_selftests import continuous_suite
+            for name,_,_ in continuous_suite():(build/name).write_bytes(b'fixture')
             (build/'target-prime-status.txt').write_text('fixture')
             args=types.SimpleNamespace(pid=1,build_dir=build,dll_name=dll.name,stereo_units_per_metre=100,
                 crosshair_assignment_observer=True,ui_observer=True,anchor_observer=True)

@@ -86,8 +86,10 @@ def settings(config,manifest,root=ROOT):
     hud_horizontal_fov(config,manifest)
     hud_layout(config,manifest)
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
-    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','graphics_startup_lock','graphics_menu_lock')):
+    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','startup_selftests_prelaunch','graphics_startup_lock','graphics_menu_lock')):
         raise ValueError('Manifest session options must be boolean')
+    if manifest.get('startup_selftests_prelaunch',False) and not manifest.get('startup_menu',False):
+        raise ValueError('Prelaunch self-tests require owned startup')
     if manifest.get('graphics_startup_lock',False) and not manifest.get('startup_menu',False):
         raise ValueError('Startup graphics lock requires owned startup menu lifecycle')
     if manifest.get('menu_recovery',False) and not manifest.get('startup_menu',False):
@@ -197,6 +199,7 @@ class Backend:
         return [int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
     def reserve(self,manifest,log,owner=None,game_path=None,foreground=False):
         receipt=log.with_name(log.name+'.'+uuid.uuid4().hex+'.birth.json')
+        preflight_nonce=uuid.uuid4().hex if owner and manifest.get('startup_selftests_prelaunch',False) else None
         cmd=[sys.executable,str(ROOT/'tools/native-capture/launch_reserve.py'),'--build-dir',str(rooted(manifest['native_build'])),
              '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link',
              '--launch-receipt',str(receipt)]
@@ -204,6 +207,7 @@ class Backend:
         if foreground:cmd+=['--foreground']
         if owner:
             cmd+=['--prime-owner-pid',str(owner['pid']),'--prime-owner-creation-time',str(owner['creation_time'])]
+        if preflight_nonce:cmd+=['--startup-preflight-nonce',preflight_nonce]
         if manifest.get('graphics_startup_lock',False):cmd+=['--graphics-startup-lock']
         if manifest.get('graphics_menu_lock',False):cmd+=['--graphics-menu-lock']
         selected=rooted(game_path if game_path is not None else manifest['game_path'])
@@ -246,6 +250,18 @@ class Backend:
                 rooted(accepted.get('image',''))!=selected or
                 report.get('game_sha256','').lower()!=manifest['game_sha256'].lower()):
             raise RuntimeError('Reservation executable identity/hash mismatch')
+        if preflight_nonce:
+            sys.path.insert(0,str(ROOT/'tools/native-capture'))
+            from startup_selftests import validate_proof,encoded
+            proof=report.get('startup_selftest_proof')
+            proof_dll=rooted(manifest['native_build'])/manifest['native_dll']
+            validate_proof(proof,proof_dll,owner,accepted,preflight_nonce)
+            if proof['artifacts'][str(proof_dll.resolve()).casefold()]!=manifest['native_sha256']:
+                raise RuntimeError('Startup self-test DLL differs from manifest')
+            path=log.with_name(log.name+'.'+preflight_nonce+'.selftests.json')
+            raw=encoded(proof)
+            with path.open('xb') as stream:stream.write(raw)
+            report['startup_selftest_handshake']=dict(path=str(path),digest=hashlib.sha256(raw).hexdigest(),nonce=preflight_nonce)
         return report
     def close_uninjected_reservation(self,receipt,selected,*,clock=time.monotonic,sleep=time.sleep):
         if not receipt.exists():return {'status':'no_birth_receipt'}
@@ -449,6 +465,9 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         args=SimpleNamespace(pid=pid,build_dir=rooted(manifest['native_build']),dll_name=manifest['native_dll'],
             xr_build_dir=rooted(manifest['xr_build']),stereo_units_per_metre=scale,startup_timeout=45.,cleanup_timeout=35.,
             native_expected_sha256=manifest['native_sha256'])
+        handshake=reserved.get('startup_selftest_handshake')
+        if handshake:
+            args.startup_selftest_proof=handshake['path'];args.startup_selftest_digest=handshake['digest'];args.startup_selftest_nonce=handshake['nonce']
         for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
         hud_fov=hud_horizontal_fov(config,manifest)
         if hud_fov is not None:args.hud_horizontal_fov_degrees=hud_fov

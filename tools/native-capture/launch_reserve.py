@@ -114,6 +114,7 @@ def main():
     parser.add_argument('--foreground',action='store_true',help='Use the ordinary foreground game startup policy')
     parser.add_argument('--dll-name',default='GearsCapturePrepare.dll')
     parser.add_argument('--launch-receipt',type=pathlib.Path,help=argparse.SUPPRESS)
+    parser.add_argument('--startup-preflight-nonce',help=argparse.SUPPRESS)
     parser.add_argument('--check-shadow-copy',action='store_true',help='Require the bounded source-view copy self-test before startup; does not enable the experiment')
     parser.add_argument('--check-shadow-state',action='store_true',help='Require the independent state lifecycle self-test before startup')
     parser.add_argument('--prime-targets',action='store_true',help='Observe RTV creation/copies during loading, bounded to 180 seconds or capture handoff')
@@ -136,24 +137,49 @@ def main():
     exe=validate_game(args.game_path) # Before self-tests, launch, or startup policy writes.
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     build=args.build_dir.resolve();dll=build/args.dll_name
-    if args.graphics_menu_lock:run_hidden([str(build/'GraphicsMenuLockTest.exe')],check=True)
-    for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime'],['--prepare']):run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
-    run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--geometry'],check=True)
-    if args.check_shadow_copy:run_hidden([str(build/'SourceViewShadowTest.exe')],check=True)
-    if args.check_shadow_state:run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--state'],check=True)
-    if args.check_mask_control:run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--first-view-mask'],check=True)
+    startup_proof=None
+    scheduled=[]
+    def schedule(command,**kwargs):scheduled.append((command,kwargs))
+    if args.graphics_menu_lock:schedule([str(build/'GraphicsMenuLockTest.exe')],check=True)
+    for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime'],['--prepare']):schedule([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
+    schedule([str(build/'CaptureSelfTest.exe'),str(dll),'--geometry'],check=True)
+    if args.check_shadow_copy:schedule([str(build/'SourceViewShadowTest.exe')],check=True)
+    if args.check_shadow_state:schedule([str(build/'CaptureSelfTest.exe'),str(dll),'--state'],check=True)
+    if args.check_mask_control:schedule([str(build/'CaptureSelfTest.exe'),str(dll),'--first-view-mask'],check=True)
     if args.check_frame_link:
-        run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--frame-link'],check=True)
-        run_hidden([str(build/'FrameLinkTest.exe')],check=True)
+        schedule([str(build/'CaptureSelfTest.exe'),str(dll),'--frame-link'],check=True)
+        schedule([str(build/'FrameLinkTest.exe')],check=True)
     if args.prime_targets:
-        run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--quad'],check=True)
-        run_hidden([str(build/'GpuViewportStatsTest.exe')],check=True)
-        run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--viewport'],check=True)
-        run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--prime'],check=True)
-        run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--prime-handoff'],check=True)
+        schedule([str(build/'CaptureSelfTest.exe'),str(dll),'--quad'],check=True)
+        schedule([str(build/'GpuViewportStatsTest.exe')],check=True)
+        schedule([str(build/'CaptureSelfTest.exe'),str(dll),'--viewport'],check=True)
+        schedule([str(build/'CaptureSelfTest.exe'),str(dll),'--prime'],check=True)
+        schedule([str(build/'CaptureSelfTest.exe'),str(dll),'--prime-handoff'],check=True)
         if owned:
             for mode in ('--prime-owned-cancel','--prime-owned-exit','--prime-owned-handoff'):
-                run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),mode],check=True)
+                schedule([str(build/'CaptureSelfTest.exe'),str(dll),mode],check=True)
+    if args.startup_preflight_nonce is not None:
+        if not(owned and args.check_shadow_state and args.check_mask_control and args.check_frame_link):
+            raise RuntimeError('Owned complete reservation required for startup self-test proof')
+        if len(args.startup_preflight_nonce)!=32 or any(ch not in '0123456789abcdef' for ch in args.startup_preflight_nonce):
+            raise RuntimeError('Invalid startup self-test nonce')
+        def check_preflight_owner():
+            current=WindowsControl().identity(args.prime_owner_pid)
+            if not current or current['creation_time']!=args.prime_owner_creation_time:
+                raise RuntimeError('Startup self-test owner exited or changed')
+        check_preflight_owner()
+        from startup_selftests import continuous_suite,run_suite,make_proof
+        suite=continuous_suite();started=time.perf_counter_ns()
+        hashes=run_suite(dll,suite,run_hidden)
+        completed={(row[0],tuple(row[1])) for row in suite}
+        for command,options in scheduled:
+            key=(pathlib.Path(command[0]).name,tuple('@dll' if value==str(dll) else value for value in command[1:]))
+            if key not in completed:run_hidden(command,**options)
+        check_preflight_owner()
+        startup_proof=make_proof(dll,suite,hashes,dict(pid=args.prime_owner_pid,creation_time=args.prime_owner_creation_time),args.startup_preflight_nonce)
+        print(json.dumps({'reservation_selftests_prelaunch_ms':(time.perf_counter_ns()-started)/1e6,'capture_suite_tests':len(suite)}),flush=True)
+    else:
+        for command,options in scheduled:run_hidden(command,**options)
     result=run_hidden(['powershell','-NoProfile','-NonInteractive','-Command',"if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"],capture_output=True)
     if result.returncode:raise RuntimeError('Existing game must exit normally first')
     pe=pefile.PE(str(dll));export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureReserve')
@@ -189,6 +215,10 @@ def main():
         control=WindowsControl()
         if control.identity(pid)!=game_identity or pathlib.Path(game_identity['image']).resolve()!=exe:
             raise RuntimeError('Fresh process identity differs from selected installation')
+        if startup_proof is not None:
+            from startup_selftests import artifacts
+            if artifacts(dll,startup_proof['suite'])!=startup_proof['artifacts']:
+                raise RuntimeError('Prelaunch self-test artifacts changed before reservation')
         validate_game(exe) # Recheck selected bytes before any injection.
         check_live()
         if time.monotonic()>=deadline:raise RuntimeError('Reservation readiness deadline before injection')
@@ -271,6 +301,9 @@ def main():
                 'native_hooks_enabled':bool(graphics_hooks),'graphics_hooks_enabled':graphics_hooks,'scene_hooks_enabled':False,
                 'descriptor_hooks_enabled':3 if args.prime_targets else 0,'independent_entry_checks':entries}
         report['factory_hooks_enabled']=3 if args.prime_targets and frame_link_capable else 0
+        if startup_proof is not None:
+            startup_proof['game_identity']=game_identity
+            report['startup_selftest_proof']=startup_proof
         if args.prime_targets:
             report['prime_lifetime']='owner' if owned else '180_seconds'
             if owned:report.update(prime_owner_pid=args.prime_owner_pid,prime_owner_creation_time=args.prime_owner_creation_time)

@@ -52,6 +52,50 @@ class FakeBackend:
         return dict(pawn='0x200',controller='0x100',camera='0x400',level='0x300',timestamp=float(self.samples))
 
 class LauncherTests(unittest.TestCase):
+    def test_prelaunch_selftest_option_requires_boolean_and_owned_startup(self):
+        for value in (1,'true',None):
+            with self.assertRaisesRegex(ValueError,'boolean'):
+                launcher.settings({},dict(MANIFEST,startup_selftests_prelaunch=value))
+        with self.assertRaisesRegex(ValueError,'owned startup'):
+            launcher.settings({},dict(MANIFEST,startup_selftests_prelaunch=True,startup_menu=False))
+
+    def test_owned_prelaunch_handshake_requires_current_successful_reservation(self):
+        sys.path.insert(0,str(launcher.ROOT/'tools/native-capture'))
+        import startup_selftests as tests
+        import run_stereo_continuous as runner
+        with tempfile.TemporaryDirectory() as directory:
+            root=pathlib.Path(directory);dll=root/'Fixture.dll';dll.write_bytes(b'dll')
+            for name,_,_ in tests.continuous_suite():(root/name).write_bytes(name.encode())
+            owner=dict(pid=7,creation_time=8)
+            manifest=dict(MANIFEST,startup_menu=True,startup_selftests_prelaunch=True,native_build=str(root),native_dll=dll.name,
+                          native_sha256=tests.digest(dll))
+            game=dict(pid=55,creation_time=456,image=str(launcher.rooted(MANIFEST['game_path'])))
+            backend=launcher.Backend.__new__(launcher.Backend)
+            for scenario in ('valid','nonce','owner','game','failed'):
+                log=root/(scenario+'.log')
+                def reserve(command,**kwargs):
+                    nonce=command[command.index('--startup-preflight-nonce')+1]
+                    proof=tests.make_proof(dll,tests.continuous_suite(),tests.artifacts(dll,tests.continuous_suite()),owner,nonce)
+                    proof['game_identity']=game.copy()
+                    if scenario=='nonce':proof['nonce']='b'*32
+                    if scenario=='owner':proof['owner']['creation_time']+=1
+                    if scenario=='game':proof['game_identity']['pid']+=1
+                    report=dict(pid=55,game_identity=game,game_sha256=MANIFEST['game_sha256'],trampolines_reserved=True,
+                        hooks_enabled=True,native_hooks_enabled=False,first_view_mask_reserved=True,independent_entry_checks=[{'matches':True}],
+                        prime_lifetime='owner',prime_owner_pid=7,prime_owner_creation_time=8,startup_selftest_proof=proof)
+                    return SimpleNamespace(returncode=1 if scenario=='failed' else 0,stdout=json.dumps(report),stderr='')
+                with mock.patch.object(launcher.subprocess,'run',side_effect=reserve):
+                    if scenario!='valid':
+                        with self.assertRaises(RuntimeError):backend.reserve(manifest,log,owner=owner)
+                        self.assertFalse(list(root.glob(log.name+'.*.selftests.json')))
+                    else:
+                        accepted=backend.reserve(manifest,log,owner=owner);handshake=accepted['startup_selftest_handshake']
+                        self.assertTrue(pathlib.Path(handshake['path']).exists())
+                        args=SimpleNamespace(pid=55,build_dir=root,dll_name=dll.name,stereo_units_per_metre=100,
+                            **{'startup_selftest_'+key:handshake[key] for key in ('digest','nonce')},startup_selftest_proof=handshake['path'])
+                        command=runner.native_command(args,owner)
+                        for key in ('proof','digest','nonce'):self.assertIn('--startup-selftest-'+key,command)
+
     def test_camera_distance_capability_and_value(self):
         manifest={'camera_distance_control':True,'anchor_observer':True,'cinematic_camera':True}
         self.assertEqual(launcher.camera_closer({},{}),0)

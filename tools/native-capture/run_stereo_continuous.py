@@ -134,6 +134,8 @@ def native_command(args,owner):
             '--frame-link-diagnostics','--require-target-prime','--stereo-gpu-publish']
     if camera_closer_metres(args)>0:command+=['--camera-closer-metres',str(camera_closer_metres(args))]
     if getattr(args,'outage_diagnostics',False):command.append('--outage-diagnostics')
+    for key in ('startup_selftest_proof','startup_selftest_digest','startup_selftest_nonce'):
+        if getattr(args,key,None) is not None:command+=['--'+key.replace('_','-'),str(getattr(args,key))]
     if getattr(args,'anchor_observer',False):command.append('--anchor-observer')
     if getattr(args,'cinematic_camera',False):command.append('--cinematic-camera')
     if getattr(args,'origin_trial',False):command.append('--origin-trial')

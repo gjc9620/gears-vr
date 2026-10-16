@@ -9,10 +9,8 @@ from ctypes import wintypes as w
 import json
 import math
 import pathlib
-import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from prime_owner import pending_prime
 ROOT=pathlib.Path(__file__).resolve().parents[2]
@@ -343,6 +341,9 @@ def main():
     parser.add_argument('--seconds',type=int,default=90,choices=range(10,181))
     parser.add_argument('--build-dir',type=pathlib.Path,default=pathlib.Path(__file__).with_name('build'))
     parser.add_argument('--dll-name',default='GearsCapture.dll',help='Name of an independently built diagnostic DLL')
+    parser.add_argument('--startup-selftest-proof',type=pathlib.Path,help=argparse.SUPPRESS)
+    parser.add_argument('--startup-selftest-digest',help=argparse.SUPPRESS)
+    parser.add_argument('--startup-selftest-nonce',help=argparse.SUPPRESS)
     parser.add_argument('--use-reserved',action='store_true',help='Activate the same DLL whose unenabled trampolines were reserved during fresh startup')
     mode=parser.add_mutually_exclusive_group()
     mode.add_argument('--wobble',action='store_true',help='Enable the gated 1.5-degree render-only yaw test')
@@ -448,41 +449,24 @@ def main():
     test=dll.with_name('CaptureSelfTest.exe')
     if not dll.is_file() or not test.is_file():raise RuntimeError('Build capture DLL and self-test first')
     selftests_started=time.perf_counter_ns()
-    run_hidden([str(test),str(dll)],check=True)
-    if args.gpu_diagnostics: run_hidden([str(test),str(dll),'--gpu'],check=True)
-    if args.first_view_mask_control:run_hidden([str(test),str(dll),'--first-view-mask'],check=True)
-    if args.view_union_mask_fix:run_hidden([str(test),str(dll),'--view-union-mask'],check=True)
-    if args.frame_link_diagnostics:
-        # The game prime watchdog owns the original directory's status file.
-        # Exercise identical DLL bytes in an isolated directory, without touching
-        # that live file or omitting the factory/association ABI checks.
-        with tempfile.TemporaryDirectory(prefix='gears-frame-link-selftest-') as directory:
-            isolated=pathlib.Path(directory)
-            isolated_dll=pathlib.Path(shutil.copy2(dll,isolated/dll.name))
-            isolated_test=pathlib.Path(shutil.copy2(test,isolated/test.name))
-            if isolated_dll.read_bytes()!=dll.read_bytes():raise RuntimeError('Self-test DLL copy differs')
-            run_hidden([str(isolated_test),str(isolated_dll),'--frame-link'],check=True)
-        run_hidden([str(dll.with_name('FrameLinkTest.exe'))],check=True)
-    if args.color_copy_diagnostics:
-        run_hidden([str(test),str(dll),'--color-copy'],check=True)
-        run_hidden([str(test),str(dll),'--color-copy-system'],check=True)
-    if args.viewport_diagnostics:
-        run_hidden([str(test),str(dll),'--geometry'],check=True)
-        run_hidden([str(test),str(dll),'--quad'],check=True)
-        run_hidden([str(dll.with_name('GpuViewportStatsTest.exe'))],check=True)
-        run_hidden([str(test),str(dll),'--viewport'],check=True)
-    if args.family_diagnostics: run_hidden([str(test),str(dll),'--family'],check=True)
-    if args.family_diagnostics: run_hidden([str(test),str(dll),'--clone'],check=True)
-    if args.family_diagnostics: run_hidden([str(test),str(dll),'--renderer'],check=True)
-    if args.family_diagnostics: run_hidden([str(test),str(dll),'--lifetime'],check=True)
-    if args.family_diagnostics: run_hidden([str(test),str(dll),'--prepare'],check=True)
-    if args.shadow_view: run_hidden([str(dll.with_name('SourceViewShadowTest.exe'))],check=True)
-    if args.shadow_constructor: run_hidden([str(dll.with_name('SourceViewArgsTest.exe'))],check=True)
-    if args.constructor_eye: run_hidden([str(dll.with_name('SourceEyeArgsTest.exe'))],check=True)
-    if args.renderer_pair: run_hidden([str(dll.with_name('TwoViewRendererShadowTest.exe'))],check=True)
-    if args.submit_pair: run_hidden([str(dll.with_name('SplitSourceViewsTest.exe'))],check=True)
-    if args.submit_pair_seconds or args.continuous_session:run_hidden([str(dll.with_name('SubmittedViewLifetimeTest.exe'))],check=True)
-    if args.shadow_state: run_hidden([str(test),str(dll),'--state'],check=True)
+    from startup_selftests import capture_suite,continuous_suite,run_suite,consume_proof
+    startup_proof=None
+    proof_options=(args.startup_selftest_proof,args.startup_selftest_digest,args.startup_selftest_nonce)
+    if any(proof_options):
+        if not all(proof_options) or not(args.continuous_session and args.use_reserved and args.require_target_prime):
+            raise RuntimeError('Complete owned startup self-test handshake required')
+        if capture_suite(args)!=continuous_suite():raise RuntimeError('Startup self-test proof does not cover requested flags')
+        # The expected digest/nonce arrived through the current successful
+        # reservation report, not from the self-declared proof document.
+        check=preparation_live_guard(args.pid,args.continuous_owner_pid,args.continuous_owner_creation_time);check()
+        from run_stereo_continuous import WindowsControl
+        game=WindowsControl().identity(args.pid)
+        startup_proof=consume_proof(args.startup_selftest_proof,args.startup_selftest_digest,dll=dll,
+            owner=dict(pid=args.continuous_owner_pid,creation_time=args.continuous_owner_creation_time),
+            game=game,nonce=args.startup_selftest_nonce)
+        check()
+        preparation_timing('self_tests_proof_verification',selftests_started)
+    else:run_suite(dll,capture_suite(args),run_hidden)
     preparation_timing('self_tests_total',selftests_started)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     check_preparation=preparation_live_guard(args.pid,args.continuous_owner_pid,args.continuous_owner_creation_time)
@@ -614,6 +598,10 @@ def main():
         if export.forwarder:raise RuntimeError('Unexpected forwarded capture export')
         status=dll.with_name('capture-status.txt')
         previous_status_mtime=status.stat().st_mtime_ns if status.exists() else None
+        check_preparation()
+        if startup_proof is not None:
+            from startup_selftests import validate_proof
+            validate_proof(startup_proof,dll,dict(pid=args.continuous_owner_pid,creation_time=args.continuous_owner_creation_time),game,args.startup_selftest_nonce)
         check_preparation()
         code=remote_call(handle,module_base+export.address,None)
         if code:raise RuntimeError(f'Capture start failed: {code}')
