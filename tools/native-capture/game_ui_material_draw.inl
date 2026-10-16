@@ -1,3 +1,4 @@
+#include "game_ui_material_target.h"
 namespace game_material {
 bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::DrawArgs args){
     if(!current||!current->entered||current->bad||current->context!=ui_material_context||!recording.load())return false;
@@ -20,10 +21,10 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
        !gears_game_material::upload_matches(*u,reinterpret_cast<uintptr_t>(&c),reinterpret_cast<uintptr_t>(list),native_list,stride,topology,quad)||
        !gears_ui_material::classify_draw({base},c.consumer,quad,caller,args,candidate))return reject(2);
     if(frame_target_stats.descriptor_capacity_lost()||binding.targets!=1||binding.target.mip||
-       !binding.target.width||binding.target.width>8192||!binding.target.height||binding.target.height>8192||
-       !swapchain_bindings.known_buffer(binding.target.resource))return reject(3);
+       !binding.target.width||binding.target.width>8192||!binding.target.height||binding.target.height>8192)return reject(3);
     const gears_frame_link::Target target{binding.target.resource,unsigned(binding.target.width),binding.target.height};
-    const auto pair=frame_link.overlay_pair(ref,target);
+    const auto pair=gears_game_material::material_target_pair(frame_link,ref,target,binding.target.format,
+        swapchain_bindings.known_buffer(binding.target.resource),final_transfer_live::enabled());
     diagnostic.ticket=pair.ticket;diagnostic.pair_rejection=pair.rejection;
     if(!pair.linked||!pair.ticket)return reject(4);
     gears_ui_material::ViewPlane plane{};gears_ui_material::ViewPlaneReject plane_reject{};

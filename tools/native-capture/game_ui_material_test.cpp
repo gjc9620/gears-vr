@@ -1,5 +1,7 @@
 #include "game_ui_material.h"
+#include "game_ui_material_target.h"
 #include "gpu_viewport_stats.h"
+#include <memory>
 #include <cstdio>
 #include <stdexcept>
 using namespace gears_game_material;
@@ -43,5 +45,34 @@ int main(){
     CHECK(threw&&calls==1&&viewport==saved.viewport&&scissor==saved.scissor&&minimum==.2f&&maximum==.8f);
     auto invalid=plan;invalid.valid=false;calls=0;
     CHECK(!gears_viewport::replay_overlay(saved,invalid,vp,sc,[&](unsigned){++calls;})&&calls==0);
+    // Runtime regression: certified Material writes land on the intermediate
+    // stereo source, before the attested transfer to the swapchain backbuffer.
+    for(unsigned mode=0;mode<10;++mode){
+        auto tracker=std::make_unique<gears_frame_link::Tracker>();
+        auto ref=tracker->reset_success(1);
+        const gears_frame_link::Target source{100,3840,2160},destination{101,3840,2161};
+        CHECK(tracker->draw_final(ref,7,0,source,{0,0,1920,2160}));
+        if(mode!=1)CHECK(tracker->draw_final(ref,7,1,source,{1920,0,1920,2160}));
+        if(mode==2)CHECK(tracker->draw_unknown(ref,source.resource));
+        if(mode==3)tracker->reset_success(1); // Reset invalidates the old generation.
+        if(mode==4){CHECK(tracker->execute(200,&ref,1));ref=tracker->reset_success(2);}
+        if(mode==5){auto other=tracker->reset_success(2);
+            CHECK(tracker->draw_final(other,8,0,{102,3840,2160},{0,0,1920,2160}));}
+        if(mode==6)tracker->invalidate_all();
+        auto target=source;if(mode==9)--target.height;
+        auto admission=material_target_pair(*tracker,ref,target,mode==7?28:24,false,mode!=8);
+        CHECK(admission.linked==(mode==0));
+        if(mode==0){
+            CHECK(admission.ticket==7&&!admission.from_executed);
+            CHECK(tracker->draw_overlay_pair(ref,7,source,admission.eyes,3));
+            CHECK(tracker->draw_transfer(ref,source,destination));
+            CHECK(tracker->execute(200,&ref,1));
+            auto result=tracker->present(destination.resource,200);
+            CHECK(result.linked&&result.ticket==7&&result.eyes[1].height==2161);
+        }
+        // Existing backbuffer executed-continuation support is retained, but
+        // it must never admit that same source as an intermediate continuation.
+        if(mode==4)CHECK(material_target_pair(*tracker,ref,source,24,true,true).linked);
+    }
     std::puts("game Material certificate rejection/completion/two-eye restoration checks passed");
 }

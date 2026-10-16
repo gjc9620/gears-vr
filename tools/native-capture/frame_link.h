@@ -484,6 +484,13 @@ public:
     Result recorded_pair(ListRef ref,Target target) {
         std::lock_guard<std::mutex> lock(mutex_);return recorded_pair_locked(ref,target);
     }
+    // Before a material write to an intermediate transfer source, require the
+    // current ticket in this recording. Never borrow an executed continuation.
+    Result current_recorded_pair(ListRef ref,Target target) {
+        std::lock_guard<std::mutex> lock(mutex_);auto result=recorded_pair_locked(ref,target);
+        if(!result.ticket||result.ticket!=maximum_ticket_){result.linked=false;result.rejection|=ticket_conflict;}
+        return result;
+    }
     // Conditional CPU Execute ordering, not pixel/GPU-completion proof.
     Result overlay_pair(ListRef ref,Target target) {
         std::lock_guard<std::mutex> lock(mutex_);return overlay_pair_locked(ref,target,true);
