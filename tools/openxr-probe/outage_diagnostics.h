@@ -28,6 +28,8 @@ struct MenuCaptureSnapshot {
     CaptureResult result=CaptureResult::not_attempted;
     std::uint64_t attempts=0,no_frames=0,accepted=0,generation=0,hwnd=0;
     std::int64_t last_taken_100ns=0,epoch_100ns=0,accepted_100ns=0;
+    std::int64_t future_ahead_last_100ns=0,future_ahead_max_100ns=0;
+    std::uint64_t pending_reused=0,pending_dropped=0;
 };
 struct MenuSnapshot {
     MenuCaptureSnapshot capture{};

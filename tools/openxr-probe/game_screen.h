@@ -12,6 +12,7 @@
 #include "startup_capture_size.h"
 #include "menu_capture_epoch.h"
 #include "capture_frame_mailbox.h"
+#include "pending_capture_frame.h"
 #include "shutdown_diagnostics.h"
 #include "outage_diagnostics.h"
 #include "transition_card_layout.h"
@@ -30,6 +31,7 @@ class GameWindowFrames {
     using Frame=winrt::Windows::Graphics::Capture::Direct3D11CaptureFrame;
     using State=CaptureFrameMailbox<Frame>;
     std::shared_ptr<State> state=std::make_shared<State>();
+    PendingCaptureFrame<Frame> pending_frame;
     winrt::com_ptr<ID3D11Device> device;
     winrt::com_ptr<ID3D11DeviceContext> context;
     winrt::com_ptr<ID3D11Texture2D> staging;
@@ -73,6 +75,7 @@ class GameWindowFrames {
     }
     bool retire_capture()noexcept{
         // Never hold the callback mutex while Close waits for WGC callbacks.
+        pending_frame.discard();
         state->retire();
         try{if(item)item.Closed(closed_token);}catch(winrt::hresult_error const&){}
         try{if(pool)pool.FrameArrived(token);}catch(winrt::hresult_error const&){}
@@ -208,7 +211,7 @@ public:
     void begin_menu_epoch(){
         if(!startup)return;
         menu_epoch.begin(menu_capture_qpc_ticks());
-        state->discard();
+        pending_frame.discard();state->discard();
         // The pool owns two buffers. The timestamp gate also rejects any old
         // buffer whose callback arrives after this bounded drain completes.
         if(pool)try{for(unsigned i=0;i<2;++i){auto pending=pool.TryGetNextFrame();if(!pending)break;pending.Close();}}
@@ -224,7 +227,8 @@ public:
     }
     outage_diagnostics::MenuCaptureSnapshot diagnostic_snapshot()const{
         auto result=diagnostic_;result.generation=generation_;result.hwnd=uint64_t(window_identity());
-        result.epoch_100ns=menu_epoch.started();result.accepted_100ns=menu_epoch.captured();return result;
+        result.epoch_100ns=menu_epoch.started();result.accepted_100ns=menu_epoch.captured();
+        result.pending_reused=pending_frame.reused;result.pending_dropped=pending_frame.dropped;return result;
     }
     bool update() {
         ++diagnostic_.attempts;diagnostic_.result=outage_diagnostics::CaptureResult::capture_error;
@@ -234,12 +238,27 @@ public:
         using namespace winrt;
         using R=outage_diagnostics::CaptureResult;
         if(!ready_window()){if(startup)return reject_capture(R::window_unavailable);throw std::runtime_error("Game window minimized");}
-        Frame frame=state->take();
+        Frame frame{nullptr};
+        if(startup&&pending_frame.has_frame()){
+            frame=pending_frame.take(menu_capture_qpc_ticks(),menu_epoch.started(),generation_);
+            // Preserve this imminent frame instead of replacing it with the
+            // latest future frame. Never wait/sleep on the XR thread.
+            if(!frame&&pending_frame.has_frame())return reject_capture(R::future);
+        }
+        if(!frame)frame=state->take();
         if(!frame){++diagnostic_.no_frames;return reject_capture(R::no_frame);}
         const std::int64_t captured=startup?frame.SystemRelativeTime().count():0;
         diagnostic_.last_taken_100ns=captured;
         if(startup){const auto now=menu_capture_qpc_ticks();
-            if(!menu_epoch.eligible(captured,now)){frame.Close();return reject_capture(timestamp_rejection(captured,now));}}
+            if(!menu_epoch.eligible(captured,now)){
+                const auto reason=timestamp_rejection(captured,now);
+                if(reason==R::future){
+                    diagnostic_.future_ahead_last_100ns=captured-now;
+                    diagnostic_.future_ahead_max_100ns=std::max(diagnostic_.future_ahead_max_100ns,captured-now);
+                    pending_frame.defer(std::move(frame),captured,now,menu_epoch.started(),generation_);
+                }else frame.Close();
+                return reject_capture(reason);
+            }}
         auto access=frame.Surface().as<::Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
         com_ptr<ID3D11Texture2D> texture;check_hresult(access->GetInterface(IID_PPV_ARGS(texture.put())));
         D3D11_TEXTURE2D_DESC desc{};texture->GetDesc(&desc);auto content=frame.ContentSize();
@@ -247,7 +266,7 @@ public:
         if(startup&&(unsigned(content.Width)!=pool_width||unsigned(content.Height)!=pool_height)){
             // Close the outstanding frame before Recreate. No callback mutex is
             // held while the pool replaces its buffers on the capture thread.
-            ++generation_;menu_epoch.begin(menu_capture_qpc_ticks());state->discard();
+            ++generation_;menu_epoch.begin(menu_capture_qpc_ticks());pending_frame.discard();state->discard();
             frame.Close();pool.Recreate(capture_device,
                 winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized,2,content);
             pool_width=content.Width;pool_height=content.Height;return reject_capture(R::resize);
@@ -264,7 +283,7 @@ public:
                 frame.Close();throw std::runtime_error("Unexpected game aspect ratio after resize");}
             source_width=client.right;source_height=client.bottom;width=fitted_width;height=fitted_height;
             pixels.resize(size_t(width)*height*4);staging=nullptr;
-            ++generation_;menu_epoch.begin(menu_capture_qpc_ticks());state->discard();
+            ++generation_;menu_epoch.begin(menu_capture_qpc_ticks());pending_frame.discard();state->discard();
             frame.Close();return reject_capture(R::resize);
         }
         if(client.right!=LONG(source_width) || client.bottom!=LONG(source_height) ||

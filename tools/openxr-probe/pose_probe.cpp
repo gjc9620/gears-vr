@@ -81,7 +81,9 @@ struct MovieFallbackDiagnostics {
             last_render.current?"true":"false",last_render.fresh_checked?"true":"false",last_render.fresh?"true":"false",last_render.fresh_now_100ns,
             last_window.generation,last_window.epoch_100ns,last_window.captured_100ns,last_window.width,last_window.height,last_window.uploads);
         for(unsigned i=0;i<8;++i)printf("%s\"%s\":%llu",i?",":"",outage_diagnostics::menu_render_reason_name(outage_diagnostics::MenuRenderReason(i)),render_reasons[i]);
-        printf("},\"capture_results_on_update\":{");
+        printf("},\"future_ahead_last_100ns\":%lld,\"future_ahead_max_100ns\":%lld,\"pending_reused\":%llu,\"pending_dropped\":%llu,\"capture_results_on_update\":{",
+            last_render.capture.future_ahead_last_100ns,last_render.capture.future_ahead_max_100ns,
+            last_render.capture.pending_reused,last_render.capture.pending_dropped);
         for(unsigned i=0;i<10;++i)printf("%s\"%s\":%llu",i?",":"",outage_diagnostics::capture_result_name(outage_diagnostics::CaptureResult(i)),capture_results[i]);
         printf("}}\n");fflush(stdout);
     }
