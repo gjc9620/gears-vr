@@ -13,6 +13,8 @@ struct ImageSnapshot {
     std::int64_t received_ns=0;
     unsigned copies=0,source=0;
     std::uint64_t head_flags=0,view_flags=0;
+    std::array<double,3> head_position{};
+    std::array<double,4> head_orientation{}; // x,y,z,w; frozen image-ticket pose.
 };
 struct Row {
     std::int64_t ns=0;

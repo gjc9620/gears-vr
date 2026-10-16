@@ -9,6 +9,7 @@ static Row frame(std::uint64_t id,bool submitted,bool fresh,std::uint64_t sessio
     r.submitted=submitted;r.new_image_valid=true;r.new_image=fresh;
     r.image.receiver_valid=r.image.ticket_valid=true;r.image.ticket_id=id;r.image.session=session;
     r.image.sequence=id+100;r.image.received_ns=r.ns-5;r.image.source=1;r.image.head_flags=r.image.view_flags=15;
+    r.image.head_position={.125,-2.5,3.75};r.image.head_orientation={.5,-.25,.125,.8125};
     r.image.acquired_serial=id+200;r.image.copies=static_cast<unsigned>(id);return r;
 }
 static std::string dumped(Recorder& recorder){
@@ -19,8 +20,11 @@ int main(int argc,char** argv){
     Recorder disabled;disabled.observe(frame(1,true,true));assert(!disabled.enabled()&&!disabled.count()&&!disabled.total());
     assert(dumped(disabled).empty());
     Recorder receipts;assert(receipts.enable());
-    auto first=frame(1,false,true);receipts.observe(first);first.image.ticket_id=999;
+    auto first=frame(1,false,true);const auto frozen_position=first.image.head_position;
+    const auto frozen_orientation=first.image.head_orientation;
+    receipts.observe(first);first.image.ticket_id=999;first.image.head_position={99,98,97};first.image.head_orientation={1,0,0,0};
     assert(receipts.count()==1&&receipts.row(0)->image.ticket_id==1&&!receipts.row(0)->submitted);
+    assert(receipts.row(0)->image.head_position==frozen_position&&receipts.row(0)->image.head_orientation==frozen_orientation);
     receipts.observe(frame(1,true,false));assert(receipts.count()==2&&receipts.row(1)->submitted);
     receipts.observe(frame(1,true,false));assert(receipts.count()==2); // Repeated cache submission.
     receipts.observe(frame(2,false,true));assert(receipts.count()==3);
@@ -39,6 +43,9 @@ int main(int argc,char** argv){
     assert(receipts.enable()&&receipts.count()==9&&!receipts.row(9)); // Enabling twice never resets evidence.
     const auto text=dumped(receipts);
     assert(text.find("\"image_ticket_diagnostics\":true")!=std::string::npos);
+    assert(text.find("\"schema\":2")!=std::string::npos);
+    assert(text.find("\"pose_semantics\":\"frozen_native_image_ticket_pose_not_current_runtime_pose\"")!=std::string::npos);
+    assert(text.find("\"head_position\":[0.125,-2.5,3.75],\"head_orientation\":[0.5,-0.25,0.125,0.8125]")!=std::string::npos);
     assert(text.find("\"total_rows\":9,\"retained_rows\":9,\"dropped_rows\":0")!=std::string::npos);
     assert(text.find("\"invalid_submitted_ticket_rows\":1")!=std::string::npos);
     assert(text.find("\"ticket_id\":1,\"session\":7,\"sequence\":101")!=std::string::npos);
@@ -53,9 +60,11 @@ int main(int argc,char** argv){
     auto wide=frame(1,true,true);wide.image.ticket_id=18446744073709551614ULL;
     wide.image.session=9007199254740993ULL;wide.image.sequence=9007199254740995ULL;
     wide.ns=9223372036854775806LL;wide.image.received_ns=9223372036854775801LL;
+    wide.image.head_position[0]=1.0000000000000002;
     integers.observe(wide);const auto integer_text=dumped(integers);
     assert(integer_text.find("\"ticket_id\":18446744073709551614,\"session\":9007199254740993,\"sequence\":9007199254740995")!=std::string::npos);
     assert(integer_text.find("\"qpc_ns\":9223372036854775806")!=std::string::npos);
+    assert(integer_text.find("\"head_position\":[1.0000000000000002,")!=std::string::npos);
     Recorder overflow;assert(overflow.enable());
     for(unsigned i=1;i<=Recorder::capacity+3;++i)overflow.observe(frame(i,true,true));
     assert(overflow.count()==Recorder::capacity&&overflow.total()==Recorder::capacity+3&&overflow.dropped()==3);

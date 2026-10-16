@@ -48,18 +48,20 @@ public:
         if(count_<capacity)(*rows_)[count_++]=r;else ++dropped_;
     }
     static void print_row(FILE* out,Row const& r) noexcept {
-        fprintf(out,"{\"image_ticket_row\":true,\"qpc_ns\":%lld,\"status\":\"%s\",\"submitted\":%s,\"actual_new_image_valid\":%s,\"actual_new_image\":%s,\"receiver_valid\":%s,\"ticket_valid\":%s,\"ticket_id\":%llu,\"session\":%llu,\"sequence\":%llu,\"received_ns\":%lld,\"source\":%u,\"head_flags\":%llu,\"view_flags\":%llu,\"acquired_serial\":%llu,\"copy_count\":%u}\n",
+        fprintf(out,"{\"image_ticket_row\":true,\"qpc_ns\":%lld,\"status\":\"%s\",\"submitted\":%s,\"actual_new_image_valid\":%s,\"actual_new_image\":%s,\"receiver_valid\":%s,\"ticket_valid\":%s,\"ticket_id\":%llu,\"session\":%llu,\"sequence\":%llu,\"received_ns\":%lld,\"source\":%u,\"head_flags\":%llu,\"view_flags\":%llu,\"acquired_serial\":%llu,\"copy_count\":%u,\"head_position\":[%.17g,%.17g,%.17g],\"head_orientation\":[%.17g,%.17g,%.17g,%.17g]}\n",
             static_cast<long long>(r.ns),r.status,r.submitted?"true":"false",
             r.new_image_valid?"true":"false",r.new_image?"true":"false",
             r.image.receiver_valid?"true":"false",r.image.ticket_valid?"true":"false",
             static_cast<unsigned long long>(r.image.ticket_id),static_cast<unsigned long long>(r.image.session),
             static_cast<unsigned long long>(r.image.sequence),static_cast<long long>(r.image.received_ns),r.image.source,
             static_cast<unsigned long long>(r.image.head_flags),static_cast<unsigned long long>(r.image.view_flags),
-            static_cast<unsigned long long>(r.image.acquired_serial),r.image.copies);
+            static_cast<unsigned long long>(r.image.acquired_serial),r.image.copies,
+            r.image.head_position[0],r.image.head_position[1],r.image.head_position[2],
+            r.image.head_orientation[0],r.image.head_orientation[1],r.image.head_orientation[2],r.image.head_orientation[3]);
     }
     void dump(FILE* out=stdout) noexcept {
         if(!rows_||dumped_)return;dumped_=true;
-        fprintf(out,"{\"image_ticket_diagnostics\":true,\"schema\":1,\"clock\":\"qpc_monotonic_ns\",\"timestamp_semantics\":\"post_xrEndFrame_observation\",\"submission_semantics\":\"projection_layer_in_successful_xrEndFrame_not_display_confirmation\",\"acquired_serial_semantics\":\"acknowledged_producer_serial_not_gpu_fence\",\"selection\":\"actual_new_image_or_successful_submission_with_changed_session_ticket\",\"capacity\":%u,\"observed_rows\":%llu,\"total_rows\":%llu,\"retained_rows\":%u,\"dropped_rows\":%llu,\"submitted_frames\":%llu,\"invalid_submitted_ticket_rows\":%llu,\"retention_complete\":%s}\n",
+        fprintf(out,"{\"image_ticket_diagnostics\":true,\"schema\":2,\"clock\":\"qpc_monotonic_ns\",\"timestamp_semantics\":\"post_xrEndFrame_observation\",\"pose_semantics\":\"frozen_native_image_ticket_pose_not_current_runtime_pose\",\"submission_semantics\":\"projection_layer_in_successful_xrEndFrame_not_display_confirmation\",\"acquired_serial_semantics\":\"acknowledged_producer_serial_not_gpu_fence\",\"selection\":\"actual_new_image_or_successful_submission_with_changed_session_ticket\",\"capacity\":%u,\"observed_rows\":%llu,\"total_rows\":%llu,\"retained_rows\":%u,\"dropped_rows\":%llu,\"submitted_frames\":%llu,\"invalid_submitted_ticket_rows\":%llu,\"retention_complete\":%s}\n",
             capacity,static_cast<unsigned long long>(observed_),static_cast<unsigned long long>(total_),count_,
             static_cast<unsigned long long>(dropped_),static_cast<unsigned long long>(submitted_),
             static_cast<unsigned long long>(invalid_submitted_),dropped_?"false":"true");

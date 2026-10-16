@@ -370,7 +370,9 @@ public:
         out.ticket_valid=ticket.id!=0&&sample.sequence!=0;
         if(out.ticket_valid){out.ticket_id=ticket.id;out.session=sample.session;out.sequence=sample.sequence;
             out.received_ns=sample.received_ns;out.source=unsigned(sample.source);
-            out.head_flags=sample.head_flags;out.view_flags=sample.view_flags;}
+            out.head_flags=sample.head_flags;out.view_flags=sample.view_flags;
+            out.head_position={sample.head.position.x,sample.head.position.y,sample.head.position.z};
+            out.head_orientation={sample.head.orientation.x,sample.head.orientation.y,sample.head.orientation.z,sample.head.orientation.w};}
         return out;
     }
 private:
