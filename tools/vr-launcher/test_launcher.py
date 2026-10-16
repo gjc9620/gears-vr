@@ -285,6 +285,30 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(backend.game_pids(),[])
             self.assertIn('Get-CimInstance',query.call_args.args[0][-1])
 
+    def test_persisted_launcher_language_settings(self):
+        manifest=json.loads(pathlib.Path(__file__).with_name('manifest.json').read_text())
+        with tempfile.TemporaryDirectory() as directory:
+            config_path=pathlib.Path(directory)/'config.json'
+            base=dict(game_path='install/game.exe',stereo_units_per_metre=123,hud_horizontal_fov_degrees=62.5)
+            expected=launcher.settings(base,manifest)
+            for language in ('zh-CN','en'):
+                with self.subTest(language=language):
+                    launcher.atomic_json(config_path,dict(base,launcher_language=language))
+                    config=json.loads(config_path.read_text())
+                    before=dict(config)
+                    self.assertEqual(launcher.settings(config,manifest),expected)
+                    self.assertEqual(launcher.hud_horizontal_fov(config,manifest),62.5)
+                    self.assertEqual(config,before)
+                    for invalid,message in (({'unknown':1},'Unknown configuration'),
+                                            ({'stereo_units_per_metre':True},'stereo_units_per_metre'),
+                                            ({'hud_horizontal_fov_degrees':101},'hud_horizontal_fov_degrees'),
+                                            ({'game_path':''},'game_path')):
+                        with self.subTest(invalid=invalid),self.assertRaisesRegex(ValueError,message):
+                            launcher.settings(dict(config,**invalid),manifest)
+            for invalid in ('','fr','EN',None,True,123,[],{}):
+                with self.subTest(language=invalid),self.assertRaisesRegex(ValueError,'launcher_language'):
+                    launcher.settings(dict(base,launcher_language=invalid),manifest)
+
     def test_scale_and_fixed_path(self):
         for value in (float('nan'),float('inf'),9,501,True,'100'):
             with self.subTest(value=value),self.assertRaises(ValueError):launcher.settings({'stereo_units_per_metre':value},MANIFEST)

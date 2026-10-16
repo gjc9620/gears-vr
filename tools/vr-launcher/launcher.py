@@ -45,7 +45,9 @@ def hud_horizontal_fov(config,manifest):
 
 
 def settings(config,manifest,root=ROOT):
-    if set(config)-{'game_path','stereo_units_per_metre','hud_horizontal_fov_degrees'}:raise ValueError('Unknown configuration field')
+    if set(config)-{'game_path','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language'}:raise ValueError('Unknown configuration field')
+    if 'launcher_language' in config and config['launcher_language'] not in ('zh-CN','en'):
+        raise ValueError('launcher_language must be zh-CN or en')
     hud_horizontal_fov(config,manifest)
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
     if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','graphics_startup_lock','graphics_menu_lock')):
