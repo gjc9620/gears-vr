@@ -13,6 +13,77 @@ import run_stereo_continuous as continuous
 
 
 class AnchorStartTests(unittest.TestCase):
+    def test_crosshair_registry_retry_uses_fresh_complete_preparation(self):
+        import crosshair_assignment_config as assignment
+        import anchor_config as anchor
+        import ui_observer_config as ui
+        baseline=dict(local_player_address='0x1',module_base='0x1000')
+        resolvers=[];ticks=[0.]
+        def resolver(pid,profile):
+            r=mock.Mock();r.base=0x1000;r.read.return_value=b'ok'
+            r.resolve.return_value=dict(baseline,camera_address=f'camera{len(resolvers)+1}')
+            resolvers.append(r);return r
+        def build(r,camera,**kwargs):
+            self.assertIs(camera,r.resolve.return_value)
+            if len(resolvers)==1:raise assignment.CrosshairRegistryChanged('Registry header changed')
+            return dict(camera=camera['camera_address'])
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(start,'Resolver',side_effect=resolver))
+            anch=stack.enter_context(mock.patch.object(anchor,'build_anchor_config',side_effect=lambda r,c,**kw:({},dict(camera=c['camera_address']))))
+            stack.enter_context(mock.patch.object(anchor,'anchor_ini',return_value='anchor\n'))
+            ui_build=stack.enter_context(mock.patch.object(ui,'build_ui_observer_config',side_effect=lambda r,c:({},dict(camera=c['camera_address']))))
+            stack.enter_context(mock.patch.object(ui,'ui_observer_ini',return_value='ui\n'))
+            builder=stack.enter_context(mock.patch.object(assignment,'build_crosshair_assignment_config',side_effect=build))
+            stack.enter_context(mock.patch.object(assignment,'crosshair_assignment_ini',side_effect=lambda c:'assignment:'+c['camera']))
+            stack.enter_context(mock.patch.object(start.time,'monotonic',side_effect=lambda:ticks[0]))
+            stack.enter_context(mock.patch.object(start.time,'sleep',side_effect=lambda duration:ticks.__setitem__(0,ticks[0]+duration)))
+            stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
+            result=start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),
+                anchor_observer=True,ui_observer=True,crosshair_assignment_observer=True)
+        self.assertEqual(len(resolvers),2);self.assertEqual(anch.call_count,2);self.assertEqual(ui_build.call_count,2)
+        self.assertEqual(builder.call_count,2)
+        self.assertEqual((result[0]['camera_address'],result[1]['camera'],result[3]['camera'],result[3]['crosshair_assignment']['camera']),('camera2',)*4)
+        self.assertEqual(result[4],'ui\nassignment:camera2')
+        for r in resolvers:r.resolve.assert_called_once();r.read.assert_called_once();r.p.close.assert_called_once()
+
+    def test_crosshair_churn_preserves_attempt_deadline_and_hard_failure_limits(self):
+        import crosshair_assignment_config as assignment
+        import anchor_config as anchor
+        import ui_observer_config as ui
+        baseline=dict(local_player_address='0x1',module_base='0x1000')
+        for scenario,expected in (('attempts',3),('deadline',1),('late_success',1),('identity',1),('untyped_churn_message',1)):
+            with self.subTest(scenario=scenario),contextlib.ExitStack() as stack:
+                ticks=[0.];resolvers=[]
+                def resolver(pid,profile):
+                    r=mock.Mock();r.base=0x1000;r.read.return_value=b'ok';r.resolve.return_value=baseline.copy()
+                    resolvers.append(r);return r
+                error=(assignment.CrosshairConfigRejected('Identity changed') if scenario=='identity' else
+                       assignment.CrosshairConfigRejected('Registry header changed') if scenario=='untyped_churn_message' else
+                       assignment.CrosshairRegistryChanged('Registry header changed'))
+                def build(*args,**kwargs):
+                    if scenario=='deadline':ticks[0]=.5
+                    if scenario=='late_success':ticks[0]=10;return {}
+                    raise error
+                stack.enter_context(mock.patch.object(start,'Resolver',side_effect=resolver))
+                stack.enter_context(mock.patch.object(anchor,'build_anchor_config',return_value=({},{})))
+                stack.enter_context(mock.patch.object(anchor,'anchor_ini',return_value='anchor\n'))
+                stack.enter_context(mock.patch.object(ui,'build_ui_observer_config',return_value=({},{})))
+                stack.enter_context(mock.patch.object(ui,'ui_observer_ini',return_value='ui\n'))
+                stack.enter_context(mock.patch.object(assignment,'build_crosshair_assignment_config',side_effect=build))
+                stack.enter_context(mock.patch.object(assignment,'crosshair_assignment_ini',return_value='assignment\n'))
+                stack.enter_context(mock.patch.object(start.time,'monotonic',side_effect=lambda:ticks[0]))
+                sleep=stack.enter_context(mock.patch.object(start.time,'sleep'))
+                stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
+                exception=ui.UIConfigRejected if scenario=='late_success' else assignment.CrosshairConfigRejected
+                with self.assertRaises(exception) as raised:
+                    start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),
+                        anchor_observer=True,ui_observer=True,crosshair_assignment_observer=True,
+                        preparation_deadline=.5 if scenario=='deadline' else 60)
+                if scenario!='late_success':self.assertIs(raised.exception,error)
+                self.assertEqual(len(resolvers),expected);self.assertEqual(sleep.call_count,expected-1)
+                for r in resolvers:r.p.close.assert_called_once()
+                self.assertFalse(start.camera_preparation_transient(raised.exception))
+
     def test_crosshair_assignment_dependencies_and_cli_forwarding(self):
         parser=mock.Mock();parser.error.side_effect=ValueError
         base=dict(crosshair_assignment_observer=True,ui_observer=True,anchor_observer=True,

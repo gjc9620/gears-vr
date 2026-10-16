@@ -7,9 +7,17 @@ enum class TicketRetainResult {retained,duplicate,invalid,stale,conflict,overflo
 
 // Original game camera plus the actual eye matrices frozen for this ticket.
 // These are independent values: never reconstruct them from a newer pose.
+// Optional owning world point. The caller supplies its authority; this value
+// and the pure projection layer do not validate game aim or camera equivalence.
+struct StereoFiniteAim {
+    bool valid{};
+    std::array<float,3> point{};
+    std::uint64_t world{},tick{};
+};
 struct StereoTicketGeometry {
     StereoMatrix source_view{},source_projection{};
     StereoMatrices eyes{};
+    StereoFiniteAim finite_aim{};
 };
 
 // Single-swapchain bounded CPU provenance store. Contains values, not renderer
@@ -37,12 +45,18 @@ class StereoTicketStore {
     }
     static bool valid(StereoTicketGeometry const& g) {
         if(!stereo_rigid(g.source_view)||!stereo_projection_supported(g.source_projection))return false;
+        if(g.finite_aim.valid){
+            if(!g.finite_aim.world||!g.finite_aim.tick)return false;
+            for(float value:g.finite_aim.point)if(!std::isfinite(value))return false;
+        }
         for(unsigned eye=0;eye<2;++eye)
             if(!stereo_rigid(g.eyes.view[eye])||!stereo_projection_supported(g.eyes.projection[eye]))return false;
         return true;
     }
     static bool same(StereoTicketGeometry const& a,StereoTicketGeometry const& b) {
         if(a.source_view!=b.source_view||a.source_projection!=b.source_projection)return false;
+        if(a.finite_aim.valid!=b.finite_aim.valid||a.finite_aim.point!=b.finite_aim.point||
+           a.finite_aim.world!=b.finite_aim.world||a.finite_aim.tick!=b.finite_aim.tick)return false;
         for(unsigned eye=0;eye<2;++eye)
             if(a.eyes.view[eye]!=b.eyes.view[eye]||a.eyes.projection[eye]!=b.eyes.projection[eye])return false;
         return true;

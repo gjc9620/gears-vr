@@ -192,6 +192,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
     cannot be preempted. No new attempt starts beyond the deadline.
     """
     from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged
+    from crosshair_assignment_config import CrosshairRegistryChanged
     if crosshair_assignment_observer and not (anchor_observer and ui_observer):
         raise ValueError('Crosshair assignment observer requires UI/anchor observers')
     deadline=time.monotonic()+10;attempts=3 if ui_observer else 1
@@ -235,11 +236,11 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                 if check_live:check_live()
                 return refreshed,anchor_metadata,anchor_section,ui_metadata,ui_section
             finally:r.p.close()
-        except UIConfigRejected as error:
-            # Only stable()'s exact typed double-read mismatch joins the existing
-            # registry retry budget. Identity, schema, code and unknown failures
-            # stay hard rejections; every retry discards this whole Resolver.
-            if not (isinstance(error,UIRegistryChanged) or
+        except (UIConfigRejected,CrosshairRegistryChanged) as error:
+            # Only the existing UI read-churn cases and typed crosshair registry
+            # header churn join this budget. Crosshair identity/link/script and
+            # unknown failures stay hard; every retry discards the whole Resolver.
+            if not (isinstance(error,(UIRegistryChanged,CrosshairRegistryChanged)) or
                     (type(error) is UIConfigRejected and str(error)=='UI certificate read changed')):raise
             if attempt+1==attempts or time.monotonic()>=deadline:raise
             print(f'UI preparation changed ({error}); reacquiring all certificates ({attempt+2}/{attempts})',file=sys.stderr)

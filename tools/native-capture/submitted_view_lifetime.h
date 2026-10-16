@@ -6,6 +6,7 @@
 #include "projection_control.h"
 #include "origin_trial.h"
 #include "../vr-common/stereo_frame.h"
+#include "../vr-common/stereo_ticket_store.h"
 
 // Tracks caller-owned renderers, never frees them. A true close/retire return
 // grants one state-release claim, which must be executed on a native thread.
@@ -13,7 +14,8 @@ namespace gears_submitted {
 struct FrameTicket {bool enabled{};std::uint64_t id{};gears_vr::StereoSample sample{};gears_vr::StereoMatrices expected{};
     gears_vr::StereoMatrix source_view{},source_projection{};
     std::uint64_t reference_generation{};gears_vr::Pose reference{};gears_origin_trial::Metadata origin{};
-    std::optional<gears_crosshair_scene::Metadata> crosshair;};
+    std::optional<gears_crosshair_scene::Metadata> crosshair;
+    gears_vr::StereoFiniteAim finite_aim{};};
 class Lifetime {
     std::mutex mutex;
     std::array<uintptr_t,64> roots{};

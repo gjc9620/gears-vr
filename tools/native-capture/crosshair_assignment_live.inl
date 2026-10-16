@@ -15,7 +15,11 @@ std::atomic<bool> budget_exceeded{};
 struct Row {unsigned kind{},thread{};uint64_t world{},tick{};long long begin{},assignment{},finish{},scene{};uintptr_t controller{},pawn{},weapon{};std::array<float,3> point{};};
 std::array<Row,32> rows{};
 std::atomic<uint64_t> anchor_associated{},anchor_association_rejected{},ticket_registered{},association_row_count{};
-struct AssociationRow {gears_crosshair_scene::Metadata data{};gears_vr::StereoMatrix view{},projection{};};
+std::array<std::atomic<uint64_t>,5> finite_reasons{};
+std::atomic<uint64_t> finite_registered{};
+struct DiagnosticPose {gears_vr::StereoMatrix view{},projection{};uint64_t ticket{},world{},tick{};unsigned thread{};};
+struct AssociationRow {gears_crosshair_scene::Metadata data{};gears_vr::StereoMatrix view{},projection{};
+    DiagnosticPose previous{};bool previous_valid{},finite{};};
 std::array<AssociationRow,32> association_rows{};
 void cost(long long elapsed){if(elapsed<0)return;overhead_qpc.fetch_add(uint64_t(elapsed));
     if(qpc_frequency>0&&elapsed>qpc_frequency/200)budget_exceeded=true;
@@ -99,6 +103,11 @@ std::uintptr_t __fastcall hook(void* self,void* frame,void* result){
     const auto value=original(self,frame,result);const auto after=now();
     gears_crosshair_assignment::CompletedAssignmentReceipt receipt{};
     if(gears_crosshair_assignment::completed(config.assignment,safe_copy,snapshot,receipt)){
+        if(receipt.view.valid){gears_anchor::Anchor anchor{};std::uint32_t stamp{};
+            if(gears_anchor::guard(anchor_config,safe_copy,anchor,stamp)&&anchor.controller==receipt.controller&&anchor.pawn==receipt.pawn){
+                receipt.view.camera_binding_valid=true;receipt.view.camera=anchor.camera;
+                receipt.view.local=anchor_config.identities[anchor_config.role_local].address;
+                receipt.view.level=anchor.level;receipt.view.assignment_stamp=stamp;}}
         ++completed;state.assignment=now();state.point=receipt.point;state.evidence.assignment(state.token,receipt,state.assignment);
     }else {++completion_rejected;state.evidence.invalidate();}
     cost(now()-after);return value;
@@ -137,26 +146,51 @@ void attach(std::optional<gears_crosshair_scene::Metadata> value,gears_anchor::R
     if(valid)receipt.crosshair=*value;else ++anchor_association_rejected;
 }
 void accepted(gears_anchor::Receipt const& receipt){if(receipt.crosshair)++anchor_associated;}
+void freeze(gears_submitted::FrameTicket& frame,gears_anchor::Receipt const* anchor){
+#if defined(GEARS_UI_RETICLE_FINITE_QUERY) && GEARS_UI_RETICLE_FINITE_QUERY
+    if(!enabled||!frame.enabled||!frame.crosshair||!anchor||!recording.load()||budget_exceeded.load())return;
+    const auto started=now();
+    gears_crosshair_finite_query::Authority authority{
+        anchor->anchor.controller,anchor->anchor.pawn,address(config.assignment.weapon),anchor->anchor.camera,
+        anchor->key.local,anchor->anchor.level,anchor->key.family,anchor->key.source,anchor->key.owner,
+        committed_world_generation.load(),anchor->invocation,GetCurrentThreadId(),anchor->key.stamp};
+    const auto reason=gears_crosshair_assignment::validate_bindings(config.assignment,safe_copy,false)?
+        gears_crosshair_finite_query::authorize(*frame.crosshair,authority,frame.source_view,now(),qpc_frequency,frame.finite_aim):
+        gears_crosshair_finite_query::Reason::binding;
+    ++finite_reasons[static_cast<unsigned>(reason)];cost(now()-started);
+#else
+    (void)frame;(void)anchor;
+#endif
+}
 void registered(gears_submitted::FrameTicket const& frame){
     if(!frame.crosshair||!frame.id||frame.crosshair->ticket!=frame.id)return;
-    ++ticket_registered;const auto index=association_row_count.fetch_add(1);
-    if(index<association_rows.size())association_rows[index]={*frame.crosshair,frame.source_view,frame.source_projection};
+    if(frame.finite_aim.valid)++finite_registered;
+    // Previous pose is retained for offline diagnostics only, never aim admission.
+    thread_local DiagnosticPose previous{};
+    const DiagnosticPose current{frame.source_view,frame.source_projection,frame.id,frame.crosshair->world,frame.crosshair->tick,GetCurrentThreadId()};
+    const auto prior=previous;previous=current;
+    const auto ordinal=ticket_registered.fetch_add(1);if(ordinal%8)return;
+    const auto index=association_row_count.fetch_add(1);
+    if(index<association_rows.size())association_rows[index]={*frame.crosshair,frame.source_view,frame.source_projection,prior,
+        prior.ticket&&prior.ticket<current.ticket&&prior.world==current.world&&prior.thread==current.thread,frame.finite_aim.valid};
 }
 void print(FILE* out){
-    fprintf(out,"crosshair_assignment_observer enabled=%u compiled=1 roots=%llu root_rejected=%llu lets_in_tick=%llu candidates=%llu snapshot_rejected=%llu completed=%llu completion_rejected=%llu sealed=%llu scene_calls=%llu scene_consumed=%llu overhead_qpc=%llu maximum_overhead_qpc=%llu qpc_frequency=%lld rows=%llu camera_equivalence_proven=0 ticket_association_proven=0 coordinates_modified=0\n",
+    fprintf(out,"crosshair_assignment_observer enabled=%u compiled=1 roots=%llu root_rejected=%llu lets_in_tick=%llu candidates=%llu snapshot_rejected=%llu completed=%llu completion_rejected=%llu sealed=%llu scene_calls=%llu scene_consumed=%llu overhead_qpc=%llu maximum_overhead_qpc=%llu qpc_frequency=%lld rows=%llu camera_equivalence_proven=0 ticket_association_proven=0 observer_query_coordinates_modified=0\n",
         enabled?1:0,roots.load(),root_rejected.load(),lets.load(),candidates.load(),snapshot_rejected.load(),completed.load(),completion_rejected.load(),
         sealed.load(),scene_calls.load(),consumed.load(),overhead_qpc.load(),maximum_overhead_qpc.load(),qpc_frequency,(std::min)(row_count.load(),uint64_t(rows.size())));
     fprintf(out,"crosshair_assignment_scene_binding_rejected=%llu\n",scene_binding_rejected.load());
     fprintf(out,"crosshair_assignment_budget_exceeded=%u per_observation_budget_ms=5\n",budget_exceeded.load()?1:0);
+    fprintf(out,"crosshair_finite_hud_query eligible=%llu binding_rejected=%llu clock_rejected=%llu age_rejected=%llu geometry_rejected=%llu registered=%llu max_assignment_and_tick_age_ms=50 camera_equivalence_proven=0 current_camera_aim_proven=0 bullet_impact_proven=0\n",
+        finite_reasons[0].load(),finite_reasons[1].load(),finite_reasons[2].load(),finite_reasons[3].load(),finite_reasons[4].load(),finite_registered.load());
     if(active.load())return;
     fprintf(out,"crosshair_assignment_association anchors=%llu anchor_rejected=%llu tickets_registered=%llu rows=%llu camera_equivalence_proven=0 finite_aim_certified=0\n",
         anchor_associated.load(),anchor_association_rejected.load(),ticket_registered.load(),
         (std::min)(association_row_count.load(),uint64_t(association_rows.size())));
     for(unsigned i=0;i<(std::min)(association_row_count.load(),uint64_t(association_rows.size()));++i){auto const& r=association_rows[i].data;
-        fprintf(out,"crosshair_assignment_ticket_row index=%u thread=%u world=%llu tick=%llu anchor_invocation=%llu ticket=%llu local=%p family=%p source=%p owner=%p stamp=%u controller=%p pawn=%p weapon=%p scene_qpc=%lld\n",
+        fprintf(out,"crosshair_assignment_ticket_row index=%u thread=%u world=%llu tick=%llu anchor_invocation=%llu ticket=%llu local=%p family=%p source=%p owner=%p stamp=%u controller=%p pawn=%p weapon=%p scene_qpc=%lld point=%.9g,%.9g,%.9g finite_query=%u\n",
             i,r.thread,r.world,r.tick,r.invocation,r.ticket,reinterpret_cast<void*>(r.local),reinterpret_cast<void*>(r.family),
             reinterpret_cast<void*>(r.source),reinterpret_cast<void*>(r.owner),r.stamp,reinterpret_cast<void*>(r.controller),
-            reinterpret_cast<void*>(r.pawn),reinterpret_cast<void*>(r.weapon),r.scene_qpc);
+            reinterpret_cast<void*>(r.pawn),reinterpret_cast<void*>(r.weapon),r.scene_qpc,r.point[0],r.point[1],r.point[2],association_rows[i].finite?1:0);
         auto const& v=r.writer_view;
         fprintf(out,"crosshair_writer_view_row index=%u valid=%u cam_loc=%.9g,%.9g,%.9g cam_rot=%d,%d,%d start=%.9g,%.9g,%.9g direction=%.9g,%.9g,%.9g source_view=",
             i,v.valid?1:0,v.location[0],v.location[1],v.location[2],v.rotation[0],v.rotation[1],v.rotation[2],
@@ -164,6 +198,14 @@ void print(FILE* out){
         for(unsigned n=0;n<16;++n)fprintf(out,"%s%.9g",n?",":"",association_rows[i].view[n]);
         fprintf(out," source_projection=");
         for(unsigned n=0;n<16;++n)fprintf(out,"%s%.9g",n?",":"",association_rows[i].projection[n]);
+        fprintf(out," camera_binding_valid=%u camera=%p level=%p assignment_stamp=%u scene_stamp=%u sample_stride=8",
+            v.camera_binding_valid?1:0,reinterpret_cast<void*>(v.camera),reinterpret_cast<void*>(v.level),v.assignment_stamp,r.stamp);
+        auto const& prior=association_rows[i].previous;
+        fprintf(out," previous_valid=%u previous_ticket=%llu previous_world=%llu previous_tick=%llu previous_source_view=",
+            association_rows[i].previous_valid?1:0,prior.ticket,prior.world,prior.tick);
+        for(unsigned n=0;n<16;++n)fprintf(out,"%s%.9g",n?",":"",prior.view[n]);
+        fprintf(out," previous_source_projection=");
+        for(unsigned n=0;n<16;++n)fprintf(out,"%s%.9g",n?",":"",prior.projection[n]);
         fprintf(out,"\n");
     }
     for(unsigned i=0;i<(std::min)(row_count.load(),uint64_t(rows.size()));++i){auto const& r=rows[i];
@@ -177,6 +219,7 @@ std::optional<gears_crosshair_scene::Metadata> scene(void*){return {};}
 void attach(std::optional<gears_crosshair_scene::Metadata>,gears_anchor::Receipt&){}
 void accepted(gears_anchor::Receipt const&){}
 void registered(gears_submitted::FrameTicket const&){}
-void print(FILE* out){fprintf(out,"crosshair_assignment_observer enabled=%u compiled=0 coordinates_modified=0\n",enabled?1:0);}
+void freeze(gears_submitted::FrameTicket&,gears_anchor::Receipt const*){}
+void print(FILE* out){fprintf(out,"crosshair_assignment_observer enabled=%u compiled=0 observer_query_coordinates_modified=0\n",enabled?1:0);}
 #endif
 }

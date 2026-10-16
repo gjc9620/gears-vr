@@ -24,13 +24,14 @@ constexpr bool ui_reticle_direction_enabled=true;
 #else
 constexpr bool ui_reticle_direction_enabled=false;
 #endif
-struct UiReticleCounts {std::atomic<uint64_t> considered{},center_rejected{},geometry_missing{},projection_rejected{},planned{},applied{};} ui_reticle_counts;
+struct UiReticleCounts {std::atomic<uint64_t> considered{},center_rejected{},geometry_missing{},projection_rejected{},planned{},applied{},finite_planned{},finite_fallback{},finite_applied{};} ui_reticle_counts;
 struct UiIndexContext {
     uint64_t execute_sequence{};
     gears_ui_indices::Snapshot snapshot{};
     gears_ui_indices::Cursor cursor{};
     unsigned ordinal{};
     bool callback_valid{};
+    bool finite_reticle{};
     std::array<gears_ui_reticle::Extent,gears_ui_indices::segment_capacity> reticle_extents{};
     std::array<gears_ui_sources::Summary,gears_ui_indices::segment_capacity> sources{};
 };
@@ -216,6 +217,7 @@ double ui_source_aspect(){
 }
 bool prepare_ui_reticle_overlay(uint64_t ticket,gears_viewport::DrawState const& saved,
         unsigned width,unsigned height,gears_viewport::OverlayPlan& out){
+    if(ui_index_context)ui_index_context->finite_reticle=false;
     if(!ui_reticle_direction_enabled||!ui_hud_plane_enabled||ui_hud_sequence_fault.load()||
        !ui_payload_context||!ui_index_context||!ui_index_context->callback_valid||
        ui_index_context->snapshot.payload!=ui_payload_context->payload||
@@ -234,8 +236,12 @@ bool prepare_ui_reticle_overlay(uint64_t ticket,gears_viewport::DrawState const&
     if(!ui_ticket_geometry(ticket,geometry)){
         ++ui_reticle_counts.geometry_missing;return false;}
     gears_viewport::OverlayPlan corrected{};
-    if(!gears_ui_reticle::plan(saved,width,height,geometry,corrected,ui_source_aspect())){
-        ++ui_reticle_counts.projection_rejected;return false;}
+    bool planned=gears_ui_reticle::plan(saved,width,height,geometry,corrected,ui_source_aspect());
+    if(geometry.finite_aim.valid){
+        if(planned){++ui_reticle_counts.finite_planned;ui_index_context->finite_reticle=true;}
+        else {++ui_reticle_counts.finite_fallback;geometry.finite_aim={};
+            planned=gears_ui_reticle::plan(saved,width,height,geometry,corrected,ui_source_aspect());}}
+    if(!planned){++ui_reticle_counts.projection_rejected;return false;}
     out=corrected;++ui_reticle_counts.planned;return true;
 }
 
@@ -288,6 +294,7 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
     ++ui_gpu_context_calls;
     if(hud_applied)++ui_hud_counts.applied;
     if(reticle_applied)++ui_reticle_counts.applied;
+    if(reticle_applied&&ui_index_context&&ui_index_context->finite_reticle)++ui_reticle_counts.finite_applied;
     if(!ui_payload_context||!ticket){++ui_gpu_context_missing;return;}
     const auto& context=*ui_payload_context;const auto kind=context.kind_mask;
     if(!kind||kind>=ui_payload_gpu_rows.size()){++ui_gpu_context_missing;return;}
@@ -342,6 +349,8 @@ void print_ui_payload_observer(FILE* status){
     fprintf(status,"ui_reticle_direction enabled=%u considered=%llu center_rejected=%llu geometry_missing=%llu projection_rejected=%llu planned=%llu applied=%llu finite_hit_proven=0 source_vertices_modified=0\n",
         ui_reticle_direction_enabled?1:0,ui_reticle_counts.considered.load(),ui_reticle_counts.center_rejected.load(),
         ui_reticle_counts.geometry_missing.load(),ui_reticle_counts.projection_rejected.load(),ui_reticle_counts.planned.load(),ui_reticle_counts.applied.load());
+    fprintf(status,"ui_reticle_finite_query plans=%llu applied=%llu direction_fallback=%llu camera_equivalence_proven=0 current_camera_aim_proven=0 bullet_impact_proven=0\n",
+        ui_reticle_counts.finite_planned.load(),ui_reticle_counts.finite_applied.load(),ui_reticle_counts.finite_fallback.load());
     const auto store=ui_payload_store.stats();
     fprintf(status,"ui_payload_store published=%llu rejected=%llu capacity_rejected=%llu groups_poisoned=%llu claimed=%llu poison_claimed=%llu active_groups=%zu poisoned_groups=%zu disabled=%u resets=%llu groups_full=%llu capacity=%zu\n",
         store.published,store.rejected,store.capacity_rejected,store.groups_poisoned,store.claimed,store.poison_claimed,

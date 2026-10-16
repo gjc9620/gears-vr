@@ -5,7 +5,7 @@ import struct
 import unittest
 
 from test_ui_observer_config import Fixture as UIBase
-from crosshair_assignment_config import (NATIVE_BYTES, SLOTS, CrosshairConfigRejected,
+from crosshair_assignment_config import (NATIVE_BYTES, SLOTS, CrosshairConfigRejected, CrosshairRegistryChanged,
     build_crosshair_assignment_config, validate_crosshair_assignment_config,
     crosshair_assignment_json, crosshair_assignment_ini)
 
@@ -63,6 +63,53 @@ class Fixture(UIBase):
 
 
 class CertificateTests(unittest.TestCase):
+    def test_only_complete_registry_header_changes_are_retryable(self):
+        for header_name in ('objects_header','names_header'):
+            for phase in ('double','final'):
+                with self.subTest(header=header_name,phase=phase):
+                    r=Fixture();read=r.read;header=getattr(r,header_name);count=0
+                    def changing(a,n):
+                        nonlocal count
+                        if a==header and n==16:
+                            count+=1
+                            if count==(2 if phase=='double' else 3):
+                                ptr,total,capacity=struct.unpack('<Qii',read(a,n))
+                                r.put(a,struct.pack('<Qii',ptr,total,capacity+1))
+                        return read(a,n)
+                    r.read=changing
+                    with self.assertRaises(CrosshairRegistryChanged) as raised:
+                        build_crosshair_assignment_config(r,r.camera)
+                    self.assertIn(f'address={header:#x} size=16',str(raised.exception))
+        # A short read does not establish a complete changed registry header.
+        r=Fixture();read=r.read
+        r.read=lambda a,n:read(a,n)[:-1] if a==r.objects_header else read(a,n)
+        with self.assertRaises(CrosshairConfigRejected) as raised:
+            build_crosshair_assignment_config(r,r.camera)
+        self.assertIs(type(raised.exception),CrosshairConfigRejected)
+
+    def test_nonregistry_final_changes_remain_hard_even_with_header_churn(self):
+        for field in ('identity','link','script'):
+            for churn in (False,True):
+                with self.subTest(field=field,churn=churn):
+                    r=Fixture();read=r.read;count=0
+                    def changing(a,n):
+                        nonlocal count
+                        if a==r.objects_header and n==16:
+                            count+=1
+                            if count==3:
+                                if churn:
+                                    ptr,total,capacity=struct.unpack('<Qii',read(a,n))
+                                    r.put(a,struct.pack('<Qii',ptr,total,capacity+1))
+                                if field=='identity':r.put(r.weapon+80,struct.pack('<Q',r.classes['Object']))
+                                if field=='link':r.put(r.pawn+0x440,struct.pack('<Q',r.pc))
+                                if field=='script':r.put(r.script+0x359,b'\x00')
+                        return read(a,n)
+                    r.read=changing
+                    with self.assertRaises(CrosshairConfigRejected) as raised:
+                        build_crosshair_assignment_config(r,r.camera)
+                    self.assertIs(type(raised.exception),CrosshairConfigRejected)
+                    self.assertIn('Certificate changed before completion: address=',str(raised.exception))
+
     def test_optional_writer_view_roundtrip_and_legacy(self):
         r=Fixture(); old=build_crosshair_assignment_config(r,r.camera)
         self.assertEqual(old['writer_view'],dict(enabled=False))

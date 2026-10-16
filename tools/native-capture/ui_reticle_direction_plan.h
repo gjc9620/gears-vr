@@ -51,9 +51,10 @@ inline bool centered(Extent const& extent,unsigned width,unsigned height){
         std::abs((extent.top+extent.bottom)/2-double(height)/2)<=1;
 }
 // Caller must certify a pure reticle draw currently centered in the source
-// viewport and the SAME actual ticket/target. This only projects the original
-// game screen-center infinite-distance direction; no weapon aim/hit is proved.
-// Translation of any camera has no effect. Shape/size and original depth remain
+// viewport and the SAME actual ticket/target. A caller-authorized owning world
+// point uses finite projection; otherwise use the original game screen-center
+// infinite-distance direction. No weapon aim/hit or camera equivalence is proved.
+// Infinite projection excludes translations. Shape/size and original depth remain
 // unchanged unless source_aspect requests source-pixel shape preservation on an
 // output with another aspect. Scissors follow the same affine map.
 inline bool plan(gears_viewport::DrawState const& saved,unsigned full_width,unsigned full_height,
@@ -61,14 +62,22 @@ inline bool plan(gears_viewport::DrawState const& saved,unsigned full_width,unsi
     auto result=gears_viewport::overlay_plan(saved,full_width,full_height);
     if(!result.valid||!std::isfinite(source_aspect)||source_aspect<0||!gears_vr::stereo_rigid(geometry.source_view)||
        !gears_vr::stereo_projection_supported(geometry.source_projection))return false;
-    double inverse[3][3]{};
-    if(!gears_vr::ui_plane_detail::inverse_rotation(geometry.source_view,inverse))return false;
-    auto const& p=geometry.source_projection;
-    const double center_camera[]{-double(p[8])/p[0],-double(p[9])/p[5],1};
-    double direction[4]{}; // w=0: deliberately excludes every translation.
-    for(unsigned col=0;col<3;++col){for(unsigned row=0;row<3;++row)
-        direction[col]+=center_camera[row]*inverse[row][col];
-        if(!std::isfinite(direction[col]))return false;}
+    double direction[4]{};
+    if(geometry.finite_aim.valid){
+        if(!geometry.finite_aim.world||!geometry.finite_aim.tick)return false;
+        for(unsigned i=0;i<3;++i){direction[i]=geometry.finite_aim.point[i];
+            if(!std::isfinite(direction[i]))return false;}
+        direction[3]=1; // Owning WORLD point: frozen eye translations matter.
+    }else{
+        double inverse[3][3]{};
+        if(!gears_vr::ui_plane_detail::inverse_rotation(geometry.source_view,inverse))return false;
+        auto const& p=geometry.source_projection;
+        const double center_camera[]{-double(p[8])/p[0],-double(p[9])/p[5],1};
+        // w=0 deliberately excludes every translation in the legacy path.
+        for(unsigned col=0;col<3;++col){for(unsigned row=0;row<3;++row)
+            direction[col]+=center_camera[row]*inverse[row][col];
+            if(!std::isfinite(direction[col]))return false;}
+    }
     const double eye_width=double(full_width)/2;
     for(unsigned eye=0;eye<2;++eye){
         auto const& view=geometry.eyes.view[eye];auto const& projection=geometry.eyes.projection[eye];
@@ -77,7 +86,7 @@ inline bool plan(gears_viewport::DrawState const& saved,unsigned full_width,unsi
         for(unsigned col=0;col<4;++col){for(unsigned row=0;row<4;++row)
             camera[col]+=direction[row]*view[4*row+col];
             if(!std::isfinite(camera[col]))return false;}
-        if(camera[2]<=0||camera[3]!=0)return false;
+        if(camera[2]<=0||camera[3]!=direction[3])return false;
         for(unsigned col=0;col<4;++col){for(unsigned row=0;row<4;++row)
             clip[col]+=camera[row]*projection[4*row+col];
             if(!std::isfinite(clip[col]))return false;}

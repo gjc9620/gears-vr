@@ -242,7 +242,7 @@ void retain_image(){
  if(!owned_xr_probe||!stereo_gpu_publish||!watching())return;
  auto const& frame=consuming_frozen_frame;
  if(!birth_ok||!frame.enabled||!frame.id||frame.id!=consuming_frame_ticket){fault(17);return;}
- gears_vr::StereoTicketGeometry geometry{frame.source_view,frame.source_projection,frame.expected};
+ gears_vr::StereoTicketGeometry geometry{frame.source_view,frame.source_projection,frame.expected,frame.finite_aim};
  auto result=image_tickets.retain(frame.id,frame.sample,simulator_operator,&geometry);
  if(!gears_vr::StereoTicketStore::accepted(result)){fault(17);return;}
  if(result==gears_vr::TicketRetainResult::retained)++retained_images;else ++duplicate_images;

@@ -26,9 +26,42 @@ static StereoTicketGeometry geometry_fixture() {
 }
 static bool same_geometry(StereoTicketGeometry const& a,StereoTicketGeometry const& b) {
     if(a.source_view!=b.source_view||a.source_projection!=b.source_projection)return false;
+    if(a.finite_aim.valid!=b.finite_aim.valid||a.finite_aim.point!=b.finite_aim.point||
+       a.finite_aim.world!=b.finite_aim.world||a.finite_aim.tick!=b.finite_aim.tick)return false;
     for(unsigned eye=0;eye<2;++eye)
         if(a.eyes.view[eye]!=b.eyes.view[eye]||a.eyes.projection[eye]!=b.eyes.projection[eye])return false;
     return true;
+}
+static int finite_geometry_tests() {
+    const auto original=geometry_fixture();auto sample=fixture();
+    // Preserve the previous three-argument aggregate initialization contract.
+    StereoTicketGeometry geometry{original.source_view,original.source_projection,original.eyes};
+    CHECK(!geometry.finite_aim.valid);
+    geometry.finite_aim={true,{1,2,3},4,5};const auto frozen=geometry;
+    StereoTicketStore store;
+    CHECK(store.retain(1,sample,false,&geometry)==TicketRetainResult::retained);
+    CHECK(store.retain(1,sample,false,&geometry)==TicketRetainResult::duplicate);
+    for(unsigned field=0;field<6;++field){auto changed=frozen;
+        if(field==0)changed.finite_aim.valid=false;
+        if(field>=1&&field<=3)changed.finite_aim.point[field-1]+=1;
+        if(field==4)++changed.finite_aim.world;if(field==5)++changed.finite_aim.tick;
+        CHECK(store.retain(1,sample,false,&changed)==TicketRetainResult::conflict);
+    }
+    for(unsigned fault=0;fault<8;++fault){auto bad=frozen;
+        if(fault<3)bad.finite_aim.point[fault]=std::numeric_limits<float>::quiet_NaN();
+        if(fault>=3&&fault<6)bad.finite_aim.point[fault-3]=std::numeric_limits<float>::infinity();
+        if(fault==6)bad.finite_aim.world=0;if(fault==7)bad.finite_aim.tick=0;
+        CHECK(store.retain(2,sample,false,&bad)==TicketRetainResult::invalid);
+        CHECK(store.size()==1&&store.highest_id()==1);
+    }
+    geometry.finite_aim.point={100,200,300};geometry.finite_aim.world=999;
+    StereoTicketGeometry copy{};CHECK(store.lookup_geometry(1,copy)&&same_geometry(copy,frozen));
+    copy.finite_aim.tick=99;CHECK(store.lookup_geometry(1,copy)&&same_geometry(copy,frozen));
+    CHECK(store.retire_through(1));const auto sentinel=copy;
+    CHECK(!store.lookup_geometry(1,copy)&&same_geometry(copy,sentinel));
+    CHECK(store.retain(2,sample,false,&original)==TicketRetainResult::retained);
+    CHECK(store.lookup_geometry(2,copy)&&!copy.finite_aim.valid); // Reused slot has no old point.
+    return 0;
 }
 static int geometry_tests() {
     auto sample=fixture();auto original=geometry_fixture();auto geometry=original;
@@ -123,6 +156,7 @@ static int visible_tests() {
     return 0;
 }
 int main() {
+    if(auto result=finite_geometry_tests())return result;
     if(auto result=visible_tests())return result;
     if(auto result=geometry_tests())return result;
     auto simulated=fixture();simulated.source=StereoSource::MetaOperatorSimulated;simulated.head_flags=3;

@@ -29,6 +29,10 @@ class CrosshairConfigRejected(RuntimeError):
     pass
 
 
+class CrosshairRegistryChanged(CrosshairConfigRejected):
+    """Only a complete objects/names registry header changed during acquisition."""
+
+
 def _require(ok, reason):
     if not ok:
         raise CrosshairConfigRejected(reason)
@@ -61,12 +65,23 @@ def _build(r, camera, include_tick_roots, include_writer_view):
              0x60 <= p['struct_property_struct'] < 0x10000, 'Unsupported property layout')
     checks = {}
 
+    def registry_header(a, n):
+        return n == 16 and a in (r.objects_header, r.names_header)
+
+    def changed(a, n, phase):
+        error = CrosshairRegistryChanged if registry_header(a, n) else CrosshairConfigRejected
+        raise error(f'{phase}: address={a:#x} size={n}')
+
     def stable(a, n):
         _require(type(a) is int and 0 < a < (1 << 64) - n, 'Invalid read range')
         x = r.read(a, n)
-        _require(len(x) == n and r.read(a, n) == x, 'Read changed')
+        y = r.read(a, n)
+        _require(len(x) == n and len(y) == n, f'Incomplete certificate read: address={a:#x} size={n}')
+        if y != x:
+            changed(a, n, 'Certificate double-read changed')
         if (a, n) in checks:
-            _require(checks[a, n] == x, 'Read changed during assembly')
+            if checks[a, n] != x:
+                changed(a, n, 'Certificate read changed during assembly')
         checks[a, n] = x
         return x
 
@@ -241,8 +256,19 @@ def _build(r, camera, include_tick_roots, include_writer_view):
         cursor += 1
     roles = dict(zip(ROLES, map(add, (writer, war_pc, pc, pawn, weapon, war_pawn, war_weapon,
                                      lhs, member, impact, impact_struct, vector, ww))))
+    registry_change = None
     for (address, size), value in checks.items():
-        _require(r.read(address, size) == value, 'Certificate changed before completion')
+        final = r.read(address, size)
+        _require(len(final) == size, f'Incomplete final certificate read: address={address:#x} size={size}')
+        if final != value:
+            if registry_header(address, size):
+                registry_change = (address, size)
+            else:
+                changed(address, size, 'Certificate changed before completion')
+    # A concurrently observed identity/link/script change always stays a hard
+    # rejection, even when an earlier registry header also changed.
+    if registry_change:
+        changed(*registry_change, 'Registry header changed before completion')
     c = dict(schema=1, pid=r.pid, base=r.base, sha256=GAME_SHA,
              objects_header=r.objects_header, names_header=r.names_header, layout=layout,
              identities=ids, supers=[dict(identity=indexes[a], parent=b) for a, b in sorted(supers.items())],

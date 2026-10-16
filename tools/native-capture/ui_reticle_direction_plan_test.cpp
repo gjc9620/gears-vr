@@ -50,7 +50,49 @@ static void extent_tests(){using namespace gears_ui_reticle;Extent e{};ExtentFix
     Extent edge{true,1910.5,1070.5,1930.5,1090.5,77};assert(centered(edge,3840,2160));edge.left+=1;edge.right+=1;assert(!centered(edge,3840,2160));
     assert(!centered(Extent{},3840,2160));
 }
+static void finite_tests(){
+    auto g=geometry();auto s=state();
+    // Parallel eyes separated by .25 world units. Projection scale is 1;
+    // x_ndc=(point.x-eye.x)/point.z, giving +/- .0625 at depth 2.
+    g.eyes.view[0][12]=.125f;g.eyes.view[1][12]=-.125f;
+    gears_viewport::OverlayPlan infinite{},finite{};
+    assert(gears_ui_reticle::plan(s,3840,2160,g,infinite));
+    near(infinite.viewports[0].x,0);near(infinite.viewports[1].x,1920);
+    g.finite_aim={true,{0,0,2},1,2};
+    assert(gears_ui_reticle::plan(s,3840,2160,g,finite));
+    near(finite.viewports[0].x,60);near(finite.viewports[1].x,1860);
+    near(finite.viewports[0].y,0);near(finite.viewports[1].y,0);
+    for(unsigned eye=0;eye<2;++eye){near(finite.viewports[eye].width,infinite.viewports[eye].width);
+        near(finite.viewports[eye].height,infinite.viewports[eye].height);}
+    // A common world-origin change moves the point and both camera positions;
+    // it must preserve the finite image, including clipped scissors.
+    auto shifted=g;const float translation[3]{16,-8,4};
+    for(unsigned axis=0;axis<3;++axis){shifted.finite_aim.point[axis]+=translation[axis];
+        shifted.source_view[12+axis]-=translation[axis];
+        for(unsigned eye=0;eye<2;++eye)shifted.eyes.view[eye][12+axis]-=translation[axis];}
+    gears_viewport::OverlayPlan copy{};
+    assert(gears_ui_reticle::plan(s,3840,2160,shifted,copy)&&same(copy,finite));
+    // Finite input already lives in world coordinates: source translation
+    // cannot silently move that point or reconstruct it from screen center.
+    shifted=g;shifted.source_view[12]=100;shifted.source_view[14]=-200;
+    assert(gears_ui_reticle::plan(s,3840,2160,shifted,copy)&&same(copy,finite));
+    auto far=g;far.finite_aim.point[2]=1000000;
+    assert(gears_ui_reticle::plan(s,3840,2160,far,copy));
+    for(unsigned eye=0;eye<2;++eye){near(copy.viewports[eye].x,infinite.viewports[eye].x);
+        near(copy.viewports[eye].y,infinite.viewports[eye].y);}
+    for(unsigned fault=0;fault<10;++fault){auto bad=g;
+        if(fault<3)bad.finite_aim.point[fault]=std::numeric_limits<float>::quiet_NaN();
+        if(fault==3)bad.finite_aim.point[0]=std::numeric_limits<float>::infinity();
+        if(fault==4)bad.finite_aim.world=0;if(fault==5)bad.finite_aim.tick=0;
+        if(fault==6)bad.finite_aim.point[2]=-2;
+        if(fault==7)bad.finite_aim.point[0]=10; // Outside eye bounds.
+        if(fault==8)bad.eyes.view[1][14]=-3; // Behind only the second eye.
+        if(fault==9)bad.finite_aim.point[2]=0;
+        reject(bad); // Every failed plan leaves output unchanged.
+    }
+}
 int main(){auto g=geometry();auto s=state();gears_viewport::OverlayPlan p{};
+    finite_tests();
     extent_tests();
     assert(gears_ui_reticle::plan(s,3840,2160,g,p));assert(same(p,gears_viewport::overlay_plan(s,3840,2160)));
     auto asym=g;asym.eyes.projection[0]=projection(-.942477763,.69813168,.767595768,-.947190166);

@@ -44,6 +44,7 @@
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
 #include "crosshair_assignment_config_loader.h"
 #include "crosshair_tick_evidence.h"
+#include "crosshair_finite_query.h"
 #endif
 #include "ui_canvas_batch.h"
 #include "ui_canvas_text_batch.h"
@@ -823,7 +824,7 @@ void retire_stereo_window() {
 bool retain_stereo_draw() {
     auto const& frame=consuming_frozen_frame;
     if(!frame.enabled||!frame.id||frame.id!=consuming_frame_ticket){++stereo_publish_counts.ticket_missing;frame_link.invalidate();return false;}
-    gears_vr::StereoTicketGeometry geometry{frame.source_view,frame.source_projection,frame.expected};
+    gears_vr::StereoTicketGeometry geometry{frame.source_view,frame.source_projection,frame.expected,frame.finite_aim};
     auto retained=stereo_ticket_store.retain(frame.id,frame.sample,simulator_operator,ui_observer_enabled?&geometry:nullptr);
     if(!gears_vr::StereoTicketStore::accepted(retained)){++stereo_publish_counts.ticket_rejected;frame_link.invalidate();return false;}
     if(retained==gears_vr::TicketRetainResult::retained)++stereo_publish_counts.ticket_retains;else ++stereo_publish_counts.ticket_duplicates;
@@ -2147,6 +2148,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         return false;
     }
     trace_rectangle(3,reinterpret_cast<uintptr_t>(sources.views[0]));trace_rectangle(4,reinterpret_cast<uintptr_t>(sources.views[1]));
+    crosshair_live::freeze(frame,anchor);
     if(frame.enabled)frame.id=++stereo_ticket_counter;
     if(frame.crosshair){if(frame.id)frame.crosshair->ticket=frame.id;else frame.crosshair.reset();}
     const bool register_submission=submit_session_enabled();
