@@ -94,3 +94,10 @@ XR14已接入该精确结构的LOADING_DISPLAY=5，只授权通用提示，WGC/�
 
 
 XR15b进一步认证同一精确加载结构的block1/2，60项相关测试通过。实际4K完成确认框取消两轮、真实检查点恢复及新Pawn手枪开镜、主菜单返回world3；三张双眼GPU图像非黑，四原生阶段各6265对零错配。block2→1→0加载段约4.403秒由等待卡衔接；相关审计通过但范围不含无空窗，仍记录GAMEPLAY资源重建约222ms间隔。已正常退出并恢复1080p。原Registry快照竞争重建风险仍待处理，V1全UI/CG/真头显及便携发行尚未完成。
+
+
+## 便携启动准备：解释器选择链
+
+GUI先选GEARSVR_PYTHON，再检查根目录runtime/python/python.exe，之后保留开发缓存/PATH回退；把经Python3探测解析到的实际解释器路径传给所有launcher子进程。Start-DebugGame.ps1使用该显式路径，无效则明确失败；缺省随包路径优先，之后开发缓存，新增-PythonCheckOnly只探测而不执行游戏操作。路径含空格及引号/环境变量展开有覆盖。隐藏GUI构建自检、debug-launch31项与launcher/menu_navigation60项测试通过。
+
+这只移除一处本机路径依赖，没有生成发行包、复制Python或宣称玩家无需环境已验证；SimulatorVR.ps1仍保留开发默认路径，后续打包还需依赖/许可清单、干净目录部署与正常启动退出验证。玩家默认仍为原清单，研究版不可直接视作已发布成品。

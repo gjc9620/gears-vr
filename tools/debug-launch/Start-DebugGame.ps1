@@ -1,11 +1,56 @@
 param([switch]$DirectLevel, [switch]$PauseOnUnfocus, [switch]$Foreground,
-      [switch]$DisableBackgroundInput, [string]$GamePath)
+      [switch]$DisableBackgroundInput, [string]$GamePath, [switch]$PythonCheckOnly)
 $ErrorActionPreference = 'Stop'
 $workspace = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+function Find-GearsVrPython([string]$Root) {
+    $preferred = [Environment]::GetEnvironmentVariable('GEARSVR_PYTHON')
+    $explicitPython = -not [string]::IsNullOrWhiteSpace($preferred)
+    $candidates = if ($explicitPython) {
+        @([Environment]::ExpandEnvironmentVariables($preferred.Trim().Trim('"')))
+    } else {
+        @((Join-Path $Root 'runtime/python/python.exe'),
+          (Join-Path $env:USERPROFILE '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'))
+    }
+    foreach ($candidate in $candidates) {
+        if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) { continue }
+        $probe = [Diagnostics.Process]::new()
+        try {
+            $probe.StartInfo = [Diagnostics.ProcessStartInfo]::new()
+            $probe.StartInfo.FileName = $candidate
+            $probe.StartInfo.Arguments = '-c "import sys; print(sys.executable); print(sys.version_info[0])"'
+            $probe.StartInfo.UseShellExecute = $false
+            $probe.StartInfo.CreateNoWindow = $true
+            $probe.StartInfo.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+            $probe.StartInfo.RedirectStandardOutput = $true
+            $probe.StartInfo.RedirectStandardError = $true
+            [void]$probe.Start()
+            $output = $probe.StandardOutput.ReadToEndAsync()
+            $errors = $probe.StandardError.ReadToEndAsync()
+            if (-not $probe.WaitForExit(5000)) {
+                $probe.Kill() # Only this disposable interpreter locator probe.
+                continue
+            }
+            $lines = $output.Result.Trim() -split '[\r\n]+'
+            if ($probe.ExitCode -eq 0 -and $lines.Count -eq 2 -and $lines[1] -eq '3' -and
+                (Test-Path -LiteralPath $lines[0] -PathType Leaf)) {
+                return [IO.Path]::GetFullPath($lines[0])
+            }
+        } catch {
+            # Explicit selection never falls through to a different interpreter.
+        } finally { $probe.Dispose() }
+    }
+    if ($explicitPython) { throw 'GEARSVR_PYTHON is not a usable Python 3 executable; no game startup actions were taken.' }
+    throw 'No usable Python 3 found in runtime/python or the development cache; set GEARSVR_PYTHON explicitly.'
+}
+$python = Find-GearsVrPython $workspace
+$env:GEARSVR_PYTHON = $python
+if ($PythonCheckOnly) {
+    @{python=$python; check_only=$true} | ConvertTo-Json -Compress
+    exit 0
+}
 $game = Join-Path $workspace 'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded'
 $exe = Join-Path $game 'Binaries_x64/GOWDE-Steam.exe'
 if ($GamePath) { $exe = $GamePath }
-$python = 'C:/Users/11/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
 $validated = & $python (Join-Path $PSScriptRoot 'game_install.py') --game-path $exe
 if ($LASTEXITCODE -ne 0) { throw 'Unsupported game installation; no startup changes made.' }
 $exe = [string]$validated

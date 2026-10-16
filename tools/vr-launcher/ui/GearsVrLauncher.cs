@@ -138,7 +138,19 @@ namespace GearsVrUi {
                 SaveOptions(temp, "legacy", false, 65); config = ReadConfig(temp);
                 if (config.ContainsKey("hud_horizontal_fov_degrees") || Convert.ToInt32(config["unknown"]) != 42) return 17;
             } finally { File.Delete(temp); }
-            var python = Python.Find();
+            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var candidates = Python.Candidates(root, "\"C:\\Python With Spaces\\python.exe\"", home);
+            if (candidates[0] != "C:\\Python With Spaces\\python.exe" ||
+                candidates[1] != Path.Combine(root, "runtime", "python", "python.exe") ||
+                candidates[2] != Path.Combine(home, ".cache", "codex-runtimes", "codex-primary-runtime", "dependencies", "python", "python.exe") ||
+                candidates[3] != "py.exe") return 18;
+            if (Python.Candidates(root, null, home)[0] != candidates[1]) return 19;
+            var python = Python.Find(root);
+            string previousPython = Environment.GetEnvironmentVariable("GEARSVR_PYTHON");
+            try {
+                Environment.SetEnvironmentVariable("GEARSVR_PYTHON", python.File);
+                if (!String.Equals(Python.Find(root).File, python.File, StringComparison.OrdinalIgnoreCase)) return 20;
+            } finally { Environment.SetEnvironmentVariable("GEARSVR_PYTHON", previousPython); }
             File.WriteAllText(Path.Combine(root, "analysis", "vr-launcher-ui", "self-test.txt"),
                 "PASS: repository, quoting, start/stop arguments, phase parsing, config preservation, HUD capability/range/save/readback/legacy behavior, owner identity handshake, Python probe\r\nPython: " + python.File);
             return 0;
@@ -153,14 +165,17 @@ namespace GearsVrUi {
             }
             return null;
         }
-        internal static Python Find() {
-            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            string preferred = Environment.GetEnvironmentVariable("GEARSVR_PYTHON");
+        internal static List<string> Candidates(string root, string preferred, string home) {
             var candidates = new List<string>();
-            if (!String.IsNullOrWhiteSpace(preferred)) candidates.Add(Environment.ExpandEnvironmentVariables(preferred.Trim('"')));
+            if (!String.IsNullOrWhiteSpace(preferred)) candidates.Add(Environment.ExpandEnvironmentVariables(preferred.Trim().Trim('"')));
+            candidates.Add(Path.Combine(root, "runtime", "python", "python.exe"));
             candidates.Add(Path.Combine(home, ".cache", "codex-runtimes", "codex-primary-runtime", "dependencies", "python", "python.exe"));
             candidates.Add("py.exe"); candidates.Add("python.exe"); candidates.Add("python3.exe");
-            foreach (string candidate in candidates) {
+            return candidates;
+        }
+        internal static Python Find(string root) {
+            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            foreach (string candidate in Candidates(root, Environment.GetEnvironmentVariable("GEARSVR_PYTHON"), home)) {
                 string file = Resolve(candidate); if (file == null) continue;
                 string prefix = Path.GetFileName(file).Equals("py.exe", StringComparison.OrdinalIgnoreCase) ? "-3 " : "";
                 try {
@@ -314,7 +329,7 @@ namespace GearsVrUi {
         async Task<int> Command(string command, string selectedRuntime) {
             try {
                 int code = await Task.Run(delegate {
-                    if (python == null) python = Python.Find();
+                    if (python == null) python = Python.Find(root);
                     using (var process = new Process()) {
                         process.StartInfo = new ProcessStartInfo(python.File, python.Prefix + Program.Arguments(root, command, selectedRuntime)) {
                             WorkingDirectory = root, UseShellExecute = false, CreateNoWindow = true,
@@ -322,6 +337,7 @@ namespace GearsVrUi {
                             StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
                         process.StartInfo.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
                         process.StartInfo.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
+                        process.StartInfo.EnvironmentVariables["GEARSVR_PYTHON"] = python.File;
                         if (command == "start" && selectedRuntime == null) process.StartInfo.EnvironmentVariables.Remove("XR_RUNTIME_JSON");
                         var stdout = new StringBuilder();
                         process.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e) { if (e.Data != null) { if (command == "status") stdout.AppendLine(e.Data); Log(e.Data); } };
