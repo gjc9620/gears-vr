@@ -249,12 +249,15 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
     return finish('timeout')
 
 
-def send_confirm(action, target):
+def send_confirm(action, target, *, window_lookup=None):
     """Same HWND Enter pair as confirm_window; bind dispatch to the original HWND."""
     import ctypes as c
     from ctypes import wintypes as w
     from game_io import game_window, interrupted, user
-    if action != 'confirm' or interrupted() or game_window() != target:
+    # Launchers for a selected installation supply their identity-checked HWND
+    # lookup. Standalone tools retain their original installation lookup.
+    lookup=window_lookup if window_lookup is not None else game_window
+    if action != 'confirm' or interrupted() or lookup() != target:
         raise RuntimeError('Confirmation target changed or Stop/F8 active')
     user.PostMessageW.argtypes = [w.HWND, w.UINT, w.WPARAM, w.LPARAM]
     user.PostMessageW.restype = w.BOOL

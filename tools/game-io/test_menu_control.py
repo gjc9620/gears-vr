@@ -1,8 +1,31 @@
 """Pure offline control-policy tests; no reader/process/input is imported."""
 import copy
 import unittest
+import sys
+from types import SimpleNamespace
+from unittest import mock
 from menu_control import (control, allowed, fingerprint, ONLINE_TITLE, ONLINE_MESSAGE,
                           wait_for_reader, wait_for_replacement, REGISTRY_IDENTITY_CHANGED, ControlProgress)
+
+
+class DispatchInstallationTests(unittest.TestCase):
+    def test_selected_window_dispatch_and_legacy_fallback(self):
+        from menu_control import send_confirm
+        post=mock.Mock(return_value=True);fixed=mock.Mock(side_effect=RuntimeError('Game window not found'))
+        stopped=[False]
+        module=SimpleNamespace(game_window=fixed,interrupted=lambda:stopped[0],user=SimpleNamespace(PostMessageW=post))
+        with mock.patch.dict(sys.modules,{'game_io':module}),mock.patch('menu_control.time.sleep'):
+            send_confirm('confirm',(123,456),window_lookup=lambda:(123,456))
+            self.assertEqual([call.args[1] for call in post.call_args_list],[0x100,0x101])
+            self.assertTrue(all(call.args[0]==456 for call in post.call_args_list));fixed.assert_not_called()
+            post.reset_mock()
+            for target in ((123,999),(999,456)):
+                with self.assertRaisesRegex(RuntimeError,'target changed'):send_confirm('confirm',(123,456),window_lookup=lambda:target)
+            stopped[0]=True
+            with self.assertRaisesRegex(RuntimeError,'Stop/F8'):send_confirm('confirm',(123,456),window_lookup=lambda:(123,456))
+            stopped[0]=False;post.assert_not_called()
+            with self.assertRaisesRegex(RuntimeError,'Game window not found'):send_confirm('confirm',(123,456))
+            fixed.assert_called_once()
 
 
 def state(continuing=False):

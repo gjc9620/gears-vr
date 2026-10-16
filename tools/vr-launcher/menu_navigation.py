@@ -126,6 +126,6 @@ def navigate(pid, game_identity, backend, cancel, deadline, log_path, check_live
         return pid,hwnd
     return navigate_core(pid, game_identity, deadline, log_path,
                          reader_factory=lambda: MenuReader(pid), window=window,
-                         send=send_confirm,
+                         send=lambda action,target:send_confirm(action,target,window_lookup=window),
                          interrupted=interrupted,
                          identity=backend.control.identity)

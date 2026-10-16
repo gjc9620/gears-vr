@@ -265,6 +265,8 @@ class SelectedInstallationAdapterTests(unittest.TestCase):
             window=core.call_args.kwargs['window']
             self.assertEqual(window(),(7,99));handle[0]=100
             self.assertEqual(window(),(7,100))
+            core.call_args.kwargs['send']('confirm',(7,100))
+            self.assertIs(modules['menu_control'].send_confirm.call_args.kwargs['window_lookup'],window)
             handle[0]=None
             with self.assertRaisesRegex(RuntimeError,'Game window not found'):window()
             fixed_lookup.assert_not_called()
