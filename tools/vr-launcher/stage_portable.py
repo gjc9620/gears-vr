@@ -1,0 +1,179 @@
+"""Build a new, allowlisted offline candidate; never launch the game or overwrite a stage."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import stat
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parents[2]
+PROJECT_MODULES = {
+    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight',
+    'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy tiny_output_recovery',
+    'game-io': 'background_input game_io menu_state menu_control movie_state',
+    'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',
+    'native-capture': ('anchor_config cinematic_anchor crosshair_assignment_config hook_entry_attestation '
+        'launch_reserve menu_display_monitor prime_owner run_stereo_continuous run_stereo_probe '
+        'start_capture ui_observer_config verify_stopped world_rebind world_rebind_monitor world_rebind_runtime'),
+}
+NATIVE_TESTS = ('CaptureSelfTest.exe', 'GraphicsMenuLockTest.exe', 'FrameLinkTest.exe',
+                'GpuViewportStatsTest.exe', 'SplitSourceViewsTest.exe', 'SubmittedViewLifetimeTest.exe')
+QUIET_BUILD = 'tools/quiet-startup/build-quiet11'
+QUIET_HASHES = {
+    'GearsEarlyLaunch.exe': '4eb27120bb8d1c5abf0d282a5280f65bf69d6f798edaa003e34673537bec0bf8',
+    'GearsQuietStartup.dll': '58b81c8340d14c7083444e6031f050fc4d1d50a4481301fee76c8269f875ea5b',
+}
+PYTHON_FILES = ('python.exe', 'python3.dll', 'python312.dll', 'vcruntime140.dll', 'vcruntime140_1.dll', 'LICENSE.txt')
+LIB_EXCLUDE = {'site-packages', '__pycache__', 'test', 'tests', 'idlelib', 'tkinter', 'turtledemo', 'ensurepip'}
+LICENSES = {
+    'tools/third-party/minhook/LICENSE.txt': 'licenses/MinHook.txt',
+    'tools/third-party/openxr-loader/share/doc/openxr/LICENSE': 'licenses/OpenXR-Loader.txt',
+    'tools/package-inspector/python-libs/pefile-2024.8.26.dist-info/LICENSE': 'licenses/pefile.txt',
+}
+
+
+def digest(path):
+    value = hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b''): value.update(block)
+    return value.hexdigest()
+
+
+def no_links(path):
+    path = Path(os.path.abspath(path))
+    for item in (path, *path.parents):
+        if not item.exists() and not item.is_symlink(): continue
+        info = item.lstat()
+        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+            raise ValueError('Symlink/reparse point refused: ' + str(item))
+    return path
+
+
+def contained(root, relative):
+    relative = Path(relative)
+    if relative.is_absolute() or '..' in relative.parts:
+        raise ValueError('Expected a contained relative path: ' + str(relative))
+    path = no_links(Path(root) / relative)
+    if not path.resolve().is_relative_to(Path(root).resolve()):
+        raise ValueError('Path escapes source root')
+    return path
+
+
+def payload_paths(manifest):
+    native, xr = Path(manifest['native_build']), Path(manifest['xr_build'])
+    for path in (native, xr):
+        if path.is_absolute() or '..' in path.parts or path.parts[:1] != ('tools',):
+            raise ValueError('Build must remain inside tools: ' + str(path))
+    dll = manifest['native_dll']
+    if Path(dll).name != dll or not dll.lower().endswith('.dll'): raise ValueError('Invalid DLL basename')
+    result = ['GearsVR Launcher.exe', 'tools/debug-launch/Start-DebugGame.ps1',
+              'tools/package-inspector/reloaded-profile.json']
+    result += [f'tools/{folder}/{name}.py' for folder, names in PROJECT_MODULES.items() for name in names.split()]
+    result += [(native / name).as_posix() for name in (dll, *NATIVE_TESTS)]
+    result += [(xr / name).as_posix() for name in ('OpenXRPoseProbe.exe', 'openxr_loader.dll')]
+    result += [f'{QUIET_BUILD}/{name}' for name in QUIET_HASHES]
+    result += ['tools/package-inspector/python-libs/pefile.py', 'tools/package-inspector/python-libs/peutils.py']
+    result += [f'tools/package-inspector/python-libs/ordlookup/{name}.py' for name in ('__init__', 'oleaut32', 'ws2_32', 'wsock32')]
+    return result
+
+
+def python_sources(python_root):
+    result = list(PYTHON_FILES)
+    for folder in ('Lib', 'DLLs'):
+        for directory, dirs, files in os.walk(contained(python_root, folder), followlinks=False):
+            # Reject reparse entries even if their name would otherwise be excluded.
+            for name in (*dirs, *files): no_links(Path(directory) / name)
+            dirs[:] = sorted(name for name in dirs if name.casefold() not in LIB_EXCLUDE)
+            for name in sorted(files):
+                relative = (Path(directory) / name).relative_to(python_root)
+                if folder == 'Lib' and relative.suffix.lower() != '.py': continue
+                if folder == 'DLLs' and (relative.suffix.lower() not in ('.dll', '.pyd') or
+                        name.lower().startswith(('_tkinter', 'tcl', 'tk'))): continue
+                result.append(relative.as_posix())
+    return sorted(set(result))
+
+
+def stage(root, python_root, destination):
+    root, python_root = no_links(root).resolve(), no_links(python_root).resolve()
+    destination = no_links(destination)
+    if destination.exists(): raise FileExistsError('A stage must be a new directory: ' + str(destination))
+    for source in (root, python_root):
+        if source == destination.resolve() or source.is_relative_to(destination.resolve()):
+            raise ValueError('Destination cannot be a source root or its ancestor')
+    manifest = json.loads(contained(root, 'tools/vr-launcher/manifest.json').read_text())
+    copies = [(contained(root, path), path, 'repository:' + path, 'project-code-or-built-artifact')
+              for path in payload_paths(manifest)]
+    copies += [(contained(root, source), target, 'repository:' + source, 'third-party-license')
+               for source, target in LICENSES.items()]
+    copies += [(contained(python_root, path), 'runtime/python/' + path, 'python-root:' + path,
+                'CPython-runtime-and-bundled-VC-runtime') for path in python_sources(python_root)]
+    for source, _, _, _ in copies:
+        if not source.is_file(): raise FileNotFoundError(source)
+    for key, relative in (('native_sha256', Path(manifest['native_build']) / manifest['native_dll']),
+                          ('xr_sha256', Path(manifest['xr_build']) / 'OpenXRPoseProbe.exe')):
+        if digest(contained(root, relative)) != manifest[key]: raise ValueError('Manifest artifact hash mismatch: ' + str(relative))
+    for name, expected in QUIET_HASHES.items():
+        if digest(contained(root, f'{QUIET_BUILD}/{name}')) != expected: raise ValueError('Quiet11 hash mismatch')
+    destination.mkdir(parents=True)
+    inventory = []
+    def record(target, source, category):
+        inventory.append(dict(path=target.relative_to(destination).as_posix(), size=target.stat().st_size,
+                              sha256=digest(target), source=source, license_category=category))
+    for source, relative, provenance, category in copies:
+        target = contained(destination, relative); target.parent.mkdir(parents=True, exist_ok=True)
+        expected = digest(source); shutil.copyfile(source, target)
+        if digest(source) != expected or digest(target) != expected: raise RuntimeError('Source changed during copy: ' + str(source))
+        record(target, provenance, category)
+    manifest['game_path'] = 'SELECT_GAME_EXECUTABLE'
+    generated = {
+        'tools/vr-launcher/manifest.json': manifest,
+        'tools/vr-launcher/config.json': {'game_path': '', 'stereo_units_per_metre': 100},
+        'portable-candidate.json': {'schema': 1, 'kind': 'offline-staging-candidate', 'release_ready': False,
+            'game_selection_required': True, 'simulator_bundled': False,
+            'runtime_choice': 'Select system OpenXR Runtime in the existing GUI; its simulator default is not bundled.',
+            'limits': ['No game/headset acceptance performed', 'Redistribution/license review remains required',
+                      'GUI developer Python fallbacks still exist outside strict preflight',
+                      'Optional game_io capture/controller diagnostics are not bundled dependencies']},
+    }
+    for relative, value in generated.items():
+        target = contained(destination, relative); target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(value, indent=2) + '\n', encoding='utf-8')
+        record(target, 'generated:' + relative, 'project-generated-config')
+    for relative in ('analysis/runtime', 'analysis/vr-launcher-ui'): contained(destination, relative).mkdir(parents=True, exist_ok=True)
+    # A file cannot contain its own digest. All payload files are listed; the
+    # inventory's own hash belongs in the separate preflight evidence receipt.
+    report = dict(schema=1, files=sorted(inventory, key=lambda row: row['path']),
+                  inventory_self_excluded=True, bytes=sum(row['size'] for row in inventory))
+    (destination / 'inventory.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+    return report
+
+
+def run_preflight(destination, evidence):
+    destination = Path(destination).resolve(); evidence = Path(evidence).resolve()
+    env = dict(os.environ)
+    for key in ('PYTHONHOME', 'PYTHONPATH', 'GEARSVR_PYTHON', 'GEARSVR_QUIET_STARTUP_BUILD'): env.pop(key, None)
+    command = [str(destination / 'runtime/python/python.exe'), '-I', '-B',
+               str(destination / 'tools/vr-launcher/portable_preflight.py'), '--output', str(evidence)]
+    result = subprocess.run(command, cwd=destination, env=env, capture_output=True, text=True,
+                            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), timeout=90)
+    if result.returncode: raise RuntimeError('Isolated preflight failed: ' + result.stderr[-2500:])
+    return json.loads(result.stdout)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--python-root', type=Path, required=True)
+    parser.add_argument('--destination', type=Path, required=True)
+    parser.add_argument('--root', type=Path, default=ROOT)
+    parser.add_argument('--preflight-output', type=Path, required=True)
+    args = parser.parse_args()
+    report = stage(args.root, args.python_root, args.destination)
+    preflight = run_preflight(args.destination, args.preflight_output)
+    print(json.dumps({'destination': str(args.destination.resolve()), 'files': len(report['files']),
+                      'payload_bytes': report['bytes'], 'preflight': preflight}))
+
+
+if __name__ == '__main__': main()
