@@ -98,6 +98,24 @@ class StageTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError): self.build()
         self.assertFalse(self.destination.exists())
 
+    def test_explicit_candidate_stages_its_artifact_without_changing_default(self):
+        default = self.root / 'tools/vr-launcher/manifest.json'
+        original = default.read_bytes()
+        candidate = dict(self.manifest, native_dll='Candidate.dll')
+        artifact = self.root / candidate['native_build'] / candidate['native_dll']
+        self.put(artifact, b'candidate-only')
+        candidate['native_sha256'] = stage.digest(artifact)
+        selected = self.base / 'candidate.json'
+        selected.write_text(json.dumps(candidate))
+        result = stage.stage(self.root, self.python, self.destination, manifest_path=selected)
+        self.assertEqual(default.read_bytes(), original)
+        self.assertEqual((self.destination / candidate['native_build'] / 'Candidate.dll').read_bytes(), b'candidate-only')
+        self.assertFalse((self.destination / candidate['native_build'] / 'Mod.dll').exists())
+        names = {item['path'] for item in result['files']}
+        self.assertNotIn('candidate.json', names)
+        self.assertFalse((self.destination / 'analysis/private.sqlite').exists())
+        preflight.check_inventory(self.destination)
+
     def test_manifest_paths_cannot_escape(self):
         for value in ('../outside', str(self.base / 'outside'), 'analysis/re-kb'):
             with self.assertRaises(ValueError): stage.payload_paths(dict(self.manifest, native_build=value))

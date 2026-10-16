@@ -96,14 +96,16 @@ def python_sources(python_root):
     return sorted(set(result))
 
 
-def stage(root, python_root, destination):
+def stage(root, python_root, destination, *, manifest_path=None):
     root, python_root = no_links(root).resolve(), no_links(python_root).resolve()
     destination = no_links(destination)
     if destination.exists(): raise FileExistsError('A stage must be a new directory: ' + str(destination))
     for source in (root, python_root):
         if source == destination.resolve() or source.is_relative_to(destination.resolve()):
             raise ValueError('Destination cannot be a source root or its ancestor')
-    manifest = json.loads(contained(root, 'tools/vr-launcher/manifest.json').read_text())
+    selected_manifest = (contained(root, 'tools/vr-launcher/manifest.json') if manifest_path is None
+                         else no_links(manifest_path))
+    manifest = json.loads(selected_manifest.read_text())
     copies = [(contained(root, path), path, 'repository:' + path, 'project-code-or-built-artifact')
               for path in payload_paths(manifest)]
     copies += [(contained(root, source), target, 'repository:' + source, 'third-party-license')
@@ -133,7 +135,7 @@ def stage(root, python_root, destination):
         'tools/vr-launcher/config.json': {'game_path': '', 'stereo_units_per_metre': 100},
         'portable-candidate.json': {'schema': 1, 'kind': 'offline-staging-candidate', 'release_ready': False,
             'game_selection_required': True, 'simulator_bundled': False,
-            'runtime_choice': 'Select system OpenXR Runtime in the existing GUI; its simulator default is not bundled.',
+            'runtime_choice': 'The GUI defaults to Quest 3 / Virtual Desktop (VDXR); system OpenXR is also selectable. Simulator files are not bundled.',
             'limits': ['No game/headset acceptance performed', 'Redistribution/license review remains required',
                       'GUI developer Python fallbacks still exist outside strict preflight',
                       'Optional game_io capture/controller diagnostics are not bundled dependencies']},
@@ -168,9 +170,10 @@ def main():
     parser.add_argument('--python-root', type=Path, required=True)
     parser.add_argument('--destination', type=Path, required=True)
     parser.add_argument('--root', type=Path, default=ROOT)
+    parser.add_argument('--manifest', type=Path, help='Stage an explicit candidate without changing the local default')
     parser.add_argument('--preflight-output', type=Path, required=True)
     args = parser.parse_args()
-    report = stage(args.root, args.python_root, args.destination)
+    report = stage(args.root, args.python_root, args.destination, manifest_path=args.manifest)
     preflight = run_preflight(args.destination, args.preflight_output)
     print(json.dumps({'destination': str(args.destination.resolve()), 'files': len(report['files']),
                       'payload_bytes': report['bytes'], 'preflight': preflight}))
