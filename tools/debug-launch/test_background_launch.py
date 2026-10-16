@@ -1,4 +1,6 @@
 import importlib.util
+import contextlib
+import io
 import json
 import pathlib
 import sys
@@ -28,7 +30,7 @@ class BackgroundLaunchTests(unittest.TestCase):
             if receipt.exists():raise RuntimeError('helper failed')
             return bootstrap
         with self.assertRaisesRegex(RuntimeError,'helper failed'):
-            background_launch.launch(self.game,game_io=self.helper,runtime=self.runtime,popen=spawn,launch_receipt=receipt)
+            background_launch.launch(self.game,disable_background_input=False,game_io=self.helper,runtime=self.runtime,popen=spawn,launch_receipt=receipt)
         value=json.loads(receipt.read_text())
         self.assertEqual(value['game_identity'],dict(pid=5100,creation_time=987654,image=str(self.game.resolve()).casefold()))
         self.assertIs(value['injection_attempted'],False);self.assertIs(value['prime_attempted'],False)
@@ -53,12 +55,12 @@ class BackgroundLaunchTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def test_default_launch_uses_frozen_quiet_policy_and_hidden_helpers(self):
+    def test_explicit_background_input_uses_frozen_quiet_policy_and_hidden_helpers(self):
         build, _, bootstrap = self.default_quiet_fixture()
         self.quiet_patches()
         popen = mock.Mock(side_effect=[bootstrap, Process(5200)])
         result = background_launch.launch(self.game, ['-NoPauseUnfocus', 'SP_Prison_P'],
-            game_io=self.helper, runtime=self.runtime, popen=popen)
+            disable_background_input=False, game_io=self.helper, runtime=self.runtime, popen=popen)
         self.assertEqual(popen.call_args_list[0].args[0], [str(build/'GearsEarlyLaunch.exe'), str(self.game),
             str(build/'GearsQuietStartup.dll'), '-NoPauseUnfocus', 'SP_Prison_P'])
         for call in popen.call_args_list:
@@ -89,10 +91,39 @@ class BackgroundLaunchTests(unittest.TestCase):
 
     def test_foreground_window_does_not_disable_controller_option(self):
         popen = mock.Mock(side_effect=[Process(4300), Process(4301)])
-        result = background_launch.launch(self.game, foreground=True,
+        result = background_launch.launch(self.game, foreground=True, disable_background_input=False,
                                           game_io=self.helper, runtime=self.runtime, popen=popen)
         self.assertEqual(popen.call_count, 2)
         self.assertTrue(result['background_input_requested'])
+
+    def test_default_python_launch_never_starts_background_helper(self):
+        _, _, bootstrap = self.default_quiet_fixture()
+        self.quiet_patches()
+        for foreground in (False, True):
+            with self.subTest(foreground=foreground):
+                popen = mock.Mock(return_value=Process(4200) if foreground else bootstrap)
+                result = background_launch.launch(self.game, foreground=foreground,
+                    game_io=self.root/'missing.py', runtime=self.runtime, popen=popen)
+                self.assertEqual(popen.call_count, 1)
+                self.assertFalse(result['background_input_requested'])
+                self.assertNotIn('background_input_helper_pid', result)
+                self.assertNotIn('background_input_stdout', result)
+                saved = json.loads(pathlib.Path(result['record_path']).read_text())
+                self.assertFalse(saved['background_input_requested'])
+
+    def test_cli_background_input_requires_explicit_opt_in_and_rejects_conflicting_flags(self):
+        with mock.patch.object(background_launch, 'launch', return_value={}) as launch, contextlib.redirect_stdout(io.StringIO()):
+            base = ['--game-path', str(self.game)]
+            for extra, disabled in (([], True), (['--disable-background-input'], True),
+                                    (['--enable-background-input'], False),
+                                    (['--foreground'], True), (['--foreground', '--enable-background-input'], False)):
+                with self.subTest(extra=extra):
+                    self.assertEqual(background_launch.main(base + extra), 0)
+                    self.assertIs(launch.call_args.kwargs['disable_background_input'], disabled)
+            launch.reset_mock()
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                background_launch.main(base + ['--enable-background-input', '--disable-background-input'])
+            launch.assert_not_called()
 
     def test_command_line_preserves_dash_game_argument(self):
         with mock.patch.object(background_launch, 'launch', return_value={}) as launch:
@@ -155,7 +186,7 @@ class BackgroundLaunchTests(unittest.TestCase):
         validate, control = self.quiet_patches()
         popen = mock.Mock(side_effect=[bootstrap, Process(5200)])
         result = background_launch.launch(self.game, ['-NoPauseUnfocus', 'argument with spaces'],
-            quiet_build=build, game_io=self.helper, runtime=self.runtime, popen=popen)
+            quiet_build=build, disable_background_input=False, game_io=self.helper, runtime=self.runtime, popen=popen)
         validate.assert_called_once_with(self.game.resolve())
         control.identity.assert_called_once_with(5100)
         bootstrap.communicate.assert_called_once_with()

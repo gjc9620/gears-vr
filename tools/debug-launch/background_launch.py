@@ -1,4 +1,4 @@
-"""Launch with the frozen process-local quiet policy, then arm background input."""
+"""Launch with the frozen process-local quiet policy; background input is opt-in."""
 import argparse
 import ctypes
 from ctypes import wintypes
@@ -55,7 +55,7 @@ def process_creation_time(process):
     return (created.dwHighDateTime << 32) | created.dwLowDateTime
 
 
-def launch(game_path, game_args=(), *, foreground=False, disable_background_input=False,
+def launch(game_path, game_args=(), *, foreground=False, disable_background_input=True,
            game_io=GAME_IO, runtime=RUNTIME, popen=subprocess.Popen, quiet_build=None, launch_receipt=None):
     quiet_build = quiet_build_for_start(foreground, quiet_build)
     game_path = pathlib.Path(game_path).resolve()
@@ -133,7 +133,12 @@ def main(argv=None):
     parser.add_argument('--game-path', type=pathlib.Path, required=True)
     parser.add_argument('--game-arg', action='append', default=[])
     parser.add_argument('--foreground', action='store_true', help='Use the ordinary foreground startup policy')
-    parser.add_argument('--disable-background-input', action='store_true')
+    inputs = parser.add_mutually_exclusive_group()
+    inputs.add_argument('--enable-background-input', dest='disable_background_input', action='store_false',
+                        help='Explicitly enable physical controller input while the game is unfocused')
+    inputs.add_argument('--disable-background-input', dest='disable_background_input', action='store_true',
+                        help='Keep background controller input disabled (default; legacy option)')
+    parser.set_defaults(disable_background_input=True)
     parser.add_argument('--quiet-build', type=pathlib.Path, help='Override frozen quiet11 startup build (or GEARSVR_QUIET_STARTUP_BUILD)')
     parser.add_argument('--launch-receipt',type=pathlib.Path,help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
