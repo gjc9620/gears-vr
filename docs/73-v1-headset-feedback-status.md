@@ -28,3 +28,5 @@ Native34首次进关前失败的PID39900：实际交换链8×8；状态文件偶
 `stage_portable.py --manifest` 可单独打包实验候选，不替换默认清单或玩家配置。真实Native34离线候选第一次检查通过：693个清单文件、42,652,715字节；包内Python隔离模式导入33个项目模块，并核验清单、哈希及PE依赖，未启动GUI或游戏。原始回执 `analysis/runtime/hud34-portable-preflight.json`，目录 `analysis/release-staging/hud34-offline-20261017`。
 
 这只证明本机的离线包依赖检查，`release_ready=false`；并非干净玩家机器、许可审查、实际安装或头显验收。包不包含游戏、模拟器、逆向数据库、伪代码或资料库。发布前仍须完成上表剩余项及实际部署验证。
+
+补充：c61921e将底层Python函数／CLI也改为默认关闭后台手柄，只有显式参数才可启用。更新后重新生成的离线候选 `analysis/release-staging/hud34-offline2-20261017` 通过包内隔离预检（693文件、42653389字节），回执 `analysis/runtime/hud34-portable-preflight2.json`；未启动GUI／游戏，仍非发布验收。
