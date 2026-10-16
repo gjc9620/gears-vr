@@ -120,3 +120,17 @@ SpaceRecovery8仅在已有 `--shutdown-diagnostics` 开启时增加初始化边�
 `bdc323f` 将 `background_launch.py` 的普通启动默认接入冻结的 quiet8；校验启动器与策略 DLL 的 SHA256，缺失或变化时拒绝启动，不降级为普通前台启动。显式 `--foreground` 仍可选择普通启动。16 项启动测试通过。这是默认接线修正，不表示上面的 9q/9r 激活遗漏已解决。
 
 `2112cd4` 为主 launcher 的 reservation、进程查询、native preparation/verification 与 native 自测/PowerShell 辅助调用补齐 `CREATE_NO_WINDOW`；不会隐藏游戏或模拟器的 GUI。XR 子进程环境固定 `XR_SIMULATOR_NO_ACTIVATE=1`，保留父进程环境和 `XR_RUNTIME_JSON`。相关 144 项 Python 测试通过。连续会话没有默认 duration 截止，启动/清理超时不等于显示时长。用户要求模拟器持续可见；目前预览依附 XR 进程，会话停止或重启时仍会关闭，不能表述为跨进程重启常驻。
+
+
+### 2026-10-16 后续实际观察与当前默认
+
+`8412253` 将默认构建更新为冻结的 quiet11，并对子进程显式启用主窗口 NOACTIVATE 策略；保留 APPWINDOW、原窗口位置/分辨率，foreground 显式启动仍绕过。36 项 debug-launch 测试通过。quiet11 是 `2dc0271` 源码阶段的冻结构建，后续 quiet12/13 仅为实验，不覆盖该构建。仍未达到“所有自动启动均不抢焦点”的实际验收，不能把默认接入等同于根因已解决。
+
+- `quiet-game-only9t.json` 的游戏前台事件，用户已明确承认手动切换；不作为自动抢焦点失败。
+- `quiet-game-only9u.json`：输入时间在整轮未变化，实际 extension-point mitigation flags=1，游戏仍自动激活。AppHook64 与 nvspcap64 仍存在，模块差集主要是 IME；没有实现对 DisplayFusion 的完整隔离，也未修改其设置或注册表。
+- `quiet-persistent11.json`：自动导航遇到视频设置确认/选项页后超时。已停止 XR，owned prime 取消并验证入口恢复，随后正常关闭该轮游戏；该轮不是持续运行通过。
+- `quiet-persistent13.json` / `continuous-stereo-16104-20261016-150650-701eca87.json`：取消自动导航、保持菜单等待，无默认显示时长。模拟器窗口可见，运行时帧计数递增；阶段为 awaiting_level，尚未激活关卡原生双目。前台事件混有大量人工输入，不能单凭目标事件归因。
+
+只读查询 `focus-persistent13.json` 显示，新增 NtUserSetForegroundWindow 实验入口首次调用发生在游戏已经前台之后，并未捕获到最初激活请求。其余四个相关 win32u 入口的运行字节与磁盘相同，见 `focus-persistent13-win32u-bytes.json`。不继续沿“该入口被绕过导致初次激活”作无证据修改。
+
+复用知识库后，已将 `RVA 0x197178 / 0x27f740 / 0x2815f0` 的全部 chunks 与当前游戏逐段读取、拼接 SHA256 比较，全部匹配，证据 `focus-persistent13-kb-functions.json`。前者是修饰键清理，不能跳过；主动窗口显示/置前块已被现有策略覆盖。下一处定向分析为已有运行栈上的视口/RHI 更新与 restore 路径，仍是待验证假设。仅打开了私有 Windows user32 副本，确认 SetForegroundWindow 是转发到 win32u 的跳转；IDA lease 已关闭，原件未改，衍生数据保留在忽略的 analysis 下。
