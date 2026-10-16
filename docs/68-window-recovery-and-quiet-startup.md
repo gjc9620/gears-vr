@@ -163,3 +163,11 @@ quiet14 构建、命令行CTest通过；实际hook fixture的 trace_valid 检查
 首轮管理员实例 `GearsVRFocus-bcca9daf7cb4413bb6e6b09a66b6c62e` 经 logman 确认实际运行（非管理员 WPR status 未显示该实例）。记录覆盖 game13348 的实际启动，随后主动请求保存，stop exit0，ETL 524288字节。xperf导出显示133秒、事件/缓冲丢失均0，但没有 Win32k 焦点事件，仅系统元数据；因此不能用于来源归因，也不能宣称ETW路线已验证可用。
 
 第二版 profile 使用 logman 查询确认的 GUID `8c416c79-d49b-4f01-a467-e56d3aa8234c`、Focus/UserActivity mask `0x22000`、NonPagedMemory及Strict启用。仍需重新采样验证事件实际出现；名称解析或buffer选项是否解释首轮空数据尚未证明。采集结果全部保存在ignored analysis，不进发布包。窗口操作对照和调用方归因尚未完成。
+
+### Win32k 有效采样与归因边界
+
+后续实例 `79dae3652d7d439e85da851fdabab248` 成功采到 Focus/FocusedProcessChange 及调用栈，正常保存退出0；该轮仅验证采集能力，没有重启游戏。实际启动实例 `a2a877fd0b8948a1a3c8c365d25c6ff9` 也正常保存退出0，导出18条焦点相关事件。新前台进程15296的事件位于49210913微秒，事件头PID15296/TID30436，栈39帧。与 `focus-etw14-valid.json` 的模块范围对照，用户态栈为 win32u+0x12e4、user32+0x119bf/+0x11948、游戏+0x1f9d93/+0x27ffa9，延续已观察到的消息泵路径。
+
+该证据确认目标线程处理激活的位置，不能将事件头PID当成最初发起异步请求的进程。继续解析这份内核栈不能可靠还原此前排队请求的发起者，因此停止这条归因路线，不再要求用户重复管理员采集。当前没有证据确认 DisplayFusion 或显卡覆盖层是根因。
+
+下一项候选是外部组件来源隔离。只读检查确认 DisplayFusion 正在运行，游戏加载 AppHook64；本机 Compatibility/Triggers 键未读到规则。官方支持说明单应用 Disable Application Hooks 并非完全禁用该应用的所有 DisplayFusion 功能，不能用该设置冒充完整隔离。尚未修改其配置或关闭该软件；短暂退出整个 DisplayFusion 会影响用户桌面功能，需要先取得该范围的同意。当前游戏15296保留运行。
