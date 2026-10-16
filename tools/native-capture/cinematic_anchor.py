@@ -132,7 +132,9 @@ class CinematicTargetCertificate:
         r = self.r
         cinematic = bool(r.u32(sampler.controller + self.offset) & self.mask)
         identity = sampler.fresh(target)
-        if (self.world_info['outer'] != level['address'] or
+        mounted = getattr(sampler, 'mounted_contract', None)
+        mounted_world = mounted is not None and mounted.certifies_world(self.world_info)
+        if ((self.world_info['outer'] != level['address'] and not mounted_world) or
                 any(r.u64(actor + self.world_offset) != self.world_info['address']
                     for actor in (sampler.controller, pawn['address'], target))):
             raise AnchorRejected('Cinematic target WorldInfo does not match controlled world')

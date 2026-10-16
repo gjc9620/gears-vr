@@ -1,7 +1,23 @@
 // Included in gears_anchor after Config/Identity. Every mounted role is immutable
 // for this certificate. A dismount, Driver change or new Turret requires rebind.
+inline bool mounted_levels_config(Config const& c){
+    if(!c.identity_count||c.identity_count>c.identities.size()||c.role_level>=c.identity_count)return false;
+    auto known=[&](std::uintptr_t address)->Identity const*{for(unsigned i=0;i<c.identity_count;++i)if(c.identities[i].address==address)return &c.identities[i];return nullptr;};
+    auto named=[](Identity const* id,wchar_t const* name){return id&&!id->name.back()&&!id->number&&!std::wcscmp(id->name.data(),name);};
+    auto const& level=c.identities[c.role_level];
+    for(auto role:{c.role_pawn,c.mounted_role_driver,c.role_controller,c.role_camera,c.mounted_role_world_info}){
+        if(role>=c.identity_count)return false;auto owner=known(c.identities[role].outer);
+        if(!owner||!owner->name[0]||owner->name.back()||!std::wcsncmp(owner->name.data(),L"Default__",9)||owner->cls!=level.cls)return false;
+        bool is_level=false;auto cls=owner->cls;
+        for(unsigned n=0;n<64&&cls;++n){auto id=known(cls);
+            if(!id||!id->check_super||!named(known(id->cls),L"Class"))return false;
+            if(named(id,L"Level")){is_level=true;break;}cls=id->super;}
+        if(!is_level)return false;
+    }
+    return c.identities[c.role_pawn].outer==level.address;
+}
 template<class Read> bool mounted_links(Config const& c,Read read){
-    if(!c.mounted_enabled||!c.identity_count||c.identity_count>c.identities.size()||c.mounted_property_offset_internal>0xfffc)return false;
+    if(!c.mounted_enabled||!mounted_levels_config(c)||c.mounted_property_offset_internal>0xfffc)return false;
     const unsigned roles[]={c.role_controller,c.role_local,c.role_camera,c.role_pawn,c.role_level,
         c.mounted_role_driver,c.mounted_role_inventory,c.mounted_role_world_info};
     for(unsigned i=0;i<std::size(roles);++i){if(roles[i]>=c.identity_count)return false;
@@ -19,7 +35,9 @@ template<class Read> bool mounted_links(Config const& c,Read read){
     for(auto role:roles){auto const& id=c.identities[role];if(!id.address||!id.name[0]||!std::wcsncmp(id.name.data(),L"Default__",9))return false;}
     if(!inherits(controlled.cls,L"Turret")||!inherits(controlled.cls,L"Vehicle")||!inherits(driver.cls,L"WarPawn")||
        !inherits(inventory.cls,L"WarInventoryManager")||!inherits(world.cls,L"WorldInfo")||
-       controlled.outer!=level||driver.outer!=level||world.outer!=level||inventory.outer!=driver.address)return false;
+       controlled.outer!=level||inventory.outer!=driver.address)return false;
+    // Each streamed actor's immediate Level is part of the immutable identity
+    // table and rechecked by the enclosing guard's registry/name brackets.
     auto field=[&](auto& v,std::uintptr_t address,unsigned offset){return address&&address<=(std::numeric_limits<std::uintptr_t>::max)()-offset-sizeof(v)&&
         read(&v,reinterpret_cast<const void*>(address+offset),sizeof(v));};
     const wchar_t* names[]={L"Pawn",L"Controller",L"Driver",L"DrivenVehicle",L"PlayerCamera",L"PCOwner",L"Player",L"WorldInfo",L"InvManager"};

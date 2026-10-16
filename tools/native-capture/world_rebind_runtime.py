@@ -13,6 +13,18 @@ from anchor_config import LiveRegistryAnchorSampler
 from hook_entry_attestation import HookEntryAttestation
 from world_rebind import build_candidate, publish_candidate, role, identity, thaw
 
+MOUNTED_LEVEL_ROLES = ('controlled','driver','controller','camera','world_info')
+
+
+def mounted_levels(config):
+    if 'mounted' not in config:return ()
+    from mounted_context import validate_mounted_config
+    validate_mounted_config(config)
+    ids=config['identities'];m=config['mounted'];roles=config['roles']
+    actors=(roles['pawn'],m['role_driver'],roles['controller'],roles['camera'],m['role_world_info'])
+    by_address={item['address']:item for item in ids}
+    return tuple(identity(by_address[ids[index]['outer']]) for index in actors)
+
 
 def snapshot(config):
     from world_rebind_monitor import WorldSnapshot
@@ -23,7 +35,8 @@ def snapshot(config):
     return WorldSnapshot(**{name:role(config,name) for name in
         ('local_player','controller','camera','level','pawn')},
         world_info=identity(config['identities'][world_index]),
-        mounted_context=tuple(identity(config['identities'][index]) for index in (config['roles']['pawn'],config['mounted']['role_driver'],config['mounted']['role_inventory'])) if 'mounted' in config else ())
+        mounted_context=tuple(identity(config['identities'][index]) for index in (config['roles']['pawn'],config['mounted']['role_driver'],config['mounted']['role_inventory'])) if 'mounted' in config else (),
+        mounted_levels=mounted_levels(config))
 
 
 class RuntimePreparation:
@@ -68,7 +81,8 @@ class RuntimePreparation:
             result = WorldSnapshot(**{name:guard[name] for name in
                 ('local_player','controller','camera','level','pawn')},
                 world_info=guard['target_proof']['world_info'],
-                mounted_context=tuple(guard['mounted_context']['roles'][key] for key in ('controlled','driver','inventory')) if 'mounted_context' in guard else ())
+                mounted_context=tuple(guard['mounted_context']['roles'][key] for key in ('controlled','driver','inventory')) if 'mounted_context' in guard else (),
+                mounted_levels=tuple(guard['mounted_context']['levels'][key] for key in MOUNTED_LEVEL_ROLES) if 'mounted_context' in guard else ())
             check_live()
             return result
         finally:

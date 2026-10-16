@@ -59,6 +59,7 @@ template<class Read> bool parse_config(Read read,std::uintptr_t module_base,Conf
         if(!length||length>=64||!id.address||!id.cls)return false;std::copy(name,name+length+1,id.name.begin());
         for(unsigned j=0;j<i;++j)if(c.identities[j].address==id.address)return false;
     }
+    if(c.mounted_enabled&&!mounted_levels_config(c))return false;
     out=c;return true;
 }
 }

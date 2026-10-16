@@ -59,6 +59,38 @@ class MountedUIFixture(MountedFixture):
 
 
 class MountedIntegrationTests(unittest.TestCase):
+    def test_streamed_levels_ini_ui_cinematic_and_rebind(self):
+        import cinematic_anchor
+        f=MountedUIFixture().stream_levels()
+        with mock.patch.object(cinematic_anchor,'BOOL_CODE',tuple(f.code)):
+            ac,meta=build_anchor_config(f,cinematic_camera=True)
+        uc,_=build_ui_observer_config(f,f.resolve(),mounted_anchor=ac)
+        text=anchor_ini(ac)
+        self.assertIn('schema=3\n',text);self.assertIn('cinematic_enabled=1',text)
+        self.assertEqual(uc['schema'],2)
+        old=snapshot(ac)
+        self.assertEqual(len(set(old.mounted_levels)),5)
+        self.assertEqual(old.mounted_levels[0],old.level)
+        import world_rebind_runtime as runtime
+        adapter=runtime.RuntimePreparation.__new__(runtime.RuntimePreparation)
+        adapter.game={'pid':f.pid};adapter.profile=f.profile;f.p=mock.Mock()
+        with mock.patch.object(runtime,'Resolver',return_value=f),mock.patch.object(cinematic_anchor,'BOOL_CODE',tuple(f.code)):
+            self.assertEqual(adapter.observe(lambda:None),old)
+        f.p.close.assert_called_once()
+        # Actor identities and pointers stay unchanged; a Level registry identity
+        # changes and must still trigger a new monitor preparation/commit.
+        f.word(f.levels['driver']+76,1)
+        current,_=build_anchor_config(f)
+        self.assertTrue(snapshot(current).changed_from(old))
+        for label in ('controlled','driver','controller','camera','world_info'):
+            bad=copy.deepcopy(ac)
+            owner=next(item for item in bad['identities'] if item['address']==f.levels[label])
+            owner['cls']=0x8000
+            with self.assertRaises(AnchorRejected):anchor_ini(bad)
+        bad=copy.deepcopy(ac)
+        bad['identities']=[item for item in bad['identities'] if item['address']!=f.levels['camera']]
+        with self.assertRaises(AnchorRejected):anchor_ini(bad)
+
     def test_exact_pov_and_human_inventory_roles(self):
         f=MountedUIFixture();ac,meta=build_anchor_config(f)
         uc,ui=build_ui_observer_config(f,f.resolve(),mounted_anchor=ac)
@@ -132,8 +164,16 @@ def export_native_fixture(directory):
     f=MountedUIFixture();ac,_=build_anchor_config(f);uc,_=build_ui_observer_config(f,f.resolve(),mounted_anchor=ac)
     proof=mounted_crosshair_suspension(ac,f.pid,f.base,GAME_SHA)
     directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
-    for name,mounted in (('mounted',True),('normal',False)):
+    for name,mounted in (('mounted',True),('streamed',True),('streamed_cinematic',True),('normal',False)):
+        if name.startswith('streamed'):
+            if name=='streamed':f.stream_levels()
+            import cinematic_anchor
+            with mock.patch.object(cinematic_anchor,'BOOL_CODE',tuple(f.code)):
+                ac,_=build_anchor_config(f,cinematic_camera=name=='streamed_cinematic')
+            uc,_=build_ui_observer_config(f,f.resolve(),mounted_anchor=ac)
         if not mounted:
+            # Return to the ordinary single-Level fixture for dismount coverage.
+            f=MountedUIFixture()
             f.dismount();ac,_=build_anchor_config(f);uc,_=build_ui_observer_config(f,f.resolve())
         text=anchor_ini(ac)+ui_observer_ini(uc)+(mounted_crosshair_ini(proof) if mounted else '')
         (directory/(name+'.ini')).write_text(text,encoding='utf-16')

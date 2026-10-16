@@ -106,7 +106,8 @@ template<class Read> bool cinematic_target(Config const& c,Read read,Identity co
     if(world_property.number||!named(&world_property,L"WorldInfo")||!named(world_property_class,L"ObjectProperty")||
        world_property_class->number||!named(known(world_property_class->cls),L"Class")||
        !named(world_owner,L"Actor")||world_owner->number||!named(known(world_owner->cls),L"Class")||
-       !world_type||!world.name[0]||!std::wcsncmp(world.name.data(),L"Default__",9)||world.outer!=level||
+       !world_type||!world.name[0]||!std::wcsncmp(world.name.data(),L"Default__",9)||
+       (world.outer!=level&&!(c.mounted_enabled&&c.role_world_info==c.mounted_role_world_info&&mounted_links(c,read)))||
        !inherits_class(c.identities[c.role_controller].cls,world_property.outer)||
        !inherits_class(pawn.cls,world_property.outer)||!inherits_class(actor_class.address,world_property.outer))return false;
     auto world_layout=[&](){unsigned dim{},size{},offset{};return field(dim,world_property.address,0x70)&&dim==1&&

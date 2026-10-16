@@ -59,6 +59,43 @@ int main(){unsigned checks{};Fixture f;CHECK(f.load(L"mounted"));auto read=[&](v
     f.put(property+0x74,4u);CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));
     f.memory=baseline;unsigned hits=0;auto race=[&](void* dest,const void* source,size_t size){auto addr=reinterpret_cast<std::uintptr_t>(source);const bool ok=read(dest,source,size);
         if(addr==0x80800&&++hits==1)f.put(0x20810,std::uintptr_t(0));return ok;};CHECK(!gears_anchor::guard(f.anchor,race,anchor,stamp)&&hits);
+    for(auto name:{L"streamed",L"streamed_cinematic"}){
+        CHECK(f.load(name));CHECK(gears_anchor::guard(f.anchor,read,anchor,stamp));
+        CHECK(anchor.level==0xa0000&&anchor.pawn==0x80000&&(anchor.location==std::array<float,3>{100,200,300}));
+        CHECK(gears_ui_binding::acquire(f.ui,f.anchor,read,binding)&&binding.pawn.address==0x20000);
+        const auto memory=f.memory;const auto config=f.anchor;
+        for(unsigned n=0;n<5;++n){
+            const std::uintptr_t level=0xa0000+n*0x1000;
+            for(auto offset:{8u,64u,72u,76u,80u}){
+                f.memory=memory;f.memory[level+offset]^=1;
+                CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));
+                CHECK(!gears_ui_binding::acquire(f.ui,f.anchor,read,binding));}
+            f.memory=memory;f.put(level+80,std::uintptr_t(0x8000));
+            CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));
+            f.memory=memory;hits=0;
+            auto level_race=[&](void* dest,const void* source,size_t size){const bool ok=read(dest,source,size);
+                if(reinterpret_cast<std::uintptr_t>(source)==level&&size==96&&++hits==1)f.put(level+76,1u);return ok;};
+            CHECK(!gears_anchor::guard(f.anchor,level_race,anchor,stamp)&&hits);
+        }
+        f.memory=memory;
+        for(auto actor:{std::uintptr_t(0x80000),std::uintptr_t(0x20000),std::uintptr_t(0x10000),std::uintptr_t(0x30000)}){
+            f.memory=memory;f.put(actor+0xd0,std::uintptr_t(0x80000));
+            CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));}
+        // Complete numeric INI with an uncertified outer must fail at parsing,
+        // before any process read. Existing identities supply all Level roles.
+        auto get_missing=[&](const wchar_t* key,wchar_t* out,unsigned size){
+            wchar_t changed[64]{};std::swprintf(changed,64,L"id%u_outer",config.role_camera);
+            if(!std::wcscmp(key,changed)){const wchar_t text[]=L"3735928559";std::copy(std::begin(text),std::end(text),out);return DWORD(10);}
+            return GetPrivateProfileStringW(L"AnchorObserver",key,L"",out,size,f.path.c_str());};
+        gears_anchor::Config rejected{};CHECK(!gears_anchor::parse_config(get_missing,0x140000000,rejected));
+        f.anchor=config;
+        unsigned level_index{};for(;level_index<f.anchor.identity_count;++level_index)if(f.anchor.identities[level_index].address==0xa1000)break;
+        CHECK(level_index<f.anchor.identity_count);
+        f.anchor.identities[level_index].cls=0x8000;CHECK(!gears_anchor::mounted_levels_config(f.anchor));f.anchor=config;
+        const wchar_t default_name[]=L"Default__Level";std::copy(std::begin(default_name),std::end(default_name),f.anchor.identities[level_index].name.begin());
+        CHECK(!gears_anchor::mounted_levels_config(f.anchor));f.anchor=config;
+        f.memory=memory;
+    }
     CHECK(f.load(L"normal"));CHECK(!f.anchor.mounted_enabled&&!f.ui.mounted);CHECK(gears_anchor::guard(f.anchor,read,anchor,stamp));
     CHECK(gears_ui_binding::acquire(f.ui,f.anchor,read,binding)&&binding.pawn.address==0x20000);
     std::printf("mounted anchor/UI/config, link/layout races and dismount restoration: %u checks passed\n",checks);return 0;

@@ -434,7 +434,9 @@ def validate_anchor_config(config):
         world_prop=ids[cine['role_world_info_property']];world=ids[cine['role_world_info']]
         if (by_address[world_prop['cls']]['name']!='ObjectProperty' or
                 by_address.get(world_prop['outer'],{}).get('name')!='Actor' or
-                world['name'].startswith('Default__') or world['outer']!=ids[config['roles']['level']]['address']):
+                world['name'].startswith('Default__') or
+                (world['outer']!=ids[config['roles']['level']]['address'] and
+                 not (schema==3 and cine['role_world_info']==config['mounted']['role_world_info']))):
             raise AnchorRejected('Cinematic WorldInfo certificate mismatch')
         def certified_ancestry(start,expected):
             seen=set();current=start

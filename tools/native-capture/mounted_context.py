@@ -23,10 +23,15 @@ class MountedContextCertificate:
         value = self._capture()
         # Possession changes require a new immutable certificate/rebind. Camera
         # timestamp and POV may advance between separate successful captures.
-        for key in ('roles', 'identities', 'supers', 'properties', 'links'):
+        for key in ('roles', 'levels', 'identities', 'supers', 'properties', 'links'):
             if value[key] != self._initial[key]:
                 raise AnchorRejected('Mounted certificate changed: ' + key)
         return copy.deepcopy(value)
+
+    def certifies_world(self, identity):
+        # Cinematic target validation runs inside the sampler's mounted capture
+        # bracket. It may share this exact world while the actor Levels differ.
+        return identity == self._initial['roles']['world_info']
 
     def _capture(self):
         s, r = self.sampler, self.sampler.r
@@ -132,8 +137,17 @@ class MountedContextCertificate:
             link(label, obj, 'WorldInfo', 'Actor', world['address'])
         level = identity(controlled['outer'])
         derives(level, 'Level')
-        if driver['outer'] != level['address'] or world['outer'] != level['address']:
-            raise AnchorRejected('Mounted roles differ in Level')
+        # Streamed actors can have different immediate Levels while sharing the
+        # reflected Actor.WorldInfo above. Freeze every actual Level identity;
+        # a name or an arbitrary outer pointer is never sufficient evidence.
+        levels = {}
+        for label, obj in (('controlled', controlled), ('driver', driver),
+                           ('controller', pc), ('camera', camera), ('world_info', world)):
+            owner = identity(obj['outer'])
+            derives(owner, 'Level')
+            if owner['cls'] != level['cls']:
+                raise AnchorRejected('Mounted Level class mismatch')
+            levels[label] = owner
         inventory = identity(link('inventory', driver, 'InvManager', 'Pawn'))
         derives(inventory, 'WarInventoryManager')
         if inventory['outer'] != driver['address']:
@@ -158,7 +172,7 @@ class MountedContextCertificate:
         roles = dict(controller=pc, camera=camera, local_player=local,
                      controlled=controlled, driver=driver, inventory_pawn=driver,
                      inventory=inventory, camera_target=controlled, level=level, world_info=world)
-        return dict(schema=1, kind='turret_driver', roles=roles, identities=identities,
+        return dict(schema=1, kind='turret_driver', roles=roles, levels=levels, identities=identities,
                     supers=supers, properties=properties, links=links,
                     camera_timestamp_raw=stamp.hex(), camera_pov_raw=pov.hex(),
                     atomic_snapshot=False, runtime_verified=False)
@@ -186,7 +200,8 @@ def validate_mounted_config(config):
         seen=set()
         while cls:
             item=by_address.get(cls)
-            if cls in seen or len(seen)>=64 or not item or not item['check_super']:
+            if (cls in seen or len(seen)>=64 or not item or not item['check_super'] or item['number'] or
+                    by_address.get(item['cls'],{}).get('name')!='Class'):
                 raise AnchorRejected('Invalid mounted ancestry')
             if item['name']==name:return True
             seen.add(cls);cls=item['super']
@@ -195,8 +210,13 @@ def validate_mounted_config(config):
     world=ids[m['role_world_info']];level=ids[roles['level']]
     for item,name in ((pawn,'Turret'),(pawn,'Vehicle'),(driver,'WarPawn'),(inventory,'WarInventoryManager'),(world,'WorldInfo')):
         if item['name'].startswith('Default__') or not ancestry(item['cls'],name):raise AnchorRejected('Mounted role class mismatch')
-    if any(i['outer']!=level['address'] for i in (pawn,driver,world)) or inventory['outer']!=driver['address']:
+    if pawn['outer']!=level['address'] or inventory['outer']!=driver['address']:
         raise AnchorRejected('Mounted role owner mismatch')
+    for obj in (pawn,driver,world,ids[roles['controller']],ids[roles['camera']]):
+        owner=by_address.get(obj['outer'])
+        if (not owner or not owner['name'] or owner['name'].startswith('Default__') or
+                owner['cls']!=level['cls'] or not ancestry(owner['cls'],'Level')):
+            raise AnchorRejected('Missing or invalid mounted Level identity')
     if set(m['properties'])!=set(MOUNTED_PROPERTIES):raise AnchorRejected('Missing mounted property')
     for name,owner in zip(MOUNTED_PROPERTIES,MOUNTED_OWNERS):
         value=m['properties'][name]
