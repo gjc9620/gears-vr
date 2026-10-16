@@ -20,6 +20,42 @@ import uuid
 
 from run_stereo_probe import ROOT, complete_csv_rows, collect_xr_evidence
 
+sys.path.insert(0,str(ROOT/'tools/debug-launch'))
+from tiny_output_recovery import StartupTinyOutputPolicy
+
+
+def attempt_startup_tiny_output_recovery(identity, dimensions):
+    """Resolve the live game HWND only after the owned startup policy triggers."""
+    sys.path.insert(0,str(ROOT/'tools/game-io'))
+    import game_io
+    from tiny_output_recovery import WindowsControl as ResizeControl, attempt_recovery
+    pid,hwnd=game_io.game_window()
+    if pid!=identity['pid']:
+        return {'attempted':False,'result':'skipped','reason':'game_window_pid_mismatch'}
+    return attempt_recovery(ResizeControl(),identity,hwnd,dimensions)
+
+
+def observe_tiny_output_recovery(policy, out_path, state, state_path, control, status, now):
+    """Best-effort diagnostic recovery; exceptions must not end a healthy session."""
+    if policy.consumed or policy.stereo_submitted or 'first_stereo_submission' in state['startup_timings']:return
+    try:
+        policy.read_new(out_path,now)
+        if not policy.ready(now,'first_stereo_submission' in state['startup_timings']):return
+        if (not status or status.get('phase')!='running'
+                or not native_owner_matches(status,state['owner_identity'])
+                or status.get('started_qpc')!=state['native_started_qpc']):return
+        policy.consumed=True
+        if control.identity(state['game_identity']['pid'])!=state['game_identity']:
+            result={'attempted':False,'result':'skipped','reason':'game_identity_changed'}
+        else:
+            result=attempt_startup_tiny_output_recovery(state['game_identity'],policy.dimensions)
+        state['tiny_output_recovery']=dict(result,observed_tiny_seconds=now-policy.tiny_since)
+    except Exception as error:
+        policy.consumed=True
+        state['tiny_output_recovery']={'attempted':False,'result':'diagnostic_error','error':repr(error)}
+    try:write_state(state_path,state)
+    except Exception as error:state['tiny_output_recovery']['state_write_error']=repr(error)
+
 
 class WindowsControl:
     def __init__(self):
@@ -365,6 +401,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
     child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None
+    tiny_output_policy=StartupTinyOutputPolicy()
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
     out_path=prefix.with_suffix('.stdout.txt');err_path=prefix.with_suffix('.stderr.txt')
@@ -480,6 +517,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     status=read_session_status(native_status,args.pid,floor)
                     if status and status.get('phase')!='running':break
                     checked_identity(control,state['game_identity'])
+                    observe_tiny_output_recovery(tiny_output_policy,out_path,state,state_path,control,status,time.monotonic())
                     if menu_monitor:menu_monitor.poll()
                     if world_monitor:
                         for event in world_monitor.poll(status,menu_monitor.last[0] if menu_monitor and menu_monitor.last else None):

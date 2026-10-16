@@ -35,6 +35,33 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_tiny_output_recovery_is_owned_once_and_diagnostic_only(self):
+        state={'startup_timings':{},'owner_identity':identity(os.getpid()),
+               'game_identity':identity(123),'native_started_qpc':'1234'}
+        status=terminal('running')
+        policy=runner.StartupTinyOutputPolicy()
+        policy.update({'gpu_source_size':[8,8]},10)
+        with mock.patch.object(policy,'read_new'), \
+                mock.patch.object(runner,'write_state') as write, \
+                mock.patch.object(runner,'attempt_startup_tiny_output_recovery',
+                    return_value={'attempted':True,'result':'resize_restore_attempted'}) as attempt:
+            runner.observe_tiny_output_recovery(policy,None,state,None,Control(),None,12)
+            attempt.assert_not_called()
+            runner.observe_tiny_output_recovery(policy,None,state,None,Control(),status,12)
+            attempt.assert_called_once_with(identity(123),[8,8])
+            self.assertEqual(state['tiny_output_recovery']['observed_tiny_seconds'],2)
+            runner.observe_tiny_output_recovery(policy,None,state,None,Control(),status,13)
+            self.assertEqual(attempt.call_count,1)
+            self.assertEqual(write.call_count,1)
+        policy=runner.StartupTinyOutputPolicy()
+        policy.update({'gpu_source_size':[8,8]},10)
+        with mock.patch.object(policy,'read_new'), \
+                mock.patch.object(runner,'write_state'), \
+                mock.patch.object(runner,'attempt_startup_tiny_output_recovery',side_effect=RuntimeError('diagnostic')):
+            runner.observe_tiny_output_recovery(policy,None,state,None,Control(),status,12)
+            self.assertEqual(state['tiny_output_recovery']['result'],'diagnostic_error')
+            self.assertTrue(policy.consumed)
+
     def test_crosshair_assignment_dependency_and_forwarding(self):
         base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
         flag='--crosshair-assignment-observer'
