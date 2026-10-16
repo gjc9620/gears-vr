@@ -120,3 +120,15 @@ Native18 DLL SHA256：`a7a31e2e47798691cb5d9f5095424d7389876c2b1698c98f2dad9791d
 实际会话 `continuous-stereo-14180-20261016-081006-6c5f54eb`：650次已完成赋值、650次scene消费、650次anchor关联，拒绝均0；305次关联到成功注册的ticket，保存32条有界tick/anchor_invocation/ticket记录。不能将305次注册等同于305张已经显示的图像。观察段累计约788.3376ms，最长单段0.7027ms，预算未触发，不作为最终性能指标。
 
 会话报告 stopped/passed=true；原生清理、43入口独立恢复及XR shutdown均通过。XR提交704次、复制301张、跨度7.8101075秒，最大提交间隔21.9203ms。本轮为静止模拟器短测，未验收开镜、切枪、重载、真头显或有限距离融合。游戏随后正常关闭、输入服务停止。下一步仍须取得writer CamLoc/CamRot和源相机关系的独立证据，不能只凭同线程/同ticket宣称相机等价。
+
+## Native19：写入相机参数与实际源视图首次对照
+
+可选 writer_view 证书在当前进程重新解析 UpdateHUDActions 的 CamLoc、CamRot、StartTrace、TraceDir 属性，核对身份、函数归属、Vector/Rotator 结构、单元素12字节布局、范围及不重叠。旧配置默认关闭；启用观察器时由同一次 fresh resolver 生成证书。INI读取接口对缺失值和显式空值均返回空，view_enabled 的空值按未启用处理；非空畸形值拒绝，不用此诊断标记授权有限距离显示。
+
+原生快照在既有 execLet 前后分别复读局部参数并要求保持不变；Sample 随已完成赋值、Tick、场景及注册ticket值拷贝传递。32条有界记录同时保存 writer 参数和该ticket实际 source_view/source_projection。未增加游戏函数调用，显示坐标仍未修改。新增原生样本测试覆盖变更、NaN、类型、大小、重叠和不可读内存；Python证书与启动测试31项，以及配置加载、赋值、Tick、关联、生命周期、帧关联和连续自测通过。扩展合成测试fixture时原有对象与名字区间发生重叠，已分离两个区域后通过；这是测试内存布局问题。
+
+Native19 SHA256：`9a6ca1f340660032142fbacbfc1a709cc7cf2f0274c6def89409811bdba8f10f`。实际会话 `continuous-stereo-37136-20261016-082714-e4fe5dae`：528次有效赋值和anchor关联，283个已注册ticket，32条有效writer-view样本，各绑定拒绝0、预算未触发。按既有行向量约定计算真实量化旋转块的逆，源相机位置为 -t R^-1；光轴和屏幕中心射线分开比较。CamLoc位置差0.005013至0.022563游戏单位；TraceDir与光轴/中心射线最大夹角均0.023320°；本轮StartTrace与CamLoc重合，不能推广为所有姿态均无武器起点偏移。
+
+对照文件 `*.writer-view-analysis.json` 保留原始样本和统计。此轮只观察静止关卡，尚未覆盖转动/移动、开镜、切枪、重载、相机时间戳一致性或真头显；camera_equivalence_proven 与 finite_aim_certified 继续为false。下一步为动态对照及武器绑定切换策略，随后实现并验证有限距离双眼准星。
+
+原报告 stopped/passed=true，原生清理、入口独立恢复和XR退出通过。XR提交699次、复制283张，跨度7.7330308秒，最大提交间隔23.302ms；游戏和输入服务正常关闭。玩家默认清单未提升至诊断版。

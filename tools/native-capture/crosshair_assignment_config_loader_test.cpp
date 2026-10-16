@@ -34,8 +34,46 @@ int main(int argc,char** argv){
         assert(!accepted);
         assert(out.pid==777&&out.assignment.script==good.assignment.script&&out.assignment.identities==&out.identities);
     };
-    // Every emitted field is required: omissions cannot become default zeros.
-    for(auto const& entry:valid){auto bad=valid;bad.erase(entry.first);reject(bad);}
+    // Optional view_enabled may be omitted by old certificates.
+    for(auto const& entry:valid){if(entry.first==L"view_enabled")continue;
+        if(entry.first.rfind(L"view_",0)==0&&!good.assignment.view.enabled)continue;
+        auto bad=valid;bad.erase(entry.first);reject(bad);}
+    {auto legacy=valid;legacy.erase(L"view_enabled");OwnedConfig out;
+        assert(parse_config(Reader{legacy},123,0x140000000,out)&&!out.assignment.view.enabled);}
+    for(auto value:{L"2",L"-1",L"+1",L"1x",L" 1",L"1 ",L"4294967296",L"1\n2"}){
+        auto bad=valid;bad[L"view_enabled"]=value;reject(bad);}
+    // Build a serialized-only optional fixture when input uses the legacy path.
+    auto view_valid=valid;
+    if(!good.assignment.view.enabled){
+        unsigned count=good.identities.identity_count;
+        auto add=[&](const wchar_t* role,const wchar_t* name,std::uintptr_t cls,std::uintptr_t outer){
+            const unsigned index=count++;const auto prefix=L"id"+std::to_wstring(index)+L"_";
+            view_valid[prefix+L"address"]=std::to_wstring(0x70000000ull+index*0x1000ull);
+            view_valid[prefix+L"index"]=std::to_wstring(3000000+index);
+            view_valid[prefix+L"name_index"]=std::to_wstring(3000000+index);
+            view_valid[prefix+L"number"]=L"0";view_valid[prefix+L"cls"]=std::to_wstring(cls);
+            view_valid[prefix+L"outer"]=std::to_wstring(outer);view_valid[prefix+L"name"]=name;
+            view_valid[L"view_"+std::wstring(role)]=std::to_wstring(index);
+        };
+        auto const& ids=good.identities;auto const& c=good.assignment;
+        add(L"rotator_struct",L"Rotator",ids.identities[c.vector_struct].cls,0);
+        const auto owner=ids.identities[c.writer].address,cls=ids.identities[c.lhs].cls;
+        add(L"cam_loc",L"CamLoc",cls,owner);add(L"cam_rot",L"CamRot",cls,owner);
+        add(L"start_trace",L"StartTrace",cls,owner);add(L"trace_dir",L"TraceDir",cls,owner);
+        view_valid[L"identity_count"]=std::to_wstring(count);view_valid[L"view_enabled"]=L"1";
+        for(auto pair:{std::pair<const wchar_t*,unsigned>{L"cam_loc",0xa0},{L"cam_rot",0xb0},{L"start_trace",0xc0},{L"trace_dir",0xd0}})
+            view_valid[L"view_"+std::wstring(pair.first)+L"_offset"]=std::to_wstring(pair.second);
+    }
+    {OwnedConfig out;assert(parse_config(Reader{view_valid},123,0x140000000,out)&&out.assignment.view.enabled);}
+    auto reject_view=[&](Values const& bad){OwnedConfig out;assert(!parse_config(Reader{bad},123,0x140000000,out));};
+    for(auto const& entry:view_valid)if(entry.first.rfind(L"view_",0)==0&&entry.first!=L"view_enabled"){
+        auto bad=view_valid;bad.erase(entry.first);reject_view(bad);}
+    for(auto value:{L"65524",L"65535",L"-1",L"1x"}){
+        auto bad=view_valid;bad[L"view_cam_loc_offset"]=value;reject_view(bad);}
+    for(auto key:{L"view_cam_rot_offset",L"ww_offset",L"impact_offset"}){
+        auto bad=view_valid;bad[L"view_cam_loc_offset"]=bad[key];reject_view(bad);}
+    {auto bad=view_valid;bad[L"view_rotator_struct"]=bad[L"vector_struct"];reject_view(bad);}
+    {auto bad=view_valid;bad[L"id"+bad[L"view_cam_loc"]+L"_outer"]=L"0";reject_view(bad);}
     for(auto value:{L"-1",L"+1",L" 1",L"1 ",L"1x",L"18446744073709551616",L"4294967296",L"",L"0x",L"1\n2"}){
         auto bad=valid;bad[L"pid"]=value;reject(bad);
     }

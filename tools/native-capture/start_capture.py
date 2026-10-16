@@ -227,7 +227,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                     ui_section=ui_observer_ini(ui_certificate)
                     if crosshair_assignment_observer:
                         from crosshair_assignment_config import build_crosshair_assignment_config,crosshair_assignment_ini
-                        assignment=build_crosshair_assignment_config(r,refreshed,include_tick_roots=True)
+                        assignment=build_crosshair_assignment_config(r,refreshed,include_tick_roots=True,include_writer_view=True)
                         ui_section+=crosshair_assignment_ini(assignment)
                         ui_metadata['crosshair_assignment']=assignment
                 if ui_observer and time.monotonic()>=deadline:

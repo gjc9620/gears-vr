@@ -27,6 +27,11 @@ class Fixture(UIBase):
         self.member = self.field(self.impact_struct, 'HitLocation', 8, 12, self.vector)
         self.impact = self.field(self.writer, 'Impact', 0x40, 84, self.impact_struct)
         self.ww = self.field(self.writer, 'WW', 0x10, 8, self.classes['WarWeapon'], 'ObjectProperty')
+        self.rotator = self.obj('Rotator', self.classes['ScriptStruct'])
+        self.view = {}
+        for name, offset, structure in (('CamLoc',0xa0,self.vector),('CamRot',0xb0,self.rotator),
+                                        ('StartTrace',0xc0,self.vector),('TraceDir',0xd0,self.vector)):
+            self.view[name] = self.field(self.writer, name, offset, 12, structure)
         self.script = 0xa00000
         self.put(self.script, bytes(0x16a7))
         tokens = b'\x0f\x01' + struct.pack('<Q', self.lhs) + b'\x35' + struct.pack('<QQ', self.member, self.impact_struct) + bytes(3) + struct.pack('<Q', self.impact)
@@ -58,6 +63,55 @@ class Fixture(UIBase):
 
 
 class CertificateTests(unittest.TestCase):
+    def test_optional_writer_view_roundtrip_and_legacy(self):
+        r=Fixture(); old=build_crosshair_assignment_config(r,r.camera)
+        self.assertEqual(old['writer_view'],dict(enabled=False))
+        self.assertIn('view_enabled=0\n',crosshair_assignment_ini(old))
+        del old['writer_view']; validate_crosshair_assignment_config(old)
+        c=build_crosshair_assignment_config(r,r.camera,include_writer_view=True)
+        self.assertEqual(c,json.loads(crosshair_assignment_json(c)))
+        view=c['writer_view'];self.assertTrue(view['enabled'])
+        self.assertEqual(c['identities'][view['roles']['cam_loc']]['address'],r.view['CamLoc'])
+        self.assertEqual(c['identities'][view['roles']['rotator_struct']]['address'],r.rotator)
+        ini=crosshair_assignment_ini(c)
+        self.assertIn('view_enabled=1\n',ini);self.assertIn('view_trace_dir_offset=208\n',ini)
+
+    def test_writer_view_fresh_shape_owner_and_overlap_rejected(self):
+        for name,change in (
+            ('dim',lambda r:r.put(r.view['CamLoc']+0x70,struct.pack('<I',2))),
+            ('size',lambda r:r.put(r.view['CamRot']+0x74,struct.pack('<I',16))),
+            ('structure',lambda r:r.put(r.view['CamRot']+0xd0,struct.pack('<Q',r.vector))),
+            ('owner',lambda r:r.put(r.view['TraceDir']+64,struct.pack('<Q',r.impact_struct))),
+            ('class',lambda r:r.put(r.view['StartTrace']+80,struct.pack('<Q',r.classes['ObjectProperty']))),
+            ('missing',lambda r:r.children[r.writer].remove(r.view['CamLoc'])),
+            ('duplicate',lambda r:r.children[r.writer].append(r.view['CamLoc'])),
+        ):
+            with self.subTest(name=name):
+                r=Fixture();change(r)
+                build_crosshair_assignment_config(r,r.camera) # Optional path adds no dependency.
+                with self.assertRaises(CrosshairConfigRejected):
+                    build_crosshair_assignment_config(r,r.camera,include_writer_view=True)
+        for offset in (0x10,0x40,0xb0,65524):
+            r=Fixture();r.put(r.view['CamLoc']+0x94,struct.pack('<I',offset))
+            r.props[r.writer,'CamLoc']['offset']=offset
+            with self.assertRaises(CrosshairConfigRejected):
+                build_crosshair_assignment_config(r,r.camera,include_writer_view=True)
+
+    def test_writer_view_serialized_tampering_rejected(self):
+        r=Fixture();good=build_crosshair_assignment_config(r,r.camera,include_writer_view=True)
+        mutations=(lambda c:c['writer_view'].update(enabled=1),
+            lambda c:c['writer_view']['roles'].update(rotator_struct=c['roles']['vector_struct']),
+            lambda c:c['writer_view']['offsets'].update(cam_loc=0x10),
+            lambda c:c['writer_view']['offsets'].update(cam_loc=65524),
+            lambda c:c['writer_view']['shapes']['cam_rot'].update(size=16),
+            lambda c:c['writer_view']['shapes']['cam_loc'].update(structure=c['roles']['impact_struct']),
+            lambda c:c['writer_view']['roles'].pop('trace_dir'),
+            lambda c:c['identities'][c['writer_view']['roles']['cam_loc']].update(outer=0),
+            lambda c:c['writer_view'].update(enabled=False))
+        for mutate in mutations:
+            c=copy.deepcopy(good);mutate(c)
+            with self.assertRaises(CrosshairConfigRejected):validate_crosshair_assignment_config(c)
+
     def test_success_json_and_optional_roots(self):
         r = Fixture()
         c = build_crosshair_assignment_config(r, r.camera, include_tick_roots=True)

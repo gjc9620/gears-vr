@@ -105,6 +105,33 @@ template<class Read> bool parse_config(Read read,unsigned expected_pid,std::uint
     if(!c.script||c.script_size<0x380||c.script_size>131072||c.script>(std::numeric_limits<std::uintptr_t>::max)()-c.script_size||
        c.impact_offset>=65536||c.ww_offset>=65536||c.impact_size<12||c.impact_size>65536||
        c.member_offset>c.impact_size-12||c.property_structure<0x60||c.property_structure>=65536)return false;
+    // Optional legacy transport. Empty and absent are indistinguishable with
+    // the caller's empty-default GetPrivateProfileStringW adapter.
+    wchar_t view_text[64]{};const auto view_length=read(L"view_enabled",view_text,64);
+    if(view_length){unsigned enabled{};
+        if(!load(L"view_enabled",enabled)||enabled>1)return false;
+        c.view.enabled=enabled!=0;
+    }
+    if(c.view.enabled){
+#define CH_VIEW_ROLE(x) if(!load(CH_W("view_" #x),c.view.x)||c.view.x>=ids.identity_count)return false
+        CH_VIEW_ROLE(cam_loc);CH_VIEW_ROLE(cam_rot);CH_VIEW_ROLE(start_trace);CH_VIEW_ROLE(trace_dir);CH_VIEW_ROLE(rotator_struct);
+#undef CH_VIEW_ROLE
+#define CH_VIEW_OFFSET(x) if(!load(CH_W("view_" #x "_offset"),c.view.x##_offset)||c.view.x##_offset>=65524)return false
+        CH_VIEW_OFFSET(cam_loc);CH_VIEW_OFFSET(cam_rot);CH_VIEW_OFFSET(start_trace);CH_VIEW_OFFSET(trace_dir);
+#undef CH_VIEW_OFFSET
+        if(!detail::named(c,c.view.cam_loc,L"CamLoc",L"StructProperty",addr(c.writer),true)||
+           !detail::named(c,c.view.cam_rot,L"CamRot",L"StructProperty",addr(c.writer),true)||
+           !detail::named(c,c.view.start_trace,L"StartTrace",L"StructProperty",addr(c.writer),true)||
+           !detail::named(c,c.view.trace_dir,L"TraceDir",L"StructProperty",addr(c.writer),true)||
+           !detail::named(c,c.view.rotator_struct,L"Rotator",L"ScriptStruct"))return false;
+        const unsigned offsets[]{c.view.cam_loc_offset,c.view.cam_rot_offset,c.view.start_trace_offset,c.view.trace_dir_offset};
+        for(unsigned i=0;i<std::size(offsets);++i){
+            const auto overlap=[&](unsigned start,unsigned size){return
+                std::uint64_t(offsets[i])<std::uint64_t(start)+size&&std::uint64_t(start)<std::uint64_t(offsets[i])+12;};
+            if(overlap(c.ww_offset,8)||overlap(c.impact_offset,c.impact_size))return false;
+            for(unsigned j=0;j<i;++j)if(overlap(offsets[j],12))return false;
+        }
+    }
     auto link=[&](const wchar_t* key,const wchar_t* name,unsigned owner,Field& f){wchar_t k[64]{};
         std::swprintf(k,64,L"%ls_property",key);if(!load(k,f.property)||f.property>=ids.identity_count)return false;
         std::swprintf(k,64,L"%ls_offset",key);if(!load(k,f.offset)||f.offset>=65536)return false;

@@ -37,7 +37,7 @@ class AnchorStartTests(unittest.TestCase):
         certificate={'fresh_certificate':True}
         with mock.patch.object(start,'Resolver',return_value=r),mock.patch.object(anchor,'build_anchor_config',return_value=({},{})),mock.patch.object(anchor,'anchor_ini',return_value='anchor\n'),mock.patch.object(ui,'build_ui_observer_config',return_value=({},{'existing':'kept'})) as ui_build,mock.patch.object(ui,'ui_observer_ini',return_value='ui\n'),mock.patch.object(assignment,'build_crosshair_assignment_config',return_value=certificate) as build,mock.patch.object(assignment,'crosshair_assignment_ini',return_value='assignment\n') as ini,mock.patch.object(start.time,'monotonic',return_value=0):
             result=start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),anchor_observer=True,ui_observer=True,crosshair_assignment_observer=True)
-            build.assert_called_once_with(r,result[0],include_tick_roots=True)
+            build.assert_called_once_with(r,result[0],include_tick_roots=True,include_writer_view=True)
             self.assertIs(ui_build.call_args.args[1],result[0]);ini.assert_called_once_with(certificate)
             build.reset_mock();ini.reset_mock();ui_build.return_value=({},{'legacy':True})
             legacy=start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),anchor_observer=True,ui_observer=True)
@@ -80,7 +80,7 @@ class AnchorStartTests(unittest.TestCase):
                 native.OpenProcess.return_value=1;native.OpenEventW.side_effect=[1,1,1,0];native.WaitForSingleObject.return_value=0x102
                 remote=stack.enter_context(mock.patch.object(start,'remote_call'))
                 with contextlib.redirect_stdout(io.StringIO()),self.assertRaises(assignment.CrosshairConfigRejected):start.main()
-                builder.assert_called_once_with(resolver,camera,include_tick_roots=True)
+                builder.assert_called_once_with(resolver,camera,include_tick_roots=True,include_writer_view=True)
                 resolver.p.close.assert_called_once()
                 remote.assert_not_called();native.VirtualAllocEx.assert_not_called();native.WriteProcessMemory.assert_not_called()
                 self.assertFalse((build/'capture.ini').exists());self.assertFalse((build/'ui-observer-config.json').exists())

@@ -6,7 +6,7 @@
 using gears_crosshair_scene::Metadata;
 static Metadata evidence(){Metadata v{};v.controller=10;v.pawn=11;v.weapon=12;v.root_frame=13;
     v.world=3;v.tick=4;v.thread=7;v.begin_qpc=1;v.assignment_qpc=2;v.finish_qpc=3;v.scene_qpc=4;
-    v.point={1,2,3};return v;}
+    v.point={1,2,3};v.writer_view.valid=true;v.writer_view.location={4,5,6};return v;}
 int main(){
     gears_anchor::Receipt receipt{};receipt.key.local=1;receipt.key.family=receipt.key.owner=2;
     receipt.key.source=3;receipt.invocation=8;receipt.thread=7;receipt.scene_qpc=5;
@@ -32,7 +32,8 @@ int main(){
     assert(context.consume(receipt.key,receipt.anchor,7,7,true,1,0x3a1595,renderer)==gears_anchor::accepted);
     assert(context.consume(receipt.key,receipt.anchor,7,7,true,1,0x3a1595,receipt)==gears_anchor::already_consumed);
     auto ticket_value=gears_crosshair_scene::take(renderer.crosshair,renderer.key,renderer.invocation,renderer.thread);
-    assert(ticket_value&&ticket_value->point==value.point&&!renderer.crosshair);
+    assert(ticket_value&&ticket_value->point==value.point&&!renderer.crosshair&&
+        gears_crosshair_view::equal(ticket_value->writer_view,value.writer_view));
     assert(!gears_crosshair_scene::take(renderer.crosshair,renderer.key,renderer.invocation,renderer.thread));
     gears_submitted::FrameTicket frame{};frame.enabled=true;frame.id=9;frame.crosshair=ticket_value;
     frame.crosshair->ticket=frame.id;gears_submitted::Lifetime lifetime;

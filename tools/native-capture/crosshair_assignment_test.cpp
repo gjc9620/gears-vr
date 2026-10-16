@@ -27,7 +27,7 @@ struct Fixture {
         assert(std::wcslen(name)<id.name.size());std::copy(name,name+std::wcslen(name)+1,id.name.begin());
         m.block(id.address,0x200);m.put(id.address+0x10,id.index);m.put(id.address+0x18,id.name_index);
         m.put(id.address+0x1c,id.number);m.put(id.address+0x20,id.cls);m.put(id.address+0x28,id.outer);
-        m.put(0x10000+index*8,id.address);std::uintptr_t entry=0x60000+index*0x200;
+        m.put(0x10000+index*8,id.address);std::uintptr_t entry=0xc0000+index*0x200;
         m.put(0x18000+index*8,entry);m.block(entry,0x180);m.put(entry,id.name_index);m.put(entry+8,id.name);return index;
     }
     std::uintptr_t address(unsigned i) const{return identities.identities[i].address;}
@@ -75,14 +75,29 @@ struct Fixture {
         m.put(identities.base+0x1d5efb,copy_route);m.block(identities.base+0x1d7ad0,32);m.put(identities.base+0x1d7ad0,execlet_entry);
     }
     auto read(){return [this](void* out,const void* a,std::size_t n){return m.read(out,a,n);};}
+    void enable_view(){
+        auto class_index=[&](unsigned object){auto cls=identities.identities[object].cls;
+            for(unsigned i=0;i<identities.identity_count;++i)if(address(i)==cls)return i;
+            assert(false);return 0u;};
+        c.view.enabled=true;c.view.rotator_struct=add(L"Rotator",class_index(c.vector_struct));
+        unsigned* roles[]{&c.view.cam_loc,&c.view.cam_rot,&c.view.start_trace,&c.view.trace_dir};
+        unsigned* offsets[]{&c.view.cam_loc_offset,&c.view.cam_rot_offset,&c.view.start_trace_offset,&c.view.trace_dir_offset};
+        const wchar_t* names[]{L"CamLoc",L"CamRot",L"StartTrace",L"TraceDir"};
+        for(unsigned i=0;i<4;++i){*roles[i]=add(names[i],class_index(c.impact),c.writer);*offsets[i]=0x90+i*0x10;
+            property(*roles[i],*offsets[i],12,address(i==1?c.view.rotator_struct:c.vector_struct));}
+        m.put(locals+c.view.cam_loc_offset,std::array<float,3>{1,2,3});
+        m.put(locals+c.view.cam_rot_offset,std::array<std::int32_t,3>{10,20,30});
+        m.put(locals+c.view.start_trace_offset,std::array<float,3>{4,5,6});
+        m.put(locals+c.view.trace_dir_offset,std::array<float,3>{1,0,0});
+    }
     void simulate_original(){m.put(frame+0x28,c.script+0x37f);m.put(address(c.controller)+0x136c,point);}
 };
 static bool same(Snapshot const& a,Snapshot const& b){return a.self==b.self&&a.frame==b.frame&&a.node==b.node&&a.locals==b.locals&&
     a.pawn==b.pawn&&a.weapon==b.weapon&&a.destination==b.destination&&a.source==b.source&&a.script==b.script&&
-    a.source_bytes==b.source_bytes&&a.previous_cache==b.previous_cache;}
+    a.source_bytes==b.source_bytes&&a.previous_cache==b.previous_cache&&gears_crosshair_view::equal(a.view,b.view);}
 static bool same(CompletedAssignmentReceipt const& a,CompletedAssignmentReceipt const& b){return a.controller==b.controller&&
     a.pawn==b.pawn&&a.weapon==b.weapon&&a.writer==b.writer&&a.frame==b.frame&&a.locals==b.locals&&a.destination==b.destination&&
-    a.cache_bytes==b.cache_bytes&&a.point==b.point;}
+    a.cache_bytes==b.cache_bytes&&a.point==b.point&&gears_crosshair_view::equal(a.view,b.view);}
 int main(){
     Fixture f;assert(validate_bindings(f.c,f.read()));Snapshot before{};assert(snapshot(f.c,f.read(),f.address(f.c.controller),f.frame,before));
     CompletedAssignmentReceipt receipt{};f.simulate_original();assert(completed(f.c,f.read(),before,receipt));assert(receipt.point==f.point);
@@ -144,5 +159,19 @@ int main(){
     Snapshot nan_before{};assert(snapshot(nonfinite.c,nonfinite.read(),nonfinite.address(nonfinite.c.controller),nonfinite.frame,nan_before));
     nonfinite.simulate_original();CompletedAssignmentReceipt nan_out{};nan_out.controller=999;auto nan_saved=nan_out;
     assert(!completed(nonfinite.c,nonfinite.read(),nan_before,nan_out)&&same(nan_saved,nan_out));
+    Fixture viewed;viewed.enable_view();Snapshot view_before{};
+    assert(snapshot(viewed.c,viewed.read(),viewed.address(viewed.c.controller),viewed.frame,view_before));
+    assert((view_before.view.valid&&view_before.view.location==std::array<float,3>({1,2,3})));
+    viewed.simulate_original();CompletedAssignmentReceipt view_out{};
+    assert(completed(viewed.c,viewed.read(),view_before,view_out)&&gears_crosshair_view::equal(view_out.view,view_before.view));
+    viewed.m.put(viewed.locals+viewed.c.view.cam_rot_offset,std::array<std::int32_t,3>{11,20,30});
+    auto view_saved=view_out;assert(!completed(viewed.c,viewed.read(),view_before,view_out)&&same(view_out,view_saved));
+    for(unsigned fault=0;fault<5;++fault){Fixture x;x.enable_view();Snapshot out{};out.self=999;auto saved=out;
+        if(fault==0)x.m.put(x.locals+x.c.view.cam_loc_offset,std::array<float,3>{std::numeric_limits<float>::quiet_NaN(),2,3});
+        if(fault==1)x.m.put(x.address(x.c.view.cam_rot)+0xd0,x.address(x.c.vector_struct));
+        if(fault==2)x.m.put(x.address(x.c.view.start_trace)+0x74,unsigned(16));
+        if(fault==3){x.c.view.cam_loc_offset=x.c.impact_offset;x.m.put(x.address(x.c.view.cam_loc)+0x94,x.c.impact_offset);}
+        if(fault==4)x.m.denied=x.locals+x.c.view.trace_dir_offset;
+        assert(!snapshot(x.c,x.read(),x.address(x.c.controller),x.frame,out)&&same(out,saved));}
     std::cout<<"crosshair_assignment_test passed\n";
 }

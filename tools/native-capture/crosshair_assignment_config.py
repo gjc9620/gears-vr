@@ -21,6 +21,8 @@ SLOTS = {0x0f: 0x1d7ad0, 0x35: 0x1d6750, 0: 0x1d7eb0, 1: 0x1d8570}
 ROLES = ('writer war_pc controller pawn weapon war_pawn war_weapon lhs member '
          'impact impact_struct vector_struct ww').split()
 LINKS = ('controller_pawn pawn_controller pawn_weapon weapon_instigator').split()
+VIEW_FIELDS = dict(cam_loc=('CamLoc', 'Vector'), cam_rot=('CamRot', 'Rotator'),
+                   start_trace=('StartTrace', 'Vector'), trace_dir=('TraceDir', 'Vector'))
 
 
 class CrosshairConfigRejected(RuntimeError):
@@ -32,21 +34,21 @@ def _require(ok, reason):
         raise CrosshairConfigRejected(reason)
 
 
-def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False):
+def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False):
     """Return a JSON-compatible certificate, rejecting any observed mutation.
 
 Unlike an owned-hook loader this factory requires original execLet bytes.
 Shared VM entry bytes are deliberately not certified (the UI owner may own it).
 """
     try:
-        return _build(resolver, camera, include_tick_roots)
+        return _build(resolver, camera, include_tick_roots, include_writer_view)
     except CrosshairConfigRejected:
         raise
     except (KeyError, TypeError, ValueError, RuntimeError, OSError, struct.error, UnicodeError) as e:
         raise CrosshairConfigRejected('Fresh certificate rejected: ' + str(e)) from e
 
 
-def _build(r, camera, include_tick_roots):
+def _build(r, camera, include_tick_roots, include_writer_view):
     p = r.profile
     started = time.perf_counter_ns()
     _require(p.get('sha256') == camera.get('sha256') == GAME_SHA and
@@ -191,6 +193,26 @@ def _build(r, camera, include_tick_roots):
              member_offset <= impact_size - 12, 'Unsupported assignment layout')
     prop_shape(lhs, 12, vector, 0x20); prop_shape(member, 12, vector, 0x400000)
     prop_shape(impact, impact_size, impact_struct); prop_shape(ww, 8, war_weapon)
+    writer_view = dict(enabled=False)
+    if include_writer_view:
+        view_roles = {}; view_offsets = {}; view_shapes = {}
+        ranges = [(ww_offset, 8), (impact_offset, impact_size)]
+        for role, (name, structure_name) in VIEW_FIELDS.items():
+            prop = child(writer, name, 'StructProperty')
+            resolved, offset = property_at(writer, name, 'StructProperty')
+            _require(resolved == prop, 'Writer child/resolver mismatch')
+            structure = number(prop + structure_offset)
+            exact(structure, structure_name, 'ScriptStruct')
+            if structure_name == 'Vector':
+                _require(structure == vector, 'Writer view Vector identity mismatch')
+            else:
+                view_roles['rotator_struct'] = add(structure)
+            prop_shape(prop, 12, structure)
+            _require(offset < 65524 and all(offset + 12 <= start or start + size <= offset
+                     for start, size in ranges), 'Writer view range overlap/bounds')
+            ranges.append((offset, 12)); view_roles[role] = add(prop); view_offsets[role] = offset
+            view_shapes[role] = dict(dim=1, size=12, structure=add(structure))
+        writer_view = dict(enabled=True, roles=view_roles, offsets=view_offsets, shapes=view_shapes)
     expected = b'\x0f\x01' + struct.pack('<Q', lhs) + b'\x35' + struct.pack('<QQ', member, impact_struct) + bytes(3) + struct.pack('<Q', impact)
     _require(len(raw) >= 0x380 and raw[0x359:0x37f] == expected, 'Exact assignment tokens mismatch')
     native = []
@@ -230,7 +252,7 @@ def _build(r, camera, include_tick_roots):
              impact_offset=impact_offset, member_offset=member_offset, ww_offset=ww_offset,
              impact_size=impact_size, property_structure=structure_offset,
              nativebyteschecks=native, native_slots=[dict(opcode=o, rva=v) for o,v in SLOTS.items()],
-             tick_roots=roots, read_only=True, runtime_coverage_proven=False,
+             tick_roots=roots, writer_view=writer_view, read_only=True, runtime_coverage_proven=False,
              provenance=dict(disk_exe_sha256=GAME_SHA, historical_code_sha256=HISTORICAL_CODE_SHA,
                              native_bytes_source='fresh process reads matched to bounded historical contract',
                              acquired_perf_counter_ns=started, finished_perf_counter_ns=time.perf_counter_ns()))
@@ -274,6 +296,32 @@ def validate_crosshair_assignment_config(c):
         named('impact','Impact','StructProperty','writer')
         named('ww','WW','ObjectProperty','writer')
         named('vector_struct','Vector','ScriptStruct'); named('impact_struct','ImpactInfo','ScriptStruct')
+        view = c.get('writer_view', dict(enabled=False))
+        _require(type(view) is dict and type(view.get('enabled')) is bool, 'Invalid writer view enabled')
+        if view['enabled']:
+            _require(set(view) == {'enabled', 'roles', 'offsets', 'shapes'} and
+                     set(view['roles']) == set(VIEW_FIELDS) | {'rotator_struct'} and
+                     set(view['offsets']) == set(view['shapes']) == set(VIEW_FIELDS), 'Incomplete writer view')
+            for role in view['roles'].values(): index(role)
+            rotator = ids[view['roles']['rotator_struct']]
+            _require(rotator['name'] == 'Rotator' and rotator['number'] == 0 and
+                     by_address[rotator['cls']]['name'] == 'ScriptStruct', 'Invalid Rotator identity')
+            ranges = [(c['ww_offset'], 8), (c['impact_offset'], c['impact_size'])]
+            for role, (name, structure_name) in VIEW_FIELDS.items():
+                prop = ids[view['roles'][role]]; offset = view['offsets'][role]; shape = view['shapes'][role]
+                target = c['roles']['vector_struct'] if structure_name == 'Vector' else view['roles']['rotator_struct']
+                _require(prop['name'] == name and prop['number'] == 0 and
+                         by_address[prop['cls']]['name'] == 'StructProperty' and
+                         prop['outer'] == ids[c['roles']['writer']]['address'], 'Invalid writer view property')
+                _require(type(offset) is int and 0 <= offset < 65524 and
+                         type(shape) is dict and set(shape) == {'dim', 'size', 'structure'} and
+                         all(type(v) is int for v in shape.values()) and
+                         shape == dict(dim=1, size=12, structure=target) and
+                         all(offset + 12 <= start or start + size <= offset for start, size in ranges),
+                         'Invalid writer view shape/range')
+                ranges.append((offset, 12))
+        else:
+            _require(set(view) == {'enabled'}, 'Disabled writer view has fields')
         for f in c['fields'].values():
             index(f['property']); _require(type(f['offset']) is int and 0 <= f['offset'] < 65536, 'Invalid field offset')
         _require(set(c['layout']) == set(LAYOUT) and c['layout']['property_offset_internal'] == 0x94, 'Invalid layout')
@@ -330,6 +378,10 @@ def crosshair_assignment_ini(config):
     values.update(native_contract=1, identity_count=len(c['identities']), super_count=len(c['supers']),
                   tick_root_count=len(c['tick_roots']))
     values.update(c['layout']); values.update(c['roles'])
+    view = c.get('writer_view', dict(enabled=False)); values['view_enabled'] = int(view['enabled'])
+    if view['enabled']:
+        for role, index in view['roles'].items(): values['view_' + role] = index
+        for role, offset in view['offsets'].items(): values['view_' + role + '_offset'] = offset
     for name,field in c['fields'].items():
         values[name+'_property']=field['property']; values[name+'_offset']=field['offset']
     for n,item in enumerate(c['identities']):

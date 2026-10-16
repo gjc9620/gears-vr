@@ -1,5 +1,6 @@
 #pragma once
 #include "ui_observer.h"
+#include "crosshair_writer_view.h"
 
 // Read-only evidence around ONE caller-owned original execLet invocation.
 // This proves assignment completion, not tick, camera or scene freshness.
@@ -13,6 +14,11 @@ inline constexpr std::array<unsigned char,21> copy_route{{
     0x8b,0x41,0x74,0x48,0x8b,0xd6,0x0f,0xaf,0x41,0x70,0x48,0x8b,0xcd,
     0x4c,0x63,0xc0,0xe8,0x4f,0x1f,0x3a,0x00}};
 struct Field {unsigned property{},offset{};};
+struct WriterViewConfig {
+    bool enabled{};
+    unsigned cam_loc{},cam_rot{},start_trace{},trace_dir{},rotator_struct{};
+    unsigned cam_loc_offset{},cam_rot_offset{},start_trace_offset{},trace_dir_offset{};
+};
 struct Config {
     // Certificate storage must remain immutable and alive across both calls.
     const gears_ui::Config* identities{};
@@ -24,15 +30,18 @@ struct Config {
     // its position is not inferred from the decompiler's malformed prototype.
     unsigned property_structure{};
     Field controller_pawn{},pawn_controller{},pawn_weapon{},weapon_instigator{};
+    WriterViewConfig view{};
 };
 struct Snapshot {
     std::uintptr_t self{},frame{},node{},locals{},pawn{},weapon{},destination{},source{},script{};
     std::array<unsigned char,12> source_bytes{},previous_cache{};
+    gears_crosshair_view::Sample view{};
 };
 struct CompletedAssignmentReceipt {
     std::uintptr_t controller{},pawn{},weapon{},writer{},frame{},locals{},destination{};
     std::array<unsigned char,12> cache_bytes{};
     std::array<float,3> point{};
+    gears_crosshair_view::Sample view{};
 };
 namespace detail {
 template<class Read> bool certificate(Config const& c,gears_ui::Reader<Read> const& r) {
@@ -99,6 +108,21 @@ template<class Read> bool schema(Config const& c,gears_ui::Reader<Read> const& r
        !prop(c.member,c.member_offset,12,addr(c.vector_struct),0x400000)||
        !prop(c.impact,c.impact_offset,c.impact_size,addr(c.impact_struct),0)||
        !prop(c.ww,c.ww_offset,8,addr(c.war_weapon),0))return false;
+    if(c.view.enabled){
+        auto const& v=c.view;
+        for(auto index:{v.cam_loc,v.cam_rot,v.start_trace,v.trace_dir,v.rotator_struct})if(!id(c,index))return false;
+        if(!named(c,v.rotator_struct,L"Rotator",L"ScriptStruct"))return false;
+        const unsigned indices[]{v.cam_loc,v.cam_rot,v.start_trace,v.trace_dir};
+        const unsigned offsets[]{v.cam_loc_offset,v.cam_rot_offset,v.start_trace_offset,v.trace_dir_offset};
+        const wchar_t* names[]{L"CamLoc",L"CamRot",L"StartTrace",L"TraceDir"};
+        for(unsigned i=0;i<4;++i){
+            if(offsets[i]>65524||!named(c,indices[i],names[i],L"StructProperty",addr(c.writer),true)||
+               !prop(indices[i],offsets[i],12,addr(i==1?v.rotator_struct:c.vector_struct),0))return false;
+            auto overlaps=[&](unsigned begin,unsigned size){return offsets[i]<begin+size&&begin<offsets[i]+12;};
+            if(overlaps(c.ww_offset,8)||overlaps(c.impact_offset,c.impact_size))return false;
+            for(unsigned j=0;j<i;++j)if(offsets[i]<offsets[j]+12&&offsets[j]<offsets[i]+12)return false;
+        }
+    }
     auto link=[&](std::uintptr_t object,Field field,std::uintptr_t target,const wchar_t* name){
         auto property=id(c,field.property);unsigned offset{};std::uintptr_t actual{};
         auto cls=property?gears_ui::known(ids,property->cls):nullptr;
@@ -155,6 +179,16 @@ template<class Read> bool state(Config const& c,gears_ui::Reader<Read> const& r,
        value.locals>(std::numeric_limits<std::uintptr_t>::max)()-c.impact_offset-c.member_offset)return false;
     value.destination=self+0x136c;value.source=value.locals+c.impact_offset+c.member_offset;
     if(!r.bytes(value.source_bytes.data(),value.source,12)||!r.bytes(value.previous_cache.data(),value.destination,12))return false;
+    if(c.view.enabled){
+        auto const& v=c.view;
+        if(!r.field(value.view.location,value.locals,v.cam_loc_offset)||
+           !r.field(value.view.rotation,value.locals,v.cam_rot_offset)||
+           !r.field(value.view.start,value.locals,v.start_trace_offset)||
+           !r.field(value.view.direction,value.locals,v.trace_dir_offset))return false;
+        for(auto const& vector:{value.view.location,value.view.start,value.view.direction})
+            for(float f:vector)if(!std::isfinite(f))return false;
+        value.view.valid=true;
+    }
     std::uintptr_t final_node{},final_object{},final_code{},final_locals{},final_ww{};unsigned final_scratch{};
     if(!r.field(final_node,frame,0x18)||final_node!=value.node||!r.field(final_object,frame,0x20)||final_object!=self||
        !r.field(final_code,frame,0x28)||final_code!=code||!r.field(final_locals,frame,0x30)||final_locals!=value.locals||
@@ -172,7 +206,8 @@ template<class Read> bool validate_bindings(Config const& c,Read read,bool check
 template<class Read> bool snapshot(Config const& c,Read read,std::uintptr_t self,std::uintptr_t frame,Snapshot& out) {
     gears_ui::Reader<Read> r{read};Snapshot a{},b{};
     if(!detail::state(c,r,self,frame,0x35a,a)||!detail::state(c,r,self,frame,0x35a,b)||
-       a.locals!=b.locals||a.source!=b.source||a.source_bytes!=b.source_bytes||a.previous_cache!=b.previous_cache)return false;
+       a.locals!=b.locals||a.source!=b.source||a.source_bytes!=b.source_bytes||a.previous_cache!=b.previous_cache||
+       !gears_crosshair_view::equal(a.view,b.view))return false;
     out=b;return true;
 }
 template<class Read> bool completed(Config const& c,Read read,Snapshot const& before,CompletedAssignmentReceipt& out) {
@@ -180,10 +215,12 @@ template<class Read> bool completed(Config const& c,Read read,Snapshot const& be
     if(!detail::state(c,r,before.self,before.frame,0x37f,a)||!detail::state(c,r,before.self,before.frame,0x37f,b)||
        a.node!=before.node||a.locals!=before.locals||a.pawn!=before.pawn||a.weapon!=before.weapon||a.script!=before.script||
        a.destination!=before.destination||a.source!=before.source||a.source_bytes!=before.source_bytes||
-       a.previous_cache!=a.source_bytes||b.locals!=a.locals||b.source_bytes!=a.source_bytes||b.previous_cache!=a.previous_cache)return false;
+       a.previous_cache!=a.source_bytes||b.locals!=a.locals||b.source_bytes!=a.source_bytes||b.previous_cache!=a.previous_cache||
+       !gears_crosshair_view::equal(a.view,b.view)||!gears_crosshair_view::equal(before.view,b.view))return false;
     CompletedAssignmentReceipt receipt{};receipt.controller=a.self;receipt.pawn=a.pawn;receipt.weapon=a.weapon;
     receipt.writer=a.node;receipt.frame=a.frame;receipt.locals=a.locals;receipt.destination=a.destination;receipt.cache_bytes=b.previous_cache;
     std::memcpy(receipt.point.data(),receipt.cache_bytes.data(),12);
+    receipt.view=b.view;
     for(float v:receipt.point)if(!std::isfinite(v))return false;
     out=receipt;return true;
 }

@@ -1,0 +1,16 @@
+#pragma once
+#include <array>
+#include <cstdint>
+
+namespace gears_crosshair_view {
+// Copied writer locals only; validity does not certify camera equivalence.
+struct Sample {
+    bool valid{};
+    std::array<float,3> location{},start{},direction{};
+    std::array<std::int32_t,3> rotation{};
+};
+inline bool equal(Sample const& a,Sample const& b){
+    return a.valid==b.valid&&a.location==b.location&&a.start==b.start&&
+        a.direction==b.direction&&a.rotation==b.rotation;
+}
+}

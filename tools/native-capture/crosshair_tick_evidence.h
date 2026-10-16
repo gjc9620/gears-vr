@@ -13,6 +13,7 @@ struct Sealed {
     std::array<float,3> point{};
     std::uint64_t tick{};
     std::int64_t begin_qpc{},assignment_qpc{},finish_qpc{};
+    gears_crosshair_view::Sample view{};
 };
 struct Counters {
     std::uint64_t begins{},nested{},assignments{},sealed{},consumed{},
@@ -72,7 +73,7 @@ public:
         for(float value:receipt.point)if(!std::isfinite(value)){
             ++counters.invalid_point;valid_=false;return;
         }
-        pending_.point=receipt.point;pending_.assignment_qpc=qpc;
+        pending_.point=receipt.point;pending_.assignment_qpc=qpc;pending_.view=receipt.view;
     }
     bool finish(std::uint64_t token,bool owners_valid,std::int64_t qpc) noexcept {
         if(depth_>1&&token==0){--depth_;valid_=false;return false;}

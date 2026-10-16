@@ -2,6 +2,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include "crosshair_writer_view.h"
 
 // Owning diagnostic assignment association only. No camera/aim certification.
 namespace gears_crosshair_scene {
@@ -15,6 +16,7 @@ struct Metadata {
     std::uintptr_t local{},family{},source{},owner{};
     std::uint32_t stamp{};
     std::array<unsigned char,128> matrices{};
+    gears_crosshair_view::Sample writer_view{};
 };
 template<class Key> bool associate(Metadata& value,Key const& key,std::uint64_t invocation,
     std::uint32_t thread,std::uint64_t world,std::uintptr_t controller,std::uintptr_t pawn) {
