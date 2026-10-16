@@ -199,3 +199,11 @@ quiet16仅扩展现有TRACE线程CBT观察器接收HCBT_MINMAX，原样CallNextH
 用户随后明确自己退出DisplayFusion，进程枚举确认已退出；之后不再自动恢复它。下一轮沿默认首次显示hint4使用quiet16，聚焦第二次最小化通知，避免把quiet15行为改动混入观察。
 
 quiet16实际game34672：70秒无输入，仍在tick2748296自动进入前台。`focus-minmax16.json`记录首个command7、同步恢复command4（游戏452DDA栈），随后同一tick2748296在PeekMessage调用栈交付command7、command9、HCBT_ACTIVATE。因此额外最小化/恢复确为延迟处理的窗口操作，不是外部20ms采样误判或单纯style读数变化。仍未恢复最初排队者身份，不据此认定显卡覆盖层、DXGI或Steam。证据 `quiet-minmax16.json` / `focus-minmax16.json`；无溢出，游戏与模拟器保持等待关卡，DisplayFusion保持用户退出状态。下一步应查这对延迟操作的排队来源，不能靠阻断所有恢复/激活破坏手动切换。
+
+### FancyZones 单游戏排除对照
+
+只读确认本机 PowerToys FancyZones 0.101.2362 开启 appLastZone_moveWindows，游戏与OpenXRPoseProbe都有区域历史；日志确认此前启动时应用了历史区域。上游源码 WindowUtils.cpp 的 SizeWindowToRect 使用 WPF_ASYNCWINDOWPLACEMENT，并可能选择SW_RESTORE（https://github.com/microsoft/PowerToys/blob/main/src/modules/fancyzones/FancyZonesLib/WindowUtils.cpp）。上游main并非本机二进制版本证据。
+
+用户授权临时仅排除GOWDE-Steam.exe并测试后恢复。`quiet-fz-exclude16-control.json`确认原排除值为空、临时单项、最终恢复成功；FancyZones日志确认两次LoadSettings，测试窗口内不再查询游戏历史，但仍查询XR历史。未关闭PowerToys，DisplayFusion保持退出。
+
+`quiet-fz-exclude16.json` game32572整轮无输入，初始/结束前台均ChatGPT17708；旧PeekMessage中的command9及紧随激活消失，command7仍存在。仍收到一次目标游戏的EVENT_SYSTEM_FOREGROUND，tick3000937，CBT栈变为游戏31B24F/31ACE0/4EDFB3→win32u+2ca4；其回调前后前台均外部67396。不能只用事件目标就认定实际抢焦点，也不能仅凭结束前台不变宣称全程通过。现有观察器未保存事件回调瞬间的实际前台，需要补充该字段及连续前台采样，再验证。临时排除不是当前持久修复。
