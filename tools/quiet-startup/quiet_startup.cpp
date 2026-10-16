@@ -7,6 +7,7 @@
 
 namespace {
 std::atomic<bool> enabled{};
+bool main_noactivate{}; // Written before hook publication; immutable thereafter.
 std::array<std::atomic<std::uint64_t>,gears_quiet::count> suppressed{};
 std::atomic<bool> trace_enabled{},trace_overflow{};
 std::atomic<unsigned> trace_next{};
@@ -195,8 +196,8 @@ BOOL WINAPI bring(HWND window) {
     return trace.native(original_bring(window));
 }
 // WS_EX_NOACTIVATE alone still changes the creating thread's active window.
-// Create hidden, then show without activation. Keep the caller's extended
-// styles unchanged, including any explicitly requested NOACTIVATE style.
+// Create hidden, then show without activation. The opt-in main-window trial
+// adds only NOACTIVATE to an unowned APPWINDOW; other extended bits are kept.
 void finish_create(HWND window,DWORD style,bool guarded) {
     if(window && guarded && (style&WS_VISIBLE))original_show(window,SW_SHOWNOACTIVATE);
 }
@@ -205,9 +206,10 @@ HWND WINAPI create_w(DWORD exstyle,LPCWSTR cls,LPCWSTR title,DWORD style,int x,i
     observe_gui_thread(style,parent);
     TraceCall trace(gears_quiet::create_w,nullptr,style,parent,exstyle);
     const bool guarded=background() && !(style&WS_CHILD) && parent!=HWND_MESSAGE;
+    const DWORD effective_exstyle=exstyle|((main_noactivate&&guarded&&!parent&&(exstyle&WS_EX_APPWINDOW))?WS_EX_NOACTIVATE:0);
     if(guarded)trace.policy(style&~WS_VISIBLE);
     if(guarded)note(gears_quiet::create_w);
-    HWND result=original_create_w(exstyle,cls,title,guarded?style&~WS_VISIBLE:style,x,y,width,height,parent,menu,instance,argument);
+    HWND result=original_create_w(effective_exstyle,cls,title,guarded?style&~WS_VISIBLE:style,x,y,width,height,parent,menu,instance,argument);
     DWORD error=GetLastError();trace.native(result);finish_create(result,style,guarded);trace.created(result);SetLastError(error);return result;
 }
 HWND WINAPI create_a(DWORD exstyle,LPCSTR cls,LPCSTR title,DWORD style,int x,int y,int width,int height,
@@ -215,15 +217,18 @@ HWND WINAPI create_a(DWORD exstyle,LPCSTR cls,LPCSTR title,DWORD style,int x,int
     observe_gui_thread(style,parent);
     TraceCall trace(gears_quiet::create_a,nullptr,style,parent,exstyle);
     const bool guarded=background() && !(style&WS_CHILD) && parent!=HWND_MESSAGE;
+    const DWORD effective_exstyle=exstyle|((main_noactivate&&guarded&&!parent&&(exstyle&WS_EX_APPWINDOW))?WS_EX_NOACTIVATE:0);
     if(guarded)trace.policy(style&~WS_VISIBLE);
     if(guarded)note(gears_quiet::create_a);
-    HWND result=original_create_a(exstyle,cls,title,guarded?style&~WS_VISIBLE:style,x,y,width,height,parent,menu,instance,argument);
+    HWND result=original_create_a(effective_exstyle,cls,title,guarded?style&~WS_VISIBLE:style,x,y,width,height,parent,menu,instance,argument);
     DWORD error=GetLastError();trace.native(result);finish_create(result,style,guarded);trace.created(result);SetLastError(error);return result;
 }
 }
 
 extern "C" __declspec(dllexport) DWORD WINAPI GearsQuietInstall(void*) {
     if(enabled.load())return ERROR_ALREADY_EXISTS;
+    wchar_t main_option[2]{};
+    main_noactivate=GetEnvironmentVariableW(L"GEARSVR_QUIET_MAIN_NOACTIVATE",main_option,2)==1&&main_option[0]==L'1';
     wchar_t trace_option[2]{};
     const bool tracing=GetEnvironmentVariableW(L"GEARSVR_QUIET_TRACE",trace_option,2)==1&&trace_option[0]==L'1';
     if(MH_Initialize()!=MH_OK)return ERROR_INVALID_FUNCTION;

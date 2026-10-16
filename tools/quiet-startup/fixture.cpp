@@ -14,6 +14,8 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
     const auto query=reinterpret_cast<gears_quiet::Read>(policy?GetProcAddress(policy,"GearsQuietStatus"):nullptr);
     gears_quiet::Status before,after;
     if(!query || query(&before)!=0 || before.installed!=1)return 11;
+    wchar_t main_option[2]{};
+    const bool main_requested=GetEnvironmentVariableW(L"GEARSVR_QUIET_MAIN_NOACTIVATE",main_option,2)==1&&main_option[0]==L'1';
     WNDCLASSW cls{};cls.hInstance=instance;cls.lpfnWndProc=DefWindowProcW;cls.lpszClassName=L"GearsQuietStartupFixture";
     if(!RegisterClassW(&cls))return 12;
     WNDCLASSA ansi_cls{};ansi_cls.hInstance=instance;ansi_cls.lpfnWndProc=DefWindowProcA;ansi_cls.lpszClassName="GearsQuietStartupFixtureA";
@@ -27,7 +29,8 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
     const HWND prior=GetForegroundWindow();
     const auto cbt_query=reinterpret_cast<gears_quiet::ReadTrace>(GetProcAddress(policy,"GearsQuietCbtTrace"));
     auto cbt=std::make_unique<gears_quiet::CbtSnapshot>();
-    HWND message_only=CreateWindowExW(0,cls.lpszClassName,L"Message only",0,0,0,0,0,HWND_MESSAGE,nullptr,instance,nullptr);
+    HWND message_only=CreateWindowExW(WS_EX_APPWINDOW,cls.lpszClassName,L"Message only",0,0,0,0,0,HWND_MESSAGE,nullptr,instance,nullptr);
+    const bool message_style=message_only&&(GetWindowLongPtrW(message_only,GWL_EXSTYLE)&WS_EX_NOACTIVATE)==0;
     bool cbt_valid=cbt_query&&cbt_query(cbt.get())==0&&cbt->thread==0&&!cbt->installed;
     if(message_only)DestroyWindow(message_only);
     HWND window=step("create_window_w",[&](){return CreateWindowExW(0,cls.lpszClassName,L"Quiet startup fixture",WS_OVERLAPPEDWINDOW|WS_VISIBLE,
@@ -36,11 +39,20 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
     HWND ansi=step("create_window_a",[&](){return CreateWindowExA(0,ansi_cls.lpszClassName,"Quiet startup ANSI fixture",WS_OVERLAPPEDWINDOW|WS_VISIBLE,
                              -30000,-30000,320,240,nullptr,nullptr,instance,nullptr);});
     if(!ansi){step("destroy_window",[&](){return DestroyWindow(window);});return 16;}
+    constexpr DWORD main_exstyle=WS_EX_APPWINDOW|WS_EX_ACCEPTFILES;
+    HWND main_w=step("create_main_w",[&](){return CreateWindowExW(main_exstyle,cls.lpszClassName,L"Main W",WS_OVERLAPPEDWINDOW|WS_VISIBLE,
+        -30000,-30000,320,240,nullptr,nullptr,instance,nullptr);});
+    HWND main_a=step("create_main_a",[&](){return CreateWindowExA(main_exstyle,ansi_cls.lpszClassName,"Main A",WS_OVERLAPPEDWINDOW|WS_VISIBLE,
+        -30000,-30000,320,240,nullptr,nullptr,instance,nullptr);});
+    const DWORD expected_main=main_exstyle|(main_requested?WS_EX_NOACTIVATE:0);
+    const auto main_matches=[&](HWND hwnd){return hwnd&&IsWindowVisible(hwnd)&&
+        (GetWindowLongPtrW(hwnd,GWL_EXSTYLE)&(main_exstyle|WS_EX_NOACTIVATE))==expected_main;};
+    const bool main_style=main_matches(main_w)&&main_matches(main_a);
     // Child coordinates remain inside the offscreen parent. WS_CHILD must not
     // become an owned top-level window or retain a temporary NOACTIVATE bit.
-    HWND child=step("create_child_a",[&](){return CreateWindowExA(0,ansi_cls.lpszClassName,"Quiet child",WS_CHILD|WS_VISIBLE,
+    HWND child=step("create_child_a",[&](){return CreateWindowExA(WS_EX_APPWINDOW,ansi_cls.lpszClassName,"Quiet child",WS_CHILD|WS_VISIBLE,
                               0,0,100,50,window,nullptr,instance,nullptr);});
-    HWND owned=step("create_owned_w",[&](){return CreateWindowExW(0,cls.lpszClassName,L"Quiet owned popup",WS_POPUP|WS_VISIBLE,
+    HWND owned=step("create_owned_w",[&](){return CreateWindowExW(WS_EX_APPWINDOW,cls.lpszClassName,L"Quiet owned popup",WS_POPUP|WS_VISIBLE,
                               -30000,-30000,100,50,window,nullptr,instance,nullptr);});
     HWND explicit_style=step("create_explicit_a",[&](){return CreateWindowExA(WS_EX_NOACTIVATE,ansi_cls.lpszClassName,"Explicit no-activate",WS_POPUP|WS_VISIBLE,
                                        -30000,-30000,100,50,nullptr,nullptr,instance,nullptr);});
@@ -85,7 +97,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
     const bool clickable=(GetWindowLongPtrW(window,GWL_EXSTYLE)&WS_EX_NOACTIVATE)==0;
     const bool topmost=(GetWindowLongPtrW(window,GWL_EXSTYLE)&WS_EX_TOPMOST)!=0;
     const HWND final=GetForegroundWindow();
-    const bool same=final==prior && prior!=window&&prior!=ansi&&prior!=owned&&prior!=explicit_style;
+    const bool same=final==prior && prior!=window&&prior!=ansi&&prior!=owned&&prior!=explicit_style&&prior!=main_w&&prior!=main_a;
     const bool queried=query(&after)==0&&after.installed==1;
     const auto query_trace=reinterpret_cast<gears_quiet::ReadTrace>(GetProcAddress(policy,"GearsQuietTrace2"));
     auto trace=std::make_unique<gears_quiet::TraceSnapshot2>();
@@ -131,6 +143,8 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
             trace_passed&&trace_blocked&&trace_null&&trace_call_mask==((1u<<gears_quiet::count)-1)&&
             std::memcmp(trace->records,saved->records,saved->completed*sizeof(gears_quiet::TraceRecord2))==0;
     }else if(trace_valid){trace_valid=trace->enabled==0&&trace->completed==0&&trace->reserved_count==0&&trace->overflow==0;}
+    const bool main_retained=main_matches(main_w)&&main_matches(main_a);
+    if(main_w)step("destroy_main_w",[&](){return DestroyWindow(main_w);});if(main_a)step("destroy_main_a",[&](){return DestroyWindow(main_a);});
     if(explicit_style)step("destroy_explicit",[&](){return DestroyWindow(explicit_style);});if(owned)step("destroy_owned",[&](){return DestroyWindow(owned);});
     step("destroy_ansi",[&](){return DestroyWindow(ansi);});step("destroy_window",[&](){return DestroyWindow(window);});
     std::ofstream out(output);
@@ -140,6 +154,8 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
        <<",\"parent_child_preserved\":"<<parent_child<<",\"owned_popup_preserved\":"<<owned_popup
        <<",\"parent_hide_preserved\":"<<parent_hide<<",\"child_visibility_restored\":"<<child_restored
        <<",\"explicit_noactivate_preserved\":"<<explicit_preserved
+       <<",\"main_noactivate_requested\":"<<main_requested<<",\"main_style_matched\":"<<main_style
+       <<",\"main_style_retained\":"<<main_retained<<",\"message_only_style_preserved\":"<<message_style
        <<",\"hide_preserved\":"<<hidden<<",\"show_minimized_preserved\":"<<minimized
        <<",\"restore_preserved\":"<<restored<<",\"minimize_preserved\":"<<minimize_command
        <<",\"restore_again_preserved\":"<<restored_again<<",\"status_queried\":"<<queried<<",\"suppressed\":[";
@@ -151,6 +167,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
        <<",\"windows\":{\"window\":"<<reinterpret_cast<uintptr_t>(window)
        <<",\"ansi\":"<<reinterpret_cast<uintptr_t>(ansi)<<",\"child\":"<<reinterpret_cast<uintptr_t>(child)
        <<",\"owned\":"<<reinterpret_cast<uintptr_t>(owned)<<",\"explicit\":"<<reinterpret_cast<uintptr_t>(explicit_style)
+       <<",\"main_w\":"<<reinterpret_cast<uintptr_t>(main_w)<<",\"main_a\":"<<reinterpret_cast<uintptr_t>(main_a)
        <<"},\"timeline_overflow\":"<<timeline_overflow<<",\"timeline\":[";
     for(unsigned i=0;i<timeline_count;++i){const auto& row=timeline[i];if(i)out<<',';
         out<<"{\"tick_ms\":"<<row.tick<<",\"stage\":\""<<row.stage<<"\",\"edge\":\""<<row.edge
@@ -158,5 +175,5 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
            <<",\"active\":"<<reinterpret_cast<uintptr_t>(row.active)<<'}';}
     out<<"]}\n";
     return visible&&clickable&&!topmost&&same&&ansi_visible&&ansi_clickable&&parent_child&&parent_hide&&child_restored&&owned_popup&&explicit_preserved&&
-        hidden&&minimized&&restored&&minimize_command&&restored_again&&queried&&trace_valid?0:14;
+        hidden&&minimized&&restored&&minimize_command&&restored_again&&queried&&trace_valid&&main_style&&main_retained&&message_style?0:14;
 }
