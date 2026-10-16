@@ -173,9 +173,11 @@ uint32_t __fastcall hook_ui_execute(void* command){
                        safe_copy(checked.data(),command,checked.size())&&checked==header){
                         index_storage->execute_sequence=++ui_execute_sequence;
                         index_storage->cursor=gears_ui_indices::Cursor(index_storage->snapshot);
-                        if(ui_reticle_direction_enabled&&(context.kind_mask&1u))
+                        if(ui_reticle_direction_enabled&&(context.kind_mask&1u)){
                             for(unsigned i=0;i<index_storage->snapshot.segment_count;++i)
                                 gears_ui_reticle::capture_extent(claim,index_storage->snapshot,i,index_storage->reticle_extents[i]);
+                            gears_ui_reticle::group_extents(index_storage->reticle_extents,index_storage->snapshot.segment_count);
+                        }
                         for(unsigned i=0;i<index_storage->snapshot.segment_count;++i)
                             gears_ui_sources::capture(claim,index_storage->snapshot,i,index_storage->sources[i]);
                         if(!gears_ui_layout::identity(ui_hud_layout_parameters)){
