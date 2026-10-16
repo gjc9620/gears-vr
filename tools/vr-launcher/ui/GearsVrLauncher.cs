@@ -99,6 +99,8 @@ namespace GearsVrUi {
             string args = Arguments(root, "start", "C:\\runtime with spaces\\openxr.json");
             if (!args.Contains("--manifest") || !args.Contains("--runtime") || args.Contains("auto-continue")) return 2;
             if (Arguments(root, "stop", null).Contains("--runtime")) return 3;
+            if (Arguments(root, "recenter", "unused").Contains("--runtime") ||
+                !Arguments(root, "recenter", null).EndsWith(" recenter")) return 18;
             if (Quote("a b\\") != "\"a b\\\\\"" || Quote("a\"b") != "\"a\\\"b\"") return 4;
             if (Phase("{\"launcher\":{\"phase\":\"preflight\"}}") != "preflight" ||
                 Phase("{\"session_phase\":\"running\",\"launcher\":{\"phase\":\"old\"}}") != "running") return 5;
@@ -184,14 +186,14 @@ namespace GearsVrUi {
         readonly object logLock = new object();
         TextBox game = new TextBox(), runtime = new TextBox(), output = new TextBox();
         ComboBox runtimeMode = new ComboBox();
-        Button start = new Button(), stop = new Button(), status = new Button(), browseGame = new Button(), browseRuntime = new Button();
+        Button start = new Button(), stop = new Button(), recenter = new Button(), status = new Button(), browseGame = new Button(), browseRuntime = new Button();
         Label state = new Label();
         NumericUpDown hudSize = new NumericUpDown { Minimum = 45, Maximum = 100, Value = 65, DecimalPlaces = 2, Increment = 1, Width = 85 };
         bool hudSupported;
         Process owner;
         int ownerPid; long ownerCreation;
         volatile bool stopRequested;
-        bool starting, stopping, closingAfterOwner;
+        bool starting, stopping, recentering, closingAfterOwner;
         Python python;
         public Launcher(string repository) {
             root = repository; config = Path.Combine(root, "tools", "vr-launcher", "config.json");
@@ -225,9 +227,9 @@ namespace GearsVrUi {
                 layout.Controls.Add(hud, 1, 4); layout.SetColumnSpan(hud, 2);
             }
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill };
-            start.Text = "启动 VR"; stop.Text = "停止 VR"; status.Text = "查看状态";
+            start.Text = "启动 VR"; stop.Text = "停止 VR"; recenter.Text = "视角回中"; status.Text = "查看状态";
             var logs = new Button { Text = "打开日志", AutoSize = true };
-            foreach (var button in new[] { start, stop, status, logs }) { button.AutoSize = true; buttons.Controls.Add(button); }
+            foreach (var button in new[] { start, stop, recenter, status, logs }) { button.AutoSize = true; buttons.Controls.Add(button); }
             layout.Controls.Add(buttons, 0, 5); layout.SetColumnSpan(buttons, 3);
             state.Text = "就绪"; state.Dock = DockStyle.Fill; layout.Controls.Add(state, 0, 6); layout.SetColumnSpan(state, 3);
             output.Multiline = true; output.ReadOnly = true; output.ScrollBars = ScrollBars.Both; output.WordWrap = false; output.Dock = DockStyle.Fill;
@@ -240,6 +242,7 @@ namespace GearsVrUi {
             runtimeMode.SelectedIndexChanged += delegate { UpdateButtons(); };
             start.Click += async delegate { await StartVr(); };
             stop.Click += async delegate { await StopVr(); };
+            recenter.Click += async delegate { await RecenterVr(); };
             status.Click += async delegate { status.Enabled = false; await Command("status", null); status.Enabled = true; };
             logs.Click += delegate { try { Process.Start("explorer.exe", Program.Quote(Path.GetDirectoryName(logPath))); } catch (Exception e) { Log(e.Message); } };
             FormClosing += OnClosingRequested; UpdateButtons();
@@ -253,9 +256,20 @@ namespace GearsVrUi {
         void UpdateButtons() {
             bool busy = starting || owner != null;
             start.Enabled = !busy && !stopping; stop.Enabled = !stopping;
+            recenter.Enabled = owner != null && !stopping && !recentering && !stopRequested;
             game.Enabled = browseGame.Enabled = runtimeMode.Enabled = !busy;
             hudSize.Enabled = !busy;
             runtime.Enabled = browseRuntime.Enabled = !busy && runtimeMode.SelectedIndex == 0;
+        }
+        async Task RecenterVr() {
+            if (owner == null || stopping || recentering || stopRequested) return;
+            if (!OwnerReady()) { Log("VR 尚未就绪，暂时无法回中。"); return; }
+            recentering = true; UpdateButtons();
+            try {
+                int code = await Command("recenter", null);
+                if (owner != null && !stopping && !stopRequested)
+                    state.Text = code == 0 ? "已请求视角回中" : "回中未完成，请查看日志";
+            } finally { recentering = false; UpdateButtons(); }
         }
         async Task StartVr() {
             if (starting || owner != null) return;

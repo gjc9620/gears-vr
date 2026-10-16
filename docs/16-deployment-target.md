@@ -1,5 +1,15 @@
 # 最终部署交付目标
 
+## 当前有效范围（2026-10-16）
+
+用户后续已撤销首版 Low/High 独立眼图档位，要求跟随游戏当前分辨率渲染；下文的每眼2K/4K、独立目标及旧百分比表保留为历史记录，不作为当前首版的交付要求或进度计算依据。已验证1920×1080和3840×2160游戏源路径；眼图尺寸按实际SBS裁取，正方形纹理不构成VR正确性的条件。
+
+首版仍要求第三人称同帧双目、头部6DoF/FOV/回中、启动VR及菜单/关卡/检查点切换、用户列出的完整UI类别、DLSS/DLAA禁用锁定、普通游玩和过场稳定性，以及无需开发环境的玩家部署与恢复。第一人称和双手武器交互仍在后续范围。
+
+当前状态以 `docs/39-mainline-progress-and-acceptance.md` 及其最新证据引用为准：Native23/XR11为私有候选，玩家默认仍Recovery8；运行时图形锁已接入，不能沿用下文“尚未接入”的旧结论。模拟器六轴实际图像证据见docs/71，真头显尺度与舒适度仍待验收。已有中文研究GUI及路径选择/HUD大小/停止/状态入口，但仍依赖仓库与Python，尚非便携包；UI覆盖、CG与短时闪黑也尚未全部完成。
+
+## 历史要求与实验记录
+
 2026-10-15 OwnedXr1/2：实验已将独立Low纹理和冻结pose ticket接入共享publisher，实际各完成120帧/119次发布；Xr1接收端读回完整双眼图。但两轮projection均0：producer发布时pose年龄中位147.10ms，超过保留的100ms门限。构建/排队及scene消费耗时仍需解决，不能升级默认清单或宣称独立分辨率VR可用。39条实验回归与6项关闭实验的兼容检查通过，58入口恢复并正常退出；Owner仍保留到退出。新实验默认OFF、无Canvas，证据见`analysis/ui-position-runtime/owned-xr2-42588.audit.json`。
 
 2026-10-15 OwnedSequence3：独立Low目标完成16个连续scene ticket，首尾GPU读回各为两张2048×2048眼图，内容非黑且有时间变化；34条回归、58入口恢复和正常退出通过。仅验证有界scene输出，Canvas/XR尚未接入此资源，High和长时间游玩未测。Owner及创建列表引用仍保留至进程退出，启动器如实incomplete，不能作为可部署完成。证据`analysis/ui-position-runtime/owned-sequence3-45772.audit.json`；实验清单`tools/vr-launcher/manifest-owned-sequence3.json`，不替换默认发布清单。
