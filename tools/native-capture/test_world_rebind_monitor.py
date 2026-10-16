@@ -238,6 +238,55 @@ class MonitorTests(unittest.TestCase):
             self.assertEqual(3, len(calls))
         self.assertFalse(h.signals)
 
+    def test_anchor_failure_preserves_class_and_specific_reason(self):
+        # The coordinator handles callback exceptions without importing the
+        # game-memory sampling stack.
+        class AnchorSamplingRejected(RuntimeError):
+            pass
+        h = Harness()
+        def fail(*args):
+            raise AnchorSamplingRejected('Camera view target is not controlled Pawn')
+        with h.monitor(prepare=fail) as m:
+            m.poll(h.status)
+            events = h.finish_worker(m)
+            self.assertEqual([dict(event='world_rebind_failed', reason='AnchorSamplingRejected',
+                                   detail='Camera view target is not controlled Pawn', request=1)], events)
+            self.assertEqual('idle', m.state)
+            self.assertEqual(1, m.attempts)
+            self.assertEqual(2, m.next_poll)
+            self.assertTrue(m.cancel.is_set())
+            self.assertFalse(h.signals)
+
+    def test_worker_failure_detail_is_bounded_and_single_line(self):
+        h = Harness()
+        def fail(*args):
+            raise ValueError('camera\r\nchanged\0\t' + 'x' * 1000)
+        with h.monitor(observe=fail) as m:
+            m.poll(h.status)
+            event = h.finish_worker(m)[0]
+            self.assertEqual('ValueError', event['reason'])
+            self.assertTrue(event['detail'].startswith('camera changed '))
+            self.assertLessEqual(len(event['detail']), 512)
+            self.assertTrue(event['detail'].isprintable())
+            self.assertFalse(h.builds)
+            self.assertFalse(h.signals)
+
+    def test_unprintable_exception_message_does_not_hide_failure(self):
+        class BrokenMessageError(Exception):
+            def __str__(self):
+                raise RuntimeError('cannot format')
+        h = Harness()
+        for error in (BrokenMessageError(), ValueError('')):
+            with self.subTest(error_type=type(error).__name__):
+                def fail(*args):
+                    raise error
+                with h.monitor(prepare=fail) as m:
+                    m.poll(h.status)
+                    self.assertEqual([dict(event='world_rebind_failed', reason=type(error).__name__,
+                                           request=1)], h.finish_worker(m))
+                    self.assertEqual('idle', m.state)
+                    self.assertFalse(h.signals)
+
     def test_mismatched_path_and_request_receipt_never_commit(self):
         h = Harness()
         def wrong(target, generation, request, check):

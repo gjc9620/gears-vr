@@ -26,6 +26,15 @@ class Cancelled(RuntimeError):
     pass
 
 
+def _error_detail(error):
+    """Keep diagnostics single-line and bounded without retaining tracebacks."""
+    try:
+        message = str(error)[:512]
+    except Exception:
+        return ''
+    return ' '.join(''.join(c if c.isprintable() else ' ' for c in message).split())
+
+
 def _identity(value):
     fields = ('address', 'cls', 'outer', 'number', 'internal_index')
     values = []
@@ -162,18 +171,20 @@ class WorldRebindMonitor:
                 raise ValueError('Prepared candidate/request mismatch')
             return snapshot, prepared, None
         except Exception as error:
-            return snapshot, prepared, type(error).__name__
+            return snapshot, prepared, (type(error).__name__, _error_detail(error))
 
     @property
     def request_filename(self):
         return f'world-rebind-{self.game["creation_time"]}-{self.generation + 1}-{self.request}.ini'
 
-    def _fail(self, reason, events):
+    def _fail(self, reason, events, detail=''):
         self.cancel.set()
         self.prepared = None
         self.state = 'idle'
         self.next_poll = self.clock() + self.backoff * max(1, self.attempts)
         events.append(dict(event='world_rebind_failed', reason=reason, request=self.request))
+        if detail:
+            events[-1]['detail'] = detail
 
     def _send(self, kind, status, events):
         """One event per accepted signal; no blind Prepare resend on timeout."""
@@ -253,9 +264,9 @@ class WorldRebindMonitor:
                         self.attempts += 1
                 if error and prepared is not None:
                     self.prepared, self.state = prepared, 'blocked'
-                    events.append(dict(event='world_rebind_blocked', reason=error, request=self.request))
+                    events.append(dict(event='world_rebind_blocked', reason=error[0], request=self.request))
                 elif error:
-                    self._fail(error, events)
+                    self._fail(error[0], events, error[1])
                 elif prepared is None:
                     self.state, self.next_poll = 'idle', now + self.interval
                 elif requests != self.request - 1 or candidate != 0:
@@ -325,7 +336,7 @@ class WorldRebindMonitor:
             if self.prepared is not None or self.future is not None:
                 self._conflict(type(error).__name__, events)
             else:
-                self._fail(type(error).__name__, events)
+                self._fail(type(error).__name__, events, _error_detail(error))
         return events
 
     def close(self):
