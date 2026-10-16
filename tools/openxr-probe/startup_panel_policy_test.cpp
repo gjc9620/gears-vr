@@ -2,6 +2,36 @@
 #include <cassert>
 #include <initializer_list>
 int main(){
+    using Wait=StartupPanelPolicy::StartupWaitContext;
+    const Wait ready{0,true,true,true,false,false,false,false,true};
+    StartupPanelPolicy waiting(true,true);
+    assert(waiting.show_startup_wait(ready)); // UNKNOWN permits only this generic card.
+    for(unsigned fault=0;fault<9;++fault){auto bad=ready;
+        switch(fault){case 0:bad.layer_count=1;break;case 1:bad.should_render=false;break;
+        case 2:bad.session_visible=false;break;case 3:bad.running=false;break;
+        case 4:bad.stop_requested=true;break;case 5:bad.producer_stopped=true;break;
+        case 6:bad.loss=true;break;case 7:bad.structural_error=true;break;
+        case 8:bad.ordinary_wait=false;break;}
+        assert(!waiting.show_startup_wait(bad));
+    }
+    assert(!waiting.projection_rendered(false)&&waiting.show_startup_wait(ready));
+    assert(waiting.minimum_sample_ns()==0);
+    assert(waiting.projection_rendered(true)&&!waiting.show_startup_wait(ready));
+    // Resize/world waits cannot undo handed_off_; nor can later authorized menus.
+    for(auto mode:{gears_menu::Mode::main_menu,gears_menu::Mode::death_menu,
+        gears_menu::Mode::pause_menu,gears_menu::Mode::unknown,gears_menu::Mode::gameplay}){
+        waiting.observe(mode,99);assert(!waiting.show_startup_wait(ready));
+    }
+    StartupPanelPolicy before_menu(true,true);
+    before_menu.observe(gears_menu::Mode::main_menu,100);
+    assert(before_menu.show_startup_wait(ready)&&before_menu.minimum_sample_ns()==100);
+    before_menu.observe(gears_menu::Mode::unknown,101);
+    assert(!before_menu.show_startup_wait(ready)); // Still obeys show_panel().
+    before_menu.observe(gears_menu::Mode::pause_menu,102);
+    assert(!before_menu.show_startup_wait(ready));
+    StartupPanelPolicy disabled_wait(false,true),cancelled_wait(true,true);
+    cancelled_wait.cancel();
+    assert(!disabled_wait.show_startup_wait(ready)&&!cancelled_wait.show_startup_wait(ready));
     StartupPanelPolicy panel(true);assert(panel.show_panel());
     assert(!panel.projection_rendered(false)&&panel.show_panel());
     assert(panel.projection_rendered(true)&&!panel.show_panel());

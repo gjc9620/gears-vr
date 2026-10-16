@@ -239,3 +239,13 @@ policy要求菜单实际成功显示过、当前为新鲜认证GAMEPLAY、仍待
 冻结XR12 SHA256 `18d656b5892642f80732ce2a193c13623b2e5a90f420790e82e9adbd727aded6`，Native23不变。实际会话 `continuous-stereo-41892-20261016-113223-9298c461` 正常进入关卡并完成非零位置回中；最长非空合成提交间隔453.4142ms，首窗口38行、丢弃0、后续窗口0，complete=true。最后成功捕获age991.0395ms；首次缺层age1002.1464ms，reason=capture_not_fresh。随后窗口不可用，generation1→2/HWND0→3/原HWND恢复，epoch重建；最后新捕获age27.7566ms时恢复startup_panel。首窗口37个缺层帧中19个capture_not_fresh、18个window_unavailable，没有授权拒绝；首个menu monitor live值晚于恢复25.13秒。
 
 这证明此次空窗的直接显示门禁，未证明窗口为何不可用或WGC为何没有新帧；“静态内容导致无新帧”仍是假设。一次future捕获拒绝也不能证明持续时钟偏差。合成层日志不是头显黑像素验收。原始日志和分析留在ignored `analysis/runtime/xr12-startup-gap-analysis.json`。会话原生清理、43入口恢复、XR shutdown及WM_CLOSE退出通过。后续可在首次projection前的既有启动等待范围显示独立提示卡，不复用过龄游戏图像或放宽门禁；尚未实现于XR12。
+
+## XR13：首次场景前的独立启动等待提示
+
+新增STARTING VR / Waiting for the game image的纯CPU像素variant，并使用第二个独立TransitionCard实例/STATIC_IMAGE交换链。正常WGC、菜单和projection优先；仅首次成功实际projection之前、原startup show_panel许可、最终没有层、XR可见且shouldRender/running、没有停止/loss/结构错/producer stopped时，普通等待才可显示。startup白名单复用旧等待集合，额外允许menu_requested以覆盖首次场景前已认证菜单的WGC等待；返回游戏卡的白名单不变。上传前后核对既有停止/owner控制，上传后重读菜单交给policy，再复核。首次成功projection后handed_off永久禁用启动卡，后续world/resize/menu不会重启它。
+
+卡片独立记录startup_wait_card层及计数，不增加projection、ticket或WGC成功数，不更改新票据门槛、帧有效期或runner超时。正常和异常路径均在session cleanup前释放两个独立实例；不确定GPU所有权按既有unsafe保留规则处理。12项XR测试、扩充的receiver全status白名单自检和独立policy/lifecycle审查通过。
+
+冻结XR13 SHA256 `3576ac6f9b44e8fd6197c8496ec35c694adf1870017b269462d080b89c60e740`，Native23不变。会话 `continuous-stereo-35372-20261016-114128-9cf8b252` 实际启动卡34层、一次上传，然后完成真实projection交接。XR记录2170次projection、936次场景复制；outage complete=true，未出现超过100ms的合成间隔，最长34.89ms。四个原生阶段各946对视图矩阵无偏差；ticket289的1920×1080 GPU源两眼均有非黑场景。原生清理、43入口恢复、XR shutdown及身份校验WM_CLOSE退出通过，无焦点激活。
+
+原始日志、PPM和 `analysis/runtime/startup-card-verification.json` 保持ignored。此轮是一次自然启动回归，不能拿不同运行的453ms与35ms直接当作严格性能对照；证明的是启动卡实际被提交且此轮未出现阈值空窗。不宣称已修复WGC底层短暂不可用、全部菜单/CG/游玩黑屏、真头显文字像素或长期稳定性。玩家默认清单尚未提升。

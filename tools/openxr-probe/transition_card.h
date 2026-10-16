@@ -35,7 +35,7 @@ class TransitionCard {
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
     std::uint64_t serial{};
     bool acquired{},waited{},in_flight{},current{},failed{},retained{},release_failed{};
-    const std::vector<std::uint8_t> pixels{transition_card_pixels::rgba()};
+    const std::vector<std::uint8_t> pixels;
 
     static void exact(XrResult result,char const* action){
         if(result!=XR_SUCCESS)throw std::runtime_error(std::string(action)+": "+std::to_string(result));
@@ -116,7 +116,9 @@ class TransitionCard {
     }
 public:
     unsigned uploads{},rendered{};
-    TransitionCard(ID3D12Device* d,ID3D12CommandQueue* q):owner_session(session),device(d),queue(q){
+    TransitionCard(ID3D12Device* d,ID3D12CommandQueue* q,
+        transition_card_pixels::Variant variant=transition_card_pixels::Variant::returning_to_game):
+        owner_session(session),device(d),queue(q),pixels(transition_card_pixels::rgba(variant)){
         try{
             if(!owner_session||!d||!q||q->GetDesc().Type!=D3D12_COMMAND_LIST_TYPE_DIRECT)
                 throw std::runtime_error("Transition-card session/device/direct queue required");

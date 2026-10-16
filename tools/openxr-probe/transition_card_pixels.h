@@ -10,6 +10,9 @@ namespace transition_card_pixels {
 inline constexpr unsigned width=768,height=256;
 inline constexpr char title[]="RETURNING TO GAME";
 inline constexpr char subtitle[]="Waiting for the next stereo frame";
+enum class Variant {returning_to_game,starting_vr};
+inline constexpr char startup_title[]="STARTING VR";
+inline constexpr char startup_subtitle[]="Waiting for the game image";
 using Glyph=std::array<std::uint8_t,7>;
 inline Glyph glyph(char c){
     switch(c){
@@ -40,7 +43,7 @@ inline unsigned text_width(char const* text,unsigned scale){
     unsigned count=0;for(;text[count];++count){}
     return count?(count*6-1)*scale:0;
 }
-inline std::vector<std::uint8_t> rgba(){
+inline std::vector<std::uint8_t> rgba(Variant variant=Variant::returning_to_game){
     std::vector<std::uint8_t> pixels(std::size_t(width)*height*4);
     const auto pixel=[&](unsigned x,unsigned y,std::array<std::uint8_t,3> color){
         if(x>=width||y>=height)return;
@@ -59,7 +62,9 @@ inline std::vector<std::uint8_t> rgba(){
             x+=6*scale;
         }
     };
-    text(title,73,5,{238,242,247});text(subtitle,139,3,{178,188,200});
+    const bool starting=variant==Variant::starting_vr;
+    text(starting?startup_title:title,73,5,{238,242,247});
+    text(starting?startup_subtitle:subtitle,139,3,{178,188,200});
     return pixels;
 }
 inline bool save_ppm(std::string const& path,std::vector<std::uint8_t> const& pixels){

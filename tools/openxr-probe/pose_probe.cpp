@@ -53,6 +53,9 @@ bool transition_panel_wait(ProjectionStatus status){
     default:return false;
     }
 }
+bool startup_panel_wait(ProjectionStatus status){
+    return transition_panel_wait(status)||status==ProjectionStatus::menu_requested;
+}
 bool projection_end_succeeded(bool queued,XrResult result,unsigned layer_count,bool projection_layers){
     return queued&&result==XR_SUCCESS&&layer_count==1&&projection_layers;
 }
@@ -108,6 +111,7 @@ int projection_receiver_self_test(){
             s==ProjectionStatus::menu_recovery_pending||s==ProjectionStatus::stale_ticket||
             s==ProjectionStatus::source_reconfiguration||s==ProjectionStatus::reference_epoch_pending;
         if(transition_panel_wait(s)!=expected)return 42;
+        if(startup_panel_wait(s)!=(expected||s==ProjectionStatus::menu_requested))return 44;
     }
     if(!xr_image_wait_succeeded(XR_SUCCESS)||xr_image_wait_succeeded(XR_TIMEOUT_EXPIRED)||xr_image_wait_succeeded(XR_SESSION_LOSS_PENDING)||
        !xr_image_work_complete(3,2)||xr_image_work_complete(1,2)||xr_image_work_complete(~uint64_t(0),2)||xr_image_work_complete(0,0))return 9;
@@ -405,6 +409,10 @@ int main(int argc, char** argv) {
         std::unique_ptr<TransitionCard,shutdown_diagnostics::DeleteMarker<TransitionCard>> transition_card{nullptr,{"transition_card_reset_enter","transition_card_reset_completed"}};
         if(menu_state_file&&startup_window)transition_card.reset(new TransitionCard(device.Get(),queue.Get()));
         unsigned transition_panel_layers{};bool transition_panel_active=false,transition_preview_saved=false;
+        std::unique_ptr<TransitionCard,shutdown_diagnostics::DeleteMarker<TransitionCard>> startup_wait_card{
+            nullptr,{"startup_wait_card_reset_enter","startup_wait_card_reset_completed"}};
+        if(startup_window)startup_wait_card.reset(new TransitionCard(device.Get(),queue.Get(),transition_card_pixels::Variant::starting_vr));
+        unsigned startup_wait_card_layers{};
         MenuDisplayReader menu_display(menu_state_file,stereo_game_pid,menu_game_creation,continuous_owner_pid,continuous_owner_creation);
         unsigned menu_quad_layers=0,menu_entries=0,menu_recoveries=0;
         unsigned main_menu_quad_layers=0,last_main_menu_entry=0,main_menu_snapshots=0;
@@ -506,7 +514,7 @@ int main(int argc, char** argv) {
             XrCompositionLayerQuad quad{XR_TYPE_COMPOSITION_LAYER_QUAD};
             const XrCompositionLayerBaseHeader* game_layers[]={reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad)};
             ProjectionStatus projection_frame_status=ProjectionStatus::producer_unavailable;
-            bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false,eye_menu_queued=false,transition_panel_queued=false;
+            bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false,eye_menu_queued=false,transition_panel_queued=false,startup_wait_card_queued=false;
             const auto menu_now=gears_vr::monotonic_ns();
             const auto menu_mode=menu_display.poll(menu_now);
             const auto observe_menu=[&](gears_menu::Mode mode,std::int64_t observed){
@@ -595,13 +603,48 @@ int main(int argc, char** argv) {
                     transition_panel_queued=true;end.layerCount=1;end.layers=game_layers;
                 }
             }
+            // Ordinary WGC/game layers win. This independent generic card is
+            // eligible only before the first successfully ended projection.
+            const auto startup_wait_context=[&]{
+                return StartupPanelPolicy::StartupWaitContext{end.layerCount,frame.shouldRender!=0,
+                    projection_session_visible(state),running,exiting||!stop_reason.empty(),
+                    stereo_screen&&stereo_screen->producer_stopped(),
+                    session_exit.loss_observed||session_exit.terminal_exiting,
+                    projection_evidence.structural_failure,startup_panel_wait(projection_frame_status)};
+            };
+            const auto startup_wait_stop=[&]{
+                if(continuous_session){if(const auto* reason=continuous_control.requested()){
+                    startup_panel.cancel();stop_reason=reason;exiting=true;end.layerCount=0;
+                }}
+            };
+            if(startup_wait_card&&startup_panel.show_startup_wait(startup_wait_context())){
+                startup_wait_stop();
+                if(startup_panel.show_startup_wait(startup_wait_context())&&startup_wait_card->render(quad)){
+                    // First upload may wait. Recheck owner/stop and menu using
+                    // the existing controls, without extending any image lease.
+                    startup_wait_stop();
+                    const auto after_card=gears_vr::monotonic_ns();
+                    const auto authorized=menu_display.poll(after_card);
+                    observe_menu(authorized,after_card);
+                    if(startup_panel.show_startup_wait(startup_wait_context())){
+                        startup_wait_card_queued=true;end.layerCount=1;end.layers=game_layers;
+                    }
+                }
+            }
             // A first upload can wait. Honor a stop which arrived during it,
             // still balancing the already begun XR frame with zero layers.
             if(continuous_session){if(const auto* reason=continuous_control.requested()){
                 startup_panel.cancel();stop_reason=reason;exiting=true;end.layerCount=0;
-                transition_panel_queued=startup_handoff_queued=startup_quad_queued=eye_menu_queued=false;
+                startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=eye_menu_queued=false;
             }}
             const auto ended=xrEndFrame(session,&end);xr_check(ended,"xrEndFrame");
+            const bool startup_wait_shown=startup_wait_card_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers;
+            if(startup_wait_shown){
+                if(++startup_wait_card_layers==1){
+                    printf("{\"startup_wait_card_first_frame\":true,\"observed_ns\":%lld,\"cause\":\"%s\",\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",
+                        gears_vr::monotonic_ns(),projection_status_name(projection_frame_status));fflush(stdout);
+                }
+            }
             const bool transition_shown=transition_panel_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers;
             if(transition_shown){
                 ++transition_panel_layers;
@@ -685,7 +728,7 @@ int main(int argc, char** argv) {
                 // on its original projection-only contract.
                 const char* layer_kind=end.layerCount==0?"none":
                     end.layers==layers?"projection":
-                    end.layers==game_layers?(transition_panel_queued?"transition_panel":eye_menu_queued?"eye_menu":
+                    end.layers==game_layers?(startup_wait_card_queued?"startup_wait_card":transition_panel_queued?"transition_panel":eye_menu_queued?"eye_menu":
                         (startup_quad_queued?"startup_panel":"quad")):"other";
                 row.menu_mode=static_cast<unsigned>(menu_mode);row.session_state=static_cast<int>(state);
                 row.should_render=frame.shouldRender!=0;row.panel_requested=menu_panel_requested;
@@ -768,6 +811,8 @@ int main(int argc, char** argv) {
         if(menu_state_file)printf("{\"menu_recovery_evidence\":true,\"entries\":%u,\"quad_layers\":%u,\"recoveries\":%u,\"panel_counts_as_stereo\":false}\n",menu_entries,menu_quad_layers,menu_recoveries);
         if(menu_state_file)printf("{\"main_menu_evidence\":true,\"quad_layers\":%u,\"source\":\"wgc_full_client\",\"panel_counts_as_stereo\":false}\n",main_menu_quad_layers);
         if(menu_state_file)printf("{\"eye_menu_evidence\":true,\"quad_layers\":%u,\"source_eye\":0,\"both_eyes_common_panel\":true,\"panel_counts_as_stereo\":false}\n",eye_menu_quad_layers);
+        if(startup_window)printf("{\"startup_wait_card_evidence\":true,\"quad_layers\":%u,\"uploads\":%u,\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",
+            startup_wait_card_layers,startup_wait_card?startup_wait_card->uploads:0);
         if(menu_state_file)printf("{\"transition_panel_evidence\":true,\"quad_layers\":%u,\"uploads\":%u,\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",transition_panel_layers,transition_card?transition_card->uploads:0);
         display_ok=display_ok && (!gpu_screen || (gpu_screen->rendered && gpu_screen->copies));
         const auto scene_copies=retired_stereo_copies+(stereo_screen?stereo_screen->copies:0);
@@ -776,6 +821,7 @@ int main(int argc, char** argv) {
             last_submitted_resource_generation==stereo_screen->resource_generation()&&
             (continuous_session?!projection_evidence.structural_failure:projection_evidence.sustained()&&!stereo_space_changed)));
         stereo_screen.reset();
+        startup_wait_card.reset();
         transition_card.reset();
         startup_screen.reset();
         gpu_screen.reset();
