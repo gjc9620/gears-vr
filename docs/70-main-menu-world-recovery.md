@@ -353,3 +353,12 @@ XR22实测 `analysis/runtime/movie22-fallback-summary.json` 记录eligible2843�
 停止后材质consumers/uploads/draws各568，rejected/failed为0；最终传输accepted892。原生清理、入口恢复和XR退出完成，report stopped/passed=true；该passed仅既有生命周期标准，仍有8671次最终pair拒绝，提交最大间隔46.815秒，不能解释为连续稳定或所有黑屏均已修复。menu/死亡等区间必须结合模式区分。保存的native-status副本保持原始证据。
 
 已将本地默认更新至manifest-material32-movie23-vd.json：Native32配原XR23，保留Native31具名清单回滚。这是已证实路径的修复候选，机枪/载具、完美换弹、FPS设置、启动延迟及头显卡顿仍待各自验证。未改变用户游戏分辨率或全局OpenXR设置。
+
+
+### Native33编译、普通关卡及FPS开启启动对照（2026-10-17）
+
+b083c62把独立控制Turret、人类Driver/背包与实际相机POV接入采样、schema3原生证书、UI及占有变化重绑定；上机枪时明确暂停有限武器查询准星，下机枪通过新证书恢复，未使用Driver持枪瞄准代替机枪。冻结build-mounted33完整DLL编译成功，MountedObserver26项、AnchorConfigLoader124项、FrameLink17990项及Anchor/UI/Material、连续/FrameLink ABI通过。合成占有关系不等于真实机枪验证；当前严格要求Turret继承、Driver.Controller为空、互反Driver/DrivenVehicle、同Level/WorldInfo和目标等于受控Turret，运行时仍需证实。默认尚未提升Native33。
+
+为区分FPS启动与游戏内切换，备份用户INI后仅临时FrameCtr=False→True，使用模拟器启动会话continuous-stereo-38416-20261017-002720-2104984d。请求快照1显示双眼场景和FPS文字，运行中published868/anchor matched878、rejected0；这覆盖FPS开启冷启动，不覆盖菜单即时开关。后续进入DeltaGameover（menu日志有明确mode2），因此全会话226秒最大projection间隔不能归为活跃游玩卡顿。正常stop后native_cleanup_verified=true，资源/入口恢复通过，游戏经身份核验WM_CLOSE退出；只把当前FrameCtr恢复False，保留其他游戏设置，恢复回执analysis/runtime/fps33-config-change.json。未改变全局OpenXR。
+
+相关ignored证据：mounted33-selftests.json、fps33-request1.png、会话GPU原图、native-status副本与menu/world/stdout；FPS反馈尚未整项验收，不据本次反向声称用户现象不存在。机枪真机、游戏内FPS切换、完美换弹和帧节奏仍待验证。
