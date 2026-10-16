@@ -117,8 +117,15 @@ def navigate(pid, game_identity, backend, cancel, deadline, log_path, check_live
     def interrupted():
         if check_live:check_live()
         return backend.cancelled(cancel) or game_io.interrupted()
+    def window():
+        # The selected executable can be outside this repository/package. The
+        # backend binds the HWND to this reserved PID; navigate_core repeatedly
+        # verifies its full creation/image identity before any menu action.
+        hwnd=backend.game_window(pid)
+        if not hwnd:raise RuntimeError('Game window not found')
+        return pid,hwnd
     return navigate_core(pid, game_identity, deadline, log_path,
-                         reader_factory=lambda: MenuReader(pid), window=game_io.game_window,
+                         reader_factory=lambda: MenuReader(pid), window=window,
                          send=send_confirm,
                          interrupted=interrupted,
                          identity=backend.control.identity)

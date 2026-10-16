@@ -3,6 +3,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import sys
+from types import SimpleNamespace
+from unittest import mock
 from menu_navigation import navigate_core, NavigationCancelled
 
 
@@ -245,6 +248,27 @@ class NavigationTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'Unknown metadata error'):
             self.run_navigation(reader_factory=factory)
         self.assertEqual(self.clock, 0)
+
+
+class SelectedInstallationAdapterTests(unittest.TestCase):
+    def test_custom_install_uses_reserved_window_not_repository_default(self):
+        import menu_navigation
+        handle=[99]
+        fixed_lookup=mock.Mock(side_effect=AssertionError('Repository game path must not select this window'))
+        backend=SimpleNamespace(game_window=mock.Mock(side_effect=lambda pid:handle[0]),
+            cancelled=lambda cancel:False,control=SimpleNamespace(identity=lambda pid:dict(pid=pid,creation_time=123,image='D:/custom/game.exe')))
+        modules={'menu_state':SimpleNamespace(MenuReader=mock.Mock()),
+                 'menu_control':SimpleNamespace(send_confirm=mock.Mock()),
+                 'game_io':SimpleNamespace(game_window=fixed_lookup,interrupted=lambda:False)}
+        with mock.patch.dict(sys.modules,modules),mock.patch.object(menu_navigation,'navigate_core',return_value='selected') as core:
+            self.assertEqual(menu_navigation.navigate(7,backend.control.identity(7),backend,None,100,Path('unused')), 'selected')
+            window=core.call_args.kwargs['window']
+            self.assertEqual(window(),(7,99));handle[0]=100
+            self.assertEqual(window(),(7,100))
+            handle[0]=None
+            with self.assertRaisesRegex(RuntimeError,'Game window not found'):window()
+            fixed_lookup.assert_not_called()
+            self.assertTrue(all(call.args==(7,) for call in backend.game_window.call_args_list))
 
 
 if __name__ == '__main__':
