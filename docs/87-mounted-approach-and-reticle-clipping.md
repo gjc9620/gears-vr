@@ -37,3 +37,9 @@ Reticle39会话 `continuous-stereo-8828-20261017-071258-2e45ae03`，游戏PID882
 四份3840×2160 GPU图像回执的ticket为279／2233／2997／4014，source serial为277／2228／2988／4000。每眼均有非黑场景，恢复图已目视确认。正常停止后原生清理、XR退出和游戏普通关闭通过，回执 `reticle54-audit.json`、`reticle54-normal-close.json`。这没有验证特殊载具、头显融合或持续开火期间用户所说的外圈偏移。
 
 完成上述回归后，本地默认改为 `manifest-reticle39-borderless-vd.json`。Caption38命名清单与此前测试ZIP保留回退，玩家配置未覆盖。新源码默认不改变此前ZIP内容；发布仍须真机和剩余场景验收。
+
+## 更新的本地测试包
+
+`analysis/release-staging/reticle39-20261017` 生成700个清单文件、43,420,731字节，隔离预检通过；inventory SHA256为 `041f4eeb46f21d15ab610b4ae9ad7442e3e0c3fb82b170517e0236d80cf9dade`。仅按清单生成 `analysis/release-zips/GearsVR-V1-development-Reticle39-20261017.zip`，701个成员、13,634,556字节，SHA256 `316aa851c694524d376f8852144603cdc14e9bd6b0d3a20beea9ed22876e0187`。
+
+ZIP解压到全新目录后，包内Python以-I/-B运行隔离预检通过；未启动GUI或游戏，release_ready=false。新包未做独立实际启动或真机验收；前文实际游戏证据来自仓库显式实验清单，不能替代新包实际部署检查。旧Caption38 ZIP未改动，未上传或公开发布。
