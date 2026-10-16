@@ -171,3 +171,9 @@ quiet14 构建、命令行CTest通过；实际hook fixture的 trace_valid 检查
 该证据确认目标线程处理激活的位置，不能将事件头PID当成最初发起异步请求的进程。继续解析这份内核栈不能可靠还原此前排队请求的发起者，因此停止这条归因路线，不再要求用户重复管理员采集。当前没有证据确认 DisplayFusion 或显卡覆盖层是根因。
 
 下一项候选是外部组件来源隔离。只读检查确认 DisplayFusion 正在运行，游戏加载 AppHook64；本机 Compatibility/Triggers 键未读到规则。官方支持说明单应用 Disable Application Hooks 并非完全禁用该应用的所有 DisplayFusion 功能，不能用该设置冒充完整隔离。尚未修改其配置或关闭该软件；短暂退出整个 DisplayFusion 会影响用户桌面功能，需要先取得该范围的同意。当前游戏15296保留运行。
+
+### DisplayFusion 临时退出对照：隔离成立，焦点归因未定
+
+用户明确授权临时退出并恢复后，正常停止旧会话，验证 prime 入口恢复及 XR shutdown，再向身份核验后的 game15296 发送 WM_CLOSE。通过 DisplayFusionCommand -CloseAll 正常退出，确认主进程与32/64位hook辅助进程均不存在，再沿同一 quiet14/Native23/XR16 链启动 game15648，观察70秒且无自动导航。恢复前模块列表不含 AppHook/DisplayFusion，仍含 nvspcap64；恢复前 DisplayFusion 进程仍为空。finally 中重新启动 DisplayFusion，并确认主进程存在，未修改其配置。游戏和模拟器保留运行。
+
+`quiet-df-isolation.json` 记录 game15648 前台tick1874546/1877109、XR14796前台tick1883390；此前最后输入分别1874515/1877000/1883343，距离仅31/109/47毫秒。用户回答记不清是否手动切换。因此本轮不能判为自动激活失败，也不能判为不抢焦点通过，更不能据此认定或排除 DisplayFusion。`focus-df-isolation.json` 保存27条完整记录、无溢出。控制及模块证据为 `quiet-df-isolation-control.json`，全部位于ignored analysis。若继续做因果对照，需要能区分人工切换的观察窗口。
