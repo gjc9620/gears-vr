@@ -129,11 +129,12 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
                 r.enter_qpc>0&&r.leave_qpc>=r.enter_qpc&&r.return_valid&&r.native_valid&&r.returned_value==r.native_value;}
     }else cbt_valid=cbt_valid&&!cbt->installed&&!cbt->completed&&!cbt->thread;
     trace_valid=trace_valid&&cbt_valid;
-    bool trace_null=false,trace_passed=false,trace_blocked=false,native_trace=false;unsigned trace_call_mask{};
+    bool trace_null=false,trace_passed=false,trace_blocked=false,native_trace=false,async_trace=false;unsigned trace_call_mask{};
     if(trace_valid&&trace_requested){
         STARTUPINFOW startup{sizeof(startup)};GetStartupInfoW(&startup);
         trace_valid=trace->startup.flags==startup.dwFlags&&trace->startup.show_window==startup.wShowWindow;
         SetActiveWindow(nullptr);SetFocus(nullptr);
+        const BOOL async_result=ShowWindowAsync(window,SW_SHOWNA);
         trace_valid=trace_valid&&query_trace(trace.get())==ERROR_SUCCESS&&trace->enabled==1&&trace->version==2&&trace->qpc_frequency>0&&
             trace->size==sizeof(*trace)&&trace->capacity==gears_quiet::trace_capacity&&trace->completed>0&&trace->busy_skipped==0;
         for(unsigned i=0;i<trace->completed&&trace_valid;++i){const auto& row=trace->records[i];
@@ -141,13 +142,16 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
                 row.stack_count<=gears_quiet::trace_stack_capacity&&row.leave_tick>=row.enter_tick&&row.enter_qpc>0&&row.leave_qpc>=row.enter_qpc&&row.return_valid==1&&
                 row.gui_before.valid==1&&row.gui_after.valid==1&&(!row.native_valid||row.native_call<gears_quiet::trace_call_count);
             native_trace|=row.call==gears_quiet::native_foreground&&row.target==reinterpret_cast<uintptr_t>(window)&&row.suppressed==1&&!row.native_valid&&row.returned_value==0;
+            async_trace|=row.call==gears_quiet::show_async&&row.target==reinterpret_cast<uintptr_t>(window)&&
+                row.argument==SW_SHOWNA&&row.effective_argument==SW_SHOWNA&&row.extra_argument==GetCurrentThreadId()&&
+                row.suppressed==0&&row.native_valid&&row.native_value==static_cast<std::uint64_t>(async_result)&&row.returned_value==row.native_value;
             if(row.call<gears_quiet::count)trace_call_mask|=1u<<row.call;
             if(row.suppressed&&(row.call==gears_quiet::foreground||row.call==gears_quiet::active||
                 row.call==gears_quiet::focus||row.call==gears_quiet::bring))trace_valid=trace_valid&&row.native_valid==0;
             trace_passed|=row.suppressed==0;trace_blocked|=row.suppressed==1;
             trace_null|=(row.call==gears_quiet::active||row.call==gears_quiet::focus)&&row.target==0&&row.suppressed==0;
         }
-        trace_valid=trace_valid&&(!native_requested||native_trace);
+        trace_valid=trace_valid&&(!native_requested||native_trace)&&async_trace;
         auto saved=std::make_unique<gears_quiet::TraceSnapshot2>(*trace);
         for(unsigned i=0;i<gears_quiet::trace_capacity+1;++i)ShowWindow(window,SW_SHOWNA);
         trace_valid=trace_valid&&query_trace(trace.get())==ERROR_SUCCESS&&trace->completed==gears_quiet::trace_capacity&&

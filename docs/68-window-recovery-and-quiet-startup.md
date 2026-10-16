@@ -147,3 +147,11 @@ SpaceRecovery8仅在已有 `--shutdown-diagnostics` 开启时增加初始化边�
 `focus-default11-final1.json` 保存27条完整记录、无溢出：ShowWindow、两次 SetWindowPos 和 SetForegroundWindow 均经过 guard，返回时前台仍为原应用；随后 PeekMessage 内交付 CBT/激活消息。这确认 quiet11 尚未完成不抢焦点目标，不能把历史人工切换解释用于这轮。
 
 只增加 `-windowed` 的启动对照见 `quiet-default11-windowed1.json`、`background-launch-35236.json`、`focus-default11-windowed1.json`。真实命令行包含 `-windowed -NoPauseUnfocus`，仍于 tick136484 自动进入前台；此前最后输入126718、此后首次输入139359，调用顺序同上。故显式窗口化未解决本机启动激活；实验性 PS 参数已撤回，未保留为默认修复。两轮间系统 tick 重新计数，不跨轮比较绝对时戳。窗口化轮保留游戏35236与XR34992、等待关卡，无自动菜单输入。下一步需定位现有 guard 之外的激活请求来源，尚无证据确定为 DisplayFusion、显卡覆盖层或某个 RHI 调用。
+
+### quiet14：排除本进程 ShowWindowAsync 入口
+
+仅在显式 TRACE 开启时增加 `ShowWindowAsync` 原样转发记录（ID11）；`extra_argument` 保存窗口所属线程，已有8个Status计数和快照大小保持不变。未修改首次最小化行为：首次 ShowWindow 受 STARTUPINFO 影响，命令2被改7并不证明实际 IsIconic。未提升默认 quiet11。
+
+quiet14 构建、命令行CTest通过；实际hook fixture的 trace_valid 检查通过，覆盖异步显示原参数、窗口线程和返回值。两次fixture整体不通过，因为各有一个短暂前台事件；旧冻结quiet11同条件对照也出现，不能将此结果写为无焦点回归通过。证据 `quiet14-on[-trace]-fixture.json`、`quiet11-control-after14.json`。
+
+实际 `quiet-async14.json` / `focus-async14.json`：game34536仍出现前台事件tick517078；策略已安装，27条完整记录、无溢出，ShowWindowAsync记录为0。该结果排除了这轮激活前通过被监测进程内该入口发起的请求，不能排除跨进程调用或其他API。会话 `continuous-stereo-34536-20261016-162343-825736d9.json` 在观察结束时继续等待关卡，owner30912、XR2492持续运行，模拟器可见；不关闭会话或通过抢回焦点掩盖事件。

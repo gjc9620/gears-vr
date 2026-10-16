@@ -107,6 +107,7 @@ void observe_gui_thread(DWORD style,HWND parent) noexcept {
     SetLastError(saved);
 }
 decltype(&ShowWindow) original_show{};
+decltype(&ShowWindowAsync) original_show_async{};
 decltype(&SetForegroundWindow) original_foreground{},original_native_foreground{};
 decltype(&SetActiveWindow) original_active{};
 decltype(&SetFocus) original_focus{};
@@ -141,6 +142,14 @@ bool own(HWND window) {
 bool background() { return enabled.load(std::memory_order_acquire) && !own(GetForegroundWindow()); }
 bool guard(HWND window,bool top_level=true) {
     return background() && own(window) && (!top_level || !(GetWindowLongPtrW(window,GWL_STYLE)&WS_CHILD));
+}
+BOOL WINAPI show_async(HWND window,int command) {
+    // Diagnostic only: preserve queued show behavior and its return value.
+    const DWORD saved=GetLastError();
+    const DWORD owner_thread=GetWindowThreadProcessId(window,nullptr);
+    SetLastError(saved);
+    TraceCall trace(gears_quiet::show_async,window,static_cast<DWORD>(command),nullptr,owner_thread);
+    return trace.native(original_show_async(window,command));
 }
 void note(gears_quiet::Call call) { suppressed[call].fetch_add(1,std::memory_order_relaxed); }
 BOOL WINAPI show(HWND window,int command) {
@@ -250,22 +259,25 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsQuietInstall(void*) {
         reinterpret_cast<void*>(&SetActiveWindow),reinterpret_cast<void*>(&SetFocus),
         reinterpret_cast<void*>(&SetWindowPos),reinterpret_cast<void*>(&BringWindowToTop),
         reinterpret_cast<void*>(&CreateWindowExW),reinterpret_cast<void*>(&CreateWindowExA),
-        reinterpret_cast<void*>(&DefWindowProcW),reinterpret_cast<void*>(&DefWindowProcA),native_target};
+        reinterpret_cast<void*>(&DefWindowProcW),reinterpret_cast<void*>(&DefWindowProcA),native_target,
+        reinterpret_cast<void*>(&ShowWindowAsync)};
     const std::array<void*,gears_quiet::trace_call_count> replacements{
         reinterpret_cast<void*>(&show),reinterpret_cast<void*>(&foreground),
         reinterpret_cast<void*>(&active),reinterpret_cast<void*>(&focus),
         reinterpret_cast<void*>(&position),reinterpret_cast<void*>(&bring),
         reinterpret_cast<void*>(&create_w),reinterpret_cast<void*>(&create_a),
-        reinterpret_cast<void*>(&def_window_w),reinterpret_cast<void*>(&def_window_a),reinterpret_cast<void*>(&native_foreground)};
+        reinterpret_cast<void*>(&def_window_w),reinterpret_cast<void*>(&def_window_a),reinterpret_cast<void*>(&native_foreground),
+        reinterpret_cast<void*>(&show_async)};
     const std::array<void**,gears_quiet::trace_call_count> originals{
         reinterpret_cast<void**>(&original_show),reinterpret_cast<void**>(&original_foreground),
         reinterpret_cast<void**>(&original_active),reinterpret_cast<void**>(&original_focus),
         reinterpret_cast<void**>(&original_position),reinterpret_cast<void**>(&original_bring),
         reinterpret_cast<void**>(&original_create_w),reinterpret_cast<void**>(&original_create_a),
-        reinterpret_cast<void**>(&original_def_window_w),reinterpret_cast<void**>(&original_def_window_a),reinterpret_cast<void**>(&original_native_foreground)};
+        reinterpret_cast<void**>(&original_def_window_w),reinterpret_cast<void**>(&original_def_window_a),reinterpret_cast<void**>(&original_native_foreground),
+        reinterpret_cast<void**>(&original_show_async)};
     std::array<unsigned,gears_quiet::trace_call_count> selected{};unsigned wanted{};
     for(unsigned i=0;i<gears_quiet::count;++i)selected[wanted++]=i;
-    if(tracing){selected[wanted++]=gears_quiet::def_window_w;selected[wanted++]=gears_quiet::def_window_a;}
+    if(tracing){selected[wanted++]=gears_quiet::def_window_w;selected[wanted++]=gears_quiet::def_window_a;selected[wanted++]=gears_quiet::show_async;}
     if(native_requested)selected[wanted++]=gears_quiet::native_foreground;
     unsigned created{};
     for(;created<wanted;++created){const unsigned i=selected[created];
