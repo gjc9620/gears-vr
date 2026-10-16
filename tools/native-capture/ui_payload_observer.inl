@@ -1,6 +1,7 @@
 // Candidate transport and opt-in HUD viewport control. Source vertices stay
 // unchanged; control additionally requires certified native segment callbacks.
 #include "ui_segment_sources.h"
+#include "ui_hud_first_fault.h"
 using UiExecute=uint32_t(__fastcall*)(void*);
 UiExecute ui_original_execute{};void* ui_execute_target{};
 uintptr_t ui_execute_observer_begin{},ui_execute_observer_end{};
@@ -19,6 +20,7 @@ std::atomic<uint64_t> ui_index_capture_ok{},ui_index_capture_rejected{},ui_index
 struct UiHudCounts {std::atomic<uint64_t> considered{},missing_context{},reticle_excluded{},unknown_or_mixed{},
     ticket_missing{},projection_rejected{},planned{},applied{};} ui_hud_counts;
 std::atomic<bool> ui_hud_sequence_fault{};
+gears_ui_fault::First ui_hud_first_fault;
 #if defined(GEARS_UI_RETICLE_DIRECTION) && GEARS_UI_RETICLE_DIRECTION
 constexpr bool ui_reticle_direction_enabled=true;
 #else
@@ -32,6 +34,9 @@ struct UiIndexContext {
     unsigned ordinal{};
     bool callback_valid{};
     bool finite_reticle{};
+    gears_ui_indices::DrawArgs last_observed_draw{};
+    bool observed_draw_valid{};
+    uint64_t verified_ticket{};
     std::array<gears_ui_reticle::Extent,gears_ui_indices::segment_capacity> reticle_extents{};
     std::array<gears_ui_sources::Summary,gears_ui_indices::segment_capacity> sources{};
 };
@@ -75,6 +80,29 @@ struct UiSubtitleGpuRow {
 std::array<UiSubtitleGpuRow,16> ui_subtitle_gpu_rows{};
 unsigned ui_subtitle_gpu_count{};uint64_t ui_subtitle_gpu_calls{},ui_subtitle_gpu_dropped{};
 long long ui_subtitle_gpu_next{};
+
+// Called only at the existing permanent-fault branches. TLS points to our
+// owning Execute-entry copies; native command/payload storage is never read.
+void record_ui_hud_first_fault(gears_ui_fault::Reason reason,bool result_valid=false,
+        uint32_t result=0,bool sequence_complete=false){
+    if(ui_hud_first_fault.published()||!ui_index_context)return;
+    auto const& index=*ui_index_context;
+    gears_ui_fault::Row row{};row.reason=reason;row.qpc=now();row.frequency=qpc_frequency;
+    row.thread=GetCurrentThreadId();row.execute_sequence=index.execute_sequence;
+    row.cursor_expected=index.cursor.expected_count();row.cursor_observed=index.cursor.observed();
+    row.cursor_poisoned=index.cursor.poisoned();row.sequence_complete=sequence_complete;
+    row.result_valid=result_valid;row.result=result;
+    row.observed_draw_valid=index.observed_draw_valid;row.observed_draw=index.last_observed_draw;
+    if(row.cursor_observed<index.snapshot.segment_count){
+        row.expected_draw_valid=true;row.expected_draw=index.snapshot.segments[row.cursor_observed].expected;
+    }
+    row.ticket=index.verified_ticket;row.ticket_valid=row.ticket!=0;
+    if(ui_payload_context){auto const& payload=*ui_payload_context;
+        row.command=payload.command;row.payload=payload.payload;row.candidate_generation=payload.generation;
+        row.root_first=payload.root_first;row.root_last=payload.root_last;
+    }
+    ui_hud_first_fault.record(row);
+}
 
 bool validate_ui_payload_content(gears_ui_receipts::Claim const& claim,UiPayloadContext& context,gears_ui_binding::Binding& binding){
     if(!ui_capture_binding(binding)){++ui_binding_claims[3];return false;}
@@ -173,7 +201,11 @@ uint32_t __fastcall hook_ui_execute(void* command){
         if(complete)++ui_index_complete;else ++ui_index_incomplete;
         // A changing live binding rejects only this publication window. Keep
         // the permanent route fault for malformed GPU sequence/return values.
-        if((!sequence_complete||result!=48)&&ui_hud_plane_enabled)ui_hud_sequence_fault=true;
+        if((!sequence_complete||result!=48)&&ui_hud_plane_enabled){
+            ui_hud_sequence_fault=true;
+            record_ui_hud_first_fault(result!=48?gears_ui_fault::Reason::return_value:gears_ui_fault::Reason::finish,
+                true,result,sequence_complete);
+        }
         std::lock_guard<std::mutex> lock(ui_payload_mutex);
         for(unsigned i=0;i<ui_subtitle_gpu_count;++i)
             if(ui_subtitle_gpu_rows[i].execute_sequence==ui_index_context->execute_sequence)
@@ -189,10 +221,13 @@ void observe_ui_index_callback(uintptr_t caller,gears_ui_indices::DrawArgs args)
     if(!ui_index_context)return;
     ui_index_context->callback_valid=false;
     if(caller!=base+0x172741)return;
+    ui_index_context->last_observed_draw=args;ui_index_context->observed_draw_valid=true;
     unsigned ordinal{};
     if(ui_execute_entry_return==base+0x19f2f3&&ui_index_context->cursor.consume(args,ordinal)){
         ui_index_context->ordinal=ordinal;ui_index_context->callback_valid=true;++ui_index_callback_ok;
-    }else {++ui_index_callback_rejected;if(ui_hud_plane_enabled)ui_hud_sequence_fault=true;}
+    }else {++ui_index_callback_rejected;if(ui_hud_plane_enabled){
+        ui_hud_sequence_fault=true;record_ui_hud_first_fault(gears_ui_fault::Reason::callback);
+    }}
 }
 
 bool ui_ticket_geometry(uint64_t ticket,gears_vr::StereoTicketGeometry& geometry){
@@ -306,6 +341,9 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
        ui_index_context->snapshot.payload==context.payload&&
        ui_index_context->snapshot.generation==context.generation&&
        ui_index_context->ordinal<ui_index_context->snapshot.segment_count){
+        // Existing caller has completed replay for this validated ticket and
+        // matching segment. Retain only the value, never a latest/global lookup.
+        ui_index_context->verified_ticket=ticket;
         const auto ordinal=ui_index_context->ordinal;const auto& source=ui_index_context->sources[ordinal];
         const auto& segment=ui_index_context->snapshot.segments[ordinal];
         if(gears_ui_sources::native_subtitle(source,context.payload,context.generation,ordinal)&&
@@ -341,6 +379,7 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
 }
 
 void print_ui_payload_observer(FILE* status){
+    gears_ui_fault::print(status,ui_hud_first_fault);
     fprintf(status,"ui_subtitle_gpu calls=%llu rows=%u dropped=%llu source_is_actual_index_membership=1 pixel_visibility_proven=0\n",ui_subtitle_gpu_calls,ui_subtitle_gpu_count,ui_subtitle_gpu_dropped);
     for(unsigned i=0;i<ui_subtitle_gpu_count;++i){auto const& row=ui_subtitle_gpu_rows[i];auto const& source=row.source;
         fprintf(status,"ui_subtitle_gpu_row row=%u payload=%p candidate_generation=%llu ordinal=%u source_mask=%u native_indices=%u unknown=%u native_root_min=%llu native_root_max=%llu execute_sequence=%llu ticket=%llu list=%p list_generation=%llu target=%p width=%u height=%u qpc=%lld thread=%u hud_applied=%u overlay_completed_mask=3 command_completed=%u pixel_visibility_proven=0 allocation_identity_proven=0\n",

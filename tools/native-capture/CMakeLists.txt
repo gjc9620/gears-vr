@@ -351,3 +351,6 @@ target_compile_options(BackbufferCopyDiagnosticsTest PRIVATE /W4 /WX /EHsc /UNDE
 target_compile_definitions(StereoTransferFixture PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_compile_options(StereoTransferFixture PRIVATE /W4 /EHsc)
 target_link_libraries(StereoTransferFixture PRIVATE d3d12 dxgi)
+
+add_executable(UiHudFirstFaultTest ui_hud_first_fault_test.cpp)
+target_compile_options(UiHudFirstFaultTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
