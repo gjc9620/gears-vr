@@ -52,6 +52,7 @@
 #include "ui_payload_receipts.h"
 #include "ui_index_membership.h"
 #include "ui_hud_plan.h"
+#include "ui_hud_layout.h"
 #include "ui_reticle_direction_plan.h"
 #include <limits>
 #include <memory>
@@ -2973,15 +2974,18 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             }
         }
         if(admitted&&(reticle||plane)){
+            const auto* layout=plane?prepare_ui_hud_layout(saved,target.width,target.height,plan):nullptr;
             auto viewport=[&](gears_viewport::Rect r,float a,float b){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,a,b};original_viewports(list,1,&v);};
             auto scissor=[&](gears_viewport::Rect r){D3D12_RECT s{LONG(r.x),LONG(r.y),LONG(r.x+r.width),LONG(r.y+r.height)};original_scissors(list,1,&s);};
             unsigned mask{};
-            try {mask=gears_viewport::replay_overlay(saved,plan,viewport,scissor,[&](unsigned){original_draw_indexed(list,indices,instances,start,vertex,first_instance);});}
+            try {if(layout)mask=gears_ui_layout::replay(saved,*layout,viewport,scissor,[&](unsigned offset,unsigned count){original_draw_indexed(list,count,instances,start+offset,vertex,first_instance);});
+                else mask=gears_viewport::replay_overlay(saved,plan,viewport,scissor,[&](unsigned){original_draw_indexed(list,indices,instances,start,vertex,first_instance);});}
             catch(...){owned_ui_live::fault(route.ticket,10);throw;}
             if(!owned_scene_gpu::tracker.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask)){
                 owned_ui_live::fault(route.ticket,11);return;
             }
             ++owned_ui_live::route_draws;
+            if(layout&&mask==3)++ui_layout_counts.applied;
             if(reticle)++owned_ui_live::route_reticle_draws;else ++owned_ui_live::route_plane_draws;
             observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,plane,&plan,reticle,&plan);
             return; // Overlay work is not an extra world-geometry draw.
@@ -3012,12 +3016,15 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             if(overlay_chain){
                 const bool reticle_direction=prepare_ui_reticle_overlay(pair.ticket,saved,target.width,target.height,plan);
                 const bool hud_plane=!reticle_direction&&prepare_ui_hud_overlay(pair.ticket,saved,target.width,target.height,plan);
+                const auto* layout=hud_plane?prepare_ui_hud_layout(saved,target.width,target.height,plan):nullptr;
                 auto viewport=[&](gears_viewport::Rect r,float minimum,float maximum){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,minimum,maximum};original_viewports(list,1,&v);};
                 auto scissor=[&](gears_viewport::Rect r){D3D12_RECT s{static_cast<LONG>(r.x),static_cast<LONG>(r.y),static_cast<LONG>(r.x+r.width),static_cast<LONG>(r.y+r.height)};original_scissors(list,1,&s);};
                 unsigned mask=0;
-                try {mask=gears_viewport::replay_overlay(saved,plan,viewport,scissor,[&](unsigned){original_draw_indexed(list,indices,instances,start,vertex,first_instance);});}
+                try {if(layout)mask=gears_ui_layout::replay(saved,*layout,viewport,scissor,[&](unsigned offset,unsigned count){original_draw_indexed(list,count,instances,start+offset,vertex,first_instance);});
+                    else mask=gears_viewport::replay_overlay(saved,plan,viewport,scissor,[&](unsigned){original_draw_indexed(list,indices,instances,start,vertex,first_instance);});}
                 catch(...){frame_link.invalidate();throw;}
                 frame_link.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask);
+                if(layout&&mask==3)++ui_layout_counts.applied;
                 observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,hud_plane&&mask==3,hud_plane?&plan:nullptr,
                     reticle_direction&&mask==3,reticle_direction?&plan:nullptr);
                 return;
@@ -3380,6 +3387,17 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: crosshair observer requires compiled support and fresh assignment/tick bindings\n");fclose(status);return 2;}
     ui_hud_plane_enabled=GetPrivateProfileIntW(L"Capture",L"ui_hud_plane",0,ini)==1;
     ui_hud_parameters=gears_ui_hud::Parameters{};
+    ui_hud_layout_parameters=gears_ui_layout::Parameters{};
+    const wchar_t* layout_keys[]{L"ui_hud_element_scale",L"ui_hud_center_scale"};
+    double* layout_values[]{&ui_hud_layout_parameters.element_scale,&ui_hud_layout_parameters.center_scale};
+    for(unsigned i=0;i<2;++i){wchar_t value[64]{},presence[64]{};
+        const auto length=GetPrivateProfileStringW(L"Capture",layout_keys[i],L"__absent__",value,64,ini);
+        GetPrivateProfileStringW(L"Capture",layout_keys[i],L"__missing__",presence,64,ini);
+        const bool explicit_value=std::wcscmp(value,L"__absent__")!=0||std::wcscmp(presence,L"__missing__")!=0;
+        if(explicit_value&&(!ui_hud_plane_enabled||length>=63||
+           !gears_ui_hud::parse_bounded_decimal(value,i?0.:1.,i?1.:2.,*layout_values[i]))){
+            fprintf(status,"rejected: HUD layout requires enabled HUD plane, element scale 1..2 and center scale 0..1\n");fclose(status);return 2;}
+    }
     wchar_t hud_fov_text[64]{};
     const auto hud_fov_length=GetPrivateProfileStringW(L"Capture",L"ui_hud_horizontal_fov_degrees",L"__absent__",hud_fov_text,64,ini);
     // A literal sentinel must still be rejected as an explicit invalid value.

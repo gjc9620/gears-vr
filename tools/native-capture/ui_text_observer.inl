@@ -25,7 +25,8 @@ void publish_ui_text_delta(gears_ui_text_batch::Delta const& delta,unsigned kind
         gears_ui_receipts::RangeMetadata metadata{delta.canvas,delta.fcanvas,range.item,range.payload,
             delta.sort_key,range.begin,range.end};
         if(range.vertex_offset>delta.vertices.size()||length>delta.vertices.size()-range.vertex_offset||
-           !ui_payload_store.publish_range(metadata,delta.vertices.data()+range.vertex_offset,length,kind,invocation,source)){
+           !ui_payload_store.publish_range(metadata,delta.vertices.data()+range.vertex_offset,length,kind,invocation,source,
+               source==gears_ui_receipts::Source::CanvasText&&delta.ranges.size()==1)){
             accepted=false;break;
         }
     }

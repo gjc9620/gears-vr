@@ -27,6 +27,7 @@ constexpr bool ui_reticle_direction_enabled=true;
 constexpr bool ui_reticle_direction_enabled=false;
 #endif
 struct UiReticleCounts {std::atomic<uint64_t> considered{},center_rejected{},geometry_missing{},projection_rejected{},planned{},applied{},finite_planned{},finite_fallback{},finite_applied{};} ui_reticle_counts;
+struct UiLayoutContext {gears_ui_layout::Groups groups{};gears_ui_layout::Replay replay{};};
 struct UiIndexContext {
     uint64_t execute_sequence{};
     gears_ui_indices::Snapshot snapshot{};
@@ -39,6 +40,7 @@ struct UiIndexContext {
     uint64_t verified_ticket{};
     std::array<gears_ui_reticle::Extent,gears_ui_indices::segment_capacity> reticle_extents{};
     std::array<gears_ui_sources::Summary,gears_ui_indices::segment_capacity> sources{};
+    std::unique_ptr<UiLayoutContext> layout;
 };
 thread_local UiIndexContext* ui_index_context{};
 struct UiPayloadContext {
@@ -176,6 +178,19 @@ uint32_t __fastcall hook_ui_execute(void* command){
                                 gears_ui_reticle::capture_extent(claim,index_storage->snapshot,i,index_storage->reticle_extents[i]);
                         for(unsigned i=0;i<index_storage->snapshot.segment_count;++i)
                             gears_ui_sources::capture(claim,index_storage->snapshot,i,index_storage->sources[i]);
+                        if(!gears_ui_layout::identity(ui_hud_layout_parameters)){
+                            // Certified Execute passes payload+0x80 to 1720a0.
+                            // Freeze/recheck before native uploads/destruction;
+                            // no later GPU callback reads the native payload.
+                            gears_ui_layout::Matrix matrix{},again{};
+                            std::unique_ptr<UiLayoutContext> layout(new(std::nothrow) UiLayoutContext{});
+                            gears_ui_batch::detail::Reader<decltype(&safe_copy)> reader{safe_copy};
+                            if(layout&&reader.field(matrix,payload,0x80)&&
+                               gears_ui_layout::capture(claim,index_storage->snapshot,matrix,layout->groups)&&
+                               reader.field(again,payload,0x80)&&matrix==again&&
+                               safe_copy(checked.data(),command,checked.size())&&checked==header)
+                                index_storage->layout=std::move(layout);
+                        }
                         ui_index_context=index_storage.get();++ui_index_capture_ok;
                     }else ++ui_index_capture_rejected;
                 }else ++ui_execute_content_rejected;
@@ -309,6 +324,20 @@ bool prepare_ui_hud_overlay(uint64_t ticket,gears_viewport::DrawState const& sav
     out=corrected;++ui_hud_counts.planned;return true;
 }
 
+gears_ui_layout::Replay const* prepare_ui_hud_layout(gears_viewport::DrawState const& saved,unsigned width,unsigned height,
+        gears_viewport::OverlayPlan const& panel){
+    if(gears_ui_layout::identity(ui_hud_layout_parameters)||!ui_hud_plane_enabled||ui_hud_sequence_fault.load()||
+       !ui_payload_context||!ui_index_context||!ui_index_context->callback_valid||
+       ui_index_context->snapshot.payload!=ui_payload_context->payload||
+       ui_index_context->snapshot.generation!=ui_payload_context->generation)return nullptr;
+    ++ui_layout_counts.considered;
+    auto* layout=ui_index_context->layout.get();
+    const bool prepared=layout&&gears_ui_layout::prepare(layout->groups,ui_index_context->ordinal,saved,width,height,
+        panel,ui_hud_layout_parameters,layout->replay);
+    if(prepared)++ui_layout_counts.planned;else ++ui_layout_counts.fallback;
+    return prepared?&layout->replay:nullptr;
+}
+
 bool reserve_ui_execute(){
     ui_execute_target=reinterpret_cast<void*>(base+0x19e64c);
     std::array<unsigned char,32> before{},after{};uintptr_t entry{};
@@ -415,6 +444,9 @@ void print_ui_payload_observer(FILE* status){
         ui_hud_plane_enabled?1:0,hud_parameters.horizontal_fov_degrees,hud_parameters.depth_metres,ui_hud_counts.considered.load(),ui_hud_counts.missing_context.load(),ui_hud_counts.reticle_excluded.load(),
         ui_hud_counts.unknown_or_mixed.load(),ui_hud_counts.ticket_missing.load(),ui_hud_counts.projection_rejected.load(),
         ui_hud_counts.planned.load(),ui_hud_counts.applied.load(),ui_hud_sequence_fault.load()?1:0);
+    fprintf(status,"ui_hud_layout element_scale=%.9g center_scale=%.9g considered=%llu planned=%llu fallback=%llu applied=%llu source_vertices_modified=0 subtitle_policy=unchanged reticle_policy=unchanged\n",
+        ui_hud_layout_parameters.element_scale,ui_hud_layout_parameters.center_scale,ui_layout_counts.considered.load(),
+        ui_layout_counts.planned.load(),ui_layout_counts.fallback.load(),ui_layout_counts.applied.load());
     for(unsigned k=1;k<ui_payload_gpu_rows.size();++k){
         fprintf(status,"ui_payload_gpu kind_mask=%u calls=%llu rows=%u\n",k,ui_payload_gpu_calls[k],ui_payload_gpu_counts[k]);
         for(unsigned i=0;i<ui_payload_gpu_counts[k];++i){auto const& r=ui_payload_gpu_rows[k][i];auto const& c=r.context;

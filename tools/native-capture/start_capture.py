@@ -286,13 +286,21 @@ def save_anchor_sampling_failure(dll,pid,error,*,preparation_failures=None,prepa
 
 
 def hud_size_ini(args):
+    result=''
     value=getattr(args,'hud_horizontal_fov_degrees',None)
     if value is not None:
         if not getattr(args,'ui_hud_plane',False):raise ValueError('HUD size requires --ui-hud-plane')
         if isinstance(value,bool) or not isinstance(value,(int,float)) or not 45<=value<=100 or not math.isfinite(value):
             raise ValueError('hud_horizontal_fov_degrees must be finite and between 45 and 100')
-        return f'ui_hud_horizontal_fov_degrees={value:.17g}\n'
-    return ''
+        result+=f'ui_hud_horizontal_fov_degrees={value:.17g}\n'
+    for key,minimum,maximum in (('hud_element_scale',1,2),('hud_center_scale',0,1)):
+        value=getattr(args,key,None)
+        if value is None:continue
+        if not getattr(args,'ui_hud_plane',False):raise ValueError('HUD layout requires --ui-hud-plane')
+        if isinstance(value,bool) or not isinstance(value,(int,float)) or not minimum<=value<=maximum or not math.isfinite(value):
+            raise ValueError(f'{key} must be finite and between {minimum} and {maximum}')
+        result+=f'ui_{key}={value:.17g}\n'
+    return result
 
 
 def configure_anchor_options(args,parser):
@@ -374,6 +382,8 @@ def main():
     parser.add_argument('--ui-hud-plane',action='store_true',help='Experimental HUD plane; requires UI observer, anchor observer and continuous session')
     parser.add_argument('--crosshair-assignment-observer',action='store_true',help='Observe certified crosshair assignments; no reticle correction')
     parser.add_argument('--hud-horizontal-fov-degrees',type=float)
+    parser.add_argument('--hud-element-scale',type=float,help='Experimental certified HUD group size, 1..2; identity default')
+    parser.add_argument('--hud-center-scale',type=float,help='Experimental HUD group center displacement, 0..1; identity default')
     parser.add_argument('--outage-diagnostics',action='store_true',help='Record a bounded missing-image window in the existing stereo publication path; disabled by default')
     args=parser.parse_args()
     configure_anchor_options(args,parser)

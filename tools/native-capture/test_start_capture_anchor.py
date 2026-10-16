@@ -199,6 +199,20 @@ class AnchorStartTests(unittest.TestCase):
                 with self.assertRaises(SystemExit):start.main()
                 write.assert_not_called();launch.assert_not_called()
 
+    def test_hud_layout_ini_and_cli_rejection(self):
+        for size,center in ((1,1),(1.25,.75),(2,0)):
+            self.assertEqual(start.hud_size_ini(types.SimpleNamespace(ui_hud_plane=True,hud_element_scale=size,hud_center_scale=center)),
+                             f'ui_hud_element_scale={size:.17g}\nui_hud_center_scale={center:.17g}\n')
+        for key,values in (('hud_element_scale',(True,0,2.1,float('inf'))),('hud_center_scale',(True,-.1,1.1,float('nan')))):
+            for value in values:
+                with self.assertRaises(ValueError):start.hud_size_ini(types.SimpleNamespace(ui_hud_plane=True,**{key:value}))
+            with self.assertRaises(ValueError):start.hud_size_ini(types.SimpleNamespace(**{key:1}))
+        for extra in (['--hud-element-scale','1.25'],['--hud-center-scale','.8'],
+                      ['--ui-hud-plane','--hud-element-scale','nan'],['--ui-hud-plane','--hud-center-scale','1.1']):
+            with mock.patch.object(sys,'argv',['start_capture.py','--pid','1',*extra]),mock.patch.object(pathlib.Path,'write_text') as write,mock.patch.object(start.subprocess,'run') as launch,contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):start.main()
+                write.assert_not_called();launch.assert_not_called()
+
     def test_ui_changed_read_reacquires_complete_preparation(self):
         import anchor_config as anchor
         import ui_observer_config as ui

@@ -36,6 +36,16 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
     else {const auto parameters=gears_ui_hud::for_source(ui_hud_parameters,plane.aspect);
         if(!gears_ui_hud::plan(saved,target.width,target.height,sample,plan,parameters))return reject(7);}
     if(!plan.valid)return reject(7);
+    bool layout_applied=false;
+    if(kind==gears_game_material::Plan::hud&&!gears_ui_layout::identity(ui_hud_layout_parameters)){
+        ++ui_layout_counts.considered;
+        gears_ui_layout::Matrix matrix{};std::memcpy(matrix.data(),c.consumer.receipt.transform.data(),sizeof(matrix));
+        gears_ui_layout::Bounds bounds{};gears_viewport::OverlayPlan adjusted{};
+        if(gears_ui_layout::quad_bounds(quad.vertices,matrix,bounds)&&
+           gears_ui_layout::compose(saved,target.width,target.height,plan,bounds,ui_hud_layout_parameters,adjusted)){
+            plan=adjusted;layout_applied=true;++ui_layout_counts.planned;
+        }else ++ui_layout_counts.fallback;
+    }
     auto viewport=[&](gears_viewport::Rect r,float a,float b){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,a,b};original_viewports(list,1,&v);};
     auto scissor=[&](gears_viewport::Rect r){D3D12_RECT s{LONG(r.x),LONG(r.y),LONG(r.x+r.width),LONG(r.y+r.height)};original_scissors(list,1,&s);};
     current->drew=true;unsigned mask{};
@@ -45,6 +55,7 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
         reject(8);frame_link.invalidate();return true; // Pixels already emitted; never forward a third draw.
     }
     ++draws;if(kind==gears_game_material::Plan::ordinary)++ordinary_draws;else ++hud_draws;
+    if(layout_applied&&mask==3)++ui_layout_counts.applied;
     return true;
 }
 }

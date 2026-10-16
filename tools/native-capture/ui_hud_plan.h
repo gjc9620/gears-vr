@@ -10,7 +10,7 @@ struct Parameters {double horizontal_fov_degrees=65,depth_metres=2,source_aspect
 inline Parameters for_source(Parameters parameters,double aspect){parameters.source_aspect=aspect;return parameters;}
 // Strict bounded decimal parsing for the optional native INI value. Preserve
 // the destination on error; no whitespace, hex, special values or suffixes.
-inline bool parse_horizontal_fov(wchar_t const* text,double& out){
+inline bool parse_bounded_decimal(wchar_t const* text,double minimum,double maximum,double& out){
     if(!text)return false;
     unsigned length=0;while(length<63&&text[length])++length;if(!length||length==63)return false;
     auto p=text;if(*p==L'+'||*p==L'-')++p;
@@ -23,9 +23,10 @@ inline bool parse_horizontal_fov(wchar_t const* text,double& out){
     }
     if(*p)return false;
     errno=0;wchar_t* end{};const double value=std::wcstod(text,&end);
-    if(errno||*end||!std::isfinite(value)||value<45||value>100)return false;
+    if(errno||*end||!std::isfinite(value)||value<minimum||value>maximum)return false;
     out=value;return true;
 }
+inline bool parse_horizontal_fov(wchar_t const* text,double& out){return parse_bounded_decimal(text,45,100,out);}
 // Deliberate head-locked panel, independent of game camera/ADS projection.
 // Admission of pure ordinary HUD/weapon/subtitle draws belongs to the caller.
 // This geometry neither places a reticle target nor proves sample freshness.

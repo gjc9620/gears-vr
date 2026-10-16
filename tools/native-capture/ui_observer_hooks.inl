@@ -2,6 +2,8 @@
 // Observation only: original VM/Canvas arguments and draw counts are preserved.
 bool ui_observer_enabled{},ui_reserved{},ui_hud_plane_enabled{};
 gears_ui_hud::Parameters ui_hud_parameters{};
+gears_ui_layout::Parameters ui_hud_layout_parameters{};
+struct UiLayoutCounts {std::atomic<uint64_t> considered{},planned{},fallback{},applied{};} ui_layout_counts;
 gears_ui::Config ui_config;
 #include "crosshair_assignment_live.inl"
 #include "ui_runtime_binding.h"
