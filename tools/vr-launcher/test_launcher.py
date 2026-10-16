@@ -217,10 +217,12 @@ class LauncherTests(unittest.TestCase):
         for key in ('game_sha256','native_sha256','xr_sha256'):
             self.assertRegex(current[key],r'^[0-9a-f]{64}$')
             self.assertNotEqual(current[key],'0'*64)
-        self.assertEqual(current['xr_build'],'tools/openxr-probe/build-main-menu23-vd')
+        self.assertTrue(current['xr_build'].startswith('tools/openxr-probe/build-'))
+        self.assertNotIn('..',pathlib.PurePosixPath(current['xr_build']).parts)
         fallback=json.loads((directory/'manifest-material32-movie23-vd.json').read_text())
         self.assertEqual(current['game_sha256'],fallback['game_sha256'])
-        self.assertEqual(current['xr_sha256'],fallback['xr_sha256'])
+        if current['xr_build']==fallback['xr_build']:
+            self.assertEqual(current['xr_sha256'],fallback['xr_sha256'])
         self.assertEqual(launcher.hud_horizontal_fov({},current),65.)
         for key in ('startup_menu','graphics_startup_lock','graphics_menu_lock','menu_recovery','ui_hud_plane',
                     'cinematic_camera','world_recovery','hud_size_control','crosshair_assignment_observer'):

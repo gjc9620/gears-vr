@@ -17,7 +17,7 @@
 
 ## 当前可用版本与测试边界
 
-本地默认仍为 Native32／XR23，清单 `manifest-material32-movie23-vd.json`。Native34的机枪／UI候选清单留在 ignored `analysis/runtime/manifest-hud34.json`，未提升为默认。用户游戏配置未为UI调参而改写；FPS对照临时设置已恢复。
+本地试用默认已切到 Native36／Borderless1，清单 `manifest-gameplay36-borderless-vd.json`；已完成一轮4K模拟器回归，尚未做新版本真头显验收。Native35及Native32命名清单保留回退。启动器新增实验性镜头拉近0–0.5米，本机按用户希望拉近的要求设为0.3米，其他用户配置保留；便携包仍从0开始。FPS对照临时设置已恢复。最新证据见[Native36修复记录](74-native36-ultra-reticle-camera.md)。
 
 Native34首次进关前失败的PID39900：实际交换链8×8；状态文件偶发PermissionError让旧监视器反复清零，237a888已修复有界读取间隙，仍须下一份新鲜采样才可动作。之后PID38836在加载器依赖12秒截止前未就绪，原启动链留下进程；4678d2f补确切身份回执与未注入时的普通关闭。未用新代码重新运行，不能记为实际抢焦点问题验收通过。
 
