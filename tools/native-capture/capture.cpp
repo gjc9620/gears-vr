@@ -45,6 +45,7 @@
 #include "crosshair_assignment_config_loader.h"
 #include "crosshair_tick_evidence.h"
 #include "crosshair_finite_query.h"
+#include "crosshair_weapon_binding.h"
 #endif
 #include "ui_canvas_batch.h"
 #include "ui_canvas_text_batch.h"
