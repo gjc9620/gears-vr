@@ -10,6 +10,13 @@ inline char const* reason_name(Reason reason){
     switch(reason){case Reason::finish:return "finish";case Reason::callback:return "callback";
         case Reason::return_value:return "return";}return "unknown";
 }
+struct FinishEvidence {
+    bool before_finish_valid{},before_finish_poisoned{};
+    unsigned before_finish_expected{},before_finish_observed{};
+    // This is semantic_scope.end's result, not an independent binding probe:
+    // end(false) short-circuits its final binding read.
+    bool binding_complete_valid{},binding_complete{};
+};
 // Owning diagnostics only. No native command/payload or cursor pointers survive.
 struct Row {
     Reason reason{};
@@ -24,6 +31,7 @@ struct Row {
     gears_ui_indices::DrawArgs expected_draw{},observed_draw{};
     std::uint64_t ticket{};
     bool ticket_valid{};
+    FinishEvidence finish{};
 };
 class First {
     std::atomic<bool> published_{};
@@ -47,8 +55,8 @@ public:
 };
 inline void print(FILE* file,First const& first){
     Row row{};
-    if(!first.snapshot(row)){std::fprintf(file,"ui_hud_first_fault schema=1 available=0\n");return;}
-    std::fprintf(file,"ui_hud_first_fault schema=1 available=1 reason=%s qpc=%lld qpc_frequency=%lld thread=%u execute_sequence=%llu candidate_generation=%llu root_first=%llu root_last=%llu command=%llx payload=%llx cursor_expected=%u cursor_observed=%u cursor_poisoned=%u sequence_complete=%u result_valid=%u result=%u expected_draw_valid=%u expected_draw=%u,%u,%u,%d,%u observed_draw_valid=%u observed_draw=%u,%u,%u,%d,%u ticket_valid=%u ticket=%llu ticket_scope=last_completed_overlay_in_same_execute_not_rejected_draw diagnostic_only=1\n",
+    if(!first.snapshot(row)){std::fprintf(file,"ui_hud_first_fault schema=2 available=0\n");return;}
+    std::fprintf(file,"ui_hud_first_fault schema=2 available=1 reason=%s qpc=%lld qpc_frequency=%lld thread=%u execute_sequence=%llu candidate_generation=%llu root_first=%llu root_last=%llu command=%llx payload=%llx cursor_expected=%u cursor_observed=%u cursor_poisoned=%u sequence_complete=%u result_valid=%u result=%u expected_draw_valid=%u expected_draw=%u,%u,%u,%d,%u observed_draw_valid=%u observed_draw=%u,%u,%u,%d,%u ticket_valid=%u ticket=%llu ticket_scope=last_completed_overlay_in_same_execute_not_rejected_draw before_finish_valid=%u before_finish_poisoned=%u before_finish_expected=%u before_finish_observed=%u binding_complete_valid=%u binding_complete=%u binding_complete_semantics=semantic_scope_end_result_not_independent_probe diagnostic_only=1\n",
         reason_name(row.reason),row.qpc,row.frequency,row.thread,
         static_cast<unsigned long long>(row.execute_sequence),static_cast<unsigned long long>(row.candidate_generation),
         static_cast<unsigned long long>(row.root_first),static_cast<unsigned long long>(row.root_last),
@@ -58,6 +66,8 @@ inline void print(FILE* file,First const& first){
         row.expected_draw.instance_count,row.expected_draw.start_index,row.expected_draw.base_vertex,row.expected_draw.first_instance,
         unsigned(row.observed_draw_valid),row.observed_draw.index_count,row.observed_draw.instance_count,
         row.observed_draw.start_index,row.observed_draw.base_vertex,row.observed_draw.first_instance,
-        unsigned(row.ticket_valid),static_cast<unsigned long long>(row.ticket));
+        unsigned(row.ticket_valid),static_cast<unsigned long long>(row.ticket),unsigned(row.finish.before_finish_valid),
+        unsigned(row.finish.before_finish_poisoned),row.finish.before_finish_expected,row.finish.before_finish_observed,
+        unsigned(row.finish.binding_complete_valid),unsigned(row.finish.binding_complete));
 }
 }

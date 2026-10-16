@@ -84,14 +84,14 @@ long long ui_subtitle_gpu_next{};
 // Called only at the existing permanent-fault branches. TLS points to our
 // owning Execute-entry copies; native command/payload storage is never read.
 void record_ui_hud_first_fault(gears_ui_fault::Reason reason,bool result_valid=false,
-        uint32_t result=0,bool sequence_complete=false){
+        uint32_t result=0,bool sequence_complete=false,gears_ui_fault::FinishEvidence const& finish={}){
     if(ui_hud_first_fault.published()||!ui_index_context)return;
     auto const& index=*ui_index_context;
     gears_ui_fault::Row row{};row.reason=reason;row.qpc=now();row.frequency=qpc_frequency;
     row.thread=GetCurrentThreadId();row.execute_sequence=index.execute_sequence;
     row.cursor_expected=index.cursor.expected_count();row.cursor_observed=index.cursor.observed();
     row.cursor_poisoned=index.cursor.poisoned();row.sequence_complete=sequence_complete;
-    row.result_valid=result_valid;row.result=result;
+    row.result_valid=result_valid;row.result=result;row.finish=finish;
     row.observed_draw_valid=index.observed_draw_valid;row.observed_draw=index.last_observed_draw;
     if(row.cursor_observed<index.snapshot.segment_count){
         row.expected_draw_valid=true;row.expected_draw=index.snapshot.segments[row.cursor_observed].expected;
@@ -190,8 +190,16 @@ uint32_t __fastcall hook_ui_execute(void* command){
 #endif
     // Semantic contexts must finish before the owned ledger can make this
     // ticket ready for publication. Unlabelled batches have no such cursor.
+    gears_ui_fault::FinishEvidence finish_evidence{};
+    if(ui_index_context){
+        finish_evidence.before_finish_valid=true;
+        finish_evidence.before_finish_poisoned=ui_index_context->cursor.poisoned();
+        finish_evidence.before_finish_expected=ui_index_context->cursor.expected_count();
+        finish_evidence.before_finish_observed=ui_index_context->cursor.observed();
+    }
     const bool sequence_complete=!ui_index_context||ui_index_context->cursor.finish();
     const bool binding_complete=semantic_scope.end(sequence_complete&&result==48);
+    finish_evidence.binding_complete_valid=true;finish_evidence.binding_complete=binding_complete;
     owned_ui_live::execute_end(owned_receipt,result,sequence_complete&&binding_complete);
     if(ui_observer_enabled&&result!=48)++ui_execute_bad_return;
     // Only our independent value copies remain live. The native command and
@@ -204,7 +212,7 @@ uint32_t __fastcall hook_ui_execute(void* command){
         if((!sequence_complete||result!=48)&&ui_hud_plane_enabled){
             ui_hud_sequence_fault=true;
             record_ui_hud_first_fault(result!=48?gears_ui_fault::Reason::return_value:gears_ui_fault::Reason::finish,
-                true,result,sequence_complete);
+                true,result,sequence_complete,finish_evidence);
         }
         std::lock_guard<std::mutex> lock(ui_payload_mutex);
         for(unsigned i=0;i<ui_subtitle_gpu_count;++i)
