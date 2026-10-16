@@ -551,6 +551,41 @@ void trace_rectangle(unsigned index,uintptr_t view) {
     rectangle_trace_phases[index]=read?2:3;
 }
 long long now() {LARGE_INTEGER value;QueryPerformanceCounter(&value);return value.QuadPart;}
+// Bounded, monotonic callback progress: callbacks never take a diagnostics lock.
+// Commit baselines provide world counts; QPC endpoints remain session cumulative.
+// A rejected scope can race commit, so baseline attribution is observational.
+enum class WorldProgress : unsigned {family,renderer,family_scope_reject,renderer_scope_reject,
+    candidate,try_pair,quiesce,closed,not_before,foreground,count};
+struct WorldProgressSample {std::atomic<uint64_t> count{};std::atomic<long long> first{},last{};};
+std::mutex world_progress_snapshot_mutex; // Commit/status only, never callbacks.
+std::array<WorldProgressSample,static_cast<unsigned>(WorldProgress::count)> world_progress{};
+std::array<uint64_t,static_cast<unsigned>(WorldProgress::count)> world_progress_baseline{};
+uint64_t world_progress_generation{1};
+long long world_progress_commit_qpc{}; // Zero denotes the initial world.
+void note_world_progress(WorldProgress stage){
+    if(!continuous_session)return;
+    const auto qpc=now();auto& sample=world_progress[static_cast<unsigned>(stage)];
+    sample.count.fetch_add(1,std::memory_order_relaxed);
+    auto first=sample.first.load(std::memory_order_relaxed);
+    while((!first||qpc<first)&&!sample.first.compare_exchange_weak(first,qpc,std::memory_order_relaxed)){}
+    auto last=sample.last.load(std::memory_order_relaxed);
+    while(qpc>last&&!sample.last.compare_exchange_weak(last,qpc,std::memory_order_relaxed)){}
+}
+void reset_world_progress(uint64_t generation){
+    std::lock_guard<std::mutex> lock(world_progress_snapshot_mutex);
+    for(unsigned i=0;i<world_progress.size();++i)world_progress_baseline[i]=world_progress[i].count.load(std::memory_order_relaxed);
+    world_progress_generation=generation;world_progress_commit_qpc=now();
+}
+void print_world_progress(FILE* output){
+    std::lock_guard<std::mutex> lock(world_progress_snapshot_mutex);
+    fprintf(output,"wg_schema=1 wg_generation=%llu wg_commit_qpc=%lld wg_tuple=total,baseline,session_first_qpc,session_last_qpc wg_baseline_racy_scope=1 ",
+        static_cast<unsigned long long>(world_progress_generation),world_progress_commit_qpc);
+    const char* names[]={"family","renderer","family_scope_reject","renderer_scope_reject",
+        "candidate","try_pair","quiesce","closed","not_before","foreground"};
+    for(unsigned i=0;i<world_progress.size();++i){const auto& s=world_progress[i];
+        fprintf(output,"wg_%s=%llu,%llu,%lld,%lld ",names[i],static_cast<unsigned long long>(s.count.load(std::memory_order_relaxed)),
+            static_cast<unsigned long long>(world_progress_baseline[i]),s.first.load(std::memory_order_relaxed),s.last.load(std::memory_order_relaxed));}
+}
 void request_session_stop_at(SessionStop reason,const char* source_file,unsigned source_line) {
     if(!continuous_session)return;
     auto running=SessionPhase::running;
@@ -1259,6 +1294,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         world_handoff_supported?1:0,
         world_handoff_phase.load(),static_cast<unsigned long long>(world_handoff_commits.load()),world_quiesce_requested.load()?1:0,
         state_release_started.load(),static_cast<unsigned long long>(epoch_submit_total.load()));
+    print_world_progress(output);
     fprintf(output,"owner_pid=%lu owner_creation_time=%llu stop_reason=%s owner_exit_observed=%u owner_error_observed=%u complete=1\n",session_owner_pid,
         static_cast<unsigned long long>(session_owner_creation_time),reasons[static_cast<unsigned>(reason)],
         session_owner_exit_observed.load()?1:0,session_owner_error_observed.load()?1:0);
@@ -1850,7 +1886,9 @@ void anchor_target_snapshot(void* canvas,void* family,gears_anchor::Receipt cons
     row.consistent=(row.read_mask&239)==239&&row.target&&row.target==row.target_after&&row.vtable&&row.vtable==row.vtable_after;
 }
 void __fastcall hook_family(void* canvas,void* family){
-    Scope scope;if(!scope.world())return original_family(canvas,family);service_session_stop_native();auto record=start_record(7,canvas,_ReturnAddress());
+    note_world_progress(WorldProgress::family);
+    Scope scope;if(!scope.world()){note_world_progress(WorldProgress::family_scope_reject);return original_family(canvas,family);}
+    service_session_stop_native();auto record=start_record(7,canvas,_ReturnAddress());
     inspect_family(record,family);
     std::optional<gears_anchor::Context::FamilyScope> anchor_scope;
     if(anchor_observer_enabled&&recording.load()){
@@ -2005,6 +2043,7 @@ void* __fastcall hook_destroy_renderer(void* renderer){
 }
 bool try_submit_pair(void* destination,void* family,void* canvas,void* transform,Record& record,void*& returned,
     gears_anchor::Receipt const* anchor=nullptr) {
+    note_world_progress(WorldProgress::try_pair);
     std::unique_lock<std::recursive_mutex> session_lock(session_native_mutex,std::defer_lock);
     if(continuous_session)session_lock.lock();
     if(continuous_session){
@@ -2013,10 +2052,10 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         service_session_stop_native();
     }
     if(submit_session_enabled()) {
-        if(world_quiesce_requested.load())return false;
-        if(submitted_lifetime.is_closed())return false;
-        if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && now()<submit_not_before)return false;
-        if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && !foreground() && !submit_background)return false;
+        if(world_quiesce_requested.load()){note_world_progress(WorldProgress::quiesce);return false;}
+        if(submitted_lifetime.is_closed()){note_world_progress(WorldProgress::closed);return false;}
+        if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && now()<submit_not_before){note_world_progress(WorldProgress::not_before);return false;}
+        if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && !foreground() && !submit_background){note_world_progress(WorldProgress::foreground);return false;}
         if(submit_deadline && (now()>=submit_deadline || (!foreground() && !submit_background) || (GetAsyncKeyState(VK_F8)&0x8000))) {
             if(submitted_lifetime.close() && state_created.load() && !submit_retained.load()) {
                 state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
@@ -2234,7 +2273,10 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     return true;
 }
 void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void* transform){
-    Scope scope;if(!scope.world())return original_renderer(destination,family,canvas,transform);auto record=start_record(9,destination,_ReturnAddress());
+    note_world_progress(WorldProgress::renderer);
+    Scope scope;if(!scope.world()){note_world_progress(WorldProgress::renderer_scope_reject);return original_renderer(destination,family,canvas,transform);}
+    auto record=start_record(9,destination,_ReturnAddress());
+    if(submitting_family&&family==submitting_family&&record.caller==0x3a1595)note_world_progress(WorldProgress::candidate);
     service_session_stop_native();
     gears_anchor::Receipt associated_anchor{};bool anchor_associated=false;
     if(anchor_observer_enabled&&recording.load()){

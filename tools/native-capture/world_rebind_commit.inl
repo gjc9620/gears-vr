@@ -73,6 +73,7 @@ void advance_world_handoff(FILE*){
         world_quiesce_token={};committed_world_generation=next;return true;
     });
     if(committed){
+        reset_world_progress(next);
         world_quiesce_requested=false;world_handoff_phase=3;++world_handoff_commits;
         world_candidate_generation=0;world_commit_request=0;pending_world.reset();
     }
