@@ -12,6 +12,8 @@
 
 这是本轮失败的直接证据，不证明以前所有无法进入VR或黑屏都由此引起。启动预留入口已恢复，之后仅向确切游戏进程发送正常关闭并确认退出，见 `active-reload37-failed-start-close.json`。
 
+修正提交 `87c771d`：只有已注册控制器及其反射Pawn属性的身份、偏移重查一致，且两次读到空Pawn时，才抛出专用的过渡异常并丢弃本次全部证书，进入已有的三次局部重取与共享截止时间。不会接受空Pawn证书；其他角色为空、字段／身份／代码不匹配仍直接拒绝。81项相关Python测试通过，包含死亡跨四轮准备、第五轮检查点恢复、持续死亡超时、取消及错误身份／属性／入口拒绝。无需重新编译原生DLL；实际回归另行记录。
+
 ## 完美换弹的判定依据
 
 先用现有知识库检索，再检查离线WarfareGame脚本缓存。HUD的 `EActiveReloadResultType` 是 None=0、Success=1、SuperSuccess=2、Failed=3；`ActiveReloadSuccess` 为完美结果赋2，`DrawActionReloadBar` 在2时绘制 `PerfectGrade`。Pawn的同名结果枚举取值不同，不能混用。源包SHA256为 `91c0f56e9302db2b3991fc3d8646abc1eaff2b33b8b021ce8df436d8cd681d13`。
