@@ -14,6 +14,7 @@
 #include "capture_frame_mailbox.h"
 #include "shutdown_diagnostics.h"
 #include "outage_diagnostics.h"
+#include "transition_card_layout.h"
 
 inline std::int64_t menu_capture_qpc_ticks(){
     LARGE_INTEGER counter{},frequency{};
@@ -299,9 +300,26 @@ class GameScreen {
             uint32_t count{};xr_check(xrEnumerateSwapchainImages(next,0,&count,nullptr),"game images");
             if(!count)throw std::runtime_error("Empty game display swapchain");
             std::vector<XrSwapchainImageD3D12KHR> next_images(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});
+            const auto capacity=count;
             xr_check(xrEnumerateSwapchainImages(next,count,&count,reinterpret_cast<XrSwapchainImageBaseHeader*>(next_images.data())),"read game images");
-            auto desc=next_images[0].texture->GetDesc();UINT64 bytes{};D3D12_PLACED_SUBRESOURCE_FOOTPRINT next_footprint{};
-            device->GetCopyableFootprints(&desc,0,1,0,&next_footprint,nullptr,nullptr,&bytes);
+            if(count!=capacity||!next_images[0].texture)throw std::runtime_error("Game display images changed");
+            const auto desc=next_images[0].texture->GetDesc();UINT64 bytes{},row_size{};UINT rows{};
+            D3D12_PLACED_SUBRESOURCE_FOOTPRINT next_footprint{};
+            if(!transition_card_layout::valid_image(desc,format,source.width,source.height))
+                throw std::runtime_error("Invalid game display image layout");
+            // A runtime may return a typeless resource in the selected format
+            // family; buffer copies still require the selected typed footprint.
+            auto copy_desc=desc;copy_desc.Format=format;
+            device->GetCopyableFootprints(&copy_desc,0,1,0,&next_footprint,&rows,&row_size,&bytes);
+            std::fprintf(stderr,"Game display layout: selected=%u resource={dimension=%u width=%llu height=%u format=%u array=%u mips=%u samples=%u quality=%u layout=%u flags=%u} upload={format=%u width=%u height=%u depth=%u pitch=%u offset=%llu rows=%u row_bytes=%llu bytes=%llu}\n",
+                unsigned(format),unsigned(desc.Dimension),static_cast<unsigned long long>(desc.Width),desc.Height,
+                unsigned(desc.Format),unsigned(desc.DepthOrArraySize),unsigned(desc.MipLevels),
+                desc.SampleDesc.Count,desc.SampleDesc.Quality,unsigned(desc.Layout),unsigned(desc.Flags),
+                unsigned(next_footprint.Footprint.Format),next_footprint.Footprint.Width,next_footprint.Footprint.Height,next_footprint.Footprint.Depth,
+                next_footprint.Footprint.RowPitch,static_cast<unsigned long long>(next_footprint.Offset),rows,
+                static_cast<unsigned long long>(row_size),static_cast<unsigned long long>(bytes));
+            if(!transition_card_layout::valid_footprint(next_footprint,bytes,format,source.width,source.height,rows,row_size))
+                throw std::runtime_error("Invalid game display upload footprint");
             D3D12_HEAP_PROPERTIES props{};props.Type=D3D12_HEAP_TYPE_UPLOAD;
             D3D12_RESOURCE_DESC buffer{};buffer.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;buffer.Width=bytes;buffer.Height=1;
             buffer.DepthOrArraySize=1;buffer.MipLevels=1;buffer.SampleDesc.Count=1;buffer.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
@@ -401,7 +419,10 @@ public:
                 upload->Unmap(0,nullptr);
                 uint32_t index{};XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};xr_check(xrAcquireSwapchainImage(chain,&acquire,&index),"acquire game image");
                 XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};wait.timeout=1000000000;xr_check(xrWaitSwapchainImage(chain,&wait),"wait game image");
-                auto* image=images.at(index).texture;
+                if(index>=images.size()||!images[index].texture)throw std::runtime_error("Invalid game display image index");
+                auto* image=images[index].texture;
+                if(!transition_card_layout::valid_image(image->GetDesc(),format,chain_width,chain_height))
+                    throw std::runtime_error("Game display image layout changed");
                 dx_check(allocator->Reset(),"game allocator reset");dx_check(commands->Reset(allocator.Get(),nullptr),"game commands reset");
                 barrier(image,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_COPY_DEST);
                 D3D12_TEXTURE_COPY_LOCATION dst{},src{};dst.pResource=image;dst.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
