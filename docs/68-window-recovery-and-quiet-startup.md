@@ -207,3 +207,11 @@ quiet16实际game34672：70秒无输入，仍在tick2748296自动进入前台。
 用户授权临时仅排除GOWDE-Steam.exe并测试后恢复。`quiet-fz-exclude16-control.json`确认原排除值为空、临时单项、最终恢复成功；FancyZones日志确认两次LoadSettings，测试窗口内不再查询游戏历史，但仍查询XR历史。未关闭PowerToys，DisplayFusion保持退出。
 
 `quiet-fz-exclude16.json` game32572整轮无输入，初始/结束前台均ChatGPT17708；旧PeekMessage中的command9及紧随激活消失，command7仍存在。仍收到一次目标游戏的EVENT_SYSTEM_FOREGROUND，tick3000937，CBT栈变为游戏31B24F/31ACE0/4EDFB3→win32u+2ca4；其回调前后前台均外部67396。不能只用事件目标就认定实际抢焦点，也不能仅凭结束前台不变宣称全程通过。现有观察器未保存事件回调瞬间的实际前台，需要补充该字段及连续前台采样，再验证。临时排除不是当前持久修复。
+
+### 本机后台启动完成验证（2026-10-16）
+
+复测 `quiet-fz-repeat16.json` 全程无输入：唯一游戏目标事件的 callback_foreground 仍为ChatGPT17708，5ms目标间隔采样没有任何实际前台变化。它不能按事件目标被判为真实抢焦点。用户随后明确选择长期保留游戏排除项、接受游戏不再使用FancyZones手动分区。已写入唯一排除项GOWDE-Steam.exe，其余设置逐字段比对未变；备份 `fz-permanent-game-exclusion-before.json`，没有重开DisplayFusion。
+
+最终 `quiet-fz-default11-final.json` 用正式默认冻结quiet11、不开TRACE、无实验构建覆盖，真实 `background-launch-23576.json` 确认构建路径和策略安装。70秒内实际前台采样仅在外部PID30444与19916之间切换，没有游戏23576或XR11708；唯一游戏事件回调时前台仍是19916。游戏与模拟器窗口均visible，owner14948/game23576/XR11708经CIM核实存活，阶段awaiting_level，未发送导航输入、没有测试时长自动停机。永久排除值读取核验通过。
+
+结论限于本机当前后台启动目标：默认启动链加用户批准的FancyZones单游戏排除已实测满足不抢焦点，模拟器保持可见运行。不代表所有第三方窗口管理器、玩家机器或VR关卡功能均已验收；诊断quiet15/16不提升发布默认。回退配置可删除FancyZones中GOWDE-Steam.exe排除项，但会重新启用本机已复现的自动区域恢复干扰。后续使用正式入口即可，无需管理员ETW或继续关闭其他桌面软件。

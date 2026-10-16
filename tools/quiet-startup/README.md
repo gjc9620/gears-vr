@@ -1,8 +1,17 @@
 # Experimental background startup
 
-This is an opt-in Windows x64 startup policy. It has passed the small native
-fixture, but has not yet passed actual-game startup or manual activation tests.
-It does not replace the current player default.
+The repository background launcher defaults to the frozen quiet11 Windows x64
+startup policy. Diagnostic builds are separate and are not promoted automatically.
+On the development PC, actual-game background startup passed after the user
+approved a FancyZones exclusion for `GOWDE-Steam.exe` (2026-10-16). FancyZones
+automatic remembered-zone placement otherwise restored and activated the game
+outside the process-local policy. This machine-specific compatibility setting
+is not automatically installed on players' machines.
+
+The exclusion also disables manual FancyZones zoning for this game; other apps'
+settings are unchanged. Ordinary window movement remains available. DisplayFusion
+was independently excluded as a necessary cause and remains closed by the user.
+See `docs/68-window-recovery-and-quiet-startup.md` for observations and limits.
 
 The first actual-game observation (9j) recorded two foreground events even though
 all eight API hooks remained installed. The user subsequently confirmed manually
@@ -33,8 +42,8 @@ launcher's child environment to the frozen build directory. `background_launch.p
 also accepts `--quiet-build`; it rejects combination with `--foreground`, validates
 the game installation and returned PID/creation time/path, then arms the existing
 background-controller helper against the game PID. The bootstrap PID is distinct.
-Unset the option to use the existing initial-show hint. No global registry/runtime
-setting is changed.
+Unset the option to use the hash-verified frozen quiet11 build. The launcher does
+not edit third-party settings or global registry/runtime settings.
 
 The command builder leaves simple arguments such as `-NoPauseUnfocus` unquoted.
 The game's raw command parser accepts only end-of-string, space or tab after a
