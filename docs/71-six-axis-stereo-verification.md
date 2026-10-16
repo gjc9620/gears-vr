@@ -52,3 +52,11 @@
 随后相对新基准继续x平移0.15米，ticket1735双眼图像变化；回到(0,1.7,0)/零旋转再次正式回中，generation2→3于ticket2198提交，ticket2398双眼场景恢复水平。基准、回中前后、继续平移、第二次回中共5张GPU源图均关联正确姿态票据。四个原生阶段各2431对矩阵检查无偏差；正常停止、43入口恢复、XR销毁和WM_CLOSE退出通过。证据为ignored `recenter-events.json`、`recenter-requests.jsonl`、`recenter-native-status.txt`、`recenter-verification.json`及GPU图像。
 
 GUI新增的“视角回中”命令路由已构建/自检；本次实际执行的是它共用的正式后端命令，并未自动点击GUI。物理头显回中体验仍待用户验证，不因此关闭整项6DoF验收。
+
+## Quest 3 / Virtual Desktop 真机启动修复（XR17）
+
+2026-10-16用户要求真机体验，停止先前显式模拟器会话后，以子进程 --runtime 指定 Virtual Desktop Streamer/OpenXR/virtualdesktop-openxr.json；没有修改全局runtime。首次Native23/XR16会话37616已成功创建VirtualDesktopXR session，却在等待卡构造报告Invalid transition-card upload footprint并退出，原生未启动，prime入口恢复通过，XR对象销毁后正常关闭游戏。
+
+XR17仅修transition card：接受选定RGBA/BGRA UNORM及其同族typeless资源，仍严格验证尺寸、array/mip/sample、对齐和复制边界；上传footprint使用选定的typed UNORM，在取得图像时再次核验。TransitionCardLayoutTest/TransitionCardPixelsTest通过。新构建build-main-menu17-vd，SHA256 6efd90db1b380d0956259631c42d785f928e48d165fb2953fe96442dfaa14aa5，使用独立临时manifest，不替换默认冻结版本。
+
+实际game23616/XR35784会话2aa35bb9确认runtime_name=VirtualDesktopXR、simulator_operator=0；诊断selected87/resource90，即B8G8R8A8_UNORM与对应TYPELESS，尺寸768×256，typed footprint87/pitch3072/bytes786432。会话进入state5，WGC启动成功、帧持续递增，等待进入关卡，未设置自动停止。该结果验证真机启动兼容修复，不代替用户实际菜单/双目/6DoF观感验收。原始证据为continuous-stereo-23616-20261016-174554-2aa35bb9及manifest-quest3-vd17.json，保存在ignored analysis/runtime。

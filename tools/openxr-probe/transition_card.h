@@ -7,10 +7,12 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <cstdio>
 #include <stdexcept>
 #include <string>
 #include <vector>
 #include "transition_card_pixels.h"
+#include "transition_card_layout.h"
 
 // These are owned by the existing XR session, not by the game-image receiver.
 extern XrSession session;
@@ -89,9 +91,8 @@ class TransitionCard {
         exact(xrWaitSwapchainImage(chain,&wait),"Wait transition card");waited=true;
         if(index>=images.size()||!images[index].texture)throw std::runtime_error("Invalid transition-card image index");
         auto* image=images[index].texture;const auto desc=image->GetDesc();
-        if(desc.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D||desc.Width!=transition_card_pixels::width||
-           desc.Height!=transition_card_pixels::height||desc.Format!=format||desc.DepthOrArraySize!=1||
-           desc.MipLevels!=1||desc.SampleDesc.Count!=1)throw std::runtime_error("Transition-card image layout changed");
+        if(!transition_card_layout::valid_image(desc,format,transition_card_pixels::width,transition_card_pixels::height))
+            throw std::runtime_error("Transition-card image layout changed");
         dx(allocator->Reset(),"Reset transition-card allocator");dx(commands->Reset(allocator.Get(),nullptr),"Reset transition-card commands");
         barrier(image,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_COPY_DEST);
         D3D12_TEXTURE_COPY_LOCATION destination{},source{};
@@ -139,14 +140,22 @@ public:
             images.resize(count,{XR_TYPE_SWAPCHAIN_IMAGE_D3D12_KHR});const auto capacity=count;
             exact(xrEnumerateSwapchainImages(chain,capacity,&count,reinterpret_cast<XrSwapchainImageBaseHeader*>(images.data())),"Read transition-card images");
             if(count!=capacity||!images[0].texture)throw std::runtime_error("Transition-card images changed");
-            const auto image_desc=images[0].texture->GetDesc();UINT64 bytes{};
-            device->GetCopyableFootprints(&image_desc,0,1,0,&footprint,nullptr,nullptr,&bytes);
-            const auto row_bytes=std::uint64_t(transition_card_pixels::width)*4;
-            const auto copied_bytes=std::uint64_t(transition_card_pixels::height-1)*footprint.Footprint.RowPitch+row_bytes;
-            if(!bytes||bytes>(std::numeric_limits<std::size_t>::max)()||footprint.Offset>bytes||copied_bytes>bytes-footprint.Offset||
-               footprint.Footprint.RowPitch<row_bytes||footprint.Footprint.Format!=format||
-               footprint.Footprint.Width!=transition_card_pixels::width||footprint.Footprint.Height!=transition_card_pixels::height||
-               footprint.Footprint.Depth!=1)throw std::runtime_error("Invalid transition-card upload footprint");
+            const auto image_desc=images[0].texture->GetDesc();UINT64 bytes{},row_size{};UINT rows{};
+            // OpenXR runtimes may expose a typeless texture of the selected
+            // format family. The buffer copy footprint must use its typed format.
+            auto copy_desc=image_desc;copy_desc.Format=format;
+            device->GetCopyableFootprints(&copy_desc,0,1,0,&footprint,&rows,&row_size,&bytes);
+            std::fprintf(stderr,"Transition-card layout: selected=%u resource={dimension=%u width=%llu height=%u format=%u array=%u mips=%u samples=%u quality=%u layout=%u flags=%u} upload={format=%u width=%u height=%u depth=%u pitch=%u offset=%llu rows=%u row_bytes=%llu bytes=%llu}\n",
+                unsigned(format),unsigned(image_desc.Dimension),static_cast<unsigned long long>(image_desc.Width),image_desc.Height,
+                unsigned(image_desc.Format),unsigned(image_desc.DepthOrArraySize),unsigned(image_desc.MipLevels),
+                image_desc.SampleDesc.Count,image_desc.SampleDesc.Quality,unsigned(image_desc.Layout),unsigned(image_desc.Flags),
+                unsigned(footprint.Footprint.Format),footprint.Footprint.Width,footprint.Footprint.Height,footprint.Footprint.Depth,
+                footprint.Footprint.RowPitch,static_cast<unsigned long long>(footprint.Offset),rows,
+                static_cast<unsigned long long>(row_size),static_cast<unsigned long long>(bytes));
+            if(!transition_card_layout::valid_image(image_desc,format,transition_card_pixels::width,transition_card_pixels::height))
+                throw std::runtime_error("Invalid transition-card image layout");
+            if(!transition_card_layout::valid_footprint(footprint,bytes,format,transition_card_pixels::width,transition_card_pixels::height,rows,row_size))
+                throw std::runtime_error("Invalid transition-card upload footprint");
             D3D12_HEAP_PROPERTIES properties{};properties.Type=D3D12_HEAP_TYPE_UPLOAD;
             D3D12_RESOURCE_DESC buffer{};buffer.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;buffer.Width=bytes;buffer.Height=1;
             buffer.DepthOrArraySize=buffer.MipLevels=1;buffer.SampleDesc.Count=1;buffer.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
