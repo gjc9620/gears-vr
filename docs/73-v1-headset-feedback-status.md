@@ -17,7 +17,7 @@
 
 ## 当前可用版本与测试边界
 
-本地试用默认已切到 Native36／Borderless1，清单 `manifest-gameplay36-borderless-vd.json`；已完成一轮4K模拟器回归，尚未做新版本真头显验收。Native35及Native32命名清单保留回退。启动器新增实验性镜头拉近0–0.5米，本机按用户希望拉近的要求设为0.3米，其他用户配置保留；便携包仍从0开始。FPS对照临时设置已恢复。最新证据见[Native36修复记录](74-native36-ultra-reticle-camera.md)。
+本地试用默认已切到 Native37／Borderless1，清单 `manifest-mounted37-borderless-vd.json`；增加分别认证流式Level的机枪绑定修正，已完成4K普通关卡／检查点回归，尚未实际占有机枪或做新版本真头显验收。Native36／35／32命名清单保留回退。启动器新增实验性镜头拉近0–0.5米，本机按用户希望拉近的要求设为0.3米，其他用户配置保留；便携包仍从0开始。FPS对照临时设置已恢复。最新证据见[Native36修复记录](74-native36-ultra-reticle-camera.md)。
 
 Native34首次进关前失败的PID39900：实际交换链8×8；状态文件偶发PermissionError让旧监视器反复清零，237a888已修复有界读取间隙，仍须下一份新鲜采样才可动作。之后PID38836在加载器依赖12秒截止前未就绪，原启动链留下进程；4678d2f补确切身份回执与未注入时的普通关闭。未用新代码重新运行，不能记为实际抢焦点问题验收通过。
 
@@ -40,3 +40,5 @@ Native34首次进关前失败的PID39900：实际交换链8×8；状态文件偶
 冻结候选补充（Native35）：从已提交源码7524ea3单独导出native-capture／vr-common，复用Native34冻结MinHook依赖并记录逐文件哈希，完成Release全量构建。DLL为`tools/native-capture/build-subtitle35/GearsCaptureSubtitle35.dll`，SHA256 `c6b40ed4b1f3ab45e5874f2bbf660d7a25c13c30d9d2919b8d96b6215a43511d`。它包含此前机枪／HUD候选以及038361c完整单范围字幕布局；不含工作区尚未提交的旁路修改。10项离线检查通过：HUD布局／平面、收据、Canvas文字、索引、材质批次、游戏材质、FrameLink及DLL continuous／frame-link ABI。记录位于`analysis/runtime/subtitle35-source.json`、`subtitle35-selftests.json`和`manifest-subtitle35.json`。未启动游戏、模拟器或输入辅助，未替换默认Native32清单，未生成新发布包。GPU、机枪、字幕实显及头显稳定性仍未验收；保持运行测试暂停与后台手柄默认关闭。
 
 用户指定试用Native35：默认manifest.json现临时选择manifest-subtitle35-vd.json（游戏／DLL／XR哈希复核通过），原Native32清单保留回退；这只是试用选择，不是完成验收或发布。用户配置未覆盖。本轮显式VDXR运行时、普通前台游戏启动，后台手柄仍关闭，不启动模拟器；用户自行游玩并决定结束时间。试用日志前缀`analysis/runtime/subtitle35-user-trial`。
+
+机枪最新进展与完整Native37构建／回归边界见[流式Level认证](76-mounted-streamed-level-certificates.md)。
