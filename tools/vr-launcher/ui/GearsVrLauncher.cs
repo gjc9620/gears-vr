@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -38,10 +38,16 @@ namespace GearsVrUi {
         internal static string Arguments(string root, string command, string runtime) {
             string result = Quote(Path.Combine(root, "tools", "vr-launcher", "launcher.py")) + " " + command;
             if (command == "start") {
-                result += " --manifest " + Quote(Path.Combine(root, "tools", "vr-launcher", "manifest.json"));
+                result += " --foreground --manifest " + Quote(Path.Combine(root, "tools", "vr-launcher", "manifest.json"));
                 if (!String.IsNullOrEmpty(runtime)) result += " --runtime " + Quote(runtime);
             }
             return result;
+        }
+        internal static string DefaultRuntime(string root, int mode) {
+            if (mode == 0) return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Virtual Desktop Streamer", "OpenXR", "virtualdesktop-openxr.json");
+            if (mode == 1) return "";
+            if (mode == 2) return Path.Combine(root, "analysis", "runtime", "simulator-quiet2", "openxr_simulator.json");
+            throw new ArgumentOutOfRangeException("mode");
         }
         internal static Dictionary<string, object> ReadConfig(string path) {
             return new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(File.ReadAllText(path));
@@ -96,8 +102,9 @@ namespace GearsVrUi {
                 Convert.ToInt32(p) == pid && Convert.ToInt64(c) == creation;
         }
         static int SelfTest(string root) {
+            if (!DefaultRuntime(root, 0).EndsWith("virtualdesktop-openxr.json") || DefaultRuntime(root, 1) != "" || !DefaultRuntime(root, 2).EndsWith("openxr_simulator.json")) return 20;
             string args = Arguments(root, "start", "C:\\runtime with spaces\\openxr.json");
-            if (!args.Contains("--manifest") || !args.Contains("--runtime") || args.Contains("auto-continue")) return 2;
+            if (!args.Contains("--foreground") || !args.Contains("--manifest") || !args.Contains("--runtime") || args.Contains("auto-continue")) return 2;
             if (Arguments(root, "stop", null).Contains("--runtime")) return 3;
             if (Arguments(root, "recenter", "unused").Contains("--runtime") ||
                 !Arguments(root, "recenter", null).EndsWith(" recenter")) return 18;
@@ -229,11 +236,11 @@ namespace GearsVrUi {
             layout.Controls.Add(new Label { Text = "游戏路径", AutoSize = true }, 0, 1); game.Dock = DockStyle.Fill; layout.Controls.Add(game, 1, 1);
             browseGame.Text = "浏览…"; layout.Controls.Add(browseGame, 2, 1);
             layout.Controls.Add(new Label { Text = "OpenXR", AutoSize = true }, 0, 2);
-            runtimeMode.DropDownStyle = ComboBoxStyle.DropDownList; runtimeMode.Items.AddRange(new object[] { "本地 OpenXR 模拟器", "系统 OpenXR Runtime" }); runtimeMode.SelectedIndex = 0; runtimeMode.Dock = DockStyle.Fill;
+            runtimeMode.DropDownStyle = ComboBoxStyle.DropDownList; runtimeMode.Items.AddRange(new object[] { "Quest 3 / Virtual Desktop (VDXR)", "系统 OpenXR Runtime", "本地 OpenXR 模拟器" }); runtimeMode.SelectedIndex = 0; runtimeMode.Dock = DockStyle.Fill;
             layout.Controls.Add(runtimeMode, 1, 2);
-            layout.Controls.Add(new Label { Text = "模拟器文件", AutoSize = true }, 0, 3); runtime.Dock = DockStyle.Fill; layout.Controls.Add(runtime, 1, 3);
+            layout.Controls.Add(new Label { Text = "Runtime 文件", AutoSize = true }, 0, 3); runtime.Dock = DockStyle.Fill; layout.Controls.Add(runtime, 1, 3);
             browseRuntime.Text = "浏览…"; layout.Controls.Add(browseRuntime, 2, 3);
-            runtime.Text = Path.Combine(root, "analysis", "runtime", "simulator-quiet2", "openxr_simulator.json");
+            runtime.Text = Program.DefaultRuntime(root, 0);
             if (hudSupported) {
                 layout.Controls.Add(new Label { Text = "HUD 大小", AutoSize = true }, 0, 4);
                 var hud = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
@@ -254,7 +261,7 @@ namespace GearsVrUi {
             try { var saved = Program.ReadConfig(config); game.Text = Convert.ToString(saved["game_path"]); if (hudSupported) hudSize.Value = Program.HudSize(saved); } catch (Exception e) { Log("读取配置失败：" + e.Message); }
             browseGame.Click += delegate { using (var dialog = new OpenFileDialog { Filter = "游戏程序 (*.exe)|*.exe" }) if (dialog.ShowDialog(this) == DialogResult.OK) game.Text = dialog.FileName; };
             browseRuntime.Click += delegate { using (var dialog = new OpenFileDialog { Filter = "OpenXR manifest (*.json)|*.json" }) if (dialog.ShowDialog(this) == DialogResult.OK) runtime.Text = dialog.FileName; };
-            runtimeMode.SelectedIndexChanged += delegate { UpdateButtons(); };
+            runtimeMode.SelectedIndexChanged += delegate { runtime.Text = Program.DefaultRuntime(root, runtimeMode.SelectedIndex); UpdateButtons(); };
             start.Click += async delegate { await StartVr(); };
             stop.Click += async delegate { await StopVr(); };
             recenter.Click += async delegate { await RecenterVr(); };
@@ -274,7 +281,7 @@ namespace GearsVrUi {
             recenter.Enabled = owner != null && !stopping && !recentering && !stopRequested;
             game.Enabled = browseGame.Enabled = runtimeMode.Enabled = !busy;
             hudSize.Enabled = !busy;
-            runtime.Enabled = browseRuntime.Enabled = !busy && runtimeMode.SelectedIndex == 0;
+            runtime.Enabled = browseRuntime.Enabled = !busy && runtimeMode.SelectedIndex != 1;
         }
         async Task RecenterVr() {
             if (owner == null || stopping || recentering || stopRequested) return;
@@ -293,9 +300,9 @@ namespace GearsVrUi {
                 if (!File.Exists(resolved)) throw new IOException("游戏程序不存在，请选择正确路径。");
                 string manifest = Path.Combine(root, "tools", "vr-launcher", "manifest.json");
                 if (!File.Exists(manifest)) throw new IOException("缺少 manifest.json，请先完成此实验构建。");
-                string selectedRuntime = runtimeMode.SelectedIndex == 0 ? runtime.Text.Trim() : null;
+                string selectedRuntime = runtimeMode.SelectedIndex != 1 ? runtime.Text.Trim() : null;
                 if (selectedRuntime != null && !Path.IsPathRooted(selectedRuntime)) selectedRuntime = Path.GetFullPath(Path.Combine(root, selectedRuntime));
-                if (selectedRuntime != null && !File.Exists(selectedRuntime)) throw new IOException("模拟器 manifest 不存在，请浏览选择 JSON 文件。");
+                if (selectedRuntime != null && !File.Exists(selectedRuntime)) throw new IOException("所选 Runtime 文件不存在。VDXR 请先安装 Virtual Desktop Streamer，或浏览选择正确的 JSON 文件。");
                 bool currentHudSupport = Program.SupportsHudSize(Program.ReadConfig(manifest));
                 if (currentHudSupport != hudSupported) throw new IOException("启动清单能力已变化，请重新打开启动器。");
                 Program.SaveOptions(config, path, hudSupported, hudSize.Value); stopRequested = false; starting = true; UpdateButtons(); state.Text = "启动中：请手动进入游戏关卡";

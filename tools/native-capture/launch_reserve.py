@@ -27,6 +27,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--build-dir',type=pathlib.Path,default=ROOT/'tools/native-capture/build-prepare')
     parser.add_argument('--game-path',type=pathlib.Path,help='Supported installation EXE; defaults to repository installation')
+    parser.add_argument('--foreground',action='store_true',help='Use the ordinary foreground game startup policy')
     parser.add_argument('--dll-name',default='GearsCapturePrepare.dll')
     parser.add_argument('--check-shadow-copy',action='store_true',help='Require the bounded source-view copy self-test before startup; does not enable the experiment')
     parser.add_argument('--check-shadow-state',action='store_true',help='Require the independent state lifecycle self-test before startup')
@@ -84,7 +85,7 @@ def main():
         if prime_export.forwarder:raise RuntimeError('Forwarded prime export rejected')
         prime_rva=prime_export.address
     pe.close()
-    run_hidden(debug_command(exe),check=True)
+    run_hidden(debug_command(exe,foreground=args.foreground),check=True)
     handle=None;deadline=time.monotonic()+12
     while time.monotonic()<deadline:
         result=run_hidden(['powershell','-NoProfile','-NonInteractive','-Command',"Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id"],capture_output=True,text=True)

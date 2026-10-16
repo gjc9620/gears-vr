@@ -155,10 +155,11 @@ class Backend:
             "Get-CimInstance Win32_Process -Filter 'Name=''GOWDE-Steam.exe''' | Select-Object -ExpandProperty ProcessId"],capture_output=True,text=True,check=True,
             creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         return [int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
-    def reserve(self,manifest,log,owner=None,game_path=None):
+    def reserve(self,manifest,log,owner=None,game_path=None,foreground=False):
         cmd=[sys.executable,str(ROOT/'tools/native-capture/launch_reserve.py'),'--build-dir',str(rooted(manifest['native_build'])),
              '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link']
         if game_path is not None:cmd+=['--game-path',str(game_path)]
+        if foreground:cmd+=['--foreground']
         if owner:
             cmd+=['--prime-owner-pid',str(owner['pid']),'--prime-owner-creation-time',str(owner['creation_time'])]
         if manifest.get('graphics_startup_lock',False):cmd+=['--graphics-startup-lock']
@@ -269,7 +270,7 @@ class Backend:
         from menu_navigation import navigate
         return navigate(pid,identity,self,cancel,deadline,log,check_live=check_live)
 
-def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sleep,auto_continue=False):
+def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sleep,auto_continue=False,foreground=False):
     game,scale=settings(config,manifest)
     profile=verify_files(manifest,game) # Reject unsupported installs before startup side effects.
     owner=backend.control.identity(os.getpid())
@@ -286,8 +287,8 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         if backend.game_pids():raise RuntimeError('An existing game process must exit normally before fresh startup')
         atomic_json(index,state)
         started=clock();state['phase']='reserving';atomic_json(index,state)
-        reserved=(backend.reserve(manifest,index.with_suffix('.reserve.log'),owner=owner,game_path=game) if owned_prime else
-                  backend.reserve(manifest,index.with_suffix('.reserve.log'),game_path=game))
+        reserved=(backend.reserve(manifest,index.with_suffix('.reserve.log'),owner=owner,game_path=game,foreground=foreground) if owned_prime else
+                  backend.reserve(manifest,index.with_suffix('.reserve.log'),game_path=game,foreground=foreground))
         pid=reserved['pid'];identity=backend.control.identity(pid)
         if not identity or identity!=reserved.get('game_identity') or pathlib.Path(identity['image']).resolve()!=game:raise RuntimeError('Reserved game identity mismatch')
         state.update(phase='waiting_for_level',game_identity=identity,reservation=reserved);atomic_json(index,state)
@@ -468,6 +469,7 @@ def main():
     parser.add_argument('--manifest',type=pathlib.Path,default=HERE/'manifest.json')
     parser.add_argument('--runtime',type=pathlib.Path,help='Child-process OpenXR manifest override; no registry change')
     parser.add_argument('--auto-continue',action='store_true',help='Navigate the verified menu path into the existing campaign')
+    parser.add_argument('--foreground',action='store_true',help='Use the ordinary foreground game startup policy')
     args=parser.parse_args()
     try:
         backend=Backend()
@@ -478,7 +480,7 @@ def main():
             runtime=args.runtime.resolve()
             if not runtime.is_file():raise RuntimeError('OpenXR runtime manifest does not exist')
             os.environ['XR_RUNTIME_JSON']=str(runtime)
-        return start(json.loads(args.config.read_text()),json.loads(args.manifest.read_text()),backend,auto_continue=args.auto_continue)
+        return start(json.loads(args.config.read_text()),json.loads(args.manifest.read_text()),backend,auto_continue=args.auto_continue,foreground=args.foreground)
     except Exception as error:print(str(error),file=sys.stderr);return 1
 
 if __name__=='__main__':raise SystemExit(main())

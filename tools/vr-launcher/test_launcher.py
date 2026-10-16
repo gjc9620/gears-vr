@@ -39,8 +39,8 @@ class FakeBackend:
     def game_pids(self):return [55] if self.existing else []
     def open_cancel(self,pid):return 2
     def cancelled(self,handle):return self.cancel
-    def reserve(self,manifest,log,owner=None,game_path=None):
-        self.reserve_calls+=1;self.prime_owner=owner;self.selected_path=game_path
+    def reserve(self,manifest,log,owner=None,game_path=None,foreground=False):
+        self.reserve_calls+=1;self.prime_owner=owner;self.selected_path=game_path;self.foreground=foreground
         return {'pid':55,'game_identity':dict(self.game)}
     def game_window(self,pid):return 12345
     def finish_owned_prime(self,manifest,identity,owner):return {'entry_restore_verified':True}
@@ -50,6 +50,34 @@ class FakeBackend:
         return dict(pawn='0x200',controller='0x100',camera='0x400',level='0x300',timestamp=float(self.samples))
 
 class LauncherTests(unittest.TestCase):
+    def test_cli_foreground_reaches_start(self):
+        for foreground in (False,True):
+            argv=['launcher.py','start']+(['--foreground'] if foreground else [])
+            with self.subTest(foreground=foreground),mock.patch.object(launcher.sys,'argv',argv),\
+                    mock.patch.object(launcher,'Backend',return_value=object()),\
+                    mock.patch.object(launcher.pathlib.Path,'read_text',return_value='{}'),\
+                    mock.patch.object(launcher,'start',return_value=0) as start:
+                self.assertEqual(launcher.main(),0)
+                self.assertIs(start.call_args.kwargs['foreground'],foreground)
+
+    def test_foreground_reaches_owned_and_legacy_reservation(self):
+        for owned in (False,True):
+            for foreground in (False,True):
+                with self.subTest(owned=owned,foreground=foreground),tempfile.TemporaryDirectory() as directory:
+                    backend=FakeBackend(cancel=True)
+                    with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                        launcher.start({},dict(MANIFEST,startup_menu=owned),backend,pathlib.Path(directory)/'index.json',foreground=foreground)
+                    self.assertIs(backend.foreground,foreground)
+
+    def test_debug_command_foreground_preserves_startup_policy_script(self):
+        launcher.sys.path.insert(0,str(launcher.ROOT/'tools/debug-launch'))
+        from game_install import debug_command
+        exe=launcher.rooted(MANIFEST['game_path'])
+        quiet=debug_command(exe)
+        self.assertIn(str(launcher.ROOT/'tools/debug-launch/Start-DebugGame.ps1'),quiet)
+        self.assertNotIn('-Foreground',quiet)
+        self.assertEqual(debug_command(exe,foreground=True),quiet+['-Foreground'])
+
     def test_backend_player_requires_full_anchor_guard_and_closes_reader(self):
         backend=launcher.Backend.__new__(launcher.Backend)
         resolver=SimpleNamespace(p=SimpleNamespace(close=mock.Mock()),resolve=mock.Mock())
@@ -115,11 +143,11 @@ class LauncherTests(unittest.TestCase):
     def test_player_default_uses_game_resolution_and_graphics_protection(self):
         directory=pathlib.Path(__file__).parent
         current=json.loads((directory/'manifest.json').read_text())
-        self.assertEqual(current,json.loads((directory/'manifest-world-recovery23-xr16.json').read_text()))
+        self.assertEqual(current,json.loads((directory/'manifest-world-recovery23-xr18-vd.json').read_text()))
         launcher.settings({},current)
         self.assertEqual(current['native_dll'],'GearsCaptureWorldRecovery23.dll')
         self.assertEqual(current['native_build'],'tools/native-capture/build-world-recovery23')
-        self.assertEqual(current['xr_build'],'tools/openxr-probe/build-main-menu16')
+        self.assertEqual(current['xr_build'],'tools/openxr-probe/build-main-menu18-vd')
         self.assertEqual(launcher.hud_horizontal_fov({},current),65.)
         for key in ('startup_menu','graphics_startup_lock','graphics_menu_lock','menu_recovery','ui_hud_plane',
                     'cinematic_camera','world_recovery','hud_size_control','crosshair_assignment_observer'):
@@ -241,6 +269,9 @@ class LauncherTests(unittest.TestCase):
             with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(report),stderr='')) as spawn:
                 backend.reserve(MANIFEST,pathlib.Path(directory)/'log',game_path=selected)
                 command=spawn.call_args.args[0];self.assertEqual(command[command.index('--game-path')+1],str(selected))
+                self.assertNotIn('--foreground',command)
+                backend.reserve(MANIFEST,pathlib.Path(directory)/'log',game_path=selected,foreground=True)
+                self.assertIn('--foreground',spawn.call_args.args[0])
             for field,value in (('game_sha256','bad'),('game_identity',dict(pid=55,creation_time=456,image='other.exe'))):
                 bad=dict(report,**{field:value})
                 with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(bad),stderr='')):

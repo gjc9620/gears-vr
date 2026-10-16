@@ -9,11 +9,11 @@ Start-Process '.\GearsVR Launcher.exe'
 
 使用系统已有 .NET Framework 编译器，不安装依赖。构建会隐藏运行 `--self-test`，检查仓库路径、命令参数、状态解析、配置字段保留、HUD 能力门禁与数值范围、保存读回、owner 身份握手及 Python 可用性，不显示 GUI 或启动游戏。输出保存在忽略目录 `analysis/vr-launcher-ui/`，并复制到仓库根目录的 `GearsVR Launcher.exe`，可直接双击。
 
-选择游戏 EXE、模拟器或系统 OpenXR Runtime，然后启动。游戏路径写入现有 `tools/vr-launcher/config.json`，保留其他字段。模拟器默认使用 `analysis/runtime/simulator-quiet2/openxr_simulator.json`；系统选项让子进程使用系统 Runtime，清除继承的 `XR_RUNTIME_JSON`，不修改注册表。 quiet2 修复菜单交换链重建后编号复用、导致双眼拿到旧菜单纹理的问题；同一重建序列已在实际游戏验证左右眼使用独立新编号并持续投影超过90秒。这项修复不代表所有闪烁或黑屏均已解决。
+默认选择 Quest 3 / Virtual Desktop (VDXR)，也可明确切换系统 Runtime 或本地模拟器，然后启动。VDXR 使用 Program Files 下 Virtual Desktop Streamer/OpenXR/virtualdesktop-openxr.json；文件不存在时直接提示，不自动回退模拟器。游戏路径写入现有 `tools/vr-launcher/config.json`，保留其他字段。选择模拟器时使用 `analysis/runtime/simulator-quiet2/openxr_simulator.json`；系统选项让子进程使用系统 Runtime，清除继承的 `XR_RUNTIME_JSON`，不修改注册表。 quiet2 修复菜单交换链重建后编号复用、导致双眼拿到旧菜单纹理的问题；同一重建序列已在实际游戏验证左右眼使用独立新编号并持续投影超过90秒。这项修复不代表所有闪烁或黑屏均已解决。
 
-模拟器预览保持可见，自动启动不获取桌面焦点；用户可以点击它或移到第二屏。正常连续 VR 会话没有自动结束计时，不主动最小化或重新定位预览。共用游戏启动入口复用后台手柄方案；静默方式不等于将游戏最小化。独立模拟器启动观察通过，游戏自行激活的行为仍需实际观察，见文档68。
+模拟器预览保持可见，自动启动不获取桌面焦点；用户可以点击它或移到第二屏。正常连续 VR 会话没有自动结束计时，不主动最小化或重新定位预览。手动点击 GUI 的“启动 VR”会传入 --foreground，允许游戏正常前台启动，同时保留后台手柄支持。CLI 默认仍使用不抢焦点策略；静默方式不等于将游戏最小化。独立模拟器启动观察通过，游戏自行激活的行为仍需实际观察，见文档68。
 
-启动调用 `launcher.py start --manifest tools/vr-launcher/manifest.json`，不会传入自动导航或结束计时参数。当前本地候选为已完成1080p和4K实际验证的Native23 / XR16，HUD大小控件已启用；旧版可用 `manifest-game-recovery8.json` 回滚，仍依赖仓库工具和Python，不是便携发布包，也未提升发布状态。
+启动调用 `launcher.py start --foreground --manifest tools/vr-launcher/manifest.json`，不会传入自动导航或结束计时参数。当前本地真机候选为 Native23 / XR18-vd：Native23 / XR16 已完成1080p和4K实际验证，XR18-vd 增加 VDXR 等待卡和菜单的类型化纹理上传兼容校验，真机完整体验仍在测试，HUD大小控件已启用；旧版可用 `manifest-game-recovery8.json` 回滚，仍依赖仓库工具和Python，不是便携发布包，也未提升发布状态。
 
 Python 按 `GEARSVR_PYTHON`、随包 `runtime/python/python.exe`、当前用户 `.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`、PATH 中的 `py.exe` / `python.exe` / `python3.exe` 顺序探测。可通过 `GEARSVR_PYTHON` 指定完整路径。探测取得 `sys.executable` 后直接启动该 Python，确保跟踪的进程就是实际 owner。后台命令隐藏窗口，异步读取标准输出和错误。
 
