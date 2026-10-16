@@ -333,3 +333,14 @@ XR22实测 `analysis/runtime/movie22-fallback-summary.json` 记录eligible2843�
 同一13096后台启动也实际触发一次tiny输出恢复，连同17708及已提交 `5fc7e9f` 的守卫/诊断边界见文档68末尾。菜单窗口重绑后成功确认的一次有界重试由 `0559132` 独立修复；失败或部分发送、butContinue不重放，身份/焦点树/稳定复读保护保持。
 
 `c4cb379` 已将默认manifest切到 `manifest-background31-movie23-vd.json`：Native31 `build-background31` 配XR23 `build-main-menu23-vd`，启用movie_display。此前各节“默认未提升”均为当时记录，不应据此再次回到XR16/19重复定位。当前完成的是上述本机有限路径；整套UI、近距离准星、真头显、长期运行、更多CG/分辨率/硬件回归及便携发布和依赖许可仍待验证，不宣称V1完成。原始日志、图像、运行时派生物继续留在ignored analysis，不能进入发布包。
+
+
+## Native32候选：真机反馈后的材质路径修复（尚未提升默认）
+
+2026-10-16用户反馈机枪、换弹、FPS选项及连续游玩黑屏、启动延迟/不进入VR。真实会话40028的保存native-status显示3528次材质上传全部被om_target拒绝；目标是最终输出前的中间纹理，旧实现仅接受swapchain backbuffer。最终传输pair_rejected4117与ticket_conflict4117一致。提交5a19df0允许有完整当前命令列表双眼pair、格式/尺寸/最终传输契约均符合的中间目标进行既有材质双眼重放，保留未知写入失效和最终传输校验；不能据此认定所有新反馈同因。
+
+冻结Native32位于build-material32，原始源来自提交归档，未纳入其他未提交UI实验。GameUiMaterial、FrameLink17990项、FinalTransferPolicy、UiHudPlan、UiMaterialBatch及连续/FrameLink ABI自测通过。模拟器会话continuous-stereo-19292-20261016-235026-f47744cd中，材质draws562（HUD560），仅两个空目标被拒绝，published946、XR copies944，证明新路径实际执行。随后观察到主菜单与空Pawn重绑定失败；换弹脚本在输入前因非关卡状态退出，不能称换弹回归通过。自动首帧GPU快照是黑色图像，不能把成功提交计数当像素画面通过；未取得后续人工请求图，暂不提升默认清单。停止时native_cleanup_verified=true，但整轮phase=incomplete，不称会话验收成功。原始证据保留在ignored analysis/runtime，含该会话native-status副本。
+
+提交579d2a2修复已证明的注册表/时间戳临时变化导致启动永久放弃，保持共享截止时间、身份和代码变化拒绝、激活不重试。19292实际经历7次重新获取后成功激活，但准备耗时19.9秒，启动延迟仍未解决。提交3c83336/3229b4d增加GUI中英文切换和后端配置兼容，50项launcher测试及GUI自检通过。
+
+余项继续保留：机枪/载具摄像机覆盖、所有黑屏路径、头显帧节奏、缩短启动、HUD元素尺寸与位置分离、真机回归。预渲染CG只能双眼共用二维电影，不能标为真实几何立体。当前默认仍Native31/XR23；Native32仅诊断候选。
