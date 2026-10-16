@@ -36,3 +36,5 @@ Native34首次进关前失败的PID39900：实际交换链8×8；状态文件偶
 离线补充：038361c允许有完整单一范围证据的NativeSubtitle字幕整体使用元素缩放／中心收拢，字间距随同组缩放；多范围碎片和未知组仍回退。UiHudLayout／UiCanvasTextBatch／UiPayloadReceipts CPU测试通过，尚未构建进冻结Native34或做画面验收。新打包流程会生成中英文README.txt，并纳入文件清单；13项打包测试通过。既有offline2包仍保持原快照，不含这两项后续变化。
 
 冻结候选补充（Native35）：从已提交源码7524ea3单独导出native-capture／vr-common，复用Native34冻结MinHook依赖并记录逐文件哈希，完成Release全量构建。DLL为`tools/native-capture/build-subtitle35/GearsCaptureSubtitle35.dll`，SHA256 `c6b40ed4b1f3ab45e5874f2bbf660d7a25c13c30d9d2919b8d96b6215a43511d`。它包含此前机枪／HUD候选以及038361c完整单范围字幕布局；不含工作区尚未提交的旁路修改。10项离线检查通过：HUD布局／平面、收据、Canvas文字、索引、材质批次、游戏材质、FrameLink及DLL continuous／frame-link ABI。记录位于`analysis/runtime/subtitle35-source.json`、`subtitle35-selftests.json`和`manifest-subtitle35.json`。未启动游戏、模拟器或输入辅助，未替换默认Native32清单，未生成新发布包。GPU、机枪、字幕实显及头显稳定性仍未验收；保持运行测试暂停与后台手柄默认关闭。
+
+用户指定试用Native35：默认manifest.json现临时选择manifest-subtitle35-vd.json（游戏／DLL／XR哈希复核通过），原Native32清单保留回退；这只是试用选择，不是完成验收或发布。用户配置未覆盖。本轮显式VDXR运行时、普通前台游戏启动，后台手柄仍关闭，不启动模拟器；用户自行游玩并决定结束时间。试用日志前缀`analysis/runtime/subtitle35-user-trial`。
