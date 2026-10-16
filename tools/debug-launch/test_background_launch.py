@@ -24,6 +24,8 @@ class BackgroundLaunchTests(unittest.TestCase):
     def setUp(self):
         patcher = mock.patch.object(background_launch, 'process_creation_time', return_value=123456)
         patcher.start(); self.addCleanup(patcher.stop)
+        environment = mock.patch.dict(background_launch.os.environ, {'GEARSVR_QUIET_STARTUP_BUILD':''})
+        environment.start(); self.addCleanup(environment.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.root = pathlib.Path(self.temp.name)
         self.game = self.root / 'GOWDE-Steam.exe'
@@ -35,32 +37,23 @@ class BackgroundLaunchTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def test_default_launch_uses_nonactivating_visible_window_and_starts_helper_hidden(self):
-        calls = []
-
-        def popen(command, **kwargs):
-            calls.append((command, kwargs))
-            return Process(4100 if len(calls) == 1 else 4101)
-
+    def test_default_launch_uses_frozen_quiet_policy_and_hidden_helpers(self):
+        build, _, bootstrap = self.default_quiet_fixture()
+        self.quiet_patches()
+        popen = mock.Mock(side_effect=[bootstrap, Process(5200)])
         result = background_launch.launch(self.game, ['-NoPauseUnfocus', 'SP_Prison_P'],
-                                          game_io=self.helper, runtime=self.runtime, popen=popen)
-        self.assertEqual(calls[0][0], [str(self.game.resolve()), '-NoPauseUnfocus', 'SP_Prison_P'])
-        self.assertEqual(calls[0][1]['cwd'], str(self.game.parent))
-        self.assertEqual(calls[0][1]['creationflags'], background_launch.subprocess.CREATE_NO_WINDOW)
-        self.assertEqual(calls[0][1]['startupinfo'].wShowWindow,
-                         background_launch.SW_SHOWNOACTIVATE)
-        self.assertEqual(calls[0][1]['startupinfo'].dwFlags & background_launch.subprocess.STARTF_USESHOWWINDOW,
-                         background_launch.subprocess.STARTF_USESHOWWINDOW)
-        self.assertEqual(calls[1][0][2:], ['enable', '--creation-time', '123456', '--pid', '4100', '--wait-seconds', '60'])
-        self.assertEqual(calls[1][1]['creationflags'], background_launch.subprocess.CREATE_NO_WINDOW)
-        self.assertEqual(calls[1][1]['startupinfo'].wShowWindow, 0)
-        self.assertIn('--creation-time', calls[1][0])
-        self.assertEqual(result['creation_time'],123456)
-        self.assertEqual(result['background_input_helper_pid'], 4101)
-        self.assertEqual(result['window_startup_policy'], 'shown_no_activate')
-        saved = json.loads((self.runtime / 'background-launch-4100.json').read_text(encoding='utf-8'))
+            game_io=self.helper, runtime=self.runtime, popen=popen)
+        self.assertEqual(popen.call_args_list[0].args[0], [str(build/'GearsEarlyLaunch.exe'), str(self.game),
+            str(build/'GearsQuietStartup.dll'), '-NoPauseUnfocus', 'SP_Prison_P'])
+        for call in popen.call_args_list:
+            self.assertEqual(call.kwargs['creationflags'], background_launch.subprocess.CREATE_NO_WINDOW)
+            self.assertEqual(call.kwargs['startupinfo'].wShowWindow, 0)
+        self.assertEqual(popen.call_args_list[1].args[0][2:],
+            ['enable', '--creation-time', '987654', '--pid', '5100', '--wait-seconds', '60'])
+        self.assertEqual(result['window_startup_policy'], 'quiet_startup')
+        self.assertEqual(result['creation_time'], 987654)
+        saved=json.loads((self.runtime/'background-launch-5100.json').read_text())
         self.assertEqual(saved['game_args'], ['-NoPauseUnfocus', 'SP_Prison_P'])
-        self.assertEqual(saved['pid'], 4100)
 
     def test_foreground_and_disabled_modes_do_not_start_helper(self):
         calls = []
@@ -89,14 +82,37 @@ class BackgroundLaunchTests(unittest.TestCase):
             self.assertEqual(background_launch.main(['--game-path',str(self.game),'--game-arg=-NoPauseUnfocus']),0)
             self.assertEqual(launch.call_args.args[1], ['-NoPauseUnfocus'])
 
-    def test_only_controller_disabled_keeps_background_window(self):
-        calls = []
-        def popen(command, **kwargs):
-            calls.append((command, kwargs)); return Process(4400)
+    def test_only_controller_disabled_keeps_quiet_startup(self):
+        _, _, bootstrap = self.default_quiet_fixture()
+        self.quiet_patches()
+        popen = mock.Mock(return_value=bootstrap)
         result = background_launch.launch(self.game, disable_background_input=True,
-                                          game_io=self.root / 'missing.py', runtime=self.runtime, popen=popen)
-        self.assertEqual(len(calls), 1)
+            game_io=self.root/'missing.py', runtime=self.runtime, popen=popen)
+        self.assertEqual(popen.call_count,1)
         self.assertFalse(result['background_input_requested'])
+        self.assertEqual(result['window_startup_policy'],'quiet_startup')
+
+    def default_quiet_fixture(self):
+        import hashlib
+        build, report, bootstrap = self.quiet_fixture()
+        for name,value in (('DEFAULT_QUIET_BUILD',build),('DEFAULT_QUIET_SHA256',
+                {name:hashlib.sha256(b'fixture').hexdigest() for name in background_launch.DEFAULT_QUIET_SHA256})):
+            patcher=mock.patch.object(background_launch,name,value);patcher.start();self.addCleanup(patcher.stop)
+        return build,report,bootstrap
+
+    def test_missing_or_changed_default_never_starts_game_or_falls_back(self):
+        build, _, _ = self.default_quiet_fixture()
+        popen=mock.Mock()
+        for name in background_launch.DEFAULT_QUIET_SHA256:
+            file=build/name
+            file.write_bytes(b'changed')
+            with self.assertRaisesRegex(RuntimeError,'artifact missing or changed'):
+                background_launch.launch(self.game,disable_background_input=True,popen=popen)
+            file.unlink()
+            with self.assertRaisesRegex(RuntimeError,'artifact missing or changed'):
+                background_launch.launch(self.game,disable_background_input=True,popen=popen)
+            file.write_bytes(b'fixture')
+        popen.assert_not_called()
 
     def quiet_fixture(self):
         build = self.root / 'quiet build'
@@ -233,6 +249,13 @@ class BackgroundLaunchTests(unittest.TestCase):
             self.assertEqual(launch.call_args.kwargs['quiet_build'], self.root/'env')
             self.assertEqual(background_launch.main(['--game-path', str(self.game), '--quiet-build', str(self.root/'explicit')]), 0)
             self.assertEqual(launch.call_args.kwargs['quiet_build'], self.root/'explicit')
+            self.assertEqual(background_launch.main(['--game-path',str(self.game),'--foreground']),0)
+            self.assertIsNone(launch.call_args.kwargs['quiet_build'])
+
+    def test_cli_without_environment_selects_frozen_default(self):
+        with mock.patch.object(background_launch,'launch',return_value={}) as launch:
+            self.assertEqual(background_launch.main(['--game-path',str(self.game)]),0)
+            self.assertEqual(launch.call_args.kwargs['quiet_build'],background_launch.DEFAULT_QUIET_BUILD)
 
 
 if __name__ == '__main__':

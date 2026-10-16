@@ -1,8 +1,9 @@
-"""Launch the game without initially activating its window, then arm background input."""
+"""Launch with the frozen process-local quiet policy, then arm background input."""
 import argparse
 import ctypes
 from ctypes import wintypes
 import datetime
+import hashlib
 import json
 import os
 import pathlib
@@ -14,6 +15,26 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 GAME_IO = ROOT / 'tools/game-io/background_input.py'
 RUNTIME = ROOT / 'analysis/runtime'
 SW_SHOWNOACTIVATE = 4
+DEFAULT_QUIET_BUILD = ROOT / 'tools/quiet-startup/build-quiet8'
+DEFAULT_QUIET_SHA256 = {
+    'GearsEarlyLaunch.exe': '1c20671926af4050091e58e388886c4d3baa5218cbe263730d47888b372bb111',
+    'GearsQuietStartup.dll': 'd24bf2da8bde8017326f540c782eaf2fba119cec4504758b291a3d9246ec17cc',
+}
+
+
+def quiet_build_for_start(foreground=False, explicit=None):
+    if foreground:
+        if explicit is not None:raise ValueError('foreground and quiet_build cannot be combined')
+        return None
+    return pathlib.Path(explicit or os.environ.get('GEARSVR_QUIET_STARTUP_BUILD') or DEFAULT_QUIET_BUILD)
+
+
+def verify_default_quiet_build(build):
+    if pathlib.Path(build).resolve() != DEFAULT_QUIET_BUILD.resolve():return
+    for name, expected in DEFAULT_QUIET_SHA256.items():
+        path = DEFAULT_QUIET_BUILD / name
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+            raise RuntimeError('Frozen quiet startup artifact missing or changed: ' + str(path))
 
 
 def nonactivating_startupinfo():
@@ -36,8 +57,7 @@ def process_creation_time(process):
 
 def launch(game_path, game_args=(), *, foreground=False, disable_background_input=False,
            game_io=GAME_IO, runtime=RUNTIME, popen=subprocess.Popen, quiet_build=None):
-    if foreground and quiet_build is not None:
-        raise ValueError('foreground and quiet_build cannot be combined')
+    quiet_build = quiet_build_for_start(foreground, quiet_build)
     game_path = pathlib.Path(game_path).resolve()
     if not game_path.is_file():
         raise FileNotFoundError(game_path)
@@ -46,6 +66,7 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
 
     quiet_report = None
     if quiet_build is not None:
+        verify_default_quiet_build(quiet_build)
         from quiet_launch import launch_quiet
         quiet_report = launch_quiet(game_path, game_args, quiet_build, popen=popen)
         game_pid, creation_time = quiet_report['pid'], quiet_report['creation_time']
@@ -100,11 +121,12 @@ def main(argv=None):
     parser.add_argument('--game-arg', action='append', default=[])
     parser.add_argument('--foreground', action='store_true', help='Use the ordinary foreground startup policy')
     parser.add_argument('--disable-background-input', action='store_true')
-    parser.add_argument('--quiet-build', type=pathlib.Path, default=os.environ.get('GEARSVR_QUIET_STARTUP_BUILD') or None)
+    parser.add_argument('--quiet-build', type=pathlib.Path, help='Override frozen quiet8 startup build (or GEARSVR_QUIET_STARTUP_BUILD)')
     args = parser.parse_args(argv)
     try:
         record = launch(args.game_path, args.game_arg, foreground=args.foreground,
-                        disable_background_input=args.disable_background_input, quiet_build=args.quiet_build)
+                        disable_background_input=args.disable_background_input,
+                        quiet_build=quiet_build_for_start(args.foreground,args.quiet_build))
         print(json.dumps(record))
         return 0
     except Exception as error:
