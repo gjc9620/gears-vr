@@ -26,6 +26,12 @@ struct alignas(8) GpuPacket {
     alignas(8) volatile LONG64 world_generation,world_minimum_sample_ns;
 };
 struct WorldState {bool valid{};std::uint64_t generation{};bool quiescing{};std::int64_t minimum_sample_ns{};};
+inline bool gpu_display_identity_matches(GpuPacket const& p,unsigned pid,std::uint64_t generation,
+                                         unsigned width,unsigned height,unsigned format,bool simulated){
+    return p.ready==1&&p.stopped==0&&p.magic==0x47564731&&p.version==gpu_packet_version&&p.size==sizeof(GpuPacket)&&
+        p.pid==pid&&pid&&p.generation==generation&&generation&&p.allow_simulated==(simulated?1u:0u)&&
+        p.width==width&&p.height==height&&p.format==format;
+}
 inline bool gpu_world_image_current(WorldState const& world,std::uint64_t acquired_generation,std::int64_t sample_ns){
     return world.valid&&!world.quiescing&&world.generation&&acquired_generation==world.generation&&sample_ns>world.minimum_sample_ns;
 }
@@ -436,6 +442,12 @@ public:
     bool reconfiguring()const{return packet&&!stopped()&&InterlockedCompareExchange(&packet->ready,0,0)==2;}
     std::uint64_t generation()const{return generation_;}
     WorldState world_state()const{return gpu_world_state(packet);}
+    // Read-only authority for an application-owned wait card. Mirrors the
+    // opened receiver identity checks without acquiring/acknowledging a slot.
+    bool display_identity_valid()const{
+        return packet&&claimed&&!stopped()&&InterlockedCompareExchange(&packet->ready,0,0)==1&&
+            gpu_display_identity_matches(*packet,producer_pid,generation_,width,height,static_cast<unsigned>(format),allow_simulated_);
+    }
     std::uint64_t acquired_world_generation()const{return acquired_world_generation_;}
     bool release_for_resize(){
         if(!reconfiguring()||pending||!claimed)return false;

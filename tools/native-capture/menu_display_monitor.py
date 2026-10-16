@@ -199,8 +199,8 @@ class MenuDisplayMonitor:
         # Keep the real exception identities for injected factories as well.
         # Importing the types does not construct a Resolver or open a process.
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'game-io'))
-        from menu_state import SnapshotChanged, DialogStorageChanged, InventoryChanged
-        self.snapshot_change_types = (SnapshotChanged, DialogStorageChanged, InventoryChanged)
+        from menu_state import SnapshotChanged, DialogStorageChanged, InventoryChanged, RegistrySnapshotChanged
+        self.snapshot_change_types = (SnapshotChanged, DialogStorageChanged, InventoryChanged, RegistrySnapshotChanged)
         self.snapshot_changed_type = SnapshotChanged
         if reader_factory is None:
             from menu_state import MenuReader

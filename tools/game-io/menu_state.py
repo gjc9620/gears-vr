@@ -32,7 +32,11 @@ class SnapshotChanged(RuntimeError):
 
 
 class InventoryChanged(RuntimeError):
-    """The second snapshot still disagreed with the cached object inventory."""
+    """The bounded acquisition still disagreed with the cached object inventory."""
+
+
+class RegistrySnapshotChanged(RuntimeError):
+    """Only the final registry-header bracket changed; refresh before reuse."""
 
 
 def read_root_source_text(read, nodes_address, base, attempts=3):
@@ -106,6 +110,7 @@ class MenuReader:
         profile = json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
         self.r = Resolver(pid, profile)
         self.properties = {}
+        self._registry_dirty = False
         try:
             self.r.prepare()
             candidates = []
@@ -270,10 +275,20 @@ class MenuReader:
             raise RuntimeError('Registry header changed during forced refresh')
 
     def sample(self, *, include_tree=False):
+        refresh_used = False
+        if getattr(self, '_registry_dirty', False):
+            # No sample may use this cache until the original client identity,
+            # both complete inventories and both header brackets pass again.
+            # Failure leaves dirty set and propagates without any retry/wrapping.
+            self.force_registry_refresh()
+            self._registry_dirty = False
+            refresh_used = True
         try:
             return self._sample_once(include_tree=include_tree)
         except RuntimeError as error:
             registry_changed = type(error) is RuntimeError and str(error)=='Object registry identity changed'
+            if registry_changed and refresh_used:
+                raise InventoryChanged(str(error)) from error
             if not registry_changed and type(error) not in (SnapshotChanged,DialogStorageChanged):raise
         # All recoverable failures share exactly one retry. _sample_once has
         # restored r.read and discarded its failed ledger. No new timestamp,
@@ -387,7 +402,8 @@ class MenuReader:
                 if original_read(address, size) != value:
                     raise SnapshotChanged(f'UI changed before snapshot verification at {address:#x} size {size}')
             if registry != original_read(r.objects_header, 16):
-                raise RuntimeError('Registry changed before snapshot verification')
+                self._registry_dirty = True
+                raise RegistrySnapshotChanged('Registry changed before snapshot verification')
             result['verified_reads'] = len(reads)
             result['consistent_reread'] = True
             return result

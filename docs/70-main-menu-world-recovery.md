@@ -295,3 +295,18 @@ XR15 SHA256 `166a697dbd80dbfe77f7261741263638a0c7de04611f6784d956855ec78714e0`�
 加载实测记录blocks=[2,1]后直接到block0，总计4402.8728ms，成功等待卡episode覆盖内部区间；完整结构与加载审计通过。独立4K审计通过的范围仅脚本路径、源GPU图像及原生一致性，明确不包含无空窗验收。最长非空合成间隔仍为222.4131ms，complete=true/dropped0/later0，位于GAMEPLAY下source_reconfiguration→waiting_image→submitted，需独立处理。日志另见精确Registry末尾复读竞争导致普通RuntimeError/reader_retry，尚未放宽保护，下一步分析专属异常与原client校验。旧XR15失败审计保留原样。
 
 正常停止、43入口恢复、XR shutdown、身份核验WM_CLOSE通过，CIM确认游戏与XR进程退出。临时4K仅修改分辨率X/Y，游戏退出后已恢复1920×1080，其他设置保留；无激活焦点操作。ignored证据：`xr15b-4k-events.json`、`xr15b-4k-audit.json`、`xr15b-loading-audit.json`、原始会话日志/图像/冻结原生状态、`xr15b-4k-config-state.json`。默认玩家清单未提升。
+
+
+## XR16：独立世界交接提示及Registry末尾竞争恢复
+
+XR15b的222ms间隔发生在菜单恢复成功约3.19秒之后的world交接，不能归因为菜单卡被不合法旧票据提前替换。新增独立WorldHandoffDisplay：仅有效world与opened receiver身份共同认证的quiescing或已有baseline后的generation增长建立pending；初始稳定代、无效/回退generation、wrongPID/resource均不能制造pending。只在continuous会话、新鲜GAMEPLAY、正常world重配置/等待图像、无其他图层且无停止/结构错误时复用原中性静态卡。上传后重新核验world、receiver资源身份、owner/stop和菜单lease；不改变projection票据、时效或资源获取规则。只有实际成功提交当前有效代次projection才清pending；独立world_handoff_card证据与layer_kind不算双目场景。
+
+XR16最终SHA256 `29d7e2e651104868bde3931939670eb5461bf6496ff289b901c0a7b3d2bba1b0`，Native23未重建且ABI布局未变。完整build16、16项CPU测试与receiver自检通过，补充wrongPID/resource quiescing→匹配同代和回退代次负例后重建复核。
+
+另将MenuReader最后一次objects header比较的唯一竞争分支区分为RegistrySnapshotChanged，失败快照仍丢弃并标记dirty；monitor仅精确异常保留reader，继续UNKNOWN/null证据，不授mode6。下次完整采集前沿用既有强刷，完整names/objects库存、原client身份、零名和两个header复核通过才清dirty；强刷共享一次预算，整轮_sample_once最多两次，I/O/header/client失败保留原拒绝/重建语义。52项menu_state、32项menu_control、41项menu monitor、19项world monitor共144项测试通过。
+
+实际1080p会话 `continuous-stereo-16312-20261016-130305-7e8c534c` 完成真实检查点world1→2、新Pawn手枪开镜/还原步枪、主菜单Continue→world3，GPU index0/1/2双眼非黑，四原生阶段各4051对零错配；projection4310/copies4032。独立world等待卡14层，成功episode从67125169039300至67125324784300持续155.745ms，由quiescing代1转到有效稳定代2成功projection而结束。两份离线审计通过，范围是本轮脚本、源GPU图像、原生一致性与已审查的成功卡episode契约，不代表头显像素验收。
+
+本轮outage完整记录complete=true/later0/dropped0，最长间隔89.319ms，未出现超过100ms窗口；最长位置在Pause面板初始衔接。mode6精确SnapshotChanged已实际出现，但本轮未再次复现RegistrySnapshotChanged，后者恢复由故障注入测试证明，不能宣称实际竞争路径已运行覆盖。正常停止、43入口恢复、XR shutdown、身份核验WM_CLOSE及CIM进程退出通过，未抢焦点，分辨率保持1080p。ignored证据 `xr16-world-events.json`、`xr16-world-audit.json`、`xr16-handoff-audit.json`、原始日志/图像与冻结原生状态。
+
+XR16尚未进行完整4K回归和真头显验证；默认玩家清单未提升。下一重点转向实际CG/视频与整套UI覆盖：cinematic标志和Continue加载不能代替播放区间/实际画面证据，章节入口尚待精确只读状态确认；不得盲目开始新游戏覆盖存档。

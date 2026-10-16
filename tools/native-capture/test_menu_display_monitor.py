@@ -642,11 +642,12 @@ class Tests(unittest.TestCase):
             m.close()
 
     def test_real_typed_snapshot_churn_keeps_reader_with_sample_snapshot_wait_only(self):
-        for type_name in ('SnapshotChanged','DialogStorageChanged','InventoryChanged'):
+        for type_name in ('SnapshotChanged','DialogStorageChanged','InventoryChanged','RegistrySnapshotChanged'):
             with self.subTest(type_name=type_name),tempfile.TemporaryDirectory() as d:
                 path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
-                from menu_state import SnapshotChanged, DialogStorageChanged, InventoryChanged
-                error_type={'SnapshotChanged':SnapshotChanged,'DialogStorageChanged':DialogStorageChanged,'InventoryChanged':InventoryChanged}[type_name]
+                from menu_state import SnapshotChanged, DialogStorageChanged, InventoryChanged, RegistrySnapshotChanged
+                error_type={'SnapshotChanged':SnapshotChanged,'DialogStorageChanged':DialogStorageChanged,
+                    'InventoryChanged':InventoryChanged,'RegistrySnapshotChanged':RegistrySnapshotChanged}[type_name]
                 factory=Mock(return_value=reader);m.factory=factory
                 reader.sample=Mock(side_effect=[pause_sample(),error_type('changed'),error_type('changed'),checkpoint_confirmation_sample()])
                 try:
@@ -709,13 +710,16 @@ class Tests(unittest.TestCase):
 
     def test_plain_failures_and_typed_subclasses_still_close_and_back_off(self):
         with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
-            from menu_state import SnapshotChanged, DialogStorageChanged, InventoryChanged
+            from menu_state import SnapshotChanged, DialogStorageChanged, InventoryChanged, RegistrySnapshotChanged
         class DerivedSnapshotChanged(SnapshotChanged):pass
         class DerivedDialogStorageChanged(DialogStorageChanged):pass
         class DerivedInventoryChanged(InventoryChanged):pass
+        class DerivedRegistrySnapshotChanged(RegistrySnapshotChanged):pass
         for error in (RuntimeError('SnapshotChanged'),RuntimeError('Object registry identity changed'),
+                      RuntimeError('Registry changed before snapshot verification'),
                       OSError('read failed'),ValueError('bad registry'),UnicodeError('bad name'),
-                      DerivedSnapshotChanged('changed'),DerivedDialogStorageChanged('changed'),DerivedInventoryChanged('changed')):
+                      DerivedSnapshotChanged('changed'),DerivedDialogStorageChanged('changed'),DerivedInventoryChanged('changed'),
+                      DerivedRegistrySnapshotChanged('changed')):
             with self.subTest(error=type(error).__name__),tempfile.TemporaryDirectory() as d:
                 path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
                 factory=Mock(return_value=reader);m.factory=factory

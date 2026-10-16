@@ -4,6 +4,7 @@
 #include "outage_diagnostics.h"
 #include "eye_chain_policy.h"
 #include "menu_eye_panel.h"
+#include "world_handoff_display.h"
 
 enum class ProjectionStatus {submitted,producer_stopped,producer_unavailable,waiting_image,current_inactive,current_untracked,
     reference_space_changed,empty_ticket,session_mismatch,ticket_flags,ticket_geometry,stale_ticket,image_rectangle,session_lost,producer_structure_invalid,probe_failure,menu_requested,menu_recovery_pending,reference_epoch_pending,source_reconfiguration,count};
@@ -67,6 +68,7 @@ class GameGpuScreen {
     // A newer receiver ticket can be rejected without changing these pixels.
     gears_vr::StereoImageTicket copied_ticket{};
     uint64_t copied_sequence{},copied_world_generation{},observed_world_generation{};
+    WorldHandoffDisplay handoff_display;
     ComPtr<ID3D12Resource> snapshot_buffer;
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT snapshot_layout{};
     UINT64 snapshot_bytes=0;
@@ -212,6 +214,7 @@ public:
     // receiver to drain the old slot without acquiring an XR image or copying.
     bool poll_world_handoff(){
         const auto world=receiver->world_state();
+        handoff_display.observe({world.valid&&receiver->display_identity_valid(),world.generation,world.quiescing});
         const bool changed=world.valid&&observed_world_generation!=world.generation;
         if(changed)observed_world_generation=world.generation;
         if(!world.valid||world.quiescing||changed){current=false;copied_ticket={};copied_sequence=0;copied_world_generation=0;}
@@ -347,6 +350,19 @@ public:
         quad.subImage.swapchain=eyes[0].chain;quad.subImage.imageRect.extent={int32_t(receiver->width),int32_t(receiver->height)};++rendered;return true;
     }
     bool producer_stopped() const{return receiver->stopped();}
+    WorldHandoffDisplay::State handoff_display_state()const{return handoff_display.state();}
+    bool handoff_display_eligible(bool refresh=false){
+        if(refresh){const auto world=receiver->world_state();
+            handoff_display.observe({world.valid&&receiver->display_identity_valid(),world.generation,world.quiescing});}
+        return receiver->display_identity_valid()&&handoff_display.eligible();
+    }
+    bool handoff_projection_completed(){
+        const auto world=receiver->world_state();
+        handoff_display.observe({world.valid&&receiver->display_identity_valid(),world.generation,world.quiescing});
+        const bool admitted=receiver->display_identity_valid()&&current&&
+            gears_vr::gpu_world_image_current(world,copied_world_generation,copied_ticket.sample.received_ns);
+        return handoff_display.projection_completed(admitted,copied_world_generation);
+    }
     bool reconfiguring()const{return receiver->reconfiguring();}
     std::uint64_t resource_generation()const{return receiver->generation();}
     bool retire_for_resize(){

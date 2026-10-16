@@ -3,7 +3,7 @@ import struct
 import unittest
 from unittest import mock
 
-from menu_state import MenuReader, registered, read_root_source_text, DialogStorageChanged, SnapshotChanged, InventoryChanged
+from menu_state import MenuReader, registered, read_root_source_text, DialogStorageChanged, SnapshotChanged, InventoryChanged, RegistrySnapshotChanged
 
 
 class FakeResolver:
@@ -119,6 +119,7 @@ class MenuStateTests(unittest.TestCase):
         self.r = FakeResolver()
         self.reader = MenuReader.__new__(MenuReader)
         self.reader.r, self.reader.client, self.reader.properties = self.r, 0x3000, {}
+        self.reader._registry_dirty = False
         # Focus on actual sample validation; no OS APIs or registry enumeration.
         self.reader.refresh = lambda: None
 
@@ -347,6 +348,105 @@ class RegistryRecoveryTests(unittest.TestCase):
         self.slot=self.r.identities[0x2000]['internal_index']
         # Stable registry headers, stale cached zero, valid current live slot.
         self.r.object_pointers[self.slot]=0
+
+    def arm_final_header_change(self):
+        # First header read is ledger acquisition, second is ledger validation;
+        # the third is the distinct final bracket after every ledger read passed.
+        self.r.object_pointers[self.slot]=0x2000
+        original=self.r.read
+        counter={'reads':0,'changes':0}
+        def read(address,size):
+            raw=original(address,size)
+            if (address,size)==(self.r.objects_header,16):
+                counter['reads']+=1
+                if counter['reads']==3:
+                    data,count,capacity=struct.unpack('<Qii',raw)
+                    raw=struct.pack('<Qii',data,count,capacity+1)
+                    self.r.put(address,raw);counter['changes']+=1
+            return raw
+        self.r.read=read
+        return counter,read
+
+    def test_real_final_third_header_race_defers_refresh_until_next_sample(self):
+        counter,read=self.arm_final_header_change()
+        with mock.patch.object(self.reader,'_sample_once',wraps=self.reader._sample_once) as sampled,\
+             mock.patch.object(self.reader,'force_registry_refresh',wraps=self.reader.force_registry_refresh) as forced:
+            with self.assertRaises(RegistrySnapshotChanged) as raised:self.reader.sample(include_tree=True)
+            self.assertIs(type(raised.exception),RegistrySnapshotChanged)
+            self.assertNotIsInstance(raised.exception,SnapshotChanged)
+            self.assertTrue(self.reader._registry_dirty);self.assertEqual(counter['reads'],3)
+            sampled.assert_called_once_with(include_tree=True);forced.assert_not_called()
+            self.assertIs(self.r.read,read);self.assertFalse(hasattr(self.reader,'_dialog_raw_read'))
+            result=self.reader.sample(include_tree=True)
+            forced.assert_called_once();self.assertEqual(sampled.call_count,2)
+        self.assertTrue(result['consistent_reread']);self.assertFalse(self.reader._registry_dirty)
+        self.assertEqual(self.r.object_pointers[self.slot],0x2000)
+        self.assertNotIn('stale',self.r.names_cache);self.r.prepare.assert_not_called()
+
+    def test_repeated_real_final_races_stay_dirty_without_nested_retry(self):
+        counter,read=self.arm_final_header_change()
+        with self.assertRaises(RegistrySnapshotChanged):self.reader.sample()
+        original=self.reader.force_registry_refresh
+        def refreshed():
+            original();counter['reads']=0
+        with mock.patch.object(self.reader,'force_registry_refresh',side_effect=refreshed) as forced,\
+             mock.patch.object(self.reader,'_sample_once',wraps=self.reader._sample_once) as sampled:
+            with self.assertRaises(RegistrySnapshotChanged):self.reader.sample()
+            forced.assert_called_once();sampled.assert_called_once()
+        self.assertEqual(counter['changes'],2);self.assertTrue(self.reader._registry_dirty)
+        self.assertIs(self.r.read,read);self.r.prepare.assert_not_called()
+
+    def test_dirty_refresh_failures_keep_original_exception_and_dirty_without_sampling(self):
+        for fault in ('client','invalid_header','changing_header','io'):
+            with self.subTest(fault=fault):
+                self.setUp();self.reader._registry_dirty=True
+                if fault=='client':self.r.identities[self.reader.client]['number']+=1
+                elif fault=='invalid_header':self.r.put(self.r.names_header,struct.pack('<Qii',self.r.names_data,1000,1001))
+                elif fault=='changing_header':self.r.change_on_second_read=(self.r.names_header,16)
+                else:
+                    error=OSError('read failed');self.r.read=mock.Mock(side_effect=error)
+                expected={'client':'Scene client identity changed','invalid_header':'Invalid forced registry header',
+                          'changing_header':'Registry header changed during forced refresh','io':'read failed'}[fault]
+                with mock.patch.object(self.reader,'_sample_once') as sampled,\
+                     mock.patch.object(self.reader,'force_registry_refresh',wraps=self.reader.force_registry_refresh) as forced:
+                    with self.assertRaisesRegex((RuntimeError,OSError),expected) as raised:self.reader.sample()
+                    if fault=='io':self.assertIs(raised.exception,error)
+                    self.assertNotIsInstance(raised.exception,(RegistrySnapshotChanged,InventoryChanged))
+                    forced.assert_called_once();sampled.assert_not_called()
+                self.assertTrue(self.reader._registry_dirty);self.r.prepare.assert_not_called()
+
+    def test_dirty_and_mixed_races_share_one_refresh_and_two_sample_budget(self):
+        cached=lambda:RuntimeError('Object registry identity changed')
+        sequences=([cached()], [SnapshotChanged('changed'),cached()],
+                   [DialogStorageChanged('changed'),cached()],
+                   [SnapshotChanged('changed'),SnapshotChanged('changed')],
+                   [DialogStorageChanged('changed'),{'consistent_reread':True}])
+        for sequence in sequences:
+            with self.subTest(sequence=sequence):
+                self.reader._registry_dirty=True
+                with mock.patch.object(self.reader,'force_registry_refresh') as forced,\
+                     mock.patch.object(self.reader,'_sample_once',side_effect=sequence) as sampled:
+                    if isinstance(sequence[-1],dict):self.assertTrue(self.reader.sample()['consistent_reread'])
+                    else:
+                        expected=InventoryChanged if str(sequence[-1])=='Object registry identity changed' else type(sequence[-1])
+                        with self.assertRaises(expected):self.reader.sample()
+                    forced.assert_called_once();self.assertEqual(sampled.call_count,len(sequence))
+                    self.assertLessEqual(sampled.call_count,2)
+        # A first ordinary UI race followed by the final-header type never gets
+        # a third snapshot, nor an in-call refresh of the dirty failed sample.
+        for first in (SnapshotChanged('ledger'),cached()):
+            self.reader._registry_dirty=False
+            def second_final(*,include_tree=False):
+                if second_final.calls==0:
+                    second_final.calls+=1;raise first
+                self.reader._registry_dirty=True;raise RegistrySnapshotChanged('final header')
+            second_final.calls=0
+            with mock.patch.object(self.reader,'_sample_once',side_effect=second_final) as sampled,\
+                 mock.patch.object(self.reader,'force_registry_refresh') as forced:
+                with self.assertRaises(RegistrySnapshotChanged):self.reader.sample()
+                self.assertEqual(sampled.call_count,2)
+                self.assertEqual(forced.call_count,int(type(first) is RuntimeError))
+            self.assertTrue(self.reader._registry_dirty)
 
     def test_same_header_slot_replacement_recovers_without_prepare_or_client_scan(self):
         before={p:self.r.read(getattr(self.r,p+'_header'),16) for p in ('names','objects')}
