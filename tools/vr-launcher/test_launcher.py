@@ -35,6 +35,7 @@ class FakeBackend:
         self.control=SimpleNamespace(identity=lambda pid:self.owner if pid==os.getpid() else self.game,
             k=SimpleNamespace(CreateMutexW=lambda *a:1,CloseHandle=mock.Mock()))
         self.runner=SimpleNamespace(run_session=mock.Mock(return_value=0))
+        self.start_tiny_output_monitor=mock.Mock(return_value=mock.Mock())
         self.existing=existing;self.cancel=cancel;self.ready=ready;self.reserve_calls=0;self.samples=0
     def game_pids(self):return [55] if self.existing else []
     def open_cancel(self,pid):return 2
@@ -407,6 +408,33 @@ class LauncherTests(unittest.TestCase):
             self.assertIs(backend.runner.run_session.call_args.args[1],backend.control)
             self.assertTrue(callable(backend.runner.run_session.call_args.kwargs['on_report']))
             backend.runner.run_session.assert_called_once()
+
+    def test_real_output_monitor_starts_before_level_wait_and_spans_session(self):
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend();index=pathlib.Path(directory)/'index.json'
+            monitor=backend.start_tiny_output_monitor.return_value
+            player=backend.player
+            def observed_player(*args):
+                backend.start_tiny_output_monitor.assert_called_once()
+                monitor.close.assert_not_called()
+                return player(*args)
+            backend.player=observed_player
+            def running(*args,**kwargs):
+                monitor.close.assert_not_called()
+                return 0
+            backend.runner.run_session.side_effect=running
+            self.assertEqual(self.start_mock(backend,index,sleep=lambda seconds:None),0)
+            backend.start_tiny_output_monitor.assert_called_once_with(MANIFEST,backend.game,index.with_suffix('.tiny-output.jsonl'))
+            monitor.close.assert_called_once()
+
+    def test_output_monitor_start_failure_is_diagnostic_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend();index=pathlib.Path(directory)/'index.json'
+            backend.start_tiny_output_monitor.side_effect=RuntimeError('observer unavailable')
+            self.assertEqual(self.start_mock(backend,index,sleep=lambda seconds:None),0)
+            diagnostic=json.loads(index.with_suffix('.tiny-output.jsonl').read_text())
+            self.assertEqual(diagnostic['event'],'monitor_start_error')
+            self.assertNotIn('tiny_output_recovery',json.loads(index.read_text()))
 
     def test_startup_menu_opens_xr_before_waiting_for_player_without_legacy_deadline(self):
         with tempfile.TemporaryDirectory() as directory:

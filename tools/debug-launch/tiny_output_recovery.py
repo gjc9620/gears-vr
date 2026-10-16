@@ -1,77 +1,168 @@
-"""One nonactivating resize attempt for an explicitly observed tiny DXGI output.
+"""Observe attested real swapchain output and attempt one nonactivating resize.
 
-The session owner must bound calls to once per session. This helper does not
-observe DXGI or establish recovery: callers must collect subsequent GPU evidence.
+The launcher monitor covers reservation through session exit. An attempt is
+diagnostic evidence; fresh subsequent output observations establish its effect.
 """
 import ctypes
 from ctypes import wintypes
 import json
 import pathlib
+import threading
+import time
 
 SWP_FLAGS = 0x0002 | 0x0004 | 0x0010 | 0x0200  # NOMOVE/NOZORDER/NOACTIVATE/NOOWNERZORDER
 
 
-class MonitorInfo(ctypes.Structure):
-    _fields_ = [('cbSize', wintypes.DWORD), ('rcMonitor', wintypes.RECT),
-                ('rcWork', wintypes.RECT), ('dwFlags', wintypes.DWORD)]
+def read_swapchain_status(path):
+    """Read one bounded atomic native snapshot, never the XR source dimensions."""
+    with pathlib.Path(path).open('rb') as stream:
+        raw = stream.read(4097)
+    if len(raw) > 4096:
+        raise ValueError('Swapchain status exceeds bound')
+    fields = {}
+    for token in raw.decode('ascii').split():
+        key, value = token.split('=', 1)
+        if key in fields:
+            raise ValueError('Duplicate swapchain status field')
+        fields[key] = value if key == 'phase' else int(value)
+    return fields
 
 
-class StartupTinyOutputPolicy:
-    """Bounded incremental owned-XR log reader and once-per-session decision."""
-    def __init__(self):
-        self.offset = 0
-        self.pending = b''
-        self.dimensions = None
-        self.tiny_since = None
-        self.stereo_submitted = False
+class SwapchainTinyOutputPolicy:
+    """One attempt per launch, using distinct fresh real-output observations."""
+    def __init__(self, expected):
+        self.expected = dict(expected)
         self.consumed = False
+        self.reset()
 
-    def update(self, event, now):
-        if not isinstance(event, dict):
-            return
-        if event.get('reference_epoch_first_projection') is True and event.get('end_frame_succeeded') is True:
-            self.stereo_submitted = True
-        if event.get('stereo_source_retired') is True:
-            self.dimensions = None
-            self.tiny_since = None
-        if 'gpu_source_size' in event:
-            size = event['gpu_source_size']
-            tiny = (isinstance(size, list) and len(size) == 2
-                    and all(type(v) is int and 1 <= v <= 8 for v in size))
-            self.dimensions = list(size) if tiny else None
-            self.tiny_since = (now if self.tiny_since is None else self.tiny_since) if tiny else None
+    def reset(self):
+        self.key = self.first_ns = self.last_ns = None
 
-    def read_new(self, path, now):
-        limit = 65536
-        with path.open('rb') as stream:
-            size = stream.seek(0, 2)
-            if size < self.offset or size - self.offset > limit:
-                # Missing events may have retired/replaced the source. Fail closed.
-                self.dimensions = None
-                self.tiny_since = None
-                self.pending = b''
-                self.offset = size
-                self.stereo_submitted = True  # Unknown lost history: disallow recovery.
-                return
-            stream.seek(self.offset)
-            data = stream.read(limit)
-            self.offset = stream.tell()
-        lines = (self.pending + data).split(b'\n')
-        self.pending = lines.pop()
-        if len(self.pending) > limit:
-            self.pending = b''
-            self.stereo_submitted = True
-            self.tiny_since = None
-        for line in lines:
-            try:
-                event = json.loads(line)
-            except (ValueError, UnicodeError):
-                continue
-            self.update(event, now)
+    def observe(self, fields, now_ns):
+        def reject(reason):
+            self.reset()
+            return dict(ready=False, reason=reason)
+        if not isinstance(fields, dict) or fields.get('schema') != 1 or fields.get('complete') != 1:
+            return reject('invalid_status')
+        if (fields.get('pid') != self.expected['pid'] or
+                fields.get('creation_time') != self.expected['creation_time']):
+            return reject('status_identity_mismatch')
+        if fields.get('phase') not in ('prime', 'running') or fields.get('valid') != 1 or fields.get('candidates') != 1:
+            return reject('output_unavailable')
+        if type(fields.get('windowed')) is not int or fields['windowed'] != 1:
+            return reject('dxgi_not_attested_windowed')
+        numeric = ('hwnd', 'chain', 'width', 'height', 'qpc', 'qpc_frequency')
+        if any(type(fields.get(key)) is not int or fields[key] <= 0 for key in numeric):
+            return reject('invalid_output_fields')
+        sampled_ns = fields['qpc'] * 1_000_000_000 // fields['qpc_frequency']
+        if not 0 <= now_ns - sampled_ns <= 2_000_000_000:
+            return reject('status_stale_or_future')
+        dimensions = [fields['width'], fields['height']]
+        if self.consumed:
+            return dict(ready=False, reason='output_after_attempt', dimensions=dimensions,
+                        hwnd=fields['hwnd'], sample_qpc=fields['qpc'])
+        if any(value > 8 for value in dimensions):
+            self.reset()
+            return dict(ready=False, reason='output_not_tiny', dimensions=dimensions)
+        key = (fields['hwnd'], fields['chain'], fields['qpc_frequency'])
+        if (key != self.key or self.last_ns is None or sampled_ns < self.last_ns or
+                sampled_ns - self.last_ns > 2_000_000_000):
+            self.key, self.first_ns, self.last_ns = key, sampled_ns, sampled_ns
+        elif sampled_ns == self.last_ns:
+            return dict(ready=False, reason='duplicate_sample')
+        else:
+            self.last_ns = sampled_ns
+        duration = sampled_ns - self.first_ns
+        return dict(ready=duration >= 2_000_000_000, reason='persistent_tiny' if duration >= 2_000_000_000 else 'observing_tiny',
+                    observed_tiny_seconds=duration / 1_000_000_000, dimensions=dimensions,
+                    hwnd=fields['hwnd'], chain=fields['chain'], sample_qpc=fields['qpc'])
 
-    def ready(self, now, stereo_submitted=False):
-        return (not self.consumed and not self.stereo_submitted and not stereo_submitted
-                and self.tiny_since is not None and now - self.tiny_since >= 2.0)
+
+class TinyOutputMonitor:
+    """Independent best-effort launcher observer, including the pre-level wait."""
+    def __init__(self, status_path, diagnostic_path, expected, control_factory=None,
+                 attempt=None, interval=.2):
+        self.status_path, self.diagnostic_path = pathlib.Path(status_path), pathlib.Path(diagnostic_path)
+        self.expected, self.policy = dict(expected), SwapchainTinyOutputPolicy(expected)
+        self.control_factory, self.attempt = control_factory, attempt
+        self.interval = interval
+        self.stop_event = threading.Event()
+        self.thread = None
+
+    def poll_once(self, control, now_ns):
+        if control.identity(self.expected['pid']) != self.expected:
+            self.policy.reset()
+            return dict(event='identity_changed', stop=True)
+        try:
+            fields = read_swapchain_status(self.status_path)
+        except (OSError, ValueError, UnicodeError) as error:
+            self.policy.reset()
+            return dict(event='status_unavailable', error=repr(error))
+        observation = self.policy.observe(fields, now_ns)
+        if not observation['ready']:
+            return dict(event='observation', **observation)
+        if self.stop_event.is_set():
+            return dict(event='monitor_cancelled', stop=True)
+        # A hidden/minimized/unusable startup HWND is not an attempt. Once it
+        # becomes actionable require a fresh full tiny interval before acting.
+        state = control.snapshot(self.expected['pid'], observation['hwnd'])
+        reason = skip_reason(observation['dimensions'], self.expected, state)
+        if reason:
+            self.policy.reset()
+            return dict(event='recovery_deferred', reason=reason, observation=observation, window=state)
+        # Consume before action, including skipped or failed attempts. A fresh
+        # identity/window check also happens inside the nonactivating helper.
+        self.policy.consumed = True
+        try:
+            result = (self.attempt or attempt_recovery)(control, self.expected, observation['hwnd'], observation['dimensions'])
+        except Exception as error:
+            result = dict(attempted=False, result='diagnostic_error', error=repr(error))
+        return dict(event='recovery_attempt', observation=observation, result=result)
+
+    def _run(self):
+        try:
+            self.diagnostic_path.parent.mkdir(parents=True, exist_ok=True)
+            with self.diagnostic_path.open('a', encoding='utf-8') as stream:
+                def record(value):
+                    stream.write(json.dumps(dict(observed_ns=time.perf_counter_ns(), identity=self.expected, **value)) + '\n')
+                    stream.flush()
+                record(dict(event='monitor_started', status_path=str(self.status_path)))
+                try:
+                    control = (self.control_factory or WindowsControl)()
+                    previous = None
+                    while not self.stop_event.is_set():
+                        try:
+                            event = self.poll_once(control, time.perf_counter_ns())
+                        except Exception as error:
+                            self.policy.reset()
+                            event = dict(event='observer_error', error=repr(error))
+                        signature = (event['event'], event.get('reason'), event.get('error'), tuple(event.get('dimensions', [])))
+                        if event.get('reason') == 'duplicate_sample':
+                            pass
+                        elif signature != previous or event['event'] == 'recovery_attempt':
+                            record(event)
+                            previous = signature
+                        if event.get('stop'):
+                            break
+                        self.stop_event.wait(self.interval)
+                except Exception as error:
+                    record(dict(event='monitor_error', error=repr(error)))
+                finally:
+                    record(dict(event='monitor_stopped', consumed=self.policy.consumed))
+        except Exception:
+            # Diagnostics/storage failures cannot interrupt the owning launcher.
+            pass
+
+    def start(self):
+        self.thread = threading.Thread(target=self._run, name='GearsVR tiny output observer', daemon=True)
+        self.thread.start()
+        return self
+
+    def close(self, timeout=2.):
+        self.stop_event.set()
+        if self.thread:
+            self.thread.join(timeout)
+        return self.thread is None or not self.thread.is_alive()
 
 
 def skip_reason(observed_output, expected, state):
@@ -160,8 +251,6 @@ class WindowsControl:
             (self.u, 'GetWindowRect', [wintypes.HWND, pointer(wintypes.RECT)], wintypes.BOOL),
             (self.u, 'GetClientRect', [wintypes.HWND, pointer(wintypes.RECT)], wintypes.BOOL),
             (self.u, 'GetWindowLongW', [wintypes.HWND, ctypes.c_int], wintypes.LONG),
-            (self.u, 'MonitorFromWindow', [wintypes.HWND, wintypes.DWORD], wintypes.HANDLE),
-            (self.u, 'GetMonitorInfoW', [wintypes.HANDLE, pointer(MonitorInfo)], wintypes.BOOL),
             (self.u, 'SetWindowPos', [wintypes.HWND, wintypes.HWND] + [ctypes.c_int] * 4 + [wintypes.UINT], wintypes.BOOL),
         ):
             fn = getattr(dll, name)
@@ -199,16 +288,10 @@ class WindowsControl:
         if not self.u.GetWindowRect(hwnd, ctypes.byref(rect)) or not self.u.GetClientRect(hwnd, ctypes.byref(client)):
             raise ctypes.WinError(ctypes.get_last_error())
         style = self.u.GetWindowLongW(hwnd, -16)
-        # Require a decorated resizable window. Borderless/fullscreen is excluded.
-        windowed = (style & 0x00C40000) == 0x00C40000
-        monitor = MonitorInfo()
-        monitor.cbSize = ctypes.sizeof(monitor)
-        if not self.u.GetMonitorInfoW(self.u.MonitorFromWindow(hwnd, 2), ctypes.byref(monitor)):
-            raise ctypes.WinError(ctypes.get_last_error())
-        bounds = monitor.rcMonitor
-        if (rect.left <= bounds.left and rect.top <= bounds.top
-                and rect.right >= bounds.right and rect.bottom >= bounds.bottom):
-            windowed = False
+        # SetWindowPos does not require WS_THICKFRAME. The observed game window
+        # has caption+system menu; native DXGI Windowed separately excludes
+        # exclusive fullscreen. Outer borders may extend beyond monitor bounds.
+        windowed = (style & 0x00C80000) == 0x00C80000
         return {'identity': self.identity(pid), 'window_pid': owner.value,
                 'visible': bool(self.u.IsWindowVisible(hwnd)), 'minimized': bool(self.u.IsIconic(hwnd)),
                 'maximized': bool(self.u.IsZoomed(hwnd)), 'windowed': windowed,

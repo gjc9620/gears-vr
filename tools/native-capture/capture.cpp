@@ -880,6 +880,50 @@ void release_bindings() {
     std::lock_guard<std::mutex> lock(binding_owner_mutex);
     for(auto& owner:binding_owners){if(owner.chain)owner.chain->Release();if(owner.queue)owner.queue->Release();owner={};}
 }
+void write_swapchain_output_status(bool sample,const char* phase) {
+    // Diagnostic only: query retained chain identities, never retain backbuffers
+    // or invoke window operations. One writer spans prime -> native handoff.
+    static std::mutex output_mutex;
+    std::lock_guard<std::mutex> writer(output_mutex);
+    std::array<gears_vr::ComPtr<IUnknown>,8> owners;
+    if(sample){
+        std::lock_guard<std::mutex> lock(binding_owner_mutex);
+        for(size_t i=0;i<binding_owners.size();++i)if(binding_owners[i].chain){
+            binding_owners[i].chain->AddRef();owners[i].Attach(binding_owners[i].chain);
+        }
+    }
+    uintptr_t identity{},window{};unsigned width{},height{},candidates{};bool windowed{};
+    // Timestamp the beginning of the query bracket, so a slow COM query never
+    // makes an old observation appear fresh to the external recovery owner.
+    LARGE_INTEGER qpc{},frequency{};const bool clock_valid=QueryPerformanceCounter(&qpc)&&QueryPerformanceFrequency(&frequency);
+    // COM calls run after dropping the owner mutex. Local AddRefs remain valid
+    // even if cleanup releases the original binding while a query is in flight.
+    for(auto const& owner:owners)if(owner){
+        gears_vr::ComPtr<IDXGISwapChain> chain;DXGI_SWAP_CHAIN_DESC desc{};
+        if(FAILED(owner->QueryInterface(IID_PPV_ARGS(&chain)))||FAILED(chain->GetDesc(&desc)))continue;
+        DWORD pid{};if(desc.OutputWindow)GetWindowThreadProcessId(desc.OutputWindow,&pid);
+        if(pid!=GetCurrentProcessId()||!desc.BufferDesc.Width||!desc.BufferDesc.Height||!desc.BufferCount)continue;
+        ++candidates;identity=reinterpret_cast<uintptr_t>(owner.Get());window=reinterpret_cast<uintptr_t>(desc.OutputWindow);
+        width=desc.BufferDesc.Width;height=desc.BufferDesc.Height;windowed=desc.Windowed!=FALSE;
+    }
+    FILETIME creation{},exit{},kernel{},user{};
+    const bool process_valid=GetProcessTimes(GetCurrentProcess(),&creation,&exit,&kernel,&user)!=FALSE;
+    const auto creation_time=(static_cast<unsigned long long>(creation.dwHighDateTime)<<32)|creation.dwLowDateTime;
+    const bool valid=sample&&process_valid&&clock_valid&&candidates==1;
+    wchar_t path[MAX_PATH];if(!GetModuleFileNameW(own_module,path,MAX_PATH))return;
+    auto slash=wcsrchr(path,L'\\');if(!slash)return;
+    wcscpy_s(slash+1,MAX_PATH-static_cast<size_t>(slash+1-path),L"swapchain-output-status.txt");
+    wchar_t temporary[MAX_PATH];if(swprintf_s(temporary,L"%s.tmp",path)<0)return;
+    FILE* output=_wfsopen(temporary,L"w",_SH_DENYWR);if(!output)return;
+    fprintf(output,"schema=1 pid=%lu creation_time=%llu phase=%s valid=%u candidates=%u hwnd=%llu chain=%llu width=%u height=%u windowed=%u qpc=%lld qpc_frequency=%lld complete=1\n",
+        GetCurrentProcessId(),creation_time,phase,valid?1u:0u,candidates,
+        static_cast<unsigned long long>(valid?window:0),static_cast<unsigned long long>(valid?identity:0),
+        valid?width:0,valid?height:0,valid&&windowed?1u:0u,qpc.QuadPart,frequency.QuadPart);
+    const bool written=fflush(output)==0;const bool closed=fclose(output)==0;
+    // A reader that holds the old file without delete sharing can defer this
+    // update; consumers must reject stale QPC evidence in that case.
+    if(written&&closed)MoveFileExW(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH);
+}
 void frame_seen_list(uintptr_t identity) {
     if(!identity)return;
     auto bucket=((identity>>4)^(identity>>17))%frame_unique_lists.size();
@@ -1259,6 +1303,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     resources_retained=resources_retained||native_owned_probe_retained();
     resources_retained=resources_retained||native_owned_scene_retained();
     if(!continuous_session)return;
+    write_swapchain_output_status(recording.load()&&session_phase.load()==SessionPhase::running,"running");
     wchar_t path[MAX_PATH];swprintf_s(path,L"%s\\session-status.txt",directory);
     FILE* output=_wfsopen(path,L"w",_SH_DENYWR);
     if(!output){session_status_available=false;return;}
@@ -3165,7 +3210,14 @@ bool present_hooks() {
 DWORD WINAPI target_prime_watchdog(void* argument) {
     FILE* status=static_cast<FILE*>(argument);
     HANDLE waits[]{prime_event,prime_owner.handle};
-    DWORD waited=prime_owner.handle?WaitForMultipleObjects(2,waits,FALSE,INFINITE):WaitForSingleObject(prime_event,180000);
+    const auto deadline=GetTickCount64()+180000;
+    DWORD waited{};
+    for(;;){
+        waited=prime_owner.handle?WaitForMultipleObjects(2,waits,FALSE,500):WaitForSingleObject(prime_event,500);
+        if(waited!=WAIT_TIMEOUT)break;
+        if(!prime_owner.handle&&GetTickCount64()>=deadline)break;
+        write_swapchain_output_status(prime_recording.load(),"prime");
+    }
     std::lock_guard<std::mutex> lock(prime_mutex);
     if(prime_handoff.load()){
         auto stats=viewport_stats.snapshot();
@@ -3184,7 +3236,10 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
         fprintf(status,"stopped reason=%s disable_status=%u active=%u entries_match=%u\n",reason,disabled?0:1,active.load(),restored?1:0);
         print_graphics_lock_observer(status,disabled);
     }
-    if(!prime_handoff.load()&&!active.load())release_bindings();
+    if(!prime_handoff.load()){
+        write_swapchain_output_status(false,"stopped");
+        if(!active.load())release_bindings();
+    }
     fclose(status);prime_done=true;return 0;
 }
 DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullptr) {

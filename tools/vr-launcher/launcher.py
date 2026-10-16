@@ -265,6 +265,11 @@ class Backend:
             if not math.isfinite(stamp):raise RuntimeError('Invalid camera timestamp')
             return {**{role:hex(current[role]['address']) for role in ('pawn','controller','camera','level')},'timestamp':stamp}
         finally:resolver.p.close()
+    def start_tiny_output_monitor(self,manifest,identity,diagnostic):
+        sys.path.insert(0,str(ROOT/'tools/debug-launch'))
+        from tiny_output_recovery import TinyOutputMonitor
+        return TinyOutputMonitor(rooted(manifest['native_build'])/'swapchain-output-status.txt',
+                                 diagnostic,identity).start()
     def navigate(self,pid,identity,cancel,deadline,log,check_live=None):
         sys.path.insert(0,str(HERE))
         from menu_navigation import navigate
@@ -281,7 +286,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
     if ctypes.get_last_error()==183:
         backend.control.k.CloseHandle(lock);raise RuntimeError('Another repository launcher is active')
     state={'schema':1,'kind':'repository_vr_launcher','owner_identity':owner,'phase':'preflight','passed':False,'native_activated':False}
-    cancel=None;identity=None;owned_prime=manifest.get('startup_menu',False)
+    cancel=None;identity=None;tiny_output_monitor=None;owned_prime=manifest.get('startup_menu',False)
     try:
         cancel=backend.open_cancel(owner['pid'])
         if backend.game_pids():raise RuntimeError('An existing game process must exit normally before fresh startup')
@@ -291,6 +296,14 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
                   backend.reserve(manifest,index.with_suffix('.reserve.log'),game_path=game,foreground=foreground))
         pid=reserved['pid'];identity=backend.control.identity(pid)
         if not identity or identity!=reserved.get('game_identity') or pathlib.Path(identity['image']).resolve()!=game:raise RuntimeError('Reserved game identity mismatch')
+        try:
+            tiny_output_monitor=backend.start_tiny_output_monitor(manifest,identity,index.with_suffix('.tiny-output.jsonl'))
+        except Exception as error:
+            # An unavailable diagnostic observer must not abort startup.
+            try:
+                with index.with_suffix('.tiny-output.jsonl').open('a',encoding='utf-8') as stream:
+                    stream.write(json.dumps(dict(event='monitor_start_error',error=repr(error),identity=identity))+'\n')
+            except OSError:pass
         state.update(phase='waiting_for_level',game_identity=identity,reservation=reserved);atomic_json(index,state)
         def prepare_level(check_live=None):
             def check_startup():
@@ -379,6 +392,9 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
                       'Game remains running. Before activation, wait for the existing 180-second prime watchdog; exit the game normally before retry.'))
         atomic_json(index,state);raise
     finally:
+        if tiny_output_monitor:
+            try:tiny_output_monitor.close()
+            except Exception:pass
         try:
             if owned_prime and identity:
                 try:
