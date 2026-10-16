@@ -32,6 +32,22 @@ struct OwnedChild {
         require(ContinueDebugEvent(event.dwProcessId,event.dwThreadId,status)!=FALSE,"ContinueDebugEvent");pending=false;
     }
 };
+struct StartupAttributes {
+    std::vector<unsigned char> storage;
+    LPPROC_THREAD_ATTRIBUTE_LIST list{};
+    DWORD64 mitigation{PROCESS_CREATION_MITIGATION_POLICY_EXTENSION_POINT_DISABLE_ALWAYS_ON};
+    ~StartupAttributes(){if(list)DeleteProcThreadAttributeList(list);}
+    void initialize(){
+        SIZE_T size{};
+        InitializeProcThreadAttributeList(nullptr,1,0,&size);
+        require(size!=0,"Size startup attributes");storage.resize(size);
+        auto* candidate=reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(storage.data());
+        require(InitializeProcThreadAttributeList(candidate,1,0,&size)!=FALSE,"Initialize startup attributes");
+        list=candidate;
+        require(UpdateProcThreadAttribute(list,0,PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY,
+            &mitigation,sizeof(mitigation),nullptr,nullptr)!=FALSE,"Set extension point experiment");
+    }
+};
 template<class T>T read(HANDLE process,uintptr_t address) {
     T value{};SIZE_T count{};
     require(ReadProcessMemory(process,reinterpret_cast<void*>(address),&value,sizeof(value),&count)&&count==sizeof(value),"ReadProcessMemory");
@@ -110,12 +126,21 @@ int wmain(int argc,wchar_t** argv) {
         const fs::path exe=fs::canonical(argv[1]),dll=fs::canonical(argv[2]);
         std::wstring command=gears_quiet::quote_argument(exe.wstring());
         for(int i=3;i<argc;++i)command+=L" "+gears_quiet::quote_argument(argv[i]);
-        OwnedChild child;STARTUPINFOW start{};start.cb=sizeof(start);
-        start.dwFlags=STARTF_USESHOWWINDOW;start.wShowWindow=SW_SHOWNOACTIVATE;
+        wchar_t experiment[2]{};
+        const bool disable_extensions=GetEnvironmentVariableW(L"GEARSVR_QUIET_DISABLE_EXTENSION_POINTS",experiment,2)==1&&experiment[0]==L'1';
+        StartupAttributes attributes;STARTUPINFOEXW start{};
+        start.StartupInfo.cb=disable_extensions?sizeof(start):sizeof(STARTUPINFOW);
+        start.StartupInfo.dwFlags=STARTF_USESHOWWINDOW;start.StartupInfo.wShowWindow=SW_SHOWNOACTIVATE;
+        if(disable_extensions){attributes.initialize();start.lpAttributeList=attributes.list;}
+        OwnedChild child;
         require(CreateProcessW(exe.c_str(),command.data(),nullptr,nullptr,FALSE,
-                              DEBUG_ONLY_THIS_PROCESS|CREATE_UNICODE_ENVIRONMENT,nullptr,exe.parent_path().c_str(),
-                              &start,&child.process)!=FALSE,"Create owned child");
+                              DEBUG_ONLY_THIS_PROCESS|CREATE_UNICODE_ENVIRONMENT|(disable_extensions?EXTENDED_STARTUPINFO_PRESENT:0),
+                              nullptr,exe.parent_path().c_str(),&start.StartupInfo,&child.process)!=FALSE,"Create owned child");
         child.attached=true;
+        PROCESS_MITIGATION_EXTENSION_POINT_DISABLE_POLICY extension_policy{};
+        require(GetProcessMitigationPolicy(child.process.hProcess,ProcessExtensionPointDisablePolicy,
+            &extension_policy,sizeof(extension_policy))!=FALSE,"Read extension point policy");
+        require(!disable_extensions||extension_policy.DisableExtensionPoints,"Extension point experiment not applied");
         // Keep debugger-exit termination until detach: no abandoned int3 child.
         require(DebugSetProcessKillOnExit(TRUE)!=FALSE,"Debug kill-on-exit");
         uintptr_t entry{};unsigned char original{};bool patched{},initial_break{};
@@ -166,7 +191,10 @@ int wmain(int argc,wchar_t** argv) {
                     const auto stamp=(static_cast<unsigned long long>(created.dwHighDateTime)<<32)|created.dwLowDateTime;
                     require(ResumeThread(child.process.hThread)==1,"Release original entry thread");child.released=true;
                     std::cout<<"{\"pid\":"<<child.process.dwProcessId<<",\"creation_time\":"<<stamp
-                             <<",\"pre_entry_visible_windows\":0,\"entry_restored\":true,\"debugger_detached\":true,\"quiet_policy_installed\":true}\n";
+                             <<",\"pre_entry_visible_windows\":0,\"entry_restored\":true,\"debugger_detached\":true,\"quiet_policy_installed\":true"
+                             <<",\"extension_point_disable_requested\":"<<(disable_extensions?"true":"false")
+                             <<",\"extension_points_disabled\":"<<(extension_policy.DisableExtensionPoints?"true":"false")
+                             <<",\"extension_point_policy_flags\":"<<extension_policy.Flags<<"}\n";
                     return 0;
                 }
                 if(exception.ExceptionRecord.ExceptionCode==EXCEPTION_BREAKPOINT && !initial_break &&
