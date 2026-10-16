@@ -151,6 +151,9 @@ def xr_command(args,csv_path,owner):
     if getattr(args,'menu_recovery',False):
         if not getattr(args,'startup_menu_window',0):raise ValueError('Menu recovery requires startup menu window')
         command+=['--menu-state-file',str(args.menu_state_file),'--menu-game-creation',str(args.menu_game_creation)]
+    if getattr(args,'movie_display',False):
+        if not getattr(args,'menu_recovery',False):raise ValueError('Movie display requires menu recovery')
+        command.append('--movie-display')
     for name in ('outage_diagnostics','shutdown_diagnostics'):
         if getattr(args,name,False):command.append('--'+name.replace('_','-'))
     if getattr(args,'origin_trial',False) or getattr(args,'image_ticket_diagnostics',False):command.append('--image-ticket-diagnostics')
@@ -355,6 +358,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'startup_menu_enabled':bool(getattr(args,'startup_menu_window',0)),
            'world_recovery_enabled':bool(getattr(args,'world_recovery',False)),
            'menu_recovery_enabled':bool(getattr(args,'menu_recovery',False)),
+           'movie_display_enabled':bool(getattr(args,'movie_display',False)),
            'ui_observer_enabled':bool(getattr(args,'ui_observer',False)),
            'ui_hud_plane_enabled':bool(getattr(args,'ui_hud_plane',False)),
            'crosshair_assignment_observer_enabled':bool(getattr(args,'crosshair_assignment_observer',False)),
@@ -461,7 +465,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 observe_first_stereo(native_started)
                 if getattr(args,'menu_recovery',False):
                     from menu_display_monitor import MenuDisplayMonitor
-                    menu_monitor=MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity)
+                    menu_monitor=MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity,
+                        movie_display=getattr(args,'movie_display',False))
                 if getattr(args,'world_recovery',False):
                     from world_rebind_runtime import RuntimePreparation
                     from world_rebind_monitor import WorldRebindMonitor
@@ -481,9 +486,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     checked_identity(control,state['game_identity'])
                     if menu_monitor:menu_monitor.poll()
                     if world_monitor:
-                        for event in world_monitor.poll(status,menu_monitor.last[0] if menu_monitor and menu_monitor.last else None):
+                        for event in world_monitor.poll(status,menu_monitor.last_menu_mode if menu_monitor and menu_monitor.last else None):
                             world_log.write(json.dumps(dict(observed_ns=time.perf_counter_ns(),**event))+'\n');world_log.flush()
-                    time.sleep(.25)
+                    time.sleep(.1 if getattr(args,'movie_display',False) else .25)
             except StartupCancelled:
                 state['stop_requested_by']='startup_cancel'
             except KeyboardInterrupt:
@@ -572,6 +577,7 @@ def main(argv=None):
     start.add_argument('--native-expected-sha256',help='Expected DLL SHA256 from trusted launch manifest; required for world recovery')
     start.add_argument('--origin-trial',action='store_true')
     start.add_argument('--cinematic-camera',action='store_true')
+    start.add_argument('--movie-display',action='store_true',help='Opt-in attested movie progress display; requires owned menu recovery')
     start.add_argument('--ui-observer',action='store_true')
     start.add_argument('--ui-hud-plane',action='store_true')
     start.add_argument('--crosshair-assignment-observer',action='store_true')

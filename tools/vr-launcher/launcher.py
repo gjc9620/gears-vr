@@ -15,7 +15,7 @@ from types import SimpleNamespace
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 HERE=pathlib.Path(__file__).resolve().parent
 INDEX=ROOT/'analysis/runtime/vr-launcher-session.json'
-SESSION_OPTIONS=('anchor_observer','cinematic_camera','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','gpu_snapshot','menu_recovery','world_recovery','crosshair_assignment_observer')
+SESSION_OPTIONS=('anchor_observer','cinematic_camera','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','gpu_snapshot','menu_recovery','world_recovery','crosshair_assignment_observer','movie_display')
 
 def atomic_json(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -54,6 +54,8 @@ def settings(config,manifest,root=ROOT):
         raise ValueError('Startup graphics lock requires owned startup menu lifecycle')
     if manifest.get('menu_recovery',False) and not manifest.get('startup_menu',False):
         raise ValueError('Menu recovery requires startup menu lifecycle')
+    if manifest.get('movie_display',False) and not manifest.get('menu_recovery',False):
+        raise ValueError('Movie display requires menu recovery and a movie-capable XR build')
     if manifest.get('graphics_menu_lock',False) and not manifest.get('graphics_startup_lock',False):
         raise ValueError('Menu lock requires startup graphics protection')
     if manifest.get('ui_hud_plane',False) and not (manifest.get('ui_observer',False) and manifest.get('anchor_observer',False)):

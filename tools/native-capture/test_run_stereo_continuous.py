@@ -83,6 +83,9 @@ class ContinuousTests(unittest.TestCase):
         cmd=runner.xr_command(args,pathlib.Path('capture.csv'),identity(100))
         self.assertEqual(cmd[cmd.index('--menu-game-creation')+1],'789')
         self.assertEqual(cmd[cmd.index('--menu-state-file')+1],'state.menu.bin')
+        self.assertNotIn('--movie-display',cmd)
+        args.movie_display=True
+        self.assertIn('--movie-display',runner.xr_command(args,pathlib.Path('capture.csv'),identity(100)))
         args.startup_menu_window=0
         with self.assertRaisesRegex(ValueError,'requires startup'):runner.xr_command(args,pathlib.Path('capture.csv'),identity(100))
 

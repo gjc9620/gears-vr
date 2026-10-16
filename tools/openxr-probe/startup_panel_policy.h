@@ -20,7 +20,7 @@ public:
             resume_required_=true;resume_after_=now;return true;}
         // Loading is neither a menu witness nor image authority. Require a
         // newer ticket on later gameplay even if no projection has occurred yet.
-        if(mode==gears_menu::Mode::loading_display){resume_required_=true;resume_after_=now;return false;}
+        if(mode==gears_menu::Mode::loading_display||mode==gears_menu::Mode::movie_display){resume_required_=true;resume_after_=now;return false;}
         // acquisition_wait deliberately follows UNKNOWN here: it cannot create
         // a resume requirement or witness during ordinary ticketed gameplay.
         if(resume_required_)resume_after_=now;
@@ -36,8 +36,8 @@ public:
            mode_==gears_menu::Mode::main_menu||mode_==gears_menu::Mode::death_menu))menu_presented_=true;
     }
     bool show_transition_panel()const{return enabled_&&reversible_&&!cancelled_&&resume_required_&&
-        menu_presented_&&(mode_==gears_menu::Mode::gameplay||mode_==gears_menu::Mode::loading_display||
-            mode_==gears_menu::Mode::acquisition_wait||mode_==gears_menu::Mode::main_menu);}
+        (mode_==gears_menu::Mode::movie_display||(menu_presented_&&(mode_==gears_menu::Mode::gameplay||mode_==gears_menu::Mode::loading_display||
+            mode_==gears_menu::Mode::acquisition_wait||mode_==gears_menu::Mode::main_menu)));}
     bool transition_menu_requested_wait()const{return show_transition_panel()&&
         (mode_==gears_menu::Mode::main_menu||mode_==gears_menu::Mode::acquisition_wait);}
     bool transition_authorized(gears_menu::Mode fresh)const{return fresh==mode_&&show_transition_panel();}
@@ -52,7 +52,8 @@ public:
     }
     bool allow_projection(bool window_fallback=false)const{return !cancelled_&&mode_!=gears_menu::Mode::death_menu&&mode_!=gears_menu::Mode::pause_menu&&
         mode_!=gears_menu::Mode::main_menu&&(mode_!=gears_menu::Mode::loading_display||window_fallback)&&
-        (!resume_required_||mode_==gears_menu::Mode::gameplay||(window_fallback&&mode_==gears_menu::Mode::loading_display));}
+        (!resume_required_||mode_==gears_menu::Mode::gameplay||(window_fallback&&
+            (mode_==gears_menu::Mode::loading_display||mode_==gears_menu::Mode::movie_display)));}
     std::int64_t minimum_sample_ns()const{return resume_required_?resume_after_:0;}
     bool projection_rendered(bool success,bool window_fallback=false) {
         if(!enabled_||!allow_projection(window_fallback)||!success)return false;

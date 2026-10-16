@@ -45,4 +45,11 @@ int main(){
     assert(v.accept(p,1500000901)==Mode::unknown);
     bad=p;bad.mode=4;assert(v.accept(bad,901)==Mode::unknown);
     ++p.sequence;p.mode=1;p.observed_ns=1000;assert(v.accept(p,1000)==Mode::gameplay);
+    Validator movie(11,22,33,44,true);
+    ++p.sequence;p.mode=7;p.observed_ns=2000;
+    assert(v.accept(p,2000)==Mode::unknown);
+    assert(movie.accept(p,2000)==Mode::movie_display);
+    assert(movie.accept(p,250002000)==Mode::movie_display);
+    assert(movie.accept(p,250002001)==Mode::unknown);
+    ++p.sequence;p.mode=8;assert(movie.accept(p,2000)==Mode::unknown);
 }

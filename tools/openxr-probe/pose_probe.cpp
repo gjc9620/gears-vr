@@ -46,6 +46,46 @@ void dx_check(HRESULT result, const char* action) {
 #include "game_screen.h"
 #include "game_gpu_screen.h"
 #include "transition_card.h"
+// Cumulative, render-thread-only diagnostics: one row per second plus final.
+// Cached packet age is evidence, never a second display-authority decision.
+struct MovieFallbackDiagnostics {
+    uint64_t eligible{},render_true{},render_false{},post_context_rejected{},post_fresh_rejected{};
+    uint64_t mode_changes{},movie_entries{},movie_exits{},expired_lease_frames{},submitted{},end_failed{};
+    uint64_t render_reasons[8]{},capture_results[10]{};
+    unsigned last_mode{};
+    std::int64_t next_report{},maximum_render_ns{},last_packet_age_ns{-1};
+    outage_diagnostics::MenuSnapshot last_render{};
+    GameScreen::WindowSnapshot last_window{};
+    void mode(gears_menu::Mode value){
+        const auto current=unsigned(value);if(current==last_mode)return;
+        ++mode_changes;if(current==7)++movie_entries;if(last_mode==7)++movie_exits;last_mode=current;
+    }
+    void rendered(bool result,std::int64_t elapsed,GameScreen const& screen){
+        if(result)++render_true;else ++render_false;
+        if(elapsed>maximum_render_ns)maximum_render_ns=elapsed;
+        last_render=screen.diagnostic_snapshot();last_window=screen.window_snapshot();
+        const auto reason=unsigned(last_render.reason);if(reason<8)++render_reasons[reason];
+        const auto capture=unsigned(last_render.capture.result);
+        if(last_render.update_attempted&&capture<10)++capture_results[capture];
+    }
+    void report(std::int64_t now,bool final=false){
+        if(!final&&now<next_report)return;next_report=now+1000000000;
+        printf("{\"movie_fallback_diagnostics\":true,\"final\":%s,\"observed_ns\":%lld,\"cumulative\":true,"
+            "\"eligible\":%llu,\"render_true\":%llu,\"render_false\":%llu,\"post_context_rejected\":%llu,\"post_fresh_rejected\":%llu,"
+            "\"mode_changes\":%llu,\"movie_entries\":%llu,\"movie_exits\":%llu,\"expired_lease_frames\":%llu,"
+            "\"submitted\":%llu,\"end_failed\":%llu,\"mode\":%u,\"packet_age_ns\":%lld,\"maximum_render_ns\":%lld,"
+            "\"last_render_current\":%s,\"last_render_fresh_checked\":%s,\"last_render_fresh\":%s,\"last_render_fresh_now_100ns\":%lld,"
+            "\"capture_generation\":%llu,\"capture_epoch_100ns\":%lld,\"captured_100ns\":%lld,\"width\":%u,\"height\":%u,\"uploads\":%u,\"render_reasons\":{",
+            final?"true":"false",now,eligible,render_true,render_false,post_context_rejected,post_fresh_rejected,
+            mode_changes,movie_entries,movie_exits,expired_lease_frames,submitted,end_failed,last_mode,last_packet_age_ns,maximum_render_ns,
+            last_render.current?"true":"false",last_render.fresh_checked?"true":"false",last_render.fresh?"true":"false",last_render.fresh_now_100ns,
+            last_window.generation,last_window.epoch_100ns,last_window.captured_100ns,last_window.width,last_window.height,last_window.uploads);
+        for(unsigned i=0;i<8;++i)printf("%s\"%s\":%llu",i?",":"",outage_diagnostics::menu_render_reason_name(outage_diagnostics::MenuRenderReason(i)),render_reasons[i]);
+        printf("},\"capture_results_on_update\":{");
+        for(unsigned i=0;i<10;++i)printf("%s\"%s\":%llu",i?",":"",outage_diagnostics::capture_result_name(outage_diagnostics::CaptureResult(i)),capture_results[i]);
+        printf("}}\n");fflush(stdout);
+    }
+};
 bool transition_panel_wait(ProjectionStatus status){
     switch(status){
     case ProjectionStatus::producer_unavailable:case ProjectionStatus::waiting_image:
@@ -251,11 +291,12 @@ int main(int argc, char** argv) {
     HWND startup_window=nullptr;DWORD startup_game_pid=0;
     const char* menu_state_file=nullptr;std::uint64_t menu_game_creation=0;
     unsigned stereo_producer_seconds=30;bool explicit_stereo_duration=false;
-    bool simulator_operator=false,continuous_session=false,diagnostic_shutdown=false,diagnostic_outage=false,diagnostic_image_tickets=false;
+    bool simulator_operator=false,continuous_session=false,diagnostic_shutdown=false,diagnostic_outage=false,diagnostic_image_tickets=false,movie_display=false;
     DWORD continuous_owner_pid=0;std::uint64_t continuous_owner_creation=0;
     for(int i=3;i<argc;++i) {
         if(!strcmp(argv[i],"--render"))test_render=true;
         else if(!strcmp(argv[i],"--menu-state-file")&&i+1<argc){if(menu_state_file)return 2;menu_state_file=argv[++i];if(!*menu_state_file)return 2;}
+        else if(!strcmp(argv[i],"--movie-display")){if(movie_display)return 2;movie_display=true;}
         else if(!strcmp(argv[i],"--menu-game-creation")&&i+1<argc){
             if(menu_game_creation)return 2;const char* value=argv[++i];char* end{};errno=0;
             menu_game_creation=strtoull(value,&end,10);
@@ -320,6 +361,7 @@ int main(int argc, char** argv) {
     if(stereo_game_pid&&stereo_game_pid!=stereo_pid)return 2;
     if(startup_window&&(!continuous_session||!stereo_game_pid||startup_game_pid!=stereo_game_pid||game_window||gpu_pid||bridge_pid))return 2;
     if((menu_state_file!=nullptr)!=(menu_game_creation!=0)||(menu_state_file&&!startup_window))return 2;
+    if(movie_display&&(!continuous_session||!menu_state_file))return 2;
     if(diagnostic_shutdown)shutdown_diagnostics::enable();
     ContinuousSessionControl continuous_control;
     if(continuous_session){try{continuous_control.open(stereo_game_pid,continuous_owner_pid,continuous_owner_creation);}catch(const std::exception& error){fprintf(stderr,"%s\n",error.what());return 2;}}
@@ -424,8 +466,9 @@ int main(int argc, char** argv) {
         }
         StartupPanelPolicy startup_panel(startup_window!=nullptr,menu_state_file!=nullptr);
         WindowFallbackPolicy window_fallback;
+        MovieFallbackDiagnostics movie_fallback_diagnostics;
         bool window_fallback_shown=false;
-        const bool window_fallback_enabled=continuous_session&&startup_screen&&menu_game_creation;
+        const bool window_fallback_enabled=movie_display&&continuous_session&&startup_screen&&menu_game_creation;
         std::unique_ptr<TransitionCard,shutdown_diagnostics::DeleteMarker<TransitionCard>> transition_card{nullptr,{"transition_card_reset_enter","transition_card_reset_completed"}};
         if(menu_state_file&&startup_window)transition_card.reset(new TransitionCard(device.Get(),queue.Get()));
         unsigned transition_panel_layers{};bool transition_panel_active=false,transition_preview_saved=false;
@@ -435,7 +478,7 @@ int main(int argc, char** argv) {
             nullptr,{"startup_wait_card_reset_enter","startup_wait_card_reset_completed"}};
         if(startup_window)startup_wait_card.reset(new TransitionCard(device.Get(),queue.Get(),transition_card_pixels::Variant::starting_vr));
         unsigned startup_wait_card_layers{};
-        MenuDisplayReader menu_display(menu_state_file,stereo_game_pid,menu_game_creation,continuous_owner_pid,continuous_owner_creation);
+        MenuDisplayReader menu_display(menu_state_file,stereo_game_pid,menu_game_creation,continuous_owner_pid,continuous_owner_creation,movie_display);
         unsigned menu_quad_layers=0,menu_entries=0,menu_recoveries=0;
         unsigned main_menu_quad_layers=0,last_main_menu_entry=0,main_menu_snapshots=0;
         unsigned eye_menu_quad_layers=0,last_eye_menu_entry=0;
@@ -625,10 +668,21 @@ int main(int argc, char** argv) {
                     startup_handoff_queued,end.layerCount!=0,mode};
             };
             auto fallback=fallback_context(menu_mode);
+            if(movie_display){
+                movie_fallback_diagnostics.mode(menu_mode);
+                const auto observed=menu_display.observed_ns(),now=uint64_t(gears_vr::monotonic_ns());
+                movie_fallback_diagnostics.last_packet_age_ns=observed&&now>=observed?std::int64_t(now-observed):-1;
+                if(menu_display.cached_mode()==7&&observed&&now>=observed&&now-observed>250000000)
+                    ++movie_fallback_diagnostics.expired_lease_frames;
+            }
             window_fallback.observe(fallback);
             if(WindowFallbackPolicy::eligible(fallback)){
                 if(window_fallback.enter(fallback))startup_screen->begin_menu_epoch();
-                if(startup_screen->render(quad,WindowFallbackPolicy::maximum_age_100ns)){
+                ++movie_fallback_diagnostics.eligible;
+                const auto render_started=gears_vr::monotonic_ns();
+                const bool rendered=startup_screen->render(quad,WindowFallbackPolicy::maximum_age_100ns);
+                movie_fallback_diagnostics.rendered(rendered,gears_vr::monotonic_ns()-render_started,*startup_screen);
+                if(rendered){
                     // A GPU upload can wait: recheck owner/stop and current menu
                     // authority before submitting pixels from the game window.
                     if(const auto* reason=continuous_control.requested()){
@@ -637,10 +691,12 @@ int main(int argc, char** argv) {
                     const auto after_window=gears_vr::monotonic_ns();
                     const auto fresh_mode=menu_display.poll(after_window);observe_menu(fresh_mode,after_window);
                     window_fallback.observe(fallback_context(fresh_mode));
-                    if(WindowFallbackPolicy::eligible(fallback_context(fresh_mode))&&
-                       startup_screen->window_fresh(WindowFallbackPolicy::maximum_age_100ns)){
-                        window_fallback_queued=true;end.layerCount=1;end.layers=game_layers;
-                    }
+                    movie_fallback_diagnostics.mode(fresh_mode);
+                    if(WindowFallbackPolicy::eligible(fallback_context(fresh_mode))){
+                        if(startup_screen->window_fresh(WindowFallbackPolicy::maximum_age_100ns)){
+                            window_fallback_queued=true;end.layerCount=1;end.layers=game_layers;
+                        }else ++movie_fallback_diagnostics.post_fresh_rejected;
+                    }else ++movie_fallback_diagnostics.post_context_rejected;
                 }
             }
             if(stereo_game_pid&&end.layerCount==0&&transition_card&&startup_panel.show_transition_panel()&&
@@ -815,6 +871,10 @@ int main(int argc, char** argv) {
             if(startup_handoff_queued){
                 printf("{\"startup_menu_handoff\":true,\"startup_quad_layers\":%u,\"ticketed_projection_rendered\":true,\"end_frame_succeeded\":true,\"one_way\":%s}\n",startup_quad_layers,menu_state_file?"false":"true");fflush(stdout);
             }
+            if(movie_display){
+                if(window_fallback_queued){if(ended==XR_SUCCESS)++movie_fallback_diagnostics.submitted;else ++movie_fallback_diagnostics.end_failed;}
+                movie_fallback_diagnostics.report(gears_vr::monotonic_ns());
+            }
             if(stereo_game_pid)projection_evidence.record(ended==XR_SUCCESS?projection_frame_status:ProjectionStatus::session_lost,gears_vr::monotonic_ns());
             if(diagnostic_outage||diagnostic_image_tickets){
                 outage_diagnostics::Row row;
@@ -911,6 +971,7 @@ int main(int argc, char** argv) {
             stereo_screen&&last_submitted_resource_generation==stereo_screen->resource_generation()?"true":"false");
         if(stereo_game_pid&&!continuous_session)projection_evidence.print();
         bool display_ok=!screen || (screen->rendered && screen->gpu_pixels_verified);
+        if(movie_display)movie_fallback_diagnostics.report(gears_vr::monotonic_ns(),true);
         if(startup_window)printf("{\"startup_menu_evidence\":true,\"startup_quad_layers\":%u,\"stereo_handoff\":%s,\"panel_counts_as_stereo\":false}\n",startup_quad_layers,stereo_image_shown?"true":"false");
         if(menu_state_file)printf("{\"menu_recovery_evidence\":true,\"entries\":%u,\"quad_layers\":%u,\"recoveries\":%u,\"panel_counts_as_stereo\":false}\n",menu_entries,menu_quad_layers,menu_recoveries);
         if(menu_state_file)printf("{\"main_menu_evidence\":true,\"quad_layers\":%u,\"source\":\"wgc_full_client\",\"panel_counts_as_stereo\":false}\n",main_menu_quad_layers);

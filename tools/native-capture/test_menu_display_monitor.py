@@ -618,7 +618,42 @@ class Tests(unittest.TestCase):
     def monitor(self, path, reader, **kwargs):
         game=dict(pid=11,creation_time=22,image='game');owner=dict(pid=33,creation_time=44,image='owner')
         return MenuDisplayMonitor(path,game,owner,lambda pid:game,lambda:reader,
-                                  kwargs.get('reader_identity',lambda r:(11,22)),lambda:100)
+                                  kwargs.get('reader_identity',lambda r:(11,22)),lambda:100,movie_display=kwargs.get("movie_display",False))
+
+    def test_movie_opt_in_independent_churn_and_explicit_menu_priority(self):
+        from menu_state import SnapshotChanged
+        from menu_display_monitor import MOVIE_DISPLAY
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader()
+            movie=Mock();movie.sample.return_value=dict(state='progress',last_advance_ns=90)
+            with patch('menu_display_monitor.attested_movie_reader',return_value=movie) as attest:
+                m=self.monitor(path,reader,movie_display=True)
+                reader.sample=Mock(side_effect=SnapshotChanged('churn'))
+                m.poll();packet=PACKET.unpack(path.read_bytes())
+                self.assertEqual(packet[3],MOVIE_DISPLAY);self.assertEqual(packet[-1],90)
+                self.assertEqual(m.last_menu_mode,ACQUISITION_WAIT);self.assertFalse(reader.closed)
+                reader.sample=lambda:sample();m.poll()
+                self.assertEqual(PACKET.unpack(path.read_bytes())[3],DEATH_MENU)
+                reader.sample=Mock(side_effect=OSError('lost'));m.poll()
+                self.assertEqual(PACKET.unpack(path.read_bytes())[3],UNKNOWN)
+                self.assertTrue(reader.closed);attest.assert_called_once();m.close()
+            reader=Reader()
+            with patch('menu_display_monitor.attested_movie_reader') as attest:
+                m=self.monitor(path,reader);m.poll();attest.assert_not_called();m.close()
+
+    def test_movie_attestation_reads_code_not_identity_dict(self):
+        import hashlib
+        from menu_display_monitor import attested_movie_reader
+        reader=Mock();reader.r.base=0x140000000;reader.r.read.return_value=b'abcd'
+        anchor=(0x123,4,hashlib.sha256(b'abcd').hexdigest())
+        with patch('menu_display_monitor.MOVIE_CODE',(anchor,)):
+            self.assertIsNotNone(attested_movie_reader(reader,dict(pid=11,creation_time=22)))
+            reader.r.read.assert_called_once_with(0x140000123,4)
+            for bad in (b'abc',b'abce'):
+                reader.r.read.return_value=bad
+                with self.assertRaises(RuntimeError):attested_movie_reader(reader,dict(pid=11,creation_time=22))
+            reader.r.base+=1
+            with self.assertRaises(RuntimeError):attested_movie_reader(reader,dict(pid=11,creation_time=22))
 
     def test_packet_and_stop(self):
         with tempfile.TemporaryDirectory() as d:

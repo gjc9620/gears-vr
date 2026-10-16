@@ -8,8 +8,8 @@ class MenuDisplayReader {
     std::uint64_t next_{};
     gears_menu::Packet cached_{};
 public:
-    MenuDisplayReader(const char* path,DWORD game,std::uint64_t creation,DWORD owner,std::uint64_t owner_creation)
-        :path_(path?path:""),validator_(game,creation,owner,owner_creation){
+    MenuDisplayReader(const char* path,DWORD game,std::uint64_t creation,DWORD owner,std::uint64_t owner_creation,bool movie_display=false)
+        :path_(path?path:""),validator_(game,creation,owner,owner_creation,movie_display){
         if(!path_.empty()){
             HANDLE target=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION|SYNCHRONIZE,FALSE,game);
             const bool matches=target&&WaitForSingleObject(target,0)==WAIT_TIMEOUT&&
@@ -19,6 +19,8 @@ public:
         }
     }
     std::uint64_t sequence()const{return cached_.sequence;}
+    std::uint64_t observed_ns()const{return cached_.observed_ns;}
+    unsigned cached_mode()const{return cached_.mode;}
     gears_menu::Mode poll(std::uint64_t now){
         if(path_.empty())return gears_menu::Mode::unknown;
         if(now>=next_){

@@ -347,6 +347,11 @@ class LauncherTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'existing game'):self.start_mock(backend,pathlib.Path(directory)/'index.json')
             self.assertEqual(backend.reserve_calls,0);backend.runner.run_session.assert_not_called()
 
+    def test_movie_display_requires_owned_menu_channel(self):
+        with self.assertRaisesRegex(ValueError,'Movie display requires'):
+            launcher.settings({},dict(MANIFEST,movie_display=True))
+        launcher.settings({},dict(MANIFEST,movie_display=True,menu_recovery=True,startup_menu=True))
+
     def test_manifest_session_options_require_booleans(self):
         for key in launcher.SESSION_OPTIONS:
             with self.subTest(key=key),self.assertRaisesRegex(ValueError,'boolean'):

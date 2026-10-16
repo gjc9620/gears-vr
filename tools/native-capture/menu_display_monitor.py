@@ -6,11 +6,31 @@ from pathlib import Path
 import struct
 import sys
 import time
+import hashlib
 
 PACKET = struct.Struct('<IIIIQQQQQQ')
 UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU = range(5)
 LOADING_DISPLAY = 5
 ACQUISITION_WAIT = 6
+MOVIE_DISPLAY = 7
+# Runtime35804 matched historical artifact1. No game code is executed.
+MOVIE_CODE = (
+    (0x434e24,0xf8,'87debeb3f8cf80bb64605af2531f7785b68aa3d46e0b9d7da00ac78f0e2c2387'),
+    (0x318e64,2182,'7523c77773a6d2e89d7753744f1503f7763fa33d1a8f87a8900d3c3bfc153423'),
+    (0x319854,1024,'09758a99b7c7a04e2cdb0f4012e917caeba5a2b5849c84fb6b11b524abf911b3'),
+)
+
+
+def attested_movie_reader(reader, game):
+    from movie_state import MovieProgressReader
+    resolver=reader.r
+    if resolver.base != 0x140000000:raise RuntimeError('Movie module base mismatch')
+    for rva,size,digest in MOVIE_CODE:
+        raw=resolver.read(resolver.base+rva,size)
+        if len(raw)!=size or hashlib.sha256(raw).hexdigest()!=digest:
+            raise RuntimeError('Movie runtime code identity mismatch')
+    return MovieProgressReader(resolver.read,resolver.base,dict(pid=game['pid'],creation_time=game['creation_time'],
+        module_base=hex(resolver.base),code_sha256=[entry[2] for entry in MOVIE_CODE]))
 PAUSE_SETTINGS = frozenset(('DeltaPause-Options', 'DeltaGameConfiguration', 'DeltaVideoSettings',
                             'PenderGraphicsSettings', 'DeltaAudioVideoSettings', 'DeltaInputSettings'))
 
@@ -195,7 +215,7 @@ def classify(sample):
 
 
 class MenuDisplayMonitor:
-    def __init__(self, path, game, owner, identity, reader_factory=None, reader_identity=None, clock=time.perf_counter_ns):
+    def __init__(self, path, game, owner, identity, reader_factory=None, reader_identity=None, clock=time.perf_counter_ns,*,movie_display=False):
         # Keep the real exception identities for injected factories as well.
         # Importing the types does not construct a Resolver or open a process.
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'game-io'))
@@ -209,6 +229,9 @@ class MenuDisplayMonitor:
         self.path, self.game, self.owner = Path(path), game, owner
         self.identity, self.factory, self.reader_identity, self.clock = identity, reader_factory, reader_identity, clock
         self.reader, self.sequence, self.retry_ns, self.last = None, 0, 0, None
+        if type(movie_display) is not bool:raise ValueError('movie_display must be boolean')
+        self.movie_enabled=movie_display;self.movie_reader=None
+        self.last_menu_mode=UNKNOWN
         self.publish_failed = False
         self.log = self.path.with_suffix('.jsonl').open('w', encoding='utf-8')
 
@@ -247,7 +270,8 @@ class MenuDisplayMonitor:
             key = mode, reason, evidence['input_block_count']
         if key != self.last:
             self.log.write(json.dumps(dict(sequence=self.sequence, observed_ns=observed, mode=mode,
-                reason=reason, state_evidence=state_evidence(evidence)))+'\n')
+                reason=reason, state_evidence=state_evidence(evidence),
+                **({'movie_progress':evidence['movie_progress']} if isinstance(evidence,dict) and 'movie_progress' in evidence else {})))+'\n')
             self.log.flush()
             self.last = key
         return True
@@ -266,6 +290,10 @@ class MenuDisplayMonitor:
                 self.reader = self.factory()
                 if self.reader_identity(self.reader) != (self.game['pid'], self.game['creation_time']):
                     raise RuntimeError('Menu reader process identity changed')
+                if self.movie_enabled:
+                    self.movie_reader=attested_movie_reader(self.reader,self.game)
+                    if self.reader_identity(self.reader) != (self.game['pid'],self.game['creation_time']):
+                        raise RuntimeError('Movie reader process identity changed after attestation')
             sampling = True
             sample = self.reader.sample()
             sampling = False
@@ -284,7 +312,22 @@ class MenuDisplayMonitor:
             if type(error) not in self.snapshot_change_types:
                 if self.reader:
                     self.reader.close();self.reader = None
+                self.movie_reader=None
                 self.retry_ns = self.clock()+1000000000
+        self.last_menu_mode=mode
+        # Movie progress is independent of transient UI ledger churn. It uses
+        # only the still-owned, identity-checked process reader; no cached UI
+        # sample can authorize it, and explicit acquired menus take precedence.
+        if self.movie_enabled and self.reader and self.movie_reader:
+            if self.reader_identity(self.reader)!=(self.game['pid'],self.game['creation_time']) or self.identity(self.game['pid'])!=self.game:
+                self.publish(UNKNOWN,observed,'movie_process_identity_changed')
+                raise RuntimeError('Movie reader process identity changed')
+            movie=self.movie_reader.sample(observed)
+            if movie['state']=='progress' and mode not in (MAIN_MENU,DEATH_MENU,PAUSE_MENU):
+                mode=MOVIE_DISPLAY;reason='verified_movie_progress'
+                # Do not extend a progress receipt when only its hold applies.
+                observed=min(observed,movie['last_advance_ns'])
+                sample=dict(sample or {},movie_progress=movie)
         self.publish(mode, observed, reason, evidence=sample)
 
     def close(self):
