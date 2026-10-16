@@ -55,6 +55,10 @@ def main():
         camera[0x1af42c]=bytes.fromhex('488bc4488958084889701048897818')
         camera[0x2a7e48]=bytes.fromhex('488bc448895808488970104889781855')
         camera[0x1d6ca0]=bytes.fromhex('4053555641564881eca8000000488b058c')
+        # Optional crosshair assignment observer. Historical runtime execLet
+        # contract, independently compared after disabling hooks; never learn
+        # an expected entry from the patched live process or capture log.
+        camera[0x1d7ad0]=bytes.fromhex('48895c240848896c2418488974242057415641574883ec30488bda4c8d358ee7')
         camera[0x1d52b4]=bytes.fromhex('488bc448895808555657488d68a14881ec')
         camera[0x3a4d3c]=bytes.fromhex('488bc4488958084889701855574156488d')
         camera[0x2482b8]=bytes.fromhex('488bc44889581855565741564157488d68')

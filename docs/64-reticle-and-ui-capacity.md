@@ -100,3 +100,13 @@ GPU审阅图`ui-recovery8-selector-reload-review.png`、1:1字幕裁切`ui-recov
 Native16 DLL SHA256：`2d57625433b04799636a94df5254c2921b137503935bcb59c1915103be827b43`。赋值状态机、配置加载、帧关联、UI 与恢复相关原生测试及三个 CaptureSelfTest 模式通过；启动器43、持续会话43、启动配置21项 Python 测试通过。观察开销以 QPC 记录，单观察段超过5ms时停止诊断，不能视为纯 CPU 时间或整 Tick 总开销上限。
 
 2026-10-16 的 `continuous-stereo-40604-20261016-075634-79fc35f0` 在原生观察器激活前收到取消信号：`native_started=false`，XR orderly stop / shutdown_completed=true。未捕获实际准星赋值，未改变玩家默认清单，未宣布有限距离准星修复。下一步仍是取得实际执行及场景关联证据，再决定显示修改。
+
+## Native17：首次捕获实际准星赋值与场景时序
+
+Native16 实际激活失败：新增 execLet Hook 后，原生会话入口表仍只有42槽，第二个 resize Hook 安装时耗尽。Native17 按编译开关增加1槽（此构建43槽），并在容量耗尽时输出明确计数。独立源码核对确认无需改变 viewport 表或动态入口清单格式。
+
+Native17 SHA256：`60a9aa9c3ec6b9c51995eb2ab9b47900a141e2201e905b18bd0766caee5b9838`。实际会话 `continuous-stereo-2796-20261016-080250-cc68bb34`：roots/candidates/completed/sealed/scene_consumed 均644，root/snapshot/completion/scene-binding拒绝均0；场景调用658。已保存32条有界时序记录。观察段累计QPC约710.69ms，最长单段0.6896ms，5ms单段预算未触发；这不是整帧性能验收。当前仅证明本轮实际 Tick 中的赋值和同线程后续场景消费，不证明相机等价、渲染ticket归属或所有武器/重载后的覆盖。
+
+43处入口清单封存成功。原生停止/资源清理通过；旧独立校验器缺少 execLet 已知运行代码签名，误把该原生入口交给系统模块校验而拒绝，原报告保留 incomplete。补充固定历史运行签名后，对仍存活的同一游戏只读复核43处入口，`world17-independent-restored.json` 的 all_match=true。随后正常关闭游戏，输入服务停止；没有把重跑校验冒充新的完整会话通过。
+
+XR短段提交678次、复制284张、跨度7.5014495秒，最大提交间隔22.4994ms。未进行真头显验收。准星显示仍是既有无限远方向方式；下一步是在精确场景/源视图/ticket内携带赋值证据，并实测写入相机和源视图关系，之后再实现有限距离准星。

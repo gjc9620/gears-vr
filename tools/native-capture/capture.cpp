@@ -331,7 +331,12 @@ constexpr unsigned game_material_hooks=1;
 #else
 constexpr unsigned game_material_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks> session_hook_entries{};
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+constexpr unsigned crosshair_assignment_hooks=1;
+#else
+constexpr unsigned crosshair_assignment_hooks=0;
+#endif
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -2543,7 +2548,10 @@ void flush(FILE* file,unsigned max_batches=0) {
 }
 bool install(void* target,void* detour,void** original) {
     if(continuous_session){
-        if(session_hook_entry_count==session_hook_entries.size())return false;
+        if(session_hook_entry_count==session_hook_entries.size()){
+            if(diagnostic_status)fprintf(diagnostic_status,"hook_entry_capacity_exhausted count=%u capacity=%zu target=%p\n",session_hook_entry_count,session_hook_entries.size(),target);
+            return false;
+        }
         auto& entry=session_hook_entries[session_hook_entry_count];entry.target=target;entry.detour=detour;
         auto primed=std::find(prime_targets.begin(),prime_targets.end(),target);
         if(prime_ready.load()&&primed!=prime_targets.end())entry.bytes=prime_original_bytes[static_cast<size_t>(primed-prime_targets.begin())];
