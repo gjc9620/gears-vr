@@ -110,7 +110,7 @@ def main_menu(sample, top):
 def loading_display(sample):
     """Exact observed blocked nonmodal stack; generic display only, never input."""
     if (sample.get('read_only') is not True or sample.get('consistent_reread') is not True
-            or type(sample.get('input_block_count')) is not int or sample['input_block_count'] != 2
+            or type(sample.get('input_block_count')) is not int or sample['input_block_count'] not in (1, 2)
             or type(sample.get('player_index')) is not int or sample['player_index'] != 0
             or sample.get('active_scenes_truncated', False) is not False
             or sample.get('focus_chain_truncated', False) is not False):
@@ -156,8 +156,9 @@ def classify(sample):
         return UNKNOWN
     if loading_display(sample):return LOADING_DISPLAY
     blocked = sample.get('input_block_count')
-    # The observed block1 transition permits only authenticated Pause or main-menu display.
-    # It is not input permission or gameplay/death-menu recovery permission.
+    # Outside the exact loading topology above, block1 permits only authenticated
+    # Pause/main-menu display. Neither loading block1/2 nor other block1 states
+    # grant input permission or gameplay/death-menu recovery permission.
     if type(blocked) is not int or blocked not in (0, 1):
         return UNKNOWN
     # MenuReader reports UIScene.LastPlayerIndex, not a LocalPlayer identity.
@@ -240,6 +241,10 @@ class MenuDisplayMonitor:
             self.log.flush()
             self.publish_failed = False
         key = mode, reason
+        # Retain the observed block2 -> block1 loading transition without
+        # changing packet publication or other modes' log deduplication.
+        if mode == LOADING_DISPLAY and isinstance(evidence, dict) and loading_display(evidence):
+            key = mode, reason, evidence['input_block_count']
         if key != self.last:
             self.log.write(json.dumps(dict(sequence=self.sequence, observed_ns=observed, mode=mode,
                 reason=reason, state_evidence=state_evidence(evidence)))+'\n')

@@ -284,3 +284,14 @@ XR15 SHA256 `166a697dbd80dbfe77f7261741263638a0c7de04611f6784d956855ec78714e0`�
 实际会话 `continuous-stereo-36080-20261016-123605-75feb4ab` 完成1080p主菜单往返、world2新Pawn及GPU index1双眼非黑图像；四原生阶段各2235对零错配，projection2141次/copies2223次。MAIN_MENU新捕获交接有成功等待卡episode，首段897.1091ms；本轮没有精确SnapshotChanged，因此mode6运行分支仍未覆盖。正常停止、43入口恢复、XR shutdown和身份核验WM_CLOSE退出通过；无焦点操作。
 
 审计 `xr15-loading-audit.json` 明确保留 bounded_checks_passed=false：原block2加载状态持续4138.8894ms后出现完整一致但block1的同名三项场景状态，约256.8745ms后才到block0 GAMEPLAY，故“直接到GAMEPLAY”检查未通过。最长成功非空合成间隔344.5089ms（complete=true、dropped0、later0）恰在该block1 UNKNOWN区间，不能声称黑屏已全部修复。block1仍未授权卡/投影/输入；下一步仅评估是否给该精确实证结构增加通用等待卡许可，禁止直接放宽全部UNKNOWN。三段返回卡分别约897ms/4078ms/7401ms，仅最后一段交给projection。原始事件、图像、冻结原生状态与审计均留在ignored analysis/runtime。
+
+
+## XR15b：同一精确加载结构的block1衔接与4K联合回归
+
+依据XR15原始第9行，只把loading_display严格整数条件扩为block1/2，完整三栈、焦点、身份和一致复读条件不变；block0才走既有GAMEPLAY，block1/2均不授权输入。仅mode5的日志去重增加block计数，保留实际2→1变化，不增加重复状态行。60项monitor/world-monitor测试通过，两种block均执行完整结构破坏负例；无需改XR15二进制或原生Hook。
+
+实际会话 `continuous-stereo-15660-20261016-124127-c2a2430e` 在3840×2160源SBS/单眼1920×2160完成两次确认框取消、真实检查点world1→2、新Pawn手枪开镜、还原步枪、主菜单Continue→world3。GPU index0/1/2三张图均有独立票据且双眼非黑，接触图目视有场景、角色、开镜与字幕；这不证明全部UI或真头显融合。原生四阶段各6265对零错配，projection5102/copies6236。
+
+加载实测记录blocks=[2,1]后直接到block0，总计4402.8728ms，成功等待卡episode覆盖内部区间；完整结构与加载审计通过。独立4K审计通过的范围仅脚本路径、源GPU图像及原生一致性，明确不包含无空窗验收。最长非空合成间隔仍为222.4131ms，complete=true/dropped0/later0，位于GAMEPLAY下source_reconfiguration→waiting_image→submitted，需独立处理。日志另见精确Registry末尾复读竞争导致普通RuntimeError/reader_retry，尚未放宽保护，下一步分析专属异常与原client校验。旧XR15失败审计保留原样。
+
+正常停止、43入口恢复、XR shutdown、身份核验WM_CLOSE通过，CIM确认游戏与XR进程退出。临时4K仅修改分辨率X/Y，游戏退出后已恢复1920×1080，其他设置保留；无激活焦点操作。ignored证据：`xr15b-4k-events.json`、`xr15b-4k-audit.json`、`xr15b-loading-audit.json`、原始会话日志/图像/冻结原生状态、`xr15b-4k-config-state.json`。默认玩家清单未提升。

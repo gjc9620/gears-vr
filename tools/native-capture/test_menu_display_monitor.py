@@ -70,7 +70,7 @@ class Reader:
     def close(self):self.closed=True
 
 
-def loading_sample():
+def loading_sample(blocked=2):
     # Actual sequence233 structure from continuous-stereo-11428...bc269c4e.
     root=dict(address='0x8e8c9280',name='PenderCrossplayInvitePopUp',number=1,
               cls='WarUIScene_CrossplayInvitePopUp',outer='0x1438a180')
@@ -78,33 +78,41 @@ def loading_sample():
     scenes=[dict(address='0x80115770',name='HUD_Toast',number=1,cls='WarUIScene_Toast',outer=root['outer'],input_mode=0),
             dict(address='0x8011dd20',name='MessageToast',number=2,cls='WarUIScene_Toast',outer=root['outer'],input_mode=0),
             dict(root,input_mode=2)]
-    return dict(sample(False),input_block_count=2,top=dict(root,input_mode=2,tag=root['name'],tag_number=0),
+    return dict(sample(False),input_block_count=blocked,top=dict(root,input_mode=2,tag=root['name'],tag_number=0),
                 active_scenes=scenes,focus_chain=[copy.deepcopy(focus)],focused_leaf=copy.deepcopy(focus))
 
 
 class Tests(unittest.TestCase):
     def test_loading_display_exact_observed_stack_is_never_gameplay_or_input(self):
-        self.assertEqual(LOADING_DISPLAY,5)
-        base=loading_sample();self.assertTrue(loading_display(base));self.assertEqual(classify(base),LOADING_DISPLAY)
-        for blocked in (1,3,-1,True,False,2.0,'2',None):
-            self.assertEqual(classify(dict(base,input_block_count=blocked)),UNKNOWN)
-        self.assertEqual(classify(dict(base,input_block_count=0)),GAMEPLAY)
-        for key,value in (('read_only',False),('consistent_reread',False),('player_index',-1),
-                          ('player_index',True),('player_index',0.0),('player_index',None)):
-            self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN)
-        with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
-            from menu_control import allowed
-        self.assertFalse(allowed(base,11))
-        # No address/instance number is a hardcoded authority.
-        changed=copy.deepcopy(base)
-        for node in [changed['top'],changed['active_scenes'][-1],changed['focused_leaf'],changed['focus_chain'][0]]:
-            node.update(address='0x123456',number=9)
-        for node in [changed['top'],*changed['active_scenes'],changed['focused_leaf'],changed['focus_chain'][0]]:
-            node['outer']='0x987654'
-        self.assertEqual(classify(changed),LOADING_DISPLAY)
+        # XR15 actual line9: same exact stack at block2 -> block1 -> block0.
+        for blocked in (1,2):
+            with self.subTest(blocked=blocked):
+                self.assertEqual(LOADING_DISPLAY,5)
+                base=loading_sample(blocked);self.assertTrue(loading_display(base));self.assertEqual(classify(base),LOADING_DISPLAY)
+                for invalid_block in (3,4,100,-1,True,False,1.0,2.0,'1','2',None):
+                    self.assertEqual(classify(dict(base,input_block_count=invalid_block)),UNKNOWN)
+                self.assertEqual(classify(dict(base,input_block_count=0)),GAMEPLAY)
+                for key,value in (('read_only',False),('consistent_reread',False),('player_index',-1),
+                                  ('player_index',True),('player_index',0.0),('player_index',None)):
+                    self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN)
+                with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
+                    from menu_control import allowed
+                self.assertFalse(allowed(base,11))
+                # No address/instance number is a hardcoded authority.
+                changed=copy.deepcopy(base)
+                for node in [changed['top'],changed['active_scenes'][-1],changed['focused_leaf'],changed['focus_chain'][0]]:
+                    node.update(address='0x123456',number=9)
+                for node in [changed['top'],*changed['active_scenes'],changed['focused_leaf'],changed['focus_chain'][0]]:
+                    node['outer']='0x987654'
+                self.assertEqual(classify(changed),LOADING_DISPLAY)
 
     def test_loading_display_rejects_each_identity_shape_order_and_focus_mismatch(self):
-        base=loading_sample()
+        for blocked in (1,2):
+            with self.subTest(blocked=blocked):
+                self._assert_loading_structure_rejected(blocked)
+
+    def _assert_loading_structure_rejected(self, blocked):
+        base=loading_sample(blocked)
         paths=[('top',),('active_scenes',0),('active_scenes',1),('active_scenes',2),('focus_chain',0),('focused_leaf',)]
         for path in paths:
             for key,bad_values in (('address',(None,'','0x0','garbage',123,'0x10000000000000000')),
@@ -153,6 +161,23 @@ class Tests(unittest.TestCase):
                 self.assertEqual(PACKET.unpack(path.read_bytes()),(0x47564d31,1,64,GAMEPLAY,11,22,33,44,2,200))
             finally:m.close()
 
+    def test_loading_block_transition_logs_2_1_0_without_repeated_same_block_rows(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+            try:
+                for sequence,blocked in enumerate((2,2,1,1,0),1):
+                    reader.sample=lambda blocked=blocked:loading_sample(blocked)
+                    m.clock=lambda sequence=sequence:sequence*100;m.poll()
+                    packet=PACKET.unpack(path.read_bytes())
+                    self.assertEqual(packet,(0x47564d31,1,64,LOADING_DISPLAY if blocked else GAMEPLAY,
+                        11,22,33,44,sequence,sequence*100))
+                records=[json.loads(line) for line in path.with_suffix('.jsonl').read_text().splitlines()]
+                self.assertEqual([r['sequence'] for r in records],[1,3,5])
+                self.assertEqual([r['mode'] for r in records],[LOADING_DISPLAY,LOADING_DISPLAY,GAMEPLAY])
+                self.assertEqual([r['state_evidence']['input_block_count'] for r in records],[2,1,0])
+                self.assertEqual({r['reason'] for r in records},{'PenderCrossplayInvitePopUp'})
+            finally:m.close()
+
     def test_state_evidence_owns_bounded_scene_and_focus_fields(self):
         state=sample(False)
         state['top'].update(address='0x500',number=3,outer='0x100',tag_number=0)
@@ -184,7 +209,7 @@ class Tests(unittest.TestCase):
             state['active_scenes']=[dict(state['top'])]
             state['focus_chain']=[dict(state['focused_leaf'])]
             try:
-                for sequence,(now,blocked,mode) in enumerate(((100,1,UNKNOWN),(200,1,UNKNOWN),(300,0,GAMEPLAY)),1):
+                for sequence,(now,blocked,mode) in enumerate(((100,1,UNKNOWN),(200,2,UNKNOWN),(300,0,GAMEPLAY)),1):
                     current=copy.deepcopy(state);current['input_block_count']=blocked
                     reader.sample=lambda current=current:current;m.clock=lambda now=now:now;m.poll()
                     self.assertEqual(PACKET.unpack(path.read_bytes()),(0x47564d31,1,64,mode,11,22,33,44,sequence,now))
