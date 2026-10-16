@@ -344,3 +344,12 @@ XR22实测 `analysis/runtime/movie22-fallback-summary.json` 记录eligible2843�
 提交579d2a2修复已证明的注册表/时间戳临时变化导致启动永久放弃，保持共享截止时间、身份和代码变化拒绝、激活不重试。19292实际经历7次重新获取后成功激活，但准备耗时19.9秒，启动延迟仍未解决。提交3c83336/3229b4d增加GUI中英文切换和后端配置兼容，50项launcher测试及GUI自检通过。
 
 余项继续保留：机枪/载具摄像机覆盖、所有黑屏路径、头显帧节奏、缩短启动、HUD元素尺寸与位置分离、真机回归。预渲染CG只能双眼共用二维电影，不能标为真实几何立体。当前默认仍Native31/XR23；Native32仅诊断候选。
+
+
+### Native32后续有效图像与本地默认候选更新（2026-10-17）
+
+第二轮continuous-stereo-12492-20261016-235900-c6b9bd9c补齐第一轮缺失的像素证据：换弹请求快照1/ticket349/source_serial341、快照2/ticket366/source_serial358，均1920×1081。目视两眼场景、武器HUD、换弹条及受伤效果可见；160个严格弹药样本完成，场景脚本完成普通换弹采样，未验证完美换弹。快照和原始状态在ignored analysis/runtime/material32b-reload*及会话PPM。
+
+停止后材质consumers/uploads/draws各568，rejected/failed为0；最终传输accepted892。原生清理、入口恢复和XR退出完成，report stopped/passed=true；该passed仅既有生命周期标准，仍有8671次最终pair拒绝，提交最大间隔46.815秒，不能解释为连续稳定或所有黑屏均已修复。menu/死亡等区间必须结合模式区分。保存的native-status副本保持原始证据。
+
+已将本地默认更新至manifest-material32-movie23-vd.json：Native32配原XR23，保留Native31具名清单回滚。这是已证实路径的修复候选，机枪/载具、完美换弹、FPS设置、启动延迟及头显卡顿仍待各自验证。未改变用户游戏分辨率或全局OpenXR设置。

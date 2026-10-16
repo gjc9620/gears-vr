@@ -144,10 +144,10 @@ class LauncherTests(unittest.TestCase):
     def test_player_default_uses_game_resolution_and_graphics_protection(self):
         directory=pathlib.Path(__file__).parent
         current=json.loads((directory/'manifest.json').read_text())
-        self.assertEqual(current,json.loads((directory/'manifest-background31-movie23-vd.json').read_text()))
+        self.assertEqual(current,json.loads((directory/'manifest-material32-movie23-vd.json').read_text()))
         launcher.settings({},current)
-        self.assertEqual(current['native_dll'],'GearsCaptureBackground31.dll')
-        self.assertEqual(current['native_build'],'tools/native-capture/build-background31')
+        self.assertEqual(current['native_dll'],'GearsCaptureMaterial32.dll')
+        self.assertEqual(current['native_build'],'tools/native-capture/build-material32')
         self.assertEqual(current['xr_build'],'tools/openxr-probe/build-main-menu23-vd')
         self.assertEqual(launcher.hud_horizontal_fov({},current),65.)
         for key in ('startup_menu','graphics_startup_lock','graphics_menu_lock','menu_recovery','ui_hud_plane',
