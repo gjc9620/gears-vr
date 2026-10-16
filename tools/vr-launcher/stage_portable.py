@@ -144,6 +144,31 @@ def stage(root, python_root, destination, *, manifest_path=None):
         target = contained(destination, relative); target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(value, indent=2) + '\n', encoding='utf-8')
         record(target, 'generated:' + relative, 'project-generated-config')
+    readme = contained(destination, 'README.txt')
+    readme.write_text('''GearsVR — 开发候选 / Development candidate
+
+中文
+1. 解压整个文件夹，不要只移动启动器 EXE。
+2. 关闭已运行的《战争机器》，打开 GearsVR Launcher.exe，选择游戏的 GOWDE-Steam.exe。
+3. Quest 3 / Virtual Desktop 用户先连接 VD，选择 Quest 3 / Virtual Desktop (VDXR)，再点击启动 VR。
+   其他头显可选择系统 OpenXR Runtime；此包不含模拟器。
+4. 分辨率在游戏内设置；DLSS / DLAA 保持关闭。手柄在游戏前台正常响应，默认不响应后台输入。
+5. 界面右上角可切换中文 / English。停止时点击“停止 VR”，等待结束后再退出游戏。
+
+这是待验证的开发候选，不是正式发布版。不包含游戏，请使用受支持的游戏版本。
+
+English
+1. Extract the whole folder; keep the launcher EXE with the other files.
+2. Close any running Gears game. Open GearsVR Launcher.exe and select the game's GOWDE-Steam.exe.
+3. For Quest 3 / Virtual Desktop, connect VD first, select Quest 3 / Virtual Desktop (VDXR), then Start VR.
+   Other headsets can use System OpenXR Runtime. Simulator files are not included.
+4. Set resolution in the game. DLSS / DLAA remain disabled. Controller input works with the game in the foreground;
+   background controller input is disabled by default.
+5. Choose 中文 / English at the upper right. Click Stop VR and wait for it to finish before exiting the game.
+
+This is an unvalidated development candidate, not a public release. Game files are not included; a supported game build is required.
+''', encoding='utf-8')
+    record(readme, 'generated:README.txt', 'project-user-instructions')
     for relative in ('analysis/runtime', 'analysis/vr-launcher-ui'): contained(destination, relative).mkdir(parents=True, exist_ok=True)
     # A file cannot contain its own digest. All payload files are listed; the
     # inventory's own hash belongs in the separate preflight evidence receipt.

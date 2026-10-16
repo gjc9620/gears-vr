@@ -32,3 +32,5 @@ Native34首次进关前失败的PID39900：实际交换链8×8；状态文件偶
 补充：c61921e将底层Python函数／CLI也改为默认关闭后台手柄，只有显式参数才可启用。更新后重新生成的离线候选 `analysis/release-staging/hud34-offline2-20261017` 通过包内隔离预检（693文件、42653389字节），回执 `analysis/runtime/hud34-portable-preflight2.json`；未启动GUI／游戏，仍非发布验收。
 
 启动准备补充：7b57d0e在有创建回执时固定同一PID／FILETIME／路径，只开一个进程句柄查询依赖模块，不反复启动PowerShell扫描。模块等待上限25秒，且受命令起始+50秒共同截止，依赖读取后、游戏哈希复核后及注入标记前后都再次核对时限与拥有者／取消／进程身份。8项定向mock测试通过，包括超过旧12秒后就绪、迟到结果和取消；没有实际启动验证。前述offline2目录在该提交前生成，仍是不可变旧快照，不包含此项Python修改；最终发布包须重新生成。
+
+离线补充：038361c允许有完整单一范围证据的NativeSubtitle字幕整体使用元素缩放／中心收拢，字间距随同组缩放；多范围碎片和未知组仍回退。UiHudLayout／UiCanvasTextBatch／UiPayloadReceipts CPU测试通过，尚未构建进冻结Native34或做画面验收。新打包流程会生成中英文README.txt，并纳入文件清单；13项打包测试通过。既有offline2包仍保持原快照，不含这两项后续变化。

@@ -46,6 +46,7 @@ class StageTests(unittest.TestCase):
         result = self.build(); checked = preflight.check_inventory(self.destination)
         self.assertEqual(result['files'], checked['files'])
         names = {item['path'] for item in result['files']}
+        self.assertIn('README.txt', names)
         self.assertIn('runtime/python/Lib/os.py', names)
         self.assertIn(stage.QUIET_BUILD + '/GearsQuietStartup.dll', names)
         self.assertFalse(any('private' in name or 'site-packages' in name or '__pycache__' in name for name in names))
