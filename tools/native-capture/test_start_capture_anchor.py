@@ -151,7 +151,7 @@ class AnchorStartTests(unittest.TestCase):
                 stack.enter_context(mock.patch.object(start,'preparation_live_guard',return_value=lambda:None))
                 camera=dict(local_player_address='0x1',module_base='0x1000',controller_address='0x2',
                     timestamp_address='0x3',camera_address='0x4',pov_address='0x200',offsets={'Rotation':'0x10'})
-                stack.enter_context(mock.patch.object(start,'resolve_camera_once',return_value=camera))
+                first_resolve=stack.enter_context(mock.patch.object(start,'resolve_camera_once',side_effect=AssertionError('No preliminary startup resolve')))
                 resolver=mock.Mock();resolver.base=0x1000;resolver.resolve.return_value=camera;resolver.read.return_value=b'ok'
                 stack.enter_context(mock.patch.object(start,'Resolver',return_value=resolver))
                 stack.enter_context(mock.patch.object(start,'observer_signatures',return_value={1:b'ok'}))
@@ -167,7 +167,7 @@ class AnchorStartTests(unittest.TestCase):
                 remote=stack.enter_context(mock.patch.object(start,'remote_call'))
                 with contextlib.redirect_stdout(io.StringIO()),self.assertRaises(assignment.CrosshairConfigRejected):start.main()
                 builder.assert_called_once_with(resolver,camera,include_tick_roots=True,include_writer_view=True)
-                resolver.p.close.assert_called_once()
+                resolver.resolve.assert_called_once();resolver.p.close.assert_called_once();first_resolve.assert_not_called()
                 remote.assert_not_called();native.VirtualAllocEx.assert_not_called();native.WriteProcessMemory.assert_not_called()
                 self.assertFalse((build/'capture.ini').exists());self.assertFalse((build/'ui-observer-config.json').exists())
                 # A successful fresh certificate reaches the actual Capture INI;
@@ -180,11 +180,15 @@ class AnchorStartTests(unittest.TestCase):
                 native.OpenEventW.side_effect=[1,1,1,0]
                 with contextlib.redirect_stdout(io.StringIO()),self.assertRaisesRegex(RuntimeError,'test stops before activation'):start.main()
                 config=(build/'capture.ini').read_text(encoding='utf-16')
+                for field in ('local_player=0x1','controller=0x2','timestamp=0x3','camera=0x4','camera_yaw=0x214'):
+                    self.assertIn('\n'+field+'\n',config)
                 self.assertIn('\ncrosshair_assignment_observer=1\n',config)
                 self.assertIn('[CrosshairAssignment]\nschema=1\n',config)
                 metadata=json.loads((build/'ui-observer-config.json').read_text())
                 self.assertEqual(metadata['crosshair_assignment'],{'fresh_certificate':True})
                 remote.assert_not_called();native.VirtualAllocEx.assert_not_called();native.WriteProcessMemory.assert_not_called()
+                self.assertEqual(resolver.resolve.call_count,2);self.assertEqual(resolver.p.close.call_count,2)
+                first_resolve.assert_not_called()
 
     def test_hud_size_ini_and_independent_cli_rejection(self):
         self.assertEqual(start.hud_size_ini(types.SimpleNamespace()),'')

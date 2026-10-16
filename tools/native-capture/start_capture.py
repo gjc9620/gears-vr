@@ -192,6 +192,19 @@ def resolve_camera_once(pid,profile):
     finally:resolver.p.close()
 
 
+class _InitialPreparationCamera:
+    """One startup's comparison inputs, never a camera/certificate cache."""
+    def __init__(self):
+        self.reference=None
+
+    def expected(self,refreshed):
+        # Latch before any builder can request an internal or outer retry.
+        # Only these comparison inputs survive; every result/certificate is fresh.
+        if self.reference is None:
+            self.reference={key:refreshed[key] for key in ('local_player_address','module_base')}
+        return self.reference
+
+
 def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False,cinematic_camera=False,
                                  record_anchor_failure=True,preparation_deadline=None,check_live=None,entry_reader=None,
                                  crosshair_assignment_observer=False):
@@ -218,9 +231,10 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
             r=Resolver(pid,profile)
             try:
                 refreshed=r.resolve()
-                if refreshed['local_player_address']!=camera['local_player_address']:
+                expected=camera.expected(refreshed) if isinstance(camera,_InitialPreparationCamera) else camera
+                if refreshed['local_player_address']!=expected['local_player_address']:
                     raise RuntimeError('Local player changed during preparation')
-                if int(refreshed['module_base'],0)!=int(camera['module_base'],0):
+                if int(refreshed['module_base'],0)!=int(expected['module_base'],0):
                     raise RuntimeError('Module base changed during preparation')
                 for offset,signature in signatures.items():
                     raw=entry_reader(r.base+offset,len(signature),r.read) if entry_reader is not None else r.read(r.base+offset,len(signature))
@@ -482,9 +496,10 @@ def main():
         if args.continuous_session and args.anchor_observer:
             return wait_camera_preparation(acquire,check_preparation,preparation_deadline,failure_receipt=failed_preparation)
         check_preparation();value=acquire();check_preparation();return value
-    first_resolve_started=time.perf_counter_ns()
-    camera=prepare(lambda:resolve_camera_once(args.pid,profile))
-    preparation_timing('first_resolve_including_retry',first_resolve_started)
+    # Initial acquisition's first successful resolve supplies its own reference.
+    # Keep it outside prepare() so outer retries cannot silently rebase identity.
+    # This consolidates discovery; the former preliminary observation is gone.
+    camera=_InitialPreparationCamera()
     certificates_started=time.perf_counter_ns()
     handle=k.OpenProcess(0x43a,False,args.pid)
     if not handle:raise c.WinError(c.get_last_error())

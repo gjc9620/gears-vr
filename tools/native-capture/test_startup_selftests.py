@@ -27,12 +27,13 @@ class StartupSelftestTests(unittest.TestCase):
                 with mock.patch.object(sys,'argv',command),mock.patch.object(tests,'run_suite') as run,\
                      mock.patch.object(start,'preparation_live_guard',return_value=lambda:None),\
                      mock.patch.object(runner,'WindowsControl',return_value=SimpleNamespace(identity=lambda pid:game)),\
-                     mock.patch.object(start,'resolve_camera_once',side_effect=RuntimeError('stop before game read')) as resolve,\
+                     mock.patch.object(start,'resolve_camera_once',side_effect=AssertionError('No preliminary startup resolve')) as resolve,\
                      mock.patch.object(start,'k') as native:
+                    native.OpenProcess.side_effect=RuntimeError('stop before game read')
                     with self.assertRaises(RuntimeError):start.main()
-                    run.assert_not_called();native.OpenProcess.assert_not_called();native.VirtualAllocEx.assert_not_called()
-                    if scenario=='valid':resolve.assert_called_once();self.assertFalse(path.exists())
-                    else:resolve.assert_not_called();self.assertTrue(path.exists())
+                    run.assert_not_called();resolve.assert_not_called();native.VirtualAllocEx.assert_not_called()
+                    if scenario=='valid':native.OpenProcess.assert_called_once_with(0x43a,False,55);self.assertFalse(path.exists())
+                    else:native.OpenProcess.assert_not_called();self.assertTrue(path.exists())
 
     def test_reservation_executes_union_once_before_any_game_launch(self):
         import launch_reserve as reserve
