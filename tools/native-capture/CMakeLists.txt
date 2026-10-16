@@ -328,6 +328,8 @@ add_executable(CrosshairAssignmentConfigLoaderTest crosshair_assignment_config_l
 target_compile_options(CrosshairAssignmentConfigLoaderTest PRIVATE /W4 /EHsc /UNDEBUG)
 add_executable(CrosshairTickEvidenceTest crosshair_tick_evidence_test.cpp)
 target_compile_options(CrosshairTickEvidenceTest PRIVATE /W4 /EHsc /UNDEBUG)
+add_executable(CrosshairSceneEvidenceTest crosshair_scene_evidence_test.cpp)
+target_compile_options(CrosshairSceneEvidenceTest PRIVATE /W4 /EHsc /UNDEBUG)
 add_executable(StereoTransferFixture stereo_transfer_fixture.cpp)
 add_executable(LateQuadDiagnosticsTest late_quad_diagnostics_test.cpp)
 target_compile_options(LateQuadDiagnosticsTest PRIVATE /W4 /WX /EHsc /UNDEBUG)

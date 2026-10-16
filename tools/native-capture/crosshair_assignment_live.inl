@@ -14,6 +14,8 @@ std::atomic<uint64_t> overhead_qpc{},maximum_overhead_qpc{},row_count{};
 std::atomic<bool> budget_exceeded{};
 struct Row {unsigned kind{},thread{};uint64_t world{},tick{};long long begin{},assignment{},finish{},scene{};uintptr_t controller{},pawn{},weapon{};std::array<float,3> point{};};
 std::array<Row,32> rows{};
+std::atomic<uint64_t> anchor_associated{},anchor_association_rejected{},ticket_registered{},association_row_count{};
+std::array<gears_crosshair_scene::Metadata,32> association_rows{};
 void cost(long long elapsed){if(elapsed<0)return;overhead_qpc.fetch_add(uint64_t(elapsed));
     if(qpc_frequency>0&&elapsed>qpc_frequency/200)budget_exceeded=true;
     auto previous=maximum_overhead_qpc.load();while(uint64_t(elapsed)>previous&&!maximum_overhead_qpc.compare_exchange_weak(previous,uint64_t(elapsed))){} }
@@ -108,11 +110,36 @@ bool reserve(){
        !safe_copy(after.data(),target,after.size())||after!=before)return false;
     reserved=true;return true;
 }
-void scene(void* local){
-    if(!enabled||budget_exceeded.load()||!recording.load()||reinterpret_cast<uintptr_t>(local)!=expected_local)return;
+std::optional<gears_crosshair_scene::Metadata> scene(void* local){
+    if(!enabled||budget_exceeded.load()||!recording.load()||reinterpret_cast<uintptr_t>(local)!=expected_local)return {};
     ++scene_calls;const auto stamp=now();auto value=state.evidence.consume(committed_world_generation.load(),stamp);
     if(value){const auto before=now();const bool valid=gears_crosshair_assignment::validate_bindings(config.assignment,safe_copy,false);cost(now()-before);
-        if(valid){++consumed;append(1,*value,stamp);}else ++scene_binding_rejected;}
+        if(valid){++consumed;append(1,*value,stamp);
+            gears_crosshair_scene::Metadata result{};result.controller=value->binding.controller;
+            result.pawn=value->binding.pawn;result.weapon=value->binding.weapon;result.root_frame=value->binding.root_frame;
+            result.world=value->binding.world;result.tick=value->tick;result.thread=GetCurrentThreadId();
+            result.begin_qpc=value->begin_qpc;result.assignment_qpc=value->assignment_qpc;
+            result.finish_qpc=value->finish_qpc;result.scene_qpc=stamp;result.point=value->point;return result;
+        }else ++scene_binding_rejected;}
+    return {};
+}
+void attach(std::optional<gears_crosshair_scene::Metadata> value,gears_anchor::Receipt& receipt){
+    if(!value)return;
+    const auto started=now();
+    const bool valid=enabled&&!budget_exceeded.load()&&recording.load()&&
+        value->controller==address(config.assignment.controller)&&value->pawn==address(config.assignment.pawn)&&
+        value->weapon==address(config.assignment.weapon)&&
+        gears_crosshair_assignment::validate_bindings(config.assignment,safe_copy,false)&&
+        gears_crosshair_scene::associate(*value,receipt.key,receipt.invocation,receipt.thread,
+            committed_world_generation.load(),receipt.anchor.controller,receipt.anchor.pawn);
+    cost(now()-started);
+    if(valid)receipt.crosshair=*value;else ++anchor_association_rejected;
+}
+void accepted(gears_anchor::Receipt const& receipt){if(receipt.crosshair)++anchor_associated;}
+void registered(gears_submitted::FrameTicket const& frame){
+    if(!frame.crosshair||!frame.id||frame.crosshair->ticket!=frame.id)return;
+    ++ticket_registered;const auto index=association_row_count.fetch_add(1);
+    if(index<association_rows.size())association_rows[index]=*frame.crosshair;
 }
 void print(FILE* out){
     fprintf(out,"crosshair_assignment_observer enabled=%u compiled=1 roots=%llu root_rejected=%llu lets_in_tick=%llu candidates=%llu snapshot_rejected=%llu completed=%llu completion_rejected=%llu sealed=%llu scene_calls=%llu scene_consumed=%llu overhead_qpc=%llu maximum_overhead_qpc=%llu qpc_frequency=%lld rows=%llu camera_equivalence_proven=0 ticket_association_proven=0 coordinates_modified=0\n",
@@ -121,6 +148,15 @@ void print(FILE* out){
     fprintf(out,"crosshair_assignment_scene_binding_rejected=%llu\n",scene_binding_rejected.load());
     fprintf(out,"crosshair_assignment_budget_exceeded=%u per_observation_budget_ms=5\n",budget_exceeded.load()?1:0);
     if(active.load())return;
+    fprintf(out,"crosshair_assignment_association anchors=%llu anchor_rejected=%llu tickets_registered=%llu rows=%llu camera_equivalence_proven=0 finite_aim_certified=0\n",
+        anchor_associated.load(),anchor_association_rejected.load(),ticket_registered.load(),
+        (std::min)(association_row_count.load(),uint64_t(association_rows.size())));
+    for(unsigned i=0;i<(std::min)(association_row_count.load(),uint64_t(association_rows.size()));++i){auto const& r=association_rows[i];
+        fprintf(out,"crosshair_assignment_ticket_row index=%u thread=%u world=%llu tick=%llu anchor_invocation=%llu ticket=%llu local=%p family=%p source=%p owner=%p stamp=%u controller=%p pawn=%p weapon=%p scene_qpc=%lld\n",
+            i,r.thread,r.world,r.tick,r.invocation,r.ticket,reinterpret_cast<void*>(r.local),reinterpret_cast<void*>(r.family),
+            reinterpret_cast<void*>(r.source),reinterpret_cast<void*>(r.owner),r.stamp,reinterpret_cast<void*>(r.controller),
+            reinterpret_cast<void*>(r.pawn),reinterpret_cast<void*>(r.weapon),r.scene_qpc);
+    }
     for(unsigned i=0;i<(std::min)(row_count.load(),uint64_t(rows.size()));++i){auto const& r=rows[i];
         fprintf(out,"crosshair_assignment_row index=%u kind=%u thread=%u world=%llu tick=%llu tick_begin_qpc=%lld assignment_qpc=%lld tick_finish_qpc=%lld scene_qpc=%lld controller=%p pawn=%p weapon=%p point=%.9g,%.9g,%.9g\n",
             i,r.kind,r.thread,r.world,r.tick,r.begin,r.assignment,r.finish,r.scene,reinterpret_cast<void*>(r.controller),reinterpret_cast<void*>(r.pawn),reinterpret_cast<void*>(r.weapon),r.point[0],r.point[1],r.point[2]);}
@@ -128,7 +164,10 @@ void print(FILE* out){
 #else
 bool load(const wchar_t*){return false;}
 struct TickScope {TickScope(void*,void*){}};
-void scene(void*){}
+std::optional<gears_crosshair_scene::Metadata> scene(void*){return {};}
+void attach(std::optional<gears_crosshair_scene::Metadata>,gears_anchor::Receipt&){}
+void accepted(gears_anchor::Receipt const&){}
+void registered(gears_submitted::FrameTicket const&){}
 void print(FILE* out){fprintf(out,"crosshair_assignment_observer enabled=%u compiled=0 coordinates_modified=0\n",enabled?1:0);}
 #endif
 }

@@ -6,6 +6,7 @@
 #include <cwchar>
 #include <limits>
 #include <algorithm>
+#include "crosshair_scene_evidence.h"
 
 namespace gears_anchor {
 struct Identity {std::uintptr_t address{},cls{},outer{},super{};unsigned index{},name_index{},number{},check_super{};
@@ -394,7 +395,8 @@ template<class Read,class Now,class Wait> bool bounded_guard(Config const& c,Rea
 }
 struct Receipt {Key key{};Anchor anchor{};std::uint64_t invocation{};std::uint32_t thread{};
     std::int64_t scene_qpc{},family_qpc{},renderer_qpc{};
-    std::array<unsigned char,128> family_matrices{},renderer_matrices{};};
+    std::array<unsigned char,128> family_matrices{},renderer_matrices{};
+    std::optional<gears_crosshair_scene::Metadata> crosshair;};
 // Pure binding check against an already-readable current source snapshot.
 // The caller obtains this receipt from its current one-use Context scope;
 // no latest/global receipt, new memory read, or persistent failure state lives here.

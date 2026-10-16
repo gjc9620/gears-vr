@@ -110,3 +110,13 @@ Native17 SHA256：`60a9aa9c3ec6b9c51995eb2ab9b47900a141e2201e905b18bd0766caee5b9
 43处入口清单封存成功。原生停止/资源清理通过；旧独立校验器缺少 execLet 已知运行代码签名，误把该原生入口交给系统模块校验而拒绝，原报告保留 incomplete。补充固定历史运行签名后，对仍存活的同一游戏只读复核43处入口，`world17-independent-restored.json` 的 all_match=true。随后正常关闭游戏，输入服务停止；没有把重跑校验冒充新的完整会话通过。
 
 XR短段提交678次、复制284张、跨度7.5014495秒，最大提交间隔22.4994ms。未进行真头显验收。准星显示仍是既有无限远方向方式；下一步是在精确场景/源视图/ticket内携带赋值证据，并实测写入相机和源视图关系，之后再实现有限距离准星。
+
+## Native18：赋值证据到已注册双目帧的实际关联
+
+新增独立 owning 元数据：场景入口取走一次 Tick 赋值，在原生场景返回且正常 anchor 身份成立后复核控制器/Pawn/武器/世界代次，随既有 Context 的单次 offer→FamilyScope→consume 传递。实际提交源矩阵匹配后，拷贝到 FrameTicket，并仅在 Lifetime.begin 成功注册后计数。元数据保留 scene 矩阵；FrameTicket 原有 source_view/source_projection 保留实际提交矩阵，二者不可混称。缺失或拒绝准星元数据不阻断普通双目。准星显示仍未修改。
+
+Native18 DLL SHA256：`a7a31e2e47798691cb5d9f5095424d7389876c2b1698c98f2dad9791d3563861`。新增关联测试及既有 AnchorObserver、SubmittedViewLifetime、世界代次、帧关联、UI 凭据测试、连续/帧关联自测通过；独立定向源码审查无阻断项。
+
+实际会话 `continuous-stereo-14180-20261016-081006-6c5f54eb`：650次已完成赋值、650次scene消费、650次anchor关联，拒绝均0；305次关联到成功注册的ticket，保存32条有界tick/anchor_invocation/ticket记录。不能将305次注册等同于305张已经显示的图像。观察段累计约788.3376ms，最长单段0.7027ms，预算未触发，不作为最终性能指标。
+
+会话报告 stopped/passed=true；原生清理、43入口独立恢复及XR shutdown均通过。XR提交704次、复制301张、跨度7.8101075秒，最大提交间隔21.9203ms。本轮为静止模拟器短测，未验收开镜、切枪、重载、真头显或有限距离融合。游戏随后正常关闭、输入服务停止。下一步仍须取得writer CamLoc/CamRot和源相机关系的独立证据，不能只凭同线程/同ticket宣称相机等价。

@@ -2047,6 +2047,10 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     }
     uintptr_t original_state=reinterpret_cast<uintptr_t>(original_source.pointer(8));
     gears_submitted::FrameTicket frame{};gears_vr::Pose frame_reference{};
+    if(anchor_observer_enabled&&anchor){
+        auto evidence=anchor->crosshair;
+        frame.crosshair=gears_crosshair_scene::take(evidence,anchor->key,anchor->invocation,GetCurrentThreadId());
+    }
     frame.enabled=frame_link_diagnostics;
     if(stereo_xr){
         // Read once per attempted pair; both constructors and all later stages
@@ -2144,7 +2148,9 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     }
     trace_rectangle(3,reinterpret_cast<uintptr_t>(sources.views[0]));trace_rectangle(4,reinterpret_cast<uintptr_t>(sources.views[1]));
     if(frame.enabled)frame.id=++stereo_ticket_counter;
-    if(submit_session_enabled() && !submitted_lifetime.begin(reinterpret_cast<uintptr_t>(destination),projection,frame)) {
+    if(frame.crosshair){if(frame.id)frame.crosshair->ticket=frame.id;else frame.crosshair.reset();}
+    const bool register_submission=submit_session_enabled();
+    if(register_submission && !submitted_lifetime.begin(reinterpret_cast<uintptr_t>(destination),projection,frame)) {
         if(!gears_split_sources::release(api,sources))submit_retained=1;
         if(continuous_session){++session_cancelled_builds;
             if(!submitted_lifetime.stopping())request_session_stop(SessionStop::proof_failure);
@@ -2152,6 +2158,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         else ++submit_skipped;
         return false;
     }
+    if(register_submission)crosshair_live::registered(frame);
     // Admission owns the ticket now. Even an impossible commit failure must
     // finish constructing this renderer so its normal retirement can drain it.
     if(origin_trial_enabled&&!origin_trial.commit(frame.origin.selection,true)){
@@ -2261,7 +2268,7 @@ void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void*
 }
 void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation,void* viewport,void* drawer) {
     Scope scope;if(!scope.world())return original_scene(local,family,position,rotation,viewport,drawer);service_session_stop_native();auto record=start_record(1,local,_ReturnAddress());
-    crosshair_live::scene(local);
+    auto crosshair_evidence=crosshair_live::scene(local);
     const bool anchor_observing=anchor_observer_enabled&&recording.load();
     gears_anchor::PawnBinding pawn_before_scene{};
     gears_anchor::PawnBindingDiagnostic pawn_diagnostic{};
@@ -2278,9 +2285,11 @@ void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation
     void* result=original_scene(local,family,position,rotation,viewport,drawer);
     if(anchor_observing){gears_anchor::Receipt receipt{};receipt.invocation=++anchor_context.sequence;
         receipt.thread=GetCurrentThreadId();receipt.scene_qpc=now();
-        auto reason=pawn_before_valid&&anchor_key(receipt.key,receipt.anchor,reinterpret_cast<uintptr_t>(family),reinterpret_cast<uintptr_t>(result),reinterpret_cast<uintptr_t>(local),0)&&
-            gears_anchor::scene_binding_matches(pawn_before_scene,receipt.anchor)?
-            anchor_context.offer(receipt):gears_anchor::identity_failed;
+        const bool anchor_valid=pawn_before_valid&&anchor_key(receipt.key,receipt.anchor,reinterpret_cast<uintptr_t>(family),reinterpret_cast<uintptr_t>(result),reinterpret_cast<uintptr_t>(local),0)&&
+            gears_anchor::scene_binding_matches(pawn_before_scene,receipt.anchor);
+        if(anchor_valid)crosshair_live::attach(std::move(crosshair_evidence),receipt);
+        auto reason=anchor_valid?anchor_context.offer(receipt):gears_anchor::identity_failed;
+        if(reason==gears_anchor::accepted)crosshair_live::accepted(receipt);
         if(reason!=gears_anchor::accepted)anchor_context.discard();anchor_note(0,reason,receipt);}
     if(record.object==expected_local)trace_rectangle(0,reinterpret_cast<uintptr_t>(result));
     if(family_diagnostics)inspect_family(record,family);
