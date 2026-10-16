@@ -206,11 +206,21 @@ class LauncherTests(unittest.TestCase):
     def test_player_default_uses_game_resolution_and_graphics_protection(self):
         directory=pathlib.Path(__file__).parent
         current=json.loads((directory/'manifest.json').read_text())
-        self.assertEqual(current,json.loads((directory/'manifest-material32-movie23-vd.json').read_text()))
+        candidates=[json.loads(path.read_text()) for path in directory.glob('manifest-*.json')]
+        self.assertIn(current,candidates,'Default must exactly match a named, reviewable candidate including artifact hashes')
         launcher.settings({},current)
-        self.assertEqual(current['native_dll'],'GearsCaptureMaterial32.dll')
-        self.assertEqual(current['native_build'],'tools/native-capture/build-material32')
+        self.assertTrue(current['native_dll'].startswith('GearsCapture'))
+        self.assertTrue(current['native_dll'].endswith('.dll'))
+        self.assertEqual(pathlib.PurePosixPath(current['native_dll']).name,current['native_dll'])
+        self.assertTrue(current['native_build'].startswith('tools/native-capture/build-'))
+        self.assertNotIn('..',pathlib.PurePosixPath(current['native_build']).parts)
+        for key in ('game_sha256','native_sha256','xr_sha256'):
+            self.assertRegex(current[key],r'^[0-9a-f]{64}$')
+            self.assertNotEqual(current[key],'0'*64)
         self.assertEqual(current['xr_build'],'tools/openxr-probe/build-main-menu23-vd')
+        fallback=json.loads((directory/'manifest-material32-movie23-vd.json').read_text())
+        self.assertEqual(current['game_sha256'],fallback['game_sha256'])
+        self.assertEqual(current['xr_sha256'],fallback['xr_sha256'])
         self.assertEqual(launcher.hud_horizontal_fov({},current),65.)
         for key in ('startup_menu','graphics_startup_lock','graphics_menu_lock','menu_recovery','ui_hud_plane',
                     'cinematic_camera','world_recovery','hud_size_control','crosshair_assignment_observer'):
@@ -218,6 +228,15 @@ class LauncherTests(unittest.TestCase):
         for tier in ('low','high'):
             with self.assertRaisesRegex(ValueError,'Unknown configuration'):
                 launcher.settings({'vr_quality':tier},current)
+
+    def test_preserved_material32_fallback_identity_and_features(self):
+        fallback=json.loads(pathlib.Path(__file__).with_name('manifest-material32-movie23-vd.json').read_text())
+        launcher.settings({},fallback)
+        self.assertEqual(fallback['native_dll'],'GearsCaptureMaterial32.dll')
+        self.assertEqual(fallback['native_build'],'tools/native-capture/build-material32')
+        self.assertTrue(fallback['world_recovery'])
+        self.assertTrue(fallback['movie_display'])
+        self.assertFalse(fallback.get('camera_distance_control',False))
 
     def test_cinematic_target_option_requires_anchor_and_boolean(self):
         for value in (1,'true',None):

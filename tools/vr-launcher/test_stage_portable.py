@@ -64,7 +64,8 @@ class StageTests(unittest.TestCase):
 
     def test_new_runtime_modules_import_only_from_stage_without_repository_fallback(self):
         repository = Path(__file__).resolve().parents[2]
-        modules = {'debug-launch': 'tiny_output_recovery', 'game-io': 'movie_state'}
+        modules = {'debug-launch': 'tiny_output_recovery', 'game-io': 'movie_state',
+                   'native-capture': 'camera_closer_options'}
         paths = ['tools/vr-launcher/' + name + '.py' for name in ('stage_portable', 'portable_preflight')]
         paths += ['tools/' + folder + '/' + name + '.py' for folder, names in modules.items() for name in names.split()]
         for relative in paths:
@@ -81,7 +82,7 @@ class StageTests(unittest.TestCase):
         result = subprocess.run(command, cwd=self.destination, capture_output=True, text=True, timeout=30,
                                 creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(set(json.loads(result.stdout)), {'tiny_output_recovery', 'movie_state'})
+        self.assertEqual(set(json.loads(result.stdout)), {'tiny_output_recovery', 'movie_state', 'camera_closer_options'})
         # Removing a required staged helper must fail instead of finding this
         # developer checkout, an environment path, or a cached imported module.
         (self.destination / 'tools/debug-launch/tiny_output_recovery.py').unlink()
@@ -89,6 +90,23 @@ class StageTests(unittest.TestCase):
                                  creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         self.assertNotEqual(missing.returncode, 0)
         self.assertIn('tiny_output_recovery', missing.stderr)
+
+    def test_missing_camera_helper_fails_staged_import_without_repository_fallback(self):
+        repository = Path(__file__).resolve().parents[2]
+        for relative in ('tools/vr-launcher/stage_portable.py', 'tools/vr-launcher/portable_preflight.py',
+                         'tools/native-capture/camera_closer_options.py'):
+            self.put(self.root / relative, (repository / relative).read_bytes())
+        self.build()
+        (self.destination / 'tools/native-capture/camera_closer_options.py').unlink()
+        code = ('import sys; from pathlib import Path; root=Path(sys.argv[1]); '
+                'sys.path.insert(0,str(root/"tools/vr-launcher")); '
+                'from portable_preflight import import_project_modules; '
+                'import_project_modules(root,{"native-capture":"camera_closer_options"})')
+        result = subprocess.run([sys.executable, '-I', '-B', '-c', code, str(self.destination)],
+                                cwd=self.destination, capture_output=True, text=True, timeout=30,
+                                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('camera_closer_options', result.stderr)
 
     def test_missing_or_wrong_artifact_rejects_before_destination_creation(self):
         artifact = self.root / stage.QUIET_BUILD / 'GearsQuietStartup.dll'

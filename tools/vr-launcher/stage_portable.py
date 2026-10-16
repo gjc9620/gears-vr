@@ -15,7 +15,7 @@ PROJECT_MODULES = {
     'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy tiny_output_recovery',
     'game-io': 'background_input game_io menu_state menu_control movie_state',
     'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',
-    'native-capture': ('anchor_config cinematic_anchor mounted_context crosshair_assignment_config hook_entry_attestation '
+    'native-capture': ('anchor_config cinematic_anchor mounted_context crosshair_assignment_config hook_entry_attestation camera_closer_options '
         'launch_reserve menu_display_monitor prime_owner run_stereo_continuous run_stereo_probe '
         'start_capture ui_observer_config verify_stopped world_rebind world_rebind_monitor world_rebind_runtime'),
 }
