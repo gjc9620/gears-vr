@@ -1,6 +1,7 @@
 #pragma once
 #include "ui_hud_plan.h"
 #include "ui_index_membership.h"
+#include "ui_text_group_geometry.h"
 
 namespace gears_ui_layout {
 // Identity until separately tuned in the game/headset. Angular panel FOV is
@@ -74,33 +75,42 @@ struct Groups {
     std::array<Run,run_capacity> runs{};
     unsigned count{};
 };
-// Called while Claim's certified immutable bytes are owned. A text receipt is
-// one explicitly complete text producer range, never a glyph/atlas fragment.
-// Canvas admits one exact quad.
-// Native subtitles require the same complete-call proof; reticles retain their
-// previous policy. Multi-atlas text never acquires per-fragment layout authority.
+// Complete-call native geometry can span atlas payloads. Current receipt bytes
+// and actual indices remain independent requirements; Canvas admits one quad.
 inline bool capture(gears_ui_receipts::Claim const& claim,gears_ui_indices::Snapshot const& snapshot,Matrix const& matrix,Groups& out){
     if(!gears_ui_indices::detail::bounded_snapshot(snapshot)||claim.generation!=snapshot.generation||
        !gears_ui_indices::detail::claim_valid(claim,snapshot.payload,snapshot.vertex_count))return false;
     Groups result{};
     for(unsigned n=0;n<claim.count;++n){auto const& entry=claim.entries[n];auto const length=entry.receipt.end-entry.receipt.begin;
         if((entry.kind!=2&&entry.kind!=3)||
-           ((entry.source==gears_ui_receipts::Source::CanvasText||entry.source==gears_ui_receipts::Source::NativeSubtitle)&&!entry.whole_text_group)||
+           ((entry.source==gears_ui_receipts::Source::CanvasText||entry.source==gears_ui_receipts::Source::NativeSubtitle)&&!entry.whole_text_group&&!entry.text_group)||
            (entry.source==gears_ui_receipts::Source::Canvas&&length!=4))continue;
         auto& bounds=result.bounds[n];bool supported=true;
+        if(entry.text_group){auto const& group=*entry.text_group;
+            if(!gears_ui_receipts::text_group_range_valid(group,entry.receipt,entry.root_invocation,entry.source,
+                   entry.text_group_offset,length)||matrix!=group.matrix)continue;
+            for(unsigned j=0;j<group.vertex_count;++j)if(!project(bounds,matrix,group.positions[j][0],group.positions[j][1])){supported=false;break;}
+        }
         for(unsigned j=0;j<length;++j){float position[4]{};
             std::memcpy(position,claim.vertices->data[entry.vertex_offset+j].data(),sizeof(position));
-            if(position[2]!=0||position[3]!=1||!project(bounds,matrix,position[0],position[1])){supported=false;break;}}
+            if(position[2]!=0||position[3]!=1||!project(bounds,matrix,position[0],position[1])||
+               (entry.text_group&&entry.text_group->positions[entry.text_group_offset+j]!=std::array<float,2>{position[0],position[1]})){supported=false;break;}}
         if(!supported||!valid(bounds))bounds={};
     }
     for(unsigned ordinal=0;ordinal<snapshot.segment_count;++ordinal){auto const& source=snapshot.segments[ordinal];
         if(!source.index_count||source.unknown||!source.kind_mask||(source.kind_mask&~6u))continue;
-        const unsigned begin=result.count;bool supported=true;
+        const unsigned begin=result.count;bool supported=true;std::uint64_t native_root{};
+        gears_ui_receipts::TextGroupGeometry const* native_group=nullptr;
         for(unsigned i=0;i<source.index_count;i+=3){unsigned owner=unsigned(claim.count);
             for(unsigned j=0;j<3;++j){const auto global=snapshot.global_vertices[source.index_offset+i+j];unsigned found=unsigned(claim.count);
                 for(unsigned n=0;n<claim.count;++n)if(global>=claim.entries[n].receipt.begin&&global<claim.entries[n].receipt.end){found=n;break;}
                 if(found==claim.count||!valid(result.bounds[found])||(j&&owner!=found)){supported=false;break;}owner=found;}
             if(!supported)break;
+            auto const& entry=claim.entries[owner];
+            if(entry.source==gears_ui_receipts::Source::NativeSubtitle){
+                if(native_root&&(native_root!=entry.root_invocation||native_group!=entry.text_group.get())){supported=false;break;}
+                native_root=entry.root_invocation;native_group=entry.text_group.get();
+            }
             if(result.count>begin&&result.runs[result.count-1].entry==owner)result.runs[result.count-1].count+=3;
             else {if(result.count==run_capacity){supported=false;break;}result.runs[result.count++]={i,3,owner};}
         }

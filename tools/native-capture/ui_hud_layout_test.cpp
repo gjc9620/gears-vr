@@ -129,11 +129,11 @@ static void grouping_tests(){
 }
 static void subtitle_tests(){
     Fixture f;
-    // Direct native adapter has no UCanvas. Each receipt here represents one
-    // separate complete subtitle call, including the two-glyph final receipt.
+    // Direct native adapter has no UCanvas. Exercise the legacy complete-range
+    // proof with one root; separate producer roots now require separate segments.
     f.claim.canvas=0;f.claim.kind_mask=4;
     for(auto& e:f.claim.entries){e.receipt.canvas=0;e.kind=3;
-        e.source=gears_ui_receipts::Source::NativeSubtitle;e.whole_text_group=true;}
+        e.source=gears_ui_receipts::Source::NativeSubtitle;e.whole_text_group=true;e.root_invocation=777;}
     auto& segment=f.snapshot.segments[0];segment.kind_mask=4;segment.known={0,0,30};
     Groups groups{};assert(capture(f.claim,f.snapshot,transform(),groups)&&groups.segments[0].valid&&groups.count==4);
     const auto original=*f.claim.vertices;const auto saved=state();gears_viewport::OverlayPlan panel{};
@@ -171,4 +171,128 @@ static void subtitle_tests(){
     f.claim.entries[2].kind=2;f.claim.kind_mask=6;
     assert(!capture(f.claim,f.snapshot,transform(),groups));
 }
-int main(){projection_tests();grouping_tests();subtitle_tests();std::cout<<"UiHudLayoutTest passed\n";}
+struct TextMatrices {
+    Matrix first=transform(),second=transform();unsigned reads{};bool mutate{},unreadable{};
+    bool read(void* out,void const* address,std::size_t size){
+        if(unreadable||size!=sizeof(Matrix))return false;
+        const auto source=reinterpret_cast<std::uintptr_t>(address);Matrix value{};
+        if(source==0x10080)value=first;else if(source==0x20080)value=second;else return false;
+        if(mutate&&reads>=2)value[12]+=.125f;
+        ++reads;std::memcpy(out,value.data(),size);return true;
+    }
+};
+static gears_ui_text_batch::Delta text_delta(){
+    gears_ui_text_batch::Delta d{};d.fcanvas=22;d.sort_key=-7;
+    d.ranges={{33,0x10000,0,4,0},{44,0x20000,0,8,4}};d.vertices.resize(12);
+    // Background spans both separate atlas glyphs and their inter-glyph gap.
+    const float xy[12][2]{{1000,800},{1200,800},{1000,840},{1200,840},
+        {1020,810},{1040,810},{1020,830},{1040,830},{1080,810},{1100,810},{1080,830},{1100,830}};
+    for(unsigned i=0;i<12;++i){const float p[4]{xy[i][0],xy[i][1],0,1};std::memcpy(d.vertices[i].data(),p,sizeof(p));}
+    return d;
+}
+static gears_ui_indices::Snapshot text_snapshot(gears_ui_receipts::Claim const& claim,bool separate=false){
+    gears_ui_indices::Snapshot s{};s.payload=claim.payload;s.generation=claim.generation;s.vertex_count=claim.observed_end;
+    s.segment_count=separate?unsigned(claim.count):1;
+    for(unsigned n=0;n<claim.count;++n){auto const& e=claim.entries[n];auto& seg=s.segments[separate?n:0];
+        seg.minimum=0;seg.maximum=int(claim.observed_end-1);if(separate)seg.index_offset=s.total_indices;
+        for(unsigned q=e.receipt.begin;q<e.receipt.end;q+=4){const unsigned indices[]{q,q+1,q+2,q+1,q+3,q+2};
+            for(unsigned v:indices){s.indices[s.total_indices]=s.global_vertices[s.total_indices]=v;++s.total_indices;++seg.index_count;}}
+        seg.kind_mask=4;seg.known={0,0,seg.index_count};seg.entry_mask|=1u<<n;seg.expected={seg.index_count,1,0,0,0};
+    }
+    assert(gears_ui_indices::detail::bounded_snapshot(s));return s;
+}
+static void multirange_subtitle_tests(){
+    using namespace gears_ui_receipts;
+    auto delta=text_delta();const auto original=delta.vertices;TextMatrices memory;
+    auto read=[&](void* out,void const* address,std::size_t size){return memory.read(out,address,size);};
+    auto group=gears_ui_text_group::capture(delta,900,read);assert(group&&memory.reads==4);
+    assert(group->vertex_count==12&&group->range_count==2&&delta.vertices==original);
+    auto store=std::make_unique<Store>();Claim background{},letters{};
+    for(auto const& range:delta.ranges){RangeMetadata r{0,delta.fcanvas,range.item,range.payload,delta.sort_key,range.begin,range.end};
+        assert(store->publish_range(r,delta.vertices.data()+range.vertex_offset,range.end-range.begin,3,900,
+            Source::NativeSubtitle,false,group,range.vertex_offset));}
+    assert(store->claim(0x10000,background)&&store->claim(0x20000,letters));
+    assert(!background.entries[0].whole_text_group&&!letters.entries[0].whole_text_group);
+    assert(background.entries[0].text_group==letters.entries[0].text_group);
+    const auto bg_snapshot=text_snapshot(background),glyph_snapshot=text_snapshot(letters);
+    Groups bg{},glyph{};assert(capture(background,bg_snapshot,transform(),bg)&&bg.segments[0].valid);
+    assert(capture(letters,glyph_snapshot,transform(),glyph)&&glyph.segments[0].valid);
+    near(bg.bounds[0].left,glyph.bounds[0].left);near(bg.bounds[0].right,glyph.bounds[0].right);
+    near(bg.bounds[0].right-bg.bounds[0].left,200./1920);
+    const auto saved=state();gears_viewport::OverlayPlan panel{};assert(gears_ui_hud::plan(saved,1920,1080,sample(),panel));
+    Replay bg_plan{},glyph_plan{};assert(prepare(bg,0,saved,1920,1080,panel,{1.2,.8},bg_plan));
+    assert(prepare(glyph,0,saved,1920,1080,panel,{1.2,.8},glyph_plan));
+    assert(bg_plan.runs[0].plan.viewports==glyph_plan.runs[0].plan.viewports&&bg_plan.runs[0].plan.scissors==glyph_plan.runs[0].plan.scissors);
+    for(unsigned eye=0;eye<2;++eye){const auto v=glyph_plan.runs[0].plan.viewports[eye];
+        near(v.width*20/1920,panel.viewports[eye].width*20/1920*1.2); // Glyph width.
+        near(v.width*40/1920,panel.viewports[eye].width*40/1920*1.2); // Gap, including separate atlas geometry.
+        const double cx=(bg.bounds[0].left+bg.bounds[0].right)/2;
+        near(v.x+v.width*cx,panel.viewports[eye].x+panel.viewports[eye].width*(.5+.8*(cx-.5)));}
+    // Geometry survives detached payload claims and retirement, independently of
+    // the original Delta and the caller's group reference.
+    auto weak=std::weak_ptr<const TextGroupGeometry>(group);group.reset();store->reset();delta.vertices.clear();
+    assert(!weak.expired()&&capture(letters,glyph_snapshot,transform(),glyph)&&glyph.segments[0].valid);
+    for(unsigned failure=0;failure<8;++failure){auto bad=letters;auto matrix=transform();
+        auto mutable_group=std::make_shared<TextGroupGeometry>(*bad.entries[0].text_group);
+        if(failure==0)bad.entries[0].text_group.reset();
+        if(failure==1)++bad.entries[0].root_invocation;
+        if(failure==2)++bad.entries[0].text_group_offset;
+        if(failure==3){++mutable_group->fcanvas;bad.entries[0].text_group=mutable_group;}
+        if(failure==4){mutable_group->positions[4][0]+=1;bad.entries[0].text_group=mutable_group;}
+        if(failure==5)matrix[12]+=.1f;
+        if(failure==6){mutable_group->positions[0][0]=std::numeric_limits<float>::quiet_NaN();bad.entries[0].text_group=mutable_group;}
+        if(failure==7)bad.entries[0].source=Source::CanvasText;
+        Groups rejected{};assert(!capture(bad,glyph_snapshot,matrix,rejected)||!rejected.segments[0].valid);
+        Replay untouched{};untouched.count=77;assert(!prepare(rejected,0,saved,1920,1080,panel,{1.2,.8},untouched)&&untouched.count==77);}
+    // Unequal/unreadable/changing matrices never produce a partial group.
+    for(unsigned failure=0;failure<12;++failure){auto bad=text_delta();memory={};
+        if(failure==0)memory.second[12]+=.1f;
+        if(failure==1)memory.mutate=true;
+        if(failure==2)memory.unreadable=true;
+        if(failure==3)memory.first[0]=std::numeric_limits<float>::infinity();
+        if(failure==4)bad.ranges[1].vertex_offset=3;
+        if(failure==5)bad.ranges[1].payload=bad.ranges[0].payload;
+        if(failure==6)bad.ranges[1].item=bad.ranges[0].item;
+        if(failure==7)bad.canvas=12;
+        if(failure==8)bad.vertices.pop_back();
+        if(failure==9)bad.vertices.resize(vertex_capacity+1);
+        if(failure==10){float z=1;std::memcpy(bad.vertices[0].data()+8,&z,sizeof(z));}
+        if(failure==11)bad.ranges[1].end=7;
+        const auto unchanged=bad.vertices;assert(!gears_ui_text_group::capture(bad,900,read)&&bad.vertices==unchanged);}
+    // Project actual saved positions, including an arbitrary projective matrix;
+    // bounding-box corner projection would include vertices never produced.
+    auto projected=text_delta();memory={};memory.first={};memory.first[0]=.2f;memory.first[5]=.3f;
+    memory.first[3]=.1f;memory.first[7]=.05f;memory.first[15]=1;memory.second=memory.first;
+    const float diamond[4][2]{{0,2},{1,0},{2,1},{1,3}};Bounds expected{};
+    for(unsigned i=0;i<projected.vertices.size();++i){const float p[4]{diamond[i%4][0],diamond[i%4][1],0,1};
+        std::memcpy(projected.vertices[i].data(),p,sizeof(p));assert(project(expected,memory.first,p[0],p[1]));}
+    auto project_group=gears_ui_text_group::capture(projected,901,read);assert(project_group);
+    auto const& range=projected.ranges[1];RangeMetadata r{0,22,range.item,range.payload,-7,range.begin,range.end};
+    assert(store->publish_range(r,projected.vertices.data()+4,8,3,901,Source::NativeSubtitle,false,project_group,4));
+    Claim project_claim{};assert(store->claim(range.payload,project_claim));
+    assert(capture(project_claim,text_snapshot(project_claim),memory.first,glyph)&&glyph.segments[0].valid);
+    near(glyph.bounds[0].left,expected.left);near(glyph.bounds[0].right,expected.right);
+    near(glyph.bounds[0].top,expected.top);near(glyph.bounds[0].bottom,expected.bottom);
+    // Combining native roots, or distinct group objects with the same root,
+    // falls back per segment. Independent segments retain their own plan.
+    for(unsigned same_root=0;same_root<2;++same_root){auto mixed=std::make_unique<Store>();auto a=text_delta(),b=text_delta();memory={};
+        b.ranges[0].begin=4;b.ranges[0].end=8;b.ranges[1].begin=8;b.ranges[1].end=16;
+        auto ga=gears_ui_text_group::capture(a,910,read),gb=gears_ui_text_group::capture(b,same_root?910:911,read);assert(ga&&gb);
+        for(auto const* d:{&a,&b}){auto const& part=d->ranges[0];const auto g=d==&a?ga:gb;
+            RangeMetadata metadata{0,22,part.item,part.payload,-7,part.begin,part.end};
+            assert(mixed->publish_range(metadata,d->vertices.data(),4,3,g->root_invocation,Source::NativeSubtitle,false,g,0));}
+        Claim claim{};assert(mixed->claim(0x10000,claim));Groups result{};
+        assert(capture(claim,text_snapshot(claim),transform(),result)&&!result.segments[0].valid);
+        assert(capture(claim,text_snapshot(claim,true),transform(),result)&&result.segments[0].valid&&result.segments[1].valid);
+        auto partial=text_snapshot(claim);partial.segment_count=2;
+        partial.segments[1]=partial.segments[0];auto& independent=partial.segments[1];
+        independent.index_offset=partial.total_indices;independent.index_count=6;independent.entry_mask=1;
+        independent.known={0,0,6};independent.expected.index_count=6;
+        for(unsigned i=0;i<6;++i){partial.indices[partial.total_indices]=partial.indices[i];
+            partial.global_vertices[partial.total_indices]=partial.global_vertices[i];++partial.total_indices;}
+        assert(capture(claim,partial,transform(),result)&&!result.segments[0].valid&&result.segments[1].valid);
+        Replay kept{};assert(prepare(result,1,saved,1920,1080,panel,{1.2,.8},kept)&&kept.count==1);
+    }
+    assert(background.vertices->data[0]==original[0]&&letters.vertices->data[0]==original[4]);
+}
+int main(){projection_tests();grouping_tests();subtitle_tests();multirange_subtitle_tests();std::cout<<"UiHudLayoutTest passed\n";}

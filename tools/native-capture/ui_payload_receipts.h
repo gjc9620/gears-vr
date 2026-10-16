@@ -22,6 +22,31 @@ inline bool provenance_valid(RangeMetadata const& r,unsigned kind,Source source)
 struct VertexBuffer {std::array<Vertex,vertex_capacity> data{};};
 using VertexAllocator=std::shared_ptr<VertexBuffer>(*)();
 inline std::shared_ptr<VertexBuffer> allocate_vertices(){return std::make_shared<VertexBuffer>();}
+inline constexpr unsigned text_group_range_capacity=64;
+struct TextGroupRange {RangeMetadata receipt{};std::uint32_t vertex_offset{};};
+// Complete producer-call geometry, shared across atlas payloads. These are
+// copied positions only; group membership never establishes GPU index ownership.
+struct TextGroupGeometry {
+    std::uint64_t root_invocation{};
+    std::uintptr_t fcanvas{};std::int32_t sort_key{};
+    std::array<float,16> matrix{};
+    unsigned vertex_count{},range_count{};
+    std::array<std::array<float,2>,vertex_capacity> positions{};
+    std::array<TextGroupRange,text_group_range_capacity> ranges{};
+};
+using TextGroup=std::shared_ptr<const TextGroupGeometry>;
+inline bool text_group_range_valid(TextGroupGeometry const& group,RangeMetadata const& r,
+    std::uint64_t root,Source source,unsigned offset,unsigned length){
+    if(source!=Source::NativeSubtitle||r.canvas||!root||group.root_invocation!=root||
+       group.fcanvas!=r.fcanvas||group.sort_key!=r.sort_key||!group.vertex_count||
+       group.vertex_count>vertex_capacity||group.range_count<2||group.range_count>text_group_range_capacity||
+       offset>group.vertex_count||length>group.vertex_count-offset||r.end<=r.begin||length!=r.end-r.begin)return false;
+    unsigned matches=0;
+    for(unsigned i=0;i<group.range_count;++i){auto const& part=group.ranges[i];auto const& p=part.receipt;
+        if(part.vertex_offset==offset&&p.canvas==r.canvas&&p.fcanvas==r.fcanvas&&p.item==r.item&&
+           p.payload==r.payload&&p.sort_key==r.sort_key&&p.begin==r.begin&&p.end==r.end)++matches;}
+    return matches==1;
+}
 struct Entry {
     RangeMetadata receipt{};
     unsigned kind{}; // 1 reticle, 2 weapon UI, 3 HUD; caller-certified label only.
@@ -29,6 +54,8 @@ struct Entry {
     std::uint32_t vertex_offset{};
     Source source=Source::Canvas;
     bool whole_text_group{}; // Explicit producer proof; multi-atlas fragments are false.
+    TextGroup text_group;
+    std::uint32_t text_group_offset{};
 };
 struct Claim {
     std::uint64_t generation{};
@@ -83,12 +110,14 @@ public:
     // Buffers allocate at most1024 vertices per payload, and any overflow or
     // allocation failure poisons all that group's candidates until consumption.
     bool publish_range(RangeMetadata const& r,Vertex const* vertices,std::size_t length,unsigned kind,
-        std::uint64_t root_invocation,Source source=Source::Canvas,bool whole_text_group=false){
+        std::uint64_t root_invocation,Source source=Source::Canvas,bool whole_text_group=false,
+        TextGroup text_group={},std::uint32_t text_group_offset=0){
         std::lock_guard<std::mutex> lock(mutex_);++stats_.publish_attempts;
         auto reject=[&](){++stats_.rejected;return false;};
         if(stats_.disabled)return reject();
         auto group=find(r.payload);
-        if(!valid(r,kind,root_invocation,source)||!vertices||length!=std::size_t(r.end-r.begin)){
+        if(!valid(r,kind,root_invocation,source)||!vertices||length!=std::size_t(r.end-r.begin)||
+           (text_group&&!text_group_range_valid(*text_group,r,root_invocation,source,text_group_offset,unsigned(length)))){
             if(group)poison(*group);return reject();}
         if(group&&group->poisoned)return reject();
         if(!group){
@@ -115,7 +144,7 @@ public:
         const std::uint64_t gap=std::uint64_t(r.begin)-c.observed_end;
         c.unknown_vertices+=gap;stats_.unknown_vertices_seen+=gap;
         std::copy(vertices,vertices+length,group->storage->data.begin()+c.vertex_count);
-        c.entries[c.count++]={r,kind,root_invocation,c.vertex_count,source,whole_text_group};c.vertex_count+=std::uint32_t(length);
+        c.entries[c.count++]={r,kind,root_invocation,c.vertex_count,source,whole_text_group,std::move(text_group),text_group_offset};c.vertex_count+=std::uint32_t(length);
         c.observed_end=r.end;c.kind_mask|=1u<<(kind-1);
         ++stats_.published;return true;
     }
