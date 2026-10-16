@@ -321,3 +321,15 @@ XR16尚未进行完整4K回归和真头显验证；默认玩家清单未提升�
 在两种分辨率实际回归后，本地GUI的manifest.json切换到具名manifest-world-recovery23-xr16.json；实际game/profile/native/XR哈希和settings前置验证、204项相关Python测试及隐藏GUI构建自检通过。旧manifest-game-recovery8.json保持原样可回滚，新增HUD大小控件现随候选能力开启。仅本地研究候选更新，不宣称便携包或发布验收完成；未改用户config/其他对话的README变更，也没有修改全局OpenXR Runtime。
 
 章节入口的静态查询已先用现有KB。artifact2的WarUIScene_Campaign类导出仅native/defaultproperties，没有按钮处理体；butLoadChapter在包对象清单中存在，与当前只读UI名相符。LoadChapter字面量仅历史运行时快照候选，不能证明当前按钮执行语义；ChapterSelect有界查询无匹配不代表不存在。原始查询保留在ignored kb-chapter-loadchapter/chapterselect.json。CG下一步仍需确认章节选择界面，并在任何实际换章节前保护现有存档；UI优先补当前布局selector与主动换弹图像。
+
+## Native31/XR23：有进度证据的CG显示及原生交回（2026-10-16）
+
+已提交 `28d3a89`：电影窗口fallback仅由精确身份绑定、只读movie_progress证据授权，校验singleton/vtable/handle及帧进度和复读一致性；UNKNOWN、普通gameplay或loading本身不授权任意窗口画面。电影采用双眼共用的2D窗口画面，保留时效、代次及停止保护；有效原生projection优先，并以成功提交的原生帧完成交回。这是CG可见性路径，不能算双目场景或立体CG重建。
+
+XR22实测 `analysis/runtime/movie22-fallback-summary.json` 记录eligible2843、render_true2641、render_false202，202次原因均为capture_not_fresh；另有399次capture future。该失败不能被“CG模式已经打开”掩盖。已提交 `632e4a7`：WGC帧时间略晚于本次判定now时，单槽暂存后等待原始时间戳可接受再处理，最多持有250ms；epoch/generation改变、超时等仍丢弃，不改捕获时间戳或放宽future/freshness规则。
+
+实际会话 `continuous-stereo-13096-20261016-223856-64596f25` 覆盖首次入关及一次死亡检查点重载。`analysis/runtime/movie23-validation.json` 与原stdout显示：首段render_false只有入口阶段6次；重载后累计17次，新增均在入口区间，已观察的中途播放段没有继续增加。该计数是render_false诊断次数，不是“丢17个视频源帧”的证明。末次快照eligible7138、render_true7121、submitted7119、end_failed0；post_context_rejected2单独保留。pending_reused940、pending_dropped1，已观察最大future ahead为13.0988ms。三条 `game_window_fallback_recovered/native_projection_end_succeeded` 标记支持电影2D公共画面后交回原生双目；不是所有CG、无空窗、声音同步或真头显像素验收。该validation是会话内快照，不是正常退出及长期稳定验收报告。
+
+同一13096后台启动也实际触发一次tiny输出恢复，连同17708及已提交 `5fc7e9f` 的守卫/诊断边界见文档68末尾。菜单窗口重绑后成功确认的一次有界重试由 `0559132` 独立修复；失败或部分发送、butContinue不重放，身份/焦点树/稳定复读保护保持。
+
+`c4cb379` 已将默认manifest切到 `manifest-background31-movie23-vd.json`：Native31 `build-background31` 配XR23 `build-main-menu23-vd`，启用movie_display。此前各节“默认未提升”均为当时记录，不应据此再次回到XR16/19重复定位。当前完成的是上述本机有限路径；整套UI、近距离准星、真头显、长期运行、更多CG/分辨率/硬件回归及便携发布和依赖许可仍待验证，不宣称V1完成。原始日志、图像、运行时派生物继续留在ignored analysis，不能进入发布包。

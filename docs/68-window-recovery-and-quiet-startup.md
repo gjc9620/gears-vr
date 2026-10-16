@@ -215,3 +215,13 @@ quiet16实际game34672：70秒无输入，仍在tick2748296自动进入前台。
 最终 `quiet-fz-default11-final.json` 用正式默认冻结quiet11、不开TRACE、无实验构建覆盖，真实 `background-launch-23576.json` 确认构建路径和策略安装。70秒内实际前台采样仅在外部PID30444与19916之间切换，没有游戏23576或XR11708；唯一游戏事件回调时前台仍是19916。游戏与模拟器窗口均visible，owner14948/game23576/XR11708经CIM核实存活，阶段awaiting_level，未发送导航输入、没有测试时长自动停机。永久排除值读取核验通过。
 
 结论限于本机当前后台启动目标：默认启动链加用户批准的FancyZones单游戏排除已实测满足不抢焦点，模拟器保持可见运行。不代表所有第三方窗口管理器、玩家机器或VR关卡功能均已验收；诊断quiet15/16不提升发布默认。回退配置可删除FancyZones中GOWDE-Steam.exe排除项，但会重新启用本机已复现的自动区域恢复干扰。后续使用正式入口即可，无需管理员ETW或继续关闭其他桌面软件。
+
+### Native31：后台真实8×8输出恢复及菜单确认恢复（2026-10-16）
+
+已提交 `5fc7e9f`：此前XR日志的 `gpu_source_size` 可为3840宽，而实际DXGI swapchain仍为8×8，不能用源图尺寸判断黑屏恢复。Native31在独立 `swapchain-output-status.txt` 发布实际GetDesc尺寸、Windowed、PID/creation FILETIME、HWND/chain及采样QPC；launcher从reserve身份核验后持续后台观察，覆盖进入关卡前并延续至session结束。仅唯一有效windowed输出、身份匹配、采样新鲜且稳定HWND/chain的不同采样持续至少2秒、尺寸均在1..8时，才允许一次不激活窗口的缩小/恢复尝试。隐藏等不可操作窗口只defer并重置连续计时，不消耗机会；恢复调用前后均检查身份/窗口，布局并发改变则不强行还原。已删除旧XR源尺寸触发，独立 `.tiny-output.jsonl` 不并发修改session JSON。
+
+自然后台启动两轮均实际触发：game17708持续tiny 2.1128516秒、game13096持续2.0660671秒；前台HWND调用前后分别保持132500和529616。两轮均成功发出第一次resize，但游戏窗口布局同时变化，结果为 `restore_skipped/window_rect_changed`，随后记录到非tiny实际输出；17708另有未聚焦主菜单正常画面。证据为ignored `analysis/runtime/background31-recovery-evidence.json`、`vr-launcher-session.tiny-output.jsonl`及13096会话日志。它们支持本机实际恢复路径已执行，不能把输出恢复唯一归因于resize，也不证明所有黑屏或真头显均修复。
+
+game17708后续超时另有明确菜单原因：CampaignButton确认完整发送后窗口短暂不可见，同HWND重绑仍为同菜单，旧attempted账本永久抑制重确认。已提交 `0559132`：仅最近成功完成的导航确认在观察到窗口消失/改变后可重确认一次；重新取得精确进程身份、已知焦点树、0.6秒稳定及立即复读才发送。失败/部分发送与butContinue不重放，全局只增加一次预算，保留原5步流程。对应离线测试覆盖实际成功send→窗口不可见→同菜单及发送异常路径，不能以测试替代所有菜单实测。
+
+当前默认清单已由 `c4cb379` 更新为Native31/XR23（具名 `manifest-background31-movie23-vd.json`），quiet11冻结策略及本机FancyZones排除结论不因此改变。CG与原生画面交回证据见文档70末尾；全部UI、近距离准星、真实头显、长期运行及发布包/依赖许可验收仍未完成，不宣称V1完成。

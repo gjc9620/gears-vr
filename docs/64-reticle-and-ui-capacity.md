@@ -189,3 +189,14 @@ Native23 DLL SHA256：`bf71e3ae9a7df228d12d8e4665f9bb6a178e4d3a9aa599e43b1923298
 早先两项脚本问题单独保留：外部重定向先创建了脚本要独占的同名log，导致dispatch前退出；分开console/log后，第一版脚本又遗漏LastPlayerIndex=-1的已有分配前置步骤，在游戏输入前超时并正常清理。它们不是游戏闪退或新的UI黑屏；补齐前置后才取得上述有效UI2证据，旧失败输出未覆盖。
 
 换弹/主动换弹、全部武器、近距准星/头显融合、任务/拾取/受伤等UI仍未由此通过。WarHUD.ResetActiveReload导出只表明ARBarData的结果与时间赋值；WarPawn.IsReloadingWeapon仅native声明，不能当实时状态。下一步采用受控单次输入、反射AmmoUsedCount/SpareAmmoCount双读与实际换弹条图像共同验证，不因候选键、计时或单个计数就认定成功。只读弹药观察器正在准备，尚未运行。
+
+
+## Native31/XR23：普通换弹状态与双眼换弹条覆盖
+
+2026-10-16，实际会话 `continuous-stereo-13096-20261016-223856-64596f25` 完成后台步枪射击与普通换弹。只读弹药观察160个样本全部取得；AmmoUsedCount由30到31、32，随后回到0，SpareAmmoCount由49到17。RT动作实际消耗两发，不称单发测试；未执行或证明完美主动换弹。
+
+请求GPU快照1/ticket14392/source_serial13794/saved_monotonic_ns23535992927000，以及快照2/ticket14408/source_serial13810/saved_monotonic_ns23536462708700，均为3840×2161、单眼1920×2161，保存于换弹完成前。目视原始图像的缩略图及分别定位两眼HUD的局部裁剪：两眼均有枪械图标、弹药数字、完整换弹条，后一个时刻的移动标记向右推进；未见本次条形被裁断。两眼非对称投影下的源像素位置不同，不能据此宣称物理头显融合、尺寸舒适度或全部UI通过。
+
+证据为ignored `analysis/runtime/xr23-reload2-events.json`、`xr23-reload2-ammo.json`、上述会话 `.gpu.ppm.1.ppm`/`.gpu.ppm.2.ppm` 与 `xr23-reload2-hud-crops.png`。场景脚本原始reload_passed=false是留待离线图像复核的保守标签，未改写原日志；本节补记已完成的普通换弹源图像复核，active_reload仍未验收。
+
+观察器v3修正旧诊断脚本把合法注册表增长误当永久失败的问题：复用既有分类，仅丢弃该样本并重新获取完整严格身份/结构括号，不接受跨变化的混合读取，也不改变产品代码。下一步仍需主动换弹、其他提示UI、近距准星和真头显融合；本次没有关闭运行中的游戏，也不是正常退出或长时间稳定性验收。
