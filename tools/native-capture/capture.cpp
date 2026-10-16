@@ -32,6 +32,7 @@
 #include "gpu_viewport_stats.h"
 #include "frame_link.h"
 #include "final_eye_diagnostics.h"
+#include "final_transfer_policy.h"
 #include "outage_trace.h"
 #include "outage_sources.h"
 #include "anchor_observer.h"
@@ -1062,12 +1063,8 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
     if(!binding.target.resource){
         diagnostic_failure(256);++frame_counts.missing_target;frame_link.invalidate();return;}
     const bool known_buffer=swapchain_bindings.known_buffer(binding.target.resource);
-    bool exact=final_eye.valid && consuming_frame_ticket && binding.targets==1 && !binding.target.mip &&
-        binding.target.width==final_eye.width && binding.target.height==final_eye.height;
-    // This additional route authenticates an intermediate source only. The
-    // existing transfer/Execute/Present chain must carry it to the backbuffer.
-    if(final_eye_candidate.caller==0x2b11a0)
-        exact=exact&&final_transfer_live::enabled()&&!known_buffer&&binding.target.format==24;
+    bool exact=gears_final_transfer::eligible_eye_target(final_eye_candidate.caller,
+        final_eye.valid,consuming_frame_ticket,final_eye.width,final_eye.height,binding,final_transfer_live::enabled());
     // The authenticated source path uses only a single-mip R10G10B10A2 target.
     // Keep unrelated scene draws on the original cheap rejection path.
     if(!known_buffer&&(!final_transfer_live::enabled()||binding.target.format!=24||binding.target.mip)){

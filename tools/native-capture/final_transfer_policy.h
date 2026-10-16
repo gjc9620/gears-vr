@@ -6,6 +6,18 @@
 // Narrow presentation geometry observed in Native11. This policy describes CPU
 // arguments; it does not claim to decode a pixel shader or prove GPU completion.
 namespace gears_final_transfer {
+// quad_valid includes the existing per-eye rectangle and (for 2b11a0)
+// identity UV/texture-size checks. The same attested eye pass can render into
+// an intermediate or directly into the current backbuffer; its destination
+// does not turn it into a full-frame transfer. Draw/Execute/Present guards
+// still apply after this predicate.
+inline bool eligible_eye_target(uintptr_t caller,bool quad_valid,uint64_t ticket,
+    unsigned eye_width,unsigned eye_height,gears_viewport::TargetDraw const& binding,bool attested){
+    if(!quad_valid||!ticket||binding.targets!=1||binding.target.mip||
+       binding.target.width!=eye_width||binding.target.height!=eye_height)return false;
+    if(caller==0x2b11a0)return attested&&binding.target.format==24;
+    return caller==0xd83b1c||caller==0xd808d8;
+}
 struct Source {
     uintptr_t resource{};unsigned dimension{},width{},height{},depth{},mips{},format{},samples{};
 };
