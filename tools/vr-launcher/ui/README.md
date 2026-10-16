@@ -25,7 +25,7 @@ Python 按 `GEARSVR_PYTHON`、随包 `runtime/python/python.exe`、当前用户 
 
 “视角回中”用于本窗口启动的VR会话，复用 `launcher.py recenter`。请求前核对启动器owner身份，后端继续核对运行阶段、游戏/XR身份和原生会话；未运行、正在停止或已有回中请求执行中时不可重复点击。成功提示只表示已请求，实际应用仍由有效追踪帧决定，可用“查看状态”检查 `reference_generation`。回中保留真实抬头和侧倾，不更改游戏存档或镜头距离。
 
-当前默认候选已更新为 Native31 / XR23（`manifest-background31-movie23-vd.json`），覆盖上述旧版本说明。独立 Low/High 分辨率功能已移除，启动器不提供画质档位或覆盖游戏分辨率；请在游戏设置中调整分辨率。HUD 大小仅调整界面角宽，不改变渲染分辨率。默认真机入口仍为 Quest 3 / Virtual Desktop；模拟器需要明确选择。
+当前默认候选已更新为 Native32 / XR23（`manifest-material32-movie23-vd.json`），覆盖上述旧版本说明。独立 Low/High 分辨率功能已移除，启动器不提供画质档位或覆盖游戏分辨率；请在游戏设置中调整分辨率。HUD 大小仅调整界面角宽，不改变渲染分辨率。默认真机入口仍为 Quest 3 / Virtual Desktop；模拟器需要明确选择。
 
 右上角的“中文 / English”选择器可立即切换界面文字、状态和启动器对话框。首次保持中文，选择会立即保存到现有配置的 `launcher_language`（`zh-CN` / `en`），下次启动读回；其余配置字段及尚未保存的界面输入会保留。后端原始日志和系统文件对话框按钮保持其原始语言，便于排查问题。
 
