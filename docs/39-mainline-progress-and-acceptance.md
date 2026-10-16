@@ -108,3 +108,6 @@ GUI先选GEARSVR_PYTHON，再检查根目录runtime/python/python.exe，之后�
 独立认证world quiescing/代次增长，在新鲜GAMEPLAY资源重建时复用静态等待卡，仅由当前代成功projection结束；不延旧图TTL、不把卡算场景。另对Registry最后复读竞争建立独立异常和下一轮原client/库存强刷，保留所有身份检查。144项相关Python测试、16项CPU测试/receiver自检通过。
 
 实际1080p完成检查点→world2新Pawn开镜→主菜单Continue→world3及三张非黑双眼图像；四原生阶段各4051对零错配。世界卡14层覆盖155.745ms并交给代2projection；本轮完整outage最长89.319ms、无超过100ms窗口，正常退出/43入口恢复通过。此为窄运行范围证据，不是全部黑屏或真头显验收；XR16完整4K、CG/视频、整套UI和便携发行仍待完成，默认玩家清单未提升。详见docs/70。
+
+
+XR16随后完成完整4K联合回归：两轮确认框取消、真实检查点恢复/新Pawn开镜和主菜单Continue至world3，三张源双眼图像非黑，四原生阶段各6214对零错配；world等待卡衔接167.025ms，本轮最长非空合成间隔88.891ms，完整诊断未记录超过100ms窗口。正常退出并恢复1080p。两种分辨率通过后，本地GUI默认已切换具名Native23/XR16候选，Recovery8具名清单保留回滚；204项相关测试与隐藏GUI自检通过。仍是研究版，便携部署、整套UI/CG和真头显体验待完成。

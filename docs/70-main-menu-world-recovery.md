@@ -310,3 +310,14 @@ XR16最终SHA256 `29d7e2e651104868bde3931939670eb5461bf6496ff289b901c0a7b3d2bba1
 本轮outage完整记录complete=true/later0/dropped0，最长间隔89.319ms，未出现超过100ms窗口；最长位置在Pause面板初始衔接。mode6精确SnapshotChanged已实际出现，但本轮未再次复现RegistrySnapshotChanged，后者恢复由故障注入测试证明，不能宣称实际竞争路径已运行覆盖。正常停止、43入口恢复、XR shutdown、身份核验WM_CLOSE及CIM进程退出通过，未抢焦点，分辨率保持1080p。ignored证据 `xr16-world-events.json`、`xr16-world-audit.json`、`xr16-handoff-audit.json`、原始日志/图像与冻结原生状态。
 
 XR16尚未进行完整4K回归和真头显验证；默认玩家清单未提升。下一重点转向实际CG/视频与整套UI覆盖：cinematic标志和Continue加载不能代替播放区间/实际画面证据，章节入口尚待精确只读状态确认；不得盲目开始新游戏覆盖存档。
+
+
+## XR16 完整4K回归与本地GUI候选更新
+
+会话 `continuous-stereo-42956-20261016-130831-35243d38` 实际3840×2160源SBS/单眼1920×2160完成两轮确认框取消、检查点world1→2、新Pawn手枪开镜/还原步枪、主菜单Continue→world3；index0/1/2三张源GPU图像双眼非黑，接触图目视有对应场景/角色及字幕。四原生阶段各6214对零错配，projection5225/copies6166。独立world等待episode持续167.0246ms并由有效当前代projection替换。完整outage最长88.8906ms，complete=true/dropped0/later0，未出现超过100ms窗口；两份窄范围审计通过，仍不等同真头显或全部UI/CG验收。
+
+正常停止/43入口恢复/XR shutdown后，另一次仅菜单检查以原game全身份、原HWND、已停止同session及43入口恢复证据为门禁，双次稳定只读采到Campaign Continue完整树，确认同parent下存在butLoadChapter、butContinue、butNewCampaign。没有按Continue/选择章节/开始新游戏，没有焦点操作；这轮菜单检查在VR停止后，不能算VR菜单像素验收。之后身份核验WM_CLOSE及CIM确认退出，临时4K设置恢复1920×1080。证据 `xr16-4k-events.json`、`xr16-4k-audit.json`、`xr16-4k-handoff-audit.json`、`inspect-chapter-menu1.json`及原始日志/图像。
+
+在两种分辨率实际回归后，本地GUI的manifest.json切换到具名manifest-world-recovery23-xr16.json；实际game/profile/native/XR哈希和settings前置验证、204项相关Python测试及隐藏GUI构建自检通过。旧manifest-game-recovery8.json保持原样可回滚，新增HUD大小控件现随候选能力开启。仅本地研究候选更新，不宣称便携包或发布验收完成；未改用户config/其他对话的README变更，也没有修改全局OpenXR Runtime。
+
+章节入口的静态查询已先用现有KB。artifact2的WarUIScene_Campaign类导出仅native/defaultproperties，没有按钮处理体；butLoadChapter在包对象清单中存在，与当前只读UI名相符。LoadChapter字面量仅历史运行时快照候选，不能证明当前按钮执行语义；ChapterSelect有界查询无匹配不代表不存在。原始查询保留在ignored kb-chapter-loadchapter/chapterselect.json。CG下一步仍需确认章节选择界面，并在任何实际换章节前保护现有存档；UI优先补当前布局selector与主动换弹图像。

@@ -115,10 +115,14 @@ class LauncherTests(unittest.TestCase):
     def test_player_default_uses_game_resolution_and_graphics_protection(self):
         directory=pathlib.Path(__file__).parent
         current=json.loads((directory/'manifest.json').read_text())
-        self.assertEqual(current,json.loads((directory/'manifest-game-recovery8.json').read_text()))
+        self.assertEqual(current,json.loads((directory/'manifest-world-recovery23-xr16.json').read_text()))
         launcher.settings({},current)
-        self.assertEqual(current['native_dll'],'GearsCaptureGameRecovery8.dll')
-        for key in ('startup_menu','graphics_startup_lock','graphics_menu_lock','menu_recovery','ui_hud_plane'):
+        self.assertEqual(current['native_dll'],'GearsCaptureWorldRecovery23.dll')
+        self.assertEqual(current['native_build'],'tools/native-capture/build-world-recovery23')
+        self.assertEqual(current['xr_build'],'tools/openxr-probe/build-main-menu16')
+        self.assertEqual(launcher.hud_horizontal_fov({},current),65.)
+        for key in ('startup_menu','graphics_startup_lock','graphics_menu_lock','menu_recovery','ui_hud_plane',
+                    'cinematic_camera','world_recovery','hud_size_control','crosshair_assignment_observer'):
             self.assertTrue(current[key])
         for tier in ('low','high'):
             with self.assertRaisesRegex(ValueError,'Unknown configuration'):
