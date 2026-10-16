@@ -19,6 +19,8 @@ void publish_ui_text_delta(gears_ui_text_batch::Delta const& delta,unsigned kind
     // Consumers take the same outer mutex. A multi-atlas call either publishes
     // every copied range, or discards all of its payload candidates before any
     // consumer can claim a partial string. The original text is never changed.
+    // Both adapters bracket the entire certified producer call. Only one changed
+    // range proves a complete affine group; atlas fragments must retain fallback.
     std::lock_guard<std::mutex> lock(ui_payload_mutex);bool accepted=true;
     for(auto const& range:delta.ranges){
         const auto length=range.end-range.begin;
@@ -26,7 +28,7 @@ void publish_ui_text_delta(gears_ui_text_batch::Delta const& delta,unsigned kind
             delta.sort_key,range.begin,range.end};
         if(range.vertex_offset>delta.vertices.size()||length>delta.vertices.size()-range.vertex_offset||
            !ui_payload_store.publish_range(metadata,delta.vertices.data()+range.vertex_offset,length,kind,invocation,source,
-               source==gears_ui_receipts::Source::CanvasText&&delta.ranges.size()==1)){
+               (source==gears_ui_receipts::Source::CanvasText||source==gears_ui_receipts::Source::NativeSubtitle)&&delta.ranges.size()==1)){
             accepted=false;break;
         }
     }

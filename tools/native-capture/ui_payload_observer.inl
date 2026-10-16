@@ -444,7 +444,7 @@ void print_ui_payload_observer(FILE* status){
         ui_hud_plane_enabled?1:0,hud_parameters.horizontal_fov_degrees,hud_parameters.depth_metres,ui_hud_counts.considered.load(),ui_hud_counts.missing_context.load(),ui_hud_counts.reticle_excluded.load(),
         ui_hud_counts.unknown_or_mixed.load(),ui_hud_counts.ticket_missing.load(),ui_hud_counts.projection_rejected.load(),
         ui_hud_counts.planned.load(),ui_hud_counts.applied.load(),ui_hud_sequence_fault.load()?1:0);
-    fprintf(status,"ui_hud_layout element_scale=%.9g center_scale=%.9g considered=%llu planned=%llu fallback=%llu applied=%llu source_vertices_modified=0 subtitle_policy=unchanged reticle_policy=unchanged\n",
+    fprintf(status,"ui_hud_layout element_scale=%.9g center_scale=%.9g considered=%llu planned=%llu fallback=%llu applied=%llu source_vertices_modified=0 subtitle_policy=complete_single_range_group reticle_policy=unchanged\n",
         ui_hud_layout_parameters.element_scale,ui_hud_layout_parameters.center_scale,ui_layout_counts.considered.load(),
         ui_layout_counts.planned.load(),ui_layout_counts.fallback.load(),ui_layout_counts.applied.load());
     for(unsigned k=1;k<ui_payload_gpu_rows.size();++k){

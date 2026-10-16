@@ -127,4 +127,48 @@ static void grouping_tests(){
     for(unsigned i=0;i<bad.total_indices;++i){const auto owner=(i/3)%2;bad.indices[i]=bad.global_vertices[i]=owner*4+i%3;++bad.segments[0].known[owner?2:1];}
     assert(capture(f.claim,bad,matrix,groups)&&!groups.segments[0].valid&&groups.count==0);
 }
-int main(){projection_tests();grouping_tests();std::cout<<"UiHudLayoutTest passed\n";}
+static void subtitle_tests(){
+    Fixture f;
+    // Direct native adapter has no UCanvas. Each receipt here represents one
+    // separate complete subtitle call, including the two-glyph final receipt.
+    f.claim.canvas=0;f.claim.kind_mask=4;
+    for(auto& e:f.claim.entries){e.receipt.canvas=0;e.kind=3;
+        e.source=gears_ui_receipts::Source::NativeSubtitle;e.whole_text_group=true;}
+    auto& segment=f.snapshot.segments[0];segment.kind_mask=4;segment.known={0,0,30};
+    Groups groups{};assert(capture(f.claim,f.snapshot,transform(),groups)&&groups.segments[0].valid&&groups.count==4);
+    const auto original=*f.claim.vertices;const auto saved=state();gears_viewport::OverlayPlan panel{};
+    assert(gears_ui_hud::plan(saved,1920,1080,sample(),panel));
+    Replay plans{};assert(prepare(groups,0,saved,1920,1080,panel,{1.3,.65},plans));
+    // Entire string shares one transform: width, glyph width and inter-glyph gap
+    // all grow together, while its center moves toward panel center.
+    auto const bounds=groups.bounds[2];const double cx=(bounds.left+bounds.right)/2,cy=(bounds.top+bounds.bottom)/2;
+    for(unsigned eye=0;eye<2;++eye){auto const v=plans.runs[3].plan.viewports[eye],base=panel.viewports[eye];
+        const auto x=[&](double source){return v.x+v.width*source;};
+        near(x(bounds.right)-x(bounds.left),base.width*60/1920*1.3);
+        near(x(bounds.left+20./1920)-x(bounds.left),base.width*20/1920*1.3); // Glyph.
+        near(x(bounds.left+40./1920)-x(bounds.left+20./1920),base.width*20/1920*1.3); // Gap.
+        near(x(cx),base.x+base.width*(.5+.65*(cx-.5)));
+        near(v.y+v.height*cy,base.y+base.height*(.5+.65*(cy-.5)));
+    }
+    assert(f.claim.vertices->data==original.data);
+    // A fragmented subtitle cannot claim a whole-string center. Even a single
+    // quad without producer proof remains on the previous replay path.
+    for(unsigned entry:{0u,2u}){auto fragmented=f.claim;fragmented.entries[entry].whole_text_group=false;
+        assert(capture(fragmented,f.snapshot,transform(),groups)&&!groups.segments[0].valid);
+        Replay sentinel{};sentinel.count=73;
+        assert(!prepare(groups,0,saved,1920,1080,panel,{1.3,.65},sentinel)&&sentinel.count==73);}
+    // Isolate another segment: one unsupported call cannot discard the valid
+    // complete subtitle call sharing the same immutable payload claim.
+    f.snapshot.segment_count=2;segment.index_count=18;segment.maximum=7;segment.entry_mask=3;
+    segment.known={0,0,18};segment.expected.index_count=18;
+    auto& last=f.snapshot.segments[1];last=segment;last.minimum=8;last.maximum=15;
+    last.index_offset=18;last.index_count=12;last.entry_mask=4;last.known={0,0,12};last.expected.index_count=12;
+    for(unsigned i=18;i<30;++i)f.snapshot.indices[i]-=8;
+    f.claim.entries[0].whole_text_group=false;
+    assert(capture(f.claim,f.snapshot,transform(),groups)&&!groups.segments[0].valid&&groups.segments[1].valid);
+    assert(prepare(groups,1,saved,1920,1080,panel,{1.3,.65},plans)&&plans.count==1&&plans.runs[0].count==12);
+    // Wrong semantic kind never grants subtitle layout authority.
+    f.claim.entries[2].kind=2;f.claim.kind_mask=6;
+    assert(!capture(f.claim,f.snapshot,transform(),groups));
+}
+int main(){projection_tests();grouping_tests();subtitle_tests();std::cout<<"UiHudLayoutTest passed\n";}

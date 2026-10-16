@@ -77,14 +77,15 @@ struct Groups {
 // Called while Claim's certified immutable bytes are owned. A text receipt is
 // one explicitly complete text producer range, never a glyph/atlas fragment.
 // Canvas admits one exact quad.
-// Native subtitles and reticles deliberately retain their previous policy.
+// Native subtitles require the same complete-call proof; reticles retain their
+// previous policy. Multi-atlas text never acquires per-fragment layout authority.
 inline bool capture(gears_ui_receipts::Claim const& claim,gears_ui_indices::Snapshot const& snapshot,Matrix const& matrix,Groups& out){
     if(!gears_ui_indices::detail::bounded_snapshot(snapshot)||claim.generation!=snapshot.generation||
        !gears_ui_indices::detail::claim_valid(claim,snapshot.payload,snapshot.vertex_count))return false;
     Groups result{};
     for(unsigned n=0;n<claim.count;++n){auto const& entry=claim.entries[n];auto const length=entry.receipt.end-entry.receipt.begin;
-        if((entry.kind!=2&&entry.kind!=3)||entry.source==gears_ui_receipts::Source::NativeSubtitle||
-           (entry.source==gears_ui_receipts::Source::CanvasText&&!entry.whole_text_group)||
+        if((entry.kind!=2&&entry.kind!=3)||
+           ((entry.source==gears_ui_receipts::Source::CanvasText||entry.source==gears_ui_receipts::Source::NativeSubtitle)&&!entry.whole_text_group)||
            (entry.source==gears_ui_receipts::Source::Canvas&&length!=4))continue;
         auto& bounds=result.bounds[n];bool supported=true;
         for(unsigned j=0;j<length;++j){float position[4]{};

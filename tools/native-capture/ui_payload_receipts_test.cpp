@@ -129,7 +129,9 @@ int main(){
     auto subtitle=text;subtitle.canvas=0;subtitle.payload=0xf400;subtitle.begin=0;subtitle.end=256;
     assert(!s->publish_range(subtitle,glyphs.data(),glyphs.size(),3,1400,Source::CanvasText));
     assert(s->publish_range(subtitle,glyphs.data(),glyphs.size(),3,1401,Source::NativeSubtitle));
-    assert(s->claim(0xf400,out)&&!out.canvas&&out.entries[0].source==Source::NativeSubtitle);
+    assert(s->claim(0xf400,out)&&!out.canvas&&out.entries[0].source==Source::NativeSubtitle&&!out.entries[0].whole_text_group);
+    assert(s->publish_range(subtitle,glyphs.data(),glyphs.size(),3,1402,Source::NativeSubtitle,true));
+    assert(s->claim(0xf400,out)&&out.entries[0].whole_text_group);
     assert(s->publish_range(subtitle,glyphs.data(),glyphs.size(),3,1402,Source::NativeSubtitle));
     auto not_native=subtitle;not_native.canvas=0x1000;not_native.begin=256;not_native.end=512;
     assert(!s->publish_range(not_native,glyphs.data(),glyphs.size(),3,1403,Source::CanvasText));assert(s->retire(0xf400));
