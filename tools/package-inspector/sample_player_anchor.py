@@ -53,7 +53,7 @@ class AnchorSampler:
         self._property('controller_pawn',pc['cls'],'Pawn','ObjectProperty')
         self.pawn=self.pointer(self.controller,'controller_pawn')
         pawn=self.fresh(self.pawn)
-        if not self.derives(pawn['cls'],'WarPawn'):raise AnchorRejected('Controlled object does not inherit WarPawn')
+        self.validate_controlled(pawn)
         self._property('pawn_controller',pawn['cls'],'Controller','ObjectProperty')
         self._property('pawn_location',pawn['cls'],'Location','StructProperty','Vector')
         self._property('pawn_rotation',pawn['cls'],'Rotation','StructProperty','Rotator')
@@ -82,6 +82,10 @@ class AnchorSampler:
             'candidate_eye_formula':'Pawn.Location + (0,0,EyeHeight); hypothesis only',
             'renderer_alignment_verified':False,'standing_verified':False,
             'limits':'Timestamp/identity bracketing is not an atomic engine snapshot or renderer alignment proof.'}
+
+    def validate_controlled(self,pawn):
+        if not self.derives(pawn['cls'],'WarPawn'):
+            raise AnchorRejected('Controlled object does not inherit WarPawn')
 
     def fresh(self,address):
         r=self.r;p=r.profile
@@ -131,7 +135,8 @@ class AnchorSampler:
         if pawn_pointer!=self.pawn:raise AnchorRejected('Controlled Pawn changed; re-resolve required')
         pawn=self.fresh(self.pawn);controller=self.fresh(self.controller)
         camera=self.fresh(self.camera);local=self.fresh(self.local)
-        if pawn['name'].startswith('Default__') or not self.derives(pawn['cls'],'WarPawn'):
+        self.validate_controlled(pawn)
+        if pawn['name'].startswith('Default__'):
             raise AnchorRejected('Pawn is default object or class changed')
         outer=pawn['outer'];outer_chain=[];seen=set();level=None
         while outer:
@@ -207,10 +212,13 @@ class AnchorSampler:
             for label,owner,fmt in (('pawn_location',self.pawn,'<3f'),('pawn_rotation',self.pawn,'<3i'),
                     ('controller_rotation',self.controller,'<3i'),('eye_height',self.pawn,'<f'),
                     ('base_eye_height',self.pawn,'<f')):
+                if getattr(self,'mounted_contract',None) is not None and owner==self.pawn:continue
                 data=self.r.read(owner+self.layout[label]['offset'],struct.calcsize(fmt))
                 value=struct.unpack(fmt,data);values[label]=list(value) if len(value)>1 else value[0];raw[label]=data.hex()
             data=self.r.read(self.pov,28);pov=struct.unpack('<3f3if',data)
             values['camera_cache_pov']={'location':list(pov[:3]),'rotation_ru':list(pov[3:6]),'fov':pov[6]};raw['camera_cache_pov']=data.hex()
+            if getattr(self,'mounted_contract',None) is not None:
+                values.update(pawn_location=list(pov[:3]),pawn_rotation=list(pov[3:6]),eye_height=0.,base_eye_height=0.)
             record.update(values=values,raw_values=raw,guard_before=before)
             after=self.guard();record['guard_after']=after
             if before!=after:raise AnchorRejected('Cross-frame or identity/pointer change during measurement')

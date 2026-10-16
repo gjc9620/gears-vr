@@ -238,9 +238,16 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                     anchor_section=anchor_ini(certificate);anchor_metadata['pid']=pid
                 if ui_observer:
                     ui_certificate,ui_metadata=build_ui_observer_config(r,refreshed,
+                        **({'mounted_anchor':certificate} if anchor_metadata is not None and certificate.get('schema')==3 else {}),
                         **({'entry_reader':entry_reader} if entry_reader is not None else {}))
                     ui_section=ui_observer_ini(ui_certificate)
-                    if crosshair_assignment_observer:
+                    if crosshair_assignment_observer and certificate.get('schema')==3:
+                        from mounted_context import mounted_crosshair_suspension,mounted_crosshair_ini
+                        suspension=mounted_crosshair_suspension(certificate,pid,r.base,profile['sha256'])
+                        ui_metadata['crosshair_assignment_suspended']=suspension
+                        ui_metadata['crosshair_assignment_observer_enabled']=True
+                        ui_section+=mounted_crosshair_ini(suspension)
+                    elif crosshair_assignment_observer:
                         from crosshair_assignment_config import build_crosshair_assignment_config,crosshair_assignment_ini
                         assignment=build_crosshair_assignment_config(r,refreshed,include_tick_roots=True,include_writer_view=True,
                             **({'entry_reader':entry_reader} if entry_reader is not None else {}))

@@ -29,6 +29,7 @@ class LiveRegistryAnchorSampler(AnchorSampler):
         self.guard_clock_ns=clock_ns or time.perf_counter_ns
         self.sample_guard_index=None
         self.cinematic_contract=None
+        self.mounted_contract=None
         def validate_target(sampler,target,pawn,level):
             if self.cinematic_contract is None:
                 from cinematic_anchor import CinematicTargetCertificate
@@ -41,6 +42,11 @@ class LiveRegistryAnchorSampler(AnchorSampler):
         except Exception as error:
             raise AnchorSamplingRejected(str(error),self.failure_evidence('initial',error,started)) from error
 
+    def validate_controlled(self,pawn):
+        if self.derives(pawn['cls'],'WarPawn'):return
+        if not self.derives(pawn['cls'],'Turret'):
+            raise AnchorRejected('Controlled object is neither WarPawn nor certified Turret')
+
     def failure_evidence(self,stage,error,started):
         return {'accepted':False,'stage':stage,'reason':str(error),
                 'exception_type':type(error).__name__,'exception_repr':repr(error),
@@ -52,7 +58,17 @@ class LiveRegistryAnchorSampler(AnchorSampler):
     def _strict_guard(self):
         self.r.objects_data,self.r.object_count,self.r.object_capacity = _header(self.r,self.r.objects_header)
         self.r.names_data,self.r.name_count,self.r.name_capacity = _header(self.r,self.r.names_header)
-        return super().guard()
+        mounted=None
+        if not self.derives(self.fresh(self.pawn)['cls'],'WarPawn'):
+            from mounted_context import MountedContextCertificate
+            if self.mounted_contract is None:self.mounted_contract=MountedContextCertificate(self)
+            mounted=self.mounted_contract.capture()
+        result=super().guard()
+        if mounted is not None:
+            after=self.mounted_contract.capture()
+            if mounted!=after:raise AnchorRejected('Mounted context changed during anchor bracket')
+            result['mounted_context']=after
+        return result
 
     def guard(self):
         stage=self.guard_stage
@@ -102,7 +118,12 @@ class LiveRegistryAnchorSampler(AnchorSampler):
 
     def sample(self):
         self.sample_guard_index=0
-        try:return super().sample()
+        try:
+            result=super().sample()
+            if self.mounted_contract is not None and result.get('accepted'):
+                result['candidate_eye_hypothesis']=list(result['values']['camera_cache_pov']['location'])
+                result['geometry_source']='CameraCache.POV'
+            return result
         finally:self.sample_guard_index=None
 
     def fresh(self,address):
@@ -268,6 +289,16 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
         return index
     roles={role:add(before[role]['address']) for role in ROLES}
     for identity in before['outer_chain']:add(identity['address'])
+    mounted=None
+    if sampler.mounted_contract is not None:
+        proof=before['mounted_context']
+        for address in proof['identities']:add(address,address in proof['supers'])
+        mounted=dict(role_driver=add(proof['roles']['driver']['address']),
+            role_inventory=add(proof['roles']['inventory']['address']),
+            role_world_info=add(proof['roles']['world_info']['address']),
+            property_offset_internal=resolver.profile['property_offset_internal'],
+            properties={name:dict(role=add(value['identity']['address']),offset=value['offset'])
+                        for name,value in proof['properties'].items()})
     contract=getattr(sampler,'cinematic_contract',None)
     cinematic=None
     if contract is not None:
@@ -298,6 +329,9 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
     layout={key:_offset(resolver.profile[key],key) for key in LAYOUT}
     sampler.guard_stage='assembly_after'
     after=sampler.guard()
+    # MountedContextCertificate.capture independently freezes all mounted role,
+    # identity, superclass, property and link records across every guard. Its
+    # camera timestamp/POV are allowed to advance between assembly guards.
     stable_keys=(*ROLES,'outer_chain','view_target')
     if cinematic is not None:stable_keys+=('target_proof',)
     if any(before[key]!=after[key] for key in stable_keys):
@@ -318,6 +352,7 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
     config={'schema':1,'objects_header':resolver.objects_header,'names_header':resolver.names_header,
             'layout':layout,'roles':roles,'fields':fields,'identities':identities}
     if cinematic is not None:config.update(schema=2,cinematic=cinematic)
+    if mounted is not None:config.update(schema=3,mounted=mounted)
     metadata={'schema':1,'config':config,'sampler':sampler.metadata,'sample':sample,
               'sample_acquisition':acquisition,
               'guard_acquisitions':sampler.guard_acquisitions,
@@ -325,7 +360,7 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
               'acquisition_budget_semantics':'sample5/200ms; each guard independently5/200ms; not total5reads; late success rejected',
               'registry_policy':'Refresh current data/count/capacity and validate selected slots; no startup count equality requirement',
               'read_only':True,'renderer_alignment_verified':False,
-              'candidate_eye_formula':'Pawn.Location + world-up EyeHeight; unverified hypothesis only',
+              'candidate_eye_formula':'CameraCache.POV; no Driver location substitution' if mounted else 'Pawn.Location + world-up EyeHeight; unverified hypothesis only',
               'certificate_final_guard':final,
               'assembly_semantics':'Static reflected identity/offset certificate; timestamp advance and registry growth are allowed across assembly. Native observations independently revalidate slots, links and strict short timestamp brackets.'}
     return config,metadata
@@ -334,8 +369,9 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
 def validate_anchor_config(config):
     expected={'schema','objects_header','names_header','layout','roles','fields','identities'}
     schema=config.get('schema')
-    if schema==2:expected.add('cinematic')
-    if set(config)!=expected or type(schema) is not int or schema not in (1,2):raise AnchorRejected('Unsupported observer schema')
+    if schema==2 or schema==3 and 'cinematic' in config:expected.add('cinematic')
+    if schema==3:expected.add('mounted')
+    if set(config)!=expected or type(schema) is not int or schema not in (1,2,3):raise AnchorRejected('Unsupported observer schema')
     def integer(value,label,limit,positive=False):
         if isinstance(value,bool) or not isinstance(value,int) or not (int(positive)<=value<limit):
             raise AnchorRejected('Invalid observer integer: '+label)
@@ -368,7 +404,10 @@ def validate_anchor_config(config):
     for role,index in config['roles'].items():
         integer(index,role,len(ids));name=ids[index]['name']
         if name.startswith('Default__'):raise AnchorRejected('Default object observer role')
-    if schema==2:
+    if schema==3:
+        from mounted_context import validate_mounted_config
+        validate_mounted_config(config)
+    if 'cinematic' in config:
         cine=config['cinematic']
         if not isinstance(cine,dict) or set(cine)!={'module_base','role_cinematic_property','role_camera_actor_class','cinematic_offset','cinematic_mask','role_world_info_property','role_world_info','world_info_offset'}:
             raise AnchorRejected('Missing cinematic certificate')
@@ -418,8 +457,16 @@ def anchor_ini(config):
     """Bounded numeric schema with already-validated, newline-free UTF16 names."""
     validate_anchor_config(config)
     rows=['[AnchorObserver]',f"schema={config['schema']}"]
-    if config['schema']==2:
-        rows.append('cinematic_enabled=1')
+    if config['schema']==3:
+        rows.append('mounted_enabled=1')
+        mounted=config['mounted']
+        rows.extend(f'mounted_{key}={value}' for key,value in mounted.items() if key!='properties')
+        from mounted_context import MOUNTED_PROPERTIES
+        for i,name in enumerate(MOUNTED_PROPERTIES):
+            rows.extend(f'mounted_property{i}_{key}={value}' for key,value in mounted['properties'][name].items())
+        rows.append(f'cinematic_enabled={int("cinematic" in config)}')
+    if 'cinematic' in config:
+        if config['schema']!=3:rows.append('cinematic_enabled=1')
         rows.extend(f'{key}={value}' for key,value in config['cinematic'].items())
     for key in ('objects_header','names_header'):rows.append(f'{key}={config[key]:#x}')
     for key,value in config['layout'].items():rows.append(f'{key}={value}')

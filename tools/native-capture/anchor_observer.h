@@ -11,12 +11,16 @@
 namespace gears_anchor {
 struct Identity {std::uintptr_t address{},cls{},outer{},super{};unsigned index{},name_index{},number{},check_super{};
     std::array<wchar_t,64> name{};};
+struct MountedProperty {unsigned role{},offset{};};
 struct Config {std::uintptr_t objects_header{},names_header{};unsigned identity_count{};
     unsigned object_internal_index{},object_name{},object_class{},object_outer{},field_super{},name_entry_index{},name_entry_text{};
     unsigned role_controller{},role_local{},role_camera{},role_pawn{},role_level{};
     unsigned controller_pawn{},pawn_controller{},pawn_location{},pawn_rotation{},controller_rotation{},eye_height{},base_eye_height{},
         player_camera{},pc_owner{},player{},camera_view_target{},camera_timestamp{},camera_pov{};
     std::array<Identity,128> identities{};
+    bool mounted_enabled{};
+    unsigned mounted_role_driver{},mounted_role_inventory{},mounted_role_world_info{},mounted_property_offset_internal{};
+    std::array<MountedProperty,9> mounted_properties{};
     bool cinematic_enabled{};
     unsigned role_cinematic_property{},role_camera_actor_class{},cinematic_offset{},cinematic_mask{};
     unsigned role_world_info_property{},role_world_info{},world_info_offset{};
@@ -27,6 +31,7 @@ inline bool equal_identity(Identity const& a,Identity const& b) {
     return a.address==b.address&&a.cls==b.cls&&a.outer==b.outer&&a.super==b.super&&a.index==b.index&&
         a.name_index==b.name_index&&a.number==b.number&&a.check_super==b.check_super&&a.name==b.name;
 }
+#include "mounted_observer.inl"
 struct PawnBinding {Identity pawn{};std::uintptr_t controller{},local{},camera{},level{};
     Identity target_identity{},target_level_identity{};bool cinematic{};};
 enum class PawnBindingStage : unsigned {config,registry,pawn,header,identity,object_slot,name_slot,name_entry,name_text,links,
@@ -192,6 +197,7 @@ template<class Read> bool capture_pawn_binding(Config const& c,Read read,PawnBin
     mark(PawnBindingStage::pawn,PawnBindingField::controller_pawn);
     if(value.controller>(std::numeric_limits<std::uintptr_t>::max)()-c.controller_pawn||
         !bytes(&value.pawn.address,value.controller+c.controller_pawn,8)||!value.pawn.address)return false;
+    if(c.mounted_enabled&&value.pawn.address!=c.identities[c.role_pawn].address)return false;
     auto& id=value.pawn;std::array<unsigned char,96> raw{};
     mark(PawnBindingStage::header,PawnBindingField::pawn_header);if(!bytes(raw.data(),id.address,raw.size()))return false;
     auto field=[&](auto& v,unsigned offset){if(offset>raw.size()||sizeof(v)>raw.size()-offset)return false;
@@ -298,7 +304,7 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
     auto derives=[&](std::uintptr_t cls,const wchar_t* name){for(unsigned n=0;n<64&&cls;++n){auto id=identity(cls);
         if(!id||!id->check_super)return false;if(!std::wcscmp(id->name.data(),name))return true;cls=id->super;}return false;};
     if(!std::wcsncmp(c.identities[c.role_pawn].name.data(),L"Default__",9)||
-        !derives(c.identities[c.role_pawn].cls,L"WarPawn")||!derives(c.identities[c.role_level].cls,L"Level")||
+        !derives(c.identities[c.role_pawn].cls,c.mounted_enabled?L"Turret":L"WarPawn")||!derives(c.identities[c.role_level].cls,L"Level")||
         !derives(c.identities[c.role_local].cls,L"WarLocalPlayer")||!derives(c.identities[c.role_camera].cls,L"WarPlayerCamera"))return false;
     auto outer=c.identities[c.role_pawn].outer;bool inlevel=false;
     for(unsigned n=0;n<16&&outer;++n){if(outer==level){inlevel=true;break;}auto id=identity(outer);if(!id)break;outer=id->outer;}
@@ -319,7 +325,7 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
         if(!equal)return false;
         if(id.check_super){std::uintptr_t parent{};if(!bytes(&parent,id.address+c.field_super,8)||parent!=id.super)return false;}
     }return true;};
-    if(!verify_identities())return false;
+    if(!verify_identities()||(c.mounted_enabled&&!mounted_links(c,read)))return false;
     TargetBinding target{};
     if(c.cinematic_enabled&&!cinematic_target(c,read,c.identities[c.role_pawn],target))return false;
     auto link=[&](std::uintptr_t owner,unsigned offset,std::uintptr_t expected){std::uintptr_t actual{};return bytes(&actual,owner+offset,8)&&actual==expected;};
@@ -329,7 +335,12 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
     Anchor anchor{};anchor.pawn=pawn;anchor.controller=pc;anchor.camera=camera;anchor.level=level;
     anchor.pawn_identity=c.identities[c.role_pawn];
     if(c.cinematic_enabled){anchor.target_identity=target.identity;anchor.target_level_identity=target.target_level_identity;anchor.cinematic=target.cinematic;}
-    if(!bytes(anchor.location.data(),pawn+c.pawn_location,12)||!bytes(&anchor.eye_height,pawn+c.eye_height,4)||
+    std::array<unsigned char,28> mounted_pov{};
+    if(c.mounted_enabled){
+        if(!bytes(mounted_pov.data(),camera+c.camera_pov,mounted_pov.size()))return false;
+        std::memcpy(anchor.location.data(),mounted_pov.data(),12);float fov{};std::memcpy(&fov,mounted_pov.data()+24,4);
+        if(!std::isfinite(fov)||fov<=0||fov>=180)return false;
+    }else if(!bytes(anchor.location.data(),pawn+c.pawn_location,12)||!bytes(&anchor.eye_height,pawn+c.eye_height,4)||
         !bytes(&anchor.base_eye_height,pawn+c.base_eye_height,4))return false;
     for(float v:anchor.location)if(!std::isfinite(v))return false;
     if(!std::isfinite(anchor.eye_height)||!std::isfinite(anchor.base_eye_height)||!std::isfinite(anchor.location[2]+anchor.eye_height))return false;
@@ -340,6 +351,8 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
     if(diagnostic)diagnostic->strict_after_stamp=after;
     // Complete non-timestamp checks before declaring a retryable time race.
     if(!links())return false;
+    if(c.mounted_enabled){std::array<unsigned char,28> final_pov{};
+        if(!mounted_links(c,read)||!bytes(final_pov.data(),camera+c.camera_pov,final_pov.size())||final_pov!=mounted_pov)return false;}
     if(c.cinematic_enabled){TargetBinding final_target{};
         if(!cinematic_target(c,read,c.identities[c.role_pawn],final_target)||!equal_target(target,final_target))return false;}
     if(before!=after){if(diagnostic){diagnostic->reason=GuardReason::strict_timestamp_changed;diagnostic->timestamp_only=true;}return false;}

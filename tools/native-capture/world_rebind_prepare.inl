@@ -42,7 +42,8 @@ bool prepare_world_candidate(const wchar_t* ini,PreparedWorld& output){
     if(ui.role_controller>=ui.identity_count||ui.role_camera>=ui.identity_count||ui.role_pawn>=ui.identity_count||
        c.role_pawn>=c.identity_count||!same_world_object(ui.identities[ui.role_controller],c.identities[c.role_controller])||
        !same_world_object(ui.identities[ui.role_camera],c.identities[c.role_camera])||
-       !same_world_object(ui.identities[ui.role_pawn],c.identities[c.role_pawn])||!guard())return false;
+       ui.mounted!=c.mounted_enabled||(c.mounted_enabled&&c.mounted_role_driver>=c.identity_count)||
+       !same_world_object(ui.identities[ui.role_pawn],c.identities[c.mounted_enabled?c.mounted_role_driver:c.role_pawn])||!guard())return false;
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
     if(crosshair_live::enabled){candidate->crosshair.emplace();
         if(!crosshair_live::prepare_recovery(ini,c,ui,*candidate->crosshair)||!guard())return false;}

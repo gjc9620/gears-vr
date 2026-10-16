@@ -1,4 +1,4 @@
-"""Read-only Turret possession certificate; no native/runtime admission is enabled.
+"""Read-only Turret possession certificate used by mounted anchor admission.
 
 Consumer supplies a sampler-like object with r, fresh(address), controller,
 camera, local, stamp, pov and view_target. These are the existing AnchorSampler
@@ -162,3 +162,69 @@ class MountedContextCertificate:
                     supers=supers, properties=properties, links=links,
                     camera_timestamp_raw=stamp.hex(), camera_pov_raw=pov.hex(),
                     atomic_snapshot=False, runtime_verified=False)
+
+
+MOUNTED_PROPERTIES = ('Pawn', 'Controller', 'Driver', 'DrivenVehicle', 'PlayerCamera',
+                      'PCOwner', 'Player', 'WorldInfo', 'InvManager')
+MOUNTED_OWNERS = ('Controller', 'Pawn', 'Vehicle', 'Pawn', 'PlayerController',
+                  'Camera', 'PlayerController', 'Actor', 'Pawn')
+
+
+def validate_mounted_config(config):
+    """Check serialized semantics before native independently validates live bytes."""
+    m=config['mounted'];ids=config['identities'];roles=config['roles']
+    if set(m)!={'role_driver','role_inventory','role_world_info','property_offset_internal','properties'}:
+        raise AnchorRejected('Incomplete mounted certificate')
+    for key in ('role_driver','role_inventory','role_world_info'):
+        if type(m[key]) is not int or not 0<=m[key]<len(ids):raise AnchorRejected('Invalid mounted role')
+    if type(m['property_offset_internal']) is not int or not 0<=m['property_offset_internal']<=0xfffc:
+        raise AnchorRejected('Invalid mounted property offset')
+    if len(set([*roles.values(),m['role_driver'],m['role_inventory'],m['role_world_info']]))!=8:
+        raise AnchorRejected('Aliased mounted roles')
+    by_address={i['address']:i for i in ids}
+    def ancestry(cls,name):
+        seen=set()
+        while cls:
+            item=by_address.get(cls)
+            if cls in seen or len(seen)>=64 or not item or not item['check_super']:
+                raise AnchorRejected('Invalid mounted ancestry')
+            if item['name']==name:return True
+            seen.add(cls);cls=item['super']
+        return False
+    pawn=ids[roles['pawn']];driver=ids[m['role_driver']];inventory=ids[m['role_inventory']]
+    world=ids[m['role_world_info']];level=ids[roles['level']]
+    for item,name in ((pawn,'Turret'),(pawn,'Vehicle'),(driver,'WarPawn'),(inventory,'WarInventoryManager'),(world,'WorldInfo')):
+        if item['name'].startswith('Default__') or not ancestry(item['cls'],name):raise AnchorRejected('Mounted role class mismatch')
+    if any(i['outer']!=level['address'] for i in (pawn,driver,world)) or inventory['outer']!=driver['address']:
+        raise AnchorRejected('Mounted role owner mismatch')
+    if set(m['properties'])!=set(MOUNTED_PROPERTIES):raise AnchorRejected('Missing mounted property')
+    for name,owner in zip(MOUNTED_PROPERTIES,MOUNTED_OWNERS):
+        value=m['properties'][name]
+        if set(value)!={'role','offset'} or type(value['role']) is not int or not 0<=value['role']<len(ids) or type(value['offset']) is not int or not 0<=value['offset']<=0xfff8:
+            raise AnchorRejected('Invalid mounted property')
+        field=ids[value['role']];kind=by_address.get(field['cls'],{});owner_id=by_address.get(field['outer'],{})
+        if field['name']!=name or field['number'] or kind.get('name')!='ObjectProperty' or owner_id.get('name')!=owner or owner_id.get('number'):
+            raise AnchorRejected('Mounted property identity mismatch')
+    for field,name in (('controller_pawn','Pawn'),('pawn_controller','Controller'),('player_camera','PlayerCamera'),('pc_owner','PCOwner'),('player','Player')):
+        if config['fields'][field]!=m['properties'][name]['offset']:raise AnchorRejected('Mounted field mismatch')
+    return m
+
+
+
+def mounted_crosshair_suspension(anchor,pid,base,sha256):
+    validate_mounted_config(anchor)
+    m=anchor['mounted'];ids=anchor['identities']
+    return dict(schema=2,native_contract=2,pid=pid,base=base,sha256=sha256,
+        controller=ids[anchor['roles']['controller']]['address'],
+        controlled=ids[anchor['roles']['pawn']]['address'],driver=ids[m['role_driver']]['address'],
+        camera=ids[anchor['roles']['camera']]['address'])
+
+
+def mounted_crosshair_ini(proof):
+    if set(proof)!={'schema','native_contract','pid','base','sha256','controller','controlled','driver','camera'} or proof['schema']!=2 or proof['native_contract']!=2:
+        raise AnchorRejected('Invalid mounted crosshair suspension')
+    for key,value in proof.items():
+        if key=='sha256':
+            if value!='bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4':raise AnchorRejected('Suspension build mismatch')
+        elif type(value) is not int or not 0<value<1<<64:raise AnchorRejected('Invalid suspension integer')
+    return '[CrosshairAssignment]\n'+'\n'.join(f'{key}={value}' for key,value in proof.items())+'\n'

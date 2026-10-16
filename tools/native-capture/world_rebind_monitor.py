@@ -61,11 +61,16 @@ class WorldSnapshot:
     level: object
     world_info: object
     pawn: object
+    mounted_context: tuple=()
 
     def __post_init__(self):
         # Copy into immutable tuples: later adapter mutation cannot alter proof.
         for field in self.__dataclass_fields__:
             value = getattr(self, field)
+            if field=='mounted_context':
+                if len(value) not in (0,3):raise ValueError('Invalid mounted role snapshot')
+                object.__setattr__(self,field,tuple(_identity(item if not isinstance(item,tuple) else dict(zip(('address','cls','outer','number','internal_index','name'),item))) for item in value))
+                continue
             if not isinstance(value, tuple):
                 value = _identity(value)
             else:
@@ -75,7 +80,7 @@ class WorldSnapshot:
     def changed_from(self, baseline):
         return (self.local_player == baseline.local_player and any(
             getattr(self, key) != getattr(baseline, key)
-            for key in ('controller', 'camera', 'level', 'world_info')))
+            for key in ('controller', 'camera', 'level', 'world_info','mounted_context')))
 
 
 @dataclass(frozen=True)

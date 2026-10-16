@@ -26,6 +26,7 @@ struct Config {
     std::array<Identity,96> identities{};std::array<Super,96> supers{};
     std::array<Scope,8> scopes{};std::array<Binding,4> bindings{};
     unsigned role_controller{},role_camera{},role_pawn{},role_hud{},role_inventory{},role_canvas_class{};
+    bool mounted{};unsigned role_controlled{},controlled_driver{},controlled_driver_property{},pawn_driven_vehicle{},pawn_driven_vehicle_property{},controlled_controller{},controlled_controller_property{};
 #define GEARS_UI_FIELD_MEMBER(name) unsigned name{},name##_property{};
     GEARS_UI_FIELDS(GEARS_UI_FIELD_MEMBER)
 #undef GEARS_UI_FIELD_MEMBER
@@ -82,6 +83,36 @@ template<class Read> bool fresh_identity(Config const& c,Reader<Read> const& r,R
     if(length==text.size()||!length)return false;
     return !id.check_super||(r.field(parent,id.address,c.field_super)&&parent==id.super);
 }
+// Controlled Turret and human inventory Pawn remain distinct semantic roles.
+template<class Read> bool possession_environment(Config const& c,Reader<Read> const& r){
+    if(c.role_controller>=c.identity_count||c.role_pawn>=c.identity_count)return false;
+    const auto pc=c.identities[c.role_controller].address,pawn=c.identities[c.role_pawn].address;
+    auto link=[&](std::uintptr_t address,unsigned offset,std::uintptr_t expected){std::uintptr_t actual{};return r.field(actual,address,offset)&&actual==expected;};
+    if(!c.mounted)return link(pc,c.controller_pawn,pawn)&&link(pawn,c.pawn_controller,pc);
+    if(c.role_controlled>=c.identity_count||c.role_controlled==c.role_pawn)return false;
+    Registry objects{},names{};if(!registry(r,c.objects_header,objects)||!registry(r,c.names_header,names)||
+        !fresh_identity(c,r,objects,names,c.identities[c.role_controlled]))return false;
+    auto const& controlled=c.identities[c.role_controlled];
+    auto has_class=[&](std::uintptr_t cls,wchar_t const* name){for(unsigned n=0;n<40&&cls;++n){auto id=known(c,cls);if(!id)return false;
+        if(!std::wcscmp(id->name.data(),name))return derives(c,controlled.cls,id->address);bool found=false;
+        for(unsigned i=0;i<c.super_count;++i)if(c.supers[i].identity<c.identity_count&&c.identities[c.supers[i].identity].address==cls){cls=c.supers[i].parent;found=true;break;}
+        if(!found)return false;}return false;};
+    if(!has_class(controlled.cls,L"Turret")||!has_class(controlled.cls,L"Vehicle"))return false;
+    const unsigned props[]={c.controlled_driver_property,c.pawn_driven_vehicle_property,c.controlled_controller_property};
+    const unsigned offsets[]={c.controlled_driver,c.pawn_driven_vehicle,c.controlled_controller};
+    const wchar_t* labels[]={L"Driver",L"DrivenVehicle",L"Controller"};
+    const wchar_t* owners[]={L"Vehicle",L"Pawn",L"Pawn"};
+    for(unsigned i=0;i<3;++i){if(props[i]>=c.identity_count||offsets[i]>0xfff8)return false;auto const& prop=c.identities[props[i]];
+        auto kind=known(c,prop.cls),owner=known(c,prop.outer);unsigned dim{},size{},offset{};
+        if(prop.number||std::wcscmp(prop.name.data(),labels[i])||!kind||std::wcscmp(kind->name.data(),L"ObjectProperty")||
+           !owner||std::wcscmp(owner->name.data(),owners[i])||!derives(c,i==1?c.identities[c.role_pawn].cls:controlled.cls,prop.outer)||
+           !fresh_identity(c,r,objects,names,prop)||!r.field(dim,prop.address,0x70)||dim!=1||!r.field(size,prop.address,0x74)||size!=8||
+           !r.field(offset,prop.address,c.property_offset_internal)||offset!=offsets[i])return false;
+    }
+    return link(pc,c.controller_pawn,controlled.address)&&link(controlled.address,c.controlled_controller,pc)&&
+        link(controlled.address,c.controlled_driver,pawn)&&link(pawn,c.pawn_driven_vehicle,controlled.address)&&link(pawn,c.pawn_controller,0);
+}
+
 template<class Read> bool validate(Config const& c,Read read,bool check_entry_bytes=true){
     Reader<Read> r{read};Registry objects{},names{};
     if(!c.base||!c.identity_count||c.identity_count>c.identities.size()||c.super_count>c.supers.size()||!c.scope_count||c.scope_count>c.scopes.size())return false;
@@ -124,8 +155,8 @@ template<class Read> bool validate(Config const& c,Read read,bool check_entry_by
     const auto pc=c.identities[c.role_controller].address,pawn=c.identities[c.role_pawn].address,hud=c.identities[c.role_hud].address,
         inventory=c.identities[c.role_inventory].address,camera=c.identities[c.role_camera].address;
     auto link=[&](std::uintptr_t address,unsigned offset,std::uintptr_t expected){std::uintptr_t actual{};return r.field(actual,address,offset)&&actual==expected;};
-    if(!link(pc,c.controller_pawn,pawn)||!link(pc,c.controller_hud,hud)||!link(pawn,c.pawn_inventory,inventory)||
-       !link(pc,c.player_camera,camera)||!link(camera,c.camera_owner,pc)||!link(hud,c.hud_owner,pc)||!link(pawn,c.pawn_controller,pc))return false;
+    if(!possession_environment(c,r)||!link(pc,c.controller_hud,hud)||!link(pawn,c.pawn_inventory,inventory)||
+       !link(pc,c.player_camera,camera)||!link(camera,c.camera_owner,pc)||!link(hud,c.hud_owner,pc))return false;
     Registry after_objects{},after_names{};
     return registry(r,c.objects_header,after_objects)&&registry(r,c.names_header,after_names)&&
         objects.data==after_objects.data&&objects.count==after_objects.count&&objects.capacity==after_objects.capacity&&
@@ -147,7 +178,7 @@ template<class Read> bool quick_environment(Config const& c,Reader<Read> const& 
     for(auto role:{c.role_controller,c.role_pawn,c.role_hud})if(!fresh_identity(c,r,objects,names,c.identities[role]))return false;
     const auto pc=c.identities[c.role_controller].address,pawn=c.identities[c.role_pawn].address,hud=c.identities[c.role_hud].address;
     auto link=[&](std::uintptr_t address,unsigned offset,std::uintptr_t expected){std::uintptr_t actual{};return r.field(actual,address,offset)&&actual==expected;};
-    return link(pc,c.controller_pawn,pawn)&&link(pc,c.controller_hud,hud)&&link(pawn,c.pawn_controller,pc)&&
+    return possession_environment(c,r)&&link(pc,c.controller_hud,hud)&&
         link(hud,c.hud_owner,pc)&&link(pawn,c.pawn_inventory,c.identities[c.role_inventory].address)&&
         link(pc,c.player_camera,c.identities[c.role_camera].address);
 }

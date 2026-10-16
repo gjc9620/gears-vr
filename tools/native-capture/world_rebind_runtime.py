@@ -16,13 +16,14 @@ from world_rebind import build_candidate, publish_candidate, role, identity, tha
 
 def snapshot(config):
     from world_rebind_monitor import WorldSnapshot
-    cine = config.get('cinematic') or {}
+    cine = config.get('mounted') or config.get('cinematic') or {}
     world_index = cine.get('role_world_info')
     if type(world_index) is not int or not 0 <= world_index < len(config['identities']):
         raise ValueError('World recovery requires certified WorldInfo')
     return WorldSnapshot(**{name:role(config,name) for name in
         ('local_player','controller','camera','level','pawn')},
-        world_info=identity(config['identities'][world_index]))
+        world_info=identity(config['identities'][world_index]),
+        mounted_context=tuple(identity(config['identities'][index]) for index in (config['roles']['pawn'],config['mounted']['role_driver'],config['mounted']['role_inventory'])) if 'mounted' in config else ())
 
 
 class RuntimePreparation:
@@ -66,7 +67,8 @@ class RuntimePreparation:
             from world_rebind_monitor import WorldSnapshot
             result = WorldSnapshot(**{name:guard[name] for name in
                 ('local_player','controller','camera','level','pawn')},
-                world_info=guard['target_proof']['world_info'])
+                world_info=guard['target_proof']['world_info'],
+                mounted_context=tuple(guard['mounted_context']['roles'][key] for key in ('controlled','driver','inventory')) if 'mounted_context' in guard else ())
             check_live()
             return result
         finally:

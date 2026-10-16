@@ -9,10 +9,13 @@ struct TickRoot {unsigned owner{},function{};std::uintptr_t script{};unsigned si
 // Stable owned storage. Copy/move always rebind the internal pointer.
 struct OwnedConfig {
     gears_ui::Config identities{}; Config assignment{};
+    bool mounted_suspended{};std::uintptr_t suspended_controller{},suspended_controlled{},suspended_driver{},suspended_camera{};
     unsigned pid{},tick_root_count{};std::array<TickRoot,2> tick_roots{};
     OwnedConfig(){assignment.identities=&identities;}
     OwnedConfig(OwnedConfig const& x){*this=x;}
     OwnedConfig& operator=(OwnedConfig const& x){
+        mounted_suspended=x.mounted_suspended;suspended_controller=x.suspended_controller;suspended_controlled=x.suspended_controlled;
+        suspended_driver=x.suspended_driver;suspended_camera=x.suspended_camera;
         identities=x.identities;assignment=x.assignment;pid=x.pid;
         tick_root_count=x.tick_root_count;tick_roots=x.tick_roots;
         assignment.identities=&identities;return *this;
@@ -41,11 +44,17 @@ template<class Read> bool parse_config(Read read,unsigned expected_pid,std::uint
     };
     OwnedConfig parsed;auto& c=parsed.assignment;auto& ids=parsed.identities;
     unsigned schema{},contract{};wchar_t sha[66]{};
-    if(!load(L"schema",schema)||schema!=1||!load(L"native_contract",contract)||contract!=1||
+    if(!load(L"schema",schema)||(schema!=1&&schema!=2)||!load(L"native_contract",contract)||contract!=schema||
        !text(L"sha256",sha,66)||std::wcscmp(sha,L"bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4")||
        !load(L"pid",parsed.pid)||!expected_pid||parsed.pid!=expected_pid||
        !load(L"base",ids.base)||!module_base||ids.base!=module_base||
        module_base>(std::numeric_limits<std::uintptr_t>::max)()-0x1b9cc30)return false;
+    if(schema==2){
+        if(!load(L"controller",parsed.suspended_controller)||!load(L"controlled",parsed.suspended_controlled)||
+           !load(L"driver",parsed.suspended_driver)||!load(L"camera",parsed.suspended_camera)||
+           !parsed.suspended_controller||!parsed.suspended_controlled||!parsed.suspended_driver||!parsed.suspended_camera)return false;
+        parsed.mounted_suspended=true;out=parsed;return true;
+    }
 #define CH_W_(x) L##x
 #define CH_W(x) CH_W_(x)
 #define CH_ID(x) if(!load(CH_W(#x),ids.x))return false

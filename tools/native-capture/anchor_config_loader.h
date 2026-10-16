@@ -16,7 +16,7 @@ template<class Read> bool parse_config(Read read,std::uintptr_t module_base,Conf
     auto load=[&](const wchar_t* key,auto& field){unsigned long long value{};
         if(!number(key,value)||value>static_cast<unsigned long long>(std::numeric_limits<std::remove_reference_t<decltype(field)>>::max()))return false;
         field=static_cast<std::remove_reference_t<decltype(field)>>(value);return true;};
-    unsigned schema{};if(!load(L"schema",schema)||(schema!=1&&schema!=2))return false;
+    unsigned schema{};if(!load(L"schema",schema)||(schema!=1&&schema!=2&&schema!=3))return false;
     Config c{};
 #define ANCHOR_CONFIG_WIDEN_(text) L##text
 #define ANCHOR_CONFIG_WIDEN(text) ANCHOR_CONFIG_WIDEN_(text)
@@ -28,7 +28,16 @@ template<class Read> bool parse_config(Read read,std::uintptr_t module_base,Conf
     ANCHOR_CONFIG_LOAD(controller_pawn);ANCHOR_CONFIG_LOAD(pawn_controller);ANCHOR_CONFIG_LOAD(pawn_location);ANCHOR_CONFIG_LOAD(pawn_rotation);ANCHOR_CONFIG_LOAD(controller_rotation);
     ANCHOR_CONFIG_LOAD(eye_height);ANCHOR_CONFIG_LOAD(base_eye_height);ANCHOR_CONFIG_LOAD(player_camera);ANCHOR_CONFIG_LOAD(pc_owner);ANCHOR_CONFIG_LOAD(player);
     ANCHOR_CONFIG_LOAD(camera_view_target);ANCHOR_CONFIG_LOAD(camera_timestamp);ANCHOR_CONFIG_LOAD(camera_pov);
-    if(schema==2){unsigned enabled{};if(!load(L"cinematic_enabled",enabled)||enabled!=1)return false;
+    if(schema==3){unsigned enabled{};if(!load(L"mounted_enabled",enabled)||enabled!=1)return false;
+        c.mounted_enabled=true;
+        ANCHOR_CONFIG_LOAD(mounted_role_driver);ANCHOR_CONFIG_LOAD(mounted_role_inventory);ANCHOR_CONFIG_LOAD(mounted_role_world_info);
+        ANCHOR_CONFIG_LOAD(mounted_property_offset_internal);
+        for(unsigned i=0;i<c.mounted_properties.size();++i){wchar_t key[64]{};
+            std::swprintf(key,64,L"mounted_property%u_role",i);if(!load(key,c.mounted_properties[i].role))return false;
+            std::swprintf(key,64,L"mounted_property%u_offset",i);if(!load(key,c.mounted_properties[i].offset))return false;}
+    }
+    unsigned cinematic{};if(schema==3&&(!load(L"cinematic_enabled",cinematic)||cinematic>1))return false;
+    if(schema==2||cinematic){unsigned enabled{};if(!load(L"cinematic_enabled",enabled)||enabled!=1)return false;
         ANCHOR_CONFIG_LOAD(module_base);ANCHOR_CONFIG_LOAD(role_cinematic_property);ANCHOR_CONFIG_LOAD(role_camera_actor_class);
         ANCHOR_CONFIG_LOAD(cinematic_offset);ANCHOR_CONFIG_LOAD(cinematic_mask);
         ANCHOR_CONFIG_LOAD(role_world_info_property);ANCHOR_CONFIG_LOAD(role_world_info);ANCHOR_CONFIG_LOAD(world_info_offset);

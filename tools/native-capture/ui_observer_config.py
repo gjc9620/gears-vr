@@ -31,8 +31,13 @@ class UIConfigRejected(RuntimeError):
 class UIRegistryChanged(UIConfigRejected):
     """Only the final concurrent registry-header change permits reacquisition."""
 
-def build_ui_observer_config(resolver, camera, *, entry_reader=None):
+def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anchor=None):
     r=resolver;p=r.profile;started=time.perf_counter_ns()
+    mounted=mounted_anchor is not None
+    if mounted:
+        from anchor_config import validate_anchor_config
+        validate_anchor_config(mounted_anchor)
+        if mounted_anchor['schema']!=3:raise UIConfigRejected('Mounted UI requires mounted anchor')
     if p.get('sha256')!=GAME_SHA or camera.get('sha256')!=GAME_SHA or camera.get('pid')!=r.pid:
         raise UIConfigRejected('UI observer requires the validated current game build/PID')
     if int(camera['module_base'],0)!=r.base:
@@ -132,13 +137,27 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None):
     def link(label,source,name,target=None):
         offset=prop(label,fresh(source)['cls'],name,'ObjectProperty')
         pointer=r.u64(source+offset)
-        if not pointer or (target is not None and pointer!=target):raise UIConfigRejected('UI reference mismatch: '+label)
-        links.append((source+offset,struct.pack('<Q',pointer)));add(pointer);return pointer
-    pawn=link('controller_pawn',pc,'Pawn');hud=link('controller_hud',pc,'myHUD')
+        if (not pointer and target!=0) or (target is not None and pointer!=target):raise UIConfigRejected('UI reference mismatch: '+label)
+        links.append((source+offset,struct.pack('<Q',pointer)))
+        if pointer:add(pointer)
+        return pointer
+    controlled=link('controller_pawn',pc,'Pawn');pawn=controlled
+    if mounted:
+        expected=mounted_anchor['identities'][mounted_anchor['roles']['pawn']]
+        if any(fresh(controlled)[key]!=expected[key] for key in fresh(controlled)):
+            raise UIConfigRejected('Mounted UI controlled role changed')
+        pawn=link('controlled_driver',controlled,'Driver')
+        expected=mounted_anchor['identities'][mounted_anchor['mounted']['role_driver']]
+        if any(fresh(pawn)[key]!=expected[key] for key in fresh(pawn)):
+            raise UIConfigRejected('Mounted UI Driver changed')
+        roles['controlled']=add(controlled)
+        link('pawn_driven_vehicle',pawn,'DrivenVehicle',controlled)
+        link('controlled_controller',controlled,'Controller',pc)
+    hud=link('controller_hud',pc,'myHUD')
     inventory=link('pawn_inventory',pawn,'InvManager')
     roles.update(pawn=add(pawn),hud=add(hud),inventory=add(inventory),canvas_class=add(classes['Canvas']))
     link('player_camera',pc,'PlayerCamera',cam);link('camera_owner',cam,'PCOwner',pc)
-    link('hud_owner',hud,'PlayerOwner',pc);link('pawn_controller',pawn,'Controller',pc)
+    link('hud_owner',hud,'PlayerOwner',pc);link('pawn_controller',pawn,'Controller',0 if mounted else pc)
     def derives(address,ancestor):
         current=fresh(address)['cls'];seen=set()
         while current and current not in seen and len(seen)<40:
@@ -216,6 +235,7 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None):
                 fields=fields,field_ids=field_ids,scopes=scopes,bindings=bindings,
                 frame_node=0x18,frame_object=0x20,frame_code=0x28,frame_locals=0x30,frame_previous=0x38,
                 function_script=0x8c,function_entry=0x114)
+    if mounted:config['schema']=2
     validate_ui_observer_config(config)
     text=ui_observer_ini(config)
     metadata=dict(schema=1,accepted=True,read_only=True,pid=r.pid,sha256=GAME_SHA,
@@ -228,7 +248,7 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None):
 def validate_ui_observer_config(c):
     def integer(v,label,maximum,positive=False):
         if type(v)!=int or not int(positive)<=v<maximum:raise UIConfigRejected('Invalid UI integer: '+label)
-    if c.get('schema')!=1 or type(c.get('schema'))!=int or c.get('sha256')!=GAME_SHA:
+    if c.get('schema') not in (1,2) or type(c.get('schema'))!=int or c.get('sha256')!=GAME_SHA:
         raise UIConfigRejected('Invalid UI schema/build')
     for key in ('pid','base','objects_header','names_header'):integer(c[key],key,1<<64,True)
     if set(c['layout'])!=set(LAYOUT):raise UIConfigRejected('Invalid UI layout')
@@ -245,12 +265,14 @@ def validate_ui_observer_config(c):
         if x['address'] in addresses or x['internal_index'] in slots:raise UIConfigRejected('Duplicate UI identity')
         addresses.add(x['address']);slots.add(x['internal_index'])
     if any(x['cls'] not in addresses for x in ids):raise UIConfigRejected('UI class closure incomplete')
-    if set(c['roles'])!={'controller','camera','pawn','hud','inventory','canvas_class'}:
+    mounted=c['schema']==2
+    if set(c['roles'])!=({'controller','camera','pawn','hud','inventory','canvas_class'}|({'controlled'} if mounted else set())):
         raise UIConfigRejected('Invalid UI roles')
     for index in c['roles'].values():integer(index,'role',len(ids))
     if len(set(c['roles'].values()))!=len(c['roles']):raise UIConfigRejected('Aliased UI roles')
     expected_fields={'controller_pawn','controller_hud','pawn_inventory','player_camera','camera_owner',
                      'hud_owner','pawn_controller','hud_canvas','weapon_instigator'}|{'canvas_'+x for x in CANVAS}
+    if mounted:expected_fields|={'controlled_driver','pawn_driven_vehicle','controlled_controller'}
     if set(c['fields'])!=expected_fields or set(c['fields'])!=set(c['field_ids']):raise UIConfigRejected('UI field identities incomplete')
     for label,offset in c['fields'].items():
         integer(offset,label,0x10000);integer(c['field_ids'][label],label,len(ids))
@@ -282,7 +304,7 @@ def validate_ui_observer_config(c):
 
 def ui_observer_ini(config):
     """Simple bounded flat fields; hexadecimal bytes, decimal identity records."""
-    c=validate_ui_observer_config(config);rows=['[UIObserver]','schema=1']
+    c=validate_ui_observer_config(config);rows=['[UIObserver]',f"schema={c['schema']}"]
     for key in ('pid','base','sha256','objects_header','names_header','frame_node','frame_object','frame_code','frame_locals','frame_previous','function_script','function_entry'):
         rows.append(f'{key}={c[key]}')
     for key,value in c['layout'].items():rows.append(f'{key}={value}')

@@ -27,13 +27,15 @@ template<class Read> bool acquire(gears_ui::Config const& c,gears_anchor::Config
        c.objects_header!=a.objects_header||c.names_header!=a.names_header||
        c.identities[c.role_controller].address!=a.identities[a.role_controller].address||
        c.identities[c.role_camera].address!=a.identities[a.role_camera].address||
-       c.identities[c.role_pawn].address!=a.identities[a.role_pawn].address||
+       c.mounted!=a.mounted_enabled||(c.mounted&&a.mounted_role_driver>=a.identity_count)||
+       c.identities[c.role_pawn].address!=a.identities[c.mounted?a.mounted_role_driver:a.role_pawn].address||
+       (c.mounted&&(c.role_controlled>=c.identity_count||c.identities[c.role_controlled].address!=a.identities[a.role_pawn].address))||
        c.object_internal_index!=a.object_internal_index||c.object_name!=a.object_name||c.object_class!=a.object_class||
        c.object_outer!=a.object_outer||c.name_entry_index!=a.name_entry_index||c.name_entry_text!=a.name_entry_text||
        c.controller_pawn!=a.controller_pawn||c.pawn_controller!=a.pawn_controller||c.player_camera!=a.player_camera||c.camera_owner!=a.pc_owner)return false;
     gears_anchor::Anchor anchor{};std::uint32_t stamp{};
     if(!gears_anchor::guard(a,read,anchor,stamp,diagnostic))return false;
-    Binding b{};b.pawn=anchor.pawn_identity;b.controller=anchor.controller;b.camera=anchor.camera;b.level=anchor.level;
+    Binding b{};b.pawn=c.mounted?a.identities[a.mounted_role_driver]:anchor.pawn_identity;b.controller=anchor.controller;b.camera=anchor.camera;b.level=anchor.level;
     gears_ui::Reader<Read> r{read};gears_ui::Registry objects{},names{};std::uintptr_t hud{},inventory{};
     if(!gears_ui::registry(r,c.objects_header,objects)||!gears_ui::registry(r,c.names_header,names)||
        !r.field(hud,b.controller,c.controller_hud)||!r.field(inventory,b.pawn.address,c.pawn_inventory))return false;
@@ -46,7 +48,7 @@ template<class Read> bool acquire(gears_ui::Config const& c,gears_anchor::Config
     const auto candidate=config(c,b);
     if(!gears_ui::quick_environment(candidate,r)||!gears_ui::fresh_identity(candidate,r,objects,names,b.inventory))return false;
     gears_anchor::Anchor after{};
-    if(!gears_anchor::guard(a,read,after,stamp,diagnostic)||!gears_anchor::equal_identity(b.pawn,after.pawn_identity)||
+    if(!gears_anchor::guard(a,read,after,stamp,diagnostic)||!gears_anchor::equal_identity(anchor.pawn_identity,after.pawn_identity)||
        after.controller!=b.controller||after.camera!=b.camera||after.level!=b.level)return false;
     gears_ui::Registry end_objects{},end_names{};
     if(!gears_ui::registry(r,c.objects_header,end_objects)||!gears_ui::registry(r,c.names_header,end_names)||

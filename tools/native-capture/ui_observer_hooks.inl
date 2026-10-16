@@ -62,7 +62,7 @@ bool ui_invocation_current(){
        !gears_ui::fresh_identity(c,r,objects,names,c.identities[c.role_inventory])||
        !gears_ui::fresh_identity(c,r,objects,names,c.identities[c.role_camera]))return false;
     uintptr_t target{};return !anchor_observer_enabled||(r.field(target,c.identities[c.role_camera].address,anchor_config.camera_view_target)&&
-        target==ui_invocation.binding.pawn.address);
+        target==(c.mounted?c.identities[c.role_controlled].address:ui_invocation.binding.pawn.address));
 }
 struct UiRow {
     gears_ui::CanvasSample sample{};
@@ -297,7 +297,7 @@ bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t contr
     };
     unsigned schema{},pid{};wchar_t sha[66]{};
     GetPrivateProfileStringW(L"UIObserver",L"sha256",L"",sha,66,ini);
-    if(!load(L"schema",schema)||schema!=1||!load(L"pid",pid)||pid!=GetCurrentProcessId()||
+    if(!load(L"schema",schema)||(schema!=1&&schema!=2)||!load(L"pid",pid)||pid!=GetCurrentProcessId()||
        wcscmp(sha,L"bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4"))return false;
     const std::pair<const wchar_t*,unsigned> layout[]={{L"frame_node",0x18},{L"frame_object",0x20},
         {L"frame_code",0x28},{L"frame_locals",0x30},{L"frame_previous",0x38},{L"function_script",0x8c},{L"function_entry",0x114}};
@@ -311,6 +311,9 @@ bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t contr
     UI_LOAD(field_super) UI_LOAD(name_entry_index) UI_LOAD(name_entry_text) UI_LOAD(property_offset_internal)
     UI_LOAD(identity_count) UI_LOAD(super_count) UI_LOAD(scope_count)
     UI_LOAD(role_controller) UI_LOAD(role_camera) UI_LOAD(role_pawn) UI_LOAD(role_hud) UI_LOAD(role_inventory) UI_LOAD(role_canvas_class)
+    if(schema==2){c.mounted=true;UI_LOAD(role_controlled)
+        UI_LOAD(controlled_driver) UI_LOAD(controlled_driver_property) UI_LOAD(pawn_driven_vehicle) UI_LOAD(pawn_driven_vehicle_property)
+        UI_LOAD(controlled_controller) UI_LOAD(controlled_controller_property)}
 #define UI_FIELD(field) UI_LOAD(field) UI_LOAD(field##_property)
     GEARS_UI_FIELDS(UI_FIELD)
 #undef UI_FIELD

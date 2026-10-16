@@ -92,6 +92,9 @@ def role(config, name):
 
 def ui_bundle_ini(ui):
     section = ui_observer_ini(ui['config'])
+    if 'crosshair_assignment_suspended' in ui:
+        from mounted_context import mounted_crosshair_ini
+        section+=mounted_crosshair_ini(ui['crosshair_assignment_suspended'])
     if 'crosshair_assignment' in ui:
         section += crosshair_assignment_ini(ui['crosshair_assignment'])
     return section
@@ -102,7 +105,7 @@ def validate_sources(camera, anchor, ui, local, pid, digest, *, crosshair_assign
         raise ValueError('Camera build/PID mismatch')
     base = uint(camera['module_base'],'module base',positive=True)
     ac,uc = anchor['config'],ui['config']
-    if (anchor.get('read_only') is not True or anchor.get('pid') != pid or ac['schema'] != 2 or
+    if (anchor.get('read_only') is not True or anchor.get('pid') != pid or ac['schema'] not in (2,3) or
             uint(ac['cinematic']['module_base'],'cinematic module',positive=True) != base):
         raise ValueError('Anchor certificate mismatch')
     if (ui.get('accepted') is not True or ui.get('read_only') is not True or ui.get('pid') != pid or
@@ -119,12 +122,22 @@ def validate_sources(camera, anchor, ui, local, pid, digest, *, crosshair_assign
         if item['address'] != uint(camera[key],key,positive=True):raise ValueError('Camera role mismatch: '+name)
         if identity(anchor['certificate_final_guard'][name]) != item:raise ValueError('Final anchor role mismatch: '+name)
         if name != 'local_player' and role(uc,name) != item:raise ValueError('UI camera source mismatch: '+name)
-    if role(ac,'pawn') != role(uc,'pawn'):raise ValueError('UI Pawn source mismatch')
+    mounted=ac['schema']==3
+    inventory_pawn=identity(ac['identities'][ac['mounted']['role_driver']]) if mounted else role(ac,'pawn')
+    if inventory_pawn != role(uc,'pawn'):raise ValueError('UI Pawn source mismatch')
+    if mounted and (uc['schema']!=2 or role(ac,'pawn')!=role(uc,'controlled')):raise ValueError('Mounted UI source mismatch')
     required_crosshair = ui.get('crosshair_assignment_observer_enabled',False)
     if type(required_crosshair) is not bool:raise ValueError('Invalid crosshair observer requirement')
-    if (crosshair_assignment_observer or required_crosshair) and 'crosshair_assignment' not in ui:
+    if (crosshair_assignment_observer or required_crosshair) and 'crosshair_assignment' not in ui and 'crosshair_assignment_suspended' not in ui:
         raise ValueError('Missing requested crosshair assignment certificate')
+    if 'crosshair_assignment_suspended' in ui:
+        from mounted_context import mounted_crosshair_suspension,mounted_crosshair_ini
+        suspended=ui['crosshair_assignment_suspended']
+        if not mounted or 'crosshair_assignment' in ui or suspended!=mounted_crosshair_suspension(ac,pid,base,digest):
+            raise ValueError('Mounted crosshair suspension mismatch')
+        mounted_crosshair_ini(suspended)
     if 'crosshair_assignment' in ui:
+        if mounted:raise ValueError('Mounted context cannot use human finite aim')
         cc = validate_crosshair_assignment_config(ui['crosshair_assignment'])
         if cc['pid'] != pid or cc['base'] != base or cc['sha256'] != digest:
             raise ValueError('Crosshair certificate build/PID/base mismatch')
