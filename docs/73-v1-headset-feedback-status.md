@@ -54,3 +54,5 @@ UI发现优化的同进程测量、完整VR与检查点回归及最新独立快�
 最新独立包实际启动及游戏内FPS开启证据见[Caption38独立包回归](82-portable-caption38-fps-runtime.md)。
 
 手枪实际开镜／一次射击样本中外圈已落在计划位置，尚无独立内外圈配对，问题仍开放；详见[手枪准星检查](83-pistol-reticle-runtime.md)。
+
+本地测试ZIP已生成并完成解压隔离预检；新步枪配对与采样器提前停止的边界见[本地交付与步枪检查](85-local-zip-and-rifle-pair-check.md)。仍不是正式发布。
