@@ -71,7 +71,7 @@ class AnchorStartTests(unittest.TestCase):
                        assignment.CrosshairRegistryChanged('Registry header changed'))
                 def build(*args,**kwargs):
                     if scenario=='deadline':ticks[0]=.5
-                    if scenario=='late_success':ticks[0]=10;return {}
+                    if scenario=='late_success':ticks[0]=60;return {}
                     raise error
                 stack.enter_context(mock.patch.object(start,'Resolver',side_effect=resolver))
                 stack.enter_context(mock.patch.object(anchor,'build_anchor_config',return_value=({},{})))
@@ -91,7 +91,7 @@ class AnchorStartTests(unittest.TestCase):
                 if scenario!='late_success':self.assertIs(raised.exception,error)
                 self.assertEqual(len(resolvers),expected);self.assertEqual(sleep.call_count,expected-1)
                 for r in resolvers:r.p.close.assert_called_once()
-                self.assertFalse(start.camera_preparation_transient(raised.exception))
+                self.assertEqual(start.camera_preparation_transient(raised.exception),scenario in ('attempts','deadline'))
 
     def test_crosshair_assignment_dependencies_and_cli_forwarding(self):
         parser=mock.Mock();parser.error.side_effect=ValueError
@@ -238,7 +238,7 @@ class AnchorStartTests(unittest.TestCase):
     def test_ui_changed_read_keeps_existing_attempt_and_deadline_limits(self):
         import ui_observer_config as ui
         baseline=dict(local_player_address='0x1',module_base='0x1000')
-        for shared_deadline,clock_values,expected_attempts in ((60,None,3),(.5,[0,0,.5],1)):
+        for shared_deadline,clock_values,expected_attempts in ((60,None,3),(.5,[0,.5],1)):
             with self.subTest(shared_deadline=shared_deadline):
                 resolvers=[]
                 def resolver(pid,profile):
@@ -256,8 +256,8 @@ class AnchorStartTests(unittest.TestCase):
                 self.assertEqual(len(resolvers),expected_attempts)
                 self.assertEqual(sleep.call_count,expected_attempts-1)
                 for r in resolvers:r.p.close.assert_called_once();r.resolve.assert_called_once();r.read.assert_called_once()
-                # Exhaustion must not enter another outer camera retry budget.
-                self.assertFalse(start.camera_preparation_transient(error))
+                # Continuous startup may reacquire within the same shared budget.
+                self.assertTrue(start.camera_preparation_transient(error))
 
     def test_ui_permanent_rejections_and_untyped_message_are_not_retried(self):
         import ui_observer_config as ui
@@ -294,10 +294,68 @@ class AnchorStartTests(unittest.TestCase):
         raw=dict(rejection=reason,guard_before=before,guard_after=after)
         evidence=dict(stage='sample',attempts=[dict(raw_rejection=raw)])
         self.assertTrue(start.camera_preparation_transient(AnchorSamplingRejected(reason,evidence)))
+        deadline_reason='Anchor sample acquisition deadline exceeded'
+        self.assertTrue(start.camera_preparation_transient(AnchorSamplingRejected(deadline_reason,evidence)))
         for key in guard:
             changed=copy.deepcopy(evidence);changed['attempts'][0]['raw_rejection']['guard_after'][key]='changed'
             self.assertFalse(start.camera_preparation_transient(AnchorSamplingRejected(reason,changed)))
+            self.assertFalse(start.camera_preparation_transient(AnchorSamplingRejected(deadline_reason,changed)))
+        for changed in ({},{'stage':'initial','attempts':evidence['attempts']},{'stage':'sample','attempts':[]},
+                        {'stage':'sample','attempts':[{'temporary_reason':'cross_frame_timestamp'}]}):
+            self.assertFalse(start.camera_preparation_transient(AnchorSamplingRejected(deadline_reason,changed)))
         self.assertFalse(start.camera_preparation_transient(RuntimeError(reason)))
+
+    def test_registry_churn_retries_beyond_three_attempts_with_shared_deadline(self):
+        import anchor_config as anchor
+        import ui_observer_config as ui
+        import crosshair_assignment_config as assignment
+        baseline=dict(local_player_address='0x1',module_base='0x1000')
+        for outcome in ('success','deadline','identity','code','cancelled'):
+            with self.subTest(outcome=outcome),contextlib.ExitStack() as stack:
+                ticks=[0.];resolvers=[]
+                def resolver(pid,profile):
+                    r=mock.Mock();r.base=0x1000;r.read.return_value=b'ok'
+                    r.resolve.return_value=dict(baseline,camera_address=str(len(resolvers)+1))
+                    resolvers.append(r);return r
+                def build(r,camera,**kwargs):
+                    ticks[0]+=3
+                    if len(resolvers)<=3 or outcome=='deadline':
+                        raise assignment.CrosshairRegistryChanged('Registry header changed')
+                    if outcome=='identity':raise assignment.CrosshairConfigRejected('Identity changed')
+                    return {'camera':camera['camera_address']}
+                def check():
+                    if outcome=='cancelled' and len(resolvers)==3:raise RuntimeError('Owner cancelled')
+                def read(address,size):
+                    if outcome=='code' and len(resolvers)>3:return b'wrong'
+                    return b'ok'
+                stack.enter_context(mock.patch.object(start,'Resolver',side_effect=resolver))
+                stack.enter_context(mock.patch.object(anchor,'build_anchor_config',side_effect=lambda r,c,**kw:({},dict(camera=c['camera_address']))))
+                stack.enter_context(mock.patch.object(anchor,'anchor_ini',return_value='anchor\n'))
+                stack.enter_context(mock.patch.object(ui,'build_ui_observer_config',side_effect=lambda r,c,**kw:({},dict(camera=c['camera_address']))))
+                stack.enter_context(mock.patch.object(ui,'ui_observer_ini',return_value='ui\n'))
+                stack.enter_context(mock.patch.object(assignment,'build_crosshair_assignment_config',side_effect=build))
+                stack.enter_context(mock.patch.object(assignment,'crosshair_assignment_ini',return_value='assignment\n'))
+                stack.enter_context(mock.patch.object(start.time,'monotonic',side_effect=lambda:ticks[0]))
+                def pause(duration):ticks[0]+=duration
+                stack.enter_context(mock.patch.object(start.time,'sleep',side_effect=pause))
+                remote=stack.enter_context(mock.patch.object(start,'remote_call'))
+                stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+                stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
+                def prepare():return start.wait_camera_preparation(lambda:start.acquire_observer_preparation(
+                    1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),anchor_observer=True,ui_observer=True,
+                    crosshair_assignment_observer=True,preparation_deadline=14,check_live=check,
+                    entry_reader=lambda address,size,original:read(address,size)),check,14,clock=lambda:ticks[0],sleep=pause)
+                if outcome=='success':
+                    value=prepare()
+                    self.assertGreater(ticks[0],10)
+                    self.assertEqual((value[0]['camera_address'],value[1]['camera'],value[3]['camera'],
+                                      value[3]['crosshair_assignment']['camera']),('4',)*4)
+                else:
+                    with self.assertRaises(RuntimeError if outcome!='deadline' else TimeoutError):prepare()
+                self.assertEqual(len(resolvers),5 if outcome=='deadline' else 3 if outcome=='cancelled' else 4)
+                self.assertLess(ticks[0],17)
+                for r in resolvers:r.p.close.assert_called_once()
+                remote.assert_not_called()
 
     def test_cinematic_camera_policy_and_command_forwarding(self):
         parser=mock.Mock();parser.error.side_effect=ValueError

@@ -72,8 +72,11 @@ def remote_call(handle,address,parameter):
 def camera_preparation_transient(error):
     # Exact known transition failures only. Schema, code, certificate identity,
     # process identity and unknown memory errors remain hard rejections.
-    from anchor_config import AnchorRegistryChanged
-    if isinstance(error,AnchorRegistryChanged):return True
+    from anchor_config import AnchorRegistryChanged,AnchorSamplingRejected
+    from ui_observer_config import UIConfigRejected,UIRegistryChanged
+    from crosshair_assignment_config import CrosshairRegistryChanged
+    if isinstance(error,(AnchorRegistryChanged,UIRegistryChanged,CrosshairRegistryChanged)):return True
+    if type(error) is UIConfigRejected and str(error)=='UI certificate read changed':return True
     reason=str(error)
     if reason in {
         'Camera view target is not controlled Pawn',
@@ -90,11 +93,12 @@ def camera_preparation_transient(error):
         'Cross-frame camera timestamp during identity checks',
     }:return True
     if reason.startswith('Anchor camera changed during startup: '):return True
-    if reason=='Cross-frame or identity/pointer change during measurement':
+    if reason in {'Cross-frame or identity/pointer change during measurement','Anchor sample acquisition deadline exceeded'}:
         # Retry discovery only when every exhausted sample was independently
         # classified as timestamp/registry growth with stable full identities.
         # The message alone also covers real identity changes and is not enough.
         from anchor_config import _temporary_sample_rejection
+        if not isinstance(error,AnchorSamplingRejected):return False
         evidence=getattr(error,'evidence',{})
         attempts=evidence.get('attempts',[]) if evidence.get('stage')=='sample' else []
         return bool(attempts) and all(isinstance(a.get('raw_rejection'),dict) and
@@ -196,16 +200,17 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
 
     A new Resolver.resolve() prepares fresh registries/caches and roles on every
     attempt. Anchor, UI and the eventual Capture INI all use that same camera.
-    The ten-second deadline rejects late success; synchronous reads themselves
-    cannot be preempted. No new attempt starts beyond the deadline.
+    Standalone acquisition has a ten-second deadline. Continuous preparation
+    uses its shared command deadline, including any outer read-only retries.
+    Synchronous reads cannot be preempted; late success is always rejected.
     """
     from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged
     from crosshair_assignment_config import CrosshairRegistryChanged
     from anchor_config import AnchorRegistryChanged
     if crosshair_assignment_observer and not (anchor_observer and ui_observer):
         raise ValueError('Crosshair assignment observer requires UI/anchor observers')
-    deadline=time.monotonic()+10;registry_retry=anchor_observer or ui_observer;attempts=3 if registry_retry else 1
-    if preparation_deadline is not None:deadline=min(deadline,preparation_deadline)
+    deadline=time.monotonic()+10 if preparation_deadline is None else preparation_deadline
+    registry_retry=anchor_observer or ui_observer;attempts=3 if registry_retry else 1
     for attempt in range(attempts):
         if check_live:check_live()
         if registry_retry and time.monotonic()>=deadline:
