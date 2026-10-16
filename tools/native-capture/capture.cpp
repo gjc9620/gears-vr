@@ -124,8 +124,8 @@ std::mutex binding_owner_mutex;
 std::recursive_mutex frame_hook_mutex;
 thread_local uint64_t consuming_frame_ticket{};
 struct FinalEye {bool valid{}; unsigned eye{}; gears_frame_link::Rect rect{}; unsigned width{},height{};};
-FinalEye classify_final_eye(uintptr_t caller,uint64_t ticket,float x,float y,float width,float height,unsigned target_width,unsigned target_height) {
-    bool exact=(caller==0xd83b1c||caller==0xd808d8)&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
+FinalEye classify_final_eye(uintptr_t caller,uint64_t ticket,float x,float y,float width,float height,unsigned target_width,unsigned target_height,bool source_attested=false) {
+    bool exact=(caller==0xd83b1c||caller==0xd808d8||(caller==0x2b11a0&&source_attested))&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
         std::isfinite(y)&&std::isfinite(width)&&std::isfinite(height)&&y==0&&height==float(target_height)&&
         width==float(target_width/2)&&(x==0||x==float(target_width/2));
     if(!exact)return {};
@@ -906,7 +906,7 @@ std::unique_lock<std::recursive_mutex> frame_lock() {
 }
 void record_final_eye_failure(unsigned stage,unsigned reason,uintptr_t caller=0,uintptr_t list=0,
     gears_viewport::TargetDraw binding={},gears_frame_link::ListRef ref={}) {
-    if((stage!=1&&!final_eye_candidate.ticket)||(final_eye_candidate.caller!=0xd83b1c&&final_eye_candidate.caller!=0xd808d8))return;
+    if((stage!=1&&!final_eye_candidate.ticket)||(final_eye_candidate.caller!=0xd83b1c&&final_eye_candidate.caller!=0xd808d8&&final_eye_candidate.caller!=0x2b11a0))return;
     // Keep the diagnostic snapshot safe even if recording was switched off
     // between hook admission and frame_lock's conditional acquisition.
     std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
@@ -984,6 +984,10 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
     const bool known_buffer=swapchain_bindings.known_buffer(binding.target.resource);
     bool exact=final_eye.valid && consuming_frame_ticket && binding.targets==1 && !binding.target.mip &&
         binding.target.width==final_eye.width && binding.target.height==final_eye.height;
+    // This additional route authenticates an intermediate source only. The
+    // existing transfer/Execute/Present chain must carry it to the backbuffer.
+    if(final_eye_candidate.caller==0x2b11a0)
+        exact=exact&&final_transfer_live::enabled()&&!known_buffer&&binding.target.format==24;
     // The authenticated source path uses only a single-mip R10G10B10A2 target.
     // Keep unrelated scene draws on the original cheap rejection path.
     if(!known_buffer&&(!final_transfer_live::enabled()||binding.target.format!=24||binding.target.mip)){
@@ -2757,9 +2761,11 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
     bool previous=in_final_quad;in_final_quad=previous||(caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8;
     auto saved_eye=final_eye;final_eye={};
     const auto saved_candidate=final_eye_candidate;final_eye_candidate={};
-    if(frame_link_diagnostics&&recording.load()&&(caller==0xd83b1c||caller==0xd808d8)) {
+    if(frame_link_diagnostics&&recording.load()&&(caller==0xd83b1c||caller==0xd808d8||caller==0x2b11a0)) {
         final_eye_candidate={caller,consuming_frame_ticket,{x,y,width,height},target_width,target_height};
-        final_eye=classify_final_eye(caller,consuming_frame_ticket,x,y,width,height,target_width,target_height);
+        const bool source_attested=final_transfer_live::enabled()&&u==x&&v==y&&uw==width&&vh==height&&
+            texture_width==target_width&&texture_height==target_height;
+        final_eye=classify_final_eye(caller,consuming_frame_ticket,x,y,width,height,target_width,target_height,source_attested);
         if(!final_eye.valid)++frame_counts.bad_quad;
         if(!final_eye.valid)record_final_eye_failure(1,1u|(!consuming_frame_ticket?2u:0u));
     }
@@ -4620,6 +4626,22 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFrameLinkCheck(void* t
        !classify_final_eye(0xd808d8,1,0,0,320,480,640,480).valid||
        classify_final_eye(0xd808d8,1,0,0,640,480,640,480).valid||
        classify_final_eye(0xd808d8,0,0,0,320,480,640,480).valid)return 140;
+    auto source_left=classify_final_eye(0x2b11a0,1,0,0,1920,2160,3840,2160,true);
+    auto source_right=classify_final_eye(0x2b11a0,1,1920,0,1920,2160,3840,2160,true);
+    if(!source_left.valid||source_left.eye||!source_right.valid||source_right.eye!=1||
+       classify_final_eye(0x2b11a0,1,0,0,1920,2160,3840,2160).valid||
+       classify_final_eye(0xd83cbf,1,0,0,1920,2160,3840,2160,true).valid||
+       classify_final_eye(0x2b11a0,0,0,0,1920,2160,3840,2160,true).valid||
+       classify_final_eye(0x2b11a0,1,0,0,3840,2160,3840,2160,true).valid)return 140;
+    for(bool overwrite:{false,true}){
+        auto tracker=std::make_unique<gears_frame_link::Tracker>();auto ref=tracker->reset_success(1);
+        const gears_frame_link::Target source{10,3840,2160},output{11,3840,2161};
+        if(!tracker->draw_final(ref,1,0,source,source_left.rect)||
+           !tracker->draw_final(ref,1,1,source,source_right.rect)||!tracker->draw_transfer(ref,source,output))return 140;
+        if(overwrite&&!tracker->draw_unknown(ref,source.resource))return 140;
+        tracker->execute(2,&ref,1);
+        if(tracker->present(output.resource,2).linked==overwrite)return 140;
+    }
     gears_submitted::FrameTicket synthetic{},copied{};synthetic.enabled=true;synthetic.id=1;
     // This 64-slot fixture is large; the production lifetime already lives in
     // static storage. Keep it off the GPU hook test's nested thread stack.

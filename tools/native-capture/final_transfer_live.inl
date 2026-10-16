@@ -30,7 +30,9 @@ bool enable(FILE* file){
     const bool ok=continuous_session&&frame_link_diagnostics&&!owned_bindings_enabled&&
         verify_range(file,0x9a6d88,0x723,"7a39267788e942bbb0b1a9700c9f8d55c0c11322f307dc525429b2272fdf025f")&&
         verify_range(file,0x9a6aa8,0x31,"db55c6cada06abe7a7dd87ee80d8eeaf6faedfa6b18f1562685163f1fd30e5d0")&&
-        verify_range(file,0x9a6adc,0x31,"0d960a5c0790633f40f677d59975f25a72d40b36d63f2f0fd98dbcc4ab7a1a04");
+        verify_range(file,0x9a6adc,0x31,"0d960a5c0790633f40f677d59975f25a72d40b36d63f2f0fd98dbcc4ab7a1a04")&&
+        verify_range(file,0x2b0c04,0x651,"5088f5f7fb8c718769016b98194413e42aa466a30bfdfeab01d081c07075515d")&&
+        verify_range(file,0x8ee78c,0x3ee,"024e4777801ff3236360d5ead3b10a2a02717438020dd634537a47723453e138");
     attested.store(ok);return ok;
 #else
     (void)file;return true;
