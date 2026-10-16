@@ -134,3 +134,8 @@ SpaceRecovery8仅在已有 `--shutdown-diagnostics` 开启时增加初始化边�
 只读查询 `focus-persistent13.json` 显示，新增 NtUserSetForegroundWindow 实验入口首次调用发生在游戏已经前台之后，并未捕获到最初激活请求。其余四个相关 win32u 入口的运行字节与磁盘相同，见 `focus-persistent13-win32u-bytes.json`。不继续沿“该入口被绕过导致初次激活”作无证据修改。
 
 复用知识库后，已将 `RVA 0x197178 / 0x27f740 / 0x2815f0` 的全部 chunks 与当前游戏逐段读取、拼接 SHA256 比较，全部匹配，证据 `focus-persistent13-kb-functions.json`。前者是修饰键清理，不能跳过；主动窗口显示/置前块已被现有策略覆盖。下一处定向分析为已有运行栈上的视口/RHI 更新与 restore 路径，仍是待验证假设。仅打开了私有 Windows user32 副本，确认 SetForegroundWindow 是转发到 win32u 的跳转；IDA lease 已关闭，原件未改，衍生数据保留在忽略的 analysis 下。
+
+
+知识库后续定向结果：`452ADC / 452BB0` 与当前运行代码 SHA256 同样匹配；后者负责已观察到的 `ShowWindow(SW_RESTORE)`，该调用仍经过现有 guard。尾部 IAT `base+0x131c9a8` 实际解析为 `user32!PostMessageW`，参数15对应绘制消息，不能视为激活，见 `focus-persistent13-rhi-constructor.json`。历史缓存 `453468` 呈现 CreateSwapChainForHwnd / Windowed=1 / MakeWindowAssociation(1) 的布局，尚未运行验证接口与实参，未支持“安装默认全屏就是根因”。
+
+另由 WINDOWED 字面量引用定位到 `14D844` 初始化函数，缓存支持命令行 `-windowed` 确实被解析、FULLSCREEN 可优先覆盖；参数反编译错位，不能直接按结构偏移补丁。可在下一次正常重启时进行仅增加 `-windowed` 的对照，不改 INI 或扩展 Hook。当前常开菜单会话继续保留，不为这项静态分析重启。
