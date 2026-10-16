@@ -121,14 +121,36 @@ class AnchorConfigTests(unittest.TestCase):
 
     def test_all_cross_frame_attempts_and_deadline_are_bounded(self):
         sampler=mock.Mock();sampler.sample.return_value={'accepted':False,'rejection':'Cross-frame camera timestamp during identity checks'}
-        clock=iter(range(0,20000000,1000000))
+        clock=iter(range(0,100000000,1000000))
         with self.assertRaises(AnchorSamplingRejected) as failure:acquire_anchor_sample(sampler,lambda:next(clock))
-        self.assertEqual(sampler.sample.call_count,5);self.assertEqual(len(failure.exception.evidence['attempts']),5)
+        self.assertEqual(sampler.sample.call_count,32);self.assertEqual(len(failure.exception.evidence['attempts']),32)
+        self.assertEqual(failure.exception.evidence['maximum_attempts'],32)
         sampler.reset_mock();clock=iter([0,1000,201000000,202000000])
         with self.assertRaises(AnchorSamplingRejected) as failure:acquire_anchor_sample(sampler,lambda:next(clock))
         self.assertEqual(sampler.sample.call_count,1);self.assertIn('deadline',str(failure.exception))
         sampler.sample.return_value={'accepted':True};clock=iter([0,1000,201000000,202000000])
         with self.assertRaises(AnchorSamplingRejected):acquire_anchor_sample(sampler,lambda:next(clock))
+
+    def test_temporal_rejections_can_recover_after_five_attempts(self):
+        before={key:1 for key in ('controller','local_player','camera','pawn','level','outer_chain','view_target')}
+        before['timestamp_raw']='0000803f'
+        after=dict(before,timestamp_raw='00000040')
+        failed={'accepted':False,'rejection':'Cross-frame or identity/pointer change during measurement',
+                'guard_before':before,'guard_after':after}
+        stable={'accepted':True,'guard_before':after,'guard_after':after}
+        sampler=mock.Mock();sampler.sample.side_effect=[failed]*8+[stable]
+        clock=iter(range(0,100000000,2000000))
+        sample,evidence=acquire_anchor_sample(sampler,lambda:next(clock))
+        self.assertIs(sample,stable);self.assertEqual(sampler.sample.call_count,9)
+        self.assertTrue(evidence['accepted'])
+        self.assertTrue(all(not row['strict_sample_accepted'] for row in evidence['attempts'][:-1]))
+
+    def test_retry_deadline_stops_before_attempt_cap(self):
+        sampler=mock.Mock();sampler.sample.return_value={'accepted':False,'rejection':'Cross-frame camera timestamp during identity checks'}
+        clock=iter(range(0,300000000,10000000))
+        with self.assertRaises(AnchorSamplingRejected) as failure:acquire_anchor_sample(sampler,lambda:next(clock))
+        self.assertEqual(sampler.sample.call_count,10)
+        self.assertFalse(failure.exception.evidence['accepted'])
 
     def test_only_explicit_temporal_composite_mismatch_retries(self):
         before={key:1 for key in ('controller','local_player','camera','pawn','level','outer_chain','view_target')}

@@ -160,17 +160,17 @@ def _temporary_sample_rejection(sample):
 
 
 def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
-    """Five independent strict attempts within200ms; failed values never reused.
+    """Up to32 independent strict attempts within200ms; failed values never reused.
 
     The deadline prevents subsequent calls, not preemption of an OS memory read.
     A result finishing outside the budget is rejected even when its bracket held.
     """
     started=clock_ns();deadline=started+200000000
     evidence={'accepted':False,'stage':'sample','clock':'perf_counter_ns','started_perf_counter_ns':started,
-              'deadline_perf_counter_ns':deadline,'maximum_attempts':5,'attempts':[],
+              'deadline_perf_counter_ns':deadline,'maximum_attempts':32,'attempts':[],
               'reason':None,'exception_type':None,'exception_repr':None,'raw_rejection':None}
     last_reason='Anchor sample acquisition deadline exceeded'
-    for index in range(5):
+    for index in range(32):
         begin=clock_ns()
         if begin>=deadline:break
         receipts=getattr(sampler,'guard_acquisitions',None)
@@ -195,7 +195,7 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
                 strict_guard_attempts=sum(len(x['attempts']) for x in fresh_receipts))
             evidence.update(guard_acquisitions=list(receipts),
                 strict_guard_attempts=sum(len(x['attempts']) for x in receipts),
-                budget_scope='sample acquisition5/200ms; each nested guard independently5/200ms; not total5reads')
+                budget_scope='sample acquisition32/200ms; each nested guard independently5/200ms; not total32reads')
             # Base sample catches AnchorRejected. Preserve a terminal guard-layer
             # rejection instead of treating its text as a new sample retry cue.
             failed_guard=next((x for x in fresh_receipts if not x['accepted']),None)
