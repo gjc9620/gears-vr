@@ -217,10 +217,10 @@ public:
     std::int64_t menu_started()const{return menu_epoch.started();}
     std::int64_t menu_captured()const{return menu_epoch.captured();}
     std::uintptr_t window_identity()const{return reinterpret_cast<std::uintptr_t>(hwnd);}
-    bool menu_fresh(std::int64_t* observed_now=nullptr)const{
+    bool menu_fresh(std::int64_t* observed_now=nullptr,std::int64_t max_age=MenuCaptureEpoch::maximum_age)const{
         if(!startup)return true;
         const auto now=menu_capture_qpc_ticks();if(observed_now)*observed_now=now;
-        return menu_epoch.fresh(now);
+        return menu_epoch.fresh(now,max_age);
     }
     outage_diagnostics::MenuCaptureSnapshot diagnostic_snapshot()const{
         auto result=diagnostic_;result.generation=generation_;result.hwnd=uint64_t(window_identity());
@@ -408,7 +408,10 @@ public:
     outage_diagnostics::MenuSnapshot diagnostic_snapshot()const{
         return diagnostic_;
     }
-    bool render(XrCompositionLayerQuad& quad) {
+    bool window_fresh(std::int64_t max_age){
+        return startup&&current&&source.available()&&source_generation==source.generation()&&source.menu_fresh(nullptr,max_age);
+    }
+    bool render(XrCompositionLayerQuad& quad,std::int64_t max_age=MenuCaptureEpoch::maximum_age) {
         using Reason=outage_diagnostics::MenuRenderReason;
         diagnostic_={};diagnostic_.cached_only=false;diagnostic_.render_attempted=true;
         diagnostic_.reason=Reason::in_progress;
@@ -505,7 +508,7 @@ public:
                 current=false;diagnostic_.generation_changed=true;diagnostic_.reason=Reason::generation_changed;
             }else{
                 diagnostic_.fresh_checked=true;
-                diagnostic_.fresh=source.menu_fresh(&diagnostic_.fresh_now_100ns);
+                diagnostic_.fresh=source.menu_fresh(&diagnostic_.fresh_now_100ns,max_age);
                 if(!diagnostic_.fresh){current=false;diagnostic_.reason=Reason::capture_not_fresh;}
             }
             source_generation=source.generation();

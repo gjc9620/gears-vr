@@ -50,12 +50,12 @@ public:
             c.session_visible&&c.running&&!c.stop_requested&&!c.producer_stopped&&!c.loss&&
             !c.structural_error&&c.ordinary_wait;
     }
-    bool allow_projection()const{return !cancelled_&&mode_!=gears_menu::Mode::death_menu&&mode_!=gears_menu::Mode::pause_menu&&
-        mode_!=gears_menu::Mode::main_menu&&mode_!=gears_menu::Mode::loading_display&&
-        (!resume_required_||mode_==gears_menu::Mode::gameplay);}
+    bool allow_projection(bool window_fallback=false)const{return !cancelled_&&mode_!=gears_menu::Mode::death_menu&&mode_!=gears_menu::Mode::pause_menu&&
+        mode_!=gears_menu::Mode::main_menu&&(mode_!=gears_menu::Mode::loading_display||window_fallback)&&
+        (!resume_required_||mode_==gears_menu::Mode::gameplay||(window_fallback&&mode_==gears_menu::Mode::loading_display));}
     std::int64_t minimum_sample_ns()const{return resume_required_?resume_after_:0;}
-    bool projection_rendered(bool success) {
-        if(!enabled_||!allow_projection()||!success)return false;
+    bool projection_rendered(bool success,bool window_fallback=false) {
+        if(!enabled_||!allow_projection(window_fallback)||!success)return false;
         const bool transition=!handed_off_||resume_required_;
         handed_off_=true;resume_required_=false;menu_presented_=false;return transition;
     }

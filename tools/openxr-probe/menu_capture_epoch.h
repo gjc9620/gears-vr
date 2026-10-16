@@ -16,5 +16,7 @@ public:
     }
     std::int64_t started()const{return epoch_;}
     std::int64_t captured()const{return captured_;}
-    bool fresh(std::int64_t now)const{return eligible(captured_,now);}
+    bool fresh(std::int64_t now,std::int64_t max_age=maximum_age)const{
+        return eligible(captured_,now)&&max_age>0&&now-captured_<=max_age;
+    }
 };
