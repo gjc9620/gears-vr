@@ -521,14 +521,18 @@ int main(int argc, char** argv) {
             observe_menu(menu_mode,menu_now);
             unsigned outage_copies_before=(diagnostic_outage||diagnostic_image_tickets)&&stereo_screen?stereo_screen->copies:0;
             if(screen && frame.shouldRender && screen->render(quad)){end.layerCount=1;end.layers=game_layers;}
-            if(startup_panel.show_panel()&&startup_screen&&frame.shouldRender&&startup_screen->render(quad)){
+            const bool menu_panel_requested=startup_panel.show_panel();
+            const bool menu_render_attempted=menu_panel_requested&&startup_screen&&frame.shouldRender;
+            const bool menu_render_result=menu_render_attempted&&startup_screen->render(quad);
+            bool menu_authorization_rejected=false;
+            if(menu_render_result){
                 // WGC upload may wait for a GPU fence. Authorization must still
                 // be fresh at submission; never extend an owner's display lease.
                 const auto after_capture=gears_vr::monotonic_ns();
                 const auto authorized=menu_display.poll(after_capture);
                 if(!menu_state_file||menu_mode==gears_menu::Mode::unknown||authorized==menu_mode){
                     startup_quad_queued=true;end.layerCount=1;end.layers=game_layers;
-                }else observe_menu(authorized,after_capture);
+                }else {menu_authorization_rejected=true;observe_menu(authorized,after_capture);}
             }
             if(gpu_screen && frame.shouldRender && gpu_screen->render(quad)){end.layerCount=1;end.layers=game_layers;}
             if(pattern && !stereo_image_shown && frame.shouldRender && view_count==2 && (view_state.viewStateFlags&3)==3) {
@@ -683,6 +687,11 @@ int main(int argc, char** argv) {
                     end.layers==layers?"projection":
                     end.layers==game_layers?(transition_panel_queued?"transition_panel":eye_menu_queued?"eye_menu":
                         (startup_quad_queued?"startup_panel":"quad")):"other";
+                row.menu_mode=static_cast<unsigned>(menu_mode);row.session_state=static_cast<int>(state);
+                row.should_render=frame.shouldRender!=0;row.panel_requested=menu_panel_requested;
+                row.render_attempted=menu_render_attempted;row.render_result=menu_render_result;
+                row.authorization_rejected=menu_authorization_rejected;
+                if(startup_screen)row.menu=outage_diagnostics::menu_snapshot_for_frame(startup_screen->diagnostic_snapshot(),menu_render_attempted);
                 outage.observe(outage_diagnostics::composition_row(row,ended==XR_SUCCESS,end.layerCount,layer_kind));
                 image_tickets.observe(row);
             }

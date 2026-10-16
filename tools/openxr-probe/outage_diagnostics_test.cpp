@@ -50,13 +50,52 @@ static void composition_tests(){
     assert(failed_end.complete()&&failed_end.longest_gap().end_valid);
     FILE* file{};assert(tmpfile_s(&file)==0&&file);composed.dump(file);rewind(file);
     std::string text;char buffer[2048];while(fgets(buffer,sizeof(buffer),file))text+=buffer;fclose(file);
-    assert(text.find("\"schema\":2")!=std::string::npos);
+    assert(text.find("\"schema\":3")!=std::string::npos);
     assert(text.find("\"submission_semantics\":\"successful_nonempty_xrEndFrame_not_pixel_validation\"")!=std::string::npos);
     assert(text.find("\"layer_count\":0,\"layer_kind\":\"none\"")!=std::string::npos);
     assert(text.find("\"layer_count\":2,\"layer_kind\":\"eye_menu\"")!=std::string::npos);
 }
+static void menu_snapshot_tests(){
+    MenuSnapshot observed;observed.cached_only=false;observed.render_attempted=true;
+    observed.update_attempted=true;observed.updated=true;observed.available_checked=true;
+    observed.available=true;observed.current=true;observed.fresh_checked=true;observed.fresh=true;
+    observed.fresh_now_100ns=1234;observed.generation_changed=true;
+    observed.reason=MenuRenderReason::rendered;
+    observed.capture={CaptureResult::accepted,10,3,7,42,99,101,100,101};
+    auto skipped=menu_snapshot_for_frame(observed,false);
+    assert(skipped.cached_only&&!skipped.render_attempted&&!skipped.update_attempted&&!skipped.updated);
+    assert(!skipped.available_checked&&!skipped.available&&!skipped.current&&!skipped.fresh_checked&&!skipped.fresh);
+    assert(skipped.fresh_now_100ns==0&&!skipped.generation_changed&&skipped.reason==MenuRenderReason::not_attempted);
+    assert(skipped.capture.result==CaptureResult::accepted&&skipped.capture.attempts==10&&skipped.capture.no_frames==3);
+    assert(skipped.capture.accepted==7&&skipped.capture.generation==42&&skipped.capture.hwnd==99);
+    assert(skipped.capture.last_taken_100ns==101&&skipped.capture.epoch_100ns==100&&skipped.capture.accepted_100ns==101);
+    Row row=frame(100,true);row.menu=menu_snapshot_for_frame(observed,true);
+    row.menu_mode=3;row.session_state=5;row.should_render=true;row.panel_requested=true;
+    row.render_attempted=true;row.render_result=true;row.authorization_rejected=true;
+    auto copied=composition_row(row,true,1,"startup_panel");
+    observed.capture.attempts=1000;observed.reason=MenuRenderReason::window_unavailable;
+    assert(copied.menu.capture.attempts==10&&copied.menu.fresh_now_100ns==1234);
+    assert(copied.menu.reason==MenuRenderReason::rendered&&copied.menu.generation_changed);
+    assert(copied.menu_mode==3&&copied.session_state==5&&copied.should_render&&copied.panel_requested);
+    assert(copied.render_attempted&&copied.render_result&&copied.authorization_rejected);
+    FILE* file{};assert(tmpfile_s(&file)==0&&file);
+    Recorder::print_row(file,"test","render",copied);
+    row.menu=skipped;row.render_attempted=false;row.render_result=false;row.authorization_rejected=false;
+    Recorder::print_row(file,"test","skipped",row);rewind(file);
+    std::string text;char buffer[2048];while(fgets(buffer,sizeof(buffer),file))text+=buffer;fclose(file);
+    assert(text.find("\"fresh_now_100ns\":1234")!=std::string::npos);
+    assert(text.find("\"reason\":\"rendered\"")!=std::string::npos);
+    assert(text.find("\"reason\":\"not_attempted\"")!=std::string::npos);
+    assert(text.find("\"cached_only\":true,\"render_attempted\":false")!=std::string::npos);
+    assert(text.find("\"capture_result\":\"accepted\",\"capture_attempts\":10")!=std::string::npos);
+    assert(text.find("\"menu_authorization_rejected\":true")!=std::string::npos);
+    for(unsigned i=0;i<=static_cast<unsigned>(CaptureResult::window_unavailable);++i)
+        assert(capture_result_name(static_cast<CaptureResult>(i))[0]);
+    for(unsigned i=0;i<=static_cast<unsigned>(MenuRenderReason::rendered);++i)
+        assert(menu_render_reason_name(static_cast<MenuRenderReason>(i))[0]);
+}
 int main(int argc,char** argv){
-    composition_tests();
+    composition_tests();menu_snapshot_tests();
     Recorder disabled;disabled.observe(frame(1,true));assert(disabled.count==0&&disabled.longest_gap().duration_ns==0);
     Recorder before;before.enabled=true;before.observe(frame(1));before.observe(frame(900000001));assert(!before.first_started);
     Recorder exact;exact.enabled=true;exact.observe(frame(1,true,true));exact.observe(frame(100000001));assert(!exact.first_started);

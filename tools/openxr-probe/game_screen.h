@@ -13,6 +13,7 @@
 #include "menu_capture_epoch.h"
 #include "capture_frame_mailbox.h"
 #include "shutdown_diagnostics.h"
+#include "outage_diagnostics.h"
 
 inline std::int64_t menu_capture_qpc_ticks(){
     LARGE_INTEGER counter{},frequency{};
@@ -44,6 +45,13 @@ class GameWindowFrames {
     uint64_t generation_=0;
     std::int64_t next_window_probe=0;
     MenuCaptureEpoch menu_epoch;
+    outage_diagnostics::MenuCaptureSnapshot diagnostic_;
+    bool reject_capture(outage_diagnostics::CaptureResult reason){diagnostic_.result=reason;return false;}
+    outage_diagnostics::CaptureResult timestamp_rejection(std::int64_t captured,std::int64_t now)const{
+        using R=outage_diagnostics::CaptureResult;
+        if(menu_epoch.started()<=0||captured<=menu_epoch.started())return R::pre_epoch;
+        if(now<captured)return R::future;return R::expired;
+    }
     void require_process()const{
         if(startup){FILETIME created{},exited{},kernel{},user{};
             if(WaitForSingleObject(target_process.value,0)!=WAIT_TIMEOUT||
@@ -183,35 +191,47 @@ public:
     std::int64_t menu_started()const{return menu_epoch.started();}
     std::int64_t menu_captured()const{return menu_epoch.captured();}
     std::uintptr_t window_identity()const{return reinterpret_cast<std::uintptr_t>(hwnd);}
-    bool menu_fresh()const{return !startup||menu_epoch.fresh(menu_capture_qpc_ticks());}
+    bool menu_fresh(std::int64_t* observed_now=nullptr)const{
+        if(!startup)return true;
+        const auto now=menu_capture_qpc_ticks();if(observed_now)*observed_now=now;
+        return menu_epoch.fresh(now);
+    }
+    outage_diagnostics::MenuCaptureSnapshot diagnostic_snapshot()const{
+        auto result=diagnostic_;result.generation=generation_;result.hwnd=uint64_t(window_identity());
+        result.epoch_100ns=menu_epoch.started();result.accepted_100ns=menu_epoch.captured();return result;
+    }
     bool update() {
-        try{return update_frame();}catch(winrt::hresult_error const&){if(!startup)throw;return false;}
+        ++diagnostic_.attempts;diagnostic_.result=outage_diagnostics::CaptureResult::capture_error;
+        try{return update_frame();}catch(winrt::hresult_error const&){if(!startup)throw;return reject_capture(outage_diagnostics::CaptureResult::capture_error);}
     }
     bool update_frame() {
         using namespace winrt;
-        if(!ready_window()){if(startup)return false;throw std::runtime_error("Game window minimized");}
+        using R=outage_diagnostics::CaptureResult;
+        if(!ready_window()){if(startup)return reject_capture(R::window_unavailable);throw std::runtime_error("Game window minimized");}
         Frame frame=state->take();
-        if(!frame)return false;
+        if(!frame){++diagnostic_.no_frames;return reject_capture(R::no_frame);}
         const std::int64_t captured=startup?frame.SystemRelativeTime().count():0;
-        if(startup&&!menu_epoch.eligible(captured,menu_capture_qpc_ticks())){frame.Close();return false;}
+        diagnostic_.last_taken_100ns=captured;
+        if(startup){const auto now=menu_capture_qpc_ticks();
+            if(!menu_epoch.eligible(captured,now)){frame.Close();return reject_capture(timestamp_rejection(captured,now));}}
         auto access=frame.Surface().as<::Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
         com_ptr<ID3D11Texture2D> texture;check_hresult(access->GetInterface(IID_PPV_ARGS(texture.put())));
         D3D11_TEXTURE2D_DESC desc{};texture->GetDesc(&desc);auto content=frame.ContentSize();
-        if(startup&&(content.Width<=0||content.Height<=0)){frame.Close();return false;}
+        if(startup&&(content.Width<=0||content.Height<=0)){frame.Close();return reject_capture(R::invalid_crop);}
         if(startup&&(unsigned(content.Width)!=pool_width||unsigned(content.Height)!=pool_height)){
             // Close the outstanding frame before Recreate. No callback mutex is
             // held while the pool replaces its buffers on the capture thread.
             ++generation_;menu_epoch.begin(menu_capture_qpc_ticks());state->discard();
             frame.Close();pool.Recreate(capture_device,
                 winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized,2,content);
-            pool_width=content.Width;pool_height=content.Height;return false;
+            pool_width=content.Width;pool_height=content.Height;return reject_capture(R::resize);
         }
         RECT client{},bounds{};POINT origin{};
         GetClientRect(hwnd,&client);ClientToScreen(hwnd,&origin);
         auto bounds_result=DwmGetWindowAttribute(hwnd,DWMWA_EXTENDED_FRAME_BOUNDS,&bounds,sizeof(bounds));
-        if(startup&&FAILED(bounds_result)){frame.Close();return false;}check_hresult(bounds_result);
+        if(startup&&FAILED(bounds_result)){frame.Close();return reject_capture(R::invalid_crop);}check_hresult(bounds_result);
         LONG left=std::max(0L,origin.x-bounds.left),top=std::max(0L,origin.y-bounds.top);
-        if(startup&&(client.right<=0||client.bottom<=0)){frame.Close();return false;}
+        if(startup&&(client.right<=0||client.bottom<=0)){frame.Close();return reject_capture(R::invalid_crop);}
         if(startup&&(client.right!=LONG(source_width)||client.bottom!=LONG(source_height))){
             unsigned fitted_width{},fitted_height{};
             if(!startup_capture_size::fit(client.right,client.bottom,fitted_width,fitted_height)){
@@ -219,12 +239,12 @@ public:
             source_width=client.right;source_height=client.bottom;width=fitted_width;height=fitted_height;
             pixels.resize(size_t(width)*height*4);staging=nullptr;
             ++generation_;menu_epoch.begin(menu_capture_qpc_ticks());state->discard();
-            frame.Close();return false;
+            frame.Close();return reject_capture(R::resize);
         }
         if(client.right!=LONG(source_width) || client.bottom!=LONG(source_height) ||
            left+client.right>content.Width || top+client.bottom>content.Height ||
            left+client.right>LONG(desc.Width) || top+client.bottom>LONG(desc.Height))
-            {if(startup){frame.Close();return false;}throw std::runtime_error("Game resized or client crop invalid; restart display test");}
+            {if(startup){frame.Close();return reject_capture(R::invalid_crop);}throw std::runtime_error("Game resized or client crop invalid; restart display test");}
         if(!staging) {
             desc.Width=source_width;desc.Height=source_height;desc.Usage=D3D11_USAGE_STAGING;desc.BindFlags=0;
             desc.CPUAccessFlags=D3D11_CPU_ACCESS_READ;desc.MiscFlags=0;
@@ -240,10 +260,11 @@ public:
         }
         context->Unmap(staging.get(),0);frame.Close();
         if(recover_window&&(!usable(hwnd)||state->closed())){
-            retire_capture();menu_epoch.begin(menu_capture_qpc_ticks());return false;
+            retire_capture();menu_epoch.begin(menu_capture_qpc_ticks());return reject_capture(R::window_unavailable);
         }
-        if(startup&&!menu_epoch.accept(captured,menu_capture_qpc_ticks()))return false;
-        ++received;return true;
+        if(startup){const auto now=menu_capture_qpc_ticks();
+            if(!menu_epoch.accept(captured,now))return reject_capture(timestamp_rejection(captured,now));}
+        ++received;++diagnostic_.accepted;diagnostic_.result=R::accepted;return true;
     }
 };
 
@@ -265,6 +286,10 @@ class GameScreen {
     bool current=false,startup=false;
     uint64_t source_generation=0;
     unsigned chain_width{},chain_height{};
+    outage_diagnostics::MenuSnapshot diagnostic_;
+    bool finish_diagnostic(bool result){
+        diagnostic_.capture=source.diagnostic_snapshot();diagnostic_.current=current;return result;
+    }
     void create_display_chain() {
         XrSwapchain next{};
         XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};create.usageFlags=XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT|XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT;
@@ -334,20 +359,30 @@ public:
     void begin_menu_epoch(){
         if(!startup)return;current=false;next_capture={};source.begin_menu_epoch();
     }
+    outage_diagnostics::MenuSnapshot diagnostic_snapshot()const{
+        return diagnostic_;
+    }
     bool render(XrCompositionLayerQuad& quad) {
+        using Reason=outage_diagnostics::MenuRenderReason;
+        diagnostic_={};diagnostic_.cached_only=false;diagnostic_.render_attempted=true;
+        diagnostic_.reason=Reason::in_progress;
         if(startup){
             const bool available=source.available();
+            diagnostic_.available_checked=true;diagnostic_.available=available;
             if(source_generation!=source.generation()){
                 source_generation=source.generation();current=false;next_capture={};
+                diagnostic_.generation_changed=true;diagnostic_.reason=Reason::generation_changed;
             }
-            if(!available){current=false;return false;}
+            if(!available){current=false;diagnostic_.reason=Reason::window_unavailable;return finish_diagnostic(false);}
         }
         auto now=std::chrono::steady_clock::now();
         if(now>=next_capture) {
             next_capture=now+std::chrono::milliseconds(startup?33:67);
-            const bool updated=source.update();
+            diagnostic_.update_attempted=true;
+            const bool updated=source.update();diagnostic_.updated=updated;
             if(startup&&source_generation!=source.generation()){
                 source_generation=source.generation();current=false;
+                diagnostic_.generation_changed=true;diagnostic_.reason=Reason::generation_changed;
             }
             if(startup&&(chain_width!=source.width||chain_height!=source.height)){
                 // A resized client can precede its matching WGC frame. Do not
@@ -412,13 +447,27 @@ public:
         if(startup){
             // The window may close while the upload waits for its GPU fence.
             const bool available=source.available();
-            if(!available||source_generation!=source.generation()||!source.menu_fresh())current=false;
+            diagnostic_.available_checked=true;diagnostic_.available=available;
+            // Same short-circuit order and calls as the display gate; diagnostics
+            // never obtain a second freshness time or probe window availability.
+            if(!available){current=false;diagnostic_.reason=Reason::window_unavailable;}
+            else if(source_generation!=source.generation()){
+                current=false;diagnostic_.generation_changed=true;diagnostic_.reason=Reason::generation_changed;
+            }else{
+                diagnostic_.fresh_checked=true;
+                diagnostic_.fresh=source.menu_fresh(&diagnostic_.fresh_now_100ns);
+                if(!diagnostic_.fresh){current=false;diagnostic_.reason=Reason::capture_not_fresh;}
+            }
             source_generation=source.generation();
         }
-        if(!current || (!startup&&now-last_frame>std::chrono::seconds(1)))return false;
+        diagnostic_.current=current;
+        if(!current || (!startup&&now-last_frame>std::chrono::seconds(1))){
+            if(diagnostic_.reason==Reason::in_progress)diagnostic_.reason=current?Reason::image_expired:Reason::no_uploaded_image;
+            return finish_diagnostic(false);
+        }
         quad={XR_TYPE_COMPOSITION_LAYER_QUAD};quad.space=view_space;quad.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
         quad.pose.orientation.w=1;quad.pose.position.z=-2;quad.size={1.6f,1.6f*source.height/source.width};
         quad.subImage.swapchain=chain;quad.subImage.imageRect.extent={int32_t(source.width),int32_t(source.height)};
-        ++rendered;return true;
+        ++rendered;diagnostic_.reason=Reason::rendered;return finish_diagnostic(true);
     }
 };

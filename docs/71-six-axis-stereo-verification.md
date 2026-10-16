@@ -44,3 +44,11 @@
 ## 尚未证明
 
 此轮支持当前渲染路径具有软件六轴响应，不能宣称已完成真头显6DoF验收。物理位移尺度、回中体验、跟踪丢失恢复、边界舒适度、不同头显及正常游玩移动仍待验证；不覆盖CG、所有UI或长期黑帧。默认玩家版本尚未提升，V1发布目标保持开放。
+
+## 非零位置和姿态下回中（XR12）
+
+后续会话 `continuous-stereo-41892-20261016-113223-9298c461` 实际设置位置(0.2,1.8,-0.1)米、yaw20°/pitch10°/roll8°，先保存ticket1190，再调用正式 `launcher.py recenter`。原生generation1→2于ticket1293提交，参考位置与请求误差小于1e-6米，参考quaternion仅含20°水平朝向。回中后快照ticket1522仍持有原完整HMD旋转；以参考逆旋转独立计算，残余与pitch10°×roll8°一致（分量误差小于1e-6）。没有将抬头和侧倾一并清零。
+
+随后相对新基准继续x平移0.15米，ticket1735双眼图像变化；回到(0,1.7,0)/零旋转再次正式回中，generation2→3于ticket2198提交，ticket2398双眼场景恢复水平。基准、回中前后、继续平移、第二次回中共5张GPU源图均关联正确姿态票据。四个原生阶段各2431对矩阵检查无偏差；正常停止、43入口恢复、XR销毁和WM_CLOSE退出通过。证据为ignored `recenter-events.json`、`recenter-requests.jsonl`、`recenter-native-status.txt`、`recenter-verification.json`及GPU图像。
+
+GUI新增的“视角回中”命令路由已构建/自检；本次实际执行的是它共用的正式后端命令，并未自动点击GUI。物理头显回中体验仍待用户验证，不因此关闭整项6DoF验收。

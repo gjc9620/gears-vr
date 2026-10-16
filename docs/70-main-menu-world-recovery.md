@@ -231,3 +231,11 @@ policy要求菜单实际成功显示过、当前为新鲜认证GAMEPLAY、仍待
 冻结XR10 SHA256 `2504156a90bfb9ec0774d6a974cc2dc5aeb65847751c536c468825c029a77bf4`；12项相关测试与projection receiver自测通过，独立审查及卡片源图检查完成。实际会话 `continuous-stereo-3600-20261016-104746-e7639997` 在59013959901900–59015804193000提交166层过渡卡（一次上传），随后成功新projection；world1→2、新Pawn手枪开镜/原步枪恢复及最终清理/43入口恢复/XR退出通过。该路径已有连续合成，等待本身未被伪称消失；没有真头显像素验收。
 
 同轮另复现确认框阶段的3.9450159秒零层：59006159367900最后eye-menu，59010104383800恢复eye-menu，非过渡卡阶段。menu日志sequence89为原始RuntimeError `Object registry identity changed`，触发关闭reader、1秒退避和全扫描。该错误是缓存库存槽不匹配，区别于后续live-slot错误；当前仍是待修项，不能因为返回游戏过渡卡成功就宣布所有闪黑完成。原始源图、事件和私有清单均留在ignored analysis，玩家默认清单未提升。
+
+## XR12：定位启动捕获空窗的直接门禁
+
+在已有outage有限记录中增加值类型菜单捕获/渲染快照，schema3；记录最近捕获结果、尝试/无帧/接受计数、HWND/generation/epoch、freshness原判定时间，以及本帧面板请求、render调用、返回值和授权拒绝。未调用render明确标为cached_only/not_attempted，不把旧捕获结果当作当前撤层原因。快照在render返回时冻结，后续授权重读不能混入新epoch。未增加捕获、QPC、窗口探测或等待调用，显示门禁与TTL未变。独立审查、12项XR测试通过。
+
+冻结XR12 SHA256 `18d656b5892642f80732ce2a193c13623b2e5a90f420790e82e9adbd727aded6`，Native23不变。实际会话 `continuous-stereo-41892-20261016-113223-9298c461` 正常进入关卡并完成非零位置回中；最长非空合成提交间隔453.4142ms，首窗口38行、丢弃0、后续窗口0，complete=true。最后成功捕获age991.0395ms；首次缺层age1002.1464ms，reason=capture_not_fresh。随后窗口不可用，generation1→2/HWND0→3/原HWND恢复，epoch重建；最后新捕获age27.7566ms时恢复startup_panel。首窗口37个缺层帧中19个capture_not_fresh、18个window_unavailable，没有授权拒绝；首个menu monitor live值晚于恢复25.13秒。
+
+这证明此次空窗的直接显示门禁，未证明窗口为何不可用或WGC为何没有新帧；“静态内容导致无新帧”仍是假设。一次future捕获拒绝也不能证明持续时钟偏差。合成层日志不是头显黑像素验收。原始日志和分析留在ignored `analysis/runtime/xr12-startup-gap-analysis.json`。会话原生清理、43入口恢复、XR shutdown及WM_CLOSE退出通过。后续可在首次projection前的既有启动等待范围显示独立提示卡，不复用过龄游戏图像或放宽门禁；尚未实现于XR12。

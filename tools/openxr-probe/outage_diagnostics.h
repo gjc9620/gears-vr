@@ -7,6 +7,41 @@
 // timestamps describe post-xrEndFrame observations, not GPU/publisher causality.
 // age_ns is observation age, NOT the earlier render_projection gate age.
 namespace outage_diagnostics {
+enum class CaptureResult : unsigned {not_attempted,no_frame,pre_epoch,future,expired,resize,invalid_crop,capture_error,accepted,window_unavailable};
+enum class MenuRenderReason : unsigned {not_attempted,in_progress,window_unavailable,generation_changed,capture_not_fresh,no_uploaded_image,image_expired,rendered};
+inline const char* capture_result_name(CaptureResult value) noexcept {
+    switch(value){
+    case CaptureResult::no_frame:return "no_frame";case CaptureResult::pre_epoch:return "pre_epoch";
+    case CaptureResult::future:return "future";case CaptureResult::expired:return "expired";
+    case CaptureResult::resize:return "resize";case CaptureResult::invalid_crop:return "invalid_crop";
+    case CaptureResult::capture_error:return "capture_error";case CaptureResult::accepted:return "accepted";
+    case CaptureResult::window_unavailable:return "window_unavailable";default:return "not_attempted";}
+}
+inline const char* menu_render_reason_name(MenuRenderReason value) noexcept {
+    switch(value){
+    case MenuRenderReason::in_progress:return "in_progress";case MenuRenderReason::window_unavailable:return "window_unavailable";
+    case MenuRenderReason::generation_changed:return "generation_changed";case MenuRenderReason::capture_not_fresh:return "capture_not_fresh";
+    case MenuRenderReason::no_uploaded_image:return "no_uploaded_image";case MenuRenderReason::image_expired:return "image_expired";
+    case MenuRenderReason::rendered:return "rendered";default:return "not_attempted";}
+}
+struct MenuCaptureSnapshot {
+    CaptureResult result=CaptureResult::not_attempted;
+    std::uint64_t attempts=0,no_frames=0,accepted=0,generation=0,hwnd=0;
+    std::int64_t last_taken_100ns=0,epoch_100ns=0,accepted_100ns=0;
+};
+struct MenuSnapshot {
+    MenuCaptureSnapshot capture{};
+    bool cached_only=true,render_attempted=false,update_attempted=false,updated=false;
+    bool available_checked=false,available=false,current=false,fresh_checked=false,fresh=false,generation_changed=false;
+    std::int64_t fresh_now_100ns=0;
+    MenuRenderReason reason=MenuRenderReason::not_attempted;
+};
+// A skipped render retains labelled historical capture data, never an old
+// render reason as the explanation for the current frame.
+inline MenuSnapshot menu_snapshot_for_frame(MenuSnapshot const& observed,bool attempted) noexcept {
+    if(attempted)return observed;
+    MenuSnapshot result;result.capture=observed.capture;return result;
+}
 struct ImageSnapshot {
     bool receiver_valid=false,ticket_valid=false;
     std::uint64_t acquired_serial=0, ticket_id=0, session=0, sequence=0;
@@ -23,6 +58,9 @@ struct Row {
     ImageSnapshot image{};
     unsigned layer_count=0;
     std::array<char,32> layer_kind{{'n','o','n','e',0}};
+    MenuSnapshot menu{};
+    unsigned menu_mode=0;int session_state=0;
+    bool should_render=false,panel_requested=false,render_attempted=false,render_result=false,authorization_rejected=false;
 };
 // Own the composition label and ordinary diagnostic values, never XR layer
 // pointers. The input retains its projection-only submitted meaning for image
@@ -99,11 +137,15 @@ public:
             fprintf(out,",\"ticket_id\":%llu,\"session\":%llu,\"sequence\":%llu,\"received_ns\":%lld,\"age_ns\":%lld,\"source\":%u,\"head_flags\":%llu,\"view_flags\":%llu",
                 (unsigned long long)r.image.ticket_id,(unsigned long long)r.image.session,(unsigned long long)r.image.sequence,(long long)r.image.received_ns,(long long)(r.ns-r.image.received_ns),r.image.source,(unsigned long long)r.image.head_flags,(unsigned long long)r.image.view_flags);
         }
-        fprintf(out,"}\n");
+        const auto& m=r.menu;const auto& c=m.capture;
+        fprintf(out,",\"menu_mode\":%u,\"session_state\":%d,\"shouldRender\":%s,\"panel_requested\":%s,\"menu_render_attempted\":%s,\"menu_render_result\":%s,\"menu_authorization_rejected\":%s,\"menu_snapshot\":{\"cached_only\":%s,\"render_attempted\":%s,\"reason\":\"%s\",\"update_attempted\":%s,\"updated\":%s,\"available_checked\":%s,\"available\":%s,\"current\":%s,\"fresh_checked\":%s,\"fresh\":%s,\"fresh_now_100ns\":%lld,\"generation_changed\":%s,\"capture_result\":\"%s\",\"capture_attempts\":%llu,\"capture_no_frames\":%llu,\"capture_accepted\":%llu,\"last_taken_100ns\":%lld,\"generation\":%llu,\"hwnd\":%llu,\"epoch_100ns\":%lld,\"accepted_100ns\":%lld}}\n",
+            r.menu_mode,r.session_state,r.should_render?"true":"false",r.panel_requested?"true":"false",r.render_attempted?"true":"false",r.render_result?"true":"false",r.authorization_rejected?"true":"false",
+            m.cached_only?"true":"false",m.render_attempted?"true":"false",menu_render_reason_name(m.reason),m.update_attempted?"true":"false",m.updated?"true":"false",m.available_checked?"true":"false",m.available?"true":"false",m.current?"true":"false",m.fresh_checked?"true":"false",m.fresh?"true":"false",(long long)m.fresh_now_100ns,m.generation_changed?"true":"false",capture_result_name(c.result),
+            (unsigned long long)c.attempts,(unsigned long long)c.no_frames,(unsigned long long)c.accepted,(long long)c.last_taken_100ns,(unsigned long long)c.generation,(unsigned long long)c.hwnd,(long long)c.epoch_100ns,(long long)c.accepted_100ns);
     }
     void dump(FILE* out=stdout) noexcept {
         if(!enabled||dumped)return;dumped=true;
-        fprintf(out,"{\"outage_diagnostics\":true,\"schema\":2,\"submission_semantics\":\"successful_nonempty_xrEndFrame_not_pixel_validation\",\"clock\":\"qpc_monotonic_ns\",\"timestamp_semantics\":\"post_xrEndFrame_observation\",\"age_semantics\":\"observation_time_minus_received_ns_not_exact_projection_gate_age\",\"threshold_ns\":100000000,\"first_window_started\":%s,\"first_window_recovered\":%s,\"first_window_rows\":%u,\"first_window_capacity\":249,\"total_item_capacity\":256,\"dropped_rows\":%llu,\"later_windows_not_recorded\":%llu,\"invalid_clock_rows\":%llu,\"complete\":%s,\"longest_gap_ns\":%lld,\"longest_gap_recovered\":%s,\"observed_submission\":%s}\n",
+        fprintf(out,"{\"outage_diagnostics\":true,\"schema\":3,\"submission_semantics\":\"successful_nonempty_xrEndFrame_not_pixel_validation\",\"clock\":\"qpc_monotonic_ns\",\"timestamp_semantics\":\"post_xrEndFrame_observation\",\"age_semantics\":\"observation_time_minus_received_ns_not_exact_projection_gate_age\",\"threshold_ns\":100000000,\"first_window_started\":%s,\"first_window_recovered\":%s,\"first_window_rows\":%u,\"first_window_capacity\":249,\"total_item_capacity\":256,\"dropped_rows\":%llu,\"later_windows_not_recorded\":%llu,\"invalid_clock_rows\":%llu,\"complete\":%s,\"longest_gap_ns\":%lld,\"longest_gap_recovered\":%s,\"observed_submission\":%s}\n",
             first_started?"true":"false",first_complete?"true":"false",count,(unsigned long long)dropped,(unsigned long long)later_windows,(unsigned long long)invalid_clock,complete()?"true":"false",(long long)longest.duration_ns,longest.end_valid?"true":"false",have_success?"true":"false");
         if(first_started)print_row(out,"first_window","last_successful_submission",first_start);
         for(unsigned i=0;i<count;++i)print_row(out,"first_window","frame",rows[i]);
