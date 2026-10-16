@@ -5,7 +5,7 @@ proof that Pawn.Location + EyeHeight is the rendered eye.
 """
 import struct
 import time
-from sample_player_anchor import AnchorSampler, AnchorRejected
+from sample_player_anchor import AnchorSampler, AnchorRejected, RegistryHeaderChanged
 
 LAYOUT = ('object_internal_index','object_name','object_class','object_outer',
           'field_super','name_entry_index','name_entry_text')
@@ -82,6 +82,7 @@ class LiveRegistryAnchorSampler(AnchorSampler):
                 'raw_guard':value if error is None else None})
             if error is not None and hasattr(error,'camera_observation'):
                 evidence['attempts'][-1]['camera_observation']=error.camera_observation
+            if isinstance(error,RegistryHeaderChanged):evidence['registry_change']=error.registry_change
             last_error=error
             # Never admit even a successful strict bracket after the deadline.
             if finished>deadline:reason='Anchor guard acquisition deadline exceeded';break
@@ -94,6 +95,9 @@ class LiveRegistryAnchorSampler(AnchorSampler):
                         strict_guard_attempts=len(evidence['attempts']))
         failure=self.failure_evidence(stage,last_error or AnchorRejected(reason),started)
         failure['failure_reason']=reason
+        if isinstance(last_error,RegistryHeaderChanged):
+            failure['registry_change']=last_error.registry_change
+            raise AnchorRegistryChanged(reason,failure) from last_error
         raise AnchorSamplingRejected(reason,failure) from last_error
 
     def sample(self):
@@ -129,6 +133,10 @@ def _offset(value,label):
 class AnchorSamplingRejected(AnchorRejected):
     def __init__(self,reason,evidence):
         super().__init__(reason);self.evidence=evidence
+
+
+class AnchorRegistryChanged(AnchorSamplingRejected):
+    """Strict registry header mismatch; requires full Resolver reacquisition."""
 
 
 def _temporary_sample_rejection(sample):
@@ -200,6 +208,9 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
                 evidence['attempts'][-1]['raw_rejection']=partial
                 evidence.update(reason=last.get('reason'),exception_type=last.get('exception_type'),
                     exception_repr=last.get('exception_repr'),raw_rejection=partial)
+                if 'registry_change' in failed_guard:
+                    evidence['registry_change']=failed_guard['registry_change']
+                    raise AnchorRegistryChanged(failed_guard['failure_reason'],evidence)
                 raise AnchorSamplingRejected(failed_guard['failure_reason'],evidence)
         if not accepted:
             # Guard identities/header bytes are finite bounded diagnostic data.

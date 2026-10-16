@@ -479,4 +479,31 @@ class AnchorStartTests(unittest.TestCase):
                 self.assertTrue(parsed.anchor_observer);self.assertTrue(parsed.family_diagnostics)
 
 
+class AnchorRegistryRetryTests(unittest.TestCase):
+    def test_typed_anchor_churn_reacquires_and_remains_bounded(self):
+        # Exercise the same all-certificate acquisition fixture used for UI churn.
+        from test_ui_registry_reacquisition import ReacquisitionTests
+        from anchor_config import AnchorRegistryChanged,AnchorSamplingRejected
+        for scenario in ('success','exhausted','deadline','identity','message_only'):
+            with self.subTest(scenario=scenario):
+                fixture=ReacquisitionTests();fixture.setUp()
+                error=AnchorRegistryChanged('Object registry changed since resolution',
+                    {'stage':'assembly_after','registry_change':{'registry':'objects'}})
+                if scenario=='identity':error=AnchorSamplingRejected('Certificate identity changed at final boundary',{})
+                if scenario=='message_only':error=AnchorSamplingRejected('Object registry changed since resolution',{})
+                def anchor_builder(r,c):
+                    if scenario!='success' or r.generation==1:raise error
+                    return {'camera':c['camera_address']},{'camera':c['camera_address']}
+                with mock.patch.object(start,'save_anchor_sampling_failure'):
+                    if scenario=='success':
+                        value,count,sleeps=fixture.collect(lambda r,c:({'camera':c['camera_address']},{}),anchor_builder=anchor_builder)
+                        self.assertEqual((value[0]['camera_address'],value[1]['camera'],count),('cam2','cam2',2))
+                    else:
+                        with self.assertRaises(type(error)):
+                            fixture.collect(lambda r,c:self.fail('UI must not run'),anchor_builder=anchor_builder,
+                                clock=[0,0,11] if scenario=='deadline' else None)
+                self.assertEqual(len(fixture.resolvers),2 if scenario=='success' else 3 if scenario=='exhausted' else 1)
+                for r in fixture.resolvers:r.p.close.assert_called_once()
+                self.assertEqual(start.camera_preparation_transient(error),scenario not in ('identity','message_only'))
+
 if __name__=='__main__':unittest.main()

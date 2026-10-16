@@ -17,6 +17,23 @@ class AnchorRejected(RuntimeError):
     pass
 
 
+class RegistryHeaderChanged(AnchorRejected):
+    """Exact valid header mismatch observed by the strict registry comparison."""
+    def __init__(self,reason,registry,expected,observed):
+        super().__init__(reason)
+        self.registry_change={'registry':registry,'expected_header':list(expected),
+                              'observed_header':list(observed)}
+
+
+def _check_registry_header(registry,raw,expected):
+    observed=struct.unpack('<Qii',raw)
+    if observed==expected:return
+    data,count,capacity=observed
+    reason=('Object' if registry=='objects' else 'Name')+' registry changed since resolution'
+    if not data or not 0<count<=capacity<4000000:raise AnchorRejected(reason)
+    raise RegistryHeaderChanged(reason,registry,expected,observed)
+
+
 class AnchorSampler:
     def __init__(self,resolver,*,prepared_camera=None,target_validator=None):
         self.r=resolver
@@ -108,10 +125,8 @@ class AnchorSampler:
         r=self.r;p=r.profile
         stamp_raw=r.read(self.stamp,4)
         objects=r.read(r.objects_header,16);names=r.read(r.names_header,16)
-        if struct.unpack('<Qii',objects)!=(r.objects_data,r.object_count,r.object_capacity):
-            raise AnchorRejected('Object registry changed since resolution')
-        if struct.unpack('<Qii',names)!=(r.names_data,r.name_count,r.name_capacity):
-            raise AnchorRejected('Name registry changed since resolution')
+        _check_registry_header('objects',objects,(r.objects_data,r.object_count,r.object_capacity))
+        _check_registry_header('names',names,(r.names_data,r.name_count,r.name_capacity))
         pawn_pointer=self.pointer(self.controller,'controller_pawn')
         if pawn_pointer!=self.pawn:raise AnchorRejected('Controlled Pawn changed; re-resolve required')
         pawn=self.fresh(self.pawn);controller=self.fresh(self.controller)

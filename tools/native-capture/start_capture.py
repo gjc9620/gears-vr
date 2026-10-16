@@ -72,6 +72,8 @@ def remote_call(handle,address,parameter):
 def camera_preparation_transient(error):
     # Exact known transition failures only. Schema, code, certificate identity,
     # process identity and unknown memory errors remain hard rejections.
+    from anchor_config import AnchorRegistryChanged
+    if isinstance(error,AnchorRegistryChanged):return True
     reason=str(error)
     if reason in {
         'Camera view target is not controlled Pawn',
@@ -199,14 +201,15 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
     """
     from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged
     from crosshair_assignment_config import CrosshairRegistryChanged
+    from anchor_config import AnchorRegistryChanged
     if crosshair_assignment_observer and not (anchor_observer and ui_observer):
         raise ValueError('Crosshair assignment observer requires UI/anchor observers')
-    deadline=time.monotonic()+10;attempts=3 if ui_observer else 1
+    deadline=time.monotonic()+10;registry_retry=anchor_observer or ui_observer;attempts=3 if registry_retry else 1
     if preparation_deadline is not None:deadline=min(deadline,preparation_deadline)
     for attempt in range(attempts):
         if check_live:check_live()
-        if ui_observer and time.monotonic()>=deadline:
-            raise UIConfigRejected('UI acquisition retry deadline exceeded before activation')
+        if registry_retry and time.monotonic()>=deadline:
+            raise UIConfigRejected('UI acquisition retry deadline exceeded before activation') if ui_observer else TimeoutError('Anchor acquisition retry deadline exceeded before activation')
         try:
             r=Resolver(pid,profile)
             try:
@@ -238,19 +241,19 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                             **({'entry_reader':entry_reader} if entry_reader is not None else {}))
                         ui_section+=crosshair_assignment_ini(assignment)
                         ui_metadata['crosshair_assignment']=assignment
-                if ui_observer and time.monotonic()>=deadline:
-                    raise UIConfigRejected('UI acquisition exceeded retry deadline before activation')
+                if registry_retry and time.monotonic()>=deadline:
+                    raise UIConfigRejected('UI acquisition exceeded retry deadline before activation') if ui_observer else TimeoutError('Anchor acquisition exceeded retry deadline before activation')
                 if check_live:check_live()
                 return refreshed,anchor_metadata,anchor_section,ui_metadata,ui_section
             finally:r.p.close()
-        except (UIConfigRejected,CrosshairRegistryChanged) as error:
-            # Only the existing UI read-churn cases and typed crosshair registry
-            # header churn join this budget. Crosshair identity/link/script and
-            # unknown failures stay hard; every retry discards the whole Resolver.
-            if not (isinstance(error,(UIRegistryChanged,CrosshairRegistryChanged)) or
+        except (UIConfigRejected,CrosshairRegistryChanged,AnchorRegistryChanged) as error:
+            # Only known read churn and typed registry header mismatches join
+            # this budget. Identity/code/unknown failures remain hard; every
+            # retry discards the Resolver and all certificates.
+            if not (isinstance(error,(UIRegistryChanged,CrosshairRegistryChanged,AnchorRegistryChanged)) or
                     (type(error) is UIConfigRejected and str(error)=='UI certificate read changed')):raise
             if attempt+1==attempts or time.monotonic()>=deadline:raise
-            print(f'UI preparation changed ({error}); reacquiring all certificates ({attempt+2}/{attempts})',file=sys.stderr)
+            print(f'Observer preparation changed ({error}); reacquiring all certificates ({attempt+2}/{attempts})',file=sys.stderr)
             time.sleep((min)(.05,(max)(0,deadline-time.monotonic())))
 
 

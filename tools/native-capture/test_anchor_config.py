@@ -25,6 +25,32 @@ class Fixture(MemoryResolver):
 
 
 class AnchorConfigTests(unittest.TestCase):
+    def test_strict_header_mismatch_preserves_typed_evidence(self):
+        from anchor_config import AnchorRegistryChanged
+        for registry,operation in (('objects','guard'),('names','guard'),('objects','sample')):
+            with self.subTest(registry=registry,operation=operation):
+                r=Fixture();sampler=LiveRegistryAnchorSampler(r)
+                sampler.guard_stage='assembly_after'
+                address=getattr(r,registry+'_header');original=r.read;hits=0
+                def changing(address_read,size):
+                    nonlocal hits
+                    if address_read==address and size==16:
+                        hits+=1
+                        if hits==2:
+                            data,count,capacity=struct.unpack('<Qii',original(address,16))
+                            r.put(address,struct.pack('<Qii',data,count+1,capacity+1))
+                    return original(address_read,size)
+                r.read=changing
+                with self.assertRaises(AnchorRegistryChanged) as failure:
+                    if operation=='sample':acquire_anchor_sample(sampler)
+                    else:sampler.guard()
+                evidence=failure.exception.evidence
+                self.assertEqual(evidence['stage'],'sample_before' if operation=='sample' else 'assembly_after')
+                change=evidence['registry_change']
+                self.assertEqual(change['registry'],registry)
+                self.assertEqual(change['observed_header'][1],change['expected_header'][1]+1)
+                self.assertEqual(evidence['guard_acquisitions'][-1]['strict_guard_attempts'],1)
+
     def test_prepared_camera_change_at_final_boundary_still_rejected(self):
         r=Fixture();prepared=r.resolve();original=LiveRegistryAnchorSampler._strict_guard
         def changing(sampler):
