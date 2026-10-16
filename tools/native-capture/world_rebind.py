@@ -192,9 +192,15 @@ def build_candidate(pid,profile,previous_local_identity,expected_generation,owne
                 pid,game['creation_time'],owner,Path(dll).resolve()):
             raise ValueError('Attestation process/owner/DLL mismatch')
         attestation.reverify()
-    camera = resolve_camera_once(pid,profile)
-    if uint(camera['local_player_address'],'local address',positive=True) != local['address']:
-        raise ValueError('Stable local address changed')
+        # Acquisition always resolves a fresh camera on every attempt. Only its
+        # two comparison inputs are needed here: the retained local identity and
+        # the module base authenticated by the bound, live attestation.
+        camera = dict(local_player_address=hex(local['address']),
+                      module_base=hex(uint(attestation.module_base,'attested module base',positive=True)))
+    else:
+        camera = resolve_camera_once(pid,profile)
+        if uint(camera['local_player_address'],'local address',positive=True) != local['address']:
+            raise ValueError('Stable local address changed')
     live()
     camera,anchor,anchor_section,ui,ui_section = acquire_observer_preparation(
         pid,profile,camera,signatures,Path(dll),anchor_observer=True,ui_observer=True,cinematic_camera=True,

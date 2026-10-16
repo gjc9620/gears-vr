@@ -1,8 +1,10 @@
 """Owner candidate preparation only: mocked readers, no game/process/tools."""
 import copy
 import configparser
+import contextlib
 import dataclasses
 import hashlib
+import io
 import pathlib
 import tempfile
 import unittest
@@ -10,6 +12,7 @@ import types
 from unittest import mock
 
 import world_rebind as rebind
+import start_capture as start
 
 
 class Tests(unittest.TestCase):
@@ -161,6 +164,110 @@ class Tests(unittest.TestCase):
         attestation.pid=123;self.acquire.reset_mock()
         with self.assertRaisesRegex(ValueError,'Attestation process/owner/DLL mismatch'):self.build(attestation=attestation)
         self.acquire.assert_not_called()
+
+    def proof(self,**changes):
+        values=dict(pid=7,game_creation=70,owner=dict(self.owner),dll=pathlib.Path('unused.dll').resolve(),
+                    module_base=self.base,reverify=mock.Mock(),read_entry=mock.Mock(return_value=next(iter(self.signatures.values()))))
+        values.update(changes)
+        return types.SimpleNamespace(**values)
+
+    def test_attested_acquisition_uses_only_bound_expectations_without_discovery(self):
+        proof=self.proof()
+        candidate=self.build(attestation=proof)
+        self.resolve.assert_not_called()
+        self.assertEqual(self.acquire.call_args.args[2],
+                         dict(local_player_address=hex(self.local['address']),module_base=hex(self.base)))
+        self.assertEqual(rebind.thaw(candidate.current_camera),self.camera)
+        self.assertEqual(proof.reverify.call_count,2)
+        self.acquire.reset_mock()
+        self.build()
+        self.resolve.assert_called_once_with(7,{'sha256':self.digest})
+        self.assertEqual(self.acquire.call_args.args[2],self.resolve.return_value)
+
+    def test_attested_binding_and_generation_reject_before_acquisition(self):
+        for changes in (dict(pid=9),dict(game_creation=71),dict(owner=dict(self.owner,creation_time=81)),
+                        dict(dll=pathlib.Path('other.dll').resolve()),dict(module_base=0)):
+            with self.subTest(changes=changes):
+                proof=self.proof(**changes);self.acquire.reset_mock()
+                with self.assertRaises(ValueError):self.build(attestation=proof)
+                self.acquire.assert_not_called()
+        for generation in (0,True,(1<<64)-1):
+            proof=self.proof();self.acquire.reset_mock()
+            with self.assertRaises(ValueError):self.build(attestation=proof,expected_generation=generation)
+            proof.reverify.assert_not_called();self.acquire.assert_not_called()
+        self.resolve.assert_not_called()
+
+    def test_attested_stale_full_local_identity_and_module_reject_after_acquisition(self):
+        for field,value in (('cls',0x9001),('outer',0x8001),('number',1),('internal_index',2),('name','ReusedLocal')):
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(ValueError,'Stable local identity changed'):
+                    self.build(attestation=self.proof(),previous_local_identity=dict(self.local,**{field:value}))
+        with self.assertRaisesRegex(ValueError,'Attestation camera module mismatch'):
+            self.build(attestation=self.proof(module_base=self.base+0x1000))
+        self.resolve.assert_not_called()
+
+    @contextlib.contextmanager
+    def fresh_attested_acquisition(self,*,retry=False,change=None):
+        import anchor_config as anchor
+        import ui_observer_config as ui
+        readers=[];built=[]
+        def resolver(pid,profile):
+            camera=copy.deepcopy(self.camera)
+            address=0x5000+len(readers)*0x1000
+            camera.update(camera_address=hex(address),timestamp_address=hex(address+0x10),pov_address=hex(address+0x20))
+            if change:camera.update(change)
+            reader=types.SimpleNamespace(base=int(camera['module_base'],0),p=mock.Mock(),
+                                         resolve=mock.Mock(return_value=camera),read=mock.Mock())
+            readers.append(reader);return reader
+        def build_anchor(reader,camera,*,prepared_camera,cinematic_camera):
+            self.assertIs(camera,prepared_camera);self.assertTrue(cinematic_camera)
+            metadata=copy.deepcopy(self.anchor)
+            camera_id=metadata['config']['identities'][2]
+            camera_id['address']=int(camera['camera_address'],0)
+            metadata['certificate_final_guard']['camera']=copy.deepcopy(camera_id)
+            metadata['sampler']['resolver']=copy.deepcopy(camera)
+            built.append((reader,metadata))
+            return metadata['config'],metadata
+        def build_ui(reader,camera,**kwargs):
+            self.assertIs(reader,built[-1][0]);self.assertIs(camera,reader.resolve.return_value)
+            if retry and len(readers)==1:raise ui.UIRegistryChanged('Registry header changed')
+            metadata=copy.deepcopy(self.ui)
+            metadata['config']['identities'][1]=copy.deepcopy(built[-1][1]['config']['identities'][2])
+            return metadata['config'],metadata
+        with contextlib.ExitStack() as stack:
+            self.acquire.side_effect=start.acquire_observer_preparation
+            stack.enter_context(mock.patch.object(start,'Resolver',side_effect=resolver))
+            stack.enter_context(mock.patch.object(anchor,'build_anchor_config',side_effect=build_anchor))
+            stack.enter_context(mock.patch.object(anchor,'anchor_ini',side_effect=self.anchor_text))
+            stack.enter_context(mock.patch.object(ui,'build_ui_observer_config',side_effect=build_ui))
+            stack.enter_context(mock.patch.object(ui,'ui_observer_ini',side_effect=self.ui_text))
+            stack.enter_context(mock.patch.object(start.time,'sleep'))
+            stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
+            yield readers,built
+
+    def test_attested_retry_resolves_again_and_returns_only_current_camera_certificates(self):
+        proof=self.proof()
+        with self.fresh_attested_acquisition(retry=True) as (readers,built):
+            candidate=self.build(attestation=proof)
+        self.resolve.assert_not_called();self.assertEqual(len(readers),2)
+        for reader in readers:reader.resolve.assert_called_once();reader.p.close.assert_called_once()
+        self.assertEqual(len(built),2);self.assertEqual(proof.read_entry.call_count,2)
+        self.assertEqual(proof.reverify.call_count,2)
+        self.assertEqual(candidate.current_camera['camera_address'],'0x6000')
+        self.assertEqual(candidate.anchor_metadata['sampler']['resolver']['camera_address'],'0x6000')
+        self.assertEqual(candidate.ui_metadata['config']['identities'][1]['address'],0x6000)
+
+    def test_attested_fresh_address_and_module_failures_are_hard(self):
+        for change,message in ((dict(local_player_address='0x999'),'Local player changed'),
+                               (dict(module_base=hex(self.base+0x1000)),'Module base changed')):
+            with self.subTest(change=change):
+                proof=self.proof()
+                with self.fresh_attested_acquisition(change=change) as (readers,built):
+                    with self.assertRaisesRegex(RuntimeError,message):self.build(attestation=proof)
+                self.assertEqual(len(readers),1);self.assertFalse(built)
+                readers[0].resolve.assert_called_once();readers[0].p.close.assert_called_once()
+                proof.read_entry.assert_not_called();self.assertEqual(proof.reverify.call_count,1)
+        self.resolve.assert_not_called()
 
     def test_missing_overflow_and_mismatched_inputs_reject_before_acquisition(self):
         for changes in ({'expected_generation':0},{'expected_generation':(1<<64)-1},{'expected_generation':True},
