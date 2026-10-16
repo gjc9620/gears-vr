@@ -151,6 +151,82 @@ class TinyOutputRecoveryTests(unittest.TestCase):
         control.identity = lambda pid: dict(IDENTITY, creation_time=999)
         self.assertTrue(monitor.poll_once(control, 14_000_000_000)['stop'])
 
+    def poll_status(self, monitor, control, second, value):
+        kwargs = {'side_effect': value} if isinstance(value, Exception) else {'return_value': value}
+        with mock.patch('tiny_output_recovery.read_swapchain_status', **kwargs):
+            return monitor.poll_once(control, int(second * 1_000_000_000))
+
+    def test_transient_permission_errors_need_next_distinct_fresh_sample_and_attempt_once(self):
+        attempt = mock.Mock(return_value=dict(attempted=True))
+        monitor = TinyOutputMonitor('unused', 'unused', IDENTITY, attempt=attempt)
+        control = FakeControl()
+        self.poll_status(monitor, control, 10, self.status(10))
+        gap = self.poll_status(monitor, control, 10.5, PermissionError('atomic replacement'))
+        self.assertTrue(gap['continuity_retained'])
+        attempt.assert_not_called()
+        self.poll_status(monitor, control, 11, self.status(11))
+        gap = self.poll_status(monitor, control, 12, PermissionError('atomic replacement'))
+        self.assertTrue(gap['continuity_retained'])
+        attempt.assert_not_called()  # Wall time alone cannot authorize recovery.
+        duplicate = self.poll_status(monitor, control, 12.1, self.status(11))
+        self.assertEqual(duplicate['reason'], 'duplicate_sample')
+        attempt.assert_not_called()
+        event = self.poll_status(monitor, control, 12.2, self.status(12.2))
+        self.assertEqual(event['event'], 'recovery_attempt')
+        self.assertAlmostEqual(event['observation']['observed_tiny_seconds'], 2.2)
+        self.poll_status(monitor, control, 12.5, PermissionError('atomic replacement'))
+        self.poll_status(monitor, control, 13, self.status(13))
+        attempt.assert_called_once_with(control, IDENTITY, 99, [8, 8])
+
+    def test_prolonged_unreadable_or_fresh_sample_gap_resets_continuity(self):
+        for gap_time, fresh_time in ((12.000000001, 12.2), (11.5, 13)):
+            with self.subTest(gap_time=gap_time):
+                monitor = TinyOutputMonitor('unused', 'unused', IDENTITY, attempt=mock.Mock())
+                control = FakeControl()
+                self.poll_status(monitor, control, 10, self.status(10))
+                gap = self.poll_status(monitor, control, gap_time, PermissionError('busy'))
+                self.assertEqual(gap['continuity_retained'], gap_time <= 12)
+                fresh = self.poll_status(monitor, control, fresh_time, self.status(fresh_time))
+                self.assertFalse(fresh['ready'])
+                self.assertEqual(fresh['observed_tiny_seconds'], 0)
+                monitor.attempt.assert_not_called()
+
+    def test_parse_identity_and_output_errors_reset_even_after_brief_io_gap(self):
+        cases = (ValueError('malformed'), UnicodeError('not ascii'),
+                 self.status(11, creation_time=999), self.status(11, width=1920),
+                 self.status(11, windowed=0), self.status(11, valid=0))
+        for invalid in cases:
+            with self.subTest(invalid=invalid):
+                monitor = TinyOutputMonitor('unused', 'unused', IDENTITY, attempt=mock.Mock())
+                control = FakeControl()
+                self.poll_status(monitor, control, 10, self.status(10))
+                self.poll_status(monitor, control, 10.5, PermissionError('busy'))
+                self.poll_status(monitor, control, 11, invalid)
+                fresh = self.poll_status(monitor, control, 12, self.status(12))
+                self.assertEqual(fresh['observed_tiny_seconds'], 0)
+                monitor.attempt.assert_not_called()
+        control.identity = lambda pid: dict(IDENTITY, creation_time=999)
+        with mock.patch('tiny_output_recovery.read_swapchain_status') as read:
+            self.assertTrue(monitor.poll_once(control, 13_000_000_000)['stop'])
+            read.assert_not_called()
+        self.assertIsNone(monitor.policy.last_ns)
+
+    def test_window_guard_after_io_gap_still_requires_new_full_interval(self):
+        monitor = TinyOutputMonitor('unused', 'unused', IDENTITY, attempt=mock.Mock())
+        control = FakeControl()
+        self.poll_status(monitor, control, 10, self.status(10))
+        self.poll_status(monitor, control, 11, self.status(11))
+        self.poll_status(monitor, control, 11.5, PermissionError('busy'))
+        control.state['window_pid'] = 124
+        event = self.poll_status(monitor, control, 12, self.status(12))
+        self.assertEqual(event['event'], 'recovery_deferred')
+        self.assertEqual(event['reason'], 'identity_or_window_changed')
+        self.assertFalse(monitor.policy.consumed)
+        monitor.attempt.assert_not_called()
+        control.state['window_pid'] = 123
+        event = self.poll_status(monitor, control, 13, self.status(13))
+        self.assertEqual(event['observed_tiny_seconds'], 0)
+
     def test_hidden_window_defers_and_visible_window_reacquires_before_one_attempt(self):
         monitor = TinyOutputMonitor('unused', 'unused', IDENTITY,
                                     attempt=mock.Mock(return_value=dict(attempted=True)))

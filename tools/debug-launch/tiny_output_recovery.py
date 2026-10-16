@@ -95,9 +95,18 @@ class TinyOutputMonitor:
             return dict(event='identity_changed', stop=True)
         try:
             fields = read_swapchain_status(self.status_path)
-        except (OSError, ValueError, UnicodeError) as error:
+        except OSError as error:
+            # Atomic replacement can briefly deny a read on Windows. Retain
+            # only the previous verified sequence within its existing 2s gap
+            # bound. This poll never authorizes action; observe() still needs
+            # a distinct fresh sample before reaching the recovery branch.
+            retained = self.policy.last_ns is not None and 0 <= now_ns - self.policy.last_ns <= 2_000_000_000
+            if not retained:
+                self.policy.reset()
+            return dict(event='status_unavailable', error=repr(error), continuity_retained=retained)
+        except (ValueError, UnicodeError) as error:
             self.policy.reset()
-            return dict(event='status_unavailable', error=repr(error))
+            return dict(event='status_unavailable', error=repr(error), continuity_retained=False)
         observation = self.policy.observe(fields, now_ns)
         if not observation['ready']:
             return dict(event='observation', **observation)
