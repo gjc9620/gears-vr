@@ -79,7 +79,7 @@ class InstallTests(unittest.TestCase):
         pe=SimpleNamespace(DIRECTORY_ENTRY_EXPORT=SimpleNamespace(symbols=[symbol]),close=mock.Mock())
         def subprocess_result(command,**kwargs):
             return SimpleNamespace(returncode=0,stdout='55' if 'Select-Object -ExpandProperty Id' in command[-1] else '',stderr='')
-        with mock.patch.object(sys,'argv',['launch_reserve','--game-path',str(selected)]),mock.patch.object(launch_reserve,'validate_game',return_value=selected),mock.patch.object(launch_reserve.pefile,'PE',return_value=pe),mock.patch.object(launch_reserve.subprocess,'run',side_effect=subprocess_result) as run,mock.patch.object(launch_reserve.k,'OpenProcess',side_effect=RuntimeError('stop before process access')):
+        with mock.patch.object(sys,'argv',['launch_reserve','--game-path',str(selected)]),mock.patch.object(launch_reserve,'validate_game',return_value=selected),mock.patch.object(launch_reserve.pefile,'PE',return_value=pe),mock.patch.object(launch_reserve.subprocess,'run',side_effect=subprocess_result) as run,mock.patch.object(launch_reserve.k,'OpenProcess',side_effect=RuntimeError('stop before process access')),mock.patch.object(launch_reserve,'WindowsControl',return_value=SimpleNamespace(identity=lambda pid:dict(pid=pid,creation_time=456,image=str(selected)))),mock.patch.object(launch_reserve,'preparation_live_guard',return_value=lambda:None):
             with self.assertRaisesRegex(RuntimeError,'stop before process'):launch_reserve.main()
             commands=[call.args[0] for call in run.call_args_list]
             self.assertIn(game_install.debug_command(selected),commands)

@@ -15,7 +15,7 @@ import subprocess
 import time
 import sys
 from prime_owner import owner_argument, pending_prime, graphics_prime_count
-from start_capture import k, modules, remote_call, pefile, ROOT, run_hidden
+from start_capture import k, modules, remote_call, pefile, ROOT, run_hidden, preparation_live_guard
 from runtime_probe import Process
 sys.path.insert(0,str(ROOT/'tools/debug-launch'))
 from game_install import validate_game, debug_command
@@ -34,7 +34,80 @@ def mark_launch_stage(path,identity,stage):
     temporary.write_text(json.dumps(receipt),encoding='utf-8');temporary.replace(path)
 
 
+def wait_loader_dependencies(exe,born,deadline,*,owner_pid=None,owner_creation_time=None,
+                             clock=time.monotonic,sleep=time.sleep):
+    """Read-only polling of one fresh identity; no loader/injection retries."""
+    control=WindowsControl();identity=None;handle=None;check=None;next_discovery=0
+    required={'kernelbase.dll','gowde-steam.exe','d3d12.dll','dxgi.dll'}
+    missing=required;attempts=0
+    if born is not None:
+        if (born.get('schema')!=1 or born.get('kind')!='reservation_birth' or
+                born.get('injection_attempted') is not False or born.get('prime_attempted') is not False):
+            raise RuntimeError('Fresh birth receipt state rejected')
+        identity=born.get('game_identity')
+        if (not isinstance(identity,dict) or type(identity.get('pid')) is not int or identity['pid']<=0 or
+                type(identity.get('creation_time')) is not int or identity['creation_time']<=0 or
+                not isinstance(identity.get('image'),str) or pathlib.Path(identity['image']).resolve()!=exe.resolve()):
+            raise RuntimeError('Fresh birth receipt identity rejected')
+    try:
+        while clock()<deadline:
+            if owner_pid is not None:
+                owner=control.identity(owner_pid)
+                if not owner or owner['creation_time']!=owner_creation_time:
+                    raise RuntimeError('Owner exited or changed during loader preparation')
+                c.set_last_error(0)
+                event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.RepositoryLauncher.Stop.{owner_pid}')
+                if not event and c.get_last_error() not in (0,2):raise c.WinError(c.get_last_error())
+                if event:
+                    try:
+                        status=k.WaitForSingleObject(event,0)
+                        if status==0:raise RuntimeError('Owner cancelled loader preparation')
+                        if status!=0x102:raise RuntimeError('Owner cancellation event wait failed')
+                    finally:k.CloseHandle(event)
+            if clock()>=deadline:break
+            if identity is None:
+                # Compatibility for direct CLI callers without a birth receipt.
+                # Once selected, never enumerate or accept a replacement PID.
+                if clock()<next_discovery:sleep(min(.1,max(0,deadline-clock())));continue
+                next_discovery=clock()+1
+                if clock()>=deadline:break
+                result=run_hidden(['powershell','-NoProfile','-NonInteractive','-Command',
+                    "Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id"],
+                    capture_output=True,text=True,timeout=max(.001,min(2,deadline-clock())))
+                pids=[int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
+                if len(pids)>1:raise RuntimeError('Ambiguous fresh process')
+                if not pids:continue
+                identity=control.identity(pids[0])
+                if not identity:raise RuntimeError('Fresh process exited during discovery')
+                if pathlib.Path(identity['image']).resolve()!=exe.resolve():raise RuntimeError('Fresh executable path differs')
+            if control.identity(identity['pid'])!=identity:raise RuntimeError('Fresh process differs from born identity')
+            if check is None:check=preparation_live_guard(identity['pid'],owner_pid,owner_creation_time)
+            check()
+            if clock()>=deadline:break
+            if handle is None:
+                handle=k.OpenProcess(0x43a,False,identity['pid'])
+                if not handle:raise c.WinError(c.get_last_error())
+            check()
+            if clock()>=deadline:break
+            attempts+=1;loaded=modules(handle)
+            check()
+            if control.identity(identity['pid'])!=identity:raise RuntimeError('Fresh process differs from born identity')
+            missing=required-set(loaded)
+            if not missing and clock()<deadline:
+                if loaded['gowde-steam.exe'][1].resolve()!=exe.resolve():raise RuntimeError('Fresh executable path differs')
+                result=(identity['pid'],handle,loaded,identity,check)
+                handle=None # Transfer the one owned handle to the caller.
+                return result
+            sleep(min(.1,max(0,deadline-clock())))
+        print(json.dumps({'reservation_loader_wait_failed':True,'missing_modules':sorted(missing),
+                          'module_polls':attempts,'game_identity':identity}),flush=True)
+        raise RuntimeError('Fresh loader dependencies not ready before bounded deadline')
+    finally:
+        if handle:k.CloseHandle(handle)
+
+
 def main():
+    command_started=time.monotonic()
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--build-dir',type=pathlib.Path,default=ROOT/'tools/native-capture/build-prepare')
     parser.add_argument('--game-path',type=pathlib.Path,help='Supported installation EXE; defaults to repository installation')
@@ -104,29 +177,21 @@ def main():
     if args.launch_receipt is not None:
         born=json.loads(args.launch_receipt.read_text(encoding='utf-8'))
         print(json.dumps({'reservation_birth':born}),flush=True)
-    handle=None;deadline=time.monotonic()+12
-    while time.monotonic()<deadline:
-        result=run_hidden(['powershell','-NoProfile','-NonInteractive','-Command',"Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id"],capture_output=True,text=True)
-        pids=[int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
-        if len(pids)>1:raise RuntimeError('Ambiguous fresh process')
-        if pids:
-            pid=pids[0];handle=k.OpenProcess(0x43a,False,pid)
-            if born and WindowsControl().identity(pid)!=born['game_identity']:
-                if handle:k.CloseHandle(handle);handle=None
-                raise RuntimeError('Fresh process differs from born identity')
-            if handle:
-                loaded=modules(handle)
-                if all(x in loaded for x in ('kernelbase.dll','gowde-steam.exe','d3d12.dll','dxgi.dll')):break
-                k.CloseHandle(handle);handle=None
-        time.sleep(.05)
-    if not handle:raise RuntimeError('Fresh loader dependencies not ready')
+    # Four possible remote calls retain their existing15s limits. Keep70s of
+    # the owner's120s subprocess bound for those calls and final verification.
+    deadline=min(time.monotonic()+25,command_started+50)
+    pid,handle,loaded,game_identity,check_live=wait_loader_dependencies(exe,born,deadline,
+        owner_pid=args.prime_owner_pid,owner_creation_time=args.prime_owner_creation_time,
+        clock=time.monotonic,sleep=time.sleep)
     memory=None;finished=False;prime_attempted=False;reported=False
     try:
         if loaded['gowde-steam.exe'][1].resolve()!=exe.resolve():raise RuntimeError('Fresh executable path differs')
-        control=WindowsControl();game_identity=control.identity(pid)
-        if not game_identity or pathlib.Path(game_identity['image']).resolve()!=exe:
+        control=WindowsControl()
+        if control.identity(pid)!=game_identity or pathlib.Path(game_identity['image']).resolve()!=exe:
             raise RuntimeError('Fresh process identity differs from selected installation')
         validate_game(exe) # Recheck selected bytes before any injection.
+        check_live()
+        if time.monotonic()>=deadline:raise RuntimeError('Reservation readiness deadline before injection')
         if dll.name.lower() in loaded:raise RuntimeError('Reservation DLL already loaded')
         loader=k.GetProcAddress(k.GetModuleHandleW('kernel32.dll'),b'LoadLibraryW');owner=w.HMODULE()
         if not k.GetModuleHandleExW(6,loader,c.byref(owner)):raise c.WinError(c.get_last_error())
@@ -134,7 +199,11 @@ def main():
         remote=loaded[pathlib.Path(path.value).name.lower()][0]+loader-owner.value
         # Persist before any capture allocation/write/remote execution. A caller
         # must treat an interrupted injection as unknown, never as safe to retry.
+        check_live()
+        if time.monotonic()>=deadline:raise RuntimeError('Reservation readiness deadline before injection')
         mark_launch_stage(args.launch_receipt,game_identity,'injection_attempted')
+        check_live()
+        if time.monotonic()>=deadline:raise RuntimeError('Reservation readiness deadline before injection')
         encoded=(str(dll)+'\0').encode('utf-16-le');memory=k.VirtualAllocEx(handle,None,len(encoded),0x3000,0x04)
         if not memory:raise c.WinError(c.get_last_error())
         count=c.c_size_t();buffer=c.create_string_buffer(encoded)
