@@ -221,3 +221,13 @@ Native13 SHA `f6f12ccf16015470bf7e0b19b7593fec7e8da606bd1a9a482309798d5945cd21`�
 实际会话 `continuous-stereo-43368-20261016-103519-21448e5b` 完成检查点确认重载、world1→2及新Pawn手枪开镜/返回。新诊断首窗口9行、丢弃0行；后续另有2个窗口未完整保留，所以complete=false，不能声称全部逐帧区间均有完整日志。最长合成提交间隔1.8005819秒，已恢复：最后eye-menu为QPC58252332334500/ticket1241，首个零层58252343563600，恢复projection58254132916400/ticket1242。中间状态menu_recovery_pending，旧样本received58252187636100不满足恢复minimum_sample_ns；新样本received58254087644200后才恢复。这证实菜单→新场景交接存在实际空窗，不能再用正常菜单投影缺席解释它。
 
 只读相机观察 `xr9-checkpoint-camera.jsonl` 有20个cinematic=true样本，但范围58215067942900–58217038168700，均早于首投影58221665926200；不把它们当成已运行VR中的剧情切入验收。Bink资料库查询仅找到已有脚本声明和历史FullScreenMovieBink路径字面量，尚无当前播放调用/画面证据，未据此启用视频回退。会话正常停止、原生清理/43入口恢复/XR shutdown通过，90秒只读相机任务完成后WM_CLOSE退出游戏，输入服务停止。下一项需解决真实交接空窗，同时保留新票据门槛、世界/资源/参考空间生命周期和二维/立体证据区分；不能把旧菜单帧冒充新场景投影。
+
+## XR10：独立返回游戏过渡卡
+
+新增session-owned static-image swapchain，使用纯CPU生成的768×256 RGBA卡片，显示RETURNING TO GAME与等待下一立体帧的说明。它不引用游戏、旧眼纹理或原生世界对象；只上传一次，严格成功wait、GPU fence完成和release后复用。异常时按既有unsafe生命周期策略保留不确定资源，正常停止先销毁自身chain再销毁session。源预览明确不是GPU回读。
+
+policy要求菜单实际成功显示过、当前为新鲜认证GAMEPLAY、仍待新projection，且无层的原因属于普通等待。UNKNOWN/失焦不可渲染/结构失败/停止不能激活；上传后重读菜单lease并检查停止请求。新projection门槛和票据保持原状，卡片不清恢复状态、不计立体。审查还修正旧handoff将正值XR_SESSION_LOSS_PENDING误当成功的问题：清恢复状态、成功计数和日志现在明确要求XR_SUCCESS及实际projection层；接收器自测覆盖这一边界。
+
+冻结XR10 SHA256 `2504156a90bfb9ec0774d6a974cc2dc5aeb65847751c536c468825c029a77bf4`；12项相关测试与projection receiver自测通过，独立审查及卡片源图检查完成。实际会话 `continuous-stereo-3600-20261016-104746-e7639997` 在59013959901900–59015804193000提交166层过渡卡（一次上传），随后成功新projection；world1→2、新Pawn手枪开镜/原步枪恢复及最终清理/43入口恢复/XR退出通过。该路径已有连续合成，等待本身未被伪称消失；没有真头显像素验收。
+
+同轮另复现确认框阶段的3.9450159秒零层：59006159367900最后eye-menu，59010104383800恢复eye-menu，非过渡卡阶段。menu日志sequence89为原始RuntimeError `Object registry identity changed`，触发关闭reader、1秒退避和全扫描。该错误是缓存库存槽不匹配，区别于后续live-slot错误；当前仍是待修项，不能因为返回游戏过渡卡成功就宣布所有闪黑完成。原始源图、事件和私有清单均留在ignored analysis，玩家默认清单未提升。

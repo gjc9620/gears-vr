@@ -1,5 +1,6 @@
 #include "startup_panel_policy.h"
 #include <cassert>
+#include <initializer_list>
 int main(){
     StartupPanelPolicy panel(true);assert(panel.show_panel());
     assert(!panel.projection_rendered(false)&&panel.show_panel());
@@ -67,4 +68,27 @@ int main(){
     assert(!main_before_handoff.observe(Mode::gameplay,2400));
     assert(main_before_handoff.allow_projection()&&main_before_handoff.minimum_sample_ns()==2400);
     assert(main_before_handoff.projection_rendered(true));
+    // A recovery card is display continuity, never evidence of a new scene.
+    StartupPanelPolicy bridge(true,true);
+    assert(!bridge.show_transition_panel());
+    bridge.observe(Mode::pause_menu,3000);
+    bridge.observe(Mode::gameplay,3100);
+    assert(!bridge.show_transition_panel()); // Observing a menu is not presenting it.
+    bridge.observe(Mode::pause_menu,3200);bridge.menu_rendered();
+    assert(!bridge.show_transition_panel());
+    bridge.observe(Mode::unknown,3300);
+    assert(!bridge.show_transition_panel());
+    bridge.observe(Mode::gameplay,3400);
+    assert(bridge.show_transition_panel()&&bridge.minimum_sample_ns()==3400);
+    assert(!bridge.projection_rendered(false)&&bridge.show_transition_panel());
+    bridge.observe(Mode::gameplay,3500);
+    assert(bridge.minimum_sample_ns()==3400); // Card does not move the new-image boundary.
+    assert(bridge.projection_rendered(true)&&!bridge.show_transition_panel());
+    bridge.observe(Mode::pause_menu,3600);bridge.observe(Mode::gameplay,3700);
+    assert(!bridge.show_transition_panel()); // Prior menu witness retired with projection.
+    bridge.observe(Mode::death_menu,3800);bridge.menu_rendered();bridge.observe(Mode::gameplay,3900);
+    assert(bridge.show_transition_panel());bridge.cancel();assert(!bridge.show_transition_panel());
+    StartupPanelPolicy no_bridge(false,true),legacy_bridge(true);
+    for(auto* p:{&no_bridge,&legacy_bridge}){p->observe(Mode::pause_menu,4000);p->menu_rendered();
+        p->observe(Mode::gameplay,4100);assert(!p->show_transition_panel());}
 }
