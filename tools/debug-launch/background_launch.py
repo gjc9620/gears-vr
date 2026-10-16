@@ -56,13 +56,15 @@ def process_creation_time(process):
 
 
 def launch(game_path, game_args=(), *, foreground=False, disable_background_input=False,
-           game_io=GAME_IO, runtime=RUNTIME, popen=subprocess.Popen, quiet_build=None):
+           game_io=GAME_IO, runtime=RUNTIME, popen=subprocess.Popen, quiet_build=None, launch_receipt=None):
     quiet_build = quiet_build_for_start(foreground, quiet_build)
     game_path = pathlib.Path(game_path).resolve()
     if not game_path.is_file():
         raise FileNotFoundError(game_path)
     if not disable_background_input and not pathlib.Path(game_io).is_file():
         raise FileNotFoundError(game_io)
+    if launch_receipt is not None and pathlib.Path(launch_receipt).exists():
+        raise RuntimeError('Launch receipt must be fresh')
 
     quiet_report = None
     if quiet_build is not None:
@@ -76,6 +78,17 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
         process = popen([str(game_path), *map(str, game_args)], cwd=str(game_path.parent),
                         startupinfo=startupinfo, creationflags=creationflags)
         game_pid, creation_time = process.pid, process_creation_time(process)
+    if launch_receipt is not None:
+        # The reservation owner supplies a fresh, per-invocation path. Publish
+        # birth before background helper startup or any capture injection.
+        receipt = pathlib.Path(launch_receipt)
+        value = dict(schema=1,kind='reservation_birth',game_identity=dict(pid=game_pid,
+            creation_time=creation_time,image=str(game_path).casefold()),
+            injection_attempted=False,prime_attempted=False)
+        receipt.parent.mkdir(parents=True,exist_ok=True)
+        temporary=receipt.with_name(receipt.name+'.tmp')
+        with temporary.open('x',encoding='utf-8') as stream:json.dump(value,stream)
+        temporary.replace(receipt)
     record = {
         'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
         'pid': game_pid,
@@ -122,10 +135,12 @@ def main(argv=None):
     parser.add_argument('--foreground', action='store_true', help='Use the ordinary foreground startup policy')
     parser.add_argument('--disable-background-input', action='store_true')
     parser.add_argument('--quiet-build', type=pathlib.Path, help='Override frozen quiet11 startup build (or GEARSVR_QUIET_STARTUP_BUILD)')
+    parser.add_argument('--launch-receipt',type=pathlib.Path,help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     try:
         record = launch(args.game_path, args.game_arg, foreground=args.foreground,
                         disable_background_input=args.disable_background_input,
+                        launch_receipt=args.launch_receipt,
                         quiet_build=quiet_build_for_start(args.foreground,args.quiet_build))
         print(json.dumps(record))
         return 0

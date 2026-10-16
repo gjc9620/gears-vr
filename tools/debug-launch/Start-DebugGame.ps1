@@ -1,5 +1,5 @@
 param([switch]$DirectLevel, [switch]$PauseOnUnfocus, [switch]$Foreground,
-      [switch]$DisableBackgroundInput, [string]$GamePath, [switch]$PythonCheckOnly)
+      [switch]$DisableBackgroundInput = $true, [string]$GamePath, [switch]$PythonCheckOnly, [string]$LaunchReceipt)
 $ErrorActionPreference = 'Stop'
 $workspace = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 function Find-GearsVrPython([string]$Root) {
@@ -82,5 +82,6 @@ $launchCommand = @((Join-Path $PSScriptRoot 'background_launch.py'), '--game-pat
 foreach ($argument in $launchArguments) { $launchCommand += "--game-arg=$argument" }
 if ($Foreground) { $launchCommand += '--foreground' }
 if ($DisableBackgroundInput) { $launchCommand += '--disable-background-input' }
+if ($LaunchReceipt) { $launchCommand += @('--launch-receipt', $LaunchReceipt) }
 & $python @launchCommand
 if ($LASTEXITCODE -ne 0) { throw 'Background game launcher failed.' }

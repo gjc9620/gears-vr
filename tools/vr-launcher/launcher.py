@@ -10,6 +10,7 @@ import subprocess
 import struct
 import sys
 import time
+import uuid
 from types import SimpleNamespace
 
 ROOT=pathlib.Path(__file__).resolve().parents[2]
@@ -183,17 +184,33 @@ class Backend:
             creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         return [int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
     def reserve(self,manifest,log,owner=None,game_path=None,foreground=False):
+        receipt=log.with_name(log.name+'.'+uuid.uuid4().hex+'.birth.json')
         cmd=[sys.executable,str(ROOT/'tools/native-capture/launch_reserve.py'),'--build-dir',str(rooted(manifest['native_build'])),
-             '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link']
+             '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link',
+             '--launch-receipt',str(receipt)]
         if game_path is not None:cmd+=['--game-path',str(game_path)]
         if foreground:cmd+=['--foreground']
         if owner:
             cmd+=['--prime-owner-pid',str(owner['pid']),'--prime-owner-creation-time',str(owner['creation_time'])]
         if manifest.get('graphics_startup_lock',False):cmd+=['--graphics-startup-lock']
         if manifest.get('graphics_menu_lock',False):cmd+=['--graphics-menu-lock']
-        result=subprocess.run(cmd,capture_output=True,text=True,timeout=120,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        selected=rooted(game_path if game_path is not None else manifest['game_path'])
+        def failed_cleanup():
+            try:cleanup=self.close_uninjected_reservation(receipt,selected)
+            except Exception as error:cleanup={'status':'cleanup_error','error':repr(error)}
+            with log.open('a',encoding='utf-8') as stream:stream.write('\n'+json.dumps({'reservation_failure_cleanup':cleanup})+'\n')
+            return cleanup
+        try:
+            result=subprocess.run(cmd,capture_output=True,text=True,timeout=120,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        except subprocess.TimeoutExpired as error:
+            def decoded(value):return value.decode('utf-8',errors='replace') if isinstance(value,bytes) else value or ''
+            log.write_text(decoded(error.stdout)+'\n'+decoded(error.stderr),encoding='utf-8')
+            error.reservation_failure_cleanup=failed_cleanup();raise
         log.write_text(result.stdout+'\n'+result.stderr,encoding='utf-8')
-        if result.returncode:raise RuntimeError('Fresh reservation failed; no retry: '+str(log))
+        if result.returncode:
+            error=RuntimeError('Fresh reservation failed; no retry: '+str(log))
+            error.reservation_failure_cleanup=failed_cleanup()
+            raise error
         reports=[]
         for line in result.stdout.splitlines():
             try:value=json.loads(line)
@@ -218,6 +235,49 @@ class Backend:
                 report.get('game_sha256','').lower()!=manifest['game_sha256'].lower()):
             raise RuntimeError('Reservation executable identity/hash mismatch')
         return report
+    def close_uninjected_reservation(self,receipt,selected,*,clock=time.monotonic,sleep=time.sleep):
+        if not receipt.exists():return {'status':'no_birth_receipt'}
+        value=json.loads(receipt.read_text(encoding='utf-8'));identity=value.get('game_identity')
+        if (value.get('schema')!=1 or value.get('kind')!='reservation_birth' or
+                value.get('injection_attempted') is not False or value.get('prime_attempted') is not False):
+            return {'status':'injection_state_unknown_or_attempted'}
+        if (not isinstance(identity,dict) or type(identity.get('pid')) is not int or identity['pid']<=0 or
+                type(identity.get('creation_time')) is not int or identity['creation_time']<=0 or
+                not isinstance(identity.get('image'),str) or rooted(identity['image'])!=selected):
+            return {'status':'birth_identity_rejected'}
+        deadline=clock()+10;posted=set()
+        while clock()<deadline:
+            current=self.control.identity(identity['pid'])
+            if current is None:return {'status':'exited','game_identity':identity,'wm_close_posted':len(posted)}
+            if current!=identity:return {'status':'identity_changed','wm_close_posted':len(posted)}
+            for window in self.game_windows(identity['pid']):
+                if self.control.identity(identity['pid'])!=identity:
+                    return {'status':'identity_changed','wm_close_posted':len(posted)}
+                if window not in posted:
+                    self.post_normal_close(window,identity);posted.add(window)
+            sleep(min(.1,max(0,deadline-clock())))
+        return {'status':'close_timeout','game_identity':identity,'wm_close_posted':len(posted)}
+    def game_windows(self,pid):
+        from ctypes import wintypes
+        user=ctypes.WinDLL('user32',use_last_error=True);windows=[]
+        callback=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
+        user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
+        user.EnumWindows.argtypes=[callback,wintypes.LPARAM]
+        def collect(window,_):
+            owner=wintypes.DWORD();user.GetWindowThreadProcessId(window,ctypes.byref(owner))
+            if owner.value==pid:windows.append(window)
+            return True
+        if not user.EnumWindows(callback(collect),0):raise ctypes.WinError(ctypes.get_last_error())
+        return windows
+    def post_normal_close(self,window,identity):
+        from ctypes import wintypes
+        user=ctypes.WinDLL('user32',use_last_error=True)
+        user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
+        user.PostMessageW.argtypes=[wintypes.HWND,wintypes.UINT,wintypes.WPARAM,wintypes.LPARAM]
+        owner=wintypes.DWORD();user.GetWindowThreadProcessId(window,ctypes.byref(owner))
+        if owner.value!=identity['pid'] or self.control.identity(identity['pid'])!=identity:
+            raise RuntimeError('Close window/process ownership changed')
+        if not user.PostMessageW(window,0x10,0,0):raise ctypes.WinError(ctypes.get_last_error())
     def game_window(self,pid):
         from ctypes import wintypes
         user=ctypes.WinDLL('user32',use_last_error=True)
@@ -418,6 +478,11 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         state.update(phase='incomplete',error=repr(error),no_automatic_retry=True,
             recovery=('Owned prime is cancelled during cleanup; inspect prime_cleanup before normal game exit/retry.' if owned_prime else
                       'Game remains running. Before activation, wait for the existing 180-second prime watchdog; exit the game normally before retry.'))
+        cleanup=getattr(error,'reservation_failure_cleanup',None)
+        if cleanup is not None:
+            state['reservation_failure_cleanup']=cleanup
+            state['recovery']=('Exact uninjected startup game exited normally; no retry was attempted.' if cleanup.get('status')=='exited' else
+                'Reservation failed; inspect reservation_failure_cleanup. No forced process termination or injection retry was attempted.')
         atomic_json(index,state);raise
     finally:
         if tiny_output_monitor:

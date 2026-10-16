@@ -21,6 +21,22 @@ class Process:
 
 
 class BackgroundLaunchTests(unittest.TestCase):
+    def test_birth_receipt_survives_background_helper_failure(self):
+        _,_,bootstrap=self.default_quiet_fixture();self.quiet_patches()
+        receipt=self.root/'birth.json'
+        def spawn(*args,**kwargs):
+            if receipt.exists():raise RuntimeError('helper failed')
+            return bootstrap
+        with self.assertRaisesRegex(RuntimeError,'helper failed'):
+            background_launch.launch(self.game,game_io=self.helper,runtime=self.runtime,popen=spawn,launch_receipt=receipt)
+        value=json.loads(receipt.read_text())
+        self.assertEqual(value['game_identity'],dict(pid=5100,creation_time=987654,image=str(self.game.resolve()).casefold()))
+        self.assertIs(value['injection_attempted'],False);self.assertIs(value['prime_attempted'],False)
+        popen=mock.Mock()
+        with self.assertRaisesRegex(RuntimeError,'fresh'):
+            background_launch.launch(self.game,popen=popen,game_io=self.helper,launch_receipt=receipt)
+        popen.assert_not_called()
+
     def setUp(self):
         patcher = mock.patch.object(background_launch, 'process_creation_time', return_value=123456)
         patcher.start(); self.addCleanup(patcher.stop)

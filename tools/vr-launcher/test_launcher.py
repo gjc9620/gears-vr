@@ -52,6 +52,56 @@ class FakeBackend:
         return dict(pawn='0x200',controller='0x100',camera='0x400',level='0x300',timestamp=float(self.samples))
 
 class LauncherTests(unittest.TestCase):
+    def test_failed_reserve_closes_only_exact_uninjected_birth(self):
+        with tempfile.TemporaryDirectory() as directory:
+            selected=pathlib.Path(directory)/'GOWDE-Steam.exe';receipt=pathlib.Path(directory)/'birth.json'
+            identity=dict(pid=55,creation_time=456,image=str(selected.resolve()).casefold())
+            backend=launcher.Backend.__new__(launcher.Backend)
+            backend.game_windows=mock.Mock(return_value=[123]);backend.post_normal_close=mock.Mock()
+            for scenario in ('exited','reused','injected','prime','unknown','wrong_path','late_window','timeout'):
+                with self.subTest(scenario=scenario):
+                    ticks=[0.];value=dict(schema=1,kind='reservation_birth',game_identity=identity,
+                                        injection_attempted=False,prime_attempted=False)
+                    if scenario=='injected':value['injection_attempted']=True
+                    if scenario=='prime':value['prime_attempted']=True
+                    if scenario=='unknown':del value['injection_attempted']
+                    if scenario=='wrong_path':value['game_identity']=dict(identity,image='C:/other/game.exe')
+                    receipt.write_text(json.dumps(value))
+                    actual=dict(identity,creation_time=789) if scenario=='reused' else identity
+                    backend.control=SimpleNamespace(identity=mock.Mock(return_value=actual))
+                    if scenario in ('exited','late_window'):
+                        backend.control.identity.side_effect=[identity,identity,None] if scenario=='exited' else [identity,identity,identity,None]
+                    backend.game_windows.reset_mock();backend.game_windows.side_effect=None
+                    backend.game_windows.return_value=[123]
+                    if scenario=='late_window':backend.game_windows.side_effect=[[],[123]]
+                    backend.post_normal_close.reset_mock()
+                    result=backend.close_uninjected_reservation(receipt,selected.resolve(),clock=lambda:ticks[0],
+                        sleep=lambda duration:ticks.__setitem__(0,ticks[0]+duration))
+                    expected=('exited' if scenario in ('exited','late_window') else 'identity_changed' if scenario=='reused'
+                        else 'birth_identity_rejected' if scenario=='wrong_path' else 'close_timeout' if scenario=='timeout'
+                        else 'injection_state_unknown_or_attempted')
+                    self.assertEqual(result['status'],expected)
+                    if scenario in ('exited','late_window','timeout'):
+                        backend.post_normal_close.assert_called_once_with(123,identity)
+                    else:backend.post_normal_close.assert_not_called()
+
+    def test_reservation_failure_and_timeout_use_unique_birth_receipt(self):
+        backend=launcher.Backend.__new__(launcher.Backend)
+        backend.close_uninjected_reservation=mock.Mock(return_value={'status':'exited'})
+        with tempfile.TemporaryDirectory() as directory:
+            log=pathlib.Path(directory)/'reserve.log';paths=[]
+            for timeout in (False,True):
+                def fail(command,**kwargs):
+                    receipt=pathlib.Path(command[command.index('--launch-receipt')+1]);paths.append(receipt)
+                    self.assertFalse(receipt.exists());self.assertEqual(kwargs['timeout'],120)
+                    if timeout:raise launcher.subprocess.TimeoutExpired(command,120,output=b'partial',stderr=b'failed')
+                    return SimpleNamespace(returncode=1,stdout='',stderr='loader not ready')
+                with mock.patch.object(launcher.subprocess,'run',side_effect=fail),self.assertRaises(Exception):
+                    backend.reserve(MANIFEST,log)
+                backend.close_uninjected_reservation.assert_called_with(paths[-1],launcher.rooted(MANIFEST['game_path']))
+                self.assertIn('reservation_failure_cleanup',log.read_text())
+            self.assertNotEqual(paths[0],paths[1])
+
     def test_cli_foreground_reaches_start(self):
         for foreground in (False,True):
             argv=['launcher.py','start']+(['--foreground'] if foreground else [])

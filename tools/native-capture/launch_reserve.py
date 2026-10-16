@@ -23,12 +23,24 @@ from run_stereo_continuous import WindowsControl
 k.SetEvent.argtypes=[w.HANDLE];k.SetEvent.restype=w.BOOL
 
 
+def mark_launch_stage(path,identity,stage):
+    if path is None:return
+    receipt=json.loads(path.read_text(encoding='utf-8'))
+    if (receipt.get('kind')!='reservation_birth' or receipt.get('schema')!=1 or
+            receipt.get('game_identity')!=identity or stage not in ('injection_attempted','prime_attempted')):
+        raise RuntimeError('Reservation birth receipt identity differs')
+    receipt[stage]=True
+    temporary=path.with_name(path.name+'.tmp')
+    temporary.write_text(json.dumps(receipt),encoding='utf-8');temporary.replace(path)
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--build-dir',type=pathlib.Path,default=ROOT/'tools/native-capture/build-prepare')
     parser.add_argument('--game-path',type=pathlib.Path,help='Supported installation EXE; defaults to repository installation')
     parser.add_argument('--foreground',action='store_true',help='Use the ordinary foreground game startup policy')
     parser.add_argument('--dll-name',default='GearsCapturePrepare.dll')
+    parser.add_argument('--launch-receipt',type=pathlib.Path,help=argparse.SUPPRESS)
     parser.add_argument('--check-shadow-copy',action='store_true',help='Require the bounded source-view copy self-test before startup; does not enable the experiment')
     parser.add_argument('--check-shadow-state',action='store_true',help='Require the independent state lifecycle self-test before startup')
     parser.add_argument('--prime-targets',action='store_true',help='Observe RTV creation/copies during loading, bounded to 180 seconds or capture handoff')
@@ -85,7 +97,13 @@ def main():
         if prime_export.forwarder:raise RuntimeError('Forwarded prime export rejected')
         prime_rva=prime_export.address
     pe.close()
-    run_hidden(debug_command(exe,foreground=args.foreground),check=True)
+    launch_command=debug_command(exe,foreground=args.foreground)
+    if args.launch_receipt is not None:launch_command+=['-LaunchReceipt',str(args.launch_receipt)]
+    run_hidden(launch_command,check=True)
+    born=None
+    if args.launch_receipt is not None:
+        born=json.loads(args.launch_receipt.read_text(encoding='utf-8'))
+        print(json.dumps({'reservation_birth':born}),flush=True)
     handle=None;deadline=time.monotonic()+12
     while time.monotonic()<deadline:
         result=run_hidden(['powershell','-NoProfile','-NonInteractive','-Command',"Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id"],capture_output=True,text=True)
@@ -93,6 +111,9 @@ def main():
         if len(pids)>1:raise RuntimeError('Ambiguous fresh process')
         if pids:
             pid=pids[0];handle=k.OpenProcess(0x43a,False,pid)
+            if born and WindowsControl().identity(pid)!=born['game_identity']:
+                if handle:k.CloseHandle(handle);handle=None
+                raise RuntimeError('Fresh process differs from born identity')
             if handle:
                 loaded=modules(handle)
                 if all(x in loaded for x in ('kernelbase.dll','gowde-steam.exe','d3d12.dll','dxgi.dll')):break
@@ -111,6 +132,9 @@ def main():
         if not k.GetModuleHandleExW(6,loader,c.byref(owner)):raise c.WinError(c.get_last_error())
         path=c.create_unicode_buffer(32768);k.GetModuleFileNameW(owner,path,len(path))
         remote=loaded[pathlib.Path(path.value).name.lower()][0]+loader-owner.value
+        # Persist before any capture allocation/write/remote execution. A caller
+        # must treat an interrupted injection as unknown, never as safe to retry.
+        mark_launch_stage(args.launch_receipt,game_identity,'injection_attempted')
         encoded=(str(dll)+'\0').encode('utf-16-le');memory=k.VirtualAllocEx(handle,None,len(encoded),0x3000,0x04)
         if not memory:raise c.WinError(c.get_last_error())
         count=c.c_size_t();buffer=c.create_string_buffer(encoded)
@@ -149,6 +173,7 @@ def main():
         if args.prime_targets:
             prime_memory=None;prime_finished=False
             try:
+                mark_launch_stage(args.launch_receipt,game_identity,'prime_attempted')
                 if owned:
                     argument=owner_argument(args.prime_owner_pid,args.prime_owner_creation_time)
                     prime_memory=k.VirtualAllocEx(handle,None,len(argument),0x3000,0x04)
