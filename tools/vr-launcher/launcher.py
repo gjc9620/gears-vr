@@ -44,11 +44,34 @@ def hud_horizontal_fov(config,manifest):
     return float(value)
 
 
+
+def hud_layout(config,manifest):
+    supported=manifest.get('hud_layout_control',False)
+    if type(supported) is not bool:raise ValueError('Manifest hud_layout_control must be boolean')
+    fields=('hud_element_scale','hud_center_scale')
+    explicit=any(key in config for key in fields)
+    if explicit and not supported:raise ValueError('Manifest does not support hud_layout_control')
+    if (supported or explicit) and not manifest.get('ui_hud_plane',False):
+        raise ValueError('HUD layout requires ui_hud_plane')
+    if not supported:return {}
+    result={}
+    for key,minimum,maximum in (('hud_element_scale',1,2),('hud_center_scale',0,1)):
+        default=manifest.get(key,1.)
+        if isinstance(default,bool) or not isinstance(default,(int,float)) or not minimum<=default<=maximum or not math.isfinite(default):
+            raise ValueError(f'Manifest {key} must be finite and between {minimum} and {maximum}')
+        value=config.get(key,default)
+        if isinstance(value,bool) or not isinstance(value,(int,float)) or not minimum<=value<=maximum or not math.isfinite(value):
+            raise ValueError(f'{key} must be finite and between {minimum} and {maximum}')
+        result[key]=float(value)
+    return result
+
+
 def settings(config,manifest,root=ROOT):
-    if set(config)-{'game_path','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language'}:raise ValueError('Unknown configuration field')
+    if set(config)-{'game_path','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language','hud_element_scale','hud_center_scale'}:raise ValueError('Unknown configuration field')
     if 'launcher_language' in config and config['launcher_language'] not in ('zh-CN','en'):
         raise ValueError('launcher_language must be zh-CN or en')
     hud_horizontal_fov(config,manifest)
+    hud_layout(config,manifest)
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
     if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','graphics_startup_lock','graphics_menu_lock')):
         raise ValueError('Manifest session options must be boolean')
@@ -357,6 +380,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
         hud_fov=hud_horizontal_fov(config,manifest)
         if hud_fov is not None:args.hud_horizontal_fov_degrees=hud_fov
+        for key,value in hud_layout(config,manifest).items():setattr(args,key,value)
         if owned_prime:
             deadline=clock()+30
             while clock()<deadline:

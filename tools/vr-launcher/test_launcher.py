@@ -3,6 +3,7 @@ import json
 import os
 import pathlib
 import struct
+import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -386,6 +387,52 @@ class LauncherTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'Crosshair assignment'):
                 launcher.settings({},dict(MANIFEST,crosshair_assignment_observer=True,ui_observer=ui,anchor_observer=anchor))
         launcher.settings({},dict(MANIFEST,crosshair_assignment_observer=True,ui_observer=True,anchor_observer=True))
+
+    def test_hud_layout_capability_and_validation(self):
+        capable=dict(MANIFEST,hud_layout_control=True,ui_hud_plane=True,ui_observer=True,anchor_observer=True)
+        self.assertEqual(launcher.hud_layout({},MANIFEST),{})
+        self.assertEqual(launcher.hud_layout({},dict(MANIFEST,hud_layout_control=False)),{})
+        self.assertEqual(launcher.hud_layout({},capable),dict(hud_element_scale=1.,hud_center_scale=1.))
+        for key,good,bad in (('hud_element_scale',(1,1.2,2),(.99,2.01)),('hud_center_scale',(0,.8,1),(-.01,1.01))):
+            for value in good:self.assertEqual(launcher.hud_layout({key:value},capable)[key],float(value))
+            for value in (*bad,True,False,None,'1',float('nan'),float('inf')):
+                with self.subTest(key=key,value=value),self.assertRaisesRegex(ValueError,key):
+                    launcher.settings({key:value},capable)
+            for manifest in (MANIFEST,dict(capable,hud_layout_control=False),dict(capable,ui_hud_plane=False)):
+                with self.assertRaises(ValueError):launcher.settings({key:1},manifest)
+        defaults=dict(capable,hud_element_scale=1.2,hud_center_scale=.8)
+        self.assertEqual(launcher.hud_layout({},defaults),dict(hud_element_scale=1.2,hud_center_scale=.8))
+        self.assertEqual(launcher.hud_layout(dict(hud_element_scale=1.5,hud_center_scale=.5),defaults),dict(hud_element_scale=1.5,hud_center_scale=.5))
+        for key,invalid in (('hud_element_scale',2.1),('hud_center_scale',-.1),('hud_element_scale',True),('hud_center_scale',float('nan'))):
+            with self.subTest(key=key,invalid=invalid),self.assertRaisesRegex(ValueError,'Manifest '+key):
+                launcher.settings({key:1},dict(defaults,**{key:invalid}))
+        for flag in (True,1,'true',None):
+            with self.subTest(flag=flag),self.assertRaises(ValueError):
+                launcher.settings({},dict(MANIFEST,hud_layout_control=flag))
+
+    def test_hud_layout_launcher_runner_and_native_command(self):
+        spec=importlib.util.spec_from_file_location('layout_runner',launcher.ROOT/'tools/native-capture/run_stereo_continuous.py')
+        runner=importlib.util.module_from_spec(spec)
+        with mock.patch.object(sys,'path',[str(launcher.ROOT/'tools/native-capture'),*sys.path]):spec.loader.exec_module(runner)
+        capable=dict(MANIFEST,hud_layout_control=True,ui_hud_plane=True,ui_observer=True,anchor_observer=True)
+        fields=('hud_element_scale','hud_center_scale')
+        for manifest,config,expected in ((MANIFEST,{},{}),(capable,{},dict.fromkeys(fields,1.)),
+                (dict(capable,hud_element_scale=1.2,hud_center_scale=.8),{},dict(hud_element_scale=1.2,hud_center_scale=.8)),
+                (capable,dict(hud_element_scale=1.2,hud_center_scale=.8,launcher_language='en'),dict(hud_element_scale=1.2,hud_center_scale=.8))):
+            with tempfile.TemporaryDirectory() as directory:
+                backend=FakeBackend();before=dict(config)
+                with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                    launcher.start(config,manifest,backend,pathlib.Path(directory)/'index.json',sleep=lambda seconds:None)
+                args=backend.runner.run_session.call_args.args[0]
+                command=runner.native_command(args,dict(pid=100,creation_time=123))
+                for key in fields:
+                    flag='--'+key.replace('_','-')
+                    if key in expected:
+                        self.assertEqual(getattr(args,key),expected[key])
+                        self.assertEqual(command[command.index(flag)+1],str(expected[key]))
+                    else:
+                        self.assertFalse(hasattr(args,key));self.assertNotIn(flag,command)
+                self.assertEqual(config,before)
 
     def test_hud_size_config_capability_range_and_legacy_tuple(self):
         capable=dict(MANIFEST,hud_size_control=True,ui_hud_plane=True,ui_observer=True,anchor_observer=True)

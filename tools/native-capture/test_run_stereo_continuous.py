@@ -50,6 +50,41 @@ class ContinuousTests(unittest.TestCase):
             self.assertEqual(runner.native_command(args,identity(100)).count(flag),1)
             self.assertNotIn(flag,runner.xr_command(args,pathlib.Path('x.csv'),identity(100)))
 
+    def test_hud_layout_cli_validation_and_native_forwarding(self):
+        base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
+        hud=['--ui-hud-plane','--ui-observer','--anchor-observer']
+        with mock.patch.object(runner,'run_session',return_value=0) as run:
+            runner.main(base)
+            command=runner.native_command(run.call_args.args[0],identity(100))
+            for flag,values in (('--hud-element-scale',('nan','inf','.99','2.01','true')),
+                                ('--hud-center-scale',('nan','inf','-.01','1.01','true'))):
+                self.assertNotIn(flag,command)
+                for extra in ([flag,'1'],*[hud+[flag,value] for value in values]):
+                    run.reset_mock()
+                    with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):runner.main(base+extra)
+                    run.assert_not_called()
+            runner.main(base+hud+['--hud-element-scale','1.2','--hud-center-scale','.8'])
+            args=run.call_args.args[0];command=runner.native_command(args,identity(100))
+            for key,value in (('hud_element_scale',1.2),('hud_center_scale',.8)):
+                flag='--'+key.replace('_','-')
+                self.assertEqual(command[command.index(flag)+1],str(value))
+                self.assertNotIn(flag,runner.xr_command(args,pathlib.Path('x.csv'),identity(100)))
+                setattr(args,key,True)
+                with self.assertRaises(ValueError):runner.native_command(args,identity(100))
+                setattr(args,key,value)
+
+    def test_hud_layout_session_report_and_native_command(self):
+        code,state,spawn,native,control,child=self.run_mock(ui_hud_plane=True,hud_layout=(1.2,.8))
+        self.assertEqual(code,0)
+        for key,value in (('hud_element_scale',1.2),('hud_center_scale',.8)):
+            self.assertEqual(state[key],value)
+            command=native.call_args_list[0].args[0];flag='--'+key.replace('_','-')
+            self.assertEqual(command[command.index(flag)+1],str(value))
+        _,legacy,_,native,_,_=self.run_mock()
+        for key in ('hud_element_scale','hud_center_scale'):
+            self.assertNotIn(key,legacy)
+            self.assertNotIn('--'+key.replace('_','-'),native.call_args_list[0].args[0])
+
     def test_hud_size_cli_validation_and_native_forwarding(self):
         base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
         hud=['--ui-hud-plane','--ui-observer','--anchor-observer']
@@ -330,7 +365,7 @@ class ContinuousTests(unittest.TestCase):
             self.assertIsNone(runner.read_session_status(path,124,0))
             self.assertEqual(runner.read_session_status(path,123,0)['phase'],'stopped')
 
-    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False):
+    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False,hud_layout=None):
         with tempfile.TemporaryDirectory() as folder:
             root=pathlib.Path(folder);build=root/'native';build.mkdir()
             (build/'capture-status.txt').write_text('capturing pid=123 stopped disable_status=0 active=0')
@@ -341,6 +376,7 @@ class ContinuousTests(unittest.TestCase):
             if origin_trial:args.origin_trial=True;args.anchor_observer=True
             if image_ticket_diagnostics:args.image_ticket_diagnostics=True
             if ui_hud_plane:args.ui_hud_plane=True;args.ui_observer=True;args.anchor_observer=True
+            if hud_layout:args.hud_element_scale,args.hud_center_scale=hud_layout
             if startup_menu:args.startup_menu_window=789
             if world_recovery:
                 args.world_recovery=True;args.anchor_observer=True;args.ui_observer=True

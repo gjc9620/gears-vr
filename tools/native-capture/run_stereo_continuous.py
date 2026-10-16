@@ -99,6 +99,12 @@ def validate_ui_hud_plane(args):
         if not getattr(args,'ui_hud_plane',False):raise ValueError('HUD size requires --ui-hud-plane')
         if isinstance(value,bool) or not isinstance(value,(int,float)) or not 45<=value<=100 or not math.isfinite(value):
             raise ValueError('hud_horizontal_fov_degrees must be finite and between 45 and 100')
+    for key,minimum,maximum in (('hud_element_scale',1,2),('hud_center_scale',0,1)):
+        value=getattr(args,key,None)
+        if value is not None:
+            if not getattr(args,'ui_hud_plane',False):raise ValueError('HUD layout requires --ui-hud-plane')
+            if isinstance(value,bool) or not isinstance(value,(int,float)) or not minimum<=value<=maximum or not math.isfinite(value):
+                raise ValueError(f'{key} must be finite and between {minimum} and {maximum}')
     if getattr(args,'cinematic_camera',False) and (not getattr(args,'anchor_observer',False) or getattr(args,'origin_trial',False)):
         raise ValueError('Cinematic camera requires anchor observer and cannot use the Pawn origin trial')
     if getattr(args,'world_recovery',False):
@@ -133,6 +139,9 @@ def native_command(args,owner):
     if getattr(args,'crosshair_assignment_observer',False):command.append('--crosshair-assignment-observer')
     if getattr(args,'hud_horizontal_fov_degrees',None) is not None:
         command+=['--hud-horizontal-fov-degrees',str(args.hud_horizontal_fov_degrees)]
+    for key in ('hud_element_scale','hud_center_scale'):
+        value=getattr(args,key,None)
+        if value is not None:command+=['--'+key.replace('_','-'),str(value)]
     return command
 
 
@@ -367,6 +376,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'owner_identity':None,'game_identity':None,
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
+    state.update({key:getattr(args,key) for key in ('hud_element_scale','hud_center_scale') if getattr(args,key,None) is not None})
     child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
@@ -582,6 +592,8 @@ def main(argv=None):
     start.add_argument('--ui-hud-plane',action='store_true')
     start.add_argument('--crosshair-assignment-observer',action='store_true')
     start.add_argument('--hud-horizontal-fov-degrees',type=float)
+    start.add_argument('--hud-element-scale',type=float)
+    start.add_argument('--hud-center-scale',type=float)
     start.add_argument('--image-ticket-diagnostics',action='store_true')
     start.add_argument('--gpu-snapshot',action='store_true',help='Enable bounded original-resolution GPU snapshots: one automatic, additional captures via snapshot command')
     start.add_argument('--outage-diagnostics',action='store_true')
