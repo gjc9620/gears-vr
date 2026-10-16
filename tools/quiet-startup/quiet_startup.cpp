@@ -3,14 +3,26 @@
 #include <MinHook.h>
 #include <array>
 #include <atomic>
+#include <type_traits>
 
 namespace {
 std::atomic<bool> enabled{};
 std::array<std::atomic<std::uint64_t>,gears_quiet::count> suppressed{};
 std::atomic<bool> trace_enabled{},trace_overflow{};
 std::atomic<unsigned> trace_next{};
-struct TraceSlot {std::atomic<bool> complete{};gears_quiet::TraceRecord record{};};
+struct TraceSlot {std::atomic<bool> complete{};gears_quiet::TraceRecord2 record{};};
 std::array<TraceSlot,gears_quiet::trace_capacity> trace_slots{};
+std::uint64_t qpc_frequency{};
+gears_quiet::StartupSnapshot startup{};
+std::uint64_t qpc() noexcept {LARGE_INTEGER value{};QueryPerformanceCounter(&value);return value.QuadPart;}
+gears_quiet::GuiThreadSnapshot gui(DWORD thread) noexcept {
+    gears_quiet::GuiThreadSnapshot result;GUITHREADINFO info{sizeof(info)};
+    result.valid=GetGUIThreadInfo(thread,&info)!=FALSE;
+    if(result.valid){result.flags=info.flags;result.active=reinterpret_cast<uintptr_t>(info.hwndActive);
+        result.focus=reinterpret_cast<uintptr_t>(info.hwndFocus);result.capture=reinterpret_cast<uintptr_t>(info.hwndCapture);}
+    else result.error=GetLastError();
+    return result;
+}
 struct TraceCall {
     TraceSlot* slot{};
     TraceCall(unsigned call,HWND target,std::uint64_t argument=0,HWND related=nullptr,std::uint64_t extra=0) noexcept {
@@ -24,6 +36,7 @@ struct TraceCall {
             r.sequence=index+1;r.call=call;r.thread=GetCurrentThreadId();
             r.target=reinterpret_cast<uintptr_t>(target);r.related=reinterpret_cast<uintptr_t>(related);
             r.argument=r.effective_argument=argument;r.extra_argument=extra;
+            r.enter_qpc=qpc();r.gui_before=gui(r.thread);
             r.enter_tick=GetTickCount64();r.foreground_before=reinterpret_cast<uintptr_t>(GetForegroundWindow());
             void* stack[gears_quiet::trace_stack_capacity]{};
             r.stack_count=CaptureStackBackTrace(1,gears_quiet::trace_stack_capacity,stack,nullptr);
@@ -31,15 +44,67 @@ struct TraceCall {
         }
         SetLastError(error);
     }
+    template<class T> static std::uint64_t bits(T value) noexcept {
+        if constexpr(std::is_pointer_v<T>)return reinterpret_cast<uintptr_t>(value);
+        else return static_cast<std::uint64_t>(value);
+    }
+    template<class T> T returned(T value) noexcept {
+        if(slot){slot->record.returned_value=bits(value);slot->record.return_valid=1;}return value;
+    }
+    template<class T> T native(T value,unsigned call=~0u) noexcept {
+        if(slot){auto& r=slot->record;r.native_value=bits(value);r.native_valid=1;
+            r.native_call=call==~0u?r.call:call;r.native_last_error=GetLastError();}return returned(value);
+    }
     void policy(std::uint64_t effective) noexcept {if(slot){slot->record.suppressed=1;slot->record.effective_argument=effective;}}
     void created(HWND window) noexcept {if(slot)slot->record.result_window=reinterpret_cast<uintptr_t>(window);}
     ~TraceCall() noexcept {
         if(!slot)return;
         const DWORD error=GetLastError();auto& r=slot->record;
+        r.leave_qpc=qpc();r.gui_after=gui(r.thread);
         r.leave_tick=GetTickCount64();r.foreground_after=reinterpret_cast<uintptr_t>(GetForegroundWindow());
         slot->complete.store(true,std::memory_order_release);SetLastError(error);
     }
 };
+// Thread-local CBT observation only. Never veto activation or system commands.
+std::atomic<DWORD> cbt_thread{},cbt_error{};
+std::atomic<bool> cbt_installed{},cbt_overflow{};
+std::atomic<unsigned> cbt_next{};
+std::array<TraceSlot,gears_quiet::trace_capacity> cbt_slots{};
+LRESULT CALLBACK observe_cbt(int code,WPARAM wparam,LPARAM lparam) {
+    TraceSlot* slot=nullptr;const DWORD entry_error=GetLastError();
+    if((code==HCBT_ACTIVATE||code==HCBT_SYSCOMMAND)&&GetCurrentThreadId()==cbt_thread.load(std::memory_order_relaxed)){
+        auto index=cbt_next.load(std::memory_order_relaxed);
+        while(index<gears_quiet::trace_capacity&&!cbt_next.compare_exchange_weak(index,index+1,std::memory_order_relaxed)){}
+        if(index>=gears_quiet::trace_capacity)cbt_overflow.store(true,std::memory_order_relaxed);
+        else {
+            slot=&cbt_slots[index];auto& r=slot->record;r.sequence=index+1;r.call=code;r.thread=GetCurrentThreadId();
+            r.enter_qpc=qpc();r.enter_tick=GetTickCount64();r.foreground_before=reinterpret_cast<uintptr_t>(GetForegroundWindow());r.gui_before=gui(r.thread);
+            if(code==HCBT_ACTIVATE){const auto* data=reinterpret_cast<const CBTACTIVATESTRUCT*>(lparam);
+                r.target=wparam;r.related=reinterpret_cast<uintptr_t>(data->hWndActive);r.argument=data->fMouse;}
+            else {r.argument=wparam;r.related=static_cast<std::uint64_t>(lparam);}
+            r.effective_argument=r.argument;void* stack[gears_quiet::trace_stack_capacity]{};
+            r.stack_count=CaptureStackBackTrace(1,gears_quiet::trace_stack_capacity,stack,nullptr);
+            for(unsigned i=0;i<r.stack_count;++i)r.stack[i]=reinterpret_cast<uintptr_t>(stack[i]);
+        }
+    }
+    SetLastError(entry_error);
+    const LRESULT result=CallNextHookEx(nullptr,code,wparam,lparam);const DWORD leave_error=GetLastError();
+    if(slot){auto& r=slot->record;r.leave_qpc=qpc();r.leave_tick=GetTickCount64();
+        r.foreground_after=reinterpret_cast<uintptr_t>(GetForegroundWindow());r.gui_after=gui(r.thread);
+        r.native_value=r.returned_value=static_cast<std::uint64_t>(result);r.native_valid=r.return_valid=1;
+        r.native_call=code;r.native_last_error=leave_error;slot->complete.store(true,std::memory_order_release);}
+    SetLastError(leave_error);return result;
+}
+void observe_gui_thread(DWORD style,HWND parent) noexcept {
+    if(!trace_enabled.load(std::memory_order_acquire)||(style&WS_CHILD)||parent!=nullptr)return;
+    const DWORD saved=GetLastError(),thread=GetCurrentThreadId();DWORD empty=0;
+    if(cbt_thread.compare_exchange_strong(empty,thread,std::memory_order_relaxed)){
+        const HHOOK hook=SetWindowsHookExW(WH_CBT,observe_cbt,nullptr,thread);
+        if(hook)cbt_installed.store(true,std::memory_order_release);
+        else cbt_error.store(GetLastError(),std::memory_order_release);
+    }
+    SetLastError(saved);
+}
 decltype(&ShowWindow) original_show{};
 decltype(&SetForegroundWindow) original_foreground{};
 decltype(&SetActiveWindow) original_active{};
@@ -60,12 +125,12 @@ bool trace_window_message(UINT message) noexcept {
 LRESULT WINAPI def_window_w(HWND window,UINT message,WPARAM wparam,LPARAM lparam) {
     if(!trace_window_message(message))return original_def_window_w(window,message,wparam,lparam);
     TraceCall trace(gears_quiet::def_window_w,window,message,reinterpret_cast<HWND>(wparam),static_cast<std::uint64_t>(lparam));
-    return original_def_window_w(window,message,wparam,lparam);
+    return trace.native(original_def_window_w(window,message,wparam,lparam));
 }
 LRESULT WINAPI def_window_a(HWND window,UINT message,WPARAM wparam,LPARAM lparam) {
     if(!trace_window_message(message))return original_def_window_a(window,message,wparam,lparam);
     TraceCall trace(gears_quiet::def_window_a,window,message,reinterpret_cast<HWND>(wparam),static_cast<std::uint64_t>(lparam));
-    return original_def_window_a(window,message,wparam,lparam);
+    return trace.native(original_def_window_a(window,message,wparam,lparam));
 }
 
 bool own(HWND window) {
@@ -86,9 +151,9 @@ BOOL WINAPI show(HWND window,int command) {
             // when this application was in the background. Hide without a
             // z-order/activation operation, preserving ShowWindow's result.
             const BOOL was_visible=IsWindowVisible(window);
-            original_position(window,nullptr,0,0,0,0,
-                SWP_HIDEWINDOW|SWP_NOACTIVATE|SWP_NOZORDER|SWP_NOMOVE|SWP_NOSIZE);
-            trace.policy(SW_HIDE);note(gears_quiet::show);return was_visible;
+            trace.native(original_position(window,nullptr,0,0,0,0,
+                SWP_HIDEWINDOW|SWP_NOACTIVATE|SWP_NOZORDER|SWP_NOMOVE|SWP_NOSIZE),gears_quiet::position);
+            trace.policy(SW_HIDE);note(gears_quiet::show);return trace.returned(was_visible);
         }
         case SW_SHOWNORMAL: case SW_SHOWMAXIMIZED: case SW_SHOW:
         case SW_RESTORE: case SW_SHOWDEFAULT:
@@ -98,22 +163,22 @@ BOOL WINAPI show(HWND window,int command) {
         default:break;
         }
     }
-    return original_show(window,command);
+    return trace.native(original_show(window,command));
 }
 BOOL WINAPI foreground(HWND window) {
     TraceCall trace(gears_quiet::foreground,window);
-    if(guard(window,false)) {trace.policy(0);note(gears_quiet::foreground);return FALSE;}
-    return original_foreground(window);
+    if(guard(window,false)) {trace.policy(0);note(gears_quiet::foreground);return trace.returned(FALSE);}
+    return trace.native(original_foreground(window));
 }
 HWND WINAPI active(HWND window) {
     TraceCall trace(gears_quiet::active,window);
-    if(guard(window,false)) {trace.policy(0);note(gears_quiet::active);return GetActiveWindow();}
-    return original_active(window);
+    if(guard(window,false)) {trace.policy(0);note(gears_quiet::active);return trace.returned(GetActiveWindow());}
+    return trace.native(original_active(window));
 }
 HWND WINAPI focus(HWND window) {
     TraceCall trace(gears_quiet::focus,window);
-    if(guard(window,false)) {trace.policy(0);note(gears_quiet::focus);return GetFocus();}
-    return original_focus(window);
+    if(guard(window,false)) {trace.policy(0);note(gears_quiet::focus);return trace.returned(GetFocus());}
+    return trace.native(original_focus(window));
 }
 BOOL WINAPI position(HWND window,HWND after,int x,int y,int width,int height,UINT flags) {
     TraceCall trace(gears_quiet::position,window,flags,after);
@@ -122,12 +187,12 @@ BOOL WINAPI position(HWND window,HWND after,int x,int y,int width,int height,UIN
         trace.policy(flags);
         note(gears_quiet::position);
     }
-    return original_position(window,after,x,y,width,height,flags);
+    return trace.native(original_position(window,after,x,y,width,height,flags));
 }
 BOOL WINAPI bring(HWND window) {
     TraceCall trace(gears_quiet::bring,window);
-    if(guard(window)) {trace.policy(0);note(gears_quiet::bring);return TRUE;}
-    return original_bring(window);
+    if(guard(window)) {trace.policy(0);note(gears_quiet::bring);return trace.returned(TRUE);}
+    return trace.native(original_bring(window));
 }
 // WS_EX_NOACTIVATE alone still changes the creating thread's active window.
 // Create hidden, then show without activation. Keep the caller's extended
@@ -137,21 +202,23 @@ void finish_create(HWND window,DWORD style,bool guarded) {
 }
 HWND WINAPI create_w(DWORD exstyle,LPCWSTR cls,LPCWSTR title,DWORD style,int x,int y,int width,int height,
                      HWND parent,HMENU menu,HINSTANCE instance,LPVOID argument) {
+    observe_gui_thread(style,parent);
     TraceCall trace(gears_quiet::create_w,nullptr,style,parent,exstyle);
     const bool guarded=background() && !(style&WS_CHILD) && parent!=HWND_MESSAGE;
     if(guarded)trace.policy(style&~WS_VISIBLE);
     if(guarded)note(gears_quiet::create_w);
     HWND result=original_create_w(exstyle,cls,title,guarded?style&~WS_VISIBLE:style,x,y,width,height,parent,menu,instance,argument);
-    DWORD error=GetLastError();finish_create(result,style,guarded);trace.created(result);SetLastError(error);return result;
+    DWORD error=GetLastError();trace.native(result);finish_create(result,style,guarded);trace.created(result);SetLastError(error);return result;
 }
 HWND WINAPI create_a(DWORD exstyle,LPCSTR cls,LPCSTR title,DWORD style,int x,int y,int width,int height,
                      HWND parent,HMENU menu,HINSTANCE instance,LPVOID argument) {
+    observe_gui_thread(style,parent);
     TraceCall trace(gears_quiet::create_a,nullptr,style,parent,exstyle);
     const bool guarded=background() && !(style&WS_CHILD) && parent!=HWND_MESSAGE;
     if(guarded)trace.policy(style&~WS_VISIBLE);
     if(guarded)note(gears_quiet::create_a);
     HWND result=original_create_a(exstyle,cls,title,guarded?style&~WS_VISIBLE:style,x,y,width,height,parent,menu,instance,argument);
-    DWORD error=GetLastError();finish_create(result,style,guarded);trace.created(result);SetLastError(error);return result;
+    DWORD error=GetLastError();trace.native(result);finish_create(result,style,guarded);trace.created(result);SetLastError(error);return result;
 }
 }
 
@@ -187,8 +254,17 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsQuietInstall(void*) {
         for(unsigned i=0;i<created;++i)MH_RemoveHook(targets[i]);
         MH_Uninitialize();return created>=gears_quiet::count?ERROR_NOT_SUPPORTED:ERROR_INVALID_FUNCTION;
     }
+    if(tracing){
+        const DWORD saved=GetLastError();LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);qpc_frequency=frequency.QuadPart;
+        STARTUPINFOW info{sizeof(info)};GetStartupInfoW(&info);
+        startup.flags=info.dwFlags;startup.show_window=info.wShowWindow;startup.x=info.dwX;startup.y=info.dwY;
+        startup.width=info.dwXSize;startup.height=info.dwYSize;startup.columns=info.dwXCountChars;
+        startup.rows=info.dwYCountChars;startup.fill=info.dwFillAttribute;
+        startup.input=reinterpret_cast<uintptr_t>(info.hStdInput);startup.output=reinterpret_cast<uintptr_t>(info.hStdOutput);
+        startup.error=reinterpret_cast<uintptr_t>(info.hStdError);SetLastError(saved);
+    }
     // Entry thread is still held by the launcher. Publish policy before enabling.
-    trace_enabled.store(tracing,std::memory_order_relaxed);
+    trace_enabled.store(tracing,std::memory_order_release);
     enabled.store(true,std::memory_order_release);
     if(MH_EnableHook(MH_ALL_HOOKS)!=MH_OK) {
         enabled.store(false,std::memory_order_release);
@@ -213,6 +289,31 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsQuietTrace(void* output) {
     out->overflow=trace_overflow.load(std::memory_order_relaxed);
     for(unsigned i=0;i<out->reserved_count;++i){
         if(trace_slots[i].complete.load(std::memory_order_acquire))out->records[out->completed++]=trace_slots[i].record;
+        else ++out->busy_skipped;
+    }
+    return ERROR_SUCCESS;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsQuietTrace2(void* output) {
+    if(!output)return ERROR_INVALID_PARAMETER;
+    auto* out=static_cast<gears_quiet::TraceSnapshot2*>(output);*out=gears_quiet::TraceSnapshot2{};
+    out->enabled=trace_enabled.load(std::memory_order_acquire);out->qpc_frequency=qpc_frequency;out->startup=startup;
+    out->reserved_count=trace_next.load(std::memory_order_relaxed);out->overflow=trace_overflow.load(std::memory_order_relaxed);
+    for(unsigned i=0;i<out->reserved_count;++i){
+        if(trace_slots[i].complete.load(std::memory_order_acquire))out->records[out->completed++]=trace_slots[i].record;
+        else ++out->busy_skipped;
+    }
+    return ERROR_SUCCESS;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI GearsQuietCbtTrace(void* output) {
+    if(!output)return ERROR_INVALID_PARAMETER;
+    auto* out=static_cast<gears_quiet::CbtSnapshot*>(output);*out=gears_quiet::CbtSnapshot{};
+    out->enabled=trace_enabled.load(std::memory_order_acquire);out->qpc_frequency=qpc_frequency;
+    out->installed=cbt_installed.load(std::memory_order_acquire);out->thread=cbt_thread.load(std::memory_order_relaxed);
+    out->install_error=cbt_error.load(std::memory_order_acquire);
+    const auto count=cbt_next.load(std::memory_order_relaxed);out->reserved_count=count<gears_quiet::trace_capacity?count:gears_quiet::trace_capacity;
+    out->overflow=cbt_overflow.load(std::memory_order_relaxed);
+    for(unsigned i=0;i<out->reserved_count;++i){
+        if(cbt_slots[i].complete.load(std::memory_order_acquire))out->records[out->completed++]=cbt_slots[i].record;
         else ++out->busy_skipped;
     }
     return ERROR_SUCCESS;

@@ -25,6 +25,11 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
         timeline[timeline_count++]={GetTickCount64(),stage,edge,GetForegroundWindow(),GetActiveWindow()};};
     auto step=[&](const char* stage,auto operation){observe(stage,"before");auto result=operation();observe(stage,"after");return result;};
     const HWND prior=GetForegroundWindow();
+    const auto cbt_query=reinterpret_cast<gears_quiet::ReadTrace>(GetProcAddress(policy,"GearsQuietCbtTrace"));
+    auto cbt=std::make_unique<gears_quiet::CbtSnapshot>();
+    HWND message_only=CreateWindowExW(0,cls.lpszClassName,L"Message only",0,0,0,0,0,HWND_MESSAGE,nullptr,instance,nullptr);
+    bool cbt_valid=cbt_query&&cbt_query(cbt.get())==0&&cbt->thread==0&&!cbt->installed;
+    if(message_only)DestroyWindow(message_only);
     HWND window=step("create_window_w",[&](){return CreateWindowExW(0,cls.lpszClassName,L"Quiet startup fixture",WS_OVERLAPPEDWINDOW|WS_VISIBLE,
                                -30000,-30000,320,240,nullptr,nullptr,instance,nullptr);});
     if(!window)return 13;
@@ -74,35 +79,57 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
         if(i==15){step("window_restore",[&](){return ShowWindow(window,SW_RESTORE);});step("set_foreground",[&](){return SetForegroundWindow(window);});}
         Sleep(10);
     }
+    step("system_minimize",[&](){return SendMessageW(window,WM_SYSCOMMAND,SC_MINIMIZE,0);});
+    step("system_restore",[&](){return ShowWindow(window,SW_RESTORE);});
     const bool visible=IsWindowVisible(window)!=FALSE;
     const bool clickable=(GetWindowLongPtrW(window,GWL_EXSTYLE)&WS_EX_NOACTIVATE)==0;
     const bool topmost=(GetWindowLongPtrW(window,GWL_EXSTYLE)&WS_EX_TOPMOST)!=0;
     const HWND final=GetForegroundWindow();
     const bool same=final==prior && prior!=window&&prior!=ansi&&prior!=owned&&prior!=explicit_style;
     const bool queried=query(&after)==0&&after.installed==1;
-    const auto query_trace=reinterpret_cast<gears_quiet::ReadTrace>(GetProcAddress(policy,"GearsQuietTrace"));
-    auto trace=std::make_unique<gears_quiet::TraceSnapshot>();
+    const auto query_trace=reinterpret_cast<gears_quiet::ReadTrace>(GetProcAddress(policy,"GearsQuietTrace2"));
+    auto trace=std::make_unique<gears_quiet::TraceSnapshot2>();
     bool trace_valid=query_trace&&query_trace(trace.get())==ERROR_SUCCESS;
+    // Keep old readers safe and verify diagnostics do not change LastError.
+    const auto legacy_query=reinterpret_cast<gears_quiet::ReadTrace>(GetProcAddress(policy,"GearsQuietTrace"));
+    struct LegacyBuffer {gears_quiet::TraceSnapshot snapshot;std::uint64_t canary{0x123456789abcdef0ull};};
+    auto legacy=std::make_unique<LegacyBuffer>();
+    SetLastError(0x12345678);
+    trace_valid=trace_valid&&legacy_query&&legacy_query(&legacy->snapshot)==ERROR_SUCCESS&&
+        GetLastError()==0x12345678&&legacy->canary==0x123456789abcdef0ull&&legacy->snapshot.version==1;
     bool trace_requested=false;wchar_t trace_option[2]{};
     trace_requested=GetEnvironmentVariableW(L"GEARSVR_QUIET_TRACE",trace_option,2)==1&&trace_option[0]==L'1';
+    cbt_valid=cbt_valid&&cbt_query(cbt.get())==0&&cbt->version==1&&cbt->size==sizeof(*cbt)&&cbt->busy_skipped==0;
+    if(trace_requested){
+        cbt_valid=cbt_valid&&cbt->installed==1&&cbt->thread==GetCurrentThreadId()&&cbt->install_error==0&&cbt->completed>0;
+        for(unsigned i=0;i<cbt->completed;++i){const auto& r=cbt->records[i];
+            cbt_valid=cbt_valid&&(r.call==HCBT_ACTIVATE||r.call==HCBT_SYSCOMMAND)&&r.thread==cbt->thread&&
+                r.enter_qpc>0&&r.leave_qpc>=r.enter_qpc&&r.return_valid&&r.native_valid&&r.returned_value==r.native_value;}
+    }else cbt_valid=cbt_valid&&!cbt->installed&&!cbt->completed&&!cbt->thread;
+    trace_valid=trace_valid&&cbt_valid;
     bool trace_null=false,trace_passed=false,trace_blocked=false;unsigned trace_call_mask{};
     if(trace_valid&&trace_requested){
+        STARTUPINFOW startup{sizeof(startup)};GetStartupInfoW(&startup);
+        trace_valid=trace->startup.flags==startup.dwFlags&&trace->startup.show_window==startup.wShowWindow;
         SetActiveWindow(nullptr);SetFocus(nullptr);
-        trace_valid=query_trace(trace.get())==ERROR_SUCCESS&&trace->enabled==1&&trace->version==gears_quiet::trace_abi&&
+        trace_valid=trace_valid&&query_trace(trace.get())==ERROR_SUCCESS&&trace->enabled==1&&trace->version==2&&trace->qpc_frequency>0&&
             trace->size==sizeof(*trace)&&trace->capacity==gears_quiet::trace_capacity&&trace->completed>0&&trace->busy_skipped==0;
         for(unsigned i=0;i<trace->completed&&trace_valid;++i){const auto& row=trace->records[i];
             trace_valid=row.sequence==i+1&&row.call<gears_quiet::trace_call_count&&row.thread!=0&&row.stack_count>0&&
-                row.stack_count<=gears_quiet::trace_stack_capacity&&row.leave_tick>=row.enter_tick;
+                row.stack_count<=gears_quiet::trace_stack_capacity&&row.leave_tick>=row.enter_tick&&row.enter_qpc>0&&row.leave_qpc>=row.enter_qpc&&row.return_valid==1&&
+                row.gui_before.valid==1&&row.gui_after.valid==1&&(!row.native_valid||row.native_call<gears_quiet::trace_call_count);
             if(row.call<gears_quiet::count)trace_call_mask|=1u<<row.call;
+            if(row.suppressed&&(row.call==gears_quiet::foreground||row.call==gears_quiet::active||
+                row.call==gears_quiet::focus||row.call==gears_quiet::bring))trace_valid=trace_valid&&row.native_valid==0;
             trace_passed|=row.suppressed==0;trace_blocked|=row.suppressed==1;
             trace_null|=(row.call==gears_quiet::active||row.call==gears_quiet::focus)&&row.target==0&&row.suppressed==0;
         }
-        auto saved=std::make_unique<gears_quiet::TraceSnapshot>(*trace);
+        auto saved=std::make_unique<gears_quiet::TraceSnapshot2>(*trace);
         for(unsigned i=0;i<gears_quiet::trace_capacity+1;++i)ShowWindow(window,SW_SHOWNA);
         trace_valid=trace_valid&&query_trace(trace.get())==ERROR_SUCCESS&&trace->completed==gears_quiet::trace_capacity&&
             trace->reserved_count==gears_quiet::trace_capacity&&trace->overflow==1&&trace->busy_skipped==0&&
             trace_passed&&trace_blocked&&trace_null&&trace_call_mask==((1u<<gears_quiet::count)-1)&&
-            std::memcmp(trace->records,saved->records,saved->completed*sizeof(gears_quiet::TraceRecord))==0;
+            std::memcmp(trace->records,saved->records,saved->completed*sizeof(gears_quiet::TraceRecord2))==0;
     }else if(trace_valid){trace_valid=trace->enabled==0&&trace->completed==0&&trace->reserved_count==0&&trace->overflow==0;}
     if(explicit_style)step("destroy_explicit",[&](){return DestroyWindow(explicit_style);});if(owned)step("destroy_owned",[&](){return DestroyWindow(owned);});
     step("destroy_ansi",[&](){return DestroyWindow(ansi);});step("destroy_window",[&](){return DestroyWindow(window);});
@@ -118,6 +145,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
        <<",\"restore_again_preserved\":"<<restored_again<<",\"status_queried\":"<<queried<<",\"suppressed\":[";
     for(unsigned i=0;i<gears_quiet::count;++i){if(i)out<<',';out<<after.suppressed[i];}
     out<<"],\"trace_requested\":"<<trace_requested<<",\"trace_valid\":"<<trace_valid
+       <<",\"cbt_valid\":"<<cbt_valid<<",\"cbt_installed\":"<<cbt->installed<<",\"cbt_completed\":"<<cbt->completed
        <<",\"trace_completed\":"<<trace->completed<<",\"trace_overflow\":"<<trace->overflow
        <<",\"trace_null_passed\":"<<trace_null<<",\"trace_call_mask\":"<<trace_call_mask
        <<",\"windows\":{\"window\":"<<reinterpret_cast<uintptr_t>(window)
