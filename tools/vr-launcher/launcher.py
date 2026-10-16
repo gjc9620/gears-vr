@@ -67,8 +67,20 @@ def hud_layout(config,manifest):
     return result
 
 
+def camera_closer(config,manifest):
+    supported=manifest.get('camera_distance_control',False)
+    if type(supported) is not bool:raise ValueError('Manifest camera_distance_control must be boolean')
+    value=config.get('camera_closer_metres',0.)
+    if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not 0<=value<=.5:
+        raise ValueError('camera_closer_metres must be finite and between 0 and 0.5')
+    if value>0 and (not supported or not all(manifest.get(key,False) for key in ('anchor_observer','cinematic_camera'))):
+        raise ValueError('Camera closer requires supported build and cinematic/anchor guards')
+    return float(value)
+
+
 def settings(config,manifest,root=ROOT):
-    if set(config)-{'game_path','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language','hud_element_scale','hud_center_scale'}:raise ValueError('Unknown configuration field')
+    if set(config)-{'game_path','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language','hud_element_scale','hud_center_scale','camera_closer_metres'}:raise ValueError('Unknown configuration field')
+    camera_closer(config,manifest)
     if 'launcher_language' in config and config['launcher_language'] not in ('zh-CN','en'):
         raise ValueError('launcher_language must be zh-CN or en')
     hud_horizontal_fov(config,manifest)
@@ -441,6 +453,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         hud_fov=hud_horizontal_fov(config,manifest)
         if hud_fov is not None:args.hud_horizontal_fov_degrees=hud_fov
         for key,value in hud_layout(config,manifest).items():setattr(args,key,value)
+        args.camera_closer_metres=camera_closer(config,manifest)
         if owned_prime:
             deadline=clock()+30
             while clock()<deadline:

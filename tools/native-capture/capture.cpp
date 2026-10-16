@@ -36,6 +36,7 @@
 #include "outage_trace.h"
 #include "outage_sources.h"
 #include "anchor_observer.h"
+#include "camera_closer.h"
 #include "anchor_config_loader.h"
 #include "hook_entry_attestation.h"
 #include "world_rebind_metadata.h"
@@ -181,6 +182,8 @@ FrameBufferCount* frame_buffer_count(uintptr_t resource) {
     frame_link.invalidate();return nullptr;
 }
 double stereo_units_per_metre=100;
+double camera_closer_metres{};
+std::atomic<unsigned long long> camera_closer_applied{},camera_closer_inactive{},camera_closer_rejected{};
 gears_vr::StereoBridge stereo_bridge;
 gears_vr::StereoGate stereo_gate;
 std::mutex stereo_mutex;
@@ -778,6 +781,8 @@ void record_stereo_reference(const gears_submitted::FrameTicket& frame,long long
 void print_stereo(FILE* file) {
     if(!stereo_xr)return;
     std::lock_guard<std::mutex> lock(stereo_mutex);
+    fprintf(file,"camera_closer experimental=1 metres=%.9g applied=%llu inactive=%llu rejected=%llu clearance_metres=0.4 direction=original_camera collision_certified=0 gameplay_camera_modified=0\n",
+        camera_closer_metres,camera_closer_applied.load(),camera_closer_inactive.load(),camera_closer_rejected.load());
     fprintf(file,"stereo_xr enabled=1 units_per_metre=%.9g accepted=%llu first_qpc=%lld last_qpc=%lld first_sequence=%llu last_sequence=%llu first_ticket=%llu last_ticket=%llu gpu_published=%u simulator_operator=%d mode=%s\n",
         stereo_units_per_metre,stereo_accepted,stereo_first_qpc,stereo_last_qpc,stereo_first_sample.sequence,stereo_last_sample.sequence,stereo_first_ticket,stereo_last_ticket,stereo_publisher.frames.load(),simulator_operator,simulator_operator?"simulated":"real");
     const char* reasons[]={"accepted","initial","untracked","inactive","stale","replayed","session_changed","invalid","bridge_read","matrix","heading_unavailable"};
@@ -2163,6 +2168,18 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                 ++origin_prepare_failed;request_session_stop(SessionStop::proof_failure);service_session_stop_native();return false;}
             view=frame.origin.base;
         }
+        if(camera_closer_metres>0){
+            const bool gameplay=anchor&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
+                !anchor->anchor.cinematic&&anchor->anchor.target_identity.address==anchor->anchor.pawn;
+            gears_vr::Vector pawn_eye{};
+            if(gameplay)pawn_eye={anchor->anchor.location[0],anchor->anchor.location[1],
+                double(anchor->anchor.location[2])+anchor->anchor.eye_height};
+            gears_camera_closer::Result closer{};
+            if(!gears_camera_closer::prepare(view,camera_closer_metres,stereo_units_per_metre,gameplay,pawn_eye,closer)){
+                ++camera_closer_rejected;return false;}
+            view=closer.view;
+            if(closer.applied_units>0)++camera_closer_applied;else ++camera_closer_inactive;
+        }
         if(!gears_vr::stereo_matrices(view,projection,result.reference,result.sample,stereo_units_per_metre,frame.expected,simulator_operator)){
             ++stereo_rejections[9];
             if(origin_trial_enabled){request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
@@ -3425,6 +3442,11 @@ DWORD WINAPI worker(void*) {
     if(frame_link_diagnostics&&(!view_union_mask_fix||!prime_ready.load()||prime_done.load()||(!continuous_session&&submit_pair_seconds!=trial_seconds)||!submit_pair_enabled||!submit_output_bounds)) {
         fprintf(status,"rejected: frame link requires bounded view union pair and active target/factory prime\n");fclose(status);return 2;
     }
+    {wchar_t value[64]{};GetPrivateProfileStringW(L"Capture",L"camera_closer_metres",L"0",value,64,ini);
+        wchar_t* end{};camera_closer_metres=wcstod(value,&end);
+        if(end==value||*end||!gears_camera_closer::valid(camera_closer_metres)||
+           (camera_closer_metres>0&&(!stereo_xr||!continuous_session||!anchor_observer_enabled||!anchor_config.cinematic_enabled||origin_trial_enabled))){
+            fprintf(status,"rejected: camera closer requires 0-0.5 metres and stereo continuous cinematic/anchor guards, without origin trial\n");fclose(status);return 2;}}
     if(stereo_xr){wchar_t scale[64]{};GetPrivateProfileStringW(L"Capture",L"stereo_units_per_metre",L"100",scale,64,ini);
         wchar_t* end{};stereo_units_per_metre=wcstod(scale,&end);
         if(end==scale || *end || !std::isfinite(stereo_units_per_metre) || stereo_units_per_metre<10 || stereo_units_per_metre>500 ||

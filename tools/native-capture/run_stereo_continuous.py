@@ -19,6 +19,7 @@ import time
 import uuid
 
 from run_stereo_probe import ROOT, complete_csv_rows, collect_xr_evidence
+from camera_closer_options import camera_closer_metres
 
 class WindowsControl:
     def __init__(self):
@@ -91,6 +92,7 @@ def checked_identity(control,expected,allow_exited=False):
 
 
 def validate_ui_hud_plane(args):
+    camera_closer_metres(args)
     if getattr(args,'crosshair_assignment_observer',False) and (not all(
             getattr(args,key,False) for key in ('ui_observer','anchor_observer')) or getattr(args,'origin_trial',False)):
         raise ValueError('Crosshair assignment observer requires continuous UI/anchor observers and cannot use origin trial')
@@ -130,6 +132,7 @@ def native_command(args,owner):
             '--viewport-diagnostics','--color-copy-diagnostics','--view-union-mask-fix',
             '--stereo-xr','--stereo-units-per-metre',str(args.stereo_units_per_metre),
             '--frame-link-diagnostics','--require-target-prime','--stereo-gpu-publish']
+    if camera_closer_metres(args)>0:command+=['--camera-closer-metres',str(camera_closer_metres(args))]
     if getattr(args,'outage_diagnostics',False):command.append('--outage-diagnostics')
     if getattr(args,'anchor_observer',False):command.append('--anchor-observer')
     if getattr(args,'cinematic_camera',False):command.append('--cinematic-camera')
@@ -372,6 +375,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'ui_hud_plane_enabled':bool(getattr(args,'ui_hud_plane',False)),
            'crosshair_assignment_observer_enabled':bool(getattr(args,'crosshair_assignment_observer',False)),
            'hud_horizontal_fov_degrees':getattr(args,'hud_horizontal_fov_degrees',None),
+           'camera_closer_metres':camera_closer_metres(args),
            'gpu_snapshot_requested':bool(getattr(args,'gpu_snapshot',False)),
            'owner_identity':None,'game_identity':None,
            'session_report':str(state_path),'native_started':False,
@@ -580,6 +584,7 @@ def main(argv=None):
     start.add_argument('--dll-name',required=True)
     start.add_argument('--xr-build-dir',type=pathlib.Path,required=True)
     start.add_argument('--stereo-units-per-metre',type=float,default=100.)
+    start.add_argument('--camera-closer-metres',type=float,default=0.)
     start.add_argument('--startup-timeout',type=float,default=45.)
     start.add_argument('--cleanup-timeout',type=float,default=35.)
     start.add_argument('--anchor-observer','--anchor-diagnostics',dest='anchor_observer',action='store_true')

@@ -52,6 +52,17 @@ class FakeBackend:
         return dict(pawn='0x200',controller='0x100',camera='0x400',level='0x300',timestamp=float(self.samples))
 
 class LauncherTests(unittest.TestCase):
+    def test_camera_distance_capability_and_value(self):
+        manifest={'camera_distance_control':True,'anchor_observer':True,'cinematic_camera':True}
+        self.assertEqual(launcher.camera_closer({},{}),0)
+        for value in (0,.3,.5):self.assertEqual(launcher.camera_closer({'camera_closer_metres':value},manifest),value)
+        for value in (True,None,'0.3',-.01,.51,float('nan'),float('inf')):
+            with self.subTest(value=value),self.assertRaises(ValueError):launcher.camera_closer({'camera_closer_metres':value},manifest)
+        for key in manifest:
+            broken={**manifest,key:False}
+            with self.subTest(key=key),self.assertRaises(ValueError):launcher.camera_closer({'camera_closer_metres':.3},broken)
+        with self.assertRaises(ValueError):launcher.camera_closer({},dict(camera_distance_control=1))
+
     def test_failed_reserve_closes_only_exact_uninjected_birth(self):
         with tempfile.TemporaryDirectory() as directory:
             selected=pathlib.Path(directory)/'GOWDE-Steam.exe';receipt=pathlib.Path(directory)/'birth.json'

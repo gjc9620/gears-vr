@@ -35,6 +35,21 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_camera_closer_cli_validation_and_forwarding(self):
+        base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
+        guards=['--anchor-observer','--cinematic-camera']
+        flag='--camera-closer-metres'
+        with mock.patch.object(runner,'run_session',return_value=0) as run:
+            runner.main(base)
+            self.assertNotIn(flag,runner.native_command(run.call_args.args[0],identity(100)))
+            for extra in ([flag,'.3'],*[guards+[flag,value] for value in ('nan','inf','-.01','.51')],guards+[flag,'.3','--origin-trial']):
+                run.reset_mock()
+                with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):runner.main(base+extra)
+                run.assert_not_called()
+            runner.main(base+guards+[flag,'.3'])
+            command=runner.native_command(run.call_args.args[0],identity(100))
+            self.assertEqual(command[command.index(flag)+1],'0.3')
+
     def test_crosshair_assignment_dependency_and_forwarding(self):
         base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
         flag='--crosshair-assignment-observer'
