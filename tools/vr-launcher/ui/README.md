@@ -24,3 +24,5 @@ Python 按 `GEARSVR_PYTHON`、随包 `runtime/python/python.exe`、当前用户 
 “查看状态”调用现有身份检查状态接口，完整输出显示在窗口。日志保存在 `analysis/runtime/vr-launcher-ui.log`，可用“打开日志”定位目录。状态不自动刷新，需点击获取。启动按钮等待其 owner 完成后才能再次使用；原生资源退出限制与现有 launcher 相同。
 
 “视角回中”用于本窗口启动的VR会话，复用 `launcher.py recenter`。请求前核对启动器owner身份，后端继续核对运行阶段、游戏/XR身份和原生会话；未运行、正在停止或已有回中请求执行中时不可重复点击。成功提示只表示已请求，实际应用仍由有效追踪帧决定，可用“查看状态”检查 `reference_generation`。回中保留真实抬头和侧倾，不更改游戏存档或镜头距离。
+
+当前默认候选已更新为 Native31 / XR23（`manifest-background31-movie23-vd.json`），覆盖上述旧版本说明。独立 Low/High 分辨率功能已移除，启动器不提供画质档位或覆盖游戏分辨率；请在游戏设置中调整分辨率。HUD 大小仅调整界面角宽，不改变渲染分辨率。默认真机入口仍为 Quest 3 / Virtual Desktop；模拟器需要明确选择。
