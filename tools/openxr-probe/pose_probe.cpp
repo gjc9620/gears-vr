@@ -546,6 +546,7 @@ int main(int argc, char** argv) {
                         (mode==gears_menu::Mode::main_menu?"main_menu":"death_menu"),observed);fflush(stdout);
             };
             observe_menu(menu_mode,menu_now);
+            if(startup_screen&&startup_panel.suspend_window_capture())startup_screen->suspend_capture();
             unsigned outage_copies_before=(diagnostic_outage||diagnostic_image_tickets)&&stereo_screen?stereo_screen->copies:0;
             if(screen && frame.shouldRender && screen->render(quad)){end.layerCount=1;end.layers=game_layers;}
             const bool menu_panel_requested=startup_panel.show_panel();
@@ -747,6 +748,7 @@ int main(int argc, char** argv) {
                 const bool recovering=startup_panel.minimum_sample_ns()!=0;
                 stereo_image_shown=true;
                 startup_handoff_queued=startup_panel.projection_rendered(true);
+                if(startup_screen&&startup_panel.suspend_window_capture())startup_screen->suspend_capture();
                 if(startup_handoff_queued&&!menu_state_file)startup_screen.reset();
                 if(startup_handoff_queued&&recovering){++menu_recoveries;
                     printf("{\"menu_display_recovered\":true,\"epoch\":%u,\"end_frame_succeeded\":true}\n",menu_entries);fflush(stdout);}

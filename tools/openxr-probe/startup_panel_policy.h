@@ -29,6 +29,8 @@ public:
     bool show_panel() const {return enabled_&&!cancelled_&&mode_!=gears_menu::Mode::loading_display&&
         (mode_==gears_menu::Mode::death_menu||mode_==gears_menu::Mode::main_menu||(!handed_off_&&!resume_required_));}
     bool show_eye_menu()const{return enabled_&&!cancelled_&&mode_==gears_menu::Mode::pause_menu;}
+    // Producer readiness alone must never retire the initial fallback capture.
+    bool suspend_window_capture()const{return handed_off_&&!show_panel();}
     void menu_rendered(){
         if(enabled_&&!cancelled_&&(mode_==gears_menu::Mode::pause_menu||
            mode_==gears_menu::Mode::main_menu||mode_==gears_menu::Mode::death_menu))menu_presented_=true;

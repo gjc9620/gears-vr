@@ -41,6 +41,29 @@ int main(){
     assert(!cancelled.show_panel()&&!cancelled.projection_rendered(true));
     StartupPanelPolicy absent(false);assert(!absent.show_panel()&&!absent.projection_rendered(true));
     using gears_menu::Mode;
+    // Capture stays alive for the first startup/CG fallback until a ticketed
+    // projection actually succeeds; readiness or failed submission is insufficient.
+    StartupPanelPolicy capture(true,true);
+    assert(!capture.suspend_window_capture());
+    capture.observe(Mode::gameplay,1);
+    assert(!capture.projection_rendered(false)&&!capture.suspend_window_capture());
+    capture.observe(Mode::loading_display,2);
+    assert(!capture.suspend_window_capture());
+    capture.observe(Mode::gameplay,3);
+    assert(capture.projection_rendered(true)&&capture.suspend_window_capture());
+    capture.observe(Mode::main_menu,4);
+    assert(capture.show_panel()&&!capture.suspend_window_capture());
+    capture.observe(Mode::main_menu,5);
+    assert(!capture.suspend_window_capture()); // Heartbeat keeps the binding.
+    capture.observe(Mode::pause_menu,6);
+    assert(capture.show_eye_menu()&&capture.suspend_window_capture());
+    capture.observe(Mode::death_menu,7);
+    assert(capture.show_panel()&&!capture.suspend_window_capture());
+    capture.observe(Mode::loading_display,8);
+    assert(capture.suspend_window_capture());
+    capture.observe(Mode::gameplay,9);
+    assert(capture.minimum_sample_ns()==9&&capture.suspend_window_capture());
+    assert(!capture.projection_rendered(false)&&capture.minimum_sample_ns()==9);
     StartupPanelPolicy reversible(true,true);
     assert(reversible.projection_rendered(true)&&!reversible.show_panel());
     assert(reversible.observe(Mode::death_menu,100));

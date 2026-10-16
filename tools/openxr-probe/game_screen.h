@@ -43,6 +43,8 @@ class GameWindowFrames {
     struct ProcessHandle {HANDLE value{};~ProcessHandle(){if(value)CloseHandle(value);}};
     bool startup=false;ProcessHandle target_process;uint64_t target_creation{};
     bool recover_window=false;
+    bool capture_suspended=false,resume_pending=false;
+    HWND resume_window{};
     uint64_t generation_=0;
     std::int64_t next_window_probe=0;
     MenuCaptureEpoch menu_epoch;
@@ -69,16 +71,18 @@ class GameWindowFrames {
         return matches(window)&&IsWindowVisible(window)&&!IsIconic(window)&&
             GetClientRect(window,&client)&&client.right>=640&&client.bottom>=360;
     }
-    void retire_capture()noexcept{
+    bool retire_capture()noexcept{
         // Never hold the callback mutex while Close waits for WGC callbacks.
         state->retire();
         try{if(item)item.Closed(closed_token);}catch(winrt::hresult_error const&){}
         try{if(pool)pool.FrameArrived(token);}catch(winrt::hresult_error const&){}
-        try{if(capture)capture.Close();}catch(winrt::hresult_error const&){}
-        try{if(pool)pool.Close();}catch(winrt::hresult_error const&){}
+        bool closed=true;
+        try{if(capture)capture.Close();}catch(winrt::hresult_error const&){closed=false;}
+        try{if(pool)pool.Close();}catch(winrt::hresult_error const&){closed=false;}
         const bool bound=hwnd||capture||pool;
         capture=nullptr;pool=nullptr;item=nullptr;hwnd=nullptr;staging=nullptr;
         if(bound)++generation_;
+        return closed;
     }
     bool open_capture(HWND window){
         using namespace winrt;
@@ -114,7 +118,12 @@ class GameWindowFrames {
             shutdown_diagnostics::initialization("wgc_start_capture_enter");
             capture.StartCapture();
             shutdown_diagnostics::initialization("wgc_start_capture_completed");
-            ++generation_;return true;
+            ++generation_;
+            if(resume_pending){
+                printf("{\"wgc_capture_resumed\":true,\"pid\":%lu,\"hwnd\":%llu,\"generation\":%llu,\"capture_epoch_100ns\":%lld,\"fresh_frame_required\":true}\n",
+                    pid,uint64_t(window_identity()),generation_,menu_epoch.started());fflush(stdout);resume_pending=false;
+            }
+            return true;
         }catch(winrt::hresult_error const& error){
             const bool transient=recover_window&&(!usable(window)||error.code()==RO_E_CLOSED||
                 error.code()==HRESULT_FROM_WIN32(ERROR_INVALID_WINDOW_HANDLE));
@@ -135,6 +144,7 @@ class GameWindowFrames {
     }
     bool ready_window(){
         require_process();
+        if(capture_suspended)return false;
         if(!recover_window){
             if(!matches(hwnd))throw std::runtime_error("Game HWND/PID identity changed");
             return !IsIconic(hwnd);
@@ -179,6 +189,21 @@ public:
     }
     ~GameWindowFrames(){retire_capture();}
     bool available(){return ready_window();}
+    void suspend_capture(){
+        if(!startup||capture_suspended)return;
+        resume_window=hwnd;capture_suspended=true;resume_pending=true;
+        const bool had_binding=hwnd||capture||pool;
+        const bool closed=retire_capture();menu_epoch.begin(menu_capture_qpc_ticks());
+        printf("{\"wgc_capture_suspended\":true,\"pid\":%lu,\"had_binding\":%s,\"close_succeeded\":%s,\"generation\":%llu}\n",
+            pid,had_binding?"true":"false",closed?"true":"false",generation_);fflush(stdout);
+    }
+    void resume_capture(){
+        if(!capture_suspended)return;
+        require_process();capture_suspended=false;next_window_probe=0;
+        // Recoverable bindings reacquire the unique usable window in available().
+        // Legacy startup bindings keep their original strict HWND identity.
+        if(!recover_window&&!open_capture(resume_window))throw std::runtime_error("Game capture window unavailable on resume");
+    }
     uint64_t generation()const{return generation_;}
     void begin_menu_epoch(){
         if(!startup)return;
@@ -377,6 +402,9 @@ public:
     void begin_menu_epoch(){
         if(!startup)return;current=false;next_capture={};source.begin_menu_epoch();
     }
+    void suspend_capture(){
+        if(!startup)return;current=false;next_capture={};source.suspend_capture();
+    }
     outage_diagnostics::MenuSnapshot diagnostic_snapshot()const{
         return diagnostic_;
     }
@@ -385,6 +413,7 @@ public:
         diagnostic_={};diagnostic_.cached_only=false;diagnostic_.render_attempted=true;
         diagnostic_.reason=Reason::in_progress;
         if(startup){
+            source.resume_capture();
             const bool available=source.available();
             diagnostic_.available_checked=true;diagnostic_.available=available;
             if(source_generation!=source.generation()){
