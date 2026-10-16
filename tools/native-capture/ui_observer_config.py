@@ -104,10 +104,14 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
     class_names={x[0] for x in SCOPES}|{'Canvas'};classes={}
     # One bounded registry traversal; no heap scan or generic UObject dump.
     pointers=struct.unpack('<'+'Q'*oc,stable(objects,oc*8))
+    # This capability batches discovery hints only. It has no authority over
+    # fresh(), selected identities, registry bounds or the final checks below.
+    # Providers without this optional capability retain their ordinary path.
+    discover=getattr(r,'discovery_identity_reader',lambda:r.identity)()
     for address in pointers:
         if not address:continue
         # Cached identity is a discovery hint only; every accepted item is fresh.
-        try:hint=r.identity(address)
+        try:hint=discover(address)
         except (RuntimeError,OSError,ValueError,UnicodeError):continue
         if hint['name'] not in class_names:continue
         item=fresh(address)

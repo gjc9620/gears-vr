@@ -1,7 +1,11 @@
 """Independent mocked memory certificates; never opens a game or XR runtime."""
 import copy
+import pathlib
 import struct
+import sys
 import unittest
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'package-inspector'))
+from resolve_camera import _DiscoveryHintPages
 from ui_observer_config import (GAME_SHA,SCOPES,BINDINGS,CANVAS,UIConfigRejected,
                                build_ui_observer_config,ui_observer_ini)
 
@@ -78,11 +82,15 @@ class Fixture:
         for name,ni in self.names.items():
             address=0x300000+ni*0x100;self.put(address,bytes(148));self.put(address,struct.pack('<I',ni))
             self.put(address+20,name.encode('utf-16-le')+b'\0\0');self.put(self.nd+ni*8,struct.pack('<Q',address))
-    def identity(self,address):
-        raw=self.read(address,0x60);ni=self.u32(address+72)
+    def identity(self,address,*,reader=None):
+        raw=(reader or self.read)(address,0x60);ni=struct.unpack_from('<I',raw,72)[0]
         name=next(n for n,i in self.names.items() if i==ni)
-        return dict(address=address,internal_index=self.u32(address+8),name=name,number=self.u32(address+76),
-                    cls=self.u64(address+80),outer=self.u64(address+64))
+        return dict(address=address,internal_index=struct.unpack_from('<I',raw,8)[0],name=name,
+                    number=struct.unpack_from('<I',raw,76)[0],cls=struct.unpack_from('<Q',raw,80)[0],
+                    outer=struct.unpack_from('<Q',raw,64)[0])
+    def discovery_identity_reader(self):
+        pages=_DiscoveryHintPages(self.read)
+        return lambda address:self.identity(address,reader=pages.read)
     def fields(self,owner):
         return (self.identity(a) for a in self.children.get(owner,[]))
     def property(self,owner,name,inherited=False):
@@ -95,6 +103,33 @@ class Fixture:
         raise RuntimeError('Fixture property not found')
 
 class UIObserverConfigTests(unittest.TestCase):
+    def test_false_discovery_class_hint_cannot_authorize_identity(self):
+        r=Fixture();ordinary=r.identity
+        def discover(address):
+            item=ordinary(address)
+            if address==r.classes['Canvas']:item=dict(item,number=0)
+            return item
+        r.discovery_identity_reader=lambda:discover
+        r.put(r.classes['Canvas']+76,struct.pack('<I',1))
+        with self.assertRaisesRegex(UIConfigRejected,'Required UI owner class missing'):
+            build_ui_observer_config(r,r.camera)
+    def test_duplicate_owner_class_rejected_with_discovery_batching(self):
+        r=Fixture();r.obj('Canvas',r.classes['Class']);r.finish_registry()
+        with self.assertRaisesRegex(UIConfigRejected,'Duplicate UI owner class'):
+            build_ui_observer_config(r,r.camera)
+    def test_discovery_reader_never_supplies_fresh_certificate_reads(self):
+        r=Fixture();ordinary=r.identity;hints=[];fresh=[];read=r.read
+        def discover(address):
+            hints.append(address);return ordinary(address)
+        r.discovery_identity_reader=lambda:discover
+        def observe(address,size):
+            if size==0x60:fresh.append(address)
+            return read(address,size)
+        r.read=observe
+        config,_=build_ui_observer_config(r,r.camera)
+        self.assertEqual(hints,r.objects)
+        for item in config['identities']:
+            self.assertGreaterEqual(fresh.count(item['address']),2)
     def test_success_scope_identity_script_and_flat_ini(self):
         r=Fixture();config,metadata=build_ui_observer_config(r,r.camera);text=ui_observer_ini(config)
         self.assertIn('[UIObserver]\nschema=1\n',text);self.assertIn('scope_count=7',text)

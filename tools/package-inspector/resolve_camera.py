@@ -21,6 +21,30 @@ psapi.EnumProcessModulesEx.restype=w.BOOL
 k.QueryFullProcessImageNameW.argtypes=[w.HANDLE,w.DWORD,w.LPWSTR,c.POINTER(w.DWORD)]
 k.QueryFullProcessImageNameW.restype=w.BOOL
 
+class _DiscoveryHintPages:
+    """One scan's bounded read hints; never use for certificate validation.
+
+    Page reuse changes the discovery read schedule, as identity caches already
+    do. It establishes neither current identity nor atomic global uniqueness.
+    Every candidate still requires the caller's ordinary fresh validations.
+    """
+    PAGE_SIZE=4096
+    MAX_PAGES=64
+    def __init__(self,read):
+        self.read_exact=read
+        self.pages={}
+    def read(self,address,size):
+        page=address-address%self.PAGE_SIZE;offset=address-page
+        if size!=0x60 or offset+size>self.PAGE_SIZE:
+            return self.read_exact(address,size)
+        if page not in self.pages:
+            try:raw=self.read_exact(page,self.PAGE_SIZE)
+            except (RuntimeError,OSError):return self.read_exact(address,size)
+            if len(raw)!=self.PAGE_SIZE:return self.read_exact(address,size)
+            if len(self.pages)>=self.MAX_PAGES:self.pages.pop(next(iter(self.pages)))
+            self.pages[page]=raw
+        return self.pages[page][offset:offset+size]
+
 class Resolver:
     def __init__(self,pid,profile):
         self.p=Process(pid)
@@ -69,16 +93,20 @@ class Resolver:
             if end is None:raise RuntimeError('Name exceeds bounded UTF16 read')
             self.names_cache[index]=raw[:end].decode('utf-16-le',errors='strict')
         return self.names_cache[index]
-    def identity(self,address):
+    def identity(self,address,*,reader=None):
         if not address:return None
         if address not in self.ident_cache:
-            raw=self.read(address,0x60)
+            raw=(reader or self.read)(address,0x60)
             index,number=struct.unpack_from('<II',raw,self.profile['object_name'])
             self.ident_cache[address]=dict(address=address,name=self.name(index),number=number,
                 cls=struct.unpack_from('<Q',raw,self.profile['object_class'])[0],
                 outer=struct.unpack_from('<Q',raw,self.profile['object_outer'])[0],
                 internal_index=struct.unpack_from('<I',raw,self.profile['object_internal_index'])[0])
         return self.ident_cache[address]
+    def discovery_identity_reader(self):
+        """Create a new scan-local hint capability; fresh reads never use it."""
+        pages=_DiscoveryHintPages(self.read)
+        return lambda address:self.identity(address,reader=pages.read)
     def class_name(self,obj):return self.identity(obj['cls'])['name']
     def find_camera_class(self):
         for index,address in enumerate(self.object_pointers):
