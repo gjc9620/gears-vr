@@ -13,6 +13,15 @@ import run_stereo_continuous as continuous
 
 
 class AnchorStartTests(unittest.TestCase):
+    def test_helpers_hide_consoles_and_preserve_argument_boundaries(self):
+        command=['powershell','-NoProfile','-NonInteractive','-File',r'J:\path with spaces\Start-DebugGame.ps1',
+                 '-GamePath',r'J:\game path\GOWDE-Steam.exe']
+        with mock.patch.object(start.subprocess,'run',return_value='result') as run:
+            self.assertEqual(start.run_hidden(command,check=True,creationflags=0x200),'result')
+            self.assertEqual(run.call_args.args[0],command)
+            self.assertEqual(run.call_args.kwargs['creationflags'],0x200|start.subprocess.CREATE_NO_WINDOW)
+            self.assertTrue(run.call_args.kwargs['check'])
+
     def test_crosshair_registry_retry_uses_fresh_complete_preparation(self):
         import crosshair_assignment_config as assignment
         import anchor_config as anchor

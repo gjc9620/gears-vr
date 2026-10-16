@@ -15,7 +15,7 @@ import subprocess
 import time
 import sys
 from prime_owner import owner_argument, pending_prime, graphics_prime_count
-from start_capture import k, modules, remote_call, pefile, ROOT
+from start_capture import k, modules, remote_call, pefile, ROOT, run_hidden
 from runtime_probe import Process
 sys.path.insert(0,str(ROOT/'tools/debug-launch'))
 from game_install import validate_game, debug_command
@@ -50,25 +50,25 @@ def main():
     exe=validate_game(args.game_path) # Before self-tests, launch, or startup policy writes.
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     build=args.build_dir.resolve();dll=build/args.dll_name
-    if args.graphics_menu_lock:subprocess.run([str(build/'GraphicsMenuLockTest.exe')],check=True)
-    for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime'],['--prepare']):subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
-    subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--geometry'],check=True)
-    if args.check_shadow_copy:subprocess.run([str(build/'SourceViewShadowTest.exe')],check=True)
-    if args.check_shadow_state:subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--state'],check=True)
-    if args.check_mask_control:subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--first-view-mask'],check=True)
+    if args.graphics_menu_lock:run_hidden([str(build/'GraphicsMenuLockTest.exe')],check=True)
+    for mode in ([],['--family'],['--clone'],['--renderer'],['--lifetime'],['--prepare']):run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),*mode],check=True)
+    run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--geometry'],check=True)
+    if args.check_shadow_copy:run_hidden([str(build/'SourceViewShadowTest.exe')],check=True)
+    if args.check_shadow_state:run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--state'],check=True)
+    if args.check_mask_control:run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--first-view-mask'],check=True)
     if args.check_frame_link:
-        subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--frame-link'],check=True)
-        subprocess.run([str(build/'FrameLinkTest.exe')],check=True)
+        run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--frame-link'],check=True)
+        run_hidden([str(build/'FrameLinkTest.exe')],check=True)
     if args.prime_targets:
-        subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--quad'],check=True)
-        subprocess.run([str(build/'GpuViewportStatsTest.exe')],check=True)
-        subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--viewport'],check=True)
-        subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--prime'],check=True)
-        subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),'--prime-handoff'],check=True)
+        run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--quad'],check=True)
+        run_hidden([str(build/'GpuViewportStatsTest.exe')],check=True)
+        run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--viewport'],check=True)
+        run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--prime'],check=True)
+        run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),'--prime-handoff'],check=True)
         if owned:
             for mode in ('--prime-owned-cancel','--prime-owned-exit','--prime-owned-handoff'):
-                subprocess.run([str(build/'CaptureSelfTest.exe'),str(dll),mode],check=True)
-    result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',"if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"],capture_output=True)
+                run_hidden([str(build/'CaptureSelfTest.exe'),str(dll),mode],check=True)
+    result=run_hidden(['powershell','-NoProfile','-NonInteractive','-Command',"if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"],capture_output=True)
     if result.returncode:raise RuntimeError('Existing game must exit normally first')
     pe=pefile.PE(str(dll));export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureReserve')
     frame_link_capable=any(x.name==b'GearsCaptureFrameLinkCheck' for x in pe.DIRECTORY_ENTRY_EXPORT.symbols)
@@ -84,10 +84,10 @@ def main():
         if prime_export.forwarder:raise RuntimeError('Forwarded prime export rejected')
         prime_rva=prime_export.address
     pe.close()
-    subprocess.run(debug_command(exe),check=True)
+    run_hidden(debug_command(exe),check=True)
     handle=None;deadline=time.monotonic()+12
     while time.monotonic()<deadline:
-        result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',"Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id"],capture_output=True,text=True)
+        result=run_hidden(['powershell','-NoProfile','-NonInteractive','-Command',"Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id"],capture_output=True,text=True)
         pids=[int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
         if len(pids)>1:raise RuntimeError('Ambiguous fresh process')
         if pids:

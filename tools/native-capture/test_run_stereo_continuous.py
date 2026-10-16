@@ -72,8 +72,10 @@ class ContinuousTests(unittest.TestCase):
         child=runner.xr_environment(parent)
         self.assertEqual(child,{**parent,'XR_SIMULATOR_NO_ACTIVATE':'1'})
         self.assertNotIn('XR_SIMULATOR_NO_ACTIVATE',parent)
-        self.assertEqual(runner.xr_environment({'XR_SIMULATOR_NO_ACTIVATE':'0'}),
-                         {'XR_SIMULATOR_NO_ACTIVATE':'0'})
+        inherited={'XR_SIMULATOR_NO_ACTIVATE':'0','XR_RUNTIME_JSON':'chosen-runtime.json'}
+        self.assertEqual(runner.xr_environment(inherited),
+                         {'XR_SIMULATOR_NO_ACTIVATE':'1','XR_RUNTIME_JSON':'chosen-runtime.json'})
+        self.assertEqual(inherited['XR_SIMULATOR_NO_ACTIVATE'],'0')
 
     def test_menu_recovery_command_is_bound_to_game_creation_and_startup_window(self):
         args=types.SimpleNamespace(pid=123,xr_build_dir=pathlib.Path('xr'),menu_recovery=True,
@@ -351,7 +353,7 @@ class ContinuousTests(unittest.TestCase):
                 self.assertTrue(path.exists());self.assertEqual(owner,identity(os.getpid()));self.assertEqual(game,identity(123))
                 reports.append(str(path))
             def spawn(command,stdout,stderr,env,creationflags):
-                self.assertEqual(env['XR_SIMULATOR_NO_ACTIVATE'],os.environ.get('XR_SIMULATOR_NO_ACTIVATE','1'))
+                self.assertEqual(env['XR_SIMULATOR_NO_ACTIVATE'],'1')
                 self.assertEqual(creationflags,getattr(subprocess,'CREATE_NO_WINDOW',0))
                 self.assertEqual(len(reports),1)
                 pathlib.Path(command[2]).write_text('stereo_published,session_state,should_render,head_flags,view_flags,stereo_source\n'+'1,5,1,15,15,0\n'*60)
@@ -363,6 +365,7 @@ class ContinuousTests(unittest.TestCase):
                 stdout.write(json.dumps(dict(continuous_owner_evidence=True,owner_pid=os.getpid(),owner_creation_time=identity(os.getpid())['creation_time'],owner_lost=False))+'\n')
                 stdout.flush();return child
             def native(command,**kwargs):
+                self.assertEqual(kwargs['creationflags'],getattr(subprocess,'CREATE_NO_WINDOW',0))
                 if command[1].endswith('verify_stopped.py'):
                     pathlib.Path(command[-1]).write_text(json.dumps({'all_match':True}))
                 elif first_stereo:

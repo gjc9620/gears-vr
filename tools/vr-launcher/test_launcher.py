@@ -168,6 +168,7 @@ class LauncherTests(unittest.TestCase):
             with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(report),stderr='')) as spawn:
                 self.assertEqual(backend.reserve(manifest,log,owner=owner)['graphics_hooks_enabled'],3)
                 self.assertIn('--graphics-startup-lock',spawn.call_args.args[0])
+                self.assertEqual(spawn.call_args.kwargs['creationflags'],launcher.subprocess.CREATE_NO_WINDOW)
                 with self.assertRaisesRegex(RuntimeError,'proof'):backend.reserve(MANIFEST,log)
             report['graphics_hooks_enabled']=4
             with mock.patch.object(launcher.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(report),stderr='')) as spawn:

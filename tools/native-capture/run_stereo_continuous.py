@@ -139,7 +139,7 @@ def native_command(args,owner):
 
 def xr_environment(parent):
     env=dict(parent)
-    env.setdefault('XR_SIMULATOR_NO_ACTIVATE','1')
+    env['XR_SIMULATOR_NO_ACTIVATE']='1'
     return env
 
 
@@ -439,7 +439,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 native_started=time.perf_counter_ns()
                 activation_attempted=True
                 with prefix.with_suffix('.native-start.log').open('w') as log:
-                    result=subprocess.run(state['native_command'],stdout=log,stderr=subprocess.STDOUT,timeout=90)
+                    result=subprocess.run(state['native_command'],stdout=log,stderr=subprocess.STDOUT,timeout=90,
+                        creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
                 if result.returncode:raise RuntimeError('Native activation failed; seeking cleanup without retry')
                 stage_completed('native_prepare',native_started,'native preparation command exited 0; does not prove a stereo frame')
                 state['native_started']=True
@@ -520,7 +521,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         with prefix.with_suffix('.verify.log').open('w') as log:
                             verified=subprocess.run([sys.executable,str(ROOT/'tools/native-capture/verify_stopped.py'),
                                 '--pid',str(args.pid),'--status',str(prefix.with_suffix('.native-status.txt')),
-                                '--output',str(restored)],stdout=log,stderr=subprocess.STDOUT,timeout=20)
+                                '--output',str(restored)],stdout=log,stderr=subprocess.STDOUT,timeout=20,
+                                creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
                         state['entry_restore_verified']=verified.returncode==0 and json.loads(restored.read_text())['all_match']
                     except Exception as error:
                         state['native_cleanup_error']=repr(error)

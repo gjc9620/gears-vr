@@ -152,7 +152,8 @@ class Backend:
         return result==0
     def game_pids(self):
         result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',
-            "Get-CimInstance Win32_Process -Filter 'Name=''GOWDE-Steam.exe''' | Select-Object -ExpandProperty ProcessId"],capture_output=True,text=True,check=True)
+            "Get-CimInstance Win32_Process -Filter 'Name=''GOWDE-Steam.exe''' | Select-Object -ExpandProperty ProcessId"],capture_output=True,text=True,check=True,
+            creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         return [int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
     def reserve(self,manifest,log,owner=None,game_path=None):
         cmd=[sys.executable,str(ROOT/'tools/native-capture/launch_reserve.py'),'--build-dir',str(rooted(manifest['native_build'])),
@@ -162,7 +163,7 @@ class Backend:
             cmd+=['--prime-owner-pid',str(owner['pid']),'--prime-owner-creation-time',str(owner['creation_time'])]
         if manifest.get('graphics_startup_lock',False):cmd+=['--graphics-startup-lock']
         if manifest.get('graphics_menu_lock',False):cmd+=['--graphics-menu-lock']
-        result=subprocess.run(cmd,capture_output=True,text=True,timeout=120)
+        result=subprocess.run(cmd,capture_output=True,text=True,timeout=120,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         log.write_text(result.stdout+'\n'+result.stderr,encoding='utf-8')
         if result.returncode:raise RuntimeError('Fresh reservation failed; no retry: '+str(log))
         reports=[]

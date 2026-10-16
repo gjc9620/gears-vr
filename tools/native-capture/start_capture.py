@@ -38,6 +38,12 @@ k.OpenEventW.argtypes=[w.DWORD,w.BOOL,w.LPCWSTR];k.OpenEventW.restype=w.HANDLE
 psapi.GetModuleFileNameExW.argtypes=[w.HANDLE,w.HMODULE,w.LPWSTR,w.DWORD]
 
 
+def run_hidden(*args,**kwargs):
+    """Hide helper consoles; explicit game/simulator GUI windows are unaffected."""
+    kwargs['creationflags']=kwargs.get('creationflags',0)|getattr(subprocess,'CREATE_NO_WINDOW',0)
+    return subprocess.run(*args,**kwargs)
+
+
 def modules(handle):
     slots=(w.HMODULE*2048)();size=w.DWORD()
     if not psapi.EnumProcessModulesEx(handle,slots,c.sizeof(slots),c.byref(size),3):
@@ -410,10 +416,10 @@ def main():
     test=dll.with_name('CaptureSelfTest.exe')
     if not dll.is_file() or not test.is_file():raise RuntimeError('Build capture DLL and self-test first')
     selftests_started=time.perf_counter_ns()
-    subprocess.run([str(test),str(dll)],check=True)
-    if args.gpu_diagnostics: subprocess.run([str(test),str(dll),'--gpu'],check=True)
-    if args.first_view_mask_control:subprocess.run([str(test),str(dll),'--first-view-mask'],check=True)
-    if args.view_union_mask_fix:subprocess.run([str(test),str(dll),'--view-union-mask'],check=True)
+    run_hidden([str(test),str(dll)],check=True)
+    if args.gpu_diagnostics: run_hidden([str(test),str(dll),'--gpu'],check=True)
+    if args.first_view_mask_control:run_hidden([str(test),str(dll),'--first-view-mask'],check=True)
+    if args.view_union_mask_fix:run_hidden([str(test),str(dll),'--view-union-mask'],check=True)
     if args.frame_link_diagnostics:
         # The game prime watchdog owns the original directory's status file.
         # Exercise identical DLL bytes in an isolated directory, without touching
@@ -423,28 +429,28 @@ def main():
             isolated_dll=pathlib.Path(shutil.copy2(dll,isolated/dll.name))
             isolated_test=pathlib.Path(shutil.copy2(test,isolated/test.name))
             if isolated_dll.read_bytes()!=dll.read_bytes():raise RuntimeError('Self-test DLL copy differs')
-            subprocess.run([str(isolated_test),str(isolated_dll),'--frame-link'],check=True)
-        subprocess.run([str(dll.with_name('FrameLinkTest.exe'))],check=True)
+            run_hidden([str(isolated_test),str(isolated_dll),'--frame-link'],check=True)
+        run_hidden([str(dll.with_name('FrameLinkTest.exe'))],check=True)
     if args.color_copy_diagnostics:
-        subprocess.run([str(test),str(dll),'--color-copy'],check=True)
-        subprocess.run([str(test),str(dll),'--color-copy-system'],check=True)
+        run_hidden([str(test),str(dll),'--color-copy'],check=True)
+        run_hidden([str(test),str(dll),'--color-copy-system'],check=True)
     if args.viewport_diagnostics:
-        subprocess.run([str(test),str(dll),'--geometry'],check=True)
-        subprocess.run([str(test),str(dll),'--quad'],check=True)
-        subprocess.run([str(dll.with_name('GpuViewportStatsTest.exe'))],check=True)
-        subprocess.run([str(test),str(dll),'--viewport'],check=True)
-    if args.family_diagnostics: subprocess.run([str(test),str(dll),'--family'],check=True)
-    if args.family_diagnostics: subprocess.run([str(test),str(dll),'--clone'],check=True)
-    if args.family_diagnostics: subprocess.run([str(test),str(dll),'--renderer'],check=True)
-    if args.family_diagnostics: subprocess.run([str(test),str(dll),'--lifetime'],check=True)
-    if args.family_diagnostics: subprocess.run([str(test),str(dll),'--prepare'],check=True)
-    if args.shadow_view: subprocess.run([str(dll.with_name('SourceViewShadowTest.exe'))],check=True)
-    if args.shadow_constructor: subprocess.run([str(dll.with_name('SourceViewArgsTest.exe'))],check=True)
-    if args.constructor_eye: subprocess.run([str(dll.with_name('SourceEyeArgsTest.exe'))],check=True)
-    if args.renderer_pair: subprocess.run([str(dll.with_name('TwoViewRendererShadowTest.exe'))],check=True)
-    if args.submit_pair: subprocess.run([str(dll.with_name('SplitSourceViewsTest.exe'))],check=True)
-    if args.submit_pair_seconds or args.continuous_session:subprocess.run([str(dll.with_name('SubmittedViewLifetimeTest.exe'))],check=True)
-    if args.shadow_state: subprocess.run([str(test),str(dll),'--state'],check=True)
+        run_hidden([str(test),str(dll),'--geometry'],check=True)
+        run_hidden([str(test),str(dll),'--quad'],check=True)
+        run_hidden([str(dll.with_name('GpuViewportStatsTest.exe'))],check=True)
+        run_hidden([str(test),str(dll),'--viewport'],check=True)
+    if args.family_diagnostics: run_hidden([str(test),str(dll),'--family'],check=True)
+    if args.family_diagnostics: run_hidden([str(test),str(dll),'--clone'],check=True)
+    if args.family_diagnostics: run_hidden([str(test),str(dll),'--renderer'],check=True)
+    if args.family_diagnostics: run_hidden([str(test),str(dll),'--lifetime'],check=True)
+    if args.family_diagnostics: run_hidden([str(test),str(dll),'--prepare'],check=True)
+    if args.shadow_view: run_hidden([str(dll.with_name('SourceViewShadowTest.exe'))],check=True)
+    if args.shadow_constructor: run_hidden([str(dll.with_name('SourceViewArgsTest.exe'))],check=True)
+    if args.constructor_eye: run_hidden([str(dll.with_name('SourceEyeArgsTest.exe'))],check=True)
+    if args.renderer_pair: run_hidden([str(dll.with_name('TwoViewRendererShadowTest.exe'))],check=True)
+    if args.submit_pair: run_hidden([str(dll.with_name('SplitSourceViewsTest.exe'))],check=True)
+    if args.submit_pair_seconds or args.continuous_session:run_hidden([str(dll.with_name('SubmittedViewLifetimeTest.exe'))],check=True)
+    if args.shadow_state: run_hidden([str(test),str(dll),'--state'],check=True)
     preparation_timing('self_tests_total',selftests_started)
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     check_preparation=preparation_live_guard(args.pid,args.continuous_owner_pid,args.continuous_owner_creation_time)
