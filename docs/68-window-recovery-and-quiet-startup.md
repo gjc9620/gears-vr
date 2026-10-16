@@ -139,3 +139,11 @@ SpaceRecovery8仅在已有 `--shutdown-diagnostics` 开启时增加初始化边�
 知识库后续定向结果：`452ADC / 452BB0` 与当前运行代码 SHA256 同样匹配；后者负责已观察到的 `ShowWindow(SW_RESTORE)`，该调用仍经过现有 guard。尾部 IAT `base+0x131c9a8` 实际解析为 `user32!PostMessageW`，参数15对应绘制消息，不能视为激活，见 `focus-persistent13-rhi-constructor.json`。历史缓存 `453468` 呈现 CreateSwapChainForHwnd / Windowed=1 / MakeWindowAssociation(1) 的布局，尚未运行验证接口与实参，未支持“安装默认全屏就是根因”。
 
 另由 WINDOWED 字面量引用定位到 `14D844` 初始化函数，缓存支持命令行 `-windowed` 确实被解析、FULLSCREEN 可优先覆盖；参数反编译错位，不能直接按结构偏移补丁。可在下一次正常重启时进行仅增加 `-windowed` 的对照，不改 INI 或扩展 Hook。当前常开菜单会话继续保留，不为这项静态分析重启。
+
+### 默认 quiet11 的实际失败与窗口化对照（2026-10-16）
+
+`quiet-default11-final1.json` 使用正式启动链、默认冻结 quiet11、显式主窗口 NOACTIVATE 与 Native23/XR16。70秒观察记录一次 game24640 前台事件，tick77508781；初始输入 tick77391093，首个后续输入 tick77530484，因此这次自动激活不能归因于人工切换。辅助进程无所属前台事件，模拟器可见；观察结束保留 owner/game/XR。36项 debug-launch 测试通过，但不覆盖此实际遗漏。
+
+`focus-default11-final1.json` 保存27条完整记录、无溢出：ShowWindow、两次 SetWindowPos 和 SetForegroundWindow 均经过 guard，返回时前台仍为原应用；随后 PeekMessage 内交付 CBT/激活消息。这确认 quiet11 尚未完成不抢焦点目标，不能把历史人工切换解释用于这轮。
+
+只增加 `-windowed` 的启动对照见 `quiet-default11-windowed1.json`、`background-launch-35236.json`、`focus-default11-windowed1.json`。真实命令行包含 `-windowed -NoPauseUnfocus`，仍于 tick136484 自动进入前台；此前最后输入126718、此后首次输入139359，调用顺序同上。故显式窗口化未解决本机启动激活；实验性 PS 参数已撤回，未保留为默认修复。两轮间系统 tick 重新计数，不跨轮比较绝对时戳。窗口化轮保留游戏35236与XR34992、等待关卡，无自动菜单输入。下一步需定位现有 guard 之外的激活请求来源，尚无证据确定为 DisplayFusion、显卡覆盖层或某个 RHI 调用。
