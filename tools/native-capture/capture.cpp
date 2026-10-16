@@ -3001,7 +3001,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             ++owned_ui_live::route_draws;
             if(layout&&mask==3)++ui_layout_counts.applied;
             if(reticle)++owned_ui_live::route_reticle_draws;else ++owned_ui_live::route_plane_draws;
-            observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,plane,&plan,reticle,&plan);
+            observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,plane,&plan,reticle,&plan,layout&&mask==3);
             return; // Overlay work is not an extra world-geometry draw.
         }
         owned_ui_live::reject_draw({route.ticket,pair.ticket,caller-base,binding.target.resource,route.resource,
@@ -3040,7 +3040,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
                 frame_link.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask);
                 if(layout&&mask==3)++ui_layout_counts.applied;
                 observe_ui_gpu_payload(pair.ticket,ref,target,indices,instances,start,vertex,hud_plane&&mask==3,hud_plane?&plan:nullptr,
-                    reticle_direction&&mask==3,reticle_direction?&plan:nullptr);
+                    reticle_direction&&mask==3,reticle_direction?&plan:nullptr,layout&&mask==3);
                 return;
             }
         }

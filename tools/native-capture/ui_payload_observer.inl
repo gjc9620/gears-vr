@@ -77,10 +77,10 @@ std::array<uint64_t,8> ui_payload_gpu_calls{};
 struct UiSubtitleGpuRow {
     gears_ui_sources::Summary source{};uint64_t execute_sequence{},ticket{};
     gears_frame_link::ListRef list{};gears_frame_link::Target target{};
-    long long qpc{};unsigned thread{};bool hud_applied{},command_completed{};
+    long long qpc{};unsigned thread{};bool hud_applied{},command_completed{},layout_applied{};
 };
 std::array<UiSubtitleGpuRow,16> ui_subtitle_gpu_rows{};
-unsigned ui_subtitle_gpu_count{};uint64_t ui_subtitle_gpu_calls{},ui_subtitle_gpu_dropped{};
+unsigned ui_subtitle_gpu_count{};uint64_t ui_subtitle_gpu_calls{},ui_subtitle_gpu_dropped{},ui_subtitle_gpu_layout_applied{};
 long long ui_subtitle_gpu_next{};
 
 // Called only at the existing permanent-fault branches. TLS points to our
@@ -363,7 +363,7 @@ bool ui_observed_overlay_chain(const uintptr_t* addresses,size_t count){
 void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears_frame_link::Target target,
         unsigned indices,unsigned instances,unsigned start,int vertex,bool hud_applied=false,
         gears_viewport::OverlayPlan const* hud_plan=nullptr,bool reticle_applied=false,
-        gears_viewport::OverlayPlan const* reticle_plan=nullptr){
+        gears_viewport::OverlayPlan const* reticle_plan=nullptr,bool layout_applied=false){
     if(!ui_observer_enabled||!recording.load())return;
     ++ui_gpu_context_calls;
     if(hud_applied)++ui_hud_counts.applied;
@@ -389,6 +389,7 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
            indices==segment.expected.index_count&&instances==segment.expected.instance_count&&
            start==segment.expected.start_index&&vertex==segment.expected.base_vertex){
             ++ui_subtitle_gpu_calls;
+            if(layout_applied)++ui_subtitle_gpu_layout_applied;
 #if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
             if(owned_ui_live::route.ticket==ticket&&hud_applied)
                 owned_scene_gpu::subtitle_candidate(ticket,ui_index_context->execute_sequence,list,target,ordinal,
@@ -396,7 +397,7 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
 #endif
             if(ui_subtitle_gpu_count<ui_subtitle_gpu_rows.size()&&
                (ui_subtitle_gpu_count<4||timestamp>=ui_subtitle_gpu_next)){
-                ui_subtitle_gpu_rows[ui_subtitle_gpu_count++]={source,ui_index_context->execute_sequence,ticket,list,target,timestamp,GetCurrentThreadId(),hud_applied,false};
+                ui_subtitle_gpu_rows[ui_subtitle_gpu_count++]={source,ui_index_context->execute_sequence,ticket,list,target,timestamp,GetCurrentThreadId(),hud_applied,false,layout_applied};
                 ui_subtitle_gpu_next=timestamp+qpc_frequency;
             }else ++ui_subtitle_gpu_dropped;
         }
@@ -419,10 +420,10 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
 
 void print_ui_payload_observer(FILE* status){
     gears_ui_fault::print(status,ui_hud_first_fault);
-    fprintf(status,"ui_subtitle_gpu calls=%llu rows=%u dropped=%llu source_is_actual_index_membership=1 pixel_visibility_proven=0\n",ui_subtitle_gpu_calls,ui_subtitle_gpu_count,ui_subtitle_gpu_dropped);
+    fprintf(status,"ui_subtitle_gpu calls=%llu layout_applied=%llu rows=%u dropped=%llu source_is_actual_index_membership=1 pixel_visibility_proven=0\n",ui_subtitle_gpu_calls,ui_subtitle_gpu_layout_applied,ui_subtitle_gpu_count,ui_subtitle_gpu_dropped);
     for(unsigned i=0;i<ui_subtitle_gpu_count;++i){auto const& row=ui_subtitle_gpu_rows[i];auto const& source=row.source;
-        fprintf(status,"ui_subtitle_gpu_row row=%u payload=%p candidate_generation=%llu ordinal=%u source_mask=%u native_indices=%u unknown=%u native_root_min=%llu native_root_max=%llu execute_sequence=%llu ticket=%llu list=%p list_generation=%llu target=%p width=%u height=%u qpc=%lld thread=%u hud_applied=%u overlay_completed_mask=3 command_completed=%u pixel_visibility_proven=0 allocation_identity_proven=0\n",
-            i,reinterpret_cast<void*>(source.payload),source.generation,source.ordinal,source.source_mask,source.native_indices,source.unknown,source.native_root_min,source.native_root_max,row.execute_sequence,row.ticket,reinterpret_cast<void*>(row.list.identity),row.list.generation,reinterpret_cast<void*>(row.target.resource),row.target.width,row.target.height,row.qpc,row.thread,row.hud_applied?1:0,row.command_completed?1:0);
+        fprintf(status,"ui_subtitle_gpu_row row=%u payload=%p candidate_generation=%llu ordinal=%u source_mask=%u native_indices=%u unknown=%u native_root_min=%llu native_root_max=%llu execute_sequence=%llu ticket=%llu list=%p list_generation=%llu target=%p width=%u height=%u qpc=%lld thread=%u hud_applied=%u layout_applied=%u overlay_completed_mask=3 command_completed=%u pixel_visibility_proven=0 allocation_identity_proven=0\n",
+            i,reinterpret_cast<void*>(source.payload),source.generation,source.ordinal,source.source_mask,source.native_indices,source.unknown,source.native_root_min,source.native_root_max,row.execute_sequence,row.ticket,reinterpret_cast<void*>(row.list.identity),row.list.generation,reinterpret_cast<void*>(row.target.resource),row.target.width,row.target.height,row.qpc,row.thread,row.hud_applied?1:0,row.layout_applied?1:0,row.command_completed?1:0);
     }
     fprintf(status,"ui_reticle_direction enabled=%u considered=%llu center_rejected=%llu geometry_missing=%llu projection_rejected=%llu planned=%llu applied=%llu finite_hit_proven=0 source_vertices_modified=0\n",
         ui_reticle_direction_enabled?1:0,ui_reticle_counts.considered.load(),ui_reticle_counts.center_rejected.load(),
@@ -446,7 +447,7 @@ void print_ui_payload_observer(FILE* status){
         ui_hud_plane_enabled?1:0,hud_parameters.horizontal_fov_degrees,hud_parameters.depth_metres,ui_hud_counts.considered.load(),ui_hud_counts.missing_context.load(),ui_hud_counts.reticle_excluded.load(),
         ui_hud_counts.unknown_or_mixed.load(),ui_hud_counts.ticket_missing.load(),ui_hud_counts.projection_rejected.load(),
         ui_hud_counts.planned.load(),ui_hud_counts.applied.load(),ui_hud_sequence_fault.load()?1:0);
-    fprintf(status,"ui_hud_layout element_scale=%.9g center_scale=%.9g considered=%llu planned=%llu fallback=%llu applied=%llu source_vertices_modified=0 subtitle_policy=complete_single_range_group reticle_policy=unchanged\n",
+    fprintf(status,"ui_hud_layout element_scale=%.9g center_scale=%.9g considered=%llu planned=%llu fallback=%llu applied=%llu source_vertices_modified=0 subtitle_policy=complete_single_range_or_frozen_native_multirange_group reticle_policy=unchanged\n",
         ui_hud_layout_parameters.element_scale,ui_hud_layout_parameters.center_scale,ui_layout_counts.considered.load(),
         ui_layout_counts.planned.load(),ui_layout_counts.fallback.load(),ui_layout_counts.applied.load());
     for(unsigned k=1;k<ui_payload_gpu_rows.size();++k){
