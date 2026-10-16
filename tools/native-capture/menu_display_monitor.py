@@ -10,6 +10,7 @@ import time
 PACKET = struct.Struct('<IIIIQQQQQQ')
 UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU = range(5)
 LOADING_DISPLAY = 5
+ACQUISITION_WAIT = 6
 PAUSE_SETTINGS = frozenset(('DeltaPause-Options', 'DeltaGameConfiguration', 'DeltaVideoSettings',
                             'PenderGraphicsSettings', 'DeltaAudioVideoSettings', 'DeltaInputSettings'))
 
@@ -199,6 +200,7 @@ class MenuDisplayMonitor:
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'game-io'))
         from menu_state import SnapshotChanged, DialogStorageChanged, InventoryChanged
         self.snapshot_change_types = (SnapshotChanged, DialogStorageChanged, InventoryChanged)
+        self.snapshot_changed_type = SnapshotChanged
         if reader_factory is None:
             from menu_state import MenuReader
             from menu_control import reader_process_identity
@@ -248,6 +250,7 @@ class MenuDisplayMonitor:
     def poll(self):
         observed = self.clock()  # Begin acquisition, never extend a slow read's lease.
         sample = None
+        sampling = False
         if self.identity(self.game['pid']) != self.game:
             self.publish(UNKNOWN, observed, 'game_identity_changed')
             raise RuntimeError('Menu observer game process changed')
@@ -258,17 +261,21 @@ class MenuDisplayMonitor:
                 self.reader = self.factory()
                 if self.reader_identity(self.reader) != (self.game['pid'], self.game['creation_time']):
                     raise RuntimeError('Menu reader process identity changed')
+            sampling = True
             sample = self.reader.sample()
+            sampling = False
             if sample.get('pid') != self.game['pid']:
                 raise RuntimeError('Menu sample PID mismatch')
             mode = classify(sample)
             reason = (sample.get('top') or {}).get('tag', 'unknown')
         except (RuntimeError, OSError, ValueError, UnicodeError) as error:
             sample = None  # A failed acquisition never carries old/partial state evidence.
-            mode, reason = UNKNOWN, type(error).__name__+': '+str(error)
+            mode = ACQUISITION_WAIT if sampling and type(error) is self.snapshot_changed_type else UNKNOWN
+            reason = type(error).__name__+': '+str(error)
             # Only these exact acquisition-churn exceptions preserve the reader.
-            # Publish no display authority; the next ordinary poll must acquire
-            # a whole new sample using its own acquisition-start timestamp.
+            # Exact sample-stage SnapshotChanged permits only a generic waiting
+            # display choice. It conveys no acquired game-image/input authority.
+            # The next poll acquires a whole sample with its own start timestamp.
             if type(error) not in self.snapshot_change_types:
                 if self.reader:
                     self.reader.close();self.reader = None

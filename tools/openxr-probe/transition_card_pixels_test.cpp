@@ -17,6 +17,7 @@ int main(int argc,char** argv){
     }
     assert(title_pixels>1000&&subtitle_pixels>1000);
     assert(text_width(title,5)<width-40&&text_width(subtitle,3)<width-40);
+    assert(!std::strcmp(title,"WAITING FOR GAME IMAGE")&&!std::strcmp(subtitle,"Updating the VR view"));
     const auto startup=rgba(Variant::starting_vr);
     assert(startup==rgba(Variant::starting_vr)&&startup!=pixels);
     assert(startup.size()==pixels.size()&&startup[0]==29&&startup[1]==32&&startup[2]==38);

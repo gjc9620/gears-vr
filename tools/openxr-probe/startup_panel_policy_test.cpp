@@ -162,4 +162,48 @@ int main(){
     loading_bridge.observe(Mode::main_menu,1500005200);loading_bridge.menu_rendered();
     loading_bridge.observe(Mode::loading_display,1500005300);loading_bridge.cancel();
     assert(!loading_bridge.show_transition_panel()&&!loading_bridge.allow_projection()&&!loading_bridge.show_startup_wait(ready));
+    // Acquisition wait preserves UNKNOWN's ordinary native projection choice.
+    // It cannot fabricate menu recovery, move a new boundary or resurrect a card.
+    StartupPanelPolicy initial_acquisition(true,true),initial_unknown(true,true);
+    initial_acquisition.observe(Mode::acquisition_wait,5900);
+    assert(initial_acquisition.show_panel()==initial_unknown.show_panel());
+    assert(initial_acquisition.allow_projection()==initial_unknown.allow_projection());
+    assert(initial_acquisition.minimum_sample_ns()==0&&!initial_acquisition.show_transition_panel());
+    StartupPanelPolicy acquisition_play(true,true);
+    assert(acquisition_play.projection_rendered(true));
+    assert(!acquisition_play.observe(Mode::acquisition_wait,6000));
+    assert(acquisition_play.allow_projection()&&acquisition_play.minimum_sample_ns()==0);
+    assert(!acquisition_play.show_transition_panel()&&!acquisition_play.show_panel()&&!acquisition_play.show_eye_menu());
+    acquisition_play.menu_rendered();assert(!acquisition_play.show_transition_panel());
+    assert(!acquisition_play.transition_menu_requested_wait()&&!acquisition_play.transition_authorized(Mode::acquisition_wait));
+    acquisition_play.observe(Mode::gameplay,6100);
+    assert(acquisition_play.allow_projection()&&acquisition_play.minimum_sample_ns()==0);
+    assert(!acquisition_play.projection_rendered(true)&&!acquisition_play.show_transition_panel());
+    StartupPanelPolicy acquisition_no_witness(true,true);
+    acquisition_no_witness.observe(Mode::pause_menu,6200);
+    acquisition_no_witness.observe(Mode::acquisition_wait,6300);
+    assert(!acquisition_no_witness.allow_projection()&&!acquisition_no_witness.show_transition_panel());
+    assert(!acquisition_no_witness.transition_menu_requested_wait());
+    StartupPanelPolicy acquisition_bridge(true,true);
+    acquisition_bridge.projection_rendered(true);
+    acquisition_bridge.observe(Mode::pause_menu,6400);acquisition_bridge.menu_rendered();
+    acquisition_bridge.observe(Mode::acquisition_wait,6500);
+    assert(acquisition_bridge.show_transition_panel()&&!acquisition_bridge.allow_projection());
+    assert(acquisition_bridge.transition_authorized(Mode::acquisition_wait)&&acquisition_bridge.transition_menu_requested_wait());
+    assert(!acquisition_bridge.transition_authorized(Mode::unknown));
+    acquisition_bridge.observe(Mode::main_menu,6600);
+    assert(acquisition_bridge.show_panel()&&acquisition_bridge.show_transition_panel()); // Caller submits WGC first.
+    assert(acquisition_bridge.transition_authorized(Mode::main_menu)&&acquisition_bridge.transition_menu_requested_wait());
+    acquisition_bridge.observe(Mode::gameplay,6700);
+    assert(acquisition_bridge.show_transition_panel()&&!acquisition_bridge.transition_menu_requested_wait());
+    acquisition_bridge.observe(Mode::loading_display,6800);
+    assert(acquisition_bridge.show_transition_panel()&&!acquisition_bridge.transition_menu_requested_wait());
+    packet.mode=6;packet.sequence=2;packet.observed_ns=7000;
+    acquisition_bridge.observe(validator.accept(packet,7000),7000);
+    assert(acquisition_bridge.show_transition_panel());
+    acquisition_bridge.observe(validator.accept(packet,1500007001),1500007001);
+    assert(!acquisition_bridge.show_transition_panel()&&!acquisition_bridge.transition_menu_requested_wait());
+    assert(!acquisition_bridge.transition_authorized(Mode::unknown));
+    acquisition_bridge.observe(Mode::main_menu,1500007100);acquisition_bridge.cancel();
+    assert(!acquisition_bridge.show_transition_panel()&&!acquisition_bridge.transition_menu_requested_wait());
 }

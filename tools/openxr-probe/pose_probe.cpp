@@ -56,6 +56,9 @@ bool transition_panel_wait(ProjectionStatus status){
 bool startup_panel_wait(ProjectionStatus status){
     return transition_panel_wait(status)||status==ProjectionStatus::menu_requested;
 }
+bool recovery_panel_wait(ProjectionStatus status,StartupPanelPolicy const& policy){
+    return transition_panel_wait(status)||(status==ProjectionStatus::menu_requested&&policy.transition_menu_requested_wait());
+}
 bool projection_end_succeeded(bool queued,XrResult result,unsigned layer_count,bool projection_layers){
     return queued&&result==XR_SUCCESS&&layer_count==1&&projection_layers;
 }
@@ -112,6 +115,15 @@ int projection_receiver_self_test(){
             s==ProjectionStatus::source_reconfiguration||s==ProjectionStatus::reference_epoch_pending;
         if(transition_panel_wait(s)!=expected)return 42;
         if(startup_panel_wait(s)!=(expected||s==ProjectionStatus::menu_requested))return 44;
+        for(auto mode:{gears_menu::Mode::unknown,gears_menu::Mode::gameplay,gears_menu::Mode::loading_display,
+                      gears_menu::Mode::main_menu,gears_menu::Mode::acquisition_wait}){
+            StartupPanelPolicy witnessed(true,true);witnessed.projection_rendered(true);
+            witnessed.observe(gears_menu::Mode::pause_menu,100);witnessed.menu_rendered();witnessed.observe(mode,200);
+            const bool narrow=mode==gears_menu::Mode::main_menu||mode==gears_menu::Mode::acquisition_wait;
+            if(recovery_panel_wait(s,witnessed)!=(expected||(s==ProjectionStatus::menu_requested&&narrow)))return 45;
+            StartupPanelPolicy unwitnessed(true,true);unwitnessed.observe(mode,200);
+            if(recovery_panel_wait(s,unwitnessed)!=expected)return 46;
+        }
     }
     if(!xr_image_wait_succeeded(XR_SUCCESS)||xr_image_wait_succeeded(XR_TIMEOUT_EXPIRED)||xr_image_wait_succeeded(XR_SESSION_LOSS_PENDING)||
        !xr_image_work_complete(3,2)||xr_image_work_complete(1,2)||xr_image_work_complete(~uint64_t(0),2)||xr_image_work_complete(0,0))return 9;
@@ -594,13 +606,13 @@ int main(int argc, char** argv) {
             }
             if(stereo_game_pid&&end.layerCount==0&&transition_card&&startup_panel.show_transition_panel()&&
                frame.shouldRender&&projection_session_visible(state)&&!projection_evidence.structural_failure&&
-               transition_panel_wait(projection_frame_status)&&transition_card->render(quad)){
+               recovery_panel_wait(projection_frame_status,startup_panel)&&transition_card->render(quad)){
                 // Upload can wait for a fence. Recheck the independent menu
                 // lease afterwards, without extending its acquisition time.
                 const auto authorized=menu_display.poll(gears_vr::monotonic_ns());
                 if(authorized!=menu_mode)observe_menu(authorized,gears_vr::monotonic_ns());
-                if((authorized==gears_menu::Mode::gameplay||authorized==gears_menu::Mode::loading_display)&&
-                   startup_panel.show_transition_panel()&&running&&!exiting&&!projection_evidence.structural_failure&&
+                if(startup_panel.transition_authorized(authorized)&&recovery_panel_wait(projection_frame_status,startup_panel)&&
+                   running&&!exiting&&!projection_evidence.structural_failure&&
                    (!stereo_screen||!stereo_screen->producer_stopped())){
                     transition_panel_queued=true;end.layerCount=1;end.layers=game_layers;
                 }

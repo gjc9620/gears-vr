@@ -5,7 +5,7 @@ import json
 import copy
 import sys
 from unittest.mock import patch, Mock
-from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, loading_display, state_evidence, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU, LOADING_DISPLAY
+from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, loading_display, state_evidence, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU, LOADING_DISPLAY, ACQUISITION_WAIT
 
 
 def sample(death=True):
@@ -616,7 +616,7 @@ class Tests(unittest.TestCase):
             reader.sample=fail;m.poll();self.assertEqual(PACKET.unpack(path.read_bytes())[3],UNKNOWN)
             m.close()
 
-    def test_real_typed_snapshot_churn_keeps_injected_reader_but_publishes_only_unknown(self):
+    def test_real_typed_snapshot_churn_keeps_reader_with_sample_snapshot_wait_only(self):
         for type_name in ('SnapshotChanged','DialogStorageChanged','InventoryChanged'):
             with self.subTest(type_name=type_name),tempfile.TemporaryDirectory() as d:
                 path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
@@ -625,13 +625,17 @@ class Tests(unittest.TestCase):
                 factory=Mock(return_value=reader);m.factory=factory
                 reader.sample=Mock(side_effect=[pause_sample(),error_type('changed'),error_type('changed'),checkpoint_confirmation_sample()])
                 try:
-                    for call,(now,mode) in enumerate(((100,PAUSE_MENU),(200,UNKNOWN),(300,UNKNOWN),(400,PAUSE_MENU)),1):
+                    churn_mode=ACQUISITION_WAIT if type_name=='SnapshotChanged' else UNKNOWN
+                    for call,(now,mode) in enumerate(((100,PAUSE_MENU),(200,churn_mode),(300,churn_mode),(400,PAUSE_MENU)),1):
                         m.clock=lambda now=now:now;m.poll()
                         packet=PACKET.unpack(path.read_bytes())
                         self.assertEqual((packet[3],packet[-2],packet[-1]),(mode,call,now))
                         self.assertEqual(reader.sample.call_count,call) # No immediate retry.
                         self.assertIs(m.reader,reader);self.assertFalse(reader.closed)
                         self.assertEqual(m.retry_ns,0);factory.assert_called_once()
+                    rows=[json.loads(line) for line in path.with_suffix('.jsonl').read_text().splitlines()]
+                    self.assertEqual(len(rows),3) # Repeated same churn does not increase log rate.
+                    self.assertIsNone(rows[1]['state_evidence'])
                 finally:m.close()
                 self.assertTrue(reader.closed)
 
@@ -645,7 +649,7 @@ class Tests(unittest.TestCase):
                 raise SnapshotChanged('second snapshot attempt changed')
             try:
                 reader.sample=Mock(side_effect=changed);m.poll()
-                self.assertEqual((PACKET.unpack(path.read_bytes())[3],PACKET.unpack(path.read_bytes())[-1]),(UNKNOWN,100))
+                self.assertEqual((PACKET.unpack(path.read_bytes())[3],PACKET.unpack(path.read_bytes())[-1]),(ACQUISITION_WAIT,100))
                 reader.sample.assert_called_once();self.assertIs(m.reader,reader)
                 def slow():
                     now[0]+=2000000000 # Already older than the unchanged 1.5 s render TTL.
@@ -659,6 +663,24 @@ class Tests(unittest.TestCase):
                 self.assertEqual(PACKET.unpack(path.read_bytes())[-1],fresh)
                 self.assertFalse(reader.closed)
             finally:m.close()
+
+    def test_exact_snapshot_exception_outside_sample_call_remains_unknown_without_evidence(self):
+        for phase in ('factory','reader_identity','classification'):
+            with self.subTest(phase=phase),tempfile.TemporaryDirectory() as d:
+                path=pathlib.Path(d)/'menu.bin';reader=Reader();reader.sample=Mock(return_value=sample(False))
+                m=self.monitor(path,reader)
+                from menu_state import SnapshotChanged
+                try:
+                    if phase=='factory':m.factory=Mock(side_effect=SnapshotChanged('factory churn'))
+                    if phase=='reader_identity':m.reader_identity=Mock(side_effect=SnapshotChanged('identity churn'))
+                    with patch('menu_display_monitor.classify',side_effect=SnapshotChanged('classification churn')) if phase=='classification' else patch('menu_display_monitor.classify',wraps=classify):
+                        m.poll()
+                    self.assertEqual(PACKET.unpack(path.read_bytes()),(0x47564d31,1,64,UNKNOWN,11,22,33,44,1,100))
+                    row=json.loads(path.with_suffix('.jsonl').read_text().splitlines()[0])
+                    self.assertEqual(row['mode'],UNKNOWN);self.assertIsNone(row['state_evidence'])
+                    self.assertEqual(reader.sample.call_count,1 if phase=='classification' else 0)
+                    self.assertFalse(reader.closed);self.assertEqual(m.retry_ns,0)
+                finally:m.close()
 
     def test_plain_failures_and_typed_subclasses_still_close_and_back_off(self):
         with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):

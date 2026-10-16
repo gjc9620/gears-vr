@@ -273,3 +273,14 @@ loading显式禁止WGC、eye-menu及projection，只更新恢复时间边界，�
 实际会话 `continuous-stereo-41216-20261016-121254-c523f414` 完成主菜单Continue→world2、不同Pawn和GPU源index1双眼非黑场景。mode5→GAMEPLAY持续4349.3252ms；对应成功返回卡episode自64135991191800至64149669323500，持续13.678秒，跨过loading并等到新projection。首条卡比分类采集起点晚28.1192ms（采集/发布和XR观察的端点差，不等于28ms空层）；内部区间有连续成功卡episode覆盖。此期间image-ticket没有新记录，未以“没有记录”冒充零投影证明。两段返回卡共1327层、一次上传；原生四阶段各2221对视图零错配，projection1853次、场景复制2207次。正常停止、43入口恢复、XR shutdown及身份核验WM_CLOSE通过，未抢焦点。ignored证据 `xr14-loading-events.json`、`xr14-loading-audit.json`、原始日志/图像及冻结原生状态。
 
 仍未通过完整无空窗验收：最长合成间隔493.3288ms，完整outage记录（later0/dropped0）显示它位于更早的返回主菜单阶段：SnapshotChanged导致短时UNKNOWN，随后MAIN_MENU等待新的合格WGC捕获；与已认证的Continue block2区间不同。source_reconfiguration拒绝23帧也不能直接算23个空层，本轮对应返回卡一直持续到新projection。默认玩家清单仍未提升；还需收敛该主菜单交接、完整4K候选回归、UI/CG、真头显及便携部署。
+
+
+## XR15：区分快照采集竞争与普通未知状态
+
+仅 reader.sample() 阶段抛出的精确 SnapshotChanged 发布 ACQUISITION_WAIT=6；构造/身份/分类错误、派生异常、其他采集错误及退避仍为 UNKNOWN。失败不携带局部样本，原采集起点、64字节包和1.5秒有效期不变。普通游玩遇到6时保留 UNKNOWN 原有的严格投影资格，不创建恢复边界或菜单 witness。已有真实菜单 witness 的恢复阶段，6或新鲜 MAIN_MENU 可在正常图层尚未排入时复用独立等待卡；menu_requested 仅在这两个窄状态下新增许可，上传后重新核验状态与停止条件。普通 UNKNOWN/过期包不授权该卡。等待卡默认文字改为中性的 WAITING FOR GAME IMAGE，首次启动文案保持原样。
+
+XR15 SHA256 `166a697dbd80dbfe77f7261741263638a0c7de04611f6784d956855ec78714e0`，Native23不变。59项 Python monitor/world-monitor 测试、相关 C++ 测试与 receiver 自检通过；Astra Medium 独立审查未发现阻断问题。精确异常分支由故障注入验证；实际主菜单往返验证结果另记，不以静态审查代替运行证据。
+
+实际会话 `continuous-stereo-36080-20261016-123605-75feb4ab` 完成1080p主菜单往返、world2新Pawn及GPU index1双眼非黑图像；四原生阶段各2235对零错配，projection2141次/copies2223次。MAIN_MENU新捕获交接有成功等待卡episode，首段897.1091ms；本轮没有精确SnapshotChanged，因此mode6运行分支仍未覆盖。正常停止、43入口恢复、XR shutdown和身份核验WM_CLOSE退出通过；无焦点操作。
+
+审计 `xr15-loading-audit.json` 明确保留 bounded_checks_passed=false：原block2加载状态持续4138.8894ms后出现完整一致但block1的同名三项场景状态，约256.8745ms后才到block0 GAMEPLAY，故“直接到GAMEPLAY”检查未通过。最长成功非空合成间隔344.5089ms（complete=true、dropped0、later0）恰在该block1 UNKNOWN区间，不能声称黑屏已全部修复。block1仍未授权卡/投影/输入；下一步仅评估是否给该精确实证结构增加通用等待卡许可，禁止直接放宽全部UNKNOWN。三段返回卡分别约897ms/4078ms/7401ms，仅最后一段交给projection。原始事件、图像、冻结原生状态与审计均留在ignored analysis/runtime。

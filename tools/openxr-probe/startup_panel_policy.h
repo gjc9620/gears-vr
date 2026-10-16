@@ -21,6 +21,8 @@ public:
         // Loading is neither a menu witness nor image authority. Require a
         // newer ticket on later gameplay even if no projection has occurred yet.
         if(mode==gears_menu::Mode::loading_display){resume_required_=true;resume_after_=now;return false;}
+        // acquisition_wait deliberately follows UNKNOWN here: it cannot create
+        // a resume requirement or witness during ordinary ticketed gameplay.
         if(resume_required_)resume_after_=now;
         return false;
     }
@@ -32,7 +34,11 @@ public:
            mode_==gears_menu::Mode::main_menu||mode_==gears_menu::Mode::death_menu))menu_presented_=true;
     }
     bool show_transition_panel()const{return enabled_&&reversible_&&!cancelled_&&resume_required_&&
-        menu_presented_&&(mode_==gears_menu::Mode::gameplay||mode_==gears_menu::Mode::loading_display);}
+        menu_presented_&&(mode_==gears_menu::Mode::gameplay||mode_==gears_menu::Mode::loading_display||
+            mode_==gears_menu::Mode::acquisition_wait||mode_==gears_menu::Mode::main_menu);}
+    bool transition_menu_requested_wait()const{return show_transition_panel()&&
+        (mode_==gears_menu::Mode::main_menu||mode_==gears_menu::Mode::acquisition_wait);}
+    bool transition_authorized(gears_menu::Mode fresh)const{return fresh==mode_&&show_transition_panel();}
     // A generic session-owned card can fill an empty startup frame. It grants
     // no authority to show a game image, and a real projection retires it forever.
     bool show_startup_wait(StartupWaitContext const& c)const{

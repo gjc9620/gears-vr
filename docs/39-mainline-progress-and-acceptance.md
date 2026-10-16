@@ -86,3 +86,8 @@ XR12同时把启动空窗定位为捕获过龄及窗口暂不可用/重建，非
 最新4K完整循环已完成两次确认取消、实际检查点重载到world2、新Pawn手枪开镜、主菜单Continue到world3，三张4K源双眼图与正常清理已复核；但另发现4.645秒实际合成空窗，不能计全程连续通过。新增只读紧凑状态诊断后，1080p独立复现确认Continue的精确非模态活动栈在block2时UNKNOWN、约4.156秒后block0恢复GAMEPLAY。正在为这个状态设计只显示通用提示的窄分支，不将block2放进GAMEPLAY，不提升默认候选。另有world commit后约255ms的source重建空窗待处理。详见docs/70末节；UI/过场/真头显/便携部署仍开放。
 
 XR14已接入该精确结构的LOADING_DISPLAY=5，只授权通用提示，WGC/投影/输入仍拒绝；58项Python、12项XR及receiver自检通过。实际Continue的4.349秒mode5期间有成功返回卡episode覆盖，并交给world2新projection与非黑双眼源图，原生各阶段2221对零错配，正常清理/恢复通过。不过返回主菜单更早阶段仍有493ms空窗，直接记录为SnapshotChanged→UNKNOWN及新WGC等待；不是已解决的Continue block2。source重建拒绝不再直接冒充空层数，具体以composition记录为准。详见docs/70 XR14节，默认仍未提升，首版整体仍开放。
+
+
+## XR15 菜单交接候选（未发布）
+
+精确快照采集竞争与普通UNKNOWN分开；已有菜单恢复时可用独立中性卡衔接MAIN_MENU新捕获，普通游玩投影条件保持原样。59项相关Python测试、相关XR测试/自检及Astra Medium独立审查通过。实际1080p完成主菜单往返、world2新Pawn、双眼非黑GPU图像及正常清理，四原生阶段各2235对零错配。但本轮出现block2→block1→block0，block1仍UNKNOWN造成约344.5ms合成间隔，旧审计有一项失败，保留false；mode6异常未在实际运行复现。不得当成全部黑屏验收，默认玩家清单仍未提升。详见docs/70。

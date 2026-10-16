@@ -8,8 +8,8 @@
 // Pure CPU RGBA source. No game pixels, OS fonts, graphics API or image library.
 namespace transition_card_pixels {
 inline constexpr unsigned width=768,height=256;
-inline constexpr char title[]="RETURNING TO GAME";
-inline constexpr char subtitle[]="Waiting for the next stereo frame";
+inline constexpr char title[]="WAITING FOR GAME IMAGE";
+inline constexpr char subtitle[]="Updating the VR view";
 enum class Variant {returning_to_game,starting_vr};
 inline constexpr char startup_title[]="STARTING VR";
 inline constexpr char startup_subtitle[]="Waiting for the game image";
@@ -30,6 +30,9 @@ inline Glyph glyph(char c){
     case 'W':return {17,17,17,21,21,21,10};case 'X':return {17,17,10,4,10,17,17};
     case 'Y':return {17,17,10,4,4,4,4};case 'Z':return {31,1,2,4,8,16,31};
     case 'a':return {0,0,14,1,15,17,15};case 'e':return {0,0,14,17,31,16,14};
+    case 'd':return {1,1,15,17,17,17,15};case 'p':return {0,0,30,17,30,16,16};
+    case 'u':return {0,0,17,17,17,19,13};case 'v':return {0,0,17,17,17,10,4};
+    case 'w':return {0,0,17,17,21,21,10};
     case 'f':return {6,8,8,28,8,8,8};case 'g':return {0,0,15,17,15,1,14};
     case 'h':return {16,16,30,17,17,17,17};case 'i':return {4,0,12,4,4,4,14};
     case 'm':return {0,0,26,21,21,21,21};case 'n':return {0,0,30,17,17,17,17};
