@@ -71,9 +71,10 @@ def camera_preparation_transient(error):
     # Exact known transition failures only. Schema, code, certificate identity,
     # process identity and unknown memory errors remain hard rejections.
     from anchor_config import AnchorRegistryChanged,AnchorSamplingRejected
-    from ui_observer_config import UIConfigRejected,UIRegistryChanged
+    from ui_observer_config import UIConfigRejected,UIRegistryChanged,UIControlledPawnUnavailable
     from crosshair_assignment_config import CrosshairRegistryChanged
     if isinstance(error,(AnchorRegistryChanged,UIRegistryChanged,CrosshairRegistryChanged)):return True
+    if type(error) is UIControlledPawnUnavailable:return True
     if type(error) is UIConfigRejected and str(error)=='UI certificate read changed':return True
     reason=str(error)
     if reason in {
@@ -202,7 +203,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
     uses its shared command deadline, including any outer read-only retries.
     Synchronous reads cannot be preempted; late success is always rejected.
     """
-    from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged
+    from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged,UIControlledPawnUnavailable
     from crosshair_assignment_config import CrosshairRegistryChanged
     from anchor_config import AnchorRegistryChanged
     if crosshair_assignment_observer and not (anchor_observer and ui_observer):
@@ -257,10 +258,11 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                 return refreshed,anchor_metadata,anchor_section,ui_metadata,ui_section
             finally:r.p.close()
         except (UIConfigRejected,CrosshairRegistryChanged,AnchorRegistryChanged) as error:
-            # Only known read churn and typed registry header mismatches join
+            # Only known read churn, typed unpossession and registry mismatches join
             # this budget. Identity/code/unknown failures remain hard; every
             # retry discards the Resolver and all certificates.
             if not (isinstance(error,(UIRegistryChanged,CrosshairRegistryChanged,AnchorRegistryChanged)) or
+                    type(error) is UIControlledPawnUnavailable or
                     (type(error) is UIConfigRejected and str(error)=='UI certificate read changed')):raise
             if attempt+1==attempts or time.monotonic()>=deadline:raise
             print(f'Observer preparation changed ({error}); reacquiring all certificates ({attempt+2}/{attempts})',file=sys.stderr)

@@ -31,6 +31,12 @@ class UIConfigRejected(RuntimeError):
 class UIRegistryChanged(UIConfigRejected):
     """Only the final concurrent registry-header change permits reacquisition."""
 
+class UIControlledPawnUnavailable(UIConfigRejected):
+    """A fresh registered controller is unpossessed; no certificate is usable."""
+    def __init__(self,controller,field,offset):
+        super().__init__('UI controlled Pawn unavailable; reacquire')
+        self.evidence=dict(controller=controller,field=field,offset=offset,pointer=0)
+
 def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anchor=None):
     r=resolver;p=r.profile;started=time.perf_counter_ns()
     mounted=mounted_anchor is not None
@@ -137,6 +143,17 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
     def link(label,source,name,target=None):
         offset=prop(label,fresh(source)['cls'],name,'ObjectProperty')
         pointer=r.u64(source+offset)
+        if label=='controller_pawn' and not pointer:
+            # Death/loading can unpossess the controller after camera/anchor
+            # acquisition. Classify only this null live link, after rechecking
+            # its source identity and reflected field; discard all certificates.
+            controller=ids[by_address[source]];field=ids[field_ids[label]]
+            if fresh(source)!=controller or fresh(field['address'])!=field:
+                raise UIConfigRejected('UI identity changed during assembly')
+            if r.u32(field['address']+p['property_offset_internal'])!=offset:
+                raise UIConfigRejected('UI field/link/entry changed during assembly')
+            if r.u64(source+offset):raise UIConfigRejected('UI certificate read changed')
+            raise UIControlledPawnUnavailable(controller.copy(),field.copy(),offset)
         if (not pointer and target!=0) or (target is not None and pointer!=target):raise UIConfigRejected('UI reference mismatch: '+label)
         links.append((source+offset,struct.pack('<Q',pointer)))
         if pointer:add(pointer)
