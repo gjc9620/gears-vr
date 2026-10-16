@@ -107,7 +107,7 @@ void observe_gui_thread(DWORD style,HWND parent) noexcept {
     SetLastError(saved);
 }
 decltype(&ShowWindow) original_show{};
-decltype(&SetForegroundWindow) original_foreground{};
+decltype(&SetForegroundWindow) original_foreground{},original_native_foreground{};
 decltype(&SetActiveWindow) original_active{};
 decltype(&SetFocus) original_focus{};
 decltype(&SetWindowPos) original_position{};
@@ -171,6 +171,11 @@ BOOL WINAPI foreground(HWND window) {
     if(guard(window,false)) {trace.policy(0);note(gears_quiet::foreground);return trace.returned(FALSE);}
     return trace.native(original_foreground(window));
 }
+BOOL WINAPI native_foreground(HWND window) {
+    TraceCall trace(gears_quiet::native_foreground,window);
+    if(guard(window,false)){trace.policy(0);note(gears_quiet::foreground);return trace.returned(FALSE);}
+    return trace.native(original_native_foreground(window));
+}
 HWND WINAPI active(HWND window) {
     TraceCall trace(gears_quiet::active,window);
     if(guard(window,false)) {trace.policy(0);note(gears_quiet::active);return trace.returned(GetActiveWindow());}
@@ -231,33 +236,44 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsQuietInstall(void*) {
     main_noactivate=GetEnvironmentVariableW(L"GEARSVR_QUIET_MAIN_NOACTIVATE",main_option,2)==1&&main_option[0]==L'1';
     wchar_t trace_option[2]{};
     const bool tracing=GetEnvironmentVariableW(L"GEARSVR_QUIET_TRACE",trace_option,2)==1&&trace_option[0]==L'1';
+    wchar_t native_option[2]{};
+    const bool native_requested=GetEnvironmentVariableW(L"GEARSVR_QUIET_NATIVE_FOREGROUND",native_option,2)==1&&native_option[0]==L'1';
+    void* native_target=nullptr;
+    if(native_requested){
+        const HMODULE win32u=GetModuleHandleW(L"win32u.dll");
+        native_target=win32u?reinterpret_cast<void*>(GetProcAddress(win32u,"NtUserSetForegroundWindow")):nullptr;
+        if(!native_target)return ERROR_NOT_SUPPORTED;
+    }
     if(MH_Initialize()!=MH_OK)return ERROR_INVALID_FUNCTION;
     const std::array<void*,gears_quiet::trace_call_count> targets{
         reinterpret_cast<void*>(&ShowWindow),reinterpret_cast<void*>(&SetForegroundWindow),
         reinterpret_cast<void*>(&SetActiveWindow),reinterpret_cast<void*>(&SetFocus),
         reinterpret_cast<void*>(&SetWindowPos),reinterpret_cast<void*>(&BringWindowToTop),
         reinterpret_cast<void*>(&CreateWindowExW),reinterpret_cast<void*>(&CreateWindowExA),
-        reinterpret_cast<void*>(&DefWindowProcW),reinterpret_cast<void*>(&DefWindowProcA)};
+        reinterpret_cast<void*>(&DefWindowProcW),reinterpret_cast<void*>(&DefWindowProcA),native_target};
     const std::array<void*,gears_quiet::trace_call_count> replacements{
         reinterpret_cast<void*>(&show),reinterpret_cast<void*>(&foreground),
         reinterpret_cast<void*>(&active),reinterpret_cast<void*>(&focus),
         reinterpret_cast<void*>(&position),reinterpret_cast<void*>(&bring),
         reinterpret_cast<void*>(&create_w),reinterpret_cast<void*>(&create_a),
-        reinterpret_cast<void*>(&def_window_w),reinterpret_cast<void*>(&def_window_a)};
+        reinterpret_cast<void*>(&def_window_w),reinterpret_cast<void*>(&def_window_a),reinterpret_cast<void*>(&native_foreground)};
     const std::array<void**,gears_quiet::trace_call_count> originals{
         reinterpret_cast<void**>(&original_show),reinterpret_cast<void**>(&original_foreground),
         reinterpret_cast<void**>(&original_active),reinterpret_cast<void**>(&original_focus),
         reinterpret_cast<void**>(&original_position),reinterpret_cast<void**>(&original_bring),
         reinterpret_cast<void**>(&original_create_w),reinterpret_cast<void**>(&original_create_a),
-        reinterpret_cast<void**>(&original_def_window_w),reinterpret_cast<void**>(&original_def_window_a)};
-    const unsigned wanted=tracing?gears_quiet::trace_call_count:gears_quiet::count;
+        reinterpret_cast<void**>(&original_def_window_w),reinterpret_cast<void**>(&original_def_window_a),reinterpret_cast<void**>(&original_native_foreground)};
+    std::array<unsigned,gears_quiet::trace_call_count> selected{};unsigned wanted{};
+    for(unsigned i=0;i<gears_quiet::count;++i)selected[wanted++]=i;
+    if(tracing){selected[wanted++]=gears_quiet::def_window_w;selected[wanted++]=gears_quiet::def_window_a;}
+    if(native_requested)selected[wanted++]=gears_quiet::native_foreground;
     unsigned created{};
-    for(;created<wanted;++created) {
-        if(MH_CreateHook(targets[created],replacements[created],originals[created])!=MH_OK)break;
+    for(;created<wanted;++created){const unsigned i=selected[created];
+        if(MH_CreateHook(targets[i],replacements[i],originals[i])!=MH_OK)break;
     }
-    if(created!=wanted) {
-        for(unsigned i=0;i<created;++i)MH_RemoveHook(targets[i]);
-        MH_Uninitialize();return created>=gears_quiet::count?ERROR_NOT_SUPPORTED:ERROR_INVALID_FUNCTION;
+    if(created!=wanted){
+        for(unsigned i=0;i<created;++i)MH_RemoveHook(targets[selected[i]]);
+        MH_Uninitialize();return selected[created]>=gears_quiet::count?ERROR_NOT_SUPPORTED:ERROR_INVALID_FUNCTION;
     }
     if(tracing){
         const DWORD saved=GetLastError();LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);qpc_frequency=frequency.QuadPart;

@@ -52,7 +52,7 @@ try:
     if not k.ReadProcessMemory(handle,argument,raw,size,c.byref(read)) or read.value!=size:raise c.WinError(c.get_last_error())
     head=struct.unpack_from('<8I',raw)
     assert head[0]==2 and head[1]==size and head[3]==128 and head[5]<=128
-    names=['ShowWindow','SetForegroundWindow','SetActiveWindow','SetFocus','SetWindowPos','BringWindowToTop','CreateWindowExW','CreateWindowExA','DefWindowProcW','DefWindowProcA']
+    names=['ShowWindow','SetForegroundWindow','SetActiveWindow','SetFocus','SetWindowPos','BringWindowToTop','CreateWindowExW','CreateWindowExA','DefWindowProcW','DefWindowProcA','NtUserSetForegroundWindow']
     keys=['sequence','call','thread','suppressed','stack_count','reserved','target','related','result_window','argument','effective_argument','extra_argument','enter_tick','leave_tick','foreground_before','foreground_after']
     def parse_records(raw,count,start,names):
         records=[]

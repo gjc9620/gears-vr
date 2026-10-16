@@ -14,7 +14,7 @@ using Install = DWORD (WINAPI*)(void*);
 using Read = DWORD (WINAPI*)(Status*);
 constexpr DWORD trace_abi=1,trace_capacity=128,trace_stack_capacity=24;
 // Trace-only IDs; Call::count and the eight Status counters remain unchanged.
-enum TraceCall : unsigned { def_window_w=count,def_window_a,trace_call_count };
+enum TraceCall : unsigned { def_window_w=count,def_window_a,native_foreground,trace_call_count };
 struct TraceRecord {
     DWORD sequence{},call{},thread{},suppressed{},stack_count{},reserved{};
     std::uint64_t target{},related{},result_window{};

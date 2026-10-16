@@ -83,6 +83,16 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
     step("set_focus",[&](){return SetFocus(window);});
     step("set_position_topmost",[&](){return SetWindowPos(window,HWND_TOPMOST,-30000,-30000,320,240,SWP_SHOWWINDOW);});
     step("bring_to_top",[&](){return BringWindowToTop(window);});
+    wchar_t native_option[2]{};
+    const bool native_requested=GetEnvironmentVariableW(L"GEARSVR_QUIET_NATIVE_FOREGROUND",native_option,2)==1&&native_option[0]==L'1';
+    const auto native_fg=reinterpret_cast<decltype(&SetForegroundWindow)>(GetProcAddress(GetModuleHandleW(L"win32u.dll"),"NtUserSetForegroundWindow"));
+    gears_quiet::Status native_before{},native_after{};
+    bool native_valid=native_fg&&query(&native_before)==0;
+    BOOL native_result=TRUE;
+    if(native_valid)native_result=step("native_foreground",[&](){return native_fg(native_requested?window:nullptr);});
+    native_valid=native_valid&&query(&native_after)==0&&
+        native_after.suppressed[gears_quiet::foreground]==native_before.suppressed[gears_quiet::foreground]+(native_requested?1:0)&&
+        (!native_requested||native_result==FALSE);
     MSG message{};
     for(unsigned i=0;i<30;++i) {
         observe("message_pump","before");
@@ -119,7 +129,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
                 r.enter_qpc>0&&r.leave_qpc>=r.enter_qpc&&r.return_valid&&r.native_valid&&r.returned_value==r.native_value;}
     }else cbt_valid=cbt_valid&&!cbt->installed&&!cbt->completed&&!cbt->thread;
     trace_valid=trace_valid&&cbt_valid;
-    bool trace_null=false,trace_passed=false,trace_blocked=false;unsigned trace_call_mask{};
+    bool trace_null=false,trace_passed=false,trace_blocked=false,native_trace=false;unsigned trace_call_mask{};
     if(trace_valid&&trace_requested){
         STARTUPINFOW startup{sizeof(startup)};GetStartupInfoW(&startup);
         trace_valid=trace->startup.flags==startup.dwFlags&&trace->startup.show_window==startup.wShowWindow;
@@ -130,12 +140,14 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
             trace_valid=row.sequence==i+1&&row.call<gears_quiet::trace_call_count&&row.thread!=0&&row.stack_count>0&&
                 row.stack_count<=gears_quiet::trace_stack_capacity&&row.leave_tick>=row.enter_tick&&row.enter_qpc>0&&row.leave_qpc>=row.enter_qpc&&row.return_valid==1&&
                 row.gui_before.valid==1&&row.gui_after.valid==1&&(!row.native_valid||row.native_call<gears_quiet::trace_call_count);
+            native_trace|=row.call==gears_quiet::native_foreground&&row.target==reinterpret_cast<uintptr_t>(window)&&row.suppressed==1&&!row.native_valid&&row.returned_value==0;
             if(row.call<gears_quiet::count)trace_call_mask|=1u<<row.call;
             if(row.suppressed&&(row.call==gears_quiet::foreground||row.call==gears_quiet::active||
                 row.call==gears_quiet::focus||row.call==gears_quiet::bring))trace_valid=trace_valid&&row.native_valid==0;
             trace_passed|=row.suppressed==0;trace_blocked|=row.suppressed==1;
             trace_null|=(row.call==gears_quiet::active||row.call==gears_quiet::focus)&&row.target==0&&row.suppressed==0;
         }
+        trace_valid=trace_valid&&(!native_requested||native_trace);
         auto saved=std::make_unique<gears_quiet::TraceSnapshot2>(*trace);
         for(unsigned i=0;i<gears_quiet::trace_capacity+1;++i)ShowWindow(window,SW_SHOWNA);
         trace_valid=trace_valid&&query_trace(trace.get())==ERROR_SUCCESS&&trace->completed==gears_quiet::trace_capacity&&
@@ -143,6 +155,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
             trace_passed&&trace_blocked&&trace_null&&trace_call_mask==((1u<<gears_quiet::count)-1)&&
             std::memcmp(trace->records,saved->records,saved->completed*sizeof(gears_quiet::TraceRecord2))==0;
     }else if(trace_valid){trace_valid=trace->enabled==0&&trace->completed==0&&trace->reserved_count==0&&trace->overflow==0;}
+    trace_valid=trace_valid&&native_valid;
     const bool main_retained=main_matches(main_w)&&main_matches(main_a);
     if(main_w)step("destroy_main_w",[&](){return DestroyWindow(main_w);});if(main_a)step("destroy_main_a",[&](){return DestroyWindow(main_a);});
     if(explicit_style)step("destroy_explicit",[&](){return DestroyWindow(explicit_style);});if(owned)step("destroy_owned",[&](){return DestroyWindow(owned);});
@@ -154,6 +167,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
        <<",\"parent_child_preserved\":"<<parent_child<<",\"owned_popup_preserved\":"<<owned_popup
        <<",\"parent_hide_preserved\":"<<parent_hide<<",\"child_visibility_restored\":"<<child_restored
        <<",\"explicit_noactivate_preserved\":"<<explicit_preserved
+       <<",\"native_foreground_requested\":"<<native_requested<<",\"native_foreground_valid\":"<<native_valid
        <<",\"main_noactivate_requested\":"<<main_requested<<",\"main_style_matched\":"<<main_style
        <<",\"main_style_retained\":"<<main_retained<<",\"message_only_style_preserved\":"<<message_style
        <<",\"hide_preserved\":"<<hidden<<",\"show_minimized_preserved\":"<<minimized
