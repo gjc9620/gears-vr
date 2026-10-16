@@ -343,7 +343,12 @@ constexpr unsigned crosshair_assignment_hooks=1;
 #else
 constexpr unsigned crosshair_assignment_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks> session_hook_entries{};
+#if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
+constexpr unsigned ui_call_boundary_hooks=1;
+#else
+constexpr unsigned ui_call_boundary_hooks=0;
+#endif
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
