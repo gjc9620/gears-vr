@@ -183,3 +183,9 @@ quiet14 构建、命令行CTest通过；实际hook fixture的 trace_valid 检查
 有界专家复核发现：default11-final1 主窗口创建时不带 WS_VISIBLE，首个 ShowWindow 请求2（guard改7），而启动器 STARTF_USESHOWWINDOW 指定4；约19.313秒后才有恢复请求。首次显示参数可能覆盖游戏初始化期间的最小化状态。此为待验证假设，不能据此宣布根因。现有fixture先创建可见dummy，未覆盖这一首次显示顺序；其SC_MINIMIZE阶段的ANSI激活事件也不能替代游戏实际抢焦点证据。
 
 early_launch新增显式诊断环境变量 `GEARSVR_QUIET_START_MINIMIZED=1`，仅把启动hint从4改7；未设置或其他值仍为4，默认冻结quiet11不变。`build-quiet15-minstart` 编译及命令行CTest通过。无窗口探针经真实early-launch启动、沿用冻结quiet14策略DLL，验证默认/1/无效值三种实际STARTUPINFO分别4/7/4且flags含STARTF_USESHOWWINDOW，证据 `quiet15-startup-contract.json`。尚未运行游戏对照，不代表焦点修复通过。下一轮需同一DisplayFusion状态与无人工输入窗口，外部记录IsIconic确认最小化/恢复实际成立；不能只相信传入参数。
+
+### 无人工输入的 DisplayFusion 隔离：仍自动抢焦点
+
+用户明确提供无输入窗口后，重复原quiet14参数的隔离测试，未启用quiet15最小化实验。`quiet-df-idle.json` 整个70秒的 input_changes 为空；game4464于tick2316546进入前台，观察结束仍在前台。`quiet-df-idle-control.json` 确认启动前与恢复前DisplayFusion进程不存在，游戏模块列表无AppHook/DisplayFusion。finally恢复DisplayFusion成功，游戏和XR继续运行等待关卡。`focus-df-idle.json` 保存25条完整记录、无溢出。
+
+该轮证明本机抢焦点在DisplayFusion缺席时仍会发生，排除它作为此问题的必要条件；不再以修改其设置作为当前修复方向。当前目标仍未完成。quiet15实验观察器 `quiet-minstart15.py` 已准备，将记录窗口IsIconic状态变化；使用新启动器配冻结quiet14 DLL，未运行、未升级默认发布构建。
