@@ -11,3 +11,11 @@ schema3 保持原有字段和 INI 格式：role_level 仍是受控 Turret 的直
 自动重绑定快照现在还包含五个 Level 的独立身份，因此 Actor 指针不变、Level 地址不变但 Level 身份变化也会要求重新准备/提交证书。UI 继续从人类 Driver 读取背包；准星查询暂停/下机恢复协议不变。
 
 验证：116 项 Python 测试通过，覆盖 mounted/cinematic/anchor/UI、重绑定准备及监控。独立 CPU 构建位于 ignored `analysis/tests/mounted-stream-levels/build`；MountedObserverTest 170 检查通过，AnchorConfigLoaderTest 124 检查通过，AnchorObserverTest、UiObserverTest、WorldRebindMetadataTest 通过。跨 Python→INI→原生的保存内存合成 fixture 同时覆盖单 Level、五个不同 Level、cinematic 组合和正常下机；反例包括错误 WorldInfo、错误/Default/缺失/未注册 Level、每个 Level 身份变化及读取中变化。此结果不建立实际游戏 mounted 验收。
+
+## 完整Native37候选与普通关卡回归
+
+源码冻结于3e90e55：`analysis/native-source-mounted37`，沿用已记录MinHook依赖，不含工作区未提交的旁路修改。`tools/native-capture/build-mounted37/GearsCaptureMounted37.dll` SHA256 `66a5bba9c1de4dab5bc66c17adb6dd267b1552619255bfbc3c64fbbd40c280f0`，完整构建及17项原生检查通过，原始回执`analysis/runtime/mounted37-selftests.json`。继续使用Borderless1 XR与本轮自测前移流程。
+
+模拟器实际会话`continuous-stereo-12756-20261017-041949-e303879b`完成4K普通关卡及一次同进程检查点读取，world generation1→2恢复。原生发布4711、capture attempts4714、busy1，ticket／rectangle拒绝0；HUD应用11275、序列错误0；0.3米镜头拉近应用4739、拒绝0。原生准备4261.692ms，首个projection在相机就绪标记后7238.477ms。初次脚本等待15秒死亡菜单未命中，没有发送输入；之后只读确认DeltaGameover／btnCheckpoint稳定再发送Enter，并取得新world实际提交。保留初次观察超时，不当作游戏重启。
+
+正常停止、native cleanup、入口恢复、XR退出0均验证，之后正常关闭游戏。状态与原始日志保留ignored analysis/runtime；`mounted37-checkpoint-audit.json`与`mounted37-normal-close.json`记录恢复和清理。本轮验证普通路径未回归，并未真正占有机枪，不能宣称机枪黑屏或全部载具已修复。默认试用清单现为`manifest-mounted37-borderless-vd.json`；Native36／35／32命名清单保留回退。
