@@ -52,3 +52,5 @@ UI发现优化的同进程测量、完整VR与检查点回归及最新独立快�
 检查点重绑定重复解析已去除，78项测试及两轮实际恢复通过；耗时与边界见[重绑定准备耗时](81-rebind-discovery-latency.md)。默认仍为Caption38／Borderless1。
 
 最新独立包实际启动及游戏内FPS开启证据见[Caption38独立包回归](82-portable-caption38-fps-runtime.md)。
+
+手枪实际开镜／一次射击样本中外圈已落在计划位置，尚无独立内外圈配对，问题仍开放；详见[手枪准星检查](83-pistol-reticle-runtime.md)。
