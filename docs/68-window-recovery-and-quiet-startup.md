@@ -155,3 +155,11 @@ SpaceRecovery8仅在已有 `--shutdown-diagnostics` 开启时增加初始化边�
 quiet14 构建、命令行CTest通过；实际hook fixture的 trace_valid 检查通过，覆盖异步显示原参数、窗口线程和返回值。两次fixture整体不通过，因为各有一个短暂前台事件；旧冻结quiet11同条件对照也出现，不能将此结果写为无焦点回归通过。证据 `quiet14-on[-trace]-fixture.json`、`quiet11-control-after14.json`。
 
 实际 `quiet-async14.json` / `focus-async14.json`：game34536仍出现前台事件tick517078；策略已安装，27条完整记录、无溢出，ShowWindowAsync记录为0。该结果排除了这轮激活前通过被监测进程内该入口发起的请求，不能排除跨进程调用或其他API。会话 `continuous-stereo-34536-20261016-162343-825736d9.json` 在观察结束时继续等待关卡，owner30912、XR2492持续运行，模拟器可见；不关闭会话或通过抢回焦点掩盖事件。
+
+### Win32k 系统跟踪能力检查
+
+本机 WPR/xperf 已安装。非管理员启动 WPR 实际返回 `0x80070005`；用户随后手动运行管理员采集脚本。`Record-Focus.ps1` 使用独立实例名、5–180秒时限及 stop 文件，正常停止保存 ETL；停止失败时只取消自己创建的实例。不会启动/关闭游戏，也不会设置前台窗口。`-CheckOnly` 和 WPR profile 解析通过；非管理员及越界时长均在采集前拒绝。
+
+首轮管理员实例 `GearsVRFocus-bcca9daf7cb4413bb6e6b09a66b6c62e` 经 logman 确认实际运行（非管理员 WPR status 未显示该实例）。记录覆盖 game13348 的实际启动，随后主动请求保存，stop exit0，ETL 524288字节。xperf导出显示133秒、事件/缓冲丢失均0，但没有 Win32k 焦点事件，仅系统元数据；因此不能用于来源归因，也不能宣称ETW路线已验证可用。
+
+第二版 profile 使用 logman 查询确认的 GUID `8c416c79-d49b-4f01-a467-e56d3aa8234c`、Focus/UserActivity mask `0x22000`、NonPagedMemory及Strict启用。仍需重新采样验证事件实际出现；名称解析或buffer选项是否解释首轮空数据尚未证明。采集结果全部保存在ignored analysis，不进发布包。窗口操作对照和调用方归因尚未完成。
