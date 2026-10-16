@@ -249,3 +249,15 @@ policy要求菜单实际成功显示过、当前为新鲜认证GAMEPLAY、仍待
 冻结XR13 SHA256 `3576ac6f9b44e8fd6197c8496ec35c694adf1870017b269462d080b89c60e740`，Native23不变。会话 `continuous-stereo-35372-20261016-114128-9cf8b252` 实际启动卡34层、一次上传，然后完成真实projection交接。XR记录2170次projection、936次场景复制；outage complete=true，未出现超过100ms的合成间隔，最长34.89ms。四个原生阶段各946对视图矩阵无偏差；ticket289的1920×1080 GPU源两眼均有非黑场景。原生清理、43入口恢复、XR shutdown及身份校验WM_CLOSE退出通过，无焦点激活。
 
 原始日志、PPM和 `analysis/runtime/startup-card-verification.json` 保持ignored。此轮是一次自然启动回归，不能拿不同运行的453ms与35ms直接当作严格性能对照；证明的是启动卡实际被提交且此轮未出现阈值空窗。不宣称已修复WGC底层短暂不可用、全部菜单/CG/游玩黑屏、真头显文字像素或长期稳定性。玩家默认清单尚未提升。
+
+### XR13 / Native23 的4K完整循环及剩余空窗
+
+会话 `continuous-stereo-23988-20261016-114631-ec71ca35` 实际源3840×2160、每眼1920×2160。完成两次取消检查点确认、实际重载world1→2、新Pawn手枪开镜及切回步枪，再经精确Surrender确认返回主菜单、Campaign/Single/Continue进入world3。三张GPU源图index0/1/2、ticket295/5823/7877保存回执有效，world3左右眼有场景。四个原生阶段各7885对视图零错配；准星finite应用91次只作代码路径计数，不等于头显融合或全部UI像素验收。projection9308次、场景复制7841次。停止、43入口恢复、XR销毁和正常WM_CLOSE通过，测试前后仅将用户分辨率1920×1080↔3840×2160并恢复，保留原配置备份，无焦点激活。证据 `xr13-4k-events.json` / `xr13-4k-audit.json` 及同会话原始文件均ignored。
+
+**此轮不能作为无闪黑通过。** 最长合成空窗4.6447721秒，边界62701975943200–62706620715300。Continue后的首次缺层WGC仍fresh/rendered，上传后菜单授权复查拒绝；随后PenderCrossplayInvitePopUp被分类UNKNOWN，show_panel=false，无render尝试，最后GAMEPLAY允许返回卡才恢复非空合成。world3提交更晚，不能用最终恢复掩盖此区间。outage complete=false/later_windows=4，其他区间未全部保留；首窗口另有约255ms的world2 source_reconfiguration→waiting_image空窗。image-ticket保留4096、丢弃3745，也不能声称后半程所有图像票据完整保留。
+
+目前只知道UNKNOWN的tag，不能断言是input_block_count或player_index哪项失配。Python监控新增仅在原模式/原因变化行输出已读sample的紧凑state_evidence（top/active/focus及分类门禁），不改变64字节packet、分类、时间戳、重试、行率或显示权限；36项相关测试通过。需要下一次Continue的UNKNOWN/恢复对照，之后再确定仅允许通用等待提示的精确过渡状态。默认未提升。
+
+后续1080p会话 `continuous-stereo-11428-20261016-120425-bc269c4e` 取得对照：sequence233（63624141326500）block=2/UNKNOWN，sequence249（63628297074400）block=0/GAMEPLAY，相隔4.156秒。两者read_only/consistent均true、player0；top仍为同一PenderCrossplayInvitePopUp对象，活动栈精确为HUD_Toast→MessageToast→Pender，前两者mode0、top mode2；焦点链仅top自身且states=[UIState_Enabled]。尚未放宽分类，下一步单独认证仅通用提示的窄状态，继续禁止旧画面、投影和自动输入。主菜单Continue→world2及请求图像完成，正常停止/43入口恢复/XR shutdown/WM_CLOSE退出通过，证据 `xr13-loading3-events.json` 及同会话日志。
+
+复现中的另两轮单独保留：40736在原生激活前因CrosshairRegistryChanged校验拒绝，runner报告incomplete；预留日志已取消且active0，另外只读核验6个系统入口及4个图形设置入口后正常WM_CLOSE，未将其改写成通过。40428的精简测试脚本漏定义world_path，在菜单操作前报错，已正常停止/恢复并退出；补变量后增加全局引用检查，后续11428才是有效复现。它们不是新的已证实游戏闪退，也未在原进程上重复注入。

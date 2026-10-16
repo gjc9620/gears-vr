@@ -12,6 +12,33 @@ PAUSE_SETTINGS = frozenset(('DeltaPause-Options', 'DeltaGameConfiguration', 'Del
                             'PenderGraphicsSettings', 'DeltaAudioVideoSettings', 'DeltaInputSettings'))
 
 
+def state_evidence(sample):
+    """Own only already-read scalar identities/gates and bounded scene chains."""
+    if not isinstance(sample, dict):return None
+    def scalar(value):
+        return value if value is None or type(value) in (bool, int, float, str) else None
+    def scene(value):
+        if not isinstance(value, dict):return None
+        result = {key: scalar(value[key]) for key in (
+            'address', 'name', 'number', 'cls', 'outer', 'input_mode', 'tag', 'tag_number') if key in value}
+        if isinstance(value.get('states'), list):
+            result['states'] = [scalar(item) for item in value['states']]
+        return result
+    result = {key: scalar(sample.get(key)) for key in (
+        'read_only', 'consistent_reread', 'input_block_count', 'player_index')}
+    result['top'] = scene(sample.get('top'))
+    result['focused_leaf'] = scene(sample.get('focused_leaf'))
+    for key, limit, tail in (('active_scenes', 32, True), ('focus_chain', 16, False)):
+        values = sample.get(key)
+        result[key] = [scene(value) for value in (values[-limit:] if tail else values[:limit])] if isinstance(values, list) else None
+        result[key+'_total'] = len(values) if isinstance(values, list) else None
+        result[key+'_truncated'] = isinstance(values, list) and len(values) > limit
+        # Active-scene tail preserves the observed top; focus-chain prefix
+        # preserves its root. The focused leaf is separately retained above.
+        result[key+'_selection'] = 'tail' if tail else 'prefix'
+    return result
+
+
 def scene_context(scene, name, cls='WarUIScene'):
     return (isinstance(scene, dict) and scene.get('name') == name and scene.get('cls') == cls
             and type(scene.get('input_mode')) is int and scene['input_mode'] == 1)
@@ -135,7 +162,7 @@ class MenuDisplayMonitor:
         self.publish_failed = False
         self.log = self.path.with_suffix('.jsonl').open('w', encoding='utf-8')
 
-    def publish(self, mode, observed, reason):
+    def publish(self, mode, observed, reason, evidence=None):
         self.sequence += 1
         data = PACKET.pack(0x47564d31, 1, PACKET.size, mode,
                            self.game['pid'], self.game['creation_time'], self.owner['pid'],
@@ -165,13 +192,15 @@ class MenuDisplayMonitor:
             self.publish_failed = False
         key = mode, reason
         if key != self.last:
-            self.log.write(json.dumps(dict(sequence=self.sequence, observed_ns=observed, mode=mode, reason=reason))+'\n')
+            self.log.write(json.dumps(dict(sequence=self.sequence, observed_ns=observed, mode=mode,
+                reason=reason, state_evidence=state_evidence(evidence)))+'\n')
             self.log.flush()
             self.last = key
         return True
 
     def poll(self):
         observed = self.clock()  # Begin acquisition, never extend a slow read's lease.
+        sample = None
         if self.identity(self.game['pid']) != self.game:
             self.publish(UNKNOWN, observed, 'game_identity_changed')
             raise RuntimeError('Menu observer game process changed')
@@ -188,6 +217,7 @@ class MenuDisplayMonitor:
             mode = classify(sample)
             reason = (sample.get('top') or {}).get('tag', 'unknown')
         except (RuntimeError, OSError, ValueError, UnicodeError) as error:
+            sample = None  # A failed acquisition never carries old/partial state evidence.
             mode, reason = UNKNOWN, type(error).__name__+': '+str(error)
             # Only these exact acquisition-churn exceptions preserve the reader.
             # Publish no display authority; the next ordinary poll must acquire
@@ -196,7 +226,7 @@ class MenuDisplayMonitor:
                 if self.reader:
                     self.reader.close();self.reader = None
                 self.retry_ns = self.clock()+1000000000
-        self.publish(mode, observed, reason)
+        self.publish(mode, observed, reason, evidence=sample)
 
     def close(self):
         try:

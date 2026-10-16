@@ -5,7 +5,7 @@ import json
 import copy
 import sys
 from unittest.mock import patch, Mock
-from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU
+from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, state_evidence, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU
 
 
 def sample(death=True):
@@ -71,6 +71,76 @@ class Reader:
 
 
 class Tests(unittest.TestCase):
+    def test_state_evidence_owns_bounded_scene_and_focus_fields(self):
+        state=sample(False)
+        state['top'].update(address='0x500',number=3,outer='0x100',tag_number=0)
+        state['focused_leaf']=dict(state['top'],states=['UIState_Enabled'])
+        state['active_scenes']=[dict(state['top'],address=hex(i)) for i in range(35)]
+        state['focus_chain']=[dict(state['focused_leaf'],address=hex(i)) for i in range(19)]
+        evidence=state_evidence(state)
+        self.assertEqual(evidence['top'],state['top'])
+        self.assertEqual(evidence['focused_leaf'],state['focused_leaf'])
+        self.assertEqual(evidence['active_scenes'],state['active_scenes'][-32:])
+        self.assertEqual(evidence['focus_chain'],state['focus_chain'][:16])
+        for key,total,selection in (('active_scenes',35,'tail'),('focus_chain',19,'prefix')):
+            self.assertEqual(evidence[key+'_total'],total)
+            self.assertTrue(evidence[key+'_truncated'])
+            self.assertEqual(evidence[key+'_selection'],selection)
+        state['top']['address']='changed';state['focused_leaf']['states'].append('changed')
+        state['active_scenes'][-1]['address']='changed';state['focus_chain'][0]['states'].append('changed')
+        self.assertEqual(evidence['top']['address'],'0x500')
+        self.assertEqual(evidence['focused_leaf']['states'],['UIState_Enabled'])
+        self.assertEqual(evidence['active_scenes'][-1]['address'],hex(34))
+        self.assertEqual(evidence['focus_chain'][0]['states'],['UIState_Enabled'])
+        self.assertIsNone(state_evidence(None))
+
+    def test_blocked_pender_unknown_then_gameplay_logs_evidence_without_more_rows_or_packet_change(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+            state=sample(False);state['top'].update(address='0x500',number=3,outer='0x100',tag_number=0)
+            state['focused_leaf']=dict(state['top'],states=['UIState_Enabled'])
+            state['active_scenes']=[dict(state['top'])]
+            state['focus_chain']=[dict(state['focused_leaf'])]
+            try:
+                for sequence,(now,blocked,mode) in enumerate(((100,1,UNKNOWN),(200,1,UNKNOWN),(300,0,GAMEPLAY)),1):
+                    current=copy.deepcopy(state);current['input_block_count']=blocked
+                    reader.sample=lambda current=current:current;m.clock=lambda now=now:now;m.poll()
+                    self.assertEqual(PACKET.unpack(path.read_bytes()),(0x47564d31,1,64,mode,11,22,33,44,sequence,now))
+                rows=[json.loads(line) for line in path.with_suffix('.jsonl').read_text().splitlines()]
+                self.assertEqual(len(rows),2)
+                self.assertEqual([r['mode'] for r in rows],[UNKNOWN,GAMEPLAY])
+                self.assertEqual([r['observed_ns'] for r in rows],[100,300])
+                self.assertEqual([r['state_evidence']['input_block_count'] for r in rows],[1,0])
+                for row in rows:
+                    evidence=row['state_evidence']
+                    self.assertTrue(evidence['read_only'] and evidence['consistent_reread'])
+                    self.assertEqual(evidence['player_index'],0)
+                    self.assertEqual(evidence['top'],state['top'])
+                    self.assertEqual(evidence['focused_leaf'],state['focused_leaf'])
+                    self.assertEqual(evidence['active_scenes'],state['active_scenes'])
+                    self.assertEqual(evidence['focus_chain'],state['focus_chain'])
+                    self.assertFalse(evidence['active_scenes_truncated'] or evidence['focus_chain_truncated'])
+            finally:m.close()
+
+    def test_failed_acquisition_has_no_previous_or_partial_sample_evidence(self):
+        for failure in ('read_error','wrong_pid'):
+            with self.subTest(failure=failure),tempfile.TemporaryDirectory() as d:
+                path=pathlib.Path(d)/'menu.bin';reader=Reader();reader.sample=lambda:sample(False)
+                m=self.monitor(path,reader)
+                try:
+                    m.poll()
+                    if failure=='read_error':reader.sample=Mock(side_effect=RuntimeError('read failed'))
+                    else:reader.sample=lambda:dict(sample(False),pid=99)
+                    m.clock=lambda:200;m.poll()
+                    rows=[json.loads(line) for line in path.with_suffix('.jsonl').read_text().splitlines()]
+                    self.assertEqual(rows[0]['mode'],GAMEPLAY)
+                    self.assertIsNotNone(rows[0]['state_evidence'])
+                    self.assertEqual(rows[1]['mode'],UNKNOWN)
+                    self.assertIsNone(rows[1]['state_evidence'])
+                    self.assertEqual(PACKET.unpack(path.read_bytes())[3],UNKNOWN)
+                    self.assertTrue(reader.closed)
+                finally:m.close()
+
     def test_campaign_descendants_require_exact_ordered_observed_chain(self):
         for continued in (False,True):
             base=campaign_menu_sample(continued)
