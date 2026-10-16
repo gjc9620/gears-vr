@@ -130,7 +130,13 @@ int wmain(int argc,wchar_t** argv) {
         const bool disable_extensions=GetEnvironmentVariableW(L"GEARSVR_QUIET_DISABLE_EXTENSION_POINTS",experiment,2)==1&&experiment[0]==L'1';
         StartupAttributes attributes;STARTUPINFOEXW start{};
         start.StartupInfo.cb=disable_extensions?sizeof(start):sizeof(STARTUPINFOW);
-        start.StartupInfo.dwFlags=STARTF_USESHOWWINDOW;start.StartupInfo.wShowWindow=SW_SHOWNOACTIVATE;
+        // Diagnostic single-variable control: the game's first ShowWindow asks
+        // to minimize. STARTF_USESHOWWINDOW otherwise overrides that request.
+        // Preserve the shipped default until actual-game evidence validates it.
+        wchar_t minimized_option[2]{};
+        const bool start_minimized=GetEnvironmentVariableW(L"GEARSVR_QUIET_START_MINIMIZED",minimized_option,2)==1&&minimized_option[0]==L'1';
+        start.StartupInfo.dwFlags=STARTF_USESHOWWINDOW;
+        start.StartupInfo.wShowWindow=start_minimized?SW_SHOWMINNOACTIVE:SW_SHOWNOACTIVATE;
         if(disable_extensions){attributes.initialize();start.lpAttributeList=attributes.list;}
         OwnedChild child;
         require(CreateProcessW(exe.c_str(),command.data(),nullptr,nullptr,FALSE,

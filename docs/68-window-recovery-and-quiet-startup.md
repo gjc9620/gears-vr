@@ -177,3 +177,9 @@ quiet14 构建、命令行CTest通过；实际hook fixture的 trace_valid 检查
 用户明确授权临时退出并恢复后，正常停止旧会话，验证 prime 入口恢复及 XR shutdown，再向身份核验后的 game15296 发送 WM_CLOSE。通过 DisplayFusionCommand -CloseAll 正常退出，确认主进程与32/64位hook辅助进程均不存在，再沿同一 quiet14/Native23/XR16 链启动 game15648，观察70秒且无自动导航。恢复前模块列表不含 AppHook/DisplayFusion，仍含 nvspcap64；恢复前 DisplayFusion 进程仍为空。finally 中重新启动 DisplayFusion，并确认主进程存在，未修改其配置。游戏和模拟器保留运行。
 
 `quiet-df-isolation.json` 记录 game15648 前台tick1874546/1877109、XR14796前台tick1883390；此前最后输入分别1874515/1877000/1883343，距离仅31/109/47毫秒。用户回答记不清是否手动切换。因此本轮不能判为自动激活失败，也不能判为不抢焦点通过，更不能据此认定或排除 DisplayFusion。`focus-df-isolation.json` 保存27条完整记录、无溢出。控制及模块证据为 `quiet-df-isolation-control.json`，全部位于ignored analysis。若继续做因果对照，需要能区分人工切换的观察窗口。
+
+### quiet15 首次显示参数单变量实验准备
+
+有界专家复核发现：default11-final1 主窗口创建时不带 WS_VISIBLE，首个 ShowWindow 请求2（guard改7），而启动器 STARTF_USESHOWWINDOW 指定4；约19.313秒后才有恢复请求。首次显示参数可能覆盖游戏初始化期间的最小化状态。此为待验证假设，不能据此宣布根因。现有fixture先创建可见dummy，未覆盖这一首次显示顺序；其SC_MINIMIZE阶段的ANSI激活事件也不能替代游戏实际抢焦点证据。
+
+early_launch新增显式诊断环境变量 `GEARSVR_QUIET_START_MINIMIZED=1`，仅把启动hint从4改7；未设置或其他值仍为4，默认冻结quiet11不变。`build-quiet15-minstart` 编译及命令行CTest通过。无窗口探针经真实early-launch启动、沿用冻结quiet14策略DLL，验证默认/1/无效值三种实际STARTUPINFO分别4/7/4且flags含STARTF_USESHOWWINDOW，证据 `quiet15-startup-contract.json`。尚未运行游戏对照，不代表焦点修复通过。下一轮需同一DisplayFusion状态与无人工输入窗口，外部记录IsIconic确认最小化/恢复实际成立；不能只相信传入参数。
