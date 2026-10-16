@@ -48,3 +48,5 @@ Native34首次进关前失败的PID39900：实际交换链8×8；状态文件偶
 UI发现优化的同进程测量、完整VR与检查点回归及最新独立快照见[启动准备耗时](78-startup-discovery-cost.md)。
 
 最新字幕双眼图像、多片段布局修正、Caption38候选与剩余边界见[字幕回归](79-subtitle-multirange-layout.md)。
+
+检查点重绑定重复解析已去除，78项测试及两轮实际恢复通过；耗时与边界见[重绑定准备耗时](81-rebind-discovery-latency.md)。默认仍为Caption38／Borderless1。
