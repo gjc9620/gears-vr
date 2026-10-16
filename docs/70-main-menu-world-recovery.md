@@ -211,3 +211,13 @@ Native12 SHA `6475080bb23e0e45f9d989a2c2a2d7c8f382a84b0dd1c2d37346c9e16f56fe94`�
 Native13 SHA `f6f12ccf16015470bf7e0b19b7593fec7e8da606bd1a9a482309798d5945cd21`，XR仍MainMenu8；仅HUD55°变化。会话 `continuous-stereo-42972-20261016-064504-bcc8002c.json`，game42972、owner28540。`world13-control-rect-experiment.json` 每200ms采样（native状态自身约1秒更新）：无resize恢复游玩10秒50样本，published440→824、projection374→1261，零层样本0；同world1物理2160→2161→2160后恢复游玩10秒50样本，published1340→1646、projection1604→2490，零层样本0。尺寸变化中的暂停阶段10样本有1个零层，仍保留可见黑闪缺口；采样未发现不代表逐帧零层不存在。
 
 显式transfer accepted1093、policy_rejected0。正常停止passed=true，native清理与入口恢复true，身份校验WM_CLOSE退出。配置前后备份world13-config-before/after-test.ini，仅恢复X/Y到1920×1080。此次未做world重绑，不把暂停或普通菜单共同quad计双目，不提升默认、不作全场景黑屏验收。
+
+## XR9：区分实际合成空窗与正常菜单
+
+此前outage诊断只把projection算作submitted，正常eye-menu/startup共同quad也会耗尽首个有限记录窗口。XR9现在将只读Row副本交给outage，以成功xrEndFrame且layerCount>0为合成提交依据，输出schema2、实际layer_count及拥有内容的layer_kind。image-ticket与projection证据继续使用原始Row及原有语义，不把二维面板算立体，也不把非空层当成源图非黑的证明。只在原有诊断开关内运行，没有新增Hook或改变显示策略。
+
+冻结 `tools/openxr-probe/build-main-menu9/OpenXRPoseProbe.exe` SHA256 `0b3a2c6878ad01ec3707e18d43ecdc0f354549ebae38e590b69e212f9a43de12`，Native仍23。11项相关XR测试通过；新增覆盖连续projection→eye-menu→startup层不制造outage、零层/失败EndFrame确实制造gap及恢复、原Row不变、标签拥有性及schema输出。
+
+实际会话 `continuous-stereo-43368-20261016-103519-21448e5b` 完成检查点确认重载、world1→2及新Pawn手枪开镜/返回。新诊断首窗口9行、丢弃0行；后续另有2个窗口未完整保留，所以complete=false，不能声称全部逐帧区间均有完整日志。最长合成提交间隔1.8005819秒，已恢复：最后eye-menu为QPC58252332334500/ticket1241，首个零层58252343563600，恢复projection58254132916400/ticket1242。中间状态menu_recovery_pending，旧样本received58252187636100不满足恢复minimum_sample_ns；新样本received58254087644200后才恢复。这证实菜单→新场景交接存在实际空窗，不能再用正常菜单投影缺席解释它。
+
+只读相机观察 `xr9-checkpoint-camera.jsonl` 有20个cinematic=true样本，但范围58215067942900–58217038168700，均早于首投影58221665926200；不把它们当成已运行VR中的剧情切入验收。Bink资料库查询仅找到已有脚本声明和历史FullScreenMovieBink路径字面量，尚无当前播放调用/画面证据，未据此启用视频回退。会话正常停止、原生清理/43入口恢复/XR shutdown通过，90秒只读相机任务完成后WM_CLOSE退出游戏，输入服务停止。下一项需解决真实交接空窗，同时保留新票据门槛、世界/资源/参考空间生命周期和二维/立体证据区分；不能把旧菜单帧冒充新场景投影。

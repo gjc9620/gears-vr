@@ -6,7 +6,57 @@ using namespace outage_diagnostics;
 static Row frame(std::int64_t ns,bool submitted=false,bool fresh=false){
     Row r;r.ns=ns;r.submitted=submitted;r.new_image=fresh;r.new_image_valid=true;r.status=submitted?"submitted":"stale_ticket";return r;
 }
+static void composition_tests(){
+    Row projection=frame(1,true,true);projection.terminal=true;
+    projection.image={true,true,7,8,9,10,11,2,3,15,31};
+    char kind[]="eye_menu";
+    auto copied=composition_row(projection,true,2,kind);kind[0]='X';
+    assert(copied.submitted&&copied.layer_count==2&&!strcmp(copied.layer_kind.data(),"eye_menu"));
+    assert(copied.ns==projection.ns&&copied.status==projection.status&&copied.terminal==projection.terminal&&
+        copied.new_image==projection.new_image&&copied.new_image_valid==projection.new_image_valid);
+    assert(copied.image.receiver_valid&&copied.image.ticket_valid&&copied.image.acquired_serial==7&&
+        copied.image.ticket_id==8&&copied.image.session==9&&copied.image.sequence==10&&
+        copied.image.received_ns==11&&copied.image.copies==2&&copied.image.source==3&&
+        copied.image.head_flags==15&&copied.image.view_flags==31);
+    assert(projection.submitted&&projection.layer_count==0&&!strcmp(projection.layer_kind.data(),"none"));
+    const auto failed=composition_row(projection,false,2,"projection");
+    assert(!failed.submitted&&failed.layer_count==2&&!strcmp(failed.layer_kind.data(),"projection"));
+    assert(!composition_row(projection,true,0,"none").submitted);
+    assert(!composition_row(projection,false,0,nullptr).submitted);
+    assert(!strcmp(composition_row(projection,true,1,nullptr).layer_kind.data(),"none"));
+    char long_kind[80]{};for(unsigned i=0;i<79;++i)long_kind[i]='a';
+    const auto bounded=composition_row(projection,true,1,long_kind);
+    assert(bounded.layer_kind.back()==0&&strlen(bounded.layer_kind.data())==31);
+    Recorder composed;composed.enabled=true;
+    const char* kinds[]{"projection","eye_menu","startup_quad"};
+    // Normal menu composition can persist far beyond the first-window capacity
+    // without consuming it: every successful nonempty EndFrame counts.
+    for(unsigned i=0;i<300;++i){const unsigned mode=i%3;
+        composed.observe(composition_row(frame(1+std::int64_t(i)*50000000,mode==0,mode==0),true,mode==1?2:1,kinds[mode]));}
+    assert(!composed.first_started&&composed.count==0&&composed.dropped==0);
+    const auto last=1+std::int64_t(299)*50000000;
+    composed.observe(composition_row(frame(last+50000000),true,0,"none"));
+    composed.observe(composition_row(frame(last+100000001),true,0,"none"));
+    assert(composed.first_started&&!composed.complete());
+    composed.observe(composition_row(frame(last+150000000),true,2,"eye_menu"));
+    assert(composed.complete()&&composed.longest_gap().end_valid);
+    assert(composed.longest_gap().first_missing.layer_count==0&&!composed.longest_gap().first_missing.submitted);
+    assert(composed.longest_gap().end.layer_count==2&&!strcmp(composed.longest_gap().end.layer_kind.data(),"eye_menu"));
+    Recorder failed_end;failed_end.enabled=true;
+    failed_end.observe(composition_row(frame(1,true),true,1,"projection"));
+    failed_end.observe(composition_row(frame(100000002,true),false,1,"startup_quad"));
+    assert(failed_end.first_started&&!failed_end.longest_gap().end_valid);
+    failed_end.observe(composition_row(frame(120000001),true,1,"startup_quad"));
+    assert(failed_end.complete()&&failed_end.longest_gap().end_valid);
+    FILE* file{};assert(tmpfile_s(&file)==0&&file);composed.dump(file);rewind(file);
+    std::string text;char buffer[2048];while(fgets(buffer,sizeof(buffer),file))text+=buffer;fclose(file);
+    assert(text.find("\"schema\":2")!=std::string::npos);
+    assert(text.find("\"submission_semantics\":\"successful_nonempty_xrEndFrame_not_pixel_validation\"")!=std::string::npos);
+    assert(text.find("\"layer_count\":0,\"layer_kind\":\"none\"")!=std::string::npos);
+    assert(text.find("\"layer_count\":2,\"layer_kind\":\"eye_menu\"")!=std::string::npos);
+}
 int main(int argc,char** argv){
+    composition_tests();
     Recorder disabled;disabled.observe(frame(1,true));assert(disabled.count==0&&disabled.longest_gap().duration_ns==0);
     Recorder before;before.enabled=true;before.observe(frame(1));before.observe(frame(900000001));assert(!before.first_started);
     Recorder exact;exact.enabled=true;exact.observe(frame(1,true,true));exact.observe(frame(100000001));assert(!exact.first_started);

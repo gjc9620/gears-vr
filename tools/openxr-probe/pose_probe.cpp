@@ -614,7 +614,14 @@ int main(int argc, char** argv) {
                 if(stereo_screen){row.image=stereo_screen->diagnostic_snapshot();row.image.copies+=retired_stereo_copies;}
                 row.new_image_valid=outage_render_attempted;
                 row.new_image=outage_render_attempted&&stereo_screen&&stereo_screen->copies>outage_copies_before;
-                outage.observe(row);
+                // Menu quads are real composition, even though they are not
+                // stereo projection evidence. Keep the ticket recorder below
+                // on its original projection-only contract.
+                const char* layer_kind=end.layerCount==0?"none":
+                    end.layers==layers?"projection":
+                    end.layers==game_layers?(eye_menu_queued?"eye_menu":
+                        (startup_quad_queued?"startup_panel":"quad")):"other";
+                outage.observe(outage_diagnostics::composition_row(row,ended==XR_SUCCESS,end.layerCount,layer_kind));
                 image_tickets.observe(row);
             }
             if(continuous_session&&projection_frame_status==ProjectionStatus::producer_stopped){stop_reason="producer_stopped";exiting=true;}

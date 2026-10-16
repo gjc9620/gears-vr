@@ -19,7 +19,19 @@ struct Row {
     const char* status="not_observed";
     bool submitted=false,new_image=false,new_image_valid=false,terminal=false;
     ImageSnapshot image{};
+    unsigned layer_count=0;
+    std::array<char,32> layer_kind{{'n','o','n','e',0}};
 };
+// Own the composition label and ordinary diagnostic values, never XR layer
+// pointers. The input retains its projection-only submitted meaning for image
+// ticket diagnostics; this copy describes successful nonempty xrEndFrame.
+inline Row composition_row(Row const& projection,bool end_succeeded,unsigned layer_count,const char* layer_kind) noexcept {
+    Row result=projection;result.submitted=end_succeeded&&layer_count>0;result.layer_count=layer_count;
+    result.layer_kind.fill(0);
+    const char* kind=layer_kind&&*layer_kind?layer_kind:"none";
+    for(unsigned i=0;i+1<result.layer_kind.size()&&kind[i];++i)result.layer_kind[i]=kind[i];
+    return result;
+}
 struct Boundary {
     Row start{},first_missing{},threshold{},last_missing{},end{};
     bool first_missing_valid=false,threshold_valid=false,last_missing_valid=false,end_valid=false;
@@ -79,8 +91,8 @@ public:
     Boundary const& longest_gap() const noexcept {return longest;}
     bool complete() const noexcept {return (!first_started||first_complete)&&!dropped&&!later_windows&&!invalid_clock;}
     static void print_row(FILE* out,const char* scope,const char* edge,Row const& r) noexcept {
-        fprintf(out,"{\"outage_row\":true,\"scope\":\"%s\",\"edge\":\"%s\",\"qpc_ns\":%lld,\"status\":\"%s\",\"submitted\":%s,\"actual_new_image_valid\":%s,\"actual_new_image\":%s,\"cache_reused_for_submission\":%s,\"receiver_valid\":%s,\"copy_count\":%u,\"acquired_serial_valid\":%s,\"acquired_serial\":%llu,\"ticket_valid\":%s",
-            scope,edge,(long long)r.ns,r.status,r.submitted?"true":"false",r.new_image_valid?"true":"false",r.new_image?"true":"false",r.submitted&&r.new_image_valid&&!r.new_image?"true":"false",r.image.receiver_valid?"true":"false",r.image.copies,r.image.receiver_valid&&r.image.acquired_serial?"true":"false",(unsigned long long)r.image.acquired_serial,r.image.ticket_valid?"true":"false");
+        fprintf(out,"{\"outage_row\":true,\"scope\":\"%s\",\"edge\":\"%s\",\"qpc_ns\":%lld,\"status\":\"%s\",\"submitted\":%s,\"layer_count\":%u,\"layer_kind\":\"%s\",\"actual_new_image_valid\":%s,\"actual_new_image\":%s,\"cache_reused_for_submission\":%s,\"receiver_valid\":%s,\"copy_count\":%u,\"acquired_serial_valid\":%s,\"acquired_serial\":%llu,\"ticket_valid\":%s",
+            scope,edge,(long long)r.ns,r.status,r.submitted?"true":"false",r.layer_count,r.layer_kind.data(),r.new_image_valid?"true":"false",r.new_image?"true":"false",r.submitted&&r.new_image_valid&&!r.new_image?"true":"false",r.image.receiver_valid?"true":"false",r.image.copies,r.image.receiver_valid&&r.image.acquired_serial?"true":"false",(unsigned long long)r.image.acquired_serial,r.image.ticket_valid?"true":"false");
         if(r.image.ticket_valid){
             fprintf(out,",\"ticket_id\":%llu,\"session\":%llu,\"sequence\":%llu,\"received_ns\":%lld,\"age_ns\":%lld,\"source\":%u,\"head_flags\":%llu,\"view_flags\":%llu",
                 (unsigned long long)r.image.ticket_id,(unsigned long long)r.image.session,(unsigned long long)r.image.sequence,(long long)r.image.received_ns,(long long)(r.ns-r.image.received_ns),r.image.source,(unsigned long long)r.image.head_flags,(unsigned long long)r.image.view_flags);
@@ -89,7 +101,7 @@ public:
     }
     void dump(FILE* out=stdout) noexcept {
         if(!enabled||dumped)return;dumped=true;
-        fprintf(out,"{\"outage_diagnostics\":true,\"clock\":\"qpc_monotonic_ns\",\"timestamp_semantics\":\"post_xrEndFrame_observation\",\"age_semantics\":\"observation_time_minus_received_ns_not_exact_projection_gate_age\",\"threshold_ns\":100000000,\"first_window_started\":%s,\"first_window_recovered\":%s,\"first_window_rows\":%u,\"first_window_capacity\":249,\"total_item_capacity\":256,\"dropped_rows\":%llu,\"later_windows_not_recorded\":%llu,\"invalid_clock_rows\":%llu,\"complete\":%s,\"longest_gap_ns\":%lld,\"longest_gap_recovered\":%s,\"observed_submission\":%s}\n",
+        fprintf(out,"{\"outage_diagnostics\":true,\"schema\":2,\"submission_semantics\":\"successful_nonempty_xrEndFrame_not_pixel_validation\",\"clock\":\"qpc_monotonic_ns\",\"timestamp_semantics\":\"post_xrEndFrame_observation\",\"age_semantics\":\"observation_time_minus_received_ns_not_exact_projection_gate_age\",\"threshold_ns\":100000000,\"first_window_started\":%s,\"first_window_recovered\":%s,\"first_window_rows\":%u,\"first_window_capacity\":249,\"total_item_capacity\":256,\"dropped_rows\":%llu,\"later_windows_not_recorded\":%llu,\"invalid_clock_rows\":%llu,\"complete\":%s,\"longest_gap_ns\":%lld,\"longest_gap_recovered\":%s,\"observed_submission\":%s}\n",
             first_started?"true":"false",first_complete?"true":"false",count,(unsigned long long)dropped,(unsigned long long)later_windows,(unsigned long long)invalid_clock,complete()?"true":"false",(long long)longest.duration_ns,longest.end_valid?"true":"false",have_success?"true":"false");
         if(first_started)print_row(out,"first_window","last_successful_submission",first_start);
         for(unsigned i=0;i<count;++i)print_row(out,"first_window","frame",rows[i]);
