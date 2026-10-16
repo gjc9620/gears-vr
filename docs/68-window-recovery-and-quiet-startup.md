@@ -113,3 +113,10 @@ SpaceRecovery8仅在已有 `--shutdown-diagnostics` 开启时增加初始化边�
 9r实际消息栈为游戏RVA `0x27ffa4` 调用 `0x1f9d74` 消息泵，在 `PeekMessageW` 内交付激活消息。64字节消息泵与历史快照完全匹配SHA256 `59e99684e64b44e882a105296235dd855920241b1528ec8a3b33dc17e26a3b24`；通过实际RIP位移读取IAT并匹配user32导出确认PeekMessageW。9q窗口过程RVA `0x1995d0` 的1866字节同样匹配历史SHA256 `f8aaedc4525ad22bcae4c49a237b777f1742f218bc1c53d3ba0803dd12b0a617`。当前Windows的DefWindowProcW转发到NTDLL.NtdllDefWindowProc_W，不能按user32模块范围误认未知函数。
 
 这证明激活消息在取消息时被交付，尚未定位请求来源；不通过过滤WM_ACTIVATE或循环抢回焦点掩盖问题。证据：`quiet9p-policy-query.json`、`focus-trace9q.json`、`focus-trace9r.json`、`focus9q-wndproc-evidence.json`、`focus9r-pump-evidence.json`、`focus9r-startup-imports.json`。quiet8 DLL SHA256 `d24bf2da8bde8017326f540c782eaf2fba119cec4504758b291a3d9246ec17cc`。未修改游戏磁盘代码、未打开新的IDA数据库。
+
+
+### 默认入口与辅助窗口补齐（2026-10-16）
+
+`bdc323f` 将 `background_launch.py` 的普通启动默认接入冻结的 quiet8；校验启动器与策略 DLL 的 SHA256，缺失或变化时拒绝启动，不降级为普通前台启动。显式 `--foreground` 仍可选择普通启动。16 项启动测试通过。这是默认接线修正，不表示上面的 9q/9r 激活遗漏已解决。
+
+`2112cd4` 为主 launcher 的 reservation、进程查询、native preparation/verification 与 native 自测/PowerShell 辅助调用补齐 `CREATE_NO_WINDOW`；不会隐藏游戏或模拟器的 GUI。XR 子进程环境固定 `XR_SIMULATOR_NO_ACTIVATE=1`，保留父进程环境和 `XR_RUNTIME_JSON`。相关 144 项 Python 测试通过。连续会话没有默认 duration 截止，启动/清理超时不等于显示时长。用户要求模拟器持续可见；目前预览依附 XR 进程，会话停止或重启时仍会关闭，不能表述为跨进程重启常驻。
