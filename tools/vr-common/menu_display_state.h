@@ -5,7 +5,7 @@
 namespace gears_menu {
 // main_menu is an explicit whole-window 2D mirror choice. It does not certify
 // mono source pixels or authorize projection without a stereo ticket.
-enum class Mode : std::uint32_t { unknown, gameplay, death_menu, pause_menu, main_menu=4 };
+enum class Mode : std::uint32_t { unknown, gameplay, death_menu, pause_menu, main_menu=4, loading_display=5 };
 // Atomic file replacement by the session owner. This authorizes a display
 // choice only; it never authorizes native scene mutation or stale pose reuse.
 struct Packet {
@@ -20,7 +20,7 @@ public:
         identity_.game_pid=game;identity_.game_creation=creation;identity_.owner_pid=owner;identity_.owner_creation=owner_creation;
     }
     Mode accept(Packet const& p,std::uint64_t now){
-        if(p.magic!=0x47564d31||p.version!=1||p.size!=sizeof(Packet)||p.mode>4||
+        if(p.magic!=0x47564d31||p.version!=1||p.size!=sizeof(Packet)||p.mode>5||
            !identity_.game_pid||!identity_.game_creation||!identity_.owner_pid||!identity_.owner_creation||
            p.game_pid!=identity_.game_pid||p.game_creation!=identity_.game_creation||
            p.owner_pid!=identity_.owner_pid||p.owner_creation!=identity_.owner_creation||

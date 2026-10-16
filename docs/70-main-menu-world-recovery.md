@@ -261,3 +261,15 @@ policy要求菜单实际成功显示过、当前为新鲜认证GAMEPLAY、仍待
 后续1080p会话 `continuous-stereo-11428-20261016-120425-bc269c4e` 取得对照：sequence233（63624141326500）block=2/UNKNOWN，sequence249（63628297074400）block=0/GAMEPLAY，相隔4.156秒。两者read_only/consistent均true、player0；top仍为同一PenderCrossplayInvitePopUp对象，活动栈精确为HUD_Toast→MessageToast→Pender，前两者mode0、top mode2；焦点链仅top自身且states=[UIState_Enabled]。尚未放宽分类，下一步单独认证仅通用提示的窄状态，继续禁止旧画面、投影和自动输入。主菜单Continue→world2及请求图像完成，正常停止/43入口恢复/XR shutdown/WM_CLOSE退出通过，证据 `xr13-loading3-events.json` 及同会话日志。
 
 复现中的另两轮单独保留：40736在原生激活前因CrosshairRegistryChanged校验拒绝，runner报告incomplete；预留日志已取消且active0，另外只读核验6个系统入口及4个图形设置入口后正常WM_CLOSE，未将其改写成通过。40428的精简测试脚本漏定义world_path，在菜单操作前报错，已正常停止/恢复并退出；补变量后增加全局引用检查，后续11428才是有效复现。它们不是新的已证实游戏闪退，也未在原进程上重复注入。
+
+## XR14：精确阻塞状态仅授权通用等待提示
+
+Python新增LOADING_DISPLAY=5，单独认证上轮实际block2/player0的完整三项活动栈、单一Enabled焦点、同outer及top/末项/焦点身份一致；所有计数和mode必须严格整数，tag_number精确0，拒绝截断标记、额外场景、block1/3、错误玩家和不一致读取。不硬编码运行地址或对象实例number。原GAMEPLAY的block0条件不变，没有新增输入许可。C++仅扩充mode5，packet仍64字节/schema1，身份、序列与1.5秒lease不变；旧XR会把5拒绝为UNKNOWN。
+
+loading显式禁止WGC、eye-menu及projection，只更新恢复时间边界，不产生菜单witness。已有真实菜单witness时可显示独立返回卡；上传后重读状态，仍为loading或合法GAMEPLAY恢复才可排层，UNKNOWN/过期/停止/结构错撤销。首次projection前可显示独立启动卡，并在loading→GAMEPLAY等待新票据时继续；真实projection成功后该首次分支永久关闭。world monitor不以mode5授权重绑或输入，实际该参数未参与其判定。
+
+冻结XR14 SHA256 `45e6cf45f996cf09706303ab3da634a5e46f742459da46044dd704b7334e6511`，Native23不变。58项Python monitor/world-monitor测试、12项XR测试及receiver自检通过，独立审查通过。
+
+实际会话 `continuous-stereo-41216-20261016-121254-c523f414` 完成主菜单Continue→world2、不同Pawn和GPU源index1双眼非黑场景。mode5→GAMEPLAY持续4349.3252ms；对应成功返回卡episode自64135991191800至64149669323500，持续13.678秒，跨过loading并等到新projection。首条卡比分类采集起点晚28.1192ms（采集/发布和XR观察的端点差，不等于28ms空层）；内部区间有连续成功卡episode覆盖。此期间image-ticket没有新记录，未以“没有记录”冒充零投影证明。两段返回卡共1327层、一次上传；原生四阶段各2221对视图零错配，projection1853次、场景复制2207次。正常停止、43入口恢复、XR shutdown及身份核验WM_CLOSE通过，未抢焦点。ignored证据 `xr14-loading-events.json`、`xr14-loading-audit.json`、原始日志/图像及冻结原生状态。
+
+仍未通过完整无空窗验收：最长合成间隔493.3288ms，完整outage记录（later0/dropped0）显示它位于更早的返回主菜单阶段：SnapshotChanged导致短时UNKNOWN，随后MAIN_MENU等待新的合格WGC捕获；与已认证的Continue block2区间不同。source_reconfiguration拒绝23帧也不能直接算23个空层，本轮对应返回卡一直持续到新projection。默认玩家清单仍未提升；还需收敛该主菜单交接、完整4K候选回归、UI/CG、真头显及便携部署。

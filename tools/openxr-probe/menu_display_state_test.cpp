@@ -13,7 +13,7 @@ int main(){
     ++p.sequence;p.mode=1;assert(v.accept(p,101)==Mode::gameplay);
     bad=p;--bad.sequence;assert(v.accept(bad,101)==Mode::unknown);
     for(unsigned field=0;field<8;++field){bad=p;++bad.sequence;
-        switch(field){case 0:++bad.magic;break;case 1:++bad.version;break;case 2:--bad.size;break;case 3:bad.mode=5;break;
+        switch(field){case 0:++bad.magic;break;case 1:++bad.version;break;case 2:--bad.size;break;case 3:bad.mode=6;break;
             case 4:++bad.game_pid;break;case 5:++bad.game_creation;break;case 6:++bad.owner_pid;break;case 7:++bad.owner_creation;break;}
         assert(v.accept(bad,101)==Mode::unknown);
     }
@@ -33,4 +33,10 @@ int main(){
     ++p.sequence;p.mode=0;p.observed_ns=500;assert(v.accept(p,500)==Mode::unknown);
     bad=p;--bad.sequence;bad.mode=4;assert(v.accept(bad,500)==Mode::unknown);
     ++p.sequence;p.mode=1;p.observed_ns=600;assert(v.accept(p,600)==Mode::gameplay);
+    static_assert(static_cast<std::uint32_t>(Mode::loading_display)==5&&sizeof(Packet)==64);
+    ++p.sequence;p.mode=5;p.observed_ns=700;assert(v.accept(p,700)==Mode::loading_display);
+    assert(v.accept(p,1500000700)==Mode::loading_display);
+    assert(v.accept(p,1500000701)==Mode::unknown); // Loading authority expires normally.
+    bad=p;bad.mode=1;assert(v.accept(bad,701)==Mode::unknown);
+    ++p.sequence;p.mode=1;p.observed_ns=800;assert(v.accept(p,800)==Mode::gameplay);
 }

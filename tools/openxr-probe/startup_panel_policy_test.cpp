@@ -121,4 +121,45 @@ int main(){
     StartupPanelPolicy no_bridge(false,true),legacy_bridge(true);
     for(auto* p:{&no_bridge,&legacy_bridge}){p->observe(Mode::pause_menu,4000);p->menu_rendered();
         p->observe(Mode::gameplay,4100);assert(!p->show_transition_panel());}
+    // An old valid ticket never bypasses an explicit loading state, including
+    // loading observed before the first projection or before a menu witness.
+    StartupPanelPolicy loading_startup(true,true);
+    assert(!loading_startup.observe(Mode::loading_display,4200));
+    assert(!loading_startup.allow_projection()&&!loading_startup.show_panel()&&!loading_startup.show_eye_menu());
+    assert(!loading_startup.projection_rendered(true)&&!loading_startup.show_transition_panel());
+    assert(loading_startup.show_startup_wait(ready)&&loading_startup.minimum_sample_ns()==4200);
+    loading_startup.menu_rendered();assert(!loading_startup.show_transition_panel()); // No fabricated menu witness.
+    loading_startup.observe(Mode::unknown,4300);
+    assert(!loading_startup.show_startup_wait(ready)&&!loading_startup.show_transition_panel());
+    loading_startup.observe(Mode::gameplay,4400);
+    assert(loading_startup.allow_projection()&&loading_startup.minimum_sample_ns()==4400);
+    assert(!loading_startup.show_transition_panel()&&loading_startup.show_startup_wait(ready));
+    auto projection_wins=ready;projection_wins.layer_count=1;
+    assert(!loading_startup.show_startup_wait(projection_wins));
+    assert(!loading_startup.projection_rendered(false)&&loading_startup.show_startup_wait(ready));
+    assert(loading_startup.projection_rendered(true)&&!loading_startup.show_startup_wait(ready));
+    loading_startup.observe(Mode::loading_display,4500);
+    assert(!loading_startup.allow_projection()&&!loading_startup.show_panel()&&!loading_startup.show_eye_menu());
+    assert(!loading_startup.show_transition_panel()&&!loading_startup.show_startup_wait(ready));
+    StartupPanelPolicy loading_bridge(true,true);
+    assert(loading_bridge.projection_rendered(true));
+    loading_bridge.observe(Mode::main_menu,4600);loading_bridge.menu_rendered();
+    loading_bridge.observe(Mode::loading_display,4700);
+    assert(loading_bridge.show_transition_panel()&&!loading_bridge.allow_projection());
+    assert(!loading_bridge.show_panel()&&!loading_bridge.show_eye_menu()&&!loading_bridge.show_startup_wait(ready));
+    assert(!loading_bridge.projection_rendered(true)&&loading_bridge.minimum_sample_ns()==4700);
+    loading_bridge.observe(Mode::loading_display,4800);assert(loading_bridge.minimum_sample_ns()==4700);
+    // Actual packet lease expiration yields UNKNOWN and revokes the generic card.
+    gears_menu::Packet packet;packet.mode=5;packet.game_pid=11;packet.game_creation=22;
+    packet.owner_pid=33;packet.owner_creation=44;packet.sequence=1;packet.observed_ns=5000;
+    gears_menu::Validator validator(11,22,33,44);
+    loading_bridge.observe(validator.accept(packet,5000),5000);assert(loading_bridge.show_transition_panel());
+    loading_bridge.observe(validator.accept(packet,1500005001),1500005001);
+    assert(!loading_bridge.show_transition_panel()&&!loading_bridge.allow_projection());
+    loading_bridge.observe(Mode::gameplay,1500005100);
+    assert(loading_bridge.show_transition_panel()&&loading_bridge.minimum_sample_ns()==1500005100);
+    assert(loading_bridge.projection_rendered(true)&&!loading_bridge.show_transition_panel());
+    loading_bridge.observe(Mode::main_menu,1500005200);loading_bridge.menu_rendered();
+    loading_bridge.observe(Mode::loading_display,1500005300);loading_bridge.cancel();
+    assert(!loading_bridge.show_transition_panel()&&!loading_bridge.allow_projection()&&!loading_bridge.show_startup_wait(ready));
 }

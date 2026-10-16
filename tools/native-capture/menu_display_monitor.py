@@ -1,6 +1,7 @@
 """Read-only menu observation for reversible XR display; no game control."""
 import os
 import json
+import re
 from pathlib import Path
 import struct
 import sys
@@ -8,6 +9,7 @@ import time
 
 PACKET = struct.Struct('<IIIIQQQQQQ')
 UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU = range(5)
+LOADING_DISPLAY = 5
 PAUSE_SETTINGS = frozenset(('DeltaPause-Options', 'DeltaGameConfiguration', 'DeltaVideoSettings',
                             'PenderGraphicsSettings', 'DeltaAudioVideoSettings', 'DeltaInputSettings'))
 
@@ -104,9 +106,54 @@ def main_menu(sample, top):
             all(top.get(key) == scenes[-1].get(key) for key in ('number', 'outer')))
 
 
+def loading_display(sample):
+    """Exact observed blocked nonmodal stack; generic display only, never input."""
+    if (sample.get('read_only') is not True or sample.get('consistent_reread') is not True
+            or type(sample.get('input_block_count')) is not int or sample['input_block_count'] != 2
+            or type(sample.get('player_index')) is not int or sample['player_index'] != 0
+            or sample.get('active_scenes_truncated', False) is not False
+            or sample.get('focus_chain_truncated', False) is not False):
+        return False
+    core = ('address', 'name', 'number', 'cls', 'outer')
+    def pointer(value):
+        return (type(value) is str and re.fullmatch(r'0x[0-9a-fA-F]{1,16}', value) is not None
+                and int(value, 16) > 0)
+    def identity(value):
+        return (isinstance(value, dict) and pointer(value.get('address')) and pointer(value.get('outer'))
+                and type(value.get('number')) is int and value['number'] >= 0
+                and type(value.get('name')) is str and bool(value['name'])
+                and type(value.get('cls')) is str and bool(value['cls']))
+    top = sample.get('top')
+    scenes = sample.get('active_scenes')
+    focus = sample.get('focus_chain')
+    leaf = sample.get('focused_leaf')
+    if (not identity(top) or top.get('tag') != 'PenderCrossplayInvitePopUp'
+            or type(top.get('tag')) is not str or type(top.get('tag_number')) is not int
+            or top['tag_number'] != 0 or not isinstance(scenes, list) or len(scenes) != 3
+            or not isinstance(focus, list) or len(focus) != 1):
+        return False
+    expected = (('HUD_Toast', 'WarUIScene_Toast', 0), ('MessageToast', 'WarUIScene_Toast', 0),
+                ('PenderCrossplayInvitePopUp', 'WarUIScene_CrossplayInvitePopUp', 2))
+    for scene, (name, cls, mode) in zip(scenes, expected):
+        if (not identity(scene) or (scene['name'], scene['cls']) != (name, cls)
+                or type(scene.get('input_mode')) is not int or scene['input_mode'] != mode
+                or scene['outer'] != top['outer']):
+            return False
+    if (len({scene['address'] for scene in scenes}) != 3
+            or type(top.get('input_mode')) is not int or top['input_mode'] != 2
+            or any(top.get(key) != scenes[-1].get(key) for key in (*core, 'input_mode'))):
+        return False
+    for focused in (focus[0], leaf):
+        if (not identity(focused) or any(focused.get(key) != top.get(key) for key in core)
+                or type(focused.get('states')) is not list or focused['states'] != ['UIState_Enabled']):
+            return False
+    return True
+
+
 def classify(sample):
     if sample.get('consistent_reread') is not True or sample.get('read_only') is not True:
         return UNKNOWN
+    if loading_display(sample):return LOADING_DISPLAY
     blocked = sample.get('input_block_count')
     # The observed block1 transition permits only authenticated Pause or main-menu display.
     # It is not input permission or gameplay/death-menu recovery permission.

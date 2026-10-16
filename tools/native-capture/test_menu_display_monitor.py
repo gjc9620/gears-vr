@@ -5,7 +5,7 @@ import json
 import copy
 import sys
 from unittest.mock import patch, Mock
-from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, state_evidence, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU
+from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, loading_display, state_evidence, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU, LOADING_DISPLAY
 
 
 def sample(death=True):
@@ -70,7 +70,89 @@ class Reader:
     def close(self):self.closed=True
 
 
+def loading_sample():
+    # Actual sequence233 structure from continuous-stereo-11428...bc269c4e.
+    root=dict(address='0x8e8c9280',name='PenderCrossplayInvitePopUp',number=1,
+              cls='WarUIScene_CrossplayInvitePopUp',outer='0x1438a180')
+    focus=dict(root,states=['UIState_Enabled'])
+    scenes=[dict(address='0x80115770',name='HUD_Toast',number=1,cls='WarUIScene_Toast',outer=root['outer'],input_mode=0),
+            dict(address='0x8011dd20',name='MessageToast',number=2,cls='WarUIScene_Toast',outer=root['outer'],input_mode=0),
+            dict(root,input_mode=2)]
+    return dict(sample(False),input_block_count=2,top=dict(root,input_mode=2,tag=root['name'],tag_number=0),
+                active_scenes=scenes,focus_chain=[copy.deepcopy(focus)],focused_leaf=copy.deepcopy(focus))
+
+
 class Tests(unittest.TestCase):
+    def test_loading_display_exact_observed_stack_is_never_gameplay_or_input(self):
+        self.assertEqual(LOADING_DISPLAY,5)
+        base=loading_sample();self.assertTrue(loading_display(base));self.assertEqual(classify(base),LOADING_DISPLAY)
+        for blocked in (1,3,-1,True,False,2.0,'2',None):
+            self.assertEqual(classify(dict(base,input_block_count=blocked)),UNKNOWN)
+        self.assertEqual(classify(dict(base,input_block_count=0)),GAMEPLAY)
+        for key,value in (('read_only',False),('consistent_reread',False),('player_index',-1),
+                          ('player_index',True),('player_index',0.0),('player_index',None)):
+            self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN)
+        with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
+            from menu_control import allowed
+        self.assertFalse(allowed(base,11))
+        # No address/instance number is a hardcoded authority.
+        changed=copy.deepcopy(base)
+        for node in [changed['top'],changed['active_scenes'][-1],changed['focused_leaf'],changed['focus_chain'][0]]:
+            node.update(address='0x123456',number=9)
+        for node in [changed['top'],*changed['active_scenes'],changed['focused_leaf'],changed['focus_chain'][0]]:
+            node['outer']='0x987654'
+        self.assertEqual(classify(changed),LOADING_DISPLAY)
+
+    def test_loading_display_rejects_each_identity_shape_order_and_focus_mismatch(self):
+        base=loading_sample()
+        paths=[('top',),('active_scenes',0),('active_scenes',1),('active_scenes',2),('focus_chain',0),('focused_leaf',)]
+        for path in paths:
+            for key,bad_values in (('address',(None,'','0x0','garbage',123,'0x10000000000000000')),
+                    ('outer',(None,'','0x0',123,'0x999')),('number',(-1,True,1.0,'1',None)),
+                    ('name',('',None,'OtherScene')),('cls',('',None,'OtherClass'))):
+                for value in bad_values:
+                    state=copy.deepcopy(base);node=state
+                    for part in path:node=node[part]
+                    node[key]=value
+                    self.assertEqual(classify(state),UNKNOWN,(path,key,value))
+        for path in [('top',),('active_scenes',0),('active_scenes',1),('active_scenes',2)]:
+            for mode in (None,True,2.0,'2',4):
+                state=copy.deepcopy(base);node=state
+                for part in path:node=node[part]
+                node['input_mode']=mode;self.assertEqual(classify(state),UNKNOWN,(path,mode))
+        for key,value in (('tag','OtherScene'),('tag',None),('tag_number',True),('tag_number',-1),('tag_number',1)):
+            state=copy.deepcopy(base);state['top'][key]=value;self.assertEqual(classify(state),UNKNOWN)
+        for key in ('active_scenes_truncated','focus_chain_truncated'):
+            self.assertEqual(classify(dict(base,**{key:False})),LOADING_DISPLAY)
+            for value in (True,None,0,1,'False',[],{}):
+                self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN,(key,value))
+        for scenes in (None,[],base['active_scenes'][:2],base['active_scenes']+[base['active_scenes'][0]],
+                       list(reversed(base['active_scenes'])),[None]*3):
+            self.assertEqual(classify(dict(base,active_scenes=scenes)),UNKNOWN)
+        for chain in (None,[],base['focus_chain']*2,[None]):
+            self.assertEqual(classify(dict(base,focus_chain=chain)),UNKNOWN)
+        for path in [('focused_leaf',),('focus_chain',0)]:
+            for states in (None,[],['UIState_Focused'],['UIState_Enabled','UIState_Focused'],('UIState_Enabled',)):
+                state=copy.deepcopy(base);node=state
+                for part in path:node=node[part]
+                node['states']=states;self.assertEqual(classify(state),UNKNOWN)
+        for key in ('top','focused_leaf'):
+            for value in (None,{},'PenderCrossplayInvitePopUp'):
+                self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN)
+        state=copy.deepcopy(base);state['active_scenes'][0]['address']=state['top']['address']
+        self.assertEqual(classify(state),UNKNOWN)
+
+    def test_loading_mode_packet_retains_schema_size_identity_and_acquisition_time(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();reader.sample=loading_sample;m=self.monitor(path,reader)
+            try:
+                m.poll();self.assertEqual(PACKET.unpack(path.read_bytes()),(0x47564d31,1,64,5,11,22,33,44,1,100))
+                row=json.loads(path.with_suffix('.jsonl').read_text().splitlines()[0])
+                self.assertEqual(row['state_evidence']['input_block_count'],2)
+                reader.sample=lambda:dict(loading_sample(),input_block_count=0);m.clock=lambda:200;m.poll()
+                self.assertEqual(PACKET.unpack(path.read_bytes()),(0x47564d31,1,64,GAMEPLAY,11,22,33,44,2,200))
+            finally:m.close()
+
     def test_state_evidence_owns_bounded_scene_and_focus_fields(self):
         state=sample(False)
         state['top'].update(address='0x500',number=3,outer='0x100',tag_number=0)

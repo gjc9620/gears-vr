@@ -84,3 +84,5 @@ XR10现已加入独立“返回游戏”卡片，实际提交166层、一次上�
 XR12同时把启动空窗定位为捕获过龄及窗口暂不可用/重建，非菜单授权拒绝。XR13以独立通用启动提示覆盖首次projection前的普通等待，不展示旧游戏图；实际34层/一次上传后交接真实projection，2170次projection、936次场景复制，最长合成间隔34.89ms，outage完整无阈值空窗。12项XR测试和receiver自检、正常清理/43入口恢复通过。详见docs/70末节；仅一次启动回归，不推广为全部闪黑或发布验收，默认仍未提升。下一步仍需当前组合的4K/检查点/主菜单回归、更多UI和过场、真头显及便携部署。
 
 最新4K完整循环已完成两次确认取消、实际检查点重载到world2、新Pawn手枪开镜、主菜单Continue到world3，三张4K源双眼图与正常清理已复核；但另发现4.645秒实际合成空窗，不能计全程连续通过。新增只读紧凑状态诊断后，1080p独立复现确认Continue的精确非模态活动栈在block2时UNKNOWN、约4.156秒后block0恢复GAMEPLAY。正在为这个状态设计只显示通用提示的窄分支，不将block2放进GAMEPLAY，不提升默认候选。另有world commit后约255ms的source重建空窗待处理。详见docs/70末节；UI/过场/真头显/便携部署仍开放。
+
+XR14已接入该精确结构的LOADING_DISPLAY=5，只授权通用提示，WGC/投影/输入仍拒绝；58项Python、12项XR及receiver自检通过。实际Continue的4.349秒mode5期间有成功返回卡episode覆盖，并交给world2新projection与非黑双眼源图，原生各阶段2221对零错配，正常清理/恢复通过。不过返回主菜单更早阶段仍有493ms空窗，直接记录为SnapshotChanged→UNKNOWN及新WGC等待；不是已解决的Continue block2。source重建拒绝不再直接冒充空层数，具体以composition记录为准。详见docs/70 XR14节，默认仍未提升，首版整体仍开放。

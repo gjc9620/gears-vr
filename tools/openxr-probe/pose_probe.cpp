@@ -599,7 +599,9 @@ int main(int argc, char** argv) {
                 // lease afterwards, without extending its acquisition time.
                 const auto authorized=menu_display.poll(gears_vr::monotonic_ns());
                 if(authorized!=menu_mode)observe_menu(authorized,gears_vr::monotonic_ns());
-                if(authorized==gears_menu::Mode::gameplay&&startup_panel.show_transition_panel()){
+                if((authorized==gears_menu::Mode::gameplay||authorized==gears_menu::Mode::loading_display)&&
+                   startup_panel.show_transition_panel()&&running&&!exiting&&!projection_evidence.structural_failure&&
+                   (!stereo_screen||!stereo_screen->producer_stopped())){
                     transition_panel_queued=true;end.layerCount=1;end.layers=game_layers;
                 }
             }
