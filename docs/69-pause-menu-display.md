@@ -125,3 +125,13 @@ monitor现在仅对exact `SnapshotChanged` / `DialogStorageChanged` 保留reader
 完整修复后会话 `continuous-stereo-32840-20261016-101242-4f64a20c` 的 `checkpoint-dialog-readerfix-layers.json` 覆盖45秒：采样持续mode3、授权新鲜、layer1，无读取错误；正式monitor无UNKNOWN或发布失败。GPU请求snapshot1/ticket1069、保存QPC56900993914000在确认框保持期间，源图两眼均能读到Load Checkpoint正文；预览 `checkpoint-dialog-readerfix-source-preview.png`。这张是源图，非最终头显像素验收；当时模拟器窗口预览仅1718×17，MCP屏幕截图不适合布局验收。取消后恢复新projection至少2秒，再正常停止。
 
 随后会话 `continuous-stereo-37000-20261016-102558-1782c0e6` 真正确认重载：menu保持Pause→确认框→GAMEPLAY，未观察到中间UNKNOWN；自动world1→2、准星证书提交1次，新Pawn完成步枪→手枪开镜→原步枪，有限准星应用97次（全会话累计）。证据 `checkpoint-dialog-reload-events.json` 及会话menu/world日志。以上各轮均先验证native清理、43入口恢复和XR shutdown，再身份校验WM_CLOSE正常退出，无主动焦点操作。没有把投影缺席当作全部零层，也没有宣称所有加载、过场、菜单或长期游玩黑屏已解决；默认玩家清单未提升，Native23/MainMenu8冻结二进制未改动。
+
+## XR10 配套读取器：耗尽的缓存库存竞争
+
+XR10首轮确认框阶段又采到3.945秒空层，monitor收到原始 `Object registry identity changed` 后关闭并重建reader。该消息来自缓存object_pointers槽比较，不等于已证明只是缓存过期；真正live-slot错误使用另一消息。日志未给出它发生在强制刷新还是第二次快照中的栈，不能将具体分支视为已运行证明。
+
+现仅在sample的第二次 `_sample_once()` 逃逸精确RuntimeError/精确此消息时包装 `InventoryChanged`；强制刷新在包装try之外，其自身同名错误仍原样失败。monitor只对精确新类型发布UNKNOWN并保留reader，下一poll完整重新采样；不额外重试、缓存授权或延长时间戳/TTL。live-slot、client、header和I/O失败仍重建。48项MenuReader及96项monitor/runner/world-monitor测试通过，覆盖转换范围、刷新失败不转换、有限预算、重复UNKNOWN与新鲜恢复。
+
+会话 `continuous-stereo-17212-20261016-105425-7cf80816` 连续创建三次确认框（前两次取消、第三次实际重载），随后新Pawn手枪开镜/原步枪恢复通过；world准备有一次仅记录类型的RuntimeError，既有限重试随后提交generation2。过渡卡三次分别约0.078、0.090、1.756秒，总173层、一次上传，均交给新projection。此轮没有再次出现该库存错误，故恢复分支以故障注入为证，实际游戏只证明正常反复创建/复用路径可运行。
+
+XR合成诊断最长间隔564.1474ms，位于首次立体提交前的startup_panel→无层→startup_panel，producer_unavailable；不是此前确认框重建位置。首窗口48行、丢弃0，另2窗口未完整保留，complete=false。menu中有一次未认证非模态tag `EHole`，没有读取/发布错误，不把它当已完成全部UI覆盖。正常停止、native清理/43入口恢复/XR退出通过，再WM_CLOSE游戏并停止输入服务。短时启动空窗、未知UI、长期游玩、过场与真头显仍待完成。

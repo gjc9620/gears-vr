@@ -3,7 +3,7 @@ import struct
 import unittest
 from unittest import mock
 
-from menu_state import MenuReader, registered, read_root_source_text, DialogStorageChanged, SnapshotChanged
+from menu_state import MenuReader, registered, read_root_source_text, DialogStorageChanged, SnapshotChanged, InventoryChanged
 
 
 class FakeResolver:
@@ -267,7 +267,7 @@ class MenuStateTests(unittest.TestCase):
         errors=[SnapshotChanged('UI changed during snapshot'),RuntimeError('Object registry identity changed')]
         with mock.patch.object(self.reader,'_sample_once',side_effect=errors) as sampled,\
              mock.patch.object(self.reader,'force_registry_refresh') as forced:
-            with self.assertRaisesRegex(RuntimeError,'Object registry identity changed'):self.reader.sample()
+            with self.assertRaisesRegex(InventoryChanged,'Object registry identity changed'):self.reader.sample()
             self.assertEqual(sampled.call_count,2);forced.assert_not_called()
         with mock.patch.object(self.reader,'_sample_once',side_effect=list(reversed(errors))) as sampled,\
              mock.patch.object(self.reader,'force_registry_refresh') as forced:
@@ -280,6 +280,41 @@ class MenuStateTests(unittest.TestCase):
             with mock.patch.object(self.reader,'_sample_once',side_effect=error) as sampled:
                 with self.assertRaises(type(error)):self.reader.sample()
                 sampled.assert_called_once()
+
+    def test_second_cached_inventory_mismatch_is_typed_without_a_third_attempt(self):
+        for first in (RuntimeError('Object registry identity changed'),SnapshotChanged('changed')):
+            second=RuntimeError('Object registry identity changed')
+            with self.subTest(first=type(first).__name__),\
+                 mock.patch.object(self.reader,'_sample_once',side_effect=[first,second]) as sampled,\
+                 mock.patch.object(self.reader,'force_registry_refresh') as forced:
+                with self.assertRaises(InventoryChanged) as raised:self.reader.sample(include_tree=True)
+                self.assertIs(type(raised.exception),InventoryChanged);self.assertIs(raised.exception.__cause__,second)
+                self.assertEqual(sampled.call_count,2)
+                self.assertEqual(sampled.call_args_list,[mock.call(include_tree=True)]*2)
+                self.assertEqual(forced.call_count,int(type(first) is RuntimeError))
+
+    def test_force_refresh_error_never_becomes_snapshot_inventory_churn(self):
+        for error in (RuntimeError('Object registry identity changed'),RuntimeError('Registry header changed'),OSError('RPM failed')):
+            with self.subTest(error=repr(error)),\
+                 mock.patch.object(self.reader,'_sample_once',side_effect=RuntimeError('Object registry identity changed')) as sampled,\
+                 mock.patch.object(self.reader,'force_registry_refresh',side_effect=error) as forced:
+                with self.assertRaises(type(error)) as raised:self.reader.sample()
+                self.assertIs(raised.exception,error);self.assertNotIsInstance(raised.exception,InventoryChanged)
+                sampled.assert_called_once();forced.assert_called_once()
+
+    def test_second_non_cached_identity_header_client_and_io_failures_stay_original(self):
+        class DifferentFailure(RuntimeError):pass
+        for error in (RuntimeError('Live object registry slot changed'),RuntimeError('Scene client replaced'),
+                      RuntimeError('Registry changed before snapshot verification'),
+                      RuntimeError('Registry header changed during forced refresh'),
+                      RuntimeError('Object registry identity changed: unknown'),
+                      DifferentFailure('Object registry identity changed'),OSError('RPM failed'),ValueError('bad header')):
+            with self.subTest(error=repr(error)),\
+                 mock.patch.object(self.reader,'_sample_once',side_effect=[SnapshotChanged('changed'),error]) as sampled,\
+                 mock.patch.object(self.reader,'force_registry_refresh') as forced:
+                with self.assertRaises(type(error)) as raised:self.reader.sample()
+                self.assertIs(raised.exception,error);self.assertNotIsInstance(raised.exception,InventoryChanged)
+                self.assertEqual(sampled.call_count,2);forced.assert_not_called()
 
     def test_live_slot_replacement_rejected(self):
         obj = self.r.identities[0x2000]

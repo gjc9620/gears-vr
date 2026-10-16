@@ -465,11 +465,11 @@ class Tests(unittest.TestCase):
             m.close()
 
     def test_real_typed_snapshot_churn_keeps_injected_reader_but_publishes_only_unknown(self):
-        for type_name in ('SnapshotChanged','DialogStorageChanged'):
+        for type_name in ('SnapshotChanged','DialogStorageChanged','InventoryChanged'):
             with self.subTest(type_name=type_name),tempfile.TemporaryDirectory() as d:
                 path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
-                from menu_state import SnapshotChanged, DialogStorageChanged
-                error_type={'SnapshotChanged':SnapshotChanged,'DialogStorageChanged':DialogStorageChanged}[type_name]
+                from menu_state import SnapshotChanged, DialogStorageChanged, InventoryChanged
+                error_type={'SnapshotChanged':SnapshotChanged,'DialogStorageChanged':DialogStorageChanged,'InventoryChanged':InventoryChanged}[type_name]
                 factory=Mock(return_value=reader);m.factory=factory
                 reader.sample=Mock(side_effect=[pause_sample(),error_type('changed'),error_type('changed'),checkpoint_confirmation_sample()])
                 try:
@@ -510,12 +510,13 @@ class Tests(unittest.TestCase):
 
     def test_plain_failures_and_typed_subclasses_still_close_and_back_off(self):
         with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
-            from menu_state import SnapshotChanged, DialogStorageChanged
+            from menu_state import SnapshotChanged, DialogStorageChanged, InventoryChanged
         class DerivedSnapshotChanged(SnapshotChanged):pass
         class DerivedDialogStorageChanged(DialogStorageChanged):pass
+        class DerivedInventoryChanged(InventoryChanged):pass
         for error in (RuntimeError('SnapshotChanged'),RuntimeError('Object registry identity changed'),
                       OSError('read failed'),ValueError('bad registry'),UnicodeError('bad name'),
-                      DerivedSnapshotChanged('changed'),DerivedDialogStorageChanged('changed')):
+                      DerivedSnapshotChanged('changed'),DerivedDialogStorageChanged('changed'),DerivedInventoryChanged('changed')):
             with self.subTest(error=type(error).__name__),tempfile.TemporaryDirectory() as d:
                 path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
                 factory=Mock(return_value=reader);m.factory=factory

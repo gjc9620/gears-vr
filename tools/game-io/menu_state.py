@@ -31,6 +31,10 @@ class SnapshotChanged(RuntimeError):
     """An observed ledger read changed; discard this entire acquisition."""
 
 
+class InventoryChanged(RuntimeError):
+    """The second snapshot still disagreed with the cached object inventory."""
+
+
 def read_root_source_text(read, nodes_address, base, attempts=3):
     """Acquire one root/source string with a short consistent storage bracket.
 
@@ -275,7 +279,14 @@ class MenuReader:
         # restored r.read and discarded its failed ledger. No new timestamp,
         # preparation, client discovery or nested retry budget is introduced.
         if registry_changed:self.force_registry_refresh()
-        return self._sample_once(include_tree=include_tree)
+        # Refresh itself remains outside this handler: its identity/header/IO
+        # failures must not acquire the snapshot-only inventory-churn type.
+        try:
+            return self._sample_once(include_tree=include_tree)
+        except RuntimeError as error:
+            if type(error) is RuntimeError and str(error)=='Object registry identity changed':
+                raise InventoryChanged(str(error)) from error
+            raise
 
     def _sample_once(self, *, include_tree=False):
         self.refresh()
