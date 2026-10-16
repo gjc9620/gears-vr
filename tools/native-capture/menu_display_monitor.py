@@ -44,9 +44,11 @@ def pause_settings(sample, top):
 def pause_return_confirmation(sample, top):
     if (top.get('tag') != 'WarfareConfirmation' or
             not scene_context(top, 'WarfareConfirmation', 'UIScene_Confirmation') or
-            sample.get('dialog_text') != {
+            sample.get('dialog_text') not in ({
                 'Title':'<Strings:WarfareGame.Generic.ConfirmSurrender_Title>',
-                'MessageText':'<Strings:WarfareGame.Generic.ConfirmSurrender>'}):
+                'MessageText':'<Strings:WarfareGame.Generic.ConfirmSurrender>'}, {
+                'Title':'<Strings:WarfareGame.Generic.ConfirmCheckPointLoad_Title>',
+                'MessageText':'<Strings:WarfareGame.Generic.ConfirmCheckPointLoad>'})):
         return False
     scenes = active_top(sample, top)
     return scenes is not None and any(scene_context(scene, 'DeltaPause-Campaign-Host') for scene in scenes[:-1])
@@ -103,8 +105,9 @@ def classify(sample):
     # Only observed settings scenes under their ordered campaign Pause context.
     if player == 0 and pause_settings(sample, top):
         return PAUSE_MENU
-    # Display only: the observed surrender prompt has scene-root focus, not an
-    # authenticated input choice. No generic confirmation/dialog admission.
+    # Display only: the exact observed surrender/checkpoint prompts under Pause
+    # are not authenticated input choices. Title/message pairs cannot mix;
+    # no generic confirmation/dialog admission or input permission is granted.
     if player == 0 and pause_return_confirmation(sample, top):
         return PAUSE_MENU
     # This persistent nonmodal scene was observed atop gameplay; it is not
@@ -117,8 +120,12 @@ def classify(sample):
 
 class MenuDisplayMonitor:
     def __init__(self, path, game, owner, identity, reader_factory=None, reader_identity=None, clock=time.perf_counter_ns):
+        # Keep the real exception identities for injected factories as well.
+        # Importing the types does not construct a Resolver or open a process.
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'game-io'))
+        from menu_state import SnapshotChanged, DialogStorageChanged
+        self.snapshot_change_types = (SnapshotChanged, DialogStorageChanged)
         if reader_factory is None:
-            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'game-io'))
             from menu_state import MenuReader
             from menu_control import reader_process_identity
             reader_factory, reader_identity = lambda: MenuReader(game['pid']), reader_process_identity
@@ -182,9 +189,13 @@ class MenuDisplayMonitor:
             reason = (sample.get('top') or {}).get('tag', 'unknown')
         except (RuntimeError, OSError, ValueError, UnicodeError) as error:
             mode, reason = UNKNOWN, type(error).__name__+': '+str(error)
-            if self.reader:
-                self.reader.close();self.reader = None
-            self.retry_ns = self.clock()+1000000000
+            # Only these exact acquisition-churn exceptions preserve the reader.
+            # Publish no display authority; the next ordinary poll must acquire
+            # a whole new sample using its own acquisition-start timestamp.
+            if type(error) not in self.snapshot_change_types:
+                if self.reader:
+                    self.reader.close();self.reader = None
+                self.retry_ns = self.clock()+1000000000
         self.publish(mode, observed, reason)
 
     def close(self):

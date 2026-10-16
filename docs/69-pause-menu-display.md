@@ -111,3 +111,17 @@ quiet9k 的 game6680 出现暗画面时，实际显示 Pause / Resume Game，而
 77项reader/控制及22项monitor测试通过。新读取器在9x同一实际确认框25秒内取得244次有效mode3，零采样错误；这验证新读取器，未热替换旧owner。`menu9x-prompt-new-reader-probe.json`保留结果。9x正常停止后清理、入口恢复与XR退出0通过，再正常关闭游戏；完整owner显示复测另记。
 
 9y（game41360/创建FILETIME `134365662104404106`、owner34216、XR进程见会话报告，`continuous-stereo-41360-20261016-033031-dd096d43`）在正式owner中加载新文字读取器，再次后台进入退出确认框。45秒状态观察覆盖Pause→确认框，未采到零层、无观察器错误，正式monitor未出现读取异常或UNKNOWN；一次原子发布权限冲突在下一采样恢复，未过期撤层。一次实际模拟器画面核对，两眼为相同完整确认框。随后精确认证对话发送一次Escape取消，返回Pause，再Resume成功恢复新票据projection；未退出主菜单。证据 `menu9y-prompt-layer-observation.json`、`menu9y-cancel-return.json`、`menu9y-resume.json`。本结论仅覆盖这个退出确认框及取消路径，不等于主菜单或world重建已修复。
+
+## Native23 配套观察器：检查点确认框及读取竞争
+
+实际会话 `continuous-stereo-23004-20261016-094123-cc2e8cf9` 暴露检查点确认框仍被分类UNKNOWN。它的title/message为精确的 `ConfirmCheckPointLoad_Title` / `ConfirmCheckPointLoad` 字符串引用，active stack有认证的 `DeltaPause-Campaign-Host` 祖先，top为 `WarfareConfirmation / UIScene_Confirmation / input_mode1`。此前只认证Surrender组合，故Pause后UNKNOWN同时禁止eye-menu与projection，形成零层路径。outage的23.312秒仅指没有projection，包含1284次成功共同菜单quad，不能全称黑屏。
+
+修复前会话 `continuous-stereo-24152-20261016-100224-44dbac6d` 保持该确认框15秒：`checkpoint-dialog-baseline-layers.json` 全部采样UNKNOWN/layer0，完整快照保存在 `checkpoint-dialog-baseline-full-sample.json`。分类器现仅额外接受该精确title/message整对，保留Pause祖先、active_top及共同守卫；混配、陌生文本仍拒绝，不新增输入许可。
+
+仅分类修复后的会话 `continuous-stereo-38096-20261016-100609-ee8914db` 虽能显示确认框，15秒窗口仍在9.375–13.391秒采到约4.016秒零层。menu日志证明第二次SnapshotChanged被monitor当作reader损坏，关闭reader并退避1秒；重建含Resolver.prepare与全注册表client扫描，下一授权观察时间已过期（超过原1.5秒TTL）。孤立PermissionError延后一次发布，但没有证据认定冲突句柄来源。
+
+monitor现在仅对exact `SnapshotChanged` / `DialogStorageChanged` 保留reader，仍立即发布UNKNOWN，下一正常poll全新采样；不增加立即重试、不更新慢采样的起始时间、不缓存授权或放宽TTL。身份、结构、I/O等其他失败仍关闭reader并退避。33项分类/生命周期测试通过，连同runner/world-monitor共96项通过。
+
+完整修复后会话 `continuous-stereo-32840-20261016-101242-4f64a20c` 的 `checkpoint-dialog-readerfix-layers.json` 覆盖45秒：采样持续mode3、授权新鲜、layer1，无读取错误；正式monitor无UNKNOWN或发布失败。GPU请求snapshot1/ticket1069、保存QPC56900993914000在确认框保持期间，源图两眼均能读到Load Checkpoint正文；预览 `checkpoint-dialog-readerfix-source-preview.png`。这张是源图，非最终头显像素验收；当时模拟器窗口预览仅1718×17，MCP屏幕截图不适合布局验收。取消后恢复新projection至少2秒，再正常停止。
+
+随后会话 `continuous-stereo-37000-20261016-102558-1782c0e6` 真正确认重载：menu保持Pause→确认框→GAMEPLAY，未观察到中间UNKNOWN；自动world1→2、准星证书提交1次，新Pawn完成步枪→手枪开镜→原步枪，有限准星应用97次（全会话累计）。证据 `checkpoint-dialog-reload-events.json` 及会话menu/world日志。以上各轮均先验证native清理、43入口恢复和XR shutdown，再身份校验WM_CLOSE正常退出，无主动焦点操作。没有把投影缺席当作全部零层，也没有宣称所有加载、过场、菜单或长期游玩黑屏已解决；默认玩家清单未提升，Native23/MainMenu8冻结二进制未改动。

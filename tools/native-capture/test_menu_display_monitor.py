@@ -4,7 +4,7 @@ import unittest
 import json
 import copy
 import sys
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from menu_display_monitor import MenuDisplayMonitor, PACKET, classify, UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU
 
 
@@ -56,6 +56,12 @@ def return_confirmation_sample():
                 dialog_text={'Title':'<Strings:WarfareGame.Generic.ConfirmSurrender_Title>',
                              'MessageText':'<Strings:WarfareGame.Generic.ConfirmSurrender>'},
                 focus_chain=[focus],focused_leaf=focus)
+
+
+def checkpoint_confirmation_sample():
+    return dict(return_confirmation_sample(),dialog_text={
+        'Title':'<Strings:WarfareGame.Generic.ConfirmCheckPointLoad_Title>',
+        'MessageText':'<Strings:WarfareGame.Generic.ConfirmCheckPointLoad>'})
 
 
 class Reader:
@@ -219,6 +225,35 @@ class Tests(unittest.TestCase):
         for key,value in (('name','DeltaMainMenu'),('cls','OtherScene'),('input_mode',2),('input_mode',True)):
             state=copy.deepcopy(base);state['active_scenes'][0][key]=value
             self.assertEqual(classify(state),UNKNOWN)
+
+    def test_exact_checkpoint_prompt_is_display_only_and_rejects_mixed_text_or_context(self):
+        base=checkpoint_confirmation_sample();surrender=return_confirmation_sample()
+        for blocked in (0,1):self.assertEqual(classify(dict(base,input_block_count=blocked)),PAUSE_MENU)
+        with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
+            from menu_control import allowed
+        self.assertFalse(allowed(base,11))
+        for text in (None,{},dict(base['dialog_text'],Title=surrender['dialog_text']['Title']),
+                     dict(base['dialog_text'],MessageText=surrender['dialog_text']['MessageText']),
+                     dict(base['dialog_text'],Title='Load checkpoint?'),
+                     dict(base['dialog_text'],MessageText='Load current checkpoint'),
+                     dict(base['dialog_text'],extra='unreviewed')):
+            self.assertEqual(classify(dict(base,dialog_text=text)),UNKNOWN)
+        for scenes in (None,[],base['active_scenes'][1:],list(reversed(base['active_scenes']))):
+            self.assertEqual(classify(dict(base,active_scenes=scenes)),UNKNOWN)
+        for key,value in (('name','DeltaMainMenu'),('cls','OtherScene'),('input_mode',2),('input_mode',True)):
+            state=copy.deepcopy(base);state['active_scenes'][0][key]=value
+            self.assertEqual(classify(state),UNKNOWN)
+        for key,value in (('tag','OtherConfirmation'),('name','OtherConfirmation'),('address','0x999'),
+                          ('address',None),('cls','WarUIScene'),('input_mode',2),('input_mode',True)):
+            state=copy.deepcopy(base);state['top'][key]=value
+            self.assertEqual(classify(state),UNKNOWN)
+        for key,value in (('address','0x999'),('name','OtherConfirmation'),('cls','WarUIScene'),('input_mode',True)):
+            state=copy.deepcopy(base);state['active_scenes'][-1][key]=value
+            self.assertEqual(classify(state),UNKNOWN)
+        for key,value in (('player_index',1),('player_index',-1),('player_index',False),('read_only',False),
+                          ('consistent_reread',False),('input_block_count',2),('input_block_count',True),
+                          ('input_block_count',1.0)):
+            self.assertEqual(classify(dict(base,**{key:value})),UNKNOWN)
 
     def test_return_prompt_rejects_top_identity_and_common_guard_mismatches(self):
         base=return_confirmation_sample()
@@ -428,6 +463,72 @@ class Tests(unittest.TestCase):
             def fail():raise RuntimeError('changed')
             reader.sample=fail;m.poll();self.assertEqual(PACKET.unpack(path.read_bytes())[3],UNKNOWN)
             m.close()
+
+    def test_real_typed_snapshot_churn_keeps_injected_reader_but_publishes_only_unknown(self):
+        for type_name in ('SnapshotChanged','DialogStorageChanged'):
+            with self.subTest(type_name=type_name),tempfile.TemporaryDirectory() as d:
+                path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+                from menu_state import SnapshotChanged, DialogStorageChanged
+                error_type={'SnapshotChanged':SnapshotChanged,'DialogStorageChanged':DialogStorageChanged}[type_name]
+                factory=Mock(return_value=reader);m.factory=factory
+                reader.sample=Mock(side_effect=[pause_sample(),error_type('changed'),error_type('changed'),checkpoint_confirmation_sample()])
+                try:
+                    for call,(now,mode) in enumerate(((100,PAUSE_MENU),(200,UNKNOWN),(300,UNKNOWN),(400,PAUSE_MENU)),1):
+                        m.clock=lambda now=now:now;m.poll()
+                        packet=PACKET.unpack(path.read_bytes())
+                        self.assertEqual((packet[3],packet[-2],packet[-1]),(mode,call,now))
+                        self.assertEqual(reader.sample.call_count,call) # No immediate retry.
+                        self.assertIs(m.reader,reader);self.assertFalse(reader.closed)
+                        self.assertEqual(m.retry_ns,0);factory.assert_called_once()
+                finally:m.close()
+                self.assertTrue(reader.closed)
+
+    def test_typed_churn_and_slow_recovery_keep_acquisition_start_timestamps(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+            from menu_state import SnapshotChanged
+            now=[100];m.clock=lambda:now[0]
+            def changed():
+                now[0]=2000000100
+                raise SnapshotChanged('second snapshot attempt changed')
+            try:
+                reader.sample=Mock(side_effect=changed);m.poll()
+                self.assertEqual((PACKET.unpack(path.read_bytes())[3],PACKET.unpack(path.read_bytes())[-1]),(UNKNOWN,100))
+                reader.sample.assert_called_once();self.assertIs(m.reader,reader)
+                def slow():
+                    now[0]+=2000000000 # Already older than the unchanged 1.5 s render TTL.
+                    return pause_sample()
+                began=now[0];reader.sample=Mock(side_effect=slow);m.poll()
+                packet=PACKET.unpack(path.read_bytes())
+                self.assertEqual((packet[3],packet[-1]),(PAUSE_MENU,began))
+                self.assertGreater(now[0]-packet[-1],1500000000)
+                reader.sample.assert_called_once()
+                now[0]+=1;fresh=now[0];reader.sample=Mock(return_value=pause_sample());m.poll()
+                self.assertEqual(PACKET.unpack(path.read_bytes())[-1],fresh)
+                self.assertFalse(reader.closed)
+            finally:m.close()
+
+    def test_plain_failures_and_typed_subclasses_still_close_and_back_off(self):
+        with patch.object(sys,'path',[str(pathlib.Path(__file__).resolve().parents[1]/'game-io'),*sys.path]):
+            from menu_state import SnapshotChanged, DialogStorageChanged
+        class DerivedSnapshotChanged(SnapshotChanged):pass
+        class DerivedDialogStorageChanged(DialogStorageChanged):pass
+        for error in (RuntimeError('SnapshotChanged'),RuntimeError('Object registry identity changed'),
+                      OSError('read failed'),ValueError('bad registry'),UnicodeError('bad name'),
+                      DerivedSnapshotChanged('changed'),DerivedDialogStorageChanged('changed')):
+            with self.subTest(error=type(error).__name__),tempfile.TemporaryDirectory() as d:
+                path=pathlib.Path(d)/'menu.bin';reader=Reader();m=self.monitor(path,reader)
+                factory=Mock(return_value=reader);m.factory=factory
+                reader.sample=Mock(side_effect=error)
+                try:
+                    m.clock=lambda:100;m.poll()
+                    self.assertEqual(PACKET.unpack(path.read_bytes())[3],UNKNOWN)
+                    self.assertTrue(reader.closed);self.assertIsNone(m.reader);self.assertEqual(m.retry_ns,1000000100)
+                    reader.sample.assert_called_once();factory.assert_called_once()
+                    m.clock=lambda:200;m.poll()
+                    self.assertEqual((PACKET.unpack(path.read_bytes())[3],PACKET.unpack(path.read_bytes())[-1]),(UNKNOWN,200))
+                    factory.assert_called_once();reader.sample.assert_called_once()
+                finally:m.close()
 
     def test_replace_failure_preserves_packet_and_recovers_with_new_sample(self):
         with tempfile.TemporaryDirectory() as d:
