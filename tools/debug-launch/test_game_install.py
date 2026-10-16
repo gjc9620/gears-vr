@@ -35,6 +35,8 @@ class InstallTests(unittest.TestCase):
                     game_install.validate_game(exe,root,'unknown hash')
             self.assertEqual(before,{p:p.read_bytes() for p in root.rglob('*') if p.is_file()})
             command=game_install.debug_command(exe,root)
+            self.assertIn('-DisableBackgroundInput',command)
+            self.assertIn('-DisableBackgroundInput',game_install.debug_command(exe,root,foreground=True))
             self.assertEqual(command[-2:],['-GamePath',str(exe)])
             self.assertIn('custom folder',command[-1]) # one literal argument, no shell interpolation
 

@@ -30,7 +30,8 @@ def validate_game(path=None, root=ROOT, expected=None):
 
 def debug_command(exe, root=ROOT, *, foreground=False):
     return ['powershell', '-NoProfile', '-NonInteractive', '-File',
-            str(root / 'tools/debug-launch/Start-DebugGame.ps1'), '-GamePath', str(exe)] + (['-Foreground'] if foreground else [])
+            str(root / 'tools/debug-launch/Start-DebugGame.ps1'), '-DisableBackgroundInput',
+            '-GamePath', str(exe)] + (['-Foreground'] if foreground else [])
 
 
 if __name__ == '__main__':
