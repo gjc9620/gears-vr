@@ -18,6 +18,12 @@ def config():
         identities=[obj(i+1) for i in range(6)],cinematic=dict(role_world_info=5))
 
 
+def initial_guard():
+    value=config()
+    return dict(**{name:value['identities'][index] for name,index in value['roles'].items()},
+                target_proof=dict(world_info=value['identities'][5]))
+
+
 class Tests(unittest.TestCase):
     def adapter(self, directory, crosshair=None):
         path=Path(directory)
@@ -55,12 +61,49 @@ class Tests(unittest.TestCase):
             adapter=self.adapter(directory)
             for error in (False,True):
                 reader=SimpleNamespace(resolve=mock.Mock(return_value={}),p=SimpleNamespace(close=mock.Mock()))
-                with mock.patch.object(runtime,'Resolver',return_value=reader),mock.patch.object(runtime,'build_anchor_config',
-                    side_effect=RuntimeError('load changed') if error else None,return_value=(config(),{})):
+                with mock.patch.object(runtime,'Resolver',return_value=reader),mock.patch.object(runtime,'LiveRegistryAnchorSampler',
+                    side_effect=RuntimeError('load changed') if error else None,return_value=SimpleNamespace(initial=initial_guard())):
                     if error:
                         with self.assertRaises(RuntimeError):adapter.observe(lambda:None)
                     else:self.assertEqual(adapter.observe(lambda:None),adapter.baseline)
                 reader.p.close.assert_called_once()
+
+    def test_observe_uses_strict_initial_guard_without_measurement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=self.adapter(directory)
+            camera={'camera_address':'0x1234'}
+            reader=SimpleNamespace(resolve=mock.Mock(return_value=camera),p=SimpleNamespace(close=mock.Mock()))
+            sampler=SimpleNamespace(initial=initial_guard(),sample=mock.Mock(side_effect=AssertionError('measurement not needed')))
+            check=mock.Mock()
+            with mock.patch.object(runtime,'Resolver',return_value=reader),\
+                 mock.patch.object(runtime,'LiveRegistryAnchorSampler',return_value=sampler) as construct:
+                observed=adapter.observe(check)
+            construct.assert_called_once_with(reader,prepared_camera=camera,cinematic_camera=True)
+            sampler.sample.assert_not_called();self.assertEqual(check.call_count,3)
+            self.assertEqual(observed,adapter.baseline)
+            sampler.initial['pawn']['number']=9
+            self.assertEqual(observed,adapter.baseline) # Snapshot owns immutable identity copies.
+            reader.p.close.assert_called_once()
+
+    def test_observe_never_substitutes_missing_world_proof(self):
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=self.adapter(directory)
+            reader=SimpleNamespace(resolve=mock.Mock(return_value={}),p=SimpleNamespace(close=mock.Mock()))
+            guard=initial_guard();guard['target_proof']={}
+            with mock.patch.object(runtime,'Resolver',return_value=reader),\
+                 mock.patch.object(runtime,'LiveRegistryAnchorSampler',return_value=SimpleNamespace(initial=guard)):
+                with self.assertRaises(KeyError):adapter.observe(lambda:None)
+            reader.p.close.assert_called_once()
+
+    def test_observe_closes_reader_when_cancelled_after_guard(self):
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=self.adapter(directory)
+            reader=SimpleNamespace(resolve=mock.Mock(return_value={}),p=SimpleNamespace(close=mock.Mock()))
+            check=mock.Mock(side_effect=[None,None,RuntimeError('cancelled')])
+            with mock.patch.object(runtime,'Resolver',return_value=reader),\
+                 mock.patch.object(runtime,'LiveRegistryAnchorSampler',return_value=SimpleNamespace(initial=initial_guard())):
+                with self.assertRaisesRegex(RuntimeError,'cancelled'):adapter.observe(check)
+            reader.p.close.assert_called_once()
 
     def test_prepare_uses_manifest_digest_and_closes_proof(self):
         with tempfile.TemporaryDirectory() as directory:

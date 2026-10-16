@@ -9,7 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from start_capture import ROOT, Resolver, observer_signatures
-from anchor_config import build_anchor_config
+from anchor_config import LiveRegistryAnchorSampler
 from hook_entry_attestation import HookEntryAttestation
 from world_rebind import build_candidate, publish_candidate, role, identity, thaw
 
@@ -57,8 +57,16 @@ class RuntimePreparation:
         try:
             camera = resolver.resolve()
             check_live()
-            config, _ = build_anchor_config(resolver,camera,prepared_camera=camera,cinematic_camera=True)
-            result = snapshot(config)
+            # Discovery needs identities, not a cross-frame measurement of POV
+            # and Pawn values. Construction already acquires a strict timestamp
+            # bracket with fresh identities, reciprocal links and world proof.
+            # Prepare still builds the complete certificate before publication.
+            sampler = LiveRegistryAnchorSampler(resolver,prepared_camera=camera,cinematic_camera=True)
+            guard = sampler.initial
+            from world_rebind_monitor import WorldSnapshot
+            result = WorldSnapshot(**{name:guard[name] for name in
+                ('local_player','controller','camera','level','pawn')},
+                world_info=guard['target_proof']['world_info'])
             check_live()
             return result
         finally:
