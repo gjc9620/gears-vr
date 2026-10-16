@@ -143,11 +143,11 @@ class LauncherTests(unittest.TestCase):
     def test_player_default_uses_game_resolution_and_graphics_protection(self):
         directory=pathlib.Path(__file__).parent
         current=json.loads((directory/'manifest.json').read_text())
-        self.assertEqual(current,json.loads((directory/'manifest-world-recovery23-xr18-vd.json').read_text()))
+        self.assertEqual(current,json.loads((directory/'manifest-final-path28-xr19-vd.json').read_text()))
         launcher.settings({},current)
-        self.assertEqual(current['native_dll'],'GearsCaptureWorldRecovery23.dll')
-        self.assertEqual(current['native_build'],'tools/native-capture/build-world-recovery23')
-        self.assertEqual(current['xr_build'],'tools/openxr-probe/build-main-menu18-vd')
+        self.assertEqual(current['native_dll'],'GearsCaptureFinalPath28.dll')
+        self.assertEqual(current['native_build'],'tools/native-capture/build-final-path28')
+        self.assertEqual(current['xr_build'],'tools/openxr-probe/build-main-menu19-vd')
         self.assertEqual(launcher.hud_horizontal_fov({},current),65.)
         for key in ('startup_menu','graphics_startup_lock','graphics_menu_lock','menu_recovery','ui_hud_plane',
                     'cinematic_camera','world_recovery','hud_size_control','crosshair_assignment_observer'):
