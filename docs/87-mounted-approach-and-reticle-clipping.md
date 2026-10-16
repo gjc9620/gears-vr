@@ -21,3 +21,19 @@ Caption38会话 `continuous-stereo-28480-20261017-070418-89b899ac`，游戏PID28
 已修正规划器：变换后交集为空时保留原投影，用眼内零面积scissor继续；不扩大可见范围。回归用例在修正前失败，修正后重新编译并运行UiReticleDirectionPlanTest通过；覆盖左右眼分别为空、上下两眼为空、replay转发与恢复、整数矩形转换，以及第二眼几何非法和原始非法裁剪仍拒绝。协调器独立重运行该测试通过。另尝试旧布局构建目录的GpuViewportStatsTest时该可执行文件不存在，未记为通过。
 
 源码回归、冻结DLL及实际游戏验证分别记录；默认Caption38与已生成测试ZIP不因源码修改自动更新。
+
+## 独立候选构建
+
+源码提交 `ab91ecc` 导出为 `analysis/native-source-reticle39`；MinHook逐字节复用Caption38冻结副本，保留同样的构建选项，排除工作区未提交的UI旁路。全部137个构建步骤完成，DLL为 `tools/native-capture/build-reticle39/GearsCaptureReticle39.dll`，SHA256 `f1865f70c0f50ed367e28e7fb2800ee09f7231a13ddb08ea8c6bafae73f60dbb`。
+
+19项相关自测通过，包括准星、viewport replay、HUD布局、UI收据／索引／材质、mounted、FrameLink和DLL continuous／frame-link ABI。首次MountedObserverTest失败是执行目录没有mounted.ini／memory测试夹具；改用既有 `analysis/tests/mounted-stream-levels` 后通过，未改测试或降低断言。构建、源码逐文件哈希和自测结果分别保存在reticle39-build.log、reticle39-source.json、reticle39-selftests.json。
+
+实际游戏回归使用显式实验清单 `analysis/runtime/manifest-reticle39.json`；这不修改默认清单、玩家配置或之前的ZIP。
+
+## 实际检查点回归与采用
+
+Reticle39会话 `continuous-stereo-8828-20261017-071258-2e45ae03`，游戏PID8828／creation134366659655727649。启动准备3795毫秒，相机就绪至实际首投影6771毫秒。连续两次死亡菜单读取检查点，world generation依次1→2→3；从实际按键发送到脚本观察到新代至少10次提交分别7487、7937毫秒。该时间包括加载、认证和脚本观测，不等于全程黑屏时间。
+
+四份3840×2160 GPU图像回执的ticket为279／2233／2997／4014，source serial为277／2228／2988／4000。每眼均有非黑场景，恢复图已目视确认。正常停止后原生清理、XR退出和游戏普通关闭通过，回执 `reticle54-audit.json`、`reticle54-normal-close.json`。这没有验证特殊载具、头显融合或持续开火期间用户所说的外圈偏移。
+
+完成上述回归后，本地默认改为 `manifest-reticle39-borderless-vd.json`。Caption38命名清单与此前测试ZIP保留回退，玩家配置未覆盖。新源码默认不改变此前ZIP内容；发布仍须真机和剩余场景验收。
