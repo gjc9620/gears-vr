@@ -37,3 +37,13 @@ ignored只读脚本 `analysis/runtime/profile-startup-discovery.py` 包装现有
 报告为 `analysis/runtime/discovery39-pairLegacy1.json`、`pairLegacy2.json`、`pairPages1.json`、`pairPages2.json`（均带discovery39前缀）。单独统计模式 `discovery39-pairPagesCounted.json` 也一次成功，UI共156711次读取，其中27716次整页请求；读取请求字节量增至125.28MB，有7次短读后回退。它用更多读取字节换取更少系统调用，不能宣称所有读取成本都减少。
 
 这个结果只有一个稳定检查点、每种路径两个计时样本，不代表整个VR冷启动或加载抖动必然按同比例改善。实际VR启动与清理回归须另行记录。未加载VR的测量游戏已正常关闭并确认退出，见 `discovery39-normal-close.json`。
+
+## 完整VR冷启动与检查点回归
+
+源码 `00aee41` 配合未改动的Native37／Borderless1，实际模拟器会话 `continuous-stereo-31084-20261017-051056-0d18a74a`。证书阶段一次UIRegistryChanged后重取成功：原生准备6.543秒，相机就绪至首个成功双目投影9.548秒。实际启动延迟仍明显，不把前一轮11.175秒与本轮6.543秒的差值全部归为优化（两轮加载和重试情况不同）。
+
+死亡菜单读取检查点一次后，generation2已提交60个epoch内帧时请求GPU图，得到票据615、源序号604、3840×2160的新收据，两眼均有非黑场景数据。旧版所有fresh与拥有Hook入口的认证路径继续通过。整轮原生发布1658次、XR投影3877次、场景复制1657次；50.516秒最大投影间隔包含死亡菜单等待，不能视为纯游玩帧率或无卡顿证明。
+
+停止后原生清理、入口恢复、XR正常退出通过，游戏正常关闭并确认退出。回执 `discovery39-vr-runtime-audit.json`、`discovery39-vr-checkpoint-audit.json`、`discovery39-vr-normal-close.json`。未做新头显、机枪、长时间游玩或所有过场验收。
+
+新独立快照 `analysis/release-staging/mounted37-discovery3-20261017` 包含两项Python启动修正，共700文件、43,419,825字节，隔离预检通过，清单SHA256 `721810195e2a938e2347ee2f06071c5baea84d77bc2d67b0620695cda26b2e11`。原生／XR沿用已验证文件，没有重复编译或重复运行未改动的原生自测；这个快照尚非正式发布。
