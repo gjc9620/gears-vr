@@ -15,10 +15,10 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 GAME_IO = ROOT / 'tools/game-io/background_input.py'
 RUNTIME = ROOT / 'analysis/runtime'
 SW_SHOWNOACTIVATE = 4
-DEFAULT_QUIET_BUILD = ROOT / 'tools/quiet-startup/build-quiet8'
+DEFAULT_QUIET_BUILD = ROOT / 'tools/quiet-startup/build-quiet11'
 DEFAULT_QUIET_SHA256 = {
-    'GearsEarlyLaunch.exe': '1c20671926af4050091e58e388886c4d3baa5218cbe263730d47888b372bb111',
-    'GearsQuietStartup.dll': 'd24bf2da8bde8017326f540c782eaf2fba119cec4504758b291a3d9246ec17cc',
+    'GearsEarlyLaunch.exe': '4eb27120bb8d1c5abf0d282a5280f65bf69d6f798edaa003e34673537bec0bf8',
+    'GearsQuietStartup.dll': '58b81c8340d14c7083444e6031f050fc4d1d50a4481301fee76c8269f875ea5b',
 }
 
 
@@ -68,7 +68,7 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
     if quiet_build is not None:
         verify_default_quiet_build(quiet_build)
         from quiet_launch import launch_quiet
-        quiet_report = launch_quiet(game_path, game_args, quiet_build, popen=popen)
+        quiet_report = launch_quiet(game_path, game_args, quiet_build, popen=popen, main_noactivate=True)
         game_pid, creation_time = quiet_report['pid'], quiet_report['creation_time']
     else:
         creationflags = 0 if foreground else subprocess.CREATE_NO_WINDOW
@@ -121,7 +121,7 @@ def main(argv=None):
     parser.add_argument('--game-arg', action='append', default=[])
     parser.add_argument('--foreground', action='store_true', help='Use the ordinary foreground startup policy')
     parser.add_argument('--disable-background-input', action='store_true')
-    parser.add_argument('--quiet-build', type=pathlib.Path, help='Override frozen quiet8 startup build (or GEARSVR_QUIET_STARTUP_BUILD)')
+    parser.add_argument('--quiet-build', type=pathlib.Path, help='Override frozen quiet11 startup build (or GEARSVR_QUIET_STARTUP_BUILD)')
     args = parser.parse_args(argv)
     try:
         record = launch(args.game_path, args.game_arg, foreground=args.foreground,

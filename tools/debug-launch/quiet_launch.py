@@ -1,5 +1,6 @@
 """Explicit early-policy launcher adapter; never falls back to ordinary startup."""
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -22,7 +23,9 @@ def unique_object(pairs):
     return result
 
 
-def launch_quiet(game_path, game_args, build, *, popen=subprocess.Popen):
+def launch_quiet(game_path, game_args, build, *, popen=subprocess.Popen, main_noactivate=None):
+    if main_noactivate is not None and type(main_noactivate) is not bool:
+        raise ValueError('main_noactivate must be None or boolean')
     game = Path(validate_game(game_path)).resolve()
     build = Path(build).resolve()
     launcher, policy = build / 'GearsEarlyLaunch.exe', build / 'GearsQuietStartup.dll'
@@ -31,10 +34,14 @@ def launch_quiet(game_path, game_args, build, *, popen=subprocess.Popen):
     info = subprocess.STARTUPINFO()
     info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     info.wShowWindow = 0
+    child_environment = None
+    if main_noactivate is not None:
+        child_environment = dict(os.environ)
+        child_environment['GEARSVR_QUIET_MAIN_NOACTIVATE'] = '1' if main_noactivate else '0'
     bootstrap = popen([str(launcher), str(game), str(policy), *map(str, game_args)],
                       cwd=str(game.parent), startupinfo=info, creationflags=subprocess.CREATE_NO_WINDOW,
                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL,
-                      close_fds=True, text=True)
+                      close_fds=True, text=True, env=child_environment)
     # Native bootstrap owns bounded entry/install/cleanup transactions. A Python
     # timeout must not kill its debugger or abandon a suspended child midway.
     stdout, stderr = bootstrap.communicate()

@@ -51,6 +51,7 @@ class BackgroundLaunchTests(unittest.TestCase):
         self.assertEqual(popen.call_args_list[1].args[0][2:],
             ['enable', '--creation-time', '987654', '--pid', '5100', '--wait-seconds', '60'])
         self.assertEqual(result['window_startup_policy'], 'quiet_startup')
+        self.assertEqual(popen.call_args_list[0].kwargs['env']['GEARSVR_QUIET_MAIN_NOACTIVATE'],'1')
         self.assertEqual(result['creation_time'], 987654)
         saved=json.loads((self.runtime/'background-launch-5100.json').read_text())
         self.assertEqual(saved['game_args'], ['-NoPauseUnfocus', 'SP_Prison_P'])
@@ -165,6 +166,39 @@ class BackgroundLaunchTests(unittest.TestCase):
             game_io=self.root/'missing.py', runtime=self.runtime, popen=popen)
         self.assertEqual(popen.call_count, 1)
         self.assertEqual(result['creation_time'], 987654)
+
+    def test_direct_quiet_launch_can_inherit_or_override_without_parent_changes(self):
+        build, _, bootstrap = self.quiet_fixture()
+        self.quiet_patches()
+        key='GEARSVR_QUIET_MAIN_NOACTIVATE'
+        for inherited in (None,'0','1'):
+            with mock.patch.dict(quiet_launch.os.environ, {'QUIET_TEST_KEEP':'value'}, clear=True):
+                if inherited is not None:quiet_launch.os.environ[key]=inherited
+                for requested in (None,False,True):
+                    with self.subTest(inherited=inherited,requested=requested):
+                        parent=dict(quiet_launch.os.environ);popen=mock.Mock(return_value=bootstrap)
+                        quiet_launch.launch_quiet(self.game,[],build,popen=popen,main_noactivate=requested)
+                        child=popen.call_args.kwargs['env']
+                        if requested is None:self.assertIsNone(child)
+                        else:
+                            self.assertEqual(child[key],'1' if requested else '0')
+                            self.assertEqual(child['QUIET_TEST_KEEP'],'value')
+                            self.assertIsNot(child,quiet_launch.os.environ)
+                        self.assertEqual(dict(quiet_launch.os.environ),parent)
+
+    def test_background_default_enforces_flag_even_if_parent_disabled_it(self):
+        _, _, bootstrap = self.default_quiet_fixture()
+        self.quiet_patches()
+        with mock.patch.dict(background_launch.os.environ, {'GEARSVR_QUIET_MAIN_NOACTIVATE':'0'}):
+            popen=mock.Mock(return_value=bootstrap)
+            background_launch.launch(self.game,disable_background_input=True,runtime=self.runtime,popen=popen)
+            self.assertEqual(popen.call_args.kwargs['env']['GEARSVR_QUIET_MAIN_NOACTIVATE'],'1')
+            self.assertEqual(background_launch.os.environ['GEARSVR_QUIET_MAIN_NOACTIVATE'],'0')
+
+    def test_direct_quiet_rejects_nonboolean_override_before_spawn(self):
+        popen=mock.Mock()
+        with self.assertRaises(ValueError):quiet_launch.launch_quiet(self.game,[],self.root,popen=popen,main_noactivate=1)
+        popen.assert_not_called()
 
     def test_quiet_foreground_conflict_is_rejected_before_side_effects(self):
         popen = mock.Mock()
