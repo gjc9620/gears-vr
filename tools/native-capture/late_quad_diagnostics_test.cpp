@@ -6,6 +6,10 @@ int main(){
     assert(observe_target(0x1234,true,true,0));assert(!observe_target(0x1234,true,true,9));
     assert(!observe_target(0x1234,false,false,0));assert(!observe_target(0x1234,false,true,9));
     assert(observe_target(0x2b11a0,false,true,9));
+    assert(observe_target(0xd83cbf,false,false,9));
+    assert(observe_target(0xd83cbf,false,false,0));
+    assert(!observe_target(0xd83cbe,false,false,9));
+    assert(!observe_target(0xd83cc0,false,false,9));
     struct Payload {unsigned queries{};};
     gears_late_quad::Recorder<Payload> recorder;
     gears_late_quad::Epoch epoch{1,1,9};gears_late_quad::Key key{};

@@ -8,7 +8,9 @@
 namespace gears_late_quad {
 // Recorder admission only; this does not classify or authorize a final draw.
 inline bool observe_target(uintptr_t quad_caller,bool known_buffer,bool final_eye_valid,uint64_t ticket){
-    return quad_caller==0x2b11a0||(known_buffer&&!(final_eye_valid&&ticket));
+    // Live repro 11028 also uses d83cbf for paired CPU quads. Observe its
+    // intermediate target/source without granting final-eye publication.
+    return quad_caller==0x2b11a0||quad_caller==0xd83cbf||(known_buffer&&!(final_eye_valid&&ticket));
 }
 struct Epoch {
     uint64_t world{},inventory{};uintptr_t chain{};

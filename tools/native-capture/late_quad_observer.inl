@@ -1,6 +1,6 @@
 // Included after resource_identity_observer.h. CPU observations inside any quad
 // reaching a current backbuffer without classified final-eye/ticket context.
-// Historical 2b11a0 remains a diagnostic exception, not an output attestation.
+// Historical 2b11a0 and live d83cbf are diagnostic exceptions, not output attestations.
 #include "late_quad_diagnostics.h"
 struct LateQuadCandidate {
     bool active{};std::array<float,8> args{};std::array<unsigned,4> dimensions{};uintptr_t caller{};unsigned draws{};
@@ -59,7 +59,7 @@ void observe_late_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned
         query_bound_resource(key.objects[slot],p.sources[slot]);
 }
 void print_late_quad(FILE* file){
-    fprintf(file,"late_quad_summary scope=all_hook_quads calls=%llu without_draw=%llu without_draw_means=no_intercepted_draw_in_quad admission=current_known_buffer_without_classified_final_eye_ticket historical_caller_exception=2b11a0 rows=%u limit=32 per_epoch_limit=8 dropped=%llu cpu_only=1 pixels_verified=0 resource_queries=new_rows_only execute_source=cpu_pre_original submission_completed=0\n",
+    fprintf(file,"late_quad_summary scope=all_hook_quads calls=%llu without_draw=%llu without_draw_means=no_intercepted_draw_in_quad admission=current_known_buffer_without_classified_final_eye_ticket historical_caller_exception=2b11a0 live_caller_exception=d83cbf rows=%u limit=32 per_epoch_limit=8 dropped=%llu cpu_only=1 pixels_verified=0 resource_queries=new_rows_only execute_source=cpu_pre_original submission_completed=0\n",
         late_quad_calls,late_quad_without_draw,late_quads.size,late_quads.dropped);
     for(unsigned i=0;i<late_quads.size;++i){const auto& r=late_quads.rows[i];const auto& k=r.key;const auto& p=r.payload;
         fprintf(file,"late_quad row=%u world=%llu inventory_epoch=%llu chain=%llx count=%llu first_qpc=%lld last_qpc=%lld ticket=%llu last_ticket=%llu quad_caller=%llx args=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g dimensions=%u,%u,%u,%u context=%llx read_mask=%u slot_count=%u bound_objects=",
