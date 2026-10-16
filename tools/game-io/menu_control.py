@@ -138,6 +138,15 @@ class ControlProgress:
     """One navigation attempt's dispatch ledger, retained across window rebinding."""
     attempted: set = field(default_factory=set)
     actions: int = 0
+    last_success: tuple | None = None
+    retry_choice: tuple | None = None
+    retries: int = 0
+
+    def window_lost(self):
+        # Only the most recent fully completed navigation pair can qualify.
+        # One extra dispatch globally; loading confirmations are never replayed.
+        if self.retries == 0 and self.last_success and self.last_success[2] != 'butContinue':
+            self.retry_choice = self.last_success
 
 
 def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
@@ -167,7 +176,7 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
     while now() < deadline:
         if interrupted():
             return finish('interrupted')
-        if progress.actions >= max_actions:
+        if progress.actions >= max_actions + progress.retries:
             return finish('max_actions')
         if window() != target:
             return finish('window_changed')
@@ -191,7 +200,8 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
             emit(dict(event='state', state=state))
             last, stable_since = current, now()
         key = choice(state)
-        if allowed(state, pid) and key not in progress.attempted and now() - stable_since >= .6:
+        retry = key == progress.retry_choice and progress.retries == 0 and key[2] != 'butContinue'
+        if allowed(state, pid) and (key not in progress.attempted or retry) and now() - stable_since >= .6:
             try:
                 before = read_state()
             except Exception as error:
@@ -217,7 +227,10 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
                 break
             # Reserve before dispatch: even a partially failed send is never retried.
             progress.attempted.add(key)
-            emit(dict(event='action_attempt', action=RULES[key], choice=key, target=target))
+            progress.last_success = progress.retry_choice = None
+            if retry:
+                progress.retries += 1
+            emit(dict(event='action_attempt', action=RULES[key], choice=key, target=target, window_retry=retry))
             try:
                 send_action(RULES[key], target)
             except Exception as error:
@@ -226,10 +239,11 @@ def control(read_state, send_action, window, interrupted, *, pid, seconds=60,
                 emit(dict(event='action_error', error=type(error).__name__ + ': ' + str(error)))
                 return finish('action_error')
             progress.actions += 1
-            emit(dict(event='action_sent', action=RULES[key], choice=key))
+            progress.last_success = key
+            emit(dict(event='action_sent', action=RULES[key], choice=key, window_retry=retry))
             if key[2] == 'butContinue':
                 return finish('loading_requested')
-            if progress.actions >= max_actions:
+            if progress.actions >= max_actions + progress.retries:
                 return finish('max_actions')
         sleep(min(.15, max(0, deadline - now())))
     return finish('timeout')

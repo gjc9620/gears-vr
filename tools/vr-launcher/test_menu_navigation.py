@@ -13,6 +13,13 @@ def continue_state():
                 top=top, focused_leaf=leaf, focus_chain=[leaf])
 
 
+def campaign_state():
+    state = continue_state()
+    state['top'] = dict(tag='DeltaMainMenu', cls='WarUIScene_MainMenu')
+    state['focused_leaf'].update(name='CampaignButton', cls='UIButtonIgnoreStart')
+    return state
+
+
 class NavigationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -111,7 +118,7 @@ class NavigationTests(unittest.TestCase):
         self.assertEqual(self.closed, 2)
         self.assertEqual(self.sent, [('confirm', (7, 100))])
 
-    def test_rebinding_keeps_prior_dispatch_ledger(self):
+    def test_rebinding_keeps_ledger_with_only_one_successful_navigation_retry(self):
         def sample():
             state = continue_state()
             if self.clock < 2:
@@ -121,8 +128,39 @@ class NavigationTests(unittest.TestCase):
         self.sample = sample
         result = self.run_navigation(window=lambda: (7, 99 if self.clock < .8 else 100), deadline=4)
         self.assertEqual(result['reason'], 'loading_requested')
-        self.assertEqual(result['actions'], 2)
-        self.assertEqual(self.sent, [('confirm', (7, 99)), ('confirm', (7, 100))])
+        self.assertEqual(result['actions'], 3)
+        self.assertEqual(self.sent, [('confirm', (7, 99)), ('confirm', (7, 100)), ('confirm', (7, 100))])
+
+    def test_successful_campaign_pair_then_missing_window_same_handle_reconfirms_once(self):
+        missing_until = [0.]
+        def send(action, target):
+            self.sent.append((action, target))
+            if len(self.sent) == 1:
+                missing_until[0] = self.clock + .4
+        def window():
+            if self.clock < missing_until[0]:
+                raise RuntimeError('Game window not found')
+            return (7, 99)
+        def sample():
+            if len(self.sent) < 2:
+                return campaign_state()
+            state = continue_state()
+            if len(self.sent) == 2:
+                state['top'] = dict(tag='DeltaCampaignType', cls='WarUIScene_CampaignType')
+                state['focused_leaf']['name'] = 'butSinglePlayer'
+            return state
+        self.sample = sample
+        result = self.run_navigation(window=window, send=send, deadline=6)
+        self.assertEqual(result['reason'], 'loading_requested')
+        self.assertEqual(result['actions'], 4)
+        self.assertEqual(self.closed, 2)
+        events = [json.loads(line) for line in self.path.read_text().splitlines()]
+        attempts = [event for event in events if event['event'] == 'action_attempt']
+        self.assertEqual([event['choice'][2] for event in attempts],
+                         ['CampaignButton', 'CampaignButton', 'butSinglePlayer', 'butContinue'])
+        self.assertEqual(sum(event['window_retry'] for event in attempts), 1)
+        rebound = [event for event in events if event['event'] == 'window_bound'][1]
+        self.assertGreaterEqual(attempts[1]['elapsed'] - rebound['elapsed'], .6)
 
     def test_bound_window_remains_missing_uses_original_deadline(self):
         def window():
@@ -162,6 +200,7 @@ class NavigationTests(unittest.TestCase):
         self.assertFalse(self.sent)
 
     def test_dispatch_failure_is_not_retried_on_recreated_window(self):
+        self.sample = campaign_state
         handle = [99]
         def send(action, target):
             self.sent.append((action, target))

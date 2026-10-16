@@ -95,7 +95,9 @@ def navigate_core(pid, game_identity, deadline, log_path, *, reader_factory,
                     if reader is not None:
                         reader.close()
                         reader = None
-                emit(dict(event='window_rebinding', reason=reason, actions=progress.actions))
+                progress.window_lost()
+                emit(dict(event='window_rebinding', reason=reason, actions=progress.actions,
+                          retry_choice=progress.retry_choice))
                 sleep(min(.15, max(0, deadline - now())))
             raise RuntimeError('Menu window wait timeout')
         except Exception as error:

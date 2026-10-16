@@ -77,9 +77,36 @@ class ControllerTests(unittest.TestCase):
         result, _, actions = self.run_control(state, partial_send, progress=progress)
         self.assertEqual(result['reason'], 'action_error')
         self.assertEqual(len(actions), 1)
+        progress.window_lost()
         result, _, actions = self.run_control(state, progress=progress)
         self.assertEqual(result['reason'], 'timeout')
         self.assertFalse(actions)
+
+    def test_successful_pair_retry_requires_window_loss_and_is_bounded(self):
+        progress = ControlProgress()
+        self.assertEqual(len(self.run_control(state, progress=progress)[2]), 1)
+        self.assertFalse(self.run_control(state, progress=progress)[2])
+        progress.window_lost()
+        self.assertEqual(len(self.run_control(state, progress=progress)[2]), 1)
+        progress.window_lost()
+        self.assertFalse(self.run_control(state, progress=progress)[2])
+        self.assertEqual(progress.retries, 1)
+
+    def test_continue_is_never_replayed_after_window_loss(self):
+        progress = ControlProgress()
+        self.assertEqual(self.run_control(lambda: state(True), progress=progress)[0]['reason'], 'loading_requested')
+        progress.window_lost()
+        self.assertFalse(self.run_control(lambda: state(True), progress=progress)[2])
+
+    def test_retry_budget_does_not_consume_remaining_five_step_budget(self):
+        progress = ControlProgress(actions=3)
+        self.run_control(state, progress=progress)
+        progress.window_lost()
+        self.assertEqual(len(self.run_control(state, progress=progress)[2]), 1)
+        result, _, actions = self.run_control(lambda: state(True), progress=progress)
+        self.assertEqual(result['reason'], 'loading_requested')
+        self.assertEqual(result['actions'], 6)
+        self.assertEqual(len(actions), 1)
 
     def test_gates_and_unknown_wait_without_input(self):
         for field, value in [('input_block_count', 1), ('player_index', 1),
