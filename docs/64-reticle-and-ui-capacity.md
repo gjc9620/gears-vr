@@ -178,3 +178,14 @@ Native23 DLL SHA256：`bf71e3ae9a7df228d12d8e4665f9bb6a178e4d3a9aa599e43b1923298
 开镜请求帧为 `.gpu.ppm.1.ppm`，日志snapshot_index1/ticket1844、saved_monotonic_ns55029991284100；同次只读武器样本确认新Pawn、手枪及FOV45，缩略预览 `analysis/runtime/world23b-post-checkpoint-ads-preview.png` 显示双眼游戏场景及准星。首次自动帧仍为 `.gpu.ppm`，不混用。证据 `world23-checkpoint-events.json` 和会话world日志；运行中的report.native_status是启动快照，代次提交以world日志及最终native-status为准。
 
 重载确认动作返回到观察到commit约7.955秒，包含检测、证书生成和生命周期交接，不等于逐帧黑屏时长，也不称即时恢复。最终stopped/passed=true、native清理、43入口独立恢复及XR shutdown通过，验证后WM_CLOSE正常关闭游戏，无主动抢焦点。117项Python测试、18项相关原生测试、ABI/连续/FrameLink自测通过；专项静态审查无阻断项。仍未覆盖长期运行、更多武器/拾取、近物体或真头显融合，不证明当前相机瞄准/子弹落点；默认玩家版本未提升。
+
+
+## Native23/XR16：当前65°换枪面板源图像复核
+
+2026-10-16会话 `continuous-stereo-36520-20261016-132203-6361f521` 使用本地默认Native23/XR16、1080p源SBS与实际命令行HUD65°。先在严格GAMEPLAY/block0条件下以已有Back单次动作把LastPlayerIndex从-1确证到0，再确认手枪身份；按已验证Recovery8 selector动作保持右方向键3秒，约1.2秒请求唯一snapshot1，并在按键释放前确认保存回执。snapshot0/ticket282与snapshot1/ticket540均有独立有效票据；selector source serial533、1920×1080、未resize。
+
+原始PPM转换PNG后目视复核，两眼均见当前负载的枪械/投掷物图标组及相邻弹药数，未观察到面板切边缺项；仅记为本次源图像覆盖，不从两眼原始像素位置直接推断头显融合，非对称投影仍需结合runtime。四原生阶段各759对零错配，正常停止/native cleanup/43入口恢复/XR shutdown及身份核验WM_CLOSE通过，无焦点操作。证据 `xr16-ui2-events.json`、`xr16-ui2-review.json`、`xr16-ui2-selector.png`、原始会话日志/PPM与冻结原生状态均在ignored analysis/runtime。
+
+早先两项脚本问题单独保留：外部重定向先创建了脚本要独占的同名log，导致dispatch前退出；分开console/log后，第一版脚本又遗漏LastPlayerIndex=-1的已有分配前置步骤，在游戏输入前超时并正常清理。它们不是游戏闪退或新的UI黑屏；补齐前置后才取得上述有效UI2证据，旧失败输出未覆盖。
+
+换弹/主动换弹、全部武器、近距准星/头显融合、任务/拾取/受伤等UI仍未由此通过。WarHUD.ResetActiveReload导出只表明ARBarData的结果与时间赋值；WarPawn.IsReloadingWeapon仅native声明，不能当实时状态。下一步采用受控单次输入、反射AmmoUsedCount/SpareAmmoCount双读与实际换弹条图像共同验证，不因候选键、计时或单个计数就认定成功。只读弹药观察器正在准备，尚未运行。
