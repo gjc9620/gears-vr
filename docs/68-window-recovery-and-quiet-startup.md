@@ -197,3 +197,5 @@ early_launch新增显式诊断环境变量 `GEARSVR_QUIET_START_MINIMIZED=1`，�
 quiet16仅扩展现有TRACE线程CBT观察器接收HCBT_MINMAX，原样CallNextHookEx、不阻断。保持记录ABI：该事件argument为原show command，related/result_window分别为调用下一hook前后的IsIconic，extra_argument低/高32位为对应style；导出器增加明确命名字段。注意“after_next_hook”不是最终操作完成，最终状态仍需外部采样确认。构建和命令行CTest通过，`quiet16-fixture.json`整体passed=true、trace_valid/cbt_valid=1、7条CBT记录。未提升默认发布构建。
 
 用户随后明确自己退出DisplayFusion，进程枚举确认已退出；之后不再自动恢复它。下一轮沿默认首次显示hint4使用quiet16，聚焦第二次最小化通知，避免把quiet15行为改动混入观察。
+
+quiet16实际game34672：70秒无输入，仍在tick2748296自动进入前台。`focus-minmax16.json`记录首个command7、同步恢复command4（游戏452DDA栈），随后同一tick2748296在PeekMessage调用栈交付command7、command9、HCBT_ACTIVATE。因此额外最小化/恢复确为延迟处理的窗口操作，不是外部20ms采样误判或单纯style读数变化。仍未恢复最初排队者身份，不据此认定显卡覆盖层、DXGI或Steam。证据 `quiet-minmax16.json` / `focus-minmax16.json`；无溢出，游戏与模拟器保持等待关卡，DisplayFusion保持用户退出状态。下一步应查这对延迟操作的排队来源，不能靠阻断所有恢复/激活破坏手动切换。
