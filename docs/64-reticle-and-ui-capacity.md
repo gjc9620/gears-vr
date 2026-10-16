@@ -166,3 +166,15 @@ Native22 SHA256：`9399b6b4f54dab5612aaef3f6f14556c14b47cec0d97a0780728bc1aaf80c
 图像编号需区分：`.gpu.ppm` 是自动首帧，`.gpu.ppm.1.ppm` 才是本轮开镜请求帧。早先预览误用了自动首帧，现已改读抓帧日志snapshot_index1/ticket388、保存时间53190405004300对应的手枪开镜图；图中两眼均见开镜角色和准星。此处仍不是物理头显融合或子弹落点验收。
 
 目前仅覆盖同一Pawn中的步枪/COG手枪往返。更换Pawn/检查点后有限点证书刷新、新拾取/丢弃武器的实际覆盖、近距离目标和真头显仍未完成；失效时保持原方向准星。下一步接入已有世界恢复的证书更新路径，防止重新读取检查点后退回长期方向模式。默认玩家清单尚未提升至实验版。
+
+## Native23：检查点重载后的准星证书恢复
+
+Python复用现有Hook入口证明读取execLet原始32字节，仅该入口允许此能力；其他脚本、GNatives及原生契约保持新鲜原始读取。新bundle包含准星、两条Tick根和writer-view，构造及序列化均要求PID/base/build及PC/Pawn完整身份与anchor/UI一致。原生prepare解析并验证候选，commit再次复核绑定、入口证明和38字节赋值表达式，在已关闭且排空lease的world gate中一起发布。TLS配置必须匹配新generation，旧世界封存证据不能跨代使用。
+
+首轮会话 `continuous-stereo-40224-20261016-093549-1f5937fd` 的检查点脚本等待90秒失败：Pawn已改变，但普通WorldSnapshot变化规则明确忽略Pawn-only，world generation仍1、证书提交0，重绑定拒绝3409。会话正常停止和清理不代表场景测试通过。既有anchor会动态适应同类新Pawn，因此没有全局改变普通路径；仅crosshair observer让monitor比较完整Pawn身份。工作线程和完成重试判断使用同一规则，保留local-player不变、空Pawn过渡拒绝及有限重试。
+
+Native23 DLL SHA256：`bf71e3ae9a7df228d12d8e4665f9bb6a178e4d3a9aa599e43b1923298ce90c21`。同一冻结DLL加Python检测修复后，会话 `continuous-stereo-23004-20261016-094123-cc2e8cf9`：Pawn2100684416→2579805056，自动prepare/commit，generation1→2，准星证书generation2/commits1；新Pawn步枪→COG手枪开镜FOV45→同一新步枪实例成功。全会话武器绑定4次、拒绝218（包含重载期间旧证书失效），有限点注册881次、计划/应用117次、方向回退0、预算未触发；这些是全会话累计，未把它们全部归为world2独立统计。
+
+开镜请求帧为 `.gpu.ppm.1.ppm`，日志snapshot_index1/ticket1844、saved_monotonic_ns55029991284100；同次只读武器样本确认新Pawn、手枪及FOV45，缩略预览 `analysis/runtime/world23b-post-checkpoint-ads-preview.png` 显示双眼游戏场景及准星。首次自动帧仍为 `.gpu.ppm`，不混用。证据 `world23-checkpoint-events.json` 和会话world日志；运行中的report.native_status是启动快照，代次提交以world日志及最终native-status为准。
+
+重载确认动作返回到观察到commit约7.955秒，包含检测、证书生成和生命周期交接，不等于逐帧黑屏时长，也不称即时恢复。最终stopped/passed=true、native清理、43入口独立恢复及XR shutdown通过，验证后WM_CLOSE正常关闭游戏，无主动抢焦点。117项Python测试、18项相关原生测试、ABI/连续/FrameLink自测通过；专项静态审查无阻断项。仍未覆盖长期运行、更多武器/拾取、近物体或真头显融合，不证明当前相机瞄准/子弹落点；默认玩家版本未提升。

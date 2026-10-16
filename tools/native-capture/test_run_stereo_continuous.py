@@ -325,7 +325,7 @@ class ContinuousTests(unittest.TestCase):
             self.assertIsNone(runner.read_session_status(path,124,0))
             self.assertEqual(runner.read_session_status(path,123,0)['phase'],'stopped')
 
-    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False):
+    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False):
         with tempfile.TemporaryDirectory() as folder:
             root=pathlib.Path(folder);build=root/'native';build.mkdir()
             (build/'capture-status.txt').write_text('capturing pid=123 stopped disable_status=0 active=0')
@@ -337,6 +337,10 @@ class ContinuousTests(unittest.TestCase):
             if image_ticket_diagnostics:args.image_ticket_diagnostics=True
             if ui_hud_plane:args.ui_hud_plane=True;args.ui_observer=True;args.anchor_observer=True
             if startup_menu:args.startup_menu_window=789
+            if world_recovery:
+                args.world_recovery=True;args.anchor_observer=True;args.ui_observer=True
+                args.cinematic_camera=True;args.native_expected_sha256='a'*64
+                args.crosshair_assignment_observer=crosshair
             control=Control();child=mock.Mock(pid=456,returncode=0)
             child.poll.return_value=0 if early_exit else None
             child.wait.side_effect=[subprocess.TimeoutExpired('xr',1),0] if xr_timeout else [0]
@@ -396,6 +400,20 @@ class ContinuousTests(unittest.TestCase):
                 (native.call_args_list[0].args[0],'--continuous-owner-pid','--continuous-owner-creation-time')]:
             self.assertEqual(command[command.index(pid_flag)+1],str(os.getpid()))
             self.assertEqual(command[command.index(time_flag)+1],str(identity(os.getpid())['creation_time']))
+
+    def test_world_monitor_pawn_change_policy_is_enabled_only_for_crosshair_observer(self):
+        import world_rebind_runtime
+        import world_rebind_monitor
+        for enabled in (False,True):
+            with self.subTest(crosshair=enabled),\
+                 mock.patch.object(world_rebind_runtime,'RuntimePreparation') as adapter,\
+                 mock.patch.object(world_rebind_monitor,'WorldRebindMonitor') as monitor:
+                monitor.return_value.poll.return_value=[]
+                code,*_=self.run_mock(world_recovery=True,crosshair=enabled)
+                self.assertEqual(code,0)
+                self.assertIs(monitor.call_args.kwargs['include_pawn_changes'],enabled)
+                self.assertIs(monitor.call_args.kwargs['baseline'],adapter.return_value.baseline)
+                monitor.return_value.close.assert_called_once()
 
     def test_startup_stage_timings_distinguish_running_from_first_stereo(self):
         _,state,*_=self.run_mock()

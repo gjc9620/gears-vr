@@ -114,9 +114,13 @@ class AnchorStartTests(unittest.TestCase):
             legacy=start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),anchor_observer=True,ui_observer=True)
             build.assert_not_called();ini.assert_not_called();self.assertEqual(len(legacy),5)
             self.assertNotIn('crosshair_assignment',legacy[3]);self.assertEqual(legacy[4],'ui\n')
+            build.reset_mock();entry_reader=mock.Mock(return_value=b'ok')
+            start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),anchor_observer=True,
+                ui_observer=True,crosshair_assignment_observer=True,entry_reader=entry_reader)
+            self.assertIs(build.call_args.kwargs['entry_reader'],entry_reader)
         self.assertEqual(len(result),5);self.assertIs(result[0],r.resolve.return_value)
         self.assertEqual(result[4],'ui\nassignment\n');self.assertIs(result[3]['crosshair_assignment'],certificate)
-        self.assertEqual(result[3]['existing'],'kept');self.assertEqual(r.p.close.call_count,2)
+        self.assertEqual(result[3]['existing'],'kept');self.assertEqual(r.p.close.call_count,3)
 
     def test_crosshair_certificate_failure_stops_before_ini_or_activation(self):
         import crosshair_assignment_config as assignment

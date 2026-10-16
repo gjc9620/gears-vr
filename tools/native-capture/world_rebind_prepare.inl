@@ -5,6 +5,9 @@ struct PreparedWorld {
     gears_world_rebind::Metadata metadata{};
     gears_anchor::Config anchor{};
     gears_ui::Config ui{};
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    std::optional<gears_crosshair_assignment::OwnedConfig> crosshair;
+#endif
 };
 std::unique_ptr<PreparedWorld> pending_world;
 bool same_world_object(gears_anchor::Identity const& a,gears_anchor::Identity const& b){
@@ -40,6 +43,10 @@ bool prepare_world_candidate(const wchar_t* ini,PreparedWorld& output){
        c.role_pawn>=c.identity_count||!same_world_object(ui.identities[ui.role_controller],c.identities[c.role_controller])||
        !same_world_object(ui.identities[ui.role_camera],c.identities[c.role_camera])||
        !same_world_object(ui.identities[ui.role_pawn],c.identities[c.role_pawn])||!guard())return false;
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    if(crosshair_live::enabled){candidate->crosshair.emplace();
+        if(!crosshair_live::prepare_recovery(ini,c,ui,*candidate->crosshair)||!guard())return false;}
+#endif
     output=*candidate;return true;
 }
 class WorldRebindPrepareRequest {

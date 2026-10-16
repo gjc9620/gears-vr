@@ -45,6 +45,7 @@ class RuntimePreparation:
         settings.read(self.dll.with_name('capture.ini'),encoding='utf-16')
         if settings.getint('Capture','pid') != game['pid']:
             raise ValueError('Startup configuration process mismatch')
+        self.crosshair_assignment_observer = settings.getboolean('Capture','crosshair_assignment_observer',fallback=False)
         flags = SimpleNamespace(**{key:settings.getboolean('Capture',key,fallback=False) for key in (
             'family_diagnostics','viewport_diagnostics','first_view_mask_control','view_union_mask_fix',
             'shadow_view','shadow_state','shadow_constructor')})
@@ -70,7 +71,8 @@ class RuntimePreparation:
                 game_creation=self.game['creation_time'],owner_identity=self.owner,dll=self.dll,
                 expected_dll_sha256=self.expected_hash) as proof:
             candidate = build_candidate(self.game['pid'],self.profile,self.local,previous_generation,
-                self.owner,self.dll,signatures=self.signatures,attestation=proof,check_live=check_live)
+                self.owner,self.dll,signatures=self.signatures,attestation=proof,check_live=check_live,
+                **({'crosshair_assignment_observer':True} if self.crosshair_assignment_observer else {}))
             actual = snapshot(thaw(candidate.anchor_metadata)['config'])
             if actual != observed:
                 raise RuntimeError('World changed during automatic certificate preparation')

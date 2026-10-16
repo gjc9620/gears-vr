@@ -38,21 +38,22 @@ def _require(ok, reason):
         raise CrosshairConfigRejected(reason)
 
 
-def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False):
+def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False, entry_reader=None):
     """Return a JSON-compatible certificate, rejecting any observed mutation.
 
-Unlike an owned-hook loader this factory requires original execLet bytes.
+Requires original execLet bytes, read directly at startup or through the
+caller's bound owned-hook attestation capability during world recovery.
 Shared VM entry bytes are deliberately not certified (the UI owner may own it).
 """
     try:
-        return _build(resolver, camera, include_tick_roots, include_writer_view)
+        return _build(resolver, camera, include_tick_roots, include_writer_view, entry_reader)
     except CrosshairConfigRejected:
         raise
     except (KeyError, TypeError, ValueError, RuntimeError, OSError, struct.error, UnicodeError) as e:
         raise CrosshairConfigRejected('Fresh certificate rejected: ' + str(e)) from e
 
 
-def _build(r, camera, include_tick_roots, include_writer_view):
+def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
     p = r.profile
     started = time.perf_counter_ns()
     _require(p.get('sha256') == camera.get('sha256') == GAME_SHA and
@@ -230,9 +231,19 @@ def _build(r, camera, include_tick_roots, include_writer_view):
         writer_view = dict(enabled=True, roles=view_roles, offsets=view_offsets, shapes=view_shapes)
     expected = b'\x0f\x01' + struct.pack('<Q', lhs) + b'\x35' + struct.pack('<QQ', member, impact_struct) + bytes(3) + struct.pack('<Q', impact)
     _require(len(raw) >= 0x380 and raw[0x359:0x37f] == expected, 'Exact assignment tokens mismatch')
-    native = []
+    native = []; attested_entry = None
     for rva, text in NATIVE_BYTES.items():
-        value = stable(r.base + rva, len(bytes.fromhex(text)))
+        address = r.base + rva; size = len(bytes.fromhex(text))
+        if rva == 0x1d7ad0 and entry_reader is not None:
+            # Only the installed execLet entry may be read through the caller's
+            # bound attestation capability. Never compare substituted originals
+            # to raw patched memory in the final ordinary-read bracket.
+            value = entry_reader(address, size, r.read)
+            _require(isinstance(value, bytes) and len(value) == size and entry_reader(address, size, r.read) == value,
+                     'Attested execLet entry changed during acquisition')
+            attested_entry = (address, size, value)
+        else:
+            value = stable(address, size)
         _require(value.hex() == text, 'Native bytes mismatch: ' + hex(rva))
         native.append(dict(rva=rva, bytes=text, sha256=hashlib.sha256(value).hexdigest()))
     for op, rva in SLOTS.items():
@@ -269,6 +280,10 @@ def _build(r, camera, include_tick_roots, include_writer_view):
     # rejection, even when an earlier registry header also changed.
     if registry_change:
         changed(*registry_change, 'Registry header changed before completion')
+    if attested_entry is not None:
+        address, size, value = attested_entry
+        _require(entry_reader(address, size, r.read) == value,
+                 'Attested execLet entry changed before completion')
     c = dict(schema=1, pid=r.pid, base=r.base, sha256=GAME_SHA,
              objects_header=r.objects_header, names_header=r.names_header, layout=layout,
              identities=ids, supers=[dict(identity=indexes[a], parent=b) for a, b in sorted(supers.items())],

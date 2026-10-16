@@ -8,10 +8,12 @@ bool reserve();
 gears_crosshair_assignment::OwnedConfig config;
 struct ThreadState {gears_crosshair_tick::Evidence evidence;uint64_t token{};uintptr_t frame{};
     gears_crosshair_tick::Binding binding{};long long begin{},assignment{};std::array<float,3> point{};
-    gears_crosshair_assignment::OwnedConfig owned{};bool prepared{};};
+    gears_crosshair_assignment::OwnedConfig owned{};bool prepared{};uint64_t generation{};};
 thread_local ThreadState state;
-const gears_crosshair_assignment::OwnedConfig& current(){return state.prepared?state.owned:config;}
+std::atomic<uint64_t> config_generation{};
+const gears_crosshair_assignment::OwnedConfig& current(){return state.prepared&&state.generation==config_generation.load()?state.owned:config;}
 std::atomic<uint64_t> weapon_rebinds{},weapon_rejected{};
+std::atomic<uint64_t> world_certificates{};
 std::atomic<uint64_t> roots{},root_rejected{},lets{},candidates{},snapshot_rejected{},completed{},completion_rejected{},sealed{},consumed{},scene_calls{},scene_binding_rejected{};
 std::atomic<uint64_t> overhead_qpc{},maximum_overhead_qpc{},row_count{};
 std::atomic<bool> budget_exceeded{};
@@ -28,14 +30,16 @@ void cost(long long elapsed){if(elapsed<0)return;overhead_qpc.fetch_add(uint64_t
     if(qpc_frequency>0&&elapsed>qpc_frequency/200)budget_exceeded=true;
     auto previous=maximum_overhead_qpc.load();while(uint64_t(elapsed)>previous&&!maximum_overhead_qpc.compare_exchange_weak(previous,uint64_t(elapsed))){} }
 uintptr_t address(unsigned index){return current().identities.identities[index].address;}
-bool root_binding(unsigned index){
-    auto const& config=current();
-    if(index>=config.tick_root_count)return false;
+bool root_binding(gears_crosshair_assignment::OwnedConfig const& config,unsigned index){
+    if(index>=config.tick_root_count||index>=config.tick_roots.size())return false;
     auto const& root=config.tick_roots[index];gears_ui::Registry script{};uintptr_t entry{};
-    return safe_copy(&script,reinterpret_cast<void*>(address(root.function)+0x8c),sizeof(script))&&
+    if(root.function>=config.identities.identity_count||root.function>=config.identities.identities.size())return false;
+    const auto function=config.identities.identities[root.function].address;
+    return safe_copy(&script,reinterpret_cast<void*>(function+0x8c),sizeof(script))&&
         script.data==root.script&&script.count==int(root.size)&&script.count<=script.capacity&&script.capacity<=131072&&
-        safe_copy(&entry,reinterpret_cast<void*>(address(root.function)+0x114),8)&&entry==base+0x1d6ca0;
+        safe_copy(&entry,reinterpret_cast<void*>(function+0x114),8)&&entry==base+0x1d6ca0;
 }
+bool root_binding(unsigned index){return root_binding(current(),index);}
 bool load(const wchar_t* ini){
     auto read=[&](const wchar_t* key,wchar_t* out,unsigned capacity){return GetPrivateProfileStringW(L"CrosshairAssignment",key,L"",out,capacity,ini);};
     gears_crosshair_assignment::OwnedConfig candidate;
@@ -43,6 +47,7 @@ bool load(const wchar_t* ini){
        candidate.identities.identities[candidate.assignment.controller].address!=expected_pc||
        !gears_crosshair_assignment::validate_bindings(candidate.assignment,safe_copy,true))return false;
     config=std::move(candidate);
+    config_generation=committed_world_generation.load();
     // Reserve only this explicitly enabled observer. The ordinary UI reserve
     // path must not acquire a dependency on an unused global opcode handler.
     return root_binding(0)&&root_binding(1)&&reserve();
@@ -53,10 +58,47 @@ void append(unsigned kind,gears_crosshair_tick::Sealed const& value,long long sc
         value.binding.controller,value.binding.pawn,value.binding.weapon,value.point};
 }
 bool prepare_weapon(){
-    if(state.prepared&&gears_crosshair_assignment::validate_bindings(current().assignment,safe_copy,false))return true;
+    if(state.prepared&&state.generation==config_generation.load()&&gears_crosshair_assignment::validate_bindings(current().assignment,safe_copy,false))return true;
     gears_crosshair_assignment::OwnedConfig candidate;
     if(!gears_crosshair_assignment::rebind_weapon(config,safe_copy,candidate)){++weapon_rejected;return false;}
-    state.owned=std::move(candidate);state.prepared=true;++weapon_rebinds;return true;
+    state.owned=std::move(candidate);state.generation=config_generation.load();state.prepared=true;++weapon_rebinds;return true;
+}
+bool same_object(gears_ui::Identity const& a,gears_ui::Identity const& b){
+    return a.address==b.address&&a.index==b.index&&a.name_index==b.name_index&&a.number==b.number&&
+        a.cls==b.cls&&a.outer==b.outer&&a.name==b.name;
+}
+bool recovery_fresh(gears_crosshair_assignment::OwnedConfig const& candidate,gears_anchor::Config const& anchor,gears_ui::Config const& ui){
+    auto const& c=candidate.assignment;auto const& ids=candidate.identities;
+    if(candidate.pid!=GetCurrentProcessId()||ids.base!=base||candidate.tick_root_count!=2||
+       c.controller>=ids.identity_count||c.pawn>=ids.identity_count||c.weapon>=ids.identity_count||
+       anchor.role_controller>=anchor.identity_count||anchor.role_pawn>=anchor.identity_count||anchor.role_camera>=anchor.identity_count||
+       ui.role_controller>=ui.identity_count||ui.role_pawn>=ui.identity_count||
+       !same_object(ids.identities[c.controller],anchor.identities[anchor.role_controller])||
+       !same_object(ids.identities[c.controller],ui.identities[ui.role_controller])||
+       !same_object(ids.identities[c.pawn],anchor.identities[anchor.role_pawn])||
+       !same_object(ids.identities[c.pawn],ui.identities[ui.role_pawn]))return false;
+    auto camera=gears_ui::known(ids,anchor.identities[anchor.role_camera].address);
+    if(!camera||!same_object(*camera,anchor.identities[anchor.role_camera])||
+       !root_binding(candidate,0)||!root_binding(candidate,1)||
+       !gears_crosshair_assignment::validate_bindings(c,safe_copy,false))return false;
+    std::array<unsigned char,32> original_entry{};
+    if(!read_attested_hook_entry(original_entry.data(),reinterpret_cast<void*>(base+0x1d7ad0),original_entry.size())||
+       original_entry!=gears_crosshair_assignment::execlet_entry)return false;
+    gears_crosshair_assignment::OwnedConfig checked;
+    return gears_crosshair_assignment::rebind_weapon(candidate,safe_copy,checked)&&
+        same_object(checked.identities.identities[checked.assignment.weapon],ids.identities[c.weapon])&&
+        gears_crosshair_assignment::validate_bindings(c,safe_copy,false);
+}
+bool prepare_recovery(const wchar_t* ini,gears_anchor::Config const& anchor,gears_ui::Config const& ui,
+    gears_crosshair_assignment::OwnedConfig& output){
+    auto read=[&](const wchar_t* key,wchar_t* buffer,unsigned capacity){return GetPrivateProfileStringW(L"CrosshairAssignment",key,L"",buffer,capacity,ini);};
+    gears_crosshair_assignment::OwnedConfig candidate;
+    if(!gears_crosshair_assignment::parse_config(read,GetCurrentProcessId(),base,candidate)||!recovery_fresh(candidate,anchor,ui))return false;
+    output=std::move(candidate);return true;
+}
+// Caller owns the closed world gate and has drained every prior native lease.
+void publish_recovery(gears_crosshair_assignment::OwnedConfig const& candidate,uint64_t generation){
+    config=candidate;config_generation=generation;++world_certificates;
 }
 struct TickScope {
     bool entered{};uint64_t token{},previous_token{},world{};uintptr_t previous_frame{};int exceptions{};
@@ -202,6 +244,7 @@ void print(FILE* out){
     fprintf(out,"crosshair_assignment_scene_binding_rejected=%llu\n",scene_binding_rejected.load());
     fprintf(out,"crosshair_assignment_budget_exceeded=%u per_observation_budget_ms=5\n",budget_exceeded.load()?1:0);
     fprintf(out,"crosshair_weapon_binding thread_local=1 rebinds=%llu rejected=%llu same_pawn_only=1 universal_object_aba_proven=0\n",weapon_rebinds.load(),weapon_rejected.load());
+    fprintf(out,"crosshair_world_certificate generation=%llu commits=%llu\n",config_generation.load(),world_certificates.load());
     fprintf(out,"crosshair_finite_hud_query eligible=%llu binding_rejected=%llu clock_rejected=%llu age_rejected=%llu geometry_rejected=%llu registered=%llu max_assignment_and_tick_age_ms=50 camera_equivalence_proven=0 current_camera_aim_proven=0 bullet_impact_proven=0\n",
         finite_reasons[0].load(),finite_reasons[1].load(),finite_reasons[2].load(),finite_reasons[3].load(),finite_reasons[4].load(),finite_registered.load());
     if(active.load())return;

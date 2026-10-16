@@ -1,6 +1,7 @@
 import threading
 import time
 import unittest
+from dataclasses import replace
 
 from world_rebind_monitor import PreparedRebind, WorldRebindMonitor, WorldSnapshot
 
@@ -115,6 +116,44 @@ class MonitorTests(unittest.TestCase):
             m.poll(h.status)
             h.finish_worker(m)
             self.assertFalse(h.builds)
+
+    def test_pawn_only_opt_in_commits_then_updates_baseline_without_repeating(self):
+        for pawn in (obj(61),obj(60,number=1),dict(obj(60),cls=901),dict(obj(60),outer=88),
+                     dict(obj(60),internal_index=62),dict(obj(60),name='NewPawn')):
+            with self.subTest(pawn=pawn):
+                h=Harness();h.current=replace(snapshot(),pawn=pawn)
+                with h.monitor(include_pawn_changes=True) as m:
+                    h.prepared(m)
+                    self.assertEqual('committing',m.state);self.assertEqual(snapshot(),m.baseline)
+                    self.assertEqual(1,m.attempts) # Worker completion uses the same Pawn-aware predicate.
+                    self.assertEqual(1,len(h.builds));self.assertEqual(2,len(h.signals))
+                    h.status.update(world_generation='2',world_candidate_generation='0')
+                    self.assertEqual('world_rebind_committed',m.poll(h.status)[0]['event'])
+                    self.assertEqual(h.current,m.baseline)
+                    h.now+=2;m.poll(h.status);h.finish_worker(m)
+                    self.assertEqual(1,len(h.builds));self.assertEqual(2,len(h.signals))
+
+    def test_pawn_change_default_is_ignored_and_null_transition_never_prepares(self):
+        h=Harness();h.current=snapshot(pawn=61)
+        with h.monitor() as m:
+            m.poll(h.status);h.finish_worker(m)
+            self.assertFalse(h.builds);self.assertFalse(h.signals)
+        h=Harness();h.current=None
+        with h.monitor(include_pawn_changes=True) as m:
+            for current in (None,snapshot(),None):
+                h.current=current;h.now+=2;m.poll(h.status);h.finish_worker(m)
+                self.assertFalse(h.builds);self.assertFalse(h.signals)
+            h.current=snapshot(pawn=61);h.now+=2;h.prepared(m)
+            self.assertEqual(1,len(h.builds));self.assertEqual('committing',m.state)
+        with self.assertRaises(ValueError):snapshot(pawn=0)
+
+    def test_pawn_opt_in_keeps_full_local_player_identity_constraint(self):
+        h=Harness();h.current=replace(snapshot(pawn=61),local_player=obj(10,number=1))
+        with h.monitor(include_pawn_changes=True) as m:
+            m.poll(h.status);h.finish_worker(m)
+            self.assertFalse(h.builds);self.assertFalse(h.signals)
+        for invalid in (1,None,'true'):
+            with self.assertRaises(ValueError):h.monitor(include_pawn_changes=invalid)
 
     def test_native_stale_rejection_allows_same_baseline_recovery(self):
         h = Harness()

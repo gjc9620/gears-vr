@@ -471,7 +471,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     world_monitor=WorldRebindMonitor(game=state['game_identity'],owner=state['owner_identity'],
                         started_qpc=state['native_started_qpc'],baseline=adapter.baseline,observe=adapter.observe,
                         prepare=adapter.prepare,signal=control.signal,identity=control.identity,enabled=True,
-                        probe_interval=2.0)
+                        probe_interval=2.0,include_pawn_changes=getattr(args,'crosshair_assignment_observer',False))
                 while child.poll() is None:
                     observe_first_stereo(native_started)
                     if cancel_requested and cancel_requested():

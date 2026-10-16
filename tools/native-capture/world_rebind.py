@@ -15,6 +15,7 @@ from types import MappingProxyType
 from start_capture import acquire_observer_preparation, resolve_camera_once
 from anchor_config import anchor_ini
 from ui_observer_config import ui_observer_ini
+from crosshair_assignment_config import validate_crosshair_assignment_config, crosshair_assignment_ini
 
 
 def process_identity(pid):
@@ -89,7 +90,14 @@ def role(config, name):
     return identity(ids[index])
 
 
-def validate_sources(camera, anchor, ui, local, pid, digest):
+def ui_bundle_ini(ui):
+    section = ui_observer_ini(ui['config'])
+    if 'crosshair_assignment' in ui:
+        section += crosshair_assignment_ini(ui['crosshair_assignment'])
+    return section
+
+
+def validate_sources(camera, anchor, ui, local, pid, digest, *, crosshair_assignment_observer=False):
     if uint(camera['pid'],'camera PID',32,True) != pid or camera['sha256'] != digest:
         raise ValueError('Camera build/PID mismatch')
     base = uint(camera['module_base'],'module base',positive=True)
@@ -112,6 +120,26 @@ def validate_sources(camera, anchor, ui, local, pid, digest):
         if identity(anchor['certificate_final_guard'][name]) != item:raise ValueError('Final anchor role mismatch: '+name)
         if name != 'local_player' and role(uc,name) != item:raise ValueError('UI camera source mismatch: '+name)
     if role(ac,'pawn') != role(uc,'pawn'):raise ValueError('UI Pawn source mismatch')
+    required_crosshair = ui.get('crosshair_assignment_observer_enabled',False)
+    if type(required_crosshair) is not bool:raise ValueError('Invalid crosshair observer requirement')
+    if (crosshair_assignment_observer or required_crosshair) and 'crosshair_assignment' not in ui:
+        raise ValueError('Missing requested crosshair assignment certificate')
+    if 'crosshair_assignment' in ui:
+        cc = validate_crosshair_assignment_config(ui['crosshair_assignment'])
+        if cc['pid'] != pid or cc['base'] != base or cc['sha256'] != digest:
+            raise ValueError('Crosshair certificate build/PID/base mismatch')
+        if len(cc['tick_roots']) != 2 or not cc.get('writer_view',{}).get('enabled'):
+            raise ValueError('Crosshair world recovery requires tick roots and writer view')
+        def full_role(config, name):
+            item = config['identities'][uint(config['roles'][name],'role '+name,32)]
+            result = identity(item)
+            if 'name_index' not in item:raise ValueError('Missing full role name index: '+name)
+            result['name_index'] = uint(item['name_index'],'role name index',32)
+            return result
+        for name in ('controller','pawn'):
+            crosshair_role = full_role(cc,name)
+            if crosshair_role != full_role(ac,name) or crosshair_role != full_role(uc,name):
+                raise ValueError('Crosshair full role mismatch: '+name)
     cam = uint(camera['camera_address'],'camera',positive=True)
     for field,key in (('camera_timestamp','timestamp_address'),('camera_pov','pov_address')):
         if cam+uint(ac['fields'][field],field,32) != uint(camera[key],key,positive=True):
@@ -121,7 +149,8 @@ def validate_sources(camera, anchor, ui, local, pid, digest):
     return base,yaw
 
 
-def build_candidate(pid,profile,previous_local_identity,expected_generation,owner_identity,dll,*,signatures,check_live=None,attestation=None):
+def build_candidate(pid,profile,previous_local_identity,expected_generation,owner_identity,dll,*,signatures,check_live=None,attestation=None,
+                    crosshair_assignment_observer=False):
     pid = uint(pid,'game PID',32,True)
     previous = uint(expected_generation,'previous generation',positive=True)
     if previous == (1 << 64)-1:raise ValueError('Generation exhausted')
@@ -157,14 +186,19 @@ def build_candidate(pid,profile,previous_local_identity,expected_generation,owne
     camera,anchor,anchor_section,ui,ui_section = acquire_observer_preparation(
         pid,profile,camera,signatures,Path(dll),anchor_observer=True,ui_observer=True,cinematic_camera=True,
         record_anchor_failure=False,check_live=live,
+        **({'crosshair_assignment_observer':True} if crosshair_assignment_observer else {}),
         **({'entry_reader':attestation.read_entry} if attestation is not None else {}))
     live()
-    base,_ = validate_sources(camera,anchor,ui,local,pid,digest)
+    if crosshair_assignment_observer:
+        # Preserve the request in the existing immutable metadata so subsequent
+        # serialization cannot silently turn a required section into absence.
+        ui = dict(ui,crosshair_assignment_observer_enabled=True)
+    base,_ = validate_sources(camera,anchor,ui,local,pid,digest,crosshair_assignment_observer=crosshair_assignment_observer)
     if attestation is not None and attestation.module_base != base:
         raise ValueError('Attestation camera module mismatch')
     if str(Path(camera['executable']).resolve()).casefold() != game['image']:
         raise ValueError('Camera executable identity mismatch')
-    if anchor_ini(anchor['config']) != anchor_section or ui_observer_ini(ui['config']) != ui_section:
+    if anchor_ini(anchor['config']) != anchor_section or ui_bundle_ini(ui) != ui_section:
         raise ValueError('Certificate INI mismatch')
     live()
     if attestation is not None:
@@ -184,7 +218,7 @@ def serialize_candidate(candidate):
     camera,anchor,ui = (thaw(value) for value in (candidate.current_camera,candidate.anchor_metadata,candidate.ui_metadata))
     base,yaw = validate_sources(camera,anchor,ui,identity(thaw(candidate.local_identity)),game['pid'],candidate.disk_sha256)
     if base != candidate.module_base or owner['pid']==game['pid']:raise ValueError('Candidate identity mismatch')
-    if anchor_ini(anchor['config']) != candidate.anchor_ini or ui_observer_ini(ui['config']) != candidate.ui_ini:
+    if anchor_ini(anchor['config']) != candidate.anchor_ini or ui_bundle_ini(ui) != candidate.ui_ini:
         raise ValueError('Candidate section mismatch')
     rows = ['[WorldRebind]','schema=1',f"game_pid={game['pid']}",f"game_creation={game['creation_time']}",
             f"owner_pid={owner['pid']}",f"owner_creation={owner['creation_time']}",

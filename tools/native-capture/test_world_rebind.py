@@ -41,7 +41,7 @@ class Tests(unittest.TestCase):
         self.ui_text=lambda config:'[UIObserver]\nschema=1\nbase='+str(config['base'])+'\n'
         def acquire(*args,**kwargs):
             kwargs['check_live']()
-            return self.camera,self.anchor,self.anchor_text(self.anchor_config),self.ui,self.ui_text(self.ui_config)
+            return self.camera,self.anchor,self.anchor_text(self.anchor_config),self.ui,rebind.ui_bundle_ini(self.ui)
         self.patches=[mock.patch.object(rebind,'process_identity',side_effect=lambda pid:self.game if pid==7 else self.owner if pid==8 else None),
                       mock.patch.object(rebind,'resolve_camera_once',return_value=copy.deepcopy(self.camera)),
                       mock.patch.object(rebind,'acquire_observer_preparation',side_effect=acquire),
@@ -54,6 +54,63 @@ class Tests(unittest.TestCase):
         args=dict(pid=7,profile={'sha256':self.digest},previous_local_identity=self.local,
                   expected_generation=1,owner_identity=self.owner,dll=pathlib.Path('unused.dll'),signatures=self.signatures)
         args.update(kwargs);return rebind.build_candidate(**args)
+
+    def enable_crosshair(self):
+        from test_crosshair_assignment_config import Fixture
+        from crosshair_assignment_config import build_crosshair_assignment_config
+        fixture=Fixture()
+        cc=build_crosshair_assignment_config(fixture,fixture.camera,include_tick_roots=True,include_writer_view=True)
+        cc['pid']=7;self.digest=cc['sha256'];self.camera['sha256']=self.digest
+        self.ui['sha256']=self.ui_config['sha256']=self.digest
+        self.controller=copy.deepcopy(cc['identities'][cc['roles']['controller']])
+        self.pawn=copy.deepcopy(cc['identities'][cc['roles']['pawn']])
+        self.camera['controller_address']=hex(self.controller['address'])
+        self.anchor_config['identities'][1]=self.ui_config['identities'][0]=self.controller
+        self.anchor_config['identities'][3]=self.ui_config['identities'][2]=self.pawn
+        self.anchor['certificate_final_guard']['controller']=self.controller
+        self.ui['crosshair_assignment']=cc
+        return cc
+
+    def test_crosshair_bundle_uses_fresh_acquisition_and_canonical_combined_ini(self):
+        self.enable_crosshair();candidate=self.build(crosshair_assignment_observer=True)
+        self.assertTrue(self.acquire.call_args.kwargs['crosshair_assignment_observer'])
+        self.assertIn('[CrosshairAssignment]\n',candidate.ui_ini)
+        self.assertIn('[CrosshairAssignment]\n',rebind.serialize_candidate(candidate).decode('utf-16'))
+        self.assertEqual(candidate.ui_ini,rebind.ui_bundle_ini(rebind.thaw(candidate.ui_metadata)))
+        invalid=dataclasses.replace(candidate,ui_ini=self.ui_text(self.ui_config))
+        with self.assertRaisesRegex(ValueError,'Candidate section mismatch'):rebind.serialize_candidate(invalid)
+        missing=rebind.thaw(candidate.ui_metadata);missing.pop('crosshair_assignment')
+        with self.assertRaisesRegex(ValueError,'Missing requested crosshair'):
+            rebind.serialize_candidate(dataclasses.replace(candidate,ui_metadata=rebind.freeze(missing),
+                ui_ini=self.ui_text(self.ui_config)))
+
+    def test_crosshair_missing_or_different_world_roles_reject(self):
+        from crosshair_assignment_config import CrosshairConfigRejected
+        with self.assertRaisesRegex(ValueError,'Missing requested crosshair'):
+            self.build(crosshair_assignment_observer=True)
+        cc=self.enable_crosshair();original=copy.deepcopy(cc)
+        mutations=[lambda c:c.update(pid=8),lambda c:c.update(base=self.base+1),
+                   lambda c:c.update(sha256='b'*64),lambda c:c.update(tick_roots=[]),
+                   lambda c:c.update(writer_view=dict(enabled=False))]
+        for role in ('controller','pawn'):
+            for field,value in (('address',0xdead),('cls',0xbeef),('outer',0xabcdf),('number',99),
+                                ('internal_index',3999999),('name','Different'),('name_index',3999999)):
+                mutations.append(lambda c,role=role,field=field,value=value:c['identities'][c['roles'][role]].update({field:value}))
+        for mutate in mutations:
+            cc=copy.deepcopy(original);mutate(cc);self.ui['crosshair_assignment']=cc
+            with self.assertRaises((ValueError,CrosshairConfigRejected)):
+                self.build(crosshair_assignment_observer=True)
+
+    def test_crosshair_attestation_is_forwarded_and_postproof_failure_rejects(self):
+        self.enable_crosshair()
+        proof=types.SimpleNamespace(pid=7,game_creation=70,owner=dict(self.owner),dll=pathlib.Path('unused.dll').resolve(),
+            module_base=self.base,reverify=mock.Mock(),read_entry=mock.Mock())
+        self.build(crosshair_assignment_observer=True,attestation=proof)
+        self.assertIs(self.acquire.call_args.kwargs['entry_reader'],proof.read_entry)
+        self.assertTrue(self.acquire.call_args.kwargs['crosshair_assignment_observer'])
+        proof.reverify.side_effect=[None,RuntimeError('post crosshair proof failed')]
+        with self.assertRaisesRegex(RuntimeError,'post crosshair proof failed'):
+            self.build(crosshair_assignment_observer=True,attestation=proof)
 
     def test_bundle_is_deeply_immutable_and_uses_full_existing_preparation(self):
         live=mock.Mock();bundle=self.build(check_live=live)

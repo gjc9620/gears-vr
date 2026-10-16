@@ -63,6 +63,34 @@ class Fixture(UIBase):
 
 
 class CertificateTests(unittest.TestCase):
+    def test_attested_execlet_entry_is_narrow_and_independently_bracketed(self):
+        r=Fixture();original=bytes.fromhex(NATIVE_BYTES[0x1d7ad0]);calls=[]
+        r.put(r.base+0x1d7ad0,b'\xe9'+bytes(31))
+        def entry(address,size,raw):
+            calls.append((address,size));self.assertEqual((address,size),(r.base+0x1d7ad0,32))
+            self.assertEqual(raw(address,size),b'\xe9'+bytes(31));return original
+        c=build_crosshair_assignment_config(r,r.camera,include_tick_roots=True,include_writer_view=True,entry_reader=entry)
+        self.assertEqual(len(calls),3);self.assertEqual(c['nativebyteschecks'][0]['bytes'],original.hex())
+        with self.assertRaises(CrosshairConfigRejected):build_crosshair_assignment_config(r,r.camera)
+        # The capability cannot substitute any other native window, slot or script.
+        for change in (lambda x:x.put(x.base+0x1d5efb,b'\x00'),
+                       lambda x:x.put(x.base+0x1b86280+0x35*8,struct.pack('<Q',x.base+1)),
+                       lambda x:x.put(x.script+0x359,b'\x00')):
+            x=Fixture();x.put(x.base+0x1d7ad0,b'\xe9'+bytes(31));change(x)
+            with self.assertRaises(CrosshairConfigRejected):
+                build_crosshair_assignment_config(x,x.camera,entry_reader=lambda a,n,raw:original)
+        for mode in ('changed_original','proof_failed'):
+            r=Fixture();calls=[]
+            def failed_entry(address,size,raw):
+                calls.append((address,size))
+                if len(calls)==3:
+                    if mode=='proof_failed':raise RuntimeError('Sealed entry changed')
+                    return bytes(32)
+                return original
+            with self.assertRaises(CrosshairConfigRejected):
+                build_crosshair_assignment_config(r,r.camera,entry_reader=failed_entry)
+            self.assertEqual(len(calls),3)
+
     def test_only_complete_registry_header_changes_are_retryable(self):
         for header_name in ('objects_header','names_header'):
             for phase in ('double','final'):

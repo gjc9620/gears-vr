@@ -19,10 +19,13 @@ def config():
 
 
 class Tests(unittest.TestCase):
-    def adapter(self, directory):
+    def adapter(self, directory, crosshair=None):
         path=Path(directory)
         (path/'anchor-observer-config.json').write_text(json.dumps(dict(pid=7,read_only=True,config=config())))
         (path/'capture.ini').write_text('[Capture]\npid=7\nfamily_diagnostics=1\nviewport_diagnostics=1\nview_union_mask_fix=1\nshadow_view=1\nshadow_state=1\nshadow_constructor=1\n',encoding='utf-16')
+        if crosshair is not None:
+            with (path/'capture.ini').open('a',encoding='utf-16') as output:
+                output.write('crosshair_assignment_observer='+str(int(crosshair))+'\n')
         return runtime.RuntimePreparation(path,'capture.dll','a'*64,
             dict(pid=7,creation_time=70,image='game.exe'),dict(pid=8,creation_time=80,image='owner.exe'))
 
@@ -32,6 +35,20 @@ class Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ValueError,'manifest SHA256'):
                 runtime.RuntimePreparation(directory,'capture.dll','',{}, {})
+
+    def test_startup_crosshair_flag_is_forwarded_only_when_enabled(self):
+        for enabled in (None,False,True):
+            with self.subTest(enabled=enabled),tempfile.TemporaryDirectory() as directory:
+                adapter=self.adapter(directory,crosshair=enabled)
+                self.assertEqual(adapter.crosshair_assignment_observer,bool(enabled))
+                proof=mock.MagicMock();candidate=SimpleNamespace(anchor_metadata=dict(config=config()))
+                with mock.patch.object(runtime,'HookEntryAttestation',return_value=proof),\
+                     mock.patch.object(runtime,'build_candidate',return_value=candidate) as build,\
+                     mock.patch.object(runtime,'publish_candidate'):
+                    adapter.prepare(adapter.baseline,1,3,lambda:None)
+                self.assertIs(build.call_args.kwargs['attestation'],proof.__enter__.return_value)
+                if enabled:self.assertIs(build.call_args.kwargs['crosshair_assignment_observer'],True)
+                else:self.assertNotIn('crosshair_assignment_observer',build.call_args.kwargs)
 
     def test_observation_closes_rpm_lease_on_success_and_rejection(self):
         with tempfile.TemporaryDirectory() as directory:

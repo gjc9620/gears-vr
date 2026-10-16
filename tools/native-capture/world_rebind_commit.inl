@@ -16,6 +16,9 @@ PendingFresh pending_world_fresh(){
     if(!gears_anchor::strict_guard(pending.anchor,safe_copy,anchor,stamp,&diagnostic))
         return diagnostic.timestamp_only?PendingFresh::transient:PendingFresh::stale;
     if(!gears_ui::validate(pending.ui,safe_copy,false))return PendingFresh::stale;
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    if(crosshair_live::enabled&&(!pending.crosshair||!crosshair_live::recovery_fresh(*pending.crosshair,pending.anchor,pending.ui)))return PendingFresh::stale;
+#endif
     for(auto const& binding:pending.ui.bindings){std::array<unsigned char,16> entry{};
         if(binding.rva>UINTPTR_MAX-pending.ui.base||!read_attested_hook_entry(entry.data(),
             reinterpret_cast<void const*>(pending.ui.base+binding.rva),entry.size())||entry!=binding.bytes)return PendingFresh::stale;
@@ -60,6 +63,9 @@ void advance_world_handoff(FILE*){
         retire_stereo_window();
         if(!stereo_ticket_store.retire_through(stereo_ticket_store.highest_id())){request_session_stop(SessionStop::proof_failure);return false;}
         retire_ui_world();anchor_config=pending_world->anchor;ui_config=pending_world->ui;
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+        if(crosshair_live::enabled)crosshair_live::publish_recovery(*pending_world->crosshair,next);
+#endif
         auto const& m=pending_world->metadata;
         expected_local=m.local_player;expected_pc=m.controller;expected_camera=m.camera;camera_cache=m.timestamp;camera_yaw=m.camera_yaw;
         reset_retired_view_state();stereo_gate.request_recenter();

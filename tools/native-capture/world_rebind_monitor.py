@@ -81,10 +81,10 @@ class WorldRebindMonitor:
     def __init__(self, *, game, owner, started_qpc, baseline, observe, prepare,
                  signal, identity, enabled=False, clock=time.monotonic,
                  probe_interval=1.0, build_timeout=15.0, prepare_timeout=12.0,
-                 commit_timeout=25.0, max_attempts=3, backoff=2.0):
+                 commit_timeout=25.0, max_attempts=3, backoff=2.0, include_pawn_changes=False):
         if not isinstance(baseline, WorldSnapshot):
             raise ValueError('Full startup world identities required')
-        if type(enabled) is not bool or int(started_qpc) <= 0:
+        if type(enabled) is not bool or type(include_pawn_changes) is not bool or int(started_qpc) <= 0:
             raise ValueError('Invalid opt-in/session')
         if any(v <= 0 for v in (probe_interval, build_timeout, prepare_timeout, commit_timeout, backoff)):
             raise ValueError('Timeouts must be positive')
@@ -94,6 +94,7 @@ class WorldRebindMonitor:
         self.started_qpc, self.baseline = str(started_qpc), baseline
         self.observe, self.prepare, self.signal, self.identity = observe, prepare, signal, identity
         self.enabled, self.clock = enabled, clock
+        self.include_pawn_changes = include_pawn_changes
         self.interval, self.build_timeout = probe_interval, build_timeout
         self.prepare_timeout, self.commit_timeout = prepare_timeout, commit_timeout
         self.max_attempts, self.backoff = max_attempts, backoff
@@ -108,6 +109,14 @@ class WorldRebindMonitor:
         if self.cancel.is_set():
             raise Cancelled('World rebind cancelled')
         self._check_processes()
+
+    def _changed_from_baseline(self, snapshot):
+        # Pawn adaptation needs an explicit opt-in. Compare the complete owned
+        # identity tuple, including same-address UObject generation changes;
+        # the local-player identity must still remain exactly unchanged.
+        return (isinstance(snapshot,WorldSnapshot) and snapshot.local_player == self.baseline.local_player and
+                (snapshot.changed_from(self.baseline) or
+                 (self.include_pawn_changes and snapshot.pawn != self.baseline.pawn)))
 
     def _check_processes(self):
         if (self.identity(self.game['pid']) != self.game or
@@ -142,7 +151,7 @@ class WorldRebindMonitor:
                 raise ValueError('Observer did not return full identities')
             if snapshot.local_player != self.baseline.local_player:
                 return snapshot, None, None
-            if not self.force_recovery and not snapshot.changed_from(self.baseline):
+            if not self.force_recovery and not self._changed_from_baseline(snapshot):
                 return snapshot, None, None
             if snapshot == self.target and self.attempts >= self.max_attempts:
                 return snapshot, None, None
@@ -237,7 +246,7 @@ class WorldRebindMonitor:
             if self.state == 'building' and self.future.done():
                 snapshot, prepared, error = self.future.result()
                 self.future = None
-                if snapshot is not None and (self.force_recovery or snapshot.changed_from(self.baseline)):
+                if snapshot is not None and (self.force_recovery or self._changed_from_baseline(snapshot)):
                     if snapshot != self.target:
                         self.target, self.attempts = snapshot, 0
                     if prepared is not None or error:
