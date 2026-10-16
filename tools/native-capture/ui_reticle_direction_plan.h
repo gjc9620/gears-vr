@@ -42,6 +42,24 @@ inline bool capture_extent(gears_ui_receipts::Claim const& claim,
     }
     if(!result.valid||entries!=segment.entry_mask)return false;out=result;return true;
 }
+// Expanding crosshairs can be split into four native draw segments. Their
+// individual quadrants are off-center, but the same semantic invocation has
+// one screen-center aim. Freeze the union only from already certified pure
+// reticle segments; never borrow geometry from a different root or HUD draw.
+inline void group_extents(std::array<Extent,gears_ui_indices::segment_capacity>& extents,unsigned count){
+    if(count>extents.size())return;
+    const auto original=extents;
+    for(unsigned i=0;i<count;++i){
+        auto const& own=original[i];if(!own.valid||!own.root_invocation)continue;
+        auto grouped=own;
+        for(unsigned j=0;j<count;++j){auto const& other=original[j];
+            if(!other.valid||other.root_invocation!=own.root_invocation)continue;
+            grouped.left=(std::min)(grouped.left,other.left);grouped.top=(std::min)(grouped.top,other.top);
+            grouped.right=(std::max)(grouped.right,other.right);grouped.bottom=(std::max)(grouped.bottom,other.bottom);
+        }
+        extents[i]=grouped;
+    }
+}
 inline bool centered(Extent const& extent,unsigned width,unsigned height){
     if(!extent.valid||!extent.root_invocation||!width||!height||width>8192||height>8192)return false;
     for(double value:{extent.left,extent.top,extent.right,extent.bottom})if(!std::isfinite(value))return false;

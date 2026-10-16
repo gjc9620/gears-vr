@@ -49,6 +49,32 @@ static void extent_tests(){using namespace gears_ui_reticle;Extent e{};ExtentFix
     Extent too_wide{true,0,1070,3840,1090,77};assert(!centered(too_wide,3840,2160));Extent too_tall{true,1910,0,1930,2160,77};assert(!centered(too_tall,3840,2160));
     Extent edge{true,1910.5,1070.5,1930.5,1090.5,77};assert(centered(edge,3840,2160));edge.left+=1;edge.right+=1;assert(!centered(edge,3840,2160));
     assert(!centered(Extent{},3840,2160));
+    // Four expanding-ring quadrants in separate native draw calls must use
+    // the same correction as the already centered icon, retaining recoil gaps.
+    std::array<Extent,gears_ui_indices::segment_capacity> split{};
+    for(unsigned i=0;i<4;++i){auto snap=expanded.snapshot;snap.segment_count=4;
+        for(unsigned j=0;j<4;++j){auto& s=snap.segments[j];s=expanded.snapshot.segments[0];
+            s.index_offset=j*6;s.index_count=6;s.known[0]=6;s.entry_mask=1u<<j;
+            s.minimum=j*4;s.maximum=j*4+3;s.expected={6,1,0,0,0};
+            for(unsigned k=0;k<6;++k)snap.indices[j*6+k]-=j*4;}
+        assert(capture_extent(expanded.claim,snap,i,split[i]));
+        assert(!centered(split[i],3840,2160));
+    }
+    split[4]={true,1915,1075,1925,1085,78}; // A separate icon root.
+    split[5]={true,100,100,120,120,79}; // Unrelated off-center helper.
+    const auto original=split;group_extents(split,6);
+    for(unsigned i=0;i<4;++i){assert(centered(split[i],3840,2160));
+        assert(split[i].left==1900&&split[i].right==1940&&split[i].root_invocation==77);}
+    assert(split[4].left==original[4].left&&centered(split[4],3840,2160));
+    assert(split[5].left==original[5].left&&!centered(split[5],3840,2160));
+    // No synthesized missing quadrant or cross-root borrowing. A subset can
+    // still have a centered union, but an isolated quadrant stays off-center.
+    auto partial=original;partial[3]={};group_extents(partial,4);
+    for(unsigned i=0;i<3;++i)assert(centered(partial[i],3840,2160));
+    auto foreign=original;foreign[1].root_invocation=80;foreign[3].root_invocation=80;
+    group_extents(foreign,4);for(unsigned i=0;i<4;++i)assert(!centered(foreign[i],3840,2160));
+    std::array<Extent,gears_ui_indices::segment_capacity> isolated{};isolated[0]=original[0];group_extents(isolated,1);
+    assert(!centered(isolated[0],3840,2160));
 }
 static void finite_tests(){
     auto g=geometry();auto s=state();
