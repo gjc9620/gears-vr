@@ -21,6 +21,15 @@ bool seal_session_hook_manifest(FILE* status){
                std::equal(gears_ui::binding_bytes[i].begin(),gears_ui::binding_bytes[i].end(),proof.original32.begin()))found=true;}
         if(!found){fprintf(status,"hook_entry_manifest available=0 missing_ui=%u\n",i);return false;}
     }
+#if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
+    if(ui_observer_enabled){bool found=false;
+        for(unsigned j=0;j<hook_entry_proof_count;++j){auto const& proof=hook_entry_proofs[j];
+            if(proof.target==reinterpret_cast<uintptr_t>(ui_call_boundary::target)&&
+               proof.detour==reinterpret_cast<uintptr_t>(ui_call_boundary::hook)&&
+               proof.original32==ui_call_boundary::entry_bytes)found=true;}
+        if(!found){fprintf(status,"hook_entry_manifest available=0 missing_ui_call_boundary=1\n");return false;}
+    }
+#endif
     FILETIME creation{},exit{},kernel{},user{};
     if(!hook_entry_proof_count||!GetProcessTimes(GetCurrentProcess(),&creation,&exit,&kernel,&user))return false;
     wchar_t temporary[MAX_PATH]{},destination[MAX_PATH]{};

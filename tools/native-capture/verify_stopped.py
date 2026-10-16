@@ -55,6 +55,9 @@ def main():
         camera[0x1af42c]=bytes.fromhex('488bc4488958084889701048897818')
         camera[0x2a7e48]=bytes.fromhex('488bc448895808488970104889781855')
         camera[0x1d6ca0]=bytes.fromhex('4053555641564881eca8000000488b058c')
+        # Optional observation-only four-pointer call boundary. Fixed saved
+        # artifact 1 bytes, current-process instruction comparison: docs/91.
+        camera[0x1d6f30]=bytes.fromhex('405553565741544155415641574881ec38050000488d6c2430c5f829b5f00400')
         # Optional crosshair assignment observer. Historical runtime execLet
         # contract, independently compared after disabling hooks; never learn
         # an expected entry from the patched live process or capture log.

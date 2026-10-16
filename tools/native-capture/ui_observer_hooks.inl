@@ -66,6 +66,7 @@ bool ui_invocation_current(){
     uintptr_t target{};return !anchor_observer_enabled||(r.field(target,c.identities[c.role_camera].address,anchor_config.camera_view_target)&&
         target==(c.mounted?c.identities[c.role_controlled].address:ui_invocation.binding.pawn.address));
 }
+#include "ui_call_boundary_live.inl"
 struct UiRow {
     gears_ui::CanvasSample sample{};
     uint64_t invocation{},calls{},latest_built_ticket{};
@@ -114,6 +115,7 @@ void retire_ui_world(){
 }
 // Only on the owning thread's next outer Scope, after old readers drained.
 void reset_ui_world_tls(){
+    ui_call_boundary::reset_tls();
     ui_invocation={};ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
     ui_text_collect_depth=0;
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
@@ -149,6 +151,7 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeCon
         }return;
     }
     const auto kind=selected.kind;if(kind<1||kind>3||selected.scope_index>=ui_canvas_scopes.size())return;
+    ui_call_boundary::canvas(draw,frame,selected,matched_frame);
     if(selected_out)*selected_out=selected;
     ++ui_canvas_scopes[selected.scope_index];
     const unsigned bucket=(kind-1)*3+draw-1;
@@ -278,7 +281,7 @@ bool reserve_ui_hooks(){
            MH_CreateHook(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]))!=MH_OK||
            !safe_copy(after.data(),ui_targets[i],after.size())||after!=before)return false;
     }
-    if(!reserve_ui_execute()||!reserve_ui_subtitle())return false;
+    if(!reserve_ui_execute()||!reserve_ui_subtitle()||!ui_call_boundary::reserve())return false;
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
     if(!owned_ui_live::reserve())return false;
 #endif
@@ -369,6 +372,7 @@ void print_ui_observer(FILE* status,bool disabled){
     fprintf(status,"ui_observer enabled=%u available=%u source_vertices_modified=0 hud_plane_enabled=%u vm_calls=%llu qpc_frequency=%lld\n",
         ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_hud_plane_enabled?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;
+    ui_call_boundary::print(status);
     fprintf(status,"ui_runtime_binding acquired=%llu rejected=%llu end_rejected=%llu claim_current=%llu claim_pending=%llu claim_retired=%llu claim_changed=%llu consumer_pending=%u timestamp_races=%llu nested_reused=%llu reassociated=%llu startup_config_immutable=1 same_level_only=1 queued_semantics_never_rebound=1\n",
         ui_binding_acquired.load(),ui_binding_rejected.load(),ui_binding_end_rejected.load(),ui_binding_claims[0].load(),ui_binding_claims[1].load(),
         ui_binding_claims[2].load(),ui_binding_claims[3].load(),ui_semantic_consumer_pending,ui_binding_timestamp_races.load(),ui_binding_nested_reused.load(),ui_binding_reassociated.load());
