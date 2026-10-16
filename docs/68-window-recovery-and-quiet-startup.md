@@ -189,3 +189,11 @@ early_launch新增显式诊断环境变量 `GEARSVR_QUIET_START_MINIMIZED=1`，�
 用户明确提供无输入窗口后，重复原quiet14参数的隔离测试，未启用quiet15最小化实验。`quiet-df-idle.json` 整个70秒的 input_changes 为空；game4464于tick2316546进入前台，观察结束仍在前台。`quiet-df-idle-control.json` 确认启动前与恢复前DisplayFusion进程不存在，游戏模块列表无AppHook/DisplayFusion。finally恢复DisplayFusion成功，游戏和XR继续运行等待关卡。`focus-df-idle.json` 保存25条完整记录、无溢出。
 
 该轮证明本机抢焦点在DisplayFusion缺席时仍会发生，排除它作为此问题的必要条件；不再以修改其设置作为当前修复方向。当前目标仍未完成。quiet15实验观察器 `quiet-minstart15.py` 已准备，将记录窗口IsIconic状态变化；使用新启动器配冻结quiet14 DLL，未运行、未升级默认发布构建。
+
+### quiet15 实测失败；quiet16 定向 MINMAX 观察
+
+`quiet-minstart15.json`：game15760，全程无输入，起始IsIconic=true，tick2481671恢复为false，2481937再次true，2481968恢复为false并进入前台。`focus-minstart15.json` 25条记录无溢出，第二次最小化没有对应的ShowWindow最小化请求。首次显示hint改7不是充分修复，默认仍为4；窗口style差值恰好WS_MINIMIZE，不能据此猜测API来源。
+
+quiet16仅扩展现有TRACE线程CBT观察器接收HCBT_MINMAX，原样CallNextHookEx、不阻断。保持记录ABI：该事件argument为原show command，related/result_window分别为调用下一hook前后的IsIconic，extra_argument低/高32位为对应style；导出器增加明确命名字段。注意“after_next_hook”不是最终操作完成，最终状态仍需外部采样确认。构建和命令行CTest通过，`quiet16-fixture.json`整体passed=true、trace_valid/cbt_valid=1、7条CBT记录。未提升默认发布构建。
+
+用户随后明确自己退出DisplayFusion，进程枚举确认已退出；之后不再自动恢复它。下一轮沿默认首次显示hint4使用quiet16，聚焦第二次最小化通知，避免把quiet15行为改动混入观察。

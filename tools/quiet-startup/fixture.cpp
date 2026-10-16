@@ -125,7 +125,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int) {
     if(trace_requested){
         cbt_valid=cbt_valid&&cbt->installed==1&&cbt->thread==GetCurrentThreadId()&&cbt->install_error==0&&cbt->completed>0;
         for(unsigned i=0;i<cbt->completed;++i){const auto& r=cbt->records[i];
-            cbt_valid=cbt_valid&&(r.call==HCBT_ACTIVATE||r.call==HCBT_SYSCOMMAND)&&r.thread==cbt->thread&&
+            cbt_valid=cbt_valid&&(r.call==HCBT_ACTIVATE||r.call==HCBT_SYSCOMMAND||r.call==HCBT_MINMAX)&&r.thread==cbt->thread&&
                 r.enter_qpc>0&&r.leave_qpc>=r.enter_qpc&&r.return_valid&&r.native_valid&&r.returned_value==r.native_value;}
     }else cbt_valid=cbt_valid&&!cbt->installed&&!cbt->completed&&!cbt->thread;
     trace_valid=trace_valid&&cbt_valid;

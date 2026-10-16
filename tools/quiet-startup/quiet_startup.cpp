@@ -73,7 +73,7 @@ std::atomic<unsigned> cbt_next{};
 std::array<TraceSlot,gears_quiet::trace_capacity> cbt_slots{};
 LRESULT CALLBACK observe_cbt(int code,WPARAM wparam,LPARAM lparam) {
     TraceSlot* slot=nullptr;const DWORD entry_error=GetLastError();
-    if((code==HCBT_ACTIVATE||code==HCBT_SYSCOMMAND)&&GetCurrentThreadId()==cbt_thread.load(std::memory_order_relaxed)){
+    if((code==HCBT_ACTIVATE||code==HCBT_SYSCOMMAND||code==HCBT_MINMAX)&&GetCurrentThreadId()==cbt_thread.load(std::memory_order_relaxed)){
         auto index=cbt_next.load(std::memory_order_relaxed);
         while(index<gears_quiet::trace_capacity&&!cbt_next.compare_exchange_weak(index,index+1,std::memory_order_relaxed)){}
         if(index>=gears_quiet::trace_capacity)cbt_overflow.store(true,std::memory_order_relaxed);
@@ -82,6 +82,14 @@ LRESULT CALLBACK observe_cbt(int code,WPARAM wparam,LPARAM lparam) {
             r.enter_qpc=qpc();r.enter_tick=GetTickCount64();r.foreground_before=reinterpret_cast<uintptr_t>(GetForegroundWindow());r.gui_before=gui(r.thread);
             if(code==HCBT_ACTIVATE){const auto* data=reinterpret_cast<const CBTACTIVATESTRUCT*>(lparam);
                 r.target=wparam;r.related=reinterpret_cast<uintptr_t>(data->hWndActive);r.argument=data->fMouse;}
+            else if(code==HCBT_MINMAX){
+                // MINMAX-only encoding, no ABI change: related/result_window
+                // contain IsIconic before/after; extra packs both style DWORDs.
+                const auto window=reinterpret_cast<HWND>(wparam);
+                r.target=wparam;r.argument=static_cast<std::uint64_t>(lparam);
+                r.related=IsIconic(window)!=FALSE;
+                r.extra_argument=static_cast<DWORD>(GetWindowLongPtrW(window,GWL_STYLE));
+            }
             else {r.argument=wparam;r.related=static_cast<std::uint64_t>(lparam);}
             r.effective_argument=r.argument;void* stack[gears_quiet::trace_stack_capacity]{};
             r.stack_count=CaptureStackBackTrace(1,gears_quiet::trace_stack_capacity,stack,nullptr);
@@ -93,7 +101,11 @@ LRESULT CALLBACK observe_cbt(int code,WPARAM wparam,LPARAM lparam) {
     if(slot){auto& r=slot->record;r.leave_qpc=qpc();r.leave_tick=GetTickCount64();
         r.foreground_after=reinterpret_cast<uintptr_t>(GetForegroundWindow());r.gui_after=gui(r.thread);
         r.native_value=r.returned_value=static_cast<std::uint64_t>(result);r.native_valid=r.return_valid=1;
-        r.native_call=code;r.native_last_error=leave_error;slot->complete.store(true,std::memory_order_release);}
+        r.native_call=code;r.native_last_error=leave_error;
+        if(code==HCBT_MINMAX){const auto window=reinterpret_cast<HWND>(wparam);
+            r.result_window=IsIconic(window)!=FALSE;
+            r.extra_argument|=static_cast<std::uint64_t>(static_cast<DWORD>(GetWindowLongPtrW(window,GWL_STYLE)))<<32;}
+        slot->complete.store(true,std::memory_order_release);}
     SetLastError(leave_error);return result;
 }
 void observe_gui_thread(DWORD style,HWND parent) noexcept {

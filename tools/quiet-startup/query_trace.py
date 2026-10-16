@@ -78,7 +78,12 @@ try:
         if not k.ReadProcessMemory(handle,argument,cbt_raw,cbt_size,c.byref(read)) or read.value!=cbt_size:raise c.WinError(c.get_last_error())
         cbt_head=struct.unpack_from('<12I',cbt_raw)
         assert cbt_head[0]==1 and cbt_head[1]==cbt_size and cbt_head[3]==128 and cbt_head[5]<=128
-        report['cbt']=dict(header=dict(zip(['version','size','enabled','capacity','reserved_count','completed','overflow','busy_skipped','thread','install_error','installed','reserved'],cbt_head)),qpc_frequency=struct.unpack_from('<Q',cbt_raw,48)[0],records=parse_records(cbt_raw,cbt_head[5],56,{5:'HCBT_ACTIVATE',7:'HCBT_SYSCOMMAND'}))
+        report['cbt']=dict(header=dict(zip(['version','size','enabled','capacity','reserved_count','completed','overflow','busy_skipped','thread','install_error','installed','reserved'],cbt_head)),qpc_frequency=struct.unpack_from('<Q',cbt_raw,48)[0],records=parse_records(cbt_raw,cbt_head[5],56,{1:'HCBT_MINMAX',5:'HCBT_ACTIVATE',7:'HCBT_SYSCOMMAND'}))
+        for record in report['cbt']['records']:
+            if record['call']==1:
+                record['minmax']=dict(show_command=record['argument'],iconic_before=bool(record['related']),
+                    iconic_after_next_hook=bool(record['result_window']),style_before=record['extra_argument']&0xffffffff,
+                    style_after_next_hook=record['extra_argument']>>32)
     pe.close()
     args.output.write_text(json.dumps(report,indent=2))
     print(json.dumps(dict(output=str(args.output),header=report['header'],qpc_frequency=report['qpc_frequency'])))
