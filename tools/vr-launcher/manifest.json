@@ -8,8 +8,8 @@
   "shutdown_diagnostics": true,
   "game_path": "Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe",
   "game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
-  "native_build": "tools/native-capture/build-vrdof67",
-  "native_dll": "GearsCaptureVrdof67.dll",
+  "native_build": "tools/native-capture/build-vrdof70",
+  "native_dll": "GearsCaptureVrdof70.dll",
   "xr_build": "tools/openxr-probe/build-borderless1",
   "xr_sha256": "2c27d29ca68a1629cb987addeedbc49ea59f2f7355408802a4b84ca7d96fe5eb",
   "ui_hud_plane": true,
@@ -25,7 +25,7 @@
   "hud_layout_control": true,
   "hud_element_scale": 1.2,
   "hud_center_scale": 0.8,
-  "native_sha256": "74ddd522acac38e352498a8f40fc6dc4968a4b3256cb962770f3c914f5a26c13",
+  "native_sha256": "e9d28afb1d5a77d2163763354b8af124b0692ae66a4e6fad6a09d37dee7b50d1",
   "camera_distance_control": true,
   "startup_selftests_prelaunch": true
 }

@@ -465,6 +465,8 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         args=SimpleNamespace(pid=pid,build_dir=rooted(manifest['native_build']),dll_name=manifest['native_dll'],
             xr_build_dir=rooted(manifest['xr_build']),stereo_units_per_metre=scale,startup_timeout=45.,cleanup_timeout=35.,
             native_expected_sha256=manifest['native_sha256'])
+        args.diagnostics_artifacts={key:manifest[key] for key in ('native_sha256','xr_sha256','game_sha256')}
+        args.diagnostics_artifacts['native_build']=pathlib.Path(manifest['native_build']).name
         handshake=reserved.get('startup_selftest_handshake')
         if handshake:
             args.startup_selftest_proof=handshake['path'];args.startup_selftest_digest=handshake['digest'];args.startup_selftest_nonce=handshake['nonce']
@@ -605,14 +607,25 @@ def status(backend,index=INDEX):
     print(json.dumps(result,indent=2));return result
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('command',choices=('start','stop','status','recenter'))
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('command',choices=('start','stop','status','recenter','export-logs'))
     parser.add_argument('--config',type=pathlib.Path,default=HERE/'config.json')
     parser.add_argument('--manifest',type=pathlib.Path,default=HERE/'manifest.json')
     parser.add_argument('--runtime',type=pathlib.Path,help='Child-process OpenXR manifest override; no registry change')
     parser.add_argument('--auto-continue',action='store_true',help='Navigate the verified menu path into the existing campaign')
     parser.add_argument('--foreground',action='store_true',help='Use the ordinary foreground game startup policy')
+    parser.add_argument('--output',type=pathlib.Path,help='Destination ZIP for export-logs')
+    parser.add_argument('--overwrite',action='store_true',help='Explicitly replace an existing diagnostics ZIP')
     args=parser.parse_args()
+    if args.command=='export-logs' and args.output is None:
+        parser.error('export-logs requires --output')
     try:
+        if args.command=='export-logs':
+            # -I omits the script directory; use only our bundled sibling module.
+            sys.path.insert(0,str(HERE))
+            from diagnostics_bundle import export_bundle
+            receipt=export_bundle(ROOT,args.output,overwrite=args.overwrite)
+            print(json.dumps(receipt,ensure_ascii=False),flush=True)
+            return 0
         backend=Backend()
         if args.command=='status':status(backend);return 0
         if args.command=='stop':return stop(backend)

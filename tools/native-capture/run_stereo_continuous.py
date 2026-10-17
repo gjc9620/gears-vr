@@ -384,6 +384,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
     state.update({key:getattr(args,key) for key in ('hud_element_scale','hud_center_scale') if getattr(args,key,None) is not None})
+    state['diagnostics_artifacts']=getattr(args,'diagnostics_artifacts',{})
     child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0

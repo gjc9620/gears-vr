@@ -1,4 +1,6 @@
 import importlib.util
+import contextlib
+import io
 import json
 import os
 import pathlib
@@ -166,6 +168,62 @@ class LauncherTests(unittest.TestCase):
                     mock.patch.object(launcher,'start',return_value=0) as start:
                 self.assertEqual(launcher.main(),0)
                 self.assertIs(start.call_args.kwargs['foreground'],foreground)
+
+    def test_cli_export_logs_is_independent_of_running_or_stopped_backend(self):
+        import diagnostics_bundle
+        for phase in ('running','stopped'):
+            for overwrite in (False,True):
+                with self.subTest(phase=phase,overwrite=overwrite),tempfile.TemporaryDirectory() as directory:
+                    root=pathlib.Path(directory);index=root/'index.json';output=root/'feedback with spaces.zip'
+                    index.write_text(json.dumps({'phase':phase,'session_report':'untrusted-do-not-follow'}))
+                    receipt={'diagnostics_exported':True,'output':str(output),'files':7,'warnings':['partial history']}
+                    stdout,stderr=io.StringIO(),io.StringIO()
+                    argv=['launcher.py','export-logs','--output',str(output)]+(['--overwrite'] if overwrite else [])
+                    with mock.patch.object(launcher.sys,'argv',argv),mock.patch.object(launcher,'ROOT',root),\
+                            mock.patch.object(launcher,'INDEX',index),\
+                            mock.patch.object(launcher,'Backend',side_effect=AssertionError('no control backend')) as backend,\
+                            mock.patch.object(diagnostics_bundle,'export_bundle',return_value=receipt) as export,\
+                            contextlib.redirect_stdout(stdout),contextlib.redirect_stderr(stderr):
+                        self.assertEqual(launcher.main(),0)
+                    backend.assert_not_called()
+                    export.assert_called_once_with(root,output,overwrite=overwrite)
+                    self.assertEqual(json.loads(stdout.getvalue()),receipt)
+                    self.assertEqual(len(stdout.getvalue().splitlines()),1)
+                    self.assertEqual(stderr.getvalue(),'')
+                    self.assertEqual(json.loads(index.read_text())['phase'],phase)
+
+    def test_cli_export_logs_requires_output_before_backend_or_collector(self):
+        import diagnostics_bundle
+        with mock.patch.object(launcher.sys,'argv',['launcher.py','export-logs']),\
+                mock.patch.object(launcher,'Backend') as backend,\
+                mock.patch.object(diagnostics_bundle,'export_bundle') as export,\
+                contextlib.redirect_stderr(io.StringIO()) as stderr:
+            with self.assertRaises(SystemExit) as error:launcher.main()
+        self.assertEqual(error.exception.code,2)
+        self.assertIn('requires --output',stderr.getvalue())
+        backend.assert_not_called();export.assert_not_called()
+
+    def test_cli_export_logs_fatal_error_is_stderr_only_and_nonzero(self):
+        import diagnostics_bundle
+        for error in (FileExistsError('output already exists'),OSError('disk full')):
+            with self.subTest(error=type(error).__name__),\
+                    mock.patch.object(launcher.sys,'argv',['launcher.py','export-logs','--output','feedback.zip']),\
+                    mock.patch.object(launcher,'Backend') as backend,\
+                    mock.patch.object(diagnostics_bundle,'export_bundle',side_effect=error),\
+                    contextlib.redirect_stdout(io.StringIO()) as stdout,contextlib.redirect_stderr(io.StringIO()) as stderr:
+                self.assertEqual(launcher.main(),1)
+            self.assertEqual(stdout.getvalue(),'')
+            self.assertIn(str(error),stderr.getvalue())
+            backend.assert_not_called()
+
+    def test_existing_control_commands_do_not_require_export_output(self):
+        for command in ('status','stop','recenter'):
+            with self.subTest(command=command),mock.patch.object(launcher.sys,'argv',['launcher.py',command]),\
+                    mock.patch.object(launcher,'Backend',return_value=object()) as backend,\
+                    mock.patch.object(launcher,command,return_value=0) as dispatch:
+                self.assertEqual(launcher.main(),0)
+            backend.assert_called_once_with()
+            dispatch.assert_called_once_with(backend.return_value)
 
     def test_foreground_reaches_owned_and_legacy_reservation(self):
         for owned in (False,True):

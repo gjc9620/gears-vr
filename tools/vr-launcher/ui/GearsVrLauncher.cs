@@ -9,7 +9,7 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace GearsVrUi {
-    enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid }
+    enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid, ExportLogs, ExportingLogs, LogsExported, ExportLogsFailed, ExportFilter, ExportInvalidResult, ExportWarnings }
     static class Language {
         internal static volatile bool English = true;
         internal static readonly string[] Chinese = new string[] {
@@ -64,6 +64,13 @@ namespace GearsVrUi {
             "镜头拉近",
             "实验：米（0–0.5）；0 为原镜头。普通游戏中生效，下次启动应用。",
             "镜头拉近必须为 0–0.5 米的数字；构建能力必须为布尔值。",
+            "导出日志",
+            "正在导出日志…",
+            "日志已导出：",
+            "日志导出失败，请重试或查看下方详情：",
+            "诊断日志 ZIP (*.zip)|*.zip",
+            "导出程序未返回有效的 ZIP 保存回执。",
+            "导出提示：",
         };
         internal static readonly string[] Translations = new string[] {
             "Gears VR startup failed",
@@ -117,6 +124,13 @@ namespace GearsVrUi {
             "Camera closer",
             "Experimental: metres (0–0.5); 0 = original. Gameplay only; next launch.",
             "Camera closer must be a number from 0 to 0.5 metres; build capability must be boolean.",
+            "Export logs",
+            "Exporting logs...",
+            "Logs exported: ",
+            "Could not export logs. Retry or check the details below: ",
+            "Diagnostic logs ZIP (*.zip)|*.zip",
+            "The exporter did not return a valid ZIP save receipt.",
+            "Export note: ",
         };
         internal static string T(TextKey key) { return English ? Translations[(int)key] : Chinese[(int)key]; }
         internal static string TranslateVisible(string text, bool english) {
@@ -164,6 +178,19 @@ namespace GearsVrUi {
                 result += " --foreground --manifest " + Quote(Path.Combine(root, "tools", "vr-launcher", "manifest.json"));
                 if (!String.IsNullOrEmpty(runtime)) result += " --runtime " + Quote(runtime);
             }
+            return result;
+        }
+        internal static string ExportArguments(string root, string destination, bool overwrite) {
+            return Arguments(root, "export-logs", null) + " --output " + Quote(destination) + (overwrite ? " --overwrite" : "");
+        }
+        internal static Dictionary<string, object> ExportReceipt(string json, string destination) {
+            var result = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
+            object success, saved;
+            if (result == null || !result.TryGetValue("diagnostics_exported", out success) ||
+                !(success is bool) || !(bool)success || !result.TryGetValue("output", out saved) ||
+                !(saved is string) || !Path.IsPathRooted((string)saved) ||
+                !String.Equals(Path.GetFullPath((string)saved), Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException(Language.T(TextKey.ExportInvalidResult));
             return result;
         }
         internal static string DefaultRuntime(string root, int mode) {
@@ -257,6 +284,7 @@ namespace GearsVrUi {
                 Convert.ToInt32(p) == pid && Convert.ToInt64(c) == creation;
         }
         static int SelfTest(string root) {
+            if (Language.Chinese.Length != Enum.GetValues(typeof(TextKey)).Length || Language.Translations.Length != Language.Chinese.Length) return 33;
             if (!DefaultRuntime(root, 0).EndsWith("virtualdesktop-openxr.json") || DefaultRuntime(root, 1) != "" || !DefaultRuntime(root, 2).EndsWith("openxr_simulator.json")) return 20;
             string args = Arguments(root, "start", "C:\\runtime with spaces\\openxr.json");
             if (!args.Contains("--foreground") || !args.Contains("--manifest") || !args.Contains("--runtime") || args.Contains("auto-continue")) return 2;
@@ -264,6 +292,21 @@ namespace GearsVrUi {
             if (Arguments(root, "recenter", "unused").Contains("--runtime") ||
                 !Arguments(root, "recenter", null).EndsWith(" recenter")) return 18;
             if (Quote("a b\\") != "\"a b\\\\\"" || Quote("a\"b") != "\"a\\\"b\"") return 4;
+            if (ExportArguments(@"C:\Root folder", @"C:\Feedback folder\run.zip", false) !=
+                "\"C:\\Root folder\\tools\\vr-launcher\\launcher.py\" export-logs --output \"C:\\Feedback folder\\run.zip\"") return 34;
+            if (ExportArguments(@"C:\Root folder", "C:\\Feedback folder\\run \"quote\".zip", true) !=
+                "\"C:\\Root folder\\tools\\vr-launcher\\launcher.py\" export-logs --output \"C:\\Feedback folder\\run \\\"quote\\\".zip\" --overwrite") return 35;
+            const string exportDestination = @"C:\Feedback folder\run.zip";
+            var exportJson = new JavaScriptSerializer();
+            ExportReceipt(exportJson.Serialize(new Dictionary<string, object>{{"diagnostics_exported", true}, {"output", exportDestination}}), exportDestination);
+            foreach (object invalid in new object[]{false, "true", null}) {
+                try { ExportReceipt(exportJson.Serialize(new Dictionary<string, object>{{"diagnostics_exported", invalid}, {"output", exportDestination}}), exportDestination); return 36; }
+                catch (InvalidDataException) { }
+            }
+            foreach (string invalid in new string[]{"run.zip", @"C:\Feedback folder\different.zip"}) {
+                try { ExportReceipt(exportJson.Serialize(new Dictionary<string, object>{{"diagnostics_exported", true}, {"output", invalid}}), exportDestination); return 37; }
+                catch (InvalidDataException) { }
+            }
             if (Phase("{\"launcher\":{\"phase\":\"preflight\"}}") != "preflight" ||
                 Phase("{\"session_phase\":\"running\",\"launcher\":{\"phase\":\"old\"}}") != "running") return 5;
             const string ready = "{\"kind\":\"repository_vr_launcher\",\"owner_identity\":{\"pid\":123,\"creation_time\":456}}";
@@ -292,6 +335,7 @@ namespace GearsVrUi {
                 SaveLanguage(temp, false);
                 if (IsEnglish(ReadConfig(temp))) return 22;
                 Language.English = true;
+                if (Language.T(TextKey.ExportLogs) != "Export logs" || Language.Chinese[(int)TextKey.ExportLogs] != "导出日志") return 38;
                 if (Language.T(TextKey.StartVr) != "Start VR" || Language.TranslateVisible(Language.Chinese[34] + "detail", true) != "Startup failed: detail") return 23;
                 for (int i = 0; i < Language.Chinese.Length; i++)
                     if (Language.TranslateVisible(Language.Chinese[i], true) != Language.Translations[i] || Language.TranslateVisible(Language.Translations[i], false) != Language.Chinese[i]) return 24;
@@ -339,8 +383,8 @@ namespace GearsVrUi {
                 Environment.SetEnvironmentVariable("GEARSVR_PYTHON", python.File);
                 if (!String.Equals(Python.Find(root).File, python.File, StringComparison.OrdinalIgnoreCase)) return 20;
             } finally { Environment.SetEnvironmentVariable("GEARSVR_PYTHON", previousPython); }
-            File.WriteAllText(Path.Combine(root, "analysis", "vr-launcher-ui", "self-test.txt"),
-                "PASS: repository, quoting, start/stop arguments, phase parsing, config preservation, HUD capability/range/save/readback/legacy behavior, bilingual catalog/language persistence, owner identity handshake, Python probe\r\nPython: " + python.File);
+            File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "self-test.txt"),
+                "PASS: repository, quoting, start/stop/export arguments, export receipt validation, phase parsing, config preservation, HUD capability/range/save/readback/legacy behavior, bilingual catalog/language persistence, owner identity handshake, Python probe\r\nPython: " + python.File);
             return 0;
         }
     }
@@ -389,7 +433,7 @@ namespace GearsVrUi {
         readonly object logLock = new object();
         TextBox game = new TextBox(), runtime = new TextBox(), output = new TextBox();
         ComboBox runtimeMode = new ComboBox(), languageMode = new ComboBox();
-        Button start = new Button(), stop = new Button(), recenter = new Button(), status = new Button(), browseGame = new Button(), browseRuntime = new Button();
+        Button start = new Button(), stop = new Button(), recenter = new Button(), status = new Button(), browseGame = new Button(), browseRuntime = new Button(), exportLogs = new Button();
         Label state = new Label();
         NumericUpDown hudSize = new NumericUpDown { Minimum = 45, Maximum = 100, Value = 65, DecimalPlaces = 2, Increment = 1, Width = 85 };
         NumericUpDown cameraCloser = new NumericUpDown { Minimum = 0, Maximum = .5m, Value = 0, DecimalPlaces = 2, Increment = .05m, Width = 85 };
@@ -397,7 +441,7 @@ namespace GearsVrUi {
         Process owner;
         int ownerPid; long ownerCreation;
         volatile bool stopRequested;
-        bool starting, stopping, recentering, closingAfterOwner, translating;
+        bool starting, stopping, recentering, closingAfterOwner, translating, exportBusy;
         Python python;
         public Launcher(string repository) {
             root = repository; config = Path.Combine(root, "tools", "vr-launcher", "config.json");
@@ -448,7 +492,8 @@ namespace GearsVrUi {
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill };
             start.Text = Language.T(TextKey.StartVr); stop.Text = Language.T(TextKey.StopVr); recenter.Text = Language.T(TextKey.Recenter); status.Text = Language.T(TextKey.Status);
             var logs = new Button { Text = Language.T(TextKey.OpenLogs), AutoSize = true };
-            foreach (var button in new[] { start, stop, recenter, status, logs }) { button.AutoSize = true; buttons.Controls.Add(button); }
+            exportLogs.Text = Language.T(TextKey.ExportLogs);
+            foreach (var button in new[] { start, stop, recenter, status, logs, exportLogs }) { button.AutoSize = true; buttons.Controls.Add(button); }
             layout.Controls.Add(buttons, 0, 6); layout.SetColumnSpan(buttons, 3);
             state.Text = Language.T(TextKey.Ready); state.Dock = DockStyle.Fill; layout.Controls.Add(state, 0, 7); layout.SetColumnSpan(state, 3);
             output.Multiline = true; output.ReadOnly = true; output.ScrollBars = ScrollBars.Both; output.WordWrap = false; output.Dock = DockStyle.Fill;
@@ -464,6 +509,7 @@ namespace GearsVrUi {
             recenter.Click += async delegate { await RecenterVr(); };
             status.Click += async delegate { status.Enabled = false; await Command("status", null); status.Enabled = true; };
             logs.Click += delegate { try { Process.Start("explorer.exe", Program.Quote(Path.GetDirectoryName(logPath))); } catch (Exception e) { Log(e.Message); } };
+            exportLogs.Click += async delegate { await ExportLogs(); };
             languageMode.SelectedIndexChanged += delegate {
                 bool english = languageMode.SelectedIndex == 1;
                 if (english == Language.English) return;
@@ -497,6 +543,57 @@ namespace GearsVrUi {
             game.Enabled = browseGame.Enabled = runtimeMode.Enabled = !busy;
             hudSize.Enabled = cameraCloser.Enabled = !busy;
             runtime.Enabled = browseRuntime.Enabled = !busy && runtimeMode.SelectedIndex != 1;
+            exportLogs.Enabled = !exportBusy;
+        }
+        async Task ExportLogs() {
+            if (exportBusy) return;
+            exportBusy = true; UpdateButtons();
+            try {
+                string destination;
+                bool overwrite;
+                using (var dialog = new SaveFileDialog {
+                    Title = Language.T(TextKey.ExportLogs), Filter = Language.T(TextKey.ExportFilter),
+                    FileName = "GearsVR-Diagnostics-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".zip",
+                    DefaultExt = "zip", AddExtension = true, OverwritePrompt = true, CheckPathExists = true }) {
+                    if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                    destination = Path.GetFullPath(dialog.FileName);
+                    overwrite = File.Exists(destination); // Save dialog confirmed replacing an existing choice.
+                }
+                state.Text = Language.T(TextKey.ExportingLogs);
+                Log(Language.T(TextKey.ExportingLogs));
+                var result = await Task.Run(delegate {
+                    var selectedPython = python ?? Python.Find(root);
+                    using (var process = new Process()) {
+                        process.StartInfo = new ProcessStartInfo(selectedPython.File,
+                            selectedPython.Prefix + Program.ExportArguments(root, destination, overwrite)) {
+                            WorkingDirectory = root, UseShellExecute = false, CreateNoWindow = true,
+                            WindowStyle = ProcessWindowStyle.Hidden, RedirectStandardOutput = true, RedirectStandardError = true,
+                            StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
+                        process.StartInfo.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
+                        process.StartInfo.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
+                        process.StartInfo.EnvironmentVariables["GEARSVR_PYTHON"] = selectedPython.File;
+                        process.Start();
+                        var stdout = process.StandardOutput.ReadToEndAsync();
+                        var stderr = process.StandardError.ReadToEndAsync();
+                        process.WaitForExit(); Task.WaitAll(stdout, stderr);
+                        if (process.ExitCode != 0)
+                            throw new IOException("Exit " + process.ExitCode + ": " + stderr.Result + stdout.Result);
+                        if (!String.IsNullOrWhiteSpace(stderr.Result)) Log(stderr.Result.Trim());
+                        var receipt = Program.ExportReceipt(stdout.Result, destination);
+                        if (!File.Exists(destination)) throw new IOException(Language.T(TextKey.ExportInvalidResult));
+                        return receipt;
+                    }
+                });
+                string saved = (string)result["output"];
+                Log(Language.T(TextKey.LogsExported) + saved);
+                object warnings;
+                if (result.TryGetValue("warnings", out warnings) && warnings is System.Collections.IEnumerable && !(warnings is string))
+                    foreach (object warning in (System.Collections.IEnumerable)warnings) Log(Language.T(TextKey.ExportWarnings) + Convert.ToString(warning));
+                state.Text = Language.T(TextKey.LogsExported) + saved;
+            } catch (Exception e) {
+                Log(Language.T(TextKey.ExportLogsFailed) + e.Message);
+                state.Text = Language.T(TextKey.ExportLogsFailed) + e.Message;
+            } finally { exportBusy = false; UpdateButtons(); }
         }
         async Task RecenterVr() {
             if (owner == null || stopping || recentering || stopRequested) return;
