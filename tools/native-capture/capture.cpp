@@ -60,8 +60,9 @@
 #include "ui_hud_plan.h"
 #include "ui_hud_layout.h"
 #include "ui_reticle_direction_plan.h"
-#if (defined(GEARS_UI_SCENE_SOURCE_TRIAL) && GEARS_UI_SCENE_SOURCE_TRIAL) || (defined(GEARS_PATH_CHOICE_POSITION_TRIAL) && GEARS_PATH_CHOICE_POSITION_TRIAL)
 #include "ui_scene_transform_trial.h"
+#include "path_choice_position_trial.h"
+#if (defined(GEARS_UI_SCENE_SOURCE_TRIAL) && GEARS_UI_SCENE_SOURCE_TRIAL) || (defined(GEARS_PATH_CHOICE_POSITION_TRIAL) && GEARS_PATH_CHOICE_POSITION_TRIAL)
 #include "native_metadata_contract.h"
 #endif
 #include <limits>

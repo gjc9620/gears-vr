@@ -161,7 +161,9 @@ def _build(sample, proof, required_only=False, **session):
         return bytes(source.cells[address+i] for i in range(size))
     require(observed(panel+0x60,16)==raw and observed(panel+0x70,4)==units,'stale raw position/units')
     for (address,size),expected in checks.spans.items():
-        require(observed(address,size)==expected,'fresh identity/owner/reflection check mismatch')
+        actual=observed(address,size)
+        require(actual==expected,'fresh identity/owner/reflection check mismatch at 0x%X size=%d expected=%s actual=%s' %
+                (address,size,expected[:32].hex(),actual[:32].hex()))
     # Reject any accidental overlap rather than silently remove identity bytes.
     excluded = ((panel+0x64,4),(panel+0x6c,4),(panel+0x74,4))
     for (address,size) in checks.spans:
