@@ -1,6 +1,7 @@
 // Optional structural observation only. Never publishes semantic/UI receipts.
 #include "ui_scene_root_candidate.h"
 #include "ui_scene_batch.h"
+#include "ui_scene_transform_trial_live.inl"
 namespace ui_scene_root_live {
 #if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
 using Exec=uintptr_t(__fastcall*)(void*,void*,void*);
@@ -18,6 +19,7 @@ thread_local Row* current{};
 void executing(unsigned kind){if(current){if(kind==1)++current->simple_executes;else if(kind==2)++current->material_executes;}}
 void reset_tls(){current=nullptr;}
 uintptr_t __fastcall hook(void* client,void* fcanvas,void* scene){
+    ui_scene_trial_live::entering();
     if(stereo_publish_bypass)return original(client,fcanvas,scene);
     // Preserve original RAX bits: return semantics have not been established.
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
@@ -32,7 +34,7 @@ uintptr_t __fastcall hook(void* client,void* fcanvas,void* scene){
     // Bound expensive inventories across the whole session, not per frame.
     unsigned slot=slots.load();
     while(slot<row_limit&&!slots.compare_exchange_weak(slot,slot+1)){}
-    if(slot>=row_limit){++dropped;return original(client,fcanvas,scene);}
+    if(slot>=row_limit){++dropped;return ui_scene_trial_live::invoke(selected,[&]{return original(client,fcanvas,scene);});}
     Row row{};row.client=reinterpret_cast<uintptr_t>(client);row.fcanvas=reinterpret_cast<uintptr_t>(fcanvas);
     row.scene=reinterpret_cast<uintptr_t>(scene);row.caller=caller;row.invocation=invocation;
     row.thread=GetCurrentThreadId();row.enter=now();
@@ -43,7 +45,7 @@ uintptr_t __fastcall hook(void* client,void* fcanvas,void* scene){
     if(row.before_valid){row.before_keys=unsigned(before.keys.size());
         for(auto const& key:before.keys)for(auto const& item:key.items){++row.before_items;row.before_vertices+=unsigned(item.vertices.size());}}
     current=&row;
-    const uintptr_t result=original(client,fcanvas,scene); // Exactly once.
+    const uintptr_t result=ui_scene_trial_live::invoke(selected,[&]{return original(client,fcanvas,scene);}); // Exactly once.
     current=nullptr;row.exit=now();
     gears_ui_scene_root::Candidate after{};
     row.after_candidate=gears_ui_scene_root::candidate({base},safe_copy,row.client,row.fcanvas,row.scene,caller,after);

@@ -45,6 +45,7 @@ class _Capture:
             raise SceneOwnerRejected('Invalid scene owner base/PID')
         self.base, self.pid = resolver.base, resolver.pid
         self.reads, self.identities, self.names = {}, {}, {}
+        self.name_entries = {}
         self.chains, self.classes, self.fields, self.properties = {}, {}, {}, {}
         self.calls = self.byte_count = self.field_count = 0
         self.hint_calls = self.hint_bytes = 0
@@ -109,6 +110,7 @@ class _Capture:
                 if not value or any(char in value for char in '\r\n\0'):
                     raise SceneOwnerRejected('Invalid owner name text')
                 self.names[index] = value
+                self.name_entries[index] = dict(index=index, address=entry, text=value)
                 return value
             text.extend(unit)
         raise SceneOwnerRejected('Owner name exceeds bounded UTF16 read')
@@ -352,6 +354,7 @@ def capture_scene_owner(resolver, client_address, scene_address, expected_contro
                 roles=dict(client=client, scene=scene, controller=pc, local_player=local,
                            interaction=interaction, viewport=viewport, engine=engine),
                 identities=list(c.identities.values()), classes=list(c.classes.values()),
+                name_entries=list(c.name_entries.values()),
                 fields=[dict(owner=address, headers=fields) for address, fields in c.fields.items()],
                 properties=list(c.properties.values()), links=links,
                 arrays=dict(game_players=players, active_scenes=active),

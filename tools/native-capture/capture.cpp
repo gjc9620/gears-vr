@@ -59,6 +59,10 @@
 #include "ui_hud_plan.h"
 #include "ui_hud_layout.h"
 #include "ui_reticle_direction_plan.h"
+#if defined(GEARS_UI_SCENE_SOURCE_TRIAL) && GEARS_UI_SCENE_SOURCE_TRIAL
+#include "ui_scene_transform_trial.h"
+#include "native_metadata_contract.h"
+#endif
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -1420,6 +1424,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         resources_retained?1:0,entries_restored?1:0,session_native_services.load(),session_cancelled_builds.load(),stereo_publisher.frames.load(),simulator_operator);
     fprintf(output,"profile_consume_thread=%lu ",gears_render_cost::first_thread.load(std::memory_order_relaxed));
     fprintf(output,"activation_ready_qpc=%lld activation_qpc_frequency=%lld ",session_activation_ready_qpc.load(),qpc_frequency);
+    ui_scene_trial_live::progress(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
     // separately; they are not compositor display or engine-update counts.
@@ -3958,6 +3963,9 @@ DWORD WINAPI worker(void*) {
         ULONGLONG next_status=0;
         for(;;){
             observe_session_owner(continuous_owner.state());
+#if defined(GEARS_UI_SCENE_SOURCE_TRIAL) && GEARS_UI_SCENE_SOURCE_TRIAL
+            {wchar_t trial_path[MAX_PATH];path_for(trial_path,L"path-choice-trial.ini");ui_scene_trial_live::poll(trial_path,status);}
+#endif
             if(stop_event&&WaitForSingleObject(stop_event,0)==WAIT_OBJECT_0)request_session_stop(SessionStop::event);
             if(GetAsyncKeyState(VK_F8)&0x8000)request_session_stop(SessionStop::f8);
             if(state_created.load()&&!submit_background&&!foreground())request_session_stop(SessionStop::focus_lost);

@@ -139,6 +139,16 @@ class Fixture:
 
 
 class SceneOwnerTests(unittest.TestCase):
+    def test_exported_name_entries_are_from_this_capture(self):
+        f=Fixture();result=f.capture();entries={x['index']:x for x in result['name_entries']}
+        self.assertEqual(entries[0]['text'],'None')
+        for identity in result['identities']:
+            entry=entries[identity['name_index']]
+            self.assertEqual(entry['text'],identity['name'])
+            pointer=struct.unpack('<Q',f.read(f.names_data+identity['name_index']*8,8))[0]
+            self.assertEqual(entry['address'],pointer)
+            self.assertEqual(f.read(pointer+20,(len(entry['text'])+1)*2),(entry['text']+'\0').encode('utf-16-le'))
+
     def test_array_allocator_slack_is_distinct_from_member_limit(self):
         f=Fixture()
         f.put(f.engine+0x228+12,'<i',17)
