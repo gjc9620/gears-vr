@@ -20,6 +20,7 @@ MAX_IDENTITIES = 4096
 MAX_FIELDS = 4096
 MAX_CLASS_FIELDS = 2048
 MAX_CHAIN = 64
+MAX_ARRAY_CAPACITY = 4096
 
 
 class SceneOwnerRejected(RuntimeError):
@@ -179,7 +180,7 @@ class _Capture:
             name_index, number = struct.unpack('<II', self.raw(current + 72, 8))
             outer = self.pointer(current + 64)
             following = self.pointer(current + 104)
-            if outer != owner or number or not 0 <= name_index < self.registries['names'][1]:
+            if outer != owner or not 0 <= name_index < self.registries['names'][1]:
                 raise SceneOwnerRejected('Owner reflected field outer/name mismatch')
             result.append(dict(address=current, internal_index=index, name_index=name_index,
                                number=number, outer=outer, next=following))
@@ -211,7 +212,10 @@ class _Capture:
             raise SceneOwnerRejected('Owner property hint name mismatch: ' + name)
         field = None
         for owner in chain:
-            matches = [value for value in self.class_fields(owner) if value['name_index'] == needle['name_index']]
+            # FName includes its numeric suffix. Unrelated numbered metadata is
+            # legal; it cannot shadow the exact unnumbered property we require.
+            matches = [value for value in self.class_fields(owner)
+                       if (value['name_index'], value['number']) == (needle['name_index'], needle['number'])]
             if len(matches) > 1:
                 raise SceneOwnerRejected('Duplicate owner reflected field: ' + name)
             if matches:
@@ -254,7 +258,9 @@ class _Capture:
     def array(self, obj, name, owner, maximum):
         prop = self.property(obj, name, 'ArrayProperty', owner)
         data, count, capacity = struct.unpack('<Qii', self.raw(obj['address'] + prop['offset'], 16))
-        if (not 0 <= count <= capacity <= maximum or (count and not data) or
+        # UE3 reserves allocator slack (the live one-player array has capacity
+        # 17). Only occupied members consume the logical/read budget.
+        if (not 0 <= count <= maximum or not count <= capacity <= MAX_ARRAY_CAPACITY or (count and not data) or
                 data > (1 << 64) - capacity * 8):
             raise SceneOwnerRejected('Invalid owner array: ' + name)
         values = list(struct.unpack('<' + 'Q' * count, self.raw(data, count * 8))) if count else []

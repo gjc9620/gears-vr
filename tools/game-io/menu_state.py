@@ -310,9 +310,14 @@ class MenuReader:
             raise RuntimeError('Unsupported reflected RenderBounds array layout')
         raw = r.read(obj['address'] + offset, 16)
         bounds = struct.unpack('<4f', raw)
-        if not all(math.isfinite(value) for value in bounds) or bounds[0] > bounds[2] or bounds[1] > bounds[3]:
-            raise RuntimeError('Invalid RenderBounds values/order')
+        if not all(math.isfinite(value) for value in bounds):
+            raise RuntimeError('Non-finite RenderBounds values')
+        # These are directed edges: mirrored widgets can reverse either axis.
+        # Preserve that evidence separately from a normalized coverage box.
         return dict(order=['left', 'top', 'right', 'bottom'], values=list(bounds), raw=raw.hex(),
+                    ordered_values=[min(bounds[0], bounds[2]), min(bounds[1], bounds[3]),
+                                    max(bounds[0], bounds[2]), max(bounds[1], bounds[3])],
+                    x_reversed=bounds[0] > bounds[2], y_reversed=bounds[1] > bounds[3],
                     reflected=dict(property_address=hex(prop['address']), type=prop['type'],
                                    offset=offset, array_dim=dimension, element_size=element_size,
                                    array_layout_raw=layout_raw.hex()))

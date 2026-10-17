@@ -234,6 +234,8 @@ class MenuStateTests(unittest.TestCase):
             bounds = row['render_bounds']
             values = expected[int(row['address'], 16)]
             self.assertEqual(bounds['values'], list(values))
+            self.assertEqual(bounds['ordered_values'], list(values))
+            self.assertFalse(bounds['x_reversed']);self.assertFalse(bounds['y_reversed'])
             self.assertEqual(bounds['order'], ['left', 'top', 'right', 'bottom'])
             self.assertEqual(bytes.fromhex(bounds['raw']), struct.pack('<4f', *values))
             self.assertEqual((bounds['reflected']['array_dim'], bounds['reflected']['element_size']), (4, 4))
@@ -282,7 +284,7 @@ class MenuStateTests(unittest.TestCase):
                     self.assertEqual(sampled.call_count, 2)
 
     def test_layout_explicitly_rejects_unknown_or_invalid_metadata_and_bounds(self):
-        for failure in ('missing', 'type', 'dimension', 'element', 'offset', 'nan', 'infinite', 'horizontal', 'vertical'):
+        for failure in ('missing', 'type', 'dimension', 'element', 'offset', 'nan', 'infinite'):
             with self.subTest(failure=failure):
                 self.setUp()
                 self.r.layout_classes()
@@ -294,11 +296,43 @@ class MenuStateTests(unittest.TestCase):
                     elif failure == 'element':self.r.put(prop['address'] + 0x74, struct.pack('<I', 8))
                     elif failure == 'offset':self.r.put(prop['address'] + 0x94, struct.pack('<I', 0x10000 - 15))
                     else:
-                        values = {'nan':(float('nan'),0,1,1), 'infinite':(0,0,float('inf'),1),
-                                  'horizontal':(2,0,1,1), 'vertical':(0,2,1,1)}[failure]
+                        values = {'nan':(float('nan'),0,1,1), 'infinite':(0,0,float('inf'),1)}[failure]
                         self.r.put(0x2000 + prop['offset'], struct.pack('<4f', *values))
                 with self.assertRaises(RuntimeError):self.reader.sample(include_layout=True)
                 self.assertTrue(self.reader.sample()['consistent_reread'])
+
+    def test_layout_preserves_directed_edges_for_reversed_axes(self):
+        cases = [((30, 2, 10, 20), True, False, [10, 2, 30, 20]),
+                 ((1, 40, 30, 20), False, True, [1, 20, 30, 40]),
+                 ((30, 40, 10, 20), True, True, [10, 20, 30, 40]),
+                 ((1, 2, 1, 2), False, False, [1, 2, 1, 2]),
+                 ((1331.8120, 148.3923, 1281.8113, 248.3918), True, False, None)]
+        for values, reversed_x, reversed_y, ordered in cases:
+            with self.subTest(values=values):
+                self.setUp();self.r.layout_classes()
+                self.r.bounds(0x2000, values)
+                result = self.reader.sample(include_layout=True)
+                bounds = result['tree'][1]['render_bounds']
+                raw = struct.pack('<4f', *values)
+                actual = list(struct.unpack('<4f', raw))
+                self.assertTrue(result['consistent_reread'])
+                self.assertEqual(bounds['values'], actual)
+                self.assertEqual(bounds['raw'], raw.hex())
+                self.assertEqual(bounds['order'], ['left', 'top', 'right', 'bottom'])
+                self.assertIs(bounds['x_reversed'], reversed_x)
+                self.assertIs(bounds['y_reversed'], reversed_y)
+                if ordered is None:ordered = [actual[2], actual[1], actual[0], actual[3]]
+                self.assertEqual(bounds['ordered_values'], ordered)
+
+    def test_reversed_layout_still_rejects_nonfinite_values_on_every_edge(self):
+        for index in range(4):
+            for invalid in (float('nan'), float('inf'), -float('inf')):
+                with self.subTest(edge=index, invalid=invalid):
+                    self.setUp();self.r.layout_classes()
+                    values = [30, 40, 10, 20];values[index] = invalid
+                    self.r.bounds(0x2000, tuple(values))
+                    with self.assertRaisesRegex(RuntimeError, 'Non-finite'):
+                        self.reader.sample(include_layout=True)
 
     def test_layout_metadata_and_late_bounds_mutations_reject_both_attempts(self):
         for kind in ('bounds', 'dimension', 'offset'):

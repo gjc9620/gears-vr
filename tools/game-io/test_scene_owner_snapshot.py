@@ -139,6 +139,45 @@ class Fixture:
 
 
 class SceneOwnerTests(unittest.TestCase):
+    def test_array_allocator_slack_is_distinct_from_member_limit(self):
+        f=Fixture()
+        f.put(f.engine+0x228+12,'<i',17)
+        f.put(f.client+0x238+12,'<i',257)
+        result=f.capture()
+        self.assertEqual(result['owner_classification'],'local_player')
+        for count,capacity in ((17,17),(1,4097),(2,1),(-1,17),(1,-1)):
+            with self.subTest(count=count,capacity=capacity):
+                f=Fixture();f.put(f.engine+0x228+8,'<ii',count,capacity)
+                with self.assertRaisesRegex(SceneOwnerRejected,'Invalid owner array'):f.capture()
+
+    def test_unrelated_numbered_fields_preserve_exact_property_identity(self):
+        for name in ('CONTEXT_ROUNDSCORE_ANNEX','Player'):
+            with self.subTest(name=name):
+                f=Fixture();field=f.prop('WarPC',name,'ObjectProperty',0x300)
+                f.put(field+76,'<I',481)
+                f.props.pop(('WarPC',name))
+                f.hint_overrides[f.classes['WarPC'],'Player']=f.props['PlayerController','Player']
+                f.sync();result=f.capture()
+                self.assertEqual(result['owner_classification'],'local_player')
+                # Numbered fields remain owned, registered and re-read evidence.
+                bad_outer=f.classes['PlayerController'];f.put(field+64,'<Q',bad_outer)
+                with self.assertRaisesRegex(SceneOwnerRejected,'outer/name'):f.capture()
+
+    def test_required_numbered_property_is_not_accepted_as_unnumbered(self):
+        f=Fixture();f.put(f.props['PlayerController','Player']+76,'<I',481)
+        with self.assertRaisesRegex(SceneOwnerRejected,'hint name mismatch'):f.capture()
+
+    def test_unrelated_number_change_during_capture_rejects(self):
+        f=Fixture();field=f.prop('WarPC','CONTEXT_ROUNDSCORE_ANNEX','ObjectProperty',0x300)
+        f.put(field+76,'<I',481);f.sync();changed=False
+        def change(address,size):
+            nonlocal changed
+            if address==field+72 and size==8 and f.read_counts[(address,size)]>=2 and not changed:
+                changed=True;f.put(field+76,'<I',482)
+        f.hook=change
+        with self.assertRaises(SceneOwnerRejected):f.capture()
+        self.assertTrue(changed)
+
     def test_resolver_read_failures_are_explicit_rejection(self):
         for error in (OSError('unreadable'), RuntimeError('process changed')):
             with self.subTest(error=type(error).__name__):
