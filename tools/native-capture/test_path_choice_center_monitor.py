@@ -1,6 +1,8 @@
 """Owner/worker lease lifecycle tests; no process handles or game input."""
 from pathlib import Path
 import tempfile
+import threading
+import time
 import unittest
 from unittest import mock
 from path_choice_center_monitor import PathChoiceCenterMonitor, LivePathChoiceProbe
@@ -95,5 +97,20 @@ class MonitorTests(unittest.TestCase):
     def test_pending_worker_cannot_publish_after_close(self):
         self.m.poll(status());self.m.future.result(timeout=2);self.m.close()
         self.assertFalse(self.path.exists());self.builder.assert_not_called()
+
+    def test_blocked_read_does_not_block_native_owner_shutdown_or_interpreter_exit(self):
+        entered,release=threading.Event(),threading.Event()
+        def blocked():entered.set();release.wait(2);return {'scene_owner':{'late':'result'}}
+        self.m.probe.capture=blocked
+        self.m.poll(status());self.assertTrue(entered.wait(1))
+        worker=self.m.executor
+        try:
+            before=time.monotonic();self.m.close();elapsed=time.monotonic()-before
+            self.assertLess(elapsed,1)
+            self.assertIs(self.m.worker_joined,False);self.assertTrue(worker.thread.daemon)
+            self.assertFalse(self.path.exists());self.builder.assert_not_called()
+        finally:
+            release.set();worker.thread.join(1)
+        self.assertFalse(worker.thread.is_alive());self.assertTrue(self.m.probe.closed)
 
 if __name__=='__main__':unittest.main()

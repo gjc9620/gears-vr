@@ -25,7 +25,8 @@ FLAGS = set(('startup_menu anchor_observer ui_observer outage_diagnostics image_
 SESSION_FIELDS = set(('schema phase passed native_started native_stop_signaled native_cleanup_verified entry_restore_verified '
                       'xr_stop_signaled xr_exit_code startup_cancelled startup_panel_submitted preflight_frames '
                       'operator_motion_requested simulation_not_physical_tracking physical_tracking_verified '
-                      'hud_horizontal_fov_degrees camera_closer_metres hud_element_scale hud_center_scale path_choice_center_enabled').split())
+                      'hud_horizontal_fov_degrees camera_closer_metres hud_element_scale hud_center_scale path_choice_center_enabled '
+                      'path_choice_center_worker_joined').split())
 CONFIG_FIELDS = set(('schema stereo_units_per_metre hud_horizontal_fov_degrees camera_closer_metres '
                      'hud_element_scale hud_center_scale launcher_language').split()) | FLAGS
 ERROR_FIELDS = ('error', 'native_cleanup_error', 'xr_cleanup_error', 'xr_forced_cleanup_reason',

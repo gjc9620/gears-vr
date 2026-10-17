@@ -484,6 +484,7 @@ class ContinuousTests(unittest.TestCase):
                     mock.patch.object(menu_display_monitor,'MenuDisplayMonitor'):
                 center.return_value.poll.return_value=[dict(event='path_center_lease_published',shift_y=374)]
                 center.return_value.cleanup_error=None
+                center.return_value.worker_joined=True
                 code,state,*_=self.run_mock(path_center=enabled,startup_menu=enabled)
                 self.assertEqual(code,0);self.assertIs(state['path_choice_center_enabled'],enabled)
                 if enabled:

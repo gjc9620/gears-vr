@@ -3,11 +3,57 @@
 Only the owner thread publishes sidecars. The single worker owns its read-only
 process reader; it never sends input, changes windows or writes game memory.
 """
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future
 from pathlib import Path
 import os
+import stat
+import queue
 import threading
 import time
+
+
+class _ReadWorker:
+    """One bounded daemon reader; it has no publication/control capability.
+
+    An uninterruptible OS read must not hold up native/XR shutdown or Python's
+    executor atexit join. The worker closes its own reader when it returns;
+    process exit also releases any remaining read-only OS handles.
+    """
+    def __init__(self, probe):
+        self.probe, self.jobs = probe, queue.Queue(maxsize=1)
+        self.stop = threading.Event()
+        self.thread = None
+        self.error = None
+
+    def submit(self, function):
+        if self.stop.is_set():raise RuntimeError('PathChoice worker stopped')
+        future = Future()
+        self.jobs.put_nowait((future,function))
+        if self.thread is None:
+            self.thread = threading.Thread(target=self.run,name='PathChoice read-only',daemon=True)
+            self.thread.start()
+        return future
+
+    def run(self):
+        try:
+            while not self.stop.is_set():
+                try:future,function = self.jobs.get(timeout=.05)
+                except queue.Empty:continue
+                if self.stop.is_set():future.cancel();break
+                if future.set_running_or_notify_cancel():
+                    try:future.set_result(function())
+                    except BaseException as error:future.set_exception(error)
+        finally:
+            try:self.probe.close()
+            except Exception as error:self.error=type(error).__name__
+
+    def close(self, timeout=.25):
+        self.stop.set()
+        if self.thread is None:
+            self.probe.close()
+            return True
+        self.thread.join(timeout)
+        return not self.thread.is_alive()
 
 
 class LivePathChoiceProbe:
@@ -56,7 +102,7 @@ class PathChoiceCenterMonitor:
         self.builder, self.layout = builder or build, layout or centered_translation
         self.cancel = threading.Event()
         self.probe = probe_factory(self.game, self.check)
-        self.executor = ThreadPoolExecutor(max_workers=1,thread_name_prefix='PathChoice read-only')
+        self.executor = _ReadWorker(self.probe)
         self.future = None
         self.request_generation = None
         self.due, self.nonce = 0., 0
@@ -66,6 +112,7 @@ class PathChoiceCenterMonitor:
         self.loaded = False
         self.last_wait = None
         self.cleanup_error = None
+        self.worker_joined = None
 
     def check(self):
         if self.cancel.is_set():
@@ -74,11 +121,15 @@ class PathChoiceCenterMonitor:
             raise RuntimeError('PathChoice owner/game identity changed')
 
     def revoke(self):
-        # Preserve a sidecar concurrently edited or replaced by another owner.
+        # Best-effort preservation of edits observed before deletion. This is
+        # not an atomic ownership protocol for concurrent external writers.
         if self.last_bytes is not None:
             try:
-                if self.path.read_bytes() == self.last_bytes:
-                    self.path.unlink()
+                info = self.path.lstat()
+                if stat.S_ISREG(info.st_mode) and info.st_size == len(self.last_bytes):
+                    with self.path.open('rb') as stream:
+                        owned = stream.read(len(self.last_bytes)+1) == self.last_bytes
+                    if owned:self.path.unlink()
             except FileNotFoundError:
                 pass
             except OSError as error:
@@ -187,8 +238,9 @@ class PathChoiceCenterMonitor:
             try:
                 if self.future is not None:
                     self.future.cancel()
-                # Reader creation/capture and close remain on the same worker.
-                self.executor.submit(self.probe.close)
             finally:
-                self.executor.shutdown(wait=True)
+                # A blocked read cannot prevent the owner from removing native
+                # hooks and closing XR. Only this owner could publish its result.
+                self.worker_joined = self.executor.close()
+                if self.executor.error:self.cleanup_error=self.executor.error
                 self.executor = None

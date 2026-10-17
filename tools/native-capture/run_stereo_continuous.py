@@ -535,6 +535,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     try:path_center.close()
                     except Exception as error:state['path_choice_center_close_error']=repr(error)
                     if path_center.cleanup_error:state['path_choice_center_cleanup_error']=path_center.cleanup_error
+                    state['path_choice_center_worker_joined']=path_center.worker_joined
                 if world_monitor:
                     try:world_monitor.close()
                     except Exception as error:state['world_monitor_close_error']=repr(error)
