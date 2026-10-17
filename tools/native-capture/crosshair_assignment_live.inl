@@ -213,7 +213,7 @@ std::optional<gears_crosshair_scene::Metadata> scene(void* local){
 }
 void attach(std::optional<gears_crosshair_scene::Metadata> value,gears_anchor::Receipt& receipt){
     auto const& config=current();
-    if(!value||config.mounted_suspended)return;
+    if(!value||config.mounted_suspended||receipt.anchor.unpossessed)return;
     const auto started=now();
     const bool valid=enabled&&!budget_exceeded.load()&&recording.load()&&
         value->controller==address(config.assignment.controller)&&value->pawn==address(config.assignment.pawn)&&
@@ -228,7 +228,7 @@ void accepted(gears_anchor::Receipt const& receipt){if(receipt.crosshair)++ancho
 void freeze(gears_submitted::FrameTicket& frame,gears_anchor::Receipt const* anchor){
     auto const& config=current();
 #if defined(GEARS_UI_RETICLE_FINITE_QUERY) && GEARS_UI_RETICLE_FINITE_QUERY
-    if(!enabled||config.mounted_suspended||!frame.enabled||!frame.crosshair||!anchor||!recording.load()||budget_exceeded.load())return;
+    if(!enabled||config.mounted_suspended||!frame.enabled||!frame.crosshair||!anchor||anchor->anchor.unpossessed||!recording.load()||budget_exceeded.load())return;
     const auto started=now();
     gears_crosshair_finite_query::Authority authority{
         anchor->anchor.controller,anchor->anchor.pawn,address(config.assignment.weapon),anchor->anchor.camera,

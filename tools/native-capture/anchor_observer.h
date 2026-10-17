@@ -21,7 +21,7 @@ struct Config {std::uintptr_t objects_header{},names_header{};unsigned identity_
     bool mounted_enabled{};
     unsigned mounted_role_driver{},mounted_role_inventory{},mounted_role_world_info{},mounted_property_offset_internal{};
     std::array<MountedProperty,9> mounted_properties{};
-    bool cinematic_enabled{};
+    bool cinematic_enabled{},unpossessed_camera_enabled{};
     unsigned role_cinematic_property{},role_camera_actor_class{},cinematic_offset{},cinematic_mask{};
     unsigned role_world_info_property{},role_world_info{},world_info_offset{};
     std::uintptr_t module_base{}; // Native byte certificates are checked before activation, not per frame.
@@ -33,7 +33,7 @@ inline bool equal_identity(Identity const& a,Identity const& b) {
 }
 #include "mounted_observer.inl"
 struct PawnBinding {Identity pawn{};std::uintptr_t controller{},local{},camera{},level{};
-    Identity target_identity{},target_level_identity{};bool cinematic{};};
+    Identity target_identity{},target_level_identity{};bool cinematic{},unpossessed{};};
 enum class PawnBindingStage : unsigned {config,registry,pawn,header,identity,object_slot,name_slot,name_entry,name_text,links,
     reread_header,reread_registry,reread_object_slot,reread_name_slot,reread_name_entry,reread_name_text,reread_links,success};
 enum class PawnBindingField : unsigned {roles,objects,names,controller,local,camera,level,controller_pawn,pawn_controller,
@@ -54,7 +54,7 @@ inline const char* pawn_binding_field_name(PawnBindingField field){
 }
 inline bool equal_binding(PawnBinding const& a,PawnBinding const& b) {
     return equal_identity(a.pawn,b.pawn)&&a.controller==b.controller&&a.local==b.local&&a.camera==b.camera&&a.level==b.level&&
-        equal_identity(a.target_identity,b.target_identity)&&equal_identity(a.target_level_identity,b.target_level_identity)&&a.cinematic==b.cinematic;
+        equal_identity(a.target_identity,b.target_identity)&&equal_identity(a.target_level_identity,b.target_level_identity)&&a.cinematic==b.cinematic&&a.unpossessed==b.unpossessed;
 }
 struct TargetBinding {Identity identity{},target_level_identity{};bool cinematic{};};
 inline bool equal_target(TargetBinding const& a,TargetBinding const& b){return a.cinematic==b.cinematic&&equal_identity(a.identity,b.identity)&&equal_identity(a.target_level_identity,b.target_level_identity);}
@@ -197,7 +197,12 @@ template<class Read> bool capture_pawn_binding(Config const& c,Read read,PawnBin
     mark(PawnBindingStage::pawn,PawnBindingField::level);if(!value.level)return false;
     mark(PawnBindingStage::pawn,PawnBindingField::controller_pawn);
     if(value.controller>(std::numeric_limits<std::uintptr_t>::max)()-c.controller_pawn||
-        !bytes(&value.pawn.address,value.controller+c.controller_pawn,8)||!value.pawn.address)return false;
+        !bytes(&value.pawn.address,value.controller+c.controller_pawn,8))return false;
+    if(!value.pawn.address){
+        if(!c.unpossessed_camera_enabled||!c.cinematic_enabled||c.mounted_enabled)return false;
+        value.unpossessed=true;value.pawn.address=c.identities[c.role_pawn].address;
+        if(!value.pawn.address)return false;
+    }
     if(c.mounted_enabled&&value.pawn.address!=c.identities[c.role_pawn].address)return false;
     auto& id=value.pawn;std::array<unsigned char,96> raw{};
     mark(PawnBindingStage::header,PawnBindingField::pawn_header);if(!bytes(raw.data(),id.address,raw.size()))return false;
@@ -235,9 +240,9 @@ template<class Read> bool capture_pawn_binding(Config const& c,Read read,PawnBin
     mark(PawnBindingStage::identity,PawnBindingField::startup_identity);
     if(id.address==c.identities[c.role_pawn].address&&!equal_identity(id,c.identities[c.role_pawn]))return false;
     if(c.cinematic_enabled){TargetBinding target{};mark(PawnBindingStage::links,PawnBindingField::target_identity);
-        if(!cinematic_target(c,read,id,target))return false;
+        if(!cinematic_target(c,read,id,target)||(value.unpossessed&&!equal_identity(target.identity,id)))return false;
         value.target_identity=target.identity;value.target_level_identity=target.target_level_identity;value.cinematic=target.cinematic;}
-    auto links=[&](PawnBindingStage stage){return link(value.controller,c.controller_pawn,id.address,stage,PawnBindingField::controller_pawn)&&link(id.address,c.pawn_controller,value.controller,stage,PawnBindingField::pawn_controller)&&
+    auto links=[&](PawnBindingStage stage){return link(value.controller,c.controller_pawn,value.unpossessed?0:id.address,stage,PawnBindingField::controller_pawn)&&link(id.address,c.pawn_controller,value.unpossessed?0:value.controller,stage,PawnBindingField::pawn_controller)&&
         link(value.camera,c.camera_view_target,c.cinematic_enabled?value.target_identity.address:id.address,stage,PawnBindingField::camera_view_target)&&link(value.controller,c.player_camera,value.camera,stage,PawnBindingField::player_camera)&&
         link(value.camera,c.pc_owner,value.controller,stage,PawnBindingField::pc_owner)&&link(value.controller,c.player,value.local,stage,PawnBindingField::player);};
     if(!links(PawnBindingStage::links))return false;
@@ -274,11 +279,11 @@ inline const char* reason_name(unsigned n){static const char* names[]={"accepted
 struct Key {std::uintptr_t local{},family{},source{},owner{};std::uint32_t stamp{};
     std::array<unsigned char,128> matrices{};};
 struct Anchor {std::uintptr_t pawn{},controller{},camera{},level{};std::array<float,3> location{};
-    float eye_height{},base_eye_height{};Identity pawn_identity{},target_identity{},target_level_identity{};bool cinematic{};};
+    float eye_height{},base_eye_height{};Identity pawn_identity{},target_identity{},target_level_identity{};bool cinematic{},unpossessed{};};
 inline bool scene_binding_matches(PawnBinding const& before,Anchor const& after) {
     return equal_identity(before.pawn,after.pawn_identity)&&before.pawn.address==after.pawn&&
         before.controller==after.controller&&before.camera==after.camera&&before.level==after.level&&
-        equal_identity(before.target_identity,after.target_identity)&&equal_identity(before.target_level_identity,after.target_level_identity)&&before.cinematic==after.cinematic;
+        equal_identity(before.target_identity,after.target_identity)&&equal_identity(before.target_level_identity,after.target_level_identity)&&before.cinematic==after.cinematic&&before.unpossessed==after.unpossessed;
 }
 enum class GuardReason {success,strict_validation,initial_binding,final_binding,read_failure,
     strict_timestamp_changed,final_timestamp_changed,deadline,attempt_limit};
@@ -290,8 +295,11 @@ inline const char* guard_reason_name(GuardReason reason){static const char* name
     const auto i=unsigned(reason);return i<std::size(names)?names[i]:"unknown";}
 inline const char* guard_stage_name(GuardStage stage){static const char* names[]={"initial_binding","strict_validation","final_binding","final_timestamp"};
     const auto i=unsigned(stage);return i<std::size(names)?names[i]:"unknown";}
-template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std::uint32_t& stamp,GuardDiagnostic* diagnostic=nullptr){
+template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std::uint32_t& stamp,GuardDiagnostic* diagnostic=nullptr,bool unpossessed=false){
     if(diagnostic)*diagnostic={};
+    // The initial binding selects this mode once. Never reinterpret a link
+    // turnover inside the strict bracket as a different anchor route.
+    if(unpossessed&&(!c.unpossessed_camera_enabled||!c.cinematic_enabled||c.mounted_enabled))return false;
     auto bytes=[&](void* dest,std::uintptr_t address,std::size_t size){const bool ok=address&&read(dest,reinterpret_cast<const void*>(address),size);
         if(!ok&&diagnostic)diagnostic->reason=GuardReason::read_failure;return ok;};
     Registry objects{},names{};
@@ -328,18 +336,19 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
     }return true;};
     if(!verify_identities()||(c.mounted_enabled&&!mounted_links(c,read)))return false;
     TargetBinding target{};
-    if(c.cinematic_enabled&&!cinematic_target(c,read,c.identities[c.role_pawn],target))return false;
+    if(c.cinematic_enabled&&(!cinematic_target(c,read,c.identities[c.role_pawn],target)||
+        (unpossessed&&!equal_identity(target.identity,c.identities[c.role_pawn]))))return false;
     auto link=[&](std::uintptr_t owner,unsigned offset,std::uintptr_t expected){std::uintptr_t actual{};return bytes(&actual,owner+offset,8)&&actual==expected;};
-    auto links=[&](){return link(pc,c.controller_pawn,pawn)&&link(pawn,c.pawn_controller,pc)&&link(pc,c.player_camera,camera)&&
+    auto links=[&](){return link(pc,c.controller_pawn,unpossessed?0:pawn)&&link(pawn,c.pawn_controller,unpossessed?0:pc)&&link(pc,c.player_camera,camera)&&
         link(camera,c.pc_owner,pc)&&link(pc,c.player,local)&&link(camera,c.camera_view_target,c.cinematic_enabled?target.identity.address:pawn);};
     if(!links())return false;
     Anchor anchor{};anchor.pawn=pawn;anchor.controller=pc;anchor.camera=camera;anchor.level=level;
-    anchor.pawn_identity=c.identities[c.role_pawn];
+    anchor.pawn_identity=c.identities[c.role_pawn];anchor.unpossessed=unpossessed;
     if(c.cinematic_enabled){anchor.target_identity=target.identity;anchor.target_level_identity=target.target_level_identity;anchor.cinematic=target.cinematic;}
-    std::array<unsigned char,28> mounted_pov{};
-    if(c.mounted_enabled){
-        if(!bytes(mounted_pov.data(),camera+c.camera_pov,mounted_pov.size()))return false;
-        std::memcpy(anchor.location.data(),mounted_pov.data(),12);float fov{};std::memcpy(&fov,mounted_pov.data()+24,4);
+    std::array<unsigned char,28> camera_pov{};
+    if(c.mounted_enabled||unpossessed){
+        if(!bytes(camera_pov.data(),camera+c.camera_pov,camera_pov.size()))return false;
+        std::memcpy(anchor.location.data(),camera_pov.data(),12);float fov{};std::memcpy(&fov,camera_pov.data()+24,4);
         if(!std::isfinite(fov)||fov<=0||fov>=180)return false;
     }else if(!bytes(anchor.location.data(),pawn+c.pawn_location,12)||!bytes(&anchor.eye_height,pawn+c.eye_height,4)||
         !bytes(&anchor.base_eye_height,pawn+c.base_eye_height,4))return false;
@@ -352,8 +361,8 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
     if(diagnostic)diagnostic->strict_after_stamp=after;
     // Complete non-timestamp checks before declaring a retryable time race.
     if(!links())return false;
-    if(c.mounted_enabled){std::array<unsigned char,28> final_pov{};
-        if(!mounted_links(c,read)||!bytes(final_pov.data(),camera+c.camera_pov,final_pov.size())||final_pov!=mounted_pov)return false;}
+    if(c.mounted_enabled||unpossessed){std::array<unsigned char,28> final_pov{};
+        if((c.mounted_enabled&&!mounted_links(c,read))||!bytes(final_pov.data(),camera+c.camera_pov,final_pov.size())||final_pov!=camera_pov)return false;}
     if(c.cinematic_enabled){TargetBinding final_target{};
         if(!cinematic_target(c,read,c.identities[c.role_pawn],final_target)||!equal_target(target,final_target))return false;}
     if(before!=after){if(diagnostic){diagnostic->reason=GuardReason::strict_timestamp_changed;diagnostic->timestamp_only=true;}return false;}
@@ -370,7 +379,7 @@ template<class Read> bool guard(Config const& startup,Read read,Anchor& out,std:
     Config candidate=startup;candidate.identities[candidate.role_pawn]=binding.pawn;
     Anchor anchor{};std::uint32_t observed{};
     GuardDiagnostic strict{};
-    const bool strict_ok=strict_guard(candidate,read,anchor,observed,&strict);result=strict;
+    const bool strict_ok=strict_guard(candidate,read,anchor,observed,&strict,binding.unpossessed);result=strict;
     if(!strict_ok&&(!diagnostic||!strict.timestamp_only))return finish(false);
     if(strict_ok&&!scene_binding_matches(binding,anchor)){result.reason=GuardReason::final_binding;result.stage=GuardStage::final_binding;return finish(false);}
     // Complete the outer identity bracket even after a strict timestamp race.
@@ -437,7 +446,7 @@ inline bool submission_matches(Receipt const* receipt,std::uintptr_t family,
 }
 inline bool equal_anchor(Anchor const& a,Anchor const& b){return a.pawn==b.pawn&&a.controller==b.controller&&
     a.camera==b.camera&&a.level==b.level&&a.location==b.location&&a.eye_height==b.eye_height&&a.base_eye_height==b.base_eye_height&&
-    equal_identity(a.pawn_identity,b.pawn_identity)&&equal_identity(a.target_identity,b.target_identity)&&equal_identity(a.target_level_identity,b.target_level_identity)&&a.cinematic==b.cinematic;}
+    equal_identity(a.pawn_identity,b.pawn_identity)&&equal_identity(a.target_identity,b.target_identity)&&equal_identity(a.target_level_identity,b.target_level_identity)&&a.cinematic==b.cinematic&&a.unpossessed==b.unpossessed;}
 inline Reason match(Key const& a,Key const& b){if(a.local!=b.local)return identity_failed;
     if(a.family!=b.family||b.owner!=b.family||a.owner!=a.family)return family_mismatch;
     if(a.source!=b.source)return source_mismatch;

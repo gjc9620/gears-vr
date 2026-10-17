@@ -201,10 +201,22 @@ thread_local gears_outage_sources::Overlay outage_source_overlay;
 bool anchor_observer_enabled=false;
 std::atomic<unsigned long long> anchor_submission_matched{0},anchor_submission_rejected{0};
 std::array<std::atomic<unsigned long long>,3> anchor_pawn_reassociated_guards{};
+std::array<std::atomic<unsigned long long>,3> anchor_unpossessed_guards{};
+struct UnpossessedSubmission {uint64_t ticket{},world{};long long qpc{};unsigned thread{};};
+std::array<UnpossessedSubmission,32> unpossessed_submissions{};
+std::atomic<unsigned> unpossessed_submission_count{};
+std::atomic<uint64_t> unpossessed_first_ticket{},unpossessed_last_ticket{};
 bool origin_trial_enabled=false;
 gears_origin_trial::Trial origin_trial;
 std::atomic<unsigned long long> origin_prepare_failed{0},origin_commit_failed{0};
 gears_anchor::Config anchor_config;
+void configure_unpossessed_camera(gears_anchor::Config& c){
+#if defined(GEARS_UNPOSSESSED_VIEW_TARGET) && GEARS_UNPOSSESSED_VIEW_TARGET
+    c.unpossessed_camera_enabled=c.cinematic_enabled&&!c.mounted_enabled;
+#else
+    c.unpossessed_camera_enabled=false;
+#endif
+}
 std::atomic<uint64_t> world_candidate_generation{},world_prepare_requests{},world_prepare_rejected{};
 std::atomic<uint64_t> committed_world_generation{1};
 #if (defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE) || (defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING) || (defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS)
@@ -1355,6 +1367,8 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"recenter_requests=%llu reference_generation=%llu heading_deferred=%llu ",stereo_recenter_requests.load(),stereo_reference_generation.load(),stereo_heading_deferred.load());
     fprintf(output,"anchor_submission_required=%u anchor_submission_matched=%llu anchor_submission_rejected=%llu ",
         anchor_observer_enabled?1:0,anchor_submission_matched.load(),anchor_submission_rejected.load());
+    fprintf(output,"unpossessed_submitted=%u unpossessed_first_ticket=%llu unpossessed_last_ticket=%llu ",
+        unpossessed_submission_count.load(),unpossessed_first_ticket.load(),unpossessed_last_ticket.load());
     fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu ",
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
         static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()));
@@ -1374,7 +1388,7 @@ void print_anchor(FILE* status,bool hooks_disabled){
     if(!anchor_observer_enabled){fprintf(status,"anchor_observer enabled=0\n");return;}
     fprintf(status,"anchor_pawn_policy same_level_only=1 same_class_outer=1 startup_config_immutable=1 full_pawn_signature=1 scene_prepost_identity=1 absolute_uobject_serial_verified=0 accepted_reassociated_guard_scene=%llu accepted_reassociated_guard_family=%llu accepted_reassociated_guard_renderer=%llu\n",
         anchor_pawn_reassociated_guards[0].load(),anchor_pawn_reassociated_guards[1].load(),anchor_pawn_reassociated_guards[2].load());
-    fprintf(status,"anchor_camera_policy cinematic_enabled=%u target_requires_cinematic_mode=1 target_exact_camera_actor=1 target_same_world_info=1 target_registered_level=1 possession_remains_pawn=1\n",anchor_config.cinematic_enabled?1:0);
+    fprintf(status,"anchor_camera_policy cinematic_enabled=%u dynamic_target_requires_cinematic_mode=1 dynamic_target_exact_camera_actor=1 target_same_world_info=1 target_registered_level=1 controlled_possession_remains_pawn=1 unpossessed_enabled=%u unpossessed_requires_certified_pawn_target=1 unpossessed_requires_null_links=1\n",anchor_config.cinematic_enabled?1:0,anchor_config.unpossessed_camera_enabled?1:0);
     if(recording.load()||active.load()||!hooks_disabled){fprintf(status,"anchor_observer enabled=1 available=0 active=%u hooks_disabled=%u\n",active.load(),hooks_disabled?1:0);return;}
     fprintf(status,"anchor_observer enabled=1 available=1 schema=1 capacity=64 rows=%u reject_capacity=16 reject_rows=%u identity_count=%u accepted_scene=%llu accepted_family=%llu accepted_renderer=%llu first_renderer_qpc=%lld last_renderer_qpc=%lld sampled_out=%llu capacity_dropped=%llu dropped_first_qpc=%lld dropped_last_qpc=%lld qpc_frequency=%lld atomic_engine_snapshot=0 renderer_alignment_verified=0 origin_modified=%u source_view_bytes_matched=64 projection_bytes_observed=64 sample_policy=first4_then_1s\n",
         std::min<unsigned>(anchor_row_count.load(),64),std::min<unsigned>(anchor_reject_count.load(),16),anchor_config.identity_count,
@@ -1393,13 +1407,18 @@ void print_anchor(FILE* status,bool hooks_disabled){
         fprintf(status," cinematic=%u target=%llx target_index=%u target_name_index=%u target_number=%u target_class=%llx target_outer=%llx",
             a.cinematic?1:0,a.target_identity.address,a.target_identity.index,a.target_identity.name_index,
             a.target_identity.number,a.target_identity.cls,a.target_identity.outer);
-        fprintf(status," target_level=%llx target_level_index=%u",a.target_level_identity.address,a.target_level_identity.index);
+        fprintf(status," target_level=%llx target_level_index=%u unpossessed=%u",a.target_level_identity.address,a.target_level_identity.index,a.unpossessed?1:0);
         const std::array<unsigned char,128>* matrices[]={&r.key.matrices,&r.family_matrices,&r.renderer_matrices};
         const char* labels[]={"scene_matrix","family_matrix","renderer_matrix"};
         for(unsigned stage=0;stage<3;++stage){fprintf(status," %s=",labels[stage]);for(unsigned j=0;j<32;++j){float value{};memcpy(&value,matrices[stage]->data()+4*j,4);fprintf(status,"%s%.9g",j?",":"",value);}}
         fprintf(status,"\n");};
     for(unsigned i=0;i<std::min<unsigned>(anchor_row_count.load(),64);++i)print(anchor_rows[i],"sampled",i);
     for(unsigned i=0;i<std::min<unsigned>(anchor_reject_count.load(),16);++i)print(anchor_rejects[i],"first_rejections",i);
+    fprintf(status,"unpossessed_camera_guards scene=%llu family=%llu renderer=%llu submitted=%u stored=%u first_ticket=%llu last_ticket=%llu camera_closer_allowed=0 crosshair_attach_allowed=0\n",
+        anchor_unpossessed_guards[0].load(),anchor_unpossessed_guards[1].load(),anchor_unpossessed_guards[2].load(),
+        unpossessed_submission_count.load(),std::min<unsigned>(unpossessed_submission_count.load(),32),unpossessed_first_ticket.load(),unpossessed_last_ticket.load());
+    for(unsigned i=0;i<std::min<unsigned>(unpossessed_submission_count.load(),32);++i){auto const& r=unpossessed_submissions[i];
+        fprintf(status,"unpossessed_submission index=%u ticket=%llu world=%llu qpc=%lld thread=%u\n",i,r.ticket,r.world,r.qpc,r.thread);}
     fprintf(status,"anchor_pawn_binding_rejections count=%u stored=%u capacity=16 additional_reads=0\n",
         anchor_pawn_reject_count.load(),std::min<unsigned>(anchor_pawn_reject_count.load(),16));
     for(unsigned i=0;i<std::min<unsigned>(anchor_pawn_reject_count.load(),16);++i){const auto& r=anchor_pawn_rejects[i];const auto& d=r.diagnostic;
@@ -1951,6 +1970,7 @@ bool anchor_key(gears_anchor::Key& key,gears_anchor::Anchor& anchor,uintptr_t fa
         !safe_copy(key.matrices.data(),reinterpret_cast<void*>(source+0x70),128))return false;
     for(unsigned i=0;i<32;++i){float value{};memcpy(&value,key.matrices.data()+i*4,4);if(!std::isfinite(value))return false;}
     const bool valid=gears_anchor::guard(anchor_config,safe_copy,anchor,key.stamp)&&before==key.stamp&&local==expected_local&&key.owner==family;
+    if(valid&&stage<3&&anchor.unpossessed)++anchor_unpossessed_guards[stage];
     if(valid&&stage<3&&anchor.pawn!=anchor_config.identities[anchor_config.role_pawn].address)++anchor_pawn_reassociated_guards[stage];
     const auto observed_right_state=state_temporary.load();
     if(valid&&stage==2&&(!gears_anchor::equal_identity(anchor_last_state_pawn,anchor.pawn_identity)||
@@ -2224,7 +2244,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             view=frame.origin.base;
         }
         if(camera_closer_metres>0){
-            const bool gameplay=anchor&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
+            const bool gameplay=anchor&&!anchor->anchor.unpossessed&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
                 !anchor->anchor.cinematic&&anchor->anchor.target_identity.address==anchor->anchor.pawn;
             gears_vr::Vector pawn_eye{};
             if(gameplay)pawn_eye={anchor->anchor.location[0],anchor->anchor.location[1],
@@ -2440,6 +2460,9 @@ void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void*
     if(handled)record.test_state=77;
     if(anchor_associated){gears_submitted::FrameTicket frame{};
         auto registered=handled&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(destination),frame);
+        if(registered&&associated_anchor.anchor.unpossessed){const auto index=unpossessed_submission_count.fetch_add(1);
+            if(index<unpossessed_submissions.size())unpossessed_submissions[index]={frame.id,committed_world_generation.load(),now(),GetCurrentThreadId()};
+            uint64_t empty=0;unpossessed_first_ticket.compare_exchange_strong(empty,frame.id);unpossessed_last_ticket=frame.id;}
         anchor_note(2,gears_anchor::accepted,associated_anchor,reinterpret_cast<uintptr_t>(destination),registered?frame.id:0);}
     if(observe){
         record.result=reinterpret_cast<uintptr_t>(result);
@@ -2494,7 +2517,7 @@ void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation
         receipt.thread=GetCurrentThreadId();receipt.scene_qpc=now();
         const bool anchor_valid=pawn_before_valid&&anchor_key(receipt.key,receipt.anchor,reinterpret_cast<uintptr_t>(family),reinterpret_cast<uintptr_t>(result),reinterpret_cast<uintptr_t>(local),0)&&
             gears_anchor::scene_binding_matches(pawn_before_scene,receipt.anchor);
-        if(anchor_valid)crosshair_live::attach(std::move(crosshair_evidence),receipt);
+        if(anchor_valid&&!receipt.anchor.unpossessed)crosshair_live::attach(std::move(crosshair_evidence),receipt);
         auto reason=anchor_valid?anchor_context.offer(receipt):gears_anchor::identity_failed;
         if(reason==gears_anchor::accepted)crosshair_live::accepted(receipt);
         if(reason!=gears_anchor::accepted)anchor_context.discard();anchor_note(0,reason,receipt);}
@@ -2709,6 +2732,7 @@ bool load_anchor_config(const wchar_t* ini){
     if(!gears_anchor::parse_config([&](const wchar_t* key,wchar_t* value,unsigned capacity){
             return GetPrivateProfileStringW(L"AnchorObserver",key,L"",value,capacity,ini);
         },reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr)),c))return false;
+    configure_unpossessed_camera(c);
     gears_anchor::Anchor a{};std::uint32_t stamp{};
     const bool expected_identity=c.role_local<c.identity_count&&c.role_controller<c.identity_count&&c.role_camera<c.identity_count&&
         c.identities[c.role_local].address==expected_local&&c.identities[c.role_controller].address==expected_pc&&

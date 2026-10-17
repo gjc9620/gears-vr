@@ -34,6 +34,7 @@ bool prepare_world_candidate(const wchar_t* ini,PreparedWorld& output){
        c.identities[c.role_camera].address!=m.camera||c.camera_timestamp>UINTPTR_MAX-m.camera||
        m.camera+c.camera_timestamp!=m.timestamp||expected_camera>camera_yaw||m.camera>m.camera_yaw||
        m.camera_yaw-m.camera!=camera_yaw-expected_camera||c.camera_pov!=anchor_config.camera_pov)return false;
+    configure_unpossessed_camera(c);
     gears_anchor::Anchor live{};std::uint32_t stamp{};
     auto guard=[&](){return gears_anchor::bounded_guard(c,safe_copy,[](){return std::uint64_t(GetTickCount64());},
             [](unsigned milliseconds){Sleep(milliseconds);},live,stamp);};

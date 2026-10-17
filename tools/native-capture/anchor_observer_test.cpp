@@ -186,6 +186,130 @@ static int cinematic_tests(){
         if(!restored&&other_headers==4&&address==camera+128&&size==8){restored=true;put(camera+128,target);}
         return ok;};
     CHECK(!guard(cfg,changing_between,anchor,stamp)&&entered&&restored);
+    // The opt-in unpossessed route is restricted to the immutable certified
+    // Pawn. CameraPOV supplies the origin only after null links and all the
+    // existing cinematic/WorldInfo/identity certificates have passed.
+    mem=baseline;cfg=initial;cfg.camera_pov=0x160;
+    put(pc+120,uintptr_t(0));put(pawn+120,uintptr_t(0));put(camera+128,pawn);
+    const std::array<float,7> pov{101,202,303,0,0,0,90};put(camera+cfg.camera_pov,pov);
+    const auto unpossessed_memory=mem;
+    CHECK(!cfg.unpossessed_camera_enabled&&!capture_pawn_binding(cfg,read,binding)&&!guard(cfg,read,anchor,stamp));
+    CHECK(!strict_guard(cfg,read,anchor,stamp,nullptr,true));
+    cfg.unpossessed_camera_enabled=true;const auto unpossessed_config=cfg;
+    CHECK(capture_pawn_binding(cfg,read,binding)&&binding.unpossessed&&binding.pawn.address==pawn);
+    CHECK(guard(cfg,read,anchor,stamp)&&anchor.unpossessed&&anchor.cinematic&&scene_binding_matches(binding,anchor));
+    CHECK((anchor.location==std::array<float,3>{101,202,303})&&anchor.eye_height==0&&anchor.base_eye_height==0);
+    CHECK(equal_identity(anchor.pawn_identity,cfg.identities[cfg.role_pawn])&&equal_identity(anchor.target_identity,anchor.pawn_identity));
+    CHECK(!strict_guard(cfg,read,anchor,stamp)&&strict_guard(cfg,read,anchor,stamp,nullptr,true)&&anchor.unpossessed);
+    const auto unpossessed_anchor=anchor;const auto unpossessed_binding=binding;
+    changed=anchor;changed.unpossessed=false;CHECK(!equal_anchor(anchor,changed)&&!scene_binding_matches(binding,changed));
+    changed_binding=binding;changed_binding.unpossessed=false;CHECK(!equal_binding(binding,changed_binding));
+    // The cinematic flag itself may be clear, but it must remain equal.
+    put(pc+cfg.cinematic_offset,0u);CHECK(guard(cfg,read,anchor,stamp)&&anchor.unpossessed&&!anchor.cinematic);
+    CHECK(!equal_anchor(anchor,unpossessed_anchor));
+    mem=unpossessed_memory;
+    GuardDiagnostic unpossessed_diagnostic{};
+    // Failed reads that happen to zero their destination never select null mode.
+    for(const auto failed_address:{pc+120,pawn+120}){
+        auto zero_failure=[&](void* dest,void const* source,size_t size){
+            if(reinterpret_cast<uintptr_t>(source)==failed_address){std::memset(dest,0,size);return false;}
+            return read(dest,source,size);};
+        CHECK(!capture_pawn_binding(cfg,zero_failure,binding));
+        CHECK(!guard(cfg,zero_failure,anchor,stamp,&unpossessed_diagnostic)&&!unpossessed_diagnostic.timestamp_only&&
+            unpossessed_diagnostic.reason==GuardReason::read_failure);
+    }
+    for(unsigned fault=0;fault<21;++fault){mem=unpossessed_memory;cfg=unpossessed_config;
+        if(fault==0)cfg.cinematic_enabled=false;
+        if(fault==1)cfg.mounted_enabled=true;
+        if(fault==2)put(pawn+120,pc);
+        if(fault==3)put(pawn+120,local);
+        if(fault==4)put(camera+128,target); // Otherwise valid CameraActor.
+        if(fault==5)put(pc+cfg.world_info_offset,uintptr_t(0));
+        if(fault==6)put(pawn+cfg.world_info_offset,uintptr_t(0));
+        if(fault==7)put(pawn+16,1u);
+        if(fault==8)put(objects.data+cfg.identities[cfg.role_pawn].index*8,uintptr_t(0));
+        if(fault==9)put(pawn+32,uintptr_t(0));
+        if(fault==10)put(pawn+24,cfg.identities[12].address);
+        if(fault==11)put(camera+cfg.camera_pov+24,0.f);
+        if(fault==12)put(camera+cfg.camera_pov+24,180.f);
+        if(fault==13)put(camera+cfg.camera_pov+24,std::numeric_limits<float>::quiet_NaN());
+        if(fault==14)put(camera+cfg.camera_pov,std::numeric_limits<float>::infinity());
+        if(fault==15)put(camera+140,std::numeric_limits<float>::quiet_NaN());
+        if(fault==16)put(world_property+0x94,cfg.world_info_offset+8);
+        if(fault==17)put(property+0xd0,cfg.cinematic_mask<<1);
+        if(fault==18)put(world+32,uintptr_t(0));
+        if(fault==19)put(camera+120,local);
+        if(fault==20)put(pc+136,pawn);
+        anchor=unpossessed_anchor;const auto old_stamp=stamp;
+        CHECK(!guard(cfg,read,anchor,stamp,&unpossessed_diagnostic)&&!unpossessed_diagnostic.timestamp_only&&
+            equal_anchor(anchor,unpossessed_anchor)&&stamp==old_stamp);
+    }
+    cfg=unpossessed_config;mem=unpossessed_memory;
+    // A valid same-class Pawn is legal for ordinary possession, but null mode
+    // cannot expand to it or remember the most recent reassociated Pawn.
+    const uintptr_t other_pawn=0x25000,other_pawn_entry=0x26000;const unsigned other_pawn_index=106,other_pawn_name=107;
+    std::memcpy(mem.data()+other_pawn,mem.data()+pawn,0x100);
+    put(other_pawn+8,other_pawn_index);put(other_pawn+12,other_pawn_name);
+    put(objects.data+other_pawn_index*8,other_pawn);put(names.data+other_pawn_name*8,other_pawn_entry);put(other_pawn_entry,other_pawn_name);
+    std::array<wchar_t,64> other_pawn_text{};std::copy_n(L"OtherPawn",10,other_pawn_text.begin());put(other_pawn_entry+8,other_pawn_text);
+    put(camera+128,other_pawn);CHECK(!guard(cfg,read,anchor,stamp,&unpossessed_diagnostic)&&!unpossessed_diagnostic.timestamp_only);
+    put(pc+120,other_pawn);put(other_pawn+120,pc);
+    CHECK(guard(cfg,read,anchor,stamp)&&!anchor.unpossessed&&anchor.pawn==other_pawn);
+    CHECK((anchor.location==std::array<float,3>{1,2,3})&&anchor.eye_height==4&&anchor.base_eye_height==5);
+    put(pc+120,uintptr_t(0));put(other_pawn+120,uintptr_t(0));
+    CHECK(!guard(cfg,read,anchor,stamp,&unpossessed_diagnostic)&&!unpossessed_diagnostic.timestamp_only);
+    // Turnover at either strict timestamp boundary is a hard rejection, even
+    // when the timestamp also advances. Rotation bytes participate in POV equality.
+    for(unsigned fault=0;fault<8;++fault){mem=unpossessed_memory;cfg=unpossessed_config;bool mutated=false;
+        auto changing_unpossessed=[&](void* dest,void const* source,size_t size){const auto address=reinterpret_cast<uintptr_t>(source);const bool ok=read(dest,source,size);
+            const bool at_pov=address==camera+cfg.camera_pov&&size==28;
+            const bool at_time=address==camera+140&&size==4;
+            if(!mutated&&(fault<2?at_time:at_pov)){mutated=true;
+                if(fault==0){put(pc+120,pawn);put(pawn+120,pc);}
+                if(fault==1)put(pc+120,pawn);
+                if(fault==2)put(pawn+120,pc);
+                if(fault==3)put(camera+cfg.camera_pov+12,1u);
+                if(fault==4)put(pc+cfg.cinematic_offset,0u);
+                if(fault==5)put(pawn+cfg.world_info_offset,uintptr_t(0));
+                if(fault==6)put(pawn+16,1u);
+                if(fault==7)put(camera+128,target);
+                put(camera+140,2.f);
+            }return ok;};
+        CHECK(!guard(cfg,changing_unpossessed,anchor,stamp,&unpossessed_diagnostic)&&mutated&&!unpossessed_diagnostic.timestamp_only);
+    }
+    // Final binding turnover after an otherwise complete strict timestamp race
+    // must suppress the startup retry as well.
+    mem=unpossessed_memory;cfg=unpossessed_config;unsigned unpossessed_stamp_reads=0;bool final_mode_changed=false;
+    auto final_turnover=[&](void* dest,void const* source,size_t size){
+        const auto address=reinterpret_cast<uintptr_t>(source);
+        if(address==camera+140&&size==4&&++unpossessed_stamp_reads==2)put(camera+140,2.f);
+        if(!final_mode_changed&&unpossessed_stamp_reads==2&&address==cfg.objects_header){final_mode_changed=true;
+            put(pc+120,pawn);put(pawn+120,pc);}
+        return read(dest,source,size);};
+    CHECK(!guard(cfg,final_turnover,anchor,stamp,&unpossessed_diagnostic)&&final_mode_changed&&
+        unpossessed_diagnostic.reason==GuardReason::final_binding&&!unpossessed_diagnostic.timestamp_only);
+    mem=unpossessed_memory;unpossessed_stamp_reads=0;final_mode_changed=false;
+    std::uint64_t unpossessed_ms=0;unsigned unpossessed_sleeps=0;BoundedGuardDiagnostic bounded_unpossessed{};
+    auto unpossessed_clock=[&](){return unpossessed_ms;};
+    auto unpossessed_pause=[&](unsigned ms){unpossessed_ms+=ms;++unpossessed_sleeps;};
+    CHECK(!bounded_guard(cfg,final_turnover,unpossessed_clock,unpossessed_pause,anchor,stamp,&bounded_unpossessed)&&
+        bounded_unpossessed.attempts==1&&!unpossessed_sleeps&&!bounded_unpossessed.last.timestamp_only);
+    mem=unpossessed_memory;cfg=unpossessed_config;put(pc+120,pawn);put(pawn+120,pc);bool lost_possession=false;
+    auto controlled_turnover=[&](void* dest,void const* source,size_t size){const bool ok=read(dest,source,size);
+        if(!lost_possession&&reinterpret_cast<uintptr_t>(source)==camera+140&&size==4){lost_possession=true;
+            put(pc+120,uintptr_t(0));put(pawn+120,uintptr_t(0));}return ok;};
+    CHECK(!guard(cfg,controlled_turnover,anchor,stamp,&unpossessed_diagnostic)&&lost_possession&&!unpossessed_diagnostic.timestamp_only);
+    mem=unpossessed_memory;cfg=unpossessed_config;unpossessed_stamp_reads=0;
+    auto only_time=[&](void* dest,void const* source,size_t size){
+        if(reinterpret_cast<uintptr_t>(source)==camera+140&&size==4&&++unpossessed_stamp_reads==2)put(camera+140,2.f);
+        return read(dest,source,size);};
+    CHECK(!guard(cfg,only_time,anchor,stamp,&unpossessed_diagnostic)&&unpossessed_diagnostic.timestamp_only&&
+        unpossessed_diagnostic.reason==GuardReason::strict_timestamp_changed);
+    mem=unpossessed_memory;unpossessed_stamp_reads=0;
+    CHECK(bounded_guard(cfg,only_time,unpossessed_clock,unpossessed_pause,anchor,stamp,&bounded_unpossessed)&&
+        bounded_unpossessed.attempts==2&&unpossessed_sleeps==1&&anchor.unpossessed);
+    CHECK(guard(cfg,read,anchor,stamp)&&anchor.unpossessed);
+    CHECK(capture_pawn_binding(cfg,read,binding)&&equal_binding(binding,unpossessed_binding));
     return 0;
 }
 int main(){
@@ -460,5 +584,5 @@ int main(){
         if(reinterpret_cast<uintptr_t>(ptr)==camera+140&&stamp_reads%3==0)milliseconds+=80;return ok;};
     CHECK(!bounded_guard(cfg,slow_race,clock,pause,anchor,stamp,&diagnostic));
     CHECK(diagnostic.attempts==2&&diagnostic.reason==GuardReason::deadline&&unchanged());
-    std::printf("anchor scope/binding/submission and bounded startup timestamp-race diagnostics CPU tests passed\n");return 0;
+    std::printf("anchor scope/binding/submission, unpossessed CameraPOV and bounded startup timestamp-race CPU tests passed\n");return 0;
 }
