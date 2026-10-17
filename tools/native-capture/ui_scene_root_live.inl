@@ -1,4 +1,5 @@
-// Optional structural observation only. Never publishes semantic/UI receipts.
+// Optional structural observation plus a separately gated source transform.
+// Never publishes semantic/UI GPU receipts.
 #include "ui_scene_root_candidate.h"
 #include "ui_scene_batch.h"
 #include "ui_scene_transform_trial_live.inl"
@@ -66,8 +67,9 @@ bool reserve(){
     reserved=true;return true;
 }
 void print(FILE* status){
-    fprintf(status,"ui_scene_root compiled=1 observation_only=1 calls=%llu structural_candidates=%llu rejected=%llu rows=%u dropped=%llu semantic_identity_proven=0 geometry_published=0 source_modified=0 same_thread_execute_counts_only=1 flush_coverage_proven=0\n",
-        calls.load(),candidates.load(),rejected.load(),(std::min)(slots.load(),row_limit),dropped.load());
+    const bool modified=ui_scene_trial_live::modified();
+    fprintf(status,"ui_scene_root compiled=1 observation_only=%u calls=%llu structural_candidates=%llu rejected=%llu rows=%u dropped=%llu semantic_identity_proven=0 geometry_published=0 source_modified=%u same_thread_execute_counts_only=1 flush_coverage_proven=0\n",
+        modified?0u:1u,calls.load(),candidates.load(),rejected.load(),(std::min)(slots.load(),row_limit),dropped.load(),modified?1u:0u);
     for(unsigned i=0;i<(std::min)(slots.load(),row_limit);++i){auto const& r=rows[i];
         fprintf(status,"ui_scene_root_row row=%u invocation=%llu client=%p fcanvas=%p scene=%p caller=%p thread=%u enter=%lld exit=%lld before_valid=%u after_candidate=%u delta_valid=%u before_keys=%u before_items=%u before_vertices=%u simple_ranges=%u added_vertices=%u materials=%u simple_executes=%u material_executes=%u before_matrix=%u after_matrix=%u matrix_restored=%u\n",
             i,r.invocation,reinterpret_cast<void*>(r.client),reinterpret_cast<void*>(r.fcanvas),reinterpret_cast<void*>(r.scene),

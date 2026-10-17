@@ -54,6 +54,15 @@ class FakeBackend:
         return dict(pawn='0x200',controller='0x100',camera='0x400',level='0x300',timestamp=float(self.samples))
 
 class LauncherTests(unittest.TestCase):
+    def test_path_choice_center_requires_explicit_supported_observers(self):
+        guards=dict(MANIFEST,path_choice_center=True,menu_recovery=True,startup_menu=True,ui_observer=True,anchor_observer=True)
+        launcher.settings({},guards)
+        for key in ('menu_recovery','ui_observer','anchor_observer'):
+            with self.subTest(key=key),self.assertRaisesRegex(ValueError,'PathChoice'):
+                launcher.settings({},dict(guards,**{key:False}))
+        with self.assertRaisesRegex(ValueError,'boolean'):
+            launcher.settings({},dict(guards,path_choice_center='true'))
+
     def test_prelaunch_selftest_option_requires_boolean_and_owned_startup(self):
         for value in (1,'true',None):
             with self.assertRaisesRegex(ValueError,'boolean'):

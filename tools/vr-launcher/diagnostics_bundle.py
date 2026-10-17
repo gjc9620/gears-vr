@@ -21,18 +21,20 @@ SESSION_NAME = re.compile(r'continuous-stereo-\d+-\d{8}-\d{6}-[a-f0-9]{8}\.json\
 FLAGS = set(('startup_menu anchor_observer ui_observer outage_diagnostics image_ticket_diagnostics shutdown_diagnostics '
              'ui_hud_plane gpu_snapshot graphics_startup_lock graphics_menu_lock menu_recovery cinematic_camera '
              'world_recovery hud_size_control crosshair_assignment_observer movie_display hud_layout_control '
-             'camera_distance_control startup_selftests_prelaunch').split())
+             'camera_distance_control startup_selftests_prelaunch path_choice_center').split())
 SESSION_FIELDS = set(('schema phase passed native_started native_stop_signaled native_cleanup_verified entry_restore_verified '
                       'xr_stop_signaled xr_exit_code startup_cancelled startup_panel_submitted preflight_frames '
                       'operator_motion_requested simulation_not_physical_tracking physical_tracking_verified '
-                      'hud_horizontal_fov_degrees camera_closer_metres hud_element_scale hud_center_scale').split())
+                      'hud_horizontal_fov_degrees camera_closer_metres hud_element_scale hud_center_scale path_choice_center_enabled').split())
 CONFIG_FIELDS = set(('schema stereo_units_per_metre hud_horizontal_fov_degrees camera_closer_metres '
                      'hud_element_scale hud_center_scale launcher_language').split()) | FLAGS
-ERROR_FIELDS = ('error', 'native_cleanup_error', 'xr_cleanup_error', 'xr_forced_cleanup_reason')
+ERROR_FIELDS = ('error', 'native_cleanup_error', 'xr_cleanup_error', 'xr_forced_cleanup_reason',
+                'path_choice_center_close_error', 'path_choice_center_cleanup_error')
 COUNTERS = set(('published epoch_submit_total capture_attempts capture_skipped busy active pending retained world_generation '
                 'world_handoff_commits anchor_submission_matched anchor_submission_rejected vr_dof_capture_rejected '
                 'width height source_width source_height game_width game_height eye_width eye_height gpu_width gpu_height '
-                'ticket_rejected rectangle_rejected').split())
+                'ticket_rejected rectangle_rejected path_trial_compiled path_trial_active path_trial_begun '
+                'path_trial_restored path_trial_rejected path_trial_failed path_trial_nested path_trial_load_rejected').split())
 CSV_FIELDS = set(('frame predicted_time session_state should_render view_flags head_flags head_x head_y head_z qx qy qz qw '
                   'left_x left_y left_z right_x right_y right_z left_angle_left left_angle_right left_angle_up left_angle_down '
                   'left_qx left_qy left_qz left_qw right_qx right_qy right_qz right_qw right_angle_left right_angle_right '
@@ -308,6 +310,8 @@ def _events(rows):
 
 def _telemetry(row):
     result = _pick(row, ('event', 'observed_ns', 'phase', 'menu_mode'))
+    if isinstance(row.get('event'),str) and row['event'].startswith('path_center_'):
+        result.update(_pick(row,('reason','world_generation','duration_ms','shift_x','shift_y')))
     result['native'] = _pick(row.get('native'), COUNTERS | {
         'world_handoff_phase', 'telemetry_present_calls', 'telemetry_present_tests', 'telemetry_present_failures',
         'telemetry_qpc', 'telemetry_qpc_frequency'}, numeric=True)

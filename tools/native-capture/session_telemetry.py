@@ -17,7 +17,8 @@ NATIVE_FIELDS = (
     'vr_dof_capture_rejected', 'vr_dof_no_site', 'vr_dof_zero_proved',
     'telemetry_schema', 'telemetry_qpc', 'telemetry_qpc_frequency',
     'telemetry_present_enabled', 'telemetry_present_calls', 'telemetry_present_tests',
-    'telemetry_present_failures')
+    'telemetry_present_failures', 'path_trial_compiled', 'path_trial_active', 'path_trial_begun',
+    'path_trial_restored', 'path_trial_rejected', 'path_trial_failed', 'path_trial_nested', 'path_trial_load_rejected')
 XR_FIELDS = ('frame', 'predicted_time', 'session_state', 'should_render', 'view_flags',
              'head_flags', 'stereo_published', 'stereo_source')
 RATE_DEFINITIONS = {

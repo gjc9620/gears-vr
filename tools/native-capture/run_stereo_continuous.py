@@ -94,6 +94,8 @@ def checked_identity(control,expected,allow_exited=False):
 
 def validate_ui_hud_plane(args):
     camera_closer_metres(args)
+    if getattr(args,'path_choice_center',False) and not all(getattr(args,k,False) for k in ('menu_recovery','ui_observer','anchor_observer')):
+        raise ValueError('PathChoice centering requires menu/UI/anchor observers')
     if getattr(args,'crosshair_assignment_observer',False) and (not all(
             getattr(args,key,False) for key in ('ui_observer','anchor_observer')) or getattr(args,'origin_trial',False)):
         raise ValueError('Crosshair assignment observer requires continuous UI/anchor observers and cannot use origin trial')
@@ -385,7 +387,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
     state.update({key:getattr(args,key) for key in ('hud_element_scale','hud_center_scale') if getattr(args,key,None) is not None})
     state['diagnostics_artifacts']=getattr(args,'diagnostics_artifacts',{})
-    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None
+    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None
+    state['path_choice_center_enabled']=bool(getattr(args,'path_choice_center',False))
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
     out_path=prefix.with_suffix('.stdout.txt');err_path=prefix.with_suffix('.stderr.txt')
@@ -501,6 +504,10 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         started_qpc=state['native_started_qpc'],baseline=adapter.baseline,observe=adapter.observe,
                         prepare=adapter.prepare,signal=control.signal,identity=control.identity,enabled=True,
                         probe_interval=2.0,include_pawn_changes=getattr(args,'crosshair_assignment_observer',False))
+                if getattr(args,'path_choice_center',False):
+                    from path_choice_center_monitor import PathChoiceCenterMonitor
+                    path_center=PathChoiceCenterMonitor(args.build_dir.resolve()/'path-choice-trial.ini',
+                        state['game_identity'],state['owner_identity'],state['native_started_qpc'],control.identity)
                 while child.poll() is None:
                     observe_first_stereo(native_started)
                     if cancel_requested and cancel_requested():
@@ -509,6 +516,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     if status and status.get('phase')!='running':break
                     checked_identity(control,state['game_identity'])
                     if menu_monitor:menu_monitor.poll()
+                    if path_center:
+                        for event in path_center.poll(status):
+                            telemetry.event(event['event'],**{key:value for key,value in event.items() if key!='event'})
                     telemetry.sample(status,state['phase'],menu_monitor.last_menu_mode if menu_monitor else None)
                     if world_monitor:
                         for event in world_monitor.poll(status,menu_monitor.last_menu_mode if menu_monitor and menu_monitor.last else None):
@@ -521,6 +531,10 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             except Exception as error:
                 state['error']=repr(error)
             finally:
+                if path_center:
+                    try:path_center.close()
+                    except Exception as error:state['path_choice_center_close_error']=repr(error)
+                    if path_center.cleanup_error:state['path_choice_center_cleanup_error']=path_center.cleanup_error
                 if world_monitor:
                     try:world_monitor.close()
                     except Exception as error:state['world_monitor_close_error']=repr(error)
@@ -609,6 +623,7 @@ def main(argv=None):
     start.add_argument('--cinematic-camera',action='store_true')
     start.add_argument('--movie-display',action='store_true',help='Opt-in attested movie progress display; requires owned menu recovery')
     start.add_argument('--ui-observer',action='store_true')
+    start.add_argument('--path-choice-center',action='store_true',help='Opt-in authenticated PathChoice source centering; requires supported native build')
     start.add_argument('--ui-hud-plane',action='store_true')
     start.add_argument('--crosshair-assignment-observer',action='store_true')
     start.add_argument('--hud-horizontal-fov-degrees',type=float)

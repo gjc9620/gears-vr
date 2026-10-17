@@ -21,21 +21,25 @@ bool certify_code(){
     }return true;
 }
 void disable(){std::atomic_store(&selected,std::shared_ptr<Active const>{});}
+bool modified(){return begun.load()!=0;}
 void entering(){if(active_canvas){++nested;++failed;disable();}}
 bool current(trial::Config const& c){return c.pid==GetCurrentProcessId()&&c.base==base&&
     c.started_qpc==static_cast<uint64_t>(session_started_qpc)&&c.world_generation==committed_world_generation.load();}
 void poll(wchar_t const* path,FILE* log){
     const auto tick=GetTickCount64();if(tick-last_poll<200)return;last_poll=tick;
     WIN32_FILE_ATTRIBUTE_DATA file{};
-    if(!GetFileAttributesExW(path,GetFileExInfoStandard,&file)||
-       (file.dwFileAttributes&(FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_REPARSE_POINT))||
+    if(!GetFileAttributesExW(path,GetFileExInfoStandard,&file)){
+        if(GetLastError()==ERROR_FILE_NOT_FOUND){disable();seen_file={};}
+        return;
+    }
+    if((file.dwFileAttributes&(FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_REPARSE_POINT))||
        (file.ftLastWriteTime.dwLowDateTime==seen_file.dwLowDateTime&&file.ftLastWriteTime.dwHighDateTime==seen_file.dwHighDateTime))return;
-    seen_file=file.ftLastWriteTime;
+    const FILETIME previous_file=seen_file;seen_file=file.ftLastWriteTime;
     try {
         if(file.nFileSizeHigh||!file.nFileSizeLow||file.nFileSizeLow>262144)throw 1;
-        FILE* input{};if(_wfopen_s(&input,path,L"rb")||!input)throw 2;
+        FILE* input{};if(_wfopen_s(&input,path,L"rb")||!input){seen_file=previous_file;return;}
         struct Close {FILE* f;~Close(){fclose(f);}} close{input};std::string text(file.nFileSizeLow,'\0');
-        if(fread(text.data(),1,text.size(),input)!=text.size()||fgetc(input)!=EOF)throw 3;
+        if(fread(text.data(),1,text.size(),input)!=text.size()||fgetc(input)!=EOF){seen_file=previous_file;return;}
         trial::Config c;if(!trial::parse(text,c)||c.nonce<=loaded_nonce.load()||!current(c))throw 4;
         FILETIME creation{},exit{},kernel{},user{};
         if(!GetProcessTimes(GetCurrentProcess(),&creation,&exit,&kernel,&user)||
@@ -78,6 +82,7 @@ void progress(FILE* out){auto request=std::atomic_load(&selected);
         loaded_nonce.load(),request&&GetTickCount64()<request->expires?1u:0u,begun.load(),restored.load(),rejected.load(),failed.load(),nested.load(),load_rejected.load(),before_depth.load(),before_capacity.load(),last_shift_y.load());}
 #else
 void entering(){}
+bool modified(){return false;}
 void poll(wchar_t const*,FILE*){}
 void progress(FILE*){}
 template<class Candidate,class Original> uintptr_t invoke(Candidate const&,Original original){return original();}

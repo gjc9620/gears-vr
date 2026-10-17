@@ -380,7 +380,7 @@ class ContinuousTests(unittest.TestCase):
             self.assertIsNone(runner.read_session_status(path,124,0))
             self.assertEqual(runner.read_session_status(path,123,0)['phase'],'stopped')
 
-    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False,hud_layout=None):
+    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False,hud_layout=None,path_center=False):
         with tempfile.TemporaryDirectory() as folder:
             root=pathlib.Path(folder);build=root/'native';build.mkdir()
             (build/'capture-status.txt').write_text('capturing pid=123 stopped disable_status=0 active=0')
@@ -393,6 +393,8 @@ class ContinuousTests(unittest.TestCase):
             if ui_hud_plane:args.ui_hud_plane=True;args.ui_observer=True;args.anchor_observer=True
             if hud_layout:args.hud_element_scale,args.hud_center_scale=hud_layout
             if startup_menu:args.startup_menu_window=789
+            if path_center:
+                args.path_choice_center=True;args.menu_recovery=True;args.ui_observer=True;args.anchor_observer=True
             if world_recovery:
                 args.world_recovery=True;args.anchor_observer=True;args.ui_observer=True
                 args.cinematic_camera=True;args.native_expected_sha256='a'*64
@@ -414,8 +416,10 @@ class ContinuousTests(unittest.TestCase):
                 stdout.write(json.dumps(evidence)+'\n')
                 if startup_menu and panel_submitted:
                     stdout.write(json.dumps(dict(startup_menu_first_frame=True,end_frame_succeeded=True,panel_counts_as_stereo=False))+'\n')
-                    stdout.write(json.dumps(dict(startup_menu_handoff=True,end_frame_succeeded=True,ticketed_projection_rendered=True,one_way=True))+'\n')
+                    stdout.write(json.dumps(dict(startup_menu_handoff=True,end_frame_succeeded=True,ticketed_projection_rendered=True,one_way=not path_center))+'\n')
                     stdout.write(json.dumps(dict(startup_menu_evidence=True,stereo_handoff=True,startup_quad_layers=10))+'\n')
+                if path_center:
+                    stdout.write(json.dumps(dict(menu_recovery_evidence=True,panel_counts_as_stereo=False))+'\n')
                 stdout.write(json.dumps(dict(continuous_owner_evidence=True,owner_pid=os.getpid(),owner_creation_time=identity(os.getpid())['creation_time'],owner_lost=False))+'\n')
                 stdout.flush();return child
             def native(command,**kwargs):
@@ -429,6 +433,7 @@ class ContinuousTests(unittest.TestCase):
                             monotonic_ns=runner.time.perf_counter_ns()))+'\n')
                 return types.SimpleNamespace(returncode=0)
             stages=[dict(terminal(),phase='running'),dict(terminal(),phase='stop_requested'),terminal('stopped' if clean else 'incomplete')]
+            if path_center:stages.insert(1,dict(terminal(),phase='running'))
             checks=0
             def cancelled():
                 nonlocal checks
@@ -471,6 +476,28 @@ class ContinuousTests(unittest.TestCase):
                 self.assertIs(monitor.call_args.kwargs['include_pawn_changes'],enabled)
                 self.assertIs(monitor.call_args.kwargs['baseline'],adapter.return_value.baseline)
                 monitor.return_value.close.assert_called_once()
+
+    def test_path_choice_monitor_is_opt_in_and_closes_before_session_cleanup(self):
+        import path_choice_center_monitor,menu_display_monitor
+        for enabled in (False,True):
+            with self.subTest(enabled=enabled),mock.patch.object(path_choice_center_monitor,'PathChoiceCenterMonitor') as center, \
+                    mock.patch.object(menu_display_monitor,'MenuDisplayMonitor'):
+                center.return_value.poll.return_value=[dict(event='path_center_lease_published',shift_y=374)]
+                center.return_value.cleanup_error=None
+                code,state,*_=self.run_mock(path_center=enabled,startup_menu=enabled)
+                self.assertEqual(code,0);self.assertIs(state['path_choice_center_enabled'],enabled)
+                if enabled:
+                    center.assert_called_once();center.return_value.poll.assert_called_once()
+                    center.return_value.close.assert_called_once()
+                    self.assertEqual(center.call_args.args[3],'1234')
+                else:center.assert_not_called()
+
+    def test_path_choice_dependency_validation_precedes_process_launch(self):
+        args=types.SimpleNamespace(path_choice_center=True,menu_recovery=True,ui_observer=True,anchor_observer=True)
+        runner.validate_ui_hud_plane(args)
+        for key in ('menu_recovery','ui_observer','anchor_observer'):
+            with self.subTest(key=key),self.assertRaisesRegex(ValueError,'PathChoice'):
+                runner.validate_ui_hud_plane(types.SimpleNamespace(**dict(vars(args),**{key:False})))
 
     def test_startup_stage_timings_distinguish_running_from_first_stereo(self):
         _,state,*_=self.run_mock()
