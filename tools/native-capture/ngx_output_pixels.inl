@@ -5,6 +5,9 @@ uint64_t world{},ticket{},eval_sequence{},copy_sequence{},execute_sequence{},byp
 thread_local int active_eval=-1,pending_eval=-1;
 struct GapReceipt {bool boundary{},copy{};int pending{-1};long long boundary_qpc{},copy_qpc{};uintptr_t caller{},command{},structure{},copy_caller{},copy_list{},source{},destination{};unsigned thread{},copy_thread{};uint64_t world{},ticket{};};
 GapReceipt gap;
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+SuppressionReceipt suppression;
+#endif
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
 gears_ngx_delayed::Gate delayed;
 void quarantine(unsigned);
@@ -72,6 +75,9 @@ EvalScope::EvalScope(bool owned,uintptr_t caller,uintptr_t command,const void* s
     if(count&&(!slots[count-1].normal||!slots[count-1].copy_seen||!same_owner(slots[0].before.ownership,before.ownership))){quarantine(association_ambiguous);return;}
     index=int(count++);auto& s=slots[unsigned(index)];s.before=before;s.sequence=eval_sequence;s.caller=caller;s.command=command;
     s.structure=reinterpret_cast<uintptr_t>(structure);s.thread=GetCurrentThreadId();s.entry=now();s.active=true;active_eval=index;
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+    s.epoch=delayed.epoch;
+#endif
 }
 EvalScope::~EvalScope(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(index>=0){auto& s=slots[unsigned(index)];s.after=eval_sample(s.structure,true);s.exit=now();s.result=raw_result;s.active=false;
@@ -130,10 +136,54 @@ int prepare_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATI
     if(!backend().prepare(unsigned(selected),s)){quarantine(prepare_failed);backend().release(unsigned(selected));s.released=true;return -1;}
     s.prepared=true;return selected;
 }
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+bool suppress_first_copy(int selected,ID3D12GraphicsCommandList* list,UINT x,UINT y,UINT z,const D3D12_BOX* box,uintptr_t caller){
+    if(selected!=0)return false;auto& s=slots[0];
+    // prepare() already certified same-device DIRECT list, supported DEFAULT
+    // heaps/resources, full extent/format, held identities and readback lifetime.
+    // This experiment admits only a completed normal first Eval, never an
+    // in-Eval copy whose eventual normal return is still unknown.
+    const auto current=eval_sample(s.structure,true);const auto id=backend().list_identity(list);const auto ref=backend().list_ref(id);
+    const bool proved=!suppression.valid&&enabled&&!stopped&&!failure&&recording.load()&&current_owner(s)&&s.prepared&&!s.released&&s.normal&&!s.active&&
+        active_eval<0&&pending_eval==0&&count==1&&s.sequence==1&&s.copy_sequence==1&&!s.copy_seen&&!s.life.appended&&!s.life.failure&&
+        delayed.accepted==1&&delayed.armed&&delayed.epoch_valid&&delayed.selected&&!delayed.closed&&!delayed.finished&&!delayed.first_invalid.valid&&
+        delayed.stable==32&&delayed.rows==1&&!delayed.active&&s.epoch==delayed.epoch&&s.before.ownership.world==delayed.world&&delayed.last_ticket==s.before.ownership.ticket&&
+        s.before.ownership.world==delayed.selected_world&&s.before.ownership.ticket==delayed.selected_ticket&&
+        s.after.handle==delayed.handle&&s.after.parameters==delayed.parameters&&
+        delayed.create[2]==2560&&delayed.create[3]==1080&&
+        current.slots_mask==3&&current.fields_mask==0x7ffff&&same_owner(s.after.ownership,current.ownership)&&current.handle==s.after.handle&&
+        current.parameters==s.after.parameters&&current.resources==s.after.resources&&current.values==s.after.values&&
+        caller==0x1c6093&&!x&&!y&&!z&&!box&&s.source.Type==D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX&&s.destination.Type==D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX&&
+        !s.source.SubresourceIndex&&!s.destination.SubresourceIndex&&textures_supported(s.source_desc,s.destination_desc)&&
+        s.source_desc.width==2560&&s.source_desc.height==1080&&s.source_desc.format==26&&
+        s.destination_desc.width==2560&&s.destination_desc.height==1080&&s.destination_desc.format==26&&
+        id&&id==s.life.held_identity&&id==s.life.list.identity&&ref.identity==id&&ref.generation&&ref.generation==s.life.list.generation;
+    if(!proved){quarantine(preserve_pair_unproved);return false;}
+    suppression.valid=suppression.suppressed=true;s.original_suppressed=true;
+    suppression.epoch=s.epoch;suppression.world=s.before.ownership.world;suppression.ticket=s.before.ownership.ticket;
+    suppression.eval_sequence=s.sequence;suppression.copy_sequence=s.copy_sequence;suppression.generation=s.life.list.generation;suppression.qpc=now();
+    suppression.ordinal=1;suppression.thread=GetCurrentThreadId();suppression.caller=caller;
+    suppression.source_type=unsigned(s.source.Type);suppression.destination_type=unsigned(s.destination.Type);
+    suppression.source_subresource=s.source.SubresourceIndex;suppression.destination_subresource=s.destination.SubresourceIndex;
+    suppression.x=x;suppression.y=y;suppression.z=z;suppression.box_null=box==nullptr;
+    suppression.source_raw=reinterpret_cast<uintptr_t>(s.source.pResource);suppression.destination_raw=reinterpret_cast<uintptr_t>(s.destination.pResource);
+    suppression.source_canonical=s.source_desc.canonical;suppression.destination_canonical=s.destination_desc.canonical;
+    suppression.list_raw=reinterpret_cast<uintptr_t>(list);suppression.list_canonical=id;
+    suppression.width=s.source_desc.width;suppression.height=s.source_desc.height;suppression.format=s.source_desc.format;return true;
+}
+#endif
 void copy_passthrough(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,UINT x,UINT y,UINT z,
     const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box,uintptr_t caller,CopyFn forward){
     auto lock=execution_lock();const int selected=prepare_copy(list,destination,x,y,z,source,box,caller);
-    try{forward(list,destination,x,y,z,source,box);}catch(...){if(selected>=0){quarantine(copy_exception);backend().release(unsigned(selected));slots[unsigned(selected)].released=true;}throw;}
+    bool omitted=false;
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+    omitted=suppress_first_copy(selected,list,x,y,z,box,caller);
+    if(selected>=0&&!omitted)slots[unsigned(selected)].original_forwarded=true;
+#endif
+    try{if(!omitted)forward(list,destination,x,y,z,source,box);}catch(...){if(selected>=0){quarantine(copy_exception);backend().release(unsigned(selected));slots[unsigned(selected)].released=true;}throw;}
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+    if(selected>=0&&!omitted)slots[unsigned(selected)].original_returned=true;
+#endif
     if(selected<0)return;auto& s=slots[unsigned(selected)];
     D3D12_TEXTURE_COPY_LOCATION src{},dst{};
     if(!current_owner(s)||!safe_copy(&src,source,sizeof(src))||!safe_copy(&dst,destination,sizeof(dst))||
@@ -143,7 +193,13 @@ void copy_passthrough(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_L
     // location. Mark appended BEFORE the extra call: an exception quarantines
     // the storage even if a driver recorded a command before unwinding.
     s.life.appended=true;s.copy_seen=true;s.prepared=false;
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+    if(omitted)suppression.readback_started=true;
+#endif
     try{backend().append(unsigned(selected),s,forward);}catch(...){quarantine(append_exception);throw;}
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+    s.readback_returned=true;if(omitted)suppression.readback_returned=true;
+#endif
     if(pending_eval==selected)pending_eval=-1;publish_pair();
 }
 unsigned prepare_execute(ID3D12CommandQueue* queue,UINT n,ID3D12CommandList* const* members){
@@ -175,6 +231,9 @@ HRESULT reset_passthrough(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator
 }
 bool enable(FILE* file){if(initialized){fprintf(file,"ngx_output_pixels_identity enabled=1 rejected_reinitialization=1\n");return false;}
     enabled=false;stopped=false;published=false;slots={};count=failure=0;world=ticket=eval_sequence=copy_sequence=execute_sequence=0;
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+    suppression={};
+#endif
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
     delayed={};
 #endif
@@ -222,6 +281,13 @@ void poll(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
 }
 void stop(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);stopped=true;for(auto& s:slots)s.life.stop();backend().close();}
 void print_control(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+    fprintf(file,"ngx_output_preserve_pair_input enabled=1 diagnostic_only=1 omission_count=%u preserve_suppressed=%u preserve_original_forwarded=%u preserve_readback_started=%u preserve_readback_returned=%u preserve_epoch=%llu preserve_world=%llu preserve_ticket=%llu preserve_ordinal=%u preserve_eval_sequence=%llu preserve_copy_sequence=%llu preserve_qpc=%lld preserve_thread=%u preserve_caller=%llx preserve_source_raw=%llx preserve_destination_raw=%llx preserve_source_canonical=%llx preserve_destination_canonical=%llx preserve_list_raw=%llx preserve_list_canonical=%llx preserve_generation=%llu preserve_source_type=%u preserve_destination_type=%u preserve_source_subresource=%u preserve_destination_subresource=%u preserve_x=%u preserve_y=%u preserve_z=%u preserve_box_null=%u preserve_width=%llu preserve_height=%u preserve_format=%u causal_pixels_verified=0 sr_verified=0 temporal_history_verified=0\n",
+        unsigned(suppression.valid),unsigned(suppression.suppressed),unsigned(suppression.original_forwarded),unsigned(suppression.readback_started),unsigned(suppression.readback_returned),
+        suppression.epoch,suppression.world,suppression.ticket,suppression.ordinal,suppression.eval_sequence,suppression.copy_sequence,suppression.qpc,suppression.thread,suppression.caller,
+        suppression.source_raw,suppression.destination_raw,suppression.source_canonical,suppression.destination_canonical,suppression.list_raw,suppression.list_canonical,suppression.generation,
+        suppression.source_type,suppression.destination_type,suppression.source_subresource,suppression.destination_subresource,suppression.x,suppression.y,suppression.z,unsigned(suppression.box_null),suppression.width,suppression.height,suppression.format);
+#endif
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
     fprintf(file,"ngx_output_delayed enabled=1 epoch=%llu epoch_valid=%u epoch_world=%llu handle=%llx parameters=%llx create=%u,%u,%u,%u,%u,%u,%u accepted=%llu rejected=%llu rejection_reason=%u nonce=%llu armed=%u stable_pairs=%u required_pairs=32 resets=%llu deadline_qpc=%llu selected=%u selected_world=%llu selected_ticket=%llu pair_closed=%u gpu_saved=%u terminal_reason=%u complete=1\n",
         delayed.epoch,unsigned(delayed.epoch_valid),delayed.world,delayed.handle,delayed.parameters,delayed.create[0],delayed.create[1],delayed.create[2],delayed.create[3],delayed.create[4],delayed.create[5],delayed.create[6],
@@ -245,6 +311,9 @@ void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mut
         unsigned(gap.copy),gap.copy_qpc,static_cast<unsigned long long>(gap.copy_caller),static_cast<unsigned long long>(gap.copy_list),static_cast<unsigned long long>(gap.source),static_cast<unsigned long long>(gap.destination),gap.copy_thread);
     fprintf(file,"ngx_output_pixels enabled=1 active=%u world=%llu ticket=%llu slots=%u limit=2 failure=%u match_request_published=%u bypassed=%llu limited=%llu unrelated=%llu barriers_added=0 same_original_list=1 matching_xr_snapshot_verified=0 logical_eye_verified=0 quad_pixels_verified=0 temporal_history_verified=0 sr_verified=0\n",unsigned(enabled),world,ticket,count,failure,unsigned(published),bypassed,limited,unrelated);
     for(unsigned i=0;i<count;++i){auto const& s=slots[i];auto const& v=s.before.values;
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+        fprintf(file,"ngx_output_copy_forward row=%u original_forwarded=%u original_returned=%u original_suppressed=%u readback_returned=%u\n",i,unsigned(s.original_forwarded),unsigned(s.original_returned),unsigned(s.original_suppressed),unsigned(s.readback_returned));
+#endif
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
         gears_ngx_route::Row diagnostic;diagnostic.evaluate=true;ngx_route_observer::print_sample(file,diagnostic,i,"selected_before",s.before);ngx_route_observer::print_sample(file,diagnostic,i,"selected_after",s.after);
 #endif

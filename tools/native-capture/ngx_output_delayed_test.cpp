@@ -154,4 +154,10 @@ void invalidation_receipt_cases(){using namespace ngx_output_pixels;using gears_
     delayed_reset();arm();frame(100);ticket(101);end_ticket(0,false,{true,false,false,1,0xface});assert(!delayed.first_invalid.valid); // Waiting resets do not consume receipt storage.
 }
 }
-int main(){pure_requests();worker_requests();wrapper_cases();concurrent_cases();create_attestation_cases();invalidation_receipt_cases();std::puts("NgxOutputDelayedTest passed (pure request/gate and actual wrappers; fake GPU, no game)");}
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_TEST_INCLUDED)
+#define main ngx_preserve_delayed_regression_main
+#endif
+int main(){pure_requests();worker_requests();wrapper_cases();concurrent_cases();create_attestation_cases();invalidation_receipt_cases();std::puts("NgxOutputDelayedTest passed (pure request/gate and actual wrappers; fake GPU, no game)");return 0;}
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_TEST_INCLUDED)
+#undef main
+#endif

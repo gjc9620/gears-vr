@@ -10,11 +10,11 @@ bool color_copy_diagnostics=true;
 namespace ngx_output_pixels {
 struct FakeBackend final:Backend {
     bool typed=true,same_device=true,signal_ok=true,complete=true,start_ok=true,publish_ok=true,unknown_identity{},removed{};
-    unsigned prepared{},appended{},released{},mapped{},signals{},publications{};unsigned format=26,width=2560;
+    unsigned prepared{},appended{},released{},mapped{},signals{},publications{};unsigned format=26,width=2560,height=1080,destination_format=26,destination_width=2560,destination_height=1080;
     uint64_t generation=4;uintptr_t queue_id=0x900;
     bool start()override{return start_ok;}
     bool prepare(unsigned,Slot& s)override{++prepared;
-        s.source_desc={0x101,width,1080,format,3,1,1,1,0};s.destination_desc={0x102,2560,1080,26,3,1,1,1,0};
+        s.source_desc={0x101,width,height,format,3,1,1,1,0};s.destination_desc={0x102,destination_width,destination_height,destination_format,3,1,1,1,0};
         s.life.list={reinterpret_cast<uintptr_t>(s.raw_list),0x700,generation};s.life.held_identity=0x700;
         return typed&&same_device&&textures_supported(s.source_desc,s.destination_desc);}
     void append(unsigned,Slot& s,CopyFn forward)override{++appended;D3D12_TEXTURE_COPY_LOCATION own{};own.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;

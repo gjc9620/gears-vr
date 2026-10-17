@@ -4,6 +4,11 @@
 #include "frame_link.h"
 #include "ngx_route_observer.h"
 #include "death_hdr_pixels.h"
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+#if !defined(GEARS_NGX_OUTPUT_PIXELS) || !GEARS_NGX_OUTPUT_PIXELS || !defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) || !GEARS_NGX_OUTPUT_DELAYED_CAPTURE || !defined(GEARS_NGX_ROUTE_OBSERVER) || !GEARS_NGX_ROUTE_OBSERVER
+#error GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT requires OUTPUT_PIXELS, OUTPUT_DELAYED_CAPTURE and ROUTE_OBSERVER
+#endif
+#endif
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
 #include "ngx_output_delayed_gate.h"
 #endif
@@ -13,14 +18,26 @@ using ExecuteFn=void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*,UINT,ID3D12CommandL
 using ResetFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*,ID3D12PipelineState*);
 struct PresentContext {bool known{},linked{},contaminated{};unsigned rejection{};uintptr_t buffer{};};
 #if defined(GEARS_NGX_OUTPUT_PIXELS) && GEARS_NGX_OUTPUT_PIXELS
-enum Failure:unsigned {none,association_ambiguous=32,eval_changed,eval_exception,nested_eval,typed_mismatch,prepare_failed,copy_exception,append_exception,stopped_incomplete};
+enum Failure:unsigned {none,association_ambiguous=32,eval_changed,eval_exception,nested_eval,typed_mismatch,prepare_failed,copy_exception,append_exception,stopped_incomplete,preserve_pair_unproved};
 struct Slot {
     gears_ngx_route::Sample before{},after{};uint64_t sequence{},copy_sequence{},result{};uintptr_t caller{},command{},structure{};unsigned thread{};
     long long entry{},exit{},copy_qpc{},execute_order{};unsigned execute_member{};bool normal{},active{},copy_seen{},inside_eval{},prepared{},released{};
     ID3D12GraphicsCommandList* raw_list{};D3D12_TEXTURE_COPY_LOCATION source{},destination{};
     gears_death_hdr_pixels::Texture source_desc{},destination_desc{};gears_death_hdr_pixels::Lifetime life{};
     HRESULT hr{E_PENDING},reset_hr{E_PENDING};long long reset_qpc{};wchar_t path[MAX_PATH]{};
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+    uint64_t epoch{};bool original_forwarded{},original_returned{},original_suppressed{},readback_returned{};
+#endif
 };
+#if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
+struct SuppressionReceipt {
+    bool valid{},suppressed{},original_forwarded{},readback_started{},readback_returned{};
+    uint64_t epoch{},world{},ticket{},eval_sequence{},copy_sequence{},generation{};long long qpc{};
+    unsigned ordinal{},thread{},source_type{},destination_type{},source_subresource{},destination_subresource{},x{},y{},z{};bool box_null{};
+    uintptr_t caller{},source_raw{},destination_raw{},source_canonical{},destination_canonical{},list_raw{},list_canonical{};
+    uint64_t width{};unsigned height{},format{};
+};
+#endif
 inline bool textures_supported(gears_death_hdr_pixels::Texture const& a,gears_death_hdr_pixels::Texture const& b){
     return gears_death_hdr_pixels::supported(a)&&gears_death_hdr_pixels::supported(b)&&a.canonical!=b.canonical&&a.width==b.width&&a.height==b.height;
 }
