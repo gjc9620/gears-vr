@@ -25,7 +25,8 @@ uint64_t __fastcall control_original_bind(const uint16_t* desc,void* view,void* 
 void control_bind(){fake_caller=mode==50?0xd831c9:0xd831c8;
     assert(dlss_route_observer::hook_bind(control_descriptor(),expected_view,control_shader.data(),0,0)==0xfedcba9876543210ull);}
 void control_reset(){
-    reset();dlss_output_control::store={};dlss_output_control::attested=true;dlss_output_control::active_key={};
+    reset();dlss_output_control::first_exit_failure={};dlss_output_control::exit_failure_claimed=false;dlss_output_control::exit_failure_ready=false;
+    dlss_output_control::store={};dlss_output_control::attested=true;dlss_output_control::active_key={};
     dlss_output_control::current_output=nullptr;dlss_output_control::current_quad=nullptr;
     source_available=true;source_width=2560;source_format=26;control_forward_count=control_draw_count=control_bind_calls=0;mode=10;
     dlss_route_observer::input_attested=true;dlss_route_observer::original_bind=control_original_bind;
@@ -108,6 +109,12 @@ uint32_t test_control_output(){
     if(selected_mode==12)controlled_quad(selected_mode);
     if(selected_mode==13)throw std::runtime_error("output after draw");
     if(selected_mode==22)put(views,0x48,gears_dlss_route::Float4{0,0,1279,1080});
+    // Native d83d5b tail-like transitions happen after draw/quad completion;
+    // they must remain OutputExit rejection causes, never diagnostic admission.
+    if(selected_mode==56)put(views,uintptr_t(expected_view)-reinterpret_cast<uintptr_t>(views.data())+0x3e8,uint32_t(1));
+    if(selected_mode==57)put(context,0x768+5*8,uintptr_t(0x888));
+    if(selected_mode==58)dlss_output_control::current_output->binding_capture.descriptor_address=1;
+    if(selected_mode==59)++fake_list_generation;
     assert(!dlss_output_control::publication(9,7)); // Output/consume are still incomplete.
     return 0xfedcba98u;
 }
@@ -120,6 +127,7 @@ void run_control_cases(){
     assert(!gears_final_transfer::eligible_eye_target(0xd83cbf,true,7,2560,1080,binding,true));
     control_reset();{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}
     assert(dlss_output_control::publication(9,7)&&control_forward_count==2&&control_draw_count==2);
+    assert(!dlss_output_control::exit_failure_ready.load(std::memory_order_acquire));
     assert(control_bind_calls==2&&dlss_output_control::last_allowed.proof.eyes[0].binding.slot==5&&
         dlss_output_control::last_allowed.proof.eyes[0].binding.highwater==10);
     assert(dlss_output_control::other_setters==4&&setter_calls==6); // Two preceding setters plus the sole target in each eye.
@@ -154,6 +162,27 @@ void run_control_cases(){
     control_reset();{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);
         put(control_public,0x138,uint32_t(3));put(control_public,0x38+3*8,uintptr_t(0x777));eye(1);}
     assert(!dlss_output_control::publication(9,7)&&control_draw_count==2);
+    for(unsigned failure:{56u,57u,58u,59u}){
+        control_reset();mode=failure;
+        {dlss_output_control::ConsumeScope consume(9,7,true);eye(0);}
+        assert(!dlss_output_control::publication(9,7)&&dlss_output_control::exit_failure_ready.load(std::memory_order_acquire));
+        auto first=dlss_output_control::first_exit_failure;
+        assert(first.valid&&!first.failed&&!first.nested&&!first.exception&&first.setter_proved&&first.quad_complete&&first.draw_candidate&&first.draw_complete);
+        assert(first.setters==1&&first.quads==1&&first.draws==1&&first.stable&&first.descriptor_stable&&!first.binding_current);
+        assert(control_draw_count==1&&control_forward_count==1&&first.binding.selector==0&&first.before.marker==1&&first.fresh_view.marker==1);
+        if(failure==56){assert(first.trace.sample.selector==1&&first.trace.sample.mask==1023&&first.binding.resource.object==first.trace.sample.resource.object);
+            assert(first.binding.public_global!=first.trace.sample.public_global&&!first.binding_equal&&first.binding_snapshot);}
+        if(failure==57)assert(first.binding.resource.object==0x777&&first.trace.sample.resource.object==0x888&&!first.binding_equal&&!first.binding_snapshot);
+        if(failure==58)assert(!(first.trace.sample.mask&1)&&!first.binding_snapshot&&first.trace.sample.resource.object==0x777);
+        if(failure==59)assert(first.binding.generation==4&&first.trace.after.generation==5&&!first.binding_equal&&first.binding_snapshot);
+        // A different later eye failure cannot replace the published first row.
+        mode=57;{dlss_output_control::ConsumeScope consume(9,7,true);eye(1);}
+        assert(dlss_output_control::first_exit_failure.key==first.key&&dlss_output_control::first_exit_failure.view==first.view&&
+            dlss_output_control::first_exit_failure.trace.sample.selector==first.trace.sample.selector);
+        FILE* receipt{};assert(!tmpfile_s(&receipt)&&receipt);dlss_output_control::print_exit_failure(receipt);
+        assert_report(receipt,"dlss_output_exit_failure",false);assert_report(receipt,"diagnostics_authorize=0",false);
+        rewind(receipt);unsigned lines{};for(int ch;(ch=fgetc(receipt))!=EOF;)if(ch=='\n')++lines;assert(lines==4);fclose(receipt);
+    }
     control_reset();FILE* identity{};assert(!tmpfile_s(&identity)&&identity);
     assert(!dlss_output_control::enable(identity,false));assert(!dlss_output_control::enable(identity,true)); // Missing live bytes cannot enable control.
     input_hash_fixture=true;input_hash_bytes={};assert(!dlss_output_control::enable(identity,true)); // Complete synthetic bytes are not the runtime identity.

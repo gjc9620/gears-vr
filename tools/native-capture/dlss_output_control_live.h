@@ -4,10 +4,22 @@ namespace dlss_output_control {
 using namespace gears_dlss_output;
 struct Output {
     Key key{};uintptr_t pass{},view{},renderer{},descriptor{};unsigned thread{},flags{},setters{},quads{},draws{},binds{};
-    View before{};Descriptor expected{};bool valid{},site{},nested{},setter_proved{},quad_complete{},failed{};
+    View before{};Descriptor expected{};bool valid{},site{},nested{},setter_proved{},quad_complete{},draw_complete{},failed{};
     bool binding_proved{},binding_failed{};gears_dlss_route::InputBind binding_capture{};
     Eye::BindingEvidence binding{};
     Eye proof{};
+};
+struct ListPath {uintptr_t owner{},raw{},table{},method{},canonical{};uint64_t generation{};bool valid{};};
+struct BindingTrace {
+    gears_dlss_route::InputSample sample{};ListPath before{},after{};uintptr_t vtable{};
+    bool vtable_read{},chain{},named{},same{};
+};
+struct OutputExitReceipt {
+    Key key{};uintptr_t pass{},view{},renderer{},descriptor{};unsigned thread{},flags{},fresh_flags{},setters{},quads{},draws{},binds{};
+    bool valid{},failed{},nested{},exception{},setter_proved{},quad_complete{},draw_candidate{},draw_complete{};
+    bool current{},thread_same{},flags_read{},stable{},descriptor_read{},descriptor_stable{},binding_snapshot{},binding_equal{},binding_current{},binding_proved{},binding_failed{};
+    View before{},fresh_view{};Descriptor expected{},fresh_descriptor{};
+    Eye::BindingEvidence binding{};gears_dlss_route::InputSample input_before{};BindingTrace trace{};
 };
 struct ConsumeScope {
     Key key{},previous{};int exceptions{};

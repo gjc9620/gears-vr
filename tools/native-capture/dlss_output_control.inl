@@ -18,7 +18,12 @@ struct MissingSource {uintptr_t context{},object{},native{},canonical{};unsigned
 MissingSource last_source;
 struct Receipt {bool valid{},complete{},site{};Key key{};unsigned decision{},failure{},setters{},quads{};Proof proof{};};
 Receipt last_allowed{},last_rejected{};
-struct ListPath {uintptr_t owner{},raw{},table{},method{},canonical{};uint64_t generation{};bool valid{};};
+OutputExitReceipt first_exit_failure;
+std::atomic<bool> exit_failure_claimed{},exit_failure_ready{};
+void publish_exit_failure(OutputExitReceipt const& receipt){bool empty=false;
+    if(!exit_failure_claimed.compare_exchange_strong(empty,true))return;
+    first_exit_failure=receipt;exit_failure_ready.store(true,std::memory_order_release);
+}
 ListPath last_list_before{},last_list_after{};uintptr_t last_list_draw{};gears_frame_link::ListRef last_list_ref{};
 ListPath list_path(uintptr_t context){
     ListPath out;
@@ -58,7 +63,7 @@ bool binding_same(Eye::BindingEvidence const& a,Eye::BindingEvidence const& b){
         a.canonical_list==b.canonical_list&&a.generation==b.generation&&x.object==y.object&&x.native==y.native&&x.canonical==y.canonical&&
         x.width==y.width&&x.height==y.height&&x.dimension==y.dimension&&x.format==y.format&&x.depth==y.depth&&x.mips==y.mips&&x.samples==y.samples;
 }
-bool binding_snapshot(Output const& o,Eye::BindingEvidence& out){
+bool binding_snapshot(Output const& o,Eye::BindingEvidence& out,BindingTrace* trace=nullptr){
     const auto before=list_path(o.before.context);const auto s=dlss_route_observer::input_sample(o.binding_capture,true);
     uintptr_t vtable{};const auto after=list_path(o.before.context);
     const bool chain=before.valid&&after.valid&&before.raw==after.raw&&before.canonical==after.canonical&&before.generation==after.generation&&
@@ -66,14 +71,24 @@ bool binding_snapshot(Output const& o,Eye::BindingEvidence& out){
     {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++source_queries;last_list_before=before;last_list_after=after;
         if(!chain)++list_rejected;
         auto const& r=s.resource;last_source={o.before.context,r.object,r.native,r.canonical,unsigned(s.highwater),unsigned(r.width),r.height,r.dimension,r.format,r.result};}
-    if(!chain||!dlss_route_observer::read(vtable,o.binding_capture.shader_owner)||!named_sample(o,s,vtable))return false;
-    out.complete=true;out.descriptor=s.descriptor;out.address=o.binding_capture.descriptor_address;out.owner=o.binding_capture.shader_owner;out.vtable=vtable;
+    // Preserve partial fields/masks even when certification fails. These values
+    // are diagnostic only; complete and the returned conjunction still gate use.
+    if(!trace&&!chain)return false;
+    const bool vtable_read=dlss_route_observer::read(vtable,o.binding_capture.shader_owner);
+    const bool named=named_sample(o,s,vtable);
+    if(trace){trace->sample=s;trace->before=before;trace->after=after;trace->vtable=vtable;
+        trace->vtable_read=vtable_read;trace->chain=chain;trace->named=named;}
+    out.complete=chain&&vtable_read&&named;out.descriptor=s.descriptor;out.address=o.binding_capture.descriptor_address;out.owner=o.binding_capture.shader_owner;out.vtable=vtable;
     out.shader_handle=s.shader_handle;out.view=s.view.address;out.context=s.view.context;out.public_global=s.public_global;out.public_pointer=s.public_pointer;
     out.public_wrapper=s.public_wrapper;out.public_index=s.public_index;out.public_object=s.public_object;out.selector=s.selector;out.slot=s.slot;out.highwater=s.highwater;
-    out.list=after.raw;out.canonical_list=after.canonical;out.generation=after.generation;out.resource=s.resource;return true;
+    out.list=after.raw;out.canonical_list=after.canonical;out.generation=after.generation;out.resource=s.resource;return out.complete;
 }
-bool binding_current(Output const& o){Eye::BindingEvidence fresh;
-    return o.binds==1&&o.binding_proved&&!o.binding_failed&&binding_snapshot(o,fresh)&&binding_same(o.binding,fresh);}
+bool binding_current(Output const& o,BindingTrace* trace=nullptr,Eye::BindingEvidence* observed=nullptr){Eye::BindingEvidence fresh;
+    if(!trace)return o.binds==1&&o.binding_proved&&!o.binding_failed&&binding_snapshot(o,fresh)&&binding_same(o.binding,fresh);
+    const bool snapshot=binding_snapshot(o,fresh,trace);trace->same=binding_same(o.binding,fresh);
+    if(observed)*observed=fresh;
+    return o.binds==1&&o.binding_proved&&!o.binding_failed&&snapshot&&trace->same;
+}
 void binding_fail(Output& o){o.binding_failed=true;if(o.site)fail(o,Failure::identity_changed);}
 BindScope::BindScope(bool world,uintptr_t caller,const uint16_t* descriptor,void* view,void* owner,uint32_t selection,int32_t alternate)
     :output(current_output),exceptions(std::uncaught_exceptions()){
@@ -112,8 +127,25 @@ OutputScope::OutputScope(bool world,uintptr_t pass,uintptr_t input):previous(cur
 }
 OutputScope::~OutputScope(){
     if(value.site){
-        const bool valid=value.valid&&!value.failed&&!value.nested&&std::uncaught_exceptions()==exceptions&&value.setters==1&&value.quads==1&&value.draws==1&&
-            value.setter_proved&&value.quad_complete&&stable(value)&&descriptor_stable(value)&&binding_current(value);
+        OutputExitReceipt r;r.key=value.key;r.pass=value.pass;r.view=value.view;r.renderer=value.renderer;r.thread=value.thread;
+        r.descriptor=value.descriptor;r.flags=value.flags;r.setters=value.setters;r.quads=value.quads;r.draws=value.draws;r.binds=value.binds;
+        r.valid=value.valid;r.failed=value.failed;r.nested=value.nested;r.exception=std::uncaught_exceptions()!=exceptions;
+        r.setter_proved=value.setter_proved;r.quad_complete=value.quad_complete;r.draw_candidate=value.proof.draw.candidate;
+        r.draw_complete=value.draw_complete;r.binding_proved=value.binding_proved;r.binding_failed=value.binding_failed;
+        r.before=value.before;r.expected=value.expected;r.binding=value.binding;r.input_before=value.binding_capture.before;
+        // Evaluate the same admission functions once each, retaining their
+        // original stable/descriptor/binding order. Receipt-only reads below
+        // never contribute evidence to the final admission conjunction.
+        r.stable=stable(value);r.descriptor_stable=descriptor_stable(value);
+        Eye::BindingEvidence fresh;r.binding_current=binding_current(value,&r.trace,&fresh);
+        r.binding_snapshot=fresh.complete;r.binding_equal=r.trace.same;
+        r.current=current(value.key);r.thread_same=value.thread==GetCurrentThreadId();
+        r.flags_read=dlss_route_observer::read(r.fresh_flags,value.pass,8);
+        r.fresh_view=value.binding_capture.view_address==value.view?r.trace.sample.view:dlss_route_observer::view(value.view);
+        r.descriptor_read=value.descriptor&&dlss_route_observer::read(r.fresh_descriptor,value.descriptor);
+        const bool valid=r.valid&&!r.failed&&!r.nested&&!r.exception&&r.setters==1&&r.quads==1&&r.draws==1&&
+            r.setter_proved&&r.quad_complete&&r.stable&&r.descriptor_stable&&r.binding_current;
+        if(!valid)publish_exit_failure(r);
         std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(auto* e=store.find(value.key)){
             if(!valid)e->fail(Failure::identity_changed);
             else{auto& eye=e->payload.eyes[value.before.eye];eye=value.proof;eye.output_complete=true;e->proved(value.before.eye,false,true);++output_proved;}}
@@ -165,7 +197,7 @@ DrawCompletion::DrawCompletion(uintptr_t raw):list(raw),exceptions(std::uncaught
 }
 DrawCompletion::~DrawCompletion(){if(!output)return;auto& o=*output;
     if(std::uncaught_exceptions()!=exceptions||o.draws!=1||!o.proof.draw.candidate||o.proof.binding.list!=list||
-       !stable(o)||!binding_current(o))fail(o,Failure::identity_changed);
+       !stable(o)||!binding_current(o))fail(o,Failure::identity_changed);else o.draw_complete=true;
 }
 void QuadScope::forward(float& x,float& y,float& w,float& h,float& u,float& v,float& uw,float& vh)const{
     if(!candidate())return;x=forwarded[0];y=forwarded[1];w=forwarded[2];h=forwarded[3];u=forwarded[4];v=forwarded[5];uw=forwarded[6];vh=forwarded[7];
@@ -213,6 +245,7 @@ bool enable(FILE* file,bool observer_attested){
     const bool config=!self_testing&&continuous_session&&stereo_xr&&stereo_gpu_publish&&submit_pair_enabled&&frame_link_diagnostics&&viewport_diagnostics&&!other_controls();
     const bool binding_attested=dlss_route_observer::verify_input_chunks(file,"566929fd4f84a21529de0ecb749d2dc75a1bf2ab3cc04876a65f65517222a339");
     attested=observer_attested&&binding_attested&&config;store={};
+    exit_failure_ready.store(false);exit_failure_claimed.store(false);first_exit_failure={};
     fprintf(file,"dlss_output_identity enabled=1 observer_full_ranges_attested=%u input_full_chunks_attested=%u configuration=%u attested=%u generated_caller=d83cbf setter=d83b69 sentinel=ffff,ffff,0 original_setter_unchanged=1 geometry_memory_written=0 binding_evidence_required=1 shader_sampling_verified=0 ngx_sr_verified=0\n",unsigned(observer_attested),unsigned(binding_attested),unsigned(config),unsigned(attested));return attested;
 }
 bool publication(uint64_t world,uint64_t ticket){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const Key key{world,ticket};const auto decision=store.decision(key);
@@ -224,7 +257,31 @@ bool publication(uint64_t world,uint64_t ticket){std::lock_guard<std::recursive_
 }
 void retire(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);store.retire_window();}
 void progress(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);fprintf(file,"dlss_output_forwarded=%llu dlss_output_draw_proved=%llu dlss_output_completed=%llu dlss_output_publication_rejected=%llu ",forwarded,draw_proved,output_proved,rejected);}
+void print_exit_failure(FILE* file){
+    if(!exit_failure_ready.load(std::memory_order_acquire))return;
+    auto const& r=first_exit_failure;
+    fprintf(file,"dlss_output_exit_failure world=%llu ticket=%llu valid=%u failed=%u nested=%u exception=%u setters=%u quads=%u draws=%u binds=%u setter_proved=%u quad_complete=%u draw_candidate=%u draw_complete=%u stable=%u descriptor_stable=%u binding_current=%u binding_snapshot=%u binding_equal=%u binding_proved=%u binding_failed=%u current=%u thread_same=%u flags_read=%u flags=%u fresh_flags=%u descriptor_read=%u descriptor=%u,%u,%u fresh_descriptor=%u,%u,%u diagnostics_authorize=0\n",
+        r.key.world,r.key.id,unsigned(r.valid),unsigned(r.failed),unsigned(r.nested),unsigned(r.exception),r.setters,r.quads,r.draws,r.binds,
+        unsigned(r.setter_proved),unsigned(r.quad_complete),unsigned(r.draw_candidate),unsigned(r.draw_complete),unsigned(r.stable),unsigned(r.descriptor_stable),unsigned(r.binding_current),
+        unsigned(r.binding_snapshot),unsigned(r.binding_equal),unsigned(r.binding_proved),unsigned(r.binding_failed),unsigned(r.current),unsigned(r.thread_same),unsigned(r.flags_read),r.flags,r.fresh_flags,
+        unsigned(r.descriptor_read),r.expected[0],r.expected[1],r.expected[2],r.fresh_descriptor[0],r.fresh_descriptor[1],r.fresh_descriptor[2]);
+    for(unsigned i=0;i<2;++i){auto const& b=i?r.trace.sample:r.input_before;auto const& v=i?r.fresh_view:r.before;
+        fprintf(file,"dlss_output_exit_sample stage=%s input_mask=%u descriptor=%u,%u,%u selector=%u slot=%u highwater=%u shader_handle=%llx public_global=%llx public_pointer=%llx public_wrapper=%llx public_index=%u public_object=%llx original_slot_object=%llx proved_slot_object=%llx actual_slot_object=%llx native=%llx canonical=%llx queried=%u result=%ld dimensions=%llu,%u format=%u dimension=%u depth=%u mips=%u samples=%u",
+            i?"fresh":"before",b.mask,b.descriptor[0],b.descriptor[1],b.descriptor[2],b.selector,b.slot,unsigned(b.highwater),
+            static_cast<unsigned long long>(b.shader_handle),static_cast<unsigned long long>(b.public_global),static_cast<unsigned long long>(b.public_pointer),static_cast<unsigned long long>(b.public_wrapper),b.public_index,
+            static_cast<unsigned long long>(b.public_object),static_cast<unsigned long long>(r.input_before.resource.object),static_cast<unsigned long long>(r.binding.resource.object),static_cast<unsigned long long>(b.resource.object),
+            static_cast<unsigned long long>(b.resource.native),static_cast<unsigned long long>(b.resource.canonical),unsigned(b.resource.queried),b.resource.result,b.resource.width,b.resource.height,b.resource.format,b.resource.dimension,b.resource.depth,b.resource.mips,b.resource.samples);
+        dlss_route_observer::print_view(file,i?"fresh":"before",v);fprintf(file,"\n");
+    }
+    auto const& a=r.trace.before;auto const& b=r.trace.after;
+    fprintf(file,"dlss_output_exit_lists proved_raw=%llx proved_canonical=%llx proved_generation=%llu before_owner=%llx before_raw=%llx before_table=%llx before_method=%llx before_canonical=%llx before_generation=%llu before_valid=%u after_owner=%llx after_raw=%llx after_table=%llx after_method=%llx after_canonical=%llx after_generation=%llu after_valid=%u chain=%u vtable_read=%u vtable=%llx named=%u\n",
+        static_cast<unsigned long long>(r.binding.list),static_cast<unsigned long long>(r.binding.canonical_list),r.binding.generation,
+        static_cast<unsigned long long>(a.owner),static_cast<unsigned long long>(a.raw),static_cast<unsigned long long>(a.table),static_cast<unsigned long long>(a.method),static_cast<unsigned long long>(a.canonical),a.generation,unsigned(a.valid),
+        static_cast<unsigned long long>(b.owner),static_cast<unsigned long long>(b.raw),static_cast<unsigned long long>(b.table),static_cast<unsigned long long>(b.method),static_cast<unsigned long long>(b.canonical),b.generation,unsigned(b.valid),
+        unsigned(r.trace.chain),unsigned(r.trace.vtable_read),static_cast<unsigned long long>(r.trace.vtable),unsigned(r.trace.named));
+}
 void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    print_exit_failure(file);
     fprintf(file,"dlss_output_control enabled=1 attested=%u forwarded=%llu actual_draw_proved=%llu output_completed=%llu publication_rejected=%llu no_site=%llu scope_proved=%llu missing=%llu incomplete=%llu rejected=%llu overflow=%llu capacity_lost=%u retired=%llu source_queries=%llu source_rejected=%llu other_setters=%llu list_rejected=%llu rows_limit_independent=1 ngx_sr_verified=0 history_verified=0\n",
         unsigned(attested),forwarded,draw_proved,output_proved,rejected,decisions[0],decisions[1],decisions[2],decisions[3],decisions[4],decisions[5],unsigned(store.capacity_lost),store.retired,source_queries,missing_source,other_setters,list_rejected);
     fprintf(file,"dlss_output_last_list draw_raw=%llx draw_canonical=%llx draw_generation=%llu before_owner=%llx before_raw=%llx before_canonical=%llx before_generation=%llu before_valid=%u after_raw=%llx after_canonical=%llx after_generation=%llu after_valid=%u path=context+127c,owner+14,vtable_slot12\n",
