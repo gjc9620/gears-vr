@@ -7,6 +7,7 @@ struct UiLayoutCounts {std::atomic<uint64_t> considered{},planned{},fallback{},a
 gears_ui::Config ui_config;
 #include "crosshair_assignment_live.inl"
 #include "ui_runtime_binding.h"
+#include "ui_canvas_tile_batch.h"
 std::mutex ui_binding_mutex;
 gears_ui_binding::Receipts ui_binding_receipts;
 std::array<std::atomic<uint64_t>,4> ui_binding_claims{};
@@ -222,7 +223,7 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
 namespace ui_tile_transaction {
 struct Row {
     uint64_t root{};unsigned scope{},thread{};long long qpc{},exit_qpc{};
-    bool sample_ok{},snapshot_attempted{},before_ok{},current_checked{},current_ok{},append_ok{},published{},post_ok{},tail_attempted{},tail_ok{};
+    bool sample_ok{},snapshot_attempted{},before_ok{},typed_transition{},current_checked{},current_ok{},append_ok{},published{},post_ok{},tail_attempted{},tail_ok{};
     gears_ui_batch::Snapshot before{},post{};
     gears_ui_batch_diagnostic::Tail tail{};
     uintptr_t receipt_payload{};unsigned receipt_begin{},receipt_end{};
@@ -237,8 +238,8 @@ void print(FILE* status){
     fprintf(status,"ui_tile_transaction observation_only=1 kind=1 failed_rows=%u successful_rows=%u failed_dropped=%llu successful_dropped=%llu capacity_per_bucket=32 tail_payload_never_read=1\n",
         counts[0],counts[1],dropped[0],dropped[1]);
     for(unsigned b=0;b<rows.size();++b)for(unsigned i=0;i<counts[b];++i){auto const& r=rows[b][i];auto const& t=r.tail;
-        fprintf(status,"ui_tile_transaction_row bucket=%u row=%u root=%llu scope=%u thread=%u qpc=%lld exit_qpc=%lld sample_ok=%u snapshot_attempted=%u before_ok=%u current_checked=%u current_ok=%u append_ok=%u published=%u receipt_payload=%p receipt_begin=%u receipt_end=%u before_payload=%p before_count=%u before_empty=%u post_ok=%u post_payload=%p post_count=%u post_empty=%u tail_attempted=%u tail_ok=%u tail_canvas=%p tail_fcanvas=%p tail_key=%d tail_element=%p tail_item=%p tail_vtable=%p tail_empty=%u tail_items_count=%d\n",
-            b,i,r.root,r.scope,r.thread,r.qpc,r.exit_qpc,r.sample_ok?1:0,r.snapshot_attempted?1:0,r.before_ok?1:0,r.current_checked?1:0,r.current_ok?1:0,r.append_ok?1:0,r.published?1:0,
+        fprintf(status,"ui_tile_transaction_row bucket=%u row=%u root=%llu scope=%u thread=%u qpc=%lld exit_qpc=%lld sample_ok=%u snapshot_attempted=%u before_ok=%u typed_transition=%u current_checked=%u current_ok=%u append_ok=%u published=%u receipt_payload=%p receipt_begin=%u receipt_end=%u before_payload=%p before_count=%u before_empty=%u post_ok=%u post_payload=%p post_count=%u post_empty=%u tail_attempted=%u tail_ok=%u tail_canvas=%p tail_fcanvas=%p tail_key=%d tail_element=%p tail_item=%p tail_vtable=%p tail_empty=%u tail_items_count=%d\n",
+            b,i,r.root,r.scope,r.thread,r.qpc,r.exit_qpc,r.sample_ok?1:0,r.snapshot_attempted?1:0,r.before_ok?1:0,r.typed_transition?1:0,r.current_checked?1:0,r.current_ok?1:0,r.append_ok?1:0,r.published?1:0,
             reinterpret_cast<void*>(r.receipt_payload),r.receipt_begin,r.receipt_end,reinterpret_cast<void*>(r.before.payload),r.before.vertex_count,r.before.empty?1:0,
             r.post_ok?1:0,reinterpret_cast<void*>(r.post.payload),r.post.vertex_count,r.post.empty?1:0,r.tail_attempted?1:0,r.tail_ok?1:0,reinterpret_cast<void*>(t.canvas),reinterpret_cast<void*>(t.fcanvas),t.sort_key,
             reinterpret_cast<void*>(t.element),reinterpret_cast<void*>(t.item),reinterpret_cast<void*>(t.vtable),t.empty?1:0,t.items.count);
@@ -249,20 +250,21 @@ void print(FILE* status){
 void __fastcall hook_ui_tile(void* self,void* frame,void* result){
     Scope active_scope;if(!active_scope.world()){ui_original[1](self,frame,result);return;}
     gears_ui::ScopeContext selected{};observe_ui_canvas(1,self,frame,&selected);
-    gears_ui_batch::Snapshot before{};gears_ui::CanvasSample sample{};
+    gears_ui_tile_batch::Before before{};gears_ui::CanvasSample sample{};
     const bool eligible=selected.kind&&ui_observer_enabled&&recording.load()&&!ui_text_collect_depth;
     if(eligible)++ui_batch_attempts;
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
     const bool sample_ok=eligible&&gears_ui::sample_canvas(ui_invocation_config(),safe_copy,selected,
         reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(frame),sample);
-    const bool captured=sample_ok&&gears_ui_batch::snapshot({base},safe_copy,reinterpret_cast<uintptr_t>(self),before);
+    const bool captured=sample_ok&&gears_ui_tile_batch::capture_before({base},safe_copy,reinterpret_cast<uintptr_t>(self),before);
     if(eligible&&!captured)++ui_batch_before_rejected;
     const bool diagnostic=eligible&&selected.kind==1&&
         (ui_tile_transaction::available(false)||ui_tile_transaction::available(true));
     ui_tile_transaction::Row transaction{};
     if(diagnostic){transaction.root=ui_invocation.sequence;transaction.scope=selected.scope_index;
         transaction.thread=GetCurrentThreadId();transaction.qpc=now();transaction.sample_ok=sample_ok;
-        transaction.snapshot_attempted=sample_ok;transaction.before_ok=captured;transaction.before=before;
+        transaction.snapshot_attempted=sample_ok;transaction.before_ok=before.strict_valid;
+        transaction.typed_transition=before.foreign_valid;transaction.before=before.strict;
         if(ui_tile_transaction::available(captured)){transaction.tail_attempted=true;
             transaction.tail_ok=gears_ui_batch_diagnostic::observe_tail(safe_copy,reinterpret_cast<uintptr_t>(self),transaction.tail);}}
     ui_original[1](self,frame,result);
@@ -273,7 +275,7 @@ void __fastcall hook_ui_tile(void* self,void* frame,void* result){
     }
     if(captured&&current_ok){
         gears_ui_batch::Receipt receipt{};
-        if(gears_ui_batch::appended_quad({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),receipt)){
+        if(gears_ui_tile_batch::appended_quad({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),receipt)){
             if(diagnostic){transaction.append_ok=true;transaction.receipt_payload=receipt.payload;
                 transaction.receipt_begin=receipt.begin;transaction.receipt_end=receipt.end;}
             std::lock_guard<std::mutex> lock(ui_payload_mutex);
@@ -286,19 +288,20 @@ void __fastcall hook_ui_tile(void* self,void* frame,void* result){
     }
     if(diagnostic){
         if(!transaction.current_checked){transaction.current_checked=true;transaction.current_ok=ui_invocation_current();}
-        // A failed-before post snapshot is evidence only; it cannot reach publish.
-        if(!captured)transaction.post_ok=gears_ui_batch::snapshot({base},safe_copy,reinterpret_cast<uintptr_t>(self),transaction.post);
+        // This extra strict post snapshot is evidence only; publication above
+        // requires the separate typed adapter's complete transition receipt.
+        if(!transaction.before_ok)transaction.post_ok=gears_ui_batch::snapshot({base},safe_copy,reinterpret_cast<uintptr_t>(self),transaction.post);
         transaction.exit_qpc=now();ui_tile_transaction::append(transaction);
     }
 #else
     const bool captured=eligible&&gears_ui::sample_canvas(ui_invocation_config(),safe_copy,selected,
         reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(frame),sample)&&
-        gears_ui_batch::snapshot({base},safe_copy,reinterpret_cast<uintptr_t>(self),before);
+        gears_ui_tile_batch::capture_before({base},safe_copy,reinterpret_cast<uintptr_t>(self),before);
     if(eligible&&!captured)++ui_batch_before_rejected;
     ui_original[1](self,frame,result);
     if(captured&&recording.load()&&ui_invocation_current()){
         gears_ui_batch::Receipt receipt{};
-        if(gears_ui_batch::appended_quad({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),receipt)){
+        if(gears_ui_tile_batch::appended_quad({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),receipt)){
             std::lock_guard<std::mutex> lock(ui_payload_mutex);
             if(ui_payload_store.publish(receipt,selected.kind,ui_invocation.sequence))++ui_batch_published;
             else ++ui_batch_publish_rejected;
