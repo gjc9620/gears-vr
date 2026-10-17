@@ -46,3 +46,15 @@ Native86从`7c387e9`冻结，DLL SHA256 `a0f3937432378d6e4de96236d5a3b7921cf8379
 本轮仍因试验位置被覆盖而停止，未完成UI修正。正常关闭、native cleanup、所有entry完整独立恢复及设置/四profile恢复通过，无自有前台采样。精简proof和原始receipt保存在ignored `analysis/runtime/path-layout86-reflow-proof-20261018.json`。后续修正应顺应这条原生布局路径，先验证其下游SetPosition参数域，避免在Render阶段持续覆写或重复调用SetPosition造成布局失效循环。
 
 后续已加入默认关闭的298694八参数只读观察，限定在同一已认证reflow/owner/nonce/panel/world作用域，最多四行，保留四个float原bits、inputType/origin/sort及原始RAX。它不hook或修改SetPosition的356B认证，不改坐标/百分比；旁路嵌套parent不会借用外层作用域。实际wrapper和原位置回归`/W4 /WX`、20项Python配置/恢复检查通过（含parent/child/双hook库存及完整chunks/两槽的39种恢复子用例）。完整DLL和实际实参采样尚待运行，不能把历史PixelViewport声明当作这轮已观察值。
+
+## 2026-10-18：实际实参与原生重排修正候选
+
+Native87未取得child实参：一次apply后认证被拒绝，parent/child均未承认记录。不能据此认定对象注册表数量变化或放宽认证。`7e5ce90`随后只增加首次认证失败的原始字节诊断，不改变接受条件；Native88本轮未重现该失败，`auth_failure_ready=0`。
+
+Native88从`7e5ce90`冻结，DLL SHA256 `1e4ee00345426cb683715fbf56e21d5d20910953f57b5a8fabe665b1b299f60e`。实际`path-layout88-20261018`在同一已认证panel/nonce/world中捕获298694正常调用，caller为base+2985a5，八实参为Left293.8561401、Top40.3919983、Right1626.1437988、Bottom1039.6080322、inputType1、origin0、sort0；保留了float原bits及原始RAX。float加法所得宽/高为1920/1080，支持UI视口坐标域，不能替换为Windows窗口尺寸。child入口为自有位移值，正常返回后再次精确恢复原始百分比坐标，X和全部元数据保持。该轮仍以ownership loss停止，没有交付位置修复；正常退出、native/entry恢复、设置及四profile恢复通过，无自有前台采样。精简原始证据为ignored `analysis/runtime/path-layout88-child-proof-20261018.json`。
+
+`c4ed52b`新增默认关闭的`GEARS_PATH_CHOICE_REFLOW_CONTROL`：仅在上述完整认证和活跃位置租约下，对原生child的Top/Bottom实参各加`(Top+Bottom)*(16.f/1080.f)`，原调用仍只执行一次，其他实参保持。控制作用域独立于四条诊断配额；首先验证原输入归一化后仍是已知安全区，且入口两Y精确等于当前owned。原生单位换算会产生1ULP差异，因此仅本次已修改、正常返回、完整元数据/X稳定的调用可在预期值2ULP以内保存实际精确bits为owned；后续holding/restore仍严格逐bit比较。失败、异常或身份不明时停止私有实验，不猜测恢复。到期/drain的正常未改参原调用仅在同一租约、已知owned入口与精确原始出口下可证明自然恢复。
+
+六次重排与四条记录、外部1ULP改写、嵌套、原调用异常、restore递归旁路、到期/drain及original执行期间撤销请求等离线检查通过。独立只读实现审查未发现阻碍本次实验的缺陷。Native89完整构建及八项wrapper/graphics/UI bypass/GPU frame-link自测通过，DLL SHA256 `5efa24ce70161c5447364a6baa85ca5389adc3657504b5eb2a5cd7f81b3c8352`。实际游戏的持续位移、恢复、子布局、GPU裁剪和输入结果仍待验证；16px只是实验量，不是最终玩家居中设置，默认Native70和开发包未改变。
+
+Native89实际`path-layout89-20261018`捕获一次正常受控重排：modified/adopted均1、控制failure0，Top经原生单位换算后比最初fraction setter结果低1ULP，并已保存真实精确owned。随后hold认证失败，首次诊断明确指向check552、base+1c24730的全局对象表完整16B头：Data94946852864、Max309766保持，Num241760增加到241761。该记录支持“旧证书将无关对象表数量变化视为失效”的具体问题，不能据此认定目标panel已被替换。没有取得shifted GPU图或完成恢复验收；实验拒绝继续写入并以proof_failure停止。正常关闭、native/entry独立恢复及完整设置/四profile恢复通过，无自有前台采样，精简证据在ignored `analysis/runtime/path-layout89-reflow-proof-20261018.json`。下一私有修正将只允许已知注册表固定前缀内的证书在Data/Max稳定且Num不低于初始值时继续使用，固定对象槽与全部身份/成员字段仍保持精确认证；采集边界仍完整复读，不引入通用字节mask。
