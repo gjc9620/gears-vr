@@ -41,3 +41,8 @@
 原始trace位于ignored `analysis/release-staging/vrdof61-profile109-20261017/analysis/runtime/startup-profile-32692-28471d83ba354e5795a050fb36f87cb3.jsonl`，源码及身份／哈希、阶段汇总见 `analysis/runtime/profile109-stage-summary.json`。首个测试monitor错误读取仓库旧会话索引，证据保留为attempt1；修正私有索引后在同一拥有的游戏、再次认证章节警告下继续，未重启或绕过状态检查。诊断副本修改不属于700文件便携包验收。
 
 该轮仍未启用新原生逻辑，启动器独立prime取消／入口恢复、普通关闭和四存档恢复通过；不把native_cleanup_verified=false改为true。进一步检查发现两个同文案时间戳边界，现有build总耗时不能区分它们。下一轮仅在私有guard内标记边界与阶段时刻，保留全部读取和比较，再判断优化；不增加期限或复用旧认证。
+
+
+110私有细分诊断随后成功：5个guard全部接受，首个完整窗口33.824ms（主要为第一次target构造），其后约1.13–1.27ms；所有原始／首末时间戳都保持同一个0.483276值。该轮电影交回双目也成功，正常停止、独立清理、普通关闭和四存档恢复通过；用户返回后停止自动测试。计时回调仅缓冲，整个acquire结束后才落盘，避免两个sample guard之间增加文件I/O。
+
+这次没有复现109的46轮失败，因此不能据此认定根因修复；相同时间戳也提示本次较长窗口恰好处于相机时间戳不变阶段。原始trace及汇总见ignored `analysis/runtime/profile110-stage-summary.json`，需要继续区分活跃时间戳下的失败边界。默认仍VRDof60，新候选61未提升。所有私有诊断改动未进入玩家ZIP或tracked实现。
