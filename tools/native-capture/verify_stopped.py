@@ -77,6 +77,16 @@ def main():
         camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
+            if rva == 0x1c4b90:
+                # Experimental death DOF control: independently verify the full
+                # authenticated 200-byte PS setter after restoring its entry.
+                expected_hash = '10b2617802b5648fea992132f8b9e20d68d58940de7e7779f34298b8be240cb0'
+                current = resolver.read(target, 200)
+                actual_hash = hashlib.sha256(current).hexdigest()
+                checks.append(dict(target=hex(target), source='artifact 1 runtime snapshot death PS constant setter',
+                                   bytes_checked=len(current), expected_sha256=expected_hash,
+                                   actual_sha256=actual_hash, matches=actual_hash == expected_hash))
+                continue
             if rva == 0x1760b4:
                 # Optional read-only death constant observer. Authenticate the
                 # entire saved 205-byte setter independently after disabling,

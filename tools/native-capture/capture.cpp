@@ -153,6 +153,7 @@ void observe_unpossessed_quad_execute(uintptr_t queue,gears_frame_link::ListRef 
 namespace death_source_live {void progress(FILE*);void print(FILE*);unsigned status_interval_ms();}
 namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_frame_link::ListRef,uint64_t,unsigned);}
 namespace death_constant_observer {void print(FILE*);}
+namespace death_dof_control {void print(FILE*);}
 namespace death_pso_cache {void print(FILE*);void poll();}
 namespace gears_death_hdr {struct Event;}
 namespace death_hdr_pixels {
@@ -399,7 +400,12 @@ constexpr unsigned death_pso_hooks=3;
 #else
 constexpr unsigned death_pso_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+death_constant_hooks+death_pso_hooks> session_hook_entries{};
+#if defined(GEARS_DEATH_DOF_CONTROL) && GEARS_DEATH_DOF_CONTROL
+constexpr unsigned death_dof_hooks=1;
+#else
+constexpr unsigned death_dof_hooks=0;
+#endif
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+death_constant_hooks+death_pso_hooks+death_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -1605,6 +1611,7 @@ void print_frame_link(FILE* status) {
     death_hdr_timeline::print(status);
     death_hdr_pixels::print(status);
     death_constant_observer::print(status);
+    death_dof_control::print(status);
     death_pso_cache::print(status);
     print_backbuffer_copies(status);
     final_transfer_live::print(status);
@@ -2098,6 +2105,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "death_hdr_pixels.inl"
 #include "death_pso_cache.inl"
 #include "death_constant_observer.inl"
+#include "death_dof_control.inl"
 
 void inspect_completed_renderer(Record& record,void* destination){
     if(!destination)return;
@@ -2259,6 +2267,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     uintptr_t original_state=reinterpret_cast<uintptr_t>(original_source.pointer(8));
     gears_submitted::FrameTicket frame{};gears_vr::Pose frame_reference{};
     frame.unpossessed=anchor&&anchor->anchor.unpossessed;
+    frame.world_generation=committed_world_generation.load();
     if(anchor_observer_enabled&&anchor){
         auto evidence=anchor->crosshair;
         frame.crosshair=gears_crosshair_scene::take(evidence,anchor->key,anchor->invocation,GetCurrentThreadId());
@@ -3025,6 +3034,7 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
     unsigned target_width,unsigned target_height,unsigned texture_width,unsigned texture_height){
     Scope scope;if(!scope.world())return original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
     death_constant_observer::quad(caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
+    death_dof_control::quad(caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
     if((caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8)observe_final_inputs();
     gears_quad_source::Args original_args{{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height}};
     gears_quad_source::Decision control;
@@ -3781,9 +3791,12 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"family_diagnostics=%d candidate_rva=0x3a148c\n",family_diagnostics);
     MH_STATUS init=MH_Initialize();
     fprintf(status,"minhook_initialize=%s\n",MH_StatusToString(init));
-    bool ok=(init==MH_OK || (reservation_ready && init==MH_ERROR_ALREADY_INITIALIZED))&&death_constant_observer::attest(status);
+    bool ok=(init==MH_OK || (reservation_ready && init==MH_ERROR_ALREADY_INITIALIZED))&&death_constant_observer::attest(status)&&death_dof_control::attest(status);
 #if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
     if(ok)ok=install(death_constant_observer::target,reinterpret_cast<void*>(death_constant_observer::hook),reinterpret_cast<void**>(&death_constant_observer::original));
+#endif
+#if defined(GEARS_DEATH_DOF_CONTROL) && GEARS_DEATH_DOF_CONTROL
+    if(ok)ok=install(death_dof_control::target,reinterpret_cast<void*>(death_dof_control::hook),reinterpret_cast<void**>(&death_dof_control::original));
 #endif
     ok=ok && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
         && install(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event));

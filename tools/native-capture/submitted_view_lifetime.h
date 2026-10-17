@@ -14,6 +14,7 @@ namespace gears_submitted {
 struct FrameTicket {bool enabled{};std::uint64_t id{};gears_vr::StereoSample sample{};gears_vr::StereoMatrices expected{};
     // Frozen anchor mode for CPU diagnostics only; never part of a bridge ABI.
     bool unpossessed{};
+    std::uint64_t world_generation{}; // Frozen internal world identity; no bridge ABI change.
     gears_vr::StereoMatrix source_view{},source_projection{};
     std::uint64_t reference_generation{};gears_vr::Pose reference{};gears_origin_trial::Metadata origin{};
     std::optional<gears_crosshair_scene::Metadata> crosshair;

@@ -28,15 +28,15 @@ int main() {
     if(!reused.begin(42,metadata) || !reused.projection(42,read) || read.pair_qpc!=222 || read.phase!=metadata.phase || reused.retire(42))return 11;
     if(!reused.begin(42) || reused.retire(42) || !reused.begin(42) || reused.close() || !reused.retire(42))return 8;
     auto& frames=stores[3];gears_submitted::FrameTicket ticket{},copied{};
-    ticket.enabled=true;ticket.id=1;ticket.sample.session=7;ticket.sample.sequence=111;ticket.expected.view[1][12]=3.2f;
+    ticket.enabled=true;ticket.id=1;ticket.world_generation=3;ticket.sample.session=7;ticket.sample.sequence=111;ticket.expected.view[1][12]=3.2f;
     if(!frames.begin(42,{},ticket))return 12;
-    ticket.sample.sequence=222;ticket.expected.view[1][12]=9;
+    ticket.world_generation=4;ticket.sample.sequence=222;ticket.expected.view[1][12]=9;
     if(!frames.frame(42,copied) || copied.sample.sequence!=111 || copied.expected.view[1][12]!=3.2f)return 13;
-    if(copied.id!=1)return 17;
+    if(copied.id!=1||copied.world_generation!=3)return 17;
     copied.sample.sequence=999;if(!frames.frame(42,copied) || copied.sample.sequence!=111)return 14;
     if(frames.retire(42) || frames.frame(42,copied) || copied.enabled)return 15;
     if(!frames.begin(42,{},ticket) || !frames.frame(42,copied) || copied.sample.sequence!=222 ||
-       copied.expected.view[1][12]!=9 || frames.close() || !frames.retire(42) || frames.frame(42,copied))return 16;
+       copied.world_generation!=4||copied.expected.view[1][12]!=9 || frames.close() || !frames.retire(42) || frames.frame(42,copied))return 16;
     auto& same_pose=stores[4];ticket.id=10;
     if(!same_pose.begin(1,{},ticket))return 18;
     ticket.id=11;if(!same_pose.begin(2,{},ticket) || !same_pose.frame(1,copied) || copied.id!=10 ||
