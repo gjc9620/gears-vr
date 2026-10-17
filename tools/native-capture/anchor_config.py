@@ -22,6 +22,20 @@ def _header(resolver, address):
     return data,count,capacity
 
 
+def _check_mounted_bracket(before, after):
+    if before == after:return
+    camera_fields = {'camera_timestamp_raw', 'camera_pov_raw'}
+    # Both complete captures already passed their own live validation. A newer
+    # camera frame rejects this attempt too, but can use the existing retry
+    # budget only when every non-camera value and the entire key set agree.
+    if (set(before) == set(after) and camera_fields <= set(before) and
+            before['camera_timestamp_raw'] != after['camera_timestamp_raw'] and
+            {key:value for key,value in before.items() if key not in camera_fields} ==
+            {key:value for key,value in after.items() if key not in camera_fields}):
+        raise MountedTimestampChanged('Mounted camera frame changed during anchor bracket')
+    raise AnchorRejected('Mounted context changed during anchor bracket')
+
+
 class LiveRegistryAnchorSampler(AnchorSampler):
     """Refresh live registry bounds; count growth alone does not reject identity."""
     def __init__(self,resolver,clock_ns=None,*,prepared_camera=None,cinematic_camera=False):
@@ -72,7 +86,7 @@ class LiveRegistryAnchorSampler(AnchorSampler):
         result=super().guard()
         if mounted is not None:
             after=self.mounted_contract.capture()
-            if mounted!=after:raise AnchorRejected('Mounted context changed during anchor bracket')
+            _check_mounted_bracket(mounted, after)
             result['mounted_context']=after
         return result
 

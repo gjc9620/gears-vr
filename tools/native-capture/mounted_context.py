@@ -15,7 +15,7 @@ from sample_player_anchor import AnchorRejected, _check_registry_header
 
 
 class MountedTimestampChanged(AnchorRejected):
-    """Only camera time changed after all other capture boundaries validated."""
+    """Camera time/frame changed while all non-camera capture evidence agrees."""
 
 
 class MountedContextCertificate:

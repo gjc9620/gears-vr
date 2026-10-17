@@ -1,4 +1,5 @@
 """Synthetic memory only: mounted possession, identity and race rejection."""
+import copy
 import struct
 import unittest
 from unittest import mock
@@ -108,6 +109,81 @@ class MountedContextTests(unittest.TestCase):
                         self.assertTrue(evidence['accepted'])
                         self.assertEqual(len(evidence['attempts']), 2)
                     self.assertEqual(evidence['attempts'][0]['exception_type'], 'MountedTimestampChanged')
+
+    def test_outer_camera_frame_advance_discards_attempt_then_recovers_or_exhausts(self):
+        from anchor_config import AnchorSampler, AnchorSamplingRejected
+        original = AnchorSampler.guard
+        for continuous in (False, True):
+            with self.subTest(continuous=continuous):
+                f = MountedFixture(); attempts = 0
+                def advancing(sampler):
+                    nonlocal attempts
+                    result = original(sampler)
+                    attempts += 1
+                    if continuous or attempts == 1:
+                        f.put(sampler.stamp, struct.pack('<f', 10 + attempts))
+                        f.put(sampler.pov, struct.pack('<3f3if', 400 + attempts, 500, 600, 7, 8, 9, 90))
+                    return result
+                with mock.patch.object(AnchorSampler, 'guard', advancing):
+                    if continuous:
+                        with self.assertRaises(AnchorSamplingRejected) as failure:
+                            LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
+                        evidence = failure.exception.evidence['guard_acquisitions'][0]
+                        self.assertEqual(attempts, 5)
+                        self.assertTrue(all(row['retryable'] and not row['strict_guard_accepted'] for row in evidence['attempts']))
+                    else:
+                        sampler = LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
+                        evidence = sampler.guard_acquisitions[0]
+                        self.assertEqual(attempts, 2)
+                        self.assertEqual(evidence['attempts'][0]['raw_guard'], None)
+                        self.assertFalse(evidence['attempts'][0]['strict_guard_accepted'])
+                        self.assertTrue(evidence['attempts'][1]['strict_guard_accepted'])
+                        accepted = evidence['attempts'][1]['raw_guard']['mounted_context']
+                        self.assertEqual(accepted['camera_timestamp_raw'], struct.pack('<f', 11).hex())
+                        self.assertEqual(accepted['camera_pov_raw'], f.read(sampler.pov, 28).hex())
+                    self.assertEqual(evidence['attempts'][0]['exception_type'], 'MountedTimestampChanged')
+
+    def test_outer_same_stamp_pov_or_static_change_never_retries(self):
+        from anchor_config import AnchorSampler, AnchorSamplingRejected
+        original = AnchorSampler.guard
+        for kind in ('pov', 'identity', 'super', 'property', 'link', 'level'):
+            with self.subTest(kind=kind):
+                f = MountedFixture()
+                def changing(sampler):
+                    result = original(sampler)
+                    if kind != 'pov':f.put(sampler.stamp, struct.pack('<f', 11))
+                    if kind == 'pov':f.put(sampler.pov, struct.pack('<3f3if', 400, 500, 600, 7, 8, 9, 90))
+                    elif kind == 'identity':f.word(f.TURRET + 76, 1)
+                    elif kind == 'super':f.ptr(0x71060, 0)
+                    elif kind == 'property':f.word(0x92094, 0x808)
+                    elif kind == 'link':f.ptr(f.TURRET + 0x800, 0)
+                    else:f.ptr(f.TURRET + 64, 0)
+                    return result
+                with mock.patch.object(AnchorSampler, 'guard', changing):
+                    with self.assertRaises(AnchorSamplingRejected) as failure:
+                        LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
+                attempts = failure.exception.evidence['guard_acquisitions'][0]['attempts']
+                self.assertEqual(len(attempts), 1)
+                self.assertFalse(attempts[0]['retryable'])
+
+    def test_outer_comparison_requires_all_static_values_and_keys_equal(self):
+        from anchor_config import _check_mounted_bracket
+        f = MountedFixture(); before = MountedContextCertificate(f.sampler).capture()
+        _check_mounted_bracket(before, copy.deepcopy(before))
+        for key in before:
+            if key in ('camera_timestamp_raw', 'camera_pov_raw'):continue
+            with self.subTest(key=key):
+                after = copy.deepcopy(before)
+                after['camera_timestamp_raw'] = struct.pack('<f', 11).hex()
+                after[key] = None
+                with self.assertRaises(AnchorRejected) as failure:_check_mounted_bracket(before, after)
+                self.assertNotIsInstance(failure.exception, MountedTimestampChanged)
+        for change in ('add', 'remove'):
+            after = copy.deepcopy(before);after['camera_timestamp_raw'] = struct.pack('<f', 11).hex()
+            if change == 'add':after['new_field'] = True
+            else:del after['atomic_snapshot']
+            with self.assertRaises(AnchorRejected) as failure:_check_mounted_bracket(before, after)
+            self.assertNotIsInstance(failure.exception, MountedTimestampChanged)
 
     def test_timestamp_transient_uses_existing_guard_deadline(self):
         from anchor_config import AnchorSamplingRejected
