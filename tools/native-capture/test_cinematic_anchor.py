@@ -117,6 +117,65 @@ class CinematicAnchorTests(unittest.TestCase):
     def sampler(self):
         return LiveRegistryAnchorSampler(self.r, cinematic_camera=True)
 
+    def test_cold_discovery_precedes_timestamp_and_both_verifications_stay_fresh(self):
+        events=[];read=self.r.read
+        init=cinematic_anchor.CinematicTargetCertificate.__init__
+        verify=cinematic_anchor.CinematicTargetCertificate.verify
+        def constructing(contract,sampler):
+            events.append('construct_begin');init(contract,sampler);events.append('construct_end')
+        def verifying(contract,sampler):
+            events.append('verify');return verify(contract,sampler)
+        def reading(address,size):
+            if (address,size)==(0x30600,4):events.append('stamp')
+            return read(address,size)
+        with mock.patch.object(cinematic_anchor.CinematicTargetCertificate,'__init__',constructing),\
+             mock.patch.object(cinematic_anchor.CinematicTargetCertificate,'verify',verifying),\
+             mock.patch.object(self.r,'read',reading):
+            sampler=self.sampler()
+            self.assertLess(events.index('construct_end'),events.index('stamp'))
+            self.assertEqual(events[events.index('stamp'):].count('verify'),2)
+            self.assertEqual(events.count('stamp'),3)
+            events.clear();sampler.guard()
+            self.assertEqual(events.count('verify'),2)
+            self.assertNotIn('construct_begin',events)
+
+    def test_cold_discovery_consumes_existing_guard_deadline(self):
+        clock=[0];init=cinematic_anchor.CinematicTargetCertificate.__init__
+        def constructing(contract,sampler):
+            init(contract,sampler);clock[0]=201000000
+        with mock.patch.object(cinematic_anchor.CinematicTargetCertificate,'__init__',constructing):
+            with self.assertRaisesRegex(AnchorRejected,'deadline exceeded'):
+                LiveRegistryAnchorSampler(self.r,lambda:clock[0],cinematic_camera=True)
+
+    def test_second_verification_rejects_layout_name_and_registry_mutations(self):
+        for mutation in ('bool_size','world_count','name','slot'):
+            with self.subTest(mutation=mutation):
+                self.r=CinematicFixture();sampler=self.sampler()
+                verify=sampler.cinematic_contract.verify;calls=0
+                identity=sampler.cinematic_contract.camera_class
+                entry=self.r.u64(self.r.names_data+self.r.u32(identity['address']+72)*8)
+                def changing(current):
+                    nonlocal calls
+                    calls+=1
+                    if calls==2:
+                        if mutation=='bool_size':self.r.word(self.r.PROPERTY+0x74,8)
+                        elif mutation=='world_count':self.r.word(self.r.WORLD_PROPERTY+0x70,2)
+                        elif mutation=='name':self.r.put(entry+20,'Changed\0'.encode('utf-16-le'))
+                        else:self.r.ptr(self.r.objects_data+identity['internal_index']*8,0)
+                    return verify(current)
+                with mock.patch.object(sampler.cinematic_contract,'verify',changing):
+                    with self.assertRaises(AnchorRejected):sampler.guard()
+                self.assertEqual(calls,2)
+
+    def test_verify_reads_both_property_shape_words_together(self):
+        sampler=self.sampler()
+        with mock.patch.object(self.r,'read',wraps=self.r.read) as read:
+            sampler.cinematic_contract.verify(sampler)
+        for prop in (self.r.PROPERTY,self.r.WORLD_PROPERTY):
+            self.assertIn(mock.call(prop+0x70,8),read.call_args_list)
+            self.assertNotIn(mock.call(prop+0x70,4),read.call_args_list)
+            self.assertNotIn(mock.call(prop+0x74,4),read.call_args_list)
+
     def test_same_level_camera_schema2_retains_controlled_pawn(self):
         config, metadata = build_anchor_config(self.r, cinematic_camera=True)
         self.assertEqual(config['schema'], 2)

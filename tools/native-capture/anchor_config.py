@@ -58,6 +58,11 @@ class LiveRegistryAnchorSampler(AnchorSampler):
     def _strict_guard(self):
         self.r.objects_data,self.r.object_count,self.r.object_capacity = _header(self.r,self.r.objects_header)
         self.r.names_data,self.r.name_count,self.r.name_capacity = _header(self.r,self.r.names_header)
+        # Reflection discovery belongs to this guard's existing budget, outside
+        # the strict timestamp bracket. Both target validations below stay fresh.
+        if self.target_validator is not None and self.cinematic_contract is None:
+            from cinematic_anchor import CinematicTargetCertificate
+            self.cinematic_contract=CinematicTargetCertificate(self)
         mounted=None
         if not self.derives(self.fresh(self.pawn)['cls'],'WarPawn'):
             from mounted_context import MountedContextCertificate
@@ -133,9 +138,18 @@ class LiveRegistryAnchorSampler(AnchorSampler):
         if not 0 <= name_index < r.name_count:
             raise AnchorRejected('Live name registry index out of range')
         entry=r.u64(r.names_data+name_index*8)
-        if not entry or r.u32(entry+p['name_entry_index']) != name_index:
+        if not entry:raise AnchorRejected('Live name entry identity mismatch')
+        entry_raw=None
+        if (p['name_entry_index'],p['name_entry_text'])==(0,20):
+            # This known layout spans exactly 148 bytes. Unknown layouts and
+            # failed/short combined reads keep the original separate reads.
+            try:entry_raw=r.read(entry,148)
+            except (RuntimeError,OSError):pass
+            if entry_raw is not None and len(entry_raw)!=148:entry_raw=None
+        entry_index=struct.unpack_from('<I',entry_raw)[0] if entry_raw is not None else r.u32(entry+p['name_entry_index'])
+        if entry_index != name_index:
             raise AnchorRejected('Live name entry identity mismatch')
-        raw=r.read(entry+p['name_entry_text'],128)
+        raw=entry_raw[20:148] if entry_raw is not None else r.read(entry+p['name_entry_text'],128)
         end=next((i for i in range(0,128,2) if raw[i:i+2]==b'\0\0'),None)
         if end is None:raise AnchorRejected('Observer name exceeds 63 UTF16 units')
         name=raw[:end].decode('utf-16-le',errors='strict')

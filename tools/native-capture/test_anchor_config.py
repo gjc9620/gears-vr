@@ -25,6 +25,43 @@ class Fixture(MemoryResolver):
 
 
 class AnchorConfigTests(unittest.TestCase):
+    def test_known_name_layout_combines_entry_and_retains_fresh_index_and_slot(self):
+        r=Fixture();sampler=LiveRegistryAnchorSampler(r);address=0x20000
+        index=r.u32(address+r.profile['object_name']);entry=r.u64(r.names_data+index*8)
+        with mock.patch.object(r,'read',wraps=r.read) as read:
+            sampler.fresh(address)
+        for call in (mock.call(entry,148),mock.call(address+r.profile['object_name'],4),mock.call(r.objects_data+index*8,8)):
+            self.assertIn(call,read.call_args_list)
+        self.assertNotIn(mock.call(entry,4),read.call_args_list)
+        self.assertNotIn(mock.call(entry+20,128),read.call_args_list)
+        for mutation in ('index','text','slot'):
+            with self.subTest(mutation=mutation):
+                r=Fixture();sampler=LiveRegistryAnchorSampler(r)
+                if mutation=='index':r.put(entry,struct.pack('<I',index+1))
+                elif mutation=='text':r.put(entry+20,'Changed\0'.encode('utf-16-le'))
+                else:r.put(r.objects_data+index*8,struct.pack('<Q',0))
+                with self.assertRaises(AnchorRejected):sampler.fresh(address)
+
+    def test_name_combined_short_failed_and_unknown_layout_keep_separate_path(self):
+        for mode in ('short','failed','layout'):
+            with self.subTest(mode=mode):
+                r=Fixture();sampler=LiveRegistryAnchorSampler(r);address=0x20000
+                index=r.u32(address+72);entry=r.u64(r.names_data+index*8);original=r.read
+                if mode=='layout':
+                    r.profile.update(name_entry_index=4,name_entry_text=24)
+                    r.put(entry+4,struct.pack('<I',index))
+                    r.put(entry+24,original(entry+20,128))
+                def reading(a,size):
+                    if (a,size)==(entry,148):
+                        if mode=='short':return b'\0'*147
+                        if mode=='failed':raise RuntimeError('combined unavailable')
+                        self.fail('unknown layout must use separate reads')
+                    return original(a,size)
+                with mock.patch.object(r,'read',side_effect=reading) as read:
+                    self.assertEqual(sampler.fresh(address)['name'],r.names[index])
+                self.assertIn(mock.call(entry+r.profile['name_entry_index'],4),read.call_args_list)
+                self.assertIn(mock.call(entry+r.profile['name_entry_text'],128),read.call_args_list)
+
     def test_strict_header_mismatch_preserves_typed_evidence(self):
         from anchor_config import AnchorRegistryChanged
         for registry,operation in (('objects','guard'),('names','guard'),('objects','sample')):

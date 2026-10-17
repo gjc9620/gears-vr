@@ -5,6 +5,7 @@ accepted separately, with its own identity, only while bCinematicMode is set.
 Native BoolProperty semantics were checked against live bytes; see docs/65.
 """
 import hashlib
+import struct
 from sample_player_anchor import AnchorRejected
 
 
@@ -116,14 +117,14 @@ class CinematicTargetCertificate:
         vtable = r.u64(prop)
         if (not vtable or r.u64(r.base + 0x1b86280 + 0x2d * 8) != r.base + 0x1d6ea4 or
                 r.u64(vtable + 0x2a0) != r.base + 0x1daba0 or
-                r.u32(prop + 0x70) != 1 or r.u32(prop + 0x74) != 4 or
+                struct.unpack('<II',r.read(prop + 0x70,8)) != (1,4) or
                 r.u32(prop + 0x94) != self.offset or r.u32(prop + 0xd0) != self.mask):
             raise AnchorRejected('Cinematic BoolProperty route/layout changed')
         for rva, size, digest in BOOL_CODE:
             if hashlib.sha256(r.read(r.base + rva, size)).hexdigest() != digest:
                 raise AnchorRejected('Cinematic BoolProperty native code changed')
         prop = self.world_property['address']
-        if (r.u32(prop + 0x70) != 1 or r.u32(prop + 0x74) != 8 or
+        if (struct.unpack('<II',r.read(prop + 0x70,8)) != (1,8) or
                 r.u32(prop + 0x94) != self.world_offset):
             raise AnchorRejected('Actor.WorldInfo property layout changed')
 
