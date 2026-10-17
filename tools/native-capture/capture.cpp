@@ -3004,6 +3004,7 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
     return result;
 }
 void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count,const D3D12_VIEWPORT* values) {
+    final_transfer_live::bracket::consumed_viewport(reinterpret_cast<uintptr_t>(list),count,values,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_viewports(list,count,values);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_viewports(list,count,values);}auto frame_guard=frame_lock();
     if(recording.load()||(owned_bindings_enabled&&prime_recording.load())) {
@@ -3021,6 +3022,7 @@ void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count
     original_viewports(list,count,values);
 }
 void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RECT* values) {
+    final_transfer_live::bracket::consumed_scissor(reinterpret_cast<uintptr_t>(list),count,values,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_scissors(list,count,values);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_scissors(list,count,values);}auto frame_guard=frame_lock();
     if(recording.load()||(owned_bindings_enabled&&prime_recording.load())) {
@@ -3292,6 +3294,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw_indexed(list,indices,instances,start,vertex,first_instance);}
 }
 void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,BOOL single,const D3D12_CPU_DESCRIPTOR_HANDLE* depth) {
+    final_transfer_live::bracket::consumed_target(reinterpret_cast<uintptr_t>(list),count,handles,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_targets(list,count,handles,single,depth);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_targets(list,count,handles,single,depth);}auto frame_guard=frame_lock();
     if(recording.load()){D3D12_CPU_DESCRIPTOR_HANDLE first{};

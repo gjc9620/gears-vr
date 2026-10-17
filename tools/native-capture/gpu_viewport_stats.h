@@ -35,6 +35,7 @@ struct BindingProvenance {
     uintptr_t handle{};DescriptorTrace trace{};
     bool operator==(BindingProvenance const& b)const{return handle==b.handle&&trace==b.trace;}
 };
+struct DescriptorSnapshot {Target target{};BindingProvenance provenance{};};
 struct DrawState {bool tracked{};Rect viewport{},scissor{};unsigned viewport_count{},scissor_count{};
     bool depth_known{};float min_depth{},max_depth{};};
 struct OverlayPlan {bool valid{};std::array<Rect,2> viewports{},scissors{};};
@@ -180,6 +181,8 @@ public:
             return true;}return false;}
     Target lookup(uintptr_t handle){std::lock_guard<std::mutex> lock(mutex);
         auto entry=descriptor(handle,false);return entry?entry->target:Target{};}
+    DescriptorSnapshot descriptor_snapshot(uintptr_t handle){std::lock_guard<std::mutex> lock(mutex);
+        auto entry=descriptor(handle,false);return entry?DescriptorSnapshot{entry->target,{handle,entry->trace}}:DescriptorSnapshot{};}
     TargetDraw binding(uintptr_t list){std::lock_guard<std::mutex> lock(mutex);
         auto slot=find(list,false);if(!slot)return {};
         return {slot->viewport,slot->targets,slot->target,0};}

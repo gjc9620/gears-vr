@@ -5,6 +5,7 @@
 #include <exception>
 namespace final_transfer_live {
 std::atomic<bool> attested{};
+std::atomic<bool> pending_code_attested{};
 uint64_t attempts{},accepted{},policy_rejected{},pair_rejected{},source_draws{},copy_writes{};
 bool enabled(){
 #if defined(GEARS_FINAL_OUTPUT_TRANSFER) && GEARS_FINAL_OUTPUT_TRANSFER
@@ -16,7 +17,10 @@ bool enabled(){
 namespace bracket {
 using Snapshot=gears_final_transfer_bracket::Snapshot;
 gears_final_transfer_bracket::Budget budget;
-struct Row {Snapshot entry{},draw{};gears_final_transfer_bracket::DrawCalls calls{};unsigned difference{};long long exit_qpc{};bool exited{},unwinding{};};
+using Pending=gears_final_transfer_bracket::Pending;
+struct Row {Snapshot entry{},draw{};gears_final_transfer_bracket::DrawCalls calls{};unsigned difference{};
+    Pending pending_entry{},pending_draw{};gears_final_transfer_bracket::ConsumedBinds binds{},draw_binds{};
+    unsigned pending_entry_reason{},pending_draw_reason{};long long exit_qpc{};bool exited{},unwinding{};};
 std::array<Row,16> rows{};
 std::array<uint64_t,6> entry_reasons{};
 thread_local Row* current{};
@@ -31,6 +35,27 @@ void pair(Snapshot& value){
         auto result=frame_link.current_recorded_pair(value.list,{s.resource,s.width,s.height});
         value.ticket=result.ticket;value.pair_linked=result.linked;value.pair_rejection=result.rejection;
     }
+}
+Pending read_pending_once(uintptr_t context){
+    Pending p{};if(!context)return p;
+    unsigned char count{},vp{},sc{};
+    auto read=[&](void* out,uintptr_t address,size_t size){return safe_copy(out,reinterpret_cast<void*>(address),size);};
+    p.readable=read(&count,context+0x563,1)&&read(&vp,context+0x560,1)&&read(&sc,context+0x561,1)&&
+        read(&p.dirty[0],context+0x9f,1)&&read(&p.dirty[1],context+0xa3,1)&&read(&p.dirty[2],context+0xa4,1);
+    p.count=count;p.viewport_count=vp;p.scissor_count=sc;
+    // One view/handle/rectangle only. MRT or array counts are not traversed.
+    if(!p.readable||count!=1||vp!=1||sc!=1)return p;
+    p.readable=read(&p.view,context+0x590,8)&&p.view&&read(&p.handle,p.view+0xc,8)&&p.handle&&
+        read(p.viewport.data(),context+0x290,sizeof(p.viewport))&&read(p.scissor.data(),context+0x410,sizeof(p.scissor));
+    if(!p.readable)return p;
+    const auto descriptor=frame_target_stats.descriptor_snapshot(p.handle);
+    p.target=descriptor.target;p.trace=descriptor.provenance.trace;
+    p.known_buffer=swapchain_bindings.known_buffer(p.target.resource);p.descriptor_lost=frame_target_stats.descriptor_capacity_lost();
+    return p;
+}
+Pending read_pending(uintptr_t context){
+    const auto a=read_pending_once(context);auto b=read_pending_once(context);
+    b.stable=gears_final_transfer_bracket::equal_pending(a,b);return b;
 }
 // This is an independent, bounded entry observation. Do not reuse it in the
 // actual draw's Input or in admission; the engine can bind lazily in original.
@@ -50,6 +75,7 @@ Snapshot entry(gears_final_transfer::Input input){
         value.input.binding=frame_target_stats.binding(list);value.input.rectangles=frame_target_stats.draw_state(list);
         value.input.known_buffer=swapchain_bindings.known_buffer(value.input.binding.target.resource);
         value.input.descriptor_lost=frame_target_stats.descriptor_capacity_lost();
+        value.provenance=frame_target_stats.binding_provenance(list);
     }
     unsigned char count{};ResourceIdentity identity{};
     if(context&&safe_copy(&count,reinterpret_cast<void*>(value.context+0x65d),1)&&count==1&&
@@ -80,6 +106,10 @@ struct Scope {
         for(unsigned bit=0;bit<entry_reasons.size();++bit)if(value.reason&(1u<<bit))++entry_reasons[bit];
         const int index=budget.retain(value.reason==0);if(index<0)return;
         row=&rows[unsigned(index)];row->entry=value;current=row;
+        if(!pending_code_attested.load())row->pending_entry_reason=gears_final_transfer_bracket::pending_unattested;
+        else if(value.reason&(1u|16u))row->pending_entry_reason=gears_final_transfer_bracket::pending_invalid;
+        else {row->pending_entry=read_pending(value.context);
+            row->pending_entry_reason=gears_final_transfer_bracket::pending_reason(row->pending_entry,value);}
     }
     ~Scope(){
         if(row){std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
@@ -92,6 +122,21 @@ void draw_call(uintptr_t raw_list,uintptr_t caller,unsigned kind,unsigned elemen
     if(!current)return;std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
     current->calls.call({raw_list,caller,kind,elements,instances},bypass);
 }
+void consumed_target(uintptr_t list,unsigned count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,bool bypass){
+    if(!current||!pending_code_attested.load())return;std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    D3D12_CPU_DESCRIPTOR_HANDLE handle{};const bool readable=count==1&&safe_copy(&handle,handles,sizeof(handle));
+    current->binds.consume(0,list==current->entry.raw_list,readable&&handle.ptr==current->pending_entry.handle,bypass);
+}
+void consumed_viewport(uintptr_t list,unsigned count,const D3D12_VIEWPORT* values,bool bypass){
+    if(!current||!pending_code_attested.load())return;std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    std::array<float,6> value{};const bool readable=count==1&&safe_copy(value.data(),values,sizeof(value));
+    current->binds.consume(1,list==current->entry.raw_list,readable&&value==current->pending_entry.viewport,bypass);
+}
+void consumed_scissor(uintptr_t list,unsigned count,const D3D12_RECT* values,bool bypass){
+    if(!current||!pending_code_attested.load())return;std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    std::array<int32_t,4> value{};const bool readable=count==1&&safe_copy(value.data(),values,sizeof(value));
+    current->binds.consume(2,list==current->entry.raw_list,readable&&value==current->pending_entry.scissor,bypass);
+}
 void actual(gears_final_transfer::Input const& input,gears_frame_link::ListRef ref,uintptr_t raw_list,uintptr_t context,uintptr_t object){
     // Existing Draw owner holds frame_hook_mutex. Preserve the independent
     // hook counter even when binding/other filters prevent observe() routing.
@@ -100,7 +145,13 @@ void actual(gears_final_transfer::Input const& input,gears_frame_link::ListRef r
     if(row.calls.matched_draws!=1)return;
     auto& value=row.draw;value.input=input;value.list=ref;value.raw_list=raw_list;
     value.context=context;value.source_object=object;environment(value);pair(value);
+    value.provenance=frame_target_stats.binding_provenance(raw_list);
     row.difference=gears_final_transfer_bracket::compare(row.entry,value);
+    row.draw_binds=row.binds;
+    if(!pending_code_attested.load())row.pending_draw_reason=gears_final_transfer_bracket::pending_unattested;
+    else if(!value.context||!ref.identity||!ref.generation)row.pending_draw_reason=gears_final_transfer_bracket::pending_invalid;
+    else {row.pending_draw=read_pending(context);
+        row.pending_draw_reason=row.pending_entry_reason|gears_final_transfer_bracket::compare_pending(row.pending_entry,row.pending_draw,value,row.draw_binds);}
 }
 void print(FILE* file){
     if(active.load())return; // Rows are emitted only after callback drain.
@@ -121,12 +172,26 @@ void print(FILE* file){
                 static_cast<unsigned long long>(t.resource),t.width,t.height,t.format,t.mip,in.binding.targets,unsigned(in.known_buffer),unsigned(in.descriptor_lost),unsigned(v.pair_linked),v.ticket,v.pair_rejection,
                 static_cast<unsigned long long>(in.draw_caller),in.kind,in.elements,in.instances,unsigned(r.tracked),r.viewport_count,r.scissor_count,
                 r.viewport.x,r.viewport.y,r.viewport.width,r.viewport.height,r.scissor.x,r.scissor.y,r.scissor.width,r.scissor.height,unsigned(r.depth_known),r.min_depth,r.max_depth,
-                in.args[0],in.args[1],in.args[2],in.args[3],in.args[4],in.args[5],in.args[6],in.args[7],in.dimensions[0],in.dimensions[1],in.dimensions[2],in.dimensions[3]);};
+                in.args[0],in.args[1],in.args[2],in.args[3],in.args[4],in.args[5],in.args[6],in.args[7],in.dimensions[0],in.dimensions[1],in.dimensions[2],in.dimensions[3]);
+            auto const& p=v.provenance;auto const& trace=p.trace;
+            fprintf(file,"final_transfer_bound_descriptor row=%u phase=%s handle=%llx trace=%llu,%llu,%llu,%llu,%llx,%llx,%llu\n",i,phase,
+                static_cast<unsigned long long>(p.handle),trace.write_serial,trace.origin_create_serial,trace.create_epoch,trace.last_write_epoch,
+                static_cast<unsigned long long>(trace.copy_source_handle),static_cast<unsigned long long>(trace.creation_live),trace.source_write_serial);};
         snapshot("entry",row.entry);if(row.calls.matched_draws)snapshot("actual_draw",row.draw);
+        auto pending=[&](const char* phase,Pending const& p,unsigned reason){
+            fprintf(file,"final_transfer_pending row=%u phase=%s code_attested=%u reason=%u readable=%u stable=%u counts=%u,%u,%u dirty=%u,%u,%u view=%llx handle=%llx target=%llx target_desc=%llu,%u,%u,%u known_buffer=%u descriptor_lost=%u trace=%llu,%llu,%llu,%llu,%llx,%llx,%llu viewport=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g scissor=%d,%d,%d,%d reason_bits=invalid:1,target:2,provenance:4,rectangles:8,not_dirty_disagree:16,changed:32,dirty_bind:64,actual_disagree:128,unattested:256\n",
+                i,phase,unsigned(pending_code_attested.load()),reason,unsigned(p.readable),unsigned(p.stable),p.count,p.viewport_count,p.scissor_count,
+                unsigned(p.dirty[0]),unsigned(p.dirty[1]),unsigned(p.dirty[2]),static_cast<unsigned long long>(p.view),static_cast<unsigned long long>(p.handle),static_cast<unsigned long long>(p.target.resource),p.target.width,p.target.height,p.target.format,p.target.mip,
+                unsigned(p.known_buffer),unsigned(p.descriptor_lost),p.trace.write_serial,p.trace.origin_create_serial,p.trace.create_epoch,p.trace.last_write_epoch,
+                static_cast<unsigned long long>(p.trace.copy_source_handle),static_cast<unsigned long long>(p.trace.creation_live),p.trace.source_write_serial,
+                p.viewport[0],p.viewport[1],p.viewport[2],p.viewport[3],p.viewport[4],p.viewport[5],p.scissor[0],p.scissor[1],p.scissor[2],p.scissor[3]);};
+        pending("entry",row.pending_entry,row.pending_entry_reason);if(row.calls.matched_draws)pending("actual_draw",row.pending_draw,row.pending_draw_reason);
+        for(unsigned kind=0;kind<3;++kind)fprintf(file,"final_transfer_pending_binds row=%u kind=%u calls=%llu matched=%llu mismatched=%llu bypassed=%llu wrong_list=%llu wrong_args=%llu before_draw_calls=%llu before_draw_matched=%llu before_draw_mismatched=%llu before_draw_bypassed=%llu before_draw_wrong_list=%llu before_draw_wrong_args=%llu kind_names=om:0,viewport:1,scissor:2\n",
+            i,kind,row.binds.calls[kind],row.binds.matched[kind],row.binds.mismatched[kind],row.binds.bypassed[kind],row.binds.wrong_list[kind],row.binds.wrong_args[kind],row.draw_binds.calls[kind],row.draw_binds.matched[kind],row.draw_binds.mismatched[kind],row.draw_binds.bypassed[kind],row.draw_binds.wrong_list[kind],row.draw_binds.wrong_args[kind]);
     }
 }
 }
-bool verify_range(FILE* file,uintptr_t rva,ULONG size,const char* expected){
+bool verify_range(FILE* file,uintptr_t rva,ULONG size,const char* expected,const char* label="final_transfer_identity"){
     BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};std::array<unsigned char,0x723> bytes{};
     bool ok=size<=bytes.size()&&BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0;
     if(ok)ok=BCryptCreateHash(algorithm,&hash,nullptr,0,nullptr,0,0)>=0;
@@ -136,8 +201,8 @@ bool verify_range(FILE* file,uintptr_t rva,ULONG size,const char* expected){
     for(unsigned i=0;i<32;++i)sprintf_s(hex+2*i,3,"%02x",digest[i]);
     if(hash)BCryptDestroyHash(hash);if(algorithm)BCryptCloseAlgorithmProvider(algorithm,0);
     ok=ok&&!strcmp(hex,expected);
-    fprintf(file,"final_transfer_identity rva=%llx size=%lu sha256=%s match=%u source=historical_runtime_artifact1 module_base=%llx\n",
-        static_cast<unsigned long long>(rva),size,hex,unsigned(ok),static_cast<unsigned long long>(base));return ok;
+    fprintf(file,"%s rva=%llx size=%lu sha256=%s match=%u source=historical_runtime_artifact1 module_base=%llx\n",
+        label,static_cast<unsigned long long>(rva),size,hex,unsigned(ok),static_cast<unsigned long long>(base));return ok;
 }
 bool enable(FILE* file){
 #if defined(GEARS_FINAL_OUTPUT_TRANSFER) && GEARS_FINAL_OUTPUT_TRANSFER
@@ -148,6 +213,17 @@ bool enable(FILE* file){
         verify_range(file,0x9a6adc,0x31,"0d960a5c0790633f40f677d59975f25a72d40b36d63f2f0fd98dbcc4ab7a1a04")&&
         verify_range(file,0x2b0c04,0x651,"5088f5f7fb8c718769016b98194413e42aa466a30bfdfeab01d081c07075515d")&&
         verify_range(file,0x8ee78c,0x3ee,"024e4777801ff3236360d5ead3b10a2a02717438020dd634537a47723453e138");
+    bool pending_ok=ok;
+    // Historical artifact1 hashes from pending-target-historical-asm.json.
+    // Independent diagnostic authority: mismatch does not alter admission.
+    pending_ok=verify_range(file,0x1af8fe,9,"03f238db561fe2c123de0356c34e987d91d22502d4daa40179423655f5869366","pending_target_identity")&&pending_ok;
+    pending_ok=verify_range(file,0x177e90,55,"06e1fefa4c97cd3caf9c54ccfd8484e4613f7efa14225c50c6644123e7d373a7","pending_target_identity")&&pending_ok;
+    pending_ok=verify_range(file,0x17862a,82,"09a2cf8f9adf0b04079b75e8e0fdf5d90074bc74f89d69de810af61ee3057b40","pending_target_identity")&&pending_ok;
+    pending_ok=verify_range(file,0x1786bf,100,"c7b97be2b6cf5ee14259c396ea0903c64ad83c98d1e4d3958372d22b2b2e3d86","pending_target_identity")&&pending_ok;
+    pending_ok=verify_range(file,0x178d9c,39,"092f6eeed12732aaaf7daaf57b3595b7ec55623dc81a2e6b3fb638b9cbd11698","pending_target_identity")&&pending_ok;
+    pending_ok=verify_range(file,0x1793a6,39,"4f7475ea72ee212e8517c09ff63583ca331e1bdeafdda1cd3b03e5b3eec91be6","pending_target_identity")&&pending_ok;
+    pending_code_attested.store(pending_ok);
+    fprintf(file,"pending_target_code attested=%u source_blob_sha256=911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6 observe_only=1\n",unsigned(pending_ok));
     attested.store(ok);return ok;
 #else
     (void)file;return true;

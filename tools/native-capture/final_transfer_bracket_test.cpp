@@ -1,6 +1,7 @@
 #include "final_transfer_bracket.h"
 #include <cassert>
 #include <iostream>
+#include <memory>
 int main(){
     using namespace gears_final_transfer_bracket;
     Snapshot a{};a.input.source={123,3,2560,1080,1,1,24,1};a.list={456,7};a.ticket=9;a.pair_linked=true;
@@ -36,5 +37,55 @@ int main(){
     assert(!wrong.exactly_one_routed_draw());
     DrawCalls multiple;multiple.call(expected,false);multiple.match(expected);multiple.match(expected);
     assert(!multiple.exactly_one_routed_draw());
+    Pending pending{};pending.readable=pending.stable=pending.known_buffer=true;
+    pending.count=pending.viewport_count=pending.scissor_count=1;pending.dirty={1,1,1};
+    pending.view=0x1230;pending.handle=0x4560;pending.target={789,2560,1080,24,0};
+    pending.trace={1,1,1,1,0,789,0};pending.viewport={0,0,2560,1080,0,1};pending.scissor={0,0,16384,16384};
+    Snapshot actual{};actual.input.dimensions={2560,1080,2560,1080};actual.input.binding.targets=1;
+    actual.input.binding.target=pending.target;actual.provenance={pending.handle,pending.trace};
+    actual.input.rectangles={true,pending_viewport(pending),pending_scissor(pending),1,1,true,0,1};
+    assert(pending_reason(pending,actual)==0);
+    ConsumedBinds consumed;for(unsigned i=0;i<3;++i)consumed.consume(i,true,true,false);
+    auto committed=pending;committed.dirty={0,0,0};
+    assert(compare_pending(pending,committed,actual,consumed)==0); // Normal dirty clearing is permitted.
+    for(unsigned fault=0;fault<13;++fault){auto p=pending;auto draw=committed;auto s=actual;auto binds=consumed;
+        unsigned expected_reason{};
+        switch(fault){
+        case 0:p.viewport[2]=std::numeric_limits<float>::quiet_NaN();expected_reason=pending_rectangles;break;
+        case 1:++p.target.width;expected_reason=pending_target;break;
+        case 2:p.viewport[2]/=2;expected_reason=pending_rectangles;break;
+        case 3:++draw.trace.write_serial;expected_reason=pending_changed;break;
+        case 4:binds={};expected_reason=pending_dirty_bind;break;
+        case 5:p.dirty={0,0,0};++s.input.binding.target.resource;expected_reason=pending_not_dirty;break;
+        case 6:p.count=2;expected_reason=pending_invalid;break;
+        case 7:p.stable=false;expected_reason=pending_invalid;break;
+        case 8:p.trace.origin_create_serial=0;expected_reason=pending_provenance;break;
+        case 9:binds.consume(0,false,true,false);expected_reason=pending_dirty_bind;break;
+        case 10:p.scissor[2]=1280;expected_reason=pending_rectangles;break;
+        case 11:p.viewport[5]=std::numeric_limits<float>::infinity();expected_reason=pending_rectangles;break;
+        case 12:++s.provenance.trace.write_serial;expected_reason=pending_actual;break;
+        }
+        const unsigned reason=pending_reason(p,s)|compare_pending(p,draw,s,binds);
+        assert(reason&expected_reason);
+    }
+    auto not_dirty=pending;not_dirty.dirty={0,0,0};ConsumedBinds none;
+    assert(pending_reason(not_dirty,actual)==0&&compare_pending(not_dirty,not_dirty,actual,none)==0);
+    assert(equal_pending(pending,pending));auto unstable=pending;unstable.scissor[2]--;
+    assert(!equal_pending(pending,unstable));unstable=pending;unstable.dirty[1]=0;assert(!equal_pending(pending,unstable));
+    // Atomic descriptor observation never changes the consumed OM snapshot.
+    auto tracker=std::make_unique<gears_viewport::Tracker>();
+    tracker->create(0x100,pending.target,4,789);auto created=tracker->descriptor_snapshot(0x100);
+    assert(created.target==pending.target&&created.provenance.handle==0x100&&created.provenance.trace.write_serial);
+    uintptr_t destination=0x200,origin=0x100;tracker->copy(&destination,&origin,1,5);
+    auto copied=tracker->descriptor_snapshot(0x200);assert(copied.target==created.target);
+    assert(copied.provenance.trace.origin_create_serial==created.provenance.trace.origin_create_serial&&
+        copied.provenance.trace.copy_source_handle==0x100&&copied.provenance.trace.source_write_serial==created.provenance.trace.write_serial);
+    assert(tracker->bind(0x300,1,0x200));auto bound=tracker->binding_provenance(0x300);
+    auto replacement=pending.target;++replacement.resource;tracker->create(0x200,replacement,6,790);
+    auto overwritten=tracker->descriptor_snapshot(0x200);
+    assert(overwritten.target==replacement&&!(overwritten.provenance.trace==copied.provenance.trace));
+    assert(tracker->binding(0x300).target==pending.target&&tracker->binding_provenance(0x300)==bound);
+    auto stats=tracker->snapshot();assert(!tracker->descriptor_snapshot(0x999).target.resource);
+    assert(tracker->snapshot().descriptor_creates==stats.descriptor_creates&&tracker->snapshot().descriptor_evictions==stats.descriptor_evictions);
     std::cout<<"final_transfer_bracket_test passed\n";
 }
