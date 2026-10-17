@@ -5412,6 +5412,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeOwnedCheck(void* 
 #include "owned_output_tracking_check.inl"
 #include "owned_scene_gpu_check.inl"
 #include "resource_resize_probe_check.inl"
+#include "ui_execute_bypass_check.inl"
+#include "ui_material_bypass_check.inl"
+#include "ui_scene_root_bypass_check.inl"
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {
     // Keep CRT thread notifications enabled for the statically linked runtime.
     if(reason==DLL_PROCESS_ATTACH) own_module=module;

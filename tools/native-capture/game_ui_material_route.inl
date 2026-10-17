@@ -26,6 +26,7 @@ struct ConsumerScope {
 };
 bool block_present(){if(completion.blocks_present()){++pending_presents;return true;}return false;}
 uintptr_t __fastcall hook_upload(void* native_context,unsigned primitive,unsigned primitives,void* vertices,unsigned stride){
+    if(stereo_publish_bypass)return original_upload(native_context,primitive,primitives,vertices,stride);
     Scope scope;if(!scope.world())return original_upload(native_context,primitive,primitives,vertices,stride);
     auto* previous=uploading;uploading=nullptr;gears_game_material::UploadCertificate certificate{};
     if(current&&current->entered&&!current->bad&&current->context==ui_material_context&&recording.load()){

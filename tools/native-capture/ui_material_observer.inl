@@ -61,6 +61,7 @@ void ui_material_after(gears_ui_material::Before const& before,unsigned kind,uin
  *vacant={receipt,invocation,true,false};++ui_material_published;
 }
 uint32_t __fastcall hook_ui_material_execute(void* command){
+ if(stereo_publish_bypass)return ui_original_material_execute(command);
  ui_scene_root_live::executing(2);
  Scope active_scope;if(!active_scope.world())return ui_original_material_execute(command);
  UiMaterialRestore restore;ui_material_context=nullptr;

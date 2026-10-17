@@ -18,6 +18,7 @@ thread_local Row* current{};
 void executing(unsigned kind){if(current){if(kind==1)++current->simple_executes;else if(kind==2)++current->material_executes;}}
 void reset_tls(){current=nullptr;}
 uintptr_t __fastcall hook(void* client,void* fcanvas,void* scene){
+    if(stereo_publish_bypass)return original(client,fcanvas,scene);
     // Preserve original RAX bits: return semantics have not been established.
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     struct Restore {Row* previous=current;~Restore(){current=previous;}} restore;
