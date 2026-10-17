@@ -36,6 +36,9 @@
 #include "outage_trace.h"
 #include "outage_sources.h"
 #include "anchor_observer.h"
+#if defined(GEARS_PAWNLESS_CAMERA_OBSERVER) && GEARS_PAWNLESS_CAMERA_OBSERVER
+#include "pawnless_camera_observer.h"
+#endif
 #include "camera_closer.h"
 #include "anchor_config_loader.h"
 #include "hook_entry_attestation.h"
@@ -220,6 +223,18 @@ std::atomic<unsigned> anchor_row_count{0},anchor_reject_count{0};
 struct AnchorPawnReject {gears_anchor::PawnBindingDiagnostic diagnostic{};long long qpc{};unsigned thread{};};
 std::array<AnchorPawnReject,16> anchor_pawn_rejects{};
 std::atomic<unsigned> anchor_pawn_reject_count{};
+#if defined(GEARS_PAWNLESS_CAMERA_OBSERVER) && GEARS_PAWNLESS_CAMERA_OBSERVER
+struct PawnlessSceneRow {
+    gears_pawnless_camera::Snapshot before{},after{};
+    uintptr_t local{},family{},source{},renderer_family{},renderer_source{};
+    long long begin_qpc{},end_qpc{},renderer_qpc{};unsigned thread{},read_mask{},renderer_thread{};
+    std::array<unsigned char,0x430> scene_bytes{},renderer_bytes{};
+};
+std::array<PawnlessSceneRow,16> pawnless_scene_rows{};
+std::mutex pawnless_scene_mutex;
+unsigned pawnless_scene_count{};
+std::atomic<long long> pawnless_scene_next{};
+#endif
 // Bounded observational state identities; no ViewState lifetime/compatibility assertion.
 struct AnchorStateTransition {gears_anchor::Identity pawn{};uintptr_t source{},original_state{},right_state{},right_table{};
     long long qpc{};unsigned thread{},read_mask{};};
@@ -1397,6 +1412,38 @@ void print_anchor(FILE* status,bool hooks_disabled){
         fprintf(status,"anchor_state_transition index=%u qpc=%lld thread=%u pawn=%llx pawn_index=%u pawn_name_index=%u pawn_number=%u pawn_class=%llx pawn_outer=%llx source=%llx original_state=%llx right_state=%llx right_table=%llx read_mask=%u\n",
             i,r.qpc,r.thread,r.pawn.address,r.pawn.index,r.pawn.name_index,r.pawn.number,r.pawn.cls,r.pawn.outer,
             r.source,r.original_state,r.right_state,r.right_table,r.read_mask);}
+#if defined(GEARS_PAWNLESS_CAMERA_OBSERVER) && GEARS_PAWNLESS_CAMERA_OBSERVER
+    {
+        std::lock_guard<std::mutex> lock(pawnless_scene_mutex);
+        fprintf(status,"pawnless_scene_observer compiled=1 rows=%u capacity=16 period_ms=250 admission_changes=0 lifetime_verified=0 local_controller_offset_certified=0\n",pawnless_scene_count);
+        auto pass=[&](unsigned index,const char* label,gears_pawnless_camera::Pass const& p){
+            fprintf(status,"pawnless_camera_pass index=%u label=%s read_mask=%u range_rejected=%u registry_valid=%u identity_match=%u link_match=%u links=%llx,%llx,%llx,%llx,%llx,%llx stamp=%u time=%.9g location=%.9g,%.9g,%.9g fov=%.9g finite_location=%u valid_fov=%u finite_stamp=%u\n",
+                index,label,p.read_mask,p.range_rejected_mask,p.registry_valid_mask,p.identity_match_mask,p.link_match_mask,
+                p.links[0],p.links[1],p.links[2],p.links[3],p.links[4],p.links[5],p.timestamp,p.time,
+                p.location[0],p.location[1],p.location[2],p.fov,p.finite_location?1:0,p.valid_fov?1:0,p.finite_timestamp?1:0);
+        };
+        auto snapshot=[&](unsigned index,const char* label,gears_pawnless_camera::Snapshot const& s){
+            fprintf(status,"pawnless_camera_snapshot index=%u label=%s config_valid=%u sampled=%u initial_pawn_read=%u initial_pawn=%llx stable_mask=%u reads_complete=%u reads_stable=%u expected=%llx,%llx,%llx,%llx\n",
+                index,label,s.config_valid?1:0,s.sampled?1:0,s.initial_pawn_read?1:0,s.initial_pawn,s.stable_mask,s.reads_complete?1:0,s.reads_stable?1:0,
+                s.expected[0],s.expected[1],s.expected[2],s.expected[3]);
+        };
+        auto source=[&](unsigned index,const char* label,std::array<unsigned char,0x430> const& bytes){
+            uintptr_t owner{},state{};std::array<float,32> matrices{};std::array<float,4> rect{};
+            memcpy(&owner,bytes.data(),8);memcpy(&state,bytes.data()+8,8);memcpy(rect.data(),bytes.data()+0x48,16);memcpy(matrices.data(),bytes.data()+0x70,128);
+            fprintf(status,"pawnless_source index=%u label=%s owner=%llx state=%llx raw_rect=%.9g,%.9g,%.9g,%.9g matrices=",index,label,owner,state,rect[0],rect[1],rect[2],rect[3]);
+            for(unsigned n=0;n<matrices.size();++n)fprintf(status,"%s%.9g",n?",":"",matrices[n]);fprintf(status,"\n");
+        };
+        for(unsigned i=0;i<pawnless_scene_count;++i){auto const& r=pawnless_scene_rows[i];
+            fprintf(status,"pawnless_scene index=%u begin_qpc=%lld end_qpc=%lld renderer_qpc=%lld thread=%u renderer_thread=%u local=%llx family=%llx source=%llx renderer_family=%llx renderer_source=%llx read_mask=%u bits=family:1,result_matches:2,scene_copy:4,renderer_copy:8,matrices_equal:16,bytes_equal:32\n",
+                i,r.begin_qpc,r.end_qpc,r.renderer_qpc,r.thread,r.renderer_thread,r.local,r.family,r.source,r.renderer_family,r.renderer_source,r.read_mask);
+            snapshot(i,"pre",r.before);snapshot(i,"post",r.after);
+            pass(i,"pre_begin",r.before.before);pass(i,"pre_end",r.before.after);pass(i,"post_begin",r.after.before);pass(i,"post_end",r.after.after);
+            if(r.read_mask&4)source(i,"scene",r.scene_bytes);if(r.read_mask&8)source(i,"renderer",r.renderer_bytes);
+        }
+    }
+#else
+    fprintf(status,"pawnless_scene_observer compiled=0 rows=0 admission_changes=0 additional_reads=0\n");
+#endif
     unsigned image_size{};IMAGE_DOS_HEADER dos{};IMAGE_NT_HEADERS64 nt{};
     if(safe_copy(&dos,reinterpret_cast<void*>(base),sizeof(dos))&&dos.e_magic==IMAGE_DOS_SIGNATURE&&
        dos.e_lfanew>0&&dos.e_lfanew<0x100000&&base<=UINTPTR_MAX-unsigned(dos.e_lfanew)&&
@@ -2347,6 +2394,24 @@ void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void*
     if(submitting_family&&family==submitting_family&&record.caller==0x3a1595)note_world_progress(WorldProgress::candidate);
     service_session_stop_native();
     gears_anchor::Receipt associated_anchor{};bool anchor_associated=false;
+#if defined(GEARS_PAWNLESS_CAMERA_OBSERVER) && GEARS_PAWNLESS_CAMERA_OBSERVER
+    if(anchor_observer_enabled&&recording.load()){
+        Record candidate{};inspect_family(candidate,family);
+        if((candidate.valid&128)&&candidate.family_count==1){
+            std::lock_guard<std::mutex> lock(pawnless_scene_mutex);
+            for(unsigned i=0;i<pawnless_scene_count;++i){auto& row=pawnless_scene_rows[i];
+                if(row.renderer_qpc||row.family!=reinterpret_cast<uintptr_t>(family)||row.source!=candidate.family_views[0]||
+                   row.thread!=GetCurrentThreadId()||record.time<row.end_qpc||record.time-row.end_qpc>qpc_frequency/2)continue;
+                row.renderer_family=reinterpret_cast<uintptr_t>(family);row.renderer_source=candidate.family_views[0];
+                row.renderer_qpc=record.time;row.renderer_thread=GetCurrentThreadId();
+                if(safe_copy(row.renderer_bytes.data(),reinterpret_cast<void*>(row.renderer_source),row.renderer_bytes.size())){
+                    row.read_mask|=8;if(!memcmp(row.scene_bytes.data()+0x70,row.renderer_bytes.data()+0x70,128))row.read_mask|=16;
+                    if(row.scene_bytes==row.renderer_bytes)row.read_mask|=32;
+                }
+            }
+        }
+    }
+#endif
     if(anchor_observer_enabled&&recording.load()){
         Record input{};inspect_family(input,family);gears_anchor::Key key{};gears_anchor::Anchor anchor{};
         bool valid=anchor_key(key,anchor,reinterpret_cast<uintptr_t>(family),input.family_views[0],expected_local,2);
@@ -2393,6 +2458,19 @@ void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation
         gears_anchor::capture_pawn_binding(anchor_config,safe_copy,pawn_before_scene,&pawn_diagnostic);
     if(anchor_observing&&!pawn_before_valid){const auto index=anchor_pawn_reject_count.fetch_add(1);
         if(index<anchor_pawn_rejects.size())anchor_pawn_rejects[index]={pawn_diagnostic,now(),GetCurrentThreadId()};}
+#if defined(GEARS_PAWNLESS_CAMERA_OBSERVER) && GEARS_PAWNLESS_CAMERA_OBSERVER
+    PawnlessSceneRow pawnless_row{};bool pawnless_sample=false;
+    if(anchor_observing&&!pawn_before_valid&&pawn_diagnostic.field==gears_anchor::PawnBindingField::controller_pawn&&
+       pawn_diagnostic.actual_valid&&!pawn_diagnostic.actual){
+        const auto timestamp=now();auto next=pawnless_scene_next.load();
+        bool room=false;{std::lock_guard<std::mutex> lock(pawnless_scene_mutex);room=pawnless_scene_count<pawnless_scene_rows.size();}
+        if(room&&qpc_frequency>0&&timestamp>=next&&pawnless_scene_next.compare_exchange_strong(next,timestamp+qpc_frequency/4)){
+            pawnless_sample=gears_pawnless_camera::observe(anchor_config,safe_copy,pawnless_row.before);
+            pawnless_row.begin_qpc=timestamp;pawnless_row.thread=GetCurrentThreadId();
+            pawnless_row.local=reinterpret_cast<uintptr_t>(local);pawnless_row.family=reinterpret_cast<uintptr_t>(family);
+        }
+    }
+#endif
     struct AnchorSceneScope {bool enabled;explicit AnchorSceneScope(bool e):enabled(e){if(e)anchor_context.begin_scene();}
         ~AnchorSceneScope(){if(enabled)anchor_context.end_scene();}} anchor_scene(anchor_observing);
     void* saved_local=scene_local;Rot* saved_rotation=scene_rotation;int saved_delta=scene_delta;
@@ -2400,6 +2478,18 @@ void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation
     scene_local=local;scene_rotation=rotation;scene_delta=0;
     scene_phase=0;scene_translation={};scene_rotation_delta={};
     void* result=original_scene(local,family,position,rotation,viewport,drawer);
+#if defined(GEARS_PAWNLESS_CAMERA_OBSERVER) && GEARS_PAWNLESS_CAMERA_OBSERVER
+    if(pawnless_sample){
+        gears_pawnless_camera::observe(anchor_config,safe_copy,pawnless_row.after);
+        pawnless_row.end_qpc=now();Record candidate{};inspect_family(candidate,family);
+        if((candidate.valid&128)&&candidate.family_count==1){pawnless_row.read_mask|=1;pawnless_row.source=candidate.family_views[0];
+            if(pawnless_row.source==reinterpret_cast<uintptr_t>(result))pawnless_row.read_mask|=2;
+            if(pawnless_row.source&&safe_copy(pawnless_row.scene_bytes.data(),reinterpret_cast<void*>(pawnless_row.source),pawnless_row.scene_bytes.size()))pawnless_row.read_mask|=4;
+        }
+        std::lock_guard<std::mutex> lock(pawnless_scene_mutex);
+        if(pawnless_scene_count<pawnless_scene_rows.size())pawnless_scene_rows[pawnless_scene_count++]=pawnless_row;
+    }
+#endif
     if(anchor_observing){gears_anchor::Receipt receipt{};receipt.invocation=++anchor_context.sequence;
         receipt.thread=GetCurrentThreadId();receipt.scene_qpc=now();
         const bool anchor_valid=pawn_before_valid&&anchor_key(receipt.key,receipt.anchor,reinterpret_cast<uintptr_t>(family),reinterpret_cast<uintptr_t>(result),reinterpret_cast<uintptr_t>(local),0)&&
