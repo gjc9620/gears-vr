@@ -152,6 +152,13 @@ void print_unpossessed_quads(FILE* status);
 void observe_unpossessed_quad_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 namespace death_source_live {void progress(FILE*);void print(FILE*);unsigned status_interval_ms();}
 namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_frame_link::ListRef,uint64_t,unsigned);}
+namespace gears_death_hdr {struct Event;}
+namespace death_hdr_pixels {
+void sample(gears_death_hdr::Event const&,uintptr_t);void poll();void print(FILE*);void progress(FILE*);
+std::unique_lock<std::recursive_mutex> execution_lock();
+bool prepare_copy(ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,UINT,UINT,UINT,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_BOX*,uintptr_t);
+void append_after_original(bool,ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_TEXTURE_COPY_LOCATION*);
+}
 void print_backbuffer_copies(FILE* status);
 void observe_backbuffer_copy_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 namespace final_transfer_live {
@@ -1302,6 +1309,7 @@ void retire_original_present_interval() {
     if(outage_diagnostics.load())outage_draws={}; // Isolated original-Present work cannot become next-frame evidence.
 }
 void stereo_publish_worker_tick() {
+    death_hdr_pixels::poll();
     if(!stereo_gpu_publish)return;
     if(continuous_session&&submitted_lifetime.stopping()&&!stereo_publish_counts.stopped.load()){
         stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;
@@ -1377,6 +1385,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"unpossessed_submitted=%u unpossessed_first_ticket=%llu unpossessed_last_ticket=%llu ",
         unpossessed_submission_count.load(),unpossessed_first_ticket.load(),unpossessed_last_ticket.load());
     death_source_live::progress(output);
+    death_hdr_pixels::progress(output);
     fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu ",
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
         static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()));
@@ -1581,6 +1590,7 @@ void print_frame_link(FILE* status) {
     print_unpossessed_quads(status);
     death_source_live::print(status);
     death_hdr_timeline::print(status);
+    death_hdr_pixels::print(status);
     print_backbuffer_copies(status);
     final_transfer_live::print(status);
     fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
@@ -2070,6 +2080,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "color_copy_observer.h"
 #include "first_view_mask_control.h"
 #include "death_source_control.inl"
+#include "death_hdr_pixels.inl"
 
 void inspect_completed_renderer(Record& record,void* destination){
     if(!destination)return;
@@ -2592,8 +2603,8 @@ void inspect_swapchain(Record& record,IDXGISwapChain* chain) {
     }
 }
 void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* lists) {
-    if(stereo_publish_bypass){original_execute(queue,count,lists);return;}
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_execute(queue,count,lists);}auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
+    if(stereo_publish_bypass){death_hdr_pixels::execute_passthrough(queue,count,lists);return;}
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();death_hdr_pixels::execute_passthrough(queue,count,lists);return;}auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
     gears_frame_link::ExecutionToken owned_token{};
     gears_frame_link::ExecutionToken* owned=nullptr;
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
@@ -2618,7 +2629,10 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     const bool retire_bindings=owned_bindings_enabled&&(recording.load()||prime_recording.load())&&
         count&&count<=binding_lists.size()&&safe_copy(binding_lists.data(),lists,count*sizeof(binding_lists[0]));
     if(retire_bindings)for(unsigned i=0;i<count;++i)binding_ids[i]=canonical_identity(binding_lists[i]);
+    auto pixel_guard=death_hdr_pixels::execution_lock();
+    const auto pixel_token=death_hdr_pixels::prepare_execute(queue,count,lists);
     original_execute(queue,count,lists);
+    death_hdr_pixels::after_execute(pixel_token,queue);
     owned_scene_gpu::commit(scene_gpu_token);
     native_owned_scene_commit(scene_receipt);
     if(owned&&owned_token.value&&!frame_link.commit_execute(owned_token))++frame_counts.execute_rejected;
@@ -2903,8 +2917,9 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
 #endif
 #include "owned_scene_gpu_hooks.inl"
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
-    if(stereo_publish_bypass)return original_reset_list(list,allocator,state);
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_reset_list(list,allocator,state);}auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
+    if(stereo_publish_bypass)return death_hdr_pixels::reset_passthrough(list,allocator,state);
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return death_hdr_pixels::reset_passthrough(list,allocator,state);}auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
+    death_hdr_pixels::reset_after_original(list,result);
     gears_render_cost::Scope cost(gears_render_cost::reset_tracking);
     owned_scene_gpu::reset(list,result);
     if(owned_bindings_enabled&&(recording.load()||prime_recording.load())){
@@ -3779,6 +3794,7 @@ DWORD WINAPI worker(void*) {
     if(ok)ok=enable_resource_resize_probe(status);
     if(ok)ok=final_transfer_live::enable(status);
     if(ok)ok=death_source_live::enable(status);
+    if(ok)ok=death_hdr_pixels::enable(status);
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     if(ok)ok=create_quad_source_events();
@@ -3846,6 +3862,7 @@ DWORD WINAPI worker(void*) {
     }
     // Disable entry patches; leave the DLL and trampolines resident so delayed
     // in-flight execution can never jump into freed code.
+    death_hdr_pixels::stop();
     MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
     recording=false;
     for(unsigned i=0;i<100 && active.load();++i) Sleep(10);

@@ -124,7 +124,10 @@ void STDMETHODCALLTYPE hook_color_copy(ID3D12GraphicsCommandList* list,const D3D
     final_transfer_live::copy_destination(list,destination);
     observe_backbuffer_copy(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     observe_color_copy(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
+    auto pixel_guard=death_hdr_pixels::execution_lock();
+    const auto pixel_token=death_hdr_pixels::prepare_copy(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     original_color_copy(list,destination,x,y,z,source,box);
+    death_hdr_pixels::append_after_original(pixel_token,list,destination,source);
 }
 void print_color_copy(FILE* file){
     std::lock_guard<std::mutex> lock(color_copy_mutex);

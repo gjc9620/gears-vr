@@ -63,7 +63,8 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller){
     Event e{};stamp(e,list,caller);
     if(selected){e.kind=sample;e.flags=list?0u:1u;e.quad_caller=late_quad_candidate.caller;
         e.args=late_quad_candidate.args;e.dimensions=late_quad_candidate.dimensions;
-        if(auto* row=bank->record(e,now())){query(*bank,e.target.resource);sample_source(*bank,*row);}
+        if(auto* row=bank->record(e,now())){query(*bank,e.target.resource);sample_source(*bank,*row);
+            death_hdr_pixels::sample(row->event,canonical(*bank,row->event.target.resource));}
     }
     if(hdr){e.kind=hdr_draw;e.flags=0;e.quad_caller=0;e.args={};e.dimensions={};
         if(bank->record(e,now()))query(*bank,e.target.resource);}
