@@ -194,6 +194,64 @@ void count(trial::Result r){switch(r){case trial::Result::applied:successful_non
         unresolved=state.lease.touched[0]||state.lease.touched[1];terminal=true;
         disable();request_session_stop(SessionStop::proof_failure);}
 }
+#if defined(GEARS_PATH_CHOICE_CLOSE_RESTORE) && GEARS_PATH_CHOICE_CLOSE_RESTORE
+// Called only by the separately authenticated CloseScene boundary, before its
+// original. No fabricated root/FCanvas candidate and no inactive-widget writes.
+enum class CloseRestoreStatus:unsigned {bypass,rejected,restored,setter_failed,identity_lost,ownership_lost,exception};
+struct CloseRestoreCompletion {
+    CloseRestoreStatus status=CloseRestoreStatus::bypass;bool borrowed{},attempted{};
+    unsigned setter_calls{},read_mask{};std::array<std::uint32_t,2> entry_owned{},observed{};
+};
+template<class Read,class Set,class Certify>
+CloseRestoreCompletion restore_before_close(trial::Config const& expected,Read read,Set setter,Certify certify)noexcept{
+    CloseRestoreCompletion out;
+    // In particular, a foreign caller cannot inspect inside or any lease State.
+    if(owner_thread.load(std::memory_order_acquire)!=GetCurrentThreadId())return out;
+    bool owned_admission=false;
+    if(owner_activity.load()==1){
+        if(!inside||!in_flight.load())return out;out.borrowed=true;
+    }else{
+        if(inside)return out;unsigned idle=0;if(!owner_activity.compare_exchange_strong(idle,1))return out;
+        ++in_flight;inside=true;owned_admission=true;
+    }
+    struct Release {bool owned;~Release(){if(owned){inside=false;--in_flight;owner_activity=terminal.load()?2u:0u;}}} release{owned_admission};
+    if(terminal.load()||restore_retries.load())return out;
+    try{
+        auto const& l=state.lease;auto const& c=l.config;
+        if(!l.active||!l.touched[0]||!l.touched[1]||!applied.load()||successful_nonce!=c.nonce||
+           c.nonce!=expected.nonce||c.client!=expected.client||c.scene!=expected.scene||c.panel!=expected.panel||
+           c.panel_vtable!=expected.panel_vtable||c.top_bits!=expected.top_bits||c.bottom_bits!=expected.bottom_bits||
+           c.vertical_offset_reference_pixels!=expected.vertical_offset_reference_pixels)return out;
+        const auto ctx=context(c.client,c.scene);const auto hint=reinterpret_cast<uintptr_t>(_ReturnAddress());
+        auto observed_read=[&](void* to,void const* from,std::size_t size){
+            const auto at=reinterpret_cast<uintptr_t>(from);if(size==4&&at==c.panel+0x64)out.read_mask=0;
+            const bool ok=read(to,from,size);
+            if(ok&&size==4){if(at==c.panel+0x64){std::memcpy(&out.observed[0],to,4);out.read_mask|=1;}
+                if(at==c.panel+0x6c){std::memcpy(&out.observed[1],to,4);out.read_mask|=2;}}return ok;};
+        if(!trial::same(expected,ctx)||!certify()||
+           !trial::authenticate(c,ctx,auth_reader(c,ctx,AuthStage::restore,hint,observed_read))||
+           !trial::positions(c,observed_read,out.entry_owned)||out.entry_owned!=l.owned){out.status=CloseRestoreStatus::rejected;return out;}
+        // Suppress reflow control and nested root mutation BEFORE either Setter.
+        ++restore_retries;out.attempted=true;
+        auto set_owned=[&](auto panel,float v,unsigned face,unsigned input,int origin){
+            ever_modified=true;++out.setter_calls;return setter(panel,v,face,input,origin);};
+        const auto result=trial::restore(state,ctx,auth_reader(c,ctx,AuthStage::restore,hint,observed_read),set_owned);
+        count(result);
+        switch(result){case trial::Result::restored:out.status=CloseRestoreStatus::restored;break;
+            case trial::Result::setter_failed:out.status=CloseRestoreStatus::setter_failed;break;
+            case trial::Result::ownership_lost:out.status=CloseRestoreStatus::ownership_lost;break;
+            default:out.status=CloseRestoreStatus::identity_lost;break;}
+    }catch(...){
+        out.status=CloseRestoreStatus::exception;
+        if(out.setter_calls){
+            // A self-exception after a native write leaves uncertain ownership.
+            // Preserve the lease receipt; never guess another rollback value.
+            unresolved=true;terminal=true;pending_restore=state.lease.active;disable();request_session_stop(SessionStop::proof_failure);
+        }
+    }
+    return out;
+}
+#endif
 template<class Candidate,class Original,class Read,class Set,class Certify>
 uintptr_t invoke_with(Candidate const& candidate,Original original,Read read,Set setter,Certify certify){
     // Fixed thread ownership is claimed even before a request exists. Foreign

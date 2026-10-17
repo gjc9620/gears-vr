@@ -184,4 +184,9 @@ static void worker_lifecycle(){
     std::atomic_store(&close_obs::selected,std::shared_ptr<close_obs::Active const>(request));
     assert(DeleteFileW(path));close_obs::last_poll=0;close_obs::poll(path,log);assert(!std::atomic_load(&close_obs::selected));fclose(log);
 }
-int main(){normal_close();close_gates();bounds_exceptions();certification();unknown_after();request_parser();worker_lifecycle();return 0;}
+#if defined(GEARS_PATH_CHOICE_CLOSE_RESTORE_TEST)
+#define CLOSE_OBSERVER_TEST_ENTRY close_observer_fixture_tests
+#else
+#define CLOSE_OBSERVER_TEST_ENTRY main
+#endif
+int CLOSE_OBSERVER_TEST_ENTRY(){normal_close();close_gates();bounds_exceptions();certification();unknown_after();request_parser();worker_lifecycle();return 0;}
