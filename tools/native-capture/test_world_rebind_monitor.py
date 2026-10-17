@@ -271,6 +271,47 @@ class MonitorTests(unittest.TestCase):
             self.assertFalse(h.builds)
             self.assertFalse(h.signals)
 
+    def test_sampling_deadline_keeps_last_inner_rejection_without_raw_graph(self):
+        h = Harness()
+        error = RuntimeError('Anchor guard acquisition deadline exceeded')
+        error.evidence = dict(guard_acquisitions=[dict(stage='initial', attempts=[
+            dict(reason='Mounted camera timestamp changed at bracket boundary',
+                 strict_guard_accepted=False, raw_guard={'secret': 'DO_NOT_LOG_RAW_GRAPH'})])])
+        def fail(*args):raise error
+        with h.monitor(observe=fail) as m:
+            m.poll(h.status)
+            event = h.finish_worker(m)[0]
+            self.assertIn('last=Mounted camera timestamp changed at bracket boundary', event['detail'])
+            self.assertIn('guard=initial', event['detail'])
+            self.assertNotIn('DO_NOT_LOG_RAW_GRAPH', event['detail'])
+            self.assertFalse(h.builds)
+            self.assertFalse(h.signals)
+
+    def test_late_success_is_not_reported_as_timestamp_rejection(self):
+        from world_rebind_monitor import _error_detail
+        error = RuntimeError('Anchor guard acquisition deadline exceeded')
+        guard = dict(stage='initial', accepted=False,
+                     failure_reason='Anchor guard acquisition deadline exceeded',
+                     attempts=[dict(reason=None, strict_guard_accepted=True)])
+        error.evidence = dict(guard_acquisitions=[guard])
+        self.assertIn('last=strict guard accepted after deadline', _error_detail(error))
+        guard['accepted'] = True
+        self.assertEqual(str(error), _error_detail(error))
+
+    def test_sampling_detail_handles_malformed_and_large_nested_evidence(self):
+        from world_rebind_monitor import _error_detail
+        error = RuntimeError('deadline')
+        for evidence in (None, [], {'guard_acquisitions': [None]},
+                         {'guard_acquisitions': [{'attempts': 'not a list'}]}):
+            error.evidence = evidence
+            self.assertEqual('deadline', _error_detail(error))
+        error.evidence = dict(guard_acquisitions=[dict(stage='x\n' * 100,
+            attempts=[dict(reason='changed\r\n\0' * 100, raw_guard={'secret': 'do not include'})])])
+        detail = _error_detail(error)
+        self.assertLessEqual(len(detail), 512)
+        self.assertTrue(detail.isprintable())
+        self.assertNotIn('do not include', detail)
+
     def test_unprintable_exception_message_does_not_hide_failure(self):
         class BrokenMessageError(Exception):
             def __str__(self):

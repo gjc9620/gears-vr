@@ -32,6 +32,26 @@ def _error_detail(error):
         message = str(error)[:512]
     except Exception:
         return ''
+    # Sampling deadlines otherwise hide the inner rejection that triggered
+    # repeated acquisition. Reuse the last recorded attempt, never its raw
+    # identity/POV graph; this adds no reads, retries or lifecycle decisions.
+    try:
+        evidence = getattr(error, 'evidence', None)
+        guards = evidence.get('guard_acquisitions') if isinstance(evidence, dict) else None
+        guard = guards[-1] if isinstance(guards, list) and guards else None
+        attempts = guard.get('attempts') if isinstance(guard, dict) else None
+        attempt = attempts[-1] if isinstance(attempts, list) and attempts else None
+        if isinstance(attempt, dict):
+            stage, reason = guard.get('stage'), attempt.get('reason')
+            if (attempt.get('strict_guard_accepted') is True and reason is None and
+                    guard.get('accepted') is False and
+                    guard.get('failure_reason') == 'Anchor guard acquisition deadline exceeded'):
+                reason = 'strict guard accepted after deadline'
+            if isinstance(stage, str) and isinstance(reason, str):
+                message = (message[:256] + ' [guard=' + stage[:32] + '; last=' +
+                           reason[:160] + '; attempts=' + str(min(len(attempts), 5)) + ']')[:512]
+    except Exception:
+        pass # Evidence formatting must not replace the original failure.
     return ' '.join(''.join(c if c.isprintable() else ' ' for c in message).split())
 
 
