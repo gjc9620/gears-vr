@@ -233,3 +233,11 @@ Actual132在native激活前停在Transient UIScene和8×8输出，菜单60秒超
 Actual133记录到一次完整恢复操作：2.1028026秒的tiny后resize返回，窗口自身位置变化故不强行restore，随后实际输出2534×1009。操作前后前台HWND均72815962，但此短区间比较不证明整轮没有抢焦点。用户报告实际干扰，已立即取消测试；XR/launcher退出、owned prime取消及入口恢复验证通过，正常关闭自有游戏35280，四份profile/完整INI哈希恢复。岔路实验未开始，不归因于它。
 
 核验本轮background-launch记录仍使用冻结quiet11、quiet_policy_installed=true、main_noactivate链路；未请求foreground或物理手柄后台响应。FancyZones排除仍包含GOWDE-Steam.exe与OpenXRPoseProbe.exe，不能重复宣称排除丢失是原因。用户继续授权后台测试；不等于允许干扰桌面。自主测试设置进程环境 `GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY=1`，仅观察tiny而不读窗口布局、不调用恢复resize，不改玩家默认启动策略或全局注册表。没有证明抢焦点根因已修复；接下来需要覆盖完整启动区间的只读焦点记录，不能以一次API返回前后相等替代。
+
+### 事件目标与实际前台必须分开；尺寸通知负结果
+
+随后 `background-observe-smoke-20261018.json` 只记录了WinEvent目标HWND/PID，没有callback时的GetForegroundWindow或采样序列。因此其中一条游戏目标事件不能证明游戏实际抢到前台，之前“游戏进入前台”的表述已撤回；原始事件保留。
+
+`background-size-message-20261018.json` 改用既有观察器，同时保留事件目标、回调时实际前台及5ms目标间隔的前台变化采样。一次quiet11后台启动中，游戏实际输出持续8×8；对已验证的自有游戏窗口补发一次当前客户区尺寸WM_SIZE，未调用窗口移动、缩放或激活，物理手柄后台响应关闭。PostMessage成功、前后窗口几何相同，但随后12秒未观察到非tiny输出，不能作为修复。调用方的DPI坐标语义未进一步认证，不把消息排队成功当成游戏已处理或使用了该尺寸。
+
+本轮没有观察到游戏PID成为实际前台；这是本轮采样结论，不保证所有启动或采样间隙。未进入关卡或激活native双目。取消后owner/XR退出、owned prime入口恢复通过；WM_CLOSE等待25秒未退出，仅对核验创建身份的自有游戏39784强制结束，完整设置已恢复。该失败方案不加入默认启动流程，不以再次移动窗口或切前台掩盖结果。

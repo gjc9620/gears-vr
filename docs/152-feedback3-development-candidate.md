@@ -1,0 +1,9 @@
+# Feedback3 development candidate
+
+2026-10-18. `a31a8ad` adds bounded mounted-camera failure summaries to exported feedback and rejects expired PathChoice layout reads. The package retains the existing frozen Native70 and Borderless1 XR binaries; it does not enable the private PathChoice experiment. Native70 SHA256 is `e9d28afb1d5a77d2163763354b8af124b0692ae66a4e6fad6a09d37dee7b50d1`.
+
+The independent candidate is `analysis/release-zips/GearsVR-V1-development-Vrdof70-Feedback3-English-20261018.zip`, SHA256 `c5cc7911deca1e0ea8f8e0d816479b8edcd3cd08e32bb11662cab3978eba39fc`, 13,708,244 bytes and 707 members. Existing packages remain unchanged. Staging and fresh extraction both passed isolated bundled-Python inventory/import/PE-dependency preflight. The freshly extracted CLI exported a synthetic mounted failure, preserving the Driver relationship and cause while excluding injected private detail and addresses. This validates the packaged diagnostics path, not an actual mounted camera or headset.
+
+Source checks passed: 29 world-monitor tests including actual sampler rejection exceptions, 27 export tests including ZIP filtering, and 12 private layout-monitor tests including expired reads and bounded worker shutdown. Package/preflight/export receipts are ignored under `analysis/runtime/vrdof70-feedback3-*`.
+
+This is an unpublished development package. Current Python/native combination has no new accepted gameplay run or headset acceptance. Mounted black output, recoil-ring alignment, PathChoice automatic centering, startup/background output recovery, extended play and headset pacing remain open. The UI experiment's same-canvas nesting and layout binding limitations remain as recorded in document151. The one-shot background WM_SIZE experiment did not restore 8×8 output and is not included as a startup fix.
