@@ -25,3 +25,17 @@
 随后使用已验证的 Native70 和 quiet2 模拟器做只读短跑。对 `0x296188`、`0x2c6ecc`、`0x2c7650`、`0x2c789c`、`0x138d70` 的全部已保存函数chunks分别读取两次，并与历史快照的每段及完整函数哈希比较：139、1509、587、85、848字节全部匹配，共3168字节。未 Hook 的13字节root adapter也匹配。此比较只覆盖这些明确范围，不能推广为磁盘EXE与整个运行模块相同，更不证明平移或异常恢复行为。
 
 证据为 ignored `analysis/runtime/vrdof130-stack-bytes2.json`，保留源记录哈希、源节哈希、模块基址、进程创建身份及逐段runtime哈希。此前未prepare Resolver的失败收据单独保留。未调用push/pop、未写矩阵或游戏内存，也未发送游戏输入。该session正常停止，原生清理与独立入口恢复通过；四份原始profile和完整INI已在正常关闭游戏后恢复并核验哈希。下一步才是带完整恢复约束的私有零位移与小幅平移实验，玩家默认功能尚未改变。
+
+## Actual131：双眼GPU图像已证明局部平移
+
+2026-10-18。私有 Native71 来自 `a9234f2`，DLL SHA256 `94d58061d4bc5333a0fdac4a2999c875c7c5f1a5f6d386b525c7eaa5a4384906`，33项构建检查通过。实验及root observer仅在该私有构建开启；玩家默认Native70及候选ZIP没有启用。游戏41176、creation FILETIME `134367271923524640`，session `continuous-stereo-41176-20261018-001342-ba1b06ca`。窗口定向鼠标消息完成四段前进，全部释放；未全局输入、激活前台或开启物理手柄后台响应。
+
+PathChoice延迟出现后首次完整owner/layout采样超出32768次读取上限，尚未加载变换。现在仅合并最终复核中已观察的相邻字节，跨度最多1024字节，不读空隙，不改变原ledger/digest、预算或身份校验；重叠冲突及最终变化仍拒绝。同一源digest下，典型完整采样由31809次降至27356次。15项owner测试（含大型反射链、冷查找预算及合并范围内的晚期变化）、66项菜单测试、9项配置测试通过。
+
+同一进程恢复实验依次向下平移0、64、374源像素，每段3秒。488条新鲜owner/名称/属性/链接检查、代码签名、session/world均通过。累计begin266、restore266，failed/rejected/nested/load_rejected全部0；入口栈深2、capacity17。收据 `analysis/runtime/vrdof131-source-trial-resume1.json` 及各次proof/INI保留。观察器旧日志的固定 `source_modified=0` 文本不能用于否认实际实验，应依据 `path_trial_*` 及图像。
+
+六张实际双眼GPU源图覆盖baseline、shift0、restored0、shift64、restored64、shift374。两眼均为64源像素对应60输出像素、374对应349输出像素，符合1009/1080缩放。标题、两按钮、背景及箭头肉眼完整；文本形状在1输出像素容差内双向覆盖100%，小平移撤销后的文本ROI与baseline完全一致。量化收据 `analysis/runtime/vrdof131-ui-image-check.json` 保留输入哈希。374结果位于眼画面中央，实际证明了排队几何继承源头矩阵。
+
+最后一张restored374请求达到XR每轮8张的磁盘上限，因此驱动总结果仍为失败，不能改写为全项通过；小平移恢复图及266次栈恢复成立。未采集GPU scissor状态，未完成头显、其他UI或长期验收。正常VR停止后45处入口独立恢复、owner/XR退出通过；正常关闭游戏后四份原始profile及完整INI已核验恢复。
+
+Actual132拟补最终恢复图，但在native激活前菜单导航超时，当时仅有Transient UIScene及8×8实际输出，未运行源头实验。失败记录与 `vrdof132-vr-launcher-session.*` 已保存。owned prime取消及入口恢复验证通过，XR/owner退出。WM_CLOSE等待20秒未退出后，仅强制终止已核验创建身份的自有测试进程17932，四份profile和完整INI恢复。监控最后日志不能单独证明卡在SetWindowPos；须增加阶段证据，再考虑有界异步恢复。不得归因于未激活的PathChoice，也不使用前台绕过。持续启用、分辨率适配及最终恢复图仍待后续验证。

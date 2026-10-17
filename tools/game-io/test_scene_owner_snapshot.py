@@ -6,7 +6,7 @@ import struct
 import unittest
 from unittest import mock
 
-from scene_owner_snapshot import capture_scene_owner, SceneOwnerRejected, GAME_SHA
+from scene_owner_snapshot import capture_scene_owner, SceneOwnerRejected, GAME_SHA, _reread_spans
 
 
 class Fixture:
@@ -122,6 +122,17 @@ class Fixture:
         try:return bytes(self.memory[address + offset] for offset in range(size))
         except KeyError as error:raise SceneOwnerRejected('Synthetic unreadable source') from error
 
+    def mutate_on_reread(self, target):
+        # A final verification span may cover several adjacent original reads.
+        # Mutate the same underlying byte regardless of the read's boundaries.
+        hits = 0
+        def mutate(address, size):
+            nonlocal hits
+            if address <= target < address + size:
+                hits += 1
+                if hits >= 2:self.memory[target] ^= 1
+        return mutate
+
     def property_hint(self, cls, name, inherited=False):
         if (cls, name) in self.hint_overrides:
             return dict(address=self.hint_overrides[cls, name], offset='poisoned', type='poisoned')
@@ -179,14 +190,9 @@ class SceneOwnerTests(unittest.TestCase):
 
     def test_unrelated_number_change_during_capture_rejects(self):
         f=Fixture();field=f.prop('WarPC','CONTEXT_ROUNDSCORE_ANNEX','ObjectProperty',0x300)
-        f.put(field+76,'<I',481);f.sync();changed=False
-        def change(address,size):
-            nonlocal changed
-            if address==field+72 and size==8 and f.read_counts[(address,size)]>=2 and not changed:
-                changed=True;f.put(field+76,'<I',482)
-        f.hook=change
+        f.put(field+76,'<I',481);f.sync()
+        f.hook=f.mutate_on_reread(field+76)
         with self.assertRaises(SceneOwnerRejected):f.capture()
-        self.assertTrue(changed)
 
     def test_resolver_read_failures_are_explicit_rejection(self):
         for error in (OSError('unreadable'), RuntimeError('process changed')):
@@ -230,13 +236,25 @@ class SceneOwnerTests(unittest.TestCase):
             self.assertNotIn((address + 80, 8), f.read_counts)
             name_index = struct.unpack('<I', bytes(f.memory[address + 72 + i] for i in range(4)))[0]
             self.assertNotIn((f.names_data + name_index * 8, 8), f.read_counts)
+        # Reproduce a cold discovery pass using the same fixed global budget.
+        # The old one-read-per-ledger-entry closure exceeds 32768 with this
+        # work; merged final spans retain all evidence and leave room for it.
+        cold = True
+        def hint(cls, name, inherited):
+            nonlocal cold
+            if cold:
+                cold = False
+                for _ in range(14000):f.read(f.base + 0x1c24730,16)
+            return f.property_hint(cls,name,inherited)
+        f.property.side_effect = hint
+        with_discovery = f.capture()
+        self.assertEqual(with_discovery['evidence']['discovery_hint_read_calls'],14000)
+        self.assertLess(with_discovery['evidence']['total_read_calls'],32768)
+        self.assertEqual(with_discovery['evidence']['source_bytes_sha256'],result['evidence']['source_bytes_sha256'])
         # A late mutation in an unrelated header is still rejected.
         target = irrelevant[10] + 104
         f.read_counts.clear()
-        def changing(address, size):
-            if (address, size) == (target, 8) and f.read_counts[target, 8] == 2:
-                f.memory[address] ^= 1
-        f.hook = changing
+        f.hook = f.mutate_on_reread(target)
         with self.assertRaises(SceneOwnerRejected):f.capture()
 
     def test_hint_reads_share_budget_and_nested_reader_is_restored(self):
@@ -329,11 +347,18 @@ class SceneOwnerTests(unittest.TestCase):
                                kind_super=(f.classes['ObjectProperty']+96,8),
                                slot=(f.objects_data+f.objects.index(f.scene)*8,8), text=(0x300000+f.names.index('DeltaChoosePath')*0x100+20,2))
                 target = targets[kind]
-                def mutate(address,size):
-                    if (address,size)==target and f.read_counts[target]>=2:
-                        f.memory[address] ^= 1
-                f.hook = mutate
+                f.hook = f.mutate_on_reread(target[0])
                 with self.assertRaises(SceneOwnerRejected):f.capture()
+
+    def test_final_spans_cover_only_observed_bytes_and_detect_overlap_conflicts(self):
+        reads={(10,2):b'ab',(12,2):b'cd',(11,2):b'bc',(20,2):b'ef'}
+        self.assertEqual(list(_reread_spans(reads)),[(10,b'abcd'),(20,b'ef')])
+        with self.assertRaisesRegex(SceneOwnerRejected,'overlapping'):
+            list(_reread_spans({(10,4):b'abcd',(11,2):b'XX'}))
+        with mock.patch('scene_owner_snapshot.MAX_REREAD_SPAN',4):
+            spans=list(_reread_spans({(10,4):b'abcd',(12,4):b'cdef',(16,2):b'gh'}))
+        self.assertTrue(all(len(raw)<=4 for _,raw in spans))
+        self.assertEqual({a+i:b for a,raw in spans for i,b in enumerate(raw)},dict(enumerate(b'abcdefgh',10)))
 
     def test_profile_input_and_budgets_reject_without_cached_proof(self):
         f = Fixture();f.profile['sha256'] = 'wrong'

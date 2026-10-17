@@ -21,10 +21,37 @@ MAX_FIELDS = 4096
 MAX_CLASS_FIELDS = 2048
 MAX_CHAIN = 64
 MAX_ARRAY_CAPACITY = 4096
+MAX_REREAD_SPAN = 1024  # Largest admitted ActiveScenes member array (128 * 8).
 
 
 class SceneOwnerRejected(RuntimeError):
     pass
+
+
+def _reread_spans(reads):
+    """Join only observed overlapping/touching bytes, without reading gaps.
+
+    Keep the acquisition ledger/digest intact. Small adjacent name units and
+    object-registry slots need one final read rather than one syscall per unit.
+    Conflicting observations of an overlapping byte invalidate the snapshot.
+    """
+    start, pending = None, bytearray()
+    for (address, size), raw in sorted(reads.items()):
+        if len(raw) != size or not 0 < size <= MAX_REREAD_SPAN:
+            raise SceneOwnerRejected('Invalid owner verification span')
+        end = start + len(pending) if start is not None else 0
+        if start is not None and address <= end:
+            overlap = min(size, end - address)
+            if pending[address-start:address-start+overlap] != raw[:overlap]:
+                raise SceneOwnerRejected('Owner overlapping source changed during acquisition')
+            if address + size - start <= MAX_REREAD_SPAN:
+                pending.extend(raw[overlap:])
+                continue
+        if start is not None:
+            yield start, bytes(pending)
+        start, pending = address, bytearray(raw)
+    if start is not None:
+        yield start, bytes(pending)
 
 
 class _Capture:
@@ -283,8 +310,10 @@ class _Capture:
                     visited.add(address)
         if self.r.base != self.base or self.r.pid != self.pid:
             raise SceneOwnerRejected('Owner resolver base/PID changed')
-        for (address, size), expected in self.reads.items():
-            if self._read(address, size) != expected:
+        self.final_read_spans = 0
+        for address, expected in _reread_spans(self.reads):
+            self.final_read_spans += 1
+            if self._read(address, len(expected)) != expected:
                 raise SceneOwnerRejected('Owner source changed at final boundary')
         # Registry headers close after all names, fields, identity and link reads.
         for address in self.headers.values():
@@ -362,6 +391,7 @@ def capture_scene_owner(resolver, client_address, scene_address, expected_contro
                               unique_reads=len(c.reads), total_read_calls=c.calls, total_read_bytes=c.byte_count,
                               max_read_calls=MAX_READS, max_read_bytes=MAX_BYTES,
                               discovery_hint_read_calls=c.hint_calls, discovery_hint_read_bytes=c.hint_bytes,
+                              final_reread_spans=c.final_read_spans, max_reread_span=MAX_REREAD_SPAN,
                               source_bytes_sha256=digest.hexdigest(), registry_headers={
                                   name: dict(address=c.headers[name], data=value[0], count=value[1], capacity=value[2])
                                   for name, value in c.registries.items()}),
