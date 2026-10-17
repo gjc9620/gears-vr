@@ -100,6 +100,10 @@ Native85从`768813a`冻结（DLL SHA256 `e44db519075ba88922c81d64dd33ab3d92d4781
 
 后续E/G/H补充只读反射和精确视频确认：SelectedResolutionScaling的3/ULTRA PERFORMANCE到0/QUALITY是质量档变化，并不是启用开关。当前AA数组实际为NONE、FXAA、AMD FidelityFX Super Resolution 3.1、NVIDIA DLSS 3.5；H在AA行两次普通Right后观察到0→2→0，路由因重复停止，仍无Create/Evaluate。这与按键重复或原生跳过选项均相容，尚未区分；编译与对应实际状态均证实三项graphics锁OFF、lock_effective=0，不能直接归咎现有禁用hook。下一实验只记录一次原按键对期间的控件CurrentIndex/SkippedItemIndex及选项索引轨迹，不盲目循环或声明DLSS已启用。各轮均正常关闭并恢复native/entry、设置/四profile，无实际自有前台采样。Create尺寸、输入图像与正确SR输出仍是未关闭项。
 
+I轮只发送一次原80ms按键对，实际反射轨迹为：按下后约13.60ms，CurrentIndex和SelectedAntialiasingSetting从0到1；释放后约23.68ms再从1到2，SkippedItemIndex一直为0。因此FXAA并未被直接跳过；第二次推进发生在释放之后，但尚不能单凭时间顺序区分释放处理与排队事件。该轮仍未启用DLSS、Create/Evaluate均0，正常关闭和native/entry、设置/四profile恢复通过，无自有前台采样。精简轨迹为ignored `analysis/runtime/dlss85-menu-create-i-aa-transitions-20261018.json`。下一轮只向同一精确AA控件发送一次原WM_KEYUP，保留身份、反射字段和稳定菜单认证；不改变普通导航或盲目循环选项。
+
+J轮实际发送且仅发送一次WM_KEYUP，未发送WM_KEYDOWN；CurrentIndex和SelectedAntialiasingSetting从0到1，并在随后200ms采样中保持1，SkippedItemIndex保持0。这证明本控件会响应单独的释放事件，结合I轮可解释普通按键对推进两格；不据此改变所有菜单输入。下一步仅对已认证的Graphics AA/SR选项引入显式单释放步进，以实际当前数组核对QUALITY和NVIDIA DLSS 3.5，再观察Create/Evaluate；本轮仍为FXAA且Create/Evaluate均0，不能算DLSS支持通过。正常关闭、native/entry独立恢复、设置/四profile恢复通过，无自有前台采样；完整helper哈希与状态已归档，精简轨迹为ignored `analysis/runtime/dlss85-menu-create-j-aa-transitions-20261018.json`。
+
 ## 其他主线进展
 
 `50cbfcd` 为 MenuReader 增加可选的 Position/DockTargets 原始布局采集，70项离线测试通过。普通采样不增加这些读取，未改变UI位置。实际普通双目回归 `ui-layout-details4-20261018` 提交1359次、scene copy723次，约15.08秒，最大提交间隔28.7181ms；正常清理和配置恢复通过。岔路详细采集初次遇到导航碰撞、脚本结果字段及注册表变化；后续 `ui-layout-details7-20261018` 已取得完整13节点及布局详情，见[文档155](155-path-choice-position-and-docking.md)。这仍不是UI修复验收。

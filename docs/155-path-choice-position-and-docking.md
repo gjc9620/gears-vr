@@ -66,3 +66,11 @@ Native90从该提交冻结，DLL SHA256 `e5805eea57654a02075e8b7ef4146924da315d8
 该轮GPU保存baseline、shifted16、restored三张2534×1009图像。上方中央文字区逐眼比较，位移最佳匹配均为向下15输出像素，与16×1009/1080≈14.948一致，IoU分别0.9824/0.9819；恢复两眼均dy0且IoU1.0。根协调另检查了左眼三图预览，标题、左右选择及提示均可见。此结果验证该幅度下的实际双眼文字平移与恢复，不证明全部裁剪、输入命中或真头显体验，也未接受16px为最终居中量。完整证据在ignored `path-layout90-reflow-proof-20261018.json`、`path-layout90-gpu-translation-20261018.json`。正常关闭、native/entry独立恢复、设置/四profile恢复通过，无自有前台采样；默认Native70和开发包未改变。
 
 现有静态与实际实参还确认：安全区宽约`1080×0.9252×4/3`、高约`1080×0.9252`并居中；安全区居中不表示其顶部内容已居中。下一候选保持宽高和L/R，对确认范围内的PathChoice内容作一次更大的Y平移，检查完整文字、间距、裁剪与正常选择。不能直接缩小百分比并假设字形和停靠关系不变，也不推广为所有UI的共同根因。
+
+`dce60a3`为schema2增加有界可选`vertical_offset_reference_pixels`，范围1..400、默认16；省略或显式16仍输出完全相同的旧INI字节，schema1拒绝新增字段。apply和正常reflow使用同一租约偏移，续用请求也必须匹配该值。原16px检查保留，新增374px的多次原生单位换算、精确hold/restore、边界及非法配置检查；四项原生`/W4 /WX`与32项Python检查通过。
+
+Native91从该提交冻结，DLL SHA256 `24475036a5bc339fba19283ed508d7c8335f8f48e3f1c404eccaa55296658bdf`，完整构建和八项自测通过。候选在当前13节点原始几何与Native90基线逐项一致时才允许试验374参考像素的Y平移；它是待验的内容居中量。首轮`path-layout91-20261018`在首次移动释放后的只读姿态采样发生AnchorRegistryChanged而停止，尚未到达位置试验，未写位置配置、没有新的居中GPU证据。游戏正常关闭，native/entry、设置及四profile恢复通过，无自有前台采样；后续只针对该明确采样失败做有界完整Resolver重新采集，身份或角色变化仍停止，不放宽生产路径认证。
+
+`path-layout91b-20261018`复用同一冻结DLL，通过实际基线几何认证后完成374参考像素候选。两眼文字最佳位移均349输出像素，与374×1009/1080≈349.413一致，恢复均dy0且IoU1.0。根协调查看了baseline/centered/restored的完整双眼六图，标题、左右箭头、两项选择及Mouse提示均完整且已靠近中央；没有把上方35%ROI当作居中后的裁剪范围。受亚像素取样影响，中间图文字mask IoU约0.7873/0.7950；它不是全图或输入验收。两次apply/restore均完成，包含owned状态主动停止；identity/ownership/setter/control失败、pending、unresolved均0，native自然restore计数仍0，不冒充该分支实际覆盖。正常关闭、native/entry独立恢复及设置/四profile恢复通过，无自有前台采样。精简proof、GPU对比和完整状态分别归档ignored `path-layout91b-reflow-proof-20261018.json`、`path-layout91b-gpu-translation-20261018.json`及`path-layout91b-20261018-artifacts/`。
+
+当前幅度通过本轮图像实验，尚未接入玩家自动流程。原有自动monitor服务的是FCanvas试验，不能直接复用其换nonce续期来反复采集已移动的Position作为原值；正常选择使ActiveScenes变化时，现有租约是否仍能认证与恢复也还缺实际证据。下一轮先用现有私有开关和首次失败记录观察正常选择关闭，保留未知值不写和完整清理，之后再实现自动生命周期；默认候选与开发包继续未改变。
