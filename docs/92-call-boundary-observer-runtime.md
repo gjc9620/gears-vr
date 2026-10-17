@@ -1,0 +1,27 @@
+# 子调用观察器实现与首次实际运行
+
+2026-10-17。实现提交b8178b5，容量修正4b092e4。默认Reticle39和玩家ZIP未替换；实验编译开关GEARS_UI_CALL_BOUNDARY_OBSERVER默认OFF。
+
+独立四指针detour只观察选定kind1 UFunction，保留原参数和返回RAX位，不解释返回值。父UI调用／令牌不改动；使用独立子调用ID、TLS嵌套恢复、最大12层匹配、64条详细记录。Canvas归属须先通过原来的认证路径，再确认实际callee Frame的PreviousFrame等于本次entry callerFrame；参数求值绘制不能仅凭TLS区间归入callee正文。没有新增几何发布或校正。
+
+新入口同时纳入预留、安装、强制manifest证明和停止后独立机器码校验。功能ON及OFF构建通过，协调器重跑UiCallBoundaryTest／UiObserverTest通过。冻结源码排除了工作区ui_execute_bypass实验。CallTrace40完整构建及20项相关测试通过，但实际集成发现下面的容量问题；不能用自测通过替代实际运行。
+
+## 失败及修正
+
+CallTrace40实际会话continuous-stereo-36436-20261017-075128-1e8bbded，安装在count=43／capacity=43拒绝，未进入双目。原数组按已有功能容量相加，没有计算新的可选入口。修正后仅在实验开关ON时追加一个容量项，OFF容量不变。
+
+失败会话native_cleanup_verified=false，没有独立入口恢复成功证据。XR退出后按确切创建身份正常关闭游戏，未强杀／重试注入，保留calltrace61-failure-close.json和原状态。后续两次尝试又因精简构建目录缺少FrameLinkTest及GraphicsMenuLockTest在自测阶段拒绝，均no_birth_receipt，未创建游戏；补齐并预先核对9个必需测试程序。失败回执分别calltrace62／63-prelaunch-failed.json与reservation-failed.log，没有改写为通过。
+
+CallTrace41来自4b092e4冻结源码，DLL SHA256 `8a11a755aaff6d92a4776cb1c6e3b947d0259f1c3f55af089889f7b83b6a427a`。重新构建原生DLL、ABI和必要测试程序；5项聚焦测试通过，实际启动仍重新执行完整同次启动自测，不复用旧pass缓存。
+
+## 实际追踪
+
+会话continuous-stereo-39292-20261017-075843-3761f664，游戏PID39292，完整创建身份见calltrace64-entry-proof.json／会话。实际进入双目后，数字键切手枪，LT／RT同次请求3秒，并申请GPU采样。脚本error=null；输入成功仅代表提交，不是弹药状态验收。
+
+统计：总CallFunction请求1,098,480，候选1260、拒绝105、接受1155、完成1155、深度拒绝0。正文归属Tile105、Material0、Text0、Canvas归属拒绝0；kind1准星考虑／计划／应用104，center／geometry／projection拒绝均0。此结果支持该入口覆盖实际准星子调用并可作有界正文观察，不证明几何组完整或外圈故障根因。
+
+64条详细记录都在后续开镜输入前耗尽，dropped1091。保留记录主要是scope1 GOW3调用、parent_child=0、单个parent_token下一个子调用，Tile=0。不能据全局Tile105给这些空记录补归属，也未证明同一PostRender下多个sibling的区分。下一轮须分别保留有绘制／无绘制的有限记录，并用步枪覆盖外圈及additional图标，而非继续扩大日志上限。
+
+运行期间用构建清单中的可信DLL哈希独立打开HookEntryAttestation并再次校验：44个入口、新target0x1401d6f30及其relay／detour／原始32字节证明均通过。停止后native_cleanup_verified、独立entry_restore_verified及普通游戏关闭通过；保存两份3840×2160图像。回执calltrace64-audit.json／entry-proof.json／normal-close.json及对应native-status保存在ignored analysis。
+
+仍未启用跨payload分组，不能宣称准星修复或全部ABI／嵌套路径验收。实际机枪、更多CG、长期黑屏及真头显显示仍开放。
