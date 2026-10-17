@@ -108,6 +108,16 @@ K轮完成上述正常菜单路径：Resolution Scaling逐次3→4→0（QUALITY
 
 两份原始Output读回均为创建当帧ticket3488的Eval1/2，GPU完成、物理Reset后释放及原始复制点契约通过，failure0；原始数据、解码和哈希保存在ignored `dlss85-menu-create-k-20261018-artifacts/`。根协调检查了两张完整Output及后续XR预览，房间与人物可辨，但当前XR图不与同ticket对应，既不能据此宣布完整像素正确，也不能把旧轮近墙取景直接套用本轮。现有绝对ticket>=32门禁在创建3488前已经满足，故本轮只读到了最初一对，未覆盖菜单恢复后的晚期输出。下一步先取得同handle的晚期pair、view矩形/缩放来源与对应最终图，区分尺寸域、取样区域和转换过程，暂不猜改尺寸或UV。正常关闭、native/entry独立恢复和设置/四profile恢复通过，无自有前台采样；默认保护与玩家包未改变，DLSS SR仍未验收。
 
+L轮保持Native85不变，换用只启用现有匹配快照代码的私有XR match1（提交3b7396b，SHA256 `30d4d978a9613dd0bca665fd37560baf682c2c0e7c0f11e3b1fff688fe760ca5`）。完整来源与四项离线检查在ignored `xr-match1-build-receipt.json`；新旧Packet/Publisher前缀相同，不能把旧Borderless1缺少接收功能解释为Native没有出版请求。实际接收器选中了world1/ticket3535/copy_seq2，但这是画质菜单内创建当帧；恢复场景时实际新图已到ticket4504，明确记录`hdr_match_missed/ticket_passed`。因此本轮仍无对应最终图，验证了接收链和采样时机缺口。正常关闭、native/entry、设置/四profile恢复通过，无自有前台采样，默认XR未替换。
+
+`5e66fb8`新增默认关闭的`GEARS_NGX_OUTPUT_DELAYED_CAPTURE`。它独立于四条Create/八条Eval观察额度，以完整前后Create括号建立epoch；worker仅接受当前进程/会话/world/epoch的一次性Resume请求。等待32个完整稳定pair后才选择下一pair，jitter可正常变化，其他签名漂移或不完整段重计且不延长30秒期限。已选中段失败只quarantine，保留原GPU退休契约；在`frame_link.present`后、同ticket最终capture前才按精确两次Eval闭合并出版。没有新增原生hook或修改尺寸/UV。独立审查发现的入口缺读/参数变化缺口已修复并补用例；原函数保持恰好一次。
+
+Native92从该提交冻结，完整DLL构建及十项相关检查（含实际DLL frame-link自测）通过，SHA256 `1869b93ded9a5e5e60f42287283679efd563e9e28fa88fd5e1536e712a563ec2`。这是采样控制候选，不是DLSS兼容修复。M驱动在正常Resume后核对projection恢复及新入场图的保存记录，再写当前身份绑定的私有arm文件；姿态CSV更新、请求已发或Native出版均不冒充最终匹配。默认Native70、Borderless1和玩家包未改变。
+
+实际`dlss92-menu-pair-m-20261018`正常完成Quality/DLSS菜单路径并接受一次Resume请求；选中world1/ticket5070后，最终状态为selected1、pair_closed0、gpu_saved0、terminal_reason13（selected_invalid），resets13。未产生该进程的原始Output文件，也未取得对应最终图，不能算晚期像素闭环。当前日志保留两条正常selected Eval/copy与该ticket的Present拒绝记录；通用selected_invalid会覆盖最初原因，尚不能仅凭最终码唯一断言最早失效边界，更不能视为DLSS取景问题根因。
+
+本轮正常关闭游戏、native/entry独立恢复、设置/四profile恢复与自有arm文件删除均通过，XR退出0、无自有前台采样。精简proof和完整状态及已核对源码已归档ignored `dlss92-menu-pair-m-20261018-proof.json`、`dlss92-menu-pair-m-20261018-artifacts/`；构建receipt已如实标记game_tested=true、matched_pair_capture_passed=false。后续先定位选中段的首个失效边界，再决定最小修正或下一采样，不放宽成对关联、GPU完成或图像验收条件。
+
 ## 其他主线进展
 
 `50cbfcd` 为 MenuReader 增加可选的 Position/DockTargets 原始布局采集，70项离线测试通过。普通采样不增加这些读取，未改变UI位置。实际普通双目回归 `ui-layout-details4-20261018` 提交1359次、scene copy723次，约15.08秒，最大提交间隔28.7181ms；正常清理和配置恢复通过。岔路详细采集初次遇到导航碰撞、脚本结果字段及注册表变化；后续 `ui-layout-details7-20261018` 已取得完整13节点及布局详情，见[文档155](155-path-choice-position-and-docking.md)。这仍不是UI修复验收。

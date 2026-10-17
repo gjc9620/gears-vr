@@ -74,3 +74,11 @@ Native91从该提交冻结，DLL SHA256 `24475036a5bc339fba19283ed508d7c8335f8f4
 `path-layout91b-20261018`复用同一冻结DLL，通过实际基线几何认证后完成374参考像素候选。两眼文字最佳位移均349输出像素，与374×1009/1080≈349.413一致，恢复均dy0且IoU1.0。根协调查看了baseline/centered/restored的完整双眼六图，标题、左右箭头、两项选择及Mouse提示均完整且已靠近中央；没有把上方35%ROI当作居中后的裁剪范围。受亚像素取样影响，中间图文字mask IoU约0.7873/0.7950；它不是全图或输入验收。两次apply/restore均完成，包含owned状态主动停止；identity/ownership/setter/control失败、pending、unresolved均0，native自然restore计数仍0，不冒充该分支实际覆盖。正常关闭、native/entry独立恢复及设置/四profile恢复通过，无自有前台采样。精简proof、GPU对比和完整状态分别归档ignored `path-layout91b-reflow-proof-20261018.json`、`path-layout91b-gpu-translation-20261018.json`及`path-layout91b-20261018-artifacts/`。
 
 当前幅度通过本轮图像实验，尚未接入玩家自动流程。原有自动monitor服务的是FCanvas试验，不能直接复用其换nonce续期来反复采集已移动的Position作为原值；正常选择使ActiveScenes变化时，现有租约是否仍能认证与恢复也还缺实际证据。下一轮先用现有私有开关和首次失败记录观察正常选择关闭，保留未知值不写和完整清理，之后再实现自动生命周期；默认候选与开发包继续未改变。
+
+91c在写入前的输入绑定采集中遇到完整读集末端变化，零apply/零选择输入后停止。91d仅在写sidecar前允许最多三次完整新reader采集，边界变化按明确类型/消息丢弃整组，其余身份、角色、反射及未知失败仍停止；写入后没有请求或输入重试。九项新采集检查和原十项输入合同检查通过。
+
+实际`path-layout91d-20261018`第一次完整采集即通过：运行时认证左/右/Start的NameProperty数组、本scene的CustomInputKey delegate、原13节点几何及全部owner证明，申请374px/6000ms租约后只向自有HWND发送一次左键down/up。两次均发送成功且all_up=true。约340ms后PathChoice离开ActiveScenes；随后32次样本中原panel仍注册、X/units保持、Y精确等于受控owned值，最后一次约在release后5.048秒。已有观察最终因UI registry快照变化而停止，不能把它解释为目标失效或追加增长。
+
+停止时主VR原因是驱动cancel的event，非UI proof_failure；identity/ownership/auth/control失败均0。但私有位置统计为applied1/restored0/pending1/unresolved1，表明普通关闭后现有匹配绘制回调未完成恢复。native/entry释放、正常游戏退出及设置/四profile恢复均通过，**不代表隐藏widget位置已恢复**。精简证据为ignored `path-layout91d-close-proof-20261018.json`，原状态在`path-layout91d-20261018-artifacts/`，无自有前台采样。
+
+下一步优先确认原生CloseScene的自然入口是否早于ActiveScenes移除：若实际同owner线程、目标scene仍活跃且现有完整认证通过，可先恢复再执行原关闭一次，避免给inactive对象猜测liveness或放宽通用检查。当前只有脚本native声明与历史字符串，尚无此版本的exec/实现ABI或当前字节认证，因此尚未增加CloseScene hook。先只读解析精确运行时UFunction入口和直接实现，再观察实际关闭顺序；该缺口仍阻止玩家自动启用。
