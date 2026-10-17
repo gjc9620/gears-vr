@@ -1420,6 +1420,12 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         resources_retained?1:0,entries_restored?1:0,session_native_services.load(),session_cancelled_builds.load(),stereo_publisher.frames.load(),simulator_operator);
     fprintf(output,"profile_consume_thread=%lu ",gears_render_cost::first_thread.load(std::memory_order_relaxed));
     fprintf(output,"activation_ready_qpc=%lld activation_qpc_frequency=%lld ",session_activation_ready_qpc.load(),qpc_frequency);
+    // Diagnostic rates use this sample's QPC, not the owner's polling time.
+    // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
+    // separately; they are not compositor display or engine-update counts.
+    fprintf(output,"telemetry_schema=1 telemetry_qpc=%lld telemetry_qpc_frequency=%lld telemetry_present_enabled=%u telemetry_present_calls=%llu telemetry_present_tests=%llu telemetry_present_failures=%llu ",
+        now(),qpc_frequency,frame_link_diagnostics?1u:0u,frame_counts.presents.load(),
+        frame_counts.tests.load(),frame_counts.present_failed.load());
     owned_scene_gpu::print_progress(output);
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
     const auto mirror=desktop_mirror.status();

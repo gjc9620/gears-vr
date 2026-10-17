@@ -20,6 +20,7 @@ import uuid
 
 from run_stereo_probe import ROOT, complete_csv_rows, collect_xr_evidence
 from camera_closer_options import camera_closer_metres
+from session_telemetry import SessionTelemetry
 
 class WindowsControl:
     def __init__(self):
@@ -383,7 +384,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'session_report':str(state_path),'native_started':False,
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
     state.update({key:getattr(args,key) for key in ('hud_element_scale','hud_center_scale') if getattr(args,key,None) is not None})
-    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None
+    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
     out_path=prefix.with_suffix('.stdout.txt');err_path=prefix.with_suffix('.stderr.txt')
@@ -396,6 +397,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                'evidence':evidence,'clock':'Windows QPC / perf_counter_ns','timing_is_runner_observation':actual_ns is None}
         if actual_ns is not None:entry.update(xr_monotonic_ns=actual_ns,runner_observation_delay_ms=(observed-actual_ns)/1000000)
         state['startup_timings'][name]=entry;write_state(state_path,state)
+        if telemetry:telemetry.event('startup_stage',stage=name,elapsed_ms=entry['elapsed_ms'],since_runner_start_ms=entry['since_runner_start_ms'])
         print(json.dumps({'startup_stage':name,**entry}),flush=True)
     def observe_first_stereo(started):
         if 'first_stereo_submission' in state['startup_timings']:return
@@ -406,6 +408,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
         state['owner_identity']=control.identity(os.getpid());state['game_identity']=control.identity(args.pid)
         floor=native_status.stat().st_mtime_ns if native_status.exists() else 0
         if not state['game_identity'] or not state['owner_identity']:raise RuntimeError('Live owner/game identity required')
+        telemetry=SessionTelemetry(prefix.with_suffix('.telemetry.jsonl'),prefix.with_suffix('.csv'),
+            args.build_dir.resolve()/'swapchain-output-status.txt',state['game_identity'],state['owner_identity'])
+        state['diagnostics']=telemetry.summary()
         if getattr(args,'menu_recovery',False):
             args.menu_state_file=prefix.with_suffix('.menu.bin');args.menu_game_creation=state['game_identity']['creation_time']
             state['menu_state_file']=str(args.menu_state_file)
@@ -477,6 +482,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 else:raise TimeoutError('Fresh native running status absent')
                 stage_completed('native_running',running_wait_started,'fresh running status with matching owner; does not prove a stereo frame')
                 state['phase']='running';state['native_status']=status;state['native_started_qpc']=status['started_qpc'];write_state(state_path,state)
+                telemetry.bind_native(status['started_qpc'])
+                telemetry.sample(status,state['phase'])
                 print(json.dumps({'continuous_running':True,'session_report':str(state_path)}),flush=True)
                 observe_first_stereo(native_started)
                 if getattr(args,'menu_recovery',False):
@@ -501,6 +508,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     if status and status.get('phase')!='running':break
                     checked_identity(control,state['game_identity'])
                     if menu_monitor:menu_monitor.poll()
+                    telemetry.sample(status,state['phase'],menu_monitor.last_menu_mode if menu_monitor else None)
                     if world_monitor:
                         for event in world_monitor.poll(status,menu_monitor.last_menu_mode if menu_monitor and menu_monitor.last else None):
                             world_log.write(json.dumps(dict(observed_ns=time.perf_counter_ns(),**event))+'\n');world_log.flush()
@@ -572,6 +580,10 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
     except Exception as error:
         state['error']=repr(error);state['phase']='incomplete'
     finally:
+        if telemetry:
+            telemetry.close(state['phase'],passed=state.get('passed',False),native_cleanup_verified=state.get('native_cleanup_verified',False),
+                xr_exit_code=state.get('xr_exit_code'),error=state.get('error'))
+            state['diagnostics']=telemetry.summary()
         write_state(state_path,state);control.close_lock(lock)
     print(json.dumps(state),flush=True)
     return 0 if state['passed'] or state.get('startup_cancelled') else 1
