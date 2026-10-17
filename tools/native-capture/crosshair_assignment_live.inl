@@ -43,20 +43,27 @@ bool root_binding(gears_crosshair_assignment::OwnedConfig const& config,unsigned
 }
 bool root_binding(unsigned index){return root_binding(current(),index);}
 bool recovery_fresh(gears_crosshair_assignment::OwnedConfig const&,gears_anchor::Config const&,gears_ui::Config const&);
-bool load(const wchar_t* ini){
+bool load(const wchar_t* ini,FILE* status=nullptr){
+    auto reject=[&](const char* stage,const char* reason="none"){
+        if(status)fprintf(status,"crosshair_assignment_activation accepted=0 stage=%s reason=%s\n",stage,reason);
+        return false;};
     auto read=[&](const wchar_t* key,wchar_t* out,unsigned capacity){return GetPrivateProfileStringW(L"CrosshairAssignment",key,L"",out,capacity,ini);};
     gears_crosshair_assignment::OwnedConfig candidate;
-    if(!gears_crosshair_assignment::parse_config(read,GetCurrentProcessId(),base,candidate))return false;
-    if(candidate.mounted_suspended){if(!recovery_fresh(candidate,anchor_config,ui_config))return false;
-        config=candidate;config_generation=committed_world_generation.load();return reserve();}
-    if(candidate.tick_root_count!=2||
-       candidate.identities.identities[candidate.assignment.controller].address!=expected_pc||
-       !gears_crosshair_assignment::validate_bindings(candidate.assignment,safe_copy,true))return false;
+    if(!gears_crosshair_assignment::parse_config(read,GetCurrentProcessId(),base,candidate))return reject("parse_config");
+    if(candidate.mounted_suspended){if(!recovery_fresh(candidate,anchor_config,ui_config))return reject("mounted_recovery");
+        config=candidate;config_generation=committed_world_generation.load();return reserve()||reject("reserve");}
+    if(candidate.tick_root_count!=2)return reject("tick_root_count");
+    if(candidate.identities.identities[candidate.assignment.controller].address!=expected_pc)return reject("controller");
+    gears_crosshair_assignment::ValidationFailure failure{};
+    if(!gears_crosshair_assignment::validate_bindings(candidate.assignment,safe_copy,true,&failure))
+        return reject("validate_bindings",gears_crosshair_assignment::validation_failure_name(failure));
     config=std::move(candidate);
     config_generation=committed_world_generation.load();
     // Reserve only this explicitly enabled observer. The ordinary UI reserve
     // path must not acquire a dependency on an unused global opcode handler.
-    return root_binding(0)&&root_binding(1)&&reserve();
+    if(!root_binding(0))return reject("root0");
+    if(!root_binding(1))return reject("root1");
+    return reserve()||reject("reserve");
 }
 void append(unsigned kind,gears_crosshair_tick::Sealed const& value,long long scene){
     const auto index=row_count.fetch_add(1);if(index>=rows.size())return;
@@ -296,7 +303,9 @@ void print(FILE* out){
             i,r.kind,r.thread,r.world,r.tick,r.begin,r.assignment,r.finish,r.scene,reinterpret_cast<void*>(r.controller),reinterpret_cast<void*>(r.pawn),reinterpret_cast<void*>(r.weapon),r.point[0],r.point[1],r.point[2]);}
 }
 #else
-bool load(const wchar_t*){return false;}
+bool load(const wchar_t*,FILE* status=nullptr){
+    if(status)fprintf(status,"crosshair_assignment_activation accepted=0 stage=compile_disabled reason=none\n");
+    return false;}
 struct TickScope {TickScope(void*,void*){}};
 std::optional<gears_crosshair_scene::Metadata> scene(void*){return {};}
 void attach(std::optional<gears_crosshair_scene::Metadata>,gears_anchor::Receipt&){}

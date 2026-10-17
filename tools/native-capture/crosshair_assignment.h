@@ -200,8 +200,22 @@ template<class Read> bool state(Config const& c,gears_ui::Reader<Read> const& r,
 }
 // Activation only: originals must still have their reserved bytes. Hot begin /
 // end cannot compare a detoured execLet prologue against its original bytes.
-template<class Read> bool validate_bindings(Config const& c,Read read,bool check_execlet_entry=true) {
-    gears_ui::Reader<Read> r{read};return detail::certificate(c,r)&&detail::schema(c,r)&&detail::bindings(c,r,check_execlet_entry);
+enum class ValidationFailure {none,certificate,schema,bindings};
+inline const char* validation_failure_name(ValidationFailure failure){
+    switch(failure){
+    case ValidationFailure::certificate:return "certificate";
+    case ValidationFailure::schema:return "schema";
+    case ValidationFailure::bindings:return "bindings";
+    default:return "none";
+    }
+}
+template<class Read> bool validate_bindings(Config const& c,Read read,bool check_execlet_entry=true,ValidationFailure* failure=nullptr) {
+    gears_ui::Reader<Read> r{read};
+    if(failure)*failure=ValidationFailure::none;
+    if(!detail::certificate(c,r)){if(failure)*failure=ValidationFailure::certificate;return false;}
+    if(!detail::schema(c,r)){if(failure)*failure=ValidationFailure::schema;return false;}
+    if(!detail::bindings(c,r,check_execlet_entry)){if(failure)*failure=ValidationFailure::bindings;return false;}
+    return true;
 }
 template<class Read> bool snapshot(Config const& c,Read read,std::uintptr_t self,std::uintptr_t frame,Snapshot& out) {
     gears_ui::Reader<Read> r{read};Snapshot a{},b{};

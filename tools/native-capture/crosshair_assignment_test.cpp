@@ -6,6 +6,27 @@ static bool same(CompletedAssignmentReceipt const& a,CompletedAssignmentReceipt 
     a.pawn==b.pawn&&a.weapon==b.weapon&&a.writer==b.writer&&a.frame==b.frame&&a.locals==b.locals&&a.destination==b.destination&&
     a.cache_bytes==b.cache_bytes&&a.point==b.point&&gears_crosshair_view::equal(a.view,b.view);}
 int main(){
+    // Activation diagnostics retain the original short-circuit validation order
+    // and report the first failed proof, including read failures at each stage.
+    for(unsigned fault=0;fault<7;++fault){Fixture x;ValidationFailure failure=ValidationFailure::bindings;
+        if(fault==1)x.m.put(0x10000+x.c.lhs*8,std::uintptr_t(0));
+        if(fault==2)x.m.denied=x.identities.names_header;
+        if(fault==3)x.m.put(x.address(x.c.lhs)+0x94,unsigned(0x1368));
+        if(fault==4)x.m.denied=x.address(x.c.writer)+0x114;
+        if(fault==5)x.m.put(x.identities.base+0x1b86280,std::uintptr_t(0));
+        if(fault==6)x.m.denied=x.identities.base+0x1d7ad0;
+        const auto expected=fault==0?ValidationFailure::none:fault<=2?ValidationFailure::certificate:
+            fault<=4?ValidationFailure::schema:ValidationFailure::bindings;
+        assert(validate_bindings(x.c,x.read(),true,&failure)==(fault==0));assert(failure==expected);
+        assert(validate_bindings(x.c,x.read())==(fault==0));
+        assert(std::strcmp(validation_failure_name(failure),fault==0?"none":fault<=2?"certificate":fault<=4?"schema":"bindings")==0);
+    }
+    Fixture precedence;precedence.m.denied=precedence.identities.names_header;
+    precedence.m.put(precedence.address(precedence.c.lhs)+0x94,unsigned(0));
+    ValidationFailure first{};assert(!validate_bindings(precedence.c,precedence.read(),true,&first)&&first==ValidationFailure::certificate);
+    Fixture detoured;detoured.m.put(detoured.identities.base+0x1d7ad0,std::uint8_t(0xe9));
+    assert(!validate_bindings(detoured.c,detoured.read(),true,&first)&&first==ValidationFailure::bindings);
+    assert(validate_bindings(detoured.c,detoured.read(),false,&first)&&first==ValidationFailure::none);
     Fixture f;assert(validate_bindings(f.c,f.read()));Snapshot before{};assert(snapshot(f.c,f.read(),f.address(f.c.controller),f.frame,before));
     CompletedAssignmentReceipt receipt{};f.simulate_original();assert(completed(f.c,f.read(),before,receipt));assert(receipt.point==f.point);
     // The cache already contained this point before the simulated original.

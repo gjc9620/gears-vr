@@ -3641,7 +3641,7 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: UI observer requires reserved entries, continuous stereo and fresh UI identities\n");fclose(status);return 2;}
     crosshair_live::enabled=GetPrivateProfileIntW(L"Capture",L"crosshair_assignment_observer",0,ini)==1;
     if(crosshair_live::enabled&&(!ui_observer_enabled||!anchor_observer_enabled||!continuous_session||
-       GetPrivateProfileIntW(L"Capture",L"origin_trial",0,ini)!=0||!crosshair_live::load(ini))){
+       GetPrivateProfileIntW(L"Capture",L"origin_trial",0,ini)!=0||!crosshair_live::load(ini,status))){
         fprintf(status,"rejected: crosshair observer requires compiled support and fresh assignment/tick bindings\n");fclose(status);return 2;}
     ui_hud_plane_enabled=GetPrivateProfileIntW(L"Capture",L"ui_hud_plane",0,ini)==1;
     ui_hud_parameters=gears_ui_hud::Parameters{};
