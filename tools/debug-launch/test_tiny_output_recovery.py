@@ -54,11 +54,15 @@ class TinyOutputRecoveryTests(unittest.TestCase):
     def observe(self, policy, seconds, **changes):
         return policy.observe(self.status(seconds, **changes), int(seconds * 1_000_000_000))
 
-    def test_real_output_requires_two_seconds_of_distinct_fresh_samples(self):
+    def test_real_output_requires_five_seconds_of_distinct_fresh_samples(self):
         policy = SwapchainTinyOutputPolicy(IDENTITY)
-        self.assertFalse(self.observe(policy, 10)['ready'])
-        self.assertFalse(self.observe(policy, 11)['ready'])
-        self.assertTrue(self.observe(policy, 12, phase='running')['ready'])
+        for second in (10, 11, 12, 13, 14, 14.9999999):
+            self.assertFalse(self.observe(policy, second)['ready'])
+        # Wall time at the boundary with an unchanged QPC is insufficient.
+        duplicate = policy.observe(self.status(14.9999999), 15_000_000_000)
+        self.assertEqual(duplicate['reason'], 'duplicate_sample')
+        self.assertFalse(duplicate['ready'])
+        self.assertTrue(self.observe(policy, 15, phase='running')['ready'])
         self.assertEqual(policy.first_ns, 10_000_000_000)
 
     def test_repeated_sample_does_not_advance_and_stale_resets(self):
@@ -67,9 +71,9 @@ class TinyOutputRecoveryTests(unittest.TestCase):
         policy.observe(fields, 10_000_000_000)
         self.assertEqual(policy.observe(fields, 12_000_000_000)['reason'], 'duplicate_sample')
         self.assertEqual(policy.observe(fields, 12_000_000_001)['reason'], 'status_stale_or_future')
-        self.assertFalse(self.observe(policy, 13)['ready'])
-        self.assertFalse(self.observe(policy, 14)['ready'])
-        self.assertTrue(self.observe(policy, 15)['ready'])
+        for second in (13, 14, 15, 16, 17):
+            self.assertFalse(self.observe(policy, second)['ready'])
+        self.assertTrue(self.observe(policy, 18)['ready'])
 
     def test_invalid_identity_size_and_output_replacement_reacquire(self):
         cases = [dict(pid=124), dict(creation_time=457), dict(width=1920, height=1080),
@@ -81,9 +85,9 @@ class TinyOutputRecoveryTests(unittest.TestCase):
                 policy = SwapchainTinyOutputPolicy(IDENTITY)
                 self.observe(policy, 10)
                 self.assertFalse(self.observe(policy, 11, **changes)['ready'])
-                self.assertFalse(self.observe(policy, 12)['ready'])
-                self.assertFalse(self.observe(policy, 13)['ready'])
-                self.assertTrue(self.observe(policy, 14)['ready'])
+                for second in (12, 13, 14, 15, 16):
+                    self.assertFalse(self.observe(policy, second)['ready'])
+                self.assertTrue(self.observe(policy, 17)['ready'])
 
     def test_missing_dxgi_windowed_field_never_authorizes_old_schema(self):
         policy = SwapchainTinyOutputPolicy(IDENTITY)
@@ -136,25 +140,61 @@ class TinyOutputRecoveryTests(unittest.TestCase):
     def test_monitor_attempts_only_once_even_on_error_and_keeps_followup_observations(self):
         monitor = TinyOutputMonitor('unused', 'unused', IDENTITY, attempt=mock.Mock(side_effect=RuntimeError('resize diagnostic')))
         control = FakeControl()
-        for second in (10, 11):
+        for second in (10, 11, 12, 13, 14):
             with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(second)):
                 self.assertEqual(monitor.poll_once(control, second * 1_000_000_000)['event'], 'observation')
-        with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(12)):
-            event = monitor.poll_once(control, 12_000_000_000)
+        with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(15)):
+            event = monitor.poll_once(control, 15_000_000_000)
         self.assertEqual(event['event'], 'recovery_attempt')
         self.assertEqual(event['result']['result'], 'diagnostic_error')
-        with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(13, width=1920, height=1080)):
-            event = monitor.poll_once(control, 13_000_000_000)
+        with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(16, width=1920, height=1080)):
+            event = monitor.poll_once(control, 16_000_000_000)
         self.assertEqual(event['dimensions'], [1920, 1080])
         self.assertFalse(event['ready'])
         monitor.attempt.assert_called_once_with(control, IDENTITY, 99, [8, 8])
         control.identity = lambda pid: dict(IDENTITY, creation_time=999)
-        self.assertTrue(monitor.poll_once(control, 14_000_000_000)['stop'])
+        self.assertTrue(monitor.poll_once(control, 17_000_000_000)['stop'])
 
     def poll_status(self, monitor, control, second, value):
         kwargs = {'side_effect': value} if isinstance(value, Exception) else {'return_value': value}
         with mock.patch('tiny_output_recovery.read_swapchain_status', **kwargs):
             return monitor.poll_once(control, int(second * 1_000_000_000))
+
+    def test_normal_startup_two_and_half_second_tiny_transient_recovers_without_action(self):
+        monitor = TinyOutputMonitor('unused', 'unused', IDENTITY, attempt=mock.Mock())
+        control = FakeControl()
+        control.snapshot = mock.Mock(side_effect=AssertionError('Transient must not inspect window'))
+        # Recorded startup shape: normal DXGI output, about 2.5s at 8x8,
+        # then natural restoration to 2534x1009. Times are synthetic.
+        sequence = [(9.5, 2534, 1009)] + [(10 + index * .5, 8, 8) for index in range(6)] + [
+            (12.6, 2534, 1009), (13.5, 2534, 1009)]
+        for second, width, height in sequence:
+            event = self.poll_status(monitor, control, second,
+                self.status(second, width=width, height=height))
+            self.assertEqual(event['event'], 'observation')
+            self.assertFalse(event['ready'])
+        self.assertEqual(event['reason'], 'output_not_tiny')
+        self.assertIsNone(monitor.policy.first_ns)
+        self.assertFalse(monitor.policy.consumed)
+        monitor.attempt.assert_not_called()
+        control.snapshot.assert_not_called()
+        self.assertEqual(control.calls, [])
+
+    def test_monitor_five_second_boundary_requires_advancing_fresh_output_sample(self):
+        attempt = mock.Mock(return_value=dict(attempted=True))
+        monitor = TinyOutputMonitor('unused', 'unused', IDENTITY, attempt=attempt)
+        control = FakeControl()
+        for second in (10, 11, 12, 13, 14, 14.9):
+            event = self.poll_status(monitor, control, second, self.status(second))
+            self.assertEqual(event['reason'], 'observing_tiny')
+            attempt.assert_not_called()
+        event = self.poll_status(monitor, control, 15, self.status(14.9))
+        self.assertEqual(event['reason'], 'duplicate_sample')
+        attempt.assert_not_called()
+        event = self.poll_status(monitor, control, 15, self.status(15))
+        self.assertEqual(event['event'], 'recovery_attempt')
+        self.assertEqual(event['observation']['observed_tiny_seconds'], 5)
+        attempt.assert_called_once_with(control, IDENTITY, 99, [8, 8])
 
     def test_transient_permission_errors_need_next_distinct_fresh_sample_and_attempt_once(self):
         attempt = mock.Mock(return_value=dict(attempted=True))
@@ -171,11 +211,15 @@ class TinyOutputRecoveryTests(unittest.TestCase):
         duplicate = self.poll_status(monitor, control, 12.1, self.status(11))
         self.assertEqual(duplicate['reason'], 'duplicate_sample')
         attempt.assert_not_called()
-        event = self.poll_status(monitor, control, 12.2, self.status(12.2))
+        for second in (12.2, 13.2, 14.2):
+            event = self.poll_status(monitor, control, second, self.status(second))
+            self.assertEqual(event['event'], 'observation')
+            attempt.assert_not_called()
+        event = self.poll_status(monitor, control, 15.2, self.status(15.2))
         self.assertEqual(event['event'], 'recovery_attempt')
-        self.assertAlmostEqual(event['observation']['observed_tiny_seconds'], 2.2)
-        self.poll_status(monitor, control, 12.5, PermissionError('atomic replacement'))
-        self.poll_status(monitor, control, 13, self.status(13))
+        self.assertAlmostEqual(event['observation']['observed_tiny_seconds'], 5.2)
+        self.poll_status(monitor, control, 15.5, PermissionError('atomic replacement'))
+        self.poll_status(monitor, control, 16, self.status(16))
         attempt.assert_called_once_with(control, IDENTITY, 99, [8, 8])
 
     def test_prolonged_unreadable_or_fresh_sample_gap_resets_continuity(self):
@@ -217,14 +261,16 @@ class TinyOutputRecoveryTests(unittest.TestCase):
         self.poll_status(monitor, control, 10, self.status(10))
         self.poll_status(monitor, control, 11, self.status(11))
         self.poll_status(monitor, control, 11.5, PermissionError('busy'))
+        for second in (12, 13, 14):
+            self.assertEqual(self.poll_status(monitor, control, second, self.status(second))['event'], 'observation')
         control.state['window_pid'] = 124
-        event = self.poll_status(monitor, control, 12, self.status(12))
+        event = self.poll_status(monitor, control, 15, self.status(15))
         self.assertEqual(event['event'], 'recovery_deferred')
         self.assertEqual(event['reason'], 'identity_or_window_changed')
         self.assertFalse(monitor.policy.consumed)
         monitor.attempt.assert_not_called()
         control.state['window_pid'] = 123
-        event = self.poll_status(monitor, control, 13, self.status(13))
+        event = self.poll_status(monitor, control, 16, self.status(16))
         self.assertEqual(event['observed_tiny_seconds'], 0)
 
     def test_hidden_window_defers_and_visible_window_reacquires_before_one_attempt(self):
@@ -235,18 +281,19 @@ class TinyOutputRecoveryTests(unittest.TestCase):
         def poll(second):
             with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(second)):
                 return monitor.poll_once(control, second * 1_000_000_000)
-        poll(10); poll(11)
-        deferred = poll(12)
+        for second in (10, 11, 12, 13, 14):
+            self.assertEqual(poll(second)['event'], 'observation')
+        deferred = poll(15)
         self.assertEqual(deferred['event'], 'recovery_deferred')
         self.assertEqual(deferred['reason'], 'window_not_visible_normal_windowed')
         self.assertFalse(monitor.policy.consumed)
         monitor.attempt.assert_not_called()
         control.state['visible'] = True
-        self.assertEqual(poll(13)['event'], 'observation')
-        self.assertEqual(poll(14)['event'], 'observation')
-        self.assertEqual(poll(15)['event'], 'recovery_attempt')
+        for second in (16, 17, 18, 19, 20):
+            self.assertEqual(poll(second)['event'], 'observation')
+        self.assertEqual(poll(21)['event'], 'recovery_attempt')
         self.assertTrue(monitor.policy.consumed)
-        poll(16); poll(17)
+        poll(22); poll(23)
         monitor.attempt.assert_called_once_with(control, IDENTITY, 99, [8, 8])
 
     def test_background_monitor_isolates_errors_and_closes_with_diagnostics(self):
@@ -267,15 +314,16 @@ class TinyOutputRecoveryTests(unittest.TestCase):
 
     def ready_monitor(self, attempt=None):
         monitor = TinyOutputMonitor('unused', 'unused', IDENTITY, attempt=attempt)
-        self.observe(monitor.policy, 10);self.observe(monitor.policy, 11)
+        for second in (10, 11, 12, 13, 14):
+            self.observe(monitor.policy, second)
         return monitor
 
     def test_observe_only_does_not_inspect_or_resize_window_when_tiny_is_confirmed(self):
         monitor=self.ready_monitor(attempt=mock.Mock())
         monitor.allow_recovery=False
         control=FakeControl();control.snapshot=mock.Mock(side_effect=AssertionError('Window must not be touched'))
-        with mock.patch('tiny_output_recovery.read_swapchain_status',return_value=self.status(12)):
-            event=monitor.poll_once(control,12_000_000_000)
+        with mock.patch('tiny_output_recovery.read_swapchain_status',return_value=self.status(15)):
+            event=monitor.poll_once(control,15_000_000_000)
         self.assertEqual(event['reason'],'recovery_disabled')
         self.assertFalse(monitor.policy.consumed)
         monitor.attempt.assert_not_called();control.snapshot.assert_not_called()
@@ -283,8 +331,8 @@ class TinyOutputRecoveryTests(unittest.TestCase):
 
     def test_default_attempt_emits_each_operation_boundary_without_window_details(self):
         monitor, control, stages = self.ready_monitor(), FakeControl(), []
-        with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(12)):
-            event = monitor.poll_once(control, 12_000_000_000, emit=stages.append)
+        with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(15)):
+            event = monitor.poll_once(control, 15_000_000_000, emit=stages.append)
         self.assertEqual(event['result']['result'], 'resize_restore_attempted')
         self.assertEqual([row['phase'] for row in stages], [
             'window_snapshot_begin', 'window_snapshot_end', 'recovery_action_begin',
@@ -300,8 +348,8 @@ class TinyOutputRecoveryTests(unittest.TestCase):
     def test_custom_attempt_retains_its_four_positional_arguments_with_phase_emitter(self):
         attempt = mock.Mock(return_value={'attempted':True})
         monitor, control, stages = self.ready_monitor(attempt), FakeControl(), []
-        with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(12)):
-            result = monitor.poll_once(control, 12_000_000_000, emit=stages.append)
+        with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(15)):
+            result = monitor.poll_once(control, 15_000_000_000, emit=stages.append)
         attempt.assert_called_once_with(control, IDENTITY, 99, [8, 8])
         self.assertEqual(result['result'], {'attempted':True})
         self.assertEqual([row['phase'] for row in stages],
@@ -312,8 +360,8 @@ class TinyOutputRecoveryTests(unittest.TestCase):
             with self.subTest(error=type(error).__name__):
                 monitor, control, stages = self.ready_monitor(), FakeControl(), []
                 with mock.patch.object(control, 'resize', side_effect=error) as resize, \
-                        mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(12)):
-                    result = monitor.poll_once(control, 12_000_000_000, emit=stages.append)
+                        mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(15)):
+                    result = monitor.poll_once(control, 15_000_000_000, emit=stages.append)
                 phases = [row['phase'] for row in stages]
                 self.assertEqual([phase for phase in phases if phase.endswith('_begin')][-1], 'resize_begin')
                 self.assertNotIn('resize_end', phases)
@@ -351,8 +399,8 @@ class TinyOutputRecoveryTests(unittest.TestCase):
             monitor.attempt = mock.Mock(side_effect=custom)
             monitor.control_factory = lambda:control
             with mock.patch.object(pathlib.Path, 'open', return_value=StageFailingStream()), \
-                    mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(12)), \
-                    mock.patch('tiny_output_recovery.time.perf_counter_ns', return_value=12_000_000_000):
+                    mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(15)), \
+                    mock.patch('tiny_output_recovery.time.perf_counter_ns', return_value=15_000_000_000):
                 monitor._run()
             monitor.attempt.assert_called_once_with(control, IDENTITY, 99, [8, 8])
             self.assertEqual(len(failed_stages), 4)

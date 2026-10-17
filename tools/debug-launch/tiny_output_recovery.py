@@ -82,7 +82,8 @@ class SwapchainTinyOutputPolicy:
         else:
             self.last_ns = sampled_ns
         duration = sampled_ns - self.first_ns
-        return dict(ready=duration >= 2_000_000_000, reason='persistent_tiny' if duration >= 2_000_000_000 else 'observing_tiny',
+        # Normal startup can briefly publish 8x8 output before natural recovery.
+        return dict(ready=duration >= 5_000_000_000, reason='persistent_tiny' if duration >= 5_000_000_000 else 'observing_tiny',
                     observed_tiny_seconds=duration / 1_000_000_000, dimensions=dimensions,
                     hwnd=fields['hwnd'], chain=fields['chain'], sample_qpc=fields['qpc'])
 
