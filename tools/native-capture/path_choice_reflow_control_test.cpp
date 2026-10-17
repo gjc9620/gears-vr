@@ -31,7 +31,7 @@ static uintptr_t __fastcall native_child(void* object,float left,float top,float
 }
 struct ControlFixture:Fixture {
     std::shared_ptr<position::Request> request;
-    ControlFixture(){
+    ControlFixture(bool prefix_policy=false){
         control::current=nullptr;control::parent_depth=0;control::attempted=0;control::modified=0;control::adopted=0;control::native_restored=0;
         control::guard_rejected=0;control::failed=0;control::receipt_slots=0;
         for(unsigned i=0;i<4;++i){control::ready[i]=false;control::receipts[i]={};}
@@ -45,6 +45,10 @@ struct ControlFixture:Fixture {
         put(c.panel+0x60,std::uint32_t(1042069801));put(c.panel+0x68,std::uint32_t(1062785461));
         put(c.panel+0x1dc,c.scene);put(c.panel+0x4e4,static_cast<unsigned char>(0));put(c.panel+0x4f8,std::uint32_t(1));
         put(0x6000,std::uint32_t(1064098280));put(0x6004,std::uint32_t(1064098280));
+        if(prefix_policy){c.schema=2;c.registry_header_policy=trial::RegistryHeaderPolicy::fixed_prefix_v1;
+            for(unsigned i=0;i<2;++i){trial::RegistryHeader header{0x700000+i*0x100000,100,200};trial::Check check;
+                check.address=c.base+trial::registry_header_rvas[i];check.bytes.resize(16);std::memcpy(check.bytes.data(),&header,16);
+                c.checks.push_back(check);put(check.address,header);}}
         request=std::make_shared<position::Request>();request->config=c;request->expires=GetTickCount64()+6000;
         std::atomic_store(&position::selected,std::shared_ptr<position::Request const>(request));
         apply();run_child_in_parent=true;observer::child_original=native_child;
@@ -170,4 +174,18 @@ static void authorization_changes_during_original(){
         request_during_original=nullptr;
     }
 }
-int main(){six_reflows_and_exact_core_restore();exact_holding_stays_exact();one_ulp_own_adoption_only();reject_bad_exit_and_exception();expired_or_draining_native_restore();entry_guard_and_metadata();foreign_and_nested_passthrough();pure_helper_bounds();restoring_bypasses_control();no_active_lease_or_wrong_object();control_receipt_publication();authorization_changes_during_original();std::puts("PathChoiceReflowControlTest passed");}
+static void schema2_suffix_with_control_and_exact_restore(){
+    ControlFixture f(true);struct Candidate {uintptr_t client=0x1000,scene=0x2000;} candidate;
+    for(int num:{101,120,100,110,105,130}){
+        for(unsigned i=0;i<2;++i)put(f.c.base+trial::registry_header_rvas[i],trial::RegistryHeader{0x700000+i*0x100000,num,200});
+        f.call();assert(position::state.lease.owned==f.positions()&&!position::terminal);
+        position::invoke_with(candidate,[]{return sentinel;},safe_copy,f.setter(),[]{return true;});
+        assert(!position::auth_failure_ready&&!position::identity_lost&&!position::ownership_lost);
+    }
+    assert(control::adopted==6&&control::modified==6&&control::receipt_slots==4);
+    assert(position::state.lease.owned[0]+1==trial::bits(trial::value(f.c.top_bits)+trial::delta));
+    f.request->expires=0;position::invoke_with(candidate,[]{return sentinel;},safe_copy,f.setter(),[]{return true;});
+    assert(position::restored==1&&!position::unresolved&&!position::state.lease.active&&
+        (f.positions()==std::array<std::uint32_t,2>{f.c.top_bits,f.c.bottom_bits}));
+}
+int main(){six_reflows_and_exact_core_restore();exact_holding_stays_exact();one_ulp_own_adoption_only();reject_bad_exit_and_exception();expired_or_draining_native_restore();entry_guard_and_metadata();foreign_and_nested_passthrough();pure_helper_bounds();restoring_bypasses_control();no_active_lease_or_wrong_object();control_receipt_publication();authorization_changes_during_original();schema2_suffix_with_control_and_exact_restore();std::puts("PathChoiceReflowControlTest passed");}

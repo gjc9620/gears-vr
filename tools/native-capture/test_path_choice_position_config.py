@@ -72,7 +72,8 @@ class PositionConfigTests(unittest.TestCase):
     def test_serialization_exact_schema_minimal_scope_and_readonly(self):
         sample,proof=fixture();before=copy.deepcopy((sample,proof));ini=position.build(sample,proof,**SESSION)
         self.assertEqual((sample,proof),before);parser=configparser.RawConfigParser();parser.read_string(ini)
-        fields=dict(parser['PathChoicePositionTrial']);self.assertEqual(len(fields),15+int(fields['check_count']))
+        fields=dict(parser['PathChoicePositionTrial']);self.assertEqual(len(fields),16+int(fields['check_count']))
+        self.assertEqual(fields['schema'],'2');self.assertEqual(fields['registry_header_policy'],'fixed_prefix_v1')
         self.assertNotIn('shift_x',fields);self.assertEqual(fields['top_bits'],str(struct.unpack('<I',bytes.fromhex(sample['tree'][1]['layout_details']['position']['members']['Value']['raw'])[4:8])[0]))
         panel=int(fields['panel'],16);checks=[]
         for i in range(int(fields['check_count'])):
@@ -81,6 +82,30 @@ class PositionConfigTests(unittest.TestCase):
             self.assertFalse(any(address<at+size and at<address+len(raw) for at,size in ((panel+0x64,4),(panel+0x6c,4),(panel+0x74,4))))
             self.assertNotEqual(address,0xb00000)
         self.assertEqual(ini,position.build(sample,proof,**SESSION))
+
+    def test_registry_headers_remain_exact_at_acquisition_boundary(self):
+        sample,proof=fixture();base=sample['scene_owner']['module_base'];header=base+0x1c24730
+        for entry in proof['checks']:
+            raw=bytearray.fromhex(entry['raw'])
+            if entry['address']<=header+8 and header+12<=entry['address']+len(raw):
+                offset=header+8-entry['address'];num=struct.unpack_from('<i',raw,offset)[0]
+                struct.pack_into('<i',raw,offset,num+1);entry['raw']=raw.hex();break
+        else:self.fail('missing synthetic registry read')
+        with self.assertRaisesRegex(ValueError,'fresh identity/owner/reflection check mismatch'):
+            position.build(sample,proof,**SESSION)
+
+    def test_only_whole_known_headers_receive_runtime_policy(self):
+        base=0x140000000;headers=(base+0x1c24730,base+0x1c34800)
+        raw=struct.pack('<Qii',0x700000,100,200)
+        for bad in ('partial','cross','missing','invalid','alias'):
+            with self.subTest(bad=bad):
+                checks=owner._Checks();checks.add(headers[0],raw)
+                if bad!='missing':checks.add(headers[1],struct.pack('<Qii',0x800000,100,200))
+                if bad=='partial':checks.add(headers[0]+8,raw[8:])
+                if bad=='cross':checks.add(headers[0]-8,b'\0'*8+raw)
+                if bad=='invalid':checks.spans[headers[0],16]=struct.pack('<Qii',0x700000,0,200)
+                if bad=='alias':checks.spans[headers[1],16]=raw
+                with self.assertRaises(ValueError):position._fixed_prefix_headers(checks,base)
 
     def test_reject_bad_selection_units_reflection_and_vslots(self):
         for error in ('missing','multiple','parent','outer','units','position_offset','value_offset','scale_offset','vslot','unknown_key','missing_identity','bad_class','children'):

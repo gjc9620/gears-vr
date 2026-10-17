@@ -43,6 +43,7 @@ static void reset(){disable();state={};owner_thread=0;in_flight=0;owner_activity
     pending_restore=false;ever_modified=false;drain_requested=false;unresolved=false;terminal=false;
     first_loss={};loss_claimed=false;loss_ready=false;
     successful_nonce=0;first_auth_failure={};auth_failure_claimed=false;auth_failure_ready=false;
+    registry_accepted_reads=0;for(unsigned i=0;i<2;++i){registry_accepted_claimed[i]=false;registry_accepted_ready[i]=false;registry_accepted_by_header[i]=0;registry_accepted_receipts[i]={};}
     loaded_nonce=0;applied=0;restored=0;rejected=0;identity_lost=0;ownership_lost=0;setter_failed=0;reads=0;stops=0;}
 static std::shared_ptr<Request> select(Engine& e){auto ctx=context(e.c.client,e.c.scene);
     e.c.pid=ctx.pid;e.c.creation_time=ctx.creation_time;e.c.started_qpc=ctx.started_qpc;e.c.world_generation=ctx.world_generation;
@@ -232,4 +233,34 @@ static void auth_duplicate_check_index(){
     invoke_with(c,original,reader,e.setter(),cert);
     assert(auth_failure_ready&&first_auth_failure.kind==AuthKind::check&&first_auth_failure.check_index==1&&calls==2&&e.calls==2);
 }
-int main(){ownership_receipts();gates();expiry_and_retry();failed_apply_rollback();threaded_drain();bounded_drain();auth_failure_checks();auth_failure_fixed_fields_and_context();auth_reader_forwarding_and_foreign();auth_failure_during_restore();auth_duplicate_check_index();std::puts("PathChoicePositionTrialLiveTest passed");}
+static void configure_prefix(Engine& e,bool schema2=true){
+    if(schema2){e.c.schema=2;e.c.registry_header_policy=RegistryHeaderPolicy::fixed_prefix_v1;}
+    for(unsigned i=0;i<2;++i){RegistryHeader h{0x700000+i*0x100000,100,200};Check check;check.address=e.c.base+registry_header_rvas[i];
+        check.bytes.resize(16);std::memcpy(check.bytes.data(),&h,16);e.c.checks.push_back(check);e.put(check.address,h);}
+}
+static void prefix_live_diagnostics_and_restore(){
+    reset();Engine e;configure_prefix(e);auto request=select(e);Candidate c;auto original=[] {return uintptr_t(1);};auto cert=[] {return true;};
+    invoke_with(c,original,e.reader(),e.setter(),cert);assert(applied==1&&registry_accepted_reads==0);
+    std::thread worker([&]{for(unsigned i=0;i<2;++i){while(!registry_accepted_ready[i].load(std::memory_order_acquire))std::this_thread::yield();
+        auto const& r=registry_accepted_receipts[i];assert(r.header_index==i&&r.check_index==i+1&&r.initial.num==100&&r.observed.num==180&&
+            r.initial.data==r.observed.data&&r.initial.max==200&&r.observed.max==200&&r.stage==AuthStage::hold&&r.nonce==e.c.nonce&&r.qpc>0);}});
+    for(int num:{180,120,100,150}){for(unsigned i=0;i<2;++i)e.put(e.c.base+registry_header_rvas[i],RegistryHeader{0x700000+i*0x100000,num,200});
+        invoke_with(c,original,e.reader(),e.setter(),cert);assert(!auth_failure_ready&&identity_lost==0&&state.lease.active);}
+    worker.join();assert(registry_accepted_reads==6&&registry_accepted_by_header[0]==3&&registry_accepted_by_header[1]==3);
+    assert(registry_accepted_receipts[0].observed.num==180); // Immutable first accepted read; no high-water gate.
+    std::vector<std::pair<uintptr_t,std::size_t>> plain,observed;
+    auto record=[&](auto& calls){return [&](void* out,void const* from,std::size_t size){calls.emplace_back(reinterpret_cast<uintptr_t>(from),size);return e.read(out,from,size);};};
+    assert(authenticate(e.c,e.ctx,record(plain))&&authenticate(e.c,e.ctx,auth_reader(e.c,e.ctx,AuthStage::hold,1,record(observed)))&&plain==observed);
+    request->expires=0;invoke_with(c,original,e.reader(),e.setter(),cert);
+    assert(restored==1&&e.calls==4&&!pending_restore&&!auth_failure_ready&&!unresolved);
+}
+static void prefix_apply_and_schema1_failure(){
+    for(bool schema2:{true,false}){reset();Engine e;configure_prefix(e,schema2);select(e);Candidate c;auto original=[] {return uintptr_t(1);};auto cert=[] {return true;};
+        if(schema2)for(unsigned i=0;i<2;++i)e.put(e.c.base+registry_header_rvas[i],RegistryHeader{0x700000+i*0x100000,101,200});
+        invoke_with(c,original,e.reader(),e.setter(),cert);assert(applied==1);
+        if(schema2){assert(registry_accepted_reads>0&&registry_accepted_receipts[0].stage==AuthStage::apply&&!auth_failure_ready);}
+        else{e.put(e.c.base+registry_header_rvas[0],RegistryHeader{0x700000,101,200});invoke_with(c,original,e.reader(),e.setter(),cert);
+            assert(identity_lost==1&&registry_accepted_reads==0&&auth_failure_ready&&first_auth_failure.first_mismatch==8&&first_auth_failure.check_index==1);}
+    }
+}
+int main(){ownership_receipts();gates();expiry_and_retry();failed_apply_rollback();threaded_drain();bounded_drain();auth_failure_checks();auth_failure_fixed_fields_and_context();auth_reader_forwarding_and_foreign();auth_failure_during_restore();auth_duplicate_check_index();prefix_live_diagnostics_and_restore();prefix_apply_and_schema1_failure();std::puts("PathChoicePositionTrialLiveTest passed");}

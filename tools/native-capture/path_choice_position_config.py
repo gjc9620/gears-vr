@@ -25,6 +25,23 @@ def _address(text):
     return integer(int(text, 16), 1)
 
 
+def _fixed_prefix_headers(checks, base):
+    """Only the two complete certified headers receive the runtime Num policy."""
+    headers = (base + 0x1c24730, base + 0x1c34800)
+    found = {}
+    for (address, size), raw in checks.spans.items():
+        for header in headers:
+            if address < header + 16 and header < address + size:
+                require(address == header and size == 16 and header not in found,
+                        'partial/overlapping/aliased registry header check')
+                data, count, capacity = struct.unpack('<Qii', raw)
+                require(data and 0 < count <= capacity < 4000000 and data <= owner.U64 - capacity * 8,
+                        'invalid fixed-prefix registry header')
+                found[header] = data
+    require(set(found) == set(headers) and len(set(found.values())) == 2,
+            'missing/aliased fixed-prefix registry headers')
+
+
 def build(sample, panelproof, *, pid, creation_time, started_qpc, world_generation, nonce, duration_ms=3000):
     """Require fresh raw coverage, exact owner digest, registered panel/reflection.
 
@@ -144,6 +161,7 @@ def _build(sample, proof, required_only=False, **session):
     checks.number(panel,vtable)
     for slot,target in proof['vslots'].items():checks.number(vtable+int(slot,16),target)
     checks.add(panel+0x70,units)
+    _fixed_prefix_headers(checks, base)
     if required_only:
         reads = owner._Checks()
         for (address,size),expected in checks.spans.items():reads.add(address,expected)
@@ -169,9 +187,9 @@ def _build(sample, proof, required_only=False, **session):
     for (address,size) in checks.spans:
         require(not any(address<at+n and at<address+size for at,n in excluded),'mutable bytes in immutable checks')
     result = {key:fields[key] for key in ('schema','nonce','pid','creation_time','started_qpc','world_generation','base','client','scene')}
-    result.update(panel=hex(panel),panel_vtable=hex(vtable),top_bits=top,bottom_bits=bottom,
+    result.update(schema=2,registry_header_policy='fixed_prefix_v1',panel=hex(panel),panel_vtable=hex(vtable),top_bits=top,bottom_bits=bottom,
                   duration_ms=session['duration_ms'],check_count=len(checks.spans))
-    require(len(result)==15,'unexpected configuration keys')
+    require(len(result)==16,'unexpected configuration keys')
     lines=['[PathChoicePositionTrial]']+[key+'='+str(value) for key,value in result.items()]
     lines+=['check_%d=0x%X:%s'%(i,address,raw.hex()) for i,((address,size),raw) in enumerate(sorted(checks.spans.items()))]
     ini='\n'.join(lines)+'\n';require(len(ini)<=262144,'configuration byte budget');ini.encode('ascii')

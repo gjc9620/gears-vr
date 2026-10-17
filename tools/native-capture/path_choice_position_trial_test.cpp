@@ -51,4 +51,43 @@ static void partial_failure(){for(unsigned fail:{1u,2u})for(bool mutated:{false,
     Engine e;State s;assert(apply(s,e.c,e.ctx,e.reader(),e.setter())==Result::applied);e.fail_call=3;
     assert(restore(s,e.ctx,e.reader(),e.setter())==Result::setter_failed&&s.lease.active);
     e.fail_call=0;assert(restore(s,e.ctx,e.reader(),e.setter())==Result::restored);}
-int main(){parse_checks();lifecycle();failed_admission();lost_ownership();partial_failure();std::puts("PathChoicePositionTrialTest passed");}
+static Check header_check(uintptr_t address,RegistryHeader h){Check c;c.address=address;c.bytes.resize(16);std::memcpy(c.bytes.data(),&h,16);return c;}
+static std::string encoded(Check const& c){constexpr char hex[]="0123456789abcdef";std::string text;
+    char address[32]{};std::snprintf(address,sizeof(address),"0x%llx:",static_cast<unsigned long long>(c.address));text=address;
+    for(auto b:c.bytes){text+=hex[b>>4];text+=hex[b&15];}return text;}
+static std::string prefix_ini(){auto text=ini();text.replace(text.find("schema=1"),8,"schema=2\nregistry_header_policy=fixed_prefix_v1");
+    for(unsigned i=0;i<2;++i){auto key="check_"+std::to_string(i)+"=0x5000:aa";
+        auto check=header_check(0x140000000+registry_header_rvas[i],{0x700000+i*0x100000,100,200});
+        text.replace(text.find(key),key.size(),"check_"+std::to_string(i)+"="+encoded(check));}return text;}
+static void prefix_parser(){Config c;auto text=prefix_ini();assert(parse(text,c)&&c.schema==2&&c.registry_header_policy==RegistryHeaderPolicy::fixed_prefix_v1);
+    auto replace=[&](std::string const& from,std::string const& to){auto bad=text;bad.replace(bad.find(from),from.size(),to);assert(!parse(bad,c));};
+    replace("fixed_prefix_v1","monotonic");replace("schema=2","schema=1");
+    auto h=header_check(0x140000000+registry_header_rvas[0],{0x700000,100,200});
+    for(auto invalid:std::vector<RegistryHeader>{{0,100,200},{0x700000,0,200},{0x700000,-1,200},{0x700000,201,200},
+            {0x700000,100,0},{0x700000,100,-1},{0x700000,100,4000000},{UINT64_MAX-1599,100,200}})
+        replace("check_0="+encoded(h),"check_0="+encoded(header_check(h.address,invalid)));
+    replace("check_1="+encoded(header_check(0x140000000+registry_header_rvas[1],{0x800000,100,200})),"check_1=0x5000:aa");
+    for(unsigned kind=0;kind<3;++kind){auto alias=h;if(kind==1){alias.address+=8;alias.bytes.erase(alias.bytes.begin(),alias.bytes.begin()+8);}
+        if(kind==2){alias.address-=8;alias.bytes.insert(alias.bytes.begin(),8,0);}
+        replace("check_2=0x5000:aa","check_2="+encoded(alias));}
+    replace("check_1="+encoded(header_check(0x140000000+registry_header_rvas[1],{0x800000,100,200})),
+            "check_1="+encoded(header_check(0x140000000+registry_header_rvas[1],{0x700000,100,200})));
+}
+static void prefix_authentication_and_restore(){Engine e;e.c.schema=2;e.c.registry_header_policy=RegistryHeaderPolicy::fixed_prefix_v1;
+    for(unsigned i=0;i<2;++i){auto h=RegistryHeader{0x700000+i*0x100000,100,200};e.c.checks.push_back(header_check(e.c.base+registry_header_rvas[i],h));e.put(e.c.base+registry_header_rvas[i],h);}
+    auto slot=header_check(0x700000+19*8,{0x3000,0,0});slot.bytes.resize(8);e.c.checks.push_back(slot);e.put(slot.address,uintptr_t(0x3000));
+    assert(authenticate(e.c,e.ctx,e.reader()));State state;assert(apply(state,e.c,e.ctx,e.reader(),e.setter())==Result::applied);
+    for(int count:{180,120,100,150}){for(unsigned i=0;i<2;++i)e.put(e.c.base+registry_header_rvas[i],RegistryHeader{0x700000+i*0x100000,count,200});
+        assert(authenticate(e.c,e.ctx,e.reader()));}
+    assert(restore(state,e.ctx,e.reader(),e.setter())==Result::restored&&e.calls==4);
+    for(unsigned i=0;i<2;++i){auto address=e.c.base+registry_header_rvas[i];
+        for(auto bad:std::vector<RegistryHeader>{{0x700000+i*0x100000,99,200},{0x700008+i*0x100000,150,200},{0x700000+i*0x100000,150,201},
+                {0x700000+i*0x100000,201,200},{0x700000+i*0x100000,-1,200},{0x700000+i*0x100000,150,4000000},{UINT64_MAX-1599,150,200}}){
+            e.put(address,bad);assert(!authenticate(e.c,e.ctx,e.reader()));}
+        e.put(address,RegistryHeader{0x700000+i*0x100000,150,200});}
+    e.put(slot.address,uintptr_t(0x3008));assert(!authenticate(e.c,e.ctx,e.reader()));e.put(slot.address,uintptr_t(0x3000));
+    auto unknown=header_check(0x900000,{0x1000000,100,200});e.c.checks.push_back(unknown);e.put(unknown.address,RegistryHeader{0x1000000,101,200});
+    assert(!authenticate(e.c,e.ctx,e.reader()));e.put(unknown.address,RegistryHeader{0x1000000,100,200});assert(authenticate(e.c,e.ctx,e.reader()));
+    e.c.schema=1;e.c.registry_header_policy=RegistryHeaderPolicy::exact;assert(!authenticate(e.c,e.ctx,e.reader()));
+}
+int main(){parse_checks();lifecycle();failed_admission();lost_ownership();partial_failure();prefix_parser();prefix_authentication_and_restore();std::puts("PathChoicePositionTrialTest passed");}

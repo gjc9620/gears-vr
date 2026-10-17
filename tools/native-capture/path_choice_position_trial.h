@@ -7,14 +7,50 @@
 // it supplies no proof of GPU clipping, input alignment or headset acceptance.
 namespace gears_path_choice_position {
 using Check=gears_ui_scene_trial::Check;
+enum class RegistryHeaderPolicy {exact,fixed_prefix_v1};
 struct Config {
     std::uint64_t nonce{},pid{},creation_time{},started_qpc{},world_generation{},base{},client{},scene{},panel{},panel_vtable{};
     std::uint32_t top_bits{},bottom_bits{};unsigned duration_ms{};std::vector<Check> checks;
+    unsigned schema=1;RegistryHeaderPolicy registry_header_policy=RegistryHeaderPolicy::exact;
 };
 inline std::uint32_t bits(float v){std::uint32_t b;std::memcpy(&b,&v,4);return b;}
 inline float value(std::uint32_t b){float v;std::memcpy(&v,&b,4);return v;}
 inline constexpr float delta=16.f/1080.f;
 inline bool overlap(std::uintptr_t a,std::size_t n,std::uintptr_t b,std::size_t m){return a<b+m&&b<a+n;}
+inline constexpr std::array<std::uintptr_t,2> registry_header_rvas{0x1c24730,0x1c34800};
+struct RegistryHeader {std::uint64_t data{};std::int32_t num{},max{};};
+static_assert(sizeof(RegistryHeader)==16,"Expected x64 Qii registry header");
+inline RegistryHeader registry_header(unsigned char const* bytes){RegistryHeader h;std::memcpy(&h,bytes,16);return h;}
+inline bool valid_registry_header(RegistryHeader const& h){return h.data&&h.num>0&&h.num<=h.max&&h.max<4000000&&
+    h.data<=UINTPTR_MAX-std::uint64_t(h.max)*8;}
+inline int registry_header_index(Config const& c,std::uintptr_t address,std::size_t size){
+    for(unsigned i=0;i<registry_header_rvas.size();++i)if(size==16&&address==c.base+registry_header_rvas[i])return int(i);return -1;
+}
+inline bool valid_registry_policy(Config const& c){
+    if(c.schema==1)return c.registry_header_policy==RegistryHeaderPolicy::exact;
+    if(c.schema!=2||c.registry_header_policy!=RegistryHeaderPolicy::fixed_prefix_v1||c.base>UINTPTR_MAX-0x2000000)return false;
+    std::array<unsigned,2> found{};std::array<RegistryHeader,2> headers{};
+    for(auto const& check:c.checks){
+        if(check.address>UINTPTR_MAX-check.bytes.size())return false;
+        for(unsigned i=0;i<registry_header_rvas.size();++i)if(overlap(check.address,check.bytes.size(),c.base+registry_header_rvas[i],16)){
+            if(check.address!=c.base+registry_header_rvas[i]||check.bytes.size()!=16||++found[i]!=1)return false;
+            headers[i]=registry_header(check.bytes.data());if(!valid_registry_header(headers[i]))return false;
+        }
+    }
+    return found[0]==1&&found[1]==1&&headers[0].data!=headers[1].data;
+}
+enum class CheckMatch {rejected,exact,accepted_registry_suffix};
+inline CheckMatch match_check(Config const& c,Check const& check,unsigned char const* observed,std::size_t size){
+    if(size!=check.bytes.size())return CheckMatch::rejected;
+    const int header=registry_header_index(c,check.address,size);
+    if(c.schema==2&&c.registry_header_policy==RegistryHeaderPolicy::fixed_prefix_v1&&header>=0){
+        auto initial=registry_header(check.bytes.data()),live=registry_header(observed);
+        if(!valid_registry_header(initial)||!valid_registry_header(live)||live.data!=initial.data||live.max!=initial.max||live.num<initial.num)
+            return CheckMatch::rejected;
+        return live.num==initial.num?CheckMatch::exact:CheckMatch::accepted_registry_suffix;
+    }
+    return std::equal(check.bytes.begin(),check.bytes.end(),observed)?CheckMatch::exact:CheckMatch::rejected;
+}
 inline bool parse(std::string text,Config& out){
     if(text.empty()||text.size()>262144||text.find('\0')!=std::string::npos)return false;
     std::map<std::string,std::string> fields;bool section=false;
@@ -23,10 +59,10 @@ inline bool parse(std::string text,Config& out){
         if(line.empty())continue;if(line=="[PathChoicePositionTrial]"){if(section)return false;section=true;continue;}
         auto split=line.find('=');if(!section||split==std::string::npos||!split||line.size()>1024||
             !fields.emplace(line.substr(0,split),line.substr(split+1)).second)return false;}
-    Config c;unsigned schema{},count{};
+    Config c;unsigned count{};
     auto u=[&](char const* key,auto& v){auto it=fields.find(key);return it!=fields.end()&&gears_ui_scene_trial::decimal(it->second,v);};
     auto a=[&](char const* key,auto& v){auto it=fields.find(key);std::uintptr_t p{};if(it==fields.end()||!gears_ui_scene_trial::address(it->second,p))return false;v=p;return true;};
-    if(!u("schema",schema)||schema!=1||!u("nonce",c.nonce)||!c.nonce||!u("pid",c.pid)||!c.pid||c.pid>0xffffffffull||
+    if(!u("schema",c.schema)||(c.schema!=1&&c.schema!=2)||!u("nonce",c.nonce)||!c.nonce||!u("pid",c.pid)||!c.pid||c.pid>0xffffffffull||
        !u("creation_time",c.creation_time)||!c.creation_time||!u("started_qpc",c.started_qpc)||!c.started_qpc||
        !u("world_generation",c.world_generation)||!c.world_generation||!a("base",c.base)||!a("client",c.client)||
        !a("scene",c.scene)||!a("panel",c.panel)||!a("panel_vtable",c.panel_vtable)||
@@ -36,7 +72,9 @@ inline bool parse(std::string text,Config& out){
        !std::isfinite(value(c.top_bits))||!std::isfinite(value(c.bottom_bits))||
        value(c.top_bits)<0||value(c.bottom_bits)>1||value(c.top_bits)>=value(c.bottom_bits)||
        !u("duration_ms",c.duration_ms)||c.duration_ms<100||c.duration_ms>8000||
-       !u("check_count",count)||count<16||count>2048||fields.size()!=15+count)return false;
+       !u("check_count",count)||count<16||count>2048||fields.size()!=(c.schema==2?16u:15u)+count)return false;
+    if(c.schema==2){auto policy=fields.find("registry_header_policy");
+        if(policy==fields.end()||policy->second!="fixed_prefix_v1")return false;c.registry_header_policy=RegistryHeaderPolicy::fixed_prefix_v1;}
     std::map<std::uintptr_t,unsigned char> seen;std::size_t total{};
     for(unsigned i=0;i<count;++i){auto it=fields.find("check_"+std::to_string(i));if(it==fields.end())return false;
         auto split=it->second.find(':');Check check;
@@ -49,17 +87,17 @@ inline bool parse(std::string text,Config& out){
         for(std::size_t j=0;j<hex.size();j+=2){int hi=nib(hex[j]),lo=nib(hex[j+1]);if(hi<0||lo<0)return false;
             auto b=static_cast<unsigned char>(hi*16+lo);auto p=seen.emplace(check.address+j/2,b);if(!p.second&&p.first->second!=b)return false;check.bytes.push_back(b);}
         c.checks.push_back(std::move(check));}
-    out=std::move(c);return true;
+    if(!valid_registry_policy(c))return false;out=std::move(c);return true;
 }
 struct Context {std::uint64_t pid{},creation_time{},started_qpc{},world_generation{},base{},client{},scene{};};
 inline bool same(Config const& c,Context const& x){return c.pid==x.pid&&c.creation_time==x.creation_time&&
     c.started_qpc==x.started_qpc&&c.world_generation==x.world_generation&&c.base==x.base&&c.client==x.client&&c.scene==x.scene;}
 template<class Read> bool authenticate(Config const& c,Context const& x,Read read){
-    if(!same(c,x))return false;
+    if(!same(c,x)||!valid_registry_policy(c))return false;
     std::array<unsigned char,256> buf{};
     for(auto const& check:c.checks)if(check.bytes.empty()||check.bytes.size()>buf.size()||
         !read(buf.data(),reinterpret_cast<void const*>(check.address),check.bytes.size())||
-        !std::equal(check.bytes.begin(),check.bytes.end(),buf.begin()))return false;
+        match_check(c,check,buf.data(),check.bytes.size())==CheckMatch::rejected)return false;
     std::uintptr_t vt{},invalidate{},notify{};std::uint32_t units{};
     return read(&vt,reinterpret_cast<void const*>(c.panel),8)&&vt==c.panel_vtable&&
         read(&invalidate,reinterpret_cast<void const*>(vt+0x3d8),8)&&invalidate==c.base+0x2988d8&&

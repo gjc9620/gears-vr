@@ -37,6 +37,24 @@ struct AuthFailureReceipt {
 };
 AuthFailureReceipt first_auth_failure;
 std::atomic<bool> auth_failure_claimed{},auth_failure_ready{};
+struct RegistryAcceptedReceipt {
+    std::uint64_t nonce{},world{},address{};unsigned check_index{},header_index{};
+    trial::RegistryHeader initial{},observed{};AuthStage stage{};uintptr_t caller_hint{};long long qpc{};DWORD thread{};
+};
+std::array<RegistryAcceptedReceipt,2> registry_accepted_receipts{};
+std::array<std::atomic<bool>,2> registry_accepted_claimed{},registry_accepted_ready{};
+std::array<std::atomic<uint64_t>,2> registry_accepted_by_header{};std::atomic<uint64_t> registry_accepted_reads{};
+void observe_registry_accepted(trial::Config const& c,trial::Context const& ctx,AuthStage stage,uintptr_t hint,unsigned check_index,
+    trial::Check const& check,unsigned char const* observed){
+    if(owner_thread.load(std::memory_order_acquire)!=GetCurrentThreadId())return;
+    int index=trial::registry_header_index(c,check.address,check.bytes.size());if(index<0)return;
+    const auto header=static_cast<unsigned>(index);++registry_accepted_reads;++registry_accepted_by_header[header];
+    bool empty=false;if(!registry_accepted_claimed[header].compare_exchange_strong(empty,true))return;
+    RegistryAcceptedReceipt r{};r.nonce=c.nonce;r.world=ctx.world_generation;r.address=check.address;r.check_index=check_index;r.header_index=header;
+    r.initial=trial::registry_header(check.bytes.data());r.observed=trial::registry_header(observed);r.stage=stage;r.caller_hint=hint;r.thread=GetCurrentThreadId();
+    LARGE_INTEGER now{};QueryPerformanceCounter(&now);r.qpc=now.QuadPart;
+    registry_accepted_receipts[header]=r;registry_accepted_ready[header].store(true,std::memory_order_release);
+}
 bool observe_auth_allowed(trial::Config const& c){
     // Must precede successful_nonce (owner-only) and every State access.
     return owner_thread.load(std::memory_order_acquire)==GetCurrentThreadId()&&applied.load()&&
@@ -71,7 +89,7 @@ template<class Read> struct AuthRead {
     trial::Config const& config;trial::Context const& ctx;AuthStage stage;uintptr_t hint;Read read;unsigned next_check{};
     bool operator()(void* out,void const* from,std::size_t size){
         const bool ok=read(out,from,size); // Forward exactly once, with the original arguments and result.
-        if(!observe_auth_allowed(config)||auth_failure_ready.load(std::memory_order_acquire))return ok;
+        if(owner_thread.load(std::memory_order_acquire)!=GetCurrentThreadId())return ok;
         const auto at=reinterpret_cast<uintptr_t>(from);
         auto compare=[&](AuthKind kind,unsigned index,unsigned char const* expected,unsigned length){
             auto observed=static_cast<unsigned char const*>(out);
@@ -83,7 +101,13 @@ template<class Read> struct AuthRead {
         if(next_check<config.checks.size()){
             auto const& check=config.checks[next_check];
             if(at==check.address&&size==check.bytes.size()){
-                const auto index=next_check++;compare(AuthKind::check,index,check.bytes.data(),static_cast<unsigned>(size));return ok;}
+                const auto index=next_check++;
+                const auto match=ok?trial::match_check(config,check,static_cast<unsigned char const*>(out),size):trial::CheckMatch::rejected;
+                if(match==trial::CheckMatch::accepted_registry_suffix)
+                    observe_registry_accepted(config,ctx,stage,hint,index,check,static_cast<unsigned char const*>(out));
+                else if(match==trial::CheckMatch::rejected)
+                    publish_auth_failure(config,ctx,stage,AuthKind::check,hint,index,UINT_MAX,at,static_cast<unsigned>(size),check.bytes.data(),static_cast<unsigned char const*>(out),ok);
+                return ok;}
         }
         auto scalar=[&](AuthKind kind,auto expected){compare(kind,UINT_MAX,reinterpret_cast<unsigned char const*>(&expected),static_cast<unsigned>(sizeof(expected)));};
         if(size==8&&at==config.panel)scalar(AuthKind::vtable,uintptr_t(config.panel_vtable));
@@ -233,6 +257,13 @@ void progress(FILE* f){fprintf(f,"path_position_compiled=1 path_position_nonce=%
         for(unsigned i=0;i<r.window_size;++i)fprintf(f,"%02x",unsigned(r.expected[i]));
         fprintf(f," path_position_auth_fail_observed=");for(unsigned i=0;i<r.window_size;++i)fprintf(f,"%02x",unsigned(r.observed[i]));fprintf(f," ");
     }
+    fprintf(f,"path_position_registry_accepted_reads=%llu path_position_registry_accepted_by_header=%llu,%llu path_position_registry_policy_supported=fixed_prefix_v1 path_position_registry_no_high_water=1 path_position_registry_header_tuple=objects:0,names:1 path_position_registry_accepted_stage_tuple=hold:1,restore:2,apply:3 path_position_registry_accepted_tuple=nonce,world,address,check_index,initial_data,initial_num,initial_max,observed_data,observed_num,observed_max,stage,caller_hint,qpc,thread ",
+        registry_accepted_reads.load(),registry_accepted_by_header[0].load(),registry_accepted_by_header[1].load());
+    for(unsigned i=0;i<2;++i){bool registry_ready=registry_accepted_ready[i].load(std::memory_order_acquire);
+        fprintf(f,"path_position_registry_accepted_%u_ready=%u ",i,registry_ready?1u:0u);if(!registry_ready)continue;auto const& r=registry_accepted_receipts[i];
+        fprintf(f,"path_position_registry_accepted_%u=%llu,%llu,%llu,%u,%llu,%d,%d,%llu,%d,%d,%u,%llu,%lld,%lu ",i,
+            r.nonce,r.world,r.address,r.check_index,r.initial.data,r.initial.num,r.initial.max,r.observed.data,r.observed.num,r.observed.max,unsigned(r.stage),
+            static_cast<unsigned long long>(r.caller_hint),r.qpc,r.thread);}
 }
 #else
 void request_drain(){}
