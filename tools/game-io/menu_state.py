@@ -345,10 +345,90 @@ class MenuReader:
         if any(r.read(getattr(r,prefix+'_header'),16)!=raw for prefix,raw in headers.items()):
             raise RuntimeError('Registry header changed during forced refresh')
 
-    def sample(self, *, include_tree=False, include_layout=False, include_owner=False,
+    def layout_details(self, obj, ancestry, *, scene_root=False):
+        """Bounded reflected storage, not evaluated GetPosition/docking results.
+
+        Field names/types follow artifact3 UIRoot declarations. All offsets,
+        array dimensions and struct extents come from current reflection.
+        Byte enum values are retained numerically: no native enum layout guessed.
+        """
+        r = self.r
+        def fresh(address):
+            r.ident_cache.pop(address, None)
+            return registered(r, address)
+        chain = {row['identity']['name']:row['identity'] for row in ancestry['class_chain']}
+        if 'UIRoot' not in chain or 'UIScreenObject' not in chain:
+            raise RuntimeError('Layout details require UIRoot/UIScreenObject ancestry')
+        def metadata(owner, name, kind, dimension, extent, *, inherited=False):
+            prop = r.property(owner, name, inherited)
+            field = fresh(prop['address'])
+            if (field['name'] != name or field['number'] != 0 or field['outer'] != owner
+                    or r.class_name(field) != kind or prop['type'] != kind):
+                raise RuntimeError('Layout detail property identity/type/owner mismatch: '+name)
+            offset = struct.unpack('<I', r.read(field['address'] + r.profile['property_offset_internal'], 4))[0]
+            dim, size = struct.unpack('<II', r.read(field['address'] + 0x70, 8))
+            if (offset != prop['offset'] or dim != dimension or not 0 < size <= 512
+                    or not 0 <= offset <= extent - dim * size):
+                raise RuntimeError('Unsupported bounded layout detail extent: '+name)
+            return dict(property_address=hex(field['address']), name=name, type=kind,
+                        owner=hex(owner), offset=offset, array_dim=dim, element_size=size)
+        def structure(owner, name, expected, extent):
+            meta = metadata(owner, name, 'StructProperty', 1, extent)
+            address = int(meta['property_address'], 16)
+            structure_address = r.struct_type({'address':address, 'type':'StructProperty'})
+            identity = fresh(structure_address)
+            if (identity['name'] != expected or identity['number'] != 0
+                    or identity['outer'] != chain['UIRoot']['address'] or r.class_name(identity) != 'ScriptStruct'):
+                raise RuntimeError('Unexpected layout detail struct: '+name)
+            return meta, identity
+        def member(base, structure_identity, name, kind, dimension, extent):
+            meta = metadata(structure_identity['address'], name, kind, dimension, extent)
+            size = {'FloatProperty':4, 'ByteProperty':1, 'ObjectProperty':8}[kind]
+            if meta['element_size'] != size:
+                raise RuntimeError('Unsupported layout detail member size: '+name)
+            raw = r.read(base + meta['offset'], dimension * size)
+            values = list(struct.unpack('<' + {'FloatProperty':'f', 'ByteProperty':'B', 'ObjectProperty':'Q'}[kind] * dimension, raw))
+            if kind == 'FloatProperty' and not all(math.isfinite(value) for value in values):
+                raise RuntimeError('Non-finite layout detail: '+name)
+            if kind == 'ObjectProperty':
+                # Describe targets only; never walk a dock target graph.
+                for value in values:
+                    if value:fresh(value)
+                values = [dict(describe(r, value)) if value else None for value in values]
+            return dict(reflected=meta, values=values, raw=raw.hex())
+        meta, identity = structure(chain['UIScreenObject']['address'], 'Position', 'UIScreenValue_Bounds', 0x10000)
+        base, extent = obj['address'] + meta['offset'], meta['element_size']
+        position = dict(reflected=meta, structure=identity,
+            members={name:member(base, identity, name, kind, dim, extent) for name,kind,dim in (
+                ('Value','FloatProperty',4), ('ScaleType','ByteProperty',4),
+                ('bInvalidated','ByteProperty',4), ('AspectRatioMode','ByteProperty',1))})
+        result = dict(position=position, docking=None, face_order=['left','top','right','bottom'],
+            limitation='Reflected raw storage with consistent reread; not evaluated positions, resolved docking, parent-following or draw/scissor proof. Enum bytes are uninterpreted.')
+        if scene_root:
+            result['docking_absence'] = 'Authenticated UIScene root has no UIObject ancestry; DockTargets belongs to UIObject'
+            return result
+        meta, identity = structure(chain['UIObject']['address'], 'DockTargets', 'UIDockingSet', 0x10000)
+        base, extent = obj['address'] + meta['offset'], meta['element_size']
+        docking = dict(reflected=meta, structure=identity,
+            members={name:member(base, identity, name, kind, dim, extent) for name,kind,dim in (
+                ('OwnerWidget','ObjectProperty',1), ('TargetWidget','ObjectProperty',4),
+                ('TargetFace','ByteProperty',4), ('bResolved','ByteProperty',4), ('bLinking','ByteProperty',4))},
+            omitted=['bLockWidthWhenDocked','bLockHeightWhenDocked'],
+            omission_reason='BoolProperty bitfield storage is not decoded by this collector')
+        padding_meta, padding_identity = structure(identity['address'], 'DockPadding', 'UIScreenValue_DockPadding', extent)
+        padding_base = base + padding_meta['offset']
+        docking['padding'] = dict(reflected=padding_meta, structure=padding_identity,
+            members={name:member(padding_base, padding_identity, name, kind, 4, padding_meta['element_size'])
+                     for name,kind in (('PaddingValue','FloatProperty'), ('PaddingScaleType','ByteProperty'))})
+        result['docking'] = docking
+        return result
+
+    def sample(self, *, include_tree=False, include_layout=False, include_layout_details=False, include_owner=False,
                expected_controller=None, expected_local_player=None):
+        include_layout = include_layout or include_layout_details
         options = dict(include_tree=include_tree or include_layout)
         if include_layout:options['include_layout'] = True
+        if include_layout_details:options['include_layout_details'] = True
         if include_owner:
             if any(type(value) is not int or not 0 < value < 1 << 64
                    for value in (expected_controller, expected_local_player)):
@@ -383,7 +463,7 @@ class MenuReader:
                 raise InventoryChanged(str(error)) from error
             raise
 
-    def _sample_once(self, *, include_tree=False, include_layout=False, include_owner=False,
+    def _sample_once(self, *, include_tree=False, include_layout=False, include_layout_details=False, include_owner=False,
                      expected_controller=None, expected_local_player=None):
         include_tree = include_tree or include_layout
         self.refresh()
@@ -487,6 +567,8 @@ class MenuReader:
                             else:
                                 row['render_bounds'] = self.render_bounds(obj)
                                 row['render_bounds']['class_ancestry'] = proof
+                            if include_layout_details:
+                                row['layout_details'] = self.layout_details(obj, proof, scene_root=parent is None)
                         for child in children:visit(child,address,depth+1)
                     visit(top['address'],None,1)
                 if result['top']['tag'] == 'WarfareConfirmation' and r.class_name(top) == 'UIScene_Confirmation':
@@ -519,6 +601,7 @@ def main():
     parser.add_argument('--samples', type=int, default=1)
     parser.add_argument('--tree', action='store_true', help='Include bounded, consistently re-read top Children tree')
     parser.add_argument('--layout', action='store_true', help='Include reflected CPU RenderBounds evidence; implies --tree, not draw/scissor proof')
+    parser.add_argument('--layout-details', action='store_true', help='Include bounded reflected Position/DockTargets storage; implies --layout')
     parser.add_argument('--owner', action='store_true', help='Include fresh PathChoice owner graph evidence; requires current expected player addresses')
     parser.add_argument('--owner-controller', type=lambda value: int(value, 0))
     parser.add_argument('--owner-player', type=lambda value: int(value, 0))
@@ -529,6 +612,7 @@ def main():
             parser.error('--owner requires valid --owner-controller and --owner-player addresses')
     elif any(value is not None for value in owner_addresses):
         parser.error('--owner-controller and --owner-player require --owner')
+    args.layout = args.layout or args.layout_details
     args.tree = args.tree or args.layout
     reader = MenuReader(args.pid)
     results = []
@@ -536,6 +620,7 @@ def main():
         for _ in range(max(1, min(args.samples, 100))):
             began = time.perf_counter()
             options = dict(include_tree=args.tree, include_layout=args.layout)
+            if args.layout_details:options['include_layout_details'] = True
             if args.owner:options.update(include_owner=True, expected_controller=args.owner_controller,
                                          expected_local_player=args.owner_player)
             value = reader.sample(**options)

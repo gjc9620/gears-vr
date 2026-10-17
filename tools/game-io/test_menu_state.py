@@ -112,6 +112,8 @@ class FakeResolver:
         return data
 
     def struct_type(self, prop):
+        if prop['address'] in getattr(self, 'detail_struct_types', {}):
+            return self.u64(prop['address'] + self.profile['struct_property_struct'])
         return self.focus_struct
 
     def name(self, index):
@@ -145,6 +147,50 @@ class FakeResolver:
         self.put(self.objects_header, struct.pack('<Qii', self.objects_data, len(self.object_pointers), len(self.object_pointers)))
         self.layout_class_addresses, self.layout_engine = classes, engine
         return classes
+
+    def layout_storage(self):
+        """Synthetic reflected structs with deliberately non-native offsets."""
+        classes = self.layout_classes()
+        self.profile['property_offset_internal'] = 0x94
+        self.detail_struct_types = {}
+        structures = {}
+        for name in ('UIScreenValue_Bounds', 'UIDockingSet', 'UIScreenValue_DockPadding'):
+            structures[name] = self.allocate()
+            self.object(structures[name], name, 'ScriptStruct', classes['UIRoot'])
+        def prop(owner, name, kind, offset, dim, size, structure=None):
+            address = self.allocate()
+            self.object(address, name, kind, owner)
+            self.props[self.identities[owner]['name'], name] = dict(address=address, offset=offset, type=kind)
+            self.put(address + 0x70, struct.pack('<II', dim, size))
+            self.put(address + 0x94, struct.pack('<I', offset))
+            if structure is not None:
+                self.detail_struct_types[address] = structures[structure]
+                self.put(address + self.profile['struct_property_struct'], struct.pack('<Q', structures[structure]))
+        prop(classes['UIScreenObject'], 'Position', 'StructProperty', 0x600, 1, 40, 'UIScreenValue_Bounds')
+        for name,kind,offset,dim,size in (('Value','FloatProperty',8,4,4), ('ScaleType','ByteProperty',25,4,1),
+                ('bInvalidated','ByteProperty',30,4,1), ('AspectRatioMode','ByteProperty',35,1,1)):
+            prop(structures['UIScreenValue_Bounds'],name,kind,offset,dim,size)
+        prop(classes['UIObject'], 'DockTargets', 'StructProperty', 0x700, 1, 112, 'UIDockingSet')
+        for name,kind,offset,dim,size in (('OwnerWidget','ObjectProperty',8,1,8),
+                ('TargetWidget','ObjectProperty',24,4,8), ('TargetFace','ByteProperty',60,4,1),
+                ('bResolved','ByteProperty',64,4,1), ('bLinking','ByteProperty',68,4,1)):
+            prop(structures['UIDockingSet'],name,kind,offset,dim,size)
+        prop(structures['UIDockingSet'], 'DockPadding', 'StructProperty', 80, 1, 28, 'UIScreenValue_DockPadding')
+        prop(structures['UIScreenValue_DockPadding'], 'PaddingValue', 'FloatProperty', 4, 4, 4)
+        prop(structures['UIScreenValue_DockPadding'], 'PaddingScaleType', 'ByteProperty', 21, 4, 1)
+        for address in (0x1000, 0x2000):
+            self.put(address + 0x600, bytes(40))
+            self.put(address + 0x608, struct.pack('<4f', 10, 20, 0.8, 0.9))
+            self.put(address + 0x619, bytes((1, 2, 5, 6)))
+            self.put(address + 0x61e, bytes((0, 1, 0, 1)))
+        self.bounds(0x2000)
+        self.put(0x2700, bytes(112))
+        self.put(0x2708, struct.pack('<Q', 0x2000))
+        self.put(0x2718, struct.pack('<4Q', 0x1000, 0, 0x2000, 0))
+        self.put(0x273c, bytes((2, 4, 0, 4)))
+        self.put(0x2754, struct.pack('<4f', 1, 2, 3, 4))
+        self.put(0x2765, bytes((0, 1, 2, 4)))
+        self.put(self.objects_header, struct.pack('<Qii', self.objects_data, len(self.object_pointers), len(self.object_pointers)))
 
 
 class MenuStateTests(unittest.TestCase):
@@ -240,6 +286,72 @@ class MenuStateTests(unittest.TestCase):
             self.assertEqual(bytes.fromhex(bounds['raw']), struct.pack('<4f', *values))
             self.assertEqual((bounds['reflected']['array_dim'], bounds['reflected']['element_size']), (4, 4))
             self.assertEqual(bounds['reflected']['type'], 'FloatProperty')
+
+    def test_optional_layout_details_use_reflected_position_and_docking_extents(self):
+        self.r.layout_storage()
+        baseline = self.reader.sample(include_layout=True)
+        with mock.patch.object(self.r, 'property', wraps=self.r.property) as reflected:
+            self.assertEqual(self.reader.sample(include_layout=True), baseline)
+            self.assertFalse(any(call.args[1] in ('Position','DockTargets') for call in reflected.call_args_list))
+        result = self.reader.sample(include_layout_details=True)
+        self.assertTrue(result['read_only']);self.assertTrue(result['consistent_reread'])
+        root, child = result['tree']
+        self.assertIn('layout_details', root)
+        self.assertIsNone(root['layout_details']['docking'])
+        self.assertIn('no UIObject ancestry', root['layout_details']['docking_absence'])
+        details = child['layout_details']
+        position = details['position']
+        self.assertEqual(position['reflected']['offset'], 0x600)
+        self.assertEqual(position['members']['Value']['values'][:2], [10, 20])
+        self.assertEqual(position['members']['ScaleType']['values'], [1,2,5,6])
+        self.assertEqual(position['members']['bInvalidated']['values'], [0,1,0,1])
+        docking = details['docking']
+        self.assertEqual(docking['members']['OwnerWidget']['values'][0]['address'], '0x2000')
+        targets = docking['members']['TargetWidget']['values']
+        self.assertEqual([value['address'] if value else None for value in targets], ['0x1000',None,'0x2000',None])
+        self.assertEqual(docking['members']['TargetFace']['values'], [2,4,0,4])
+        self.assertEqual(docking['padding']['members']['PaddingValue']['values'], [1,2,3,4])
+        self.assertEqual(docking['padding']['members']['PaddingScaleType']['values'], [0,1,2,4])
+        self.assertIn('bLockWidthWhenDocked', docking['omitted'])
+        self.assertEqual(child['render_bounds'], baseline['tree'][1]['render_bounds'])
+        self.assertNotIn('layout_details', self.reader.sample(include_layout=True)['tree'][1])
+
+    def test_layout_details_reject_bad_metadata_extents_nonfinite_and_unregistered_dock_targets(self):
+        for failure in ('dimension','size','offset','struct_owner','field_owner','type','nan','target'):
+            with self.subTest(failure=failure):
+                self.setUp();self.r.layout_storage()
+                field = self.r.props['UIScreenValue_Bounds','Value']
+                if failure == 'dimension':self.r.put(field['address']+0x70,struct.pack('<II',128,4))
+                elif failure == 'size':self.r.put(field['address']+0x74,struct.pack('<I',8))
+                elif failure == 'offset':
+                    field['offset']=39;self.r.put(field['address']+0x94,struct.pack('<I',39))
+                elif failure == 'struct_owner':
+                    prop=self.r.props['UIScreenObject','Position']
+                    self.r.identities[self.r.detail_struct_types[prop['address']]]['outer']=0x1000
+                elif failure == 'field_owner':self.r.identities[field['address']]['outer']=0x1000
+                elif failure == 'type':field['type']='ByteProperty'
+                elif failure == 'nan':self.r.put(0x1608,struct.pack('<f',float('nan')))
+                elif failure == 'target':self.r.put(0x2718,struct.pack('<Q',0xdeadbeef))
+                with self.assertRaises((RuntimeError,KeyError)):
+                    self.reader.sample(include_layout_details=True)
+
+    def test_layout_detail_values_and_metadata_participate_in_existing_reread_ledger(self):
+        for field_name in ('position','docking','metadata'):
+            with self.subTest(field=field_name):
+                self.setUp();self.r.layout_storage()
+                key = (0x1608,16) if field_name=='position' else (0x2718,32)
+                if field_name=='metadata':
+                    key=(self.r.props['UIScreenValue_Bounds','Value']['address']+0x70,8)
+                original=self.r.read
+                def changing(address,size):
+                    raw=original(address,size)
+                    if (address,size)==key:
+                        # Mutate after each observation so every snapshot's
+                        # closing reread differs, including the existing retry.
+                        self.r.put(address,bytes([raw[0]^1])+raw[1:])
+                    return raw
+                self.r.read=changing
+                with self.assertRaises(SnapshotChanged):self.reader.sample(include_layout_details=True)
 
     def test_layout_rejects_unknown_malicious_unregistered_and_cyclic_ancestry(self):
         for failure in ('unknown_root', 'widget_root', 'scene_child', 'fake_metaclass',
@@ -380,6 +492,16 @@ class MenuStateTests(unittest.TestCase):
              mock.patch('builtins.print'):
             menu_state.main()
         reader.sample.assert_called_once_with(include_tree=True, include_layout=True)
+
+    def test_layout_details_cli_is_explicit_and_implies_layout_tree(self):
+        import menu_state
+        reader = mock.Mock()
+        reader.sample.return_value = dict(pid=123, tree=[])
+        with mock.patch.object(menu_state, 'MenuReader', return_value=reader), \
+                mock.patch.object(menu_state.sys, 'argv', ['menu_state.py', '--pid', '123', '--layout-details']), \
+                mock.patch('builtins.print'):
+            menu_state.main()
+        reader.sample.assert_called_once_with(include_tree=True, include_layout=True, include_layout_details=True)
         reader.close.assert_called_once()
 
     def test_optional_tree_includes_unfocused_descendants_without_default_reads(self):
