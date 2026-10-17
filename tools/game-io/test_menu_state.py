@@ -9,7 +9,7 @@ from menu_state import MenuReader, registered, read_root_source_text, DialogStor
 class FakeResolver:
     def __init__(self):
         self.pid = 123
-        self.profile = {'struct_property_struct': 208}
+        self.profile = {'struct_property_struct': 208, 'field_super': 96}
         self.objects_header, self.objects_data = 0x8000, 0x9000
         self.object_pointers = []
         self.identities, self.memory, self.props = {}, {}, {}
@@ -64,9 +64,12 @@ class FakeResolver:
         return self.identities[address]
 
     def class_name(self, obj):
-        return obj['cls']
+        cls = obj['cls']
+        return self.identities[cls]['name'] if isinstance(cls, int) else cls
 
     def property(self, owner, name, inherited=False):
+        if isinstance(owner, int) and owner in self.identities and owner != self.focus_struct:
+            owner = self.identities[owner]['name']
         if owner == self.focus_struct:
             return dict(address=0, offset={'FocusedControl': 0, 'LastFocusedControl': 8}[name],
                         type='ObjectProperty')
@@ -78,7 +81,7 @@ class FakeResolver:
         return prop
 
     def scalar(self, address, name, kind, value, fmt):
-        owner = self.identities[address]['cls']
+        owner = self.class_name(self.identities[address])
         key = owner, name
         if key not in self.props:
             offset = 0x100 + sum(k[0] == owner for k in self.props) * 0x20
@@ -88,13 +91,13 @@ class FakeResolver:
 
     def bounds(self, address, values=(0, 0, 1280, 720)):
         self.scalar(address, 'RenderBounds', 'FloatProperty', values, '<4f')
-        prop = self.props[self.identities[address]['cls'], 'RenderBounds']
+        prop = self.props[self.class_name(self.identities[address]), 'RenderBounds']
         self.put(prop['address'] + 0x70, struct.pack('<II', 4, 4))
         self.put(prop['address'] + 0x94, struct.pack('<I', prop['offset']))
         return prop
 
     def array(self, address, name, values, kind='ObjectProperty'):
-        owner = self.identities[address]['cls']
+        owner = self.class_name(self.identities[address])
         key = owner, name
         if key not in self.props:
             offset = 0x100 + sum(k[0] == owner for k in self.props) * 0x20
@@ -124,6 +127,24 @@ class FakeResolver:
 
     def u64(self, address):
         return struct.unpack('<Q', self.read(address, 8))[0]
+
+    def layout_classes(self):
+        """Separate real-style UIScene and UIObject branches; no root bounds."""
+        classes = {name:self.allocate() for name in
+                   ('Class', 'Package', 'Object', 'UIRoot', 'UIScreenObject', 'UIScene', 'UIObject', 'Scene', 'Widget')}
+        engine = self.allocate()
+        self.object(engine, 'Engine', classes['Package'], 0)
+        supers = dict(Class='Object', Package='Object', Object=None, UIRoot='Object',
+                      UIScreenObject='UIRoot', UIScene='UIScreenObject', UIObject='UIScreenObject',
+                      Scene='UIScene', Widget='UIObject')
+        for name, address in classes.items():
+            self.object(address, name, classes['Class'], engine)
+            self.put(address + 96, struct.pack('<Q', classes[supers[name]] if supers[name] else 0))
+        for obj in self.identities.values():
+            if obj['cls'] in ('Scene', 'Widget'):obj['cls'] = classes[obj['cls']]
+        self.put(self.objects_header, struct.pack('<Qii', self.objects_data, len(self.object_pointers), len(self.object_pointers)))
+        self.layout_class_addresses, self.layout_engine = classes, engine
+        return classes
 
 
 class MenuStateTests(unittest.TestCase):
@@ -188,9 +209,11 @@ class MenuStateTests(unittest.TestCase):
     def test_optional_layout_reads_all_nodes_and_preserves_normal_samples(self):
         self.add_tree_widget(0xa000, 0x2000, 'Descendant')
         self.r.array(0x2000, 'Children', [0xa000])
+        self.r.layout_classes()
         baseline = self.reader.sample()
-        for address in (0x1000, 0x2000, 0xa000):
-            prop = self.r.bounds(address, (1, 2, 300, 400))
+        expected = {0x2000:(1, 2, 300, 400), 0xa000:(10, 20, 100, 200)}
+        for address, values in expected.items():
+            prop = self.r.bounds(address, values)
             self.assertNotIn((address + prop['offset'], 16), self.r.read_counts)
         with mock.patch.object(self.r, 'property', wraps=self.r.property) as reflected:
             self.assertEqual(self.reader.sample(), baseline)
@@ -200,20 +223,71 @@ class MenuStateTests(unittest.TestCase):
         self.assertTrue(result['consistent_reread'])
         self.assertEqual(result['layout_evidence'], 'consistent CPU layout snapshot; not actual draw/scissor proof')
         self.assertEqual([row['address'] for row in result['tree']], ['0x1000', '0x2000', '0xa000'])
-        for row in result['tree']:
+        root = result['tree'][0]
+        self.assertIsNone(root['render_bounds'])
+        self.assertIn('no UIObject ancestry', root['render_bounds_absence']['reason'])
+        proof = root['render_bounds_absence']['proof']
+        self.assertEqual(proof['base']['identity']['name'], 'UIScene')
+        self.assertNotIn('UIObject', [c['identity']['name'] for c in proof['class_chain']])
+        self.assertNotIn(('Scene', 'RenderBounds'), self.r.props)
+        for row in result['tree'][1:]:
             bounds = row['render_bounds']
-            self.assertEqual(bounds['values'], [1, 2, 300, 400])
+            values = expected[int(row['address'], 16)]
+            self.assertEqual(bounds['values'], list(values))
             self.assertEqual(bounds['order'], ['left', 'top', 'right', 'bottom'])
-            self.assertEqual(bytes.fromhex(bounds['raw']), struct.pack('<4f', 1, 2, 300, 400))
+            self.assertEqual(bytes.fromhex(bounds['raw']), struct.pack('<4f', *values))
             self.assertEqual((bounds['reflected']['array_dim'], bounds['reflected']['element_size']), (4, 4))
             self.assertEqual(bounds['reflected']['type'], 'FloatProperty')
+
+    def test_layout_rejects_unknown_malicious_unregistered_and_cyclic_ancestry(self):
+        for failure in ('unknown_root', 'widget_root', 'scene_child', 'fake_metaclass',
+                        'base_owner', 'unregistered_class', 'live_slot', 'cycle', 'mixed_branches'):
+            with self.subTest(failure=failure):
+                self.setUp()
+                classes = self.r.layout_classes()
+                self.r.bounds(0x2000)
+                if failure == 'unknown_root':
+                    self.r.put(classes['Scene'] + 96, struct.pack('<Q', classes['Object']))
+                elif failure == 'widget_root':self.r.put(classes['Scene'] + 96, struct.pack('<Q', classes['UIObject']))
+                elif failure == 'scene_child':self.r.put(classes['Widget'] + 96, struct.pack('<Q', classes['UIScene']))
+                elif failure == 'fake_metaclass':self.r.identities[classes['UIScene']]['cls'] = classes['UIRoot']
+                elif failure == 'base_owner':self.r.identities[classes['UIScene']]['outer'] = 0x3000
+                elif failure == 'unregistered_class':
+                    self.r.identities[classes['UIScene']]['internal_index'] = len(self.r.object_pointers)
+                elif failure == 'live_slot':
+                    index = self.r.identities[classes['UIScene']]['internal_index']
+                    self.r.put(self.r.objects_data + index * 8, bytes(8))
+                elif failure == 'cycle':self.r.put(classes['UIScene'] + 96, struct.pack('<Q', classes['Scene']))
+                elif failure == 'mixed_branches':self.r.put(classes['UIScene'] + 96, struct.pack('<Q', classes['UIObject']))
+                with self.assertRaisesRegex(RuntimeError, 'layout|registry'):
+                    self.reader.sample(include_layout=True)
+
+    def test_layout_changed_ancestry_is_in_snapshot_ledger_and_rejects_both_attempts(self):
+        for field in ('super', 'identity'):
+            with self.subTest(field=field):
+                self.setUp()
+                classes = self.r.layout_classes()
+                self.r.bounds(0x2000)
+                target = (classes['UIScene'] + 96, 8) if field == 'super' else (classes['UIScene'], 0x60)
+                original = self.r.read
+                def changing(address, size):
+                    raw = original(address, size)
+                    if (address, size) == target and self.r.read_counts[target] % 2 == 0:
+                        return (struct.pack('<Q', classes['Object']) if field == 'super'
+                                else bytes([raw[0] ^ 1]) + raw[1:])
+                    return raw
+                self.r.read = changing
+                with mock.patch.object(self.reader, '_sample_once', wraps=self.reader._sample_once) as sampled:
+                    with self.assertRaises(SnapshotChanged):self.reader.sample(include_layout=True)
+                    self.assertEqual(sampled.call_count, 2)
 
     def test_layout_explicitly_rejects_unknown_or_invalid_metadata_and_bounds(self):
         for failure in ('missing', 'type', 'dimension', 'element', 'offset', 'nan', 'infinite', 'horizontal', 'vertical'):
             with self.subTest(failure=failure):
                 self.setUp()
+                self.r.layout_classes()
                 if failure != 'missing':
-                    for address in (0x1000, 0x2000):self.r.bounds(address)
+                    self.r.bounds(0x2000)
                     prop = self.r.props['Widget', 'RenderBounds']
                     if failure == 'type':prop['type'] = 'StructProperty'
                     elif failure == 'dimension':self.r.put(prop['address'] + 0x70, struct.pack('<I', 3))
@@ -230,7 +304,8 @@ class MenuStateTests(unittest.TestCase):
         for kind in ('bounds', 'dimension', 'offset'):
             with self.subTest(kind=kind):
                 self.setUp()
-                for address in (0x1000, 0x2000):self.r.bounds(address)
+                self.r.layout_classes()
+                self.r.bounds(0x2000)
                 prop = self.r.props['Widget', 'RenderBounds']
                 target = {'bounds':(0x2000 + prop['offset'],16),
                           'dimension':(prop['address'] + 0x70,8), 'offset':(prop['address'] + 0x94,4)}[kind]
@@ -247,7 +322,8 @@ class MenuStateTests(unittest.TestCase):
                 self.assertIs(self.r.read, changing)
 
     def test_late_bounds_change_discards_old_layout_before_recovery(self):
-        for address in (0x1000, 0x2000):self.r.bounds(address)
+        self.r.layout_classes()
+        self.r.bounds(0x2000)
         prop = self.r.props['Widget', 'RenderBounds']
         target = (0x2000 + prop['offset'], 16)
         original = self.r.read

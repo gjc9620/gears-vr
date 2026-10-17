@@ -252,6 +252,49 @@ class MenuReader:
             raise RuntimeError('Missing dialog labels')
         return texts
 
+    def layout_ancestry(self, obj, *, scene_root):
+        """Authenticate the distinct UIScene/UIObject branches in this ledger."""
+        r = self.r
+        def fresh(address):
+            if type(address) is not int or not 0 < address < 1 << 64:
+                raise RuntimeError('Invalid layout metadata address')
+            r.ident_cache.pop(address, None)
+            return dict(registered(r, address))
+        if fresh(obj['address']) != obj:
+            raise SnapshotChanged('Layout object identity changed')
+        chain, seen, class_meta = [], set(), None
+        current = obj['cls']
+        while current:
+            if current in seen or len(seen) >= 40:
+                raise RuntimeError('Invalid layout class ancestry cycle/depth')
+            seen.add(current)
+            cls = fresh(current)
+            meta = fresh(cls['cls'])
+            if (cls['number'] != 0 or meta['name'] != 'Class' or meta['number'] != 0
+                    or meta['cls'] != meta['address'] or (class_meta is not None and meta != class_meta)):
+                raise RuntimeError('Invalid layout class metadata')
+            class_meta = meta
+            parent = r.u64(current + r.profile['field_super'])
+            chain.append(dict(identity=cls, metaclass=meta, super=parent))
+            current = parent
+        bases = {}
+        for row in chain:
+            cls = row['identity']
+            if cls['name'] in ('UIScene', 'UIObject'):
+                package = fresh(cls['outer'])
+                package_type = fresh(package['cls'])
+                if (package['name'] != 'Engine' or package['number'] != 0 or package['outer'] != 0
+                        or package_type['name'] != 'Package' or package_type['number'] != 0
+                        or fresh(package_type['cls']) != class_meta):
+                    raise RuntimeError('Invalid layout Engine base owner')
+                if cls['name'] in bases:
+                    raise RuntimeError('Duplicate layout base class')
+                bases[cls['name']] = dict(identity=cls, package=package, package_type=package_type)
+        expected = 'UIScene' if scene_root else 'UIObject'
+        if expected not in bases or ('UIObject' if scene_root else 'UIScene') in bases:
+            raise RuntimeError('Unexpected layout root/widget ancestry')
+        return dict(class_chain=chain, base=bases[expected])
+
     def render_bounds(self, obj):
         """Reflected CPU layout only; called inside the optional tree ledger."""
         r = self.r
@@ -428,7 +471,17 @@ class MenuReader:
                             raise RuntimeError('Focused child outside parent tree')
                         result['tree'].append(dict(describe(r, address),parent=hex(parent) if parent is not None else None,
                                                   depth=depth,states=states,focus_child=hex(focused) if focused else None))
-                        if include_layout:result['tree'][-1]['render_bounds'] = self.render_bounds(obj)
+                        if include_layout:
+                            proof = self.layout_ancestry(obj, scene_root=parent is None)
+                            row = result['tree'][-1]
+                            if parent is None:
+                                row['render_bounds'] = None
+                                row['render_bounds_absence'] = dict(
+                                    reason='authenticated UIScene root has no UIObject ancestry; RenderBounds belongs to UIObject',
+                                    proof=proof)
+                            else:
+                                row['render_bounds'] = self.render_bounds(obj)
+                                row['render_bounds']['class_ancestry'] = proof
                         for child in children:visit(child,address,depth+1)
                     visit(top['address'],None,1)
                 if result['top']['tag'] == 'WarfareConfirmation' and r.class_name(top) == 'UIScene_Confirmation':
