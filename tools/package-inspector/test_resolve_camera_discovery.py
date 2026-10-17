@@ -1,10 +1,50 @@
 """Synthetic memory only; constructing these resolvers never opens a process."""
 import struct
 import unittest
+from unittest import mock
 from resolve_camera import Resolver,_DiscoveryHintPages
 
 
 class DiscoveryHintTests(unittest.TestCase):
+    def test_camera_class_scan_matches_exact_results_and_rejections_with_fewer_reads(self):
+        for outcome in ('found','missing','bad_index'):
+            with self.subTest(outcome=outcome):
+                raw=bytearray(4096)
+                names=('Canvas','WarPlayerCamera','Class','Pawn')
+                # Skip a null slot, a numbered camera and a camera whose class
+                # is not Class before reaching the valid camera class.
+                records=((0x100,1,0,0,0x500),(0x180,2,1,1,0x500),
+                         (0x200,3,1,0,0x580),(0x280,4,1,0,0x500),
+                         (0x500,5,2,0,0x500),(0x580,6,3,0,0x500))
+                for address,index,name,number,cls in records:
+                    if outcome=='bad_index' and address==0x180:index=99
+                    if outcome=='missing' and address==0x280:number=2
+                    struct.pack_into('<I',raw,address+8,index)
+                    struct.pack_into('<IIQ',raw,address+72,name,number,cls)
+                def resolver():
+                    r=Resolver.__new__(Resolver);r.ident_cache={};r.calls=[]
+                    r.object_pointers=(0,0x100,0x180,0x200,0x280)
+                    r.profile=dict(object_internal_index=8,object_outer=64,object_name=72,object_class=80)
+                    r.name=lambda index:names[index]
+                    def read(address,size):
+                        r.calls.append((address,size));return bytes(raw[address:address+size])
+                    r.read=read
+                    return r
+                ordinary=resolver();batched=resolver()
+                # The reference uses the same predicates with ordinary exact
+                # identity reads, matching the scan before batching.
+                with mock.patch.object(ordinary,'discovery_identity_reader',return_value=ordinary.identity):
+                    if outcome=='found':
+                        self.assertEqual(ordinary.find_camera_class(),0x280)
+                        self.assertEqual(batched.find_camera_class(),0x280)
+                    else:
+                        reason='Object registry index mismatch' if outcome=='bad_index' else 'WarPlayerCamera class not loaded'
+                        for r in (ordinary,batched):
+                            with self.assertRaisesRegex(RuntimeError,reason):r.find_camera_class()
+                self.assertEqual(batched.ident_cache,ordinary.ident_cache)
+                self.assertLess(len(batched.calls),len(ordinary.calls))
+                self.assertEqual(batched.calls[0],(0,4096))
+
     def test_fixed_memory_equivalence_and_original_path(self):
         raw=bytearray(8192)
         for address,index in ((0x100,0),(0x180,1),(0x1100,2)):

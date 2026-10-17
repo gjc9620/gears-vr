@@ -139,9 +139,10 @@ class Resolver:
         return lambda address:self.identity(address,reader=pages.read)
     def class_name(self,obj):return self.identity(obj['cls'])['name']
     def find_camera_class(self):
+        discover=self.discovery_identity_reader()
         for index,address in enumerate(self.object_pointers):
             if not address:continue
-            obj=self.identity(address)
+            obj=discover(address)
             if obj['internal_index']!=index:raise RuntimeError('Object registry index mismatch')
             if obj['name']=='WarPlayerCamera' and obj['number']==0 and self.class_name(obj)=='Class':
                 return address
