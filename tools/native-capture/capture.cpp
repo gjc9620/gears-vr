@@ -352,6 +352,16 @@ std::recursive_mutex session_native_mutex;
 thread_local unsigned session_build_depth{};
 bool session_status_available{};
 LONGLONG session_started_qpc{};
+struct SessionActivationGate {
+    enum class State:unsigned {initializing,ready,closed};
+    std::atomic<State> state{State::initializing};
+    bool publish(){auto expected=State::initializing;
+        return state.compare_exchange_strong(expected,State::ready,std::memory_order_release,std::memory_order_relaxed);}
+    void close(){state.exchange(State::closed,std::memory_order_acq_rel);}
+    bool ready()const{return state.load(std::memory_order_acquire)==State::ready;}
+};
+SessionActivationGate session_activation_gate;
+std::atomic<LONGLONG> session_activation_ready_qpc{};
 struct SessionHookEntry{void* target{};void* detour{};std::array<unsigned char,32> bytes{};};
 #if defined(GEARS_NATIVE_RESIZE_PROBE) && GEARS_NATIVE_RESIZE_PROBE
 constexpr size_t session_hook_base_capacity=60,viewport_hook_capacity=29;
@@ -661,6 +671,7 @@ void print_world_progress(FILE* output){
 }
 void request_session_stop_at(SessionStop reason,const char* source_file,unsigned source_line) {
     if(!continuous_session)return;
+    session_activation_gate.close();
     auto running=SessionPhase::running;
     if(!session_phase.compare_exchange_strong(running,SessionPhase::stop_requested))return;
     session_reason=reason;session_stop_tick=GetTickCount64();
@@ -674,6 +685,13 @@ void request_session_stop_at(SessionStop reason,const char* source_file,unsigned
 }
 // Covers every later call and .inl include, including graphics_lock_observer.
 #define request_session_stop(reason) request_session_stop_at((reason),__FILE__,__LINE__)
+bool publish_session_activation_ready(bool prerequisites){
+    if(!prerequisites||session_phase.load()!=SessionPhase::running||submitted_lifetime.stopping())return false;
+    const auto ready_qpc=now();
+    if(!session_activation_gate.publish())return false;
+    session_activation_ready_qpc=ready_qpc;
+    return true;
+}
 void observe_session_owner(gears_session::OwnerState state) {
     if(state==gears_session::OwnerState::exited){session_owner_exit_observed=true;request_session_stop(SessionStop::owner_exited);}
     else if(state==gears_session::OwnerState::error){session_owner_error_observed=true;request_session_stop(SessionStop::owner_error);}
@@ -1395,6 +1413,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         stereo_publish_counts.drain_ok.load(),stereo_publish_counts.close_ok.load(),session_cleanup_timeout.load()?1:0,
         resources_retained?1:0,entries_restored?1:0,session_native_services.load(),session_cancelled_builds.load(),stereo_publisher.frames.load(),simulator_operator);
     fprintf(output,"profile_consume_thread=%lu ",gears_render_cost::first_thread.load(std::memory_order_relaxed));
+    fprintf(output,"activation_ready_qpc=%lld activation_qpc_frequency=%lld ",session_activation_ready_qpc.load(),qpc_frequency);
     owned_scene_gpu::print_progress(output);
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
     const auto mirror=desktop_mirror.status();
@@ -1424,7 +1443,8 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"owner_pid=%lu owner_creation_time=%llu stop_reason=%s owner_exit_observed=%u owner_error_observed=%u complete=1\n",session_owner_pid,
         static_cast<unsigned long long>(session_owner_creation_time),reasons[static_cast<unsigned>(reason)],
         session_owner_exit_observed.load()?1:0,session_owner_error_observed.load()?1:0);
-    session_status_available=fflush(output)==0;fclose(output);
+    const bool flushed=fflush(output)==0;
+    session_status_available=fclose(output)==0&&flushed;
 }
 void print_anchor(FILE* status,bool hooks_disabled){
     fprintf(status,"anchor_submission_guard required=%u matched=%llu rejected=%llu policy=skip_unassociated_candidate\n",
@@ -2236,11 +2256,12 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         if((GetAsyncKeyState(VK_F8)&0x8000))request_session_stop(SessionStop::f8);
         if(state_created.load()&&!foreground()&&!submit_background)request_session_stop(SessionStop::focus_lost);
         service_session_stop_native();
+        if(!session_activation_gate.ready())return false;
     }
     if(submit_session_enabled()) {
         if(world_quiesce_requested.load()){note_world_progress(WorldProgress::quiesce);return false;}
         if(submitted_lifetime.is_closed()){note_world_progress(WorldProgress::closed);return false;}
-        if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && now()<submit_not_before){note_world_progress(WorldProgress::not_before);return false;}
+        if(!continuous_session&&!submit_deadline && now()<submit_not_before){note_world_progress(WorldProgress::not_before);return false;}
         if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && !foreground() && !submit_background){note_world_progress(WorldProgress::foreground);return false;}
         if(submit_deadline && (now()>=submit_deadline || (!foreground() && !submit_background) || (GetAsyncKeyState(VK_F8)&0x8000))) {
             if(submitted_lifetime.close() && state_created.load() && !submit_retained.load()) {
@@ -3539,6 +3560,8 @@ void reset_world_thread_context(){
     reset_ui_world_tls();
 }
 DWORD WINAPI worker(void*) {
+    // GearsCaptureStart's one-shot started flag forbids reopening this gate.
+    struct ActivationExit {~ActivationExit(){session_activation_gate.close();}} activation_exit;
     gears_session::Owner continuous_owner; // Retain the process object through all cleanup and early returns.
     wchar_t ini[MAX_PATH],csv[MAX_PATH],status_path[MAX_PATH];
     path_for(ini,L"capture.ini");path_for(csv,L"capture.csv");path_for(status_path,L"capture-status.txt");
@@ -3871,13 +3894,14 @@ DWORD WINAPI worker(void*) {
             if(ok){prime_handoff=true;SetEvent(prime_event);}
         }
         if(ok){
-        submit_not_before=now()+3*qpc_frequency;recording=true;prime_recording=false;
+        submit_not_before=continuous_session?0:now()+3*qpc_frequency;recording=true;prime_recording=false;
         MH_STATUS applied=MH_ApplyQueued();fprintf(status,"minhook_apply=%s\n",MH_StatusToString(applied));ok=applied==MH_OK;
         if(ok&&continuous_session&&!seal_session_hook_manifest(status))
             fprintf(status,"hook_entry_manifest available=0 recovery_certificate_unavailable=1\n");
         }
     }
     if(!ok) {
+        session_activation_gate.close();
         recording=false;MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
         close_quad_source_events();
         close_first_view_mask_events();
@@ -3894,6 +3918,7 @@ DWORD WINAPI worker(void*) {
         session_started_qpc=now();write_session_status();
         WorldRebindPrepareRequest world_rebind_request;
         if(!session_status_available||!stop_event)request_session_stop(SessionStop::proof_failure);
+        publish_session_activation_ready(session_status_available&&stop_event);
         ULONGLONG next_status=0;
         for(;;){
             observe_session_owner(continuous_owner.state());
@@ -3922,6 +3947,7 @@ DWORD WINAPI worker(void*) {
     }
     // Disable entry patches; leave the DLL and trampolines resident so delayed
     // in-flight execution can never jump into freed code.
+    session_activation_gate.close();
     death_hdr_pixels::stop();
     MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
     recording=false;
@@ -4121,7 +4147,26 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*)
     // CPU-only: actual production stop/native destroy helpers with fake native
     // destructor/state release. No D3D device, GPU commands or XR session.
     if(!graphics_lock_observer_self_test())return 240;
+    // Test the production gate on private instances, including publish/close
+    // overlap. Closed remains terminal regardless of which operation wins.
+    {
+        SessionActivationGate gate;
+        if(gate.ready()||!gate.publish()||!gate.ready()||gate.publish())return 249;
+        gate.close();if(gate.ready()||gate.publish())return 250;
+        for(unsigned i=0;i<32;++i){
+            SessionActivationGate raced;
+            HANDLE publisher=CreateThread(nullptr,0,[](void* value)->DWORD{
+                static_cast<SessionActivationGate*>(value)->publish();return 0;
+            },&raced,0,nullptr);
+            if(!publisher)return 251;
+            raced.close();const auto waited=WaitForSingleObject(publisher,INFINITE);CloseHandle(publisher);
+            if(waited!=WAIT_OBJECT_0||raced.ready()||raced.publish())return 252;
+        }
+    }
     continuous_session=true;stereo_gpu_publish=true;submit_pair_enabled=true;
+    if(session_activation_gate.ready()||publish_session_activation_ready(false)||session_activation_ready_qpc.load())return 246;
+    if(!publish_session_activation_ready(true)||!session_activation_gate.ready()||
+       session_activation_ready_qpc.load()<=0)return 247;
     std::uint64_t parsed{};FILETIME created{},exited{},kernel{},user{};
     if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user))return 210;
     auto identity=gears_session::creation_time(created);
@@ -4150,6 +4195,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*)
         const auto first_stop_before=now();const unsigned first_stop_line=__LINE__+1;
         request_session_stop(SessionStop::event);
         const auto first_stop_after=now(),first_stop_qpc=session_stop_qpc.load();
+        if(session_activation_gate.ready()||publish_session_activation_ready(true))error=248;
         const auto first_stop_tick=session_stop_tick.load();const auto first_stop_thread=session_stop_thread.load();
         const auto first_stop_file=session_stop_source_file.load();const auto first_stop_source_line=session_stop_source_line.load();
         observe_session_owner(gears_session::owner_wait_state(WAIT_OBJECT_0)); // Evidence survives an earlier first stop reason.
