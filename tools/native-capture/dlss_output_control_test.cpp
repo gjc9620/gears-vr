@@ -14,6 +14,7 @@ void control_reset(){
     fake_list_generation=4;fake_list_canonical=0x500;fake_system_methods=true;drift_list_generation=false;
     dlss_output_control::other_setters=dlss_output_control::list_rejected=0;
     dlss_output_control::non_target_setters={};
+    dlss_output_control::non_target_quads={};
     actual_list={};foreign_list={};list_owner={};list_vtable={};list_vtable[12]=0x1337;viewport_targets[3]=reinterpret_cast<void*>(list_vtable[12]);
     put(actual_list,0,reinterpret_cast<uintptr_t>(list_vtable.data()));put(foreign_list,0,reinterpret_cast<uintptr_t>(list_vtable.data()));
     put(list_owner,0x14,reinterpret_cast<uintptr_t>(actual_list.data()));put(context,0x127c,reinterpret_cast<uintptr_t>(list_owner.data()));
@@ -49,6 +50,15 @@ void controlled_quad(unsigned selected_mode){
 uint32_t test_control_output(){
     const auto selected_mode=mode;
     if(selected_mode==19){mode=10;dlss_route_observer::hook_output(expected_pass,0xfeed,expected_view);mode=19;}
+    {
+        // d82fd9 calls 194950, which can issue this 1024x32 preprocessing
+        // quad (call 194c8e / return 194c93) before the generated final quad.
+        const std::array<float,8> before{0,0,1024,32,0,0,1024,32};auto args=before;
+        dlss_output_control::QuadScope preprocessing(true,0x194c93,args,{1024,32,1024,32});
+        preprocessing.forward(args[0],args[1],args[2],args[3],args[4],args[5],args[6],args[7]);
+        assert(args==before&&!preprocessing.candidate()&&!dlss_output_control::scoped());
+        assert(dlss_output_control::current_output->quads==0);
+    }
     // Real preceding setters are unrelated to the one generated output setter.
     for(auto caller:{uintptr_t(0xd8388e),uintptr_t(0xd8397d)}){fake_caller=caller;
         assert(dlss_route_observer::hook_setter(0xdead,descriptor(),payload.data(),0)==0x123456789abcdef0ull);}
@@ -80,6 +90,7 @@ void run_control_cases(){
     assert(dlss_output_control::publication(9,7)&&control_forward_count==2&&control_draw_count==2);
     assert(dlss_output_control::other_setters==4&&setter_calls==6); // Two preceding setters plus the sole target in each eye.
     assert((dlss_output_control::non_target_setters==std::array<uint64_t,3>{2,2,0}));
+    assert((dlss_output_control::non_target_quads==std::array<uint64_t,2>{2,0}));
     assert((data==std::array<unsigned char,0x100>{})); // Sentinel setter is unchanged and remains a no-op.
     assert(!dlss_output_control::publication(10,7)&&!dlss_output_control::publication(9,8));
     dlss_output_control::retire();assert(!dlss_output_control::publication(9,7));

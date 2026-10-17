@@ -19,6 +19,36 @@ import pefile
 from resolve_camera import Resolver
 from start_capture import modules
 
+# Fixed historical artifact 1 complete known chunks, independent of capture
+# status and live memory. The second chunk is an Output continuation, not a
+# separately installed entry. Matching only its entry prefix is insufficient.
+DLSS_OUTPUT_RANGES = (
+    (0xd82f58, 0xc78, '1efb10541bf56d87b31aae4f452da0d281afd552da16b4bfd16d653f2cd425ea'),
+    (0xd83bd0, 0x1e9, 'e051a2d325a4d5ebc12be670d63cd8eae1eead437f33dfa39946de852e61e724'),
+)
+DLSS_INPUT_BIND_CHUNKS = ((0x1665dc, 0x1cc), (0x8b492c, 0x2b))
+DLSS_INPUT_BIND_SHA256 = '566929fd4f84a21529de0ecb749d2dc75a1bf2ab3cc04876a65f65517222a339'
+
+
+def check_runtime_ranges(read, base, target, ranges, source):
+    checks = []
+    for rva, size, expected_hash in ranges:
+        current = read(base + rva, size)
+        actual_hash = hashlib.sha256(current).hexdigest()
+        checks.append(dict(target=hex(target), range_rva=hex(rva), source=source,
+                           bytes_checked=len(current), expected_size=size, expected_sha256=expected_hash,
+                           actual_sha256=actual_hash, matches=len(current) == size and actual_hash == expected_hash))
+    return checks
+
+
+def check_runtime_chunks(read, base, target, chunks, expected_hash, source):
+    data = [read(base + rva, size) for rva, size in chunks]
+    actual_hash = hashlib.sha256(b''.join(data)).hexdigest()
+    return dict(target=hex(target), source=source, chunks=[dict(rva=hex(rva), size=size) for rva, size in chunks],
+                bytes_checked=sum(map(len, data)), expected_size=sum(size for _, size in chunks),
+                expected_sha256=expected_hash, actual_sha256=actual_hash,
+                matches=all(len(raw) == size for raw, (_, size) in zip(data, chunks)) and actual_hash == expected_hash)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -100,7 +130,7 @@ def main():
                                    actual_sha256=actual_hash, matches=actual_hash == expected_hash))
                 continue
             if rva == 0x1760b4:
-                # Optional read-only death constant observer. Authenticate the
+                # Shared read-only death/DLSS route constant observer. Authenticate the
                 # entire saved 205-byte setter independently after disabling,
                 # never use an expected entry learned from the patched process.
                 expected_hash = 'd7d20d3f5c510685b8b3ffb12d12d51ae583d4070e00cf11a39655c7e086c45b'
@@ -109,6 +139,17 @@ def main():
                 checks.append(dict(target=hex(target), source='artifact 1 runtime snapshot death constant setter',
                                    bytes_checked=len(current), expected_sha256=expected_hash,
                                    actual_sha256=actual_hash, matches=actual_hash == expected_hash))
+                continue
+            if rva == 0xd82f58:
+                checks.extend(check_runtime_ranges(resolver.read, resolver.base, target, DLSS_OUTPUT_RANGES,
+                              'artifact 1 runtime snapshot DLSS Output full known chunks'))
+                continue
+            if rva == 0x1665dc:
+                check = check_runtime_chunks(resolver.read, resolver.base, target, DLSS_INPUT_BIND_CHUNKS,
+                              DLSS_INPUT_BIND_SHA256, 'artifact 1 runtime snapshot DLSS input bind full known chunks')
+                check.update(module_base=hex(resolver.base), historical_module_base='0x140000000',
+                             source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+                checks.append(check)
                 continue
             material_ranges = {
                 0x3a514c: (0x3fc, '193ddb21a13443746e258f12f799968a47ca9d21fe8badf3cd5c1884a462931b'),

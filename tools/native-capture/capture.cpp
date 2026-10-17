@@ -158,7 +158,7 @@ void observe_unpossessed_quad_execute(uintptr_t queue,gears_frame_link::ListRef 
 namespace death_source_live {void progress(FILE*);void print(FILE*);unsigned status_interval_ms();}
 namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_frame_link::ListRef,uint64_t,unsigned);}
 namespace death_constant_observer {void print(FILE*);}
-namespace dlss_route_observer {void print(FILE*);}
+namespace dlss_route_observer {void print(FILE*);void draw(uintptr_t,uintptr_t,unsigned,unsigned,unsigned);}
 namespace death_dof_control {void print(FILE*);}
 namespace vr_dof_compat {void print(FILE*);void progress(FILE*);void retire();bool publication(uint64_t,uint64_t);}
 namespace death_pso_cache {void print(FILE*);void poll();}
@@ -424,6 +424,11 @@ constexpr unsigned dlss_route_hooks=2;
 #else
 constexpr unsigned dlss_route_hooks=0;
 #endif
+#if defined(GEARS_DLSS_INPUT_BIND_OBSERVER) && GEARS_DLSS_INPUT_BIND_OBSERVER
+constexpr unsigned dlss_input_bind_hooks=1;
+#else
+constexpr unsigned dlss_input_bind_hooks=0;
+#endif
 #if defined(GEARS_DEATH_PSO_CACHE) && GEARS_DEATH_PSO_CACHE
 constexpr unsigned death_pso_hooks=3;
 #else
@@ -439,7 +444,7 @@ constexpr unsigned vr_dof_hooks=1;
 #else
 constexpr unsigned vr_dof_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+death_constant_hooks+dlss_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -1174,6 +1179,7 @@ void sample_frame_work(unsigned kind,uintptr_t caller,uintptr_t list,uintptr_t q
 }
 void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances) {
     if(!recording.load())return;
+    dlss_route_observer::draw(reinterpret_cast<uintptr_t>(list),caller,kind,elements,instances);
     gears_render_cost::Scope cost(gears_render_cost::frame_draw);
     if(owned_bindings_enabled){
         const auto identity=canonical_identity(list);
@@ -3917,6 +3923,9 @@ DWORD WINAPI worker(void*) {
 #if defined(GEARS_DLSS_ROUTE_OBSERVER) && GEARS_DLSS_ROUTE_OBSERVER
     if(ok)ok=install(dlss_route_observer::output_target,reinterpret_cast<void*>(dlss_route_observer::hook_output),reinterpret_cast<void**>(&dlss_route_observer::original_output))&&
         install(dlss_route_observer::setter_target,reinterpret_cast<void*>(dlss_route_observer::hook_setter),reinterpret_cast<void**>(&dlss_route_observer::original_setter));
+#endif
+#if defined(GEARS_DLSS_INPUT_BIND_OBSERVER) && GEARS_DLSS_INPUT_BIND_OBSERVER
+    if(ok)ok=install(dlss_route_observer::bind_target,reinterpret_cast<void*>(dlss_route_observer::hook_bind),reinterpret_cast<void**>(&dlss_route_observer::original_bind));
 #endif
 #if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
     if(ok)ok=install(death_constant_observer::target,reinterpret_cast<void*>(death_constant_observer::hook),reinterpret_cast<void**>(&death_constant_observer::original));

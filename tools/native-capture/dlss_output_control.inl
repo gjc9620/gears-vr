@@ -9,6 +9,7 @@ namespace dlss_output_control {
 bool attested{};Store store;thread_local Key active_key{};thread_local Output* current_output{};thread_local QuadScope* current_quad{};
 uint64_t forwarded{},draw_proved{},output_proved{},rejected{},missing_source{},source_queries{},other_setters{},list_rejected{};
 std::array<uint64_t,3> non_target_setters{}; // d8388e, d8397d, other; never target-proof counts.
+std::array<uint64_t,2> non_target_quads{}; // 194c93 preprocessing, other; never target-proof counts.
 std::array<uint64_t,static_cast<unsigned>(Decision::count)> decisions{};
 struct MissingSource {uintptr_t context{},object{},native{},canonical{};unsigned slots{},width{},height{},dimension{},format{};long result{};};
 MissingSource last_source;
@@ -84,8 +85,9 @@ SetterScope::~SetterScope(){if(!tracking||!output)return;
 }
 QuadScope::QuadScope(bool world,uintptr_t caller,Args const&,Dimensions const& sizes):output(current_output),previous(current_quad),dimensions(sizes),exceptions(std::uncaught_exceptions()){
     current_quad=nullptr;if(previous&&previous->output){previous->output->nested=true;fail(*previous->output,Failure::duplicate_quad);}
-    if(!output||!output->key)return;++output->quads;
-    if(caller!=0xd83cbf)return;participate(*output);
+    if(!output||!output->key)return;
+    if(caller!=0xd83cbf){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++non_target_quads[caller==0x194c93?0u:1u];return;}
+    ++output->quads;participate(*output);
     if(!world||!output->valid||output->failed||output->nested||output->setters!=1||output->quads!=1||!output->setter_proved||!stable(*output)||!descriptor_stable(*output)||
        !geometry(output->before,dimensions,forwarded)){fail(*output,Failure::prequad);return;}
     {
@@ -171,6 +173,7 @@ void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mut
         static_cast<unsigned long long>(last_list_before.owner),static_cast<unsigned long long>(last_list_before.raw),static_cast<unsigned long long>(last_list_before.canonical),last_list_before.generation,unsigned(last_list_before.valid),
         static_cast<unsigned long long>(last_list_after.raw),static_cast<unsigned long long>(last_list_after.canonical),last_list_after.generation,unsigned(last_list_after.valid));
     fprintf(file,"dlss_output_non_target_setters d8388e=%llu d8397d=%llu other=%llu counted_toward_target_proof=0\n",non_target_setters[0],non_target_setters[1],non_target_setters[2]);
+    fprintf(file,"dlss_output_non_target_quads preprocessing_194c93=%llu other=%llu counted_toward_target_proof=0\n",non_target_quads[0],non_target_quads[1]);
     fprintf(file,"dlss_output_last_source context=%llx slots=%u object=%llx native=%llx canonical=%llx width=%u height=%u dimension=%u format=%u result=%ld source_offsets=context+65d,context+768 resource_query=existing_authenticated_wrapper inferred_dimensions=0\n",
         static_cast<unsigned long long>(last_source.context),last_source.slots,static_cast<unsigned long long>(last_source.object),static_cast<unsigned long long>(last_source.native),static_cast<unsigned long long>(last_source.canonical),last_source.width,last_source.height,last_source.dimension,last_source.format,last_source.result);
     const Receipt examples[]{last_allowed,last_rejected};

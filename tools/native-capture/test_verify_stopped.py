@@ -1,5 +1,6 @@
 """Independent restoration verifier tests using saved bytes, never a process."""
 import contextlib
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -101,6 +102,97 @@ class VerifyStoppedTests(unittest.TestCase):
                     with self.assertRaises(RuntimeError):verify_stopped.main()
                 factory.assert_not_called()
                 self.assertFalse(self.output.exists())
+
+    def test_dlss_default_ranges_are_fixed_complete_historical_chunks(self):
+        self.assertEqual(verify_stopped.DLSS_OUTPUT_RANGES, (
+            (0xd82f58, 0xc78, '1efb10541bf56d87b31aae4f452da0d281afd552da16b4bfd16d653f2cd425ea'),
+            (0xd83bd0, 0x1e9, 'e051a2d325a4d5ebc12be670d63cd8eae1eead437f33dfa39946de852e61e724'),
+        ))
+        self.assertEqual(verify_stopped.DLSS_INPUT_BIND_CHUNKS, ((0x1665dc, 0x1cc), (0x8b492c, 0x2b)))
+        self.assertEqual(verify_stopped.DLSS_INPUT_BIND_SHA256, '566929fd4f84a21529de0ecb749d2dc75a1bf2ab3cc04876a65f65517222a339')
+
+    def dlss_fixture(self):
+        # Synthetic test bytes and real SHA256; do not check proprietary chunks
+        # into the test suite. Only this test's expected hashes are substituted.
+        ranges = []
+        for rva, size, _ in verify_stopped.DLSS_OUTPUT_RANGES:
+            raw = bytes((i % 251 for i in range(size)))
+            self.memory[self.base + rva] = raw
+            ranges.append((rva, size, hashlib.sha256(raw).hexdigest()))
+        self.write_status((0xd82f58, 0x15cf08))
+        return tuple(ranges)
+
+    def test_dlss_output_routes_both_full_ranges_through_independent_hash_checks(self):
+        ranges = self.dlss_fixture()
+        with mock.patch.object(verify_stopped, 'DLSS_OUTPUT_RANGES', ranges):self.invoke()
+        report = json.loads(self.output.read_text())
+        self.assertTrue(report['all_match'])
+        self.assertEqual(len(report['checks']), 3)
+        for check, (rva, size, expected) in zip(report['checks'], ranges):
+            self.assertEqual(check['range_rva'], hex(rva))
+            self.assertEqual(check['bytes_checked'], size)
+            self.assertEqual(check['expected_sha256'], expected)
+            self.read.assert_any_call(self.base + rva, size)
+        self.closed.assert_called_once()
+
+    def test_dlss_main_or_continuation_tail_drift_fails_despite_status_claims(self):
+        ranges = self.dlss_fixture()
+        originals = {rva:self.memory[self.base + rva] for rva, _, _ in ranges}
+        for rva, size, _ in ranges:
+            for at in (0, size - 1):
+                with self.subTest(rva=hex(rva), byte=at):
+                    self.closed.reset_mock()
+                    for old_rva, raw in originals.items():self.memory[self.base + old_rva] = raw
+                    changed = bytearray(originals[rva]);changed[at] ^= 1
+                    self.memory[self.base + rva] = bytes(changed)
+                    with self.status.open('a') as stream:stream.write('entries_restored=1 dlss_route_identity match=1\n')
+                    with mock.patch.object(verify_stopped, 'DLSS_OUTPUT_RANGES', ranges):
+                        with self.assertRaises(SystemExit) as error:self.invoke()
+                    self.assertEqual(error.exception.code, 1)
+                    self.assertFalse(json.loads(self.output.read_text())['all_match'])
+                    self.closed.assert_called_once()
+
+    def bind_fixture(self):
+        data = []
+        for rva, size in verify_stopped.DLSS_INPUT_BIND_CHUNKS:
+            raw = bytes((i % 251 for i in range(size)))
+            self.memory[self.base + rva] = raw;data.append(raw)
+        self.write_status((0x1665dc, 0x15cf08))
+        return hashlib.sha256(b''.join(data)).hexdigest()
+
+    def test_input_bind_complete_chunk_set_matches_independently(self):
+        expected = self.bind_fixture()
+        with mock.patch.object(verify_stopped, 'DLSS_INPUT_BIND_SHA256', expected):self.invoke()
+        report = json.loads(self.output.read_text())
+        self.assertTrue(report['all_match'])
+        self.assertEqual(report['checks'][0]['bytes_checked'], 503)
+        self.assertEqual(report['checks'][0]['expected_size'], 503)
+        for rva, size in verify_stopped.DLSS_INPUT_BIND_CHUNKS:self.read.assert_any_call(self.base + rva, size)
+        self.closed.assert_called_once()
+
+    def test_input_bind_main_or_tail_drift_fails_despite_status_claim(self):
+        expected = self.bind_fixture()
+        originals = {rva:self.memory[self.base + rva] for rva, _ in verify_stopped.DLSS_INPUT_BIND_CHUNKS}
+        for rva, size in verify_stopped.DLSS_INPUT_BIND_CHUNKS:
+            for at in (0, size - 1):
+                with self.subTest(rva=hex(rva), byte=at):
+                    self.closed.reset_mock()
+                    for old_rva, raw in originals.items():self.memory[self.base + old_rva] = raw
+                    changed = bytearray(originals[rva]);changed[at] ^= 1;self.memory[self.base + rva] = bytes(changed)
+                    with self.status.open('a') as stream:stream.write('entries_restored=1 dlss_input_bind_identity match=1\n')
+                    with mock.patch.object(verify_stopped, 'DLSS_INPUT_BIND_SHA256', expected):
+                        with self.assertRaises(SystemExit):self.invoke()
+                    self.assertFalse(json.loads(self.output.read_text())['all_match'])
+                    self.closed.assert_called_once()
+
+    def test_input_bind_short_read_cannot_pass_even_with_its_own_digest(self):
+        self.bind_fixture()
+        tail_rva, _ = verify_stopped.DLSS_INPUT_BIND_CHUNKS[-1]
+        self.memory[self.base + tail_rva] = self.memory[self.base + tail_rva][:-1]
+        expected = hashlib.sha256(b''.join(self.memory[self.base + rva] for rva, _ in verify_stopped.DLSS_INPUT_BIND_CHUNKS)).hexdigest()
+        with mock.patch.object(verify_stopped, 'DLSS_INPUT_BIND_SHA256', expected):
+            with self.assertRaises(SystemExit):self.invoke()
+        self.assertFalse(json.loads(self.output.read_text())['all_match'])
 
 
 if __name__ == '__main__':

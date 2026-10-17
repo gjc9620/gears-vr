@@ -21,7 +21,19 @@ std::recursive_mutex frame_hook_mutex;bool admitted=true;
 std::atomic<unsigned> active{};
 struct Scope {Scope(){++active;}~Scope(){--active;}bool world()const{return admitted;}};
 long long ticks{};long long now(){return ++ticks;}
-bool safe_copy(void* out,void const* in,size_t size){__try{std::memcpy(out,in,size);return true;}__except(EXCEPTION_EXECUTE_HANDLER){return false;}}
+#if defined(GEARS_DLSS_INPUT_BIND_OBSERVER_TEST)
+uintptr_t input_public_cell{},input_alternate_cell{};
+bool input_hash_fixture{},input_hash_tail_missing{};std::array<unsigned char,503> input_hash_bytes{};
+uint32_t test_input_bind_output();void run_input_bind_cases();
+#endif
+bool safe_copy(void* out,void const* in,size_t size){
+#if defined(GEARS_DLSS_INPUT_BIND_OBSERVER_TEST)
+    const auto at=reinterpret_cast<uintptr_t>(in);
+    if(input_hash_fixture&&at==base+0x1665dc&&size==0x1cc){std::memcpy(out,input_hash_bytes.data(),size);return true;}
+    if(input_hash_fixture&&at==base+0x8b492c&&size==0x2b){if(input_hash_tail_missing)return false;std::memcpy(out,input_hash_bytes.data()+0x1cc,size);return true;}
+    if(size==8&&(at==base+0x1c3b410||at==base+0x1c3b488)){std::memcpy(out,at==base+0x1c3b410?&input_public_cell:&input_alternate_cell,8);return true;}
+#endif
+    __try{std::memcpy(out,in,size);return true;}__except(EXCEPTION_EXECUTE_HANDLER){return false;}}
 uintptr_t fake_root{},fake_caller{};
 uintptr_t test_readgsqword(unsigned long){return fake_root;}
 void* test_return_address(){return reinterpret_cast<void*>(base+fake_caller);}
@@ -36,12 +48,14 @@ struct ResourceIdentity {
     struct Desc {unsigned Dimension=3;uint64_t Width=2560;unsigned Height=1080,DepthOrArraySize=1,MipLevels=1,Format=24;struct Samples {unsigned Count=1;} SampleDesc;} desc;
 };
 bool source_available=true;unsigned source_width=2560;
+unsigned source_query_calls{};
 uint64_t fake_list_generation=4;uintptr_t fake_list_canonical=0x500;bool fake_system_methods=true,drift_list_generation{};
 std::array<void*,4> viewport_targets{};
 bool system_resource_methods(uintptr_t value){return value&&fake_system_methods;}
 uintptr_t canonical_identity(IUnknown* value){return value?fake_list_canonical:0;}
 struct FakeFrameLink {gears_frame_link::ListRef current(uintptr_t value)const{return {value,fake_list_generation};}} frame_link;
 void query_bound_resource(uintptr_t object,ResourceIdentity& out){
+    ++source_query_calls;
     if(object&&source_available){out.result=0;out.native=0xabc;out.canonical=0x1234;out.desc.Width=source_width;}
     if(drift_list_generation)++fake_list_generation;
 }
@@ -84,6 +98,9 @@ uint64_t __fastcall original_setter(uintptr_t rcx,const uint16_t* desc,const voi
 uint32_t __fastcall original_output(void* pass,uintptr_t unused,void* input){
     assert_frame_mutex_unlocked();++output_lock_probes;
     ++output_calls;assert(pass==expected_pass&&input==expected_view&&unused==0xfeed);
+#if defined(GEARS_DLSS_INPUT_BIND_OBSERVER_TEST)
+    if(mode>=100)return test_input_bind_output();
+#endif
 #if defined(GEARS_DLSS_OUTPUT_CONTROL_TEST)
     if(mode>=10)return test_control_output();
 #endif
@@ -188,6 +205,9 @@ int main(){
     dlss_output_control::QuadScope disabled(true,0xd83cbf,unchanged,{2560,1080,2560,1080});
     disabled.forward(unchanged[0],unchanged[1],unchanged[2],unchanged[3],unchanged[4],unchanged[5],unchanged[6],unchanged[7]);
     assert((!disabled.candidate()&&unchanged==std::array<float,8>({1,2,3,4,5,6,7,8})));
+#endif
+#if defined(GEARS_DLSS_INPUT_BIND_OBSERVER_TEST)
+    run_input_bind_cases();
 #endif
     std::puts("DlssRouteObserverTest passed (actual wrappers; synthetic TLS/memory only)");
 }
