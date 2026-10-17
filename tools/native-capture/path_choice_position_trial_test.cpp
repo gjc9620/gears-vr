@@ -90,4 +90,19 @@ static void prefix_authentication_and_restore(){Engine e;e.c.schema=2;e.c.regist
     assert(!authenticate(e.c,e.ctx,e.reader()));e.put(unknown.address,RegistryHeader{0x1000000,100,200});assert(authenticate(e.c,e.ctx,e.reader()));
     e.c.schema=1;e.c.registry_header_policy=RegistryHeaderPolicy::exact;assert(!authenticate(e.c,e.ctx,e.reader()));
 }
-int main(){parse_checks();lifecycle();failed_admission();lost_ownership();partial_failure();prefix_parser();prefix_authentication_and_restore();std::puts("PathChoicePositionTrialTest passed");}
+static void offset_parse_and_apply(){Config c;auto text=prefix_ini();assert(parse(text,c)&&c.vertical_offset_reference_pixels==16&&delta_for(c)==delta);
+    for(unsigned offset:{1u,16u,374u,400u}){assert(parse(text+"vertical_offset_reference_pixels="+std::to_string(offset)+"\n",c));
+        assert(c.vertical_offset_reference_pixels==offset&&delta_for(c)==static_cast<float>(offset)/1080.f);}
+    for(auto bad:{"0","401","-1","16.0","true","4294967296"})assert(!parse(text+"vertical_offset_reference_pixels="+bad+"\n",c));
+    assert(!parse(text+"vertical_offset_reference_pixels=374\nvertical_offset_reference_pixels=374\n",c));
+    assert(!parse(text+"vertical_offset_reference_pixel=374\n",c));
+    assert(!parse(ini()+"vertical_offset_reference_pixels=16\n",c));
+    assert(!parse(ini()+"vertical_offset_reference_pixels=374\n",c));
+    Engine e;e.c.schema=2;e.c.registry_header_policy=RegistryHeaderPolicy::fixed_prefix_v1;e.c.vertical_offset_reference_pixels=374;
+    for(unsigned i=0;i<2;++i){auto h=RegistryHeader{0x700000+i*0x100000,100,200};e.c.checks.push_back(header_check(e.c.base+registry_header_rvas[i],h));e.put(e.c.base+registry_header_rvas[i],h);}
+    State s;auto before=e.pos();assert(apply(s,e.c,e.ctx,e.reader(),e.setter())==Result::applied);
+    assert((e.pos()==std::array<std::uint32_t,2>{bits(value(before[0])+374.f/1080.f),bits(value(before[1])+374.f/1080.f)}));
+    assert(restore(s,e.ctx,e.reader(),e.setter())==Result::restored&&e.pos()==before);
+    e.c.schema=1;e.c.registry_header_policy=RegistryHeaderPolicy::exact;State legacy;assert(apply(legacy,e.c,e.ctx,e.reader(),e.setter())==Result::rejected);
+}
+int main(){parse_checks();lifecycle();failed_admission();lost_ownership();partial_failure();prefix_parser();prefix_authentication_and_restore();offset_parse_and_apply();std::puts("PathChoicePositionTrialTest passed");}

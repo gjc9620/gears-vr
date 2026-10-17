@@ -17,8 +17,8 @@ static uintptr_t __fastcall native_child(void* object,float left,float top,float
     if(native_mode==7&&native_nested)return child_sentinel;
     auto const& c=position::state.lease.config;
     std::uint32_t t=trial::bits(top/1080.f),b=trial::bits(bottom/1080.f);
-    if(native_mode==1){t=control_core::bits(control_core::value(c.top_bits)+trial::delta)+1;b=control_core::bits(control_core::value(c.bottom_bits)+trial::delta)+1;}
-    if(native_mode==2){t=control_core::bits(control_core::value(c.top_bits)+trial::delta)+3;b=control_core::bits(control_core::value(c.bottom_bits)+trial::delta)+3;}
+    if(native_mode==1){t=control_core::bits(control_core::value(c.top_bits)+trial::delta_for(c))+1;b=control_core::bits(control_core::value(c.bottom_bits)+trial::delta_for(c))+1;}
+    if(native_mode==2){t=control_core::bits(control_core::value(c.top_bits)+trial::delta_for(c))+3;b=control_core::bits(control_core::value(c.bottom_bits)+trial::delta_for(c))+3;}
     put(c.panel+0x64,t);if(native_mode==6)throw 93;put(c.panel+0x6c,b);
     if(native_mode==3)put(c.panel+0x60,std::uint32_t(1042069800));
     if(native_mode==4)put(c.panel+0x70,std::uint32_t(0x04040405));
@@ -31,7 +31,7 @@ static uintptr_t __fastcall native_child(void* object,float left,float top,float
 }
 struct ControlFixture:Fixture {
     std::shared_ptr<position::Request> request;
-    ControlFixture(bool prefix_policy=false){
+    ControlFixture(bool prefix_policy=false,unsigned offset=16){
         control::current=nullptr;control::parent_depth=0;control::attempted=0;control::modified=0;control::adopted=0;control::native_restored=0;
         control::guard_rejected=0;control::failed=0;control::receipt_slots=0;
         for(unsigned i=0;i<4;++i){control::ready[i]=false;control::receipts[i]={};}
@@ -41,6 +41,7 @@ struct ControlFixture:Fixture {
         native_calls=0;native_mode=0;native_nested=0;native_inputs.clear();
         child_input={1133702550,1109496168,1154172058,1149367157};child_input_type=1;child_origin=0;child_sort=0;
         c.top_bits=1025061054;c.bottom_bits=1064725749;
+        c.vertical_offset_reference_pixels=offset;
         put(c.panel+0x64,c.top_bits);put(c.panel+0x6c,c.bottom_bits);
         put(c.panel+0x60,std::uint32_t(1042069801));put(c.panel+0x68,std::uint32_t(1062785461));
         put(c.panel+0x1dc,c.scene);put(c.panel+0x4e4,static_cast<unsigned char>(0));put(c.panel+0x4f8,std::uint32_t(1));
@@ -188,4 +189,31 @@ static void schema2_suffix_with_control_and_exact_restore(){
     assert(position::restored==1&&!position::unresolved&&!position::state.lease.active&&
         (f.positions()==std::array<std::uint32_t,2>{f.c.top_bits,f.c.bottom_bits}));
 }
-int main(){six_reflows_and_exact_core_restore();exact_holding_stays_exact();one_ulp_own_adoption_only();reject_bad_exit_and_exception();expired_or_draining_native_restore();entry_guard_and_metadata();foreign_and_nested_passthrough();pure_helper_bounds();restoring_bypasses_control();no_active_lease_or_wrong_object();control_receipt_publication();authorization_changes_during_original();schema2_suffix_with_control_and_exact_restore();std::puts("PathChoiceReflowControlTest passed");}
+static void offset374_native_holding_restore(){
+    for(unsigned rounding:{0u,1u}){ControlFixture f(true,374);native_mode=rounding;
+        auto initial=position::state.lease.owned;assert(initial[0]==trial::bits(trial::value(f.c.top_bits)+374.f/1080.f));
+        for(unsigned i=0;i<6;++i){f.call();assert(control::adopted==i+1&&position::state.lease.owned==f.positions()&&!position::terminal);}
+        assert(control::receipts[0].plan.height==1080.f&&control::receipts[0].plan.offset==374.f&&control::modified==6);
+        for(auto const& input:native_inputs)assert(input[0]==child_input[0]&&input[2]==child_input[2]&&
+            input[1]==trial::bits(trial::value(child_input[1])+374.f)&&input[3]==trial::bits(trial::value(child_input[3])+374.f));
+        struct Candidate {uintptr_t client=0x1000,scene=0x2000;} candidate;
+        position::invoke_with(candidate,[]{return sentinel;},safe_copy,f.setter(),[]{return true;});assert(!position::ownership_lost&&position::state.lease.active);
+        f.request->expires=0;position::invoke_with(candidate,[]{return sentinel;},safe_copy,f.setter(),[]{return true;});
+        assert(position::restored==1&&!position::unresolved&&!position::state.lease.active&&
+            (f.positions()==std::array<std::uint32_t,2>{f.c.top_bits,f.c.bottom_bits}));
+    }
+}
+static void same_nonce_offset_mismatch(){
+    {ControlFixture f(true,374);control::Parent p{{f.c.panel,f.c.scene,f.c.client,0,f.c.nonce,f.c.world_generation},
+            {f.c.scene,f.c.top_bits,f.c.bottom_bits,374},trial::delta_for(f.c)};
+        assert(control::same_lease(p)&&control::request_current(p));f.request->config.vertical_offset_reference_pixels=16;
+        assert(!control::request_current(p));f.call();assert(control::modified==0&&control::adopted==0&&control::native_restored==1);
+        assert(native_inputs.back()==child_input&&!position::state.lease.active);}
+    {ControlFixture f(true,374);control::Parent p{{f.c.panel,f.c.scene,f.c.client,0,f.c.nonce,f.c.world_generation},
+            {f.c.scene,f.c.top_bits,f.c.bottom_bits,16},trial::delta};assert(!control::same_lease(p));
+        f.request->config.vertical_offset_reference_pixels=16;struct Candidate {uintptr_t client=0x1000,scene=0x2000;} candidate;
+        position::invoke_with(candidate,[]{return sentinel;},safe_copy,f.setter(),[]{return true;});
+        assert(position::restored==1&&!position::state.lease.active&&control::modified==0&&
+            (f.positions()==std::array<std::uint32_t,2>{f.c.top_bits,f.c.bottom_bits}));}
+}
+int main(){six_reflows_and_exact_core_restore();exact_holding_stays_exact();one_ulp_own_adoption_only();reject_bad_exit_and_exception();expired_or_draining_native_restore();entry_guard_and_metadata();foreign_and_nested_passthrough();pure_helper_bounds();restoring_bypasses_control();no_active_lease_or_wrong_object();control_receipt_publication();authorization_changes_during_original();schema2_suffix_with_control_and_exact_restore();offset374_native_holding_restore();same_nonce_offset_mismatch();std::puts("PathChoiceReflowControlTest passed");}

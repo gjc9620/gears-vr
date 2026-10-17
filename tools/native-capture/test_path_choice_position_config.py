@@ -1,6 +1,7 @@
 """Offline position config contracts; synthetic identities and raw memory only."""
 import copy
 import configparser
+import hashlib
 import struct
 import unittest
 from unittest import mock
@@ -69,6 +70,23 @@ def fixture():
 
 
 class PositionConfigTests(unittest.TestCase):
+    def test_optional_vertical_offset_and_default_byte_compatibility(self):
+        sample,proof=fixture();default=position.build(sample,proof,**SESSION)
+        self.assertEqual(hashlib.sha256(default.encode('ascii')).hexdigest(),
+                         '97e6da2238a281271c14c453f9310e4907736b47f3309e4fcb3031b116567652')
+        self.assertEqual(default,position.build(sample,proof,**SESSION,vertical_offset_reference_pixels=16))
+        self.assertNotIn('vertical_offset_reference_pixels=',default)
+        original_reads=position.required_reads(sample,proof,**SESSION)
+        for offset in (1,374,400):
+            ini=position.build(sample,proof,**SESSION,vertical_offset_reference_pixels=offset)
+            self.assertEqual(ini.replace('vertical_offset_reference_pixels=%d\n'%offset,''),default)
+            parser=configparser.RawConfigParser();parser.read_string(ini);fields=dict(parser['PathChoicePositionTrial'])
+            self.assertEqual(len(fields),17+int(fields['check_count']))
+            self.assertEqual(position.required_reads(sample,proof,**SESSION,vertical_offset_reference_pixels=offset),original_reads)
+        for invalid in (0,401,-1,16.0,True,'374'):
+            with self.subTest(offset=invalid):
+                with self.assertRaises(ValueError):position.build(sample,proof,**SESSION,vertical_offset_reference_pixels=invalid)
+                with self.assertRaises(ValueError):position.required_reads(sample,proof,**SESSION,vertical_offset_reference_pixels=invalid)
     def test_serialization_exact_schema_minimal_scope_and_readonly(self):
         sample,proof=fixture();before=copy.deepcopy((sample,proof));ini=position.build(sample,proof,**SESSION)
         self.assertEqual((sample,proof),before);parser=configparser.RawConfigParser();parser.read_string(ini)

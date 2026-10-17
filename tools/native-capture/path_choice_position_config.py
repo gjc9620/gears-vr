@@ -42,7 +42,8 @@ def _fixed_prefix_headers(checks, base):
             'missing/aliased fixed-prefix registry headers')
 
 
-def build(sample, panelproof, *, pid, creation_time, started_qpc, world_generation, nonce, duration_ms=3000):
+def build(sample, panelproof, *, pid, creation_time, started_qpc, world_generation, nonce, duration_ms=3000,
+          vertical_offset_reference_pixels=16):
     """Require fresh raw coverage, exact owner digest, registered panel/reflection.
 
     panelproof has schema/kind/pid/module_base/read_only/consistent_reread,
@@ -52,7 +53,8 @@ def build(sample, panelproof, *, pid, creation_time, started_qpc, world_generati
     """
     try:
         return _build(sample, panelproof, pid=pid, creation_time=creation_time, started_qpc=started_qpc,
-                      world_generation=world_generation, nonce=nonce, duration_ms=duration_ms)
+                      world_generation=world_generation, nonce=nonce, duration_ms=duration_ms,
+                      vertical_offset_reference_pixels=vertical_offset_reference_pixels)
     except (KeyError, TypeError, AttributeError, UnicodeError, struct.error, OverflowError) as error:
         raise ValueError('malformed position panel evidence') from error
 
@@ -71,7 +73,8 @@ def required_reads(sample, panelproof, **session):
         raise ValueError('malformed position panel evidence') from error
 
 
-def _build(sample, proof, required_only=False, **session):
+def _build(sample, proof, required_only=False, vertical_offset_reference_pixels=16, **session):
+    vertical_offset=integer(vertical_offset_reference_pixels,1,400)
     require(type(sample) is dict and sample.get('read_only') is True and sample.get('consistent_reread') is True,
             'unverified layout sample')
     snapshot = sample['scene_owner']
@@ -189,7 +192,8 @@ def _build(sample, proof, required_only=False, **session):
     result = {key:fields[key] for key in ('schema','nonce','pid','creation_time','started_qpc','world_generation','base','client','scene')}
     result.update(schema=2,registry_header_policy='fixed_prefix_v1',panel=hex(panel),panel_vtable=hex(vtable),top_bits=top,bottom_bits=bottom,
                   duration_ms=session['duration_ms'],check_count=len(checks.spans))
-    require(len(result)==16,'unexpected configuration keys')
+    if vertical_offset!=16:result['vertical_offset_reference_pixels']=vertical_offset
+    require(len(result)==(16 if vertical_offset==16 else 17),'unexpected configuration keys')
     lines=['[PathChoicePositionTrial]']+[key+'='+str(value) for key,value in result.items()]
     lines+=['check_%d=0x%X:%s'%(i,address,raw.hex()) for i,((address,size),raw) in enumerate(sorted(checks.spans.items()))]
     ini='\n'.join(lines)+'\n';require(len(ini)<=262144,'configuration byte budget');ini.encode('ascii')

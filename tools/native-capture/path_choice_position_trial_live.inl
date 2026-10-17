@@ -174,7 +174,7 @@ void poll(wchar_t const* path,FILE* log){
             !trial::authenticate(c,context(c.client,c.scene),safe_copy)||!certify_code())throw 2;
         auto req=std::make_shared<Request>();req->config=std::move(c);req->expires=tick+req->config.duration_ms;
         loaded_nonce=req->config.nonce;std::atomic_store(&selected,std::shared_ptr<Request const>(req));
-        fprintf(log,"path_position_loaded nonce=%llu duration_ms=%u delta_y_pixels=16 code_attested=1\n",req->config.nonce,req->config.duration_ms);fflush(log);
+        fprintf(log,"path_position_loaded nonce=%llu duration_ms=%u delta_y_pixels=%u code_attested=1\n",req->config.nonce,req->config.duration_ms,req->config.vertical_offset_reference_pixels);fflush(log);
     }catch(...){++rejected;disable();fprintf(log,"path_position_load_rejected count=%llu\n",rejected.load());fflush(log);}}
 using Setter=void(__fastcall*)(void*,float,unsigned char,unsigned char,int);
 bool set(uintptr_t panel,float v,unsigned face,unsigned input,int origin){
@@ -225,7 +225,8 @@ uintptr_t invoke_with(Candidate const& candidate,Original original,Read read,Set
         if(!complete||p!=state.lease.owned){
             publish_loss(c,ctx.world_generation,p,read_mask,complete,read);
             state.lease.active=false;count(trial::Result::ownership_lost);return original();}
-        if(drain_requested.load()||!req||req->config.nonce!=c.nonce||GetTickCount64()>=req->expires){
+        if(drain_requested.load()||!req||req->config.nonce!=c.nonce||
+           req->config.vertical_offset_reference_pixels!=c.vertical_offset_reference_pixels||GetTickCount64()>=req->expires){
             if(!certify()){state.lease.active=false;count(trial::Result::identity_lost);return original();}
             ++restore_retries;count(trial::restore(state,ctx,auth_reader(c,ctx,AuthStage::restore,caller_hint,read),invoke_set));return original();}
         return original();
