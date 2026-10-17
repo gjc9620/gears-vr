@@ -86,8 +86,10 @@ def settings(config,manifest,root=ROOT):
     hud_horizontal_fov(config,manifest)
     hud_layout(config,manifest)
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
-    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','startup_selftests_prelaunch','graphics_startup_lock','graphics_menu_lock')):
+    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','startup_selftests_prelaunch','graphics_startup_lock','graphics_menu_lock','experimental_preserve_upscaler')):
         raise ValueError('Manifest session options must be boolean')
+    if manifest.get('experimental_preserve_upscaler',False) and any(manifest.get(key,False) for key in ('graphics_startup_lock','graphics_menu_lock')):
+        raise ValueError('Experimental preserve upscaler conflicts with graphics locks')
     if manifest.get('startup_selftests_prelaunch',False) and not manifest.get('startup_menu',False):
         raise ValueError('Prelaunch self-tests require owned startup')
     if manifest.get('graphics_startup_lock',False) and not manifest.get('startup_menu',False):
@@ -207,6 +209,7 @@ class Backend:
              '--launch-receipt',str(receipt)]
         if game_path is not None:cmd+=['--game-path',str(game_path)]
         if foreground:cmd+=['--foreground']
+        if manifest.get('experimental_preserve_upscaler',False):cmd+=['--experimental-preserve-upscaler']
         if owner:
             cmd+=['--prime-owner-pid',str(owner['pid']),'--prime-owner-creation-time',str(owner['creation_time'])]
         if preflight_nonce:cmd+=['--startup-preflight-nonce',preflight_nonce]

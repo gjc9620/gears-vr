@@ -1,5 +1,6 @@
 param([switch]$DirectLevel, [switch]$PauseOnUnfocus, [switch]$Foreground,
-      [switch]$DisableBackgroundInput = $true, [string]$GamePath, [switch]$PythonCheckOnly, [string]$LaunchReceipt)
+      [switch]$DisableBackgroundInput = $true, [string]$GamePath, [switch]$PythonCheckOnly, [string]$LaunchReceipt,
+      [switch]$ExperimentalPreserveUpscaler)
 $ErrorActionPreference = 'Stop'
 $workspace = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 function Find-GearsVrPython([string]$Root) {
@@ -60,12 +61,13 @@ $defaultExe = Join-Path $game 'Binaries_x64/GOWDE-Steam.exe'
 if (Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowHandle -ne 0}) {
     throw 'Exit the current game first; this launcher does not terminate it.'
 }
-# Preserve the default reversible policy. Other installs require DLSS already
-# OFF and make no writes to either installation or the player's user settings.
+# Preserve the default reversible OFF policy. The explicit SR experiment only
+# checks its fixed profile and leaves the player's upscaler settings unchanged.
+# Other installs require DLSS already OFF unless that experiment is selected.
 $isDefault = [IO.Path]::GetFullPath($exe) -eq [IO.Path]::GetFullPath($defaultExe)
-$graphicsAction = if ($isDefault) { 'apply' } else { 'check' }
+$graphicsAction = if ($ExperimentalPreserveUpscaler) { 'check-experimental-sr' } elseif ($isDefault) { 'apply' } else { 'check' }
 & $python (Join-Path $PSScriptRoot 'graphics_policy.py') $graphicsAction
-if ($LASTEXITCODE -ne 0) { throw 'DLSS OFF startup policy failed.' }
+if ($LASTEXITCODE -ne 0) { throw 'Upscaler startup policy failed.' }
 # Custom installations are read-only: validation above accepts original or known
 # patched config; never apply repository backups to another installation.
 if ($isDefault) {

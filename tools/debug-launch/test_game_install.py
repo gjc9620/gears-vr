@@ -15,6 +15,23 @@ import launch_reserve
 
 
 class InstallTests(unittest.TestCase):
+    def test_experimental_upscaler_switch_is_explicit_and_preserves_background_flags(self):
+        selected = pathlib.Path('X:/an install with spaces/Binaries_x64/GOWDE-Steam.exe')
+        original = game_install.debug_command(selected)
+        self.assertNotIn('-ExperimentalPreserveUpscaler', original)
+        experimental = game_install.debug_command(selected, experimental_preserve_upscaler=True)
+        self.assertEqual(experimental, original + ['-ExperimentalPreserveUpscaler'])
+        self.assertIn('-DisableBackgroundInput', experimental)
+        self.assertNotIn('-Foreground', experimental)
+
+    def test_reserve_rejects_experimental_upscaler_lock_conflicts_before_preflight(self):
+        for flag in ('--graphics-startup-lock', '--graphics-menu-lock'):
+            with mock.patch.object(sys, 'argv', ['launch_reserve', '--experimental-preserve-upscaler', flag]), \
+                    mock.patch.object(launch_reserve, 'validate_game') as validate, \
+                    mock.patch.object(launch_reserve.subprocess, 'run') as run:
+                with self.assertRaises(SystemExit):launch_reserve.main()
+                validate.assert_not_called();run.assert_not_called()
+
     def fixture(self,root):
         exe=root/'custom folder/Binaries_x64/GOWDE-Steam.exe'
         exe.parent.mkdir(parents=True);exe.write_bytes(b'supported fixture executable')
@@ -84,6 +101,25 @@ class InstallTests(unittest.TestCase):
             commands=[call.args[0] for call in run.call_args_list]
             self.assertIn(game_install.debug_command(selected),commands)
             self.assertEqual(sum('-File' in command for command in commands),1)
+
+    def test_reserve_experimental_flag_reaches_powershell_command(self):
+        from types import SimpleNamespace
+        selected = pathlib.Path('X:/an install with spaces/Binaries_x64/GOWDE-Steam.exe')
+        pe = SimpleNamespace(DIRECTORY_ENTRY_EXPORT=SimpleNamespace(symbols=[
+            SimpleNamespace(name=b'GearsCaptureReserve', forwarder=None, address=123)]), close=mock.Mock())
+        def result(command, **kwargs):
+            return SimpleNamespace(returncode=0, stdout='55' if 'Select-Object -ExpandProperty Id' in command[-1] else '', stderr='')
+        with mock.patch.object(sys, 'argv', ['launch_reserve', '--experimental-preserve-upscaler']), \
+                mock.patch.object(launch_reserve, 'validate_game', return_value=selected), \
+                mock.patch.object(launch_reserve.pefile, 'PE', return_value=pe), \
+                mock.patch.object(launch_reserve.subprocess, 'run', side_effect=result) as run, \
+                mock.patch.object(launch_reserve.k, 'OpenProcess', side_effect=RuntimeError('stop before process access')), \
+                mock.patch.object(launch_reserve, 'WindowsControl', return_value=SimpleNamespace(
+                    identity=lambda pid:dict(pid=pid,creation_time=456,image=str(selected)))), \
+                mock.patch.object(launch_reserve, 'preparation_live_guard', return_value=lambda:None):
+            with self.assertRaisesRegex(RuntimeError, 'stop before process'):launch_reserve.main()
+            commands = [call.args[0] for call in run.call_args_list]
+            self.assertIn(game_install.debug_command(selected, experimental_preserve_upscaler=True), commands)
 
     def test_powershell_rejects_unknown_path_without_policy_or_launch(self):
         import subprocess

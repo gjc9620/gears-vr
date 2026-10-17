@@ -1,4 +1,4 @@
-"""Release startup policy: DLSS OFF. This does not lock live engine settings."""
+"""Default startup policy: DLSS OFF; explicit fixed-profile SR preflight is read-only."""
 import argparse
 import hashlib
 import json
@@ -69,6 +69,21 @@ def status(target=None):
             'runtime_lock_verified': False, 'live_dlss': 'unknown'}
 
 
+def check_experimental_sr(target=None):
+    """Read-only preflight for one historical SR profile; no live support claim."""
+    target = pathlib.Path(target) if target is not None else locate()
+    text, _ = decode(target.read_bytes())
+    expected = {'DLSS':'true', 'FSR2':'false', 'FSR3':'false', 'MFSR':'false',
+                'AADefaultQualityMode':'3'}
+    for key, value in expected.items():
+        values = re.findall(r'^' + re.escape(key) + r'=([^\r\n]*)\r?$', text, re.M | re.I)
+        if len(values) != 1 or values[0].lower() != value:
+            raise RuntimeError('Experimental DLSS SR requires one ' + key + '=' + value)
+    return {'path':str(target), 'startup_policy':'experimental_preserve_upscaler',
+            'persisted_dlss':'true', 'persisted_aa_quality_mode':3, 'changed':False,
+            'runtime_lock_verified':False, 'live_dlss':'unknown'}
+
+
 def enforce_off_before_launch(target=None, state=STATE, stopped=require_game_stopped):
     stopped()
     target = (pathlib.Path(target) if target is not None else locate()).resolve()
@@ -117,10 +132,12 @@ def restore(manifest, target=None, stopped=require_game_stopped):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('status', 'check', 'apply', 'restore'))
+    parser.add_argument('action', choices=('status', 'check', 'apply', 'restore', 'check-experimental-sr'))
     parser.add_argument('--manifest', help='Explicit backup manifest required for restore')
     args = parser.parse_args()
-    if args.action == 'restore':
+    if args.action == 'check-experimental-sr':
+        result = check_experimental_sr()
+    elif args.action == 'restore':
         if not args.manifest:
             parser.error('restore requires --manifest')
         result = restore(args.manifest)

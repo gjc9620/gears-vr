@@ -28,10 +28,11 @@ def validate_game(path=None, root=ROOT, expected=None):
     return exe
 
 
-def debug_command(exe, root=ROOT, *, foreground=False):
+def debug_command(exe, root=ROOT, *, foreground=False, experimental_preserve_upscaler=False):
     return ['powershell', '-NoProfile', '-NonInteractive', '-File',
             str(root / 'tools/debug-launch/Start-DebugGame.ps1'), '-DisableBackgroundInput',
-            '-GamePath', str(exe)] + (['-Foreground'] if foreground else [])
+            '-GamePath', str(exe)] + (['-Foreground'] if foreground else []) + (
+                ['-ExperimentalPreserveUpscaler'] if experimental_preserve_upscaler else [])
 
 
 if __name__ == '__main__':

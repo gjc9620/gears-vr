@@ -378,6 +378,36 @@ class LauncherTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'requires startup'):
             launcher.settings({},dict(MANIFEST,graphics_menu_lock=True))
 
+    def test_experimental_preserve_upscaler_manifest_is_explicit_boolean_and_conflicts_with_locks(self):
+        experimental = dict(MANIFEST, experimental_preserve_upscaler=True,
+                            graphics_startup_lock=False, graphics_menu_lock=False)
+        launcher.settings({}, experimental)
+        for key in ('graphics_startup_lock', 'graphics_menu_lock'):
+            with self.assertRaisesRegex(ValueError, 'conflicts with graphics locks'):
+                launcher.settings({}, dict(experimental, **{key:True}))
+        with self.assertRaisesRegex(ValueError, 'boolean'):
+            launcher.settings({}, dict(experimental, experimental_preserve_upscaler='true'))
+        with self.assertRaisesRegex(ValueError, 'Unknown configuration'):
+            launcher.settings({'experimental_preserve_upscaler':True}, MANIFEST)
+
+    def test_experimental_preserve_upscaler_reaches_reservation_without_graphics_lock_flags(self):
+        backend = launcher.Backend.__new__(launcher.Backend)
+        report = dict(pid=55, game_identity=dict(pid=55, creation_time=456,
+            image=str(launcher.rooted(MANIFEST['game_path']))), game_sha256=MANIFEST['game_sha256'],
+            trampolines_reserved=True, hooks_enabled=True, native_hooks_enabled=False,
+            graphics_hooks_enabled=0, scene_hooks_enabled=False, first_view_mask_reserved=True,
+            independent_entry_checks=[{'matches':True}])
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(launcher.subprocess, 'run',
+                return_value=SimpleNamespace(returncode=0, stdout=json.dumps(report), stderr='')) as spawn:
+            log = pathlib.Path(directory)/'reserve.log'
+            backend.reserve(MANIFEST, log)
+            self.assertNotIn('--experimental-preserve-upscaler', spawn.call_args.args[0])
+            backend.reserve(dict(MANIFEST, experimental_preserve_upscaler=True), log)
+            command = spawn.call_args.args[0]
+            self.assertIn('--experimental-preserve-upscaler', command)
+            self.assertNotIn('--graphics-startup-lock', command)
+            self.assertNotIn('--graphics-menu-lock', command)
+
     def test_reservation_admits_only_requested_graphics_hooks(self):
         backend=launcher.Backend.__new__(launcher.Backend)
         owner=dict(pid=7,creation_time=8)

@@ -112,6 +112,7 @@ def main():
     parser.add_argument('--build-dir',type=pathlib.Path,default=ROOT/'tools/native-capture/build-prepare')
     parser.add_argument('--game-path',type=pathlib.Path,help='Supported installation EXE; defaults to repository installation')
     parser.add_argument('--foreground',action='store_true',help='Use the ordinary foreground game startup policy')
+    parser.add_argument('--experimental-preserve-upscaler',action='store_true',help='Read-only preflight and preserve the fixed experimental DLSS SR startup profile')
     parser.add_argument('--dll-name',default='GearsCapturePrepare.dll')
     parser.add_argument('--launch-receipt',type=pathlib.Path,help=argparse.SUPPRESS)
     parser.add_argument('--startup-preflight-nonce',help=argparse.SUPPRESS)
@@ -125,6 +126,8 @@ def main():
     parser.add_argument('--check-mask-control',action='store_true',help='Self-test and reserve the optional first-view mask trampoline without enabling it; requires a DLL with that export')
     parser.add_argument('--check-frame-link',action='store_true',help='Require frame-association self-tests and startup target/binding priming')
     args=parser.parse_args()
+    if args.experimental_preserve_upscaler and (args.graphics_startup_lock or args.graphics_menu_lock):
+        parser.error('Experimental preserve upscaler conflicts with graphics locks')
     owned=args.prime_owner_pid is not None or args.prime_owner_creation_time is not None
     if owned and (not args.prime_targets or args.prime_owner_pid is None or
                   not 0<args.prime_owner_pid<=0xffffffff or args.prime_owner_creation_time is None or
@@ -196,7 +199,7 @@ def main():
         if prime_export.forwarder:raise RuntimeError('Forwarded prime export rejected')
         prime_rva=prime_export.address
     pe.close()
-    launch_command=debug_command(exe,foreground=args.foreground)
+    launch_command=debug_command(exe,foreground=args.foreground,experimental_preserve_upscaler=args.experimental_preserve_upscaler)
     if args.launch_receipt is not None:launch_command+=['-LaunchReceipt',str(args.launch_receipt)]
     run_hidden(launch_command,check=True)
     born=None

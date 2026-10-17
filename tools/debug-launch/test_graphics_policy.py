@@ -90,6 +90,34 @@ class GraphicsPolicyTests(unittest.TestCase):
         self.assertEqual(temp.read_bytes(), b'owned by another writer')
         self.assertEqual(self.target.read_bytes(), b'DLSS=True\n')
 
+    def test_experimental_sr_preflight_is_read_only_in_supported_encodings(self):
+        for encoding in ('utf-8', 'utf-8-sig', 'utf-16'):
+            raw = 'DLSS=True\r\nFSR2=False\r\nFSR3=False\r\nMFSR=False\r\nAADefaultQualityMode=3\r\nOther=keep\r\n'.encode(encoding)
+            self.target.write_bytes(raw)
+            report = policy.check_experimental_sr(self.target)
+            self.assertEqual(report['startup_policy'], 'experimental_preserve_upscaler')
+            self.assertFalse(report['changed'])
+            self.assertEqual(report['live_dlss'], 'unknown')
+            self.assertEqual(self.target.read_bytes(), raw)
+            self.assertFalse(self.state.exists())
+
+    def test_experimental_sr_rejects_dlaa_other_upscalers_and_ambiguous_keys_without_write(self):
+        text = 'DLSS=True\nFSR2=False\nFSR3=False\nMFSR=False\nAADefaultQualityMode=3\n'
+        invalid = [text.replace('DLSS=True', 'DLSS=False'), text + 'DLSS=True\n',
+                   text.replace('AADefaultQualityMode=3', 'AADefaultQualityMode=4'),
+                   text.replace('AADefaultQualityMode=3', 'AADefaultQualityMode=2'),
+                   text.replace('AADefaultQualityMode=3\n', '')]
+        for key in ('FSR2', 'FSR3', 'MFSR'):
+            invalid.extend((text.replace(key+'=False', key+'=True'),
+                            text.replace(key+'=False\n', ''), text+key+'=False\n'))
+        for value in invalid:
+            raw = value.encode()
+            self.target.write_bytes(raw)
+            with self.assertRaisesRegex(RuntimeError, 'Experimental DLSS SR'):
+                policy.check_experimental_sr(self.target)
+            self.assertEqual(self.target.read_bytes(), raw)
+            self.assertFalse(self.state.exists())
+
 
 if __name__ == '__main__':
     unittest.main()
