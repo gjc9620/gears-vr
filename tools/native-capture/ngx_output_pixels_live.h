@@ -11,6 +11,7 @@ namespace ngx_output_pixels {
 using CopyFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,UINT,UINT,UINT,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_BOX*);
 using ExecuteFn=void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);
 using ResetFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*,ID3D12PipelineState*);
+struct PresentContext {bool known{},linked{},contaminated{};unsigned rejection{};uintptr_t buffer{};};
 #if defined(GEARS_NGX_OUTPUT_PIXELS) && GEARS_NGX_OUTPUT_PIXELS
 enum Failure:unsigned {none,association_ambiguous=32,eval_changed,eval_exception,nested_eval,typed_mismatch,prepare_failed,copy_exception,append_exception,stopped_incomplete};
 struct Slot {
@@ -61,6 +62,7 @@ struct CreateScope {
 #endif
 };
 void end_ticket(uint64_t,bool);void worker_request(const wchar_t*,uint64_t,uint64_t,uint64_t,uint64_t);
+void end_ticket(uint64_t,bool,PresentContext const&);
 bool enable(FILE*);void poll();void stop();void print(FILE*);void print_control(FILE*);
 std::unique_lock<std::recursive_mutex> execution_lock();
 void copy_passthrough(ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,UINT,UINT,UINT,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_BOX*,uintptr_t,CopyFn);
@@ -73,6 +75,7 @@ struct EvalScope {EvalScope(bool,uintptr_t,uintptr_t,const void*){}void normal_r
 struct CreateScope {CreateScope(bool,uintptr_t,uintptr_t,const void*){}void normal_return(){}};
 inline void create_boundary(bool,uintptr_t,uintptr_t,const void*){}inline bool enable(FILE*){return true;}inline void poll(){}inline void stop(){}inline void print(FILE*){}
 inline void end_ticket(uint64_t,bool){}inline void worker_request(const wchar_t*,uint64_t,uint64_t,uint64_t,uint64_t){}
+inline void end_ticket(uint64_t,bool,PresentContext const&){}
 inline void print_control(FILE*){}
 inline std::unique_lock<std::recursive_mutex> execution_lock(){return {};}
 inline void copy_passthrough(ID3D12GraphicsCommandList* l,const D3D12_TEXTURE_COPY_LOCATION* d,UINT x,UINT y,UINT z,const D3D12_TEXTURE_COPY_LOCATION* s,const D3D12_BOX* b,uintptr_t,CopyFn f){f(l,d,x,y,z,s,b);}

@@ -81,7 +81,7 @@ EvalScope::~EvalScope(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mu
         if(!normal)quarantine(std::uncaught_exceptions()!=exceptions?eval_exception:eval_changed);
         else{s.normal=true;if(!s.copy_seen)pending_eval=index;else publish_pair();}}
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
-    if(gate_observed){const auto after=eval_sample(observed_structure,true);delayed.end_eval(observed,after,returned&&std::uncaught_exceptions()==exceptions);delayed_failure();}
+    if(gate_observed){const auto after=eval_sample(observed_structure,true);delayed.end_eval(observed,after,returned&&std::uncaught_exceptions()==exceptions,uint64_t(now()));delayed_failure();}
 #endif
     active_eval=parent;
 }
@@ -89,7 +89,7 @@ EvalScope::~EvalScope(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mu
 CreateScope::CreateScope(bool owned,uintptr_t caller,uintptr_t command,const void* input):structure(reinterpret_cast<uintptr_t>(input)),exceptions(std::uncaught_exceptions()){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     // Revoke first, independently of the bounded observer row allocation.
-    if(enabled&&!stopped){serial=delayed.begin_create();delayed_failure();gears_ngx_route::Row row;row.structure=structure;before=ngx_route_observer::sample(row,owned);}
+    if(enabled&&!stopped){serial=delayed.begin_create(uint64_t(now()),ngx_route_observer::ownership(owned));delayed_failure();gears_ngx_route::Row row;row.structure=structure;before=ngx_route_observer::sample(row,owned);}
     create_boundary(owned,caller,command,input);
 }
 CreateScope::~CreateScope(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!serial)return;
@@ -97,14 +97,16 @@ CreateScope::~CreateScope(){std::lock_guard<std::recursive_mutex> lock(frame_hoo
     delayed.end_create(serial,returned&&std::uncaught_exceptions()==exceptions&&recording.load()&&ngx_route_observer::attested,before,after);delayed_failure();
 }
 #endif
-void end_ticket(uint64_t ended,bool linked){
+void end_ticket(uint64_t ended,bool linked,PresentContext const& present_context){
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!enabled||stopped)return;
-    if(delayed.end_ticket(ended,linked,uint64_t(now())))publish_pair();delayed_failure();
+    const gears_ngx_delayed::PresentEvidence present{present_context.known,present_context.linked,present_context.contaminated,present_context.rejection,present_context.buffer};
+    if(delayed.end_ticket(ended,linked,uint64_t(now()),present))publish_pair();delayed_failure();
 #else
-    (void)ended;(void)linked;
+    (void)ended;(void)linked;(void)present_context;
 #endif
 }
+void end_ticket(uint64_t ended,bool linked){end_ticket(ended,linked,{});}
 void create_boundary(bool owned,uintptr_t caller,uintptr_t command,const void* structure){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     foreign_boundary(owned,caller,command,structure);
     if(enabled&&(active_eval>=0||pending_eval>=0))quarantine(association_ambiguous);pending_eval=-1;}
@@ -224,6 +226,14 @@ void print_control(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_
     fprintf(file,"ngx_output_delayed enabled=1 epoch=%llu epoch_valid=%u epoch_world=%llu handle=%llx parameters=%llx create=%u,%u,%u,%u,%u,%u,%u accepted=%llu rejected=%llu rejection_reason=%u nonce=%llu armed=%u stable_pairs=%u required_pairs=32 resets=%llu deadline_qpc=%llu selected=%u selected_world=%llu selected_ticket=%llu pair_closed=%u gpu_saved=%u terminal_reason=%u complete=1\n",
         delayed.epoch,unsigned(delayed.epoch_valid),delayed.world,delayed.handle,delayed.parameters,delayed.create[0],delayed.create[1],delayed.create[2],delayed.create[3],delayed.create[4],delayed.create[5],delayed.create[6],
         delayed.accepted,delayed.rejected,unsigned(delayed.rejection),delayed.last_nonce,unsigned(delayed.armed),delayed.stable,delayed.resets,delayed.deadline,unsigned(delayed.selected),delayed.selected_world,delayed.selected_ticket,unsigned(delayed.closed),unsigned(delayed.finished),unsigned(delayed.reason));
+    if(delayed.first_invalid.valid){const auto& invalid=delayed.first_invalid;const auto& trigger=invalid.trigger;const auto& incoming=trigger.incoming;const auto& present=trigger.present;
+        // One immutable receipt, rewritten only with the existing bounded status.
+        // Prefix every key: the session reader also parses the native first line.
+        fprintf(file,"ngx_output_delayed_invalid invalid_first=1 invalid_site=%s invalid_site_code=%u invalid_original_reason=%u invalid_qpc=%llu invalid_active=%u invalid_rows=%u invalid_stable=%u invalid_pair_thread=%u invalid_epoch=%llu invalid_world=%llu invalid_last_ticket=%llu invalid_completed_ticket=%llu invalid_selected_ticket=%llu invalid_selected_world=%llu invalid_incoming_known=%u invalid_incoming_associated=%u invalid_incoming_mask=%u invalid_incoming_eye=%u invalid_incoming_world=%llu invalid_incoming_ticket=%llu invalid_incoming_renderer=%llx invalid_incoming_context=%llx invalid_incoming_view=%llx invalid_incoming_views=%llx invalid_incoming_count=%d invalid_at_present=%u invalid_present_eligible=%u invalid_present_ticket=%llu invalid_present_details_known=%u invalid_present_linked=%u invalid_present_contaminated=%u invalid_present_rejection=%u invalid_present_buffer=%llx\n",
+            gears_ngx_delayed::site_name(trigger.site),unsigned(trigger.site),unsigned(invalid.original_reason),trigger.qpc,invalid.active,invalid.rows,invalid.stable,invalid.pair_thread,
+            invalid.epoch,invalid.world,invalid.last_ticket,invalid.completed_ticket,invalid.selected_ticket,invalid.selected_world,unsigned(trigger.incoming_known),unsigned(incoming.associated),incoming.mask,incoming.eye,
+            incoming.world,incoming.ticket,incoming.renderer,incoming.context,incoming.view,incoming.views,incoming.count,unsigned(trigger.at_present),unsigned(trigger.eligible),trigger.present_ticket,
+            unsigned(present.known),unsigned(present.linked),unsigned(present.contaminated),present.rejection,present.buffer);}
 #else
     (void)file;
 #endif

@@ -1375,7 +1375,8 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
 #endif
     if(ui_semantic_consumer_pending)frame_link.invalidate(); // Nonblocking: semantic consumers have not passed their final identity bracket.
     auto result=frame_link.present(resource,inventory_ok?binding.queue:0);
-    ngx_output_pixels::end_ticket(result.ticket,result.linked&&!result.contaminated);
+    ngx_output_pixels::end_ticket(result.ticket,result.linked&&!result.contaminated,
+        {true,result.linked,result.contaminated,result.rejection,resource});
     if(diagnostic){diagnostic->valid|=gears_outage::association;diagnostic->buffer=resource;diagnostic->queue=binding.queue;
         diagnostic->ticket=result.ticket;diagnostic->rejection=result.rejection;diagnostic->linked=result.linked;diagnostic->contaminated=result.contaminated;}
     if(!owned_xr_probe&&stereo_gpu_publish&&result.linked&&inventory_ok&&final_transfer_live::normalizer::publication_allowed()&&vr_dof_compat::publication(committed_world_generation.load(),result.ticket)&&

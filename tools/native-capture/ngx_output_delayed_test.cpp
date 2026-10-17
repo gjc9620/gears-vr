@@ -83,7 +83,7 @@ void worker_requests(){using namespace ngx_output_pixels;delayed_reset();
 }
 void wrapper_cases(){using namespace ngx_output_pixels;
     delayed_reset();for(uint64_t id=1;id<40;++id)frame(id);assert(!delayed.accepted&&!count&&!extra_copies); // Resume required.
-    arm();warm();frame(132,true);assert(delayed.closed&&count==2&&!failure&&extra_copies==2&&published&&fake_backend.publications==1);
+    arm();warm();frame(132,true);assert(delayed.closed&&count==2&&!failure&&extra_copies==2&&published&&fake_backend.publications==1&&!delayed.first_invalid.valid);
     assert(ngx_route_observer::recorder.evaluate_count==8);execute();poll();assert(!fake_backend.mapped);retire();poll();assert(fake_backend.mapped==2&&fake_backend.released==2);
     ticks=static_cast<long long>(delayed.deadline);poll();assert(delayed.finished&&!failure&&delayed.reason==Reason::complete); // Completed GPU pair is terminal.
     FILE* report{};assert(!tmpfile_s(&report));print(report);assert(contains(report,"stable_pairs=32")&&contains(report,"stage=selected_before")&&contains(report,"stage=selected_after"));fclose(report);
@@ -116,5 +116,42 @@ void wrapper_cases(){using namespace ngx_output_pixels;
     delayed_reset();arm();const auto waiting_deadline=delayed.deadline;ticks=static_cast<long long>(waiting_deadline);poll();
     assert(!delayed.armed&&!count&&!failure&&!fake_backend.released&&delayed.reason==Reason::timeout);
 }
+void selected_open_pair(){delayed_reset();arm();warm();ticket(132);pixel_mode=1;
+    for(unsigned i=0;i<2;++i){put(evaluation,0x60,uint32_t(i*1280));assert(invoke_evaluate()==evaluate_result);}
+    assert(ngx_output_pixels::count==2&&!ngx_output_pixels::published&&!ngx_output_pixels::failure&&!ngx_output_pixels::delayed.first_invalid.valid);
 }
-int main(){pure_requests();worker_requests();wrapper_cases();concurrent_cases();create_attestation_cases();std::puts("NgxOutputDelayedTest passed (pure request/gate and actual wrappers; fake GPU, no game)");}
+void invalidation_receipt_cases(){using namespace ngx_output_pixels;using gears_ngx_delayed::Site;
+    selected_open_pair();end_ticket(132,true,{true,true,false,0,0xface});
+    assert(delayed.closed&&published&&!failure&&!delayed.first_invalid.valid&&fake_backend.publications==1);
+    execute();retire();poll();assert(delayed.finished&&fake_backend.mapped==2&&fake_backend.released==2&&!delayed.first_invalid.valid);
+    selected_open_pair();const auto before_qpc=ticks;
+    end_ticket(0,false,{true,false,false,1,0xface});
+    const auto first=delayed.first_invalid;
+    assert(first.valid&&first.original_reason==Reason::incomplete&&first.trigger.site==Site::end_ticket&&first.trigger.qpc>uint64_t(before_qpc));
+    assert(first.active==0&&first.rows==2&&first.stable==32&&first.last_ticket==132&&first.completed_ticket==131&&first.selected_ticket==132&&first.selected_world==9);
+    assert(first.trigger.at_present&&!first.trigger.eligible&&first.trigger.present_ticket==0&&first.trigger.present.known&&!first.trigger.present.linked&&
+           !first.trigger.present.contaminated&&first.trigger.present.rejection==1&&first.trigger.present.buffer==0xface&&!first.trigger.incoming_known);
+    assert(failure==association_ambiguous&&delayed.reason==Reason::selected_invalid&&!delayed.armed&&!fake_backend.released);
+    // Later Create, Eval, a second explicit Present fault, and worker stop must
+    // not overwrite the original receipt or reopen/release the selected slots.
+    assert(invoke_create()==create_result);assert(invoke_evaluate()==evaluate_result);end_ticket(999,false,{true,true,true,128,0xbeef});stop();
+    const auto& retained=delayed.first_invalid;
+    assert(retained.trigger.site==first.trigger.site&&retained.original_reason==first.original_reason&&retained.trigger.qpc==first.trigger.qpc&&
+           retained.rows==first.rows&&retained.stable==first.stable&&retained.epoch==first.epoch&&retained.last_ticket==first.last_ticket&&
+           retained.selected_ticket==first.selected_ticket&&retained.trigger.present.rejection==1&&retained.trigger.present.buffer==0xface&&!fake_backend.released);
+    FILE* file{};assert(!tmpfile_s(&file));print_control(file);
+    assert(contains(file,"invalid_site=end_ticket")&&contains(file,"invalid_original_reason=10")&&contains(file,"invalid_present_rejection=1")&&contains(file,"invalid_present_buffer=face"));fclose(file);
+    selected_open_pair();end_ticket(132,false,{true,true,true,128,0xbeef});
+    assert(delayed.first_invalid.trigger.present.linked&&delayed.first_invalid.trigger.present.contaminated&&!delayed.first_invalid.trigger.eligible);
+    selected_open_pair();end_ticket(0,false);assert(delayed.first_invalid.valid&&delayed.first_invalid.trigger.at_present&&!delayed.first_invalid.trigger.present.known);
+    selected_open_pair();ticket(133);assert(invoke_evaluate()==evaluate_result);
+    assert(delayed.first_invalid.trigger.site==Site::eval_ticket_change&&delayed.first_invalid.trigger.incoming_known&&delayed.first_invalid.trigger.incoming.ticket==133&&
+           delayed.first_invalid.trigger.incoming.world==9&&delayed.first_invalid.last_ticket==132&&delayed.first_invalid.rows==2);
+    selected_open_pair();put(evaluation,0x60,uint32_t(0));assert(invoke_evaluate()==evaluate_result);
+    assert(delayed.first_invalid.trigger.site==Site::eval_extra&&delayed.first_invalid.original_reason==Reason::incomplete&&delayed.first_invalid.trigger.incoming.ticket==132);
+    selected_open_pair();assert(invoke_create()==create_result);
+    assert(delayed.first_invalid.trigger.site==Site::create_entry&&delayed.first_invalid.original_reason==Reason::new_create&&delayed.first_invalid.epoch==1&&delayed.epoch==2);
+    delayed_reset();arm();frame(100);ticket(101);end_ticket(0,false,{true,false,false,1,0xface});assert(!delayed.first_invalid.valid); // Waiting resets do not consume receipt storage.
+}
+}
+int main(){pure_requests();worker_requests();wrapper_cases();concurrent_cases();create_attestation_cases();invalidation_receipt_cases();std::puts("NgxOutputDelayedTest passed (pure request/gate and actual wrappers; fake GPU, no game)");}
