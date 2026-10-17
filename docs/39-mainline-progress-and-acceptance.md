@@ -1,12 +1,12 @@
 # 主线进度与 V1 验收
 
-2026-10-17 更新。V1目标是第三人称双目VR，UI修正纳入本版，尽量加入可用6DoF。真正的原生左右眼渲染和 OpenXR 对应眼投影已经实现，并有实际游戏、GPU 图像与模拟器提交证据。当前工作是补齐恢复、菜单、剧情和持续稳定性，**尚未完成 V1 验收，也尚未形成可发布包**。已有本地便携测试ZIP，未公开发布。最新候选和剩余缺口见[Reticle46记录](99-reticle46-player-candidate.md)。不以进程存活、测试数量或模拟器提交计数代替画面与真头显验收。
+2026-10-17 更新。V1目标是第三人称双目VR，UI修正纳入本版，尽量加入可用6DoF。真正的原生左右眼渲染和 OpenXR 对应眼投影已经实现，并有实际游戏、GPU 图像与模拟器提交证据。当前工作是补齐恢复、菜单、剧情和持续稳定性，**尚未完成 V1 验收，也尚未形成可发布包**。已有本地便携测试ZIP，未公开发布。最新候选和剩余缺口见[Reticle47记录](102-reticle47-player-candidate.md)。不以进程存活、测试数量或模拟器提交计数代替画面与真头显验收。
 
 ## 当前入口与候选版本
 
 | 入口 | Native / XR | 定位 |
 | --- | --- | --- |
-| `tools/vr-launcher/manifest.json` | Reticle46 / Borderless1 | 当前冻结默认；手枪、两次检查点恢复及全新ZIP实际启动通过，待新真机与剩余场景验收 |
+| `tools/vr-launcher/manifest.json` | Reticle47 / Borderless1 | 当前冻结默认；CG后容量阻断修复及全新ZIP实际启动通过，待新真机与剩余场景验收 |
 | `manifest-game-recovery9-window3.json` | GameRecovery9 / SpaceRecovery7 | 实时剧情相机、窗口恢复和共同 Pause 菜单面板的历史候选；未提升默认 |
 | ignored `analysis/runtime/main-menu8-manifest.json` | WorldRecovery6 / MainMenu8 | 自动世界恢复及主菜单共同窗口面板；1080p两轮循环通过，1081高度失败，未提升默认 |
 | ignored `analysis/runtime/world-recovery12-manifest.json` | WorldRecovery12 / MainMenu8 | 显式关联额外呈现pass；1081尺寸、Resume及主菜单继续至world2实际恢复新图像并正常清理，未提升默认 |
