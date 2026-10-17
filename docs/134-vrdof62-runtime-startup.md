@@ -27,3 +27,9 @@ The final native report records 37358 accepted stereo tickets but zero publicati
 `frame_link_compare kind=first anchor=1 reason_mask=8` is an accepted initial reanchor, not a binding fault: binding rejected=0, changed=0 and anchors=1. The nonactivating tiny-output recovery completed before activation.
 
 Native cleanup, entry restoration and XR object destruction were verified; the owned game was normally closed and all four profiles restored. Evidence: `continuous-stereo-7124-20261017-181337-3ae20545.*`, `vrdof109-{audit,live-status,normal-close,save-restored}.json` under ignored `analysis/runtime/`. The existing development ZIP predates the Python fix and has not been promoted.
+
+## Geometry experiment blocked before activation: PID10756
+
+A follow-up using the same candidate acquired certificates in 2239.7163 ms, then native startup rejected `crosshair observer requires compiled support and fresh assignment/tick bindings`. No geometry adjustment or GPU snapshot was performed. The existing crosshair safety check was not disabled. The generic native rejection still needs separation of compiled support, assignment and tick validation before attributing this intermittent startup failure. Prime cancellation/entry restoration, normal owned-game exit and four-profile restoration were verified. Evidence: `continuous-stereo-10756-20261017-182746-6ba84fa0.*`, `vrdof110-startup-{audit,normal-close,save-restored}.json`.
+
+Next: isolate that rejection with existing binding evidence; complete the reversible, nonactivating window-geometry experiment without weakening transfer or UI admission checks. Mounted black output, fork UI placement, recoil ring alignment and new headset acceptance remain open.
