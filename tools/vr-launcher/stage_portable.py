@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PROJECT_MODULES = {
     'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight',
     'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy tiny_output_recovery',
-    'game-io': 'background_input game_io menu_state menu_control movie_state',
+    'game-io': 'background_input game_io menu_state menu_control movie_state scene_owner_snapshot',
     'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',
     'native-capture': ('anchor_config cinematic_anchor mounted_context crosshair_assignment_config hook_entry_attestation camera_closer_options '
         'launch_reserve menu_display_monitor prime_owner run_stereo_continuous run_stereo_probe startup_selftests '

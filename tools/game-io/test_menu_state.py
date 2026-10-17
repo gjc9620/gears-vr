@@ -135,6 +135,50 @@ class MenuStateTests(unittest.TestCase):
         # Focus on actual sample validation; no OS APIs or registry enumeration.
         self.reader.refresh = lambda: None
 
+    def test_owner_option_is_explicit_and_does_not_change_default_sample(self):
+        with mock.patch('scene_owner_snapshot.capture_scene_owner', return_value={'render_admission': False}) as capture:
+            baseline = self.reader.sample()
+            self.assertNotIn('scene_owner', baseline)
+            capture.assert_not_called()
+            result = self.reader.sample(include_owner=True, expected_controller=0xa000, expected_local_player=0xb000)
+            capture.assert_called_once_with(self.r, 0x3000, 0x1000, 0xa000, 0xb000)
+            self.assertEqual(result['scene_owner'], {'render_admission': False})
+
+    def test_owner_option_requires_addresses_before_any_read(self):
+        for controller, player in ((None, None), (0, 1), (True, 2), (-1, 2), (2**64, 2), (1, '2')):
+            with self.subTest(controller=controller, player=player):
+                before = dict(self.r.read_counts)
+                with self.assertRaises(ValueError):
+                    self.reader.sample(include_owner=True, expected_controller=controller, expected_local_player=player)
+                self.assertEqual(self.r.read_counts, before)
+
+    def test_owner_failure_propagates_without_partial_sample_or_retry(self):
+        from scene_owner_snapshot import SceneOwnerRejected
+        original_read = self.r.read
+        with mock.patch('scene_owner_snapshot.capture_scene_owner', side_effect=SceneOwnerRejected('changed')) as capture:
+            with self.assertRaisesRegex(SceneOwnerRejected, 'changed'):
+                self.reader.sample(include_owner=True, expected_controller=0xa000, expected_local_player=0xb000)
+            self.assertEqual(capture.call_count, 1)
+        self.assertEqual(self.r.read, original_read)
+
+    def test_owner_option_rejects_missing_active_scene(self):
+        self.r.array(0x3000, 'ActiveScenes', [])
+        with mock.patch('scene_owner_snapshot.capture_scene_owner') as capture:
+            with self.assertRaisesRegex(RuntimeError, 'active PathChoice'):
+                self.reader.sample(include_owner=True, expected_controller=0xa000, expected_local_player=0xb000)
+            capture.assert_not_called()
+
+    def test_owner_cli_rejects_incomplete_addresses_before_opening_process(self):
+        import menu_state
+        for args in (['--owner'], ['--owner-controller', '0x1000'],
+                     ['--owner', '--owner-controller', '0', '--owner-player', '0x2000']):
+            with self.subTest(args=args), mock.patch('sys.argv', ['menu_state.py', '--pid', '123', *args]), \
+                 mock.patch('menu_state.MenuReader') as reader, mock.patch('sys.stderr'):
+                with self.assertRaises(SystemExit) as stopped:
+                    menu_state.main()
+                self.assertEqual(stopped.exception.code, 2)
+                reader.assert_not_called()
+
     def add_tree_widget(self,address,parent,name='Branch'):
         self.r.object(address,name,'Widget',parent)
         self.r.array(address,'Children',[])

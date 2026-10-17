@@ -297,9 +297,16 @@ class MenuReader:
         if any(r.read(getattr(r,prefix+'_header'),16)!=raw for prefix,raw in headers.items()):
             raise RuntimeError('Registry header changed during forced refresh')
 
-    def sample(self, *, include_tree=False, include_layout=False):
+    def sample(self, *, include_tree=False, include_layout=False, include_owner=False,
+               expected_controller=None, expected_local_player=None):
         options = dict(include_tree=include_tree or include_layout)
         if include_layout:options['include_layout'] = True
+        if include_owner:
+            if any(type(value) is not int or not 0 < value < 1 << 64
+                   for value in (expected_controller, expected_local_player)):
+                raise ValueError('Owner evidence requires current controller and local-player addresses')
+            options.update(include_owner=True, expected_controller=expected_controller,
+                           expected_local_player=expected_local_player)
         refresh_used = False
         if getattr(self, '_registry_dirty', False):
             # No sample may use this cache until the original client identity,
@@ -328,7 +335,8 @@ class MenuReader:
                 raise InventoryChanged(str(error)) from error
             raise
 
-    def _sample_once(self, *, include_tree=False, include_layout=False):
+    def _sample_once(self, *, include_tree=False, include_layout=False, include_owner=False,
+                     expected_controller=None, expected_local_player=None):
         include_tree = include_tree or include_layout
         self.refresh()
         r = self.r
@@ -363,6 +371,8 @@ class MenuReader:
             if include_tree:result['tree'] = []
             if include_layout:
                 result['layout_evidence'] = 'consistent CPU layout snapshot; not actual draw/scissor proof'
+            if include_owner and not scenes:
+                raise RuntimeError('Owner evidence requires an active PathChoice scene')
             if scenes:
                 top = registered(r, scenes[-1])
                 if self.pointer(top, 'SceneClient') != self.client:
@@ -372,6 +382,10 @@ class MenuReader:
                 player_index = self.integer(top, 'LastPlayerIndex')
                 result['top'] = dict(summary[-1], tag=r.name(tag), tag_number=number)
                 result['player_index'] = player_index
+                if include_owner:
+                    from scene_owner_snapshot import capture_scene_owner
+                    result['scene_owner'] = capture_scene_owner(
+                        r, self.client, top['address'], expected_controller, expected_local_player)
                 current, seen = top['address'], set()
                 while current:
                     if current in seen or len(seen) >= 16:
@@ -447,17 +461,29 @@ def main():
     parser.add_argument('--samples', type=int, default=1)
     parser.add_argument('--tree', action='store_true', help='Include bounded, consistently re-read top Children tree')
     parser.add_argument('--layout', action='store_true', help='Include reflected CPU RenderBounds evidence; implies --tree, not draw/scissor proof')
+    parser.add_argument('--owner', action='store_true', help='Include fresh PathChoice owner graph evidence; requires current expected player addresses')
+    parser.add_argument('--owner-controller', type=lambda value: int(value, 0))
+    parser.add_argument('--owner-player', type=lambda value: int(value, 0))
     args = parser.parse_args()
+    owner_addresses = (args.owner_controller, args.owner_player)
+    if args.owner:
+        if any(value is None or not 0 < value < 1 << 64 for value in owner_addresses):
+            parser.error('--owner requires valid --owner-controller and --owner-player addresses')
+    elif any(value is not None for value in owner_addresses):
+        parser.error('--owner-controller and --owner-player require --owner')
     args.tree = args.tree or args.layout
     reader = MenuReader(args.pid)
     results = []
     try:
         for _ in range(max(1, min(args.samples, 100))):
             began = time.perf_counter()
-            value = reader.sample(include_tree=args.tree, include_layout=args.layout)
+            options = dict(include_tree=args.tree, include_layout=args.layout)
+            if args.owner:options.update(include_owner=True, expected_controller=args.owner_controller,
+                                         expected_local_player=args.owner_player)
+            value = reader.sample(**options)
             value['sample_ms'] = round((time.perf_counter()-began)*1000, 3)
             results.append(value)
-            print(json.dumps(value if args.tree else compact_state(value)), flush=True)
+            print(json.dumps(value if args.tree or args.owner else compact_state(value)), flush=True)
             if args.samples > 1:
                 time.sleep(.1)
     finally:
