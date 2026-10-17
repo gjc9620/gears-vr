@@ -60,7 +60,7 @@ bool matching(Row const& row){return eligible(true)&&row.ticket==consuming_frame
 using BindFn=uint64_t(__fastcall*)(const uint16_t*,void*,void*,uint32_t,int32_t);
 BindFn original_bind{};void* bind_target{};bool input_attested{};
 constexpr unsigned input_slot_limit=32; // Observation bound, not a claimed native capacity.
-InputSample input_sample(InputBind const& b,bool fixed_slot=false){
+InputSample input_sample(InputBind const& b,bool fixed_slot=false,uintptr_t proved_public_global=0){
     InputSample out;out.view=view(b.view_address);
     if(read(out.descriptor,b.descriptor_address))out.mask|=1;
     if(read(out.shader_handle,b.shader_owner,0x50))out.mask|=2;
@@ -78,7 +78,11 @@ InputSample input_sample(InputBind const& b,bool fixed_slot=false){
     // Only the exact selection=0/alternate=0 branch is named here. The public
     // pointer is loaded from the proved global cell, never inferred by size.
     if(!b.selection&&!b.alternate&&(out.mask&8)){
-        out.public_global=base+(out.selector?0x1c3b488:0x1c3b410);
+        // Optional Output-tail re-read of the already proved bank0 source.
+        // The actual selector above is never replaced. No other supplied cell
+        // is accepted, and ordinary observer/checkpoint reads stay unchanged.
+        if(proved_public_global&&proved_public_global!=base+0x1c3b410)return out;
+        out.public_global=proved_public_global?proved_public_global:base+(out.selector?0x1c3b488:0x1c3b410);
         if(read(out.public_pointer,out.public_global)){out.mask|=64;
             if(out.public_pointer>=0x13c){out.public_wrapper=out.public_pointer-0x13c;
                 if(read(out.public_index,out.public_wrapper,0x138)){out.mask|=128;

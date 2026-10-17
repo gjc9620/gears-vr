@@ -63,8 +63,8 @@ bool binding_same(Eye::BindingEvidence const& a,Eye::BindingEvidence const& b){
         a.canonical_list==b.canonical_list&&a.generation==b.generation&&x.object==y.object&&x.native==y.native&&x.canonical==y.canonical&&
         x.width==y.width&&x.height==y.height&&x.dimension==y.dimension&&x.format==y.format&&x.depth==y.depth&&x.mips==y.mips&&x.samples==y.samples;
 }
-bool binding_snapshot(Output const& o,Eye::BindingEvidence& out,BindingTrace* trace=nullptr){
-    const auto before=list_path(o.before.context);const auto s=dlss_route_observer::input_sample(o.binding_capture,true);
+bool binding_snapshot(Output const& o,Eye::BindingEvidence& out,BindingTrace* trace=nullptr,uintptr_t proved_public_global=0){
+    const auto before=list_path(o.before.context);const auto s=dlss_route_observer::input_sample(o.binding_capture,true,proved_public_global);
     uintptr_t vtable{};const auto after=list_path(o.before.context);
     const bool chain=before.valid&&after.valid&&before.raw==after.raw&&before.canonical==after.canonical&&before.generation==after.generation&&
         before.owner==after.owner&&before.table==after.table&&before.method==after.method;
@@ -88,6 +88,41 @@ bool binding_current(Output const& o,BindingTrace* trace=nullptr,Eye::BindingEvi
     const bool snapshot=binding_snapshot(o,fresh,trace);trace->same=binding_same(o.binding,fresh);
     if(observed)*observed=fresh;
     return o.binds==1&&o.binding_proved&&!o.binding_failed&&snapshot&&trace->same;
+}
+bool output_tail_current(Output const& o,OutputExitReceipt& r){
+    // Only the normal generated Output tail may change the view's selector.
+    // Earlier Bind/quad/draw checks retain binding_current, including equality
+    // of their actual selectors and public cells. This never adopts bank1.
+    if(!o.site||!r.valid||r.failed||r.nested||r.exception||r.setters!=1||r.quads!=1||r.draws!=1||r.binds!=1||
+       !r.setter_proved||!r.quad_complete||!r.draw_complete||!r.draw_candidate||!r.stable||!r.descriptor_stable||
+       !o.binding_proved||o.binding_failed||!o.binding.complete||o.binding.selector!=0||o.binding.public_global!=base+0x1c3b410||
+       o.before.marker!=1||r.fresh_view.marker!=1||!(r.trace.sample.mask&8)||r.trace.sample.selector!=1)return false;
+    // The strict observation may differ only in selecting the new public bank.
+    // Missing or changed original fields are not repaired by a second sample.
+    auto const& strict=r.trace.sample;auto const& proved=o.binding;auto const& old=proved.resource;auto const& seen=strict.resource;
+    if((strict.mask&0x23f)!=0x23f||!same(o.before,strict.view)||strict.descriptor!=proved.descriptor||strict.shader_handle!=proved.shader_handle||
+       strict.slot!=proved.slot||strict.highwater!=proved.highwater||!seen.queried||!SUCCEEDED(seen.result)||seen.object!=old.object||
+       seen.native!=old.native||seen.canonical!=old.canonical||seen.width!=old.width||seen.height!=old.height||seen.dimension!=old.dimension||
+       seen.format!=old.format||seen.depth!=old.depth||seen.mips!=old.mips||seen.samples!=old.samples||!r.trace.vtable_read||r.trace.vtable!=proved.vtable||
+       !r.trace.chain||r.trace.after.raw!=proved.list||r.trace.after.canonical!=proved.canonical_list||r.trace.after.generation!=proved.generation)return false;
+    Eye::BindingEvidence fresh;if(!binding_snapshot(o,fresh,&r.tail_trace,o.binding.public_global))return false;
+    auto const& a=o.binding;auto const& b=fresh;auto const& x=a.resource;auto const& y=b.resource;
+    const bool equal=a.complete&&b.complete&&a.selector==0&&b.selector==1&&a.descriptor==b.descriptor&&a.address==b.address&&a.owner==b.owner&&
+        a.vtable==b.vtable&&a.shader_handle==b.shader_handle&&a.view==b.view&&a.context==b.context&&a.public_global==b.public_global&&
+        a.public_pointer==b.public_pointer&&a.public_wrapper==b.public_wrapper&&a.public_index==b.public_index&&a.public_object==b.public_object&&
+        a.slot==b.slot&&a.highwater==b.highwater&&a.list==b.list&&a.canonical_list==b.canonical_list&&a.generation==b.generation&&
+        x.object==y.object&&x.native==y.native&&x.canonical==y.canonical&&x.width==y.width&&x.height==y.height&&x.dimension==y.dimension&&
+        x.format==y.format&&x.depth==y.depth&&x.mips==y.mips&&x.samples==y.samples;
+    r.tail_trace.same=equal;
+    uint32_t selector{},public_index{};Descriptor descriptor{};uintptr_t public_pointer{},public_object{},object{},handle{},vtable{};unsigned char highwater{};
+    return equal&&dlss_route_observer::read(selector,o.view,0x3e8)&&selector==1&&
+        dlss_route_observer::read(descriptor,o.binding_capture.descriptor_address)&&descriptor==a.descriptor&&
+        dlss_route_observer::read(handle,a.owner,0x50)&&handle==a.shader_handle&&dlss_route_observer::read(vtable,a.owner)&&vtable==a.vtable&&
+        dlss_route_observer::read(public_pointer,a.public_global)&&public_pointer==a.public_pointer&&
+        dlss_route_observer::read(public_index,a.public_wrapper,0x138)&&public_index==a.public_index&&
+        dlss_route_observer::read(public_object,a.public_wrapper,0x38+uintptr_t(public_index)*8)&&public_object==a.public_object&&
+        dlss_route_observer::read(highwater,a.context,0x65d)&&highwater==a.highwater&&
+        dlss_route_observer::read(object,a.context,0x768+uintptr_t(a.slot)*8)&&object==a.resource.object&&stable(o)&&descriptor_stable(o);
 }
 void binding_fail(Output& o){o.binding_failed=true;if(o.site)fail(o,Failure::identity_changed);}
 BindScope::BindScope(bool world,uintptr_t caller,const uint16_t* descriptor,void* view,void* owner,uint32_t selection,int32_t alternate)
@@ -143,12 +178,14 @@ OutputScope::~OutputScope(){
         r.flags_read=dlss_route_observer::read(r.fresh_flags,value.pass,8);
         r.fresh_view=value.binding_capture.view_address==value.view?r.trace.sample.view:dlss_route_observer::view(value.view);
         r.descriptor_read=value.descriptor&&dlss_route_observer::read(r.fresh_descriptor,value.descriptor);
+        r.tail_transition_validated=!r.binding_current&&output_tail_current(value,r);
         const bool valid=r.valid&&!r.failed&&!r.nested&&!r.exception&&r.setters==1&&r.quads==1&&r.draws==1&&
-            r.setter_proved&&r.quad_complete&&r.stable&&r.descriptor_stable&&r.binding_current;
-        if(!valid)publish_exit_failure(r);
+            r.setter_proved&&r.quad_complete&&r.stable&&r.descriptor_stable&&(r.binding_current||r.tail_transition_validated);
+        r.output_admitted=valid;
+        if(!valid||!r.binding_current)publish_exit_failure(r); // Retain strict failure even for a separately proved tail.
         std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(auto* e=store.find(value.key)){
             if(!valid)e->fail(Failure::identity_changed);
-            else{auto& eye=e->payload.eyes[value.before.eye];eye=value.proof;eye.output_complete=true;e->proved(value.before.eye,false,true);++output_proved;}}
+            else{auto& eye=e->payload.eyes[value.before.eye];eye=value.proof;eye.output_complete=true;eye.tail_transition_validated=r.tail_transition_validated;e->proved(value.before.eye,false,true);++output_proved;}}
     }
     current_output=previous;
 }
@@ -265,6 +302,12 @@ void print_exit_failure(FILE* file){
         unsigned(r.setter_proved),unsigned(r.quad_complete),unsigned(r.draw_candidate),unsigned(r.draw_complete),unsigned(r.stable),unsigned(r.descriptor_stable),unsigned(r.binding_current),
         unsigned(r.binding_snapshot),unsigned(r.binding_equal),unsigned(r.binding_proved),unsigned(r.binding_failed),unsigned(r.current),unsigned(r.thread_same),unsigned(r.flags_read),r.flags,r.fresh_flags,
         unsigned(r.descriptor_read),r.expected[0],r.expected[1],r.expected[2],r.fresh_descriptor[0],r.fresh_descriptor[1],r.fresh_descriptor[2]);
+    fprintf(file,"dlss_output_tail_transition tail_transition_validated=%u output_admitted=%u strict_binding_current=%u actual_selector=%u sampled_sourceglobal=%llx input_mask=%u descriptor=%u,%u,%u public_pointer=%llx public_wrapper=%llx public_index=%u public_object=%llx slot_object=%llx native=%llx canonical=%llx list_raw=%llx list_canonical=%llx generation=%llu chain=%u same=%u\n",
+        unsigned(r.tail_transition_validated),unsigned(r.output_admitted),unsigned(r.binding_current),r.tail_trace.sample.selector,static_cast<unsigned long long>(r.tail_trace.sample.public_global),r.tail_trace.sample.mask,
+        r.tail_trace.sample.descriptor[0],r.tail_trace.sample.descriptor[1],r.tail_trace.sample.descriptor[2],static_cast<unsigned long long>(r.tail_trace.sample.public_pointer),
+        static_cast<unsigned long long>(r.tail_trace.sample.public_wrapper),r.tail_trace.sample.public_index,static_cast<unsigned long long>(r.tail_trace.sample.public_object),
+        static_cast<unsigned long long>(r.tail_trace.sample.resource.object),static_cast<unsigned long long>(r.tail_trace.sample.resource.native),static_cast<unsigned long long>(r.tail_trace.sample.resource.canonical),
+        static_cast<unsigned long long>(r.tail_trace.after.raw),static_cast<unsigned long long>(r.tail_trace.after.canonical),r.tail_trace.after.generation,unsigned(r.tail_trace.chain),unsigned(r.tail_trace.same));
     for(unsigned i=0;i<2;++i){auto const& b=i?r.trace.sample:r.input_before;auto const& v=i?r.fresh_view:r.before;
         fprintf(file,"dlss_output_exit_sample stage=%s input_mask=%u descriptor=%u,%u,%u selector=%u slot=%u highwater=%u shader_handle=%llx public_global=%llx public_pointer=%llx public_wrapper=%llx public_index=%u public_object=%llx original_slot_object=%llx proved_slot_object=%llx actual_slot_object=%llx native=%llx canonical=%llx queried=%u result=%ld dimensions=%llu,%u format=%u dimension=%u depth=%u mips=%u samples=%u",
             i?"fresh":"before",b.mask,b.descriptor[0],b.descriptor[1],b.descriptor[2],b.selector,b.slot,unsigned(b.highwater),
@@ -302,6 +345,8 @@ void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mut
                 unsigned(n==0),i,r.key.world,r.key.id,static_cast<unsigned long long>(e.renderer),static_cast<unsigned long long>(e.view),static_cast<unsigned long long>(e.context),static_cast<unsigned long long>(e.pass),static_cast<unsigned long long>(e.descriptor),unsigned(e.output_complete),unsigned(d.candidate),
                 static_cast<unsigned long long>(d.list),d.generation,static_cast<unsigned long long>(d.source),static_cast<unsigned long long>(d.target),e.forwarded[0],e.forwarded[1],e.forwarded[2],e.forwarded[3],e.forwarded[4],e.forwarded[5],e.forwarded[6],e.forwarded[7],e.dimensions[0],e.dimensions[1],e.dimensions[2],e.dimensions[3]);
             auto const& b=e.binding;
+            fprintf(file,"dlss_output_tail_eye allowed=%u eye=%u tail_transition_validated=%u sampled_sourceglobal=%llx\n",
+                unsigned(n==0),i,unsigned(e.tail_transition_validated),static_cast<unsigned long long>(b.public_global));
             fprintf(file,"dlss_output_binding_evidence allowed=%u eye=%u complete=%u descriptor=%u,%u,%u slot=%u highwater=%u owner=%llx vtable=%llx view=%llx context=%llx public_global=%llx public_pointer=%llx wrapper=%llx index=%u public_object=%llx native=%llx canonical=%llx format=%u dimensions=%llu,%u list_raw=%llx list_canonical=%llx generation=%llu shader_sampling_verified=0\n",
                 unsigned(n==0),i,unsigned(b.complete),b.descriptor[0],b.descriptor[1],b.descriptor[2],b.slot,b.highwater,
                 static_cast<unsigned long long>(b.owner),static_cast<unsigned long long>(b.vtable),static_cast<unsigned long long>(b.view),static_cast<unsigned long long>(b.context),

@@ -72,7 +72,7 @@ bool enable(FILE* file){
 }
 void print_sample(FILE* file,Row const& row,unsigned index,const char* stage,Sample const& s){
     auto const& o=s.ownership;
-    fprintf(file,"ngx_route_sample kind=%s row=%u stage=%s slots_mask=%u handle=%llx parameters=%llx fields_mask=%x missing_reads=%u associated=%u world=%llu ticket=%llu eye=%u renderer=%llx context=%llx current_view=%llx renderer_views=%llx renderer_count=%d ownership_mask=%u\n",
+    fprintf(file,"ngx_route_sample kind=%s row=%u stage=%s slots_mask=%u handle=%llx parameters=%llx fields_mask=%x missing_reads=%u tls_associated=%u world=%llu ticket=%llu tls_eye=%u logical_eye_verified=0 renderer=%llx context=%llx current_view=%llx renderer_views=%llx renderer_count=%d ownership_mask=%u\n",
         row.evaluate?"evaluate":"create",index,stage,s.slots_mask,static_cast<unsigned long long>(s.handle),static_cast<unsigned long long>(s.parameters),s.fields_mask,unsigned(s.slots_mask!=3||s.fields_mask!=(row.evaluate?0x7ffffu:0x7fu)),
         unsigned(o.associated),o.world,o.ticket,o.eye,static_cast<unsigned long long>(o.renderer),static_cast<unsigned long long>(o.context),static_cast<unsigned long long>(o.view),static_cast<unsigned long long>(o.views),o.count,o.mask);
     if(!row.evaluate){fprintf(file,"ngx_route_create_fields row=%u stage=%s width=%u height=%u out_width=%u out_height=%u quality_raw=%u flags_raw=%u output_subrects_byte_raw=%u\n",

@@ -74,6 +74,12 @@ Native81从`e758929`冻结，DLL SHA256 `8478dac38c9f96519418ba189f43d0af2a198df
 
 Output退出首次失败记录已实现：逐项调用原stable/descriptor/binding谓词并保留原AND条件，保存前后选择状态、字段mask、原槽/实际对象和列表generation；只发布第一条完整记录，cleanup以release/acquire读取，最多四行。正常、仅selector切换、槽变更、缺读、generation漂移及禁止后续覆盖用例通过。记录只用于定位，不授权publication。
 
+Native82（`c7faf64`，SHA256 `a991b62b941a97f17e222c6895f719a826e761fa31b693d54a80bccc2dd11b8e`）完整构建、五组wrapper/policy及实际GPU frame-link ABI自测通过。实际`continuous-stereo-41880-20261018-034815-8ed1daee`得567次绘制证明，0 Output完成和0图片/XR场景发布，XR退出1/incomplete。首次失败receipt表明：所有其他退出谓词通过，input mask1023，selector确为0→1；原绑定槽对象、真实format26资源及list raw/canonical/generation596均保持。当前publicglobal转为新bank后对象不匹配，恰是binding_current拒绝点。该首条记录只覆盖ticket1左Output，后续修正仍须实际验证双眼及后续帧。
+
+同轮当前NGX完整认证通过，记录0 Create和8 Evaluate，后续1132次只正常旁路不写行。未观察到Create只说明激活之后没有记录。row1..6覆盖ticket1..3的三对调用：提交结构render853×360，source base分别0/1280，output raw相同且output base均0；公共handle槽前后相同。只有row2 Reset=1，其余相关行0。两个不同source base调用的执行TLS都指向eye1；它不能用于识别逻辑左/右眼，日志后续改为tls_associated/tls_eye并显式logical_eye_verified=0。相同输出区域可能被覆盖，也可能是暂存后搬运；仍需实际写入/复制与最终像素证据。公共槽快照不证明下游消费handle或独立时域历史。
+
+该轮native cleanup、所有entry独立恢复、正常关闭和设置/四profile恢复通过，无自有前台采样。下一私有修正保留绘制全程严格源绑定，只在Output正常尾部接受已认证marker1的0→1转换，并从原已证明publicglobal0重新核对完整源链；不借新bank替换源或放宽其他身份检查。Astra复核认可进入GPU像素实验，DLSS支持仍未完成。
+
 ## 其他主线进展
 
 `50cbfcd` 为 MenuReader 增加可选的 Position/DockTargets 原始布局采集，70项离线测试通过。普通采样不增加这些读取，未改变UI位置。实际普通双目回归 `ui-layout-details4-20261018` 提交1359次、scene copy723次，约15.08秒，最大提交间隔28.7181ms；正常清理和配置恢复通过。岔路详细采集初次遇到导航碰撞、脚本结果字段及注册表变化；后续 `ui-layout-details7-20261018` 已取得完整13节点及布局详情，见[文档155](155-path-choice-position-and-docking.md)。这仍不是UI修复验收。

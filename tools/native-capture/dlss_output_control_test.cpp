@@ -22,13 +22,15 @@ uint64_t __fastcall control_original_bind(const uint16_t* desc,void* view,void* 
     if(mode==47)put(control_shader,0,uintptr_t(0x999));
     return 0xfedcba9876543210ull;
 }
-void control_bind(){fake_caller=mode==50?0xd831c9:0xd831c8;
+void control_bind(){fake_caller=mode==50||mode==82?0xd831c9:0xd831c8;
     assert(dlss_route_observer::hook_bind(control_descriptor(),expected_view,control_shader.data(),0,0)==0xfedcba9876543210ull);}
 void control_reset(){
     reset();dlss_output_control::first_exit_failure={};dlss_output_control::exit_failure_claimed=false;dlss_output_control::exit_failure_ready=false;
     dlss_output_control::store={};dlss_output_control::attested=true;dlss_output_control::active_key={};
     dlss_output_control::current_output=nullptr;dlss_output_control::current_quad=nullptr;
+    input_public_missing=false;
     source_available=true;source_width=2560;source_format=26;control_forward_count=control_draw_count=control_bind_calls=0;mode=10;
+    source_native=0xabc;source_canonical=0x1234;
     dlss_route_observer::input_attested=true;dlss_route_observer::original_bind=control_original_bind;
     fake_list_generation=4;fake_list_canonical=0x500;fake_system_methods=true;drift_list_generation=false;
     dlss_output_control::other_setters=dlss_output_control::list_rejected=0;
@@ -71,11 +73,14 @@ void controlled_quad(unsigned selected_mode){
         if(selected_mode==49)put(context,0x768+5*8,uintptr_t(0x888));
         if(selected_mode==52)++fake_list_generation; // Drift during the actual native draw invocation.
         if(selected_mode==53)throw std::runtime_error("actual draw");
+        if(selected_mode==66)put(views,uintptr_t(expected_view)-reinterpret_cast<uintptr_t>(views.data())+0x3e8,uint32_t(1));
     }
+    if(selected_mode==67)put(views,uintptr_t(expected_view)-reinterpret_cast<uintptr_t>(views.data())+0x3e8,uint32_t(1));
     if(selected_mode==30)throw std::runtime_error("quad");
 }
 uint32_t test_control_output(){
     const auto selected_mode=mode;
+    if(selected_mode==83){put(views,uintptr_t(expected_view)-reinterpret_cast<uintptr_t>(views.data())+0x3e8,uint32_t(1));return 0xfedcba98u;}
     if(selected_mode==19){mode=10;dlss_route_observer::hook_output(expected_pass,0xfeed,expected_view);mode=19;}
     {
         // d82fd9 calls 194950, which can issue this 1024x32 preprocessing
@@ -103,18 +108,40 @@ uint32_t test_control_output(){
     if(selected_mode==35)put(context,0x127c,uintptr_t(0));
     if(selected_mode==36)fake_list_canonical=0x501;
     if(selected_mode==37)list_vtable[12]=0x9999;
+    if(selected_mode==65)put(views,uintptr_t(expected_view)-reinterpret_cast<uintptr_t>(views.data())+0x3e8,uint32_t(1));
     controlled_quad(selected_mode);
     if(selected_mode==42)control_bind(); // Duplicate after actual draw must invalidate the ticket too.
     if(selected_mode==55)put(control_shader,0xb4,gears_dlss_route::Descriptor{6,1,0});
     if(selected_mode==12)controlled_quad(selected_mode);
     if(selected_mode==13)throw std::runtime_error("output after draw");
     if(selected_mode==22)put(views,0x48,gears_dlss_route::Float4{0,0,1279,1080});
-    // Native d83d5b tail-like transitions happen after draw/quad completion;
-    // they must remain OutputExit rejection causes, never diagnostic admission.
+    // Native marker1 d83d5b tail updates only this selector after the final quad.
     if(selected_mode==56)put(views,uintptr_t(expected_view)-reinterpret_cast<uintptr_t>(views.data())+0x3e8,uint32_t(1));
     if(selected_mode==57)put(context,0x768+5*8,uintptr_t(0x888));
     if(selected_mode==58)dlss_output_control::current_output->binding_capture.descriptor_address=1;
     if(selected_mode==59)++fake_list_generation;
+    if(selected_mode>=60&&selected_mode<=82)put(views,uintptr_t(expected_view)-reinterpret_cast<uintptr_t>(views.data())+0x3e8,uint32_t(selected_mode==60?2:1));
+    if(selected_mode==61)put(family,0x4c,uint32_t(0));
+    if(selected_mode==62)put(control_public,0x38+2*8,uintptr_t(0x999));
+    if(selected_mode==63)put(context,0x768+5*8,uintptr_t(0x888));
+    if(selected_mode==64)++fake_list_generation;
+    if(selected_mode==68)put(control_shader,0xb4,gears_dlss_route::Descriptor{6,1,0});
+    if(selected_mode==69)put(control_shader,0x50,uintptr_t(0xabc124));
+    if(selected_mode==70)input_public_cell=0;
+    if(selected_mode==71)source_format=24;
+    if(selected_mode==72)committed_world_generation=10;
+    if(selected_mode==73)input_public_cell+=8;
+    if(selected_mode==74)put(context,0x65d,uint8_t(11));
+    if(selected_mode==75)put(owner,0xaa,gears_dlss_route::Descriptor{0xffff,0xfffe,0});
+    if(selected_mode==76)put(control_shader,0,uintptr_t(0xabcdf));
+    if(selected_mode==77)put(list_owner,0x14,reinterpret_cast<uintptr_t>(foreign_list.data()));
+    if(selected_mode==78)drift_list_generation=true;
+    if(selected_mode==79)source_width=1280;
+    if(selected_mode==80)source_available=false;
+    if(selected_mode==81)input_public_missing=true;
+    if(selected_mode==84){put(views,uintptr_t(expected_view)-reinterpret_cast<uintptr_t>(views.data())+0x3e8,uint32_t(1));throw std::runtime_error("output tail");}
+    if(selected_mode==85||selected_mode==86){put(views,uintptr_t(expected_view)-reinterpret_cast<uintptr_t>(views.data())+0x3e8,uint32_t(1));
+        if(selected_mode==85)source_canonical=0x4321;else source_native=0xdef;}
     assert(!dlss_output_control::publication(9,7)); // Output/consume are still incomplete.
     return 0xfedcba98u;
 }
@@ -144,7 +171,7 @@ void run_control_cases(){
         assert(!dlss_output_control::publication(9,7));
         if(failure>=32&&failure<=37)assert(!control_draw_count);
     }
-    for(unsigned exception:{13u,30u,43u,53u}){control_reset();mode=exception;
+    for(unsigned exception:{13u,30u,43u,53u,84u}){control_reset();mode=exception;
         try{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);assert(false);}catch(std::runtime_error const&){}
         assert(!dlss_output_control::publication(9,7)&&!dlss_output_control::current_output&&!dlss_output_control::current_quad&&!dlss_output_control::active_key);}
     control_reset();source_available=false;{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}assert(!dlss_output_control::publication(9,7));
@@ -162,7 +189,7 @@ void run_control_cases(){
     control_reset();{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);
         put(control_public,0x138,uint32_t(3));put(control_public,0x38+3*8,uintptr_t(0x777));eye(1);}
     assert(!dlss_output_control::publication(9,7)&&control_draw_count==2);
-    for(unsigned failure:{56u,57u,58u,59u}){
+    for(unsigned failure:{57u,58u,59u}){
         control_reset();mode=failure;
         {dlss_output_control::ConsumeScope consume(9,7,true);eye(0);}
         assert(!dlss_output_control::publication(9,7)&&dlss_output_control::exit_failure_ready.load(std::memory_order_acquire));
@@ -170,8 +197,6 @@ void run_control_cases(){
         assert(first.valid&&!first.failed&&!first.nested&&!first.exception&&first.setter_proved&&first.quad_complete&&first.draw_candidate&&first.draw_complete);
         assert(first.setters==1&&first.quads==1&&first.draws==1&&first.stable&&first.descriptor_stable&&!first.binding_current);
         assert(control_draw_count==1&&control_forward_count==1&&first.binding.selector==0&&first.before.marker==1&&first.fresh_view.marker==1);
-        if(failure==56){assert(first.trace.sample.selector==1&&first.trace.sample.mask==1023&&first.binding.resource.object==first.trace.sample.resource.object);
-            assert(first.binding.public_global!=first.trace.sample.public_global&&!first.binding_equal&&first.binding_snapshot);}
         if(failure==57)assert(first.binding.resource.object==0x777&&first.trace.sample.resource.object==0x888&&!first.binding_equal&&!first.binding_snapshot);
         if(failure==58)assert(!(first.trace.sample.mask&1)&&!first.binding_snapshot&&first.trace.sample.resource.object==0x777);
         if(failure==59)assert(first.binding.generation==4&&first.trace.after.generation==5&&!first.binding_equal&&first.binding_snapshot);
@@ -181,8 +206,32 @@ void run_control_cases(){
             dlss_output_control::first_exit_failure.trace.sample.selector==first.trace.sample.selector);
         FILE* receipt{};assert(!tmpfile_s(&receipt)&&receipt);dlss_output_control::print_exit_failure(receipt);
         assert_report(receipt,"dlss_output_exit_failure",false);assert_report(receipt,"diagnostics_authorize=0",false);
-        rewind(receipt);unsigned lines{};for(int ch;(ch=fgetc(receipt))!=EOF;)if(ch=='\n')++lines;assert(lines==4);fclose(receipt);
+        rewind(receipt);unsigned lines{};for(int ch;(ch=fgetc(receipt))!=EOF;)if(ch=='\n')++lines;assert(lines==5);fclose(receipt);
     }
+    for(bool unreadable_new_bank:{false,true}){control_reset();mode=56;if(unreadable_new_bank)input_alternate_cell=0;
+        {dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}
+        assert(dlss_output_control::publication(9,7)&&control_forward_count==2&&control_draw_count==2);
+        auto const& receipt=dlss_output_control::first_exit_failure;
+        assert(dlss_output_control::exit_failure_ready.load(std::memory_order_acquire)&&!receipt.binding_current&&receipt.tail_transition_validated&&receipt.output_admitted);
+        assert(receipt.trace.sample.selector==1&&receipt.trace.sample.public_global==base+0x1c3b488&&receipt.tail_trace.sample.selector==1&&receipt.tail_trace.sample.public_global==base+0x1c3b410);
+        assert(dlss_output_control::last_allowed.proof.eyes[0].tail_transition_validated&&dlss_output_control::last_allowed.proof.eyes[1].tail_transition_validated);
+        FILE* printed{};assert(!tmpfile_s(&printed)&&printed);dlss_output_control::print_exit_failure(printed);
+        assert_report(printed,"tail_transition_validated=1",false);assert_report(printed,"sampled_sourceglobal=141c3b410",false);fclose(printed);
+    }
+    for(unsigned failure:{60u,61u,62u,63u,64u,65u,66u,67u,68u,69u,70u,71u,72u,73u,74u,75u,76u,77u,78u,79u,80u,81u,82u,85u,86u}){
+        control_reset();mode=failure;{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);}
+        assert(!dlss_output_control::publication(9,7)&&dlss_output_control::exit_failure_ready.load(std::memory_order_acquire));
+        assert(!dlss_output_control::first_exit_failure.output_admitted&&!dlss_output_control::first_exit_failure.tail_transition_validated);
+    }
+    control_reset();mode=83;{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}
+    assert(dlss_output_control::publication(9,7)&&!control_forward_count&&!control_draw_count&&!dlss_output_control::exit_failure_ready.load(std::memory_order_acquire));
+    control_reset();gears_dlss_route::InputBind raw;raw.shader_owner=reinterpret_cast<uintptr_t>(control_shader.data());raw.view_address=reinterpret_cast<uintptr_t>(views.data());
+    raw.descriptor_address=reinterpret_cast<uintptr_t>(control_descriptor());raw.tracked_slot_known=true;raw.tracked_slot=5;
+    put(views,0x3e8,uint32_t(1));
+    const auto actual=dlss_route_observer::input_sample(raw,true),pinned=dlss_route_observer::input_sample(raw,true,base+0x1c3b410);
+    const auto unsupported=dlss_route_observer::input_sample(raw,true,base+0x1c3b488);
+    assert(actual.selector==1&&actual.public_global==base+0x1c3b488&&pinned.selector==1&&pinned.public_global==base+0x1c3b410);
+    assert(unsupported.selector==1&&!(unsupported.mask&64)&&!unsupported.public_global);
     control_reset();FILE* identity{};assert(!tmpfile_s(&identity)&&identity);
     assert(!dlss_output_control::enable(identity,false));assert(!dlss_output_control::enable(identity,true)); // Missing live bytes cannot enable control.
     input_hash_fixture=true;input_hash_bytes={};assert(!dlss_output_control::enable(identity,true)); // Complete synthetic bytes are not the runtime identity.

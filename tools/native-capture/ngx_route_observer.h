@@ -17,6 +17,8 @@ constexpr std::array<unsigned,4> resource_offsets{0,8,0x18,0x20};
 // Render width/height, Reset, jitter X/Y bits, raw MV scale X/Y bits,
 // Color, Depth, MV and Output subrect base X/Y pairs.
 constexpr std::array<unsigned,15> value_offsets{0x30,0x34,0x38,0x28,0x2c,0x3c,0x40,0x60,0x64,0x68,0x6c,0x70,0x74,0x88,0x8c};
+// Association describes the executing TLS view, not the logical eye whose
+// queued NGX parameters are being evaluated. It never admits render work.
 struct Ownership {
     bool associated{};unsigned mask{},eye{};uint64_t world{},ticket{};
     uintptr_t renderer{},context{},view{},views{};int count{};

@@ -28,7 +28,7 @@ struct Eye {
         uint64_t generation{};unsigned public_index{},selector{},slot{},highwater{};gears_dlss_route::InputResource resource{};
     } binding{};
     uintptr_t renderer{},view{},context{},pass{},descriptor{};Args forwarded{};Dimensions dimensions{};
-    gears_final_transfer::EyeDrawEvidence draw{};bool output_complete{};
+    gears_final_transfer::EyeDrawEvidence draw{};bool output_complete{},tail_transition_validated{};
 };
 struct Proof {std::array<Eye,2> eyes{};};
 using Store=gears_vr_dof::Store<Proof>;

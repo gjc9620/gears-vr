@@ -18,8 +18,9 @@ struct OutputExitReceipt {
     Key key{};uintptr_t pass{},view{},renderer{},descriptor{};unsigned thread{},flags{},fresh_flags{},setters{},quads{},draws{},binds{};
     bool valid{},failed{},nested{},exception{},setter_proved{},quad_complete{},draw_candidate{},draw_complete{};
     bool current{},thread_same{},flags_read{},stable{},descriptor_read{},descriptor_stable{},binding_snapshot{},binding_equal{},binding_current{},binding_proved{},binding_failed{};
+    bool tail_transition_validated{},output_admitted{};
     View before{},fresh_view{};Descriptor expected{},fresh_descriptor{};
-    Eye::BindingEvidence binding{};gears_dlss_route::InputSample input_before{};BindingTrace trace{};
+    Eye::BindingEvidence binding{};gears_dlss_route::InputSample input_before{};BindingTrace trace{},tail_trace{};
 };
 struct ConsumeScope {
     Key key{},previous{};int exceptions{};

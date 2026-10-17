@@ -23,6 +23,7 @@ struct Scope {Scope(){++active;}~Scope(){--active;}bool world()const{return admi
 long long ticks{};long long now(){return ++ticks;}
 #if defined(GEARS_DLSS_BIND_TEST_RUNTIME)
 uintptr_t input_public_cell{},input_alternate_cell{};
+bool input_public_missing{};
 bool input_hash_fixture{},input_hash_tail_missing{};std::array<unsigned char,503> input_hash_bytes{};
 #endif
 #if defined(GEARS_DLSS_INPUT_BIND_OBSERVER_TEST)
@@ -33,7 +34,8 @@ bool safe_copy(void* out,void const* in,size_t size){
     const auto at=reinterpret_cast<uintptr_t>(in);
     if(input_hash_fixture&&at==base+0x1665dc&&size==0x1cc){std::memcpy(out,input_hash_bytes.data(),size);return true;}
     if(input_hash_fixture&&at==base+0x8b492c&&size==0x2b){if(input_hash_tail_missing)return false;std::memcpy(out,input_hash_bytes.data()+0x1cc,size);return true;}
-    if(size==8&&(at==base+0x1c3b410||at==base+0x1c3b488)){std::memcpy(out,at==base+0x1c3b410?&input_public_cell:&input_alternate_cell,8);return true;}
+    if(size==8&&(at==base+0x1c3b410||at==base+0x1c3b488)){if(at==base+0x1c3b410&&input_public_missing)return false;
+        std::memcpy(out,at==base+0x1c3b410?&input_public_cell:&input_alternate_cell,8);return true;}
 #endif
     __try{std::memcpy(out,in,size);return true;}__except(EXCEPTION_EXECUTE_HANDLER){return false;}}
 uintptr_t fake_root{},fake_caller{};
@@ -50,6 +52,7 @@ struct ResourceIdentity {
     struct Desc {unsigned Dimension=3;uint64_t Width=2560;unsigned Height=1080,DepthOrArraySize=1,MipLevels=1,Format=24;struct Samples {unsigned Count=1;} SampleDesc;} desc;
 };
 bool source_available=true;unsigned source_width=2560,source_format=24;
+uintptr_t source_native=0xabc,source_canonical=0x1234;
 unsigned source_query_calls{};
 uint64_t fake_list_generation=4;uintptr_t fake_list_canonical=0x500;bool fake_system_methods=true,drift_list_generation{};
 std::array<void*,4> viewport_targets{};
@@ -58,7 +61,7 @@ uintptr_t canonical_identity(IUnknown* value){return value?fake_list_canonical:0
 struct FakeFrameLink {gears_frame_link::ListRef current(uintptr_t value)const{return {value,fake_list_generation};}} frame_link;
 void query_bound_resource(uintptr_t object,ResourceIdentity& out){
     ++source_query_calls;
-    if(object&&source_available){out.result=0;out.native=0xabc;out.canonical=0x1234;out.desc.Width=source_width;out.desc.Format=source_format;}
+    if(object&&source_available){out.result=0;out.native=source_native;out.canonical=source_canonical;out.desc.Width=source_width;out.desc.Format=source_format;}
     if(drift_list_generation)++fake_list_generation;
 }
 uint32_t test_control_output();void run_control_cases();
