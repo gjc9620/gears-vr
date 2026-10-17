@@ -3,8 +3,10 @@
 namespace dlss_output_control {
 using namespace gears_dlss_output;
 struct Output {
-    Key key{};uintptr_t pass{},view{},renderer{},descriptor{};unsigned thread{},flags{},setters{},quads{},draws{};
+    Key key{};uintptr_t pass{},view{},renderer{},descriptor{};unsigned thread{},flags{},setters{},quads{},draws{},binds{};
     View before{};Descriptor expected{};bool valid{},site{},nested{},setter_proved{},quad_complete{},failed{};
+    bool binding_proved{},binding_failed{};gears_dlss_route::InputBind binding_capture{};
+    Eye::BindingEvidence binding{};
     Eye proof{};
 };
 struct ConsumeScope {
@@ -22,12 +24,22 @@ struct SetterScope {
     SetterScope(bool world,uintptr_t caller,const uint16_t* descriptor,unsigned index);~SetterScope();
     SetterScope(SetterScope const&)=delete;SetterScope& operator=(SetterScope const&)=delete;
 };
+struct BindScope {
+    Output* output{};bool tracking{};uintptr_t vtable{};int exceptions{};
+    BindScope(bool world,uintptr_t caller,const uint16_t* descriptor,void* view,void* owner,uint32_t selection,int32_t alternate);~BindScope();
+    BindScope(BindScope const&)=delete;BindScope& operator=(BindScope const&)=delete;
+};
 struct QuadScope {
     Output* output{};QuadScope* previous{};Args forwarded{};Dimensions dimensions{};bool changed{};int exceptions{};
     QuadScope(bool world,uintptr_t caller,Args const& args,Dimensions const& sizes);~QuadScope();
     bool candidate()const;
     void forward(float& x,float& y,float& w,float& h,float& u,float& v,float& uw,float& vh)const;
     QuadScope(QuadScope const&)=delete;QuadScope& operator=(QuadScope const&)=delete;
+};
+struct DrawCompletion {
+    Output* output{};uintptr_t list{};int exceptions{};
+    explicit DrawCompletion(uintptr_t raw);~DrawCompletion();
+    DrawCompletion(DrawCompletion const&)=delete;DrawCompletion& operator=(DrawCompletion const&)=delete;
 };
 bool enable(FILE*,bool observer_attested);
 bool scoped();

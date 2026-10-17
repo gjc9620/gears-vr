@@ -2,7 +2,8 @@
 #include "death_constant_observer.h"
 #include <exception>
 
-// Bounded CPU evidence only; never used for render admission or argument repair.
+// Bounded CPU route diagnostics. The separate private control may re-read the
+// same native layout; diagnostic rows themselves never authorize admission.
 namespace gears_dlss_route {
 using gears_death_constants::Descriptor;
 using gears_death_constants::Float4;

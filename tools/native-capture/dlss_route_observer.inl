@@ -92,6 +92,7 @@ struct InputFinish {
 };
 uint64_t __fastcall hook_bind(const uint16_t* descriptor,void* input_view,void* shader_owner,uint32_t selection,int32_t alternate){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;Scope scope;auto* row=current?current->row:nullptr;
+    dlss_output_control::BindScope control(scope.world(),caller,descriptor,input_view,shader_owner,selection,alternate);
     if(!scope.world()||!input_attested||caller!=0xd831c8||!row||!matching(*row))return original_bind(descriptor,input_view,shader_owner,selection,alternate);
     auto& b=row->input;if(b.present){++b.duplicates;return original_bind(descriptor,input_view,shader_owner,selection,alternate);}
     b.present=true;b.caller=caller;b.descriptor_address=reinterpret_cast<uintptr_t>(descriptor);b.view_address=reinterpret_cast<uintptr_t>(input_view);

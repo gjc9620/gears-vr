@@ -3247,6 +3247,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
 #endif
     }
 #endif
+    dlss_output_control::DrawCompletion dlss_binding_completion(reinterpret_cast<uintptr_t>(list));
     if(gears_viewport::has_draw_work(vertices,instances))observe_frame_draw(list,caller,0,vertices,instances);
     if(recording.load()){gears_render_cost::Scope cost(gears_render_cost::viewport_draw);viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);}
     if(recording.load())observe_output_stack(list,0);
@@ -3367,6 +3368,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             }
         }
     }
+    dlss_output_control::DrawCompletion dlss_binding_completion(reinterpret_cast<uintptr_t>(list));
     if(gears_viewport::has_draw_work(indices,instances))observe_frame_draw(list,caller,1,indices,instances);
     if(recording.load()){gears_render_cost::Scope cost(gears_render_cost::viewport_draw);viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);}
     if(recording.load())observe_output_stack(list,1);

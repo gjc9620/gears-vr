@@ -3,6 +3,9 @@ namespace dlss_output_control {
 #if !defined(GEARS_DLSS_ROUTE_OBSERVER) || !GEARS_DLSS_ROUTE_OBSERVER
 #error DLSS output control requires its independently attested route observer
 #endif
+#if !defined(GEARS_DLSS_INPUT_BIND_OBSERVER) || !GEARS_DLSS_INPUT_BIND_OBSERVER
+#error DLSS output control requires independently attested named input binding
+#endif
 #if (defined(GEARS_GRAPHICS_RUNTIME_LOCK) && GEARS_GRAPHICS_RUNTIME_LOCK) || (defined(GEARS_GRAPHICS_STARTUP_LOCK) && GEARS_GRAPHICS_STARTUP_LOCK) || (defined(GEARS_GRAPHICS_MENU_LOCK) && GEARS_GRAPHICS_MENU_LOCK)
 #error DLSS output experiment cannot run with graphics locks
 #endif
@@ -41,6 +44,56 @@ void fail(Output& o,Failure why){o.failed=true;std::lock_guard<std::recursive_mu
     if(auto* e=store.find(o.key))e->fail(why);}
 void participate(Output& o){o.site=true;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(!store.participate(o.key))o.failed=true;}
+bool named_sample(Output const& o,gears_dlss_route::InputSample const& s,uintptr_t vtable){
+    auto const& r=s.resource;
+    return same(o.before,s.view)&&s.mask==1023&&vtable&&s.shader_handle&&s.descriptor[1]&&s.slot<32&&s.highwater<=32&&s.slot<s.highwater&&
+        s.public_object&&s.public_object==r.object&&r.queried&&SUCCEEDED(r.result)&&r.native&&r.canonical&&r.dimension==3&&r.format==26&&
+        r.width&&r.width<=8192&&!(r.width%2)&&r.height&&r.height<=8192&&r.depth==1&&r.mips==1&&r.samples==1;
+}
+bool binding_same(Eye::BindingEvidence const& a,Eye::BindingEvidence const& b){
+    auto const& x=a.resource;auto const& y=b.resource;
+    return a.complete&&b.complete&&a.descriptor==b.descriptor&&a.address==b.address&&a.owner==b.owner&&a.vtable==b.vtable&&a.shader_handle==b.shader_handle&&
+        a.view==b.view&&a.context==b.context&&a.public_global==b.public_global&&a.public_pointer==b.public_pointer&&a.public_wrapper==b.public_wrapper&&
+        a.public_index==b.public_index&&a.public_object==b.public_object&&a.selector==b.selector&&a.slot==b.slot&&a.list==b.list&&
+        a.canonical_list==b.canonical_list&&a.generation==b.generation&&x.object==y.object&&x.native==y.native&&x.canonical==y.canonical&&
+        x.width==y.width&&x.height==y.height&&x.dimension==y.dimension&&x.format==y.format&&x.depth==y.depth&&x.mips==y.mips&&x.samples==y.samples;
+}
+bool binding_snapshot(Output const& o,Eye::BindingEvidence& out){
+    const auto before=list_path(o.before.context);const auto s=dlss_route_observer::input_sample(o.binding_capture,true);
+    uintptr_t vtable{};const auto after=list_path(o.before.context);
+    const bool chain=before.valid&&after.valid&&before.raw==after.raw&&before.canonical==after.canonical&&before.generation==after.generation&&
+        before.owner==after.owner&&before.table==after.table&&before.method==after.method;
+    {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++source_queries;last_list_before=before;last_list_after=after;
+        if(!chain)++list_rejected;
+        auto const& r=s.resource;last_source={o.before.context,r.object,r.native,r.canonical,unsigned(s.highwater),unsigned(r.width),r.height,r.dimension,r.format,r.result};}
+    if(!chain||!dlss_route_observer::read(vtable,o.binding_capture.shader_owner)||!named_sample(o,s,vtable))return false;
+    out.complete=true;out.descriptor=s.descriptor;out.address=o.binding_capture.descriptor_address;out.owner=o.binding_capture.shader_owner;out.vtable=vtable;
+    out.shader_handle=s.shader_handle;out.view=s.view.address;out.context=s.view.context;out.public_global=s.public_global;out.public_pointer=s.public_pointer;
+    out.public_wrapper=s.public_wrapper;out.public_index=s.public_index;out.public_object=s.public_object;out.selector=s.selector;out.slot=s.slot;out.highwater=s.highwater;
+    out.list=after.raw;out.canonical_list=after.canonical;out.generation=after.generation;out.resource=s.resource;return true;
+}
+bool binding_current(Output const& o){Eye::BindingEvidence fresh;
+    return o.binds==1&&o.binding_proved&&!o.binding_failed&&binding_snapshot(o,fresh)&&binding_same(o.binding,fresh);}
+void binding_fail(Output& o){o.binding_failed=true;if(o.site)fail(o,Failure::identity_changed);}
+BindScope::BindScope(bool world,uintptr_t caller,const uint16_t* descriptor,void* view,void* owner,uint32_t selection,int32_t alternate)
+    :output(current_output),exceptions(std::uncaught_exceptions()){
+    if(!output||!output->key||caller!=0xd831c8)return;
+    if(++output->binds!=1){binding_fail(*output);return;}tracking=true;
+    auto& b=output->binding_capture;b.present=true;b.caller=caller;b.descriptor_address=reinterpret_cast<uintptr_t>(descriptor);
+    b.view_address=reinterpret_cast<uintptr_t>(view);b.shader_owner=reinterpret_cast<uintptr_t>(owner);b.selection=selection;b.alternate=alternate;
+    if(!world||!output->valid||output->nested||!stable(*output)||selection||alternate||b.view_address!=output->view||!b.shader_owner||
+       b.shader_owner>UINTPTR_MAX-0xb4||b.descriptor_address!=b.shader_owner+0xb4||!dlss_route_observer::read(vtable,b.shader_owner)||!vtable){binding_fail(*output);return;}
+    b.before=dlss_route_observer::input_sample(b);
+    if(b.before.mask!=1023||!same(output->before,b.before.view)||b.before.slot>=32){binding_fail(*output);return;}
+    b.tracked_slot=b.before.slot;b.tracked_slot_known=true;
+}
+BindScope::~BindScope(){if(!tracking||!output)return;auto& o=*output;auto& b=o.binding_capture;Eye::BindingEvidence fresh;
+    if(o.binding_failed||std::uncaught_exceptions()!=exceptions||!stable(o)||!binding_snapshot(o,fresh)||fresh.vtable!=vtable||
+       fresh.descriptor!=b.before.descriptor||fresh.shader_handle!=b.before.shader_handle||fresh.public_global!=b.before.public_global||
+       fresh.public_pointer!=b.before.public_pointer||fresh.public_wrapper!=b.before.public_wrapper||fresh.public_index!=b.before.public_index||
+       fresh.public_object!=b.before.public_object||fresh.selector!=b.before.selector){binding_fail(o);return;}
+    b.exited=true;o.binding=fresh;o.binding_proved=true;
+}
 ConsumeScope::ConsumeScope(uint64_t world,uint64_t ticket,bool enabled):previous(active_key),exceptions(std::uncaught_exceptions()){
     active_key={};std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     const Key next{world,ticket};if(enabled&&attested&&recording.load()&&world&&world==committed_world_generation.load()&&ticket==consuming_frame_ticket&&ticket){
@@ -60,7 +113,7 @@ OutputScope::OutputScope(bool world,uintptr_t pass,uintptr_t input):previous(cur
 OutputScope::~OutputScope(){
     if(value.site){
         const bool valid=value.valid&&!value.failed&&!value.nested&&std::uncaught_exceptions()==exceptions&&value.setters==1&&value.quads==1&&value.draws==1&&
-            value.setter_proved&&value.quad_complete&&stable(value)&&descriptor_stable(value);
+            value.setter_proved&&value.quad_complete&&stable(value)&&descriptor_stable(value)&&binding_current(value);
         std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(auto* e=store.find(value.key)){
             if(!valid)e->fail(Failure::identity_changed);
             else{auto& eye=e->payload.eyes[value.before.eye];eye=value.proof;eye.output_complete=true;e->proved(value.before.eye,false,true);++output_proved;}}
@@ -89,24 +142,31 @@ QuadScope::QuadScope(bool world,uintptr_t caller,Args const&,Dimensions const& s
     if(caller!=0xd83cbf){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++non_target_quads[caller==0x194c93?0u:1u];return;}
     ++output->quads;participate(*output);
     if(!world||!output->valid||output->failed||output->nested||output->setters!=1||output->quads!=1||!output->setter_proved||!stable(*output)||!descriptor_stable(*output)||
-       !geometry(output->before,dimensions,forwarded)){fail(*output,Failure::prequad);return;}
+       !geometry(output->before,dimensions,forwarded)||!binding_current(*output)||output->binding.resource.width!=dimensions[2]||output->binding.resource.height!=dimensions[3]){fail(*output,Failure::prequad);return;}
     {
         std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto* e=store.find(output->key);
         if(!e||!e->reserve(output->before.eye,false)){output->failed=true;return;}
         if(e->failure!=Failure::none){output->failed=true;return;}++dlss_output_control::forwarded;
     }
-    output->proof={};output->proof.renderer=output->renderer;output->proof.view=output->view;output->proof.context=output->before.context;
+    output->proof={};output->proof.binding=output->binding;output->proof.renderer=output->renderer;output->proof.view=output->view;output->proof.context=output->before.context;
     output->proof.pass=output->pass;output->proof.descriptor=output->descriptor;output->proof.forwarded=forwarded;output->proof.dimensions=dimensions;
     changed=true;current_quad=this;
 }
 QuadScope::~QuadScope(){
     if(changed&&output){const bool valid=!output->failed&&!output->nested&&std::uncaught_exceptions()==exceptions&&output->draws==1&&
-        output->proof.draw.candidate&&stable(*output)&&descriptor_stable(*output);
+        output->proof.draw.candidate&&stable(*output)&&descriptor_stable(*output)&&binding_current(*output);
         if(!valid)fail(*output,Failure::prequad);else output->quad_complete=true;}
     current_quad=previous;
 }
 bool QuadScope::candidate()const{return changed&&current_quad==this&&output&&!output->failed&&current(output->key);}
 bool scoped(){return current_quad&&current_quad->candidate();}
+DrawCompletion::DrawCompletion(uintptr_t raw):list(raw),exceptions(std::uncaught_exceptions()){
+    if(scoped())output=current_quad->output;
+}
+DrawCompletion::~DrawCompletion(){if(!output)return;auto& o=*output;
+    if(std::uncaught_exceptions()!=exceptions||o.draws!=1||!o.proof.draw.candidate||o.proof.binding.list!=list||
+       !stable(o)||!binding_current(o))fail(o,Failure::identity_changed);
+}
 void QuadScope::forward(float& x,float& y,float& w,float& h,float& u,float& v,float& uw,float& vh)const{
     if(!candidate())return;x=forwarded[0];y=forwarded[1];w=forwarded[2];h=forwarded[3];u=forwarded[4];v=forwarded[5];uw=forwarded[6];vh=forwarded[7];
 }
@@ -126,22 +186,20 @@ gears_final_transfer::EyeDrawEvidence draw(uintptr_t list,uintptr_t caller,unsig
         if(!list_matches(before_list,list,ref))++list_rejected;
     }
     if(!list_matches(before_list,list,ref)){fail(o,Failure::identity_changed);return proof;}
-    // Query the real bound SRV through the same authenticated resource wrapper
-    // used by final_transfer_live. Never infer its dimensions from view fields.
-    unsigned char slots{};uintptr_t object{};ResourceIdentity source{};
-    const bool bound=dlss_route_observer::read(slots,context,0x65d)&&slots==1&&dlss_route_observer::read(object,context,0x768)&&object;
-    if(bound)query_bound_resource(object,source);auto const& d=source.desc;
+    // Re-read this invocation's descriptor-selected binding. No diagnostic row,
+    // fixed slot or resource dimensions can stand in for the named binding.
+    Eye::BindingEvidence named;const bool bound=o.binds==1&&o.binding_proved&&!o.binding_failed&&binding_snapshot(o,named)&&binding_same(o.binding,named);
+    auto const& source=named.resource;
     const auto after_list=list_path(context);
     const bool list_stable=list_matches(after_list,list,ref)&&before_list.owner==after_list.owner&&before_list.table==after_list.table&&before_list.method==after_list.method;
     {
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++source_queries;
+        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
         last_list_after=after_list;if(!list_stable)++list_rejected;
-        last_source={context,object,source.native,source.canonical,unsigned(slots),d.Width<=8192?unsigned(d.Width):0u,d.Height,unsigned(d.Dimension),unsigned(d.Format),source.result};
     }
     if(!list_stable){fail(o,Failure::identity_changed);return proof;}
     auto const& sizes=quad->dimensions;
-    const bool resource=bound&&SUCCEEDED(source.result)&&source.canonical&&source.canonical!=binding.target.resource&&d.Dimension==3&&d.Width==sizes[2]&&d.Height==sizes[3]&&
-        d.DepthOrArraySize==1&&d.MipLevels==1&&d.SampleDesc.Count==1&&d.Format==24&&binding.targets==1&&binding.target.resource&&!binding.target.mip&&
+    const bool resource=bound&&named.list==list&&named.canonical_list==ref.identity&&named.generation==ref.generation&&source.canonical!=binding.target.resource&&
+        source.width==sizes[2]&&source.height==sizes[3]&&source.format==26&&binding.targets==1&&binding.target.resource&&!binding.target.mip&&
         binding.target.format==24&&binding.target.width==sizes[0]&&binding.target.height==sizes[1];
     auto const& v=rectangles.viewport;auto const& s=rectangles.scissor;const unsigned eye=o.before.eye;
     const bool rects=rectangles.tracked&&rectangles.viewport_count==1&&rectangles.scissor_count==1&&rectangles.depth_known&&rectangles.min_depth==0&&rectangles.max_depth==1&&
@@ -153,8 +211,9 @@ gears_final_transfer::EyeDrawEvidence draw(uintptr_t list,uintptr_t caller,unsig
 }
 bool enable(FILE* file,bool observer_attested){
     const bool config=!self_testing&&continuous_session&&stereo_xr&&stereo_gpu_publish&&submit_pair_enabled&&frame_link_diagnostics&&viewport_diagnostics&&!other_controls();
-    attested=observer_attested&&config;store={};
-    fprintf(file,"dlss_output_identity enabled=1 observer_full_ranges_attested=%u configuration=%u attested=%u generated_caller=d83cbf setter=d83b69 sentinel=ffff,ffff,0 original_setter_unchanged=1 geometry_memory_written=0 ngx_sr_verified=0\n",unsigned(observer_attested),unsigned(config),unsigned(attested));return attested;
+    const bool binding_attested=dlss_route_observer::verify_input_chunks(file,"566929fd4f84a21529de0ecb749d2dc75a1bf2ab3cc04876a65f65517222a339");
+    attested=observer_attested&&binding_attested&&config;store={};
+    fprintf(file,"dlss_output_identity enabled=1 observer_full_ranges_attested=%u input_full_chunks_attested=%u configuration=%u attested=%u generated_caller=d83cbf setter=d83b69 sentinel=ffff,ffff,0 original_setter_unchanged=1 geometry_memory_written=0 binding_evidence_required=1 shader_sampling_verified=0 ngx_sr_verified=0\n",unsigned(observer_attested),unsigned(binding_attested),unsigned(config),unsigned(attested));return attested;
 }
 bool publication(uint64_t world,uint64_t ticket){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const Key key{world,ticket};const auto decision=store.decision(key);
     ++decisions[static_cast<unsigned>(decision)];auto* e=store.find(key);
@@ -184,14 +243,23 @@ void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mut
         for(unsigned i=0;i<2;++i){const auto& e=r.proof.eyes[i];const auto& d=e.draw;
             fprintf(file,"dlss_output_eye_example allowed=%u eye=%u world=%llu ticket=%llu renderer=%llx view=%llx context=%llx pass=%llx descriptor=%llx completed_output=%u candidate_draw=%u list=%llx list_generation=%llu source=%llx target=%llx args=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g dimensions=%u,%u,%u,%u\n",
                 unsigned(n==0),i,r.key.world,r.key.id,static_cast<unsigned long long>(e.renderer),static_cast<unsigned long long>(e.view),static_cast<unsigned long long>(e.context),static_cast<unsigned long long>(e.pass),static_cast<unsigned long long>(e.descriptor),unsigned(e.output_complete),unsigned(d.candidate),
-                static_cast<unsigned long long>(d.list),d.generation,static_cast<unsigned long long>(d.source),static_cast<unsigned long long>(d.target),e.forwarded[0],e.forwarded[1],e.forwarded[2],e.forwarded[3],e.forwarded[4],e.forwarded[5],e.forwarded[6],e.forwarded[7],e.dimensions[0],e.dimensions[1],e.dimensions[2],e.dimensions[3]);}
+                static_cast<unsigned long long>(d.list),d.generation,static_cast<unsigned long long>(d.source),static_cast<unsigned long long>(d.target),e.forwarded[0],e.forwarded[1],e.forwarded[2],e.forwarded[3],e.forwarded[4],e.forwarded[5],e.forwarded[6],e.forwarded[7],e.dimensions[0],e.dimensions[1],e.dimensions[2],e.dimensions[3]);
+            auto const& b=e.binding;
+            fprintf(file,"dlss_output_binding_evidence allowed=%u eye=%u complete=%u descriptor=%u,%u,%u slot=%u highwater=%u owner=%llx vtable=%llx view=%llx context=%llx public_global=%llx public_pointer=%llx wrapper=%llx index=%u public_object=%llx native=%llx canonical=%llx format=%u dimensions=%llu,%u list_raw=%llx list_canonical=%llx generation=%llu shader_sampling_verified=0\n",
+                unsigned(n==0),i,unsigned(b.complete),b.descriptor[0],b.descriptor[1],b.descriptor[2],b.slot,b.highwater,
+                static_cast<unsigned long long>(b.owner),static_cast<unsigned long long>(b.vtable),static_cast<unsigned long long>(b.view),static_cast<unsigned long long>(b.context),
+                static_cast<unsigned long long>(b.public_global),static_cast<unsigned long long>(b.public_pointer),static_cast<unsigned long long>(b.public_wrapper),b.public_index,
+                static_cast<unsigned long long>(b.public_object),static_cast<unsigned long long>(b.resource.native),static_cast<unsigned long long>(b.resource.canonical),b.resource.format,
+                static_cast<unsigned long long>(b.resource.width),b.resource.height,static_cast<unsigned long long>(b.list),static_cast<unsigned long long>(b.canonical_list),b.generation);}
     }
 }
 #else
 ConsumeScope::ConsumeScope(uint64_t,uint64_t,bool){}ConsumeScope::~ConsumeScope(){}
 OutputScope::OutputScope(bool,uintptr_t,uintptr_t){}OutputScope::~OutputScope(){}
+BindScope::BindScope(bool,uintptr_t,const uint16_t*,void*,void*,uint32_t,int32_t){}BindScope::~BindScope(){}
 SetterScope::SetterScope(bool,uintptr_t,const uint16_t*,unsigned){}SetterScope::~SetterScope(){}
 QuadScope::QuadScope(bool,uintptr_t,Args const&,Dimensions const&){}QuadScope::~QuadScope(){}
+DrawCompletion::DrawCompletion(uintptr_t){}DrawCompletion::~DrawCompletion(){}
 bool QuadScope::candidate()const{return false;}
 void QuadScope::forward(float&,float&,float&,float&,float&,float&,float&,float&)const{}
 bool enable(FILE*,bool){return true;}bool publication(uint64_t,uint64_t){return true;}

@@ -22,6 +22,11 @@ inline bool geometry(View const& v,Dimensions const& d,Args& forwarded){
     forwarded={v.source[0],v.source[1],v.source[2],v.source[3],float(v.target[0]),float(v.target[1]),float(v.target[2]),float(v.target[3])};return true;
 }
 struct Eye {
+    struct BindingEvidence {
+        bool complete{};Descriptor descriptor{};uintptr_t address{},owner{},vtable{},shader_handle{},view{},context{};
+        uintptr_t public_global{},public_pointer{},public_wrapper{},public_object{},list{},canonical_list{};
+        uint64_t generation{};unsigned public_index{},selector{},slot{},highwater{};gears_dlss_route::InputResource resource{};
+    } binding{};
     uintptr_t renderer{},view{},context{},pass{},descriptor{};Args forwarded{};Dimensions dimensions{};
     gears_final_transfer::EyeDrawEvidence draw{};bool output_complete{};
 };
@@ -33,8 +38,14 @@ inline bool complete(Store::Entry const& e){
     if(!a.renderer||a.renderer!=b.renderer||!a.context||a.context!=b.context||!a.view||a.view>UINTPTR_MAX-0xd30||b.view!=a.view+0xd30||
        a.dimensions!=b.dimensions||a.draw.source!=b.draw.source||a.draw.target!=b.draw.target)return false;
     for(unsigned i=0;i<2;++i){auto const& eye=e.payload.eyes[i];auto const& d=eye.draw;
-        if(!eye.output_complete||!d.candidate||d.world!=e.key.world||d.ticket!=e.key.id||d.eye!=i||!d.list||!d.generation||!d.source||!d.target||
+        auto const& bind=eye.binding;
+        if(!eye.output_complete||!bind.complete||!d.candidate||d.world!=e.key.world||d.ticket!=e.key.id||d.eye!=i||!d.list||!d.generation||!d.source||!d.target||
+           bind.context!=eye.context||bind.view!=eye.view||bind.canonical_list!=d.list||bind.generation!=d.generation||bind.resource.canonical!=d.source||bind.resource.format!=26||
            d.args!=eye.forwarded||d.dimensions!=eye.dimensions)return false;}
+    auto const& ba=a.binding;auto const& bb=b.binding;
+    if(ba.owner!=bb.owner||ba.vtable!=bb.vtable||ba.shader_handle!=bb.shader_handle||ba.descriptor!=bb.descriptor||ba.address!=bb.address||ba.public_global!=bb.public_global||ba.public_pointer!=bb.public_pointer||
+       ba.public_wrapper!=bb.public_wrapper||ba.public_index!=bb.public_index||ba.public_object!=bb.public_object||ba.selector!=bb.selector||ba.slot!=bb.slot||
+       ba.resource.object!=bb.resource.object||ba.resource.native!=bb.resource.native||ba.resource.canonical!=bb.resource.canonical)return false;
     return true;
 }
 }
