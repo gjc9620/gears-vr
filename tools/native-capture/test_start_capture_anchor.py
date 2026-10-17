@@ -326,25 +326,64 @@ class AnchorStartTests(unittest.TestCase):
         self.assertFalse(start.camera_preparation_transient(RuntimeError(reason)))
 
     def test_registry_churn_retries_beyond_three_attempts_with_shared_deadline(self):
+        import crosshair_assignment_config as assignment
+        self._check_churn_whole_acquisition(lambda:assignment.CrosshairRegistryChanged('Registry header changed'))
+
+    def test_controlled_link_churn_retries_fresh_whole_acquisition_with_shared_guards(self):
+        import crosshair_assignment_config as assignment
+        self._check_churn_whole_acquisition(lambda:assignment.CrosshairControlledLinkChanged(
+            dict(stage='crosshair_final_links',changes=[dict(field='Weapon')])))
+
+    def test_controlled_link_retry_requires_exact_type_not_message_or_subclass(self):
+        import crosshair_assignment_config as assignment
+        class UnknownLinkChange(assignment.CrosshairControlledLinkChanged):pass
+        evidence=dict(stage='crosshair_final_links',changes=[dict(field='Weapon')])
+        typed=assignment.CrosshairControlledLinkChanged(evidence)
+        self.assertTrue(start.camera_preparation_transient(typed))
+        for error in (RuntimeError(str(typed)),assignment.CrosshairConfigRejected(str(typed)),
+                assignment.CrosshairConfigRejected('Certificate changed before completion: address=0x20dceabc size=8'),
+                UnknownLinkChange(evidence)):
+            self.assertFalse(start.camera_preparation_transient(error))
+            baseline=dict(local_player_address='0x1',module_base='0x1000')
+            r=mock.Mock();r.base=0x1000;r.resolve.return_value=baseline;r.read.return_value=b'ok'
+            import anchor_config as anchor
+            import ui_observer_config as ui
+            with mock.patch.object(start,'Resolver',return_value=r) as resolve,\
+                 mock.patch.object(anchor,'build_anchor_config',return_value=({},{})),\
+                 mock.patch.object(anchor,'anchor_ini',return_value='anchor\n'),\
+                 mock.patch.object(ui,'build_ui_observer_config',return_value=({},{})),\
+                 mock.patch.object(ui,'ui_observer_ini',return_value='ui\n'),\
+                 mock.patch.object(assignment,'build_crosshair_assignment_config',side_effect=error),\
+                 mock.patch.object(start,'remote_call') as remote,\
+                 self.assertRaises(RuntimeError) as raised:
+                start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),
+                    anchor_observer=True,ui_observer=True,crosshair_assignment_observer=True)
+            self.assertIs(raised.exception,error);resolve.assert_called_once();r.p.close.assert_called_once()
+            remote.assert_not_called()
+
+    def _check_churn_whole_acquisition(self,make_error):
         import anchor_config as anchor
         import ui_observer_config as ui
         import crosshair_assignment_config as assignment
         baseline=dict(local_player_address='0x1',module_base='0x1000')
-        for outcome in ('success','deadline','identity','code','cancelled'):
+        for outcome in ('success','deadline','identity','code','cancelled','process','local_player','module'):
             with self.subTest(outcome=outcome),contextlib.ExitStack() as stack:
                 ticks=[0.];resolvers=[]
                 def resolver(pid,profile):
                     r=mock.Mock();r.base=0x1000;r.read.return_value=b'ok'
                     r.resolve.return_value=dict(baseline,camera_address=str(len(resolvers)+1))
+                    if len(resolvers)>=3 and outcome in ('local_player','module'):
+                        r.resolve.return_value['local_player_address' if outcome=='local_player' else 'module_base']='0x2000'
                     resolvers.append(r);return r
                 def build(r,camera,**kwargs):
                     ticks[0]+=3
                     if len(resolvers)<=3 or outcome=='deadline':
-                        raise assignment.CrosshairRegistryChanged('Registry header changed')
+                        raise make_error()
                     if outcome=='identity':raise assignment.CrosshairConfigRejected('Identity changed')
                     return {'camera':camera['camera_address']}
                 def check():
                     if outcome=='cancelled' and len(resolvers)==3:raise RuntimeError('Owner cancelled')
+                    if outcome=='process' and len(resolvers)==3:raise RuntimeError('Game process identity changed')
                 def read(address,size):
                     if outcome=='code' and len(resolvers)>3:return b'wrong'
                     return b'ok'
@@ -372,7 +411,7 @@ class AnchorStartTests(unittest.TestCase):
                                       value[3]['crosshair_assignment']['camera']),('4',)*4)
                 else:
                     with self.assertRaises(RuntimeError if outcome!='deadline' else TimeoutError):prepare()
-                self.assertEqual(len(resolvers),5 if outcome=='deadline' else 3 if outcome=='cancelled' else 4)
+                self.assertEqual(len(resolvers),5 if outcome=='deadline' else 3 if outcome in ('cancelled','process') else 4)
                 self.assertLess(ticks[0],17)
                 for r in resolvers:r.p.close.assert_called_once()
                 remote.assert_not_called()

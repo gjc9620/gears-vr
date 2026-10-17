@@ -33,6 +33,17 @@ class CrosshairRegistryChanged(CrosshairConfigRejected):
     """A complete objects/names header changed beyond monotonic count growth."""
 
 
+class CrosshairControlledLinkChanged(CrosshairConfigRejected):
+    """Only certified role-link values changed in the final read bracket.
+
+    This rejects the whole acquisition; it never accepts a replacement pointer.
+    """
+    def __init__(self, evidence):
+        self.evidence = evidence
+        super().__init__('Certified controlled-role link changed before completion: ' +
+                         ', '.join(change['field'] for change in evidence['changes']))
+
+
 def _require(ok, reason):
     if not ok:
         raise CrosshairConfigRejected(reason)
@@ -195,6 +206,19 @@ def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
     _, pawn_pc = link(pawn, 'Controller', pc)
     weapon, pawn_weapon = link(pawn, 'Weapon'); war_weapon = role_class(weapon, 'WarWeapon')
     _, weapon_pawn = link(weapon, 'Instigator', pawn)
+    # Only these four exact pointer spans may produce a deferred final-bracket
+    # transition. Their owner/property identities and offsets were authenticated
+    # above; PlayerCamera/PCOwner and all assembly/double-read changes stay hard.
+    controlled_links = {}
+    for role, owner_role, owner, name, field in (
+            ('controller_pawn', 'controller', pc, 'Pawn', pc_pawn),
+            ('pawn_controller', 'pawn', pawn, 'Controller', pawn_pc),
+            ('pawn_weapon', 'pawn', pawn, 'Weapon', pawn_weapon),
+            ('weapon_instigator', 'weapon', weapon, 'Instigator', weapon_pawn)):
+        span = (owner + field['offset'], 8)
+        _require(span not in controlled_links, 'Controlled link spans overlap')
+        controlled_links[span] = dict(role=role, owner_role=owner_role, owner=owner,
+            field=name, property=ids[field['property']]['address'], offset=field['offset'])
 
     def child(owner, name, kind):
         found = [f['address'] for f in r.fields(owner) if f['name'] == name]
@@ -287,7 +311,7 @@ def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
         cursor += 1
     roles = dict(zip(ROLES, map(add, (writer, war_pc, pc, pawn, weapon, war_pawn, war_weapon,
                                      lhs, member, impact, impact_struct, vector, ww))))
-    registry_change = None
+    registry_change = None; link_changes = []
     for (address, size), value in checks.items():
         final = r.read(address, size)
         _require(len(final) == size, f'Incomplete final certificate read: address={address:#x} size={size}')
@@ -295,11 +319,15 @@ def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
             if not registry_append(value, final):
                 registry_change = (address, size)
         elif final != value:
-            changed(address, size, 'Certificate changed before completion')
-    # A concurrently observed identity/link/script change always stays a hard
-    # rejection, even when an earlier registry header also changed.
-    if registry_change:
-        changed(*registry_change, 'Registry header changed before completion')
+            selected_link = controlled_links.get((address, size))
+            if selected_link is None:
+                changed(address, size, 'Certificate changed before completion')
+            link_changes.append(dict(selected_link, address=address, size=size,
+                old=struct.unpack('<Q', value)[0], new=struct.unpack('<Q', final)[0],
+                phase='final'))
+    # Finish every immutable check and serialized schema validation before any
+    # deferred retryable result. A link/registry transition cannot mask corrupt
+    # identities, scripts, property metadata, code or the attested entry.
     if attested_entry is not None:
         address, size, value = attested_entry
         _require(entry_reader(address, size, r.read) == value,
@@ -318,6 +346,12 @@ def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
                              native_bytes_source='fresh process reads matched to bounded historical contract',
                              acquired_perf_counter_ns=started, finished_perf_counter_ns=time.perf_counter_ns()))
     validate_crosshair_assignment_config(c)
+    if link_changes:
+        raise CrosshairControlledLinkChanged(dict(stage='crosshair_final_links',
+            changes=link_changes, pid=r.pid, base=r.base, sha256=GAME_SHA,
+            read_only=True, accepted=False))
+    if registry_change:
+        changed(*registry_change, 'Registry header changed before completion')
     return c
 
 

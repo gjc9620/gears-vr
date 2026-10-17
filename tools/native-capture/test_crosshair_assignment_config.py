@@ -3,9 +3,10 @@ import copy
 import json
 import struct
 import unittest
+from unittest import mock
 
 from test_ui_observer_config import Fixture as UIBase
-from crosshair_assignment_config import (NATIVE_BYTES, SLOTS, CrosshairConfigRejected, CrosshairRegistryChanged,
+from crosshair_assignment_config import (NATIVE_BYTES, SLOTS, CrosshairConfigRejected, CrosshairRegistryChanged, CrosshairControlledLinkChanged,
     build_crosshair_assignment_config, validate_crosshair_assignment_config,
     crosshair_assignment_json, crosshair_assignment_ini)
 
@@ -167,7 +168,7 @@ class CertificateTests(unittest.TestCase):
                     build_crosshair_assignment_config(r,r.camera)
                 self.assertIs(type(raised.exception),CrosshairConfigRejected)
 
-    def test_selected_evidence_mutation_remains_hard_alongside_registry_growth(self):
+    def test_final_selected_evidence_classification_alongside_registry_growth(self):
         mutations={
             'identity':lambda r:r.put(r.weapon+80,struct.pack('<Q',r.classes['Object'])),
             'link':lambda r:r.put(r.pawn+0x440,struct.pack('<Q',r.pc)),
@@ -195,8 +196,9 @@ class CertificateTests(unittest.TestCase):
                     r.read=changing
                     with self.assertRaises(CrosshairConfigRejected) as raised:
                         build_crosshair_assignment_config(r,r.camera)
-                    self.assertIs(type(raised.exception),CrosshairConfigRejected)
-                    self.assertIn('Certificate changed before completion: address=',str(raised.exception))
+                    expected=CrosshairControlledLinkChanged if field=='link' else CrosshairConfigRejected
+                    self.assertIs(type(raised.exception),expected)
+                    if field!='link':self.assertIn('Certificate changed before completion: address=',str(raised.exception))
 
     def test_attested_execlet_entry_is_narrow_and_independently_bracketed(self):
         r=Fixture();original=bytes.fromhex(NATIVE_BYTES[0x1d7ad0]);calls=[]
@@ -250,7 +252,7 @@ class CertificateTests(unittest.TestCase):
             build_crosshair_assignment_config(r,r.camera)
         self.assertIs(type(raised.exception),CrosshairConfigRejected)
 
-    def test_nonregistry_final_changes_remain_hard_even_with_header_churn(self):
+    def test_final_nonlink_changes_stay_hard_even_with_header_churn(self):
         for field in ('identity','link','script'):
             for churn in (False,True):
                 with self.subTest(field=field,churn=churn):
@@ -270,8 +272,98 @@ class CertificateTests(unittest.TestCase):
                     r.read=changing
                     with self.assertRaises(CrosshairConfigRejected) as raised:
                         build_crosshair_assignment_config(r,r.camera)
+                    expected=CrosshairControlledLinkChanged if field=='link' else CrosshairConfigRejected
+                    self.assertIs(type(raised.exception),expected)
+                    if field!='link':self.assertIn('Certificate changed before completion: address=',str(raised.exception))
+
+    def on_final(self,r,mutate):
+        read=r.read;count=0
+        def changing(a,n):
+            nonlocal count
+            if (a,n)==(r.objects_header,16):
+                count+=1
+                if count==3:mutate()
+            return read(a,n)
+        r.read=changing
+
+    def test_four_controlled_final_links_have_exact_typed_evidence(self):
+        for role,owner_role,name,offset in (('controller_pawn','controller','Pawn',0x224),
+                ('pawn_controller','pawn','Controller',0x230),('pawn_weapon','pawn','Weapon',0x440),
+                ('weapon_instigator','weapon','Instigator',0x220)):
+            with self.subTest(role=role):
+                r=Fixture();owner={'controller':r.pc,'pawn':r.pawn,'weapon':r.weapon}[owner_role]
+                address=owner+offset;old=r.u64(address)
+                self.on_final(r,lambda:r.put(address,bytes(8)))
+                with self.assertRaises(CrosshairControlledLinkChanged) as raised:
+                    build_crosshair_assignment_config(r,r.camera)
+                self.assertIs(type(raised.exception),CrosshairControlledLinkChanged)
+                evidence=raised.exception.evidence;self.assertEqual(evidence['stage'],'crosshair_final_links')
+                self.assertEqual(len(evidence['changes']),1);change=evidence['changes'][0]
+                self.assertEqual((change['role'],change['owner_role'],change['owner'],change['field'],change['offset'],
+                    change['address'],change['size'],change['old'],change['new'],change['phase']),
+                    (role,owner_role,owner,name,offset,address,8,old,0,'final'))
+                self.assertEqual(r.u32(change['property']+0x94),offset)
+                self.assertFalse(evidence['accepted']);self.assertTrue(evidence['read_only'])
+
+    def test_multiple_final_link_changes_are_collected_without_accepting_any_pointer(self):
+        r=Fixture()
+        def mutate():
+            r.put(r.pc+0x224,bytes(8));r.put(r.pawn+0x440,bytes(8))
+        self.on_final(r,mutate)
+        with self.assertRaises(CrosshairControlledLinkChanged) as raised:
+            build_crosshair_assignment_config(r,r.camera)
+        evidence=raised.exception.evidence
+        self.assertEqual({c['role'] for c in evidence['changes']},{'controller_pawn','pawn_weapon'})
+        self.assertEqual((evidence['pid'],evidence['base'],evidence['sha256']),(r.pid,r.base,r.camera['sha256']))
+        self.assertFalse(json.loads(json.dumps(evidence))['accepted'])
+
+    def test_controlled_double_read_and_other_pointer_changes_stay_hard(self):
+        for mode in ('double','camera_owner','camera_link','vm_entry'):
+            with self.subTest(mode=mode):
+                r=Fixture();read=r.read;count=0;address=r.pawn+0x440
+                if mode=='double':
+                    def changing(a,n):
+                        nonlocal count
+                        if (a,n)==(address,8):
+                            count+=1
+                            if count==2:return bytes(8)
+                        return read(a,n)
+                    r.read=changing
+                else:
+                    address={'camera_owner':r.cam+0x224,'camera_link':r.pc+0x37c,'vm_entry':r.writer+0x114}[mode]
+                    self.on_final(r,lambda:r.put(address,bytes(8)))
+                with self.assertRaises(CrosshairConfigRejected) as raised:
+                    build_crosshair_assignment_config(r,r.camera)
+                self.assertIs(type(raised.exception),CrosshairConfigRejected)
+
+    def test_deferred_link_or_registry_never_masks_immutable_attested_or_schema_failure(self):
+        for transient in ('early_link','late_link','registry'):
+            for corrupt in ('early_identity','late_identity','script','property','code','attested','schema'):
+                with self.subTest(transient=transient,corrupt=corrupt):
+                    r=Fixture();entry_calls=[]
+                    def mutate():
+                        if transient=='registry':
+                            ptr,count,cap=struct.unpack('<Qii',Fixture.read(r,r.objects_header,16))
+                            r.put(r.objects_header,struct.pack('<Qii',ptr,count,cap+1))
+                        else:r.put(r.pc+0x224 if transient=='early_link' else r.weapon+0x220,bytes(8))
+                        if corrupt=='early_identity':r.put(r.pc+80,struct.pack('<Q',r.classes['Object']))
+                        elif corrupt=='late_identity':r.put(r.weapon+80,struct.pack('<Q',r.classes['Object']))
+                        elif corrupt=='script':r.put(r.script+0x359,b'\x00')
+                        elif corrupt=='property':r.put(r.lhs+0x94,struct.pack('<I',0x1370))
+                        elif corrupt=='code':r.put(r.base+0x1d5efb,b'\x00')
+                    self.on_final(r,mutate)
+                    def entry(a,n,raw):
+                        entry_calls.append((a,n))
+                        return bytes(n) if corrupt=='attested' and len(entry_calls)==3 else bytes.fromhex(NATIVE_BYTES[0x1d7ad0])
+                    original=validate_crosshair_assignment_config
+                    def validate(c):
+                        if corrupt=='schema':c['schema']=2
+                        return original(c)
+                    with mock.patch('crosshair_assignment_config.validate_crosshair_assignment_config',side_effect=validate):
+                        with self.assertRaises(CrosshairConfigRejected) as raised:
+                            build_crosshair_assignment_config(r,r.camera,entry_reader=entry)
                     self.assertIs(type(raised.exception),CrosshairConfigRejected)
-                    self.assertIn('Certificate changed before completion: address=',str(raised.exception))
+                    if corrupt in ('attested','schema'):self.assertEqual(len(entry_calls),3)
 
     def test_optional_writer_view_roundtrip_and_legacy(self):
         r=Fixture(); old=build_crosshair_assignment_config(r,r.camera)
