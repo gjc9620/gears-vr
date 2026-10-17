@@ -39,7 +39,7 @@ class StageTests(unittest.TestCase):
         self.manifest['native_sha256'] = stage.digest(self.root / self.manifest['native_build'] / 'Mod.dll')
         self.manifest['xr_sha256'] = stage.digest(self.root / self.manifest['xr_build'] / 'OpenXRPoseProbe.exe')
         self.put(self.root / 'tools/vr-launcher/manifest.json', json.dumps(self.manifest).encode())
-        self.put(self.root / 'tools/vr-launcher/config.json', b'{"game_path":"private"}')
+        self.put(self.root / 'tools/vr-launcher/config.json', b'{"game_path":"private","launcher_language":"zh-CN"}')
         self.put(self.root / 'analysis/private.sqlite', b'private')
         hashes = {name: stage.digest(self.root / stage.QUIET_BUILD / name) for name in stage.QUIET_HASHES}
         patcher = mock.patch.object(stage, 'QUIET_HASHES', hashes); patcher.start(); self.addCleanup(patcher.stop)
@@ -63,6 +63,7 @@ class StageTests(unittest.TestCase):
         config = json.loads((self.destination / 'tools/vr-launcher/config.json').read_text())
         manifest = json.loads((self.destination / 'tools/vr-launcher/manifest.json').read_text())
         self.assertEqual(config['game_path'], ''); self.assertEqual(manifest['game_path'], 'SELECT_GAME_EXECUTABLE')
+        self.assertEqual(config['launcher_language'], 'en')
         self.assertEqual((self.root / 'tools/vr-launcher/config.json').read_bytes(), original)
         self.assertTrue(all({'path', 'source', 'license_category', 'size', 'sha256'} <= item.keys() for item in result['files']))
 

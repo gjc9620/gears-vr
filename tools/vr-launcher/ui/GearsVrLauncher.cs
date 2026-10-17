@@ -11,7 +11,7 @@ using System.Windows.Forms;
 namespace GearsVrUi {
     enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid }
     static class Language {
-        internal static volatile bool English;
+        internal static volatile bool English = true;
         internal static readonly string[] Chinese = new string[] {
             "Gears VR 启动失败",
             "找不到仓库。请从仓库 analysis/vr-launcher-ui 目录运行生成的启动器。",
@@ -177,7 +177,7 @@ namespace GearsVrUi {
         }
         internal static bool IsEnglish(Dictionary<string, object> config) {
             object language;
-            return config.TryGetValue("launcher_language", out language) && Convert.ToString(language) == "en";
+            return !config.TryGetValue("launcher_language", out language) || Convert.ToString(language) != "zh-CN";
         }
         internal static void SaveLanguage(string path, bool english) {
             var config = ReadConfig(path); config["launcher_language"] = english ? "en" : "zh-CN";
@@ -269,6 +269,7 @@ namespace GearsVrUi {
             const string ready = "{\"kind\":\"repository_vr_launcher\",\"owner_identity\":{\"pid\":123,\"creation_time\":456}}";
             if (OwnIndexReady("{}",123,456) || OwnIndexReady(ready,124,456) || OwnIndexReady(ready,123,457) ||
                 !OwnIndexReady(ready,123,456)) return 7;
+            if (!Language.English || !IsEnglish(new Dictionary<string, object>())) return 31;
             string temp = Path.GetTempFileName();
             try {
                 File.WriteAllText(temp, "{\"game_path\":\"old\",\"stereo_units_per_metre\":100,\"extra\":{\"keep\":true}}");
@@ -276,6 +277,7 @@ namespace GearsVrUi {
                 if (!config.ContainsKey("extra") || Convert.ToInt32(config["stereo_units_per_metre"]) != 100 ||
                     Convert.ToString(config["game_path"]) != "C:\\game path\\game.exe") return 6;
                 if (config.ContainsKey("hud_horizontal_fov_degrees") || HudSize(config) != 65) return 8;
+                if (!IsEnglish(config) || config.ContainsKey("launcher_language")) return 32;
                 if (SupportsHudSize(new Dictionary<string, object>()) || SupportsHudSize(new Dictionary<string, object>{{"hud_size_control", false}}) ||
                     !SupportsHudSize(new Dictionary<string, object>{{"hud_size_control", true}})) return 9;
                 foreach (object invalid in new object[]{"true", 1, null}) {

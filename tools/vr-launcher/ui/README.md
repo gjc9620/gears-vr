@@ -27,6 +27,6 @@ Python 按 `GEARSVR_PYTHON`、随包 `runtime/python/python.exe`、当前用户 
 
 当前默认候选已更新为 Native32 / XR23（`manifest-material32-movie23-vd.json`），覆盖上述旧版本说明。独立 Low/High 分辨率功能已移除，启动器不提供画质档位或覆盖游戏分辨率；请在游戏设置中调整分辨率。HUD 大小仅调整界面角宽，不改变渲染分辨率。默认真机入口仍为 Quest 3 / Virtual Desktop；模拟器需要明确选择。
 
-右上角的“中文 / English”选择器可立即切换界面文字、状态和启动器对话框。首次保持中文，选择会立即保存到现有配置的 `launcher_language`（`zh-CN` / `en`），下次启动读回；其余配置字段及尚未保存的界面输入会保留。后端原始日志和系统文件对话框按钮保持其原始语言，便于排查问题。
+右上角的“中文 / English”选择器可立即切换界面文字、状态和启动器对话框。首次默认英文，已保存的中文选择仍会保留，选择会立即保存到现有配置的 `launcher_language`（`zh-CN` / `en`），下次启动读回；其余配置字段及尚未保存的界面输入会保留。后端原始日志和系统文件对话框按钮保持其原始语言，便于排查问题。
 
-Select **中文** or **English** in the upper-right corner to switch the launcher immediately. The choice is saved as `launcher_language` (`zh-CN` / `en`) in the existing config and restored next time; other config fields and unsaved form inputs are preserved. Chinese remains the default. Raw backend logs and system file-dialog buttons retain their original language. Build with the PowerShell command above; the hidden self-test also checks catalog round trips and language preference preservation.
+Select **中文** or **English** in the upper-right corner to switch the launcher immediately. The choice is saved as `launcher_language` (`zh-CN` / `en`) in the existing config and restored next time; other config fields and unsaved form inputs are preserved. English is the default when no preference is saved; an explicit Chinese preference is preserved. Portable packages also start in English. Raw backend logs and system file-dialog buttons retain their original language. Build with the PowerShell command above; the hidden self-test also checks catalog round trips and language preference preservation.

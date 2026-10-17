@@ -133,7 +133,7 @@ def stage(root, python_root, destination, *, manifest_path=None):
     manifest['game_path'] = 'SELECT_GAME_EXECUTABLE'
     generated = {
         'tools/vr-launcher/manifest.json': manifest,
-        'tools/vr-launcher/config.json': {'game_path': '', 'stereo_units_per_metre': 100},
+        'tools/vr-launcher/config.json': {'game_path': '', 'stereo_units_per_metre': 100, 'launcher_language': 'en'},
         'portable-candidate.json': {'schema': 1, 'kind': 'offline-staging-candidate', 'release_ready': False,
             'game_selection_required': True, 'simulator_bundled': False,
             'runtime_choice': 'The GUI defaults to Quest 3 / Virtual Desktop (VDXR); system OpenXR is also selectable. Simulator files are not bundled.',
