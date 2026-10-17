@@ -1,0 +1,20 @@
+# 死亡右眼黑屏：同票据的前后像素对照
+
+2026-10-17。诊断代码提交e8c2026a7767bcf3e9deeeb50e3bf435b7cddcfd；Hdrpixels55 DLL SHA256453338a1d9564cb422f7b0dd0939c7bd4c2e28e4d1ea21321adb4f7014f76f27，Hdrmatched55 XR EXE SHA256b6e214f9bd762400b09c928adcf3e2f00f5efbf65f8e8b23e19310a192484681。默认玩家候选仍Reticle47／Borderless1。
+
+为补齐文档110的相邻帧限制，新增独立、默认不启用的诊断映射。原生在一次HDR复制追加后发布game PID、票据、world、原copy序号；ticket原子写入最后。XR只在既有新图准入通过后对完全相同的ticket/world触发既有读回。错过、场景不符或达到8张上限均明确失败，不选择最近帧、缓存图，也不放宽年龄、姿态、菜单或几何检查；原有bridge ABI不变。
+
+完整原生构建及16项冻结CPU检查、完整XR构建及映射策略测试通过。实际95会话continuous-stereo-39312-20261017-122011-2df58c72完成精确配对：
+
+- HDR票据599/world1/copy_seq295，唯一执行、实际Reset成功及GPU完成后保存RAW。
+- XR收到同票据599/world1，source_serial594，保存最终GPU图snapshot_index2，cached_image=false。
+- HDR格式26的左右两半均为完整死亡场景，有限通道100%；右半RGB均值.041836/.041277/.038001，接近零像素.002435%。
+- **同票据最终图右半97.4644%像素RGB各通道≤8，其中90.4792%严格全零；左半保留死亡场景与效果。**
+
+这直接将本次复现的故障区间界定在所选HDR全幅复制源之后到最终共享图之前。不能再用“这帧右眼世界场景根本没渲染出来／机位从一开始就在墙内”解释这对已配对像素。仍未读取d80a7b实际采样时的输入、辅助纹理或shader常量，不能据此认定具体哪个shader或copy有错。也不推广为所有黑屏触发的统一根因。
+
+RAW SHA256bbdbbd3872fddc7cbc5b02594634c36885b533a966d0e2864629337c4f1c0cc0；最终GPU图SHA2560b665d9c01693394dd88543603811dae73aee592b743b4759bb7a28067993fab。忽略目录中完整配对审计为analysis/runtime/hdrpixels95-exact-pixel-audit.json。RAW、元数据、原始GPU图和仅供查看的缩略图均保留，不进入发布包。
+
+一次检查点world1→2恢复观察8111ms（含加载），正常停止、原生清理、普通关闭游戏及四份存档恢复核验通过。本轮只在显式模拟器运行时测试，没有改全局运行时，没有真头显验收，release_ready仍false。
+
+下一项有界检查是死亡专用处理分支对全幅HDR与较小辅助纹理的坐标变换。既存反编译记录提示descriptor+170/+178两个float4上传值得左右比较；这只是待验证假设，不直接补偿UV或更换shader常量。所需setter的反编译签名已发现与汇编寄存器不一致，必须按认证汇编设计观察，不能按伪代码参数位置装Hook。
