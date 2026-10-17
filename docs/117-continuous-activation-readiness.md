@@ -32,3 +32,12 @@
 该轮native_started=false，连续会话清理没有成功回执，不冒记native_cleanup_verified=true。启动器随后独立取消owned prime并确认入口恢复，普通关闭游戏、XR退出及四存档恢复通过；相应`prison107-normal-close.json`和`prison107-save-restored.json`保留此区别。没有绕过认证或原样盲目重启。
 
 下一步需有界计时定位认证中耗时的具体阶段，再复测电影与便携包。候选61的ZIP已离线生成但尚未实际运行，默认仍为已验证的60。新门的两次成功不能替代全部CG、机枪、长期或真头显验收。
+
+
+## 109阶段计时：不是UI构建卡住
+
+独立私有副本的start_capture实际子进程只包原有acquire／resolve／anchor／UI／crosshair调用，原参数、55秒期限与重试策略不变，没有额外resolve。278个有限事件记录：46次Resolver.resolve全部成功，共28.387秒；46次build_anchor_config全部因跨帧相机时间戳拒绝，共4.329秒；UI与Crosshair调用均为0。其余主要是原有每轮0.5秒等待。因此本轮的UI acquisition超时文案是通用截止检查，不能当作UI构建缓慢的证据。
+
+原始trace位于ignored `analysis/release-staging/vrdof61-profile109-20261017/analysis/runtime/startup-profile-32692-28471d83ba354e5795a050fb36f87cb3.jsonl`，源码及身份／哈希、阶段汇总见 `analysis/runtime/profile109-stage-summary.json`。首个测试monitor错误读取仓库旧会话索引，证据保留为attempt1；修正私有索引后在同一拥有的游戏、再次认证章节警告下继续，未重启或绕过状态检查。诊断副本修改不属于700文件便携包验收。
+
+该轮仍未启用新原生逻辑，启动器独立prime取消／入口恢复、普通关闭和四存档恢复通过；不把native_cleanup_verified=false改为true。进一步检查发现两个同文案时间戳边界，现有build总耗时不能区分它们。下一轮仅在私有guard内标记边界与阶段时刻，保留全部读取和比较，再判断优化；不增加期限或复用旧认证。
