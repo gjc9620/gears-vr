@@ -1,5 +1,9 @@
 # GearsVR：开发流程与随项目学习
 
+2026-10-18 当前状态请先看[主线进度与V1验收](39-mainline-progress-and-acceptance.md)。默认Native70/Borderless1及Feedback3开发包未提升；第三人称同帧双目和6DoF已有基础及此前真机反馈，Low/High已撤下。首发新增必做DLSS SR，隔离Native83已恢复实际双眼输出，但兼容验收未完成。机枪黑屏、手枪外圈、岔路UI和长期/真机稳定性仍开放，不能沿用旧百分比。DLSS与UI最新证据分别见[文档154](154-dlss-sr-startup-and-output-route.md)、[文档155](155-path-choice-position-and-docking.md)。
+
+以下保留此前阶段的学习及实验记录，其中“当前”“最新”和百分比属于相应历史日期，不代表上述现状。
+
 更新时间：2026-10-15。面向有一点前端和编程基础、不了解 UE 的开发者。
 
 当前玩家测试方向已于2026-10-15调整：按用户要求撤下Low/High固定分辨率，回到游戏输出尺寸驱动的同帧SBS，并交付中文本机启动器。1920×1080游戏输出对应各眼960×1080。默认清单切换为GameResolution1 native＋MenuRecovery1 XR，保留启动菜单、DLSS/DLAA保护及原有HUD/准星修正；没有自动导航或测试倒计时。构建与离线检查通过，尚未启动这份新组合，等待用户自行实测。详见[当前构建与启动器](62-game-resolution-launcher.md)。

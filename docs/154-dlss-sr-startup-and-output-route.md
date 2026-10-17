@@ -80,6 +80,14 @@ Native82（`c7faf64`，SHA256 `a991b62b941a97f17e222c6895f719a826e761fa31b693d54
 
 该轮native cleanup、所有entry独立恢复、正常关闭和设置/四profile恢复通过，无自有前台采样。下一私有修正保留绘制全程严格源绑定，只在Output正常尾部接受已认证marker1的0→1转换，并从原已证明publicglobal0重新核对完整源链；不借新bank替换源或放宽其他身份检查。Astra复核认可进入GPU像素实验，DLSS支持仍未完成。
 
+Native83从`8e2dd6b`冻结（SHA256 `e61542a0e963cf020bcde2ca5b1fb0af2cb1937517dc63d42c3eb1155062918a`），完整构建、五组wrapper/policy与实际GPU frame-link ABI通过。实际`continuous-stereo-43064-20261018-040411-30561c20`完成1108次转发/实际draw/Output；390次完整scope publication，XR scene copy384次、projection layer1411次。允许样本的左右眼tail均单独通过并保留原global0，source/list/pub拒绝为0。3张GPU图像两半均非全黑，已保存原始图和统计；末图左右非黑占比约83.9%/90.2%，平均luma约10.44/16.14。样图近景占比大且两眼亮度不同，需要固定相机的DLSS开关对照，不能只凭非黑宣称像素、SR或history正确。
+
+该轮会话stopped、XR退出0，native cleanup、全部entry独立恢复、正常关闭及完整设置/四profile恢复通过，无自有前台采样。默认Native70及现有开发ZIP未改；本结果只表明该隔离SR配置下已恢复实际双眼输出，不是全部质量模式、CG/机枪、长时间或头显兼容验收。
+
+随后同一Native83进行DLSS关闭对照`continuous-stereo-9000-20261018-040759-2a575dde`：两轮测试前完整设置与四profile的SHA逐项相同，无额外游戏输入，XR CSV的头部位置/旋转及左右眼偏移也一致；未单独保存同步游戏相机POV。OFF图像显示正常人物和全景，ON图像明显只呈现放大的近处墙柱/地面，不能作为正确立体画面验收。OFF有634次scene copy、1416次projection，正常退出/全部清理与设置恢复通过。此对照不是同步姿态/固定GPU负载性能基准。
+
+按Native83实际QPC排序，ticket1..3均为两次NGX Evaluate返回后才进入左/右Output及quad，不能将d83cbf认定在上采样调用之前。quad绑定的真实资源等于NGX Colorraw，Outputraw则不同；这仍不能排除中间复制或原位回写。提交的853×360与view的1280×1080不是同一语义。下一实验应观察一个ticket内的实际资源写入/复制位置及quad源像素/真实SRV，先核实有效区域和输出去向，不继续凭最终矩形猜UV。CPU排序报告和原始图片仅在ignored analysis/runtime。
+
 ## 其他主线进展
 
 `50cbfcd` 为 MenuReader 增加可选的 Position/DockTargets 原始布局采集，70项离线测试通过。普通采样不增加这些读取，未改变UI位置。实际普通双目回归 `ui-layout-details4-20261018` 提交1359次、scene copy723次，约15.08秒，最大提交间隔28.7181ms；正常清理和配置恢复通过。岔路详细采集初次遇到导航碰撞、脚本结果字段及注册表变化；后续 `ui-layout-details7-20261018` 已取得完整13节点及布局详情，见[文档155](155-path-choice-position-and-docking.md)。这仍不是UI修复验收。

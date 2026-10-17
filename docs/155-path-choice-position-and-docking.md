@@ -32,3 +32,5 @@ Native80（`364800f`，SHA256 `986fbad49dabc61da5a79319e78f6df793ea9f62c384bc428
 `path-position80c-20261018` 取得实际首次loss：`applied=1`，read mask=3且complete，Top/Bottom观察bits分别`1025061054/1064725749`，精确等于原始bits；自有位移bits为`1029037876/1064974300`。units可读且四项均4，world/current world均1、identity lost=0。因此这轮确认数值恢复到原值，已排除该记录中的读取失败；仍未定位具体writer，不能仅凭相等宣布298bdc执行。试验以proof_failure停止，没有位移后GPU图像或最终UI修复验收。下一步围绕SafePanel正常布局入口取得有界调用证据，避免在Render层反复覆盖。
 
 该轮正常关闭自有游戏，native cleanup与entry恢复、完整设置/四profile恢复均通过，本轮自有配置在停止后完整比对并清理；无自有前台采样。原Top/Bottom约`0.0374/0.96260005`，自有值约`0.05221482/0.97741485`。历史`298bdc`完整161B读取已核对缓存SHA；其入口使用对象与12B输入，条件调用Left/Top SetPosition，尚不能命名为SafeRegion更新或证明它恢复Bottom。下一条证据需要当前完整161B与实际panel的vtable+488，以及精确对象调用内的位置前后变化。
+
+只读`path-position80d-20261018`随后在实际PathChoice panel上双读vtable+488及目标完整161B：指针为当前base+298bdc，SHA256 `b5dae9f89c8182b26eef27e87ca2ae57804899ed313cb9acdc630280a03b6fb5`，身份、指针和字节复读一致。未写位置INI、未调用位置API；这只补齐当前静态认证，仍没有该函数实际执行/改写位置的证据。正常关闭、native/entry恢复和完整设置/四profile恢复均通过，无自有前台采样。下一步可围绕这一精确对象做有界入口/出口观察。
