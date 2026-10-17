@@ -44,3 +44,5 @@ Native84从`228f82a`冻结（DLL SHA256 `baf522a98cabdfad9ef24b0ef748ca06e7cbb65
 Native86从`7c387e9`冻结，DLL SHA256 `a0f3937432378d6e4de96236d5a3b7921cf83797c47e87986a10b5ec5a364c50`。完整DLL、四项wrapper/core/graphics检查及实际UI bypass/GPU frame-link自测通过。`path-layout86-20261018`在同一目标panel上捕获正常reflow调用：caller为当前base+2982a8，入口与出口身份和全部2047 mask一致，Top/Bottom从自有`0.052214816/0.977414846`变回原始`0.0374/0.962600052`，Left/Right保持`0.15305008/0.846949875`。数组Num/Max均2，raw索引0、selected值0.9252、units四项4保持；不把未经反射命名的raw偏移当已还原字段。全入口2次、承认1行，另一入口因外线程旁路。该实际样本已证明2983f8调用子树会重设目标位置，但未追踪具体store，也不证明所有UI症状有相同原因。
 
 本轮仍因试验位置被覆盖而停止，未完成UI修正。正常关闭、native cleanup、所有entry完整独立恢复及设置/四profile恢复通过，无自有前台采样。精简proof和原始receipt保存在ignored `analysis/runtime/path-layout86-reflow-proof-20261018.json`。后续修正应顺应这条原生布局路径，先验证其下游SetPosition参数域，避免在Render阶段持续覆写或重复调用SetPosition造成布局失效循环。
+
+后续已加入默认关闭的298694八参数只读观察，限定在同一已认证reflow/owner/nonce/panel/world作用域，最多四行，保留四个float原bits、inputType/origin/sort及原始RAX。它不hook或修改SetPosition的356B认证，不改坐标/百分比；旁路嵌套parent不会借用外层作用域。实际wrapper和原位置回归`/W4 /WX`、20项Python配置/恢复检查通过（含parent/child/双hook库存及完整chunks/两槽的39种恢复子用例）。完整DLL和实际实参采样尚待运行，不能把历史PixelViewport声明当作这轮已观察值。

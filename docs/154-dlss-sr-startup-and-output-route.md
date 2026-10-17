@@ -90,6 +90,12 @@ Native83从`8e2dd6b`冻结（SHA256 `e61542a0e963cf020bcde2ca5b1fb0af2cb1937517d
 
 进一步核对同轮已有原生复制日志：`caller=1c6093` 共2770次完整子资源复制，实际source正是NGX Outputraw，destination正是quad绑定的Colorraw，box为空、目标偏移为0。它支持Output整图回写到最终源的路径，因此不能把“quad绑定Color”单独认定为绑错输入。现有聚合记录没有逐次Evaluate关联与GPU像素；下一私有观察器拟在已存在的真实复制源旁最多读取两个GPU样本，核实实际有效区域与最终画面的关系，不新增资源状态转换或额外Execute。未取得样本之前，DLSS取景异常、逻辑眼/history/SR验证仍未关闭。
 
+Native85从`768813a`冻结（DLL SHA256 `e44db519075ba88922c81d64dd33ab3d92d47814dc91e840711db415e15ece9b`），新增默认关闭、最多两份的相邻CopySource读回；六项实际wrapper/policy检查及实际GPU frame-link ABI自测通过。独立审查发现并修正跨线程Eval/Create可绕过TLS未完成区间的歧义门禁，实际不满足关联时不追加采样。`dlss85-output-pixels-20261018`成功采到同一world1/ticket32的Evaluate65/66：source base分别0/1280，Render.Subrect均853×360、output base均0；每份读回都位于对应Eval正常返回之后、下一Eval之前的原生Output→Color完整复制旁，使用独立列表generation、同一DIRECT queue，无新增barrier或Execute。
+
+两份2560×1080 format26原始数据均在成功物理Reset和fence完成后保存，failure=0、持有引用随后释放。GPU预览在此Output复制点就呈现放大的近墙柱画面，因此最终SBS矩形不能作为唯一原因；尚未区分输入已异常与NGX参数/feature行为。原始GPU数据与解码结果已校验哈希并归档ignored `analysis/runtime/dlss85-output-pixels/`。XR有437次scene copy、1405次projection，但当前Borderless1二进制没有输出hdr_match记录，发布匹配请求不等于取得同ticket最终XR图，不能宣称像素闭环或真机通过。正常关闭、native/entry独立恢复、设置/四profile恢复通过，无自有前台采样，默认包未改。
+
+下一实验先补激活前遗漏的真实Create输入/输出尺寸、quality/flags/subrects及后续handle关联；853×360与整图宽高比相近只是假设，不直接改尺寸或UV。原生复制中的Color是COPY_DEST，不能把它当输入读回的COPY_SOURCE；预Eval输入像素还缺真实状态和执行顺序证据。DLSS SR、逻辑眼及独立history仍未通过。
+
 ## 其他主线进展
 
 `50cbfcd` 为 MenuReader 增加可选的 Position/DockTargets 原始布局采集，70项离线测试通过。普通采样不增加这些读取，未改变UI位置。实际普通双目回归 `ui-layout-details4-20261018` 提交1359次、scene copy723次，约15.08秒，最大提交间隔28.7181ms；正常清理和配置恢复通过。岔路详细采集初次遇到导航碰撞、脚本结果字段及注册表变化；后续 `ui-layout-details7-20261018` 已取得完整13节点及布局详情，见[文档155](155-path-choice-position-and-docking.md)。这仍不是UI修复验收。
