@@ -58,3 +58,11 @@ Native88从`7e5ce90`冻结，DLL SHA256 `1e4ee00345426cb683715fbf56e21d5d2091095
 六次重排与四条记录、外部1ULP改写、嵌套、原调用异常、restore递归旁路、到期/drain及original执行期间撤销请求等离线检查通过。独立只读实现审查未发现阻碍本次实验的缺陷。Native89完整构建及八项wrapper/graphics/UI bypass/GPU frame-link自测通过，DLL SHA256 `5efa24ce70161c5447364a6baa85ca5389adc3657504b5eb2a5cd7f81b3c8352`。实际游戏的持续位移、恢复、子布局、GPU裁剪和输入结果仍待验证；16px只是实验量，不是最终玩家居中设置，默认Native70和开发包未改变。
 
 Native89实际`path-layout89-20261018`捕获一次正常受控重排：modified/adopted均1、控制failure0，Top经原生单位换算后比最初fraction setter结果低1ULP，并已保存真实精确owned。随后hold认证失败，首次诊断明确指向check552、base+1c24730的全局对象表完整16B头：Data94946852864、Max309766保持，Num241760增加到241761。该记录支持“旧证书将无关对象表数量变化视为失效”的具体问题，不能据此认定目标panel已被替换。没有取得shifted GPU图或完成恢复验收；实验拒绝继续写入并以proof_failure停止。正常关闭、native/entry独立恢复及完整设置/四profile恢复通过，无自有前台采样，精简证据在ignored `analysis/runtime/path-layout89-reflow-proof-20261018.json`。下一私有修正将只允许已知注册表固定前缀内的证书在Data/Max稳定且Num不低于初始值时继续使用，固定对象槽与全部身份/成员字段仍保持精确认证；采集边界仍完整复读，不引入通用字节mask。
+
+`55f83f2`实现显式schema2 `registry_header_policy=fixed_prefix_v1`。仅base+1c24730与base+1c34800的完整16B头适用，两个头都必须存在且合法，不允许部分/跨头/重复别名覆盖；Data/Max保持，实时Num可在初始Num至固定Max之间变化。具体对象/名称槽仍来自首次有效范围，所有依赖字节继续exact。此策略允许无关后缀变化，不声称整个表单调追加。schema1保持原逐字节规则，Python采集边界和owner serializer未改变；core与诊断共享同一matcher，接受计数来自原有同次Read。四项`/W4 /WX`检查及31项Python检查通过。
+
+Native90从该提交冻结，DLL SHA256 `e5805eea57654a02075e8b7ef4146924da315d821540db2823f399a77586dbcc`，完整构建与八项自测通过。实际`path-layout90-20261018`完成两次apply和两次restore，涵盖6秒到期及owned状态主动停止；identity/ownership lost、pending、unresolved及控制failure均0。记录346次注册表后缀变化的接受读取，首条对象Num241814到241826，Data/Max保持，目标身份与原生代码认证仍通过。两次正常重排均修改并承认实际owned，未把原值当自有位移。
+
+该轮GPU保存baseline、shifted16、restored三张2534×1009图像。上方中央文字区逐眼比较，位移最佳匹配均为向下15输出像素，与16×1009/1080≈14.948一致，IoU分别0.9824/0.9819；恢复两眼均dy0且IoU1.0。根协调另检查了左眼三图预览，标题、左右选择及提示均可见。此结果验证该幅度下的实际双眼文字平移与恢复，不证明全部裁剪、输入命中或真头显体验，也未接受16px为最终居中量。完整证据在ignored `path-layout90-reflow-proof-20261018.json`、`path-layout90-gpu-translation-20261018.json`。正常关闭、native/entry独立恢复、设置/四profile恢复通过，无自有前台采样；默认Native70和开发包未改变。
+
+现有静态与实际实参还确认：安全区宽约`1080×0.9252×4/3`、高约`1080×0.9252`并居中；安全区居中不表示其顶部内容已居中。下一候选保持宽高和L/R，对确认范围内的PathChoice内容作一次更大的Y平移，检查完整文字、间距、裁剪与正常选择。不能直接缩小百分比并假设字形和停靠关系不变，也不推广为所有UI的共同根因。

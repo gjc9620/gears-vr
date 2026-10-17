@@ -98,6 +98,8 @@ Native85从`768813a`冻结（DLL SHA256 `e44db519075ba88922c81d64dd33ab3d92d4781
 
 正常菜单重建试验`dlss85-menu-create-d-20261018`从DLSS关闭状态启动，保留Native85现有观察器，通过实际UI状态导航至Resolution Scaling并发送一次原生窗口Right。前后CPU DLSS/alternate DWORD仍均为0，Create/Evaluate记录均0；因此该轮没有证明启用，也没有取得创建尺寸。返回时实际出现`WarfareConfirmation / UIScene_Confirmation`，正文为`ConfirmVideoSettings`，自动路由因未知确认页停止。后续将只对该精确本地视频确认页补有界处理，并记录反射选项值；不把一次Right、历史脚本的Enter分支或CPU标志当SDK实际生效证明。该轮正常关闭、native/entry独立恢复及设置/四profile恢复通过，无实际自有前台采样；完整状态和哈希已归档ignored analysis/runtime。
 
+后续E/G/H补充只读反射和精确视频确认：SelectedResolutionScaling的3/ULTRA PERFORMANCE到0/QUALITY是质量档变化，并不是启用开关。当前AA数组实际为NONE、FXAA、AMD FidelityFX Super Resolution 3.1、NVIDIA DLSS 3.5；H在AA行两次普通Right后观察到0→2→0，路由因重复停止，仍无Create/Evaluate。这与按键重复或原生跳过选项均相容，尚未区分；编译与对应实际状态均证实三项graphics锁OFF、lock_effective=0，不能直接归咎现有禁用hook。下一实验只记录一次原按键对期间的控件CurrentIndex/SkippedItemIndex及选项索引轨迹，不盲目循环或声明DLSS已启用。各轮均正常关闭并恢复native/entry、设置/四profile，无实际自有前台采样。Create尺寸、输入图像与正确SR输出仍是未关闭项。
+
 ## 其他主线进展
 
 `50cbfcd` 为 MenuReader 增加可选的 Position/DockTargets 原始布局采集，70项离线测试通过。普通采样不增加这些读取，未改变UI位置。实际普通双目回归 `ui-layout-details4-20261018` 提交1359次、scene copy723次，约15.08秒，最大提交间隔28.7181ms；正常清理和配置恢复通过。岔路详细采集初次遇到导航碰撞、脚本结果字段及注册表变化；后续 `ui-layout-details7-20261018` 已取得完整13节点及布局详情，见[文档155](155-path-choice-position-and-docking.md)。这仍不是UI修复验收。
