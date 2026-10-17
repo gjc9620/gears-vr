@@ -1,6 +1,7 @@
 // Include after capture's safe_copy/base/session/world globals and metadata helper.
 #include "path_choice_position_trial.h"
 #include "path_choice_position_code_contract.h"
+#include <intrin.h>
 namespace path_choice_position_live {
 #if defined(GEARS_PATH_CHOICE_POSITION_TRIAL) && GEARS_PATH_CHOICE_POSITION_TRIAL
 namespace trial=gears_path_choice_position;
@@ -25,6 +26,76 @@ OwnershipLossReceipt first_loss;
 std::atomic<bool> loss_claimed{},loss_ready{};
 trial::State state; // Only the bound scene-root owner thread accesses this.
 std::uint64_t successful_nonce{}; // Same owner only; a later partial apply is not certified by an older count.
+enum class AuthStage:unsigned {hold=1,restore=2,apply=3};
+enum class AuthKind:unsigned {check,context,vtable,invalidate,notify,units};
+struct AuthFailureReceipt {
+    std::uint64_t nonce{},panel{},scene{},world{},current_world{};
+    uintptr_t caller_hint{},address{};long long qpc{};DWORD thread{};
+    AuthStage stage{};AuthKind kind{};unsigned check_index=UINT_MAX,context_field=UINT_MAX;
+    unsigned length{},first_mismatch=UINT_MAX,window_offset{},window_size{};bool readable{};
+    std::array<unsigned char,16> expected{},observed{};
+};
+AuthFailureReceipt first_auth_failure;
+std::atomic<bool> auth_failure_claimed{},auth_failure_ready{};
+bool observe_auth_allowed(trial::Config const& c){
+    // Must precede successful_nonce (owner-only) and every State access.
+    return owner_thread.load(std::memory_order_acquire)==GetCurrentThreadId()&&applied.load()&&
+        c.nonce&&successful_nonce==c.nonce;
+}
+void publish_auth_failure(trial::Config const& c,trial::Context const& ctx,AuthStage stage,AuthKind kind,
+    uintptr_t hint,unsigned check_index,unsigned context_field,uintptr_t address,unsigned length,
+    unsigned char const* expected,unsigned char const* observed,bool readable){
+    if(!observe_auth_allowed(c))return;
+    bool empty=false;if(!auth_failure_claimed.compare_exchange_strong(empty,true))return;
+    AuthFailureReceipt r{};r.nonce=c.nonce;r.panel=c.panel;r.scene=c.scene;r.world=c.world_generation;r.current_world=ctx.world_generation;
+    r.caller_hint=hint;r.address=address;r.thread=GetCurrentThreadId();r.stage=stage;r.kind=kind;
+    r.check_index=check_index;r.context_field=context_field;r.length=length;r.readable=readable;
+    if(readable){for(unsigned i=0;i<length;++i)if(expected[i]!=observed[i]){r.first_mismatch=i;break;}}
+    r.window_offset=readable&&r.first_mismatch!=UINT_MAX&&r.first_mismatch>8?r.first_mismatch-8:0;
+    r.window_size=(std::min)(16u,length-r.window_offset);
+    for(unsigned i=0;i<r.window_size;++i){r.expected[i]=expected[r.window_offset+i];
+        if(readable)r.observed[i]=observed[r.window_offset+i];}
+    LARGE_INTEGER now{};QueryPerformanceCounter(&now);r.qpc=now.QuadPart;
+    first_auth_failure=r;auth_failure_ready.store(true,std::memory_order_release);
+}
+// Uses only already-available context values; it performs no game reads.
+void observe_context_failure(trial::Config const& c,trial::Context const& ctx,AuthStage stage,uintptr_t hint){
+    if(!observe_auth_allowed(c)||trial::same(c,ctx))return;
+    std::array<std::uint64_t,7> expected{c.pid,c.creation_time,c.started_qpc,c.world_generation,c.base,c.client,c.scene};
+    std::array<std::uint64_t,7> actual{ctx.pid,ctx.creation_time,ctx.started_qpc,ctx.world_generation,ctx.base,ctx.client,ctx.scene};
+    for(unsigned i=0;i<expected.size();++i)if(expected[i]!=actual[i]){
+        publish_auth_failure(c,ctx,stage,AuthKind::context,hint,UINT_MAX,i,0,8,
+            reinterpret_cast<unsigned char const*>(&expected[i]),reinterpret_cast<unsigned char const*>(&actual[i]),true);return;}
+}
+template<class Read> struct AuthRead {
+    trial::Config const& config;trial::Context const& ctx;AuthStage stage;uintptr_t hint;Read read;unsigned next_check{};
+    bool operator()(void* out,void const* from,std::size_t size){
+        const bool ok=read(out,from,size); // Forward exactly once, with the original arguments and result.
+        if(!observe_auth_allowed(config)||auth_failure_ready.load(std::memory_order_acquire))return ok;
+        const auto at=reinterpret_cast<uintptr_t>(from);
+        auto compare=[&](AuthKind kind,unsigned index,unsigned char const* expected,unsigned length){
+            auto observed=static_cast<unsigned char const*>(out);
+            if(!ok||!std::equal(expected,expected+length,observed))
+                publish_auth_failure(config,ctx,stage,kind,hint,index,UINT_MAX,at,length,expected,observed,ok);
+        };
+        // authenticate receives its Reader by value. Each authentication starts
+        // at check zero, including duplicate address/length checks in the config.
+        if(next_check<config.checks.size()){
+            auto const& check=config.checks[next_check];
+            if(at==check.address&&size==check.bytes.size()){
+                const auto index=next_check++;compare(AuthKind::check,index,check.bytes.data(),static_cast<unsigned>(size));return ok;}
+        }
+        auto scalar=[&](AuthKind kind,auto expected){compare(kind,UINT_MAX,reinterpret_cast<unsigned char const*>(&expected),static_cast<unsigned>(sizeof(expected)));};
+        if(size==8&&at==config.panel)scalar(AuthKind::vtable,uintptr_t(config.panel_vtable));
+        else if(size==8&&at==config.panel_vtable+0x3d8)scalar(AuthKind::invalidate,uintptr_t(config.base+0x2988d8));
+        else if(size==8&&at==config.panel_vtable+0x3b8)scalar(AuthKind::notify,uintptr_t(config.base+0x297338));
+        else if(size==4&&at==config.panel+0x70)scalar(AuthKind::units,std::uint32_t(0x04040404));
+        return ok;
+    }
+};
+template<class Read> auto auth_reader(trial::Config const& c,trial::Context const& ctx,AuthStage stage,uintptr_t hint,Read read){
+    observe_context_failure(c,ctx,stage,hint);return AuthRead<Read>{c,ctx,stage,hint,read};
+}
 template<class Read> void publish_loss(trial::Config const& c,std::uint64_t current_world,
     std::array<std::uint32_t,2> observed,unsigned read_mask,bool complete,Read read){
     bool empty=false;if(!loss_claimed.compare_exchange_strong(empty,true))return;
@@ -111,13 +182,15 @@ uintptr_t invoke_with(Candidate const& candidate,Original original,Read read,Set
     struct Reset{~Reset(){inside=false;--in_flight;owner_activity=terminal.load()?2u:0u;}} reset;
     if(terminal.load())return original();
     auto req=std::atomic_load(&selected);auto ctx=context(candidate.client,candidate.scene);
+    const auto caller_hint=reinterpret_cast<uintptr_t>(_ReturnAddress());
     auto invoke_set=[&](auto panel,float v,unsigned face,unsigned input,int origin){
         ever_modified=true;return setter(panel,v,face,input,origin);};
     if(state.lease.active){auto const& c=state.lease.config;
         if(c.world_generation!=ctx.world_generation||c.started_qpc!=ctx.started_qpc||c.pid!=ctx.pid||c.creation_time!=ctx.creation_time||c.base!=ctx.base){
+            observe_context_failure(c,ctx,AuthStage::hold,caller_hint);
             state.lease.active=false;count(trial::Result::identity_lost);return original();}
         if(c.client!=candidate.client||c.scene!=candidate.scene)return original();
-        if(!trial::authenticate(c,ctx,read)){state.lease.active=false;count(trial::Result::identity_lost);return original();}
+        if(!trial::authenticate(c,ctx,auth_reader(c,ctx,AuthStage::hold,caller_hint,read))){state.lease.active=false;count(trial::Result::identity_lost);return original();}
         std::array<std::uint32_t,2> p{};unsigned read_mask=0;
         auto observed_read=[&](void* out,void const* from,std::size_t size){
             bool ok=read(out,from,size);auto address=reinterpret_cast<uintptr_t>(from);
@@ -130,13 +203,13 @@ uintptr_t invoke_with(Candidate const& candidate,Original original,Read read,Set
             state.lease.active=false;count(trial::Result::ownership_lost);return original();}
         if(drain_requested.load()||!req||req->config.nonce!=c.nonce||GetTickCount64()>=req->expires){
             if(!certify()){state.lease.active=false;count(trial::Result::identity_lost);return original();}
-            ++restore_retries;count(trial::restore(state,ctx,read,invoke_set));return original();}
+            ++restore_retries;count(trial::restore(state,ctx,auth_reader(c,ctx,AuthStage::restore,caller_hint,read),invoke_set));return original();}
         return original();
     }
     if(!drain_requested.load()&&req&&GetTickCount64()<req->expires&&req->config.nonce>state.consumed_nonce&&
         req->config.client==candidate.client&&req->config.scene==candidate.scene){
         if(!certify()){count(trial::Result::rejected);disable();return original();}
-        restore_retries=0;count(trial::apply(state,req->config,ctx,read,invoke_set));}
+        restore_retries=0;count(trial::apply(state,req->config,ctx,auth_reader(req->config,ctx,AuthStage::apply,caller_hint,read),invoke_set));}
     return original();
 }
 template<class Candidate,class Original> uintptr_t invoke(Candidate const& candidate,Original original){
@@ -150,6 +223,15 @@ void progress(FILE* f){fprintf(f,"path_position_compiled=1 path_position_nonce=%
         fprintf(f,"path_position_loss_read_mask=%u path_position_loss_complete=%u path_position_loss_original_top=%u path_position_loss_original_bottom=%u path_position_loss_owned_top=%u path_position_loss_owned_bottom=%u path_position_loss_observed_top=%u path_position_loss_observed_bottom=%u path_position_loss_units_readable=%u path_position_loss_units=%u path_position_loss_scene=%llu path_position_loss_panel=%llu path_position_loss_world=%llu path_position_loss_current_world=%llu path_position_loss_tick=%llu ",
             r.read_mask,r.positions_complete?1u:0u,r.original[0],r.original[1],r.owned[0],r.owned[1],r.observed[0],r.observed[1],
             r.units_readable?1u:0u,r.units,r.scene,r.panel,r.world,r.current_world,r.tick);
+    }
+    const bool auth_ready=auth_failure_ready.load(std::memory_order_acquire);
+    fprintf(f,"path_position_auth_fail_ready=%u ",auth_ready?1u:0u);
+    if(auth_ready){auto const& r=first_auth_failure;
+        fprintf(f,"path_position_auth_fail_nonce=%llu path_position_auth_fail_panel=%llu path_position_auth_fail_scene=%llu path_position_auth_fail_world=%llu path_position_auth_fail_current_world=%llu path_position_auth_fail_stage=%u path_position_auth_fail_stage_tuple=hold:1,restore:2,apply:3 path_position_auth_fail_kind=%u path_position_auth_fail_kind_tuple=check:0,context:1,vtable:2,invalidate:3,notify:4,units:5 path_position_auth_fail_context_tuple=pid,creation_time,started_qpc,world,base,client,scene path_position_auth_fail_context_field=%u path_position_auth_fail_index=%u path_position_auth_fail_address=%llu path_position_auth_fail_length=%u path_position_auth_fail_readable=%u path_position_auth_fail_first_mismatch=%u path_position_auth_fail_window_offset=%u path_position_auth_fail_window_size=%u path_position_auth_fail_qpc=%lld path_position_auth_fail_thread=%lu path_position_auth_fail_caller_hint=%llu path_position_auth_fail_expected=",
+            r.nonce,r.panel,r.scene,r.world,r.current_world,unsigned(r.stage),unsigned(r.kind),r.context_field,r.check_index,
+            static_cast<unsigned long long>(r.address),r.length,r.readable?1u:0u,r.first_mismatch,r.window_offset,r.window_size,r.qpc,r.thread,static_cast<unsigned long long>(r.caller_hint));
+        for(unsigned i=0;i<r.window_size;++i)fprintf(f,"%02x",unsigned(r.expected[i]));
+        fprintf(f," path_position_auth_fail_observed=");for(unsigned i=0;i<r.window_size;++i)fprintf(f,"%02x",unsigned(r.observed[i]));fprintf(f," ");
     }
 }
 #else

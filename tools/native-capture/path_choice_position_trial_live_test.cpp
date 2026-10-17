@@ -42,6 +42,7 @@ struct Engine {
 static void reset(){disable();state={};owner_thread=0;in_flight=0;owner_activity=0;inside=false;restore_retries=0;drain_started=0;
     pending_restore=false;ever_modified=false;drain_requested=false;unresolved=false;terminal=false;
     first_loss={};loss_claimed=false;loss_ready=false;
+    successful_nonce=0;first_auth_failure={};auth_failure_claimed=false;auth_failure_ready=false;
     loaded_nonce=0;applied=0;restored=0;rejected=0;identity_lost=0;ownership_lost=0;setter_failed=0;reads=0;stops=0;}
 static std::shared_ptr<Request> select(Engine& e){auto ctx=context(e.c.client,e.c.scene);
     e.c.pid=ctx.pid;e.c.creation_time=ctx.creation_time;e.c.started_qpc=ctx.started_qpc;e.c.world_generation=ctx.world_generation;
@@ -149,4 +150,86 @@ static void ownership_receipts(){
             first_loss.tick==receipt.tick&&first_loss.current_world==receipt.current_world&&e.calls==2);
     }
 }
-int main(){ownership_receipts();gates();expiry_and_retry();failed_apply_rollback();threaded_drain();bounded_drain();std::puts("PathChoicePositionTrialLiveTest passed");}
+static void auth_failure_checks(){
+    for(bool readable:{true,false}){reset();Engine e;
+        Check check;check.address=0x6000;for(unsigned i=0;i<40;++i){check.bytes.push_back(static_cast<unsigned char>(i+10));e.memory[check.address+i]=check.bytes.back();}
+        e.c.checks.push_back(check);select(e);Candidate candidate;unsigned originals{};
+        auto original=[&]{++originals;return uintptr_t(0xfedcba9876543210ull);};auto cert=[] {return true;};
+        invoke_with(candidate,original,e.reader(),e.setter(),cert);assert(applied==1&&!auth_failure_ready);
+        if(readable)e.memory[check.address+25]^=1;
+        unsigned target_reads{};
+        auto reader=[&](void* out,void const* from,std::size_t size){
+            if(reinterpret_cast<uintptr_t>(from)==check.address){++target_reads;if(!readable){static_cast<unsigned char*>(out)[0]=0xff;return false;}}
+            return e.read(out,from,size);};
+        std::thread worker([&]{while(!auth_failure_ready.load(std::memory_order_acquire))std::this_thread::yield();
+            auto const& r=first_auth_failure;assert(r.nonce==e.c.nonce&&r.panel==e.c.panel&&r.scene==e.c.scene&&r.world==e.c.world_generation);
+            assert(r.kind==AuthKind::check&&r.stage==AuthStage::hold&&r.check_index==1&&r.length==40&&r.address==check.address);
+            assert(r.readable==readable&&r.first_mismatch==(readable?25u:UINT_MAX)&&r.window_offset==(readable?17u:0u)&&r.window_size==16);
+            for(unsigned i=0;i<16;++i){assert(r.expected[i]==check.bytes[r.window_offset+i]);
+                assert(r.observed[i]==(readable?static_cast<unsigned char>(check.bytes[r.window_offset+i]^(r.window_offset+i==25?1:0)):0));}
+        });
+        assert(invoke_with(candidate,original,reader,e.setter(),cert)==0xfedcba9876543210ull);worker.join();
+        assert(target_reads==1&&identity_lost==1&&ownership_lost==0&&e.calls==2&&originals==2&&terminal&&stops==1);
+        auto const saved=first_auth_failure;unsigned char expected=1,actual=2;
+        publish_auth_failure(e.c,e.ctx,AuthStage::restore,AuthKind::units,7,0,0,0x8000,1,&expected,&actual,true);
+        invoke_with(candidate,original,e.reader(),e.setter(),cert);
+        assert(first_auth_failure.qpc==saved.qpc&&first_auth_failure.expected==saved.expected&&first_auth_failure.observed==saved.observed&&
+            first_auth_failure.address==saved.address&&first_auth_failure.caller_hint==saved.caller_hint&&saved.qpc>0&&saved.thread==GetCurrentThreadId());
+    }
+}
+static void auth_failure_fixed_fields_and_context(){
+    for(unsigned failure=0;failure<5;++failure){reset();Engine e;select(e);Candidate c;auto original=[] {return uintptr_t(1);};auto cert=[] {return true;};
+        invoke_with(c,original,e.reader(),e.setter(),cert);unsigned expected_field=UINT_MAX;
+        if(failure==0)e.put(e.c.panel,uintptr_t(0x4008));
+        if(failure==1)e.put(e.c.panel_vtable+0x3d8,e.c.base+0x2988d9);
+        if(failure==2)e.put(e.c.panel_vtable+0x3b8,e.c.base+0x297339);
+        if(failure==3)e.put(e.c.panel+0x70,std::uint32_t(0x04050404));
+        if(failure==4){++committed_world_generation;expected_field=3;}
+        unsigned read_calls{};auto reader=[&](void* out,void const* from,std::size_t size){++read_calls;return e.read(out,from,size);};
+        invoke_with(c,original,reader,e.setter(),cert);if(failure==4)--committed_world_generation;
+        assert(auth_failure_ready&&identity_lost==1&&e.calls==2);
+        auto const& r=first_auth_failure;
+        assert(r.stage==AuthStage::hold&&r.kind==(failure==4?AuthKind::context:static_cast<AuthKind>(unsigned(AuthKind::vtable)+failure)));
+        assert(r.check_index==UINT_MAX&&r.context_field==expected_field&&r.readable&&r.first_mismatch!=UINT_MAX);
+        if(failure==4)assert(read_calls==0&&r.current_world==r.world+1&&r.address==0);
+    }
+}
+static void auth_reader_forwarding_and_foreign(){
+    reset();Engine e;select(e);Candidate c;auto original=[] {return uintptr_t(1);};auto cert=[] {return true;};
+    invoke_with(c,original,e.reader(),e.setter(),cert);
+    std::vector<std::pair<uintptr_t,std::size_t>> plain,observed;
+    auto record=[&](auto& calls){return [&](void* out,void const* from,std::size_t size){calls.emplace_back(reinterpret_cast<uintptr_t>(from),size);return e.read(out,from,size);};};
+    assert(authenticate(e.c,e.ctx,record(plain)));
+    assert(authenticate(e.c,e.ctx,auth_reader(e.c,e.ctx,AuthStage::hold,123,record(observed))));
+    assert(plain==observed&&!auth_failure_ready);
+    e.memory[0x5000]^=1;plain.clear();observed.clear();
+    std::thread foreign([&]{auto wrong=e.ctx;++wrong.world_generation;
+        assert(!authenticate(e.c,e.ctx,auth_reader(e.c,wrong,AuthStage::hold,123,record(observed))));
+        assert(!auth_failure_ready);});foreign.join();
+    assert(!authenticate(e.c,e.ctx,record(plain)));assert(plain==observed&&!auth_failure_ready);
+    unsigned callbacks{},reads_before=reads.load();std::thread foreign_wrapper([&]{
+        invoke_with(c,[&]{++callbacks;return uintptr_t(1);},e.reader(),e.setter(),cert);});foreign_wrapper.join();
+    assert(callbacks==1&&reads==reads_before&&!auth_failure_ready&&e.calls==2);
+    ++successful_nonce;assert(!authenticate(e.c,e.ctx,auth_reader(e.c,e.ctx,AuthStage::hold,123,e.reader())));
+    assert(!auth_failure_ready);--successful_nonce;
+}
+static void auth_failure_during_restore(){
+    reset();Engine e;auto req=select(e);Candidate c;unsigned originals{};auto original=[&]{++originals;return uintptr_t(1);};auto cert=[] {return true;};
+    invoke_with(c,original,e.reader(),e.setter(),cert);req->expires=0;unsigned check_reads{};
+    // Holding authenticate succeeds; the original restore authenticate's next
+    // exact check read changes. There is no extra diagnostic game read.
+    auto reader=[&](void* out,void const* from,std::size_t size){auto at=reinterpret_cast<uintptr_t>(from);
+        if(at==0x5000&&++check_reads==2)e.memory[at]^=1;return e.read(out,from,size);};
+    invoke_with(c,original,reader,e.setter(),cert);
+    assert(auth_failure_ready&&first_auth_failure.stage==AuthStage::restore&&first_auth_failure.kind==AuthKind::check&&
+        first_auth_failure.check_index==0&&check_reads==2&&e.calls==2&&identity_lost==1&&originals==2);
+}
+static void auth_duplicate_check_index(){
+    reset();Engine e;e.c.checks.push_back(e.c.checks[0]);select(e);Candidate c;auto original=[] {return uintptr_t(1);};auto cert=[] {return true;};
+    invoke_with(c,original,e.reader(),e.setter(),cert);unsigned calls{};
+    auto reader=[&](void* out,void const* from,std::size_t size){bool ok=e.read(out,from,size);
+        if(reinterpret_cast<uintptr_t>(from)==0x5000&&++calls==2)static_cast<unsigned char*>(out)[0]^=1;return ok;};
+    invoke_with(c,original,reader,e.setter(),cert);
+    assert(auth_failure_ready&&first_auth_failure.kind==AuthKind::check&&first_auth_failure.check_index==1&&calls==2&&e.calls==2);
+}
+int main(){ownership_receipts();gates();expiry_and_retry();failed_apply_rollback();threaded_drain();bounded_drain();auth_failure_checks();auth_failure_fixed_fields_and_context();auth_reader_forwarding_and_foreign();auth_failure_during_restore();auth_duplicate_check_index();std::puts("PathChoicePositionTrialLiveTest passed");}
