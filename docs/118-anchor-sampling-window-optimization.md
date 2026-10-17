@@ -15,3 +15,6 @@
 Sol6.1 Medium执行96项聚焦CPU检查，以及41项anchor／mounted联合检查，均通过，两组有重叠。新增用例实际验证构造在首次时间戳之前、构造超时仍拒绝、同guard两次fresh验证、第二次验证前修改布局／名称／槽仍拒绝，以及名称合并读取的回退。命令及对应源码哈希保存在ignored `analysis/runtime/anchor-window-optimization-cpu-proof.json`。
 
 后续需要在不抢用户前台的协作条件下，验证活跃时间戳场景及CG后启动。没有将本次合成检查写成真机或全部启动故障验收。
+
+
+后续已另建包含该源码的独立AnchorPrep测试包，旧60／61 ZIP不变；离线打包与隔离预检通过，没有启动游戏。版本组合、哈希和验收边界见[新候选包](119-anchorprep-offline-candidate.md)。
