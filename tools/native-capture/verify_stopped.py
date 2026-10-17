@@ -37,6 +37,10 @@ PATH_REFLOW_CHUNKS = ((0x2983f8, 666), (0x8ead70, 435))
 PATH_REFLOW_SHA256 = '9df4472db8e3ebaca59f6c14356c8de8c685a2aac1a1ff060ca0f7603d945d97'
 PATH_REFLOW_CHILD_CHUNKS = ((0x298694, 201), (0x8eaf24, 39))
 PATH_REFLOW_CHILD_SHA256 = 'c455b118525aa5c957e5eea29cd8a46479aa2a95ef633693d4aa04da0e15ac28'
+PATH_CLOSE_CHUNKS = ((0x346574, 62),)
+PATH_CLOSE_SHA256 = 'b8c82a830ef05c50a88489351c469e591b65a154310a2fefec91e57f66fb7b3a'
+PATH_CLOSE_EXEC_CHUNKS = ((0x34698c, 128), (0x90dbe6, 32))
+PATH_CLOSE_EXEC_SHA256 = '1f03d742fcd859a664004bb62ff35c327d80b1364b235701e64184eee53e55c1'
 
 
 def check_runtime_ranges(read, base, target, ranges, source):
@@ -57,6 +61,24 @@ def check_runtime_chunks(read, base, target, chunks, expected_hash, source):
                 bytes_checked=sum(map(len, data)), expected_size=sum(size for _, size in chunks),
                 expected_sha256=expected_hash, actual_sha256=actual_hash,
                 matches=all(len(raw) == size for raw, (_, size) in zip(data, chunks)) and actual_hash == expected_hash)
+
+
+def check_path_close(read, base, target, native_pointer_addresses=()):
+    checks=[]
+    for chunks, digest, source in (
+        (PATH_CLOSE_CHUNKS,PATH_CLOSE_SHA256,'CloseScene complete 62B'),
+        (PATH_CLOSE_EXEC_CHUNKS,PATH_CLOSE_EXEC_SHA256,'CloseScene exec complete 160B')):
+        row=check_runtime_chunks(read,base,target,chunks,digest,'artifact 1 runtime snapshot '+source)
+        row.update(module_base=hex(base),historical_module_base='0x140000000',
+                   source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+        checks.append(row)
+    pointers=[(base+0x1429d58+0x228,base+0x346574,'CloseScene global vtable +228')]
+    pointers += [(address,base+0x34698c,'CloseScene configured UFunction native pointer') for address in native_pointer_addresses]
+    for address,expected,source in pointers:
+        raw=read(address,8)
+        checks.append(dict(target=hex(address),source=source,bytes_checked=len(raw),expected_size=8,
+                           expected_target=hex(expected),matches=raw==struct.pack('<Q',expected),module_base=hex(base)))
+    return checks
 
 
 def main():
@@ -116,6 +138,12 @@ def main():
         camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
+            if rva == 0x346574:
+                addresses=sorted(set(int(value) for value in re.findall(r'path_close_loaded [^\n]*?native_pointer=(\d+)',status)))
+                if len(addresses)>16 or any(not 0<address<(1<<64)-8 for address in addresses):
+                    raise RuntimeError('Unexpected CloseScene native pointer inventory')
+                checks.extend(check_path_close(resolver.read,resolver.base,target,addresses))
+                continue
             if rva in (0x2983f8, 0x298694):
                 # Independent historical expectations: the complete hooked body
                 # AND its authenticated child, including both cold chunks.

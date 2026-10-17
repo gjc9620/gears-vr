@@ -426,6 +426,11 @@ constexpr unsigned path_layout_hooks=2;
 #else
 constexpr unsigned path_layout_hooks=0;
 #endif
+#if defined(GEARS_PATH_CHOICE_CLOSE_OBSERVER) && GEARS_PATH_CHOICE_CLOSE_OBSERVER
+constexpr unsigned path_close_hooks=1;
+#else
+constexpr unsigned path_close_hooks=0;
+#endif
 #if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
 constexpr unsigned death_constant_hooks=1;
 #else
@@ -461,7 +466,7 @@ constexpr unsigned vr_dof_hooks=1;
 #else
 constexpr unsigned vr_dof_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -977,6 +982,7 @@ struct Scope {
 #include "graphics_lock_observer.inl"
 bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "ui_observer_hooks.inl"
+#include "path_choice_close_observer.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
     if(!object || FAILED(object->QueryInterface(IID_PPV_ARGS(&identity))))return 0;
@@ -1490,6 +1496,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     ui_scene_trial_live::progress(output);
     path_choice_position_live::progress(output);
     path_choice_layout_observer::progress(output);
+    path_choice_close_observer::progress(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
     // separately; they are not compositor display or engine-update counts.
@@ -3023,9 +3030,23 @@ bool session_hooks_restored() {
         if(!safe_copy(bytes.data(),session_hook_entries[i].target,bytes.size())||bytes!=session_hook_entries[i].bytes)return false;}
     if(prime_ready.load())for(unsigned i=0;i<prime_targets.size();++i){std::array<unsigned char,32> bytes{};
         if(!safe_copy(bytes.data(),prime_targets[i],bytes.size())||bytes!=prime_original_bytes[i])return false;}
+#if defined(GEARS_PATH_CHOICE_CLOSE_OBSERVER) && GEARS_PATH_CHOICE_CLOSE_OBSERVER
+    if(!path_choice_close_observer::restored())return false;
+#endif
     return true;
 }
 #include "hook_entry_manifest.inl"
+#if defined(GEARS_PATH_CHOICE_CLOSE_OBSERVER) && GEARS_PATH_CHOICE_CLOSE_OBSERVER
+bool path_choice_close_observer::read_own_entry(void* output,void const* source,std::size_t size){
+    if(!hook_entry_manifest_ready.load(std::memory_order_acquire))return false;
+    for(unsigned i=0;i<hook_entry_proof_count;++i){auto const& proof=hook_entry_proofs[i];
+        if(proof.target==reinterpret_cast<uintptr_t>(path_choice_close_observer::target)&&
+           proof.detour==reinterpret_cast<uintptr_t>(path_choice_close_observer::hook))
+            return gears_path_choice_close::read_own_prefix(proof,reinterpret_cast<uintptr_t>(path_choice_close_observer::target),
+                reinterpret_cast<uintptr_t>(path_choice_close_observer::hook),output,source,size,safe_copy);}
+    return false;
+}
+#endif
 #include "world_rebind_prepare.inl"
 #include "world_rebind_commit.inl"
 #include "resource_resize_probe.inl"
@@ -3991,6 +4012,10 @@ DWORD WINAPI worker(void*) {
     if(ok&&ui_observer_enabled)ok=path_choice_layout_observer::enable(status)&&
         install(path_choice_layout_observer::target,reinterpret_cast<void*>(path_choice_layout_observer::hook),reinterpret_cast<void**>(&path_choice_layout_observer::original));
 #endif
+#if defined(GEARS_PATH_CHOICE_CLOSE_OBSERVER) && GEARS_PATH_CHOICE_CLOSE_OBSERVER
+    if(ok&&ui_observer_enabled)ok=path_choice_close_observer::enable(status)&&
+        install(path_choice_close_observer::target,reinterpret_cast<void*>(path_choice_close_observer::hook),reinterpret_cast<void**>(&path_choice_close_observer::original));
+#endif
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
     if(ok&&ui_observer_enabled)ok=install(ui_call_boundary::target,reinterpret_cast<void*>(ui_call_boundary::hook),reinterpret_cast<void**>(&ui_call_boundary::original));
 #endif
@@ -4077,6 +4102,9 @@ DWORD WINAPI worker(void*) {
 #endif
 #if defined(GEARS_PATH_CHOICE_POSITION_TRIAL) && GEARS_PATH_CHOICE_POSITION_TRIAL
             {wchar_t trial_path[MAX_PATH];path_for(trial_path,L"path-choice-position-trial.ini");path_choice_position_live::poll(trial_path,status);}
+#endif
+#if defined(GEARS_PATH_CHOICE_CLOSE_OBSERVER) && GEARS_PATH_CHOICE_CLOSE_OBSERVER
+            {wchar_t close_path[MAX_PATH];path_for(close_path,L"path-choice-close-observer.ini");path_choice_close_observer::poll(close_path,status);}
 #endif
             if(stop_event&&WaitForSingleObject(stop_event,0)==WAIT_OBJECT_0)request_session_stop(SessionStop::event);
             if(GetAsyncKeyState(VK_F8)&0x8000)request_session_stop(SessionStop::f8);
