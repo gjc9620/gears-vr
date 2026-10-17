@@ -151,6 +151,7 @@ void observe_late_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t
 void print_unpossessed_quads(FILE* status);
 void observe_unpossessed_quad_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 namespace death_source_live {void progress(FILE*);void print(FILE*);unsigned status_interval_ms();}
+namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_frame_link::ListRef,uint64_t,unsigned);}
 void print_backbuffer_copies(FILE* status);
 void observe_backbuffer_copy_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 namespace final_transfer_live {
@@ -1178,6 +1179,7 @@ void observe_frame_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandLis
     if(frame_link_diagnostics&&recording.load())for(unsigned i=0;i<count;++i){
         observe_late_execute(queue_id,refs[i],frame_counts.executes.load(),i);
         observe_unpossessed_quad_execute(queue_id,refs[i],frame_counts.executes.load(),i);
+        death_hdr_timeline::executed(queue_id,refs[i],frame_counts.executes.load(),i);
         observe_backbuffer_copy_execute(queue_id,refs[i],frame_counts.executes.load(),i);}
     const bool accepted=owned_token?frame_link.prepare_execute(queue_id,refs.data(),count,*owned_token):
         frame_link.execute(queue_id,refs.data(),count);
@@ -1578,6 +1580,7 @@ void print_frame_link(FILE* status) {
     print_late_quad(status);
     print_unpossessed_quads(status);
     death_source_live::print(status);
+    death_hdr_timeline::print(status);
     print_backbuffer_copies(status);
     final_transfer_live::print(status);
     fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
@@ -2059,6 +2062,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "resource_identity_observer.h"
 #include "late_quad_observer.inl"
 #include "unpossessed_quad_observer.inl"
+#include "death_hdr_timeline.inl"
 #include "final_transfer_live.inl"
 #include "backbuffer_copy_observer.inl"
 #include "final_input_observer.h"
@@ -2860,6 +2864,7 @@ uintptr_t barrier_identity(IUnknown* object) {
 void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RESOURCE_BARRIER* barriers) {
     if(stereo_publish_bypass){original_resource_barrier(list,count,barriers);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_resource_barrier(list,count,barriers);}auto frame_guard=frame_lock();const auto owned=frame_link.owned_status();
+    death_hdr_timeline::barriers_event(list,count,barriers,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     {gears_render_cost::Scope cost(gears_render_cost::barrier_observation);
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
     if(owned_scene_gpu::watching()){
@@ -3020,6 +3025,7 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
     death_source_live::complete(death_control);
     if(late_quad_candidate.active&&!late_quad_candidate.draws){
         observe_unpossessed_quad_draw(nullptr,0,0,0,0);
+        death_hdr_timeline::draw(nullptr,0);
         std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);++late_quad_without_draw;
     }
     late_quad_candidate=saved_late;
@@ -3058,6 +3064,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     if(outage_diagnostics.load())outage_source_overlay={};
     observe_late_draw(list,caller,0,vertices,instances);
     observe_unpossessed_quad_draw(list,caller,0,vertices,instances);
+    death_hdr_timeline::draw(list,caller>=base?caller-base:caller);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
         const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
@@ -3086,6 +3093,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     if(outage_diagnostics.load())outage_source_overlay={};
     observe_late_draw(list,caller,1,indices,instances);
     observe_unpossessed_quad_draw(list,caller,1,indices,instances);
+    death_hdr_timeline::draw(list,caller>=base?caller-base:caller);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
         const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
@@ -3240,6 +3248,7 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
             }
         }
     }
+    death_hdr_timeline::targets_event(list,count,single!=FALSE,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     original_targets(list,count,handles,single,depth);
 }
 void STDMETHODCALLTYPE hook_create_rtv(ID3D12Device* device,ID3D12Resource* resource,const D3D12_RENDER_TARGET_VIEW_DESC* view,D3D12_CPU_DESCRIPTOR_HANDLE handle) {

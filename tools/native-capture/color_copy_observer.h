@@ -120,6 +120,7 @@ void STDMETHODCALLTYPE hook_color_copy(ID3D12GraphicsCommandList* list,const D3D
         else {owned_scene_gpu::use(list,canonical_identity(src.pResource),true);owned_scene_gpu::use(list,canonical_identity(dst.pResource),true);}
     }
 #endif
+    death_hdr_timeline::copy_event(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     final_transfer_live::copy_destination(list,destination);
     observe_backbuffer_copy(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     observe_color_copy(list,destination,x,y,z,source,box,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
