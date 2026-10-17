@@ -69,6 +69,9 @@ struct UiPayloadGpuRow {
     gears_viewport::OverlayPlan hud_plan{};
     bool reticle_direction_applied{};
     gears_viewport::OverlayPlan reticle_plan{};
+#if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
+    gears_ui_reticle::Extent reticle_extent{};
+#endif
 };
 std::array<std::array<UiPayloadGpuRow,24>,8> ui_payload_gpu_rows{};
 std::array<unsigned,8> ui_payload_gpu_counts{};
@@ -403,7 +406,11 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
         }
     }
     ++ui_payload_gpu_calls[kind];auto& count=ui_payload_gpu_counts[kind];
-    if(count>=ui_payload_gpu_rows[kind].size()||(count>=8&&timestamp<ui_payload_next_row[kind]))return;
+    bool consecutive_reticle=false;
+#if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
+    consecutive_reticle=kind==1; // Same fixed capacity, diagnostic sampling only.
+#endif
+    if(count>=ui_payload_gpu_rows[kind].size()||(!consecutive_reticle&&count>=8&&timestamp<ui_payload_next_row[kind]))return;
     ui_payload_next_row[kind]=timestamp+qpc_frequency;
     auto& row=ui_payload_gpu_rows[kind][count++];
     row={context,ticket,list,target,timestamp,GetCurrentThreadId(),indices,instances,start,vertex};
@@ -415,6 +422,12 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
         row.segment_ordinal=ui_index_context->ordinal;
         row.segment=ui_index_context->snapshot.segments[row.segment_ordinal];
         row.index_callback_matched=true;
+#if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
+        if(row.segment_ordinal<ui_index_context->reticle_extents.size()){
+            auto const& extent=ui_index_context->reticle_extents[row.segment_ordinal];
+            if(extent.valid)row.reticle_extent=extent;
+        }
+#endif
     }
 }
 
@@ -478,6 +491,11 @@ void print_ui_payload_observer(FILE* status){
                 }
             }
             if(r.reticle_direction_applied){
+#if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
+                auto const& extent=r.reticle_extent;
+                fprintf(status,"ui_reticle_source_extent_row kind_mask=%u row=%u ticket=%llu ordinal=%u valid=%u root=%llu bounds=%.9g,%.9g,%.9g,%.9g\n",
+                    k,i,r.ticket,r.segment_ordinal,extent.valid?1:0,extent.root_invocation,extent.left,extent.top,extent.right,extent.bottom);
+#endif
                 for(unsigned e=0;e<2;++e){auto const& v=r.reticle_plan.viewports[e];auto const& s=r.reticle_plan.scissors[e];
                     fprintf(status,"ui_reticle_direction_row kind_mask=%u row=%u ticket=%llu eye=%u viewport=%.9g,%.9g,%.9g,%.9g scissor=%.9g,%.9g,%.9g,%.9g applied=1\n",
                         k,i,r.ticket,e,v.x,v.y,v.width,v.height,s.x,s.y,s.width,s.height);
