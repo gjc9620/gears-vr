@@ -154,6 +154,7 @@ namespace death_source_live {void progress(FILE*);void print(FILE*);unsigned sta
 namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_frame_link::ListRef,uint64_t,unsigned);}
 namespace death_constant_observer {void print(FILE*);}
 namespace death_dof_control {void print(FILE*);}
+namespace vr_dof_compat {void print(FILE*);void progress(FILE*);void retire();bool publication(uint64_t,uint64_t);}
 namespace death_pso_cache {void print(FILE*);void poll();}
 namespace gears_death_hdr {struct Event;}
 namespace death_hdr_pixels {
@@ -405,7 +406,12 @@ constexpr unsigned death_dof_hooks=1;
 #else
 constexpr unsigned death_dof_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+death_constant_hooks+death_pso_hooks+death_dof_hooks> session_hook_entries{};
+#if defined(GEARS_VR_DOF_COMPAT) && GEARS_VR_DOF_COMPAT
+constexpr unsigned vr_dof_hooks=1;
+#else
+constexpr unsigned vr_dof_hooks=0;
+#endif
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+death_constant_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -922,6 +928,7 @@ void bind_stereo_publisher(uintptr_t chain_id,uintptr_t queue_id) {
     frame_link.invalidate();
 }
 void retire_stereo_window() {
+    vr_dof_compat::retire();
     if(!stereo_gpu_publish)return;
     if(!stereo_ticket_store.retire_through(stereo_window_retained)){++stereo_publish_counts.ticket_rejected;frame_link.invalidate();}
     stereo_window_retained=0;
@@ -1283,7 +1290,7 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
     auto result=frame_link.present(resource,inventory_ok?binding.queue:0);
     if(diagnostic){diagnostic->valid|=gears_outage::association;diagnostic->buffer=resource;diagnostic->queue=binding.queue;
         diagnostic->ticket=result.ticket;diagnostic->rejection=result.rejection;diagnostic->linked=result.linked;diagnostic->contaminated=result.contaminated;}
-    if(!owned_xr_probe&&stereo_gpu_publish&&result.linked&&inventory_ok){
+    if(!owned_xr_probe&&stereo_gpu_publish&&result.linked&&inventory_ok&&vr_dof_compat::publication(committed_world_generation.load(),result.ticket)){
         gears_vr::StereoImageTicket image{};image.id=result.ticket;
         if(!stereo_ticket_store.lookup(result.ticket,image.sample,simulator_operator)){++stereo_publish_counts.ticket_missing;}
         else {
@@ -1405,6 +1412,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         unpossessed_submission_count.load(),unpossessed_first_ticket.load(),unpossessed_last_ticket.load());
     death_source_live::progress(output);
     death_hdr_pixels::progress(output);
+    vr_dof_compat::progress(output);
     fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu ",
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
         static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()));
@@ -1612,6 +1620,7 @@ void print_frame_link(FILE* status) {
     death_hdr_pixels::print(status);
     death_constant_observer::print(status);
     death_dof_control::print(status);
+    vr_dof_compat::print(status);
     death_pso_cache::print(status);
     print_backbuffer_copies(status);
     final_transfer_live::print(status);
@@ -2106,6 +2115,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "death_pso_cache.inl"
 #include "death_constant_observer.inl"
 #include "death_dof_control.inl"
+#include "vr_dof_compat.inl"
 
 void inspect_completed_renderer(Record& record,void* destination){
     if(!destination)return;
@@ -2136,6 +2146,7 @@ void __fastcall hook_consume(void* renderer){
     auto saved_frozen_frame=consuming_frozen_frame;
     consuming_frame_ticket=frame_link_diagnostics&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(renderer),consume_frame)?consume_frame.id:0;
     consuming_frozen_frame=consume_frame;
+    const auto dof_consume=vr_dof_compat::begin(consume_frame,renderer!=nullptr);
     observe_unpossessed_ticket();
     // Allocation probes run only on this RHI callback. The metadata probe
     // releases immediately; the scene probe retains an owner for a later family.
@@ -2148,6 +2159,7 @@ void __fastcall hook_consume(void* renderer){
     consuming_owned_scene=native_owned_scene_consuming(renderer,consume_frame.id);
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
     {gears_render_cost::Window cost(owned_scene_gpu::render_cost(consume_frame.id));original_consume(renderer);}
+    vr_dof_compat::finish(dof_consume);
     native_owned_scene_end(renderer,consume_frame.id); // Identity value only; original may have destroyed it.
     consuming_owned_scene=saved_owned_scene;
       trial_draw_scope=saved_draw_scope;
@@ -3032,7 +3044,8 @@ void observe_output_post(unsigned attempt){
 }
 void __fastcall hook_quad(float x,float y,float width,float height,float u,float v,float uw,float vh,
     unsigned target_width,unsigned target_height,unsigned texture_width,unsigned texture_height){
-    Scope scope;if(!scope.world())return original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
+    Scope scope;uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;vr_dof_compat::quad(caller,scope.world());
+    if(!scope.world())return original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);
     death_constant_observer::quad(caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
     death_dof_control::quad(caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
     if((caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8)observe_final_inputs();
@@ -3791,12 +3804,15 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"family_diagnostics=%d candidate_rva=0x3a148c\n",family_diagnostics);
     MH_STATUS init=MH_Initialize();
     fprintf(status,"minhook_initialize=%s\n",MH_StatusToString(init));
-    bool ok=(init==MH_OK || (reservation_ready && init==MH_ERROR_ALREADY_INITIALIZED))&&death_constant_observer::attest(status)&&death_dof_control::attest(status);
+    bool ok=(init==MH_OK || (reservation_ready && init==MH_ERROR_ALREADY_INITIALIZED))&&death_constant_observer::attest(status)&&death_dof_control::attest(status)&&vr_dof_compat::attest(status);
 #if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
     if(ok)ok=install(death_constant_observer::target,reinterpret_cast<void*>(death_constant_observer::hook),reinterpret_cast<void**>(&death_constant_observer::original));
 #endif
 #if defined(GEARS_DEATH_DOF_CONTROL) && GEARS_DEATH_DOF_CONTROL
     if(ok)ok=install(death_dof_control::target,reinterpret_cast<void*>(death_dof_control::hook),reinterpret_cast<void**>(&death_dof_control::original));
+#endif
+#if defined(GEARS_VR_DOF_COMPAT) && GEARS_VR_DOF_COMPAT
+    if(ok)ok=install(vr_dof_compat::target,reinterpret_cast<void*>(vr_dof_compat::hook),reinterpret_cast<void**>(&vr_dof_compat::original));
 #endif
     ok=ok && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
         && install(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event));

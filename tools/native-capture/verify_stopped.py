@@ -78,8 +78,8 @@ def main():
         for target in targets:
             rva = target - resolver.base
             if rva == 0x1c4b90:
-                # Experimental death DOF control: independently verify the full
-                # authenticated 200-byte PS setter after restoring its entry.
+                # VR DOF compatibility or its prior diagnostic: independently
+                # verify the full authenticated 200-byte PS setter after restore.
                 expected_hash = '10b2617802b5648fea992132f8b9e20d68d58940de7e7779f34298b8be240cb0'
                 current = resolver.read(target, 200)
                 actual_hash = hashlib.sha256(current).hexdigest()
