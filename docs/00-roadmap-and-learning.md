@@ -1,6 +1,6 @@
 # GearsVR：开发流程与随项目学习
 
-2026-10-18 当前状态请先看[主线进度与V1验收](39-mainline-progress-and-acceptance.md)。默认Native70/Borderless1及Feedback3开发包未提升；第三人称同帧双目和6DoF已有基础及此前真机反馈，Low/High已撤下。首发新增必做DLSS SR，隔离Native83已恢复实际双眼输出，但兼容验收未完成。机枪黑屏、手枪外圈、岔路UI和长期/真机稳定性仍开放，不能沿用旧百分比。DLSS与UI最新证据分别见[文档154](154-dlss-sr-startup-and-output-route.md)、[文档155](155-path-choice-position-and-docking.md)。
+2026-10-18 当前状态请先看[主线进度与V1验收](39-mainline-progress-and-acceptance.md)。默认Native70/Borderless1及Feedback3开发包未提升；第三人称同帧双目和6DoF已有基础及此前真机反馈，Low/High已撤下。首发新增必做DLSS SR，隔离Native83已恢复实际双眼输出，但开关对照仍有取景异常，兼容验收未完成。机枪黑屏、手枪外圈、岔路UI和长期/真机稳定性仍开放，不能沿用旧百分比。DLSS与UI最新证据分别见[文档154](154-dlss-sr-startup-and-output-route.md)、[文档155](155-path-choice-position-and-docking.md)。
 
 以下保留此前阶段的学习及实验记录，其中“当前”“最新”和百分比属于相应历史日期，不代表上述现状。
 
