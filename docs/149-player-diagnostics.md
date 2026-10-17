@@ -17,3 +17,9 @@ python tools/vr-launcher/launcher.py export-logs --output C:\Feedback\GearsVR-Di
 ```
 
 Validation receipts, actual-game export samples and portable package verification are kept under ignored `analysis/runtime/` and `analysis/release-zips/`. Simulator tests do not establish physical headset acceptance or readiness of the other V1 features.
+
+## Mounted-camera rejection summaries
+
+World-rebind failures now retain a bounded `guard_failure` receipt through the local event log and exported ZIP. Closed categories distinguish a mounted camera target mismatch, camera timestamp change, registry change, read failure, deadline and unknown cause. The receipt keeps strict-attempt count/timing and separately records whether the observed target was the controlled object, Driver, null or another object, plus the consistency of timestamp and registry reads. Missing observations remain unavailable; a target mismatch alongside changed registry/timestamp is not presented as a stable root cause.
+
+The exporter independently validates the receipt and omits object names/addresses, raw memory, pointer values and free-form exception detail. Integration tests exercise actual mounted and registry rejection exceptions through the monitor, plus malformed evidence and ZIP filtering. No new reads, hooks, retries or admission permissions are introduced. This improves feedback diagnosis; it does not prove the reported mounted black screen is fixed.

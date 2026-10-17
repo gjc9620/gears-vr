@@ -142,6 +142,43 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(docs['game-settings.json'][0]['TextureGroup_World']['LODBias'], -1)
         self.assertEqual(docs['configuration.json']['manifest']['native_build'], 'build-vrdof69')
 
+    def test_world_guard_failure_zip_keeps_typed_causes_and_excludes_private_evidence(self):
+        path = self.session()
+        stable = dict(schema=1, stage='sample_before', cause='mounted_target_mismatch', attempts=1,
+            retryable=False, strict_guard_accepted=False, elapsed_ms=12.5, target_relation='driver',
+            consistent_read=True, timestamp_state='unchanged', objects_registry_state='unchanged',
+            names_registry_state='unchanged', mismatch_stages=[], read_error_stage=None,
+            roles={'driver':{'address':0x12345678,'name':'PRIVATE_OBJECT_NAME'}},
+            expected_raw='PRIVATE_BYTES', error='PRIVATE_ERROR')
+        changing = dict(stable, consistent_read=False, timestamp_state='changed',
+            objects_registry_state='changed', mismatch_stages=['timestamp','header'], read_error_stage='memory')
+        hostile = dict(stable, stage='PRIVATE_STAGE', cause='PRIVATE_CAUSE', target_relation='PRIVATE_NAME',
+            timestamp_state='PRIVATE_BYTES', objects_registry_state=[], names_registry_state=12345678,
+            attempts=12345678, elapsed_ms=float('inf'), retryable='PRIVATE_VALUE',
+            mismatch_stages=['PRIVATE_STAGE']*20, read_error_stage='PRIVATE_ERROR')
+        path.with_suffix('.world.jsonl').write_text(''.join(json.dumps(dict(event='world_rebind_failed',
+            reason='AnchorSamplingRejected', detail='PRIVATE_DETAILS', guard_failure=summary,
+            camera_observation={'address':0x12345678,'name':'PRIVATE_OBJECT_NAME'}))+'\n'
+            for summary in (stable, changing, hostile)))
+        self.export()
+        _, raw, docs = self.read_zip()
+        events = docs['sessions/session-1.json']['world_transitions']
+        first, second, third = [event['guard_failure'] for event in events]
+        self.assertEqual('mounted_target_mismatch', first['cause'])
+        self.assertEqual('driver', first['target_relation'])
+        self.assertTrue(first['consistent_read'])
+        self.assertEqual('changed', second['timestamp_state'])
+        self.assertEqual('changed', second['objects_registry_state'])
+        self.assertEqual('memory', second['read_error_stage'])
+        self.assertEqual(['timestamp','header'], second['mismatch_stages'])
+        self.assertEqual('unknown', third['cause'])
+        self.assertEqual('unavailable', third['timestamp_state'])
+        self.assertIsNone(third['attempts']);self.assertIsNone(third['elapsed_ms'])
+        self.assertIsNone(third['retryable'])
+        self.assertEqual(['unknown']*8, third['mismatch_stages'])
+        for private in ('PRIVATE', '12345678', 'expected_raw', 'camera_observation', 'roles', 'detail'):
+            self.assertNotIn(private, raw)
+
     def test_corrupt_oversized_logs_and_partial_jsonl_create_warnings_not_fatal(self):
         broken = self.session(1)
         broken.write_text('{')

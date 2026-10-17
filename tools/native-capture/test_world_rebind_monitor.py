@@ -1,6 +1,8 @@
 import threading
 import time
 import unittest
+import json
+import struct
 from dataclasses import replace
 
 from world_rebind_monitor import PreparedRebind, WorldRebindMonitor, WorldSnapshot
@@ -297,6 +299,139 @@ class MonitorTests(unittest.TestCase):
         self.assertIn('last=strict guard accepted after deadline', _error_detail(error))
         guard['accepted'] = True
         self.assertEqual(str(error), _error_detail(error))
+
+    def test_mounted_failure_event_has_public_stable_and_changing_receipts(self):
+        for changing in (False, True):
+            h = Harness()
+            observation = dict(target_field=dict(address=0x12345678, value=80),
+                target_is_driver=True, roles={'controlled':obj(60, 'PRIVATE_OBJECT_NAME')},
+                consistent_read=not changing,
+                timestamp=dict(consistent=not changing, expected_raw='PRIVATE_BYTES', observed_raw='PRIVATE_BYTES'),
+                headers={'objects':dict(consistent=not changing, observed_raw='PRIVATE_BYTES'),
+                         'names':dict(consistent=True, observed_raw='PRIVATE_BYTES')},
+                mismatches=[dict(stage='timestamp', address=0x12345678)] if changing else [])
+            if changing:
+                observation['read_error'] = dict(stage='target_identity', address=0x12345678,
+                    error='PRIVATE_READ_ERROR', exception_type='PrivateReader')
+            error = RuntimeError('Anchor guard acquisition deadline exceeded')
+            error.evidence = dict(guard_acquisitions=[dict(stage='sample_before', attempts=[
+                dict(reason='Mounted camera target is not controlled turret', retryable=False,
+                     strict_guard_accepted=False, elapsed_ms=12.5, camera_observation=observation)])])
+            def fail(*args):raise error
+            with h.monitor(prepare=fail) as m:
+                m.poll(h.status)
+                event = h.finish_worker(m)[0]
+                summary = event['guard_failure']
+                self.assertEqual('mounted_target_mismatch', summary['cause'])
+                self.assertEqual('driver', summary['target_relation'])
+                self.assertEqual(not changing, summary['consistent_read'])
+                self.assertEqual('changed' if changing else 'unchanged', summary['timestamp_state'])
+                self.assertEqual('changed' if changing else 'unchanged', summary['objects_registry_state'])
+                self.assertEqual('target_identity' if changing else None, summary['read_error_stage'])
+                self.assertEqual(['timestamp'] if changing else [], summary['mismatch_stages'])
+                self.assertFalse(summary['retryable'])
+                self.assertEqual(1, summary['attempts'])
+                self.assertEqual('idle', m.state)
+                self.assertFalse(h.signals)
+                encoded = json.dumps(summary)
+                for private in ('PRIVATE', 'address', 'expected_raw', 'observed_raw', '12345678', 'PrivateReader'):
+                    self.assertNotIn(private, encoded)
+
+    def test_guard_failure_cause_enums_missing_and_malformed_evidence(self):
+        from world_rebind_monitor import _guard_failure
+        cases = [({'exception_type':'MountedTimestampChanged'}, {}, 'timestamp_changed'),
+                 ({'exception_type':'RegistryHeaderChanged'}, {}, 'registry_changed'),
+                 ({'camera_observation':{'read_error':{'stage':'memory'}}}, {}, 'read_failed'),
+                 ({'strict_guard_accepted':True}, {'failure_reason':'Anchor guard acquisition deadline exceeded'}, 'deadline'),
+                 ({}, {}, 'unknown')]
+        for attempt, fields, cause in cases:
+            error = RuntimeError('PRIVATE_ERROR')
+            error.evidence = dict(guard_acquisitions=[dict(stage='PRIVATE_STAGE', attempts=[attempt], **fields)])
+            summary = _guard_failure(error)
+            self.assertEqual(cause, summary['cause'])
+            self.assertEqual('unknown', summary['stage'])
+            self.assertEqual('unavailable', summary['timestamp_state'])
+            self.assertIsNone(summary['consistent_read'])
+            self.assertNotIn('PRIVATE', json.dumps(summary))
+        self.assertIsNone(_guard_failure(RuntimeError('missing')))
+
+    def test_actual_sampler_exceptions_reach_monitor_failure_summary(self):
+        from test_mounted_context import MountedFixture
+        from test_anchor_config import Fixture
+        from anchor_config import LiveRegistryAnchorSampler, AnchorSamplingRejected, AnchorRegistryChanged
+
+        def mounted_failure():
+            fixture = MountedFixture()
+            fixture.ptr(fixture.sampler.view_target, 0x20000)
+            LiveRegistryAnchorSampler(fixture, clock_ns=lambda: 0)
+
+        def registry_failure():
+            fixture = Fixture()
+            sampler = LiveRegistryAnchorSampler(fixture)
+            sampler.guard_stage = 'assembly_after'
+            original = fixture.read
+            hits = 0
+            def changing(address, size):
+                nonlocal hits
+                if (address, size) == (fixture.objects_header, 16):
+                    hits += 1
+                    if hits == 2:
+                        data, count, capacity = struct.unpack('<Qii', original(address, size))
+                        fixture.put(address, struct.pack('<Qii', data, count + 1, capacity + 1))
+                return original(address, size)
+            fixture.read = changing
+            sampler.guard()
+
+        for producer, expected_type, cause in (
+                (mounted_failure, AnchorSamplingRejected, 'mounted_target_mismatch'),
+                (registry_failure, AnchorRegistryChanged, 'registry_changed')):
+            def fail(*args):
+                try:producer()
+                except expected_type:raise
+                self.fail('synthetic sampler must reject')
+            h = Harness()
+            with h.monitor(prepare=fail) as m:
+                m.poll(h.status)
+                event = h.finish_worker(m)[0]
+                self.assertEqual(expected_type.__name__, event['reason'])
+                summary = event['guard_failure']
+                self.assertEqual(cause, summary['cause'])
+                self.assertEqual(1, summary['attempts'])
+                if cause == 'mounted_target_mismatch':
+                    self.assertEqual('driver', summary['target_relation'])
+                    self.assertTrue(summary['consistent_read'])
+                else:
+                    self.assertEqual('unavailable', summary['objects_registry_state'])
+                    self.assertIsNone(summary['consistent_read'])
+                self.assertFalse(h.signals)
+                for private in ('address', 'Turret_0', 'WarPawn', 'expected_header', 'observed_header'):
+                    self.assertNotIn(private, json.dumps(summary))
+
+    def test_top_level_typed_discovery_failure_uses_no_invented_camera_checks(self):
+        # Import fixture first to expose the package-inspector dependency path.
+        from test_anchor_config import Fixture
+        from anchor_config import AnchorSamplingRejected, AnchorRegistryChanged
+        errors = [AnchorSamplingRejected('PRIVATE', dict(stage='initial', exception_type='MountedTimestampChanged',
+                    guard_acquisitions=[], attempts=[{'PRIVATE':'not a guard attempt'}])),
+                  AnchorRegistryChanged('PRIVATE', dict(stage='initial', exception_type='RegistryHeaderChanged',
+                    guard_acquisitions=[], registry_change={'registry':'objects', 'expected_header':[12345678]})),
+                  AnchorSamplingRejected('PRIVATE', dict(stage=None, exception_type=None, guard_acquisitions=[]))]
+        for error, cause in zip(errors, ('timestamp_changed', 'registry_changed', 'unknown')):
+            h = Harness()
+            def fail(*args):raise error
+            with h.monitor(observe=fail) as m:
+                m.poll(h.status)
+                summary = h.finish_worker(m)[0]['guard_failure']
+                self.assertEqual(cause, summary['cause'])
+                self.assertEqual(0, summary['attempts'])
+                self.assertIsNone(summary['strict_guard_accepted'])
+                self.assertIsNone(summary['retryable'])
+                self.assertIsNone(summary['consistent_read'])
+                self.assertEqual('unknown', summary['target_relation'])
+                self.assertEqual('unavailable', summary['timestamp_state'])
+                self.assertEqual('unavailable', summary['objects_registry_state'])
+                self.assertNotIn('PRIVATE', json.dumps(summary))
+                self.assertNotIn('12345678', json.dumps(summary))
 
     def test_sampling_detail_handles_malformed_and_large_nested_evidence(self):
         from world_rebind_monitor import _error_detail

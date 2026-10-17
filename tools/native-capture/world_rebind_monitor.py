@@ -20,10 +20,90 @@ from dataclasses import dataclass
 from pathlib import Path
 import threading
 import time
+import math
 
 
 class Cancelled(RuntimeError):
     pass
+
+
+def _guard_failure(error):
+    """Reduce existing failure evidence to public enums; never sample or retry."""
+    try:
+        evidence = getattr(error, 'evidence', None)
+        if not isinstance(evidence, dict):
+            return None
+        guards = evidence.get('guard_acquisitions')
+        guard = guards[-1] if isinstance(guards, list) and guards else None
+        has_guard = isinstance(guard, dict)
+        guard = guard if has_guard else evidence
+        # Top-level sample attempts have a different budget/meaning. Do not
+        # mislabel them as strict guard attempts during discovery failure.
+        attempts = guard.get('attempts') if has_guard else ([] if guards == [] else None)
+        attempt = attempts[-1] if isinstance(attempts, list) and attempts else {}
+        if not isinstance(attempt, dict):
+            attempt = {}
+        observation = attempt.get('camera_observation')
+        observation = observation if isinstance(observation, dict) else {}
+        def boolean(value):
+            return value if type(value) is bool else None
+        def state(record):
+            value = record.get('consistent') if isinstance(record, dict) else None
+            return 'unchanged' if value is True else 'changed' if value is False and record.get('observed_raw') is not None else 'unavailable'
+        stages = {'identity', 'memory', 'header', 'target', 'timestamp', 'target_identity', 'target_field'}
+        mismatches = observation.get('mismatches')
+        mismatches = mismatches[:8] if isinstance(mismatches, list) else []
+        mismatch_stages = [item.get('stage') if item.get('stage') in stages else 'unknown'
+                           for item in mismatches if isinstance(item, dict)]
+        read_error = observation.get('read_error')
+        read_stage = (read_error.get('stage') if read_error.get('stage') in stages else 'unknown') if isinstance(read_error, dict) else None
+        reason = attempt.get('reason') if attempt else evidence.get('reason')
+        exception_type = attempt.get('exception_type') if attempt else evidence.get('exception_type')
+        cause = 'unknown'
+        if reason == 'Mounted camera target is not controlled turret':
+            cause = 'mounted_target_mismatch'
+        elif exception_type == 'MountedTimestampChanged' or reason in (
+                'Mounted camera timestamp changed at bracket boundary',
+                'Mounted camera frame changed during anchor bracket',
+                'Cross-frame camera timestamp during identity checks'):
+            cause = 'timestamp_changed'
+        elif exception_type in ('RegistryHeaderChanged', 'AnchorRegistryChanged') or isinstance(guard.get('registry_change'), dict) or isinstance(evidence.get('registry_change'), dict):
+            cause = 'registry_changed'
+        elif read_stage is not None:
+            cause = 'read_failed'
+        elif guard.get('failure_reason') in ('Anchor guard acquisition deadline exceeded', 'Anchor sample acquisition deadline exceeded'):
+            cause = 'deadline'
+        relation = 'unknown'
+        field = observation.get('target_field')
+        if isinstance(field, dict) and 'value' in field:
+            target = field['value']
+            roles = observation.get('roles')
+            controlled = roles.get('controlled') if isinstance(roles, dict) else None
+            if target == 0:
+                relation = 'null'
+            elif observation.get('target_is_driver') is True:
+                relation = 'driver'
+            elif isinstance(controlled, dict) and target is not None and target == controlled.get('address'):
+                relation = 'controlled'
+            elif type(target) is int and target > 0:
+                relation = 'other'
+        elapsed = attempt.get('elapsed_ms')
+        elapsed = elapsed if type(elapsed) in (int, float) and math.isfinite(elapsed) and 0 <= elapsed <= 60000 else None
+        headers = observation.get('headers')
+        headers = headers if isinstance(headers, dict) else {}
+        stage = guard.get('stage')
+        return dict(schema=1, stage=stage if stage in ('initial', 'startup_validation', 'sample',
+            'sample_before', 'sample_after', 'certificate_assembly', 'assembly_after',
+            'final_identity_validation', 'final_boundary') else 'unknown', cause=cause,
+            attempts=min(len(attempts), 5) if isinstance(attempts, list) else None,
+            retryable=boolean(attempt.get('retryable')),
+            strict_guard_accepted=boolean(attempt.get('strict_guard_accepted')), elapsed_ms=elapsed,
+            target_relation=relation, consistent_read=boolean(observation.get('consistent_read')),
+            timestamp_state=state(observation.get('timestamp')),
+            objects_registry_state=state(headers.get('objects')), names_registry_state=state(headers.get('names')),
+            mismatch_stages=mismatch_stages, read_error_stage=read_stage)
+    except Exception:
+        return None  # Diagnostics cannot replace the original failure or affect lifecycle.
 
 
 def _error_detail(error):
@@ -197,13 +277,15 @@ class WorldRebindMonitor:
                 raise ValueError('Prepared candidate/request mismatch')
             return snapshot, prepared, None
         except Exception as error:
-            return snapshot, prepared, (type(error).__name__, _error_detail(error))
+            failure = (type(error).__name__, _error_detail(error))
+            summary = _guard_failure(error)
+            return snapshot, prepared, failure + (summary,) if summary is not None else failure
 
     @property
     def request_filename(self):
         return f'world-rebind-{self.game["creation_time"]}-{self.generation + 1}-{self.request}.ini'
 
-    def _fail(self, reason, events, detail=''):
+    def _fail(self, reason, events, detail='', guard_failure=None):
         self.cancel.set()
         self.prepared = None
         self.state = 'idle'
@@ -211,6 +293,8 @@ class WorldRebindMonitor:
         events.append(dict(event='world_rebind_failed', reason=reason, request=self.request))
         if detail:
             events[-1]['detail'] = detail
+        if guard_failure is not None:
+            events[-1]['guard_failure'] = guard_failure
 
     def _send(self, kind, status, events):
         """One event per accepted signal; no blind Prepare resend on timeout."""
@@ -292,7 +376,7 @@ class WorldRebindMonitor:
                     self.prepared, self.state = prepared, 'blocked'
                     events.append(dict(event='world_rebind_blocked', reason=error[0], request=self.request))
                 elif error:
-                    self._fail(error[0], events, error[1])
+                    self._fail(error[0], events, error[1], error[2] if len(error) > 2 else None)
                 elif prepared is None:
                     self.state, self.next_poll = 'idle', now + self.interval
                 elif requests != self.request - 1 or candidate != 0:

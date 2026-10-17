@@ -296,6 +296,38 @@ def _rate(rows, time_key, count_key, scale=1e9):
     return round((points[-1][1]-points[0][1])*scale/(points[-1][0]-points[0][0]), 3)
 
 
+def _guard_failure(data):
+    """Validate the public receipt independently of the producer; no free text."""
+    if not isinstance(data, dict) or type(data.get('schema')) is not int or data['schema'] != 1:
+        return None
+    enums = {
+        'stage': ('initial', 'startup_validation', 'sample', 'sample_before', 'sample_after',
+                  'certificate_assembly', 'assembly_after', 'final_identity_validation', 'final_boundary', 'unknown'),
+        'cause': ('mounted_target_mismatch', 'timestamp_changed', 'registry_changed', 'read_failed', 'deadline', 'unknown'),
+        'target_relation': ('controlled', 'driver', 'null', 'other', 'unknown'),
+        'timestamp_state': ('unchanged', 'changed', 'unavailable'),
+        'objects_registry_state': ('unchanged', 'changed', 'unavailable'),
+        'names_registry_state': ('unchanged', 'changed', 'unavailable'),
+    }
+    out = {'schema':1}
+    for key, allowed in enums.items():
+        value = data.get(key)
+        out[key] = value if isinstance(value, str) and value in allowed else ('unavailable' if key.endswith('_state') else 'unknown')
+    for key in ('retryable', 'strict_guard_accepted', 'consistent_read'):
+        out[key] = data.get(key) if type(data.get(key)) is bool else None
+    attempts = data.get('attempts')
+    out['attempts'] = attempts if type(attempts) is int and 0 <= attempts <= 5 else None
+    elapsed = data.get('elapsed_ms')
+    out['elapsed_ms'] = _number(elapsed) if type(elapsed) in (int, float) and 0 <= elapsed <= 60000 else None
+    stages = ('identity', 'memory', 'header', 'target', 'timestamp', 'target_identity', 'target_field', 'unknown')
+    values = data.get('mismatch_stages')
+    out['mismatch_stages'] = [value if isinstance(value, str) and value in stages else 'unknown'
+                              for value in values[:8]] if isinstance(values, list) else []
+    value = data.get('read_error_stage')
+    out['read_error_stage'] = value if isinstance(value, str) and value in stages else ('unknown' if value is not None else None)
+    return out
+
+
 def _events(rows):
     out = []
     for row in rows[-64:]:
@@ -305,6 +337,9 @@ def _events(rows):
         if isinstance(state, dict):
             entry['state'] = _pick(state, ('read_only', 'consistent_reread', 'input_block_count', 'player_index'))
             entry['top'] = _pick(state.get('top'), ('tag', 'cls', 'input_mode'))
+        failure = _guard_failure(row.get('guard_failure'))
+        if failure is not None:
+            entry['guard_failure'] = failure
         out.append(entry)
     return out
 
