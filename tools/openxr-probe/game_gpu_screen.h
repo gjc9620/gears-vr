@@ -5,6 +5,9 @@
 #include "eye_chain_policy.h"
 #include "menu_eye_panel.h"
 #include "world_handoff_display.h"
+#if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
+#include "../vr-common/death_hdr_match.h"
+#endif
 
 enum class ProjectionStatus {submitted,producer_stopped,producer_unavailable,waiting_image,current_inactive,current_untracked,
     reference_space_changed,empty_ticket,session_mismatch,ticket_flags,ticket_geometry,stale_ticket,image_rectangle,session_lost,producer_structure_invalid,probe_failure,menu_requested,menu_recovery_pending,reference_epoch_pending,source_reconfiguration,count};
@@ -79,6 +82,43 @@ class GameGpuScreen {
     bool snapshot_auto_taken{};
     uint64_t snapshot_ticket{},snapshot_source_serial{};
     std::chrono::steady_clock::time_point snapshot_after=std::chrono::steady_clock::now()+std::chrono::seconds(10);
+#if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
+    DWORD hdr_game_pid{};
+    gears_death_hdr_match::Reader hdr_reader;
+    gears_death_hdr_match::Selector hdr_selector;
+    bool hdr_pending{},hdr_saved{},hdr_missed{},hdr_rejected_logged{};
+    uint64_t hdr_snapshot_world{};
+    void poll_hdr_selection(){
+        if(!stereo||snapshot_path.empty()||hdr_selector.has_selection)return;
+        gears_death_hdr_match::Snapshot a{},b{};
+        if(!hdr_reader.read(hdr_game_pid,a,b))return;
+        if(hdr_selector.select(a,b,hdr_game_pid)){
+            auto const& s=hdr_selector.selected;
+            printf("{\"hdr_match_selected\":true,\"game_pid\":%lu,\"selected_ticket\":%llu,\"selected_world\":%llu,\"copy_seq\":%llu}\n",
+                hdr_game_pid,static_cast<unsigned long long>(s.ticket),static_cast<unsigned long long>(s.world),static_cast<unsigned long long>(s.copy_seq));fflush(stdout);
+            hdr_reader.close(); // Immutable selection copied locally; never reopen.
+        }else if((a.ticket||b.ticket)&&!hdr_rejected_logged){
+            printf("{\"hdr_match_mapping_rejected\":true,\"game_pid\":%lu,\"stable_identity_required\":true}\n",hdr_game_pid);fflush(stdout);hdr_rejected_logged=true;
+        }
+    }
+    bool request_hdr_snapshot(){
+        // Called ONLY in the admitted-new-image snapshot path, after all
+        // session/menu/tracking/age/geometry checks. Never inspect cached pixels.
+        poll_hdr_selection();
+        if(!stereo||snapshot_path.empty())return false;
+        const auto actual=receiver->ticket().id,world=receiver->acquired_world_generation();
+        const auto decision=hdr_selector.decide(actual,world,true,snapshot_count<snapshot_limit);
+        using Decision=gears_death_hdr_match::Decision;
+        if(decision==Decision::matched){hdr_pending=true;hdr_snapshot_world=world;return true;}
+        if(decision==Decision::missed_after||decision==Decision::missed_world||decision==Decision::missed_capacity){
+            auto const& s=hdr_selector.selected;hdr_missed=true;
+            const char* reason=decision==Decision::missed_after?"ticket_passed":decision==Decision::missed_world?"world_mismatch":"snapshot_limit";
+            printf("{\"hdr_match_missed\":true,\"reason\":\"%s\",\"game_pid\":%lu,\"selected_ticket\":%llu,\"selected_world\":%llu,\"copy_seq\":%llu,\"actual_ticket\":%llu,\"actual_world\":%llu}\n",
+                reason,hdr_game_pid,static_cast<unsigned long long>(s.ticket),static_cast<unsigned long long>(s.world),static_cast<unsigned long long>(s.copy_seq),static_cast<unsigned long long>(actual),static_cast<unsigned long long>(world));fflush(stdout);
+        }
+        return false;
+    }
+#endif
     void require_eye_dimensions(unsigned eye_index,unsigned image_index,const char* stage) const {
         const auto& eye=eyes.at(eye_index);
         auto* texture=eye.images.at(image_index).texture;
@@ -126,6 +166,13 @@ class GameGpuScreen {
         printf("{\"gpu_snapshot_size\":[%u,%u],\"source_format\":%u,\"snapshot_index\":%u,\"snapshot_limit\":%u,\"ticket\":%llu,\"source_serial\":%llu,\"saved_monotonic_ns\":%lld,\"resized\":false}\n",
                width,height,unsigned(format),snapshot_count,snapshot_limit,static_cast<unsigned long long>(snapshot_ticket),
                static_cast<unsigned long long>(snapshot_source_serial),static_cast<long long>(saved_ns));fflush(stdout);
+#if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
+        if(hdr_pending){auto const& s=hdr_selector.selected;
+            printf("{\"hdr_match_matched\":true,\"game_pid\":%lu,\"selected_ticket\":%llu,\"selected_world\":%llu,\"copy_seq\":%llu,\"actual_ticket\":%llu,\"actual_world\":%llu,\"snapshot_index\":%u,\"source_serial\":%llu,\"saved_monotonic_ns\":%lld,\"cached_image\":false}\n",
+                hdr_game_pid,static_cast<unsigned long long>(s.ticket),static_cast<unsigned long long>(s.world),static_cast<unsigned long long>(s.copy_seq),static_cast<unsigned long long>(snapshot_ticket),static_cast<unsigned long long>(hdr_snapshot_world),snapshot_count,
+                static_cast<unsigned long long>(snapshot_source_serial),static_cast<long long>(saved_ns));fflush(stdout);hdr_saved=true;hdr_pending=false;
+        }
+#endif
         ++snapshot_count;
         snapshot_saved=true;snapshot_buffer.Reset();
     }
@@ -135,6 +182,10 @@ public:
     bool snapshot_saved=false;
     GameGpuScreen(ID3D12Device* d,ID3D12CommandQueue* q,DWORD pid,const char* snapshot=nullptr,bool simulated=false,
                   gears_eye_chain::Limits const* stereo_limits=nullptr,bool retain_image=false):allow_simulated(simulated),stereo(stereo_limits!=nullptr),device(d),queue(q),retain_stereo_image(retain_image),snapshot_path(snapshot?snapshot:""){
+#if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
+        hdr_game_pid=pid;
+        if(stereo&&snapshot_path.empty()){printf("{\"hdr_match_disabled\":true,\"snapshot_path_required\":true,\"game_pid\":%lu}\n",pid);fflush(stdout);}
+#endif
         try{
         receiver->open(d,pid,allow_simulated);
         if(receiver->generation()>1&&!snapshot_path.empty())snapshot_path+=".g"+std::to_string(receiver->generation());
@@ -185,6 +236,12 @@ public:
         }catch(...){for(auto& eye:eyes)if(eye.chain){xrDestroySwapchain(eye.chain);eye.chain=XR_NULL_HANDLE;}if(event){CloseHandle(event);event=nullptr;}if(snapshot_event){CloseHandle(snapshot_event);snapshot_event=nullptr;}throw;}
     }
     ~GameGpuScreen(){
+#if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
+        if(hdr_selector.has_selection&&!hdr_saved&&!hdr_missed){auto const& s=hdr_selector.selected;
+            printf("{\"hdr_match_missed\":true,\"reason\":\"%s\",\"game_pid\":%lu,\"selected_ticket\":%llu,\"selected_world\":%llu,\"copy_seq\":%llu}\n",
+                hdr_pending?"snapshot_not_saved":"screen_closed_before_admitted_match",hdr_game_pid,static_cast<unsigned long long>(s.ticket),static_cast<unsigned long long>(s.world),static_cast<unsigned long long>(s.copy_seq));fflush(stdout);
+        }
+#endif
         // Request event has no GPU/fence dependency; close even on unsafe GPU teardown.
         if(snapshot_event){CloseHandle(snapshot_event);snapshot_event=nullptr;}
         if(in_flight && fence && xr_image_work_complete(fence->GetCompletedValue(),serial))in_flight=false;
@@ -213,6 +270,9 @@ public:
     // Poll on every XR frame, even when policy disables projection. Use this
     // receiver to drain the old slot without acquiring an XR image or copying.
     bool poll_world_handoff(){
+#if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
+        poll_hdr_selection(); // CPU control only; never admits or copies an image.
+#endif
         const auto world=receiver->world_state();
         handoff_display.observe({world.valid&&receiver->display_identity_valid(),world.generation,world.quiescing});
         const bool changed=world.valid&&observed_world_generation!=world.generation;
@@ -298,11 +358,15 @@ public:
                 requested=request==WAIT_OBJECT_0;
             }
             const bool automatic=!snapshot_path.empty()&&!snapshot_auto_taken&&now>=snapshot_after;
-            if((requested||automatic)&&snapshot_count>=snapshot_limit){
+            bool hdr_requested=false;
+#if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
+            hdr_requested=request_hdr_snapshot();
+#endif
+            if((requested||automatic||hdr_requested)&&snapshot_count>=snapshot_limit){
                 if(requested){printf("{\"gpu_snapshot_request_rejected\":true,\"snapshot_limit\":%u}\n",snapshot_limit);fflush(stdout);}
                 snapshot_auto_taken=true;
             }
-            if((requested||automatic)&&snapshot_count<snapshot_limit){
+            if((requested||automatic||hdr_requested)&&snapshot_count<snapshot_limit){
                 if(automatic)snapshot_auto_taken=true;
                 snapshot_ticket=receiver->ticket().id;
                 // Diagnostic output remains full SBS, independent of eye chain layout.

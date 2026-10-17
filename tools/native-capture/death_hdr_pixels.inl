@@ -1,9 +1,12 @@
 #include "death_hdr_pixels.h"
+#include "../vr-common/death_hdr_match.h"
 namespace death_hdr_pixels {
 #if defined(GEARS_DEATH_HDR_PIXELS) && GEARS_DEATH_HDR_PIXELS
 using namespace gears_death_hdr_pixels;
 bool attested{},attempted{},prepared{},released{},stopped{};HRESULT result=S_OK;
 Trigger trigger;Lifetime life;
+gears_death_hdr_match::Publisher matched_ticket;
+bool match_mapping_created{};
 HRESULT reset_hr=E_PENDING;
 long long reset_qpc{};
 ID3D12Resource *source_hold{},*destination_hold{},*readback{};
@@ -22,9 +25,11 @@ Texture texture(ResourceIdentity const* i){
 }
 Texture texture(ID3D12Resource* resource){auto d=resource->GetDesc();return {identity(resource),d.Width,d.Height,unsigned(d.Format),unsigned(d.Dimension),unsigned(d.DepthOrArraySize),unsigned(d.MipLevels),d.SampleDesc.Count,d.SampleDesc.Quality};}
 bool enable(FILE* file){
-    attested=!self_testing&&continuous_session&&frame_link_diagnostics&&color_copy_diagnostics&&viewport_diagnostics&&
+    const bool runtime_match=!self_testing&&continuous_session&&frame_link_diagnostics&&color_copy_diagnostics&&viewport_diagnostics&&
         final_transfer_live::verify_range(file,0x1c6033,128,"9a2b3a678a07074110f5209b21e01a66b6a93a34872b76c01eee70f2d30b2c86");
-    fprintf(file,"death_hdr_pixels_identity enabled=1 runtime_range_match=%u rva=1c6033 size=128 historical_code_sha256=911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6 whole_function_attested=0\n",unsigned(attested));
+    attested=runtime_match;
+    if(attested){match_mapping_created=matched_ticket.create(GetCurrentProcessId());attested=match_mapping_created;}
+    fprintf(file,"death_hdr_pixels_identity enabled=1 runtime_range_match=%u match_mapping_created=%u probe_enabled=%u rva=1c6033 size=128 historical_code_sha256=911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6 whole_function_attested=0\n",unsigned(runtime_match),unsigned(match_mapping_created),unsigned(attested));
     return attested;
 }
 void sample(gears_death_hdr::Event const& event,uintptr_t canonical){
@@ -109,6 +114,7 @@ void append_after_original(bool token,ID3D12GraphicsCommandList* list,const D3D1
     D3D12_TEXTURE_COPY_LOCATION own{};own.pResource=readback;own.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;own.PlacedFootprint=footprint;
     life.appended=true;prepared=false;
     original_color_copy(list,&own,0,0,0,&original_source,nullptr); // Same source contract, immediately adjacent; no transitions.
+    matched_ticket.publish(ticket,world,copy_seq); // One immutable request; ticket is the atomic LAST commit.
 }
 std::unique_lock<std::recursive_mutex> execution_lock(){return std::unique_lock<std::recursive_mutex>(frame_hook_mutex);}
 bool prepare_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* members){
@@ -163,7 +169,7 @@ void poll(){
         if(!CloseHandle(meta))ok=false;}
     if(ok){life.saved=true;release_safe();}else life.fail(file_failed);
 }
-void stop(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);stopped=true;life.stop();}
+void stop(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);stopped=true;life.stop();matched_ticket.close();}
 void progress(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     fprintf(file,"death_hdr_pixels_saved=%u death_hdr_pixels_appended=%u death_hdr_pixels_failure=%u ",unsigned(life.saved),unsigned(life.appended),life.failure);}
 void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
@@ -175,6 +181,8 @@ void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mut
     fprintf(file,"death_hdr_pixels_reset observed=%u retired=%u reason=%s held_canonical=%llx captured_tracker_identity=%llx captured_tracker_generation=%llu reset_raw=%llx observed_reset_canonical=%llx original_reset_hr=%08lx observed_tracker_identity=%llx observed_tracker_generation=%llu qpc=%lld retirement_source=observed_successful_original_Reset_on_held_canonical\n",
         unsigned(r.observed),unsigned(life.retired),reason,static_cast<unsigned long long>(life.held_identity),static_cast<unsigned long long>(life.list.identity),life.list.generation,
         static_cast<unsigned long long>(r.raw),static_cast<unsigned long long>(r.identity),static_cast<unsigned long>(reset_hr),static_cast<unsigned long long>(r.tracker_identity),r.tracker_generation,reset_qpc);
+    fprintf(file,"death_hdr_match_mapping created=%u published=%u game_pid=%lu ticket=%llu world=%llu copy_seq=%llu independent_bridge_abi=1 publish_after_append=1\n",
+        unsigned(match_mapping_created),unsigned(matched_ticket.published()),GetCurrentProcessId(),ticket,world,copy_seq);
 }
 #else
 bool enable(FILE*){return true;}
