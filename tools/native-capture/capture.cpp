@@ -1561,6 +1561,9 @@ void print_frame_link(FILE* status) {
     fprintf(status,"frame_link_capacity list_limit=%zu list_highwater=%zu active_lists=%zu event_limit=%zu event_highwater=%zu list_overflow=%llu event_overflow=%llu target_overflow=%llu sticky=%u target_binding_overflow=%llu descriptor_evictions=%llu descriptor_capacity_bad=%u\n",
         gears_frame_link::Tracker::list_capacity,tracker.list_highwater,tracker.active_lists,gears_frame_link::Tracker::events_per_list,tracker.event_highwater,
         tracker.list_overflow,tracker.event_overflow,tracker.target_overflow,tracker.capacity_bad?1:0,target_tracker.overflow,target_tracker.descriptor_evictions,frame_target_stats.descriptor_capacity_lost()?1:0);
+    fprintf(status,"target_binding_capacity list_limit=%zu active_lists=%zu list_highwater=%zu first_failed_list=%llx\n",
+        gears_viewport::Tracker::list_capacity,target_tracker.active_lists,target_tracker.list_highwater,
+        static_cast<unsigned long long>(target_tracker.first_failed_list));
     fprintf(status,"frame_link_execute_batches unknown=%llu duplicate=%llu invalid=%llu metadata=%llu\n",
         tracker.unknown_batches,tracker.duplicate_batches,tracker.invalid_batches,tracker.metadata_batches);
     const gears_swapchain_binding::Comparison details[]={swapchain_bindings.first_comparison(),swapchain_bindings.first_failure()};
@@ -4744,7 +4747,7 @@ HRESULT STDMETHODCALLTYPE fake_frame_present(IDXGISwapChain*,UINT,UINT) {
     frame_link.draw_final(fixture.recorded,fixture.ticket,1,{fixture.resource,640,480},{320,0,320,480});
     hook_execute(fixture.queue,1,members);
     if(fixture.fill_capacity)for(uintptr_t i=1;i<=gears_frame_link::Tracker::list_capacity+1;++i)frame_link.reset_success(i);
-    if(fixture.fill_bindings)for(uintptr_t i=1;i<=257;++i)frame_target_stats.reset(i);
+    if(fixture.fill_bindings)for(uintptr_t i=1;i<=gears_viewport::Tracker::list_capacity+1;++i)frame_target_stats.reset(i);
     if(fixture.cross_thread){
         fixture.thread=CreateThread(nullptr,0,fake_frame_external_execute,nullptr,0,nullptr);
         fixture.context_ok=fixture.context_ok&&fixture.thread&&WaitForSingleObject(fixture.ready,5000)==WAIT_OBJECT_0&&

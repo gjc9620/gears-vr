@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cmath>
 #include <mutex>
+#include "recording_capacity.h"
 
 namespace gears_viewport {
 // Categories describe API rectangles, not final pixels or engine eye identity.
@@ -94,6 +95,8 @@ inline unsigned classify(float x,float y,float width,float height) {
 }
 struct Snapshot {
     uint64_t resets{},viewports{},scissors{},overflow{},untracked_draws{};
+    std::size_t active_lists{},list_highwater{};
+    uintptr_t first_failed_list{}; // First capacity rejection; diagnostic only.
     std::array<std::array<std::array<uint64_t,5>,5>,3> draws{};
     // Exact paired rectangles only inside the trial consumer, bounded storage.
     std::array<DrawRect,64> trial_rects{};
@@ -102,10 +105,13 @@ struct Snapshot {
     std::array<TargetDraw,128> trial_targets{};
 };
 class Tracker {
+public:
+    static constexpr std::size_t list_capacity=gears_recording_capacity::command_lists;
+private:
     struct Slot {uintptr_t list{};unsigned viewport{},scissor{};Rect viewport_rect{},scissor_rect{};Target target{};unsigned targets{},viewport_count{},scissor_count{};
         bool depth_known{};float min_depth{},max_depth{};BindingProvenance provenance{};};
     struct Descriptor {uintptr_t handle{};Target target{};DescriptorTrace trace{};};
-    std::array<Slot,256> slots{};
+    std::array<Slot,list_capacity> slots{};
     std::array<Descriptor,4096> descriptors{};
     Snapshot data{};
     uint64_t cleared_binding_overflow{};
@@ -127,8 +133,10 @@ class Tracker {
         if(!list)return nullptr;
         Slot* empty{};
         for(auto& slot:slots){if(slot.list==list)return &slot;if(!slot.list&&!empty)empty=&slot;}
-        if(insert&&empty){empty->list=list;return empty;}
-        if(insert)++data.overflow;
+        if(insert&&empty){empty->list=list;++data.active_lists;
+            if(data.active_lists>data.list_highwater)data.list_highwater=data.active_lists;
+            return empty;}
+        if(insert){++data.overflow;if(!data.first_failed_list)data.first_failed_list=list;}
         return nullptr;
     }
 public:
@@ -138,10 +146,10 @@ public:
     // CPU recording state only. Submitted proof/GPU lifetimes belong to the
     // caller; descriptors are independent and survive list retirement.
     bool retire(uintptr_t list){std::lock_guard<std::mutex> lock(mutex);
-        if(auto slot=find(list,false)){*slot={};return true;}return false;}
+        if(auto slot=find(list,false)){*slot={};--data.active_lists;return true;}return false;}
     // A consuming observer may retire a whole recording window while keeping
     // descriptor provenance from startup priming. The legacy tracker never calls this.
-    bool clear_bindings(){std::lock_guard<std::mutex> lock(mutex);slots={};
+    bool clear_bindings(){std::lock_guard<std::mutex> lock(mutex);slots={};data.active_lists=0;
         bool overflowed=data.overflow!=cleared_binding_overflow;cleared_binding_overflow=data.overflow;return overflowed;}
     // Provenance loss is sticky for this tracker lifetime. Present/anchor cannot
     // recover evicted startup metadata merely by clearing command-list bindings.

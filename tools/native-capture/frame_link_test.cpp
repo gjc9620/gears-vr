@@ -7,6 +7,8 @@
 #include <memory>
 
 using namespace gears_frame_link;
+static_assert(Tracker::list_capacity==gears_viewport::Tracker::list_capacity,
+    "Frame association and target binding admission must cover the same lists");
 static unsigned checks{};
 static void check(bool condition, int line) {
     ++checks;
@@ -361,16 +363,51 @@ int main() {
     }
     {
         auto targets=std::make_unique<gears_viewport::Tracker>();auto links=std::make_unique<Tracker>();
-        for(uintptr_t i=1;i<=256;++i)CHECK(targets->reset(i));
-        CHECK(!targets->reset(257));CHECK(!targets->bind(257,1,10));
+        // Legacy/non-strict recording must cover the entire shared bound,
+        // including the observed cinematic296-list window and lists257..512.
+        // The last list retains both RS state and its OM target.
+        std::array<ListRef,gears_viewport::Tracker::list_capacity> lists{};
+        const gears_viewport::Rect rectangle{0,0,1920,1080};targets->create(10,{buffer,1920,1080,24,0});
+        for(size_t i=0;i<lists.size();++i){const uintptr_t id=i+1;
+            // Also cover legacy OM admission without a preceding observed Reset.
+            if(i%2==0)CHECK(targets->reset(id));
+            CHECK(targets->bind(id,1,10));lists[i]=links->reset_success(id);
+            CHECK(targets->set(id,gears_viewport::full,false,rectangle));
+            CHECK(targets->set(id,gears_viewport::full,true,rectangle));
+            const auto state=targets->draw_state(id);
+            CHECK(state.tracked&&state.viewport==rectangle&&state.scissor==rectangle);
+            CHECK(lists[i].generation&&targets->binding(id).target.resource==buffer);}
+        auto target_stats=targets->snapshot();
+        CHECK(target_stats.active_lists==lists.size()&&target_stats.list_highwater==lists.size()&&!target_stats.overflow&&!target_stats.first_failed_list);
+        pair(*links,lists.back());CHECK(links->execute(queue,lists.data(),lists.size()));
+        CHECK(links->present(buffer,queue).linked&&!links->snapshot().active_lists);
+        CHECK(!targets->clear_bindings()&&!targets->snapshot().active_lists);
+        CHECK(!targets->binding(lists.size()).targets&&!targets->draw_state(lists.size()).tracked&&targets->lookup(10).resource==buffer);
+        CHECK(targets->snapshot().list_highwater==lists.size());
+    }
+    {
+        auto targets=std::make_unique<gears_viewport::Tracker>();auto links=std::make_unique<Tracker>();
+        constexpr uintptr_t rejected=gears_viewport::Tracker::list_capacity+1;
+        for(uintptr_t i=1;i<=gears_viewport::Tracker::list_capacity;++i)CHECK(targets->reset(i));
+        CHECK(!targets->reset(rejected));CHECK(!targets->bind(rejected,1,10));
+        CHECK(targets->snapshot().list_highwater==gears_viewport::Tracker::list_capacity);
+        CHECK(targets->snapshot().first_failed_list==rejected);
         auto list=links->reset_success(1);pair(*links,list);
         // Production checks the boolean capacity failure even though a lookup
         // would otherwise resemble explicitly unbound render targets.
-        if(!targets->bind(257,1,10))links->invalidate();
-        CHECK(!targets->binding(257).targets);CHECK(!links->execute(queue,&list,1));
+        if(!targets->bind(rejected,1,10))links->invalidate();
+        CHECK(!targets->binding(rejected).targets);CHECK(!links->execute(queue,&list,1));
         CHECK(!links->present(buffer,queue).linked);
-        CHECK(targets->clear_bindings());CHECK(!targets->clear_bindings());
-        CHECK(targets->reset(257));
+        // Production's interval boundary treats target-state overflow as lost
+        // association proof. Reclaimed slots do not clear that FrameLink fault.
+        const bool overflowed=targets->clear_bindings();CHECK(overflowed);
+        if(overflowed)links->invalidate_capacity();
+        CHECK(!targets->clear_bindings()&&!targets->snapshot().active_lists);
+        CHECK(targets->reset(rejected));CHECK(targets->snapshot().active_lists==1);
+        CHECK(targets->retire(rejected)&&!targets->retire(rejected));
+        CHECK(!targets->snapshot().active_lists&&targets->snapshot().first_failed_list==rejected);
+        auto next=links->reset_success(2);pair(*links,next,2);
+        CHECK(!links->execute(queue,&next,1)&&!links->present(buffer,queue).linked&&links->snapshot().capacity_bad);
     }
     {
         auto targets=std::make_unique<gears_viewport::Tracker>();auto links=std::make_unique<Tracker>();

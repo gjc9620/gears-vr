@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <limits>
 #include <mutex>
+#include "recording_capacity.h"
 
 namespace gears_frame_link {
 using Identity = uintptr_t;
@@ -73,7 +74,7 @@ struct Snapshot {
 // It must record_owned_barrier_fault for unsupported alias/UAV/enhanced coverage.
 class Tracker {
 public:
-    static constexpr size_t list_capacity = 512;
+    static constexpr size_t list_capacity = gears_recording_capacity::command_lists;
     static constexpr size_t events_per_list = 32;
     static constexpr size_t target_capacity = 16;
 private:

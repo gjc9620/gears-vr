@@ -24,11 +24,20 @@ static int strict_lifecycle_tests(){
     if(!t.retire(7)||!t.reset(8)||!t.bind(8,1,64)||!(t.binding(8).target==target))return 49;
     if(!t.retire(8))return 50;
     // Capacity concerns simultaneous recordings, not historical list identities.
-    for(uintptr_t list=1;list<=256;++list)if(!t.reset(list))return 51;
-    if(t.reset(257)||t.snapshot().overflow!=1||t.draw_state(257).tracked)return 52;
-    if(t.set(257,full,false,rectangle)||t.bind(257,1,32)||t.snapshot().overflow!=1)return 53;
-    if(!t.retire(128)||!t.reset(257)||!t.set(257,full,false,rectangle)||!t.bind(257,1,32))return 54;
+    for(uintptr_t list=1;list<=Tracker::list_capacity;++list)if(!t.reset(list))return 51;
+    const uintptr_t rejected=Tracker::list_capacity+1;
+    if(t.reset(rejected)||t.snapshot().overflow!=1||t.draw_state(rejected).tracked)return 52;
+    if(t.set(rejected,full,false,rectangle)||t.bind(rejected,1,32)||t.snapshot().overflow!=1)return 53;
+    auto capacity=t.snapshot();
+    if(capacity.active_lists!=Tracker::list_capacity||capacity.list_highwater!=Tracker::list_capacity||capacity.first_failed_list!=rejected)return 56;
+    if(!t.retire(128)||!t.reset(rejected)||!t.set(rejected,full,false,rectangle)||!t.bind(rejected,1,32))return 54;
     if(!t.draw_state(129).tracked||t.draw_state(128).tracked||!(t.lookup(64)==target))return 55;
+    if(t.retire(128)||t.snapshot().active_lists!=Tracker::list_capacity)return 57;
+    // Retirement/replacement cannot erase an overflow awaiting the caller's
+    // fail-closed window boundary. Clearing reports it once, preserving history.
+    if(!t.clear_bindings()||t.clear_bindings()||t.snapshot().active_lists||t.binding(rejected).targets)return 58;
+    if(t.snapshot().list_highwater!=Tracker::list_capacity||t.snapshot().first_failed_list!=rejected||t.snapshot().overflow!=1)return 59;
+    if(!t.reset(rejected)||!t.bind(rejected,1,32)||!(t.binding(rejected).target==target)||t.snapshot().active_lists!=1)return 60;
     return 0;
 }
 int main(){
@@ -44,7 +53,7 @@ int main(){
     if(sample.untracked_draws!=1||sample.draws[1][right][left]!=1||sample.draws[1][right][right])return 3;
     tracker.reset(42);tracker.draw(42,2);
     if(tracker.snapshot().draws[2][unknown][unknown]!=1)return 4;
-    for(uintptr_t i=100;i<356;++i)tracker.reset(i);
+    for(uintptr_t i=100;i<100+Tracker::list_capacity;++i)tracker.reset(i);
     if(tracker.snapshot().overflow!=1)return 5;
     auto rectangle_storage=std::make_unique<Tracker>();auto& rectangles=*rectangle_storage;
     Rect right_rect{960,0,960,1080},wide_scissor{0,0,32767,32767};
