@@ -166,6 +166,7 @@ void append_after_original(bool,ID3D12GraphicsCommandList*,const D3D12_TEXTURE_C
 void print_backbuffer_copies(FILE* status);
 void observe_backbuffer_copy_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 namespace final_transfer_live {
+namespace normalizer {bool publication_allowed();}
 bool enabled();bool tracks(gears_frame_link::ListRef,uintptr_t);
 bool observe(ID3D12GraphicsCommandList*,uintptr_t,unsigned,unsigned,unsigned,gears_viewport::TargetDraw const&,gears_frame_link::ListRef);
 void record_source_draw();void print(FILE*);
@@ -1308,7 +1309,7 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
     auto result=frame_link.present(resource,inventory_ok?binding.queue:0);
     if(diagnostic){diagnostic->valid|=gears_outage::association;diagnostic->buffer=resource;diagnostic->queue=binding.queue;
         diagnostic->ticket=result.ticket;diagnostic->rejection=result.rejection;diagnostic->linked=result.linked;diagnostic->contaminated=result.contaminated;}
-    if(!owned_xr_probe&&stereo_gpu_publish&&result.linked&&inventory_ok&&vr_dof_compat::publication(committed_world_generation.load(),result.ticket)){
+    if(!owned_xr_probe&&stereo_gpu_publish&&result.linked&&inventory_ok&&final_transfer_live::normalizer::publication_allowed()&&vr_dof_compat::publication(committed_world_generation.load(),result.ticket)){
         gears_vr::StereoImageTicket image{};image.id=result.ticket;
         if(!stereo_ticket_store.lookup(result.ticket,image.sample,simulator_operator)){++stereo_publish_counts.ticket_missing;}
         else {
@@ -2662,6 +2663,7 @@ void inspect_swapchain(Record& record,IDXGISwapChain* chain) {
     }
 }
 void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* lists) {
+    final_transfer_live::normalizer::boundary();
     if(stereo_publish_bypass){death_hdr_pixels::execute_passthrough(queue,count,lists);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();death_hdr_pixels::execute_passthrough(queue,count,lists);return;}auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
     gears_frame_link::ExecutionToken owned_token{};
@@ -2735,6 +2737,7 @@ bool desktop_mirror_present(IDXGISwapChain* chain,UINT flags){
 #endif
 }
 HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT flags) {
+    final_transfer_live::normalizer::boundary();
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_present(chain,interval,flags);}auto frame_guard=frame_lock();
     FramePresentScope frame_present;
     auto record=start_record(3,chain,_ReturnAddress());
@@ -2759,6 +2762,7 @@ HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT 
     enqueue(record);return result;
 }
 HRESULT STDMETHODCALLTYPE hook_present1(IDXGISwapChain1* chain,UINT interval,UINT flags,const DXGI_PRESENT_PARAMETERS* params) {
+    final_transfer_live::normalizer::boundary();
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_present1(chain,interval,flags,params);}auto frame_guard=frame_lock();
     FramePresentScope frame_present;
     auto record=start_record(4,chain,_ReturnAddress());
@@ -3004,6 +3008,7 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
     return result;
 }
 void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count,const D3D12_VIEWPORT* values) {
+    final_transfer_live::normalizer::bind(1,reinterpret_cast<uintptr_t>(list),count,values,stereo_publish_bypass!=0);
     final_transfer_live::bracket::consumed_viewport(reinterpret_cast<uintptr_t>(list),count,values,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_viewports(list,count,values);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_viewports(list,count,values);}auto frame_guard=frame_lock();
@@ -3022,6 +3027,7 @@ void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count
     original_viewports(list,count,values);
 }
 void STDMETHODCALLTYPE hook_scissors(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RECT* values) {
+    final_transfer_live::normalizer::bind(2,reinterpret_cast<uintptr_t>(list),count,values,stereo_publish_bypass!=0);
     final_transfer_live::bracket::consumed_scissor(reinterpret_cast<uintptr_t>(list),count,values,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_scissors(list,count,values);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_scissors(list,count,values);}auto frame_guard=frame_lock();
@@ -3071,6 +3077,9 @@ void observe_output_post(unsigned attempt){
 void __fastcall hook_quad(float x,float y,float width,float height,float u,float v,float uw,float vh,
     unsigned target_width,unsigned target_height,unsigned texture_width,unsigned texture_height){
     Scope scope;uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;vr_dof_compat::quad(caller,scope.world());
+    final_transfer_live::normalizer::Scope normalize(caller,{x,y,width,height,u,v,uw,vh},
+        {target_width,target_height,texture_width,texture_height},scope.world());
+    normalize.forward(u,v,uw,vh);
     if(!scope.world())return original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);
     final_transfer_live::bracket::Scope transfer_bracket(caller,{x,y,width,height,u,v,uw,vh},
         {target_width,target_height,texture_width,texture_height});
@@ -3144,6 +3153,7 @@ void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
 #include "game_ui_material_draw.inl"
 #endif
 void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,UINT instances,UINT start,UINT first_instance) {
+    final_transfer_live::normalizer::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,0,vertices,instances,stereo_publish_bypass!=0);
     final_transfer_live::bracket::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,0,vertices,instances,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_draw(list,vertices,instances,start,first_instance);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw(list,vertices,instances,start,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
@@ -3175,6 +3185,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw(list,vertices,instances,start,first_instance);}
 }
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
+    final_transfer_live::normalizer::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,1,indices,instances,stereo_publish_bypass!=0);
     final_transfer_live::bracket::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,1,indices,instances,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_draw_indexed(list,indices,instances,start,vertex,first_instance);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw_indexed(list,indices,instances,start,vertex,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
@@ -3294,6 +3305,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw_indexed(list,indices,instances,start,vertex,first_instance);}
 }
 void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,BOOL single,const D3D12_CPU_DESCRIPTOR_HANDLE* depth) {
+    final_transfer_live::normalizer::bind(0,reinterpret_cast<uintptr_t>(list),count,handles,stereo_publish_bypass!=0);
     final_transfer_live::bracket::consumed_target(reinterpret_cast<uintptr_t>(list),count,handles,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_targets(list,count,handles,single,depth);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_targets(list,count,handles,single,depth);}auto frame_guard=frame_lock();

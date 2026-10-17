@@ -2,6 +2,7 @@
 // calls. All resource queries use the engine's currently bound input object.
 #include "final_transfer_policy.h"
 #include "final_transfer_bracket.h"
+#include "final_transfer_normalize.h"
 #include <exception>
 namespace final_transfer_live {
 std::atomic<bool> attested{};
@@ -191,6 +192,117 @@ void print(FILE* file){
     }
 }
 }
+namespace normalizer {
+#if defined(GEARS_FINAL_TRANSFER_NORMALIZE) && GEARS_FINAL_TRANSFER_NORMALIZE
+struct Scope;
+thread_local Scope* current{};
+std::atomic<bool> faulted{};
+uint64_t considered{},preflight_rejected{},identity_passthrough{},planned{},linked_count{},completed_count{},failed_count{};
+const char* first_failure="none";const char* first_preflight="none";
+std::array<float,8> first_original{},first_effective{};
+std::array<float,8> failed_original{},failed_effective{};
+void fault(const char* stage);
+struct Scope {
+    Scope* saved{};std::unique_lock<std::recursive_mutex> guard;
+    bracket::Snapshot entry{},draw{};bracket::Pending pending{};
+    gears_final_transfer_normalize::Plan plan{};
+    gears_final_transfer_bracket::DrawCalls calls{};
+    gears_final_transfer_bracket::ConsumedBinds binds{},draw_binds{};
+    uint64_t accepted{};int exceptions{};bool mutated{},nested{};
+    Scope(uintptr_t caller,std::array<float,8> args,std::array<unsigned,4> dimensions,bool world):saved(current),exceptions(std::uncaught_exceptions()){
+        if(saved){saved->nested=true;fault("nested_quad");current=nullptr;return;}
+        if(caller!=0x9a7377||!gears_final_transfer_normalize::allowed_mode(enabled(),pending_code_attested.load(),
+            recording.load(),world,self_testing,owned_bindings_enabled,faulted.load()))return;
+        guard=std::unique_lock<std::recursive_mutex>(frame_hook_mutex);
+        if(faulted.load()){guard.unlock();return;}++considered;
+        auto reject=[&](const char* stage){++preflight_rejected;if(!std::strcmp(first_preflight,"none"))first_preflight=stage;guard.unlock();};
+        gears_final_transfer::Input input{};input.quad_caller=caller;input.args=args;input.dimensions=dimensions;
+        entry=bracket::entry(input);
+        if(entry.reason){reject("entry");return;}
+        pending=bracket::read_pending(entry.context);
+        if(gears_final_transfer_bracket::pending_reason(pending,entry)){reject("pending");return;}
+        auto prospective=entry.input;prospective.binding.targets=1;prospective.binding.target=pending.target;
+        prospective.known_buffer=pending.known_buffer;prospective.descriptor_lost=pending.descriptor_lost;
+        prospective.rectangles={true,gears_final_transfer_bracket::pending_viewport(pending),gears_final_transfer_bracket::pending_scissor(pending),1,1,true,pending.viewport[4],pending.viewport[5]};
+        plan=gears_final_transfer_normalize::plan(prospective);
+        if(!plan.valid){reject("plan");return;}
+        if(!plan.modified){++identity_passthrough;guard.unlock();return;}
+        if(!planned){first_original=plan.original;first_effective=plan.effective;}
+        ++planned;mutated=true;current=this;
+    }
+    ~Scope(){
+        if(mutated){
+            const bool exception=std::uncaught_exceptions()>exceptions;
+            if(!faulted.load()&&!exception&&calls.exactly_one_routed_draw()&&accepted==1&&!nested){
+                gears_final_transfer::Input input{};input.quad_caller=entry.input.quad_caller;
+                input.args=plan.effective;input.dimensions=entry.input.dimensions;
+                auto post=bracket::entry(input);
+                const auto difference=gears_final_transfer_bracket::compare(draw,post);
+                // The explicit transfer retires its source-local pair. All
+                // other post-call fields must still match the certified draw.
+                if((post.reason&(1u|2u|4u|16u|32u))||(difference&~unsigned(gears_final_transfer_bracket::pair)))fault("completion_identity");
+                else if(gears_final_transfer_bracket::compare_pending(pending,bracket::read_pending(post.context),post,binds))fault("completion_pending");
+                else if(binds.calls!=draw_binds.calls)fault("post_draw_bind");
+            }
+            if(!gears_final_transfer_normalize::completion(calls,accepted,exception,nested,faulted.load()?1u:0u))fault(exception?"exception":"completion");
+            else ++completed_count;
+        }
+        current=saved;
+    }
+    void forward(float& u,float& v,float& uw,float& vh)const{if(mutated){u=plan.effective[4];v=plan.effective[5];uw=plan.effective[6];vh=plan.effective[7];}}
+    Scope(Scope const&)=delete;Scope& operator=(Scope const&)=delete;
+};
+void fault(const char* stage){
+    if(!faulted.exchange(true)){first_failure=stage;++failed_count;
+        if(current){failed_original=current->plan.original;failed_effective=current->plan.effective;}}
+    // Discard the uncertain current window; publication is latched off for
+    // this session, including any already recorded transfer from this scope.
+    frame_link.invalidate();
+}
+bool scoped(){return current&&current->mutated;}
+bool publication_allowed(){return !faulted.load();}
+void boundary(){if(scoped())fault("execute_or_present_inside_quad");}
+void draw_call(uintptr_t list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances,bool bypass){
+    if(!scoped())return;auto& s=*current;s.calls.call({list,caller,kind,elements,instances},bypass);
+    if(bypass||s.calls.all_draws!=1||list!=s.entry.raw_list||caller!=0x1af92b||kind!=1||elements!=6||instances!=1)fault("draw_hook");
+}
+void bind(unsigned kind,uintptr_t list,unsigned count,const void* values,bool bypass){
+    if(!scoped())return;auto& s=*current;bool match=false;
+    if(kind==0){D3D12_CPU_DESCRIPTOR_HANDLE h{};match=count==1&&safe_copy(&h,values,sizeof(h))&&h.ptr==s.pending.handle;}
+    if(kind==1){std::array<float,6> v{};match=count==1&&safe_copy(v.data(),values,sizeof(v))&&v==s.pending.viewport;}
+    if(kind==2){std::array<int32_t,4> v{};match=count==1&&safe_copy(v.data(),values,sizeof(v))&&v==s.pending.scissor;}
+    s.binds.consume(kind,list==s.entry.raw_list,match,bypass);
+    if(bypass||list!=s.entry.raw_list||!match)fault("consumed_bind");
+}
+bool validate(gears_final_transfer::Input const& input,gears_frame_link::ListRef ref,uintptr_t list,uintptr_t context,uintptr_t object){
+    if(!scoped()||faulted.load())return false;auto& s=*current;
+    s.calls.match({list,input.draw_caller,input.kind,input.elements,input.instances});
+    auto& draw=s.draw;draw.input=input;draw.list=ref;draw.raw_list=list;draw.context=context;draw.source_object=object;
+    bracket::environment(draw);bracket::pair(draw);draw.provenance=frame_target_stats.binding_provenance(list);s.draw_binds=s.binds;
+    if(!s.calls.exactly_one_routed_draw()){fault("draw_routing");return false;}
+    if(gears_final_transfer_normalize::draw_proof(s.entry,draw,s.plan,s.pending,bracket::read_pending(context),s.binds)){
+        fault("draw_proof");return false;}
+    return true;
+}
+void linked(bool success){if(!scoped())return;if(!success){fault("transfer_record");return;}++current->accepted;++linked_count;}
+void print(FILE* file){
+    if(active.load())return;
+    fprintf(file,"final_transfer_normalize compiled=1 faulted=%u considered=%llu preflight_rejected=%llu identity_passthrough=%llu planned=%llu linked=%llu completed=%llu failures=%llu first_failure=%s first_preflight_rejection=%s original=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g effective=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g gpu_proven=0\n",
+        unsigned(faulted.load()),considered,preflight_rejected,identity_passthrough,planned,linked_count,completed_count,failed_count,first_failure,first_preflight,
+        first_original[0],first_original[1],first_original[2],first_original[3],first_original[4],first_original[5],first_original[6],first_original[7],
+        first_effective[0],first_effective[1],first_effective[2],first_effective[3],first_effective[4],first_effective[5],first_effective[6],first_effective[7]);
+    if(faulted.load())fprintf(file,"final_transfer_normalize_first_failure stage=%s original=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g effective=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g\n",first_failure,
+        failed_original[0],failed_original[1],failed_original[2],failed_original[3],failed_original[4],failed_original[5],failed_original[6],failed_original[7],
+        failed_effective[0],failed_effective[1],failed_effective[2],failed_effective[3],failed_effective[4],failed_effective[5],failed_effective[6],failed_effective[7]);
+}
+#else
+struct Scope {Scope(uintptr_t,std::array<float,8>,std::array<unsigned,4>,bool){}void forward(float&,float&,float&,float&)const{}};
+constexpr bool scoped(){return false;}inline bool publication_allowed(){return true;}
+void boundary(){}void draw_call(uintptr_t,uintptr_t,unsigned,unsigned,unsigned,bool){}void bind(unsigned,uintptr_t,unsigned,const void*,bool){}
+bool validate(gears_final_transfer::Input const&,gears_frame_link::ListRef,uintptr_t,uintptr_t,uintptr_t){return false;}
+void linked(bool){}void print(FILE* file){fprintf(file,"final_transfer_normalize compiled=0\n");}
+#endif
+}
 bool verify_range(FILE* file,uintptr_t rva,ULONG size,const char* expected,const char* label="final_transfer_identity"){
     BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};std::array<unsigned char,0x723> bytes{};
     bool ok=size<=bytes.size()&&BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0;
@@ -252,10 +364,13 @@ bool observe(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned kind,unsi
             input.source={identity.canonical,unsigned(d.Dimension),unsigned(d.Width),d.Height,unsigned(d.DepthOrArraySize),
                 unsigned(d.MipLevels),unsigned(d.Format),d.SampleDesc.Count};}}
     bracket::actual(input,ref,reinterpret_cast<uintptr_t>(list),context,object);
-    if(!gears_final_transfer::eligible(input)){++policy_rejected;return false;}
+    const bool normalized=normalizer::scoped();
+    if(normalized?!normalizer::validate(input,ref,reinterpret_cast<uintptr_t>(list),context,object):!gears_final_transfer::eligible(input)){
+        ++policy_rejected;return false;}
     const gears_frame_link::Target source{input.source.resource,input.source.width,input.source.height};
     const gears_frame_link::Target destination{binding.target.resource,unsigned(binding.target.width),binding.target.height};
-    if(!frame_link.draw_transfer(ref,source,destination)){++pair_rejected;return false;}
+    if(!frame_link.draw_transfer(ref,source,destination)){if(normalized)normalizer::linked(false);++pair_rejected;return false;}
+    if(normalized)normalizer::linked(true);
     ++accepted;return true;
 }
 void copy_destination(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination){
@@ -270,5 +385,6 @@ void print(FILE* file){
     fprintf(file,"final_transfer enabled=%u attested=%u attempts=%llu accepted=%llu policy_rejected=%llu pair_rejected=%llu source_draws=%llu observed_copy_writes=%llu same_list_only=1 geometry=same_width_height_delta_0_or_1 native_caller=9a7377 shader_bytecode_decoded=0 gpu_pixels_verified=0\n",
         unsigned(enabled()),unsigned(attested.load()),attempts,accepted,policy_rejected,pair_rejected,source_draws,copy_writes);
     bracket::print(file);
+    normalizer::print(file);
 }
 }
