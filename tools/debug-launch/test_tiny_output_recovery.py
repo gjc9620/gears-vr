@@ -265,6 +265,89 @@ class TinyOutputRecoveryTests(unittest.TestCase):
             self.assertIn('observer_error', [event['event'] for event in events])
             self.assertEqual(events[-1]['event'], 'monitor_stopped')
 
+    def ready_monitor(self, attempt=None):
+        monitor = TinyOutputMonitor('unused', 'unused', IDENTITY, attempt=attempt)
+        self.observe(monitor.policy, 10);self.observe(monitor.policy, 11)
+        return monitor
+
+    def test_default_attempt_emits_each_operation_boundary_without_window_details(self):
+        monitor, control, stages = self.ready_monitor(), FakeControl(), []
+        with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(12)):
+            event = monitor.poll_once(control, 12_000_000_000, emit=stages.append)
+        self.assertEqual(event['result']['result'], 'resize_restore_attempted')
+        self.assertEqual([row['phase'] for row in stages], [
+            'window_snapshot_begin', 'window_snapshot_end', 'recovery_action_begin',
+            'attempt_snapshot_before_begin', 'attempt_snapshot_before_end', 'resize_begin', 'resize_end',
+            'attempt_snapshot_after_resize_begin', 'attempt_snapshot_after_resize_end', 'restore_begin', 'restore_end',
+            'attempt_snapshot_after_restore_begin', 'attempt_snapshot_after_restore_end', 'recovery_action_complete'])
+        for row in stages:
+            self.assertEqual(set(row), {'event', 'phase', 'target_identity', 'hwnd'})
+            self.assertEqual(row['target_identity'], IDENTITY)
+            self.assertEqual(row['hwnd'], 99)
+        self.assertEqual(SWP_FLAGS, 0x216)
+
+    def test_custom_attempt_retains_its_four_positional_arguments_with_phase_emitter(self):
+        attempt = mock.Mock(return_value={'attempted':True})
+        monitor, control, stages = self.ready_monitor(attempt), FakeControl(), []
+        with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(12)):
+            result = monitor.poll_once(control, 12_000_000_000, emit=stages.append)
+        attempt.assert_called_once_with(control, IDENTITY, 99, [8, 8])
+        self.assertEqual(result['result'], {'attempted':True})
+        self.assertEqual([row['phase'] for row in stages],
+            ['window_snapshot_begin', 'window_snapshot_end', 'recovery_action_begin', 'recovery_action_complete'])
+
+    def test_resize_exception_retains_last_begin_without_false_end(self):
+        for error in (OSError('resize failed'), RuntimeError('custom resize fault')):
+            with self.subTest(error=type(error).__name__):
+                monitor, control, stages = self.ready_monitor(), FakeControl(), []
+                with mock.patch.object(control, 'resize', side_effect=error) as resize, \
+                        mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(12)):
+                    result = monitor.poll_once(control, 12_000_000_000, emit=stages.append)
+                phases = [row['phase'] for row in stages]
+                self.assertEqual([phase for phase in phases if phase.endswith('_begin')][-1], 'resize_begin')
+                self.assertNotIn('resize_end', phases)
+                self.assertNotIn('restore_begin', phases)
+                self.assertEqual(phases[-1], 'recovery_action_complete')
+                self.assertIn(result['result']['result'], ('error', 'diagnostic_error'))
+                resize.assert_called_once_with(99, 1932, 1116)
+
+    def test_phase_callback_failure_does_not_change_recovery_result(self):
+        expected = self.run_attempt(FakeControl())
+        failing = mock.Mock(side_effect=OSError('phase record unavailable'))
+        actual = attempt_recovery(FakeControl(), IDENTITY, 99, (8, 8), emit=failing)
+        self.assertEqual(actual, expected)
+        self.assertEqual(failing.call_count, 10)
+
+    def test_run_phase_record_failure_does_not_block_custom_recovery_or_stop_record(self):
+        with tempfile.TemporaryDirectory() as temp:
+            records, failed_stages = [], []
+            class StageFailingStream:
+                def __enter__(self):return self
+                def __exit__(self, *args):pass
+                def write(self, value):
+                    row = json.loads(value)
+                    if row['event'] == 'recovery_stage':
+                        failed_stages.append(row['phase'])
+                        raise OSError('stage-only storage fault')
+                    records.append(row)
+                def flush(self):pass
+            monitor = self.ready_monitor()
+            monitor.diagnostic_path = pathlib.Path(temp)/'diagnostic.jsonl'
+            control = FakeControl()
+            def custom(c, identity, hwnd, output):
+                monitor.stop_event.set()
+                return {'attempted':True}
+            monitor.attempt = mock.Mock(side_effect=custom)
+            monitor.control_factory = lambda:control
+            with mock.patch.object(pathlib.Path, 'open', return_value=StageFailingStream()), \
+                    mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(12)), \
+                    mock.patch('tiny_output_recovery.time.perf_counter_ns', return_value=12_000_000_000):
+                monitor._run()
+            monitor.attempt.assert_called_once_with(control, IDENTITY, 99, [8, 8])
+            self.assertEqual(len(failed_stages), 4)
+            self.assertIn('recovery_attempt', [row['event'] for row in records])
+            self.assertEqual(records[-1]['event'], 'monitor_stopped')
+
     def run_attempt(self, control, output=(8, 8)):
         return attempt_recovery(control, IDENTITY, 99, output)
 

@@ -409,13 +409,16 @@ class BundleTests(unittest.TestCase):
         index.write_text(json.dumps({'schema':1,'kind':'repository_vr_launcher','phase':'reserving',
             'error':r'Cannot start C:\Users\PrivateUser\game.exe', 'native_activated':False, 'passed':False,
             'control_exit_code':1, 'session_report':'DO_NOT_FOLLOW', 'native_command':['SECRET_COMMAND'],
-            'prime_cleanup':{'cancelled':True,'entry_restore_verified':True,'game_exited':False,'native_bytes':'PROPRIETARY'}}))
+            'prime_cleanup':{'cancelled':True,'entry_restore_verified':True,'game_exited':False,'native_bytes':'PROPRIETARY'},
+            'tiny_output_monitor_cleanup':{'joined':False,'error':r'busy C:\Users\PrivateUser\monitor.py','raw':'PROPRIETARY'}}))
         self.export()
         _, raw, docs = self.read_zip()
         state = docs['launcher-state.json']
         self.assertEqual(state['phase'],'reserving');self.assertFalse(state['native_activated'])
         self.assertEqual(state['control_exit_code'],1)
         self.assertEqual(state['prime_cleanup'], {'cancelled':True,'entry_restore_verified':True,'game_exited':False})
+        self.assertIs(state['tiny_output_monitor_cleanup']['joined'],False)
+        self.assertNotIn('raw',state['tiny_output_monitor_cleanup'])
         for secret in ('PrivateUser','DO_NOT_FOLLOW','SECRET_COMMAND','PROPRIETARY'):
             self.assertNotIn(secret,raw)
 

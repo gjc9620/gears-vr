@@ -395,6 +395,12 @@ def _launcher_state(collector):
     cleanup = data.get('prime_cleanup', {})
     result['prime_cleanup'] = {key:cleanup[key] for key in ('game_exited', 'handed_off', 'cancelled', 'entry_restore_verified')
                              if isinstance(cleanup, dict) and type(cleanup.get(key)) is bool}
+    monitor = data.get('tiny_output_monitor_cleanup')
+    if isinstance(monitor, dict):
+        joined = monitor.get('joined')
+        result['tiny_output_monitor_cleanup'] = {'joined':joined if type(joined) is bool else None}
+        if isinstance(monitor.get('error'),str):
+            result['tiny_output_monitor_cleanup']['error'] = _text(monitor['error'])
     return result
 
 

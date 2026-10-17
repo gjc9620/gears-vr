@@ -13,6 +13,15 @@ import time
 SWP_FLAGS = 0x0002 | 0x0004 | 0x0010 | 0x0200  # NOMOVE/NOZORDER/NOACTIVATE/NOOWNERZORDER
 
 
+def _phase(emit, phase, expected, hwnd):
+    if emit is not None:
+        try:
+            emit(dict(event='recovery_stage', phase=phase, target_identity=dict(expected), hwnd=hwnd))
+        except Exception:
+            # Stage storage is diagnostic only; never gate an existing action.
+            pass
+
+
 def read_swapchain_status(path):
     """Read one bounded atomic native snapshot, never the XR source dimensions."""
     with pathlib.Path(path).open('rb') as stream:
@@ -89,7 +98,7 @@ class TinyOutputMonitor:
         self.stop_event = threading.Event()
         self.thread = None
 
-    def poll_once(self, control, now_ns):
+    def poll_once(self, control, now_ns, emit=None):
         if control.identity(self.expected['pid']) != self.expected:
             self.policy.reset()
             return dict(event='identity_changed', stop=True)
@@ -114,7 +123,9 @@ class TinyOutputMonitor:
             return dict(event='monitor_cancelled', stop=True)
         # A hidden/minimized/unusable startup HWND is not an attempt. Once it
         # becomes actionable require a fresh full tiny interval before acting.
+        _phase(emit, 'window_snapshot_begin', self.expected, observation['hwnd'])
         state = control.snapshot(self.expected['pid'], observation['hwnd'])
+        _phase(emit, 'window_snapshot_end', self.expected, observation['hwnd'])
         reason = skip_reason(observation['dimensions'], self.expected, state)
         if reason:
             self.policy.reset()
@@ -122,10 +133,15 @@ class TinyOutputMonitor:
         # Consume before action, including skipped or failed attempts. A fresh
         # identity/window check also happens inside the nonactivating helper.
         self.policy.consumed = True
+        _phase(emit, 'recovery_action_begin', self.expected, observation['hwnd'])
         try:
-            result = (self.attempt or attempt_recovery)(control, self.expected, observation['hwnd'], observation['dimensions'])
+            if self.attempt:
+                result = self.attempt(control, self.expected, observation['hwnd'], observation['dimensions'])
+            else:
+                result = attempt_recovery(control, self.expected, observation['hwnd'], observation['dimensions'], emit=emit)
         except Exception as error:
             result = dict(attempted=False, result='diagnostic_error', error=repr(error))
+        _phase(emit, 'recovery_action_complete', self.expected, observation['hwnd'])
         return dict(event='recovery_attempt', observation=observation, result=result)
 
     def _run(self):
@@ -141,7 +157,7 @@ class TinyOutputMonitor:
                     previous = None
                     while not self.stop_event.is_set():
                         try:
-                            event = self.poll_once(control, time.perf_counter_ns())
+                            event = self.poll_once(control, time.perf_counter_ns(), emit=record)
                         except Exception as error:
                             self.policy.reset()
                             event = dict(event='observer_error', error=repr(error))
@@ -195,14 +211,16 @@ def skip_reason(observed_output, expected, state):
     return None
 
 
-def attempt_recovery(control, expected, hwnd, observed_output):
+def attempt_recovery(control, expected, hwnd, observed_output, *, emit=None):
     """Return evidence only; caller owns once-per-session policy and DXGI sampling."""
     result = {'hwnd': hwnd, 'observed_output': observed_output, 'attempted': False,
               'resized': False, 'restored': False, 'foreground_before': None,
               'foreground_after': None, 'result': 'skipped'}
     try:
         result['foreground_before'] = control.foreground()
+        _phase(emit, 'attempt_snapshot_before_begin', expected, hwnd)
         state = control.snapshot(expected['pid'], hwnd)
+        _phase(emit, 'attempt_snapshot_before_end', expected, hwnd)
         result['before'] = state
         reason = skip_reason(observed_output, expected, state)
         if reason:
@@ -213,8 +231,12 @@ def attempt_recovery(control, expected, hwnd, observed_output):
         result['original_size'] = [width, height]
         result['intermediate_size'] = [width - 1, height]
         result['attempted'] = True
+        _phase(emit, 'resize_begin', expected, hwnd)
         result['resized'] = bool(control.resize(hwnd, width - 1, height))
+        _phase(emit, 'resize_end', expected, hwnd)
+        _phase(emit, 'attempt_snapshot_after_resize_begin', expected, hwnd)
         after = control.snapshot(expected['pid'], hwnd)
+        _phase(emit, 'attempt_snapshot_after_resize_end', expected, hwnd)
         result['after_resize'] = after
         # Preserve a concurrent move/resize, mode change, or replacement HWND.
         reason = skip_reason(observed_output, expected, after)
@@ -225,9 +247,13 @@ def attempt_recovery(control, expected, hwnd, observed_output):
         elif not result['resized']:
             result['result'] = 'resize_failed'
         else:
+            _phase(emit, 'restore_begin', expected, hwnd)
             result['restored'] = bool(control.resize(hwnd, width, height))
+            _phase(emit, 'restore_end', expected, hwnd)
             result['result'] = 'resize_restore_attempted' if result['restored'] else 'restore_failed'
+            _phase(emit, 'attempt_snapshot_after_restore_begin', expected, hwnd)
             result['after_restore'] = control.snapshot(expected['pid'], hwnd)
+            _phase(emit, 'attempt_snapshot_after_restore_end', expected, hwnd)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         result['result'] = 'error'
         result['error'] = str(exc)

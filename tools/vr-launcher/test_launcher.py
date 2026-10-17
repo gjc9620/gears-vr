@@ -673,6 +673,7 @@ class LauncherTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             backend=FakeBackend();index=pathlib.Path(directory)/'index.json'
             monitor=backend.start_tiny_output_monitor.return_value
+            monitor.close.return_value=True
             player=backend.player
             def observed_player(*args):
                 backend.start_tiny_output_monitor.assert_called_once()
@@ -686,6 +687,23 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(self.start_mock(backend,index,sleep=lambda seconds:None),0)
             backend.start_tiny_output_monitor.assert_called_once_with(MANIFEST,backend.game,index.with_suffix('.tiny-output.jsonl'))
             monitor.close.assert_called_once()
+            self.assertEqual(json.loads(index.read_text())['tiny_output_monitor_cleanup'],{'joined':True})
+
+    def test_output_monitor_join_failure_is_preserved_without_blocking_prime_cleanup(self):
+        for result in (False,RuntimeError('monitor close fault')):
+            with self.subTest(result=result),tempfile.TemporaryDirectory() as directory:
+                backend=FakeBackend();index=pathlib.Path(directory)/'index.json'
+                monitor=backend.start_tiny_output_monitor.return_value
+                if isinstance(result,Exception):monitor.close.side_effect=result
+                else:monitor.close.return_value=result
+                backend.finish_owned_prime=mock.Mock(return_value={'entry_restore_verified':True})
+                with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                    self.assertEqual(launcher.start({},dict(MANIFEST,startup_menu=True),backend,index,sleep=lambda _:None),0)
+                report=json.loads(index.read_text())
+                self.assertIs(report['tiny_output_monitor_cleanup']['joined'],False)
+                self.assertTrue(report['prime_cleanup']['entry_restore_verified'])
+                backend.finish_owned_prime.assert_called_once()
+                self.assertEqual(backend.control.k.CloseHandle.call_count,2)
 
     def test_output_monitor_start_failure_is_diagnostic_only(self):
         with tempfile.TemporaryDirectory() as directory:

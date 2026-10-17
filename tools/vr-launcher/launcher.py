@@ -520,7 +520,13 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         atomic_json(index,state);raise
     finally:
         if tiny_output_monitor:
-            try:tiny_output_monitor.close()
+            try:
+                joined=tiny_output_monitor.close()
+                state['tiny_output_monitor_cleanup']={'joined':joined if type(joined) is bool else None}
+            except Exception as error:
+                state['tiny_output_monitor_cleanup']={'joined':False,'error':repr(error)}
+            # Best-effort diagnostics must not prevent native/prime cleanup.
+            try:atomic_json(index,state)
             except Exception:pass
         try:
             if owned_prime and identity:
