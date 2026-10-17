@@ -181,6 +181,7 @@ bool observe(ID3D12GraphicsCommandList*,uintptr_t,unsigned,unsigned,unsigned,gea
 void record_source_draw();void print(FILE*);
 }
 #include "dlss_output_control_live.h"
+#include "ngx_output_pixels_live.h"
 struct FrameLinkCounters {
     std::atomic<uint64_t> resets{},reset_failed{},draws{},filtered{},unknown{},missing_target{},missing_ticket{},bad_quad{},
         executes{},execute_rejected{},presents{},linked{},contaminated{},present_failed{},tests{},unbound{},changed{},last_ticket{};
@@ -1419,6 +1420,7 @@ void retire_original_present_interval() {
 }
 void stereo_publish_worker_tick() {
     death_hdr_pixels::poll();
+    ngx_output_pixels::poll();
     death_pso_cache::poll();
     if(!stereo_gpu_publish)return;
     if(continuous_session&&submitted_lifetime.stopping()&&!stereo_publish_counts.stopped.load()){
@@ -1717,6 +1719,7 @@ void print_frame_link(FILE* status) {
     death_constant_observer::print(status);
     dlss_route_observer::print(status);
     ngx_route_observer::print(status);
+    ngx_output_pixels::print(status);
     death_dof_control::print(status);
     vr_dof_compat::print(status);
     dlss_output_control::print(status);
@@ -2216,6 +2219,8 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "dlss_route_observer.inl"
 #include "dlss_output_control.inl"
 #include "ngx_route_observer.inl"
+#include "ngx_output_pixels.inl"
+#include "ngx_output_pixels_native.inl"
 #include "death_dof_control.inl"
 #include "vr_dof_compat.inl"
 
@@ -2746,8 +2751,8 @@ void inspect_swapchain(Record& record,IDXGISwapChain* chain) {
 }
 void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* lists) {
     final_transfer_live::normalizer::boundary();
-    if(stereo_publish_bypass){death_hdr_pixels::execute_passthrough(queue,count,lists);return;}
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();death_hdr_pixels::execute_passthrough(queue,count,lists);return;}auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
+    if(stereo_publish_bypass){ngx_output_pixels::execute_passthrough(queue,count,lists,death_hdr_pixels::execute_passthrough);return;}
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();ngx_output_pixels::execute_passthrough(queue,count,lists,death_hdr_pixels::execute_passthrough);return;}auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
     gears_frame_link::ExecutionToken owned_token{};
     gears_frame_link::ExecutionToken* owned=nullptr;
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
@@ -2774,7 +2779,7 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     if(retire_bindings)for(unsigned i=0;i<count;++i)binding_ids[i]=canonical_identity(binding_lists[i]);
     auto pixel_guard=death_hdr_pixels::execution_lock();
     const auto pixel_token=death_hdr_pixels::prepare_execute(queue,count,lists);
-    original_execute(queue,count,lists);
+    ngx_output_pixels::execute_passthrough(queue,count,lists,original_execute);
     death_hdr_pixels::after_execute(pixel_token,queue);
     owned_scene_gpu::commit(scene_gpu_token);
     native_owned_scene_commit(scene_receipt);
@@ -3065,8 +3070,8 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
 #endif
 #include "owned_scene_gpu_hooks.inl"
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
-    if(stereo_publish_bypass)return death_pso_cache::reset_passthrough(list,allocator,state);
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return death_pso_cache::reset_passthrough(list,allocator,state);}auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
+    if(stereo_publish_bypass)return ngx_output_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return ngx_output_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);}auto frame_guard=frame_lock();HRESULT result=ngx_output_pixels::reset_passthrough(list,allocator,state,original_reset_list);
     death_hdr_pixels::reset_after_original(list,result);
     death_pso_cache::reset(list,result);
     gears_render_cost::Scope cost(gears_render_cost::reset_tracking);
@@ -4007,6 +4012,7 @@ DWORD WINAPI worker(void*) {
     if(ok)ok=final_transfer_live::enable(status);
     if(ok)ok=death_source_live::enable(status);
     if(ok)ok=death_hdr_pixels::enable(status);
+    if(ok)ok=ngx_output_pixels::enable(status);
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     if(ok)ok=create_quad_source_events();
@@ -4088,6 +4094,7 @@ DWORD WINAPI worker(void*) {
     // in-flight execution can never jump into freed code.
     session_activation_gate.close();
     death_hdr_pixels::stop();
+    ngx_output_pixels::stop();
     MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
     recording=false;
     for(unsigned i=0;i<100 && active.load();++i) Sleep(10);

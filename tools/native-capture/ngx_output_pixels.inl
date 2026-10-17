@@ -1,0 +1,154 @@
+namespace ngx_output_pixels {
+#if defined(GEARS_NGX_OUTPUT_PIXELS) && GEARS_NGX_OUTPUT_PIXELS
+bool enabled{},stopped{},published{},initialized{};std::array<Slot,2> slots{};unsigned count{},failure{};
+uint64_t world{},ticket{},eval_sequence{},copy_sequence{},execute_sequence{},bypassed{},unrelated{},limited{};unsigned owner_thread{};
+thread_local int active_eval=-1,pending_eval=-1;
+struct GapReceipt {bool boundary{},copy{};int pending{-1};long long boundary_qpc{},copy_qpc{};uintptr_t caller{},command{},structure{},copy_caller{},copy_list{},source{},destination{};unsigned thread{},copy_thread{};uint64_t world{},ticket{};};
+GapReceipt gap;
+bool same_owner(gears_ngx_route::Ownership const& a,gears_ngx_route::Ownership const& b){
+    return a.associated&&b.associated&&a.world==b.world&&a.ticket==b.ticket&&a.renderer==b.renderer&&a.context==b.context&&a.view==b.view&&a.views==b.views&&a.count==b.count;
+}
+gears_ngx_route::Sample eval_sample(uintptr_t structure,bool owned){gears_ngx_route::Row row;row.evaluate=true;row.structure=structure;return ngx_route_observer::sample(row,owned);}
+void quarantine(unsigned reason){if(!failure)failure=reason;for(unsigned i=0;i<count;++i)slots[i].life.fail(reason);}
+void ambiguous_boundary(int pending,bool owned,uintptr_t caller,uintptr_t command,const void* structure){
+    if(!gap.boundary){gap.boundary=true;gap.pending=pending;gap.boundary_qpc=now();gap.caller=caller;gap.command=command;
+        gap.structure=reinterpret_cast<uintptr_t>(structure);gap.thread=GetCurrentThreadId();auto const owner=ngx_route_observer::ownership(owned);gap.world=owner.world;gap.ticket=owner.ticket;}
+    quarantine(association_ambiguous);
+}
+void foreign_boundary(bool owned,uintptr_t caller,uintptr_t command,const void* structure){
+    // TLS cannot describe an Eval/Create on another thread. Invalidate the
+    // global unfinished interval BEFORE any ownership/caller/quota bypass.
+    if(!enabled||stopped||failure||!count||owner_thread==GetCurrentThreadId())return;
+    for(unsigned i=0;i<count;++i)if(!slots[i].copy_seen){ambiguous_boundary(int(i),owned,caller,command,structure);return;}
+}
+bool current_owner(Slot const& s){return !stopped&&enabled&&!failure&&recording.load()&&s.thread==GetCurrentThreadId()&&
+    same_owner(s.before.ownership,ngx_route_observer::ownership(true));}
+void publish_pair(){
+    if(published||stopped||failure||count!=2)return;
+    for(auto const& s:slots)if(!s.normal||!s.copy_seen||!s.life.appended||s.life.failure||!current_owner(s))return;
+    published=backend().publish(ticket,world,slots[1].copy_sequence);
+}
+EvalScope::EvalScope(bool owned,uintptr_t caller,uintptr_t command,const void* structure):parent(active_eval),exceptions(std::uncaught_exceptions()){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);active_eval=-1;
+    foreign_boundary(owned,caller,command,structure);
+    // A completed Eval is eligible only up to the NEXT Eval boundary. Never
+    // assign two later copies to two old evaluations sharing the same pointers.
+    if(pending_eval>=0){ambiguous_boundary(pending_eval,owned,caller,command,structure);pending_eval=-1;}
+    if(parent>=0)quarantine(nested_eval);
+    if(!enabled||stopped||failure||!recording.load()||!ngx_route_observer::attested||caller!=base+0x9a35d3){++bypassed;return;}
+    ++eval_sequence;auto before=eval_sample(reinterpret_cast<uintptr_t>(structure),owned);
+    if(before.fields_mask!=0x7ffff||before.slots_mask!=3||!before.ownership.associated||before.ownership.ticket<32||
+       !before.resources[0]||!before.resources[1]||before.resources[0]==before.resources[1]){++bypassed;return;}
+    if(count==slots.size()){++limited;return;}
+    if(!count){world=before.ownership.world;ticket=before.ownership.ticket;owner_thread=GetCurrentThreadId();}
+    if(world!=before.ownership.world||ticket!=before.ownership.ticket||owner_thread!=GetCurrentThreadId()){quarantine(association_ambiguous);return;}
+    if(count&&(!slots[count-1].normal||!slots[count-1].copy_seen||!same_owner(slots[0].before.ownership,before.ownership))){quarantine(association_ambiguous);return;}
+    index=int(count++);auto& s=slots[unsigned(index)];s.before=before;s.sequence=eval_sequence;s.caller=caller;s.command=command;
+    s.structure=reinterpret_cast<uintptr_t>(structure);s.thread=GetCurrentThreadId();s.entry=now();s.active=true;active_eval=index;
+}
+EvalScope::~EvalScope(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(index>=0){auto& s=slots[unsigned(index)];s.after=eval_sample(s.structure,true);s.exit=now();s.result=raw_result;s.active=false;
+        const bool normal=returned&&std::uncaught_exceptions()==exceptions&&active_eval==index&&!failure&&
+            s.after.fields_mask==0x7ffff&&s.after.slots_mask==3&&same_owner(s.before.ownership,s.after.ownership)&&
+            s.before.resources==s.after.resources&&s.before.values==s.after.values&&s.before.handle==s.after.handle&&s.before.parameters==s.after.parameters;
+        if(!normal)quarantine(std::uncaught_exceptions()!=exceptions?eval_exception:eval_changed);
+        else{s.normal=true;if(!s.copy_seen)pending_eval=index;else publish_pair();}}
+    active_eval=parent;
+}
+void create_boundary(bool owned,uintptr_t caller,uintptr_t command,const void* structure){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    foreign_boundary(owned,caller,command,structure);
+    if(enabled&&(active_eval>=0||pending_eval>=0))quarantine(association_ambiguous);pending_eval=-1;}
+std::unique_lock<std::recursive_mutex> execution_lock(){return std::unique_lock<std::recursive_mutex>(frame_hook_mutex);}
+int prepare_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,UINT x,UINT y,UINT z,
+    const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box,uintptr_t caller){
+    if(!enabled||stopped||!recording.load())return -1;
+    if(failure){if(failure==association_ambiguous&&count&&!gap.copy){D3D12_TEXTURE_COPY_LOCATION src{},dst{};
+            if(safe_copy(&src,source,sizeof(src))&&safe_copy(&dst,destination,sizeof(dst))&&reinterpret_cast<uintptr_t>(src.pResource)==slots[0].before.resources[1]&&reinterpret_cast<uintptr_t>(dst.pResource)==slots[0].before.resources[0]){
+                gap.copy=true;gap.copy_qpc=now();gap.copy_caller=caller;gap.copy_list=reinterpret_cast<uintptr_t>(list);gap.source=reinterpret_cast<uintptr_t>(src.pResource);gap.destination=reinterpret_cast<uintptr_t>(dst.pResource);gap.copy_thread=GetCurrentThreadId();}}
+        return -1;}
+    const int selected=active_eval>=0?active_eval:pending_eval;if(selected<0)return -1;auto& s=slots[unsigned(selected)];
+    if(!current_owner(s)){quarantine(association_ambiguous);return -1;}
+    D3D12_TEXTURE_COPY_LOCATION src{},dst{};
+    if(!safe_copy(&src,source,sizeof(src))||!safe_copy(&dst,destination,sizeof(dst))){quarantine(typed_mismatch);return -1;}
+    if(reinterpret_cast<uintptr_t>(src.pResource)!=s.before.resources[1]&&reinterpret_cast<uintptr_t>(dst.pResource)!=s.before.resources[0]){++unrelated;return -1;}
+    if(caller!=0x1c6093||reinterpret_cast<uintptr_t>(src.pResource)!=s.before.resources[1]||reinterpret_cast<uintptr_t>(dst.pResource)!=s.before.resources[0]||
+       src.Type!=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX||dst.Type!=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX||src.SubresourceIndex||dst.SubresourceIndex||x||y||z||box||s.copy_seen||
+       (active_eval<0&&!s.normal)){quarantine(typed_mismatch);return -1;}
+    s.raw_list=list;s.source=src;s.destination=dst;s.inside_eval=active_eval>=0;s.copy_qpc=now();s.copy_sequence=++copy_sequence;
+    if(!backend().prepare(unsigned(selected),s)){quarantine(prepare_failed);backend().release(unsigned(selected));s.released=true;return -1;}
+    s.prepared=true;return selected;
+}
+void copy_passthrough(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,UINT x,UINT y,UINT z,
+    const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box,uintptr_t caller,CopyFn forward){
+    auto lock=execution_lock();const int selected=prepare_copy(list,destination,x,y,z,source,box,caller);
+    try{forward(list,destination,x,y,z,source,box);}catch(...){if(selected>=0){quarantine(copy_exception);backend().release(unsigned(selected));slots[unsigned(selected)].released=true;}throw;}
+    if(selected<0)return;auto& s=slots[unsigned(selected)];
+    D3D12_TEXTURE_COPY_LOCATION src{},dst{};
+    if(!current_owner(s)||!safe_copy(&src,source,sizeof(src))||!safe_copy(&dst,destination,sizeof(dst))||
+       src.pResource!=s.source.pResource||dst.pResource!=s.destination.pResource||src.Type!=s.source.Type||dst.Type!=s.destination.Type||src.SubresourceIndex||dst.SubresourceIndex){
+        quarantine(typed_mismatch);backend().release(unsigned(selected));s.released=true;return;}
+    // Original CopySource contract still holds at this immediately adjacent
+    // location. Mark appended BEFORE the extra call: an exception quarantines
+    // the storage even if a driver recorded a command before unwinding.
+    s.life.appended=true;s.copy_seen=true;s.prepared=false;
+    try{backend().append(unsigned(selected),s,forward);}catch(...){quarantine(append_exception);throw;}
+    if(pending_eval==selected)pending_eval=-1;publish_pair();
+}
+unsigned prepare_execute(ID3D12CommandQueue* queue,UINT n,ID3D12CommandList* const* members){
+    std::array<ID3D12CommandList*,gears_frame_link::Tracker::list_capacity> copied{};const bool readable=n<=copied.size()&&(!n||safe_copy(copied.data(),members,size_t(n)*sizeof(copied[0])));
+    const auto order=++execute_sequence;unsigned token{};
+    for(unsigned i=0;i<count;++i){auto& s=slots[i];if(!s.life.appended||s.life.failure||s.life.saved)continue;
+        bool valid=readable,exact=true;unsigned occurrences{},member{};
+        if(valid)for(unsigned k=0;k<n;++k){const auto id=backend().list_identity(copied[k]);if(!id){valid=false;break;}
+            if(id==s.life.held_identity){++occurrences;member=k;const auto ref=backend().list_ref(id);exact=exact&&ref.identity==s.life.list.identity&&ref.generation==s.life.list.generation;}}
+        uintptr_t identity{};if(occurrences&&!backend().queue_valid(i,queue,identity)){s.life.fail(gears_death_hdr_pixels::cross_queue);continue;}
+        if(s.life.before(valid,occurrences,identity,exact)){token|=1u<<i;s.execute_member=member;s.execute_order=order;}
+    }return token;
+}
+void after_execute(unsigned token,ID3D12CommandQueue* queue){for(unsigned i=0;i<count;++i)if(token&(1u<<i))slots[i].life.after(backend().signal(i,queue));}
+void execute_passthrough(ID3D12CommandQueue* queue,UINT n,ID3D12CommandList* const* members,ExecuteFn forward){
+    auto lock=execution_lock();const auto token=prepare_execute(queue,n,members);
+    try{forward(queue,n,members);}catch(...){for(auto& s:slots)if(s.life.appended)s.life.fail(gears_death_hdr_pixels::unknown_membership);throw;}
+    after_execute(token,queue);
+}
+void reset_after_original(ID3D12GraphicsCommandList* list,HRESULT hr){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    const auto id=backend().list_identity(list);
+    for(unsigned i=0;i<count;++i){auto& s=slots[i];if(!s.life.appended||s.life.failure||s.life.saved||s.life.retired)continue;
+        if(id&&id!=s.life.held_identity&&list!=s.raw_list)continue;const auto ref=backend().list_ref(s.life.held_identity);
+        s.reset_hr=hr;s.reset_qpc=now();s.life.reset(SUCCEEDED(hr),id,ref.generation,reinterpret_cast<uintptr_t>(list),ref.identity);}
+}
+HRESULT reset_passthrough(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state,ResetFn forward){
+    auto lock=execution_lock();try{const auto hr=forward(list,allocator,state);reset_after_original(list,hr);return hr;}
+    catch(...){for(auto& s:slots)if(s.life.appended&&!s.life.saved)s.life.fail(gears_death_hdr_pixels::reset_failed);throw;}
+}
+bool enable(FILE* file){if(initialized){fprintf(file,"ngx_output_pixels_identity enabled=1 rejected_reinitialization=1\n");return false;}
+    enabled=false;stopped=false;published=false;slots={};count=failure=0;world=ticket=eval_sequence=copy_sequence=execute_sequence=0;
+    const bool ready=!self_testing&&continuous_session&&frame_link_diagnostics&&color_copy_diagnostics&&ngx_route_observer::attested;
+    if(ready)initialized=true;enabled=ready&&backend().start();fprintf(file,"ngx_output_pixels_identity enabled=1 configuration=%u active=%u first_ticket_minimum=32 slots=2 original_copy_source_contract=1 barriers_added=0\n",unsigned(ready),unsigned(enabled));return enabled;
+}
+void poll(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(!enabled||stopped||failure)return;
+    for(unsigned i=0;i<count;++i){auto& s=slots[i];if(!s.normal||!s.life.appended||s.life.failure||s.life.saved)continue;
+        if(backend().poll(i,s)&&s.life.saved){backend().release(i);s.released=true;}}
+}
+void stop(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);stopped=true;for(auto& s:slots)s.life.stop();backend().close();}
+void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);
+    fprintf(file,"ngx_output_pixel_clock qpc_frequency=%lld gap_boundary=%u pending_row=%d boundary_qpc=%lld boundary_caller=%llx boundary_command=%llx boundary_structure=%llx boundary_thread=%u boundary_world=%llu boundary_ticket=%llu later_matching_copy=%u copy_qpc=%lld copy_caller=%llx copy_list=%llx copy_source=%llx copy_destination=%llx copy_thread=%u association_not_recovered=1\n",
+        frequency.QuadPart,unsigned(gap.boundary),gap.pending,gap.boundary_qpc,static_cast<unsigned long long>(gap.caller),static_cast<unsigned long long>(gap.command),static_cast<unsigned long long>(gap.structure),gap.thread,gap.world,gap.ticket,
+        unsigned(gap.copy),gap.copy_qpc,static_cast<unsigned long long>(gap.copy_caller),static_cast<unsigned long long>(gap.copy_list),static_cast<unsigned long long>(gap.source),static_cast<unsigned long long>(gap.destination),gap.copy_thread);
+    fprintf(file,"ngx_output_pixels enabled=1 active=%u world=%llu ticket=%llu slots=%u limit=2 failure=%u match_request_published=%u bypassed=%llu limited=%llu unrelated=%llu barriers_added=0 same_original_list=1 matching_xr_snapshot_verified=0 logical_eye_verified=0 quad_pixels_verified=0 temporal_history_verified=0 sr_verified=0\n",unsigned(enabled),world,ticket,count,failure,unsigned(published),bypassed,limited,unrelated);
+    for(unsigned i=0;i<count;++i){auto const& s=slots[i];auto const& v=s.before.values;
+        fprintf(file,"ngx_output_eval row=%u eval_sequence=%llu entry_qpc=%lld exit_qpc=%lld copy_qpc=%lld thread=%u caller=%llx command=%llx structure=%llx before_slots_mask=%u after_slots_mask=%u before_fields_mask=%x after_fields_mask=%x before_handle=%llx after_handle=%llx before_parameters=%llx after_parameters=%llx\n",
+            i,s.sequence,s.entry,s.exit,s.copy_qpc,s.thread,static_cast<unsigned long long>(s.caller),static_cast<unsigned long long>(s.command),static_cast<unsigned long long>(s.structure),s.before.slots_mask,s.after.slots_mask,s.before.fields_mask,s.after.fields_mask,
+            static_cast<unsigned long long>(s.before.handle),static_cast<unsigned long long>(s.after.handle),static_cast<unsigned long long>(s.before.parameters),static_cast<unsigned long long>(s.after.parameters));
+        fprintf(file,"ngx_output_pixel row=%u eval_sequence=%llu copy_sequence=%llu normal=%u inside_eval=%u source_base=%u,%u output_base=%u,%u render_dimensions=%u,%u reset_raw=%u result_rax=%llx source_raw=%llx color_raw=%llx source_canonical=%llx color_canonical=%llx dimensions=%llu,%u format=%u list_raw=%llx list_identity=%llx generation=%llu execute_order=%lld member=%u queue=%llx appended=%u executed=%u signalled=%u retired=%u gpu_complete=%u saved=%u failure=%u held_until_process=%u hr=%08lx path=%ls copy_point_only=1\n",
+            i,s.sequence,s.copy_sequence,unsigned(s.normal),unsigned(s.inside_eval),v[7],v[8],v[13],v[14],v[0],v[1],v[2],s.result,
+            static_cast<unsigned long long>(s.before.resources[1]),static_cast<unsigned long long>(s.before.resources[0]),static_cast<unsigned long long>(s.source_desc.canonical),static_cast<unsigned long long>(s.destination_desc.canonical),s.source_desc.width,s.source_desc.height,s.source_desc.format,
+            static_cast<unsigned long long>(s.life.list.raw),static_cast<unsigned long long>(s.life.list.identity),s.life.list.generation,s.execute_order,s.execute_member,static_cast<unsigned long long>(s.life.queue),
+            unsigned(s.life.appended),unsigned(s.life.executed),unsigned(s.life.signalled),unsigned(s.life.retired),unsigned(s.life.gpu_complete),unsigned(s.life.saved),s.life.failure,unsigned(s.life.appended&&!s.released),static_cast<unsigned long>(s.hr),s.path);
+        auto const& r=s.life.reset_receipt;
+        fprintf(file,"ngx_output_pixel_reset row=%u observed=%u success=%u raw=%llx canonical=%llx held_canonical=%llx tracker_identity=%llx tracker_generation=%llu hr=%08lx qpc=%lld physical_retirement_required=1\n",i,unsigned(r.observed),unsigned(r.success),static_cast<unsigned long long>(r.raw),static_cast<unsigned long long>(r.identity),static_cast<unsigned long long>(s.life.held_identity),static_cast<unsigned long long>(r.tracker_identity),r.tracker_generation,static_cast<unsigned long>(s.reset_hr),s.reset_qpc);}
+}
+#endif
+}

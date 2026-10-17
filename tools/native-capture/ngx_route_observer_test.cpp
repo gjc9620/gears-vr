@@ -134,4 +134,4 @@ void cases(){
     code_available=false;assert(!ngx_route_observer::enable(report));code_available=true;short_code=true;assert(!ngx_route_observer::enable(report));fclose(report);
 }
 }
-int main(){cases();std::puts("NgxRouteObserverTest passed (raw wrapper CPU facts; no SDK/GPU/history claims)");}
+int main(){cases();std::puts("NgxRouteObserverTest passed (raw wrapper CPU facts; no SDK/GPU/history claims)");return 0;}
