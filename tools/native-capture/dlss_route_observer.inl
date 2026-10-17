@@ -1,0 +1,176 @@
+#include "dlss_route_observer.h"
+namespace dlss_route_observer {
+#if defined(GEARS_DLSS_ROUTE_OBSERVER) && GEARS_DLSS_ROUTE_OBSERVER
+#if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
+#error DLSS route and death constant observers detour the same setter
+#endif
+using namespace gears_dlss_route;
+using OutputFn=uint32_t(__fastcall*)(void*,uintptr_t,void*);
+using SetterFn=uint64_t(__fastcall*)(uintptr_t,const uint16_t*,const void*,unsigned);
+OutputFn original_output{};SetterFn original_setter{};void* output_target{};void* setter_target{};
+bool attested{},printed{};Recorder recorder;thread_local Context* current{};
+// Only allocation/counters are shared during capture. A reserved array element
+// never moves, is never reused in-session, and is written only by its TLS owner.
+// enable resets before installation. Cleanup may time out with owners in flight;
+// print therefore checks recording=false AND active==0 before reading any row.
+// Each owner writes before its Scope's atomic active decrement. With recording
+// closed, subsequent bypass entries cannot write rows; observing the completed
+// active drain publishes owner writes. frame_hook_mutex alone does not do so.
+template<class T> bool read(T& out,uintptr_t address,uintptr_t offset=0){
+    return address&&offset<=UINTPTR_MAX-address&&sizeof(T)-1<=UINTPTR_MAX-(address+offset)&&
+        safe_copy(&out,reinterpret_cast<void*>(address+offset),sizeof(T));
+}
+View view(uintptr_t address){
+    View out;out.address=address;out.native.renderer=reinterpret_cast<uintptr_t>(consuming_renderer);
+    uintptr_t slot{};const auto root=__readgsqword(0x58);
+    if(read(slot,root)&&slot&&read(out.context,slot,0x20)&&out.context&&read(out.native.current_view,out.context,0x14c0))out.native.read_mask|=1;
+    if(read(out.native.renderer_views,out.native.renderer,0x68))out.native.read_mask|=2;
+    if(read(out.native.renderer_count,out.native.renderer,0x70))out.native.read_mask|=4;
+    out.native.eye_valid=out.native.read_mask==7&&gears_unpossessed_quad::native_eye_index(out.native.current_view,out.native.renderer_views,out.native.renderer_count,out.native.eye);
+    out.eye_valid=(out.native.read_mask&6)==6&&gears_unpossessed_quad::native_eye_index(address,out.native.renderer_views,out.native.renderer_count,out.eye);
+    out.same_current=(out.native.read_mask&1)&&address==out.native.current_view;
+    if(read(out.source,address,0x48))out.mask|=1;
+    if(read(out.target,address,0x58))out.mask|=2;
+    if(read(out.sampling,address,0x3d0))out.mask|=4;
+    if(read(out.family,address)&&out.family){out.mask|=8;if(read(out.marker,out.family,0x4c))out.mask|=16;}
+    return out;
+}
+Destination destination_snapshot(Descriptor const& descriptor,unsigned index){
+    // Same proven uint16 descriptor / bank layout as death_constant_observer.
+    // Missing reads are observations, never reasons to change the engine call.
+    Destination out;if(index||descriptor[0]>=16||descriptor[2]<16)return out;
+    out.root=__readgsqword(0x58);if(!out.root)return out;out.read_mask|=1;
+    if(!read(out.slot,out.root)||!out.slot)return out;out.read_mask|=2;
+    if(!read(out.active,out.slot,0x10))return out;out.read_mask|=4;if(!out.active)return out;
+    if(!read(out.context,out.slot,0x20)||!out.context)return out;out.read_mask|=8;
+    if(!read(out.table,out.context,0x13ac)||!out.table)return out;out.read_mask|=16;
+    if(!read(out.bank,out.table,uintptr_t(descriptor[0])*8)||!out.bank)return out;out.read_mask|=32;
+    if(!read(out.data,out.bank,0x3c)||!out.data)return out;out.read_mask|=64;
+    if(!read(out.highwater,out.bank,0x44))return out;out.read_mask|=128;
+    if(!gears_death_constants::destination(descriptor,index,out.data,out.address))return out;
+    out.readable=read(out.value,out.address);if(out.readable)out.read_mask|=256;
+    out.finite_value=out.readable&&gears_death_constants::finite(out.value);return out;
+}
+bool eligible(bool world){return gears_dlss_route::eligible(world,attested,recording.load(),frame_link_diagnostics,consuming_renderer!=nullptr,
+    consuming_frozen_frame.enabled,consuming_frame_ticket,consuming_frozen_frame.id,committed_world_generation.load(),consuming_frozen_frame.world_generation);}
+bool matching(Row const& row){return eligible(true)&&row.ticket==consuming_frame_ticket&&row.world==consuming_frozen_frame.world_generation&&
+    row.renderer==reinterpret_cast<uintptr_t>(consuming_renderer)&&row.thread==GetCurrentThreadId();}
+struct OutputFinish {
+    Context& context;int exceptions=std::uncaught_exceptions();
+    ~OutputFinish(){if(auto* r=context.row){r->after=view(context.view);r->exit=now();r->exited=true;r->unwinding=std::uncaught_exceptions()>exceptions;}}
+};
+uint32_t __fastcall hook_output(void* pass,uintptr_t unused,void* input_view){
+    Scope scope;
+    Context context{reinterpret_cast<uintptr_t>(pass),reinterpret_cast<uintptr_t>(input_view),nullptr};Binding binding(current,context);
+    if(!eligible(scope.world()))return original_output(pass,unused,input_view);
+    bool candidate=false;
+    {
+        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        if(binding.nested)++recorder.nested;
+        else if(recorder.size==recorder.rows.size())++recorder.limited;
+        else candidate=true;
+    }
+    if(!candidate)return original_output(pass,unused,input_view);
+    const auto before=view(context.view);uint32_t flags{};const bool flags_read=read(flags,context.pass,8);
+    // Skip incomplete startup records without consuming one of the eight rows.
+    {
+        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        context.row=recorder.reserve(flags_read&&(before.mask&7)==7&&before.native.eye_valid);
+    }
+    if(!context.row)return original_output(pass,unused,input_view);
+    auto& row=*context.row;row.pass=context.pass;row.renderer=reinterpret_cast<uintptr_t>(consuming_renderer);
+    row.caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;row.ticket=consuming_frame_ticket;row.world=consuming_frozen_frame.world_generation;
+    row.thread=GetCurrentThreadId();row.eye=before.native.eye;row.entry=now();row.before=before;row.flags=flags;row.flags_read=flags_read;
+    OutputFinish finish{context};row.result=original_output(pass,unused,input_view);return row.result;
+}
+struct SetterFinish {
+    Setter& row;int exceptions=std::uncaught_exceptions();
+    ~SetterFinish(){row.exit=now();row.exited=true;row.unwinding=std::uncaught_exceptions()>exceptions;
+        if(row.mask&1)row.after=destination_snapshot(row.descriptor,row.index);}
+};
+uint64_t __fastcall hook_setter(uintptr_t rcx,const uint16_t* descriptor,const void* payload,unsigned index){
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
+    Scope scope;auto* row=current?current->row:nullptr;
+    if(!scope.world()||!row||setter_role(caller)>1||index||!matching(*row))return original_setter(rcx,descriptor,payload,index);
+    // This row belongs exclusively to the current thread's Output invocation.
+    // Do not hold the global frame lock across the unchanged native setter.
+    if(row->setter_count==row->setters.size()){++row->setter_overflow;return original_setter(rcx,descriptor,payload,index);}
+    auto& setter=row->setters[row->setter_count++];setter.caller=caller;setter.rcx=rcx;setter.index=index;setter.entry=now();
+    setter.descriptor_address=reinterpret_cast<uintptr_t>(descriptor);setter.source_address=reinterpret_cast<uintptr_t>(payload);
+    setter.owner=setter.descriptor_address>=0xaa?setter.descriptor_address-0xaa:0;
+    if(read(setter.descriptor,setter.descriptor_address)){setter.mask|=1;setter.before=destination_snapshot(setter.descriptor,index);}
+    if(read(setter.payload,setter.source_address))setter.mask|=2;
+    // Keep the submitted float4 copy; R8 storage may be reused after return.
+    SetterFinish finish{setter};setter.result=original_setter(rcx,descriptor,payload,index);return setter.result;
+}
+void quad(uintptr_t caller,std::array<float,8> const& args,std::array<unsigned,4> const& dimensions){
+    auto* row=current?current->row:nullptr;
+    if(!row||!matching(*row)||(caller!=0xd83b1c&&caller!=0xd83cbf))return;
+    if(row->quad_count==row->quads.size()){++row->quad_overflow;return;}
+    auto& quad=row->quads[row->quad_count++];quad.caller=caller;quad.qpc=now();quad.args=args;quad.dimensions=dimensions;quad.view=view(current->view);
+    for(unsigned i=0;i<row->setter_count;++i){const auto& setter=row->setters[i];Descriptor current_descriptor{};
+        quad.descriptor_matches[i]=(setter.mask&1)&&read(current_descriptor,setter.descriptor_address)&&current_descriptor==setter.descriptor;
+        if(quad.descriptor_matches[i])quad.consumed[i]=destination_snapshot(current_descriptor,setter.index);}
+}
+bool verify_chunk(FILE* file,uintptr_t rva,ULONG size,const char* expected){
+    // Authenticate complete saved chunks before either hook is installed. The
+    // largest chunk (0xc78) exceeds final_transfer_live's small local buffer.
+    BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};std::array<unsigned char,0x1000> bytes{};
+    bool ok=size&&size<=bytes.size()&&BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0;
+    if(ok)ok=BCryptCreateHash(algorithm,&hash,nullptr,0,nullptr,0,0)>=0;
+    if(ok)ok=safe_copy(bytes.data(),reinterpret_cast<void*>(base+rva),size)&&BCryptHashData(hash,bytes.data(),size,0)>=0;
+    unsigned char digest[32]{};char hex[65]{};if(ok)ok=BCryptFinishHash(hash,digest,32,0)>=0;
+    for(unsigned i=0;i<32;++i)sprintf_s(hex+2*i,3,"%02x",digest[i]);
+    if(hash)BCryptDestroyHash(hash);if(algorithm)BCryptCloseAlgorithmProvider(algorithm,0);
+    ok=ok&&!strcmp(hex,expected);
+    fprintf(file,"dlss_route_identity rva=%llx size=%lu sha256=%s match=%u module_base=%llx source=historical_runtime_artifact1 snapshot_sha256=911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6\n",
+        static_cast<unsigned long long>(rva),size,hex,unsigned(ok),static_cast<unsigned long long>(base));return ok;
+}
+bool enable(FILE* file){
+    attested=false;recorder={};printed=false;
+    output_target=reinterpret_cast<void*>(base+0xd82f58);setter_target=reinterpret_cast<void*>(base+0x1760b4);
+    if(self_testing||!continuous_session||!frame_link_diagnostics||!viewport_diagnostics)return false;
+    const bool output=verify_chunk(file,0xd82f58,0xc78,"1efb10541bf56d87b31aae4f452da0d281afd552da16b4bfd16d653f2cd425ea");
+    const bool continuation=verify_chunk(file,0xd83bd0,0x1e9,"e051a2d325a4d5ebc12be670d63cd8eae1eead437f33dfa39946de852e61e724");
+    const bool setter=verify_chunk(file,0x1760b4,0xcd,"d7d20d3f5c510685b8b3ffb12d12d51ae583d4070e00cf11a39655c7e086c45b");
+    attested=output&&continuation&&setter;return attested;
+}
+void values(FILE* file,Float4 const& v){fprintf(file,"%.9g,%.9g,%.9g,%.9g",v[0],v[1],v[2],v[3]);}
+void print_view(FILE* file,const char* label,View const& v){
+    fprintf(file," %s_view=%llx %s_context=%llx %s_current_view=%llx %s_same_current=%u %s_native_mask=%u %s_eye_valid=%u %s_eye=%u %s_tls_eye_valid=%u %s_tls_eye=%u %s_renderer_views=%llx %s_renderer_count=%d %s_mask=%u %s_family=%llx %s_family_marker=%u %s_source=",
+        label,static_cast<unsigned long long>(v.address),label,static_cast<unsigned long long>(v.context),label,static_cast<unsigned long long>(v.native.current_view),label,unsigned(v.same_current),label,v.native.read_mask,label,unsigned(v.eye_valid),label,v.eye,label,unsigned(v.native.eye_valid),label,v.native.eye,label,static_cast<unsigned long long>(v.native.renderer_views),label,v.native.renderer_count,label,v.mask,label,static_cast<unsigned long long>(v.family),label,v.marker,label);
+    values(file,v.source);fprintf(file," %s_target=%d,%d,%d,%d %s_sampling=",label,v.target[0],v.target[1],v.target[2],v.target[3],label);values(file,v.sampling);
+}
+void print_destination(FILE* file,const char* label,Destination const& d){
+    fprintf(file," %s_mask=%u %s_active=%u %s_context=%llx %s_table=%llx %s_bank=%llx %s_data=%llx %s_address=%llx %s_highwater=%u %s_readable=%u %s_value=",
+        label,d.read_mask,label,unsigned(d.active),label,static_cast<unsigned long long>(d.context),label,static_cast<unsigned long long>(d.table),label,static_cast<unsigned long long>(d.bank),label,static_cast<unsigned long long>(d.data),label,static_cast<unsigned long long>(d.address),label,d.highwater,label,unsigned(d.readable),label);values(file,d.value);
+}
+void print(FILE* file){
+    // Cleanup can retain resources on timeout. Never inspect an unfinished row.
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(printed)return;printed=true;
+    const bool quiescent=!recording.load()&&active.load()==0;
+    fprintf(file,"dlss_route_observer enabled=1 attested=%u cpu_only=1 gpu_verified=0 semantic_verified=0 mutation=0 rows=%u rows_unavailable=%u limit=8 missing=%llu nested=%llu limited=%llu highwater_is_capacity=0 old_r8_read_at_quad=0\n",
+        unsigned(attested),recorder.size,unsigned(!quiescent),recorder.missing,recorder.nested,recorder.limited);
+    if(!quiescent)return; // Counters above are locked; all row fields stay unread.
+    for(unsigned i=0;i<recorder.size;++i){const auto& r=recorder.rows[i];
+        fprintf(file,"dlss_route_output row=%u ticket=%llu world=%llu eye=%u thread=%u caller=%llx pass=%llx renderer=%llx flags_read=%u flags=%u entry=%lld exit=%lld exited=%u unwinding=%u result=%u setters=%u quads=%u setter_overflow=%u quad_overflow=%u",
+            i,r.ticket,r.world,r.eye,r.thread,static_cast<unsigned long long>(r.caller),static_cast<unsigned long long>(r.pass),static_cast<unsigned long long>(r.renderer),unsigned(r.flags_read),r.flags,r.entry,r.exit,unsigned(r.exited),unsigned(r.unwinding),r.result,r.setter_count,r.quad_count,r.setter_overflow,r.quad_overflow);
+        print_view(file,"entry",r.before);print_view(file,"exit",r.after);fprintf(file,"\n");
+        for(unsigned j=0;j<r.setter_count;++j){const auto& s=r.setters[j];
+            fprintf(file,"dlss_route_setter row=%u setter=%u caller=%llx rcx=%llx descriptor_address=%llx source_address=%llx owner=%llx index=%u mask=%u descriptor=%u,%u,%u entry=%lld exit=%lld exited=%u unwinding=%u result=%llx payload=",
+                i,j,static_cast<unsigned long long>(s.caller),static_cast<unsigned long long>(s.rcx),static_cast<unsigned long long>(s.descriptor_address),static_cast<unsigned long long>(s.source_address),static_cast<unsigned long long>(s.owner),s.index,s.mask,s.descriptor[0],s.descriptor[1],s.descriptor[2],s.entry,s.exit,unsigned(s.exited),unsigned(s.unwinding),static_cast<unsigned long long>(s.result));
+            values(file,s.payload);print_destination(file,"before",s.before);print_destination(file,"after",s.after);fprintf(file,"\n");}
+        for(unsigned j=0;j<r.quad_count;++j){const auto& q=r.quads[j];
+            const bool exit_same=q.view.mask==r.after.mask&&q.view.address==r.after.address&&q.view.context==r.after.context&&q.view.native==r.after.native&&
+                gears_death_constants::equal(q.view.source,r.after.source)&&q.view.target==r.after.target&&gears_death_constants::equal(q.view.sampling,r.after.sampling);
+            fprintf(file,"dlss_route_quad row=%u quad=%u caller=%llx qpc=%lld args=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g dimensions=%u,%u,%u,%u exit_view_same=%u",
+                i,j,static_cast<unsigned long long>(q.caller),q.qpc,q.args[0],q.args[1],q.args[2],q.args[3],q.args[4],q.args[5],q.args[6],q.args[7],q.dimensions[0],q.dimensions[1],q.dimensions[2],q.dimensions[3],unsigned(exit_same));
+            print_view(file,"quad",q.view);for(unsigned k=0;k<r.setter_count;++k){fprintf(file," setter%u_descriptor_matches=%u",k,unsigned(q.descriptor_matches[k]));print_destination(file,k?"consumed1":"consumed0",q.consumed[k]);}fprintf(file,"\n");}
+    }
+}
+#else
+bool enable(FILE*){return true;}
+void quad(uintptr_t,std::array<float,8> const&,std::array<unsigned,4> const&){}
+void print(FILE*){}
+#endif
+}
