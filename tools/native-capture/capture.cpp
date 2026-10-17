@@ -5312,6 +5312,21 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFrameLinkCheck(void* t
                     }
                     } // Restore self_testing before the real Present gate runs.
 #endif
+#if defined(GEARS_DLSS_OUTPUT_CONTROL) && GEARS_DLSS_OUTPUT_CONTROL
+                    {
+                        // This dedicated GPU fixture does not invoke consume or
+                        // Output. Establish an explicit completed NoSite record;
+                        // production missing/incomplete records must still fail.
+                        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+                        const gears_vr_dof::Key key{consuming_frozen_frame.world_generation,image_id};
+                        if(!key.world||dlss_output_control::publication(key.world,key.id))result=195;
+                        else if(!dlss_output_control::store.begin(key)||dlss_output_control::publication(key.world,key.id))result=196;
+                        else {
+                            dlss_output_control::store.finish(key);
+                            if(!dlss_output_control::publication(key.world,key.id))result=197;
+                        }
+                    }
+#endif
                     auto raw_list=reinterpret_cast<uintptr_t>(interval_list);auto ref=frame_link.reset_success(canonical_identity(interval_list));
                     frame_target_stats.reset(raw_list);frame_target_stats.create(32,{identity,640,480,28,0});frame_target_stats.bind(raw_list,1,32);
                     frame_target_stats.set(raw_list,gears_viewport::other,false,{0,0,640,480});
