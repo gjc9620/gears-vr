@@ -5167,7 +5167,31 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFrameLinkCheck(void* t
                     if(simulator_operator){gears_vr::StereoGate strict_gate;
                         if(strict_gate.update(frozen,frozen.received_ns))result=187;}
                     consuming_frozen_frame.enabled=true;consuming_frozen_frame.id=image_id;consuming_frozen_frame.sample=frozen;
+                    consuming_frozen_frame.world_generation=committed_world_generation.load();
                     consuming_frame_ticket=image_id;
+#if defined(GEARS_VR_DOF_COMPAT) && GEARS_VR_DOF_COMPAT
+                    {
+                    struct FixtureMode {
+                        bool saved=self_testing;
+                        FixtureMode(){self_testing=true;}
+                        ~FixtureMode(){self_testing=saved;}
+                    } fixture_mode;
+                    // This legacy fixture does not run original_consume. Give
+                    // its synthetic owned ticket a completed NoSite receipt;
+                    // the real Present publication gate still decides admission.
+                    if(!self_testing)result=191;
+                    else {
+                        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+                        const gears_vr_dof::Key key{consuming_frozen_frame.world_generation,image_id};
+                        if(!key.world||key.world!=committed_world_generation.load())result=194;
+                        else {
+                            if(vr_dof_compat::publication(key.world,key.id))result=192; // Missing must reject.
+                            if(!vr_dof_compat::store.begin(key)||vr_dof_compat::publication(key.world,key.id))result=193; // Incomplete must reject.
+                            vr_dof_compat::store.finish(key);
+                        }
+                    }
+                    } // Restore self_testing before the real Present gate runs.
+#endif
                     auto raw_list=reinterpret_cast<uintptr_t>(interval_list);auto ref=frame_link.reset_success(canonical_identity(interval_list));
                     frame_target_stats.reset(raw_list);frame_target_stats.create(32,{identity,640,480,28,0});frame_target_stats.bind(raw_list,1,32);
                     frame_target_stats.set(raw_list,gears_viewport::other,false,{0,0,640,480});
