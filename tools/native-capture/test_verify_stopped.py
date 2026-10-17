@@ -111,15 +111,19 @@ class VerifyStoppedTests(unittest.TestCase):
         cases = [(None, False)] + [(self.base + rva, short) for family in families
                                   for rva, _ in family for short in (False, True)]
         cases += [(self.base + 0x138a558 + slot, short) for slot in (0x528, 0x2c8) for short in (False, True)]
-        for address, short in cases:
-            with self.subTest(address=address, short=short):
+        for hook_rvas, address, short in [(hook_rvas, address, short)
+                for hook_rvas in ((0x2983f8, 0x15cf08), (0x298694, 0x15cf08), (0x298694, 0x2983f8))
+                for address, short in cases]:
+            with self.subTest(hook_rvas=hook_rvas, address=address, short=short):
+                self.resolver.prepare.reset_mock()
+                self.closed.reset_mock()
                 self.memory.update(original)
                 if address is not None:
                     changed = bytearray(self.memory[address])
                     if short:del changed[-1]
                     else:changed[-1] ^= 1
                     self.memory[address] = bytes(changed)
-                self.write_status((0x2983f8, 0x15cf08))
+                self.write_status(hook_rvas)
                 with mock.patch.object(verify_stopped, 'PATH_REFLOW_SHA256', hashes[0]), \
                         mock.patch.object(verify_stopped, 'PATH_REFLOW_CHILD_SHA256', hashes[1]):
                     if address is None:self.invoke()
@@ -134,6 +138,8 @@ class VerifyStoppedTests(unittest.TestCase):
                 self.assertEqual(checks[1]['source_snapshot_sha256'],
                     '911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
                 self.assertEqual([item['slot'] for item in report['checks'][2:4]], ['0x528', '0x2c8'])
+                self.assertEqual([item['target'] for item in checks],
+                    [hex(self.base + 0x2983f8), hex(self.base + 0x298694)])
 
     def test_each_corrupted_root_byte_fails_despite_capture_claim_and_closes(self):
         for at in range(13):

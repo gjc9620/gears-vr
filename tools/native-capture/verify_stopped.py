@@ -116,11 +116,11 @@ def main():
         camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
-            if rva == 0x2983f8:
+            if rva in (0x2983f8, 0x298694):
                 # Independent historical expectations: the complete hooked body
                 # AND its authenticated child, including both cold chunks.
                 for checked_target, chunks, expected_hash, source in (
-                    (target, PATH_REFLOW_CHUNKS, PATH_REFLOW_SHA256,
+                    (resolver.base + 0x2983f8, PATH_REFLOW_CHUNKS, PATH_REFLOW_SHA256,
                      'artifact 1 runtime snapshot PathChoice reflow complete chunks'),
                     (resolver.base + 0x298694, PATH_REFLOW_CHILD_CHUNKS, PATH_REFLOW_CHILD_SHA256,
                      'artifact 1 runtime snapshot PathChoice reflow child complete chunks'),

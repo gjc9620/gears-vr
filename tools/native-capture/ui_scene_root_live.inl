@@ -5,6 +5,12 @@
 #include "ui_scene_transform_trial_live.inl"
 #include "path_choice_position_trial_live.inl"
 #include "path_choice_layout_observer.inl"
+#if defined(GEARS_PATH_CHOICE_LAYOUT_OBSERVER) && GEARS_PATH_CHOICE_LAYOUT_OBSERVER
+bool install(void*,void*,void**);
+namespace path_choice_layout_observer {
+bool install_child_hook(){return install(child_target,reinterpret_cast<void*>(child_hook),reinterpret_cast<void**>(&child_original));}
+}
+#endif
 namespace ui_scene_root_live {
 #if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
 using Exec=uintptr_t(__fastcall*)(void*,void*,void*);

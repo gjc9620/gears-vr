@@ -419,7 +419,7 @@ constexpr unsigned ui_scene_root_hooks=1;
 constexpr unsigned ui_scene_root_hooks=0;
 #endif
 #if defined(GEARS_PATH_CHOICE_LAYOUT_OBSERVER) && GEARS_PATH_CHOICE_LAYOUT_OBSERVER
-constexpr unsigned path_layout_hooks=1;
+constexpr unsigned path_layout_hooks=2;
 #else
 constexpr unsigned path_layout_hooks=0;
 #endif

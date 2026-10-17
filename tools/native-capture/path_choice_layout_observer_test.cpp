@@ -36,6 +36,7 @@ enum class SessionStop {proof_failure};
 static void request_session_stop(SessionStop){}
 #include "path_choice_position_trial_live.inl"
 #include "path_choice_layout_observer.inl"
+namespace path_choice_layout_observer {bool install_child_hook(){return true;}}
 namespace observer=path_choice_layout_observer;
 namespace position=path_choice_position_live;
 namespace trial=gears_path_choice_position;
@@ -43,6 +44,12 @@ static std::atomic<unsigned> original_calls{};
 static void* expected_object{};
 static unsigned mode{},nested{};
 static constexpr uintptr_t sentinel=0xfedcba9876543210ull;
+static constexpr uintptr_t child_sentinel=0x87654321fedcba98ull;
+static std::atomic<unsigned> child_original_calls{};
+static bool run_child_in_parent{};static unsigned child_mode{},child_repetitions=1,child_nested{};
+static std::array<std::uint32_t,4> child_input{0x7fc12345,0x80000000,1,0xc2354321};
+static unsigned char child_input_type=0xfe;static int child_origin=-123456789,child_sort=0x76543210;
+static uintptr_t call_child();
 static std::promise<void>* entered{},*release_original{};
 static uintptr_t __fastcall original(void* object){
     ++original_calls;assert(object==expected_object);
@@ -53,12 +60,31 @@ static uintptr_t __fastcall original(void* object){
     if(mode==5){auto const& c=position::state.lease.config;put(c.panel+0x64,c.top_bits);put(c.panel+0x6c,c.bottom_bits);
         position::publish_loss(c,c.world_generation,{c.top_bits,c.bottom_bits},3,true,safe_copy);++position::ownership_lost;}
     if(mode==6)++committed_world_generation;
+    if(run_child_in_parent)for(unsigned i=0;i<child_repetitions;++i)assert(call_child()==child_sentinel);
+    if(mode==7){entered->set_value();release_original->get_future().wait();}
     return sentinel;
 }
+static uintptr_t __fastcall child_original(void* object,float left,float top,float right,float bottom,unsigned char input_type,int origin,int sort){
+    ++child_original_calls;assert(object==expected_object);
+    assert((std::array<std::uint32_t,4>{trial::bits(left),trial::bits(top),trial::bits(right),trial::bits(bottom)}==child_input));
+    assert(input_type==child_input_type&&origin==child_origin&&sort==child_sort);
+    if(child_mode==1)throw 93;
+    if(child_mode==2&&!child_nested){++child_nested;assert(call_child()==child_sentinel);--child_nested;}
+    if(child_mode==3){entered->set_value();release_original->get_future().wait();}
+    if(child_mode==4){auto const& c=position::state.lease.config;put(c.panel+0x64,c.top_bits);put(c.panel+0x6c,c.bottom_bits);}
+    return child_sentinel;
+}
+static uintptr_t call_child(){return observer::child_hook(expected_object,trial::value(child_input[0]),trial::value(child_input[1]),
+    trial::value(child_input[2]),trial::value(child_input[3]),child_input_type,child_origin,child_sort);}
 struct Fixture {
     trial::Config c;
     Fixture(){
         memory.clear();original_calls=0;read_calls=0;array_reads=0;mode=0;nested=0;observer::depth=0;observer::slots=0;observer::entries=0;
+        observer::parent_scope=nullptr;observer::child_depth=0;observer::child_slots=0;observer::child_entries=0;
+        child_original_calls=0;run_child_in_parent=false;child_mode=0;child_repetitions=1;child_nested=0;
+        for(auto& count:observer::child_bypass)count=0;
+        for(unsigned i=0;i<observer::row_limit;++i){observer::child_rows[i]={};observer::child_ready[i]=false;}
+        observer::child_original=child_original;
         for(auto& count:observer::bypass)count=0;
         for(unsigned i=0;i<observer::row_limit;++i){observer::rows[i]={};observer::ready[i]=false;}
         observer::original=original;recording=true;ui_observer_enabled=true;admitted=true;stereo_publish_bypass=0;
@@ -159,6 +185,71 @@ static void bounded_array(){
         if(bad<5)assert(!(s.mask&512)&&array_reads==0);else assert((s.mask&512)&&s.zero_bits==trial::bits(.8f));
     }
 }
+static uint64_t child_count(observer::ChildBypass why){return observer::child_bypass[unsigned(why)].load();}
+static void child_arguments_and_effect(){
+    Fixture f;f.apply();run_child_in_parent=true;child_mode=4;f.call();
+    assert(original_calls==1&&child_original_calls==1&&observer::slots==1&&observer::child_slots==1);
+    assert(observer::child_ready[0].load(std::memory_order_acquire));auto const& r=observer::child_rows[0];
+    assert(r.normal&&r.result==child_sentinel&&r.input==child_input&&r.input_type==child_input_type&&r.origin==child_origin&&r.sort==child_sort);
+    assert(r.caller&&r.parent_row==0&&r.nonce==f.c.nonce&&r.panel==f.c.panel&&r.scene==f.c.scene&&r.client==f.c.client);
+    assert(r.world==4&&r.thread==GetCurrentThreadId()&&r.exit>=r.enter&&r.before.mask==2047&&r.after.mask==2047);
+    assert(r.before.position[1]==position::state.lease.owned[0]&&r.before.position[3]==position::state.lease.owned[1]);
+    assert(r.after.position[1]==f.c.top_bits&&r.after.position[3]==f.c.bottom_bits);
+    assert(observer::rows[0].after.position==r.after.position&&observer::child_depth==0&&!observer::parent_scope&&active==0);
+}
+static void child_gates(){
+    Fixture f;f.apply();auto pass=[&](observer::ChildBypass why){auto reads=read_calls.load(),calls=child_original_calls.load();auto before=child_count(why);
+        assert(call_child()==child_sentinel);assert(observer::child_slots==0&&read_calls==reads&&child_original_calls==calls+1&&child_count(why)==before+1);};
+    pass(observer::ChildBypass::no_scope);
+    std::thread foreign([&]{observer::parent_scope=reinterpret_cast<observer::ParentScope const*>(uintptr_t(1));
+        pass(observer::ChildBypass::foreign_thread);observer::parent_scope=nullptr;});foreign.join();
+    stereo_publish_bypass=1;pass(observer::ChildBypass::stereo);stereo_publish_bypass=0;
+    ui_observer_enabled=false;pass(observer::ChildBypass::disabled);ui_observer_enabled=true;
+    admitted=false;pass(observer::ChildBypass::world);admitted=true;
+    recording=false;pass(observer::ChildBypass::not_recording);recording=true;
+    observer::Row row{};row.panel=f.c.panel;row.scene=f.c.scene;row.client=f.c.client;row.world=f.c.world_generation;row.nonce=f.c.nonce;row.depth=1;
+    observer::ParentScope scope{&row,3};observer::parent_scope=&scope;
+    expected_object=reinterpret_cast<void*>(f.c.panel+8);pass(observer::ChildBypass::wrong_object);expected_object=reinterpret_cast<void*>(f.c.panel);
+    ++position::state.lease.config.nonce;pass(observer::ChildBypass::no_successful_nonce);--position::state.lease.config.nonce;
+    ++committed_world_generation;pass(observer::ChildBypass::world);--committed_world_generation;
+    row.depth=2;pass(observer::ChildBypass::nested);row.depth=1;
+    memory[0x5000]^=1;auto before=child_count(observer::ChildBypass::identity);assert(call_child()==child_sentinel);
+    assert(observer::child_slots==0&&child_count(observer::ChildBypass::identity)==before+1);memory[0x5000]^=1;
+    observer::parent_scope=nullptr;
+    uint64_t rejected{};for(auto const& n:observer::child_bypass)rejected+=n.load();assert(rejected==observer::child_entries);
+}
+static void child_nested_and_exception(){
+    {Fixture f;f.apply();child_mode=1;try{call_child();assert(false);}catch(int n){assert(n==93);}
+        assert(child_original_calls==1&&observer::child_slots==0&&observer::child_depth==0&&!observer::parent_scope&&active==0);}
+    {Fixture f;f.apply();run_child_in_parent=true;mode=2;auto before=memory;f.call();
+        assert(original_calls==2&&child_original_calls==2&&observer::child_slots==1&&child_count(observer::ChildBypass::nested)==1);
+        assert(observer::child_rows[0].parent_row==0&&memory==before&&!observer::parent_scope&&observer::child_depth==0);}
+    {Fixture f;f.apply();run_child_in_parent=true;child_mode=2;auto before=memory;f.call();
+        assert(child_original_calls==2&&observer::child_slots==1&&child_count(observer::ChildBypass::nested)==1&&memory==before);}
+    {Fixture f;f.apply();run_child_in_parent=true;mode=2;observer::slots=3;f.call();
+        assert(observer::slots==4&&child_original_calls==2&&observer::child_slots==1);
+        assert(child_count(observer::ChildBypass::no_scope)==1&&observer::child_rows[0].parent_row==3&&!observer::parent_scope);}
+    {Fixture f;f.apply();run_child_in_parent=true;child_mode=1;try{f.call();assert(false);}catch(int n){assert(n==93);}
+        assert(observer::child_ready[0]&&!observer::child_rows[0].normal&&observer::ready[0]&&!observer::rows[0].normal);
+        assert(!observer::parent_scope&&observer::child_depth==0&&observer::depth==0&&active==0&&child_original_calls==1);
+        child_mode=0;f.call();assert(observer::child_ready[1]&&observer::child_rows[1].normal&&child_original_calls==2);}
+}
+static void child_quota(){
+    Fixture f;f.apply();run_child_in_parent=true;child_repetitions=6;auto before=memory;f.call();
+    assert(original_calls==1&&child_original_calls==6&&observer::child_slots==4&&child_count(observer::ChildBypass::quota)==2&&memory==before);
+    for(unsigned i=0;i<4;++i)assert(observer::child_ready[i]&&observer::child_rows[i].parent_row==0&&observer::child_rows[i].input==child_input);
+}
+static void child_publication(){
+    for(bool completed_child:{false,true}){Fixture f;f.apply();run_child_in_parent=true;
+        if(completed_child)mode=7;else child_mode=3;
+        std::promise<void> start,release;entered=&start;release_original=&release;
+        std::thread owner([&]{position::owner_thread=GetCurrentThreadId();f.call();});
+        start.get_future().wait();auto text=progress();
+        assert(text.find("path_layout_0=")==std::string::npos);
+        assert((text.find("path_layout_child_0=")!=std::string::npos)==completed_child);
+        release.set_value();owner.join();text=progress();assert(text.find("path_layout_child_0=")!=std::string::npos&&observer::child_ready[0]);
+    }
+}
 static void complete_certification(){
     Fixture f;std::array<unsigned char,observer::code_size> code{};std::array<unsigned char,observer::child_size> child{};
     for(unsigned i=0;i<code.size();++i)code[i]=static_cast<unsigned char>(i%251);
@@ -184,4 +275,4 @@ static void complete_certification(){
         assert(!observer::certify_with(changing,hash));
     }
 }
-int main(){call_subtree();gates();bounds_nesting_exceptions();publication();loss_timeline();bounded_array();complete_certification();std::puts("PathChoiceLayoutObserverTest passed");}
+int main(){call_subtree();gates();bounds_nesting_exceptions();publication();loss_timeline();bounded_array();child_arguments_and_effect();child_gates();child_nested_and_exception();child_quota();child_publication();complete_certification();std::puts("PathChoiceLayoutObserverTest passed");}
