@@ -60,7 +60,7 @@
 #include "ui_hud_plan.h"
 #include "ui_hud_layout.h"
 #include "ui_reticle_direction_plan.h"
-#if defined(GEARS_UI_SCENE_SOURCE_TRIAL) && GEARS_UI_SCENE_SOURCE_TRIAL
+#if (defined(GEARS_UI_SCENE_SOURCE_TRIAL) && GEARS_UI_SCENE_SOURCE_TRIAL) || (defined(GEARS_PATH_CHOICE_POSITION_TRIAL) && GEARS_PATH_CHOICE_POSITION_TRIAL)
 #include "ui_scene_transform_trial.h"
 #include "native_metadata_contract.h"
 #endif
@@ -687,8 +687,29 @@ void print_world_progress(FILE* output){
         fprintf(output,"wg_%s=%llu,%llu,%lld,%lld ",names[i],static_cast<unsigned long long>(s.count.load(std::memory_order_relaxed)),
             static_cast<unsigned long long>(world_progress_baseline[i]),s.first.load(std::memory_order_relaxed),s.last.load(std::memory_order_relaxed));}
 }
+#if defined(GEARS_PATH_CHOICE_POSITION_TRIAL) && GEARS_PATH_CHOICE_POSITION_TRIAL
+namespace path_choice_position_live {void request_drain();bool draining();}
+std::atomic<unsigned> path_position_stop_record{}; // 0 empty, 1 writer, 2 published.
+SessionStop path_position_stop_reason=SessionStop::none;
+const char* path_position_stop_file{};
+unsigned path_position_stop_line{};
+#endif
 void request_session_stop_at(SessionStop reason,const char* source_file,unsigned source_line) {
     if(!continuous_session)return;
+#if defined(GEARS_PATH_CHOICE_POSITION_TRIAL) && GEARS_PATH_CHOICE_POSITION_TRIAL
+    if(session_phase.load()!=SessionPhase::running)return;
+    unsigned empty=0;
+    if(path_position_stop_record.compare_exchange_strong(empty,1)){
+        path_position_stop_reason=reason;path_position_stop_file=source_file;path_position_stop_line=source_line;
+        path_position_stop_record.store(2,std::memory_order_release);
+    }
+    if(path_position_stop_record.load(std::memory_order_acquire)!=2)return;
+    // Keep normal scene-hook admission open while its owner restores the lease.
+    // The trial bounds this drain and explicitly records unresolved ownership.
+    path_choice_position_live::request_drain();
+    if(path_choice_position_live::draining())return;
+    reason=path_position_stop_reason;source_file=path_position_stop_file;source_line=path_position_stop_line;
+#endif
     session_activation_gate.close();
     auto running=SessionPhase::running;
     if(!session_phase.compare_exchange_strong(running,SessionPhase::stop_requested))return;
@@ -1441,6 +1462,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"profile_consume_thread=%lu ",gears_render_cost::first_thread.load(std::memory_order_relaxed));
     fprintf(output,"activation_ready_qpc=%lld activation_qpc_frequency=%lld ",session_activation_ready_qpc.load(),qpc_frequency);
     ui_scene_trial_live::progress(output);
+    path_choice_position_live::progress(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
     // separately; they are not compositor display or engine-update counts.
@@ -3992,9 +4014,16 @@ DWORD WINAPI worker(void*) {
         publish_session_activation_ready(session_status_available&&stop_event);
         ULONGLONG next_status=0;
         for(;;){
+#if defined(GEARS_PATH_CHOICE_POSITION_TRIAL) && GEARS_PATH_CHOICE_POSITION_TRIAL
+            if(path_position_stop_record.load(std::memory_order_acquire)==2)
+                request_session_stop_at(path_position_stop_reason,path_position_stop_file,path_position_stop_line);
+#endif
             observe_session_owner(continuous_owner.state());
 #if defined(GEARS_UI_SCENE_SOURCE_TRIAL) && GEARS_UI_SCENE_SOURCE_TRIAL
             {wchar_t trial_path[MAX_PATH];path_for(trial_path,L"path-choice-trial.ini");ui_scene_trial_live::poll(trial_path,status);}
+#endif
+#if defined(GEARS_PATH_CHOICE_POSITION_TRIAL) && GEARS_PATH_CHOICE_POSITION_TRIAL
+            {wchar_t trial_path[MAX_PATH];path_for(trial_path,L"path-choice-position-trial.ini");path_choice_position_live::poll(trial_path,status);}
 #endif
             if(stop_event&&WaitForSingleObject(stop_event,0)==WAIT_OBJECT_0)request_session_stop(SessionStop::event);
             if(GetAsyncKeyState(VK_F8)&0x8000)request_session_stop(SessionStop::f8);

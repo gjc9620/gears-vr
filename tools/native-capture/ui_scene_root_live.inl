@@ -3,6 +3,7 @@
 #include "ui_scene_root_candidate.h"
 #include "ui_scene_batch.h"
 #include "ui_scene_transform_trial_live.inl"
+#include "path_choice_position_trial_live.inl"
 namespace ui_scene_root_live {
 #if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
 using Exec=uintptr_t(__fastcall*)(void*,void*,void*);
@@ -32,10 +33,12 @@ uintptr_t __fastcall hook(void* client,void* fcanvas,void* scene){
         reinterpret_cast<uintptr_t>(fcanvas),reinterpret_cast<uintptr_t>(scene),caller,selected)){
         ++rejected;return original(client,fcanvas,scene);}
     const auto invocation=++candidates;
+    auto render=[&]{return path_choice_position_live::invoke(selected,[&]{
+        return ui_scene_trial_live::invoke(selected,[&]{return original(client,fcanvas,scene);});});};
     // Bound expensive inventories across the whole session, not per frame.
     unsigned slot=slots.load();
     while(slot<row_limit&&!slots.compare_exchange_weak(slot,slot+1)){}
-    if(slot>=row_limit){++dropped;return ui_scene_trial_live::invoke(selected,[&]{return original(client,fcanvas,scene);});}
+    if(slot>=row_limit){++dropped;return render();}
     Row row{};row.client=reinterpret_cast<uintptr_t>(client);row.fcanvas=reinterpret_cast<uintptr_t>(fcanvas);
     row.scene=reinterpret_cast<uintptr_t>(scene);row.caller=caller;row.invocation=invocation;
     row.thread=GetCurrentThreadId();row.enter=now();
@@ -46,7 +49,7 @@ uintptr_t __fastcall hook(void* client,void* fcanvas,void* scene){
     if(row.before_valid){row.before_keys=unsigned(before.keys.size());
         for(auto const& key:before.keys)for(auto const& item:key.items){++row.before_items;row.before_vertices+=unsigned(item.vertices.size());}}
     current=&row;
-    const uintptr_t result=ui_scene_trial_live::invoke(selected,[&]{return original(client,fcanvas,scene);}); // Exactly once.
+    const uintptr_t result=render(); // Exactly once, including either private trial.
     current=nullptr;row.exit=now();
     gears_ui_scene_root::Candidate after{};
     row.after_candidate=gears_ui_scene_root::candidate({base},safe_copy,row.client,row.fcanvas,row.scene,caller,after);
@@ -67,7 +70,7 @@ bool reserve(){
     reserved=true;return true;
 }
 void print(FILE* status){
-    const bool modified=ui_scene_trial_live::modified();
+    const bool modified=ui_scene_trial_live::modified()||path_choice_position_live::modified();
     fprintf(status,"ui_scene_root compiled=1 observation_only=%u calls=%llu structural_candidates=%llu rejected=%llu rows=%u dropped=%llu semantic_identity_proven=0 geometry_published=0 source_modified=%u same_thread_execute_counts_only=1 flush_coverage_proven=0\n",
         modified?0u:1u,calls.load(),candidates.load(),rejected.load(),(std::min)(slots.load(),row_limit),dropped.load(),modified?1u:0u);
     for(unsigned i=0;i<(std::min)(slots.load(),row_limit);++i){auto const& r=rows[i];
