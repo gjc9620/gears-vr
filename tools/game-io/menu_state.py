@@ -5,6 +5,7 @@ does not inject code, write game memory, or send input.
 """
 import argparse
 import json
+import math
 from pathlib import Path
 import struct
 import sys
@@ -251,6 +252,28 @@ class MenuReader:
             raise RuntimeError('Missing dialog labels')
         return texts
 
+    def render_bounds(self, obj):
+        """Reflected CPU layout only; called inside the optional tree ledger."""
+        r = self.r
+        # Deliberately bypass the reader's cross-sample property cache. The
+        # resolver discovers this field and reads its current metadata anew.
+        prop = r.property(obj['cls'], 'RenderBounds', True)
+        offset = prop['offset']
+        if prop['type'] != 'FloatProperty' or type(offset) is not int or not 0 <= offset <= 0x10000 - 16:
+            raise RuntimeError('Unsupported reflected RenderBounds type/offset')
+        layout_raw = r.read(prop['address'] + 0x70, 8)
+        dimension, element_size = struct.unpack('<II', layout_raw)
+        if (dimension, element_size) != (4, 4):
+            raise RuntimeError('Unsupported reflected RenderBounds array layout')
+        raw = r.read(obj['address'] + offset, 16)
+        bounds = struct.unpack('<4f', raw)
+        if not all(math.isfinite(value) for value in bounds) or bounds[0] > bounds[2] or bounds[1] > bounds[3]:
+            raise RuntimeError('Invalid RenderBounds values/order')
+        return dict(order=['left', 'top', 'right', 'bottom'], values=list(bounds), raw=raw.hex(),
+                    reflected=dict(property_address=hex(prop['address']), type=prop['type'],
+                                   offset=offset, array_dim=dimension, element_size=element_size,
+                                   array_layout_raw=layout_raw.hex()))
+
     def force_registry_refresh(self):
         """One bounded inventory refresh, retaining the originally proven client."""
         r = self.r
@@ -274,7 +297,9 @@ class MenuReader:
         if any(r.read(getattr(r,prefix+'_header'),16)!=raw for prefix,raw in headers.items()):
             raise RuntimeError('Registry header changed during forced refresh')
 
-    def sample(self, *, include_tree=False):
+    def sample(self, *, include_tree=False, include_layout=False):
+        options = dict(include_tree=include_tree or include_layout)
+        if include_layout:options['include_layout'] = True
         refresh_used = False
         if getattr(self, '_registry_dirty', False):
             # No sample may use this cache until the original client identity,
@@ -284,7 +309,7 @@ class MenuReader:
             self._registry_dirty = False
             refresh_used = True
         try:
-            return self._sample_once(include_tree=include_tree)
+            return self._sample_once(**options)
         except RuntimeError as error:
             registry_changed = type(error) is RuntimeError and str(error)=='Object registry identity changed'
             if registry_changed and refresh_used:
@@ -297,13 +322,14 @@ class MenuReader:
         # Refresh itself remains outside this handler: its identity/header/IO
         # failures must not acquire the snapshot-only inventory-churn type.
         try:
-            return self._sample_once(include_tree=include_tree)
+            return self._sample_once(**options)
         except RuntimeError as error:
             if type(error) is RuntimeError and str(error)=='Object registry identity changed':
                 raise InventoryChanged(str(error)) from error
             raise
 
-    def _sample_once(self, *, include_tree=False):
+    def _sample_once(self, *, include_tree=False, include_layout=False):
+        include_tree = include_tree or include_layout
         self.refresh()
         r = self.r
         original_read = r.read
@@ -335,6 +361,8 @@ class MenuReader:
                           input_block_count=blocked, top=None, focus_chain=[], focused_leaf=None,
                           read_only=True, player_index=None)
             if include_tree:result['tree'] = []
+            if include_layout:
+                result['layout_evidence'] = 'consistent CPU layout snapshot; not actual draw/scissor proof'
             if scenes:
                 top = registered(r, scenes[-1])
                 if self.pointer(top, 'SceneClient') != self.client:
@@ -386,6 +414,7 @@ class MenuReader:
                             raise RuntimeError('Focused child outside parent tree')
                         result['tree'].append(dict(describe(r, address),parent=hex(parent) if parent is not None else None,
                                                   depth=depth,states=states,focus_child=hex(focused) if focused else None))
+                        if include_layout:result['tree'][-1]['render_bounds'] = self.render_bounds(obj)
                         for child in children:visit(child,address,depth+1)
                     visit(top['address'],None,1)
                 if result['top']['tag'] == 'WarfareConfirmation' and r.class_name(top) == 'UIScene_Confirmation':
@@ -417,13 +446,15 @@ def main():
     parser.add_argument('--out', type=Path)
     parser.add_argument('--samples', type=int, default=1)
     parser.add_argument('--tree', action='store_true', help='Include bounded, consistently re-read top Children tree')
+    parser.add_argument('--layout', action='store_true', help='Include reflected CPU RenderBounds evidence; implies --tree, not draw/scissor proof')
     args = parser.parse_args()
+    args.tree = args.tree or args.layout
     reader = MenuReader(args.pid)
     results = []
     try:
         for _ in range(max(1, min(args.samples, 100))):
             began = time.perf_counter()
-            value = reader.sample(include_tree=args.tree)
+            value = reader.sample(include_tree=args.tree, include_layout=args.layout)
             value['sample_ms'] = round((time.perf_counter()-began)*1000, 3)
             results.append(value)
             print(json.dumps(value if args.tree else compact_state(value)), flush=True)

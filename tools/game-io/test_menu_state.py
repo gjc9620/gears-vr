@@ -70,7 +70,12 @@ class FakeResolver:
         if owner == self.focus_struct:
             return dict(address=0, offset={'FocusedControl': 0, 'LastFocusedControl': 8}[name],
                         type='ObjectProperty')
-        return self.props[owner, name]
+        if (owner, name) not in self.props:
+            raise RuntimeError('Property ' + name + ' not found')
+        prop = self.props[owner, name]
+        if name == 'RenderBounds':
+            prop = dict(prop, offset=struct.unpack('<I', self.read(prop['address'] + 0x94, 4))[0])
+        return prop
 
     def scalar(self, address, name, kind, value, fmt):
         owner = self.identities[address]['cls']
@@ -80,6 +85,13 @@ class FakeResolver:
             self.props[key] = dict(address=self.allocate(), offset=offset, type=kind)
         values = value if isinstance(value, tuple) else (value,)
         self.put(address + self.props[key]['offset'], struct.pack(fmt, *values))
+
+    def bounds(self, address, values=(0, 0, 1280, 720)):
+        self.scalar(address, 'RenderBounds', 'FloatProperty', values, '<4f')
+        prop = self.props[self.identities[address]['cls'], 'RenderBounds']
+        self.put(prop['address'] + 0x70, struct.pack('<II', 4, 4))
+        self.put(prop['address'] + 0x94, struct.pack('<I', prop['offset']))
+        return prop
 
     def array(self, address, name, values, kind='ObjectProperty'):
         owner = self.identities[address]['cls']
@@ -128,6 +140,93 @@ class MenuStateTests(unittest.TestCase):
         self.r.array(address,'Children',[])
         self.r.array(address,'StateStack',[])
         self.r.array(address,'FocusControls',[],'StructProperty')
+
+    def test_optional_layout_reads_all_nodes_and_preserves_normal_samples(self):
+        self.add_tree_widget(0xa000, 0x2000, 'Descendant')
+        self.r.array(0x2000, 'Children', [0xa000])
+        baseline = self.reader.sample()
+        for address in (0x1000, 0x2000, 0xa000):
+            prop = self.r.bounds(address, (1, 2, 300, 400))
+            self.assertNotIn((address + prop['offset'], 16), self.r.read_counts)
+        with mock.patch.object(self.r, 'property', wraps=self.r.property) as reflected:
+            self.assertEqual(self.reader.sample(), baseline)
+            self.reader.sample(include_tree=True)
+            self.assertFalse(any(call.args[1] == 'RenderBounds' for call in reflected.call_args_list))
+        result = self.reader.sample(include_layout=True)
+        self.assertTrue(result['consistent_reread'])
+        self.assertEqual(result['layout_evidence'], 'consistent CPU layout snapshot; not actual draw/scissor proof')
+        self.assertEqual([row['address'] for row in result['tree']], ['0x1000', '0x2000', '0xa000'])
+        for row in result['tree']:
+            bounds = row['render_bounds']
+            self.assertEqual(bounds['values'], [1, 2, 300, 400])
+            self.assertEqual(bounds['order'], ['left', 'top', 'right', 'bottom'])
+            self.assertEqual(bytes.fromhex(bounds['raw']), struct.pack('<4f', 1, 2, 300, 400))
+            self.assertEqual((bounds['reflected']['array_dim'], bounds['reflected']['element_size']), (4, 4))
+            self.assertEqual(bounds['reflected']['type'], 'FloatProperty')
+
+    def test_layout_explicitly_rejects_unknown_or_invalid_metadata_and_bounds(self):
+        for failure in ('missing', 'type', 'dimension', 'element', 'offset', 'nan', 'infinite', 'horizontal', 'vertical'):
+            with self.subTest(failure=failure):
+                self.setUp()
+                if failure != 'missing':
+                    for address in (0x1000, 0x2000):self.r.bounds(address)
+                    prop = self.r.props['Widget', 'RenderBounds']
+                    if failure == 'type':prop['type'] = 'StructProperty'
+                    elif failure == 'dimension':self.r.put(prop['address'] + 0x70, struct.pack('<I', 3))
+                    elif failure == 'element':self.r.put(prop['address'] + 0x74, struct.pack('<I', 8))
+                    elif failure == 'offset':self.r.put(prop['address'] + 0x94, struct.pack('<I', 0x10000 - 15))
+                    else:
+                        values = {'nan':(float('nan'),0,1,1), 'infinite':(0,0,float('inf'),1),
+                                  'horizontal':(2,0,1,1), 'vertical':(0,2,1,1)}[failure]
+                        self.r.put(0x2000 + prop['offset'], struct.pack('<4f', *values))
+                with self.assertRaises(RuntimeError):self.reader.sample(include_layout=True)
+                self.assertTrue(self.reader.sample()['consistent_reread'])
+
+    def test_layout_metadata_and_late_bounds_mutations_reject_both_attempts(self):
+        for kind in ('bounds', 'dimension', 'offset'):
+            with self.subTest(kind=kind):
+                self.setUp()
+                for address in (0x1000, 0x2000):self.r.bounds(address)
+                prop = self.r.props['Widget', 'RenderBounds']
+                target = {'bounds':(0x2000 + prop['offset'],16),
+                          'dimension':(prop['address'] + 0x70,8), 'offset':(prop['address'] + 0x94,4)}[kind]
+                original = self.r.read
+                def changing(address, size):
+                    raw = original(address, size)
+                    if (address, size) == target and self.r.read_counts[target] % 2 == 0:
+                        return bytes([raw[0] ^ 1]) + raw[1:]
+                    return raw
+                self.r.read = changing
+                with mock.patch.object(self.reader, '_sample_once', wraps=self.reader._sample_once) as sampled:
+                    with self.assertRaises(SnapshotChanged):self.reader.sample(include_layout=True)
+                    self.assertEqual(sampled.call_count, 2)
+                self.assertIs(self.r.read, changing)
+
+    def test_late_bounds_change_discards_old_layout_before_recovery(self):
+        for address in (0x1000, 0x2000):self.r.bounds(address)
+        prop = self.r.props['Widget', 'RenderBounds']
+        target = (0x2000 + prop['offset'], 16)
+        original = self.r.read
+        def changing(address, size):
+            if (address, size) == target and self.r.read_counts.get(target, 0) == 1:
+                self.r.put(address, struct.pack('<4f', 10, 20, 100, 200))
+            return original(address, size)
+        self.r.read = changing
+        with mock.patch.object(self.reader, '_sample_once', wraps=self.reader._sample_once) as sampled:
+            result = self.reader.sample(include_layout=True)
+        self.assertEqual(sampled.call_count, 2)
+        self.assertEqual(result['tree'][1]['render_bounds']['values'], [10, 20, 100, 200])
+
+    def test_layout_cli_implies_tree(self):
+        import menu_state
+        reader = mock.Mock()
+        reader.sample.return_value = dict(pid=123, tree=[])
+        with mock.patch.object(menu_state, 'MenuReader', return_value=reader), \
+             mock.patch.object(menu_state.sys, 'argv', ['menu_state.py', '--pid', '123', '--layout']), \
+             mock.patch('builtins.print'):
+            menu_state.main()
+        reader.sample.assert_called_once_with(include_tree=True, include_layout=True)
+        reader.close.assert_called_once()
 
     def test_optional_tree_includes_unfocused_descendants_without_default_reads(self):
         self.add_tree_widget(0xa000,0x1000,'OptionsCandidate')
