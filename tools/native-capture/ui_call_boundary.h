@@ -45,6 +45,18 @@ template<class Read> bool body_ancestry(Read read,std::uintptr_t canvas_frame,
 struct Child {std::uint64_t id{},parent_token{},parent_child{};std::uintptr_t self{},caller{},callee{};unsigned scope_index{},depth{};};
 struct Nesting {Child const* current{};unsigned depth{};};
 inline bool selected_depth(Nesting const& state){return state.depth&&state.depth<=frame_limit;}
+// Empty calls cannot consume the later positive-body diagnostic budget.
+template<class T,unsigned Capacity=32> struct Samples {
+    static_assert(Capacity>0&&Capacity<=64);
+    std::array<std::array<T,Capacity>,2> rows{};
+    std::array<unsigned,2> counts{};
+    std::array<std::uint64_t,2> dropped{};
+    bool append(T const& value,bool body){
+        const unsigned bucket=body?1:0;
+        if(counts[bucket]>=Capacity){++dropped[bucket];return false;}
+        rows[bucket][counts[bucket]++]=value;return true;
+    }
+};
 struct Nest {
     Nesting& state;Child const* saved;unsigned saved_depth;
     explicit Nest(Nesting& value):state(value),saved(value.current),saved_depth(value.depth){++state.depth;}

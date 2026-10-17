@@ -75,5 +75,12 @@ int main(){
     cb::Child sibling{++ids,99,0,self,caller,node,0,1};assert(sibling.id!=first.id&&sibling.id==3);
     {cb::Nest next(tls);next.select(&sibling);assert(tls.current->id==3&&tls.depth==1);}
     assert(!tls.current&&!tls.depth);
-    std::cout<<"UiCallBoundaryTest passed: body ancestry, exclusions, bounds, nesting restoration\n";
+    cb::Samples<unsigned,2> samples;
+    assert(samples.append(10,false)&&samples.append(11,false));
+    assert(!samples.append(12,false)&&samples.counts[1]==0);
+    assert(samples.append(20,true)&&samples.append(21,true));
+    assert(!samples.append(22,true));
+    assert(samples.counts[0]==2&&samples.counts[1]==2&&samples.dropped[0]==1&&samples.dropped[1]==1);
+    assert(samples.rows[0][0]==10&&samples.rows[0][1]==11&&samples.rows[1][0]==20&&samples.rows[1][1]==21);
+    std::cout<<"UiCallBoundaryTest passed: body ancestry, exclusions, bounds, nesting restoration, separate sample budgets\n";
 }

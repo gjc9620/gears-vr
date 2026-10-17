@@ -15,7 +15,7 @@ struct Row {
     unsigned thread{};bool before_valid{},after_valid{},returned{};
     std::array<uint64_t,3> draws{};
 };
-std::array<Row,64> rows{};unsigned row_count{};std::mutex mutex;
+gears_ui_call_boundary::Samples<Row> samples;std::mutex mutex;
 thread_local Row* current_row{};
 bool selected_entry(gears_ui::Config const& c,unsigned index,uintptr_t self){
     if(index>=c.scope_count||index>=c.scopes.size())return false;
@@ -57,7 +57,8 @@ uintptr_t __fastcall hook(void* self,void* caller_frame,void* result,void* calle
     // Return semantics remain unproven. Forward the original RAX bits unchanged.
     const uintptr_t value=original(self,caller_frame,result,callee);
     row.exit=now();row.after_valid=gears_ui_call_boundary::frame(safe_copy,row.child.caller,row.after);row.returned=true;++completed;
-    {std::lock_guard<std::mutex> lock(mutex);if(row_count<rows.size())rows[row_count++]=row;else ++rows_dropped;}
+    {std::lock_guard<std::mutex> lock(mutex);
+        if(!samples.append(row,row.draws[0]||row.draws[1]||row.draws[2]))++rows_dropped;}
     return value;
 }
 void canvas(unsigned draw,void* frame,gears_ui::ScopeContext const& selected,uintptr_t matched_frame){
@@ -79,12 +80,13 @@ bool reserve(){
 }
 void reset_tls(){nesting={};current_row=nullptr;}
 void print(FILE* status){
-    fprintf(status,"ui_call_boundary compiled=1 observation_only=1 calls=%llu candidates=%llu rejected=%llu depth_rejected=%llu accepted=%llu completed=%llu rows=%u dropped=%llu canvas_rejected=%llu tile=%llu material=%llu text=%llu addresses_diagnostic_only=1 geometry_complete=0 parent_token_unchanged=1 return_semantics_unproven=1 maximum_frames=%u\n",
-        calls.load(),candidates.load(),rejected.load(),depth_rejected.load(),accepted.load(),completed.load(),row_count,rows_dropped.load(),canvas_rejected.load(),
-        canvas_calls[0].load(),canvas_calls[1].load(),canvas_calls[2].load(),gears_ui_call_boundary::frame_limit);
-    for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];auto const& c=r.child;
+    fprintf(status,"ui_call_boundary compiled=1 observation_only=1 calls=%llu candidates=%llu rejected=%llu depth_rejected=%llu accepted=%llu completed=%llu rows=%u dropped=%llu canvas_rejected=%llu tile=%llu material=%llu text=%llu addresses_diagnostic_only=1 geometry_complete=0 parent_token_unchanged=1 return_semantics_unproven=1 maximum_frames=%u empty_rows=%u body_rows=%u empty_dropped=%llu body_dropped=%llu\n",
+        calls.load(),candidates.load(),rejected.load(),depth_rejected.load(),accepted.load(),completed.load(),samples.counts[0]+samples.counts[1],rows_dropped.load(),canvas_rejected.load(),
+        canvas_calls[0].load(),canvas_calls[1].load(),canvas_calls[2].load(),gears_ui_call_boundary::frame_limit,
+        samples.counts[0],samples.counts[1],samples.dropped[0],samples.dropped[1]);
+    for(unsigned bucket=0;bucket<2;++bucket)for(unsigned i=0;i<samples.counts[bucket];++i){auto const& r=samples.rows[bucket][i];auto const& c=r.child;
         fprintf(status,"ui_call_boundary_row row=%u child=%llu parent_child=%llu parent_token=%llu thread=%u depth=%u scope=%u self=%p caller_frame=%p result_address=%p callee=%p enter=%lld exit=%lld returned=%u before_valid=%u caller_node_before=%p caller_code_before=%p after_valid=%u caller_node_after=%p caller_code_after=%p tile=%llu material=%llu text=%llu\n",
-            i,c.id,c.parent_child,c.parent_token,r.thread,c.depth,c.scope_index,reinterpret_cast<void*>(c.self),reinterpret_cast<void*>(c.caller),
+            bucket*32+i,c.id,c.parent_child,c.parent_token,r.thread,c.depth,c.scope_index,reinterpret_cast<void*>(c.self),reinterpret_cast<void*>(c.caller),
             reinterpret_cast<void*>(r.result_address),reinterpret_cast<void*>(c.callee),r.enter,r.exit,r.returned?1:0,r.before_valid?1:0,
             reinterpret_cast<void*>(r.before.node),reinterpret_cast<void*>(r.before.code),r.after_valid?1:0,reinterpret_cast<void*>(r.after.node),
             reinterpret_cast<void*>(r.after.code),r.draws[0],r.draws[1],r.draws[2]);}
