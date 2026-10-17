@@ -77,6 +77,18 @@ def main():
         camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
+            if rva == 0x296178:
+                # Optional UI scene root observer: exactly the saved 13-byte
+                # artifact 1 adapter, also recorded in ui_scene_root_candidate.h
+                # (docs/122,130). Historical code section SHA256:
+                # 911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6.
+                # Never derive expected bytes from capture status or live memory.
+                expected = bytes.fromhex('498b00498bc848ffa0a8040000')
+                current = resolver.read(target, len(expected))
+                checks.append(dict(target=hex(target), source='artifact 1 runtime snapshot UI scene root adapter',
+                                   bytes_checked=len(expected), expected_sha256=hashlib.sha256(expected).hexdigest(),
+                                   actual_sha256=hashlib.sha256(current).hexdigest(), matches=current == expected))
+                continue
             if rva == 0x1c4b90:
                 # VR DOF compatibility or its prior diagnostic: independently
                 # verify the full authenticated 200-byte PS setter after restore.
