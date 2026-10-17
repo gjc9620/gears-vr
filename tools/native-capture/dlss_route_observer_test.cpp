@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <bcrypt.h>
 #include <intrin.h>
+#include <unknwn.h>
 #include <atomic>
 #include <cassert>
 #include <cstdio>
@@ -10,7 +11,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <thread>
-#include "dlss_route_observer.h"
+#include "dlss_output_control.h"
 namespace {
 uintptr_t base=0x140000000;bool self_testing{},continuous_session=true,frame_link_diagnostics=true,viewport_diagnostics=true;
 std::atomic<bool> recording{true};std::atomic<uint64_t> committed_world_generation{9};
@@ -24,11 +25,34 @@ bool safe_copy(void* out,void const* in,size_t size){__try{std::memcpy(out,in,si
 uintptr_t fake_root{},fake_caller{};
 uintptr_t test_readgsqword(unsigned long){return fake_root;}
 void* test_return_address(){return reinterpret_cast<void*>(base+fake_caller);}
+#if defined(GEARS_DLSS_OUTPUT_CONTROL_TEST)
+bool owned_bindings_enabled{},owned_xr_probe{},first_view_mask_control{},submit_duplicate_control{},submit_mono_control{},submit_mono_independent_state{},projection_control{},origin_trial_enabled{};
+bool stereo_xr=true,stereo_gpu_publish=true,submit_pair_enabled=true;
+bool quad_source_control_enabled(){return false;}
+struct FakeTargets {bool descriptor_capacity_lost()const{return false;}} frame_target_stats;
+struct FakeLate {bool active{};std::array<float,8> args{};std::array<unsigned,4> dimensions{};uintptr_t caller{};} late_quad_candidate;
+struct ResourceIdentity {
+    uintptr_t native{},canonical{};long result=-1;
+    struct Desc {unsigned Dimension=3;uint64_t Width=2560;unsigned Height=1080,DepthOrArraySize=1,MipLevels=1,Format=24;struct Samples {unsigned Count=1;} SampleDesc;} desc;
+};
+bool source_available=true;unsigned source_width=2560;
+uint64_t fake_list_generation=4;uintptr_t fake_list_canonical=0x500;bool fake_system_methods=true,drift_list_generation{};
+std::array<void*,4> viewport_targets{};
+bool system_resource_methods(uintptr_t value){return value&&fake_system_methods;}
+uintptr_t canonical_identity(IUnknown* value){return value?fake_list_canonical:0;}
+struct FakeFrameLink {gears_frame_link::ListRef current(uintptr_t value)const{return {value,fake_list_generation};}} frame_link;
+void query_bound_resource(uintptr_t object,ResourceIdentity& out){
+    if(object&&source_available){out.result=0;out.native=0xabc;out.canonical=0x1234;out.desc.Width=source_width;}
+    if(drift_list_generation)++fake_list_generation;
+}
+uint32_t test_control_output();void run_control_cases();
+#endif
 }
 #define GEARS_DLSS_ROUTE_OBSERVER 1
 #define __readgsqword test_readgsqword
 #define _ReturnAddress test_return_address
 #include "dlss_route_observer.inl"
+#include "dlss_output_control.inl"
 #undef _ReturnAddress
 #undef __readgsqword
 namespace {
@@ -54,11 +78,15 @@ const uint16_t* descriptor(){return reinterpret_cast<const uint16_t*>(owner.data
 uint64_t __fastcall original_setter(uintptr_t rcx,const uint16_t* desc,const void* source,unsigned index){
     assert_frame_mutex_unlocked();++setter_lock_probes;
     ++setter_calls;assert(rcx==0xdead&&desc==descriptor()&&source==payload.data()&&index==0);
-    std::memcpy(data.data()+16,source,16);if(mode==4)throw std::runtime_error("setter");return 0x123456789abcdef0ull;
+    if(!gears_dlss_output::noop({desc[0],desc[1],desc[2]},index))std::memcpy(data.data()+16,source,16);
+    if(mode==4)throw std::runtime_error("setter");return 0x123456789abcdef0ull;
 }
 uint32_t __fastcall original_output(void* pass,uintptr_t unused,void* input){
     assert_frame_mutex_unlocked();++output_lock_probes;
     ++output_calls;assert(pass==expected_pass&&input==expected_view&&unused==0xfeed);
+#if defined(GEARS_DLSS_OUTPUT_CONTROL_TEST)
+    if(mode>=10)return test_control_output();
+#endif
     if(mode==1){mode=0;auto* parent=dlss_route_observer::current;
         assert(parent&&parent->row);assert(dlss_route_observer::hook_output(pass,unused,input)==0xfedcba98u);
         assert(dlss_route_observer::current==parent);mode=1;}
@@ -153,5 +181,13 @@ int main(){
     assert_report(timeout_report,"rows_unavailable=1",false);fclose(timeout_report);timeout_report=nullptr;
     assert(dlss_route_observer::recorder.rows[0].exited); // Owner completed safely after the timeout print.
     mode=0;assert(call()==0xfedcba98u&&dlss_route_observer::recorder.size==1&&active.load()==0); // Closed-recording bypass cannot write a new row.
+#if defined(GEARS_DLSS_OUTPUT_CONTROL_TEST)
+    run_control_cases();
+#else
+    std::array<float,8> unchanged{1,2,3,4,5,6,7,8};
+    dlss_output_control::QuadScope disabled(true,0xd83cbf,unchanged,{2560,1080,2560,1080});
+    disabled.forward(unchanged[0],unchanged[1],unchanged[2],unchanged[3],unchanged[4],unchanged[5],unchanged[6],unchanged[7]);
+    assert((!disabled.candidate()&&unchanged==std::array<float,8>({1,2,3,4,5,6,7,8})));
+#endif
     std::puts("DlssRouteObserverTest passed (actual wrappers; synthetic TLS/memory only)");
 }

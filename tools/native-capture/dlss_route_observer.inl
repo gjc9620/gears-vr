@@ -1,4 +1,5 @@
 #include "dlss_route_observer.h"
+#include "dlss_output_control_live.h"
 namespace dlss_route_observer {
 #if defined(GEARS_DLSS_ROUTE_OBSERVER) && GEARS_DLSS_ROUTE_OBSERVER
 #if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
@@ -62,6 +63,7 @@ struct OutputFinish {
 uint32_t __fastcall hook_output(void* pass,uintptr_t unused,void* input_view){
     Scope scope;
     Context context{reinterpret_cast<uintptr_t>(pass),reinterpret_cast<uintptr_t>(input_view),nullptr};Binding binding(current,context);
+    dlss_output_control::OutputScope output_control(scope.world(),context.pass,context.view);
     if(!eligible(scope.world()))return original_output(pass,unused,input_view);
     bool candidate=false;
     {
@@ -90,7 +92,7 @@ struct SetterFinish {
 };
 uint64_t __fastcall hook_setter(uintptr_t rcx,const uint16_t* descriptor,const void* payload,unsigned index){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
-    Scope scope;auto* row=current?current->row:nullptr;
+    Scope scope;dlss_output_control::SetterScope output_control(scope.world(),caller,descriptor,index);auto* row=current?current->row:nullptr;
     if(!scope.world()||!row||setter_role(caller)>1||index||!matching(*row))return original_setter(rcx,descriptor,payload,index);
     // This row belongs exclusively to the current thread's Output invocation.
     // Do not hold the global frame lock across the unchanged native setter.
@@ -133,7 +135,7 @@ bool enable(FILE* file){
     const bool output=verify_chunk(file,0xd82f58,0xc78,"1efb10541bf56d87b31aae4f452da0d281afd552da16b4bfd16d653f2cd425ea");
     const bool continuation=verify_chunk(file,0xd83bd0,0x1e9,"e051a2d325a4d5ebc12be670d63cd8eae1eead437f33dfa39946de852e61e724");
     const bool setter=verify_chunk(file,0x1760b4,0xcd,"d7d20d3f5c510685b8b3ffb12d12d51ae583d4070e00cf11a39655c7e086c45b");
-    attested=output&&continuation&&setter;return attested;
+    attested=output&&continuation&&setter;return attested&&dlss_output_control::enable(file,attested);
 }
 void values(FILE* file,Float4 const& v){fprintf(file,"%.9g,%.9g,%.9g,%.9g",v[0],v[1],v[2],v[3]);}
 void print_view(FILE* file,const char* label,View const& v){

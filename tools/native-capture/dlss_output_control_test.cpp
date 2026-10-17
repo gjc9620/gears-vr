@@ -1,0 +1,111 @@
+#define GEARS_DLSS_OUTPUT_CONTROL 1
+#define GEARS_DLSS_OUTPUT_CONTROL_TEST 1
+#include "dlss_route_observer_test.cpp"
+
+namespace {
+unsigned control_forward_count{},control_draw_count{};
+alignas(8) std::array<unsigned char,8> actual_list{},foreign_list{};
+alignas(8) std::array<unsigned char,0x20> list_owner{};
+std::array<uintptr_t,13> list_vtable{};
+void control_reset(){
+    reset();dlss_output_control::store={};dlss_output_control::attested=true;dlss_output_control::active_key={};
+    dlss_output_control::current_output=nullptr;dlss_output_control::current_quad=nullptr;
+    source_available=true;source_width=2560;control_forward_count=control_draw_count=0;mode=10;
+    fake_list_generation=4;fake_list_canonical=0x500;fake_system_methods=true;drift_list_generation=false;
+    dlss_output_control::other_setters=dlss_output_control::list_rejected=0;
+    dlss_output_control::non_target_setters={};
+    actual_list={};foreign_list={};list_owner={};list_vtable={};list_vtable[12]=0x1337;viewport_targets[3]=reinterpret_cast<void*>(list_vtable[12]);
+    put(actual_list,0,reinterpret_cast<uintptr_t>(list_vtable.data()));put(foreign_list,0,reinterpret_cast<uintptr_t>(list_vtable.data()));
+    put(list_owner,0x14,reinterpret_cast<uintptr_t>(actual_list.data()));put(context,0x127c,reinterpret_cast<uintptr_t>(list_owner.data()));
+    put(owner,8,uint32_t(12));put(owner,0xaa,gears_dlss_route::Descriptor{0xffff,0xffff,0});put(family,0x4c,uint32_t(1));
+    put(context,0x65d,uint8_t(1));put(context,0x768,uintptr_t(0x777));
+    for(unsigned eye=0;eye<2;++eye){const auto offset=eye*0xd30;
+        put(views,offset+0x48,gears_dlss_route::Float4{float(eye*1280),0,1280,1080});
+        put(views,offset+0x58,std::array<int32_t,4>{int32_t(eye*1280),0,1280,1080});}
+}
+void controlled_quad(unsigned selected_mode){
+    using namespace gears_dlss_output;
+    const Args raw{4294966784.0f,35,2534,1010,0,0,2534,1010};Args args=raw;Dimensions sizes{2560,1080,2560,1080};
+    const uintptr_t caller=selected_mode==24?0xd83b1c:0xd83cbf;
+    dlss_output_control::QuadScope quad(true,caller,args,sizes);
+    quad.forward(args[0],args[1],args[2],args[3],args[4],args[5],args[6],args[7]);
+    if(quad.candidate()){
+        ++control_forward_count;const unsigned eye=dlss_route_observer::view(reinterpret_cast<uintptr_t>(expected_view)).eye;
+        assert(args==Args({float(eye*1280),0,1280,1080,float(eye*1280),0,1280,1080}));
+    }else assert(args==raw);
+    late_quad_candidate={true,args,sizes,caller};if(selected_mode==26)late_quad_candidate.args[7]=1079;
+    if(selected_mode!=11){
+        gears_viewport::TargetDraw binding{0,1,{0x5678,2560,1080,24,0},0};
+        gears_frame_link::ListRef ref{0x500,selected_mode==25?0ull:4ull};
+        gears_viewport::DrawState rectangles{true,{0,0,2560,1080},{0,0,2560,1080},1,1,true,0,1};
+        const auto proof=dlss_output_control::draw(reinterpret_cast<uintptr_t>(actual_list.data()),base+0x1af92b,1,6,1,binding,ref,rectangles);
+        if(proof.candidate){++control_draw_count;assert(gears_final_transfer::eligible_eye_target(caller,true,7,2560,1080,binding,true,proof,9));
+            auto stale=proof;stale.ticket=8;assert(!gears_final_transfer::eligible_eye_target(caller,true,7,2560,1080,binding,true,stale,9));
+            stale=proof;stale.world=10;assert(!gears_final_transfer::eligible_eye_target(caller,true,7,2560,1080,binding,true,stale,9));}
+        if(selected_mode==23)dlss_output_control::draw(reinterpret_cast<uintptr_t>(actual_list.data()),base+0x1af92b,1,6,1,binding,ref,rectangles);
+    }
+    if(selected_mode==30)throw std::runtime_error("quad");
+}
+uint32_t test_control_output(){
+    const auto selected_mode=mode;
+    if(selected_mode==19){mode=10;dlss_route_observer::hook_output(expected_pass,0xfeed,expected_view);mode=19;}
+    // Real preceding setters are unrelated to the one generated output setter.
+    for(auto caller:{uintptr_t(0xd8388e),uintptr_t(0xd8397d)}){fake_caller=caller;
+        assert(dlss_route_observer::hook_setter(0xdead,descriptor(),payload.data(),0)==0x123456789abcdef0ull);}
+    if(selected_mode!=18){fake_caller=0xd83b69;assert(dlss_route_observer::hook_setter(0xdead,descriptor(),payload.data(),0)==0x123456789abcdef0ull);
+        if(selected_mode==29)assert(dlss_route_observer::hook_setter(0xdead,descriptor(),payload.data(),0)==0x123456789abcdef0ull);}
+    if(selected_mode==14)put(owner,0xaa,gears_dlss_route::Descriptor{0xffff,0xfffe,0});
+    if(selected_mode==15)consuming_frame_ticket=8;
+    if(selected_mode==32)put(list_owner,0x14,reinterpret_cast<uintptr_t>(foreign_list.data())); // Same canonical, wrong raw list/context.
+    if(selected_mode==33)drift_list_generation=true; // Reset/reuse during SRV query must be caught after it.
+    if(selected_mode==34)fake_list_generation=5;
+    if(selected_mode==35)put(context,0x127c,uintptr_t(0));
+    if(selected_mode==36)fake_list_canonical=0x501;
+    if(selected_mode==37)list_vtable[12]=0x9999;
+    controlled_quad(selected_mode);
+    if(selected_mode==12)controlled_quad(selected_mode);
+    if(selected_mode==13)throw std::runtime_error("output after draw");
+    if(selected_mode==22)put(views,0x48,gears_dlss_route::Float4{0,0,1279,1080});
+    assert(!dlss_output_control::publication(9,7)); // Output/consume are still incomplete.
+    return 0xfedcba98u;
+}
+void eye(unsigned index){expected_view=views.data()+index*0xd30;put(context,0x14c0,reinterpret_cast<uintptr_t>(expected_view));assert(call()==0xfedcba98u);}
+void run_control_cases(){
+    using namespace gears_dlss_output;
+    assert(!gears_final_transfer::eye_caller(0xd83cbf,true));
+    assert(gears_final_transfer::eye_caller(0xd83cbf,false,true));
+    gears_viewport::TargetDraw binding{0,1,{0x5678,2560,1080,24,0},0};
+    assert(!gears_final_transfer::eligible_eye_target(0xd83cbf,true,7,2560,1080,binding,true));
+    control_reset();{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}
+    assert(dlss_output_control::publication(9,7)&&control_forward_count==2&&control_draw_count==2);
+    assert(dlss_output_control::other_setters==4&&setter_calls==6); // Two preceding setters plus the sole target in each eye.
+    assert((dlss_output_control::non_target_setters==std::array<uint64_t,3>{2,2,0}));
+    assert((data==std::array<unsigned char,0x100>{})); // Sentinel setter is unchanged and remains a no-op.
+    assert(!dlss_output_control::publication(10,7)&&!dlss_output_control::publication(9,8));
+    dlss_output_control::retire();assert(!dlss_output_control::publication(9,7));
+    control_reset();dlss_route_observer::recorder.size=8;
+    {dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}
+    assert(dlss_output_control::publication(9,7)&&control_forward_count==2&&dlss_route_observer::recorder.limited==2);
+    for(unsigned failure:{11u,12u,14u,15u,18u,19u,22u,23u,24u,25u,26u,29u,32u,33u,34u,35u,36u,37u}){
+        control_reset();mode=failure;{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}
+        assert(!dlss_output_control::publication(9,7));
+        if(failure>=32)assert(dlss_output_control::list_rejected>0&&!control_draw_count);
+    }
+    for(unsigned exception:{13u,30u}){control_reset();mode=exception;
+        try{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);assert(false);}catch(std::runtime_error const&){}
+        assert(!dlss_output_control::publication(9,7)&&!dlss_output_control::current_output&&!dlss_output_control::current_quad&&!dlss_output_control::active_key);}
+    control_reset();source_available=false;{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}assert(!dlss_output_control::publication(9,7));
+    control_reset();source_width=1280;{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}assert(!dlss_output_control::publication(9,7));
+    control_reset();put(context,0x65d,uint8_t(2));{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}assert(!dlss_output_control::publication(9,7));
+    control_reset();put(owner,8,uint32_t(4));{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}assert(!dlss_output_control::publication(9,7)&&!control_forward_count);
+    control_reset();put(family,0x4c,uint32_t(0));{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}assert(!dlss_output_control::publication(9,7)&&!control_forward_count);
+    control_reset();put(views,0x58,std::array<int32_t,4>{-1,0,1280,1080});{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}assert(!dlss_output_control::publication(9,7)&&!control_forward_count);
+    control_reset();put(views,0x48,gears_dlss_route::Float4{0,0,2560,1080});{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(1);}assert(!dlss_output_control::publication(9,7)&&!control_forward_count);
+    control_reset();{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);}assert(!dlss_output_control::publication(9,7));
+    control_reset();{dlss_output_control::ConsumeScope consume(9,7,true);eye(0);eye(0);eye(1);}assert(!dlss_output_control::publication(9,7));
+    control_reset();FILE* identity{};assert(!tmpfile_s(&identity)&&identity);
+    assert(!dlss_output_control::enable(identity,false));assert(dlss_output_control::enable(identity,true));
+    owned_bindings_enabled=true;assert(!dlss_output_control::enable(identity,true));owned_bindings_enabled=false;fclose(identity);
+    std::puts("DlssOutputControlTest passed (candidate and completed Output proofs remain separate)");
+}
+}

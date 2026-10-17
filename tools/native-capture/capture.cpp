@@ -33,6 +33,7 @@
 #include "frame_link.h"
 #include "final_eye_diagnostics.h"
 #include "final_transfer_policy.h"
+#include "dlss_output_control.h"
 #include "outage_trace.h"
 #include "outage_sources.h"
 #include "anchor_observer.h"
@@ -134,8 +135,8 @@ std::mutex binding_owner_mutex;
 std::recursive_mutex frame_hook_mutex;
 thread_local uint64_t consuming_frame_ticket{};
 struct FinalEye {bool valid{}; unsigned eye{}; gears_frame_link::Rect rect{}; unsigned width{},height{};};
-FinalEye classify_final_eye(uintptr_t caller,uint64_t ticket,float x,float y,float width,float height,unsigned target_width,unsigned target_height,bool source_attested=false) {
-    bool exact=(caller==0xd83b1c||caller==0xd808d8||(caller==0x2b11a0&&source_attested))&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
+FinalEye classify_final_eye(uintptr_t caller,uint64_t ticket,float x,float y,float width,float height,unsigned target_width,unsigned target_height,bool source_attested=false,bool output_controlled=false) {
+    bool exact=gears_final_transfer::eye_caller(caller,source_attested,output_controlled)&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
         std::isfinite(y)&&std::isfinite(width)&&std::isfinite(height)&&y==0&&height==float(target_height)&&
         width==float(target_width/2)&&(x==0||x==float(target_width/2));
     if(!exact)return {};
@@ -176,6 +177,7 @@ bool enabled();bool tracks(gears_frame_link::ListRef,uintptr_t);
 bool observe(ID3D12GraphicsCommandList*,uintptr_t,unsigned,unsigned,unsigned,gears_viewport::TargetDraw const&,gears_frame_link::ListRef);
 void record_source_draw();void print(FILE*);
 }
+#include "dlss_output_control_live.h"
 struct FrameLinkCounters {
     std::atomic<uint64_t> resets{},reset_failed{},draws{},filtered{},unknown{},missing_target{},missing_ticket{},bad_quad{},
         executes{},execute_rejected{},presents{},linked{},contaminated{},present_failed{},tests{},unbound{},changed{},last_ticket{};
@@ -963,6 +965,7 @@ void bind_stereo_publisher(uintptr_t chain_id,uintptr_t queue_id) {
 }
 void retire_stereo_window() {
     vr_dof_compat::retire();
+    dlss_output_control::retire();
     if(!stereo_gpu_publish)return;
     if(!stereo_ticket_store.retire_through(stereo_window_retained)){++stereo_publish_counts.ticket_rejected;frame_link.invalidate();}
     stereo_window_retained=0;
@@ -1171,13 +1174,19 @@ void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigne
     if(!binding.target.resource){
         diagnostic_failure(256);++frame_counts.missing_target;frame_link.invalidate();return;}
     const bool known_buffer=swapchain_bindings.known_buffer(binding.target.resource);
+    gears_frame_link::ListRef ref{};gears_final_transfer::EyeDrawEvidence output_evidence{};
+    if(dlss_output_control::scoped()){
+        ref=frame_link.current(canonical_identity(list));
+        output_evidence=dlss_output_control::draw(reinterpret_cast<uintptr_t>(list),caller,kind,elements,instances,binding,ref,
+            frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list)));}
     bool exact=gears_final_transfer::eligible_eye_target(final_eye_candidate.caller,
-        final_eye.valid,consuming_frame_ticket,final_eye.width,final_eye.height,binding,final_transfer_live::enabled());
+        final_eye.valid&&(final_eye_candidate.caller!=0xd83cbf||output_evidence.eye==final_eye.eye),
+        consuming_frame_ticket,final_eye.width,final_eye.height,binding,final_transfer_live::enabled(),output_evidence,committed_world_generation.load());
     // The authenticated source path uses only a single-mip R10G10B10A2 target.
     // Keep unrelated scene draws on the original cheap rejection path.
     if(!known_buffer&&(!final_transfer_live::enabled()||binding.target.format!=24||binding.target.mip)){
         diagnostic_failure(512);++frame_counts.filtered;return;}
-    auto ref=frame_link.current(canonical_identity(list));
+    if(!ref.identity)ref=frame_link.current(canonical_identity(list));
     if(!known_buffer&&!exact&&!final_transfer_live::tracks(ref,binding.target.resource)){
         diagnostic_failure(512);++frame_counts.filtered;return;}
     ++frame_counts.draws;
@@ -1324,7 +1333,8 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
     auto result=frame_link.present(resource,inventory_ok?binding.queue:0);
     if(diagnostic){diagnostic->valid|=gears_outage::association;diagnostic->buffer=resource;diagnostic->queue=binding.queue;
         diagnostic->ticket=result.ticket;diagnostic->rejection=result.rejection;diagnostic->linked=result.linked;diagnostic->contaminated=result.contaminated;}
-    if(!owned_xr_probe&&stereo_gpu_publish&&result.linked&&inventory_ok&&final_transfer_live::normalizer::publication_allowed()&&vr_dof_compat::publication(committed_world_generation.load(),result.ticket)){
+    if(!owned_xr_probe&&stereo_gpu_publish&&result.linked&&inventory_ok&&final_transfer_live::normalizer::publication_allowed()&&vr_dof_compat::publication(committed_world_generation.load(),result.ticket)&&
+       dlss_output_control::publication(committed_world_generation.load(),result.ticket)){
         gears_vr::StereoImageTicket image{};image.id=result.ticket;
         if(!stereo_ticket_store.lookup(result.ticket,image.sample,simulator_operator)){++stereo_publish_counts.ticket_missing;}
         else {
@@ -1455,6 +1465,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     death_source_live::progress(output);
     death_hdr_pixels::progress(output);
     vr_dof_compat::progress(output);
+    dlss_output_control::progress(output);
     fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu ",
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
         static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()));
@@ -1665,6 +1676,7 @@ void print_frame_link(FILE* status) {
     dlss_route_observer::print(status);
     death_dof_control::print(status);
     vr_dof_compat::print(status);
+    dlss_output_control::print(status);
     death_pso_cache::print(status);
     print_backbuffer_copies(status);
     final_transfer_live::print(status);
@@ -2159,6 +2171,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "death_pso_cache.inl"
 #include "death_constant_observer.inl"
 #include "dlss_route_observer.inl"
+#include "dlss_output_control.inl"
 #include "death_dof_control.inl"
 #include "vr_dof_compat.inl"
 
@@ -2192,6 +2205,7 @@ void __fastcall hook_consume(void* renderer){
     consuming_frame_ticket=frame_link_diagnostics&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(renderer),consume_frame)?consume_frame.id:0;
     consuming_frozen_frame=consume_frame;
     const auto dof_consume=vr_dof_compat::begin(consume_frame,renderer!=nullptr);
+    dlss_output_control::ConsumeScope dlss_consume(consume_frame.world_generation,consume_frame.id,renderer&&consume_frame.enabled);
     observe_unpossessed_ticket();
     // Allocation probes run only on this RHI callback. The metadata probe
     // releases immediately; the scene probe retains an owner for a later family.
@@ -3102,6 +3116,8 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
     unsigned target_width,unsigned target_height,unsigned texture_width,unsigned texture_height){
     Scope scope;uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;vr_dof_compat::quad(caller,scope.world());
     dlss_route_observer::quad(caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
+    dlss_output_control::QuadScope dlss_quad(scope.world(),caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
+    dlss_quad.forward(x,y,width,height,u,v,uw,vh);
     final_transfer_live::normalizer::Scope normalize(caller,{x,y,width,height,u,v,uw,vh},
         {target_width,target_height,texture_width,texture_height},scope.world());
     normalize.forward(u,v,uw,vh);
@@ -3126,11 +3142,11 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
     bool previous=in_final_quad;in_final_quad=previous||(caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8;
     auto saved_eye=final_eye;final_eye={};
     const auto saved_candidate=final_eye_candidate;final_eye_candidate={};
-    if(frame_link_diagnostics&&recording.load()&&(caller==0xd83b1c||caller==0xd808d8||caller==0x2b11a0)) {
+    if(frame_link_diagnostics&&recording.load()&&(caller==0xd83b1c||caller==0xd808d8||caller==0x2b11a0||(caller==0xd83cbf&&dlss_quad.candidate()))) {
         final_eye_candidate={caller,consuming_frame_ticket,{x,y,width,height},target_width,target_height};
         const bool source_attested=final_transfer_live::enabled()&&u==x&&v==y&&uw==width&&vh==height&&
             texture_width==target_width&&texture_height==target_height;
-        final_eye=classify_final_eye(caller,consuming_frame_ticket,x,y,width,height,target_width,target_height,source_attested);
+        final_eye=classify_final_eye(caller,consuming_frame_ticket,x,y,width,height,target_width,target_height,source_attested,dlss_quad.candidate());
         if(!final_eye.valid)++frame_counts.bad_quad;
         if(!final_eye.valid)record_final_eye_failure(1,1u|(!consuming_frame_ticket?2u:0u));
     }
