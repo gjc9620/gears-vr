@@ -417,6 +417,11 @@ constexpr unsigned ui_scene_root_hooks=1;
 #else
 constexpr unsigned ui_scene_root_hooks=0;
 #endif
+#if defined(GEARS_PATH_CHOICE_LAYOUT_OBSERVER) && GEARS_PATH_CHOICE_LAYOUT_OBSERVER
+constexpr unsigned path_layout_hooks=1;
+#else
+constexpr unsigned path_layout_hooks=0;
+#endif
 #if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
 constexpr unsigned death_constant_hooks=1;
 #else
@@ -452,7 +457,7 @@ constexpr unsigned vr_dof_hooks=1;
 #else
 constexpr unsigned vr_dof_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -1477,6 +1482,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"activation_ready_qpc=%lld activation_qpc_frequency=%lld ",session_activation_ready_qpc.load(),qpc_frequency);
     ui_scene_trial_live::progress(output);
     path_choice_position_live::progress(output);
+    path_choice_layout_observer::progress(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
     // separately; they are not compositor display or engine-update counts.
@@ -3969,6 +3975,10 @@ DWORD WINAPI worker(void*) {
         ok=install(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]));
 #if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
     if(ok&&ui_observer_enabled)ok=install(ui_scene_root_live::target,reinterpret_cast<void*>(ui_scene_root_live::hook),reinterpret_cast<void**>(&ui_scene_root_live::original));
+#endif
+#if defined(GEARS_PATH_CHOICE_LAYOUT_OBSERVER) && GEARS_PATH_CHOICE_LAYOUT_OBSERVER
+    if(ok&&ui_observer_enabled)ok=path_choice_layout_observer::enable(status)&&
+        install(path_choice_layout_observer::target,reinterpret_cast<void*>(path_choice_layout_observer::hook),reinterpret_cast<void**>(&path_choice_layout_observer::original));
 #endif
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
     if(ok&&ui_observer_enabled)ok=install(ui_call_boundary::target,reinterpret_cast<void*>(ui_call_boundary::hook),reinterpret_cast<void**>(&ui_call_boundary::original));

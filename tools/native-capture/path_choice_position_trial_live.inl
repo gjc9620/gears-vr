@@ -24,6 +24,7 @@ struct OwnershipLossReceipt {
 OwnershipLossReceipt first_loss;
 std::atomic<bool> loss_claimed{},loss_ready{};
 trial::State state; // Only the bound scene-root owner thread accesses this.
+std::uint64_t successful_nonce{}; // Same owner only; a later partial apply is not certified by an older count.
 template<class Read> void publish_loss(trial::Config const& c,std::uint64_t current_world,
     std::array<std::uint32_t,2> observed,unsigned read_mask,bool complete,Read read){
     bool empty=false;if(!loss_claimed.compare_exchange_strong(empty,true))return;
@@ -84,7 +85,7 @@ using Setter=void(__fastcall*)(void*,float,unsigned char,unsigned char,int);
 bool set(uintptr_t panel,float v,unsigned face,unsigned input,int origin){
     ever_modified=true;reinterpret_cast<Setter>(base+0x298760)(reinterpret_cast<void*>(panel),v,static_cast<unsigned char>(face),static_cast<unsigned char>(input),origin);return true;}
 // Owner thread only: callers bind owner_thread before inspecting State.
-void count(trial::Result r){switch(r){case trial::Result::applied:++applied;ever_modified=true;break;
+void count(trial::Result r){switch(r){case trial::Result::applied:successful_nonce=state.lease.config.nonce;++applied;ever_modified=true;break;
     case trial::Result::restored:++restored;break;case trial::Result::rejected:++rejected;break;
     case trial::Result::identity_lost:++identity_lost;break;case trial::Result::ownership_lost:++ownership_lost;break;
     case trial::Result::setter_failed:++setter_failed;break;default:break;}

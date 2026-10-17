@@ -32,6 +32,7 @@ NGX_WRAPPER_RANGES = (
     (0xbe5b5c, 0xf9, '53709f650d84bd1ea4cc1ae5e25eb8ef7f3462102fe51d07b790d96c48734879'),
     (0xbe5c58, 0x561, '21868e6f8203578f5c4ef689fc4f66a5c79e13fdb243eebe2eb81cc7d6309441'),
 )
+PATH_LAYOUT_RANGES = ((0x298bdc, 161, 'b5dae9f89c8182b26eef27e87ca2ae57804899ed313cb9acdc630280a03b6fb5'),)
 
 
 def check_runtime_ranges(read, base, target, ranges, source):
@@ -111,6 +112,14 @@ def main():
         camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
+            if rva == 0x298bdc:
+                values = check_runtime_ranges(resolver.read, resolver.base, target, PATH_LAYOUT_RANGES,
+                              'artifact 1 runtime snapshot PathChoice layout complete body')
+                for check in values:
+                    check.update(module_base=hex(resolver.base), historical_module_base='0x140000000',
+                                 source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+                checks.extend(values)
+                continue
             if rva == 0x296178:
                 # Optional UI scene root observer: exactly the saved 13-byte
                 # artifact 1 adapter, also recorded in ui_scene_root_candidate.h

@@ -4,6 +4,7 @@
 #include "ui_scene_batch.h"
 #include "ui_scene_transform_trial_live.inl"
 #include "path_choice_position_trial_live.inl"
+#include "path_choice_layout_observer.inl"
 namespace ui_scene_root_live {
 #if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
 using Exec=uintptr_t(__fastcall*)(void*,void*,void*);

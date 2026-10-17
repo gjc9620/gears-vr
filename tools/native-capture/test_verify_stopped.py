@@ -65,6 +65,28 @@ class VerifyStoppedTests(unittest.TestCase):
         self.read.assert_any_call(self.base + 0x296178, 13)
         self.closed.assert_called_once()
 
+    def test_path_layout_complete_restore_and_tail_corruption(self):
+        expected = verify_stopped.PATH_LAYOUT_RANGES
+        self.assertEqual(expected, ((0x298bdc, 161,
+            'b5dae9f89c8182b26eef27e87ca2ae57804899ed313cb9acdc630280a03b6fb5'),))
+        raw = bytes(range(161))
+        fixture = ((0x298bdc, len(raw), hashlib.sha256(raw).hexdigest()),)
+        for corrupt in (False, True):
+            with self.subTest(corrupt=corrupt):
+                changed = bytearray(raw)
+                if corrupt:changed[-1] ^= 1
+                self.memory[self.base + 0x298bdc] = bytes(changed)
+                self.write_status((0x298bdc, 0x15cf08))
+                with mock.patch.object(verify_stopped, 'PATH_LAYOUT_RANGES', fixture):
+                    if corrupt:
+                        with self.assertRaises(SystemExit):self.invoke()
+                    else:self.invoke()
+                check = json.loads(self.output.read_text())['checks'][0]
+                self.assertEqual(check['bytes_checked'], 161)
+                self.assertEqual(check['matches'], not corrupt)
+                self.assertEqual(check['source_snapshot_sha256'],
+                    '911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+
     def test_each_corrupted_root_byte_fails_despite_capture_claim_and_closes(self):
         for at in range(13):
             with self.subTest(byte=at):

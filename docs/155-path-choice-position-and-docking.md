@@ -34,3 +34,5 @@ Native80（`364800f`，SHA256 `986fbad49dabc61da5a79319e78f6df793ea9f62c384bc428
 该轮正常关闭自有游戏，native cleanup与entry恢复、完整设置/四profile恢复均通过，本轮自有配置在停止后完整比对并清理；无自有前台采样。原Top/Bottom约`0.0374/0.96260005`，自有值约`0.05221482/0.97741485`。历史`298bdc`完整161B读取已核对缓存SHA；其入口使用对象与12B输入，条件调用Left/Top SetPosition，尚不能命名为SafeRegion更新或证明它恢复Bottom。下一条证据需要当前完整161B与实际panel的vtable+488，以及精确对象调用内的位置前后变化。
 
 只读`path-position80d-20261018`随后在实际PathChoice panel上双读vtable+488及目标完整161B：指针为当前base+298bdc，SHA256 `b5dae9f89c8182b26eef27e87ca2ae57804899ed313cb9acdc630280a03b6fb5`，身份、指针和字节复读一致。未写位置INI、未调用位置API；这只补齐当前静态认证，仍没有该函数实际执行/改写位置的证据。正常关闭、native/entry恢复和完整设置/四profile恢复均通过，无自有前台采样。下一步可围绕这一精确对象做有界入口/出口观察。
+
+新增默认关闭的`GEARS_PATH_CHOICE_LAYOUT_OBSERVER`，仅在完整当前161B及全局虚表槽双读认证后观察该方法。它要求位置试验的固定owner线程、成功apply的同一nonce、精确panel/root/client/world及实际虚表槽；最多保存4条入口/出口快照，以release/acquire逐条发布，不新增跨original锁、不改参数或坐标。累计apply次数不认证后续未成功的新nonce。新wrapper、原位置core/live的`/W4 /WX`检查及18项Python检查通过，完整DLL及实际writer命中尚待验证。该观察器不是UI修复。
