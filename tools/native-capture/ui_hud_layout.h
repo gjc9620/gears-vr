@@ -1,5 +1,6 @@
 #pragma once
 #include "ui_hud_plan.h"
+#include "ui_group_placement.h"
 #include "ui_index_membership.h"
 #include "ui_text_group_geometry.h"
 
@@ -46,25 +47,7 @@ inline bool compose(gears_viewport::DrawState const& saved,unsigned width,unsign
     const double cx=(bounds.left+bounds.right)/2,cy=(bounds.top+bounds.bottom)/2;
     const double tx=.5+p.center_scale*(cx-.5)-p.element_scale*cx;
     const double ty=.5+p.center_scale*(cy-.5)-p.element_scale*cy;
-    const double l=(std::max)(0.,double(saved.scissor.x))/width;
-    const double r=(std::min)(double(width),double(saved.scissor.x)+saved.scissor.width)/width;
-    const double t=(std::max)(0.,double(saved.scissor.y))/height;
-    const double b=(std::min)(double(height),double(saved.scissor.y)+saved.scissor.height)/height;
-    gears_viewport::OverlayPlan result{};
-    for(unsigned eye=0;eye<2;++eye){auto const base=panel.viewports[eye];
-        auto& v=result.viewports[eye];v={float(base.x+base.width*tx),float(base.y+base.height*ty),
-            float(base.width*p.element_scale),float(base.height*p.element_scale)};
-        for(double value:{double(v.x),double(v.y),double(v.width),double(v.height),double(v.x)+v.width,double(v.y)+v.height})
-            if(!std::isfinite(value)||value<-32768||value>32767)return false;
-        if(v.width<=0||v.height<=0)return false;
-        const double origin=double(eye)*width/2;
-        const double cl=(std::max)(origin,double(v.x)+v.width*l),cr=(std::min)(origin+width/2.,double(v.x)+v.width*r);
-        const double ct=(std::max)(0.,double(v.y)+v.height*t),cb=(std::min)(double(height),double(v.y)+v.height*b);
-        if(!(cr>cl&&cb>ct))return false;
-        const double sl=std::floor(cl),st=std::floor(ct),sr=std::ceil(cr),sb=std::ceil(cb);
-        result.scissors[eye]={float(sl),float(st),float(sr-sl),float(sb-st)};
-    }
-    result.valid=true;out=result;return true;
+    return gears_ui_group::compose(saved,width,height,panel,{p.element_scale,tx,ty},out,true);
 }
 inline constexpr unsigned run_capacity=256;
 struct Run {unsigned first{},count{},entry{};}; // Segment-relative index offsets.

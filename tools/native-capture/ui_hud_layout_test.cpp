@@ -61,6 +61,16 @@ static void projection_tests(){
         near(c.y+c.height,std::ceil((std::min)(1080.,v.y+double(v.height)*700/1080)));
         assert(c.x>=eye*960&&c.x+c.width<=(eye+1)*960&&c.y>=0&&c.y+c.height<=1080);
     }
+    // Non-identity HUD policy can produce an identity affine for centered
+    // bounds. It must still recompute the saved source clip, as before.
+    const auto full_panel=gears_viewport::overlay_plan(saved,1920,1080);
+    const Bounds centered{.4,.4,.6,.6,true};
+    assert(compose(clipped,1920,1080,full_panel,centered,{1,.8},result));
+    assert((result.scissors[0]==gears_viewport::Rect{100,100,600,600}));
+    assert((result.scissors[1]==gears_viewport::Rect{1060,100,600,600}));
+    assert(result.viewports==full_panel.viewports);
+    assert(compose(clipped,1920,1080,full_panel,centered,{},result));
+    assert(result.scissors==full_panel.scissors); // Actual identity policy preserves panel.
     clipped.scissor={0,0,0,1080};assert(!compose(clipped,1920,1080,panel,b,p,result));
 }
 struct Fixture {
