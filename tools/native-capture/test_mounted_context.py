@@ -62,6 +62,81 @@ class MountedFixture(CinematicFixture):
 
 
 class MountedContextTests(unittest.TestCase):
+    def test_rejected_camera_targets_have_failure_only_consistency_evidence(self):
+        for label, target in (('driver', 0x20000), ('null', 0), ('foreign', 0xb0000)):
+            with self.subTest(target=label):
+                f = MountedFixture()
+                if label == 'foreign':f.add(target, 'ForeignTarget_0', 0x3000, outer=0x50000)
+                f.ptr(f.sampler.view_target, target)
+                with self.assertRaisesRegex(AnchorRejected, '^Mounted camera target is not controlled turret$') as failure:
+                    MountedContextCertificate(f.sampler)
+                self.assertNotIsInstance(failure.exception, MountedTimestampChanged)
+                observation = failure.exception.camera_observation
+                self.assertTrue(observation['diagnostic_only']); self.assertFalse(observation['accepted'])
+                self.assertTrue(observation['consistent_read']); self.assertFalse(observation['atomic_snapshot'])
+                self.assertEqual(observation['target_field'], dict(address=f.sampler.view_target, value=target, observed_value=target))
+                self.assertEqual(observation['target_is_driver'], label == 'driver')
+                self.assertEqual(observation['roles']['controlled']['address'], f.TURRET)
+                self.assertEqual(observation['roles']['driver']['address'], 0x20000)
+                self.assertTrue(observation['timestamp']['consistent'])
+                self.assertTrue(all(header['consistent'] for header in observation['headers'].values()))
+                if target:
+                    self.assertEqual(observation['target_identity']['address'], target)
+                    self.assertEqual(observation['target_class']['address'], observation['target_identity']['cls'])
+                else:
+                    self.assertIsNone(observation['target_identity']); self.assertIsNone(observation['target_class'])
+
+    def test_camera_observation_churn_and_read_errors_cannot_change_rejection(self):
+        for kind in ('target', 'identity', 'timestamp', 'header', 'property', 'link', 'read_error', 'target_unreadable'):
+            with self.subTest(kind=kind):
+                f = MountedFixture(); f.ptr(f.sampler.view_target, 0xdeadbeef if kind == 'target_unreadable' else 0x20000)
+                original_read = f.read; original_fresh = f.sampler.fresh; hits = {}
+                def read(address, size):
+                    key = address, size; hits[key] = hits.get(key, 0) + 1
+                    data = original_read(address, size)
+                    if hits[key] >= 2:
+                        if kind == 'target' and address == f.sampler.view_target:return struct.pack('<Q', f.TURRET)
+                        if kind == 'timestamp' and address == f.sampler.stamp:return struct.pack('<f', 42)
+                        if kind == 'header' and address == f.names_header:
+                            data_ptr, count, cap = struct.unpack('<Qii', data);return struct.pack('<Qii', data_ptr, count + 1, cap + 1)
+                        if kind == 'property' and address == 0x92094:return struct.pack('<I', 0x808)
+                        if kind == 'link' and address == f.TURRET + 0x800:return struct.pack('<Q', 0)
+                        if kind == 'read_error' and address == f.TURRET + 0x800:raise RuntimeError('Diagnostic link unreadable')
+                    return data
+                fresh_hits = {}
+                def fresh(address):
+                    value = original_fresh(address);fresh_hits[address] = fresh_hits.get(address, 0) + 1
+                    if kind == 'identity' and address == f.TURRET and fresh_hits[address] >= 2:
+                        value = dict(value, number=value['number'] + 1)
+                    return value
+                with mock.patch.object(f, 'read', side_effect=read), mock.patch.object(f.sampler, 'fresh', side_effect=fresh):
+                    with self.assertRaisesRegex(AnchorRejected, '^Mounted camera target is not controlled turret$') as failure:
+                        MountedContextCertificate(f.sampler)
+                self.assertNotIsInstance(failure.exception, MountedTimestampChanged)
+                observation = failure.exception.camera_observation
+                self.assertFalse(observation['consistent_read']);self.assertFalse(observation['accepted'])
+                if kind in ('read_error', 'target_unreadable'):
+                    self.assertIn('read_error', observation)
+                    self.assertIn('exception_type', observation['read_error'])
+                    self.assertIn('stage', observation['read_error'])
+                else:self.assertTrue(observation['mismatches'])
+
+    def test_accepted_turret_does_not_run_failure_diagnostic(self):
+        f = MountedFixture()
+        proof = MountedContextCertificate(f.sampler).capture()
+        self.assertEqual(proof['roles']['camera_target']['address'], f.TURRET)
+        self.assertNotIn('camera_observation', proof)
+
+    def test_guard_propagates_camera_diagnostic_without_retry_authority(self):
+        from anchor_config import AnchorSamplingRejected
+        f = MountedFixture();f.ptr(f.sampler.view_target, 0x20000)
+        with self.assertRaises(AnchorSamplingRejected) as failure:
+            LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
+        attempts = failure.exception.evidence['guard_acquisitions'][0]['attempts']
+        self.assertEqual(len(attempts), 1);self.assertFalse(attempts[0]['retryable'])
+        self.assertTrue(attempts[0]['camera_observation']['diagnostic_only'])
+        self.assertTrue(attempts[0]['camera_observation']['target_is_driver'])
+
     def test_capture_local_reuse_still_revalidates_every_identity(self):
         f = MountedFixture()
         with mock.patch.object(f.sampler, 'fresh', wraps=f.sampler.fresh) as fresh:

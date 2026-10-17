@@ -163,8 +163,82 @@ class MountedContextCertificate:
         derives(inventory, 'WarInventoryManager')
         if inventory['outer'] != driver['address']:
             raise AnchorRejected('Mounted inventory owner mismatch')
-        if not s.view_target or pointer(s.view_target) != controlled['address']:
-            raise AnchorRejected('Mounted camera target is not controlled turret')
+        target = pointer(s.view_target) if s.view_target else None
+        if not s.view_target or target != controlled['address']:
+            error = AnchorRejected('Mounted camera target is not controlled turret')
+            observation = dict(diagnostic_only=True, accepted=False, consistent_read=False,
+                atomic_snapshot=False, roles=copy.deepcopy(dict(controlled=controlled, driver=driver,
+                    controller=pc, camera=camera)), target_field=dict(address=s.view_target, value=target),
+                target_identity=None, target_class=None, target_is_driver=target == driver['address'],
+                timestamp=dict(address=s.stamp, expected_raw=stamp.hex(), observed_raw=None, consistent=False),
+                headers={}, mismatches=[])
+
+            def diagnostic_error(stage, address, failure, size=None):
+                if 'read_error' not in observation:
+                    observation['read_error'] = dict(stage=stage, address=address, size=size,
+                        exception_type=type(failure).__name__, error=str(failure)[:256])
+
+            def mismatch(stage, address, size=None):
+                # Every captured item is checked; only the first eight changes
+                # are retained. This is a failure receipt, never retry authority.
+                if len(observation['mismatches']) < 8:
+                    observation['mismatches'].append(dict(stage=stage, address=address, size=size))
+
+            # Reuse this capture's identities, including a target already seen
+            # as Driver. Add at most the foreign target and its exact class.
+            if target:
+                try:
+                    item = identities.get(target)
+                    if item is None:
+                        item = copy.deepcopy(s.fresh(target)); identities[target] = item
+                    observation['target_identity'] = copy.deepcopy(item)
+                    cls = item['cls']; kind = identities.get(cls)
+                    if kind is None:
+                        kind = copy.deepcopy(s.fresh(cls)); identities[cls] = kind
+                    observation['target_class'] = copy.deepcopy(kind)
+                except Exception as failure:
+                    diagnostic_error('target_identity', target, failure)
+            if not s.view_target:
+                diagnostic_error('target_field', s.view_target, AnchorRejected('Missing mounted target field'), 8)
+            for address, expected in identities.items():
+                try:
+                    if s.fresh(address) != expected: mismatch('identity', address)
+                except Exception as failure:
+                    diagnostic_error('identity', address, failure)
+            for (address, size), expected in reads.items():
+                try:
+                    if r.read(address, size) != expected: mismatch('memory', address, size)
+                except Exception as failure:
+                    diagnostic_error('memory', address, failure, size)
+            # Close the diagnostic bracket with current headers, target and
+            # timestamp. Equality is consistency evidence, not atomicity.
+            for header, label in ((r.objects_header, 'objects'), (r.names_header, 'names')):
+                expected = reads[header, 16]
+                record = dict(address=header, expected_raw=expected.hex(), observed_raw=None, consistent=False)
+                observation['headers'][label] = record
+                try:
+                    observed = r.read(header, 16); record.update(observed_raw=observed.hex(), consistent=observed == expected)
+                    if observed != expected: mismatch('header', header, 16)
+                except Exception as failure:
+                    diagnostic_error('header', header, failure, 16)
+            if s.view_target:
+                try:
+                    observed = r.read(s.view_target, 8)
+                    observation['target_field']['observed_value'] = struct.unpack('<Q', observed)[0]
+                    if observed != reads[s.view_target, 8]: mismatch('target', s.view_target, 8)
+                except Exception as failure:
+                    diagnostic_error('target_field', s.view_target, failure, 8)
+            try:
+                observed = r.read(s.stamp, 4)
+                observation['timestamp'].update(observed_raw=observed.hex(), consistent=observed == stamp)
+                if observed != stamp: mismatch('timestamp', s.stamp, 4)
+            except Exception as failure:
+                diagnostic_error('timestamp', s.stamp, failure, 4)
+            observation['captured_identity_count'] = len(identities)
+            observation['captured_read_count'] = len(reads)
+            observation['consistent_read'] = not observation['mismatches'] and 'read_error' not in observation
+            error.camera_observation = observation
+            raise error
         pov = raw(s.pov, 28)
         values = struct.unpack('<3f3if', pov)
         if not all(math.isfinite(x) for x in (*values[:3], values[-1])) or not 0 < values[-1] < 180:
