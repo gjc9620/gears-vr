@@ -27,21 +27,28 @@ int main(){
     shapes.sample(7,1,49,3,e,src);shapes.sample(7,1,49,4,e,src);assert(shapes.invalid);
     Trigger targets;targets.sample(7,1,49,1,e,src);e.view.eye=1;e.rectangles.viewport.x=1920;e.args[4]=1920;
     auto other=src;other.canonical=11;targets.sample(7,1,49,2,e,other);assert(targets.invalid);
-    for(unsigned order=0;order<2;++order){Lifetime life;life.appended=true;assert(life.before(true,1,90,true));life.after(true);
-        if(!order){life.completion(1);assert(!life.may_map());life.reset(true,true);}else{life.reset(true,true);assert(!life.may_map());life.completion(1);}
+    auto new_life=[](){Lifetime life;life.appended=true;life.held_identity=123;life.list={55,123,999};return life;};
+    for(unsigned order=0;order<2;++order){auto life=new_life();assert(life.before(true,1,90,true));life.after(true);
+        if(!order){life.completion(1);assert(!life.may_map());life.reset(true,123,0,55);}else{life.reset(true,123,0,55);assert(!life.may_map());life.completion(1);}
+        assert(life.reset_receipt.tracker_generation==0&&life.reset_receipt.tracker_identity==0&&life.reset_receipt.identity==123);
         assert(life.may_map());life.saved=true;assert(!life.may_map());}
-    for(unsigned reason=0;reason<5;++reason){Lifetime life;life.appended=true;
+    for(unsigned reason=0;reason<5;++reason){auto life=new_life();
         if(reason==0){assert(life.before(true,1,90,true));life.after(true);assert(!life.before(true,1,90,true));}
         if(reason==1)assert(!life.before(false,0,0,false));
         if(reason==2){assert(life.before(true,1,90,true));life.after(false);}
         if(reason==3){assert(life.before(true,1,90,true));life.after(true);assert(!life.before(true,1,91,true));}
         if(reason==4)life.stop();
-        life.reset(true,true);life.completion(1);assert(life.failure&&!life.may_map());}
-    Lifetime early_reset;early_reset.appended=true;early_reset.reset(true,true);assert(early_reset.failure==reset_before_execute&&!early_reset.may_map());
-    Lifetime removed;removed.appended=true;assert(removed.before(true,1,90,true));removed.after(true);removed.reset(true,true);
+        life.reset(true,123,0,55);life.completion(1);assert(life.failure&&!life.may_map());}
+    auto early_reset=new_life();early_reset.reset(true,123,0,55);assert(early_reset.failure==reset_before_execute&&!early_reset.may_map());
+    auto removed=new_life();assert(removed.before(true,1,90,true));removed.after(true);removed.reset(true,123,0,55);
     removed.completion(UINT64_MAX);assert(removed.failure==device_removed&&!removed.may_map());
     Lifetime unrelated;unrelated.appended=true;assert(!unrelated.before(true,0,0,false)&&!unrelated.failure);
     assert(!unrelated.before(true,2,90,true)&&unrelated.failure==duplicate_execution);
+    for(unsigned kind=0;kind<3;++kind){auto life=new_life();assert(life.before(true,1,90,true));life.after(true);life.completion(1);
+        life.reset(kind!=0,kind==1?456:kind==2?0:123,0,55);
+        assert(!life.may_map()&&!life.retired&&life.reset_receipt.observed);
+        assert(life.failure==(kind==0?reset_failed:kind==1?reset_identity_mismatch:unknown_membership));
+        life.reset(true,123,0,55);assert(!life.may_map());}
     assert(footprint_valid(src,33177600,0,15360,2160,15360,3840,2160,1,26));
     assert(!footprint_valid(src,33177599,0,15360,2160,15360,3840,2160,1,26));
     assert(!footprint_valid(src,33177600,1,15360,2160,15360,3840,2160,1,26));

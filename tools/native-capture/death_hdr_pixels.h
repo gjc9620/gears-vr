@@ -32,9 +32,10 @@ struct Trigger {
     }
 };
 enum Failure:unsigned {none,unknown_membership,duplicate_execution,cross_queue,signal_failed,device_removed,reset_failed,
-    reset_before_execute,stop_incomplete,prepare_failed,map_failed,file_failed};
+    reset_before_execute,stop_incomplete,prepare_failed,map_failed,file_failed,reset_identity_mismatch};
 struct Lifetime {
-    gears_death_hdr::List list{};uintptr_t queue{};bool appended{},executing{},executed{},signalled{},retired{},gpu_complete{},saved{};
+    gears_death_hdr::List list{};uintptr_t queue{},held_identity{};bool appended{},executing{},executed{},signalled{},retired{},gpu_complete{},saved{};
+    struct ResetReceipt {bool observed{},success{};uintptr_t raw{},identity{};uint64_t tracker_generation{};uintptr_t tracker_identity{};} reset_receipt;
     unsigned failure{};
     void fail(unsigned reason){if(!failure)failure=reason;}
     bool before(bool readable,unsigned occurrences,uintptr_t queue_identity,bool exact_generation){
@@ -49,9 +50,14 @@ struct Lifetime {
     }
     void after(bool signal_ok){if(!executing||failure)return;executing=false;executed=true;
         if(signal_ok)signalled=true;else fail(signal_failed);}
-    void reset(bool success,bool exact_generation){
-        if(!appended||failure||saved)return;
-        if(!success||!exact_generation){fail(reset_failed);return;}
+    void reset(bool success,uintptr_t actual_identity,uint64_t tracker_generation,uintptr_t raw,uintptr_t tracker_identity=0){
+        if(!appended||failure||saved||retired)return;
+        reset_receipt={true,success,raw,actual_identity,tracker_generation,tracker_identity};
+        // The held COM object cannot be reused. A successful original Reset
+        // discards its physical recording even when Present erased TrackerRef.
+        if(!success){fail(reset_failed);return;}
+        if(!actual_identity||!held_identity){fail(unknown_membership);return;}
+        if(actual_identity!=held_identity){fail(reset_identity_mismatch);return;}
         if(!executed||!signalled){fail(reset_before_execute);return;}retired=true;
     }
     void completion(uint64_t value){if(!appended||failure||saved)return;

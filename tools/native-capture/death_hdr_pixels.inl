@@ -4,6 +4,8 @@ namespace death_hdr_pixels {
 using namespace gears_death_hdr_pixels;
 bool attested{},attempted{},prepared{},released{},stopped{};HRESULT result=S_OK;
 Trigger trigger;Lifetime life;
+HRESULT reset_hr=E_PENDING;
+long long reset_qpc{};
 ID3D12Resource *source_hold{},*destination_hold{},*readback{};
 ID3D12GraphicsCommandList* list_hold{};ID3D12CommandQueue* queue_hold{};ID3D12Device* device{};ID3D12Fence* fence{};
 D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};UINT rows{};UINT64 row_bytes{},bytes{};
@@ -93,7 +95,9 @@ bool prepare_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCAT
     buffer.DepthOrArraySize=1;buffer.MipLevels=1;buffer.SampleDesc.Count=1;buffer.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
     result=device->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&buffer,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&readback));
     if(FAILED(result))return fail();result=device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence));if(FAILED(result))return fail();
-    list_hold=list;list_hold->AddRef();prepared=true;return true;
+    list_hold=list;list_hold->AddRef();life.held_identity=identity(list_hold);
+    if(!life.held_identity||life.held_identity!=life.list.identity)return fail();
+    prepared=true;return true;
 }
 void append_after_original(bool token,ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,const D3D12_TEXTURE_COPY_LOCATION* source){
     if(!token)return;
@@ -128,9 +132,13 @@ void execute_passthrough(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*
 void reset_after_original(ID3D12GraphicsCommandList* list,HRESULT hr){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(!life.appended||life.failure||life.saved)return;
-    const auto id=identity(list);if(!id){life.fail(unknown_membership);return;}
-    if(id!=life.list.identity||life.retired)return;
-    const auto old=frame_link.current(life.list.identity);life.reset(SUCCEEDED(hr),old.identity==life.list.identity&&old.generation==life.list.generation);
+    const auto id=identity(list);
+    // A known unrelated object cannot retire the held list. An unidentified
+    // callback, or a changed identity at its held raw address, fails closed.
+    if(id&&id!=life.held_identity&&reinterpret_cast<uintptr_t>(list)!=life.list.raw)return;
+    if(life.retired)return;
+    const auto tracker=frame_link.current(life.held_identity);reset_hr=hr;reset_qpc=now();
+    life.reset(SUCCEEDED(hr),id,tracker.generation,reinterpret_cast<uintptr_t>(list),tracker.identity);
 }
 HRESULT reset_passthrough(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state){
     auto lock=execution_lock();auto hr=original_reset_list(list,allocator,state);reset_after_original(list,hr);return hr;
@@ -148,8 +156,9 @@ void poll(){
     D3D12_RANGE none_written{0,0};readback->Unmap(0,&none_written);
     HANDLE meta=CreateFileW(metadata_path,GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr);
     if(meta==INVALID_HANDLE_VALUE)ok=false;else{
-        char text[2048]{};const int n=sprintf_s(text,"ticket=%llu world=%llu original_copy_seq=%llu caller=1c6093 qpc=%lld source_canonical=%llx destination_canonical=%llx list_identity=%llx list_generation=%llu queue=%llx executions=1 retired=1 gpu_complete=1 raw_bytes=%llu footprint_offset=%llu row_pitch=%u rows=%u row_bytes=%llu width=%u height=%u depth=%u format=%u source_subresource=0 destination_subresource=0 xyz=0,0,0 box_null=1 conversion=none\n",
-            ticket,world,copy_seq,prepared_qpc,static_cast<unsigned long long>(trigger.main.canonical),static_cast<unsigned long long>(trigger.destination.canonical),static_cast<unsigned long long>(life.list.identity),life.list.generation,static_cast<unsigned long long>(life.queue),bytes,footprint.Offset,footprint.Footprint.RowPitch,rows,row_bytes,footprint.Footprint.Width,footprint.Footprint.Height,footprint.Footprint.Depth,unsigned(footprint.Footprint.Format));
+        char text[2048]{};const int n=sprintf_s(text,"ticket=%llu world=%llu original_copy_seq=%llu caller=1c6093 qpc=%lld source_canonical=%llx destination_canonical=%llx list_identity=%llx list_generation=%llu queue=%llx executions=1 retired=1 gpu_complete=1 raw_bytes=%llu footprint_offset=%llu row_pitch=%u rows=%u row_bytes=%llu width=%u height=%u depth=%u format=%u source_subresource=0 destination_subresource=0 xyz=0,0,0 box_null=1 conversion=none retirement_source=observed_successful_original_Reset_on_held_canonical held_identity=%llx reset_raw=%llx reset_identity=%llx reset_hr=%08lx reset_tracker_generation=%llu reset_tracker_identity=%llx reset_qpc=%lld\n",
+            ticket,world,copy_seq,prepared_qpc,static_cast<unsigned long long>(trigger.main.canonical),static_cast<unsigned long long>(trigger.destination.canonical),static_cast<unsigned long long>(life.list.identity),life.list.generation,static_cast<unsigned long long>(life.queue),bytes,footprint.Offset,footprint.Footprint.RowPitch,rows,row_bytes,footprint.Footprint.Width,footprint.Footprint.Height,footprint.Footprint.Depth,unsigned(footprint.Footprint.Format),
+            static_cast<unsigned long long>(life.held_identity),static_cast<unsigned long long>(life.reset_receipt.raw),static_cast<unsigned long long>(life.reset_receipt.identity),static_cast<unsigned long>(reset_hr),life.reset_receipt.tracker_generation,static_cast<unsigned long long>(life.reset_receipt.tracker_identity),reset_qpc);
         DWORD written{};if(n<=0||!WriteFile(meta,text,n,&written,nullptr)||written!=unsigned(n)||!FlushFileBuffers(meta))ok=false;
         if(!CloseHandle(meta))ok=false;}
     if(ok){life.saved=true;release_safe();}else life.fail(file_failed);
@@ -159,7 +168,14 @@ void progress(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_
     fprintf(file,"death_hdr_pixels_saved=%u death_hdr_pixels_appended=%u death_hdr_pixels_failure=%u ",unsigned(life.saved),unsigned(life.appended),life.failure);}
 void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     fprintf(file,"death_hdr_pixels enabled=1 attested=%u attempted=%u eyes=%u matching_copies=%u ticket=%llu world=%llu copy_seq=%llu appended=%u executed=%u signalled=%u retired=%u gpu_complete=%u saved=%u failure=%u hr=%08lx held_until_process=%u original_forwarded_once=1 appended_source_copy_count=%u separate_list=0 separate_queue=0 engine_barriers_added=0 source_state_source=adjacent_original_copy_contract all_execute_reset_branches=1 unknown_execution_quarantines=1 raw_path=%ls metadata_path=%ls\n",
-        unsigned(attested),unsigned(attempted),trigger.eyes,trigger.copies,ticket,world,copy_seq,unsigned(life.appended),unsigned(life.executed),unsigned(life.signalled),unsigned(life.retired),unsigned(life.gpu_complete),unsigned(life.saved),life.failure,static_cast<unsigned long>(result),unsigned(life.appended&&!released),unsigned(life.appended),raw_path,metadata_path);}
+        unsigned(attested),unsigned(attempted),trigger.eyes,trigger.copies,ticket,world,copy_seq,unsigned(life.appended),unsigned(life.executed),unsigned(life.signalled),unsigned(life.retired),unsigned(life.gpu_complete),unsigned(life.saved),life.failure,static_cast<unsigned long>(result),unsigned(life.appended&&!released),unsigned(life.appended),raw_path,metadata_path);
+    const auto& r=life.reset_receipt;
+    const char* reason=!r.observed?"not_observed":!r.success?"original_Reset_failed":!r.identity?"canonical_unidentified":
+        r.identity!=life.held_identity?"held_identity_mismatch":life.failure==reset_before_execute?"reset_before_execute":"successful_physical_Reset";
+    fprintf(file,"death_hdr_pixels_reset observed=%u retired=%u reason=%s held_canonical=%llx captured_tracker_identity=%llx captured_tracker_generation=%llu reset_raw=%llx observed_reset_canonical=%llx original_reset_hr=%08lx observed_tracker_identity=%llx observed_tracker_generation=%llu qpc=%lld retirement_source=observed_successful_original_Reset_on_held_canonical\n",
+        unsigned(r.observed),unsigned(life.retired),reason,static_cast<unsigned long long>(life.held_identity),static_cast<unsigned long long>(life.list.identity),life.list.generation,
+        static_cast<unsigned long long>(r.raw),static_cast<unsigned long long>(r.identity),static_cast<unsigned long>(reset_hr),static_cast<unsigned long long>(r.tracker_identity),r.tracker_generation,reset_qpc);
+}
 #else
 bool enable(FILE*){return true;}
 void sample(gears_death_hdr::Event const&,uintptr_t){}
