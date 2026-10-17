@@ -11,6 +11,12 @@ import queue
 import threading
 import time
 
+MAX_SAMPLE_SECONDS = 2.0
+
+
+class StaleLayoutRead(ValueError):
+    """A completed read cannot obtain a new lease after its capture budget."""
+
 
 class _ReadWorker:
     """One bounded daemon reader; it has no publication/control capability.
@@ -105,6 +111,7 @@ class PathChoiceCenterMonitor:
         self.executor = _ReadWorker(self.probe)
         self.future = None
         self.request_generation = None
+        self.request_started = None
         self.due, self.nonce = 0., 0
         self.last_bytes = None
         self.disabled = False
@@ -146,6 +153,7 @@ class PathChoiceCenterMonitor:
                 stream.write(raw)
             for attempt in range(3):
                 self.check()
+                self.require_fresh_read()
                 try:
                     os.replace(temporary,self.path)
                     break
@@ -156,6 +164,11 @@ class PathChoiceCenterMonitor:
         finally:
             try:temporary.unlink(missing_ok=True)
             except OSError:pass
+
+    def require_fresh_read(self):
+        elapsed = self.clock() - self.request_started if self.request_started is not None else -1.
+        if not 0. <= elapsed <= MAX_SAMPLE_SECONDS:
+            raise StaleLayoutRead('PathChoice layout read exceeded its acquisition budget')
 
     def poll(self, status):
         if self.disabled or self.cancel.is_set():
@@ -209,11 +222,14 @@ class PathChoiceCenterMonitor:
                     self.revoke()
                     self.due = self.clock()+1.
                     return events+([dict(event='path_center_revoked',reason='scene_closed')] if was_active else [])
+                self.require_fresh_read()
                 x,y = self.layout(sample)
                 self.nonce = max(self.nonce+1,int(self.nonce_clock()))
                 text = self.builder(sample['scene_owner'],pid=self.game['pid'],
                     creation_time=self.game['creation_time'],started_qpc=self.started_qpc,
                     world_generation=generation,nonce=self.nonce,shift_x=x,shift_y=y,duration_ms=8000)
+                # Validation/serialization time is part of the same budget.
+                self.require_fresh_read()
                 self.publish(text.encode('ascii'))
                 self.loaded = False
                 self.due = self.clock()+3.
@@ -225,6 +241,7 @@ class PathChoiceCenterMonitor:
                 events.append(dict(event='path_center_acquisition_rejected',reason=type(error).__name__))
         if self.future is None and self.clock() >= self.due:
             self.request_generation = generation
+            self.request_started = self.clock()
             self.future = self.executor.submit(self.probe.capture)
         return events
 

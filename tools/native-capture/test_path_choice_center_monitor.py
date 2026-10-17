@@ -98,6 +98,22 @@ class MonitorTests(unittest.TestCase):
         self.m.poll(status());self.m.future.result(timeout=2);self.m.close()
         self.assertFalse(self.path.exists());self.builder.assert_not_called()
 
+    def test_old_read_cannot_create_new_lease_and_previous_lease_is_revoked(self):
+        self.acquire();self.now=3.
+        self.m.poll(status());self.m.future.result(timeout=2)
+        self.now=5.01
+        events=self.m.poll(status())
+        self.assertEqual(events[-1]['reason'],'StaleLayoutRead')
+        self.assertFalse(self.path.exists());self.assertEqual(self.builder.call_count,1)
+        self.now=6.02;self.acquire()
+        self.assertTrue(self.path.exists());self.assertEqual(self.builder.call_count,2)
+
+    def test_validation_time_is_included_in_read_age(self):
+        self.builder.side_effect=lambda *args,**kwargs: setattr(self,'now',2.01) or 'late'
+        events=self.acquire()
+        self.assertEqual(events[-1]['reason'],'StaleLayoutRead')
+        self.assertFalse(self.path.exists())
+
     def test_blocked_read_does_not_block_native_owner_shutdown_or_interpreter_exit(self):
         entered,release=threading.Event(),threading.Event()
         def blocked():entered.set();release.wait(2);return {'scene_owner':{'late':'result'}}
