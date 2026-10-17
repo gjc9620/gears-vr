@@ -37,3 +37,12 @@
 实际102连续完成三次检查点恢复，world1→2→3→4，派发至观测分别6275.7747、4757.2937、7936.8749ms（含加载）。4584份消费全部完成，两眼各724次修改及setter／prequad证明；NoSite／零值门放行3857／724，拒绝、overflow、late均0。7份3840×2160 GPU图中，三份死亡图左右均保留场景，右眼近黑占比依次4.4580%、3.1182%、4.2842%，不再重现原基线约97.5%的近黑右眼。恢复图两眼均非黑。
 
 会话为 `continuous-stereo-1732-20261017-135105-c8031a4e`。逐图哈希、近黑比例和恢复事件见ignored `analysis/runtime/vrdof102-summary.json`；审计、正常关闭及四份存档恢复回执分别为同目录`vrdof102-audit.json`、`vrdof102-normal-close.json`、`vrdof102-save-restored.json`。协调线程复核三份死亡图；本轮支持跨多次world恢复的该路径兼容，不能扩大为任意章节或长时间零黑屏保证。
+
+
+## 实际103：开场电影交回
+
+同一候选60，会话 `continuous-stereo-33728-20261017-135417-d372a22c`。以已认证菜单状态选择Prison首章，电影进度实际从frame60继续推进（总1674帧），随后inactive。电影路径最终submitted=4645、xrEndFrame失败0；5次渲染拒绝均为capture_not_fresh，没有把这些调用记为成功。此处预渲染电影仍为两眼共享的二维内容，不宣称几何立体。
+
+电影结束后新原生双目提交成功，后续3840×2160 GPU快照两眼均有Prison走廊和角色。原生兼容存储447份消费完成，NoSite门放行445，拒绝／overflow／late均0。这条路径没有触发景深site，因而属于电影交接回归，不能替代前述死亡分支证明。
+
+首张原生自动快照两眼均为全黑，后续请求快照恢复；保留这个交接缺口，不能由最终成功称全程无黑。`prison103-audit.json`、`prison103-normal-close.json`、`prison103-save-restored.json`保留电影、图像哈希、清理和四存档恢复证据，均位于ignored `analysis/runtime/`。未做真头显观察。
