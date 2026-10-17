@@ -3070,6 +3070,8 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
     unsigned target_width,unsigned target_height,unsigned texture_width,unsigned texture_height){
     Scope scope;uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;vr_dof_compat::quad(caller,scope.world());
     if(!scope.world())return original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);
+    final_transfer_live::bracket::Scope transfer_bracket(caller,{x,y,width,height,u,v,uw,vh},
+        {target_width,target_height,texture_width,texture_height});
     death_constant_observer::quad(caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
     death_dof_control::quad(caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
     if((caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8)observe_final_inputs();
@@ -3140,6 +3142,7 @@ void observe_output_stack(ID3D12GraphicsCommandList* list,unsigned kind) {
 #include "game_ui_material_draw.inl"
 #endif
 void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,UINT instances,UINT start,UINT first_instance) {
+    final_transfer_live::bracket::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,0,vertices,instances,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_draw(list,vertices,instances,start,first_instance);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw(list,vertices,instances,start,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     if(outage_diagnostics.load())outage_source_overlay={};
@@ -3170,6 +3173,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw(list,vertices,instances,start,first_instance);}
 }
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
+    final_transfer_live::bracket::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,1,indices,instances,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_draw_indexed(list,indices,instances,start,vertex,first_instance);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw_indexed(list,indices,instances,start,vertex,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     if(outage_diagnostics.load())outage_source_overlay={};
