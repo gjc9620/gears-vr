@@ -3,9 +3,9 @@ import struct
 import unittest
 from unittest import mock
 
-from anchor_config import LiveRegistryAnchorSampler, AnchorRejected
 from test_cinematic_anchor import CinematicFixture
-from mounted_context import MountedContextCertificate
+from anchor_config import LiveRegistryAnchorSampler, AnchorRejected
+from mounted_context import MountedContextCertificate, MountedTimestampChanged
 
 
 class MountedFixture(CinematicFixture):
@@ -61,6 +61,105 @@ class MountedFixture(CinematicFixture):
 
 
 class MountedContextTests(unittest.TestCase):
+    def test_capture_local_reuse_still_revalidates_every_identity(self):
+        f = MountedFixture()
+        with mock.patch.object(f.sampler, 'fresh', wraps=f.sampler.fresh) as fresh:
+            cert = MountedContextCertificate(f.sampler)
+        addresses = [call.args[0] for call in fresh.call_args_list]
+        self.assertEqual(set(addresses), set(cert._initial['identities']))
+        self.assertTrue(all(addresses.count(address) == 2 for address in set(addresses)))
+        with mock.patch.object(f.sampler, 'fresh', wraps=f.sampler.fresh) as fresh:
+            self.assertEqual(cert.capture(), cert._initial)
+        self.assertEqual(fresh.call_count, len(addresses))
+
+    def test_timestamp_only_transient_retries_once_or_exhausts_existing_cap(self):
+        from anchor_config import AnchorSamplingRejected
+        original_capture = MountedContextCertificate._capture
+        for continuous in (False, True):
+            with self.subTest(continuous=continuous):
+                f = MountedFixture(); captures = 0
+                def capture(cert):
+                    nonlocal captures
+                    captures += 1
+                    if captures > 1 and not continuous:
+                        return original_capture(cert)
+                    read = f.read; stamps = 0
+                    def changing(address, size):
+                        nonlocal stamps
+                        if (address, size) == (cert.sampler.stamp, 4):
+                            stamps += 1
+                            if stamps == 2:
+                                old = struct.unpack('<f', read(address, size))[0]
+                                f.put(address, struct.pack('<f', old + 1))
+                        return read(address, size)
+                    with mock.patch.object(f, 'read', side_effect=changing):
+                        return original_capture(cert)
+                with mock.patch.object(MountedContextCertificate, '_capture', capture):
+                    if continuous:
+                        with self.assertRaises(AnchorSamplingRejected) as failure:
+                            LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
+                        evidence = failure.exception.evidence['guard_acquisitions'][0]
+                        self.assertEqual(captures, 5)
+                        self.assertEqual(len(evidence['attempts']), 5)
+                        self.assertTrue(all(x['retryable'] for x in evidence['attempts']))
+                    else:
+                        sampler = LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
+                        evidence = sampler.guard_acquisitions[0]
+                        self.assertTrue(evidence['accepted'])
+                        self.assertEqual(len(evidence['attempts']), 2)
+                    self.assertEqual(evidence['attempts'][0]['exception_type'], 'MountedTimestampChanged')
+
+    def test_timestamp_transient_uses_existing_guard_deadline(self):
+        from anchor_config import AnchorSamplingRejected
+        sampler = LiveRegistryAnchorSampler(MountedFixture())
+        ticks = iter(range(0, 1000000000, 50000000))
+        sampler.guard_clock_ns = lambda: next(ticks)
+        with mock.patch.object(sampler, '_strict_guard', side_effect=MountedTimestampChanged('rollover')) as strict:
+            with self.assertRaises(AnchorSamplingRejected) as failure:
+                sampler.guard()
+        self.assertEqual(strict.call_count, 2)
+        evidence = failure.exception.evidence['guard_acquisitions'][-1]
+        self.assertEqual(evidence['deadline_perf_counter_ns'] - evidence['started_perf_counter_ns'], 200000000)
+        self.assertEqual(len(evidence['attempts']), 2)
+        self.assertTrue(all(x['retryable'] for x in evidence['attempts']))
+
+    def test_timestamp_change_does_not_hide_other_boundary_mutation(self):
+        for target in (0x80800, 0x92094, 0x71060, 0x30604, 0x80000):
+            with self.subTest(target=hex(target)):
+                f = MountedFixture(); original = f.read; counts = {}
+                def changing(address, size):
+                    counts[address] = counts.get(address, 0) + 1
+                    data = original(address, size)
+                    if address in (target, 0x30600) and counts[address] >= 2:
+                        index = 76 if address == 0x80000 else 0
+                        return data[:index] + bytes([data[index] ^ 1]) + data[index + 1:]
+                    return data
+                with mock.patch.object(f, 'read', side_effect=changing):
+                    with self.assertRaises((AnchorRejected, RuntimeError)) as failure:
+                        MountedContextCertificate(f.sampler)
+                self.assertNotIsInstance(failure.exception, MountedTimestampChanged)
+
+    def test_valid_header_change_keeps_registry_classification(self):
+        from sample_player_anchor import RegistryHeaderChanged
+        for registry in ('objects', 'names'):
+            f = MountedFixture(); header = getattr(f, registry + '_header')
+            original = f.read; hits = 0
+            expected = struct.unpack('<Qii', original(header, 16))
+            observed = (expected[0], expected[1] + 1, expected[2] + 1)
+            def changing(address, size):
+                nonlocal hits
+                value = original(address, size)
+                if (address, size) == (header, 16):
+                    hits += 1
+                    if hits >= 2:
+                        return struct.pack('<Qii', *observed)
+                return value
+            with mock.patch.object(f, 'read', side_effect=changing):
+                with self.assertRaises(RegistryHeaderChanged) as failure:
+                    MountedContextCertificate(f.sampler)
+            self.assertEqual(failure.exception.registry_change, dict(registry=registry,
+                expected_header=list(expected), observed_header=list(observed)))
+
     def test_distinct_registered_levels_same_world(self):
         f=MountedFixture().stream_levels()
         proof=MountedContextCertificate(f.sampler).capture()

@@ -11,7 +11,11 @@ Stable repeated reads establish consistency, not an atomic engine snapshot.
 import copy
 import math
 import struct
-from sample_player_anchor import AnchorRejected
+from sample_player_anchor import AnchorRejected, _check_registry_header
+
+
+class MountedTimestampChanged(AnchorRejected):
+    """Only camera time changed after all other capture boundaries validated."""
 
 
 class MountedContextCertificate:
@@ -36,6 +40,7 @@ class MountedContextCertificate:
     def _capture(self):
         s, r = self.sampler, self.sampler.r
         identities, supers, properties, links, reads = {}, {}, {}, {}, {}
+        chains = {}
 
         def raw(address, size):
             if not address or address < 0 or address > (1 << 64) - size:
@@ -53,15 +58,20 @@ class MountedContextCertificate:
             return struct.unpack('<Q', raw(address, 8))[0]
 
         def identity(address):
+            # Reuse only within this capture. Every visited identity is freshly
+            # revalidated below, including class and property identities.
+            if address in identities:
+                return identities[address]
             value = s.fresh(address)
             if not value['name'] or value['name'].startswith('Default__'):
                 raise AnchorRejected('Default/empty mounted identity')
-            if address in identities and identities[address] != value:
-                raise AnchorRejected('Mounted identity changed during discovery')
             identities[address] = copy.deepcopy(value)
             return value
 
         def chain(cls):
+            if cls in chains:
+                return chains[cls]
+            start = cls
             result = []
             while cls:
                 if cls in result or len(result) >= 64:
@@ -73,6 +83,7 @@ class MountedContextCertificate:
                 result.append(cls)
                 supers[cls] = pointer(cls + r.profile['field_super'])
                 cls = supers[cls]
+            chains[start] = result
             return result
 
         def derives(obj, name):
@@ -161,14 +172,30 @@ class MountedContextCertificate:
         for address, expected in identities.items():
             if s.fresh(address) != expected:
                 raise AnchorRejected('Mounted identity changed at bracket boundary')
+        def changed_timestamp(observed):
+            if len(observed) != 4 or not math.isfinite(struct.unpack('<f', observed)[0]):
+                raise AnchorRejected('Invalid mounted camera timestamp at bracket boundary')
+            return observed != stamp
+
+        timestamp_changed = False
         for (address, size), expected in reads.items():
-            if r.read(address, size) != expected:
+            observed = r.read(address, size)
+            if address in (r.objects_header, r.names_header) and size == 16:
+                registry = 'objects' if address == r.objects_header else 'names'
+                _check_registry_header(registry, observed, struct.unpack('<Qii', expected))
+            elif (address, size) == (s.stamp, 4):
+                timestamp_changed |= changed_timestamp(observed)
+            elif observed != expected:
                 raise AnchorRejected('Mounted memory changed at bracket boundary')
-        # Camera time and registry bounds close the bracket after the final
-        # identity/link reads as well. No retry or stale snapshot substitution.
-        for address, size in ((s.stamp, 4), (r.objects_header, 16), (r.names_header, 16)):
-            if r.read(address, size) != reads[address, size]:
-                raise AnchorRejected('Mounted camera/registry bracket changed')
+        # Close after all identity/layout/link/POV checks. A timestamp mismatch
+        # is retryable only when the other boundaries, including both exact
+        # registry headers, passed. No successful proof survives a retry.
+        timestamp_changed |= changed_timestamp(r.read(s.stamp, 4))
+        for header, registry in ((r.objects_header, 'objects'), (r.names_header, 'names')):
+            _check_registry_header(registry, r.read(header, 16),
+                                   struct.unpack('<Qii', reads[header, 16]))
+        if timestamp_changed:
+            raise MountedTimestampChanged('Mounted camera timestamp changed at bracket boundary')
         roles = dict(controller=pc, camera=camera, local_player=local,
                      controlled=controlled, driver=driver, inventory_pawn=driver,
                      inventory=inventory, camera_target=controlled, level=level, world_info=world)

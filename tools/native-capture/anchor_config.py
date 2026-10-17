@@ -6,6 +6,7 @@ proof that Pawn.Location + EyeHeight is the rendered eye.
 import struct
 import time
 from sample_player_anchor import AnchorSampler, AnchorRejected, RegistryHeaderChanged
+from mounted_context import MountedTimestampChanged
 
 LAYOUT = ('object_internal_index','object_name','object_class','object_outer',
           'field_super','name_entry_index','name_entry_text')
@@ -93,7 +94,8 @@ class LiveRegistryAnchorSampler(AnchorSampler):
             try:value=self._strict_guard()
             except Exception as failure:error=failure
             finished=clock()
-            temporary=error is not None and str(error)=='Cross-frame camera timestamp during identity checks' and isinstance(error,AnchorRejected)
+            temporary=isinstance(error,MountedTimestampChanged) or (isinstance(error,AnchorRejected) and
+                str(error)=='Cross-frame camera timestamp during identity checks')
             reason=str(error) if error is not None else None
             evidence['attempts'].append({'attempt':index+1,'started_perf_counter_ns':begin,
                 'finished_perf_counter_ns':finished,'elapsed_ms':(finished-begin)/1e6,
