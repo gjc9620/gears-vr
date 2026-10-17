@@ -33,7 +33,9 @@ def main():
     # UI observer adds four VM/Canvas entries, Canvas/subtitle consumers, and
     # optionally the Material consumer, three graphics settings callbacks, and
     # the UIOptionList selection transaction and optional ResourceBarrier entry.
-    # ResourceBarrier uses the existing system-module PE/relocation verification.
+    # ResourceBarrier and the optional three death PSO observers (ClearState,
+    # SetPipelineState, ExecuteBundle) use the existing system-module PE/relocation
+    # verification below; there is no additional allowlist or byte exemption.
     # Owned Material adds its producer and the certified nonindexed upload entry.
     if not 2 <= len(targets) <= 64 or len(set(targets))!=len(targets):
         raise RuntimeError('Unexpected hook target inventory')

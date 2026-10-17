@@ -7,6 +7,7 @@
 // Hand counting previously confused OMSetStencilRef (24) with ResourceBarrier.
 #define SLOT(type,member,index) static_assert(offsetof(type,member)==(index)*sizeof(void*),#type "::" #member " slot mismatch")
 SLOT(ID3D12GraphicsCommandListVtbl,Reset,10);
+SLOT(ID3D12GraphicsCommandListVtbl,ClearState,11);
 SLOT(ID3D12GraphicsCommandListVtbl,DrawInstanced,12);
 SLOT(ID3D12GraphicsCommandListVtbl,DrawIndexedInstanced,13);
 SLOT(ID3D12GraphicsCommandListVtbl,CopyTextureRegion,16);
@@ -26,6 +27,7 @@ SLOT(ID3D12GraphicsCommandList1Vtbl,ResolveSubresourceRegion,64);
 SLOT(ID3D12GraphicsCommandList4Vtbl,BeginRenderPass,68);
 SLOT(ID3D12GraphicsCommandList7Vtbl,Barrier,80);
 SLOT(ID3D12CommandQueueVtbl,ExecuteCommandLists,10);
+SLOT(ID3D12PipelineStateVtbl,GetCachedBlob,8);
 SLOT(ID3D12DeviceVtbl,CreateCommandList,12);
 SLOT(ID3D12Device4Vtbl,CreateCommandList1,51);
 SLOT(ID3D12DeviceVtbl,CreateRenderTargetView,20);
@@ -38,4 +40,4 @@ SLOT(ID3D12Device8Vtbl,CreateCommittedResource2,69);
 SLOT(ID3D12Device8Vtbl,CreatePlacedResource1,70);
 SLOT(ID3D12Device10Vtbl,CreateCommittedResource3,76);
 SLOT(ID3D12Device10Vtbl,CreatePlacedResource2,77);
-int main(){std::puts("D3D12 ABI: 32 SDK vtable offsets verified, ResourceBarrier=26 (StencilRef=24)");}
+int main(){std::puts("D3D12 ABI: 34 SDK vtable offsets verified, ClearState=11, SetPipelineState=25, ExecuteBundle=27, GetCachedBlob=8");}

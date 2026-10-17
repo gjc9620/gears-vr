@@ -153,6 +153,7 @@ void observe_unpossessed_quad_execute(uintptr_t queue,gears_frame_link::ListRef 
 namespace death_source_live {void progress(FILE*);void print(FILE*);unsigned status_interval_ms();}
 namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_frame_link::ListRef,uint64_t,unsigned);}
 namespace death_constant_observer {void print(FILE*);}
+namespace death_pso_cache {void print(FILE*);void poll();}
 namespace gears_death_hdr {struct Event;}
 namespace death_hdr_pixels {
 void sample(gears_death_hdr::Event const&,uintptr_t);void poll();void print(FILE*);void progress(FILE*);
@@ -393,7 +394,12 @@ constexpr unsigned death_constant_hooks=1;
 #else
 constexpr unsigned death_constant_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+death_constant_hooks> session_hook_entries{};
+#if defined(GEARS_DEATH_PSO_CACHE) && GEARS_DEATH_PSO_CACHE
+constexpr unsigned death_pso_hooks=3;
+#else
+constexpr unsigned death_pso_hooks=0;
+#endif
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+death_constant_hooks+death_pso_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -1316,6 +1322,7 @@ void retire_original_present_interval() {
 }
 void stereo_publish_worker_tick() {
     death_hdr_pixels::poll();
+    death_pso_cache::poll();
     if(!stereo_gpu_publish)return;
     if(continuous_session&&submitted_lifetime.stopping()&&!stereo_publish_counts.stopped.load()){
         stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;
@@ -1598,6 +1605,7 @@ void print_frame_link(FILE* status) {
     death_hdr_timeline::print(status);
     death_hdr_pixels::print(status);
     death_constant_observer::print(status);
+    death_pso_cache::print(status);
     print_backbuffer_copies(status);
     final_transfer_live::print(status);
     fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
@@ -2088,6 +2096,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "first_view_mask_control.h"
 #include "death_source_control.inl"
 #include "death_hdr_pixels.inl"
+#include "death_pso_cache.inl"
 #include "death_constant_observer.inl"
 
 void inspect_completed_renderer(Record& record,void* destination){
@@ -2925,9 +2934,10 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
 #endif
 #include "owned_scene_gpu_hooks.inl"
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
-    if(stereo_publish_bypass)return death_hdr_pixels::reset_passthrough(list,allocator,state);
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return death_hdr_pixels::reset_passthrough(list,allocator,state);}auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
+    if(stereo_publish_bypass)return death_pso_cache::reset_passthrough(list,allocator,state);
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return death_pso_cache::reset_passthrough(list,allocator,state);}auto frame_guard=frame_lock();HRESULT result=original_reset_list(list,allocator,state);
     death_hdr_pixels::reset_after_original(list,result);
+    death_pso_cache::reset(list,result);
     gears_render_cost::Scope cost(gears_render_cost::reset_tracking);
     owned_scene_gpu::reset(list,result);
     if(owned_bindings_enabled&&(recording.load()||prime_recording.load())){
@@ -3088,6 +3098,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     if(outage_diagnostics.load())outage_source_overlay={};
     observe_late_draw(list,caller,0,vertices,instances);
     observe_unpossessed_quad_draw(list,caller,0,vertices,instances);
+    death_pso_cache::draw(list);
     death_hdr_timeline::draw(list,caller>=base?caller-base:caller);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
@@ -3117,6 +3128,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     if(outage_diagnostics.load())outage_source_overlay={};
     observe_late_draw(list,caller,1,indices,instances);
     observe_unpossessed_quad_draw(list,caller,1,indices,instances);
+    death_pso_cache::draw(list);
     death_hdr_timeline::draw(list,caller>=base?caller-base:caller);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
@@ -3357,6 +3369,12 @@ bool viewport_hooks(ID3D12Device* device) {
         success=install(viewport_targets[7],reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void**>(&original_copy_descriptors))&&success;
         success=install(viewport_targets[8],reinterpret_cast<void*>(hook_copy_simple),reinterpret_cast<void**>(&original_copy_simple))&&success;
         if(color_copy_diagnostics)success=install(viewport_targets[9],reinterpret_cast<void*>(hook_color_copy),reinterpret_cast<void**>(&original_color_copy))&&success;
+#if defined(GEARS_DEATH_PSO_CACHE) && GEARS_DEATH_PSO_CACHE
+        death_pso_cache::targets={table[25],table[11],table[27]};
+        success=install(death_pso_cache::targets[0],reinterpret_cast<void*>(death_pso_cache::set),reinterpret_cast<void**>(&death_pso_cache::original_set))&&success;
+        success=install(death_pso_cache::targets[1],reinterpret_cast<void*>(death_pso_cache::clear),reinterpret_cast<void**>(&death_pso_cache::original_clear))&&success;
+        success=install(death_pso_cache::targets[2],reinterpret_cast<void*>(death_pso_cache::bundle),reinterpret_cast<void**>(&death_pso_cache::original_bundle))&&success;
+#endif
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
         success=install(viewport_targets[10],reinterpret_cast<void*>(hook_resource_barrier),reinterpret_cast<void**>(&original_resource_barrier))&&success;
 #endif
@@ -3897,6 +3915,7 @@ DWORD WINAPI worker(void*) {
         if(session_cleanup_expired())session_cleanup_timeout=true;
         write_session_status();Sleep(100);stereo_closed=close_stereo_publisher();
     }
+    death_pso_cache::poll();death_pso_cache::stop();
     print_frame_link(status);
     print_outage(status,disabled==MH_OK);
     print_anchor(status,disabled==MH_OK);
