@@ -152,6 +152,7 @@ void print_unpossessed_quads(FILE* status);
 void observe_unpossessed_quad_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 namespace death_source_live {void progress(FILE*);void print(FILE*);unsigned status_interval_ms();}
 namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_frame_link::ListRef,uint64_t,unsigned);}
+namespace death_constant_observer {void print(FILE*);}
 namespace gears_death_hdr {struct Event;}
 namespace death_hdr_pixels {
 void sample(gears_death_hdr::Event const&,uintptr_t);void poll();void print(FILE*);void progress(FILE*);
@@ -387,7 +388,12 @@ constexpr unsigned ui_call_boundary_hooks=1;
 #else
 constexpr unsigned ui_call_boundary_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks> session_hook_entries{};
+#if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
+constexpr unsigned death_constant_hooks=1;
+#else
+constexpr unsigned death_constant_hooks=0;
+#endif
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+death_constant_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -1591,6 +1597,7 @@ void print_frame_link(FILE* status) {
     death_source_live::print(status);
     death_hdr_timeline::print(status);
     death_hdr_pixels::print(status);
+    death_constant_observer::print(status);
     print_backbuffer_copies(status);
     final_transfer_live::print(status);
     fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
@@ -2081,6 +2088,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "first_view_mask_control.h"
 #include "death_source_control.inl"
 #include "death_hdr_pixels.inl"
+#include "death_constant_observer.inl"
 
 void inspect_completed_renderer(Record& record,void* destination){
     if(!destination)return;
@@ -3006,6 +3014,7 @@ void observe_output_post(unsigned attempt){
 void __fastcall hook_quad(float x,float y,float width,float height,float u,float v,float uw,float vh,
     unsigned target_width,unsigned target_height,unsigned texture_width,unsigned texture_height){
     Scope scope;if(!scope.world())return original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);uintptr_t caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
+    death_constant_observer::quad(caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height});
     if((caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8)observe_final_inputs();
     gears_quad_source::Args original_args{{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height}};
     gears_quad_source::Decision control;
@@ -3754,7 +3763,11 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"family_diagnostics=%d candidate_rva=0x3a148c\n",family_diagnostics);
     MH_STATUS init=MH_Initialize();
     fprintf(status,"minhook_initialize=%s\n",MH_StatusToString(init));
-    bool ok=(init==MH_OK || (reservation_ready && init==MH_ERROR_ALREADY_INITIALIZED)) && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
+    bool ok=(init==MH_OK || (reservation_ready && init==MH_ERROR_ALREADY_INITIALIZED))&&death_constant_observer::attest(status);
+#if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
+    if(ok)ok=install(death_constant_observer::target,reinterpret_cast<void*>(death_constant_observer::hook),reinterpret_cast<void**>(&death_constant_observer::original));
+#endif
+    ok=ok && install(scene_target,reinterpret_cast<void*>(hook_scene),reinterpret_cast<void**>(&original_scene))
         && install(event_target,reinterpret_cast<void*>(hook_event),reinterpret_cast<void**>(&original_event));
     if(ok && family_diagnostics)ok=install(family_target,reinterpret_cast<void*>(hook_family),reinterpret_cast<void**>(&original_family));
     if(ok && family_diagnostics)ok=install(clone_target,reinterpret_cast<void*>(hook_clone),reinterpret_cast<void**>(&original_clone));
