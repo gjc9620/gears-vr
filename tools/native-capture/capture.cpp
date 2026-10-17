@@ -402,6 +402,11 @@ constexpr unsigned ui_call_boundary_hooks=1;
 #else
 constexpr unsigned ui_call_boundary_hooks=0;
 #endif
+#if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
+constexpr unsigned ui_scene_root_hooks=1;
+#else
+constexpr unsigned ui_scene_root_hooks=0;
+#endif
 #if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
 constexpr unsigned death_constant_hooks=1;
 #else
@@ -422,7 +427,7 @@ constexpr unsigned vr_dof_hooks=1;
 #else
 constexpr unsigned vr_dof_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+death_constant_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+death_constant_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
