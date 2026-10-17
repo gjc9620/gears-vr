@@ -82,3 +82,17 @@ Native91从该提交冻结，DLL SHA256 `24475036a5bc339fba19283ed508d7c8335f8f4
 停止时主VR原因是驱动cancel的event，非UI proof_failure；identity/ownership/auth/control失败均0。但私有位置统计为applied1/restored0/pending1/unresolved1，表明普通关闭后现有匹配绘制回调未完成恢复。native/entry释放、正常游戏退出及设置/四profile恢复均通过，**不代表隐藏widget位置已恢复**。精简证据为ignored `path-layout91d-close-proof-20261018.json`，原状态在`path-layout91d-20261018-artifacts/`，无自有前台采样。
 
 下一步优先确认原生CloseScene的自然入口是否早于ActiveScenes移除：若实际同owner线程、目标scene仍活跃且现有完整认证通过，可先恢复再执行原关闭一次，避免给inactive对象猜测liveness或放宽通用检查。当前只有脚本native声明与历史字符串，尚无此版本的exec/实现ABI或当前字节认证，因此尚未增加CloseScene hook。先只读解析精确运行时UFunction入口和直接实现，再观察实际关闭顺序；该缺口仍阻止玩家自动启用。
+
+N轮后续已补齐当前入口认证。旧只读helper复用局部变量`expected`，覆盖了闭包捕获的游戏身份，造成M轮末端误报会话不匹配；原脚本和失败记录保留，b副本以独立`expected_game`修正。N首轮读到注册表跨边界变化而拒绝，第二次全新只读采集通过172个范围最终复读、完整进程/owner/session绑定。当前exec为base+34698c，完整160B SHA256 `1f03d742fcd859a664004bb62ff35c327d80b1364b235701e64184eee53e55c1`，与artifact1完整chunks相同，不能推广为整EXE版本相同。
+
+该完整实际汇编明确在3469f4调用`[client.vtable+228]`，RCX是原client、RDX是解码出的Scene，随后把EAX写入原结果地址。单槽只读采集又证明当前vtable1429d58+228实际目标为base+346574，完整62B SHA256 `b8c82a830ef05c50a88489351c469e591b65a154310a2fefec91e57f66fb7b3a`与历史相同。证据为ignored `n-close-scene-live-map-b-20261018.json`、`n-close-scene-slot228-20261018.json`；没有调用原生方法或写游戏内存。该入口适合先做有界自然关闭观察，不需要猜exec的FFrame原型；其下游虚表330及实际删除顺序仍未动态认证，尚未修复位置恢复。
+### Native94d：实际自然关闭先后顺序已确认
+
+Native94从`0a4634f`冻结，DLL SHA256为`0d0e427dec59ceef905e7510d5911e469a09b36cbdfc260983c13ffe59738b9d`，关闭观察器只读、没有恢复Setter或VR停止控制。八项相关自测及十项私有驱动准备检查通过。首次驱动在游戏出生前因六个启动自测exe未构建而结束，补建同一冻结源的缺失目标；94b在导航后的旧inventory、94c在元数据发现后的registry header边界分别拒绝，均未写位置请求或选择输入，保留原失败记录。不是三次游戏黑屏。
+
+94d在导航后完整重建外层reader，并在元数据helper的全表发现之后、tracked读取之前调用一次保留原client的完整双inventory刷新；原完整header与最终读集复核未删改，也未追加输入或位置请求重试。新只读helper为`close-scene-live-map-c-20261018.py`，SHA256 `7c42dbebd1a92ff7be0416698294bb0553ede8f526bc1925e4826fd88997ac81`。实际metadata完整认证后，只发布同nonce观察与位置配置，并向自有HWND发送一次正常左键down/up。
+
+实际`path-layout94d-20261018`进入精确PathChoice并应用374参考像素位移。自然CloseScene在固定owner线程42788进入：activation_before=1、owned_before=1、before.mask=127、场景occurrences=1；原函数正常返回opaque RAX=1。调用前ActiveScenes有4项，调用后3项且该scene occurrences=0，after完整activation失效，但原panel的位移位仍未恢复。它证明此关闭入口在活动成员移除之前具备现有完整恢复认证，而不是给inactive对象补猜测证书。
+
+最终applied1/restored0/pending1/unresolved1符合只读实验；正常退出、native与entry独立恢复、两份owned配置精确清理、设置及四profile恢复通过，无自有前台采样。完整结果在ignored `analysis/runtime/path-layout94d-20261018.json`。下一修复复用该关闭入口，在原函数前取得或借用同owner admission并执行已有精确位置恢复，再恰好调用一次原关闭；默认只读模式保留。此轮没有宣称位置生命周期已修好或玩家自动居中已完成。
+

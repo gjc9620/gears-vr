@@ -118,8 +118,30 @@ Native92从该提交冻结，完整DLL构建及十项相关检查（含实际DLL
 
 本轮正常关闭游戏、native/entry独立恢复、设置/四profile恢复与自有arm文件删除均通过，XR退出0、无自有前台采样。精简proof和完整状态及已核对源码已归档ignored `dlss92-menu-pair-m-20261018-proof.json`、`dlss92-menu-pair-m-20261018-artifacts/`；构建receipt已如实标记game_tested=true、matched_pair_capture_passed=false。后续先定位选中段的首个失效边界，再决定最小修正或下一采样，不放宽成对关联、GPU完成或图像验收条件。
 
+## 2026-10-18：晚期同帧闭环及输出反馈证据
+
+`dd7cbe1`保留首个选中段失效的原始原因、具体入口、QPC、pair状态、incoming owner和实际Present结果，不改变选择、拒绝或GPU退休规则；所有新增状态键使用`invalid_`前缀。Native93从该提交冻结，DLL SHA256 `fd921e95bad0d6faed6faf4460a6d9cb1c554ec0fc358a6a0793880f931caee7`，完整构建及十项相关检查通过。该版本仍是诊断候选，默认玩家保护未变。
+
+实际O轮正常菜单启用Quality后恢复游戏，一次Resume请求、32个完整稳定pair、零reset，选中world1/ticket4844。两份原始Output均正常复制/执行/Signal，成功物理Reset及fence完成后保存并释放，failure0；最后pair_closed1/gpu_saved1。私有XR match1实际保存uncached snapshot2，actual/selected ticket均4844、world均1，source_serial3849。此轮首次取得晚期两份Output与最终双眼图的精确同帧闭环，不只是发布请求或后续邻帧图。正常关闭、native/entry独立恢复、设置/四profile及自有arm清理均通过，无自有前台采样；原始数据仅保留在ignored `dlss93-menu-pair-o-20261018-artifacts/`。
+
+根协调查看完整三图后，使用显式区域比较进一步核对：Output2与Output1右半横向放大后的亮度相关0.99908、XY梯度相关0.99327；整幅Output1及其左半的梯度相关仅0.04306/0.03952。最终左眼与Output2左半的梯度相关0.95035，最终右眼与Output2右半为0.94066，其余候选最高0.08041/0.05275，最佳平移均零。比较使用同一HDR预览曲线、640×270网格与小范围平移，不把曝光/后处理差异当作像素字节相同；完整方法和哈希在ignored `dlss93-o-region-comparison.py/.json`。
+
+这些像素证据表明本轮最终双眼取的是第二份输出的不同半区，第二份输出又高度对应第一份的右半放大，不能作为两份正确独立眼图验收。结合原生完整Output→Color回写和第二次Eval的Color base1280，强烈支持首眼整图回写破坏后续眼输入的反馈假设；但仍需核对实际Evaluate命令列表/代次及原生调用合同，或做一次严格隔离实验，才能把外观对应提升为确证的GPU依赖。不能据此只改最终UV或解除默认保护；输入/输出尺寸域、每眼历史、正确SR、场景回归和真机验收仍开放。
+
 ## 其他主线进展
 
 `50cbfcd` 为 MenuReader 增加可选的 Position/DockTargets 原始布局采集，70项离线测试通过。普通采样不增加这些读取，未改变UI位置。实际普通双目回归 `ui-layout-details4-20261018` 提交1359次、scene copy723次，约15.08秒，最大提交间隔28.7181ms；正常清理和配置恢复通过。岔路详细采集初次遇到导航碰撞、脚本结果字段及注册表变化；后续 `ui-layout-details7-20261018` 已取得完整13节点及布局详情，见[文档155](155-path-choice-position-and-docking.md)。这仍不是UI修复验收。
 
 机枪方面，实际函数发现已把 `PlayerUpdateCameraNative` 的exec映射到 `3b3af4`，其拆包后直接调用已有 `110878`；炮塔 `GetBaseViewOffsets` 的exec为 `1248238`，实际实现经模式对象虚表调用。发现不等于全部当前函数字节或实际挂载验收。现有准星配对证据是 AssaultRifle，不是手枪，不能用于宣布用户报告的手枪外圈问题已修复。
+### Native95/P：一次首眼回写省略的实际因果对照
+
+从提交`5dd8a82`冻结Native95，DLL SHA256为`385fb4b323cf5e97976bc076edf8055145da047bff2ce859c358ba5144041b57`。11项相关检查通过。该私有默认关闭实验只在完整认证的稳定pair中省略第一次原始`Output→Color`整图复制，仍通过未过滤的原函数追加Output读回；第二次原始复制、Create/Evaluate参数、视图、UV及资源状态转换均保持原样。不是玩家修复开关。
+
+实际P轮完成正常菜单Quality/DLSS选择及Resume，选中world1/ticket5349。首眼omission_count=1、original_forwarded=0、readback_started/returned=1；两份2560×1080、format26原始Output均在fence完成和物理Reset退休后保存。最终XR源图通过actual/selected world与ticket精确匹配，snapshot_index2、cached_image=false；不以请求成功或序号相等代替实际匹配。原始数据、独立清理与哈希证据归档于ignored `analysis/runtime/dlss95-menu-pair-p-20261018-proof.json`及同名前缀artifacts目录；归档仅复制，未删除构建目录原件。
+
+复用O轮同一NumPy/PIL区域比较方法，Output2与本pair的Output1右半放大图的最佳梯度相关从O轮0.993269降至P轮0.039281。协调者查看完整读回与同帧最终图，确认P轮Output2不再只是Output1右半放大。此单次干预支持首眼整图回写对立即输入反馈有因果参与；没有直接取得Evaluate2之前的Color输入像素，也没有证明vendor内部history。
+
+最终左、右面板仍分别与Output2的左右半图高度对应（梯度相关0.944376/0.909643），因此省略首眼复制并没有实现正确双眼合成，不能作为DLSS SR修复发布。下一步须保留各眼独立输出并正确缩放/组合，继续核对Quality的创建/渲染尺寸和时域history。对照仅一pair，不是性能、所有画质或真头显验收。
+
+P轮诊断完成，正常关闭、native及所有entry独立恢复、设置及四profile恢复、arm精确清理均通过，XR退出0，无自有前台采样。默认Native70/Borderless1及Feedback3开发ZIP未变。
+
