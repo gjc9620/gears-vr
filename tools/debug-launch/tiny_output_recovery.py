@@ -90,11 +90,12 @@ class SwapchainTinyOutputPolicy:
 class TinyOutputMonitor:
     """Independent best-effort launcher observer, including the pre-level wait."""
     def __init__(self, status_path, diagnostic_path, expected, control_factory=None,
-                 attempt=None, interval=.2):
+                 attempt=None, interval=.2, *, allow_recovery=True):
         self.status_path, self.diagnostic_path = pathlib.Path(status_path), pathlib.Path(diagnostic_path)
         self.expected, self.policy = dict(expected), SwapchainTinyOutputPolicy(expected)
         self.control_factory, self.attempt = control_factory, attempt
         self.interval = interval
+        self.allow_recovery = allow_recovery
         self.stop_event = threading.Event()
         self.thread = None
 
@@ -121,6 +122,9 @@ class TinyOutputMonitor:
             return dict(event='observation', **observation)
         if self.stop_event.is_set():
             return dict(event='monitor_cancelled', stop=True)
+        if not self.allow_recovery:
+            return dict(event='observation', ready=False, reason='recovery_disabled',
+                        dimensions=observation['dimensions'])
         # A hidden/minimized/unusable startup HWND is not an attempt. Once it
         # becomes actionable require a fresh full tiny interval before acting.
         _phase(emit, 'window_snapshot_begin', self.expected, observation['hwnd'])

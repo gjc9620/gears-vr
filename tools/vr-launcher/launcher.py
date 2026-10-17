@@ -384,7 +384,8 @@ class Backend:
         sys.path.insert(0,str(ROOT/'tools/debug-launch'))
         from tiny_output_recovery import TinyOutputMonitor
         return TinyOutputMonitor(rooted(manifest['native_build'])/'swapchain-output-status.txt',
-                                 diagnostic,identity).start()
+                                 diagnostic,identity,
+                                 allow_recovery=os.environ.get('GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY')!='1').start()
     def navigate(self,pid,identity,cancel,deadline,log,check_live=None):
         sys.path.insert(0,str(HERE))
         from menu_navigation import navigate

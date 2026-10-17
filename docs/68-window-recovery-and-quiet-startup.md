@@ -225,3 +225,11 @@ quiet16实际game34672：70秒无输入，仍在tick2748296自动进入前台。
 game17708后续超时另有明确菜单原因：CampaignButton确认完整发送后窗口短暂不可见，同HWND重绑仍为同菜单，旧attempted账本永久抑制重确认。已提交 `0559132`：仅最近成功完成的导航确认在观察到窗口消失/改变后可重确认一次；重新取得精确进程身份、已知焦点树、0.6秒稳定及立即复读才发送。失败/部分发送与butContinue不重放，全局只增加一次预算，保留原5步流程。对应离线测试覆盖实际成功send→窗口不可见→同菜单及发送异常路径，不能以测试替代所有菜单实测。
 
 当前默认清单已由 `c4cb379` 更新为Native31/XR23（具名 `manifest-background31-movie23-vd.json`），quiet11冻结策略及本机FancyZones排除结论不因此改变。CG与原生画面交回证据见文档70末尾；全部UI、近距离准星、真实头显、长期运行及发布包/依赖许可验收仍未完成，不宣称V1完成。
+
+## 2026-10-18：后台测试干扰反馈及有界诊断
+
+Actual132在native激活前停在Transient UIScene和8×8输出，菜单60秒超时；监控末尾只有去重后的observing_tiny，没有操作边界，因此不能定位卡在snapshot或SetWindowPos。新增recovery_stage前后记录和tiny_output_monitor_cleanup.joined；日志失败不改变恢复或原生清理，自定义attempt接口不变，导出包仅保留清理状态及脱敏错误。
+
+Actual133记录到一次完整恢复操作：2.1028026秒的tiny后resize返回，窗口自身位置变化故不强行restore，随后实际输出2534×1009。操作前后前台HWND均72815962，但此短区间比较不证明整轮没有抢焦点。用户报告实际干扰，已立即取消测试；XR/launcher退出、owned prime取消及入口恢复验证通过，正常关闭自有游戏35280，四份profile/完整INI哈希恢复。岔路实验未开始，不归因于它。
+
+核验本轮background-launch记录仍使用冻结quiet11、quiet_policy_installed=true、main_noactivate链路；未请求foreground或物理手柄后台响应。FancyZones排除仍包含GOWDE-Steam.exe与OpenXRPoseProbe.exe，不能重复宣称排除丢失是原因。用户继续授权后台测试；不等于允许干扰桌面。自主测试设置进程环境 `GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY=1`，仅观察tiny而不读窗口布局、不调用恢复resize，不改玩家默认启动策略或全局注册表。没有证明抢焦点根因已修复；接下来需要覆盖完整启动区间的只读焦点记录，不能以一次API返回前后相等替代。

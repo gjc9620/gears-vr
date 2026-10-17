@@ -714,6 +714,16 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(diagnostic['event'],'monitor_start_error')
             self.assertNotIn('tiny_output_recovery',json.loads(index.read_text()))
 
+    def test_autonomous_observe_only_override_keeps_monitor_nonmutating(self):
+        sys.path.insert(0,str(launcher.ROOT/'tools/debug-launch'))
+        backend=launcher.Backend.__new__(launcher.Backend)
+        for setting,allowed in (('1',False),('0',True)):
+            with self.subTest(setting=setting),mock.patch.dict(os.environ,{'GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY':setting}), \
+                    mock.patch('tiny_output_recovery.TinyOutputMonitor') as monitor:
+                backend.start_tiny_output_monitor(MANIFEST,{'pid':55},pathlib.Path('diagnostic.jsonl'))
+                self.assertIs(monitor.call_args.kwargs['allow_recovery'],allowed)
+                monitor.return_value.start.assert_called_once()
+
     def test_startup_menu_opens_xr_before_waiting_for_player_without_legacy_deadline(self):
         with tempfile.TemporaryDirectory() as directory:
             backend=FakeBackend();index=pathlib.Path(directory)/'index.json';ticks=[0.];events=[]

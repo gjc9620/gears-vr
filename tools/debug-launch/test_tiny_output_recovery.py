@@ -270,6 +270,17 @@ class TinyOutputRecoveryTests(unittest.TestCase):
         self.observe(monitor.policy, 10);self.observe(monitor.policy, 11)
         return monitor
 
+    def test_observe_only_does_not_inspect_or_resize_window_when_tiny_is_confirmed(self):
+        monitor=self.ready_monitor(attempt=mock.Mock())
+        monitor.allow_recovery=False
+        control=FakeControl();control.snapshot=mock.Mock(side_effect=AssertionError('Window must not be touched'))
+        with mock.patch('tiny_output_recovery.read_swapchain_status',return_value=self.status(12)):
+            event=monitor.poll_once(control,12_000_000_000)
+        self.assertEqual(event['reason'],'recovery_disabled')
+        self.assertFalse(monitor.policy.consumed)
+        monitor.attempt.assert_not_called();control.snapshot.assert_not_called()
+        self.assertEqual(control.calls,[])
+
     def test_default_attempt_emits_each_operation_boundary_without_window_details(self):
         monitor, control, stages = self.ready_monitor(), FakeControl(), []
         with mock.patch('tiny_output_recovery.read_swapchain_status', return_value=self.status(12)):
