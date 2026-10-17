@@ -148,6 +148,8 @@ struct FinalEyeInventory {
 } final_eye_inventory;
 void print_late_quad(FILE* status);
 void observe_late_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
+void print_unpossessed_quads(FILE* status);
+void observe_unpossessed_quad_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 void print_backbuffer_copies(FILE* status);
 void observe_backbuffer_copy_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 namespace final_transfer_live {
@@ -203,7 +205,8 @@ std::atomic<unsigned long long> anchor_submission_matched{0},anchor_submission_r
 std::array<std::atomic<unsigned long long>,3> anchor_pawn_reassociated_guards{};
 std::array<std::atomic<unsigned long long>,3> anchor_unpossessed_guards{};
 struct UnpossessedSubmission {uint64_t ticket{},world{};long long qpc{};unsigned thread{};};
-std::array<UnpossessedSubmission,32> unpossessed_submissions{};
+constexpr unsigned unpossessed_submission_capacity=512;
+std::array<UnpossessedSubmission,unpossessed_submission_capacity> unpossessed_submissions{};
 std::atomic<unsigned> unpossessed_submission_count{};
 std::atomic<uint64_t> unpossessed_first_ticket{},unpossessed_last_ticket{};
 bool origin_trial_enabled=false;
@@ -1173,6 +1176,7 @@ void observe_frame_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandLis
             if(!saved&&stats->first_unknown_count<stats->first_unknown.size())stats->first_unknown[stats->first_unknown_count++]=identity;}}
     if(frame_link_diagnostics&&recording.load())for(unsigned i=0;i<count;++i){
         observe_late_execute(queue_id,refs[i],frame_counts.executes.load(),i);
+        observe_unpossessed_quad_execute(queue_id,refs[i],frame_counts.executes.load(),i);
         observe_backbuffer_copy_execute(queue_id,refs[i],frame_counts.executes.load(),i);}
     const bool accepted=owned_token?frame_link.prepare_execute(queue_id,refs.data(),count,*owned_token):
         frame_link.execute(queue_id,refs.data(),count);
@@ -1414,10 +1418,10 @@ void print_anchor(FILE* status,bool hooks_disabled){
         fprintf(status,"\n");};
     for(unsigned i=0;i<std::min<unsigned>(anchor_row_count.load(),64);++i)print(anchor_rows[i],"sampled",i);
     for(unsigned i=0;i<std::min<unsigned>(anchor_reject_count.load(),16);++i)print(anchor_rejects[i],"first_rejections",i);
-    fprintf(status,"unpossessed_camera_guards scene=%llu family=%llu renderer=%llu submitted=%u stored=%u first_ticket=%llu last_ticket=%llu camera_closer_allowed=0 crosshair_attach_allowed=0\n",
+    fprintf(status,"unpossessed_camera_guards scene=%llu family=%llu renderer=%llu submitted=%u stored=%u capacity=%u first_ticket=%llu last_ticket=%llu camera_closer_allowed=0 crosshair_attach_allowed=0\n",
         anchor_unpossessed_guards[0].load(),anchor_unpossessed_guards[1].load(),anchor_unpossessed_guards[2].load(),
-        unpossessed_submission_count.load(),std::min<unsigned>(unpossessed_submission_count.load(),32),unpossessed_first_ticket.load(),unpossessed_last_ticket.load());
-    for(unsigned i=0;i<std::min<unsigned>(unpossessed_submission_count.load(),32);++i){auto const& r=unpossessed_submissions[i];
+        unpossessed_submission_count.load(),std::min<unsigned>(unpossessed_submission_count.load(),unpossessed_submission_capacity),unpossessed_submission_capacity,unpossessed_first_ticket.load(),unpossessed_last_ticket.load());
+    for(unsigned i=0;i<std::min<unsigned>(unpossessed_submission_count.load(),unpossessed_submission_capacity);++i){auto const& r=unpossessed_submissions[i];
         fprintf(status,"unpossessed_submission index=%u ticket=%llu world=%llu qpc=%lld thread=%u\n",i,r.ticket,r.world,r.qpc,r.thread);}
     fprintf(status,"anchor_pawn_binding_rejections count=%u stored=%u capacity=16 additional_reads=0\n",
         anchor_pawn_reject_count.load(),std::min<unsigned>(anchor_pawn_reject_count.load(),16));
@@ -1570,6 +1574,7 @@ void print_frame_link(FILE* status) {
     if(!frame_link_diagnostics)return;
     std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
     print_late_quad(status);
+    print_unpossessed_quads(status);
     print_backbuffer_copies(status);
     final_transfer_live::print(status);
     fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
@@ -2050,6 +2055,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "geometry_observer.h"
 #include "resource_identity_observer.h"
 #include "late_quad_observer.inl"
+#include "unpossessed_quad_observer.inl"
 #include "final_transfer_live.inl"
 #include "backbuffer_copy_observer.inl"
 #include "final_input_observer.h"
@@ -2086,6 +2092,7 @@ void __fastcall hook_consume(void* renderer){
     auto saved_frozen_frame=consuming_frozen_frame;
     consuming_frame_ticket=frame_link_diagnostics&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(renderer),consume_frame)?consume_frame.id:0;
     consuming_frozen_frame=consume_frame;
+    observe_unpossessed_ticket();
     // Allocation probes run only on this RHI callback. The metadata probe
     // releases immediately; the scene probe retains an owner for a later family.
     if(!self_testing&&continuous_session&&recording.load()&&consume_frame.enabled&&
@@ -2215,6 +2222,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     }
     uintptr_t original_state=reinterpret_cast<uintptr_t>(original_source.pointer(8));
     gears_submitted::FrameTicket frame{};gears_vr::Pose frame_reference{};
+    frame.unpossessed=anchor&&anchor->anchor.unpossessed;
     if(anchor_observer_enabled&&anchor){
         auto evidence=anchor->crosshair;
         frame.crosshair=gears_crosshair_scene::take(evidence,anchor->key,anchor->invocation,GetCurrentThreadId());
@@ -3001,8 +3009,10 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
         late_quad_candidate={true,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height},caller};
         std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);++late_quad_calls;
     }
+    observe_unpossessed_quad_begin();
     original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);
     if(late_quad_candidate.active&&!late_quad_candidate.draws){
+        observe_unpossessed_quad_draw(nullptr,0,0,0,0);
         std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);++late_quad_without_draw;
     }
     late_quad_candidate=saved_late;
@@ -3040,6 +3050,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw(list,vertices,instances,start,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     if(outage_diagnostics.load())outage_source_overlay={};
     observe_late_draw(list,caller,0,vertices,instances);
+    observe_unpossessed_quad_draw(list,caller,0,vertices,instances);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
         const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
@@ -3067,6 +3078,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_draw_indexed(list,indices,instances,start,vertex,first_instance);}auto frame_guard=frame_lock();const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     if(outage_diagnostics.load())outage_source_overlay={};
     observe_late_draw(list,caller,1,indices,instances);
+    observe_unpossessed_quad_draw(list,caller,1,indices,instances);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(ui_material_context&&recording.load()){
         const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
