@@ -26,3 +26,9 @@
 历史虚表候选 `138a558+488 → 298bdc` 会计算位置并以return `298c46/298c7b` 调用SetPosition的Left/Top。尚未认证当前这个虚表槽或证明本轮执行了该函数。下一步保存首次失去所有权时的实际值，观察该panel的原生SetPosition来源，再决定在哪个正常布局入口调整；不在Render层反复覆盖。
 
 新增一次性loss记录区分Top/Bottom可读mask、原始/自有/实际bits、units及scene/panel/world；只发布首条完整记录，worker通过release/acquire读取。缺读、变回原始、单face改变和禁止第二条覆盖用例通过；实际数据待采集。
+
+Native80（`364800f`，SHA256 `986fbad49dabc61da5a79319e78f6df793ea9f62c384bc428685a033508a7723`）完整构建及实际wrapper/GPU frame-link启动自测通过。80首轮配置被拒绝、未apply；80b则由旧试验INI阻止，未执行位置API。已修正ignored驱动的会话配置生命周期：只清理由完整历史receipt和进程失效证明关联的旧配置，未知内容不覆盖；本轮配置等待正常退出和native/entry恢复验证后清理。
+
+`path-position80c-20261018` 取得实际首次loss：`applied=1`，read mask=3且complete，Top/Bottom观察bits分别`1025061054/1064725749`，精确等于原始bits；自有位移bits为`1029037876/1064974300`。units可读且四项均4，world/current world均1、identity lost=0。因此这轮确认数值恢复到原值，已排除该记录中的读取失败；仍未定位具体writer，不能仅凭相等宣布298bdc执行。试验以proof_failure停止，没有位移后GPU图像或最终UI修复验收。下一步围绕SafePanel正常布局入口取得有界调用证据，避免在Render层反复覆盖。
+
+该轮正常关闭自有游戏，native cleanup与entry恢复、完整设置/四profile恢复均通过，本轮自有配置在停止后完整比对并清理；无自有前台采样。原Top/Bottom约`0.0374/0.96260005`，自有值约`0.05221482/0.97741485`。历史`298bdc`完整161B读取已核对缓存SHA；其入口使用对象与12B输入，条件调用Left/Top SetPosition，尚不能命名为SafeRegion更新或证明它恢复Bottom。下一条证据需要当前完整161B与实际panel的vtable+488，以及精确对象调用内的位置前后变化。

@@ -194,6 +194,41 @@ class VerifyStoppedTests(unittest.TestCase):
             with self.assertRaises(SystemExit):self.invoke()
         self.assertFalse(json.loads(self.output.read_text())['all_match'])
 
+    def test_ngx_wrapper_fixed_complete_historical_ranges(self):
+        self.assertEqual(verify_stopped.NGX_WRAPPER_RANGES, (
+            (0xbe5b5c, 249, '53709f650d84bd1ea4cc1ae5e25eb8ef7f3462102fe51d07b790d96c48734879'),
+            (0xbe5c58, 1377, '21868e6f8203578f5c4ef689fc4f66a5c79e13fdb243eebe2eb81cc7d6309441')))
+
+    def ngx_fixture(self):
+        ranges = []
+        for rva, size, _ in verify_stopped.NGX_WRAPPER_RANGES:
+            raw = bytes((i % 251 for i in range(size)))
+            self.memory[self.base + rva] = raw
+            ranges.append((rva, size, hashlib.sha256(raw).hexdigest()))
+        self.write_status((0xbe5b5c, 0xbe5c58))
+        return tuple(ranges)
+
+    def test_ngx_wrapper_roles_independently_check_whole_chunks(self):
+        ranges = self.ngx_fixture()
+        with mock.patch.object(verify_stopped, 'NGX_WRAPPER_RANGES', ranges):self.invoke()
+        checks = json.loads(self.output.read_text())['checks']
+        self.assertEqual([check['bytes_checked'] for check in checks], [249, 1377])
+        self.assertTrue(all(check['matches'] for check in checks))
+        for check in checks:self.assertEqual(check['source_snapshot_sha256'], '911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+
+    def test_ngx_wrapper_tail_drift_or_short_reads_reject_status_claims(self):
+        ranges = self.ngx_fixture()
+        originals = {rva:self.memory[self.base + rva] for rva, _, _ in ranges}
+        for rva, _, _ in ranges:
+            for short in (False, True):
+                with self.subTest(rva=hex(rva), short=short):
+                    for old_rva, raw in originals.items():self.memory[self.base + old_rva] = raw
+                    self.memory[self.base + rva] = originals[rva][:-1] if short else originals[rva][:-1] + bytes([originals[rva][-1] ^ 1])
+                    with self.status.open('a') as stream:stream.write('entries_restored=1 ngx_route_identity match=1\n')
+                    with mock.patch.object(verify_stopped, 'NGX_WRAPPER_RANGES', ranges):
+                        with self.assertRaises(SystemExit):self.invoke()
+                    self.assertFalse(json.loads(self.output.read_text())['all_match'])
+
 
 if __name__ == '__main__':
     unittest.main()

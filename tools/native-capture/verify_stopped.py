@@ -28,6 +28,10 @@ DLSS_OUTPUT_RANGES = (
 )
 DLSS_INPUT_BIND_CHUNKS = ((0x1665dc, 0x1cc), (0x8b492c, 0x2b))
 DLSS_INPUT_BIND_SHA256 = '566929fd4f84a21529de0ecb749d2dc75a1bf2ab3cc04876a65f65517222a339'
+NGX_WRAPPER_RANGES = (
+    (0xbe5b5c, 0xf9, '53709f650d84bd1ea4cc1ae5e25eb8ef7f3462102fe51d07b790d96c48734879'),
+    (0xbe5c58, 0x561, '21868e6f8203578f5c4ef689fc4f66a5c79e13fdb243eebe2eb81cc7d6309441'),
+)
 
 
 def check_runtime_ranges(read, base, target, ranges, source):
@@ -150,6 +154,15 @@ def main():
                 check.update(module_base=hex(resolver.base), historical_module_base='0x140000000',
                              source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
                 checks.append(check)
+                continue
+            if rva in (0xbe5b5c, 0xbe5c58):
+                ranges = tuple(item for item in NGX_WRAPPER_RANGES if item[0] == rva)
+                values = check_runtime_ranges(resolver.read, resolver.base, target, ranges,
+                              'artifact 1 runtime snapshot NGX wrapper complete known chunk')
+                for check in values:
+                    check.update(module_base=hex(resolver.base), historical_module_base='0x140000000',
+                                 source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+                checks.extend(values)
                 continue
             material_ranges = {
                 0x3a514c: (0x3fc, '193ddb21a13443746e258f12f799968a47ca9d21fe8badf3cd5c1884a462931b'),

@@ -34,6 +34,7 @@
 #include "final_eye_diagnostics.h"
 #include "final_transfer_policy.h"
 #include "dlss_output_control.h"
+#include "ngx_route_observer.h"
 #include "outage_trace.h"
 #include "outage_sources.h"
 #include "anchor_observer.h"
@@ -160,6 +161,7 @@ namespace death_source_live {void progress(FILE*);void print(FILE*);unsigned sta
 namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_frame_link::ListRef,uint64_t,unsigned);}
 namespace death_constant_observer {void print(FILE*);}
 namespace dlss_route_observer {void print(FILE*);void draw(uintptr_t,uintptr_t,unsigned,unsigned,unsigned);}
+namespace ngx_route_observer {void print(FILE*);}
 namespace death_dof_control {void print(FILE*);}
 namespace vr_dof_compat {void print(FILE*);void progress(FILE*);void retire();bool publication(uint64_t,uint64_t);}
 namespace death_pso_cache {void print(FILE*);void poll();}
@@ -430,6 +432,11 @@ constexpr unsigned dlss_input_bind_hooks=1;
 #else
 constexpr unsigned dlss_input_bind_hooks=0;
 #endif
+#if defined(GEARS_NGX_ROUTE_OBSERVER) && GEARS_NGX_ROUTE_OBSERVER
+constexpr unsigned ngx_route_hooks=2;
+#else
+constexpr unsigned ngx_route_hooks=0;
+#endif
 #if defined(GEARS_DEATH_PSO_CACHE) && GEARS_DEATH_PSO_CACHE
 constexpr unsigned death_pso_hooks=3;
 #else
@@ -445,7 +452,7 @@ constexpr unsigned vr_dof_hooks=1;
 #else
 constexpr unsigned vr_dof_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -1703,6 +1710,7 @@ void print_frame_link(FILE* status) {
     death_hdr_pixels::print(status);
     death_constant_observer::print(status);
     dlss_route_observer::print(status);
+    ngx_route_observer::print(status);
     death_dof_control::print(status);
     vr_dof_compat::print(status);
     dlss_output_control::print(status);
@@ -2201,6 +2209,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "death_constant_observer.inl"
 #include "dlss_route_observer.inl"
 #include "dlss_output_control.inl"
+#include "ngx_route_observer.inl"
 #include "death_dof_control.inl"
 #include "vr_dof_compat.inl"
 
@@ -3923,6 +3932,11 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"minhook_initialize=%s\n",MH_StatusToString(init));
     bool ok=(init==MH_OK || (reservation_ready && init==MH_ERROR_ALREADY_INITIALIZED))&&death_constant_observer::attest(status)&&death_dof_control::attest(status)&&vr_dof_compat::attest(status);
     if(ok)ok=dlss_route_observer::enable(status);
+    if(ok)ok=ngx_route_observer::enable(status);
+#if defined(GEARS_NGX_ROUTE_OBSERVER) && GEARS_NGX_ROUTE_OBSERVER
+    if(ok)ok=install(ngx_route_observer::create_target,reinterpret_cast<void*>(ngx_route_observer::hook_create),reinterpret_cast<void**>(&ngx_route_observer::original_create))&&
+        install(ngx_route_observer::evaluate_target,reinterpret_cast<void*>(ngx_route_observer::hook_evaluate),reinterpret_cast<void**>(&ngx_route_observer::original_evaluate));
+#endif
 #if defined(GEARS_DLSS_ROUTE_OBSERVER) && GEARS_DLSS_ROUTE_OBSERVER
     if(ok)ok=install(dlss_route_observer::output_target,reinterpret_cast<void*>(dlss_route_observer::hook_output),reinterpret_cast<void**>(&dlss_route_observer::original_output))&&
         install(dlss_route_observer::setter_target,reinterpret_cast<void*>(dlss_route_observer::hook_setter),reinterpret_cast<void**>(&dlss_route_observer::original_setter));
