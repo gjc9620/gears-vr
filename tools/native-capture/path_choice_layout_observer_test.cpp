@@ -156,7 +156,11 @@ static void bounds_nesting_exceptions(){
     assert(original_calls==14&&observer::entries==14&&observer::slots==4&&read_calls==reads&&observer::depth==0&&count(observer::Bypass::quota)==10);
 }
 static std::string progress(){FILE* file{};assert(tmpfile_s(&file)==0&&file);observer::progress(file);rewind(file);
-    std::string text;char buffer[512];while(auto n=fread(buffer,1,sizeof(buffer),file))text.append(buffer,n);fclose(file);return text;}
+    std::string text;char buffer[512];while(auto n=fread(buffer,1,sizeof(buffer),file))text.append(buffer,n);fclose(file);
+    auto tuple_count=[&](std::string const& key){auto begin=text.find(key);assert(begin!=std::string::npos);begin+=key.size();auto end=text.find(' ',begin);
+        return 1u+unsigned(std::count(text.begin()+begin,text.begin()+end,','));};
+    assert(tuple_count("path_layout_bypass_tuple=")==unsigned(observer::Bypass::count));
+    assert(tuple_count("path_layout_child_bypass_tuple=")==unsigned(observer::ChildBypass::count));return text;}
 static void publication(){
     Fixture f;f.apply();mode=4;std::promise<void> start,release;entered=&start;release_original=&release;
     std::thread owner([&]{position::owner_thread=GetCurrentThreadId();f.call();});
@@ -275,4 +279,4 @@ static void complete_certification(){
         assert(!observer::certify_with(changing,hash));
     }
 }
-int main(){call_subtree();gates();bounds_nesting_exceptions();publication();loss_timeline();bounded_array();child_arguments_and_effect();child_gates();child_nested_and_exception();child_quota();child_publication();complete_certification();std::puts("PathChoiceLayoutObserverTest passed");}
+int main(){call_subtree();gates();bounds_nesting_exceptions();publication();loss_timeline();bounded_array();child_arguments_and_effect();child_gates();child_nested_and_exception();child_quota();child_publication();complete_certification();std::puts("PathChoiceLayoutObserverTest passed");return 0;}
