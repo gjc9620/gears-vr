@@ -1,7 +1,7 @@
 """Synthetic name memory; no process is opened."""
 import struct
 import unittest
-from resolve_camera import Resolver
+from resolve_camera import Resolver,DiscoveryRegistryChanged
 
 
 class NameReadTests(unittest.TestCase):
@@ -54,6 +54,52 @@ class NameReadTests(unittest.TestCase):
         r=self.resolver(0x1ffe,b'\0\0',index=1)
         with self.assertRaisesRegex(RuntimeError,'Name entry index mismatch'):r.name(0)
         self.assertEqual(r.calls,[(0x1fea,4)])
+
+    def grown_resolver(self, *, count=1002, entry_index=1001, text='NewName\0'):
+        r=self.resolver(0x4014,text.encode('utf-16-le'),index=entry_index)
+        r.names_header=0x100;r.name_count=count # Live anchor guard changed it.
+        header=struct.pack('<Qii',0x8000,count,count)
+        ordinary=r.read
+        def read(address,size):
+            if address==r.names_header and size==16:return header
+            if address==0x8000+1001*8 and size==8:return struct.pack('<Q',0x4000)
+            return ordinary(address,size)
+        r.read=read
+        return r
+
+    def test_grown_live_bounds_do_not_index_original_snapshot(self):
+        r=self.grown_resolver()
+        self.assertEqual(r.name(1001),'NewName')
+        self.assertEqual(len(r.name_pointers),1)
+        # Even an unchanged stale live count does not hide a valid new slot.
+        r=self.grown_resolver();r.name_count=1
+        self.assertEqual(r.name(1001),'NewName')
+
+    def test_grown_name_still_rejects_corrupt_index_utf16_and_bounds(self):
+        for kwargs,error in ((dict(count=1001),RuntimeError),(dict(count=4000000),RuntimeError),
+                             (dict(entry_index=1000),RuntimeError),(dict(text='\ud800\0'),UnicodeDecodeError)):
+            with self.subTest(kwargs=kwargs):
+                if 'text' in kwargs:
+                    r=self.grown_resolver();ordinary=r.read
+                    r.read=lambda address,size: (b'\x00\xd8\0\0'+bytes(124))[:size] if address==0x4014 else ordinary(address,size)
+                else:r=self.grown_resolver(**kwargs)
+                with self.assertRaises(error):r.name(1001)
+                self.assertEqual(r.names_cache,{})
+
+    def test_concurrent_header_change_is_typed_and_never_cached(self):
+        for changed_at in (2,3):
+            with self.subTest(changed_at=changed_at):
+                r=self.grown_resolver();ordinary=r.read;hits=0
+                def read(address,size):
+                    nonlocal hits
+                    value=ordinary(address,size)
+                    if address==r.names_header:
+                        hits+=1
+                        if hits>=changed_at:return struct.pack('<Qii',0x9000,1003,1003)
+                    return value
+                r.read=read
+                with self.assertRaises(DiscoveryRegistryChanged):r.name(1001)
+                self.assertEqual(r.names_cache,{})
 
 
 if __name__=='__main__':unittest.main()

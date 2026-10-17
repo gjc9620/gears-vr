@@ -8,6 +8,7 @@ from unittest import mock
 import start_capture as start
 import ui_observer_config as ui
 import anchor_config as anchor
+from resolve_camera import DiscoveryRegistryChanged
 from test_ui_observer_config import Fixture
 
 class ReacquisitionTests(unittest.TestCase):
@@ -46,11 +47,27 @@ class ReacquisitionTests(unittest.TestCase):
         self.assertTrue(all(not cache for _,_,cache in seen))
         for r in self.resolvers:r.resolve.assert_called_once();r.p.close.assert_called_once();r.read.assert_called_once()
     def test_only_typed_final_registry_change_retries(self):
-        for error in (ui.UIConfigRejected('identity changed'),ui.UIConfigRejected('UI registry changed during assembly; reacquire'),RuntimeError('signature mismatch')):
+        for error in (ui.UIConfigRejected('identity changed'),ui.UIConfigRejected('UI registry changed during assembly; reacquire'),RuntimeError('signature mismatch'),IndexError('tuple index out of range'),RuntimeError('Name index out of range')):
             with self.subTest(error=error):
                 self.resolvers=[]
                 with self.assertRaises(type(error)):self.collect(lambda r,c:(_ for _ in ()).throw(error))
                 self.assertEqual(len(self.resolvers),1);self.resolvers[0].p.close.assert_called_once()
+
+    def test_discovery_registry_change_reacquires_all_certificates(self):
+        def build(r,c):
+            if r.generation==1:raise DiscoveryRegistryChanged('Name registry changed during discovery')
+            return {'camera':c['camera_address']},{'camera':c['camera_address']}
+        (camera,am,_,um,_),anchors,sleeps=self.collect(build)
+        self.assertEqual((camera['camera_address'],am['camera'],um['camera']),('cam2','cam2','cam2'))
+        self.assertEqual((anchors,sleeps),(2,1))
+        self.assertTrue(start.camera_preparation_transient(DiscoveryRegistryChanged('changed')))
+        self.assertFalse(start.camera_preparation_transient(IndexError('tuple index out of range')))
+        for r in self.resolvers:r.p.close.assert_called_once()
+
+    def test_ui_discovery_propagates_only_typed_registry_change(self):
+        r=Fixture()
+        r.discovery_identity_reader=lambda:lambda address:(_ for _ in ()).throw(DiscoveryRegistryChanged('changed'))
+        with self.assertRaises(DiscoveryRegistryChanged):ui.build_ui_observer_config(r,r.camera)
     def test_three_attempt_limit(self):
         with self.assertRaises(ui.UIRegistryChanged):
             self.collect(lambda r,c:(_ for _ in ()).throw(ui.UIRegistryChanged('changed')))

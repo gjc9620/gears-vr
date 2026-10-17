@@ -17,7 +17,7 @@ ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools/package-inspector'))
 sys.path.insert(0,str(ROOT/'tools/package-inspector/python-libs'))
 import pefile
-from resolve_camera import Resolver,psapi
+from resolve_camera import Resolver,psapi,DiscoveryRegistryChanged
 
 k=c.WinDLL('kernel32',use_last_error=True)
 k.OpenProcess.argtypes=[w.DWORD,w.BOOL,w.DWORD];k.OpenProcess.restype=w.HANDLE
@@ -74,7 +74,7 @@ def camera_preparation_transient(error):
     from ui_observer_config import UIConfigRejected,UIRegistryChanged,UIControlledPawnUnavailable
     from crosshair_assignment_config import CrosshairRegistryChanged,CrosshairControlledLinkChanged
     if type(error) is CrosshairControlledLinkChanged:return True
-    if isinstance(error,(AnchorRegistryChanged,UIRegistryChanged,CrosshairRegistryChanged)):return True
+    if isinstance(error,(AnchorRegistryChanged,UIRegistryChanged,CrosshairRegistryChanged,DiscoveryRegistryChanged)):return True
     if type(error) is UIControlledPawnUnavailable:return True
     if type(error) is UIConfigRejected and str(error)=='UI certificate read changed':return True
     reason=str(error)
@@ -272,11 +272,11 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                 if check_live:check_live()
                 return refreshed,anchor_metadata,anchor_section,ui_metadata,ui_section
             finally:r.p.close()
-        except (UIConfigRejected,CrosshairRegistryChanged,CrosshairControlledLinkChanged,AnchorRegistryChanged) as error:
+        except (UIConfigRejected,CrosshairRegistryChanged,CrosshairControlledLinkChanged,AnchorRegistryChanged,DiscoveryRegistryChanged) as error:
             # Only known read churn, typed unpossession and registry mismatches join
             # this budget. Identity/code/unknown failures remain hard; every
             # retry discards the Resolver and all certificates.
-            if not (isinstance(error,(UIRegistryChanged,CrosshairRegistryChanged,AnchorRegistryChanged)) or
+            if not (isinstance(error,(UIRegistryChanged,CrosshairRegistryChanged,AnchorRegistryChanged,DiscoveryRegistryChanged)) or
                     type(error) is CrosshairControlledLinkChanged or
                     type(error) is UIControlledPawnUnavailable or
                     (type(error) is UIConfigRejected and str(error)=='UI certificate read changed')):raise

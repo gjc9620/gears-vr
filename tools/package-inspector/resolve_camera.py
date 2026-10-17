@@ -45,6 +45,9 @@ class _DiscoveryHintPages:
             self.pages[page]=raw
         return self.pages[page][offset:offset+size]
 
+class DiscoveryRegistryChanged(RuntimeError):
+    """A validated registry header changed across a discovery read."""
+
 class Resolver:
     def __init__(self,pid,profile):
         self.p=Process(pid)
@@ -85,8 +88,23 @@ class Resolver:
         if self.name(0)!='None':raise RuntimeError('Name registry zero entry is not None')
     def name(self,index):
         if index not in self.names_cache:
-            if not 0<=index<self.name_count:raise RuntimeError('Name index out of range')
-            entry=self.name_pointers[index]
+            if index<0:raise RuntimeError('Name index out of range')
+            # Anchor guards refresh live bounds, not this discovery snapshot.
+            # Newly registered objects can refer to names added after prepare().
+            # Resolve those slots from a bounded current header; never index the
+            # old tuple using a subsequently refreshed name_count.
+            header=None
+            if index<len(self.name_pointers):entry=self.name_pointers[index]
+            else:
+                header=self.read(self.names_header,16)
+                data,count,capacity=struct.unpack('<Qii',header)
+                if not data or not 1000<count<=capacity<4000000:
+                    raise RuntimeError('Invalid name array header')
+                if index>=count:raise RuntimeError('Name index out of range')
+                entry=self.u64(data+index*8)
+                if self.read(self.names_header,16)!=header:
+                    raise DiscoveryRegistryChanged('Name registry changed during discovery')
+            if not entry:raise RuntimeError('Null name entry')
             if self.u32(entry+self.profile['name_entry_index'])!=index:raise RuntimeError('Name entry index mismatch')
             # A short name can end before an unreadable neighboring page.
             # Keep the same bound, but do not request that page unless the
@@ -100,7 +118,10 @@ class Resolver:
                 end=next((i for i in range(0,len(raw)-1,2) if raw[i:i+2]==b'\0\0'),None)
                 if end is not None:break
             if end is None:raise RuntimeError('Name exceeds bounded UTF16 read')
-            self.names_cache[index]=raw[:end].decode('utf-16-le',errors='strict')
+            name=raw[:end].decode('utf-16-le',errors='strict')
+            if header is not None and self.read(self.names_header,16)!=header:
+                raise DiscoveryRegistryChanged('Name registry changed during discovery')
+            self.names_cache[index]=name
         return self.names_cache[index]
     def identity(self,address,*,reader=None):
         if not address:return None

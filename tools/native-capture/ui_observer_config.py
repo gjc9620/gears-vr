@@ -6,6 +6,7 @@ The caller supplies its prepared, SHA-gated Resolver and current camera result.
 import hashlib
 import struct
 import time
+from resolve_camera import DiscoveryRegistryChanged
 
 GAME_SHA = 'bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4'
 LAYOUT = ('object_internal_index','object_name','object_class','object_outer',
@@ -112,6 +113,7 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
         if not address:continue
         # Cached identity is a discovery hint only; every accepted item is fresh.
         try:hint=discover(address)
+        except DiscoveryRegistryChanged:raise
         except (RuntimeError,OSError,ValueError,UnicodeError):continue
         if hint['name'] not in class_names:continue
         item=fresh(address)
