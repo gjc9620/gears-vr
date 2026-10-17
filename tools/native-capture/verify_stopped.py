@@ -75,6 +75,17 @@ def main():
         camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
+            if rva == 0x1760b4:
+                # Optional read-only death constant observer. Authenticate the
+                # entire saved 205-byte setter independently after disabling,
+                # never use an expected entry learned from the patched process.
+                expected_hash = 'd7d20d3f5c510685b8b3ffb12d12d51ae583d4070e00cf11a39655c7e086c45b'
+                current = resolver.read(target, 205)
+                actual_hash = hashlib.sha256(current).hexdigest()
+                checks.append(dict(target=hex(target), source='artifact 1 runtime snapshot death constant setter',
+                                   bytes_checked=len(current), expected_sha256=expected_hash,
+                                   actual_sha256=actual_hash, matches=actual_hash == expected_hash))
+                continue
             material_ranges = {
                 0x3a514c: (0x3fc, '193ddb21a13443746e258f12f799968a47ca9d21fe8badf3cd5c1884a462931b'),
                 0x1af054: (0x2fb, '4cf2c5b249b2abb2decb11cae8adf0eacc3a08833345691e63fcbaf7eae7c41a'),
