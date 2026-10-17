@@ -96,3 +96,15 @@ Native94从`0a4634f`冻结，DLL SHA256为`0d0e427dec59ceef905e7510d5911e469a09b
 
 最终applied1/restored0/pending1/unresolved1符合只读实验；正常退出、native与entry独立恢复、两份owned配置精确清理、设置及四profile恢复通过，无自有前台采样。完整结果在ignored `analysis/runtime/path-layout94d-20261018.json`。下一修复复用该关闭入口，在原函数前取得或借用同owner admission并执行已有精确位置恢复，再恰好调用一次原关闭；默认只读模式保留。此轮没有宣称位置生命周期已修好或玩家自动居中已完成。
 
+### Native97c：正常关闭前精确恢复实际通过
+
+提交`910aa76`增加默认OFF的`GEARS_PATH_CHOICE_CLOSE_RESTORE`，复用既有关闭入口、完整认证、owner admission与位置恢复，不修改配置schema或新增hook。空闲时获得owner admission，位于已有owner原调用子树时借用原admission；Setter前递增restore_retries以避免reflow递归。原CloseScene的参数、完整返回值、异常及恰好一次调用保持不变。恢复控制与两条诊断记录额度独立。Native97 DLL SHA256为`baa889156db076e6979a59804217f1f83325d921a466e5f1092cb1fe6adfd77d`，完整DLL构建与28项相关/启动检查通过。
+
+首轮97未覆盖PathChoice：固定四段导航在最后仍移动41单位而正常结束，不能当恢复通过。97b增加一段有界正常移动后到达PathChoice，但写入后的冗余只读panel快照在末端检测到变化，未发送选择输入；正常清理时已有位置恢复。97c移除该冗余采集，只在实际dispatch admission中保留完整panel复读，并仅对精确末端读集变化允许最多三次只读整组重取；每次先检查同一未恢复的native lease。没有新位置请求、baseline重采、输入重试或身份检查放宽；本次该只读重取分支未使用。
+
+实际`path-layout97c-20261018`完成同一374参考像素应用及一次正常左键选择。关闭入口仍有完整activation/owned证明；恢复receipt状态2、attempted1、setter_calls2、read_mask3，读回top/bottom逐位等于首次baseline。时间顺序满足natural-enter≤restore-enter≤restore-completed≤original-enter≤natural-exit；随后原函数正常返回RAX1，scene从ActiveScenes移除，原始坐标在只读after快照中保持。最终applied1/restored1/pending0/unresolved0，identity/ownership/setter失败均0。
+
+根协调者以独立断言校验并仅复制归档原始报告、当前capture/session状态、配置、元数据与源码哈希，结果为ignored `analysis/runtime/path-layout97c-20261018-proof.json`及artifacts目录。正常关闭、native及entry独立恢复、两份精确owned sidecar清理、设置及四profile恢复通过，XR退出0，无自有前台采样。没有在inactive对象上执行Setter；旧只读decoder的restoration_authorized=false仅说明不授权关闭后的写入，不否定新的关闭前恢复证据。
+
+此结果关闭了已复现的“正常选择后位置未恢复”缺口；尚未验证玩家自动采集、持有超过六秒、同对象反复打开及当前组合真头显。下一阶段接入保留首次baseline的同nonce原字节续租及后台监视器，默认玩家清单与开发包暂不提升。
+

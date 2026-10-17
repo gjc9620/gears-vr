@@ -24,7 +24,7 @@ DLSS 隔离启动入口、实际输出分支及尚未解决的缺口见[文档15
 | 首发事项 | 最新边界 |
 | --- | --- |
 | DLSS SR | Native93/O同帧GPU图像发现Output2近似Output1右半放大。Native95/P只省略一次首眼整图回写后，该特征消失，确认该复制参与输入反馈；最终双眼仍错误地分别取Output2两半。正在修正每眼输出的保存与组合，并核对尺寸域及history，暂不解除默认保护，见[文档154](154-dlss-sr-startup-and-output-route.md)。 |
-| 岔路UI | Native91b实际验证374参考像素的居中候选：两眼内容向下349输出像素，完整标题/箭头/选择提示可见，两次位移/恢复通过。91d正常选择约340ms后关闭，但原panel仍保持位移、pending/unresolved各1；原生关闭前恢复与玩家自动启用仍待完成，见[文档155](155-path-choice-position-and-docking.md)。 |
+| 岔路UI | Native91b验证374参考像素居中图像；Native97c实际正常选择时在原CloseScene之前恢复原始坐标，applied1/restored1、pending/unresolved均0。该关闭生命周期已通过，长时间持有、重复打开与玩家自动接入仍在实现，见[文档155](155-path-choice-position-and-docking.md)。 |
 | 机枪与准星外圈 | 仍未关闭；静态调用链、普通步枪样本不能代替真实挂载或手枪外圈验收。 |
 | 黑屏、卡顿、持续游玩 | 普通路径有局部回归，全部过场/载具/画质切换/长时间与Quest3/VD仍需覆盖；背景tiny-output根因未统一关闭。 |
 | 发布 | 开发包检查通过，最终默认候选、完整流程及当前组合真机验收未通过，release_ready=false。 |

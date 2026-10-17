@@ -145,3 +145,11 @@ Native92从该提交冻结，完整DLL构建及十项相关检查（含实际DLL
 
 P轮诊断完成，正常关闭、native及所有entry独立恢复、设置及四profile恢复、arm精确清理均通过，XR退出0，无自有前台采样。默认Native70/Borderless1及Feedback3开发ZIP未变。
 
+### 分眼布局与feature寿命策略已写入源码，尚未接入SDK
+
+提交`88a6875`增加纯CPU的分眼布局/单box复制计划及两个feature的创建、逐眼使用、失效和GPU退休策略。输入尺寸必须由已验证生产端明确提供，不从Quality枚举猜比例；每眼输出、物理纹理和padded输入槽保持不同语义。完整输出复制的两个正常边界将分别只复制有效眼图到对应槽，仍使用原Color资源与最终shader。策略本身不调用SDK、不修改视图、不提交GPU命令，不能算DLSS支持已经实现。
+
+协调审查以P轮实际sidecar修正了初稿“共用list/generation”的错误假设：两眼实际分别为list161b4d9b30/gen1988765和1150860d0/gen1988767，在同一queue595086d0依序执行。CPU策略现保留每眼各自的list/generation；每个feature提交必须匹配自己的记录，GPU顺序仍须由实际adapter的执行/fence证据认证。未被接纳的私有Create返回句柄有明确caller-quarantine归属，不静默遗失。
+
+两个CMake策略测试以`/W4 /WX /UNDEBUG`构建并通过，覆盖边界、跨眼输入覆盖、实际两list模式、部分Create失败、独立handle、过期epoch、未提交/未完成GPU工作、错误queue/fence及重复释放。实现尚未接入活体SDK；源构造的实际低分辨率生产、物理Color输出尺寸、两个feature的正常重建/退出以及图像/时域正确性继续保持未验证。具体接入设计和完整历史chunk身份在ignored `dlss95-p-correct-output-plan-20261018.md`，不打包知识库或反编译资料。
+
