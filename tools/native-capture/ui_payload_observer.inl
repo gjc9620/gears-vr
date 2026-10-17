@@ -138,6 +138,7 @@ bool validate_ui_payload_content(gears_ui_receipts::Claim const& claim,UiPayload
 }
 
 uint32_t __fastcall hook_ui_execute(void* command){
+    ui_scene_root_live::executing(1);
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());
     Scope active_scope;if(!active_scope.world())return ui_original_execute(command);
     UiPayloadRestore restore;ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;

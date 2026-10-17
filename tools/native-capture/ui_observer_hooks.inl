@@ -68,6 +68,7 @@ bool ui_invocation_current(){
         target==(c.mounted?c.identities[c.role_controlled].address:ui_invocation.binding.pawn.address));
 }
 #include "ui_call_boundary_live.inl"
+#include "ui_scene_root_live.inl"
 struct UiRow {
     gears_ui::CanvasSample sample{};
     uint64_t invocation{},calls{},latest_built_ticket{};
@@ -117,6 +118,7 @@ void retire_ui_world(){
 // Only on the owning thread's next outer Scope, after old readers drained.
 void reset_ui_world_tls(){
     ui_call_boundary::reset_tls();
+    ui_scene_root_live::reset_tls();
     ui_invocation={};ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
     ui_text_collect_depth=0;
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
@@ -353,7 +355,7 @@ bool reserve_ui_hooks(){
            MH_CreateHook(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]))!=MH_OK||
            !safe_copy(after.data(),ui_targets[i],after.size())||after!=before)return false;
     }
-    if(!reserve_ui_execute()||!reserve_ui_subtitle()||!ui_call_boundary::reserve())return false;
+    if(!reserve_ui_execute()||!reserve_ui_subtitle()||!ui_call_boundary::reserve()||!ui_scene_root_live::reserve())return false;
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
     if(!owned_ui_live::reserve())return false;
 #endif
@@ -445,6 +447,7 @@ void print_ui_observer(FILE* status,bool disabled){
         ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_hud_plane_enabled?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;
     ui_call_boundary::print(status);
+    ui_scene_root_live::print(status);
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
     ui_tile_transaction::print(status);
 #endif

@@ -2894,6 +2894,9 @@ bool install(void* target,void* detour,void** original) {
           (prime_ready.load() && std::find(prime_targets.begin(),prime_targets.end(),target)!=prime_targets.end())||
           graphics_lock_observer_reserved_target(target)||
           (ui_reserved&&(std::find(ui_targets.begin(),ui_targets.end(),target)!=ui_targets.end()||target==ui_execute_target||target==ui_subtitle_target
+#if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
+             ||target==ui_scene_root_live::target
+#endif
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
              ||target==ui_call_boundary::target
 #endif
@@ -3851,6 +3854,9 @@ DWORD WINAPI worker(void*) {
     if(ok && first_view_mask_hook_enabled())ok=install(first_view_mask_target,reinterpret_cast<void*>(hook_first_view_mask),reinterpret_cast<void**>(&original_first_view_mask));
     if(ok&&ui_observer_enabled)for(unsigned i=0;i<4&&ok;++i)
         ok=install(ui_targets[i],reinterpret_cast<void*>(ui_detours[i]),reinterpret_cast<void**>(&ui_original[i]));
+#if defined(GEARS_UI_SCENE_ROOT_OBSERVER) && GEARS_UI_SCENE_ROOT_OBSERVER
+    if(ok&&ui_observer_enabled)ok=install(ui_scene_root_live::target,reinterpret_cast<void*>(ui_scene_root_live::hook),reinterpret_cast<void**>(&ui_scene_root_live::original));
+#endif
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
     if(ok&&ui_observer_enabled)ok=install(ui_call_boundary::target,reinterpret_cast<void*>(ui_call_boundary::hook),reinterpret_cast<void**>(&ui_call_boundary::original));
 #endif
