@@ -17,3 +17,13 @@ Evidence (ignored): `analysis/runtime/continuous-stereo-17640-20261017-180938-ed
 `Resolver.name()` now bounds snapshot reads using the tuple length. For a newly added name outside that snapshot, it validates a bounded current registry header and slot, the entry index and strict UTF-16, and verifies the header before caching. An observed header change raises typed `DiscoveryRegistryChanged`; UI discovery propagates it and preparation discards all certificates within its existing retry/deadline budget. Corrupt names, unexpected exceptions and target identities remain rejected. No native DLL, rendering route, deadline or retry count changed.
 
 Validation: 14 resolver name/discovery tests, 31 UI tests and 29 startup anchor tests passed (74 total). The actual follow-up is recorded separately below; these CPU checks do not establish GPU/headset behavior.
+
+## Follow-up: PID7124
+
+After the Python correction, actual native preparation completed (certificate acquisition 2286.5424 ms; activation 517.9055 ms). No name indexing exception recurred. This supports the corrected preparation path, not a successful stereo display: XR received zero scene copies/submitted frames and the scheduled death-menu/checkpoint test timed out.
+
+The final native report records 37358 accepted stereo tickets but zero publication/capture attempts. All 37368 final-transfer attempts were policy-rejected; source texture was 2560x1080 while presented buffers were 2534x1009, and the transfer arguments included a horizontal crop. The current strict final-transfer policy supports equal widths and at most one extra destination row, so this geometry cannot pass. This is a demonstrated reason for this run's no-publication; a subsequent controlled geometry test is required before assigning a broader root cause.
+
+`frame_link_compare kind=first anchor=1 reason_mask=8` is an accepted initial reanchor, not a binding fault: binding rejected=0, changed=0 and anchors=1. The nonactivating tiny-output recovery completed before activation.
+
+Native cleanup, entry restoration and XR object destruction were verified; the owned game was normally closed and all four profiles restored. Evidence: `continuous-stereo-7124-20261017-181337-3ae20545.*`, `vrdof109-{audit,live-status,normal-close,save-restored}.json` under ignored `analysis/runtime/`. The existing development ZIP predates the Python fix and has not been promoted.
