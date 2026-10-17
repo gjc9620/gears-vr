@@ -46,8 +46,8 @@ struct Call {
     Call(Call const&)=delete;Call& operator=(Call const&)=delete;
 };
 uint64_t __fastcall hook_create(uintptr_t first,uintptr_t second,uintptr_t third,uintptr_t fourth,uintptr_t fifth,const void* structure){
-    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;ngx_output_pixels::create_boundary(scope.world(),caller,first,structure);Call call(false,scope.world(),caller,{first,second,third,fourth,fifth},structure);
-    const auto result=original_create(first,second,third,fourth,fifth,structure);if(call.row){call.row->result=result;call.row->returned=true;}return result;
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;ngx_output_pixels::CreateScope pixels(scope.world(),caller,first,structure);Call call(false,scope.world(),caller,{first,second,third,fourth,fifth},structure);
+    const auto result=original_create(first,second,third,fourth,fifth,structure);pixels.normal_return();if(call.row){call.row->result=result;call.row->returned=true;}return result;
 }
 uint64_t __fastcall hook_evaluate(uintptr_t first,uintptr_t second,uintptr_t third,const void* structure){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;ngx_output_pixels::EvalScope pixels(scope.world(),caller,first,structure);Call call(true,scope.world(),caller,{first,second,third,0,0},structure);

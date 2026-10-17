@@ -25,7 +25,13 @@ struct FakeBackend final:Backend {
     bool signal(unsigned,ID3D12CommandQueue*)override{++signals;return signal_ok;}
     bool poll(unsigned,Slot& s)override{s.life.completion(removed?UINT64_MAX:complete?1:0);if(!s.life.may_map())return false;++mapped;s.life.saved=true;return true;}
     void release(unsigned)override{++released;}
-    bool publish(uint64_t selected_ticket,uint64_t selected_world,uint64_t seq)override{assert(selected_ticket==32&&selected_world==9&&seq==2);++publications;return publish_ok;}
+    bool publish(uint64_t selected_ticket,uint64_t selected_world,uint64_t seq)override{
+#if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
+        assert(delayed.closed&&selected_ticket==delayed.selected_ticket&&selected_world==9&&seq==2);
+#else
+        assert(selected_ticket==32&&selected_world==9&&seq==2);
+#endif
+        ++publications;return publish_ok;}
     void close()override{}
 };
 FakeBackend fake_backend;Backend& backend(){return fake_backend;}
@@ -130,4 +136,10 @@ void pixel_cases(){using namespace ngx_output_pixels;
     assert(life.before(true,1,4,true));life.after(true);life.completion(1);assert(!life.may_map());life.reset(true,2,0,1,0);assert(life.may_map());
 }
 }
-int main(){ngx_observer_regression_main();pixel_cases();std::puts("NgxOutputPixelsTest passed (actual wrappers, fake GPU; no game)");}
+#if defined(GEARS_NGX_OUTPUT_DELAYED_TEST_INCLUDED)
+#define main ngx_output_legacy_main
+#endif
+int main(){ngx_observer_regression_main();pixel_cases();std::puts("NgxOutputPixelsTest passed (actual wrappers, fake GPU; no game)");return 0;}
+#if defined(GEARS_NGX_OUTPUT_DELAYED_TEST_INCLUDED)
+#undef main
+#endif

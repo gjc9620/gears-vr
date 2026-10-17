@@ -35,6 +35,9 @@
 #include "final_transfer_policy.h"
 #include "dlss_output_control.h"
 #include "ngx_route_observer.h"
+#if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
+#include "ngx_output_delayed_gate.h"
+#endif
 #include "outage_trace.h"
 #include "outage_sources.h"
 #include "anchor_observer.h"
@@ -1323,11 +1326,11 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
     if(!frame_link_diagnostics || !recording.load())return;
     owned_scene_gpu::present();
     auto identity=canonical_identity(chain);auto binding=swapchain_bindings.registered(identity);
-    if(!binding.chain){++frame_counts.unbound;frame_link.invalidate();frame_link.present(0,0);retire_stereo_window();frame_target_stats.clear_bindings();
+    if(!binding.chain){++frame_counts.unbound;frame_link.invalidate();frame_link.present(0,0);ngx_output_pixels::end_ticket(0,false);retire_stereo_window();frame_target_stats.clear_bindings();
         if(outage_diagnostics.load())outage_draws={};return;}
-    if(binding.resizing){frame_link.invalidate_all();retire_stereo_window();frame_target_stats.clear_bindings();return;}
+    if(binding.resizing){frame_link.invalidate_all();ngx_output_pixels::end_ticket(0,false);retire_stereo_window();frame_target_stats.clear_bindings();return;}
     ++frame_counts.presents;if(flags&DXGI_PRESENT_TEST){++frame_counts.tests;
-        frame_link.invalidate();frame_link.present(0,0);retire_stereo_window();frame_target_stats.clear_bindings();
+        frame_link.invalidate();frame_link.present(0,0);ngx_output_pixels::end_ticket(0,false);retire_stereo_window();frame_target_stats.clear_bindings();
         if(outage_diagnostics.load())outage_draws={};return;}
     DXGI_SWAP_CHAIN_DESC desc{};std::array<uintptr_t,16> resources{};auto desc_result=chain->GetDesc(&desc);bool valid=SUCCEEDED(desc_result);
     if(!valid)frame_read_failure(1,0,desc_result);
@@ -1372,6 +1375,7 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
 #endif
     if(ui_semantic_consumer_pending)frame_link.invalidate(); // Nonblocking: semantic consumers have not passed their final identity bracket.
     auto result=frame_link.present(resource,inventory_ok?binding.queue:0);
+    ngx_output_pixels::end_ticket(result.ticket,result.linked&&!result.contaminated);
     if(diagnostic){diagnostic->valid|=gears_outage::association;diagnostic->buffer=resource;diagnostic->queue=binding.queue;
         diagnostic->ticket=result.ticket;diagnostic->rejection=result.rejection;diagnostic->linked=result.linked;diagnostic->contaminated=result.contaminated;}
     if(!owned_xr_probe&&stereo_gpu_publish&&result.linked&&inventory_ok&&final_transfer_live::normalizer::publication_allowed()&&vr_dof_compat::publication(committed_world_generation.load(),result.ticket)&&
@@ -1521,6 +1525,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"owner_pid=%lu owner_creation_time=%llu stop_reason=%s owner_exit_observed=%u owner_error_observed=%u complete=1\n",session_owner_pid,
         static_cast<unsigned long long>(session_owner_creation_time),reasons[static_cast<unsigned>(reason)],
         session_owner_exit_observed.load()?1:0,session_owner_error_observed.load()?1:0);
+    ngx_output_pixels::print_control(output);
     const bool flushed=fflush(output)==0;
     session_status_available=fclose(output)==0&&flushed;
 }
@@ -4061,6 +4066,11 @@ DWORD WINAPI worker(void*) {
                 request_session_stop_at(path_position_stop_reason,path_position_stop_file,path_position_stop_line);
 #endif
             observe_session_owner(continuous_owner.state());
+#if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
+            {wchar_t arm_path[MAX_PATH];path_for(arm_path,L"ngx-output-arm.ini");FILETIME created{},exited{},kernel{},user{};LARGE_INTEGER frequency{};
+                if(GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user)&&QueryPerformanceFrequency(&frequency))
+                    ngx_output_pixels::worker_request(arm_path,GetCurrentProcessId(),gears_session::creation_time(created),uint64_t(session_started_qpc),uint64_t(frequency.QuadPart));}
+#endif
 #if defined(GEARS_UI_SCENE_SOURCE_TRIAL) && GEARS_UI_SCENE_SOURCE_TRIAL
             {wchar_t trial_path[MAX_PATH];path_for(trial_path,L"path-choice-trial.ini");ui_scene_trial_live::poll(trial_path,status);}
 #endif

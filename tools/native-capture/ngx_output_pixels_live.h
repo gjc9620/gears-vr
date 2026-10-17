@@ -4,6 +4,9 @@
 #include "frame_link.h"
 #include "ngx_route_observer.h"
 #include "death_hdr_pixels.h"
+#if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
+#include "ngx_output_delayed_gate.h"
+#endif
 namespace ngx_output_pixels {
 using CopyFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,UINT,UINT,UINT,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_BOX*);
 using ExecuteFn=void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);
@@ -39,12 +42,26 @@ struct Backend {
 Backend& backend();
 struct EvalScope {
     int index{-1},parent{-1};int exceptions{};bool returned{};uint64_t raw_result{};
+#if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
+    gears_ngx_route::Sample observed{};uintptr_t observed_structure{};bool gate_observed{};
+#endif
     EvalScope(bool world,uintptr_t caller,uintptr_t command,const void* structure);~EvalScope();
     void normal_return(uint64_t value){returned=true;raw_result=value;}
     EvalScope(EvalScope const&)=delete;EvalScope& operator=(EvalScope const&)=delete;
 };
 void create_boundary(bool owned,uintptr_t caller,uintptr_t command,const void* structure);
-bool enable(FILE*);void poll();void stop();void print(FILE*);
+struct CreateScope {
+#if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
+    gears_ngx_route::Sample before{};uintptr_t structure{};uint64_t serial{};int exceptions{};bool returned{};
+    CreateScope(bool,uintptr_t,uintptr_t,const void*);~CreateScope();
+    void normal_return(){returned=true;}
+#else
+    CreateScope(bool owned,uintptr_t caller,uintptr_t command,const void* structure){create_boundary(owned,caller,command,structure);}
+    void normal_return(){}
+#endif
+};
+void end_ticket(uint64_t,bool);void worker_request(const wchar_t*,uint64_t,uint64_t,uint64_t,uint64_t);
+bool enable(FILE*);void poll();void stop();void print(FILE*);void print_control(FILE*);
 std::unique_lock<std::recursive_mutex> execution_lock();
 void copy_passthrough(ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,UINT,UINT,UINT,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_BOX*,uintptr_t,CopyFn);
 unsigned prepare_execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);void after_execute(unsigned,ID3D12CommandQueue*);
@@ -53,7 +70,10 @@ void reset_after_original(ID3D12GraphicsCommandList*,HRESULT);
 HRESULT reset_passthrough(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*,ID3D12PipelineState*,ResetFn);
 #else
 struct EvalScope {EvalScope(bool,uintptr_t,uintptr_t,const void*){}void normal_return(uint64_t){}};
+struct CreateScope {CreateScope(bool,uintptr_t,uintptr_t,const void*){}void normal_return(){}};
 inline void create_boundary(bool,uintptr_t,uintptr_t,const void*){}inline bool enable(FILE*){return true;}inline void poll(){}inline void stop(){}inline void print(FILE*){}
+inline void end_ticket(uint64_t,bool){}inline void worker_request(const wchar_t*,uint64_t,uint64_t,uint64_t,uint64_t){}
+inline void print_control(FILE*){}
 inline std::unique_lock<std::recursive_mutex> execution_lock(){return {};}
 inline void copy_passthrough(ID3D12GraphicsCommandList* l,const D3D12_TEXTURE_COPY_LOCATION* d,UINT x,UINT y,UINT z,const D3D12_TEXTURE_COPY_LOCATION* s,const D3D12_BOX* b,uintptr_t,CopyFn f){f(l,d,x,y,z,s,b);}
 inline unsigned prepare_execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*){return 0;}inline void after_execute(unsigned,ID3D12CommandQueue*){}
