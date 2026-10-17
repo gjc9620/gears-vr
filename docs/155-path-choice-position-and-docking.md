@@ -21,6 +21,8 @@
 
 首轮启动前发现缺少GraphicsMenuLockTest测试可执行文件，补建后再开始游戏；`path-position77b` 实际到达岔路场景，但布局采样因UI变化而拒绝，未写入试验配置或修改位置。正常清理、游戏退出与设置/profile恢复通过。采集器现仅对带明确SnapshotChanged原因的失败丢弃整个样本并有界重新采集，不放宽身份认证。父子bounds变化、GPU文字/裁剪与输入仍待实际验证，尚未交付岔路UI修复。
 
-`path-position77e` 实际取得认证配置并调用原生接口，立即读回成功，`applied=1`；之后同一对象的Top/Bottom未继续等于自有值，`ownership_lost=1`，未通过同一接口恢复，`unresolved=1`。没有取得位移后的GPU图片，不能证明子布局移动。试验未覆盖新值，随后停止并正常关闭游戏；native cleanup、entry恢复、设置及四个profile恢复通过，自有前台采样为空。普通双目在该轮仍有1153次XR提交、572次scene copy；这不是位置修正通过。
+`path-position77e` 实际取得认证配置并调用原生接口，立即读回成功，`applied=1`；之后位置读取失败或数值不再匹配自有值，`ownership_lost=1`，未通过同一接口恢复，`unresolved=1`。当时同一个标志覆盖这两种情况，不能仅凭它认定游戏改写了坐标。没有取得位移后的GPU图片，不能证明子布局移动。试验未强行恢复，随后停止并正常关闭游戏；native cleanup、entry恢复、设置及四个profile恢复通过，自有前台采样为空。普通双目在该轮仍有1153次XR提交、572次scene copy；这不是位置修正通过。
 
 历史虚表候选 `138a558+488 → 298bdc` 会计算位置并以return `298c46/298c7b` 调用SetPosition的Left/Top。尚未认证当前这个虚表槽或证明本轮执行了该函数。下一步保存首次失去所有权时的实际值，观察该panel的原生SetPosition来源，再决定在哪个正常布局入口调整；不在Render层反复覆盖。
+
+新增一次性loss记录区分Top/Bottom可读mask、原始/自有/实际bits、units及scene/panel/world；只发布首条完整记录，worker通过release/acquire读取。缺读、变回原始、单face改变和禁止第二条覆盖用例通过；实际数据待采集。

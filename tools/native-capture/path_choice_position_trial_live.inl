@@ -14,7 +14,29 @@ std::atomic<DWORD> owner_thread{};std::atomic<unsigned> in_flight{},restore_retr
 // cannot race an owner entering between its idle check and terminal publish.
 std::atomic<unsigned> owner_activity{};
 inline constexpr unsigned retry_limit=3;
-trial::State state; // Owned exclusively by the existing scene-root game hook.
+// First ownership loss only. The owner writes once, then publishes immutable
+// fields; worker progress reads them only after an acquire of ready.
+struct OwnershipLossReceipt {
+    std::array<std::uint32_t,2> original{},owned{},observed{};
+    std::uint32_t units{};unsigned read_mask{};bool positions_complete{},units_readable{};
+    std::uint64_t scene{},panel{},world{},current_world{},tick{};
+};
+OwnershipLossReceipt first_loss;
+std::atomic<bool> loss_claimed{},loss_ready{};
+trial::State state; // Only the bound scene-root owner thread accesses this.
+template<class Read> void publish_loss(trial::Config const& c,std::uint64_t current_world,
+    std::array<std::uint32_t,2> observed,unsigned read_mask,bool complete,Read read){
+    bool empty=false;if(!loss_claimed.compare_exchange_strong(empty,true))return;
+    OwnershipLossReceipt receipt;
+    receipt.original={c.top_bits,c.bottom_bits};receipt.owned=state.lease.owned;
+    receipt.read_mask=read_mask;receipt.positions_complete=complete;
+    for(unsigned i=0;i<2;++i)if(read_mask&(1u<<i))receipt.observed[i]=observed[i];
+    std::uint32_t units{};receipt.units_readable=read(&units,reinterpret_cast<void const*>(c.panel+0x70),4);
+    if(receipt.units_readable)receipt.units=units;
+    receipt.scene=c.scene;receipt.panel=c.panel;receipt.world=c.world_generation;
+    receipt.current_world=current_world;receipt.tick=GetTickCount64();
+    first_loss=receipt;loss_ready.store(true,std::memory_order_release);
+}
 ULONGLONG last_poll{};FILETIME seen_file{};thread_local bool inside{};
 uint64_t creation_time(){FILETIME c{},e{},k{},u{};if(!GetProcessTimes(GetCurrentProcess(),&c,&e,&k,&u))return 0;
     return (uint64_t(c.dwHighDateTime)<<32)|c.dwLowDateTime;}
@@ -95,8 +117,16 @@ uintptr_t invoke_with(Candidate const& candidate,Original original,Read read,Set
             state.lease.active=false;count(trial::Result::identity_lost);return original();}
         if(c.client!=candidate.client||c.scene!=candidate.scene)return original();
         if(!trial::authenticate(c,ctx,read)){state.lease.active=false;count(trial::Result::identity_lost);return original();}
-        std::array<std::uint32_t,2> p{};
-        if(!trial::positions(c,read,p)||p!=state.lease.owned){state.lease.active=false;count(trial::Result::ownership_lost);return original();}
+        std::array<std::uint32_t,2> p{};unsigned read_mask=0;
+        auto observed_read=[&](void* out,void const* from,std::size_t size){
+            bool ok=read(out,from,size);auto address=reinterpret_cast<uintptr_t>(from);
+            if(ok&&size==4){if(address==c.panel+0x64)read_mask|=1;if(address==c.panel+0x6c)read_mask|=2;}
+            return ok;
+        };
+        const bool complete=trial::positions(c,observed_read,p);
+        if(!complete||p!=state.lease.owned){
+            publish_loss(c,ctx.world_generation,p,read_mask,complete,read);
+            state.lease.active=false;count(trial::Result::ownership_lost);return original();}
         if(drain_requested.load()||!req||req->config.nonce!=c.nonce||GetTickCount64()>=req->expires){
             if(!certify()){state.lease.active=false;count(trial::Result::identity_lost);return original();}
             ++restore_retries;count(trial::restore(state,ctx,read,invoke_set));return original();}
@@ -112,7 +142,15 @@ template<class Candidate,class Original> uintptr_t invoke(Candidate const& candi
     return invoke_with(candidate,original,safe_copy,set,certify_code);
 }
 void progress(FILE* f){fprintf(f,"path_position_compiled=1 path_position_nonce=%llu path_position_applied=%llu path_position_restored=%llu path_position_rejected=%llu path_position_identity_lost=%llu path_position_ownership_lost=%llu path_position_setter_failed=%llu path_position_pending_restore=%u path_position_owner_thread=%lu path_position_in_flight=%u path_position_restore_retries=%u path_position_draining=%u path_position_unresolved=%u ",
-    loaded_nonce.load(),applied.load(),restored.load(),rejected.load(),identity_lost.load(),ownership_lost.load(),setter_failed.load(),pending_restore.load()?1u:0u,owner_thread.load(),in_flight.load(),restore_retries.load(),draining()?1u:0u,unresolved.load()?1u:0u);}
+    loaded_nonce.load(),applied.load(),restored.load(),rejected.load(),identity_lost.load(),ownership_lost.load(),setter_failed.load(),pending_restore.load()?1u:0u,owner_thread.load(),in_flight.load(),restore_retries.load(),draining()?1u:0u,unresolved.load()?1u:0u);
+    const bool ready=loss_ready.load(std::memory_order_acquire);
+    fprintf(f,"path_position_loss_ready=%u ",ready?1u:0u);
+    if(ready){auto const& r=first_loss;
+        fprintf(f,"path_position_loss_read_mask=%u path_position_loss_complete=%u path_position_loss_original_top=%u path_position_loss_original_bottom=%u path_position_loss_owned_top=%u path_position_loss_owned_bottom=%u path_position_loss_observed_top=%u path_position_loss_observed_bottom=%u path_position_loss_units_readable=%u path_position_loss_units=%u path_position_loss_scene=%llu path_position_loss_panel=%llu path_position_loss_world=%llu path_position_loss_current_world=%llu path_position_loss_tick=%llu ",
+            r.read_mask,r.positions_complete?1u:0u,r.original[0],r.original[1],r.owned[0],r.owned[1],r.observed[0],r.observed[1],
+            r.units_readable?1u:0u,r.units,r.scene,r.panel,r.world,r.current_world,r.tick);
+    }
+}
 #else
 void request_drain(){}
 bool draining(){return false;}

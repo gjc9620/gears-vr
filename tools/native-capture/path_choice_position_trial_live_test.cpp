@@ -41,6 +41,7 @@ struct Engine {
 
 static void reset(){disable();state={};owner_thread=0;in_flight=0;owner_activity=0;inside=false;restore_retries=0;drain_started=0;
     pending_restore=false;ever_modified=false;drain_requested=false;unresolved=false;terminal=false;
+    first_loss={};loss_claimed=false;loss_ready=false;
     loaded_nonce=0;applied=0;restored=0;rejected=0;identity_lost=0;ownership_lost=0;setter_failed=0;reads=0;stops=0;}
 static std::shared_ptr<Request> select(Engine& e){auto ctx=context(e.c.client,e.c.scene);
     e.c.pid=ctx.pid;e.c.creation_time=ctx.creation_time;e.c.started_qpc=ctx.started_qpc;e.c.world_generation=ctx.world_generation;
@@ -111,4 +112,41 @@ static void bounded_drain(){reset();Engine e;select(e);Candidate c;auto original
     for(unsigned i=0;i<retry_limit;++i){invoke_with(c,original,e2.reader(),fail,cert);if(i+1<retry_limit)assert(stops==0&&!terminal&&pending_restore);}
     assert(stops==1&&terminal&&unresolved&&pending_restore&&!draining());
 }
-int main(){gates();expiry_and_retry();failed_apply_rollback();threaded_drain();bounded_drain();std::puts("PathChoicePositionTrialLiveTest passed");}
+static void ownership_receipts(){
+    for(unsigned failure=0;failure<5;++failure){
+        reset();Engine e;select(e);Candidate c;unsigned originals{};
+        auto original=[&](){++originals;return uintptr_t(123);};auto certify=[](){return true;};
+        invoke_with(c,original,e.reader(),e.setter(),certify);auto owned=e.pos();
+        if(failure==1||failure==4){e.put(e.c.panel+0x64,e.c.top_bits);e.put(e.c.panel+0x6c,e.c.bottom_bits);}
+        if(failure==2)e.put(e.c.panel+0x64,bits(.2f));
+        unsigned units_reads{};
+        auto reader=[&](void* out,void const* from,std::size_t size){auto at=reinterpret_cast<uintptr_t>(from);
+            if(size==4&&((failure==0&&(at==e.c.panel+0x64||at==e.c.panel+0x6c))||
+                (failure==3&&at==e.c.panel+0x6c)))return false;
+            if(at==e.c.panel+0x70&&size==4&&failure==4&&++units_reads==2)return false;
+            return e.read(out,from,size);
+        };
+        std::thread worker([&]{while(!loss_ready.load(std::memory_order_acquire))std::this_thread::yield();
+            assert(first_loss.original[0]==e.c.top_bits&&first_loss.original[1]==e.c.bottom_bits);
+            assert(first_loss.owned==owned&&first_loss.panel==e.c.panel&&first_loss.scene==e.c.scene);
+            assert(first_loss.world==e.c.world_generation&&first_loss.current_world==e.c.world_generation);
+        });
+        assert(invoke_with(c,original,reader,e.setter(),certify)==123);worker.join();
+        assert(ownership_lost==1&&stops==1&&originals==2&&e.calls==2&&loss_ready.load(std::memory_order_acquire));
+        auto const receipt=first_loss;
+        const unsigned mask=failure==0?0u:failure==3?1u:3u;
+        assert(receipt.read_mask==mask&&receipt.positions_complete==(mask==3));
+        assert(receipt.units_readable==(failure!=4)&&receipt.units==(failure==4?0u:0x04040404u));
+        if(failure==0)assert(receipt.observed[0]==0&&receipt.observed[1]==0);
+        if(failure==1||failure==4)assert(receipt.observed[0]==e.c.top_bits&&receipt.observed[1]==e.c.bottom_bits);
+        if(failure==2)assert(receipt.observed[0]==bits(.2f)&&receipt.observed[1]==owned[1]);
+        if(failure==3)assert(receipt.observed[0]==owned[0]&&receipt.observed[1]==0);
+        // The terminal hook and an attempted second publication cannot replace
+        // the first receipt, including its failure mask and original tick.
+        invoke_with(c,original,e.reader(),e.setter(),certify);
+        publish_loss(e.c,99,{1,2},3,true,e.reader());
+        assert(first_loss.observed==receipt.observed&&first_loss.read_mask==receipt.read_mask&&
+            first_loss.tick==receipt.tick&&first_loss.current_world==receipt.current_world&&e.calls==2);
+    }
+}
+int main(){ownership_receipts();gates();expiry_and_retry();failed_apply_rollback();threaded_drain();bounded_drain();std::puts("PathChoicePositionTrialLiveTest passed");}
