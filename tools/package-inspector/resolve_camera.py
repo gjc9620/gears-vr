@@ -88,8 +88,17 @@ class Resolver:
             if not 0<=index<self.name_count:raise RuntimeError('Name index out of range')
             entry=self.name_pointers[index]
             if self.u32(entry+self.profile['name_entry_index'])!=index:raise RuntimeError('Name entry index mismatch')
-            raw=self.read(entry+self.profile['name_entry_text'],128)
-            end=next((i for i in range(0,len(raw),2) if raw[i:i+2]==b'\0\0'),None)
+            # A short name can end before an unreadable neighboring page.
+            # Keep the same bound, but do not request that page unless the
+            # string actually continues into it. Exact-read failures propagate.
+            address=entry+self.profile['name_entry_text']
+            raw=b'';end=None
+            while len(raw)<128:
+                current=address+len(raw)
+                size=min(128-len(raw),4096-current%4096)
+                raw+=self.read(current,size)
+                end=next((i for i in range(0,len(raw)-1,2) if raw[i:i+2]==b'\0\0'),None)
+                if end is not None:break
             if end is None:raise RuntimeError('Name exceeds bounded UTF16 read')
             self.names_cache[index]=raw[:end].decode('utf-16-le',errors='strict')
         return self.names_cache[index]
