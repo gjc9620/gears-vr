@@ -16,14 +16,16 @@ struct Path {
     bool same(Path const& b)const{return valid&&b.valid&&root==b.root&&slot==b.slot&&context==b.context&&table==b.table&&bank==b.bank&&data==b.data&&address==b.address&&active==b.active;}
 };
 struct Eye {
-    uintptr_t descriptor_address{},owner{};Descriptor descriptor{};Float4 source{},forwarded{};View before{},after{};Path post{};
+    uintptr_t descriptor_address{},owner{},quad_caller{};Descriptor descriptor{};Float4 source{},forwarded{};View before{},after{};Path post{};
 };
 struct Proof {uintptr_t owner{};std::array<Eye,2> eyes{};};
 Store<Proof> store;
 std::array<uint64_t,2> modified{},already_zero{},setter_proved{},quad_proved{};
+std::array<std::array<uint64_t,2>,2> quad_site_calls{},quad_site_proved{};
 std::array<uint64_t,static_cast<unsigned>(Decision::count)> decisions{};
 uint64_t capture_rejected{},site_calls{};
-struct Receipt {bool valid{},complete{},site{};uint64_t ticket{},world{};unsigned decision{},failure{},setters{},quads{};};
+struct Receipt {bool valid{},complete{},site{};uint64_t ticket{},world{};unsigned decision{},failure{},setters{},quads{};
+    std::array<uintptr_t,2> quad_callers{};};
 Receipt last_allowed{},last_rejected{};
 template<class T> bool read(T& out,uintptr_t address,uintptr_t offset=0){
     return address&&offset<=UINTPTR_MAX-address&&sizeof(T)-1<=UINTPTR_MAX-(address+offset)&&safe_copy(&out,reinterpret_cast<void*>(address+offset),sizeof(T));
@@ -47,9 +49,9 @@ bool other_controls(){return owned_bindings_enabled||quad_source_control_enabled
 bool attest(FILE* file){
     const bool configuration=!self_testing&&continuous_session&&stereo_xr&&stereo_gpu_publish&&submit_pair_enabled&&frame_link_diagnostics&&viewport_diagnostics&&!owned_xr_probe&&!other_controls();
     attested=configuration&&final_transfer_live::verify_range(file,0x1c4b90,200,"10b2617802b5648fea992132f8b9e20d68d58940de7e7779f34298b8be240cb0")&&
-        final_transfer_live::verify_range(file,0xd80360,96,"bbdd0a157bda57262b76ad682af9363b24c23e225d41859857a0e8ab7c98c85b");
+        final_transfer_live::verify_range(file,0xd80360,0x71b,"e7bdb0107d1243e27ccdfc2c24e2a477b209ca1e31c3a78ec9e3489ee5423997");
     target=reinterpret_cast<void*>(base+0x1c4b90);
-    fprintf(file,"vr_dof_identity enabled=1 configuration=%u runtime_ranges_match=%u setter_rva=1c4b90 setter_size=200 caller_rva=d80360 caller_size=96 historical_code_sha256=911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6 owned_xr_probe_supported=0\n",unsigned(configuration),unsigned(attested));return attested;
+    fprintf(file,"vr_dof_identity enabled=1 configuration=%u runtime_ranges_match=%u setter_rva=1c4b90 setter_size=200 caller_rva=d80360 caller_size=1819 historical_code_sha256=911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6 owned_xr_probe_supported=0\n",unsigned(configuration),unsigned(attested));return attested;
 }
 bool current(Key key){return attested&&recording.load()&&!other_controls()&&key&&active_key==key&&consuming_renderer&&consuming_frozen_frame.enabled&&
     consuming_frame_ticket==key.id&&consuming_frozen_frame.id==key.id&&consuming_frozen_frame.world_generation==key.world&&committed_world_generation.load()==key.world;}
@@ -86,20 +88,24 @@ uint64_t __fastcall hook(uintptr_t rcx,const uint16_t* descriptor,const void* da
     if(change)++modified[before.eye];else ++already_zero[before.eye];return result;
 }
 void quad(uintptr_t caller,bool world){
-    if(caller!=0xd80a7b)return;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!active_key)return;
+    if(!gears_vr_dof::quad_caller(caller))return;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!active_key)return;
     const auto key=active_key;auto* entry=store.participate(key);++site_calls; // A quad without a supported setter is a participating failure.
     if(!entry)return;if(!world||!current(key)){entry->fail(Failure::identity_changed);return;}
-    const auto now=view();if(!now.valid){entry->fail(Failure::read_failed);return;}if(!entry->reserve(now.eye,false))return;
+    const auto now=view();if(!now.valid){entry->fail(Failure::read_failed);return;}
+    const unsigned site=caller==0xd808d8?0u:1u;++quad_site_calls[site][now.eye];
+    if(!entry->reserve(now.eye,false))return; // One shared per-eye reserve across both sites.
     const auto& setter=entry->payload.eyes[now.eye];Descriptor descriptor{};const auto path=destination();
     const bool proof=(entry->setter_mask&(1u<<now.eye))&&setter.owner&&setter.owner==entry->payload.owner&&
         read(descriptor,setter.descriptor_address)&&descriptor==setter.descriptor&&setter.after==now&&path.same(setter.post)&&
         path.context==now.context&&finite(path.value)&&path.value[0]==0.0f&&equal(path.value,setter.forwarded);
-    entry->proved(now.eye,false,proof);if(proof)++quad_proved[now.eye]; // No old R8 memory is read here.
+    entry->proved(now.eye,false,proof);if(proof){entry->payload.eyes[now.eye].quad_caller=caller;
+        ++quad_proved[now.eye];++quad_site_proved[site][now.eye];} // No old R8 memory is read here.
 }
 bool publication(uint64_t world,uint64_t ticket){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const Key key{world,ticket};const auto decision=store.decision(key);++decisions[static_cast<unsigned>(decision)];
     Receipt receipt;receipt.valid=true;receipt.world=world;receipt.ticket=ticket;receipt.decision=static_cast<unsigned>(decision);
-    if(auto* entry=store.find(key)){receipt.complete=entry->complete;receipt.site=entry->site;receipt.failure=static_cast<unsigned>(entry->failure);receipt.setters=entry->setter_mask;receipt.quads=entry->quad_mask;}
+    if(auto* entry=store.find(key)){receipt.complete=entry->complete;receipt.site=entry->site;receipt.failure=static_cast<unsigned>(entry->failure);receipt.setters=entry->setter_mask;receipt.quads=entry->quad_mask;
+        for(unsigned eye=0;eye<2;++eye)receipt.quad_callers[eye]=entry->payload.eyes[eye].quad_caller;}
     (allowed(decision)?last_allowed:last_rejected)=receipt;
     if(!allowed(decision))++capture_rejected;return allowed(decision);
 }
@@ -108,8 +114,11 @@ void progress(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_
 void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     fprintf(file,"vr_dof_compat enabled=1 attested=%u both_owned_eyes=1 outside_owned_unchanged=1 store_capacity=128 capacity_lost=%u overflow=%llu late=%llu invalid=%llu begun=%llu completed=%llu retired_through=%llu observed_through=%llu site_calls=%llu modified_left=%llu modified_right=%llu already_zero_left=%llu already_zero_right=%llu setter_proved_left=%llu setter_proved_right=%llu quad_proved_left=%llu quad_proved_right=%llu no_site_allowed=%llu zero_proved_allowed=%llu capture_rejected=%llu missing=%llu incomplete=%llu proof_rejected=%llu overflow_rejected=%llu no_gpu_commands=1 source_memory_written=0 old_r8_read_at_quad=0 highwater_is_capacity=0 owned_xr_probe_supported=0\n",
         unsigned(attested),unsigned(store.capacity_lost),store.overflow,store.late,store.invalid,store.begins,store.finishes,store.retired,store.observed,site_calls,modified[0],modified[1],already_zero[0],already_zero[1],setter_proved[0],setter_proved[1],quad_proved[0],quad_proved[1],decisions[0],decisions[1],capture_rejected,decisions[2],decisions[3],decisions[4],decisions[5]);
+    fprintf(file,"vr_dof_quad_sites site0=d808d8 calls=%llu,%llu proved=%llu,%llu site1=d80a7b calls=%llu,%llu proved=%llu,%llu eye_order=left,right call_counts_require_valid_view=1\n",
+        quad_site_calls[0][0],quad_site_calls[0][1],quad_site_proved[0][0],quad_site_proved[0][1],quad_site_calls[1][0],quad_site_calls[1][1],quad_site_proved[1][0],quad_site_proved[1][1]);
     const Receipt examples[]{last_allowed,last_rejected};for(unsigned i=0;i<2;++i){auto const& r=examples[i];
-        fprintf(file,"vr_dof_publication_example allowed=%u valid=%u world=%llu ticket=%llu decision=%u failure=%u complete=%u site=%u setters=%u quads=%u\n",unsigned(i==0),unsigned(r.valid),r.world,r.ticket,r.decision,r.failure,unsigned(r.complete),unsigned(r.site),r.setters,r.quads);}
+        fprintf(file,"vr_dof_publication_example allowed=%u valid=%u world=%llu ticket=%llu decision=%u failure=%u complete=%u site=%u setters=%u quads=%u quad_callers=%llx,%llx\n",unsigned(i==0),unsigned(r.valid),r.world,r.ticket,r.decision,r.failure,unsigned(r.complete),unsigned(r.site),r.setters,r.quads,
+            static_cast<unsigned long long>(r.quad_callers[0]),static_cast<unsigned long long>(r.quad_callers[1]));}
 }
 #else
 bool attest(FILE*){return true;}

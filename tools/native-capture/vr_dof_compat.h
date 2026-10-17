@@ -16,6 +16,7 @@ template<class Fn> uint64_t call_setter(Fn original,uintptr_t rcx,const uint16_t
     return original(rcx,descriptor,change?static_cast<const void*>(copy.data()):source,index);
 }
 inline uintptr_t descriptor_owner(uintptr_t address){return address>=0xfe&&address%2==0?address-0xfe:0;}
+inline bool quad_caller(uintptr_t caller){return caller==0xd808d8||caller==0xd80a7b;}
 inline bool native_eye(uintptr_t current,uintptr_t views,int count,unsigned& eye){
     if(count!=2||!views||views%8||views>UINTPTR_MAX-0xd30||current<views)return false;
     const auto offset=current-views;if(offset!=0&&offset!=0xd30)return false;eye=offset?1u:0u;return true;
