@@ -150,6 +150,7 @@ void print_late_quad(FILE* status);
 void observe_late_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 void print_unpossessed_quads(FILE* status);
 void observe_unpossessed_quad_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
+namespace death_source_live {void progress(FILE*);void print(FILE*);unsigned status_interval_ms();}
 void print_backbuffer_copies(FILE* status);
 void observe_backbuffer_copy_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member);
 namespace final_transfer_live {
@@ -1373,6 +1374,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         anchor_observer_enabled?1:0,anchor_submission_matched.load(),anchor_submission_rejected.load());
     fprintf(output,"unpossessed_submitted=%u unpossessed_first_ticket=%llu unpossessed_last_ticket=%llu ",
         unpossessed_submission_count.load(),unpossessed_first_ticket.load(),unpossessed_last_ticket.load());
+    death_source_live::progress(output);
     fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu ",
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
         static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()));
@@ -1575,6 +1577,7 @@ void print_frame_link(FILE* status) {
     std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
     print_late_quad(status);
     print_unpossessed_quads(status);
+    death_source_live::print(status);
     print_backbuffer_copies(status);
     final_transfer_live::print(status);
     fprintf(status,"final_eye_failure_inventory rows=%u limit=%u per_epoch_limit=%u missing_ticket_per_epoch_limit=1 missing_ticket_global_limit=16 dropped=%llu resource_desc_source=tracked_rtv present_source=existing_inventory stage_bits=quad:1,draw:2 reason_bits=eye_invalid:1,ticket_missing:2,targets_not_one:4,mip:8,width:16,height:32,descriptor_capacity:64,no_targets:128,no_resource:256,not_known_buffer:512,verified_rect:1024\n",
@@ -2062,6 +2065,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "quad_source_control.h"
 #include "color_copy_observer.h"
 #include "first_view_mask_control.h"
+#include "death_source_control.inl"
 
 void inspect_completed_renderer(Record& record,void* destination){
     if(!destination)return;
@@ -2986,6 +2990,8 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
     gears_quad_source::Args original_args{{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height}};
     gears_quad_source::Decision control;
     if(quad_source_control_enabled()){control=prepare_quad_source_control(original_args,caller);u=control.forwarded.rectangle[4];}
+    const auto death_control=death_source_live::prepare({original_args.rectangle,original_args.dimensions},caller);
+    if(death_control.decision.modified)u=death_control.decision.forwarded.rectangle[4];
     if(recording.load()&&viewport_diagnostics&&trial_draw_scope&&(self_testing||(caller>=0xd82f58&&caller<0xd83db9)||caller==0xd808d8)){
         QuadTrace value{caller,{x,y,width,height,u,v,uw,vh},{target_width,target_height,texture_width,texture_height},1};
         bool saved=false;std::lock_guard<std::mutex> lock(quad_mutex);
@@ -3011,6 +3017,7 @@ void __fastcall hook_quad(float x,float y,float width,float height,float u,float
     }
     observe_unpossessed_quad_begin();
     original_quad(x,y,width,height,u,v,uw,vh,target_width,target_height,texture_width,texture_height);
+    death_source_live::complete(death_control);
     if(late_quad_candidate.active&&!late_quad_candidate.draws){
         observe_unpossessed_quad_draw(nullptr,0,0,0,0);
         std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);++late_quad_without_draw;
@@ -3762,6 +3769,7 @@ DWORD WINAPI worker(void*) {
     if(ok&&continuous_session)ok=enable_graphics_lock_observer();
     if(ok)ok=enable_resource_resize_probe(status);
     if(ok)ok=final_transfer_live::enable(status);
+    if(ok)ok=death_source_live::enable(status);
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     if(ok)ok=create_quad_source_events();
@@ -3819,7 +3827,7 @@ DWORD WINAPI worker(void*) {
                 if(session_native_cleanup_ready())break;
                 if(session_cleanup_expired())session_cleanup_timeout=true;
             }
-            if(GetTickCount64()>=next_status){write_session_status();next_status=GetTickCount64()+1000;}
+            if(GetTickCount64()>=next_status){write_session_status();next_status=GetTickCount64()+death_source_live::status_interval_ms();}
             flush(file,4);Sleep(20);
         }
         session_phase=SessionPhase::draining;write_session_status();

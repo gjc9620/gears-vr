@@ -11,3 +11,7 @@
 一次检查点world1→2，恢复观察4907ms，包含加载。正常原生清理、游戏正常关闭、四份存档恢复并核验通过。菜单名称分块修正连续两轮自动导航成功。尚不提升候选或重打发行包；真实头显、全部CG/载具及UI回归仍待完成。
 
 证据均留在忽略目录：`analysis/runtime/unpossessed89-{audit,normal-close,gpu-audit,save-restored}.json`，会话`.native-status.txt`、`.native-status.unpossessed-quads.json`、stdout和四张GPU图。相关历史原生函数先查知识库，保留artifact1快照身份；不能仅凭RVA把静态伪代码当本轮运行字节。
+
+静态复核纠正：不能把1c964b右眼u=0直接判为错误；历史伪代码存在实际view矩形和shader采样变换，局部scratch复用可能合理。四帧d80a7b输出资源均与2b11a0 slot2 canonical相等、同list代次/Execute，最终右眼矩形和全幅viewport正确。接下来只做d80a7b右眼源u半宽→0的短A/B/A定位，保持destination及其他参数，且须先认证运行callsite并保存精确票据。若B恢复场景、A2再黑，则缩小到该步骤的输入/地址/变换；若仍黑则削弱简单UV解释。控制不属于产品修复。
+
+历史blobSHA256911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6经校验；返回RVA d80a7b之前的相对调用指令经机械核验指向1af42c，原始字节留在忽略目录。候选认证范围d80a1b起128字节SHA256d276fe37daadd6dfeadd4a0e3154cf6fb7c053bf17757a3da5b9e0e0d54ff6dc，目前尚未宣称与实际新进程匹配。相关1c76e8和d7fd14仍属artifact1历史证据。
