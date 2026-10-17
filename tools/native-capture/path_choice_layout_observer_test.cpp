@@ -22,11 +22,12 @@ static std::atomic<uint64_t> committed_world_generation{4};
 static std::atomic<bool> recording{true};
 static bool ui_observer_enabled=true,admitted=true;
 static thread_local unsigned stereo_publish_bypass{};
-static std::atomic<unsigned> active{},read_calls{};
+static std::atomic<unsigned> active{},read_calls{},array_reads{};
 struct Scope {Scope(){++active;}~Scope(){--active;}bool world()const{return admitted;}};
 static std::map<uintptr_t,unsigned char> memory;
 static bool safe_copy(void* out,void const* from,std::size_t size){
     ++read_calls;auto address=reinterpret_cast<uintptr_t>(from);auto target=static_cast<unsigned char*>(out);
+    if(address>=0x6000&&address<0x6100)++array_reads;
     for(std::size_t i=0;i<size;++i){auto it=memory.find(address+i);if(it==memory.end())return false;target[i]=it->second;}return true;
 }
 template<class T> static void put(uintptr_t address,T const& value){auto p=reinterpret_cast<unsigned char const*>(&value);
@@ -39,22 +40,26 @@ namespace observer=path_choice_layout_observer;
 namespace position=path_choice_position_live;
 namespace trial=gears_path_choice_position;
 static std::atomic<unsigned> original_calls{};
-static void* expected_object{};static void const* expected_input{};
+static void* expected_object{};
 static unsigned mode{},nested{};
+static constexpr uintptr_t sentinel=0xfedcba9876543210ull;
 static std::promise<void>* entered{},*release_original{};
-static void __fastcall original(void* object,void const* input){
-    ++original_calls;assert(object==expected_object&&input==expected_input);
+static uintptr_t __fastcall original(void* object){
+    ++original_calls;assert(object==expected_object);
     if(mode==1){auto const& c=position::state.lease.config;put(c.panel+0x64,c.top_bits);put(c.panel+0x6c,c.bottom_bits);}
-    if(mode==2&&!nested){++nested;observer::hook(object,input);--nested;}
+    if(mode==2&&!nested){++nested;assert(observer::hook(object)==sentinel);--nested;}
     if(mode==3)throw 71;
     if(mode==4){entered->set_value();release_original->get_future().wait();}
     if(mode==5){auto const& c=position::state.lease.config;put(c.panel+0x64,c.top_bits);put(c.panel+0x6c,c.bottom_bits);
         position::publish_loss(c,c.world_generation,{c.top_bits,c.bottom_bits},3,true,safe_copy);++position::ownership_lost;}
+    if(mode==6)++committed_world_generation;
+    return sentinel;
 }
 struct Fixture {
-    trial::Config c;std::array<std::uint32_t,3> input{0x12345678,0xabcdef01,0x87654321};
+    trial::Config c;
     Fixture(){
-        memory.clear();original_calls=0;read_calls=0;mode=0;nested=0;observer::depth=0;observer::slots=0;
+        memory.clear();original_calls=0;read_calls=0;array_reads=0;mode=0;nested=0;observer::depth=0;observer::slots=0;observer::entries=0;
+        for(auto& count:observer::bypass)count=0;
         for(unsigned i=0;i<observer::row_limit;++i){observer::rows[i]={};observer::ready[i]=false;}
         observer::original=original;recording=true;ui_observer_enabled=true;admitted=true;stereo_publish_bypass=0;
         position::disable();position::state={};position::owner_thread=GetCurrentThreadId();position::owner_activity=0;position::inside=false;
@@ -67,52 +72,62 @@ struct Fixture {
         c.top_bits=trial::bits(.0374f);c.bottom_bits=trial::bits(.9626f);
         c.checks.push_back({0x5000,{0xab}});memory[0x5000]=0xab;
         put(c.panel,c.panel_vtable);put(c.panel_vtable+0x3d8,base+0x2988d8);put(c.panel_vtable+0x3b8,base+0x297338);
-        put(c.panel_vtable+observer::slot_offset,base+observer::code_rva);put(c.panel+0x70,std::uint32_t(0x04040404));
-        put(c.panel+0x64,c.top_bits);put(c.panel+0x6c,c.bottom_bits);put(c.panel+0x3e8,std::array<std::uint32_t,3>{7,8,9});
-        expected_object=reinterpret_cast<void*>(c.panel);expected_input=input.data();put(reinterpret_cast<uintptr_t>(input.data()),input);
+        put(c.panel_vtable+observer::slot_offset,base+observer::code_rva);put(c.panel_vtable+observer::child_slot,base+observer::child_rva);
+        put(c.panel+0x70,std::uint32_t(0x04040404));put(c.panel+0x60,std::uint32_t(11));put(c.panel+0x68,std::uint32_t(33));
+        put(c.panel+0x64,c.top_bits);put(c.panel+0x6c,c.bottom_bits);
+        put(c.panel+0x1dc,uintptr_t(0x78787878));put(c.panel+0x4e4,static_cast<unsigned char>(1));
+        put(c.panel+0x4e8,uintptr_t(0x6000));put(c.panel+0x4f0,int(2));put(c.panel+0x4f4,int(2));put(c.panel+0x4f8,std::uint32_t(0x12345678));
+        put(0x6000,trial::bits(.8f));put(0x6004,trial::bits(.9f));expected_object=reinterpret_cast<void*>(c.panel);
     }
     auto setter(){return [&](auto panel,float value,unsigned face,unsigned,unsigned){put(panel+0x60+face*4,trial::bits(value));return true;};}
     void apply(){auto ctx=position::context(c.client,c.scene);
         assert(trial::apply(position::state,c,ctx,safe_copy,setter())==trial::Result::applied);position::count(trial::Result::applied);}
-    void call(){observer::hook(expected_object,expected_input);}
+    void call(){assert(observer::hook(expected_object)==sentinel);}
 };
+static uint64_t count(observer::Bypass why){return observer::bypass[unsigned(why)].load();}
 static void call_subtree(){
     Fixture f;auto req=std::make_shared<position::Request>();req->config=f.c;req->expires=GetTickCount64()+7000;
     std::atomic_store(&position::selected,std::shared_ptr<position::Request const>(req));
-    struct Candidate{uintptr_t client=0x1000,scene=0x2000;} candidate;
-    mode=1;const auto input=f.input;
+    struct Candidate{uintptr_t client=0x1000,scene=0x2000;} candidate;mode=1;
     assert(position::invoke_with(candidate,[&]{f.call();return uintptr_t(123);},safe_copy,f.setter(),[]{return true;})==123);
-    assert(original_calls==1&&observer::ready[0].load(std::memory_order_acquire));
-    auto const& r=observer::rows[0];assert(r.normal&&r.depth==1&&r.caller&&r.thread==GetCurrentThreadId());
-    assert(r.before.identity&&r.after.identity&&r.before.mask==15&&r.after.mask==15&&r.input_readable&&r.input==input&&f.input==input);
-    assert(r.before.position==position::state.lease.owned&&r.after.position[0]==f.c.top_bits&&r.after.position[1]==f.c.bottom_bits);
-    assert((r.before.stored==std::array<std::uint32_t,3>{7,8,9})&&r.before.stored==r.after.stored&&r.before.applied==1);
-    assert(r.before.units==0x04040404&&r.before.world==4&&r.exit>=r.enter&&active==0&&observer::depth==0);
+    assert(original_calls==1&&observer::entries==1&&observer::ready[0].load(std::memory_order_acquire));
+    auto const& r=observer::rows[0];assert(r.normal&&r.depth==1&&r.caller&&r.thread==GetCurrentThreadId()&&r.result==sentinel);
+    assert(r.before.identity&&r.after.identity&&r.before.mask==2047&&r.after.mask==2047);
+    assert(r.before.position[1]==position::state.lease.owned[0]&&r.before.position[3]==position::state.lease.owned[1]);
+    assert(r.after.position[1]==f.c.top_bits&&r.after.position[3]==f.c.bottom_bits);
+    assert(r.before.position[0]==11&&r.before.position[2]==33&&r.after.position[0]==11&&r.after.position[2]==33);
+    assert(r.before.raw_1dc==0x78787878&&r.before.raw_4e4==1&&r.before.raw_4e8==0x6000&&r.before.num==2&&r.before.max==2);
+    assert(r.before.raw_4f8==0x12345678&&r.before.selected_bits==trial::bits(.9f)&&r.before.zero_bits==trial::bits(.8f));
+    assert(r.before.units==0x04040404&&r.before.world==4&&r.before.applied==1&&r.exit>=r.enter&&active==0&&observer::depth==0);
 }
 static void gates(){
-    Fixture f;f.call();assert(original_calls==1&&observer::slots==0);f.apply();
-    auto bypass=[&]{auto reads=read_calls.load();f.call();assert(observer::slots==0&&read_calls==reads);};
-    ++position::state.lease.config.nonce;bypass();--position::state.lease.config.nonce;
-    std::thread foreign([&]{bypass();});foreign.join();
-    expected_object=reinterpret_cast<void*>(f.c.panel+8);bypass();expected_object=reinterpret_cast<void*>(f.c.panel);
-    recording=false;bypass();recording=true;ui_observer_enabled=false;bypass();ui_observer_enabled=true;
-    admitted=false;bypass();admitted=true;stereo_publish_bypass=1;bypass();stereo_publish_bypass=0;
-    auto denied=[&]{f.call();assert(observer::slots==0);};
-    ++committed_world_generation;denied();--committed_world_generation;
+    Fixture f;f.call();assert(original_calls==1&&observer::slots==0&&count(observer::Bypass::no_successful_nonce)==1);f.apply();
+    auto bypass=[&](observer::Bypass why){auto reads=read_calls.load(),calls=original_calls.load();auto before=count(why);
+        f.call();assert(observer::slots==0&&read_calls==reads&&original_calls==calls+1&&count(why)==before+1);};
+    ++position::state.lease.config.nonce;bypass(observer::Bypass::no_successful_nonce);--position::state.lease.config.nonce;
+    std::thread foreign([&]{bypass(observer::Bypass::foreign_thread);});foreign.join();
+    expected_object=reinterpret_cast<void*>(f.c.panel+8);bypass(observer::Bypass::wrong_object);expected_object=reinterpret_cast<void*>(f.c.panel);
+    recording=false;bypass(observer::Bypass::not_recording);recording=true;
+    ui_observer_enabled=false;bypass(observer::Bypass::disabled);ui_observer_enabled=true;
+    admitted=false;bypass(observer::Bypass::world);admitted=true;stereo_publish_bypass=1;bypass(observer::Bypass::stereo);stereo_publish_bypass=0;
+    ++committed_world_generation;bypass(observer::Bypass::world);--committed_world_generation;
+    auto denied=[&]{auto before=count(observer::Bypass::identity);f.call();assert(observer::slots==0&&count(observer::Bypass::identity)==before+1);};
     ++session_started_qpc;denied();--session_started_qpc;
     memory[0x5000]^=1;denied();memory[0x5000]^=1;
     put(f.c.panel,f.c.panel_vtable+8);denied();put(f.c.panel,f.c.panel_vtable);
     put(f.c.panel_vtable+observer::slot_offset,base+observer::code_rva+1);denied();put(f.c.panel_vtable+observer::slot_offset,base+observer::code_rva);
+    put(f.c.panel_vtable+observer::child_slot,base+observer::child_rva+1);denied();put(f.c.panel_vtable+observer::child_slot,base+observer::child_rva);
     f.call();assert(observer::slots==1&&observer::ready[0]);
+    uint64_t rejected{};for(auto const& counter:observer::bypass)rejected+=counter.load();assert(observer::entries==rejected+1);
 }
 static void bounds_nesting_exceptions(){
-    Fixture f;f.apply();mode=2;f.call();assert(original_calls==2&&observer::slots==2&&observer::depth==0);
+    Fixture f;f.apply();auto unchanged=memory;mode=2;f.call();assert(original_calls==2&&observer::slots==2&&observer::depth==0&&memory==unchanged);
     assert(observer::rows[0].depth==1&&observer::rows[1].depth==2&&observer::ready[0]&&observer::ready[1]);
     mode=3;try{f.call();assert(false);}catch(int n){assert(n==71);}
-    assert(original_calls==3&&observer::depth==0&&observer::ready[2]&&!observer::rows[2].normal&&active==0);
-    mode=0;memory.erase(f.c.panel+0x6c);f.call();assert(observer::ready[3]&&observer::rows[3].before.mask==11);
+    assert(original_calls==3&&observer::depth==0&&observer::ready[2]&&!observer::rows[2].normal&&active==0&&memory==unchanged);
+    mode=0;memory.erase(f.c.panel+0x6c);f.call();assert(observer::ready[3]&&observer::rows[3].before.mask==2039);
     auto reads=read_calls.load();for(unsigned i=0;i<10;++i)f.call();
-    assert(original_calls==14&&observer::slots==4&&read_calls==reads&&observer::depth==0);
+    assert(original_calls==14&&observer::entries==14&&observer::slots==4&&read_calls==reads&&observer::depth==0&&count(observer::Bypass::quota)==10);
 }
 static std::string progress(){FILE* file{};assert(tmpfile_s(&file)==0&&file);observer::progress(file);rewind(file);
     std::string text;char buffer[512];while(auto n=fread(buffer,1,sizeof(buffer),file))text.append(buffer,n);fclose(file);return text;}
@@ -125,24 +140,48 @@ static void publication(){
 static void loss_timeline(){
     Fixture f;f.apply();mode=5;f.call();auto const& r=observer::rows[0];
     assert(!r.before.loss_ready&&r.before.ownership_lost==0&&r.after.loss_ready&&r.after.ownership_lost==1);
-    assert(r.after.loss_tick==position::first_loss.tick&&r.after.position[0]==f.c.top_bits&&r.after.position[1]==f.c.bottom_bits);
+    assert(r.after.loss_tick==position::first_loss.tick&&r.after.position[1]==f.c.top_bits&&r.after.position[3]==f.c.bottom_bits);
     mode=0;f.call();assert(observer::rows[1].before.loss_ready&&observer::rows[1].before.loss_tick==r.after.loss_tick);
+    mode=6;f.call();assert(!observer::rows[2].after.identity&&observer::rows[2].after.mask==0&&observer::rows[2].normal);
+}
+static void bounded_array(){
+    for(unsigned bad=0;bad<8;++bad){Fixture f;f.apply();
+        if(bad==0)put(f.c.panel+0x4f0,int(-1));
+        if(bad==1)put(f.c.panel+0x4f4,int(1));
+        if(bad==2)put(f.c.panel+0x4f4,int(65));
+        if(bad==3)put(f.c.panel+0x4e8,UINTPTR_MAX-3);
+        if(bad==4)put(f.c.panel+0x4e8,uintptr_t(0));
+        if(bad==5)put(f.c.panel+0x4e4,static_cast<unsigned char>(2));
+        if(bad==6)memory.erase(f.c.panel+0x4e4);
+        if(bad==7)memory.erase(0x6004);
+        auto before=memory;array_reads=0;f.call();auto const& s=observer::rows[0].before;
+        assert(!(s.mask&1024)&&memory==before);
+        if(bad<5)assert(!(s.mask&512)&&array_reads==0);else assert((s.mask&512)&&s.zero_bits==trial::bits(.8f));
+    }
 }
 static void complete_certification(){
-    Fixture f;std::array<unsigned char,161> body{};for(unsigned i=0;i<body.size();++i)body[i]=static_cast<unsigned char>(i);
-    put(base+observer::code_rva,body);unsigned hash_calls{};
-    auto hash=[&](unsigned char const* data,unsigned n,char const* sha){++hash_calls;
-        assert(n==161&&std::string(sha)==observer::code_sha256);return std::equal(body.begin(),body.end(),data);};
-    assert(observer::certify_with(safe_copy,hash)&&hash_calls==1);
-    memory[base+observer::code_rva+160]^=1;assert(!observer::certify_with(safe_copy,hash));memory[base+observer::code_rva+160]^=1;
-    memory.erase(base+observer::code_rva+160);assert(!observer::certify_with(safe_copy,hash));put(base+observer::code_rva,body);
-    put(f.c.panel_vtable+observer::slot_offset,base+observer::code_rva+1);assert(!observer::certify_with(safe_copy,hash));
-    put(f.c.panel_vtable+observer::slot_offset,base+observer::code_rva);
-    unsigned code_reads{};auto changing=[&](void* out,void const* from,std::size_t n){bool ok=safe_copy(out,from,n);
-        if(ok&&reinterpret_cast<uintptr_t>(from)==base+observer::code_rva&&++code_reads==2)static_cast<unsigned char*>(out)[160]^=1;return ok;};
-    assert(!observer::certify_with(changing,hash));
-    unsigned slot_reads{};auto slot_changing=[&](void* out,void const* from,std::size_t n){bool ok=safe_copy(out,from,n);
-        if(ok&&reinterpret_cast<uintptr_t>(from)==base+observer::vtable_rva+observer::slot_offset&&++slot_reads==2)static_cast<unsigned char*>(out)[0]^=1;return ok;};
-    assert(!observer::certify_with(slot_changing,hash));
+    Fixture f;std::array<unsigned char,observer::code_size> code{};std::array<unsigned char,observer::child_size> child{};
+    for(unsigned i=0;i<code.size();++i)code[i]=static_cast<unsigned char>(i%251);
+    for(unsigned i=0;i<child.size();++i)child[i]=static_cast<unsigned char>((i+7)%251);
+    auto seed=[&]{unsigned offset{};for(auto const& span:observer::code_chunks){for(unsigned i=0;i<span.size;++i)memory[base+span.rva+i]=code[offset+i];offset+=span.size;}
+        offset=0;for(auto const& span:observer::child_chunks){for(unsigned i=0;i<span.size;++i)memory[base+span.rva+i]=child[offset+i];offset+=span.size;}};seed();
+    unsigned hash_calls{};auto hash=[&](unsigned char const* data,unsigned n,char const* sha){++hash_calls;
+        if(n==code.size()){assert(std::string(sha)==observer::code_sha256);return std::equal(code.begin(),code.end(),data);}
+        assert(n==child.size()&&std::string(sha)==observer::child_sha256);return std::equal(child.begin(),child.end(),data);};
+    assert(observer::certify_with(safe_copy,hash)&&hash_calls==2);
+    for(auto span:{observer::code_chunks[0],observer::code_chunks[1],observer::child_chunks[0],observer::child_chunks[1]}){
+        auto tail=base+span.rva+span.size-1;memory[tail]^=1;assert(!observer::certify_with(safe_copy,hash));seed();
+        memory.erase(tail);assert(!observer::certify_with(safe_copy,hash));seed();
+        unsigned chunk_reads{};auto changing=[&](void* out,void const* from,std::size_t n){bool ok=safe_copy(out,from,n);
+            if(ok&&reinterpret_cast<uintptr_t>(from)==base+span.rva&&++chunk_reads==2)static_cast<unsigned char*>(out)[n-1]^=1;return ok;};
+        assert(!observer::certify_with(changing,hash));
+    }
+    for(auto slot:{observer::slot_offset,observer::child_slot}){
+        auto address=base+observer::vtable_rva+slot;auto expected=slot==observer::slot_offset?base+observer::code_rva:base+observer::child_rva;
+        put(address,expected+1);assert(!observer::certify_with(safe_copy,hash));put(address,expected);
+        unsigned reads{};auto changing=[&](void* out,void const* from,std::size_t n){bool ok=safe_copy(out,from,n);
+            if(ok&&reinterpret_cast<uintptr_t>(from)==address&&++reads==2)static_cast<unsigned char*>(out)[0]^=1;return ok;};
+        assert(!observer::certify_with(changing,hash));
+    }
 }
-int main(){call_subtree();gates();bounds_nesting_exceptions();publication();loss_timeline();complete_certification();std::puts("PathChoiceLayoutObserverTest passed");}
+int main(){call_subtree();gates();bounds_nesting_exceptions();publication();loss_timeline();bounded_array();complete_certification();std::puts("PathChoiceLayoutObserverTest passed");}

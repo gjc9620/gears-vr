@@ -87,6 +87,54 @@ class VerifyStoppedTests(unittest.TestCase):
                 self.assertEqual(check['source_snapshot_sha256'],
                     '911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
 
+    def test_path_reflow_contract_covers_all_four_chunks(self):
+        self.assertEqual(verify_stopped.PATH_REFLOW_CHUNKS, ((0x2983f8, 666), (0x8ead70, 435)))
+        self.assertEqual(verify_stopped.PATH_REFLOW_SHA256,
+            '9df4472db8e3ebaca59f6c14356c8de8c685a2aac1a1ff060ca0f7603d945d97')
+        self.assertEqual(verify_stopped.PATH_REFLOW_CHILD_CHUNKS, ((0x298694, 201), (0x8eaf24, 39)))
+        self.assertEqual(verify_stopped.PATH_REFLOW_CHILD_SHA256,
+            'c455b118525aa5c957e5eea29cd8a46479aa2a95ef633693d4aa04da0e15ac28')
+
+    def test_path_reflow_restore_rejects_each_warm_or_cold_tail_and_short_read(self):
+        families = (verify_stopped.PATH_REFLOW_CHUNKS, verify_stopped.PATH_REFLOW_CHILD_CHUNKS)
+        original = {}
+        hashes = []
+        for family in families:
+            data = []
+            for rva, size in family:
+                raw = bytes((i % 251 for i in range(size)))
+                original[self.base + rva] = raw
+                data.append(raw)
+            hashes.append(hashlib.sha256(b''.join(data)).hexdigest())
+        for slot, expected_rva in ((0x528, 0x2983f8), (0x2c8, 0x298694)):
+            original[self.base + 0x138a558 + slot] = (self.base + expected_rva).to_bytes(8, 'little')
+        cases = [(None, False)] + [(self.base + rva, short) for family in families
+                                  for rva, _ in family for short in (False, True)]
+        cases += [(self.base + 0x138a558 + slot, short) for slot in (0x528, 0x2c8) for short in (False, True)]
+        for address, short in cases:
+            with self.subTest(address=address, short=short):
+                self.memory.update(original)
+                if address is not None:
+                    changed = bytearray(self.memory[address])
+                    if short:del changed[-1]
+                    else:changed[-1] ^= 1
+                    self.memory[address] = bytes(changed)
+                self.write_status((0x2983f8, 0x15cf08))
+                with mock.patch.object(verify_stopped, 'PATH_REFLOW_SHA256', hashes[0]), \
+                        mock.patch.object(verify_stopped, 'PATH_REFLOW_CHILD_SHA256', hashes[1]):
+                    if address is None:self.invoke()
+                    else:
+                        with self.assertRaises(SystemExit):self.invoke()
+                report = json.loads(self.output.read_text())
+                self.assertEqual(report['all_match'], address is None)
+                checks = report['checks'][:2]
+                self.assertEqual([item['expected_size'] for item in checks], [1101, 240])
+                self.assertEqual([len(item['chunks']) for item in checks], [2, 2])
+                self.assertEqual(checks[0]['historical_module_base'], '0x140000000')
+                self.assertEqual(checks[1]['source_snapshot_sha256'],
+                    '911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+                self.assertEqual([item['slot'] for item in report['checks'][2:4]], ['0x528', '0x2c8'])
+
     def test_each_corrupted_root_byte_fails_despite_capture_claim_and_closes(self):
         for at in range(13):
             with self.subTest(byte=at):

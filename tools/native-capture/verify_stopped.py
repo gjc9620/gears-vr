@@ -33,6 +33,10 @@ NGX_WRAPPER_RANGES = (
     (0xbe5c58, 0x561, '21868e6f8203578f5c4ef689fc4f66a5c79e13fdb243eebe2eb81cc7d6309441'),
 )
 PATH_LAYOUT_RANGES = ((0x298bdc, 161, 'b5dae9f89c8182b26eef27e87ca2ae57804899ed313cb9acdc630280a03b6fb5'),)
+PATH_REFLOW_CHUNKS = ((0x2983f8, 666), (0x8ead70, 435))
+PATH_REFLOW_SHA256 = '9df4472db8e3ebaca59f6c14356c8de8c685a2aac1a1ff060ca0f7603d945d97'
+PATH_REFLOW_CHILD_CHUNKS = ((0x298694, 201), (0x8eaf24, 39))
+PATH_REFLOW_CHILD_SHA256 = 'c455b118525aa5c957e5eea29cd8a46479aa2a95ef633693d4aa04da0e15ac28'
 
 
 def check_runtime_ranges(read, base, target, ranges, source):
@@ -112,6 +116,29 @@ def main():
         camera[0xc7f63c]=bytes.fromhex('48895c240848896c24104889742418574883ec308bda488bf93b91d80500000f')
         for target in targets:
             rva = target - resolver.base
+            if rva == 0x2983f8:
+                # Independent historical expectations: the complete hooked body
+                # AND its authenticated child, including both cold chunks.
+                for checked_target, chunks, expected_hash, source in (
+                    (target, PATH_REFLOW_CHUNKS, PATH_REFLOW_SHA256,
+                     'artifact 1 runtime snapshot PathChoice reflow complete chunks'),
+                    (resolver.base + 0x298694, PATH_REFLOW_CHILD_CHUNKS, PATH_REFLOW_CHILD_SHA256,
+                     'artifact 1 runtime snapshot PathChoice reflow child complete chunks'),
+                ):
+                    check = check_runtime_chunks(resolver.read, resolver.base, checked_target, chunks, expected_hash, source)
+                    check.update(module_base=hex(resolver.base), historical_module_base='0x140000000',
+                                 source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+                    checks.append(check)
+                for slot, expected_rva in ((0x528, 0x2983f8), (0x2c8, 0x298694)):
+                    address = resolver.base + 0x138a558 + slot
+                    expected = struct.pack('<Q', resolver.base + expected_rva)
+                    current = resolver.read(address, 8)
+                    checks.append(dict(target=hex(address), source='artifact 1 runtime snapshot PathChoice global vtable slot',
+                        vtable_rva='0x138a558', slot=hex(slot), expected_target_rva=hex(expected_rva), bytes_checked=len(current),
+                        expected_size=8, matches=current == expected, module_base=hex(resolver.base),
+                        historical_module_base='0x140000000',
+                        source_rdata_sha256='c5deb08128dea890e2606b7bb6bf30eb3e1045c19b3f477e0bebf6c7fd15231c'))
+                continue
             if rva == 0x298bdc:
                 values = check_runtime_ranges(resolver.read, resolver.base, target, PATH_LAYOUT_RANGES,
                               'artifact 1 runtime snapshot PathChoice layout complete body')
