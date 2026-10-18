@@ -7,6 +7,7 @@ from unittest import mock
 from test_cinematic_anchor import CinematicFixture
 from anchor_config import LiveRegistryAnchorSampler, AnchorRejected
 from mounted_context import MountedContextCertificate, MountedTimestampChanged
+from mounted_read_pass import MountedReadPass
 
 
 class MountedFixture(CinematicFixture):
@@ -65,6 +66,96 @@ class MountedFixture(CinematicFixture):
 
 
 class MountedContextTests(unittest.TestCase):
+    def test_batched_pass_reduces_actual_resolver_reads_with_equal_proof(self):
+        counts, proofs = {}, {}
+        for label, span in (('unbatched', 8), ('batched', 256)):
+            f = MountedFixture();cert = MountedContextCertificate(f.sampler)
+            with mock.patch.object(MountedReadPass, 'MAX_SPAN', span), mock.patch.object(f, 'read', wraps=f.read) as reading:
+                proofs[label] = cert.capture();counts[label] = reading.call_count
+            self.assertFalse(hasattr(f.sampler, '_mounted_read_pass'))
+        self.assertEqual(proofs['unbatched'], proofs['batched'])
+        self.assertLess(counts['batched'], counts['unbatched'] * .8, counts)
+
+    def test_slot_batches_are_bounded_and_each_pass_rereads(self):
+        f = MountedFixture();cert = MountedContextCertificate(f.sampler)
+        with mock.patch.object(f, 'read', wraps=f.read) as reading:
+            cert.capture()
+        calls = [(x.args[0], x.args[1]) for x in reading.call_args_list]
+        batches = [(a, n) for a, n in calls if n > 8 and (
+            f.objects_data <= a < f.objects_data + f.object_count * 8 or
+            f.names_data <= a < f.names_data + f.name_count * 8)]
+        self.assertTrue(batches)
+        for a, n in batches:
+            self.assertLessEqual(n, 256);self.assertEqual(a // 4096, (a + n - 1) // 4096)
+            self.assertEqual(calls.count((a, n)), 2)
+        # Both separate FName reads and fresh entry bodies survive the batching.
+        for address, identity in cert._initial['identities'].items():
+            self.assertEqual(calls.count((address + f.profile['object_name'], 4)), 2)
+            entry = f.u64(f.names_data + identity['name_index'] * 8)
+            self.assertEqual(calls.count((entry, 148)), 2)
+
+    def test_slot_batch_short_read_is_terminal_and_binding_is_removed(self):
+        for registry in ('objects', 'names'):
+            f = MountedFixture();cert = MountedContextCertificate(f.sampler);read = f.read
+            start = getattr(f, registry + '_data');count = getattr(f, 'object_count' if registry == 'objects' else 'name_count')
+            def short(address, size):
+                data = read(address, size)
+                return data[:-1] if start <= address < start + count * 8 and size > 8 else data
+            with mock.patch.object(f, 'read', side_effect=short):
+                with self.assertRaisesRegex(AnchorRejected, 'Short mounted identity memory read'):cert.capture()
+            self.assertFalse(hasattr(f.sampler, '_mounted_read_pass'))
+
+    def test_slot_change_after_opening_batch_rejected_by_independent_closing_pass(self):
+        for registry in ('objects', 'names'):
+            f = MountedFixture();cert = MountedContextCertificate(f.sampler);read = f.read
+            identity = cert._initial['roles']['controlled']
+            slot = getattr(f, registry + '_data') + identity['internal_index' if registry == 'objects' else 'name_index'] * 8
+            changed = False
+            def changing(address, size):
+                nonlocal changed
+                value = read(address, size)
+                if not changed and size > 8 and address <= slot < address + size:
+                    changed = True;f.ptr(slot, 0)
+                return value
+            with mock.patch.object(f, 'read', side_effect=changing):
+                with self.assertRaises(AnchorRejected):cert.capture()
+            self.assertTrue(changed);self.assertFalse(hasattr(f.sampler, '_mounted_read_pass'))
+
+    def test_repeated_selected_slot_request_forces_new_read(self):
+        f = MountedFixture();cert = MountedContextCertificate(f.sampler)
+        ids = cert._initial['identities'];names = {a: x['name_index'] for a, x in ids.items()}
+        reader = MountedReadPass(f, ids, names);address = f.TURRET
+        self.assertEqual(reader.fresh(address), f.sampler.fresh(address))
+        f.ptr(f.objects_data + ids[address]['internal_index'] * 8, 0)
+        with self.assertRaises(AnchorRejected):reader.fresh(address)
+
+    def test_mounted_pass_retains_fresh_name_index_entry_and_text_checks(self):
+        for mutation in ('object_name', 'entry_index', 'entry_text', 'entry_short'):
+            with self.subTest(mutation=mutation):
+                f = MountedFixture();cert = MountedContextCertificate(f.sampler)
+                ids = cert._initial['identities'];identity = ids[f.TURRET]
+                reader = MountedReadPass(f, ids, {a: x['name_index'] for a, x in ids.items()})
+                entry = f.u64(f.names_data + identity['name_index'] * 8);read = f.read
+                if mutation == 'entry_index':f.word(entry, identity['name_index'] + 1)
+                elif mutation == 'entry_text':f.put(entry + 20, 'Changed\0'.encode('utf-16-le'))
+                def changing(address, size):
+                    value = read(address, size)
+                    if mutation == 'object_name' and (address, size) == (f.TURRET, 96):
+                        f.word(f.TURRET + f.profile['object_name'], 0)
+                    if mutation == 'entry_short' and (address, size) == (entry, 148):return value[:-1]
+                    return value
+                with mock.patch.object(f, 'read', side_effect=changing):
+                    with self.assertRaises(AnchorRejected):reader.fresh(f.TURRET)
+
+    def test_failed_capture_buffers_never_survive_into_retry(self):
+        f = MountedFixture();cert = MountedContextCertificate(f.sampler)
+        identity = cert._initial['roles']['controlled'];slot = f.objects_data + identity['internal_index'] * 8
+        original = f.u64(slot);f.ptr(slot, 0)
+        with self.assertRaises(AnchorRejected):cert.capture()
+        self.assertFalse(hasattr(f.sampler, '_mounted_read_pass'))
+        f.ptr(slot, original)
+        self.assertEqual(cert.capture(), cert._initial)
+
     def test_inventory_actor_owner_and_level_are_distinct(self):
         f = MountedFixture().stream_levels()
         proof = MountedContextCertificate(f.sampler).capture()

@@ -149,6 +149,9 @@ class LiveRegistryAnchorSampler(AnchorSampler):
         finally:self.sample_guard_index=None
 
     def fresh(self,address):
+        mounted_pass = getattr(self, "_mounted_read_pass", None)
+        if mounted_pass is not None:
+            return mounted_pass.fresh(address)
         result = super().fresh(address)
         r=self.r;p=r.profile
         name_index = r.u32(address+p['object_name'])

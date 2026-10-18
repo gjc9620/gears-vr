@@ -12,6 +12,7 @@ import copy
 import math
 import struct
 from sample_player_anchor import AnchorRejected, _check_registry_header
+from mounted_read_pass import MountedReadPass
 
 
 class MountedTimestampChanged(AnchorRejected):
@@ -22,6 +23,7 @@ class MountedContextCertificate:
     def __init__(self, sampler, *, defer_capture=False):
         self.sampler = sampler
         self._identity_hints, self._super_hints, self._link_hints = {}, {}, {}
+        self._name_index_hints = {}
         self._property_hints = self._discover_properties()
         # The live guard retains discovery across timestamp-only retries. No
         # initial certificate exists until a complete strict capture succeeds.
@@ -40,6 +42,7 @@ class MountedContextCertificate:
             if not address:
                 raise AnchorRejected('Null mounted discovery object')
             value = dict(r.identity(address))
+            self._name_index_hints[address] = r.u32(address + r.profile['object_name'])
             before = self._identity_hints.setdefault(address, value)
             if value != before:
                 raise AnchorRejected('Mounted discovery identity changed')
@@ -113,6 +116,18 @@ class MountedContextCertificate:
         s, r = self.sampler, self.sampler.r
         identities, supers, properties, links, reads = {}, {}, {}, {}, {}
         chains = {}
+        planned = dict(self._identity_hints)
+        if getattr(self, '_initial', None) is not None:
+            planned.update(self._initial['identities'])
+        names = dict(self._name_index_hints)
+        names.update({address: value['name_index'] for address, value in planned.items()
+                      if 'name_index' in value})
+        opening = MountedReadPass(r, planned, names)
+        closing = None
+
+        def fresh(address, read_pass):
+            with read_pass.bind(s):
+                return s.fresh(address)
 
         def raw(address, size):
             if not address or address < 0 or address > (1 << 64) - size:
@@ -137,7 +152,7 @@ class MountedContextCertificate:
             # revalidated below, including class and property identities.
             if address in identities:
                 return identities[address]
-            value = s.fresh(address)
+            value = fresh(address, opening)
             hint = self._identity_hints.get(address)
             if hint is not None and any(value.get(key) != expected for key, expected in hint.items()):
                 raise AnchorRejected('Mounted identity changed since discovery')
@@ -250,6 +265,7 @@ class MountedContextCertificate:
         link('inventory_owner', inventory, 'Owner', 'Actor', driver['address'])
         target = pointer(s.view_target) if s.view_target else None
         if not s.view_target or target != controlled['address']:
+            closing = MountedReadPass(r, identities, {a: x['name_index'] for a, x in identities.items()})
             error = AnchorRejected('Mounted camera target is not controlled turret')
             observation = dict(diagnostic_only=True, accepted=False, consistent_read=False,
                 atomic_snapshot=False, roles=copy.deepcopy(dict(controlled=controlled, driver=driver,
@@ -275,11 +291,11 @@ class MountedContextCertificate:
                 try:
                     item = identities.get(target)
                     if item is None:
-                        item = copy.deepcopy(s.fresh(target)); identities[target] = item
+                        item = copy.deepcopy(fresh(target, opening)); identities[target] = item
                     observation['target_identity'] = copy.deepcopy(item)
                     cls = item['cls']; kind = identities.get(cls)
                     if kind is None:
-                        kind = copy.deepcopy(s.fresh(cls)); identities[cls] = kind
+                        kind = copy.deepcopy(fresh(cls, opening)); identities[cls] = kind
                     observation['target_class'] = copy.deepcopy(kind)
                 except Exception as failure:
                     diagnostic_error('target_identity', target, failure)
@@ -287,7 +303,7 @@ class MountedContextCertificate:
                 diagnostic_error('target_field', s.view_target, AnchorRejected('Missing mounted target field'), 8)
             for address, expected in identities.items():
                 try:
-                    if s.fresh(address) != expected: mismatch('identity', address)
+                    if fresh(address, closing) != expected: mismatch('identity', address)
                 except Exception as failure:
                     diagnostic_error('identity', address, failure)
             for (address, size), expected in reads.items():
@@ -328,8 +344,9 @@ class MountedContextCertificate:
         values = struct.unpack('<3f3if', pov)
         if not all(math.isfinite(x) for x in (*values[:3], values[-1])) or not 0 < values[-1] < 180:
             raise AnchorRejected('Invalid mounted camera POV')
+        closing = MountedReadPass(r, identities, {a: x['name_index'] for a, x in identities.items()})
         for address, expected in identities.items():
-            if s.fresh(address) != expected:
+            if fresh(address, closing) != expected:
                 raise AnchorRejected('Mounted identity changed at bracket boundary')
         def changed_timestamp(observed):
             if len(observed) != 4 or not math.isfinite(struct.unpack('<f', observed)[0]):
