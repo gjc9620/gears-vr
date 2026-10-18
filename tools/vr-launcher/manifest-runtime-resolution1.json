@@ -25,7 +25,7 @@
   "hud_layout_control": true,
   "hud_element_scale": 1.2,
   "hud_center_scale": 0.8,
-  "native_sha256": "accb5ef8d4b3f40a37e5b550ea7b5a6a3f75fc37c02f7657f208e2f245b4d3d6",
+  "native_sha256": "55f0940ca8208298ef514458b2f35b2087db68a9398df01193c19d92432761de",
   "camera_distance_control": true,
   "startup_selftests_prelaunch": true,
   "runtime_render_size": true

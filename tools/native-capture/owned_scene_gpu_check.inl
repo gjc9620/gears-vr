@@ -5,13 +5,25 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
 #if !defined(GEARS_NATIVE_OWNED_PIXELS) || !GEARS_NATIVE_OWNED_PIXELS
  (void)input;return ERROR_NOT_SUPPORTED;
 #else
- if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>21)return 2;
- const bool xr_mode=(mode>=10&&mode<=12)||(mode>=19&&mode<=21);
+ if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>24)return 2;
+ const bool xr_mode=(mode>=10&&mode<=12)||(mode>=19&&mode<=24);
  if(mode==19&&!owned_scene_gpu::sustained)return ERROR_NOT_SUPPORTED;
+ gears_vr::RenderSizePlan fixture_size{2048,2048,2048,2048,4096,2048,1.};
+ if(mode>=22){
+#if !defined(GEARS_RUNTIME_RENDER_SIZE) || !GEARS_RUNTIME_RENDER_SIZE || !defined(GEARS_VR_DOF_COMPAT) || !GEARS_VR_DOF_COMPAT
+  return ERROR_NOT_SUPPORTED;
+#else
+  const unsigned recommended_height=mode==24?1401u:1400u;
+  const gears_vr::RenderSizeLimits limits{{1280,1280},{recommended_height,recommended_height},{4096,4096},{4096,4096},4096,4096};
+  if(gears_vr::make_render_size_plan(limits,mode==23?.7:1.,fixture_size)!=gears_vr::RenderSizeError::none)return 73;
+#endif
+ }
+ const unsigned source_width=fixture_size.source_width,source_height=fixture_size.source_height,eye_width=fixture_size.eye_width;
+ const uint64_t eye_pixels=uint64_t(eye_width)*source_height;
 #if defined(GEARS_RUNTIME_RENDER_SIZE) && GEARS_RUNTIME_RENDER_SIZE
  // Explicit synthetic fixture geometry; no runtime recommendation, engine
  // surface creation or actual-game rendering is claimed by this WARP test.
- gears_native_render_size::packet.plan={2048,2048,2048,2048,4096,2048,1.};
+ gears_native_render_size::packet.plan=fixture_size;
  gears_native_render_size::packet.session=17;gears_native_render_size::loaded=true;
 #endif
  using Microsoft::WRL::ComPtr;
@@ -63,12 +75,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   const auto ref=list_ref(identity);
   const auto raw_list=reinterpret_cast<uintptr_t>(observed);
   frame_target_stats.reset(raw_list);
-  frame_target_stats.set(raw_list,gears_viewport::other,false,{0,0,4096,2048});
-  frame_target_stats.set(raw_list,gears_viewport::other,true,{0,0,4096,2048});
-  gears_viewport::TargetDraw binding{};binding.targets=1;binding.target={100,4096,2048,28,0};
+  frame_target_stats.set(raw_list,gears_viewport::other,false,{0,0,float(source_width),float(source_height)});
+  frame_target_stats.set(raw_list,gears_viewport::other,true,{0,0,float(source_width),float(source_height)});
+  gears_viewport::TargetDraw binding{};binding.targets=1;binding.target={100,source_width,source_height,28,0};
   consuming_frame_ticket=2;
   for(unsigned eye=0;eye<2;++eye){
-   final_eye={true,eye,{eye*2048,0,2048,2048},4096,2048};
+   final_eye={true,eye,{eye*eye_width,0,eye_width,source_height},source_width,source_height};
    native_owned_scene_draw(observed,binding,base+0x1af92b,1,6,1);
   }
   final_eye={};
@@ -105,7 +117,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   return error==15&&!watching()&&!birth_ok?0:23;
  }
  D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_DEFAULT;
- D3D12_RESOURCE_DESC desc{};desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;desc.Width=4096;desc.Height=2048;
+ D3D12_RESOURCE_DESC desc{};desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;desc.Width=source_width;desc.Height=source_height;
  desc.DepthOrArraySize=desc.MipLevels=1;desc.SampleDesc.Count=1;desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;desc.Flags=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
  {
   CreateScope creation_scope;
@@ -159,10 +171,15 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   {StereoPublishBypass bypass;if(!stereo_publisher.prepare())return 26;}
   try{receiver.open(device.Get(),GetCurrentProcessId());}catch(...){return 27;}
  }
- const FLOAT color[]{.25f,.5f,.75f,1};owned_hook_clear(list.Get(),handle,color,0,nullptr);
+ const FLOAT color[]{.25f,.5f,.75f,1};
+ if(mode>=22){
+  const FLOAT right_color[]{.75f,.25f,.5f,1};
+  const D3D12_RECT left{0,0,LONG(eye_width),LONG(source_height)},right{LONG(eye_width),0,LONG(source_width),LONG(source_height)};
+  owned_hook_clear(list.Get(),handle,color,1,&left);owned_hook_clear(list.Get(),handle,right_color,1,&right);
+ }else owned_hook_clear(list.Get(),handle,color,0,nullptr);
  const auto ref=tracker.current(canonical_identity(list.Get()));
- tracker.draw_final(ref,2,0,{resource,4096,2048},{0,0,2048,2048});
- tracker.draw_final(ref,2,1,{resource,4096,2048},{2048,0,2048,2048});
+ tracker.draw_final(ref,2,0,{resource,source_width,source_height},{0,0,eye_width,source_height});
+ tracker.draw_final(ref,2,1,{resource,source_width,source_height},{eye_width,0,eye_width,source_height});
  if(mode==2)use(list.Get(),resource,true); // Copy-like state use must reject.
  if(mode==3)use(list.Get(),resource,false); // Later MRT write contaminates pair.
  if(mode==4)uncertain(); // Unknown descriptor/enhanced/bundle path.
@@ -176,9 +193,13 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   // Synthetic no-site metadata is separate from the real GPU clear/copy.
   // Incomplete proof and a changed world must prevent shared publication.
   if(!vr_dof_compat::store.begin(key))return 68;
+  if(mode>=22){auto* entry=vr_dof_compat::store.find(key);if(!entry)return 74;
+   for(unsigned eye=0;eye<2;++eye){if(!entry->reserve(eye,true))return 74;entry->proved(eye,true,true);
+    if(!entry->reserve(eye,false))return 74;entry->proved(eye,false,true);}
+  }
   if(mode!=20)vr_dof_compat::store.finish(key);
   vr_dof_compat::retire(); // Desktop boundary cannot retire deferred owned proof.
-  if(vr_dof_compat::store.decision(key)!=(mode==20?gears_vr_dof::Decision::incomplete:gears_vr_dof::Decision::no_site))return 69;
+  if(vr_dof_compat::store.decision(key)!=(mode==20?gears_vr_dof::Decision::incomplete:mode>=22?gears_vr_dof::Decision::zero_proved:gears_vr_dof::Decision::no_site))return 69;
   if(mode==21)++publication_world;
  }
 #endif
@@ -190,14 +211,24 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  if(mode&&mode<5)return !readback.result().queued&&error==(mode==3?9u:8u)?0:15;
  if(mode==20||mode==21){poll();return error==22&&!published_count&&stereo_publisher.frames.load()==0?0:70;}
  poll();auto const& r=readback.result();
- const bool good=proof.state_certified&&proof.final_state==((mode==10||mode==19)?4u:128u)&&r.saved&&r.completed&&
-  r.eyes[0].nonblack==2048ull*2048&&r.eyes[1].nonblack==2048ull*2048&&r.differing_pixels==0;
+ const bool good=proof.state_certified&&proof.final_state==((mode==10||mode>=19)?4u:128u)&&r.saved&&r.completed&&
+  r.width==source_width&&r.height==source_height&&r.eyes[0].nonblack==eye_pixels&&r.eyes[1].nonblack==eye_pixels&&r.differing_pixels==(mode>=22?eye_pixels:0);
  if(xr_mode){
   if(mode==12){receiver.close();stereo_publisher.mark_stopped();stereo_publisher.close();
    return error==18&&publication_count==0&&stereo_publisher.frames.load()==0?0:28;}
   bool received=false;try{received=receiver.acquire(q.Get());}catch(...){return 29;}
   if(!received||published_count!=1||image_tickets.size()||receiver.ticket().id!=2||
-     !gears_vr::stereo_same(receiver.ticket().sample,image_sample)||receiver.width!=4096||receiver.height!=2048)return 30;
+     !gears_vr::stereo_same(receiver.ticket().sample,image_sample)||receiver.width!=source_width||receiver.height!=source_height)return 30;
+  if(mode>=22){
+   for(unsigned eye=0;eye<2;++eye){auto const& rect=receiver.ticket().rect[eye];
+    if(rect.x!=int(eye*eye_width)||rect.y||rect.width!=int(eye_width)||rect.height!=int(source_height))return 75;}
+#if defined(GEARS_VR_DOF_COMPAT) && GEARS_VR_DOF_COMPAT
+   auto const& receipt=vr_dof_compat::last_allowed;
+   if(!receipt.valid||!receipt.complete||receipt.ticket!=2||receipt.world!=publication_world||receipt.setters!=3||receipt.quads!=3||
+      receipt.decision!=unsigned(gears_vr_dof::Decision::zero_proved)||vr_dof_compat::store.retired!=2||
+      vr_dof_compat::store.decision({publication_world,2})!=gears_vr_dof::Decision::missing)return 76;
+#endif
+  }
   owned_scene_readback::Probe shared_pixels;wchar_t shared_path[MAX_PATH]{};
   swprintf_s(shared_path,L"%s\\owned-shared-%lu.ppm",temp,GetCurrentProcessId());
   if(!shared_pixels.queue(receiver.texture.Get(),q.Get(),D3D12_RESOURCE_STATE_COMMON,true,shared_path))return 31;
@@ -206,6 +237,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   const auto until=GetTickCount64()+5000;while(done->GetCompletedValue()<2&&GetTickCount64()<until)Sleep(1);
   if(done->GetCompletedValue()!=2)return 34;shared_pixels.poll();const auto& pixels=shared_pixels.result();
   const bool same_pixels=pixels.saved&&pixels.completed&&pixels.eyes[0].hash==r.eyes[0].hash&&pixels.eyes[1].hash==r.eyes[1].hash;
+  if(mode>=22){
+   if(!good||!same_pixels||pixels.width!=source_width||pixels.height!=source_height||pixels.differing_pixels!=eye_pixels||
+      pixels.eyes[0].hash==pixels.eyes[1].hash)return 77;
+   printf("{\"owned_rectangle_fixture\":true,\"mode\":%u,\"recommended\":[%u,%u],\"scale\":%.9g,\"source\":[%u,%u],\"eye\":[%u,%u],\"ticket\":2,\"world\":%llu,\"published\":%llu,\"same_ticket_dof_proved\":true,\"dof_retired_after_publication\":true,\"receiver_rectangles_match\":true,\"different_eye_pixels\":%llu,\"matching_source_receiver_eye_hashes\":true,\"actual_game_scene_rendered\":false,\"xr_session_opened\":false}\n",
+    mode,fixture_size.recommended_width,fixture_size.recommended_height,fixture_size.scale,source_width,source_height,eye_width,source_height,
+    publication_world,published_count,eye_pixels);
+   fflush(stdout); // The fixture is also invoked from a Python-hosted DLL.
+  }
   if(mode==19){
    // Cross both fixed history capacities using real WARP clears, ordered
    // submissions, shared image copies and receiver acknowledgements. Only
@@ -225,8 +264,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
     selected(ticket);built(ticket);began(ticket);retain_image();
     owned_hook_clear(list.Get(),handle,color,0,nullptr);
     const auto ref=list_ref(canonical_identity(list.Get()));
-    tracker.draw_final(ref,ticket,0,{resource,4096,2048},{0,0,2048,2048});
-    tracker.draw_final(ref,ticket,1,{resource,4096,2048},{2048,0,2048,2048});
+    tracker.draw_final(ref,ticket,0,{resource,source_width,source_height},{0,0,eye_width,source_height});
+    tracker.draw_final(ref,ticket,1,{resource,source_width,source_height},{eye_width,0,eye_width,source_height});
     if(FAILED(list->Close()))return 61;
     const auto token=prepare(q.Get(),1,members);q->ExecuteCommandLists(1,members);commit(token);
     submitted(ticket);returned(ticket);destroyed(ticket);
