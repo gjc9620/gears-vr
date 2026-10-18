@@ -638,6 +638,15 @@ class MenuReader:
         except RuntimeError as error:
             if type(error) is not RuntimeError or str(error) != 'Object outside registry':
                 raise
+            registration = getattr(error, 'registration_failure', None)
+            if registration is not None:
+                error.read_conflict = dict(stage='menu_registration_rejected',
+                                           registration_failure=dict(registration))
+                acquired = reads.get((r.objects_header, 16))
+                if acquired is not None and len(acquired) == 16:
+                    data, count, capacity = struct.unpack('<Qii', acquired)
+                    error.read_conflict['acquired_objects_header'] = dict(address=hex(r.objects_header),
+                        raw=acquired.hex(), data=hex(data), count=count, capacity=capacity)
             # A rejected registration never grants retry by its message alone.
             # Only independently reread bytes from THIS failed acquisition can
             # prove churn; never accept the rejected target or reuse its sample.
@@ -655,6 +664,9 @@ class MenuReader:
                         changed = read_conflict_error(RegistrySnapshotChanged if is_header else SnapshotChanged,
                             'Registration failed after observed UI source changed',
                             'menu_failed_registration_reread', address, expected, actual, headers)
+                        if registration is not None:
+                            changed.registration_failure = dict(registration)
+                            changed.read_conflict['registration_failure'] = dict(registration)
                         if is_header:self._registry_dirty = True
                         break
             except Exception:

@@ -16,7 +16,14 @@ ROOT = Path(__file__).resolve().parents[2]
 def registered(resolver, address):
     item = resolver.identity(address)
     if not item or item['internal_index'] >= len(resolver.object_pointers):
-        raise RuntimeError('Object outside registry')
+        error = RuntimeError('Object outside registry')
+        # Same failed identity/inventory observation; no extra remote reads and
+        # no change to the existing rejection predicate, message or exception type.
+        error.registration_failure = dict(address=hex(address) if type(address) is int else None,
+            item_none=item is None, item_empty=not bool(item),
+            internal_index=item.get('internal_index') if item else None,
+            inventory_length=len(resolver.object_pointers))
+        raise error
     if resolver.object_pointers[item['internal_index']] != address:
         raise RuntimeError('Object registry identity changed')
     if resolver.u64(resolver.objects_data + item['internal_index'] * 8) != address:

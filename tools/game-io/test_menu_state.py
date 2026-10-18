@@ -283,6 +283,51 @@ class MenuStateTests(unittest.TestCase):
             self.assertIs(caught.exception,error)
             self.assertEqual(self.r.read_counts[self.r.objects_header,16],1)
 
+    def test_outside_registry_rejection_reports_same_identity_without_new_reads(self):
+        import json
+        for index in (len(self.r.object_pointers),0xffffffff):
+            self.setUp();self.r.identities[0x1000]['internal_index']=index
+            before=dict(self.r.read_counts)
+            with self.assertRaisesRegex(RuntimeError,'Object outside registry') as caught:registered(self.r,0x1000)
+            error=caught.exception;self.assertIs(type(error),RuntimeError)
+            detail=json.loads(json.dumps(error.registration_failure))
+            self.assertEqual(detail,dict(address='0x1000',item_none=False,item_empty=False,
+                internal_index=index,inventory_length=len(self.r.object_pointers)))
+            self.assertEqual(self.r.read_counts.get((0x1000,0x60),0)-before.get((0x1000,0x60),0),1)
+            self.assertEqual(sum(self.r.read_counts.values())-sum(before.values()),1)
+
+    def test_null_active_scene_stays_fatal_with_parseable_menu_detail(self):
+        import json
+        self.r.array(0x3000,'ActiveScenes',[0])
+        with mock.patch.object(self.reader,'_sample_once',wraps=self.reader._sample_once) as sample:
+            with self.assertRaisesRegex(RuntimeError,'Object outside registry') as caught:self.reader.sample()
+        self.assertIs(type(caught.exception),RuntimeError);self.assertEqual(sample.call_count,1)
+        detail=json.loads(json.dumps(caught.exception.read_conflict))
+        self.assertEqual(detail['stage'],'menu_registration_rejected')
+        self.assertEqual(detail['registration_failure'],dict(address='0x0',item_none=True,item_empty=True,
+            internal_index=None,inventory_length=len(self.r.object_pointers)))
+        self.assertEqual(detail['acquired_objects_header']['address'],hex(self.r.objects_header))
+        self.assertEqual(detail['acquired_objects_header']['count'],6)
+        self.assertFalse(self.reader._registry_dirty)
+
+    def test_initializing_uint_index_stays_fatal_with_menu_detail(self):
+        import json
+        self.r.identities[0x1000]['internal_index']=0xffffffff
+        with self.assertRaisesRegex(RuntimeError,'Object outside registry') as caught:self.reader.sample()
+        self.assertIs(type(caught.exception),RuntimeError)
+        detail=json.loads(json.dumps(caught.exception.read_conflict))
+        self.assertEqual(detail['registration_failure']['internal_index'],4294967295)
+        self.assertFalse(self.reader._registry_dirty)
+
+    def test_changed_registration_preserves_detail_on_existing_churn_class(self):
+        def change():
+            raw=self.r.read(self.r.objects_header,16);data,count,capacity=struct.unpack('<Qii',raw)
+            self.r.put(self.r.objects_header,struct.pack('<Qii',data,count+1,capacity))
+        self.fail_scene_registration(change)
+        with self.assertRaises(RegistrySnapshotChanged) as caught:self.reader.sample()
+        self.assertEqual(caught.exception.read_conflict['registration_failure'],caught.exception.__cause__.registration_failure)
+        self.assertEqual(caught.exception.registration_failure,caught.exception.__cause__.registration_failure)
+
     def test_owner_option_is_explicit_and_does_not_change_default_sample(self):
         with mock.patch('scene_owner_snapshot.capture_scene_owner', return_value={'render_admission': False}) as capture:
             baseline = self.reader.sample()
