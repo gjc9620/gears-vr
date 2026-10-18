@@ -433,7 +433,9 @@ class ContinuousTests(unittest.TestCase):
                             monotonic_ns=runner.time.perf_counter_ns()))+'\n')
                 return types.SimpleNamespace(returncode=0)
             stages=[dict(terminal(),phase='running'),dict(terminal(),phase='stop_requested'),terminal('stopped' if clean else 'incomplete')]
-            if path_center:stages.insert(1,dict(terminal(),phase='running'))
+            if path_center:
+                stages[0]['path_position_service_compiled']='1'
+                stages.insert(1,dict(terminal(),phase='running',path_position_service_compiled='1'))
             checks=0
             def cancelled():
                 nonlocal checks
@@ -478,19 +480,35 @@ class ContinuousTests(unittest.TestCase):
                 monitor.return_value.close.assert_called_once()
 
     def test_path_choice_monitor_is_opt_in_and_closes_before_session_cleanup(self):
-        import path_choice_center_monitor,menu_display_monitor
+        import path_choice_position_monitor,menu_display_monitor
         for enabled in (False,True):
-            with self.subTest(enabled=enabled),mock.patch.object(path_choice_center_monitor,'PathChoiceCenterMonitor') as center, \
+            signals=[]
+            original_signal=Control.signal
+            def signal(control,name):
+                signals.append(name)
+                return original_signal(control,name)
+            with self.subTest(enabled=enabled),mock.patch.object(path_choice_position_monitor,'PathChoicePositionMonitor') as center, \
+                    mock.patch.object(Control,'signal',signal), \
                     mock.patch.object(menu_display_monitor,'MenuDisplayMonitor'):
-                center.return_value.poll.return_value=[dict(event='path_center_lease_published',shift_y=374)]
+                center.return_value.poll.return_value=[dict(event='path_position_published',nonce=99)]
                 center.return_value.cleanup_error=None
                 center.return_value.worker_joined=True
+                center.return_value.close.side_effect=lambda:self.assertEqual(signals,[])
+                def finish(**proofs):
+                    self.assertEqual(signals,['Local\\GearsVR.Capture.Stop.123','Local\\GearsVR.XR.Stop.123'])
+                    self.assertEqual(proofs,dict(native_cleanup_verified=True,entry_restore_verified=True,game_absent=False))
+                    return True
+                center.return_value.finish_cleanup.side_effect=finish
                 code,state,*_=self.run_mock(path_center=enabled,startup_menu=enabled)
                 self.assertEqual(code,0);self.assertIs(state['path_choice_center_enabled'],enabled)
                 if enabled:
                     center.assert_called_once();center.return_value.poll.assert_called_once()
                     center.return_value.close.assert_called_once()
-                    self.assertEqual(center.call_args.args[3],'1234')
+                    center.return_value.finish_cleanup.assert_called_once()
+                    self.assertEqual(center.call_args.args[0].name,'path-choice-position-trial.ini')
+                    self.assertEqual(center.call_args.args[1].name,'path-choice-close-observer.ini')
+                    self.assertEqual(center.call_args.args[2]['native_started_qpc'],'1234')
+                    self.assertTrue(state['path_choice_center_sidecars_cleaned'])
                 else:center.assert_not_called()
 
     def test_path_choice_dependency_validation_precedes_process_launch(self):

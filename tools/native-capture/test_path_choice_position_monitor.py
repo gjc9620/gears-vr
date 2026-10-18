@@ -1,0 +1,327 @@
+"""Deterministic service lifecycle tests; no process, input, native or XR actions."""
+from concurrent.futures import Future
+import json
+import threading
+import time
+import unittest
+from unittest import mock
+from types import SimpleNamespace
+
+from path_choice_center_monitor import _ReadWorker
+from path_choice_position_collect import ActivationCertificate
+from path_choice_position_monitor import LivePathChoicePositionProbe, Observation, PathChoicePositionMonitor
+
+
+GAME = dict(pid=3, creation_time=30, image='game')
+OWNER = dict(pid=4, creation_time=40, image='owner')
+SESSION = dict(game_identity=GAME, owner_identity=OWNER, native_started_qpc=50, phase='running')
+
+
+class ImmediateWorker:
+    def __init__(self, probe):self.probe = probe; self.error = None
+    def submit(self, function):
+        future = Future()
+        try:future.set_result(function())
+        except Exception as error:future.set_exception(error)
+        return future
+    def close(self):self.probe.close(); return True
+
+
+class Probe:
+    def __init__(self, *args):
+        self.present = True; self.absent = False; self.full_reads = 0; self.reads = 0; self.closed = False
+    def capture(self, nonce, acquire, generation):
+        self.reads += 1
+        if not self.present:return Observation(False, scene_absent=self.absent)
+        certificate = None
+        if acquire:
+            self.full_reads += 1
+            roles = {key:dict(address=101 + index, internal_index=index, cls=201)
+                     for index, key in enumerate(('scene', 'client', 'controller', 'local_player'))}
+            baseline = dict(nonce=nonce, roles=roles, nodes=list(range(13)))
+            certificate = ActivationCertificate('position nonce=' + str(nonce) + ' offset=374',
+                'close nonce=' + str(nonce), json.dumps(baseline), '{}')
+        return Observation(True, certificate, scene_address=101)
+    def close(self):self.closed = True
+
+
+class MonitorTests(unittest.TestCase):
+    def setUp(self):
+        self.now = 10.; self.actions = []; self.files = {}; self.identities = {3:GAME, 4:OWNER}
+        self.status = dict(pid=3, owner_pid=4, owner_creation_time=40, started_qpc=50,
+            phase='running', world_generation=1, path_position_service_compiled=1,
+            path_position_identity_lost=0, path_position_ownership_lost=0,
+            path_position_setter_failed=0, path_position_pending_restore=0, path_position_unresolved=0,
+            path_position_active_nonce=0, path_position_consumed_nonce=0,
+            path_position_last_restored_nonce=0, path_position_last_restored_tick=0)
+        for prefix in ('path_position_', 'path_close_'):
+            self.status.update({prefix + key:0 for key in ('nonce', 'renewals', 'accepted_tick', 'expires_tick')})
+        case = self
+        class Sidecar:
+            def __init__(self, path):self.path = path; self.owned = False; self.raw = None; case.files[path] = self
+            def publish(self, raw):
+                if self.owned:raise RuntimeError('Already owned')
+                self.owned = True; self.raw = raw; case.actions.append(('publish', self.path, raw))
+                case.ack(self.path, first=True)
+            def renew(self):
+                case.actions.append(('renew', self.path, self.raw))
+                if case.auto_ack:case.ack(self.path)
+            def remove(self):
+                if self.owned:case.actions.append(('remove', self.path, self.raw))
+                self.owned = False
+        self.Sidecar = Sidecar; self.auto_ack = True
+        self.m = self.create()
+        self.addCleanup(self.m.close)
+
+    def create(self, **kwargs):
+        return PathChoicePositionMonitor('position', 'close', SESSION, lambda:dict(self.status), self.identities.get,
+            clock=lambda:self.now, tick_clock=lambda:int(self.now * 1000), nonce_clock=lambda:100,
+            probe_factory=kwargs.pop('probe_factory', Probe), sidecar_factory=self.Sidecar,
+            worker_factory=kwargs.pop('worker_factory', ImmediateWorker),
+            **kwargs)
+
+    def ack(self, path, first=False):
+        prefix = 'path_position_' if path == 'position' else 'path_close_'
+        self.status[prefix + 'nonce'] = self.m.nonce
+        self.status[prefix + 'renewals'] = 0 if first else self.status[prefix + 'renewals'] + 1
+        self.status[prefix + 'accepted_tick'] = int(self.now * 1000)
+        self.status[prefix + 'expires_tick'] = int(self.now * 1000) + (6000 if path == 'position' else 8000)
+        if path == 'position':
+            self.status['path_position_active_nonce'] = self.status['path_position_consumed_nonce'] = self.m.nonce
+            self.status['path_position_pending_restore'] = 1
+
+    def step(self, amount=.25):
+        self.now += amount
+        return self.m.poll()
+
+    def hold(self):
+        for _ in range(8):
+            self.m.poll()
+            if self.m.state == 'holding':return
+            self.now += .1
+        self.fail('Did not enter holding: ' + str(self.m.state))
+
+    def test_holds_over_30_seconds_with_one_baseline_nonce_and_exact_close_first_renewals(self):
+        self.hold(); nonce = self.m.nonce; certificate = self.m.certificate
+        for _ in range(160):self.step()
+        self.assertEqual(self.m.state, 'holding')
+        self.assertEqual(self.m.nonce, nonce); self.assertIs(self.m.certificate, certificate)
+        self.assertEqual(self.m.probe.full_reads, 1)
+        renewals = [row for row in self.actions if row[0] == 'renew']
+        self.assertGreater(len(renewals), 20)
+        self.assertEqual([row[1] for row in renewals], ['close', 'position'] * (len(renewals) // 2))
+        self.assertEqual(set(row[2] for row in renewals if row[1] == 'position'),
+                         {certificate.position_ini.encode('ascii')})
+
+    def test_same_nonce_ack_is_insufficient_to_renew_position(self):
+        self.hold(); self.auto_ack = False
+        for _ in range(12):self.step()
+        self.assertEqual(self.m.renew_phase, 'close')
+        self.assertEqual([row[1] for row in self.actions if row[0] == 'renew'], ['close'])
+        for _ in range(12):self.step()
+        self.assertTrue(self.m.terminal); self.assertFalse(self.m.position.owned)
+        self.assertTrue(self.m.close_sidecar.owned)
+
+    def test_renewal_counter_without_advanced_expiry_cannot_touch_position(self):
+        self.hold(); self.auto_ack = False
+        for _ in range(10):self.step()
+        self.assertEqual(self.m.renew_phase, 'close')
+        self.status['path_close_renewals'] += 1
+        self.m.poll()
+        self.assertEqual(self.m.renew_phase, 'close')
+        self.assertEqual([row[1] for row in self.actions if row[0] == 'renew'], ['close'])
+
+    def test_false_close_restore_latches_until_actual_scene_leave_then_reopen(self):
+        self.hold(); nonce = self.m.nonce
+        self.status.update(path_position_last_restored_nonce=nonce, path_position_last_restored_tick=11000,
+                           path_position_active_nonce=0, path_position_pending_restore=0)
+        for _ in range(20):self.step()
+        self.assertEqual(self.m.state, 'latched_closed'); self.assertEqual(self.m.probe.full_reads, 1)
+        self.assertEqual(self.m.last_restored_nonce, nonce)
+        self.m.probe.present = False; self.m.probe.absent = True
+        for _ in range(6):self.step()
+        self.m.probe.present = True
+        for _ in range(12):self.step()
+        self.assertEqual(self.m.state, 'holding'); self.assertGreater(self.m.nonce, nonce)
+        self.assertEqual(self.m.probe.full_reads, 2)
+
+    def test_overlay_stops_renewal_but_does_not_count_as_scene_leave(self):
+        self.hold(); self.m.probe.present = False
+        for _ in range(6):self.step()
+        self.assertEqual(self.m.state, 'await_restore'); self.assertFalse(self.m.leave_seen)
+        self.assertFalse(self.m.position.owned); self.assertTrue(self.m.close_sidecar.owned)
+
+    def test_world_change_discards_completed_old_world_certificate(self):
+        self.m.poll(); self.assertTrue(self.m.future.done())
+        self.status['world_generation'] = 2
+        events = self.m.poll()
+        self.assertTrue(any(row.get('reason') == 'late_or_world_changed_read' for row in events))
+        self.assertFalse(self.m.position.owned); self.assertFalse(self.m.close_sidecar.owned)
+
+    def test_cancel_discards_late_result_and_bounded_worker_join(self):
+        self.m.poll(); self.m.close()
+        self.assertEqual(self.m.poll(), [])
+        self.assertFalse(self.m.position.owned); self.assertFalse(self.m.close_sidecar.owned)
+        self.assertTrue(self.m.worker_joined)
+
+    def test_stale_result_budget_is_wrapper_finished_time(self):
+        self.m.poll(); self.now += 2.01
+        events = self.m.poll()
+        self.assertTrue(any(row.get('reason') == 'late_or_world_changed_read' for row in events))
+        self.assertFalse(self.m.close_sidecar.owned)
+
+    def test_slow_final_identity_status_check_cannot_extend_certificate_budget(self):
+        count = [0]
+        def delayed_status():
+            count[0] += 1
+            if count[0] == 3:self.now += 3
+            return dict(self.status)
+        self.m.read_status = delayed_status
+        self.m.poll(); self.m.poll()
+        self.assertTrue(self.m.terminal); self.assertFalse(self.m.close_sidecar.owned)
+
+    def test_restore_nonce_without_clean_owner_ack_retains_close_sidecar(self):
+        self.hold()
+        self.status.update(path_position_last_restored_nonce=self.m.nonce,
+                           path_position_last_restored_tick=11000, path_position_pending_restore=1)
+        self.m.poll()
+        self.assertTrue(self.m.close_sidecar.owned)
+        self.assertEqual(self.m.last_restored_nonce, 0)
+
+    def test_wrong_native_identity_and_rejection_are_terminal_without_global_stop(self):
+        self.hold(); self.status['path_position_ownership_lost'] = 1
+        self.m.poll(); self.assertTrue(self.m.terminal)
+        self.assertFalse(self.m.position.owned); self.assertTrue(self.m.close_sidecar.owned)
+        self.assertFalse(hasattr(self.m, 'signal'))
+
+    def test_expired_native_receipt_stops_renewal(self):
+        self.hold(); self.status['path_position_expires_tick'] = int(self.now * 1000) - 1
+        self.m.poll(); self.assertTrue(self.m.terminal)
+        self.assertFalse(self.m.position.owned); self.assertTrue(self.m.close_sidecar.owned)
+
+    def test_cleanup_requires_both_native_and_entry_proof_or_game_absence(self):
+        self.hold(); self.m.close()
+        self.assertFalse(self.m.position.owned); self.assertTrue(self.m.close_sidecar.owned)
+        self.assertFalse(self.m.finish_cleanup(native_cleanup_verified=True))
+        self.assertFalse(self.m.finish_cleanup(entry_restore_verified=True))
+        self.assertTrue(self.m.finish_cleanup(native_cleanup_verified=True, entry_restore_verified=True))
+        self.assertFalse(self.m.close_sidecar.owned)
+
+    def test_runner_cached_status_cannot_override_latest_native_world(self):
+        self.status['started_qpc'] = 999
+        self.m.poll(dict(self.status, started_qpc=50))
+        self.assertTrue(self.m.terminal); self.assertEqual(self.m.probe.reads, 0)
+
+    def test_live_verifier_rechecks_reader_and_frozen_world_and_pending_restore(self):
+        module = SimpleNamespace(reader_process_identity=lambda reader:(3, 30))
+        with mock.patch.dict('sys.modules', {'menu_control':module}):
+            session, status = self.m.verify_session(object(), 1)
+            self.assertEqual(session, SESSION)
+            self.status['world_generation'] = 2
+            with self.assertRaisesRegex(RuntimeError, 'world changed'):
+                self.m.verify_session(object(), 1)
+            self.status['world_generation'] = 1
+            self.status['path_position_pending_restore'] = 1
+            with self.assertRaisesRegex(RuntimeError, 'state changed'):
+                self.m.verify_session(object(), 1)
+            self.status['path_position_pending_restore'] = 0
+            module.reader_process_identity = lambda reader:(3, 31)
+            with self.assertRaisesRegex(RuntimeError, 'handle identity'):
+                self.m.verify_session(object(), 1)
+
+    def live_probe_modules(self):
+        reader = SimpleNamespace(
+            sample=lambda **kwargs:dict(top=dict(cls='UIScene_PathChoice', address='0x65'), active_scenes=[]),
+            r=SimpleNamespace(resolve=lambda:dict(controller_address='0x67', local_player_address='0x68')),
+            close=mock.Mock())
+        return {'menu_state':SimpleNamespace(MenuReader=lambda pid:reader),
+                'menu_control':SimpleNamespace(reader_process_identity=lambda current:(3, 30))}
+
+    def test_live_probe_holds_pending_restore_one_over_30s_with_native_poll_cadence(self):
+        self.m.close()
+        modules = self.live_probe_modules()
+        certificate_probe = Probe()
+        def collect(reader, sample, status, session, nonce, verify):
+            verify(reader)
+            return certificate_probe.capture(nonce, True, 1).certificate
+        original_ack = self.ack; pending = []; published = dict(self.status)
+        self.ack = lambda path, first=False:pending.append((path, first))
+        with mock.patch.dict('sys.modules', modules), mock.patch('path_choice_position_collect.collect', side_effect=collect):
+            self.m = self.create(probe_factory=LivePathChoicePositionProbe)
+            self.addCleanup(self.m.close)
+            self.m.read_status = lambda:dict(published)
+            # Native file polling every 200 ms; published status every 1 s.
+            for step in range(420):
+                self.now = 10 + step / 10
+                if step % 2 == 0:
+                    queued, pending[:] = pending[:], []
+                    for path, first in queued:original_ack(path, first)
+                if step % 10 == 0:published.update(self.status)
+                self.m.poll()
+            self.assertEqual(self.m.state, 'holding')
+            self.assertFalse(self.m.terminal)
+            self.assertEqual(certificate_probe.full_reads, 1)
+            self.assertEqual(published['path_position_pending_restore'], 1)
+            renewals = [row[1] for row in self.actions if row[0] == 'renew']
+            self.assertGreater(len(renewals), 10)
+            self.assertEqual(renewals, ['close', 'position'] * (len(renewals) // 2))
+
+    def test_live_probe_pending_lease_requires_owned_exact_unrestored_nonce(self):
+        self.hold()
+        with mock.patch.dict('sys.modules', self.live_probe_modules()):
+            probe = LivePathChoicePositionProbe(GAME, self.m.verify_session)
+            self.addCleanup(probe.close)
+            self.assertTrue(probe.capture(self.m.nonce, False, 1).scene_present)
+            with self.assertRaisesRegex(RuntimeError, 'state changed'):
+                probe.capture(self.m.nonce, True, 1)
+            for key, value in (
+                    ('path_position_nonce', self.m.nonce + 1),
+                    ('path_position_active_nonce', self.m.nonce + 1),
+                    ('path_position_consumed_nonce', self.m.nonce + 1),
+                    ('path_position_last_restored_nonce', self.m.nonce),
+                    ('path_position_ownership_lost', 1),
+                    ('world_generation', 2)):
+                original = self.status[key]
+                with self.subTest(key=key), self.assertRaises(RuntimeError):
+                    self.status[key] = value
+                    probe.capture(self.m.nonce, False, 1)
+                self.status[key] = original
+            with self.assertRaisesRegex(RuntimeError, 'state changed'):
+                probe.capture(self.m.nonce + 1, False, 1)
+            # Revocation removes position but retains the owned close guard while
+            # read-only observation waits for native restoration.
+            self.m.position.remove()
+            self.assertTrue(probe.capture(self.m.nonce, False, 1).scene_present)
+            self.m.close_sidecar.remove()
+            with self.assertRaisesRegex(RuntimeError, 'state changed'):
+                probe.capture(self.m.nonce, False, 1)
+
+    def test_real_monitor_hung_worker_cannot_publish_after_bounded_close(self):
+        self.m.close()
+        entered = threading.Event(); released = threading.Event()
+        class BlockedProbe(Probe):
+            def capture(self, *args):
+                entered.set(); released.wait(3)
+                return super().capture(*args)
+        self.m = self.create(worker_factory=_ReadWorker, probe_factory=BlockedProbe)
+        self.addCleanup(self.m.close)
+        self.m.poll(); self.assertTrue(entered.wait(1))
+        before = time.monotonic(); self.m.close()
+        self.assertLess(time.monotonic() - before, .6); self.assertFalse(self.m.worker_joined)
+        released.set(); self.m.executor.thread.join(1)
+        self.assertEqual(self.m.poll(), [])
+        self.assertFalse(self.m.position.owned); self.assertFalse(self.m.close_sidecar.owned)
+
+    def test_hung_real_read_worker_is_daemon_and_shutdown_is_bounded(self):
+        released = threading.Event(); entered = threading.Event()
+        probe = Probe(); worker = _ReadWorker(probe)
+        def blocked():entered.set(); released.wait(3); return Observation(False)
+        future = worker.submit(blocked)
+        self.assertTrue(entered.wait(1))
+        before = time.monotonic()
+        self.assertFalse(worker.close(timeout=.02)); self.assertLess(time.monotonic() - before, .3)
+        self.assertTrue(worker.thread.daemon); self.assertFalse(future.done())
+        released.set(); worker.thread.join(1); self.assertTrue(probe.closed)
+
+
+if __name__ == '__main__':unittest.main()

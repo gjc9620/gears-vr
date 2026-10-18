@@ -52,6 +52,15 @@ class WindowsControl:
                     'image':str(pathlib.Path(path.value).resolve()).casefold()}
         finally:self.k.CloseHandle(handle)
 
+    def game_absent(self,pid):
+        """A failed identity lookup alone cannot prove the game has exited."""
+        handle=self.k.OpenProcess(0x1000,False,pid)
+        if not handle:return ctypes.get_last_error()==87  # ERROR_INVALID_PARAMETER: no such PID
+        try:
+            code=wintypes.DWORD()
+            return bool(self.k.GetExitCodeProcess(handle,ctypes.byref(code)) and code.value!=259)
+        finally:self.k.CloseHandle(handle)
+
     def owner_lock(self,pid):
         handle=self.k.CreateMutexW(None,False,f'Local\\GearsVR.Continuous.Owner.{pid}')
         error=ctypes.get_last_error()
@@ -90,6 +99,46 @@ def checked_identity(control,expected,allow_exited=False):
     if actual is None and allow_exited:return False
     if actual!=expected:raise RuntimeError('Session process identity changed or exited: '+str(expected['pid']))
     return True
+
+
+def start_path_choice_position(args,state,native_status,floor,control):
+    if not getattr(args,'path_choice_center',False):return None
+    try:
+        # Native99 support is explicit; never fall back to FCanvas or the old trial.
+        if str(state['native_status'].get('path_position_service_compiled'))!='1':
+            raise ValueError('Native99 PathChoice position service required')
+        from path_choice_position_monitor import PathChoicePositionMonitor
+        return PathChoicePositionMonitor(args.build_dir.resolve()/'path-choice-position-trial.ini',
+            args.build_dir.resolve()/'path-choice-close-observer.ini',state,
+            lambda:read_session_status(native_status,args.pid,floor),control.identity)
+    except Exception as error:
+        state['path_choice_center_start_error']=repr(error)
+        return None
+
+
+def close_path_choice_position(monitor,state):
+    if monitor is None:return
+    try:monitor.close()
+    except Exception as error:state['path_choice_center_close_error']=repr(error)
+    if monitor.cleanup_error:state['path_choice_center_cleanup_error']=monitor.cleanup_error
+    state['path_choice_center_worker_joined']=monitor.worker_joined
+
+
+def finish_path_choice_position(monitor,state,control):
+    if monitor is None:return
+    try:
+        # Independently proven process absence; missing native status is insufficient.
+        verified=(state.get('native_cleanup_verified') is True and state.get('entry_restore_verified') is True)
+        absent=False
+        if not verified:
+            absent=getattr(control,'game_absent',lambda pid:False)(state['game_identity']['pid']) is True
+        state['path_choice_center_game_absent_verified']=absent
+        state['path_choice_center_sidecars_cleaned']=monitor.finish_cleanup(
+            native_cleanup_verified=state.get('native_cleanup_verified') is True,
+            entry_restore_verified=state.get('entry_restore_verified') is True,game_absent=absent)
+    except Exception as error:state['path_choice_center_cleanup_error']=repr(error)
+    if monitor.cleanup_error:state['path_choice_center_cleanup_error']=monitor.cleanup_error
+    state['path_choice_center_worker_joined']=monitor.worker_joined
 
 
 def validate_ui_hud_plane(args):
@@ -504,10 +553,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         started_qpc=state['native_started_qpc'],baseline=adapter.baseline,observe=adapter.observe,
                         prepare=adapter.prepare,signal=control.signal,identity=control.identity,enabled=True,
                         probe_interval=2.0,include_pawn_changes=getattr(args,'crosshair_assignment_observer',False))
-                if getattr(args,'path_choice_center',False):
-                    from path_choice_center_monitor import PathChoiceCenterMonitor
-                    path_center=PathChoiceCenterMonitor(args.build_dir.resolve()/'path-choice-trial.ini',
-                        state['game_identity'],state['owner_identity'],state['native_started_qpc'],control.identity)
+                path_center=start_path_choice_position(args,state,native_status,floor,control)
                 while child.poll() is None:
                     observe_first_stereo(native_started)
                     if cancel_requested and cancel_requested():
@@ -517,8 +563,12 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     checked_identity(control,state['game_identity'])
                     if menu_monitor:menu_monitor.poll()
                     if path_center:
-                        for event in path_center.poll(status):
-                            telemetry.event(event['event'],**{key:value for key,value in event.items() if key!='event'})
+                        try:
+                            for event in path_center.poll():
+                                telemetry.event(event['event'],**{key:value for key,value in event.items() if key!='event'})
+                        except Exception as error:
+                            state['path_choice_center_poll_error']=repr(error)
+                            close_path_choice_position(path_center,state)
                     telemetry.sample(status,state['phase'],menu_monitor.last_menu_mode if menu_monitor else None)
                     if world_monitor:
                         for event in world_monitor.poll(status,menu_monitor.last_menu_mode if menu_monitor and menu_monitor.last else None):
@@ -531,11 +581,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             except Exception as error:
                 state['error']=repr(error)
             finally:
-                if path_center:
-                    try:path_center.close()
-                    except Exception as error:state['path_choice_center_close_error']=repr(error)
-                    if path_center.cleanup_error:state['path_choice_center_cleanup_error']=path_center.cleanup_error
-                    state['path_choice_center_worker_joined']=path_center.worker_joined
+                close_path_choice_position(path_center,state)
                 if world_monitor:
                     try:world_monitor.close()
                     except Exception as error:state['world_monitor_close_error']=repr(error)
@@ -573,6 +619,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         state['native_cleanup_verified']=False
                 if child:
                     cleanup_owned_xr(child,state['xr_owned_pid'],args.pid,args.cleanup_timeout,control,state)
+                finish_path_choice_position(path_center,state,control)
         if activation_attempted:observe_first_stereo(native_started)
         collect_xr_evidence(out_path,state)
         for line in out_path.read_text(encoding='utf-8',errors='replace').splitlines():
@@ -624,7 +671,7 @@ def main(argv=None):
     start.add_argument('--cinematic-camera',action='store_true')
     start.add_argument('--movie-display',action='store_true',help='Opt-in attested movie progress display; requires owned menu recovery')
     start.add_argument('--ui-observer',action='store_true')
-    start.add_argument('--path-choice-center',action='store_true',help='Opt-in authenticated PathChoice source centering; requires supported native build')
+    start.add_argument('--path-choice-center',action='store_true',help='Opt-in authenticated PathChoice position service; requires Native99 support')
     start.add_argument('--ui-hud-plane',action='store_true')
     start.add_argument('--crosshair-assignment-observer',action='store_true')
     start.add_argument('--hud-horizontal-fov-degrees',type=float)

@@ -18,7 +18,9 @@ PROJECT_MODULES = {
     'native-capture': ('anchor_config cinematic_anchor mounted_context crosshair_assignment_config hook_entry_attestation camera_closer_options '
         'launch_reserve menu_display_monitor prime_owner run_stereo_continuous run_stereo_probe startup_selftests '
         'session_telemetry start_capture ui_observer_config verify_stopped world_rebind world_rebind_monitor world_rebind_runtime '
-        'path_choice_center_monitor path_choice_layout path_choice_trial_config'),
+        'path_choice_center_monitor path_choice_layout path_choice_trial_config '
+        'path_choice_position_monitor path_choice_position_collect path_choice_position_config '
+        'path_choice_close_config path_choice_owned_sidecar'),
 }
 NATIVE_TESTS = ('CaptureSelfTest.exe', 'GraphicsMenuLockTest.exe', 'FrameLinkTest.exe',
                 'GpuViewportStatsTest.exe', 'SplitSourceViewsTest.exe', 'SubmittedViewLifetimeTest.exe',
