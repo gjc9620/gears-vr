@@ -2541,7 +2541,9 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
         // One owned frame at a time. While its Canvas is pending, forward the
         // ordinary native scene instead of building an unbound stereo clone.
-        if(gears_owned_scene_live::trial.ticket)return false;
+        // A retired world needs exactly one bootstrap renderer to reach RHI
+        // recreation; keep the old ticket until that recreation actually runs.
+        if(gears_owned_scene_live::trial.ticket&&!native_owned_scene_try_bootstrap())return false;
     }
 #endif
     const gears_split_sources::FixedOutputBounds owned_bounds{gears_native_render_size::width(),gears_native_render_size::height()};
