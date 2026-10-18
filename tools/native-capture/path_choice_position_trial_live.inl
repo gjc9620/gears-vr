@@ -213,7 +213,10 @@ std::shared_ptr<Request const> load_request(std::string const& text,ULONGLONG ti
         if(completed(c))throw CompletedRenewal{c.nonce,"completed_before_auth"};
         stage("renewal_expired");if(tick>=previous->expires)throw 2;
         stage("renewal_counter_exhausted");if(previous->renewals==UINT64_MAX)throw 2;
-        stage("renewal_not_held");if(!held())throw 2;
+        stage("renewal_not_held");if(!held()){
+            if(completed(c))throw CompletedRenewal{c.nonce,"completed_before_auth"};
+            throw 2;
+        }
     }else{stage("first_admission");if(active_nonce.load(std::memory_order_acquire)||c.nonce<=consumed_nonce_ack.load(std::memory_order_acquire))throw 2;}
 #else
     stage("nonce_consumed");if(c.nonce<=loaded_nonce.load())throw 2;
@@ -241,7 +244,10 @@ std::shared_ptr<Request const> load_request(std::string const& text,ULONGLONG ti
     stage("post_context");if(!trial::same(request->config,context(request->config.client,request->config.scene)))throw 2;
     if(renew){
         if(completed(request->config))throw CompletedRenewal{request->config.nonce,"completed_after_auth"};
-        stage("post_renewal_not_held");if(!held())throw 2;
+        stage("post_renewal_not_held");if(!held()){
+            if(completed(request->config))throw CompletedRenewal{request->config.nonce,"completed_after_auth"};
+            throw 2;
+        }
         stage("post_renewal_expired");if(accepted>=previous->expires)throw 2;
     }else{stage("post_first_admission");if(terminal.load()||drain_requested.load()||active_nonce.load()||request->config.nonce<=consumed_nonce_ack.load())throw 2;}
     if(renew)++service_renewed;

@@ -54,7 +54,7 @@ static void first_renew_close_and_no_resurrection(){
     assert(originals==1&&position::last_restored_nonce==f.f.c.nonce&&position::active_nonce==0&&position::last_restored_tick>0&&!position::unresolved);
     assert(std::atomic_load(&position::last_request_receipt)->renewals==6&&std::atomic_load(&close_obs::last_request_receipt)->renewals==6);
     try{position::load_request(f.pw,GetTickCount64(),safe_copy,[]{return true;});assert(false);}catch(position::CompletedRenewal const& completed){assert(completed.nonce==f.f.c.nonce);}
-    try{close_obs::load_request(f.cw,GetTickCount64(),safe_copy,[]{return true;});assert(false);}catch(int){}
+    try{close_obs::load_request(f.cw,GetTickCount64(),safe_copy,[]{return true;});assert(false);}catch(position::CompletedRenewal const& completed){assert(completed.nonce==f.f.c.nonce);}
     // Even a stale selected pointer that races the restore cannot resurrect this consumed nonce.
     std::atomic_store(&position::selected,p);struct Candidate{uintptr_t client,scene;} candidate{f.f.c.client,f.f.c.scene};unsigned sets{};
     assert(position::invoke_with(candidate,[]{return sentinel;},safe_copy,[&](auto,float,unsigned,unsigned,int){++sets;return true;},[]{return true;})==sentinel);
@@ -216,6 +216,51 @@ static void normal_close_during_authentication_false_is_retired(){
         std::thread rejected_worker([&]{position::poll_with(invalid.path,invalid.log,safe_copy,[]{return false;});});rejected_worker.join();
         assert(position::terminal&&position::unresolved&&position::rejected==1&&position::restored==0&&position::pending_restore);}
 }
+static void close_worker_completed_poll_is_retired(){
+    for(unsigned phase=0;phase<4;++phase){
+        ServiceFixture f;position::rejected=0;f.load();f.apply_owner();TempRequest file;file.write(f.cw);
+        auto prior_close=std::atomic_load(&close_obs::selected);auto prior_receipt=std::atomic_load(&close_obs::last_request_receipt);
+        std::promise<void> boundary_arrived,release_boundary;auto wait=release_boundary.get_future().share();
+        auto read=[&](void* to,void const* from,std::size_t size){if(phase==1){boundary_arrived.set_value();wait.wait();return false;}return safe_copy(to,from,size);};
+        auto certify=[&]{if(phase>=2){boundary_arrived.set_value();wait.wait();}return phase!=3;};
+        auto restore=[&]{assert(f.run([&](void*,void*){return sentinel;})==sentinel);assert(position::restored==1&&!position::pending_restore);};
+        if(phase==0)restore();
+        std::thread worker([&]{close_obs::poll_with(file.path,file.log,read,certify);});
+        if(phase){boundary_arrived.get_future().wait();restore();release_boundary.set_value();}worker.join();
+        assert(close_obs::load_rejected==0&&position::rejected==0&&!position::terminal&&!position::unresolved);
+        assert(position::active_nonce==0&&position::last_restored_nonce==1&&position::consumed_nonce_ack==1&&position::restored==1);
+        assert(std::atomic_load(&close_obs::selected)==prior_close&&std::atomic_load(&close_obs::last_request_receipt)==prior_receipt);
+        rewind(file.log);std::string log;char buffer[256]{};while(auto n=fread(buffer,1,sizeof(buffer),file.log))log.append(buffer,n);
+        const char* expected[]={"close_completed_before_auth","close_completed_during_position_auth","close_completed_after_auth","close_completed_during_cert"};
+        assert(log.find(expected[phase])!=std::string::npos);
+    }
+}
+static void close_worker_completion_requires_own_immutable_request(){
+    for(unsigned variant=0;variant<11;++variant){
+        ServiceFixture f;f.load();f.apply_owner();assert(f.run([&](void*,void*){return sentinel;})==sentinel);
+        auto wire=f.cw;
+        if(variant==0)wire+='\n';
+        if(variant==1){auto prior=std::make_shared<close_obs::Active>(*std::atomic_load(&close_obs::selected));++prior->request.nonce;std::atomic_store(&close_obs::selected,std::shared_ptr<close_obs::Active const>(prior));}
+        if(variant==2){auto prior=std::make_shared<close_obs::Active>(*std::atomic_load(&close_obs::selected));prior->wire+='\n';std::atomic_store(&close_obs::selected,std::shared_ptr<close_obs::Active const>(prior));}
+        if(variant==3){auto prior=std::make_shared<position::Request>(*std::atomic_load(&position::last_request_receipt));prior->config.panel+=8;std::atomic_store(&position::last_request_receipt,std::shared_ptr<position::Request const>(prior));}
+        if(variant==4)position::consumed_nonce_ack=0;
+        if(variant==5)position::active_nonce=1;
+        if(variant==6)position::last_restored_nonce=2;
+        if(variant==7)position::pending_restore=true;
+        if(variant==8)position::last_restored_tick=0;
+        if(variant==9)++committed_world_generation;
+        if(variant==10)++session_started_qpc;
+        TempRequest file;file.write(wire);std::thread worker([&]{close_obs::poll_with(file.path,file.log,safe_copy,[]{return true;});});worker.join();
+        assert(close_obs::load_rejected==1&&position::terminal&&position::unresolved&&position::restored==1);
+        if(variant==10)--session_started_qpc;
+    }
+    for(unsigned failure=0;failure<4;++failure){
+        ServiceFixture f;f.load();f.apply_owner();TempRequest file;file.write(failure==2?"invalid close request":f.cw);
+        auto read=[&](void* to,void const* from,std::size_t size){if(failure==0)return false;if(failure==1)throw 7;return safe_copy(to,from,size);};
+        std::thread worker([&]{close_obs::poll_with(file.path,file.log,read,[&]{return failure!=3;});});worker.join();
+        assert(close_obs::load_rejected==1&&position::terminal&&position::unresolved&&position::restored==0&&position::pending_restore);
+    }
+}
 static void product_failures_never_stop_vr(){
     for(unsigned kind=0;kind<4;++kind){ServiceFixture f;f.load();f.apply_owner();struct Candidate{uintptr_t client,scene;} c{f.f.c.client,f.f.c.scene};unsigned originals{},sets{};
         if(kind==0)memory[0x5000]^=1;
@@ -255,5 +300,5 @@ static void expiry_and_ack_status(){
     while(auto n=fread(b,1,sizeof(b),log))text.append(b,n);fclose(log);
     for(auto key:{"path_position_service_compiled=1","path_position_active_nonce=0","path_position_last_restored_nonce=1","path_position_expires_tick=","path_position_renewals=0","path_close_expires_tick=","path_close_renewals=0"})assert(text.find(key)!=std::string::npos);
 }
-int main(){first_renew_close_and_no_resurrection();renewal_rejections();prefix_growth_renewal();boundary_expiry_context_and_first_publish();actual_poll_and_unknown_file_isolation();owner_completion_during_worker_certification();completed_owner_poll_stage_diagnostic();completed_renewal_proof_cannot_mask_real_failures();normal_close_during_authentication_false_is_retired();product_failures_never_stop_vr();expiry_and_ack_status();
+int main(){first_renew_close_and_no_resurrection();renewal_rejections();prefix_growth_renewal();boundary_expiry_context_and_first_publish();actual_poll_and_unknown_file_isolation();owner_completion_during_worker_certification();completed_owner_poll_stage_diagnostic();completed_renewal_proof_cannot_mask_real_failures();normal_close_during_authentication_false_is_retired();close_worker_completed_poll_is_retired();close_worker_completion_requires_own_immutable_request();product_failures_never_stop_vr();expiry_and_ack_status();
     std::puts("PathChoicePositionServiceTest passed");return 0;}

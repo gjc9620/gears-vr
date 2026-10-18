@@ -50,38 +50,83 @@ bool enable(FILE* log){
 }
 bool restored(){return !target||core::certify(base,safe_copy,safe_copy,gears_native_metadata::matches);}
 template<class Read,class Certify>
-std::shared_ptr<Active const> load_request(std::string const& text,ULONGLONG tick,Read read,Certify certify){
-    core::Request r;if(!core::parse(text,r))throw 2;
+std::shared_ptr<Active const> load_request(std::string const& text,ULONGLONG tick,Read read,Certify certify,
+    char const** rejection_stage=nullptr){
+    auto stage=[&](char const* value){if(rejection_stage)*rejection_stage=value;};
+    stage("parse");core::Request r;if(!core::parse(text,r))throw 2;
+    auto same_session=[&]{return r.base==base&&r.pid==GetCurrentProcessId()&&r.creation_time==position::creation_time()&&
+        r.started_qpc==uint64_t(session_started_qpc)&&r.world_generation==committed_world_generation.load();};
 #if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
     const auto previous=std::atomic_load(&selected);const auto loaded=loaded_nonce.load();const bool renew=r.nonce==loaded;
     std::shared_ptr<position::Request const> position_request;
     auto held=[&]{return !position::terminal.load()&&!position::drain_requested.load()&&position::active_nonce.load(std::memory_order_acquire)==r.nonce&&
         position::consumed_nonce_ack.load(std::memory_order_acquire)==r.nonce&&position::last_restored_nonce.load(std::memory_order_acquire)<r.nonce;};
-    if(position::terminal.load()||position::drain_requested.load()||r.nonce<loaded||
-       (renew&&(!previous||previous->wire!=text||tick>=previous->expires||previous->renewals==UINT64_MAX||!held()))||
-       (!renew&&((position::active_nonce.load()&&position::active_nonce.load()!=r.nonce)||r.nonce<=position::last_restored_nonce.load())))throw 2;
+    auto completed=[&]{
+        // Authenticate this close worker's own immutable accepted request, then
+        // bind it to the immutable position receipt completed by the owner.
+        const auto completed_position=std::atomic_load(&position::last_request_receipt);
+        return renew&&previous&&previous->request.nonce==r.nonce&&previous->wire==text&&
+            completed_position&&core::same(r,completed_position->config)&&
+            position::last_restored_nonce.load(std::memory_order_acquire)==r.nonce&&
+            position::active_nonce.load(std::memory_order_acquire)==0&&position::consumed_nonce_ack.load(std::memory_order_acquire)==r.nonce&&
+            position::last_restored_tick.load()>0&&!position::pending_restore.load()&&
+            !position::terminal.load()&&!position::drain_requested.load()&&same_session();
+    };
+    auto failed=[&](char const* value){if(completed())throw position::CompletedRenewal{r.nonce,value};throw 2;};
+    stage("terminal");if(position::terminal.load())throw 2;
+    stage("draining");if(position::drain_requested.load())throw 2;
+    stage("older_nonce");if(r.nonce<loaded)throw 2;
+    if(renew){
+        stage("renewal_missing_previous");if(!previous)throw 2;
+        stage("renewal_wire_changed");if(previous->wire!=text)throw 2;
+        if(completed())throw position::CompletedRenewal{r.nonce,"close_completed_before_auth"};
+        stage("renewal_expired");if(tick>=previous->expires)throw 2;
+        stage("renewal_counter_exhausted");if(previous->renewals==UINT64_MAX)throw 2;
+        stage("renewal_not_held");if(!held())failed("close_completed_before_auth");
+    }else{stage("first_admission");if((position::active_nonce.load()&&position::active_nonce.load()!=r.nonce)||r.nonce<=position::last_restored_nonce.load())throw 2;}
 #else
-    if(r.nonce<=loaded_nonce.load())throw 2;
+    stage("nonce_consumed");if(r.nonce<=loaded_nonce.load())throw 2;
 #endif
-    auto same_session=[&]{return r.base==base&&r.pid==GetCurrentProcessId()&&r.creation_time==position::creation_time()&&
-        r.started_qpc==uint64_t(session_started_qpc)&&r.world_generation==committed_world_generation.load();};
 #if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
     if(renew){position_request=std::atomic_load(&position::selected);
-        if(!position_request||tick>=position_request->expires||!core::same(r,position_request->config)||
-           !position::trial::authenticate(position_request->config,position::context(r.client,r.scene),read)||
-           !core::function_identity(position_request->config,r,read))throw 2;}
+        stage("position_binding");if(!position_request||tick>=position_request->expires||!core::same(r,position_request->config))failed("close_completed_during_position_binding");
+        stage("position_authenticate");if(!position::trial::authenticate(position_request->config,position::context(r.client,r.scene),read))failed("close_completed_during_position_auth");
+        stage("function_identity");if(!core::function_identity(position_request->config,r,read))failed("close_completed_during_function_auth");}
 #endif
-    if(!same_session()||!certify()||!core::native_pointer(r,read)||tick>UINT64_MAX-r.duration_ms)throw 2;
-    auto request=std::make_shared<Active>();request->request=r;request->expires=tick+r.duration_ms;
+    stage("session");if(!same_session())throw 2;
+    stage("certify");if(!certify()){
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        failed("close_completed_during_cert");
+#else
+        throw 2;
+#endif
+    }
+    stage("native_pointer");if(!core::native_pointer(r,read)){
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        failed("close_completed_during_native_pointer");
+#else
+        throw 2;
+#endif
+    }
+    stage("tick_overflow");if(tick>UINT64_MAX-r.duration_ms)throw 2;
+    stage("allocate");auto request=std::make_shared<Active>();request->request=r;request->expires=tick+r.duration_ms;
 #if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
     request->wire=text;const auto accepted=GetTickCount64();
-    if(!same_session()||position::terminal.load()||position::drain_requested.load()||(renew&&(!held()||accepted>=previous->expires||accepted>=position_request->expires)))throw 2;
+    stage("post_session");if(!same_session())throw 2;
+    stage("post_terminal");if(position::terminal.load())throw 2;
+    stage("post_draining");if(position::drain_requested.load())throw 2;
+    if(renew){
+        if(completed())throw position::CompletedRenewal{r.nonce,"close_completed_after_auth"};
+        stage("post_renewal_not_held");if(!held())failed("close_completed_after_auth");
+        stage("post_renewal_expired");if(accepted>=previous->expires||accepted>=position_request->expires)throw 2;
+    }
     request->first_tick=renew?previous->first_tick:accepted;request->accepted_tick=accepted;
     request->renewals=renew?previous->renewals+1:0;request->expires=accepted+r.duration_ms;
     std::atomic_store(&last_request_receipt,std::shared_ptr<Active const>(request));
 #endif
     loaded_nonce=r.nonce;std::atomic_store(&selected,std::shared_ptr<Active const>(request));return request;
 }
+
 template<class Read,class Certify> void poll_with(wchar_t const* path,FILE* log,Read read,Certify certify){
 #if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
     if(position::terminal.load()||position::drain_requested.load())return;
@@ -91,19 +136,24 @@ template<class Read,class Certify> void poll_with(wchar_t const* path,FILE* log,
         if(GetLastError()==ERROR_FILE_NOT_FOUND){disable();seen_file={};}return;}
     if(file.ftLastWriteTime.dwLowDateTime==seen_file.dwLowDateTime&&file.ftLastWriteTime.dwHighDateTime==seen_file.dwHighDateTime)return;
     auto previous=seen_file;seen_file=file.ftLastWriteTime;
+    char const* rejection_stage="file_validation";
     try{
         if((file.dwFileAttributes&(FILE_ATTRIBUTE_DIRECTORY|FILE_ATTRIBUTE_REPARSE_POINT))||file.nFileSizeHigh||!file.nFileSizeLow||file.nFileSizeLow>32768)throw 1;
         FILE* input{};if(_wfopen_s(&input,path,L"rb")||!input){seen_file=previous;return;}
         struct Close{FILE* file;~Close(){fclose(file);}} close{input};std::string text(file.nFileSizeLow,'\0');
         if(fread(text.data(),1,text.size(),input)!=text.size()||fgetc(input)!=EOF){seen_file=previous;return;}
-        auto request=load_request(text,tick,read,certify);
+        auto request=load_request(text,tick,read,certify,&rejection_stage);
         fprintf(log,"path_close_loaded nonce=%llu duration_ms=%u native_pointer=%llu own_prefix_certified=1 observation_only=%u\n",
             request->request.nonce,request->request.duration_ms,static_cast<unsigned long long>(request->request.function+0x114),observation_only);fflush(log);
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    }catch(position::CompletedRenewal const& done){
+        fprintf(log,"path_close_completed_renewal_discarded nonce=%llu stage=%s\n",done.nonce,done.stage);fflush(log);
+#endif
     }catch(...){++load_rejected;disable();
 #if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
         position::isolate_ui_failure();
 #endif
-        fprintf(log,"path_close_load_rejected count=%llu observation_only=%u\n",load_rejected.load(),observation_only);fflush(log);}
+        fprintf(log,"path_close_load_rejected count=%llu observation_only=%u stage=%s\n",load_rejected.load(),observation_only,rejection_stage);fflush(log);}
 }
 void poll(wchar_t const* path,FILE* log){
 #if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
