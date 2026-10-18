@@ -429,6 +429,29 @@ class ContinuousTests(unittest.TestCase):
             self.assertIsNone(runner.read_session_status(path,123,path.stat().st_mtime_ns,diagnostic=diagnostic))
             self.assertEqual(diagnostic,{'reason':'stale_file'})
 
+    def test_path_status_closure_keeps_same_read_reason_and_never_retries(self):
+        import path_choice_position_monitor
+        for reason in ('empty_file','io_error','unknown','accepted'):
+            with self.subTest(reason=reason), tempfile.TemporaryDirectory() as folder:
+                args=types.SimpleNamespace(path_choice_center=True,build_dir=pathlib.Path(folder),pid=123)
+                state={'native_status':{'path_position_service_compiled':'1'}}
+                fields={'phase':'running'}
+                def reading(path,pid,floor,*,diagnostic):
+                    if reason!='unknown':diagnostic['reason']=reason
+                    return fields if reason=='accepted' else None
+                with mock.patch.object(path_choice_position_monitor,'PathChoicePositionMonitor') as center, \
+                     mock.patch.object(runner,'read_session_status',side_effect=reading) as read:
+                    runner.start_path_choice_position(args,state,pathlib.Path(folder)/'status.txt',7,Control())
+                    callback=center.call_args.args[3]
+                    if reason=='accepted':self.assertIs(callback(),fields)
+                    else:
+                        with self.assertRaisesRegex(ValueError,'Missing native status') as failure:callback()
+                        self.assertEqual(failure.exception.native_status_diagnostic,{'reason':reason})
+                        self.assertIn('"reason":"'+reason+'"',str(failure.exception))
+                    read.assert_called_once()
+                    self.assertEqual(read.call_args.args,(pathlib.Path(folder)/'status.txt',123,7))
+                    self.assertNotIn('path_choice_center_start_error',state)
+
     def test_session_read_diagnostic_does_not_reread_empty_file_or_retry_io_failure(self):
         path=mock.Mock();path.stat.return_value.st_mtime_ns=10
         path.read_text.side_effect=['','continuous_session=1 pid=123 started_qpc=456 complete=1\n']

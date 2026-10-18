@@ -108,9 +108,18 @@ def start_path_choice_position(args,state,native_status,floor,control):
         if str(state['native_status'].get('path_position_service_compiled'))!='1':
             raise ValueError('Native99 PathChoice position service required')
         from path_choice_position_monitor import PathChoicePositionMonitor
+        def read_path_status():
+            diagnostic={}
+            status=read_session_status(native_status,args.pid,floor,diagnostic=diagnostic)
+            if status is None:
+                error=ValueError('Missing native status: '+json.dumps(diagnostic or {'reason':'unknown'},
+                                                                     sort_keys=True,separators=(',',':')))
+                error.native_status_diagnostic=diagnostic or {'reason':'unknown'}
+                raise error
+            return status
         return PathChoicePositionMonitor(args.build_dir.resolve()/'path-choice-position-trial.ini',
             args.build_dir.resolve()/'path-choice-close-observer.ini',state,
-            lambda:read_session_status(native_status,args.pid,floor),control.identity)
+            read_path_status,control.identity)
     except Exception as error:
         state['path_choice_center_start_error']=repr(error)
         return None
