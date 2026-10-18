@@ -55,5 +55,13 @@
     "OpenXRPoseProbe hosts the runtime in-process; there is no simulator.exe assumption.",
     "ActiveRuntime registry unchanged; testing must select this private manifest with child-process XR_RUNTIME_JSON and GEARSVR_TEST_WINDOWS_BEHIND=1.",
     "Flag unset retains original quiet2 show/restore behavior. No periodic z-order enforcement is added."
-  ]
+  ],
+  "runtime_manifest_sha256": "d6e2661d0ec80a162d022a8c5ae75ad1dbbb432bb0adb4491bf455fada7f1ab7",
+  "runtime_library_path": "J:/gearsVr/analysis/runtime/simulator-behind/openxr_simulator.dll",
+  "manifest_packaging": {
+    "generator": "analysis/runtime/verify-package-simulator-behind.py",
+    "generator_sha256": "3a4401f1b08ca4969a333aac04dc402f5e5d6bd5a9ea2c868ffc61ba95aa1dff",
+    "policy": "Resolve the packaged DLL to an existing absolute path; never emit a bare DLL filename. No registry selection changes.",
+    "correction": "Coordinator startup8 failed before game start: loader error2 resolving the prior bare DLL filename. Absolute-path correction verified offline only; loader probe remains pending."
+  }
 }
