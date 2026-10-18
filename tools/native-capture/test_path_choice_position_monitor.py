@@ -212,6 +212,36 @@ class MonitorTests(unittest.TestCase):
         self.m.poll(dict(self.status, started_qpc=50))
         self.assertTrue(self.m.terminal); self.assertEqual(self.m.probe.reads, 0)
 
+    def test_acquisition_failure_preserves_bounded_detail_in_one_terminal_event(self):
+        self.m.close()
+        class SceneOwnerRejected(RuntimeError):pass
+        class RejectedProbe(Probe):
+            def capture(self, nonce, acquire, generation):
+                try:
+                    raise OSError('read failure ' + 'c' * 1000)
+                except OSError as cause:
+                    raise SceneOwnerRejected('Owner source read failed ' + 'x' * 1000) from cause
+        self.m = self.create(probe_factory=RejectedProbe)
+        self.addCleanup(self.m.close)
+        self.m.poll()
+        events = self.m.poll()
+        self.assertEqual(len(events), 1)
+        event = events[0]
+        self.assertEqual(event['event'], 'path_position_revoked')
+        self.assertEqual(event['reason'], 'SceneOwnerRejected')
+        self.assertEqual(event['error_state'], 'acquiring')
+        self.assertTrue(event['error_message'].startswith('Owner source read failed'))
+        self.assertEqual(len(event['error_message']), 512)
+        self.assertEqual(event['error_causes'][0]['type'], 'OSError')
+        self.assertEqual(len(event['error_causes'][0]['message']), 256)
+        self.assertLessEqual(len(event['error_frames']), 4)
+        self.assertEqual(event['error_frames'][-1]['function'], 'capture')
+        self.assertEqual(set(event['error_frames'][-1]), {'file', 'function', 'line'})
+        self.assertTrue(self.m.terminal)
+        self.assertFalse(self.m.position.owned); self.assertFalse(self.m.close_sidecar.owned)
+        self.assertIsNone(self.m.future)
+        self.assertEqual(self.m.poll(), [])
+
     def test_live_verifier_rechecks_reader_and_frozen_world_and_pending_restore(self):
         module = SimpleNamespace(reader_process_identity=lambda reader:(3, 30))
         with mock.patch.dict('sys.modules', {'menu_control':module}):

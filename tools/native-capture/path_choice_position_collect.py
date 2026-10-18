@@ -157,7 +157,12 @@ def collect(reader, sample, native_status, session, nonce, verify_session):
         require(native_status['path_position_'+name] == '0', 'native position lease is not clean')
     expected_ids = _geometry(sample); roles = sample['scene_owner']['roles']
     original_client = copy.deepcopy(reader.client_identity)
-    require(reader.client == roles['client']['address'] and original_client == roles['client'], 'original client mismatch')
+    # MenuReader retains Resolver.identity()/registered()'s six-field identity.
+    # The independently read owner role additionally contains name_index; keep
+    # that richer identity intact for the exact fresh-role comparison below.
+    menu_client = {key:roles['client'][key] for key in
+                   ('address', 'name', 'number', 'cls', 'outer', 'internal_index')}
+    require(reader.client == roles['client']['address'] and original_client == menu_client, 'original client mismatch')
     reader.force_registry_refresh()
     require(reader.client_identity == original_client and reader.client == original_client['address'], 'refresh replaced client')
     check()

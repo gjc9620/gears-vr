@@ -44,7 +44,10 @@ def fixture():
         setattr(r,prefix+'_header',header);setattr(r,prefix+'_data',data)
         setattr(r,singular+'_count',count);setattr(r,singular+'_capacity',capacity)
     reader = SimpleNamespace(r=r, client=sample['scene_owner']['roles']['client']['address'],
-        client_identity=copy.deepcopy(sample['scene_owner']['roles']['client']), properties={})
+        # Actual MenuReader retained registered()/Resolver.identity() shape:
+        # name_index exists only in the independent scene-owner role.
+        client_identity={key:copy.deepcopy(value) for key,value in sample['scene_owner']['roles']['client'].items()
+                         if key != 'name_index'}, properties={})
     reader.force_registry_refresh = mock.Mock()
     def acquire(**options):
         # Model the fresh MenuReader acquisition, including its observed sources.
@@ -69,6 +72,9 @@ class CollectorTests(unittest.TestCase):
 
     def test_single_fresh_admission_immutable_and_no_retained_baseline(self):
         values=fixture();reader=values[0];original=reader.r.read
+        self.assertNotIn('name_index', reader.client_identity)
+        self.assertIn('name_index', values[1]['scene_owner']['roles']['client'])
+        original_client=copy.deepcopy(reader.client_identity)
         receipt=self.invoke(values)
         self.assertIn('vertical_offset_reference_pixels=374',receipt.position_ini)
         self.assertIn('duration_ms=6000',receipt.position_ini)
@@ -76,12 +82,48 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(json.loads(receipt.baseline_ids_json)['nonce'],1000)
         self.assertTrue(json.loads(receipt.evidence_json)['consistent_final_reread'])
         reader.force_registry_refresh.assert_called_once();reader._sample_once.assert_called_once()
+        self.assertEqual(reader.client_identity, original_client)
+        self.assertEqual(json.loads(receipt.baseline_ids_json)['roles']['client'], values[1]['scene_owner']['roles']['client'])
         self.assertIs(reader.r.read,original)
         with self.assertRaises(FrozenInstanceError):receipt.close_ini='changed'
         # A second activation must independently reacquire rather than reuse.
         self.invoke(values)
         self.assertEqual(reader.force_registry_refresh.call_count,2)
         self.assertEqual(reader._sample_once.call_count,2)
+
+    def test_live_shaped_client_boundary_rejects_each_changed_identity_field(self):
+        for field in ('address', 'name', 'number', 'cls', 'outer', 'internal_index'):
+            values=fixture();reader=values[0]
+            value=reader.client_identity[field]
+            reader.client_identity[field]=value+'changed' if isinstance(value,str) else value+1
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError,'original client mismatch'):
+                self.invoke(values)
+            reader.force_registry_refresh.assert_not_called()
+            reader._sample_once.assert_not_called()
+
+    def test_full_refresh_cannot_adopt_a_changed_selected_client(self):
+        for field in ('address', 'name', 'number', 'cls', 'outer', 'internal_index'):
+            values=fixture();reader=values[0]
+            def replace_client():
+                value=reader.client_identity[field]
+                reader.client_identity[field]=value+'changed' if isinstance(value,str) else value+1
+            reader.force_registry_refresh.side_effect=replace_client
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError,'refresh replaced client'):
+                self.invoke(values)
+            reader.force_registry_refresh.assert_called_once()
+            reader._sample_once.assert_not_called()
+
+    def test_owner_only_name_index_still_requires_exact_fresh_role(self):
+        values=fixture();reader=values[0];original=reader._sample_once.side_effect
+        def changed(**options):
+            fresh=original(**options)
+            fresh['scene_owner']['roles']['client']['name_index']+=1
+            return fresh
+        reader._sample_once.side_effect=changed
+        with self.assertRaisesRegex(ValueError,'original baseline changed'):
+            self.invoke(values)
+        reader.force_registry_refresh.assert_called_once()
+        reader._sample_once.assert_called_once()
 
     def test_bad_session_owner_and_native_start_stop_before_refresh(self):
         for field in ('owner_identity','game_identity'):

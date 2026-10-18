@@ -187,6 +187,27 @@ class PathChoicePositionMonitor:
         self.state = 'await_restore' if self.close_sidecar.owned else 'latched_closed'
         return dict(event='path_position_revoked', reason=reason, nonce=self.nonce)
 
+    @staticmethod
+    def _exception_detail(error):
+        # Keep the exact read rejection diagnosable without dumping samples,
+        # process memory, source lines, or an unbounded exception traceback.
+        frames = []
+        trace = error.__traceback__
+        while trace is not None:
+            code = trace.tb_frame.f_code
+            frames.append(dict(file=Path(code.co_filename).name[:128],
+                               function=code.co_name[:64], line=trace.tb_lineno))
+            frames = frames[-4:]
+            trace = trace.tb_next
+        causes = []
+        current = error
+        for _ in range(2):
+            current = current.__cause__ or (None if current.__suppress_context__ else current.__context__)
+            if current is None or current is error:
+                break
+            causes.append(dict(type=type(current).__name__[:64], message=str(current)[:256]))
+        return dict(error_message=str(error)[:512], error_frames=frames, error_causes=causes)
+
     def _restored(self, status):
         restored = int(status.get('path_position_last_restored_nonce', 0))
         if (not self.nonce or self.last_restored_nonce == self.nonce or restored != self.nonce or
@@ -344,7 +365,11 @@ class PathChoicePositionMonitor:
                     self.position_bytes = self.close_bytes = None
                 self._submit(generation, acquire)
         except Exception as error:
-            events.append(self._revoke(type(error).__name__, terminal=True))
+            detail = self._exception_detail(error)
+            detail['error_state'] = self.state
+            event = self._revoke(type(error).__name__, terminal=True)
+            event.update(detail)
+            events.append(event)
         return events
 
     def close(self):
