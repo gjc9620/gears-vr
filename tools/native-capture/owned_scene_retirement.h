@@ -52,7 +52,7 @@ public:
     };
 private:
     ResourceIdentity identity_{};uint64_t serial_{},next_world_{};
-    bool requested_{},armed_{};
+    bool requested_{},armed_{},bootstrap_claimed_{};
 public:
     bool begin(Gate& gate,ResourceIdentity identity,gears_native_owned::DrainProof proof){
         if(requested_)return identity==identity_&&proof.generation==identity_.generation;
@@ -60,7 +60,7 @@ public:
            identity.ticket_cutoff<identity.generation||proof.generation!=identity.generation||
            (serial_&&(identity.world<=identity_.world||identity.generation<=identity_.generation||
                      identity.ticket_cutoff<=identity_.ticket_cutoff))||!gate.request(proof))return false;
-        identity_=identity;++serial_;requested_=true;return true;
+        identity_=identity;++serial_;requested_=true;bootstrap_claimed_=false;return true;
     }
     bool receipt(Gate const& gate,bool owner_retained,bool tracker_retired,Receipt& out)const{
         if(!requested_||gate.phase()!=Phase::released||gate.generation()!=identity_.generation||owner_retained||!tracker_retired)return false;
@@ -78,12 +78,20 @@ public:
     bool recreated(Gate& gate,uint64_t world,uint64_t generation){
         if(!can_recreate(world,generation,false)||
            !gate.reopen(identity_.generation,generation))return false;
-        requested_=armed_=false;return true;
+        requested_=armed_=bootstrap_claimed_=false;return true;
     }
     bool requested()const{return requested_;}
     bool armed()const{return armed_;}
+    // Arm authorizes one ordinary stereo renderer to reach the RHI creation
+    // callback. This claim does not discard the old trial or reopen Owner.
+    bool claim_bootstrap(Gate const& gate,uint64_t world,bool stopped){
+        if(stopped||!requested_||!armed_||bootstrap_claimed_||world!=next_world_||
+           gate.phase()!=Phase::released||gate.generation()!=identity_.generation)return false;
+        bootstrap_claimed_=true;return true;
+    }
+    bool bootstrap_claimed()const{return bootstrap_claimed_;}
     bool can_recreate(uint64_t world,uint64_t generation,bool stopped)const{
-        return armed_&&!stopped&&world==next_world_&&generation>identity_.ticket_cutoff;
+        return armed_&&bootstrap_claimed_&&!stopped&&world==next_world_&&generation>identity_.ticket_cutoff;
     }
     uint64_t next_world()const{return next_world_;}
     uint64_t minimum_generation()const{return identity_.ticket_cutoff==UINT64_MAX?0:identity_.ticket_cutoff+1;}

@@ -32,11 +32,11 @@ bool native_owned_scene_tick(uint64_t ticket){using namespace gears_owned_scene_
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
  if(handoff.armed()){
   if(shutdown_conflict||!handoff.can_recreate(committed_world_generation.load(),ticket,submitted_lifetime.stopping()))return false;
-  const auto completed=trial.completed;trial={};trial.completed=completed;
   owned_scene_gpu::CreateScope scope;
   const bool ok=owner.recreate_on_rhi(*ops,gears_native_render_size::width(),gears_native_render_size::height(),ticket);created=owner.snapshot();
   if(!ok){trial.error=8;return false;}
   owned_scene_gpu::accept(owner.borrow_resource(),ticket);
+  const auto completed=trial.completed;trial={};trial.completed=completed;
   if(!trial.ready(canonical_identity(owner.borrow_resource()),reinterpret_cast<uintptr_t>(owner.borrow_adapter()),ticket)||
      !handoff.recreated(shutdown,committed_world_generation.load(),ticket)){trial.error=9;return false;}
   resource_world=committed_world_generation.load();owned_scene_gpu::handoff_recreated();return true;
@@ -58,6 +58,23 @@ uintptr_t native_owned_scene_candidate(){using namespace gears_owned_scene_live;
   if(!trial.advance(trial.ticket,true)){trial.error=12;return 0;}
  }
  return healthy()&&trial.candidate()?trial.adapter:0;}
+bool native_owned_scene_try_bootstrap(){using namespace gears_owned_scene_live;
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+#if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
+ const auto world=committed_world_generation.load();const auto life=submitted_lifetime.snapshot();
+ if(shutdown_conflict||trial.error||!handoff.armed()||submitted_lifetime.stopping()||
+    world!=handoff.next_world()||frame_link.world_epoch()!=world||life.generation!=world||life.closed||
+    life.stop_requested||life.permanent_closed||life.quiescing||life.pending||
+    owner.snapshot().phase!=gears_native_owned::Phase::released||owner.retained()||
+    !owned_scene_gpu::handoff_rearmed||owned_scene_gpu::handoff_failed()||owned_scene_gpu::tracker.world_epoch()!=world||
+    owned_scene_gpu::tracker.owned_status().enabled)return false;
+ gears_owned_retirement::Handoff::Receipt receipt;
+ if(!handoff.receipt(shutdown,false,owned_scene_gpu::handoff_retired(handoff.identity()),receipt)||!handoff.current(shutdown,receipt))return false;
+ return handoff.claim_bootstrap(shutdown,world,false);
+#else
+ return false;
+#endif
+}
 bool native_owned_scene_select(void* renderer,uint64_t ticket,uintptr_t adapter){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
  const bool ok=trial.select(reinterpret_cast<uintptr_t>(renderer),ticket,adapter);if(ok)owned_scene_gpu::selected(ticket);return ok;}
@@ -214,6 +231,8 @@ void print_native_owned_scene(FILE* file){using namespace gears_owned_scene_live
  fprintf(file,"owned_bindings strict=1 resets=%llu overflow=%llu descriptor_evictions=%llu descriptor_lost=%u\n",
   bindings.resets,bindings.overflow,bindings.descriptor_evictions,owned_target_stats.descriptor_capacity_lost()?1:0);
  healthy();const auto live=owner.snapshot();
+ fprintf(file,"native_owned_bootstrap armed=%u claimed=%u next_world=%llu minimum_generation=%llu\n",
+  unsigned(handoff.armed()),unsigned(handoff.bootstrap_claimed()),handoff.next_world(),handoff.minimum_generation());
  fprintf(file,"native_owned_scene attempted=%u resource=%llx adapter=%llx born=%llu ticket=%llu renderer=%llx width=%u height=%u built=%u entered=%u returned=%u destroyed=%u draw_mask=%u submitted_mask=%u draws=%llu unknown_draws=%llu submissions=%llu queue=%llx error=%u create_error=%u live_phase=%u live_error=%u adapter_fault=%u retained=%u retention_until_process_exit=%u shutdown_phase=%u shutdown_conflict=%u canvas_redirected=0 gpu_state_certified=%u pixels_read_back=%u pixels_verified=0\n",
   attempted?1:0,trial.resource,trial.adapter,trial.born,trial.ticket,trial.renderer,created.width,created.height,
   trial.built?1:0,trial.entered?1:0,trial.returned?1:0,trial.destroyed?1:0,trial.draw_mask,trial.submitted_mask,
@@ -225,6 +244,7 @@ void print_native_owned_scene(FILE* file){using namespace gears_owned_scene_live
 void initialize_native_owned_scene(bool){}
 bool native_owned_scene_tick(uint64_t){return true;}
 uintptr_t native_owned_scene_candidate(){return 0;}
+bool native_owned_scene_try_bootstrap(){return false;}
 bool native_owned_scene_select(void*,uint64_t,uintptr_t){return false;}
 bool native_owned_scene_built(void*,uint64_t,bool){return true;}
 bool native_owned_scene_begin(void*,uint64_t){return true;}

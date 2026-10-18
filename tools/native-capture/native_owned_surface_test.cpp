@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include "native_owned_surface.inl"
 #include "owned_scene_retirement.h"
+#include "owned_scene_trial.h"
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -178,6 +179,7 @@ int main(int argc,char** argv){
   auto proof=drain();proof.gpu_fence_completed=false;
   CHECK(!handoff.begin(gate,identity,{9,true,false,true,true,false}));
   CHECK(handoff.begin(gate,identity,proof));CHECK(!handoff.receipt(gate,false,true,first));
+  CHECK(!handoff.claim_bootstrap(gate,2,false)); // CPU/GPU retirement alone is not arm.
   CHECK(!owner.recreate_on_rhi(ops,2560,1400,13)&&ops.creates==1);
   CHECK(gate.gpu_drained(9,true,true,true)&&gate.retire_on_rhi(owner));
   CHECK(!handoff.receipt(gate,false,false,first));CHECK(!handoff.receipt(gate,true,true,first));
@@ -186,18 +188,35 @@ int main(int argc,char** argv){
   CHECK(handoff.arm(gate,first,2,false)&&handoff.arm(gate,first,2,false));
   CHECK(!handoff.can_recreate(2,13,true)&&ops.creates==1); // Stop after arm does not create.
   CHECK(!handoff.can_recreate(1,13,false)&&!handoff.can_recreate(2,12,false));
+  CHECK(!handoff.can_recreate(2,13,false)); // A renderer must claim bootstrap first.
+  gears_owned_scene::Trial old_trial;old_trial.resource=ops.d;old_trial.adapter=reinterpret_cast<uintptr_t>(adapter);
+  old_trial.ticket=12;old_trial.returned=old_trial.destroyed=true;
+  CHECK(old_trial.ticket&&!handoff.claim_bootstrap(gate,1,false));
+  CHECK(!handoff.claim_bootstrap(gate,2,true)&&!handoff.bootstrap_claimed());
+  auto permit=[&](){return !old_trial.ticket||handoff.claim_bootstrap(gate,2,false);};
+  CHECK(permit()&&handoff.bootstrap_claimed()&&old_trial.ticket==12); // Old guard would reject this.
+  CHECK(!permit()&&old_trial.ticket==12); // Only one unbound stereo clone may reach RHI.
+  CHECK(handoff.arm(gate,first,2,false)&&!permit()); // Idempotent arm cannot mint another permit.
+  CHECK(!handoff.can_recreate(2,13,true)&&old_trial.ticket==12); // Stop after claim still wins.
   CHECK(!owner.recreate_on_rhi(ops,2560,1400,9));
   ops.tid=43;CHECK(!owner.recreate_on_rhi(ops,2560,1400,13)&&ops.creates==1);ops.tid=42;
+  CHECK(old_trial.ticket==12&&!permit()); // Failed RHI does not erase the retired ticket or reissue.
   ++ops.context;CHECK(!owner.recreate_on_rhi(ops,2560,1400,13)&&ops.creates==1);--ops.context;
   CHECK(handoff.can_recreate(2,13,false)&&owner.recreate_on_rhi(ops,2560,1401,13));
   CHECK(owner.borrow_adapter()==adapter&&owner.snapshot().generation==13&&owner.snapshot().height==1401);
   CHECK(handoff.recreated(gate,2,13)&&!handoff.current(gate,first));
+  CHECK(!handoff.claim_bootstrap(gate,2,false)&&!handoff.bootstrap_claimed());
+  gears_owned_scene::Trial rebuilt;CHECK(rebuilt.ready(ops.d,reinterpret_cast<uintptr_t>(adapter),13));
+  CHECK(rebuilt.select(0xa00000,14,reinterpret_cast<uintptr_t>(adapter)));
+  CHECK(!rebuilt.select(0xa00010,15,reinterpret_cast<uintptr_t>(adapter))); // Original one-owned-frame policy.
   CHECK(!handoff.arm(gate,first,2,false));
   const gears_owned_retirement::ResourceIdentity next{2,13,20,ops.d,0x900000};
   CHECK(handoff.begin(gate,next,{13,true,true,true,true,false}));
   CHECK(gate.gpu_drained(13,true,true,true)&&gate.retire_on_rhi(owner));
   CHECK(handoff.receipt(gate,false,true,second)&&second.serial()>first.serial());
   CHECK(!handoff.current(gate,first)&&handoff.current(gate,second));
+  CHECK(handoff.arm(gate,second,3,false)&&!handoff.claim_bootstrap(gate,2,false));
+  CHECK(handoff.claim_bootstrap(gate,3,false)&&!handoff.claim_bootstrap(gate,3,false));
   CHECK(ops.creates==2&&ops.clears==2&&ops.releases==4&&!owner.retained());
  }
  std::printf("native owned surface: %u CPU checks passed\n",checks);
