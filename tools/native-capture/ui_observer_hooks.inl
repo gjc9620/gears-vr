@@ -97,24 +97,29 @@ std::mutex ui_rows_mutex;
 #endif
 
 // Caller closes world admission, drains readers, and holds frame/session locks.
-bool ui_world_handoff_ready(){
-#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
-    return false; // Experimental owned ledgers have no safe world retirement.
-#else
+bool ui_world_handoff_ready(gears_owned_ui_world::Guards const* owned_guards=nullptr,
+    gears_owned_ui_world::Receipt const* owned_receipt=nullptr){
     if(ui_semantic_consumer_pending)return false;
 #if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
     if(game_material::completion.blocks_present())return false;
 #endif
-    return true;
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+    return owned_guards&&owned_receipt&&owned_guards->old_world==committed_world_generation.load()&&
+        owned_ui_world_retirement_current(*owned_guards,*owned_receipt);
+#else
+    (void)owned_guards;(void)owned_receipt;return true;
 #endif
 }
-void retire_ui_world(){
+bool retire_ui_world(gears_owned_ui_world::Guards const* owned_guards=nullptr,
+    gears_owned_ui_world::Receipt const* owned_receipt=nullptr){
+    if(!ui_world_handoff_ready(owned_guards,owned_receipt))return false;
     {std::lock_guard<std::mutex> lock(ui_binding_mutex);ui_binding_receipts.retire_all();}
     {std::lock_guard<std::mutex> lock(ui_payload_mutex);ui_payload_store.retire_all();}
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     {std::lock_guard<std::mutex> lock(ui_material_mutex);
         for(auto& entry:ui_material_entries)if(entry.occupied)entry.poisoned=true;}
 #endif
+    return true;
 }
 // Only on the owning thread's next outer Scope, after old readers drained.
 void reset_ui_world_tls(){

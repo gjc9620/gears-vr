@@ -254,7 +254,9 @@ void configure_unpossessed_camera(gears_anchor::Config& c){
 }
 std::atomic<uint64_t> world_candidate_generation{},world_prepare_requests{},world_prepare_rejected{};
 std::atomic<uint64_t> committed_world_generation{1};
-#if (defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE) || (defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING) || (defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS)
+#if defined(GEARS_OWNED_WORLD_HANDOFF) && GEARS_OWNED_WORLD_HANDOFF
+constexpr bool world_handoff_supported=true;
+#elif (defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE) || (defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING) || (defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS)
 constexpr bool world_handoff_supported=false;
 #else
 constexpr bool world_handoff_supported=true;

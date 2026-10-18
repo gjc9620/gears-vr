@@ -34,6 +34,7 @@ void reset_retired_view_state(){
     submit_owned_verified=submit_sources_released=submit_original_preserved=0;epoch_submit_total=0;
     // submit_retained must already be zero; never erase failed ownership proof.
 }
+#include "owned_world_handoff.inl"
 void advance_world_handoff(FILE*){
     if(!pending_world||!pending_world->request||world_commit_request.load()!=pending_world->request||submitted_lifetime.stopping())return;
     const auto phase=world_handoff_phase.load();if(phase!=1&&phase!=2)return;
@@ -43,6 +44,14 @@ void advance_world_handoff(FILE*){
         world_quiesce_requested=true;return;
     }
     if(phase!=2||!world_old_state_retired())return;
+#if defined(GEARS_OWNED_WORLD_HANDOFF) && GEARS_OWNED_WORLD_HANDOFF
+    const auto preparation_fresh=pending_world_fresh();
+    if(preparation_fresh==PendingFresh::transient)return;
+    if(preparation_fresh==PendingFresh::stale){
+        pending_world.reset();world_candidate_generation=0;world_commit_request=0;world_handoff_phase=4;return;
+    }
+    if(!prepare_owned_world_handoff(previous))return;
+#endif
     gears_vr::GpuIdleSnapshot idle{};if(!stereo_publisher.try_idle(idle))return;
     gears_world::EpochGate::CloseToken closed{};if(!world_gate.try_close(closed))return;
     struct Reopen {gears_world::EpochGate::CloseToken token;~Reopen(){if(!world_gate.open(token))std::terminate();}} reopen{closed};
@@ -50,7 +59,13 @@ void advance_world_handoff(FILE*){
     std::unique_lock<std::recursive_mutex> frame_lock_guard(frame_hook_mutex,std::try_to_lock);
     std::unique_lock<std::mutex> stereo_lock(stereo_mutex,std::try_to_lock);
     if(!native_lock.owns_lock()||!frame_lock_guard.owns_lock()||!stereo_lock.owns_lock()||
-       !world_old_state_retired()||!ui_world_handoff_ready()||!frame_link.world_handoff_ready(previous,next))return;
+       !world_old_state_retired()||!frame_link.world_handoff_ready(previous,next))return;
+#if defined(GEARS_OWNED_WORLD_HANDOFF) && GEARS_OWNED_WORLD_HANDOFF
+    const auto owned_guards=owned_world_ui_guards(true);
+    if(!owned_world_handoff_current()||!ui_world_handoff_ready(&owned_guards,&owned_world_handoff.ui))return;
+#else
+    if(!ui_world_handoff_ready())return;
+#endif
     const auto fresh=pending_world_fresh();if(fresh==PendingFresh::transient)return;
     if(fresh==PendingFresh::stale){
         pending_world.reset();world_candidate_generation=0;world_commit_request=0;world_handoff_phase=4;return;
@@ -62,7 +77,16 @@ void advance_world_handoff(FILE*){
         if(!frame_link.advance_world_epoch(previous,next)){request_session_stop(SessionStop::proof_failure);return false;}
         retire_stereo_window();
         if(!stereo_ticket_store.retire_through(stereo_ticket_store.highest_id())){request_session_stop(SessionStop::proof_failure);return false;}
-        retire_ui_world();anchor_config=pending_world->anchor;ui_config=pending_world->ui;
+#if defined(GEARS_OWNED_WORLD_HANDOFF) && GEARS_OWNED_WORLD_HANDOFF
+        if(!vr_dof_compat::retire_world(previous,owned_world_handoff.cutoff)||
+           !native_owned_scene_handoff_arm(owned_world_handoff.resource,next)||
+           !retire_ui_world(&owned_guards,&owned_world_handoff.ui)){
+            request_session_stop(SessionStop::proof_failure);return false;
+        }
+#else
+        if(!retire_ui_world()){request_session_stop(SessionStop::proof_failure);return false;}
+#endif
+        anchor_config=pending_world->anchor;ui_config=pending_world->ui;
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
         if(crosshair_live::enabled)crosshair_live::publish_recovery(*pending_world->crosshair,next);
 #endif
@@ -73,6 +97,9 @@ void advance_world_handoff(FILE*){
         world_quiesce_token={};committed_world_generation=next;return true;
     });
     if(committed){
+#if defined(GEARS_OWNED_WORLD_HANDOFF) && GEARS_OWNED_WORLD_HANDOFF
+        owned_world_handoff={};
+#endif
         reset_world_progress(next);
         world_quiesce_requested=false;world_handoff_phase=3;++world_handoff_commits;
         world_candidate_generation=0;world_commit_request=0;pending_world.reset();
