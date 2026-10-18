@@ -115,9 +115,32 @@ void typed_boundaries(){
     {Setup scoped;scoped.write();retained=scoped.bank.lookup(scope,1000);held_heap=retained.heap.hold;}
     assert(!held_heap.expired()&&retained.retained_uav());retained={};assert(held_heap.expired());
 }
+void early_lifetime_and_sparse_invalidations(){
+    const auto early=gears_ngx_mv::lifetime_scope(9,7);
+    Bank bank;HeapFixture heap;ResourceFixture mv;
+    assert(bank.begin(early)&&bank.observe_heap(early,typed(heap)));
+    for(unsigned i=0;i<8;++i)assert(bank.invalidate_if_tracked(early,1000+16*i));
+    assert(bank.invalidate_if_tracked(early,9000)&&bank.cells()==0);
+    assert(bank.write_uav(early,1000,typed(mv),nullptr,{}));
+    auto birth=bank.lookup(early,1000);
+    assert(birth.retained_uav()&&birth.scope.world==0&&birth.scope.ticket==0);
+    // Consuming a different ticket cannot manufacture a creation in that scope.
+    assert(!bank.lookup(scope,1000).version&&bank.current(birth));
+    auto another=early;++another.epoch;assert(!bank.lookup(another,1000).version);
+    assert(bank.invalidate_if_tracked(early,1000)&&bank.cells()==1);
+    assert(!bank.current(birth)&&!bank.lookup(early,1000).retained_uav());
+    assert(birth.retained_uav()); // Retained historical observation, not current.
+    auto forged=early;forged.world=2;forged.ticket=3;
+    Bank invalid;assert(!invalid.begin(forged));
+    Bank missing;assert(!missing.begin(gears_ngx_mv::lifetime_scope(0,7)));
+    auto wrong_kind=early;wrong_kind.kind=gears_ngx_mv::ScopeKind::selected_ticket;
+    assert(!gears_ngx_mv::same(early,wrong_kind)&&!gears_ngx_mv::valid(wrong_kind));
+    assert(!bank.begin(scope)); // No in-place relabeling or restart.
+}
 }
 int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     static_assert(!Bank::Snapshot::producer_authorized,"observation must not authorize producer");
     rewrite_and_lifetime();ranges();invalid_ranges();scope_capacity_and_heap_aba();typed_boundaries();
+    early_lifetime_and_sparse_invalidations();
     std::puts("NGX MV descriptor CPU provenance tests passed; no GPU/Dispatch/producer proof");
 }

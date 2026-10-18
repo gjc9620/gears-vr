@@ -30,9 +30,18 @@ public:
         raw==reinterpret_cast<uintptr_t>(heap_.Get())&&canonical==reinterpret_cast<uintptr_t>(identity_.Get())&&
         device==reinterpret_cast<uintptr_t>(device_identity_.Get())&&cpu&&count&&stride&&(!visible||gpu);}
 };
-struct Scope {uint64_t epoch{},world{},ticket{};uintptr_t device{};};
-inline bool same(Scope a,Scope b){return a.epoch==b.epoch&&a.world==b.world&&a.ticket==b.ticket&&a.device==b.device;}
-inline bool valid(Scope s){return s.epoch&&s.world&&s.ticket&&s.device;}
+enum class ScopeKind {selected_ticket,device_lifetime};
+// In device_lifetime mode epoch is the capture generation, NOT an NGX Create
+// epoch. Unknown world/ticket stay zero. A later Eval must carry its own use
+// identity separately; it cannot relabel these original creation records.
+struct Scope {uint64_t epoch{},world{},ticket{};uintptr_t device{};ScopeKind kind=ScopeKind::selected_ticket;};
+inline Scope lifetime_scope(uint64_t capture_generation,uintptr_t device){
+    return {capture_generation,0,0,device,ScopeKind::device_lifetime};
+}
+inline bool same(Scope a,Scope b){return a.kind==b.kind&&a.epoch==b.epoch&&a.world==b.world&&a.ticket==b.ticket&&a.device==b.device;}
+inline bool valid(Scope s){return s.epoch&&s.device&&(
+    (s.kind==ScopeKind::selected_ticket&&s.world&&s.ticket)||
+    (s.kind==ScopeKind::device_lifetime&&!s.world&&!s.ticket));}
 enum class Loss {none,bad_scope,unreadable,capacity,invalid_heap,overlap,unknown_heap,bad_range,device_mismatch};
 // Hook must guarded-copy the original arrays before forwarding. Null native
 // sizes means one descriptor per range; no unowned pointer enters this bank.
@@ -124,6 +133,14 @@ public:
     // SRV/CBV, unsupported typed view and other known destination writes MUST
     // erase a previous UAV. This is not a missing-event recovery mechanism.
     bool unknown_write(Scope value,uint64_t cpu){return write_uav(value,cpu,nullptr,nullptr,{});}
+    // Early SRV/CBV observation must invalidate a tracked UAV without filling
+    // the bounded bank with unrelated descriptors. A heap we never observed
+    // cannot contain any tracked cell; it remains unknown, never reconstructed.
+    bool invalidate_if_tracked(Scope value,uint64_t cpu){
+        if(!scope(value))return false;uint32_t slot{};auto* h=heap(cpu,false,slot);
+        if(!h||!find(h->canonical,slot))return true;
+        return unknown_write(value,cpu);
+    }
     bool copy(Scope value,Ranges<CellCapacity> const& destinations,Ranges<CellCapacity> const& sources){
         if(!scope(value))return false;std::array<uint64_t,CellCapacity> dst{},src{};unsigned dn{},sn{};
         if(!flatten(destinations,false,dst,dn)||!flatten(sources,true,src,sn))return false;if(dn!=sn)return lose(Loss::bad_range);

@@ -419,3 +419,17 @@ mapping of the consumed region; an exact equal-sized generating rectangle may
 be unnecessarily restrictive if real shader evidence establishes a larger
 valid domain. No guard is relaxed on that hypothesis alone. Runtime-recommended
 resolution times launcher scale remains the higher-priority 0.0.1 default.
+
+The subsequent CPU helper revision adds an explicit device-lifetime scope:
+its epoch is an observation capture generation and world/ticket remain zero.
+Selected-ticket scope is a separate kind; lookups cannot relabel early creation
+as a later Eval. `invalidate_if_tracked` clears a tracked UAV on SRV/CBV writes
+without allocating cells for unrelated descriptors. Fresh MSVC compilation and
+all CPU fixtures passed (`analysis/runtime/mv-descriptor-provenance2/receipt.json`).
+Header SHA256 `50264634408baf7ccf1f872df4489a68634438778bae9c5e48675fc09dfb6343`;
+test SHA256 `3890d62e32052b411af8a7ff8b753afd2fa78e1b6a4e06302bafa012d772ee35`.
+Early hook installation, sparse descriptor-copy handling, selected-use binding
+and Dispatch evidence are still outstanding; this revision is not in the game
+capture path. The existing prime injection also occurs after loader dependency
+discovery, so even early hooks must report missing births instead of assuming
+that every descriptor was created after installation.
