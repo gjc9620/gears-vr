@@ -280,3 +280,24 @@ the game closed normally and all five settings/profile backups were restored.
 The earlier menu8 attempt cancelled before native activation on a changing
 desktop snapshot and supplied no DLSS evidence. Full native status is preserved
 under ignored `analysis/runtime/dlss-native-menu9-native-status.txt`.
+
+### Menu9 source/domain review and next implementation boundary
+
+The typed Color and Output descriptors are both 3840x2160, one mip/layer/sample,
+format 26. With subresource zero, null source box and zero destination, the
+recorded Copy commands request full-subresource replacement, not eye-local
+composition. Copy0 serial 134, Color/Output transitions 136/137 and Eval1
+138/139 share list/generation `3d7fc1a20/416010`; Eval1 reads the same Color.
+This establishes recorded command ordering and the input feedback path, not
+GPU completion. Both Evals also use the same public feature handle; the mod
+has not supplied independent per-eye feature histories in this run.
+
+The next implementation boundary is the existing NativeCreateSource split-input
+selection feeding RenderInputBounds and the constructor/ticket path. This
+sample's Create-derived split is 1280x1440 per eye, stride 1920, output
+1920x2160 per eye. Merely replacing Evaluate dimensions would leave producer
+rendering inconsistent. Constructor inputs must carry the matching immutable
+Create epoch through deferred prepare/consume; Create metadata alone cannot
+certify actual Color/Depth/MV producer bounds or GPU ownership. Existing
+independent-feature and boxed-copy code remains inactive until those facts
+are connected and verified. No new runtime acceptance is claimed here.
