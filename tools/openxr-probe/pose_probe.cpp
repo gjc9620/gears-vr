@@ -775,6 +775,10 @@ int main(int argc, char** argv) {
                 world_handoff_panel_queued=startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=eye_menu_queued=false;
             }}
             const auto ended=xrEndFrame(session,&end);xr_check(ended,"xrEndFrame");
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+            if(stereo_screen&&projection_frame_status==ProjectionStatus::submitted)
+                stereo_screen->observe_sixdof_submission(ended,end,projection,space_epoch.epoch());
+#endif
             if(window_fallback_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers){
                 if(!window_fallback_shown){const auto image=startup_screen->window_snapshot();
                     printf("{\"game_window_fallback_first_frame\":true,\"both_eyes_common_panel\":true,\"panel_counts_as_stereo\":false,\"capture_generation\":%llu,\"capture_epoch_100ns\":%lld,\"captured_100ns\":%lld,\"maximum_age_ms\":250,\"reason\":\"%s\"}\n",
@@ -931,6 +935,9 @@ int main(int argc, char** argv) {
         if(bridge_pid)bridge.publish({});
         if(stereo_pid)stereo_bridge.publish({});
         shutdown_diagnostics::marker("frame_loop_finished");
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+        if(stereo_screen)stereo_screen->dump_sixdof();
+#endif
         outage.dump();
         image_tickets.dump();
         if(running&&!session_exit.terminal_exiting&&stop_reason!="session_lost"&&stop_reason!="instance_lost") {

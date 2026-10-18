@@ -5,6 +5,9 @@
 #include "eye_chain_policy.h"
 #include "menu_eye_panel.h"
 #include "world_handoff_display.h"
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+#include "../vr-common/sixdof_ticket_mailbox.h"
+#endif
 #if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
 #include "../vr-common/death_hdr_match.h"
 #endif
@@ -81,6 +84,12 @@ class GameGpuScreen {
     unsigned snapshot_count{};
     bool snapshot_auto_taken{};
     uint64_t snapshot_ticket{},snapshot_source_serial{};
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+    DWORD sixdof_game_pid{};
+    gears_sixdof::PinMailbox sixdof_pins;
+    gears_sixdof::SubmittedRecorder sixdof_submitted;
+    bool sixdof_dumped{};
+#endif
     std::chrono::steady_clock::time_point snapshot_after=std::chrono::steady_clock::now()+std::chrono::seconds(10);
 #if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
     DWORD hdr_game_pid{};
@@ -163,6 +172,20 @@ class GameGpuScreen {
         const bool closed=CloseHandle(file)!=FALSE;
         if(!complete||!closed)throw std::runtime_error("GPU snapshot write incomplete");
         const auto saved_ns=gears_vr::monotonic_ns();
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+        if(stereo){
+            const bool mailbox=sixdof_pins.open(sixdof_game_pid);
+            const auto& frozen=receiver->ticket();
+            gears_sixdof::SubmittedRow request{};
+            request.key={sixdof_game_pid,sixdof_pins.start,frozen.sample.session,receiver->acquired_world_generation(),snapshot_ticket};
+            request.snapshot_index=snapshot_count;request.source_serial=snapshot_source_serial;
+            const bool pinned=mailbox&&sixdof_pins.request(request.key,snapshot_count,snapshot_source_serial);
+            const bool retained=sixdof_submitted.request(request);
+            printf("{\"sixdof_snapshot_pin_request\":true,");gears_sixdof::print_key(stdout,request.key);
+            printf(",\"snapshot_index\":%u,\"source_serial\":%llu,\"native_request_published\":%s,\"xr_retained\":%s}\n",
+                snapshot_count,static_cast<unsigned long long>(snapshot_source_serial),pinned?"true":"false",retained?"true":"false");fflush(stdout);
+        }
+#endif
         printf("{\"gpu_snapshot_size\":[%u,%u],\"source_format\":%u,\"snapshot_index\":%u,\"snapshot_limit\":%u,\"ticket\":%llu,\"source_serial\":%llu,\"saved_monotonic_ns\":%lld,\"resized\":false}\n",
                width,height,unsigned(format),snapshot_count,snapshot_limit,static_cast<unsigned long long>(snapshot_ticket),
                static_cast<unsigned long long>(snapshot_source_serial),static_cast<long long>(saved_ns));fflush(stdout);
@@ -182,6 +205,9 @@ public:
     bool snapshot_saved=false;
     GameGpuScreen(ID3D12Device* d,ID3D12CommandQueue* q,DWORD pid,const char* snapshot=nullptr,bool simulated=false,
                   gears_eye_chain::Limits const* stereo_limits=nullptr,bool retain_image=false):allow_simulated(simulated),stereo(stereo_limits!=nullptr),device(d),queue(q),retain_stereo_image(retain_image),snapshot_path(snapshot?snapshot:""){
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+        sixdof_game_pid=pid;
+#endif
 #if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
         hdr_game_pid=pid;
         if(stereo&&snapshot_path.empty()){printf("{\"hdr_match_disabled\":true,\"snapshot_path_required\":true,\"game_pid\":%lu}\n",pid);fflush(stdout);}
@@ -236,6 +262,9 @@ public:
         }catch(...){for(auto& eye:eyes)if(eye.chain){xrDestroySwapchain(eye.chain);eye.chain=XR_NULL_HANDLE;}if(event){CloseHandle(event);event=nullptr;}if(snapshot_event){CloseHandle(snapshot_event);snapshot_event=nullptr;}throw;}
     }
     ~GameGpuScreen(){
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+        dump_sixdof();
+#endif
 #if defined(GEARS_HDR_MATCHED_SNAPSHOT) && GEARS_HDR_MATCHED_SNAPSHOT
         if(hdr_selector.has_selection&&!hdr_saved&&!hdr_missed){auto const& s=hdr_selector.selected;
             printf("{\"hdr_match_missed\":true,\"reason\":\"%s\",\"game_pid\":%lu,\"selected_ticket\":%llu,\"selected_world\":%llu,\"copy_seq\":%llu}\n",
@@ -507,4 +536,29 @@ public:
         if(copies==copies_before&&now-sample.received_ns>100000000)++retained_projections;
         ++projection_rendered;return true;
     }
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+    // Called ONLY after xrEndFrame returns. Read the actual submitted layer's
+    // fields, not freshly synthesized expected values or current runtime pose.
+    void observe_sixdof_submission(XrResult ended,XrFrameEndInfo const& end,
+        XrCompositionLayerProjection const& candidate,std::uint64_t epoch) noexcept {
+        if(ended!=XR_SUCCESS||!stereo||!copied_ticket.id)return;
+        bool present=false;
+        for(unsigned i=0;i<end.layerCount;++i)if(end.layers[i]==reinterpret_cast<XrCompositionLayerBaseHeader const*>(&candidate))present=true;
+        if(!present||candidate.type!=XR_TYPE_COMPOSITION_LAYER_PROJECTION||candidate.viewCount!=2||!candidate.views)return;
+        for(unsigned i=0;i<2;++i)if(candidate.views[i].subImage.swapchain!=eyes[i].chain)return;
+        gears_sixdof::SubmittedRow actual{};
+        actual.key={sixdof_game_pid,sixdof_pins.start,copied_ticket.sample.session,copied_world_generation,copied_ticket.id};
+        actual.source_serial=copied_sequence;actual.success=true;actual.local=candidate.space==local;
+        actual.space_epoch=epoch;actual.ns=gears_vr::monotonic_ns();actual.display_time=end.displayTime;
+        for(unsigned i=0;i<2;++i){const auto& view=candidate.views[i];
+            actual.eyes[i]={{view.pose.position.x,view.pose.position.y,view.pose.position.z},
+                {view.pose.orientation.x,view.pose.orientation.y,view.pose.orientation.z,view.pose.orientation.w}};
+            actual.fov[i]={view.fov.angleLeft,view.fov.angleRight,view.fov.angleUp,view.fov.angleDown};}
+        sixdof_submitted.observe(actual);
+    }
+    void dump_sixdof() noexcept {
+        if(sixdof_dumped||!stereo)return;sixdof_dumped=true;
+        sixdof_pins.dump(stdout);sixdof_submitted.dump(stdout);fflush(stdout);
+    }
+#endif
 };

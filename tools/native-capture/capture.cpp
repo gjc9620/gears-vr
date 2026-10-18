@@ -45,6 +45,9 @@
 #include "pawnless_camera_observer.h"
 #endif
 #include "camera_closer.h"
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+#include "../vr-common/sixdof_ticket_mailbox.h"
+#endif
 #include "anchor_config_loader.h"
 #include "hook_entry_attestation.h"
 #include "world_rebind_metadata.h"
@@ -846,6 +849,11 @@ struct StereoAggregate {unsigned long long count{},mismatch{},sequence_first{},s
     long long first{},last{};double view_error_max{};
     std::array<float,2> residual8_min{},residual8_max{},residual9_min{},residual9_max{};};
 std::array<StereoAggregate,4> stereo_aggregates{};
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+gears_sixdof::NativeRecorder sixdof_native;
+gears_sixdof::PinMailbox sixdof_pins;
+bool sixdof_pin_init_attempted{};
+#endif
 struct OriginStage {long long qpc{};unsigned reads{};bool matching{};gears_vr::StereoMatrices actual{};};
 struct OriginRow {gears_submitted::FrameTicket frame{};std::array<OriginStage,4> stages{};unsigned mask{};};
 std::array<std::array<OriginRow,12>,3> origin_rows{};
@@ -881,6 +889,23 @@ void stereo_observe(unsigned stage,uintptr_t renderer,const std::array<uintptr_t
     for(unsigned i=0;i<2;++i){a.residual8_min[i]=std::min(a.residual8_min[i],r8[i]);a.residual8_max[i]=std::max(a.residual8_max[i],r8[i]);
         a.residual9_min[i]=std::min(a.residual9_min[i],r9[i]);a.residual9_max[i]=std::max(a.residual9_max[i],r9[i]);}
     ++a.count;if(!matching)++a.mismatch;
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+    // Passive copy of the independently read engine-stage matrices above.
+    // Recent storage rolls for the whole session; snapshot requests pin exact
+    // session/world/ticket rows, including captures long after startup.
+    if(!sixdof_pin_init_attempted){sixdof_pin_init_attempted=true;sixdof_pins.create();}
+    gears_sixdof::NativeRow diagnostic{};
+    diagnostic.key={GetCurrentProcessId(),sixdof_pins.start,ticket.sample.session,ticket.world_generation,ticket.id};
+    diagnostic.reference_generation=ticket.reference_generation;diagnostic.space_epoch=ticket.sample.space_epoch;
+    diagnostic.sequence=ticket.sample.sequence;diagnostic.units_per_metre=stereo_units_per_metre;
+    diagnostic.reference=ticket.reference;diagnostic.head=ticket.sample.head;
+    diagnostic.source_view=ticket.source_view;
+    for(unsigned eye=0;eye<2;++eye){diagnostic.eyes[eye]=ticket.sample.eyes[eye].pose;diagnostic.expected[eye]=ticket.expected.view[eye];}
+    gears_sixdof::Stage actual{};actual.qpc=timestamp;actual.count=count;
+    actual.reads=observation.reads&3;
+    for(unsigned eye=0;eye<2;++eye)actual.actual[eye]=observation.actual.view[eye];
+    sixdof_native.observe(diagnostic,stage,actual);sixdof_pins.service(sixdof_native);
+#endif
     if(origin_trial_enabled&&ticket.origin.enabled){
         auto phase=static_cast<unsigned>(ticket.origin.selection.phase);
         if(phase<3&&stage<4){
@@ -933,6 +958,11 @@ void record_stereo_reference(const gears_submitted::FrameTicket& frame,long long
 void print_stereo(FILE* file) {
     if(!stereo_xr)return;
     std::lock_guard<std::mutex> lock(stereo_mutex);
+#if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
+    // Final requests remain serviceable even if rendering stopped immediately
+    // after the last GPU snapshot. Output is bounded to eight pinned tickets.
+    sixdof_pins.service(sixdof_native);sixdof_pins.dump(file);sixdof_native.dump(file);
+#endif
     fprintf(file,"camera_closer experimental=1 metres=%.9g applied=%llu inactive=%llu rejected=%llu clearance_metres=0.4 direction=original_camera collision_certified=0 gameplay_camera_modified=0\n",
         camera_closer_metres,camera_closer_applied.load(),camera_closer_inactive.load(),camera_closer_rejected.load());
     fprintf(file,"stereo_xr enabled=1 units_per_metre=%.9g accepted=%llu first_qpc=%lld last_qpc=%lld first_sequence=%llu last_sequence=%llu first_ticket=%llu last_ticket=%llu gpu_published=%u simulator_operator=%d mode=%s\n",
