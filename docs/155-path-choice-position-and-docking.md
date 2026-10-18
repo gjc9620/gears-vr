@@ -1,5 +1,13 @@
 # 岔路 UI 的实际位置与停靠关系
 
+## 2026-10-19：65°对照通过并集成默认测试包
+
+`path-fit-integration5-fov65-20261019` 使用独立65°配置、当前进程导航回执和同一Integration1 DLL。三阶段GPU图像均完整、阶段核对通过，SBS尺寸2560×1400；协调者目视确认前两张岔路文字/箭头/背景均在两眼完整显示，相比45°明显放大，正常选择后第三张提示消失。本轮恢复后采样没有字幕，不能宣称字幕放大已实际验收。42秒保持、10次续租、单次apply/restore通过，清理与入口恢复通过，五个原文件SHA256独立恢复通过。实际会话 `continuous-stereo-41212-20261019-042438-971e9715`。这属于模拟器GPU布局证据，真头显舒适度仍待用户体验。
+
+默认manifest现选择Integration1 DLL并开启`path_choice_center`，保留`runtime_render_size=true`及原XR二进制。发行干净配置省略HUD FOV，使用已有默认65°；用户本地显式45°配置不自动覆写。补编译并运行打包所需的TwoViewRendererShadowTest通过，DLL哈希仍为下述41a5…。
+
+开发ZIP `analysis/release-zips/GearsVR-0.0.1-development-RuntimeScale-PathChoice-20261019.zip`：14,036,721字节，SHA256 `3efa8fd0bf5d41c77dc6e0cf9ea1bb648e474534b662b47221f135548517b240`。stage与全新解压后的隔离Python预检均通过，716个文件；回执 `runtime-default-pathchoice-preflight.json` / `runtime-default-pathchoice-extracted-preflight.json`。这是默认测试版本集成，不是公开发布，也不证明机枪、黎明之锤、DLSS或完整检查点覆盖完成。推荐尺寸模式保持0.0.1正式默认与高于DLSS的优先级。
+
 ## 2026-10-19：Integration3 双眼图像复核
 
 随后65°私有配置对照 `path-fit-integration4-fov65-20261019` 未到岔路：协调者复制驱动时遗漏独立导航辅助脚本名称，旧脚本因回执已存在立即退出1，驱动又读取了旧PID36916的回执而当前游戏为PID36548。这是测试驱动错误，不是FOV或生产monitor回归。实际会话运行65°并正常清理；五文件哈希独立恢复通过。下一驱动使用唯一辅助脚本/回执，要求导航退出0、完整进程身份一致和all_up后才进入布局测试，禁止旧回执支持新一轮结论。本轮没有65°布局验收结果。
