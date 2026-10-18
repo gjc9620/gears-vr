@@ -1,4 +1,5 @@
 #pragma once
+#include "owned_ui_world_retirement.h"
 // CPU association is independent of GPU submission proof. Target substitution
 // is enabled only by the separate, experimental GEARS_OWNED_UI_BATCH build.
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
@@ -231,6 +232,18 @@ void owned_ui_discard_completed(uint64_t ticket){
  if(ui_observer_enabled&&!owned_ui_live::ledger.discard_completed(ticket,now()))owned_ui_live::fault(ticket,44);
 }
 bool owned_ui_ready(uint64_t ticket){return !owned_ui_live::routing||owned_ui_live::ledger.ready(ticket);}
+bool owned_ui_world_cpu_ready(gears_owned_ui_world::Guards guards){
+ guards.route_fault=guards.route_fault||owned_ui_live::route_faults.load()!=0;
+ return owned_ui_live::routing&&gears_owned_ui_world::cpu_ready(owned_ui_live::ledger,guards,now(),owned_ui_live::material_routing?3u:1u);
+}
+bool owned_ui_prepare_world_retirement(gears_owned_ui_world::Guards guards,gears_owned_ui_world::Receipt& out){
+ guards.route_fault=guards.route_fault||owned_ui_live::route_faults.load()!=0;
+ return owned_ui_live::routing&&gears_owned_ui_world::prepare_cpu(owned_ui_live::ledger,guards,now(),owned_ui_live::material_routing?3u:1u,out);
+}
+bool owned_ui_world_retirement_current(gears_owned_ui_world::Guards guards,gears_owned_ui_world::Receipt const& receipt){
+ guards.route_fault=guards.route_fault||owned_ui_live::route_faults.load()!=0;
+ return owned_ui_live::routing&&gears_owned_ui_world::current(owned_ui_live::ledger,guards,receipt);
+}
 #else
 namespace owned_ui_live {
 struct FamilyScope {FamilyScope(void*,void*,bool){}};
@@ -241,4 +254,7 @@ void execute_end(uint64_t,uint32_t,bool){}
 void owned_ui_published(uint64_t){}
 void owned_ui_discard_completed(uint64_t){}
 bool owned_ui_ready(uint64_t){return true;}
+bool owned_ui_world_cpu_ready(gears_owned_ui_world::Guards){return false;}
+bool owned_ui_prepare_world_retirement(gears_owned_ui_world::Guards,gears_owned_ui_world::Receipt&){return false;}
+bool owned_ui_world_retirement_current(gears_owned_ui_world::Guards,gears_owned_ui_world::Receipt const&){return false;}
 #endif
