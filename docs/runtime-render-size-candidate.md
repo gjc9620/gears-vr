@@ -8,6 +8,27 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+SourceRanges1 narrows the viewport hypothesis. DLL
+`1f4dc427d2a759cde44c2066bee5e1fff2ca95b26b022d25c3306405a639b7ed`
+passed startup/component tests and two actual checkpoint reloads with clean
+restoration. Ticket503/world2 records1135 nonempty direct draws in113 exact
+range groups (limit128, no overflow);659 draws lack a first color target and
+one lacks eye attribution. Readback source canonical16ae081640 still has
+all-zero columns x>=3840, raw SHA
+`3e6b4f13617e555552b67ece9e0b13e7114c8b811000c0e29c951c09af6e19f2`.
+Matching source writes have full or correct per-eye5120x2800/2560x2800
+viewports, with several unrestricted scissors; there is no universal3840
+scissor bound in these observed writes. Some use four render targets.
+This rules out a universal observed direct-draw viewport/scissor bound, not
+all upstream clipping: only first RTV is resolved; other MRTs, bound DSV,
+compute/copy/clear/indirect writes remain outside this diagnostic.
+Next resolve other OM attachments at these writes. Existing RTV descriptor
+hooks can cover all slots; existing viewport depth_known is only MinDepth/
+MaxDepth, not depth-buffer identity, and must not be used as DSV evidence.
+Evidence: `analysis/runtime/runtime-source-ranges1-scale2-run1-20261019.json`,
+`.final.native-status.txt`, `.final.native-status.source-ranges.json` and
+ignored build-runtime-source-ranges1/owned-hdr-source-41744*.
+
 SourcePixels3 provides actual intermediate HDR evidence. Private DLL
 `f4fcced4ca35b72c9421960e7c15e7ec9c7e442b69c5a2ac867583366c143309`
 passed the source-readback and NGX regression tests plus continuous startup

@@ -2314,8 +2314,31 @@ struct DrawRow {
     long long qpc{};uintptr_t view{},list{},caller{};
     gears_viewport::TargetDraw binding{};gears_viewport::DrawState state{};
 };
+// All direct draws in the selected owned consumer, including passes outside
+// hook_geometry. The first RTV already has canonical IUnknown identity in this
+// tracker; no draw-time COM/resource query or retained lease is needed.
+struct DrawRangeRow {
+    gears_viewport::Target target{};gears_viewport::DrawState state{};
+    uintptr_t caller{},quad_caller{},first_list{},last_list{},first_view{},last_view{};
+    uint64_t calls{},first_ordinal{},last_ordinal{};
+    unsigned eye=2,stage=4,mode=2,indexed{},targets{},eye_sources{};bool descriptor_capacity_lost{};
+};
+uintptr_t active_quad_caller();
 uint64_t ticket{},world{};uintptr_t renderer{},adapter{};bool finished{};
 std::array<Row,8> rows{};std::array<DrawRow,16> draws{};
+std::array<DrawRangeRow,128> draw_ranges{};unsigned draw_range_count{};
+uint64_t direct_draw_count{},draw_range_overflow{},draw_unknown_eye{},draw_missing_target{};
+uint64_t draw_overflow_first{},draw_overflow_last{};
+bool same_draw_state(gears_viewport::DrawState const& a,gears_viewport::DrawState const& b){
+    // Compare rectangle/depth bits, including signed zero and nonfinite values;
+    // never compare struct padding or merge merely similar rectangles.
+    auto equal=[](float x,float y){return !memcmp(&x,&y,sizeof(x));};
+    auto rectangle=[&](gears_viewport::Rect const& x,gears_viewport::Rect const& y){
+        return equal(x.x,y.x)&&equal(x.y,y.y)&&equal(x.width,y.width)&&equal(x.height,y.height);};
+    return a.tracked==b.tracked&&a.viewport_count==b.viewport_count&&a.scissor_count==b.scissor_count&&
+        a.depth_known==b.depth_known&&rectangle(a.viewport,b.viewport)&&rectangle(a.scissor,b.scissor)&&
+        equal(a.min_depth,b.min_depth)&&equal(a.max_depth,b.max_depth);
+}
 bool matches(void* root,gears_submitted::FrameTicket const& frame){
     return ticket&&frame.enabled&&frame.id==ticket&&frame.world_generation==world&&
         reinterpret_cast<uintptr_t>(root)==renderer;
@@ -2357,10 +2380,57 @@ void select(void* root,gears_submitted::FrameTicket const& frame,uintptr_t targe
     views(0,root,frame,left,right);
 }
 void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,bool indexed,unsigned elements,unsigned instances){
-    // Read only TLS until a geometry draw for the chosen owned ticket exists.
-    if(!current_geometry||!elements||!instances||!consuming_owned_scene)return;
+    if(!recording.load()||!elements||!instances||!consuming_owned_scene)return;
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(finished||!matches(consuming_renderer,consuming_frozen_frame))return;
+    const auto ordinal=++direct_draw_count;
+    const auto list_address=reinterpret_cast<uintptr_t>(list);
+    const auto binding=frame_target_stats.binding(list_address);
+    const auto state=frame_target_stats.draw_state(list_address);
+    const bool capacity_lost=frame_target_stats.descriptor_capacity_lost();
+    const auto draw_caller=caller>=base?caller-base:caller;
+    const auto quad_caller=active_quad_caller();
+    const unsigned stage=current_geometry?current_geometry->stage:4,mode=current_geometry?current_geometry->mode:2;
+    unsigned eye=2,eye_source=0;uintptr_t view{};
+    if(current_geometry&&current_geometry->eye<2){
+        eye=current_geometry->eye;view=current_geometry->view;eye_source=1;
+    }else{
+        // Same bounded current-view attribution as observe_engine_view_draw;
+        // viewport position alone never establishes an engine eye.
+        uintptr_t tls{},context{};struct Header{uintptr_t data;int count,capacity;} views{};
+        if(safe_copy(&tls,reinterpret_cast<void*>(__readgsqword(0x58)),8)&&tls&&
+           safe_copy(&context,reinterpret_cast<void*>(tls+0x20),8)&&context&&
+           safe_copy(&view,reinterpret_cast<void*>(context+0x14c0),8)&&
+           safe_copy(&views,reinterpret_cast<char*>(consuming_renderer)+0x68,sizeof(views))&&views.data&&
+           views.count==2&&views.capacity>=2&&views.capacity<=1024&&view>=views.data&&
+           (view-views.data)%0xd30==0&&(view-views.data)/0xd30<2){
+            eye=unsigned((view-views.data)/0xd30);eye_source=2;
+        }
+    }
+    if(eye==2)++draw_unknown_eye;
+    if(!binding.target.resource)++draw_missing_target;
+    DrawRangeRow* range{};
+    for(unsigned i=0;i<draw_range_count;++i){auto& candidate=draw_ranges[i];
+        if(candidate.target==binding.target&&candidate.targets==binding.targets&&candidate.eye==eye&&
+           candidate.indexed==unsigned(indexed)&&candidate.caller==draw_caller&&
+           candidate.quad_caller==quad_caller&&candidate.stage==stage&&candidate.mode==mode&&
+           candidate.descriptor_capacity_lost==capacity_lost&&same_draw_state(candidate.state,state)){
+            range=&candidate;break;
+        }
+    }
+    if(!range&&draw_range_count<draw_ranges.size()){
+        range=&draw_ranges[draw_range_count++];range->target=binding.target;range->state=state;
+        range->targets=binding.targets;range->eye=eye;range->indexed=indexed;range->caller=draw_caller;
+        range->quad_caller=quad_caller;range->stage=stage;range->mode=mode;
+        range->descriptor_capacity_lost=capacity_lost;range->first_ordinal=ordinal;
+        range->first_list=list_address;range->first_view=view;
+    }
+    if(range){++range->calls;range->last_ordinal=ordinal;range->last_list=list_address;
+        range->last_view=view;range->eye_sources|=eye_source;}
+    else {if(!draw_range_overflow)draw_overflow_first=ordinal;++draw_range_overflow;draw_overflow_last=ordinal;}
+    // Preserve the existing first draw for each geometry stage/mode as a
+    // separate diagnostic; it no longer bounds the all-pass observations.
+    if(!current_geometry)return;
     auto const& geometry=*current_geometry;
     if(geometry.eye>=2||geometry.stage>=4||geometry.mode>=2)return;
     auto& row=draws[geometry.eye*8+geometry.stage*2+geometry.mode];if(row.present)return;
@@ -2391,6 +2461,18 @@ void print(FILE* status){
         b.targets,static_cast<unsigned long long>(b.target.resource),static_cast<unsigned long long>(b.target.width),b.target.height,b.target.mip,b.target.format,
         s.tracked?1:0,s.viewport_count,s.scissor_count,s.viewport.x,s.viewport.y,s.viewport.width,s.viewport.height,s.scissor.x,s.scissor.y,s.scissor.width,s.scissor.height);
     }
+    fprintf(status,"owned_ticket_draw_range_summary ticket=%llu world=%llu renderer=%llx rows=%u limit=128 total=%llu overflow_calls=%llu overflow_first_ordinal=%llu overflow_last_ordinal=%llu unknown_eye_calls=%llu missing_target_calls=%llu finished=%u aggregation=exact_tuple ordinal=cpu_pre_original_nonempty_direct_draw first_rtv_only=1 first_viewport_scissor_only=1 canonical_resource=1 eye_unknown=2 geometry_absent_stage=4 geometry_absent_mode=2 quad_absent=0 eye_source_bits=geometry:1,current_view:2 same_thread_consumer_only=1 observes_compute_copy_clear_indirect=0 pixels_verified=0\n",
+        ticket,world,static_cast<unsigned long long>(renderer),draw_range_count,direct_draw_count,draw_range_overflow,
+        draw_overflow_first,draw_overflow_last,draw_unknown_eye,draw_missing_target,finished?1:0);
+    for(unsigned i=0;i<draw_range_count;++i){auto const& row=draw_ranges[i];auto const& t=row.target;auto const& s=row.state;
+        fprintf(status,"owned_ticket_draw_range row=%u ticket=%llu world=%llu renderer=%llx calls=%llu first_ordinal=%llu last_ordinal=%llu eye=%u eye_sources=%u stage=%u mode=%u indexed=%u caller=%llx quad_caller=%llx first_list=%llx last_list=%llx first_view=%llx last_view=%llx targets=%u canonical=%llx width=%llu height=%u mip=%u format=%u descriptor_capacity_lost=%u tracked=%u viewport_count=%u scissor_count=%u viewport=%.9g,%.9g,%.9g,%.9g scissor=%.9g,%.9g,%.9g,%.9g depth_known=%u depth=%.9g,%.9g\n",
+            i,ticket,world,static_cast<unsigned long long>(renderer),row.calls,row.first_ordinal,row.last_ordinal,row.eye,row.eye_sources,
+            row.stage,row.mode,row.indexed,static_cast<unsigned long long>(row.caller),static_cast<unsigned long long>(row.quad_caller),static_cast<unsigned long long>(row.first_list),static_cast<unsigned long long>(row.last_list),
+            static_cast<unsigned long long>(row.first_view),static_cast<unsigned long long>(row.last_view),row.targets,static_cast<unsigned long long>(t.resource),
+            static_cast<unsigned long long>(t.width),t.height,t.mip,t.format,unsigned(row.descriptor_capacity_lost),unsigned(s.tracked),s.viewport_count,s.scissor_count,
+            s.viewport.x,s.viewport.y,s.viewport.width,s.viewport.height,s.scissor.x,s.scissor.y,s.scissor.width,s.scissor.height,
+            unsigned(s.depth_known),s.min_depth,s.max_depth);
+    }
 }
 }
 
@@ -2398,6 +2480,7 @@ void print(FILE* status){
 #include "late_quad_observer.inl"
 
 namespace owned_ticket_size_trace {
+uintptr_t active_quad_caller(){return late_quad_candidate.active?late_quad_candidate.caller:0;}
 // Ordered CPU pre-original draw samples, never aggregate across passes. The
 // existing TLS candidate contains the arguments actually forwarded to this quad.
 struct QuadDrawRow {
