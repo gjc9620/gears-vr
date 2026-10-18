@@ -477,6 +477,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         backend.control.k.CloseHandle(lock);raise RuntimeError('Another repository launcher is active')
     state={'schema':1,'kind':'repository_vr_launcher','owner_identity':owner,'phase':'preflight','passed':False,'native_activated':False}
     if size_plan:state['render_size_plan']=size_plan
+    audio_state_key='test_audio_guard'
     cancel=None;identity=None;tiny_output_monitor=None;test_audio_guard=None;owned_prime=manifest.get('startup_menu',False)
     try:
         cancel=backend.open_cancel(owner['pid'])
@@ -492,6 +493,13 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
             from game_audio_guard import begin
             test_audio_guard=begin(identity,owner,index.with_name(index.stem+'.'+uuid.uuid4().hex+'.audio.jsonl'))
             state['test_audio_guard']={'enabled':True,'log':str(test_audio_guard.log),'muting_confirmed':False}
+        elif foreground:
+            sys.path.insert(0,str(HERE))
+            from game_audio_guard import begin_manual
+            test_audio_guard=begin_manual(identity,owner,index.with_name(index.stem+'.'+uuid.uuid4().hex+'.audio.jsonl'))
+            if test_audio_guard:
+                audio_state_key='manual_game_audio'
+                state[audio_state_key]={'enabled':True,'log':str(test_audio_guard.log),'configured':False}
         try:
             tiny_output_monitor=backend.start_tiny_output_monitor(manifest,identity,index.with_suffix('.tiny-output.jsonl'))
         except Exception as error:
@@ -605,8 +613,8 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         atomic_json(index,state);raise
     finally:
         if test_audio_guard:
-            try:state['test_audio_guard']=test_audio_guard.close()
-            except Exception as error:state['test_audio_guard']={'enabled':True,'restored':False,'error':repr(error)}
+            try:state[audio_state_key]=test_audio_guard.close()
+            except Exception as error:state[audio_state_key]={'enabled':True,'cleanup_failed':True,'error':repr(error)}
             # Audio restoration failure must not obstruct existing native/prime cleanup.
             try:atomic_json(index,state)
             except Exception:pass

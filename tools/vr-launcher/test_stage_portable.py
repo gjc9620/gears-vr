@@ -33,6 +33,8 @@ class StageTests(unittest.TestCase):
             xr_build='tools/openxr-probe/build-fixture', native_sha256='', xr_sha256='')
         for relative in [*stage.payload_paths(self.manifest), *stage.LICENSES]:
             self.put(self.root / relative, b'fixture')
+        self.put(self.root/stage.AUDIO_PROVENANCE,json.dumps(dict(schema=1,policy='manual_game_session_v1',
+            helper=Path(stage.AUDIO_HELPER).name,helper_sha256=stage.digest(self.root/stage.AUDIO_HELPER))).encode())
         for relative in (*stage.PYTHON_FILES, 'Lib/os.py', 'Lib/site-packages/private.py',
                          'Lib/test/private.py', 'Lib/__pycache__/private.pyc', 'DLLs/_ctypes.pyd'):
             self.put(self.python / relative, b'python-fixture')
@@ -67,6 +69,33 @@ class StageTests(unittest.TestCase):
         self.assertEqual((self.root / 'tools/vr-launcher/config.json').read_bytes(), original)
         self.assertTrue(all({'path', 'source', 'license_category', 'size', 'sha256'} <= item.keys() for item in result['files']))
 
+    def test_packaged_audio_import_and_hash_check_never_falls_back(self):
+        repository=Path(__file__).resolve().parents[2]
+        self.put(self.root/'tools/vr-launcher/game_audio_guard.py',
+                 (repository/'tools/vr-launcher/game_audio_guard.py').read_bytes())
+        self.build()
+        code=('import sys; from pathlib import Path; root=Path(sys.argv[1]).resolve(); '
+              'sys.path.insert(0,str(root/"tools/vr-launcher")); '
+              'import game_audio_guard as audio; '
+              'assert audio.MANUAL_HELPER.resolve()==root/"tools/game-audio/GearsTestAudioGuard.exe"; '
+              'audio.verify_manual_helper()')
+        command=[sys.executable,'-I','-B','-c',code,str(self.destination)]
+        def run():return subprocess.run(command,cwd=self.destination,capture_output=True,text=True,timeout=20,
+                            creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        result=run();self.assertEqual(result.returncode,0,result.stderr)
+        helper=self.destination/stage.AUDIO_HELPER;helper.write_bytes(b'wrong-helper')
+        self.assertNotEqual(run().returncode,0)
+        helper.unlink();self.assertNotEqual(run().returncode,0)
+
+    def test_audio_helper_and_receipt_required_before_stage(self):
+        helper=self.root/stage.AUDIO_HELPER
+        helper.write_bytes(b'wrong-or-old-helper')
+        with self.assertRaisesRegex(ValueError,'provenance/hash'):self.build()
+        self.assertFalse(self.destination.exists())
+        helper.unlink()
+        with self.assertRaises(FileNotFoundError):self.build()
+        self.assertFalse(self.destination.exists())
+
     def test_existing_target_never_overwritten(self):
         self.destination.mkdir(); self.put(self.destination / 'keep', b'keep')
         with self.assertRaises(FileExistsError): self.build()
@@ -74,7 +103,7 @@ class StageTests(unittest.TestCase):
 
     def test_new_runtime_modules_import_only_from_stage_without_repository_fallback(self):
         repository = Path(__file__).resolve().parents[2]
-        modules = {'debug-launch': 'tiny_output_recovery', 'game-io': 'movie_state',
+        modules = {'vr-launcher':'game_audio_guard', 'debug-launch': 'tiny_output_recovery', 'game-io': 'movie_state',
                    'native-capture': 'camera_closer_options startup_selftests path_choice_group_fit'}
         paths = ['tools/vr-launcher/' + name + '.py' for name in ('stage_portable', 'portable_preflight')]
         paths += ['tools/' + folder + '/' + name + '.py' for folder, names in modules.items() for name in names.split()]
@@ -92,7 +121,7 @@ class StageTests(unittest.TestCase):
         result = subprocess.run(command, cwd=self.destination, capture_output=True, text=True, timeout=30,
                                 creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(set(json.loads(result.stdout)), {'tiny_output_recovery', 'movie_state', 'camera_closer_options','startup_selftests','path_choice_group_fit'})
+        self.assertEqual(set(json.loads(result.stdout)), {'game_audio_guard','tiny_output_recovery', 'movie_state', 'camera_closer_options','startup_selftests','path_choice_group_fit'})
         # Removing a required staged helper must fail instead of finding this
         # developer checkout, an environment path, or a cached imported module.
         (self.destination / 'tools/debug-launch/tiny_output_recovery.py').unlink()

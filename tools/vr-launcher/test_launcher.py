@@ -57,6 +57,26 @@ class LauncherTests(unittest.TestCase):
     def setUp(self):
         environment=mock.patch.dict(os.environ,{'GEARSVR_TEST_MUTE_GAME':''})
         environment.start();self.addCleanup(environment.stop)
+        import game_audio_guard
+        manual=mock.patch.object(game_audio_guard,'begin_manual',return_value=None)
+        manual.start();self.addCleanup(manual.stop)
+
+    def test_manual_audio_only_for_foreground_with_test_mute_precedence(self):
+        import game_audio_guard
+        for foreground,mute,expect_manual,expect_mute in ((False,'',False,False),(True,'',True,False),(True,'1',False,True)):
+            with self.subTest(foreground=foreground,mute=mute),tempfile.TemporaryDirectory() as directory:
+                backend=FakeBackend();guard=mock.Mock();guard.log=pathlib.Path(directory)/'audio.jsonl'
+                guard.close.return_value={'configured':True}
+                with mock.patch.dict(os.environ,GEARSVR_TEST_MUTE_GAME=mute),\
+                     mock.patch.object(game_audio_guard,'begin_manual',return_value=guard) as manual,\
+                     mock.patch.object(game_audio_guard,'begin',return_value=guard) as muted,\
+                     mock.patch.object(launcher,'verify_files',return_value={}),\
+                     mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                    launcher.start({},dict(MANIFEST,startup_menu=True),backend,pathlib.Path(directory)/'index.json',sleep=lambda _:None,foreground=foreground)
+                self.assertEqual(manual.called,expect_manual);self.assertEqual(muted.called,expect_mute)
+                if expect_manual:
+                    self.assertEqual(manual.call_args.args[:2],(backend.game,backend.owner))
+                self.assertEqual(guard.close.call_count,int(expect_manual or expect_mute))
 
     def test_test_audio_restores_before_prime_cleanup_without_masking_original_cleanup(self):
         import game_audio_guard

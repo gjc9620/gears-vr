@@ -8,7 +8,7 @@ import sys
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/vr-launcher'))
-from stage_portable import PROJECT_MODULES, LICENSES, QUIET_BUILD, QUIET_HASHES, contained, digest, payload_paths
+from stage_portable import PROJECT_MODULES, LICENSES, QUIET_BUILD, QUIET_HASHES, AUDIO_HELPER, contained, digest, payload_paths
 
 
 def check_inventory(root):
@@ -117,6 +117,10 @@ def preflight(root=ROOT):
     for name, expected in QUIET_HASHES.items():
         if digest(contained(root, f'{QUIET_BUILD}/{name}')) != expected: raise ValueError('Quiet11 hash mismatch')
     imported = import_project_modules(root)
+    audio = importlib.import_module('game_audio_guard')
+    if audio.MANUAL_HELPER.resolve() != contained(root, AUDIO_HELPER):
+        raise ValueError('Manual audio helper escapes stage')
+    audio.verify_manual_helper(audio.MANUAL_HELPER)
     pefile = importlib.import_module('pefile')
     if not Path(pefile.__file__).resolve().is_relative_to(root): raise ValueError('External pefile import')
     # Query the actual Windows system directory, never a developer PATH entry.

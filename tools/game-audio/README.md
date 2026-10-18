@@ -1,9 +1,26 @@
-# Test-only game audio guard
+# Game audio launch policy
 
 `GEARSVR_TEST_MUTE_GAME=1` opts the repository launcher into per-process test muting.
-Set it only on the automated test's child environment. With the variable absent,
-the launcher does not start this tool or change audio. No system, endpoint master,
-session master volume, grouping, registry or other application volume is written.
+Set it only on the automated test's child environment. It takes precedence over
+the manual foreground launch policy. Manual foreground launches set each newly
+observed exclusive game audio session to 100% and unmute it once; subsequent user
+adjustments are preserved. Background launches without the test flag do not
+change audio. No system/endpoint master, grouping, registry or other application's
+volume is written. Game-internal sound settings are unchanged.
+
+For the packaged helper, run `build_helper.py` from an x64 MSVC developer shell
+with a new `--build-dir` and `--output-dir tools/game-audio`. Supply `--cmake` and
+`--ninja` if they are not on PATH. The builder runs only pure policy tests and
+produces the EXE plus `audio-helper-provenance.json`; it never runs an audio mode.
+Existing output is refused. The launcher and package preflight verify the receipt
+and EXE hash. Both files and the Python guard are included by the portable stager.
+
+2026-10-19 integration: root compiled the helper and passed 117 Python tests plus
+the native policy test. The runtime-resolution development stage with this helper
+passed isolated bundled-Python/import/PE dependency preflight. These are offline
+and package checks, not actual manual 100% audio acceptance. Root receipts are in
+ignored `analysis/runtime/manual-audio-root-tests.json` and
+`runtime-default-001-audio-preflight.json`.
 
 Build with the existing Windows SDK/MSVC toolchain (no dependencies to install):
 

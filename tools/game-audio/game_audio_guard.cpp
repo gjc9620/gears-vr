@@ -31,17 +31,23 @@ struct AudioSession final : Session {
         BOOL state{}; if (FAILED(volume->GetMute(&state))) return false;
         value=state!=FALSE; return true;
     }
-    bool set_mute(bool value) override {
+    bool same_session() {
         DWORD current{};
         if (control->GetProcessId(&current)!=S_OK || current!=pid) return false;
         LPWSTR raw{};
         if (FAILED(control->GetSessionInstanceIdentifier(&raw))) return false;
         bool same=raw && instance==raw; CoTaskMemFree(raw);
-        return same && SUCCEEDED(volume->SetMute(value?TRUE:FALSE,nullptr));
+        return same;
+    }
+    bool set_mute(bool value) override {
+        return same_session() && SUCCEEDED(volume->SetMute(value?TRUE:FALSE,nullptr));
+    }
+    bool set_volume(float value) override {
+        return same_session() && SUCCEEDED(volume->SetMasterVolume(value,nullptr));
     }
 };
 struct ScanCounts { unsigned endpoints{}, sessions{}, unavailable{}, rejected_shared{}; };
-static ScanCounts scan(IMMDeviceEnumerator* enumerator, DWORD target, HANDLE process, Policy* policy) {
+static ScanCounts scan(IMMDeviceEnumerator* enumerator, DWORD target, HANDLE process, Policy* policy, ManualPolicy* manual=nullptr) {
     ScanCounts result; ComPtr<IMMDeviceCollection> devices;
     if (FAILED(enumerator->EnumAudioEndpoints(eRender,DEVICE_STATE_ACTIVE,&devices))) {
         ++result.unavailable; return result;
@@ -61,7 +67,7 @@ static ScanCounts scan(IMMDeviceEnumerator* enumerator, DWORD target, HANDLE pro
             ComPtr<IAudioSessionControl> control; ComPtr<IAudioSessionControl2> control2;
             if (FAILED(sessions->GetSession(j,&control)) || FAILED(control.As(&control2))) { ++result.unavailable; continue; }
             ++result.sessions;
-            if (!policy) continue; // Read-only enumeration never queries/modifies volume.
+            if (!policy && !manual) continue; // Read-only enumeration never queries/modifies volume.
             DWORD pid{}; HRESULT owner=control2->GetProcessId(&pid);
             if (owner!=S_OK) { if (SUCCEEDED(owner)) ++result.rejected_shared; continue; }
             if (pid!=target || !alive(process) || control2->IsSystemSoundsSession()!=S_FALSE) continue;
@@ -73,7 +79,8 @@ static ScanCounts scan(IMMDeviceEnumerator* enumerator, DWORD target, HANDLE pro
             session->id=device_id+L"\n"+raw_instance; session->pid=pid; session->control=control2;
             CoTaskMemFree(raw_instance);
             if (FAILED(control.As(&session->volume))) { ++result.unavailable; continue; }
-            policy->observe(std::move(session),alive(process));
+            if (manual) manual->observe(std::move(session),alive(process));
+            else policy->observe(std::move(session),alive(process));
         }
     }
     return result;
@@ -105,7 +112,11 @@ int wmain(int argc,wchar_t** argv) {
             std::printf("{\"event\":\"read_only_audio_inventory\",\"active_render_endpoints\":%u,\"sessions\":%u,\"unavailable\":%u,\"mutations\":0}\n",c.endpoints,c.sessions,c.unavailable);
             return 0;
         }
-        if (argc!=14 || std::wstring(argv[1])!=L"--guard") return 2;
+        if (argc!=14) return 2;
+        const bool manual=std::wstring(argv[1])==L"--manual-volume";
+        if (!manual && std::wstring(argv[1])!=L"--guard") return 2;
+        wchar_t mute[2]{};
+        if (manual && GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",mute,2)==1 && mute[0]==L'1') return 2;
         std::map<std::wstring,std::wstring> args;
         for (int i=2;i<argc;i+=2) if (!args.emplace(argv[i],argv[i+1]).second) return 2;
         auto pid64=number(args.at(L"--pid")), owner64=number(args.at(L"--owner-pid"));
@@ -123,15 +134,19 @@ int wmain(int argc,wchar_t** argv) {
             creation(parent.value)!=owner_creation || !alive(game.value) || !alive(parent.value)) {
             std::printf("{\"event\":\"identity_rejected\",\"mutations\":0}\n"); return 3;
         }
-        Policy policy; RestoreFallback fallback{policy};
+        Policy policy; ManualPolicy manual_policy; RestoreFallback fallback{policy};
         std::printf("{\"event\":\"guard_ready\",\"pid\":%lu,\"creation_time\":%llu,\"matched\":0,\"muted\":0}\n",pid,game_creation); std::fflush(stdout);
         HANDLE waits[]{stop.value,parent.value,game.value};
         auto deadline=GetTickCount64()+seconds*1000; char const* reason="deadline";
-        std::uint64_t scans{}, unavailable{}, shared{}, last_muted{};
+        std::uint64_t scans{}, unavailable{}, shared{}, last_muted{}, last_configured{};
         while (GetTickCount64()<deadline) {
             DWORD signal=WaitForMultipleObjects(3,waits,FALSE,0);
             if (signal!=WAIT_TIMEOUT) { reason=signal==WAIT_OBJECT_0?"stop":signal==WAIT_OBJECT_0+1?"owner_exit":signal==WAIT_OBJECT_0+2?"game_exit":"wait_error"; break; }
-            auto c=scan(enumerator.Get(),pid,game.value,&policy); ++scans; unavailable+=c.unavailable; shared+=c.rejected_shared;
+            auto c=scan(enumerator.Get(),pid,game.value,manual?nullptr:&policy,manual?&manual_policy:nullptr); ++scans; unavailable+=c.unavailable; shared+=c.rejected_shared;
+            if (manual && manual_policy.configured()!=last_configured) {
+                last_configured=manual_policy.configured();
+                std::printf("{\"event\":\"manual_audio_configured\",\"sessions\":%llu,\"volume\":1.0,\"muted\":false}\n",last_configured); std::fflush(stdout);
+            }
             auto counts=policy.counts();
             if (counts.muted!=last_muted) {
                 last_muted=counts.muted;
@@ -139,6 +154,10 @@ int wmain(int argc,wchar_t** argv) {
             }
             signal=WaitForMultipleObjects(3,waits,FALSE,250);
             if (signal!=WAIT_TIMEOUT) { reason=signal==WAIT_OBJECT_0?"stop":signal==WAIT_OBJECT_0+1?"owner_exit":signal==WAIT_OBJECT_0+2?"game_exit":"wait_error"; break; }
+        }
+        if (manual) {
+            std::printf("{\"event\":\"manual_audio_cleanup\",\"reason\":\"%s\",\"sessions_configured\":%llu,\"configure_failed\":%llu}\n",reason,manual_policy.configured(),manual_policy.failed);
+            std::fflush(stdout); return 0;
         }
         // Original COM objects survive target/owner exit and are restored before
         // their final Release. Never locate a successor PID/session to restore.

@@ -2,6 +2,7 @@
 import ctypes
 from ctypes import wintypes
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -10,6 +11,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
 HELPER = ROOT / 'analysis/runtime/test-audio-guard-build/GearsTestAudioGuard.exe'
+MANUAL_HELPER = ROOT / 'tools/game-audio/GearsTestAudioGuard.exe'
 
 
 def enabled():
@@ -60,16 +62,18 @@ def records(path):
 
 class Guard:
     def __init__(self, game, owner, log, *, helper=HELPER, events=None,
-                 popen=subprocess.Popen, clock=time.monotonic, sleep=time.sleep):
+                 popen=subprocess.Popen, clock=time.monotonic, sleep=time.sleep, manual=False):
+        if manual and enabled(): raise ValueError('Unattended mute takes precedence over manual audio')
+        self.manual = manual
         self.game, self.owner = identity(game), identity(owner)
         if self.game['pid'] == self.owner['pid']: raise ValueError('Game and owner must differ')
         helper = Path(helper)
-        if not helper.is_file(): raise FileNotFoundError('Build the test-only Core Audio helper first: ' + str(helper))
+        if not helper.is_file(): raise FileNotFoundError('Build/package the Core Audio helper first: ' + str(helper))
         self.log = Path(log); self.events = events or Events(); self.process = None; self.handle = None
         self.receipt = None
         nonce = uuid.uuid4().hex
         self.handle = self.events.create('Local\\GearsVR.TestAudio.Stop.' + nonce)
-        command = [str(helper), '--guard', '--pid', str(self.game['pid']), '--creation-time', str(self.game['creation_time']),
+        command = [str(helper), '--manual-volume' if manual else '--guard', '--pid', str(self.game['pid']), '--creation-time', str(self.game['creation_time']),
                    '--owner-pid', str(self.owner['pid']), '--owner-creation-time', str(self.owner['creation_time']),
                    '--max-seconds', '21600', '--nonce', nonce]
         try:
@@ -95,21 +99,31 @@ class Guard:
         if self.receipt is not None: return self.receipt
         result = dict(enabled=True, game_identity=self.game, owner_identity=self.owner,
                       log=str(self.log), restored=False)
+        if self.manual:
+            result.pop('restored')
+            result.update(manual=True,configured=False)
         try:
             if self.handle: self.events.signal(self.handle)
             if self.process is not None:
                 try: code = self.process.wait(timeout=4)
                 except subprocess.TimeoutExpired:
-                    result.update(helper_running=True, error='Restore deadline expired; guardian was not killed')
+                    result.update(helper_running=True, error='Audio guard stop deadline expired; guardian was not killed')
                 else:
-                    reports = [r for r in records(self.log) if r.get('event') == 'guard_cleanup']
+                    reports = [r for r in records(self.log) if r.get('event') == ('manual_audio_cleanup' if self.manual else 'guard_cleanup')]
                     result.update(exit_code=code)
                     if len(reports) == 1:
                         result.update(reports[0])
-                        result['restored'] = code == 0 and reports[0].get('restore_pending') == 0
-                        result['sessions_restored'] = reports[0].get('restored')
-                    else: result['error'] = 'No unique restoration receipt'
-            else: result.update(restored=True, helper_started=False)
+                        if self.manual:
+                            result.pop('restored',None)
+                            result['manual'] = True
+                            result['configured'] = code == 0 and reports[0].get('sessions_configured',0)>0
+                        else:
+                            result['restored'] = code == 0 and reports[0].get('restore_pending') == 0
+                            result['sessions_restored'] = reports[0].get('restored')
+                    else: result['error'] = 'No unique audio cleanup receipt'
+            else:
+                result.update(helper_started=False)
+                if not self.manual: result['restored']=True
         except Exception as error:
             result['error'] = repr(error)
         finally:
@@ -119,6 +133,28 @@ class Guard:
         return result
 
 
+def verify_manual_helper(helper=MANUAL_HELPER):
+    helper = Path(helper)
+    receipt = helper.with_name('audio-helper-provenance.json')
+    value = json.loads(receipt.read_text(encoding='utf-8'))
+    if (value.get('schema') != 1 or value.get('policy') != 'manual_game_session_v1' or
+            value.get('helper') != helper.name or not helper.is_file() or
+            hashlib.sha256(helper.read_bytes()).hexdigest() != value.get('helper_sha256')):
+        raise ValueError('Manual game audio helper provenance/hash mismatch')
+    return value
+
+
+def begin_manual(game, owner, log):
+    if enabled(): return None
+    verify_manual_helper(MANUAL_HELPER)
+    return Guard(game, owner, log, helper=MANUAL_HELPER, manual=True)
+
+
 def begin(game, owner, log):
     if not enabled(): return None
+    # A staged package uses the same verified helper for unattended mute.
+    # Developer test builds retain their existing fallback when no package exists.
+    if MANUAL_HELPER.exists() or MANUAL_HELPER.with_name('audio-helper-provenance.json').exists():
+        verify_manual_helper(MANUAL_HELPER)
+        return Guard(game, owner, log, helper=MANUAL_HELPER)
     return Guard(game, owner, log)

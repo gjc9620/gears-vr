@@ -12,7 +12,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT_MODULES = {
-    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle',
+    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle game_audio_guard',
     'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy tiny_output_recovery',
     'game-io': 'background_input game_io menu_state menu_control movie_state scene_owner_snapshot',
     'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',
@@ -26,6 +26,8 @@ PROJECT_MODULES = {
 NATIVE_TESTS = ('CaptureSelfTest.exe', 'GraphicsMenuLockTest.exe', 'FrameLinkTest.exe',
                 'GpuViewportStatsTest.exe', 'SplitSourceViewsTest.exe', 'SubmittedViewLifetimeTest.exe',
                 'SourceViewShadowTest.exe','SourceViewArgsTest.exe','SourceEyeArgsTest.exe','TwoViewRendererShadowTest.exe')
+AUDIO_HELPER = 'tools/game-audio/GearsTestAudioGuard.exe'
+AUDIO_PROVENANCE = 'tools/game-audio/audio-helper-provenance.json'
 QUIET_BUILD = 'tools/quiet-startup/build-quiet11'
 QUIET_HASHES = {
     'GearsEarlyLaunch.exe': '4eb27120bb8d1c5abf0d282a5280f65bf69d6f798edaa003e34673537bec0bf8',
@@ -80,6 +82,7 @@ def payload_paths(manifest):
     result += [(native / name).as_posix() for name in (dll, *NATIVE_TESTS)]
     result += [(xr / name).as_posix() for name in ('OpenXRPoseProbe.exe', 'openxr_loader.dll')]
     result += [f'{QUIET_BUILD}/{name}' for name in QUIET_HASHES]
+    result += [AUDIO_HELPER, AUDIO_PROVENANCE]
     result += ['tools/package-inspector/python-libs/pefile.py', 'tools/package-inspector/python-libs/peutils.py']
     result += [f'tools/package-inspector/python-libs/ordlookup/{name}.py' for name in ('__init__', 'oleaut32', 'ws2_32', 'wsock32')]
     return result
@@ -128,6 +131,8 @@ def stage(root, python_root, destination, *, manifest_path=None, launcher_path=N
         if digest(contained(root, relative)) != manifest[key]: raise ValueError('Manifest artifact hash mismatch: ' + str(relative))
     for name, expected in QUIET_HASHES.items():
         if digest(contained(root, f'{QUIET_BUILD}/{name}')) != expected: raise ValueError('Quiet11 hash mismatch')
+    from game_audio_guard import verify_manual_helper
+    verify_manual_helper(contained(root, AUDIO_HELPER))
     destination.mkdir(parents=True)
     inventory = []
     def record(target, source, category):

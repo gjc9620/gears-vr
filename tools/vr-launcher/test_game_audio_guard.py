@@ -38,6 +38,59 @@ class GuardTests(unittest.TestCase):
         return audio.Guard(self.game,self.owner,self.log,helper=self.helper,events=self.events,popen=spawn,
                            clock=lambda:ticks[0],sleep=lambda seconds:ticks.__setitem__(0,ticks[0]+seconds))
 
+    def test_manual_opt_in_never_overrides_test_mute(self):
+        with mock.patch.dict(os.environ,GEARSVR_TEST_MUTE_GAME='1'),mock.patch.object(audio,'Guard') as guard:
+            self.assertIsNone(audio.begin_manual(self.game,self.owner,self.log));guard.assert_not_called()
+        with mock.patch.dict(os.environ,GEARSVR_TEST_MUTE_GAME=''),mock.patch.object(audio,'verify_manual_helper') as verified,mock.patch.object(audio,'Guard') as guard:
+            audio.begin_manual(self.game,self.owner,self.log)
+            verified.assert_called_once_with(audio.MANUAL_HELPER)
+            self.assertTrue(guard.call_args.kwargs['manual'])
+            self.assertEqual(guard.call_args.kwargs['helper'],audio.MANUAL_HELPER)
+
+    def test_packaged_test_mute_reuses_verified_helper_without_manual_mode(self):
+        import hashlib
+        receipt=self.helper.with_name('audio-helper-provenance.json')
+        receipt.write_text(json.dumps(dict(schema=1,policy='manual_game_session_v1',helper=self.helper.name,
+            helper_sha256=hashlib.sha256(self.helper.read_bytes()).hexdigest())))
+        with mock.patch.dict(os.environ,GEARSVR_TEST_MUTE_GAME='1'),mock.patch.object(audio,'MANUAL_HELPER',self.helper),mock.patch.object(audio,'Guard') as guard:
+            audio.begin(self.game,self.owner,self.log)
+            self.assertEqual(guard.call_args.kwargs,{'helper':self.helper})
+            guard.reset_mock();self.helper.write_bytes(b'wrong')
+            with self.assertRaisesRegex(ValueError,'provenance/hash'):audio.begin(self.game,self.owner,self.log)
+            guard.assert_not_called()
+
+    def test_manual_helper_missing_wrong_hash_and_old_policy_rejected(self):
+        import hashlib
+        receipt=self.helper.with_name('audio-helper-provenance.json')
+        with self.assertRaises(FileNotFoundError):audio.verify_manual_helper(self.helper)
+        value=dict(schema=1,policy='manual_game_session_v1',helper=self.helper.name,
+                   helper_sha256=hashlib.sha256(self.helper.read_bytes()).hexdigest())
+        receipt.write_text(json.dumps(value));self.assertEqual(audio.verify_manual_helper(self.helper),value)
+        self.helper.write_bytes(b'old-helper')
+        with self.assertRaisesRegex(ValueError,'provenance/hash'):audio.verify_manual_helper(self.helper)
+        value['helper_sha256']=hashlib.sha256(self.helper.read_bytes()).hexdigest();value['policy']='mute_only'
+        receipt.write_text(json.dumps(value))
+        with self.assertRaisesRegex(ValueError,'provenance/hash'):audio.verify_manual_helper(self.helper)
+        self.helper.unlink()
+        with self.assertRaisesRegex(ValueError,'provenance/hash'):audio.verify_manual_helper(self.helper)
+
+    def test_manual_exact_identity_command_and_late_session_not_claimed(self):
+        def spawn(command,**kwargs):
+            self.command=command
+            kwargs['stdout'].write((json.dumps(dict(event='guard_ready',**self.game))+'\n').encode());kwargs['stdout'].flush()
+            process=mock.Mock();process.poll.return_value=None
+            def finish(timeout):
+                with self.log.open('a') as stream:
+                    stream.write(json.dumps(dict(event='manual_audio_cleanup',sessions_configured=0,configure_failed=0))+'\n')
+                return 0
+            process.wait.side_effect=finish;return process
+        with mock.patch.dict(os.environ,GEARSVR_TEST_MUTE_GAME=''):
+            guard=audio.Guard(self.game,self.owner,self.log,helper=self.helper,manual=True,events=self.events,popen=spawn)
+        self.assertEqual(self.command[1],'--manual-volume')
+        self.assertEqual(self.command[self.command.index('--creation-time')+1],'34')
+        self.assertFalse(guard.close()['configured'])
+        self.assertNotIn('restored',guard.close())
+
     def test_only_exact_opt_in_and_valid_identity(self):
         for value in ('','0','true','yes'):
             with mock.patch.dict(os.environ,GEARSVR_TEST_MUTE_GAME=value),mock.patch.object(audio,'Guard') as guard:
