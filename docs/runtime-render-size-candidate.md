@@ -27,6 +27,25 @@ remain outstanding; the development stage has not been publicly released.
 
 ## First actual-game evidence, 2026-10-18
 
+### Post-promotion startup smoke, 2026-10-19
+
+The first background smoke cancelled before activation when the occlusion guard
+observed the game above other applications. Thus the background placement fix is
+not universal. With the user's explicit overnight permission for foreground
+operation, the second smoke entered gameplay using the promoted native/XR pair
+and a child-only simulator runtime. Recommendation 1280x1400 at 1.0x yielded
+2560x1400 SBS readbacks: three files with distinct hashes and nonzero means in
+both halves. This is simulator-size evidence, not physical-headset quality.
+XR recorded 1353 stereo projections and 409 scene copies. The session stopped
+with native cleanup and independent entry restoration verified.
+
+The private driver's final normal-close loop hit Win32 error 1400 after a window
+disappeared. Root separately verified no game remained and restored all five
+hashed settings/profile backups. Do not call the driver itself fully passed.
+Receipts: ignored `runtime-default-smoke2-recovery.json`,
+`runtime-default-smoke2-pixels.json`, and
+`continuous-stereo-32904-20261019-024011-980a4109.json`.
+
 ### Verified terminal retirement follow-up
 
 Session `continuous-stereo-17496-20261018-192745-63abd9ec` ran the retirement candidate for 59.37 seconds of scene submission: 1202 published pairs / copies and 5347 simulator scene submissions. Native shutdown reached `live_phase=4`, `shutdown_phase=3`, `retained=0`, `resources_retained=0`, `owned_shutdown_closed=1`, fence state 2 and no cleanup timeout or owned error. The session runner independently confirmed both native cleanup and entry-byte restoration; its scoped session result passed. Game then exited normally and all four pre-test profile hashes were restored. Raw status and GPU samples are preserved in ignored `analysis/runtime/retirement-17496-evidence/`. The independent runtime-size candidate manifest now selects this build; the player default remains unchanged.
