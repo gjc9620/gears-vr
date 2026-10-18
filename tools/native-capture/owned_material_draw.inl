@@ -1,3 +1,4 @@
+#include "material_overlay_plan.h"
 namespace owned_material {
 // The CPU-side native upload certificate is tied to this TLS consumer and to
 // the exact command list. Actual OM/ticket identity is checked independently.
@@ -31,16 +32,21 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
     binding.target.resource!=target.resource||binding.target.width!=target.width||binding.target.height!=target.height||
     !pair.linked||pair.ticket!=c.owned_ticket)return reject_draw(27);
  if(!gears_ui_material::material_view_plane(safe_copy,c.consumer,plane,&reject))return reject_draw(40+unsigned(reject));
- gears_viewport::OverlayPlan plan{};gears_vr::StereoSample sample{};
- gears_ui_hud::Parameters parameters{};parameters.source_aspect=plane.aspect;
+ gears_vr::StereoSample sample{};gears_material_overlay::Result overlay{};
+ gears_ui_layout::Matrix matrix{};std::memcpy(matrix.data(),c.consumer.receipt.transform.data(),sizeof(matrix));
  if(!owned_scene_gpu::image_tickets.lookup(c.owned_ticket,sample,simulator_operator)||
-    !gears_ui_hud::plan(saved,target.width,target.height,sample,plan,parameters))return reject_draw(28);
+    !gears_material_overlay::plan(c.consumer.receipt.kind,ui_hud_plane_enabled,saved,target.width,target.height,
+      sample,plane.aspect,ui_hud_parameters,ui_hud_layout_parameters,quad,matrix,overlay))return reject_draw(28);
+ if(overlay.layout_considered){++ui_layout_counts.considered;
+  if(overlay.layout_applied)++ui_layout_counts.planned;else ++ui_layout_counts.fallback;
+ }
  auto viewport=[&](gears_viewport::Rect r,float a,float b){D3D12_VIEWPORT v{r.x,r.y,r.width,r.height,a,b};original_viewports(list,1,&v);};
  auto scissor=[&](gears_viewport::Rect r){D3D12_RECT s{LONG(r.x),LONG(r.y),LONG(r.x+r.width),LONG(r.y+r.height)};original_scissors(list,1,&s);};
  unsigned mask{};
- try{mask=gears_viewport::replay_overlay(saved,plan,viewport,scissor,[&](unsigned){original_draw(list,args.count,args.instances,args.start,args.first_instance);});}
+ try{mask=gears_viewport::replay_overlay(saved,overlay.plan,viewport,scissor,[&](unsigned){original_draw(list,args.count,args.instances,args.start,args.first_instance);});}
  catch(...){fail(c,29);throw;}
  if(!owned_scene_gpu::tracker.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask)){fail(c,30);return true;}
+ if(overlay.layout_applied&&mask==3)++ui_layout_counts.applied;
  ++c.owned_draws;++draws;owned_scene_gpu::material_candidate(c.owned_ticket);return true;
 }
 }

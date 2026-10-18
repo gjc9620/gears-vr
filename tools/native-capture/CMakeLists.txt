@@ -609,6 +609,9 @@ target_compile_options(SixDofTicketDiagnosticsTest PRIVATE /W4 /WX /EHsc /UNDEBU
 add_executable(PathChoiceReflowControlTest path_choice_reflow_control_test.cpp)
 target_compile_options(PathChoiceReflowControlTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(UiHudLayoutTest ui_hud_layout_test.cpp)
+
+add_executable(MaterialOverlayPlanTest material_overlay_plan_test.cpp)
+target_compile_options(MaterialOverlayPlanTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 target_compile_options(UiHudLayoutTest PRIVATE /W4 /EHsc /UNDEBUG)
 target_link_options(UiHudLayoutTest PRIVATE /STACK:16777216)
 add_executable(UiReticleDirectionPlanTest ui_reticle_direction_plan_test.cpp)
