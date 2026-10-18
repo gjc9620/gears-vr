@@ -215,7 +215,7 @@ class CollectorTests(unittest.TestCase):
             return raw
         r.read=grow
         def sample(**options):
-            reader.force_registry_refresh.assert_called_once()
+            reader.force_registry_refresh.assert_called_once_with(registry_header_policy="fixed_prefix_v1")
             self.assertEqual(options,dict(include_owner=True))
             self.assertEqual(r.read(r.objects_header,16),initial)
             self.assertEqual(r.read(r.objects_header,16),initial)
@@ -231,7 +231,8 @@ class CollectorTests(unittest.TestCase):
 
     def test_presample_policy_is_built_after_fresh_registry_refresh(self):
         values=fixture();reader=values[0];r=reader.r;source=r.read
-        def refresh():
+        def refresh(**options):
+            self.assertEqual(options,dict(registry_header_policy="fixed_prefix_v1"))
             r.object_count+=1
             raw=struct.pack('<Qii',r.objects_data,r.object_count,r.object_capacity)
             values[6].update((r.objects_header+i,b) for i,b in enumerate(raw))
@@ -381,7 +382,7 @@ class CollectorTests(unittest.TestCase):
     def test_full_refresh_cannot_adopt_a_changed_selected_client(self):
         for field in ('address', 'name', 'number', 'cls', 'outer', 'internal_index'):
             values=fixture();reader=values[0]
-            def replace_client():
+            def replace_client(**options):
                 value=reader.client_identity[field]
                 reader.client_identity[field]=value+'changed' if isinstance(value,str) else value+1
             reader.force_registry_refresh.side_effect=replace_client

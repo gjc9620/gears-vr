@@ -117,7 +117,7 @@ def sample_fixed_prefix(reader, **options):
     Existing snapshot, slot, layout and owner checks then consume that same
     validated logical read projection. No failed bytes or policy survive it.
     """
-    reader.force_registry_refresh()
+    reader.force_registry_refresh(registry_header_policy="fixed_prefix_v1")
     r = reader.r
     original_read = r.read
     policy = _FixedPrefixReads(r, original_read)
@@ -349,7 +349,7 @@ def collect(reader, sample, native_status, session, nonce, verify_session, *, re
     menu_client = {key:roles['client'][key] for key in
                    ('address', 'name', 'number', 'cls', 'outer', 'internal_index')}
     require(reader.client == roles['client']['address'] and original_client == menu_client, 'original client mismatch')
-    reader.force_registry_refresh()
+    reader.force_registry_refresh(registry_header_policy=registry_header_policy)
     require(reader.client_identity == original_client and reader.client == original_client['address'], 'refresh replaced client')
     check()
     original_read = r.read; reads = {}; origins = {}; byte_count = 0

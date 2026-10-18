@@ -342,8 +342,15 @@ class MenuReader:
                                    offset=offset, array_dim=dimension, element_size=element_size,
                                    array_layout_raw=layout_raw.hex()))
 
-    def force_registry_refresh(self):
-        """One bounded inventory refresh, retaining the originally proven client."""
+    def force_registry_refresh(self, *, registry_header_policy='exact'):
+        """Refresh the initial inventory prefix, retaining the proven client.
+
+        Only the explicit PathChoice adapter opts into a fixed prefix. A later
+        Num is never adopted into the tuples or their admitted index bounds.
+        Client discovery/uniqueness is not repeated or replaced by this refresh.
+        """
+        if registry_header_policy not in ('exact','fixed_prefix_v1'):
+            raise ValueError('Unsupported forced registry header policy')
         r = self.r
         headers = {prefix:r.read(getattr(r,prefix+'_header'),16) for prefix in ('names','objects')}
         inventories = {}
@@ -365,7 +372,13 @@ class MenuReader:
         for prefix, raw in headers.items():
             address = getattr(r, prefix+'_header')
             observed = r.read(address, 16)
-            if observed != raw:
+            accepted = observed == raw
+            if registry_header_policy == 'fixed_prefix_v1' and len(observed) == 16:
+                initial_data, initial_count, initial_capacity = struct.unpack('<Qii', raw)
+                live_data, live_count, live_capacity = struct.unpack('<Qii', observed)
+                accepted = (live_data == initial_data and live_capacity == initial_capacity and
+                            initial_count <= live_count <= initial_capacity)
+            if not accepted:
                 raise read_conflict_error(ForcedRegistryRefreshChanged,
                     'Registry header changed during forced refresh', 'forced_registry_bracket',
                     address, raw, observed, {prefix:address})

@@ -860,6 +860,60 @@ class RegistryRecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'Scene client identity changed'):
             self.reader.sample()
 
+    def arm_forced_refresh_suffix(self,prefix,change='num'):
+        for name in ('names','objects'):
+            address=getattr(self.r,name+'_header')
+            data,num,_=struct.unpack('<Qii',self.r.read(address,16))
+            self.r.put(address,struct.pack('<Qii',data,num,2000))
+        source=self.r.read;calls={'names':0,'objects':0}
+        def read(address,size):
+            raw=source(address,size)
+            for name in calls:
+                if (address,size)==(getattr(self.r,name+'_header'),16):
+                    calls[name]+=1
+                    if name==prefix and calls[name]==2:
+                        data,num,capacity=struct.unpack('<Qii',raw)
+                        changes={'num':(data,num+3,capacity),'shrink':(data,num-1,capacity),
+                            'data':(data+8,num,capacity),'max':(data,num,capacity+1),
+                            'excess':(data,capacity+1,capacity)}
+                        return struct.pack('<Qii',*changes[change])
+            return raw
+        self.r.read=read
+        return calls
+
+    def test_explicit_forced_prefix_accepts_growth_without_adopting_suffix(self):
+        for prefix in ('names','objects'):
+            with self.subTest(prefix=prefix):
+                self.setUp();calls=self.arm_forced_refresh_suffix(prefix)
+                self.reader.force_registry_refresh(registry_header_policy='fixed_prefix_v1')
+                self.assertEqual(calls,dict(names=2,objects=2))
+                self.assertEqual(self.r.object_count,1001)
+                self.assertEqual(self.r.name_count,1001)
+                self.assertEqual(len(self.r.object_pointers),1001)
+                self.assertEqual(len(self.r.name_pointers),1001)
+                self.assertEqual(self.reader.client_identity,self.r.identities[self.reader.client])
+
+    def test_explicit_forced_prefix_rejects_invalid_boundaries_and_old_identity(self):
+        from menu_state import ForcedRegistryRefreshChanged
+        for prefix in ('names','objects'):
+            for change in ('shrink','data','max','excess'):
+                with self.subTest(prefix=prefix,change=change):
+                    self.setUp();self.arm_forced_refresh_suffix(prefix,change)
+                    with self.assertRaises(ForcedRegistryRefreshChanged):
+                        self.reader.force_registry_refresh(registry_header_policy='fixed_prefix_v1')
+        for change in ('slot','client','name_zero'):
+            with self.subTest(change=change):
+                self.setUp();self.arm_forced_refresh_suffix('objects')
+                if change=='slot':
+                    index=self.r.identities[self.reader.client]['internal_index']
+                    self.r.put(self.r.objects_data+index*8,struct.pack('<Q',0))
+                elif change=='client':self.r.identities[self.reader.client]['number']+=1
+                else:self.r.name=lambda index:'changed'
+                with self.assertRaises(RuntimeError):
+                    self.reader.force_registry_refresh(registry_header_policy='fixed_prefix_v1')
+        with self.assertRaisesRegex(ValueError,'Unsupported forced registry'):
+            self.reader.force_registry_refresh(registry_header_policy='unknown')
+
     def test_forced_refresh_reports_same_read_header_fields_and_short_circuits(self):
         from menu_state import ForcedRegistryRefreshChanged
         for prefix in ('names','objects'):
