@@ -39,6 +39,7 @@
 #include "ngx_route_observer.h"
 #include "ngx_stereo_gpu_submit.h"
 #include "ngx_typed_copy.h"
+#include "ngx_epoch_pair_probe.h"
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
 #include "ngx_output_delayed_gate.h"
 #endif
@@ -2312,6 +2313,8 @@ namespace ngx_capture_control {
 bool copy(ID3D12GraphicsCommandList*,D3D12_TEXTURE_COPY_LOCATION const*,UINT,UINT,UINT,D3D12_TEXTURE_COPY_LOCATION const*,D3D12_BOX const*,uintptr_t,ngx_stereo_host::CopyFn);
 void execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,ngx_stereo_host::ExecuteFn);
 }
+#define GEARS_NGX_EPOCH_PAIR_WIRING 1
+#include "ngx_epoch_pair_probe.inl"
 #include "ngx_stereo_host_live.inl"
 #include "ngx_control_capture.inl"
 #include "ngx_output_pixels_native.inl"
@@ -2378,6 +2381,7 @@ void __fastcall hook_prepare(void* renderer){
     auto record=start_record(12,renderer,_ReturnAddress());
     if(observe){
         Record before{};inspect_completed_renderer(before,renderer);
+        ngx_epoch_pair::prepare(1,renderer,before);
         projection_observe(2,reinterpret_cast<uintptr_t>(renderer),before.family_views,before.family_count,now());
         stereo_observe(2,reinterpret_cast<uintptr_t>(renderer),before.family_views,before.family_count,now());
         if(submit_pair_enabled && before.family_count==(submit_mono_control?1:2) && (submit_session_enabled()?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
@@ -2392,6 +2396,7 @@ void __fastcall hook_prepare(void* renderer){
     original_prepare(renderer);
     if(observe){
         inspect_completed_renderer(record,renderer);
+        ngx_epoch_pair::prepare(2,renderer,record);
         if(submit_pair_enabled && (submit_session_enabled()?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
             reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load())) {
             uintptr_t right_state{};
@@ -2689,6 +2694,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             !memcmp(rectangle.data(),sources.inputs[source_index].bytes.data()+0x48,16);
     }
     if(owned_scene_target&&!native_owned_scene_built(destination,frame.id,verified))verified=false;
+    ngx_epoch_pair::built(destination,frame,built,verified,sources.inputs[0].bytes.data()+0x48,sources.inputs[1].bytes.data()+0x48);
     if(!ngx_capture_control::constructed(destination,frame,built,verified))verified=false;
     projection_observe(0,reinterpret_cast<uintptr_t>(destination),built.family_views,built.family_count,now());
     stereo_observe(0,reinterpret_cast<uintptr_t>(destination),built.family_views,built.family_count,now());
@@ -3176,6 +3182,9 @@ uintptr_t barrier_identity(IUnknown* object) {
 void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RESOURCE_BARRIER* barriers) {
     if(stereo_publish_bypass){original_resource_barrier(list,count,barriers);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_resource_barrier(list,count,barriers);}auto frame_guard=frame_lock();const auto owned=frame_link.owned_status();
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+    ngx_epoch_pair::BarrierScope epoch_barriers(list,count,barriers,reinterpret_cast<uintptr_t>(_ReturnAddress()));
+#endif
     ngx_stereo_host::barriers(list,count,barriers,reinterpret_cast<uintptr_t>(_ReturnAddress()));
     death_hdr_timeline::barriers_event(list,count,barriers,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     {gears_render_cost::Scope cost(gears_render_cost::barrier_observation);
@@ -3212,12 +3221,19 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
         }
     }
     }original_resource_barrier(list,count,barriers);
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+    epoch_barriers.returned(list);
+#endif
 }
 #endif
 #include "owned_scene_gpu_hooks.inl"
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
     if(stereo_publish_bypass)return ngx_output_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return ngx_output_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);}auto frame_guard=frame_lock();HRESULT result=ngx_output_pixels::reset_passthrough(list,allocator,state,original_reset_list);
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return ngx_output_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);}auto frame_guard=frame_lock();
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+    const auto epoch_reset_before=ngx_epoch_pair::list(list);
+#endif
+    HRESULT result=ngx_output_pixels::reset_passthrough(list,allocator,state,original_reset_list);
     death_hdr_pixels::reset_after_original(list,result);
     death_pso_cache::reset(list,result);
     gears_render_cost::Scope cost(gears_render_cost::reset_tracking);
@@ -3239,6 +3255,9 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
             if(!frame_target_stats.reset(reinterpret_cast<uintptr_t>(list)))frame_link.invalidate();}
         else {++frame_counts.reset_failed;frame_link.invalidate_list(identity);}
     }
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+    ngx_epoch_pair::reset(epoch_reset_before,list,result);
+#endif
     return result;
 }
 void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count,const D3D12_VIEWPORT* values) {

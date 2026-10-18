@@ -247,6 +247,9 @@ WrapperScope::WrapperScope(bool eval,bool owned,uintptr_t caller,uintptr_t comma
         // exhausted bank must not permanently suppress the new feature's typed
         // inputs. Initial epoch plus at most three Creates bounds total work.
         if(epochs<4)sampled_tickets=typed_observations=0;}
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+    if(eval)ngx_epoch_pair::eval_enter(reinterpret_cast<uintptr_t>(this),owned,caller,command,structure,concurrent);
+#endif
     if(epochs>=4||(eval&&epoch_evals>=2)||row_count==rows.size()){++limited;return;}
     gears_ngx_route::Row native;native.evaluate=eval;native.structure=reinterpret_cast<uintptr_t>(structure);
     auto before=ngx_route_observer::sample(native,owned);
@@ -263,9 +266,20 @@ WrapperScope::~WrapperScope(){std::lock_guard<std::recursive_mutex> lock(frame_h
            (source_result&0xfff00000u)!=0xbad00000u&&uint32_t(result)==source_result&&
            read(handle,base,gears_ngx_route::handle_cell_rva)&&handle&&handle==source.handle&&
            read(parameters,base,gears_ngx_route::parameter_cell_rva)&&parameters==source.parameters&&
-           read_create_fields(fields,source_structure)&&fields==source.fields)latest_native_create=source;
+           read_create_fields(fields,source_structure)&&fields==source.fields){latest_native_create=source;
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+            ngx_epoch_pair::created(source);
+#endif
+        }else{
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+            ngx_epoch_pair::changed();
+#endif
+        }
         source_create_scope=previous_source;
     }
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+    if(evaluate)ngx_epoch_pair::eval_leave(reinterpret_cast<uintptr_t>(this),returned&&std::uncaught_exceptions()==exceptions,result);
+#endif
     if(counted&&in_wrappers)--in_wrappers;
     if(row>=0){auto& value=rows[unsigned(row)];gears_ngx_route::Row native;native.evaluate=evaluate;native.structure=value.structure;
         value.after=ngx_route_observer::sample(native,true);value.returned=returned;value.wrapper_result=result;
@@ -294,7 +308,14 @@ uint32_t __fastcall hook_create(uintptr_t command,uint32_t feature,uintptr_t par
     return result;
 }
 uint32_t __fastcall hook_evaluate(uintptr_t command,uintptr_t handle,uintptr_t parameters,uintptr_t callback){
-    Scope active_scope;int selected=-1;{std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    Scope active_scope;int selected=-1;
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+    int pair_dispatch=-1;
+#endif
+    {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+        pair_dispatch=ngx_epoch_pair::dispatch(command,handle,parameters,callback);
+#endif
         if(attested&&recording.load()&&current_row>=0&&rows[unsigned(current_row)].evaluate){selected=current_row;auto& row=rows[unsigned(selected)];++row.dispatches;
             row.dispatcher_entry=now();row.consumed_handle=handle;row.consumed_parameters=parameters;row.callback=callback;
             row.dispatcher_match=row.dispatches==1&&row.command==command&&row.before.slots_mask==3&&row.before.fields_mask==0x7ffff&&row.before.handle==handle&&row.before.parameters==parameters&&!callback;
@@ -302,10 +323,17 @@ uint32_t __fastcall hook_evaluate(uintptr_t command,uintptr_t handle,uintptr_t p
         else ++foreign_dispatches;}
     auto owner=current_control();const auto result=owner?owner->bridge().evaluate_dispatch(command,handle,parameters,callback,original_evaluate):
         original_evaluate(command,handle,parameters,callback);
-    if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=rows[unsigned(selected)];row.dispatch_result=result;row.dispatcher_returned=true;row.dispatcher_exit=now();}return result;
+    if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=rows[unsigned(selected)];row.dispatch_result=result;row.dispatcher_returned=true;row.dispatcher_exit=now();}
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+    {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);ngx_epoch_pair::dispatched(pair_dispatch,result);}
+#endif
+    return result;
 }
 uint32_t __fastcall hook_release(uintptr_t handle){Scope active_scope;int selected=-1;
     {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+        ngx_epoch_pair::released(handle);
+#endif
         if(handle==latest_native_create.handle||in_wrappers){latest_native_create={};++native_create_revision;}
         if(attested&&recording.load()&&release_count<releases.size()){
         selected=int(release_count++);auto& row=releases[unsigned(selected)];row.handle=handle;row.caller=reinterpret_cast<uintptr_t>(_ReturnAddress());row.entry=now();
@@ -315,6 +343,9 @@ uint32_t __fastcall hook_release(uintptr_t handle){Scope active_scope;int select
 }
 void copy_passthrough(ID3D12GraphicsCommandList* command,D3D12_TEXTURE_COPY_LOCATION const* destination,UINT x,UINT y,UINT z,
     D3D12_TEXTURE_COPY_LOCATION const* source,D3D12_BOX const* box,uintptr_t caller,CopyFn forward){
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+    ngx_epoch_pair::CopyScope epoch_copy(command,destination,x,y,z,source,box,caller);
+#endif
     int selected=-1;D3D12_TEXTURE_COPY_LOCATION src{},dst{};
     {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);int candidate=current_row>=0?current_row:pending_row;
         if(attested&&recording.load()&&candidate>=0&&rows[unsigned(candidate)].evaluate&&safe_copy(&src,source,sizeof(src))&&safe_copy(&dst,destination,sizeof(dst))){
@@ -326,11 +357,17 @@ void copy_passthrough(ID3D12GraphicsCommandList* command,D3D12_TEXTURE_COPY_LOCA
     if(!ngx_capture_control::copy(command,destination,x,y,z,source,box,caller,forward))
 #endif
         forward(command,destination,x,y,z,source,box);
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+    epoch_copy.returned(command,destination,source,box);
+#endif
     if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=rows[unsigned(selected)];D3D12_TEXTURE_COPY_LOCATION fresh_source{},fresh_destination{};
         row.copy_returned=safe_copy(&fresh_source,source,sizeof(fresh_source))&&safe_copy(&fresh_destination,destination,sizeof(fresh_destination))&&
             fresh_source.pResource==src.pResource&&fresh_destination.pResource==dst.pResource&&fresh_source.Type==src.Type&&fresh_destination.Type==dst.Type&&same(list(command),row.copy_list);}
 }
 void execute_passthrough(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* commands,ExecuteFn forward){
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+    ngx_epoch_pair::ExecuteScope epoch_execute(queue,count,commands);
+#endif
     std::array<List,64> members{};bool readable=false;uint64_t order{};
     {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(attested&&recording.load()){
         order=++execute_sequence;std::array<ID3D12CommandList*,64> raw{};readable=count<=raw.size()&&(!count||safe_copy(raw.data(),commands,count*sizeof(raw[0])));
@@ -339,6 +376,9 @@ void execute_passthrough(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*
     ngx_capture_control::execute(queue,count,commands,forward);
 #else
     forward(queue,count,commands);
+#endif
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+    epoch_execute.returned();
 #endif
     if(!order)return;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const auto queue_id=canonical_identity(queue);
     for(unsigned i=0;readable&&i<row_count;++i){auto& row=rows[i];
@@ -370,18 +410,29 @@ constexpr Contract contracts[]{
     {0x7c80d0,0x152,"f42ccc68bce5664a9d28f2219904a8671ab47975f4a455d9a4f19ede83d16689"}
 };
 bool enable(FILE* file){if(current_control())return false; // Never reset a retained live SDK owner.
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+    ngx_epoch_pair::reset_capture(false);
+#endif
     attested=false;printed=false;bank={};rows={};releases={};row_count=epoch_evals=epochs=in_wrappers=release_count=0;
     latest_native_create={};native_create_revision=0;source_create_scope=nullptr;
     sampled_tickets=typed_observations=total_sampled_tickets=total_typed_observations=0;
     sequence=execute_sequence=limited=foreign_dispatches=read_failures=0;current_row=pending_row=-1;
     if(self_testing||!continuous_session||!frame_link_diagnostics||!color_copy_diagnostics)return false;
     bool matched=true;for(auto const& contract:contracts)matched=ngx_route_observer::verify(file,contract.rva,contract.size,contract.hash)&&matched;
-    attested=matched;fprintf(file,"ngx_stereo_host_identity enabled=1 attested=%u chunks=10 mode=readonly sdk_mutation=0 gpu_commands_added=0\n",unsigned(attested));return attested;
+    attested=matched;
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+    ngx_epoch_pair::reset_capture(matched);
+#endif
+    fprintf(file,"ngx_stereo_host_identity enabled=1 attested=%u chunks=10 mode=readonly sdk_mutation=0 gpu_commands_added=0\n",unsigned(attested));return attested;
 }
 bool install_hooks(){return attested&&install(reinterpret_cast<void*>(base+0x7c82f0),reinterpret_cast<void*>(hook_create),reinterpret_cast<void**>(&original_create))&&
     install(reinterpret_cast<void*>(base+0x7c8440),reinterpret_cast<void*>(hook_evaluate),reinterpret_cast<void**>(&original_evaluate))&&
     install(reinterpret_cast<void*>(base+0x7c87e0),reinterpret_cast<void*>(hook_release),reinterpret_cast<void**>(&original_release));}
-void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(printed)return;printed=true;
+void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+#if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
+    ngx_epoch_pair::print(file);
+#endif
+    if(printed)return;printed=true;
     const bool drained=!recording.load()&&active.load()==0;
     fprintf(file,"ngx_stereo_host_budget sampled_tickets=%u ticket_limit_per_epoch=8 typed_observations=%u typed_limit_per_epoch=512 total_sampled_tickets=%u total_ticket_limit=32 total_typed_observations=%u total_typed_limit=2048 per_ticket_resources=64 per_ticket_draw_groups=64 draw_candidates_per_input=2\n",sampled_tickets,typed_observations,total_sampled_tickets,total_typed_observations);
     fprintf(file,"ngx_stereo_host enabled=1 attested=%u rows=%u epochs=%u limited=%llu foreign_dispatches=%llu read_failures=%llu rows_unavailable=%u gpu_completion_verified=0 producer_draw_is_write_proof=0 typed_resource_leases=1 depth_stencil_descriptor_resolved=0\n",
