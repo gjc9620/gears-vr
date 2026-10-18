@@ -46,3 +46,22 @@ The shared implementation boundary is complete normalized content bounds plus `g
 `UiSceneLogicalLayoutTest` passes MSVC `/O2 /W4 /WX /UNDEBUG`, including two invocations with identical function/frame addresses, split text atlases, material geometry, foreign overlap, incomplete/changed proof and atomic rejection. The existing observer test instantiates the adapter against its real Row type and passes; shared placement/HUD tests and seven decoder tests also pass. CMake test wiring is supplied separately to the coordinator; no runtime Hook, admission scope, layout policy or default manifest changes.
 
 The minimum remaining evidence is one actual Hammer event linked to its pickup action identity and unique completed invocation, all of that invocation's text/tile/material members without an intervening flush, and the independent world/ticket/resource plus GPU viewport/scissor proof. Those facts must then authorize one immutable recipe for every member and bypass ordinary per-entry layout for that group. Current105 evidence has no Hammer or PathChoice coverage and predates runtime verification of the unique-token extension. This candidate has no GPU replay, hitbox or headset acceptance; enabling it for all HUD or writing a guessed Hammer offset remains unsupported.
+
+## 2026-10-19 — complete-group sampling candidate prepared
+
+Root built a separate `build-runtime-resolution1-ui-group` candidate with both
+`GEARS_UI_CALL_BOUNDARY_OBSERVER` and `GEARS_UI_LOGICAL_GROUP_OBSERVER` enabled.
+It includes the current PathChoice close/position renewal fixes. DLL SHA256:
+`7066f6c2faebc7b5a8a706c75de57c9cba7cbe7d64d531e178f9bb4624413366`.
+All 22 startup checks plus PositionService and CloseRestore tests passed.
+The private build command, manifest and checks are under ignored analysis/runtime
+(`build-runtime-ui-group.cmd`, `manifest-runtime-ui-group.json`,
+`ui-group-startup-checks.json`). No default player manifest/package was changed.
+
+The missing evidence remains an actual Hammer pickup/action invocation with its
+complete text/icon/material membership and corresponding GPU output. Historical
+chapter providers must be read again in the live process; old PID/address/index
+values cannot be replayed. Current fit_invocation is not yet wired into shared
+text/material replay. This build prepares that evidence collection only; it does
+not claim Hammer placement or common UI layout is fixed. No game was started for
+this candidate's checks.
