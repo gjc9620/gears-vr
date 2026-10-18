@@ -14,6 +14,8 @@
 
 ### UI 定向采样的导航进展
 
+后续改用正式启动器 Continue 流程，避免章节导航阻挡布局调查。sample12发现私有提示探针误写反射属性 `MyHUD`，现按既有声明及 `ui_observer_config.py` 修正为精确 `myHUD`；未放宽对象身份或复读校验。sample13前三次读取中两次因对象表变化拒绝，第三次取得有效快照：ActiveAction/PreviousAction均为type0、名字None、文字空，6条相机／玩家／HUD关系通过校验。最终8组HUD记录中DrawActions已返回但body_calls=0、没有DrawActionInfo，因此仍未覆盖拾取提示的实际绘制组。下一步寻找可验证的附近交互目标，不重复以静止无提示场景冒充布局验收。sample12/13均正常停止、原生清理和入口恢复通过，5文件原哈希独立核验恢复；sample13保存3份GPU文件，但此记录不宣称它们证明提示布局正确。
+
 sample3 实际确认初始 `GameUISceneClient` 缺失可以通过已有初始化白名单等待至 ready，并完成标题／联网提示两次确认；章节脚本在 Main Enter 后 readiness 校验失败，当时没有保存失败快照，具体字段未知。sample4 加入有界就绪等待及失败状态保存后，已通过战役、Act 1 至 `DeltaSelectMap/lstMaps`，随后第四次 Down 后未取得精确下一索引确认而停止。不能据此断定是延迟、丢键或列表跳项；正在补充索引确认诊断。
 
 两轮均在 native 激活前取消，正常关闭游戏，独立核验5个原文件哈希恢复一致。它们验证导航进展，不是黎明之锤提示布局或双目图像验收。原始回执为 ignored `analysis/runtime/hammer-ui-sample3-20261019.json`、`hammer-ui-sample4-20261019.json` 及对应 chapter-route 回执。既有菜单控制36项、sample3私有4项、route4私有16项离线测试通过。
