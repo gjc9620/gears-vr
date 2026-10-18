@@ -173,7 +173,8 @@ static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
     require(!publisher.retire_owned_source(2,7)&&!publisher.retire_owned_source(1,8)&&!source_destroyed,"wrong source retirement identity accepted");
     require(publisher.retire_owned_source(1,7)&&source_destroyed,"idle source references not fully released");
     retained_source=nullptr; // Never inspect the released COM object.
-    require(!publisher.retire_owned_source(1,7),"source retirement replay accepted");
+    require(publisher.retire_owned_source(1,7)&&!publisher.retire_owned_source(1,8)&&
+        !publisher.retire_owned_source(2,7),"source retirement retry lost exact identity");
     require(metadata.packet->sequence==old_sequence&&same_ticket(metadata.packet->ticket,old_ticket)&&
         metadata.packet->ready==1&&metadata.packet->stopped==0&&receiver.generation()==resource_generation,"retirement changed shared snapshot");
     auto replacement=texture(gpu.device.Get(),64,true,idle);
@@ -192,6 +193,8 @@ static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
     require(!publisher.capture_resource(replacement.Get(),8,idle,ticket(4),&detached)&&detached.reason==GpuCaptureReason::owned_binding_mismatch,"detached publisher admitted source");
     require(!publisher.capture(nullptr),"detached publisher fell through swapchain path");
     require(!publisher.bind_resource(gpu.queue.Get(),replacement.Get(),7,idle),"old resource generation rebound");
+    require(!publisher.bind_resource(gpu.queue.Get(),replacement.Get(),8,
+        idle==D3D12_RESOURCE_STATE_COMMON?D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE:D3D12_RESOURCE_STATE_COMMON),"idle contract changed on rebind");
     require(!publisher.bind_resource(gpu.queue.Get(),replacement.Get(),8,idle,true),"simulation policy changed on rebind");
     auto resized=texture(gpu.device.Get(),128,true,idle);
     require(!publisher.bind_resource(gpu.queue.Get(),resized.Get(),8,idle),"owned descriptor resized");

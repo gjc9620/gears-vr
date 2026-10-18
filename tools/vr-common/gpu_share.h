@@ -168,7 +168,7 @@ public:
                SUCCEEDED(r_device.As(&r_identity))&&q_identity.Get()==r_identity.Get()&&
                SUCCEEDED(resource->QueryInterface(IID_PPV_ARGS(&identity)))) {
                 ComPtr<IUnknown> old_queue,new_queue;
-                const bool same_binding=first||(same_desc(desc,bound_desc)&&q_identity.Get()==bound_device_identity.Get()&&
+                const bool same_binding=first||(idle==bound_idle&&same_desc(desc,bound_desc)&&q_identity.Get()==bound_device_identity.Get()&&
                     SUCCEEDED(queue.As(&old_queue))&&SUCCEEDED(q->QueryInterface(IID_PPV_ARGS(&new_queue)))&&old_queue.Get()==new_queue.Get());
                 if(same_binding){
                     device=q_device;queue=q;bound_resource=resource;bound_identity=identity;bound_device_identity=q_identity;
@@ -349,10 +349,11 @@ public:
     // poll() must first observe producer completion; never fabricate an ACK.
     bool retire_owned_source(std::uint64_t expected_world,UINT64 expected_resource_generation){
         if(!TryAcquireSRWLockExclusive(&lock))return false;
-        const bool ok=state==2&&world_quiescing_&&expected_world&&expected_world==world_generation_&&
-            owned_binding_&&!owned_detached_&&bound_resource&&expected_resource_generation==bound_generation&&
-            owned_matches(bound_resource.Get(),bound_generation,bound_idle)&&gpu_idle_complete(idle_locked());
-        if(ok){
+        const bool identity=state==2&&world_quiescing_&&expected_world&&expected_world==world_generation_&&
+            owned_binding_&&expected_resource_generation==bound_generation&&gpu_idle_complete(idle_locked());
+        const bool ok=identity&&((owned_detached_&&!source&&!bound_resource&&!bound_identity&&retired_owned_world_==expected_world)||
+            (!owned_detached_&&bound_resource&&owned_matches(bound_resource.Get(),bound_generation,bound_idle)));
+        if(ok&&!owned_detached_){
             retired_owned_world_=world_generation_;retired_owned_ticket_=packet->ticket.id;
             source.Reset();bound_resource.Reset();bound_identity.Reset();owned_detached_=true;
         }
