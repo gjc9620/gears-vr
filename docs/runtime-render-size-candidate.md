@@ -10,6 +10,29 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ### Blocking image defect at scale 2.0
 
+Source-owner candidate tested, **insufficient to fix coverage**: source view
+construction now receives the same owned family/target copy as renderer
+construction, while original source/family authentication and immutability
+remain. Historical assembly at 15efd3–15efed reads family target dimensions
+into +60/+64 and 15f056–15f07b derives sampling values. Coordinator re-exported
+15ef46..15f171 and matched source blob bytes; slice SHA256
+`aa69699eb320146c91b18aec3a0d8182d8bbb8246f8a61cde0d2bc977fa80c4e`.
+
+Private build `build-runtime-source-owner1` (DLL SHA256
+`9f1c581f07091dea5789dcb38fb63a0619386eaa3a302baf1841da1eb3378f25`)
+compiled with 462 tracked dependencies; 22 continuous startup checks passed.
+Actual `runtime-source-owner1-scale2-run2-20261019` completed two reloads and
+77 restored-entry checks; five file hashes independently matched and no game
+remained. But both 5120x2800 GPU images still have zero pixels above channel
+value4 in columns3840..5119. The first image was visually inspected; the
+original right/bottom defect persists. Report SHA256
+`3a7639ec12ceeccb60e10e0a6813c3d51830d76e4ab5bd4923c2f5c084820eea`.
+Do not promote this candidate or claim the constructor mismatch is the sole
+cause. Next evidence must follow owned-ticket dimensions through renderer
+construction/prepare and scene passes; existing first-frame traces are
+bootstrap observations. Run1 stopped before game creation because the fresh
+build lacked GraphicsMenuLockTest; built the missing target before run2.
+
 Actual `runtime-integration-checkpoint-scale2-run2-20261019` completed two
 reloads, new-world XR projection, normal shutdown and restoration. Its
 `passed=true` covers those mechanical checks only: both GPU files are 5120x2800

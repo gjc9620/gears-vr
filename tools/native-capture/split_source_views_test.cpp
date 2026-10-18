@@ -7,6 +7,8 @@
 namespace {
 unsigned allocations{},constructs{},destroys{},frees{},allocation_limit=100;
 bool bad_matrix{},alias_array{},fail_constructor{};
+bool derive_owner_bounds{},wrong_output_owner{};
+struct FakeTarget {int width,height;};
 gears_vr::StereoMatrices* update_during_constructor{};
 unsigned update_at_construct{};
 uintptr_t aliased{};
@@ -66,6 +68,13 @@ void* __fastcall construct(void* destination,void* owner,void* state,void*,void*
     auto bytes=static_cast<unsigned char*>(destination);
     memcpy(bytes,&owner,8);memcpy(bytes+8,&state,8);
     float rectangle[]={x,y,width,height};memcpy(bytes+0x48,rectangle,16);
+    if(derive_owner_bounds){
+        FakeTarget* target{};memcpy(&target,static_cast<unsigned char*>(owner)+0x10,sizeof(target));
+        const int output[]={0,0,target->width,target->height};memcpy(bytes+0x58,output,16);
+        const float derived[]={width/target->width,height/target->height,1.f/target->width,1.f/target->height};
+        memcpy(bytes+0x3d0,derived,sizeof(derived));
+        if(wrong_output_owner){void* invalid=nullptr;memcpy(bytes,&invalid,sizeof(invalid));}
+    }
     memcpy(bytes+0x70,view,64);memcpy(bytes+0xb0,projection,64);
     if(update_during_constructor && constructs==update_at_construct){
         update_during_constructor->view[1][12]=999;update_during_constructor->projection[1][8]=999;}
@@ -255,6 +264,47 @@ int main() {
         if(!release(api,result))return 57;
     }
     memcpy(source,untouched.data(),sizeof(source));
+    // Model the certified constructor dependency: output integer bounds and
+    // normalized sampling fields come from owner+0x10, not its float arguments.
+    // This is a CPU ownership/ABI test, not proof of actual-game scene coverage.
+    {
+        FakeTarget desktop{3840,2160},owned{5120,2800};
+        auto desktop_ptr=&desktop;memcpy(family+0x10,&desktop_ptr,sizeof(desktop_ptr));
+        std::array<unsigned char,sizeof(family)> original_family{};memcpy(original_family.data(),family,sizeof(family));
+        auto constructor_family=original_family;auto owned_ptr=&owned;
+        memcpy(constructor_family.data()+0x10,&owned_ptr,sizeof(owned_ptr));
+        const auto saved=untouched;const FixedOutputBounds fixed{5120,2800};
+        derive_owner_bounds=true;
+        // Default owner remains the original, demonstrating the old derived size.
+        result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,false,false,Phase::a1,&custom,&fixed);
+        if(result.checks!=63||result.inputs[0].pointer(0)!=family)return 101;
+        int old_width{};memcpy(&old_width,static_cast<unsigned char*>(result.views[0])+0x60,4);
+        if(old_width!=3840||!release(api,result))return 102;
+        result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,false,false,Phase::a1,&custom,&fixed,nullptr,constructor_family.data());
+        if(result.checks!=63||memcmp(source,saved.data(),sizeof(source))||
+           memcmp(family,original_family.data(),sizeof(family)))return 103;
+        for(unsigned i=0;i<2;++i){
+            const auto bytes=static_cast<unsigned char*>(result.views[i]);void* actual_owner{};memcpy(&actual_owner,bytes,sizeof(actual_owner));
+            int bounds[4]{};memcpy(bounds,bytes+0x58,sizeof(bounds));float derived[4]{};memcpy(derived,bytes+0x3d0,sizeof(derived));
+            if(actual_owner!=constructor_family.data()||bounds[0]||bounds[1]||bounds[2]!=5120||bounds[3]!=2800||
+               derived[0]!=0.5f||derived[1]!=1.f||derived[2]!=1.f/5120||derived[3]!=1.f/2800||
+               result.inputs[i].pointer(0)!=family)return 104;
+        }
+        if(!release(api,result))return 105;
+        wrong_output_owner=true;
+        result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,false,false,Phase::a1,&custom,&fixed,nullptr,constructor_family.data());
+        if(result.checks==63||!result.cleanup_safe||!release(api,result))return 106;
+        wrong_output_owner=false;
+        // A valid constructor copy must not authenticate a source whose original
+        // owner was replaced: reject before allocating either eye.
+        const auto before_allocations=allocations,before_constructs=constructs;
+        void* forged_original_owner=constructor_family.data();memcpy(source,&forged_original_owner,sizeof(forged_original_owner));
+        result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,false,false,Phase::a1,&custom,&fixed,nullptr,constructor_family.data());
+        if(result.rejection!=1||result.input_evidence.failure_mask!=family_mismatch||
+           allocations!=before_allocations||constructs!=before_constructs)return 107;
+        memcpy(source,saved.data(),sizeof(source));derive_owner_bounds=false;
+        memcpy(family,family_before.data(),sizeof(family));
+    }
     // Actual native family Create1706x720 -> per-eye853x720. Preserve the
     // 1280 output stride: packing the right input at853 would overlap Copy0.
     // The synthetic native constructor receives the reduced arguments itself.

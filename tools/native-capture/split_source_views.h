@@ -34,7 +34,11 @@ inline bool map_outside_view(gears_source_map::Snapshot const& map,std::uintptr_
 inline Result create(API api,void* family,void* source,void* right_state,bool output_bounds=false,bool preserve_geometry=false,
     bool projection_control=false,gears_projection::Phase phase=gears_projection::Phase::a1,
     const gears_vr::StereoMatrices* stereo=nullptr,const FixedOutputBounds* fixed_output=nullptr,
-    const RenderInputBounds* render_input=nullptr) {
+    const RenderInputBounds* render_input=nullptr,void* constructor_family=nullptr) {
+    // family authenticates the immutable original source. The caller-owned
+    // constructor family must remain alive through renderer construction and clone release.
+    // Its target may differ; never substitute it into the original-source guard.
+    void* const output_family=constructor_family?constructor_family:family;
     Result result{};gears_source_args::Snapshot original{};
     const auto fixed=fixed_output?*fixed_output:FixedOutputBounds{};
     if(fixed_output&&(!stereo||(fixed.width<128||fixed.width>8192||fixed.width%2||fixed.height<64||fixed.height>8192))){
@@ -120,7 +124,7 @@ inline Result create(API api,void* family,void* source,void* right_state,bool ou
     bool returned=true;
     for(unsigned i=0;i<2;++i) {
         void* state=i?right_state:original.pointer(8);
-        returned=returned && result.inputs[i].invoke(api.construct,result.views[i],family,state)==result.views[i];
+        returned=returned && result.inputs[i].invoke(api.construct,result.views[i],output_family,state)==result.views[i];
         if(!returned || !api.read(outputs[i].bytes.data(),result.views[i],0x430)){result.rejection=6;return result;}
     }
     result.checks|=4;
@@ -128,7 +132,7 @@ inline Result create(API api,void* family,void* source,void* right_state,bool ou
     constexpr size_t arrays[]={0x380,0x390,0x3ec,0x400};
     for(unsigned i=0;i<2;++i) {
         auto& output=outputs[i];auto& input=result.inputs[i];
-        matching=matching && output.pointer(0)==family && output.pointer(8)==(i?right_state:original.pointer(8)) &&
+        matching=matching && output.pointer(0)==output_family && output.pointer(8)==(i?right_state:original.pointer(8)) &&
             !memcmp(output.bytes.data()+0x48,input.bytes.data()+0x48,16) &&
             !memcmp(output.bytes.data()+0x70,input.bytes.data()+0x70,128);
         if((!maps&&output.pointer(0x140)) || output.pointer(0x418))safe=false;

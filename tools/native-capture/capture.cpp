@@ -2618,8 +2618,13 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         }
     }
 #endif
+    // Native source construction derives output bounds/UVs from family+0x10.
+    // Use the same caller-owned family copy as the renderer, while retaining
+    // original family/source authentication. This stack copy outlives clone release.
+    split_family=original_family_bytes;
+    if(owned_scene_target)memcpy(split_family.data()+0x10,&owned_scene_target,sizeof(owned_scene_target));
     auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state,submit_output_bounds,submit_mono_control || submit_duplicate_control,projection_control,projection.phase,stereo_xr?&frame.expected:nullptr,
-        constructor_output,constructor_input);
+        constructor_output,constructor_input,owned_scene_target?split_family.data():family);
 #if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
     if(constructor_input&&sources.checks==63){
         if(!ngx_stereo_host::native_create_matches(native_source)){
@@ -2676,11 +2681,9 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     // finish constructing this renderer so its normal retirement can drain it.
     if(origin_trial_enabled&&!origin_trial.commit(frame.origin.selection,true)){
         ++origin_commit_failed;request_session_stop(SessionStop::proof_failure);}
-    split_family=original_family_bytes;
     if(owned_scene_target){
         if(!native_owned_scene_select(destination,frame.id,owned_scene_target))request_session_stop(SessionStop::proof_failure);
         else owned_ui_live::selected(frame.id);
-        memcpy(split_family.data()+0x10,&owned_scene_target,sizeof(owned_scene_target));
     }
     if(stereo_xr&&frame.enabled){std::lock_guard<std::mutex> lock(stereo_mutex);auto timestamp=now();
         record_stereo_reference(frame,timestamp);
