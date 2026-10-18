@@ -47,6 +47,7 @@ struct Row {
 struct ReleaseRow {uintptr_t handle{},caller{},vendor{},module{};uint32_t result{};bool returned{},vendor_module_named{};long long entry{},exit{};};
 bool attested{},printed{};TicketBank bank;std::array<Row,12> rows{};unsigned row_count{},epoch_evals{},epochs{},in_wrappers{},release_count{};
 unsigned sampled_tickets{},typed_observations{};
+unsigned total_sampled_tickets{},total_typed_observations{};
 std::array<ReleaseRow,8> releases{};uint64_t sequence{},execute_sequence{},limited{},foreign_dispatches{},read_failures{};
 thread_local int current_row=-1,pending_row=-1;
 template<class T> bool read(T& value,uintptr_t address,uintptr_t offset=0){return ngx_route_observer::read(value,address,offset);}
@@ -69,7 +70,7 @@ Typed typed(ID3D12Resource*);bool vendor_owner(uintptr_t,uintptr_t&);UINT descri
 #endif
 bool available(){return attested&&recording.load()&&frame_link_diagnostics&&epoch_evals<2&&epochs<4;}
 bool select_bank(){if(!available())return false;auto owner=ngx_route_observer::ownership(true);if(!owner.associated)return false;
-    if(bank.world!=owner.world||bank.ticket!=owner.ticket){if(sampled_tickets==8)return false;++sampled_tickets;bank={};bank.world=owner.world;bank.ticket=owner.ticket;}
+    if(bank.world!=owner.world||bank.ticket!=owner.ticket){if(sampled_tickets==8)return false;++sampled_tickets;++total_sampled_tickets;bank={};bank.world=owner.world;bank.ticket=owner.ticket;}
     return true;
 }
 void barriers(ID3D12GraphicsCommandList* command,UINT count,D3D12_RESOURCE_BARRIER const* values,uintptr_t caller){
@@ -83,7 +84,7 @@ void barriers(ID3D12GraphicsCommandList* command,UINT count,D3D12_RESOURCE_BARRI
         // pResource is typed by the intercepted D3D12 API. NGX raw parameters
         // never enter typed()/QueryInterface. This records a transition request,
         // not a globally complete resource-state tracker or GPU completion.
-        if(typed_observations==512){++bank.dropped;continue;}++typed_observations;
+        if(typed_observations==512){++bank.dropped;continue;}++typed_observations;++total_typed_observations;
         bank.resources[slot]={typed(b.Transition.pResource),ref,bank.serial,caller,unsigned(b.Transition.StateBefore),
             unsigned(b.Transition.StateAfter),b.Transition.Subresource,unsigned(b.Flags)};
     }
@@ -146,7 +147,11 @@ WrapperScope::WrapperScope(bool eval,bool owned,uintptr_t caller,uintptr_t comma
     current_row=-1;pending_row=-1;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(!attested||!recording.load())return;
     const bool concurrent=in_wrappers++!=0;counted=true;if(previous>=0)rows[unsigned(previous)].nested=true;
-    if(!eval){++epochs;epoch_evals=0;bank={};}
+    if(!eval){++epochs;epoch_evals=0;bank={};
+        // A menu-created DLSS feature may follow many ordinary frames. Their
+        // exhausted bank must not permanently suppress the new feature's typed
+        // inputs. Initial epoch plus at most three Creates bounds total work.
+        if(epochs<4)sampled_tickets=typed_observations=0;}
     if(epochs>=4||(eval&&epoch_evals>=2)||row_count==rows.size()){++limited;return;}
     gears_ngx_route::Row native;native.evaluate=eval;native.structure=reinterpret_cast<uintptr_t>(structure);
     auto before=ngx_route_observer::sample(native,owned);
@@ -239,7 +244,7 @@ constexpr Contract contracts[]{
     {0x7c80d0,0x152,"f42ccc68bce5664a9d28f2219904a8671ab47975f4a455d9a4f19ede83d16689"}
 };
 bool enable(FILE* file){attested=false;printed=false;bank={};rows={};releases={};row_count=epoch_evals=epochs=in_wrappers=release_count=0;
-    sampled_tickets=typed_observations=0;
+    sampled_tickets=typed_observations=total_sampled_tickets=total_typed_observations=0;
     sequence=execute_sequence=limited=foreign_dispatches=read_failures=0;current_row=pending_row=-1;
     if(self_testing||!continuous_session||!frame_link_diagnostics||!color_copy_diagnostics)return false;
     bool matched=true;for(auto const& contract:contracts)matched=ngx_route_observer::verify(file,contract.rva,contract.size,contract.hash)&&matched;
@@ -250,7 +255,7 @@ bool install_hooks(){return attested&&install(reinterpret_cast<void*>(base+0x7c8
     install(reinterpret_cast<void*>(base+0x7c87e0),reinterpret_cast<void*>(hook_release),reinterpret_cast<void**>(&original_release));}
 void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(printed)return;printed=true;
     const bool drained=!recording.load()&&active.load()==0;
-    fprintf(file,"ngx_stereo_host_budget sampled_tickets=%u ticket_limit=8 typed_observations=%u typed_limit=512 per_ticket_resources=64 per_ticket_draw_groups=64 draw_candidates_per_input=2\n",sampled_tickets,typed_observations);
+    fprintf(file,"ngx_stereo_host_budget sampled_tickets=%u ticket_limit_per_epoch=8 typed_observations=%u typed_limit_per_epoch=512 total_sampled_tickets=%u total_ticket_limit=32 total_typed_observations=%u total_typed_limit=2048 per_ticket_resources=64 per_ticket_draw_groups=64 draw_candidates_per_input=2\n",sampled_tickets,typed_observations,total_sampled_tickets,total_typed_observations);
     fprintf(file,"ngx_stereo_host enabled=1 attested=%u rows=%u epochs=%u limited=%llu foreign_dispatches=%llu read_failures=%llu rows_unavailable=%u gpu_completion_verified=0 producer_draw_is_write_proof=0 typed_resource_leases=1 depth_stencil_descriptor_resolved=0\n",
         unsigned(attested),row_count,epochs,limited,foreign_dispatches,read_failures,unsigned(!drained));if(!drained)return;
     for(unsigned i=0;i<row_count;++i){auto const& row=rows[i];auto const& owner=row.before.ownership;

@@ -38,7 +38,7 @@ void STDMETHODCALLTYPE forward_copy(ID3D12GraphicsCommandList* command,D3D12_TEX
     unlocked();++copy_calls;assert(command==reinterpret_cast<ID3D12GraphicsCommandList*>(0x100)&&!x&&!y&&!z&&!box);assert(src->pResource==reinterpret_cast<ID3D12Resource*>(0x501)&&dst->pResource==reinterpret_cast<ID3D12Resource*>(0x500));}
 void STDMETHODCALLTYPE forward_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* commands){unlocked();++execute_calls;assert(queue==reinterpret_cast<ID3D12CommandQueue*>(0x200)&&count==1&&commands[0]==reinterpret_cast<ID3D12CommandList*>(0x100));}
 void host_reset(){reset();using namespace ngx_stereo_host;attested=true;printed=false;bank={};rows={};releases={};row_count=epoch_evals=epochs=in_wrappers=release_count=0;
-    sampled_tickets=typed_observations=0;
+    sampled_tickets=typed_observations=total_sampled_tickets=total_typed_observations=0;
     sequence=execute_sequence=limited=foreign_dispatches=read_failures=0;current_row=pending_row=-1;typed_calls=0;
     ngx_stereo_host::original_create=forward_create;ngx_stereo_host::original_evaluate=forward_eval;original_release=forward_release;frame_link.generation=1;
     dispatch_calls=copy_calls=execute_calls=release_calls=0;throw_dispatch=false;
@@ -73,6 +73,29 @@ void host_cases(){
     host_reset();ngx_stereo_host::typed_observations=512;observe_inputs();eval();
     assert(!ngx_stereo_host::typed_calls&&!ngx_stereo_host::rows[0].typed_mask&&ngx_stereo_host::rows[0].bank_dropped==4);
     host_reset();ngx_stereo_host::sampled_tickets=8;observe_inputs();eval();assert(!ngx_stereo_host::typed_calls&&!ngx_stereo_host::rows[0].typed_mask);
+    // Pre-menu normal frames may exhaust a bank before any NGX feature exists.
+    // Only a real observed Create epoch replenishes it, never arbitrary Eval.
+    host_reset();
+    for(unsigned epoch=0;epoch<4;++epoch){
+        if(epoch){ngx_stereo_host::WrapperScope create(false,true,base+0xbe66bc,0x100,creation.data());create.normal_return(1);}
+        assert(ngx_stereo_host::epochs==epoch);
+        for(unsigned ticket=1;ticket<=8;++ticket){
+            consuming_frame_ticket=consuming_frozen_frame.id=100*epoch+ticket;
+            for(unsigned repeat=0;repeat<16;++repeat)observe_inputs();
+        }
+        assert(ngx_stereo_host::sampled_tickets==8&&ngx_stereo_host::typed_observations==512);
+        assert(ngx_stereo_host::typed_calls==512*(epoch+1));
+        observe_inputs(); // Same-ticket typed quota is exhausted.
+        consuming_frame_ticket=consuming_frozen_frame.id=100*epoch+9;
+        observe_inputs(); // A ninth ticket cannot bypass either quota.
+        assert(ngx_stereo_host::typed_calls==512*(epoch+1));
+        consuming_frame_ticket=consuming_frozen_frame.id=100*epoch+8;
+        eval();assert(ngx_stereo_host::rows[ngx_stereo_host::row_count-1].typed_mask==15);
+        observe_inputs();assert(ngx_stereo_host::typed_calls==512*(epoch+1)); // Eval never replenishes.
+    }
+    {ngx_stereo_host::WrapperScope create(false,true,base+0xbe66bc,0x100,creation.data());create.normal_return(1);}
+    observe_inputs();assert(ngx_stereo_host::epochs==4&&ngx_stereo_host::typed_calls==2048);
+    assert(ngx_stereo_host::total_sampled_tickets==32&&ngx_stereo_host::total_typed_observations==2048);
     host_reset();observe_inputs();eval();frame_link.generation=2;auto* list=reinterpret_cast<ID3D12CommandList*>(0x100);
     ngx_stereo_host::execute_passthrough(reinterpret_cast<ID3D12CommandQueue*>(0x200),1,&list,forward_execute);
     assert(!ngx_stereo_host::rows[0].execute_generation_match&&execute_calls==1);
