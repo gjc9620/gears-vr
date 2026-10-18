@@ -1,5 +1,13 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19：实际界值确认整幅宽度下限冲突
+
+`dlss-native-menu11` 使用只读界值观察候选 DLL `1c0e6c21e5b1c71c24fb190ad19ab4b76d109860fe36f51c9081d98e4428c1db`，session `8935e971` / PID23756。Create 后与两次接受的 Eval 入口均记录相同参数身份，界值双读稳定：maxW/maxH=3840/2160，minW/minH=1920/1080；Eval ticket1483、revision1/world1，两眼实际输入仍为1920×1440。结合已保存且按完整chunk认证的 `be65cc` 路径（读取view宽，再按 `1ad1960` 族界值夹取），确认1280的每眼构造宽被整幅配置的1920最小宽度抬高。不能据此将所有DLSS问题归结于此，也不能仅改Eval宽度绕过有效范围。
+
+下一步应让每眼输出尺寸、GetOptimal结果、独立feature与输入域一致，再处理真实生产资源和输出生命周期；不修改发布默认以迁就旧整幅路径。此轮没有观察GetOptimal回调，不能宣称其调用已验证。运行时推荐尺寸×倍率仍是0.0.1正式默认，优先于DLSS。
+
+协调端独立确认 session stopped、native_cleanup_verified/entry_restore_verified=true，游戏已退出，5个受保护文件逐哈希恢复。原始状态 `analysis/runtime/dlss-native-menu11-native-status.txt` SHA256 `5523c7c6c383a575d5f80930aa91b21f7cc6d876262f480d93d9d49c057b5d7d`。候选3项CTest及22项启动验证通过；这些结果不等于正确双眼GPU图像或DLSS可玩验收。
+
 ## 2026-10-19：输入矩形实验实跑，Eval 宽度仍不一致
 
 当前发布开发基线已切为推荐每眼尺寸×倍率（见主进度文档），优先级高于DLSS。本节为私有game-resolution诊断，不替换默认模式；以下Native70等默认描述均属历史。
