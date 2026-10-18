@@ -8,6 +8,24 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+Attachments1 actual run completed two reloads and cleanup. DLL SHA
+`d2be0253dc8fcdd6e7a85811d28616dbde05b939969bb54948706c3b6b446193`.
+Ticket528/world2:1269 direct draws,120 groups, no overflow. Scene MRT slots1-3
+are5120x2800, formats24/26/29; first scene color slots also5120x2800.
+Two depth-only candidates (ordinals1 and1230) use3840x2160 viewport and the
+same raw DSV handle145b43cc0. Both observed stacks include native returns
+1af345 ->1ade10 ->27e752 ->119347 ->15a943. DSV resource size remains unknown.
+Cached27e580 pseudocode and newly exported historical assembly show its
+27e74d call passes color-disable edx0 and depth-enable r9d1 to1ad75c before
+the per-view loop. The two reads therefore identify a concrete depth-clear
+candidate still using desktop viewport; causal pixel effect remains untested.
+Historical slices27e580..27e752 and1ad75c..1ade10 match source blob
+911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6;
+hashes dd5aeb84d7bb96ebeb1b0d2f24f37ba12127dac74b872be038632fd94cdf0cea
+and34142122907196b48fa7c7b7ab28508837420c5a8e930c7c2b2f38fe57172622.
+Private IDA lease closed. Evidence: runtime-attachments1-scale2-run1-20261019
+artifacts and analysis/ida/ngx-copy-contract-20261019/clear-route-chunks.json.
+
 SourceRanges1 narrows the viewport hypothesis. DLL
 `1f4dc427d2a759cde44c2066bee5e1fff2ca95b26b022d25c3306405a639b7ed`
 passed startup/component tests and two actual checkpoint reloads with clean

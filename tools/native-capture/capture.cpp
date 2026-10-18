@@ -32,6 +32,7 @@
 #include "continuous_owner.h"
 #include "target_prime_owner.h"
 #include "gpu_viewport_stats.h"
+#include "owned_attachment_observer.h"
 #include "frame_link.h"
 #include "final_eye_diagnostics.h"
 #include "final_transfer_policy.h"
@@ -2319,14 +2320,19 @@ struct DrawRow {
 // tracker; no draw-time COM/resource query or retained lease is needed.
 struct DrawRangeRow {
     gears_viewport::Target target{};gears_viewport::DrawState state{};
+    gears_owned_attachments::Snapshot attachments{};uint64_t last_bind_serial{};
     uintptr_t caller{},quad_caller{},first_list{},last_list{},first_view{},last_view{};
     uint64_t calls{},first_ordinal{},last_ordinal{};
     unsigned eye=2,stage=4,mode=2,indexed{},targets{},eye_sources{};bool descriptor_capacity_lost{};
 };
 uintptr_t active_quad_caller();
+gears_owned_attachments::Tracker<> attachments;
 uint64_t ticket{},world{};uintptr_t renderer{},adapter{};bool finished{};
 std::array<Row,8> rows{};std::array<DrawRow,16> draws{};
 std::array<DrawRangeRow,128> draw_ranges{};unsigned draw_range_count{};
+struct ProbeStack {uint64_t ordinal{};uintptr_t list{},view{};unsigned eye=2,count{};
+    gears_owned_attachments::Snapshot attachments{};std::array<void*,12> frames{};};
+std::array<ProbeStack,2> probe_stacks{};unsigned probe_stack_count{};
 uint64_t direct_draw_count{},draw_range_overflow{},draw_unknown_eye{},draw_missing_target{};
 uint64_t draw_overflow_first{},draw_overflow_last{};
 bool same_draw_state(gears_viewport::DrawState const& a,gears_viewport::DrawState const& b){
@@ -2379,6 +2385,23 @@ void select(void* root,gears_submitted::FrameTicket const& frame,uintptr_t targe
     ticket=frame.id;world=frame.world_generation;renderer=reinterpret_cast<uintptr_t>(root);adapter=target;
     views(0,root,frame,left,right);
 }
+void bind_attachments(ID3D12GraphicsCommandList* list,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE const* handles,
+    BOOL contiguous,UINT stride,D3D12_CPU_DESCRIPTOR_HANDLE const* depth){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(finished)return;
+    D3D12_CPU_DESCRIPTOR_HANDLE depth_value{};
+    const bool depth_read=depth&&safe_copy(&depth_value,depth,sizeof(depth_value));
+    const auto snapshot=gears_owned_attachments::capture(count,contiguous!=FALSE,stride,frame_target_stats.descriptor_capacity_lost(),
+        [&](unsigned i,uintptr_t& out){D3D12_CPU_DESCRIPTOR_HANDLE value{};
+            if(!handles||!safe_copy(&value,handles+i,sizeof(value)))return false;out=value.ptr;return true;},
+        [&](uintptr_t handle){return frame_target_stats.lookup(handle);},depth!=nullptr,depth_read,depth_value.ptr);
+    attachments.bind(reinterpret_cast<uintptr_t>(list),snapshot);
+}
+void retire_attachments(uintptr_t list){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);attachments.retire(list);
+}
+void clear_attachments(){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);attachments.clear();
+}
 void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,bool indexed,unsigned elements,unsigned instances){
     if(!recording.load()||!elements||!instances||!consuming_owned_scene)return;
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
@@ -2387,6 +2410,7 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,bool indexed,unsigned
     const auto list_address=reinterpret_cast<uintptr_t>(list);
     const auto binding=frame_target_stats.binding(list_address);
     const auto state=frame_target_stats.draw_state(list_address);
+    const auto bound_attachments=attachments.binding(list_address);
     const bool capacity_lost=frame_target_stats.descriptor_capacity_lost();
     const auto draw_caller=caller>=base?caller-base:caller;
     const auto quad_caller=active_quad_caller();
@@ -2409,11 +2433,18 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,bool indexed,unsigned
     }
     if(eye==2)++draw_unknown_eye;
     if(!binding.target.resource)++draw_missing_target;
+    if(probe_stack_count<probe_stacks.size()&&binding.targets==0&&draw_caller==0x1af345&&
+       state.viewport_count==1&&state.viewport==gears_viewport::Rect{0,0,3840,2160}){
+        auto& probe=probe_stacks[probe_stack_count++];probe.ordinal=ordinal;probe.list=list_address;
+        probe.view=view;probe.eye=eye;probe.attachments=bound_attachments;
+        probe.count=CaptureStackBackTrace(0,static_cast<DWORD>(probe.frames.size()),probe.frames.data(),nullptr);
+    }
     DrawRangeRow* range{};
     for(unsigned i=0;i<draw_range_count;++i){auto& candidate=draw_ranges[i];
         if(candidate.target==binding.target&&candidate.targets==binding.targets&&candidate.eye==eye&&
            candidate.indexed==unsigned(indexed)&&candidate.caller==draw_caller&&
            candidate.quad_caller==quad_caller&&candidate.stage==stage&&candidate.mode==mode&&
+           gears_owned_attachments::same(candidate.attachments,bound_attachments)&&
            candidate.descriptor_capacity_lost==capacity_lost&&same_draw_state(candidate.state,state)){
             range=&candidate;break;
         }
@@ -2422,11 +2453,12 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,bool indexed,unsigned
         range=&draw_ranges[draw_range_count++];range->target=binding.target;range->state=state;
         range->targets=binding.targets;range->eye=eye;range->indexed=indexed;range->caller=draw_caller;
         range->quad_caller=quad_caller;range->stage=stage;range->mode=mode;
+        range->attachments=bound_attachments;
         range->descriptor_capacity_lost=capacity_lost;range->first_ordinal=ordinal;
         range->first_list=list_address;range->first_view=view;
     }
     if(range){++range->calls;range->last_ordinal=ordinal;range->last_list=list_address;
-        range->last_view=view;range->eye_sources|=eye_source;}
+        range->last_view=view;range->eye_sources|=eye_source;range->last_bind_serial=bound_attachments.serial;}
     else {if(!draw_range_overflow)draw_overflow_first=ordinal;++draw_range_overflow;draw_overflow_last=ordinal;}
     // Preserve the existing first draw for each geometry stage/mode as a
     // separate diagnostic; it no longer bounds the all-pass observations.
@@ -2461,7 +2493,7 @@ void print(FILE* status){
         b.targets,static_cast<unsigned long long>(b.target.resource),static_cast<unsigned long long>(b.target.width),b.target.height,b.target.mip,b.target.format,
         s.tracked?1:0,s.viewport_count,s.scissor_count,s.viewport.x,s.viewport.y,s.viewport.width,s.viewport.height,s.scissor.x,s.scissor.y,s.scissor.width,s.scissor.height);
     }
-    fprintf(status,"owned_ticket_draw_range_summary ticket=%llu world=%llu renderer=%llx rows=%u limit=128 total=%llu overflow_calls=%llu overflow_first_ordinal=%llu overflow_last_ordinal=%llu unknown_eye_calls=%llu missing_target_calls=%llu finished=%u aggregation=exact_tuple ordinal=cpu_pre_original_nonempty_direct_draw first_rtv_only=1 first_viewport_scissor_only=1 canonical_resource=1 eye_unknown=2 geometry_absent_stage=4 geometry_absent_mode=2 quad_absent=0 eye_source_bits=geometry:1,current_view:2 same_thread_consumer_only=1 observes_compute_copy_clear_indirect=0 pixels_verified=0\n",
+    fprintf(status,"owned_ticket_draw_range_summary ticket=%llu world=%llu renderer=%llx rows=%u limit=128 total=%llu overflow_calls=%llu overflow_first_ordinal=%llu overflow_last_ordinal=%llu unknown_eye_calls=%llu missing_target_calls=%llu finished=%u aggregation=exact_tuple ordinal=cpu_pre_original_nonempty_direct_draw primary_rtv_slot=0 attachment_slots=8 dsv_size_known=0 first_viewport_scissor_only=1 canonical_resource=1 eye_unknown=2 geometry_absent_stage=4 geometry_absent_mode=2 quad_absent=0 eye_source_bits=geometry:1,current_view:2 same_thread_consumer_only=1 observes_compute_copy_clear_indirect=0 pixels_verified=0\n",
         ticket,world,static_cast<unsigned long long>(renderer),draw_range_count,direct_draw_count,draw_range_overflow,
         draw_overflow_first,draw_overflow_last,draw_unknown_eye,draw_missing_target,finished?1:0);
     for(unsigned i=0;i<draw_range_count;++i){auto const& row=draw_ranges[i];auto const& t=row.target;auto const& s=row.state;
@@ -2472,6 +2504,24 @@ void print(FILE* status){
             static_cast<unsigned long long>(t.width),t.height,t.mip,t.format,unsigned(row.descriptor_capacity_lost),unsigned(s.tracked),s.viewport_count,s.scissor_count,
             s.viewport.x,s.viewport.y,s.viewport.width,s.viewport.height,s.scissor.x,s.scissor.y,s.scissor.width,s.scissor.height,
             unsigned(s.depth_known),s.min_depth,s.max_depth);
+        const auto& a=row.attachments;
+        fprintf(status,"owned_ticket_draw_attachments row=%u ticket=%llu world=%llu observed=%u first_bind_serial=%llu last_bind_serial=%llu targets=%u count_valid=%u read_mask=%u known_mask=%u rtv_complete=%u descriptor_capacity_lost=%u dsv_present=%u dsv_read=%u dsv_handle=%llx dsv_size_known=0 binding_overflow=%llu\n",
+            i,ticket,world,unsigned(a.observed),a.serial,row.last_bind_serial,a.count,unsigned(a.count_valid),a.read_mask,a.known_mask,
+            unsigned(a.complete()),unsigned(a.descriptor_capacity_lost),unsigned(a.depth_present),unsigned(a.depth_read),
+            static_cast<unsigned long long>(a.depth_handle),attachments.overflow());
+        for(unsigned slot=0;slot<std::min(a.count,8u);++slot){auto const& attachment=a.targets[slot];
+            fprintf(status,"owned_ticket_draw_attachment row=%u ticket=%llu world=%llu slot=%u handle=%llx readable=%u known=%u canonical=%llx width=%llu height=%u mip=%u format=%u\n",
+                i,ticket,world,slot,static_cast<unsigned long long>(a.handles[slot]),(a.read_mask>>slot)&1u,(a.known_mask>>slot)&1u,
+                static_cast<unsigned long long>(attachment.resource),static_cast<unsigned long long>(attachment.width),attachment.height,attachment.mip,attachment.format);
+        }
+    }
+    for(unsigned i=0;i<probe_stack_count;++i){auto const& probe=probe_stacks[i];auto const& a=probe.attachments;
+        fprintf(status,"owned_ticket_draw_probe_stack row=%u ticket=%llu world=%llu ordinal=%llu eye=%u list=%llx view=%llx caller=1af345 targets=0 viewport=0,0,3840,2160 bind_observed=%u bind_serial=%llu dsv_present=%u dsv_read=%u dsv_handle=%llx dsv_size_known=0 module_base=%llx stack_count=%u stack=",
+            i,ticket,world,probe.ordinal,probe.eye,static_cast<unsigned long long>(probe.list),static_cast<unsigned long long>(probe.view),
+            unsigned(a.observed),a.serial,unsigned(a.depth_present),unsigned(a.depth_read),static_cast<unsigned long long>(a.depth_handle),
+            static_cast<unsigned long long>(base),probe.count);
+        for(unsigned frame=0;frame<probe.count;++frame)fprintf(status,"%s%llx",frame?",":"",static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(probe.frames[frame])));
+        fprintf(status,"\n");
     }
 }
 }
@@ -3184,7 +3234,7 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     NativeOwnedShutdownRhiScope owned_shutdown_scope;
     final_transfer_live::normalizer::boundary();
     if(stereo_publish_bypass){owned_source_pixels::execute_passthrough(queue,count,lists,death_hdr_pixels::execute_passthrough);return;}
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();owned_source_pixels::execute_passthrough(queue,count,lists,death_hdr_pixels::execute_passthrough);return;}auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();owned_ticket_size_trace::clear_attachments();owned_source_pixels::execute_passthrough(queue,count,lists,death_hdr_pixels::execute_passthrough);return;}auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
     gears_frame_link::ExecutionToken owned_token{};
     gears_frame_link::ExecutionToken* owned=nullptr;
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
@@ -3217,6 +3267,8 @@ void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12C
     native_owned_scene_commit(scene_receipt);
     if(owned&&owned_token.value&&!frame_link.commit_execute(owned_token))++frame_counts.execute_rejected;
     if(retire_bindings)for(unsigned i=0;i<count;++i)owned_target_stats.retire(binding_ids[i]);
+    if(retire_bindings)for(unsigned i=0;i<count;++i)owned_ticket_size_trace::retire_attachments(reinterpret_cast<uintptr_t>(binding_lists[i]));
+    else if(count)owned_ticket_size_trace::clear_attachments(); // Membership unreadable/unbounded: retain no stale OM state.
     record.duration=now()-record.time;enqueue(record);
 }
 bool desktop_mirror_present(IDXGISwapChain* chain,UINT flags){
@@ -3525,11 +3577,12 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
 #include "owned_scene_gpu_hooks.inl"
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
     if(stereo_publish_bypass)return owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);}auto frame_guard=frame_lock();
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();owned_ticket_size_trace::retire_attachments(reinterpret_cast<uintptr_t>(list));return owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);}auto frame_guard=frame_lock();
 #if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
     const auto epoch_reset_before=ngx_epoch_pair::list(list);
 #endif
     HRESULT result=owned_source_pixels::reset_passthrough(list,allocator,state,original_reset_list);
+    owned_ticket_size_trace::retire_attachments(reinterpret_cast<uintptr_t>(list)); // Success starts unbound; failure cannot certify old state.
     death_hdr_pixels::reset_after_original(list,result);
     death_pso_cache::reset(list,result);
     gears_render_cost::Scope cost(gears_render_cost::reset_tracking);
@@ -3866,12 +3919,13 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
     final_transfer_live::normalizer::bind(0,reinterpret_cast<uintptr_t>(list),count,handles,stereo_publish_bypass!=0);
     final_transfer_live::bracket::consumed_target(reinterpret_cast<uintptr_t>(list),count,handles,stereo_publish_bypass!=0);
     if(stereo_publish_bypass){original_targets(list,count,handles,single,depth);return;}
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_targets(list,count,handles,single,depth);}auto frame_guard=frame_lock();
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();owned_ticket_size_trace::retire_attachments(reinterpret_cast<uintptr_t>(list));return original_targets(list,count,handles,single,depth);}auto frame_guard=frame_lock();
     if(recording.load()){D3D12_CPU_DESCRIPTOR_HANDLE first{};
         if(count)safe_copy(&first,handles,sizeof(first));
         viewport_stats.bind(reinterpret_cast<uintptr_t>(list),count,first.ptr);}
     const bool legacy=frame_link_diagnostics&&recording.load();
     const bool owned=owned_bindings_enabled&&(recording.load()||prime_recording.load());
+    UINT attachment_stride{}; // Reuse the existing MRT bind's device query below.
     if(legacy||owned){D3D12_CPU_DESCRIPTOR_HANDLE first{};
         auto reject=[&](){if(legacy)frame_link.invalidate();
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
@@ -3889,6 +3943,7 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
             if(count>D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)reject();
             else {ID3D12Device* device{};UINT stride{};
                 if(single){if(SUCCEEDED(list->GetDevice(IID_PPV_ARGS(&device)))){stride=device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);device->Release();}
+                    attachment_stride=stride;
                     if(!stride)reject();}
                 for(UINT i=1;i<count;++i){D3D12_CPU_DESCRIPTOR_HANDLE handle{};
                     if(single){uint64_t offset=uint64_t(i)*stride;
@@ -3908,6 +3963,7 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
             }
         }
     }
+    if(legacy||owned)owned_ticket_size_trace::bind_attachments(list,count,handles,single,attachment_stride,depth);
     ngx_stereo_host::targets(list,count,handles,single,depth);
     death_hdr_timeline::targets_event(list,count,single!=FALSE,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     original_targets(list,count,handles,single,depth);
