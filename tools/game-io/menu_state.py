@@ -41,6 +41,10 @@ class RegistrySnapshotChanged(RuntimeError):
     """Only the final registry-header bracket changed; refresh before reuse."""
 
 
+class ForcedRegistryRefreshChanged(RuntimeError):
+    """Fresh inventory bracket failed; terminal unless caller explicitly handles it."""
+
+
 def read_root_source_text(read, nodes_address, base, attempts=3):
     """Acquire one root/source string with a short consistent storage bracket.
 
@@ -358,8 +362,13 @@ class MenuReader:
         if r.name(0)!='None':raise RuntimeError('Forced registry zero name changed')
         if dict(registered(r,self.client))!=self.client_identity:
             raise RuntimeError('Scene client identity changed during registry refresh')
-        if any(r.read(getattr(r,prefix+'_header'),16)!=raw for prefix,raw in headers.items()):
-            raise RuntimeError('Registry header changed during forced refresh')
+        for prefix, raw in headers.items():
+            address = getattr(r, prefix+'_header')
+            observed = r.read(address, 16)
+            if observed != raw:
+                raise read_conflict_error(ForcedRegistryRefreshChanged,
+                    'Registry header changed during forced refresh', 'forced_registry_bracket',
+                    address, raw, observed, {prefix:address})
 
     def layout_details(self, obj, ancestry, *, scene_root=False):
         """Bounded reflected storage, not evaluated GetPosition/docking results.

@@ -860,6 +860,43 @@ class RegistryRecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'Scene client identity changed'):
             self.reader.sample()
 
+    def test_forced_refresh_reports_same_read_header_fields_and_short_circuits(self):
+        from menu_state import ForcedRegistryRefreshChanged
+        for prefix in ('names','objects'):
+            for change in ('num','data','max'):
+                with self.subTest(prefix=prefix,change=change):
+                    self.setUp()
+                    for name in ('names','objects'):
+                        pointer=getattr(self.r,name+'_header')
+                        data,count,_=struct.unpack('<Qii',self.r.read(pointer,16))
+                        self.r.put(pointer,struct.pack('<Qii',data,count,2000))
+                    source=self.r.read;calls={'names':0,'objects':0}
+                    initial=source(getattr(self.r,prefix+'_header'),16)
+                    data,num,capacity=struct.unpack('<Qii',initial)
+                    observed=struct.pack('<Qii',data+(8 if change=='data' else 0),
+                        num+(4 if change=='num' else 0),capacity+(1 if change=='max' else 0))
+                    def read(address,size):
+                        raw=source(address,size)
+                        for name in calls:
+                            if (address,size)==(getattr(self.r,name+'_header'),16):
+                                calls[name]+=1
+                                if name==prefix and calls[name]==2:return observed
+                        return raw
+                    self.r.read=read
+                    with self.assertRaises(ForcedRegistryRefreshChanged) as raised:
+                        self.reader.force_registry_refresh()
+                    detail=raised.exception.read_conflict
+                    self.assertEqual(str(raised.exception),'Registry header changed during forced refresh')
+                    self.assertEqual(detail['stage'],'forced_registry_bracket')
+                    self.assertEqual(detail['registry'],prefix)
+                    self.assertEqual(detail['address'],hex(getattr(self.r,prefix+'_header')))
+                    self.assertEqual(detail['initial_raw'],initial.hex())
+                    self.assertEqual(detail['observed_raw'],observed.hex())
+                    self.assertEqual(detail['initial'],dict(data=hex(data),num=num,max=capacity))
+                    self.assertEqual(detail['observed'],dict(data=hex(data+(8 if change=='data' else 0)),
+                        num=num+(4 if change=='num' else 0),max=capacity+(1 if change=='max' else 0)))
+                    self.assertEqual(calls,dict(names=2,objects=1 if prefix=='names' else 2))
+
     def test_force_refresh_rejects_changed_or_invalid_headers(self):
         self.r.change_on_second_read=(self.r.names_header,16)
         with self.assertRaisesRegex(RuntimeError,'Registry header changed during forced refresh'):

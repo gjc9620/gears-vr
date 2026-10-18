@@ -241,6 +241,7 @@ class PathChoicePositionMonitor:
         for _ in range(3):
             if (type(current) in (AcquisitionSourceChanged, getattr(menu_state, "SnapshotChanged", None),
                                   getattr(menu_state, "RegistrySnapshotChanged", None),
+                                  getattr(menu_state, "ForcedRegistryRefreshChanged", None),
                                   getattr(scene_owner_snapshot, "SceneOwnerRejected", None))
                     and type(getattr(current, "read_conflict", None)) is dict):
                 detail['error_read_conflict'] = copy.deepcopy(current.read_conflict)

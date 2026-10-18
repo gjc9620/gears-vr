@@ -301,6 +301,27 @@ class MonitorTests(unittest.TestCase):
         unrelated.read_conflict={'registry':'objects'}
         self.assertNotIn('error_read_conflict',self.m._exception_detail(unrelated))
 
+    def test_forced_registry_bracket_detail_is_terminal_without_retry(self):
+        import struct
+        from scene_owner_snapshot import read_conflict_error
+        from menu_state import ForcedRegistryRefreshChanged
+        error=read_conflict_error(ForcedRegistryRefreshChanged,
+            'Registry header changed during forced refresh','forced_registry_bracket',0x100,
+            struct.pack('<Qii',0x9000,1001,2000),struct.pack('<Qii',0x9000,1005,2000),{'objects':0x100})
+        self.m.close()
+        class RejectedProbe(Probe):
+            def capture(self,*args):raise error
+        self.m=self.create(probe_factory=RejectedProbe);self.addCleanup(self.m.close)
+        self.m.poll();events=self.m.poll()
+        self.assertEqual(len(events),1)
+        self.assertEqual(events[0]['event'],'path_position_revoked')
+        self.assertEqual(events[0]['error_read_conflict'],error.read_conflict)
+        self.assertEqual(events[0]['reason'],'ForcedRegistryRefreshChanged')
+        self.assertEqual(self.m.acquisition_attempts,1)
+        self.assertTrue(self.m.terminal)
+        self.assertEqual(self.actions,[])
+        self.assertEqual(self.m.poll(),[])
+
     def test_collector_byte_conflict_evidence_survives_wrapper_and_stays_terminal(self):
         from path_choice_position_collect import AcquisitionSourceChanged
         self.m.close()
