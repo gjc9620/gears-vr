@@ -8,6 +8,25 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+RuntimeRelease2 is now the launcher default and named manifest
+`manifest-runtime-release2.json`. Native SHA
+`249aeb07684891c1a7d1813b732a4e8e185b36b2df5827f99659527ee0b26b5f`;
+XR artifact remains unchanged. It preserves the Integration1 feature flags,
+enables generic depth clearing, and disables source-pixel and size/draw/quad
+trace collectors. Attachment tracking required by the clear control remains
+enabled. Fresh compilation, six focused native tests and the continuous
+startup suite passed. This exact build passed scale2 and default scale1 actual
+game runs, each with two checkpoint reloads, final GPU readbacks, native cleanup,
+independent entry restoration and five-file restoration. Scale2 final images
+have full5120x2800 coverage; reclaim receipts show455->0 and400->0, with zero
+capacity faults. Evidence: `runtime-release2-scale{2,1}-run1-20261019*`.
+
+Launcher/render-plan/stage/package suites passed110 tests. Fresh portable
+stage `analysis/runtime/portable-runtime-release2-20261019` contains716 files;
+isolated interpreter/import/PE/hash preflight passed. This is a development
+artifact, not public release acceptance; mounted gun, remaining UI, DLSS and
+headset verification remain separate requirements.
+
 The same DepthReclaim1 DLL also passed scale0.7: runtime recommendation
 1280x1400 produced896x980 per eye (SBS1792x980). Both checkpoint reloads,
 native cleanup, independent entry restoration and five-file restoration

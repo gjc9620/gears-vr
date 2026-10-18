@@ -2,9 +2,11 @@
 
 ## 2026-10-19 当前基线：推荐尺寸成为 0.0.1 默认
 
-用户明确 **OpenXR 推荐每眼尺寸 × 启动器倍率取代游戏分辨率 VR 路径，优先级高于 DLSS**。当前 `tools/vr-launcher/manifest.json` 已启用 `runtime_render_size`，选择 runtime-resolution1-world-handoff 原生构建及 runtime-resolution1 XR；倍率缺省为 1.0。以下旧记录中的“默认 Mounted104”“未替换默认”仅描述当时状态，不是当前基线。
+用户明确 **OpenXR 推荐每眼尺寸 × 启动器倍率取代游戏分辨率 VR 路径，优先级高于 DLSS**。当前 `tools/vr-launcher/manifest.json` 已启用 `runtime_render_size`，选择 runtime-release2 原生构建及 runtime-resolution1 XR；倍率缺省为 1.0。以下旧记录中的“默认 Mounted104”“未替换默认”仅描述当时状态，不是当前基线。
 
 发布要求：推荐尺寸与倍率必须作为 0.0.1 的正式默认方案交付，不是可延期的可选候选；剩余资源重建或兼容性问题应在此方案上解决。游戏内分辨率不再决定 VR 每眼尺寸，启动器提供倍率供不同配置用户选择。该要求的优先级高于 DLSS；开发包已采用此默认，不等于最终发布验收完成。
+
+最新默认 RuntimeRelease2 已修正高倍率场景裁切：在经过身份及资源校验的原生深度清除路径中，使用当前 VR 目标范围，并在绘制后恢复 viewport；检查点退休后安全回收旧命令列表关联，避免跨世界累积至512上限。正式集成构建关闭额外 HDR 源图读取及一次性绘制追踪。默认1.0×和2.0×各完成两次检查点重载、画面读取、正常收尾和配置恢复；同功能诊断构建0.7×也通过。当前启动器默认与 `manifest-runtime-release2.json` 完全一致。仍不能据此宣称机枪、全部UI、DLSS或真头显完整流程通过。
 
 实际游戏／模拟器证据：1.0× 得到每眼1280×1400，0.7× 得到896×980，两轮均保存不同时间的双眼非黑 GPU 图像；world-handoff 会话完成两次检查点重载、资源重建及新代投影，停止清理和入口恢复通过。详见 [尺寸与运行证据](runtime-render-size-candidate.md)。这不代表全部地图、机枪、DLSS、切换中停止或真头显画质已验收。
 
