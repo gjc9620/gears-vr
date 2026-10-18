@@ -8,7 +8,7 @@
   "shutdown_diagnostics": true,
   "game_path": "Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe",
   "game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
-  "native_build": "tools/native-capture/build-runtime-resolution1-retirement",
+  "native_build": "tools/native-capture/build-runtime-resolution1-world-handoff",
   "native_dll": "GearsCaptureRuntimeResolution1.dll",
   "xr_build": "tools/openxr-probe/build-runtime-resolution1",
   "xr_sha256": "6fa167063f12d2425b3099cb9eef89eb2c0ce38b367db1eb1254c0c45417d9bc",
@@ -25,7 +25,7 @@
   "hud_layout_control": true,
   "hud_element_scale": 1.2,
   "hud_center_scale": 0.8,
-  "native_sha256": "9645b4346a0e440495958ecb258e0f9ef845d8c5dafd520df700b7790b599f8a",
+  "native_sha256": "17f2cf7d7e0d09520717e11716b6d9c9610218b98b986a02d38ceb8c4c889026",
   "camera_distance_control": true,
   "startup_selftests_prelaunch": true,
   "runtime_render_size": true
