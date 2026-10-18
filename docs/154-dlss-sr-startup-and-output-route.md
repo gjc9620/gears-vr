@@ -1,5 +1,13 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19：原生Copy契约静态核对
+
+先查询KB artifact1，再在原IDA库私有副本导出 `1c5dd8`、`1c60f0`、`1c617c` 完整chunks汇编；每段字节与历史运行时blob `911ab9…` 对比一致。复制函数含热/冷两段789+569字节，组合哈希与KB一致。另机械核对其状态帮助函数 `17c0b4`/`17ab94` 的完整范围和哈希。证据 `analysis/ida/ngx-copy-contract-20261019/copy-chunks-with-state-helpers.json`，不进入发布包。原IDA库前后SHA256 `324248ac7cd0388a05907c29436fccf804eb82e5cb8433190806342c1cfcbb26` 一致，私有lease已关闭。
+
+汇编支持的精确分支：`1c5f54`/`1c5f79` 向状态helper传入0x400/0x800；`1c605e` 通过command list +0xd0提交积累barriers；`1c608d` 经+0x80复制，返回点1c6093。原始XYZ为0、box为null；后续两次1c617c按scope保存值恢复状态。完整函数还含CopyResource及其他分支，不能按函数名把它们一并允许。缓存伪代码的参数位置及部分常量与汇编不符，不作为ABI接线依据。
+
+据此可走“保持原生状态转换、同资源/列表/顺序，仅限制复制box和目的偏移”的契约，无需伪造状态tracker。但历史代码相同不证明当前资源、实际生产区域或GPU完成；生产端必须验证当前完整chunks、确切返回地址和typed参数，且仍等待Color/Depth/MV生成域证据，不能据此启用DLSS。
+
 ## 2026-10-19：控制器持有 typed 四资源
 
 Context现在只从当前有效消费ticket内的typed Barrier/Copy实参获取资源引用，覆盖UAV与alias参数；NGX整数只与已持有对象匹配，不转换成COM指针。首次有效Eval固定Create epoch/world/device及Color/Depth/MV/Output四资源，后续替换拒绝。绑定前的候选有界64项、不同ticket不混用，绑定后仅保留四资源；满容量时非SR或异设备资源仍按类型筛选忽略，新合格纹理溢出才拒绝。资源身份持有不构成producer区域、资源状态或GPU内容证明。
