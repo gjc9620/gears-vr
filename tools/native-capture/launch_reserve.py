@@ -39,7 +39,7 @@ def wait_loader_dependencies(exe,born,deadline,*,owner_pid=None,owner_creation_t
     """Read-only polling of one fresh identity; no loader/injection retries."""
     control=WindowsControl();identity=None;handle=None;check=None;next_discovery=0
     required={'kernelbase.dll','gowde-steam.exe','d3d12.dll','dxgi.dll'}
-    missing=required;attempts=0
+    missing=required;attempts=0;last_loaded_names=[]
     if born is not None:
         if (born.get('schema')!=1 or born.get('kind')!='reservation_birth' or
                 born.get('injection_attempted') is not False or born.get('prime_attempted') is not False):
@@ -92,6 +92,7 @@ def wait_loader_dependencies(exe,born,deadline,*,owner_pid=None,owner_creation_t
             attempts+=1;loaded=modules(handle)
             check()
             if control.identity(identity['pid'])!=identity:raise RuntimeError('Fresh process differs from born identity')
+            last_loaded_names=sorted(loaded)
             missing=required-set(loaded)
             if not missing and clock()<deadline:
                 if loaded['gowde-steam.exe'][1].resolve()!=exe.resolve():raise RuntimeError('Fresh executable path differs')
@@ -100,7 +101,10 @@ def wait_loader_dependencies(exe,born,deadline,*,owner_pid=None,owner_creation_t
                 return result
             sleep(min(.1,max(0,deadline-clock())))
         print(json.dumps({'reservation_loader_wait_failed':True,'missing_modules':sorted(missing),
-                          'module_polls':attempts,'game_identity':identity}),flush=True)
+                          'module_polls':attempts,'game_identity':identity,
+                          'last_loaded_modules':last_loaded_names[:256],
+                          'loaded_module_count':len(last_loaded_names),
+                          'loaded_modules_truncated':len(last_loaded_names)>256}),flush=True)
         raise RuntimeError('Fresh loader dependencies not ready before bounded deadline')
     finally:
         if handle:k.CloseHandle(handle)

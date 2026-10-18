@@ -12,6 +12,26 @@ import launch_reserve
 
 
 class ReserveLifecycleTests(unittest.TestCase):
+    def test_loader_timeout_reports_last_existing_snapshot_without_an_extra_poll(self):
+        exe=pathlib.Path('J:/fixture/GOWDE-Steam.exe');ticks=[0.]
+        identity=dict(pid=55,creation_time=456,image=str(exe).casefold())
+        born=dict(schema=1,kind='reservation_birth',game_identity=identity,injection_attempted=False,prime_attempted=False)
+        loaded={name:(1,exe) for name in ['gowde-steam.exe','kernelbase.dll']+[f'module{i:03d}.dll' for i in range(260)]}
+        output=io.StringIO()
+        with mock.patch.object(launch_reserve,'WindowsControl',return_value=SimpleNamespace(identity=lambda pid:identity)),\
+             mock.patch.object(launch_reserve,'preparation_live_guard',return_value=mock.Mock()),\
+             mock.patch.object(launch_reserve,'k') as native,\
+             mock.patch.object(launch_reserve,'modules',return_value=loaded) as read,\
+             mock.patch.object(launch_reserve,'run_hidden') as shell,contextlib.redirect_stdout(output):
+            native.OpenProcess.return_value=123
+            with self.assertRaisesRegex(RuntimeError,'dependencies not ready'):
+                launch_reserve.wait_loader_dependencies(exe,born,1,clock=lambda:ticks[0],sleep=lambda delay:ticks.__setitem__(0,1.))
+            read.assert_called_once_with(123);shell.assert_not_called();native.CloseHandle.assert_called_once_with(123)
+        report=json.loads(output.getvalue())
+        self.assertEqual(report['last_loaded_modules'],sorted(loaded)[:256])
+        self.assertEqual(report['loaded_module_count'],262);self.assertTrue(report['loaded_modules_truncated'])
+        self.assertEqual(report['missing_modules'],['d3d12.dll','dxgi.dll'])
+
     def test_command_budget_survives_slow_validation_and_prevents_injection(self):
         exe=pathlib.Path('J:/fixture/GOWDE-Steam.exe');ticks=[0.]
         identity=dict(pid=55,creation_time=456,image=str(exe))
