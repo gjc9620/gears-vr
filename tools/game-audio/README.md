@@ -45,3 +45,5 @@ after game exit; those require the coordinator's separate runtime test.
 
 API references: [session persistence](https://learn.microsoft.com/en-us/windows/win32/coreaudio/audio-sessions),
 [GetProcessId and cross-process rejection](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nf-audiopolicy-iaudiosessioncontrol2-getprocessid).
+
+Actual game check (2026-10-18): session `continuous-stereo-35320-20261018-212357-b5ff9b15` matched and muted one game audio session; stop restored that same session, with restore_pending=0, read_failed=0 and mute_failed=0. Receipt: `analysis/runtime/vr-launcher-session.1bfb91ffd2374e8389066345a9da13e0.audio.jsonl`. The background game and audio helper exited. This validates audio mute/restore only: the combined UI test did not acquire its layout lease, and its native cleanup verification failed, so it must not be advertised as a successful VR regression.
