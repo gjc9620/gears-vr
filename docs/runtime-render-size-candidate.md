@@ -1,5 +1,30 @@
 # Runtime render size candidate
 
+## Default mode promotion, 2026-10-19
+
+User confirmed runtime-recommended per-eye size times launcher render scale
+replaces game-resolution VR rendering in 0.0.1 and takes priority over DLSS.
+`tools/vr-launcher/manifest.json` now selects the previously tested world-handoff
+candidate from `manifest-runtime-resolution1.json`, with `runtime_render_size`
+enabled. Both native and XR binary hashes were checked before promotion. The
+launcher defaults missing scale to 1.0; desktop resolution controls the mirror.
+Earlier statements below that the player default is unchanged are historical
+and superseded by this promotion. This is a default-mode change, not a claim
+that all remaining 0.0.1 issues have passed acceptance.
+
+The current GUI was rebuilt, passed its hidden self-test and installed as the
+root `GearsVR Launcher.exe`. Four render-size tests and sixteen portable-stage
+tests passed. An independent development stage at ignored
+`analysis/release-runtime-default-001` passed bundled-runtime preflight; its
+manifest enables runtime size, its config sets render_scale=1.0, and its GUI
+hash matches the installed executable. Receipt:
+`analysis/runtime/runtime-default-001-preflight.json`.
+
+No new game or headset run occurred during this promotion. Actual checkpoint
+evidence remains the two reloads documented below. UI fixes, mounted gameplay,
+DLSS compatibility, interrupted handoff and final headset/package acceptance
+remain outstanding; the development stage has not been publicly released.
+
 ## First actual-game evidence, 2026-10-18
 
 ### Verified terminal retirement follow-up
