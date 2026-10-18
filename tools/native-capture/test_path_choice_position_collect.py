@@ -51,7 +51,10 @@ def fixture():
     reader.force_registry_refresh = mock.Mock()
     def acquire(**options):
         # Model the fresh MenuReader acquisition, including its observed sources.
-        for address in sorted(memory): r.read(address,1)
+        for header in (r.objects_header,r.names_header): r.read(header,16)
+        for address in sorted(memory):
+            if not any(header <= address < header+16 for header in (r.objects_header,r.names_header)):
+                r.read(address,1)
         return copy.deepcopy(sample)
     reader._sample_once = mock.Mock(side_effect=acquire)
     session = dict(phase='running', native_started_qpc=789,
@@ -64,11 +67,97 @@ def fixture():
 
 
 class CollectorTests(unittest.TestCase):
-    def invoke(self, values, verify=None):
+    def invoke(self, values, verify=None, policy='exact'):
         reader,sample,proof,metadata,session,status,memory=values
-        with mock.patch.object(collector,'_panel_proof',side_effect=lambda *a:copy.deepcopy(proof)), \
+        def panel_proof(r,fresh):
+            result=copy.deepcopy(proof)
+            result['owner_snapshot_sha256']=collector.position.owner_digest(fresh['scene_owner'])
+            return result
+        with mock.patch.object(collector,'_panel_proof',side_effect=panel_proof), \
              mock.patch.object(collector,'_close_metadata',side_effect=lambda *a:copy.deepcopy(metadata)):
-            return collector.collect(reader,sample,status,session,1000,verify or (lambda r:copy.deepcopy(session)))
+            return collector.collect(reader,sample,status,session,1000,verify or (lambda r:copy.deepcopy(session)),
+                                     registry_header_policy=policy)
+
+    def live_header_fixture(self):
+        values=fixture();r=values[0].r
+        # Native99e bytes: GObjects Num 0x3b07c -> 0x3b088, stable Data/Max.
+        r.object_count=0x3b07c;r.object_capacity=0x4ba06
+        header=values[1]['scene_owner']['evidence']['registry_headers']['objects']
+        header.update(count=r.object_count,capacity=r.object_capacity)
+        initial=struct.pack('<Qii',r.objects_data,r.object_count,r.object_capacity)
+        values[6].update((r.objects_header+i,b) for i,b in enumerate(initial))
+        return values,initial
+
+    def test_fixed_prefix_actual_plus12_uses_initial_serialized_baseline(self):
+        values,initial=self.live_header_fixture();reader=values[0];r=reader.r;source=r.read
+        calls=0
+        def grow(address,size):
+            nonlocal calls
+            raw=source(address,size)
+            if address==r.objects_header and size==16:
+                calls+=1
+                # A decrease back to INITIAL is legal; there is no highwater.
+                num=r.object_count+(12 if calls%2 else 0)
+                return struct.pack('<Qii',r.objects_data,num,r.object_capacity)
+            return raw
+        r.read=grow
+        certificate=self.invoke(values,policy='fixed_prefix_v1')
+        evidence=json.loads(certificate.evidence_json)
+        self.assertTrue(evidence['normalized_fixed_prefix_headers'])
+        self.assertEqual(evidence['consistency_semantics'],'logical_fixed_prefix_consistency')
+        self.assertFalse(evidence['atomic_snapshot'])
+        observation=evidence['registry_header_observations']['objects']
+        self.assertEqual(observation['initial_raw'],initial.hex())
+        self.assertGreater(observation['accepted_suffix_reads'],0)
+        self.assertLessEqual(len(observation['first_live_headers']),8)
+        self.assertIn('registry_header_policy=fixed_prefix_v1',certificate.position_ini)
+        checks=evidence['panel_proof']['checks']
+        self.assertEqual([c['raw'] for c in checks if c['address']==r.objects_header],[initial.hex()])
+        self.assertIn(initial.hex(),certificate.position_ini)
+        self.assertEqual(evidence['sample']['scene_owner']['evidence']['registry_headers']['objects']['count'],0x3b07c)
+        self.assertIs(r.read,grow)
+
+    def test_exact_default_still_rejects_actual_plus12(self):
+        values,initial=self.live_header_fixture();r=values[0].r;source=r.read
+        def grow(address,size):
+            if (address,size)==(r.objects_header,16):
+                return struct.pack('<Qii',r.objects_data,r.object_count+12,r.object_capacity)
+            return source(address,size)
+        r.read=grow
+        with self.assertRaisesRegex(ValueError,'registry changed after refresh'):self.invoke(values)
+        self.assertIs(r.read,grow)
+
+    def test_fixed_prefix_rejects_shrink_data_capacity_and_excess_count(self):
+        for change in ('shrink','data','capacity','excess'):
+            values,initial=self.live_header_fixture();r=values[0].r;source=r.read
+            data,num,capacity=struct.unpack('<Qii',initial)
+            if change=='shrink':num-=1
+            if change=='data':data+=8
+            if change=='capacity':capacity+=1
+            if change=='excess':num=capacity+1
+            changed=struct.pack('<Qii',data,num,capacity)
+            def read(address,size):
+                return changed if (address,size)==(r.objects_header,16) else source(address,size)
+            r.read=read
+            with self.subTest(change=change),self.assertRaises(collector.AcquisitionSourceChanged):
+                self.invoke(values,policy='fixed_prefix_v1')
+            self.assertIs(r.read,read)
+
+    def test_fixed_prefix_does_not_mask_old_slot_or_unexpected_ui_bytes(self):
+        for kind in ('slot','ui'):
+            values,initial=self.live_header_fixture();reader=values[0];r=reader.r
+            target=r.objects_data if kind=='slot' else 0x987600
+            values[6][target]=42
+            original=reader._sample_once.side_effect
+            def acquire(**options):
+                fresh=original(**options)
+                r.read(target,1)
+                values[6][target]^=1
+                r.read(target,1)
+                return fresh
+            reader._sample_once.side_effect=acquire
+            with self.subTest(kind=kind),self.assertRaises(collector.AcquisitionSourceChanged):
+                self.invoke(values,policy='fixed_prefix_v1')
 
     def test_single_fresh_admission_immutable_and_no_retained_baseline(self):
         values=fixture();reader=values[0];original=reader.r.read
@@ -145,12 +234,12 @@ class CollectorTests(unittest.TestCase):
     def test_changed_final_read_restores_reader_and_stops(self):
         values=fixture();reader=values[0];base_read=reader.r.read
         # During final verification the original function sees itself restored
-        # only after finally; the third repeated complete header is final reread.
+        # only after finally; the fourth repeated complete header is final reread.
         header=reader.r.objects_header;counts={}
         def changing(address,size):
             key=(address,size);counts[key]=counts.get(key,0)+1
             raw=base_read(address,size)
-            if key==(header,16) and counts[key]>=3:return bytes([raw[0]^1])+raw[1:]
+            if key==(header,16) and counts[key]>=4:return bytes([raw[0]^1])+raw[1:]
             return raw
         reader.r.read=changing
         with self.assertRaises(collector.AcquisitionSourceChanged) as caught:self.invoke(values)
@@ -222,6 +311,95 @@ class CollectorTests(unittest.TestCase):
             function['outer']-=8
             raw=bytearray.fromhex(meta['header_hex']);raw[0x114]^=1;meta['header_hex']=raw.hex()
             with self.assertRaisesRegex(ValueError,'native pointer'):collector._close_metadata(reader.r,sample,collector._binding(session))
+
+
+class FixedPrefixNestedTests(unittest.TestCase):
+    def resolver(self):
+        from test_scene_owner_snapshot import Fixture
+        r=Fixture()
+        for prefix,singular,rva,items in (('objects','object',0x1c24730,r.objects),('names','name',0x1c34800,r.names)):
+            setattr(r,prefix+'_header',r.base+rva)
+            setattr(r,singular+'_count',len(items))
+            setattr(r,singular+'_capacity',len(items)+32)
+            r.put(r.base+rva,'<Qii',getattr(r,prefix+'_data'),len(items),len(items)+32)
+        return r
+
+    def test_capture_finish_uses_same_initial_prefix_and_exact_slots(self):
+        for policy_enabled in (False,True):
+            r=self.resolver();initial=r.object_count
+            def grow(address,size):
+                if address==r.objects_header and r.read_counts[address,size]>=2:
+                    r.put(r.objects_header,'<Qii',r.objects_data,initial+12,r.object_capacity)
+            r.hook=grow
+            policy=collector._FixedPrefixReads(r,r.read)
+            if policy_enabled:r.read=policy.read
+            if policy_enabled:
+                result=r.capture()
+                self.assertEqual(result['evidence']['registry_headers']['objects']['count'],initial)
+                self.assertGreater(policy.observations['objects']['accepted_suffix_reads'],0)
+            else:
+                from scene_owner_snapshot import SceneOwnerRejected
+                with self.assertRaises(SceneOwnerRejected):r.capture()
+        r=self.resolver();policy=collector._FixedPrefixReads(r,r.read);r.read=policy.read
+        r.hook=r.mutate_on_reread(r.objects_data)
+        from scene_owner_snapshot import SceneOwnerRejected
+        with self.assertRaises(SceneOwnerRejected):r.capture()
+
+    def test_referenced_new_object_or_name_is_outside_initial_prefix(self):
+        from scene_owner_snapshot import _Capture,SceneOwnerRejected
+        r=self.resolver();policy=collector._FixedPrefixReads(r,r.read);r.read=policy.read
+        cap=_Capture(r)
+        new=r.obj('SuffixOnlyObject',r.classes['Object'])
+        r.put(r.objects_data+r.object_count*8,'<Q',new)
+        r.put(r.objects_header,'<Qii',r.objects_data,r.object_count+1,r.object_capacity)
+        with self.assertRaisesRegex(SceneOwnerRejected,'registry slot mismatch'):cap.identity(new)
+        with self.assertRaisesRegex(SceneOwnerRejected,'outside registry'):cap.name(r.name_count)
+
+    def test_partial_header_refused_and_merged_final_span_validates_full_header(self):
+        r=self.resolver();header=r.objects_header;source=r.read
+        initial=source(header,16)
+        r.bytes(header-2,b'ab');r.bytes(header+16,b'cd')
+        policy=collector._FixedPrefixReads(r,source)
+        r.put(header,'<Qii',r.objects_data,r.object_count+12,r.object_capacity)
+        for address,size in ((header+8,4),(header-1,16),(header,8)):
+            with self.subTest(address=address,size=size),self.assertRaisesRegex(ValueError,'partial'):
+                policy.read(address,size)
+        self.assertEqual(policy.read(header-2,20),b'ab'+initial+b'cd')
+        r.bytes(header+16,b'Xd')
+        self.assertEqual(policy.read(header-2,20),b'ab'+initial+b'Xd')
+        r.put(header,'<Qii',r.objects_data+8,r.object_count+12,r.object_capacity)
+        with self.assertRaises(collector.AcquisitionSourceChanged):policy.read(header-2,20)
+
+    def test_menu_reader_nested_final_ledger_accepts_only_opt_in_header_suffix(self):
+        from menu_state import MenuReader,SnapshotChanged
+        from test_menu_state import FakeResolver
+        for enabled in (False,True):
+            r=FakeResolver();r.base=0x140000000
+            r.objects_header=r.base+0x1c24730;r.names_header=r.base+0x1c34800
+            r.names_data=0x800000
+            r.object_count=len(r.object_pointers);r.object_capacity=r.object_count+32
+            r.name_count=10;r.name_capacity=42
+            r.put(r.objects_header,struct.pack('<Qii',r.objects_data,r.object_count,r.object_capacity))
+            r.put(r.names_header,struct.pack('<Qii',r.names_data,r.name_count,r.name_capacity))
+            source=r.read;count=0
+            def grow(address,size):
+                nonlocal count
+                raw=source(address,size)
+                if (address,size)==(r.objects_header,16):
+                    count+=1
+                    if count>=2:return struct.pack('<Qii',r.objects_data,r.object_count+12,r.object_capacity)
+                return raw
+            policy=collector._FixedPrefixReads(r,grow)
+            r.read=policy.read if enabled else grow
+            reader=MenuReader.__new__(MenuReader)
+            reader.r,reader.client,reader.properties=r,0x3000,{}
+            reader.refresh=lambda:None
+            if enabled:
+                result=reader._sample_once(include_tree=True)
+                self.assertTrue(result['consistent_reread'])
+                self.assertGreater(policy.observations['objects']['accepted_suffix_reads'],0)
+            else:
+                with self.assertRaises(SnapshotChanged):reader._sample_once(include_tree=True)
 
 
 if __name__=='__main__':unittest.main()

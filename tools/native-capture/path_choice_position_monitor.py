@@ -67,7 +67,7 @@ class LivePathChoicePositionProbe:
             verify(reader)
             from path_choice_position_collect import collect
             certificate = collect(reader, sample, status, session, nonce,
-                lambda current: verify(current)[0])
+                lambda current: verify(current)[0], registry_header_policy='fixed_prefix_v1')
             verify(reader)
             return Observation(True, certificate, scene_address=address)
         except Exception:

@@ -318,7 +318,8 @@ class MonitorTests(unittest.TestCase):
             menu_control=SimpleNamespace(reader_process_identity=lambda reader:(3, 30)))
         self.enterContext(mock.patch.dict('sys.modules', modules))
         certificate_probe = Probe()
-        def collect(reader, sample, status, session, nonce, verify):
+        def collect(reader, sample, status, session, nonce, verify, *, registry_header_policy):
+            self.assertEqual(registry_header_policy, 'fixed_prefix_v1')
             verify(reader)
             return certificate_probe.capture(nonce, True, 1).certificate
         self.enterContext(mock.patch('path_choice_position_collect.collect', side_effect=collect))
@@ -390,7 +391,8 @@ class MonitorTests(unittest.TestCase):
         self.m.close()
         modules = self.live_probe_modules()
         certificate_probe = Probe()
-        def collect(reader, sample, status, session, nonce, verify):
+        def collect(reader, sample, status, session, nonce, verify, *, registry_header_policy):
+            self.assertEqual(registry_header_policy, 'fixed_prefix_v1')
             verify(reader)
             return certificate_probe.capture(nonce, True, 1).certificate
         original_ack = self.ack; pending = []; published = dict(self.status)

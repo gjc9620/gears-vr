@@ -50,6 +50,65 @@ class AcquisitionSourceChanged(ValueError):
         super().__init__(f'{phase}: source changed during acquisition at {address:#x} '
                          f'size {len(expected)} offset {offset:#x}')
 
+
+class _FixedPrefixReads:
+    """Explicit logical read projection, private to one PathChoice acquisition.
+
+    Complete known headers are live-validated against the refreshed INITIAL
+    prefix on every read, then represented by that initial header in every
+    nested ledger. Other bytes are untouched. This does not assert that remote
+    header bytes stayed equal, that suffixes are append-only, or atomicity.
+    """
+    def __init__(self, resolver, source_read):
+        self.source_read = source_read
+        self.headers = {}
+        self.observations = {}
+        for prefix, singular, rva in (('objects','object',0x1c24730), ('names','name',0x1c34800)):
+            address = resolver.base+rva
+            require(getattr(resolver,prefix+'_header') == address, 'fixed-prefix header anchor mismatch')
+            initial = (getattr(resolver,prefix+'_data'), getattr(resolver,singular+'_count'),
+                       getattr(resolver,singular+'_capacity'))
+            require(self.valid(initial), 'invalid initial fixed-prefix header')
+            raw = struct.pack('<Qii',*initial)
+            self.headers[address] = raw
+            self.observations[prefix] = dict(address=hex(address), initial_raw=raw.hex(),
+                live_reads=0, accepted_suffix_reads=0, first_live_headers=[], last_live_header=None)
+        require(len({struct.unpack('<Qii',raw)[0] for raw in self.headers.values()}) == 2,
+                'aliased fixed-prefix registries')
+
+    @staticmethod
+    def valid(header):
+        data, count, capacity = header
+        return (type(data) is int and type(count) is int and type(capacity) is int and
+                0 < data <= (1 << 64)-1-capacity*8 and 0 < count <= capacity < 4000000)
+
+    def read(self, address, size):
+        overlaps = [(header,initial) for header,initial in self.headers.items()
+                    if address < header+16 and header < address+size]
+        # A merged final span can contain a whole header and ordinary bytes;
+        # a partial/straddling header has no policy interpretation and rejects.
+        require(all(address <= header and header+16 <= address+size for header,_ in overlaps),
+                'partial fixed-prefix header read')
+        raw = self.source_read(address,size)
+        require(type(raw) is bytes and len(raw) == size, 'short fixed-prefix acquisition read')
+        for header, initial in overlaps:
+            offset = header-address
+            observed = raw[offset:offset+16]
+            first, live = struct.unpack('<Qii',initial), struct.unpack('<Qii',observed)
+            if not (self.valid(live) and live[0] == first[0] and live[2] == first[2] and live[1] >= first[1]):
+                raise AcquisitionSourceChanged('fixed_prefix_header',header,initial,observed,_read_origin())
+            record = next(row for row in self.observations.values() if row['address'] == hex(header))
+            record['live_reads'] += 1
+            record['accepted_suffix_reads'] += int(live[1] != first[1])
+            if len(record['first_live_headers']) < 8: record['first_live_headers'].append(observed.hex())
+            record['last_live_header'] = observed.hex()
+            raw = raw[:offset]+initial+raw[offset+16:]
+        return raw
+
+    def semantics(self):
+        return dict(registry_header_policy='fixed_prefix_v1', normalized_fixed_prefix_headers=True,
+                    consistency_semantics='logical_fixed_prefix_consistency', nonheader_bytes_exact=True)
+
 # Neutral supported content signature: names/classes and reflected Value/ScaleType
 # bytes only, extracted from the validated baseline. No heap or image addresses.
 SUPPORTED_LAYOUT = (
@@ -166,7 +225,7 @@ def _close_metadata(r, sample, binding):
         native_pointer_field='0x114', metadata_only=True)
 
 
-def collect(reader, sample, native_status, session, nonce, verify_session):
+def collect(reader, sample, native_status, session, nonce, verify_session, *, registry_header_policy='exact'):
     """Acquire once, fail closed, return no partial receipt and keep no baseline.
 
     The supplied sample must include layout details and owner evidence. Reacquire
@@ -175,6 +234,7 @@ def collect(reader, sample, native_status, session, nonce, verify_session):
     process/session check, called before and after the acquisition; it returns a
     current session document. Code/ABI attestation is exclusively native.
     """
+    require(registry_header_policy in ('exact','fixed_prefix_v1'), 'unsupported acquisition registry policy')
     sample = copy.deepcopy(sample); native_status = copy.deepcopy(native_status)
     bound = _binding(session); r = reader.r; original_base = r.base
     require(callable(verify_session), 'live session verifier required')
@@ -199,11 +259,13 @@ def collect(reader, sample, native_status, session, nonce, verify_session):
     require(reader.client_identity == original_client and reader.client == original_client['address'], 'refresh replaced client')
     check()
     original_read = r.read; reads = {}; origins = {}; byte_count = 0
+    policy = _FixedPrefixReads(r,original_read) if registry_header_policy == 'fixed_prefix_v1' else None
+    acquisition_read = policy.read if policy else original_read
     def tracked(address, size):
         nonlocal byte_count
         require(type(address) is int and type(size) is int and 0 < address <= (1 << 64)-size and 0 < size <= 1024,
                 'invalid bounded acquisition read')
-        raw = original_read(address, size)
+        raw = acquisition_read(address, size)
         require(type(raw) is bytes and len(raw) == size, 'short acquisition read')
         key = address, size
         if key in reads and reads[key] != raw:
@@ -223,6 +285,13 @@ def collect(reader, sample, native_status, session, nonce, verify_session):
         fresh = reader._sample_once(include_tree=True, include_layout=True, include_layout_details=True, include_owner=True,
             expected_controller=roles['controller']['address'], expected_local_player=roles['local_player']['address'])
         require(fresh['scene_owner']['roles'] == roles and _geometry(fresh) == expected_ids, 'original baseline changed')
+        if policy:
+            for header in fresh['scene_owner']['evidence']['registry_headers'].values():
+                require(policy.headers.get(header['address']) == struct.pack('<Qii',header['data'],header['count'],header['capacity']),
+                        'serializer fixed-prefix baseline mismatch')
+            fresh.update(policy.semantics())
+            fresh['scene_owner']['evidence'].update(policy.semantics(),
+                source_bytes_semantics='digest_of_logical_fixed_prefix_read_ledger')
         proof = _panel_proof(r, fresh)
         args = dict(pid=r.pid, creation_time=bound['game']['creation_time'], started_qpc=bound['native_started_qpc'],
             world_generation=position.integer(int(native_status['world_generation']), 1), nonce=nonce,
@@ -233,9 +302,10 @@ def collect(reader, sample, native_status, session, nonce, verify_session):
         position_ini = position.build(fresh, proof, **args)
         # The flags describe the ledger verified below, not a native code check.
         metadata.update(consistent_final_reread=True, process_owner_verified=True, atomic_snapshot=False)
+        if policy: metadata.update(policy.semantics())
         close_ini = close.build(fresh, proof, metadata, observer_duration_ms=8000, **args)
         for address, expected in _reread_spans(reads):
-            actual = original_read(address, len(expected))
+            actual = acquisition_read(address, len(expected))
             require(type(actual) is bytes, 'invalid whole-acquisition final reread')
             if actual != expected:
                 offset = next((i for i, (a,b) in enumerate(zip(expected,actual)) if a != b),
@@ -248,6 +318,8 @@ def collect(reader, sample, native_status, session, nonce, verify_session):
             atomic_snapshot=False, read_ranges=len(reads), read_bytes=sum(len(raw) for raw in reads.values()),
             native_attestation_source='native startup and poll; no Python code/ABI attestation',
             sample=fresh, panel_proof=proof, close_metadata=metadata)
+        if policy:
+            evidence.update(policy.semantics(), registry_header_observations=policy.observations)
         baseline = dict(roles=roles, nodes=expected_ids, nonce=nonce, module_base=r.base,
                         owner_snapshot_sha256=position.owner_digest(fresh['scene_owner']))
         return ActivationCertificate(position_ini, close_ini, _json(baseline), _json(evidence))
