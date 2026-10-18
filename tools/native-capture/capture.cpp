@@ -682,6 +682,10 @@ bool owned_ui_ready(uint64_t ticket);
 bool verified_stereo_draw(gears_viewport::DrawState const&,FinalEye const&,uintptr_t,unsigned,unsigned,unsigned);
 #include "owned_scene_gpu.inl"
 #include "native_owned_scene.inl"
+// Created before the ordinary Scope/locks in each RHI entry. Its destructor
+// also runs after a world-gate passthrough return, keeping terminal retirement
+// service alive after submitted native state has closed.
+struct NativeOwnedShutdownRhiScope {~NativeOwnedShutdownRhiScope(){native_owned_scene_shutdown_rhi();}};
 void trace_rectangle(unsigned index,uintptr_t view) {
     if(!submit_pair_enabled || !view)return;
     unsigned expected=0;if(!rectangle_trace_phases[index].compare_exchange_strong(expected,1))return;
@@ -2308,6 +2312,7 @@ void inspect_completed_renderer(Record& record,void* destination){
     if(safe_copy(&record.clone_owner,reinterpret_cast<void*>(view),8))record.valid|=1024;
 }
 void __fastcall hook_consume(void* renderer){
+    NativeOwnedShutdownRhiScope owned_shutdown_scope;
     Scope scope;if(!scope.world())return original_consume(renderer);auto record=start_record(10,renderer,_ReturnAddress());
     inspect_completed_renderer(record,renderer);
     if(submit_pair_enabled && (submit_session_enabled()?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
@@ -2819,6 +2824,7 @@ void inspect_swapchain(Record& record,IDXGISwapChain* chain) {
     }
 }
 void STDMETHODCALLTYPE hook_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* lists) {
+    NativeOwnedShutdownRhiScope owned_shutdown_scope;
     final_transfer_live::normalizer::boundary();
     if(stereo_publish_bypass){ngx_output_pixels::execute_passthrough(queue,count,lists,death_hdr_pixels::execute_passthrough);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();ngx_output_pixels::execute_passthrough(queue,count,lists,death_hdr_pixels::execute_passthrough);return;}auto frame_guard=frame_lock();auto record=start_record(5,queue,_ReturnAddress());
@@ -4211,7 +4217,21 @@ DWORD WINAPI worker(void*) {
             if(submitted_lifetime.stopping()){
                 if(submitted_lifetime.is_closed()){auto requested=SessionPhase::stop_requested;
                     session_phase.compare_exchange_strong(requested,SessionPhase::native_closed);}
-                if(session_native_cleanup_ready())break;
+                if(session_native_cleanup_ready()){
+                    if(!native_owned_scene_retained())break;
+                    auto owned_cleanup=[&](bool bridges_closed){
+                        std::lock_guard<std::recursive_mutex> native_guard(session_native_mutex);
+                        bool canvas_drained=true;
+#if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
+                        canvas_drained=owned_ui_live::ledger.cpu_drained();
+#endif
+                        return native_owned_scene_shutdown_worker(session_native_cleanup_ready(),canvas_drained,bridges_closed);
+                    };
+                    owned_cleanup(false); // Freeze CPU/Canvas proof before stopping GPU publication.
+                    const bool bridges_closed=close_stereo_publisher(); // Retain the active-callback guard.
+                    if(owned_cleanup(bridges_closed))break;
+                    if(session_cleanup_expired()){session_cleanup_timeout=true;break;} // Fail closed; keep resources.
+                }
                 if(session_cleanup_expired())session_cleanup_timeout=true;
             }
             if(GetTickCount64()>=next_status){write_session_status();next_status=GetTickCount64()+death_source_live::status_interval_ms();}

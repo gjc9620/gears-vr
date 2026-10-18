@@ -609,6 +609,9 @@ target_compile_options(SixDofTicketDiagnosticsTest PRIVATE /W4 /WX /EHsc /UNDEBU
 add_executable(PathChoiceReflowControlTest path_choice_reflow_control_test.cpp)
 target_compile_options(PathChoiceReflowControlTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(UiHudLayoutTest ui_hud_layout_test.cpp)
+add_executable(OwnedQueueDrainTest owned_queue_drain_test.cpp)
+target_compile_options(OwnedQueueDrainTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+target_link_libraries(OwnedQueueDrainTest PRIVATE d3d12 dxgi)
 
 add_executable(MaterialOverlayPlanTest material_overlay_plan_test.cpp)
 target_compile_options(MaterialOverlayPlanTest PRIVATE /W4 /WX /EHsc /UNDEBUG)

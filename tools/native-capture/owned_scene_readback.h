@@ -62,6 +62,15 @@ public:
         }
     }
     const Result& result() const { return result_; }
+    bool retained() const {return source_||readback_||queue_||device_||allocator_||list_||fence_;}
+    // Keep the immutable result for reporting; release only our actual COM
+    // leases after this probe's own submission fence proves completion.
+    bool close() {
+        if(executed_&&!result_.completed)poll();
+        if(executed_&&!result_.completed)return false;
+        source_.Reset();readback_.Reset();queue_.Reset();device_.Reset();
+        allocator_.Reset();list_.Reset();fence_.Reset();return true;
+    }
     bool queue(ID3D12Resource* source, ID3D12CommandQueue* queue,
                D3D12_RESOURCE_STATES idle_state, bool certified_idle_state,
                const wchar_t* absolute_ppm_path) {

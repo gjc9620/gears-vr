@@ -4,6 +4,7 @@
 // follows actual Reset generations; it never manufactures a command-list Reset.
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
 #include "owned_scene_readback.h"
+#include "owned_queue_drain.h"
 namespace owned_scene_gpu {
 gears_frame_link::Tracker tracker;
 struct Creation {uintptr_t resource{},device{};D3D12_RESOURCE_DESC desc{};unsigned state{},api{},uses{};bool legacy{true};unsigned layout{};};
@@ -291,7 +292,7 @@ bool publish_image(){
   ++stereo_publish_counts.capture_skipped;
   using R=gears_vr::GpuCaptureReason;
   const bool skip=trace.reason==R::lock_busy||trace.reason==R::no_consumer||trace.reason==R::producer_in_flight||
-   trace.reason==R::consumer_not_done||trace.reason==R::native_stopped||trace.reason==R::native_deadline||
+   trace.reason==R::consumer_not_done||trace.reason==R::native_stopped||trace.reason==R::native_deadline||trace.reason==R::world_quiescing||
    (trace.reason==R::not_ready&&(trace.state==1||(trace.state==4&&stereo_publish_counts.stopped.load())));
   if(!skip){fault(19);return false;}
  }
@@ -422,8 +423,40 @@ bool can_advance(uint64_t ticket){return continuous_probe&&watching()&&birth_ok&
 bool state_certified(){return proof.state_certified&&tracker.owned_status().certified;}
 bool pixels_read_back(){return readback.result().completed&&readback.result().saved;}
 bool publication_failed(){return owned_xr_probe&&stereo_gpu_publish&&error;}
+gears_owned_retirement::QueueDrain<> shutdown_fence;
+bool shutdown_started{},shutdown_closed{};
+bool begin_shutdown(){
+ if(shutdown_started)return true;
+ // Closed CPU borrowers alone do not cover a recorded but unsubmitted list.
+ // Any lost tracking, unknown owned use, or unsubmitted event retains Owner.
+ if(!birth_ok||error||!queue||!texture||tracker.has_unsubmitted_owned_events(resource))return false;
+ const auto owned=tracker.owned_status();
+ if(!owned.enabled||!owned.certified||owned.target.resource!=resource||owned.generation!=generation||
+    owned.queue!=canonical_identity(queue))return false;
+ finished=true;shutdown_started=true;return true;
+}
+bool drain_shutdown(bool bridges_closed){
+ if(shutdown_closed)return true;
+ if(!shutdown_started||!bridges_closed)return false;
+ StereoPublishBypass bypass;
+ if(!shutdown_fence.begin(queue)||!shutdown_fence.poll())return false;
+ bool closed=readback.close();closed=last_readback.close()&&closed;closed=late_readback.close()&&closed;
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+ closed=material_readback.close()&&closed;
+#endif
+#if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
+ for(auto& probe:subtitle_readbacks)closed=probe.close()&&closed;
+#endif
+ if(!closed)return false;
+ for(auto& list:created_lists)if(list){list->Release();list=nullptr;}
+ texture=nullptr;queue->Release();queue=nullptr;
+ if(!shutdown_fence.close())return false;
+ shutdown_closed=true;return true;
+}
 void print_progress(FILE* file){
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ fprintf(file,"owned_shutdown_started=%u owned_shutdown_closed=%u owned_shutdown_fence=%u owned_shutdown_hr=%ld owned_shutdown_unsubmitted=%u ",
+  shutdown_started?1:0,shutdown_closed?1:0,shutdown_fence.state(),long(shutdown_fence.error()),tracker.has_unsubmitted_owned_events(resource)?1:0);
 #if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
  unsigned saved{};for(unsigned i=0;i<subtitle_sample_count;++i)if(subtitle_readbacks[i].result().saved)++saved;
  fprintf(file,"owned_subtitle_candidates=%u owned_subtitle_saved=%u ",subtitle_sample_count,saved);
@@ -528,6 +561,8 @@ void poll(){}
 bool state_certified(){return false;}
 bool pixels_read_back(){return false;}
 bool publication_failed(){return false;}
+bool begin_shutdown(){return false;}
+bool drain_shutdown(bool){return false;}
 void print_progress(FILE*){}
 void print(FILE*){}
 }

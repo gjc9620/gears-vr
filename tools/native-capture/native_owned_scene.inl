@@ -3,14 +3,20 @@
 #include "native_render_size.h"
 #if defined(GEARS_NATIVE_OWNED_SCENE_PROBE) && GEARS_NATIVE_OWNED_SCENE_PROBE
 #include "native_owned_surface.inl"
+#include "owned_scene_retirement.h"
+void owned_ui_discard_completed(uint64_t ticket);
 namespace gears_owned_scene_live {
 gears_owned_scene::Trial trial;
 gears_native_owned::Owner<gears_native_owned::NativeOps> owner;
 std::unique_ptr<gears_native_owned::NativeOps> ops;
 bool image_verified{},attempted{};
+gears_owned_retirement::Gate shutdown;
+bool shutdown_conflict{};
+std::atomic<bool> shutdown_rhi_ready{};
 gears_native_owned::Snapshot created{};
 bool healthy(){const auto live=owner.snapshot();
- if(trial.resource&&(live.adapter_fault||live.phase!=gears_native_owned::Phase::live))trial.error=10;
+ const bool released=shutdown.phase()==gears_owned_retirement::Phase::released&&live.phase==gears_native_owned::Phase::released;
+ if(trial.resource&&(live.adapter_fault||(!released&&live.phase!=gears_native_owned::Phase::live)))trial.error=10;
  return !trial.error;
 }
 }
@@ -33,6 +39,7 @@ bool native_owned_scene_tick(uint64_t ticket){using namespace gears_owned_scene_
 }
 uintptr_t native_owned_scene_candidate(){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ if(shutdown.stopping())return 0;
  if(trial.complete()&&healthy()&&owned_scene_gpu::can_advance(trial.ticket)){
   if(!trial.advance(trial.ticket,true)){trial.error=12;return 0;}
  }
@@ -50,12 +57,17 @@ bool native_owned_scene_begin(void* renderer,uint64_t ticket){using namespace ge
  const bool ok=healthy()&&trial.begin(reinterpret_cast<uintptr_t>(renderer),ticket);
  if(ok&&trial.renderer==reinterpret_cast<uintptr_t>(renderer)&&trial.ticket==ticket){owned_scene_gpu::began(ticket);owned_scene_gpu::activate();}return ok;}
 void native_owned_scene_copy(){using namespace gears_owned_scene_live;
+ if(shutdown.stopping())return;
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
- const auto consumed_before=owned_scene_gpu::consumed_count;
+ const auto consumed_before=owned_scene_gpu::consumed_count,published_before=owned_scene_gpu::published_count;
 #endif
  owned_scene_gpu::copy(healthy()&&trial.returned&&trial.destroyed&&trial.submitted_mask==3&&!trial.unknown_draws&&owned_ui_ready(trial.ticket),trial.ticket);
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
- if(owned_scene_gpu::consumed_count>consumed_before)owned_ui_published(trial.ticket);
+ if(owned_scene_gpu::consumed_count>consumed_before){
+  if(owned_scene_gpu::published_count>published_before&&owned_scene_gpu::latest_publication.ticket==trial.ticket)
+   owned_ui_published(trial.ticket);
+  else owned_ui_discard_completed(trial.ticket);
+ }
 #endif
 }
 bool native_owned_scene_consuming(void* renderer,uint64_t ticket){using namespace gears_owned_scene_live;
@@ -71,6 +83,7 @@ void native_owned_scene_destroyed(void* renderer){using namespace gears_owned_sc
 void native_owned_scene_draw(ID3D12GraphicsCommandList* list,gears_viewport::TargetDraw const& binding,
  uintptr_t caller,unsigned kind,unsigned elements,unsigned instances){using namespace gears_owned_scene_live;
  if(!trial.resource||binding.target.resource!=trial.resource)return;
+ if(shutdown.stopping()){shutdown_conflict=true;return;}
  const auto state=owned_bindings_enabled?owned_target_stats.draw_state(canonical_identity(list)):
   frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
  const bool exact=final_eye.valid&&binding.targets==1&&!binding.target.mip&&final_eye.width==gears_native_render_size::width()&&final_eye.height==gears_native_render_size::height()&&
@@ -93,6 +106,32 @@ void native_owned_scene_commit(gears_owned_scene::Receipt const& receipt){using 
  if(trial.submitted_mask==3)owned_scene_gpu::submitted(trial.ticket);native_owned_scene_copy();}
 bool native_owned_scene_retained(){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return attempted&&owner.retained();}
+// Caller holds session_native_mutex: native_cpu_drained includes closed entry
+// admission, no pending submitted renderers/state, and no producer build scope.
+// Canvas is independently derived from every active owned UI ledger receipt.
+bool native_owned_scene_shutdown_worker(bool native_cpu_drained,bool canvas_drained,bool bridges_closed){
+ using namespace gears_owned_scene_live;
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ if(!attempted||!owner.retained())return true;
+ if(shutdown_conflict)return false;
+ if(!shutdown.stopping()){
+  if(!native_cpu_drained||!canvas_drained||(trial.ticket&&(!trial.returned||!trial.destroyed)))return false;
+  const gears_native_owned::DrainProof proof{created.generation,true,true,true,true,false};
+  if(!shutdown.request(proof))return false;
+ }
+ if(shutdown.phase()==gears_owned_retirement::Phase::cpu_drained&&owned_scene_gpu::begin_shutdown()&&
+    owned_scene_gpu::drain_shutdown(bridges_closed))
+  if(shutdown.gpu_drained(created.generation,true,bridges_closed,true))shutdown_rhi_ready.store(true);
+ return shutdown.phase()==gears_owned_retirement::Phase::released&&!owner.retained();
+}
+void native_owned_scene_shutdown_rhi(){using namespace gears_owned_scene_live;
+ thread_local bool servicing{};
+ if(servicing||!shutdown_rhi_ready.load())return;
+ std::lock_guard<std::recursive_mutex> native_guard(session_native_mutex);
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ if(shutdown.phase()!=gears_owned_retirement::Phase::gpu_drained||shutdown_conflict||GetCurrentThreadId()!=created.creation_thread)return;
+ servicing=true;if(shutdown.retire_on_rhi(owner))shutdown_rhi_ready.store(false);servicing=false;
+}
 void print_native_owned_scene(FILE* file){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
  owned_scene_gpu::poll();owned_scene_gpu::print(file);
@@ -106,10 +145,11 @@ void print_native_owned_scene(FILE* file){using namespace gears_owned_scene_live
  fprintf(file,"owned_bindings strict=1 resets=%llu overflow=%llu descriptor_evictions=%llu descriptor_lost=%u\n",
   bindings.resets,bindings.overflow,bindings.descriptor_evictions,owned_target_stats.descriptor_capacity_lost()?1:0);
  healthy();const auto live=owner.snapshot();
- fprintf(file,"native_owned_scene attempted=%u resource=%llx adapter=%llx born=%llu ticket=%llu renderer=%llx width=%u height=%u built=%u entered=%u returned=%u destroyed=%u draw_mask=%u submitted_mask=%u draws=%llu unknown_draws=%llu submissions=%llu queue=%llx error=%u create_error=%u live_phase=%u live_error=%u adapter_fault=%u retained=%u retention_until_process_exit=1 canvas_redirected=0 gpu_state_certified=%u pixels_read_back=%u pixels_verified=0\n",
+ fprintf(file,"native_owned_scene attempted=%u resource=%llx adapter=%llx born=%llu ticket=%llu renderer=%llx width=%u height=%u built=%u entered=%u returned=%u destroyed=%u draw_mask=%u submitted_mask=%u draws=%llu unknown_draws=%llu submissions=%llu queue=%llx error=%u create_error=%u live_phase=%u live_error=%u adapter_fault=%u retained=%u retention_until_process_exit=%u shutdown_phase=%u shutdown_conflict=%u canvas_redirected=0 gpu_state_certified=%u pixels_read_back=%u pixels_verified=0\n",
   attempted?1:0,trial.resource,trial.adapter,trial.born,trial.ticket,trial.renderer,created.width,created.height,
   trial.built?1:0,trial.entered?1:0,trial.returned?1:0,trial.destroyed?1:0,trial.draw_mask,trial.submitted_mask,
   trial.draws,trial.unknown_draws,trial.submissions,trial.queue,trial.error,unsigned(created.error),unsigned(live.phase),unsigned(live.error),live.adapter_fault?1:0,owner.retained()?1:0,
+  owner.retained()?1:0,unsigned(shutdown.phase()),shutdown_conflict?1:0,
   owned_scene_gpu::state_certified()?1:0,owned_scene_gpu::pixels_read_back()?1:0);
 }
 #else
@@ -126,5 +166,7 @@ void native_owned_scene_draw(ID3D12GraphicsCommandList*,gears_viewport::TargetDr
 gears_owned_scene::Receipt native_owned_scene_prepare(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*){return {};}
 void native_owned_scene_commit(gears_owned_scene::Receipt const&){}
 bool native_owned_scene_retained(){return false;}
+bool native_owned_scene_shutdown_worker(bool,bool,bool){return true;}
+void native_owned_scene_shutdown_rhi(){}
 void print_native_owned_scene(FILE*){}
 #endif

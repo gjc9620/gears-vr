@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include "native_owned_surface.inl"
+#include "owned_scene_retirement.h"
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -150,5 +151,25 @@ int main(int argc,char** argv){
   CHECK(owner.retire_on_rhi(drain())&&!owner.retained());}
  for(auto dimensions:{std::pair<unsigned,unsigned>{127,3264},{6145,3264},{8194,3264},{6144,0},{6144,8193}}){Mock ops;TestOwner owner;
   CHECK(!owner.create_on_rhi(ops,dimensions.first,dimensions.second,9)&&!ops.creates&&!owner.retained());}
+ // Scene shutdown cannot turn a worker request or a copy-only drain into a
+ // native release. Exercise the new gate against the actual Owner template.
+ for(unsigned missing=0;missing<5;++missing){Mock ops;TestOwner owner;CHECK(create(owner,ops));
+  gears_owned_retirement::Gate gate;auto proof=drain();proof.gpu_fence_completed=false;
+  if(missing==0)proof.generation=0;if(missing==1)proof.new_submissions_disabled=false;
+  if(missing==2)proof.renderers_retired=false;if(missing==3)proof.canvas_commands_retired=false;
+  if(missing==4)proof.producer_cpu_access_retired=false;
+  CHECK(!gate.request(proof));CHECK(!gate.retire_on_rhi(owner));CHECK(owner.retained()&&!ops.releases&&!ops.clears);
+ }
+ {Mock ops;TestOwner owner;CHECK(create(owner,ops));gears_owned_retirement::Gate gate;
+  auto proof=drain();proof.gpu_fence_completed=false;CHECK(gate.request(proof));
+  CHECK(!gate.gpu_drained(10,true,true,true));CHECK(!gate.gpu_drained(9,false,true,true));
+  CHECK(!gate.gpu_drained(9,true,false,true));CHECK(!gate.gpu_drained(9,true,true,false));
+  CHECK(!gate.retire_on_rhi(owner)&&owner.retained()&&!ops.releases&&!ops.clears);
+  CHECK(gate.gpu_drained(9,true,true,true));ops.tid=43;
+  CHECK(!gate.retire_on_rhi(owner)&&owner.retained()&&!ops.releases&&!ops.clears);
+  ops.tid=42;++ops.context;CHECK(!gate.retire_on_rhi(owner)&&!ops.releases);--ops.context;
+  CHECK(gate.retire_on_rhi(owner)&&!owner.retained());CHECK(gate.retire_on_rhi(owner));
+  CHECK(ops.clears==1&&ops.releases==2&&gate.phase()==gears_owned_retirement::Phase::released);
+ }
  std::printf("native owned surface: %u CPU checks passed\n",checks);
 }

@@ -227,6 +227,9 @@ void print(FILE* file){
 }
 }
 void owned_ui_published(uint64_t ticket){if(ui_observer_enabled)owned_ui_live::ledger.published(ticket,now());}
+void owned_ui_discard_completed(uint64_t ticket){
+ if(ui_observer_enabled&&!owned_ui_live::ledger.discard_completed(ticket,now()))owned_ui_live::fault(ticket,44);
+}
 bool owned_ui_ready(uint64_t ticket){return !owned_ui_live::routing||owned_ui_live::ledger.ready(ticket);}
 #else
 namespace owned_ui_live {
@@ -236,5 +239,6 @@ uint64_t execute_begin(void*){return 0;}
 void execute_end(uint64_t,uint32_t,bool){}
 }
 void owned_ui_published(uint64_t){}
+void owned_ui_discard_completed(uint64_t){}
 bool owned_ui_ready(uint64_t){return true;}
 #endif
