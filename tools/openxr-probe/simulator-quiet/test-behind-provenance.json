@@ -1,0 +1,59 @@
+{
+  "base_swapchain_provenance": "tools/openxr-probe/simulator-quiet/swapchain-handles-provenance.json",
+  "base_swapchain_provenance_sha256": "53bdfcc80f0364e8e1201db6ff1da901cb8f5e2e55810de36e2046d26cf076c8",
+  "apply_after": "quiet.patch, then swapchain-handles.patch",
+  "patch": "tools/openxr-probe/simulator-quiet/test-behind.patch",
+  "patch_sha256": "955bb202e52b40d31fbaaa4ec426024051ca3c679047c883873a58c6df5ae51f",
+  "files": [
+    {
+      "path": "src/runtime.cpp",
+      "before_lf_sha256": "e8c77699d18626bfe7d606a725319694840715a3671a60cec945f48e20ff1fb3",
+      "after_lf_sha256": "b27330da250161fb8412e5f849c79c37ddce1840a9a1bd41b9002ac0a323c349"
+    },
+    {
+      "path": "src/preview_window_policy.h",
+      "before_lf_sha256": null,
+      "after_lf_sha256": "733455da2e4a10a6f9c532a891b357e99f53124a551f2251fb45ca199b3b048f"
+    },
+    {
+      "path": "tests/preview_window_policy_tests.cpp",
+      "before_lf_sha256": null,
+      "after_lf_sha256": "9ccd81b9efb3fdef3ceb6c9f6dba5f98ffd8f8cd881b74a144f96c5b07e734f6"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "before_lf_sha256": "f5a43f78d6618a0c18e04c5c46e37a777f159308a6bcce57e22a012287e28291",
+      "after_lf_sha256": "155d31b8bd282db93cb1b19341627455004487cf7481c7362254c4bfaf467c62"
+    }
+  ],
+  "private_source": "analysis/simulator-behind-source",
+  "private_build": "analysis/simulator-behind-build",
+  "runtime_manifest": "analysis/runtime/simulator-behind/openxr_simulator.json",
+  "compiled_dll_sha256": "5681e8af6075cbec815382a684f30ccfe4450fa828bff5a394ff6d4ed9f59cdd",
+  "unchanged_quiet2_dll_sha256": "760dccf583ef05d2c8dbb2d26f514e91f3a67e21142870afae70da651683432c",
+  "build": {
+    "generator": "Ninja",
+    "configuration": "Release",
+    "compiler": "MSVC 14.51.36231 x64",
+    "vulkan_headers": "analysis/deps/Vulkan-Headers-v1.3.290/include",
+    "installed_dependencies": false,
+    "configure_command": "cmake -S analysis/simulator-behind-source -B analysis/simulator-behind-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCMAKE_MAKE_PROGRAM=E:/vs/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe -DSIMXR_VULKAN_INCLUDE_DIR=J:/gearsVr/analysis/deps/Vulkan-Headers-v1.3.290/include",
+    "build_command": "cmake --build analysis/simulator-behind-build",
+    "test_command": "ctest --test-dir analysis/simulator-behind-build --output-on-failure"
+  },
+  "tests": {
+    "ctest": "5/5 passed",
+    "preview_window_policy": "76 checks passed: exact env opt-in, legacy behavior, bottom-before-show ordering, flags, failed position prevents show across every show mode",
+    "source_contracts": "Passed: hidden creation, all explicit shows routed through helper, no behind foreground/top call, maximized behind branch preserves state/geometry",
+    "logs": "analysis/runtime/build-simulator-behind.log",
+    "gui_or_openxr_started": false
+  },
+  "policy": "Own preview: hidden creation; explicit HWND_BOTTOM with NOACTIVATE|NOMOVE|NOSIZE before SW_SHOWNA. Reuse follows same show policy. Behind SIZE_MAXIMIZED preserves current state/geometry and returns after lowering; no normal restoration. No periodic z-order enforcement. Flag unset follows original quiet2 behavior. A failed SetWindowPos returns false and suppresses ShowWindow; runtime callback preserves the BOOL failure result.",
+  "limits": [
+    "Static and CPU verification only; foreground, z-order and second-monitor runtime acceptance remain pending.",
+    "This flag controls only the runtime-owned preview. No existing user window is hidden, minimized or repositioned.",
+    "OpenXRPoseProbe hosts the runtime in-process; there is no simulator.exe assumption.",
+    "ActiveRuntime registry unchanged; testing must select this private manifest with child-process XR_RUNTIME_JSON and GEARSVR_TEST_WINDOWS_BEHIND=1.",
+    "Flag unset retains original quiet2 show/restore behavior. No periodic z-order enforcement is added."
+  ]
+}

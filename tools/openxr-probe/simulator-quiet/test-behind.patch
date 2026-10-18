@@ -1,0 +1,191 @@
+--- a/src/runtime.cpp
++++ b/src/runtime.cpp
+@@ -116,6 +116,7 @@
+ #include "mcp_integration.h"
+ #include "projection_timing.h"
+ #include "focus_policy.h"
++#include "preview_window_policy.h"
+ #include "swapchain_handles.h"
+ #include "ui_enhancements.h"
+ 
+@@ -163,6 +164,20 @@
+     char value[2]{};
+     return GetEnvironmentVariableA("XR_SIMULATOR_NO_ACTIVATE", value, sizeof(value)) == 1 && value[0] == '1';
+ }();
++
++
++// Test-only opt-in. No registry/runtime selection or periodic z-order changes.
++static const bool g_windowsBehind = []() {
++    char value[2]{};
++    const DWORD length = GetEnvironmentVariableA("GEARSVR_TEST_WINDOWS_BEHIND", value, sizeof(value));
++    return length == 1 && simxr::WindowsBehindEnabled(std::string_view(value, length));
++}();
++
++static void ShowPreviewWindow(HWND hwnd, int legacyCommand) {
++    simxr::PresentPreviewWindow(hwnd, g_windowsBehind, legacyCommand,
++        [](HWND h, HWND after, UINT flags) { return SetWindowPos(h, after, 0, 0, 0, 0, flags) != FALSE; },
++        [](HWND h, int command) { ShowWindow(h, command); });
++}
+ 
+ static void EnsureLogFile() {
+     if (g_LogFile) return;
+@@ -1356,7 +1371,7 @@
+     AdjustWindowRectEx(&rc, (DWORD)GetWindowLongW(hWnd, GWL_STYLE), GetMenu(hWnd) != nullptr,
+                        (DWORD)GetWindowLongW(hWnd, GWL_EXSTYLE));
+     SetWindowPos(hWnd, nullptr, 0, 0, rc.right - rc.left, rc.bottom - rc.top,
+-                 SWP_NOMOVE | SWP_NOZORDER | (g_noActivate ? SWP_NOACTIVATE : 0));
++                 SWP_NOMOVE | SWP_NOZORDER | ((g_noActivate || g_windowsBehind) ? SWP_NOACTIVATE : 0));
+ }
+ 
+ // Re-shape the window for a new content aspect -- a view mode or layout change, which
+@@ -1384,7 +1399,7 @@
+     AdjustWindowRectEx(&rc, (DWORD)GetWindowLongW(hWnd, GWL_STYLE), GetMenu(hWnd) != nullptr,
+                        (DWORD)GetWindowLongW(hWnd, GWL_EXSTYLE));
+     SetWindowPos(hWnd, nullptr, 0, 0, rc.right - rc.left, rc.bottom - rc.top,
+-                 SWP_NOMOVE | SWP_NOZORDER);
++                 SWP_NOMOVE | SWP_NOZORDER | (g_windowsBehind ? SWP_NOACTIVATE : 0));
+ }
+ 
+ // View format for sampling a D3D12 swapchain image in the preview's scaling pass. The
+@@ -1692,6 +1707,12 @@
+             BOOL  hasMenu = GetMenu(hWnd) != nullptr;
+ 
+             if (wParam == SIZE_MAXIMIZED) {
++                if (g_windowsBehind) {
++                    // Preserve this preview's current state/geometry. Restoring
++                    // normal size may briefly raise it above the user's window.
++                    ShowPreviewWindow(hWnd, SW_SHOWNA);
++                    return 0;
++                }
+                 // Restore out of maximized state, then size to the largest
+                 // aspect-correct rect that fits in the monitor's work area.
+                 HMONITOR hmon = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+@@ -1719,8 +1740,8 @@
+                 int y = mi.rcWork.top  + (availH - outerH) / 2;
+ 
+                 inFix = true;
+-                ShowWindow(hWnd, SW_RESTORE);
+-                SetWindowPos(hWnd, nullptr, x, y, outerW, outerH, SWP_NOZORDER);
++                ShowPreviewWindow(hWnd, SW_RESTORE);
++                SetWindowPos(hWnd, nullptr, x, y, outerW, outerH, SWP_NOZORDER | (g_windowsBehind ? SWP_NOACTIVATE : 0));
+                 inFix = false;
+             } else {
+                 // Anything else (DPI change, programmatic, Aero snap, etc.):
+@@ -1824,13 +1845,13 @@
+     if (s.hwnd) return;
+     WNDCLASSW wc{}; wc.lpfnWndProc = WndProc; wc.hInstance = GetModuleHandleW(nullptr); wc.lpszClassName = L"OpenXR Simulator";
+     RegisterClassW(&wc);
+-    s.hwnd = CreateWindowExW(0, wc.lpszClassName, L"OpenXR Simulator", WS_OVERLAPPEDWINDOW | (g_noActivate ? 0 : WS_VISIBLE),
++    s.hwnd = CreateWindowExW(0, wc.lpszClassName, L"OpenXR Simulator", WS_OVERLAPPEDWINDOW | ((g_noActivate || g_windowsBehind) ? 0 : WS_VISIBLE),
+                              CW_USEDEFAULT, CW_USEDEFAULT, (int)s.previewWidth, (int)s.previewHeight, nullptr, nullptr, wc.hInstance, nullptr);
+     Logf("[SimXR] ensurePreview: hwnd=%p size=%ux%u usesD3D12=%d", s.hwnd, s.previewWidth, s.previewHeight, s.usesD3D12);
+ 
+     // Make sure window is shown and updated
+     if (s.hwnd) {
+-        ShowWindow(s.hwnd, g_noActivate ? SW_SHOWNOACTIVATE : SW_SHOW);
++        ShowPreviewWindow(s.hwnd, g_noActivate ? SW_SHOWNOACTIVATE : SW_SHOW);
+         UpdateWindow(s.hwnd);
+ 
+         // Check if window has focus
+@@ -4578,7 +4599,7 @@
+             SetWindowLongPtrW(s.hwnd, GWLP_WNDPROC, (LONG_PTR)rt::WndProc);
+             Log("[SimXR] Updated window WndProc to new DLL address");
+             ui::ApplyDarkTheme(s.hwnd);
+-            ShowWindow(s.hwnd, g_noActivate ? SW_SHOWNA : SW_SHOW);
++            ShowPreviewWindow(s.hwnd, g_noActivate ? SW_SHOWNA : SW_SHOW);
+             UpdateWindow(s.hwnd);
+             // Seed clientWidth/Height from the actual current client area
+             RECT cr{};
+@@ -4603,10 +4624,10 @@
+         Log("[SimXR] Failed to create preview window!");
+         return;
+     }
+-    ShowWindow(s.hwnd, g_noActivate ? SW_SHOWNOACTIVATE : SW_SHOW);
++    ShowPreviewWindow(s.hwnd, g_noActivate ? SW_SHOWNOACTIVATE : SW_SHOW);
+     UpdateWindow(s.hwnd);
+-    if (!g_noActivate) SetForegroundWindow(s.hwnd);
+-    SetWindowPos(s.hwnd, g_noActivate ? nullptr : HWND_TOP, 0, 0, 0, 0,
++    if (!g_noActivate && !g_windowsBehind) SetForegroundWindow(s.hwnd);
++    if (!g_windowsBehind) SetWindowPos(s.hwnd, g_noActivate ? nullptr : HWND_TOP, 0, 0, 0, 0,
+                  SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | (g_noActivate ? SWP_NOACTIVATE | SWP_NOZORDER : 0));
+     Logf("[SimXR] Created new preview window: hwnd=%p clientSize=%ux%u",
+          s.hwnd, initialClientW, initialClientH);
+--- /dev/null
++++ b/src/preview_window_policy.h
+@@ -0,0 +1,19 @@
++#pragma once
++#include <windows.h>
++#include <string_view>
++
++namespace simxr {
++inline bool WindowsBehindEnabled(std::string_view value) { return value == "1"; }
++
++// Called only for this runtime's own preview at explicit show/restore boundaries.
++// Position callback intentionally has no geometry arguments: preserve location/size.
++template<class Position, class Show>
++inline bool PresentPreviewWindow(HWND hwnd, bool behind, int legacyCommand,
++                                 Position position, Show show) {
++    if (!behind) { show(hwnd, legacyCommand); return true; }
++    constexpr UINT flags = SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE;
++    if (!position(hwnd, HWND_BOTTOM, flags)) return false;
++    show(hwnd, SW_SHOWNA);
++    return true;
++}
++} // namespace simxr
+--- /dev/null
++++ b/tests/preview_window_policy_tests.cpp
+@@ -0,0 +1,41 @@
++#include "preview_window_policy.h"
++#include <cstdio>
++#include <vector>
++#include <initializer_list>
++struct Event { bool position; HWND window; HWND after; unsigned value; };
++int main() {
++    int checks=0, failures=0;
++    const auto check=[&](bool ok){ ++checks; if(!ok) ++failures; };
++    for(const auto value : {"", "0", "true", "01", "1 ", " 1", "11"})
++        check(!simxr::WindowsBehindEnabled(value));
++    check(simxr::WindowsBehindEnabled("1"));
++    HWND own=reinterpret_cast<HWND>(static_cast<UINT_PTR>(123));
++    for(bool behind : {false,true}) for(int command : {SW_SHOW,SW_SHOWNA,SW_SHOWNOACTIVATE,SW_RESTORE}) {
++        std::vector<Event> events;
++        const bool presented=simxr::PresentPreviewWindow(own,behind,command,
++            [&](HWND h,HWND after,UINT flags){events.push_back({true,h,after,flags}); return true;},
++            [&](HWND h,int show){events.push_back({false,h,nullptr,static_cast<unsigned>(show)});});
++        check(presented);
++        for(const auto& event:events) check(event.window==own);
++        if(!behind) {
++            check(events.size()==1 && !events[0].position && events[0].value==command);
++            continue;
++        }
++        check(events.size()==2);
++        check(events[0].position && events[0].after==HWND_BOTTOM);
++        check(events[0].value==(SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE));
++        check(!(events[0].value&(SWP_SHOWWINDOW|SWP_HIDEWINDOW|SWP_NOZORDER)));
++        check(!events.back().position && events.back().value==SW_SHOWNA);
++    }
++    for(bool behind : {false,true}) for(int command : {SW_SHOW,SW_SHOWNA,SW_SHOWNOACTIVATE,SW_RESTORE}) {
++        int positioned=0, shown=0;
++        const bool presented=simxr::PresentPreviewWindow(own,behind,command,
++            [&](HWND,HWND,UINT){++positioned; return false;},
++            [&](HWND,int){++shown;});
++        check(presented==!behind);
++        check(positioned==(behind?1:0));
++        check(shown==(behind?0:1));
++    }
++    std::printf("preview policy: %d checks, %d failures\n",checks,failures);
++    return failures?1:0;
++}
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -48,6 +48,10 @@
+ 
+ include(CTest)
+ if(BUILD_TESTING)
++    add_executable(preview_window_policy_tests tests/preview_window_policy_tests.cpp)
++    target_include_directories(preview_window_policy_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
++    add_test(NAME preview_window_policy COMMAND preview_window_policy_tests)
++
+     add_executable(swapchain_handles_tests tests/swapchain_handles_tests.cpp)
+     target_include_directories(swapchain_handles_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+     add_test(NAME swapchain_handles COMMAND swapchain_handles_tests)
