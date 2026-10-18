@@ -15,7 +15,7 @@ class DesktopMirror {
 public:
     enum class Reason : unsigned { none,not_ready,lock_busy,copy_busy,source,generation,ticket,stale,queue,device,destination,api,timeout,closed };
     struct Status {
-        unsigned state{},destination_format{}; // 0 empty, 1 bound, 2 ready, 3 failed, 4 closed.
+        unsigned state{},destination_format{}; // 0 empty, 1 bound, 2 ready, 3 failed, 4 closed, 5 retiring.
         uint64_t captures{},presents{},busy{},stale{},rejected{},wait_ns{},max_wait_ns{},timeouts{},ticket{};
         int64_t received_ns{};HRESULT error{S_OK};Reason reason{Reason::none};bool unsafe{},destination_held{};
     };
@@ -125,6 +125,7 @@ public:
     Status status(){AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};auto result=stats_;result.busy+=lock_busy_.load();result.destination_held=held_destination_!=nullptr;return result;}
     bool bind(ID3D12CommandQueue* queue,ID3D12Resource* source,uint64_t generation){
         AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};if(stats_.state)return reject(Reason::not_ready);
+        if(generation<=generation_)return reject(Reason::generation);
         if(!queue||!source||!generation||queue->GetDesc().Type!=D3D12_COMMAND_LIST_TYPE_DIRECT)return reject(Reason::source);
         const auto d=source->GetDesc();
         if(d.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D||!d.Width||d.Width>16384||d.Width%2||d.DepthOrArraySize!=1||d.MipLevels!=1||d.SampleDesc.Count!=1||d.SampleDesc.Quality||format_index(d.Format)<0)return reject(Reason::source);
@@ -207,6 +208,23 @@ public:
         const bool copied=complete(copy_fence_,copy_serial_,copy_signaled_,copy_inflight_);
         const bool drawn=complete(draw_fence_,draw_serial_,draw_signaled_,draw_inflight_);
         if(drawn)held_destination_.Reset();return copied&&drawn;
+    }
+    // Nonterminal source retirement. The caller has stopped old-world producers.
+    // Freeze both copy and presentation before polling either fence; a pending
+    // GPU operation keeps every resource alive and may be retried without waits.
+    // Keep generation and ticket high-water marks across the next bind.
+    bool retire_source(uint64_t expected_generation){
+        if(!TryAcquireSRWLockExclusive(&lock_))return false;Unlock unlock{&lock_};
+        if(!expected_generation||expected_generation!=generation_)return reject(Reason::generation);
+        if(stats_.state==0)return true;
+        if(stats_.state!=1&&stats_.state!=2&&stats_.state!=5)return false;
+        stats_.state=5;snapshot_valid_=false;
+        const bool copied=complete(copy_fence_,copy_serial_,copy_signaled_,copy_inflight_);
+        const bool drawn=complete(draw_fence_,draw_serial_,draw_signaled_,draw_inflight_);
+        if(!copied||!drawn||stats_.state==3)return false;
+        release(false);source_desc_={};copy_serial_=draw_serial_=0;
+        copy_signaled_=draw_signaled_=false;
+        stats_.received_ns=0;stats_.state=0;stats_.reason=Reason::none;return true;
     }
     bool drain(unsigned timeout_ms=1000){AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};if(stats_.state==4)return !stats_.unsafe;return drain_locked(timeout_ms);}
     bool close(unsigned timeout_ms=1000){

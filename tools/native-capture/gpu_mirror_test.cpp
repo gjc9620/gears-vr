@@ -138,5 +138,32 @@ int main(){try{
         require(recovered.status().state==3,"timeout remains disabled after GPU recovery");
         require(recovered.drain(0)&&recovered.close(0)&&!recovered.status().unsafe,"continuous retry can close safely");
     }
-    gpu.verify();std::printf("desktop mirror WARP: %u checks passed (SDR formats, snapshot, states, bars, stale/identity, close, timeout recovery)\n",checks);return 0;
+    {
+        auto first=gpu.texture(16,8,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(first.Get(),true);
+        auto next=gpu.texture(20,10,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(next.Get(),false);
+        auto dest=gpu.texture(10,10,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_PRESENT);
+        DesktopMirror mirror;require(mirror.bind(gpu.queue.Get(),first.Get(),7)&&mirror.prepare(),"handoff first binding");
+        ComPtr<ID3D12Fence> blocker;gpu_check(gpu.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&blocker)),"handoff blocker");
+        gpu_check(gpu.queue->Wait(blocker.Get(),1),"handoff stall");
+        const auto stamp=monotonic_ns();
+        require(mirror.capture(first.Get(),7,41,stamp,D3D12_RESOURCE_STATE_RENDER_TARGET),"handoff pending copy");
+        require(!mirror.retire_source(6)&&mirror.status().state==2,"stale retirement cannot suspend current source");
+        require(!mirror.retire_source(7)&&mirror.status().state==5,"pending copy retains source");
+        require(!mirror.capture(first.Get(),7,42,stamp,D3D12_RESOURCE_STATE_RENDER_TARGET),"retiring source cannot capture");
+        require(!mirror.present(dest.Get(),gpu.queue.Get(),stamp+1),"retiring snapshot cannot present");
+        require(!mirror.bind(gpu.queue.Get(),next.Get(),8),"pending source cannot be replaced");
+        gpu_check(blocker->Signal(1),"handoff resume");gpu.finish();
+        require(mirror.retire_source(7)&&mirror.retire_source(7)&&mirror.status().state==0,"completed retirement is retryable");
+        require(!mirror.bind(gpu.queue.Get(),next.Get(),7),"retired resource generation cannot repeat");
+        require(mirror.bind(gpu.queue.Get(),next.Get(),8)&&mirror.prepare(),"new source binding");
+        require(!mirror.capture(next.Get(),8,41,monotonic_ns(),D3D12_RESOURCE_STATE_RENDER_TARGET),"old ticket cannot replay after bind");
+        const auto next_stamp=monotonic_ns();
+        require(mirror.capture(next.Get(),8,42,next_stamp,D3D12_RESOURCE_STATE_RENDER_TARGET)&&mirror.drain(),"new source capture");
+        require(mirror.present(dest.Get(),gpu.queue.Get(),next_stamp+1),"new source present");
+        const auto pixels=gpu.read(dest.Get(),D3D12_RESOURCE_STATE_PRESENT);
+        require(pixels[0]==0&&pixels[1]==255&&pixels[2]==0,"handoff displays new source pixels");
+        require(mirror.status().captures==2&&mirror.status().ticket==42,"handoff preserves counters");
+        require(mirror.close()&&!mirror.retire_source(8)&&!mirror.bind(gpu.queue.Get(),first.Get(),9),"terminal close cannot reopen");
+    }
+    gpu.verify();std::printf("desktop mirror WARP: %u checks passed (SDR formats, snapshot, states, bars, stale/identity, close, timeout recovery, source handoff)\n",checks);return 0;
 }catch(std::exception const& error){std::fprintf(stderr,"mirror test: %s\n",error.what());return 1;}}
