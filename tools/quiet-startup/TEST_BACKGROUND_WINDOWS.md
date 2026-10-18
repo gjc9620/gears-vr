@@ -86,8 +86,17 @@ belong to the snapshot caller; do not exclude ordinary applications by guessing.
 Five offline regression tests cover the foreground-only blind spot, partial and
 complete coverage, invisible windows, and nonoverlap. Run with Python unittest
 discovery in this directory using pattern `test_window_occlusion.py`.
-The helper is not yet wired into the runtime driver. These tests verify only the
-rectangle analysis, not live placement or the cause of the user's reported
+`window_snapshot.py` supplies a bounded read-only Win32/DWM snapshot, with no
+window title collection. It checks HWND process/thread identity and repeats the
+Z-order walk; query failure or order changes invalidate the sample. Five further
+mocked tests cover bounds, failed queries, identity/order races and the traversal
+limit. The unexecuted private `analysis/runtime/dlss-native-menu5.py` driver now
+uses both helpers at 250 ms intervals after owned identities are available,
+requesting owned-test cancellation on occlusion or invalid observations. It does
+not repair desktop Z order. Startup before identity discovery remains a gap.
+
+These tests verify only the snapshot logic and rectangle analysis, not live
+placement or the cause of the user's reported
 occlusion. Live snapshots can race window changes and rectangles do not model
 transparent pixels or irregular regions. No new game launch is justified by
 these offline results alone.
