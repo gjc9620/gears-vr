@@ -46,7 +46,7 @@ class FakeBackend:
     def reserve(self,manifest,log,owner=None,game_path=None,foreground=False):
         self.reserve_calls+=1;self.prime_owner=owner;self.selected_path=game_path;self.foreground=foreground
         return {'pid':55,'game_identity':dict(self.game)}
-    def game_window(self,pid):return 12345
+    def game_window(self,pid,*,diagnostic=None):return 12345
     def finish_owned_prime(self,manifest,identity,owner):return {'entry_restore_verified':True}
     def player(self,pid,profile):
         if not self.ready:raise RuntimeError('Menu has no Pawn')
@@ -797,6 +797,95 @@ class LauncherTests(unittest.TestCase):
                 backend.start_tiny_output_monitor(MANIFEST,{'pid':55},pathlib.Path('diagnostic.jsonl'))
                 self.assertIs(monitor.call_args.kwargs['allow_recovery'],allowed)
                 monitor.return_value.start.assert_called_once()
+
+    def window_user_fixture(self,rows):
+        user=SimpleNamespace(**{name:mock.Mock() for name in
+            ('EnumWindows','IsWindowVisible','GetWindowThreadProcessId','GetClientRect')})
+        def enum(callback,argument):
+            for hwnd in rows:self.assertTrue(callback(hwnd,argument))
+            return True
+        def owner(hwnd,out):out._obj.value=rows[hwnd]['pid'];return 1
+        def rectangle(hwnd,out):
+            value=rows[hwnd].get('rect')
+            if value is None:return False
+            out._obj.left,out._obj.top,out._obj.right,out._obj.bottom=value;return True
+        user.EnumWindows.side_effect=enum;user.GetWindowThreadProcessId.side_effect=owner
+        user.IsWindowVisible.side_effect=lambda hwnd:rows[hwnd]['visible']
+        user.GetClientRect.side_effect=rectangle
+        return user
+
+    def test_game_window_optional_diagnostic_uses_same_candidate_reads(self):
+        rows={1:dict(pid=99,visible=True,rect=(0,0,1920,1080)),
+              2:dict(pid=55,visible=False,rect=(0,0,1920,1080)),
+              3:dict(pid=55,visible=True,rect=(0,0,8,8)),
+              4:dict(pid=55,visible=True,rect=None),
+              5:dict(pid=55,visible=True,rect=(0,0,640,360))}
+        backend=launcher.Backend.__new__(launcher.Backend)
+        for enabled in (False,True):
+            with self.subTest(diagnostic=enabled):
+                user=self.window_user_fixture(rows);diagnostic={}
+                with mock.patch.object(launcher.ctypes,'WinDLL',return_value=user):
+                    result=backend.game_window(55,**({'diagnostic':diagnostic} if enabled else {}))
+                self.assertEqual(result,5);user.EnumWindows.assert_called_once()
+                self.assertEqual(user.GetWindowThreadProcessId.call_count,5)
+                self.assertEqual(user.IsWindowVisible.call_count,4)
+                self.assertEqual([call.args[0] for call in user.GetClientRect.call_args_list],[3,4,5])
+                if enabled:
+                    self.assertEqual(diagnostic['reason'],'accepted')
+                    self.assertEqual(diagnostic['matched_pid_windows'],4)
+                    self.assertEqual([x['rejection'] for x in diagnostic['candidates']],
+                                     ['not_visible','client_too_small','client_rect_unavailable',None])
+                    self.assertIsNone(diagnostic['candidates'][0]['client_rect'])
+                    self.assertEqual(diagnostic['candidates'][1]['client_rect']['right'],8)
+
+    def test_game_window_diagnostic_bounds_and_multiple_candidates_still_reject(self):
+        backend=launcher.Backend.__new__(launcher.Backend)
+        for kind in ('none','hidden','multiple'):
+            rows={} if kind=='none' else {i:dict(pid=55,visible=kind=='multiple',rect=(0,0,1920,1080))
+                                         for i in range(1,3 if kind=='multiple' else 21)}
+            user=self.window_user_fixture(rows);diagnostic={}
+            with mock.patch.object(launcher.ctypes,'WinDLL',return_value=user):
+                if kind=='multiple':
+                    with self.assertRaisesRegex(RuntimeError,'Multiple game windows'):backend.game_window(55,diagnostic=diagnostic)
+                    self.assertEqual(diagnostic['reason'],'multiple_eligible_windows')
+                else:
+                    self.assertIsNone(backend.game_window(55,diagnostic=diagnostic))
+                    self.assertEqual(diagnostic['reason'],'no_pid_window' if kind=='none' else 'no_eligible_window')
+            self.assertLessEqual(len(diagnostic['candidates']),16)
+            if kind=='hidden':self.assertEqual(diagnostic['dropped_candidates'],4);user.GetClientRect.assert_not_called()
+
+    def test_window_wait_keeps_30s_last_snapshot_and_cancellation_identity_guards(self):
+        for scenario in ('timeout','cancel','identity'):
+            with self.subTest(scenario=scenario),tempfile.TemporaryDirectory() as directory:
+                backend=FakeBackend();index=pathlib.Path(directory)/'index.json';ticks=[0.];calls=[]
+                def window(pid,*,diagnostic):
+                    calls.append(ticks[0]);diagnostic.clear()
+                    diagnostic.update(reason='no_eligible_window',candidates=[dict(hwnd=123,visible=True,
+                        client_rect=dict(left=0,top=0,right=8,bottom=8),eligible=False,rejection='client_too_small')],
+                        sample=len(calls))
+                    return None
+                backend.game_window=window
+                if scenario=='cancel':backend.cancelled=lambda handle:ticks[0]>=10
+                if scenario=='identity':
+                    identify=backend.control.identity
+                    backend.control.identity=lambda pid:dict(backend.game,creation_time=999) if pid==55 and ticks[0]>=10 else identify(pid)
+                def sleep(seconds):self.assertEqual(seconds,.1);ticks[0]+=5
+                with mock.patch.object(launcher,'verify_files',return_value={}),mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                    if scenario=='timeout':
+                        with self.assertRaisesRegex(TimeoutError,'Game window unavailable'):
+                            launcher.start({},dict(MANIFEST,startup_menu=True),backend,index,clock=lambda:ticks[0],sleep=sleep)
+                    elif scenario=='identity':
+                        with self.assertRaisesRegex(RuntimeError,'Reserved game exited or changed'):
+                            launcher.start({},dict(MANIFEST,startup_menu=True),backend,index,clock=lambda:ticks[0],sleep=sleep)
+                    else:self.assertEqual(launcher.start({},dict(MANIFEST,startup_menu=True),backend,index,clock=lambda:ticks[0],sleep=sleep),0)
+                state=json.loads(index.read_text());backend.runner.run_session.assert_not_called()
+                self.assertEqual(backend.reserve_calls,1);self.assertFalse(state['native_activated'])
+                if scenario=='timeout':
+                    self.assertEqual(ticks[0],30);self.assertEqual(calls,[0,5,10,15,20,25])
+                    self.assertEqual(state['startup_window_last_diagnostic']['sample'],6)
+                    self.assertEqual(state['startup_window_last_diagnostic']['candidates'][0]['rejection'],'client_too_small')
+                    self.assertTrue(state['no_automatic_retry'])
+                else:self.assertEqual(calls,[0,5]);self.assertNotIn('startup_window_last_diagnostic',state)
 
     def test_startup_menu_opens_xr_before_waiting_for_player_without_legacy_deadline(self):
         with tempfile.TemporaryDirectory() as directory:

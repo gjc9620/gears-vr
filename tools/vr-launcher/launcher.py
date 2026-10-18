@@ -351,7 +351,7 @@ class Backend:
         if owner.value!=identity['pid'] or self.control.identity(identity['pid'])!=identity:
             raise RuntimeError('Close window/process ownership changed')
         if not user.PostMessageW(window,0x10,0,0):raise ctypes.WinError(ctypes.get_last_error())
-    def game_window(self,pid):
+    def game_window(self,pid,*,diagnostic=None):
         from ctypes import wintypes
         user=ctypes.WinDLL('user32',use_last_error=True)
         callback=ctypes.WINFUNCTYPE(wintypes.BOOL,wintypes.HWND,wintypes.LPARAM)
@@ -359,17 +359,40 @@ class Backend:
         user.IsWindowVisible.argtypes=[wintypes.HWND];user.IsWindowVisible.restype=wintypes.BOOL
         user.GetWindowThreadProcessId.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.DWORD)]
         user.GetClientRect.argtypes=[wintypes.HWND,ctypes.POINTER(wintypes.RECT)]
-        windows=[]
+        windows=[];matched=0
+        if diagnostic is not None:diagnostic.clear();diagnostic.update(candidates=[],dropped_candidates=0)
         @callback
         def visit(hwnd,_):
+            nonlocal matched
             actual=wintypes.DWORD();user.GetWindowThreadProcessId(hwnd,ctypes.byref(actual))
-            rect=wintypes.RECT()
-            if (actual.value==pid and user.IsWindowVisible(hwnd) and user.GetClientRect(hwnd,ctypes.byref(rect))
-                    and rect.right>=640 and rect.bottom>=360):windows.append(int(hwnd))
+            if actual.value!=pid:return True
+            matched+=1
+            visible=bool(user.IsWindowVisible(hwnd));rect=wintypes.RECT();rectangle=None
+            # Preserve the original short-circuit reads: hidden windows have an
+            # unknown client rect, rather than adding an extra native query.
+            reason='not_visible'
+            if visible:
+                if user.GetClientRect(hwnd,ctypes.byref(rect)):
+                    rectangle=dict(left=rect.left,top=rect.top,right=rect.right,bottom=rect.bottom)
+                    reason=None if rect.right>=640 and rect.bottom>=360 else 'client_too_small'
+                else:reason='client_rect_unavailable'
+            if reason is None:windows.append(int(hwnd))
+            if diagnostic is not None:
+                if len(diagnostic['candidates'])<16:
+                    diagnostic['candidates'].append(dict(hwnd=int(hwnd),visible=visible,client_rect=rectangle,
+                                                        eligible=reason is None,rejection=reason))
+                else:diagnostic['dropped_candidates']+=1
             return True
-        if not user.EnumWindows(visit,0):raise ctypes.WinError(ctypes.get_last_error())
+        if not user.EnumWindows(visit,0):
+            if diagnostic is not None:diagnostic.update(reason='enum_failed',matched_pid_windows=matched)
+            raise ctypes.WinError(ctypes.get_last_error())
+        if diagnostic is not None:
+            diagnostic.update(matched_pid_windows=matched,eligible_windows=len(windows),
+                reason='multiple_eligible_windows' if len(windows)>1 else 'accepted' if windows else
+                       'no_eligible_window' if matched else 'no_pid_window')
         if len(windows)>1:raise RuntimeError('Multiple game windows; cannot select startup panel')
         return windows[0] if windows else None
+
     def finish_owned_prime(self,manifest,identity,owner):
         if self.control.identity(identity['pid']) is None:return {'game_exited':True}
         self.runner.checked_identity(self.control,identity)
@@ -536,15 +559,18 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         args.render_scale=selected_render_scale
         if owned_prime:
             deadline=clock()+30
+            last_window_diagnostic={}
             while clock()<deadline:
                 if backend.cancelled(cancel):
                     state.update(phase='cancelled_before_activation',native_activated=False)
                     atomic_json(index,state);return 0
                 if backend.control.identity(pid)!=identity:raise RuntimeError('Reserved game exited or changed')
-                hwnd=backend.game_window(pid)
+                hwnd=backend.game_window(pid,diagnostic=last_window_diagnostic)
                 if hwnd:args.startup_menu_window=hwnd;break
                 sleep(.1)
-            else:raise TimeoutError('Game window unavailable for startup VR panel')
+            else:
+                state['startup_window_last_diagnostic']=last_window_diagnostic
+                raise TimeoutError('Game window unavailable for startup VR panel')
         def on_report(path,reported_owner,reported_game):
             report=pathlib.Path(path).resolve()
             if report.parent!=(ROOT/'analysis/runtime').resolve() or reported_owner!=owner or reported_game!=identity:
