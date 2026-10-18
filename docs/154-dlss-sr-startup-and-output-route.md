@@ -385,3 +385,37 @@ Root receipts are ignored `ngx-input-root-tests.json` and
 `ngx-input-startup-suite.json`. Actual reduced-input producer rectangles remain
 unverified until the next game sample; shared history and whole-output copying
 are still unresolved.
+
+### Descriptor provenance foundation (2026-10-19, CPU only)
+
+Added `ngx_mv_descriptor_provenance.h` and its isolated CPU fixture target.
+The bounded bank retains typed resource/heap identities, tracks descriptor
+copies and overwrites, and rejects stale snapshots, scope/device mismatches,
+overlapping heap ranges and exhausted capacity. Unknown source descriptors
+remain unknown after a copy. `producer_authorized` is always false.
+
+Root compiled with MSVC `/W4 /WX /EHsc /UNDEBUG` and ran successfully.
+Ignored evidence: `analysis/runtime/mv-descriptor-provenance1/receipt.json`,
+`compile.log` and `test.log`. Tested header SHA256:
+`8c1ee90a57918d689f7881a652c7040aa686f735989568a8b5874914653c0f8f`;
+test source SHA256:
+`b0d186191917dc4abb7650ba1be9788e2b4b034564f274e5b1fb7afe61d04519`.
+These are CPU fixtures, not real COM/GPU or playable-DLSS acceptance.
+The helper is not wired into runtime hooks and does not change release behavior.
+
+Source inspection of `capture.cpp::begin_target_prime` confirms the current
+early descriptor hooks cover CreateRTV and descriptor copies, not CreateUAV or
+CreateDescriptorHeap. Starting a bank at a selected Eval ticket therefore does
+not recover earlier UAV creation. Integration must retain actual early typed
+creation evidence with its original lifetime/scope, or demonstrate actual
+recreation; it must not relabel historical creation as the selected ticket.
+
+Independent architecture review leaves the two-Eval/per-eye-feature route as
+the supported candidate, not a proven cure. The next bounded experiment must
+join the selected MV resource to copied UAV descriptors, root table 3 and the
+actual Dispatch with list generation and region-defining data. Bound UAVs alone
+do not prove shader writes. Producer validation must establish coverage and
+mapping of the consumed region; an exact equal-sized generating rectangle may
+be unnecessarily restrictive if real shader evidence establishes a larger
+valid domain. No guard is relaxed on that hypothesis alone. Runtime-recommended
+resolution times launcher scale remains the higher-priority 0.0.1 default.
