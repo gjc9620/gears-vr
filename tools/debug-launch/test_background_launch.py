@@ -23,6 +23,36 @@ class Process:
 
 
 class BackgroundLaunchTests(unittest.TestCase):
+    def test_test_behind_policy_requires_explicit_built_and_authenticated_artifacts(self):
+        import hashlib
+        build,_,bootstrap=self.quiet_fixture();self.quiet_patches();popen=mock.Mock(return_value=bootstrap)
+        with mock.patch.dict(background_launch.os.environ,{'GEARSVR_TEST_WINDOWS_BEHIND':'1'}):
+            with self.assertRaisesRegex(RuntimeError,'explicitly built'):
+                background_launch.launch(self.game,popen=popen,runtime=self.runtime)
+            popen.assert_not_called()
+            with self.assertRaisesRegex(RuntimeError,'Missing built'):
+                background_launch.launch(self.game,quiet_build=build,popen=popen,runtime=self.runtime)
+            popen.assert_not_called()
+            proof=dict(schema=1,policy='hidden_bottom_showna_v1',sha256={
+                name:hashlib.sha256((build/name).read_bytes()).hexdigest()
+                for name in ('GearsEarlyLaunch.exe','GearsQuietStartup.dll')})
+            (build/'test-background-policy.json').write_text(json.dumps(proof))
+            result=background_launch.launch(self.game,quiet_build=build,popen=popen,runtime=self.runtime)
+            self.assertTrue(result['test_windows_behind_requested'])
+            self.assertEqual(popen.call_args.kwargs['env']['GEARSVR_TEST_WINDOWS_BEHIND'],'1')
+            popen.reset_mock();(build/'GearsQuietStartup.dll').write_bytes(b'changed')
+            with self.assertRaisesRegex(RuntimeError,'missing or changed'):
+                background_launch.launch(self.game,quiet_build=build,popen=popen,runtime=self.runtime)
+            popen.assert_not_called()
+
+    def test_test_env_never_changes_manual_foreground_launch(self):
+        popen=mock.Mock(return_value=Process(4200))
+        with mock.patch.dict(background_launch.os.environ,{'GEARSVR_TEST_WINDOWS_BEHIND':'1'}):
+            result=background_launch.launch(self.game,foreground=True,popen=popen,runtime=self.runtime)
+        self.assertEqual(result['window_startup_policy'],'foreground')
+        self.assertFalse(result['test_windows_behind_requested'])
+        self.assertIsNone(popen.call_args.kwargs['startupinfo'])
+
     def test_birth_receipt_survives_background_helper_failure(self):
         _,_,bootstrap=self.default_quiet_fixture();self.quiet_patches()
         receipt=self.root/'birth.json'
@@ -42,7 +72,7 @@ class BackgroundLaunchTests(unittest.TestCase):
     def setUp(self):
         patcher = mock.patch.object(background_launch, 'process_creation_time', return_value=123456)
         patcher.start(); self.addCleanup(patcher.stop)
-        environment = mock.patch.dict(background_launch.os.environ, {'GEARSVR_QUIET_STARTUP_BUILD':''})
+        environment = mock.patch.dict(background_launch.os.environ, {'GEARSVR_QUIET_STARTUP_BUILD':'','GEARSVR_TEST_WINDOWS_BEHIND':''})
         environment.start(); self.addCleanup(environment.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.root = pathlib.Path(self.temp.name)

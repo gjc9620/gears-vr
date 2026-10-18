@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "quiet_startup.h"
+#include "test_background_policy.h"
 #include "command_line.h"
 
 namespace fs=std::filesystem;
@@ -136,7 +137,9 @@ int wmain(int argc,wchar_t** argv) {
         wchar_t minimized_option[2]{};
         const bool start_minimized=GetEnvironmentVariableW(L"GEARSVR_QUIET_START_MINIMIZED",minimized_option,2)==1&&minimized_option[0]==L'1';
         start.StartupInfo.dwFlags=STARTF_USESHOWWINDOW;
-        start.StartupInfo.wShowWindow=start_minimized?SW_SHOWMINNOACTIVE:SW_SHOWNOACTIVATE;
+        wchar_t behind_option[2]{};
+        const bool test_behind=GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind_option,2)==1&&behind_option[0]==L'1';
+        start.StartupInfo.wShowWindow=static_cast<WORD>(gears_quiet_test::startup_show(start_minimized,test_behind));
         if(disable_extensions){attributes.initialize();start.lpAttributeList=attributes.list;}
         OwnedChild child;
         require(CreateProcessW(exe.c_str(),command.data(),nullptr,nullptr,FALSE,

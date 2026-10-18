@@ -26,7 +26,29 @@ def quiet_build_for_start(foreground=False, explicit=None):
     if foreground:
         if explicit is not None:raise ValueError('foreground and quiet_build cannot be combined')
         return None
-    return pathlib.Path(explicit or os.environ.get('GEARSVR_QUIET_STARTUP_BUILD') or DEFAULT_QUIET_BUILD)
+    selected = explicit or os.environ.get('GEARSVR_QUIET_STARTUP_BUILD')
+    if test_windows_behind_requested() and not selected:
+        raise RuntimeError('Test behind-windows policy requires an explicitly built quiet startup directory')
+    return pathlib.Path(selected or DEFAULT_QUIET_BUILD)
+
+
+def test_windows_behind_requested(foreground=False):
+    return not foreground and os.environ.get('GEARSVR_TEST_WINDOWS_BEHIND') == '1'
+
+
+def verify_test_behind_build(build):
+    proof = pathlib.Path(build) / 'test-background-policy.json'
+    if not proof.is_file():raise RuntimeError('Missing built test behind-windows policy proof: ' + str(proof))
+    value = json.loads(proof.read_text(encoding='utf-8-sig'))
+    if value.get('schema') != 1 or value.get('policy') != 'hidden_bottom_showna_v1':
+        raise RuntimeError('Unsupported test behind-windows policy proof')
+    hashes = value.get('sha256')
+    if not isinstance(hashes,dict) or set(hashes) != {'GearsEarlyLaunch.exe','GearsQuietStartup.dll'}:
+        raise RuntimeError('Incomplete test behind-windows build identity')
+    for name,expected in hashes.items():
+        file = pathlib.Path(build) / name
+        if not file.is_file() or hashlib.sha256(file.read_bytes()).hexdigest() != expected:
+            raise RuntimeError('Test behind-windows artifact missing or changed: ' + str(file))
 
 
 def verify_default_quiet_build(build):
@@ -69,6 +91,7 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
     quiet_report = None
     if quiet_build is not None:
         verify_default_quiet_build(quiet_build)
+        if test_windows_behind_requested(foreground):verify_test_behind_build(quiet_build)
         from quiet_launch import launch_quiet
         quiet_report = launch_quiet(game_path, game_args, quiet_build, popen=popen, main_noactivate=True)
         game_pid, creation_time = quiet_report['pid'], quiet_report['creation_time']
@@ -97,6 +120,7 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
         'game_args': list(map(str, game_args)),
         'window_startup_policy': 'quiet_startup' if quiet_report else 'foreground' if foreground else 'shown_no_activate',
         'background_input_requested': not disable_background_input,
+        'test_windows_behind_requested': test_windows_behind_requested(foreground),
     }
     runtime = pathlib.Path(runtime)
     runtime.mkdir(parents=True, exist_ok=True)

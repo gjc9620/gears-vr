@@ -1,5 +1,6 @@
 // Process-local automatic activation policy. No desktop/global focus changes.
 #include "quiet_startup.h"
+#include "test_background_policy.h"
 #include <MinHook.h>
 #include <array>
 #include <atomic>
@@ -7,6 +8,7 @@
 
 namespace {
 std::atomic<bool> enabled{};
+bool test_windows_behind{}; // Explicit automatic-test policy, never the default.
 bool main_noactivate{}; // Written before hook publication; immutable thereafter.
 std::array<std::atomic<std::uint64_t>,gears_quiet::count> suppressed{};
 std::atomic<bool> trace_enabled{},trace_overflow{};
@@ -155,12 +157,20 @@ bool background() { return enabled.load(std::memory_order_acquire) && !own(GetFo
 bool guard(HWND window,bool top_level=true) {
     return background() && own(window) && (!top_level || !(GetWindowLongPtrW(window,GWL_STYLE)&WS_CHILD));
 }
+bool place_behind(HWND window) {
+    return original_position(window,HWND_BOTTOM,0,0,0,0,
+        SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER)!=FALSE;
+}
 BOOL WINAPI show_async(HWND window,int command) {
     // Diagnostic only: preserve queued show behavior and its return value.
     const DWORD saved=GetLastError();
     const DWORD owner_thread=GetWindowThreadProcessId(window,nullptr);
     SetLastError(saved);
     TraceCall trace(gears_quiet::show_async,window,static_cast<DWORD>(command),nullptr,owner_thread);
+    if(test_windows_behind&&guard(window)&&command!=SW_HIDE) {
+        command=gears_quiet_test::show_command(command,true);trace.policy(command);
+        if(!place_behind(window))return trace.returned(FALSE);
+    }
     return trace.native(original_show_async(window,command));
 }
 void note(gears_quiet::Call call) { suppressed[call].fetch_add(1,std::memory_order_relaxed); }
@@ -179,10 +189,14 @@ BOOL WINAPI show(HWND window,int command) {
         }
         case SW_SHOWNORMAL: case SW_SHOWMAXIMIZED: case SW_SHOW:
         case SW_RESTORE: case SW_SHOWDEFAULT:
-            command=SW_SHOWNOACTIVATE;trace.policy(command);note(gears_quiet::show);break;
+            command=gears_quiet_test::show_command(command,test_windows_behind);trace.policy(command);note(gears_quiet::show);break;
         case SW_SHOWMINIMIZED: case SW_MINIMIZE:
             command=SW_SHOWMINNOACTIVE;trace.policy(command);note(gears_quiet::show);break;
         default:break;
+        }
+        if(test_windows_behind) {
+            command=gears_quiet_test::show_command(command,true);trace.policy(command);
+            if(!place_behind(window))return trace.returned(IsWindowVisible(window));
         }
     }
     return trace.native(original_show(window,command));
@@ -210,7 +224,8 @@ HWND WINAPI focus(HWND window) {
 BOOL WINAPI position(HWND window,HWND after,int x,int y,int width,int height,UINT flags) {
     TraceCall trace(gears_quiet::position,window,flags,after);
     if(guard(window)) {
-        flags|=SWP_NOACTIVATE|SWP_NOZORDER;
+        flags=gears_quiet_test::position_flags(flags,test_windows_behind);
+        after=gears_quiet_test::insert_after(after,test_windows_behind);
         trace.policy(flags);
         note(gears_quiet::position);
     }
@@ -225,7 +240,9 @@ BOOL WINAPI bring(HWND window) {
 // Create hidden, then show without activation. The opt-in main-window trial
 // adds only NOACTIVATE to an unowned APPWINDOW; other extended bits are kept.
 void finish_create(HWND window,DWORD style,bool guarded) {
-    if(window && guarded && (style&WS_VISIBLE))original_show(window,SW_SHOWNOACTIVATE);
+    if(window && guarded && (style&WS_VISIBLE))
+        gears_quiet_test::first_show(test_windows_behind,[&]{return place_behind(window);},
+            [&](int command){original_show(window,command);});
 }
 HWND WINAPI create_w(DWORD exstyle,LPCWSTR cls,LPCWSTR title,DWORD style,int x,int y,int width,int height,
                      HWND parent,HMENU menu,HINSTANCE instance,LPVOID argument) {
@@ -253,6 +270,8 @@ HWND WINAPI create_a(DWORD exstyle,LPCSTR cls,LPCSTR title,DWORD style,int x,int
 
 extern "C" __declspec(dllexport) DWORD WINAPI GearsQuietInstall(void*) {
     if(enabled.load())return ERROR_ALREADY_EXISTS;
+    wchar_t behind_option[2]{};
+    test_windows_behind=GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind_option,2)==1&&behind_option[0]==L'1';
     wchar_t main_option[2]{};
     main_noactivate=GetEnvironmentVariableW(L"GEARSVR_QUIET_MAIN_NOACTIVATE",main_option,2)==1&&main_option[0]==L'1';
     wchar_t trace_option[2]{};
