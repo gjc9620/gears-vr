@@ -58,8 +58,20 @@ def allowed_paths(root):
             raise ValueError('Unexpected staged build path')
     if not re.fullmatch(r'GearsCapture[A-Za-z0-9_-]*\.dll', manifest.get('native_dll', '')):
         raise ValueError('Unexpected staged native DLL')
-    return set(staging.payload_paths(manifest)) | set(staging.LICENSES.values()) | {
+    result = set(staging.payload_paths(manifest)) | set(staging.LICENSES.values()) | {
         'tools/vr-launcher/manifest.json', 'tools/vr-launcher/config.json', 'README.txt', 'portable-candidate.json'}
+    metadata = json.loads(read_bounded(staging.contained(root, 'portable-candidate.json'), 1024 * 1024),
+                          object_pairs_hook=unique_object)
+    if not isinstance(metadata, dict): raise ValueError('Invalid portable candidate metadata')
+    alias = metadata.get('candidate_manifest')
+    if alias is not None:
+        if not isinstance(alias, str) or not re.fullmatch(r'tools/vr-launcher/manifest-[A-Za-z0-9_-]+\.json', alias):
+            raise ValueError('Unexpected candidate manifest alias')
+        active = read_bounded(staging.contained(root, 'tools/vr-launcher/manifest.json'), 1024 * 1024)
+        if read_bounded(staging.contained(root, alias), 1024 * 1024) != active:
+            raise ValueError('Candidate manifest alias differs from active manifest')
+        result.add(alias)
+    return result
 
 
 def permitted(name, fixed):

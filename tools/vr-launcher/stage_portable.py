@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import stat
@@ -100,7 +101,7 @@ def python_sources(python_root):
     return sorted(set(result))
 
 
-def stage(root, python_root, destination, *, manifest_path=None):
+def stage(root, python_root, destination, *, manifest_path=None, launcher_path=None):
     root, python_root = no_links(root).resolve(), no_links(python_root).resolve()
     destination = no_links(destination)
     if destination.exists(): raise FileExistsError('A stage must be a new directory: ' + str(destination))
@@ -110,8 +111,12 @@ def stage(root, python_root, destination, *, manifest_path=None):
     selected_manifest = (contained(root, 'tools/vr-launcher/manifest.json') if manifest_path is None
                          else no_links(manifest_path))
     manifest = json.loads(selected_manifest.read_text())
-    copies = [(contained(root, path), path, 'repository:' + path, 'project-code-or-built-artifact')
-              for path in payload_paths(manifest)]
+    candidate_launcher = no_links(launcher_path) if launcher_path is not None else None
+    if candidate_launcher is not None and candidate_launcher.suffix.lower() != '.exe':
+        raise ValueError('Expected a compiled candidate launcher EXE')
+    copies = [(candidate_launcher if path == 'GearsVR Launcher.exe' and candidate_launcher is not None else contained(root, path),
+               path, 'candidate-gui:' + candidate_launcher.name if path == 'GearsVR Launcher.exe' and candidate_launcher is not None else 'repository:' + path,
+               'project-code-or-built-artifact') for path in payload_paths(manifest)]
     copies += [(contained(root, source), target, 'repository:' + source, 'third-party-license')
                for source, target in LICENSES.items()]
     copies += [(contained(python_root, path), 'runtime/python/' + path, 'python-root:' + path,
@@ -134,22 +139,29 @@ def stage(root, python_root, destination, *, manifest_path=None):
         if digest(source) != expected or digest(target) != expected: raise RuntimeError('Source changed during copy: ' + str(source))
         record(target, provenance, category)
     manifest['game_path'] = 'SELECT_GAME_EXECUTABLE'
+    alias = ('tools/vr-launcher/' + selected_manifest.name
+             if re.fullmatch(r'manifest-[A-Za-z0-9_-]+\.json', selected_manifest.name) else None)
+    config = {'game_path': '', 'stereo_units_per_metre': 100, 'launcher_language': 'en'}
+    if manifest.get('runtime_render_size') is True: config['render_scale'] = 1.0
     generated = {
         'tools/vr-launcher/manifest.json': manifest,
-        'tools/vr-launcher/config.json': {'game_path': '', 'stereo_units_per_metre': 100, 'launcher_language': 'en'},
+        'tools/vr-launcher/config.json': config,
         'portable-candidate.json': {'schema': 1, 'kind': 'offline-staging-candidate', 'release_ready': False,
+            'candidate_manifest': alias, 'source_manifest_name': selected_manifest.name,
+            'source_manifest_sha256': digest(selected_manifest),
             'game_selection_required': True, 'simulator_bundled': False,
             'runtime_choice': 'The GUI defaults to Quest 3 / Virtual Desktop (VDXR); system OpenXR is also selectable. Simulator files are not bundled.',
             'limits': ['No game/headset acceptance performed', 'Redistribution/license review remains required',
                       'GUI developer Python fallbacks still exist outside strict preflight',
                       'Optional game_io capture/controller diagnostics are not bundled dependencies']},
     }
+    if alias is not None: generated[alias] = manifest
     for relative, value in generated.items():
         target = contained(destination, relative); target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(value, indent=2) + '\n', encoding='utf-8')
         record(target, 'generated:' + relative, 'project-generated-config')
     readme = contained(destination, 'README.txt')
-    readme.write_text('''GearsVR — 开发候选 / Development candidate
+    instructions = '''GearsVR — 开发候选 / Development candidate
 
 中文
 1. 解压整个文件夹，不要只移动启动器 EXE。
@@ -183,7 +195,13 @@ Missing rates are unavailable, not zero FPS; XR loop rate is not headset display
 不包含游戏文件、存档、截图和逆向资料；账号和个人路径会过滤。
 
 This is an unvalidated development candidate, not a public release. Game files are not included; a supported game build is required.
-''', encoding='utf-8')
+'''
+    if manifest.get('runtime_render_size') is True:
+        instructions = instructions.replace('分辨率在游戏内设置；',
+            'VR 每眼分辨率使用 Runtime 推荐值 × 启动器渲染倍率，默认100%；“检查眼图尺寸”可预先查看。\n   游戏分辨率只影响桌面镜像；倍率改动在下次启动生效。')
+        instructions = instructions.replace('Set resolution in the game.',
+            'VR eye size uses the runtime recommendation × launcher render scale (100% by default).\n   Use Check eye size before launch. Game resolution controls the desktop mirror; scale changes apply next launch.')
+    readme.write_text(instructions, encoding='utf-8')
     record(readme, 'generated:README.txt', 'project-user-instructions')
     for relative in ('analysis/runtime', 'analysis/vr-launcher-ui'): contained(destination, relative).mkdir(parents=True, exist_ok=True)
     # A file cannot contain its own digest. All payload files are listed; the
@@ -212,9 +230,10 @@ def main():
     parser.add_argument('--destination', type=Path, required=True)
     parser.add_argument('--root', type=Path, default=ROOT)
     parser.add_argument('--manifest', type=Path, help='Stage an explicit candidate without changing the local default')
+    parser.add_argument('--launcher', type=Path, help='Use an independently compiled GUI without replacing the player EXE')
     parser.add_argument('--preflight-output', type=Path, required=True)
     args = parser.parse_args()
-    report = stage(args.root, args.python_root, args.destination, manifest_path=args.manifest)
+    report = stage(args.root, args.python_root, args.destination, manifest_path=args.manifest, launcher_path=args.launcher)
     preflight = run_preflight(args.destination, args.preflight_output)
     print(json.dumps({'destination': str(args.destination.resolve()), 'files': len(report['files']),
                       'payload_bytes': report['bytes'], 'preflight': preflight}))

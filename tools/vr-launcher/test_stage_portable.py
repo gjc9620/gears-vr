@@ -150,6 +150,40 @@ class StageTests(unittest.TestCase):
             with self.assertRaises(ValueError): stage.payload_paths(dict(self.manifest, native_build=value))
         with self.assertRaises(ValueError): stage.contained(self.root, '../outside')
 
+    def test_named_resolution_candidate_and_gui_are_isolated_from_player_defaults(self):
+        player = self.root / 'GearsVR Launcher.exe'
+        player_bytes = player.read_bytes()
+        default = self.root / 'tools/vr-launcher/manifest.json'
+        default_bytes = default.read_bytes()
+        config = self.root / 'tools/vr-launcher/config.json'
+        config_bytes = config.read_bytes()
+        selected = self.base / 'manifest-runtime-resolution1.json'
+        selected.write_text(json.dumps(dict(self.manifest, runtime_render_size=True)))
+        gui = self.base / 'candidate/GearsVrLauncher.exe'; self.put(gui, b'candidate-gui')
+        result = stage.stage(self.root, self.python, self.destination,
+                             manifest_path=selected, launcher_path=gui)
+        self.assertEqual(player.read_bytes(), player_bytes)
+        self.assertEqual(default.read_bytes(), default_bytes)
+        self.assertEqual(config.read_bytes(), config_bytes)
+        self.assertEqual((self.destination / 'GearsVR Launcher.exe').read_bytes(), b'candidate-gui')
+        active = self.destination / 'tools/vr-launcher/manifest.json'
+        alias = 'tools/vr-launcher/manifest-runtime-resolution1.json'
+        self.assertEqual((self.destination / alias).read_bytes(), active.read_bytes())
+        self.assertNotIn(b'private/game', active.read_bytes())
+        portable_config = json.loads((self.destination / 'tools/vr-launcher/config.json').read_text())
+        self.assertEqual(portable_config['render_scale'], 1.0)
+        self.assertEqual(portable_config['launcher_language'], 'en')
+        metadata = json.loads((self.destination / 'portable-candidate.json').read_text())
+        self.assertEqual(metadata['candidate_manifest'], alias)
+        self.assertEqual(metadata['source_manifest_sha256'], stage.digest(selected))
+        readme = (self.destination / 'README.txt').read_text(encoding='utf-8')
+        self.assertIn('runtime recommendation', readme)
+        self.assertIn('默认100%', readme)
+        self.assertIn('Export logs', readme)
+        row = next(item for item in result['files'] if item['path'] == 'GearsVR Launcher.exe')
+        self.assertEqual(row['source'], 'candidate-gui:GearsVrLauncher.exe')
+        preflight.check_inventory(self.destination)
+
     def test_source_or_ancestor_destination_refused(self):
         for destination in (self.root, self.root.parent, self.python):
             with self.assertRaises((FileExistsError, ValueError)): stage.stage(self.root, self.python, destination)

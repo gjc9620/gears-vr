@@ -23,6 +23,7 @@ class PackageTests(unittest.TestCase):
         self.add('README.txt', b'instructions')
         self.add('tools/native-capture/build-fixture/GearsCaptureFixture.dll', b'our-mod')
         self.add('runtime/python/Lib/os.py', b'python')
+        self.add('portable-candidate.json', b'{}')
         present = {row['path'] for row in self.rows}
         required = packaging.allowed_paths(self.stage) | {
             'runtime/python/' + name for name in packaging.staging.PYTHON_FILES}
@@ -67,6 +68,35 @@ class PackageTests(unittest.TestCase):
         self.put('README.txt', b'changed')
         with self.assertRaisesRegex(ValueError, 'Inventory verification'):
             self.build()
+        self.assert_clean()
+
+    def candidate_alias(self, alias, contents=None):
+        self.rows = [row for row in self.rows if row['path'] != 'portable-candidate.json']
+        self.add('portable-candidate.json', json.dumps({'candidate_manifest': alias}).encode())
+        if contents is not None: self.add(alias, contents)
+        self.save()
+
+    def test_one_exact_active_manifest_alias_is_allowed(self):
+        alias = 'tools/vr-launcher/manifest-runtime-resolution1.json'
+        self.candidate_alias(alias, (self.stage / 'tools/vr-launcher/manifest.json').read_bytes())
+        self.build()
+        with zipfile.ZipFile(self.output) as archive:
+            self.assertEqual(archive.read(alias), archive.read('tools/vr-launcher/manifest.json'))
+
+    def test_alias_cannot_admit_different_content_or_arbitrary_manifest(self):
+        alias = 'tools/vr-launcher/manifest-runtime-resolution1.json'
+        self.candidate_alias(alias, b'{}')
+        with self.assertRaisesRegex(ValueError, 'differs from active'): self.build()
+        self.assert_clean()
+        self.candidate_alias('tools/vr-launcher/anything.json')
+        with self.assertRaisesRegex(ValueError, 'Unexpected candidate manifest alias'): self.build()
+        self.assert_clean()
+
+    def test_named_alias_does_not_allow_second_manifest(self):
+        alias = 'tools/vr-launcher/manifest-runtime-resolution1.json'
+        self.candidate_alias(alias, (self.stage / 'tools/vr-launcher/manifest.json').read_bytes())
+        self.add('tools/vr-launcher/manifest-extra.json', b'{}'); self.save()
+        with self.assertRaisesRegex(ValueError, 'allowlist'): self.build()
         self.assert_clean()
 
     def test_unsafe_and_nonallowlisted_paths_rejected(self):
