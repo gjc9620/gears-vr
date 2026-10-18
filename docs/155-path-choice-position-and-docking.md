@@ -2,6 +2,8 @@
 
 ## 2026-10-19 整合候选复测
 
+随后 `path-fit-integration2-20261019` 使用同一Integration1 DLL、获准的无人值守前台启动，实际进入岔路场景并保持42秒，续租0→10。正常选择后applied/restored均1，rejected/unresolved/service_terminal/pending_restore均0。native清理、入口恢复、正常关闭与5文件原哈希独立核验通过。最终状态SHA256 `63aff405614bb1da2865ecc1afa0e4eae40e96d782545ecd4fd1ed4b40e19bfa`，session `continuous-stereo-17484-20261019-040851-78c79251`。这证明新整合下此场景的持续租约与恢复，不证明双眼布局像素、裁剪或黎明之锤提示；后续补GPU布局采样再决定默认提升。
+
 现有源码的 `0ffa8fb` / `afb27a2` 已修正可复现的正常完成与续租竞争；actual17未记录具体抛出位置，不能回溯认定它必由某一个分支触发。当前推荐尺寸默认DLL的PathChoice service/trial/close等7项编译开关仍为OFF，因此不能把源码修正当作已交付UI修复。
 
 新鲜 `build-runtime-release-integration1/GearsCaptureRuntimeIntegration1.dll` 保留默认推荐尺寸和world-handoff配置，开启7项PathChoice相关开关，SHA256 `41a5b882ab1202940c0590d88a6c732609fd0db9511157e19f51f802064cc065`。完整构建及33项启动/组件调用通过，Ninja记录461项依赖。首轮 `path-fit-integration1-20261019` 未进入VR激活，结束状态cancelled_before_activation；没有布局保持/恢复验收数据。Prime入口恢复、正常游戏退出和5文件原哈希独立确认通过。旧driver没有把无会话超时标记为错误，因此它的error=null不能解释为通过；下一轮必须明确这一失败并使用获准的前台无人值守启动路径。尚未替换默认包。
