@@ -8,8 +8,8 @@ from unittest import mock
 from types import SimpleNamespace
 
 from path_choice_center_monitor import _ReadWorker
-from path_choice_position_collect import ActivationCertificate
-from path_choice_position_monitor import LivePathChoicePositionProbe, Observation, PathChoicePositionMonitor
+from path_choice_position_collect import ActivationCertificate, AcquisitionSourceChanged
+from path_choice_position_monitor import LivePathChoicePositionProbe, Observation, PathChoicePositionMonitor, _acquisition_source_conflict
 
 
 GAME = dict(pid=3, creation_time=30, image='game')
@@ -291,7 +291,14 @@ class MonitorTests(unittest.TestCase):
         return {'menu_state':SimpleNamespace(MenuReader=lambda pid:reader),
                 'menu_control':SimpleNamespace(reader_process_identity=lambda current:(3, 30))}
 
-    def snapshot_retry_fixture(self, failures=1, *, unknown=False, world_change=False, postpublish=False, registry=False):
+    @staticmethod
+    def acquisition_error(phase='final_reread'):
+        before=bytearray(96);after=bytearray(before);before[0x1d]=0x8f;after[0x1d]=0x9b
+        return AcquisitionSourceChanged(phase,0x123000,bytes(before),bytes(after),
+            [dict(file='synthetic.py',function='identity',line=1,field='StateStack')])
+
+    def snapshot_retry_fixture(self, failures=1, *, unknown=False, world_change=False, postpublish=False, registry=False,
+                               acquisition=None, prior_snapshot=False):
         self.m.close()
         class SnapshotChanged(RuntimeError):pass
         class SceneOwnerRejected(RuntimeError):pass
@@ -300,10 +307,12 @@ class MonitorTests(unittest.TestCase):
         def new_reader(pid):
             index = len(readers)
             def sample(**kwargs):
-                failing = (kwargs.get('include_owner') and index < failures) or (
+                failing = (kwargs.get('include_owner') and index < failures and
+                           (acquisition is None or (prior_snapshot and index==0))) or (
                     postpublish and self.m.close_sidecar.owned)
                 if failing:
                     if world_change:self.status['world_generation'] = 2
+                    if acquisition and not (prior_snapshot and index==0):raise self.acquisition_error(acquisition)
                     if registry:raise RegistrySnapshotChanged('Registry changed before snapshot verification')
                     try:
                         fault = RuntimeError if unknown else SnapshotChanged
@@ -311,7 +320,7 @@ class MonitorTests(unittest.TestCase):
                     except RuntimeError as cause:
                         raise SceneOwnerRejected('Owner source read failed') from cause
                 return dict(top=dict(cls='UIScene_PathChoice', address='0x65'), active_scenes=[])
-            reader = SimpleNamespace(sample=sample, close=mock.Mock(),
+            reader = SimpleNamespace(sample=sample, close=mock.Mock(),acquisition_index=index,
                 r=SimpleNamespace(resolve=lambda:dict(controller_address='0x67', local_player_address='0x68')))
             readers.append(reader)
             return reader
@@ -325,11 +334,102 @@ class MonitorTests(unittest.TestCase):
             self.assertEqual(registry_header_policy, 'fixed_prefix_v1')
             self.assertEqual(target_vertical_region, (.25, .75))
             verify(reader)
+            if acquisition and reader.acquisition_index<failures:
+                if world_change:self.status['world_generation']=2
+                raise self.acquisition_error(acquisition)
             return certificate_probe.capture(nonce, True, 1).certificate
         self.enterContext(mock.patch('path_choice_position_collect.collect', side_effect=collect))
         self.m = self.create(probe_factory=LivePathChoicePositionProbe)
         self.addCleanup(self.m.close)
         return readers, certificate_probe
+
+    def test_direct_final_read_conflict_reacquires_everything_with_new_reader(self):
+        readers,collector=self.snapshot_retry_fixture(acquisition='final_reread')
+        self.m.poll();nonce=self.m.nonce;events=self.m.poll()
+        self.assertEqual(events[0]['event'],'path_position_acquisition_discarded')
+        self.assertEqual(events[0]['reason'],'AcquisitionSourceChanged')
+        self.assertEqual(events[0]['error_read_conflict']['changed_offset'],0x1d)
+        self.assertEqual(self.actions,[]);self.assertEqual(len(readers),2)
+        readers[0].close.assert_called_once();self.assertIsNot(readers[0],readers[1])
+        self.hold();self.assertEqual(self.m.nonce,nonce);self.assertEqual(self.m.acquisition_attempts,2)
+        self.assertEqual(collector.full_reads,1)
+        self.assertEqual([x[1] for x in self.actions if x[0]=='publish'],['close','position'])
+
+    def test_direct_repeated_read_conflict_uses_same_bounded_retry(self):
+        readers,collector=self.snapshot_retry_fixture(acquisition='repeated_read')
+        self.m.poll();events=self.m.poll()
+        self.assertEqual(events[0]['event'],'path_position_acquisition_discarded')
+        self.assertEqual(self.actions,[]);self.hold()
+        self.assertEqual(len(readers),2);self.assertEqual(collector.full_reads,1)
+
+    def test_mixed_snapshot_and_acquisition_conflicts_share_three_attempt_budget(self):
+        readers,collector=self.snapshot_retry_fixture(failures=2,acquisition='final_reread',prior_snapshot=True)
+        events=[]
+        for _ in range(4):events.extend(self.m.poll())
+        discarded=[e for e in events if e['event']=='path_position_acquisition_discarded']
+        self.assertEqual([e['reason'] for e in discarded],['SceneOwnerRejected','AcquisitionSourceChanged'])
+        self.assertEqual([e['retry_count'] for e in discarded],[1,2])
+        self.assertEqual(len(readers),3);self.assertEqual(self.m.acquisition_attempts,3)
+        self.hold();self.assertEqual(collector.full_reads,1)
+
+    def test_mixed_budget_final_failure_is_terminal_without_any_publication(self):
+        readers,collector=self.snapshot_retry_fixture(failures=10,acquisition='final_reread',prior_snapshot=True)
+        events=[]
+        for _ in range(6):events.extend(self.m.poll())
+        self.assertEqual(len(readers),3);self.assertEqual(self.m.acquisition_attempts,3)
+        self.assertTrue(self.m.terminal);self.assertEqual(self.actions,[]);self.assertEqual(collector.full_reads,0)
+        self.assertEqual([e['retry_count'] for e in events if e['event']=='path_position_acquisition_discarded'],[1,2])
+        self.assertEqual(events[-1]['event'],'path_position_revoked')
+        for reader in readers:reader.close.assert_called_once()
+
+    def test_prefix_and_unknown_acquisition_phases_are_terminal(self):
+        for phase in ('fixed_prefix_header','unknown'):
+            self.assertFalse(_acquisition_source_conflict(self.acquisition_error(phase)))
+        readers,collector=self.snapshot_retry_fixture(acquisition='fixed_prefix_header')
+        self.m.poll();self.m.poll()
+        self.assertEqual(len(readers),1);self.assertTrue(self.m.terminal)
+        self.assertEqual(self.actions,[]);self.assertEqual(collector.full_reads,0)
+
+    def test_wrapped_subclassed_short_or_malformed_conflict_is_not_retried(self):
+        cause=self.acquisition_error()
+        wrapped=RuntimeError('wrapped');wrapped.__cause__=cause
+        self.assertFalse(_acquisition_source_conflict(wrapped))
+        cause.__cause__=ValueError('other failure');self.assertFalse(_acquisition_source_conflict(cause))
+        cause=self.acquisition_error();cause.__context__=ValueError('other failure')
+        self.assertFalse(_acquisition_source_conflict(cause))
+        class Derived(AcquisitionSourceChanged):pass
+        self.assertFalse(_acquisition_source_conflict(Derived('final_reread',1,b'a',b'b',[])))
+        for field,value in (('actual_size',95),('changed_offset',96),('address','bad'),('changed_address','0x99'),
+                            ('expected_window','zz'),('actual_window','')):
+            error=self.acquisition_error();error.read_conflict[field]=value
+            with self.subTest(field=field):self.assertFalse(_acquisition_source_conflict(error))
+
+    def test_direct_source_conflict_cannot_retry_after_publication(self):
+        readers,collector=self.snapshot_retry_fixture(failures=0,postpublish=True,acquisition='final_reread')
+        self.hold();events=[]
+        for _ in range(10):events.extend(self.step())
+        self.assertEqual(len(readers),1);self.assertTrue(self.m.terminal)
+        self.assertFalse(any(e['event']=='path_position_acquisition_discarded' for e in events))
+        self.assertEqual(collector.full_reads,1)
+
+    def test_direct_source_conflict_cannot_retry_across_world_change(self):
+        readers,collector=self.snapshot_retry_fixture(acquisition='final_reread',world_change=True)
+        self.m.poll();events=self.m.poll()
+        self.assertEqual(len(readers),1);self.assertTrue(self.m.terminal)
+        self.assertFalse(any(e['event']=='path_position_acquisition_discarded' for e in events))
+        self.assertEqual(self.actions,[]);self.assertEqual(collector.full_reads,0)
+
+    def test_direct_source_conflict_requires_clean_native_and_no_cancellation(self):
+        readers,_=self.snapshot_retry_fixture(acquisition='final_reread')
+        self.m.poll()
+        for key in ('path_position_pending_restore','path_position_active_nonce','path_position_unresolved'):
+            self.status[key]=1
+            with self.subTest(key=key),self.assertRaisesRegex(RuntimeError,'Native position state changed before snapshot retry'):
+                self.m._retry_unowned_snapshot(self.acquisition_error(),1)
+            self.status[key]=0
+        self.m.cancel.set()
+        self.assertFalse(self.m._retry_unowned_snapshot(self.acquisition_error(),1))
+        self.assertEqual(len(readers),1);self.assertEqual(self.actions,[])
 
     def test_registry_conflict_restarts_full_unowned_capture(self):
         readers, collector = self.snapshot_retry_fixture(registry=True)

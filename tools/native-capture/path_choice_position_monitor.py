@@ -24,6 +24,26 @@ MAX_ACQUISITION_ATTEMPTS = 3
 TARGET_VERTICAL_REGION = (.25, .75)
 
 
+def _acquisition_source_conflict(error):
+    """Only an exact, complete-byte acquisition disagreement can be retried.
+
+    This discards the entire unpublished certificate; no byte is masked and
+    fixed-prefix identity/header violations keep their existing terminal path.
+    """
+    from path_choice_position_collect import AcquisitionSourceChanged
+    if type(error) is not AcquisitionSourceChanged or error.__cause__ is not None or error.__context__ is not None:
+        return False
+    try:
+        d=error.read_conflict;address=int(d['address'],16);size=d['size'];offset=d['changed_offset']
+        expected=bytes.fromhex(d['expected_window']);actual=bytes.fromhex(d['actual_window'])
+        return (d['phase'] in ('repeated_read','final_reread') and type(size) is int and 0<size<=1024 and
+                d['actual_size']==size and type(offset) is int and 0<=offset<size and
+                0<address<=(1<<64)-size and int(d['changed_address'],16)==address+offset and
+                0<len(expected)==len(actual)<=8 and expected!=actual)
+    except (AttributeError,KeyError,TypeError,ValueError):
+        return False
+
+
 def get_tick_count64():
     fn = ctypes.WinDLL('kernel32', use_last_error=True).GetTickCount64
     fn.restype = ctypes.c_ulonglong
@@ -302,7 +322,7 @@ class PathChoicePositionMonitor:
                 type(error.__cause__) is SnapshotChanged and
                 str(error.__cause__) == 'UI changed during snapshot' and
                 error.__cause__.__cause__ is None and error.__cause__.__context__ is None)
-        if not (registry_conflict or ledger_conflict):
+        if not (registry_conflict or ledger_conflict or _acquisition_source_conflict(error)):
             return False
         self._check_processes()
         status = copy.deepcopy(self.read_status())
