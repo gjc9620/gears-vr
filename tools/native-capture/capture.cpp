@@ -20,6 +20,7 @@
 #endif
 #include "../vr-common/stereo_ticket_store.h"
 #include "render_cost.h"
+#include "atomic_status_file.h"
 #include "resource_resize_probe.h"
 #include "swapchain_startup_trace.h"
 #include "source_view_shadow.h"
@@ -1548,7 +1549,8 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     if(!continuous_session)return;
     write_swapchain_output_status(recording.load()&&session_phase.load()==SessionPhase::running,"running");
     wchar_t path[MAX_PATH];swprintf_s(path,L"%s\\session-status.txt",directory);
-    FILE* output=_wfsopen(path,L"w",_SH_DENYWR);
+    gears_status::AtomicFile publication(path);
+    FILE* output=publication.get();
     if(!output){session_status_available=false;return;}
     const char* phases[]={"running","stop_requested","native_closed","draining","stopped"};
     const char* reasons[]={"none","event","f8","focus_lost","proof_failure","owner_exited","owner_error"};
@@ -1600,12 +1602,12 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         world_handoff_phase.load(),static_cast<unsigned long long>(world_handoff_commits.load()),world_quiesce_requested.load()?1:0,
         state_release_started.load(),static_cast<unsigned long long>(epoch_submit_total.load()));
     print_world_progress(output);
-    fprintf(output,"owner_pid=%lu owner_creation_time=%llu stop_reason=%s owner_exit_observed=%u owner_error_observed=%u complete=1\n",session_owner_pid,
+    fprintf(output,"owner_pid=%lu owner_creation_time=%llu stop_reason=%s owner_exit_observed=%u owner_error_observed=%u\n",session_owner_pid,
         static_cast<unsigned long long>(session_owner_creation_time),reasons[static_cast<unsigned>(reason)],
         session_owner_exit_observed.load()?1:0,session_owner_error_observed.load()?1:0);
     ngx_output_pixels::print_control(output);
-    const bool flushed=fflush(output)==0;
-    session_status_available=fclose(output)==0&&flushed;
+    fprintf(output,"complete=1\n"); // Last field, after every diagnostic producer.
+    session_status_available=publication.commit();
 }
 void print_anchor(FILE* status,bool hooks_disabled){
     fprintf(status,"anchor_submission_guard required=%u matched=%llu rejected=%llu policy=skip_unassociated_candidate\n",
