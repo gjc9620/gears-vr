@@ -6,11 +6,11 @@ namespace owned_depth_clear_trial {
 #error Owned depth-clear trial requires runtime render size and native owned pixels
 #endif
 using Input=gears_owned_depth_clear::Input;
-bool enabled{},attested{},initialized{};uint64_t attempts{},applied{},returned{},restored{},row_overflow{};
+bool enabled{},attested{},initialized{};uint64_t attempts{},applied{},noops{},returned{},restored{},accepted_overflow{},rejected_overflow{};
 uintptr_t observer_base{};unsigned module_size{},observer_size{};
 std::array<uint64_t,gears_owned_depth_clear::reason_count> rejects{};
 struct Row {Input input{};uintptr_t resource{};uint64_t generation{},last_ticket{},calls{};unsigned reason{};};
-std::array<Row,32> rows{};unsigned row_count{};
+std::array<Row,16> accepted_rows{},rejected_rows{};unsigned accepted_count{},rejected_count{};
 bool image_size(uintptr_t image,unsigned& size){
     IMAGE_DOS_HEADER dos{};IMAGE_NT_HEADERS64 nt{};
     if(!image||!safe_copy(&dos,reinterpret_cast<void*>(image),sizeof(dos))||dos.e_magic!=IMAGE_DOS_SIGNATURE||
@@ -50,6 +50,10 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
         gears_native_render_size::matches_session(frozen.sample.session)&&native_owned_scene_consuming(consuming_renderer,frozen.id)&&
         gears_owned_scene_live::resource_world==frozen.world_generation;
     const auto owned=owned_scene_gpu::tracker.owned_status();const auto& creation=owned_scene_gpu::creation;
+    const auto& size_plan=gears_native_render_size::packet.plan;
+    in.plan_valid=gears_native_render_size::loaded&&gears_vr::render_size_valid(size_plan)&&
+        gears_native_render_size::matches_session(frozen.sample.session);
+    in.plan_width=size_plan.source_width;in.plan_height=size_plan.source_height;
     in.owned_active=owned_scene_gpu::watching()&&owned_scene_gpu::birth_ok&&owned.enabled&&owned.certified&&owned_scene_gpu::texture&&
         owned.target.resource&&owned.target.resource==owned_scene_gpu::resource&&owned.target.resource==creation.resource&&
         owned.target.resource==gears_owned_scene_live::trial.resource&&owned.generation==owned_scene_gpu::generation&&owned.generation&&
@@ -57,6 +61,17 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
         creation.desc.SampleDesc.Count==1&&!creation.desc.SampleDesc.Quality&&creation.desc.Format==DXGI_FORMAT_R8G8B8A8_UNORM&&
         creation.desc.Flags==D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET&&creation.desc.Width==owned.target.width&&creation.desc.Height==owned.target.height;
     in.width=owned.target.width;in.height=owned.target.height;
+    const auto inventory=final_eye_inventory;const auto desktop=swapchain_bindings.inventory(inventory.chain);
+    in.desktop_chain=inventory.chain;in.desktop_epoch=inventory.epoch;in.inventory_qpc=inventory.qpc;
+    in.desktop_width=inventory.width;in.desktop_height=inventory.height;in.desktop_count=inventory.count;in.inventory_resources=inventory.resources;
+    in.desktop_queue=desktop.binding.queue;in.owned_queue=owned.queue;in.desktop_generation=desktop.binding.generation;
+    in.binding_count=desktop.count;in.binding_resources=desktop.resources;
+    in.desktop_valid=inventory.valid&&desktop.valid&&desktop.binding.chain==inventory.chain&&
+        desktop.binding.width==inventory.width&&desktop.binding.height==inventory.height;
+    // Equality is against the accessor's exact CURRENT per-chain inventory, not
+    // a generation assigned retroactively to a cached Present stamp.
+    if(in.desktop_valid&&inventory.count==desktop.count&&inventory.resources==desktop.resources)
+        in.matched_generation=desktop.binding.generation;
     in.state=frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
     in.om=owned_ticket_size_trace::attachments.binding(reinterpret_cast<uintptr_t>(list));
     // Stack walking is confined to an otherwise admitted candidate clear.
@@ -65,15 +80,18 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
         in.stack_count=CaptureStackBackTrace(0,static_cast<DWORD>(frames.size()),frames.data(),nullptr);
         for(unsigned i=0;i<in.stack_count;++i)in.stack[i]=reinterpret_cast<uintptr_t>(frames[i]);decision=gears_owned_depth_clear::plan(in);
     }
+    const bool receipt=decision.apply()||decision.reason==gears_owned_depth_clear::already_correct;
+    auto& rows=receipt?accepted_rows:rejected_rows;auto& row_count=receipt?accepted_count:rejected_count;
     Row* row{};
     for(unsigned i=0;i<row_count;++i){auto& candidate=rows[i];
         if(candidate.reason==unsigned(decision.reason)&&candidate.input.world==in.world&&candidate.resource==owned.target.resource&&
            candidate.generation==owned.generation&&candidate.input.om.depth_handle==in.om.depth_handle&&
+           candidate.input.desktop_chain==in.desktop_chain&&candidate.input.desktop_generation==in.desktop_generation&&
            candidate.input.state.viewport==in.state.viewport&&candidate.input.width==in.width&&candidate.input.height==in.height){row=&candidate;break;}
     }
     if(!row&&row_count<rows.size()){row=&rows[row_count++];row->input=in;row->resource=owned.target.resource;row->generation=owned.generation;row->reason=decision.reason;}
-    if(row){++row->calls;row->last_ticket=in.ticket;}else ++row_overflow;
-    if(decision.apply())++applied;else ++rejects[decision.reason];
+    if(row){++row->calls;row->last_ticket=in.ticket;}else if(receipt)++accepted_overflow;else ++rejected_overflow;
+    if(decision.apply())++applied;else if(decision.reason==gears_owned_depth_clear::already_correct)++noops;else ++rejects[decision.reason];
     auto viewport=[&](gears_owned_depth_clear::Viewport const& value){const auto& r=value.rectangle;
         const D3D12_VIEWPORT native{r.x,r.y,r.width,r.height,value.minimum,value.maximum};original_viewports(list,1,&native);
         if(r==decision.before.rectangle)++restored;
@@ -82,15 +100,23 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
 }
 void print(FILE* file){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
-    fprintf(file,"owned_depth_clear_trial compiled=1 enabled=%u attested=%u attempts=%llu applied=%llu returned=%llu restored=%llu rows=%u limit=32 row_overflow=%llu dsv_size_known=0 viewport_only=1 pixels_verified=0\n",unsigned(enabled),unsigned(attested),attempts,applied,returned,restored,row_count,row_overflow);
-    for(unsigned reason=1;reason<rejects.size();++reason)fprintf(file,"owned_depth_clear_reject reason=%u count=%llu reasons=disabled:1,identity:2,arguments:3,owner:4,output:5,attachments:6,rectangles:7,route:8\n",reason,rejects[reason]);
+    fprintf(file,"owned_depth_clear_trial compiled=1 enabled=%u attested=%u attempts=%llu applied=%llu noops=%llu returned=%llu restored=%llu accepted_rows=%u accepted_limit=16 accepted_overflow=%llu rejected_rows=%u rejected_limit=16 rejected_overflow=%llu dsv_size_known=0 viewport_only=1 pixels_verified=0\n",unsigned(enabled),unsigned(attested),attempts,applied,noops,returned,restored,accepted_count,accepted_overflow,rejected_count,rejected_overflow);
+    for(unsigned reason=1;reason<gears_owned_depth_clear::already_correct;++reason)fprintf(file,"owned_depth_clear_reject reason=%u count=%llu reasons=disabled:1,identity:2,arguments:3,owner:4,output:5,attachments:6,rectangles:7,route:8,desktop:9\n",reason,rejects[reason]);
+    auto print_rows=[&](auto const& rows,unsigned row_count,const char* kind){
     for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];auto const& in=r.input;auto const& old=in.state.viewport;
-        fprintf(file,"owned_depth_clear_row row=%u reason=%u calls=%llu world=%llu first_ticket=%llu last_ticket=%llu resource=%llx generation=%llu caller=%llx vertices=%u instances=%u start=%u first_instance=%u owned_current=%u owned_active=%u bind_serial=%llu om_observed=%u targets=%u dsv_present=%u dsv_read=%u dsv_handle=%llx old_viewport=%.9g,%.9g,%.9g,%.9g new_viewport=0,0,%u,%u scissor=%.9g,%.9g,%.9g,%.9g depth=%.9g,%.9g module_base=%llx stack_count=%u stack=",
-            i,r.reason,r.calls,in.world,in.ticket,r.last_ticket,static_cast<unsigned long long>(r.resource),r.generation,static_cast<unsigned long long>(in.caller),in.vertices,in.instances,in.start,in.first_instance,
+        fprintf(file,"owned_depth_clear_row row=%u kind=%s reason=%u calls=%llu world=%llu first_ticket=%llu last_ticket=%llu resource=%llx generation=%llu caller=%llx vertices=%u instances=%u start=%u first_instance=%u owned_current=%u owned_active=%u bind_serial=%llu om_observed=%u targets=%u dsv_present=%u dsv_read=%u dsv_handle=%llx old_viewport=%.9g,%.9g,%.9g,%.9g new_viewport=0,0,%u,%u scissor=%.9g,%.9g,%.9g,%.9g depth=%.9g,%.9g module_base=%llx stack_count=%u stack=",
+            i,kind,r.reason,r.calls,in.world,in.ticket,r.last_ticket,static_cast<unsigned long long>(r.resource),r.generation,static_cast<unsigned long long>(in.caller),in.vertices,in.instances,in.start,in.first_instance,
             unsigned(in.owned_current),unsigned(in.owned_active),in.om.serial,unsigned(in.om.observed),in.om.count,unsigned(in.om.depth_present),unsigned(in.om.depth_read),static_cast<unsigned long long>(in.om.depth_handle),
             old.x,old.y,old.width,old.height,in.width,in.height,in.state.scissor.x,in.state.scissor.y,in.state.scissor.width,in.state.scissor.height,in.state.min_depth,in.state.max_depth,static_cast<unsigned long long>(base),in.stack_count);
         for(unsigned frame=0;frame<in.stack_count;++frame)fprintf(file,"%s%llx",frame?",":"",static_cast<unsigned long long>(in.stack[frame]));fprintf(file,"\n");
+        fprintf(file,"owned_depth_clear_extents row=%u kind=%s plan_valid=%u plan=%u,%u desktop_valid=%u desktop_chain=%llx desktop_queue=%llx owned_queue=%llx desktop=%u,%u inventory_epoch=%llu inventory_qpc=%lld binding_generation=%llu matched_binding_generation=%llu inventory_count=%u binding_count=%u exact_current_inventory=%u dsv_size_known=0\n",
+            i,kind,unsigned(in.plan_valid),in.plan_width,in.plan_height,unsigned(in.desktop_valid),static_cast<unsigned long long>(in.desktop_chain),
+            static_cast<unsigned long long>(in.desktop_queue),static_cast<unsigned long long>(in.owned_queue),in.desktop_width,in.desktop_height,
+            in.desktop_epoch,in.inventory_qpc,in.desktop_generation,in.matched_generation,in.desktop_count,in.binding_count,
+            unsigned(in.matched_generation!=0));
     }
+    };
+    print_rows(accepted_rows,accepted_count,"accepted");print_rows(rejected_rows,rejected_count,"rejected");
 }
 #else
 bool enable(FILE*){return true;}

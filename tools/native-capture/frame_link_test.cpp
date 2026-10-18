@@ -169,6 +169,64 @@ static void owned_retirement_cases() {
         auto t=std::make_unique<Tracker>();OwnedRetirement proof{};
         CHECK(!t->owned_retirement_snapshot(proof));CHECK(!t->retire_owned_output(proof,true));
     }
+    // Native handoff reclaims only AFTER certified retirement, before releasing
+    // canonical COM leases. Distinct lifetime lists must not accumulate across
+    // worlds, while the tracker keeps monotonically increasing generations.
+    auto retire_and_reclaim=[](Tracker& t,OwnedRetirement const& proof){
+        if(!t.retire_owned_output(proof,true))return false;
+        t.retire_present_interval();return true;
+    };
+    {
+        auto t=configured();uint64_t last_generation{};
+        constexpr size_t lists_per_world=Tracker::list_capacity/2;
+        static_assert(lists_per_world*3>Tracker::list_capacity);
+        for(uint64_t world=1;world<=3;++world){
+            for(size_t i=0;i<lists_per_world;++i){
+                const Identity id=1000+(world-1)*lists_per_world+i;
+                auto ref=i%3==0?t->create_success(id,false):t->reset_success(id);
+                CHECK(ref.identity==id&&ref.generation>last_generation);last_generation=ref.generation;
+                if(i==1){pair(*t,ref,world);submit(*t,ref);}
+                else if(i%3==2)CHECK(t->draw_unknown(ref,buffer+1)); // Unsubmitted unrelated recording.
+            }
+            CHECK(t->consume_owned_output(buffer,8+world,queue,world).linked);
+            OwnedRetirement proof{};CHECK(t->owned_retirement_snapshot(proof));
+            CHECK(retire_and_reclaim(*t,proof));
+            CHECK(t->snapshot().active_lists==0&&!t->snapshot().capacity_bad);
+            CHECK(!t->current(1000+(world-1)*lists_per_world+1).identity);
+            CHECK(t->advance_world_epoch(world,world+1));
+            if(world<3)CHECK(t->birth_owned_output(target,queue,9+world,4,true,true));
+        }
+        CHECK(t->snapshot().list_highwater==lists_per_world&&!t->snapshot().list_overflow);
+    }
+    // Reclamation cannot manufacture retirement proof for a pending batch or
+    // an unfinished source recording. Failed retirement preserves admission.
+    for(bool pending:{false,true}){
+        auto t=configured();auto ref=t->reset_success(1);OwnedRetirement proof{};
+        CHECK(t->owned_retirement_snapshot(proof));ExecutionToken token{};
+        if(pending)CHECK(t->prepare_execute(queue,&ref,1,token));
+        else CHECK(t->record_transition(ref,buffer,9,4,4));
+        CHECK(!retire_and_reclaim(*t,proof));
+        CHECK(t->current(1).generation==ref.generation&&t->snapshot().active_lists==1);
+        if(pending)CHECK(t->commit_execute(token));else submit(*t,ref);
+        CHECK(t->owned_retirement_snapshot(proof));CHECK(retire_and_reclaim(*t,proof));
+    }
+    // Both executed and unrelated unsubmitted old references stay unknown after
+    // reclamation/birth, including when their identity has acquired a new Reset.
+    for(bool executed:{false,true})for(bool reuse:{false,true}){
+        auto t=configured();auto old=t->reset_success(1);CHECK(t->draw_unknown(old,buffer+1));
+        if(executed)submit(*t,old);OwnedRetirement proof{};
+        CHECK(t->owned_retirement_snapshot(proof));CHECK(retire_and_reclaim(*t,proof));
+        CHECK(t->advance_world_epoch(1,2));CHECK(t->birth_owned_output(target,queue,10,4,true,true));
+        if(reuse){auto fresh=t->reset_success(1);CHECK(fresh.generation>old.generation);}
+        ExecutionToken token{123};CHECK(!t->prepare_execute(queue,&old,1,token));
+        CHECK(token.value==123&&!t->owned_status().certified);
+    }
+    {
+        auto t=configured();OwnedRetirement proof{};CHECK(t->owned_retirement_snapshot(proof));
+        CHECK(t->retire_owned_output(proof,true));t->invalidate_capacity();
+        t->retire_present_interval();CHECK(t->snapshot().capacity_bad);
+        CHECK(t->advance_world_epoch(1,2));CHECK(!t->birth_owned_output(target,queue,10,4,true,true));
+    }
 }
 int main() {
     owned_retirement_cases();
@@ -426,6 +484,26 @@ int main() {
         CHECK(observer.begin_resize(1)&&!observer.complete_resize(1,0,0,nullptr,0,false));
         CHECK(observer.begin_resize(1)&&observer.complete_resize(1,1920,1080,first,2,true)); // A failed API may itself be retried.
         CHECK(observer.lookup(1).generation==6&&observer.known_buffer(100)&&!observer.known_buffer(200));
+    }
+    {
+        gears_swapchain_binding::Observer observer;
+        CHECK(observer.bind({1,2,3,1920,1080,2},true,true));
+        CHECK(observer.buffer(1,100,0)&&observer.buffer(1,101,1));
+        CHECK(!observer.inventory(1).valid); // Unanchored startup state is insufficient.
+        const uintptr_t first[]{100,101},second[]{200,201};
+        CHECK(observer.anchor(1,1920,1080,first,2));
+        const auto old=observer.inventory(1);
+        CHECK(old.valid&&old.binding.chain==1&&old.binding.queue==2&&old.binding.generation==1&&old.count==2);
+        CHECK(old.resources[0]==100&&old.resources[1]==101&&!old.resources[2]);
+        CHECK(observer.begin_resize(1)&&!observer.inventory(1).valid);
+        CHECK(observer.complete_resize(1,2560,1440,second,2,true));
+        const auto current=observer.inventory(1);
+        CHECK(current.valid&&current.binding.generation==2&&current.binding.width==2560&&current.binding.height==1440);
+        CHECK(current.count==2&&current.resources[0]==200&&current.resources[1]==201&&current.resources!=old.resources);
+        CHECK(observer.begin_resize(1)&&!observer.complete_resize(1,0,0,nullptr,0,false));
+        CHECK(!observer.inventory(1).valid); // Failed resize requires revalidation.
+        CHECK(observer.unchanged(1,2560,1440,second,2)&&observer.inventory(1).valid);
+        observer.invalidate();CHECK(!observer.inventory(1).valid&&!observer.inventory(99).valid);
     }
     {
         // Separate chains can resize concurrently and complete in either order.

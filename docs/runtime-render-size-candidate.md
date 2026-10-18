@@ -8,6 +8,36 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+DepthGeneral1 replaces the trial's fixed dimensions with the validated
+session RenderSizePlan. It compares the desktop Present inventory against
+a read-only, single-lock snapshot of the currently admitted anchored
+swapchain binding, including every buffer identity, dimensions, queue and
+generation. Only an exact full desktop viewport on the certified native
+clear route is changed. Already-correct VR viewports remain unchanged.
+Accepted receipts now have a separate16-row bank from rejected draws.
+Fresh build SHA `1fdb2f22053a20a884ce18dcac9ca0ee051036ada413b73f0b6fe1d745dad97a`
+passed OwnedDepthClearTrialTest, FrameLinkTest, source-pixel/NGX checks and
+the continuous startup suite. The helper tests cover multiple rectangular
+sizes, invalid plans, stale inventories and failed resize revalidation.
+
+Actual scale2 session32040 **failed lifecycle acceptance** before its second
+checkpoint reload completed. It did apply and restore1563 generic clears;
+world2 ticket449 HDR source SHA
+`af210e65632ba0920d1e6332addf6aa2d9be4e9224f8bdbbd11ec2190b773898`
+has99.9934% positive pixels beyond x3840 and99.9987% below y2160. This supports
+the generalized extent calculation, not completed lifecycle or lower-scale
+acceptance. The exact failure is now recorded: tracker_create subtype6,
+active_lists512/list_capacity512, overflow0->1, capacity_bad0->1. Only60
+retained creation leases existed, so their separate capacity was not hit.
+The owner stopped with owned_error14/proof_failure; native cleanup timed out.
+The harness subsequently closed the game normally and restored five files,
+but entry restoration was not independently verified. Preserve this failure;
+do not count the normal process exit as native cleanup success. Raw statuses
+were archived as `runtime-depth-general1-scale2-run1-20261019.failed.*` before
+any new run. Next work is safe tracker identity reclamation after certified
+retirement, then repeat high/low multiplier lifecycle tests. Default artifacts
+have not been advanced to this diagnostic build.
+
 DepthClear2 counterfactual restored the previously missing high-scale scene
 region. DLL SHA `c6383e60ea63f9cdb71a0a759d274aae59ed2dd32e429c80f975e952d0c5c821`;
 fresh compilation, component checks and continuous startup suite passed.

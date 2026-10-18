@@ -12,6 +12,7 @@ namespace gears_swapchain_binding {
 using Identity = uintptr_t;
 struct Binding {Identity chain{}, queue{}, window{}; unsigned width{}, height{}, method{}; bool anchored{};
     uint64_t generation{1};bool resizing{},needs_revalidation{},rejected{};};
+struct Inventory {Binding binding{};std::array<Identity,16> resources{};unsigned count{};bool valid{};};
 enum Difference : unsigned {invalid_input=1, dimensions=2, buffer_count=4, buffer_identity=8, missing_binding=16, inventory_rejected=32};
 struct Comparison {
     bool recorded{}, anchor{};
@@ -173,6 +174,20 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         for (const auto& entry : bindings_) if (entry.chain == chain&&chain&&admitted(entry)) return entry;
         return {};
+    }
+    // Read-only current-generation inventory, copied in one lock scope. This
+    // does not refresh, revalidate or admit an earlier Present observation.
+    Inventory inventory(Identity chain){
+        std::lock_guard<std::mutex> lock(mutex_);Inventory out{};
+        for(auto const& entry:bindings_)if(chain&&entry.chain==chain&&entry.anchored&&admitted(entry))out.binding=entry;
+        if(!out.binding.chain)return {};
+        unsigned mask{};
+        for(auto const& entry:buffers_)if(entry.chain==chain){
+            if(entry.index>=out.resources.size()||!entry.resource||(mask&(1u<<entry.index)))return {};
+            mask|=1u<<entry.index;out.resources[entry.index]=entry.resource;++out.count;
+        }
+        out.valid=out.count&&out.count<=out.resources.size()&&mask==((1u<<out.count)-1u);
+        return out.valid?out:Inventory{};
     }
     bool known_buffer(Identity resource) {
         std::lock_guard<std::mutex> lock(mutex_);
