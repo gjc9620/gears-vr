@@ -54,6 +54,35 @@ class FakeBackend:
         return dict(pawn='0x200',controller='0x100',camera='0x400',level='0x300',timestamp=float(self.samples))
 
 class LauncherTests(unittest.TestCase):
+    def setUp(self):
+        environment=mock.patch.dict(os.environ,{'GEARSVR_TEST_MUTE_GAME':''})
+        environment.start();self.addCleanup(environment.stop)
+
+    def test_test_audio_restores_before_prime_cleanup_without_masking_original_cleanup(self):
+        import game_audio_guard
+        for scenario in ('normal','cancel','exception','audio_close_failure'):
+            with self.subTest(scenario=scenario),tempfile.TemporaryDirectory() as directory:
+                backend=FakeBackend(cancel=scenario=='cancel');order=[]
+                guard=mock.Mock();guard.log=pathlib.Path(directory)/'audio.jsonl'
+                def restore():
+                    order.append('audio')
+                    if scenario=='audio_close_failure':raise RuntimeError('audio cleanup fixture')
+                    return {'restored':True}
+                guard.close.side_effect=restore
+                backend.finish_owned_prime=lambda *args:order.append('prime') or {'entry_restore_verified':True}
+                if scenario=='exception':backend.runner.run_session.side_effect=RuntimeError('session failed')
+                with mock.patch.dict(os.environ,GEARSVR_TEST_MUTE_GAME='1'),\
+                     mock.patch.object(game_audio_guard,'begin',return_value=guard) as begin,\
+                     mock.patch.object(launcher,'verify_files',return_value={}),\
+                     mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                    if scenario=='exception':
+                        with self.assertRaisesRegex(RuntimeError,'session failed'):
+                            launcher.start({},dict(MANIFEST,startup_menu=True),backend,pathlib.Path(directory)/'index.json',sleep=lambda _:None)
+                    else:launcher.start({},dict(MANIFEST,startup_menu=True),backend,pathlib.Path(directory)/'index.json',sleep=lambda _:None)
+                self.assertEqual(order,['audio','prime'])
+                self.assertEqual(begin.call_args.args[:2],(backend.game,backend.owner))
+                guard.close.assert_called_once()
+
     def test_path_choice_center_requires_explicit_supported_observers(self):
         guards=dict(MANIFEST,path_choice_center=True,menu_recovery=True,startup_menu=True,ui_observer=True,anchor_observer=True)
         launcher.settings({},guards)

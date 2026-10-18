@@ -453,7 +453,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         backend.control.k.CloseHandle(lock);raise RuntimeError('Another repository launcher is active')
     state={'schema':1,'kind':'repository_vr_launcher','owner_identity':owner,'phase':'preflight','passed':False,'native_activated':False}
     if size_plan:state['render_size_plan']=size_plan
-    cancel=None;identity=None;tiny_output_monitor=None;owned_prime=manifest.get('startup_menu',False)
+    cancel=None;identity=None;tiny_output_monitor=None;test_audio_guard=None;owned_prime=manifest.get('startup_menu',False)
     try:
         cancel=backend.open_cancel(owner['pid'])
         if backend.game_pids():raise RuntimeError('An existing game process must exit normally before fresh startup')
@@ -463,6 +463,11 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
                   backend.reserve(manifest,index.with_suffix('.reserve.log'),game_path=game,foreground=foreground))
         pid=reserved['pid'];identity=backend.control.identity(pid)
         if not identity or identity!=reserved.get('game_identity') or pathlib.Path(identity['image']).resolve()!=game:raise RuntimeError('Reserved game identity mismatch')
+        if os.environ.get('GEARSVR_TEST_MUTE_GAME')=='1':
+            sys.path.insert(0,str(HERE))
+            from game_audio_guard import begin
+            test_audio_guard=begin(identity,owner,index.with_name(index.stem+'.'+uuid.uuid4().hex+'.audio.jsonl'))
+            state['test_audio_guard']={'enabled':True,'log':str(test_audio_guard.log),'muting_confirmed':False}
         try:
             tiny_output_monitor=backend.start_tiny_output_monitor(manifest,identity,index.with_suffix('.tiny-output.jsonl'))
         except Exception as error:
@@ -572,6 +577,12 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
                 'Reservation failed; inspect reservation_failure_cleanup. No forced process termination or injection retry was attempted.')
         atomic_json(index,state);raise
     finally:
+        if test_audio_guard:
+            try:state['test_audio_guard']=test_audio_guard.close()
+            except Exception as error:state['test_audio_guard']={'enabled':True,'restored':False,'error':repr(error)}
+            # Audio restoration failure must not obstruct existing native/prime cleanup.
+            try:atomic_json(index,state)
+            except Exception:pass
         if tiny_output_monitor:
             try:
                 joined=tiny_output_monitor.close()
