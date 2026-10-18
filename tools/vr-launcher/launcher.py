@@ -16,7 +16,7 @@ from types import SimpleNamespace
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 HERE=pathlib.Path(__file__).resolve().parent
 INDEX=ROOT/'analysis/runtime/vr-launcher-session.json'
-SESSION_OPTIONS=('anchor_observer','cinematic_camera','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','gpu_snapshot','menu_recovery','world_recovery','crosshair_assignment_observer','movie_display','path_choice_center')
+SESSION_OPTIONS=('anchor_observer','cinematic_camera','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','ui_reticle_late_sample','gpu_snapshot','menu_recovery','world_recovery','crosshair_assignment_observer','movie_display','path_choice_center')
 
 def atomic_json(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -104,6 +104,8 @@ def settings(config,manifest,root=ROOT):
         raise ValueError('Menu lock requires startup graphics protection')
     if manifest.get('ui_hud_plane',False) and not (manifest.get('ui_observer',False) and manifest.get('anchor_observer',False)):
         raise ValueError('HUD plane requires UI observer and anchor observer in the continuous launcher')
+    if manifest.get('ui_reticle_late_sample',False) and not all(manifest.get(key,False) for key in ('ui_observer','ui_hud_plane')):
+        raise ValueError('Late reticle sampling requires UI observer and HUD plane in the continuous launcher')
     if manifest.get('crosshair_assignment_observer',False) and not all(manifest.get(key,False) for key in ('ui_observer','anchor_observer')):
         raise ValueError('Crosshair assignment observer requires UI observer and anchor observer')
     if manifest.get('world_recovery',False) and not all(manifest.get(key,False) for key in ('anchor_observer','ui_observer','cinematic_camera')):

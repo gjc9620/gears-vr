@@ -605,6 +605,12 @@ class LauncherTests(unittest.TestCase):
             with self.subTest(key=key),self.assertRaisesRegex(ValueError,'boolean'):
                 launcher.settings({},dict(MANIFEST,**{key:'true'}))
 
+    def test_private_late_reticle_requires_ui_and_hud(self):
+        for ui,hud in ((False,False),(True,False),(False,True)):
+            with self.assertRaises(ValueError):
+                launcher.settings({},dict(MANIFEST,ui_reticle_late_sample=True,ui_observer=ui,ui_hud_plane=hud,anchor_observer=True))
+        launcher.settings({},dict(MANIFEST,ui_reticle_late_sample=True,ui_observer=True,ui_hud_plane=True,anchor_observer=True))
+
     def test_crosshair_assignment_requires_observers(self):
         for ui,anchor in ((False,False),(True,False),(False,True)):
             with self.assertRaisesRegex(ValueError,'Crosshair assignment'):

@@ -13,6 +13,13 @@ import run_stereo_continuous as continuous
 
 
 class AnchorStartTests(unittest.TestCase):
+    def test_late_reticle_dependencies_reject_before_ini_or_activation(self):
+        for extra in ([],['--ui-observer'],['--ui-observer','--ui-hud-plane']):
+            with mock.patch.object(sys,'argv',['start_capture.py','--pid','1','--ui-reticle-late-sample',*extra]),\
+                 mock.patch.object(pathlib.Path,'write_text') as write,mock.patch.object(start.subprocess,'run') as launch,\
+                 contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):
+                start.main()
+            write.assert_not_called();launch.assert_not_called()
     def test_helpers_hide_consoles_and_preserve_argument_boundaries(self):
         command=['powershell','-NoProfile','-NonInteractive','-File',r'J:\path with spaces\Start-DebugGame.ps1',
                  '-GamePath',r'J:\game path\GOWDE-Steam.exe']
@@ -142,7 +149,7 @@ class AnchorStartTests(unittest.TestCase):
             for name,_,_ in continuous_suite():(build/name).write_bytes(b'fixture')
             (build/'target-prime-status.txt').write_text('fixture')
             args=types.SimpleNamespace(pid=1,build_dir=build,dll_name=dll.name,stereo_units_per_metre=100,
-                crosshair_assignment_observer=True,ui_observer=True,anchor_observer=True)
+                crosshair_assignment_observer=True,ui_observer=True,anchor_observer=True,ui_hud_plane=True,ui_reticle_late_sample=True)
             argv=continuous.native_command(args,{'pid':100,'creation_time':1000})[2:]
             error=assignment.CrosshairConfigRejected('Unknown crosshair certificate identity')
             with contextlib.ExitStack() as stack:
@@ -183,6 +190,7 @@ class AnchorStartTests(unittest.TestCase):
                 for field in ('local_player=0x1','controller=0x2','timestamp=0x3','camera=0x4','camera_yaw=0x214'):
                     self.assertIn('\n'+field+'\n',config)
                 self.assertIn('\ncrosshair_assignment_observer=1\n',config)
+                self.assertIn('\nui_reticle_late_sample=1\n',config)
                 self.assertIn('[CrosshairAssignment]\nschema=1\n',config)
                 metadata=json.loads((build/'ui-observer-config.json').read_text())
                 self.assertEqual(metadata['crosshair_assignment'],{'fresh_certificate':True})

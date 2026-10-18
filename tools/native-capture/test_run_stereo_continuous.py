@@ -35,6 +35,30 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_late_reticle_private_cli_and_native_only_forwarding(self):
+        base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
+        flag='--ui-reticle-late-sample'
+        with mock.patch.object(runner,'run_session',return_value=0) as run:
+            runner.main(base);args=run.call_args.args[0]
+            self.assertFalse(args.ui_reticle_late_sample)
+            self.assertNotIn(flag,runner.native_command(args,identity(100)))
+            for extra in ([],['--ui-observer','--anchor-observer'],['--ui-hud-plane','--anchor-observer']):
+                run.reset_mock()
+                with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):runner.main(base+[flag,*extra])
+                run.assert_not_called()
+            runner.main(base+[flag,'--ui-hud-plane','--ui-observer','--anchor-observer'])
+            args=run.call_args.args[0]
+            self.assertEqual(runner.native_command(args,identity(100)).count(flag),1)
+            self.assertNotIn(flag,runner.xr_command(args,pathlib.Path('unused.csv'),identity(100)))
+
+    def test_late_reticle_direct_caller_rejects_before_process_or_lock(self):
+        for ui,hud in ((False,False),(True,False),(False,True)):
+            args=types.SimpleNamespace(ui_reticle_late_sample=True,ui_observer=ui,ui_hud_plane=hud)
+            control=mock.Mock()
+            with mock.patch.object(runner,'WindowsControl') as create,mock.patch.object(runner.subprocess,'Popen') as spawn:
+                with self.assertRaisesRegex(ValueError,'Late reticle'):runner.run_session(args,control)
+                control.owner_lock.assert_not_called();create.assert_not_called();spawn.assert_not_called()
+
     def test_camera_closer_cli_validation_and_forwarding(self):
         base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
         guards=['--anchor-observer','--cinematic-camera']
@@ -194,6 +218,7 @@ class ContinuousTests(unittest.TestCase):
         for enabled in (False,True):
             _,state,_,_,_,_=self.run_mock(ui_hud_plane=enabled)
             self.assertEqual(state['ui_hud_plane_enabled'],enabled)
+            self.assertFalse(state['ui_reticle_late_sample_enabled'])
 
     def test_xr_image_ticket_evidence_explicit_or_origin_only(self):
         args=types.SimpleNamespace(pid=123,build_dir=pathlib.Path('native'),dll_name='Continuous.dll',

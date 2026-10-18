@@ -3855,6 +3855,10 @@ DWORD WINAPI worker(void*) {
        GetPrivateProfileIntW(L"Capture",L"origin_trial",0,ini)!=0||!crosshair_live::load(ini,status))){
         fprintf(status,"rejected: crosshair observer requires compiled support and fresh assignment/tick bindings\n");fclose(status);return 2;}
     ui_hud_plane_enabled=GetPrivateProfileIntW(L"Capture",L"ui_hud_plane",0,ini)==1;
+    if(!ui_reticle_late_sample::configure(GetPrivateProfileIntW(L"Capture",L"ui_reticle_late_sample",0,ini)==1)){
+        fprintf(status,"rejected: late reticle sampling is not compiled\n");fclose(status);return 2;}
+    if(ui_reticle_late_sample::enabled&&(!ui_observer_enabled||!ui_hud_plane_enabled||!continuous_session||!ui_reticle_direction_enabled)){
+        fprintf(status,"rejected: late reticle sampling requires continuous UI/HUD observers and compiled reticle direction\n");fclose(status);return 2;}
     ui_hud_parameters=gears_ui_hud::Parameters{};
     ui_hud_layout_parameters=gears_ui_layout::Parameters{};
     const wchar_t* layout_keys[]{L"ui_hud_element_scale",L"ui_hud_center_scale"};
@@ -4184,6 +4188,7 @@ DWORD WINAPI worker(void*) {
             if(state_created.load()&&!submit_background&&!foreground())request_session_stop(SessionStop::focus_lost);
             if(stereo_publisher.state.load()==3)request_session_stop(SessionStop::proof_failure);
             stereo_publish_worker_tick();
+            {wchar_t arm_path[MAX_PATH];path_for(arm_path,L"reticle-sample-arm.ini");ui_reticle_late_sample::poll(arm_path,status);}
             world_rebind_request.poll(status);
             advance_world_handoff(status);
             {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);owned_scene_gpu::poll();

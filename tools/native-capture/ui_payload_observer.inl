@@ -69,7 +69,7 @@ struct UiPayloadGpuRow {
     gears_viewport::OverlayPlan hud_plan{};
     bool reticle_direction_applied{};
     gears_viewport::OverlayPlan reticle_plan{};
-#if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
+#if (defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER) || (defined(GEARS_UI_RETICLE_LATE_SAMPLE) && GEARS_UI_RETICLE_LATE_SAMPLE)
     gears_ui_reticle::Extent reticle_extent{};
 #endif
 };
@@ -77,6 +77,8 @@ std::array<std::array<UiPayloadGpuRow,24>,8> ui_payload_gpu_rows{};
 std::array<unsigned,8> ui_payload_gpu_counts{};
 std::array<long long,8> ui_payload_next_row{};
 std::array<uint64_t,8> ui_payload_gpu_calls{};
+bool ui_ticket_geometry(uint64_t ticket,gears_vr::StereoTicketGeometry& geometry);
+#include "reticle_sample_live.inl"
 struct UiSubtitleGpuRow {
     gears_ui_sources::Summary source{};uint64_t execute_sequence{},ticket{};
     gears_frame_link::ListRef list{};gears_frame_link::Target target{};
@@ -243,6 +245,7 @@ uint32_t __fastcall hook_ui_execute(void* command){
         for(unsigned k=1;k<ui_payload_gpu_rows.size();++k)
             for(unsigned i=0;i<ui_payload_gpu_counts[k];++i){auto& row=ui_payload_gpu_rows[k][i];
                 if(row.execute_sequence==ui_index_context->execute_sequence)row.command_completed=complete;}
+        ui_reticle_late_sample::complete(ui_index_context->execute_sequence,complete);
     }
     return result;
 }
@@ -378,6 +381,9 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
     const auto& context=*ui_payload_context;const auto kind=context.kind_mask;
     if(!kind||kind>=ui_payload_gpu_rows.size()){++ui_gpu_context_missing;return;}
     const auto timestamp=now();std::lock_guard<std::mutex> lock(ui_payload_mutex);
+#if defined(GEARS_UI_RETICLE_LATE_SAMPLE) && GEARS_UI_RETICLE_LATE_SAMPLE
+    if(kind&1u)ui_reticle_late_sample::observe(context,ticket,list,target,timestamp,indices,instances,start,vertex,reticle_applied,reticle_plan);
+#endif
     // This function's sole caller is after normal replay_overlay return: valid
     // plan executes both eyes or throws before this observer. This proves API
     // replay completion, not subtitle pixels, visibility or whole Execute exit.
@@ -434,6 +440,7 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
 }
 
 void print_ui_payload_observer(FILE* status){
+    ui_reticle_late_sample::print(status);
     gears_ui_fault::print(status,ui_hud_first_fault);
     fprintf(status,"ui_subtitle_gpu calls=%llu layout_applied=%llu rows=%u dropped=%llu source_is_actual_index_membership=1 pixel_visibility_proven=0\n",ui_subtitle_gpu_calls,ui_subtitle_gpu_layout_applied,ui_subtitle_gpu_count,ui_subtitle_gpu_dropped);
     for(unsigned i=0;i<ui_subtitle_gpu_count;++i){auto const& row=ui_subtitle_gpu_rows[i];auto const& source=row.source;

@@ -326,6 +326,9 @@ def hud_size_ini(args):
 
 
 def configure_anchor_options(args,parser):
+    if getattr(args,'ui_reticle_late_sample',False) and not all(
+            getattr(args,key,False) for key in ('ui_observer','ui_hud_plane','continuous_session')):
+        parser.error('Late reticle sampling requires --ui-observer, --ui-hud-plane and --continuous-session')
     if getattr(args,'crosshair_assignment_observer',False) and (not all(
             getattr(args,key,False) for key in ('ui_observer','anchor_observer','continuous_session')) or getattr(args,'origin_trial',False)):
         parser.error('Crosshair assignment observer requires continuous UI/anchor observers and cannot use origin trial')
@@ -405,6 +408,7 @@ def main():
     parser.add_argument('--cinematic-camera',action='store_true',help='Accept certified cinematic CameraActor targets sharing the controlled WorldInfo while preserving Pawn possession')
     parser.add_argument('--ui-observer',action='store_true',help='Observe registered reticle/HUD Canvas calls without changing coordinates')
     parser.add_argument('--ui-hud-plane',action='store_true',help='Experimental HUD plane; requires UI observer, anchor observer and continuous session')
+    parser.add_argument('--ui-reticle-late-sample',action='store_true',help=argparse.SUPPRESS)
     parser.add_argument('--crosshair-assignment-observer',action='store_true',help='Observe certified crosshair assignments; no reticle correction')
     parser.add_argument('--hud-horizontal-fov-degrees',type=float)
     parser.add_argument('--camera-closer-metres',type=float,default=0.)
@@ -553,6 +557,7 @@ def main():
         config+=f'ui_observer={int(args.ui_observer)}\n'
         config+=f'crosshair_assignment_observer={int(args.crosshair_assignment_observer)}\n'
         config+=f'ui_hud_plane={int(getattr(args,"ui_hud_plane",False))}\n'
+        config+=f'ui_reticle_late_sample={int(getattr(args,"ui_reticle_late_sample",False))}\n'
         config+=hud_size_ini(args)
         config+=f'origin_trial={int(getattr(args,"origin_trial",False))}\n'
         config+=f'stereo_gpu_publish={int(args.stereo_gpu_publish)}\n'

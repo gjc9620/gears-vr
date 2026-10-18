@@ -143,6 +143,8 @@ def finish_path_choice_position(monitor,state,control):
 
 def validate_ui_hud_plane(args):
     camera_closer_metres(args)
+    if getattr(args,'ui_reticle_late_sample',False) and not all(getattr(args,key,False) for key in ('ui_observer','ui_hud_plane')):
+        raise ValueError('Late reticle sampling requires UI observer and HUD plane in a continuous session')
     if getattr(args,'path_choice_center',False) and not all(getattr(args,k,False) for k in ('menu_recovery','ui_observer','anchor_observer')):
         raise ValueError('PathChoice centering requires menu/UI/anchor observers')
     if getattr(args,'crosshair_assignment_observer',False) and (not all(
@@ -193,6 +195,7 @@ def native_command(args,owner):
     if getattr(args,'origin_trial',False):command.append('--origin-trial')
     if getattr(args,'ui_observer',False):command.append('--ui-observer')
     if getattr(args,'ui_hud_plane',False):command.append('--ui-hud-plane')
+    if getattr(args,'ui_reticle_late_sample',False):command.append('--ui-reticle-late-sample')
     if getattr(args,'crosshair_assignment_observer',False):command.append('--crosshair-assignment-observer')
     if getattr(args,'hud_horizontal_fov_degrees',None) is not None:
         command+=['--hud-horizontal-fov-degrees',str(args.hud_horizontal_fov_degrees)]
@@ -427,6 +430,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'movie_display_enabled':bool(getattr(args,'movie_display',False)),
            'ui_observer_enabled':bool(getattr(args,'ui_observer',False)),
            'ui_hud_plane_enabled':bool(getattr(args,'ui_hud_plane',False)),
+           'ui_reticle_late_sample_enabled':bool(getattr(args,'ui_reticle_late_sample',False)),
            'crosshair_assignment_observer_enabled':bool(getattr(args,'crosshair_assignment_observer',False)),
            'hud_horizontal_fov_degrees':getattr(args,'hud_horizontal_fov_degrees',None),
            'camera_closer_metres':camera_closer_metres(args),
@@ -673,6 +677,7 @@ def main(argv=None):
     start.add_argument('--ui-observer',action='store_true')
     start.add_argument('--path-choice-center',action='store_true',help='Opt-in authenticated PathChoice position service; requires Native99 support')
     start.add_argument('--ui-hud-plane',action='store_true')
+    start.add_argument('--ui-reticle-late-sample',action='store_true',help=argparse.SUPPRESS)
     start.add_argument('--crosshair-assignment-observer',action='store_true')
     start.add_argument('--hud-horizontal-fov-degrees',type=float)
     start.add_argument('--hud-element-scale',type=float)
