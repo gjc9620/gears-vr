@@ -453,23 +453,87 @@ class ContinuousTests(unittest.TestCase):
                     self.assertNotIn('path_choice_center_start_error',state)
 
     def test_session_read_diagnostic_does_not_reread_empty_file_or_retry_io_failure(self):
-        path=mock.Mock();path.stat.return_value.st_mtime_ns=10
-        path.read_text.side_effect=['','continuous_session=1 pid=123 started_qpc=456 complete=1\n']
+        path=pathlib.Path('unopened-fixture.txt');stream=mock.Mock()
+        stream.read.side_effect=['','continuous_session=1 pid=123 started_qpc=456 complete=1\n']
+        resource=mock.MagicMock();resource.__enter__.return_value=stream;resource.__exit__.return_value=False
         diagnostic={}
-        self.assertIsNone(runner.read_session_status(path,123,0,diagnostic=diagnostic))
-        path.read_text.assert_called_once();self.assertEqual(diagnostic['reason'],'empty_file')
-        for stage in ('stat','read'):
+        with mock.patch.object(runner,'open_session_status',return_value=resource) as opened, \
+             mock.patch.object(runner.os,'fstat',return_value=types.SimpleNamespace(st_mtime_ns=10)):
+            self.assertIsNone(runner.read_session_status(path,123,0,diagnostic=diagnostic))
+        opened.assert_called_once_with(path);stream.read.assert_called_once()
+        self.assertEqual(diagnostic['reason'],'empty_file');resource.__exit__.assert_called_once()
+        for stage in ('open','stat','read'):
             with self.subTest(stage=stage):
-                path=mock.Mock();path.stat.return_value.st_mtime_ns=10
+                stream=mock.Mock();resource=mock.MagicMock()
+                resource.__enter__.return_value=stream;resource.__exit__.return_value=False
                 failure=PermissionError(13,'PRIVATE_CONTENT')
-                if stage=='stat':path.stat.side_effect=failure
-                else:path.read_text.side_effect=failure
-                self.assertIsNone(runner.read_session_status(path,123,0,diagnostic=diagnostic))
+                with mock.patch.object(runner,'open_session_status',return_value=resource) as opened, \
+                     mock.patch.object(runner.os,'fstat',return_value=types.SimpleNamespace(st_mtime_ns=10)) as stat:
+                    if stage=='open':opened.side_effect=failure
+                    elif stage=='stat':stat.side_effect=failure
+                    else:stream.read.side_effect=failure
+                    self.assertIsNone(runner.read_session_status(path,123,0,diagnostic=diagnostic))
                 self.assertEqual(diagnostic['reason'],'io_error');self.assertEqual(diagnostic['stage'],stage)
                 self.assertEqual(diagnostic['exception_type'],'PermissionError')
-                self.assertNotIn('PRIVATE_CONTENT',json.dumps(diagnostic))
-                self.assertEqual(path.stat.call_count,1)
-                self.assertEqual(path.read_text.call_count,0 if stage=='stat' else 1)
+                self.assertNotIn('PRIVATE_CONTENT',json.dumps(diagnostic));opened.assert_called_once()
+                self.assertEqual(stream.read.call_count,1 if stage=='read' else 0)
+                self.assertEqual(resource.__exit__.call_count,0 if stage=='open' else 1)
+
+    @staticmethod
+    def publish_status_fixture(temporary,destination):
+        # File-only test of the same Windows atomic namespace operation used by
+        # AtomicFile. No retry and no process/window access.
+        if os.name!='nt':os.replace(temporary,destination);return
+        c=runner.ctypes;w=runner.wintypes;kernel=c.WinDLL('kernel32',use_last_error=True)
+        kernel.CreateFileW.argtypes=[w.LPCWSTR,w.DWORD,w.DWORD,c.c_void_p,w.DWORD,w.DWORD,w.HANDLE]
+        kernel.CreateFileW.restype=w.HANDLE
+        kernel.SetFileInformationByHandle.argtypes=[w.HANDLE,c.c_int,c.c_void_p,w.DWORD]
+        kernel.SetFileInformationByHandle.restype=w.BOOL
+        kernel.CloseHandle.argtypes=[w.HANDLE]
+        name=str(destination.resolve())
+        class Rename(c.Structure):
+            _fields_=[('flags',w.DWORD),('root',w.HANDLE),('length',w.DWORD),('name',c.c_wchar*len(name))]
+        info=Rename();info.flags=1|2;info.length=len(name.encode('utf-16-le'));info.name=name
+        handle=kernel.CreateFileW(str(temporary),0x10000,1|2|4,None,3,0x80,None)
+        if handle==w.HANDLE(-1).value:raise c.WinError(c.get_last_error())
+        try:
+            if not kernel.SetFileInformationByHandle(handle,22,c.byref(info),c.sizeof(info)):
+                raise c.WinError(c.get_last_error())
+        finally:kernel.CloseHandle(handle)
+
+    def test_single_status_handle_keeps_old_generation_during_atomic_replacement(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=pathlib.Path(folder)/'status.txt';temporary=path.with_name('status.tmp')
+            a='continuous_session=1 pid=123 started_qpc=456 generation=A complete=1\n'
+            b=a.replace('generation=A','generation=B');path.write_text(a);temporary.write_text(b)
+            with runner.open_session_status(path) as old:
+                self.publish_status_fixture(temporary,path)
+                self.assertEqual(old.read(),a)
+                self.assertEqual(runner.read_session_status(path,123,0)['generation'],'B')
+            self.assertTrue(old.closed)
+            try:
+                with runner.open_session_status(path) as stream:raise RuntimeError('test close')
+            except RuntimeError:pass
+            self.assertTrue(stream.closed)
+
+    def test_status_mtime_and_contents_come_from_same_open_handle(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=pathlib.Path(folder)/'status.txt';temporary=path.with_name('status.tmp')
+            a='continuous_session=1 pid=123 started_qpc=456 generation=A complete=1\n'
+            path.write_text(a);temporary.write_text(a.replace('generation=A','generation=B'))
+            old_time=1600000000000000000;new_time=old_time+2000000000
+            os.utime(path,ns=(old_time,old_time));os.utime(temporary,ns=(new_time,new_time))
+            original=runner.open_session_status
+            @contextlib.contextmanager
+            def publishing(current):
+                with original(current) as stream:
+                    self.publish_status_fixture(temporary,path)
+                    yield stream
+            diagnostic={}
+            with mock.patch.object(runner,'open_session_status',publishing):
+                self.assertIsNone(runner.read_session_status(path,123,old_time+1000000000,diagnostic=diagnostic))
+            self.assertEqual(diagnostic['reason'],'stale_file')
+            self.assertEqual(runner.read_session_status(path,123,old_time+1000000000)['generation'],'B')
 
     def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False,hud_layout=None,path_center=False):
         with tempfile.TemporaryDirectory() as folder:

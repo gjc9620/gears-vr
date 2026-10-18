@@ -5,6 +5,7 @@ No simulation commands are sent. Bounded diagnostic runners remain separate.
 """
 import argparse
 import ctypes
+import contextlib
 from ctypes import wintypes
 import datetime
 import json
@@ -276,6 +277,30 @@ def first_stereo_submitted(path):
     return None
 
 
+@contextlib.contextmanager
+def open_session_status(path):
+    """One immutable published generation; Windows permits atomic replacement."""
+    if os.name != 'nt':
+        with path.open('r',encoding='utf-8',errors='replace') as stream:yield stream
+        return
+    import msvcrt
+    kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+    kernel.CreateFileW.argtypes=[wintypes.LPCWSTR,wintypes.DWORD,wintypes.DWORD,ctypes.c_void_p,
+                                wintypes.DWORD,wintypes.DWORD,wintypes.HANDLE]
+    kernel.CreateFileW.restype=wintypes.HANDLE
+    kernel.CloseHandle.argtypes=[wintypes.HANDLE];kernel.CloseHandle.restype=wintypes.BOOL
+    handle=kernel.CreateFileW(str(path),0x80000000,1|2|4,None,3,0x80,None)
+    if handle==wintypes.HANDLE(-1).value:raise ctypes.WinError(ctypes.get_last_error())
+    try:fd=msvcrt.open_osfhandle(handle,os.O_RDONLY|os.O_BINARY)
+    except BaseException:
+        kernel.CloseHandle(handle);raise
+    # Ownership moved to the CRT descriptor; each failure path closes once.
+    try:stream=os.fdopen(fd,'r',encoding='utf-8',errors='replace')
+    except BaseException:
+        os.close(fd);raise
+    with stream:yield stream
+
+
 def read_session_status(path,pid,floor,*,diagnostic=None):
     """Same admission as before; optional bounded reasons from this exact read.
 
@@ -286,11 +311,13 @@ def read_session_status(path,pid,floor,*,diagnostic=None):
     def rejected(reason,**details):
         if diagnostic is not None:diagnostic.update(reason=reason,**details)
         return None
-    stage='stat'
+    stage='open'
     try:
-        if path.stat().st_mtime_ns<=floor:return rejected('stale_file')
-        stage='read'
-        text=path.read_text(encoding='utf-8',errors='replace')
+        with open_session_status(path) as stream:
+            stage='stat'
+            if os.fstat(stream.fileno()).st_mtime_ns<=floor:return rejected('stale_file')
+            stage='read'
+            text=stream.read()
         if diagnostic is not None:diagnostic.update(text_length=len(text),ends_with_newline=text.endswith('\n'))
         fields=dict(re.findall(r'(\w+)=([^\s]+)',text))
         if not text:return rejected('empty_file')
