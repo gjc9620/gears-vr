@@ -2,6 +2,7 @@
 #include <d3d12.h>
 #include <cstdio>
 #include <cstdint>
+#include "ngx_typed_resources.h"
 namespace ngx_stereo_host {
 using CopyFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,UINT,UINT,UINT,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_BOX*);
 using ExecuteFn=void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);

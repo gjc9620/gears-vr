@@ -18,7 +18,7 @@ using EvalFn=uint32_t(__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 using ReleaseFn=uint32_t(__fastcall*)(uintptr_t);
 CreateFn original_create{};EvalFn original_evaluate{};ReleaseFn original_release{};
 struct List {uintptr_t raw{},canonical{};uint64_t generation{};};
-struct Typed {uintptr_t raw{},canonical{},device{};D3D12_RESOURCE_DESC desc{};HRESULT hr{E_POINTER};};
+using Typed=gears_ngx_stereo::TypedResourceLease;
 struct Transition {Typed resource{};List list{};uint64_t serial{};uintptr_t caller{};unsigned before{},after{},subresource{},flags{};};
 struct Draw {uintptr_t resource{},caller{},view{};List list{};gears_viewport::DrawState rectangles{};uint64_t first{},last{},count{};};
 struct Bind {List list{};std::array<uintptr_t,8> resources{};unsigned count{};uintptr_t depth_handle{};bool complete{};};
@@ -39,6 +39,10 @@ struct Row {
     std::array<unsigned,3> copy_destination{};bool copy_box{};uintptr_t copy_caller{};
     long long entry{},exit{},dispatcher_entry{},dispatcher_exit{};
     uintptr_t queue{};uint64_t execute_order{};unsigned execute_member{},execute_occurrences{};bool execute_returned{},execute_generation_match{};
+    unsigned retained_mask{};bool typed_set_ready{};
+    std::array<gears_ngx_stereo::Resource,4> adapter_resources{};
+    uintptr_t eval_queue{};uint64_t eval_execute_order{};unsigned eval_execute_member{},eval_execute_occurrences{};
+    bool eval_execute_returned{},eval_execute_generation_match{};
 };
 struct ReleaseRow {uintptr_t handle{},caller{},vendor{},module{};uint32_t result{};bool returned{},vendor_module_named{};long long entry{},exit{};};
 bool attested{},printed{};TicketBank bank;std::array<Row,12> rows{};unsigned row_count{},epoch_evals{},epochs{},in_wrappers{},release_count{};
@@ -51,11 +55,7 @@ bool valid(List a){return a.raw&&a.canonical&&a.generation;}
 List list(ID3D12CommandList* value){if(!value)return {};auto id=canonical_identity(value);auto ref=frame_link.current(id);
     return {reinterpret_cast<uintptr_t>(value),id,ref.identity==id?ref.generation:0};}
 #if !defined(GEARS_NGX_STEREO_HOST_TEST)
-Typed typed(ID3D12Resource* resource){Typed out;out.raw=reinterpret_cast<uintptr_t>(resource);if(!resource)return out;
-    ResourceIdentity identity{};query_native_resource(out.raw,identity);out.hr=identity.result;out.canonical=identity.canonical;out.desc=identity.desc;
-    if(FAILED(out.hr)||!out.canonical)return out;ID3D12Device* device{};out.hr=resource->GetDevice(IID_PPV_ARGS(&device));
-    if(SUCCEEDED(out.hr)&&device){out.device=canonical_identity(device);device->Release();}return out;
-}
+Typed typed(ID3D12Resource* resource){return Typed::observe(resource);}
 bool vendor_owner(uintptr_t pointer,uintptr_t& module){HMODULE owner{};wchar_t path[MAX_PATH]{};
     if(!pointer||!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
         reinterpret_cast<LPCWSTR>(pointer),&owner))return false;
@@ -126,10 +126,13 @@ void sample_renderer(Row& row){auto const& owner=row.before.ownership;if(!owner.
 }
 void join_inputs(Row& row){if(!row.evaluate||bank.world!=row.before.ownership.world||bank.ticket!=row.before.ownership.ticket)return;
     row.bank_dropped=bank.dropped;
+    std::array<Typed,4> retained{};
     for(unsigned i=0;i<4;++i){for(unsigned j=0;j<bank.transitions;++j){auto const& t=bank.resources[j];
         if(t.resource.raw!=row.before.resources[i])continue;row.inputs[i]=t;
         if(t.resource.canonical&&t.resource.device&&SUCCEEDED(t.resource.hr))row.typed_mask|=1u<<i;
+        retained[i]=t.resource;if(t.resource.retained())row.retained_mask|=1u<<i;
         if(t.list.raw==row.command)row.command_list=t.list;break;}}
+    row.typed_set_ready=gears_ngx_stereo::resolve_typed_resources(retained,row.before.resources,row.adapter_resources);
     // Sample order follows native structure: Color,Output,Depth,MV. Producer
     // order is Color,Depth,MV, joined to actual RTV binding/draw observations.
     constexpr unsigned input_indices[]{0,2,3};
@@ -207,7 +210,14 @@ void execute_passthrough(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*
         if(readable)for(unsigned i=0;i<count;++i)members[i]=list(raw[i]);}}
     forward(queue,count,commands);
     if(!order)return;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const auto queue_id=canonical_identity(queue);
-    for(unsigned i=0;readable&&i<row_count;++i){auto& row=rows[i];List wanted=row.copy_list.raw?row.copy_list:row.command_list;if(!wanted.raw)continue;
+    for(unsigned i=0;readable&&i<row_count;++i){auto& row=rows[i];
+        // Eval and native Output->Color may be different physical recordings.
+        // Never let observing Copy's Execute stand in for Eval's Execute.
+        if(row.command_list.raw)for(unsigned j=0;j<count;++j)if(members[j].raw==row.command_list.raw){
+            ++row.eval_execute_occurrences;if(!row.eval_execute_order){row.eval_execute_order=order;row.eval_execute_member=j;row.eval_queue=queue_id;
+                row.eval_execute_generation_match=valid(members[j])&&same(members[j],row.command_list);row.eval_execute_returned=true;}
+            if(row.eval_execute_occurrences!=1)row.eval_execute_generation_match=false;}
+        List wanted=row.copy_list;if(!wanted.raw)continue;
         for(unsigned j=0;j<count;++j)if(members[j].raw==wanted.raw){++row.execute_occurrences;if(!row.execute_order){row.execute_order=order;row.execute_member=j;row.queue=queue_id;
             row.execute_generation_match=valid(members[j])&&same(members[j],wanted);row.execute_returned=true;}}}
 }
@@ -241,9 +251,11 @@ bool install_hooks(){return attested&&install(reinterpret_cast<void*>(base+0x7c8
 void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(printed)return;printed=true;
     const bool drained=!recording.load()&&active.load()==0;
     fprintf(file,"ngx_stereo_host_budget sampled_tickets=%u ticket_limit=8 typed_observations=%u typed_limit=512 per_ticket_resources=64 per_ticket_draw_groups=64 draw_candidates_per_input=2\n",sampled_tickets,typed_observations);
-    fprintf(file,"ngx_stereo_host enabled=1 attested=%u rows=%u epochs=%u limited=%llu foreign_dispatches=%llu read_failures=%llu rows_unavailable=%u gpu_completion_verified=0 producer_draw_is_write_proof=0 resource_pointer_lifetime_retained=0 depth_stencil_descriptor_resolved=0\n",
+    fprintf(file,"ngx_stereo_host enabled=1 attested=%u rows=%u epochs=%u limited=%llu foreign_dispatches=%llu read_failures=%llu rows_unavailable=%u gpu_completion_verified=0 producer_draw_is_write_proof=0 typed_resource_leases=1 depth_stencil_descriptor_resolved=0\n",
         unsigned(attested),row_count,epochs,limited,foreign_dispatches,read_failures,unsigned(!drained));if(!drained)return;
     for(unsigned i=0;i<row_count;++i){auto const& row=rows[i];auto const& owner=row.before.ownership;
+        fprintf(file,"ngx_stereo_host_typed row=%u retained_mask=%x typed_set_ready=%u eval_queue=%llx eval_execute_order=%llu eval_member=%u eval_occurrences=%u eval_returned=%u eval_generation_match=%u\n",
+            i,row.retained_mask,unsigned(row.typed_set_ready),row.eval_queue,row.eval_execute_order,row.eval_execute_member,row.eval_execute_occurrences,unsigned(row.eval_execute_returned),unsigned(row.eval_execute_generation_match));
         fprintf(file,"ngx_stereo_host_call row=%u kind=%s epoch=%llu world=%llu ticket=%llu thread=%u wrapper_command=%llx wrapper_caller=%llx wrapper_returned=%u unwinding=%u nested=%u concurrent=%u wrapper_result=%llx dispatches=%u dispatch_match=%u dispatch_returned=%u dispatch_result=%x consumed_handle=%llx consumed_parameters=%llx callback=%llx handle_output=%llx vendor=%llx vendor_module=%llx vendor_named=%u entry=%lld exit=%lld dispatch_entry=%lld dispatch_exit=%lld typed_mask=%x producer_mask=%x bank_dropped=%u command_list=%llx,%llx,%llu render=%u,%u bases=%u,%u;%u,%u;%u,%u reset=%u\n",
             i,row.evaluate?"evaluate":"create",row.epoch,owner.world,owner.ticket,row.thread,row.command,row.caller,unsigned(row.returned),unsigned(row.unwinding),unsigned(row.nested),unsigned(row.concurrent),row.wrapper_result,row.dispatches,unsigned(row.dispatcher_match),unsigned(row.dispatcher_returned),row.dispatch_result,row.consumed_handle,row.consumed_parameters,row.callback,row.handle_output,row.vendor,row.vendor_module,unsigned(row.vendor_module_named),row.entry,row.exit,row.dispatcher_entry,row.dispatcher_exit,row.typed_mask,row.producer_mask,row.bank_dropped,row.command_list.raw,row.command_list.canonical,row.command_list.generation,row.before.values[0],row.before.values[1],row.before.values[7],row.before.values[8],row.before.values[9],row.before.values[10],row.before.values[11],row.before.values[12],row.before.values[2]);
         for(unsigned j=0;j<4;++j){auto const& t=row.inputs[j];auto const& r=t.resource;fprintf(file,"ngx_stereo_host_resource row=%u input=%u ngx_raw=%llx typed_raw=%llx canonical=%llx device=%llx hr=%lx size=%llu,%u format=%u dimension=%u mips=%u layers=%u samples=%u transition_list=%llx,%llx,%llu transition=%x,%x subresource=%u flags=%u serial=%llu caller=%llx state_coverage_complete=0\n",
@@ -253,6 +265,8 @@ void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mut
         fprintf(file,"ngx_stereo_host_copy_execute row=%u copies=%u copy_returned=%u copy_caller=%llx copy_list=%llx,%llx,%llu copy_source=%llx,%llx copy_dest=%llx,%llx destination=%u,%u,%u box=%u source_type=%u dest_type=%u source_sub=%u dest_sub=%u queue=%llx execute_order=%llu member=%u occurrences=%u execute_returned=%u generation_match=%u signal_observed=0 fence_completion_observed=0\n",i,row.copies,unsigned(row.copy_returned),row.copy_caller,row.copy_list.raw,row.copy_list.canonical,row.copy_list.generation,row.copied[0].raw,row.copied[0].canonical,row.copied[1].raw,row.copied[1].canonical,row.copy_destination[0],row.copy_destination[1],row.copy_destination[2],unsigned(row.copy_box),row.copy_source_type,row.copy_destination_type,row.copy_source_subresource,row.copy_destination_subresource,row.queue,row.execute_order,row.execute_member,row.execute_occurrences,unsigned(row.execute_returned),unsigned(row.execute_generation_match));
     }
     for(unsigned i=0;i<release_count;++i){auto const& row=releases[i];fprintf(file,"ngx_stereo_host_release row=%u handle=%llx caller=%llx result=%x returned=%u vendor=%llx module=%llx vendor_named=%u entry=%lld exit=%lld safe_retirement_verified=0\n",i,row.handle,row.caller,row.result,unsigned(row.returned),row.vendor,row.module,unsigned(row.vendor_module_named),row.entry,row.exit);}
+    for(auto& transition:bank.resources)transition.resource.release();
+    for(auto& row:rows){for(auto& input:row.inputs)input.resource.release();for(auto& copied:row.copied)copied.release();}
 }
 #endif
 }

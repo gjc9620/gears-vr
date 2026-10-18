@@ -62,6 +62,8 @@ void host_cases(){
     host_reset();observe_inputs();eval();copy_execute();auto const& row=ngx_stereo_host::rows[0];
     assert(dispatch_calls==1&&copy_calls==1&&execute_calls==1&&row.dispatcher_match&&row.dispatcher_returned&&row.returned&&row.wrapper_result==0xfedcba9876543210);
     assert(row.typed_mask==15&&row.producer_mask==1&&row.copies==1&&row.copy_returned&&row.execute_generation_match&&row.execute_returned);
+    assert(row.eval_execute_returned&&row.eval_execute_generation_match&&row.eval_execute_occurrences==1);
+    assert(!row.retained_mask&&!row.typed_set_ready); // Synthetic raw metadata cannot become retained COM proof.
     assert(ngx_stereo_host::typed_calls==6&&!ngx_stereo_host::in_wrappers&&!active.load());
     host_reset();eval();assert(!ngx_stereo_host::rows[0].typed_mask&&!ngx_stereo_host::typed_calls); // Raw NGX pointers never probed.
     host_reset();observe_inputs();ngx_route_observer::original_evaluate=wrapper_forward;test_caller=base+0x9a35d3;
@@ -74,6 +76,19 @@ void host_cases(){
     host_reset();observe_inputs();eval();frame_link.generation=2;auto* list=reinterpret_cast<ID3D12CommandList*>(0x100);
     ngx_stereo_host::execute_passthrough(reinterpret_cast<ID3D12CommandQueue*>(0x200),1,&list,forward_execute);
     assert(!ngx_stereo_host::rows[0].execute_generation_match&&execute_calls==1);
+    assert(!ngx_stereo_host::rows[0].eval_execute_generation_match);
+    // Copy execution on another list is independent of Eval's actual recording.
+    host_reset();observe_inputs();eval();ngx_stereo_host::rows[0].copy_list={0x300,0x300,1};
+    auto* different=reinterpret_cast<ID3D12CommandList*>(0x300);
+    const auto any_execute=[](ID3D12CommandQueue*,UINT,ID3D12CommandList* const*){unlocked();++execute_calls;};
+    ngx_stereo_host::execute_passthrough(reinterpret_cast<ID3D12CommandQueue*>(0x200),1,&different,any_execute);
+    assert(ngx_stereo_host::rows[0].execute_returned&&!ngx_stereo_host::rows[0].eval_execute_returned);
+    list=reinterpret_cast<ID3D12CommandList*>(0x100);
+    ngx_stereo_host::execute_passthrough(reinterpret_cast<ID3D12CommandQueue*>(0x200),1,&list,forward_execute);
+    assert(ngx_stereo_host::rows[0].eval_execute_generation_match&&ngx_stereo_host::rows[0].eval_execute_order==2&&
+        ngx_stereo_host::rows[0].execute_order==1&&execute_calls==2);
+    ngx_stereo_host::execute_passthrough(reinterpret_cast<ID3D12CommandQueue*>(0x200),1,&list,forward_execute);
+    assert(ngx_stereo_host::rows[0].eval_execute_occurrences==2&&!ngx_stereo_host::rows[0].eval_execute_generation_match);
     host_reset();throw_dispatch=true;try{eval();assert(false);}catch(std::runtime_error const&){}
     assert(dispatch_calls==1&&!ngx_stereo_host::rows[0].returned&&ngx_stereo_host::rows[0].unwinding&&!ngx_stereo_host::rows[0].dispatcher_returned&&!ngx_stereo_host::in_wrappers);
     host_reset();for(unsigned i=0;i<5;++i)eval();assert(dispatch_calls==5&&ngx_stereo_host::row_count==2&&!ngx_stereo_host::in_wrappers);
