@@ -2349,7 +2349,7 @@ void views(unsigned stage,void* root,gears_submitted::FrameTicket const& frame,u
 void select(void* root,gears_submitted::FrameTicket const& frame,uintptr_t target,uintptr_t left,uintptr_t right){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(ticket||!root||!target||!frame.enabled||!frame.id||!frame.world_generation)return;
-    if(frame.world_generation<GEARS_SIZE_TRACE_MIN_WORLD)return;
+    if(frame.world_generation<2||frame.world_generation<GEARS_SIZE_TRACE_MIN_WORLD)return;
     ticket=frame.id;world=frame.world_generation;renderer=reinterpret_cast<uintptr_t>(root);adapter=target;
     views(0,root,frame,left,right);
 }
@@ -2393,6 +2393,79 @@ void print(FILE* status){
 
 #include "resource_identity_observer.h"
 #include "late_quad_observer.inl"
+
+namespace owned_ticket_size_trace {
+// Ordered CPU pre-original draw samples, never aggregate across passes. The
+// existing TLS candidate contains the arguments actually forwarded to this quad.
+struct QuadDrawRow {
+    gears_late_quad::Key key{};std::array<ResourceIdentity,4> sources{};
+    uintptr_t list{},view{};unsigned eye=2,thread{};long long qpc{};
+};
+std::array<QuadDrawRow,64> quad_draws{};unsigned quad_draw_count{};
+uint64_t quad_draw_dropped{};bool quad_draw_overflow{};
+void quad_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances){
+    if(!late_quad_candidate.active||!recording.load()||!elements||!instances||!consuming_owned_scene)return;
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(finished||world<2||!matches(consuming_renderer,consuming_frozen_frame))return;
+    if(quad_draw_count==quad_draws.size()){
+        quad_draw_overflow=true;if(quad_draw_dropped!=UINT64_MAX)++quad_draw_dropped;return;
+    }
+    auto& row=quad_draws[quad_draw_count++];auto& key=row.key;
+    row.list=reinterpret_cast<uintptr_t>(list);row.qpc=now();row.thread=GetCurrentThreadId();
+    key.args=late_quad_candidate.args;key.dimensions=late_quad_candidate.dimensions;
+    key.quad_caller=late_quad_candidate.caller;key.draw_caller=caller>=base?caller-base:caller;
+    key.kind=kind;key.elements=elements;key.instances=instances;
+    const auto binding=frame_target_stats.binding(row.list);key.target=binding.target;key.targets=binding.targets;
+    key.rectangles=frame_target_stats.draw_state(row.list);
+    key.known_buffer=swapchain_bindings.known_buffer(key.target.resource);
+    key.descriptor_capacity_lost=frame_target_stats.descriptor_capacity_lost();
+    uintptr_t tls{};unsigned char count{};
+    if(safe_copy(&tls,reinterpret_cast<void*>(__readgsqword(0x58)),8)&&tls&&
+       safe_copy(&key.context,reinterpret_cast<void*>(tls+0x20),8)&&key.context){
+        key.read_mask|=1;
+        if(safe_copy(&count,reinterpret_cast<void*>(key.context+0x65d),1)){
+            key.read_mask|=2;key.slot_count=count;
+            const auto slots=std::min(unsigned(count),4u);
+            if(!slots||safe_copy(key.objects.data(),reinterpret_cast<void*>(key.context+0x768),slots*8))key.read_mask|=4;
+        }
+        if(safe_copy(&row.view,reinterpret_cast<void*>(key.context+0x14c0),8)){
+            key.read_mask|=8;struct Header{uintptr_t data;int count,capacity;} views{};
+            if(safe_copy(&views,reinterpret_cast<char*>(consuming_renderer)+0x68,sizeof(views))&&views.data&&
+               views.count==2&&views.capacity>=2&&views.capacity<=1024&&row.view>=views.data&&
+               (row.view-views.data)%0xd30==0&&(row.view-views.data)/0xd30<2){
+                row.eye=unsigned((row.view-views.data)/0xd30);key.read_mask|=16;
+            }
+        }
+    }
+    // Only these newly appended rows query engine-owned resources. No COM lease
+    // is retained; overflow performs no TLS/resource queries or additional reads.
+    if((key.read_mask&7)==7)for(unsigned slot=0;slot<std::min(key.slot_count,4u);++slot)
+        query_bound_resource(key.objects[slot],row.sources[slot]);
+}
+void print_quad_draws(FILE* file){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    fprintf(file,"owned_ticket_quad_summary ticket=%llu world=%llu renderer=%llx rows=%u limit=64 overflow=%u dropped=%llu finished=%u ordered=1 aggregation=0 source_limit=4 sampling=cpu_pre_original_forwarded_draw direct_same_thread_only=1 pixels_verified=0 read_bits=context:1,slot_count:2,first4_objects:4,current_view:8,current_eye:16\n",
+        ticket,world,static_cast<unsigned long long>(renderer),quad_draw_count,quad_draw_overflow?1:0,quad_draw_dropped,finished?1:0);
+    for(unsigned i=0;i<quad_draw_count;++i){const auto& row=quad_draws[i];const auto& k=row.key;const auto& s=k.rectangles;
+        fprintf(file,"owned_ticket_quad row=%u ticket=%llu world=%llu renderer=%llx qpc=%lld thread=%u view=%llx eye=%u quad_caller=%llx draw_caller=%llx kind=%u elements=%u instances=%u args=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g dimensions=%u,%u,%u,%u context=%llx read_mask=%u slot_count=%u list=%llx resource=%llx width=%llu height=%u mip=%u format=%u targets=%u known_buffer=%u descriptor_capacity_lost=%u tracked=%u viewport_count=%u scissor_count=%u viewport=%.9g,%.9g,%.9g,%.9g scissor=%.9g,%.9g,%.9g,%.9g depth_known=%u depth=%.9g,%.9g\n",
+            i,ticket,world,static_cast<unsigned long long>(renderer),row.qpc,row.thread,static_cast<unsigned long long>(row.view),row.eye,
+            static_cast<unsigned long long>(k.quad_caller),static_cast<unsigned long long>(k.draw_caller),k.kind,k.elements,k.instances,
+            k.args[0],k.args[1],k.args[2],k.args[3],k.args[4],k.args[5],k.args[6],k.args[7],k.dimensions[0],k.dimensions[1],k.dimensions[2],k.dimensions[3],
+            static_cast<unsigned long long>(k.context),k.read_mask,k.slot_count,static_cast<unsigned long long>(row.list),static_cast<unsigned long long>(k.target.resource),
+            static_cast<unsigned long long>(k.target.width),k.target.height,k.target.mip,k.target.format,k.targets,unsigned(k.known_buffer),unsigned(k.descriptor_capacity_lost),
+            unsigned(s.tracked),s.viewport_count,s.scissor_count,s.viewport.x,s.viewport.y,s.viewport.width,s.viewport.height,s.scissor.x,s.scissor.y,s.scissor.width,s.scissor.height,
+            unsigned(s.depth_known),s.min_depth,s.max_depth);
+        for(unsigned slot=0;slot<std::min(k.slot_count,4u);++slot){const auto& source=row.sources[slot];const auto& d=source.desc;
+            fprintf(file,"owned_ticket_quad_source row=%u ticket=%llu world=%llu slot=%u object=%llx native=%llx resource=%llx canonical=%llx hr=%08lx width=%llu height=%u dimension=%u depth=%u mips=%u format=%u samples=%u flags=%u wrapper=%llx state_read=%u engine_state=%u engine_flags=%u\n",
+                i,ticket,world,slot,static_cast<unsigned long long>(k.objects[slot]),static_cast<unsigned long long>(source.native),
+                static_cast<unsigned long long>(source.resource),static_cast<unsigned long long>(source.canonical),static_cast<unsigned long>(source.result),
+                d.Width,d.Height,unsigned(d.Dimension),unsigned(d.DepthOrArraySize),unsigned(d.MipLevels),unsigned(d.Format),d.SampleDesc.Count,unsigned(d.Flags),
+                static_cast<unsigned long long>(source.engine_wrapper),unsigned(source.engine_state_read),source.engine_state,unsigned(source.engine_flags));
+        }
+    }
+}
+}
+
 #include "unpossessed_quad_observer.inl"
 #include "death_hdr_timeline.inl"
 #include "final_transfer_live.inl"
@@ -3573,6 +3646,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     if(gears_viewport::has_draw_work(vertices,instances))observe_frame_draw(list,caller,0,vertices,instances);
     if(recording.load()){gears_render_cost::Scope cost(gears_render_cost::viewport_draw);viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);}
     if(recording.load())observe_output_stack(list,0);
+    owned_ticket_size_trace::quad_draw(list,caller,0,vertices,instances);
     owned_ticket_size_trace::draw(list,caller,false,vertices,instances);
     geometry_draw(list,false,vertices,instances);
     observe_engine_view_draw(list,false,vertices,instances);
@@ -3695,6 +3769,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     if(gears_viewport::has_draw_work(indices,instances))observe_frame_draw(list,caller,1,indices,instances);
     if(recording.load()){gears_render_cost::Scope cost(gears_render_cost::viewport_draw);viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);}
     if(recording.load())observe_output_stack(list,1);
+    owned_ticket_size_trace::quad_draw(list,caller,1,indices,instances);
     owned_ticket_size_trace::draw(list,caller,true,indices,instances);
     geometry_draw(list,true,indices,instances);
     observe_engine_view_draw(list,true,indices,instances);
@@ -4615,6 +4690,7 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"submit_duplicate_control=%d\n",submit_duplicate_control);
     fprintf(status,"submit_mono_independent_state=%d\n",submit_mono_independent_state);
     owned_ticket_size_trace::print(status);
+    owned_ticket_size_trace::print_quad_draws(status);
     for(unsigned i=0;i<rectangle_traces.size();++i) {
         unsigned phase=rectangle_trace_phases[i].load();auto trace=phase==2?rectangle_traces[i]:RectangleTrace{};
         fprintf(status,"rectangle_trace index=%u phase=%u object=0x%llx source=%.9g,%.9g,%.9g,%.9g target=%d,%d,%d,%d\n",

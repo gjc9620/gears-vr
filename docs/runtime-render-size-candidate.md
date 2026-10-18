@@ -10,6 +10,25 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ### Blocking image defect at scale 2.0
 
+Owned postprocess trace: RuntimeQuadTrace1 DLL
+`95137583c2057582f51446993198684e92c62e6196c1ce2795a9db67a60a2dcd`
+passed22 startup checks and two reloads, normal shutdown/restoration.
+Session `continuous-stereo-45540-20261019-055214-cba73105`, ticket487/world2:
+40 ordered quad draws, no overflow. Final d83b1c rows20/39 have correct
+left/right2560x2800 destination/source rectangles,5120x2800 target/texture
+dimensions, actual RTV5120x2800, full viewport, and non-clipping scissor.
+Both bind slot0 actual5120x2800 format26 color texture. Intermediate rows
+include reduced-size passes; size reduction alone is not evidence of a bug.
+Rows0/1 have unknown RTV identity (resource0), not proof of missing output.
+Corrected sampling-buffer reads now match actual allocation dimensions.
+
+Both post-reload source readbacks still have zero pixels above channel4 in
+columns3840+. Thus the CPU final-quad dimensions do not explain the crop.
+Need actual intermediate color pixels versus final output, or independently
+verified shader/constant evidence; don't infer correct pixels from descriptors.
+The report/complete status remain ignored under
+`analysis/runtime/runtime-quad-trace1-scale2-run1-20261019*`.
+
 Later-world counterexample: RuntimeSizeTrace3, DLL
 `19417a286f414f9a706be33fa7916ff2f905ed70657512d437570c4f279e8df8`,
 passed22 startup checks and two actual reloads with normal restoration.
