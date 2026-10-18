@@ -19,6 +19,14 @@ DLSS 隔离启动入口、实际输出分支及尚未解决的缺口见[文档15
 
 ## 2026-10-18 当前交付与实验摘要
 
+### 2026-10-18 真机现场反馈与后续自主测试
+
+- 用户在本轮 Quest 3／VD Native103／XR101 测试中报告：游戏有时中断显示，头显出现“Waiting for game image”（用户原文“watingforgame image”）。列为未解决的间歇显示中断；当前没有证据把所有此类中断归为同一原因。
+- 本轮上 Troika 机枪黑屏已取得实际角色、相机和物品管理器证据：三次一致读取均显示 inventory.Outer 为 Driver 所在的 PersistentLevel，反射 Actor.Owner／Instigator 才指向 Driver；旧校验错误要求 Outer 等于 Driver，world rebind 因 `Mounted inventory owner mismatch` 反复失败。下机枪后发布计数恢复增长。修复正在实施，尚未在新构建中验证机枪画面。
+- 用户继续自行测试，并将自行使用启动器启动 KRVR、AVP 及尝试 DLSS。助手只记录和离线修复，不替用户启动、重启、关闭游戏、切换运行时或抢焦点；等待用户反馈。
+- 版本需以各次日志为准：本轮手动协调的私有候选是 Native103／XR101，仓库默认清单仍是 Native70／Borderless1。两个清单均启用 DLSS/DLAA 禁用保护；菜单选项不能证明 DLSS 已实际执行。DLSS 兼容仍未完成，未为本次自主测试解除保护。
+- 原始证据留在 ignored `analysis/runtime/`：`quest3-mounted-inventory-20261018.jsonl`、`quest3-mounted-admission-audit-20261018.json`、`quest3-mounted-after-20261018.jsonl`，关联会话 `continuous-stereo-35016-20261018-151007-0428b25e`。先前三个真机图像/追踪样本等待用户结束后正常停止，再关联最终原生阶段和成功 XR 提交记录；尚不能称真机 6DoF 已通过。
+
 默认仍为Native70/Borderless1；最新便携Feedback3开发包见[文档152](152-feedback3-development-candidate.md)，未发布。英文默认/中文切换、按游戏分辨率、相机距离、日志导出及配置/硬件/帧信息已具备相应构建或检查证据。用户最新明确报告：启动器选Quest 3／VD，关卡内转头正常，平移头部时场景不动。**真机6DoF重新列为未解决问题**，此前正面反馈及模拟器结果不能关闭这项报告。
 
 | 首发事项 | 最新边界 |
