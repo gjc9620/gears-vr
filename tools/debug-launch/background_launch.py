@@ -40,7 +40,7 @@ def verify_test_behind_build(build):
     proof = pathlib.Path(build) / 'test-background-policy.json'
     if not proof.is_file():raise RuntimeError('Missing built test behind-windows policy proof: ' + str(proof))
     value = json.loads(proof.read_text(encoding='utf-8-sig'))
-    if value.get('schema') != 1 or value.get('policy') != 'hidden_bottom_showna_v1':
+    if value.get('schema') != 1 or value.get('policy') != 'hidden_bottom_showwindow_v2':
         raise RuntimeError('Unsupported test behind-windows policy proof')
     hashes = value.get('sha256')
     if not isinstance(hashes,dict) or set(hashes) != {'GearsEarlyLaunch.exe','GearsQuietStartup.dll'}:

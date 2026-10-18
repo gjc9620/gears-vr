@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "base_provenance": "tools/openxr-probe/simulator-quiet/test-behind-provenance.json",
+  "base_provenance_sha256": "266a22c97d17daffa003e3652304fde7b6c7b455ca367d1c18b0c2d20b991877",
+  "apply_after": "existing test-behind.patch",
+  "patch": "tools/openxr-probe/simulator-quiet/test-behind-atomic.patch",
+  "patch_sha256": "f4a1fa999512cd7d8dae27d41b78bc7022221d18d609fdb1fffa7f2b44ab2087",
+  "files": [
+    {
+      "path": "src/preview_window_policy.h",
+      "before_lf_sha256": "733455da2e4a10a6f9c532a891b357e99f53124a551f2251fb45ca199b3b048f",
+      "after_lf_sha256": "8b89b613524f54faf138f3686558c0a3664966bd0a8aa4c09e0bde1f4cf95ca4"
+    },
+    {
+      "path": "tests/preview_window_policy_tests.cpp",
+      "before_lf_sha256": "9ccd81b9efb3fdef3ceb6c9f6dba5f98ffd8f8cd881b74a144f96c5b07e734f6",
+      "after_lf_sha256": "e02481ffed23ef9111129ce0740f9cc1ada76f0c5b825c84f934d2f4e6d5979e"
+    }
+  ],
+  "private_source": "analysis\\simulator-behind-atomic-source",
+  "private_build": "analysis/simulator-behind-atomic-build",
+  "compiled_dll": "analysis\\simulator-behind-atomic-source\\bin\\openxr_simulator.dll",
+  "compiled_dll_sha256": "9abbeae48db197bf72543426644ddf8fd3f4554a4884b41815bc8af99a6b4dca",
+  "candidate_manifest": "analysis\\simulator-behind-atomic-source\\bin\\openxr_simulator.json",
+  "candidate_manifest_sha256": "163219efddc4303653956932ca0d8776639064bae58a2d9419d77a332cd39846",
+  "policy": "behind only: single SetWindowPos HWND_BOTTOM with SWP_SHOWWINDOW|SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_NOOWNERZORDER; return exact bool; no following ShowWindow. Flag unset uses original show callback and legacy command.",
+  "sdk_source": "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowpos",
+  "build_script": "analysis/runtime/build-simulator-behind-atomic.cmd",
+  "build_log": "analysis/runtime/build-simulator-behind-atomic.log",
+  "tests": {
+    "ctest": "5/5 passed",
+    "preview_policy": "preview policy: 68 checks, 0 failures",
+    "gui_or_openxr_started": false
+  },
+  "unchanged": {
+    "base_packaged_dll_sha256": "5681e8af6075cbec815382a684f30ccfe4450fa828bff5a394ff6d4ed9f59cdd",
+    "shared_patch_sha256": "955bb202e52b40d31fbaaa4ec426024051ca3c679047c883873a58c6df5ae51f",
+    "base_private_source_unchanged": true
+  },
+  "limits": [
+    "CPU policy callbacks do not prove actual OS window layering or render behavior.",
+    "No game, GUI, XR session, registry/runtime selection, or shared artifacts were launched/modified.",
+    "No claim of eliminating all OS position/show failures; false remains failure."
+  ]
+}

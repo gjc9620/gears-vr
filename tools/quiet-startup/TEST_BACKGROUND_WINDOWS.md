@@ -9,18 +9,19 @@ For an automatic test, set these variables in the test's child environment:
 
 ```text
 GEARSVR_TEST_WINDOWS_BEHIND=1
-GEARSVR_QUIET_STARTUP_BUILD=J:\gearsVr\tools\quiet-startup\build-test-behind1
+GEARSVR_QUIET_STARTUP_BUILD=J:\gearsVr\tools\quiet-startup\build-test-behind2
 ```
 
 The explicit directory must contain a successfully built `GearsEarlyLaunch.exe`
 and `GearsQuietStartup.dll`, plus `test-background-policy.json`. The proof must
-use schema 1, policy `hidden_bottom_showna_v1`, and a `sha256` object containing
+use schema 1, policy `hidden_bottom_showwindow_v2`, and a `sha256` object containing
 the matching hashes of both artifacts. Missing or mismatched artifacts reject
 launch before spawning. The proof is a local build receipt, not a signature
 authenticating an untrusted build.
 
-New visible windows are created hidden, placed at `HWND_BOTTOM` without
-activation, then shown using `SW_SHOWNA`. A failed initial placement leaves the
+New visible windows are created hidden, then shown and placed at `HWND_BOTTOM`
+in one `SetWindowPos` call using `SWP_SHOWWINDOW | SWP_NOACTIVATE`. No later
+`ShowWindow` call follows this operation. A failed initial show leaves the
 window hidden. Subsequent show/position requests from the background game keep
 the same opt-in placement policy; there is no desktop watchdog. The original
 quiet11 default directory and hashes are unchanged. `--foreground` retains its
@@ -31,7 +32,7 @@ window and calls no window-management APIs. CMake applies `/UNDEBUG` to this
 target so Release assertions remain enabled. Run it with:
 
 ```text
-ctest --test-dir tools/quiet-startup/build-test-behind1 -R "^BackgroundPolicyTest$" --output-on-failure
+ctest --test-dir tools/quiet-startup/build-test-behind2 -R "^BackgroundPolicyTest$" --output-on-failure
 ```
 
 The combined actual-run check below supplements the offline/mock validation;
@@ -40,9 +41,9 @@ preview requires its own runtime-side policy; this game startup DLL does not
 control windows owned by the OpenXR probe process.
 
 The matching simulator candidate is described by
-`tools/openxr-probe/simulator-quiet/test-behind-provenance.json`. For local
+`tools/openxr-probe/simulator-quiet/test-behind-atomic-provenance.json`. For local
 automatic simulator tests, explicitly select
-`J:\gearsVr\analysis\runtime\simulator-behind\openxr_simulator.json` using the
+`J:\gearsVr\analysis\simulator-behind-atomic-source\bin\openxr_simulator.json` using the
 launcher's runtime argument (or `XR_RUNTIME_JSON` in the probe child environment),
 alongside the two variables above. Do not change the system ActiveRuntime.
 The preview is owned by the OpenXR probe process, not a separate simulator.exe.
@@ -100,3 +101,30 @@ placement or the cause of the user's reported
 occlusion. Live snapshots can race window changes and rectangles do not model
 transparent pixels or irregular regions. No new game launch is justified by
 these offline results alone.
+
+## 2026-10-19: actual USER32 cause isolated without using the input desktop
+
+`private_desktop_show_test.cpp` creates a private desktop, attaches only its own
+thread, and destroys its own fixture windows before restoring that thread. It
+never calls SwitchDesktop or addresses windows on the user's desktop. Failure
+to create/attach the private desktop stops the fixture without a fallback.
+
+On this machine, bottom-then-SW_SHOWNA raised the test window above the existing
+fixture in all four cases (ordinary/topmost creation, ShowWindow/ShowWindowAsync).
+A single SetWindowPos bottom+show operation kept it below in all four controls.
+There were zero API/setup errors. This demonstrates the ordering defect in the
+old API sequence; it does not prove all actual game/preview lifecycle paths.
+The asynchronous case uses the same window thread and does not certify cross-
+thread dispatch timing. The test stays opt-in, outside ordinary CTest execution.
+
+The new game build passes both registered C++ tests; all 24 background-launch
+Python tests pass, including rejection of the old v1 receipt. Ordinary launcher
+behavior remains unchanged. The simulator's incremental atomic patch passes its
+five registered tests and preserves the default show callback. No game or XR
+session was started for this revision. Manual game play and system runtime
+selection were not modified.
+
+The v2 protocol uses ShowWindow's prior-visibility return semantics for intercepted
+synchronous shows; asynchronous shows return the positioning API acceptance.
+See Microsoft's [SetWindowPos reference](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowpos)
+and [ShowWindow reference](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow).

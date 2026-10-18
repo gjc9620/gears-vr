@@ -20,9 +20,14 @@ inline HWND insert_after(HWND previous, bool behind) noexcept {return behind?HWN
 inline int startup_show(bool minimized, bool behind) noexcept {
     return minimized?SW_SHOWMINNOACTIVE:behind?SW_SHOWNA:SW_SHOWNOACTIVATE;
 }
-// A first show must fail hidden if placing the new window below others failed.
+inline UINT behind_show_flags(bool asynchronous=false) noexcept {
+    return SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_SHOWWINDOW|
+        (asynchronous?SWP_ASYNCWINDOWPOS:0);
+}
+// Display and bottom placement must be one operation: ShowWindow(SW_SHOWNA)
+// after a separate bottom placement can raise the window without activating it.
 template<class Bottom,class Show> bool first_show(bool behind,Bottom bottom,Show show) {
-    if(behind&&!bottom())return false;
-    show(behind?SW_SHOWNA:SW_SHOWNOACTIVATE);return true;
+    if(behind)return bottom();
+    show(SW_SHOWNOACTIVATE);return true;
 }
 }

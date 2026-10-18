@@ -24,9 +24,12 @@ int main() {
     assert(position_flags(original,false)==(original|SWP_NOACTIVATE));
     std::vector<int> order;
     assert(first_show(true,[&]{order.push_back(1);return true;},[&](int c){assert(c==SW_SHOWNA);order.push_back(2);}));
-    assert((order==std::vector<int>{1,2}));
+    assert((order==std::vector<int>{1}));
     order.clear();assert(!first_show(true,[&]{order.push_back(1);return false;},[&](int){order.push_back(2);}));
     assert((order==std::vector<int>{1}));
     order.clear();assert(first_show(false,[&]{order.push_back(1);return true;},[&](int c){assert(c==SW_SHOWNOACTIVATE);order.push_back(2);}));
     assert((order==std::vector<int>{2}));
+    const UINT show_flags=SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER|SWP_SHOWWINDOW;
+    assert(behind_show_flags()==show_flags);
+    assert(behind_show_flags(true)==(show_flags|SWP_ASYNCWINDOWPOS));
 }

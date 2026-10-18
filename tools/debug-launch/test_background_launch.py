@@ -37,6 +37,11 @@ class BackgroundLaunchTests(unittest.TestCase):
                 name:hashlib.sha256((build/name).read_bytes()).hexdigest()
                 for name in ('GearsEarlyLaunch.exe','GearsQuietStartup.dll')})
             (build/'test-background-policy.json').write_text(json.dumps(proof))
+            with self.assertRaisesRegex(RuntimeError,'Unsupported'):
+                background_launch.launch(self.game,quiet_build=build,popen=popen,runtime=self.runtime)
+            popen.assert_not_called()
+            proof['policy']='hidden_bottom_showwindow_v2'
+            (build/'test-background-policy.json').write_text(json.dumps(proof))
             result=background_launch.launch(self.game,quiet_build=build,popen=popen,runtime=self.runtime)
             self.assertTrue(result['test_windows_behind_requested'])
             self.assertEqual(popen.call_args.kwargs['env']['GEARSVR_TEST_WINDOWS_BEHIND'],'1')

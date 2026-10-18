@@ -1,0 +1,33 @@
+--- a/src/preview_window_policy.h
++++ b/src/preview_window_policy.h
+@@ -11,9 +11,9 @@
+ inline bool PresentPreviewWindow(HWND hwnd, bool behind, int legacyCommand,
+                                  Position position, Show show) {
+     if (!behind) { show(hwnd, legacyCommand); return true; }
+-    constexpr UINT flags = SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE;
+-    if (!position(hwnd, HWND_BOTTOM, flags)) return false;
+-    show(hwnd, SW_SHOWNA);
+-    return true;
++    // Show and lower in one operation: a later ShowWindow can raise Z order.
++    constexpr UINT flags = SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_NOMOVE |
++                           SWP_NOSIZE | SWP_NOOWNERZORDER;
++    return position(hwnd, HWND_BOTTOM, flags);
+ }
+ } // namespace simxr
+--- a/tests/preview_window_policy_tests.cpp
++++ b/tests/preview_window_policy_tests.cpp
+@@ -21,11 +21,10 @@
+             check(events.size()==1 && !events[0].position && events[0].value==command);
+             continue;
+         }
+-        check(events.size()==2);
++        check(events.size()==1);
+         check(events[0].position && events[0].after==HWND_BOTTOM);
+-        check(events[0].value==(SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE));
+-        check(!(events[0].value&(SWP_SHOWWINDOW|SWP_HIDEWINDOW|SWP_NOZORDER)));
+-        check(!events.back().position && events.back().value==SW_SHOWNA);
++        check(events[0].value==(SWP_SHOWWINDOW|SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOSIZE|SWP_NOOWNERZORDER));
++        check(!(events[0].value&(SWP_HIDEWINDOW|SWP_NOZORDER)));
+     }
+     for(bool behind : {false,true}) for(int command : {SW_SHOW,SW_SHOWNA,SW_SHOWNOACTIVATE,SW_RESTORE}) {
+         int positioned=0, shown=0;

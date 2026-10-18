@@ -161,6 +161,10 @@ bool place_behind(HWND window) {
     return original_position(window,HWND_BOTTOM,0,0,0,0,
         SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER)!=FALSE;
 }
+BOOL show_behind(HWND window,bool asynchronous=false) {
+    return original_position(window,HWND_BOTTOM,0,0,0,0,
+        gears_quiet_test::behind_show_flags(asynchronous));
+}
 BOOL WINAPI show_async(HWND window,int command) {
     // Diagnostic only: preserve queued show behavior and its return value.
     const DWORD saved=GetLastError();
@@ -169,6 +173,7 @@ BOOL WINAPI show_async(HWND window,int command) {
     TraceCall trace(gears_quiet::show_async,window,static_cast<DWORD>(command),nullptr,owner_thread);
     if(test_windows_behind&&guard(window)&&command!=SW_HIDE) {
         command=gears_quiet_test::show_command(command,true);trace.policy(command);
+        if(command==SW_SHOWNA)return trace.native(show_behind(window,true),gears_quiet::position);
         if(!place_behind(window))return trace.returned(FALSE);
     }
     return trace.native(original_show_async(window,command));
@@ -196,6 +201,11 @@ BOOL WINAPI show(HWND window,int command) {
         }
         if(test_windows_behind) {
             command=gears_quiet_test::show_command(command,true);trace.policy(command);
+            if(command==SW_SHOWNA) {
+                const BOOL was_visible=IsWindowVisible(window);
+                trace.native(show_behind(window),gears_quiet::position);
+                return trace.returned(was_visible);
+            }
             if(!place_behind(window))return trace.returned(IsWindowVisible(window));
         }
     }
@@ -241,7 +251,7 @@ BOOL WINAPI bring(HWND window) {
 // adds only NOACTIVATE to an unowned APPWINDOW; other extended bits are kept.
 void finish_create(HWND window,DWORD style,bool guarded) {
     if(window && guarded && (style&WS_VISIBLE))
-        gears_quiet_test::first_show(test_windows_behind,[&]{return place_behind(window);},
+        gears_quiet_test::first_show(test_windows_behind,[&]{return show_behind(window)!=FALSE;},
             [&](int command){original_show(window,command);});
 }
 HWND WINAPI create_w(DWORD exstyle,LPCWSTR cls,LPCWSTR title,DWORD style,int x,int y,int width,int height,
