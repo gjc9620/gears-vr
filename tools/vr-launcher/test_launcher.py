@@ -363,12 +363,18 @@ class LauncherTests(unittest.TestCase):
                     launcher.start({},dict(MANIFEST,startup_menu=True),backend,index,clock=lambda:999.,sleep=pause)
             self.assertEqual(activated,[]);backend.player.assert_called_once()
 
-    def test_player_default_uses_game_resolution_and_graphics_protection(self):
+    def test_player_default_uses_runtime_resolution_and_graphics_protection(self):
         directory=pathlib.Path(__file__).parent
         current=json.loads((directory/'manifest.json').read_text())
         candidates=[json.loads(path.read_text()) for path in directory.glob('manifest-*.json')]
         self.assertIn(current,candidates,'Default must exactly match a named, reviewable candidate including artifact hashes')
         launcher.settings({},current)
+        self.assertIs(current.get('runtime_render_size'),True,
+                      '0.0.1 must use runtime-recommended eye size, not game resolution')
+        self.assertEqual(launcher.render_scale({},current),1.0)
+        for scale in (.25,.7,1.,2.):
+            launcher.settings({'render_scale':scale},current)
+            self.assertEqual(launcher.render_scale({'render_scale':scale},current),scale)
         self.assertTrue(current['native_dll'].startswith('GearsCapture'))
         self.assertTrue(current['native_dll'].endswith('.dll'))
         self.assertEqual(pathlib.PurePosixPath(current['native_dll']).name,current['native_dll'])

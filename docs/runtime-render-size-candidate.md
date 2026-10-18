@@ -6,6 +6,16 @@ render multiplier; 1.0 uses the OpenXR runtime's recommended per-eye dimensions.
 Game resolution does not select the VR render dimensions. Remaining validation
 is release work for this default, not a reason to defer it to 0.0.2.
 
+## Default configuration regression, 2026-10-19
+
+The launcher suite found the promoted Integration1 default lacked an identical
+named manifest. Added `manifest-runtime-release-integration1.json` with the
+current verified artifact hashes; the active manifest and binaries are unchanged.
+The default regression now explicitly requires runtime sizing and scale 1.0,
+and accepts user multipliers 0.25, 0.7, 1.0 and 2.0. All 74 launcher tests and
+four render-size tests pass. These are configuration/CPU checks, not additional
+headset or high-resolution GPU acceptance.
+
 ## Integrated default: two actual checkpoint reloads, 2026-10-19
 
 After default promotion to Integration1 (native SHA256
