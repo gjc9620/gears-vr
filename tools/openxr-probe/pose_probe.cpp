@@ -106,6 +106,9 @@ bool recovery_panel_wait(ProjectionStatus status,StartupPanelPolicy const& polic
 bool world_handoff_panel_wait(ProjectionStatus status){
     return status==ProjectionStatus::source_reconfiguration||status==ProjectionStatus::waiting_image;
 }
+bool tracking_recovery_panel_wait(ProjectionStatus status,unsigned queued_layers){
+    return queued_layers==0&&status==ProjectionStatus::current_untracked;
+}
 bool projection_end_succeeded(bool queued,XrResult result,unsigned layer_count,bool projection_layers){
     return queued&&result==XR_SUCCESS&&layer_count==1&&projection_layers;
 }
@@ -163,6 +166,10 @@ int projection_receiver_self_test(){
         if(transition_panel_wait(s)!=expected)return 42;
         if(startup_panel_wait(s)!=(expected||s==ProjectionStatus::menu_requested))return 44;
         if(world_handoff_panel_wait(s)!=(s==ProjectionStatus::source_reconfiguration||s==ProjectionStatus::waiting_image))return 47;
+        // Tracking may disappear before the first game projection. Eligibility
+        // is independent of stereo history, but never replaces a queued layer.
+        if(tracking_recovery_panel_wait(s,0)!=(s==ProjectionStatus::current_untracked)||
+           tracking_recovery_panel_wait(s,1)||tracking_recovery_panel_wait(s,2))return 48;
         for(auto mode:{gears_menu::Mode::unknown,gears_menu::Mode::gameplay,gears_menu::Mode::loading_display,
                       gears_menu::Mode::main_menu,gears_menu::Mode::acquisition_wait}){
             StartupPanelPolicy witnessed(true,true);witnessed.projection_rendered(true);
@@ -482,6 +489,10 @@ int main(int argc, char** argv) {
             nullptr,{"startup_wait_card_reset_enter","startup_wait_card_reset_completed"}};
         if(startup_window)startup_wait_card.reset(new TransitionCard(device.Get(),queue.Get(),transition_card_pixels::Variant::starting_vr));
         unsigned startup_wait_card_layers{};
+        std::unique_ptr<TransitionCard,shutdown_diagnostics::DeleteMarker<TransitionCard>> tracking_recovery_card{
+            nullptr,{"tracking_recovery_card_reset_enter","tracking_recovery_card_reset_completed"}};
+        if(stereo_game_pid)tracking_recovery_card.reset(new TransitionCard(device.Get(),queue.Get(),transition_card_pixels::Variant::tracking_lost));
+        unsigned tracking_recovery_card_layers{};
         MenuDisplayReader menu_display(menu_state_file,stereo_game_pid,menu_game_creation,continuous_owner_pid,continuous_owner_creation,movie_display);
         unsigned menu_quad_layers=0,menu_entries=0,menu_recoveries=0;
         unsigned main_menu_quad_layers=0,last_main_menu_entry=0,main_menu_snapshots=0;
@@ -589,7 +600,7 @@ int main(int argc, char** argv) {
             XrCompositionLayerQuad quad{XR_TYPE_COMPOSITION_LAYER_QUAD};
             const XrCompositionLayerBaseHeader* game_layers[]={reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad)};
             ProjectionStatus projection_frame_status=ProjectionStatus::producer_unavailable;
-            bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false,eye_menu_queued=false,transition_panel_queued=false,startup_wait_card_queued=false,world_handoff_panel_queued=false,window_fallback_queued=false;
+            bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false,eye_menu_queued=false,transition_panel_queued=false,startup_wait_card_queued=false,world_handoff_panel_queued=false,window_fallback_queued=false,tracking_recovery_card_queued=false;
             WorldHandoffDisplay::State world_handoff_panel_state{};
             const auto menu_now=gears_vr::monotonic_ns();
             const auto menu_mode=menu_display.poll(menu_now);
@@ -776,11 +787,23 @@ int main(int argc, char** argv) {
                     }
                 }
             }
+            // A VIEW-space, session-owned card needs no game image or tracked
+            // world pose. Keep current_untracked out of all game-pixel fallbacks.
+            const auto tracking_card_eligible=[&]{
+                return tracking_recovery_card&&
+                    tracking_recovery_panel_wait(projection_frame_status,end.layerCount)&&
+                    frame.shouldRender&&projection_session_visible(state)&&running&&!exiting&&stop_reason.empty()&&
+                    !session_exit.loss_observed&&!session_exit.terminal_exiting&&!projection_evidence.structural_failure&&
+                    (!stereo_screen||!stereo_screen->producer_stopped());
+            };
+            if(tracking_card_eligible()&&tracking_recovery_card->render(quad)&&tracking_card_eligible()){
+                tracking_recovery_card_queued=true;end.layerCount=1;end.layers=game_layers;
+            }
             // A first upload can wait. Honor a stop which arrived during it,
             // still balancing the already begun XR frame with zero layers.
             if(continuous_session){if(const auto* reason=continuous_control.requested()){
                 startup_panel.cancel();stop_reason=reason;exiting=true;end.layerCount=0;
-                world_handoff_panel_queued=startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=eye_menu_queued=false;
+                tracking_recovery_card_queued=world_handoff_panel_queued=startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=eye_menu_queued=false;
             }}
             const auto ended=xr_wait_diagnostics::recorder.measure(xr_wait_diagnostics::Operation::end_frame,
                 [&]{return xrEndFrame(session,&end);},[]{return xr_wait_diagnostics::current_context;},
@@ -817,6 +840,11 @@ int main(int argc, char** argv) {
                 if(++startup_wait_card_layers==1){
                     printf("{\"startup_wait_card_first_frame\":true,\"observed_ns\":%lld,\"cause\":\"%s\",\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",
                         gears_vr::monotonic_ns(),projection_status_name(projection_frame_status));fflush(stdout);
+                }
+            }
+            if(tracking_recovery_card_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers){
+                if(++tracking_recovery_card_layers==1){
+                    printf("{\"tracking_recovery_card_first_frame\":true,\"cause\":\"current_untracked\",\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n");fflush(stdout);
                 }
             }
             const bool transition_shown=transition_panel_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers;
@@ -909,7 +937,7 @@ int main(int argc, char** argv) {
                 // on its original projection-only contract.
                 const char* layer_kind=end.layerCount==0?"none":
                     end.layers==layers?"projection":
-                    end.layers==game_layers?(world_handoff_panel_queued?"world_handoff_card":startup_wait_card_queued?"startup_wait_card":transition_panel_queued?"transition_panel":eye_menu_queued?"eye_menu":
+                    end.layers==game_layers?(tracking_recovery_card_queued?"tracking_recovery_card":world_handoff_panel_queued?"world_handoff_card":startup_wait_card_queued?"startup_wait_card":transition_panel_queued?"transition_panel":eye_menu_queued?"eye_menu":
                         (startup_quad_queued?"startup_panel":"quad")):"other";
                 row.menu_mode=static_cast<unsigned>(menu_mode);row.session_state=static_cast<int>(state);
                 row.should_render=frame.shouldRender!=0;row.panel_requested=menu_panel_requested;
@@ -1007,6 +1035,7 @@ int main(int argc, char** argv) {
             last_submitted_resource_generation==stereo_screen->resource_generation()&&
             (continuous_session?!projection_evidence.structural_failure:projection_evidence.sustained()&&!stereo_space_changed)));
         stereo_screen.reset();
+        tracking_recovery_card.reset();
         startup_wait_card.reset();
         transition_card.reset();
         startup_screen.reset();

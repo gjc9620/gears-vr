@@ -10,9 +10,11 @@ namespace transition_card_pixels {
 inline constexpr unsigned width=768,height=256;
 inline constexpr char title[]="WAITING FOR GAME IMAGE";
 inline constexpr char subtitle[]="Updating the VR view";
-enum class Variant {returning_to_game,starting_vr};
+enum class Variant {returning_to_game,starting_vr,tracking_lost};
 inline constexpr char startup_title[]="STARTING VR";
 inline constexpr char startup_subtitle[]="Waiting for the game image";
+inline constexpr char tracking_title[]="WAITING FOR TRACKING";
+inline constexpr char tracking_subtitle[]="Resuming the VR view";
 using Glyph=std::array<std::uint8_t,7>;
 inline Glyph glyph(char c){
     switch(c){
@@ -66,8 +68,9 @@ inline std::vector<std::uint8_t> rgba(Variant variant=Variant::returning_to_game
         }
     };
     const bool starting=variant==Variant::starting_vr;
-    text(starting?startup_title:title,73,5,{238,242,247});
-    text(starting?startup_subtitle:subtitle,139,3,{178,188,200});
+    const bool tracking=variant==Variant::tracking_lost;
+    text(tracking?tracking_title:starting?startup_title:title,73,5,{238,242,247});
+    text(tracking?tracking_subtitle:starting?startup_subtitle:subtitle,139,3,{178,188,200});
     return pixels;
 }
 inline bool save_ppm(std::string const& path,std::vector<std::uint8_t> const& pixels){

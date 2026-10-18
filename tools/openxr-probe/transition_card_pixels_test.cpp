@@ -30,7 +30,18 @@ int main(int argc,char** argv){
     assert(startup_title_pixels>1000&&startup_subtitle_pixels>1000);
     assert(text_width(startup_title,5)<width-40&&text_width(startup_subtitle,3)<width-40);
     assert(!std::strcmp(startup_title,"STARTING VR")&&!std::strcmp(startup_subtitle,"Waiting for the game image"));
-    for(auto text:{title,subtitle,startup_title,startup_subtitle})for(unsigned i=0;text[i];++i)if(text[i]!=' '){
+    const auto tracking=rgba(Variant::tracking_lost);
+    assert(tracking==rgba(Variant::tracking_lost)&&tracking!=pixels&&tracking!=startup);
+    assert(tracking.size()==pixels.size());
+    unsigned tracking_title_pixels=0,tracking_subtitle_pixels=0;
+    for(std::size_t i=0;i<tracking.size();i+=4){
+        assert(tracking[i+3]==255);const auto y=i/4/width;
+        if(tracking[i]==238&&tracking[i+1]==242&&tracking[i+2]==247){++tracking_title_pixels;assert(y>=73&&y<108);}
+        if(tracking[i]==178&&tracking[i+1]==188&&tracking[i+2]==200){++tracking_subtitle_pixels;assert(y>=139&&y<160);}
+    }
+    assert(tracking_title_pixels>1000&&tracking_subtitle_pixels>1000);
+    assert(text_width(tracking_title,5)<width-40&&text_width(tracking_subtitle,3)<width-40);
+    for(auto text:{title,subtitle,startup_title,startup_subtitle,tracking_title,tracking_subtitle})for(unsigned i=0;text[i];++i)if(text[i]!=' '){
         bool drawn=false;for(auto row:glyph(text[i]))drawn=drawn||row!=0;assert(drawn);
     }
     assert(!save_ppm("unused-transition-card-preview.ppm",{})); // Reject before creating a file.
