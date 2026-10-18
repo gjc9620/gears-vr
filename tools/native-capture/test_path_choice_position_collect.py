@@ -78,7 +78,7 @@ class CollectorTests(unittest.TestCase):
             return collector.collect(reader,sample,status,session,1000,verify or (lambda r:copy.deepcopy(session)),
                                      registry_header_policy=policy, target_vertical_region=target)
 
-    def test_shared_fit_acquisition_builds_matching_close_certificate(self):
+    def shared_fit_values(self):
         values=fixture();sample=values[1];memory=values[6]
         root=sample['top']['address']
         panel=next(row for row in sample['tree'] if row['cls']=='UIWarSafeRegionPanel')
@@ -97,6 +97,11 @@ class CollectorTests(unittest.TestCase):
             row.update(parent=panel['address'],outer=panel['address'],depth=3)
             bounds(row,[550+i,70+i,1370-i,260-i])
         content[-1].update(parent=root,outer=root,depth=2)
+        return values
+
+    def test_shared_fit_acquisition_builds_matching_close_certificate(self):
+        values=self.shared_fit_values()
+        panel=next(row for row in values[1]['tree'] if row['cls']=='UIWarSafeRegionPanel')
         certificate=self.invoke(values,policy='fixed_prefix_v1',target=(.25,.75))
         self.assertIn('group_fit=vertical_v1',certificate.position_ini)
         # Close authorizes the same lease; its restoration uses the baseline
@@ -104,6 +109,55 @@ class CollectorTests(unittest.TestCase):
         for field in ('nonce=1000', 'panel='+panel['address'], 'world_generation=2'):
             self.assertIn(field,certificate.close_ini)
         self.assertNotIn('vertical_offset_reference_pixels=374',certificate.position_ini)
+        self.assertEqual(len(json.loads(certificate.baseline_ids_json)['nodes']),13)
+
+    def test_shared_fit_accepts_current_child_coordinates_legacy_does_not(self):
+        values=self.shared_fit_values()
+        child=next(row for row in values[1]['tree'] if row['name']=='LblLeftButton')
+        member=child['layout_details']['position']['members']['Value']
+        changed=list(member['values']);changed[0]+=.01
+        member['raw']=struct.pack('<4f',*changed).hex()
+        member['values']=list(struct.unpack('<4f',bytes.fromhex(member['raw'])))
+        receipt=self.invoke(values,target=(.25,.75))
+        evidence=json.loads(receipt.evidence_json)
+        actual=next(row for row in evidence['sample']['tree'] if row['name']=='LblLeftButton')
+        self.assertEqual(actual['layout_details']['position']['members']['Value'],member)
+        self.assertIn('group_fit=vertical_v1',receipt.position_ini)
+        with self.assertRaisesRegex(ValueError,'unsupported PathChoice baseline geometry'):
+            self.invoke(values)
+
+    def test_shared_fit_still_requires_initial_fresh_full_layout_equality(self):
+        for field in ('position','docking','bounds','identity'):
+            values=self.shared_fit_values();reader=values[0];original=reader._sample_once.side_effect
+            def changed(**options):
+                fresh=original(**options)
+                child=next(row for row in fresh['tree'] if row['name']=='LblLeftButton')
+                if field=='position':
+                    member=child['layout_details']['position']['members']['Value']
+                    numbers=list(member['values']);numbers[0]+=.01
+                    member['raw']=struct.pack('<4f',*numbers).hex()
+                    member['values']=list(struct.unpack('<4f',bytes.fromhex(member['raw'])))
+                elif field=='docking':child['layout_details']['docking']={'changed':'metadata or target'}
+                elif field=='bounds':child['render_bounds']['reflected']['offset']+=4
+                else:child['outer']=fresh['top']['address']
+                return fresh
+            reader._sample_once.side_effect=changed
+            with self.subTest(field=field),self.assertRaisesRegex(ValueError,'original baseline changed'):
+                self.invoke(values,target=(.25,.75))
+
+    def test_shared_fit_rejects_unknown_inventory_and_invalid_storage(self):
+        for field in ('name','class','nan','raw','units'):
+            values=self.shared_fit_values();child=next(row for row in values[1]['tree'] if row['name']=='LblLeftButton')
+            members=child['layout_details']['position']['members']
+            if field=='name':child['name']='UnknownContent'
+            elif field=='class':child['cls']='UnknownWidget'
+            elif field=='nan':
+                members['Value']['values'][0]=float('nan')
+                members['Value']['raw']=struct.pack('<4f',*members['Value']['values']).hex()
+            elif field=='raw':members['Value']['raw']='00'*16
+            else:members['ScaleType']['values'][0]^=1
+            with self.subTest(field=field),self.assertRaises(ValueError):self.invoke(values,target=(.25,.75))
+            values[0].force_registry_refresh.assert_not_called()
 
     def live_header_fixture(self):
         values=fixture();r=values[0].r

@@ -8,6 +8,7 @@ Consistent rereads cannot establish an atomic/ABA snapshot.
 import copy
 from dataclasses import dataclass
 import json
+import math
 import os
 from pathlib import Path
 import struct
@@ -156,16 +157,34 @@ def _binding(session):
                 native_started_qpc=position.integer(int(session['native_started_qpc']), 1), phase='running')
 
 
-def _geometry(sample):
+def _geometry(sample, *, shared_fit=False):
     tree = sample['tree']
     require(type(tree) is list and len(tree) == 13, 'unsupported PathChoice node inventory')
     signature = []
     for row in tree:
         members = row['layout_details']['position']['members']
         signature.append((row['name'], row['cls'], members['Value']['raw'], members['ScaleType']['raw']))
-    require(tuple(sorted(signature)) == SUPPORTED_LAYOUT, 'unsupported PathChoice baseline geometry')
-    return tuple(sorted((row['name'], row['cls'], row['address'], row.get('parent'), row.get('outer'),
-                         row.get('number'), row.get('depth')) for row in tree))
+    if not shared_fit:
+        # Legacy fixed-reference-pixel policy retains its historical signature.
+        require(tuple(sorted(signature)) == SUPPORTED_LAYOUT, 'unsupported PathChoice baseline geometry')
+    else:
+        require(sorted((row['name'],row['cls']) for row in tree) ==
+                sorted((name,kind) for name,kind,_,_ in SUPPORTED_LAYOUT),
+                'unsupported PathChoice content inventory')
+        for row in tree:
+            members=row['layout_details']['position']['members']
+            value,units=members['Value'],members['ScaleType']
+            require(len(value['values'])==4 and all(type(x) in (int,float) and math.isfinite(x) for x in value['values']) and
+                    struct.pack('<4f',*value['values']).hex()==value['raw'] and
+                    len(units['raw'])==8 and list(bytes.fromhex(units['raw']))==units['values'],
+                    'invalid current PathChoice position storage')
+    identities=tuple(sorted((row['name'], row['cls'], row['address'], row.get('parent'), row.get('outer'),
+                             row.get('number'), row.get('depth')) for row in tree))
+    if not shared_fit:return identities
+    # A fit uses the CURRENT complete group's layout, not old per-widget Value
+    # bytes. Still require the entire original snapshot to survive reacquisition:
+    # metadata, positions, docking, evaluated bounds and class/owner evidence.
+    return identities,tuple(sorted((row['address'],_json(row)) for row in tree))
 
 
 def _panel_proof(r, sample):
@@ -247,7 +266,8 @@ def collect(reader, sample, native_status, session, nonce, verify_session, *, re
             'native session/start mismatch')
     for name in ('identity_lost','ownership_lost','setter_failed','pending_restore','unresolved'):
         require(native_status['path_position_'+name] == '0', 'native position lease is not clean')
-    expected_ids = _geometry(sample); roles = sample['scene_owner']['roles']
+    shared_fit=target_vertical_region is not None
+    expected_ids = _geometry(sample,shared_fit=shared_fit); roles = sample['scene_owner']['roles']
     original_client = copy.deepcopy(reader.client_identity)
     # MenuReader retains Resolver.identity()/registered()'s six-field identity.
     # The independently read owner role additionally contains name_index; keep
@@ -284,7 +304,7 @@ def collect(reader, sample, native_status, session, nonce, verify_session, *, re
                     'registry changed after refresh')
         fresh = reader._sample_once(include_tree=True, include_layout=True, include_layout_details=True, include_owner=True,
             expected_controller=roles['controller']['address'], expected_local_player=roles['local_player']['address'])
-        require(fresh['scene_owner']['roles'] == roles and _geometry(fresh) == expected_ids, 'original baseline changed')
+        require(fresh['scene_owner']['roles'] == roles and _geometry(fresh,shared_fit=shared_fit) == expected_ids, 'original baseline changed')
         if policy:
             for header in fresh['scene_owner']['evidence']['registry_headers'].values():
                 require(policy.headers.get(header['address']) == struct.pack('<Qii',header['data'],header['count'],header['capacity']),
@@ -322,7 +342,7 @@ def collect(reader, sample, native_status, session, nonce, verify_session, *, re
             sample=fresh, panel_proof=proof, close_metadata=metadata)
         if policy:
             evidence.update(policy.semantics(), registry_header_observations=policy.observations)
-        baseline = dict(roles=roles, nodes=expected_ids, nonce=nonce, module_base=r.base,
+        baseline = dict(roles=roles, nodes=expected_ids[0] if shared_fit else expected_ids, nonce=nonce, module_base=r.base,
                         owner_snapshot_sha256=position.owner_digest(fresh['scene_owner']))
         return ActivationCertificate(position_ini, close_ini, _json(baseline), _json(evidence))
     finally:
