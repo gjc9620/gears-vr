@@ -20,6 +20,10 @@ unsigned GetCurrentThreadId(){return 42;}
 bool safe_copy(void* out,void const* at,size_t n){return memory.read(out,at,n);}
 #define GEARS_UI_LOGICAL_GROUP_OBSERVER 1
 #include "ui_logical_group_observer_live.inl"
+#include "ui_scene_logical_layout.h"
+// Compile the candidate against the real observer Row as well as its fixtures.
+template bool gears_ui_scene_layout::fit_invocation(ui_logical_group_live::Row const&,uint64_t,
+    gears_ui_group::Bounds,double,gears_ui_scene_layout::Candidate&);
 using namespace gears_ui_logical_group;
 static std::array<unsigned char,80> transform(){std::array<unsigned char,80> bytes{};
     const float m[16]{2,0,0,0,0,-2,0,0,0,0,1,0,-1,1,0,1};std::memcpy(bytes.data(),m,sizeof(m));return bytes;}
