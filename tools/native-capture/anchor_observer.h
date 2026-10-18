@@ -20,7 +20,7 @@ struct Config {std::uintptr_t objects_header{},names_header{};unsigned identity_
     std::array<Identity,128> identities{};
     bool mounted_enabled{};
     unsigned mounted_role_driver{},mounted_role_inventory{},mounted_role_world_info{},mounted_property_offset_internal{};
-    std::array<MountedProperty,9> mounted_properties{};
+    std::array<MountedProperty,10> mounted_properties{};
     bool cinematic_enabled{},unpossessed_camera_enabled{};
     unsigned role_cinematic_property{},role_camera_actor_class{},cinematic_offset{},cinematic_mask{};
     unsigned role_world_info_property{},role_world_info{},world_info_offset{};

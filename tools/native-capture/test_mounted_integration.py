@@ -59,6 +59,18 @@ class MountedUIFixture(MountedFixture):
 
 
 class MountedIntegrationTests(unittest.TestCase):
+    def test_owner_wire_contract_rejects_legacy_and_wrong_containment(self):
+        f=MountedUIFixture();ac,_=build_anchor_config(f)
+        text=anchor_ini(ac)
+        self.assertIn('schema=4\n',text)
+        self.assertIn('mounted_property9_role=',text)
+        self.assertIn('mounted_property9_offset=140',text)
+        old=copy.deepcopy(ac);del old['mounted']['properties']['Owner']
+        with self.assertRaises(AnchorRejected):anchor_ini(old)
+        bad=copy.deepcopy(ac)
+        bad['identities'][bad['mounted']['role_inventory']]['outer']=0x20000
+        with self.assertRaises(AnchorRejected):anchor_ini(bad)
+
     def test_streamed_levels_ini_ui_cinematic_and_rebind(self):
         import cinematic_anchor
         f=MountedUIFixture().stream_levels()
@@ -66,7 +78,7 @@ class MountedIntegrationTests(unittest.TestCase):
             ac,meta=build_anchor_config(f,cinematic_camera=True)
         uc,_=build_ui_observer_config(f,f.resolve(),mounted_anchor=ac)
         text=anchor_ini(ac)
-        self.assertIn('schema=3\n',text);self.assertIn('cinematic_enabled=1',text)
+        self.assertIn('schema=4\n',text);self.assertIn('cinematic_enabled=1',text)
         self.assertEqual(uc['schema'],2)
         old=snapshot(ac)
         self.assertEqual(len(set(old.mounted_levels)),5)

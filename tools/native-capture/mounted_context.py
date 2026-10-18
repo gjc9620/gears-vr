@@ -161,8 +161,11 @@ class MountedContextCertificate:
             levels[label] = owner
         inventory = identity(link('inventory', driver, 'InvManager', 'Pawn'))
         derives(inventory, 'WarInventoryManager')
-        if inventory['outer'] != driver['address']:
-            raise AnchorRejected('Mounted inventory owner mismatch')
+        # InventoryManager is an Actor contained by the Driver's registered
+        # Level; Actor.Owner, not UObject.Outer, establishes gameplay ownership.
+        if inventory['outer'] != levels['driver']['address']:
+            raise AnchorRejected('Mounted inventory Level mismatch')
+        link('inventory_owner', inventory, 'Owner', 'Actor', driver['address'])
         target = pointer(s.view_target) if s.view_target else None
         if not s.view_target or target != controlled['address']:
             error = AnchorRejected('Mounted camera target is not controlled turret')
@@ -280,9 +283,9 @@ class MountedContextCertificate:
 
 
 MOUNTED_PROPERTIES = ('Pawn', 'Controller', 'Driver', 'DrivenVehicle', 'PlayerCamera',
-                      'PCOwner', 'Player', 'WorldInfo', 'InvManager')
+                      'PCOwner', 'Player', 'WorldInfo', 'InvManager', 'Owner')
 MOUNTED_OWNERS = ('Controller', 'Pawn', 'Vehicle', 'Pawn', 'PlayerController',
-                  'Camera', 'PlayerController', 'Actor', 'Pawn')
+                  'Camera', 'PlayerController', 'Actor', 'Pawn', 'Actor')
 
 
 def validate_mounted_config(config):
@@ -311,7 +314,7 @@ def validate_mounted_config(config):
     world=ids[m['role_world_info']];level=ids[roles['level']]
     for item,name in ((pawn,'Turret'),(pawn,'Vehicle'),(driver,'WarPawn'),(inventory,'WarInventoryManager'),(world,'WorldInfo')):
         if item['name'].startswith('Default__') or not ancestry(item['cls'],name):raise AnchorRejected('Mounted role class mismatch')
-    if pawn['outer']!=level['address'] or inventory['outer']!=driver['address']:
+    if pawn['outer']!=level['address'] or inventory['outer']!=driver['outer']:
         raise AnchorRejected('Mounted role owner mismatch')
     for obj in (pawn,driver,world,ids[roles['controller']],ids[roles['camera']]):
         owner=by_address.get(obj['outer'])

@@ -51,6 +51,23 @@ int main(){unsigned checks{};Fixture f;CHECK(f.load(L"mounted"));auto read=[&](v
     auto get=[&](const wchar_t* key,wchar_t* out,unsigned size){return GetPrivateProfileStringW(L"CrosshairAssignment",key,L"",out,size,f.path.c_str());};
     CHECK(gears_crosshair_assignment::parse_config(get,123,0x140000000,suspended)&&suspended.mounted_suspended&&suspended.suspended_controlled==anchor.pawn);
     const auto baseline=f.memory;
+    // Native wire4 cannot silently consume legacy mounted wire3 or omit Owner.
+    for(auto mode:{0,1}){
+        auto incompatible=[&](const wchar_t* key,wchar_t* out,unsigned size){
+            if(mode==0&&!std::wcscmp(key,L"schema")){out[0]=L'3';out[1]=0;return DWORD(1);}
+            if(mode==1&&!std::wcscmp(key,L"mounted_property9_role")){out[0]=0;return DWORD(0);}
+            return GetPrivateProfileStringW(L"AnchorObserver",key,L"",out,size,f.path.c_str());};
+        gears_anchor::Config rejected{};CHECK(!gears_anchor::parse_config(incompatible,0x140000000,rejected));
+    }
+    for(auto owner:{std::uintptr_t(0),std::uintptr_t(0x80000)}){
+        f.memory=baseline;f.put(0x8108c,owner);CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));}
+    for(auto outer:{std::uintptr_t(0),std::uintptr_t(0x20000)}){
+        f.memory=baseline;f.put(0x81040,outer);CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));}
+    f.memory=baseline;
+    unsigned owner_hits=0;
+    auto owner_race=[&](void* dest,const void* source,size_t size){const bool ok=read(dest,source,size);
+        if(reinterpret_cast<std::uintptr_t>(source)==0x8108c&&++owner_hits==1)f.put(0x8108c,std::uintptr_t(0));return ok;};
+    CHECK(!gears_anchor::guard(f.anchor,owner_race,anchor,stamp)&&owner_hits);
     for(auto address:{std::uintptr_t(0x80800),std::uintptr_t(0x20810),std::uintptr_t(0x800d0),std::uintptr_t(0x300d0),std::uintptr_t(0x20820),std::uintptr_t(0x30500)}){
         f.memory=baseline;f.put(address,std::uintptr_t(0));CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));CHECK(!gears_ui_binding::acquire(f.ui,f.anchor,read,binding));}
     f.memory=baseline;f.put(0x10224,std::uintptr_t(0xa0000));CHECK(!gears_anchor::guard(f.anchor,read,anchor,stamp));

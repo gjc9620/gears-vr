@@ -488,7 +488,11 @@ def validate_anchor_config(config):
 def anchor_ini(config):
     """Bounded numeric schema with already-validated, newline-free UTF16 names."""
     validate_anchor_config(config)
-    rows=['[AnchorObserver]',f"schema={config['schema']}"]
+    # Python schema3 denotes mounted semantics. Native wire4 adds Actor.Owner;
+    # wire3's nine-property contract is incompatible in both directions.
+    # In particular Native103 rejects wire4 before reading any role/layout.
+    wire_schema=4 if config['schema']==3 else config['schema']
+    rows=['[AnchorObserver]',f"schema={wire_schema}"]
     if config['schema']==3:
         rows.append('mounted_enabled=1')
         mounted=config['mounted']

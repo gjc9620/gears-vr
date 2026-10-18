@@ -20,17 +20,18 @@ class MountedFixture(CinematicFixture):
         self.add(0x71000, 'Turret', 0x1000, parent=0x70000)
         self.add(0x72000, 'PlayerController', 0x1000, parent=0x6000)
         self.add(0x73000, 'Camera', 0x1000, parent=0x4000)
-        self.add(0x74000, 'WarInventoryManager', 0x1000, parent=0x8000)
+        self.add(0x74000, 'WarInventoryManager', 0x1000, parent=0x4000)
         self.ptr(0x5000 + 96, 0x72000)
         self.ptr(0x9000 + 96, 0x73000)
         self.add(self.TURRET, 'Turret_0', 0x71000, outer=0x50000)
-        self.add(self.INVENTORY, 'Inventory_0', 0x74000, outer=0x20000)
+        self.add(self.INVENTORY, 'Inventory_0', 0x74000, outer=0x50000)
         for actor in (0x10000, 0x30000):self.ptr(actor + 64, 0x50000)
         for index, (owner, name, offset) in enumerate((
                 (0x6000, 'Pawn', 0x224), (0x3000, 'Controller', 0x250),
                 (0x70000, 'Driver', 0x800), (0x3000, 'DrivenVehicle', 0x810),
                 (0x72000, 'PlayerCamera', 0x37c), (0x73000, 'PCOwner', 0x224),
-                (0x72000, 'Player', 0x374), (0x3000, 'InvManager', 0x820))):
+                (0x72000, 'Player', 0x374), (0x3000, 'InvManager', 0x820),
+                (0x4000, 'Owner', 0x8c))):
             address = 0x90000 + index * 0x1000
             self.add(address, name, 0x69000, outer=owner)
             self.properties[owner, name] = dict(address=address, offset=offset, type='ObjectProperty')
@@ -40,6 +41,7 @@ class MountedFixture(CinematicFixture):
         for address, value in ((0x10224, self.TURRET), (self.TURRET + 0x250, 0x10000),
                                (self.TURRET + 0x800, 0x20000), (0x20810, self.TURRET),
                                (0x20250, 0), (0x20820, self.INVENTORY),
+                               (self.INVENTORY + 0x8c, 0x20000),
                                (self.TURRET + self.WORLD_OFFSET, self.WORLD_INFO),
                                (0x30000 + self.WORLD_OFFSET, self.WORLD_INFO),
                                (0x30500, self.TURRET)):
@@ -58,10 +60,46 @@ class MountedFixture(CinematicFixture):
             self.add(level, 'StreamLevel_' + str(index), 0x7000)
             self.ptr(actor + 64, level)
             self.levels[label] = level
+        self.ptr(self.INVENTORY + 64, self.levels['driver'])
         return self
 
 
 class MountedContextTests(unittest.TestCase):
+    def test_inventory_actor_owner_and_level_are_distinct(self):
+        f = MountedFixture().stream_levels()
+        proof = MountedContextCertificate(f.sampler).capture()
+        self.assertEqual(proof['roles']['inventory']['outer'], f.levels['driver'])
+        self.assertEqual(proof['links']['inventory_owner']['value'], 0x20000)
+        for offset, value in ((0x8c, 0), (0x8c, f.TURRET), (64, 0x20000),
+                              (64, f.levels['controlled']), (64, 0)):
+            with self.subTest(offset=offset, value=value):
+                f = MountedFixture().stream_levels()
+                f.ptr(f.INVENTORY + offset, value)
+                with self.assertRaises(AnchorRejected):MountedContextCertificate(f.sampler)
+
+    def test_inventory_owner_changes_during_read_or_between_captures_reject(self):
+        f = MountedFixture()
+        original = f.read
+        def read(address, size):
+            data = original(address, size)
+            if address == f.INVENTORY + 0x8c and size == 8:
+                f.ptr(address, 0)
+            return data
+        f.read = read
+        with self.assertRaises(AnchorRejected):MountedContextCertificate(f.sampler)
+        f = MountedFixture();certificate = MountedContextCertificate(f.sampler)
+        f.ptr(f.INVENTORY + 0x8c, f.TURRET)
+        with self.assertRaises(AnchorRejected):certificate.capture()
+
+    def test_inventory_owner_reflected_layout_and_identity_rejected(self):
+        for offset, value, width in ((0x40, 0x3000, 8), (0x74, 4, 4),
+                                     (0x94, 0x90, 4), (0x08, 0xffffffff, 4)):
+            f=MountedFixture()
+            prop=f.property(0x74000, 'Owner', True)['address']
+            (f.ptr if width==8 else f.word)(prop+offset, value)
+            with self.assertRaises((AnchorRejected, RuntimeError)):
+                MountedContextCertificate(f.sampler)
+
     def test_rejected_camera_targets_have_failure_only_consistency_evidence(self):
         for label, target in (('driver', 0x20000), ('null', 0), ('foreign', 0xb0000)):
             with self.subTest(target=label):
