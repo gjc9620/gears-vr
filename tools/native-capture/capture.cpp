@@ -3779,7 +3779,7 @@ DWORD WINAPI worker(void*) {
     gears_session::Owner continuous_owner; // Retain the process object through all cleanup and early returns.
     wchar_t ini[MAX_PATH],csv[MAX_PATH],status_path[MAX_PATH];
     path_for(ini,L"capture.ini");path_for(csv,L"capture.csv");path_for(status_path,L"capture-status.txt");
-    FILE* status{};_wfopen_s(&status,status_path,L"w");
+    FILE* status=_wfsopen(status_path,L"w",_SH_DENYWR);
     if(!status) return 1;
     diagnostic_status=status;
     if(!hash_matches() || ini_address(ini,L"pid")!=GetCurrentProcessId()) {
