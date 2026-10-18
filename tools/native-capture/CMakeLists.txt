@@ -809,8 +809,17 @@ target_link_libraries(NgxTypedListJoinTest PRIVATE d3d12 dxgi)
 add_test(NAME NgxTypedListJoinTest COMMAND NgxTypedListJoinTest)
 
 # Independent bounded source-pixel diagnostic. No NGX/SDK hooks or death gate changes.
+option(GEARS_OWNED_SIZE_TRACE "Bounded owned ticket size, direct-draw, quad-resource and probe-stack diagnostics" ON)
+if(GEARS_OWNED_SIZE_TRACE)
+    target_compile_definitions(GearsCapture PRIVATE GEARS_OWNED_SIZE_TRACE=1)
+else()
+    target_compile_definitions(GearsCapture PRIVATE GEARS_OWNED_SIZE_TRACE=0)
+endif()
 option(GEARS_OWNED_SOURCE_PIXELS "Two adjacent HDR source readbacks on one world>=2 owned ticket" OFF)
 if(GEARS_OWNED_SOURCE_PIXELS)
+    if(NOT GEARS_OWNED_SIZE_TRACE)
+        message(FATAL_ERROR "OWNED_SOURCE_PIXELS requires OWNED_SIZE_TRACE for successful owned ticket selection")
+    endif()
     if(NOT GEARS_NATIVE_OWNED_PIXELS OR NOT GEARS_RUNTIME_RENDER_SIZE OR
        GEARS_NGX_ROUTE_OBSERVER OR GEARS_NGX_STEREO_HOST_OBSERVER OR GEARS_NGX_OUTPUT_PIXELS OR
        GEARS_DEATH_HDR_PIXELS OR GEARS_DEATH_SOURCE_CONTROL OR GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT)

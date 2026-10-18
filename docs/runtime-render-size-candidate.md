@@ -8,6 +8,16 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+The same DepthReclaim1 DLL also passed scale0.7: runtime recommendation
+1280x1400 produced896x980 per eye (SBS1792x980). Both checkpoint reloads,
+native cleanup, independent entry restoration and five-file restoration
+passed. Final GPU previews show two complete scene halves at that size.
+Reclaim receipts show375->0 and378->0 active identities, no overflow.
+No depth-clear viewport mutations were admitted in this lower-size run;
+its passing images do not prove a low-size mutation occurred. The high-size
+run below is the actual mutation evidence. Evidence:
+`runtime-depth-reclaim1-scale07-run1-20261019*`, session37060.
+
 DepthReclaim1 (`2f9276a7e818047ec68f08db165102544918d935cbc520fafba13e45f91ee9cd`)
 passed fresh build/component/startup checks and the scale2 repeat with two
 checkpoint reloads. Certified retirement now precedes explicit association
@@ -25,7 +35,7 @@ desktop width/height. Two reloads, native cleanup, independent entry checks,
 normal close and five-file restoration all passed. This proves the tested
 cross-world accumulation case, not unlimited identities within one world.
 Evidence: `runtime-depth-reclaim1-scale2-run1-20261019*`, session40880.
-Lower-scale and release-build validation remain pending.
+Release-build validation remains pending.
 
 DepthGeneral1 replaces the trial's fixed dimensions with the validated
 session RenderSizePlan. It compares the desktop Present inventory against

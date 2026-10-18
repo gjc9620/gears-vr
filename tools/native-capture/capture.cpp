@@ -2301,6 +2301,16 @@ void* __fastcall hook_clone(void* destination,void* source){
 // One successful owned selection only; bootstrap renderers cannot claim this.
 // Read-only bounded diagnostics, serialized by the existing frame hook lock.
 namespace owned_ticket_size_trace {
+#ifndef GEARS_OWNED_SIZE_TRACE
+#define GEARS_OWNED_SIZE_TRACE 1
+#endif
+#if defined(GEARS_OWNED_SOURCE_PIXELS) && GEARS_OWNED_SOURCE_PIXELS && !GEARS_OWNED_SIZE_TRACE
+#error Owned source pixels requires owned size trace selection
+#endif
+// The depth-clear control consumes this OM sidecar independently of the
+// one-ticket source diagnostics. Keep its existing lifecycle available.
+gears_owned_attachments::Tracker<> attachments;
+#if GEARS_OWNED_SIZE_TRACE
 #ifndef GEARS_SIZE_TRACE_MIN_WORLD
 #define GEARS_SIZE_TRACE_MIN_WORLD 0
 #endif
@@ -2327,7 +2337,6 @@ struct DrawRangeRow {
     unsigned eye=2,stage=4,mode=2,indexed{},targets{},eye_sources{};bool descriptor_capacity_lost{};
 };
 uintptr_t active_quad_caller();
-gears_owned_attachments::Tracker<> attachments;
 uint64_t ticket{},world{};uintptr_t renderer{},adapter{};bool finished{};
 std::array<Row,8> rows{};std::array<DrawRow,16> draws{};
 std::array<DrawRangeRow,128> draw_ranges{};unsigned draw_range_count{};
@@ -2386,10 +2395,14 @@ void select(void* root,gears_submitted::FrameTicket const& frame,uintptr_t targe
     ticket=frame.id;world=frame.world_generation;renderer=reinterpret_cast<uintptr_t>(root);adapter=target;
     views(0,root,frame,left,right);
 }
+#else
+void views(unsigned,void*,gears_submitted::FrameTicket const&,uintptr_t,uintptr_t){}
+void select(void*,gears_submitted::FrameTicket const&,uintptr_t,uintptr_t,uintptr_t){}
+#endif
 void bind_attachments(ID3D12GraphicsCommandList* list,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE const* handles,
     BOOL contiguous,UINT stride,D3D12_CPU_DESCRIPTOR_HANDLE const* depth){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
-#if !defined(GEARS_OWNED_DEPTH_CLEAR_TRIAL) || !GEARS_OWNED_DEPTH_CLEAR_TRIAL
+#if GEARS_OWNED_SIZE_TRACE && (!defined(GEARS_OWNED_DEPTH_CLEAR_TRIAL) || !GEARS_OWNED_DEPTH_CLEAR_TRIAL)
     if(finished)return;
 #endif
     D3D12_CPU_DESCRIPTOR_HANDLE depth_value{};
@@ -2406,6 +2419,7 @@ void retire_attachments(uintptr_t list){
 void clear_attachments(){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);attachments.clear();
 }
+#if GEARS_OWNED_SIZE_TRACE
 void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,bool indexed,unsigned elements,unsigned instances){
     if(!recording.load()||!elements||!instances||!consuming_owned_scene)return;
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
@@ -2528,12 +2542,18 @@ void print(FILE* status){
         fprintf(status,"\n");
     }
 }
+#else
+void draw(ID3D12GraphicsCommandList*,uintptr_t,bool,unsigned,unsigned){}
+void finish(void*,gears_submitted::FrameTicket const&){}
+void print(FILE*){}
+#endif
 }
 
 #include "resource_identity_observer.h"
 #include "late_quad_observer.inl"
 
 namespace owned_ticket_size_trace {
+#if GEARS_OWNED_SIZE_TRACE
 uintptr_t active_quad_caller(){return late_quad_candidate.active?late_quad_candidate.caller:0;}
 // Ordered CPU pre-original draw samples, never aggregate across passes. The
 // existing TLS candidate contains the arguments actually forwarded to this quad.
@@ -2604,6 +2624,10 @@ void print_quad_draws(FILE* file){
         }
     }
 }
+#else
+void quad_draw(ID3D12GraphicsCommandList*,uintptr_t,unsigned,unsigned,unsigned){}
+void print_quad_draws(FILE*){}
+#endif
 }
 
 #include "unpossessed_quad_observer.inl"
