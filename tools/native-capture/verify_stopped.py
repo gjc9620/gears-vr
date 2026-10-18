@@ -5,6 +5,9 @@ System-module entries use their on-disk PE bytes with DIR64 relocations applied.
 No remote calls, writes or DLL unloads are performed.
 """
 import argparse
+import bisect
+import contextlib
+import os
 import hashlib
 import json
 import pathlib
@@ -96,6 +99,63 @@ def hook_targets(status):
     return targets
 
 
+class SystemEntryCache:
+    """PE resources and relocation indices owned by ONE verification run.
+
+    Full parsing and all existing relocation rules are retained. The index
+    limits lookup work, never the set of applicable relocation entries.
+    """
+    def __init__(self):
+        self._images = {}
+        self._resources = contextlib.ExitStack()
+
+    def _image(self, path):
+        key = os.path.normcase(os.path.abspath(path))
+        if key not in self._images:
+            pe = pefile.PE(str(path))
+            self._resources.callback(pe.close)
+            # Keep original traversal order for duplicate/overlapping entries;
+            # sorting is only an index for selecting the intersecting window.
+            relocations = sorted((entry.rva, index, entry.type)
+                for index, entry in enumerate(entry for block in getattr(pe, 'DIRECTORY_ENTRY_BASERELOC', [])
+                                               for entry in block.entries)
+                if entry.type != 0)
+            self._images[key] = pe, relocations
+        return self._images[key]
+
+    def expected(self, loaded, target):
+        owner = None
+        for name, (base, path) in loaded.items():
+            if name not in ('dxgi.dll', 'd3d12.dll', 'd3d12core.dll'):
+                continue
+            pe, relocations = self._image(path)
+            if base <= target < base + pe.OPTIONAL_HEADER.SizeOfImage:
+                owner = base, path, pe, relocations
+                break
+        if owner is None:
+            raise RuntimeError('Target not in an allowed graphics system module')
+        base, path, pe, relocations = owner
+        offset = target - base
+        expected = bytearray(pe.get_data(offset, 32))
+        if len(expected) != 32:
+            raise RuntimeError('Missing on-disk entry bytes')
+        delta = base - pe.OPTIONAL_HEADER.ImageBase
+        first = bisect.bisect_left(relocations, (offset - 7,))
+        last = bisect.bisect_left(relocations, (offset + 32,))
+        for rva, _, kind in sorted(relocations[first:last], key=lambda row: row[1]):
+            if kind != 10 or not offset <= rva <= offset + 24:
+                raise RuntimeError('Unsupported or partial entry relocation')
+            at = rva - offset
+            value = struct.unpack_from('<Q', expected, at)[0]
+            struct.pack_into('<Q', expected, at, (value + delta) & 0xffffffffffffffff)
+        return bytes(expected), str(path)
+
+    def close(self):
+        # ExitStack runs every close even when an individual close raises.
+        try:self._resources.close()
+        finally:self._images.clear()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--pid', type=int, required=True)
@@ -115,6 +175,7 @@ def main():
     # Owned Material adds its producer and the certified nonindexed upload entry.
     resolver = Resolver(args.pid, json.loads((ROOT / 'tools/package-inspector/reloaded-profile.json').read_text()))
     checks = []
+    system_entries = SystemEntryCache()
     try:
         resolver.prepare()
         loaded = modules(resolver.p.handle)
@@ -274,41 +335,12 @@ def main():
                 expected = camera[rva]
                 source = 'validated runtime camera signature'
             else:
-                owner = None
-                for name, (base, path) in loaded.items():
-                    if name not in ('dxgi.dll', 'd3d12.dll', 'd3d12core.dll'):
-                        continue
-                    pe = pefile.PE(str(path))
-                    if base <= target < base + pe.OPTIONAL_HEADER.SizeOfImage:
-                        owner = (base, path, pe)
-                        break
-                    pe.close()
-                if owner is None:
-                    raise RuntimeError('Target not in an allowed graphics system module')
-                base, path, pe = owner
-                try:
-                    offset = target - base
-                    expected = bytearray(pe.get_data(offset, 32))
-                    if len(expected) != 32:
-                        raise RuntimeError('Missing on-disk entry bytes')
-                    delta = base - pe.OPTIONAL_HEADER.ImageBase
-                    for block in getattr(pe, 'DIRECTORY_ENTRY_BASERELOC', []):
-                        for entry in block.entries:
-                            if entry.type == 0 or not offset - 7 <= entry.rva < offset + 32:
-                                continue
-                            if entry.type != 10 or not offset <= entry.rva <= offset + 24:
-                                raise RuntimeError('Unsupported or partial entry relocation')
-                            at = entry.rva - offset
-                            value = struct.unpack_from('<Q', expected, at)[0]
-                            struct.pack_into('<Q', expected, at, (value + delta) & 0xffffffffffffffff)
-                    expected = bytes(expected)
-                    source = str(path)
-                finally:
-                    pe.close()
+                expected, source = system_entries.expected(loaded, target)
             actual = resolver.read(target, len(expected))
             checks.append(dict(target=hex(target), source=source, bytes_checked=len(expected), matches=actual == expected))
     finally:
-        resolver.p.close()
+        try:system_entries.close()
+        finally:resolver.p.close()
     report = dict(pid=args.pid, checks=checks, all_match=all(item['matches'] for item in checks),
                   limitation='Only checked entry bytes; DLLs and trampolines remain resident until game exit.')
     args.output.parent.mkdir(parents=True, exist_ok=True)

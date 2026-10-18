@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import sys
+import struct
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -49,16 +50,120 @@ class VerifyStoppedTests(unittest.TestCase):
         if stopped:text += 'stopped disable_status=0 active=0\n'
         self.status.write_text(text)
 
-    def invoke(self):
+    def invoke(self, loaded=None):
         args = ['verify_stopped.py', '--pid', '321', '--status', str(self.status), '--output', str(self.output)]
         with mock.patch.object(sys, 'argv', args), \
                 mock.patch.object(verify_stopped, 'Resolver', return_value=self.resolver) as factory, \
-                mock.patch.object(verify_stopped, 'modules', return_value={}) as modules, \
+                mock.patch.object(verify_stopped, 'modules', return_value={} if loaded is None else loaded) as modules, \
                 contextlib.redirect_stdout(io.StringIO()):
             verify_stopped.main()
         factory.assert_called_once()
         self.resolver.prepare.assert_called_once()
         modules.assert_called_once_with(123)
+
+    def fake_pe(self, raw=bytes(range(32)), relocs=(), image_base=0x70000000):
+        pe=SimpleNamespace(OPTIONAL_HEADER=SimpleNamespace(SizeOfImage=0x10000,ImageBase=image_base),
+                           get_data=mock.Mock(return_value=raw),close=mock.Mock())
+        pe.DIRECTORY_ENTRY_BASERELOC=[SimpleNamespace(entries=[SimpleNamespace(rva=rva,type=kind) for rva,kind in relocs])]
+        return pe
+
+    def test_system_main_reuses_pe_and_closes_all_with_full_32byte_comparison(self):
+        dxgi=self.fake_pe();core=self.fake_pe(raw=b'C'*32,image_base=0x71000000)
+        loaded={'dxgi.dll':(0x70000000,'dxgi.dll'),'d3d12core.dll':(0x71000000,'D3D12Core.dll')}
+        addresses=(0x70000100,0x71000200,0x71000300)
+        for corrupt in (False,True):
+            with self.subTest(corrupt=corrupt):
+                self.closed.reset_mock();self.resolver.prepare.reset_mock()
+                dxgi.close.reset_mock();core.close.reset_mock()
+                for address in addresses:self.memory[address]=bytes(range(32)) if address<0x71000000 else b'C'*32
+                if corrupt:self.memory[addresses[-1]]=b'C'*31+b'D'
+                self.write_status(tuple(a-self.base for a in addresses))
+                with mock.patch.object(verify_stopped.pefile,'PE',side_effect=(dxgi,core)) as parse:
+                    if corrupt:
+                        with self.assertRaises(SystemExit):self.invoke(loaded)
+                    else:self.invoke(loaded)
+                self.assertEqual(parse.call_count,2)
+                report=json.loads(self.output.read_text());self.assertEqual(report['all_match'],not corrupt)
+                self.assertTrue(all(row['bytes_checked']==32 for row in report['checks']))
+                self.closed.assert_called_once();dxgi.close.assert_called_once();core.close.assert_called_once()
+
+    def test_relocation_index_preserves_original_rules_and_application_order(self):
+        offset=0x100;raw=bytes(range(32))
+        cases=[([],0), ([(offset,10),(offset+24,10)],0x1234),
+               ([(offset+8,10),(offset+4,10),(offset+8,10)],-0x30),
+               ([(offset-8,3),(offset+32,3),(offset-7,0),(offset+31,0)],0x40),
+               ([(offset-7,10)],1), ([(offset+25,10)],1),
+               ([(offset+31,10)],1), ([(offset+8,3)],1)]
+        for relocs,delta in cases:
+            with self.subTest(relocs=relocs,delta=delta):
+                expected=bytearray(raw);failure=False
+                for rva,kind in relocs:
+                    if kind==0 or not offset-7<=rva<offset+32:continue
+                    if kind!=10 or not offset<=rva<=offset+24:failure=True;break
+                    at=rva-offset;value=struct.unpack_from('<Q',expected,at)[0]
+                    struct.pack_into('<Q',expected,at,(value+delta)&0xffffffffffffffff)
+                pe=self.fake_pe(raw,relocs);cache=verify_stopped.SystemEntryCache()
+                with mock.patch.object(verify_stopped.pefile,'PE',return_value=pe):
+                    try:
+                        if failure:
+                            with self.assertRaisesRegex(RuntimeError,'Unsupported or partial'):cache.expected({'dxgi.dll':(0x70000000+delta,'dxgi.dll')},0x70000000+delta+offset)
+                        else:
+                            actual,_=cache.expected({'dxgi.dll':(0x70000000+delta,'dxgi.dll')},0x70000000+delta+offset)
+                            self.assertEqual(actual,bytes(expected))
+                    finally:cache.close()
+                pe.close.assert_called_once()
+
+    def test_cache_is_per_run_and_relocation_index_built_once(self):
+        scans=[]
+        class Entries:
+            def __iter__(self):
+                scans.append(1);return iter([SimpleNamespace(rva=0x100,type=10)])
+        images=[]
+        def parse(path):
+            image=self.fake_pe();image.DIRECTORY_ENTRY_BASERELOC=[SimpleNamespace(entries=Entries())]
+            images.append(image);return image
+        with mock.patch.object(verify_stopped.pefile,'PE',side_effect=parse) as parser:
+            for _ in range(2):
+                cache=verify_stopped.SystemEntryCache()
+                try:
+                    for offset in (0x100,0x200,0x300):cache.expected({'dxgi.dll':(0x70000000,'dxgi.dll')},0x70000000+offset)
+                finally:cache.close()
+            self.assertEqual(parser.call_count,2);self.assertEqual(len(scans),2)
+        for image in images:image.close.assert_called_once()
+
+    def test_main_read_failure_and_close_error_still_close_every_resource(self):
+        for close_error in (False,True):
+            with self.subTest(close_error=close_error):
+                self.closed.reset_mock();self.resolver.prepare.reset_mock()
+                dxgi=self.fake_pe();core=self.fake_pe()
+                if close_error:core.close.side_effect=RuntimeError('close failed')
+                addresses=(0x70000100,0x71000200)
+                self.memory[addresses[0]]=bytes(range(32));self.memory.pop(addresses[1],None)
+                self.write_status(tuple(a-self.base for a in addresses))
+                loaded={'dxgi.dll':(0x70000000,'dxgi.dll'),'d3d12core.dll':(0x71000000,'core.dll')}
+                with mock.patch.object(verify_stopped.pefile,'PE',side_effect=(dxgi,core)):
+                    with self.assertRaises((KeyError,RuntimeError)):self.invoke(loaded)
+                dxgi.close.assert_called_once();core.close.assert_called_once();self.closed.assert_called_once()
+
+    def test_short_disk_bytes_unknown_module_and_parse_failure_fail_closed(self):
+        cache=verify_stopped.SystemEntryCache();pe=self.fake_pe(raw=b'x'*31)
+        with mock.patch.object(verify_stopped.pefile,'PE',return_value=pe):
+            try:
+                with self.assertRaisesRegex(RuntimeError,'Missing on-disk'):cache.expected({'dxgi.dll':(0x70000000,'dxgi.dll')},0x70000100)
+            finally:cache.close()
+        with mock.patch.object(verify_stopped.pefile,'PE') as parse:
+            cache=verify_stopped.SystemEntryCache()
+            try:
+                with self.assertRaisesRegex(RuntimeError,'allowed graphics system module'):cache.expected({'other.dll':(0x70000000,'other.dll')},0x70000100)
+            finally:cache.close()
+            parse.assert_not_called()
+        first=self.fake_pe();cache=verify_stopped.SystemEntryCache()
+        with mock.patch.object(verify_stopped.pefile,'PE',side_effect=(first,RuntimeError('invalid PE'))):
+            try:
+                with self.assertRaisesRegex(RuntimeError,'invalid PE'):
+                    cache.expected({'dxgi.dll':(0x70000000,'dxgi.dll'),'d3d12.dll':(0x71000000,'d3d12.dll')},0x71000100)
+            finally:cache.close()
+        first.close.assert_called_once()
 
     def test_exact_historical_root_matches_and_closes_reader(self):
         self.write_status()
