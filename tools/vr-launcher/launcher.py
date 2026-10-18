@@ -647,10 +647,23 @@ def current_native_status(backend,session):
     command=session.get('native_command',[])
     try:build=pathlib.Path(command[command.index('--build-dir')+1]).resolve()
     except (ValueError,IndexError):raise RuntimeError('Indexed native command has no build directory')
-    fields=backend.runner.read_session_status(build/'session-status.txt',session['game_identity']['pid'],0)
-    if (not fields or not backend.runner.native_owner_matches(fields,session['owner_identity']) or
-        fields.get('started_qpc')!=str(session.get('native_started_qpc'))):
-        raise RuntimeError('Current native status belongs to a different or unverified session')
+    diagnostic={}
+    fields=backend.runner.read_session_status(build/'session-status.txt',session['game_identity']['pid'],0,
+                                              diagnostic=diagnostic)
+    reason=None
+    if not fields:reason='reader_rejected'
+    elif not backend.runner.native_owner_matches(fields,session['owner_identity']):reason='owner_mismatch'
+    elif fields.get('started_qpc')!=str(session.get('native_started_qpc')):reason='started_qpc_mismatch'
+    if reason is not None:
+        detail=dict(reason=reason,reader=diagnostic or {'reason':'unknown'})
+        if fields:
+            detail.update(owner_fields_present=all(k in fields for k in ('owner_pid','owner_creation_time')),
+                          observed_started_qpc_present='started_qpc' in fields,
+                          expected_started_qpc_present=session.get('native_started_qpc') is not None)
+        error=RuntimeError('Current native status belongs to a different or unverified session: '+
+                           json.dumps(detail,sort_keys=True,separators=(',',':')))
+        error.native_status_diagnostic=detail
+        raise error
     return fields
 
 def recenter(backend,index=INDEX):

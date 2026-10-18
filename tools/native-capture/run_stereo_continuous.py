@@ -267,15 +267,40 @@ def first_stereo_submitted(path):
     return None
 
 
-def read_session_status(path,pid,floor):
+def read_session_status(path,pid,floor,*,diagnostic=None):
+    """Same admission as before; optional bounded reasons from this exact read.
+
+    No second read, retry, raw contents, paths, owner IDs or timestamp values
+    are retained. Missing diagnostic data remains explicitly unknown.
+    """
+    if diagnostic is not None:diagnostic.clear()
+    def rejected(reason,**details):
+        if diagnostic is not None:diagnostic.update(reason=reason,**details)
+        return None
+    stage='stat'
     try:
-        if path.stat().st_mtime_ns<=floor:return None
+        if path.stat().st_mtime_ns<=floor:return rejected('stale_file')
+        stage='read'
         text=path.read_text(encoding='utf-8',errors='replace')
+        if diagnostic is not None:diagnostic.update(text_length=len(text),ends_with_newline=text.endswith('\n'))
         fields=dict(re.findall(r'(\w+)=([^\s]+)',text))
-        if (not text.endswith('\n') or fields.get('complete')!='1' or int(fields.get('started_qpc','0'))<=0
-                or fields.get('pid')!=str(pid) or fields.get('continuous_session')!='1'):return None
+        if not text:return rejected('empty_file')
+        if not text.endswith('\n'):return rejected('missing_final_newline')
+        if fields.get('complete')!='1':return rejected('complete_marker_missing_or_invalid')
+        stage='started_qpc'
+        if int(fields.get('started_qpc','0'))<=0:return rejected('started_qpc_missing_or_nonpositive')
+        if fields.get('pid')!=str(pid):return rejected('pid_mismatch',field_present='pid' in fields)
+        if fields.get('continuous_session')!='1':return rejected('continuous_session_mismatch',field_present='continuous_session' in fields)
+        if diagnostic is not None:diagnostic.update(reason='accepted')
         return fields
-    except (OSError,UnicodeError,ValueError):return None
+    except OSError as error:
+        return rejected('io_error',stage=stage,exception_type=type(error).__name__,
+                        errno=error.errno,winerror=getattr(error,'winerror',None))
+    except UnicodeError as error:
+        return rejected('unicode_error',stage=stage,exception_type=type(error).__name__)
+    except ValueError as error:
+        return rejected('invalid_started_qpc' if stage=='started_qpc' else 'invalid_value',
+                        stage=stage,exception_type=type(error).__name__)
 
 
 def native_stopped_clean(status):

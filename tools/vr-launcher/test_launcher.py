@@ -1014,6 +1014,29 @@ class LauncherTests(unittest.TestCase):
             backend.runner.request_recenter.side_effect=RuntimeError('Stereo recenter control is unavailable in this native build')
             with self.assertRaisesRegex(RuntimeError,'unavailable'):launcher.recenter(backend,index)
 
+    def test_current_native_status_has_safe_distinct_failure_reasons_without_retry(self):
+        for kind in ('empty','unknown','owner','qpc'):
+            with self.subTest(kind=kind),tempfile.TemporaryDirectory() as directory:
+                backend,_,_,session,fields=self.recenter_fixture(directory)
+                fields['owner_pid']='PRIVATE_OWNER';fields['owner_creation_time']='PRIVATE_CREATION'
+                def read(path,pid,floor,*,diagnostic):
+                    if kind=='empty':diagnostic.update(reason='empty_file',text_length=0,ends_with_newline=False)
+                    elif kind!='unknown':diagnostic.update(reason='accepted')
+                    if kind in ('empty','unknown'):return None
+                    return fields
+                backend.runner.read_session_status.side_effect=read
+                if kind=='owner':backend.runner.native_owner_matches.return_value=False
+                if kind=='qpc':fields['started_qpc']='PRIVATE_QPC'
+                with self.assertRaisesRegex(RuntimeError,'different or unverified session') as failure:
+                    launcher.current_native_status(backend,session)
+                detail=failure.exception.native_status_diagnostic
+                self.assertEqual(detail['reason'],'reader_rejected' if kind in ('empty','unknown') else 'owner_mismatch' if kind=='owner' else 'started_qpc_mismatch')
+                if kind in ('empty','unknown'):self.assertEqual(detail['reader']['reason'],'empty_file' if kind=='empty' else 'unknown')
+                for private in ('PRIVATE_OWNER','PRIVATE_CREATION','PRIVATE_QPC'):
+                    self.assertNotIn(private,str(failure.exception))
+                backend.runner.read_session_status.assert_called_once()
+                backend.runner.request_recenter.assert_not_called()
+
     def test_status_generation_requires_matching_session(self):
         with tempfile.TemporaryDirectory() as directory:
             backend,index,report,session,fields=self.recenter_fixture(directory)

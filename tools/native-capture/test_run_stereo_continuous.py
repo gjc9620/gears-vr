@@ -405,6 +405,49 @@ class ContinuousTests(unittest.TestCase):
             self.assertIsNone(runner.read_session_status(path,124,0))
             self.assertEqual(runner.read_session_status(path,123,0)['phase'],'stopped')
 
+    def test_session_read_diagnostics_classify_same_read_without_changing_legacy_results(self):
+        valid='continuous_session=1 pid=123 started_qpc=456 complete=1\n'
+        cases=[('', 'empty_file'),(valid.rstrip(),'missing_final_newline'),
+               (valid.replace('complete=1','complete=0'),'complete_marker_missing_or_invalid'),
+               (valid.replace('started_qpc=456','started_qpc=0'),'started_qpc_missing_or_nonpositive'),
+               (valid.replace('started_qpc=456','started_qpc=private-secret'),'invalid_started_qpc'),
+               (valid.replace('pid=123','pid=124'),'pid_mismatch'),
+               (valid.replace('continuous_session=1','continuous_session=0'),'continuous_session_mismatch'),
+               (valid,'accepted')]
+        with tempfile.TemporaryDirectory() as folder:
+            path=pathlib.Path(folder)/'status.txt'
+            for text,reason in cases:
+                with self.subTest(reason=reason):
+                    path.write_text(text);diagnostic={'old':'must be removed'}
+                    previous=runner.read_session_status(path,123,0)
+                    value=runner.read_session_status(path,123,0,diagnostic=diagnostic)
+                    self.assertEqual(value,previous);self.assertEqual(diagnostic['reason'],reason)
+                    self.assertNotIn('old',diagnostic)
+                    self.assertNotIn('private-secret',json.dumps(diagnostic))
+                    self.assertEqual(diagnostic['text_length'],len(text))
+            diagnostic={}
+            self.assertIsNone(runner.read_session_status(path,123,path.stat().st_mtime_ns,diagnostic=diagnostic))
+            self.assertEqual(diagnostic,{'reason':'stale_file'})
+
+    def test_session_read_diagnostic_does_not_reread_empty_file_or_retry_io_failure(self):
+        path=mock.Mock();path.stat.return_value.st_mtime_ns=10
+        path.read_text.side_effect=['','continuous_session=1 pid=123 started_qpc=456 complete=1\n']
+        diagnostic={}
+        self.assertIsNone(runner.read_session_status(path,123,0,diagnostic=diagnostic))
+        path.read_text.assert_called_once();self.assertEqual(diagnostic['reason'],'empty_file')
+        for stage in ('stat','read'):
+            with self.subTest(stage=stage):
+                path=mock.Mock();path.stat.return_value.st_mtime_ns=10
+                failure=PermissionError(13,'PRIVATE_CONTENT')
+                if stage=='stat':path.stat.side_effect=failure
+                else:path.read_text.side_effect=failure
+                self.assertIsNone(runner.read_session_status(path,123,0,diagnostic=diagnostic))
+                self.assertEqual(diagnostic['reason'],'io_error');self.assertEqual(diagnostic['stage'],stage)
+                self.assertEqual(diagnostic['exception_type'],'PermissionError')
+                self.assertNotIn('PRIVATE_CONTENT',json.dumps(diagnostic))
+                self.assertEqual(path.stat.call_count,1)
+                self.assertEqual(path.read_text.call_count,0 if stage=='stat' else 1)
+
     def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False,hud_layout=None,path_center=False):
         with tempfile.TemporaryDirectory() as folder:
             root=pathlib.Path(folder);build=root/'native';build.mkdir()
