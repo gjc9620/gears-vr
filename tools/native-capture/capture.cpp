@@ -686,8 +686,19 @@ bool verified_stereo_draw(gears_viewport::DrawState const&,FinalEye const&,uintp
 #include "native_owned_scene.inl"
 // Created before the ordinary Scope/locks in each RHI entry. Its destructor
 // also runs after a world-gate passthrough return, keeping terminal retirement
-// service alive after submitted native state has closed.
-struct NativeOwnedShutdownRhiScope {~NativeOwnedShutdownRhiScope(){native_owned_scene_shutdown_rhi();}};
+// service alive after submitted native state has closed. Its independent count
+// covers retirement after ordinary Scope releases world admission, including
+// the publisher-bypass path which never constructs an ordinary Scope.
+struct NativeOwnedShutdownRhiScope {
+    struct Activity {
+        Activity(){++active;}
+        ~Activity(){--active;}
+    } activity;
+    NativeOwnedShutdownRhiScope()=default;
+    NativeOwnedShutdownRhiScope(NativeOwnedShutdownRhiScope const&)=delete;
+    NativeOwnedShutdownRhiScope& operator=(NativeOwnedShutdownRhiScope const&)=delete;
+    ~NativeOwnedShutdownRhiScope(){native_owned_scene_shutdown_rhi();}
+};
 void trace_rectangle(unsigned index,uintptr_t view) {
     if(!submit_pair_enabled || !view)return;
     unsigned expected=0;if(!rectangle_trace_phases[index].compare_exchange_strong(expected,1))return;
@@ -4540,7 +4551,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*)
     {
         std::lock_guard<std::recursive_mutex> frame_guard(frame_hook_mutex);
         blocked=CreateThread(nullptr,0,[](void*)->DWORD{hook_execute(nullptr,0,nullptr);return 0;},nullptr,0,nullptr);
-        if(!blocked||WaitForSingleObject(frame_test_waiting,1000)!=WAIT_OBJECT_0||active.load()!=1||continuous_test_executes.load())error=206;
+        if(!blocked||WaitForSingleObject(frame_test_waiting,1000)!=WAIT_OBJECT_0||active.load()!=2||continuous_test_executes.load())error=206;
         recording=false;
         if(!active.load()||session_hooks_restored())error=207;
     }
@@ -4558,12 +4569,22 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*)
     {
         std::lock_guard<std::recursive_mutex> frame_guard(frame_hook_mutex);
         blocked=CreateThread(nullptr,0,[](void*)->DWORD{hook_execute(nullptr,0,nullptr);return 0;},nullptr,0,nullptr);
-        if(!blocked||WaitForSingleObject(frame_test_waiting,1000)!=WAIT_OBJECT_0||active.load()!=1||continuous_test_executes.load()!=1)error=243;
+        if(!blocked||WaitForSingleObject(frame_test_waiting,1000)!=WAIT_OBJECT_0||active.load()!=2||continuous_test_executes.load()!=1)error=243;
     }
     if(blocked&&WaitForSingleObject(blocked,1000)!=WAIT_OBJECT_0)error=244;
     if(blocked)CloseHandle(blocked);CloseHandle(frame_test_waiting);frame_test_waiting=nullptr;
     if(!world_gate.open(world_closed)||active.load()||continuous_test_executes.load()!=2)error=245;
     original_execute=saved_execute;frame_link_diagnostics=false;self_testing=false;
+    // Retirement stays visible after ordinary world admission has gone away.
+    // It must not keep the epoch gate admitted merely to keep active nonzero.
+    {
+        NativeOwnedShutdownRhiScope retirement;
+        {Scope ordinary;if(active.load()!=2)error=246;}
+        gears_world::EpochGate::CloseToken retirement_closed{};
+        if(active.load()!=1||world_thread.depth||!world_gate.try_close(retirement_closed))error=247;
+        else if(!world_gate.open(retirement_closed))error=248;
+    }
+    if(active.load())error=249;
     // CSV suppression must not turn off the proof-recording switch.
     recording=true;Record row{};auto before=write_index;enqueue(row);
     if(write_index!=before||!recording.load())error=198;
