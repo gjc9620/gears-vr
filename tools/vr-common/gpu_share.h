@@ -93,6 +93,8 @@ class GpuPublisher {
     ComPtr<IUnknown> bound_identity,bound_device_identity;
     D3D12_RESOURCE_DESC bound_desc{};
     UINT64 bound_generation{};
+    bool owned_binding_=false,owned_detached_=false;
+    UINT64 retired_owned_world_{},retired_owned_ticket_{};
     D3D12_RESOURCE_STATES bound_idle=D3D12_RESOURCE_STATE_COMMON;
     ComPtr<ID3D12CommandAllocator> allocator;
     ComPtr<ID3D12GraphicsCommandList> list;
@@ -148,20 +150,31 @@ public:
     // The caller certifies actual RHI state and same-queue render/copy ordering.
     // D3D12 cannot query a resource's current state. COMMON/PRESENT both have
     // value zero; accepting it is not proof that an arbitrary resource is idle.
-    // One fixed binding per publisher lifetime; no replacement or resize API.
+    // Rebinding requires explicit source retirement and a committed later world;
+    // it keeps the same shared slot, DIRECT queue, device and resource descriptor.
     bool bind_resource(ID3D12CommandQueue* q,ID3D12Resource* resource,UINT64 generation,
                       D3D12_RESOURCE_STATES idle,bool allow_sim=false) {
         if(!q||!resource||!generation||!TryAcquireSRWLockExclusive(&lock))return false;
         bool ok=false;
-        if(state==0&&q->GetDesc().Type==D3D12_COMMAND_LIST_TYPE_DIRECT) {
+        const bool first=state==0;
+        const bool rebind=state==2&&owned_binding_&&owned_detached_&&!bound_resource&&!source&&
+            !world_quiescing_&&world_generation_>retired_owned_world_&&generation>bound_generation&&
+            allow_sim==allow_simulated_&&gpu_idle_complete(idle_locked());
+        if((first||rebind)&&q->GetDesc().Type==D3D12_COMMAND_LIST_TYPE_DIRECT) {
             ComPtr<ID3D12Device> q_device,r_device;ComPtr<IUnknown> q_identity,r_identity,identity;
             auto desc=resource->GetDesc();
             if(owned_desc_supported(desc,idle)&&SUCCEEDED(q->GetDevice(IID_PPV_ARGS(&q_device)))&&
                SUCCEEDED(resource->GetDevice(IID_PPV_ARGS(&r_device)))&&SUCCEEDED(q_device.As(&q_identity))&&
                SUCCEEDED(r_device.As(&r_identity))&&q_identity.Get()==r_identity.Get()&&
                SUCCEEDED(resource->QueryInterface(IID_PPV_ARGS(&identity)))) {
-                device=q_device;queue=q;bound_resource=resource;bound_identity=identity;bound_device_identity=q_identity;
-                bound_desc=desc;bound_generation=generation;bound_idle=idle;allow_simulated_=allow_sim;state=1;ok=true;
+                ComPtr<IUnknown> old_queue,new_queue;
+                const bool same_binding=first||(same_desc(desc,bound_desc)&&q_identity.Get()==bound_device_identity.Get()&&
+                    SUCCEEDED(queue.As(&old_queue))&&SUCCEEDED(q->QueryInterface(IID_PPV_ARGS(&new_queue)))&&old_queue.Get()==new_queue.Get());
+                if(same_binding){
+                    device=q_device;queue=q;bound_resource=resource;bound_identity=identity;bound_device_identity=q_identity;
+                    bound_desc=desc;bound_generation=generation;bound_idle=idle;allow_simulated_=allow_sim;
+                    owned_binding_=true;owned_detached_=false;if(first)state=1;ok=true;
+                }
             }
         }
         ReleaseSRWLockExclusive(&lock);return ok;
@@ -230,7 +243,7 @@ public:
     bool begin_resize(IDXGISwapChain* swap){
         AcquireSRWLockExclusive(&lock);bool ok=false;
         ComPtr<IDXGISwapChain3> candidate;
-        if(!bound_resource&&!resize_active&&state!=3&&state!=4&&swap&&
+        if(!owned_binding_&&!resize_active&&state!=3&&state!=4&&swap&&
            (state==0||(SUCCEEDED(swap->QueryInterface(IID_PPV_ARGS(&candidate)))&&candidate.Get()==chain.Get()))){
             resize_active=true;ok=true;
             if(state!=0){state=5;if(packet)InterlockedExchange(&packet->ready,2);}
@@ -261,6 +274,7 @@ private:
             if(state!=2){reason(GpuCaptureReason::not_ready);break;} // mark_stopped may win before lock.
             if(packet->magic!=0x47564731 || packet->version!=gpu_packet_version || packet->size!=sizeof(*packet) || packet->pid!=GetCurrentProcessId() || packet->allow_simulated!=(allow_simulated_?1u:0u)){reason(GpuCaptureReason::metadata_invalid);break;}
             if(world_quiescing_){reason(GpuCaptureReason::world_quiescing);break;}
+            if(owned_detached_){reason(GpuCaptureReason::owned_binding_mismatch);break;}
             if(bound_resource){
                 if(swap||!owned_matches(resource,generation,idle)||packet->width!=bound_desc.Width||packet->height!=bound_desc.Height||
                    packet->format!=static_cast<unsigned>(bound_desc.Format)){reason(GpuCaptureReason::owned_binding_mismatch);break;}
@@ -270,6 +284,8 @@ private:
             StereoImageTicket frozen=ticket?*ticket:StereoImageTicket{};
             if(allow_simulated_&&!ticket){reason(GpuCaptureReason::ticket_invalid);break;}
             if(ticket && !stereo_image_ticket_valid(frozen,packet->width,packet->height,allow_simulated_)){reason(GpuCaptureReason::ticket_invalid);break;}
+            if(owned_binding_&&retired_owned_world_&&(!ticket||frozen.id<=retired_owned_ticket_||
+                frozen.sample.received_ns<=world_minimum_sample_ns_)){reason(GpuCaptureReason::ticket_invalid);break;}
             if(serial&&frozen.id&&packet->ticket.id&&frozen.sample.source!=packet->ticket.sample.source){reason(GpuCaptureReason::source_changed);break;}
             auto consumer=InterlockedCompareExchange(&packet->consumer,0,0);
             if(traceout){traceout->consumer=consumer;traceout->valid|=capture_consumer_valid;}
@@ -326,6 +342,21 @@ public:
     bool try_idle(GpuIdleSnapshot& out){
         if(!TryAcquireSRWLockExclusive(&lock))return false;
         out=idle_locked();const bool idle=gpu_idle_complete(out);ReleaseSRWLockExclusive(&lock);return idle;
+    }
+    // Release only this publisher's source references. The shared image/fences
+    // remain available to XR. Caller separately drains native owner/other GPU
+    // users; this method proves only the producer/consumer shared-slot lifetime.
+    // poll() must first observe producer completion; never fabricate an ACK.
+    bool retire_owned_source(std::uint64_t expected_world,UINT64 expected_resource_generation){
+        if(!TryAcquireSRWLockExclusive(&lock))return false;
+        const bool ok=state==2&&world_quiescing_&&expected_world&&expected_world==world_generation_&&
+            owned_binding_&&!owned_detached_&&bound_resource&&expected_resource_generation==bound_generation&&
+            owned_matches(bound_resource.Get(),bound_generation,bound_idle)&&gpu_idle_complete(idle_locked());
+        if(ok){
+            retired_owned_world_=world_generation_;retired_owned_ticket_=packet->ticket.id;
+            source.Reset();bound_resource.Reset();bound_identity.Reset();owned_detached_=true;
+        }
+        ReleaseSRWLockExclusive(&lock);return ok;
     }
     // Admission barrier shares capture's lock. A failed commit never reopens it.
     bool begin_world_rebind(std::uint64_t expected){

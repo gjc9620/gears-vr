@@ -5,6 +5,28 @@
 #include <memory>
 using namespace gears_vr;
 static void require(bool value,const char* message){if(!value)throw std::runtime_error(message);}
+struct QueueHold {
+    ComPtr<ID3D12Fence> fence;
+    QueueHold(ID3D12Device* device,ID3D12CommandQueue* queue){
+        gpu_check(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)),"hold fence");
+        gpu_check(queue->Wait(fence.Get(),1),"hold queue");}
+    void release(){gpu_check(fence->Signal(1),"release queue");}
+    ~QueueHold(){if(fence)fence->Signal(1);}
+};
+struct ResourceWitness final: IUnknown {
+    std::atomic<ULONG> references{1};bool* destroyed;
+    explicit ResourceWitness(bool& flag):destroyed(&flag){}
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID id,void** out) override {
+        if(!out)return E_POINTER;*out=nullptr;if(id!=IID_IUnknown)return E_NOINTERFACE;
+        *out=static_cast<IUnknown*>(this);AddRef();return S_OK;}
+    ULONG STDMETHODCALLTYPE AddRef() override{return ++references;}
+    ULONG STDMETHODCALLTYPE Release() override{const auto n=--references;if(!n){*destroyed=true;delete this;}return n;}
+};
+static void watch_resource(ID3D12Resource* resource,bool& destroyed){
+    static const GUID key={0x7e199deb,0xe847,0x4ae2,{0x9c,0xb4,0xd3,0x91,0xb8,0x11,0x51,0x29}};
+    auto* witness=new ResourceWitness(destroyed);const auto result=resource->SetPrivateDataInterface(key,witness);
+    witness->Release();gpu_check(result,"resource witness");
+}
 struct GPU {
     ComPtr<ID3D12Device> device;ComPtr<ID3D12CommandQueue> queue;
     ComPtr<ID3D12CommandAllocator> allocator;ComPtr<ID3D12GraphicsCommandList> list;ComPtr<ID3D12Fence> fence;
@@ -61,6 +83,7 @@ static void rejects(GPU& gpu){auto source=texture(gpu.device.Get());GpuPublisher
 }
 static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
     auto source=texture(gpu.device.Get(),64,true,idle),other=texture(gpu.device.Get());
+    bool source_destroyed=false;watch_resource(source.Get(),source_destroyed);
     GpuPublisher publisher;require(publisher.bind_resource(gpu.queue.Get(),source.Get(),7,idle),"owned bind");
     require(!publisher.bind_resource(gpu.queue.Get(),other.Get(),8,idle),"binding replaced");
     auto* retained_source=source.Get();source.Reset(); // Publisher must own the sole remaining resource references.
@@ -120,17 +143,41 @@ static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
     const auto resource_generation=receiver.generation();
     require(receiver.world_state().valid&&receiver.world_state().generation==1&&!receiver.world_state().quiescing,"initial world");
     require(!publisher.begin_world_rebind(0)&&!publisher.begin_world_rebind(2)&&!publisher.commit_world_rebind(1,2,100),"invalid world begin/commit");
-    require(publisher.capture_resource(retained_source,7,idle,ticket(3)),"final old-world publication");
+    require(!publisher.retire_owned_source(1,7),"source retired outside quiescence");
+    {
+        QueueHold producer_pending(gpu.device.Get(),gpu.queue.Get());
+        require(publisher.capture_resource(retained_source,7,idle,ticket(3)),"final old-world publication");
+        require(publisher.begin_world_rebind(1),"world begin");
+        publisher.poll();GpuIdleSnapshot pending{};
+        require(!publisher.try_idle(pending)&&pending.in_flight&&pending.ready_completed<pending.serial,"producer hold did not remain pending");
+        require(!publisher.retire_owned_source(1,7)&&!source_destroyed,"pending producer source retired");
+        producer_pending.release();
+    }
     require(gpu.finish(),"old-world producer completion");publisher.poll();
-    require(publisher.begin_world_rebind(1),"world begin");
     const auto old_sequence=metadata.packet->sequence;const auto old_ticket=metadata.packet->ticket;GpuCaptureTrace quiesced{};
     require(!publisher.capture_resource(retained_source,7,idle,ticket(4),&quiesced)&&quiesced.reason==GpuCaptureReason::world_quiescing&&
         metadata.packet->sequence==old_sequence&&same_ticket(metadata.packet->ticket,old_ticket),"quiescence mutated slot");
     require(!publisher.commit_world_rebind(1,2,1000000003),"unacquired old slot committed");
+    require(!publisher.retire_owned_source(1,7)&&!source_destroyed,"unacquired old slot source retired");
     require(receiver.acquire(gpu.queue.Get())&&receiver.acquired_world_generation()==1,"old slot acquire during quiescence");
     require(!gpu_world_image_current(receiver.world_state(),receiver.acquired_world_generation(),receiver.ticket().sample.received_ns),"quiescing slot displayable");
     require(!publisher.commit_world_rebind(1,2,1000000003),"pending old slot committed");
-    receiver.acknowledge(gpu.queue.Get());require(gpu.finish(),"old-world ACK");
+    {
+        QueueHold consumer_pending(gpu.device.Get(),gpu.queue.Get());
+        receiver.acknowledge(gpu.queue.Get());GpuIdleSnapshot pending{};
+        require(!publisher.try_idle(pending)&&!pending.in_flight&&pending.done_completed<pending.serial,"consumer hold did not remain pending");
+        require(!publisher.retire_owned_source(1,7)&&!source_destroyed,"pending consumer source retired");
+        consumer_pending.release();
+    }
+    require(gpu.finish(),"old-world ACK");
+    require(!publisher.retire_owned_source(2,7)&&!publisher.retire_owned_source(1,8)&&!source_destroyed,"wrong source retirement identity accepted");
+    require(publisher.retire_owned_source(1,7)&&source_destroyed,"idle source references not fully released");
+    retained_source=nullptr; // Never inspect the released COM object.
+    require(!publisher.retire_owned_source(1,7),"source retirement replay accepted");
+    require(metadata.packet->sequence==old_sequence&&same_ticket(metadata.packet->ticket,old_ticket)&&
+        metadata.packet->ready==1&&metadata.packet->stopped==0&&receiver.generation()==resource_generation,"retirement changed shared snapshot");
+    auto replacement=texture(gpu.device.Get(),64,true,idle);
+    require(!publisher.bind_resource(gpu.queue.Get(),replacement.Get(),8,idle),"rebound before world commit");
     require(!publisher.commit_world_rebind(1,3,1000000003)&&!publisher.commit_world_rebind(1,2,0)&&!publisher.commit_world_rebind(2,3,1000000003)&&
         receiver.world_state().quiescing,"invalid commit reopened world");
     bool invoked=false;
@@ -141,16 +188,51 @@ static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
     require(receiver.generation()==resource_generation&&metadata.packet->sequence==old_sequence&&receiver.sequence()==UINT64(old_sequence),"commit reset GPU identity or serial");
     require(!receiver.acquire(gpu.queue.Get())&&!gpu_world_image_current(world,receiver.acquired_world_generation(),receiver.ticket().sample.received_ns),"old ACK became new-world image");
     require(!gpu_world_image_current(world,2,1000000003)&&!gpu_world_image_current({},2,1000000004),"minimum or invalid world accepted");
-    require(publisher.capture_resource(retained_source,7,idle,ticket(4)),"new-world publication");
+    GpuCaptureTrace detached{};
+    require(!publisher.capture_resource(replacement.Get(),8,idle,ticket(4),&detached)&&detached.reason==GpuCaptureReason::owned_binding_mismatch,"detached publisher admitted source");
+    require(!publisher.capture(nullptr),"detached publisher fell through swapchain path");
+    require(!publisher.bind_resource(gpu.queue.Get(),replacement.Get(),7,idle),"old resource generation rebound");
+    require(!publisher.bind_resource(gpu.queue.Get(),replacement.Get(),8,idle,true),"simulation policy changed on rebind");
+    auto resized=texture(gpu.device.Get(),128,true,idle);
+    require(!publisher.bind_resource(gpu.queue.Get(),resized.Get(),8,idle),"owned descriptor resized");
+    D3D12_COMMAND_QUEUE_DESC qd{};ComPtr<ID3D12CommandQueue> different_queue;
+    gpu_check(gpu.device->CreateCommandQueue(&qd,IID_PPV_ARGS(&different_queue)),"different direct queue");
+    require(!publisher.bind_resource(different_queue.Get(),replacement.Get(),8,idle),"different queue rebound");
+    require(publisher.bind_resource(gpu.queue.Get(),replacement.Get(),8,idle)&&publisher.state==2,"next-world source rebind");
+    require(!publisher.prepare()&&!publisher.bind_resource(gpu.queue.Get(),replacement.Get(),9,idle),"rebind allowed rebuild or live replacement");
+    gpu.device->CreateRenderTargetView(replacement.Get(),nullptr,rtv->GetCPUDescriptorHandleForHeapStart());
+    gpu.begin();if(idle!=D3D12_RESOURCE_STATE_RENDER_TARGET)gpu_barrier(gpu.list.Get(),replacement.Get(),idle,D3D12_RESOURCE_STATE_RENDER_TARGET);
+    const float green[]={0,1,0,1};gpu.list->ClearRenderTargetView(rtv->GetCPUDescriptorHandleForHeapStart(),green,0,nullptr);
+    if(idle!=D3D12_RESOURCE_STATE_RENDER_TARGET)gpu_barrier(gpu.list.Get(),replacement.Get(),D3D12_RESOURCE_STATE_RENDER_TARGET,idle);gpu.submit();
+    require(!publisher.capture_resource(other.Get(),8,idle,ticket(4),&detached)&&detached.reason==GpuCaptureReason::owned_binding_mismatch,"old unbound source admitted");
+    require(!publisher.capture_resource(replacement.Get(),7,idle,ticket(4),&detached)&&detached.reason==GpuCaptureReason::owned_binding_mismatch,"old generation admitted");
+    auto stale=ticket(3);stale.sample.received_ns=1000000004;
+    require(!publisher.capture_resource(replacement.Get(),8,idle,stale,&detached)&&detached.reason==GpuCaptureReason::ticket_invalid,"retired ticket reused");
+    stale=ticket(4);stale.sample.received_ns=1000000003;
+    require(!publisher.capture_resource(replacement.Get(),8,idle,stale,&detached)&&detached.reason==GpuCaptureReason::ticket_invalid,"old-world sample reused");
+    require(publisher.capture_resource(replacement.Get(),8,idle,ticket(4)),"new-world publication");
     require(gpu.finish(),"new-world producer completion");publisher.poll();
     require(receiver.acquire(gpu.queue.Get())&&receiver.acquired_world_generation()==2&&
         gpu_world_image_current(receiver.world_state(),receiver.acquired_world_generation(),receiver.ticket().sample.received_ns),"new-world image rejected");
+    require(metadata.packet->sequence==old_sequence+1&&receiver.generation()==resource_generation,"rebind reset serial or slot identity");
+    gpu.begin();gpu_barrier(gpu.list.Get(),receiver.texture.Get(),D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_COPY_SOURCE);
+    D3D12_TEXTURE_COPY_LOCATION dst{},src{};dst.pResource=readback.Get();dst.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;dst.PlacedFootprint=fp;
+    src.pResource=receiver.texture.Get();src.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;gpu.list->CopyTextureRegion(&dst,0,0,0,&src,nullptr);
+    gpu_barrier(gpu.list.Get(),receiver.texture.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_COMMON);gpu.submit();
+    void* mapped{};D3D12_RANGE range{0,SIZE_T(bytes)};gpu_check(readback->Map(0,&range,&mapped),"new-world pixels");
+    bool green_pixels=true;for(unsigned y=0;y<32;++y)for(unsigned x=0;x<64;++x){auto* p=static_cast<unsigned char*>(mapped)+size_t(y)*fp.Footprint.RowPitch+x*4;
+        if(p[0]!=0||p[1]!=255||p[2]!=0||p[3]!=255)green_pixels=false;}
+    D3D12_RANGE empty{};readback->Unmap(0,&empty);require(green_pixels,"new source pixels not published");
     receiver.acknowledge(gpu.queue.Get());require(gpu.finish(),"new-world ACK");
     const auto sequence=metadata.packet->sequence;const auto frozen=metadata.packet->ticket;
-    publisher.mark_stopped();require(!publisher.capture_resource(retained_source,7,idle,ticket(3))&&metadata.packet->sequence==sequence&&same_ticket(metadata.packet->ticket,frozen),"stop mutated image slot");
+    require(publisher.begin_world_rebind(2)&&publisher.retire_owned_source(2,8),"second source retirement");
+    require(!publisher.bind_resource(gpu.queue.Get(),other.Get(),9,idle),"second retirement bypassed world commit");
+    publisher.mark_stopped();require(!publisher.capture_resource(replacement.Get(),8,idle,ticket(5))&&metadata.packet->sequence==sequence&&same_ticket(metadata.packet->ticket,frozen),"stop mutated image slot");
+    require(!publisher.begin_world_rebind(2)&&!publisher.commit_world_rebind(2,3,1000000004)&&
+        !publisher.retire_owned_source(2,8)&&!publisher.bind_resource(gpu.queue.Get(),other.Get(),9,idle),"stopped publisher revived");
     GpuIdleSnapshot stopped{};require(!publisher.try_idle(stopped),"stopped publisher accepted as resumable idle");
     require(publisher.drain(1000),"producer drain");receiver.close();require(publisher.close(),"producer close");gpu.verify();
-    printf("{\"owned_idle_state\":%u,\"frames\":4,\"world_handoff_verified\":true,\"two_eye_pixels_verified\":true,\"private_ticket_verified\":true}\n",unsigned(idle));
+    printf("{\"owned_idle_state\":%u,\"frames\":4,\"world_handoff_verified\":true,\"source_retirement_verified\":true,\"pending_fences_rejected\":true,\"new_source_pixels_verified\":true,\"two_eye_pixels_verified\":true,\"private_ticket_verified\":true}\n",unsigned(idle));
 }
 static void world_epoch_policy(){
     GpuPacket packet{};packet.magic=0x47564731;packet.version=gpu_packet_version;packet.size=sizeof(packet);packet.world_generation=1;
