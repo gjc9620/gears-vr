@@ -1,5 +1,11 @@
 # 岔路 UI 的实际位置与停靠关系
 
+## 2026-10-19 整合候选复测
+
+现有源码的 `0ffa8fb` / `afb27a2` 已修正可复现的正常完成与续租竞争；actual17未记录具体抛出位置，不能回溯认定它必由某一个分支触发。当前推荐尺寸默认DLL的PathChoice service/trial/close等7项编译开关仍为OFF，因此不能把源码修正当作已交付UI修复。
+
+新鲜 `build-runtime-release-integration1/GearsCaptureRuntimeIntegration1.dll` 保留默认推荐尺寸和world-handoff配置，开启7项PathChoice相关开关，SHA256 `41a5b882ab1202940c0590d88a6c732609fd0db9511157e19f51f802064cc065`。完整构建及33项启动/组件调用通过，Ninja记录461项依赖。首轮 `path-fit-integration1-20261019` 未进入VR激活，结束状态cancelled_before_activation；没有布局保持/恢复验收数据。Prime入口恢复、正常游戏退出和5文件原哈希独立确认通过。旧driver没有把无会话超时标记为错误，因此它的error=null不能解释为通过；下一轮必须明确这一失败并使用获准的前台无人值守启动路径。尚未替换默认包。
+
 2026-10-18。`50cbfcd` 增加默认不读取的布局细节选项。本轮在冻结 Native70 的实际游戏中取得 `DeltaChoosePath / UIScene_PathChoice` 的完整13节点树及 Position、DockTargets 元数据和值，保留 `read_only=true`、`consistent_reread=true`、23,799项复读验证。它是顺序CPU采样，不是原子快照或GPU裁剪证明。
 
 证据保存在 ignored `analysis/runtime/ui-layout-details7-20261018.json` 的 `path_layout_details`。导航只向自有 HWND 发送已确认绑定的鼠标消息；达到碰撞后停止移动，等待关卡脚本显示岔路菜单。测试结束正常关闭自有游戏，native cleanup、设置与四个profile恢复通过。未启用旧FCanvas平移实验或修改UI位置。
