@@ -14,6 +14,15 @@ import verify_stopped
 
 
 class VerifyStoppedTests(unittest.TestCase):
+    def test_full_owned_inventory_keeps_every_entry_and_rejects_duplicates(self):
+        def status(count):
+            return ''.join(f'hook_target={0x140000000+i*32:x} create=MH_OK queue=MH_OK\n' for i in range(count))
+        for count in (2, 65, 87):
+            self.assertEqual(verify_stopped.hook_targets(status(count)),
+                             [0x140000000+i*32 for i in range(count)])
+        for raw in (status(1), status(88), status(65)+status(2)):
+            with self.assertRaises(RuntimeError):verify_stopped.hook_targets(raw)
+
     # Historical artifact 1 entry bytes, independent of status-file contents.
     ROOT_ENTRY = bytes.fromhex('498b00498bc848ffa0a8040000')
     CAMERA_ENTRY = bytes.fromhex('488bc45356574154415541564157')
@@ -168,7 +177,7 @@ class VerifyStoppedTests(unittest.TestCase):
 
     def test_clean_status_and_inventory_preconditions_remain_required(self):
         cases = [dict(pid=322), dict(stopped=False), dict(rvas=(0x296178,)),
-                 dict(rvas=(0x296178, 0x296178)), dict(rvas=tuple(range(65)))]
+                 dict(rvas=(0x296178, 0x296178)), dict(rvas=tuple(range(88)))]
         for values in cases:
             with self.subTest(values=values):
                 self.write_status(**values)

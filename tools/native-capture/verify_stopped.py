@@ -86,6 +86,16 @@ def check_path_close(read, base, target, native_pointer_addresses=()):
     return checks
 
 
+def hook_targets(status):
+    targets = [int(value, 16) for value in re.findall(r'hook_target=([0-9A-Fa-f]+) create=MH_OK queue=MH_OK', status)]
+    # capture.cpp: largest base 60 + owned UI 4 + optional hook slots 23.
+    # This is only an inventory bound; every entry still requires independent
+    # byte verification below. The runtime-size candidate installs 65 hooks.
+    if not 2 <= len(targets) <= 87 or len(set(targets)) != len(targets):
+        raise RuntimeError('Unexpected hook target inventory')
+    return targets
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--pid', type=int, required=True)
@@ -95,7 +105,7 @@ def main():
     status = args.status.read_text()
     if f'capturing pid={args.pid} ' not in status or 'stopped disable_status=0 active=0' not in status:
         raise RuntimeError('Matching PID and clean stopped status required')
-    targets = [int(value, 16) for value in re.findall(r'hook_target=([0-9A-Fa-f]+) create=MH_OK queue=MH_OK', status)]
+    targets = hook_targets(status)
     # UI observer adds four VM/Canvas entries, Canvas/subtitle consumers, and
     # optionally the Material consumer, three graphics settings callbacks, and
     # the UIOptionList selection transaction and optional ResourceBarrier entry.
@@ -103,8 +113,6 @@ def main():
     # SetPipelineState, ExecuteBundle) use the existing system-module PE/relocation
     # verification below; there is no additional allowlist or byte exemption.
     # Owned Material adds its producer and the certified nonindexed upload entry.
-    if not 2 <= len(targets) <= 64 or len(set(targets))!=len(targets):
-        raise RuntimeError('Unexpected hook target inventory')
     resolver = Resolver(args.pid, json.loads((ROOT / 'tools/package-inspector/reloaded-profile.json').read_text()))
     checks = []
     try:

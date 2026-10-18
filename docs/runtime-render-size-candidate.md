@@ -1,5 +1,13 @@
 # Runtime render size candidate
 
+## First actual-game evidence, 2026-10-18
+
+Session `continuous-stereo-24120-20261018-185551-6eeae1ab` used the material-policy candidate and simulator recommendation 1280×1400 at 1.0. The native engine target was 2560×1400 with `built=1`, both-eye draw/submission masks 3 and error 0. It published 146 eye pairs; XR reported 610 successful scene submissions and 146 copies over about 6.75 seconds. The saved 2560×1400 last GPU image visually contains game scenery in both halves. This is actual-game source image and simulator submission evidence, not headset acceptance, temporal correctness or long-session stability.
+
+Desktop swapchain output remained 8×8. The coordinator stopped this short test on that observation; subsequent logs and GPU image establish that the independent VR path was nevertheless producing scenery. Future tests must distinguish the desktop observer from owned VR target evidence. No window movement or activation was used. Game exited normally and the four pre-test profile hashes were restored.
+
+The session remains **incomplete**: native reports `resources_retained=1`, with scene Owner retention until process exit, so the existing cleanup gate correctly failed. It also reports `world_handoff_supported=0`, which remains a delivery gap for checkpoint/world changes. Do not waive these checks. Independent entry verification initially rejected the 65-hook inventory against its obsolete 64 limit; the limit now matches capture.cpp's maximum 87 slots, with all per-entry byte checks preserved. All 65 entries then independently matched. Verifier tests cover the larger inventory, duplicate and over-capacity rejection (18 tests pass). Raw status and both GPU images are preserved under ignored `analysis/runtime/resolution-material-24120-evidence/`.
+
 This candidate implements the 0.0.1 requirement to render VR independently of the desktop resolution. It is not enabled by the default manifest yet and has no new game or headset acceptance evidence.
 
 `runtime_render_size: true` in a candidate manifest enables the launcher control. `render_scale` in the user configuration defaults to `1.0`, accepts `0.25` through `2.0`, and multiplies each runtime recommended eye dimension. Dimensions round upward to whole pixels. Both eyes use the larger recommended width and height when recommendations differ. A recommendation of 3072×3264 yields 2151×2285 per eye at 0.7, or 3072×3264 at 1.0.
