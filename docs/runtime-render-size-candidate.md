@@ -1,5 +1,19 @@
 # Runtime render size candidate
 
+## Interrupted-handoff coverage attempt, 2026-10-19
+
+`checkpoint-handoff-stop-actual2-20261019` used the current default manifest,
+scale 1.0, child-only simulator and muted background launch. State-checked
+checkpoint confirmation completed; sampled generation changed 1 to 2 and the
+native commit QPC was 2143641623022. Stop QPC was 2143650047135, **after** that
+commit. The test correctly reports `race_observed=false`: its status polling
+missed phases 1/2, so it does not prove interruption during resource recreation.
+Native cleanup, all 65 restored-entry checks, normal exit and five original
+file hashes passed, independently checked by the coordinator. The earlier
+actual1 stopped before menu input after a PermissionError; driver2 uses the
+existing share-delete JSON reader and preserves traceback/path diagnostics.
+The original error's exact location was not recorded and remains unproven.
+
 ## Default mode promotion, 2026-10-19
 
 Development package after audio integration: ignored
