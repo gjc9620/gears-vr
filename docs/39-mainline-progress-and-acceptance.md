@@ -24,6 +24,7 @@ DLSS 隔离启动入口、实际输出分支及尚未解决的缺口见[文档15
 - 用户在本轮 Quest 3／VD Native103／XR101 测试中报告：游戏有时中断显示，头显出现“Waiting for game image”（用户原文“watingforgame image”）。列为未解决的间歇显示中断；当前没有证据把所有此类中断归为同一原因。
 - 本轮上 Troika 机枪黑屏已取得实际角色、相机和物品管理器证据：三次一致读取均显示 inventory.Outer 为 Driver 所在的 PersistentLevel，反射 Actor.Owner／Instigator 才指向 Driver；旧校验错误要求 Outer 等于 Driver，world rebind 因 `Mounted inventory owner mismatch` 反复失败。下机枪后发布计数恢复增长。修复正在实施，尚未在新构建中验证机枪画面。
 - 用户继续自行测试，并将自行使用启动器启动 KRVR、AVP 及尝试 DLSS。助手只记录和离线修复，不替用户启动、重启、关闭游戏、切换运行时或抢焦点；等待用户反馈。
+- 用户随后报告切换游戏显示为 4K 后头显**没有进入 VR 应用**；用户明确纠正这不是 VR 内的大屏幕模式。15:35–15:39 的四次启动实际选择系统 KRVR，使用默认 Native70／Borderless1，而此前 Quest 3／VD 成功轮使用私有 Native103／XR101，不能将版本与运行时差异归因于 4K。最新 4K 轮检测到 3840×2160，KRVR `xrBeginSession` 成功，状态 FOCUSED，首个菜单 QUAD 成功 `xrEndFrame`；客户端连接并持续收帧、回传节奏反馈。游戏进程在原生双目激活前退出，日志只记录玩家相机未稳定；是否玩家主动退出或加载故障未知。头显没有切入应用的现场反馈仍未解释，需按实际佩戴设备和接收端做对照，不能宣称 4K 被修复或 KRVR 头显显示成功。
 - 版本需以各次日志为准：本轮手动协调的私有候选是 Native103／XR101，仓库默认清单仍是 Native70／Borderless1。两个清单均启用 DLSS/DLAA 禁用保护；菜单选项不能证明 DLSS 已实际执行。DLSS 兼容仍未完成，未为本次自主测试解除保护。
 - 原始证据留在 ignored `analysis/runtime/`：`quest3-mounted-inventory-20261018.jsonl`、`quest3-mounted-admission-audit-20261018.json`、`quest3-mounted-after-20261018.jsonl`，关联会话 `continuous-stereo-35016-20261018-151007-0428b25e`。先前三个真机图像/追踪样本等待用户结束后正常停止，再关联最终原生阶段和成功 XR 提交记录；尚不能称真机 6DoF 已通过。
 
