@@ -447,6 +447,12 @@ bool publication_failed(){return owned_xr_probe&&stereo_gpu_publish&&error;}
 gears_owned_retirement::QueueDrain<> shutdown_fence;
 bool shutdown_started{},shutdown_closed{};
 gears_frame_link::OwnedRetirement handoff_snapshot{};
+struct HandoffReclaimReceipt {
+ uint64_t world{},generation{},cutoff{};
+ gears_frame_link::Snapshot before{},after{};
+};
+std::array<HandoffReclaimReceipt,8> handoff_reclaims{};
+unsigned handoff_reclaim_count{};uint64_t handoff_reclaim_overflow{};
 uint64_t handoff_cutoff{},handoff_world{};
 bool handoff_prepared{},handoff_gpu_drained{},handoff_tracker_retired{},handoff_rearmed{},handoff_fault{};
 bool begin_shutdown(){
@@ -518,7 +524,19 @@ bool finish_handoff(gears_owned_retirement::ResourceIdentity identity){
  if(handoff_tracker_retired)return identity.world==handoff_world&&identity.ticket_cutoff==handoff_cutoff;
  if(!handoff_gpu_drained||!handoff_current()||identity.world!=handoff_world||identity.ticket_cutoff!=handoff_cutoff||
     identity.resource!=resource||identity.generation!=generation||identity.queue!=handoff_snapshot.output.queue)return false;
+ const auto reclaim_before=tracker.snapshot();
  if(!tracker.retire_owned_output(handoff_snapshot,true)){handoff_fault=true;return false;}
+ // The certified retirement above must succeed before discarding any list
+ // association. Under the caller's session_native_mutex/frame_hook_mutex and
+ // closed native admission this
+ // seals unrelated old recordings too: late submissions require real Reset/
+ // Create. Reclaim metadata before releasing canonical-identity COM leases;
+ // preserve monotonic generations, retired tickets and sticky capacity faults.
+ tracker.retire_present_interval();
+ const auto reclaim_after=tracker.snapshot();
+ if(handoff_reclaim_count<handoff_reclaims.size())
+  handoff_reclaims[handoff_reclaim_count++]={handoff_world,generation,handoff_cutoff,reclaim_before,reclaim_after};
+ else ++handoff_reclaim_overflow;
  if(image_tickets.highest_id()>handoff_cutoff||!image_tickets.retire_through(image_tickets.highest_id())){handoff_fault=true;return false;}
  for(auto& list:created_lists)if(list){list->Release();list=nullptr;}
  texture=nullptr;queue->Release();queue=nullptr;
@@ -597,6 +615,14 @@ void print(FILE* file){
  if(continuous_probe)fprintf(file,"native_owned_list_creation count=%u closed=%u tracker_creates=%llu retained_until_exit=1\n",list_creation_count,list_creation_closed,s.list_creates);
  fprintf(file,"native_owned_tracker list_capacity=%zu active_lists=%zu list_highwater=%zu list_overflow=%llu event_overflow=%llu target_overflow=%llu capacity_bad=%u\n",
   gears_frame_link::Tracker::list_capacity,s.active_lists,s.list_highwater,s.list_overflow,s.event_overflow,s.target_overflow,s.capacity_bad);
+ fprintf(file,"native_owned_handoff_reclaims count=%u limit=%zu overflow=%llu association_only=1 world_commit_proven=0\n",
+  handoff_reclaim_count,handoff_reclaims.size(),handoff_reclaim_overflow);
+ for(unsigned i=0;i<handoff_reclaim_count;++i){auto const& row=handoff_reclaims[i];
+  fprintf(file,"native_owned_handoff_reclaim index=%u world=%llu resource_generation=%llu ticket_cutoff=%llu before_epoch=%llu after_epoch=%llu before_active=%zu after_active=%zu before_highwater=%zu after_highwater=%zu before_list_overflow=%llu after_list_overflow=%llu before_capacity_bad=%u after_capacity_bad=%u\n",
+   i,row.world,row.generation,row.cutoff,row.before.world_epoch,row.after.world_epoch,
+   row.before.active_lists,row.after.active_lists,row.before.list_highwater,row.after.list_highwater,
+   row.before.list_overflow,row.after.list_overflow,row.before.capacity_bad,row.after.capacity_bad);
+ }
  {
   std::lock_guard<std::mutex> lock(list_creation_failure_mutex);auto const& f=list_creation_failure;
   fprintf(file,"native_owned_list_failure subtype=%u legend=none:0,output_read:1,null_output:2,identity_qi:3,duplicate_identity:4,lease_capacity:5,tracker_create:6 hr=%08lx object=%llx identity=%llx open=%u count=%u closed=%u tracker_called=%u list_capacity=%zu\n",

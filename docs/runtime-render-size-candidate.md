@@ -8,6 +8,25 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+DepthReclaim1 (`2f9276a7e818047ec68f08db165102544918d935cbc520fafba13e45f91ee9cd`)
+passed fresh build/component/startup checks and the scale2 repeat with two
+checkpoint reloads. Certified retirement now precedes explicit association
+reclamation, under the existing session/frame locks and closed admission;
+canonical COM leases are released afterward. Pending or unsubmitted owned
+work still prevents retirement. The existing primitive preserves monotonic
+list generations and sticky faults; tests cover768 lifetime list identities,
+stale references/reuse and failed retirement without erasing evidence.
+
+Actual receipts show world1 active476->0 and world2 active404->0, no capacity
+fault or list overflow; final active326, lifetime high-water476. Each world
+has accepted generic depth-clear receipts (1916 applications/restorations
+total). Both final5120x2800 readbacks retain scene content beyond the old
+desktop width/height. Two reloads, native cleanup, independent entry checks,
+normal close and five-file restoration all passed. This proves the tested
+cross-world accumulation case, not unlimited identities within one world.
+Evidence: `runtime-depth-reclaim1-scale2-run1-20261019*`, session40880.
+Lower-scale and release-build validation remain pending.
+
 DepthGeneral1 replaces the trial's fixed dimensions with the validated
 session RenderSizePlan. It compares the desktop Present inventory against
 a read-only, single-lock snapshot of the currently admitted anchored
