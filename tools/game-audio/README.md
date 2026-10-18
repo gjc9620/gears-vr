@@ -1,5 +1,12 @@
 # Game audio launch policy
 
+Actual packaged-helper regression (2026-10-19): game PID 43444's automated run
+matched and muted one exclusive game session, restored it once, and exited zero
+with restore_pending/read_failed/mute_failed all zero. Receipt:
+`analysis/runtime/vr-launcher-session.1f2201b2d8a84306b70176c9baa3c2ea.audio.jsonl`.
+The UI navigation attempt itself failed; this receipt establishes only audio
+mute/restoration. Manual 100% mode still has offline/policy evidence only.
+
 `GEARSVR_TEST_MUTE_GAME=1` opts the repository launcher into per-process test muting.
 Set it only on the automated test's child environment. It takes precedence over
 the manual foreground launch policy. Manual foreground launches set each newly

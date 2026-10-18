@@ -2,6 +2,15 @@
 
 ## Default mode promotion, 2026-10-19
 
+Development package after audio integration: ignored
+`analysis/release-zips/GearsVR-0.0.1-development-RuntimeScale-Audio-20261019.zip`,
+13,979,905 bytes, SHA256
+`3fd496ac54b730317f8843fc36d4725227f0606036a1715e6d82918840d9d233`.
+The staged inventory and freshly extracted package both passed bundled-Python
+preflight. Extraction receipt is `runtime-scale-audio-extracted-preflight.json`.
+This package contains the default runtime-size mode and packaged audio helper;
+it is not a public release or a fix for outstanding mounted/UI/DLSS issues.
+
 User confirmed runtime-recommended per-eye size times launcher render scale
 replaces game-resolution VR rendering in 0.0.1 and takes priority over DLSS.
 `tools/vr-launcher/manifest.json` now selects the previously tested world-handoff
