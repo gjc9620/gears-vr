@@ -29,6 +29,13 @@ static void check(bool value){++checks;if(!value)throw std::runtime_error("live 
 static void hr(HRESULT value){check(SUCCEEDED(value));}
 template<class T> static void put(unsigned char* bytes,size_t offset,T const& value){std::memcpy(bytes+offset,&value,sizeof(value));}
 int main(){try{
+    // Inactive observation must not dereference even a synthetic caller's
+    // list/arguments on return. The ordinary copy self-test uses such a list.
+    ngx_epoch_pair::reset_capture(false);
+    auto invalid_list=reinterpret_cast<ID3D12GraphicsCommandList*>(1);
+    auto invalid_copy=reinterpret_cast<D3D12_TEXTURE_COPY_LOCATION const*>(1);
+    {ngx_epoch_pair::CopyScope ignored(invalid_list,invalid_copy,0,0,0,invalid_copy,nullptr,0);
+        check(ignored.index<0);ignored.returned(invalid_list,invalid_copy,invalid_copy,nullptr);}
     const uint32_t extent[]{2133,720},buffer[]{2560,1080};std::memcpy(renderer_bytes.data()+0xd0,extent,8);put(module.data(),0x1c3b3b8,buffer[0]);put(module.data(),0x1c3b3bc,buffer[1]);
     const uintptr_t h=300,p=400;put(module.data(),gears_ngx_route::handle_cell_rva,h);put(module.data(),gears_ngx_route::parameter_cell_rva,p);
     const std::array<float,4> sr0{0,0,853,720},sr1{1280,0,853,720};const std::array<int32_t,4> tr0{0,0,853,720},tr1{1280,0,853,720};

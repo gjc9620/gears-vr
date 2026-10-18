@@ -78,6 +78,7 @@ struct CopyScope {
         has_box=b!=nullptr;index=probe.copy(list(c),dst,{x,y,z},src,b?&box:nullptr,caller);
     }
     void returned(ID3D12GraphicsCommandList* c,D3D12_TEXTURE_COPY_LOCATION const* d,D3D12_TEXTURE_COPY_LOCATION const* s,D3D12_BOX const* b){
+        if(index<0)return; // An unselected copy owns no observation or typed list lease.
         std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);D3D12_TEXTURE_COPY_LOCATION sd{},dd{};bool valid=safe_copy(&sd,s,sizeof(sd))&&safe_copy(&dd,d,sizeof(dd))&&
             sd.pResource==src.pResource&&dd.pResource==dst.pResource&&sd.Type==src.Type&&dd.Type==dst.Type;
         if(valid&&src.Type==D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX)valid=sd.SubresourceIndex==src.SubresourceIndex;
