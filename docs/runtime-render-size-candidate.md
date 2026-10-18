@@ -1,5 +1,34 @@
 # Runtime render size candidate
 
+## Integrated default: two actual checkpoint reloads, 2026-10-19
+
+After default promotion to Integration1 (native SHA256
+`41a5b882ab1202940c0590d88a6c732609fd0db9511157e19f51f802064cc065`,
+PathChoice service enabled), `runtime-integration-checkpoint-20261019-run3`
+completed two normal reloads of the current checkpoint in the same game process.
+Session: `continuous-stereo-9480-20261019-044100-2fdf1b18`.
+The launcher authenticated the child simulator's recommended 1280x1400 per eye
+at scale1; desktop settings were not used to select the VR dimensions.
+
+World generation advanced 1→2→3 and commit count 0→1→2. Each generation had new
+native publication/tickets and a matching XR `world_handoff_card_ended` receipt
+with `world_valid=true`, `quiescing=false`, `replacement_projection=true`.
+Each fresh GPU file was complete 2560x1400 SBS, matching the authenticated plan;
+the coordinator viewed the second reload's image and confirmed both scene eyes
+were present. Native cleanup, entry restoration, owner exit0 and independent
+five-file original SHA256 restoration passed. Report SHA256:
+`cd5d64c933382ef6d6040cf46e121f91a23db86a805db68b58e8480af4e87c91`.
+
+Runs1/2 each completed the first reload, then the test's second menu-open guard
+rejected the observed player_index0 because it only accepted initial -1.
+Run2 retained the exact read-only consistent snapshot; the private test now
+accepts those two observed indices with all other identity/scene checks intact.
+Twelve offline driver checks passed. No production admission rule was changed.
+This evidence covers enabled PathChoice service across world replacement, not
+an open PathChoice panel during reload, all checkpoints, mid-retirement stop,
+real-headset quality, mounted play or DLSS. Runtime-recommended dimensions ×
+launcher multiplier remain the required 0.0.1 default, ahead of DLSS.
+
 ## Interrupted-handoff coverage attempt, 2026-10-19
 
 Follow-up `checkpoint-prepare-stop-actual3-20261019` covers cancellation during
