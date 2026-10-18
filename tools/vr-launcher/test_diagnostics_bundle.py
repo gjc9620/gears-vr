@@ -179,6 +179,31 @@ class BundleTests(unittest.TestCase):
         for private in ('PRIVATE', '12345678', 'expected_raw', 'camera_observation', 'roles', 'detail'):
             self.assertNotIn(private, raw)
 
+    def test_render_size_feedback_keeps_typed_settings_and_filters_hostile_values(self):
+        config = self.root / 'tools/vr-launcher/config.json'
+        manifest = self.root / 'tools/vr-launcher/manifest.json'
+        config.write_text(json.dumps({'render_scale': .7, 'game_path': 'PRIVATE_GAME_PATH'}))
+        manifest.write_text(json.dumps({'runtime_render_size': True, 'unlisted_render_setting': 'PRIVATE'}))
+        self.export()
+        _, raw, docs = self.read_zip()
+        self.assertEqual(docs['configuration.json']['config']['render_scale'], .7)
+        self.assertIs(docs['configuration.json']['manifest']['runtime_render_size'], True)
+        self.assertNotIn('PRIVATE', raw)
+        for scale, flag in ((True, 1), ('0.7', 'true'), (None, None),
+                            (float('nan'), []), (float('inf'), {})):
+            config.write_text(json.dumps({'render_scale': scale}))
+            manifest.write_text(json.dumps({'runtime_render_size': flag}))
+            self.export(overwrite=True)
+            _, _, docs = self.read_zip()
+            self.assertNotIn('render_scale', docs['configuration.json']['config'])
+            self.assertNotIn('runtime_render_size', docs['configuration.json']['manifest'])
+        config.write_text(json.dumps({'render_scale': 1}))
+        manifest.write_text(json.dumps({'runtime_render_size': False}))
+        self.export(overwrite=True)
+        _, _, docs = self.read_zip()
+        self.assertEqual(docs['configuration.json']['config']['render_scale'], 1)
+        self.assertIs(docs['configuration.json']['manifest']['runtime_render_size'], False)
+
     def test_corrupt_oversized_logs_and_partial_jsonl_create_warnings_not_fatal(self):
         broken = self.session(1)
         broken.write_text('{')

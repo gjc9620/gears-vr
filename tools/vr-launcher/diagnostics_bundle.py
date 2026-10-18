@@ -21,14 +21,14 @@ SESSION_NAME = re.compile(r'continuous-stereo-\d+-\d{8}-\d{6}-[a-f0-9]{8}\.json\
 FLAGS = set(('startup_menu anchor_observer ui_observer outage_diagnostics image_ticket_diagnostics shutdown_diagnostics '
              'ui_hud_plane gpu_snapshot graphics_startup_lock graphics_menu_lock menu_recovery cinematic_camera '
              'world_recovery hud_size_control crosshair_assignment_observer movie_display hud_layout_control '
-             'camera_distance_control startup_selftests_prelaunch path_choice_center').split())
+             'camera_distance_control startup_selftests_prelaunch path_choice_center runtime_render_size').split())
 SESSION_FIELDS = set(('schema phase passed native_started native_stop_signaled native_cleanup_verified entry_restore_verified '
                       'xr_stop_signaled xr_exit_code startup_cancelled startup_panel_submitted preflight_frames '
                       'operator_motion_requested simulation_not_physical_tracking physical_tracking_verified '
                       'hud_horizontal_fov_degrees camera_closer_metres hud_element_scale hud_center_scale path_choice_center_enabled '
                       'path_choice_center_worker_joined').split())
 CONFIG_FIELDS = set(('schema stereo_units_per_metre hud_horizontal_fov_degrees camera_closer_metres '
-                     'hud_element_scale hud_center_scale launcher_language').split()) | FLAGS
+                     'hud_element_scale hud_center_scale launcher_language render_scale').split()) | FLAGS
 ERROR_FIELDS = ('error', 'native_cleanup_error', 'xr_cleanup_error', 'xr_forced_cleanup_reason',
                 'path_choice_center_close_error', 'path_choice_center_cleanup_error')
 COUNTERS = set(('published epoch_submit_total capture_attempts capture_skipped busy active pending retained world_generation '
