@@ -1,0 +1,257 @@
+#pragma once
+#include "ngx_stereo_feature_pair.h"
+#include <atomic>
+#include <cstring>
+#include <memory>
+
+// Unwired production adapter. No hook installation, environment switch, global
+// handle write, COM cast, barrier, Execute or guessed NGX result code lives here.
+// The host holds Entry across wrapper setters AND its SDK tail dispatcher.
+namespace gears_ngx_stereo {
+// Historical artifact1 native contracts; these constants do not authenticate
+// the current process. Current-byte gates remain mandatory before activation.
+using NativeResult=uint32_t;
+constexpr NativeResult dispatch_unavailable=0xbad00007u;
+constexpr NativeResult named_result_success=1u;
+// Native callers accept every non-BAD value. This is broader than the named
+// NVSDK_NGX_Result_Success value1; preserve unknown accepted raw values.
+constexpr bool native_result_accepted(NativeResult raw){return (raw&0xfff00000u)!=0xbad00000u;}
+constexpr size_t create_consumed_span=0x19; // Consumer-complete, not sizeof.
+constexpr size_t evaluate_initialized_span=0x168;
+struct alignas(8) CreateShadow {
+    std::array<unsigned char,create_consumed_span> bytes{};
+    std::array<unsigned char,7> owner_alignment_padding{}; // Not native fields.
+};
+struct alignas(8) EvaluateShadow {std::array<unsigned char,evaluate_initialized_span> bytes{};};
+struct AdapterPrerequisites {
+    bool enabled{}; // Explicit opt-in; default construction never calls SDK.
+    bool current_wrappers{},current_dispatchers{},current_release{},current_builder{};
+    bool consumed_structure_spans{},result_semantics{},serial_parameter_consumption{};
+    bool producer_domains{},typed_resource_domains{},retained_output_accepted{},release_context{};
+    bool ready()const{return enabled&&current_wrappers&&current_dispatchers&&current_release&&current_builder&&
+        consumed_structure_spans&&result_semantics&&serial_parameter_consumption&&producer_domains&&
+        typed_resource_domains&&retained_output_accepted&&release_context;}
+};
+struct Command {
+    uint64_t raw{},list{},generation{},device{};bool direct{};
+};
+inline bool valid(Command c,Identity id){return c.raw&&c.list&&c.generation&&c.device==id.device&&c.direct;}
+// Derive the logical eye only from the attested producer's matching Color,
+// Depth and MV domains. TLS current-view eye is intentionally not an input.
+inline bool select_input_eye(Layout const& l,Extent rendered,std::array<Point,3> const& bases,unsigned& eye){
+    if(!valid(l)||!same(rendered,l.input)||!same(bases[0],bases[1])||!same(bases[0],bases[2]))return false;
+    for(unsigned i=0;i<2;++i)if(same(bases[0],l.input_base[i])){eye=i;return true;}return false;
+}
+struct ExecuteReceipt {
+    Submission submission{};uint64_t order{};unsigned member{};
+};
+// These callbacks are the already resolved, unfiltered originals. Host maps
+// copy() to the original typed CopyTextureRegion arguments plus this one box.
+struct AdapterBackend {
+    virtual ~AdapterBackend()=default;
+    virtual NativeResult create(uint64_t command,uint32_t feature,uint64_t parameters,uint64_t* handle)=0;
+    // Dispatcher7c8440 forwards R9 as a callback through helper7c7bd0.
+    // The admitted be5c58 wrapper explicitly supplies zero at be6188.
+    virtual NativeResult evaluate(uint64_t command,uint64_t handle,uint64_t parameters,uint64_t callback)=0;
+    virtual NativeResult release(uint64_t handle)=0;
+    virtual void copy(CopyPlan const&)=0;
+};
+struct [[nodiscard]] DispatchResult {
+    bool admitted{},raw_valid{};NativeResult raw{};uint64_t public_handle{};
+};
+struct RecordedOutput {
+    Identity identity{};uint64_t ticket{},color{};
+    Layout layout{};std::array<CopyPlan,2> copies{};
+};
+// Consumes an adapter receipt after both boxed originals returned. This is a
+// geometry proof only: the host must separately join the actual final Color SRV
+// and draw/list generation, and reject publication on failed execution proof.
+inline bool output_geometry(RecordedOutput const& r,Identity id,uint64_t ticket,uint64_t color,
+    unsigned eye,Rect rendered,Extent display,Rect& source,Rect& destination){
+    if(!valid(r.layout)||!same(r.identity,id)||r.ticket!=ticket||!ticket||!color||r.color!=color||eye>1||
+        !bounded(display)||display.width%2)return false;
+    auto const& l=r.layout;auto p=l.input_base[eye];
+    if(rendered.x!=p.x||rendered.y!=p.y||rendered.width!=l.input.width||rendered.height!=l.input.height)return false;
+    for(unsigned i=0;i<2;++i){auto const& c=r.copies[i];
+        if(c.ticket!=ticket||c.ordinal!=i||c.target!=color||!c.source||c.source==color||!c.list||!c.generation||
+            c.source_box!=std::array<uint32_t,6>{0,0,0,l.eye_output.width,l.eye_output.height,1}||
+            c.destination!=std::array<uint32_t,3>{i*l.stride,0,0})return false;
+    }
+    if(r.copies[0].source!=r.copies[1].source)return false;
+    source={eye*l.stride,0,l.eye_output.width,l.eye_output.height};
+    destination={eye*(display.width/2),0,display.width/2,display.height};return true;
+}
+// Create's authenticated complete wrapper consumes only six u32 and byte+18;
+// its structure pointer does not escape. 0x19 is a consumer-complete shadow,
+// not an inferred native sizeof. Evaluate requires its FULL caller-initialized
+// 0x168 span: be65cc initializes it, and wrapper be5c58 reads through +160.
+// Scalar patches preserve every other byte, including opaque fields after90.
+template<size_t N> inline bool patch_create(std::array<unsigned char,N> const& original,
+    std::array<unsigned char,N>& owned,Layout const& l){
+    static_assert(N>=create_consumed_span,"consumer-complete Create shadow required");
+    if(!valid(l))return false;owned=original;
+    uint32_t dimensions[]{l.input.width,l.input.height,l.eye_output.width,l.eye_output.height};
+    std::memcpy(owned.data(),dimensions,sizeof dimensions);return true;
+}
+template<size_t N> inline bool patch_evaluate(std::array<unsigned char,N> const& original,
+    std::array<unsigned char,N>& owned,Layout const& l,unsigned eye,bool reset){
+    static_assert(N>=evaluate_initialized_span,"full 0x168 initialized Evaluate span required");
+    if(!valid(l)||eye>1)return false;owned=original;
+    auto put=[&](size_t offset,uint32_t v){std::memcpy(owned.data()+offset,&v,sizeof v);};
+    put(0x30,l.input.width);put(0x34,l.input.height);put(0x38,reset?1u:0u);
+    for(size_t offset:{size_t(0x60),size_t(0x68),size_t(0x70)}){
+        put(offset,l.input_base[eye].x);put(offset+4,l.input_base[eye].y);}
+    put(0x88,0);put(0x8c,0);return true;
+}
+class StereoAdapter {
+    AdapterBackend& backend_;AdapterPrerequisites prerequisites_;
+    std::atomic_flag gate_=ATOMIC_FLAG_INIT;std::atomic<bool> poisoned_{false};
+    std::unique_ptr<FeaturePair> pair_;std::unique_ptr<CopySequence> sequence_;
+    Command creation_command_{};bool creation_recorded_{},creation_submitted_{},release_uncertain_{};
+    ExecuteReceipt creation_execution_{},last_execution_{};
+    std::array<EvalUse,2> uses_{};std::array<CopyPlan,2> copies_{};
+    std::array<bool,2> recorded_{},evaluated_{},copied_{},submitted_{},history_reset_{true,true};
+    EvalUse pending_{};Command pending_command_{};bool prepared_{},dispatched_{},reset_{};
+    uint64_t selected_handle_{},ticket_{},reset_ticket_{};unsigned next_copy_{};
+    void fail(){if(pair_)pair_->invalidate();}
+    bool stream_valid(ExecuteReceipt const& e)const{
+        if(!pair_)return false;auto const& s=e.submission;auto const& p=last_execution_.submission;
+        if(!e.order||!s.direct||s.device!=pair_->identity().device||!s.list||!s.generation||!s.queue||!s.fence||!s.value)return false;
+        if(!last_execution_.order)return true;
+        if(s.queue!=p.queue||s.fence!=p.fence||s.value<p.value||e.order<last_execution_.order)return false;
+        if(e.order==last_execution_.order){
+            if(e.member<last_execution_.member)return false;
+            if(e.member==last_execution_.member&&(s.list!=p.list||s.generation!=p.generation||s.value!=p.value))return false;
+        }
+        return true;
+    }
+public:
+    class Entry {
+        friend class StereoAdapter;StereoAdapter* owner_{};bool held_{};
+        explicit Entry(StereoAdapter& a):owner_(&a),held_(!a.gate_.test_and_set(std::memory_order_acquire)){
+            if(!held_)a.poisoned_.store(true,std::memory_order_release);
+        }
+    public:
+        Entry(Entry const&)=delete;Entry& operator=(Entry const&)=delete;
+        ~Entry(){if(held_){const bool poisoned=owner_->poisoned_.exchange(false,std::memory_order_acq_rel);
+            if(owner_->prepared_||poisoned)owner_->fail();
+            owner_->gate_.clear(std::memory_order_release);}}
+        explicit operator bool()const{return held_;}
+    };
+private:
+    bool allowed(Entry const& e){
+        if(e.owner_!=this||!e.held_)return false;
+        if(poisoned_.load(std::memory_order_acquire)){fail();return false;}return true;
+    }
+public:
+    explicit StereoAdapter(AdapterBackend& backend,AdapterPrerequisites p={}):backend_(backend),prerequisites_(p){}
+    StereoAdapter(StereoAdapter const&)=delete;StereoAdapter& operator=(StereoAdapter const&)=delete;
+    Entry enter(){return Entry(*this);}
+    // Restart requires all old owned handles released. Destruction never calls
+    // vendor Release: host must retain/quarantine this owner until drained.
+    bool begin_epoch(Entry const& e,Identity id,Layout layout){
+        if(!allowed(e)||!prerequisites_.ready()||!valid(id)||!valid(layout)||release_uncertain_||(pair_&&!pair_->drained()))return false;
+        pair_=std::make_unique<FeaturePair>(id,layout);sequence_.reset();creation_command_={};
+        creation_recorded_=creation_submitted_=false;creation_execution_=last_execution_={};
+        uses_={};copies_={};recorded_={};evaluated_={};copied_={};submitted_={};history_reset_={true,true};
+        prepared_=dispatched_=false;ticket_=reset_ticket_=0;next_copy_=0;return true;
+    }
+    // Called at Create SDK dispatcher after the owned wrapper set eye-sized
+    // parameters. The engine handle slot is written by host ONLY if admitted.
+    DispatchResult create(Entry const& e,Command command,uint32_t feature,uint64_t parameters){
+        if(!allowed(e)||!pair_||creation_recorded_||!valid(command,pair_->identity())||!feature||parameters!=pair_->identity().parameters){fail();return {};}
+        creation_command_=command;creation_recorded_=true;DispatchResult result;
+        for(unsigned eye=0;eye<2;++eye){uint64_t handle{};NativeResult raw{};
+            try{raw=backend_.create(command.raw,feature,parameters,&handle);}
+            catch(...){(void)pair_->created(eye,handle,false);fail();throw;}
+            result.raw_valid=true;result.raw=raw;
+            const auto ownership=pair_->created(eye,handle,native_result_accepted(raw));
+            // Ordered local output slots make caller_quarantine unreachable.
+            // A failed Create can still own a nonzero handle and GPU commands.
+            if(!ownership||!allowed(e)){fail();return result;}
+        }
+        if(!pair_->commit()){fail();return result;}
+        result.admitted=true;result.public_handle=pair_->state(0).handle;return result;
+    }
+    // Host uses reset_out to patch its owned Evaluate structure, retaining
+    // native Reset (camera cut) as well as each independent history's first use.
+    bool prepare_evaluate(Entry const& e,EvalUse use,Command command,uint64_t public_handle,
+        uint64_t parameters,bool native_reset,bool& reset_out){
+        if(!allowed(e)||!pair_||!pair_->usable()||prepared_||!valid(command,pair_->identity())||
+            command.list!=use.list||command.generation!=use.generation||parameters!=pair_->identity().parameters||
+            public_handle!=pair_->state(0).handle||!same(use.identity,pair_->identity())||!use.ticket||use.eye>1){fail();return false;}
+        if(use.eye==0){
+            if(ticket_&&(use.ticket<=ticket_||!copied_[0]||!copied_[1]||!submitted_[0]||!submitted_[1])){fail();return false;}
+            sequence_=std::make_unique<CopySequence>(pair_->layout(),pair_->identity());
+            recorded_={};evaluated_={};copied_={};submitted_={};copies_={};next_copy_=0;ticket_=use.ticket;
+        }else if(use.eye!=1||!copied_[0]||ticket_!=use.ticket){fail();return false;}
+        // Setters are CPU work. Mark the handle GPU-recorded only immediately
+        // before entering the original SDK dispatcher, so an abandoned wrapper
+        // preparation can still retire its prior actual uses safely.
+        reset_=pair_->state(use.eye).reset_pending;
+        pending_=use;pending_command_=command;prepared_=true;dispatched_=false;
+        if(native_reset&&reset_ticket_!=use.ticket){history_reset_={true,true};reset_ticket_=use.ticket;}
+        reset_out=reset_||history_reset_[use.eye];return true;
+    }
+    DispatchResult evaluate(Entry const& e,uint64_t command,uint64_t engine_handle,uint64_t parameters,uint64_t callback){
+        if(!allowed(e)||!pair_||!prepared_||dispatched_||command!=pending_command_.raw||
+            engine_handle!=pair_->state(0).handle||parameters!=pair_->identity().parameters||callback!=0){fail();return {};}
+        bool feature_reset{};
+        if(!pair_->begin_eval(pending_,selected_handle_,feature_reset)||feature_reset!=reset_){fail();prepared_=false;return {};}
+        dispatched_=true;DispatchResult result;uses_[pending_.eye]=pending_;recorded_[pending_.eye]=true;
+        try{result.raw=backend_.evaluate(command,selected_handle_,parameters,callback);result.raw_valid=true;}
+        catch(...){fail();throw;}
+        result.admitted=allowed(e)&&pair_->end_eval(pending_,native_result_accepted(result.raw));
+        evaluated_[pending_.eye]=result.admitted;if(result.admitted)history_reset_[pending_.eye]=false;prepared_=false;
+        if(!result.admitted)fail();return result;
+    }
+    // One original boxed copy per completed eye. No fallback full copy after
+    // a mutation; rejection invalidates this ticket's publication at the host.
+    bool copy(Entry const& e,CopyFacts const& facts,unsigned eye){
+        if(!allowed(e)||!pair_||!pair_->usable()||prepared_||eye>1||eye!=next_copy_||!evaluated_[eye]||
+            facts.list!=uses_[eye].list||facts.generation!=uses_[eye].generation||!sequence_){fail();return false;}
+        CopyPlan plan;if(!sequence_->next(facts,eye,plan)){fail();return false;}
+        try{backend_.copy(plan);}catch(...){fail();throw;}
+        if(!allowed(e)){fail();return false;}copies_[eye]=plan;copied_[eye]=true;++next_copy_;return true;
+    }
+    // Call only AFTER real ExecuteCommandLists and successful Signal covering
+    // that batch. Receipt order/member comes from the actual submission hook.
+    bool submitted_creation(Entry const& e,ExecuteReceipt receipt){
+        auto const& s=receipt.submission;
+        if(!allowed(e)||!creation_recorded_||creation_submitted_||s.list!=creation_command_.list||
+            s.generation!=creation_command_.generation||!stream_valid(receipt)){fail();return false;}
+        creation_execution_=last_execution_=receipt;creation_submitted_=true;return true;
+    }
+    bool submitted_eye(Entry const& e,unsigned eye,ExecuteReceipt receipt){
+        if(!allowed(e)||!pair_||eye>1||!creation_submitted_||!recorded_[eye]||submitted_[eye]||
+            (eye==1&&!submitted_[0])||!stream_valid(receipt)||
+            !pair_->submitted(pair_->state(eye).handle,uses_[eye],receipt.submission)){fail();return false;}
+        submitted_[eye]=true;last_execution_=receipt;return true;
+    }
+    bool recorded_output(Entry const& e,RecordedOutput& out){
+        if(!allowed(e)||!pair_||!pair_->usable()||!sequence_||!sequence_->complete()||!copied_[0]||!copied_[1])return false;
+        out={pair_->identity(),ticket_,copies_[0].target,pair_->layout(),copies_};return true;
+    }
+    // This establishes actual ordered submissions, not completed pixels or
+    // final-SRV association. Host still joins its actual Color/list draw proof.
+    bool ordered_output(Entry const& e,RecordedOutput& out){
+        return allowed(e)&&submitted_[0]&&submitted_[1]&&recorded_output(e,out);
+    }
+    void invalidate(Entry const& e){if(allowed(e))fail();}
+    // Unknown handles are forwarded unchanged at the original release hook.
+    // Owned handles are deferred; a raw SDK success is never fabricated here.
+    bool owns(Entry const& e,uint64_t handle){return allowed(e)&&pair_&&pair_->owns(handle);}
+    bool release_completed(Entry const& e,uint64_t handle,Completion c,NativeResult& raw_result){
+        if(!allowed(e)||!pair_||!pair_->retired()||!creation_submitted_)return false;
+        auto const& s=creation_execution_.submission;
+        if(c.device!=s.device||c.queue!=s.queue||c.fence!=s.fence||c.value<s.value)return false;
+        uint64_t release{};
+        if(!pair_->claim_unused_release(handle,pair_->identity(),release)&&!pair_->claim_completed_release(handle,c,release))return false;
+        // Claim before entering SDK; exceptions/uncertain failures aren't retried.
+        try{raw_result=backend_.release(release);}
+        catch(...){release_uncertain_=true;throw;}
+        if(!native_result_accepted(raw_result))release_uncertain_=true;return true;
+    }
+    bool drained(Entry const& e){return allowed(e)&&pair_&&pair_->drained()&&!release_uncertain_;}
+};
+}
