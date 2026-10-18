@@ -137,10 +137,71 @@ void early_lifetime_and_sparse_invalidations(){
     assert(!gears_ngx_mv::same(early,wrong_kind)&&!gears_ngx_mv::valid(wrong_kind));
     assert(!bank.begin(scope)); // No in-place relabeling or restart.
 }
+void sparse_ranges_and_rewrites(){
+    Setup s;s.write();s.write(1032,&s.other);
+    auto birth=s.bank.lookup(scope,1000);
+    Ranges d{},r{};d.count=2;d.sizes_present=true;d.starts[0]=2000;d.sizes[0]=2;d.starts[1]=2128;d.sizes[1]=2;
+    r.count=2;r.sizes_present=true;r.starts[0]=1000;r.sizes[0]=3;r.starts[1]=1064;r.sizes[1]=1;
+    assert(s.bank.copy_sparse(scope,d,r)&&s.bank.cells()==4);
+    auto first=s.bank.lookup(scope,2000),second=s.bank.lookup(scope,2128);
+    assert(first.retained_uav()&&first.origin==birth.origin&&first.source_version==birth.version);
+    assert(second.resource.canonical==102&&second.source_handle==1032);
+    assert(!s.bank.lookup(scope,2032).version&&!s.bank.lookup(scope,2160).version);
+    s.write(1000,&s.other);assert(s.bank.current(first));
+    assert(s.bank.copy_simple_sparse(scope,2000,1000,1)&&s.bank.cells()==4);
+    auto rewritten=s.bank.lookup(scope,2000);
+    assert(!s.bank.current(first)&&rewritten.version>first.version&&rewritten.resource.canonical==102);
+    // Missing UAV creation in an observed heap clears a tracked destination.
+    assert(s.bank.copy_simple_sparse(scope,2000,1016,1)&&s.bank.cells()==4);
+    auto erased=s.bank.lookup(scope,2000);
+    assert(!s.bank.current(rewritten)&&!erased.known_uav&&!erased.resource.retained()&&!erased.origin);
+    assert(erased.version>rewritten.version&&erased.source_handle==1016&&!erased.source_version);
+    // Explicitly invalidated sources also remain unknown, without new cells.
+    assert(s.bank.invalidate_if_tracked(scope,1032));auto invalid=s.bank.lookup(scope,1032);
+    d={};r={};d.count=r.count=2;d.starts[0]=2128;d.starts[1]=2160;r.starts[0]=1032;r.starts[1]=1016;
+    assert(s.bank.copy_sparse(scope,d,r)&&s.bank.cells()==4);
+    assert(!s.bank.current(second)&&!s.bank.lookup(scope,2128).retained_uav());
+    assert(s.bank.lookup(scope,2128).source_version==invalid.version&&!s.bank.lookup(scope,2160).version);
+    assert(s.bank.copy_simple_sparse(scope,0,0,0));
+}
+void sparse_capacity_and_lifetime_scope(){
+    const auto early=gears_ngx_mv::lifetime_scope(9,7);
+    Bank bank;HeapFixture cpu{},gpu{202,7,2000,10000,8,32,true,true};ResourceFixture mv;
+    assert(bank.begin(early)&&bank.observe_heap(early,typed(cpu))&&bank.observe_heap(early,typed(gpu)));
+    assert(bank.copy_simple_sparse(early,2000,1000,8)&&bank.cells()==0);
+    assert(bank.write_uav(early,1000,typed(mv),nullptr,{}));
+    for(unsigned i=0;i<7;++i)assert(bank.copy_simple_sparse(early,2000+32*i,1000,1));
+    assert(bank.cells()==8);auto old=bank.lookup(early,2000);
+    assert(old.retained_uav()&&gears_ngx_mv::same(old.scope,early)&&!old.scope.world&&!old.scope.ticket);
+    assert(bank.copy_simple_sparse(early,2224,1016,1)&&bank.cells()==8&&!bank.lookup(early,2224).version);
+    assert(bank.copy_simple_sparse(early,2000,1016,1)&&bank.cells()==8&&!bank.current(old));
+    assert(!bank.lookup(early,2000).retained_uav());
+    assert(bank.copy_simple_sparse(early,2000,1000,1)&&bank.cells()==8&&bank.lookup(early,2000).retained_uav());
+    // Eligible new provenance must not be dropped/evicted when full.
+    assert(!bank.copy_simple_sparse(early,2224,1000,1)&&bank.loss()==Loss::capacity);
+    assert(!bank.lookup(early,2000).version);
+}
+void sparse_rejections(){
+    // Validate even wholly unknown copies that would allocate no cells.
+    for(unsigned bad=0;bad<9;++bad){Setup s;Ranges d{},r{};d.count=r.count=1;d.starts[0]=2000;r.starts[0]=1000;
+        if(bad==0)d.readable=false;if(bad==1)d.count=9;if(bad==2)d.starts[0]=2001;
+        if(bad==3){d.sizes_present=true;d.sizes[0]=2;}if(bad==4)r.starts[0]=2000;
+        if(bad==5)d.starts[0]=1000;if(bad==6){d.count=r.count=2;d.starts[1]=2000;r.starts[1]=1016;}
+        if(bad==7){d.starts[0]=2224;d.sizes_present=r.sizes_present=true;d.sizes[0]=r.sizes[0]=2;}
+        if(bad==8)r.starts[0]=9000;
+        assert(!s.bank.copy_sparse(scope,d,r)&&s.bank.failed()&&s.bank.cells()==0);
+    }
+    Setup unknown;unknown.write(2000);auto old=unknown.bank.lookup(scope,2000);
+    assert(!unknown.bank.copy_simple_sparse(scope,2000,9000,1)&&unknown.bank.loss()==Loss::unknown_heap);
+    assert(!unknown.bank.current(old)&&!unknown.bank.lookup(scope,2000).version);
+    Setup wrong;auto changed=scope;++changed.ticket;
+    assert(!wrong.bank.copy_simple_sparse(changed,2000,1000,1)&&wrong.bank.loss()==Loss::bad_scope);
+}
 }
 int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     static_assert(!Bank::Snapshot::producer_authorized,"observation must not authorize producer");
     rewrite_and_lifetime();ranges();invalid_ranges();scope_capacity_and_heap_aba();typed_boundaries();
     early_lifetime_and_sparse_invalidations();
+    sparse_ranges_and_rewrites();sparse_capacity_and_lifetime_scope();sparse_rejections();
     std::puts("NGX MV descriptor CPU provenance tests passed; no GPU/Dispatch/producer proof");
 }

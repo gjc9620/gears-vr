@@ -141,7 +141,8 @@ public:
         if(!h||!find(h->canonical,slot))return true;
         return unknown_write(value,cpu);
     }
-    bool copy(Scope value,Ranges<CellCapacity> const& destinations,Ranges<CellCapacity> const& sources){
+private:
+    bool copy_impl(Scope value,Ranges<CellCapacity> const& destinations,Ranges<CellCapacity> const& sources,bool sparse){
         if(!scope(value))return false;std::array<uint64_t,CellCapacity> dst{},src{};unsigned dn{},sn{};
         if(!flatten(destinations,false,dst,dn)||!flatten(sources,true,src,sn))return false;if(dn!=sn)return lose(Loss::bad_range);
         // Snapshot all sources before any destination write. Reject unsupported
@@ -149,13 +150,23 @@ public:
         std::array<Cell,CellCapacity> captured{};
         for(unsigned i=0;i<dn;++i){for(unsigned j=0;j<dn;++j)if(dst[i]==src[j]||(j<i&&dst[i]==dst[j]))return lose(Loss::overlap);
             uint32_t slot{};auto* h=heap(src[i],false,slot);if(auto* c=find(h->canonical,slot))captured[i]=*c;}
-        for(unsigned i=0;i<dn;++i){uint32_t slot{};auto* h=heap(dst[i],false,slot);auto* c=destination(h->canonical,slot);if(!c)return false;
+        for(unsigned i=0;i<dn;++i){uint32_t slot{};auto* h=heap(dst[i],false,slot);
+            if(sparse&&!captured[i].known_uav&&!find(h->canonical,slot))continue;
+            auto* c=destination(h->canonical,slot);if(!c)return false;
             if(serial_==UINT64_MAX)return lose(Loss::capacity);auto value_copy=std::move(captured[i]);value_copy.heap=h->canonical;value_copy.index=slot;
             value_copy.source_handle=src[i];value_copy.source_version=value_copy.version;value_copy.version=++serial_;*c=std::move(value_copy);}
         return true;
     }
+public:
+    bool copy(Scope value,Ranges<CellCapacity> const& destinations,Ranges<CellCapacity> const& sources){return copy_impl(value,destinations,sources,false);}
+    // Early observation: propagate known UAVs, erase tracked destinations on
+    // unknown sources, but do not allocate cells for unrelated unknown copies.
+    // All range/heap/overlap validation still applies, including skipped cells.
+    bool copy_sparse(Scope value,Ranges<CellCapacity> const& destinations,Ranges<CellCapacity> const& sources){return copy_impl(value,destinations,sources,true);}
     bool copy_simple(Scope value,uint64_t dst,uint64_t src,unsigned count){Ranges<CellCapacity> d{},s{};
         d.count=s.count=1;d.sizes_present=s.sizes_present=true;d.starts[0]=dst;s.starts[0]=src;d.sizes[0]=s.sizes[0]=count;return copy(value,d,s);}
+    bool copy_simple_sparse(Scope value,uint64_t dst,uint64_t src,unsigned count){Ranges<CellCapacity> d{},s{};
+        d.count=s.count=1;d.sizes_present=s.sizes_present=true;d.starts[0]=dst;s.starts[0]=src;d.sizes[0]=s.sizes[0]=count;return copy_sparse(value,d,s);}
     Snapshot lookup(Scope value,uint64_t handle,bool gpu=false)const{
         Snapshot out;if(!begun_||failed()||!same(scope_,value))return out;uint32_t slot{};auto* h=heap(handle,gpu,slot);if(!h)return out;
         auto* c=find(h->canonical,slot);if(!c)return out;out.scope=scope_;out.owner=owner_;out.heap=*h;out.resource=c->resource;out.counter=c->counter;out.view=c->view;

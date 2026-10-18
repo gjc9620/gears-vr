@@ -433,3 +433,11 @@ and Dispatch evidence are still outstanding; this revision is not in the game
 capture path. The existing prime injection also occurs after loader dependency
 discovery, so even early hooks must report missing births instead of assuming
 that every descriptor was created after installation.
+
+Sparse copy APIs now propagate known UAV provenance, erase tracked destinations
+when the source is unknown, and skip allocation for unknown-to-untracked copies.
+They share the original range/overlap/version validation; original copy behavior
+is unchanged. Root's fresh CPU test run passed, including full-capacity overwrite
+and skip cases (`analysis/runtime/mv-descriptor-provenance3/receipt.json`).
+Header SHA256 `93ade51057bce6f7035644812310d09b6d2527d7b87fd4ffc7e06dfc2a8ed35b`;
+test SHA256 `0cf4221d0d6b257f32dedc0261ca7c7da293a57faa4082f05444f51ff7f2a9be`.
