@@ -1,5 +1,9 @@
 # 主线进度与 V1 验收
 
+## 2026-10-18 新分辨率候选资源收尾实测通过
+
+会话17496使用独立retirement候选，实际游戏生成每眼1280×1400，约59.37秒内发布1202对眼图、模拟器提交5347帧。正常停止后Owner进入released，resources_retained=0、cleanup_timeout=0，runner确认native_cleanup_verified及entry_restore_verified均true。已正常退出游戏并逐哈希恢复四个profile。此轮只证明短时运行及停止释放；世界切换仍明确不支持，机枪、DLSS、UI位置与最终头显验收未完成。`manifest-runtime-resolution1.json`更新到本轮构建，玩家默认Mounted104不变。完整证据与限制见`docs/runtime-render-size-candidate.md`。
+
 ## 2026-10-18 机枪读取与分辨率候选后续
 
 机枪采样新增每轮独立的有界registry槽位合并读取：仅合并同页、最大256字节的已选槽位；对象header、第二次FName索引和名字内容仍现场读取，前后轮不共享缓冲。时间戳边界、200ms预算、角色关系和native准入未改。相同fixture首次capture从469降至355次r.read，已有初始证书时从469降至345；这是调用计数，不是实机耗时或机枪画面证明。91项相关测试通过，协调端复跑其中83项及26项打包测试通过。批量读取改变同轮槽位观察顺序，不能排除任意A→B→A；独立后轮持续校验所有身份与关系。新helper已加入便携包allowlist。

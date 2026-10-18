@@ -2,6 +2,12 @@
 
 ## First actual-game evidence, 2026-10-18
 
+### Verified terminal retirement follow-up
+
+Session `continuous-stereo-17496-20261018-192745-63abd9ec` ran the retirement candidate for 59.37 seconds of scene submission: 1202 published pairs / copies and 5347 simulator scene submissions. Native shutdown reached `live_phase=4`, `shutdown_phase=3`, `retained=0`, `resources_retained=0`, `owned_shutdown_closed=1`, fence state 2 and no cleanup timeout or owned error. The session runner independently confirmed both native cleanup and entry-byte restoration; its scoped session result passed. Game then exited normally and all four pre-test profile hashes were restored. Raw status and GPU samples are preserved in ignored `analysis/runtime/retirement-17496-evidence/`. The independent runtime-size candidate manifest now selects this build; the player default remains unchanged.
+
+This establishes one actual-game terminal retirement and short sustained simulator run. It does not establish world handoff, restart inside the same game process, mounted-camera behavior, DLSS, headset appearance or long-session stability. `world_handoff_supported` remains false and must not be presented as delivered checkpoint recovery.
+
 Subsequent offline shutdown candidate: `build-runtime-resolution1-retirement` now freezes native/Canvas CPU drain, refuses unsubmitted or uncertified owned tracking, closes publisher/mirror, waits for a dedicated fence on the certified queue, releases diagnostic references, and services the existing Owner retirement on its original RHI thread/TLS. Hooks remain available for this service until completion or the existing cleanup deadline. Queue/resource/generation identity and the session-native → frame lock order are checked. Completed unpublished UI cycles have a separate discard receipt; they are not reported as published. World handoff remains disabled. Fresh full compilation, 24 startup invocations, 31 WARP queue checks, 375 Owner checks and 2012 ledger checks passed. This is not actual native retirement acceptance; the temporary candidate manifest is ignored `analysis/runtime/manifest-runtime-resolution-retirement.json`, and neither the player default nor the earlier runtime candidate was replaced.
 
 First/later GPU samples from the run below have different hashes for each eye, with changes spanning each 1280×1400 half. This excludes a completely frozen eye across these two samples only; it does not establish correct temporal history. Receipt: ignored `resolution-material-24120-evidence/eye-temporal-comparison.json`.
