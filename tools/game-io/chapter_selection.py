@@ -118,6 +118,36 @@ def capture_chapters(reader, expected_identity, verify, deadline, *, now=time.mo
     return dict(fingerprint=fingerprint(after), scene=scene, list=obj, index=index, rows=rows)
 
 
+def wait_arrow_ack(snapshot, baseline, expected_index, bound_window, window, deadline, evidence, *,
+                   now=time.monotonic, sleep=time.sleep):
+    """Read-only acknowledgement; no dispatch/retry and no source relaxation."""
+    until=min(deadline,now()+5.)
+    old_index=baseline['index']
+    evidence.update(from_index=old_index,expected_index=expected_index,observed_index=None,reads=0)
+    try:
+        while now()<until:
+            require(window()==bound_window,'Chapter window changed during arrow acknowledgement')
+            observed=snapshot()
+            evidence['observed_index']=observed['index'];evidence['reads']+=1
+            # Only Index may change. Scene/list/provider/fingerprint proof is identical.
+            invariant=dict(observed,index=old_index)
+            require(invariant==baseline,'Chapter acknowledgement source identity/provider/fingerprint changed')
+            require(window()==bound_window,'Chapter window changed during arrow acknowledgement')
+            require(now()<until,'Chapter arrow acknowledgement timed out; key not retried')
+            require(observed['index']in (old_index,expected_index),'Chapter arrow acknowledgement skipped or reversed')
+            if observed['index']==expected_index:
+                evidence['acknowledged']=True
+                return observed
+            sleep(min(.15,max(0,until-now())))
+        raise ChapterSelectionRejected('Chapter arrow acknowledgement timed out; key not retried')
+    except Exception as error:
+        prior=getattr(error,'detail',None)
+        error.detail=dict(arrow_ack=copy.deepcopy(evidence),source_detail=prior)
+        if isinstance(error,ChapterSelectionRejected):
+            error.args=(str(error)+f" (from_index={old_index}, expected_index={expected_index}, observed_index={evidence['observed_index']})",)
+        raise
+
+
 def select_chapter(reader, expected_identity, values, *, verify, window, send, deadline,
                    now=time.monotonic, sleep=time.sleep, identity=reader_process_identity,
                    max_actions=32):
@@ -162,5 +192,6 @@ def select_chapter(reader, expected_identity, values, *, verify, window, send, d
                         selected_provider=selected, actions=actions,
                         next_screen_requires_independent_review=True)
         expected_index = first['index']+(1 if action == 'down' else -1)
-        sleep(min(.15, max(0, deadline-now())))
+        actions[-1]['arrow_ack']={}
+        wait_arrow_ack(snapshot,first,expected_index,bound_window,window,deadline,actions[-1]['arrow_ack'],now=now,sleep=sleep)
     raise ChapterSelectionRejected('Chapter action budget exhausted; no further input')

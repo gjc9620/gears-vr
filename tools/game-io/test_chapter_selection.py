@@ -56,7 +56,7 @@ class Fixture:
     def capture(self):return chapter.capture_chapters(self.reader,(7,70),lambda:None,10,now=lambda:self.time,identity=lambda r:(7,70))
     def select(self,**kwargs):
         options=dict(verify=lambda:None,window=lambda:(7,77),send=self.send,deadline=10,
-                     now=lambda:self.time,sleep=lambda sec:None,identity=lambda r:(7,70))
+                     now=lambda:self.time,sleep=lambda sec:setattr(self,'time',self.time+sec),identity=lambda r:(7,70))
         options.update(kwargs)
         return chapter.select_chapter(self.reader,(7,70),dict(chapter.HAMMER),**options)
 
@@ -144,10 +144,55 @@ class ChapterTests(unittest.TestCase):
 
     def test_unacknowledged_or_uncertain_key_is_never_retried(self):
         def no_ack(action,window):self.f.sent.append((action,window))
-        with self.assertRaisesRegex(chapter.ChapterSelectionRejected,'acknowledged'):self.f.select(send=no_ack)
+        with self.assertRaisesRegex(chapter.ChapterSelectionRejected,'acknowledgement'):self.f.select(send=no_ack)
         self.assertEqual(len(self.f.sent),1);self.f.sent=[]
         def partial(action,window):self.f.sent.append((action,window));raise OSError('uncertain key pair')
         with self.assertRaises(OSError):self.f.select(send=partial)
         self.assertEqual(len(self.f.sent),1)
+
+    def test_delayed_arrow_ack_old_index_until_exact_expected(self):
+        pending=[None];reads=[0];original=self.f.sample
+        def send(action,window):
+            self.f.sent.append((action,window))
+            if action!='confirm':pending[0]=self.f.integer(self.f.identities[0x1100],'Index')+1;reads[0]=0
+        def sample():
+            if pending[0]is not None:
+                reads[0]+=1
+                if reads[0]>=5:self.f.put(0x1140,struct.pack('<i',pending[0]));pending[0]=None
+            return original()
+        self.f.reader.sample=sample
+        result=self.f.select(send=send)
+        self.assertEqual([a for a,w in self.f.sent],['down','down','confirm'])
+        self.assertTrue(all(a['arrow_ack']['reads']>=3 and a['arrow_ack']['acknowledged']for a in result['actions'][:-1]))
+
+    def test_ack_timeout_retains_indices_and_only_one_key(self):
+        def send(action,window):self.f.sent.append((action,window))
+        with self.assertRaises(chapter.ChapterSelectionRejected)as error:self.f.select(send=send)
+        evidence=error.exception.detail['arrow_ack']
+        self.assertEqual((evidence['from_index'],evidence['expected_index'],evidence['observed_index']),(0,1,0))
+        self.assertEqual(len(self.f.sent),1);self.assertGreaterEqual(self.f.time,5)
+
+    def test_ack_skip_reverse_and_provider_drift_fatal(self):
+        for change in ('skip','reverse','provider','fingerprint','window'):
+            with self.subTest(change=change):
+                f=Fixture();window=[(7,77)]
+                if change=='reverse':f.put(0x1140,struct.pack('<i',1))
+                def send(action,target):
+                    f.sent.append((action,target))
+                    if change=='skip':f.put(0x1140,struct.pack('<i',2))
+                    elif change=='reverse':f.put(0x1140,struct.pack('<i',0))
+                    elif change=='provider':f.identities[0x4200]['number']=1
+                    elif change=='fingerprint':f.identities[0x1000]['outer']=0x999
+                    else:window[0]=(7,78)
+                with mock.patch('chapter_selection.registered',side_effect=f.registered),self.assertRaises(chapter.ChapterSelectionRejected):
+                    f.select(send=send,window=lambda:window[0])
+                self.assertEqual(len(f.sent),1)
+
+    def test_unknown_snapshot_error_is_fatal_not_retried(self):
+        calls=[0];evidence={};baseline=dict(index=0,rows=[],fingerprint='same')
+        def snapshot():calls[0]+=1;raise ValueError('unknown data')
+        with self.assertRaisesRegex(ValueError,'unknown data')as error:
+            chapter.wait_arrow_ack(snapshot,baseline,1,(7,77),lambda:(7,77),5,evidence,now=lambda:0,sleep=lambda sec:None)
+        self.assertEqual(calls[0],1);self.assertIsNone(error.exception.detail['arrow_ack']['observed_index'])
 
 if __name__=='__main__':unittest.main()
