@@ -39,6 +39,7 @@
 #include "ngx_route_observer.h"
 #include "ngx_stereo_gpu_submit.h"
 #include "ngx_typed_copy.h"
+#include "ngx_typed_quartet.h"
 #include "ngx_epoch_pair_probe.h"
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
 #include "ngx_output_delayed_gate.h"
@@ -2312,6 +2313,9 @@ void* __fastcall hook_clone(void* destination,void* source){
 #define GEARS_NGX_CAPTURE_CONTROL_WIRING 1
 void inspect_completed_renderer(Record&,void*);
 namespace ngx_capture_control {
+#if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
+void detached(std::shared_ptr<ngx_stereo_host::ControlOwner> const&);
+#endif
 bool copy(ID3D12GraphicsCommandList*,D3D12_TEXTURE_COPY_LOCATION const*,UINT,UINT,UINT,D3D12_TEXTURE_COPY_LOCATION const*,D3D12_BOX const*,uintptr_t,ngx_stereo_host::CopyFn);
 void execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,ngx_stereo_host::ExecuteFn);
 }
@@ -3206,6 +3210,7 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
 #if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
     ngx_epoch_pair::BarrierScope epoch_barriers(list,count,barriers,reinterpret_cast<uintptr_t>(_ReturnAddress()));
 #endif
+    ngx_capture_control::acquire_barriers(count,barriers);
     ngx_stereo_host::barriers(list,count,barriers,reinterpret_cast<uintptr_t>(_ReturnAddress()));
     death_hdr_timeline::barriers_event(list,count,barriers,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     {gears_render_cost::Scope cost(gears_render_cost::barrier_observation);

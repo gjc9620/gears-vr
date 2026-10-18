@@ -759,6 +759,11 @@ target_compile_options(PawnlessCameraObserverTest PRIVATE /W4 /WX /EHsc /UNDEBUG
 target_compile_options(UiHudFirstFaultTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 
 add_executable(NgxStereoHostLiveTest ngx_stereo_host_live_test.cpp)
+add_executable(NgxTypedQuartetTest ngx_typed_quartet_test.cpp)
+target_compile_options(NgxTypedQuartetTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+target_compile_definitions(NgxTypedQuartetTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_link_libraries(NgxTypedQuartetTest PRIVATE d3d12 dxgi)
+add_test(NAME NgxTypedQuartetTest COMMAND NgxTypedQuartetTest)
 target_compile_options(NgxStereoHostLiveTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 target_compile_definitions(NgxStereoHostLiveTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 if(GEARS_NGX_INPUT_RECT_EXPERIMENT)

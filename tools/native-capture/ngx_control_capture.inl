@@ -6,9 +6,10 @@ struct Context {
     struct Construction {uint64_t world{},ticket{};uintptr_t renderer{};std::array<uintptr_t,2> views{};};
     NativeGpuSubmission gpu;std::weak_ptr<ngx_stereo_host::ControlOwner> owner;
     std::array<Construction,64> constructions{};
+    std::unique_ptr<TypedQuartet> quartet{std::make_unique<TypedQuartet>()};
     std::shared_ptr<void> producer_lifetime;
     // These two actual evidence sources remain required; no observer row/bank
-    // can implement them. The first also retains the four typed resources.
+    // can implement them. Quartet retention is separate from producer proof.
     bool (*producer)(void*,ngx_stereo_host::ControlCreateBinding const&,ngx_stereo_host::ControlConsumption,
         EvaluateShadow const&,Command,ngx_stereo_host::ControlInputTicket&){};
     bool (*copy_states)(void*,ngx_stereo_host::ControlInputTicket const&,unsigned,Command,uint64_t,uint64_t){};
@@ -19,6 +20,40 @@ std::shared_ptr<Context> context;
 uint64_t generation(ID3D12CommandList*,uintptr_t canonical){auto ref=frame_link.current(canonical);return ref.identity==canonical?ref.generation:0;}
 bool read(void* out,void const* in,size_t size){return safe_copy(out,in,size);}
 void reject(Context& c){c.failed=true;if(auto owner=c.owner.lock()){owner->invalidate();request_session_stop(SessionStop::proof_failure);}}
+// Called by successful detach_control while frame_hook_mutex is held. No stop,
+// print, world change, failed recording or uncertain Release reaches this path.
+void detached(std::shared_ptr<ngx_stereo_host::ControlOwner> const& owner){
+    if(context&&context->owner.lock()==owner){
+        context->failed=true;context->quartet.reset();context.reset();
+    }
+}
+bool acquisition_scope(Context& c,uint64_t& ticket){
+    gears_submitted::FrameTicket live;ticket=consuming_frame_ticket;
+    return !c.failed&&c.quartet&&!c.owner.expired()&&valid(c.created.identity)&&recording.load()&&
+        c.created.identity.world==committed_world_generation.load()&&consuming_renderer&&ticket&&
+        consuming_frozen_frame.enabled&&consuming_frozen_frame.id==ticket&&
+        consuming_frozen_frame.world_generation==c.created.identity.world&&
+        submitted_lifetime.frame(reinterpret_cast<uintptr_t>(consuming_renderer),live)&&
+        live.enabled&&live.id==ticket&&live.world_generation==c.created.identity.world;
+}
+void acquire_barriers(UINT count,D3D12_RESOURCE_BARRIER const* values){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);uint64_t ticket{};
+    if(!context||!acquisition_scope(*context,ticket))return;auto& c=*context;
+    if(count>1024||(count&&!values)){c.quartet->uncertain();reject(c);return;}
+    for(UINT i=0;i<count;++i){D3D12_RESOURCE_BARRIER value{};
+        if(!safe_copy(&value,values+i,sizeof(value))||!acquire_quartet_barrier(*c.quartet,c.created.identity,ticket,value)){
+            c.quartet->uncertain();reject(c);return;}
+    }
+}
+void acquire_copy(D3D12_TEXTURE_COPY_LOCATION const* source,D3D12_TEXTURE_COPY_LOCATION const* destination){
+    uint64_t ticket{};if(!context||!acquisition_scope(*context,ticket))return;auto& c=*context;
+    D3D12_TEXTURE_COPY_LOCATION s{},d{};
+    if(!safe_copy(&s,source,sizeof(s))||!safe_copy(&d,destination,sizeof(d))||
+       !c.quartet->observe_resource(c.created.identity,ticket,s.pResource)||
+       !c.quartet->observe_resource(c.created.identity,ticket,d.pResource)){
+        c.quartet->uncertain();reject(c);
+    }
+}
 void reset_command(ID3D12CommandList* list){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!context||context->failed||!list)return;
     auto& c=*context;auto owner=c.owner.lock();if(!owner)return;
@@ -80,7 +115,8 @@ bool constructed(void* renderer,gears_submitted::FrameTicket const& frame,Record
 bool create(void* opaque,ngx_stereo_host::NativeCreateSource const& source,uintptr_t raw,ngx_stereo_host::ControlCreateBinding& out){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& c=*static_cast<Context*>(opaque);out={};
     if(c.failed||source.world!=committed_world_generation.load()||!source.create_layout(out.layout)||!command(c,raw,out.command))return false;
-    out.identity={source.revision,source.world,out.command.device,source.parameters,source.revision};c.created=out;return true;
+    out.identity={source.revision,source.world,out.command.device,source.parameters,source.revision};
+    if(!c.quartet||!c.quartet->begin(out.identity))return false;c.created=out;return true;
 }
 bool input(void* opaque,ngx_stereo_host::ControlConsumption used,EvaluateShadow const& source,uintptr_t raw,ngx_stereo_host::ControlInputTicket& out){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& c=*static_cast<Context*>(opaque);out={};Command cmd;gears_submitted::FrameTicket frame;
@@ -92,10 +128,17 @@ bool input(void* opaque,ngx_stereo_host::ControlConsumption used,EvaluateShadow 
         if(built.world==used.world&&built.ticket==used.ticket&&built.renderer==used.renderer){original=&built;break;}
     if(!original)return false;Record live;inspect_completed_renderer(live,consuming_renderer);
     if(live.family_count!=2||live.renderer_count!=2||live.family_views[0]!=original->views[0]||live.family_views[1]!=original->views[1])return false;
+    std::array<uintptr_t,4> native{};constexpr size_t offsets[]{0,8,0x18,0x20};
+    for(unsigned i=0;i<4;++i)std::memcpy(&native[i],source.bytes.data()+offsets[i],sizeof(uintptr_t));
+    std::array<Resource,4> retained{};
+    if(!c.quartet||!c.quartet->bind(c.created.identity,used.ticket,native,retained))return false;
     if(!c.producer(c.producer_lifetime.get(),c.created,used,source,cmd,out)||out.original_views!=original->views)return false;
     std::array<Point,3> bases;for(unsigned i=0;i<3;++i)std::memcpy(&bases[i],source.bytes.data()+0x60+8*i,8);
     if(!select_input_eye(c.created.layout,c.created.layout.input,bases,c.last_eye))return false;
-    c.last_input=out;return true; // ControlOwner/bridge perform the full typed producer checks before SDK.
+    constexpr unsigned order[]{0,2,3,1};
+    for(unsigned i=0;i<4;++i)if(out.raw_resources[i]!=native[order[i]]||
+        !same_resource(out.producers[c.last_eye].resources[i],retained[i]))return false;
+    c.last_input=out;return true; // Producer domains are still required; retention never supplies them.
 }
 Completion completion(void* opaque,uint64_t handle){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& c=*static_cast<Context*>(opaque);auto owner=c.owner.lock();
@@ -129,6 +172,7 @@ bool copy(ID3D12GraphicsCommandList* list,D3D12_TEXTURE_COPY_LOCATION const* dst
     D3D12_TEXTURE_COPY_LOCATION const* src,D3D12_BOX const*,uintptr_t caller,ngx_stereo_host::CopyFn forward){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto owner=ngx_stereo_host::current_control();if(!owner)return false;
     if(!context||context->owner.lock()!=owner){owner->invalidate();request_session_stop(SessionStop::proof_failure);return true;}
+    acquire_copy(src,dst);
     auto& c=*context;D3D12_TEXTURE_COPY_LOCATION s{},d{};
     if(!safe_copy(&s,src,sizeof(s))||!safe_copy(&d,dst,sizeof(d))){reject(c);return true;}
     if(reinterpret_cast<uintptr_t>(s.pResource)!=c.last_input.raw_resources[3]||reinterpret_cast<uintptr_t>(d.pResource)!=c.last_input.raw_resources[0])return false;
@@ -166,6 +210,7 @@ bool activate(AdapterPrerequisites prerequisites){
     c.owner=owner;if(ngx_stereo_host::attach_control(owner))return true;c.owner.reset();return false;
 }
 #else
+inline void acquire_barriers(UINT,D3D12_RESOURCE_BARRIER const*){}
 inline void reset_command(ID3D12CommandList*){}
 inline void created_command(HRESULT,void**,bool){}
 inline bool constructed(void*,gears_submitted::FrameTicket const&,Record const&,bool){return true;}

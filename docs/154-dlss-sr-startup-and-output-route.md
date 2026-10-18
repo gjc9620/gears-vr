@@ -1,5 +1,15 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19：控制器持有 typed 四资源
+
+Context现在只从当前有效消费ticket内的typed Barrier/Copy实参获取资源引用，覆盖UAV与alias参数；NGX整数只与已持有对象匹配，不转换成COM指针。首次有效Eval固定Create epoch/world/device及Color/Depth/MV/Output四资源，后续替换拒绝。绑定前的候选有界64项、不同ticket不混用，绑定后仅保留四资源；满容量时非SR或异设备资源仍按类型筛选忽略，新合格纹理溢出才拒绝。资源身份持有不构成producer区域、资源状态或GPU内容证明。
+
+停止、失败、world变化不清空已绑定资源；仅现有detach检查确认wrapper/active/GPU/feature均退休后释放Context持有。frame锁与活动计数保护采集和退出边界。真实首次Eval之前是否能在此窗口取得全部四资源尚未验证；缺项拒绝，不从诊断bank补齐。
+
+协调者实际运行新CMake目标NgxTypedQuartetTest（253项CPU检查）和HostLive回归通过；私有提取的实际退出保护28项检查通过，退休事实使用测试替身。host开启完整capture重新编译通过，Ninja447依赖包含新增header，私有DLL SHA256 `98d29546682c388d595f230afdf2f6367c91755b04654d29500c8720b1abc792`。另用build_verified新建默认功能组合但host关闭的完整构建，462依赖验证通过，未覆盖已验收默认DLL或修改其manifest。此轮未运行游戏、未启用DLSS。
+
+仍缺：真实Color/Depth/MV生产域、完整认证的原生Copy路线及共享参数串行性，之后才可做实际DLSS双目与连续游玩验证。推荐尺寸默认模式不受本次源码准备影响。
+
 ## 2026-10-19：实际界值确认整幅宽度下限冲突
 
 首pair完成接线已加入源码：真实Create、两次Eval、两次boxed Copy的提交义务全部在匹配device/queue/fence上完成后，才能接受传输并允许后续ticket。该API不构造像素观察，不声称画质正确。Execute后先非阻塞检查；同步原生调用到达下一ticket而首pair仍pending时，在frame/adapter锁外最多等待2000ms，只等已提交且Signal已返回的工作；stop/world变化或超时停止并保留未退休资源，不重放SDK。私有完整调用链锁审查及CPU回归通过；协调端在修复header依赖的目录完成capture重新编译，Adapter/HostLive测试直接运行通过。真实producer域、原生Copy契约、参数串行性及实际GPU连续画面仍未接通或验证，默认未激活。原始日志 `analysis/runtime/build-ngx-transport-integrated.log`。

@@ -61,6 +61,9 @@ bool attach_control(std::shared_ptr<ControlOwner> const& owner){
 bool detach_control(std::shared_ptr<ControlOwner> const& owner){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(!owner||control_owner!=owner||in_wrappers||active.load()||!owner->can_detach())return false;
+#if defined(GEARS_NGX_CAPTURE_CONTROL_WIRING) && GEARS_NGX_CAPTURE_CONTROL_WIRING
+    ngx_capture_control::detached(owner); // Only after callback/GPU/feature drain above.
+#endif
     control_owner.reset();return true;
 }
 std::shared_ptr<ControlOwner> current_control(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return control_owner;}
