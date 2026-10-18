@@ -2,11 +2,14 @@
 // adapters. Never interpret an NGX raw pointer as COM: only typed copy arguments
 // enter this backend, while their original API caller owns them.
 namespace ngx_output_pixels {
-#if defined(GEARS_NGX_OUTPUT_PIXELS) && GEARS_NGX_OUTPUT_PIXELS
+#if (defined(GEARS_NGX_OUTPUT_PIXELS) && GEARS_NGX_OUTPUT_PIXELS) || (defined(GEARS_OWNED_SOURCE_PIXELS) && GEARS_OWNED_SOURCE_PIXELS)
 struct NativeData {
     ID3D12Resource *source{},*destination{},*readback{};ID3D12GraphicsCommandList* list{};
     ID3D12CommandQueue* queue{};ID3D12Device* device{};ID3D12Fence* fence{};
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};UINT rows{};UINT64 row_bytes{},bytes{};
+#if defined(GEARS_OWNED_SOURCE_PIXELS) && GEARS_OWNED_SOURCE_PIXELS
+    UINT64 completed_value{};
+#endif
 };
 // Deliberately no COM destructors: uncertain submitted objects survive teardown.
 std::array<NativeData,2> native_data;gears_death_hdr_match::Publisher match_publisher;
@@ -43,7 +46,11 @@ struct NativeBackend final:Backend {
            n.footprint.Footprint.Width,n.footprint.Footprint.Height,n.footprint.Footprint.Depth,unsigned(n.footprint.Footprint.Format)))return false;
         const auto length=GetModuleFileNameW(own_module,s.path,MAX_PATH);if(!length||length>=MAX_PATH)return false;
         auto* separator=wcsrchr(s.path,L'\\');if(!separator)return false;*separator=0;wchar_t parent[MAX_PATH]{};wcscpy_s(parent,s.path);
+#if defined(GEARS_OWNED_SOURCE_PIXELS) && GEARS_OWNED_SOURCE_PIXELS
+        if(swprintf_s(s.path,L"%s\\owned-hdr-source-%lu-%llu-copy%llu-%lld.raw",parent,GetCurrentProcessId(),s.before.ownership.ticket,s.sequence,s.copy_qpc)<=0)return false;
+#else
         if(swprintf_s(s.path,L"%s\\ngx-output-copy-%lu-%llu-eval%llu-%lld.raw",parent,GetCurrentProcessId(),s.before.ownership.ticket,s.sequence,s.copy_qpc)<=0)return false;
+#endif
         D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_READBACK;D3D12_RESOURCE_DESC buffer{};
         buffer.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;buffer.Width=n.bytes;buffer.Height=1;buffer.DepthOrArraySize=1;buffer.MipLevels=1;
         buffer.SampleDesc.Count=1;buffer.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
@@ -69,7 +76,12 @@ struct NativeBackend final:Backend {
     bool poll(unsigned index,Slot& s)override{
         auto& n=native_data[index];if(!s.life.signalled)return false;
         s.hr=n.device->GetDeviceRemovedReason();if(FAILED(s.hr)){s.life.fail(gears_death_hdr_pixels::device_removed);return false;}
-        s.life.completion(n.fence->GetCompletedValue());if(!s.life.may_map())return false;
+#if defined(GEARS_OWNED_SOURCE_PIXELS) && GEARS_OWNED_SOURCE_PIXELS
+        n.completed_value=n.fence->GetCompletedValue();s.life.completion(n.completed_value);
+#else
+        s.life.completion(n.fence->GetCompletedValue());
+#endif
+        if(!s.life.may_map())return false;
         void* data{};D3D12_RANGE range{0,SIZE_T(n.bytes)};s.hr=n.readback->Map(0,&range,&data);
         if(FAILED(s.hr)||!data){s.life.fail(gears_death_hdr_pixels::map_failed);return false;}
         HANDLE raw=CreateFileW(s.path,GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr);bool ok=raw!=INVALID_HANDLE_VALUE;
@@ -77,11 +89,22 @@ struct NativeBackend final:Backend {
         D3D12_RANGE none_written{};n.readback->Unmap(0,&none_written);
         wchar_t meta[MAX_PATH]{};if(swprintf_s(meta,L"%s.txt",s.path)<=0)ok=false;
         HANDLE output=ok?CreateFileW(meta,GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr):INVALID_HANDLE_VALUE;
-        if(output==INVALID_HANDLE_VALUE)ok=false;else{char text[2048]{};auto const& v=s.before.values;
+        if(output==INVALID_HANDLE_VALUE)ok=false;else{char text[2048]{};
+#if !defined(GEARS_OWNED_SOURCE_PIXELS) || !GEARS_OWNED_SOURCE_PIXELS
+            auto const& v=s.before.values;
+#endif
+#if defined(GEARS_OWNED_SOURCE_PIXELS) && GEARS_OWNED_SOURCE_PIXELS
+            const int length=sprintf_s(text,"world=%llu ticket=%llu copy_order=%llu eye=%u view=%llx renderer=%llx thread=%u caller=1c6093 source_raw=%llx destination_raw=%llx source_canonical=%llx destination_canonical=%llx list_raw=%llx list_identity=%llx list_generation=%llu execute_order=%lld member=%u queue=%llx copy_qpc=%lld raw_bytes=%llu footprint_offset=%llu row_pitch=%u rows=%u row_bytes=%llu width=%u height=%u depth=%u format=%u samples=1 mip=0 source_subresource=0 destination_subresource=0 xyz=0,0,0 box_null=1 conversion=none executions=1 retired=1 gpu_complete=1 fence=%llx fence_target=1 fence_completed=%llu reset_raw=%llx reset_identity=%llx reset_hr=%08lx reset_tracker_generation=%llu reset_tracker_identity=%llx reset_qpc=%lld source_pixel_only=1 final_match_verified=0 content_eye_verified=0 barriers_added=0\n",
+                s.before.ownership.world,s.before.ownership.ticket,s.sequence,s.before.ownership.eye,s.before.ownership.view,s.before.ownership.renderer,s.thread,
+                s.before.resources[1],s.before.resources[0],s.source_desc.canonical,s.destination_desc.canonical,s.life.list.raw,s.life.list.identity,s.life.list.generation,
+                s.execute_order,s.execute_member,s.life.queue,s.copy_qpc,n.bytes,n.footprint.Offset,n.footprint.Footprint.RowPitch,n.rows,n.row_bytes,n.footprint.Footprint.Width,n.footprint.Footprint.Height,n.footprint.Footprint.Depth,unsigned(n.footprint.Footprint.Format),
+                reinterpret_cast<uintptr_t>(n.fence),n.completed_value,s.life.reset_receipt.raw,s.life.reset_receipt.identity,static_cast<unsigned long>(s.reset_hr),s.life.reset_receipt.tracker_generation,s.life.reset_receipt.tracker_identity,s.reset_qpc);
+#else
             const int length=sprintf_s(text,"world=%llu ticket=%llu eval_sequence=%llu copy_sequence=%llu source_base=%u,%u output_base=%u,%u render_dimensions=%u,%u reset_raw=%u inside_eval=%u source_raw=%llx color_raw=%llx source_canonical=%llx color_canonical=%llx list=%llx generation=%llu execute_order=%lld member=%u queue=%llx copy_qpc=%lld raw_bytes=%llu footprint_offset=%llu row_pitch=%u rows=%u row_bytes=%llu width=%u height=%u format=%u source_subresource=0 destination_subresource=0 original_caller=1c6093 copy_point_only=1 logical_eye_verified=0 gpu_complete=1 physical_reset_retired=1 barriers_added=0\n",
                 s.before.ownership.world,s.before.ownership.ticket,s.sequence,s.copy_sequence,v[7],v[8],v[13],v[14],v[0],v[1],v[2],unsigned(s.inside_eval),
                 static_cast<unsigned long long>(s.before.resources[1]),static_cast<unsigned long long>(s.before.resources[0]),static_cast<unsigned long long>(s.source_desc.canonical),static_cast<unsigned long long>(s.destination_desc.canonical),
                 static_cast<unsigned long long>(s.life.list.identity),s.life.list.generation,s.execute_order,s.execute_member,static_cast<unsigned long long>(s.life.queue),s.copy_qpc,n.bytes,n.footprint.Offset,n.footprint.Footprint.RowPitch,n.rows,n.row_bytes,n.footprint.Footprint.Width,n.footprint.Footprint.Height,unsigned(n.footprint.Footprint.Format));
+#endif
             DWORD written{};if(length<=0||!WriteFile(output,text,DWORD(length),&written,nullptr)||written!=unsigned(length)||!FlushFileBuffers(output))ok=false;if(!CloseHandle(output))ok=false;}
         if(!ok){s.life.fail(gears_death_hdr_pixels::file_failed);return false;}s.life.saved=true;return true;
     }

@@ -8,6 +8,29 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+SourcePixels3 provides actual intermediate HDR evidence. Private DLL
+`f4fcced4ca35b72c9421960e7c15e7ec9c7e442b69c5a2ac867583366c143309`
+passed the source-readback and NGX regression tests plus continuous startup
+suite. Actual session `continuous-stereo-27764-20261019-062549-a0ef966e`
+completed two checkpoint reloads, native cleanup and protected-file restoration.
+The previous error14 did not recur: owned tracker highwater459/512, no overflow;
+new first-failure subtype diagnostics remain available without changing policy.
+
+At ticket495/world2, two sequential native color copies at return RVA1c6093
+captured the same source canonical16c3184880/destination16c317fc00, format26,
+5120x2800. Both completed real queue fences and command-list retirement before
+readback; all pixels decoded finite. Both contain exactly zero RGB throughout
+x>=3840 (3,584,000 pixels), with asymmetric scene coverage in the preview.
+Raw hashes: `a5cd13d7421bd8bb5ad5940cccc2fa2d5b39102119188a95c43294a2739b7471`
+and `1ba7406d44e83df55c8e88b585201037ce3d03a24f1245e9cd46a83e7071a5ff`.
+Evidence is under ignored build-runtime-source-pixels3/owned-hdr-source-27764*
+and analysis/runtime/runtime-source-pixels3-scale2-run1-20261019*.
+This locates missing pixels in an intermediate native color source, before
+XR transport; it does not yet identify the producer responsible or prove exact
+final-output association. Both copies report TLS eye1, not independently
+certified eye content. Next inspect the producer/pass immediately upstream of
+this source, rather than further changing XR output size.
+
 SourcePixels2 diagnostic follow-up: the private build
 `a79ade0afe7b00df7bfb5a635bf4401edf6bcb13fc7244e2114865263d96831a`
 entered projection at recommended1280x1400 times2, but failed during the first

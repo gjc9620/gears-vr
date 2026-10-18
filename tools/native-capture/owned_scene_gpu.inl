@@ -147,6 +147,19 @@ struct ExecuteFailure {
 } execute_failure;
 std::array<IUnknown*,gears_frame_link::Tracker::list_capacity> created_lists{};
 unsigned list_creation_count{},list_creation_closed{};
+struct ListCreationFailure {
+ unsigned subtype{},count{},closed{};uintptr_t object{},identity{};HRESULT hr{};bool open{},tracker_called{};
+ gears_frame_link::Snapshot before{},after{};
+} list_creation_failure;
+std::mutex list_creation_failure_mutex;
+void record_list_creation_failure(unsigned subtype,HRESULT hr,IUnknown* object,IUnknown* identity,bool open,
+ const gears_frame_link::Snapshot* before=nullptr,const gears_frame_link::Snapshot* after=nullptr){
+ std::lock_guard<std::mutex> lock(list_creation_failure_mutex);
+ if(list_creation_failure.subtype)return;
+ auto& f=list_creation_failure;f.subtype=subtype;f.hr=hr;f.object=reinterpret_cast<uintptr_t>(object);
+ f.identity=reinterpret_cast<uintptr_t>(identity);f.open=open;f.count=list_creation_count;f.closed=list_creation_closed;
+ f.tracker_called=before&&after;f.before=before?*before:tracker.snapshot();f.after=after?*after:f.before;
+}
 void fault(unsigned reason){if(!error)error=reason;tracker.invalidate();}
 bool watching(){return enabled&&!finished&&!error;}
 // Scene submission and GPU state proof must name the same observed generation.
@@ -160,15 +173,21 @@ void list_created(HRESULT hr,void** out,bool open){
  const bool bindings=owned_bindings_enabled&&(recording.load()||prime_recording.load());
  const bool proof=continuous_probe&&watching();if(!bindings&&!proof)return;
  IUnknown* object{};IUnknown* identity{};
- if(!safe_copy(&object,out,sizeof(object))||!object||FAILED(object->QueryInterface(IID_PPV_ARGS(&identity)))){fault(14);return;}
+ if(!safe_copy(&object,out,sizeof(object))){record_list_creation_failure(1,hr,object,identity,open);fault(14);return;}
+ if(!object){record_list_creation_failure(2,hr,object,identity,open);fault(14);return;}
+ const HRESULT identity_hr=object->QueryInterface(IID_PPV_ARGS(&identity));
+ if(FAILED(identity_hr)){record_list_creation_failure(3,identity_hr,object,identity,open);fault(14);return;}
  if(bindings){if(open)owned_target_stats.reset(reinterpret_cast<uintptr_t>(identity));
   else owned_target_stats.retire(reinterpret_cast<uintptr_t>(identity));}
  if(!proof){identity->Release();return;}
- for(auto* previous:created_lists)if(previous==identity){identity->Release();fault(14);return;}
- if(list_creation_count==created_lists.size()){identity->Release();fault(14);return;}
+ for(auto* previous:created_lists)if(previous==identity){record_list_creation_failure(4,hr,object,identity,open);identity->Release();fault(14);return;}
+ if(list_creation_count==created_lists.size()){record_list_creation_failure(5,hr,object,identity,open);identity->Release();fault(14);return;}
  created_lists[list_creation_count++]=identity; // Diagnostic lease until process exit; no pointer reuse.
  if(!open)++list_creation_closed;
- if(!tracker.create_success(reinterpret_cast<uintptr_t>(identity),open).identity)fault(14);
+ const auto before=tracker.snapshot();
+ const auto created=tracker.create_success(reinterpret_cast<uintptr_t>(identity),open);
+ const auto after=tracker.snapshot();
+ if(!created.identity){record_list_creation_failure(6,hr,object,identity,open,&before,&after);fault(14);}
 }
 struct CreateScope {CreateScope(){++creating;}~CreateScope(){--creating;}};
 void created(ID3D12Device* device,HRESULT hr,void** out,D3D12_RESOURCE_STATES state,unsigned api,bool legacy=true,unsigned layout=0){
@@ -576,6 +595,21 @@ void print(FILE* file){
   r.width,r.height,r.eyes[0].nonblack,r.eyes[1].nonblack,r.differing_pixels,r.eyes[0].hash,r.eyes[1].hash);
  fprintf(file,"native_owned_gpu_dispatch available=%u match=%u\n",device_dispatch_available,device_dispatch_match);
  if(continuous_probe)fprintf(file,"native_owned_list_creation count=%u closed=%u tracker_creates=%llu retained_until_exit=1\n",list_creation_count,list_creation_closed,s.list_creates);
+ fprintf(file,"native_owned_tracker list_capacity=%zu active_lists=%zu list_highwater=%zu list_overflow=%llu event_overflow=%llu target_overflow=%llu capacity_bad=%u\n",
+  gears_frame_link::Tracker::list_capacity,s.active_lists,s.list_highwater,s.list_overflow,s.event_overflow,s.target_overflow,s.capacity_bad);
+ {
+  std::lock_guard<std::mutex> lock(list_creation_failure_mutex);auto const& f=list_creation_failure;
+  fprintf(file,"native_owned_list_failure subtype=%u legend=none:0,output_read:1,null_output:2,identity_qi:3,duplicate_identity:4,lease_capacity:5,tracker_create:6 hr=%08lx object=%llx identity=%llx open=%u count=%u closed=%u tracker_called=%u list_capacity=%zu\n",
+   f.subtype,f.hr,f.object,f.identity,f.open,f.count,f.closed,f.tracker_called,gears_frame_link::Tracker::list_capacity);
+  if(f.subtype){
+   const gears_frame_link::Snapshot snapshots[]={f.before,f.after};
+   for(unsigned i=0;i<2;++i){auto const& snapshot=snapshots[i];
+    fprintf(file,"native_owned_list_failure_tracker stage=%s list_creates=%llu resets=%llu active_lists=%zu list_highwater=%zu list_overflow=%llu event_overflow=%llu target_overflow=%llu capacity_bad=%u\n",
+     i?"after":"before",snapshot.list_creates,snapshot.reset_calls,snapshot.active_lists,snapshot.list_highwater,
+     snapshot.list_overflow,snapshot.event_overflow,snapshot.target_overflow,snapshot.capacity_bad);
+   }
+  }
+ }
  if(execute_failure.count){auto const& f=execute_failure;
   fprintf(file,"native_owned_execute_failure caller=%llx module=%llx rva=%llx queue=%llx count=%u missing_list=%llx previously_certified=%u inside_present=%u present_depth=%u unknown=%llu duplicate=%llu metadata=%llu\n",
    f.caller,f.module,f.caller-f.module,f.queue,f.count,f.missing_list,f.previously_certified,f.inside_present,f.present_depth,

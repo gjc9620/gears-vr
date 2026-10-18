@@ -807,3 +807,19 @@ target_compile_options(NgxTypedListJoinTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 target_compile_definitions(NgxTypedListJoinTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(NgxTypedListJoinTest PRIVATE d3d12 dxgi)
 add_test(NAME NgxTypedListJoinTest COMMAND NgxTypedListJoinTest)
+
+# Independent bounded source-pixel diagnostic. No NGX/SDK hooks or death gate changes.
+option(GEARS_OWNED_SOURCE_PIXELS "Two adjacent HDR source readbacks on one world>=2 owned ticket" OFF)
+if(GEARS_OWNED_SOURCE_PIXELS)
+    if(NOT GEARS_NATIVE_OWNED_PIXELS OR NOT GEARS_RUNTIME_RENDER_SIZE OR
+       GEARS_NGX_ROUTE_OBSERVER OR GEARS_NGX_STEREO_HOST_OBSERVER OR GEARS_NGX_OUTPUT_PIXELS OR
+       GEARS_DEATH_HDR_PIXELS OR GEARS_DEATH_SOURCE_CONTROL OR GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT)
+        message(FATAL_ERROR "OWNED_SOURCE_PIXELS requires NATIVE_OWNED_PIXELS and RUNTIME_RENDER_SIZE; NGX and other pixel experiments must be OFF")
+    endif()
+    target_compile_definitions(GearsCapture PRIVATE GEARS_OWNED_SOURCE_PIXELS=1)
+endif()
+add_executable(OwnedSourcePixelsTest owned_source_pixels_test.cpp)
+target_compile_options(OwnedSourcePixelsTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+target_link_libraries(OwnedSourcePixelsTest PRIVATE bcrypt d3d12 dxgi)
+target_compile_definitions(OwnedSourcePixelsTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+add_test(NAME OwnedSourcePixelsTest COMMAND OwnedSourcePixelsTest)

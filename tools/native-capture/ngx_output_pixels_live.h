@@ -18,7 +18,7 @@ using CopyFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,const D3D12_TEX
 using ExecuteFn=void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);
 using ResetFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*,ID3D12PipelineState*);
 struct PresentContext {bool known{},linked{},contaminated{};unsigned rejection{};uintptr_t buffer{};};
-#if defined(GEARS_NGX_OUTPUT_PIXELS) && GEARS_NGX_OUTPUT_PIXELS
+#if defined(GEARS_NGX_OUTPUT_PIXELS) && GEARS_NGX_OUTPUT_PIXELS || (defined(GEARS_OWNED_SOURCE_PIXELS) && GEARS_OWNED_SOURCE_PIXELS)
 enum Failure:unsigned {none,association_ambiguous=32,eval_changed,eval_exception,nested_eval,typed_mismatch,prepare_failed,copy_exception,append_exception,stopped_incomplete,preserve_pair_unproved};
 struct Slot {
     gears_ngx_route::Sample before{},after{};uint64_t sequence{},copy_sequence{},result{};uintptr_t caller{},command{},structure{};unsigned thread{};
@@ -59,6 +59,8 @@ struct Backend {
     virtual void close()=0;
 };
 Backend& backend();
+#endif
+#if defined(GEARS_NGX_OUTPUT_PIXELS) && GEARS_NGX_OUTPUT_PIXELS
 struct EvalScope {
     int index{-1},parent{-1};int exceptions{};bool returned{};uint64_t raw_result{};
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
