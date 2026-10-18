@@ -128,8 +128,14 @@ class MountedContextTests(unittest.TestCase):
         for kind in ('target', 'identity', 'timestamp', 'header', 'property', 'link', 'read_error', 'target_unreadable'):
             with self.subTest(kind=kind):
                 f = MountedFixture(); f.ptr(f.sampler.view_target, 0xdeadbeef if kind == 'target_unreadable' else 0x20000)
-                original_read = f.read; original_fresh = f.sampler.fresh; hits = {}
+                original_read = f.read; original_fresh = f.sampler.fresh; hits = {}; bracket_started = False
                 def read(address, size):
+                    nonlocal bracket_started
+                    # Discovery may read possession links. This fixture tests
+                    # changes during the failure diagnostic, after its capture
+                    # has opened the camera bracket, not discovery rejection.
+                    if (address, size) == (f.sampler.stamp, 4):bracket_started = True
+                    if not bracket_started:return original_read(address, size)
                     key = address, size; hits[key] = hits.get(key, 0) + 1
                     data = original_read(address, size)
                     if hits[key] >= 2:
@@ -185,6 +191,79 @@ class MountedContextTests(unittest.TestCase):
         with mock.patch.object(f.sampler, 'fresh', wraps=f.sampler.fresh) as fresh:
             self.assertEqual(cert.capture(), cert._initial)
         self.assertEqual(fresh.call_count, len(addresses))
+
+    def test_reflection_discovery_precedes_frame_bracket_and_never_repeats_in_capture(self):
+        f = MountedFixture();events = [];read = f.read;prop = f.property
+        def reading(address, size):
+            if (address, size) == (f.sampler.stamp, 4):events.append('stamp')
+            return read(address, size)
+        def discovering(cls, name, inherited=False):
+            events.append(('property', cls, name));return prop(cls, name, inherited)
+        with mock.patch.object(f, 'read', side_effect=reading), mock.patch.object(f, 'property', side_effect=discovering):
+            cert = MountedContextCertificate(f.sampler)
+            calls = [event for event in events if isinstance(event, tuple)]
+            self.assertEqual(len(calls), len(set(calls)))
+            self.assertEqual(len(calls), len(cert._property_hints))
+            self.assertTrue(calls)
+            self.assertFalse(any(isinstance(event, tuple) for event in events[events.index('stamp'):]))
+            events.clear();cert.capture();cert.capture()
+            self.assertTrue(events);self.assertEqual(set(events), {'stamp'})
+        # No alternative resolver call silently replaces the cached hints.
+        with mock.patch.object(f, 'property', side_effect=AssertionError('reflection inside capture')):
+            self.assertEqual(cert.capture(), cert._initial)
+
+    def test_prepared_discovery_rejects_stale_offset_identity_super_and_possession(self):
+        for mutation in ('offset', 'field_identity', 'role_identity', 'super', 'possession', 'registry'):
+            with self.subTest(mutation=mutation):
+                f = MountedFixture();cert = MountedContextCertificate(f.sampler, defer_capture=True)
+                self.assertIsNone(cert._initial)
+                self.assertFalse(cert.certifies_world({}))
+                if mutation == 'offset':f.word(0x92094, 0x808)
+                elif mutation == 'field_identity':f.word(0x92000 + 76, 1)
+                elif mutation == 'role_identity':f.word(f.TURRET + 76, 1)
+                elif mutation == 'super':f.ptr(0x71000 + 96, 0x3000)
+                elif mutation == 'possession':f.ptr(0x10224, 0x20000)
+                else:f.ptr(f.objects_data + f.u32(0x92000 + 8) * 8, 0)
+                with mock.patch.object(f, 'property', side_effect=AssertionError('unexpected rediscovery')):
+                    with self.assertRaises(AnchorRejected):cert.capture()
+                self.assertIsNone(cert._initial)
+
+    def test_guard_timestamp_retry_retains_discovery_but_not_failed_certificate(self):
+        f = MountedFixture();discover = MountedContextCertificate._discover_properties
+        capture = MountedContextCertificate._capture;discoveries = [];captures = []
+        def discovering(cert):
+            discoveries.append(cert);return discover(cert)
+        def capturing(cert):
+            captures.append(cert)
+            if len(captures) == 1:
+                self.assertIsNone(cert._initial)
+                raise MountedTimestampChanged('synthetic first bracket rollover')
+            if len(captures) == 2:self.assertIsNone(cert._initial)
+            return capture(cert)
+        with mock.patch.object(MountedContextCertificate, '_discover_properties', discovering),\
+             mock.patch.object(MountedContextCertificate, '_capture', capturing):
+            sampler = LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
+        self.assertEqual(len(discoveries), 1)
+        self.assertEqual(len({id(cert) for cert in captures}), 1)
+        self.assertIs(sampler.mounted_contract, discoveries[0])
+        self.assertIsNotNone(sampler.mounted_contract._initial)
+        attempts = sampler.guard_acquisitions[0]['attempts']
+        self.assertEqual(len(attempts), 2)
+        self.assertTrue(attempts[0]['retryable']);self.assertTrue(attempts[1]['strict_guard_accepted'])
+
+    def test_discovery_is_within_existing_guard_budget(self):
+        from anchor_config import AnchorSamplingRejected
+        f = MountedFixture();ticks = [0];discover = MountedContextCertificate._discover_properties
+        def discovering(cert):
+            result = discover(cert);ticks[0] = 201000000;return result
+        with mock.patch.object(MountedContextCertificate, '_discover_properties', discovering):
+            with self.assertRaises(AnchorSamplingRejected) as failure:
+                LiveRegistryAnchorSampler(f, clock_ns=lambda: ticks[0])
+        evidence = failure.exception.evidence['guard_acquisitions'][0]
+        self.assertEqual(evidence['deadline_perf_counter_ns'], 200000000)
+        self.assertEqual(evidence['strict_guard_attempts'], 1)
+        self.assertFalse(evidence['accepted'])
+        self.assertEqual(evidence['failure_reason'], 'Anchor guard acquisition deadline exceeded')
 
     def test_timestamp_only_transient_retries_once_or_exhausts_existing_cap(self):
         from anchor_config import AnchorSamplingRejected

@@ -81,7 +81,8 @@ class LiveRegistryAnchorSampler(AnchorSampler):
         mounted=None
         if not self.derives(self.fresh(self.pawn)['cls'],'WarPawn'):
             from mounted_context import MountedContextCertificate
-            if self.mounted_contract is None:self.mounted_contract=MountedContextCertificate(self)
+            if self.mounted_contract is None:
+                self.mounted_contract=MountedContextCertificate(self, defer_capture=True)
             mounted=self.mounted_contract.capture()
         result=super().guard()
         if mounted is not None:

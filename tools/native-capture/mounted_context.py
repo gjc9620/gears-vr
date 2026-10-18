@@ -19,12 +19,84 @@ class MountedTimestampChanged(AnchorRejected):
 
 
 class MountedContextCertificate:
-    def __init__(self, sampler):
+    def __init__(self, sampler, *, defer_capture=False):
         self.sampler = sampler
-        self._initial = self._capture()
+        self._identity_hints, self._super_hints, self._link_hints = {}, {}, {}
+        self._property_hints = self._discover_properties()
+        # The live guard retains discovery across timestamp-only retries. No
+        # initial certificate exists until a complete strict capture succeeds.
+        self._initial = None if defer_capture else self._capture()
+
+    def _discover_properties(self):
+        """Walk reflection lists before the camera-frame bracket.
+
+        These are discovery hints only. _capture freshly checks every field's
+        registered identity, declaring class, ancestry, layout and live offset.
+        Possession changes to an undiscovered class reject the acquisition.
+        """
+        s, r = self.sampler, self.sampler.r
+        hints, chains = {}, {}
+        def discover_identity(address):
+            if not address:
+                raise AnchorRejected('Null mounted discovery object')
+            value = dict(r.identity(address))
+            before = self._identity_hints.setdefault(address, value)
+            if value != before:
+                raise AnchorRejected('Mounted discovery identity changed')
+            return value
+        def ancestry(cls):
+            if cls in chains:
+                return chains[cls]
+            current, chain = cls, []
+            while current:
+                if current in chain or len(chain) >= 64:
+                    raise AnchorRejected('Invalid mounted discovery superclass chain')
+                value = discover_identity(current)
+                discover_identity(value['cls'])
+                chain.append(current)
+                parent = r.u64(current + r.profile['field_super'])
+                previous = self._super_hints.setdefault(current, parent)
+                if parent != previous:
+                    raise AnchorRejected('Mounted discovery superclass changed')
+                current = parent
+            chains[cls] = chain
+            return chain
+        def prepare(address, names):
+            cls = discover_identity(address)['cls']
+            # Bound/cycle-check the ancestry before asking a resolver to walk
+            # it. Resolver implementations (including test doubles) need not
+            # supply their own bound. Strict capture independently rereads it.
+            ancestry(cls)
+            for name in names:
+                if (cls, name) not in hints:
+                    value = dict(r.property(cls, name, True))
+                    hints[cls, name] = value
+                    field = discover_identity(value['address'])
+                    discover_identity(field['cls'])
+            return cls
+        def follow(address, offset):
+            if type(offset) is not int or not 0 <= offset <= 0xfff8:
+                raise AnchorRejected('Unsupported mounted discovery offset')
+            location = address + offset
+            value = r.u64(location)
+            if self._link_hints.setdefault(location, value) != value:
+                raise AnchorRejected('Mounted discovery possession changed')
+            return value
+        pc = prepare(s.controller, ('Pawn', 'PlayerCamera', 'Player', 'WorldInfo'))
+        controlled = follow(s.controller, hints[pc, 'Pawn']['offset'])
+        turret = prepare(controlled, ('Driver', 'Controller', 'WorldInfo'))
+        driver = follow(controlled, hints[turret, 'Driver']['offset'])
+        pawn = prepare(driver, ('DrivenVehicle', 'Controller', 'WorldInfo', 'InvManager'))
+        prepare(s.camera, ('PCOwner', 'WorldInfo'))
+        inventory = follow(driver, hints[pawn, 'InvManager']['offset'])
+        prepare(inventory, ('Owner',))
+        return hints
 
     def capture(self):
         value = self._capture()
+        if self._initial is None:
+            self._initial = copy.deepcopy(value)
+            return copy.deepcopy(value)
         # Possession changes require a new immutable certificate/rebind. Camera
         # timestamp and POV may advance between separate successful captures.
         for key in ('roles', 'levels', 'identities', 'supers', 'properties', 'links'):
@@ -35,7 +107,7 @@ class MountedContextCertificate:
     def certifies_world(self, identity):
         # Cinematic target validation runs inside the sampler's mounted capture
         # bracket. It may share this exact world while the actor Levels differ.
-        return identity == self._initial['roles']['world_info']
+        return self._initial is not None and identity == self._initial['roles']['world_info']
 
     def _capture(self):
         s, r = self.sampler, self.sampler.r
@@ -55,7 +127,10 @@ class MountedContextCertificate:
             return value
 
         def pointer(address):
-            return struct.unpack('<Q', raw(address, 8))[0]
+            value = struct.unpack('<Q', raw(address, 8))[0]
+            if address in self._link_hints and value != self._link_hints[address]:
+                raise AnchorRejected('Mounted possession changed since discovery')
+            return value
 
         def identity(address):
             # Reuse only within this capture. Every visited identity is freshly
@@ -63,6 +138,9 @@ class MountedContextCertificate:
             if address in identities:
                 return identities[address]
             value = s.fresh(address)
+            hint = self._identity_hints.get(address)
+            if hint is not None and any(value.get(key) != expected for key, expected in hint.items()):
+                raise AnchorRejected('Mounted identity changed since discovery')
             if not value['name'] or value['name'].startswith('Default__'):
                 raise AnchorRejected('Default/empty mounted identity')
             identities[address] = copy.deepcopy(value)
@@ -82,6 +160,8 @@ class MountedContextCertificate:
                     raise AnchorRejected('Mounted ancestry is not registered classes')
                 result.append(cls)
                 supers[cls] = pointer(cls + r.profile['field_super'])
+                if cls in self._super_hints and supers[cls] != self._super_hints[cls]:
+                    raise AnchorRejected('Mounted superclass changed since discovery')
                 cls = supers[cls]
             chains[start] = result
             return result
@@ -91,7 +171,9 @@ class MountedContextCertificate:
                 raise AnchorRejected('Mounted class mismatch: ' + name)
 
         def prop(obj, name, owner_name):
-            value = r.property(obj['cls'], name, True)
+            value = self._property_hints.get((obj['cls'], name))
+            if value is None:
+                raise AnchorRejected('Mounted property discovery changed: ' + name)
             offset = value['offset']
             if value['type'] != 'ObjectProperty' or type(offset) is not int or not 0 <= offset <= 0xfff8:
                 raise AnchorRejected('Unsupported mounted property: ' + name)
