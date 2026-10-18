@@ -17,9 +17,19 @@ static CopyFacts facts(unsigned eye,uint64_t ticket=10){CopyFacts f;f.identity=i
     auto c=command(eye);f.list=c.list;f.generation=c.generation;f.list_device=3;f.direct=f.copy_source=f.copy_dest=true;
     for(unsigned i=0;i<4;++i)f.resources[i]={100u+i,3,{2560,1080},26,0,1,0};
     f.input_base=layout().input_base;f.feature_output=layout().eye_output;f.evaluated_ordinal=eye;return f;}
+static ProducerObservation producer(unsigned eye,uint64_t ticket=10){ProducerObservation p;
+    p.use=use(eye,ticket);p.view=900+eye;p.resources=facts(eye,ticket).resources;
+    for(auto& r:p.rendered)r={eye*1280,0,853,720};return p;}
+static std::array<RetainedOutputObservation,2> observations(uint64_t ticket=10,uint64_t completed=3){
+    std::array<RetainedOutputObservation,2> out{};
+    for(unsigned eye=0;eye<2;++eye)out[eye]={use(eye,ticket),100+eye,facts(eye,ticket).resources[3],{0,0,1280,1080},completion(completed)};
+    return out;
+}
+static void accept(StereoAdapter& a,uint64_t ticket=10,uint64_t completed=3){auto entry=a.enter();
+    assert(a.accept_candidate(entry,observations(ticket,completed))&&a.phase(entry)==AcceptancePhase::accepted);}
 static uint32_t word(std::array<unsigned char,evaluate_initialized_span> const& b,size_t offset){uint32_t v{};std::memcpy(&v,b.data()+offset,4);return v;}
 struct Fake final:AdapterBackend {
-    unsigned creates{},evaluates{},releases{},copies{};unsigned fail_create{99},fail_eval{99};
+    unsigned creates{},evaluates{},releases{},copies{};unsigned fail_create{99},zero_create{99},fail_eval{99};
     NativeResult accepted_result{named_result_success},release_result{named_result_success};
     bool duplicate{},throw_create{},throw_eval{},throw_copy{},throw_release{},failed_release{};
     StereoAdapter* nested{};std::vector<uint64_t> handles,released;
@@ -32,6 +42,7 @@ struct Fake final:AdapterBackend {
     NativeResult create(uint64_t cmd,uint32_t feature,uint64_t parameters,uint64_t* handle)override{
         assert(cmd==command().raw&&feature==1&&parameters==4);unsigned eye=creates++;
         *handle=duplicate?100u:100u+eye; // Even failed/throwing SDK may return a handle.
+        if(eye==zero_create)*handle=0;
         if(throw_create)throw std::runtime_error("create");return eye==fail_create?dispatch_unavailable:accepted_result;
     }
     NativeResult evaluate(uint64_t cmd,uint64_t handle,uint64_t parameters,uint64_t callback)override{
@@ -63,7 +74,7 @@ struct Fake final:AdapterBackend {
 static void start(StereoAdapter& a){auto entry=a.enter();assert(entry&&a.begin_epoch(entry,identity(),layout()));
     auto result=a.create(entry,command(),1,4);assert(result.admitted&&result.raw_valid&&result.raw==named_result_success&&result.public_handle==100);}
 static bool eval(StereoAdapter& a,Fake& f,unsigned eye,uint64_t ticket=10,bool native_reset=false,bool expected_reset=true){
-    auto entry=a.enter();assert(entry);bool reset{};assert(a.prepare_evaluate(entry,use(eye,ticket),command(eye),100,4,native_reset,reset));assert(reset==expected_reset);
+    auto entry=a.enter();assert(entry&&a.observe_producer(entry,producer(eye,ticket)));bool reset{};assert(a.prepare_evaluate(entry,use(eye,ticket),command(eye),100,4,native_reset,reset));assert(reset==expected_reset);
     auto original=f.eval_structure;assert(patch_evaluate(original,f.eval_structure,layout(),eye,reset));
     auto r=a.evaluate(entry,command(eye).raw,100,4,0);assert(r.raw_valid);return r.admitted;
 }
@@ -92,9 +103,10 @@ static void disabled_and_prerequisites(){
     for(unsigned missing=0;missing<12;++missing){auto p=ready();switch(missing){
         case 0:p.enabled=false;break;case 1:p.current_wrappers=false;break;case 2:p.current_dispatchers=false;break;
         case 3:p.current_release=false;break;case 4:p.current_builder=false;break;case 5:p.consumed_structure_spans=false;break;
-        case 6:p.result_semantics=false;break;case 7:p.serial_parameter_consumption=false;break;case 8:p.producer_domains=false;break;
-        case 9:p.typed_resource_domains=false;break;case 10:p.retained_output_accepted=false;break;case 11:p.release_context=false;break;}
-        Fake f;StereoAdapter a(f,p);auto entry=a.enter();assert(!a.begin_epoch(entry,identity(),layout())&&f.creates==0);}
+        case 6:p.result_semantics=false;break;case 7:p.serial_parameter_consumption=false;break;case 8:p.typed_resource_domains=false;break;
+        case 9:p.release_context=false;break;case 10:p.candidate_isolation=false;break;case 11:p.execution_dependencies=false;break;}
+        Fake f;StereoAdapter a(f,p);auto entry=a.enter();assert(!a.begin_epoch(entry,identity(),layout()));
+        assert(!a.create(entry,command(),1,4).admitted&&f.creates==0);}
     Fake f;StereoAdapter a(f);auto entry=a.enter();assert(!a.begin_epoch(entry,identity(),layout()));assert(!a.create(entry,command(),1,4).admitted&&f.creates==0);
 }
 static void independent_images_and_histories(){
@@ -109,21 +121,24 @@ static void independent_images_and_histories(){
     for(unsigned eye=0;eye<2;++eye)for(unsigned y=0;y<1080;++y)for(unsigned x=0;x<1280;++x)
         assert(f.color[y*2560+eye*1280+x]==expected[eye][y*1280+x]);
     assert(expected[0]!=expected[1]&&f.handles==std::vector<uint64_t>({100,101}));
-    {auto entry=a.enter();RecordedOutput out;assert(a.recorded_output(entry,out)&&out.color==100&&out.copies[0].list!=out.copies[1].list);assert(!a.ordered_output(entry,out));
+    {auto entry=a.enter();RecordedOutput out;assert(a.phase(entry)==AcceptancePhase::candidate&&!a.recorded_output(entry,out)&&!a.ordered_output(entry,out));}
+    submit(a,0,2,2);submit(a,1,3,3);
+    {auto entry=a.enter();RecordedOutput out;assert(!a.recorded_output(entry,out)&&!a.ordered_output(entry,out));}
+    accept(a);
+    {auto entry=a.enter();RecordedOutput out;assert(a.recorded_output(entry,out)&&out.color==100&&out.copies[0].list!=out.copies[1].list&&a.ordered_output(entry,out));
         Rect source{},destination{};assert(output_geometry(out,identity(),10,100,1,{1280,0,853,720},{2560,1080},source,destination));
         assert(source.x==1280&&source.width==1280&&source.height==1080&&destination.x==1280&&destination.width==1280);
         assert(!output_geometry(out,identity(),10,100,1,{1280,0,1280,1080},{2560,1080},source,destination));
         auto wrong=out;wrong.copies[0].target++;assert(!output_geometry(wrong,identity(),10,100,1,{1280,0,853,720},{2560,1080},source,destination));
         assert(!output_geometry(out,identity(),11,100,1,{1280,0,853,720},{2560,1080},source,destination));}
-    submit(a,0,2,2);submit(a,1,3,3);
-    {auto entry=a.enter();RecordedOutput out;assert(a.ordered_output(entry,out));}
     for(uint64_t ticket=11;ticket<14;++ticket){bool cut=ticket==12;
         assert(eval(a,f,0,ticket,cut,cut));copy(a,0,ticket);assert(eval(a,f,1,ticket,cut,cut));copy(a,1,ticket);
         submit(a,0,2*ticket,2*ticket);submit(a,1,2*ticket+1,2*ticket+1);}
     assert(f.histories[0]==2&&f.histories[1]==2);assert(f.creates==2&&f.evaluates==8&&f.copies==8);
     {auto entry=a.enter();a.invalidate(entry);NativeResult raw{};assert(!a.release_completed(entry,100,completion(25),raw));
         assert(a.release_completed(entry,100,completion(27),raw)&&raw==named_result_success);assert(a.release_completed(entry,101,completion(27),raw));
-        assert(!a.release_completed(entry,100,completion(99),raw)&&a.drained(entry));assert(a.begin_epoch(entry,{2,2,3,4,6},layout()));}
+        assert(!a.release_completed(entry,100,completion(99),raw)&&a.drained(entry));assert(a.begin_epoch(entry,{2,2,3,4,6},layout()));
+        assert(a.phase(entry)==AcceptancePhase::candidate);RecordedOutput out;assert(!a.recorded_output(entry,out));}
 }
 static void create_failures_and_gpu_retirement(){
     for(unsigned failure=0;failure<4;++failure){Fake f;f.fail_create=failure<2?failure:99;f.duplicate=failure==2;f.throw_create=failure==3;
@@ -163,17 +178,18 @@ static void bad_order_and_concurrency(){
 }
 static void boundary_rejections(){
     {Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);
-        {auto entry=a.enter();bool reset{};assert(a.prepare_evaluate(entry,use(0),command(0),100,4,false,reset));
+        {auto entry=a.enter();assert(a.observe_producer(entry,producer(0)));bool reset{};assert(a.prepare_evaluate(entry,use(0),command(0),100,4,false,reset));
             auto r=a.evaluate(entry,command(0).raw,100,4,1);assert(!r.admitted&&!r.raw_valid&&f.evaluates==0);}
         auto entry=a.enter();NativeResult raw{};assert(a.release_completed(entry,100,completion(1),raw));
         assert(a.release_completed(entry,101,completion(1),raw)&&a.drained(entry));}
     {Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);
-        {auto entry=a.enter();bool reset{};assert(a.prepare_evaluate(entry,use(0),command(0),100,4,false,reset));}
+        {auto entry=a.enter();assert(a.observe_producer(entry,producer(0)));bool reset{};assert(a.prepare_evaluate(entry,use(0),command(0),100,4,false,reset));}
         // No SDK Eval was entered. Abandonment invalidates publication, but
         // does not invent an unsubmitted GPU obligation that leaks the handles.
         auto entry=a.enter();NativeResult raw{};assert(f.evaluates==0&&a.release_completed(entry,100,completion(1),raw));
         assert(a.release_completed(entry,101,completion(1),raw)&&a.drained(entry));}
     for(unsigned bad=0;bad<6;++bad){Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);auto entry=a.enter();
+        assert(a.observe_producer(entry,producer(0)));
         auto u=use(0);auto c=command(0);uint64_t handle=100,parameters=4;
         if(bad==0)u=use(1);if(bad==1)u.identity.epoch++;if(bad==2)c.generation++;if(bad==3)handle=101;
         if(bad==4)parameters++;if(bad==5)u.ticket=0;bool reset{};
@@ -183,12 +199,13 @@ static void boundary_rejections(){
     {Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);assert(eval(a,f,0));copy(a,0);assert(eval(a,f,1));f.throw_copy=true;bool threw{};
         try{copy(a,1);}catch(std::runtime_error const&){threw=true;}
         auto entry=a.enter();RecordedOutput out;assert(threw&&f.copies==2&&!a.recorded_output(entry,out));}
-    // Two real list members in one queue Execute batch can share one fence
-    // signal. Member order, rather than a guessed per-eye fence increment,
-    // establishes the scratch Output dependency.
+    // Members in one batch may share a fence. This verifies submission receipt
+    // bookkeeping only; host execution_dependencies must separately attest the
+    // actual scratch-resource barriers. Member order is not that dependency.
     {Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);assert(eval(a,f,0));copy(a,0);assert(eval(a,f,1));copy(a,1);
         auto entry=a.enter();auto left=execution(0,2,5),right=execution(1,2,5);right.member=1;
-        assert(a.submitted_eye(entry,0,left)&&a.submitted_eye(entry,1,right));RecordedOutput out;assert(a.ordered_output(entry,out));}
+        assert(a.submitted_eye(entry,0,left)&&a.submitted_eye(entry,1,right));RecordedOutput out;assert(!a.ordered_output(entry,out));
+        assert(a.accept_candidate(entry,observations(10,5))&&a.ordered_output(entry,out));}
 }
 static void result_mask_contract(){
     static_assert(sizeof(NativeResult)==4&&named_result_success==1);
@@ -199,7 +216,7 @@ static void result_mask_contract(){
         {auto entry=a.enter();assert(a.begin_epoch(entry,identity(),layout()));auto r=a.create(entry,command(),1,4);
             assert(r.admitted&&r.raw_valid&&r.raw==raw&&r.public_handle==100);}
         submit_create(a);
-        {auto entry=a.enter();bool reset{};assert(a.prepare_evaluate(entry,use(0),command(0),100,4,false,reset));
+        {auto entry=a.enter();assert(a.observe_producer(entry,producer(0)));bool reset{};assert(a.prepare_evaluate(entry,use(0),command(0),100,4,false,reset));
             auto original=f.eval_structure;assert(patch_evaluate(original,f.eval_structure,layout(),0,reset));
             auto r=a.evaluate(entry,command(0).raw,100,4,0);assert(r.admitted&&r.raw_valid&&r.raw==raw);}
         submit(a,0,2,2);
@@ -212,6 +229,88 @@ static void result_mask_contract(){
     assert(native_result_accepted(static_cast<NativeResult>(0xbad0000000000001ull)));
     assert(!native_result_accepted(static_cast<NativeResult>(0xffffffffbad00007ull)));
 }
+static void candidate_observations_and_quarantine(){
+    // All capability gates true still cannot publish, or Eval without observed
+    // producer data. The capability object has no dynamic-acceptance flags.
+    {Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);auto entry=a.enter();
+        RecordedOutput out;bool reset{};assert(a.phase(entry)==AcceptancePhase::candidate);
+        assert(!a.recorded_output(entry,out));assert(!a.prepare_evaluate(entry,use(0),command(0),100,4,false,reset));
+        assert(f.evaluates==0&&a.phase(entry)==AcceptancePhase::quarantined);}
+    for(unsigned bad=0;bad<8;++bad){Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);
+        auto p=producer(0);switch(bad){case 0:++p.use.identity.epoch;break;case 1:p.view=0;break;
+            case 2:p.rendered[1].x=1280;break;case 3:p.rendered[2].width=1280;break;
+            case 4:p.resources[3].extent.width=1280;break;case 5:p.resources[0].device++;break;
+            case 6:p.resources[3].identity=p.resources[0].identity;break;case 7:p.use.eye=1;break;}
+        auto entry=a.enter();assert(!a.observe_producer(entry,p)&&f.evaluates==0&&a.phase(entry)==AcceptancePhase::quarantined);
+    }
+    // Copy must use the exact resources whose producers were observed.
+    {Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);assert(eval(a,f,0));
+        auto changed=facts(0);changed.resources[2].identity+=20;auto entry=a.enter();
+        assert(!a.copy(entry,changed,0)&&f.copies==0&&a.phase(entry)==AcceptancePhase::quarantined);}
+    // A candidate is bounded to one pair. A new ticket cannot overwrite its
+    // pending acceptance evidence even after both original submissions return.
+    {Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);assert(eval(a,f,0));copy(a,0);assert(eval(a,f,1));copy(a,1);
+        submit(a,0,2,2);submit(a,1,3,3);auto entry=a.enter();
+        assert(!a.observe_producer(entry,producer(0,11))&&f.evaluates==2&&a.phase(entry)==AcceptancePhase::quarantined);}
+    // Unknown or incomplete acceptance is a failed trial, not an automatic
+    // retry. Already-recorded work is still retired through its real receipts.
+    for(unsigned bad=0;bad<12;++bad){Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);
+        assert(eval(a,f,0));copy(a,0);assert(eval(a,f,1));copy(a,1);submit(a,0,2,2);submit(a,1,3,3);
+        auto observed=observations();switch(bad){case 0:observed[1].feature=100;break;
+            case 1:observed[0].use.identity.epoch++;break;case 2:observed[1].use.ticket++;break;
+            case 3:observed[1].use.generation++;break;case 4:observed[0].output.identity++;break;
+            case 5:observed[0].output.extent.height=720;break;case 6:observed[1].produced.x=1280;break;
+            case 7:observed[1].produced.width=853;break;case 8:observed[1].completion.value=2;break;
+            case 9:observed[0].completion.fence++;break;case 10:observed[0].completion.value=UINT64_MAX;break;
+            case 11:observed[0].use.eye=1;break;}
+        auto entry=a.enter();RecordedOutput out;assert(!a.accept_candidate(entry,observed));
+        assert(a.phase(entry)==AcceptancePhase::quarantined&&!a.recorded_output(entry,out)&&!a.ordered_output(entry,out));
+        assert(!a.accept_candidate(entry,observations()));NativeResult raw{};
+        assert(!a.release_completed(entry,100,completion(UINT64_MAX),raw)&&f.releases==0);
+        assert(a.release_completed(entry,100,completion(3),raw)&&a.release_completed(entry,101,completion(3),raw)&&a.drained(entry));
+    }
+    {Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);assert(eval(a,f,0));copy(a,0);assert(eval(a,f,1));copy(a,1);
+        auto entry=a.enter();assert(!a.accept_candidate(entry,observations()));assert(a.phase(entry)==AcceptancePhase::quarantined);
+        assert(a.submitted_eye(entry,0,execution(0,2,2))&&a.submitted_eye(entry,1,execution(1,3,3)));
+        NativeResult raw{};assert(a.release_completed(entry,100,completion(3),raw)&&a.release_completed(entry,101,completion(3),raw));}
+    // After acceptance, last ticket's observations cannot authorize another
+    // ticket's SDK invocation; persistent acceptance does not waive this join.
+    {Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);assert(eval(a,f,0));copy(a,0);assert(eval(a,f,1));copy(a,1);
+        submit(a,0,2,2);submit(a,1,3,3);accept(a);auto entry=a.enter();bool reset{};
+        assert(!a.prepare_evaluate(entry,use(0,11),command(0),100,4,false,reset)&&f.evaluates==2);}
+    {Fake f;StereoAdapter a(f,ready());start(a);submit_create(a);assert(eval(a,f,0));copy(a,0);assert(eval(a,f,1));copy(a,1);
+        submit(a,0,2,2);submit(a,1,3,3);accept(a);auto changed=producer(0,11);changed.resources[3].identity+=20;
+        auto entry=a.enter();assert(!a.observe_producer(entry,changed)&&f.evaluates==2&&a.phase(entry)==AcceptancePhase::quarantined);}
+}
+static void zero_handle_creation_retirement(){
+    for(unsigned outcome=0;outcome<3;++outcome){Fake f;f.zero_create=0;f.fail_create=outcome==0?0:99;f.throw_create=outcome==2;
+        StereoAdapter a(f,ready());auto entry=a.enter();assert(a.begin_epoch(entry,identity(),layout()));
+        bool threw{};try{auto result=a.create(entry,command(),1,4);assert(!result.admitted&&result.raw_valid);
+            assert(result.raw==(outcome==0?dispatch_unavailable:named_result_success));}
+        catch(std::runtime_error const&){threw=true;}
+        assert(threw==(outcome==2)&&f.creates==1&&!a.owns(entry,100)&&!a.drained(entry));
+        assert(!a.complete_creation(entry,completion(99))&&!a.begin_epoch(entry,{2,2,3,4,6},layout()));
+        assert(a.submitted_creation(entry,execution(2,1,5)));
+        for(unsigned bad=0;bad<5;++bad){auto c=completion(5);switch(bad){case 0:c.value=4;break;
+            case 1:c.device++;break;case 2:c.queue++;break;case 3:c.fence++;break;case 4:c.value=UINT64_MAX;break;}
+            assert(!a.complete_creation(entry,c)&&!a.drained(entry)&&!a.begin_epoch(entry,{2,2,3,4,6},layout()));}
+        NativeResult raw=99;assert(!a.release_completed(entry,100,completion(4),raw)&&raw==99&&f.releases==0);
+        assert(a.complete_creation(entry,completion(5))&&a.drained(entry)&&f.releases==0);
+        assert(a.begin_epoch(entry,{2,2,3,4,6},layout())&&a.phase(entry)==AcceptancePhase::candidate);
+        assert(!a.complete_creation(entry,completion(99))&&f.releases==0);
+    }
+    // A zero second result leaves the first handle and the shared Create
+    // command obligation owned. Completing Create must not release that handle.
+    {Fake f;f.zero_create=1;f.fail_create=1;StereoAdapter a(f,ready());auto entry=a.enter();
+        assert(a.begin_epoch(entry,identity(),layout()));auto result=a.create(entry,command(),1,4);
+        assert(!result.admitted&&result.raw==dispatch_unavailable&&f.creates==2&&a.owns(entry,100)&&!a.owns(entry,101));
+        assert(!a.drained(entry)&&!a.begin_epoch(entry,{2,2,3,4,6},layout()));
+        assert(a.submitted_creation(entry,execution(2,1,5))&&a.complete_creation(entry,completion(5)));
+        assert(!a.drained(entry)&&!a.begin_epoch(entry,{2,2,3,4,6},layout())&&f.releases==0);
+        NativeResult raw{};assert(a.release_completed(entry,100,completion(5),raw)&&raw==named_result_success);
+        assert(a.drained(entry)&&f.releases==1&&a.begin_epoch(entry,{2,2,3,4,6},layout()));}
+}
 int main(){patch_boundaries();disabled_and_prerequisites();independent_images_and_histories();create_failures_and_gpu_retirement();
-    failed_recorded_eval_and_copy();bad_order_and_concurrency();boundary_rejections();result_mask_contract();std::cout<<"NGX adapter SDK/copy/retirement boundary tests passed\n";}
+    failed_recorded_eval_and_copy();bad_order_and_concurrency();boundary_rejections();result_mask_contract();candidate_observations_and_quarantine();zero_handle_creation_retirement();
+    std::cout<<"NGX adapter SDK/copy/retirement boundary tests passed\n";}
 
