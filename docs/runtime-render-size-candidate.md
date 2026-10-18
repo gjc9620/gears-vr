@@ -27,6 +27,16 @@ isolated interpreter/import/PE/hash preflight passed. This is a development
 artifact, not public release acceptance; mounted gun, remaining UI, DLSS and
 headset verification remain separate requirements.
 
+The actual development ZIP was subsequently hash-verified, its complete member
+inventory verified, and extracted to a fresh directory containing spaces.
+Its bundled interpreter passed isolated import/PE/hash preflight for all716
+payload files without launching a GUI or game. ZIP SHA256:
+`fd4be4e7ec48e5ae3c87da4ad1ce7e532b17097ada65d9acd2cbea7758e19110`.
+Evidence: `analysis/runtime/runtime-release2-extracted-preflight.json`;
+driver: `analysis/runtime/verify-release2-extracted.py`. This verifies the
+delivered archive's offline dependency closure, not installation or headset
+behavior on another player's machine.
+
 The same DepthReclaim1 DLL also passed scale0.7: runtime recommendation
 1280x1400 produced896x980 per eye (SBS1792x980). Both checkpoint reloads,
 native cleanup, independent entry restoration and five-file restoration
