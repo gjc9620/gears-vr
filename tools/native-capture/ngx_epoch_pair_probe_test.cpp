@@ -18,6 +18,9 @@ int main(){try{
     auto p_owner=std::make_unique<Probe>();auto& p=*p_owner;EvalInput ignored;check(p.enter(ignored,false)==-1);p.built(geo(),true);check(!p.selected&&!p.resource_count);
     p.created(1,2,300,400,{1706,720,2560,1080,1,0x12,1});check(p.enter(ignored,false)==-1&&p.skipped==1);
     auto wrong=geo();wrong.world=3;p.built(wrong,true);check(!p.selected);p.built(geo(),true);p.prepared(1,geo());p.prepared(2,geo());check(p.selected&&p.ticket==10);
+    for(unsigned i=0;i<337;++i){List other{100000+i,200000+i,300000+i};auto next=other;++next.generation;p.reset(other,next,true);}
+    for(unsigned i=0;i<205;++i){List other{100000+i,200000+i,300000+i};auto order=p.execute_begin(80,&other,1);p.execute_end(order,80,&other,&other,1);}
+    check(p.event_count==0&&!p.finished&&p.excluded_resets==337&&p.excluded_execute_members==205&&p.execution_order==205);
     const List eval_lists[]{{11,21,31},{12,22,32}};const List copy_lists[]{{13,23,33},{14,24,34}};
     for(unsigned eye=0;eye<2;++eye){
         const auto before=p.serial;
@@ -66,5 +69,44 @@ int main(){try{
         if(evidence==0)rearm.built(geo(),true);else if(evidence==1)rearm.resource_count=1;else if(evidence==2)rearm.eval_count=1;else if(evidence==3)rearm.event_count=1;else rearm.execution_order=1;
         rearm.created(2,2,301,400,fields);check(rearm.finished&&rearm.stop==2&&rearm.revision==1&&!rearm.empty_epoch_count);
     }
+    // A mixed batch preserves the original member/count/order. Unknown/reset-only
+    // lists remain excluded; unknown UAV/alias barriers still seed observations.
+    auto scoped_owner=std::make_unique<Probe>();auto& scoped=*scoped_owner;arm(scoped);
+    List member[]{ {40,50,60},{41,51,61},{42,52,62} };
+    D3D12_RESOURCE_BARRIER wildcard{};wildcard.Type=D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    scoped.barrier(member[1],wildcard,70);check(scoped.unknown==1&&scoped.event_count==1);
+    order=scoped.execute_begin(80,member,3);check(scoped.event_count==2&&scoped.excluded_execute_members==2&&scoped.events[1].member==1&&scoped.events[1].count==3);
+    // Late enrollment during the API cannot retroactively acquire membership.
+    scoped.barrier(member[0],wildcard,70);scoped.execute_end(order,80,member,member,3);
+    check(scoped.event_count==4&&scoped.events[3].kind==Kind::execute_return&&scoped.events[3].member==1&&scoped.events[3].order==order);
+    auto count=scoped.event_count;List unseen{60,70,80},unseen_next=unseen;++unseen_next.generation;scoped.reset(unseen,unseen_next,true);
+    check(scoped.event_count==count&&!scoped.watches(unseen_next));
+    auto changed_list=member[1];++changed_list.generation;scoped.reset(member[1],changed_list,true);
+    check(scoped.events[scoped.event_count-1].kind==Kind::reset&&!scoped.watches(changed_list));
+    // Wrong pre-execute generation is retained for a pending Eval and rejected;
+    // an exact duplicate generation remains visible after first submission.
+    auto pending_owner=std::make_unique<Probe>();auto& pending=*pending_owner;arm(pending);in=p.evals[0].input;
+    check(pending.enter(in,false)==0);pending.leave(in.scope,true,1);auto wrong_generation=in.command;++wrong_generation.generation;
+    count=pending.event_count;pending.reset(wrong_generation,wrong_generation,false);check(pending.event_count==count+1&&!pending.events[count].returned);
+    order=pending.execute_begin(80,&wrong_generation,1);pending.execute_end(order,80,&wrong_generation,&wrong_generation,1);
+    check(pending.evals[0].eval_executes==1&&!pending.evals[0].eval_generation);
+    pending.clear();arm(pending);check(pending.enter(in,false)==0);pending.leave(in.scope,true,1);
+    for(unsigned i=0;i<2;++i){order=pending.execute_begin(80,&in.command,1);pending.execute_end(order,80,&in.command,&in.command,1);}
+    check(pending.evals[0].eval_executes==2&&!pending.evals[0].eval_generation);
+    // Copy-only recordings seed relevance independently and preserve pending
+    // wrong-generation submission, reset, and exact duplicate diagnostics.
+    D3D12_TEXTURE_COPY_LOCATION copy_src{},copy_dst{};copy_src.pResource=resources[1].Get();copy_dst.pResource=resources[0].Get();
+    copy_src.Type=copy_dst.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+    for(unsigned duplicate=0;duplicate<2;++duplicate){
+        pending.clear();arm(pending);check(pending.enter(in,false)==0);pending.leave(in.scope,true,1);
+        check(pending.copy(copy_lists[0],copy_dst,{0,0,0},copy_src,nullptr,0x1c6093)==0);pending.copied(0,copy_lists[0],true);
+        auto submitted=copy_lists[0];if(!duplicate)++submitted.generation;
+        count=pending.event_count;pending.reset(submitted,submitted,false);check(pending.event_count==count+1&&!pending.events[count].returned);
+        for(unsigned i=0;i<1+duplicate;++i){order=pending.execute_begin(80,&submitted,1);pending.execute_end(order,80,&submitted,&submitted,1);}
+        check(pending.evals[0].copy_executes==1+duplicate&&!pending.evals[0].copy_generation);
+    }
+    // Relevant, unknown barriers still exhaust the unchanged bound, not a ring.
+    scoped.clear();arm(scoped);for(unsigned i=0;i<Probe::event_capacity+1;++i)scoped.barrier(member[0],wildcard,70);
+    check(scoped.finished&&scoped.stop==6&&scoped.event_count==1024&&scoped.dropped==1);
     std::printf("NGX epoch pair probe tests passed: %u checks (real typed resources, synthetic event sequence)\n",checks);return 0;
 }catch(std::exception const& e){std::fprintf(stderr,"%s (%u)\n",e.what(),checks);return 1;}}

@@ -40,6 +40,7 @@ public:
     struct EmptyEpoch {uint64_t revision{},world{};uintptr_t handle{},parameters{};std::array<uint32_t,7> fields{};unsigned reason{},skipped{};};
     struct Typed {gears_ngx_stereo::TypedResourceLease lease{};uint64_t first{},last{};unsigned observations{};};
     bool armed{},selected{},finished{};unsigned stop{},dropped{},unknown{},skipped{},eval_count{},resource_count{},event_count{};
+    uint64_t excluded_execute_members{},excluded_resets{};
     unsigned empty_epoch_count{},end_reason{};std::array<EmptyEpoch,3> empty_epochs{};
     uint64_t revision{},world{},ticket{},serial{},execution_order{};uintptr_t handle{},parameters{},renderer{};
     std::array<uint32_t,7> creation{};std::array<Geometry,3> geometry{};
@@ -140,13 +141,29 @@ public:
         if(index<0||index>=2||!observing())return;auto& e=evals[unsigned(index)];e.copy_returned=unchanged&&same(e.copy_list,current);
         Event ev;ev.kind=Kind::copy_return;ev.list=current;ev.member=unsigned(index);ev.returned=e.copy_returned;event(ev);
     }
+    // Only selected-ticket Barrier/Eval/Copy evidence introduces a recording.
+    // Reset/Execute never seed relevance. Pending uses also retain wrong-generation
+    // observations of the same raw list, so filtering cannot hide a violation.
+    bool watches(List list)const{
+        if(!list.raw)return false;
+        for(unsigned i=0;i<event_count;++i){auto const& e=events[i];
+            if((e.kind==Kind::transition||e.kind==Kind::uav||e.kind==Kind::alias||e.kind==Kind::eval_begin||e.kind==Kind::copy_begin)&&same(e.list,list))return true;}
+        for(unsigned i=0;i<eval_count;++i){auto const& e=evals[i];
+            if((!e.eval_executes&&e.input.command.raw==list.raw)||(!e.copy_executes&&e.copy_list.raw==list.raw))return true;}
+        return false;
+    }
+    bool executing(uint64_t order,unsigned member,List list)const{
+        for(unsigned i=0;i<event_count;++i){auto const& e=events[i];
+            if(e.kind==Kind::execute_begin&&e.order==order&&e.member==member&&same(e.list,list))return true;}
+        return false;
+    }
     uint64_t execute_begin(uintptr_t queue,List const* lists,unsigned count){
         if(!observing())return 0;const auto order=++execution_order;
-        for(unsigned i=0;i<count;++i){Event ev;ev.kind=Kind::execute_begin;ev.list=lists[i];ev.queue=queue;ev.order=order;ev.member=i;ev.count=count;event(ev);}return order;
+        for(unsigned i=0;i<count;++i){if(!watches(lists[i])){++excluded_execute_members;continue;}Event ev;ev.kind=Kind::execute_begin;ev.list=lists[i];ev.queue=queue;ev.order=order;ev.member=i;ev.count=count;event(ev);}return order;
     }
     void execute_end(uint64_t order,uintptr_t queue,List const* before,List const* after,unsigned count){
         if(!order||!observing())return;
-        for(unsigned i=0;i<count;++i){Event ev;ev.kind=Kind::execute_return;ev.list=before[i];ev.queue=queue;ev.order=order;ev.member=i;ev.count=count;ev.returned=true;ev.current=same(before[i],after[i]);event(ev);
+        for(unsigned i=0;i<count;++i){if(!executing(order,i,before[i]))continue;Event ev;ev.kind=Kind::execute_return;ev.list=before[i];ev.queue=queue;ev.order=order;ev.member=i;ev.count=count;ev.returned=true;ev.current=same(before[i],after[i]);event(ev);
             for(unsigned j=0;j<eval_count;++j){auto& e=evals[j];
                 if(same(e.input.command,before[i])||(e.input.command.raw==before[i].raw&&!e.eval_executes)){++e.eval_executes;e.eval_generation=e.eval_executes==1&&ev.current&&same(before[i],e.input.command);e.eval_order=order;e.eval_queue=queue;e.eval_member=i;}
                 if(e.copy_list.raw&&(same(e.copy_list,before[i])||(e.copy_list.raw==before[i].raw&&!e.copy_executes))){++e.copy_executes;e.copy_generation=e.copy_executes==1&&ev.current&&same(before[i],e.copy_list);e.copy_order=order;e.copy_queue=queue;e.copy_member=i;}
@@ -154,7 +171,7 @@ public:
         }
         if(!finished&&eval_count==2&&evals[0].copy_executes&&evals[1].copy_executes&&evals[0].eval_executes&&evals[1].eval_executes){finished=true;stop=1;}
     }
-    void reset(List before,List after,bool returned){Event ev;ev.kind=Kind::reset;ev.list=before;ev.order=after.generation;ev.returned=returned;ev.current=before.canonical==after.canonical;event(ev);}
+    void reset(List before,List after,bool returned){if(!observing())return;if(!watches(before)){++excluded_resets;return;}Event ev;ev.kind=Kind::reset;ev.list=before;ev.order=after.generation;ev.returned=returned;ev.current=before.canonical==after.canonical;event(ev);}
     void release_leases(){for(auto& r:resources)r.lease.release();}
     bool complete()const{
         if(!finished||stop!=1||dropped||eval_count!=2||geometry[0].valid!=31||geometry[0].constructor_valid!=3||geometry[1].valid!=31||geometry[2].valid!=31)return false;

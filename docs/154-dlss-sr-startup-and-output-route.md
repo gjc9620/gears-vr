@@ -187,3 +187,27 @@ Root applied the integration and lifetime patch, built the fresh host-OFF `build
 `eba6be2` and `ba312c5` add a default-OFF epoch/pair observer at the existing constructor/prepare, typed Barrier/Copy, NGX Create/Evaluate/Release and Execute/Reset boundaries. It preserves up to three summaries of wholly empty epochs before rearming; any pair evidence freezes its epoch. Candidate completeness explicitly does not certify producer coverage, logical eyes, resource state, GPU completion or queue dependencies. SDK parameters and GPU work remain unchanged.
 
 Root built and linked `build-runtime-resolution1-ngx-pair/GearsCaptureRuntimeNgxPair.dll`, SHA256 `65933b1e69e061417b71e72867389fc2cfff645d7d6596feca82f51970fda0e4`, with host and epoch observers ON and no control activation. Both registered probe tests and the DLL continuous self-test passed. The new actual-callback test uses real D3D12 Barrier/Copy/Execute/Reset with synthetic SDK scopes. No game run has yet used this candidate. The next bounded game sample must provide the missing typed Depth/MotionVectors identities, dimensions and actual pair transitions; these remain absent from historical Color/Output-only evidence. No player manifest/package was changed.
+
+### 2026-10-19: prevent unrelated command traffic exhausting epoch evidence
+
+The actual `dlss-native-menu4` sample selected NVIDIA DLSS 3.5 / Quality in the
+reflected game menu. Native Create reported 2560x1440 input and 3840x2160 output,
+but 994 of 1024 recorded events were global Reset/Execute traffic. Capture ended
+at the unchanged event limit before any Eval. Menu navigation also hit its
+90-second parent deadline; return to gameplay and stereo output were not proved.
+
+Execute/Reset records now require a list recording previously introduced by a
+selected Barrier, Eval or Copy. Pending Eval/Copy wrong-generation submissions,
+failed Reset, duplicates and all selected barriers remain observable. Mixed
+batches preserve original member/count and CPU call order; return membership is
+frozen at begin. Excluded counters and `earlier_history_complete=0` make the
+missing earlier history explicit. No SDK mutation, control activation or extra
+GPU work is introduced; relevant-event overflow still stops at 1024.
+
+Root rebuilt the game-resolution sampling DLL, SHA256
+`26bac014cbd99ca98ee89578e5fb6a6b0e5a0387670a26f3e52506bae128a0aa`.
+Both registered epoch tests and all 22 startup checks passed. The focused tests
+include 747 unrelated prefix events, mixed batches, pending generation failures,
+duplicate submissions and genuine capacity exhaustion. This remains an observer
+candidate, not released DLSS support. No game/simulator launch or player package
+change was performed for this revision; actual menu pair evidence is still due.

@@ -65,7 +65,7 @@ int main(){try{
         {ngx_epoch_pair::BarrierScope observed(list.Get(),1,&b,base+12);list->ResourceBarrier(1,&b);observed.returned(list.Get());}
         D3D12_TEXTURE_COPY_LOCATION src{},dst{};src.pResource=resources[1].Get();dst.pResource=resources[0].Get();src.Type=dst.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
         {ngx_epoch_pair::CopyScope observed(list.Get(),&dst,0,0,0,&src,nullptr,base+0x1c6093);list->CopyTextureRegion(&dst,0,0,0,&src,nullptr);observed.returned(list.Get(),&dst,&src,nullptr);}
-        hr(list->Close());ID3D12CommandList* batch[]{list.Get()};{ngx_epoch_pair::ExecuteScope observed(queue.Get(),1,batch);queue->ExecuteCommandLists(1,batch);observed.returned();}
+        hr(list->Close());ID3D12CommandList* batch[]{list.Get()};auto* saved_renderer=consuming_renderer;consuming_renderer=nullptr;{ngx_epoch_pair::ExecuteScope observed(queue.Get(),1,batch);queue->ExecuteCommandLists(1,batch);observed.returned();}consuming_renderer=saved_renderer;
         // Independent test fence only; observer never submits a fence or waits.
         hr(queue->Signal(fence.Get(),eye+1));const auto end=GetTickCount64()+5000;while(fence->GetCompletedValue()<eye+1&&GetTickCount64()<end)Sleep(1);check(fence->GetCompletedValue()==eye+1);
         if(!eye){const auto before=ngx_epoch_pair::list(list.Get());hr(allocator->Reset());hr(list->Reset(allocator.Get(),nullptr));++frame_link.generation;ngx_epoch_pair::reset(before,list.Get(),S_OK);}
@@ -74,6 +74,7 @@ int main(){try{
     std::string text;char buffer_line[2048];while(fgets(buffer_line,sizeof(buffer_line),output))text+=buffer_line;fclose(output);
     check(text.find("candidate_complete=1")!=std::string::npos&&text.find("producer_domain_verified=0")!=std::string::npos&&text.find("gpu_completion_verified=0")!=std::string::npos);
     check(text.find("stage=prepare_after")!=std::string::npos&&text.find("typed_before=f")!=std::string::npos&&text.find("format=41")!=std::string::npos);
+    check(text.find("membership_frozen_at_execute_begin=1 earlier_history_complete=0")!=std::string::npos);
     check(!ngx_epoch_pair::probe.resources[0].lease.retained());
     recording=true;ngx_epoch_pair::reset_capture(true);ngx_epoch_pair::created({2,2,h,p,{1706,720,2560,1080,1,0x12,1}});ngx_epoch_pair::released(h);check(ngx_epoch_pair::probe.stop==2);
     ngx_epoch_pair::reset_capture(true);ngx_epoch_pair::created({3,2,h,p,{1706,720,2560,1080,1,0x12,1}});committed_world_generation=3;check(!ngx_epoch_pair::selected()&&ngx_epoch_pair::probe.stop==2);
