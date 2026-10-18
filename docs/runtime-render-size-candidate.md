@@ -10,6 +10,18 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ### Blocking image defect at scale 2.0
 
+Synthetic transport check,2026-10-19: private
+`analysis/runtime/high-size-share-test.cpp` reuses the real GpuPublisher and
+GpuReceiver with an owned5120x2800 RGBA8 target, independent of any swapchain.
+Four distinct GPU-clear regions cross x3840 and y2160. After actual shared
+publication, acquisition and full-footprint GPU readback, every RGBA channel
+of14,336,000 pixels matched (zero differences); ticket and dimensions matched,
+ACK/drain/close succeeded. D3D12 debug layer was unavailable (`false`).
+This supports the transport's ability to preserve pixels beyond desktop size;
+it does not prove the live game selects the correct source/state or produces
+correct scene pixels. Source HDR readback remains required. Evidence:
+`analysis/runtime/high-size-share-test-result.json` and build log/source.
+
 Owned postprocess trace: RuntimeQuadTrace1 DLL
 `95137583c2057582f51446993198684e92c62e6196c1ce2795a9db67a60a2dcd`
 passed22 startup checks and two reloads, normal shutdown/restoration.
