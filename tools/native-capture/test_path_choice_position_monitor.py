@@ -343,6 +343,8 @@ class MonitorTests(unittest.TestCase):
                 self.m.verify_session(object(), 1)
 
     def live_probe_modules(self):
+        self.fixed_prefix_sample=self.enterContext(mock.patch("path_choice_position_collect.sample_fixed_prefix",
+            side_effect=lambda reader, **options: reader.sample(**options)))
         reader = SimpleNamespace(
             sample=lambda **kwargs:dict(top=dict(cls='UIScene_PathChoice', address='0x65'), active_scenes=[]),
             r=SimpleNamespace(resolve=lambda:dict(controller_address='0x67', local_player_address='0x68')),
@@ -388,6 +390,8 @@ class MonitorTests(unittest.TestCase):
             scene_owner_snapshot=SimpleNamespace(SceneOwnerRejected=SceneOwnerRejected),
             menu_control=SimpleNamespace(reader_process_identity=lambda reader:(3, 30)))
         self.enterContext(mock.patch.dict('sys.modules', modules))
+        self.enterContext(mock.patch("path_choice_position_collect.sample_fixed_prefix",
+            side_effect=lambda reader, **options: reader.sample(**options)))
         certificate_probe = Probe()
         def collect(reader, sample, status, session, nonce, verify, *, registry_header_policy, target_vertical_region):
             self.assertEqual(registry_header_policy, 'fixed_prefix_v1')
@@ -601,6 +605,8 @@ class MonitorTests(unittest.TestCase):
             self.assertEqual(self.m.state, 'holding')
             self.assertFalse(self.m.terminal)
             self.assertEqual(certificate_probe.full_reads, 1)
+            self.assertEqual(self.fixed_prefix_sample.call_count, 2)
+            self.assertTrue(self.fixed_prefix_sample.call_args.kwargs["include_owner"])
             self.assertEqual(published['path_position_pending_restore'], 1)
             renewals = [row[1] for row in self.actions if row[0] == 'renew']
             self.assertGreater(len(renewals), 10)

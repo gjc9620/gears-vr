@@ -74,7 +74,8 @@ class LivePathChoicePositionProbe:
             return self.verify_session(current, generation, observation_nonce=None if acquire else nonce)
         try:
             session, status = verify(reader)
-            sample = reader.sample()
+            from path_choice_position_collect import sample_fixed_prefix
+            sample = sample_fixed_prefix(reader) if acquire else reader.sample()
             if (sample.get('top') or {}).get('cls') != 'UIScene_PathChoice':
                 verify(reader)
                 absent = not any(row.get('cls') == 'UIScene_PathChoice' for row in sample['active_scenes'])
@@ -84,7 +85,7 @@ class LivePathChoicePositionProbe:
                 verify(reader)
                 return Observation(True, scene_address=address)
             camera = reader.r.resolve()
-            sample = reader.sample(include_tree=True, include_layout_details=True, include_owner=True,
+            sample = sample_fixed_prefix(reader, include_tree=True, include_layout_details=True, include_owner=True,
                 expected_controller=int(camera['controller_address'], 16),
                 expected_local_player=int(camera['local_player_address'], 16))
             verify(reader)

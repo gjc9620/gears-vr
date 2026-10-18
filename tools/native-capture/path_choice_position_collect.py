@@ -110,6 +110,30 @@ class _FixedPrefixReads:
         return dict(registry_header_policy='fixed_prefix_v1', normalized_fixed_prefix_headers=True,
                     consistency_semantics='logical_fixed_prefix_consistency', nonheader_bytes_exact=True)
 
+def sample_fixed_prefix(reader, **options):
+    """One PathChoice-only preliminary sample; default MenuReader stays exact.
+
+    A fresh inventory/client bracket establishes this call's initial prefix.
+    Existing snapshot, slot, layout and owner checks then consume that same
+    validated logical read projection. No failed bytes or policy survive it.
+    """
+    reader.force_registry_refresh()
+    r = reader.r
+    original_read = r.read
+    policy = _FixedPrefixReads(r, original_read)
+    r.read = policy.read
+    try:
+        sample = reader.sample(**options)
+        sample.update(policy.semantics())
+        sample['registry_header_observations'] = copy.deepcopy(policy.observations)
+        if 'scene_owner' in sample:
+            sample['scene_owner']['evidence'].update(policy.semantics(),
+                source_bytes_semantics='digest_of_logical_fixed_prefix_read_ledger')
+        return sample
+    finally:
+        r.read = original_read
+
+
 # Neutral supported content signature: names/classes and reflected Value/ScaleType
 # bytes only, extracted from the validated baseline. No heap or image addresses.
 SUPPORTED_LAYOUT = (

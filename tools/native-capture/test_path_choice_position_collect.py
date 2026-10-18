@@ -201,6 +201,81 @@ class CollectorTests(unittest.TestCase):
         values[6].update((r.objects_header+i,b) for i,b in enumerate(initial))
         return values,initial
 
+    def test_presample_fixed_prefix_actual11_plus4_and_finally_restore(self):
+        values,initial=self.live_header_fixture();reader=values[0];r=reader.r;source=r.read
+        r.object_count=241927
+        initial=struct.pack('<Qii',r.objects_data,r.object_count,r.object_capacity)
+        values[6].update((r.objects_header+i,b) for i,b in enumerate(initial))
+        calls=[]
+        def grow(address,size):
+            raw=source(address,size)
+            if (address,size)==(r.objects_header,16):
+                calls.append(1)
+                return struct.pack('<Qii',r.objects_data,r.object_count+4,r.object_capacity)
+            return raw
+        r.read=grow
+        def sample(**options):
+            reader.force_registry_refresh.assert_called_once()
+            self.assertEqual(options,dict(include_owner=True))
+            self.assertEqual(r.read(r.objects_header,16),initial)
+            self.assertEqual(r.read(r.objects_header,16),initial)
+            return copy.deepcopy(values[1])
+        reader.sample=mock.Mock(side_effect=sample)
+        result=collector.sample_fixed_prefix(reader,include_owner=True)
+        self.assertEqual(result['registry_header_policy'],'fixed_prefix_v1')
+        self.assertEqual(result['scene_owner']['evidence']['source_bytes_semantics'],
+            'digest_of_logical_fixed_prefix_read_ledger')
+        self.assertEqual(result['registry_header_observations']['objects']['accepted_suffix_reads'],2)
+        self.assertEqual(len(calls),2)
+        self.assertIs(r.read,grow)
+
+    def test_presample_policy_is_built_after_fresh_registry_refresh(self):
+        values=fixture();reader=values[0];r=reader.r;source=r.read
+        def refresh():
+            r.object_count+=1
+            raw=struct.pack('<Qii',r.objects_data,r.object_count,r.object_capacity)
+            values[6].update((r.objects_header+i,b) for i,b in enumerate(raw))
+        reader.force_registry_refresh.side_effect=refresh
+        reader.sample=lambda **options:dict(header=r.read(r.objects_header,16))
+        result=collector.sample_fixed_prefix(reader)
+        self.assertEqual(struct.unpack('<Qii',result['header'])[1],r.object_count)
+        self.assertIs(r.read,source)
+        reader.force_registry_refresh.side_effect=RuntimeError('fresh inventory rejected')
+        reader.sample=mock.Mock()
+        with self.assertRaisesRegex(RuntimeError,'fresh inventory rejected'):collector.sample_fixed_prefix(reader)
+        reader.sample.assert_not_called()
+        self.assertIs(r.read,source)
+
+    def test_presample_fixed_prefix_rejects_invalid_header_and_restores(self):
+        for change in ('shrink','data','capacity','excess','partial'):
+            values,initial=self.live_header_fixture();reader=values[0];r=reader.r;source=r.read
+            data,num,capacity=struct.unpack('<Qii',initial)
+            if change=='shrink':num-=1
+            if change=='data':data+=8
+            if change=='capacity':capacity+=1
+            if change=='excess':num=capacity+1
+            def changed(address,size):
+                return struct.pack('<Qii',data,num,capacity) if (address,size)==(r.objects_header,16) else source(address,size)
+            r.read=changed
+            reader.sample=lambda **options:r.read(r.objects_header,8 if change=='partial' else 16)
+            with self.subTest(change=change),self.assertRaises(ValueError):collector.sample_fixed_prefix(reader)
+            self.assertIs(r.read,changed)
+
+    def test_presample_keeps_nonheader_checks_exact_and_restores_on_error(self):
+        from menu_state import SnapshotChanged
+        for target_kind in ('slot','layout'):
+            values=fixture();reader=values[0];r=reader.r;source=r.read
+            target=r.objects_data if target_kind=='slot' else 0x987600
+            values[6][target]=42
+            def sample(**options):
+                first=r.read(target,1)
+                values[6][target]^=1
+                if r.read(target,1)!=first:raise SnapshotChanged('changed ordinary sampled bytes')
+            reader.sample=sample
+            with self.subTest(target_kind=target_kind),self.assertRaises(SnapshotChanged):
+                collector.sample_fixed_prefix(reader)
+            self.assertIs(r.read,source)
+
     def test_fixed_prefix_actual_plus12_uses_initial_serialized_baseline(self):
         values,initial=self.live_header_fixture();reader=values[0];r=reader.r;source=r.read
         calls=0
