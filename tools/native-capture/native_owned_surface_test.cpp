@@ -171,5 +171,34 @@ int main(int argc,char** argv){
   CHECK(gate.retire_on_rhi(owner)&&!owner.retained());CHECK(gate.retire_on_rhi(owner));
   CHECK(ops.clears==1&&ops.releases==2&&gate.phase()==gears_owned_retirement::Phase::released);
  }
+ {Mock ops;TestOwner owner;CHECK(create(owner,ops));auto* adapter=owner.borrow_adapter();
+  gears_owned_retirement::Gate gate;gears_owned_retirement::Handoff handoff,foreign;
+  gears_owned_retirement::Handoff::Receipt first{},second{};
+  const gears_owned_retirement::ResourceIdentity identity{1,9,12,ops.d,0x900000};
+  auto proof=drain();proof.gpu_fence_completed=false;
+  CHECK(!handoff.begin(gate,identity,{9,true,false,true,true,false}));
+  CHECK(handoff.begin(gate,identity,proof));CHECK(!handoff.receipt(gate,false,true,first));
+  CHECK(!owner.recreate_on_rhi(ops,2560,1400,13)&&ops.creates==1);
+  CHECK(gate.gpu_drained(9,true,true,true)&&gate.retire_on_rhi(owner));
+  CHECK(!handoff.receipt(gate,false,false,first));CHECK(!handoff.receipt(gate,true,true,first));
+  CHECK(handoff.receipt(gate,false,true,first));CHECK(!foreign.current(gate,first));
+  CHECK(!handoff.arm(gate,first,3,false));CHECK(!handoff.arm(gate,first,2,true));
+  CHECK(handoff.arm(gate,first,2,false)&&handoff.arm(gate,first,2,false));
+  CHECK(!handoff.can_recreate(2,13,true)&&ops.creates==1); // Stop after arm does not create.
+  CHECK(!handoff.can_recreate(1,13,false)&&!handoff.can_recreate(2,12,false));
+  CHECK(!owner.recreate_on_rhi(ops,2560,1400,9));
+  ops.tid=43;CHECK(!owner.recreate_on_rhi(ops,2560,1400,13)&&ops.creates==1);ops.tid=42;
+  ++ops.context;CHECK(!owner.recreate_on_rhi(ops,2560,1400,13)&&ops.creates==1);--ops.context;
+  CHECK(handoff.can_recreate(2,13,false)&&owner.recreate_on_rhi(ops,2560,1401,13));
+  CHECK(owner.borrow_adapter()==adapter&&owner.snapshot().generation==13&&owner.snapshot().height==1401);
+  CHECK(handoff.recreated(gate,2,13)&&!handoff.current(gate,first));
+  CHECK(!handoff.arm(gate,first,2,false));
+  const gears_owned_retirement::ResourceIdentity next{2,13,20,ops.d,0x900000};
+  CHECK(handoff.begin(gate,next,{13,true,true,true,true,false}));
+  CHECK(gate.gpu_drained(13,true,true,true)&&gate.retire_on_rhi(owner));
+  CHECK(handoff.receipt(gate,false,true,second)&&second.serial()>first.serial());
+  CHECK(!handoff.current(gate,first)&&handoff.current(gate,second));
+  CHECK(ops.creates==2&&ops.clears==2&&ops.releases==4&&!owner.retained());
+ }
  std::printf("native owned surface: %u CPU checks passed\n",checks);
 }

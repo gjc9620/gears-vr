@@ -47,5 +47,9 @@ public:
     unsigned state()const{return state_;}
     HRESULT error()const{return error_;}
     bool retained()const{return ops_.retained();}
+    bool rearm(){
+        if(state_!=2||ops_.retained())return false;
+        input_=nullptr;state_=0;error_=S_OK;return true;
+    }
 };
 }

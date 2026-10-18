@@ -53,7 +53,7 @@ public:
  struct Adapter {const uintptr_t* vtable;Owner* owner;};
 private:
  Ops* ops_{};uint64_t surface_{};uintptr_t com_{},device_{},tls_{},context_{},failed_window_{};
- Chain chain_{};uint64_t generation_{};DWORD thread_{};unsigned width_{},height_{};
+ Chain chain_{};uint64_t generation_{},generation_floor_{};DWORD thread_{};unsigned width_{},height_{};
  bool trusted_surface_{},trusted_com_{},trusted_device_{},uncertain_{};
  std::atomic<Phase> phase_{Phase::empty};std::atomic<Error> error_{Error::none};
  std::atomic<bool> adapter_fault_{};std::atomic<unsigned> callbacks_{};
@@ -111,7 +111,7 @@ public:
  }
  bool create_on_rhi(Ops& ops,unsigned width,unsigned height,uint64_t generation){
   if(phase_.load()!=Phase::empty)return false;
-  if(!generation||width<128||width>8192||width%2||height<64||height>8192)
+  if(!generation||generation<=generation_floor_||width<128||width>8192||width%2||height<64||height>8192)
    return fail(Error::invalid_config);
   uintptr_t block{},context{};if(!ops.tls(block,context)||!block||!context){error_=Error::tls_pending;return false;}
   ops_=&ops;tls_=block;context_=context;thread_=ops.thread();generation_=generation;
@@ -156,6 +156,13 @@ public:
   error_=Error::none;phase_.store(Phase::released,std::memory_order_release);return true;
  }
  bool retained()const{return surface_||com_||device_||uncertain_;}
+ // Only a fully released Owner can be reused, on its original RHI/TLS. Keep
+ // the adapter and surface-slot addresses stable and never reuse a generation.
+ bool recreate_on_rhi(Ops& ops,unsigned width,unsigned height,uint64_t generation){
+  if(phase_.load()!=Phase::released||retained()||callbacks_.load()||generation<=generation_||!same_tls())return false;
+  generation_floor_=generation_;chain_={};trusted_surface_=trusted_com_=trusted_device_=false;
+  failed_window_=0;phase_=Phase::empty;return create_on_rhi(ops,width,height,generation);
+ }
  Snapshot snapshot()const{return {phase_.load(),error_.load(),generation_,surface_,com_,device_,failed_window_,
   width_,height_,thread_,uncertain_,adapter_fault_.load()};}
 };

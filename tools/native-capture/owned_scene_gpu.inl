@@ -1,5 +1,6 @@
 #pragma once
 #include "native_render_size.h"
+#include "owned_scene_retirement.h"
 // Diagnostic only. All calls are serialized by frame_hook_mutex. The tracker
 // follows actual Reset generations; it never manufactures a command-list Reset.
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
@@ -42,7 +43,7 @@ constexpr uint64_t late_sample_frame=1800;
 uint64_t late_sample_ticket{};
 struct Frame {uint64_t ticket{};unsigned state{};bool copied{};};
 std::array<Frame,frame_limit> consumed_frames{};unsigned stored_frames{};
-uint64_t consumed_count{},last_consumed_ticket{};
+uint64_t consumed_count{},last_consumed_ticket{},resource_consumed{},resource_cycles{};
 gears_vr::StereoTicketStore image_tickets; // Independent of Present's legacy store and retirement.
 #if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
 struct SubtitleSample {
@@ -390,12 +391,13 @@ void copy(bool ready,uint64_t ticket){
 #if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
  if(!copy_subtitle(ticket)){fault(21);return;}
 #endif
- const bool last=continuous_probe&&consumed_count+1==frame_limit;
- const bool late=sustained&&consumed_count+1==late_sample_frame;
- const bool sample=!continuous_probe||!consumed_count||last||late;
+ const bool last=continuous_probe&&resource_consumed+1==frame_limit;
+ const bool late=sustained&&resource_consumed+1==late_sample_frame;
+ const bool sample=!continuous_probe||!resource_consumed||last||late;
  if(sample){
   wchar_t path[MAX_PATH]{};
-  if(late)swprintf_s(path,L"%s\\owned-scene-%lu-late.ppm",directory,GetCurrentProcessId());
+  if(resource_cycles)swprintf_s(path,L"%s\\owned-scene-%lu-generation-%llu-%u.ppm",directory,GetCurrentProcessId(),generation,late?2u:last?1u:0u);
+  else if(late)swprintf_s(path,L"%s\\owned-scene-%lu-late.ppm",directory,GetCurrentProcessId());
   else if(last)swprintf_s(path,L"%s\\owned-scene-%lu-last.ppm",directory,GetCurrentProcessId());
   else swprintf_s(path,L"%s\\owned-scene-%lu.ppm",directory,GetCurrentProcessId());
   StereoPublishBypass bypass;
@@ -406,7 +408,7 @@ void copy(bool ready,uint64_t ticket){
  if(continuous_probe){
   if((!sustained&&stored_frames==consumed_frames.size())||consumed_count==UINT64_MAX){fault(11);return;}
   if(stored_frames<consumed_frames.size())consumed_frames[stored_frames++]={ticket,proof.final_state,sample};
-  ++consumed_count;last_consumed_ticket=ticket;
+  ++consumed_count;++resource_consumed;last_consumed_ticket=ticket;
  }
  finished=!continuous_probe||(!sustained&&last);
 }
@@ -419,12 +421,15 @@ void poll(){if(enabled){readback.poll();last_readback.poll();late_readback.poll(
 #endif
 }}
 bool can_advance(uint64_t ticket){return continuous_probe&&watching()&&birth_ok&&consumed_count&&
- (sustained||consumed_count<frame_limit)&&last_consumed_ticket==ticket&&tracker.owned_status().certified;}
+ (sustained||resource_consumed<frame_limit)&&last_consumed_ticket==ticket&&tracker.owned_status().certified;}
 bool state_certified(){return proof.state_certified&&tracker.owned_status().certified;}
 bool pixels_read_back(){return readback.result().completed&&readback.result().saved;}
 bool publication_failed(){return owned_xr_probe&&stereo_gpu_publish&&error;}
 gears_owned_retirement::QueueDrain<> shutdown_fence;
 bool shutdown_started{},shutdown_closed{};
+gears_frame_link::OwnedRetirement handoff_snapshot{};
+uint64_t handoff_cutoff{},handoff_world{};
+bool handoff_prepared{},handoff_gpu_drained{},handoff_tracker_retired{},handoff_rearmed{},handoff_fault{};
 bool begin_shutdown(){
  if(shutdown_started)return true;
  // Closed CPU borrowers alone do not cover a recorded but unsubmitted list.
@@ -453,10 +458,92 @@ bool drain_shutdown(bool bridges_closed){
  if(!shutdown_fence.close())return false;
  shutdown_closed=true;return true;
 }
+// Unlike terminal begin_shutdown, handoff keeps watching every old-source
+// observation while its independent GPU fence is pending. Only unrelated D3D
+// work may leave the resource-specific tracker snapshot unchanged.
+bool prepare_handoff(uint64_t world,uint64_t cutoff){
+ if(handoff_prepared)return !handoff_fault&&world==handoff_world&&cutoff==handoff_cutoff;
+ if(shutdown_started||shutdown_closed||!watching()||!birth_ok||!queue||!texture||
+    image_tickets.highest_id()>cutoff||tracker.has_unsubmitted_owned_events(resource))return false;
+ gears_frame_link::OwnedRetirement snapshot{};
+ if(!tracker.owned_retirement_snapshot(snapshot))return false;
+ if(snapshot.world_epoch!=world||snapshot.ticket_cutoff>cutoff||snapshot.output.target.resource!=resource||
+    snapshot.output.generation!=generation||snapshot.output.queue!=canonical_identity(queue))return false;
+ handoff_snapshot=snapshot;handoff_world=world;handoff_cutoff=cutoff;handoff_prepared=true;return true;
+}
+bool handoff_current(){
+ return handoff_prepared&&!handoff_fault&&!handoff_tracker_retired&&tracker.owned_retirement_current(handoff_snapshot);
+}
+uintptr_t handoff_queue_identity(){return canonical_identity(queue);}
+bool handoff_failed(){return handoff_fault||(handoff_prepared&&(error||shutdown_fence.state()==3));}
+bool drain_handoff(bool bridges_retired){
+ if(!handoff_prepared||handoff_fault||handoff_tracker_retired)return false;
+ if(!handoff_current()){handoff_fault=true;return false;}
+ if(!bridges_retired)return false;
+ // All old-source observers and their exact queue/resource leases remain live
+ // until native retirement. Only completed diagnostic-copy leases close here.
+ StereoPublishBypass bypass;
+ if(!shutdown_fence.begin(queue)||!shutdown_fence.poll())return false;
+ bool closed=readback.close();closed=last_readback.close()&&closed;closed=late_readback.close()&&closed;
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+ closed=material_readback.close()&&closed;
+#endif
+#if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
+ for(auto& probe:subtitle_readbacks)closed=probe.close()&&closed;
+#endif
+ if(!closed)return false;
+ if(!handoff_current()){handoff_fault=true;return false;}
+ handoff_gpu_drained=true;return true;
+}
+bool finish_handoff(gears_owned_retirement::ResourceIdentity identity){
+ if(handoff_tracker_retired)return identity.world==handoff_world&&identity.ticket_cutoff==handoff_cutoff;
+ if(!handoff_gpu_drained||!handoff_current()||identity.world!=handoff_world||identity.ticket_cutoff!=handoff_cutoff||
+    identity.resource!=resource||identity.generation!=generation||identity.queue!=handoff_snapshot.output.queue)return false;
+ if(!tracker.retire_owned_output(handoff_snapshot,true)){handoff_fault=true;return false;}
+ if(image_tickets.highest_id()>handoff_cutoff||!image_tickets.retire_through(image_tickets.highest_id())){handoff_fault=true;return false;}
+ for(auto& list:created_lists)if(list){list->Release();list=nullptr;}
+ texture=nullptr;queue->Release();queue=nullptr;
+ if(!shutdown_fence.close()){handoff_fault=true;return false;}
+ publication_world=publication_ticket=0;handoff_tracker_retired=true;finished=true;
+ shutdown_started=shutdown_closed=true;return true;
+}
+bool handoff_retired(gears_owned_retirement::ResourceIdentity identity){
+ return handoff_tracker_retired&&!handoff_fault&&identity.world==handoff_world&&identity.ticket_cutoff==handoff_cutoff&&
+  identity.resource==handoff_snapshot.output.target.resource&&identity.generation==handoff_snapshot.output.generation&&
+  identity.queue==handoff_snapshot.output.queue;
+}
+bool rearm_handoff(gears_owned_retirement::ResourceIdentity identity,uint64_t next_world){
+ if(handoff_rearmed)return next_world==handoff_world+1&&identity.world==handoff_world&&identity.ticket_cutoff==handoff_cutoff;
+ if(!handoff_tracker_retired||handoff_fault||!shutdown_closed||!handoff_world||handoff_world==UINT64_MAX||
+    next_world!=handoff_world+1||identity.world!=handoff_world||identity.generation!=generation||
+    identity.resource!=resource||identity.ticket_cutoff!=handoff_cutoff||image_tickets.size()||
+    tracker.snapshot().capacity_bad||!tracker.world_handoff_ready(handoff_world,next_world)||resource_cycles==UINT64_MAX)return false;
+ if(!tracker.advance_world_epoch(handoff_world,next_world))return false;
+ // These objects already released every COM lease. Rearming is memory-only,
+ // never an engine/GPU operation inside the short world commit transaction.
+ if(!readback.rearm()||!last_readback.rearm()||!late_readback.rearm()||!shutdown_fence.rearm())return false;
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+ if(!material_readback.rearm())return false;material_sample_ticket=0;material_sample_queued=material_sample_missed=false;
+#endif
+#if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
+ for(auto& probe:subtitle_readbacks)if(!probe.rearm())return false;
+ subtitle_samples={};subtitle_sample_count=0;
+#endif
+ creations={};creation_count=0;creation={};proof={};resource=0;generation=0;
+ prebirth_faults=birth_attempts=device_dispatch_available=device_dispatch_match=0;
+ finished=sealed=birth_ok=shutdown_started=shutdown_closed=false;resource_consumed=0;++resource_cycles;
+ list_creation_count=list_creation_closed=0;late_sample_ticket=0;handoff_rearmed=true;return true;
+}
+void handoff_recreated(){
+ handoff_snapshot={};handoff_cutoff=handoff_world=0;
+ handoff_prepared=handoff_gpu_drained=handoff_tracker_retired=handoff_rearmed=handoff_fault=false;
+}
 void print_progress(FILE* file){
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
  fprintf(file,"owned_shutdown_started=%u owned_shutdown_closed=%u owned_shutdown_fence=%u owned_shutdown_hr=%ld owned_shutdown_unsubmitted=%u ",
   shutdown_started?1:0,shutdown_closed?1:0,shutdown_fence.state(),long(shutdown_fence.error()),tracker.has_unsubmitted_owned_events(resource)?1:0);
+ fprintf(file,"owned_resource_cycles=%llu owned_resource_frames=%llu owned_handoff_prepared=%u owned_handoff_retired=%u owned_handoff_fault=%u ",
+  resource_cycles,resource_consumed,unsigned(handoff_prepared),unsigned(handoff_tracker_retired),unsigned(handoff_fault));
 #if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
  unsigned saved{};for(unsigned i=0;i<subtitle_sample_count;++i)if(subtitle_readbacks[i].result().saved)++saved;
  fprintf(file,"owned_subtitle_candidates=%u owned_subtitle_saved=%u ",subtitle_sample_count,saved);
@@ -563,6 +650,15 @@ bool pixels_read_back(){return false;}
 bool publication_failed(){return false;}
 bool begin_shutdown(){return false;}
 bool drain_shutdown(bool){return false;}
+bool prepare_handoff(uint64_t,uint64_t){return false;}
+bool handoff_current(){return false;}
+uintptr_t handoff_queue_identity(){return 0;}
+bool handoff_failed(){return false;}
+bool drain_handoff(bool){return false;}
+bool finish_handoff(gears_owned_retirement::ResourceIdentity){return false;}
+bool handoff_retired(gears_owned_retirement::ResourceIdentity){return false;}
+bool rearm_handoff(gears_owned_retirement::ResourceIdentity,uint64_t){return false;}
+void handoff_recreated(){}
 void print_progress(FILE*){}
 void print(FILE*){}
 }

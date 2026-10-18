@@ -71,6 +71,10 @@ public:
         source_.Reset();readback_.Reset();queue_.Reset();device_.Reset();
         allocator_.Reset();list_.Reset();fence_.Reset();return true;
     }
+    bool rearm() {
+        if(retained()||(executed_&&!result_.completed))return false;
+        footprint_={};bytes_=0;path_.clear();result_={};attempted_=executed_=signaled_=false;return true;
+    }
     bool queue(ID3D12Resource* source, ID3D12CommandQueue* queue,
                D3D12_RESOURCE_STATES idle_state, bool certified_idle_state,
                const wchar_t* absolute_ppm_path) {

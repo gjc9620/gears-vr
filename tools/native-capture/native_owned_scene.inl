@@ -1,9 +1,9 @@
 #pragma once
 #include "owned_scene_trial.h"
 #include "native_render_size.h"
+#include "owned_scene_retirement.h"
 #if defined(GEARS_NATIVE_OWNED_SCENE_PROBE) && GEARS_NATIVE_OWNED_SCENE_PROBE
 #include "native_owned_surface.inl"
-#include "owned_scene_retirement.h"
 void owned_ui_discard_completed(uint64_t ticket);
 namespace gears_owned_scene_live {
 gears_owned_scene::Trial trial;
@@ -11,6 +11,8 @@ gears_native_owned::Owner<gears_native_owned::NativeOps> owner;
 std::unique_ptr<gears_native_owned::NativeOps> ops;
 bool image_verified{},attempted{};
 gears_owned_retirement::Gate shutdown;
+gears_owned_retirement::Handoff handoff;
+uint64_t resource_world{};
 bool shutdown_conflict{};
 std::atomic<bool> shutdown_rhi_ready{};
 gears_native_owned::Snapshot created{};
@@ -26,20 +28,32 @@ void initialize_native_owned_scene(bool image_verified){gears_owned_scene_live::
 #endif
 }
 bool native_owned_scene_tick(uint64_t ticket){using namespace gears_owned_scene_live;
+ std::lock_guard<std::recursive_mutex> native_guard(session_native_mutex);
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ if(handoff.armed()){
+  if(shutdown_conflict||!handoff.can_recreate(committed_world_generation.load(),ticket,submitted_lifetime.stopping()))return false;
+  const auto completed=trial.completed;trial={};trial.completed=completed;
+  owned_scene_gpu::CreateScope scope;
+  const bool ok=owner.recreate_on_rhi(*ops,gears_native_render_size::width(),gears_native_render_size::height(),ticket);created=owner.snapshot();
+  if(!ok){trial.error=8;return false;}
+  owned_scene_gpu::accept(owner.borrow_resource(),ticket);
+  if(!trial.ready(canonical_identity(owner.borrow_resource()),reinterpret_cast<uintptr_t>(owner.borrow_adapter()),ticket)||
+     !handoff.recreated(shutdown,committed_world_generation.load(),ticket)){trial.error=9;return false;}
+  resource_world=committed_world_generation.load();owned_scene_gpu::handoff_recreated();return true;
+ }
  if(attempted)return !trial.error;attempted=true;
  if(!image_verified){trial.error=13;return false;}
  ops=std::make_unique<gears_native_owned::NativeOps>(base,safe_copy,image_verified);
  owned_scene_gpu::CreateScope scope;
  const bool ok=owner.create_on_rhi(*ops,gears_native_render_size::width(),gears_native_render_size::height(),ticket);created=owner.snapshot();
- if(!ok){trial.error=8;return false;}
+ if(!ok){trial.error=8;return false;}resource_world=committed_world_generation.load();
  owned_scene_gpu::accept(owner.borrow_resource(),ticket);
  if(!trial.ready(canonical_identity(owner.borrow_resource()),reinterpret_cast<uintptr_t>(owner.borrow_adapter()),ticket)){
   trial.error=9;return false;}return true;
 }
 uintptr_t native_owned_scene_candidate(){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
- if(shutdown.stopping())return 0;
+ if(shutdown.stopping()||submitted_lifetime.stopping())return 0;
  if(trial.complete()&&healthy()&&owned_scene_gpu::can_advance(trial.ticket)){
   if(!trial.advance(trial.ticket,true)){trial.error=12;return 0;}
  }
@@ -82,6 +96,7 @@ void native_owned_scene_destroyed(void* renderer){using namespace gears_owned_sc
  if(trial.renderer==reinterpret_cast<uintptr_t>(renderer))owned_scene_gpu::destroyed(trial.ticket);native_owned_scene_copy();}
 void native_owned_scene_draw(ID3D12GraphicsCommandList* list,gears_viewport::TargetDraw const& binding,
  uintptr_t caller,unsigned kind,unsigned elements,unsigned instances){using namespace gears_owned_scene_live;
+ if(shutdown.phase()==gears_owned_retirement::Phase::released)return;
  if(!trial.resource||binding.target.resource!=trial.resource)return;
  if(shutdown.stopping()){shutdown_conflict=true;return;}
  const auto state=owned_bindings_enabled?owned_target_stats.draw_state(canonical_identity(list)):
@@ -105,15 +120,22 @@ void native_owned_scene_commit(gears_owned_scene::Receipt const& receipt){using 
  trial.commit(receipt,[](uintptr_t identity){return owned_scene_gpu::list_ref(identity);});
  if(trial.submitted_mask==3)owned_scene_gpu::submitted(trial.ticket);native_owned_scene_copy();}
 bool native_owned_scene_retained(){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return attempted&&owner.retained();}
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ return attempted&&(owner.retained()||(handoff.requested()&&!owned_scene_gpu::handoff_retired(handoff.identity())));}
 // Caller holds session_native_mutex: native_cpu_drained includes closed entry
 // admission, no pending submitted renderers/state, and no producer build scope.
 // Canvas is independently derived from every active owned UI ledger receipt.
 bool native_owned_scene_shutdown_worker(bool native_cpu_drained,bool canvas_drained,bool bridges_closed){
  using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
- if(!attempted||!owner.retained())return true;
+ if(!attempted||(!owner.retained()&&(!handoff.requested()||owned_scene_gpu::handoff_retired(handoff.identity()))))return true;
  if(shutdown_conflict)return false;
+ if(handoff.requested()){
+  if(shutdown.phase()==gears_owned_retirement::Phase::cpu_drained&&
+     owned_scene_gpu::prepare_handoff(handoff.identity().world,handoff.identity().ticket_cutoff)&&owned_scene_gpu::drain_handoff(bridges_closed))
+   if(shutdown.gpu_drained(created.generation,true,bridges_closed,true))shutdown_rhi_ready.store(true);
+  return shutdown.phase()==gears_owned_retirement::Phase::released&&!owner.retained();
+ }
  if(!shutdown.stopping()){
   if(!native_cpu_drained||!canvas_drained||(trial.ticket&&(!trial.returned||!trial.destroyed)))return false;
   const gears_native_owned::DrainProof proof{created.generation,true,true,true,true,false};
@@ -130,7 +152,54 @@ void native_owned_scene_shutdown_rhi(){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> native_guard(session_native_mutex);
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
  if(shutdown.phase()!=gears_owned_retirement::Phase::gpu_drained||shutdown_conflict||GetCurrentThreadId()!=created.creation_thread)return;
- servicing=true;if(shutdown.retire_on_rhi(owner))shutdown_rhi_ready.store(false);servicing=false;
+ if(handoff.requested()&&!owned_scene_gpu::handoff_current()){shutdown_conflict=true;return;}
+ servicing=true;if(shutdown.retire_on_rhi(owner)){
+  if(handoff.requested()&&!owned_scene_gpu::finish_handoff(handoff.identity()))shutdown_conflict=true;
+  shutdown_rhi_ready.store(false);
+ }servicing=false;
+}
+uint64_t native_owned_scene_resource_generation(){
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return gears_owned_scene_live::created.generation;
+}
+bool native_owned_scene_handoff_prepare(uint64_t old_world,uint64_t cutoff,bool native_cpu_drained,bool canvas_drained){
+ using namespace gears_owned_scene_live;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ if(submitted_lifetime.stopping()||shutdown_conflict||!attempted||resource_world!=old_world||
+    old_world!=committed_world_generation.load()||!native_cpu_drained||!canvas_drained||
+    cutoff<created.generation||cutoff<trial.ticket||cutoff<trial.last_ticket||
+    (trial.ticket&&(!trial.returned||!trial.destroyed)))return false;
+ if(handoff.requested())return handoff.identity().world==old_world&&handoff.identity().ticket_cutoff==cutoff&&
+  owned_scene_gpu::prepare_handoff(old_world,cutoff);
+ if(!owner.retained())return false;
+ const gears_owned_retirement::ResourceIdentity identity{old_world,created.generation,cutoff,trial.resource,owned_scene_gpu::handoff_queue_identity()};
+ if(!handoff.begin(shutdown,identity,{created.generation,true,true,true,true,false}))return false;
+ return owned_scene_gpu::prepare_handoff(old_world,cutoff);
+}
+bool native_owned_scene_handoff_step(bool bridge_sources_retired){
+ using namespace gears_owned_scene_live;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ if(!handoff.requested()||shutdown_conflict)return false;
+ if(shutdown.phase()==gears_owned_retirement::Phase::cpu_drained&&
+    owned_scene_gpu::prepare_handoff(handoff.identity().world,handoff.identity().ticket_cutoff)&&owned_scene_gpu::drain_handoff(bridge_sources_retired))
+  if(shutdown.gpu_drained(created.generation,true,bridge_sources_retired,true))shutdown_rhi_ready.store(true);
+ return shutdown.phase()==gears_owned_retirement::Phase::released&&!owner.retained()&&owned_scene_gpu::handoff_retired(handoff.identity());
+}
+bool native_owned_scene_handoff_failed(){
+ std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ return gears_owned_scene_live::shutdown_conflict||owned_scene_gpu::handoff_failed()||
+  (gears_owned_scene_live::handoff.requested()&&gears_owned_scene_live::trial.error);
+}
+bool native_owned_scene_handoff_receipt(gears_owned_retirement::Handoff::Receipt& receipt){
+ using namespace gears_owned_scene_live;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ return !shutdown_conflict&&handoff.receipt(shutdown,owner.retained(),owned_scene_gpu::handoff_retired(handoff.identity()),receipt);
+}
+bool native_owned_scene_handoff_current(gears_owned_retirement::Handoff::Receipt const& receipt){
+ using namespace gears_owned_scene_live;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ return !shutdown_conflict&&!owner.retained()&&handoff.current(shutdown,receipt)&&owned_scene_gpu::handoff_retired(receipt.identity());
+}
+bool native_owned_scene_handoff_arm(gears_owned_retirement::Handoff::Receipt const& receipt,uint64_t next_world){
+ using namespace gears_owned_scene_live;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ if(submitted_lifetime.stopping()||frame_link.world_epoch()!=next_world||!native_owned_scene_handoff_current(receipt))return false;
+ if(!handoff.arm(shutdown,receipt,next_world,false)||!owned_scene_gpu::rearm_handoff(receipt.identity(),next_world))return false;
+ shutdown_rhi_ready.store(false);return true;
 }
 void print_native_owned_scene(FILE* file){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
@@ -168,5 +237,12 @@ void native_owned_scene_commit(gears_owned_scene::Receipt const&){}
 bool native_owned_scene_retained(){return false;}
 bool native_owned_scene_shutdown_worker(bool,bool,bool){return true;}
 void native_owned_scene_shutdown_rhi(){}
+uint64_t native_owned_scene_resource_generation(){return 0;}
+bool native_owned_scene_handoff_prepare(uint64_t,uint64_t,bool,bool){return false;}
+bool native_owned_scene_handoff_step(bool){return false;}
+bool native_owned_scene_handoff_failed(){return false;}
+bool native_owned_scene_handoff_receipt(gears_owned_retirement::Handoff::Receipt&){return false;}
+bool native_owned_scene_handoff_current(gears_owned_retirement::Handoff::Receipt const&){return false;}
+bool native_owned_scene_handoff_arm(gears_owned_retirement::Handoff::Receipt const&,uint64_t){return false;}
 void print_native_owned_scene(FILE*){}
 #endif
