@@ -43,7 +43,7 @@ def _fixed_prefix_headers(checks, base):
 
 
 def build(sample, panelproof, *, pid, creation_time, started_qpc, world_generation, nonce, duration_ms=3000,
-          vertical_offset_reference_pixels=16):
+          vertical_offset_reference_pixels=16, target_vertical_region=None):
     """Require fresh raw coverage, exact owner digest, registered panel/reflection.
 
     panelproof has schema/kind/pid/module_base/read_only/consistent_reread,
@@ -54,7 +54,7 @@ def build(sample, panelproof, *, pid, creation_time, started_qpc, world_generati
     try:
         return _build(sample, panelproof, pid=pid, creation_time=creation_time, started_qpc=started_qpc,
                       world_generation=world_generation, nonce=nonce, duration_ms=duration_ms,
-                      vertical_offset_reference_pixels=vertical_offset_reference_pixels)
+                      vertical_offset_reference_pixels=vertical_offset_reference_pixels,target_vertical_region=target_vertical_region)
     except (KeyError, TypeError, AttributeError, UnicodeError, struct.error, OverflowError) as error:
         raise ValueError('malformed position panel evidence') from error
 
@@ -73,7 +73,7 @@ def required_reads(sample, panelproof, **session):
         raise ValueError('malformed position panel evidence') from error
 
 
-def _build(sample, proof, required_only=False, vertical_offset_reference_pixels=16, **session):
+def _build(sample, proof, required_only=False, vertical_offset_reference_pixels=16, target_vertical_region=None, **session):
     vertical_offset=integer(vertical_offset_reference_pixels,1,400)
     require(type(sample) is dict and sample.get('read_only') is True and sample.get('consistent_reread') is True,
             'unverified layout sample')
@@ -110,6 +110,11 @@ def _build(sample, proof, required_only=False, vertical_offset_reference_pixels=
     require(_address(row['parent']) == root and _address(row['outer']) == root and row['depth'] == 2 and
             row['cls'] == 'UIWarSafeRegionPanel' and panel in identities, 'panel not registered direct root child')
     identity = identities[panel]
+    fit_fields, fit_reads = {}, []
+    if target_vertical_region is not None:
+        require(vertical_offset == 16, 'fit and legacy pixel offset are mutually exclusive')
+        from path_choice_group_fit import inputs
+        fit_fields, fit_reads = inputs(sample,row,target_vertical_region,require)
     require(identity['name'] == row['name'] and identity['number'] == row['number'] and identity['outer'] == root and
             identities[identity['cls']]['name'] == 'UIWarSafeRegionPanel', 'panel identity mismatch')
     chain = {};address = identity['cls']
@@ -169,6 +174,7 @@ def _build(sample, proof, required_only=False, vertical_offset_reference_pixels=
         reads = owner._Checks()
         for (address,size),expected in checks.spans.items():reads.add(address,expected)
         reads.add(panel+0x60,raw)
+        for span in fit_reads:reads.add(span['address'],span['raw'])
         return [dict(address=address,size=size) for address,size in sorted(reads.spans)]
     # All source bytes, including the original raw positions, must be covered by
     # the caller's fresh final-reread ledger. None are accepted on labels alone.
@@ -181,6 +187,7 @@ def _build(sample, proof, required_only=False, vertical_offset_reference_pixels=
         require(all(address+i in source.cells for i in range(size)),'missing fresh raw coverage')
         return bytes(source.cells[address+i] for i in range(size))
     require(observed(panel+0x60,16)==raw and observed(panel+0x70,4)==units,'stale raw position/units')
+    for span in fit_reads:require(observed(span['address'],len(span['raw']))==span['raw'],'stale content RenderBounds')
     for (address,size),expected in checks.spans.items():
         actual=observed(address,size)
         require(actual==expected,'fresh identity/owner/reflection check mismatch at 0x%X size=%d expected=%s actual=%s' %
@@ -193,7 +200,8 @@ def _build(sample, proof, required_only=False, vertical_offset_reference_pixels=
     result.update(schema=2,registry_header_policy='fixed_prefix_v1',panel=hex(panel),panel_vtable=hex(vtable),top_bits=top,bottom_bits=bottom,
                   duration_ms=session['duration_ms'],check_count=len(checks.spans))
     if vertical_offset!=16:result['vertical_offset_reference_pixels']=vertical_offset
-    require(len(result)==(16 if vertical_offset==16 else 17),'unexpected configuration keys')
+    result.update(fit_fields)
+    require(len(result)==(16 if vertical_offset==16 else 17)+len(fit_fields),'unexpected configuration keys')
     lines=['[PathChoicePositionTrial]']+[key+'='+str(value) for key,value in result.items()]
     lines+=['check_%d=0x%X:%s'%(i,address,raw.hex()) for i,((address,size),raw) in enumerate(sorted(checks.spans.items()))]
     ini='\n'.join(lines)+'\n';require(len(ini)<=262144,'configuration byte budget');ini.encode('ascii')

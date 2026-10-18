@@ -4,7 +4,8 @@ extern thread_local unsigned child_depth;
 namespace reflow_control {
 namespace core=gears_path_reflow_control;
 struct Frame {uintptr_t panel{},scene{},client{},caller{};uint64_t nonce{},world{};};
-struct Contract {uintptr_t scene{};std::uint32_t top_bits{},bottom_bits{};unsigned vertical_offset_reference_pixels=16;};
+struct Contract {uintptr_t scene{};std::uint32_t top_bits{},bottom_bits{};unsigned vertical_offset_reference_pixels=16;
+    position::trial::GroupFit group_fit{};};
 struct Parent {Frame frame;Contract contract;float delta{};};
 thread_local Parent const* current{};thread_local unsigned parent_depth{};
 struct ParentBoundary {
@@ -22,7 +23,7 @@ bool same_lease(Parent const& p){
     return l.active&&l.touched[0]&&l.touched[1]&&position::successful_nonce==p.frame.nonce&&c.nonce==p.frame.nonce&&
         c.panel==p.frame.panel&&c.scene==p.frame.scene&&c.client==p.frame.client&&c.world_generation==p.frame.world&&
         committed_world_generation.load()==p.frame.world&&c.top_bits==p.contract.top_bits&&c.bottom_bits==p.contract.bottom_bits&&
-        c.vertical_offset_reference_pixels==p.contract.vertical_offset_reference_pixels;
+        position::trial::same_offset(c,p.contract);
 }
 bool known_owned(Snapshot const& s){return s.position[1]==position::state.lease.owned[0]&&s.position[3]==position::state.lease.owned[1];}
 void fail_closed(){
@@ -39,7 +40,7 @@ template<class Original,class Read> uintptr_t parent_call(void* object,uintptr_t
     auto const& c=position::state.lease.config;
     if(!c.nonce||!position::applied.load()||position::successful_nonce!=c.nonce||reinterpret_cast<uintptr_t>(object)!=c.panel)return call();
     Parent p{{c.panel,c.scene,c.client,caller,c.nonce,c.world_generation},
-        {c.scene,c.top_bits,c.bottom_bits,c.vertical_offset_reference_pixels},position::trial::delta_for(c)};
+        {c.scene,c.top_bits,c.bottom_bits,c.vertical_offset_reference_pixels,c.group_fit},position::trial::delta_for(c)};
     if(!same_lease(p))return call();
     auto before=snapshot(p.frame,read);
     if(!core::metadata(p.contract,before)||!known_owned(before)){++guard_rejected;fail_closed();return call();}
@@ -53,7 +54,7 @@ bool request_current(Parent const& p){
     return c.nonce==p.frame.nonce&&c.panel==p.frame.panel&&c.scene==p.frame.scene&&c.client==p.frame.client&&
         c.world_generation==p.frame.world&&c.pid==lease.pid&&c.creation_time==lease.creation_time&&c.started_qpc==lease.started_qpc&&
         c.base==lease.base&&c.panel_vtable==lease.panel_vtable&&c.top_bits==p.contract.top_bits&&c.bottom_bits==p.contract.bottom_bits&&
-        c.vertical_offset_reference_pixels==p.contract.vertical_offset_reference_pixels;
+        position::trial::same_offset(c,p.contract);
 }
 void publish(unsigned slot,Receipt const& receipt){if(slot<receipts.size()){receipts[slot]=receipt;ready[slot].store(true,std::memory_order_release);}}
 template<class Original,class Read> uintptr_t child_call(void* object,core::Input const& input,uintptr_t caller,Original call,Read read){

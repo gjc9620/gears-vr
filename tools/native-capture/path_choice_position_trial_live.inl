@@ -221,7 +221,9 @@ template<class Read,class Certify> void poll_with(wchar_t const* path,FILE* log,
         struct Close{FILE* f;~Close(){fclose(f);}} close{input};std::string text(file.nFileSizeLow,'\0');
         if(fread(text.data(),1,text.size(),input)!=text.size()||fgetc(input)!=EOF){seen_file=previous;return;}
         auto req=load_request(text,tick,read,certify);
-        fprintf(log,"path_position_loaded nonce=%llu duration_ms=%u delta_y_pixels=%u code_attested=1\n",req->config.nonce,req->config.duration_ms,req->config.vertical_offset_reference_pixels);fflush(log);
+        const auto& c=req->config;
+        const double pixels=c.group_fit.enabled?double(trial::delta_for(c))*1080:c.vertical_offset_reference_pixels;
+        fprintf(log,"path_position_loaded nonce=%llu duration_ms=%u delta_y_pixels=%.9g group_fit=%u code_attested=1\n",c.nonce,c.duration_ms,pixels,c.group_fit.enabled?1u:0u);fflush(log);
     }catch(...){++rejected;disable();
 #if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
         isolate_ui_failure();
@@ -281,7 +283,7 @@ CloseRestoreCompletion restore_before_close(trial::Config const& expected,Read r
         if(!l.active||!l.touched[0]||!l.touched[1]||!applied.load()||successful_nonce!=c.nonce||
            c.nonce!=expected.nonce||c.client!=expected.client||c.scene!=expected.scene||c.panel!=expected.panel||
            c.panel_vtable!=expected.panel_vtable||c.top_bits!=expected.top_bits||c.bottom_bits!=expected.bottom_bits||
-           c.vertical_offset_reference_pixels!=expected.vertical_offset_reference_pixels)return out;
+           !trial::same_offset(c,expected))return out;
         const auto ctx=context(c.client,c.scene);const auto hint=reinterpret_cast<uintptr_t>(_ReturnAddress());
         auto observed_read=[&](void* to,void const* from,std::size_t size){
             const auto at=reinterpret_cast<uintptr_t>(from);if(size==4&&at==c.panel+0x64)out.read_mask=0;
@@ -366,7 +368,7 @@ uintptr_t invoke_with(Candidate const& candidate,Original original,Read read,Set
             publish_loss(c,ctx.world_generation,p,read_mask,complete,read);
             state.lease.active=false;count(trial::Result::ownership_lost);return original();}
         if(drain_requested.load()||!req||req->config.nonce!=c.nonce||
-           req->config.vertical_offset_reference_pixels!=c.vertical_offset_reference_pixels||GetTickCount64()>=req->expires){
+           !trial::same_offset(req->config,c)||GetTickCount64()>=req->expires){
             if(!certify()){state.lease.active=false;count(trial::Result::identity_lost);return original();}
             ++restore_retries;count(trial::restore(state,ctx,auth_reader(c,ctx,AuthStage::restore,caller_hint,read),invoke_set));return original();}
         return original();

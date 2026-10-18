@@ -105,4 +105,27 @@ static void offset_parse_and_apply(){Config c;auto text=prefix_ini();assert(pars
     assert(restore(s,e.ctx,e.reader(),e.setter())==Result::restored&&e.pos()==before);
     e.c.schema=1;e.c.registry_header_policy=RegistryHeaderPolicy::exact;State legacy;assert(apply(legacy,e.c,e.ctx,e.reader(),e.setter())==Result::rejected);
 }
-int main(){parse_checks();lifecycle();failed_admission();lost_ownership();partial_failure();prefix_parser();prefix_authentication_and_restore();offset_parse_and_apply();std::puts("PathChoicePositionTrialTest passed");}
+static void group_fit_parse_and_apply(){
+    const std::array<float,6> source{.28663f,.06703f,.71394f,.2411013f,.25f,.75f};
+    std::string text=prefix_ini()+"group_fit=vertical_v1\n";
+    const char* keys[]{"fit_left_bits","fit_top_bits","fit_right_bits","fit_bottom_bits","fit_target_top_bits","fit_target_bottom_bits"};
+    for(unsigned i=0;i<6;++i)text+=std::string(keys[i])+"="+std::to_string(bits(source[i]))+"\n";
+    Config c;assert(parse(text,c)&&c.group_fit.enabled);const float shift=delta_for(c);
+    assert(std::abs(shift-(.5f-(source[1]+source[3])/2))<1e-7f);
+    assert(!parse(text+"vertical_offset_reference_pixels=374\n",c));
+    assert(parse(text,c));auto changed=c;changed.group_fit.bounds[4]=bits(.49f);changed.group_fit.bounds[5]=bits(.51f);
+    assert(!std::isfinite(delta_for(changed)));changed=c;changed.group_fit.bounds[4]=bits(.1f);
+    assert(!same_offset(c,changed));
+    changed=c;changed.group_fit.bounds[4]=bits(-.01f);assert(!std::isfinite(delta_for(changed)));
+    changed=c;changed.group_fit.bounds[5]=bits(1.01f);assert(!std::isfinite(delta_for(changed)));
+    auto outside=text;const auto field="fit_target_top_bits="+std::to_string(bits(.25f));
+    outside.replace(outside.find(field),field.size(),"fit_target_top_bits="+std::to_string(bits(-.01f)));
+    Config rejected;assert(!parse(outside,rejected));
+    Engine e;e.c.schema=c.schema;e.c.registry_header_policy=c.registry_header_policy;e.c.checks=c.checks;
+    e.c.group_fit=c.group_fit;
+    for(auto const& check:c.checks)for(unsigned i=0;i<check.bytes.size();++i)e.memory[check.address+i]=check.bytes[i];
+    State state;assert(apply(state,e.c,e.ctx,e.reader(),e.setter())==Result::applied);
+    assert(e.pos()[0]==bits(value(e.c.top_bits)+shift));
+    assert(restore(state,e.ctx,e.reader(),e.setter())==Result::restored&&e.pos()[0]==e.c.top_bits&&e.pos()[1]==e.c.bottom_bits);
+}
+int main(){parse_checks();lifecycle();failed_admission();lost_ownership();partial_failure();prefix_parser();prefix_authentication_and_restore();offset_parse_and_apply();group_fit_parse_and_apply();std::puts("PathChoicePositionTrialTest passed");}

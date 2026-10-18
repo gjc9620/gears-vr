@@ -1,5 +1,6 @@
 #define NOMINMAX
 #define GEARS_PATH_CHOICE_POSITION_TRIAL 1
+#include "path_choice_position_trial.h"
 #include <windows.h>
 #include <atomic>
 #include <memory>

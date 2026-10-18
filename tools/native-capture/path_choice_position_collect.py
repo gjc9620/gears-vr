@@ -225,7 +225,7 @@ def _close_metadata(r, sample, binding):
         native_pointer_field='0x114', metadata_only=True)
 
 
-def collect(reader, sample, native_status, session, nonce, verify_session, *, registry_header_policy='exact'):
+def collect(reader, sample, native_status, session, nonce, verify_session, *, registry_header_policy='exact', target_vertical_region=None):
     """Acquire once, fail closed, return no partial receipt and keep no baseline.
 
     The supplied sample must include layout details and owner evidence. Reacquire
@@ -296,6 +296,8 @@ def collect(reader, sample, native_status, session, nonce, verify_session, *, re
         args = dict(pid=r.pid, creation_time=bound['game']['creation_time'], started_qpc=bound['native_started_qpc'],
             world_generation=position.integer(int(native_status['world_generation']), 1), nonce=nonce,
             duration_ms=6000, vertical_offset_reference_pixels=374)
+        if target_vertical_region is not None:
+            args.update(vertical_offset_reference_pixels=16,target_vertical_region=target_vertical_region)
         for span in position.required_reads(fresh, proof, **args):
             proof['checks'].append(dict(address=span['address'], raw=r.read(span['address'],span['size']).hex()))
         metadata = _close_metadata(r, fresh, bound)

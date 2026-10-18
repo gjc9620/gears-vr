@@ -1,5 +1,6 @@
 #pragma once
 #include "ui_scene_transform_trial.h"
+#include "ui_group_placement.h"
 #include <cstring>
 #include <limits>
 
@@ -8,16 +9,32 @@
 namespace gears_path_choice_position {
 using Check=gears_ui_scene_trial::Check;
 enum class RegistryHeaderPolicy {exact,fixed_prefix_v1};
+struct GroupFit {bool enabled{};std::array<std::uint32_t,6> bounds{};};
 struct Config {
     std::uint64_t nonce{},pid{},creation_time{},started_qpc{},world_generation{},base{},client{},scene{},panel{},panel_vtable{};
     std::uint32_t top_bits{},bottom_bits{};unsigned duration_ms{};std::vector<Check> checks;
     unsigned schema=1;RegistryHeaderPolicy registry_header_policy=RegistryHeaderPolicy::exact;
     unsigned vertical_offset_reference_pixels=16;
+    GroupFit group_fit{};
 };
 inline std::uint32_t bits(float v){std::uint32_t b;std::memcpy(&b,&v,4);return b;}
 inline float value(std::uint32_t b){float v;std::memcpy(&v,&b,4);return v;}
 inline constexpr float delta=16.f/1080.f;
-inline float delta_for(Config const& c){return static_cast<float>(c.vertical_offset_reference_pixels)/1080.f;}
+inline float delta_for(Config const& c){
+    if(!c.group_fit.enabled)return static_cast<float>(c.vertical_offset_reference_pixels)/1080.f;
+    auto const& b=c.group_fit.bounds;
+    gears_ui_group::Bounds source{value(b[0]),value(b[1]),value(b[2]),value(b[3]),true};
+    gears_ui_group::Bounds target{source.left,value(b[4]),source.right,value(b[5]),true};
+    gears_ui_group::Recipe recipe{};
+    if(c.vertical_offset_reference_pixels!=16||source.left<0||source.top<0||source.right>1||source.bottom>1||
+       !gears_ui_group::fit(source,target,1,recipe)||recipe.scale!=1||recipe.translation_x!=0||
+       !std::isfinite(recipe.translation_y)||recipe.translation_y<=0||recipe.translation_y>400./1080.)
+        return (std::numeric_limits<float>::quiet_NaN)();
+    return static_cast<float>(recipe.translation_y);
+}
+template<class A,class B> bool same_offset(A const& a,B const& b){return
+    a.vertical_offset_reference_pixels==b.vertical_offset_reference_pixels&&a.group_fit.enabled==b.group_fit.enabled&&
+    a.group_fit.bounds==b.group_fit.bounds;}
 inline bool overlap(std::uintptr_t a,std::size_t n,std::uintptr_t b,std::size_t m){return a<b+m&&b<a+n;}
 inline constexpr std::array<std::uintptr_t,2> registry_header_rvas{0x1c24730,0x1c34800};
 struct RegistryHeader {std::uint64_t data{};std::int32_t num{},max{};};
@@ -29,9 +46,10 @@ inline int registry_header_index(Config const& c,std::uintptr_t address,std::siz
     for(unsigned i=0;i<registry_header_rvas.size();++i)if(size==16&&address==c.base+registry_header_rvas[i])return int(i);return -1;
 }
 inline bool valid_registry_policy(Config const& c){
-    if(c.schema==1)return c.registry_header_policy==RegistryHeaderPolicy::exact&&c.vertical_offset_reference_pixels==16;
+    if(c.schema==1)return c.registry_header_policy==RegistryHeaderPolicy::exact&&c.vertical_offset_reference_pixels==16&&!c.group_fit.enabled;
     if(c.schema!=2||c.registry_header_policy!=RegistryHeaderPolicy::fixed_prefix_v1||c.base>UINTPTR_MAX-0x2000000)return false;
     if(c.vertical_offset_reference_pixels<1||c.vertical_offset_reference_pixels>400)return false;
+    if(c.group_fit.enabled&&!std::isfinite(delta_for(c)))return false;
     std::array<unsigned,2> found{};std::array<RegistryHeader,2> headers{};
     for(auto const& check:c.checks){
         if(check.address>UINTPTR_MAX-check.bytes.size())return false;
@@ -77,10 +95,17 @@ inline bool parse(std::string text,Config& out){
        !u("duration_ms",c.duration_ms)||c.duration_ms<100||c.duration_ms>8000||
        !u("check_count",count)||count<16||count>2048)return false;
     const bool explicit_offset=fields.find("vertical_offset_reference_pixels")!=fields.end();
-    if(fields.size()!=(c.schema==2?16u+unsigned(explicit_offset):15u)+count)return false;
+    const bool explicit_fit=fields.find("group_fit")!=fields.end();
+    if(fields.size()!=(c.schema==2?16u+unsigned(explicit_offset)+7u*unsigned(explicit_fit):15u)+count)return false;
     if(c.schema==2){auto policy=fields.find("registry_header_policy");
         if(policy==fields.end()||policy->second!="fixed_prefix_v1")return false;c.registry_header_policy=RegistryHeaderPolicy::fixed_prefix_v1;
         if(explicit_offset&&(!u("vertical_offset_reference_pixels",c.vertical_offset_reference_pixels)||c.vertical_offset_reference_pixels<1||c.vertical_offset_reference_pixels>400))return false;}
+    if(explicit_fit){
+        if(c.schema!=2||explicit_offset||fields.at("group_fit")!="vertical_v1")return false;
+        constexpr char const* keys[]{"fit_left_bits","fit_top_bits","fit_right_bits","fit_bottom_bits","fit_target_top_bits","fit_target_bottom_bits"};
+        c.group_fit.enabled=true;for(unsigned i=0;i<6;++i)if(!u(keys[i],c.group_fit.bounds[i]))return false;
+        if(!std::isfinite(delta_for(c)))return false;
+    }
     std::map<std::uintptr_t,unsigned char> seen;std::size_t total{};
     for(unsigned i=0;i<count;++i){auto it=fields.find("check_"+std::to_string(i));if(it==fields.end())return false;
         auto split=it->second.find(':');Check check;
