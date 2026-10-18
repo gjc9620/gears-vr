@@ -275,14 +275,34 @@ class VerifyStoppedTests(unittest.TestCase):
             (0xbe5b5c, 249, '53709f650d84bd1ea4cc1ae5e25eb8ef7f3462102fe51d07b790d96c48734879'),
             (0xbe5c58, 1377, '21868e6f8203578f5c4ef689fc4f66a5c79e13fdb243eebe2eb81cc7d6309441')))
 
-    def ngx_fixture(self):
+    def ngx_fixture(self, source=None):
         ranges = []
-        for rva, size, _ in verify_stopped.NGX_WRAPPER_RANGES:
+        for rva, size, _ in (verify_stopped.NGX_WRAPPER_RANGES if source is None else source):
             raw = bytes((i % 251 for i in range(size)))
             self.memory[self.base + rva] = raw
             ranges.append((rva, size, hashlib.sha256(raw).hexdigest()))
-        self.write_status((0xbe5b5c, 0xbe5c58))
+        self.write_status(tuple(rva for rva, _, _ in ranges))
         return tuple(ranges)
+
+    def test_ngx_dispatch_complete_ranges_and_tail_rejection(self):
+        self.assertEqual([(rva, size) for rva, size, _ in verify_stopped.NGX_DISPATCH_RANGES],
+                         [(0x7c82f0, 118), (0x7c8440, 53), (0x7c87e0, 69)])
+        ranges = self.ngx_fixture(verify_stopped.NGX_DISPATCH_RANGES)
+        originals = {rva:self.memory[self.base + rva] for rva, _, _ in ranges}
+        with mock.patch.object(verify_stopped, 'NGX_DISPATCH_RANGES', ranges):
+            self.invoke()
+            checks = json.loads(self.output.read_text())['checks']
+            self.assertEqual([row['bytes_checked'] for row in checks], [118, 53, 69])
+            self.assertTrue(all(row['matches'] for row in checks))
+            for rva, _, _ in ranges:
+                for short in (False, True):
+                    with self.subTest(rva=hex(rva), short=short):
+                        for old_rva, raw in originals.items():self.memory[self.base + old_rva] = raw
+                        raw = originals[rva]
+                        self.memory[self.base + rva] = raw[:-1] if short else raw[:-1] + bytes([raw[-1] ^ 1])
+                        with self.status.open('a') as stream:stream.write('entries_restored=1\n')
+                        with self.assertRaises(SystemExit):self.invoke()
+                        self.assertFalse(json.loads(self.output.read_text())['all_match'])
 
     def test_ngx_wrapper_roles_independently_check_whole_chunks(self):
         ranges = self.ngx_fixture()

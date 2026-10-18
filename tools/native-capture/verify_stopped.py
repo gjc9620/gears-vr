@@ -32,6 +32,11 @@ NGX_WRAPPER_RANGES = (
     (0xbe5b5c, 0xf9, '53709f650d84bd1ea4cc1ae5e25eb8ef7f3462102fe51d07b790d96c48734879'),
     (0xbe5c58, 0x561, '21868e6f8203578f5c4ef689fc4f66a5c79e13fdb243eebe2eb81cc7d6309441'),
 )
+NGX_DISPATCH_RANGES = (
+    (0x7c82f0, 0x76, '25cb57848839e9bf6d5da04fefca109a4a30326b74fcb7f90d5340aa84f969a9'),
+    (0x7c8440, 0x35, 'ac6de83a5c7a3c8451f842391785c00e492980557c84328d55509537874d82e7'),
+    (0x7c87e0, 0x45, 'ba5c32ea310653f741ee1d10b735249162778259755de6dcb0e8a673b02fff63'),
+)
 PATH_LAYOUT_RANGES = ((0x298bdc, 161, 'b5dae9f89c8182b26eef27e87ca2ae57804899ed313cb9acdc630280a03b6fb5'),)
 PATH_REFLOW_CHUNKS = ((0x2983f8, 666), (0x8ead70, 435))
 PATH_REFLOW_SHA256 = '9df4472db8e3ebaca59f6c14356c8de8c685a2aac1a1ff060ca0f7603d945d97'
@@ -219,10 +224,10 @@ def main():
                              source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
                 checks.append(check)
                 continue
-            if rva in (0xbe5b5c, 0xbe5c58):
-                ranges = tuple(item for item in NGX_WRAPPER_RANGES if item[0] == rva)
+            if rva in (0xbe5b5c, 0xbe5c58, 0x7c82f0, 0x7c8440, 0x7c87e0):
+                ranges = tuple(item for item in NGX_WRAPPER_RANGES + NGX_DISPATCH_RANGES if item[0] == rva)
                 values = check_runtime_ranges(resolver.read, resolver.base, target, ranges,
-                              'artifact 1 runtime snapshot NGX wrapper complete known chunk')
+                              'artifact 1 runtime snapshot NGX wrapper/dispatcher complete known chunk')
                 for check in values:
                     check.update(module_base=hex(resolver.base), historical_module_base='0x140000000',
                                  source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')

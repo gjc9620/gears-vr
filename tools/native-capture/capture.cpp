@@ -470,7 +470,12 @@ constexpr unsigned vr_dof_hooks=1;
 #else
 constexpr unsigned vr_dof_hooks=0;
 #endif
-std::array<SessionHookEntry,session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+#if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
+constexpr unsigned ngx_stereo_host_hooks=3;
+#else
+constexpr unsigned ngx_stereo_host_hooks=0;
+#endif
+std::array<SessionHookEntry,ngx_stereo_host_hooks+session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -1248,6 +1253,7 @@ void sample_frame_work(unsigned kind,uintptr_t caller,uintptr_t list,uintptr_t q
 void observe_frame_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances) {
     if(!recording.load())return;
     dlss_route_observer::draw(reinterpret_cast<uintptr_t>(list),caller,kind,elements,instances);
+    ngx_stereo_host::draw(list,caller,elements,instances);
     gears_render_cost::Scope cost(gears_render_cost::frame_draw);
     if(owned_bindings_enabled){
         const auto identity=canonical_identity(list);
@@ -1777,6 +1783,7 @@ void print_frame_link(FILE* status) {
     death_constant_observer::print(status);
     dlss_route_observer::print(status);
     ngx_route_observer::print(status);
+    ngx_stereo_host::print(status);
     ngx_output_pixels::print(status);
     death_dof_control::print(status);
     vr_dof_compat::print(status);
@@ -2278,6 +2285,7 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "dlss_output_control.inl"
 #include "ngx_route_observer.inl"
 #include "ngx_output_pixels.inl"
+#include "ngx_stereo_host_live.inl"
 #include "ngx_output_pixels_native.inl"
 #include "death_dof_control.inl"
 #include "vr_dof_compat.inl"
@@ -3106,6 +3114,7 @@ uintptr_t barrier_identity(IUnknown* object) {
 void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RESOURCE_BARRIER* barriers) {
     if(stereo_publish_bypass){original_resource_barrier(list,count,barriers);return;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_resource_barrier(list,count,barriers);}auto frame_guard=frame_lock();const auto owned=frame_link.owned_status();
+    ngx_stereo_host::barriers(list,count,barriers,reinterpret_cast<uintptr_t>(_ReturnAddress()));
     death_hdr_timeline::barriers_event(list,count,barriers,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     {gears_render_cost::Scope cost(gears_render_cost::barrier_observation);
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
@@ -3517,6 +3526,7 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
             }
         }
     }
+    ngx_stereo_host::targets(list,count,handles,single,depth);
     death_hdr_timeline::targets_event(list,count,single!=FALSE,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     original_targets(list,count,handles,single,depth);
 }
@@ -4051,6 +4061,8 @@ DWORD WINAPI worker(void*) {
     bool ok=(init==MH_OK || (reservation_ready && init==MH_ERROR_ALREADY_INITIALIZED))&&death_constant_observer::attest(status)&&death_dof_control::attest(status)&&vr_dof_compat::attest(status);
     if(ok)ok=dlss_route_observer::enable(status);
     if(ok)ok=ngx_route_observer::enable(status);
+    if(ok)ok=ngx_stereo_host::enable(status);
+    if(ok)ok=ngx_stereo_host::install_hooks();
 #if defined(GEARS_NGX_ROUTE_OBSERVER) && GEARS_NGX_ROUTE_OBSERVER
     if(ok)ok=install(ngx_route_observer::create_target,reinterpret_cast<void*>(ngx_route_observer::hook_create),reinterpret_cast<void**>(&ngx_route_observer::original_create))&&
         install(ngx_route_observer::evaluate_target,reinterpret_cast<void*>(ngx_route_observer::hook_evaluate),reinterpret_cast<void**>(&ngx_route_observer::original_evaluate));

@@ -180,7 +180,7 @@ void copy_passthrough(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_L
     omitted=suppress_first_copy(selected,list,x,y,z,box,caller);
     if(selected>=0&&!omitted)slots[unsigned(selected)].original_forwarded=true;
 #endif
-    try{if(!omitted)forward(list,destination,x,y,z,source,box);}catch(...){if(selected>=0){quarantine(copy_exception);backend().release(unsigned(selected));slots[unsigned(selected)].released=true;}throw;}
+    try{if(!omitted)ngx_stereo_host::copy_passthrough(list,destination,x,y,z,source,box,caller,forward);}catch(...){if(selected>=0){quarantine(copy_exception);backend().release(unsigned(selected));slots[unsigned(selected)].released=true;}throw;}
 #if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
     if(selected>=0&&!omitted)slots[unsigned(selected)].original_returned=true;
 #endif
@@ -216,7 +216,7 @@ unsigned prepare_execute(ID3D12CommandQueue* queue,UINT n,ID3D12CommandList* con
 void after_execute(unsigned token,ID3D12CommandQueue* queue){for(unsigned i=0;i<count;++i)if(token&(1u<<i))slots[i].life.after(backend().signal(i,queue));}
 void execute_passthrough(ID3D12CommandQueue* queue,UINT n,ID3D12CommandList* const* members,ExecuteFn forward){
     auto lock=execution_lock();const auto token=prepare_execute(queue,n,members);
-    try{forward(queue,n,members);}catch(...){for(auto& s:slots)if(s.life.appended)s.life.fail(gears_death_hdr_pixels::unknown_membership);throw;}
+    try{ngx_stereo_host::execute_passthrough(queue,n,members,forward);}catch(...){for(auto& s:slots)if(s.life.appended)s.life.fail(gears_death_hdr_pixels::unknown_membership);throw;}
     after_execute(token,queue);
 }
 void reset_after_original(ID3D12GraphicsCommandList* list,HRESULT hr){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);

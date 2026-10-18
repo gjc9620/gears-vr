@@ -3,6 +3,7 @@
 #include <mutex>
 #include "frame_link.h"
 #include "ngx_route_observer.h"
+#include "ngx_stereo_host_live.h"
 #include "death_hdr_pixels.h"
 #if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
 #if !defined(GEARS_NGX_OUTPUT_PIXELS) || !GEARS_NGX_OUTPUT_PIXELS || !defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) || !GEARS_NGX_OUTPUT_DELAYED_CAPTURE || !defined(GEARS_NGX_ROUTE_OBSERVER) || !GEARS_NGX_ROUTE_OBSERVER
@@ -95,9 +96,9 @@ inline void end_ticket(uint64_t,bool){}inline void worker_request(const wchar_t*
 inline void end_ticket(uint64_t,bool,PresentContext const&){}
 inline void print_control(FILE*){}
 inline std::unique_lock<std::recursive_mutex> execution_lock(){return {};}
-inline void copy_passthrough(ID3D12GraphicsCommandList* l,const D3D12_TEXTURE_COPY_LOCATION* d,UINT x,UINT y,UINT z,const D3D12_TEXTURE_COPY_LOCATION* s,const D3D12_BOX* b,uintptr_t,CopyFn f){f(l,d,x,y,z,s,b);}
+inline void copy_passthrough(ID3D12GraphicsCommandList* l,const D3D12_TEXTURE_COPY_LOCATION* d,UINT x,UINT y,UINT z,const D3D12_TEXTURE_COPY_LOCATION* s,const D3D12_BOX* b,uintptr_t caller,CopyFn f){ngx_stereo_host::copy_passthrough(l,d,x,y,z,s,b,caller,f);}
 inline unsigned prepare_execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*){return 0;}inline void after_execute(unsigned,ID3D12CommandQueue*){}
-inline void execute_passthrough(ID3D12CommandQueue* q,UINT n,ID3D12CommandList* const* l,ExecuteFn f){f(q,n,l);}
+inline void execute_passthrough(ID3D12CommandQueue* q,UINT n,ID3D12CommandList* const* l,ExecuteFn f){ngx_stereo_host::execute_passthrough(q,n,l,f);}
 inline void reset_after_original(ID3D12GraphicsCommandList*,HRESULT){}
 inline HRESULT reset_passthrough(ID3D12GraphicsCommandList* l,ID3D12CommandAllocator* a,ID3D12PipelineState* p,ResetFn f){return f(l,a,p);}
 #endif

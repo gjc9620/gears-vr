@@ -19,7 +19,7 @@ struct Frozen {bool enabled=true;uint64_t id=7,world_generation=9;};thread_local
 std::recursive_mutex frame_hook_mutex;
 struct Scope {Scope(){++active;}~Scope(){--active;}bool world()const{return admitted;}};
 long long ticks{};long long now(){return ++ticks;}
-alignas(8) std::array<unsigned char,0x78> renderer{};
+alignas(8) std::array<unsigned char,0xd8> renderer{};
 alignas(8) std::array<unsigned char,0x1a60> views{};
 alignas(8) std::array<unsigned char,0x1500> context{};
 alignas(8) std::array<unsigned char,0x28> test_tls_slot{};
