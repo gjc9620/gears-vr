@@ -112,5 +112,10 @@ static void control_admission_denied(){
         else assert(close_obs::restore_rows[0].completion.status==Status::rejected);
     }
 }
-int main(){idle_and_same_nonce();borrowed_and_drain();diagnostic_quota_and_nested();failures_original_and_foreign();control_admission_denied();
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE_TEST)
+#define CLOSE_RESTORE_TEST_ENTRY close_restore_fixture_tests
+#else
+#define CLOSE_RESTORE_TEST_ENTRY main
+#endif
+int CLOSE_RESTORE_TEST_ENTRY(){idle_and_same_nonce();borrowed_and_drain();diagnostic_quota_and_nested();failures_original_and_foreign();control_admission_denied();
     std::puts("PathChoiceCloseRestoreTest passed");return 0;}

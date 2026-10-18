@@ -22,7 +22,7 @@ static std::atomic<uint64_t> committed_world_generation{4};
 static std::atomic<bool> recording{true};
 static bool ui_observer_enabled=true,admitted=true;
 static thread_local unsigned stereo_publish_bypass{};
-static std::atomic<unsigned> active{},read_calls{},array_reads{};
+static std::atomic<unsigned> active{},read_calls{},array_reads{},session_stop_calls{};
 struct Scope {Scope(){++active;}~Scope(){--active;}bool world()const{return admitted;}};
 static std::map<uintptr_t,unsigned char> memory;
 static bool safe_copy(void* out,void const* from,std::size_t size){
@@ -33,7 +33,7 @@ static bool safe_copy(void* out,void const* from,std::size_t size){
 template<class T> static void put(uintptr_t address,T const& value){auto p=reinterpret_cast<unsigned char const*>(&value);
     for(std::size_t i=0;i<sizeof(value);++i)memory[address+i]=p[i];}
 enum class SessionStop {proof_failure};
-static void request_session_stop(SessionStop){}
+[[maybe_unused]] static void request_session_stop(SessionStop){++session_stop_calls;}
 #include "path_choice_position_trial_live.inl"
 #include "path_choice_layout_observer.inl"
 namespace path_choice_layout_observer {bool install_child_hook(){return true;}}
@@ -88,6 +88,11 @@ struct Fixture {
         for(auto& count:observer::bypass)count=0;
         for(unsigned i=0;i<observer::row_limit;++i){observer::rows[i]={};observer::ready[i]=false;}
         observer::original=original;recording=true;ui_observer_enabled=true;admitted=true;stereo_publish_bypass=0;
+        session_stop_calls=0;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        position::active_nonce=0;position::consumed_nonce_ack=0;position::last_restored_nonce=0;position::last_restored_tick=0;position::service_renewed=0;
+        std::atomic_store(&position::last_request_receipt,std::shared_ptr<position::Request const>{});
+#endif
         position::disable();position::state={};position::owner_thread=GetCurrentThreadId();position::owner_activity=0;position::inside=false;
         position::terminal=false;position::drain_requested=false;position::pending_restore=false;position::in_flight=0;
         position::applied=0;position::successful_nonce=0;position::ownership_lost=0;position::loss_ready=false;position::loss_claimed=false;position::first_loss={};

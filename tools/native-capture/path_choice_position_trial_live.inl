@@ -5,7 +5,11 @@
 namespace path_choice_position_live {
 #if defined(GEARS_PATH_CHOICE_POSITION_TRIAL) && GEARS_PATH_CHOICE_POSITION_TRIAL
 namespace trial=gears_path_choice_position;
-struct Request {trial::Config config;ULONGLONG expires{};};
+struct Request {trial::Config config;ULONGLONG expires{};
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    std::string wire;ULONGLONG first_tick{},accepted_tick{};uint64_t renewals{};
+#endif
+};
 std::shared_ptr<Request const> selected;
 std::atomic<uint64_t> loaded_nonce{},applied{},restored{},rejected{},identity_lost{},ownership_lost{},setter_failed{};
 std::atomic<bool> pending_restore{},ever_modified{},drain_requested{},unresolved{},terminal{};
@@ -15,6 +19,12 @@ std::atomic<DWORD> owner_thread{};std::atomic<unsigned> in_flight{},restore_retr
 // cannot race an owner entering between its idle check and terminal publish.
 std::atomic<unsigned> owner_activity{};
 inline constexpr unsigned retry_limit=3;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+// Worker reads these acknowledgments only; it never inspects owner State.
+std::atomic<uint64_t> active_nonce{},consumed_nonce_ack{},last_restored_nonce{},service_renewed{};
+std::atomic<ULONGLONG> last_restored_tick{};
+std::shared_ptr<Request const> last_request_receipt;
+#endif
 // First ownership loss only. The owner writes once, then publishes immutable
 // fields; worker progress reads them only after an acquire of ready.
 struct OwnershipLossReceipt {
@@ -133,6 +143,20 @@ template<class Read> void publish_loss(trial::Config const& c,std::uint64_t curr
     receipt.current_world=current_world;receipt.tick=GetTickCount64();
     first_loss=receipt;loss_ready.store(true,std::memory_order_release);
 }
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+void isolate_ui_failure(){
+    unresolved=true;terminal=true;std::atomic_store(&selected,std::shared_ptr<Request const>{});
+}
+void publish_owner_ack(trial::Result result){
+    if(owner_thread.load(std::memory_order_acquire)!=GetCurrentThreadId())return;
+    consumed_nonce_ack.store(state.consumed_nonce,std::memory_order_release);
+    active_nonce.store(state.lease.active?state.lease.config.nonce:0,std::memory_order_release);
+    if(result==trial::Result::restored&&!state.lease.active&&!state.lease.touched[0]&&!state.lease.touched[1]){
+        last_restored_tick.store(GetTickCount64(),std::memory_order_relaxed);
+        last_restored_nonce.store(state.lease.config.nonce,std::memory_order_release);
+    }
+}
+#endif
 ULONGLONG last_poll{};FILETIME seen_file{};thread_local bool inside{};
 uint64_t creation_time(){FILETIME c{},e{},k{},u{};if(!GetProcessTimes(GetCurrentProcess(),&c,&e,&k,&u))return 0;
     return (uint64_t(c.dwHighDateTime)<<32)|c.dwLowDateTime;}
@@ -160,7 +184,33 @@ bool draining(){
 // External bounded-drain deadline only. Preserve pending_restore as an explicit
 // unresolved receipt, prohibit subsequent writes, and wait for in_flight==0.
 void abandon_drain(){drain_requested=true;unresolved=true;terminal=true;unsigned idle=0;owner_activity.compare_exchange_strong(idle,2);disable();}
-void poll(wchar_t const* path,FILE* log){
+template<class Read,class Certify>
+std::shared_ptr<Request const> load_request(std::string const& text,ULONGLONG tick,Read read,Certify certify){
+    trial::Config c;if(!trial::parse(text,c))throw 2;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    const auto previous=std::atomic_load(&selected);const auto loaded=loaded_nonce.load();const bool renew=c.nonce==loaded;
+    auto held=[&]{return !terminal.load()&&!drain_requested.load()&&active_nonce.load(std::memory_order_acquire)==c.nonce&&
+        consumed_nonce_ack.load(std::memory_order_acquire)==c.nonce&&last_restored_nonce.load(std::memory_order_acquire)<c.nonce;};
+    if(terminal.load()||drain_requested.load()||c.nonce<loaded||
+       (renew&&(!previous||previous->wire!=text||tick>=previous->expires||previous->renewals==UINT64_MAX||!held()))||
+       (!renew&&(active_nonce.load(std::memory_order_acquire)||c.nonce<=consumed_nonce_ack.load(std::memory_order_acquire))))throw 2;
+#else
+    if(c.nonce<=loaded_nonce.load())throw 2;
+#endif
+    if(!trial::authenticate(c,context(c.client,c.scene),read)||!certify()||tick>UINT64_MAX-c.duration_ms)throw 2;
+    auto request=std::make_shared<Request>();request->config=std::move(c);request->expires=tick+request->config.duration_ms;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    request->wire=text;const auto accepted=GetTickCount64();
+    request->first_tick=renew?previous->first_tick:accepted;request->accepted_tick=accepted;request->expires=accepted+request->config.duration_ms;
+    request->renewals=renew?previous->renewals+1:0;
+    // Owner can finish restoring while worker certification is in progress.
+    if(!trial::same(request->config,context(request->config.client,request->config.scene))||(renew&&(!held()||accepted>=previous->expires)))throw 2;if(!renew&&(terminal.load()||drain_requested.load()||active_nonce.load()||request->config.nonce<=consumed_nonce_ack.load()))throw 2;
+    if(renew)++service_renewed;
+    std::atomic_store(&last_request_receipt,std::shared_ptr<Request const>(request));
+#endif
+    loaded_nonce=request->config.nonce;std::atomic_store(&selected,std::shared_ptr<Request const>(request));return request;
+}
+template<class Read,class Certify> void poll_with(wchar_t const* path,FILE* log,Read read,Certify certify){
     if(drain_requested.load()||terminal.load())return;
     auto tick=GetTickCount64();if(tick-last_poll<200)return;last_poll=tick;WIN32_FILE_ATTRIBUTE_DATA file{};
     if(!GetFileAttributesExW(path,GetFileExInfoStandard,&file)){if(GetLastError()==ERROR_FILE_NOT_FOUND){disable();seen_file={};}return;}
@@ -170,12 +220,14 @@ void poll(wchar_t const* path,FILE* log){
         FILE* input{};if(_wfopen_s(&input,path,L"rb")||!input){seen_file=previous;return;}
         struct Close{FILE* f;~Close(){fclose(f);}} close{input};std::string text(file.nFileSizeLow,'\0');
         if(fread(text.data(),1,text.size(),input)!=text.size()||fgetc(input)!=EOF){seen_file=previous;return;}
-        trial::Config c;if(!trial::parse(text,c)||c.nonce<=loaded_nonce.load()||
-            !trial::authenticate(c,context(c.client,c.scene),safe_copy)||!certify_code())throw 2;
-        auto req=std::make_shared<Request>();req->config=std::move(c);req->expires=tick+req->config.duration_ms;
-        loaded_nonce=req->config.nonce;std::atomic_store(&selected,std::shared_ptr<Request const>(req));
+        auto req=load_request(text,tick,read,certify);
         fprintf(log,"path_position_loaded nonce=%llu duration_ms=%u delta_y_pixels=%u code_attested=1\n",req->config.nonce,req->config.duration_ms,req->config.vertical_offset_reference_pixels);fflush(log);
-    }catch(...){++rejected;disable();fprintf(log,"path_position_load_rejected count=%llu\n",rejected.load());fflush(log);}}
+    }catch(...){++rejected;disable();
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        isolate_ui_failure();
+#endif
+        fprintf(log,"path_position_load_rejected count=%llu\n",rejected.load());fflush(log);}}
+void poll(wchar_t const* path,FILE* log){poll_with(path,log,safe_copy,certify_code);}
 using Setter=void(__fastcall*)(void*,float,unsigned char,unsigned char,int);
 bool set(uintptr_t panel,float v,unsigned face,unsigned input,int origin){
     ever_modified=true;reinterpret_cast<Setter>(base+0x298760)(reinterpret_cast<void*>(panel),v,static_cast<unsigned char>(face),static_cast<unsigned char>(input),origin);return true;}
@@ -185,6 +237,12 @@ void count(trial::Result r){switch(r){case trial::Result::applied:successful_non
     case trial::Result::identity_lost:++identity_lost;break;case trial::Result::ownership_lost:++ownership_lost;break;
     case trial::Result::setter_failed:++setter_failed;break;default:break;}
     pending_restore=state.lease.active;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    publish_owner_ack(r);
+    if(r==trial::Result::rejected||r==trial::Result::identity_lost||r==trial::Result::ownership_lost||r==trial::Result::setter_failed){
+        isolate_ui_failure(); // Optional UI control cannot stop the stereo session.
+    }
+#else
     if(r==trial::Result::setter_failed){
         // A failed rollback still owns known values: retain the hook and retry
         // on later owner-thread scene entries, never during the same frame.
@@ -192,7 +250,9 @@ void count(trial::Result r){switch(r){case trial::Result::applied:successful_non
     }
     if(r==trial::Result::identity_lost||r==trial::Result::ownership_lost||r==trial::Result::setter_failed){
         unresolved=state.lease.touched[0]||state.lease.touched[1];terminal=true;
-        disable();request_session_stop(SessionStop::proof_failure);}
+        disable();request_session_stop(SessionStop::proof_failure);
+    }
+#endif
 }
 #if defined(GEARS_PATH_CHOICE_CLOSE_RESTORE) && GEARS_PATH_CHOICE_CLOSE_RESTORE
 // Called only by the separately authenticated CloseScene boundary, before its
@@ -230,10 +290,17 @@ CloseRestoreCompletion restore_before_close(trial::Config const& expected,Read r
                 if(at==c.panel+0x6c){std::memcpy(&out.observed[1],to,4);out.read_mask|=2;}}return ok;};
         if(!trial::same(expected,ctx)||!certify()||
            !trial::authenticate(c,ctx,auth_reader(c,ctx,AuthStage::restore,hint,observed_read))||
-           !trial::positions(c,observed_read,out.entry_owned)||out.entry_owned!=l.owned){out.status=CloseRestoreStatus::rejected;return out;}
+           !trial::positions(c,observed_read,out.entry_owned)||out.entry_owned!=l.owned){out.status=CloseRestoreStatus::rejected;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+            isolate_ui_failure();
+#endif
+            return out;}
         // Suppress reflow control and nested root mutation BEFORE either Setter.
         ++restore_retries;out.attempted=true;
         auto set_owned=[&](auto panel,float v,unsigned face,unsigned input,int origin){
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+            if(terminal.load())return false;
+#endif
             ever_modified=true;++out.setter_calls;return setter(panel,v,face,input,origin);};
         const auto result=trial::restore(state,ctx,auth_reader(c,ctx,AuthStage::restore,hint,observed_read),set_owned);
         count(result);
@@ -243,10 +310,18 @@ CloseRestoreCompletion restore_before_close(trial::Config const& expected,Read r
             default:out.status=CloseRestoreStatus::identity_lost;break;}
     }catch(...){
         out.status=CloseRestoreStatus::exception;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        isolate_ui_failure();
+#endif
         if(out.setter_calls){
             // A self-exception after a native write leaves uncertain ownership.
             // Preserve the lease receipt; never guess another rollback value.
-            unresolved=true;terminal=true;pending_restore=state.lease.active;disable();request_session_stop(SessionStop::proof_failure);
+            unresolved=true;terminal=true;pending_restore=state.lease.active;disable();
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+            isolate_ui_failure();publish_owner_ack(trial::Result::idle);
+#else
+            request_session_stop(SessionStop::proof_failure);
+#endif
         }
     }
     return out;
@@ -266,8 +341,15 @@ uintptr_t invoke_with(Candidate const& candidate,Original original,Read read,Set
     auto req=std::atomic_load(&selected);auto ctx=context(candidate.client,candidate.scene);
     const auto caller_hint=reinterpret_cast<uintptr_t>(_ReturnAddress());
     auto invoke_set=[&](auto panel,float v,unsigned face,unsigned input,int origin){
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        if(terminal.load())return false;
+#endif
         ever_modified=true;return setter(panel,v,face,input,origin);};
     if(state.lease.active){auto const& c=state.lease.config;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        if(active_nonce.load(std::memory_order_acquire)!=c.nonce||consumed_nonce_ack.load(std::memory_order_acquire)!=c.nonce||last_restored_nonce.load(std::memory_order_acquire)>=c.nonce){
+            isolate_ui_failure();return original();}
+#endif
         if(c.world_generation!=ctx.world_generation||c.started_qpc!=ctx.started_qpc||c.pid!=ctx.pid||c.creation_time!=ctx.creation_time||c.base!=ctx.base){
             observe_context_failure(c,ctx,AuthStage::hold,caller_hint);
             state.lease.active=false;count(trial::Result::identity_lost);return original();}
@@ -291,6 +373,9 @@ uintptr_t invoke_with(Candidate const& candidate,Original original,Read read,Set
     }
     if(!drain_requested.load()&&req&&GetTickCount64()<req->expires&&req->config.nonce>state.consumed_nonce&&
         req->config.client==candidate.client&&req->config.scene==candidate.scene){
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        if(active_nonce.load()||req->config.nonce<=consumed_nonce_ack.load()||req->config.nonce<=last_restored_nonce.load())return original();
+#endif
         if(!certify()){count(trial::Result::rejected);disable();return original();}
         restore_retries=0;count(trial::apply(state,req->config,ctx,auth_reader(req->config,ctx,AuthStage::apply,caller_hint,read),invoke_set));}
     return original();
@@ -300,6 +385,16 @@ template<class Candidate,class Original> uintptr_t invoke(Candidate const& candi
 }
 void progress(FILE* f){fprintf(f,"path_position_compiled=1 path_position_nonce=%llu path_position_applied=%llu path_position_restored=%llu path_position_rejected=%llu path_position_identity_lost=%llu path_position_ownership_lost=%llu path_position_setter_failed=%llu path_position_pending_restore=%u path_position_owner_thread=%lu path_position_in_flight=%u path_position_restore_retries=%u path_position_draining=%u path_position_unresolved=%u ",
     loaded_nonce.load(),applied.load(),restored.load(),rejected.load(),identity_lost.load(),ownership_lost.load(),setter_failed.load(),pending_restore.load()?1u:0u,owner_thread.load(),in_flight.load(),restore_retries.load(),draining()?1u:0u,unresolved.load()?1u:0u);
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    fprintf(f,"path_position_service_compiled=1 path_position_active_nonce=%llu path_position_consumed_nonce=%llu path_position_last_restored_nonce=%llu path_position_last_restored_tick=%llu path_position_service_renewed=%llu path_position_service_terminal=%u path_position_request_tuple=nonce,first_tick,accepted_tick,expires_tick,renewals ",
+        active_nonce.load(std::memory_order_acquire),consumed_nonce_ack.load(std::memory_order_acquire),last_restored_nonce.load(std::memory_order_acquire),
+        last_restored_tick.load(),service_renewed.load(),terminal.load()?1u:0u);
+    auto request=std::atomic_load(&last_request_receipt);
+    fprintf(f,"path_position_first_tick=%llu path_position_accepted_tick=%llu path_position_expires_tick=%llu path_position_renewals=%llu ",
+        request?request->first_tick:0ull,request?request->accepted_tick:0ull,request?request->expires:0ull,request?request->renewals:0ull);
+    if(request)fprintf(f,"path_position_request=%llu,%llu,%llu,%llu,%llu ",request->config.nonce,
+        request->first_tick,request->accepted_tick,request->expires,request->renewals);
+#endif
     const bool ready=loss_ready.load(std::memory_order_acquire);
     fprintf(f,"path_position_loss_ready=%u ",ready?1u:0u);
     if(ready){auto const& r=first_loss;

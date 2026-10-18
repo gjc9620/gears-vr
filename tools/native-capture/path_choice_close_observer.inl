@@ -9,8 +9,15 @@ namespace core=gears_path_choice_close;namespace position=path_choice_position_l
 using Exec=uintptr_t(__fastcall*)(void*,void*);
 Exec original{};void* target{};
 bool read_own_entry(void*,void const*,std::size_t); // Exact sealed target AND this detour; no fallback.
-struct Active {core::Request request;ULONGLONG expires{};};
+struct Active {core::Request request;ULONGLONG expires{};
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    std::string wire;ULONGLONG first_tick{},accepted_tick{};uint64_t renewals{};
+#endif
+};
 std::shared_ptr<Active const> selected;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+std::shared_ptr<Active const> last_request_receipt;
+#endif
 std::atomic<uint64_t> entries{},loaded_nonce{},load_rejected{};
 enum class Bypass:unsigned {stereo,disabled,world,not_recording,foreign_thread,nested,no_request,no_lease,wrong_object,identity,quota,count};
 std::array<std::atomic<uint64_t>,unsigned(Bypass::count)> bypass{};
@@ -42,7 +49,43 @@ bool enable(FILE* log){
         ok?1u:0u,static_cast<unsigned long long>(base),core::close_sha,core::exec_sha,observation_only);return ok;
 }
 bool restored(){return !target||core::certify(base,safe_copy,safe_copy,gears_native_metadata::matches);}
-void poll(wchar_t const* path,FILE* log){
+template<class Read,class Certify>
+std::shared_ptr<Active const> load_request(std::string const& text,ULONGLONG tick,Read read,Certify certify){
+    core::Request r;if(!core::parse(text,r))throw 2;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    const auto previous=std::atomic_load(&selected);const auto loaded=loaded_nonce.load();const bool renew=r.nonce==loaded;
+    std::shared_ptr<position::Request const> position_request;
+    auto held=[&]{return !position::terminal.load()&&!position::drain_requested.load()&&position::active_nonce.load(std::memory_order_acquire)==r.nonce&&
+        position::consumed_nonce_ack.load(std::memory_order_acquire)==r.nonce&&position::last_restored_nonce.load(std::memory_order_acquire)<r.nonce;};
+    if(position::terminal.load()||position::drain_requested.load()||r.nonce<loaded||
+       (renew&&(!previous||previous->wire!=text||tick>=previous->expires||previous->renewals==UINT64_MAX||!held()))||
+       (!renew&&((position::active_nonce.load()&&position::active_nonce.load()!=r.nonce)||r.nonce<=position::last_restored_nonce.load())))throw 2;
+#else
+    if(r.nonce<=loaded_nonce.load())throw 2;
+#endif
+    auto same_session=[&]{return r.base==base&&r.pid==GetCurrentProcessId()&&r.creation_time==position::creation_time()&&
+        r.started_qpc==uint64_t(session_started_qpc)&&r.world_generation==committed_world_generation.load();};
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    if(renew){position_request=std::atomic_load(&position::selected);
+        if(!position_request||tick>=position_request->expires||!core::same(r,position_request->config)||
+           !position::trial::authenticate(position_request->config,position::context(r.client,r.scene),read)||
+           !core::function_identity(position_request->config,r,read))throw 2;}
+#endif
+    if(!same_session()||!certify()||!core::native_pointer(r,read)||tick>UINT64_MAX-r.duration_ms)throw 2;
+    auto request=std::make_shared<Active>();request->request=r;request->expires=tick+r.duration_ms;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    request->wire=text;const auto accepted=GetTickCount64();
+    if(!same_session()||position::terminal.load()||position::drain_requested.load()||(renew&&(!held()||accepted>=previous->expires||accepted>=position_request->expires)))throw 2;
+    request->first_tick=renew?previous->first_tick:accepted;request->accepted_tick=accepted;
+    request->renewals=renew?previous->renewals+1:0;request->expires=accepted+r.duration_ms;
+    std::atomic_store(&last_request_receipt,std::shared_ptr<Active const>(request));
+#endif
+    loaded_nonce=r.nonce;std::atomic_store(&selected,std::shared_ptr<Active const>(request));return request;
+}
+template<class Read,class Certify> void poll_with(wchar_t const* path,FILE* log,Read read,Certify certify){
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    if(position::terminal.load()||position::drain_requested.load())return;
+#endif
     const auto tick=GetTickCount64();if(tick-last_poll<200)return;last_poll=tick;WIN32_FILE_ATTRIBUTE_DATA file{};
     if(!GetFileAttributesExW(path,GetFileExInfoStandard,&file)){
         if(GetLastError()==ERROR_FILE_NOT_FOUND){disable();seen_file={};}return;}
@@ -53,16 +96,23 @@ void poll(wchar_t const* path,FILE* log){
         FILE* input{};if(_wfopen_s(&input,path,L"rb")||!input){seen_file=previous;return;}
         struct Close{FILE* file;~Close(){fclose(file);}} close{input};std::string text(file.nFileSizeLow,'\0');
         if(fread(text.data(),1,text.size(),input)!=text.size()||fgetc(input)!=EOF){seen_file=previous;return;}
-        core::Request r;
-        if(!core::parse(text,r)||r.nonce<=loaded_nonce.load()||r.base!=base||r.pid!=GetCurrentProcessId()||
-           r.creation_time!=position::creation_time()||r.started_qpc!=uint64_t(session_started_qpc)||
-           r.world_generation!=committed_world_generation.load()||!certify_live()||!core::native_pointer(r,safe_copy))throw 2;
-        auto request=std::make_shared<Active>();request->request=std::move(r);request->expires=tick+request->request.duration_ms;
-        loaded_nonce=request->request.nonce;std::atomic_store(&selected,std::shared_ptr<Active const>(request));
+        auto request=load_request(text,tick,read,certify);
         fprintf(log,"path_close_loaded nonce=%llu duration_ms=%u native_pointer=%llu own_prefix_certified=1 observation_only=%u\n",
             request->request.nonce,request->request.duration_ms,static_cast<unsigned long long>(request->request.function+0x114),observation_only);fflush(log);
-    }catch(...){++load_rejected;disable();fprintf(log,"path_close_load_rejected count=%llu observation_only=%u\n",load_rejected.load(),observation_only);fflush(log);}
+    }catch(...){++load_rejected;disable();
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        position::isolate_ui_failure();
+#endif
+        fprintf(log,"path_close_load_rejected count=%llu observation_only=%u\n",load_rejected.load(),observation_only);fflush(log);}
 }
+void poll(wchar_t const* path,FILE* log){
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    poll_with(path,log,safe_copy,[]{return certify_live()&&position::certify_code();});
+#else
+    poll_with(path,log,safe_copy,certify_live);
+#endif
+}
+
 template<class Original,class Read,class Certify,class Restore>
 uintptr_t invoke_with(void* client,void* scene,uintptr_t caller,Original call,Read read,Certify certify,Restore restore){
     (void)restore;
@@ -99,7 +149,12 @@ uintptr_t invoke_with(void* client,void* scene,uintptr_t caller,Original call,Re
             read(&slot,reinterpret_cast<void const*>(vt+core::close_slot),8)&&slot==base+core::close_rva&&
             core::function_identity(c,r,read)&&core::native_pointer(r,read)&&certify();
     }catch(...){proof_ok=false;}
-    if(!proof_ok)return pass(Bypass::identity);
+    if(!proof_ok){
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        position::isolate_ui_failure();
+#endif
+        return pass(Bypass::identity);
+    }
     unsigned slot=slots.load();while(slot<row_limit&&!slots.compare_exchange_weak(slot,slot+1)){}
 #if !defined(GEARS_PATH_CHOICE_CLOSE_RESTORE) || !GEARS_PATH_CHOICE_CLOSE_RESTORE
     if(slot>=row_limit)return pass(Bypass::quota);
@@ -108,7 +163,11 @@ uintptr_t invoke_with(void* client,void* scene,uintptr_t caller,Original call,Re
     RestoreReceipt completion{};completion.nonce=c.nonce;completion.world=c.world_generation;
     completion.client=c.client;completion.scene=c.scene;completion.panel=c.panel;completion.thread=GetCurrentThreadId();completion.enter=qpc();
     // Production restore is noexcept; contain a test/injected prelude exception as well.
-    try{completion.completion=restore(c);}catch(...){completion.completion.status=position::CloseRestoreStatus::exception;}
+    try{completion.completion=restore(c);}catch(...){completion.completion.status=position::CloseRestoreStatus::exception;
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+        position::isolate_ui_failure();
+#endif
+    }
     completion.completed=qpc();
     if(completion.completion.attempted)++restore_attempted;
     if(completion.completion.status==position::CloseRestoreStatus::restored)++restore_completed;
@@ -141,6 +200,13 @@ void progress(FILE* f){
     fprintf(f,"path_close_compiled=1 path_close_entries=%llu path_close_nonce=%llu path_close_load_rejected=%llu path_close_rows=%u path_close_row_limit=2 path_close_observation_only=%u path_close_bypass_tuple=stereo,disabled,world,not_recording,foreign_thread,nested,no_request,no_lease,wrong_object,identity,quota path_close_bypass=",
         entries.load(),loaded_nonce.load(),load_rejected.load(),slots.load(),observation_only);
     for(unsigned i=0;i<unsigned(Bypass::count);++i)fprintf(f,"%s%llu",i?",":"",bypass[i].load());
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    auto request=std::atomic_load(&last_request_receipt);
+    fprintf(f," path_close_first_tick=%llu path_close_accepted_tick=%llu path_close_expires_tick=%llu path_close_renewals=%llu ",
+        request?request->first_tick:0ull,request?request->accepted_tick:0ull,request?request->expires:0ull,request?request->renewals:0ull);
+    if(request)fprintf(f,"path_close_request_tuple=nonce,first_tick,accepted_tick,expires_tick,renewals path_close_request=%llu,%llu,%llu,%llu,%llu ",
+        request->request.nonce,request->first_tick,request->accepted_tick,request->expires,request->renewals);
+#endif
     fprintf(f," path_close_row_tuple=nonce,client,scene,panel,world,caller,thread,enter,exit,normal,rax,activation_before,activation_after,owned_before,owned_top,owned_bottom,after_world path_close_snapshot_identity_is_raw=1 path_close_liveness_proven=0 path_close_snapshot_tuple=mask,read_exception,vtable,left,top,right,bottom,units,active_data,active_num,active_max,scene_occurrences ");
 #if defined(GEARS_PATH_CHOICE_CLOSE_RESTORE) && GEARS_PATH_CHOICE_CLOSE_RESTORE
     fprintf(f,"path_close_restore_compiled=1 path_close_restore_attempted=%llu path_close_restore_completed=%llu path_close_restore_failed=%llu path_close_restore_rows=%u path_close_restore_limit=2 path_close_restore_status_tuple=bypass:0,rejected:1,restored:2,setter_failed:3,identity_lost:4,ownership_lost:5,exception:6 path_close_restore_tuple=nonce,client,scene,panel,world,thread,enter,completed,original_enter,status,borrowed,attempted,setter_calls,read_mask,entry_owned_top,entry_owned_bottom,observed_top,observed_bottom ",

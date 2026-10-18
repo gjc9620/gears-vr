@@ -27,7 +27,12 @@ bool same_lease(Parent const& p){
 bool known_owned(Snapshot const& s){return s.position[1]==position::state.lease.owned[0]&&s.position[3]==position::state.lease.owned[1];}
 void fail_closed(){
     ++failed;position::unresolved=true;position::terminal=true;position::state.lease.active=false;
-    position::pending_restore=false;position::disable();request_session_stop(SessionStop::proof_failure);
+    position::pending_restore=false;position::disable();
+#if defined(GEARS_PATH_CHOICE_POSITION_SERVICE) && GEARS_PATH_CHOICE_POSITION_SERVICE
+    position::publish_owner_ack(position::trial::Result::idle);position::isolate_ui_failure();
+#else
+    request_session_stop(SessionStop::proof_failure);
+#endif
 }
 template<class Original,class Read> uintptr_t parent_call(void* object,uintptr_t caller,Original call,Read read){
     if(position::owner_thread.load(std::memory_order_acquire)!=GetCurrentThreadId()||parent_depth!=1||position::terminal.load()||position::restore_retries.load())return call();
