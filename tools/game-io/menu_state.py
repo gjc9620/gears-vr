@@ -114,16 +114,31 @@ class MenuReader:
         self._registry_dirty = False
         try:
             self.r.prepare()
-            candidates = []
+            # Scan-local hints only. Full registration/identity checks below
+            # never consume a cached discovery identity or page snapshot.
+            discover = self.r.discovery_identity_reader()
+            hints = []
             for address in self.r.object_pointers:
                 if not address:
                     continue
                 try:
-                    obj = registered(self.r, address)
-                    if obj['name'] == 'GameUISceneClient' and self.r.class_name(obj) == 'GameUISceneClient':
-                        candidates.append(address)
+                    obj = discover(address)
+                    if obj['name'] == 'GameUISceneClient':
+                        cls = discover(obj['cls'])
+                        if cls['name'] == 'GameUISceneClient':
+                            hints.append((address, dict(obj), dict(cls)))
                 except (RuntimeError, OSError, ValueError, UnicodeError):
                     continue
+            self.r.ident_cache.clear()
+            self.r.names_cache.clear()
+            candidates = []
+            for address, hint, class_hint in hints:
+                obj = registered(self.r, address)
+                cls = registered(self.r, obj['cls'])
+                if (obj != hint or cls != class_hint or obj['name'] != 'GameUISceneClient' or
+                        cls['name'] != 'GameUISceneClient'):
+                    raise RuntimeError('GameUISceneClient identity changed during discovery')
+                candidates.append(address)
             if len(candidates) != 1:
                 raise RuntimeError('Expected one registered GameUISceneClient; found '+str(len(candidates)))
             self.client = candidates[0]
