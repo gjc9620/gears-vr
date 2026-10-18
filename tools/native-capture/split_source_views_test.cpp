@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 #include "split_source_views.h"
+#include "ngx_native_create_source.h"
 namespace {
 unsigned allocations{},constructs{},destroys{},frees{},allocation_limit=100;
 bool bad_matrix{},alias_array{},fail_constructor{};
@@ -196,6 +197,11 @@ int main() {
     result=gears_split_sources::create(api,family,source,reinterpret_cast<void*>(0x2000),false,false,true,Phase::a1);
     if(result.rejection!=10 || allocations!=allocated_before)return 20;
     memcpy(source,untouched.data(),sizeof(source));
+    // Menu9: derive from the actual completed native family Create, then pass
+    // those arguments to the existing constructor (not merely an observer).
+    gears_ngx_create::NativeCreateSource menu9{1,1,0x100,0x200,{2560,1440,3840,2160,2,67,0}};
+    unsigned menu9_width{},menu9_height{};
+    if(!menu9.split_input(3840,2160,menu9_width,menu9_height)||menu9_width!=1280||menu9_height!=1440)return 71;
     float huge=1.e20f;memcpy(source+0xd0,&huge,4);
     result=gears_split_sources::create(api,family,source,reinterpret_cast<void*>(0x2000),false,false,true,Phase::c);
     if(result.rejection!=10 || allocations!=allocated_before)return 24;
@@ -253,7 +259,8 @@ int main() {
     // 1280 output stride: packing the right input at853 would overlap Copy0.
     // The synthetic native constructor receives the reduced arguments itself.
     for(auto sample:{std::array<unsigned,4>{2560,1080,853,720},
-                     std::array<unsigned,4>{4302,2285,1433,1523}}){
+                     std::array<unsigned,4>{4302,2285,1433,1523},
+                     std::array<unsigned,4>{menu9.fields[2],menu9.fields[3],menu9_width,menu9_height}}){
         const FixedOutputBounds display{sample[0],sample[1]};
         const RenderInputBounds render{sample[2],sample[3]};
         const auto saved=untouched;

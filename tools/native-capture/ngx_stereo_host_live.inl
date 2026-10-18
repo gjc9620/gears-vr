@@ -138,6 +138,19 @@ NativeCreateAvailability native_create_state(uint64_t world,NativeCreateSource& 
 bool native_create_source(uint64_t world,NativeCreateSource& out){
     return native_create_state(world,out)==NativeCreateAvailability::ready;
 }
+bool native_create_matches(NativeCreateSource const& expected){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);uintptr_t handle{},parameters{};
+    if(!attested||!recording.load()||in_wrappers>1)return false;
+    // Invalidate observed loss rather than accepting an old token after a
+    // later handle/parameter ABA. A stale caller must not invalidate a newer Create.
+    if(latest_native_create.revision&&(latest_native_create.world!=committed_world_generation.load()||
+       !read(handle,base,gears_ngx_route::handle_cell_rva)||
+       !read(parameters,base,gears_ngx_route::parameter_cell_rva)||
+       handle!=latest_native_create.handle||parameters!=latest_native_create.parameters)){
+        latest_native_create={};++native_create_revision;
+    }
+    return expected.world==committed_world_generation.load()&&expected.matches(latest_native_create);
+}
 bool same(List a,List b){return a.raw==b.raw&&a.canonical==b.canonical&&a.generation==b.generation;}
 bool valid(List a){return a.raw&&a.canonical&&a.generation;}
 List list(ID3D12CommandList* value){if(!value)return {};auto id=canonical_identity(value);auto ref=frame_link.current(id);
@@ -235,6 +248,14 @@ WrapperScope::WrapperScope(bool eval,bool owned,uintptr_t caller,uintptr_t comma
     if(!attested||!recording.load())return;
     const bool concurrent=in_wrappers++!=0;counted=true;if(previous>=0)rows[unsigned(previous)].nested=true;
     if(concurrent){latest_native_create={};++native_create_revision;}
+#if defined(GEARS_NGX_INPUT_RECT_EXPERIMENT) && GEARS_NGX_INPUT_RECT_EXPERIMENT
+    // A late Create or changed feature cannot certify a previously constructed
+    // reduced-input ticket. Stop the experiment; original native work still
+    // runs so registered renderers retain their ordinary destruction path.
+    if(consuming_frozen_frame.ngx_constructor_source.revision&&
+       (!owned||!eval||!native_create_matches(consuming_frozen_frame.ngx_constructor_source))){
+        request_session_stop(SessionStop::proof_failure);ngx_epoch_pair::changed();}
+#endif
     if(!eval){
         latest_native_create={};source_seen=true;previous_source=source_create_scope;source_create_scope=this;
         source.revision=++native_create_revision;source.world=committed_world_generation.load();source_command=command;source_structure=reinterpret_cast<uintptr_t>(structure);

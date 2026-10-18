@@ -301,3 +301,27 @@ Create epoch through deferred prepare/consume; Create metadata alone cannot
 certify actual Color/Depth/MV producer bounds or GPU ownership. Existing
 independent-feature and boxed-copy code remains inactive until those facts
 are connected and verified. No new runtime acceptance is claimed here.
+
+### Create-derived constructor experiment integrated
+
+`GEARS_NGX_INPUT_RECT_EXPERIMENT` remains default OFF and requires the epoch
+observer plus the game-resolution diagnostic configuration. It reuses the native
+Create split-input path for real constructor arguments; the full Create identity
+is copied into the submitted frame and checked across constructor, prepare,
+consume and wrapper boundaries. Observed identity loss stops the experiment
+without skipping the original native callbacks. This is not SDK activation or
+GPU producer certification. The diagnostic uses game-resolution output to
+isolate this change; runtime-recommended resolution times launcher scale remains
+a required 0.0.1 delivery feature, not a deferred feature.
+
+Root's full DLL build exposed a header namespace collision not covered by the
+private test harness. Moving the shared value type to `gears_ngx_create`, with
+an alias in the host namespace, fixed the integrated build. Both experiment ON
+and OFF full DLL configurations compiled. Seven targeted tests and all 22
+continuous-startup checks passed. Candidate:
+`build-game-resolution-ngx-input/GearsCaptureGameNgxInput.dll`, SHA256
+`7ce3dd337fc9fe91604bbb523d4b1cd0a5c080431d47b6737130edd7acd40edc`.
+Root receipts are ignored `ngx-input-root-tests.json` and
+`ngx-input-startup-suite.json`. Actual reduced-input producer rectangles remain
+unverified until the next game sample; shared history and whole-output copying
+are still unresolved.

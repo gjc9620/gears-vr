@@ -29,12 +29,18 @@ int main() {
     if(!reused.begin(42) || reused.retire(42) || !reused.begin(42) || reused.close() || !reused.retire(42))return 8;
     auto& frames=stores[3];gears_submitted::FrameTicket ticket{},copied{};
     ticket.enabled=true;ticket.id=1;ticket.world_generation=3;ticket.sample.session=7;ticket.sample.sequence=111;ticket.expected.view[1][12]=3.2f;
+    ticket.ngx_constructor_source={1,3,0x100,0x200,{2560,1440,3840,2160,2,67,0}};
+    const auto frozen_create=ticket.ngx_constructor_source;
     if(!frames.begin(42,{},ticket))return 12;
     ticket.world_generation=4;ticket.sample.sequence=222;ticket.expected.view[1][12]=9;
+    ++ticket.ngx_constructor_source.revision;++ticket.ngx_constructor_source.world;
+    ticket.ngx_constructor_source.fields[0]=1920;
     if(!frames.frame(42,copied) || copied.sample.sequence!=111 || copied.expected.view[1][12]!=3.2f)return 13;
     if(copied.id!=1||copied.world_generation!=3)return 17;
+    if(!copied.ngx_constructor_source.matches(frozen_create)||copied.ngx_constructor_source.matches(ticket.ngx_constructor_source))return 41;
+    copied.ngx_constructor_source={};if(!frames.frame(42,copied)||!copied.ngx_constructor_source.matches(frozen_create))return 42;
     copied.sample.sequence=999;if(!frames.frame(42,copied) || copied.sample.sequence!=111)return 14;
-    if(frames.retire(42) || frames.frame(42,copied) || copied.enabled)return 15;
+    if(frames.retire(42) || frames.frame(42,copied) || copied.enabled||copied.ngx_constructor_source.revision)return 15;
     if(!frames.begin(42,{},ticket) || !frames.frame(42,copied) || copied.sample.sequence!=222 ||
        copied.world_generation!=4||copied.expected.view[1][12]!=9 || frames.close() || !frames.retire(42) || frames.frame(42,copied))return 16;
     auto& same_pose=stores[4];ticket.id=10;

@@ -13,6 +13,11 @@ struct Frame {uint64_t generation=1;struct Ref {uintptr_t identity;uint64_t gene
 gears_viewport::Tracker frame_target_stats;
 uintptr_t canonical_identity(IUnknown* object){return reinterpret_cast<uintptr_t>(object);}
 bool install(void*,void*,void**){return true;}
+#if defined(GEARS_NGX_INPUT_RECT_EXPERIMENT) && GEARS_NGX_INPUT_RECT_EXPERIMENT
+enum class SessionStop {proof_failure};unsigned experiment_stops{};
+void request_session_stop(SessionStop){++experiment_stops;}
+namespace ngx_epoch_pair {unsigned changes{};void changed(){++changes;}}
+#endif
 }
 #define _ReturnAddress test_return_address
 #pragma warning(push)
@@ -113,6 +118,40 @@ void source_cases(){
     complete();unreadable=reinterpret_cast<uintptr_t>(creation.data());complete();unreadable=0;
     assert(!native_create_source(9,source));
     complete();dispatch();assert(!native_create_source(9,source)); // Foreign dispatcher, no wrapper.
+}
+void constructor_source_cases(){
+    using namespace ngx_stereo_host;host_reset();
+    const uint32_t values[]{2560,1440,3840,2160,2,67};
+    for(unsigned i=0;i<6;++i)put(creation,i*4,values[i]);put(creation,0x18,uint8_t(0));
+    auto complete=[](){WrapperScope scope(false,true,base+0xbe66bc,0x100,creation.data());
+        scope.normal_return(hook_create(0x100,1,parameters,reinterpret_cast<uintptr_t*>(base+handle_cell_rva)));};
+    complete();NativeCreateSource saved;assert(native_create_source(9,saved)&&native_create_matches(saved));
+    uint32_t width{},height{};gears_ngx_stereo::Layout layout;
+    assert(saved.split_input(3840,2160,width,height)&&width==1280&&height==1440);
+    assert(saved.create_layout(layout)&&layout.stride==1920&&layout.eye_output.width==1920&&layout.eye_output.height==2160);
+    auto altered=saved;for(unsigned i=0;i<7;++i){altered=saved;++altered.fields[i];assert(!native_create_matches(altered));}
+    altered=saved;++altered.world;assert(!native_create_matches(altered));
+    altered=saved;++altered.revision;assert(!native_create_matches(altered));
+    altered=saved;++altered.handle;assert(!native_create_matches(altered));
+    altered=saved;++altered.parameters;assert(!native_create_matches(altered));
+    assert(native_create_matches(saved)); // Bad caller metadata cannot poison current source.
+#if defined(GEARS_NGX_INPUT_RECT_EXPERIMENT) && GEARS_NGX_INPUT_RECT_EXPERIMENT
+    consuming_frozen_frame.ngx_constructor_source=saved;experiment_stops=ngx_epoch_pair::changes=0;
+    eval();assert(experiment_stops==0&&ngx_epoch_pair::changes==0&&dispatch_calls==2);
+    ++handle;eval();assert(experiment_stops==1&&ngx_epoch_pair::changes==1&&dispatch_calls==3);
+    --handle;assert(!native_create_matches(saved)); // Observed loss is sticky even if same address returns.
+    consuming_frozen_frame.ngx_constructor_source={};complete();assert(native_create_source(9,saved));
+    consuming_frozen_frame.ngx_constructor_source=saved;complete(); // Late Create forwards, stops old renderer.
+    assert(experiment_stops==2&&ngx_epoch_pair::changes==2&&!native_create_matches(saved));
+    consuming_frozen_frame.ngx_constructor_source={};
+#endif
+    complete();assert(native_create_source(9,saved));++parameters;assert(!native_create_matches(saved));
+    --parameters;assert(!native_create_matches(saved));complete();assert(native_create_source(9,saved));
+    cells_available=false;assert(!native_create_matches(saved));cells_available=true;assert(!native_create_matches(saved));
+    complete();assert(native_create_source(9,saved));committed_world_generation=10;assert(!native_create_matches(saved));
+    committed_world_generation=9;assert(!native_create_matches(saved));complete();assert(native_create_source(9,saved));
+    complete();NativeCreateSource newer;assert(native_create_source(9,newer)&&!native_create_matches(saved)&&native_create_matches(newer));
+    hook_release(handle);assert(!native_create_matches(newer));
 }
 struct ControlFixture {
     unsigned creates{},evaluates{},copies{},releases{};uint64_t completed{};bool wrong_ticket{};
@@ -278,4 +317,4 @@ void host_cases(){
     host_reset();FILE* rejected{};assert(!tmpfile_s(&rejected));assert(!ngx_stereo_host::enable(rejected)&&!ngx_stereo_host::attested);fclose(rejected);
 }
 }
-int main(){assert(route_observer_test_main()==0);source_cases();control_cases();host_cases();std::puts("NgxStereoHostLiveTest passed (forwarding/provenance only; no SDK/GPU completion claims)");return 0;}
+int main(){assert(route_observer_test_main()==0);source_cases();constructor_source_cases();control_cases();host_cases();std::puts("NgxStereoHostLiveTest passed (forwarding/provenance only; no SDK/GPU completion claims)");return 0;}

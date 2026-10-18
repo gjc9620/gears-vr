@@ -2340,6 +2340,16 @@ void inspect_completed_renderer(Record& record,void* destination){
     if(view && safe_copy(record.matrices.data(),reinterpret_cast<void*>(view+0x70),128))record.valid|=512;
     if(safe_copy(&record.clone_owner,reinterpret_cast<void*>(view),8))record.valid|=1024;
 }
+void check_ngx_constructor_source(gears_submitted::FrameTicket const& frame){
+#if defined(GEARS_NGX_INPUT_RECT_EXPERIMENT) && GEARS_NGX_INPUT_RECT_EXPERIMENT
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(frame.ngx_constructor_source.revision&&(!frame.enabled||frame.world_generation!=frame.ngx_constructor_source.world||
+       !ngx_stereo_host::native_create_matches(frame.ngx_constructor_source))){
+        ngx_epoch_pair::changed();request_session_stop(SessionStop::proof_failure);}
+#else
+    (void)frame;
+#endif
+}
 void __fastcall hook_consume(void* renderer){
     NativeOwnedShutdownRhiScope owned_shutdown_scope;
     Scope scope;if(!scope.world())return original_consume(renderer);auto record=start_record(10,renderer,_ReturnAddress());
@@ -2352,7 +2362,7 @@ void __fastcall hook_consume(void* renderer){
     auto saved_ticket=consuming_frame_ticket;gears_submitted::FrameTicket consume_frame{};
     auto saved_frozen_frame=consuming_frozen_frame;
     consuming_frame_ticket=frame_link_diagnostics&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(renderer),consume_frame)?consume_frame.id:0;
-    consuming_frozen_frame=consume_frame;
+    consuming_frozen_frame=consume_frame;check_ngx_constructor_source(consume_frame);
     const auto dof_consume=vr_dof_compat::begin(consume_frame,renderer!=nullptr);
     dlss_output_control::ConsumeScope dlss_consume(consume_frame.world_generation,consume_frame.id,renderer&&consume_frame.enabled);
     observe_unpossessed_ticket();
@@ -2367,7 +2377,7 @@ void __fastcall hook_consume(void* renderer){
     consuming_owned_scene=native_owned_scene_consuming(renderer,consume_frame.id);
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
     {gears_render_cost::Window cost(owned_scene_gpu::render_cost(consume_frame.id));original_consume(renderer);}
-    vr_dof_compat::finish(dof_consume);
+    check_ngx_constructor_source(consume_frame);vr_dof_compat::finish(dof_consume);
     native_owned_scene_end(renderer,consume_frame.id); // Identity value only; original may have destroyed it.
     consuming_owned_scene=saved_owned_scene;
       trial_draw_scope=saved_draw_scope;
@@ -2395,8 +2405,10 @@ void __fastcall hook_prepare(void* renderer){
         if(before.valid&512)record.valid|=256;
         if(safe_copy(&record.renderer_sources[0],reinterpret_cast<void*>(record.clone_source+8),8))record.valid|=8192;
     }
+    if(observe)check_ngx_constructor_source(consuming_frozen_frame);
     original_prepare(renderer);
     if(observe){
+        check_ngx_constructor_source(consuming_frozen_frame);
         inspect_completed_renderer(record,renderer);
         ngx_epoch_pair::prepare(2,renderer,record);
         if(submit_pair_enabled && (submit_session_enabled()?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
@@ -2579,12 +2591,19 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     const gears_split_sources::FixedOutputBounds* constructor_output=owned_scene_target?&owned_bounds:nullptr;
     const gears_split_sources::RenderInputBounds* constructor_input=nullptr;
 #if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
-    // Integration-only branch: do not enable until pair Eval/Copy/output and
-    // GPU retirement are connected. Native handle zero preserves the OFF path.
+    // The default path requires a real SDK owner. The private constructor-only
+    // experiment changes local source inputs while preserving SDK passthrough.
+    // A readable zero native handle preserves the non-SR path.
     ngx_stereo_host::NativeCreateSource native_source;
     gears_split_sources::FixedOutputBounds native_output;
     gears_split_sources::RenderInputBounds native_input;
-    if(stereo_xr&&!projection_control&&!submit_mono_control&&!submit_duplicate_control&&ngx_stereo_host::current_control()){
+    bool use_native_input=bool(ngx_stereo_host::current_control());
+#if defined(GEARS_NGX_INPUT_RECT_EXPERIMENT) && GEARS_NGX_INPUT_RECT_EXPERIMENT
+    {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        use_native_input=use_native_input||(!self_testing&&continuous_session&&recording.load()&&
+            ngx_epoch_pair::enabled&&ngx_epoch_pair::probe.armed&&!ngx_epoch_pair::probe.finished);}
+#endif
+    if(stereo_xr&&!projection_control&&!submit_mono_control&&!submit_duplicate_control&&use_native_input){
         const auto native_source_status=ngx_stereo_host::native_create_state(frame.world_generation,native_source);
         if(native_source_status==ngx_stereo_host::NativeCreateAvailability::unavailable)return false;
         if(native_source_status==ngx_stereo_host::NativeCreateAvailability::ready){
@@ -2599,12 +2618,11 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         constructor_output,constructor_input);
 #if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
     if(constructor_input&&sources.checks==63){
-        ngx_stereo_host::NativeCreateSource current_source;
-        if(!ngx_stereo_host::native_create_source(frame.world_generation,current_source)||current_source.revision!=native_source.revision){
+        if(!ngx_stereo_host::native_create_matches(native_source)){
             // Reuse existing safe clone cleanup/rejection; never submit views
             // constructed across a Create/Release/world/parameter change.
             sources.checks=0;sources.rejection=15;
-        }
+        }else frame.ngx_constructor_source=native_source;
     }
 #endif
     if(projection_control)for(unsigned i=0;i<2;++i)memcpy(projection.expected[i].data(),sources.inputs[i].bytes.data()+0xb0,64);
@@ -2695,6 +2713,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             safe_copy(rectangle.data(),reinterpret_cast<void*>(built.family_views[i]+0x48),16) &&
             !memcmp(rectangle.data(),sources.inputs[source_index].bytes.data()+0x48,16);
     }
+    if(frame.ngx_constructor_source.revision&&!ngx_stereo_host::native_create_matches(frame.ngx_constructor_source))verified=false;
     if(owned_scene_target&&!native_owned_scene_built(destination,frame.id,verified))verified=false;
     ngx_epoch_pair::built(destination,frame,built,verified,sources.inputs[0].bytes.data()+0x48,sources.inputs[1].bytes.data()+0x48);
     if(!ngx_capture_control::constructed(destination,frame,built,verified))verified=false;

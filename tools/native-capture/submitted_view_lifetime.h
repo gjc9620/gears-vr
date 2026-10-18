@@ -4,6 +4,7 @@
 #include <mutex>
 #include "crosshair_scene_evidence.h"
 #include "projection_control.h"
+#include "ngx_native_create_source.h"
 #include "origin_trial.h"
 #include "../vr-common/stereo_frame.h"
 #include "../vr-common/stereo_ticket_store.h"
@@ -18,7 +19,10 @@ struct FrameTicket {bool enabled{};std::uint64_t id{};gears_vr::StereoSample sam
     gears_vr::StereoMatrix source_view{},source_projection{};
     std::uint64_t reference_generation{};gears_vr::Pose reference{};gears_origin_trial::Metadata origin{};
     std::optional<gears_crosshair_scene::Metadata> crosshair;
-    gears_vr::StereoFiniteAim finite_aim{};};
+    gears_vr::StereoFiniteAim finite_aim{};
+    // Immutable completed Create parameters for reduced constructor inputs.
+    // CPU identity only: owns no feature, resource, GPU work or producer proof.
+    gears_ngx_create::NativeCreateSource ngx_constructor_source{};};
 class Lifetime {
     std::mutex mutex;
     std::array<uintptr_t,64> roots{};
