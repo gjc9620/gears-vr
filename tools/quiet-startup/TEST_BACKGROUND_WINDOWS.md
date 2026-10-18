@@ -69,3 +69,25 @@ whole VR regression did not pass. Native cleanup, independent entry restoration,
 normal game close and five settings/profile restores did pass. This outcome
 supports the new placement policy only within the sampled interval; the status
 read failure remains separate work. The system runtime registry was not changed.
+
+## Coverage limitation and expanded offline detector
+
+The foreground-only walk above can miss a test window covering another visible
+application on a second monitor or below the foreground window. Its zero count
+must not be described as proof that no user windows were covered.
+
+`window_occlusion.py` analyzes a supplied top-to-bottom snapshot across monitors,
+subtracting rectangles already covered by higher windows. It reports test-window
+areas above other visible applications, including negative screen coordinates.
+Hidden, minimized and cloaked windows are excluded. It neither reads window
+titles nor moves, activates or reorders anything. Explicit shell HWND exclusions
+belong to the snapshot caller; do not exclude ordinary applications by guessing.
+
+Five offline regression tests cover the foreground-only blind spot, partial and
+complete coverage, invisible windows, and nonoverlap. Run with Python unittest
+discovery in this directory using pattern `test_window_occlusion.py`.
+The helper is not yet wired into the runtime driver. These tests verify only the
+rectangle analysis, not live placement or the cause of the user's reported
+occlusion. Live snapshots can race window changes and rectangles do not model
+transparent pixels or irregular regions. No new game launch is justified by
+these offline results alone.
