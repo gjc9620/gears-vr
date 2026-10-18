@@ -1,5 +1,13 @@
 # 主线进度与 V1 验收
 
+## 2026-10-18 夜间：状态发布修正已实跑，首发仍未完成
+
+当前源码已加入原生状态文件完整代发布，修正 actual12 实际读到4096字符半份状态的问题。新 AtomicStatus 候选在 actual14 进入关卡并提交双目画面，66次遥测未再出现该读取错误；正常关闭、native清理、入口恢复和设置恢复通过。这不代表所有黑屏已修复，玩家默认包未替换。
+
+PathChoice 已采用运行时 viewport 的整组布局，并在历史 actual7 完成42秒保持及选择后恢复；最新对象表增长适配仍需复测，不能把历史通过当成新组合通过。黎明之锤提示的实际调用组尚未覆盖。DLSS 已接入默认关闭的原生控制边界，真实 GPU 队列及资源复制测试通过，但实际游戏四资源／生产域／最终画面接线和验收仍未完成。机枪两层采样修正已接入源码，仍缺修正后的真实机枪画面证据。
+
+自动测试已采用游戏和模拟器均不抢焦点、不盖住前台窗口的专用配置，并静音游戏；actual14的1021次窗口层级采样未见遮挡。此为测试行为，不改玩家正常启动。详细依据与下一步分别见[DLSS记录](154-dlss-sr-startup-and-output-route.md)和[UI记录](155-path-choice-position-and-docking.md)。推荐尺寸＋倍率、完整UI、机枪、DLSS、候选合并和0.0.1包验收仍按原范围推进。
+
 ## 2026-10-18 新分辨率候选资源收尾实测通过
 
 会话17496使用独立retirement候选，实际游戏生成每眼1280×1400，约59.37秒内发布1202对眼图、模拟器提交5347帧。正常停止后Owner进入released，resources_retained=0、cleanup_timeout=0，runner确认native_cleanup_verified及entry_restore_verified均true。已正常退出游戏并逐哈希恢复四个profile。此轮只证明短时运行及停止释放；世界切换仍明确不支持，机枪、DLSS、UI位置与最终头显验收未完成。`manifest-runtime-resolution1.json`更新到本轮构建，玩家默认Mounted104不变。完整证据与限制见`docs/runtime-render-size-candidate.md`。
