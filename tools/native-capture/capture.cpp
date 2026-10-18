@@ -2296,11 +2296,15 @@ void* __fastcall hook_clone(void* destination,void* source){
 // One successful owned selection only; bootstrap renderers cannot claim this.
 // Read-only bounded diagnostics, serialized by the existing frame hook lock.
 namespace owned_ticket_size_trace {
+#ifndef GEARS_SIZE_TRACE_MIN_WORLD
+#define GEARS_SIZE_TRACE_MIN_WORLD 0
+#endif
 struct Row {
     bool present{};unsigned mask{},eye{},stage{},thread{};long long qpc{};
     uintptr_t view{},family{},target{},resource{};
     std::array<float,4> source{},sampling{};std::array<int,4> output{};
     uint64_t target_width{};unsigned target_height{},target_format{};
+    std::array<unsigned,2> sampling_buffer{};
 };
 struct DrawRow {
     bool present{};unsigned eye{},stage{},mode{},indexed{},elements{},instances{},thread{};
@@ -2320,6 +2324,8 @@ void views(unsigned stage,void* root,gears_submitted::FrameTicket const& frame,u
     for(unsigned eye=0;eye<2;++eye){auto& row=rows[stage*2+eye];if(row.present)continue;
         row.present=true;row.eye=eye;row.stage=stage;row.view=addresses[eye];row.thread=GetCurrentThreadId();row.qpc=now();
         if(!row.view)continue;
+        // RIP decoded from 116590/1165bf; IDA's cs display label is 0x1000 lower.
+        if(safe_copy(row.sampling_buffer.data(),reinterpret_cast<void*>(base+0x1c3b3b8),8))row.mask|=128;
         if(safe_copy(row.source.data(),reinterpret_cast<void*>(row.view+0x48),16))row.mask|=1;
         if(safe_copy(row.output.data(),reinterpret_cast<void*>(row.view+0x58),16))row.mask|=2;
         if(safe_copy(row.sampling.data(),reinterpret_cast<void*>(row.view+0x3d0),16))row.mask|=4;
@@ -2343,6 +2349,7 @@ void views(unsigned stage,void* root,gears_submitted::FrameTicket const& frame,u
 void select(void* root,gears_submitted::FrameTicket const& frame,uintptr_t target,uintptr_t left,uintptr_t right){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(ticket||!root||!target||!frame.enabled||!frame.id||!frame.world_generation)return;
+    if(frame.world_generation<GEARS_SIZE_TRACE_MIN_WORLD)return;
     ticket=frame.id;world=frame.world_generation;renderer=reinterpret_cast<uintptr_t>(root);adapter=target;
     views(0,root,frame,left,right);
 }
@@ -2368,12 +2375,12 @@ void print(FILE* status){
     for(auto const& row:draws)draw_count+=row.present?1:0;
     fprintf(status,"owned_ticket_size_trace ticket=%llu world=%llu renderer=%llx adapter=%llx rows_mask=%u finished=%u draw_rows=%u selection=successful_owned_only stages=source_constructed,renderer_built,prepare_before,prepare_after mask_bits=floatrect:1,intrect:2,sampling:4,family:8,target:16,owned_adapter_match:32,resource_desc:64 direct_draws_only=1 pixels_verified=0\n",
         ticket,world,static_cast<unsigned long long>(renderer),static_cast<unsigned long long>(adapter),mask,finished?1:0,draw_count);
-    for(auto const& row:rows)if(row.present)fprintf(status,
+    for(auto const& row:rows)if(row.present){fprintf(status,"owned_ticket_sampling_buffer ticket=%llu stage=%u eye=%u width=%u height=%u readable=%u min_world=%u\n",ticket,row.stage,row.eye,row.sampling_buffer[0],row.sampling_buffer[1],(row.mask&128)?1:0,unsigned(GEARS_SIZE_TRACE_MIN_WORLD));fprintf(status,
         "owned_ticket_size_row ticket=%llu world=%llu renderer=%llx stage=%u eye=%u qpc=%lld thread=%u mask=%u view=%llx family=%llx target=%llx source=%.9g,%.9g,%.9g,%.9g output=%d,%d,%d,%d sampling=%.9g,%.9g,%.9g,%.9g resource=%llx target_width=%llu target_height=%u target_format=%u\n",
         ticket,world,static_cast<unsigned long long>(renderer),row.stage,row.eye,row.qpc,row.thread,row.mask,
         static_cast<unsigned long long>(row.view),static_cast<unsigned long long>(row.family),static_cast<unsigned long long>(row.target),
         row.source[0],row.source[1],row.source[2],row.source[3],row.output[0],row.output[1],row.output[2],row.output[3],
-        row.sampling[0],row.sampling[1],row.sampling[2],row.sampling[3],static_cast<unsigned long long>(row.resource),row.target_width,row.target_height,row.target_format);
+        row.sampling[0],row.sampling[1],row.sampling[2],row.sampling[3],static_cast<unsigned long long>(row.resource),row.target_width,row.target_height,row.target_format);}
     for(auto const& row:draws)if(row.present){auto const& b=row.binding;auto const& s=row.state;fprintf(status,
         "owned_ticket_size_draw ticket=%llu world=%llu renderer=%llx eye=%u stage=%u mode=%u qpc=%lld thread=%u view=%llx list=%llx caller=%llx indexed=%u elements=%u instances=%u targets=%u resource=%llx width=%llu height=%u mip=%u format=%u tracked=%u viewport_count=%u scissor_count=%u viewport=%.9g,%.9g,%.9g,%.9g scissor=%.9g,%.9g,%.9g,%.9g\n",
         ticket,world,static_cast<unsigned long long>(renderer),row.eye,row.stage,row.mode,row.qpc,row.thread,

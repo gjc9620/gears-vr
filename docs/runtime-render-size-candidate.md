@@ -10,6 +10,26 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ### Blocking image defect at scale 2.0
 
+Later-world counterexample: RuntimeSizeTrace3, DLL
+`19417a286f414f9a706be33fa7916ff2f905ed70657512d437570c4f279e8df8`,
+passed22 startup checks and two actual reloads with normal restoration.
+Session `continuous-stereo-46068-20261019-054626-e3d3b745`, ticket481/world2:
+built/pre/post sampling is already `.25,-.5,.5,.25` (left) and
+`.25,-.5,.5,.75` (right), with correct2560x2800 eye rectangles and observed
+geometry viewports/5120x2800 target. Yet both post-reload GPU captures still
+have no pixels above channel4 in columns3840..5119. Thus stale constructor
+sampling is **not a sufficient explanation for the persistent clipping**;
+do not promote a four-float sampling patch as its fix. Next inspect actual
+owned postprocess/final source bounds and copies.
+
+Trace3's extra `owned_ticket_sampling_buffer` rows are INVALID evidence:
+that binary read the misleading IDA label's RVA1c3a3b8. Its independent
+view/target/draw rows remain usable; source now reads RIP-confirmed1c3b3b8.
+The diagnostic world filter is build-only (`GEARS_SIZE_TRACE_MIN_WORLD=2`).
+Trace2 was never run in-game: overriding CMAKE_CXX_FLAGS omitted `/EHsc`,
+and viewport exception-cleanup self-test31 failed. Trace3 restored all
+original flags and passed the full suite before starting the game.
+
 2026-10-19 bounded owned-ticket trace: private RuntimeSizeTrace1 DLL
 `91d2cbe6bd1074664c56129bd53807e720120f23bb377b0802e8578fdcb79ea0`
 passed the 22 startup checks and two actual checkpoint reloads, with normal
@@ -26,9 +46,12 @@ last component1), consistent with denominator3840x2160. It remains unchanged
 through prepare. Constructor observation QPC2211057222908 precedes the actual
 resource resize QPC2211057579650..2211058176743; prepare starts afterward.
 Historical snapshot assembly was re-exported and byte-matched for
-116250..116b34: at116590/1165bf it reads globals1c3a3b8/1c3a3bc to derive
+116250..116b34: at116590/1165bf it reads globals1c3b3b8/1c3b3bc to derive
 view+3d0..3dc, independently of the target's virtual width/height clamp.
 Slice SHA256 `b3614facc38c953bc9b2ead6c8cca42783225619757a630d06b9d1982733a07e`.
+Corrected the original address transcription using raw RIP-relative bytes:
+`8b05224eb201` at116590 and `8b05f74db201` at1165bf. IDA's cs display labels
+are 0x1000 lower than the real targets; KB xrefs agree with the decoded targets.
 Evidence is under ignored `analysis/ida/ngx-copy-contract-20261019/renderer-sampling.*`.
 This identifies a constructor/resize ordering discrepancy for the sampled
 ticket, **not yet the complete explanation for persistent clipping**. Both
