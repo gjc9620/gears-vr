@@ -267,6 +267,101 @@ class MonitorTests(unittest.TestCase):
         return {'menu_state':SimpleNamespace(MenuReader=lambda pid:reader),
                 'menu_control':SimpleNamespace(reader_process_identity=lambda current:(3, 30))}
 
+    def snapshot_retry_fixture(self, failures=1, *, unknown=False, world_change=False, postpublish=False):
+        self.m.close()
+        class SnapshotChanged(RuntimeError):pass
+        class SceneOwnerRejected(RuntimeError):pass
+        readers = []
+        def new_reader(pid):
+            index = len(readers)
+            def sample(**kwargs):
+                failing = (kwargs.get('include_owner') and index < failures) or (
+                    postpublish and self.m.close_sidecar.owned)
+                if failing:
+                    if world_change:self.status['world_generation'] = 2
+                    try:
+                        fault = RuntimeError if unknown else SnapshotChanged
+                        raise fault('UI changed during snapshot')
+                    except RuntimeError as cause:
+                        raise SceneOwnerRejected('Owner source read failed') from cause
+                return dict(top=dict(cls='UIScene_PathChoice', address='0x65'), active_scenes=[])
+            reader = SimpleNamespace(sample=sample, close=mock.Mock(),
+                r=SimpleNamespace(resolve=lambda:dict(controller_address='0x67', local_player_address='0x68')))
+            readers.append(reader)
+            return reader
+        modules = dict(menu_state=SimpleNamespace(MenuReader=new_reader, SnapshotChanged=SnapshotChanged),
+            scene_owner_snapshot=SimpleNamespace(SceneOwnerRejected=SceneOwnerRejected),
+            menu_control=SimpleNamespace(reader_process_identity=lambda reader:(3, 30)))
+        self.enterContext(mock.patch.dict('sys.modules', modules))
+        certificate_probe = Probe()
+        def collect(reader, sample, status, session, nonce, verify):
+            verify(reader)
+            return certificate_probe.capture(nonce, True, 1).certificate
+        self.enterContext(mock.patch('path_choice_position_collect.collect', side_effect=collect))
+        self.m = self.create(probe_factory=LivePathChoicePositionProbe)
+        self.addCleanup(self.m.close)
+        return readers, certificate_probe
+
+    def test_exact_nested_snapshot_conflict_discards_full_unowned_capture_with_fresh_reader(self):
+        readers, collector = self.snapshot_retry_fixture()
+        self.m.poll(); nonce = self.m.nonce
+        events = self.m.poll()
+        self.assertEqual([event['event'] for event in events], ['path_position_acquisition_discarded'])
+        self.assertEqual(events[0]['retry_count'], 1)
+        self.assertEqual(events[0]['error_causes'][0]['type'], 'SnapshotChanged')
+        self.assertEqual(collector.full_reads, 1)
+        self.assertEqual(self.actions, [])
+        self.assertEqual(len(readers), 2)
+        readers[0].close.assert_called_once()
+        self.assertIsNot(readers[0], readers[1])
+        self.hold()
+        self.assertEqual(self.m.nonce, nonce)
+        self.assertEqual(self.m.acquisition_attempts, 2)
+        self.assertEqual([row[1] for row in self.actions if row[0] == 'publish'], ['close', 'position'])
+        self.assertEqual(collector.full_reads, 1)
+
+    def test_snapshot_acquisition_retry_bound_exhaustion_is_terminal_without_publication(self):
+        readers, collector = self.snapshot_retry_fixture(failures=10)
+        events = []
+        for _ in range(6):events.extend(self.m.poll())
+        self.assertEqual(len(readers), 3)
+        self.assertEqual(self.m.acquisition_attempts, 3)
+        self.assertTrue(self.m.terminal)
+        self.assertEqual(self.actions, [])
+        self.assertEqual(collector.full_reads, 0)
+        self.assertEqual([e['retry_count'] for e in events if e['event'] == 'path_position_acquisition_discarded'], [1, 2])
+        self.assertEqual(events[-1]['event'], 'path_position_revoked')
+        self.assertEqual(events[-1]['retry_count'], 2)
+        for reader in readers:reader.close.assert_called_once()
+
+    def test_unknown_snapshot_cause_is_terminal_without_retry(self):
+        readers, collector = self.snapshot_retry_fixture(unknown=True)
+        self.m.poll(); events = self.m.poll()
+        self.assertEqual(len(readers), 1)
+        self.assertTrue(self.m.terminal)
+        self.assertEqual(events[-1]['event'], 'path_position_revoked')
+        self.assertEqual(self.actions, [])
+
+    def test_snapshot_conflict_world_change_cannot_retry(self):
+        readers, collector = self.snapshot_retry_fixture(world_change=True)
+        self.m.poll(); events = self.m.poll()
+        self.assertEqual(len(readers), 1)
+        self.assertTrue(self.m.terminal)
+        self.assertFalse(any(e['event'] == 'path_position_acquisition_discarded' for e in events))
+        self.assertEqual(self.actions, [])
+
+    def test_exact_snapshot_conflict_after_publication_is_terminal_without_retry(self):
+        readers, collector = self.snapshot_retry_fixture(failures=0, postpublish=True)
+        self.hold()
+        events = []
+        for _ in range(10):events.extend(self.step())
+        self.assertEqual(len(readers), 1)
+        self.assertTrue(self.m.terminal)
+        self.assertFalse(self.m.position.owned)
+        self.assertTrue(self.m.close_sidecar.owned)
+        self.assertFalse(any(e['event'] == 'path_position_acquisition_discarded' for e in events))
+        self.assertEqual(collector.full_reads, 1)
+
     def test_live_probe_holds_pending_restore_one_over_30s_with_native_poll_cadence(self):
         self.m.close()
         modules = self.live_probe_modules()

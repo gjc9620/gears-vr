@@ -18,6 +18,7 @@ from path_choice_owned_sidecar import OwnedSidecar
 MAX_RESULT_AGE = 2.0
 OBSERVE_INTERVAL = .5
 RENEW_INTERVAL = 2.0
+MAX_ACQUISITION_ATTEMPTS = 3
 
 
 def get_tick_count64():
@@ -100,6 +101,7 @@ class PathChoicePositionMonitor:
         self.state = 'idle'; self.generation = None; self.nonce = 0
         self.certificate = None; self.baseline_ids = None
         self.certificate_finished = None
+        self.acquisition_attempts = 0
         self.position_bytes = self.close_bytes = None
         self.last_restored_nonce = 0; self.leave_seen = False
         self.last_observed = None; self.due = 0.; self.renew_due = 0.
@@ -258,7 +260,38 @@ class PathChoicePositionMonitor:
         self.request_generation = generation
         self.future = self.executor.submit(capture)
         if acquire:
+            self.acquisition_attempts += 1
             self.state = 'acquiring'
+
+    def _retry_unowned_snapshot(self, error, generation):
+        if (self.state != 'acquiring' or self.terminal or self.cancel.is_set() or
+                self.request_generation != generation or self.generation != generation or
+                self.acquisition_attempts >= MAX_ACQUISITION_ATTEMPTS or
+                self.position.owned or self.close_sidecar.owned or self.certificate is not None or
+                self.baseline_ids is not None or self.position_bytes is not None or self.close_bytes is not None):
+            return False
+        try:
+            from menu_state import SnapshotChanged
+            from scene_owner_snapshot import SceneOwnerRejected
+        except ImportError:
+            return False
+        # Only the demonstrated wrapper of MenuReader's repeated-ledger-read
+        # conflict is retryable. Identity/IO/budget/code failures stay terminal.
+        if not (type(error) is SceneOwnerRejected and str(error) == 'Owner source read failed' and
+                type(error.__cause__) is SnapshotChanged and
+                str(error.__cause__) == 'UI changed during snapshot' and
+                error.__cause__.__cause__ is None and error.__cause__.__context__ is None):
+            return False
+        self._check_processes()
+        status = copy.deepcopy(self.read_status())
+        if self._status(status) != generation:
+            raise RuntimeError('Native world changed before snapshot retry')
+        if (self._failure(status) or str(status.get('path_position_pending_restore')) != '0' or
+                str(status.get('path_position_active_nonce')) != '0'):
+            raise RuntimeError('Native position state changed before snapshot retry')
+        # LivePathChoicePositionProbe closed its failed reader on the worker;
+        # the next full capture independently verifies a newly opened reader.
+        return True
 
     def _renew_ack(self, status, prefix, duration):
         current = self._receipt(status, prefix)
@@ -291,7 +324,22 @@ class PathChoicePositionMonitor:
             now = self.clock()
             if self.future is not None and self.future.done():
                 future, self.future = self.future, None
-                observation, finished = future.result()
+                retry_acquisition = False
+                try:
+                    observation, finished = future.result()
+                except Exception as error:
+                    if not self._retry_unowned_snapshot(error, generation):
+                        raise
+                    event = dict(event='path_position_acquisition_discarded', reason=type(error).__name__,
+                                 nonce=self.nonce, error_state=self.state,
+                                 acquisition_attempt=self.acquisition_attempts,
+                                 retry_count=self.acquisition_attempts)
+                    event.update(self._exception_detail(error))
+                    events.append(event)
+                    retry_acquisition = True
+                if retry_acquisition:
+                    self._submit(generation, True)
+                    return events
                 if (self.request_generation != generation or not 0 <= now - finished <= MAX_RESULT_AGE or
                         self.cancel.is_set()):
                     events.append(self._revoke('late_or_world_changed_read'))
@@ -363,10 +411,13 @@ class PathChoicePositionMonitor:
                     self.nonce = max(self.nonce + 1, self.last_restored_nonce + 1, int(self.nonce_clock()))
                     self.leave_seen = False; self.certificate = self.baseline_ids = None
                     self.position_bytes = self.close_bytes = None
+                    self.acquisition_attempts = 0
                 self._submit(generation, acquire)
         except Exception as error:
             detail = self._exception_detail(error)
             detail['error_state'] = self.state
+            detail['acquisition_attempt'] = self.acquisition_attempts
+            detail['retry_count'] = max(0, self.acquisition_attempts - 1)
             event = self._revoke(type(error).__name__, terminal=True)
             event.update(detail)
             events.append(event)
