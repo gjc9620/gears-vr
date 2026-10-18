@@ -144,3 +144,13 @@ minimized and cloaked windows do not consume the visible budget. Thirteen
 snapshot/rectangle tests pass, including a 637-window/40-visible fixture. A
 subsequent read-only desktop capture completed with 637 traversed and 24 visible
 non-cloaked windows. These numbers are a sample, not a fixed desktop assumption.
+
+### Actual v2 menu6 interval
+
+The subsequent `dlss-native-menu6` run completed its bounded native graphics-menu
+route and returned to the game UI. Its 527 cross-window snapshots reported no
+occlusion or invalid samples; no actual game-foreground sample was recorded.
+This supports v2 during the sampled interval only, not every startup instant or
+all desktop layouts. Native cleanup, independent entry restoration, normal game
+close and five settings/profile restores passed. No GPU projection was published
+by this observer candidate, so this is not visual or DLSS acceptance.

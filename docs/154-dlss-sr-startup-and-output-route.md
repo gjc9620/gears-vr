@@ -211,3 +211,17 @@ include 747 unrelated prefix events, mixed batches, pending generation failures,
 duplicate submissions and genuine capacity exhaustion. This remains an observer
 candidate, not released DLSS support. No game/simulator launch or player package
 change was performed for this revision; actual menu pair evidence is still due.
+
+### Actual scoped menu6 sample
+
+The game-menu DLSS Quality route now completes and returns through the expected
+UI route. The probe retains 99 events and 13 typed resources, excluding 324
+unrelated Execute members and 569 resets. It no longer hits event capacity, but
+stops at the first selected Eval input rejection (`stop=3`, zero accepted Evals).
+Create again reports 2560x1440 input and 3840x2160 output. Separate native route
+samples show Evaluate calls, including different Color/Depth/MV base offsets;
+these are not sufficient to establish valid per-eye producer dimensions or
+history. The combined input rejection currently lacks a per-condition reason;
+that must be resolved before changing SR parameters. GPU publish remains zero.
+Native cleanup, entry restoration, normal exit and settings restoration passed.
+Evidence is archived under ignored `analysis/runtime/dlss-native-menu6-*`.
