@@ -23,7 +23,123 @@ static bool eye(Tracker& tracker, ListRef ref, uint64_t ticket, unsigned index, 
 static void pair(Tracker& tracker, ListRef ref, uint64_t ticket = 1) {
     CHECK(eye(tracker, ref, ticket, 0)); CHECK(eye(tracker, ref, ticket, 1));
 }
+static void owned_retirement_cases() {
+    const Target target{buffer,1920,1080};
+    auto configured=[&](){auto t=std::make_unique<Tracker>();
+        CHECK(t->configure_owned_output(target,queue,9,4,true));return t;};
+    auto submit=[](Tracker& t,ListRef ref){ExecutionToken token{};
+        CHECK(t.prepare_execute(queue,&ref,1,token));CHECK(t.commit_execute(token));};
+    // Independent proof and every identity field are mandatory; refusal leaves
+    // the original snapshot and generation usable, not a partial retirement.
+    for(unsigned bad=0;bad<13;++bad){
+        auto t=configured();auto ref=t->reset_success(1);pair(*t,ref,10);submit(*t,ref);
+        OwnedRetirement proof{};CHECK(t->owned_retirement_snapshot(proof));auto altered=proof;
+        if(bad==0)++altered.world_epoch;
+        if(bad==1)++altered.revision;
+        if(bad==2)++altered.ticket_cutoff;
+        if(bad==3)++altered.output.target.resource;
+        if(bad==4)++altered.output.target.width;
+        if(bad==5)++altered.output.target.height;
+        if(bad==6)++altered.output.queue;
+        if(bad==7)++altered.output.generation;
+        if(bad==8)++altered.output.state;
+        if(bad==9)altered.output.enabled=false;
+        if(bad==10)altered.output.certified=false;
+        if(bad==11)altered={};
+        CHECK(!t->retire_owned_output(altered,bad!=12));
+        CHECK(t->owned_status().enabled&&t->owned_status().certified);
+        CHECK(!t->world_handoff_ready(1,2)&&!t->advance_world_epoch(1,2));
+        CHECK(t->retire_owned_output(proof,true));CHECK(!t->retire_owned_output(proof,true));
+        CHECK(t->world_handoff_ready(1,2));
+    }
+    // Even unrelated pending submission blocks; refusal cannot cancel its token.
+    {
+        auto t=configured();auto ref=t->reset_success(1);OwnedRetirement proof{};
+        CHECK(t->owned_retirement_snapshot(proof));ExecutionToken token{};
+        CHECK(t->prepare_execute(queue,&ref,1,token));
+        OwnedRetirement untouched=proof;CHECK(!t->owned_retirement_snapshot(untouched));
+        CHECK(untouched.revision==proof.revision);CHECK(!t->retire_owned_output(proof,true));
+        CHECK(!t->world_handoff_ready(1,2));CHECK(t->commit_execute(token));
+        CHECK(!t->retire_owned_output(proof,true)); // Commit changed revision.
+        CHECK(t->owned_retirement_snapshot(proof));CHECK(t->retire_owned_output(proof,true));
+    }
+    // No erase-to-pass: finals, unknown writes, barriers and overlays all wait
+    // for actual submission. Failed metadata/capacity remain terminal.
+    for(unsigned mode=0;mode<7;++mode){
+        auto t=configured();auto ref=t->reset_success(1);OwnedRetirement proof{};
+        CHECK(t->owned_retirement_snapshot(proof));
+        if(mode==0)CHECK(eye(*t,ref,1,0));
+        if(mode==1)CHECK(t->draw_unknown(ref,buffer));
+        if(mode==2)CHECK(t->record_transition(ref,buffer,9,4,128));
+        if(mode==3){pair(*t,ref);auto p=t->overlay_pair(ref,target);CHECK(p.linked);
+            CHECK(t->draw_overlay_pair(ref,1,target,p.eyes,3));}
+        if(mode==4)t->invalidate();
+        if(mode==5)t->invalidate_capacity();
+        if(mode==6)t->invalidate_list(1);
+        OwnedRetirement untouched{};untouched.revision=123;
+        CHECK(!t->owned_retirement_snapshot(untouched));CHECK(untouched.revision==123);
+        CHECK(!t->retire_owned_output(proof,true));CHECK(t->owned_status().enabled);
+        CHECK(!t->advance_world_epoch(1,2));
+        if(mode<4){submit(*t,ref);CHECK(t->owned_retirement_snapshot(proof));CHECK(t->retire_owned_output(proof,true));}
+        if(mode==5){CHECK(t->snapshot().capacity_bad);CHECK(!t->world_handoff_ready(1,2));}
+    }
+    // Changes after fence snapshot require fresh evidence, even unrelated Reset.
+    {
+        auto t=configured();OwnedRetirement proof{};CHECK(t->owned_retirement_snapshot(proof));
+        t->reset_success(1);CHECK(!t->retire_owned_output(proof,true));
+        CHECK(t->owned_retirement_snapshot(proof));CHECK(t->retire_owned_output(proof,true));
+    }
+    // Retirement retains real generations and executed markers, seals unrelated
+    // unsubmitted recordings, and only a later epoch/new resource generation can
+    // be born. Reused resource addresses require that same new lifetime proof.
+    for(bool recreate:{false,true}){
+        auto t=configured();auto done=t->reset_success(1);pair(*t,done,10);submit(*t,done);
+        auto open=t->reset_success(2);CHECK(t->draw_unknown(open,buffer+1));
+        auto closed=t->create_success(3,false);const auto before=t->snapshot();
+        OwnedRetirement proof{};CHECK(t->owned_retirement_snapshot(proof));
+        CHECK(proof.world_epoch==1&&proof.ticket_cutoff==10&&proof.output.generation==9);
+        CHECK(t->retire_owned_output(proof,true));
+        CHECK(!t->owned_status().enabled&&!t->owned_status().certified);
+        CHECK(t->snapshot().active_lists==before.active_lists&&t->snapshot().reset_calls==before.reset_calls);
+        CHECK(t->current(1).generation==done.generation&&t->current(2).generation==open.generation);
+        CHECK(!t->current(3).identity);
+        CHECK(!t->birth_owned_output(target,queue,10,4,true,true)); // Same epoch.
+        CHECK(!t->configure_owned_output(target,queue,10,4,true));
+        CHECK(!t->execute(queue,&open,1));CHECK(!t->present(buffer,queue).linked);
+        CHECK(t->world_handoff_ready(1,2));CHECK(t->advance_world_epoch(1,2));
+        CHECK(!t->birth_owned_output(target,queue,9,4,true,true)); // Generation ABA.
+        CHECK(t->birth_owned_output(target,queue,10,4,true,true));
+        CHECK(!t->retire_owned_output(proof,true)); // Previous lifetime receipt.
+        auto fresh=recreate?t->create_success(2,true):t->reset_success(2);
+        CHECK(fresh.generation>open.generation&&fresh.generation>closed.generation);
+        pair(*t,fresh,11);submit(*t,fresh);CHECK(t->consume_owned_output(buffer,10,queue,11).linked);
+        CHECK(t->owned_retirement_snapshot(proof));CHECK(t->retire_owned_output(proof,true));
+        CHECK(t->advance_world_epoch(2,3));CHECK(t->birth_owned_output(target,queue,11,128,true,true));
+    }
+    // No Present is needed to advance, and neither an executed nor unsubmitted
+    // old list acquires the new epoch merely from birth clearing associations.
+    for(bool executed:{false,true}){
+        auto t=configured();auto old=t->reset_success(1);CHECK(t->draw_unknown(old,buffer+1));
+        if(executed)submit(*t,old);OwnedRetirement proof{};
+        CHECK(t->owned_retirement_snapshot(proof));CHECK(t->retire_owned_output(proof,true));
+        CHECK(t->advance_world_epoch(1,2));CHECK(t->birth_owned_output(target,queue,10,4,true,true));
+        CHECK(t->current(1).generation==old.generation);ExecutionToken token{123};
+        CHECK(!t->prepare_execute(queue,&old,1,token));CHECK(token.value==123);
+        CHECK(!t->owned_status().certified); // Late old submission is terminal.
+    }
+    {
+        auto t=configured();OwnedRetirement proof{};CHECK(t->owned_retirement_snapshot(proof));
+        CHECK(t->retire_owned_output(proof,true));t->invalidate_capacity();
+        CHECK(t->advance_world_epoch(1,2));CHECK(t->snapshot().capacity_bad);
+        CHECK(!t->birth_owned_output(target,queue,10,4,true,true));
+    }
+    {
+        auto t=std::make_unique<Tracker>();OwnedRetirement proof{};
+        CHECK(!t->owned_retirement_snapshot(proof));CHECK(!t->retire_owned_output(proof,true));
+    }
+}
 int main() {
+    owned_retirement_cases();
     {
         auto storage = std::make_unique<Tracker>(); auto& t = *storage; auto a = t.reset_success(1);
         CHECK(t.draw_unknown(a, buffer)); pair(t, a);

@@ -30,6 +30,10 @@ struct Result {
 };
 struct ExecutionToken {uint64_t value{};};
 struct OwnedStatus {bool enabled{},certified{};Target target{};Identity queue{};uint64_t generation{};uint32_t state{};};
+struct OwnedRetirement {
+    uint64_t world_epoch{},revision{},ticket_cutoff{};
+    OwnedStatus output{};
+};
 struct OverlayDiagnostic {
     ListRef current{};Target target{};uint64_t maximum_ticket{},retired_ticket{};
     unsigned executed_mask{},other_complete_recorded_lists{};
@@ -109,6 +113,7 @@ private:
     uint32_t window_rejection_{};
     Snapshot stats_{};
     OwnedStatus owned_{};
+    uint64_t retired_owned_epoch_{},retired_owned_generation_{};
     uint64_t revision_{},execution_sequence_{};
     struct Pending {bool active{};uint64_t token{},revision{};Identity queue{};size_t count{};uint32_t state{};
         std::array<ListRef,list_capacity> members{};} pending_{};
@@ -117,6 +122,13 @@ private:
         if(!owned_.enabled||list.executed)return;
         for(size_t i=0;i<list.count;++i)
             if(list.events[i].overlay&&list.events[i].target.resource==owned_.target.resource){lose_owned();return;}
+    }
+    bool owned_retirement_ready_locked() const {
+        if(!owned_.enabled||!owned_.certified||pending_.active||window_bad_||capacity_bad_||revision_==UINT64_MAX)return false;
+        for(auto const& list:lists_)if(!list.executed)
+            for(size_t i=0;i<list.count;++i){auto const& event=list.events[i];
+                if(event.target.resource==owned_.target.resource||event.transfer_source.resource==owned_.target.resource)return false;}
+        return true;
     }
     static bool color_state(uint32_t state){return state==0||state==4||state==128||state==1024||state==2048||state==4096||state==8192;}
     bool transition_supported(Event const& event) const {
@@ -378,7 +390,7 @@ public:
     // integration, not this helper. One generation; no recovery/replacement API.
     bool configure_owned_output(Target target,Identity queue,uint64_t generation,uint32_t initial_state,bool certified_single_normal_color) {
         std::lock_guard<std::mutex> lock(mutex_);
-        if(owned_.enabled||!certified_single_normal_color||!target.resource||!queue||!generation||
+        if(owned_.enabled||retired_owned_epoch_||!certified_single_normal_color||!target.resource||!queue||!generation||
            !target.width||target.width%2||!target.height||target.width>8192||target.height>8192||
            (initial_state!=4&&initial_state!=128)||stats_.active_lists||stats_.reset_calls||stats_.list_creates||stats_.execute_calls||
            maximum_ticket_||window_bad_||capacity_bad_||pending_.active)return false;
@@ -394,7 +406,9 @@ public:
     // Its canonical identity, native
     // placement lifetime, DIRECT queue, descriptor and RT/PSR creation state are
     // externally certified; a reused address alone proves none of these facts.
-    // Both proof flags are mandatory. This is not recovery or replacement.
+    // Both proof flags are mandatory. Replacement requires explicit certified
+    // retirement, a later world epoch and a strictly newer resource generation;
+    // birth alone cannot recover or replace a still-enabled output.
     // Discard only association metadata predating birth, not actual GPU work.
     // Preserve every list's real generation, validity and executed marker:
     // existing unsubmitted lists may continue without inventing a Reset; already
@@ -403,7 +417,8 @@ public:
     bool birth_owned_output(Target target,Identity queue,uint64_t generation,uint32_t initial_state,
                             bool certified_single_normal_color,bool certified_unexposed_ordered_birth) {
         std::lock_guard<std::mutex> lock(mutex_);
-        if(owned_.enabled||!certified_single_normal_color||!certified_unexposed_ordered_birth||
+        if(owned_.enabled||(retired_owned_epoch_&&world_epoch_<=retired_owned_epoch_)||generation<=retired_owned_generation_||
+           !certified_single_normal_color||!certified_unexposed_ordered_birth||
            !target.resource||!queue||!generation||!target.width||target.width%2||!target.height||
            target.width>8192||target.height>8192||(initial_state!=4&&initial_state!=128)||
            window_bad_||capacity_bad_||pending_.active||revision_==UINT64_MAX)return false;
@@ -427,6 +442,41 @@ public:
         owned_={true,true,target,queue,generation,initial_state};++revision_;return true;
     }
     OwnedStatus owned_status(){std::lock_guard<std::mutex> lock(mutex_);return owned_;}
+    // Capture BEFORE the caller's independent CPU/GPU retirement procedure,
+    // under the same API-order lock. This snapshot certifies no GPU completion.
+    // Failure leaves out untouched. Pending Execute and even barrier-only owned
+    // recordings block retirement; unrelated recordings need not be submitted.
+    bool owned_retirement_snapshot(OwnedRetirement& out) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!owned_retirement_ready_locked())return false;
+        out={world_epoch_,revision_,maximum_ticket_,owned_};return true;
+    }
+    // Caller has frozen old-world producers, drained CPU payload consumers,
+    // prevented any future use of this owner/resource and verified completion
+    // of ALL GPU users with an actual ordered fence (including external copies).
+    // Keep that admission freeze and API-order lock through this call and world
+    // commit. A boolean alone is not evidence: the host owns the full receipt.
+    // Refuse changed observations instead of relabeling them as already drained.
+    // This is a memory-only transition, not a resource release or state recovery.
+    bool retire_owned_output(OwnedRetirement const& receipt,bool certified_cpu_gpu_retired) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto const& expected=receipt.output;
+        if(!certified_cpu_gpu_retired||!owned_retirement_ready_locked()||
+           receipt.world_epoch!=world_epoch_||receipt.revision!=revision_||receipt.ticket_cutoff!=maximum_ticket_||
+           !expected.enabled||!expected.certified||expected.target.resource!=owned_.target.resource||
+           expected.target.width!=owned_.target.width||expected.target.height!=owned_.target.height||
+           expected.queue!=owned_.queue||expected.generation!=owned_.generation||expected.state!=owned_.state)return false;
+        retired_owned_epoch_=world_epoch_;retired_owned_generation_=owned_.generation;
+        owned_.enabled=false;owned_.certified=false;
+        retired_ticket_=maximum_ticket_;candidates_={};++revision_;
+        // Seal every old recording immediately, without manufacturing Reset or
+        // Execute. Keep canonical identities/generations/validity/executed bits;
+        // epoch zero is never admitted by find(). Only real Reset/Create can
+        // restore admission. Clear old associations so a genuinely new resource
+        // may reuse an address after the separately certified destruction.
+        for(auto& list:lists_){list.count=0;list.world_epoch=0;}
+        return true;
+    }
     // Waiting hint only; never consumes evidence or changes certification.
     // Any active submission prevents consumption, even with unrelated members.
     // Caller must retain the API-order lock through its later consume decision.
