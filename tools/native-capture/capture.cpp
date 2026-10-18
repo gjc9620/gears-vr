@@ -170,7 +170,7 @@ namespace death_constant_observer {void print(FILE*);}
 namespace dlss_route_observer {void print(FILE*);void draw(uintptr_t,uintptr_t,unsigned,unsigned,unsigned);}
 namespace ngx_route_observer {void print(FILE*);}
 namespace death_dof_control {void print(FILE*);}
-namespace vr_dof_compat {void print(FILE*);void progress(FILE*);void retire();bool publication(uint64_t,uint64_t);}
+namespace vr_dof_compat {void print(FILE*);void progress(FILE*);void retire();bool publication(uint64_t,uint64_t);bool retire_owned(uint64_t,uint64_t);}
 namespace death_pso_cache {void print(FILE*);void poll();}
 namespace gears_death_hdr {struct Event;}
 namespace death_hdr_pixels {
@@ -2458,6 +2458,9 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         std::lock_guard<std::mutex> lock(stereo_mutex);gears_vr::StereoSample sample{};
         poll_stereo_recenter();
         if(!stereo_bridge.read(sample)){++stereo_rejections[8];return false;}
+#if defined(GEARS_RUNTIME_RENDER_SIZE) && GEARS_RUNTIME_RENDER_SIZE
+        if(!gears_native_render_size::matches_session(sample.session)){++stereo_rejections[8];return false;}
+#endif
         auto result=stereo_gate.update(sample,gears_vr::monotonic_ns(),simulator_operator);
         if(result.heading_deferred)++stereo_heading_deferred;
         if(!result){++stereo_rejections[static_cast<unsigned>(result.status)];
@@ -2526,7 +2529,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         if(gears_owned_scene_live::trial.ticket)return false;
     }
 #endif
-    const gears_split_sources::FixedOutputBounds owned_bounds{4096,2048};
+    const gears_split_sources::FixedOutputBounds owned_bounds{gears_native_render_size::width(),gears_native_render_size::height()};
     auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state,submit_output_bounds,submit_mono_control || submit_duplicate_control,projection_control,projection.phase,stereo_xr?&frame.expected:nullptr,
         owned_scene_target?&owned_bounds:nullptr);
     if(projection_control)for(unsigned i=0;i<2;++i)memcpy(projection.expected[i].data(),sources.inputs[i].bytes.data()+0xb0,64);
@@ -3378,7 +3381,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
         const auto binding=owned_target_stats.binding(canonical_identity(list));
         const auto saved=owned_target_stats.draw_state(canonical_identity(list));
         const auto ref=owned_scene_gpu::list_ref(canonical_identity(list));
-        const gears_frame_link::Target target{route.resource,4096,2048};
+        const gears_frame_link::Target target{route.resource,gears_native_render_size::width(),gears_native_render_size::height()};
         const auto pair=owned_scene_gpu::tracker.overlay_pair(ref,target);
         std::array<void*,12> stack{};std::array<uintptr_t,12> addresses{};
         const auto count=CaptureStackBackTrace(0,static_cast<DWORD>(stack.size()),stack.data(),nullptr);
@@ -4353,6 +4356,9 @@ DWORD WINAPI worker(void*) {
             e.field140,e.field418,f.before_owner,f.before_state,f.before140,f.before418,f.begin_qpc,f.end_qpc);
     }
     fprintf(status,"submit_output_bounds=%d\n",submit_output_bounds);
+#if defined(GEARS_RUNTIME_RENDER_SIZE) && GEARS_RUNTIME_RENDER_SIZE
+    fprintf(status,"resolution_source=openxr_recommended_scaled independent_engine_target=1\n");
+#endif
 #ifdef GEARS_GAME_RESOLUTION
     fprintf(status,"resolution_source=game\n");
 #endif

@@ -73,8 +73,8 @@ struct GPU {
 int main(){try{
     GPU gpu;const DXGI_FORMAT formats[]={DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,DXGI_FORMAT_B8G8R8A8_UNORM_SRGB};
     const DXGI_FORMAT destinations[]={DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,DXGI_FORMAT_R10G10B10A2_UNORM};
-    for(auto source_format:formats){
-        auto source=gpu.texture(16,8,source_format,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(source.Get(),true);
+    for(auto source_format:formats)for(auto shape:{std::array<unsigned,2>{16,8},std::array<unsigned,2>{18,7}}){
+        auto source=gpu.texture(shape[0],shape[1],source_format,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(source.Get(),true);
         DesktopMirror mirror;require(mirror.bind(gpu.queue.Get(),source.Get(),9),"bind");require(mirror.status().state==1&&!mirror.status().captures,"bind is metadata only");
         require(!mirror.capture(source.Get(),9,1,monotonic_ns(),D3D12_RESOURCE_STATE_RENDER_TARGET),"capture before prepare rejected");require(mirror.prepare(),"prepare");
         const auto received=monotonic_ns();require(mirror.capture(source.Get(),9,1,received,D3D12_RESOURCE_STATE_RENDER_TARGET),"capture");
@@ -84,8 +84,8 @@ int main(){try{
         for(auto dest_format:destinations)for(bool tall:{false,true}){
             const unsigned width=tall?8:16,height=tall?16:8;auto dest=gpu.texture(width,height,dest_format,D3D12_RESOURCE_STATE_PRESENT);
             require(mirror.present(dest.Get(),gpu.queue.Get(),received+1),"present");auto pixels=gpu.read(dest.Get(),D3D12_RESOURCE_STATE_PRESENT);
-            const unsigned x0=tall?0:4,y0=tall?4:0;
-            for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x){auto p=&pixels[(y*width+x)*4];const bool inside=x>=x0&&x<x0+8&&y>=y0&&y<y0+8;
+            const auto rectangle=mirror_rectangle(width,height,shape[0]/2,shape[1]);
+            for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x){auto p=&pixels[(y*width+x)*4];const bool inside=x>=rectangle.x&&x<rectangle.x+rectangle.width&&y>=rectangle.y&&y<rectangle.y+rectangle.height;
                 if(inside)require(abs(int(p[0])-128)<=2&&abs(int(p[1])-32)<=2&&abs(int(p[2])-16)<=2&&p[3]==255,"snapshot mono color, no right-eye bleed");
                 else require(p[0]==0&&p[1]==0&&p[2]==0&&p[3]==255,"letterbox black");}
         }
@@ -105,8 +105,8 @@ int main(){try{
         require(mirror.drain()&&mirror.close()&&!mirror.status().unsafe&&mirror.status().state==4,"drain close");
         require(!mirror.present(dest.Get(),gpu.queue.Get(),received+3),"closed rejected");
     }
-    DesktopMirror invalid;auto non_square=gpu.texture(18,8,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);
-    require(!invalid.bind(gpu.queue.Get(),non_square.Get(),1),"non-square eye rejected");require(invalid.close(),"empty close");
+    DesktopMirror invalid;auto non_square=gpu.texture(17,8,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);
+    require(!invalid.bind(gpu.queue.Get(),non_square.Get(),1),"odd SBS width rejected");require(invalid.close(),"empty close");
     {
         // Explicitly stalled queue: no background thread and no game involved.
         // An unconfirmed timeout must retain destination/allocators/resources.

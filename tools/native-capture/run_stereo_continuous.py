@@ -141,7 +141,15 @@ def finish_path_choice_position(monitor,state,control):
     state['path_choice_center_worker_joined']=monitor.worker_joined
 
 
+def validate_render_scale(args):
+    value=getattr(args,'render_scale',None)
+    if value is not None and (isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not .25<=value<=2):
+        raise ValueError('render_scale must be finite and between 0.25 and 2.0')
+    return value
+
+
 def validate_ui_hud_plane(args):
+    validate_render_scale(args)
     camera_closer_metres(args)
     if getattr(args,'ui_reticle_late_sample',False) and not all(getattr(args,key,False) for key in ('ui_observer','ui_hud_plane')):
         raise ValueError('Late reticle sampling requires UI observer and HUD plane in a continuous session')
@@ -215,6 +223,7 @@ def xr_command(args,csv_path,owner):
     command=[str(args.xr_build_dir.resolve()/'OpenXRPoseProbe.exe'),'0',str(csv_path),
             '--stereo-game-pid',str(args.pid),'--continuous-session',
             '--owner-pid',str(owner['pid']),'--owner-creation-time',str(owner['creation_time'])]
+    if validate_render_scale(args) is not None:command+=['--render-scale',str(args.render_scale)]
     if getattr(args,'startup_menu_window',0):
         command+=['--startup-menu-window',str(args.startup_menu_window),str(args.pid)]
     if getattr(args,'menu_recovery',False):
@@ -665,6 +674,7 @@ def main(argv=None):
     start.add_argument('--dll-name',required=True)
     start.add_argument('--xr-build-dir',type=pathlib.Path,required=True)
     start.add_argument('--stereo-units-per-metre',type=float,default=100.)
+    start.add_argument('--render-scale',type=float,help='Runtime recommended eye size multiplier per dimension; requires matching native build')
     start.add_argument('--camera-closer-metres',type=float,default=0.)
     start.add_argument('--startup-timeout',type=float,default=45.)
     start.add_argument('--cleanup-timeout',type=float,default=35.)

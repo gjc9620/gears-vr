@@ -249,8 +249,8 @@ public:
             if(count!=eye.images.size())throw std::runtime_error("GPU game swapchain image count changed during enumeration");
             for(unsigned image_index=0;image_index<count;++image_index)require_eye_dimensions(i,image_index,"enumeration");
         }
-        printf("{\"gpu_source_size\":[%u,%u],\"xr_image_size\":[%u,%u],\"xr_eye_chains\":%u,\"pixel_exact_crop\":%s,\"native_size_decoupled\":false}\n",
-               receiver->width,receiver->height,stereo?eye_plan.eye_width:receiver->width,receiver->height,stereo?2u:1u,stereo?"true":"false");fflush(stdout);
+        printf("{\"gpu_source_size\":[%u,%u],\"xr_image_size\":[%u,%u],\"xr_eye_chains\":%u,\"pixel_exact_crop\":%s,\"native_size_decoupled\":%s}\n",
+               receiver->width,receiver->height,stereo?eye_plan.eye_width:receiver->width,receiver->height,stereo?2u:1u,stereo?"true":"false",stereo&&stereo_limits->independent_render_size?"true":"false");fflush(stdout);
         dx_check(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)),"GPU game allocator");
         dx_check(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&commands)),"GPU game commands");dx_check(commands->Close(),"GPU game initial close");
         dx_check(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)),"GPU game fence");event=CreateEventW(nullptr,FALSE,FALSE,nullptr);

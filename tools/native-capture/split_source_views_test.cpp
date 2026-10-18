@@ -229,15 +229,15 @@ int main() {
     // game source rectangle. Neither family nor any source byte is modified.
     custom=frozen_custom;
     std::array<unsigned char,sizeof(family)> family_before{};memcpy(family_before.data(),family,sizeof(family));
-    for(auto fixed: {FixedOutputBounds{4096,2048},FixedOutputBounds{8192,4096}}){
+    for(auto fixed: {FixedOutputBounds{4096,2048},FixedOutputBounds{8192,4096},FixedOutputBounds{6144,3264},FixedOutputBounds{4302,2285}}){
         memcpy(source,untouched.data(),sizeof(source));
         const float game_rectangle[]={37,19,1919,1079};memcpy(source+0x48,game_rectangle,16);
         const int game_output[]={11,7,2559,1439};memcpy(source+0x58,game_output,16);
         std::array<unsigned char,0x430> saved{};memcpy(saved.data(),source,sizeof(source));
         result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,false,false,Phase::a1,&custom,&fixed);
         if(result.checks!=63||memcmp(source,saved.data(),sizeof(source))||memcmp(family,family_before.data(),sizeof(family)))return 54;
-        const float n=float(fixed.height);
-        for(unsigned i=0;i<2;++i){const std::array<float,4> expected{float(i)*n,0,n,n};
+        const float w=float(fixed.width/2),h=float(fixed.height);
+        for(unsigned i=0;i<2;++i){const std::array<float,4> expected{float(i)*w,0,w,h};
             if(memcmp(result.inputs[i].bytes.data()+0x48,expected.data(),16)||
                memcmp(static_cast<unsigned char*>(result.views[i])+0x48,expected.data(),16)||
                memcmp(result.inputs[i].bytes.data()+0x70,custom.view[i].data(),64)||
@@ -250,8 +250,8 @@ int main() {
     }
     memcpy(source,untouched.data(),sizeof(source));
     const auto fixed_allocations=allocations,fixed_constructs=constructs;
-    for(auto invalid:{FixedOutputBounds{0,0},FixedOutputBounds{2048,2048},FixedOutputBounds{4096,4096},
-        FixedOutputBounds{8192,2048},FixedOutputBounds{4095,2048},FixedOutputBounds{UINT32_MAX,4096}}){
+    for(auto invalid:{FixedOutputBounds{0,0},FixedOutputBounds{126,2048},FixedOutputBounds{8194,4096},
+        FixedOutputBounds{8192,8193},FixedOutputBounds{4095,2048},FixedOutputBounds{UINT32_MAX,4096}}){
         result=create(api,family,source,reinterpret_cast<void*>(0x2000),false,false,false,Phase::a1,&custom,&invalid);
         if(result.rejection!=13||result.checks||result.views[0]||result.views[1]||allocations!=fixed_allocations||constructs!=fixed_constructs||
            memcmp(source,untouched.data(),sizeof(source)))return 58;

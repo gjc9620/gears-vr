@@ -1,4 +1,5 @@
 #pragma once
+#include "native_render_size.h"
 // Diagnostic only. All calls are serialized by frame_hook_mutex. The tracker
 // follows actual Reset generations; it never manufactures a command-list Reset.
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
@@ -101,6 +102,9 @@ struct Publication {uint64_t ticket{},pose{},session{},serial{};unsigned reason{
 std::array<Publication,frame_limit> publications{};unsigned publication_count{};
 uint64_t publication_attempts{},published_count{};Publication latest_publication{};
 uint64_t retained_images{},duplicate_images{};
+// Unlike the current TLS frame, this identity survives deferred Canvas/GPU
+// submission and remains attached to the one admitted owned scene.
+uint64_t publication_world{},publication_ticket{};
 struct Timing {uint64_t ticket{};int64_t selected{},built{},begin{},draw[2]{},submitted{},returned{},destroyed{},ready{},publish_begin{},publish_end{},received{};
  gears_render_cost::Record cost{};};
 std::array<Timing,frame_limit> timings{};unsigned timing_count{};
@@ -125,7 +129,10 @@ void selected(uint64_t ticket){
  if(timing_count<timings.size())timings[timing_count++]={ticket,gears_vr::monotonic_ns()};
  else if(sustained)latest_timing={ticket,gears_vr::monotonic_ns()};
 }
-void began(uint64_t ticket){if(auto t=timing(ticket))t->begin=gears_vr::monotonic_ns();}
+void began(uint64_t ticket){if(auto t=timing(ticket))t->begin=gears_vr::monotonic_ns();
+ const auto& frame=consuming_frozen_frame;
+ publication_world=frame.enabled&&frame.id==ticket?frame.world_generation:0;publication_ticket=ticket;
+}
 void built(uint64_t ticket){if(auto t=timing(ticket))t->built=gears_vr::monotonic_ns();}
 void drew(uint64_t ticket,unsigned eye){if(eye<2)if(auto t=timing(ticket))t->draw[eye]=gears_vr::monotonic_ns();}
 void submitted(uint64_t ticket){if(auto t=timing(ticket))if(!t->submitted)t->submitted=gears_vr::monotonic_ns();}
@@ -196,7 +203,7 @@ void accept(ID3D12Resource* value,uint64_t ticket){
  device->Release();
  unsigned matches{};for(unsigned i=0;i<creation_count;++i)if(creations[i].resource==resource){creation=creations[i];++matches;}
  const auto& d=creation.desc;
- if(matches!=1||!resource||!creation.legacy||d.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D||d.Width!=4096||d.Height!=2048||
+ if(matches!=1||!resource||!creation.legacy||d.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D||d.Width!=gears_native_render_size::width()||d.Height!=gears_native_render_size::height()||
   d.DepthOrArraySize!=1||d.MipLevels!=1||d.SampleDesc.Count!=1||d.SampleDesc.Quality||d.Format!=DXGI_FORMAT_R8G8B8A8_UNORM||
   d.Flags!=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET||(creation.state!=4&&creation.state!=128)){fault(3);return;}
  if(identity!=creation.device){fault(4);return;}
@@ -226,7 +233,7 @@ void activate(){
   }
  }
  if(!queue){fault(6);return;}
- birth_ok=tracker.birth_owned_output({resource,4096,2048},canonical_identity(queue),generation,creation.state,true,true);
+ birth_ok=tracker.birth_owned_output({resource,gears_native_render_size::width(),gears_native_render_size::height()},canonical_identity(queue),generation,creation.state,true,true);
  if(!birth_ok)fault(7);
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
  if(birth_ok){StereoPublishBypass bypass;desktop_mirror.bind(queue,texture,generation);}
@@ -254,10 +261,14 @@ bool publish_image(){
     proof.target.resource!=resource||proof.final_state!=creation.state){fault(18);return false;}
  for(unsigned eye=0;eye<2;++eye){auto r=proof.eyes[eye];
   image.rect[eye]={static_cast<int>(r.x),static_cast<int>(r.y),static_cast<int>(r.width),static_cast<int>(r.height)};}
- if(!gears_vr::stereo_image_ticket_valid(image,4096,2048,simulator_operator)||
+ if(!gears_vr::stereo_image_ticket_valid(image,gears_native_render_size::width(),gears_native_render_size::height(),simulator_operator)||
     (!sustained&&publication_count==publications.size())||publication_attempts==UINT64_MAX){
   fault(18);return false;
  }
+#if defined(GEARS_VR_DOF_COMPAT) && GEARS_VR_DOF_COMPAT
+ if(publication_ticket!=image.id||!publication_world||publication_world!=committed_world_generation.load()||
+    !vr_dof_compat::publication(publication_world,image.id)){fault(22);return false;}
+#endif
  gears_vr::GpuCaptureTrace trace{};bool published=false;
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
  // This proof includes all required UI and its actual queue submission. Take
@@ -287,13 +298,16 @@ bool publish_image(){
  // capture_resource copied the value or made an explicit no-submit decision.
  // It owns all GPU copy references and fences independently of this CPU store.
  if(!image_tickets.retire_through(image.id)){fault(20);return false;}
+#if defined(GEARS_VR_DOF_COMPAT) && GEARS_VR_DOF_COMPAT
+ if(!vr_dof_compat::retire_owned(publication_world,image.id)){fault(23);return false;}
+#endif
  return true;
 }
 void draw(ID3D12GraphicsCommandList* list,uintptr_t target,bool exact,unsigned eye,gears_frame_link::Rect rect,uint64_t ticket){
  if(!watching()||!touches(target))return;
  if(!birth_ok){prebirth_use(target);return;}
  auto ref=tracker.current(canonical_identity(list));
- if(exact)tracker.draw_final(ref,ticket,eye,{resource,4096,2048},rect);
+ if(exact)tracker.draw_final(ref,ticket,eye,{resource,gears_native_render_size::width(),gears_native_render_size::height()},rect);
  else tracker.draw_unknown(ref,resource);
 }
 void uncertain(Unknown reason=Unknown::unspecified){if(!watching()||(!resource&&!creation_count))return;++unsupported;

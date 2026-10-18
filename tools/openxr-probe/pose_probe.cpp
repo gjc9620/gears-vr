@@ -18,6 +18,7 @@
 #include "../vr-common/pose_bridge.h"
 #include "reference_space_epoch.h"
 #include "../vr-common/stereo_bridge.h"
+#include "../vr-common/render_size_bridge.h"
 #include "continuous_session.h"
 #include "shutdown_diagnostics.h"
 #include "session_exit_state.h"
@@ -271,8 +272,50 @@ int runtime_info(){
         return 0;
     } catch(const std::exception& e){fprintf(stderr,"%s\n",e.what());cleanup();return 1;}
 }
+gears_vr::RenderSizeLimits query_render_size_limits(XrSystemId system) {
+    gears_vr::RenderSizeLimits limits{};XrSystemProperties properties{XR_TYPE_SYSTEM_PROPERTIES};
+    xr_check(xrGetSystemProperties(instance,system,&properties),"render size system limits");
+    limits.system_width=properties.graphicsProperties.maxSwapchainImageWidth;
+    limits.system_height=properties.graphicsProperties.maxSwapchainImageHeight;
+    uint32_t count{};
+    xr_check(xrEnumerateViewConfigurationViews(instance,system,XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,0,&count,nullptr),"render size view count");
+    if(count!=2)throw std::runtime_error("Render size requires exactly two runtime views");
+    std::array<XrViewConfigurationView,2> views{{{XR_TYPE_VIEW_CONFIGURATION_VIEW},{XR_TYPE_VIEW_CONFIGURATION_VIEW}}};
+    xr_check(xrEnumerateViewConfigurationViews(instance,system,XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,2,&count,views.data()),"render size views");
+    if(count!=2)throw std::runtime_error("Render size runtime view count changed");
+    for(unsigned eye=0;eye<2;++eye){limits.recommended_width[eye]=views[eye].recommendedImageRectWidth;
+        limits.recommended_height[eye]=views[eye].recommendedImageRectHeight;
+        limits.maximum_width[eye]=views[eye].maxImageRectWidth;limits.maximum_height[eye]=views[eye].maxImageRectHeight;}
+    return limits;
+}
+void print_render_size_plan(gears_vr::RenderSizePlan const& p) {
+    printf("{\"runtime_render_size_plan\":true,\"recommended\":[%u,%u],\"render_scale\":%.9g,\"eye\":[%u,%u],\"source\":[%u,%u],\"engine_sbs_limit\":8192,\"dimensions_are_plan_not_gpu_proof\":true}\n",
+        p.recommended_width,p.recommended_height,p.scale,p.eye_width,p.eye_height,p.source_width,p.source_height);fflush(stdout);
+}
+bool parse_render_scale(const char* text,double& out) {
+    if(!text||!*text)return false;
+    char* end{};errno=0;const double value=strtod(text,&end);
+    if(end==text||*end||errno==ERANGE||!std::isfinite(value)||value<.25||value>2.)return false;
+    out=value;return true;
+}
+int render_size_info(double scale) {
+    try{XrInstanceCreateInfo create{XR_TYPE_INSTANCE_CREATE_INFO};
+        strcpy_s(create.applicationInfo.applicationName,"GearsVR Render Size");create.applicationInfo.apiVersion=XR_API_VERSION_1_0;
+        xr_check(xrCreateInstance(&create,&instance),"render size instance");
+        XrSystemGetInfo info{XR_TYPE_SYSTEM_GET_INFO};info.formFactor=XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;XrSystemId system{};
+        xr_check(xrGetSystem(instance,&info,&system),"render size system");
+        gears_vr::RenderSizePlan plan{};auto error=gears_vr::make_render_size_plan(query_render_size_limits(system),scale,plan);
+        if(error!=gears_vr::RenderSizeError::none)throw std::runtime_error(gears_vr::render_size_error(error));
+        print_render_size_plan(plan);xr_check(xrDestroyInstance(instance),"render size cleanup");instance=XR_NULL_HANDLE;return 0;
+    }catch(std::exception const& error){fprintf(stderr,"%s\n",error.what());cleanup();return 1;}
+}
 int main(int argc, char** argv) {
     xr_wait_diagnostics::SessionDump wait_diagnostics_dump;
+    if(argc>=2&&!strcmp(argv[1],"--render-size-info")){
+        double scale=1.;
+        if(argc!=2&&(argc!=4||strcmp(argv[2],"--render-scale")||!parse_render_scale(argv[3],scale)))return 2;
+        return render_size_info(scale);
+    }
     if(argc==3&&!strcmp(argv[1],"--stop-session")){
         char* end{};errno=0;const auto pid=strtoull(argv[2],&end,10);
         if(*argv[2]<'0'||*argv[2]>'9'||*end||errno==ERANGE||!pid||pid>std::numeric_limits<DWORD>::max())return 2;
@@ -302,10 +345,14 @@ int main(int argc, char** argv) {
     HWND startup_window=nullptr;DWORD startup_game_pid=0;
     const char* menu_state_file=nullptr;std::uint64_t menu_game_creation=0;
     unsigned stereo_producer_seconds=30;bool explicit_stereo_duration=false;
+    double render_scale{};bool explicit_render_scale=false;
     bool simulator_operator=false,continuous_session=false,diagnostic_shutdown=false,diagnostic_outage=false,diagnostic_image_tickets=false,movie_display=false;
     DWORD continuous_owner_pid=0;std::uint64_t continuous_owner_creation=0;
     for(int i=3;i<argc;++i) {
         if(!strcmp(argv[i],"--render"))test_render=true;
+        else if(!strcmp(argv[i],"--render-scale")&&i+1<argc){
+            if(explicit_render_scale||!parse_render_scale(argv[++i],render_scale))return 2;explicit_render_scale=true;
+        }
         else if(!strcmp(argv[i],"--menu-state-file")&&i+1<argc){if(menu_state_file)return 2;menu_state_file=argv[++i];if(!*menu_state_file)return 2;}
         else if(!strcmp(argv[i],"--movie-display")){if(movie_display)return 2;movie_display=true;}
         else if(!strcmp(argv[i],"--menu-game-creation")&&i+1<argc){
@@ -361,6 +408,7 @@ int main(int argc, char** argv) {
     if(!continuous_session&&(continuous_owner_pid||continuous_owner_creation))return 2;
     if(explicit_stereo_duration&&(!stereo_game_pid||seconds<int(stereo_producer_seconds+10)))return 2;
     if(simulator_operator&&!stereo_game_pid)return 2;
+    if(explicit_render_scale&&!stereo_game_pid)return 2;
     if(diagnostic_outage&&!stereo_game_pid)return 2;
     if(diagnostic_image_tickets&&!stereo_game_pid)return 2;
     if(game_window && (test_render || bridge_pid || !game_pid))return 2;
@@ -379,6 +427,7 @@ int main(int argc, char** argv) {
     if(game_window||startup_window){SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);winrt::init_apartment(winrt::apartment_type::multi_threaded);}
     gears_vr::PoseBridge bridge;
     if(bridge_pid && !bridge.open(bridge_pid,true)){fprintf(stderr,"Pose bridge creation rejected\n");return 2;}
+    gears_vr::RenderSizeBridge render_size_bridge;
     gears_vr::StereoBridge stereo_bridge;
     if(stereo_pid && !stereo_bridge.open(stereo_pid,true)){fprintf(stderr,"Stereo bridge creation rejected\n");return 2;}
     const uint64_t stereo_session=static_cast<uint64_t>(gears_vr::monotonic_ns());
@@ -439,6 +488,13 @@ int main(int argc, char** argv) {
                 printf("{\"xr_eye_limits\":%u,\"recommended\":[%u,%u],\"maximum\":[%u,%u],\"system_maximum\":[%u,%u]}\n",eye,
                        configurations[eye].recommendedImageRectWidth,configurations[eye].recommendedImageRectHeight,
                        stereo_limits.view_width[eye],stereo_limits.view_height[eye],stereo_limits.system_width,stereo_limits.system_height);
+            }
+            if(explicit_render_scale){
+                auto error=gears_vr::make_render_size_plan(query_render_size_limits(system),render_scale,stereo_limits.render_size);
+                if(error!=gears_vr::RenderSizeError::none)throw std::runtime_error(gears_vr::render_size_error(error));
+                if(!render_size_bridge.publish(stereo_game_pid,stereo_session,stereo_limits.render_size))
+                    throw std::runtime_error("Render size control publication rejected");
+                stereo_limits.independent_render_size=true;print_render_size_plan(stereo_limits.render_size);
             }
             fflush(stdout);
         }

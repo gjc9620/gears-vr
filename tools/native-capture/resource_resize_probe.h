@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdint>
 #include <windows.h>
+#include "native_render_size.h"
 
 // Optional, bounded observation. No locks, allocation or logging on the game
 // thread. API counts belong to the innermost observed call on this thread;
@@ -32,17 +33,18 @@ struct Window {
  explicit Window(Row* row):previous(current){current=row;if(row)row->nested=previous?1:0;}
  ~Window(){current=previous;}
 };
-// Low-only experiment: retain capacity for the object/thread first encountered
-// in a certified 4096x2048 owned consume. Never write the engine's mode flag.
+// Retain capacity for the object/thread first encountered in a certified owned
+// consume. The session geometry is immutable. Never write the engine mode flag.
 // This changes allocation requests only; view rectangles/projections stay native.
 struct Capacity {
  uintptr_t object{};DWORD thread{};uint32_t legacy_width{},legacy_height{};
  unsigned choose(uintptr_t target,DWORD tid,bool owned,const Snapshot& before,uint32_t& width,uint32_t& height){
   if((before.valid&3)!=3||before.config[0]||!target||!tid||!width||!height||width>8192||height>8192||
      !before.width||!before.height||before.width>8192||before.height>8192)return 3;
-  if(!object){if(!owned||width!=4096||height!=2048)return 0;object=target;thread=tid;legacy_width=before.width;legacy_height=before.height;}
+  const auto owned_width=gears_native_render_size::width(),owned_height=gears_native_render_size::height();
+  if(!object){if(!owned||width!=owned_width||height!=owned_height)return 0;object=target;thread=tid;legacy_width=before.width;legacy_height=before.height;}
   if(object!=target||thread!=tid)return 4;
-  if(owned&&(width!=4096||height!=2048))return 5;
+  if(owned&&(width!=owned_width||height!=owned_height))return 5;
   if(!owned&&(width!=legacy_width||height!=legacy_height))return 5;
   const auto old_width=width,old_height=height;
   if(width<before.width)width=before.width;if(height<before.height)height=before.height;

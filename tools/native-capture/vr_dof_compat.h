@@ -21,6 +21,11 @@ inline bool native_eye(uintptr_t current,uintptr_t views,int count,unsigned& eye
     if(count!=2||!views||views%8||views>UINTPTR_MAX-0xd30||current<views)return false;
     const auto offset=current-views;if(offset!=0&&offset!=0xd30)return false;eye=offset?1u:0u;return true;
 }
+// Owned transport needs an independently frozen runtime size and its own
+// publication/retirement boundary. Other experimental owned paths stay denied.
+inline bool transport_supported(bool owned_publisher,bool owned_bindings,bool runtime_size){
+    return owned_publisher?(owned_bindings&&runtime_size):!owned_bindings;
+}
 struct Key {uint64_t world{},id{};explicit operator bool()const{return world&&id;}
     bool operator==(Key const& b)const{return world==b.world&&id==b.id;}};
 enum class Failure:unsigned {none,duplicate_begin,duplicate_finish,after_finish,unknown_eye,duplicate_setter,unsupported,identity_changed,read_failed,post_setter,duplicate_quad,prequad};
@@ -66,9 +71,14 @@ template<class Payload=Empty> struct Store {
         if(!e->site)return Decision::no_site;
         return e->setter_mask==3&&e->quad_mask==3?Decision::zero_proved:Decision::rejected;
     }
-    void retire_window(){
-        if(observed>retired)retired=observed;
+    bool retire_through(uint64_t ticket){
+        if(!ticket||ticket>observed||ticket<retired)return false;
+        retired=ticket;
         for(auto& e:entries)if(e.key&&e.key.id<=retired)e={};
+        return true;
+    }
+    void retire_window(){
+        if(observed>retired)retire_through(observed);
     }
 };
 inline bool allowed(Decision decision){return decision==Decision::no_site||decision==Decision::zero_proved;}

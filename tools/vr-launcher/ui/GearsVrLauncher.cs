@@ -9,7 +9,7 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace GearsVrUi {
-    enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid, ExportLogs, ExportingLogs, LogsExported, ExportLogsFailed, ExportFilter, ExportInvalidResult, ExportWarnings }
+    enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid, ExportLogs, ExportingLogs, LogsExported, ExportLogsFailed, ExportFilter, ExportInvalidResult, ExportWarnings, RenderScale, RenderHint, RenderPreview, RenderInvalid, RenderIntro }
     static class Language {
         internal static volatile bool English = true;
         internal static readonly string[] Chinese = new string[] {
@@ -71,6 +71,11 @@ namespace GearsVrUi {
             "诊断日志 ZIP (*.zip)|*.zip",
             "导出程序未返回有效的 ZIP 保存回执。",
             "导出提示：",
+            "渲染倍率",
+            "× 推荐宽高；0.7 较省性能，1.0 为推荐尺寸；下次启动生效",
+            "查看实际尺寸",
+            "渲染倍率必须为 0.25–2.0 的数字；构建能力必须为布尔值。",
+            "实验版本 · VR 使用运行时推荐尺寸 × 渲染倍率\r\n桌面镜像尺寸独立；请手动进入关卡。",
         };
         internal static readonly string[] Translations = new string[] {
             "Gears VR startup failed",
@@ -131,6 +136,11 @@ namespace GearsVrUi {
             "Diagnostic logs ZIP (*.zip)|*.zip",
             "The exporter did not return a valid ZIP save receipt.",
             "Export note: ",
+            "Render scale",
+            "x recommended width/height; 0.7 saves GPU work, 1.0 recommended; next launch",
+            "Check eye size",
+            "Render scale must be a number from 0.25 to 2.0; build capability must be boolean.",
+            "Experimental build · VR uses runtime recommended size × render scale\r\nDesktop mirror resolution is independent. Enter a level manually.",
         };
         internal static string T(TextKey key) { return English ? Translations[(int)key] : Chinese[(int)key]; }
         internal static string TranslateVisible(string text, bool english) {
@@ -172,10 +182,16 @@ namespace GearsVrUi {
             }
             return b.Append('\\', slash * 2).Append('"').ToString();
         }
+        internal static string ManifestPath(string root) {
+            string value = Environment.GetEnvironmentVariable("GEARSVR_MANIFEST");
+            return String.IsNullOrWhiteSpace(value) ? Path.Combine(root, "tools", "vr-launcher", "manifest.json") :
+                Path.GetFullPath(Path.IsPathRooted(value) ? value : Path.Combine(root, value));
+        }
         internal static string Arguments(string root, string command, string runtime) {
             string result = Quote(Path.Combine(root, "tools", "vr-launcher", "launcher.py")) + " " + command;
-            if (command == "start") {
-                result += " --foreground --manifest " + Quote(Path.Combine(root, "tools", "vr-launcher", "manifest.json"));
+            if (command == "start" || command == "render-size") {
+                if (command == "start") result += " --foreground";
+                result += " --manifest " + Quote(ManifestPath(root));
                 if (!String.IsNullOrEmpty(runtime)) result += " --runtime " + Quote(runtime);
             }
             return result;
@@ -244,6 +260,31 @@ namespace GearsVrUi {
             if (Double.IsNaN(number) || Double.IsInfinity(number) || number < 0 || number > .5)
                 throw new InvalidDataException(Language.T(TextKey.CameraInvalid));
             return Convert.ToDecimal(value);
+        }
+        internal static bool SupportsRenderSize(Dictionary<string, object> manifest) {
+            object value;if (!manifest.TryGetValue("runtime_render_size", out value)) return false;
+            if (!(value is bool)) throw new InvalidDataException(Language.T(TextKey.RenderInvalid));return (bool)value;
+        }
+        internal static decimal RenderScale(Dictionary<string, object> config) {
+            object value;if (!config.TryGetValue("render_scale", out value)) return 1m;
+            if (!(value is int || value is long || value is decimal || value is double || value is float))
+                throw new InvalidDataException(Language.T(TextKey.RenderInvalid));
+            double number=Convert.ToDouble(value);
+            if (Double.IsNaN(number)||Double.IsInfinity(number)||number<.25||number>2)
+                throw new InvalidDataException(Language.T(TextKey.RenderInvalid));return Convert.ToDecimal(value);
+        }
+        internal static void SaveRenderScale(string path, decimal scale) {
+            if(scale<.25m||scale>2m)throw new ArgumentOutOfRangeException("scale");
+            var config=ReadConfig(path);config["render_scale"]=scale;WriteConfig(path,config);
+        }
+        internal static string RenderSizeText(string json) {
+            var value=new JavaScriptSerializer().Deserialize<Dictionary<string,object>>(json);
+            object enabled,eyes,scale;
+            if(!value.TryGetValue("runtime_render_size_plan",out enabled)||!(enabled is bool)||!(bool)enabled||
+                !value.TryGetValue("eye",out eyes)||!value.TryGetValue("render_scale",out scale))return null;
+            var dimensions=eyes as System.Collections.IList;
+            if(dimensions==null||dimensions.Count!=2)return null;
+            return String.Format("VR: {0} × {1} / eye ({2:0.00}×)",dimensions[0],dimensions[1],Convert.ToDouble(scale));
         }
         internal static void SaveOptions(string path, string game, bool hudSupported, decimal hudSize) {
             SaveOptions(path, game, hudSupported, hudSize, false, 0);
@@ -369,6 +410,12 @@ namespace GearsVrUi {
                     SaveOptions(temp, "bounds", false, 65, true, distance);
                     if (CameraCloser(ReadConfig(temp)) != distance) return 30;
                 }
+                if(SupportsRenderSize(new Dictionary<string,object>())||RenderScale(new Dictionary<string,object>())!=1m)return 40;
+                SaveRenderScale(temp,.65m);if(RenderScale(ReadConfig(temp))!=.65m||CameraCloser(ReadConfig(temp))!=.5m)return 41;
+                foreach(object invalid in new object[]{true,"0.7",null,Double.NaN,Double.PositiveInfinity,.24,2.01}) {
+                    try{RenderScale(new Dictionary<string,object>{{"render_scale",invalid}});return 42;}catch(InvalidDataException){}
+                }
+                if(RenderSizeText("{\"runtime_render_size_plan\":true,\"eye\":[2151,2285],\"render_scale\":0.7}")!="VR: 2151 × 2285 / eye (0.70×)")return 43;
             } finally { File.Delete(temp); }
             string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var candidates = Python.Candidates(root, "\"C:\\Python With Spaces\\python.exe\"", home);
@@ -434,10 +481,12 @@ namespace GearsVrUi {
         TextBox game = new TextBox(), runtime = new TextBox(), output = new TextBox();
         ComboBox runtimeMode = new ComboBox(), languageMode = new ComboBox();
         Button start = new Button(), stop = new Button(), recenter = new Button(), status = new Button(), browseGame = new Button(), browseRuntime = new Button(), exportLogs = new Button();
-        Label state = new Label();
+        Label state = new Label(), renderInfo = new Label();
+        Button renderPreview = new Button();
+        NumericUpDown renderScale = new NumericUpDown { Minimum = .25m, Maximum = 2, Value = 1m, DecimalPlaces = 2, Increment = .05m, Width = 75 };
         NumericUpDown hudSize = new NumericUpDown { Minimum = 45, Maximum = 100, Value = 65, DecimalPlaces = 2, Increment = 1, Width = 85 };
         NumericUpDown cameraCloser = new NumericUpDown { Minimum = 0, Maximum = .5m, Value = 0, DecimalPlaces = 2, Increment = .05m, Width = 85 };
-        bool hudSupported, cameraSupported;
+        bool hudSupported, cameraSupported, renderSupported;
         Process owner;
         int ownerPid; long ownerCreation;
         volatile bool stopRequested;
@@ -448,17 +497,19 @@ namespace GearsVrUi {
             logPath = Path.Combine(root, "analysis", "runtime", "vr-launcher-ui.log");
             Directory.CreateDirectory(Path.GetDirectoryName(logPath));
             try { Language.English = Program.IsEnglish(Program.ReadConfig(config)); } catch { }
-            hudSupported = Program.SupportsHudSize(Program.ReadConfig(Path.Combine(root, "tools", "vr-launcher", "manifest.json")));
-            cameraSupported = Program.SupportsCameraDistance(Program.ReadConfig(Path.Combine(root, "tools", "vr-launcher", "manifest.json")));
+            hudSupported = Program.SupportsHudSize(Program.ReadConfig(Program.ManifestPath(root)));
+            cameraSupported = Program.SupportsCameraDistance(Program.ReadConfig(Program.ManifestPath(root)));
+            renderSupported = Program.SupportsRenderSize(Program.ReadConfig(Program.ManifestPath(root)));
             Text = Language.T(TextKey.WindowTitle); ClientSize = new Size(960, 610); MinimumSize = new Size(940, 520);
             Font = new Font("Microsoft YaHei UI", 9F); StartPosition = FormStartPosition.CenterScreen;
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 3, RowCount = 10 };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 3, RowCount = 11 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
             for (int i = 1; i < 4; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, hudSupported ? 38 : 0));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, cameraSupported ? 38 : 0));
-            for (int i = 6; i < 8; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, renderSupported ? 66 : 0));
+            for (int i = 7; i < 9; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
             var info = new Label { Text = Language.T(TextKey.Intro), Dock = DockStyle.Fill };
             layout.Controls.Add(info, 0, 0); layout.SetColumnSpan(info, 2);
@@ -489,21 +540,38 @@ namespace GearsVrUi {
                 camera.Controls.Add(new Label { Text = Language.T(TextKey.CameraHint), AutoSize = true, Padding = new Padding(0, 5, 0, 0) });
                 layout.Controls.Add(camera, 1, 5); layout.SetColumnSpan(camera, 2);
             }
+            if(renderSupported) {
+                info.Text=Language.T(TextKey.RenderIntro);
+                layout.Controls.Add(new Label { Text=Language.T(TextKey.RenderScale), AutoSize=true },0,6);
+                var controls=new FlowLayoutPanel { Dock=DockStyle.Fill, WrapContents=true };
+                controls.Controls.Add(renderScale);renderPreview.Text=Language.T(TextKey.RenderPreview);renderPreview.AutoSize=true;controls.Controls.Add(renderPreview);
+                renderInfo.AutoSize=true;renderInfo.Padding=new Padding(2,5,0,0);controls.Controls.Add(renderInfo);
+                controls.Controls.Add(new Label { Text=Language.T(TextKey.RenderHint), AutoSize=true });
+                layout.Controls.Add(controls,1,6);layout.SetColumnSpan(controls,2);
+            }
             var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill };
             start.Text = Language.T(TextKey.StartVr); stop.Text = Language.T(TextKey.StopVr); recenter.Text = Language.T(TextKey.Recenter); status.Text = Language.T(TextKey.Status);
             var logs = new Button { Text = Language.T(TextKey.OpenLogs), AutoSize = true };
             exportLogs.Text = Language.T(TextKey.ExportLogs);
             foreach (var button in new[] { start, stop, recenter, status, logs, exportLogs }) { button.AutoSize = true; buttons.Controls.Add(button); }
-            layout.Controls.Add(buttons, 0, 6); layout.SetColumnSpan(buttons, 3);
-            state.Text = Language.T(TextKey.Ready); state.Dock = DockStyle.Fill; layout.Controls.Add(state, 0, 7); layout.SetColumnSpan(state, 3);
+            layout.Controls.Add(buttons, 0, 7); layout.SetColumnSpan(buttons, 3);
+            state.Text = Language.T(TextKey.Ready); state.Dock = DockStyle.Fill; layout.Controls.Add(state, 0, 8); layout.SetColumnSpan(state, 3);
             output.Multiline = true; output.ReadOnly = true; output.ScrollBars = ScrollBars.Both; output.WordWrap = false; output.Dock = DockStyle.Fill;
-            layout.Controls.Add(output, 0, 8); layout.SetColumnSpan(output, 3);
+            layout.Controls.Add(output, 0, 9); layout.SetColumnSpan(output, 3);
             var footer = new Label { Text = Language.T(TextKey.StopHint), Dock = DockStyle.Fill };
-            layout.Controls.Add(footer, 0, 9); layout.SetColumnSpan(footer, 3); Controls.Add(layout);
-            try { var saved = Program.ReadConfig(config); game.Text = Convert.ToString(saved["game_path"]); if (hudSupported) hudSize.Value = Program.HudSize(saved); if (cameraSupported) cameraCloser.Value = Program.CameraCloser(saved); } catch (Exception e) { Log(Language.T(TextKey.ConfigReadError) + e.Message); }
+            layout.Controls.Add(footer, 0, 10); layout.SetColumnSpan(footer, 3); Controls.Add(layout);
+            try { var saved = Program.ReadConfig(config); game.Text = Convert.ToString(saved["game_path"]); if (hudSupported) hudSize.Value = Program.HudSize(saved); if (cameraSupported) cameraCloser.Value = Program.CameraCloser(saved); if(renderSupported)renderScale.Value=Program.RenderScale(saved); } catch (Exception e) { Log(Language.T(TextKey.ConfigReadError) + e.Message); }
             browseGame.Click += delegate { using (var dialog = new OpenFileDialog { Filter = Language.T(TextKey.GameFilter) }) if (dialog.ShowDialog(this) == DialogResult.OK) game.Text = dialog.FileName; };
             browseRuntime.Click += delegate { using (var dialog = new OpenFileDialog { Filter = "OpenXR manifest (*.json)|*.json" }) if (dialog.ShowDialog(this) == DialogResult.OK) runtime.Text = dialog.FileName; };
             runtimeMode.SelectedIndexChanged += delegate { if (translating) return; runtime.Text = Program.DefaultRuntime(root, runtimeMode.SelectedIndex); UpdateButtons(); };
+            renderPreview.Click += async delegate {
+                if(starting||owner!=null)return;
+                try{Program.SaveRenderScale(config,renderScale.Value);starting=true;UpdateButtons();
+                    await Command("render-size",runtimeMode.SelectedIndex!=1?runtime.Text.Trim():null);
+                }catch(Exception e){Log(e.Message);renderInfo.Text=Language.T(TextKey.StartupFailed);}
+                finally{starting=false;UpdateButtons();}
+            };
+            renderScale.ValueChanged += delegate {renderInfo.Text="";};
             start.Click += async delegate { await StartVr(); };
             stop.Click += async delegate { await StopVr(); };
             recenter.Click += async delegate { await RecenterVr(); };
@@ -541,7 +609,7 @@ namespace GearsVrUi {
             start.Enabled = !busy && !stopping; stop.Enabled = !stopping;
             recenter.Enabled = owner != null && !stopping && !recentering && !stopRequested;
             game.Enabled = browseGame.Enabled = runtimeMode.Enabled = !busy;
-            hudSize.Enabled = cameraCloser.Enabled = !busy;
+            hudSize.Enabled = cameraCloser.Enabled = renderScale.Enabled = renderPreview.Enabled = !busy;
             runtime.Enabled = browseRuntime.Enabled = !busy && runtimeMode.SelectedIndex != 1;
             exportLogs.Enabled = !exportBusy;
         }
@@ -610,14 +678,15 @@ namespace GearsVrUi {
             try {
                 string path = game.Text.Trim(); string resolved = Path.IsPathRooted(path) ? path : Path.Combine(root, path);
                 if (!File.Exists(resolved)) throw new IOException(Language.T(TextKey.GameMissing));
-                string manifest = Path.Combine(root, "tools", "vr-launcher", "manifest.json");
+                string manifest = Program.ManifestPath(root);
                 if (!File.Exists(manifest)) throw new IOException(Language.T(TextKey.ManifestMissing));
                 string selectedRuntime = runtimeMode.SelectedIndex != 1 ? runtime.Text.Trim() : null;
                 if (selectedRuntime != null && !Path.IsPathRooted(selectedRuntime)) selectedRuntime = Path.GetFullPath(Path.Combine(root, selectedRuntime));
                 if (selectedRuntime != null && !File.Exists(selectedRuntime)) throw new IOException(Language.T(TextKey.RuntimeMissing));
                 bool currentHudSupport = Program.SupportsHudSize(Program.ReadConfig(manifest));
-                if (currentHudSupport != hudSupported || Program.SupportsCameraDistance(Program.ReadConfig(manifest)) != cameraSupported) throw new IOException(Language.T(TextKey.ManifestChanged));
-                Program.SaveOptions(config, path, hudSupported, hudSize.Value, cameraSupported, cameraCloser.Value); stopRequested = false; starting = true; UpdateButtons(); state.Text = Language.T(TextKey.Starting);
+                if (currentHudSupport != hudSupported || Program.SupportsCameraDistance(Program.ReadConfig(manifest)) != cameraSupported || Program.SupportsRenderSize(Program.ReadConfig(manifest)) != renderSupported) throw new IOException(Language.T(TextKey.ManifestChanged));
+                Program.SaveOptions(config, path, hudSupported, hudSize.Value, cameraSupported, cameraCloser.Value);
+                if(renderSupported)Program.SaveRenderScale(config,renderScale.Value); stopRequested = false; starting = true; UpdateButtons(); state.Text = Language.T(TextKey.Starting);
                 int result = await Command("start", selectedRuntime);
                 if (result < 0) state.Text = Language.T(TextKey.StartupFailed);
             } catch (Exception e) { Log(e.Message); state.Text = Language.T(TextKey.StartupFailedPrefix) + e.Message; }
@@ -657,9 +726,11 @@ namespace GearsVrUi {
                         process.StartInfo.EnvironmentVariables["PYTHONUNBUFFERED"] = "1";
                         process.StartInfo.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
                         process.StartInfo.EnvironmentVariables["GEARSVR_PYTHON"] = python.File;
-                        if (command == "start" && selectedRuntime == null) process.StartInfo.EnvironmentVariables.Remove("XR_RUNTIME_JSON");
+                        if ((command == "start" || command == "render-size") && selectedRuntime == null) process.StartInfo.EnvironmentVariables.Remove("XR_RUNTIME_JSON");
                         var stdout = new StringBuilder();
-                        process.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e) { if (e.Data != null) { if (command == "status") stdout.AppendLine(e.Data); Log(e.Data); } };
+                        process.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e) { if (e.Data != null) { if (command == "status") stdout.AppendLine(e.Data);
+                            if(renderSupported&&(command=="start"||command=="render-size")){try{string dimensions=Program.RenderSizeText(e.Data);if(dimensions!=null)Ui(delegate{renderInfo.Text=dimensions;});}catch{}}
+                            Log(e.Data); } };
                         process.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e) { if (e.Data != null) Log(e.Data); };
                         Log(Language.T(TextKey.RunningCommand) + command);
                         if (command == "start" && stopRequested) { Log(Language.T(TextKey.CancelBeforeLaunch)); return 0; }

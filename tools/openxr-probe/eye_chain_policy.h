@@ -1,10 +1,12 @@
 #pragma once
 #include "../vr-common/stereo_image_ticket.h"
+#include "../vr-common/render_size_plan.h"
 
 namespace gears_eye_chain {
 struct Limits {
     unsigned system_width{},system_height{};
     std::array<unsigned,2> view_width{},view_height{},view_samples{};
+    bool independent_render_size{};gears_vr::RenderSizePlan render_size{};
 };
 struct Plan {
     unsigned source_width{},source_height{},eye_width{},eye_height{};
@@ -12,6 +14,7 @@ struct Plan {
 };
 inline bool make_plan(unsigned width,unsigned height,Limits const& limits,Plan& out) {
     if(!width||width%2||width>8192||!height||height>8192)return false;
+    if(limits.independent_render_size&&(!gears_vr::render_size_valid(limits.render_size)||width!=limits.render_size.source_width||height!=limits.render_size.source_height))return false;
     const unsigned half=width/2;
     if(!half||half>limits.system_width||height>limits.system_height)return false;
     for(unsigned eye=0;eye<2;++eye)

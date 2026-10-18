@@ -1,6 +1,7 @@
 #pragma once
 #include "gpu_share.h"
 #include "pose_bridge.h"
+#include "mirror_geometry.h"
 #include <d3dcompiler.h>
 #include <atomic>
 #include <chrono>
@@ -126,7 +127,7 @@ public:
         AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};if(stats_.state)return reject(Reason::not_ready);
         if(!queue||!source||!generation||queue->GetDesc().Type!=D3D12_COMMAND_LIST_TYPE_DIRECT)return reject(Reason::source);
         const auto d=source->GetDesc();
-        if(d.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D||!d.Width||d.Width>16384||d.Width%2||d.Width/2!=d.Height||d.DepthOrArraySize!=1||d.MipLevels!=1||d.SampleDesc.Count!=1||d.SampleDesc.Quality||format_index(d.Format)<0)return reject(Reason::source);
+        if(d.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D||!d.Width||d.Width>16384||d.Width%2||d.DepthOrArraySize!=1||d.MipLevels!=1||d.SampleDesc.Count!=1||d.SampleDesc.Quality||format_index(d.Format)<0)return reject(Reason::source);
         ComPtr<ID3D12Device> device,other;ComPtr<IUnknown> di,qi,si,oi;
         if(FAILED(source->GetDevice(IID_PPV_ARGS(&device)))||FAILED(queue->GetDevice(IID_PPV_ARGS(&other)))||FAILED(device.As(&di))||FAILED(other.As(&oi))||di.Get()!=oi.Get()||
            FAILED(queue->QueryInterface(IID_PPV_ARGS(&qi)))||FAILED(source->QueryInterface(IID_PPV_ARGS(&si))))return reject(Reason::device);
@@ -182,8 +183,10 @@ public:
             const auto handle=rtv_->GetCPUDescriptorHandleForHeapStart();device_->CreateRenderTargetView(destination,&view,handle);
             transition(draw_list_.Get(),destination,D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_RENDER_TARGET);transition(draw_list_.Get(),snapshot_.Get(),D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
             const float black[]={0,0,0,1};draw_list_->ClearRenderTargetView(handle,black,0,nullptr);draw_list_->OMSetRenderTargets(1,&handle,FALSE,nullptr);
-            const unsigned side=(std::min)(static_cast<unsigned>(d.Width),d.Height);const unsigned x=(static_cast<unsigned>(d.Width)-side)/2,y=(d.Height-side)/2;
-            D3D12_VIEWPORT viewport{float(x),float(y),float(side),float(side),0,1};D3D12_RECT scissor{LONG(x),LONG(y),LONG(x+side),LONG(y+side)};
+            const auto rectangle=mirror_rectangle(unsigned(d.Width),d.Height,unsigned(source_desc_.Width/2),source_desc_.Height);
+            if(!rectangle.width||!rectangle.height)return reject(Reason::destination);
+            D3D12_VIEWPORT viewport{float(rectangle.x),float(rectangle.y),float(rectangle.width),float(rectangle.height),0,1};
+            D3D12_RECT scissor{LONG(rectangle.x),LONG(rectangle.y),LONG(rectangle.x+rectangle.width),LONG(rectangle.y+rectangle.height)};
             draw_list_->RSSetViewports(1,&viewport);draw_list_->RSSetScissorRects(1,&scissor);draw_list_->SetGraphicsRootSignature(root_.Get());
             ID3D12DescriptorHeap* heaps[]={srv_.Get()};draw_list_->SetDescriptorHeaps(1,heaps);draw_list_->SetGraphicsRootDescriptorTable(0,srv_->GetGPUDescriptorHandleForHeapStart());
             const unsigned extent[]={static_cast<unsigned>(source_desc_.Width),source_desc_.Height};draw_list_->SetGraphicsRoot32BitConstants(1,2,extent,0);

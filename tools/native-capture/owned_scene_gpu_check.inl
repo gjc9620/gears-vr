@@ -5,9 +5,15 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
 #if !defined(GEARS_NATIVE_OWNED_PIXELS) || !GEARS_NATIVE_OWNED_PIXELS
  (void)input;return ERROR_NOT_SUPPORTED;
 #else
- if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>19)return 2;
- const bool xr_mode=(mode>=10&&mode<=12)||mode==19;
+ if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>21)return 2;
+ const bool xr_mode=(mode>=10&&mode<=12)||(mode>=19&&mode<=21);
  if(mode==19&&!owned_scene_gpu::sustained)return ERROR_NOT_SUPPORTED;
+#if defined(GEARS_RUNTIME_RENDER_SIZE) && GEARS_RUNTIME_RENDER_SIZE
+ // Explicit synthetic fixture geometry; no runtime recommendation, engine
+ // surface creation or actual-game rendering is claimed by this WARP test.
+ gears_native_render_size::packet.plan={2048,2048,2048,2048,4096,2048,1.};
+ gears_native_render_size::packet.session=17;gears_native_render_size::loaded=true;
+#endif
  using Microsoft::WRL::ComPtr;
  using namespace owned_scene_gpu;
  if(enabled||tracker.snapshot().reset_calls)return 3;
@@ -140,6 +146,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   image_sample.head.orientation={};
   for(unsigned eye=0;eye<2;++eye){image_sample.eyes[eye].pose.orientation={};image_sample.eyes[eye].pose.position.x=eye?.032:-.032;image_sample.eyes[eye].fov={-.8,.7,.75,-.65};}
   consuming_frozen_frame.enabled=true;consuming_frozen_frame.id=consuming_frame_ticket=2;consuming_frozen_frame.sample=image_sample;
+  consuming_frozen_frame.world_generation=committed_world_generation.load();
+  consuming_frozen_frame.source_view={1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+  consuming_frozen_frame.source_projection={2,0,0,0,0,3,0,0,0,0,1,1,0,0,-.5f,0};
+  for(unsigned eye=0;eye<2;++eye){consuming_frozen_frame.expected.view[eye]=consuming_frozen_frame.source_view;
+   consuming_frozen_frame.expected.projection[eye]=consuming_frozen_frame.source_projection;}
   selected(2);built(2);began(2);
   retain_image();if(error||retained_images!=1)return 25;
   if(mode==11)++consuming_frozen_frame.sample.sequence;retain_image();
@@ -155,17 +166,29 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  if(mode==2)use(list.Get(),resource,true); // Copy-like state use must reject.
  if(mode==3)use(list.Get(),resource,false); // Later MRT write contaminates pair.
  if(mode==4)uncertain(); // Unknown descriptor/enhanced/bundle path.
- if(mode!=10&&mode!=19)hook_resource_barrier(list.Get(),1,&b);
+ if(mode!=10&&mode<19)hook_resource_barrier(list.Get(),1,&b);
  if(FAILED(list->Close()))return 12;
  ID3D12CommandList* members[]{list.Get()};auto token=prepare(q.Get(),1,members);
  q->ExecuteCommandLists(1,members);commit(token);
  wchar_t temp[MAX_PATH]{};GetTempPathW(MAX_PATH,temp);swprintf_s(directory,L"%s",temp);
+#if defined(GEARS_VR_DOF_COMPAT) && GEARS_VR_DOF_COMPAT
+ if(xr_mode){const gears_vr_dof::Key key{publication_world,2};
+  // Synthetic no-site metadata is separate from the real GPU clear/copy.
+  // Incomplete proof and a changed world must prevent shared publication.
+  if(!vr_dof_compat::store.begin(key))return 68;
+  if(mode!=20)vr_dof_compat::store.finish(key);
+  vr_dof_compat::retire(); // Desktop boundary cannot retire deferred owned proof.
+  if(vr_dof_compat::store.decision(key)!=(mode==20?gears_vr_dof::Decision::incomplete:gears_vr_dof::Decision::no_site))return 69;
+  if(mode==21)++publication_world;
+ }
+#endif
  copy(true,2);
  // Drain real test clear/transition even for negative cases; production never waits here.
  ComPtr<ID3D12Fence> done;if(FAILED(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&done)))||FAILED(q->Signal(done.Get(),1)))return 13;
  const auto deadline=GetTickCount64()+5000;while(done->GetCompletedValue()<1&&GetTickCount64()<deadline)Sleep(1);
  if(done->GetCompletedValue()!=1)return 14;
  if(mode&&mode<5)return !readback.result().queued&&error==(mode==3?9u:8u)?0:15;
+ if(mode==20||mode==21){poll();return error==22&&!published_count&&stereo_publisher.frames.load()==0?0:70;}
  poll();auto const& r=readback.result();
  const bool good=proof.state_certified&&proof.final_state==((mode==10||mode==19)?4u:128u)&&r.saved&&r.completed&&
   r.eyes[0].nonblack==2048ull*2048&&r.eyes[1].nonblack==2048ull*2048&&r.differing_pixels==0;
@@ -206,7 +229,13 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
     tracker.draw_final(ref,ticket,1,{resource,4096,2048},{2048,0,2048,2048});
     if(FAILED(list->Close()))return 61;
     const auto token=prepare(q.Get(),1,members);q->ExecuteCommandLists(1,members);commit(token);
-    submitted(ticket);returned(ticket);destroyed(ticket);copy(true,ticket);
+    submitted(ticket);returned(ticket);destroyed(ticket);
+#if defined(GEARS_VR_DOF_COMPAT) && GEARS_VR_DOF_COMPAT
+    const gears_vr_dof::Key key{publication_world,ticket};
+    if(!vr_dof_compat::store.begin(key))return 71;vr_dof_compat::store.finish(key);
+    vr_dof_compat::retire();if(vr_dof_compat::store.decision(key)!=gears_vr_dof::Decision::no_site)return 72;
+#endif
+    copy(true,ticket);
     if(error||finished||consumed_count!=iteration+2||last_consumed_ticket!=ticket||!can_advance(ticket))return 62;
     if(!wait_gpu())return 63;
     try{if(!receiver.acquire(q.Get())||receiver.ticket().id!=ticket||

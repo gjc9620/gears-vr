@@ -144,5 +144,11 @@ int main(int argc,char** argv){
   float values[3]{};memcpy(values,bytes,12);CHECK(values[0]==1.f&&values[1]==1.f&&values[2]==1.f);
   CHECK(bytes[12]==2&&bytes[15]==255);CHECK(!owner.retire_on_rhi(drain()));}
  {Mock ops;{TestOwner owner;CHECK(create(owner,ops));}CHECK(!ops.clears&&!ops.releases);}
+ for(auto dimensions:{std::pair<unsigned,unsigned>{6144,3264},{4302,2285},{8192,8192}}){Mock ops;TestOwner owner;
+  CHECK(owner.create_on_rhi(ops,dimensions.first,dimensions.second,9));auto sample=owner.snapshot();
+  CHECK(sample.width==dimensions.first&&sample.height==dimensions.second&&ops.width==dimensions.first&&ops.height==dimensions.second);
+  CHECK(owner.retire_on_rhi(drain())&&!owner.retained());}
+ for(auto dimensions:{std::pair<unsigned,unsigned>{127,3264},{6145,3264},{8194,3264},{6144,0},{6144,8193}}){Mock ops;TestOwner owner;
+  CHECK(!owner.create_on_rhi(ops,dimensions.first,dimensions.second,9)&&!ops.creates&&!owner.retained());}
  std::printf("native owned surface: %u CPU checks passed\n",checks);
 }

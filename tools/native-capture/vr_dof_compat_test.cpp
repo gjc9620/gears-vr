@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <limits>
 int main(){using namespace gears_vr_dof;
+    for(unsigned bits=0;bits<8;++bits){const bool owned=bits&1,bindings=bits&2,runtime=bits&4;
+        assert(transport_supported(owned,bindings,runtime)==((!owned&&!bindings)||(owned&&bindings&&runtime)));}
     assert(quad_caller(0xd808d8)&&quad_caller(0xd80a7b));
     assert(!quad_caller(0)&&!quad_caller(0xd803bf)&&!quad_caller(0xd808d9)&&!quad_caller(0xd80a7a));
     Float4 source{1,-0.0f,2,3};Descriptor descriptor{0,192,16};assert(supported(descriptor,0,source));
@@ -48,5 +50,18 @@ int main(){using namespace gears_vr_dof;
         assert(e->failure==Failure::duplicate_quad);e->proved(0,false,true);
         e->reserve(1,false);e->proved(1,false,true);shared.finish({1,1});assert(shared.decision({1,1})==Decision::rejected);
     }
-    std::puts("VrDofCompatTest passed");
+    // Owned Canvas can complete after desktop Present: partial retirement must
+    // retain the later ticket and cannot silently claim an unobserved boundary.
+    Store<> deferred;deferred.begin({1,1});deferred.finish({1,1});deferred.begin({1,2});deferred.finish({1,2});
+    assert(deferred.retire_through(1)&&deferred.decision({1,1})==Decision::missing&&deferred.decision({1,2})==Decision::no_site);
+    assert(!deferred.retire_through(3)&&deferred.decision({1,2})==Decision::no_site);
+    assert(deferred.retire_through(2)&&deferred.decision({1,2})==Decision::missing&&!deferred.retire_through(1));
+    Store<> sustained;
+    for(unsigned id=1;id<=2000;++id){auto* entry=sustained.begin({1,id});assert(entry);
+        for(unsigned eye_index=0;eye_index<2;++eye_index){assert(entry->reserve(eye_index,true));entry->proved(eye_index,true,true);
+            assert(entry->reserve(eye_index,false));entry->proved(eye_index,false,true);}
+        sustained.finish({1,id});assert(sustained.decision({1,id})==Decision::zero_proved);
+        assert(sustained.retire_through(id)&&!sustained.capacity_lost);
+    }
+    std::puts("VrDofCompatTest passed: transport policy, exact proof, deferred owned retirement and 2000 publications");
 }

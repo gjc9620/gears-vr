@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <windows.h>
 #include <d3d12.h>
+#include "../vr-common/render_size_plan.h"
 
 namespace gears_native_owned {
 enum class Quality:unsigned {low,high};
@@ -105,11 +106,16 @@ public:
  // is invented from pointer readability; the owner stores no viewport pointer.
  bool create_on_rhi(Ops& ops,Quality quality,uint64_t generation){
   if(phase_.load()!=Phase::empty)return false;
-  if((quality!=Quality::low&&quality!=Quality::high)||!generation)
+  if(quality!=Quality::low&&quality!=Quality::high)return fail(Error::invalid_config);
+  return create_on_rhi(ops,quality==Quality::low?4096u:8192u,quality==Quality::low?2048u:4096u,generation);
+ }
+ bool create_on_rhi(Ops& ops,unsigned width,unsigned height,uint64_t generation){
+  if(phase_.load()!=Phase::empty)return false;
+  if(!generation||width<128||width>8192||width%2||height<64||height>8192)
    return fail(Error::invalid_config);
   uintptr_t block{},context{};if(!ops.tls(block,context)||!block||!context){error_=Error::tls_pending;return false;}
   ops_=&ops;tls_=block;context_=context;thread_=ops.thread();generation_=generation;
-  width_=quality==Quality::low?4096:8192;height_=quality==Quality::low?2048:4096;
+  width_=width;height_=height;
   phase_=Phase::creating;error_=Error::none;
   if(!ops.certify(failed_window_))return fail(Error::code_identity);
   if(!same_tls())return fail(Error::wrong_thread);

@@ -32,7 +32,7 @@ inline Result create(API api,void* family,void* source,void* right_state,bool ou
     const gears_vr::StereoMatrices* stereo=nullptr,const FixedOutputBounds* fixed_output=nullptr) {
     Result result{};gears_source_args::Snapshot original{};
     const auto fixed=fixed_output?*fixed_output:FixedOutputBounds{};
-    if(fixed_output&&(!stereo||!((fixed.width==4096&&fixed.height==2048)||(fixed.width==8192&&fixed.height==4096)))){
+    if(fixed_output&&(!stereo||(fixed.width<128||fixed.width>8192||fixed.width%2||fixed.height<64||fixed.height>8192))){
         result.rejection=13;return result;}
     if(stereo && (projection_control || preserve_geometry)){result.rejection=11;return result;}
     if(stereo)for(unsigned i=0;i<2;++i)for(unsigned j=0;j<16;++j)

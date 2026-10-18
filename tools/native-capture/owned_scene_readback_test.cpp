@@ -60,13 +60,13 @@ static std::wstring output_path(unsigned state) {
     return std::wstring(temp)+L"gears_owned_readback_"+std::to_wstring(GetCurrentProcessId())+L"_"+
         std::to_wstring(GetTickCount64())+L"_"+std::to_wstring(state)+L".ppm";
 }
-static void known_pixels(GPU& gpu,D3D12_RESOURCE_STATES state) {
-    auto t=texture(gpu);ComPtr<ID3D12DescriptorHeap> heap;D3D12_DESCRIPTOR_HEAP_DESC hd{};
+static void known_pixels(GPU& gpu,D3D12_RESOURCE_STATES state,unsigned image_height=8) {
+    auto t=texture(gpu,16,image_height);ComPtr<ID3D12DescriptorHeap> heap;D3D12_DESCRIPTOR_HEAP_DESC hd{};
     hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_RTV;hd.NumDescriptors=1;
     check(gpu.device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&heap)),"RTV heap");
     auto rtv=heap->GetCPUDescriptorHandleForHeapStart();gpu.device->CreateRenderTargetView(t.Get(),nullptr,rtv);
     gpu.begin();const float red[4]={1,0,0,1}, green[4]={0,1,0,1};
-    D3D12_RECT left{0,0,8,8},right{8,0,16,8};
+    D3D12_RECT left{0,0,8,LONG(image_height)},right{8,0,16,LONG(image_height)};
     gpu.list->ClearRenderTargetView(rtv,red,1,&left);gpu.list->ClearRenderTargetView(rtv,green,1,&right);
     gpu.transition(t.Get(),D3D12_RESOURCE_STATE_RENDER_TARGET,state);gpu.submit();
     const auto path=output_path(static_cast<unsigned>(state));
@@ -75,7 +75,7 @@ static void known_pixels(GPU& gpu,D3D12_RESOURCE_STATES state) {
     const auto deadline=GetTickCount64()+10000;
     while(probe.result().status==owned_scene_readback::Status::pending && GetTickCount64()<deadline) {probe.poll();Sleep(1);}
     const auto& r=probe.result();require(r.queued&&r.completed&&r.saved,"readback save");
-    require(r.width==16&&r.height==8&&r.eyes[0].nonblack==64&&r.eyes[1].nonblack==64&&r.differing_pixels==64,"pixel counts");
+    require(r.width==16&&r.height==image_height&&r.eyes[0].nonblack==8*image_height&&r.eyes[1].nonblack==8*image_height&&r.differing_pixels==8*image_height,"pixel counts");
     require(r.eyes[0].min_rgb==std::array<unsigned char,3>{{255,0,0}}&&r.eyes[0].min_rgb==r.eyes[0].max_rgb,"left red");
     require(r.eyes[1].min_rgb==std::array<unsigned char,3>{{0,255,0}}&&r.eyes[1].min_rgb==r.eyes[1].max_rgb,"right green");
     require(r.eyes[0].hash!=r.eyes[1].hash,"eye hashes");
@@ -86,10 +86,10 @@ static void known_pixels(GPU& gpu,D3D12_RESOURCE_STATES state) {
      require(duplicate.result().completed&&!duplicate.result().saved&&
          duplicate.result().error==owned_scene_readback::Error::file_open,"existing file must not overwrite");}
     std::ifstream ppm(path,std::ios::binary);std::string magic;unsigned width{},height{},max{};
-    ppm>>magic>>width>>height>>max;ppm.get();require(magic=="P6"&&width==16&&height==8&&max==255,"PPM header");
-    std::vector<unsigned char> data(16*8*3);ppm.read(reinterpret_cast<char*>(data.data()),data.size());
+    ppm>>magic>>width>>height>>max;ppm.get();require(magic=="P6"&&width==16&&height==image_height&&max==255,"PPM header");
+    std::vector<unsigned char> data(16*image_height*3);ppm.read(reinterpret_cast<char*>(data.data()),data.size());
     require(ppm.gcount()==static_cast<std::streamsize>(data.size())&&ppm.peek()==std::char_traits<char>::eof(),"PPM exact size");
-    for(unsigned y=0;y<8;++y)for(unsigned x=0;x<16;++x) {auto* p=&data[(y*16+x)*3];require(p[0]==(x<8?255:0)&&p[1]==(x<8?0:255)&&p[2]==0,"PPM pixels");}
+    for(unsigned y=0;y<image_height;++y)for(unsigned x=0;x<16;++x) {auto* p=&data[(y*16+x)*3];require(p[0]==(x<8?255:0)&&p[1]==(x<8?0:255)&&p[2]==0,"PPM pixels");}
     ppm.close();require(DeleteFileW(path.c_str())!=0,"remove test PPM");
     // A subsequent clear uses exactly the original idle state as StateBefore.
     gpu.begin();gpu.transition(t.Get(),state,D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -105,11 +105,10 @@ int main() {
         {owned_scene_readback::Probe p;require(!p.queue(t.Get(),gpu.queue.Get(),D3D12_RESOURCE_STATE_COPY_SOURCE,true,path.c_str()),"unsupported state accepted");}
         {owned_scene_readback::Probe p;require(!p.queue(t.Get(),gpu.queue.Get(),D3D12_RESOURCE_STATE_RENDER_TARGET,true,L"relative.ppm"),"relative path accepted");}
         {auto odd=texture(gpu,15,8);owned_scene_readback::Probe p;require(!p.queue(odd.Get(),gpu.queue.Get(),D3D12_RESOURCE_STATE_RENDER_TARGET,true,path.c_str()),"odd width accepted");}
-        {auto odd=texture(gpu,16,7);owned_scene_readback::Probe p;require(!p.queue(odd.Get(),gpu.queue.Get(),D3D12_RESOURCE_STATE_RENDER_TARGET,true,path.c_str()),"odd height accepted");}
         {ComPtr<ID3D12CommandQueue> compute;D3D12_COMMAND_QUEUE_DESC q{};q.Type=D3D12_COMMAND_LIST_TYPE_COMPUTE;
          check(gpu.device->CreateCommandQueue(&q,IID_PPV_ARGS(&compute)),"compute queue");owned_scene_readback::Probe p;
          require(!p.queue(t.Get(),compute.Get(),D3D12_RESOURCE_STATE_RENDER_TARGET,true,path.c_str()),"compute accepted");}
-        for(unsigned state:{0u,4u,128u})known_pixels(gpu,static_cast<D3D12_RESOURCE_STATES>(state));
+        for(unsigned state:{0u,4u,128u})for(unsigned height:{8u,7u})known_pixels(gpu,static_cast<D3D12_RESOURCE_STATES>(state),height);
         std::cout<<"PASS: WARP readback RGB/PPM, idle-state restoration (0,4,128), rejection checks; debug layer "
                  <<(gpu.debug_enabled?"enabled":"unavailable")<<"\n";return 0;
     }catch(const std::exception& e) {std::cerr<<"FAIL: "<<e.what()<<"\n";return 1;}

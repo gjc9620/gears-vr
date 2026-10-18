@@ -90,7 +90,7 @@ public:
         if(desc.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
            desc.Format!=DXGI_FORMAT_R8G8B8A8_UNORM || desc.Width<2 ||
            desc.Width>(std::numeric_limits<UINT>::max)() || !desc.Height ||
-           desc.Width%2 || desc.Height%2 || desc.DepthOrArraySize!=1 ||
+           desc.Width%2 || desc.DepthOrArraySize!=1 ||
            desc.MipLevels!=1 || desc.SampleDesc.Count!=1 || desc.SampleDesc.Quality!=0)
             return fail(Error::unsupported_texture,E_INVALIDARG);
         result_.width=static_cast<UINT>(desc.Width); result_.height=desc.Height;

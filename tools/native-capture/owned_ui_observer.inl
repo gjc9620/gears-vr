@@ -152,7 +152,8 @@ struct CommandScope {
    fault(e.ticket,7);return;
   }
   memcpy(dimensions,header.data()+2,sizeof(dimensions));
-  if(!dimensions[0]||!dimensions[1]||dimensions[0]>8192||dimensions[1]>8192){fault(e.ticket,8);return;}
+  if(!gears_native_render_size::width()||!gears_native_render_size::height()||
+     !dimensions[0]||!dimensions[1]||dimensions[0]>8192||dimensions[1]>8192){fault(e.ticket,8);return;}
   // The checked Execute body uses only this 48-byte header; it destroys the
   // original payload exactly once. The native queued header stays untouched.
   header[4]=trial.adapter;argument=header.data();

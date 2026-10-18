@@ -78,9 +78,46 @@ def camera_closer(config,manifest):
     return float(value)
 
 
+def render_scale(config,manifest):
+    supported=manifest.get('runtime_render_size',False)
+    if type(supported) is not bool:raise ValueError('Manifest runtime_render_size must be boolean')
+    if not supported:
+        if 'render_scale' in config:raise ValueError('This build does not support runtime render size')
+        return None
+    value=config.get('render_scale',1.)
+    if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not .25<=value<=2:
+        raise ValueError('render_scale must be finite and between 0.25 and 2.0 (per dimension)')
+    return float(value)
+
+
+def render_size_info(manifest,scale,root=ROOT):
+    probe=rooted(manifest['xr_build'],root)/'OpenXRPoseProbe.exe'
+    if hashlib.sha256(probe.read_bytes()).hexdigest().lower()!=manifest['xr_sha256'].lower():
+        raise RuntimeError('XR render size probe SHA256 mismatch')
+    result=subprocess.run([str(probe),'--render-size-info','--render-scale',str(scale)],
+        capture_output=True,text=True,timeout=30,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+    if result.returncode:raise RuntimeError('VR render size rejected before game launch: '+(result.stderr.strip() or result.stdout.strip()))
+    plans=[]
+    for line in result.stdout.splitlines():
+        try:value=json.loads(line)
+        except ValueError:continue
+        if isinstance(value,dict) and value.get('runtime_render_size_plan') is True:plans.append(value)
+    if len(plans)!=1:raise RuntimeError('Runtime did not return one render size plan')
+    plan=plans[0]
+    for key in ('recommended','eye','source'):
+        if not isinstance(plan.get(key),list) or len(plan[key])!=2 or any(type(v) is not int or v<1 for v in plan[key]):
+            raise RuntimeError('Runtime render size plan has invalid dimensions')
+    w,h=plan['eye'];rw,rh=plan['recommended']
+    if (plan.get('render_scale')!=scale or plan['source']!=[2*w,h] or not 64<=w<=4096 or not 64<=h<=8192 or
+        w!=math.ceil(rw*scale-1e-9) or h!=math.ceil(rh*scale-1e-9)):
+        raise RuntimeError('Runtime render size plan does not match the requested multiplier and engine limits')
+    return plan
+
+
 def settings(config,manifest,root=ROOT):
-    if set(config)-{'game_path','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language','hud_element_scale','hud_center_scale','camera_closer_metres'}:raise ValueError('Unknown configuration field')
+    if set(config)-{'game_path','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language','hud_element_scale','hud_center_scale','camera_closer_metres','render_scale'}:raise ValueError('Unknown configuration field')
     camera_closer(config,manifest)
+    render_scale(config,manifest)
     if 'launcher_language' in config and config['launcher_language'] not in ('zh-CN','en'):
         raise ValueError('launcher_language must be zh-CN or en')
     hud_horizontal_fov(config,manifest)
@@ -401,6 +438,12 @@ class Backend:
 def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sleep,auto_continue=False,foreground=False):
     game,scale=settings(config,manifest)
     profile=verify_files(manifest,game) # Reject unsupported installs before startup side effects.
+    selected_render_scale=render_scale(config,manifest)
+    size_plan=render_size_info(manifest,selected_render_scale) if selected_render_scale is not None else None
+    if size_plan:
+        print(json.dumps(size_plan),flush=True)
+        print('VR per eye: %d x %d; render scale %.2f per dimension; desktop resolution is independent.' %
+              (*size_plan['eye'],selected_render_scale),flush=True)
     owner=backend.control.identity(os.getpid())
     if not owner:raise RuntimeError('Launcher process identity unavailable')
     ctypes.set_last_error(0)
@@ -409,6 +452,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
     if ctypes.get_last_error()==183:
         backend.control.k.CloseHandle(lock);raise RuntimeError('Another repository launcher is active')
     state={'schema':1,'kind':'repository_vr_launcher','owner_identity':owner,'phase':'preflight','passed':False,'native_activated':False}
+    if size_plan:state['render_size_plan']=size_plan
     cancel=None;identity=None;tiny_output_monitor=None;owned_prime=manifest.get('startup_menu',False)
     try:
         cancel=backend.open_cancel(owner['pid'])
@@ -483,6 +527,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         if hud_fov is not None:args.hud_horizontal_fov_degrees=hud_fov
         for key,value in hud_layout(config,manifest).items():setattr(args,key,value)
         args.camera_closer_metres=camera_closer(config,manifest)
+        args.render_scale=selected_render_scale
         if owned_prime:
             deadline=clock()+30
             while clock()<deadline:
@@ -621,7 +666,7 @@ def status(backend,index=INDEX):
     print(json.dumps(result,indent=2));return result
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('command',choices=('start','stop','status','recenter','export-logs'))
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('command',choices=('start','stop','status','recenter','export-logs','render-size'))
     parser.add_argument('--config',type=pathlib.Path,default=HERE/'config.json')
     parser.add_argument('--manifest',type=pathlib.Path,default=HERE/'manifest.json')
     parser.add_argument('--runtime',type=pathlib.Path,help='Child-process OpenXR manifest override; no registry change')
@@ -648,6 +693,11 @@ def main():
             runtime=args.runtime.resolve()
             if not runtime.is_file():raise RuntimeError('OpenXR runtime manifest does not exist')
             os.environ['XR_RUNTIME_JSON']=str(runtime)
+        if args.command=='render-size':
+            config=json.loads(args.config.read_text());manifest=json.loads(args.manifest.read_text())
+            value=render_scale(config,manifest)
+            if value is None:raise ValueError('This build does not support runtime render size')
+            print(json.dumps(render_size_info(manifest,value)),flush=True);return 0
         return start(json.loads(args.config.read_text()),json.loads(args.manifest.read_text()),backend,auto_continue=args.auto_continue,foreground=args.foreground)
     except Exception as error:print(str(error),file=sys.stderr);return 1
 

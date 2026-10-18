@@ -4,7 +4,7 @@
 
 用户已明确开始开发测试，分别推进分辨率、DLSS、UI与机枪。后台测试不抢焦点，音量功能仍延期。
 
-机枪采样优化：`mounted_context.py`将有界反射发现移到CameraCache时间戳窗口前；正式guard保留只含发现提示的contract，时间戳重试不重复遍历属性链。每次capture仍重读身份、父类、属性布局和offset、角色关系与注册表；未知或变化信息拒绝，不增加预算。83项mounted/anchor/cinematic相关测试通过。合成fixture单次capture的property调用14→0，仅表示消除反射遍历，不代表真实耗时或黑屏已修复。实际候选UIGroup105（独立DLL，默认清单未换）已完成22项启动自测并开始模拟器后台采样。
+机枪采样优化：`mounted_context.py`将有界反射发现移到CameraCache时间戳窗口前；正式guard保留只含发现提示的contract，时间戳重试不重复遍历属性链。每次capture仍重读身份、父类、属性布局和offset、角色关系与注册表；未知或变化信息拒绝，不增加预算。83项mounted/anchor/cinematic相关测试通过。合成fixture单次capture的property调用14→0，仅表示消除反射遍历，不代表真实耗时或黑屏已修复。实际候选UIGroup105（独立DLL，默认清单未换）通过22项启动自测。后台会话23004进入关卡，但窗口输出8×8、VR published=0，用户也看到黑屏；该轮不算画面验收。停止后native_cleanup_verified和entry_restore_verified均为true，再正常WM_CLOSE退出游戏，四个测试前profile文件逐哈希恢复。普通PostRender只读组采样有效，未覆盖Hammer或PathChoice。详细会话为analysis/runtime/continuous-stereo-23004-20261018-180334-03ce8195.json。
 
 ## 2026-10-18 最新范围：推荐每眼尺寸与倍率纳入 0.0.1
 

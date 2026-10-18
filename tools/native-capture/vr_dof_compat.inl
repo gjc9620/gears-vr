@@ -44,14 +44,22 @@ Path destination(){
        !read(out.highwater,out.bank,0x44)||out.data>UINTPTR_MAX-207)return out;
     out.address=out.data+192;out.valid=read(out.value,out.address);return out; // Bank 0, exact 16 bytes; highwater is not capacity.
 }
-bool other_controls(){return owned_bindings_enabled||quad_source_control_enabled()||first_view_mask_control||submit_duplicate_control||
+bool runtime_size_transport(){
+#if defined(GEARS_RUNTIME_RENDER_SIZE) && GEARS_RUNTIME_RENDER_SIZE
+    return gears_native_render_size::loaded&&gears_native_render_size::width()&&gears_native_render_size::height();
+#else
+    return false;
+#endif
+}
+bool supported_transport(){return gears_vr_dof::transport_supported(owned_xr_probe,owned_bindings_enabled,runtime_size_transport());}
+bool other_controls(){return !supported_transport()||quad_source_control_enabled()||first_view_mask_control||submit_duplicate_control||
     submit_mono_control||submit_mono_independent_state||projection_control||origin_trial_enabled;}
 bool attest(FILE* file){
-    const bool configuration=!self_testing&&continuous_session&&stereo_xr&&stereo_gpu_publish&&submit_pair_enabled&&frame_link_diagnostics&&viewport_diagnostics&&!owned_xr_probe&&!other_controls();
+    const bool configuration=!self_testing&&continuous_session&&stereo_xr&&stereo_gpu_publish&&submit_pair_enabled&&frame_link_diagnostics&&viewport_diagnostics&&!other_controls();
     attested=configuration&&final_transfer_live::verify_range(file,0x1c4b90,200,"10b2617802b5648fea992132f8b9e20d68d58940de7e7779f34298b8be240cb0")&&
         final_transfer_live::verify_range(file,0xd80360,0x71b,"e7bdb0107d1243e27ccdfc2c24e2a477b209ca1e31c3a78ec9e3489ee5423997");
     target=reinterpret_cast<void*>(base+0x1c4b90);
-    fprintf(file,"vr_dof_identity enabled=1 configuration=%u runtime_ranges_match=%u setter_rva=1c4b90 setter_size=200 caller_rva=d80360 caller_size=1819 historical_code_sha256=911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6 owned_xr_probe_supported=0\n",unsigned(configuration),unsigned(attested));return attested;
+    fprintf(file,"vr_dof_identity enabled=1 configuration=%u runtime_ranges_match=%u setter_rva=1c4b90 setter_size=200 caller_rva=d80360 caller_size=1819 historical_code_sha256=911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6 runtime_owned_transport=%u\n",unsigned(configuration),unsigned(attested),unsigned(owned_xr_probe&&runtime_size_transport()));return attested;
 }
 bool current(Key key){return attested&&recording.load()&&!other_controls()&&key&&active_key==key&&consuming_renderer&&consuming_frozen_frame.enabled&&
     consuming_frame_ticket==key.id&&consuming_frozen_frame.id==key.id&&consuming_frozen_frame.world_generation==key.world&&committed_world_generation.load()==key.world;}
@@ -109,10 +117,18 @@ bool publication(uint64_t world,uint64_t ticket){
     (allowed(decision)?last_allowed:last_rejected)=receipt;
     if(!allowed(decision))++capture_rejected;return allowed(decision);
 }
-void retire(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);store.retire_window();}
+void retire(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    // Desktop Present is not the completed owned Canvas/publication boundary.
+    if(owned_xr_probe&&runtime_size_transport())return;
+    store.retire_window();}
+bool retire_owned(uint64_t world,uint64_t ticket){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    const Key key{world,ticket};
+    if(!owned_xr_probe||!runtime_size_transport()||!allowed(store.decision(key)))return false;
+    return store.retire_through(ticket);
+}
 void progress(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);fprintf(file,"vr_dof_capture_rejected=%llu vr_dof_no_site=%llu vr_dof_zero_proved=%llu ",capture_rejected,decisions[0],decisions[1]);}
 void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
-    fprintf(file,"vr_dof_compat enabled=1 attested=%u both_owned_eyes=1 outside_owned_unchanged=1 store_capacity=128 capacity_lost=%u overflow=%llu late=%llu invalid=%llu begun=%llu completed=%llu retired_through=%llu observed_through=%llu site_calls=%llu modified_left=%llu modified_right=%llu already_zero_left=%llu already_zero_right=%llu setter_proved_left=%llu setter_proved_right=%llu quad_proved_left=%llu quad_proved_right=%llu no_site_allowed=%llu zero_proved_allowed=%llu capture_rejected=%llu missing=%llu incomplete=%llu proof_rejected=%llu overflow_rejected=%llu no_gpu_commands=1 source_memory_written=0 old_r8_read_at_quad=0 highwater_is_capacity=0 owned_xr_probe_supported=0\n",
+    fprintf(file,"vr_dof_compat enabled=1 attested=%u both_owned_eyes=1 outside_owned_unchanged=1 store_capacity=128 capacity_lost=%u overflow=%llu late=%llu invalid=%llu begun=%llu completed=%llu retired_through=%llu observed_through=%llu site_calls=%llu modified_left=%llu modified_right=%llu already_zero_left=%llu already_zero_right=%llu setter_proved_left=%llu setter_proved_right=%llu quad_proved_left=%llu quad_proved_right=%llu no_site_allowed=%llu zero_proved_allowed=%llu capture_rejected=%llu missing=%llu incomplete=%llu proof_rejected=%llu overflow_rejected=%llu no_gpu_commands=1 source_memory_written=0 old_r8_read_at_quad=0 highwater_is_capacity=0 runtime_owned_supported=1 owned_publication_proof_required=1\n",
         unsigned(attested),unsigned(store.capacity_lost),store.overflow,store.late,store.invalid,store.begins,store.finishes,store.retired,store.observed,site_calls,modified[0],modified[1],already_zero[0],already_zero[1],setter_proved[0],setter_proved[1],quad_proved[0],quad_proved[1],decisions[0],decisions[1],capture_rejected,decisions[2],decisions[3],decisions[4],decisions[5]);
     fprintf(file,"vr_dof_quad_sites site0=d808d8 calls=%llu,%llu proved=%llu,%llu site1=d80a7b calls=%llu,%llu proved=%llu,%llu eye_order=left,right call_counts_require_valid_view=1\n",
         quad_site_calls[0][0],quad_site_calls[0][1],quad_site_proved[0][0],quad_site_proved[0][1],quad_site_calls[1][0],quad_site_calls[1][1],quad_site_proved[1][0],quad_site_proved[1][1]);
@@ -125,6 +141,7 @@ bool attest(FILE*){return true;}
 Consume begin(gears_submitted::FrameTicket const&,bool){return {};}
 void finish(Consume const&){}void quad(uintptr_t,bool){}void retire(){}
 bool publication(uint64_t,uint64_t){return true;}
+bool retire_owned(uint64_t,uint64_t){return true;}
 void progress(FILE*){}
 void print(FILE* file){fprintf(file,"vr_dof_compat enabled=0\n");}
 #endif

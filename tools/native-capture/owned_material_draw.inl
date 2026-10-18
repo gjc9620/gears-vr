@@ -6,7 +6,7 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
  const auto binding=owned_target_stats.binding(canonical_identity(list));
  const auto saved=owned_target_stats.draw_state(canonical_identity(list));
  const auto ref=owned_scene_gpu::list_ref(canonical_identity(list));
- const gears_frame_link::Target target{c.owned_resource,4096,2048};
+ const gears_frame_link::Target target{c.owned_resource,gears_native_render_size::width(),gears_native_render_size::height()};
  const auto pair=owned_scene_gpu::tracker.overlay_pair(ref,target);
  gears_ui_material::Quad quad{};gears_ui_material::Candidate candidate{};
  gears_ui_material::ViewPlane plane{};gears_ui_material::ViewPlaneReject reject{};

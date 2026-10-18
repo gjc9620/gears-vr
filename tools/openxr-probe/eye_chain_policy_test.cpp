@@ -42,5 +42,11 @@ int main() {
     }
     CHECK(make_plan(3840,2160,limits,plan)&&plan.eye_width==1920&&plan.eye_height==2160);
     CHECK(make_plan(3842,2005,limits,plan)&&plan.eye_width==1921&&plan.eye_height==2005);
+    gears_vr::RenderSizeLimits size_limits{{3072,3072},{3264,3264},{4096,4096},{4096,4096},4096,4096};
+    CHECK(gears_vr::make_render_size_plan(size_limits,1.,limits.render_size)==gears_vr::RenderSizeError::none);
+    limits.independent_render_size=true;
+    CHECK(make_plan(6144,3264,limits,plan)&&plan.eye_width==3072&&plan.eye_height==3264);
+    CHECK(!make_plan(3840,2160,limits,plan)); // No XR upscale from a desktop-sized source.
+    CHECK(!make_plan(6144,3263,limits,plan));
     std::puts("eye chain policy tests passed: Low/High/exact crops/limits/invalid/provenance");return 0;
 }
