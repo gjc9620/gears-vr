@@ -1,5 +1,13 @@
 # 岔路 UI 的实际位置与停靠关系
 
+## 2026-10-19：Integration3 双眼图像复核
+
+`path-fit-integration3-20261019` 使用下述同一 Integration1 DLL，在推荐尺寸模式下取得三张完整 2560×1400 SBS GPU 图像：保持开始、保持结束、正常选择恢复后。三次 `visual_samples` 的 `saved_verified` 与 `stage_verified` 均为 true；请求刚发出时控制台的 false 是异步保存之前的状态，不能当作最终捕获失败。图像只与采样阶段关联，未证明精确 ticket 关联。
+
+协调者查看原始 PPM 转成的 PNG：两眼均有场景；前两张均有完整岔路提示，最后一张提示消失并出现字幕。提示位置已下移，但提示和字幕在该输出中均显得偏小，尚不能认定整体布局可读性达标。因此不据此提升 PathChoice 候选为默认，也不把此结果推广到黎明之锤提示。下一步核对共同 UI 尺寸/投影变换，而不是继续单独猜测各提示偏移。
+
+持续保持42秒、续租10次，applied/restored各1，rejected/unresolved/service_terminal/pending_restore均0。会话 `continuous-stereo-36916-20261019-041423-7c48b263` 的 native cleanup 与 entry restore 均为 true。游戏已退出，协调者独立比对原设置和四个 profile 的 SHA256，全部恢复。此轮未切换检查点，不能增加资源重建覆盖。三张 GPU 文件及哈希保存在 ignored 测试报告中；报告和原始像素均不进入发布包。
+
 ## 2026-10-19 整合候选复测
 
 随后 `path-fit-integration2-20261019` 使用同一Integration1 DLL、获准的无人值守前台启动，实际进入岔路场景并保持42秒，续租0→10。正常选择后applied/restored均1，rejected/unresolved/service_terminal/pending_restore均0。native清理、入口恢复、正常关闭与5文件原哈希独立核验通过。最终状态SHA256 `63aff405614bb1da2865ecc1afa0e4eae40e96d782545ecd4fd1ed4b40e19bfa`，session `continuous-stereo-17484-20261019-040851-78c79251`。这证明新整合下此场景的持续租约与恢复，不证明双眼布局像素、裁剪或黎明之锤提示；后续补GPU布局采样再决定默认提升。
