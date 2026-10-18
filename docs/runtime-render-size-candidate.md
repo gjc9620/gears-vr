@@ -8,6 +8,19 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+SourcePixels2 diagnostic follow-up: the private build
+`a79ade0afe7b00df7bfb5a635bf4401edf6bcb13fc7244e2114865263d96831a`
+entered projection at recommended1280x1400 times2, but failed during the first
+checkpoint reload: owned_error14, stop_reason proof_failure; native cleanup
+was not verified. No HDR raw readback was obtained. This is a failed diagnostic,
+not evidence that source pixels or checkpoint rebuilding are correct.
+The coordinator subsequently requested normal game exit and restored all five
+protected configuration/profile files with matching hashes. Original failure
+report is preserved at
+`analysis/runtime/runtime-source-pixels2-scale2-run1-20261019.json`, with
+separate `.recovery.json`. The diagnostic is not the launcher default.
+The required0.0.1 replacement route and priority above DLSS remain unchanged.
+
 ### Blocking image defect at scale 2.0
 
 Synthetic transport check,2026-10-19: private
