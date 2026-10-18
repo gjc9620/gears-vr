@@ -37,6 +37,18 @@ driver: `analysis/runtime/verify-release2-extracted.py`. This verifies the
 delivered archive's offline dependency closure, not installation or headset
 behavior on another player's machine.
 
+RuntimeRelease2 also passed the automatic PathChoice lifecycle at1.25x
+(1600x1750 per eye, source3200x1750) with the clean-package HUD65 setting.
+Session2808 `continuous-stereo-2808-20261019-075038-d22d0000` acquired one
+group position, held42 seconds with10 renewals and restored after normal choice.
+Final applied/restored counters were1/1; rejection, unresolved and service-terminal
+counters were0. Native cleanup and entry restoration passed, the game closed
+normally, and all five backed-up settings/profile files were restored.
+Evidence: `analysis/runtime/path-fit-release2-scale125-20261019.json` and its
+launcher log. Four GPU readback files were saved; no new headset or Hammer-pickup
+acceptance is inferred. The test explicitly allowed the owned game foreground,
+muted game audio and used a child-only simulator runtime.
+
 The same DepthReclaim1 DLL also passed scale0.7: runtime recommendation
 1280x1400 produced896x980 per eye (SBS1792x980). Both checkpoint reloads,
 native cleanup, independent entry restoration and five-file restoration
