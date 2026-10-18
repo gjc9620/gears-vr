@@ -54,3 +54,18 @@ Keep `GEARSVR_TEST_MUTE_GAME=1` and
 `GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY=1` on autonomous test children. Do not set
 these variables globally or on normal player launches. Do not fall back to the
 old startup/runtime pair if the test candidates or their hashes are unavailable.
+
+## Actual combined check (2026-10-18)
+
+`analysis/runtime/path-fit-runtime9-20261018.json` used both candidates and the
+explicit test flags. The game and OpenXR probe ran, and XR reported projection
+submissions. A read-only Z-order walk sampled 785 times after owned identities
+were available; no visible owned game/probe window appeared above the current
+foreground window. This is sampled evidence, not proof of every startup instant
+or every multi-monitor layout. The check made no focus, move or resize requests.
+
+The longer UI hold check stopped on an unverified native-status read, so the
+whole VR regression did not pass. Native cleanup, independent entry restoration,
+normal game close and five settings/profile restores did pass. This outcome
+supports the new placement policy only within the sampled interval; the status
+read failure remains separate work. The system runtime registry was not changed.
