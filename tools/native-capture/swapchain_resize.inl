@@ -1,5 +1,6 @@
 // DXGI lifecycle handling for the game-resolution transport. No requested
-// dimensions or queue arguments are changed. Call only the original API once.
+// queue arguments are changed. The explicit private zero-extent trial can
+// resolve zero dimensions from fresh evidence. Call the original API once.
 #if defined(GEARS_GAME_RESOLUTION) && GEARS_GAME_RESOLUTION
 namespace game_resize {
 using ResizeFn=HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain*,UINT,UINT,UINT,DXGI_FORMAT,UINT);
@@ -8,6 +9,7 @@ ResizeFn original{};Resize1Fn original1{};
 thread_local unsigned depth{};
 std::atomic<unsigned> calls{},completed{},failed{},rejected{},drain_failed{};
 struct Depth {Depth(){++depth;}~Depth(){--depth;}};
+struct LastErrorBoundary {DWORD value{GetLastError()};~LastErrorBoundary(){SetLastError(value);}};
 struct ResizeTrace {
     unsigned method{},count{},width{},height{},format{},flags{};uintptr_t chain{};
     uint64_t generation_before{},generation_after{};long long begin_qpc{},end_qpc{};
@@ -74,17 +76,20 @@ void finish(Boundary const& boundary,IDXGISwapChain* chain,HRESULT result,bool q
     if(boundary.publisher){StereoPublishBypass bypass;stereo_publisher.end_resize();}
 }
 HRESULT STDMETHODCALLTYPE hook(IDXGISwapChain* chain,UINT count,UINT width,UINT height,DXGI_FORMAT format,UINT flags){
-    Scope scope;Depth nested;
+    LastErrorBoundary error;Scope scope;Depth nested;
     const auto startup=gears_swapchain_startup::begin_resize(gears_swapchain_startup::resize,chain,count,width,height,format,flags,
         _ReturnAddress(),prime_recording.load(),recording.load());
     const auto boundary=begin(chain,0,count,width,height,format,flags);
-    const auto result=original(chain,count,width,height,format,flags);
+    const auto dimensions=gears_swapchain_startup::prepare_resize(startup,chain,width,height,depth==1);
+    SetLastError(error.value);
+    const auto result=original(chain,count,dimensions.width,dimensions.height,format,flags);
+    error.value=GetLastError();
     gears_swapchain_startup::finish(startup,result,chain);
     finish(boundary,chain,result);return result;
 }
 HRESULT STDMETHODCALLTYPE hook1(IDXGISwapChain3* chain,UINT count,UINT width,UINT height,DXGI_FORMAT format,UINT flags,
                                 const UINT* nodes,IUnknown* const* queues){
-    Scope scope;Depth nested;
+    LastErrorBoundary error;Scope scope;Depth nested;
     const auto startup=gears_swapchain_startup::begin_resize(gears_swapchain_startup::resize1,chain,count,width,height,format,flags,
         _ReturnAddress(),prime_recording.load(),recording.load(),nodes,queues);
     const auto boundary=begin(chain,1,count,width,height,format,flags);bool same_queue=true;
@@ -94,7 +99,10 @@ HRESULT STDMETHODCALLTYPE hook1(IDXGISwapChain3* chain,UINT count,UINT width,UIN
         for(unsigned i=0;same_queue&&i<n;++i){IUnknown* value{};
             same_queue=safe_copy(&value,queues+i,sizeof(value))&&value&&canonical_identity(value)==boundary.queue;}
     }
-    const auto result=original1(chain,count,width,height,format,flags,nodes,queues);
+    const auto dimensions=gears_swapchain_startup::prepare_resize(startup,chain,width,height,depth==1);
+    SetLastError(error.value);
+    const auto result=original1(chain,count,dimensions.width,dimensions.height,format,flags,nodes,queues);
+    error.value=GetLastError();
     gears_swapchain_startup::finish(startup,result,chain);
     finish(boundary,chain,result,same_queue);return result;
 }

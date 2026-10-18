@@ -7,13 +7,24 @@
 #include <windows.h>
 #include <dxgi1_4.h>
 #include <d3d12.h>
+#include "background_zero_extent_policy.h"
+#if defined(GEARS_BACKGROUND_ZERO_EXTENT_CONTROL) && GEARS_BACKGROUND_ZERO_EXTENT_CONTROL && (!defined(GEARS_SWAPCHAIN_STARTUP_TRACE) || !GEARS_SWAPCHAIN_STARTUP_TRACE)
+#error Background zero extent control requires startup trace
+#endif
 
-// Independent CPU evidence only. Never calls transport begin/finish, retains
-// resources, changes arguments, or touches window geometry/activation.
+// Independent CPU evidence. No transport begin/finish, retained resources,
+// or window mutations. The separately gated private control returns effective
+// dimensions; the caller still owns exactly one original resize invocation.
 namespace gears_swapchain_startup {
 constexpr unsigned capacity=64, invalid=capacity;
 enum Method:unsigned {create_legacy,create_hwnd,create_composition,resize,resize1};
 enum Reason:unsigned {not_queried,api_failed,no_chain,desc_failed,buffer_failed,buffer_not_d3d12,complete};
+struct PreResize {
+ HRESULT desc_result{E_PENDING},buffer_result{E_PENDING},resource_result{E_PENDING};
+ DXGI_SWAP_CHAIN_DESC desc{};D3D12_RESOURCE_DESC buffer{};
+ gears_background_zero_extent::Evidence evidence{};
+ unsigned effective_width{},effective_height{},substituted{};
+};
 struct Row {
  unsigned method{},prime{},running{},request_bytes{},request_readable{},full_bytes{},full_readable{};
  unsigned width{},height{},count{},format{},flags{},stack_count{},reason{};
@@ -23,6 +34,7 @@ struct Row {
  std::array<unsigned char,128> request{};std::array<unsigned char,64> fullscreen{};
  std::array<uintptr_t,7> arguments{};
  std::array<void*,8> stack{};DXGI_SWAP_CHAIN_DESC desc{};D3D12_RESOURCE_DESC buffer{};
+ PreResize pre{};
 };
 struct Export {std::array<bool,capacity> emitted{};bool summary{};};
 template<unsigned N> struct Store {
@@ -40,6 +52,47 @@ template<class Query> inline void observe_result(Row& row,HRESULT result,bool ch
 }
 #if defined(GEARS_SWAPCHAIN_STARTUP_TRACE) && GEARS_SWAPCHAIN_STARTUP_TRACE
 inline Store<capacity> records;
+inline void window_evidence(HWND hwnd,gears_background_zero_extent::Evidence& e){
+ DWORD owner{};e.owned_hwnd=hwnd&&GetWindowThreadProcessId(hwnd,&owner)&&owner==GetCurrentProcessId();
+ if(!e.owned_hwnd)return;
+ const HWND foreground=GetForegroundWindow();DWORD foreground_pid{};
+ e.background_verified=foreground&&GetWindowThreadProcessId(foreground,&foreground_pid)&&foreground_pid&&foreground_pid!=owner;
+ e.iconic=IsIconic(hwnd)!=FALSE;RECT client{};
+ e.client_valid=GetClientRect(hwnd,&client)&&client.right>=client.left&&client.bottom>=client.top;
+ if(e.client_valid){e.client_width=static_cast<unsigned>(client.right-client.left);e.client_height=static_cast<unsigned>(client.bottom-client.top);}
+ // Fail closed if foreground changed while sampling.
+ e.background_verified=e.background_verified&&foreground==GetForegroundWindow();
+}
+template<class WindowQuery> inline gears_background_zero_extent::Decision prepare_resize_with(
+ unsigned index,IDXGISwapChain* chain,UINT width,UINT height,bool outermost,WindowQuery query){
+ const DWORD saved=GetLastError();gears_background_zero_extent::Decision decision{width,height,false};
+ // A full trace cannot safely authorize an unrecorded control operation.
+ if(index==invalid||!chain)return decision;
+ auto& p=records.rows[index].pre;p=PreResize{};auto& e=p.evidence;e.outermost=outermost;
+#if defined(GEARS_BACKGROUND_ZERO_EXTENT_CONTROL) && GEARS_BACKGROUND_ZERO_EXTENT_CONTROL
+ e.trial_enabled=true;
+#endif
+ p.desc_result=chain->GetDesc(&p.desc);
+ if(succeeded(p.desc_result)){
+  e.windowed=p.desc.Windowed!=FALSE;query(p.desc.OutputWindow,e);
+  IUnknown* object{};p.buffer_result=chain->GetBuffer(0,__uuidof(IUnknown),reinterpret_cast<void**>(&object));
+  if(succeeded(p.buffer_result)&&object){
+   ID3D12Resource* resource{};p.resource_result=object->QueryInterface(__uuidof(ID3D12Resource),reinterpret_cast<void**>(&resource));
+   if(succeeded(p.resource_result)&&resource){p.buffer=resource->GetDesc();resource->Release();}
+   object->Release();
+  }
+  e.physical_verified=succeeded(p.buffer_result)&&succeeded(p.resource_result)&&
+   p.buffer.Dimension==D3D12_RESOURCE_DIMENSION_TEXTURE2D&&p.desc.BufferCount&&
+   p.buffer.Width==p.desc.BufferDesc.Width&&p.buffer.Height==p.desc.BufferDesc.Height&&p.buffer.Format==p.desc.BufferDesc.Format;
+  if(e.physical_verified){e.physical_width=p.desc.BufferDesc.Width;e.physical_height=p.desc.BufferDesc.Height;}
+ }
+ decision=gears_background_zero_extent::resolve(width,height,e);
+ p.effective_width=decision.width;p.effective_height=decision.height;p.substituted=decision.substituted;
+ SetLastError(saved);return decision;
+}
+inline gears_background_zero_extent::Decision prepare_resize(unsigned index,IDXGISwapChain* chain,UINT width,UINT height,bool outermost){
+ return prepare_resize_with(index,chain,width,height,outermost,window_evidence);
+}
 inline bool copy_bytes(void* out,const void* source,size_t size){
  if(!source)return false;
  __try {std::memcpy(out,source,size);return true;} __except(EXCEPTION_EXECUTE_HANDLER){return false;}
@@ -130,12 +183,18 @@ inline bool print(FILE* file,Export* cursor=nullptr){
    const auto* raw=reinterpret_cast<const unsigned char*>(&r.desc);for(unsigned j=0;j<sizeof(r.desc);++j)fprintf(file,"%02x",raw[j]);}
   fprintf(file," buffer_raw=");if(r.reason==complete){
    const auto* raw=reinterpret_cast<const unsigned char*>(&r.buffer);for(unsigned j=0;j<sizeof(r.buffer);++j)fprintf(file,"%02x",raw[j]);}
+  const auto& p=r.pre;const auto& e=p.evidence;
+  fprintf(file," pre_desc_hr=%08lx pre_desc_size=%u,%u pre_hwnd=%llx pre_windowed=%u pre_buffer_hr=%08lx pre_resource_hr=%08lx pre_buffer_dimension=%u pre_buffer_size=%llu,%u pre_buffer_format=%u pre_physical_verified=%u pre_owned=%u pre_background=%u pre_iconic=%u pre_client_valid=%u pre_client_size=%u,%u control_enabled=%u control_outermost=%u effective_size=%u,%u substituted=%u",
+   (unsigned long)p.desc_result,p.desc.BufferDesc.Width,p.desc.BufferDesc.Height,(unsigned long long)reinterpret_cast<uintptr_t>(p.desc.OutputWindow),unsigned(e.windowed),
+   (unsigned long)p.buffer_result,(unsigned long)p.resource_result,unsigned(p.buffer.Dimension),p.buffer.Width,p.buffer.Height,unsigned(p.buffer.Format),unsigned(e.physical_verified),
+   unsigned(e.owned_hwnd),unsigned(e.background_verified),unsigned(e.iconic),unsigned(e.client_valid),e.client_width,e.client_height,unsigned(e.trial_enabled),unsigned(e.outermost),p.effective_width,p.effective_height,p.substituted);
   fputc('\n',file);
   if(cursor)cursor->emitted[i]=true;wrote=true;
  }
  return wrote;
 }
 #else
+inline gears_background_zero_extent::Decision prepare_resize(unsigned,IDXGISwapChain*,UINT width,UINT height,bool){return {width,height,false};}
 inline unsigned begin(Method,const void*,unsigned,HWND,void*,bool,bool,const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* =nullptr){return invalid;}
 inline unsigned begin_factory(Method,void*,IUnknown*,HWND,const void*,unsigned,const DXGI_SWAP_CHAIN_FULLSCREEN_DESC*,IDXGIOutput*,void*,void*,bool,bool){return invalid;}
 inline unsigned begin_resize(Method,IDXGISwapChain*,UINT,UINT,UINT,DXGI_FORMAT,UINT,void*,bool,bool,const UINT* =nullptr,IUnknown* const* =nullptr){return invalid;}

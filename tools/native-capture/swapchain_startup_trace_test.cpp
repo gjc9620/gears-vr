@@ -95,6 +95,37 @@ int main(){
  assert(records.rows[bad_buffer].reason==buffer_failed&&records.rows[bad_buffer].buffer.Width==0);
  chain.buffer_hr=S_OK;chain.resource.supported=false;auto wrong_resource=begin_resize(resize,&chain,0,8,8,DXGI_FORMAT_UNKNOWN,0,nullptr,true,false);finish(wrong_resource,S_OK,&chain);
  assert(records.rows[wrong_resource].reason==buffer_not_d3d12&&records.rows[wrong_resource].resource_result==E_NOINTERFACE&&chain.resource.refs==1);
+ // Pre-call adapter releases every COM reference before the caller forwards
+ // ResizeBuffers. Window state is injected; this test never creates a window.
+ chain.resource.supported=true;chain.desc.Windowed=TRUE;
+ chain.desc.BufferDesc.Width=1920;chain.desc.BufferDesc.Height=1080;
+ auto pre_index=begin_resize(resize,&chain,2,0,0,DXGI_FORMAT_UNKNOWN,0,nullptr,true,false);
+ const auto window=[](HWND,gears_background_zero_extent::Evidence& e){
+  e.owned_hwnd=e.background_verified=e.iconic=true;SetLastError(777);
+ };
+ SetLastError(12345);
+ auto dimensions=prepare_resize_with(pre_index,&chain,0,0,true,window);
+ assert(GetLastError()==12345&&chain.resource.refs==1&&records.rows[pre_index].pre.evidence.physical_verified);
+#if defined(GEARS_BACKGROUND_ZERO_EXTENT_CONTROL) && GEARS_BACKGROUND_ZERO_EXTENT_CONTROL
+ assert(dimensions.substituted&&dimensions.width==1920&&dimensions.height==1080);
+#else
+ assert(!dimensions.substituted&&!dimensions.width&&!dimensions.height);
+#endif
+ unsigned forwarded{};const auto forward=[&](unsigned w,unsigned h){
+  ++forwarded;assert(chain.resource.refs==1);assert(w==dimensions.width&&h==dimensions.height);return E_FAIL;
+ };
+ assert(forward(dimensions.width,dimensions.height)==E_FAIL&&forwarded==1);
+ assert(!prepare_resize_with(pre_index,&chain,0,0,false,window).substituted);
+ chain.resource.desc.Width=8;assert(!prepare_resize_with(pre_index,&chain,0,0,true,window).substituted);
+ chain.resource.desc.Width=1920;chain.desc_hr=E_FAIL;
+ const auto buffer_calls=chain.buffer_calls;
+ assert(!prepare_resize_with(pre_index,&chain,0,0,true,window).substituted&&chain.buffer_calls==buffer_calls);
+ chain.desc_hr=S_OK;chain.buffer_hr=E_FAIL;
+ assert(!prepare_resize_with(pre_index,&chain,0,0,true,window).substituted&&chain.resource.refs==1);
+ chain.buffer_hr=S_OK;
+ dimensions=prepare_resize_with(pre_index,&chain,0,900,true,window);
+ assert(dimensions.height==900&&chain.resource.refs==1);
+ finish(pre_index,E_FAIL,&chain);
  FILE* output{};assert(tmpfile_s(&output)==0&&output);Export cursor;
  assert(print(output,&cursor)&&!print(output,&cursor));rewind(output);
  std::array<char,32768> text{};const auto length=fread(text.data(),1,text.size()-1,output);assert(length&&fclose(output)==0);
@@ -104,7 +135,7 @@ int main(){
  for(unsigned t=0;t<4;++t)workers.emplace_back([]{for(unsigned n=0;n<24;++n){
   auto i=begin_resize(resize1,nullptr,2,8,8,DXGI_FORMAT_R8G8B8A8_UNORM,0,nullptr,true,false);
   finish(i,E_FAIL,nullptr);}});
- for(auto& w:workers)w.join();assert(records.attempts.load()==104);
+ for(auto& w:workers)w.join();assert(records.attempts.load()==105);
  for(auto& r:records.ready)assert(r.load());
  SetLastError(4321);assert(begin(create_hwnd,nullptr,0,nullptr,nullptr,false,false)==invalid&&GetLastError()==4321);
 #else
@@ -112,6 +143,8 @@ int main(){
  // no request dereference, COM call, stack capture, or output is performed.
  assert(begin(create_hwnd,reinterpret_cast<void*>(1),999,nullptr,nullptr,true,false)==invalid);
  assert(begin_resize(resize,reinterpret_cast<IDXGISwapChain*>(1),2,8,8,DXGI_FORMAT_UNKNOWN,0,nullptr,true,false)==invalid);
+ SetLastError(2468);const auto dimensions=prepare_resize(0,reinterpret_cast<IDXGISwapChain*>(1),0,900,true);
+ assert(!dimensions.substituted&&dimensions.width==0&&dimensions.height==900&&GetLastError()==2468);
  finish(0,S_OK,reinterpret_cast<IDXGISwapChain*>(1));print(reinterpret_cast<FILE*>(1));
 #endif
  puts("swapchain startup trace boundaries/prime/bounded/off PASS");
