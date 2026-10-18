@@ -34,10 +34,10 @@ target so Release assertions remain enabled. Run it with:
 ctest --test-dir tools/quiet-startup/build-test-behind1 -R "^BackgroundPolicyTest$" --output-on-failure
 ```
 
-This policy has only offline/mock validation so far. Actual window occlusion
-and continued game rendering have not been verified. The simulator preview
-requires its own runtime-side policy; this game startup DLL does not control
-windows owned by the OpenXR probe process.
+The combined actual-run check below supplements the offline/mock validation;
+it does not establish every startup instant or desktop layout. The simulator
+preview requires its own runtime-side policy; this game startup DLL does not
+control windows owned by the OpenXR probe process.
 
 The matching simulator candidate is described by
 `tools/openxr-probe/simulator-quiet/test-behind-provenance.json`. For local
