@@ -46,6 +46,21 @@ Receipts: ignored `runtime-default-smoke2-recovery.json`,
 `runtime-default-smoke2-pixels.json`, and
 `continuous-stereo-32904-20261019-024011-980a4109.json`.
 
+### Actual 0.7x scale smoke
+
+A separate child config set render_scale=0.7 without changing the user's config.
+With the same simulator recommendation 1280x1400, the actual GPU readbacks were
+1792x980 SBS (896x980 per eye). Three samples had distinct hashes and nonzero
+means in both halves. Session `continuous-stereo-40272-20261019-024237-e8f3debe`
+recorded 1344 stereo projection layers and 399 scene copies, then stopped with
+native cleanup, entry restoration, normal game exit and all five settings/profile
+restores verified. The driver tolerated a disappearing normal-close window so
+one stale HWND could not skip remaining cleanup. Evidence:
+`analysis/runtime/runtime-scale07-smoke-evidence.json` and the matching full
+driver/session reports. This proves actual size scaling for this recommendation
+and startup path; it does not establish physical-headset quality, frame-rate
+improvement or all scale/runtime combinations.
+
 ### Verified terminal retirement follow-up
 
 Session `continuous-stereo-17496-20261018-192745-63abd9ec` ran the retirement candidate for 59.37 seconds of scene submission: 1202 published pairs / copies and 5347 simulator scene submissions. Native shutdown reached `live_phase=4`, `shutdown_phase=3`, `retained=0`, `resources_retained=0`, `owned_shutdown_closed=1`, fence state 2 and no cleanup timeout or owned error. The session runner independently confirmed both native cleanup and entry-byte restoration; its scoped session result passed. Game then exited normally and all four pre-test profile hashes were restored. Raw status and GPU samples are preserved in ignored `analysis/runtime/retirement-17496-evidence/`. The independent runtime-size candidate manifest now selects this build; the player default remains unchanged.
