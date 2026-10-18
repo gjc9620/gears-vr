@@ -77,6 +77,9 @@ public:
         for(unsigned i=0;i<4;++i)resources=resources&&binding.raw_resources[i]&&pointer(source,offsets[i])==binding.raw_resources[i];
         if(current_||!resources||!select_input_eye(layout_,layout_.input,bases,eye)||eye!=use.eye||
            !adapter_.observe_producer(entry,binding.producer)){adapter_.invalidate(entry);return {};}
+        // First actual Evaluate binds physical resources; Create deliberately
+        // had no such arguments. Never patch/call Eval with an unbound layout.
+        if(!adapter_.bound_layout(entry,layout_)){adapter_.invalidate(entry);return {};}
         bool reset{};
         if(!adapter_.prepare_evaluate(entry,use,binding.command,binding.public_handle,use.identity.parameters,
                                      word(source,0x38)!=0,reset))return {};

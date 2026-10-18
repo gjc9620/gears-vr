@@ -69,7 +69,7 @@ uint64_t ControlOwner::create(NativeCreateSource const& family,uintptr_t command
     using namespace gears_ngx_stereo;ControlCreateBinding binding;
     if(!configured_||!callbacks_.create(callbacks_.lifetime.get(),family,command,binding)||
        binding.identity.world!=family.world||binding.identity.parameters!=family.parameters||
-       binding.command.raw!=command||!valid(binding.layout)||family.fields[0]!=2*binding.layout.input.width||
+       binding.command.raw!=command||!valid_create_layout(binding.layout)||family.fields[0]!=2*binding.layout.input.width||
        family.fields[1]!=binding.layout.input.height||family.fields[2]!=binding.layout.full_output.width||
        family.fields[3]!=binding.layout.full_output.height){invalidate();return dispatch_unavailable;}
     {std::lock_guard<std::mutex> lock(metadata_mutex_);creation_=binding;}

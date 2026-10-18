@@ -43,12 +43,14 @@ inline bool valid(Command c,Identity id){return c.raw&&c.list&&c.generation&&c.d
 // Derive the logical eye only from the attested producer's matching Color,
 // Depth and MV domains. TLS current-view eye is intentionally not an input.
 inline bool select_input_eye(Layout const& l,Extent rendered,std::array<Point,3> const& bases,unsigned& eye){
-    if(!valid(l)||!same(rendered,l.input)||!same(bases[0],bases[1])||!same(bases[0],bases[2]))return false;
+    if(!valid_create_geometry(l)||!same(rendered,l.input)||!same(bases[0],bases[1])||!same(bases[0],bases[2]))return false;
     for(unsigned i=0;i<2;++i)if(same(bases[0],l.input_base[i])){eye=i;return true;}return false;
 }
 struct ExecuteReceipt {
     Submission submission{};uint64_t order{};unsigned member{};
 };
+enum class RecordingKind {creation,evaluate,copy};
+struct PendingRecording {RecordingKind kind{};unsigned eye{};uint64_t list{},generation{};};
 enum class AcceptancePhase {inactive,candidate,accepted,quarantined};
 // The host captures these from actual named Color/Depth/MV producers and typed
 // resource bindings BEFORE Eval. Patched Evaluate arguments are not evidence of
@@ -117,7 +119,7 @@ inline bool output_geometry(RecordedOutput const& r,Identity id,uint64_t ticket,
 template<size_t N> inline bool patch_create(std::array<unsigned char,N> const& original,
     std::array<unsigned char,N>& owned,Layout const& l){
     static_assert(N>=create_consumed_span,"consumer-complete Create shadow required");
-    if(!valid(l))return false;owned=original;
+    if(!valid_create_layout(l))return false;owned=original;
     uint32_t dimensions[]{l.input.width,l.input.height,l.eye_output.width,l.eye_output.height};
     std::memcpy(owned.data(),dimensions,sizeof dimensions);return true;
 }
@@ -135,6 +137,7 @@ class StereoAdapter {
     AdapterBackend& backend_;AdapterPrerequisites prerequisites_;
     std::atomic_flag gate_=ATOMIC_FLAG_INIT;std::atomic<bool> poisoned_{false};
     std::unique_ptr<FeaturePair> pair_;std::unique_ptr<CopySequence> sequence_;
+    Layout layout_{};bool resources_bound_{};std::array<Resource,4> epoch_resources_{};
     Command creation_command_{};bool creation_recorded_{},creation_submitted_{},creation_retired_{},release_uncertain_{};
     ExecuteReceipt creation_execution_{},last_execution_{};
     std::array<EvalUse,2> uses_{};std::array<CopyPlan,2> copies_{};
@@ -185,9 +188,10 @@ public:
     // Restart requires all old owned handles released. Destruction never calls
     // vendor Release: host must retain/quarantine this owner until drained.
     bool begin_epoch(Entry const& e,Identity id,Layout layout){
-        if(!allowed(e)||!prerequisites_.ready()||!valid(id)||!valid(layout)||release_uncertain_||
+        if(!allowed(e)||!prerequisites_.ready()||!valid(id)||!valid_create_layout(layout)||release_uncertain_||
            (creation_recorded_&&!creation_retired_)||(pair_&&!pair_->drained()))return false;
         pair_=std::make_unique<FeaturePair>(id,layout);sequence_.reset();creation_command_={};
+        layout_=layout;resources_bound_=false;epoch_resources_={};
         creation_recorded_=creation_submitted_=creation_retired_=false;creation_execution_=last_execution_={};
         uses_={};copies_={};recorded_={};evaluated_={};copied_={};submitted_={};history_reset_={true,true};
         phase_=AcceptancePhase::candidate;candidate_ticket_=producer_ticket_=0;producers_={};producer_observed_={};accepted_resources_={};executions_={};
@@ -201,7 +205,11 @@ public:
         auto const& use=observed.use;
         if(!allowed(e)||!pair_||!pair_->usable()||prepared_||!same(use.identity,pair_->identity())||
            !use.ticket||!use.list||!use.generation||use.eye>1||!observed.view){fail();return false;}
-        auto const& l=pair_->layout();unsigned eye{};std::array<Point,3> bases{};
+        auto l=layout_;unsigned eye{};std::array<Point,3> bases{};
+        if(!resources_bound_)for(unsigned i=0;i<4;++i){
+            if(!l.physical[i].width&&!l.physical[i].height)l.physical[i]=observed.resources[i].extent;
+        }
+        if(!valid(l)){fail();return false;}
         for(unsigned i=0;i<3;++i){auto const& r=observed.rendered[i];bases[i]={r.x,r.y};
             if(!same(Extent{r.width,r.height},l.input)){fail();return false;}}
         if(!select_input_eye(l,l.input,bases,eye)||eye!=use.eye){fail();return false;}
@@ -209,6 +217,8 @@ public:
             if(!r.identity||r.device!=use.identity.device||!same(r.extent,l.physical[i])||!r.format||
                ((i==0||i==3)&&r.format!=26)||r.mip||r.samples!=1||r.subresource){fail();return false;}
             for(unsigned j=0;j<i;++j)if(r.identity==observed.resources[j].identity){fail();return false;}}
+        if(resources_bound_)for(unsigned i=0;i<4;++i)
+            if(!same_resource(observed.resources[i],epoch_resources_[i])){fail();return false;}
         if(phase_==AcceptancePhase::candidate&&candidate_ticket_&&candidate_ticket_!=use.ticket){fail();return false;}
         if(!eye){
             if(producer_ticket_==use.ticket||(ticket_&&(use.ticket<=ticket_||!copied_[0]||!copied_[1]||!submitted_[0]||!submitted_[1]||!copy_submitted_[0]||!copy_submitted_[1]))){fail();return false;}
@@ -221,8 +231,13 @@ public:
         }else if(producer_ticket_!=use.ticket||!producer_observed_[0]||producer_observed_[1]||
             ticket_!=use.ticket||!copied_[0]||observed.view==producers_[0].view){fail();return false;}
         if(eye)for(unsigned i=0;i<4;++i)if(!same_resource(observed.resources[i],producers_[0].resources[i])){fail();return false;}
+        // Bind only after the full first-eye identity/domain/ticket checks.
+        // Create dimensions remain immutable; physical identity is fixed for
+        // this epoch even before the candidate reaches acceptance.
+        if(!resources_bound_){if(eye){fail();return false;}layout_=l;epoch_resources_=observed.resources;resources_bound_=true;}
         producers_[eye]=observed;producer_observed_[eye]=true;return true;
     }
+    bool bound_layout(Entry const& e,Layout& out){out={};if(!allowed(e)||!resources_bound_)return false;out=layout_;return true;}
     // Called at Create SDK dispatcher after the owned wrapper set eye-sized
     // parameters. The engine handle slot is written by host ONLY if admitted.
     DispatchResult create(Entry const& e,Command command,uint32_t feature,uint64_t parameters){
@@ -250,7 +265,7 @@ public:
             !producer_observed_[use.eye]||!same_use(producers_[use.eye].use,use)){fail();return false;}
         if(use.eye==0){
             if(ticket_&&(use.ticket<=ticket_||!copied_[0]||!copied_[1]||!submitted_[0]||!submitted_[1]||!copy_submitted_[0]||!copy_submitted_[1])){fail();return false;}
-            sequence_=std::make_unique<CopySequence>(pair_->layout(),pair_->identity());
+            sequence_=std::make_unique<CopySequence>(layout_,pair_->identity());
             recorded_={};evaluated_={};copied_={};submitted_={};copies_={};executions_={};next_copy_=0;ticket_=use.ticket;
             copy_executions_={};copy_recorded_={};copy_submitted_={};
         }else if(use.eye!=1||!copied_[0]||ticket_!=use.ticket){fail();return false;}
@@ -287,6 +302,17 @@ public:
         try{backend_.copy(plan);}catch(...){fail();throw;}
         if(!allowed(e)){fail();return false;}copies_[eye]=plan;copied_[eye]=true;++next_copy_;return true;
     }
+    // Actual SDK/copy calls, including failed calls, own these recording
+    // obligations. Never reconstruct them from diagnostic rows or TLS eye.
+    unsigned pending_recordings(Entry const& e,std::array<PendingRecording,5>& out){
+        out={};if(!allowed(e))return 0;unsigned n{};
+        if(creation_recorded_&&!creation_submitted_)out[n++]={RecordingKind::creation,0,creation_command_.list,creation_command_.generation};
+        for(unsigned eye=0;eye<2;++eye){
+            if(recorded_[eye]&&!submitted_[eye])out[n++]={RecordingKind::evaluate,eye,uses_[eye].list,uses_[eye].generation};
+            if(copy_recorded_[eye]&&!copy_submitted_[eye])out[n++]={RecordingKind::copy,eye,copies_[eye].list,copies_[eye].generation};
+        }
+        return n;
+    }
     // Call only AFTER real ExecuteCommandLists and successful Signal covering
     // that batch. Receipt order/member comes from the actual submission hook.
     bool submitted_creation(Entry const& e,ExecuteReceipt receipt){
@@ -318,7 +344,7 @@ public:
         for(unsigned eye=0;eye<2;++eye){auto const& o=observed[eye];auto const& c=o.completion;
             auto const& submitted=executions_[eye].submission;auto const& created=creation_execution_.submission;
             auto const& copied=copy_executions_[eye].submission;
-            auto const extent=pair_->layout().eye_output;
+            auto const extent=layout_.eye_output;
             if(!producer_observed_[eye]||!recorded_[eye]||!evaluated_[eye]||!copied_[eye]||!submitted_[eye]||!copy_submitted_[eye]||
                !same_use(o.use,uses_[eye])||o.feature!=pair_->state(eye).handle||
                !same_resource(o.output,producers_[eye].resources[3])||o.output.identity!=copies_[eye].source||
@@ -332,7 +358,7 @@ public:
     bool recorded_output(Entry const& e,RecordedOutput& out){
         if(!allowed(e)||!pair_||!pair_->usable()||phase_!=AcceptancePhase::accepted||producer_ticket_!=ticket_||
            !producer_observed_[0]||!producer_observed_[1]||!sequence_||!sequence_->complete()||!copied_[0]||!copied_[1])return false;
-        out={pair_->identity(),ticket_,copies_[0].target,pair_->layout(),copies_};return true;
+        out={pair_->identity(),ticket_,copies_[0].target,layout_,copies_};return true;
     }
     // This establishes actual ordered submissions, not completed pixels or
     // final-SRV association. Host still joins its actual Color/list draw proof.

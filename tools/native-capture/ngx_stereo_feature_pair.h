@@ -36,7 +36,7 @@ class FeaturePair {
         for(unsigned i=0;i<2;++i)if(handles_[i].handle==handle){index=i;return true;}return false;
     }
 public:
-    FeaturePair(Identity id,Layout l):identity_(id),layout_(l){if(!valid(id)||!valid(l))fail();}
+    FeaturePair(Identity id,Layout l):identity_(id),layout_(l){if(!valid(id)||!valid_create_layout(l))fail();}
     FeaturePair(FeaturePair const&)=delete;
     FeaturePair& operator=(FeaturePair const&)=delete;
     Identity identity()const{return identity_;}

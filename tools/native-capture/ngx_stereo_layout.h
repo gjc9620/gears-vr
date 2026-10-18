@@ -24,11 +24,17 @@ struct Layout {
     std::array<Point,2> input_base{};
     uint32_t stride{};
 };
-inline bool valid(Layout const& l){
+// Native Create has dimensions/quality/flags, but no resource pointers. Its
+// logical geometry is valid independently of later typed physical bindings.
+inline bool valid_create_geometry(Layout const& l){
     if(!bounded(l.full_output)||(l.full_output.width%2||l.full_output.height%2)||!bounded(l.input)||!bounded(l.eye_output))return false;
     if(l.stride!=l.full_output.width/2||!same(l.eye_output,{l.stride,l.full_output.height}))return false;
     if(l.input.width>l.stride||l.input.height>l.eye_output.height)return false;
     if(!same(l.input_base[0],{0,0})||!same(l.input_base[1],{l.stride,0}))return false;
+    return true;
+}
+inline bool valid(Layout const& l){
+    if(!valid_create_geometry(l))return false;
     for(auto e:l.physical)if(!bounded(e))return false;
     if(!contains(l.physical[3],{0,0,l.eye_output.width,l.eye_output.height}))return false;
     for(unsigned eye=0;eye<2;++eye){
@@ -37,6 +43,11 @@ inline bool valid(Layout const& l){
         if(!contains(l.physical[0],{eye*l.stride,0,l.eye_output.width,l.eye_output.height}))return false;
     }
     return true;
+}
+inline bool valid_create_layout(Layout const& l){
+    if(!valid_create_geometry(l))return false;
+    bool empty=true;for(auto e:l.physical)empty=empty&&!e.width&&!e.height;
+    return empty||valid(l); // Partial/guessed allocation metadata is rejected.
 }
 inline bool same(Layout const& a,Layout const& b){
     if(!same(a.full_output,b.full_output)||!same(a.input,b.input)||!same(a.eye_output,b.eye_output)||a.stride!=b.stride)return false;

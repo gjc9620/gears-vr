@@ -310,7 +310,31 @@ static void zero_handle_creation_retirement(){
         NativeResult raw{};assert(a.release_completed(entry,100,completion(5),raw)&&raw==named_result_success);
         assert(a.drained(entry)&&f.releases==1&&a.begin_epoch(entry,{2,2,3,4,6},layout()));}
 }
-int main(){patch_boundaries();disabled_and_prerequisites();independent_images_and_histories();create_failures_and_gpu_retirement();
+static void native_create_before_resources(){
+    auto logical=layout();logical.physical={};assert(valid_create_layout(logical)&&!valid(logical));
+    auto partial=logical;partial.physical[0]={2560,1080};assert(!valid_create_layout(partial));
+    for(unsigned fault=0;fault<9;++fault){Fake f;StereoAdapter a(f,ready());
+        {auto entry=a.enter();assert(a.begin_epoch(entry,identity(),logical));assert(a.create(entry,command(),1,4).admitted);
+            Layout unbound;assert(!a.bound_layout(entry,unbound)&&f.creates==2&&!f.evaluates);
+            std::array<PendingRecording,5> pending;assert(a.pending_recordings(entry,pending)==1&&pending[0].kind==RecordingKind::creation);
+            auto p=producer(0);switch(fault){case 0:p.resources[1].identity=0;break;case 1:p.resources[2].device++;break;
+                case 2:p.resources[1].extent.width=1280;break;case 3:p.resources[2].samples=4;break;
+                case 4:p.rendered[1].width=1280;break;case 5:p.view=0;break;case 6:p.use.identity.world++;break;
+                case 7:p.use.ticket=0;break;case 8:p.resources[3].identity=p.resources[0].identity;break;}
+            assert(!a.observe_producer(entry,p)&&!a.bound_layout(entry,unbound)&&f.evaluates==0);
+            NativeResult raw{};assert(!a.release_completed(entry,100,completion(99),raw));
+            assert(a.submitted_creation(entry,execution(2,1,1)));
+            assert(a.release_completed(entry,100,completion(1),raw)&&a.release_completed(entry,101,completion(1),raw)&&a.drained(entry));}
+    }
+    {Fake f;StereoAdapter a(f,ready());{auto entry=a.enter();assert(a.begin_epoch(entry,identity(),logical));assert(a.create(entry,command(),1,4).admitted);}
+        submit_create(a);assert(eval(a,f,0));copy(a,0);
+        {auto entry=a.enter();Layout bound;assert(a.bound_layout(entry,bound)&&same(bound,layout()));
+            auto changed=producer(1);changed.resources[2].identity+=99;assert(!a.observe_producer(entry,changed)&&f.evaluates==1);
+            std::array<PendingRecording,5> pending;assert(a.pending_recordings(entry,pending)==2&&pending[0].kind==RecordingKind::evaluate&&pending[1].kind==RecordingKind::copy);}
+        submit(a,0,2,2);auto entry=a.enter();NativeResult raw{};
+        assert(a.release_completed(entry,100,completion(2),raw)&&a.release_completed(entry,101,completion(2),raw)&&a.drained(entry));}
+}
+int main(){native_create_before_resources();patch_boundaries();disabled_and_prerequisites();independent_images_and_histories();create_failures_and_gpu_retirement();
     failed_recorded_eval_and_copy();bad_order_and_concurrency();boundary_rejections();result_mask_contract();candidate_observations_and_quarantine();zero_handle_creation_retirement();
     std::cout<<"NGX adapter SDK/copy/retirement boundary tests passed\n";}
 

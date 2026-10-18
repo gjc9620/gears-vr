@@ -129,7 +129,9 @@ struct ControlFixture {
         for(unsigned i=0;i<4;++i)r[i]={0x500u+i,0xd00,{2560,1080},26,0,1,0};return r;}
     static bool creation_binding(void*,ngx_stereo_host::NativeCreateSource const& source,uintptr_t raw,ngx_stereo_host::ControlCreateBinding& out){
         assert(source.fields[0]==1706&&source.fields[1]==720&&source.fields[2]==2560&&source.parameters==4&&raw==0x100);
-        out={identity(),layout(),command(0)};return true;}
+        gears_ngx_stereo::Layout logical;assert(source.create_layout(logical));
+        for(auto physical:logical.physical)assert(!physical.width&&!physical.height);
+        assert(!source.handle);out={identity(),logical,command(0)};return true;}
     static bool input_binding(void* owner_context,ngx_stereo_host::ControlConsumption consumed,gears_ngx_stereo::EvaluateShadow const&,uintptr_t raw,
         ngx_stereo_host::ControlInputTicket& out){
         auto& f=*static_cast<ControlFixture*>(owner_context);out.consumption=consumed;if(f.wrong_ticket)++out.consumption.ticket;
@@ -176,6 +178,7 @@ void control_cases(){
         assert(ngx_route_observer::hook_create(0x100,0,0,0,0,creation.data())==1&&fixture->creates==2&&handle==100&&creation==family_original);
         uint32_t actual[4]{};std::memcpy(actual,fixture->consumed_create.bytes.data(),sizeof(actual));
         assert(actual[0]==853&&actual[1]==720&&actual[2]==1280&&actual[3]==1080);
+        {auto entry=owner->adapter().enter();Layout physical;assert(!owner->adapter().bound_layout(entry,physical));}
         NativeCreateSource family_source;assert(native_create_source(9,family_source)&&family_source.fields[0]==1706&&family_source.fields[2]==2560);
         assert(!detach_control(owner));{auto e=owner->adapter().enter();assert(owner->adapter().submitted_creation(e,ControlFixture::execution(0,1)));}
         // Actual TLS stays on right view for BOTH evaluations, matching O/P.
@@ -187,7 +190,8 @@ void control_cases(){
             uint32_t no_reset{};std::memcpy(source.bytes.data()+0x38,&no_reset,4);const auto original=source.bytes;
             test_caller=base+0x9a35d3;auto result=ngx_route_observer::hook_evaluate(ControlFixture::command(2*eye).raw,0,0,source.bytes.data());
             assert(source.bytes==original);if(wrong_ticket){assert(result==dispatch_unavailable&&!fixture->evaluates);break;}
-            assert(result==1);CopyFacts facts;facts.identity=ControlFixture::identity();facts.ticket=7;facts.caller=0x1c6093;
+            assert(result==1);{auto entry=owner->adapter().enter();Layout physical;assert(owner->adapter().bound_layout(entry,physical)&&same(physical,ControlFixture::layout()));}
+            CopyFacts facts;facts.identity=ControlFixture::identity();facts.ticket=7;facts.caller=0x1c6093;
             auto cmd=ControlFixture::command(2*eye+1);facts.list=cmd.list;facts.generation=cmd.generation;facts.list_device=0xd00;
             facts.direct=facts.copy_source=facts.copy_dest=true;auto r=ControlFixture::resources();facts.resources={r[0],r[2],r[3],r[1]};
             facts.input_base=ControlFixture::layout().input_base;facts.feature_output={1280,1080};facts.evaluated_ordinal=eye;
