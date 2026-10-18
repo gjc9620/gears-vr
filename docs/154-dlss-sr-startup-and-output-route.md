@@ -231,3 +231,28 @@ Evidence is archived under ignored `analysis/runtime/dlss-native-menu6-*`.
 Menu6 selected Eval raw command-list addresses did not occur among its 99 recorded events. The previous event-only join therefore could not establish canonical identity/generation. The observer now keeps at most 64 typed Create/Reset candidates and two pinned Eval leases. Eviction loses evidence rather than manufacturing identity; failed Reset, closed creation, world/generation mismatch and tracker capacity loss reject. There is no conversion of an NGX integer into a COM pointer, no event fallback, and no GPU/state/producer certification. Leases release after callback drain; the first rejection records its specific mask and tracker diagnostics.
 
 Root rebuilt the sampling DLL, SHA256 `a969235e2f63681e86986cb334bf4550bfc7869b1d3770431b298e74202fadb6`. Three registered NGX tests and all 22 startup checks passed. The new real-D3D lifetime test exercises 600 candidate creations with synthetic tracker generations. No actual game run has used this revision; defaults/packages remain unchanged. Evidence: ignored `analysis/runtime/ngx-sampling-startup-suite-typed.json` and `ngx-typed-list-join/`.
+
+### Actual menu7 sample and Copy caller-unit correction
+
+Menu7 accepted two Evaluate observations with typed command lists and resources,
+one Execute each, but recorded no copies. It retained 237 events and 41 resources;
+six dropped observations remain unexplained. The UI route stopped after a sent
+key when its post-key snapshot exceeded the timeout; no uncertain input was
+replayed. Normal exit, entry restoration and five settings/profile restores
+passed. This is not playable DLSS or GPU output acceptance. Evidence remains in
+ignored `analysis/runtime/dlss-native-menu7-*`.
+
+Source inspection identified a definite copy-observer error: the original copy
+hook passes `_ReturnAddress() - base` through unchanged, while CopyScope compared
+that RVA with `base + 0x1c6093`. CopyScope now compares with RVA `0x1c6093`.
+The real-D3D regression sends a correct RVA, an absolute address and a foreign
+RVA, checking that only the correct observation is retained and all original
+CopyTextureRegion calls still execute. It does not attribute the six drops to
+this filter or prove that menu7's selected TLS scope contained the missing copy.
+
+Root rebuilt the candidate (SHA256
+`219fa9e072ac96013ee8ec0c09849e33011011f957f2e50de152757e4f22d60b`)
+and passed all three registered NGX tests. The prior live fixture incorrectly
+supplied an absolute address; the corrected fixture now follows the real hook
+contract. No game or simulator was launched for this revision. A fresh actual
+sample is still required; release defaults and packages remain unchanged.

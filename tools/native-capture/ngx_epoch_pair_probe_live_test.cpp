@@ -65,7 +65,20 @@ int main(){try{
         auto b=barriers[0];b.Transition.StateBefore=D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;b.Transition.StateAfter=D3D12_RESOURCE_STATE_COPY_DEST;
         {ngx_epoch_pair::BarrierScope observed(list.Get(),1,&b,base+12);list->ResourceBarrier(1,&b);observed.returned(list.Get());}
         D3D12_TEXTURE_COPY_LOCATION src{},dst{};src.pResource=resources[1].Get();dst.pResource=resources[0].Get();src.Type=dst.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        {ngx_epoch_pair::CopyScope observed(list.Get(),&dst,0,0,0,&src,nullptr,base+0x1c6093);list->CopyTextureRegion(&dst,0,0,0,&src,nullptr);observed.returned(list.Get(),&dst,&src,nullptr);}
+        // Real color_copy_observer passes _ReturnAddress()-base through both
+        // passthrough layers unchanged. Every call still executes its original
+        // D3D Copy; observation alone rejects wrong units or a foreign RVA.
+        unsigned originals{};
+        auto copy_passthrough=[&](uintptr_t caller_rva){
+            ngx_epoch_pair::CopyScope observed(list.Get(),&dst,0,0,0,&src,nullptr,caller_rva);
+            list->CopyTextureRegion(&dst,0,0,0,&src,nullptr);++originals;
+            observed.returned(list.Get(),&dst,&src,nullptr);return observed.index;};
+        const auto prior_events=ngx_epoch_pair::probe.event_count;
+        check(copy_passthrough(base+0x1c6093)==-1&&ngx_epoch_pair::probe.evals[eye].copies==0);
+        check(copy_passthrough(0x1c6094)==-1&&ngx_epoch_pair::probe.event_count==prior_events);
+        const uintptr_t caller_rva=(base+0x1c6093)-base;
+        check(copy_passthrough(caller_rva)==int(eye)&&ngx_epoch_pair::probe.evals[eye].copies==1&&originals==3);
+        check(ngx_epoch_pair::probe.events[prior_events].caller==0x1c6093);
         hr(list->Close());ID3D12CommandList* batch[]{list.Get()};auto* saved_renderer=consuming_renderer;consuming_renderer=nullptr;{ngx_epoch_pair::ExecuteScope observed(queue.Get(),1,batch);queue->ExecuteCommandLists(1,batch);observed.returned();}consuming_renderer=saved_renderer;
         // Independent test fence only; observer never submits a fence or waits.
         hr(queue->Signal(fence.Get(),eye+1));const auto end=GetTickCount64()+5000;while(fence->GetCompletedValue()<eye+1&&GetTickCount64()<end)Sleep(1);check(fence->GetCompletedValue()==eye+1);

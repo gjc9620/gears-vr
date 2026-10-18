@@ -94,7 +94,9 @@ struct BarrierScope {
 struct CopyScope {
     int index=-1;D3D12_TEXTURE_COPY_LOCATION src{},dst{};D3D12_BOX box{};bool has_box{};
     CopyScope(ID3D12GraphicsCommandList* c,D3D12_TEXTURE_COPY_LOCATION const* d,UINT x,UINT y,UINT z,D3D12_TEXTURE_COPY_LOCATION const* s,D3D12_BOX const* b,uintptr_t caller){
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!selected()||caller!=base+0x1c6093)return;
+        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        // Copy passthrough supplies _ReturnAddress()-base, unlike Eval's absolute caller.
+        if(!selected()||caller!=0x1c6093)return;
         if(!safe_copy(&src,s,sizeof(src))||!safe_copy(&dst,d,sizeof(dst))||(b&&!safe_copy(&box,b,sizeof(box)))){probe.gap();return;}
         has_box=b!=nullptr;index=probe.copy(list(c),dst,{x,y,z},src,b?&box:nullptr,caller);
     }
