@@ -1,5 +1,15 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19：输入矩形实验实跑，Eval 宽度仍不一致
+
+当前发布开发基线已切为推荐每眼尺寸×倍率（见主进度文档），优先级高于DLSS。本节为私有game-resolution诊断，不替换默认模式；以下Native70等默认描述均属历史。
+
+`dlss-native-menu10` 在正常游戏菜单启用DLSS Quality并返回关卡，实际加载输入构造实验DLL SHA256 `7ce3dd337fc9fe91604bbb523d4b1cd0a5c080431d47b6737130edd7acd40edc`。session `5672a25a`，PID46600，完整出生身份在ignored运行回执。菜单helper成功、观察期结束，native清理、入口恢复、游戏正常退出以及5文件恢复均通过，协调端再次核验无游戏进程和全部原文件哈希。
+
+冻结epoch revision1/world1/ticket1492：candidate_complete=1、drained=1、dropped=0、evals=2。Create参数为2560×1440→3840×2160。构造两眼source/target为1280×1440，x分别0/1920；prepare前后及Eval时对应view矩形保持不变。但两次NGX Eval实际输入值仍是 **1920×1440**，而不是预期1280×1440。两次typed_before/final均f，dispatch_match=1、result=1。这证明只修构造输入矩形未同步Eval宽度；需继续追踪调用前宽度来源，不可把局部构造结果算作DLSS输入域整体通过。
+
+原始状态 `analysis/runtime/dlss-native-menu10-native-status.txt` SHA256 `1bd23d54c4a0e91250e5b056dfb7a74419fecea9aabd1ef3ee6a802fa7aca588`，关键行188–202、244–252。gpu_completion_verified=0、producer_domain_verified=0；共享历史、输出回写及正确双眼图像仍未证明。本轮不支持“DLSS已可玩”的结论，下一步仅按这个明确宽度差异查保存反编译／代码。
+
 2026-10-18。用户已把 DLSS 超分辨率列为 V1 必做项。当前玩家默认仍为 Native70，DLSS/DLAA 保护仍开启；本记录中的独立候选没有提升默认，也未加入发布包。DLAA、帧生成不在新增范围。
 
 ## 已实现的实验入口
