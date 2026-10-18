@@ -382,9 +382,15 @@ class PathChoicePositionMonitor:
                 if retry_acquisition:
                     self._submit(generation, True)
                     return events
-                if (self.request_generation != generation or not 0 <= now - finished <= MAX_RESULT_AGE or
-                        self.cancel.is_set()):
-                    events.append(self._revoke('late_or_world_changed_read'))
+                # The worker can finish between the earlier clock sample and
+                # done(). Measure age only after obtaining that finished result.
+                now = self.clock()
+                age = now - finished;cancelled = self.cancel.is_set()
+                if (self.request_generation != generation or not 0 <= age <= MAX_RESULT_AGE or cancelled):
+                    event = self._revoke('late_or_world_changed_read')
+                    event.update(age_seconds=age,request_generation=self.request_generation,
+                                 current_generation=generation,cancelled=cancelled)
+                    events.append(event)
                 else:
                     self.last_observed = finished
                     if not observation.scene_present:

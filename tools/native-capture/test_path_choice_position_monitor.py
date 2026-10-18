@@ -156,7 +156,30 @@ class MonitorTests(unittest.TestCase):
         self.status['world_generation'] = 2
         events = self.m.poll()
         self.assertTrue(any(row.get('reason') == 'late_or_world_changed_read' for row in events))
+        event=next(row for row in events if row.get('reason')=='late_or_world_changed_read')
+        self.assertEqual((event['request_generation'],event['current_generation']),(1,2))
+        self.assertEqual(event['age_seconds'],0);self.assertFalse(event['cancelled'])
         self.assertFalse(self.m.position.owned); self.assertFalse(self.m.close_sidecar.owned)
+
+    def test_future_finishing_during_done_uses_a_clock_sample_after_result(self):
+        self.m.close();case=self
+        class FinishOnDone(Future):
+            def __init__(self,function):super().__init__();self.function=function
+            def done(self):
+                if not super().done():
+                    case.now+=.125
+                    try:self.set_result(self.function())
+                    except Exception as error:self.set_exception(error)
+                return super().done()
+        class Worker(ImmediateWorker):
+            def submit(self,function):return FinishOnDone(function)
+        self.m=self.create(worker_factory=Worker);self.addCleanup(self.m.close)
+        self.m.poll();events=self.m.poll()
+        self.assertEqual(self.now,10.125)
+        self.assertFalse(any(row.get('reason')=='late_or_world_changed_read' for row in events))
+        self.assertEqual([row['event'] for row in events],['path_position_close_published'])
+        self.assertEqual(self.m.certificate_finished,10.125)
+        self.assertTrue(self.m.close_sidecar.owned);self.assertFalse(self.m.position.owned)
 
     def test_cancel_discards_late_result_and_bounded_worker_join(self):
         self.m.poll(); self.m.close()
@@ -168,7 +191,28 @@ class MonitorTests(unittest.TestCase):
         self.m.poll(); self.now += 2.01
         events = self.m.poll()
         self.assertTrue(any(row.get('reason') == 'late_or_world_changed_read' for row in events))
+        event=next(row for row in events if row.get('reason')=='late_or_world_changed_read')
+        self.assertAlmostEqual(event['age_seconds'],2.01)
+        self.assertEqual((event['request_generation'],event['current_generation']),(1,1))
+        self.assertFalse(event['cancelled'])
         self.assertFalse(self.m.close_sidecar.owned)
+
+    def test_completed_result_at_exact_two_second_budget_still_accepts(self):
+        self.m.poll();self.now+=2
+        events=self.m.poll()
+        self.assertTrue(any(row['event']=='path_position_close_published' for row in events))
+        self.assertFalse(any(row.get('reason')=='late_or_world_changed_read' for row in events))
+
+    def test_cancelled_completed_result_reports_cancellation_without_publication(self):
+        self.m.poll();completed=self.m.future;case=self
+        class CancelOnDone:
+            def done(self):case.m.cancel.set();return completed.done()
+            def result(self):return completed.result()
+        self.m.future=CancelOnDone();events=self.m.poll()
+        event=next(row for row in events if row.get('reason')=='late_or_world_changed_read')
+        self.assertTrue(event['cancelled']);self.assertEqual(event['age_seconds'],0)
+        self.assertEqual((event['request_generation'],event['current_generation']),(1,1))
+        self.assertEqual(self.actions,[])
 
     def test_slow_final_identity_status_check_cannot_extend_certificate_budget(self):
         count = [0]
