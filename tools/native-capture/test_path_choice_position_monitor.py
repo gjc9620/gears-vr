@@ -291,10 +291,11 @@ class MonitorTests(unittest.TestCase):
         return {'menu_state':SimpleNamespace(MenuReader=lambda pid:reader),
                 'menu_control':SimpleNamespace(reader_process_identity=lambda current:(3, 30))}
 
-    def snapshot_retry_fixture(self, failures=1, *, unknown=False, world_change=False, postpublish=False):
+    def snapshot_retry_fixture(self, failures=1, *, unknown=False, world_change=False, postpublish=False, registry=False):
         self.m.close()
         class SnapshotChanged(RuntimeError):pass
         class SceneOwnerRejected(RuntimeError):pass
+        class RegistrySnapshotChanged(RuntimeError):pass
         readers = []
         def new_reader(pid):
             index = len(readers)
@@ -303,6 +304,7 @@ class MonitorTests(unittest.TestCase):
                     postpublish and self.m.close_sidecar.owned)
                 if failing:
                     if world_change:self.status['world_generation'] = 2
+                    if registry:raise RegistrySnapshotChanged('Registry changed before snapshot verification')
                     try:
                         fault = RuntimeError if unknown else SnapshotChanged
                         raise fault('UI changed during snapshot')
@@ -313,7 +315,8 @@ class MonitorTests(unittest.TestCase):
                 r=SimpleNamespace(resolve=lambda:dict(controller_address='0x67', local_player_address='0x68')))
             readers.append(reader)
             return reader
-        modules = dict(menu_state=SimpleNamespace(MenuReader=new_reader, SnapshotChanged=SnapshotChanged),
+        modules = dict(menu_state=SimpleNamespace(MenuReader=new_reader, SnapshotChanged=SnapshotChanged,
+            RegistrySnapshotChanged=RegistrySnapshotChanged),
             scene_owner_snapshot=SimpleNamespace(SceneOwnerRejected=SceneOwnerRejected),
             menu_control=SimpleNamespace(reader_process_identity=lambda reader:(3, 30)))
         self.enterContext(mock.patch.dict('sys.modules', modules))
@@ -327,6 +330,31 @@ class MonitorTests(unittest.TestCase):
         self.m = self.create(probe_factory=LivePathChoicePositionProbe)
         self.addCleanup(self.m.close)
         return readers, certificate_probe
+
+    def test_registry_conflict_restarts_full_unowned_capture(self):
+        readers, collector = self.snapshot_retry_fixture(registry=True)
+        self.m.poll(); events=self.m.poll()
+        self.assertEqual(events[0]['event'],'path_position_acquisition_discarded')
+        self.assertEqual(self.actions,[])
+        self.assertEqual(len(readers),2)
+        readers[0].close.assert_called_once()
+        self.hold()
+        self.assertEqual(collector.full_reads,1)
+
+    def test_registry_conflict_is_bounded(self):
+        readers,_=self.snapshot_retry_fixture(failures=10,registry=True)
+        for _ in range(6):self.m.poll()
+        self.assertEqual(len(readers),3)
+        self.assertTrue(self.m.terminal)
+        self.assertEqual(self.actions,[])
+
+    def test_registry_conflict_cannot_retry_across_world_change(self):
+        readers,_=self.snapshot_retry_fixture(registry=True,world_change=True)
+        self.m.poll();events=self.m.poll()
+        self.assertEqual(len(readers),1)
+        self.assertTrue(self.m.terminal)
+        self.assertFalse(any(e['event']=='path_position_acquisition_discarded' for e in events))
+        self.assertEqual(self.actions,[])
 
     def test_exact_nested_snapshot_conflict_discards_full_unowned_capture_with_fresh_reader(self):
         readers, collector = self.snapshot_retry_fixture()

@@ -288,12 +288,21 @@ class PathChoicePositionMonitor:
             from scene_owner_snapshot import SceneOwnerRejected
         except ImportError:
             return False
-        # Only the demonstrated wrapper of MenuReader's repeated-ledger-read
-        # conflict is retryable. Identity/IO/budget/code failures stay terminal.
-        if not (type(error) is SceneOwnerRejected and str(error) == 'Owner source read failed' and
+        # Discard only demonstrated pre-publication read conflicts. A registry
+        # mismatch requires a NEW reader/full certificate, never relaxed bytes.
+        try:
+            from menu_state import RegistrySnapshotChanged
+        except ImportError:
+            RegistrySnapshotChanged = None
+        registry_conflict = (RegistrySnapshotChanged is not None and
+            type(error) is RegistrySnapshotChanged and
+            str(error) == 'Registry changed before snapshot verification' and
+            error.__cause__ is None and error.__context__ is None)
+        ledger_conflict = (type(error) is SceneOwnerRejected and str(error) == 'Owner source read failed' and
                 type(error.__cause__) is SnapshotChanged and
                 str(error.__cause__) == 'UI changed during snapshot' and
-                error.__cause__.__cause__ is None and error.__cause__.__context__ is None):
+                error.__cause__.__cause__ is None and error.__cause__.__context__ is None)
+        if not (registry_conflict or ledger_conflict):
             return False
         self._check_processes()
         status = copy.deepcopy(self.read_status())
