@@ -7,6 +7,36 @@ namespace ngx_epoch_pair {
 #endif
 using namespace gears_ngx_epoch;
 Probe probe;TypedLists typed_lists;bool enabled{},printed{},cleanup_pending{};
+// Post-Create / accepted Eval observations only. These are the four globals
+// consumed by authenticated be65cc, NOT a captured GetOptimal callback result.
+struct BoundsSnapshot {
+    uint64_t revision{},world{},ticket{};uintptr_t renderer{},scope{},handle{},parameters{};
+    std::array<uint32_t,4> first{},last{}; // max W,H; min W,H at RVA1ad1960..6c.
+    bool readable{},identity{},stable{};
+};
+std::array<BoundsSnapshot,4> create_bounds{};std::array<BoundsSnapshot,2> eval_bounds{};
+BoundsSnapshot sample_bounds(uint64_t ticket=0,uintptr_t renderer=0,uintptr_t scope=0){
+    BoundsSnapshot out;out.revision=probe.revision;out.world=probe.world;out.ticket=ticket;
+    out.renderer=renderer;out.scope=scope;out.handle=probe.handle;out.parameters=probe.parameters;
+    uintptr_t h0{},p0{},h1{},p1{};const auto world0=committed_world_generation.load();
+    const bool before=safe_copy(&h0,reinterpret_cast<void const*>(base+gears_ngx_route::handle_cell_rva),8)&&
+        safe_copy(&p0,reinterpret_cast<void const*>(base+gears_ngx_route::parameter_cell_rva),8);
+    const bool first=safe_copy(out.first.data(),reinterpret_cast<void const*>(base+0x1ad1960),16);
+    const bool last=safe_copy(out.last.data(),reinterpret_cast<void const*>(base+0x1ad1960),16);
+    const bool after=safe_copy(&h1,reinterpret_cast<void const*>(base+gears_ngx_route::handle_cell_rva),8)&&
+        safe_copy(&p1,reinterpret_cast<void const*>(base+gears_ngx_route::parameter_cell_rva),8);
+    out.readable=first&&last;
+    out.identity=before&&after&&out.revision&&world0==out.world&&committed_world_generation.load()==out.world&&
+        h0==out.handle&&h1==out.handle&&p0==out.parameters&&p1==out.parameters;
+    out.stable=out.readable&&out.identity&&out.first==out.last;return out;
+}
+void print_bounds(FILE* file,char const* stage,unsigned ordinal,BoundsSnapshot const& b){
+    if(!b.revision)return;
+    fprintf(file,"ngx_epoch_bounds stage=%s ordinal=%u revision=%llu world=%llu ticket=%llu renderer=%llx scope=%llx handle=%llx parameters=%llx readable=%u identity=%u stable=%u order=maxW,maxH,minW,minH first=%u,%u,%u,%u last=%u,%u,%u,%u rva=1ad1960 getoptimal_callback_observed=0 gpu_domain_verified=0\n",
+        stage,ordinal,b.revision,b.world,b.ticket,b.renderer,b.scope,b.handle,b.parameters,unsigned(b.readable),unsigned(b.identity),unsigned(b.stable),
+        b.first[0],b.first[1],b.first[2],b.first[3],b.last[0],b.last[1],b.last[2],b.last[3]);
+}
+
 List list(ID3D12CommandList* p){if(!p)return {};const auto id=canonical_identity(p);auto ref=frame_link.current(id);return {reinterpret_cast<uintptr_t>(p),id,ref.identity==id?ref.generation:0};}
 bool consumption(uint64_t& world,uint64_t& ticket,uintptr_t& renderer){
     renderer=reinterpret_cast<uintptr_t>(consuming_renderer);gears_submitted::FrameTicket live;
@@ -47,13 +77,13 @@ void reset_capture(bool ready){std::lock_guard<std::recursive_mutex> lock(frame_
     // preserve their audit and leases until a drained print/reset can release.
     bool held=typed_lists.held()!=0;for(auto const& r:probe.resources)held=held||r.lease.retained();
     if(held&&(recording.load()||active.load())){probe.changed(4);cleanup_pending=true;printed=false;return;}
-    typed_lists={};probe.clear();enabled=ready;printed=cleanup_pending=false;
+    typed_lists={};probe.clear();create_bounds={};eval_bounds={};enabled=ready;printed=cleanup_pending=false;
 }
 void created(ngx_stereo_host::NativeCreateSource const& source){if(enabled&&!cleanup_pending){const auto old=probe.revision;
     probe.created(source.revision,source.world,source.handle,source.parameters,source.fields);
     // Pure empty epoch rearm never carries candidate identities into the next
     // Create. Accepted Eval leases make the old epoch nonempty and immutable.
-    if(old!=probe.revision)typed_lists={};}}
+    if(old!=probe.revision){typed_lists={};create_bounds[probe.empty_epoch_count]=sample_bounds();}}}
 void changed(){if(enabled)probe.changed();}
 void released(uintptr_t handle){if(enabled&&handle==probe.handle)probe.changed(1);}
 void eval_enter(uintptr_t scope,bool owned,uintptr_t caller,uintptr_t command,void const* structure,bool concurrent){
@@ -74,7 +104,8 @@ void eval_enter(uintptr_t scope,bool owned,uintptr_t caller,uintptr_t command,vo
     for(unsigned i=0;i<15;++i)in.readable=safe_copy(&in.values[i],reinterpret_cast<void const*>(address+values[i]),4)&&in.readable;
     unsigned extra=found.reason?Probe::typed_lookup_failed:0u;
     if(!extra&&!Probe::input_rejection(in,concurrent)&&in.handle==probe.handle&&in.parameters==probe.parameters&&probe.eval_count<2&&!typed_lists.pin(found))extra|=Probe::pinning_failed;
-    const bool had_rejection=probe.rejection.present;probe.enter(in,concurrent,extra);
+    const bool had_rejection=probe.rejection.present;const auto prior_evals=probe.eval_count;probe.enter(in,concurrent,extra);
+    if(probe.eval_count==prior_evals+1)eval_bounds[prior_evals]=sample_bounds(in.ticket,in.renderer,in.scope);
     if(!had_rejection&&probe.rejection.present){auto& r=probe.rejection;r.lookup_reason=found.reason;r.saved=found.saved;r.current=found.current;
         const auto tracker=frame_link.snapshot();r.tracker_overflow=tracker.list_overflow;r.tracker_capacity_bad=tracker.capacity_bad;}
 
@@ -143,6 +174,8 @@ void print(FILE* file){
     fprintf(file,"ngx_epoch_schema version=1 resources_order=Color,Output,Depth,MotionVectors event_kinds=1:transition,2:uav,3:alias,4:eval_begin,5:eval_dispatch,6:eval_return,7:copy_begin,8:copy_return,9:execute_begin,10:execute_return,11:reset stops=0:open,1:captured,2:epoch_end,3:input_gap,4:extra_eval,5:unwind,6:capacity,8:empty_epoch_budget end_reasons=1:release,2:world,3:recreate,4:invalid_create logical_eye_verified=0 state_certified=0 barrier_state_is_request=1 execute_order_is_cpu_call_order=1 queue_dependency_verified=0\n");
     for(unsigned i=0;i<probe.empty_epoch_count;++i){auto const& e=probe.empty_epochs[i];fprintf(file,"ngx_epoch_empty index=%u revision=%llu world=%llu handle=%llx parameters=%llx reason=%u skipped=%u fields=%u,%u,%u,%u,%u,%u,%u pair_evidence=0\n",i,e.revision,e.world,e.handle,e.parameters,e.reason,e.skipped,e.fields[0],e.fields[1],e.fields[2],e.fields[3],e.fields[4],e.fields[5],e.fields[6]);}
     fprintf(file,"ngx_epoch_create fields=%u,%u,%u,%u,%u,%u,%u\n",probe.creation[0],probe.creation[1],probe.creation[2],probe.creation[3],probe.creation[4],probe.creation[5],probe.creation[6]);
+    for(unsigned i=0;i<create_bounds.size();++i)print_bounds(file,"post_create",i,create_bounds[i]);
+    for(unsigned i=0;i<probe.eval_count;++i)print_bounds(file,"eval_enter",i,eval_bounds[i]);
     print_geometry(file,"built",probe.geometry[0]);print_geometry(file,"prepare_before",probe.geometry[1]);print_geometry(file,"prepare_after",probe.geometry[2]);
     for(unsigned i=0;i<probe.resource_count;++i){auto const& t=probe.resources[i];auto const& r=t.lease;auto const& d=r.desc;
         fprintf(file,"ngx_epoch_resource index=%u raw=%llx canonical=%llx device=%llx retained=%u dimension=%u width=%llu height=%u format=%u mips=%u layers=%u samples=%u quality=%u flags=%u layout=%u alignment=%llu first=%llu last=%llu observations=%u\n",i,r.raw,r.canonical,r.device,unsigned(r.retained()),unsigned(d.Dimension),d.Width,d.Height,unsigned(d.Format),d.MipLevels,d.DepthOrArraySize,d.SampleDesc.Count,d.SampleDesc.Quality,unsigned(d.Flags),unsigned(d.Layout),d.Alignment,t.first,t.last,t.observations);}

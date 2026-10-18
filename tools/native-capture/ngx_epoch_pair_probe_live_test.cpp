@@ -19,7 +19,15 @@ struct Lifetime {bool frame(uintptr_t ptr,gears_submitted::FrameTicket& f){if(pt
 struct Record {int family_count=2,renderer_count=2;std::array<uintptr_t,2> family_views{reinterpret_cast<uintptr_t>(left_bytes.data()),reinterpret_cast<uintptr_t>(right_bytes.data())};};
 void inspect_completed_renderer(Record& r,void*){r=Record{};}
 struct Tracker {uint64_t generation=1;struct Ref {uintptr_t identity;uint64_t generation;};Ref current(uintptr_t id){return {id,generation};}struct Snapshot {uint64_t list_overflow{};bool capacity_bad{};};Snapshot stats{};Snapshot snapshot(){return stats;}} frame_link;
-bool safe_copy(void* out,void const* in,size_t n){if(!in||!out)return false;std::memcpy(out,in,n);return true;}
+unsigned bounds_reads{},bounds_fault{};
+bool safe_copy(void* out,void const* in,size_t n){if(!in||!out)return false;
+    if(reinterpret_cast<uintptr_t>(in)==base+0x1ad1960){++bounds_reads;if(bounds_fault==1)return false;}
+    std::memcpy(out,in,n);
+    if(reinterpret_cast<uintptr_t>(in)==base+0x1ad1960&&bounds_reads==1){
+        if(bounds_fault==2)++*reinterpret_cast<uint32_t*>(module.data()+0x1ad1968);
+        if(bounds_fault==3)++*reinterpret_cast<uintptr_t*>(module.data()+gears_ngx_route::handle_cell_rva);
+        if(bounds_fault==4)++committed_world_generation;
+    }return true;}
 uintptr_t canonical_identity(IUnknown* p){Microsoft::WRL::ComPtr<IUnknown> id;if(!p||FAILED(p->QueryInterface(IID_PPV_ARGS(&id))))return 0;return reinterpret_cast<uintptr_t>(id.Get());}
 }
 #include "ngx_epoch_pair_probe.inl"
@@ -28,7 +36,33 @@ static unsigned checks{};
 static void check(bool value){++checks;if(!value)throw std::runtime_error("live epoch probe check failed");}
 static void hr(HRESULT value){check(SUCCEEDED(value));}
 template<class T> static void put(unsigned char* bytes,size_t offset,T const& value){std::memcpy(bytes+offset,&value,sizeof(value));}
-int main(){try{
+static void bounds_cases(){
+    const uintptr_t h=300,p=400;const std::array<uint32_t,4> bounds{3840,2160,1920,1080};
+    auto arm=[&](unsigned fault){recording=false;ngx_epoch_pair::reset_capture(true);recording=true;committed_world_generation=2;
+        put(module.data(),gears_ngx_route::handle_cell_rva,h);put(module.data(),gears_ngx_route::parameter_cell_rva,p);
+        put(module.data(),0x1ad1960,bounds);bounds_reads=0;bounds_fault=fault;
+        ngx_epoch_pair::created({1,2,h,p,{2560,1440,3840,2160,2,67,0}});};
+    arm(0);check(ngx_epoch_pair::create_bounds[0].stable&&ngx_epoch_pair::create_bounds[0].first==bounds);
+    auto observed=ngx_epoch_pair::sample_bounds(10,0x123,0x456);
+    check(observed.stable&&observed.ticket==10&&observed.renderer==0x123&&observed.scope==0x456);
+    for(unsigned fault=1;fault<=4;++fault){arm(fault);auto const& b=ngx_epoch_pair::create_bounds[0];check(!b.stable);
+        if(fault==1)check(!b.readable&&b.identity);
+        if(fault==2)check(b.readable&&b.identity&&b.first!=b.last);
+        if(fault>=3)check(b.readable&&!b.identity);}
+    arm(0);ngx_epoch_pair::released(h);put(module.data(),0x1ad1968,uint32_t(960));
+    ngx_epoch_pair::created({2,2,h,p,{1280,1440,1920,2160,2,67,0}});
+    check(ngx_epoch_pair::create_bounds[0].first[2]==1920&&ngx_epoch_pair::create_bounds[1].revision==2&&ngx_epoch_pair::create_bounds[1].first[2]==960);
+    Record record;ngx_epoch_pair::built(consuming_renderer,consuming_frozen_frame,record,true,nullptr,nullptr);
+    const auto before_reads=bounds_reads;consuming_frame_ticket=11;
+    ngx_epoch_pair::eval_enter(99,true,base+0x9a35d3,1,nullptr,false);
+    check(bounds_reads==before_reads&&!ngx_epoch_pair::eval_bounds[0].revision);consuming_frame_ticket=10;
+    ngx_epoch_pair::created({3,2,h,p,{1280,1440,1920,2160,2,67,0}});
+    check(ngx_epoch_pair::probe.revision==2&&ngx_epoch_pair::create_bounds[1].revision==2&&!ngx_epoch_pair::create_bounds[2].revision);
+    recording=false;ngx_epoch_pair::reset_capture(false);check(!ngx_epoch_pair::create_bounds[0].revision&&!ngx_epoch_pair::eval_bounds[0].revision);recording=true;bounds_fault=0;
+}
+int main(int argc,char** argv){try{
+    bounds_cases();if(argc==2&&std::strcmp(argv[1],"--bounds-only")==0){std::printf("Bounds CPU observer tests passed: %u checks; no GPU/game\n",checks);return 0;}
+
     // Inactive observation must not dereference even a synthetic caller's
     // list/arguments on return. The ordinary copy self-test uses such a list.
     ngx_epoch_pair::reset_capture(false);
@@ -84,7 +118,7 @@ int main(){try{
         hr(queue->Signal(fence.Get(),eye+1));const auto end=GetTickCount64()+5000;while(fence->GetCompletedValue()<eye+1&&GetTickCount64()<end)Sleep(1);check(fence->GetCompletedValue()==eye+1);
         if(!eye){const auto before=ngx_epoch_pair::list(list.Get());hr(allocator->Reset());hr(list->Reset(allocator.Get(),nullptr));++frame_link.generation;ngx_epoch_pair::reset(before,list.Get(),S_OK);}
     }
-    check(ngx_epoch_pair::probe.complete());recording=false;FILE* output{};check(tmpfile_s(&output)==0&&output);ngx_epoch_pair::print(output);rewind(output);
+    check(ngx_epoch_pair::probe.complete());check(ngx_epoch_pair::eval_bounds[0].ticket==10&&ngx_epoch_pair::eval_bounds[1].ticket==10&&ngx_epoch_pair::eval_bounds[0].scope==10000&&ngx_epoch_pair::eval_bounds[1].scope==10001);recording=false;FILE* output{};check(tmpfile_s(&output)==0&&output);ngx_epoch_pair::print(output);rewind(output);
     std::string text;char buffer_line[2048];while(fgets(buffer_line,sizeof(buffer_line),output))text+=buffer_line;fclose(output);
     check(text.find("candidate_complete=1")!=std::string::npos&&text.find("producer_domain_verified=0")!=std::string::npos&&text.find("gpu_completion_verified=0")!=std::string::npos);
     check(text.find("stage=prepare_after")!=std::string::npos&&text.find("typed_before=f")!=std::string::npos&&text.find("format=41")!=std::string::npos);
