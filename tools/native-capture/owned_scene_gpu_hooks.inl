@@ -8,12 +8,12 @@ struct OwnedListCreateScope{bool outer;OwnedListCreateScope():outer(owned_list_c
 HRESULT STDMETHODCALLTYPE owned_hook_create_list(ID3D12Device* d,UINT mask,D3D12_COMMAND_LIST_TYPE type,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state,REFIID iid,void** out){
  if(stereo_publish_bypass)return owned_original_create_list(d,mask,type,allocator,state,iid,out);
  Scope scope;auto lock=frame_lock();OwnedListCreateScope creation;auto hr=owned_original_create_list(d,mask,type,allocator,state,iid,out);
- if(creation.outer)owned_scene_gpu::list_created(hr,out,true);return hr;
+ if(creation.outer){owned_scene_gpu::list_created(hr,out,true);ngx_capture_control::created_command(hr,out,true);}return hr;
 }
 HRESULT STDMETHODCALLTYPE owned_hook_create_list1(ID3D12Device4* d,UINT mask,D3D12_COMMAND_LIST_TYPE type,D3D12_COMMAND_LIST_FLAGS flags,REFIID iid,void** out){
  if(stereo_publish_bypass)return owned_original_create_list1(d,mask,type,flags,iid,out);
  Scope scope;auto lock=frame_lock();OwnedListCreateScope creation;auto hr=owned_original_create_list1(d,mask,type,flags,iid,out);
- if(creation.outer)owned_scene_gpu::list_created(hr,out,false);return hr;
+ if(creation.outer){owned_scene_gpu::list_created(hr,out,false);ngx_capture_control::created_command(hr,out,false);}return hr;
 }
 using OwnedCommittedFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device*,const D3D12_HEAP_PROPERTIES*,D3D12_HEAP_FLAGS,const D3D12_RESOURCE_DESC*,D3D12_RESOURCE_STATES,const D3D12_CLEAR_VALUE*,REFIID,void**);
 using OwnedCommitted1Fn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device4*,const D3D12_HEAP_PROPERTIES*,D3D12_HEAP_FLAGS,const D3D12_RESOURCE_DESC*,D3D12_RESOURCE_STATES,const D3D12_CLEAR_VALUE*,ID3D12ProtectedResourceSession*,REFIID,void**);

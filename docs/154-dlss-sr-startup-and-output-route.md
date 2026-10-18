@@ -173,3 +173,11 @@ P轮诊断完成，正常关闭、native及所有entry独立恢复、设置及�
 新增 `GEARS_NGX_STEREO_HOST_OBSERVER`，将完整wrapper上下文与Create/Evaluate/Release dispatcher、带类型的D3D12资源观察接通。仅采样，不激活独立SR，不修改参数、GPU状态或全局句柄。完整历史代码块认证后才安装；资源生命周期、DSV解析与GPU退休仍显式标为未证明，Execute返回不等于GPU完成。默认发布清单不变。
 
 宿主组件测试和启用选项的capture编译通过；协调端再次构建并运行宿主测试。三个dispatcher恢复验证使用固定历史完整块哈希，独立于Hook自报状态；17项Python验证测试通过，包括末端字节改变与短读拒绝。没有启动游戏验证此观察器，也没有DLSS双眼图像验收。接线、证据与限制见ignored `analysis/runtime/dlss-host-handoff-20261018.txt`。
+
+## 2026-10-18: Capture integration and bounded command ownership
+
+Capture now forwards the real constructor, CreateCommandList, Reset, Copy and Execute boundaries to the NGX control integration. No activation call is installed: the default owner remains absent and the ordinary rendering path remains in use. Producer-resource/domain evidence, exact copy-state/dependency evidence and final-output/retirement integration are still required before enabling game DLSS.
+
+The initial integration retained every direct command list in a 128-entry cache. Historical game observations exceeded that capacity, so it was replaced before runtime deployment. Only actual NGX recording and in-flight obligations retain lists. Reclamation requires both an observed Reset and completion of the relevant GPU fence; unrelated command lists occupy no persistent slots. A prepared context failing before owner activation does not stop normal stereo rendering.
+
+Root applied the integration and lifetime patch, built the fresh host-OFF `build-runtime-resolution1-ngx-wiring` candidate and passed the DLL continuous self-test, 3,652 real GPU queue checks and 66 typed-resource/boxed-copy pixel checks. The queue tests use synthetic SDK calls. The agent also built private host-ON/native-owned and host-OFF capture configurations. These are integration evidence, not proof that game-menu DLSS produces correct stereo or survives quality changes. No player manifest or release package was changed.

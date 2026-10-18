@@ -744,3 +744,8 @@ add_executable(NgxTypedResourcesTest ngx_typed_resources_test.cpp)
 target_compile_options(NgxTypedResourcesTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 target_compile_definitions(NgxTypedResourcesTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(NgxTypedResourcesTest PRIVATE d3d12 dxgi)
+
+add_executable(NgxStereoGpuSubmitTest ngx_stereo_gpu_submit_test.cpp)
+target_compile_options(NgxStereoGpuSubmitTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+target_compile_definitions(NgxStereoGpuSubmitTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_link_libraries(NgxStereoGpuSubmitTest PRIVATE d3d12 dxgi)

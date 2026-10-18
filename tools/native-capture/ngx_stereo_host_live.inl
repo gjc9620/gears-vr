@@ -322,7 +322,10 @@ void copy_passthrough(ID3D12GraphicsCommandList* command,D3D12_TEXTURE_COPY_LOCA
                 selected=candidate;++row.copies;row.copy_caller=caller;row.copy_list=list(command);row.copied={typed(src.pResource),typed(dst.pResource)};
                 row.copy_source_type=src.Type;row.copy_destination_type=dst.Type;row.copy_source_subresource=src.SubresourceIndex;row.copy_destination_subresource=dst.SubresourceIndex;
                 row.copy_destination={x,y,z};row.copy_box=box!=nullptr;}}}
-    forward(command,destination,x,y,z,source,box);
+#if defined(GEARS_NGX_CAPTURE_CONTROL_WIRING) && GEARS_NGX_CAPTURE_CONTROL_WIRING
+    if(!ngx_capture_control::copy(command,destination,x,y,z,source,box,caller,forward))
+#endif
+        forward(command,destination,x,y,z,source,box);
     if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=rows[unsigned(selected)];D3D12_TEXTURE_COPY_LOCATION fresh_source{},fresh_destination{};
         row.copy_returned=safe_copy(&fresh_source,source,sizeof(fresh_source))&&safe_copy(&fresh_destination,destination,sizeof(fresh_destination))&&
             fresh_source.pResource==src.pResource&&fresh_destination.pResource==dst.pResource&&fresh_source.Type==src.Type&&fresh_destination.Type==dst.Type&&same(list(command),row.copy_list);}
@@ -332,7 +335,11 @@ void execute_passthrough(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*
     {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(attested&&recording.load()){
         order=++execute_sequence;std::array<ID3D12CommandList*,64> raw{};readable=count<=raw.size()&&(!count||safe_copy(raw.data(),commands,count*sizeof(raw[0])));
         if(readable)for(unsigned i=0;i<count;++i)members[i]=list(raw[i]);}}
+#if defined(GEARS_NGX_CAPTURE_CONTROL_WIRING) && GEARS_NGX_CAPTURE_CONTROL_WIRING
+    ngx_capture_control::execute(queue,count,commands,forward);
+#else
     forward(queue,count,commands);
+#endif
     if(!order)return;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const auto queue_id=canonical_identity(queue);
     for(unsigned i=0;readable&&i<row_count;++i){auto& row=rows[i];
         // Eval and native Output->Color may be different physical recordings.

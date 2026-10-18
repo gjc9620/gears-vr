@@ -36,6 +36,8 @@
 #include "final_transfer_policy.h"
 #include "dlss_output_control.h"
 #include "ngx_route_observer.h"
+#include "ngx_stereo_gpu_submit.h"
+#include "ngx_typed_copy.h"
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
 #include "ngx_output_delayed_gate.h"
 #endif
@@ -2302,7 +2304,14 @@ void* __fastcall hook_clone(void* destination,void* source){
 #include "dlss_output_control.inl"
 #include "ngx_route_observer.inl"
 #include "ngx_output_pixels.inl"
+#define GEARS_NGX_CAPTURE_CONTROL_WIRING 1
+void inspect_completed_renderer(Record&,void*);
+namespace ngx_capture_control {
+bool copy(ID3D12GraphicsCommandList*,D3D12_TEXTURE_COPY_LOCATION const*,UINT,UINT,UINT,D3D12_TEXTURE_COPY_LOCATION const*,D3D12_BOX const*,uintptr_t,ngx_stereo_host::CopyFn);
+void execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,ngx_stereo_host::ExecuteFn);
+}
 #include "ngx_stereo_host_live.inl"
+#include "ngx_control_capture.inl"
 #include "ngx_output_pixels_native.inl"
 #include "death_dof_control.inl"
 #include "vr_dof_compat.inl"
@@ -2558,8 +2567,37 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     }
 #endif
     const gears_split_sources::FixedOutputBounds owned_bounds{gears_native_render_size::width(),gears_native_render_size::height()};
+    const gears_split_sources::FixedOutputBounds* constructor_output=owned_scene_target?&owned_bounds:nullptr;
+    const gears_split_sources::RenderInputBounds* constructor_input=nullptr;
+#if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
+    // Integration-only branch: do not enable until pair Eval/Copy/output and
+    // GPU retirement are connected. Native handle zero preserves the OFF path.
+    ngx_stereo_host::NativeCreateSource native_source;
+    gears_split_sources::FixedOutputBounds native_output;
+    gears_split_sources::RenderInputBounds native_input;
+    if(stereo_xr&&!projection_control&&!submit_mono_control&&!submit_duplicate_control&&ngx_stereo_host::current_control()){
+        const auto native_source_status=ngx_stereo_host::native_create_state(frame.world_generation,native_source);
+        if(native_source_status==ngx_stereo_host::NativeCreateAvailability::unavailable)return false;
+        if(native_source_status==ngx_stereo_host::NativeCreateAvailability::ready){
+            native_output=owned_scene_target?owned_bounds:
+                gears_split_sources::FixedOutputBounds{native_source.fields[2],native_source.fields[3]};
+            if(!native_source.split_input(native_output.width,native_output.height,native_input.width,native_input.height))return false;
+            constructor_output=&native_output;constructor_input=&native_input;
+        }
+    }
+#endif
     auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state,submit_output_bounds,submit_mono_control || submit_duplicate_control,projection_control,projection.phase,stereo_xr?&frame.expected:nullptr,
-        owned_scene_target?&owned_bounds:nullptr);
+        constructor_output,constructor_input);
+#if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
+    if(constructor_input&&sources.checks==63){
+        ngx_stereo_host::NativeCreateSource current_source;
+        if(!ngx_stereo_host::native_create_source(frame.world_generation,current_source)||current_source.revision!=native_source.revision){
+            // Reuse existing safe clone cleanup/rejection; never submit views
+            // constructed across a Create/Release/world/parameter change.
+            sources.checks=0;sources.rejection=15;
+        }
+    }
+#endif
     if(projection_control)for(unsigned i=0;i<2;++i)memcpy(projection.expected[i].data(),sources.inputs[i].bytes.data()+0xb0,64);
     submit_source_checks=sources.checks;submit_rejection=sources.rejection;
     if(sources.input_evidence.field140){
@@ -2649,6 +2687,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             !memcmp(rectangle.data(),sources.inputs[source_index].bytes.data()+0x48,16);
     }
     if(owned_scene_target&&!native_owned_scene_built(destination,frame.id,verified))verified=false;
+    if(!ngx_capture_control::constructed(destination,frame,built,verified))verified=false;
     projection_observe(0,reinterpret_cast<uintptr_t>(destination),built.family_views,built.family_count,now());
     stereo_observe(0,reinterpret_cast<uintptr_t>(destination),built.family_views,built.family_count,now());
     bool source_released=gears_split_sources::release(api,sources);
@@ -3194,6 +3233,7 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
         auto identity=canonical_identity(list);
         frame_seen_list(identity);
         if(SUCCEEDED(result)){++frame_counts.resets;frame_link.reset_success(identity);
+            ngx_capture_control::reset_command(list);
             if(!frame_target_stats.reset(reinterpret_cast<uintptr_t>(list)))frame_link.invalidate();}
         else {++frame_counts.reset_failed;frame_link.invalidate_list(identity);}
     }
