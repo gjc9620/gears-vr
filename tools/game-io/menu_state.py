@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/package-inspector'))
 from resolve_camera import Resolver
 from inspect_ui_state import registered, describe
+from scene_owner_snapshot import read_conflict_error
 
 def compact_state(value):
     top, leaf = value.get('top') or {}, value.get('focused_leaf') or {}
@@ -485,10 +486,12 @@ class MenuReader:
         r = self.r
         original_read = r.read
         reads = {}
+        headers = dict(objects=r.objects_header, names=getattr(r, "names_header", None))
         def observed(address, size):
             value = original_read(address, size)
             if (address, size) in reads and reads[(address, size)] != value:
-                raise SnapshotChanged('UI changed during snapshot')
+                raise read_conflict_error(SnapshotChanged, 'UI changed during snapshot',
+                    'menu_repeated_read', address, reads[address, size], value, headers)
             reads[(address, size)] = value
             return value
         r.read = observed
@@ -597,11 +600,16 @@ class MenuReader:
                 result['dialog_text_consistency'] = 'bounded_root_acquisition_and_semantic_reread'
             # Re-read every ordinary sampled value; no assertion of an atomic game lock.
             for (address, size), value in reads.items():
-                if original_read(address, size) != value:
-                    raise SnapshotChanged(f'UI changed before snapshot verification at {address:#x} size {size}')
-            if registry != original_read(r.objects_header, 16):
+                actual = original_read(address, size)
+                if actual != value:
+                    raise read_conflict_error(SnapshotChanged,
+                        f'UI changed before snapshot verification at {address:#x} size {size}',
+                        'menu_final_reread', address, value, actual, headers)
+            registry_observed = original_read(r.objects_header, 16)
+            if registry != registry_observed:
                 self._registry_dirty = True
-                raise RegistrySnapshotChanged('Registry changed before snapshot verification')
+                raise read_conflict_error(RegistrySnapshotChanged, 'Registry changed before snapshot verification',
+                    'menu_registry_bracket', r.objects_header, registry, registry_observed, headers)
             result['verified_reads'] = len(reads)
             result['consistent_reread'] = True
             return result

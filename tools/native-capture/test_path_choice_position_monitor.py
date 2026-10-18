@@ -286,6 +286,21 @@ class MonitorTests(unittest.TestCase):
         self.assertIsNone(self.m.future)
         self.assertEqual(self.m.poll(), [])
 
+    def test_menu_and_owner_conflicts_survive_existing_error_detail(self):
+        from scene_owner_snapshot import SceneOwnerRejected, read_conflict_error
+        from menu_state import RegistrySnapshotChanged, SnapshotChanged
+        for kind in (RegistrySnapshotChanged, SnapshotChanged, SceneOwnerRejected):
+            error=read_conflict_error(kind,'changed','test_stage',0x300,b'abc',b'aXc',{})
+            try:
+                raise SceneOwnerRejected('Owner source read failed') from error
+            except SceneOwnerRejected as wrapped:
+                detail=self.m._exception_detail(wrapped)
+            self.assertEqual(detail['error_read_conflict'],error.read_conflict)
+            self.assertNotIn('registry',detail['error_read_conflict'])
+        unrelated=RuntimeError('untrusted')
+        unrelated.read_conflict={'registry':'objects'}
+        self.assertNotIn('error_read_conflict',self.m._exception_detail(unrelated))
+
     def test_collector_byte_conflict_evidence_survives_wrapper_and_stays_terminal(self):
         from path_choice_position_collect import AcquisitionSourceChanged
         self.m.close()

@@ -6,7 +6,7 @@ import struct
 import unittest
 from unittest import mock
 
-from scene_owner_snapshot import capture_scene_owner, SceneOwnerRejected, GAME_SHA, _reread_spans
+from scene_owner_snapshot import capture_scene_owner, SceneOwnerRejected, GAME_SHA, _reread_spans, _Capture, read_conflict_error
 
 
 class Fixture:
@@ -150,6 +150,53 @@ class Fixture:
 
 
 class SceneOwnerTests(unittest.TestCase):
+    def test_conflict_reports_exact_headers_without_misclassifying_other_spans(self):
+        expected=struct.pack('<Qii',0x9000,1001,2000)
+        observed=struct.pack('<Qii',0x9000,1013,2000)
+        for address,size,registry in [(0x100,16,True),(0x300,16,False),(0x100,8,False)]:
+            error=read_conflict_error(SceneOwnerRejected,'changed','owner_repeated_read',
+                address,expected[:size],observed[:size],{'objects':0x100})
+            detail=error.read_conflict
+            self.assertEqual(detail['stage'],'owner_repeated_read')
+            self.assertEqual(detail['address'],hex(address))
+            self.assertEqual('registry' in detail,registry)
+            if registry:
+                self.assertEqual(detail['initial_raw'],expected.hex())
+                self.assertEqual(detail['observed_raw'],observed.hex())
+                self.assertEqual(detail['initial'],dict(data='0x9000',num=1001,max=2000))
+                self.assertEqual(detail['observed']['num'],1013)
+
+    def test_owner_final_registry_bracket_reports_header_without_extra_read(self):
+        c=_Capture.__new__(_Capture)
+        c.identities={};c.base=1;c.pid=2;c.r=mock.Mock(base=1,pid=2)
+        c.headers={'objects':0x100,'names':0x200}
+        expected=struct.pack('<Qii',0x9000,1001,2000)
+        observed=struct.pack('<Qii',0x9000,1013,2000)
+        c.reads={(0x100,16):expected}
+        c._read=mock.Mock(side_effect=[expected,observed])
+        with self.assertRaises(SceneOwnerRejected) as raised:c.finish()
+        detail=raised.exception.read_conflict
+        self.assertEqual(detail['stage'],'owner_registry_bracket')
+        self.assertEqual(detail['initial']['num'],1001)
+        self.assertEqual(detail['observed']['num'],1013)
+        self.assertEqual(c._read.call_args_list,[mock.call(0x100,16),mock.call(0x100,16)])
+
+    def test_owner_final_conflict_uses_same_read_and_only_changed_window(self):
+        c=_Capture.__new__(_Capture)
+        c.identities={};c.base=1;c.pid=2
+        c.r=mock.Mock(base=1,pid=2)
+        c.headers={'objects':0x100,'names':0x200}
+        c.reads={(0x300,16):b'a'*16}
+        c._read=mock.Mock(return_value=b'a'*5+b'Z'+b'a'*10)
+        with self.assertRaises(SceneOwnerRejected) as raised:c.finish()
+        detail=raised.exception.read_conflict
+        self.assertEqual(detail['stage'],'owner_final_reread')
+        self.assertEqual(detail['changed_address'],'0x305')
+        self.assertEqual(detail['expected_window'],(b'a'*8).hex())
+        self.assertEqual(detail['actual_window'],(b'Z'+b'a'*7).hex())
+        self.assertNotIn('registry',detail)
+        c._read.assert_called_once_with(0x300,16)
+
     def test_exported_name_entries_are_from_this_capture(self):
         f=Fixture();result=f.capture();entries={x['index']:x for x in result['name_entries']}
         self.assertEqual(entries[0]['text'],'None')

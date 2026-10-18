@@ -28,6 +28,25 @@ class SceneOwnerRejected(RuntimeError):
     pass
 
 
+def read_conflict_error(error_type, message, stage, address, expected, observed, headers):
+    """Attach bounded evidence from the failing read; never read remote memory."""
+    error = error_type(message)
+    offset = next((i for i, (a, b) in enumerate(zip(expected, observed)) if a != b),
+                  min(len(expected), len(observed)))
+    error.read_conflict = dict(stage=stage, address=hex(address), size=len(expected),
+        actual_size=len(observed), changed_offset=offset, changed_address=hex(address+offset),
+        expected_window=expected[offset:offset+8].hex(), actual_window=observed[offset:offset+8].hex())
+    # A 16-byte UI array or an enclosing merged span is not a registry header.
+    registry = next((name for name, pointer in headers.items() if pointer == address), None)
+    if registry is not None and len(expected) == len(observed) == 16:
+        def decoded(raw):
+            data, count, capacity = struct.unpack('<Qii', raw)
+            return dict(data=hex(data), num=count, max=capacity)
+        error.read_conflict.update(registry=registry, initial_raw=expected.hex(), observed_raw=observed.hex(),
+                                   initial=decoded(expected), observed=decoded(observed))
+    return error
+
+
 def _reread_spans(reads):
     """Join only observed overlapping/touching bytes, without reading gaps.
 
@@ -43,7 +62,8 @@ def _reread_spans(reads):
         if start is not None and address <= end:
             overlap = min(size, end - address)
             if pending[address-start:address-start+overlap] != raw[:overlap]:
-                raise SceneOwnerRejected('Owner overlapping source changed during acquisition')
+                raise read_conflict_error(SceneOwnerRejected, 'Owner overlapping source changed during acquisition',
+                    'owner_overlapping_reads', address, bytes(pending[address-start:address-start+overlap]), raw[:overlap], {})
             if address + size - start <= MAX_REREAD_SPAN:
                 pending.extend(raw[overlap:])
                 continue
@@ -110,7 +130,8 @@ class _Capture:
         value = self._read(address, size)
         key = address, size
         if key in self.reads and self.reads[key] != value:
-            raise SceneOwnerRejected('Owner source changed during acquisition')
+            raise read_conflict_error(SceneOwnerRejected, 'Owner source changed during acquisition',
+                'owner_repeated_read', address, self.reads[key], value, self.headers)
         self.reads[key] = value
         return value
 
@@ -313,12 +334,16 @@ class _Capture:
         self.final_read_spans = 0
         for address, expected in _reread_spans(self.reads):
             self.final_read_spans += 1
-            if self._read(address, len(expected)) != expected:
-                raise SceneOwnerRejected('Owner source changed at final boundary')
+            observed = self._read(address, len(expected))
+            if observed != expected:
+                raise read_conflict_error(SceneOwnerRejected, 'Owner source changed at final boundary',
+                    'owner_final_reread', address, expected, observed, self.headers)
         # Registry headers close after all names, fields, identity and link reads.
         for address in self.headers.values():
-            if self._read(address, 16) != self.reads[address, 16]:
-                raise SceneOwnerRejected('Owner registry changed at final boundary')
+            observed = self._read(address, 16)
+            if observed != self.reads[address, 16]:
+                raise read_conflict_error(SceneOwnerRejected, 'Owner registry changed at final boundary',
+                    'owner_registry_bracket', address, self.reads[address, 16], observed, self.headers)
 
 
 def capture_scene_owner(resolver, client_address, scene_address, expected_controller, expected_local_player):

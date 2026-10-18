@@ -234,9 +234,14 @@ class PathChoicePositionMonitor:
             causes.append(dict(type=type(current).__name__[:64], message=str(current)[:256]))
         detail = dict(error_message=str(error)[:512], error_frames=frames, error_causes=causes)
         from path_choice_position_collect import AcquisitionSourceChanged
+        import menu_state
+        import scene_owner_snapshot
         current = error
         for _ in range(3):
-            if type(current) is AcquisitionSourceChanged:
+            if (type(current) in (AcquisitionSourceChanged, getattr(menu_state, "SnapshotChanged", None),
+                                  getattr(menu_state, "RegistrySnapshotChanged", None),
+                                  getattr(scene_owner_snapshot, "SceneOwnerRejected", None))
+                    and type(getattr(current, "read_conflict", None)) is dict):
                 detail['error_read_conflict'] = copy.deepcopy(current.read_conflict)
                 break
             current = current.__cause__ or (None if current.__suppress_context__ else current.__context__)
