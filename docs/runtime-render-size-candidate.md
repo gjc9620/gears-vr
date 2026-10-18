@@ -2,6 +2,15 @@
 
 ## Interrupted-handoff coverage attempt, 2026-10-19
 
+Follow-up `checkpoint-prepare-stop-actual3-20261019` covers cancellation during
+preparation, separately from the unobserved native phase-1/2 race. The current
+default requested generation 2 while generation 1 remained active; preparation
+count was 1, handoff phase 0 and quiesce 0. Owner cancellation then completed
+with generation still 1 and commit QPC 0. Native cleanup, all 65 entry-byte
+checks, normal game exit and the five original file hashes passed and were
+independently verified. This proves the observed preparation-cancellation path;
+it does not prove interruption inside GPU retirement or recreation.
+
 `checkpoint-handoff-stop-actual2-20261019` used the current default manifest,
 scale 1.0, child-only simulator and muted background launch. State-checked
 checkpoint confirmation completed; sampled generation changed 1 to 2 and the
