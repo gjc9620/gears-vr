@@ -31,14 +31,16 @@ class WindowSnapshot:
         handles, seen = [], set()
         hwnd = self.u.GetTopWindow(None)
         while hwnd:
-            if hwnd in seen or len(handles) >= limit:
-                raise RuntimeError('Window order changed or exceeded snapshot limit')
+            if hwnd in seen:
+                raise RuntimeError('Window order cycle detected')
+            if len(handles) >= limit:
+                raise RuntimeError('Top-level traversal exceeded snapshot limit')
             seen.add(hwnd)
             handles.append(hwnd)
             hwnd = self.u.GetWindow(hwnd, 2)  # GW_HWNDNEXT
         return handles
 
-    def capture(self, limit=512):
+    def capture(self, limit=4096, visible_limit=256):
         start = time.monotonic()
         order = self._order(limit)
         excluded = {self.u.GetShellWindow(), self.u.GetDesktopWindow()} - {None, 0}
@@ -56,6 +58,8 @@ class WindowSnapshot:
                 raise RuntimeError('Unable to determine DWM cloaking')
             if cloaked.value:
                 continue
+            if len(rows) >= visible_limit:
+                raise RuntimeError('Visible windows exceeded snapshot limit')
             rect = w.RECT()
             # DWMWA_EXTENDED_FRAME_BOUNDS uses screen coordinates, without
             # changing the caller's DPI awareness or moving any window.
@@ -69,4 +73,5 @@ class WindowSnapshot:
         if order != self._order(limit):
             raise RuntimeError('Window order changed during snapshot')
         return dict(windows=rows, excluded_hwnds=sorted(excluded),
+                    traversed_windows=len(order),
                     elapsed_seconds=time.monotonic() - start, atomic=False)

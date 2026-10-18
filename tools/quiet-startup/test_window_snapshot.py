@@ -77,6 +77,24 @@ class SnapshotTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'snapshot limit'):
             self.make().capture(limit=1)
 
+    def test_many_hidden_windows_do_not_exhaust_visible_budget(self):
+        sampler = self.make()
+        sampler.u.orders = [list(range(10, 647))] * 2
+        sampler.u.IsWindowVisible = lambda hwnd: hwnd < 50
+        result = sampler.capture()
+        self.assertEqual(result['traversed_windows'], 637)
+        self.assertEqual(len(result['windows']), 40)
+
+    def test_visible_budget_independently_bounded(self):
+        with self.assertRaisesRegex(RuntimeError, 'Visible windows'):
+            self.make().capture(visible_limit=1)
+
+    def test_cycle_has_distinct_error(self):
+        sampler = self.make()
+        sampler.u.GetWindow = lambda hwnd, direction: hwnd
+        with self.assertRaisesRegex(RuntimeError, 'cycle'):
+            sampler.capture()
+
 
 if __name__ == '__main__':
     unittest.main()

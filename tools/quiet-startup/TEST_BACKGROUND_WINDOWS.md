@@ -128,3 +128,19 @@ The v2 protocol uses ShowWindow's prior-visibility return semantics for intercep
 synchronous shows; asynchronous shows return the positioning API acceptance.
 See Microsoft's [SetWindowPos reference](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowpos)
 and [ShowWindow reference](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow).
+
+### First actual v2 attempt: cancelled before VR activation
+
+The `dlss-native-menu5` run reached reservation, then its new snapshot guard
+cancelled before VR activation because the desktop contained 637 top-level
+windows, exceeding the original 512 traversal limit. This was not a recorded
+occlusion. The prime entry restoration was verified; the game subsequently
+exited and all five settings/profile backups were restored. No DLSS pair or
+actual combined game/preview layering acceptance was obtained.
+
+Traversal now has a separate 4096-handle bound and a 256-visible-window bound.
+Cycle, traversal overflow and visible overflow have distinct errors. Hidden,
+minimized and cloaked windows do not consume the visible budget. Thirteen
+snapshot/rectangle tests pass, including a 637-window/40-visible fixture. A
+subsequent read-only desktop capture completed with 637 traversed and 24 visible
+non-cloaked windows. These numbers are a sample, not a fixed desktop assumption.
