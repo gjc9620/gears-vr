@@ -256,3 +256,27 @@ and passed all three registered NGX tests. The prior live fixture incorrectly
 supplied an absolute address; the corrected fixture now follows the real hook
 contract. No game or simulator was launched for this revision. A fresh actual
 sample is still required; release defaults and packages remain unchanged.
+
+### Actual menu9: complete CPU-side Eval/copy sequence
+
+The rebuilt RVA-corrected candidate completed the actual game-menu DLSS route
+and returned to gameplay (game PID 24188; exact identity in ignored
+`dlss-native-menu9-20261019.json`). The selected ticket 1528 recorded two Evals,
+one returned copy per Eval and one queue execution for each Eval/copy recording.
+The probe reports `candidate_complete=1`, `dropped=0`, `stop=1`; all four resource
+identities were typed before and after both Evals. This validates this bounded
+CPU observation only: GPU completion and producer-domain verification remain 0.
+
+Create input/output is 2560x1440 / 3840x2160. Both Evals report 1920x2160, with
+Color/Depth/MV base X 0 then 1920; both use the same raw CODM resources. Both
+recorded output-to-color copies use subresource 0, no source box and destination
+0,0,0. These shared resources and copy extents require domain/history analysis;
+they do not establish correct per-eye pixels or playable DLSS. The observer
+published zero GPU pairs and the overall session remains incomplete.
+
+There were 389 valid occlusion samples, no occlusion/error records and no game
+foreground sample. Native cleanup and independent entry restoration passed;
+the game closed normally and all five settings/profile backups were restored.
+The earlier menu8 attempt cancelled before native activation on a changing
+desktop snapshot and supplied no DLSS evidence. Full native status is preserved
+under ignored `analysis/runtime/dlss-native-menu9-native-status.txt`.
