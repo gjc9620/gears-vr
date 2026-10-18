@@ -74,13 +74,20 @@ void finish(Boundary const& boundary,IDXGISwapChain* chain,HRESULT result,bool q
     if(boundary.publisher){StereoPublishBypass bypass;stereo_publisher.end_resize();}
 }
 HRESULT STDMETHODCALLTYPE hook(IDXGISwapChain* chain,UINT count,UINT width,UINT height,DXGI_FORMAT format,UINT flags){
-    Scope scope;Depth nested;const auto boundary=begin(chain,0,count,width,height,format,flags);
+    Scope scope;Depth nested;
+    const auto startup=gears_swapchain_startup::begin_resize(gears_swapchain_startup::resize,chain,count,width,height,format,flags,
+        _ReturnAddress(),prime_recording.load(),recording.load());
+    const auto boundary=begin(chain,0,count,width,height,format,flags);
     const auto result=original(chain,count,width,height,format,flags);
+    gears_swapchain_startup::finish(startup,result,chain);
     finish(boundary,chain,result);return result;
 }
 HRESULT STDMETHODCALLTYPE hook1(IDXGISwapChain3* chain,UINT count,UINT width,UINT height,DXGI_FORMAT format,UINT flags,
                                 const UINT* nodes,IUnknown* const* queues){
-    Scope scope;Depth nested;const auto boundary=begin(chain,1,count,width,height,format,flags);bool same_queue=true;
+    Scope scope;Depth nested;
+    const auto startup=gears_swapchain_startup::begin_resize(gears_swapchain_startup::resize1,chain,count,width,height,format,flags,
+        _ReturnAddress(),prime_recording.load(),recording.load(),nodes,queues);
+    const auto boundary=begin(chain,1,count,width,height,format,flags);bool same_queue=true;
     if(boundary.begun&&queues){
         DXGI_SWAP_CHAIN_DESC desc{};const auto n=count?count:(SUCCEEDED(chain->GetDesc(&desc))?desc.BufferCount:0);
         same_queue=n&&n<=16;
@@ -88,6 +95,7 @@ HRESULT STDMETHODCALLTYPE hook1(IDXGISwapChain3* chain,UINT count,UINT width,UIN
             same_queue=safe_copy(&value,queues+i,sizeof(value))&&value&&canonical_identity(value)==boundary.queue;}
     }
     const auto result=original1(chain,count,width,height,format,flags,nodes,queues);
+    gears_swapchain_startup::finish(startup,result,chain);
     finish(boundary,chain,result,same_queue);return result;
 }
 bool install_hooks(IDXGISwapChain1* chain){

@@ -21,6 +21,7 @@
 #include "../vr-common/stereo_ticket_store.h"
 #include "render_cost.h"
 #include "resource_resize_probe.h"
+#include "swapchain_startup_trace.h"
 #include "source_view_shadow.h"
 #include "native_source_view_args.h"
 #include "source_eye_args.h"
@@ -572,7 +573,12 @@ std::array<void*,viewport_hook_capacity> viewport_targets{};
 using BarrierFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D3D12_RESOURCE_BARRIER*);
 BarrierFn original_resource_barrier{};
 #endif
-std::array<void*,6> prime_targets{};
+#if defined(GEARS_SWAPCHAIN_STARTUP_TRACE) && GEARS_SWAPCHAIN_STARTUP_TRACE
+constexpr unsigned prime_hook_count=8;
+#else
+constexpr unsigned prime_hook_count=6;
+#endif
+std::array<void*,prime_hook_count> prime_targets{};
 std::atomic<bool> prime_recording{},prime_ready{},prime_handoff{},prime_done{};
 std::atomic<unsigned> prime_started{};
 std::mutex prime_mutex;
@@ -586,7 +592,7 @@ bool prime_owner_allows_handoff(bool continuous,DWORD pid,std::uint64_t created)
         gears_prime::same_owner(prime_owner_pid,prime_owner_creation_time,pid,created)&&
         prime_owner.state()==gears_session::OwnerState::alive));
 }
-std::array<std::array<unsigned char,32>,6> prime_original_bytes{};
+std::array<std::array<unsigned char,32>,prime_hook_count> prime_original_bytes{};
 using CreateSwapChainFn=HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory*,IUnknown*,DXGI_SWAP_CHAIN_DESC*,IDXGISwapChain**);
 using CreateHwndFn=HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory2*,IUnknown*,HWND,const DXGI_SWAP_CHAIN_DESC1*,const DXGI_SWAP_CHAIN_FULLSCREEN_DESC*,IDXGIOutput*,IDXGISwapChain1**);
 using CreateCompositionFn=HRESULT(STDMETHODCALLTYPE*)(IDXGIFactory2*,IUnknown*,const DXGI_SWAP_CHAIN_DESC1*,IDXGIOutput*,IDXGISwapChain1**);
@@ -1144,20 +1150,29 @@ void remember_swapchain(unsigned method,IUnknown* input,IDXGISwapChain* chain) {
     }
 }
 HRESULT STDMETHODCALLTYPE hook_create_swapchain(IDXGIFactory* factory,IUnknown* input,DXGI_SWAP_CHAIN_DESC* desc,IDXGISwapChain** out) {
-    Scope scope;auto result=original_create_swapchain(factory,input,desc,out);
+    Scope scope;
+    const auto startup=gears_swapchain_startup::begin_factory(gears_swapchain_startup::create_legacy,factory,input,nullptr,desc,sizeof(*desc),nullptr,nullptr,out,_ReturnAddress(),prime_recording.load(),recording.load());
+    auto result=original_create_swapchain(factory,input,desc,out);
     IDXGISwapChain* chain{};if(SUCCEEDED(result)&&out&&safe_copy(&chain,out,sizeof(chain)))remember_swapchain(1,input,chain);
+    gears_swapchain_startup::finish(startup,result,chain);
     return result;
 }
 HRESULT STDMETHODCALLTYPE hook_create_hwnd(IDXGIFactory2* factory,IUnknown* input,HWND window,const DXGI_SWAP_CHAIN_DESC1* desc,
     const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* full,IDXGIOutput* restrict_output,IDXGISwapChain1** out) {
-    Scope scope;auto result=original_create_hwnd(factory,input,window,desc,full,restrict_output,out);
+    Scope scope;
+    const auto startup=gears_swapchain_startup::begin_factory(gears_swapchain_startup::create_hwnd,factory,input,window,desc,sizeof(*desc),full,restrict_output,out,_ReturnAddress(),prime_recording.load(),recording.load());
+    auto result=original_create_hwnd(factory,input,window,desc,full,restrict_output,out);
     IDXGISwapChain1* chain{};if(SUCCEEDED(result)&&out&&safe_copy(&chain,out,sizeof(chain)))remember_swapchain(2,input,chain);
+    gears_swapchain_startup::finish(startup,result,chain);
     return result;
 }
 HRESULT STDMETHODCALLTYPE hook_create_composition(IDXGIFactory2* factory,IUnknown* input,const DXGI_SWAP_CHAIN_DESC1* desc,
     IDXGIOutput* restrict_output,IDXGISwapChain1** out) {
-    Scope scope;auto result=original_create_composition(factory,input,desc,restrict_output,out);
+    Scope scope;
+    const auto startup=gears_swapchain_startup::begin_factory(gears_swapchain_startup::create_composition,factory,input,nullptr,desc,sizeof(*desc),nullptr,restrict_output,out,_ReturnAddress(),prime_recording.load(),recording.load());
+    auto result=original_create_composition(factory,input,desc,restrict_output,out);
     IDXGISwapChain1* chain{};if(SUCCEEDED(result)&&out&&safe_copy(&chain,out,sizeof(chain)))remember_swapchain(3,input,chain);
+    gears_swapchain_startup::finish(startup,result,chain);
     return result;
 }
 std::unique_lock<std::recursive_mutex> frame_lock() {
@@ -3640,6 +3655,7 @@ bool present_hooks() {
 }
 DWORD WINAPI target_prime_watchdog(void* argument) {
     FILE* status=static_cast<FILE*>(argument);
+    gears_swapchain_startup::Export startup_export;
     HANDLE waits[]{prime_event,prime_owner.handle};
     const auto deadline=GetTickCount64()+180000;
     DWORD waited{};
@@ -3648,6 +3664,7 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
         if(waited!=WAIT_TIMEOUT)break;
         if(!prime_owner.handle&&GetTickCount64()>=deadline)break;
         write_swapchain_output_status(prime_recording.load(),"prime");
+        if(gears_swapchain_startup::print(status,&startup_export))fflush(status);
     }
     std::lock_guard<std::mutex> lock(prime_mutex);
     if(prime_handoff.load()){
@@ -3671,6 +3688,7 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
         write_swapchain_output_status(false,"stopped");
         if(!active.load())release_bindings();
     }
+    gears_swapchain_startup::print(status,&startup_export);
     fclose(status);prime_done=true;return 0;
 }
 DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullptr) {
@@ -3690,11 +3708,36 @@ DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullpt
     if(FAILED(D3D12CreateDevice(nullptr,D3D_FEATURE_LEVEL_11_0,IID_PPV_ARGS(&device)))){fclose(status);return ERROR_NOT_SUPPORTED;}
     if(FAILED(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)))){device->Release();fclose(status);return ERROR_NOT_SUPPORTED;}
     auto table=*reinterpret_cast<void***>(device);auto factory_table=*reinterpret_cast<void***>(factory);
-    prime_targets={table[20],table[23],table[24],factory_table[10],factory_table[15],factory_table[24]};device->Release();factory->Release();
-    std::array<void*,6> detours{reinterpret_cast<void*>(hook_create_rtv),reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void*>(hook_copy_simple),
+    prime_targets={table[20],table[23],table[24],factory_table[10],factory_table[15],factory_table[24]};
+#if defined(GEARS_SWAPCHAIN_STARTUP_TRACE) && GEARS_SWAPCHAIN_STARTUP_TRACE
+    // Discover the existing resize entrypoints before the game's first chain.
+    // This private composition chain has no HWND and is released before hooks
+    // are installed. The usual prime lease owns both entrypoints and originals.
+    bool resize_targets_ready=false;
+    {
+        gears_vr::ComPtr<ID3D12CommandQueue> queue;gears_vr::ComPtr<IDXGISwapChain1> chain;
+        gears_vr::ComPtr<IDXGISwapChain3> extended;D3D12_COMMAND_QUEUE_DESC queue_desc{};
+        DXGI_SWAP_CHAIN_DESC1 desc{};desc.Width=16;desc.Height=16;desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM;
+        desc.SampleDesc.Count=1;desc.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;desc.BufferCount=2;
+        desc.SwapEffect=DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;desc.AlphaMode=DXGI_ALPHA_MODE_PREMULTIPLIED;
+        if(SUCCEEDED(device->CreateCommandQueue(&queue_desc,IID_PPV_ARGS(&queue)))&&
+           SUCCEEDED(factory->CreateSwapChainForComposition(queue.Get(),&desc,nullptr,&chain))&&
+           SUCCEEDED(chain->QueryInterface(IID_PPV_ARGS(&extended)))){
+            prime_targets[6]=(*reinterpret_cast<void***>(chain.Get()))[13];
+            prime_targets[7]=(*reinterpret_cast<void***>(extended.Get()))[39];resize_targets_ready=true;
+        }
+    }
+    if(!resize_targets_ready){device->Release();factory->Release();fclose(status);return ERROR_NOT_SUPPORTED;}
+#endif
+    device->Release();factory->Release();
+    std::array<void*,prime_hook_count> detours{reinterpret_cast<void*>(hook_create_rtv),reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void*>(hook_copy_simple),
         reinterpret_cast<void*>(hook_create_swapchain),reinterpret_cast<void*>(hook_create_hwnd),reinterpret_cast<void*>(hook_create_composition)};
-    std::array<void**,6> originals{reinterpret_cast<void**>(&original_create_rtv),reinterpret_cast<void**>(&original_copy_descriptors),reinterpret_cast<void**>(&original_copy_simple),
+    std::array<void**,prime_hook_count> originals{reinterpret_cast<void**>(&original_create_rtv),reinterpret_cast<void**>(&original_copy_descriptors),reinterpret_cast<void**>(&original_copy_simple),
         reinterpret_cast<void**>(&original_create_swapchain),reinterpret_cast<void**>(&original_create_hwnd),reinterpret_cast<void**>(&original_create_composition)};
+#if defined(GEARS_SWAPCHAIN_STARTUP_TRACE) && GEARS_SWAPCHAIN_STARTUP_TRACE
+    detours[6]=reinterpret_cast<void*>(game_resize::hook);detours[7]=reinterpret_cast<void*>(game_resize::hook1);
+    originals[6]=reinterpret_cast<void**>(&game_resize::original);originals[7]=reinterpret_cast<void**>(&game_resize::original1);
+#endif
     bool ok=true;
     for(unsigned i=0;i<prime_targets.size();++i){
         if(!safe_copy(prime_original_bytes[i].data(),prime_targets[i],32)){ok=false;break;}
@@ -4195,6 +4238,7 @@ DWORD WINAPI worker(void*) {
     print_native_owned_probe(status);
     print_native_owned_scene(status);
     print_resource_resize_probe(status);
+    gears_swapchain_startup::print(status);
 #if defined(GEARS_GAME_RESOLUTION) && GEARS_GAME_RESOLUTION
     fprintf(status,"game_resolution_resize calls=%u completed=%u failed=%u rejected=%u drain_failed=%u\n",
         game_resize::calls.load(),game_resize::completed.load(),game_resize::failed.load(),game_resize::rejected.load(),game_resize::drain_failed.load());
