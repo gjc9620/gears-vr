@@ -5,6 +5,7 @@
 #include "eye_chain_policy.h"
 #include "menu_eye_panel.h"
 #include "world_handoff_display.h"
+#include "xr_wait_diagnostics.h"
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
 #include "../vr-common/sixdof_ticket_mailbox.h"
 #endif
@@ -352,7 +353,10 @@ public:
                 XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
                 xr_check(xrAcquireSwapchainImage(eye.chain,&acquire,&index),"GPU game acquire");eye.acquired=true;
                 XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};wait.timeout=1000000000;
-                const auto waited=xrWaitSwapchainImage(eye.chain,&wait);xr_check(waited,"GPU game wait");
+                const auto waited=xr_wait_diagnostics::recorder.measure(i?xr_wait_diagnostics::Operation::wait_eye1:xr_wait_diagnostics::Operation::wait_eye0,
+                    [&]{return xrWaitSwapchainImage(eye.chain,&wait);},[]{return xr_wait_diagnostics::current_context;},
+                    [](XrResult r){return r==XR_TIMEOUT_EXPIRED?xr_wait_diagnostics::Outcome::timeout:r==XR_SUCCESS?xr_wait_diagnostics::Outcome::success:xr_wait_diagnostics::Outcome::error;});
+                xr_check(waited,"GPU game wait");
                 if(!xr_image_wait_succeeded(waited))throw std::runtime_error(waited==XR_TIMEOUT_EXPIRED?
                     "GPU game swapchain wait timeout; image not written or released":"GPU game swapchain wait did not succeed; image not written or released");
                 eye.waited=true;destinations[i]=eye.images.at(index).texture;
@@ -413,7 +417,11 @@ public:
             dx_check(commands->Close(),"GPU game close");ID3D12CommandList* lists[]={commands.Get()};++serial;in_flight=true;queue->ExecuteCommandLists(1,lists);
             receiver->acknowledge(queue.Get());dx_check(queue->Signal(fence.Get(),serial),"GPU game local fence");
             if(fence->GetCompletedValue()==~UINT64(0))throw std::runtime_error("GPU game device removed");
-            if(fence->GetCompletedValue()<serial){dx_check(fence->SetEventOnCompletion(serial,event),"GPU game fence event");if(WaitForSingleObject(event,3000)!=WAIT_OBJECT_0)throw std::runtime_error("GPU game fence timeout");}
+            if(fence->GetCompletedValue()<serial){dx_check(fence->SetEventOnCompletion(serial,event),"GPU game fence event");
+                const auto waited=xr_wait_diagnostics::recorder.measure(xr_wait_diagnostics::Operation::local_fence,
+                    [&]{return WaitForSingleObject(event,3000);},[]{return xr_wait_diagnostics::current_context;},
+                    [](DWORD r){return r==WAIT_TIMEOUT?xr_wait_diagnostics::Outcome::timeout:r==WAIT_OBJECT_0?xr_wait_diagnostics::Outcome::success:xr_wait_diagnostics::Outcome::error;});
+                if(waited!=WAIT_OBJECT_0)throw std::runtime_error("GPU game fence timeout");}
             if(!xr_image_work_complete(fence->GetCompletedValue(),serial))throw std::runtime_error("GPU game completion unconfirmed after fence wait");
             in_flight=false;
             if(snapshot_buffer){

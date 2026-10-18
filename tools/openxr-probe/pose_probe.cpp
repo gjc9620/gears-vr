@@ -25,6 +25,7 @@
 #include "startup_panel_policy.h"
 #include "window_fallback_policy.h"
 #include "menu_display_reader.h"
+#include "xr_wait_diagnostics.h"
 
 using Microsoft::WRL::ComPtr;
 XrInstance instance = XR_NULL_HANDLE;
@@ -264,6 +265,7 @@ int runtime_info(){
     } catch(const std::exception& e){fprintf(stderr,"%s\n",e.what());cleanup();return 1;}
 }
 int main(int argc, char** argv) {
+    xr_wait_diagnostics::SessionDump wait_diagnostics_dump;
     if(argc==3&&!strcmp(argv[1],"--stop-session")){
         char* end{};errno=0;const auto pid=strtoull(argv[2],&end,10);
         if(*argv[2]<'0'||*argv[2]>'9'||*end||errno==ERANGE||!pid||pid>std::numeric_limits<DWORD>::max())return 2;
@@ -537,7 +539,13 @@ int main(int argc, char** argv) {
             if(exiting)break;
             if(!running) {std::this_thread::sleep_for(std::chrono::milliseconds(10));continue;}
             XrFrameWaitInfo wait{XR_TYPE_FRAME_WAIT_INFO};XrFrameState frame{XR_TYPE_FRAME_STATE};
-            xr_check(xrWaitFrame(session,&wait,&frame),"xrWaitFrame");
+            XrResult frame_wait_result=XR_SUCCESS;
+            const auto waited_frame=xr_wait_diagnostics::recorder.measure(xr_wait_diagnostics::Operation::wait_frame,
+                [&]{return frame_wait_result=xrWaitFrame(session,&wait,&frame);},
+                [&]{return frame_wait_result==XR_SUCCESS?xr_wait_diagnostics::context(int(state),frame.shouldRender!=0):xr_wait_diagnostics::Context::unknown;},
+                [](XrResult r){return r==XR_TIMEOUT_EXPIRED?xr_wait_diagnostics::Outcome::timeout:XR_FAILED(r)?xr_wait_diagnostics::Outcome::error:xr_wait_diagnostics::Outcome::success;});
+            xr_check(waited_frame,"xrWaitFrame");
+            xr_wait_diagnostics::current_context=xr_wait_diagnostics::context(int(state),frame.shouldRender!=0);
             if(continuous_session&&stereo_pid){
                 if(space_epoch.advance(frame.predictedDisplayTime)){
                     printf("{\"reference_space_rebased\":true,\"space_epoch\":%llu,\"change_time\":%lld}\n",space_epoch.epoch(),space_epoch.last_change_time());fflush(stdout);
@@ -774,7 +782,10 @@ int main(int argc, char** argv) {
                 startup_panel.cancel();stop_reason=reason;exiting=true;end.layerCount=0;
                 world_handoff_panel_queued=startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=eye_menu_queued=false;
             }}
-            const auto ended=xrEndFrame(session,&end);xr_check(ended,"xrEndFrame");
+            const auto ended=xr_wait_diagnostics::recorder.measure(xr_wait_diagnostics::Operation::end_frame,
+                [&]{return xrEndFrame(session,&end);},[]{return xr_wait_diagnostics::current_context;},
+                [](XrResult r){return r==XR_TIMEOUT_EXPIRED?xr_wait_diagnostics::Outcome::timeout:XR_FAILED(r)?xr_wait_diagnostics::Outcome::error:xr_wait_diagnostics::Outcome::success;});
+            xr_check(ended,"xrEndFrame");
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
             if(stereo_screen&&projection_frame_status==ProjectionStatus::submitted)
                 stereo_screen->observe_sixdof_submission(ended,end,projection,space_epoch.epoch());
