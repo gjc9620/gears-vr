@@ -46,6 +46,7 @@ static void owned_retirement_cases() {
         if(bad==9)altered.output.enabled=false;
         if(bad==10)altered.output.certified=false;
         if(bad==11)altered={};
+        if(bad<12)CHECK(!t->owned_retirement_current(altered));
         CHECK(!t->retire_owned_output(altered,bad!=12));
         CHECK(t->owned_status().enabled&&t->owned_status().certified);
         CHECK(!t->world_handoff_ready(1,2)&&!t->advance_world_epoch(1,2));
@@ -57,11 +58,12 @@ static void owned_retirement_cases() {
         auto t=configured();auto ref=t->reset_success(1);OwnedRetirement proof{};
         CHECK(t->owned_retirement_snapshot(proof));ExecutionToken token{};
         CHECK(t->prepare_execute(queue,&ref,1,token));
+        CHECK(!t->owned_retirement_current(proof));
         OwnedRetirement untouched=proof;CHECK(!t->owned_retirement_snapshot(untouched));
         CHECK(untouched.revision==proof.revision);CHECK(!t->retire_owned_output(proof,true));
         CHECK(!t->world_handoff_ready(1,2));CHECK(t->commit_execute(token));
-        CHECK(!t->retire_owned_output(proof,true)); // Commit changed revision.
-        CHECK(t->owned_retirement_snapshot(proof));CHECK(t->retire_owned_output(proof,true));
+        CHECK(t->owned_retirement_current(proof)); // Empty/unrelated commit changed no source evidence.
+        CHECK(t->retire_owned_output(proof,true));
     }
     // No erase-to-pass: finals, unknown writes, barriers and overlays all wait
     // for actual submission. Failed metadata/capacity remain terminal.
@@ -83,11 +85,41 @@ static void owned_retirement_cases() {
         if(mode<4){submit(*t,ref);CHECK(t->owned_retirement_snapshot(proof));CHECK(t->retire_owned_output(proof,true));}
         if(mode==5){CHECK(t->snapshot().capacity_bad);CHECK(!t->world_handoff_ready(1,2));}
     }
-    // Changes after fence snapshot require fresh evidence, even unrelated Reset.
-    {
+    // Desktop work need not stop while the owned retirement fence is pending.
+    // Preserve the ORIGINAL snapshot; no new snapshot is paired with that fence.
+    for(bool recreate:{false,true}){
         auto t=configured();OwnedRetirement proof{};CHECK(t->owned_retirement_snapshot(proof));
-        t->reset_success(1);CHECK(!t->retire_owned_output(proof,true));
-        CHECK(t->owned_retirement_snapshot(proof));CHECK(t->retire_owned_output(proof,true));
+        for(unsigned n=0;n<3;++n){auto desktop=recreate?t->create_success(1,true):t->reset_success(1);
+            CHECK(t->draw_unknown(desktop,buffer+1));CHECK(t->draw_unknown(desktop,buffer+1));
+            CHECK(t->owned_retirement_current(proof));submit(*t,desktop);
+            CHECK(t->owned_retirement_current(proof));}
+        OwnedRetirement same{};CHECK(t->owned_retirement_snapshot(same));CHECK(same.revision==proof.revision);
+        CHECK(t->retire_owned_output(proof,true));CHECK(!t->owned_retirement_current(proof));
+    }
+    // Source mutation after a retirement fence snapshot never regains that old
+    // receipt even after execution, Reset, or a net-zero state transition.
+    for(unsigned mode=0;mode<8;++mode){
+        auto t=configured();auto source=t->reset_success(1);OwnedRetirement proof{};
+        CHECK(t->owned_retirement_snapshot(proof));
+        if(mode==0||mode==1||mode==4){CHECK(t->draw_unknown(source,buffer));
+            if(mode==1)CHECK(t->draw_unknown(source,buffer));}
+        if(mode==2||mode==3){CHECK(t->record_transition(source,buffer,9,4,128));
+            CHECK(t->record_transition(source,buffer,9,128,4));}
+        if(mode==5)CHECK(eye(*t,source,1,0));
+        if(mode==6){pair(*t,source);auto p=t->overlay_pair(source,target);CHECK(p.linked);
+            CHECK(t->draw_overlay_pair(source,1,target,p.eyes,3));}
+        if(mode==7)CHECK(t->record_owned_barrier_fault(source,9));
+        CHECK(!t->owned_retirement_current(proof));CHECK(!t->retire_owned_output(proof,true));
+        if(mode==3||mode==4||mode==7)t->reset_success(1);else submit(*t,source);
+        CHECK(!t->owned_retirement_current(proof));CHECK(!t->retire_owned_output(proof,true));
+        CHECK(t->owned_status().enabled); // Refusal did not release the owner.
+    }
+    for(bool consume:{false,true}){
+        auto t=configured();auto source=t->reset_success(1);pair(*t,source);submit(*t,source);
+        OwnedRetirement proof{};CHECK(t->owned_retirement_snapshot(proof));CHECK(t->owned_retirement_current(proof));
+        if(consume)CHECK(t->consume_owned_output(buffer,9,queue,1).linked);
+        else CHECK(t->seal_owned_output(buffer,9,queue).linked);
+        CHECK(!t->owned_retirement_current(proof));CHECK(!t->retire_owned_output(proof,true));
     }
     // Retirement retains real generations and executed markers, seals unrelated
     // unsubmitted recordings, and only a later epoch/new resource generation can

@@ -31,6 +31,7 @@ struct Result {
 struct ExecutionToken {uint64_t value{};};
 struct OwnedStatus {bool enabled{},certified{};Target target{};Identity queue{};uint64_t generation{};uint32_t state{};};
 struct OwnedRetirement {
+    // revision covers owned-source mutations, not unrelated desktop work.
     uint64_t world_epoch{},revision{},ticket_cutoff{};
     OwnedStatus output{};
 };
@@ -113,22 +114,39 @@ private:
     uint32_t window_rejection_{};
     Snapshot stats_{};
     OwnedStatus owned_{};
-    uint64_t retired_owned_epoch_{},retired_owned_generation_{};
+    uint64_t retired_owned_epoch_{},retired_owned_generation_{},owned_revision_{};
     uint64_t revision_{},execution_sequence_{};
     struct Pending {bool active{};uint64_t token{},revision{};Identity queue{};size_t count{};uint32_t state{};
         std::array<ListRef,list_capacity> members{};} pending_{};
-    void lose_owned(){if(owned_.enabled){owned_.certified=false;window_bad_=true;window_rejection_|=owned_state_lost;}pending_.active=false;}
+    void change_owned(){if(owned_.enabled){if(owned_revision_==UINT64_MAX){capacity_bad_=true;owned_.certified=false;}else ++owned_revision_;}}
+    bool owned_event(Event const& event) const {
+        return owned_.enabled&&(event.state_kind||event.target.resource==owned_.target.resource||event.transfer_source.resource==owned_.target.resource);
+    }
+    bool owned_events(List const& list) const {
+        for(size_t i=0;i<list.count;++i)if(owned_event(list.events[i]))return true;
+        return false;
+    }
+    void lose_owned(){if(owned_.enabled){change_owned();owned_.certified=false;window_bad_=true;window_rejection_|=owned_state_lost;}pending_.active=false;}
     void discard_recording(List const& list){
         if(!owned_.enabled||list.executed)return;
+        if(owned_events(list))change_owned();
         for(size_t i=0;i<list.count;++i)
             if(list.events[i].overlay&&list.events[i].target.resource==owned_.target.resource){lose_owned();return;}
     }
     bool owned_retirement_ready_locked() const {
-        if(!owned_.enabled||!owned_.certified||pending_.active||window_bad_||capacity_bad_||revision_==UINT64_MAX)return false;
+        if(!owned_.enabled||!owned_.certified||pending_.active||window_bad_||capacity_bad_||revision_==UINT64_MAX||owned_revision_==UINT64_MAX)return false;
         for(auto const& list:lists_)if(!list.executed)
             for(size_t i=0;i<list.count;++i){auto const& event=list.events[i];
                 if(event.target.resource==owned_.target.resource||event.transfer_source.resource==owned_.target.resource)return false;}
         return true;
+    }
+    bool owned_retirement_current_locked(OwnedRetirement const& receipt) const {
+        auto const& expected=receipt.output;
+        return owned_retirement_ready_locked()&&receipt.world_epoch==world_epoch_&&receipt.revision==owned_revision_&&
+            receipt.ticket_cutoff==maximum_ticket_&&expected.enabled&&expected.certified&&
+            expected.target.resource==owned_.target.resource&&expected.target.width==owned_.target.width&&
+            expected.target.height==owned_.target.height&&expected.queue==owned_.queue&&
+            expected.generation==owned_.generation&&expected.state==owned_.state;
     }
     static bool color_state(uint32_t state){return state==0||state==4||state==128||state==1024||state==2048||state==4096||state==8192;}
     bool transition_supported(Event const& event) const {
@@ -164,6 +182,7 @@ private:
         if (list->count == events_per_list) { ++stats_.event_overflow;capacity_bad_ = true; return false; }
         list->events[list->count++] = event;
         ++revision_;
+        if(owned_event(event))change_owned();
         if(list->count>stats_.event_highwater)stats_.event_highwater=list->count;
         return true;
     }
@@ -394,7 +413,7 @@ public:
            !target.width||target.width%2||!target.height||target.width>8192||target.height>8192||
            (initial_state!=4&&initial_state!=128)||stats_.active_lists||stats_.reset_calls||stats_.list_creates||stats_.execute_calls||
            maximum_ticket_||window_bad_||capacity_bad_||pending_.active)return false;
-        owned_={true,true,target,queue,generation,initial_state};++revision_;return true;
+        owned_={true,true,target,queue,generation,initial_state};++revision_;change_owned();return true;
     }
     // Explicit resource-creation boundary for a tracker with real Reset history.
     // Caller must hold the SAME API-order lock used across Reset, recording,
@@ -439,7 +458,7 @@ public:
         stats_.owned_births=1;
         stats_.owned_birth_discarded_events=discarded_events; // Event records, not multiplicity/GPU draws.
         stats_.owned_birth_discarded_candidates=discarded_candidates;
-        owned_={true,true,target,queue,generation,initial_state};++revision_;return true;
+        owned_={true,true,target,queue,generation,initial_state};++revision_;change_owned();return true;
     }
     OwnedStatus owned_status(){std::lock_guard<std::mutex> lock(mutex_);return owned_;}
     // Capture BEFORE the caller's independent CPU/GPU retirement procedure,
@@ -449,7 +468,14 @@ public:
     bool owned_retirement_snapshot(OwnedRetirement& out) {
         std::lock_guard<std::mutex> lock(mutex_);
         if(!owned_retirement_ready_locked())return false;
-        out={world_epoch_,revision_,maximum_ticket_,owned_};return true;
+        out={world_epoch_,owned_revision_,maximum_ticket_,owned_};return true;
+    }
+    // Recheck the ORIGINAL pre-fence snapshot before irreversible owner release.
+    // Does not refresh its revision or substitute a new snapshot for an old fence.
+    // Unrelated Reset/Execute may continue; source writes, state observations,
+    // discarded unsubmitted source recordings and consumption invalidate it.
+    bool owned_retirement_current(OwnedRetirement const& receipt) {
+        std::lock_guard<std::mutex> lock(mutex_);return owned_retirement_current_locked(receipt);
     }
     // Caller has frozen old-world producers, drained CPU payload consumers,
     // prevented any future use of this owner/resource and verified completion
@@ -460,12 +486,7 @@ public:
     // This is a memory-only transition, not a resource release or state recovery.
     bool retire_owned_output(OwnedRetirement const& receipt,bool certified_cpu_gpu_retired) {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto const& expected=receipt.output;
-        if(!certified_cpu_gpu_retired||!owned_retirement_ready_locked()||
-           receipt.world_epoch!=world_epoch_||receipt.revision!=revision_||receipt.ticket_cutoff!=maximum_ticket_||
-           !expected.enabled||!expected.certified||expected.target.resource!=owned_.target.resource||
-           expected.target.width!=owned_.target.width||expected.target.height!=owned_.target.height||
-           expected.queue!=owned_.queue||expected.generation!=owned_.generation||expected.state!=owned_.state)return false;
+        if(!certified_cpu_gpu_retired||!owned_retirement_current_locked(receipt))return false;
         retired_owned_epoch_=world_epoch_;retired_owned_generation_=owned_.generation;
         owned_.enabled=false;owned_.certified=false;
         retired_ticket_=maximum_ticket_;candidates_={};++revision_;
@@ -527,7 +548,7 @@ public:
         // Revalidate membership against Reset/reentrant changes, and apply the
         // same retained event values after the real queue submission returned.
         if(!validate_members(pending_.queue,pending_.members.data(),pending_.count)){lose_owned();return false;}
-        for(size_t i=0;i<pending_.count;++i){auto list=find(pending_.members[i]);list->executed=true;
+        for(size_t i=0;i<pending_.count;++i){auto list=find(pending_.members[i]);if(owned_events(*list))change_owned();list->executed=true;
             for(size_t j=0;j<list->count;++j)submit(pending_.queue,list->events[j]);}
         owned_.state=pending_.state;pending_.active=false;++revision_;
         if(window_bad_||capacity_bad_){++stats_.metadata_batches;lose_owned();return false;}return true;
@@ -558,7 +579,7 @@ public:
         if(stats_.overlay_recorded==std::numeric_limits<uint64_t>::max()||
             (merge&&list->events[list->count-1].multiplicity==std::numeric_limits<uint64_t>::max())){
             checked_add(stats_.overlay_rejected,1);capacity_bad_=true;window_bad_=true;window_rejection_|=capacity;return false;}
-        if(merge){++revision_;++list->events[list->count-1].multiplicity;++stats_.overlay_recorded;
+        if(merge){++revision_;if(owned_event(list->events[list->count-1]))change_owned();++list->events[list->count-1].multiplicity;++stats_.overlay_recorded;
             if(pair.from_executed)++stats_.overlay_from_executed_recorded;return true;}
         Event event{};event.ticket=ticket;event.target=target;event.overlay=true;event.overlay_rects=rects;event.completed_mask=completed_mask;
         event.from_executed=pair.from_executed;event.expected_queue=pair.source_queue;
@@ -692,7 +713,7 @@ public:
                     stats_.unknown_coalesced==std::numeric_limits<uint64_t>::max()){
                     capacity_bad_=true;return false;
                 }
-                ++revision_;++previous.multiplicity;++stats_.unknown_coalesced;return true;
+                ++revision_;if(owned_event(previous))change_owned();++previous.multiplicity;++stats_.unknown_coalesced;return true;
             }
         }
         return append(ref, {0, 0, {resource, 0, 0}, {}, false});
@@ -758,6 +779,7 @@ private:
     }
     Result seal_locked(Identity backbuffer, Identity verified_swapchain_queue,bool owned_seal=false) {
         if(pending_.active)lose_owned();
+        change_owned();
         ++revision_;
         auto result=result_locked(backbuffer,verified_swapchain_queue,owned_seal);
         retired_ticket_ = maximum_ticket_;
@@ -811,7 +833,7 @@ public:
         // stay intact. Unsubmitted unrelated recordings remain untouched.
         for(auto& list:lists_)if(list.executed)list.count=0;
         candidates_={};retired_ticket_=ticket;
-        ++revision_;++stats_.owned_consumed_frames;
+        ++revision_;change_owned();++stats_.owned_consumed_frames;
         return result;
     }
     void invalidate() {
