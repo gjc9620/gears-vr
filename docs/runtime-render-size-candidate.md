@@ -8,6 +8,27 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+### Blocking image defect at scale 2.0
+
+Actual `runtime-integration-checkpoint-scale2-run2-20261019` completed two
+reloads, new-world XR projection, normal shutdown and restoration. Its
+`passed=true` covers those mechanical checks only: both GPU files are 5120x2800
+as requested, but coordinator inspection of the second image shows substantial
+black right/bottom regions and scene content apparently limited to the old
+3840x2160 extent. **This is NOT successful scale2 image acceptance.** Investigate
+the actual scene view/target/viewport dimensions before accepting the runtime
+size default as release-ready. This is higher priority than DLSS.
+
+Session `continuous-stereo-2412-20261019-051846-06cd3de6`; report SHA256
+`25f528fd7931f0dbbd83667ab5b9a60e206dc4c59caa5b973a5495477c7faaf3`.
+Second GPU image SHA256
+`e1b8adc1362a02d7b38c97c3cdda61f2e1b0f069fb2852a9807d1abf604be250`.
+No exact per-ticket image association was established. Independent 77 entry
+checks and five protected-file hashes passed; no game remained running.
+Run1 stopped on a new menu object's index exceeding cached inventory; run2's
+private driver uses a fresh reader per observation, retaining exact two-read
+input checks. No production menu rejection rule was weakened.
+
 The launcher suite found the promoted Integration1 default lacked an identical
 named manifest. Added `manifest-runtime-release-integration1.json` with the
 current verified artifact hashes; the active manifest and binaries are unchanged.
