@@ -8,6 +8,52 @@
 namespace gears_ngx_epoch {
 struct List {uintptr_t raw{},canonical{};uint64_t generation{};};
 inline bool same(List a,List b){return a.raw==b.raw&&a.canonical==b.canonical&&a.generation==b.generation;}
+// CPU identity evidence only. Candidate eviction drops evidence, never GPU work.
+// The two accepted Eval leases cannot be evicted or retagged by later Reset.
+class TypedLists {
+public:
+    static constexpr unsigned capacity=64,pin_capacity=2;
+    enum Reason:unsigned {ok=0,miss=1,closed=2,boundary_failed=3,generation_missing=4,
+        world_mismatch=5,generation_changed=6,pin_limit=7};
+    struct Entry {List list{};uint64_t world{},age{};unsigned reason=miss;
+        Microsoft::WRL::ComPtr<ID3D12CommandList> lease;};
+    struct Lookup {List saved{},current{};unsigned reason=miss;};
+    std::array<Entry,capacity> candidates{};std::array<Entry,pin_capacity> pins{};
+    uint64_t sequence{},evicted{},create_failures{};unsigned pinned{};
+    unsigned held()const{unsigned n=pinned;for(auto const& e:candidates)if(e.lease)++n;return n;}
+    void release(){for(auto& e:candidates)e={};for(auto& e:pins)e={};pinned=0;}
+    void boundary(ID3D12CommandList* p,List ref,uint64_t world,unsigned reason){
+        if(!p)return;const auto raw=reinterpret_cast<uintptr_t>(p);
+        // A successful API gives a new recording; failure also revokes lookup.
+        // Pinned snapshots retain the old lease and exact generation for audit.
+        for(auto& e:pins)if(e.lease&&(e.list.raw==raw||(ref.canonical&&e.list.canonical==ref.canonical)))e.reason=boundary_failed;
+        Entry* slot{};for(auto& e:candidates)if(e.list.raw==raw||(ref.canonical&&e.list.canonical==ref.canonical)){slot=&e;break;}
+        if(!slot)for(auto& e:candidates)if(!e.lease){slot=&e;break;}
+        if(!slot){slot=&candidates[0];for(auto& e:candidates)if(e.age<slot->age)slot=&e;++evicted;}
+        Entry next;next.list=ref;next.list.raw=raw;next.world=world;next.age=++sequence;next.reason=reason;next.lease=p;
+        if(!next.reason&&(!ref.canonical||!ref.generation))next.reason=generation_missing;
+        *slot=std::move(next);
+    }
+    template<class Current> Lookup lookup(uintptr_t raw,uint64_t world,Current current)const{
+        Lookup result;
+        for(auto const& e:candidates)if(raw&&e.list.raw==raw&&e.lease){
+            result.saved=e.list;result.current=current(e.list);result.reason=e.reason;
+            if(result.reason)return result;
+            if(e.world!=world){result.reason=world_mismatch;return result;}
+            if(!result.current.canonical||!result.current.generation){result.reason=generation_missing;return result;}
+            if(!same(result.saved,result.current)){result.reason=generation_changed;return result;}
+            return result;
+        }
+        return result;
+    }
+    bool pin(Lookup const& found){
+        if(found.reason||pinned==pins.size())return false;
+        for(auto& e:candidates)if(e.lease&&!e.reason&&same(e.list,found.saved)){
+            e.age=++sequence;pins[pinned++]=e;return true;}
+        return false;
+    }
+};
+
 struct Geometry {
     uint64_t world{},ticket{};uintptr_t renderer{};unsigned valid{},constructor_valid{};
     std::array<uint32_t,2> extent{},buffer{};
@@ -45,6 +91,14 @@ public:
     uint64_t revision{},world{},ticket{},serial{},execution_order{};uintptr_t handle{},parameters{},renderer{};
     std::array<uint32_t,7> creation{};std::array<Geometry,3> geometry{};
     std::array<Typed,resource_capacity> resources{};std::array<Event,event_capacity> events{};std::array<Eval,2> evals{};
+    enum Reject:unsigned {concurrent_input=1,unassociated=2,unreadable=4,handle_changed=8,parameters_changed=16,
+        raw_missing=32,canonical_missing=64,generation_absent=128,scope_missing=256,typed_lookup_failed=512,pinning_failed=1024};
+    struct Rejection {bool present{};unsigned mask{},lookup_reason{};EvalInput input{};List saved{},current{};uint64_t tracker_overflow{};bool tracker_capacity_bad{};} rejection;
+    static unsigned input_rejection(EvalInput const& in,bool concurrent){
+        return (concurrent?concurrent_input:0u)|(!in.associated?unassociated:0u)|(!in.readable?unreadable:0u)|
+            (!in.command.raw?raw_missing:0u)|(!in.command.canonical?canonical_missing:0u)|
+            (!in.command.generation?generation_absent:0u)|(!in.scope?scope_missing:0u);
+    }
     void clear(){*this={};}
     bool observing()const{return armed&&selected&&!finished;}
     bool matches(uint64_t w,uint64_t t,uintptr_t r)const{return observing()&&world==w&&ticket==t&&renderer==r;}
@@ -105,11 +159,11 @@ public:
             if(resources[i].lease.raw==raw[j]&&resources[i].lease.retained())out|=1u<<j;
         return out;
     }
-    int enter(EvalInput const& in,bool concurrent){
+    int enter(EvalInput const& in,bool concurrent,unsigned extra=0){
         if(!armed||finished)return -1;if(!selected){++skipped;return -1;}
         if(!matches(in.world,in.ticket,in.renderer))return -1;
-        if(concurrent||!in.associated||!in.readable||in.handle!=handle||in.parameters!=parameters||
-           !in.command.raw||!in.command.canonical||!in.command.generation||!in.scope){gap();stop=3;finished=true;return -1;}
+        const auto rejected=input_rejection(in,concurrent)|extra|(in.handle!=handle?handle_changed:0u)|(in.parameters!=parameters?parameters_changed:0u);
+        if(rejected){if(!rejection.present){rejection.present=true;rejection.mask=rejected;rejection.input=in;}gap();stop=3;finished=true;return -1;}
         if(eval_count==2){gap();stop=4;finished=true;return -1;}
         const auto index=eval_count++;auto& e=evals[index];e.input=in;e.typed_mask=mask(in.resources);
         Event ev;ev.kind=Kind::eval_begin;ev.list=in.command;ev.member=index;e.begin=event(ev);return int(index);

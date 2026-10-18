@@ -225,3 +225,9 @@ history. The combined input rejection currently lacks a per-condition reason;
 that must be resolved before changing SR parameters. GPU publish remains zero.
 Native cleanup, entry restoration, normal exit and settings restoration passed.
 Evidence is archived under ignored `analysis/runtime/dlss-native-menu6-*`.
+
+### Typed command-list identity join candidate
+
+Menu6 selected Eval raw command-list addresses did not occur among its 99 recorded events. The previous event-only join therefore could not establish canonical identity/generation. The observer now keeps at most 64 typed Create/Reset candidates and two pinned Eval leases. Eviction loses evidence rather than manufacturing identity; failed Reset, closed creation, world/generation mismatch and tracker capacity loss reject. There is no conversion of an NGX integer into a COM pointer, no event fallback, and no GPU/state/producer certification. Leases release after callback drain; the first rejection records its specific mask and tracker diagnostics.
+
+Root rebuilt the sampling DLL, SHA256 `a969235e2f63681e86986cb334bf4550bfc7869b1d3770431b298e74202fadb6`. Three registered NGX tests and all 22 startup checks passed. The new real-D3D lifetime test exercises 600 candidate creations with synthetic tracker generations. No actual game run has used this revision; defaults/packages remain unchanged. Evidence: ignored `analysis/runtime/ngx-sampling-startup-suite-typed.json` and `ngx-typed-list-join/`.

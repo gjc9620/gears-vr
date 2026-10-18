@@ -108,5 +108,6 @@ int main(){try{
     // Relevant, unknown barriers still exhaust the unchanged bound, not a ring.
     scoped.clear();arm(scoped);for(unsigned i=0;i<Probe::event_capacity+1;++i)scoped.barrier(member[0],wildcard,70);
     check(scoped.finished&&scoped.stop==6&&scoped.event_count==1024&&scoped.dropped==1);
+    check(malformed.rejection.present&&(malformed.rejection.mask&Probe::unreadable)&&malformed.rejection.input.scope==in.scope);
     std::printf("NGX epoch pair probe tests passed: %u checks (real typed resources, synthetic event sequence)\n",checks);return 0;
 }catch(std::exception const& e){std::fprintf(stderr,"%s (%u)\n",e.what(),checks);return 1;}}

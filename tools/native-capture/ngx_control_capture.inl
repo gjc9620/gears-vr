@@ -29,10 +29,16 @@ void created_command(HRESULT hr,void** out,bool open){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     const bool observing=ngx_stereo_host::attested&&recording.load()&&frame_link_diagnostics;
     const bool controlling=context&&!context->failed;
-    if(FAILED(hr)||(!observing&&!controlling))return;
+    if(FAILED(hr)){
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+        ngx_epoch_pair::creation_failed();
+#endif
+        return;
+    }
+    if(!observing&&!controlling)return;
     auto failed=[&](){if(context)reject(*context);
 #if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
-        ngx_epoch_pair::probe.gap();
+        ngx_epoch_pair::creation_failed();ngx_epoch_pair::probe.gap();
 #endif
     };
     IUnknown* returned{};Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> list;
@@ -40,7 +46,11 @@ void created_command(HRESULT hr,void** out,bool open){
     // a fresh generation even on address reuse; no permanent list COM cache.
     if(!safe_copy(&returned,out,sizeof(returned))||!returned||FAILED(returned->QueryInterface(IID_PPV_ARGS(&list)))){failed();return;}
     if(list->GetType()!=D3D12_COMMAND_LIST_TYPE_DIRECT)return;
-    const auto id=canonical_identity(list.Get());if(!id||!frame_link.create_success(id,open).identity){failed();return;}
+    const auto id=canonical_identity(list.Get());const auto born=frame_link.create_success(id,open);
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+    ngx_epoch_pair::created_list(list.Get(),open,id&&born.identity);
+#endif
+    if(!id||!born.identity){failed();return;}
     // CreateCommandList1 is closed: only the actual Reset enables recording.
 }
 bool command(Context& c,uintptr_t raw,Command& out){

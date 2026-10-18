@@ -18,7 +18,7 @@ gears_submitted::FrameTicket consuming_frozen_frame{10,2,true};
 struct Lifetime {bool frame(uintptr_t ptr,gears_submitted::FrameTicket& f){if(ptr!=reinterpret_cast<uintptr_t>(consuming_renderer))return false;f=consuming_frozen_frame;return true;}} submitted_lifetime;
 struct Record {int family_count=2,renderer_count=2;std::array<uintptr_t,2> family_views{reinterpret_cast<uintptr_t>(left_bytes.data()),reinterpret_cast<uintptr_t>(right_bytes.data())};};
 void inspect_completed_renderer(Record& r,void*){r=Record{};}
-struct Tracker {uint64_t generation=1;struct Ref {uintptr_t identity;uint64_t generation;};Ref current(uintptr_t id){return {id,generation};}} frame_link;
+struct Tracker {uint64_t generation=1;struct Ref {uintptr_t identity;uint64_t generation;};Ref current(uintptr_t id){return {id,generation};}struct Snapshot {uint64_t list_overflow{};bool capacity_bad{};};Snapshot stats{};Snapshot snapshot(){return stats;}} frame_link;
 bool safe_copy(void* out,void const* in,size_t n){if(!in||!out)return false;std::memcpy(out,in,n);return true;}
 uintptr_t canonical_identity(IUnknown* p){Microsoft::WRL::ComPtr<IUnknown> id;if(!p||FAILED(p->QueryInterface(IID_PPV_ARGS(&id))))return 0;return reinterpret_cast<uintptr_t>(id.Get());}
 }
@@ -47,6 +47,7 @@ int main(){try{
     ComPtr<ID3D12CommandQueue> queue;D3D12_COMMAND_QUEUE_DESC qd{};hr(device->CreateCommandQueue(&qd,IID_PPV_ARGS(&queue)));
     ComPtr<ID3D12CommandAllocator> allocator;hr(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)));
     ComPtr<ID3D12GraphicsCommandList> list;hr(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&list)));
+    ngx_epoch_pair::created_list(list.Get(),true,true);check(ngx_epoch_pair::typed_lists.held()==1);
     ComPtr<ID3D12Fence> fence;hr(device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)));
     std::array<ComPtr<ID3D12Resource>,4> resources;D3D12_HEAP_PROPERTIES hp{};hp.Type=D3D12_HEAP_TYPE_DEFAULT;D3D12_RESOURCE_DESC desc{};
     desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;desc.Width=2560;desc.Height=1080;desc.MipLevels=desc.DepthOrArraySize=1;desc.SampleDesc.Count=1;desc.Format=DXGI_FORMAT_R11G11B10_FLOAT;
@@ -75,8 +76,47 @@ int main(){try{
     check(text.find("candidate_complete=1")!=std::string::npos&&text.find("producer_domain_verified=0")!=std::string::npos&&text.find("gpu_completion_verified=0")!=std::string::npos);
     check(text.find("stage=prepare_after")!=std::string::npos&&text.find("typed_before=f")!=std::string::npos&&text.find("format=41")!=std::string::npos);
     check(text.find("membership_frozen_at_execute_begin=1 earlier_history_complete=0")!=std::string::npos);
-    check(!ngx_epoch_pair::probe.resources[0].lease.retained());
+    check(!ngx_epoch_pair::probe.resources[0].lease.retained()&&!ngx_epoch_pair::typed_lists.held());
     recording=true;ngx_epoch_pair::reset_capture(true);ngx_epoch_pair::created({2,2,h,p,{1706,720,2560,1080,1,0x12,1}});ngx_epoch_pair::released(h);check(ngx_epoch_pair::probe.stop==2);
     ngx_epoch_pair::reset_capture(true);ngx_epoch_pair::created({3,2,h,p,{1706,720,2560,1080,1,0x12,1}});committed_world_generation=3;check(!ngx_epoch_pair::selected()&&ngx_epoch_pair::probe.stop==2);
+    // A real successful Reset supplies identity without any selected Barrier.
+    committed_world_generation=2;
+    auto arm=[&](uint64_t revision){recording=false;active=0;ngx_epoch_pair::reset_capture(true);recording=true;
+        ngx_epoch_pair::created({revision,2,h,p,{1706,720,2560,1080,1,0x12,1}});
+        ngx_epoch_pair::built(consuming_renderer,consuming_frozen_frame,record,true,sr0.data(),sr1.data());};
+    arm(4);auto before=ngx_epoch_pair::list(list.Get());hr(allocator->Reset());hr(list->Reset(allocator.Get(),nullptr));++frame_link.generation;ngx_epoch_pair::reset(before,list.Get(),S_OK);
+    check(ngx_epoch_pair::probe.event_count==0&&ngx_epoch_pair::typed_lists.held()==1);
+    std::array<unsigned char,0x168> empty_eval{};
+    const auto raw_list=reinterpret_cast<uintptr_t>(list.Get());ngx_epoch_pair::eval_enter(20000,true,base+0x9a35d3,raw_list,empty_eval.data(),false);
+    check(ngx_epoch_pair::probe.eval_count==1&&ngx_epoch_pair::typed_lists.pinned==1&&!ngx_epoch_pair::probe.rejection.present);
+    ngx_epoch_pair::eval_leave(20000,true,1);
+    // Synthetic failure HRESULT: the prior successful typed boundary and the
+    // eval_begin row must not be usable as a fallback after invalidation.
+    before=ngx_epoch_pair::list(list.Get());ngx_epoch_pair::reset(before,list.Get(),E_FAIL);
+    ngx_epoch_pair::eval_enter(20001,true,base+0x9a35d3,raw_list,empty_eval.data(),false);
+    check(ngx_epoch_pair::probe.stop==3&&ngx_epoch_pair::probe.rejection.lookup_reason==gears_ngx_epoch::TypedLists::boundary_failed&&ngx_epoch_pair::probe.eval_count==1);
+    check(ngx_epoch_pair::probe.rejection.mask&gears_ngx_epoch::Probe::typed_lookup_failed);
+    const auto frozen=ngx_epoch_pair::probe.rejection.input.scope;ngx_epoch_pair::eval_enter(20002,true,base+0x9a35d3,raw_list,empty_eval.data(),true);check(ngx_epoch_pair::probe.rejection.input.scope==frozen);
+    const auto held=ngx_epoch_pair::typed_lists.held();ngx_epoch_pair::reset_capture(false);check(ngx_epoch_pair::typed_lists.held()==held&&ngx_epoch_pair::probe.rejection.present);
+    check(tmpfile_s(&output)==0&&output);ngx_epoch_pair::print(output);check(ngx_epoch_pair::typed_lists.held()==held&&!ngx_epoch_pair::printed);
+    recording=false;active=1;ngx_epoch_pair::print(output);check(ngx_epoch_pair::typed_lists.held()==held&&!ngx_epoch_pair::printed);
+    active=0;ngx_epoch_pair::print(output);check(!ngx_epoch_pair::typed_lists.held()&&ngx_epoch_pair::printed);rewind(output);text.clear();while(fgets(buffer_line,sizeof(buffer_line),output))text+=buffer_line;fclose(output);
+    check(text.find("ngx_epoch_reject mask=")!=std::string::npos&&text.find("lookup=3 world=2 ticket=10")!=std::string::npos);
+    // No actual Create epoch means no retained candidates, even if enabled.
+    ngx_epoch_pair::reset_capture(true);recording=true;ngx_epoch_pair::created_list(list.Get(),true,true);ngx_epoch_pair::creation_failed();check(!ngx_epoch_pair::typed_lists.held()&&!ngx_epoch_pair::typed_lists.create_failures);
+    // Empty Create rearm drops the prior directory; no cross-epoch candidates.
+    ngx_epoch_pair::created({5,2,h,p,{1706,720,2560,1080,1,0x12,1}});
+    ComPtr<ID3D12Device4> device4;hr(device.As(&device4));ComPtr<ID3D12GraphicsCommandList> closed;
+    hr(device4->CreateCommandList1(0,D3D12_COMMAND_LIST_TYPE_DIRECT,D3D12_COMMAND_LIST_FLAG_NONE,IID_PPV_ARGS(&closed)));
+    ngx_epoch_pair::created_list(closed.Get(),false,true);check(ngx_epoch_pair::typed_lists.held()==1);
+    ngx_epoch_pair::released(h);ngx_epoch_pair::created({6,2,h,p,{1706,720,2560,1080,1,0x12,1}});
+    check(!ngx_epoch_pair::typed_lists.held()&&ngx_epoch_pair::probe.revision==6&&ngx_epoch_pair::probe.empty_epoch_count==1);
+    arm(7);ngx_epoch_pair::created_list(closed.Get(),false,true);ngx_epoch_pair::eval_enter(30000,true,base+0x9a35d3,reinterpret_cast<uintptr_t>(closed.Get()),empty_eval.data(),false);
+    check(ngx_epoch_pair::probe.rejection.lookup_reason==gears_ngx_epoch::TypedLists::closed);
+    arm(8);ngx_epoch_pair::creation_failed();check(ngx_epoch_pair::typed_lists.create_failures==1&&!ngx_epoch_pair::typed_lists.held());
+    // Existing global tracker capacity loss remains a conservative rejection.
+    frame_link.stats={7,true};ngx_epoch_pair::created_list(list.Get(),true,false);ngx_epoch_pair::eval_enter(40000,true,base+0x9a35d3,raw_list,empty_eval.data(),false);
+    check(ngx_epoch_pair::probe.rejection.lookup_reason==gears_ngx_epoch::TypedLists::generation_missing&&ngx_epoch_pair::probe.rejection.tracker_overflow==7&&ngx_epoch_pair::probe.rejection.tracker_capacity_bad);
+    recording=false;ngx_epoch_pair::reset_capture(false);check(!ngx_epoch_pair::typed_lists.held());hr(list->Close());
     std::printf("NGX live epoch probe tests passed: %u checks (real D3D barriers/copies/Execute, synthetic SDK)\n",checks);return 0;
 }catch(std::exception const& e){std::fprintf(stderr,"%s (%u)\n",e.what(),checks);return 1;}}
