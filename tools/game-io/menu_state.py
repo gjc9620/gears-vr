@@ -635,6 +635,34 @@ class MenuReader:
             result['verified_reads'] = len(reads)
             result['consistent_reread'] = True
             return result
+        except RuntimeError as error:
+            if type(error) is not RuntimeError or str(error) != 'Object outside registry':
+                raise
+            # A rejected registration never grants retry by its message alone.
+            # Only independently reread bytes from THIS failed acquisition can
+            # prove churn; never accept the rejected target or reuse its sample.
+            changed = None
+            try:
+                header_keys = [(address, 16) for address in headers.values()
+                               if address is not None and (address, 16) in reads]
+                for address, size in header_keys + [key for key in reads if key not in header_keys]:
+                    expected = reads[address, size]
+                    actual = original_read(address, size)
+                    if len(actual) != len(expected):
+                        break  # A short read is unavailable evidence, not proof of change.
+                    if actual != expected:
+                        is_header = (address, size) in header_keys
+                        changed = read_conflict_error(RegistrySnapshotChanged if is_header else SnapshotChanged,
+                            'Registration failed after observed UI source changed',
+                            'menu_failed_registration_reread', address, expected, actual, headers)
+                        if is_header:self._registry_dirty = True
+                        break
+            except Exception:
+                # Failure to prove change preserves the original fatal rejection.
+                raise error
+            if changed is not None:
+                raise changed from error
+            raise
         finally:
             r.read = original_read
             del self._dialog_raw_read, self._dialog_sources

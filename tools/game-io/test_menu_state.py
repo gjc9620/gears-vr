@@ -202,6 +202,87 @@ class MenuStateTests(unittest.TestCase):
         # Focus on actual sample validation; no OS APIs or registry enumeration.
         self.reader.refresh = lambda: None
 
+    def fail_scene_registration(self, change=None):
+        original=self.r.identity
+        armed=[True]
+        def identity(address):
+            obj=original(address)
+            if address==0x1000 and armed[0]:
+                armed[0]=False
+                if change is not None:change()
+                return dict(obj,internal_index=len(self.r.object_pointers)+17)
+            return obj
+        self.r.identity=identity
+
+    def test_failed_registration_changed_header_is_dirty_and_preserves_cause(self):
+        original_read=self.r.read
+        def change():
+            raw=self.r.read(self.r.objects_header,16)
+            data,count,capacity=struct.unpack('<Qii',raw)
+            self.r.put(self.r.objects_header,struct.pack('<Qii',data,count+1,capacity))
+        self.fail_scene_registration(change)
+        with self.assertRaises(RegistrySnapshotChanged) as caught:
+            self.reader.sample(include_tree=True)
+        self.assertIs(type(caught.exception),RegistrySnapshotChanged)
+        self.assertEqual(str(caught.exception.__cause__),'Object outside registry')
+        self.assertEqual(caught.exception.read_conflict['registry'],'objects')
+        self.assertEqual(caught.exception.read_conflict['stage'],'menu_failed_registration_reread')
+        self.assertTrue(self.reader._registry_dirty)
+        self.assertEqual(self.r.read,original_read)
+        self.assertFalse(hasattr(self.reader,'_dialog_raw_read'))
+
+    def test_failed_registration_changed_active_scenes_source_is_snapshot_only(self):
+        address=0x3000+self.r.props['GameUISceneClient','ActiveScenes']['offset']
+        def change():
+            raw=self.r.read(address,16);data,_,capacity=struct.unpack('<Qii',raw)
+            self.r.put(address,struct.pack('<Qii',data,0,capacity))
+        self.fail_scene_registration(change)
+        with self.assertRaises(SnapshotChanged) as caught:self.reader._sample_once()
+        self.assertIs(type(caught.exception),SnapshotChanged)
+        self.assertEqual(caught.exception.read_conflict['address'],hex(address))
+        self.assertFalse(self.reader._registry_dirty)
+        # Entire failed acquisition was discarded; the next one independently
+        # validates the now-empty menu rather than admitting the invalid object.
+        result=self.reader.sample();self.assertTrue(result['consistent_reread'])
+        self.assertEqual(result['active_scenes'],[])
+
+    def test_failed_registration_stable_invalid_pointer_stays_fatal_once(self):
+        self.fail_scene_registration()
+        with mock.patch.object(self.reader,'_sample_once',wraps=self.reader._sample_once) as sample:
+            with self.assertRaisesRegex(RuntimeError,'Object outside registry') as caught:self.reader.sample()
+        self.assertIs(type(caught.exception),RuntimeError)
+        self.assertEqual(sample.call_count,1)
+        self.assertFalse(self.reader._registry_dirty)
+
+    def test_failed_registration_reread_io_or_short_is_not_churn_authority(self):
+        for short in (False,True):
+            with self.subTest(short=short):
+                self.setUp();original_read=self.r.read;failed=[False]
+                def change():failed[0]=True
+                def read(address,size):
+                    if failed[0]:
+                        if short:return b''
+                        raise OSError('unavailable failure reread')
+                    return original_read(address,size)
+                self.r.read=read;self.fail_scene_registration(change)
+                with self.assertRaisesRegex(RuntimeError,'Object outside registry') as caught:self.reader.sample()
+                self.assertIs(type(caught.exception),RuntimeError)
+                self.assertFalse(self.reader._registry_dirty)
+                self.assertEqual(self.r.read,read)
+
+    def test_other_failure_message_does_not_gain_failure_rereads(self):
+        original=self.r.identity
+        class Different(RuntimeError):pass
+        for error in (RuntimeError('Object outside registry: unknown'),Different('Object outside registry')):
+            self.setUp();original=self.r.identity
+            def identity(address):
+                if address==0x1000:raise error
+                return original(address)
+            self.r.identity=identity
+            with self.assertRaises(type(error)) as caught:self.reader.sample()
+            self.assertIs(caught.exception,error)
+            self.assertEqual(self.r.read_counts[self.r.objects_header,16],1)
+
     def test_owner_option_is_explicit_and_does_not_change_default_sample(self):
         with mock.patch('scene_owner_snapshot.capture_scene_owner', return_value={'render_admission': False}) as capture:
             baseline = self.reader.sample()
