@@ -1,4 +1,10 @@
-# Runtime render size candidate
+# Runtime-recommended render size: required 0.0.1 default
+
+Release priority: this mode replaces game-resolution-based VR rendering in
+0.0.1 and takes precedence over DLSS compatibility. The launcher exposes the
+render multiplier; 1.0 uses the OpenXR runtime's recommended per-eye dimensions.
+Game resolution does not select the VR render dimensions. Remaining validation
+is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Integrated default: two actual checkpoint reloads, 2026-10-19
 
