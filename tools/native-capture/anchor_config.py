@@ -5,6 +5,8 @@ proof that Pawn.Location + EyeHeight is the rendered eye.
 """
 import struct
 import time
+import datetime
+import math
 from sample_player_anchor import AnchorSampler, AnchorRejected, RegistryHeaderChanged
 from mounted_context import MountedTimestampChanged
 
@@ -78,18 +80,12 @@ class LiveRegistryAnchorSampler(AnchorSampler):
         if self.target_validator is not None and self.cinematic_contract is None:
             from cinematic_anchor import CinematicTargetCertificate
             self.cinematic_contract=CinematicTargetCertificate(self)
-        mounted=None
         if not self.derives(self.fresh(self.pawn)['cls'],'WarPawn'):
-            from mounted_context import MountedContextCertificate
+            from mounted_context import MountedContextCertificate,mounted_guard_result
             if self.mounted_contract is None:
                 self.mounted_contract=MountedContextCertificate(self, defer_capture=True)
-            mounted=self.mounted_contract.capture()
-        result=super().guard()
-        if mounted is not None:
-            after=self.mounted_contract.capture()
-            _check_mounted_bracket(mounted, after)
-            result['mounted_context']=after
-        return result
+            return mounted_guard_result(self.mounted_contract.capture())
+        return super().guard()
 
     def guard(self):
         stage=self.guard_stage
@@ -139,6 +135,41 @@ class LiveRegistryAnchorSampler(AnchorSampler):
         raise AnchorSamplingRejected(reason,failure) from last_error
 
     def sample(self):
+        # Mounted uses one explicitly two-layer acquisition, not two expensive
+        # full guards forced to share a camera frame. Its inner endpoints are
+        # independently read, including roles, slots, links and actual POV.
+        if self.mounted_contract is not None:
+            from mounted_context import mounted_guard_result
+            record={'started_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    'started_monotonic':time.monotonic(),'accepted':False,
+                    'sampling_contract':'single_guard_two_layer_mounted_inner_endpoints'}
+            previous_stage=self.guard_stage
+            self.guard_stage='sample_two_layer';self.sample_guard_index=None
+            try:
+                guarded=self.guard();proof=guarded['mounted_context']
+                before=mounted_guard_result(proof,'inner_before')
+                record['guard_before']=before
+                after=mounted_guard_result(proof,'inner_after');record['guard_after']=after
+                for key in ROLES:
+                    if before[key]!=self.initial[key]:raise AnchorRejected('Resolved object identity changed: '+key)
+                pov=struct.unpack('<3f3if',bytes.fromhex(proof['validation']['inner_before']['pov_raw']))
+                if not all(math.isfinite(x) for x in (*pov[:3],pov[-1])) or not 1<pov[-1]<179:
+                    raise AnchorRejected('Invalid CameraCache FOV or values')
+                values=dict(camera_cache_pov=dict(location=list(pov[:3]),rotation_ru=list(pov[3:6]),fov=pov[6]),
+                            pawn_location=list(pov[:3]),pawn_rotation=list(pov[3:6]),eye_height=0.,base_eye_height=0.)
+                rotation_raw=proof['validation']['inner_before']['controller_rotation_raw']
+                if rotation_raw is None:raise AnchorRejected('Missing mounted controller rotation evidence')
+                values['controller_rotation']=list(struct.unpack('<3i',bytes.fromhex(rotation_raw)))
+                record.update(accepted=True,values=values,raw_values={'camera_cache_pov':proof['camera_pov_raw'],
+                              'controller_rotation':rotation_raw},
+                              camera_timestamp=struct.unpack('<f',bytes.fromhex(before['timestamp_raw']))[0],
+                              candidate_eye_hypothesis=list(pov[:3]),geometry_source='CameraCache.POV')
+            except (RuntimeError,OSError,ValueError,struct.error) as error:
+                record['rejection']=str(error)
+            finally:
+                self.sample_guard_index=None;self.guard_stage=previous_stage
+            record['finished_monotonic']=time.monotonic()
+            return record
         self.sample_guard_index=0
         try:
             result=super().sample()

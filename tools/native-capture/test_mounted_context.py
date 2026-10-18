@@ -87,12 +87,13 @@ class MountedContextTests(unittest.TestCase):
         self.assertTrue(batches)
         for a, n in batches:
             self.assertLessEqual(n, 256);self.assertEqual(a // 4096, (a + n - 1) // 4096)
-            self.assertEqual(calls.count((a, n)), 2)
+            self.assertIn(calls.count((a, n)), (2, 4))
         # Both separate FName reads and fresh entry bodies survive the batching.
         for address, identity in cert._initial['identities'].items():
-            self.assertEqual(calls.count((address + f.profile['object_name'], 4)), 2)
+            expected = 4 if address in cert._initial['validation']['inner_before']['roles'] else 2
+            self.assertEqual(calls.count((address + f.profile['object_name'], 4)), expected)
             entry = f.u64(f.names_data + identity['name_index'] * 8)
-            self.assertEqual(calls.count((entry, 148)), 2)
+            self.assertGreaterEqual(calls.count((entry, 148)), 2)
 
     def test_slot_batch_short_read_is_terminal_and_binding_is_removed(self):
         for registry in ('objects', 'names'):
@@ -229,7 +230,7 @@ class MountedContextTests(unittest.TestCase):
                     if not bracket_started:return original_read(address, size)
                     key = address, size; hits[key] = hits.get(key, 0) + 1
                     data = original_read(address, size)
-                    if hits[key] >= 2:
+                    if hits[key] >= (1 if kind in ('property', 'link', 'read_error') else 2):
                         if kind == 'target' and address == f.sampler.view_target:return struct.pack('<Q', f.TURRET)
                         if kind == 'timestamp' and address == f.sampler.stamp:return struct.pack('<f', 42)
                         if kind == 'header' and address == f.names_header:
@@ -278,7 +279,9 @@ class MountedContextTests(unittest.TestCase):
             cert = MountedContextCertificate(f.sampler)
         addresses = [call.args[0] for call in fresh.call_args_list]
         self.assertEqual(set(addresses), set(cert._initial['identities']))
-        self.assertTrue(all(addresses.count(address) == 2 for address in set(addresses)))
+        role_ids = cert._initial['validation']['inner_before']['roles']
+        self.assertTrue(all(addresses.count(address) == (4 if address in role_ids else 2)
+                            for address in set(addresses)))
         with mock.patch.object(f.sampler, 'fresh', wraps=f.sampler.fresh) as fresh:
             self.assertEqual(cert.capture(), cert._initial)
         self.assertEqual(fresh.call_count, len(addresses))
@@ -393,61 +396,52 @@ class MountedContextTests(unittest.TestCase):
                         self.assertEqual(len(evidence['attempts']), 2)
                     self.assertEqual(evidence['attempts'][0]['exception_type'], 'MountedTimestampChanged')
 
-    def test_outer_camera_frame_advance_discards_attempt_then_recovers_or_exhausts(self):
-        from anchor_config import AnchorSampler, AnchorSamplingRejected
-        original = AnchorSampler.guard
-        for continuous in (False, True):
-            with self.subTest(continuous=continuous):
-                f = MountedFixture(); attempts = 0
-                def advancing(sampler):
-                    nonlocal attempts
-                    result = original(sampler)
-                    attempts += 1
-                    if continuous or attempts == 1:
-                        f.put(sampler.stamp, struct.pack('<f', 10 + attempts))
-                        f.put(sampler.pov, struct.pack('<3f3if', 400 + attempts, 500, 600, 7, 8, 9, 90))
-                    return result
-                with mock.patch.object(AnchorSampler, 'guard', advancing):
-                    if continuous:
-                        with self.assertRaises(AnchorSamplingRejected) as failure:
-                            LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
-                        evidence = failure.exception.evidence['guard_acquisitions'][0]
-                        self.assertEqual(attempts, 5)
-                        self.assertTrue(all(row['retryable'] and not row['strict_guard_accepted'] for row in evidence['attempts']))
-                    else:
-                        sampler = LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
-                        evidence = sampler.guard_acquisitions[0]
-                        self.assertEqual(attempts, 2)
-                        self.assertEqual(evidence['attempts'][0]['raw_guard'], None)
-                        self.assertFalse(evidence['attempts'][0]['strict_guard_accepted'])
-                        self.assertTrue(evidence['attempts'][1]['strict_guard_accepted'])
-                        accepted = evidence['attempts'][1]['raw_guard']['mounted_context']
-                        self.assertEqual(accepted['camera_timestamp_raw'], struct.pack('<f', 11).hex())
-                        self.assertEqual(accepted['camera_pov_raw'], f.read(sampler.pov, 28).hex())
-                    self.assertEqual(evidence['attempts'][0]['exception_type'], 'MountedTimestampChanged')
+    def test_camera_advance_outside_inner_window_is_allowed_without_calling_base_guard(self):
+        from anchor_config import AnchorSampler
+        f = MountedFixture();sampler = LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
+        original = f.read; stamps = 0
+        def advancing(address, size):
+            nonlocal stamps
+            if (address, size) == (sampler.stamp, 4):stamps += 1
+            # A camera frame starts during the outer opening, and another
+            # after the inner window, before closing metadata validation.
+            if (address, size) == (f.TURRET, 96) and stamps in (0, 3):
+                f.put(sampler.stamp, struct.pack('<f', 20 + stamps))
+                f.put(sampler.pov, struct.pack('<3f3if', 400 + stamps, 500, 600, 7, 8, 9, 90))
+            return original(address, size)
+        with mock.patch.object(f,'read',side_effect=advancing), \
+             mock.patch.object(AnchorSampler,'guard',side_effect=AssertionError('old long mounted bracket')):
+            result = sampler.guard()
+        proof = result['mounted_context'];self.assertEqual(stamps, 3)
+        self.assertEqual(proof['camera_timestamp_raw'],struct.pack('<f',20).hex())
+        self.assertEqual(f.read(sampler.stamp,4),struct.pack('<f',23))
+        self.assertEqual(proof['validation']['inner_before'],proof['validation']['inner_after'])
 
-    def test_outer_same_stamp_pov_or_static_change_never_retries(self):
-        from anchor_config import AnchorSampler, AnchorSamplingRejected
-        original = AnchorSampler.guard
-        for kind in ('pov', 'identity', 'super', 'property', 'link', 'level'):
-            with self.subTest(kind=kind):
-                f = MountedFixture()
-                def changing(sampler):
-                    result = original(sampler)
-                    if kind != 'pov':f.put(sampler.stamp, struct.pack('<f', 11))
-                    if kind == 'pov':f.put(sampler.pov, struct.pack('<3f3if', 400, 500, 600, 7, 8, 9, 90))
-                    elif kind == 'identity':f.word(f.TURRET + 76, 1)
-                    elif kind == 'super':f.ptr(0x71060, 0)
-                    elif kind == 'property':f.word(0x92094, 0x808)
-                    elif kind == 'link':f.ptr(f.TURRET + 0x800, 0)
-                    else:f.ptr(f.TURRET + 64, 0)
-                    return result
-                with mock.patch.object(AnchorSampler, 'guard', changing):
-                    with self.assertRaises(AnchorSamplingRejected) as failure:
-                        LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
-                attempts = failure.exception.evidence['guard_acquisitions'][0]['attempts']
-                self.assertEqual(len(attempts), 1)
-                self.assertFalse(attempts[0]['retryable'])
+    def test_two_layer_inner_and_outer_changes_reject_without_retry(self):
+        from anchor_config import AnchorSamplingRejected
+        for phase in ('inner', 'outer_closing'):
+            for kind in ('identity', 'super', 'property', 'link', 'level', 'slot'):
+                with self.subTest(phase=phase,kind=kind):
+                    f = MountedFixture();sampler = LiveRegistryAnchorSampler(f,clock_ns=lambda: 0)
+                    original = f.read;stamps = 0;changed = False
+                    def changing(address,size):
+                        nonlocal stamps, changed
+                        if (address,size)==(sampler.stamp,4):stamps += 1
+                        trigger = stamps == 1 if phase=='inner' else stamps == 3 and size==96
+                        if trigger and not changed:
+                            changed = True
+                            if kind=='identity':f.word(f.TURRET+76,1)
+                            elif kind=='super':f.ptr(0x71060,0)
+                            elif kind=='property':f.word(0x92094,0x808)
+                            elif kind=='link':f.ptr(f.TURRET+0x800,0)
+                            elif kind=='level':f.ptr(f.TURRET+64,0)
+                            else:f.ptr(f.objects_data+f.u32(f.TURRET+8)*8,0)
+                        return original(address,size)
+                    with mock.patch.object(f,'read',side_effect=changing):
+                        with self.assertRaises(AnchorSamplingRejected) as failure:sampler.guard()
+                    self.assertTrue(changed)
+                    attempts=failure.exception.evidence['guard_acquisitions'][-1]['attempts']
+                    self.assertEqual(len(attempts),1);self.assertFalse(attempts[0]['retryable'])
 
     def test_outer_comparison_requires_all_static_values_and_keys_equal(self):
         from anchor_config import _check_mounted_bracket
@@ -553,6 +547,86 @@ class MountedContextTests(unittest.TestCase):
                     return result
                 with mock.patch.object(f.sampler,'fresh',side_effect=changing):
                     with self.assertRaises(AnchorRejected):MountedContextCertificate(f.sampler)
+
+    def test_inner_window_read_count_and_independent_evidence(self):
+        f=MountedFixture();cert=MountedContextCertificate(f.sampler)
+        with mock.patch.object(f,'read',wraps=f.read) as reader:proof=cert.capture()
+        calls=[(x.args[0],x.args[1]) for x in reader.call_args_list]
+        stamps=[i for i,x in enumerate(calls) if x==(f.sampler.stamp,4)]
+        window=calls[stamps[0]:stamps[-1]+1]
+        # Same fixture previously required 341 reads between camera timestamps.
+        self.assertLess(len(window),120);self.assertLess(len(window),len(calls)//3)
+        role_ids=proof['validation']['inner_before']['roles']
+        self.assertTrue(all(a in role_ids for a,n in window if n==96))
+        self.assertEqual(proof['validation']['inner_before'],proof['validation']['inner_after'])
+        self.assertIsNot(proof['validation']['inner_before'],proof['validation']['inner_after'])
+        self.assertIsNot(proof['validation']['inner_before']['roles'],proof['validation']['inner_after']['roles'])
+        self.assertEqual(proof['validation']['outer_before_sha256'],proof['validation']['outer_after_sha256'])
+        self.assertFalse(proof['atomic_snapshot'])
+
+    def test_inner_endpoint_and_outer_digest_tampering_rejected(self):
+        from mounted_context import mounted_guard_result
+        original=MountedContextCertificate(MountedFixture().sampler).capture()
+        for kind in ('role','slot_index','link','pov','stamp','outer'):
+            with self.subTest(kind=kind):
+                proof=copy.deepcopy(original);end=proof['validation']['inner_after']
+                if kind=='role':end['roles'][proof['roles']['controller']['address']]['cls']+=8
+                elif kind=='slot_index':end['roles'][proof['roles']['controlled']['address']]['internal_index']+=1
+                elif kind=='link':end['links']['controlled']['raw']='00'*8
+                elif kind=='pov':end['pov_raw']='00'*28
+                elif kind=='stamp':end['timestamp_raw']=struct.pack('<f',42).hex()
+                else:proof['validation']['outer_after_sha256']='0'*64
+                with self.assertRaises(AnchorRejected):mounted_guard_result(proof)
+
+    def test_mounted_sample_uses_actual_inner_pov_and_rotation_not_later_camera(self):
+        f=MountedFixture();sampler=LiveRegistryAnchorSampler(f,clock_ns=lambda:0)
+        original=f.read;stamps=0;advanced=False
+        def reading(address,size):
+            nonlocal stamps,advanced
+            if (address,size)==(sampler.stamp,4):stamps+=1
+            if stamps==3 and size==96 and not advanced:
+                advanced=True
+                f.put(sampler.stamp,struct.pack('<f',42))
+                f.put(sampler.pov,struct.pack('<3f3if',400,500,600,7,8,9,90))
+            return original(address,size)
+        with mock.patch.object(f,'read',side_effect=reading):sample=sampler.sample()
+        self.assertTrue(sample['accepted'],sample.get('rejection'));self.assertTrue(advanced)
+        self.assertEqual(sample['sampling_contract'],'single_guard_two_layer_mounted_inner_endpoints')
+        self.assertEqual(sample['raw_values']['camera_cache_pov'],sample['guard_before']['mounted_context']['validation']['inner_before']['pov_raw'])
+        self.assertNotEqual(sample['raw_values']['camera_cache_pov'],f.read(sampler.pov,28).hex())
+        self.assertEqual(len(sample['values']['controller_rotation']),3)
+        self.assertEqual(len(sampler.guard_acquisitions[-1]['attempts']),1)
+        self.assertEqual(sampler.guard_acquisitions[-1]['stage'],'sample_two_layer')
+        self.assertIsNot(sample['guard_before']['pawn'],sample['guard_after']['pawn'])
+
+    def test_inner_pov_and_controller_rotation_changes_reject(self):
+        from anchor_config import AnchorSamplingRejected
+        for kind in ('pov','rotation'):
+            with self.subTest(kind=kind):
+                f=MountedFixture();sampler=LiveRegistryAnchorSampler(f,clock_ns=lambda:0)
+                original=f.read;stamps=0;changed=False
+                def reading(address,size):
+                    nonlocal stamps,changed
+                    if (address,size)==(sampler.stamp,4):stamps+=1
+                    if stamps==2 and not changed:
+                        changed=True
+                        if kind=='pov':f.put(sampler.pov,struct.pack('<3f3if',400,500,600,7,8,9,90))
+                        else:f.put(sampler.controller+sampler.layout['controller_rotation']['offset'],struct.pack('<3i',77,88,99))
+                    return original(address,size)
+                with mock.patch.object(f,'read',side_effect=reading):
+                    with self.assertRaises(AnchorSamplingRejected):sampler.guard()
+
+    def test_two_layer_config_keeps_native_wire4_and_bounded_metadata(self):
+        import json
+        from anchor_config import build_anchor_config,validate_anchor_config,anchor_ini
+        config,metadata=build_anchor_config(MountedFixture())
+        validate_anchor_config(config);text=anchor_ini(config)
+        self.assertEqual(config['schema'],3);self.assertIn('schema=4\n',text)
+        self.assertIn('mounted_enabled=1\n',text)
+        self.assertEqual(set(config['mounted']['properties']),
+                         {'Pawn','Controller','Driver','DrivenVehicle','PlayerCamera','PCOwner','Player','WorldInfo','InvManager','Owner'})
+        self.assertLess(len(json.dumps(metadata).encode()),256*1024)
+        self.assertEqual(metadata['sample']['sampling_contract'],'single_guard_two_layer_mounted_inner_endpoints')
 
     def test_roles_camera_and_independent_results(self):
         f = MountedFixture()

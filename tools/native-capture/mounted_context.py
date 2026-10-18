@@ -11,6 +11,8 @@ Stable repeated reads establish consistency, not an atomic engine snapshot.
 import copy
 import math
 import struct
+import hashlib
+import json
 from sample_player_anchor import AnchorRejected, _check_registry_header
 from mounted_read_pass import MountedReadPass
 
@@ -27,6 +29,7 @@ class MountedContextCertificate:
         self._property_hints = self._discover_properties()
         # The live guard retains discovery across timestamp-only retries. No
         # initial certificate exists until a complete strict capture succeeds.
+        self._validating_world = None
         self._initial = None if defer_capture else self._capture()
 
     def _discover_properties(self):
@@ -110,7 +113,11 @@ class MountedContextCertificate:
     def certifies_world(self, identity):
         # Cinematic target validation runs inside the sampler's mounted capture
         # bracket. It may share this exact world while the actor Levels differ.
-        return self._initial is not None and identity == self._initial['roles']['world_info']
+        if self._initial is not None:return identity == self._initial['roles']['world_info']
+        # Only during this capture's outer target validator. Its opening world
+        # is provisional; the full outer closing proof must still pass before
+        # capture() commits any immutable certificate.
+        return self._validating_world is not None and identity == self._validating_world
 
     def _capture(self):
         s, r = self.sampler, self.sampler.r
@@ -215,15 +222,13 @@ class MountedContextCertificate:
             links[label] = dict(address=obj['address'] + offset, value=value)
             return value
 
-        # Include exact registry headers and the camera timestamp in the same
-        # read bracket as all roles, reflected layouts and pointer relationships.
+        # Outer bracket: all registered identities, reflected layouts, ancestry
+        # and relationships remain independently checked at both boundaries.
+        # Camera time does not cover the expensive metadata validation.
         for header in (r.objects_header, r.names_header):
             data, count, capacity = struct.unpack('<Qii', raw(header, 16))
             if not data or not 0 < count <= capacity < 4000000:
                 raise AnchorRejected('Invalid mounted registry header')
-        stamp = raw(s.stamp, 4)
-        if not math.isfinite(struct.unpack('<f', stamp)[0]):
-            raise AnchorRejected('Invalid mounted camera timestamp')
         pc, camera, local = identity(s.controller), identity(s.camera), identity(s.local)
         controlled = identity(link('controlled', pc, 'Pawn', 'Controller'))
         derives(controlled, 'Turret')
@@ -263,6 +268,17 @@ class MountedContextCertificate:
         if inventory['outer'] != levels['driver']['address']:
             raise AnchorRejected('Mounted inventory Level mismatch')
         link('inventory_owner', inventory, 'Owner', 'Actor', driver['address'])
+        def validate_optional_target():
+            validator = getattr(s, 'target_validator', None)
+            if validator is None:return None
+            self._validating_world = world
+            try:return validator(s, controlled['address'], controlled, level)
+            finally:self._validating_world = None
+        target_proof = validate_optional_target()
+        # Inner camera bracket starts only after the outer opening validation.
+        stamp = raw(s.stamp, 4)
+        if not math.isfinite(struct.unpack('<f', stamp)[0]):
+            raise AnchorRejected('Invalid mounted camera timestamp')
         target = pointer(s.view_target) if s.view_target else None
         if not s.view_target or target != controlled['address']:
             closing = MountedReadPass(r, identities, {a: x['name_index'] for a, x in identities.items()})
@@ -344,41 +360,125 @@ class MountedContextCertificate:
         values = struct.unpack('<3f3if', pov)
         if not all(math.isfinite(x) for x in (*values[:3], values[-1])) or not 0 < values[-1] < 180:
             raise AnchorRejected('Invalid mounted camera POV')
-        closing = MountedReadPass(r, identities, {a: x['name_index'] for a, x in identities.items()})
-        for address, expected in identities.items():
-            if fresh(address, closing) != expected:
-                raise AnchorRejected('Mounted identity changed at bracket boundary')
-        def changed_timestamp(observed):
-            if len(observed) != 4 or not math.isfinite(struct.unpack('<f', observed)[0]):
-                raise AnchorRejected('Invalid mounted camera timestamp at bracket boundary')
-            return observed != stamp
-
-        timestamp_changed = False
-        for (address, size), expected in reads.items():
-            observed = r.read(address, size)
-            if address in (r.objects_header, r.names_header) and size == 16:
-                registry = 'objects' if address == r.objects_header else 'names'
-                _check_registry_header(registry, observed, struct.unpack('<Qii', expected))
-            elif (address, size) == (s.stamp, 4):
-                timestamp_changed |= changed_timestamp(observed)
-            elif observed != expected:
-                raise AnchorRejected('Mounted memory changed at bracket boundary')
-        # Close after all identity/layout/link/POV checks. A timestamp mismatch
-        # is retryable only when the other boundaries, including both exact
-        # registry headers, passed. No successful proof survives a retry.
-        timestamp_changed |= changed_timestamp(r.read(s.stamp, 4))
-        for header, registry in ((r.objects_header, 'objects'), (r.names_header, 'names')):
-            _check_registry_header(registry, r.read(header, 16),
-                                   struct.unpack('<Qii', reads[header, 16]))
-        if timestamp_changed:
-            raise MountedTimestampChanged('Mounted camera timestamp changed at bracket boundary')
         roles = dict(controller=pc, camera=camera, local_player=local,
                      controlled=controlled, driver=driver, inventory_pawn=driver,
                      inventory=inventory, camera_target=controlled, level=level, world_info=world)
-        return dict(schema=1, kind='turret_driver', roles=roles, levels=levels, identities=identities,
+        role_ids = {x['address']: x for x in (*roles.values(), *levels.values())}
+        def inner_boundary():
+            # New buffers at each endpoint, never a reused opening pass.
+            current = MountedReadPass(r, role_ids, {a: x['name_index'] for a, x in role_ids.items()})
+            actual_roles = {}
+            for address, expected in role_ids.items():
+                actual_roles[address] = fresh(address, current)
+                if actual_roles[address] != expected:
+                    raise AnchorRejected('Mounted role identity changed inside camera bracket')
+            actual_links = {}
+            for label, item in links.items():
+                observed = r.read(item['address'], 8)
+                actual_links[label] = dict(address=item['address'], raw=observed.hex())
+                if observed != struct.pack('<Q', item['value']):
+                    raise AnchorRejected('Mounted relationship changed inside camera bracket')
+            actual_target = r.read(s.view_target, 8)
+            if actual_target != struct.pack('<Q', controlled['address']):
+                raise AnchorRejected('Mounted target changed inside camera bracket')
+            actual_pov = r.read(s.pov, 28)
+            if actual_pov != pov:
+                raise AnchorRejected('Mounted POV changed inside camera bracket')
+            actual_headers = {}
+            for header, registry in ((r.objects_header, 'objects'), (r.names_header, 'names')):
+                observed = r.read(header, 16); actual_headers[registry] = observed.hex()
+                _check_registry_header(registry, observed, struct.unpack('<Qii', reads[header, 16]))
+            rotation_field = getattr(s, 'layout', {}).get('controller_rotation')
+            rotation_raw = None
+            if rotation_field is not None:
+                rotation_raw = r.read(s.controller + rotation_field['offset'], 12)
+                if len(rotation_raw) != 12:raise AnchorRejected('Short mounted controller rotation read')
+            observed_stamp = r.read(s.stamp, 4)
+            if len(observed_stamp) != 4 or not math.isfinite(struct.unpack('<f', observed_stamp)[0]):
+                raise AnchorRejected('Invalid mounted camera timestamp at bracket boundary')
+            return dict(roles=actual_roles, links=actual_links, target_raw=actual_target.hex(),
+                        pov_raw=actual_pov.hex(), headers=actual_headers, timestamp_raw=observed_stamp.hex(),
+                        controller_rotation_raw=None if rotation_raw is None else rotation_raw.hex())
+        inner_before = inner_boundary()
+        inner_after = inner_boundary()
+        timestamp_changed = any(x['timestamp_raw'] != stamp.hex() for x in (inner_before, inner_after))
+        if ({k:v for k,v in inner_before.items() if k != 'timestamp_raw'} !=
+                {k:v for k,v in inner_after.items() if k != 'timestamp_raw'}):
+            raise AnchorRejected('Mounted inner endpoint values changed')
+        # Finish the independent OUTER validation even on frame rollover, so
+        # timestamp retries never hide identity/layout/link/registry failures.
+        closing = MountedReadPass(r, identities, {a: x['name_index'] for a, x in identities.items()})
+        outer_after_ids, outer_after_reads = {}, {}
+        for address, expected in identities.items():
+            outer_after_ids[address] = fresh(address, closing)
+            if outer_after_ids[address] != expected:
+                raise AnchorRejected('Mounted identity changed at bracket boundary')
+        for (address, size), expected in reads.items():
+            if (address, size) == (s.stamp, 4) or (address, size) == (s.pov, 28):
+                continue  # Camera bytes were checked only in the inner bracket.
+            observed = r.read(address, size)
+            outer_after_reads[address, size] = observed
+            if address in (r.objects_header, r.names_header) and size == 16:
+                registry = 'objects' if address == r.objects_header else 'names'
+                _check_registry_header(registry, observed, struct.unpack('<Qii', expected))
+            elif observed != expected:
+                raise AnchorRejected('Mounted memory changed at bracket boundary')
+        for header, registry in ((r.objects_header, 'objects'), (r.names_header, 'names')):
+            _check_registry_header(registry, r.read(header, 16),
+                                   struct.unpack('<Qii', reads[header, 16]))
+        after_target_proof = validate_optional_target()
+        if after_target_proof != target_proof:
+            raise AnchorRejected('Mounted cinematic target validation changed')
+        if timestamp_changed:
+            raise MountedTimestampChanged('Mounted camera timestamp changed at bracket boundary')
+        def digest(ids, memory):
+            payload = dict(identities=ids, reads=[(a, n, v.hex()) for (a, n), v in sorted(memory.items())])
+            return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        outer_before_reads = {key: value for key, value in reads.items()
+                              if key not in ((s.stamp, 4), (s.pov, 28))}
+        validation = dict(contract='outer_identity_layout_twice_inner_camera_roles_links_pov_twice',
+                          inner_before=inner_before, inner_after=inner_after,
+                          outer_before_sha256=digest(identities, outer_before_reads),
+                          outer_after_sha256=digest(outer_after_ids, outer_after_reads),
+                          outer_identity_count=len(identities), outer_read_count=len(outer_before_reads),
+                          atomic_snapshot=False)
+        result = dict(schema=1, kind='turret_driver', roles=roles, levels=levels, identities=identities,
                     supers=supers, properties=properties, links=links,
                     camera_timestamp_raw=stamp.hex(), camera_pov_raw=pov.hex(),
+                    validation=validation,
                     atomic_snapshot=False, runtime_verified=False)
+        if target_proof is not None:result['target_proof'] = target_proof
+        return result
+
+
+def mounted_guard_result(proof, boundary='inner_after'):
+    """Map an independently read inner endpoint to existing serialized roles.
+
+    This is not a second full guard. The proof explicitly contains separate
+    inner reads and digests of both complete outer validation boundaries.
+    """
+    v = proof.get('validation')
+    if not isinstance(v,dict) or not isinstance(v.get('inner_before'),dict) or not isinstance(v.get('inner_after'),dict):
+        raise AnchorRejected('Missing mounted two-layer validation evidence')
+    before, after = v['inner_before'], v['inner_after']
+    if (v['contract'] != 'outer_identity_layout_twice_inner_camera_roles_links_pov_twice' or
+            before != after or v['outer_before_sha256'] != v['outer_after_sha256'] or
+            before['timestamp_raw'] != proof['camera_timestamp_raw'] or
+            before['pov_raw'] != proof['camera_pov_raw']):
+        raise AnchorRejected('Invalid mounted two-layer validation evidence')
+    current = v[boundary]; roles = proof['roles']
+    def role(name):
+        item = roles[name]
+        value = current['roles'][item['address']]
+        if value != item:raise AnchorRejected('Mounted endpoint role mismatch')
+        return copy.deepcopy(value)
+    result = dict(pawn=role('controlled'), controller=role('controller'), camera=role('camera'),
+                local_player=role('local_player'), level=role('level'), outer_chain=[role('level')],
+                view_target=struct.unpack('<Q', bytes.fromhex(current['target_raw']))[0],
+                timestamp_raw=current['timestamp_raw'], objects_header=current['headers']['objects'],
+                names_header=current['headers']['names'], mounted_context=proof)
+    if 'target_proof' in proof:result['target_proof'] = copy.deepcopy(proof['target_proof'])
+    return result
 
 
 MOUNTED_PROPERTIES = ('Pawn', 'Controller', 'Driver', 'DrivenVehicle', 'PlayerCamera',

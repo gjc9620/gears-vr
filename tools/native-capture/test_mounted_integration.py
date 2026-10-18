@@ -103,6 +103,33 @@ class MountedIntegrationTests(unittest.TestCase):
         bad['identities']=[item for item in bad['identities'] if item['address']!=f.levels['camera']]
         with self.assertRaises(AnchorRejected):anchor_ini(bad)
 
+    def test_cinematic_mounted_validation_remains_twice_outside_inner_frame(self):
+        import cinematic_anchor
+        f=MountedUIFixture().stream_levels();events=[];read=f.read
+        target=cinematic_anchor.CinematicTargetCertificate.target
+        def reading(address,size):
+            if (address,size)==(0x30600,4):events.append('stamp')
+            return read(address,size)
+        def targeting(*args):
+            events.append('target');return target(*args)
+        with mock.patch.object(cinematic_anchor,'BOOL_CODE',tuple(f.code)), \
+             mock.patch.object(cinematic_anchor.CinematicTargetCertificate,'target',targeting), \
+             mock.patch.object(f,'read',side_effect=reading):
+            sampler=LiveRegistryAnchorSampler(f,cinematic_camera=True)
+        self.assertEqual(events,['target','stamp','stamp','stamp','target'])
+        self.assertIn('target_proof',sampler.initial)
+        # Optional cinematic validation still rejects a change between its
+        # independently executed outer endpoints, even with a valid Turret.
+        calls=0
+        def changed(*args):
+            nonlocal calls
+            value=target(*args);calls+=1
+            if calls==2:value=dict(value,cinematic=not value['cinematic'])
+            return value
+        with mock.patch.object(cinematic_anchor,'BOOL_CODE',tuple(f.code)), \
+             mock.patch.object(cinematic_anchor.CinematicTargetCertificate,'target',changed):
+            with self.assertRaises(AnchorRejected):sampler.guard()
+
     def test_exact_pov_and_human_inventory_roles(self):
         f=MountedUIFixture();ac,meta=build_anchor_config(f)
         uc,ui=build_ui_observer_config(f,f.resolve(),mounted_anchor=ac)
