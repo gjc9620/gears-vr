@@ -8,11 +8,10 @@ struct Context {
     std::array<Construction,64> constructions{};
     std::unique_ptr<TypedQuartet> quartet{std::make_unique<TypedQuartet>()};
     std::shared_ptr<void> producer_lifetime;
-    // These two actual evidence sources remain required; no observer row/bank
-    // can implement them. Quartet retention is separate from producer proof.
+    // Actual producer evidence remains required; no observer row/bank can
+    // implement it. Quartet retention is separate from producer proof.
     bool (*producer)(void*,ngx_stereo_host::ControlCreateBinding const&,ngx_stereo_host::ControlConsumption,
         EvaluateShadow const&,Command,ngx_stereo_host::ControlInputTicket&){};
-    bool (*copy_states)(void*,ngx_stereo_host::ControlInputTicket const&,unsigned,Command,uint64_t,uint64_t){};
     ngx_stereo_host::ControlCreateBinding created{};ngx_stereo_host::ControlInputTicket last_input{};
     unsigned last_eye{};TypedCopyBoundary* copy_boundary{};bool failed{};
 };
@@ -168,20 +167,31 @@ bool admit(void* opaque,ngx_stereo_host::ControlConsumption used){
 void boxed_dispatch(void* opaque,CopyPlan const& plan){auto& c=*static_cast<Context*>(opaque);
     if(c.failed||!c.copy_boundary||!c.copy_boundary->copy(plan))throw std::runtime_error("NGX actual copy boundary rejected");}
 bool current(void*,ID3D12GraphicsCommandList* list,uintptr_t id,uint64_t gen){return canonical_identity(list)==id&&generation(list,id)==gen;}
-bool copy(ID3D12GraphicsCommandList* list,D3D12_TEXTURE_COPY_LOCATION const* dst,UINT,UINT,UINT,
-    D3D12_TEXTURE_COPY_LOCATION const* src,D3D12_BOX const*,uintptr_t caller,ngx_stereo_host::CopyFn forward){
+bool copy(ID3D12GraphicsCommandList* list,D3D12_TEXTURE_COPY_LOCATION const* dst,UINT x,UINT y,UINT z,
+    D3D12_TEXTURE_COPY_LOCATION const* src,D3D12_BOX const* box,uintptr_t caller,ngx_stereo_host::CopyFn forward){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto owner=ngx_stereo_host::current_control();if(!owner)return false;
     if(!context||context->owner.lock()!=owner){owner->invalidate();request_session_stop(SessionStop::proof_failure);return true;}
     acquire_copy(src,dst);
     auto& c=*context;D3D12_TEXTURE_COPY_LOCATION s{},d{};
     if(!safe_copy(&s,src,sizeof(s))||!safe_copy(&d,dst,sizeof(d))){reject(c);return true;}
     if(reinterpret_cast<uintptr_t>(s.pResource)!=c.last_input.raw_resources[3]||reinterpret_cast<uintptr_t>(d.pResource)!=c.last_input.raw_resources[0])return false;
-    Command cmd;
-    if(c.failed||c.copy_boundary||!command(c,reinterpret_cast<uintptr_t>(list),cmd)||!c.copy_states||
-       !c.copy_states(c.producer_lifetime.get(),c.last_input,c.last_eye,cmd,c.last_input.raw_resources[3],c.last_input.raw_resources[0])){reject(c);return true;}
+    Command cmd;uint64_t ticket{};std::array<Resource,4> retained{};
+    auto const& raw=c.last_input.raw_resources;
+    const std::array<uintptr_t,4> native{uintptr_t(raw[0]),uintptr_t(raw[3]),uintptr_t(raw[1]),uintptr_t(raw[2])};
+    if(c.failed||c.copy_boundary||c.last_eye>1||!acquisition_scope(c,ticket)||
+       c.last_input.consumption.ticket!=ticket||c.last_input.consumption.world!=c.created.identity.world||
+       c.last_input.consumption.renderer!=reinterpret_cast<uintptr_t>(consuming_renderer)||
+       !c.quartet->bound()||!c.quartet->bind(c.created.identity,ticket,native,retained)||
+       !preserves_native_copy(ngx_stereo_host::attested,caller,d,x,y,z,s,box,uintptr_t(raw[3]),uintptr_t(raw[0]))||
+       !command(c,reinterpret_cast<uintptr_t>(list),cmd)||cmd.device!=c.created.identity.device){reject(c);return true;}
+    auto const& producer=c.last_input.producers[c.last_eye];
+    if(!same(producer.use.identity,c.created.identity)||producer.use.ticket!=ticket||producer.use.eye!=c.last_eye){reject(c);return true;}
+    for(unsigned i=0;i<4;++i)if(!same_resource(retained[i],producer.resources[i])){reject(c);return true;}
     CopyFacts facts;facts.identity=c.created.identity;facts.ticket=c.last_input.consumption.ticket;facts.caller=caller;
     facts.list=cmd.list;facts.generation=cmd.generation;facts.list_device=cmd.device;facts.direct=cmd.direct;
-    facts.copy_source=facts.copy_dest=true;facts.resources=c.last_input.producers[c.last_eye].resources;
+    // Legal-state requirement is preserved from the attested native call,
+    // not reconstructed from last-observed barriers. No barriers are added.
+    facts.copy_source=facts.copy_dest=true;facts.resources=retained;
     facts.input_base=c.created.layout.input_base;facts.feature_output=c.created.layout.eye_output;facts.evaluated_ordinal=c.last_eye;
     TypedCopyBoundary boundary(list,cmd.list,cmd.generation,facts.ticket,c.last_eye,d,s,&c,current,forward);
     struct Scope {Context& c;Scope(Context& value,TypedCopyBoundary& b):c(value){c.copy_boundary=&b;}~Scope(){c.copy_boundary=nullptr;}} scope(c,boundary);
@@ -199,10 +209,10 @@ void execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* list
     if(transport==TransportCompletion::rejected)reject(*context);
 }
 // Prepare before the native Create/Eval wrappers. Activate only when
-// the actual producer/state source and full output/retirement gates are wired.
+// the actual producer source and full output/retirement gates are wired.
 // No call is inserted here; this is a host installation seam, not a user option.
 bool activate(AdapterPrerequisites prerequisites){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!context||context->failed||!context->producer||!context->copy_states||!context->producer_lifetime||!context->owner.expired())return false;
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!context||context->failed||!context->producer||!context->producer_lifetime||!context->owner.expired())return false;
     auto& c=*context;NativeDispatchFunctions functions{ngx_stereo_host::original_create,ngx_stereo_host::original_evaluate,ngx_stereo_host::original_release,&c,boxed_dispatch};
     functions.optimal=ngx_stereo_host::native_optimal_query();
     ngx_stereo_host::ControlCallbacks callbacks{context,create,input,completion,admit};

@@ -5,6 +5,19 @@
 namespace gears_ngx_stereo {
 using TypedCopyOriginal=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,D3D12_TEXTURE_COPY_LOCATION const*,UINT,UINT,UINT,
     D3D12_TEXTURE_COPY_LOCATION const*,D3D12_BOX const*);
+// CPU shape check at the authenticated native return RVA. This preserves the
+// original helper's COPY_SOURCE/COPY_DEST setup, flush, and post-call restore:
+// only the copy box/destination may change. It does not observe GPU state.
+inline bool preserves_native_copy(bool attested,uintptr_t caller,
+    D3D12_TEXTURE_COPY_LOCATION const& dst,UINT x,UINT y,UINT z,
+    D3D12_TEXTURE_COPY_LOCATION const& src,D3D12_BOX const* box,
+    uintptr_t retained_output,uintptr_t retained_color){
+    return attested&&caller==0x1c6093&&!x&&!y&&!z&&!box&&retained_output&&retained_color&&
+        retained_output!=retained_color&&reinterpret_cast<uintptr_t>(src.pResource)==retained_output&&
+        reinterpret_cast<uintptr_t>(dst.pResource)==retained_color&&
+        src.Type==D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX&&dst.Type==D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX&&
+        !src.SubresourceIndex&&!dst.SubresourceIndex;
+}
 // One admitted native Output->Color boundary. All objects come from its typed
 // arguments, never from integer IDs in CopyPlan. The caller owns state/producer
 // and ordering proof; this adapter adds no barrier, Execute, Signal or wait.

@@ -1,5 +1,13 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19：原生 Copy 保持接线已集成，未启用 DLSS
+
+将上述静态契约接入控制器，移除未实现的 `copy_states` 回调：现有启用检查新增六个完整函数块哈希；选中的 Output→Color 复制要求返回 RVA 1c6093、原始零 XYZ/null box/subresource0、固定的 typed 四资源、当前 world/ticket/renderer/eye 及真实 command/device/generation。仅调整复制区域和目的偏移，保持游戏原有状态设置、barrier 提交和恢复顺序。无关复制仍转发；选中复制验证失败不会回退全图复制。日志 chunks 改为实际表长度。
+
+协调者运行 `NgxNativeCopyPreservationTest` 32项 CPU 检查、`NgxTypedQuartetTest` 253项及 `NgxStereoHostLiveTest` 均通过；host 开/关两个完整 capture 构建成功，Ninja 依赖分别447/462且有效。构建日志在 ignored `analysis/runtime/ngx-copy-integration-{on,off}-build.log`。默认 Integration1 DLL SHA256 仍为 `41a5b882ab1202940c0590d88a6c732609fd0db9511157e19f51f802064cc065`。
+
+本轮无游戏或 GPU 验证，没有激活 producer，也未改变发布默认。Color/Depth/MV 实际生成区域、共享参数串行化和实际 DLSS 连续游玩仍需证据；这些 CPU 检查不能证明 DLSS 已可用。
+
 ## 2026-10-19：原生Copy契约静态核对
 
 先查询KB artifact1，再在原IDA库私有副本导出 `1c5dd8`、`1c60f0`、`1c617c` 完整chunks汇编；每段字节与历史运行时blob `911ab9…` 对比一致。复制函数含热/冷两段789+569字节，组合哈希与KB一致。另机械核对其状态帮助函数 `17c0b4`/`17ab94` 的完整范围和哈希。证据 `analysis/ida/ngx-copy-contract-20261019/copy-chunks-with-state-helpers.json`，不进入发布包。原IDA库前后SHA256 `324248ac7cd0388a05907c29436fccf804eb82e5cb8433190806342c1cfcbb26` 一致，私有lease已关闭。

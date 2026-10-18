@@ -60,6 +60,8 @@ struct Resource {
 };
 struct CopyFacts {
     Identity identity{};uint64_t ticket{},caller{},list{},generation{},list_device{};
+    // State legality may be inherited from a byte-attested original Copy route
+    // with unchanged resources/subresources/list/order; not GPU completion.
     bool direct{},copy_source{},copy_dest{};
     std::array<Resource,4> resources{};
     std::array<Point,2> input_base{};

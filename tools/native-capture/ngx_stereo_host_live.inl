@@ -456,6 +456,13 @@ struct Contract {uintptr_t rva;unsigned size;char const* hash;};
 // Full function chunks from the saved wrapper/release contracts, not disk-EXE
 // identity. enable() hashes every complete current chunk before any host hook.
 constexpr Contract contracts[]{
+    // Native zero-offset/null-box Copy route and its state setup/restore.
+    {0x1c5dd8,0x315,"038bef1d04e09846166ed3dd5479a71f6a9cc548469d5b8f1626553f1f137bf4"},
+    {0x897f50,0x239,"ce26c00b6cd9d2148ec2f94f53e3ca11fab8127b943f08386d6d2a7c199e71c7"},
+    {0x1c60f0,0x8c,"0c9f3023bb7afd53bf933be7ea725a591e548ba5ec2b2e44e8eab2d790ccc61b"},
+    {0x1c617c,0x43,"421a79a0fc79095b9082dae3e29d7ea221705decb0da2fce586c99d23ce5231e"},
+    {0x17c0b4,0x10e,"16a728d1d2df0385da04fe63c8bc43d01941c3d34384445489820180e076ae94"},
+    {0x17ab94,0x327,"dd18f288f7976969f3be83427e41455328568263995755e1aced455707db0a86"},
     {0xbe61bc,0x187,"1ac9bd946037e33c6b06f2b6b8211eec72ee7096bec92912742c41150279500d"},
     {0xbe5b5c,0xf9,"53709f650d84bd1ea4cc1ae5e25eb8ef7f3462102fe51d07b790d96c48734879"},
     {0xbe5c58,0x561,"21868e6f8203578f5c4ef689fc4f66a5c79e13fdb243eebe2eb81cc7d6309441"},
@@ -482,7 +489,7 @@ bool enable(FILE* file){if(current_control())return false; // Never reset a reta
 #if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
     ngx_epoch_pair::reset_capture(matched);
 #endif
-    fprintf(file,"ngx_stereo_host_identity enabled=1 attested=%u chunks=10 mode=readonly sdk_mutation=0 gpu_commands_added=0\n",unsigned(attested));return attested;
+    fprintf(file,"ngx_stereo_host_identity enabled=1 attested=%u chunks=%zu mode=readonly sdk_mutation=0 gpu_commands_added=0\n",unsigned(attested),sizeof(contracts)/sizeof(contracts[0]));return attested;
 }
 bool install_hooks(){return attested&&install(reinterpret_cast<void*>(base+0x7c82f0),reinterpret_cast<void*>(hook_create),reinterpret_cast<void**>(&original_create))&&
     install(reinterpret_cast<void*>(base+0x7c8440),reinterpret_cast<void*>(hook_evaluate),reinterpret_cast<void**>(&original_evaluate))&&
