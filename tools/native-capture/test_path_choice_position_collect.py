@@ -10,6 +10,7 @@ from unittest import mock
 
 import path_choice_position_collect as collector
 import test_path_choice_close_config as fixtures
+from test_path_choice_group_fit import viewport_fixture
 
 
 def fixture():
@@ -67,18 +68,28 @@ def fixture():
 
 
 class CollectorTests(unittest.TestCase):
-    def invoke(self, values, verify=None, policy='exact', target=None):
+    def invoke(self, values, verify=None, policy='exact', target=None, close_hook=None):
         reader,sample,proof,metadata,session,status,memory=values
         def panel_proof(r,fresh):
             result=copy.deepcopy(proof)
             result['owner_snapshot_sha256']=collector.position.owner_digest(fresh['scene_owner'])
             return result
+        def viewport(r,fresh):
+            domain=copy.deepcopy(fresh['viewport_domain'])
+            for span in domain['source_checks']:
+                expected=bytes.fromhex(span['raw'])
+                collector.require(r.read(span['address'],len(expected))==expected,'synthetic viewport source drift')
+            return domain
+        def close_metadata(*args):
+            if close_hook:close_hook()
+            return copy.deepcopy(metadata)
         with mock.patch.object(collector,'_panel_proof',side_effect=panel_proof), \
-             mock.patch.object(collector,'_close_metadata',side_effect=lambda *a:copy.deepcopy(metadata)):
+             mock.patch.object(collector,'_viewport_domain',side_effect=viewport), \
+             mock.patch.object(collector,'_close_metadata',side_effect=close_metadata):
             return collector.collect(reader,sample,status,session,1000,verify or (lambda r:copy.deepcopy(session)),
                                      registry_header_policy=policy, target_vertical_region=target)
 
-    def shared_fit_values(self):
+    def shared_fit_values(self, dimensions=(1920.,1080.)):
         values=fixture();sample=values[1];memory=values[6]
         root=sample['top']['address']
         panel=next(row for row in sample['tree'] if row['cls']=='UIWarSafeRegionPanel')
@@ -92,11 +103,15 @@ class CollectorTests(unittest.TestCase):
             memory.update((int(row['address'],0)+676+i,b) for i,b in enumerate(raw))
         panel.update(parent=root,depth=2)
         fractions=panel['layout_details']['position']['members']['Value']['values']
-        bounds(panel,[v*(1920 if i%2==0 else 1080) for i,v in enumerate(fractions)])
+        bounds(panel,[v*dimensions[i%2] for i,v in enumerate(fractions)])
         for i,row in enumerate(content[:10]):
             row.update(parent=panel['address'],outer=panel['address'],depth=3)
-            bounds(row,[550+i,70+i,1370-i,260-i])
+            bounds(row,[(550+i)*dimensions[0]/1920,(70+i)*dimensions[1]/1080,
+                (1370-i)*dimensions[0]/1920,(260-i)*dimensions[1]/1080])
         content[-1].update(parent=root,outer=root,depth=2)
+        sample['viewport_domain']=viewport_fixture(sample,dimensions)
+        for span in sample['viewport_domain']['source_checks']:
+            memory.update((span['address']+i,b) for i,b in enumerate(bytes.fromhex(span['raw'])))
         return values
 
     def test_shared_fit_acquisition_builds_matching_close_certificate(self):
@@ -110,6 +125,23 @@ class CollectorTests(unittest.TestCase):
             self.assertIn(field,certificate.close_ini)
         self.assertNotIn('vertical_offset_reference_pixels=374',certificate.position_ini)
         self.assertEqual(len(json.loads(certificate.baseline_ids_json)['nodes']),13)
+
+    def test_shared_fit_uses_live_domain_including_4k_and_records_immutable_checks(self):
+        for dimensions in ((1920.,1080.),(3840.,2160.),(1280.,1400.)):
+            values=self.shared_fit_values(dimensions)
+            certificate=self.invoke(values,target=(.25,.75))
+            domain=json.loads(certificate.evidence_json)['sample']['viewport_domain']
+            self.assertEqual(domain['values_xy'],list(dimensions))
+            self.assertIn('0x%X:%s'%(domain['value_address'],domain['raw']),certificate.position_ini)
+            self.assertIn('group_fit=vertical_v1',certificate.position_ini)
+
+    def test_shared_fit_final_viewport_value_or_metadata_drift_yields_no_certificate(self):
+        for field in ('value','metadata'):
+            values=self.shared_fit_values((3840.,2160.));domain=values[1]['viewport_domain']
+            address=domain['value_address'] if field=='value' else domain['property']['identity']['address']+0x70
+            def mutate():values[6][address]^=1
+            with self.subTest(field=field),self.assertRaises(collector.AcquisitionSourceChanged):
+                self.invoke(values,target=(.25,.75),close_hook=mutate)
 
     def test_shared_fit_accepts_current_child_coordinates_legacy_does_not(self):
         values=self.shared_fit_values()

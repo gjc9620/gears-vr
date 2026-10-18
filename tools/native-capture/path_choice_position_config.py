@@ -114,7 +114,11 @@ def _build(sample, proof, required_only=False, vertical_offset_reference_pixels=
     if target_vertical_region is not None:
         require(vertical_offset == 16, 'fit and legacy pixel offset are mutually exclusive')
         from path_choice_group_fit import inputs
-        fit_fields, fit_reads = inputs(sample,row,target_vertical_region,require)
+        immutable_fit_reads=[]
+        fit_fields, fit_reads = inputs(sample,row,target_vertical_region,require,immutable_reads=immutable_fit_reads)
+        # Viewport storage/metadata stays immutable for this lease. Content and
+        # panel bounds remain acquisition-only because our own layout moves them.
+        for span in immutable_fit_reads:checks.add(span['address'],span['raw'])
     require(identity['name'] == row['name'] and identity['number'] == row['number'] and identity['outer'] == root and
             identities[identity['cls']]['name'] == 'UIWarSafeRegionPanel', 'panel identity mismatch')
     chain = {};address = identity['cls']

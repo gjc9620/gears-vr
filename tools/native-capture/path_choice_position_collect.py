@@ -187,6 +187,56 @@ def _geometry(sample, *, shared_fit=False):
     return identities,tuple(sorted((row['address'],_json(row)) for row in tree))
 
 
+def _viewport_domain(r, sample):
+    """Fresh reflected UIScene storage; never infer dimensions from panel bounds."""
+    cap=_Capture(r);source=r.read;scene=cap.identity(int(sample['top']['address'],0))
+    require(scene==sample['scene_owner']['roles']['scene'],'viewport scene identity mismatch')
+    chain=cap.chain(scene['cls']);r.read=cap.raw
+    try:
+        prop=r.property(scene['cls'],'CurrentViewportSize',True)
+        field=cap.identity(prop['address']);owner=cap.class_identity(field['outer'])
+        require(field['name']=='CurrentViewportSize' and field['number']==0 and prop['type']=='StructProperty' and
+                cap.class_identity(field['cls'])['name']=='StructProperty' and owner['name']=='UIScene' and
+                owner['number']==0 and owner['address'] in chain,'unsupported viewport property owner/type')
+        package=cap.identity(owner['outer'])
+        require(package['name']=='Engine' and package['number']==0 and package['outer']==0 and
+                cap.class_identity(package['cls'])['name']=='Package','unsupported viewport Engine owner')
+        require(sum(item['address']==field['address'] for item in cap.class_fields(owner['address']))==1,
+                'unreachable viewport property')
+        dimension,size=struct.unpack('<II',cap.raw(field['address']+0x70,8))
+        offset=struct.unpack('<I',cap.raw(field['address']+r.profile['property_offset_internal'],4))[0]
+        require(dimension==1 and 8<=size<=128 and offset==prop['offset'] and 0<=offset<=0x10000-size,
+                'unsupported viewport property extent')
+        structure=r.struct_type(prop)
+        require(structure==cap.pointer(field['address']+r.profile['struct_property_struct']),
+                'viewport struct pointer changed')
+        struct_identity=cap.identity(structure)
+        require(cap.class_identity(struct_identity['cls'])['name']=='ScriptStruct','invalid viewport struct type')
+        members={};offsets=[]
+        for name in ('X','Y'):
+            member=r.property(structure,name,False);identity=cap.identity(member['address'])
+            require(member['type']=='FloatProperty' and identity['name']==name and identity['number']==0 and
+                    identity['outer']==structure and cap.class_identity(identity['cls'])['name']=='FloatProperty' and
+                    sum(item['address']==identity['address'] for item in cap.class_fields(structure))==1,
+                    'unsupported viewport member owner/type')
+            dim,extent=struct.unpack('<II',cap.raw(identity['address']+0x70,8))
+            at=struct.unpack('<I',cap.raw(identity['address']+r.profile['property_offset_internal'],4))[0]
+            require((dim,extent)==(1,4) and at==member['offset'] and 0<=at<=size-4,
+                    'unsupported viewport member extent')
+            offsets.append(at);members[name]=dict(identity=identity,type='FloatProperty',offset=at,array_dim=dim,element_size=extent)
+        require(abs(offsets[0]-offsets[1])>=4,'overlapping viewport members')
+        address=scene['address']+offset;raw=cap.raw(address,size)
+        values=[struct.unpack_from('<f',raw,at)[0] for at in offsets]
+        require(all(math.isfinite(v) and v>0 for v in values),'invalid reflected viewport size')
+    finally:
+        r.read=source
+    cap.finish()
+    return dict(schema=1,kind='reflected_uiscene_viewport_domain',read_only=True,consistent_reread=True,
+        scene=scene,property=dict(identity=field,owner=owner,type='StructProperty',offset=offset,array_dim=dimension,element_size=size),
+        struct_type=struct_identity,members=members,value_address=address,raw=raw.hex(),values_xy=values,
+        source_checks=[dict(address=at,raw=data.hex()) for at,data in _reread_spans(cap.reads)])
+
+
 def _panel_proof(r, sample):
     snapshot = sample['scene_owner']; cap = _Capture(r)
     node = next(row for row in sample['tree'] if row['name'] == 'UIWarSafeRegionPanel')
@@ -305,6 +355,7 @@ def collect(reader, sample, native_status, session, nonce, verify_session, *, re
         fresh = reader._sample_once(include_tree=True, include_layout=True, include_layout_details=True, include_owner=True,
             expected_controller=roles['controller']['address'], expected_local_player=roles['local_player']['address'])
         require(fresh['scene_owner']['roles'] == roles and _geometry(fresh,shared_fit=shared_fit) == expected_ids, 'original baseline changed')
+        if shared_fit:fresh['viewport_domain']=_viewport_domain(r,fresh)
         if policy:
             for header in fresh['scene_owner']['evidence']['registry_headers'].values():
                 require(policy.headers.get(header['address']) == struct.pack('<Qii',header['data'],header['count'],header['capacity']),
