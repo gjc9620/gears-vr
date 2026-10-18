@@ -2,6 +2,8 @@
 
 ## 2026-10-19：实际界值确认整幅宽度下限冲突
 
+后续Ninja构建使用 `tools/native-capture/build_verified.py`：指定新 `--build-dir`、原有 `--define NAME=VALUE` 和 `--target`，保留候选功能组合。工具实际探测编译器showIncludes前缀，校验生成规则与编译器身份，并在构建后拒绝0依赖或缺少指定 `.inl` 依赖的结果；不复用有旧解析缓存的目录。5项离线检查及协调端实际小工程运行通过，另有修改私有header后重编译的回执。它只证明构建依赖被正确解析，不替代游戏/GPU验收。全量原生构建的446项依赖证据见下文。
+
 完整私有构建随后完成于 `build-game-resolution-ngx-optimal`，DLL SHA256 `ce9ef2f8a954c4740105f086392917bc988b017f9764838d8a9c100c34f458ea`，未替换默认清单。期间发现旧Ninja构建的header依赖为0：当前中文MSVC输出UTF-8 showIncludes前缀，被CMake误解码并写入规则；VSLANG=1033不能修复仅有2052资源的安装。使用实测前缀的project-include override后fresh完整构建通过，capture.cpp依赖446项，明确包含本次修改的host/native_api/control_capture。不能将先前“ninja no work”当新源码编译证据。原始构建日志在ignored `build-game-ngx-optimal-prefix-fixed.log`；实际每眼GetOptimal/GPU画面仍未验证。
 
 后续源码已接入每眼 GetOptimal 查询与双feature创建前的参数检查：按每眼输出尺寸和原quality查询，校验输入落入实际返回范围，并在查询前后重新验证world/revision/参数对象/handle/原Create字段。未知或漂移时拒绝创建，不将整幅最小宽度硬除以二。完整helper字节认证也已加入。共享源码重新编译的 NativeBridge/HostLive 两个测试程序直接运行通过；最初CTest名称过滤未选中测试，不计作通过。查询回执仍由测试替身提供，真实每眼GetOptimal尚未运行，完整capture构建及GPU验证未在本轮完成。该接口未激活，真实producer域、Copy状态、GPU fence退休及所有共享parameter调用串行性仍为接线前提。
