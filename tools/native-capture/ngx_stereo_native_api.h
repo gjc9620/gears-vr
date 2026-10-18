@@ -25,9 +25,11 @@ struct NativeDispatchFunctions {
 };
 class NativeDispatchBackend final:public AdapterBackend {
     NativeDispatchFunctions functions_;
+    std::atomic<uint64_t> create_attempts_{};
 public:
     explicit NativeDispatchBackend(NativeDispatchFunctions functions):functions_(functions){}
     NativeResult create(uint64_t command,uint32_t feature,uint64_t parameters,uint64_t* handle)override{
+        if(functions_.create)++create_attempts_;
         return functions_.create?functions_.create(command,feature,parameters,handle):dispatch_unavailable;
     }
     NativeResult evaluate(uint64_t command,uint64_t handle,uint64_t parameters,uint64_t callback)override{
@@ -40,5 +42,6 @@ public:
         if(!functions_.copy)throw std::logic_error("NGX typed copy boundary unavailable");
         functions_.copy(functions_.copy_context,plan);
     }
+    uint64_t create_attempts()const{return create_attempts_.load();}
 };
 }

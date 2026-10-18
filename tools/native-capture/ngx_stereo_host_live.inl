@@ -52,6 +52,66 @@ std::array<ReleaseRow,8> releases{};uint64_t sequence{},execute_sequence{},limit
 thread_local int current_row=-1,pending_row=-1;
 NativeCreateSource latest_native_create{};uint64_t native_create_revision{};
 thread_local WrapperScope* source_create_scope{};
+std::shared_ptr<ControlOwner> control_owner;
+bool attach_control(std::shared_ptr<ControlOwner> const& owner){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(!attested||!recording.load()||in_wrappers||control_owner||!owner||!owner->configured())return false;
+    control_owner=owner;return true;
+}
+bool detach_control(std::shared_ptr<ControlOwner> const& owner){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(!owner||control_owner!=owner||in_wrappers||active.load()||!owner->can_detach())return false;
+    control_owner.reset();return true;
+}
+std::shared_ptr<ControlOwner> current_control(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return control_owner;}
+uint64_t ControlOwner::create(NativeCreateSource const& family,uintptr_t command,
+    gears_ngx_stereo::CreateShadow const& source,void const* original_pointer,std::function<uint64_t(void const*)> const& original){
+    using namespace gears_ngx_stereo;ControlCreateBinding binding;
+    if(!configured_||!callbacks_.create(callbacks_.lifetime.get(),family,command,binding)||
+       binding.identity.world!=family.world||binding.identity.parameters!=family.parameters||
+       binding.command.raw!=command||!valid(binding.layout)||family.fields[0]!=2*binding.layout.input.width||
+       family.fields[1]!=binding.layout.input.height||family.fields[2]!=binding.layout.full_output.width||
+       family.fields[3]!=binding.layout.full_output.height){invalidate();return dispatch_unavailable;}
+    {std::lock_guard<std::mutex> lock(metadata_mutex_);creation_=binding;}
+    return bridge_.create_wrapper(binding.identity,binding.layout,binding.command,
+        reinterpret_cast<uint64_t*>(base+gears_ngx_route::handle_cell_rva),source,original_pointer,original).raw;
+}
+uint64_t ControlOwner::evaluate(ControlConsumption consumed,uintptr_t command,uintptr_t handle,uintptr_t parameters,
+    gears_ngx_stereo::EvaluateShadow const& source,void const* original_pointer,std::function<uint64_t(void const*)> const& original){
+    using namespace gears_ngx_stereo;ControlCreateBinding created;
+    {std::lock_guard<std::mutex> lock(metadata_mutex_);created=creation_;}
+    ControlInputTicket ticket;unsigned eye{};std::array<Point,3> bases{};
+    for(unsigned i=0;i<3;++i)std::memcpy(&bases[i],source.bytes.data()+0x60+8*i,8);
+    if(!configured_||!consumed.world||!consumed.ticket||!consumed.renderer||created.identity.world!=consumed.world||
+       created.identity.parameters!=parameters||!select_input_eye(created.layout,created.layout.input,bases,eye)||
+       !callbacks_.input(callbacks_.lifetime.get(),consumed,source,command,ticket)||
+       ticket.consumption.world!=consumed.world||ticket.consumption.ticket!=consumed.ticket||ticket.consumption.renderer!=consumed.renderer||
+       !ticket.original_views[0]||!ticket.original_views[1]||ticket.original_views[0]==ticket.original_views[1]||ticket.command.raw!=command){
+        invalidate();return dispatch_unavailable;}
+    auto const& producer=ticket.producers[eye];auto const& use=producer.use;
+    if(!same(use.identity,created.identity)||use.ticket!=consumed.ticket||use.eye!=eye||
+       use.list!=ticket.command.list||use.generation!=ticket.command.generation||producer.view!=ticket.original_views[eye]){
+        invalidate();return dispatch_unavailable;}
+    EvaluationBinding binding{producer,ticket.command,handle,ticket.raw_resources};
+    return bridge_.evaluate_wrapper(binding,source,original_pointer,original).raw;
+}
+uint64_t create_passthrough(uintptr_t a,uintptr_t b,uintptr_t c,uintptr_t d,uintptr_t e,void const* structure,CreateWrapperFn forward){
+    auto owner=current_control();if(!owner)return forward(a,b,c,d,e,structure);
+    gears_ngx_stereo::CreateShadow source;auto* observed=source_create_scope;
+    if(!observed||observed->source_bad||!safe_copy(source.bytes.data(),structure,source.bytes.size())){
+        owner->invalidate();return gears_ngx_stereo::dispatch_unavailable;}
+    return owner->create(observed->source,a,source,structure,[&](void const* p){return forward(a,b,c,d,e,p);});
+}
+uint64_t evaluate_passthrough(bool owned,uintptr_t a,uintptr_t b,uintptr_t c,void const* structure,EvaluateWrapperFn forward){
+    auto owner=current_control();if(!owner)return forward(a,b,c,structure);
+    gears_ngx_stereo::EvaluateShadow source;uintptr_t handle{},parameters{};
+    ControlConsumption consumed{committed_world_generation.load(),consuming_frame_ticket,reinterpret_cast<uintptr_t>(consuming_renderer)};
+    if(!owned||!consuming_frozen_frame.enabled||consumed.ticket!=consuming_frozen_frame.id||
+       consumed.world!=consuming_frozen_frame.world_generation||!safe_copy(source.bytes.data(),structure,source.bytes.size())||
+       !ngx_route_observer::read(handle,base,gears_ngx_route::handle_cell_rva)||!ngx_route_observer::read(parameters,base,gears_ngx_route::parameter_cell_rva)){
+        owner->invalidate();return gears_ngx_stereo::dispatch_unavailable;}
+    return owner->evaluate(consumed,a,handle,parameters,source,structure,[&](void const* p){return forward(a,b,c,p);});
+}
 template<class T> bool read(T& value,uintptr_t address,uintptr_t offset=0){return ngx_route_observer::read(value,address,offset);}
 bool read_create_fields(std::array<uint32_t,7>& fields,uintptr_t structure){
     std::array<uint32_t,6> words{};uint8_t subrect{};
@@ -224,7 +284,8 @@ uint32_t __fastcall hook_create(uintptr_t command,uint32_t feature,uintptr_t par
             row.dispatcher_entry=now();row.consumed_parameters=parameters;row.dispatcher_match=row.dispatches==1&&row.command==command&&
                 row.before.slots_mask==3&&row.before.fields_mask==127&&row.before.parameters==parameters&&feature==1&&reinterpret_cast<uintptr_t>(output)==base+gears_ngx_route::handle_cell_rva;}
         else ++foreign_dispatches;}
-    const auto result=original_create(command,feature,parameters,output);
+    auto owner=current_control();const auto result=owner?owner->bridge().create_dispatch(command,feature,parameters,reinterpret_cast<uint64_t*>(output),original_create):
+        original_create(command,feature,parameters,output);
     if(source_owner){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
         source_owner->source_result=result;source_owner->source_returned=true;
         if(!read(source_owner->source.handle,reinterpret_cast<uintptr_t>(output)))source_owner->source_bad=true;}
@@ -239,7 +300,8 @@ uint32_t __fastcall hook_evaluate(uintptr_t command,uintptr_t handle,uintptr_t p
             row.dispatcher_match=row.dispatches==1&&row.command==command&&row.before.slots_mask==3&&row.before.fields_mask==0x7ffff&&row.before.handle==handle&&row.before.parameters==parameters&&!callback;
             read(row.vendor,base,0x1b55d80);row.vendor_module_named=vendor_owner(row.vendor,row.vendor_module);}
         else ++foreign_dispatches;}
-    const auto result=original_evaluate(command,handle,parameters,callback);
+    auto owner=current_control();const auto result=owner?owner->bridge().evaluate_dispatch(command,handle,parameters,callback,original_evaluate):
+        original_evaluate(command,handle,parameters,callback);
     if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=rows[unsigned(selected)];row.dispatch_result=result;row.dispatcher_returned=true;row.dispatcher_exit=now();}return result;
 }
 uint32_t __fastcall hook_release(uintptr_t handle){Scope active_scope;int selected=-1;
@@ -248,7 +310,8 @@ uint32_t __fastcall hook_release(uintptr_t handle){Scope active_scope;int select
         if(attested&&recording.load()&&release_count<releases.size()){
         selected=int(release_count++);auto& row=releases[unsigned(selected)];row.handle=handle;row.caller=reinterpret_cast<uintptr_t>(_ReturnAddress());row.entry=now();
         read(row.vendor,base,0x1b55d88);row.vendor_module_named=vendor_owner(row.vendor,row.module);}}
-    const auto result=original_release(handle);if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=releases[unsigned(selected)];row.result=result;row.returned=true;row.exit=now();}return result;
+    auto owner=current_control();const auto result=owner?owner->release(handle,original_release):original_release(handle);
+    if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=releases[unsigned(selected)];row.result=result;row.returned=true;row.exit=now();}return result;
 }
 void copy_passthrough(ID3D12GraphicsCommandList* command,D3D12_TEXTURE_COPY_LOCATION const* destination,UINT x,UINT y,UINT z,
     D3D12_TEXTURE_COPY_LOCATION const* source,D3D12_BOX const* box,uintptr_t caller,CopyFn forward){
@@ -299,7 +362,8 @@ constexpr Contract contracts[]{
     {0xbe6aac,0x6c,"45d9331f52def2e0d92fc6339bebc53a169c04413a20265f9c6992a981479b48"},
     {0x7c80d0,0x152,"f42ccc68bce5664a9d28f2219904a8671ab47975f4a455d9a4f19ede83d16689"}
 };
-bool enable(FILE* file){attested=false;printed=false;bank={};rows={};releases={};row_count=epoch_evals=epochs=in_wrappers=release_count=0;
+bool enable(FILE* file){if(current_control())return false; // Never reset a retained live SDK owner.
+    attested=false;printed=false;bank={};rows={};releases={};row_count=epoch_evals=epochs=in_wrappers=release_count=0;
     latest_native_create={};native_create_revision=0;source_create_scope=nullptr;
     sampled_tickets=typed_observations=total_sampled_tickets=total_typed_observations=0;
     sequence=execute_sequence=limited=foreign_dispatches=read_failures=0;current_row=pending_row=-1;

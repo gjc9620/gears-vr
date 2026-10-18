@@ -2,6 +2,10 @@
 #include <array>
 #include <cstdint>
 #include <exception>
+#include <functional>
+#include "ngx_stereo_native_bridge.h"
+#include "ngx_stereo_native_api.h"
+#include "ngx_typed_resources.h"
 #include "unpossessed_quad_observer.h"
 
 // Raw CPU wrapper observations only. Resource pointers have no inferred COM

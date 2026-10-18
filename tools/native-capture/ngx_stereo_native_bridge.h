@@ -45,6 +45,7 @@ public:
     explicit NativeWrapperBridge(StereoAdapter& adapter,bool enabled=false):adapter_(adapter),enabled_(enabled){}
     NativeWrapperBridge(NativeWrapperBridge const&)=delete;
     NativeWrapperBridge& operator=(NativeWrapperBridge const&)=delete;
+    bool in_wrapper()const{return current_&&current_->bridge==this;}
     // The disabled path forwards the exact original pointer and uint64 return.
     // When enabled, the host must copy source safely before calling, and pass an
     // authenticated writable handle cell whose lifetime encloses this call.

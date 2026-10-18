@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <thread>
 #include "ngx_route_observer.h"
+#include "ngx_stereo_host_live.h"
 namespace {
 using namespace gears_ngx_route;
 uintptr_t base=0x140000000;bool self_testing{},continuous_session=true,frame_link_diagnostics=true,admitted=true;

@@ -143,6 +143,8 @@ class StereoAdapter {
     std::array<ProducerObservation,2> producers_{};std::array<bool,2> producer_observed_{};
     std::array<Resource,4> accepted_resources_{};
     std::array<ExecuteReceipt,2> executions_{};
+    std::array<ExecuteReceipt,2> copy_executions_{};
+    std::array<bool,2> copy_recorded_{},copy_submitted_{};
     EvalUse pending_{};Command pending_command_{};bool prepared_{},dispatched_{},reset_{};
     uint64_t selected_handle_{},ticket_{},reset_ticket_{};unsigned next_copy_{};
     void fail(){if(pair_){pair_->invalidate();phase_=AcceptancePhase::quarantined;}}
@@ -189,6 +191,7 @@ public:
         creation_recorded_=creation_submitted_=creation_retired_=false;creation_execution_=last_execution_={};
         uses_={};copies_={};recorded_={};evaluated_={};copied_={};submitted_={};history_reset_={true,true};
         phase_=AcceptancePhase::candidate;candidate_ticket_=producer_ticket_=0;producers_={};producer_observed_={};accepted_resources_={};executions_={};
+        copy_executions_={};copy_recorded_={};copy_submitted_={};
         prepared_=dispatched_=false;ticket_=reset_ticket_=0;next_copy_=0;return true;
     }
     // Bind one actual candidate ticket. There is no all-ready shortcut to the
@@ -208,7 +211,7 @@ public:
             for(unsigned j=0;j<i;++j)if(r.identity==observed.resources[j].identity){fail();return false;}}
         if(phase_==AcceptancePhase::candidate&&candidate_ticket_&&candidate_ticket_!=use.ticket){fail();return false;}
         if(!eye){
-            if(producer_ticket_==use.ticket||(ticket_&&(use.ticket<=ticket_||!copied_[0]||!copied_[1]||!submitted_[0]||!submitted_[1]))){fail();return false;}
+            if(producer_ticket_==use.ticket||(ticket_&&(use.ticket<=ticket_||!copied_[0]||!copied_[1]||!submitted_[0]||!submitted_[1]||!copy_submitted_[0]||!copy_submitted_[1]))){fail();return false;}
             // Acceptance is for these retained resources. Replacement needs a
             // fresh epoch/trial even when the new allocations have equal size.
             if(phase_==AcceptancePhase::accepted)for(unsigned i=0;i<4;++i)
@@ -246,9 +249,10 @@ public:
             public_handle!=pair_->state(0).handle||!same(use.identity,pair_->identity())||!use.ticket||use.eye>1||
             !producer_observed_[use.eye]||!same_use(producers_[use.eye].use,use)){fail();return false;}
         if(use.eye==0){
-            if(ticket_&&(use.ticket<=ticket_||!copied_[0]||!copied_[1]||!submitted_[0]||!submitted_[1])){fail();return false;}
+            if(ticket_&&(use.ticket<=ticket_||!copied_[0]||!copied_[1]||!submitted_[0]||!submitted_[1]||!copy_submitted_[0]||!copy_submitted_[1])){fail();return false;}
             sequence_=std::make_unique<CopySequence>(pair_->layout(),pair_->identity());
             recorded_={};evaluated_={};copied_={};submitted_={};copies_={};executions_={};next_copy_=0;ticket_=use.ticket;
+            copy_executions_={};copy_recorded_={};copy_submitted_={};
         }else if(use.eye!=1||!copied_[0]||ticket_!=use.ticket){fail();return false;}
         // Setters are CPU work. Mark the handle GPU-recorded only immediately
         // before entering the original SDK dispatcher, so an abandoned wrapper
@@ -274,9 +278,12 @@ public:
     // a mutation; rejection invalidates this ticket's publication at the host.
     bool copy(Entry const& e,CopyFacts const& facts,unsigned eye){
         if(!allowed(e)||!pair_||!pair_->usable()||prepared_||eye>1||eye!=next_copy_||!evaluated_[eye]||
-            facts.list!=uses_[eye].list||facts.generation!=uses_[eye].generation||!sequence_){fail();return false;}
+            facts.ticket!=ticket_||facts.ticket!=uses_[eye].ticket||!sequence_){fail();return false;}
         for(unsigned i=0;i<4;++i)if(!same_resource(facts.resources[i],producers_[eye].resources[i])){fail();return false;}
         CopyPlan plan;if(!sequence_->next(facts,eye,plan)){fail();return false;}
+        // Native93/95 Copy uses a DIFFERENT list from its Eval. Retain the
+        // actual copy recording even if the original throws after recording.
+        copies_[eye]=plan;copy_recorded_[eye]=true;
         try{backend_.copy(plan);}catch(...){fail();throw;}
         if(!allowed(e)){fail();return false;}copies_[eye]=plan;copied_[eye]=true;++next_copy_;return true;
     }
@@ -292,19 +299,32 @@ public:
         if(!allowed(e)||!pair_||eye>1||!creation_submitted_||!recorded_[eye]||submitted_[eye]||
             (eye==1&&!submitted_[0])||!stream_valid(receipt)||
             !pair_->submitted(pair_->state(eye).handle,uses_[eye],receipt.submission)){fail();return false;}
-        submitted_[eye]=true;executions_[eye]=last_execution_=receipt;return true;
+        submitted_[eye]=true;executions_[eye]=last_execution_=receipt;
+        if(copy_recorded_[eye]&&copies_[eye].list==receipt.submission.list&&copies_[eye].generation==receipt.submission.generation){
+            copy_submitted_[eye]=true;copy_executions_[eye]=receipt;}
+        return true;
+    }
+    // A distinct Copy list needs its own real Execute+Signal receipt. Legal
+    // after invalidation so failed recordings retain a retirement obligation.
+    bool submitted_copy(Entry const& e,unsigned eye,ExecuteReceipt receipt){
+        auto const& s=receipt.submission;
+        if(!allowed(e)||!pair_||eye>1||!copy_recorded_[eye]||copy_submitted_[eye]||!submitted_[eye]||
+           s.list!=copies_[eye].list||s.generation!=copies_[eye].generation||!stream_valid(receipt))return false;
+        copy_executions_[eye]=last_execution_=receipt;copy_submitted_[eye]=true;return true;
     }
     bool accept_candidate(Entry const& e,std::array<RetainedOutputObservation,2> const& observed){
         if(!allowed(e)||!pair_||!pair_->usable()||phase_!=AcceptancePhase::candidate||!candidate_ticket_||
            ticket_!=candidate_ticket_||!creation_submitted_||!sequence_||!sequence_->complete()){fail();return false;}
         for(unsigned eye=0;eye<2;++eye){auto const& o=observed[eye];auto const& c=o.completion;
             auto const& submitted=executions_[eye].submission;auto const& created=creation_execution_.submission;
+            auto const& copied=copy_executions_[eye].submission;
             auto const extent=pair_->layout().eye_output;
-            if(!producer_observed_[eye]||!recorded_[eye]||!evaluated_[eye]||!copied_[eye]||!submitted_[eye]||
+            if(!producer_observed_[eye]||!recorded_[eye]||!evaluated_[eye]||!copied_[eye]||!submitted_[eye]||!copy_submitted_[eye]||
                !same_use(o.use,uses_[eye])||o.feature!=pair_->state(eye).handle||
                !same_resource(o.output,producers_[eye].resources[3])||o.output.identity!=copies_[eye].source||
                o.produced.x||o.produced.y||o.produced.width!=extent.width||o.produced.height!=extent.height||
                c.value==UINT64_MAX||c.device!=submitted.device||c.queue!=submitted.queue||c.fence!=submitted.fence||c.value<submitted.value||
+               c.device!=copied.device||c.queue!=copied.queue||c.fence!=copied.fence||c.value<copied.value||
                c.device!=created.device||c.queue!=created.queue||c.fence!=created.fence||c.value<created.value){fail();return false;}
         }
         accepted_resources_=producers_[0].resources;phase_=AcceptancePhase::accepted;return true;
@@ -317,7 +337,7 @@ public:
     // This establishes actual ordered submissions, not completed pixels or
     // final-SRV association. Host still joins its actual Color/list draw proof.
     bool ordered_output(Entry const& e,RecordedOutput& out){
-        return allowed(e)&&submitted_[0]&&submitted_[1]&&recorded_output(e,out);
+        return allowed(e)&&submitted_[0]&&submitted_[1]&&copy_submitted_[0]&&copy_submitted_[1]&&recorded_output(e,out);
     }
     void invalidate(Entry const& e){if(allowed(e))fail();}
     // Unknown handles are forwarded unchanged at the original release hook.
@@ -335,6 +355,8 @@ public:
         if(!allowed(e)||!pair_||!pair_->retired()||release_uncertain_||!creation_submitted_||
            !complete_creation(e,c))return false;
         for(unsigned eye=0;eye<2;++eye){auto const& h=pair_->state(eye);if(!h.handle)continue;
+            if(copy_recorded_[eye]){auto const& s=copy_executions_[eye].submission;
+                if(!copy_submitted_[eye]||c.device!=s.device||c.queue!=s.queue||c.fence!=s.fence||c.value<s.value)return false;}
             if(h.lifetime==Lifetime::created_unused)continue;
             auto const& s=h.last_submission;
             if(h.lifetime!=Lifetime::submitted||c.device!=s.device||c.queue!=s.queue||c.fence!=s.fence||c.value<s.value)return false;
@@ -353,6 +375,8 @@ public:
     bool release_completed(Entry const& e,uint64_t handle,Completion c,NativeResult& raw_result){
         if(!allowed(e)||!pair_||!pair_->retired()||!creation_submitted_)return false;
         if(!complete_creation(e,c))return false;
+        for(unsigned eye=0;eye<2;++eye)if(copy_recorded_[eye]){auto const& s=copy_executions_[eye].submission;
+            if(!copy_submitted_[eye]||c.device!=s.device||c.queue!=s.queue||c.fence!=s.fence||c.value<s.value)return false;}
         uint64_t release{};
         if(!pair_->claim_unused_release(handle,pair_->identity(),release)&&!pair_->claim_completed_release(handle,c,release))return false;
         // Claim before entering SDK; exceptions/uncertain failures aren't retried.

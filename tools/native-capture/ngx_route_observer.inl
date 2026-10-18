@@ -48,11 +48,11 @@ struct Call {
 };
 uint64_t __fastcall hook_create(uintptr_t first,uintptr_t second,uintptr_t third,uintptr_t fourth,uintptr_t fifth,const void* structure){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;ngx_stereo_host::WrapperScope host(false,scope.world(),caller,first,structure);ngx_output_pixels::CreateScope pixels(scope.world(),caller,first,structure);Call call(false,scope.world(),caller,{first,second,third,fourth,fifth},structure);
-    const auto result=original_create(first,second,third,fourth,fifth,structure);host.normal_return(result);pixels.normal_return();if(call.row){call.row->result=result;call.row->returned=true;}return result;
+    const auto result=ngx_stereo_host::create_passthrough(first,second,third,fourth,fifth,structure,original_create);host.normal_return(result);pixels.normal_return();if(call.row){call.row->result=result;call.row->returned=true;}return result;
 }
 uint64_t __fastcall hook_evaluate(uintptr_t first,uintptr_t second,uintptr_t third,const void* structure){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;ngx_stereo_host::WrapperScope host(true,scope.world(),caller,first,structure);ngx_output_pixels::EvalScope pixels(scope.world(),caller,first,structure);Call call(true,scope.world(),caller,{first,second,third,0,0},structure);
-    const auto result=original_evaluate(first,second,third,structure);host.normal_return(result);pixels.normal_return(result);if(call.row){call.row->result=result;call.row->returned=true;}return result;
+    const auto result=ngx_stereo_host::evaluate_passthrough(scope.world(),first,second,third,structure,original_evaluate);host.normal_return(result);pixels.normal_return(result);if(call.row){call.row->result=result;call.row->returned=true;}return result;
 }
 bool verify(FILE* file,uintptr_t rva,unsigned size,const char* expected){
     BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};std::array<unsigned char,evaluate_size> bytes{};

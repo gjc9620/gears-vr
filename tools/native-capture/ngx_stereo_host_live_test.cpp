@@ -114,6 +114,97 @@ void source_cases(){
     assert(!native_create_source(9,source));
     complete();dispatch();assert(!native_create_source(9,source)); // Foreign dispatcher, no wrapper.
 }
+struct ControlFixture {
+    unsigned creates{},evaluates{},copies{},releases{};uint64_t completed{};bool wrong_ticket{};
+    std::array<uint64_t,2> used{};gears_ngx_stereo::CreateShadow consumed_create{};
+    gears_ngx_stereo::EvaluateShadow consumed_eval{};
+    static gears_ngx_stereo::Identity identity(){return {1,9,0xd00,4,1};}
+    static gears_ngx_stereo::Layout layout(){gears_ngx_stereo::Layout l;
+        for(auto& extent:l.physical)extent={2560,1080};l.full_output={2560,1080};l.input={853,720};
+        l.eye_output={1280,1080};l.stride=1280;l.input_base={gears_ngx_stereo::Point{0,0},{1280,0}};return l;}
+    static gears_ngx_stereo::Command command(unsigned index){return {0x100u*(index+1),0x100u*(index+1),index+1,0xd00,true};}
+    static gears_ngx_stereo::ExecuteReceipt execution(unsigned index,uint64_t value){auto c=command(index);
+        return {{0xd00,c.list,c.generation,0x20,0x30,value,true},value,0};}
+    static std::array<gears_ngx_stereo::Resource,4> resources(){std::array<gears_ngx_stereo::Resource,4> r{};
+        for(unsigned i=0;i<4;++i)r[i]={0x500u+i,0xd00,{2560,1080},26,0,1,0};return r;}
+    static bool creation_binding(void*,ngx_stereo_host::NativeCreateSource const& source,uintptr_t raw,ngx_stereo_host::ControlCreateBinding& out){
+        assert(source.fields[0]==1706&&source.fields[1]==720&&source.fields[2]==2560&&source.parameters==4&&raw==0x100);
+        out={identity(),layout(),command(0)};return true;}
+    static bool input_binding(void* owner_context,ngx_stereo_host::ControlConsumption consumed,gears_ngx_stereo::EvaluateShadow const&,uintptr_t raw,
+        ngx_stereo_host::ControlInputTicket& out){
+        auto& f=*static_cast<ControlFixture*>(owner_context);out.consumption=consumed;if(f.wrong_ticket)++out.consumption.ticket;
+        out.original_views={reinterpret_cast<uintptr_t>(views.data()),reinterpret_cast<uintptr_t>(views.data())+0xd30};
+        out.command=command(raw==0x100?0:2);out.raw_resources={0x500,0x502,0x503,0x501};
+        for(unsigned eye=0;eye<2;++eye){auto& p=out.producers[eye];auto cmd=command(2*eye);
+            p.use={identity(),consumed.ticket,cmd.list,cmd.generation,eye};p.view=out.original_views[eye];
+            p.resources=resources(); // Adapter order C,D,M,O differs from native C,O,D,M.
+            p.resources={resources()[0],resources()[2],resources()[3],resources()[1]};
+            for(auto& rect:p.rendered)rect={eye*1280,0,853,720};}
+        return true;}
+    static gears_ngx_stereo::Completion completion(void* owner_context,uint64_t){return {0xd00,0x20,0x30,static_cast<ControlFixture*>(owner_context)->completed};}
+};
+ControlFixture* control_fixture{};
+uint32_t __fastcall control_sdk_create(uint64_t raw,uint32_t feature,uint64_t p,uint64_t* out){
+    unlocked();assert(raw==0x100&&feature==1&&p==4);*out=100+control_fixture->creates++;return 1;}
+uint32_t __fastcall control_sdk_evaluate(uint64_t raw,uint64_t h,uint64_t p,uint64_t callback){
+    unlocked();auto& f=*control_fixture;assert(h==100||h==101);const auto eye=unsigned(h-100);
+    assert(raw==ControlFixture::command(2*eye).raw&&p==4&&!callback);f.used[f.evaluates++]=h;
+    uint32_t render[3]{};std::memcpy(render,f.consumed_eval.bytes.data()+0x30,sizeof(render));
+    assert(render[0]==853&&render[1]==720&&render[2]==1);return 1;}
+uint32_t __fastcall control_sdk_release(uint64_t h){unlocked();assert(h==100||h==101);++control_fixture->releases;return 1;}
+void control_copy(void* owner_context,gears_ngx_stereo::CopyPlan const& plan){auto& f=*static_cast<ControlFixture*>(owner_context);
+    ++f.copies;assert(plan.list==ControlFixture::command(plan.ordinal?3:1).list&&plan.destination[0]==plan.ordinal*1280);}
+uint64_t __fastcall control_create_wrapper(uintptr_t a,uintptr_t,uintptr_t,uintptr_t,uintptr_t,void const* p){
+    std::memcpy(control_fixture->consumed_create.bytes.data(),p,gears_ngx_stereo::create_consumed_span);
+    return ngx_stereo_host::hook_create(a,1,parameters,reinterpret_cast<uintptr_t*>(base+handle_cell_rva));}
+uint64_t __fastcall control_eval_wrapper(uintptr_t a,uintptr_t,uintptr_t,void const* p){
+    std::memcpy(control_fixture->consumed_eval.bytes.data(),p,gears_ngx_stereo::evaluate_initialized_span);
+    return ngx_stereo_host::hook_evaluate(a,handle,parameters,0);}
+void control_cases(){
+    using namespace gears_ngx_stereo;using namespace ngx_stereo_host;
+    for(bool wrong_ticket:{false,true}){
+        host_reset();const auto saved_base=base;base=reinterpret_cast<uintptr_t>(&handle)-handle_cell_rva;handle=0;parameters=4;
+        auto fixture=std::make_shared<ControlFixture>();control_fixture=fixture.get();fixture->wrong_ticket=wrong_ticket;
+        NativeDispatchFunctions functions{control_sdk_create,control_sdk_evaluate,control_sdk_release,fixture.get(),control_copy};
+        AdapterPrerequisites ready{true,true,true,true,true,true,true,true,true,true,true,true};
+        ControlCallbacks callbacks{fixture,ControlFixture::creation_binding,ControlFixture::input_binding,ControlFixture::completion};
+        auto owner=std::make_shared<ControlOwner>(functions,ready,callbacks);assert(attach_control(owner));assert(!attach_control(owner));
+        ngx_route_observer::original_create=control_create_wrapper;ngx_route_observer::original_evaluate=control_eval_wrapper;
+        ngx_stereo_host::original_create=control_sdk_create;ngx_stereo_host::original_evaluate=control_sdk_evaluate;ngx_stereo_host::original_release=control_sdk_release;
+        const uint32_t family[]{1706,720,2560,1080,1,0x12};std::memcpy(creation.data(),family,sizeof(family));put(creation,0x18,uint8_t(1));
+        const auto family_original=creation;test_caller=base+0xbe66bc;
+        assert(ngx_route_observer::hook_create(0x100,0,0,0,0,creation.data())==1&&fixture->creates==2&&handle==100&&creation==family_original);
+        uint32_t actual[4]{};std::memcpy(actual,fixture->consumed_create.bytes.data(),sizeof(actual));
+        assert(actual[0]==853&&actual[1]==720&&actual[2]==1280&&actual[3]==1080);
+        NativeCreateSource family_source;assert(native_create_source(9,family_source)&&family_source.fields[0]==1706&&family_source.fields[2]==2560);
+        assert(!detach_control(owner));{auto e=owner->adapter().enter();assert(owner->adapter().submitted_creation(e,ControlFixture::execution(0,1)));}
+        // Actual TLS stays on right view for BOTH evaluations, matching O/P.
+        put(context,0x14c0,reinterpret_cast<uintptr_t>(views.data())+0xd30);
+        for(unsigned eye=0;eye<(wrong_ticket?1u:2u);++eye){
+            EvaluateShadow source;source.bytes.fill(0x5b);const uintptr_t raw[]{0x500,0x501,0x502,0x503};
+            for(unsigned i=0;i<4;++i)std::memcpy(source.bytes.data()+resource_offsets[i],&raw[i],8);
+            for(size_t offset:{size_t(0x60),size_t(0x68),size_t(0x70)}){const Point p{eye*1280,0};std::memcpy(source.bytes.data()+offset,&p,8);}
+            uint32_t no_reset{};std::memcpy(source.bytes.data()+0x38,&no_reset,4);const auto original=source.bytes;
+            test_caller=base+0x9a35d3;auto result=ngx_route_observer::hook_evaluate(ControlFixture::command(2*eye).raw,0,0,source.bytes.data());
+            assert(source.bytes==original);if(wrong_ticket){assert(result==dispatch_unavailable&&!fixture->evaluates);break;}
+            assert(result==1);CopyFacts facts;facts.identity=ControlFixture::identity();facts.ticket=7;facts.caller=0x1c6093;
+            auto cmd=ControlFixture::command(2*eye+1);facts.list=cmd.list;facts.generation=cmd.generation;facts.list_device=0xd00;
+            facts.direct=facts.copy_source=facts.copy_dest=true;auto r=ControlFixture::resources();facts.resources={r[0],r[2],r[3],r[1]};
+            facts.input_base=ControlFixture::layout().input_base;facts.feature_output={1280,1080};facts.evaluated_ordinal=eye;
+            auto e=owner->adapter().enter();assert(owner->adapter().copy(e,facts,eye));
+            assert(owner->adapter().submitted_eye(e,eye,ControlFixture::execution(2*eye,2+2*eye)));
+            auto bad=ControlFixture::execution(2*eye+1,3+2*eye);++bad.submission.generation;
+            assert(!owner->adapter().submitted_copy(e,eye,bad));
+            assert(owner->adapter().submitted_copy(e,eye,ControlFixture::execution(2*eye+1,3+2*eye)));
+        }
+        assert(!detach_control(owner)&&!fixture->releases);
+        // A CPU return or Eval-only fence never retires the later Copy list.
+        fixture->completed=wrong_ticket?0:4;assert(ngx_stereo_host::hook_release(100)==dispatch_unavailable&&!fixture->releases);
+        fixture->completed=wrong_ticket?1:5;assert(ngx_stereo_host::hook_release(100)==1&&fixture->releases==2);
+        assert(detach_control(owner));if(!wrong_ticket)assert(fixture->evaluates==2&&fixture->used[0]==100&&fixture->used[1]==101&&fixture->copies==2);
+        base=saved_base;control_fixture=nullptr;
+    }
+}
 void host_cases(){
     host_reset();observe_inputs();eval();copy_execute();auto const& row=ngx_stereo_host::rows[0];
     assert(dispatch_calls==1&&copy_calls==1&&execute_calls==1&&row.dispatcher_match&&row.dispatcher_returned&&row.returned&&row.wrapper_result==0xfedcba9876543210);
@@ -183,4 +274,4 @@ void host_cases(){
     host_reset();FILE* rejected{};assert(!tmpfile_s(&rejected));assert(!ngx_stereo_host::enable(rejected)&&!ngx_stereo_host::attested);fclose(rejected);
 }
 }
-int main(){assert(route_observer_test_main()==0);source_cases();host_cases();std::puts("NgxStereoHostLiveTest passed (forwarding/provenance only; no SDK/GPU completion claims)");return 0;}
+int main(){assert(route_observer_test_main()==0);source_cases();control_cases();host_cases();std::puts("NgxStereoHostLiveTest passed (forwarding/provenance only; no SDK/GPU completion claims)");return 0;}
