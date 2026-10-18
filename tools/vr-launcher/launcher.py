@@ -95,7 +95,8 @@ def render_size_info(manifest,scale,root=ROOT):
     if hashlib.sha256(probe.read_bytes()).hexdigest().lower()!=manifest['xr_sha256'].lower():
         raise RuntimeError('XR render size probe SHA256 mismatch')
     result=subprocess.run([str(probe),'--render-size-info','--render-scale',str(scale)],
-        capture_output=True,text=True,timeout=30,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=30,
+        creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     if result.returncode:raise RuntimeError('VR render size rejected before game launch: '+(result.stderr.strip() or result.stdout.strip()))
     plans=[]
     for line in result.stdout.splitlines():

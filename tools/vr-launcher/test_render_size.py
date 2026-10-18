@@ -43,4 +43,21 @@ class RenderSizeTests(unittest.TestCase):
             args.render_scale=value
             with self.assertRaises(ValueError):runner.xr_command(args,pathlib.Path('sample.csv'),dict(pid=2,creation_time=3))
 
+    def test_utf8_loader_failure_survives_windows_locale(self):
+        real_run=launcher.subprocess.run
+        with tempfile.TemporaryDirectory() as directory:
+            root=pathlib.Path(directory);probe=root/'xr/OpenXRPoseProbe.exe';probe.parent.mkdir();probe.write_bytes(b'test')
+            manifest=dict(xr_build='xr',xr_sha256=hashlib.sha256(b'test').hexdigest())
+            message='Runtime DLL not found: 系统找不到指定的文件。'
+            # Exercise actual pipe decoding, including invalid trailing bytes,
+            # without loading OpenXR or creating a window.
+            payload=(message.encode('utf-8')+b'\xff').hex()
+            def child(command,**kwargs):
+                return real_run([sys.executable,'-c',
+                    "import sys;sys.stderr.buffer.write(bytes.fromhex('"+payload+"'));sys.exit(1)"],**kwargs)
+            with mock.patch.object(launcher.subprocess,'run',side_effect=child):
+                with self.assertRaises(RuntimeError) as caught:launcher.render_size_info(manifest,1,root)
+            self.assertIn(message,str(caught.exception))
+            self.assertIn('before game launch',str(caught.exception))
+
 if __name__=='__main__':unittest.main()
