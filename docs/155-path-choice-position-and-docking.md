@@ -123,3 +123,9 @@ Native94从`0a4634f`冻结，DLL SHA256为`0d0e427dec59ceef905e7510d5911e469a09b
 在a1e6a0e固定前缀修正后，实际99f由自动监视器获取和发布，测试驱动没有直接写位置请求。保持同一nonce166683963775400与首次baseline共42.4217061秒，续租10次；之后一次正常LeftMouseButton down/up完成选择。关闭前恢复通过，最终applied1/restored1，pending/unresolved及identity/ownership/setter失败均0。native、独立入口、正常退出、设置和四profile恢复均通过，无自有前台采样。独立断言及全部原始证据哈希归档ignored `analysis/runtime/path-layout99f-20261018-proof.json`，测试使用Native99冻结896f48c及运行时Python438bc03。
 
 这一轮关闭自动获取和超过六秒持有的已复现缺口；没有重新拍摄居中图像，374参考像素的视觉证据仍来自前轮。重复打开、世界切换及当前组合真机仍待覆盖，默认清单尚未提升。
+
+## Automatic service selects whole-group fit
+
+The automatic position probe now requests the shared content-bounds fit into the normalized vertical band [0.25, 0.75], replacing its fixed 374-reference-pixel request. First-baseline acquisition, same-nonce renewal and close-before-removal restoration are unchanged. The collector still certifies the known complete panel subtree and 1920x1080 UI coordinate domain; unsupported domains reject rather than guessing from desktop or eye texture dimensions. This is not universal UI support or a Hammer pickup placement claim.
+
+58 focused Python tests passed, including a complete synthetic collection that serializes group-fit geometry and its matching close lease. Native group-fit parsing/math already exists; the player default and runtime-resolution candidate do not enable the PathChoice feature flags. Actual placement with this automatic fit, world transitions and headset appearance remain pending. The earlier Native99f fixed-offset runtime evidence must not be presented as validation of this new automatic-fit policy.

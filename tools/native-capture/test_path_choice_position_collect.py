@@ -67,7 +67,7 @@ def fixture():
 
 
 class CollectorTests(unittest.TestCase):
-    def invoke(self, values, verify=None, policy='exact'):
+    def invoke(self, values, verify=None, policy='exact', target=None):
         reader,sample,proof,metadata,session,status,memory=values
         def panel_proof(r,fresh):
             result=copy.deepcopy(proof)
@@ -76,7 +76,34 @@ class CollectorTests(unittest.TestCase):
         with mock.patch.object(collector,'_panel_proof',side_effect=panel_proof), \
              mock.patch.object(collector,'_close_metadata',side_effect=lambda *a:copy.deepcopy(metadata)):
             return collector.collect(reader,sample,status,session,1000,verify or (lambda r:copy.deepcopy(session)),
-                                     registry_header_policy=policy)
+                                     registry_header_policy=policy, target_vertical_region=target)
+
+    def test_shared_fit_acquisition_builds_matching_close_certificate(self):
+        values=fixture();sample=values[1];memory=values[6]
+        root=sample['top']['address']
+        panel=next(row for row in sample['tree'] if row['cls']=='UIWarSafeRegionPanel')
+        content=[row for row in sample['tree'] if row['address'] not in (root,panel['address'])]
+        self.assertEqual(len(content),11)
+        def bounds(row,coordinates):
+            raw=struct.pack('<4f',*coordinates);numbers=list(struct.unpack('<4f',raw))
+            row['render_bounds']=dict(order=['left','top','right','bottom'],values=numbers,
+                ordered_values=numbers,raw=raw.hex(),reflected=dict(type='FloatProperty',
+                offset=676,array_dim=4,element_size=4))
+            memory.update((int(row['address'],0)+676+i,b) for i,b in enumerate(raw))
+        panel.update(parent=root,depth=2)
+        fractions=panel['layout_details']['position']['members']['Value']['values']
+        bounds(panel,[v*(1920 if i%2==0 else 1080) for i,v in enumerate(fractions)])
+        for i,row in enumerate(content[:10]):
+            row.update(parent=panel['address'],outer=panel['address'],depth=3)
+            bounds(row,[550+i,70+i,1370-i,260-i])
+        content[-1].update(parent=root,outer=root,depth=2)
+        certificate=self.invoke(values,policy='fixed_prefix_v1',target=(.25,.75))
+        self.assertIn('group_fit=vertical_v1',certificate.position_ini)
+        # Close authorizes the same lease; its restoration uses the baseline
+        # already owned by native, not a second independent translation.
+        for field in ('nonce=1000', 'panel='+panel['address'], 'world_generation=2'):
+            self.assertIn(field,certificate.close_ini)
+        self.assertNotIn('vertical_offset_reference_pixels=374',certificate.position_ini)
 
     def live_header_fixture(self):
         values=fixture();r=values[0].r

@@ -19,6 +19,9 @@ MAX_RESULT_AGE = 2.0
 OBSERVE_INTERVAL = .5
 RENEW_INTERVAL = 2.0
 MAX_ACQUISITION_ATTEMPTS = 3
+# Fit the complete authenticated panel content into the central vertical band.
+# The collector certifies its coordinate domain; unsupported layouts reject.
+TARGET_VERTICAL_REGION = (.25, .75)
 
 
 def get_tick_count64():
@@ -67,7 +70,8 @@ class LivePathChoicePositionProbe:
             verify(reader)
             from path_choice_position_collect import collect
             certificate = collect(reader, sample, status, session, nonce,
-                lambda current: verify(current)[0], registry_header_policy='fixed_prefix_v1')
+                lambda current: verify(current)[0], registry_header_policy='fixed_prefix_v1',
+                target_vertical_region=TARGET_VERTICAL_REGION)
             verify(reader)
             return Observation(True, certificate, scene_address=address)
         except Exception:
