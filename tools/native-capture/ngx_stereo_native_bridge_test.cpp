@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+#include <limits>
 using namespace gears_ngx_stereo;
 static Identity id(){return {1,2,3,4,5};}
 static Layout layout(){Layout l;for(auto& e:l.physical)e={2560,1080};l.full_output={2560,1080};
@@ -128,6 +129,27 @@ static void exceptions_and_release(){
 static NativeResult __fastcall api_create(uint64_t c,uint32_t feature,uint64_t p,uint64_t* h){assert(c==12&&feature==1&&p==14);*h=99;return 17;}
 static NativeResult __fastcall api_evaluate(uint64_t c,uint64_t h,uint64_t p,uint64_t cb){assert(c==12&&h==99&&p==14&&cb==0);return 18;}
 static NativeResult __fastcall api_release(uint64_t h){assert(h==99);return 19;}
+static unsigned optimal_calls{};
+static NativeResult __fastcall api_optimal(uint32_t first,uint32_t w,uint32_t h,uint32_t quality,
+    uint32_t* ow,uint32_t* oh,uint32_t* maxw,uint32_t* maxh,uint32_t* minw,uint32_t* minh,float* sharpness){
+    assert(first==w&&w==1920&&h==2160&&quality==2);++optimal_calls;
+    *ow=1280;*oh=1440;*maxw=1920;*maxh=2160;*minw=960;*minh=1080;*sharpness=.25f;return 1;
+}
+static void optimal_api(){
+    NativeDispatchFunctions functions;NativeDispatchBackend missing(functions);
+    assert(!missing.optimal({1920,2160},2).called);
+    functions.optimal=api_optimal;NativeDispatchBackend backend(functions);
+    assert(!backend.optimal({},2).called&&!optimal_calls);
+    auto result=backend.optimal({1920,2160},2);
+    assert(optimal_calls==1&&!backend.create_attempts()&&result.supports({1280,1440}));
+    assert(result.output.width==1920&&result.output.height==2160&&result.quality==2&&result.sharpness==.25f);
+    auto changed=result;changed.minimum.width=1920;assert(!changed.supports({1280,1440}));
+    changed=result;changed.result=0xbad0000c;assert(!changed.supports({1280,1440}));
+    changed=result;changed.maximum.height=0;assert(!changed.supports({1280,1440}));
+    changed=result;changed.optimal.width=2000;assert(!changed.supports({1280,1440}));
+    changed=result;changed.sharpness=std::numeric_limits<float>::quiet_NaN();assert(!changed.supports({1280,1440}));
+    assert(!result.supports({0,1440})&&!result.supports({1280,2200})&&!result.supports({900,1440}));
+}
 static void raw_api(){
     unsigned copies{};NativeDispatchFunctions functions{api_create,api_evaluate,api_release,&copies,
         [](void* context,CopyPlan const& p){assert(p.ticket==123);++*static_cast<unsigned*>(context);}};
@@ -137,5 +159,5 @@ static void raw_api(){
     NativeDispatchBackend missing({});assert(missing.create(12,1,14,&h)==dispatch_unavailable&&missing.evaluate(12,h,14,0)==dispatch_unavailable&&missing.release(h)==dispatch_unavailable);
     bool threw{};try{missing.copy(plan);}catch(std::logic_error const&){threw=true;}assert(threw);
 }
-int main(){disabled();normal();rejected_create();rejected_evaluate();resource_binding();exceptions_and_release();raw_api();
+int main(){disabled();normal();rejected_create();rejected_evaluate();resource_binding();exceptions_and_release();raw_api();optimal_api();
     std::cout<<"NGX complete-wrapper bridge, independent dispatch and release tests passed\n";}

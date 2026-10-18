@@ -155,6 +155,7 @@ void constructor_source_cases(){
 }
 struct ControlFixture {
     unsigned creates{},evaluates{},copies{},releases{};uint64_t completed{};bool wrong_ticket{};
+    unsigned queries{},query_failure{};
     std::array<uint64_t,2> used{};gears_ngx_stereo::CreateShadow consumed_create{};
     gears_ngx_stereo::EvaluateShadow consumed_eval{};
     static gears_ngx_stereo::Identity identity(){return {1,9,0xd00,4,1};}
@@ -185,8 +186,22 @@ struct ControlFixture {
     static gears_ngx_stereo::Completion completion(void* owner_context,uint64_t){return {0xd00,0x20,0x30,static_cast<ControlFixture*>(owner_context)->completed};}
 };
 ControlFixture* control_fixture{};
+uint32_t __fastcall control_optimal(uint32_t original_width,uint32_t width,uint32_t height,uint32_t quality,
+    uint32_t* optimal_w,uint32_t* optimal_h,uint32_t* max_w,uint32_t* max_h,uint32_t* min_w,uint32_t* min_h,float* sharpness){
+    unlocked();auto& f=*control_fixture;++f.queries;
+    assert(original_width==width&&width==1280&&height==1080&&quality==1&&!f.creates&&handle==0&&parameters==4);
+    *optimal_w=853;*optimal_h=720;*max_w=1280;*max_h=1080;*min_w=640;*min_h=540;*sharpness=0.25f;
+    if(f.query_failure==1)return 0xbad0000c;
+    if(f.query_failure==2)*min_w=900; // Original family/unsupported contract is never halved to pass.
+    if(f.query_failure==3)++parameters;
+    if(f.query_failure==4)++committed_world_generation;
+    if(f.query_failure==5)++ngx_stereo_host::native_create_revision;
+    if(f.query_failure==6)handle=444;
+    if(f.query_failure==7)put(creation,0,uint32_t(1708));
+    return 1;
+}
 uint32_t __fastcall control_sdk_create(uint64_t raw,uint32_t feature,uint64_t p,uint64_t* out){
-    unlocked();assert(raw==0x100&&feature==1&&p==4);*out=100+control_fixture->creates++;return 1;}
+    unlocked();assert(raw==0x100&&feature==1&&p==4&&control_fixture->queries==1);*out=100+control_fixture->creates++;return 1;}
 uint32_t __fastcall control_sdk_evaluate(uint64_t raw,uint64_t h,uint64_t p,uint64_t callback){
     unlocked();auto& f=*control_fixture;assert(h==100||h==101);const auto eye=unsigned(h-100);
     assert(raw==ControlFixture::command(2*eye).raw&&p==4&&!callback);f.used[f.evaluates++]=h;
@@ -207,6 +222,7 @@ void control_cases(){
         host_reset();const auto saved_base=base;base=reinterpret_cast<uintptr_t>(&handle)-handle_cell_rva;handle=0;parameters=4;
         auto fixture=std::make_shared<ControlFixture>();control_fixture=fixture.get();fixture->wrong_ticket=wrong_ticket;
         NativeDispatchFunctions functions{control_sdk_create,control_sdk_evaluate,control_sdk_release,fixture.get(),control_copy};
+        functions.optimal=control_optimal;
         AdapterPrerequisites ready{true,true,true,true,true,true,true,true,true,true,true,true};
         ControlCallbacks callbacks{fixture,ControlFixture::creation_binding,ControlFixture::input_binding,ControlFixture::completion};
         auto owner=std::make_shared<ControlOwner>(functions,ready,callbacks);assert(attach_control(owner));assert(!attach_control(owner));
@@ -246,6 +262,25 @@ void control_cases(){
         fixture->completed=wrong_ticket?1:5;assert(ngx_stereo_host::hook_release(100)==1&&fixture->releases==2);
         assert(detach_control(owner));if(!wrong_ticket)assert(fixture->evaluates==2&&fixture->used[0]==100&&fixture->used[1]==101&&fixture->copies==2);
         base=saved_base;control_fixture=nullptr;
+    }
+}
+void optimal_host_failures(){
+    using namespace gears_ngx_stereo;using namespace ngx_stereo_host;
+    for(unsigned failure=1;failure<=7;++failure){
+        host_reset();const auto saved_base=base;base=reinterpret_cast<uintptr_t>(&handle)-handle_cell_rva;handle=0;parameters=4;
+        auto fixture=std::make_shared<ControlFixture>();control_fixture=fixture.get();fixture->query_failure=failure;
+        NativeDispatchFunctions functions{control_sdk_create,control_sdk_evaluate,control_sdk_release,fixture.get(),control_copy};
+        AdapterPrerequisites ready{true,true,true,true,true,true,true,true,true,true,true,true};
+        ControlCallbacks callbacks{fixture,ControlFixture::creation_binding,ControlFixture::input_binding,ControlFixture::completion};
+        assert(!std::make_shared<ControlOwner>(functions,ready,callbacks)->configured());
+        functions.optimal=control_optimal;auto owner=std::make_shared<ControlOwner>(functions,ready,callbacks);assert(attach_control(owner));
+        ngx_route_observer::original_create=control_create_wrapper;
+        const uint32_t family[]{1706,720,2560,1080,1,0x12};std::memcpy(creation.data(),family,sizeof(family));put(creation,0x18,uint8_t(1));
+        const auto original=creation;test_caller=base+0xbe66bc;
+        const auto result=ngx_route_observer::hook_create(0x100,0,0,0,0,creation.data());
+        assert(result==(failure==1?0xbad0000cu:dispatch_unavailable)&&fixture->queries==1&&!fixture->creates&&!fixture->evaluates&&!fixture->releases);
+        if(failure!=7)assert(creation==original);else assert(creation!=original);
+        assert(detach_control(owner));base=saved_base;control_fixture=nullptr;
     }
 }
 void host_cases(){
@@ -317,4 +352,4 @@ void host_cases(){
     host_reset();FILE* rejected{};assert(!tmpfile_s(&rejected));assert(!ngx_stereo_host::enable(rejected)&&!ngx_stereo_host::attested);fclose(rejected);
 }
 }
-int main(){assert(route_observer_test_main()==0);source_cases();constructor_source_cases();control_cases();host_cases();std::puts("NgxStereoHostLiveTest passed (forwarding/provenance only; no SDK/GPU completion claims)");return 0;}
+int main(){assert(route_observer_test_main()==0);source_cases();constructor_source_cases();control_cases();optimal_host_failures();host_cases();std::puts("NgxStereoHostLiveTest passed (forwarding/provenance only; no SDK/GPU completion claims)");return 0;}

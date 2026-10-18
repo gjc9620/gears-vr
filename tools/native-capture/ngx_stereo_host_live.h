@@ -20,6 +20,7 @@ using ExecuteFn=void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*,UINT,ID3D12CommandL
 struct ControlConsumption {uint64_t world{},ticket{};uintptr_t renderer{};};
 struct ControlCreateBinding {
     gears_ngx_stereo::Identity identity{};gears_ngx_stereo::Layout layout{};gears_ngx_stereo::Command command{};
+    gears_ngx_stereo::NativeOptimalSettings optimal{}; // One query covers two identically sized independent features.
 };
 struct ControlInputTicket {
     ControlConsumption consumption{};std::array<uintptr_t,2> original_views{};
@@ -45,7 +46,7 @@ class ControlOwner {
 public:
     ControlOwner(gears_ngx_stereo::NativeDispatchFunctions functions,gears_ngx_stereo::AdapterPrerequisites prerequisites,ControlCallbacks callbacks)
         :backend_(functions),adapter_(backend_,prerequisites),bridge_(adapter_,true),callbacks_(std::move(callbacks)),
-         configured_(functions.ready()&&prerequisites.ready()&&callbacks_.lifetime&&callbacks_.create&&callbacks_.input&&callbacks_.completion){}
+         configured_(functions.ready()&&functions.optimal&&prerequisites.ready()&&callbacks_.lifetime&&callbacks_.create&&callbacks_.input&&callbacks_.completion){}
     ControlOwner(ControlOwner const&)=delete;
     bool configured()const{return configured_;}
     bool can_detach(){auto e=adapter_.enter();return e&&(!backend_.create_attempts()||adapter_.drained(e));}
@@ -58,6 +59,7 @@ public:
     uint32_t release(uint64_t handle,std::function<uint32_t(uint64_t)> const& original){
         return bridge_.release_dispatch(handle,callbacks_.completion(callbacks_.lifetime.get(),handle),original);}
 };
+gears_ngx_stereo::NativeOptimalQuery native_optimal_query();
 bool attach_control(std::shared_ptr<ControlOwner> const&);
 bool detach_control(std::shared_ptr<ControlOwner> const&);
 uint64_t create_passthrough(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,void const*,CreateWrapperFn);

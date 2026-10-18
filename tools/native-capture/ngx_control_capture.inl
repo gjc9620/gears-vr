@@ -135,6 +135,7 @@ void execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* list
 bool activate(AdapterPrerequisites prerequisites){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!context||context->failed||!context->producer||!context->copy_states||!context->producer_lifetime||!context->owner.expired())return false;
     auto& c=*context;NativeDispatchFunctions functions{ngx_stereo_host::original_create,ngx_stereo_host::original_evaluate,ngx_stereo_host::original_release,&c,boxed_dispatch};
+    functions.optimal=ngx_stereo_host::native_optimal_query();
     ngx_stereo_host::ControlCallbacks callbacks{context,create,input,completion};
     auto owner=std::make_shared<ngx_stereo_host::ControlOwner>(functions,prerequisites,callbacks);
     c.owner=owner;if(ngx_stereo_host::attach_control(owner))return true;c.owner.reset();return false;

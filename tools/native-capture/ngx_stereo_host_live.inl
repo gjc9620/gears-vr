@@ -64,6 +64,21 @@ bool detach_control(std::shared_ptr<ControlOwner> const& owner){
     control_owner.reset();return true;
 }
 std::shared_ptr<ControlOwner> current_control(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return control_owner;}
+gears_ngx_stereo::NativeOptimalQuery native_optimal_query(){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    return attested?reinterpret_cast<gears_ngx_stereo::NativeOptimalQuery>(base+0xbe61bc):nullptr;
+}
+bool read_create_fields(std::array<uint32_t,7>& fields,uintptr_t structure);
+bool pending_create_current(NativeCreateSource const& source){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);uintptr_t handle{},parameters{};
+    std::array<uint32_t,7> fields{};
+    return attested&&recording.load()&&in_wrappers==1&&source_create_scope&&!source_create_scope->source_bad&&
+        !source.handle&&source.revision==native_create_revision&&source.world==committed_world_generation.load()&&
+        source_create_scope->source.revision==source.revision&&source_create_scope->source.fields==source.fields&&
+        read_create_fields(fields,source_create_scope->source_structure)&&fields==source.fields&&
+        ngx_route_observer::read(handle,base,gears_ngx_route::handle_cell_rva)&&!handle&&
+        ngx_route_observer::read(parameters,base,gears_ngx_route::parameter_cell_rva)&&parameters==source.parameters;
+}
 uint64_t ControlOwner::create(NativeCreateSource const& family,uintptr_t command,
     gears_ngx_stereo::CreateShadow const& source,void const* original_pointer,std::function<uint64_t(void const*)> const& original){
     using namespace gears_ngx_stereo;ControlCreateBinding binding;
@@ -72,9 +87,27 @@ uint64_t ControlOwner::create(NativeCreateSource const& family,uintptr_t command
        binding.command.raw!=command||!valid_create_layout(binding.layout)||family.fields[0]!=2*binding.layout.input.width||
        family.fields[1]!=binding.layout.input.height||family.fields[2]!=binding.layout.full_output.width||
        family.fields[3]!=binding.layout.full_output.height){invalidate();return dispatch_unavailable;}
+    // Query the actual per-eye output/Quality, never divide family min/max.
+    // The adapter gate serializes parameter-consuming owned wrappers. It is
+    // deliberately released before bridge_.create_wrapper takes its own gate;
+    // the original Create wrapper then overwrites its normal Create parameters.
+    {
+        auto entry=adapter_.enter();if(!entry)return dispatch_unavailable;
+        if(!pending_create_current(family)||source_create_scope->source_command!=command||
+           source_create_scope->source_structure!=reinterpret_cast<uintptr_t>(original_pointer)){
+            adapter_.invalidate(entry);return dispatch_unavailable;}
+        try{binding.optimal=backend_.optimal(binding.layout.eye_output,family.fields[4]);}
+        catch(...){adapter_.invalidate(entry);throw;}
+        if(!pending_create_current(family)||!binding.optimal.supports(binding.layout.input)){
+            adapter_.invalidate(entry);
+            return binding.optimal.called&&!native_result_accepted(binding.optimal.result)?binding.optimal.result:dispatch_unavailable;
+        }
+    }
     {std::lock_guard<std::mutex> lock(metadata_mutex_);creation_=binding;}
     return bridge_.create_wrapper(binding.identity,binding.layout,binding.command,
-        reinterpret_cast<uint64_t*>(base+gears_ngx_route::handle_cell_rva),source,original_pointer,original).raw;
+        reinterpret_cast<uint64_t*>(base+gears_ngx_route::handle_cell_rva),source,original_pointer,[&](void const* owned){
+            return pending_create_current(family)?original(owned):uint64_t(dispatch_unavailable);
+        }).raw;
 }
 uint64_t ControlOwner::evaluate(ControlConsumption consumed,uintptr_t command,uintptr_t handle,uintptr_t parameters,
     gears_ngx_stereo::EvaluateShadow const& source,void const* original_pointer,std::function<uint64_t(void const*)> const& original){
@@ -419,6 +452,7 @@ struct Contract {uintptr_t rva;unsigned size;char const* hash;};
 // Full function chunks from the saved wrapper/release contracts, not disk-EXE
 // identity. enable() hashes every complete current chunk before any host hook.
 constexpr Contract contracts[]{
+    {0xbe61bc,0x187,"1ac9bd946037e33c6b06f2b6b8211eec72ee7096bec92912742c41150279500d"},
     {0xbe5b5c,0xf9,"53709f650d84bd1ea4cc1ae5e25eb8ef7f3462102fe51d07b790d96c48734879"},
     {0xbe5c58,0x561,"21868e6f8203578f5c4ef689fc4f66a5c79e13fdb243eebe2eb81cc7d6309441"},
     {0xbe65cc,0x446,"a00d6a1971ceef0a066f350562c2c4033ab7beedb83e34568dd9e72f637fe727"},
