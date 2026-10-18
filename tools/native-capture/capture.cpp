@@ -392,6 +392,8 @@ struct SessionHookEntry{void* target{};void* detour{};std::array<unsigned char,3
 constexpr size_t session_hook_base_capacity=60,viewport_hook_capacity=29;
 #elif defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
 constexpr size_t session_hook_base_capacity=59,viewport_hook_capacity=29;
+#elif defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
+constexpr size_t session_hook_base_capacity=42,viewport_hook_capacity=13;
 #elif defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
 constexpr size_t session_hook_base_capacity=40,viewport_hook_capacity=11;
 #else
@@ -3705,6 +3707,9 @@ bool viewport_hooks(ID3D12Device* device) {
 #endif
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
         success=owned_scene_gpu_install(device,list)&&success;
+#endif
+#if (defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS) || (defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER)
+        success=command_list_birth_install(device)&&success;
 #endif
         list->Close();
     }

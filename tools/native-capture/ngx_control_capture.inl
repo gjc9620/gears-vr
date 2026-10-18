@@ -26,14 +26,22 @@ void reset_command(ID3D12CommandList* list){
     if(!c.gpu.reset_success(owner->adapter(),list,id,gen))reject(c);
 }
 void created_command(HRESULT hr,void** out,bool open){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!context||context->failed||FAILED(hr))return;
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    const bool observing=ngx_stereo_host::attested&&recording.load()&&frame_link_diagnostics;
+    const bool controlling=context&&!context->failed;
+    if(FAILED(hr)||(!observing&&!controlling))return;
+    auto failed=[&](){if(context)reject(*context);
+#if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+        ngx_epoch_pair::probe.gap();
+#endif
+    };
     IUnknown* returned{};Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> list;
-    // The returned pointer comes from successful CreateCommandList(1), not
-    // an integer captured from NGX. QueryInterface supplies the typed lease.
-    if(!safe_copy(&returned,out,sizeof(returned))||!returned||FAILED(returned->QueryInterface(IID_PPV_ARGS(&list)))){reject(*context);return;}
+    // The successful typed API result is held during registration. Birth makes
+    // a fresh generation even on address reuse; no permanent list COM cache.
+    if(!safe_copy(&returned,out,sizeof(returned))||!returned||FAILED(returned->QueryInterface(IID_PPV_ARGS(&list)))){failed();return;}
     if(list->GetType()!=D3D12_COMMAND_LIST_TYPE_DIRECT)return;
-    const auto id=canonical_identity(list.Get());if(!id||!frame_link.create_success(id,open).identity){reject(*context);return;}
-    // No COM cache: CreateCommandList1 still awaits the actual Reset hook.
+    const auto id=canonical_identity(list.Get());if(!id||!frame_link.create_success(id,open).identity){failed();return;}
+    // CreateCommandList1 is closed: only the actual Reset enables recording.
 }
 bool command(Context& c,uintptr_t raw,Command& out){
     out={};auto owner=c.owner.lock();if(c.failed||!owner||!raw)return false;
