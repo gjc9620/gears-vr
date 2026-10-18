@@ -33,6 +33,9 @@ bool selected_entry(gears_ui::Config const& c,unsigned index,uintptr_t self){
 }
 uintptr_t __fastcall hook(void* self,void* caller_frame,void* result,void* callee){
     Scope scope;if(!scope.world()||!ui_observer_enabled||!recording.load())return original(self,caller_frame,result,callee);
+    ui_logical_group_live::ChildScope logical(self,caller_frame,callee,
+        ui_logical_group_live::boundary_candidate()&&ui_invocation.frozen&&ui_invocation_current());
+    auto invoke=[&]{return logical.invoke([&]{return original(self,caller_frame,result,callee);});};
     ++calls;gears_ui_call_boundary::Nest nest(nesting);
     // Pointer-only frozen candidate lookup precedes expensive parent validation.
     constexpr unsigned no_candidate=(std::numeric_limits<unsigned>::max)();
@@ -40,13 +43,13 @@ uintptr_t __fastcall hook(void* self,void* caller_frame,void* result,void* calle
     if(config&&config->scope_count<=config->scopes.size()&&config->identity_count<=config->identities.size())
         for(unsigned i=0;i<config->scope_count;++i){auto const& s=config->scopes[i];
             if(s.kind==1&&s.function<config->identity_count&&config->identities[s.function].address==reinterpret_cast<uintptr_t>(callee)){candidate=i;break;}}
-    if(candidate==no_candidate)return original(self,caller_frame,result,callee);
+    if(candidate==no_candidate)return invoke();
     ++candidates;
     // Mask an outer selected observer while a recognized child is rejected.
     nest.select(nullptr);
-    if(!gears_ui_call_boundary::selected_depth(nesting)){++rejected;++depth_rejected;return original(self,caller_frame,result,callee);}
+    if(!gears_ui_call_boundary::selected_depth(nesting)){++rejected;++depth_rejected;return invoke();}
     if(!ui_invocation.context.kind||!ui_invocation.sequence||!ui_invocation_current()||
-       !selected_entry(*config,candidate,reinterpret_cast<uintptr_t>(self))){++rejected;return original(self,caller_frame,result,callee);}
+       !selected_entry(*config,candidate,reinterpret_cast<uintptr_t>(self))){++rejected;return invoke();}
     Row row{};row.child={++accepted,ui_invocation.sequence,nest.saved?nest.saved->id:0,
         reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(caller_frame),reinterpret_cast<uintptr_t>(callee),candidate,nesting.depth};
     row.result_address=reinterpret_cast<uintptr_t>(result);row.thread=GetCurrentThreadId();row.enter=now();
@@ -55,7 +58,7 @@ uintptr_t __fastcall hook(void* self,void* caller_frame,void* result,void* calle
     struct RowRestore {Row* saved=current_row;~RowRestore(){current_row=saved;}} restore;
     current_row=&row;
     // Return semantics remain unproven. Forward the original RAX bits unchanged.
-    const uintptr_t value=original(self,caller_frame,result,callee);
+    const uintptr_t value=invoke();
     row.exit=now();row.after_valid=gears_ui_call_boundary::frame(safe_copy,row.child.caller,row.after);row.returned=true;++completed;
     {std::lock_guard<std::mutex> lock(mutex);
         if(!samples.append(row,row.draws[0]||row.draws[1]||row.draws[2]))++rows_dropped;}

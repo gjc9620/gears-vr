@@ -68,6 +68,40 @@ static void failures_are_atomic(){
     assert(!gears_ui_group::compose(saved,1919,1080,base,{},out));assert(same(out,sentinel));
     assert(gears_ui_group::compose(saved,1920,1080,base,{},out));assert(same(out,base));
 }
-int main(){shared_translation();scale_and_edges();failures_are_atomic();
+static void whole_group_fit(){
+    using gears_ui_group::Bounds;
+    // Two unrelated source positions share one target policy; a title, choices
+    // and hints in one group retain their relative offsets and original size.
+    const Bounds target{.15,.3,.85,.7,true};
+    for(Bounds group:{Bounds{.2,.02,.8,.18,true},Bounds{.3,.75,.7,.95,true}}){
+        Recipe r{99,98,97};assert(gears_ui_group::fit(group,target,1,r));
+        near(r.scale,1);near((group.left+group.right)*r.scale/2+r.translation_x,.5);
+        near((group.top+group.bottom)*r.scale/2+r.translation_y,.5);
+        const double old_spacing=group.bottom-group.top;
+        near((group.bottom*r.scale+r.translation_y)-(group.top*r.scale+r.translation_y),old_spacing);
+        auto saved=source();saved.scissor={0,0,1920,1080};auto base=panel();OverlayPlan mapped{};
+        assert(gears_ui_group::compose(saved,1920,1080,base,r,mapped));
+        for(unsigned eye=0;eye<2;++eye){const auto v=mapped.viewports[eye],b=base.viewports[eye];
+            near(v.y+v.height*(group.top+group.bottom)/2,b.y+b.height*.5);
+            near(v.x+v.width*(group.left+group.right)/2,b.x+b.width*.5);}
+    }
+    // Wide/large groups shrink uniformly to fit without independent line moves.
+    Recipe wide{};assert(gears_ui_group::fit({-.5,.1,1.5,.9,true},target,1,wide));
+    near(wide.scale,.35);near(-.5*wide.scale+wide.translation_x,.15);
+    near(1.5*wide.scale+wide.translation_x,.85);
+    Recipe tall{};assert(gears_ui_group::fit({.4,-1,.6,2,true},target,2,tall));
+    near(tall.scale,.4/3);near(-tall.scale+tall.translation_y,.3);
+    near(2*tall.scale+tall.translation_y,.7);
+    Recipe enlarged{};assert(gears_ui_group::fit({.4,.4,.6,.6,true},target,1.5,enlarged));near(enlarged.scale,1.5);
+    // Empty, unknown, nonfinite or invalid target policies never publish output.
+    const Recipe sentinel{3,4,5};Recipe out=sentinel;const double nan=std::numeric_limits<double>::quiet_NaN();
+    for(Bounds bad:{Bounds{},Bounds{0,0,0,1,true},Bounds{1,0,0,1,true},Bounds{0,nan,1,1,true}}){
+        assert(!gears_ui_group::fit(bad,target,1,out));assert(out.scale==3&&out.translation_x==4&&out.translation_y==5);}
+    for(Bounds bad:{Bounds{-.1,0,1,1,true},Bounds{0,0,1,1.1,true},Bounds{0,0,1,1,false}})
+        assert(!gears_ui_group::fit(target,bad,1,out));
+    for(double bad:{0.,-1.,nan,std::numeric_limits<double>::infinity()})assert(!gears_ui_group::fit(target,target,bad,out));
+    assert(out.scale==sentinel.scale&&out.translation_x==sentinel.translation_x&&out.translation_y==sentinel.translation_y);
+}
+int main(){shared_translation();scale_and_edges();failures_are_atomic();whole_group_fit();
     std::cout<<"PASS: shared group affine placement, saved clipping, asymmetric eyes, limits and atomic rejection\n";
 }

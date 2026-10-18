@@ -67,6 +67,7 @@ bool ui_invocation_current(){
     uintptr_t target{};return !anchor_observer_enabled||(r.field(target,c.identities[c.role_camera].address,anchor_config.camera_view_target)&&
         target==(c.mounted?c.identities[c.role_controlled].address:ui_invocation.binding.pawn.address));
 }
+#include "ui_logical_group_observer_live.inl"
 #include "ui_call_boundary_live.inl"
 #include "ui_scene_root_live.inl"
 struct UiRow {
@@ -118,6 +119,7 @@ void retire_ui_world(){
 // Only on the owning thread's next outer Scope, after old readers drained.
 void reset_ui_world_tls(){
     ui_call_boundary::reset_tls();
+    ui_logical_group_live::reset_tls();
     ui_scene_root_live::reset_tls();
     ui_invocation={};ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
     ui_text_collect_depth=0;
@@ -139,12 +141,13 @@ void reset_ui_world_tls(){
 }
 
 void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeContext* selected_out=nullptr){
-    if(!ui_observer_enabled||!recording.load()||!ui_invocation.context.kind)return;
+    if(!ui_observer_enabled||!recording.load()||!ui_invocation.context.kind){ui_logical_group_live::canvas_rejected();return;}
     if(draw<1||draw>3)return;
     ++ui_chain_calls;
     gears_ui::ScopeContext selected{};uintptr_t matched_frame{};unsigned matched_depth{};
     if(!ui_invocation_current()||!gears_ui::classify_canvas_scope(ui_invocation_config(),safe_copy,ui_invocation.context,
             ui_invocation.frame,reinterpret_cast<uintptr_t>(frame),selected,matched_frame,&matched_depth)){
+        ui_logical_group_live::canvas_rejected();
         if(ui_chain_rejected.fetch_add(1)==0){auto& r=ui_first_chain_reject;
             r.root_frame=ui_invocation.frame;r.frame=reinterpret_cast<uintptr_t>(frame);r.qpc=now();r.draw=draw;
             if(frame){safe_copy(&r.node,static_cast<unsigned char*>(frame)+0x18,8);
@@ -153,8 +156,10 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeCon
                 safe_copy(&r.previous,static_cast<unsigned char*>(frame)+0x38,8);}
         }return;
     }
-    const auto kind=selected.kind;if(kind<1||kind>3||selected.scope_index>=ui_canvas_scopes.size())return;
+    const auto kind=selected.kind;if(kind<1||kind>3||selected.scope_index>=ui_canvas_scopes.size()){
+        ui_logical_group_live::canvas_rejected();return;}
     ui_call_boundary::canvas(draw,frame,selected,matched_frame);
+    ui_logical_group_live::canvas(draw,canvas,frame,selected,matched_frame);
     if(selected_out)*selected_out=selected;
     ++ui_canvas_scopes[selected.scope_index];
     const unsigned bucket=(kind-1)*3+draw-1;
@@ -202,9 +207,12 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
                     ui_invocation={context,reinterpret_cast<uintptr_t>(frame),++ui_invocation_counter,now(),&frozen,binding};
                     const auto token=ui_invocation.sequence;ui_binding_begin(token,binding);
                     struct Finish {uint64_t token;bool done{};~Finish(){if(!done)ui_binding_finish(token,false);}} finish{token};
+                    ui_logical_group_live::Observe group(context.kind==3?1u:0u,token,binding.hud.address,
+                        context.function,0,0,reinterpret_cast<uintptr_t>(frame),&frozen);
                     ui_original[0](self,frame,result);
                     gears_ui_binding::Binding after{};
                     const bool valid=inherited?ui_invocation_current():(ui_capture_binding(after)&&gears_ui_binding::same(binding,after));if(!valid)++ui_binding_end_rejected;
+                    group.finish(valid);
                     ui_binding_finish(token,valid);finish.done=true;return;
                 }
                 ++ui_binding_rejected;
@@ -252,6 +260,7 @@ void print(FILE* status){
 void __fastcall hook_ui_tile(void* self,void* frame,void* result){
     Scope active_scope;if(!active_scope.world()){ui_original[1](self,frame,result);return;}
     gears_ui::ScopeContext selected{};observe_ui_canvas(1,self,frame,&selected);
+    ui_logical_group_live::CallMark group_call(frame,1,selected.kind!=0);
     gears_ui_tile_batch::Before before{};gears_ui::CanvasSample sample{};
     const bool eligible=selected.kind&&ui_observer_enabled&&recording.load()&&!ui_text_collect_depth;
     if(eligible)++ui_batch_attempts;
@@ -278,6 +287,7 @@ void __fastcall hook_ui_tile(void* self,void* frame,void* result){
     if(captured&&current_ok){
         gears_ui_batch::Receipt receipt{};
         if(gears_ui_tile_batch::appended_quad({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),receipt)){
+            group_call.tile(receipt);
             if(diagnostic){transaction.append_ok=true;transaction.receipt_payload=receipt.payload;
                 transaction.receipt_begin=receipt.begin;transaction.receipt_end=receipt.end;}
             std::lock_guard<std::mutex> lock(ui_payload_mutex);
@@ -304,6 +314,7 @@ void __fastcall hook_ui_tile(void* self,void* frame,void* result){
     if(captured&&recording.load()&&ui_invocation_current()){
         gears_ui_batch::Receipt receipt{};
         if(gears_ui_tile_batch::appended_quad({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),receipt)){
+            group_call.tile(receipt);
             std::lock_guard<std::mutex> lock(ui_payload_mutex);
             if(ui_payload_store.publish(receipt,selected.kind,ui_invocation.sequence))++ui_batch_published;
             else ++ui_batch_publish_rejected;
@@ -314,6 +325,7 @@ void __fastcall hook_ui_tile(void* self,void* frame,void* result){
 void __fastcall hook_ui_material(void* self,void* frame,void* result){
     Scope active_scope;if(!active_scope.world()){ui_original[2](self,frame,result);return;}
     gears_ui::ScopeContext selected{};observe_ui_canvas(2,self,frame,&selected);
+    ui_logical_group_live::CallMark group_call(frame,2,selected.kind!=0);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     gears_ui_material::Before before{};
     const bool captured=ui_material_before(self,before);
@@ -321,11 +333,15 @@ void __fastcall hook_ui_material(void* self,void* frame,void* result){
     ui_original[2](self,frame,result);
 #if defined(GEARS_UI_MATERIAL_ROUTE) && GEARS_UI_MATERIAL_ROUTE
     if(captured&&recording.load())ui_material_after(before,selected.kind&&ui_invocation_current()?selected.kind:0,ui_invocation.sequence);
+    if(group_call.observing()&&captured&&selected.kind&&recording.load()&&ui_invocation_current()){
+        gears_ui_material::Receipt observed{};
+        if(gears_ui_material::snapshot_after({base},safe_copy,before,selected.kind,observed))group_call.material(observed);}
 #endif
 }
 void __fastcall hook_ui_text(void* self,void* frame,void* result){
     Scope active_scope;if(!active_scope.world()){ui_original[3](self,frame,result);return;}
     gears_ui::ScopeContext selected{};observe_ui_canvas(3,self,frame,&selected);
+    ui_logical_group_live::CallMark group_call(frame,3,selected.kind!=0);
     auto& counts=ui_text_counts[0];if(ui_observer_enabled&&recording.load())++counts.calls;
     const bool eligible=selected.kind&&ui_observer_enabled&&recording.load()&&!ui_text_collect_depth;
     if(!eligible){ui_original[3](self,frame,result);return;}
@@ -339,8 +355,10 @@ void __fastcall hook_ui_text(void* self,void* frame,void* result){
     ui_original[3](self,frame,result);
     if(captured&&recording.load()&&ui_invocation_current()){
         gears_ui_text_batch::Delta delta{};
-        if(gears_ui_text_batch::delta_canvas({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),delta))
+        if(gears_ui_text_batch::delta_canvas({base},safe_copy,before,reinterpret_cast<uintptr_t>(self),delta)){
+            group_call.text(delta);
             publish_ui_text_delta(delta,selected.kind,invocation,gears_ui_receipts::Source::CanvasText,0);
+        }
         else ++counts.delta_rejected;
     }
 }
@@ -448,6 +466,7 @@ void print_ui_observer(FILE* status,bool disabled){
     if(!ui_observer_enabled||!disabled||active.load())return;
     ui_call_boundary::print(status);
     ui_scene_root_live::print(status);
+    ui_logical_group_live::print(status);
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
     ui_tile_transaction::print(status);
 #endif

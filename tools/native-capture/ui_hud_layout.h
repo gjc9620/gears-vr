@@ -11,15 +11,10 @@ struct Parameters {double element_scale=1,center_scale=1;};
 inline bool valid(Parameters p){return std::isfinite(p.element_scale)&&p.element_scale>=1&&p.element_scale<=2&&
     std::isfinite(p.center_scale)&&p.center_scale>=0&&p.center_scale<=1;}
 inline bool identity(Parameters p){return p.element_scale==1&&p.center_scale==1;}
-struct Bounds {double left{},top{},right{},bottom{};bool valid{};};
+using Bounds=gears_ui_group::Bounds;
 using Matrix=std::array<float,16>;
-inline bool include(Bounds& b,double x,double y){
-    if(!std::isfinite(x)||!std::isfinite(y))return false;
-    if(!b.valid)b={x,y,x,y,true};else {b.left=(std::min)(b.left,x);b.right=(std::max)(b.right,x);
-        b.top=(std::min)(b.top,y);b.bottom=(std::max)(b.bottom,y);}return true;
-}
-inline bool valid(Bounds b){return b.valid&&std::isfinite(b.left)&&std::isfinite(b.top)&&std::isfinite(b.right)&&
-    std::isfinite(b.bottom)&&b.right>b.left&&b.bottom>b.top;}
+using gears_ui_group::include;
+using gears_ui_group::valid;
 // UE row-vector native transform, then D3D NDC -> top-left normalized canvas.
 // Bounds are computed after the original mapping; copied XY need not be pixels.
 inline bool project(Bounds& bounds,Matrix const& matrix,double x,double y){
