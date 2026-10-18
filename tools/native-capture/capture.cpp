@@ -33,6 +33,7 @@
 #include "target_prime_owner.h"
 #include "gpu_viewport_stats.h"
 #include "owned_attachment_observer.h"
+#include "owned_depth_clear_trial.h"
 #include "frame_link.h"
 #include "final_eye_diagnostics.h"
 #include "final_transfer_policy.h"
@@ -2387,7 +2388,10 @@ void select(void* root,gears_submitted::FrameTicket const& frame,uintptr_t targe
 }
 void bind_attachments(ID3D12GraphicsCommandList* list,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE const* handles,
     BOOL contiguous,UINT stride,D3D12_CPU_DESCRIPTOR_HANDLE const* depth){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(finished)return;
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+#if !defined(GEARS_OWNED_DEPTH_CLEAR_TRIAL) || !GEARS_OWNED_DEPTH_CLEAR_TRIAL
+    if(finished)return;
+#endif
     D3D12_CPU_DESCRIPTOR_HANDLE depth_value{};
     const bool depth_read=depth&&safe_copy(&depth_value,depth,sizeof(depth_value));
     const auto snapshot=gears_owned_attachments::capture(count,contiguous!=FALSE,stride,frame_target_stats.descriptor_capacity_lost(),
@@ -2633,6 +2637,7 @@ void execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,ngx_stereo_host:
 #include "ngx_control_capture.inl"
 #include "ngx_output_pixels_native.inl"
 #include "owned_source_pixels.inl"
+#include "owned_depth_clear_trial.inl"
 #include "death_dof_control.inl"
 #include "vr_dof_compat.inl"
 
@@ -3790,7 +3795,13 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     owned_ticket_size_trace::draw(list,caller,false,vertices,instances);
     geometry_draw(list,false,vertices,instances);
     observe_engine_view_draw(list,false,vertices,instances);
-    {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw(list,vertices,instances,start,first_instance);}
+    {gears_render_cost::Scope cost(gears_render_cost::draw_forward);
+#if defined(GEARS_OWNED_DEPTH_CLEAR_TRIAL) && GEARS_OWNED_DEPTH_CLEAR_TRIAL
+        owned_depth_clear_trial::draw(list,caller,vertices,instances,start,first_instance);
+#else
+        original_draw(list,vertices,instances,start,first_instance);
+#endif
+    }
 }
 void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT indices,UINT instances,UINT start,INT vertex,UINT first_instance) {
     final_transfer_live::normalizer::draw_call(reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(_ReturnAddress())-base,1,indices,instances,stereo_publish_bypass!=0);
@@ -4578,6 +4589,7 @@ DWORD WINAPI worker(void*) {
     if(ok)ok=death_hdr_pixels::enable(status);
     if(ok)ok=ngx_output_pixels::enable(status);
     if(ok)ok=owned_source_pixels::enable(status);
+    if(ok)ok=owned_depth_clear_trial::enable(status);
     bool graphics=ok && present_hooks();
     if(gpu_diagnostics && !graphics)ok=false;
     if(ok)ok=create_quad_source_events();
@@ -4836,6 +4848,7 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"submit_mono_independent_state=%d\n",submit_mono_independent_state);
     owned_ticket_size_trace::print(status);
     owned_ticket_size_trace::print_quad_draws(status);
+    owned_depth_clear_trial::print(status);
     for(unsigned i=0;i<rectangle_traces.size();++i) {
         unsigned phase=rectangle_trace_phases[i].load();auto trace=phase==2?rectangle_traces[i]:RectangleTrace{};
         fprintf(status,"rectangle_trace index=%u phase=%u object=0x%llx source=%.9g,%.9g,%.9g,%.9g target=%d,%d,%d,%d\n",

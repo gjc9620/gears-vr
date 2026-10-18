@@ -8,6 +8,37 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+DepthClear2 counterfactual restored the previously missing high-scale scene
+region. DLL SHA `c6383e60ea63f9cdb71a0a759d274aae59ed2dd32e429c80f975e952d0c5c821`;
+fresh compilation, component checks and continuous startup suite passed.
+Actual session `continuous-stereo-45744-20261019-065223-169d596a` completed two
+checkpoint reloads, normal cleanup, 77 independent entry-byte checks and
+restoration of all five protected files. The private trial changed only the
+GPU viewport around the byte-attested depth-clear draw on the current owned
+scene, from3840x2160 to5120x2800, then restored it. Runtime counters report1906
+applications and1906 restorations; both native chunk hashes matched.
+
+World2 ticket490 HDR source copy1 SHA
+`e36e4120f3bffb9b712d46f5998835f4ce086908c68030479fe4775dac0e08a6`
+has99.9995% positive pixels right of x3840 (previous baseline: all zero), and
+99.9984% below y2160. Copy2 independently has99.9968% and99.9987% respectively.
+Source and final XR readback previews show full scene coverage in both halves;
+both post-reload final GPU images cover5120x2800 and exceed97.6% occupancy to
+the right of the old desktop boundary. These scene-specific measurements and
+visual inspection support the stale depth-clear viewport as a cause of the
+observed clipping. They do not establish every rendering effect or headset
+quality, nor explain all historical black screens.
+
+The trial remains default OFF and hardcoded to the measured counterfactual,
+not the release implementation. Generalization must derive dimensions from
+the certified runtime plan and retain native-route/ownership validation.
+Its32 diagnostic rows filled with unrelated rejected draws before world2;
+aggregate counts remain available, but per-ticket accepted receipts need a
+separate bounded allocation before further attribution. Active DSV resource
+dimensions remain unobserved. Evidence: ignored
+`analysis/runtime/runtime-depth-clear2-scale2-run1-20261019*` and raw readbacks
+under `tools/native-capture/build-runtime-depth-clear2/`.
+
 Attachments1 actual run completed two reloads and cleanup. DLL SHA
 `d2be0253dc8fcdd6e7a85811d28616dbde05b939969bb54948706c3b6b446193`.
 Ticket528/world2:1269 direct draws,120 groups, no overflow. Scene MRT slots1-3
