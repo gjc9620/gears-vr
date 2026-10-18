@@ -440,6 +440,14 @@ if(GEARS_GAME_RESOLUTION)
             GEARS_NATIVE_RESIZE_PROBE GEARS_NATIVE_RESIZE_REUSE GEARS_OWNED_OUTPUT_TRACKING
             GEARS_OWNED_UI_ROUTE_PROBE GEARS_OWNED_UI_BATCH GEARS_OWNED_UI_MATERIAL
             GEARS_OWNED_SUBTITLE_PIXELS GEARS_DESKTOP_MIRROR)
+        # The bounded NGX epoch probe only needs the typed ResourceBarrier hook.
+        # Keep every owned allocation/redirection option forbidden below.
+        if(FIXED_OPTION STREQUAL "GEARS_OWNED_OUTPUT_TRACKING" AND
+                GEARS_NGX_EPOCH_PAIR_OBSERVER AND GEARS_NGX_STEREO_HOST_OBSERVER AND
+                GEARS_NGX_ROUTE_OBSERVER AND NOT GEARS_NGX_OUTPUT_PIXELS AND
+                NOT GEARS_DLSS_OUTPUT_CONTROL)
+            continue()
+        endif()
         if(${FIXED_OPTION})
             message(FATAL_ERROR "GEARS_GAME_RESOLUTION cannot enable ${FIXED_OPTION}")
         endif()
