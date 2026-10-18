@@ -1,5 +1,13 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19：Compute Dispatch 边界汇编核对
+
+KB查询后，在已有私有IDA副本只读导出 `1ac6e4` 与 `17b420` 的全部热/冷chunks；导出后关闭lease。证据为 ignored `analysis/ida/ngx-copy-contract-20261019/compute-chunks.json` 及同目录两份汇编。所有字节与历史blob `911ab9…` 一致，组合hash分别 `151372ef327a20c9c6d56d227d371601a80ea61e7f9d572858a41b4d60cd6761`、`c84b4ac0e66f5f17bd7465a26fd54a87017bbd0162f1b2be98b895e599721e43`。原始资料库hash仍为 `324248ac7cd0388a05907c29436fccf804eb82e5cb8433190806342c1cfcbb26`。
+
+`1ac6e4` 保存入口R8D/R9D，调用 `17b420(context+0x40)` 后，从 `[[context+0x127c]+0x14]` 取得命令列表，在 `1ac830` 调用vtable+0x70，返回 `1ac833`；三个Dispatch参数来自入口R8D、R9D和第五参数。`17ba1e` 则调用vtable+0xd0，`17ba24` 清空累计barrier数量。这证实后者不是Dispatch位置，不能从其附近MV的UAV屏障推断实际writer。
+
+绑定助手还在 `17b982` 调用device vtable+0xb8，在 `17b994` 调用command list+0xf8（EDX=3），随后处理其他根参数分支。需要将实际UAV描述符和常量与同一ticket的MV及view对应；当前仅确认调用位置和参数来源，不确认这个通用Dispatch就是MV生成pass。本轮未增加hook、未运行游戏，也未证明当前进程字节与历史快照相同。
+
 ## 2026-10-19：原生 Copy 保持接线已集成，未启用 DLSS
 
 将上述静态契约接入控制器，移除未实现的 `copy_states` 回调：现有启用检查新增六个完整函数块哈希；选中的 Output→Color 复制要求返回 RVA 1c6093、原始零 XYZ/null box/subresource0、固定的 typed 四资源、当前 world/ticket/renderer/eye 及真实 command/device/generation。仅调整复制区域和目的偏移，保持游戏原有状态设置、barrier 提交和恢复顺序。无关复制仍转发；选中复制验证失败不会回退全图复制。日志 chunks 改为实际表长度。
