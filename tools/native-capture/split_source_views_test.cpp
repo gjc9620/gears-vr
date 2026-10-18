@@ -249,6 +249,38 @@ int main() {
         if(!release(api,result))return 57;
     }
     memcpy(source,untouched.data(),sizeof(source));
+    // Actual native family Create1706x720 -> per-eye853x720. Preserve the
+    // 1280 output stride: packing the right input at853 would overlap Copy0.
+    // The synthetic native constructor receives the reduced arguments itself.
+    for(auto sample:{std::array<unsigned,4>{2560,1080,853,720},
+                     std::array<unsigned,4>{4302,2285,1433,1523}}){
+        const FixedOutputBounds display{sample[0],sample[1]};
+        const RenderInputBounds render{sample[2],sample[3]};
+        const auto saved=untouched;
+        result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,false,false,Phase::a1,&custom,&display,&render);
+        if(result.checks!=63||memcmp(source,saved.data(),sizeof(source))||memcmp(family,family_before.data(),sizeof(family)))return 64;
+        for(unsigned i=0;i<2;++i){
+            const std::array<float,4> expected{float(i*(display.width/2)),0,float(render.width),float(render.height)};
+            if(memcmp(result.inputs[i].bytes.data()+0x48,expected.data(),16)||
+               memcmp(static_cast<unsigned char*>(result.views[i])+0x48,expected.data(),16))return 65;
+            auto restored=result.inputs[i];memcpy(restored.bytes.data()+0x48,saved.data()+0x48,16);
+            memcpy(restored.bytes.data()+0x70,saved.data()+0x70,128);
+            if(restored.bytes!=saved)return 66;
+        }
+        if(!release(api,result))return 67;
+    }
+    const auto render_allocations=allocations,render_constructs=constructs;
+    const FixedOutputBounds display{2560,1080};
+    for(auto invalid:{RenderInputBounds{0,0},RenderInputBounds{63,720},RenderInputBounds{853,63},
+                     RenderInputBounds{1281,720},RenderInputBounds{853,1081},RenderInputBounds{UINT32_MAX,720}}){
+        result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,false,false,Phase::a1,&custom,&display,&invalid);
+        if(result.rejection!=14||result.checks||allocations!=render_allocations||constructs!=render_constructs)return 68;
+    }
+    const RenderInputBounds render{853,720};
+    result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,false,false,Phase::a1,&custom,nullptr,&render);
+    if(result.rejection!=14||allocations!=render_allocations||constructs!=render_constructs)return 69;
+    result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,true,false,Phase::a1,&custom,&display,&render);
+    if(result.rejection!=11||allocations!=render_allocations)return 70;
     const auto fixed_allocations=allocations,fixed_constructs=constructs;
     for(auto invalid:{FixedOutputBounds{0,0},FixedOutputBounds{126,2048},FixedOutputBounds{8194,4096},
         FixedOutputBounds{8192,8193},FixedOutputBounds{4095,2048},FixedOutputBounds{UINT32_MAX,4096}}){

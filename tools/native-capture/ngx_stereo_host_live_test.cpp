@@ -28,20 +28,21 @@ bool vendor_owner(uintptr_t,uintptr_t&){return false;}
 UINT descriptor_stride(ID3D12GraphicsCommandList*){return 32;}
 }
 namespace {
-unsigned dispatch_calls{},copy_calls{},execute_calls{},release_calls{};bool throw_dispatch{};
+unsigned dispatch_calls{},copy_calls{},execute_calls{},release_calls{};bool throw_dispatch{};uint32_t create_raw=0x12345678;
 uint32_t __fastcall forward_eval(uintptr_t command,uintptr_t h,uintptr_t p,uintptr_t callback){unlocked();++dispatch_calls;
     assert(command==0x100&&h==handle&&p==parameters&&!callback);if(throw_dispatch)throw std::runtime_error("dispatcher");return 0xbad01234;}
 uint32_t __fastcall forward_create(uintptr_t command,uint32_t feature,uintptr_t p,uintptr_t* output){unlocked();++dispatch_calls;
-    assert(command==0x100&&feature==1&&p==parameters&&reinterpret_cast<uintptr_t>(output)==base+handle_cell_rva);handle=0x12345;return 0x12345678;}
+    assert(command==0x100&&feature==1&&p==parameters&&reinterpret_cast<uintptr_t>(output)==base+handle_cell_rva);handle=0x12345;return create_raw;}
 uint32_t __fastcall forward_release(uintptr_t h){unlocked();++release_calls;assert(h==handle);return 0x87654321;}
 void STDMETHODCALLTYPE forward_copy(ID3D12GraphicsCommandList* command,D3D12_TEXTURE_COPY_LOCATION const* dst,UINT x,UINT y,UINT z,D3D12_TEXTURE_COPY_LOCATION const* src,D3D12_BOX const* box){
     unlocked();++copy_calls;assert(command==reinterpret_cast<ID3D12GraphicsCommandList*>(0x100)&&!x&&!y&&!z&&!box);assert(src->pResource==reinterpret_cast<ID3D12Resource*>(0x501)&&dst->pResource==reinterpret_cast<ID3D12Resource*>(0x500));}
 void STDMETHODCALLTYPE forward_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* commands){unlocked();++execute_calls;assert(queue==reinterpret_cast<ID3D12CommandQueue*>(0x200)&&count==1&&commands[0]==reinterpret_cast<ID3D12CommandList*>(0x100));}
 void host_reset(){reset();using namespace ngx_stereo_host;attested=true;printed=false;bank={};rows={};releases={};row_count=epoch_evals=epochs=in_wrappers=release_count=0;
     sampled_tickets=typed_observations=total_sampled_tickets=total_typed_observations=0;
+    latest_native_create={};native_create_revision=0;source_create_scope=nullptr;
     sequence=execute_sequence=limited=foreign_dispatches=read_failures=0;current_row=pending_row=-1;typed_calls=0;
     ngx_stereo_host::original_create=forward_create;ngx_stereo_host::original_evaluate=forward_eval;original_release=forward_release;frame_link.generation=1;
-    dispatch_calls=copy_calls=execute_calls=release_calls=0;throw_dispatch=false;
+    dispatch_calls=copy_calls=execute_calls=release_calls=0;throw_dispatch=false;create_raw=0x12345678;
     for(unsigned i=0;i<4;++i)put(evaluation,resource_offsets[i],uintptr_t(0x500+i));}
 void observe_inputs(){auto* command=reinterpret_cast<ID3D12GraphicsCommandList*>(0x100);
     std::array<D3D12_RESOURCE_BARRIER,4> barriers{};for(unsigned i=0;i<4;++i){auto& b=barriers[i];b.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;b.Transition.pResource=reinterpret_cast<ID3D12Resource*>(uintptr_t(0x500+i));b.Transition.StateAfter=D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;}
@@ -58,6 +59,61 @@ void copy_execute(){D3D12_TEXTURE_COPY_LOCATION src{},dst{};src.pResource=reinte
     src.Type=dst.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
     ngx_stereo_host::copy_passthrough(reinterpret_cast<ID3D12GraphicsCommandList*>(0x100),&dst,0,0,0,&src,nullptr,base+0x1c6093,forward_copy);
     auto* list=reinterpret_cast<ID3D12CommandList*>(0x100);ngx_stereo_host::execute_passthrough(reinterpret_cast<ID3D12CommandQueue*>(0x200),1,&list,forward_execute);}
+void source_cases(){
+    using namespace ngx_stereo_host;
+    auto dimensions=[](){const uint32_t values[]{1706,720,2560,1080,1,0x12};
+        for(unsigned i=0;i<6;++i)put(creation,i*4,values[i]);put(creation,0x18,uint8_t(1));};
+    auto dispatch=[](){return hook_create(0x100,1,parameters,reinterpret_cast<uintptr_t*>(base+handle_cell_rva));};
+    auto complete=[&](){WrapperScope scope(false,true,base+0xbe66bc,0x100,creation.data());
+        NativeCreateSource pending;assert(!native_create_source(9,pending));scope.normal_return(dispatch());};
+    NativeCreateSource source;uint32_t w=7,h=9;
+    host_reset();dimensions();assert(native_create_state(9,source)==NativeCreateAvailability::unavailable);
+    handle=0;assert(native_create_state(9,source)==NativeCreateAvailability::inactive);
+    cells_available=false;assert(native_create_state(9,source)==NativeCreateAvailability::unavailable);cells_available=true;
+    complete();
+    assert(native_create_source(9,source)&&source.fields[0]==1706&&source.fields[1]==720&&source.fields[4]==1&&source.fields[5]==0x12&&source.fields[6]==1);
+    assert(source.split_input(2560,1080,w,h)&&w==853&&h==720);
+    w=7;h=9;assert(!source.split_input(4096,2048,w,h)&&w==7&&h==9); // No ratio scaling to owned output.
+    auto invalid=source;invalid.fields[0]=1707;assert(!invalid.split_input(2560,1080,w,h));
+    invalid=source;invalid.fields[1]=1081;assert(!invalid.split_input(2560,1080,w,h));
+    // Diagnostic quotas can exhaust; actual latest Create semantics remain fresh.
+    const auto first=source.revision;for(unsigned i=0;i<5;++i)complete();
+    assert(epochs>=4&&native_create_source(9,source)&&source.revision>first);
+    assert(!native_create_source(8,source)&&!source.revision);
+    ++handle;assert(!native_create_source(9,source));--handle;assert(!native_create_source(9,source));complete();
+    ++parameters;assert(!native_create_source(9,source));--parameters;assert(!native_create_source(9,source));complete();
+    committed_world_generation=10;assert(!native_create_source(9,source)&&!native_create_source(10,source));committed_world_generation=9;
+    assert(!native_create_source(9,source));complete();
+    cells_available=false;assert(!native_create_source(9,source));cells_available=true;assert(!native_create_source(9,source));complete();
+    recording=false;assert(!native_create_source(9,source));recording=true;
+    hook_release(handle);assert(!native_create_source(9,source));
+    complete();assert(native_create_source(9,source));
+    // Failure, missing/duplicate dispatcher, mutated fields, unrelated callsite
+    // and nested/concurrent scope all invalidate rather than revive old fields.
+    create_raw=0xbad00001;complete();assert(!native_create_source(9,source));create_raw=0x12345678;
+    complete();{WrapperScope scope(false,true,base+0xbe66bc,0x100,creation.data());scope.normal_return(create_raw);}
+    assert(!native_create_source(9,source));
+    complete();{WrapperScope scope(false,true,base+0xbe66bc,0x100,creation.data());dispatch();scope.normal_return(dispatch());}
+    assert(!native_create_source(9,source));
+    complete();{WrapperScope scope(false,true,base+0xbe66bc,0x100,creation.data());scope.normal_return(dispatch());put(creation,0,uint32_t(1600));}
+    assert(!native_create_source(9,source));dimensions();
+    complete();{WrapperScope scope(false,true,base+0xbe66bd,0x100,creation.data());scope.normal_return(dispatch());}
+    assert(!native_create_source(9,source));
+    complete();{WrapperScope scope(false,true,base+0xbe66bc,0x100,creation.data());
+        {WrapperScope nested(true,true,base+0x9a35d3,0x100,evaluation.data());}scope.normal_return(dispatch());}
+    assert(!native_create_source(9,source));
+    complete();{WrapperScope scope(false,true,base+0xbe66bc,0x100,creation.data());
+        std::thread competing([&]{complete();});competing.join();scope.normal_return(dispatch());}
+    assert(!native_create_source(9,source));
+    complete();{WrapperScope scope(false,true,base+0xbe66bc,0x100,creation.data());scope.normal_return(dispatch());
+        std::thread release_during_create([&]{hook_release(handle);});release_during_create.join();}
+    assert(!native_create_source(9,source));
+    complete();try{WrapperScope scope(false,true,base+0xbe66bc,0x100,creation.data());dispatch();throw std::runtime_error("Create wrapper");}
+    catch(std::runtime_error const&){}assert(!native_create_source(9,source));
+    complete();unreadable=reinterpret_cast<uintptr_t>(creation.data());complete();unreadable=0;
+    assert(!native_create_source(9,source));
+    complete();dispatch();assert(!native_create_source(9,source)); // Foreign dispatcher, no wrapper.
+}
 void host_cases(){
     host_reset();observe_inputs();eval();copy_execute();auto const& row=ngx_stereo_host::rows[0];
     assert(dispatch_calls==1&&copy_calls==1&&execute_calls==1&&row.dispatcher_match&&row.dispatcher_returned&&row.returned&&row.wrapper_result==0xfedcba9876543210);
@@ -127,4 +183,4 @@ void host_cases(){
     host_reset();FILE* rejected{};assert(!tmpfile_s(&rejected));assert(!ngx_stereo_host::enable(rejected)&&!ngx_stereo_host::attested);fclose(rejected);
 }
 }
-int main(){assert(route_observer_test_main()==0);host_cases();std::puts("NgxStereoHostLiveTest passed (forwarding/provenance only; no SDK/GPU completion claims)");return 0;}
+int main(){assert(route_observer_test_main()==0);source_cases();host_cases();std::puts("NgxStereoHostLiveTest passed (forwarding/provenance only; no SDK/GPU completion claims)");return 0;}

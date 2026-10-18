@@ -13,6 +13,10 @@ struct API {gears_shadow::Allocate allocate;gears_source_args::Constructor const
 // Constructor geometry only. Selecting/allocating an independent engine output
 // target belongs to the caller; this does not modify the family or source.
 struct FixedOutputBounds {std::uint32_t width{},height{};};
+// Optional per-eye render dimensions, independent of the final SBS output.
+// The caller supplies actual native SR dimensions, never a quality multiplier.
+// Input slots remain padded at output_width/2 so Copy0 cannot overwrite Input1.
+struct RenderInputBounds {std::uint32_t width{},height{};};
 enum InputFailure:unsigned {read_failed=1,family_mismatch=2,missing_original_state=4,
     missing_right_state=8,aliased_state=16,field140_nonzero=32,field418_nonzero=64};
 struct InputEvidence {bool read_succeeded{};unsigned failure_mask{};
@@ -29,12 +33,17 @@ inline bool map_outside_view(gears_source_map::Snapshot const& map,std::uintptr_
 }
 inline Result create(API api,void* family,void* source,void* right_state,bool output_bounds=false,bool preserve_geometry=false,
     bool projection_control=false,gears_projection::Phase phase=gears_projection::Phase::a1,
-    const gears_vr::StereoMatrices* stereo=nullptr,const FixedOutputBounds* fixed_output=nullptr) {
+    const gears_vr::StereoMatrices* stereo=nullptr,const FixedOutputBounds* fixed_output=nullptr,
+    const RenderInputBounds* render_input=nullptr) {
     Result result{};gears_source_args::Snapshot original{};
     const auto fixed=fixed_output?*fixed_output:FixedOutputBounds{};
     if(fixed_output&&(!stereo||(fixed.width<128||fixed.width>8192||fixed.width%2||fixed.height<64||fixed.height>8192))){
         result.rejection=13;return result;}
     if(stereo && (projection_control || preserve_geometry)){result.rejection=11;return result;}
+    const auto render=render_input?*render_input:RenderInputBounds{};
+    if(render_input&&(!fixed_output||!stereo||render.width<64||render.height<64||
+        render.width>fixed.width/2||render.height>fixed.height)){
+        result.rejection=14;return result;}
     if(stereo)for(unsigned i=0;i<2;++i)for(unsigned j=0;j<16;++j)
         if(!std::isfinite(stereo->view[i][j]) || !std::isfinite(stereo->projection[i][j])){result.rejection=12;return result;}
     auto& evidence=result.input_evidence;
@@ -96,7 +105,7 @@ inline Result create(API api,void* family,void* source,void* right_state,bool ou
         gears_eye_args::Result shift{};
         if(!stereo && !gears_eye_args::shift_right(result.inputs[i],i?1.f:-1.f,shift)){result.rejection=4;return result;}
         float half=width*.5f,left=x+(i?half:0.f);
-        float rectangle[]={left,y,half,height};
+        float rectangle[]={left,y,render_input?float(render.width):half,render_input?float(render.height):height};
         memcpy(result.inputs[i].bytes.data()+0x48,rectangle,16);
     }
     result.checks|=1;

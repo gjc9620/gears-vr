@@ -50,7 +50,34 @@ unsigned sampled_tickets{},typed_observations{};
 unsigned total_sampled_tickets{},total_typed_observations{};
 std::array<ReleaseRow,8> releases{};uint64_t sequence{},execute_sequence{},limited{},foreign_dispatches{},read_failures{};
 thread_local int current_row=-1,pending_row=-1;
+NativeCreateSource latest_native_create{};uint64_t native_create_revision{};
+thread_local WrapperScope* source_create_scope{};
 template<class T> bool read(T& value,uintptr_t address,uintptr_t offset=0){return ngx_route_observer::read(value,address,offset);}
+bool read_create_fields(std::array<uint32_t,7>& fields,uintptr_t structure){
+    std::array<uint32_t,6> words{};uint8_t subrect{};
+    if(!read(words,structure)||!read(subrect,structure,0x18))return false;
+    for(unsigned i=0;i<6;++i)fields[i]=words[i];fields[6]=subrect;return true;
+}
+NativeCreateAvailability native_create_state(uint64_t world,NativeCreateSource& out){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);out={};uintptr_t handle{},parameters{};
+    using State=NativeCreateAvailability;
+    if(!attested||!recording.load()||in_wrappers)return State::unavailable;
+    const auto current_world=committed_world_generation.load();
+    if(latest_native_create.revision&&latest_native_create.world!=current_world){latest_native_create={};++native_create_revision;}
+    if(!world||world!=current_world)return State::unavailable;
+    if(!read(handle,base,gears_ngx_route::handle_cell_rva)){
+        latest_native_create={};++native_create_revision;return State::unavailable;}
+    // A readable zero native handle is distinct from missing Create evidence.
+    if(!handle){latest_native_create={};++native_create_revision;return State::inactive;}
+    if(!latest_native_create.revision)return State::unavailable;
+    if(!read(parameters,base,gears_ngx_route::parameter_cell_rva)||
+       handle!=latest_native_create.handle||parameters!=latest_native_create.parameters){
+        latest_native_create={};++native_create_revision;return State::unavailable;}
+    out=latest_native_create;return State::ready;
+}
+bool native_create_source(uint64_t world,NativeCreateSource& out){
+    return native_create_state(world,out)==NativeCreateAvailability::ready;
+}
 bool same(List a,List b){return a.raw==b.raw&&a.canonical==b.canonical&&a.generation==b.generation;}
 bool valid(List a){return a.raw&&a.canonical&&a.generation;}
 List list(ID3D12CommandList* value){if(!value)return {};auto id=canonical_identity(value);auto ref=frame_link.current(id);
@@ -147,6 +174,14 @@ WrapperScope::WrapperScope(bool eval,bool owned,uintptr_t caller,uintptr_t comma
     current_row=-1;pending_row=-1;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(!attested||!recording.load())return;
     const bool concurrent=in_wrappers++!=0;counted=true;if(previous>=0)rows[unsigned(previous)].nested=true;
+    if(concurrent){latest_native_create={};++native_create_revision;}
+    if(!eval){
+        latest_native_create={};source_seen=true;previous_source=source_create_scope;source_create_scope=this;
+        source.revision=++native_create_revision;source.world=committed_world_generation.load();source_command=command;source_structure=reinterpret_cast<uintptr_t>(structure);
+        source_bad=concurrent||previous_source||caller!=base+0xbe66bc||!source.world||
+            !read(source.parameters,base,gears_ngx_route::parameter_cell_rva)||!source.parameters||
+            !read_create_fields(source.fields,reinterpret_cast<uintptr_t>(structure));
+    }
     if(!eval){++epochs;epoch_evals=0;bank={};
         // A menu-created DLSS feature may follow many ordinary frames. Their
         // exhausted bank must not permanently suppress the new feature's typed
@@ -161,6 +196,16 @@ WrapperScope::WrapperScope(bool eval,bool owned,uintptr_t caller,uintptr_t comma
     value.nested=previous>=0;value.concurrent=concurrent;if(eval){++epoch_evals;sample_renderer(value);join_inputs(value);}
 }
 WrapperScope::~WrapperScope(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(source_seen){
+        uintptr_t handle{},parameters{};std::array<uint32_t,7> fields{};
+        if(!source_bad&&source_returned&&returned&&std::uncaught_exceptions()==exceptions&&source_dispatches==1&&
+           in_wrappers==1&&source.revision==native_create_revision&&source.world==committed_world_generation.load()&&
+           (source_result&0xfff00000u)!=0xbad00000u&&uint32_t(result)==source_result&&
+           read(handle,base,gears_ngx_route::handle_cell_rva)&&handle&&handle==source.handle&&
+           read(parameters,base,gears_ngx_route::parameter_cell_rva)&&parameters==source.parameters&&
+           read_create_fields(fields,source_structure)&&fields==source.fields)latest_native_create=source;
+        source_create_scope=previous_source;
+    }
     if(counted&&in_wrappers)--in_wrappers;
     if(row>=0){auto& value=rows[unsigned(row)];gears_ngx_route::Row native;native.evaluate=evaluate;native.structure=value.structure;
         value.after=ngx_route_observer::sample(native,true);value.returned=returned;value.wrapper_result=result;
@@ -168,12 +213,21 @@ WrapperScope::~WrapperScope(){std::lock_guard<std::recursive_mutex> lock(frame_h
     current_row=previous;
 }
 uint32_t __fastcall hook_create(uintptr_t command,uint32_t feature,uintptr_t parameters,uintptr_t* output){
-    Scope active_scope;int selected=-1;{std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    Scope active_scope;int selected=-1;WrapperScope* source_owner{};{std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        source_owner=source_create_scope;
+        if(attested&&recording.load()&&source_owner){
+            if(++source_owner->source_dispatches!=1||command!=source_owner->source_command||feature!=1||
+               parameters!=source_owner->source.parameters||reinterpret_cast<uintptr_t>(output)!=base+gears_ngx_route::handle_cell_rva)
+                source_owner->source_bad=true;
+        }else{source_owner=nullptr;latest_native_create={};++native_create_revision;}
         if(attested&&recording.load()&&current_row>=0&&!rows[unsigned(current_row)].evaluate){selected=current_row;auto& row=rows[unsigned(selected)];++row.dispatches;
             row.dispatcher_entry=now();row.consumed_parameters=parameters;row.dispatcher_match=row.dispatches==1&&row.command==command&&
                 row.before.slots_mask==3&&row.before.fields_mask==127&&row.before.parameters==parameters&&feature==1&&reinterpret_cast<uintptr_t>(output)==base+gears_ngx_route::handle_cell_rva;}
         else ++foreign_dispatches;}
     const auto result=original_create(command,feature,parameters,output);
+    if(source_owner){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        source_owner->source_result=result;source_owner->source_returned=true;
+        if(!read(source_owner->source.handle,reinterpret_cast<uintptr_t>(output)))source_owner->source_bad=true;}
     if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=rows[unsigned(selected)];row.dispatch_result=result;row.dispatcher_returned=true;row.dispatcher_exit=now();
         if(!read(row.handle_output,reinterpret_cast<uintptr_t>(output)))++read_failures;read(row.vendor,base,0x1b55d78);row.vendor_module_named=vendor_owner(row.vendor,row.vendor_module);}
     return result;
@@ -189,7 +243,9 @@ uint32_t __fastcall hook_evaluate(uintptr_t command,uintptr_t handle,uintptr_t p
     if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=rows[unsigned(selected)];row.dispatch_result=result;row.dispatcher_returned=true;row.dispatcher_exit=now();}return result;
 }
 uint32_t __fastcall hook_release(uintptr_t handle){Scope active_scope;int selected=-1;
-    {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(attested&&recording.load()&&release_count<releases.size()){
+    {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        if(handle==latest_native_create.handle||in_wrappers){latest_native_create={};++native_create_revision;}
+        if(attested&&recording.load()&&release_count<releases.size()){
         selected=int(release_count++);auto& row=releases[unsigned(selected)];row.handle=handle;row.caller=reinterpret_cast<uintptr_t>(_ReturnAddress());row.entry=now();
         read(row.vendor,base,0x1b55d88);row.vendor_module_named=vendor_owner(row.vendor,row.module);}}
     const auto result=original_release(handle);if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=releases[unsigned(selected)];row.result=result;row.returned=true;row.exit=now();}return result;
@@ -244,6 +300,7 @@ constexpr Contract contracts[]{
     {0x7c80d0,0x152,"f42ccc68bce5664a9d28f2219904a8671ab47975f4a455d9a4f19ede83d16689"}
 };
 bool enable(FILE* file){attested=false;printed=false;bank={};rows={};releases={};row_count=epoch_evals=epochs=in_wrappers=release_count=0;
+    latest_native_create={};native_create_revision=0;source_create_scope=nullptr;
     sampled_tickets=typed_observations=total_sampled_tickets=total_typed_observations=0;
     sequence=execute_sequence=limited=foreign_dispatches=read_failures=0;current_row=pending_row=-1;
     if(self_testing||!continuous_session||!frame_link_diagnostics||!color_copy_diagnostics)return false;
