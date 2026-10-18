@@ -10,6 +10,32 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ### Blocking image defect at scale 2.0
 
+2026-10-19 bounded owned-ticket trace: private RuntimeSizeTrace1 DLL
+`91d2cbe6bd1074664c56129bd53807e720120f23bb377b0802e8578fdcb79ea0`
+passed the 22 startup checks and two actual checkpoint reloads, with normal
+cleanup/restoration. Session `continuous-stereo-34916-20261019-053954-4fba6fbe`.
+Ticket2/world1 has all eight source/built/prepare rows (mask127): owned target
+5120x2800, built and prepare eye rectangles2560x2800 at x0/2560. The first
+observed indexed geometry draw per eye also targets5120x2800 with the correct
+eye viewport and a non-clipping scissor. This is bounded direct-draw evidence,
+not proof that all passes use correct dimensions.
+
+The built sampling vector is nevertheless
+`0.333333343,-0.648148119,0.648148119,0.333333343` for the left eye (right
+last component1), consistent with denominator3840x2160. It remains unchanged
+through prepare. Constructor observation QPC2211057222908 precedes the actual
+resource resize QPC2211057579650..2211058176743; prepare starts afterward.
+Historical snapshot assembly was re-exported and byte-matched for
+116250..116b34: at116590/1165bf it reads globals1c3a3b8/1c3a3bc to derive
+view+3d0..3dc, independently of the target's virtual width/height clamp.
+Slice SHA256 `b3614facc38c953bc9b2ead6c8cca42783225619757a630d06b9d1982733a07e`.
+Evidence is under ignored `analysis/ida/ngx-copy-contract-20261019/renderer-sampling.*`.
+This identifies a constructor/resize ordering discrepancy for the sampled
+ticket, **not yet the complete explanation for persistent clipping**. Both
+post-reload GPU images still have zero pixels above channel4 in columns3840+.
+Next establish later-ticket sampling and postprocess bounds before choosing
+the corrective lifetime boundary. No new default package was promoted.
+
 Source-owner candidate tested, **insufficient to fix coverage**: source view
 construction now receives the same owned family/target copy as renderer
 construction, while original source/family authentication and immutability

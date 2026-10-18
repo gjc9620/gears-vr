@@ -2292,6 +2292,98 @@ void* __fastcall hook_clone(void* destination,void* source){
     return result;
 }
 #include "geometry_observer.h"
+
+// One successful owned selection only; bootstrap renderers cannot claim this.
+// Read-only bounded diagnostics, serialized by the existing frame hook lock.
+namespace owned_ticket_size_trace {
+struct Row {
+    bool present{};unsigned mask{},eye{},stage{},thread{};long long qpc{};
+    uintptr_t view{},family{},target{},resource{};
+    std::array<float,4> source{},sampling{};std::array<int,4> output{};
+    uint64_t target_width{};unsigned target_height{},target_format{};
+};
+struct DrawRow {
+    bool present{};unsigned eye{},stage{},mode{},indexed{},elements{},instances{},thread{};
+    long long qpc{};uintptr_t view{},list{},caller{};
+    gears_viewport::TargetDraw binding{};gears_viewport::DrawState state{};
+};
+uint64_t ticket{},world{};uintptr_t renderer{},adapter{};bool finished{};
+std::array<Row,8> rows{};std::array<DrawRow,16> draws{};
+bool matches(void* root,gears_submitted::FrameTicket const& frame){
+    return ticket&&frame.enabled&&frame.id==ticket&&frame.world_generation==world&&
+        reinterpret_cast<uintptr_t>(root)==renderer;
+}
+void views(unsigned stage,void* root,gears_submitted::FrameTicket const& frame,uintptr_t left,uintptr_t right){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(finished||stage>=4||!matches(root,frame))return;
+    const uintptr_t addresses[]={left,right};
+    for(unsigned eye=0;eye<2;++eye){auto& row=rows[stage*2+eye];if(row.present)continue;
+        row.present=true;row.eye=eye;row.stage=stage;row.view=addresses[eye];row.thread=GetCurrentThreadId();row.qpc=now();
+        if(!row.view)continue;
+        if(safe_copy(row.source.data(),reinterpret_cast<void*>(row.view+0x48),16))row.mask|=1;
+        if(safe_copy(row.output.data(),reinterpret_cast<void*>(row.view+0x58),16))row.mask|=2;
+        if(safe_copy(row.sampling.data(),reinterpret_cast<void*>(row.view+0x3d0),16))row.mask|=4;
+        if(safe_copy(&row.family,reinterpret_cast<void*>(row.view),8)&&row.family)row.mask|=8;
+        if((row.mask&8)&&safe_copy(&row.target,reinterpret_cast<void*>(row.family+0x10),8))row.mask|=16;
+#if defined(GEARS_NATIVE_OWNED_SCENE_PROBE) && GEARS_NATIVE_OWNED_SCENE_PROBE
+        // No untrusted target virtual calls. Only the retained owned resource,
+        // under its existing API-order lock, can provide an actual GetDesc.
+        if((row.mask&16)&&row.target==adapter&&
+           reinterpret_cast<uintptr_t>(gears_owned_scene_live::owner.borrow_adapter())==adapter){
+            row.mask|=32;const auto snap=gears_owned_scene_live::owner.snapshot();
+            if(snap.phase==gears_native_owned::Phase::live&&snap.resource){
+                row.resource=snap.resource;
+                const auto desc=reinterpret_cast<ID3D12Resource*>(snap.resource)->GetDesc();
+                row.target_width=desc.Width;row.target_height=desc.Height;row.target_format=unsigned(desc.Format);row.mask|=64;
+            }
+        }
+#endif
+    }
+}
+void select(void* root,gears_submitted::FrameTicket const& frame,uintptr_t target,uintptr_t left,uintptr_t right){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(ticket||!root||!target||!frame.enabled||!frame.id||!frame.world_generation)return;
+    ticket=frame.id;world=frame.world_generation;renderer=reinterpret_cast<uintptr_t>(root);adapter=target;
+    views(0,root,frame,left,right);
+}
+void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,bool indexed,unsigned elements,unsigned instances){
+    // Read only TLS until a geometry draw for the chosen owned ticket exists.
+    if(!current_geometry||!elements||!instances||!consuming_owned_scene)return;
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(finished||!matches(consuming_renderer,consuming_frozen_frame))return;
+    auto const& geometry=*current_geometry;
+    if(geometry.eye>=2||geometry.stage>=4||geometry.mode>=2)return;
+    auto& row=draws[geometry.eye*8+geometry.stage*2+geometry.mode];if(row.present)return;
+    row.present=true;row.eye=geometry.eye;row.stage=geometry.stage;row.mode=geometry.mode;
+    row.indexed=indexed;row.elements=elements;row.instances=instances;row.thread=GetCurrentThreadId();row.qpc=now();
+    row.view=geometry.view;row.list=reinterpret_cast<uintptr_t>(list);row.caller=caller>=base?caller-base:caller;
+    row.binding=viewport_stats.binding(row.list);row.state=viewport_stats.draw_state(row.list);
+}
+void finish(void* root,gears_submitted::FrameTicket const& frame){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(matches(root,frame))finished=true;
+}
+void print(FILE* status){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);unsigned mask=0,draw_count=0;
+    for(unsigned i=0;i<rows.size();++i)if(rows[i].present)mask|=1u<<i;
+    for(auto const& row:draws)draw_count+=row.present?1:0;
+    fprintf(status,"owned_ticket_size_trace ticket=%llu world=%llu renderer=%llx adapter=%llx rows_mask=%u finished=%u draw_rows=%u selection=successful_owned_only stages=source_constructed,renderer_built,prepare_before,prepare_after mask_bits=floatrect:1,intrect:2,sampling:4,family:8,target:16,owned_adapter_match:32,resource_desc:64 direct_draws_only=1 pixels_verified=0\n",
+        ticket,world,static_cast<unsigned long long>(renderer),static_cast<unsigned long long>(adapter),mask,finished?1:0,draw_count);
+    for(auto const& row:rows)if(row.present)fprintf(status,
+        "owned_ticket_size_row ticket=%llu world=%llu renderer=%llx stage=%u eye=%u qpc=%lld thread=%u mask=%u view=%llx family=%llx target=%llx source=%.9g,%.9g,%.9g,%.9g output=%d,%d,%d,%d sampling=%.9g,%.9g,%.9g,%.9g resource=%llx target_width=%llu target_height=%u target_format=%u\n",
+        ticket,world,static_cast<unsigned long long>(renderer),row.stage,row.eye,row.qpc,row.thread,row.mask,
+        static_cast<unsigned long long>(row.view),static_cast<unsigned long long>(row.family),static_cast<unsigned long long>(row.target),
+        row.source[0],row.source[1],row.source[2],row.source[3],row.output[0],row.output[1],row.output[2],row.output[3],
+        row.sampling[0],row.sampling[1],row.sampling[2],row.sampling[3],static_cast<unsigned long long>(row.resource),row.target_width,row.target_height,row.target_format);
+    for(auto const& row:draws)if(row.present){auto const& b=row.binding;auto const& s=row.state;fprintf(status,
+        "owned_ticket_size_draw ticket=%llu world=%llu renderer=%llx eye=%u stage=%u mode=%u qpc=%lld thread=%u view=%llx list=%llx caller=%llx indexed=%u elements=%u instances=%u targets=%u resource=%llx width=%llu height=%u mip=%u format=%u tracked=%u viewport_count=%u scissor_count=%u viewport=%.9g,%.9g,%.9g,%.9g scissor=%.9g,%.9g,%.9g,%.9g\n",
+        ticket,world,static_cast<unsigned long long>(renderer),row.eye,row.stage,row.mode,row.qpc,row.thread,
+        static_cast<unsigned long long>(row.view),static_cast<unsigned long long>(row.list),static_cast<unsigned long long>(row.caller),row.indexed,row.elements,row.instances,
+        b.targets,static_cast<unsigned long long>(b.target.resource),static_cast<unsigned long long>(b.target.width),b.target.height,b.target.mip,b.target.format,
+        s.tracked?1:0,s.viewport_count,s.scissor_count,s.viewport.x,s.viewport.y,s.viewport.width,s.viewport.height,s.scissor.x,s.scissor.y,s.scissor.width,s.scissor.height);
+    }
+}
+}
+
 #include "resource_identity_observer.h"
 #include "late_quad_observer.inl"
 #include "unpossessed_quad_observer.inl"
@@ -2381,6 +2473,7 @@ void __fastcall hook_consume(void* renderer){
     consuming_owned_scene=native_owned_scene_consuming(renderer,consume_frame.id);
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
     {gears_render_cost::Window cost(owned_scene_gpu::render_cost(consume_frame.id));original_consume(renderer);}
+    owned_ticket_size_trace::finish(renderer,consume_frame);
     check_ngx_constructor_source(consume_frame);vr_dof_compat::finish(dof_consume);
     native_owned_scene_end(renderer,consume_frame.id); // Identity value only; original may have destroyed it.
     consuming_owned_scene=saved_owned_scene;
@@ -2397,6 +2490,7 @@ void __fastcall hook_prepare(void* renderer){
     auto record=start_record(12,renderer,_ReturnAddress());
     if(observe){
         Record before{};inspect_completed_renderer(before,renderer);
+        owned_ticket_size_trace::views(2,renderer,consuming_frozen_frame,before.family_views[0],before.family_views[1]);
         ngx_epoch_pair::prepare(1,renderer,before);
         projection_observe(2,reinterpret_cast<uintptr_t>(renderer),before.family_views,before.family_count,now());
         stereo_observe(2,reinterpret_cast<uintptr_t>(renderer),before.family_views,before.family_count,now());
@@ -2414,6 +2508,7 @@ void __fastcall hook_prepare(void* renderer){
     if(observe){
         check_ngx_constructor_source(consuming_frozen_frame);
         inspect_completed_renderer(record,renderer);
+        owned_ticket_size_trace::views(3,renderer,consuming_frozen_frame,record.family_views[0],record.family_views[1]);
         ngx_epoch_pair::prepare(2,renderer,record);
         if(submit_pair_enabled && (submit_session_enabled()?submitted_lifetime.contains(reinterpret_cast<uintptr_t>(renderer)):
             reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load())) {
@@ -2683,7 +2778,11 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         ++origin_commit_failed;request_session_stop(SessionStop::proof_failure);}
     if(owned_scene_target){
         if(!native_owned_scene_select(destination,frame.id,owned_scene_target))request_session_stop(SessionStop::proof_failure);
-        else owned_ui_live::selected(frame.id);
+        else {
+            owned_ui_live::selected(frame.id);
+            owned_ticket_size_trace::select(destination,frame,owned_scene_target,
+                reinterpret_cast<uintptr_t>(sources.views[0]),reinterpret_cast<uintptr_t>(sources.views[1]));
+        }
     }
     if(stereo_xr&&frame.enabled){std::lock_guard<std::mutex> lock(stereo_mutex);auto timestamp=now();
         record_stereo_reference(frame,timestamp);
@@ -2705,6 +2804,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     returned=original_renderer(destination,split_family.data(),canvas,transform);
     submitting_family=previous;
     Record built{};inspect_completed_renderer(built,destination);
+    owned_ticket_size_trace::views(1,destination,frame,built.family_views[0],built.family_views[1]);
     trace_rectangle(5,built.family_views[0]);
     bool verified=returned==destination && built.family_count==count && built.renderer_count==count &&
         built.family_views[0]==built.renderer_storage && (count==1 || built.family_views[1]==built.renderer_storage+0xd30);
@@ -3466,6 +3566,7 @@ void STDMETHODCALLTYPE hook_draw(ID3D12GraphicsCommandList* list,UINT vertices,U
     if(gears_viewport::has_draw_work(vertices,instances))observe_frame_draw(list,caller,0,vertices,instances);
     if(recording.load()){gears_render_cost::Scope cost(gears_render_cost::viewport_draw);viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);}
     if(recording.load())observe_output_stack(list,0);
+    owned_ticket_size_trace::draw(list,caller,false,vertices,instances);
     geometry_draw(list,false,vertices,instances);
     observe_engine_view_draw(list,false,vertices,instances);
     {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw(list,vertices,instances,start,first_instance);}
@@ -3587,6 +3688,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     if(gears_viewport::has_draw_work(indices,instances))observe_frame_draw(list,caller,1,indices,instances);
     if(recording.load()){gears_render_cost::Scope cost(gears_render_cost::viewport_draw);viewport_stats.draw(reinterpret_cast<uintptr_t>(list),trial_draw_scope?1:0);}
     if(recording.load())observe_output_stack(list,1);
+    owned_ticket_size_trace::draw(list,caller,true,indices,instances);
     geometry_draw(list,true,indices,instances);
     observe_engine_view_draw(list,true,indices,instances);
     {gears_render_cost::Scope cost(gears_render_cost::draw_forward);original_draw_indexed(list,indices,instances,start,vertex,first_instance);}
@@ -4505,6 +4607,7 @@ DWORD WINAPI worker(void*) {
     fprintf(status,"submit_view_count=%u submit_event_marker=77\n",submit_mono_control?1:2);
     fprintf(status,"submit_duplicate_control=%d\n",submit_duplicate_control);
     fprintf(status,"submit_mono_independent_state=%d\n",submit_mono_independent_state);
+    owned_ticket_size_trace::print(status);
     for(unsigned i=0;i<rectangle_traces.size();++i) {
         unsigned phase=rectangle_trace_phases[i].load();auto trace=phase==2?rectangle_traces[i]:RectangleTrace{};
         fprintf(status,"rectangle_trace index=%u phase=%u object=0x%llx source=%.9g,%.9g,%.9g,%.9g target=%d,%d,%d,%d\n",
