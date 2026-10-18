@@ -97,7 +97,7 @@ int main(){
  assert(records.rows[wrong_resource].reason==buffer_not_d3d12&&records.rows[wrong_resource].resource_result==E_NOINTERFACE&&chain.resource.refs==1);
  // Pre-call adapter releases every COM reference before the caller forwards
  // ResizeBuffers. Window state is injected; this test never creates a window.
- chain.resource.supported=true;chain.desc.Windowed=TRUE;
+ chain.resource.supported=true;chain.desc.Windowed=TRUE;chain.desc.BufferCount=2;
  chain.desc.BufferDesc.Width=1920;chain.desc.BufferDesc.Height=1080;
  auto pre_index=begin_resize(resize,&chain,2,0,0,DXGI_FORMAT_UNKNOWN,0,nullptr,true,false);
  const auto window=[](HWND,gears_background_zero_extent::Evidence& e){
@@ -116,6 +116,10 @@ int main(){
  };
  assert(forward(dimensions.width,dimensions.height)==E_FAIL&&forwarded==1);
  assert(!prepare_resize_with(pre_index,&chain,0,0,false,window).substituted);
+ chain.desc.BufferCount=0;
+ assert(!prepare_resize_with(pre_index,&chain,0,0,true,window).substituted);
+ assert(!records.rows[pre_index].pre.evidence.physical_verified&&chain.resource.refs==1);
+ chain.desc.BufferCount=2;
  chain.resource.desc.Width=8;assert(!prepare_resize_with(pre_index,&chain,0,0,true,window).substituted);
  chain.resource.desc.Width=1920;chain.desc_hr=E_FAIL;
  const auto buffer_calls=chain.buffer_calls;
