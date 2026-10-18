@@ -184,6 +184,12 @@ struct ControlFixture {
             for(auto& rect:p.rendered)rect={eye*1280,0,853,720};}
         return true;}
     static gears_ngx_stereo::Completion completion(void* owner_context,uint64_t){return {0xd00,0x20,0x30,static_cast<ControlFixture*>(owner_context)->completed};}
+    static bool admit(void*,ngx_stereo_host::ControlConsumption used){
+        // Entered through the complete real route hook/WrapperScope/Call/host
+        // chain, not just the extracted Context callback. Neither lock may leak.
+        unlocked();auto owner=ngx_stereo_host::current_control();assert(owner);
+        {auto entry=owner->adapter().enter();assert(entry);}
+        return used.world==identity().world&&used.ticket!=0;}
 };
 ControlFixture* control_fixture{};
 uint32_t __fastcall control_optimal(uint32_t original_width,uint32_t width,uint32_t height,uint32_t quality,
@@ -224,7 +230,7 @@ void control_cases(){
         NativeDispatchFunctions functions{control_sdk_create,control_sdk_evaluate,control_sdk_release,fixture.get(),control_copy};
         functions.optimal=control_optimal;
         AdapterPrerequisites ready{true,true,true,true,true,true,true,true,true,true,true,true};
-        ControlCallbacks callbacks{fixture,ControlFixture::creation_binding,ControlFixture::input_binding,ControlFixture::completion};
+        ControlCallbacks callbacks{fixture,ControlFixture::creation_binding,ControlFixture::input_binding,ControlFixture::completion,ControlFixture::admit};
         auto owner=std::make_shared<ControlOwner>(functions,ready,callbacks);assert(attach_control(owner));assert(!attach_control(owner));
         ngx_route_observer::original_create=control_create_wrapper;ngx_route_observer::original_evaluate=control_eval_wrapper;
         ngx_stereo_host::original_create=control_sdk_create;ngx_stereo_host::original_evaluate=control_sdk_evaluate;ngx_stereo_host::original_release=control_sdk_release;
@@ -271,9 +277,11 @@ void optimal_host_failures(){
         auto fixture=std::make_shared<ControlFixture>();control_fixture=fixture.get();fixture->query_failure=failure;
         NativeDispatchFunctions functions{control_sdk_create,control_sdk_evaluate,control_sdk_release,fixture.get(),control_copy};
         AdapterPrerequisites ready{true,true,true,true,true,true,true,true,true,true,true,true};
-        ControlCallbacks callbacks{fixture,ControlFixture::creation_binding,ControlFixture::input_binding,ControlFixture::completion};
+        ControlCallbacks callbacks{fixture,ControlFixture::creation_binding,ControlFixture::input_binding,ControlFixture::completion,ControlFixture::admit};
         assert(!std::make_shared<ControlOwner>(functions,ready,callbacks)->configured());
-        functions.optimal=control_optimal;auto owner=std::make_shared<ControlOwner>(functions,ready,callbacks);assert(attach_control(owner));
+        functions.optimal=control_optimal;auto missing_admission=callbacks;missing_admission.admit=nullptr;
+        assert(!std::make_shared<ControlOwner>(functions,ready,missing_admission)->configured());
+        auto owner=std::make_shared<ControlOwner>(functions,ready,callbacks);assert(attach_control(owner));
         ngx_route_observer::original_create=control_create_wrapper;
         const uint32_t family[]{1706,720,2560,1080,1,0x12};std::memcpy(creation.data(),family,sizeof(family));put(creation,0x18,uint8_t(1));
         const auto original=creation;test_caller=base+0xbe66bc;

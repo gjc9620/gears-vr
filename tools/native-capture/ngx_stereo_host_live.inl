@@ -117,6 +117,7 @@ uint64_t ControlOwner::evaluate(ControlConsumption consumed,uintptr_t command,ui
     for(unsigned i=0;i<3;++i)std::memcpy(&bases[i],source.bytes.data()+0x60+8*i,8);
     if(!configured_||!consumed.world||!consumed.ticket||!consumed.renderer||created.identity.world!=consumed.world||
        created.identity.parameters!=parameters||!select_input_eye(created.layout,created.layout.input,bases,eye)||
+       !callbacks_.admit(callbacks_.lifetime.get(),consumed)||
        !callbacks_.input(callbacks_.lifetime.get(),consumed,source,command,ticket)||
        ticket.consumption.world!=consumed.world||ticket.consumption.ticket!=consumed.ticket||ticket.consumption.renderer!=consumed.renderer||
        !ticket.original_views[0]||!ticket.original_views[1]||ticket.original_views[0]==ticket.original_views[1]||ticket.command.raw!=command){

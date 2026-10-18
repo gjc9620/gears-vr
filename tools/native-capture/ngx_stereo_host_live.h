@@ -34,6 +34,9 @@ struct ControlCallbacks {
     bool (*create)(void*,NativeCreateSource const&,uintptr_t,ControlCreateBinding&){};
     bool (*input)(void*,ControlConsumption,gears_ngx_stereo::EvaluateShadow const&,uintptr_t,ControlInputTicket&){};
     gears_ngx_stereo::Completion (*completion)(void*,uint64_t){};
+    // Called before the input callback/adapter gate. May hold the synchronous
+    // native call until an already-submitted first pair completes; no replay.
+    bool (*admit)(void*,ControlConsumption){};
 };
 // Live SDK owner. No automatic Release in the destructor. The host pins this
 // owner; detach is rejected until actual creation/Eval/Copy retirement drains.
@@ -46,7 +49,7 @@ class ControlOwner {
 public:
     ControlOwner(gears_ngx_stereo::NativeDispatchFunctions functions,gears_ngx_stereo::AdapterPrerequisites prerequisites,ControlCallbacks callbacks)
         :backend_(functions),adapter_(backend_,prerequisites),bridge_(adapter_,true),callbacks_(std::move(callbacks)),
-         configured_(functions.ready()&&functions.optimal&&prerequisites.ready()&&callbacks_.lifetime&&callbacks_.create&&callbacks_.input&&callbacks_.completion){}
+         configured_(functions.ready()&&functions.optimal&&prerequisites.ready()&&callbacks_.lifetime&&callbacks_.create&&callbacks_.input&&callbacks_.completion&&callbacks_.admit){}
     ControlOwner(ControlOwner const&)=delete;
     bool configured()const{return configured_;}
     bool can_detach(){auto e=adapter_.enter();return e&&(!backend_.create_attempts()||adapter_.drained(e));}

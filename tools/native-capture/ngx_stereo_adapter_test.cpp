@@ -334,7 +334,50 @@ static void native_create_before_resources(){
         submit(a,0,2,2);auto entry=a.enter();NativeResult raw{};
         assert(a.release_completed(entry,100,completion(2),raw)&&a.release_completed(entry,101,completion(2),raw)&&a.drained(entry));}
 }
-int main(){native_create_before_resources();patch_boundaries();disabled_and_prerequisites();independent_images_and_histories();create_failures_and_gpu_retirement();
+static ExecuteReceipt copy_execution(unsigned eye){return {{3,90+eye,30+eye,70,80,eye?5u:3u,true},eye?5u:3u,0};}
+static void transport_pair(StereoAdapter& a,Fake& f,bool final_copy=true){
+    start(a);submit_create(a);
+    for(unsigned eye=0;eye<2;++eye){assert(eval(a,f,eye));auto copied=facts(eye);copied.list=90+eye;copied.generation=30+eye;
+        auto entry=a.enter();assert(a.copy(entry,copied,eye));}
+    submit(a,0,2,2);{auto entry=a.enter();assert(a.submitted_copy(entry,0,copy_execution(0)));}
+    submit(a,1,4,4);if(final_copy){auto entry=a.enter();assert(a.submitted_copy(entry,1,copy_execution(1)));}
+}
+static void transport_admission(){
+    // Production may signal before hardware completes. Repeated normal holds
+    // retain the candidate and never run another SDK call or reset its history.
+    {Fake f;StereoAdapter a(f,ready());{auto e=a.enter();assert(a.complete_candidate_transport(e,{})==TransportCompletion::incomplete);}
+        transport_pair(a,f);
+        for(uint64_t completed=0;completed<5;++completed){auto e=a.enter();
+            assert(a.complete_candidate_transport(e,completion(completed))==TransportCompletion::pending);
+            assert(a.admit_ticket(e,2,11,completion(completed))==TicketAdmission::hold);
+            assert(a.phase(e)==AcceptancePhase::candidate&&f.evaluates==2);}
+        {auto e=a.enter();assert(a.admit_ticket(e,2,11,completion(5))==TicketAdmission::admitted);
+            assert(a.complete_candidate_transport(e,completion(5))==TransportCompletion::accepted);
+            assert(a.complete_candidate_transport(e,completion(5))==TransportCompletion::accepted);
+            RecordedOutput out;assert(a.ordered_output(e,out)&&out.ticket==10);}
+        assert(eval(a,f,0,11,false,false)); // Fresh producer and independent existing history.
+        assert(f.histories[0]==2&&f.histories[1]==1);
+    }
+    // No wait/admission can stand in for a missing or reset Copy recording.
+    {Fake f;StereoAdapter a(f,ready());transport_pair(a,f,false);auto e=a.enter();
+        auto changed=copy_execution(1);++changed.submission.generation;assert(!a.submitted_copy(e,1,changed));
+        assert(a.complete_candidate_transport(e,completion(999))==TransportCompletion::incomplete);
+        assert(a.admit_ticket(e,2,11,completion(999))==TicketAdmission::rejected);}
+    for(unsigned bad=0;bad<4;++bad){Fake f;StereoAdapter a(f,ready());transport_pair(a,f);auto c=completion(5);
+        if(bad==0)++c.device;if(bad==1)++c.queue;if(bad==2)++c.fence;if(bad==3)c.value=UINT64_MAX;
+        auto e=a.enter();assert(a.complete_candidate_transport(e,c)==TransportCompletion::rejected);}
+    {Fake f;StereoAdapter a(f,ready());transport_pair(a,f);auto e=a.enter();
+        assert(!a.submitted_eye(e,0,execution(0,2,2))); // Duplicate/old recording cannot accept.
+        assert(a.complete_candidate_transport(e,completion(5))==TransportCompletion::rejected);}
+    {Fake f;StereoAdapter a(f,ready());transport_pair(a,f);auto e=a.enter();
+        assert(a.admit_ticket(e,2,11,completion(4))==TicketAdmission::hold);a.invalidate(e); // stop/timeout
+        assert(a.admit_ticket(e,2,11,completion(5))==TicketAdmission::rejected);NativeResult raw{};
+        assert(!a.release_completed(e,100,completion(4),raw)&&!f.releases);
+        assert(a.release_completed(e,100,completion(5),raw)&&a.release_completed(e,101,completion(5),raw)&&a.drained(e));}
+    {Fake f;StereoAdapter a(f,ready());transport_pair(a,f);auto e=a.enter();
+        assert(a.admit_ticket(e,3,11,completion(5))==TicketAdmission::rejected);}
+}
+int main(){transport_admission();native_create_before_resources();patch_boundaries();disabled_and_prerequisites();independent_images_and_histories();create_failures_and_gpu_retirement();
     failed_recorded_eval_and_copy();bad_order_and_concurrency();boundary_rejections();result_mask_contract();candidate_observations_and_quarantine();zero_handle_creation_retirement();
     std::cout<<"NGX adapter SDK/copy/retirement boundary tests passed\n";}
 

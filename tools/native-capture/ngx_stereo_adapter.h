@@ -52,6 +52,8 @@ struct ExecuteReceipt {
 enum class RecordingKind {creation,evaluate,copy};
 struct PendingRecording {RecordingKind kind{};unsigned eye{};uint64_t list{},generation{};};
 enum class AcceptancePhase {inactive,candidate,accepted,quarantined};
+enum class TransportCompletion {incomplete,pending,accepted,rejected};
+enum class TicketAdmission {admitted,hold,rejected};
 // The host captures these from actual named Color/Depth/MV producers and typed
 // resource bindings BEFORE Eval. Patched Evaluate arguments are not evidence of
 // rendering. Order of resources is Color, Depth, MV, Output, matching Layout.
@@ -337,6 +339,43 @@ public:
         if(!allowed(e)||!pair_||eye>1||!copy_recorded_[eye]||copy_submitted_[eye]||!submitted_[eye]||
            s.list!=copies_[eye].list||s.generation!=copies_[eye].generation||!stream_valid(receipt))return false;
         copy_executions_[eye]=last_execution_=receipt;copy_submitted_[eye]=true;return true;
+    }
+    // Completion of already validated producer/SDK/boxed-Copy recordings.
+    // No output readback or pixel/temporal QA is asserted by this transport path.
+    // An incomplete or pending candidate remains intact for a later poll.
+    TransportCompletion complete_candidate_transport(Entry const& e,Completion c){
+        if(!allowed(e)||phase_==AcceptancePhase::quarantined)return TransportCompletion::rejected;
+        if(!pair_)return TransportCompletion::incomplete;
+        if(!pair_->usable())return TransportCompletion::rejected;
+        if(phase_==AcceptancePhase::accepted)return TransportCompletion::accepted;
+        if(phase_!=AcceptancePhase::candidate||!candidate_ticket_||ticket_!=candidate_ticket_||
+           !creation_submitted_||!sequence_||!sequence_->complete())return TransportCompletion::incomplete;
+        for(unsigned eye=0;eye<2;++eye)
+            if(!producer_observed_[eye]||!recorded_[eye]||!evaluated_[eye]||!copied_[eye]||!submitted_[eye]||!copy_submitted_[eye])
+                return TransportCompletion::incomplete;
+        uint64_t required{};
+        const Submission obligations[]{creation_execution_.submission,executions_[0].submission,executions_[1].submission,
+            copy_executions_[0].submission,copy_executions_[1].submission};
+        for(auto const& s:obligations){
+            if(c.value==UINT64_MAX||!s.value||c.device!=s.device||c.queue!=s.queue||c.fence!=s.fence){
+                fail();return TransportCompletion::rejected;}
+            if(s.value>required)required=s.value;
+        }
+        if(c.value<required)return TransportCompletion::pending;
+        // CopySequence certified exact disjoint Color boxes; copied_ records
+        // returned originals, and these five receipts cover their real queue work.
+        accepted_resources_=producers_[0].resources;phase_=AcceptancePhase::accepted;
+        return TransportCompletion::accepted;
+    }
+    TicketAdmission admit_ticket(Entry const& e,uint64_t world,uint64_t ticket,Completion c){
+        if(!allowed(e)||!pair_||!pair_->usable()||world!=pair_->identity().world||!ticket||
+           (candidate_ticket_&&ticket<candidate_ticket_)){fail();return TicketAdmission::rejected;}
+        const auto state=complete_candidate_transport(e,c);
+        if(state==TransportCompletion::rejected)return TicketAdmission::rejected;
+        if(state==TransportCompletion::accepted||!candidate_ticket_||ticket==candidate_ticket_)return TicketAdmission::admitted;
+        if(state==TransportCompletion::pending)return TicketAdmission::hold;
+        // Never wait for recordings which have not actually been submitted.
+        fail();return TicketAdmission::rejected;
     }
     bool accept_candidate(Entry const& e,std::array<RetainedOutputObservation,2> const& observed){
         if(!allowed(e)||!pair_||!pair_->usable()||phase_!=AcceptancePhase::candidate||!candidate_ticket_||

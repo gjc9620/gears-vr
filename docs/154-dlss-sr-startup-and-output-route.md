@@ -2,6 +2,8 @@
 
 ## 2026-10-19：实际界值确认整幅宽度下限冲突
 
+首pair完成接线已加入源码：真实Create、两次Eval、两次boxed Copy的提交义务全部在匹配device/queue/fence上完成后，才能接受传输并允许后续ticket。该API不构造像素观察，不声称画质正确。Execute后先非阻塞检查；同步原生调用到达下一ticket而首pair仍pending时，在frame/adapter锁外最多等待2000ms，只等已提交且Signal已返回的工作；stop/world变化或超时停止并保留未退休资源，不重放SDK。私有完整调用链锁审查及CPU回归通过；协调端在修复header依赖的目录完成capture重新编译，Adapter/HostLive测试直接运行通过。真实producer域、原生Copy契约、参数串行性及实际GPU连续画面仍未接通或验证，默认未激活。原始日志 `analysis/runtime/build-ngx-transport-integrated.log`。
+
 后续Ninja构建使用 `tools/native-capture/build_verified.py`：指定新 `--build-dir`、原有 `--define NAME=VALUE` 和 `--target`，保留候选功能组合。工具实际探测编译器showIncludes前缀，校验生成规则与编译器身份，并在构建后拒绝0依赖或缺少指定 `.inl` 依赖的结果；不复用有旧解析缓存的目录。5项离线检查及协调端实际小工程运行通过，另有修改私有header后重编译的回执。它只证明构建依赖被正确解析，不替代游戏/GPU验收。全量原生构建的446项依赖证据见下文。
 
 完整私有构建随后完成于 `build-game-resolution-ngx-optimal`，DLL SHA256 `ce9ef2f8a954c4740105f086392917bc988b017f9764838d8a9c100c34f458ea`，未替换默认清单。期间发现旧Ninja构建的header依赖为0：当前中文MSVC输出UTF-8 showIncludes前缀，被CMake误解码并写入规则；VSLANG=1033不能修复仅有2052资源的安装。使用实测前缀的project-include override后fresh完整构建通过，capture.cpp依赖446项，明确包含本次修改的host/native_api/control_capture。不能将先前“ninja no work”当新源码编译证据。原始构建日志在ignored `build-game-ngx-optimal-prefix-fixed.log`；实际每眼GetOptimal/GPU画面仍未验证。

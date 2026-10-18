@@ -101,6 +101,27 @@ Completion completion(void* opaque,uint64_t handle){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& c=*static_cast<Context*>(opaque);auto owner=c.owner.lock();
     if(!owner)return {};auto entry=owner->adapter().enter();if(!entry||!owner->adapter().owns(entry,handle))return {};return c.gpu.completion();
 }
+// Called by ControlOwner before its producer callback and adapter gate. The
+// wrapper's caller still owns the native renderer; never return/defer/replay it.
+// All queue Signals needed below have ALREADY returned. Sleep holds neither
+// frame_hook_mutex nor an adapter Entry, so submission/stop hooks can progress.
+bool admit(void* opaque,ngx_stereo_host::ControlConsumption used){
+    auto& c=*static_cast<Context*>(opaque);const auto start=GetTickCount64();
+    constexpr ULONGLONG first_pair_timeout_ms=2000;
+    for(;;){
+        {
+            std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto owner=c.owner.lock();
+            if(!owner||c.failed||!recording.load()||submitted_lifetime.stopping()||
+               used.world!=committed_world_generation.load()||used.world!=c.created.identity.world){reject(c);return false;}
+            TicketAdmission admission;
+            {auto entry=owner->adapter().enter();if(!entry){reject(c);return false;}
+                admission=owner->adapter().admit_ticket(entry,used.world,used.ticket,c.gpu.completion());}
+            if(admission==TicketAdmission::admitted)return true;
+            if(admission==TicketAdmission::rejected||GetTickCount64()-start>=first_pair_timeout_ms){reject(c);return false;}
+        }
+        Sleep(10); // Only normal pending first-pair GPU completion reaches here.
+    }
+}
 void boxed_dispatch(void* opaque,CopyPlan const& plan){auto& c=*static_cast<Context*>(opaque);
     if(c.failed||!c.copy_boundary||!c.copy_boundary->copy(plan))throw std::runtime_error("NGX actual copy boundary rejected");}
 bool current(void*,ID3D12GraphicsCommandList* list,uintptr_t id,uint64_t gen){return canonical_identity(list)==id&&generation(list,id)==gen;}
@@ -127,7 +148,11 @@ void execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* list
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto owner=ngx_stereo_host::current_control();
     if(!owner){forward(queue,count,lists);return;}
     if(!context||context->owner.lock()!=owner){owner->invalidate();request_session_stop(SessionStop::proof_failure);forward(queue,count,lists);return;}
-    if(!context->gpu.execute(owner->adapter(),queue,count,lists,forward,read,generation))reject(*context);
+    if(!context->gpu.execute(owner->adapter(),queue,count,lists,forward,read,generation)){reject(*context);return;}
+    TransportCompletion transport;
+    {auto entry=owner->adapter().enter();if(!entry){reject(*context);return;}
+        transport=owner->adapter().complete_candidate_transport(entry,context->gpu.completion());}
+    if(transport==TransportCompletion::rejected)reject(*context);
 }
 // Prepare before the native Create/Eval wrappers. Activate only when
 // the actual producer/state source and full output/retirement gates are wired.
@@ -136,7 +161,7 @@ bool activate(AdapterPrerequisites prerequisites){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!context||context->failed||!context->producer||!context->copy_states||!context->producer_lifetime||!context->owner.expired())return false;
     auto& c=*context;NativeDispatchFunctions functions{ngx_stereo_host::original_create,ngx_stereo_host::original_evaluate,ngx_stereo_host::original_release,&c,boxed_dispatch};
     functions.optimal=ngx_stereo_host::native_optimal_query();
-    ngx_stereo_host::ControlCallbacks callbacks{context,create,input,completion};
+    ngx_stereo_host::ControlCallbacks callbacks{context,create,input,completion,admit};
     auto owner=std::make_shared<ngx_stereo_host::ControlOwner>(functions,prerequisites,callbacks);
     c.owner=owner;if(ngx_stereo_host::attach_control(owner))return true;c.owner.reset();return false;
 }
