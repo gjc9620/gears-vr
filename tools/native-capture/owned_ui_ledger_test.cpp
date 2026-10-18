@@ -138,4 +138,48 @@ void material_cases(){
  }
  std::printf("owned UI ledger: %u checks passed\n",checks);
 }
-int main(){legacy_cases();material_cases();}
+void discard_cases(){
+ for(bool material:{false,true}){
+  auto storage=std::make_unique<Ledger>();auto& l=*storage;CHECK(l.cpu_drained());bind(l);
+  const auto kind=material?Kind::Material:Kind::Batch;
+  CHECK(l.expect(1,1,kind));auto id=l.produce(1,100,3,kind,20);CHECK(id);
+  CHECK(!l.cpu_drained()&&!l.discard_completed(1,4));
+  CHECK(l.execute(100,20,4,kind)==id);CHECK(l.complete(id,true,5,kind));
+  CHECK(!l.cpu_drained()&&!l.discard_completed(1,6)); // Missing producer transfer.
+  CHECK(l.transferred(id,material?TransferProof::MaterialDispatched:TransferProof::BatchCleared));
+  CHECK(!l.cpu_drained()&&!l.discard_completed(1,6)); // Missing Canvas close.
+  CHECK(l.close(1,7));CHECK(l.cpu_drained());
+  auto before=l.snapshot();CHECK(l.cpu_drained());auto after=l.snapshot();
+  CHECK(before.active_count==after.active_count&&before.counts.retired==after.counts.retired&&after.active[0].ticket==1);
+  CHECK(!l.discard_completed(2,8)&&!l.discard_completed(0,8)&&!l.discard_completed(1,6));
+  CHECK(l.discard_completed(1,8));auto s=l.snapshot();
+  CHECK(!s.active_count&&s.retained_count==1&&s.counts.discarded==1&&s.counts.retired==1&&!s.counts.published);
+  CHECK(s.retained[0].discarded&&s.retained[0].discard_qpc==8&&!s.retained[0].published&&!s.retained[0].publication_qpc);
+  CHECK(!s.counts.consumed_before_completion&&!s.counts.consumed_before_closure&&l.cpu_drained());
+  CHECK(!l.published(1,9)&&!l.discard_completed(1,9)&&!l.complete(id,true,9,kind));
+  CHECK(!l.bind(1,10,20,30,10));bind(l,2);CHECK(l.expect(2,0));CHECK(l.close(2,11));CHECK(l.discard_completed(2,12));
+  CHECK(l.snapshot().counts.discarded==2&&l.cpu_drained());
+ }
+ // Every older cycle must drain; a newer completed cycle cannot cover it.
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));auto id=l.produce(1,100,3);CHECK(id);
+  CHECK(l.transferred(id,true));CHECK(l.close(1,4));bind(l,2);CHECK(l.expect(2,0));CHECK(l.close(2,5));
+  CHECK(!l.cpu_drained());CHECK(l.discard_completed(2,6));CHECK(!l.cpu_drained()&&!l.discard_completed(1,6));
+  CHECK(l.execute(100,20,7)==id);CHECK(l.complete(id,true,8));CHECK(l.cpu_drained());CHECK(l.discard_completed(1,9));}
+ // Equal aggregate counts do not cover missing Material inventory.
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));CHECK(l.expect(1,1,Kind::Material));
+  for(uintptr_t p:{100u,101u}){auto id=l.produce(1,p,3);CHECK(l.transferred(id,true));CHECK(l.execute(p,20,4)==id);CHECK(l.complete(id,true,5));}
+  CHECK(l.close(1,6));CHECK(!l.cpu_drained()&&!l.discard_completed(1,7));CHECK(l.snapshot().active_count==1);}
+ for(unsigned fault=0;fault<4;++fault){
+  auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,1));auto id=l.produce(1,100,3);CHECK(id);
+  CHECK(l.transferred(id,true));CHECK(l.execute(100,20,4)==id);CHECK(l.complete(id,fault!=0,5));
+  if(fault==1)CHECK(l.invalidate(1));
+  if(fault==2)CHECK(!l.produce(1,100,6));
+  if(fault==3)CHECK(!l.transferred(id,true));
+  CHECK(l.close(1,7));CHECK(!l.cpu_drained()&&!l.discard_completed(1,8));CHECK(l.snapshot().active_count==1);
+ }
+ // Already published retirement cannot be relabeled as an explicit discard.
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);CHECK(l.expect(1,0));CHECK(l.close(1,3));CHECK(l.published(1,4));
+  CHECK(!l.discard_completed(1,5)&&!l.snapshot().counts.discarded&&l.cpu_drained());}
+ std::printf("owned UI discard/drain: %u total checks passed\n",checks);
+}
+int main(){legacy_cases();material_cases();discard_cases();}

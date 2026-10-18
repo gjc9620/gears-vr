@@ -13,14 +13,14 @@ enum class TransferProof : unsigned { BatchCleared,MaterialDispatched,Rejected }
 struct KindCounts {uint64_t expected{},produced{},transferred{},executed{},completed{},failed{};};
 struct Cycle {
  uint64_t ticket{};uintptr_t canvas{},target{},thread{},caller{};
- int64_t bind_qpc{},first_production_qpc{},last_completion_qpc{},closure_qpc{},publication_qpc{};
+ int64_t bind_qpc{},first_production_qpc{},last_completion_qpc{},closure_qpc{},publication_qpc{},discard_qpc{};
  uint64_t flushes{},expected_batches{},produced{},transferred{},completed{},failed{}; // Aggregates across both kinds.
- bool closed{},published{},published_before_completion{},published_before_closure{},ambiguous_payload{},invalid{};
+ bool closed{},published{},published_before_completion{},published_before_closure{},ambiguous_payload{},invalid{},discarded{};
  std::array<KindCounts,2> by_kind{};
 };
 struct Execution {uint64_t id{},ticket{};uintptr_t canvas{},target{},payload{};Kind kind{Kind::Batch};};
 struct Counters {
- uint64_t bound{},flushes{},produced{},transferred{},executed{},completed{},failed{},closed{},published{},retired{};
+ uint64_t bound{},flushes{},produced{},transferred{},executed{},completed{},failed{},closed{},published{},retired{},discarded{};
  uint64_t consumed_before_completion{},consumed_before_closure{},retired_with_payload{},retired_empty{};
  uint64_t rejected{},binding_rejected{},payload_rejected{},capacity_rejected{},stale_rejected{},target_rejected{},transfer_rejected{};
  uint64_t kind_rejected{};std::array<KindCounts,2> by_kind{};
@@ -48,8 +48,19 @@ class Ledger {
   c.published_before_completion=c.published&&c.completed&&c.publication_qpc<c.last_completion_qpc;
   c.published_before_closure=c.published&&c.closed&&c.publication_qpc<c.closure_qpc;
  }
+ bool cpu_cycle_drained(Cycle const& c)const{
+  if(!c.closed||c.invalid||c.ambiguous_payload||c.failed||c.produced!=c.expected_batches||
+     c.transferred!=c.produced||c.completed!=c.produced||!kinds_ready(c))return false;
+  std::array<uint64_t,2> counted{};
+  for(auto const& r:receipts_)if(r.id&&r.ticket==c.ticket){
+   if(!valid_kind(r.kind)||!r.payload||!r.expected_target||!r.transferred||!r.executing||!r.completed||r.ambiguous)return false;
+   ++counted[unsigned(r.kind)];
+  }
+  for(unsigned i=0;i<counted.size();++i)if(counted[i]!=c.by_kind[i].produced||c.by_kind[i].executed!=c.by_kind[i].produced)return false;
+  return true;
+ }
  void retire(Cycle& c){
-  if(!c.closed||!c.published||c.transferred!=c.produced||c.completed!=c.produced)return;
+  if(!c.closed||(!c.published&&!c.discarded)||c.transferred!=c.produced||c.completed!=c.produced)return;
   order_flags(c);if(retained_count_<retained_.size())retained_[retained_count_++]=c;
   if(c.published_before_completion)++counts_.consumed_before_completion;
   if(c.published_before_closure)++counts_.consumed_before_closure;
@@ -61,6 +72,27 @@ class Ledger {
   c={};++counts_.retired;
  }
 public:
+ // Read-only CPU payload drain proof. Caller first closes new production and
+ // serializes producer/consumer admission. No GPU completion or world token.
+ // Cover ALL active tickets; the last ticket alone can hide an older payload.
+ bool cpu_drained()const{
+  std::lock_guard<std::mutex> lock(mutex_);
+  for(auto const& c:cycles_)if(c.ticket&&!cpu_cycle_drained(c))return false;
+  for(auto const& r:receipts_)if(r.id){bool owner=false;
+   for(auto const& c:cycles_)if(c.ticket==r.ticket&&c.ticket){owner=true;break;}
+   if(!owner)return false;
+  }
+  return true;
+ }
+ // Explicitly abandon one completed CPU cycle without claiming publication.
+ // Caller owns the ticket/world cutoff and separately proves GPU retirement.
+ // Unknown, pending, invalid or previously retired cycles never get erased.
+ bool discard_completed(uint64_t ticket,int64_t qpc){
+  std::lock_guard<std::mutex> lock(mutex_);auto c=cycle(ticket);
+  if(!c||c->published||c->discarded||qpc<=0||qpc<c->closure_qpc||qpc<c->last_completion_qpc||
+     !cpu_cycle_drained(*c))return reject(counts_.stale_rejected);
+  c->discarded=true;c->discard_qpc=qpc;++counts_.discarded;retire(*c);return true;
+ }
  bool bind(uint64_t ticket,uintptr_t canvas,uintptr_t target,uintptr_t thread,int64_t qpc){
   std::lock_guard<std::mutex> lock(mutex_);
   if(!ticket||!canvas||!target||!thread||ticket<=maximum_ticket_)return reject(counts_.binding_rejected);
@@ -176,7 +208,7 @@ public:
  bool published(uint64_t ticket,int64_t qpc){
   std::lock_guard<std::mutex> lock(mutex_);auto c=cycle(ticket);
   if(!c)for(unsigned i=0;i<retained_count_;++i)if(retained_[i].ticket==ticket)c=&retained_[i];
-  if(!c||c->published)return reject(counts_.stale_rejected);
+  if(!c||c->published||c->discarded)return reject(counts_.stale_rejected);
   c->published=true;c->publication_qpc=qpc;++counts_.published;order_flags(*c);
   // Active cycles remain available for publication even beyond retained history.
   // A retained cycle is already published, so only active cycles reach here.
