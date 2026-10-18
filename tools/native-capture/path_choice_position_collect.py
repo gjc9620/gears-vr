@@ -11,12 +11,44 @@ import json
 import os
 from pathlib import Path
 import struct
+import sys
 
 import path_choice_position_config as position
 import path_choice_close_config as close
 from scene_owner_snapshot import _Capture, _reread_spans
 
 require = position.require
+
+
+def _read_origin():
+    """Bounded source locations only; never retain frames or arbitrary locals."""
+    frame = sys._getframe(2)
+    result = []
+    try:
+        for _ in range(6):
+            if frame is None: break
+            row = dict(file=Path(frame.f_code.co_filename).name[:64],
+                       function=frame.f_code.co_name[:64], line=frame.f_lineno)
+            name = frame.f_locals.get('name')
+            if type(name) is str: row['field'] = name[:64]
+            result.append(row)
+            frame = frame.f_back
+    finally:
+        del frame
+    return result
+
+
+class AcquisitionSourceChanged(ValueError):
+    """Terminal byte disagreement with bounded evidence for the next diagnosis."""
+    def __init__(self, phase, address, expected, actual, origin):
+        offset = next((i for i, (a, b) in enumerate(zip(expected, actual)) if a != b),
+                      min(len(expected), len(actual)))
+        self.read_conflict = dict(phase=phase, address=hex(address), size=len(expected),
+            actual_size=len(actual), changed_offset=offset, changed_address=hex(address+offset),
+            expected_window=expected[offset:offset+8].hex(), actual_window=actual[offset:offset+8].hex(),
+            first_read=origin)
+        super().__init__(f'{phase}: source changed during acquisition at {address:#x} '
+                         f'size {len(expected)} offset {offset:#x}')
 
 # Neutral supported content signature: names/classes and reflected Value/ScaleType
 # bytes only, extracted from the validated baseline. No heap or image addresses.
@@ -166,7 +198,7 @@ def collect(reader, sample, native_status, session, nonce, verify_session):
     reader.force_registry_refresh()
     require(reader.client_identity == original_client and reader.client == original_client['address'], 'refresh replaced client')
     check()
-    original_read = r.read; reads = {}; byte_count = 0
+    original_read = r.read; reads = {}; origins = {}; byte_count = 0
     def tracked(address, size):
         nonlocal byte_count
         require(type(address) is int and type(size) is int and 0 < address <= (1 << 64)-size and 0 < size <= 1024,
@@ -174,9 +206,11 @@ def collect(reader, sample, native_status, session, nonce, verify_session):
         raw = original_read(address, size)
         require(type(raw) is bytes and len(raw) == size, 'short acquisition read')
         key = address, size
-        require(key not in reads or reads[key] == raw, 'source changed during acquisition')
+        if key in reads and reads[key] != raw:
+            raise AcquisitionSourceChanged('repeated_read', address, reads[key], raw, origins[key])
         byte_count += size
         require(len(reads) < 32768 and byte_count <= 8*1024*1024, 'acquisition read budget exceeded')
+        if key not in reads: origins[key] = _read_origin()
         reads[key] = raw
         return raw
     r.read = tracked
@@ -201,7 +235,14 @@ def collect(reader, sample, native_status, session, nonce, verify_session):
         metadata.update(consistent_final_reread=True, process_owner_verified=True, atomic_snapshot=False)
         close_ini = close.build(fresh, proof, metadata, observer_duration_ms=8000, **args)
         for address, expected in _reread_spans(reads):
-            require(original_read(address, len(expected)) == expected, 'whole-acquisition final reread changed')
+            actual = original_read(address, len(expected))
+            require(type(actual) is bytes, 'invalid whole-acquisition final reread')
+            if actual != expected:
+                offset = next((i for i, (a,b) in enumerate(zip(expected,actual)) if a != b),
+                              min(len(expected),len(actual)))
+                origin = next((origins[key] for key in reads
+                               if key[0] <= address+offset < key[0]+key[1]), [])
+                raise AcquisitionSourceChanged('final_reread', address, expected, actual, origin)
         check()
         evidence = dict(read_only=True, consistent_final_reread=True, process_owner_verified=True,
             atomic_snapshot=False, read_ranges=len(reads), read_bytes=sum(len(raw) for raw in reads.values()),

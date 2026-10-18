@@ -208,7 +208,16 @@ class PathChoicePositionMonitor:
             if current is None or current is error:
                 break
             causes.append(dict(type=type(current).__name__[:64], message=str(current)[:256]))
-        return dict(error_message=str(error)[:512], error_frames=frames, error_causes=causes)
+        detail = dict(error_message=str(error)[:512], error_frames=frames, error_causes=causes)
+        from path_choice_position_collect import AcquisitionSourceChanged
+        current = error
+        for _ in range(3):
+            if type(current) is AcquisitionSourceChanged:
+                detail['error_read_conflict'] = copy.deepcopy(current.read_conflict)
+                break
+            current = current.__cause__ or (None if current.__suppress_context__ else current.__context__)
+            if current is None or current is error: break
+        return detail
 
     def _restored(self, status):
         restored = int(status.get('path_position_last_restored_nonce', 0))

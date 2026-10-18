@@ -242,6 +242,30 @@ class MonitorTests(unittest.TestCase):
         self.assertIsNone(self.m.future)
         self.assertEqual(self.m.poll(), [])
 
+    def test_collector_byte_conflict_evidence_survives_wrapper_and_stays_terminal(self):
+        from path_choice_position_collect import AcquisitionSourceChanged
+        self.m.close()
+        class RejectedProbe(Probe):
+            def capture(self, nonce, acquire, generation):
+                try:
+                    raise AcquisitionSourceChanged('repeated_read',0x1230,b'abc',b'aXc',
+                        [dict(file='menu_state.py',function='member',line=399,field='Value')])
+                except AcquisitionSourceChanged as cause:
+                    raise RuntimeError('Owner source read failed') from cause
+        self.m = self.create(probe_factory=RejectedProbe)
+        self.addCleanup(self.m.close)
+        self.m.poll(); events=self.m.poll()
+        self.assertEqual(len(events),1)
+        detail=events[0]['error_read_conflict']
+        self.assertEqual(detail['changed_address'],'0x1231')
+        self.assertEqual(detail['expected_window'],'6263')
+        self.assertEqual(detail['actual_window'],'5863')
+        self.assertEqual(detail['first_read'][0]['field'],'Value')
+        self.assertEqual(events[0]['event'],'path_position_revoked')
+        self.assertEqual(self.m.acquisition_attempts,1)
+        self.assertTrue(self.m.terminal)
+        self.assertEqual(self.actions,[])
+
     def test_live_verifier_rechecks_reader_and_frozen_world_and_pending_restore(self):
         module = SimpleNamespace(reader_process_identity=lambda reader:(3, 30))
         with mock.patch.dict('sys.modules', {'menu_control':module}):

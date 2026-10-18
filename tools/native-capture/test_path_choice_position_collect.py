@@ -153,8 +153,34 @@ class CollectorTests(unittest.TestCase):
             if key==(header,16) and counts[key]>=3:return bytes([raw[0]^1])+raw[1:]
             return raw
         reader.r.read=changing
-        with self.assertRaises(ValueError):self.invoke(values)
+        with self.assertRaises(collector.AcquisitionSourceChanged) as caught:self.invoke(values)
+        detail = caught.exception.read_conflict
+        self.assertEqual(detail['phase'], 'final_reread')
+        self.assertEqual(detail['changed_address'], hex(header))
+        self.assertTrue(detail['first_read'])
+        self.assertLessEqual(len(detail['expected_window']),16)
         self.assertIs(reader.r.read,changing)
+
+    def test_repeated_read_conflict_records_first_field_and_exact_byte(self):
+        values=fixture();reader=values[0];original_read=reader.r.read
+        address=reader.r.objects_header+8
+        def acquire(**options):
+            name='SyntheticMutableField'
+            reader.r.read(address,4)
+            values[6][address+2]^=1
+            reader.r.read(address,4)
+        reader._sample_once.side_effect=acquire
+        with self.assertRaises(collector.AcquisitionSourceChanged) as caught:self.invoke(values)
+        detail=caught.exception.read_conflict
+        self.assertEqual(detail['phase'],'repeated_read')
+        self.assertEqual(detail['address'],hex(address))
+        self.assertEqual(detail['size'],4)
+        self.assertEqual(detail['changed_offset'],2)
+        self.assertEqual(detail['changed_address'],hex(address+2))
+        self.assertEqual(detail['first_read'][0]['field'],'SyntheticMutableField')
+        self.assertLessEqual(len(detail['first_read']),6)
+        self.assertIs(reader.r.read,original_read)
+        reader._sample_once.assert_called_once()
 
     def test_owner_reflection_and_geometry_proof_rejections(self):
         for mutation in ('reflection','owner','geometry','pending'):
