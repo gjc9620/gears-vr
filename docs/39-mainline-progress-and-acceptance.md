@@ -18,6 +18,10 @@ sample3 实际确认初始 `GameUISceneClient` 缺失可以通过已有初始化
 
 章节箭头确认已在 `041e634` 改为最多5秒只读等待；只允许原索引等待或精确下一索引确认，源身份／provider／窗口漂移及跳项仍拒绝，不重发按键，14项测试通过。sample5 实际记录从 index=3 请求4，26次读取仍为3直至超时。这排除了“仅150ms过早判错”的解释，但尚不能区分章节可选范围与输入未生效；下一步应检查该列表的可选状态及当前存档进度，而非继续加等待或重复按键。此次同样没有激活native，正常退出且5文件哈希恢复通过。具体证据：ignored `hammer-ui-sample5-20261019-chapter.chapter-route.json` 的 `error_detail.arrow_ack`。
 
+后续 sample7 只读确认旧岔路fixture的实例 RowCount=4、ColumnCount=1、CellLinkType=2、WrapType=0，index0–3 的 bUnlocked 原始存储为1、index4–7为0（该轮未解码位掩码）。sample8 不应用旧fixture，保留玩家当前存档，按 `camera_phase.py` 已保存的 BoolProperty 原生代码哈希、vtable、尺寸和单bit掩码规则现场校验，得到mask=1，index0–4已解锁、HAMMER(index5)及后续未解锁。这是当前 provider 状态的实际证据；未调用 IsProviderDisabled，不能把脚本未解析token冒充完整原生禁用路径证明。
+
+因此停止直接选择尚未解锁 HAMMER 的重复试验，改查已解锁场景的同类 DrawActionInfo 提示以验证公共布局；Hammer实际提示的覆盖仍待以后到达。sample6曾因Object outside registry取消，sample7采样完成后主动停止，sample8因目标未解锁主动停止，均未激活native、均正常关闭并恢复5文件。原始数据继续保留在ignored sample6–8及对应chapter-route回执，不进入发布包。
+
 ## 2026-10-18 夜间：状态发布修正已实跑，首发仍未完成
 
 当前源码已加入原生状态文件完整代发布，修正 actual12 实际读到4096字符半份状态的问题。新 AtomicStatus 候选在 actual14 进入关卡并提交双目画面，66次遥测未再出现该读取错误；正常关闭、native清理、入口恢复和设置恢复通过。这不代表所有黑屏已修复，玩家默认包未替换。
