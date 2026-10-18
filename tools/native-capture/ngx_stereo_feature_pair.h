@@ -91,7 +91,7 @@ public:
     bool submitted(uint64_t handle,EvalUse use,Submission s){
         unsigned i{};if(!owned_index(handle,i))return false;auto& h=handles_[i];auto const& last=h.last_use;
         if(h.lifetime!=Lifetime::recorded_unsubmitted||i!=use.eye||!same(use.identity,identity_)||use.ticket!=last.ticket||use.list!=last.list||use.generation!=last.generation||
-           !s.direct||s.device!=identity_.device||s.list!=last.list||s.generation!=last.generation||!s.queue||!s.fence||!s.value)return false;
+           !s.direct||s.device!=identity_.device||s.list!=last.list||s.generation!=last.generation||!s.queue||!s.fence||!s.value||s.value==UINT64_MAX)return false;
         auto const& previous=h.last_submission;
         if(previous.value&&(s.queue!=previous.queue||s.fence!=previous.fence||s.value<=previous.value))return false;
         h.last_submission=s;h.lifetime=Lifetime::submitted;return true;
@@ -109,7 +109,7 @@ public:
     }
     bool claim_completed_release(uint64_t handle,Completion c,uint64_t& release){
         unsigned i{};if(!retired_||!owned_index(handle,i))return false;auto& h=handles_[i];auto const& s=h.last_submission;
-        if(h.lifetime!=Lifetime::submitted||c.device!=identity_.device||!c.queue||c.queue!=s.queue||!c.fence||c.fence!=s.fence||c.value<s.value)return false;
+        if(h.lifetime!=Lifetime::submitted||c.value==UINT64_MAX||c.device!=identity_.device||!c.queue||c.queue!=s.queue||!c.fence||c.fence!=s.fence||c.value<s.value)return false;
         h.lifetime=Lifetime::released;release=handle;return true;
     }
     bool drained()const{

@@ -160,3 +160,10 @@ P轮诊断完成，正常关闭、native及所有entry独立恢复、设置及�
 实际Native101后台游戏3432中，只读采集对Create/Eval/Release dispatcher、callback helper、结果格式化器及相关原生封装/owner完整chunks逐字节核验并末端复读，all_selected_chunks_matched=true。三个vendor函数指针均落在实际加载的_nvngx.dll（文件SHA256 66767018c36b3bab46398dade3adf173daa3730fda75965689ea848c9bc4e79b）。精确session与全部函数哈希保留在ignored `analysis/runtime/pistol101a-20261018.dlss.json`。这认证所选代码和指针归属，不证明vendor内部行为、资源同步或DLSS图像正确；preset helper等未选代码不自动取得认证。
 
 输出关联组件明确区分记录位置、真实Execute/Signal顺序及完成条件；同一次Execute中的不同list成员顺序不当作资源依赖。尚需实际生产域、整个参数封装的排他、Create/Eval GPU退休、两眼独立history及原生Release返回政策。默认Native70与DLSS/DLAA保护均未变，DLSS仍为首发未完成项。
+
+
+## 2026-10-18 原生分眼桥接组件（尚未接通真实SDK）
+
+新增NativeWrapperBridge与NativeDispatchBackend：完整wrapper期间参数排他、独立双Create句柄、逐眼Evaluate及history reset、按真实完成凭据释放双句柄；关闭路径保持原始参数和返回值。新增output receipt到quad几何转换，遵循destination→source参数顺序。FeaturePair明确拒绝D3D12 UINT64_MAX完成哨兵。六组MSVC /W4 /WX /UNDEBUG组件测试通过；UiGroup105整合构建中的桥接与geometry测试再次通过。
+
+这不是DLSS已可用：真实Color/Depth/MV生产区域、typed CopyTextureRegion接线、Execute/Signal完成、首次双眼图像隔离和安全Release仍未闭环；默认DLSS保护保持。完整接线说明与测试日志存于ignored analysis/runtime/dlss-integration.txt与ngx-stereo-native-bridge-test。

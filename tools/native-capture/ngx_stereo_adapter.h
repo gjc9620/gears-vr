@@ -323,6 +323,24 @@ public:
     // Unknown handles are forwarded unchanged at the original release hook.
     // Owned handles are deferred; a raw SDK success is never fabricated here.
     bool owns(Entry const& e,uint64_t handle){return allowed(e)&&pair_&&pair_->owns(handle);}
+    // Read under the same wrapper/dispatcher gate. A snapshot does not transfer
+    // ownership; failed partial Creates also remain visible to host retirement.
+    std::array<uint64_t,2> owned_handles(Entry const& e){
+        if(!allowed(e)||!pair_)return {};return {pair_->state(0).handle,pair_->state(1).handle};
+    }
+    // Preflight the entire owned pair before the native Release interception
+    // consumes either obligation. Completion must cover creation and every
+    // recorded use; an unsubmitted list can never be retired by a large value.
+    bool pair_release_ready(Entry const& e,Completion c){
+        if(!allowed(e)||!pair_||!pair_->retired()||release_uncertain_||!creation_submitted_||
+           !complete_creation(e,c))return false;
+        for(unsigned eye=0;eye<2;++eye){auto const& h=pair_->state(eye);if(!h.handle)continue;
+            if(h.lifetime==Lifetime::created_unused)continue;
+            auto const& s=h.last_submission;
+            if(h.lifetime!=Lifetime::submitted||c.device!=s.device||c.queue!=s.queue||c.fence!=s.fence||c.value<s.value)return false;
+        }
+        return true;
+    }
     // Create may record GPU work even on failure, exception or zero handles.
     // Its retirement is independent of FeaturePair's handle obligations. Only
     // a completed real submission can discharge it; CPU return cannot do so.

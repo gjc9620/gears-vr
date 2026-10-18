@@ -43,11 +43,11 @@ static void evaluations(){
 static void retirement(){
     FeaturePair p(id(),layout());create(p);run_eye(p,0,10,8,true);run_eye(p,1,10,9,true);p.invalidate();uint64_t release{};uint64_t rejected_handle{};bool rejected_reset{};assert(!p.begin_eval(use(0,11),rejected_handle,rejected_reset));assert(p.state(0).handle==100&&p.state(1).handle==200);
     assert(!p.claim_unused_release(100,id(),release));assert(!p.claim_completed_release(999,completion(),release));
-    for(unsigned n=0;n<4;++n){auto c=completion();switch(n){case 0:c.device++;break;case 1:c.queue++;break;case 2:c.fence++;break;case 3:c.value=7;break;}assert(!p.claim_completed_release(100,c,release));}
+    for(unsigned n=0;n<5;++n){auto c=completion();switch(n){case 0:c.device++;break;case 1:c.queue++;break;case 2:c.fence++;break;case 3:c.value=7;break;case 4:c.value=UINT64_MAX;break;}assert(!p.claim_completed_release(100,c,release));}
     assert(p.claim_completed_release(100,completion(),release)&&release==100);assert(!p.claim_completed_release(100,completion(),release));
     assert(!p.claim_completed_release(200,completion(),release));assert(p.claim_completed_release(200,completion(9),release)&&p.drained());
-    for(unsigned n=0;n<8;++n){FeaturePair q(id(),layout());create(q);uint64_t h{};bool r{};assert(q.begin_eval(use(0),h,r));assert(q.end_eval(use(0),true));q.invalidate();auto s=submit();switch(n){
-        case 0:s.device++;break;case 1:s.list++;break;case 2:s.generation++;break;case 3:s.queue=0;break;case 4:s.fence=0;break;case 5:s.value=0;break;case 6:s.direct=false;break;case 7:h=999;break;}
+    for(unsigned n=0;n<9;++n){FeaturePair q(id(),layout());create(q);uint64_t h{};bool r{};assert(q.begin_eval(use(0),h,r));assert(q.end_eval(use(0),true));q.invalidate();auto s=submit();switch(n){
+        case 0:s.device++;break;case 1:s.list++;break;case 2:s.generation++;break;case 3:s.queue=0;break;case 4:s.fence=0;break;case 5:s.value=0;break;case 6:s.direct=false;break;case 7:h=999;break;case 8:s.value=UINT64_MAX;break;}
         assert(!q.submitted(h,use(0),s));assert(!q.claim_unused_release(100,id(),release));assert(!q.claim_completed_release(100,completion(100),release));
     }
     for(unsigned n=0;n<4;++n){FeaturePair q(id(),layout());create(q);run_eye(q,0,10,8,true);run_eye(q,1,10,8,true);uint64_t h{};bool r{};assert(q.begin_eval(use(0,11),h,r));assert(q.end_eval(use(0,11),true));auto s=submit(9);if(n==0)s.queue++;if(n==1)s.fence++;if(n==2)s.value=7;if(n==3)s.value=8;assert(!q.submitted(h,use(0,11),s));q.invalidate();assert(!q.claim_completed_release(h,completion(100),release));}
