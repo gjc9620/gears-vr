@@ -2,7 +2,56 @@
 #include <cassert>
 #include <cstdio>
 #include <limits>
+static void world_retirement_test(){using namespace gears_vr_dof;
+    // A final complete entry need not have reached publication. Readiness is
+    // const and retirement must not invent publication/proof or reset counters.
+    Store<unsigned> last;auto* entry=last.begin({7,10});assert(entry);entry->payload=91;
+    auto const& read_only=last;
+    assert(!read_only.world_retirement_ready(7,10)&&!last.retire_world(7,10));
+    assert(last.find({7,10})->payload==91&&last.retired==0);
+    last.finish({7,10});
+    assert(read_only.world_retirement_ready(7,12)&&last.find({7,10}));
+    assert(last.retire_world(7,12)&&!last.find({7,10}));
+    assert(last.retired==12&&last.observed==10&&last.begins==1&&last.finishes==1);
+    assert(last.retire_world(7,12)&&!last.retire_world(7,11));
+    assert(!last.begin({8,12})&&last.late==1&&last.begin({8,13}));
+    last.finish({8,13});assert(last.retire_world(8,13));
+    assert(last.observed==13&&last.retired==13&&last.begins==2&&last.finishes==2&&last.late==1);
+    assert(!last.world_retirement_ready(0,13)&&!last.retire_world(8,0));
+
+    // Preflight is atomic: neither a late old-world tail nor a pending consumer
+    // permits deleting an earlier completed entry.
+    Store<> pending;assert(pending.begin({7,1}));pending.finish({7,1});assert(pending.begin({7,2}));
+    assert(!pending.retire_world(7,2)&&pending.find({7,1})&&pending.find({7,2})&&pending.retired==0);
+    pending.finish({7,2});assert(!pending.retire_world(7,1)&&pending.find({7,1}));
+    assert(pending.retire_world(7,2));
+
+    // A global watermark cannot strand a foreign entry at/below its cutoff.
+    Store<unsigned> foreign;assert(foreign.begin({7,1}));foreign.finish({7,1});
+    entry=foreign.begin({8,2});assert(entry);entry->payload=42;foreign.finish({8,2});
+    assert(!foreign.world_retirement_ready(7,2)&&!foreign.retire_world(7,2));
+    assert(foreign.retired==0&&foreign.find({7,1})&&foreign.find({8,2})->payload==42);
+    assert(foreign.retire_world(7,1)&&!foreign.find({7,1})&&foreign.find({8,2})->payload==42);
+    assert(foreign.retired==1&&foreign.observed==2&&foreign.begins==2&&foreign.finishes==2);
+    assert(foreign.retire_world(8,2));
+    Store<> foreign_active;foreign_active.begin({7,1});foreign_active.finish({7,1});foreign_active.begin({8,2});
+    assert(!foreign_active.retire_world(7,1)&&foreign_active.find({7,1})&&foreign_active.retired==0);
+
+    Store<> empty;assert(empty.world_retirement_ready(7,20)&&empty.retire_world(7,20));
+    assert(empty.retired==20&&empty.observed==0&&empty.begins==0&&empty.finishes==0);
+    assert(!empty.begin({8,20})&&empty.begin({8,21}));
+    Store<> overflow;
+    for(unsigned id=1;id<=Store<>::capacity;++id){assert(overflow.begin({7,id}));overflow.finish({7,id});}
+    assert(!overflow.begin({7,129})&&overflow.capacity_lost);
+    assert(!overflow.retire_world(7,129)&&overflow.retired==0&&overflow.find({7,1})&&overflow.overflow==1);
+
+    Store<> sustained;
+    for(unsigned id=1;id<=300;++id){assert(sustained.begin({id,id}));sustained.finish({id,id});
+        assert(sustained.retire_world(id,id)&&sustained.retired==id&&sustained.observed==id);}
+    assert(sustained.begins==300&&sustained.finishes==300&&!sustained.capacity_lost);
+}
 int main(){using namespace gears_vr_dof;
+    world_retirement_test();
     for(unsigned bits=0;bits<8;++bits){const bool owned=bits&1,bindings=bits&2,runtime=bits&4;
         assert(transport_supported(owned,bindings,runtime)==((!owned&&!bindings)||(owned&&bindings&&runtime)));}
     assert(quad_caller(0xd808d8)&&quad_caller(0xd80a7b));
@@ -63,5 +112,5 @@ int main(){using namespace gears_vr_dof;
         sustained.finish({1,id});assert(sustained.decision({1,id})==Decision::zero_proved);
         assert(sustained.retire_through(id)&&!sustained.capacity_lost);
     }
-    std::puts("VrDofCompatTest passed: transport policy, exact proof, deferred owned retirement and 2000 publications");
+    std::puts("VrDofCompatTest passed: exact proof, deferred retirement, atomic world retirement, 300 worlds and 2000 publications");
 }

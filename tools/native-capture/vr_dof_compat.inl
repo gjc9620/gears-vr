@@ -126,6 +126,16 @@ bool retire_owned(uint64_t world,uint64_t ticket){std::lock_guard<std::recursive
     if(!owned_xr_probe||!runtime_size_transport()||!allowed(store.decision(key)))return false;
     return store.retire_through(ticket);
 }
+// Memory-only closed-world transaction, after independent resource retirement.
+// No active_key access: Consume begin/finish retain ownership on their thread.
+bool world_retirement_ready(uint64_t old_world,uint64_t cutoff){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    return store.world_retirement_ready(old_world,cutoff);
+}
+bool retire_world(uint64_t old_world,uint64_t cutoff){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    return store.retire_world(old_world,cutoff);
+}
 void progress(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);fprintf(file,"vr_dof_capture_rejected=%llu vr_dof_no_site=%llu vr_dof_zero_proved=%llu ",capture_rejected,decisions[0],decisions[1]);}
 void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     fprintf(file,"vr_dof_compat enabled=1 attested=%u both_owned_eyes=1 outside_owned_unchanged=1 store_capacity=128 capacity_lost=%u overflow=%llu late=%llu invalid=%llu begun=%llu completed=%llu retired_through=%llu observed_through=%llu site_calls=%llu modified_left=%llu modified_right=%llu already_zero_left=%llu already_zero_right=%llu setter_proved_left=%llu setter_proved_right=%llu quad_proved_left=%llu quad_proved_right=%llu no_site_allowed=%llu zero_proved_allowed=%llu capture_rejected=%llu missing=%llu incomplete=%llu proof_rejected=%llu overflow_rejected=%llu no_gpu_commands=1 source_memory_written=0 old_r8_read_at_quad=0 highwater_is_capacity=0 runtime_owned_supported=1 owned_publication_proof_required=1\n",
@@ -142,6 +152,8 @@ Consume begin(gears_submitted::FrameTicket const&,bool){return {};}
 void finish(Consume const&){}void quad(uintptr_t,bool){}void retire(){}
 bool publication(uint64_t,uint64_t){return true;}
 bool retire_owned(uint64_t,uint64_t){return true;}
+bool world_retirement_ready(uint64_t,uint64_t){return true;}
+bool retire_world(uint64_t,uint64_t){return true;}
 void progress(FILE*){}
 void print(FILE* file){fprintf(file,"vr_dof_compat enabled=0\n");}
 #endif

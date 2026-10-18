@@ -80,6 +80,24 @@ template<class Payload=Empty> struct Store {
     void retire_window(){
         if(observed>retired)retire_through(observed);
     }
+    // Caller has stopped old-world production and drained world readers and
+    // resource consumers. Preflight every entry before changing the global ID
+    // watermark: a foreign entry below it cannot be silently left behind.
+    bool world_retirement_ready(uint64_t old_world,uint64_t cutoff)const{
+        if(!old_world||!cutoff||cutoff<retired||capacity_lost)return false;
+        for(auto const& e:entries)if(e.key){
+            if(!e.complete)return false;
+            if(e.key.world==old_world){if(e.key.id>cutoff)return false;}
+            else if(e.key.id<=cutoff)return false;
+        }
+        return true;
+    }
+    bool retire_world(uint64_t old_world,uint64_t cutoff){
+        if(!world_retirement_ready(old_world,cutoff))return false;
+        for(auto& e:entries)if(e.key.world==old_world&&e.key.id<=cutoff)e={};
+        retired=cutoff; // Global frame IDs remain monotonic, including gaps.
+        return true;
+    }
 };
 inline bool allowed(Decision decision){return decision==Decision::no_site||decision==Decision::zero_proved;}
 }
