@@ -44,7 +44,7 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
     Input in{};in.enabled=enabled;in.attested=attested;in.module_base=base;in.caller=caller;
     in.module_size=module_size;in.observer_base=observer_base;in.observer_size=observer_size;
     in.vertices=vertices;in.instances=instances;in.start=start;in.first_instance=first_instance;
-    const auto& frozen=consuming_frozen_frame;in.ticket=frozen.id;in.world=frozen.world_generation;
+    const auto& frozen=consuming_frozen_frame;in.ticket=frozen.id;in.world=frozen.world_generation;in.source_output=frozen.source_output;
     in.owned_current=recording.load()&&consuming_owned_scene&&consuming_renderer&&frozen.enabled&&frozen.id&&
         frozen.id==consuming_frame_ticket&&frozen.world_generation&&frozen.world_generation==committed_world_generation.load()&&
         gears_native_render_size::matches_session(frozen.sample.session)&&native_owned_scene_consuming(consuming_renderer,frozen.id)&&
@@ -74,11 +74,11 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
         in.matched_generation=desktop.binding.generation;
     in.state=frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
     in.om=owned_ticket_size_trace::attachments.binding(reinterpret_cast<uintptr_t>(list));
-    // Also retain the route for owned desktop-extent failures: a tiny Present
-    // surface can differ from the engine scene extent. Observation only; the
-    // admission policy remains unchanged.
+    // Retain the route for owned inventory/source-extent failures too. A tiny
+    // Present surface can differ from the frozen original engine scene extent.
     auto decision=gears_owned_depth_clear::plan(in);
-    if(decision.reason==gears_owned_depth_clear::route||decision.reason==gears_owned_depth_clear::desktop){std::array<void*,12> frames{};
+    if(decision.reason==gears_owned_depth_clear::route||decision.reason==gears_owned_depth_clear::desktop||
+       decision.reason==gears_owned_depth_clear::source_extent){std::array<void*,12> frames{};
         in.stack_count=CaptureStackBackTrace(0,static_cast<DWORD>(frames.size()),frames.data(),nullptr);
         for(unsigned i=0;i<in.stack_count;++i)in.stack[i]=reinterpret_cast<uintptr_t>(frames[i]);decision=gears_owned_depth_clear::plan(in);
     }
@@ -94,6 +94,7 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
         if(candidate.reason==unsigned(decision.reason)&&candidate.input.world==in.world&&candidate.resource==owned.target.resource&&
            candidate.generation==owned.generation&&candidate.input.om.depth_handle==in.om.depth_handle&&
            candidate.input.desktop_chain==in.desktop_chain&&candidate.input.desktop_generation==in.desktop_generation&&
+           candidate.input.source_output.rectangle==in.source_output.rectangle&&candidate.input.source_output.target==in.source_output.target&&
            candidate.input.state.viewport==in.state.viewport&&candidate.input.width==in.width&&candidate.input.height==in.height){row=&candidate;break;}
     }
     if(record_receipt&&!row&&row_count<rows.size()){row=&rows[row_count++];row->input=in;row->resource=owned.target.resource;row->generation=owned.generation;row->reason=decision.reason;}
@@ -107,9 +108,10 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
 }
 void print(FILE* file){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
-    fprintf(file,"owned_depth_clear_receipt_scope owned_scene_only=1 unowned_skipped=%llu admission_unchanged=1\n",unowned_receipts_skipped);
+    fprintf(file,"owned_depth_clear_receipt_scope owned_scene_only=1 unowned_skipped=%llu frozen_source_extent=1 present_extent_independent=1\n",unowned_receipts_skipped);
     fprintf(file,"owned_depth_clear_trial compiled=1 enabled=%u attested=%u attempts=%llu applied=%llu noops=%llu returned=%llu restored=%llu accepted_rows=%u accepted_limit=16 accepted_overflow=%llu rejected_rows=%u rejected_limit=16 rejected_overflow=%llu dsv_size_known=0 viewport_only=1 pixels_verified=0\n",unsigned(enabled),unsigned(attested),attempts,applied,noops,returned,restored,accepted_count,accepted_overflow,rejected_count,rejected_overflow);
-    for(unsigned reason=1;reason<gears_owned_depth_clear::already_correct;++reason)fprintf(file,"owned_depth_clear_reject reason=%u count=%llu reasons=disabled:1,identity:2,arguments:3,owner:4,output:5,attachments:6,rectangles:7,route:8,desktop:9\n",reason,rejects[reason]);
+    for(unsigned reason=1;reason<gears_owned_depth_clear::reason_count;++reason)if(reason!=gears_owned_depth_clear::already_correct)
+        fprintf(file,"owned_depth_clear_reject reason=%u count=%llu reasons=disabled:1,identity:2,arguments:3,owner:4,output:5,attachments:6,rectangles:7,route:8,desktop:9,source_extent:11\n",reason,rejects[reason]);
     auto print_rows=[&](auto const& rows,unsigned row_count,const char* kind){
     for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];auto const& in=r.input;auto const& old=in.state.viewport;
         fprintf(file,"owned_depth_clear_row row=%u kind=%s reason=%u calls=%llu world=%llu first_ticket=%llu last_ticket=%llu resource=%llx generation=%llu caller=%llx vertices=%u instances=%u start=%u first_instance=%u owned_current=%u owned_active=%u bind_serial=%llu om_observed=%u targets=%u dsv_present=%u dsv_read=%u dsv_handle=%llx old_viewport=%.9g,%.9g,%.9g,%.9g new_viewport=0,0,%u,%u scissor=%.9g,%.9g,%.9g,%.9g depth=%.9g,%.9g module_base=%llx stack_count=%u stack=",
@@ -122,6 +124,11 @@ void print(FILE* file){
             static_cast<unsigned long long>(in.desktop_queue),static_cast<unsigned long long>(in.owned_queue),in.desktop_width,in.desktop_height,
             in.desktop_epoch,in.inventory_qpc,in.desktop_generation,in.matched_generation,in.desktop_count,in.binding_count,
             unsigned(in.matched_generation!=0));
+        const auto& source=in.source_output;
+        fprintf(file,"owned_depth_clear_source_extent row=%u kind=%s ticket=%llu world=%llu source=%llx family=%llx target=%llx output=%d,%d,%d,%d matches_ticket_world=%u scalar_identity_only=1 dsv_size_known=0\n",
+            i,kind,source.ticket,source.world,static_cast<unsigned long long>(source.source),static_cast<unsigned long long>(source.family),
+            static_cast<unsigned long long>(source.target),source.rectangle[0],source.rectangle[1],source.rectangle[2],source.rectangle[3],
+            unsigned(source.matches(in.ticket,in.world)));
     }
     };
     print_rows(accepted_rows,accepted_count,"accepted");print_rows(rejected_rows,rejected_count,"rejected");

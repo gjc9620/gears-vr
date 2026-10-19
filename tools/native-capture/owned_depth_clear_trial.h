@@ -1,8 +1,9 @@
 #pragma once
 #include "owned_attachment_observer.h"
+#include "source_output_extent.h"
 
 namespace gears_owned_depth_clear {
-enum Reason:unsigned {accepted,disabled,identity,arguments,owner,output,attachments,rectangles,route,desktop,already_correct,reason_count};
+enum Reason:unsigned {accepted,disabled,identity,arguments,owner,output,attachments,rectangles,route,desktop,already_correct,source_extent,reason_count};
 struct Viewport {gears_viewport::Rect rectangle{};float minimum{},maximum{};};
 struct Input {
     bool enabled{},attested{},owned_current{},owned_active{},plan_valid{},desktop_valid{};
@@ -14,6 +15,7 @@ struct Input {
     unsigned plan_width{},plan_height{},desktop_width{},desktop_height{};
     unsigned desktop_count{},binding_count{};std::array<uintptr_t,16> inventory_resources{},binding_resources{};
     gears_viewport::DrawState state{};gears_owned_attachments::Snapshot om{};
+    gears_source_output::Extent source_output{};
     std::array<uintptr_t,12> stack{};
 };
 struct Plan {Reason reason=disabled;Viewport before{},after{};bool apply()const{return reason==accepted;}};
@@ -38,8 +40,13 @@ inline Plan plan(Input const& in){
     if(!correct&&(!in.desktop_valid||!in.desktop_chain||!in.inventory_qpc||!in.desktop_epoch||!in.desktop_generation||
        in.desktop_generation!=in.matched_generation||!in.desktop_queue||in.desktop_queue!=in.owned_queue||
        !buffers_match||
-       !in.desktop_width||!in.desktop_height||
-       !(in.state.viewport==gears_viewport::Rect{0,0,float(in.desktop_width),float(in.desktop_height)}))){p.reason=desktop;return p;}
+       !in.desktop_width||!in.desktop_height)){p.reason=desktop;return p;}
+    // Present may legitimately be tiny while the native scene still uses the
+    // original engine extent. The frozen source is bound to this exact ticket
+    // and world; it does not establish the DSV's resource dimensions.
+    if(!correct&&(!in.source_output.matches(in.ticket,in.world)||
+       !(in.state.viewport==gears_viewport::Rect{0,0,float(in.source_output.rectangle[2]),float(in.source_output.rectangle[3])}))){
+        p.reason=source_extent;return p;}
     // Only our injected module may sit between these native returns. Never
     // search past another game return, or silently skip an unrelated DLL.
     const bool bounds=in.module_size>0x27e752&&in.module_base<=UINTPTR_MAX-in.module_size&&in.observer_base&&in.observer_size&&

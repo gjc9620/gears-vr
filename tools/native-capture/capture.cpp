@@ -3020,6 +3020,20 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     trace_rectangle(3,reinterpret_cast<uintptr_t>(sources.views[0]));trace_rectangle(4,reinterpret_cast<uintptr_t>(sources.views[1]));
     crosshair_live::freeze(frame,anchor);
     if(frame.enabled)frame.id=++stereo_ticket_counter;
+    if(owned_scene_target){
+        // Both constructor input snapshots retain the original integer output
+        // rectangle (+58..64); only their float eye rectangles were replaced.
+        // Freeze scalars now, while the authenticated original source is live.
+        std::array<int,4> original_output{},left_output{},right_output{};uintptr_t original_target{};
+        memcpy(original_output.data(),original_source.bytes.data()+0x58,sizeof(original_output));
+        memcpy(left_output.data(),sources.inputs[0].bytes.data()+0x58,sizeof(left_output));
+        memcpy(right_output.data(),sources.inputs[1].bytes.data()+0x58,sizeof(right_output));
+        memcpy(&original_target,original_family_bytes.data()+0x10,sizeof(original_target));
+        if(original_source.pointer(0)==family&&sources.inputs[0].pointer(0)==family&&sources.inputs[1].pointer(0)==family&&
+           sources.input_evidence.source==input.family_views[0]&&sources.input_evidence.family==reinterpret_cast<uintptr_t>(family))
+            frame.source_output=gears_source_output::freeze(frame.id,frame.world_generation,input.family_views[0],
+                reinterpret_cast<uintptr_t>(family),original_target,original_output,left_output,right_output);
+    }
     if(frame.crosshair){if(frame.id)frame.crosshair->ticket=frame.id;else frame.crosshair.reset();}
     const bool register_submission=submit_session_enabled();
     if(register_submission && !submitted_lifetime.begin(reinterpret_cast<uintptr_t>(destination),projection,frame)) {

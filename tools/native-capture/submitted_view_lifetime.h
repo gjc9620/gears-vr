@@ -6,6 +6,7 @@
 #include "projection_control.h"
 #include "ngx_native_create_source.h"
 #include "origin_trial.h"
+#include "source_output_extent.h"
 #include "../vr-common/stereo_frame.h"
 #include "../vr-common/stereo_ticket_store.h"
 
@@ -16,6 +17,7 @@ struct FrameTicket {bool enabled{};std::uint64_t id{};gears_vr::StereoSample sam
     // Frozen anchor mode for CPU diagnostics only; never part of a bridge ABI.
     bool unpossessed{};
     std::uint64_t world_generation{}; // Frozen internal world identity; no bridge ABI change.
+    gears_source_output::Extent source_output{}; // Immutable original engine extent, independent of Present.
     gears_vr::StereoMatrix source_view{},source_projection{};
     std::uint64_t reference_generation{};gears_vr::Pose reference{};gears_origin_trial::Metadata origin{};
     std::optional<gears_crosshair_scene::Metadata> crosshair;
