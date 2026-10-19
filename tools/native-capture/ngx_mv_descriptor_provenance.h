@@ -50,13 +50,21 @@ template<size_t N=128> struct Ranges {
     std::array<uint64_t,N> starts{};std::array<unsigned,N> sizes{};
 };
 struct ViewDescription {bool readable=true,provided{};D3D12_UNORDERED_ACCESS_VIEW_DESC value{};};
+// Audit of the source observation used to seed another bounded bank. Local
+// target versions are never relabeled as source history. Copies share this
+// immutable evidence; ordinary native writes clear it with the old cell.
+struct SeedEvidence {
+    Scope scope{};std::shared_ptr<unsigned const> owner;
+    uint64_t version{},origin{},source_handle{},source_version{};
+};
 
 template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease,
          size_t HeapCapacity=8,size_t CellCapacity=128,bool ReuseNonUav=false,size_t CopyCapacity=CellCapacity,bool SourceLedger=false>
 class DescriptorBank {
     static_assert(HeapCapacity&&CellCapacity&&CopyCapacity&&CopyCapacity<=CellCapacity,"nonempty bounded observation/copy limits");
     struct Cell {uintptr_t heap{};uint32_t index{};uint64_t version{},origin{},source_handle{},source_version{};
-        ResourceLease resource{},counter{};ViewDescription view{};bool known_uav{};};
+        ResourceLease resource{},counter{};ViewDescription view{};bool known_uav{};
+        std::shared_ptr<SeedEvidence const> seed;};
     Scope scope_{};Loss loss_{};bool begun_{};uint64_t serial_{};size_t heap_count_{},cell_count_{};
     uint64_t cell_reuses_{};
     std::array<DescriptorHeapLease,HeapCapacity> heaps_{};std::array<Cell,CellCapacity> cells_{};
@@ -120,6 +128,7 @@ public:
         Scope scope{};std::shared_ptr<unsigned const> owner;
         DescriptorHeapLease heap{};ResourceLease resource{},counter{};ViewDescription view{};
         uint64_t cpu{},gpu{},version{},origin{},source_handle{},source_version{};bool known_uav{};
+        std::shared_ptr<SeedEvidence const> seed;
         bool retained_uav()const{return known_uav&&heap.retained()&&resource.retained()&&version&&origin;}
         // Comparison ONLY with an already retained typed quartet MV lease.
         bool same_mv(ResourceLease const& mv)const{return retained_uav()&&mv.retained()&&
@@ -136,7 +145,12 @@ public:
     bool contains_cpu(uint64_t handle)const{uint32_t slot{};return begun_&&!failed()&&heap(handle,false,slot)!=nullptr;}
     void uncertain(){lose(Loss::unreadable);}
     bool observe_heap(Scope value,ID3D12DescriptorHeap* typed){
-        if(!scope(value))return false;auto h=DescriptorHeapLease::observe(typed);
+        if(!scope(value))return false;return observe_heap_lease(value,DescriptorHeapLease::observe(typed));
+    }
+    // Import ownership, never reconstruct an interface from a stored address.
+    // Uses the same validation as a direct typed heap boundary.
+    bool observe_heap_lease(Scope value,DescriptorHeapLease const& h){
+        if(!scope(value))return false;
         if(!h.retained())return lose(Loss::invalid_heap);if(h.device!=scope_.device)return lose(Loss::device_mismatch);
         for(size_t i=0;i<heap_count_;++i)if(heaps_[i].canonical==h.canonical){auto const& old=heaps_[i];
             return old.cpu==h.cpu&&old.gpu==h.gpu&&old.count==h.count&&old.stride==h.stride&&old.visible==h.visible?true:lose(Loss::invalid_heap);}
@@ -144,7 +158,40 @@ public:
         for(size_t i=0;i<heap_count_;++i){auto const& old=heaps_[i];uint64_t last{},last_gpu{};span(old.cpu,old.count,old.stride,last);
             if(h.cpu<=last&&old.cpu<=end)return lose(Loss::overlap);
             if(h.visible&&old.visible){span(old.gpu,old.count,old.stride,last_gpu);if(h.gpu<=last_gpu&&old.gpu<=gpu_end)return lose(Loss::overlap);}}
-        if(heap_count_==HeapCapacity)return capacity_loss(CapacitySite::heaps);heaps_[heap_count_++]=std::move(h);return true;
+        if(heap_count_==HeapCapacity)return capacity_loss(CapacitySite::heaps);heaps_[heap_count_++]=h;return true;
+    }
+    // Caller holds the common ordering lock across heap import and seeding.
+    // A failed source cannot donate any lease, even if its historical snapshots
+    // still own valid COM objects. Visitor returns false to stop a failed import.
+    template<class Visit> bool visit_heap_leases(Scope value,Visit visit)const{
+        if(!begun_||failed()||!same(scope_,value))return false;
+        for(size_t i=0;i<heap_count_;++i)if(!visit(heaps_[i]))return false;return true;
+    }
+    // Requires the source heap to have been imported. Import all source heaps
+    // first so later native alias copies cannot resolve through missing history.
+    template<class Source> bool seed_current_mv(Scope value,Source const& source,typename Source::Snapshot const& captured,ResourceLease const& selected_mv){
+        if(!scope(value))return false;
+        if(!source.current(captured)||!captured.same_mv(selected_mv))return lose(Loss::unreadable);
+        // Snapshot fields are public diagnostic values. Re-read the current
+        // source cell rather than copying edited resource/view/heap fields.
+        const auto live=source.lookup(captured.scope,captured.cpu);
+        if(!live.same_mv(selected_mv)||!live.view.readable||live.owner==owner_)return lose(Loss::unreadable);
+        if(captured.gpu!=live.gpu)return lose(Loss::bad_range);
+        const bool counter_present=live.counter.raw||live.counter.canonical||live.counter.device;
+        if(counter_present&&!live.counter.retained())return lose(Loss::unreadable);
+        if(live.scope.device!=scope_.device||live.heap.device!=scope_.device||live.resource.device!=scope_.device||
+           (counter_present&&live.counter.device!=scope_.device))return lose(Loss::device_mismatch);
+        uint32_t slot{};const auto* h=heap(live.cpu,false,slot);
+        if(!h||h->canonical!=live.heap.canonical)return lose(Loss::unknown_heap);
+        if(h->cpu!=live.heap.cpu||h->gpu!=live.heap.gpu||h->count!=live.heap.count||h->stride!=live.heap.stride||h->visible!=live.heap.visible||
+           live.gpu!=(h->visible?h->gpu+uint64_t(slot)*h->stride:0))return lose(Loss::invalid_heap);
+        if(serial_==UINT64_MAX)return capacity_loss(CapacitySite::serial);
+        std::shared_ptr<SeedEvidence const> evidence;
+        try{evidence=std::make_shared<SeedEvidence const>(SeedEvidence{live.scope,live.owner,live.version,live.origin,live.source_handle,live.source_version});}
+        catch(...){return lose(Loss::unreadable);}
+        auto* c=destination(h->canonical,slot);if(!c)return false;
+        *c={h->canonical,slot,++serial_};c->origin=c->version;c->resource=live.resource;c->counter=live.counter;
+        c->view=live.view;c->known_uav=true;c->seed=std::move(evidence);return true;
     }
     // Call after the original typed CreateUAV returned, under the same ordering
     // lock as every descriptor writer. Desc is a guarded pre-call value copy.
@@ -205,7 +252,7 @@ public:
         Snapshot out;if(!begun_||failed()||!same(scope_,value))return out;uint32_t slot{};auto* h=heap(handle,gpu,slot);if(!h)return out;
         auto* c=find(h->canonical,slot);if(!c)return out;out.scope=scope_;out.owner=owner_;out.heap=*h;out.resource=c->resource;out.counter=c->counter;out.view=c->view;
         out.cpu=h->cpu+uint64_t(slot)*h->stride;out.gpu=h->visible?h->gpu+uint64_t(slot)*h->stride:0;out.version=c->version;out.origin=c->origin;
-        out.source_handle=c->source_handle;out.source_version=c->source_version;out.known_uav=c->known_uav;return out;
+        out.source_handle=c->source_handle;out.source_version=c->source_version;out.known_uav=c->known_uav;out.seed=c->seed;return out;
     }
     bool current(Snapshot const& captured)const{auto live=lookup(captured.scope,captured.cpu);
         return captured.owner&&captured.owner==owner_&&captured.version&&live.version==captured.version&&
@@ -239,4 +286,8 @@ using ObserverDescriptorBank=DescriptorBank<ResourceLease,DescriptorHeapLease,ob
 // device bank. Original direct UAV cells and nonvisible aliases only, no eviction.
 template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease>
 using SourceDescriptorLedger=DescriptorBank<ResourceLease,DescriptorHeapLease,96,128,false,128,true>;
+// Core storage for a later selected-MV observation scope. Validated heap import
+// and resource seeding stay separate; no hook or admission policy is attached.
+template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease>
+using SelectedMvDescriptorBank=DescriptorBank<ResourceLease,DescriptorHeapLease,96,128,true,128>;
 }

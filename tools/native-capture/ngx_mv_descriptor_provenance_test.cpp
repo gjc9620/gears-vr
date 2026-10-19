@@ -411,6 +411,74 @@ void source_ledger_skipped_copy_validation(){
     assert(!full.visit_mv(early,typed_mv,[&](Ledger::Snapshot const&){++joined;})&&!joined&&!full.current(old)&&old.retained_uav());
     assert(!full.begin(early)&&full.saturation().cells.known_uav==128);
 }
+void lease_only_seed_and_source_retirement(){
+    using Source=gears_ngx_mv::SourceDescriptorLedger<ResourceLease,HeapLease>;
+    using Target=gears_ngx_mv::SelectedMvDescriptorBank<ResourceLease,HeapLease>;
+    static_assert(Target::heap_capacity==96&&Target::cell_capacity==128&&Target::copy_capacity==128&&Target::reuse_non_uav,"bounded future target core");
+    const auto birth_scope=gears_ngx_mv::lifetime_scope(2,7);const gears_ngx_mv::Scope target_scope{5,6,7,7};
+    auto target=std::make_unique<Target>();assert(target->begin(target_scope));
+    std::weak_ptr<unsigned> resource_hold,counter_hold,heap_hold;uint64_t source_version{},source_origin{};
+    Target::Snapshot seeded,copied;ResourceLease selected;
+    {Source source;HeapFixture cpu{},gpu{202,7,2000,10000,8,32,true,true};ResourceFixture mv{},counter{102,7,true};
+        assert(source.begin(birth_scope)&&source.observe_heap(birth_scope,typed(cpu))&&source.observe_heap(birth_scope,typed(gpu)));
+        assert(source.unknown_write(birth_scope,1000)&&source.unknown_write(birth_scope,1032));
+        gears_ngx_mv::ViewDescription view;view.provided=true;view.value.Format=DXGI_FORMAT_R32_UINT;view.value.ViewDimension=D3D12_UAV_DIMENSION_TEXTURE2D;
+        assert(source.write_uav(birth_scope,1000,typed(mv),typed(counter),view)&&source.copy_simple_sparse(birth_scope,1016,1000,1));
+        auto alias=source.lookup(birth_scope,1016);selected=ResourceLease::observe(typed(mv));
+        resource_hold=alias.resource.hold;counter_hold=alias.counter.hold;heap_hold=alias.heap.hold;source_version=alias.version;source_origin=alias.origin;
+        size_t heaps{};assert(source.visit_heap_leases(birth_scope,[&](HeapLease const& lease){++heaps;return target->observe_heap_lease(target_scope,lease);}));
+        assert(heaps==2&&target->heaps()==2&&target->seed_current_mv(target_scope,source,alias,selected));
+        seeded=target->lookup(target_scope,1016);
+        assert(seeded.same_mv(selected)&&seeded.version==1&&seeded.origin==1&&seeded.version!=source_version&&seeded.origin!=source_origin);
+        assert(seeded.seed&&gears_ngx_mv::same(seeded.seed->scope,birth_scope)&&seeded.seed->owner==alias.owner&&seeded.seed->version==source_version&&seeded.seed->origin==source_origin);
+        assert(seeded.seed->source_handle==1000&&seeded.seed->source_version==source_origin&&seeded.counter.hold==alias.counter.hold&&seeded.view.value.Format==view.value.Format);
+        assert(target->copy_simple_sparse(target_scope,2000,1016,1));copied=target->lookup(target_scope,10000,true);
+        assert(copied.same_mv(selected)&&copied.seed==seeded.seed&&copied.source_version==seeded.version&&copied.origin==seeded.origin);
+        // Re-seeding is a fresh local write; old target snapshots cannot become current.
+        assert(target->seed_current_mv(target_scope,source,alias,selected)&&!target->current(seeded)&&target->current(copied));
+    }
+    selected={};assert(!resource_hold.expired()&&!counter_hold.expired()&&!heap_hold.expired());
+    auto live=target->lookup(target_scope,1016);assert(live.retained_uav()&&live.seed->version==source_version&&gears_ngx_mv::same(live.scope,target_scope));
+    assert(target->unknown_write(target_scope,1016)&&!target->lookup(target_scope,1016).seed&&!target->current(live));
+    assert(target->unknown_write(target_scope,2000)&&!target->current(copied));
+    seeded={};copied={};live={};assert(resource_hold.expired()&&counter_hold.expired()&&!heap_hold.expired());
+    target.reset();assert(heap_hold.expired());
+}
+void seed_rejects_stale_owner_failure_device_and_non_mv(){
+    using Target=gears_ngx_mv::SelectedMvDescriptorBank<ResourceLease,HeapLease>;
+    for(unsigned bad=0;bad<7;++bad){Setup source;source.write();Setup other;other.write();
+        auto captured=source.bank.lookup(scope,1000);auto selected=ResourceLease::observe(typed(source.mv));
+        auto target_scope=scope;++target_scope.epoch;if(bad==3)target_scope.device=8;
+        Target target;assert(target.begin(target_scope));
+        if(bad!=3&&bad!=6)assert(source.bank.visit_heap_leases(scope,[&](HeapLease const& h){return target.observe_heap_lease(target_scope,h);}));
+        if(bad==0)assert(source.bank.invalidate_if_tracked(scope,1000));
+        if(bad==1)captured=other.bank.lookup(scope,1000);
+        if(bad==2)source.bank.uncertain();
+        if(bad==4){selected=ResourceLease::observe(typed(source.other));captured.resource=selected;} // Forged retained payload cannot bypass the live source check.
+        if(bad==5)++captured.gpu;
+        assert(!target.seed_current_mv(target_scope,source.bank,captured,selected)&&target.failed()&&!target.cells());
+        assert(source.bank.heaps()==2); // Rejection never mutates the donating bank.
+    }
+}
+void retained_heap_import_validation_and_authoritative_seed(){
+    using Target=gears_ngx_mv::SelectedMvDescriptorBank<ResourceLease,HeapLease>;
+    for(unsigned bad=0;bad<4;++bad){Setup source;source.write();auto captured=source.bank.lookup(scope,1000);auto lease=captured.heap;
+        Target target;assert(target.begin(scope));
+        if(bad==0)lease.hold.reset();if(bad==1)lease.device=8;
+        if(bad==2)lease.cpu=UINT64_MAX-1;
+        if(bad==3){assert(target.observe_heap_lease(scope,lease));++lease.canonical;}
+        assert(!target.observe_heap_lease(scope,lease)&&target.failed());
+    }
+    Setup source;source.write();auto captured=source.bank.lookup(scope,1000);auto selected=ResourceLease::observe(typed(source.mv));
+    Target target;auto next=scope;++next.epoch;assert(target.begin(next));
+    assert(source.bank.visit_heap_leases(scope,[&](HeapLease const& h){return target.observe_heap_lease(next,h);}));
+    // Public diagnostic fields cannot substitute another retained payload while
+    // preserving a genuine owner/version: seed copies the live source row.
+    captured.counter=ResourceLease::observe(typed(source.other));captured.view.value.Format=DXGI_FORMAT_R32_UINT;
+    assert(target.seed_current_mv(next,source.bank,captured,selected));auto seeded=target.lookup(next,1000);
+    assert(!seeded.counter.retained()&&seeded.view.value.Format==DXGI_FORMAT_UNKNOWN);
+    source.bank.uncertain();size_t visited{};assert(!source.bank.visit_heap_leases(scope,[&](HeapLease const&){++visited;return true;})&&!visited);
+}
 }
 int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     static_assert(!Bank::Snapshot::producer_authorized,"observation must not authorize producer");
@@ -421,5 +489,6 @@ int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     erased_cell_reuse_and_snapshot_aba();reuse_copy_source_snapshot_and_validation();
     production_cell_and_copy_boundaries();
     source_ledger_aliases_fanout_and_rewrites();source_ledger_independence_and_failed_no_join();source_ledger_skipped_copy_validation();
+    lease_only_seed_and_source_retirement();seed_rejects_stale_owner_failure_device_and_non_mv();retained_heap_import_validation_and_authoritative_seed();
     std::puts("NGX MV descriptor CPU provenance tests passed; no GPU/Dispatch/producer proof");
 }

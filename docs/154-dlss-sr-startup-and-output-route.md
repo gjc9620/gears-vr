@@ -574,3 +574,13 @@ protected-file restores passed. Final observer status reports released1.
 Archived raw evidence: `analysis/runtime/dlss-descriptor-menu1-native-status.txt`
 and `dlss-descriptor-menu1-prime-status.txt`; lifecycle receipt:
 `analysis/runtime/dlss-descriptor-menu1-20261019.json`. No public default changed.
+
+## 2026-10-19: selected MV seed and future-consume core
+
+Fresh build `build-ngx-target-core1` passed dependency verification (457 includes), continuous startup suite, descriptor provenance/census tests, target-window CPU tests, live epoch fixture and native descriptor/prime/handoff/continuous fixtures. DLL SHA256 `a5229ce02566dd3c33352784060e260378847f55db060370a1bc7539347e7f92`. Receipt: ignored `analysis/runtime/ngx-target-core1-tests.json`; full output `ngx-target-core1-selftests.log`.
+
+The seed API imports retained typed heap leases and re-reads a current source cell before retaining its selected MV resource, counter and view. Target versions remain local; immutable source provenance survives alias copies. Tests cover stale/forged/foreign observations, invalid imports, and resource ownership after source retirement.
+
+The independent CPU window excludes the selection ticket, permits a different renderer on the next newer consume, and requires stable world/Create revision/MV plus one or two successfully returned Eval calls. Deadline, nesting, identity changes and missing/unfinished Eval terminate the observation. A frozen window is scheduling evidence, not stereo or GPU producer proof.
+
+These cores are not yet wired into runtime command-list/Dispatch observation. No game was launched for this step; player default and release package remain unchanged. Next: integrate bounded selected-source descriptor capture and command-list state with attested runtime callers, then collect actual-game evidence.
