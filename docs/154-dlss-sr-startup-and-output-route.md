@@ -441,3 +441,31 @@ is unchanged. Root's fresh CPU test run passed, including full-capacity overwrit
 and skip cases (`analysis/runtime/mv-descriptor-provenance3/receipt.json`).
 Header SHA256 `93ade51057bce6f7035644812310d09b6d2527d7b87fd4ffc7e06dfc2a8ed35b`;
 test SHA256 `0cf4221d0d6b257f32dedc0261ca7c7da293a57faa4082f05444f51ff7f2a9be`.
+
+### Early descriptor hook candidate, default OFF
+
+`GEARS_NGX_MV_DESCRIPTOR_OBSERVER` appends CreateDescriptorHeap/CBV/SRV/UAV
+observation to the existing prime and viewport hooks, and shares the existing
+descriptor-copy callbacks. The first observed CBV/SRV/UAV heap selects one
+bounded, explicitly unattested device candidate. Other devices are counted;
+unknown births and capacity/order uncertainty invalidate the observation.
+Original calls still run once. History survives prime handoff and world changes;
+closed admission and drained callbacks precede retained-lease release.
+The status explicitly reports no selected-pair or producer proof.
+
+Root built `build-ngx-descriptor-early4/GearsCaptureNgxDescriptorEarly4.dll`,
+SHA256 `37b4f2849ca726346b6a3ba063198f8c12aafec58d4a42d193c6ec5b493e9c5c`.
+Fresh build recorded469 dependencies; CPU provenance test and the existing
+continuous startup suite passed. Separate `--prime`, `--prime-handoff`,
+`--prime-owned-cancel`, `--prime-owned-exit`, `--prime-owned-handoff` and
+`--continuous` invocations all returned0. These prime fixtures did not create
+a CBV heap, so they verify hook lifecycle/restoration, not the new typed
+descriptor callback data path. A dedicated real-device fixture and selected
+MV/Dispatch association remain required before an actual-game producer claim.
+No default manifest or player DLL changed. Startup-trace ON remains unverified:
+that option requires a different game-resolution diagnostic configuration.
+The first three fresh configure attempts rejected missing NGX dependencies or
+the incompatible source-pixel observer, before any binary was produced.
+The observer-OFF configuration also passed a fresh build, CPU test and continuous
+startup suite: `build-ngx-descriptor-off1/GearsCaptureNgxDescriptorOff1.dll`,
+SHA256 `61fff9f378ac0f349c6a7faa8459176b5fa3089b464cd74dce8705fce6a44db8`.

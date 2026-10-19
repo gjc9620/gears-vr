@@ -43,6 +43,9 @@
 #include "ngx_typed_copy.h"
 #include "ngx_typed_quartet.h"
 #include "ngx_epoch_pair_probe.h"
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+#include "ngx_mv_descriptor_provenance.h"
+#endif
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
 #include "ngx_output_delayed_gate.h"
 #endif
@@ -176,6 +179,7 @@ namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_fr
 namespace death_constant_observer {void print(FILE*);}
 namespace dlss_route_observer {void print(FILE*);void draw(uintptr_t,uintptr_t,unsigned,unsigned,unsigned);}
 namespace ngx_route_observer {void print(FILE*);}
+namespace ngx_mv_descriptor_capture {void arm();void close();void release_drained();void print(FILE*);}
 namespace death_dof_control {void print(FILE*);}
 namespace vr_dof_compat {void print(FILE*);void progress(FILE*);void retire();bool publication(uint64_t,uint64_t);bool retire_owned(uint64_t,uint64_t);}
 namespace death_pso_cache {void print(FILE*);void poll();}
@@ -393,16 +397,22 @@ SessionActivationGate session_activation_gate;
 std::atomic<LONGLONG> session_activation_ready_qpc{};
 struct SessionHookEntry{void* target{};void* detour{};std::array<unsigned char,32> bytes{};};
 #if defined(GEARS_NATIVE_RESIZE_PROBE) && GEARS_NATIVE_RESIZE_PROBE
-constexpr size_t session_hook_base_capacity=60,viewport_hook_capacity=29;
+constexpr size_t session_hook_base_capacity=60,viewport_hook_base_capacity=29;
 #elif defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
-constexpr size_t session_hook_base_capacity=59,viewport_hook_capacity=29;
+constexpr size_t session_hook_base_capacity=59,viewport_hook_base_capacity=29;
 #elif defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
-constexpr size_t session_hook_base_capacity=42,viewport_hook_capacity=13;
+constexpr size_t session_hook_base_capacity=42,viewport_hook_base_capacity=13;
 #elif defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
-constexpr size_t session_hook_base_capacity=40,viewport_hook_capacity=11;
+constexpr size_t session_hook_base_capacity=40,viewport_hook_base_capacity=11;
 #else
-constexpr size_t session_hook_base_capacity=39,viewport_hook_capacity=10;
+constexpr size_t session_hook_base_capacity=39,viewport_hook_base_capacity=10;
 #endif
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+constexpr unsigned ngx_mv_descriptor_hooks=4;
+#else
+constexpr unsigned ngx_mv_descriptor_hooks=0;
+#endif
+constexpr size_t viewport_hook_capacity=viewport_hook_base_capacity+ngx_mv_descriptor_hooks;
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
 constexpr size_t session_hook_capacity=session_hook_base_capacity+4;
@@ -487,7 +497,7 @@ constexpr unsigned ngx_stereo_host_hooks=3;
 #else
 constexpr unsigned ngx_stereo_host_hooks=0;
 #endif
-std::array<SessionHookEntry,ngx_stereo_host_hooks+session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+std::array<SessionHookEntry,ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -591,10 +601,11 @@ using BarrierFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,const D
 BarrierFn original_resource_barrier{};
 #endif
 #if defined(GEARS_SWAPCHAIN_STARTUP_TRACE) && GEARS_SWAPCHAIN_STARTUP_TRACE
-constexpr unsigned prime_hook_count=8;
+constexpr unsigned prime_hook_base_count=8;
 #else
-constexpr unsigned prime_hook_count=6;
+constexpr unsigned prime_hook_base_count=6;
 #endif
+constexpr unsigned prime_hook_count=prime_hook_base_count+ngx_mv_descriptor_hooks;
 std::array<void*,prime_hook_count> prime_targets{};
 std::atomic<bool> prime_recording{},prime_ready{},prime_handoff{},prime_done{};
 std::atomic<unsigned> prime_started{};
@@ -1107,6 +1118,7 @@ bool verified_stereo_draw(gears_viewport::DrawState const& state,FinalEye const&
 void release_bindings() {
     // Call only after all hooks are disabled and callbacks have drained. Holding
     // chain/queue identities prevents reuse; buffers are NEVER held long term.
+    ngx_mv_descriptor_capture::release_drained();
     std::lock_guard<std::mutex> lock(binding_owner_mutex);
     for(auto& owner:binding_owners){if(owner.chain)owner.chain->Release();if(owner.queue)owner.queue->Release();owner={};}
 }
@@ -1812,6 +1824,7 @@ void print_frame_link(FILE* status) {
     death_constant_observer::print(status);
     dlss_route_observer::print(status);
     ngx_route_observer::print(status);
+    ngx_mv_descriptor_capture::print(status);
     ngx_stereo_host::print(status);
     ngx_output_pixels::print(status);
     owned_source_pixels::print(status);
@@ -4003,6 +4016,7 @@ void STDMETHODCALLTYPE hook_targets(ID3D12GraphicsCommandList* list,UINT count,c
     death_hdr_timeline::targets_event(list,count,single!=FALSE,reinterpret_cast<uintptr_t>(_ReturnAddress())-base);
     original_targets(list,count,handles,single,depth);
 }
+#include "ngx_mv_descriptor_capture.inl"
 void STDMETHODCALLTYPE hook_create_rtv(ID3D12Device* device,ID3D12Resource* resource,const D3D12_RENDER_TARGET_VIEW_DESC* view,D3D12_CPU_DESCRIPTOR_HANDLE handle) {
     if(stereo_publish_bypass){original_create_rtv(device,resource,view,handle);return;}
     Scope scope;auto frame_guard=frame_lock();original_create_rtv(device,resource,view,handle);
@@ -4042,7 +4056,17 @@ bool flatten_descriptors(UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* starts,co
 }
 void STDMETHODCALLTYPE hook_copy_descriptors(ID3D12Device* device,UINT destinations,const D3D12_CPU_DESCRIPTOR_HANDLE* destination_starts,const UINT* destination_sizes,
     UINT sources,const D3D12_CPU_DESCRIPTOR_HANDLE* source_starts,const UINT* source_sizes,D3D12_DESCRIPTOR_HEAP_TYPE type) {
-    Scope scope;auto frame_guard=frame_lock();original_copy_descriptors(device,destinations,destination_starts,destination_sizes,sources,source_starts,source_sizes,type);
+    Scope scope;auto frame_guard=frame_lock();
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+    ngx_mv_descriptor_capture::Call observation(type==D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    ngx_mv_descriptor_capture::Ranges captured_dest{},captured_src{};
+    if(observation){captured_dest=ngx_mv_descriptor_capture::read_ranges(destinations,destination_starts,destination_sizes);
+        captured_src=ngx_mv_descriptor_capture::read_ranges(sources,source_starts,source_sizes);}
+#endif
+    original_copy_descriptors(device,destinations,destination_starts,destination_sizes,sources,source_starts,source_sizes,type);
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+    if(observation)ngx_mv_descriptor_capture::attempt([&]{ngx_mv_descriptor_capture::copied(device,captured_dest,captured_src);});
+#endif
     if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> dest{},src{};unsigned dc{},sc{};
         std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
         const auto descriptor_epoch=final_eye_inventory.epoch;
@@ -4053,7 +4077,17 @@ void STDMETHODCALLTYPE hook_copy_descriptors(ID3D12Device* device,UINT destinati
         else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(owned_bindings_enabled)owned_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
 }
 void STDMETHODCALLTYPE hook_copy_simple(ID3D12Device* device,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dest,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type) {
-    Scope scope;auto frame_guard=frame_lock();original_copy_simple(device,count,dest,src,type);
+    Scope scope;auto frame_guard=frame_lock();
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+    ngx_mv_descriptor_capture::Call observation(type==D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+#endif
+    original_copy_simple(device,count,dest,src,type);
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+    if(observation)ngx_mv_descriptor_capture::attempt([&]{
+        ngx_mv_descriptor_capture::Ranges d{},s{};d.count=s.count=1;d.sizes_present=s.sizes_present=true;
+        d.starts[0]=dest.ptr;s.starts[0]=src.ptr;d.sizes[0]=s.sizes[0]=count;
+        ngx_mv_descriptor_capture::copied(device,d,s);});
+#endif
     if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> destinations{},sources{};unsigned dc{},sc{};
         std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
         const auto descriptor_epoch=final_eye_inventory.epoch;
@@ -4064,6 +4098,7 @@ void STDMETHODCALLTYPE hook_copy_simple(ID3D12Device* device,UINT count,D3D12_CP
         else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(owned_bindings_enabled)owned_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
 }
 bool viewport_hooks(ID3D12Device* device) {
+    ngx_mv_descriptor_capture::arm();
     ID3D12CommandAllocator* allocator{};ID3D12GraphicsCommandList* list{};bool success=false;
     if(SUCCEEDED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)))&&
        SUCCEEDED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator,nullptr,IID_PPV_ARGS(&list)))) {
@@ -4084,6 +4119,16 @@ bool viewport_hooks(ID3D12Device* device) {
         success=install(viewport_targets[6],reinterpret_cast<void*>(hook_create_rtv),reinterpret_cast<void**>(&original_create_rtv))&&success;
         success=install(viewport_targets[7],reinterpret_cast<void*>(hook_copy_descriptors),reinterpret_cast<void**>(&original_copy_descriptors))&&success;
         success=install(viewport_targets[8],reinterpret_cast<void*>(hook_copy_simple),reinterpret_cast<void**>(&original_copy_simple))&&success;
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+        viewport_targets[viewport_hook_base_capacity]=device_table[14];
+        viewport_targets[viewport_hook_base_capacity+1]=device_table[17];
+        viewport_targets[viewport_hook_base_capacity+2]=device_table[18];
+        viewport_targets[viewport_hook_base_capacity+3]=device_table[19];
+        success=install(viewport_targets[viewport_hook_base_capacity],reinterpret_cast<void*>(ngx_mv_descriptor_capture::heap),reinterpret_cast<void**>(&ngx_mv_descriptor_capture::original_heap))&&success;
+        success=install(viewport_targets[viewport_hook_base_capacity+1],reinterpret_cast<void*>(ngx_mv_descriptor_capture::cbv),reinterpret_cast<void**>(&ngx_mv_descriptor_capture::original_cbv))&&success;
+        success=install(viewport_targets[viewport_hook_base_capacity+2],reinterpret_cast<void*>(ngx_mv_descriptor_capture::srv),reinterpret_cast<void**>(&ngx_mv_descriptor_capture::original_srv))&&success;
+        success=install(viewport_targets[viewport_hook_base_capacity+3],reinterpret_cast<void*>(ngx_mv_descriptor_capture::uav),reinterpret_cast<void**>(&ngx_mv_descriptor_capture::original_uav))&&success;
+#endif
         if(color_copy_diagnostics)success=install(viewport_targets[9],reinterpret_cast<void*>(hook_color_copy),reinterpret_cast<void**>(&original_color_copy))&&success;
 #if defined(GEARS_DEATH_PSO_CACHE) && GEARS_DEATH_PSO_CACHE
         death_pso_cache::targets={table[25],table[11],table[27]};
@@ -4160,6 +4205,7 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
         auto stats=viewport_stats.snapshot();
         fprintf(status,"handed_off creates=%llu copies=%llu evictions=%llu\n",stats.descriptor_creates,stats.descriptor_copies,stats.descriptor_evictions);
     }else{
+        ngx_mv_descriptor_capture::close();
         prime_recording=false;bool disabled=disable_graphics_lock_prime();
         for(auto target:prime_targets){auto result=MH_DisableHook(target);disabled=disabled&&(result==MH_OK||result==MH_ERROR_DISABLED);}
         // Apply can still be inside a native collector/commit when cancellation
@@ -4178,6 +4224,7 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
         if(!active.load())release_bindings();
     }
     gears_swapchain_startup::print(status,&startup_export);
+    ngx_mv_descriptor_capture::print(status);
     fclose(status);prime_done=true;return 0;
 }
 DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullptr) {
@@ -4198,6 +4245,10 @@ DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullpt
     if(FAILED(CreateDXGIFactory2(0,IID_PPV_ARGS(&factory)))){device->Release();fclose(status);return ERROR_NOT_SUPPORTED;}
     auto table=*reinterpret_cast<void***>(device);auto factory_table=*reinterpret_cast<void***>(factory);
     prime_targets={table[20],table[23],table[24],factory_table[10],factory_table[15],factory_table[24]};
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+    prime_targets[prime_hook_base_count]=table[14];prime_targets[prime_hook_base_count+1]=table[17];
+    prime_targets[prime_hook_base_count+2]=table[18];prime_targets[prime_hook_base_count+3]=table[19];
+#endif
 #if defined(GEARS_SWAPCHAIN_STARTUP_TRACE) && GEARS_SWAPCHAIN_STARTUP_TRACE
     // Discover the existing resize entrypoints before the game's first chain.
     // This private composition chain has no HWND and is released before hooks
@@ -4223,6 +4274,16 @@ DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullpt
         reinterpret_cast<void*>(hook_create_swapchain),reinterpret_cast<void*>(hook_create_hwnd),reinterpret_cast<void*>(hook_create_composition)};
     std::array<void**,prime_hook_count> originals{reinterpret_cast<void**>(&original_create_rtv),reinterpret_cast<void**>(&original_copy_descriptors),reinterpret_cast<void**>(&original_copy_simple),
         reinterpret_cast<void**>(&original_create_swapchain),reinterpret_cast<void**>(&original_create_hwnd),reinterpret_cast<void**>(&original_create_composition)};
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+    detours[prime_hook_base_count]=reinterpret_cast<void*>(ngx_mv_descriptor_capture::heap);
+    detours[prime_hook_base_count+1]=reinterpret_cast<void*>(ngx_mv_descriptor_capture::cbv);
+    detours[prime_hook_base_count+2]=reinterpret_cast<void*>(ngx_mv_descriptor_capture::srv);
+    detours[prime_hook_base_count+3]=reinterpret_cast<void*>(ngx_mv_descriptor_capture::uav);
+    originals[prime_hook_base_count]=reinterpret_cast<void**>(&ngx_mv_descriptor_capture::original_heap);
+    originals[prime_hook_base_count+1]=reinterpret_cast<void**>(&ngx_mv_descriptor_capture::original_cbv);
+    originals[prime_hook_base_count+2]=reinterpret_cast<void**>(&ngx_mv_descriptor_capture::original_srv);
+    originals[prime_hook_base_count+3]=reinterpret_cast<void**>(&ngx_mv_descriptor_capture::original_uav);
+#endif
 #if defined(GEARS_SWAPCHAIN_STARTUP_TRACE) && GEARS_SWAPCHAIN_STARTUP_TRACE
     detours[6]=reinterpret_cast<void*>(game_resize::hook);detours[7]=reinterpret_cast<void*>(game_resize::hook1);
     originals[6]=reinterpret_cast<void**>(&game_resize::original);originals[7]=reinterpret_cast<void**>(&game_resize::original1);
@@ -4242,12 +4303,12 @@ DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullpt
     ok=ok&&prime_event;
     if(ok&&prime_owner.handle)ok=prime_owner.state()==gears_session::OwnerState::alive;
     if(ok)ok=begin_graphics_lock_prime(status,prime_owner.handle!=nullptr);
-    if(ok){prime_recording=true;ok=MH_ApplyQueued()==MH_OK;}
+    if(ok){ngx_mv_descriptor_capture::arm();prime_recording=true;ok=MH_ApplyQueued()==MH_OK;}
     HANDLE thread{};
     if(ok){thread=CreateThread(nullptr,0,target_prime_watchdog,status,0,nullptr);ok=thread!=nullptr;}
-    if(!ok){prime_recording=false;disable_graphics_lock_prime();for(auto target:prime_targets){MH_QueueDisableHook(target);MH_DisableHook(target);}fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
-    if(prime_owner.handle)fprintf(status,"capturing pid=%lu lifetime=owner owner_pid=%lu owner_creation_time=%llu native_hooks_enabled=%u graphics_hooks_enabled=%u scene_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId(),prime_owner_pid,static_cast<unsigned long long>(prime_owner_creation_time),graphics_lock_prime_count(),graphics_lock_prime_count());
-    else fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=3 factory_hooks_enabled=3\n",GetCurrentProcessId());fflush(status);
+    if(!ok){ngx_mv_descriptor_capture::close();prime_recording=false;disable_graphics_lock_prime();for(auto target:prime_targets){MH_QueueDisableHook(target);MH_DisableHook(target);}ngx_mv_descriptor_capture::release_drained();ngx_mv_descriptor_capture::print(status);fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
+    if(prime_owner.handle)fprintf(status,"capturing pid=%lu lifetime=owner owner_pid=%lu owner_creation_time=%llu native_hooks_enabled=%u graphics_hooks_enabled=%u scene_hooks_enabled=0 descriptor_hooks_enabled=%u factory_hooks_enabled=3\n",GetCurrentProcessId(),prime_owner_pid,static_cast<unsigned long long>(prime_owner_creation_time),graphics_lock_prime_count(),graphics_lock_prime_count(),3+ngx_mv_descriptor_hooks);
+    else fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=%u factory_hooks_enabled=3\n",GetCurrentProcessId(),3+ngx_mv_descriptor_hooks);fflush(status);
     prime_ready=true;CloseHandle(thread);return 0;
 }
 void reset_world_thread_context(){
@@ -4638,10 +4699,12 @@ DWORD WINAPI worker(void*) {
     }
     if(!ok) {
         session_activation_gate.close();
+        ngx_mv_descriptor_capture::close();
         recording=false;MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
         close_quad_source_events();
         close_first_view_mask_events();
         close_stereo_recenter_event();
+        ngx_mv_descriptor_capture::release_drained();ngx_mv_descriptor_capture::print(status);
         fprintf(status,"hook installation failed disable_status=%d active=%u\n",disabled,active.load());
         diagnostic_status=nullptr;fclose(file);fclose(status);return 6;
     }
@@ -4717,6 +4780,7 @@ DWORD WINAPI worker(void*) {
     // Disable entry patches; leave the DLL and trampolines resident so delayed
     // in-flight execution can never jump into freed code.
     session_activation_gate.close();
+    ngx_mv_descriptor_capture::close();
     death_hdr_pixels::stop();
     ngx_output_pixels::stop();
     owned_source_pixels::stop();
@@ -4760,6 +4824,7 @@ DWORD WINAPI worker(void*) {
     print_graphics_lock_observer(status,disabled==MH_OK);
     print_origin_trial(status,disabled==MH_OK);
     if(!active.load()&&stereo_closed)release_bindings();
+    ngx_mv_descriptor_capture::print(status);
     if(continuous_session){
         {std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);retire_stereo_window();}
     }
@@ -5756,8 +5821,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureGPUCheck(void*) {
                ring[0].command_count!=1 || !(ring[0].valid&128)))result=55;
         }
     }
+    ngx_mv_descriptor_capture::close();
     if(MH_DisableHook(MH_ALL_HOOKS)!=MH_OK && !result)result=56;
     recording=false;
+    ngx_mv_descriptor_capture::release_drained();
     if(!result && (!safe_copy(after,execute_target,32) || memcmp(before,after,32)))result=57;
     if(!result&&viewport_diagnostics)for(unsigned i=0;i<viewport_targets.size();++i)
         if(viewport_targets[i]&&(!safe_copy(after,viewport_targets[i],32)||memcmp(after,viewport_before[i].data(),32)))result=62;
