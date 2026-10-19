@@ -110,10 +110,11 @@ uint64_t publication_world{},publication_ticket{};
 struct Timing {uint64_t ticket{};int64_t selected{},built{},begin{},draw[2]{},submitted{},returned{},destroyed{},ready{},publish_begin{},publish_end{},received{};
  gears_render_cost::Record cost{};};
 std::array<Timing,frame_limit> timings{};unsigned timing_count{};
-Timing latest_timing{},latest_completed_timing{};
+std::array<Timing,2> rolling_timings{};unsigned rolling_timing_next{};
+Timing latest_completed_timing{};
 bool latest_cost_profiled{};
 Timing* timing(uint64_t ticket){for(unsigned i=0;i<timing_count;++i)if(timings[i].ticket==ticket)return &timings[i];
- return ticket&&latest_timing.ticket==ticket?&latest_timing:nullptr;}
+ for(auto& t:rolling_timings)if(ticket&&t.ticket==ticket)return &t;return nullptr;}
 gears_render_cost::Record* render_cost(uint64_t ticket){
 #if defined(GEARS_NATIVE_RENDER_COST_PROBE) && GEARS_NATIVE_RENDER_COST_PROBE
  // The game builder appends timings concurrently with RHI consumption. Only
@@ -121,7 +122,7 @@ gears_render_cost::Record* render_cost(uint64_t ticket){
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
  // Only immutable-address, never-recycled first-window records are borrowed by
  // Window/Scope. The rolling latest timestamp record is never exposed to them.
- auto t=timing(ticket);return t&&t!=&latest_timing?&t->cost:nullptr;
+ for(unsigned i=0;i<timing_count;++i)if(timings[i].ticket==ticket)return &timings[i].cost;return nullptr;
 #else
  return nullptr;
 #endif
@@ -129,7 +130,7 @@ gears_render_cost::Record* render_cost(uint64_t ticket){
 void selected(uint64_t ticket){
  if(!owned_xr_probe||!stereo_gpu_publish)return;
  if(timing_count<timings.size())timings[timing_count++]={ticket,gears_vr::monotonic_ns()};
- else if(sustained)latest_timing={ticket,gears_vr::monotonic_ns()};
+ else if(sustained){rolling_timings[rolling_timing_next]={ticket,gears_vr::monotonic_ns()};rolling_timing_next^=1;}
 }
 void began(uint64_t ticket){if(auto t=timing(ticket))t->begin=gears_vr::monotonic_ns();
  const auto& frame=consuming_frozen_frame;
@@ -303,7 +304,8 @@ bool publish_image(){
  else if(deadline&&now()>=deadline)trace.reason=gears_vr::GpuCaptureReason::native_deadline;
  else {StereoPublishBypass bypass;published=stereo_publisher.capture_resource(texture,generation,
        D3D12_RESOURCE_STATES(proof.final_state),image,&trace);}
- if(stamp){stamp->publish_end=gears_vr::monotonic_ns();latest_completed_timing=*stamp;latest_cost_profiled=stamp!=&latest_timing;}
+ if(stamp){stamp->publish_end=gears_vr::monotonic_ns();latest_completed_timing=*stamp;
+  latest_cost_profiled=false;for(unsigned i=0;i<timing_count;++i)if(timings[i].ticket==image.id)latest_cost_profiled=true;}
  latest_publication={image.id,image.sample.sequence,image.sample.session,trace.serial_after,unsigned(trace.reason)};
  ++publication_attempts;
  if(publication_count<publications.size())publications[publication_count++]=latest_publication;

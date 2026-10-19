@@ -9,6 +9,14 @@ using gears_owned_ui::Kind;
 using gears_owned_ui::TransferProof;
 void bind(Ledger& l,uint64_t ticket=1){CHECK(l.bind(ticket,10,20,30,1));CHECK(l.begin_flush(10,20,30,40,2)==ticket);}
 void legacy_cases(){
+ {auto storage=std::make_unique<Ledger>();auto& l=*storage;
+  CHECK(l.can_bind(10,20,30));CHECK(!l.can_bind(0,20,30));bind(l);
+  CHECK(!l.can_bind(10,20,30));CHECK(l.can_bind(11,20,30));
+  CHECK(l.expect(1,1));CHECK(l.produce(1,100,3));CHECK(l.close(1,4));
+  CHECK(!l.ready(1));CHECK(l.can_bind(10,20,30)); // Closed producer; GPU/consumer need not be ready.
+  const auto before=l.snapshot().counts;CHECK(l.can_bind(10,20,30));
+  const auto after=l.snapshot().counts;CHECK(before.bound==after.bound&&before.rejected==after.rejected);
+  CHECK(l.bind(2,10,20,30,5));CHECK(!l.can_bind(10,20,30));}
  {auto storage=std::make_unique<Ledger>();auto& l=*storage;bind(l);auto id=l.produce(1,100,3);CHECK(id);CHECK(l.transferred(id,true));CHECK(l.published(1,4));
   CHECK(l.close(1,5));CHECK(l.snapshot().active_count==1);CHECK(l.execute(100,20,6)==id);CHECK(l.complete(id,true,7));
   auto s=l.snapshot();CHECK(!s.active_count&&s.retained_count==1&&s.counts.retired==1);

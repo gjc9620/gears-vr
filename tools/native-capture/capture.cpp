@@ -755,6 +755,8 @@ uintptr_t canonical_identity(IUnknown* object);
 long long now();
 void owned_ui_published(uint64_t ticket);
 bool owned_ui_ready(uint64_t ticket);
+bool owned_ui_can_bind_frame();
+void native_owned_pipeline_failure(unsigned reason);
 bool verified_stereo_draw(gears_viewport::DrawState const&,FinalEye const&,uintptr_t,unsigned,unsigned,unsigned);
 #include "owned_scene_gpu.inl"
 #include "native_owned_scene.inl"
@@ -857,6 +859,21 @@ void request_session_stop_at(SessionStop reason,const char* source_file,unsigned
 }
 // Covers every later call and .inl include, including graphics_lock_observer.
 #define request_session_stop(reason) request_session_stop_at((reason),__FILE__,__LINE__)
+void native_owned_pipeline_failure(unsigned reason){
+#if defined(GEARS_NATIVE_OWNED_SCENE_PROBE) && GEARS_NATIVE_OWNED_SCENE_PROBE
+    // Called with frame_hook_mutex. Retain native objects before closing
+    // admission; do not acquire session_native_mutex in this lock order.
+    gears_owned_scene_live::pipeline_failed=true;
+    gears_owned_scene_live::pipeline_failure_reason=reason;
+    gears_owned_scene_live::shutdown_conflict=true;submit_retained=1;
+    gears_owned_scene_live::trial.error=25;
+    owned_scene_gpu::fault(24);frame_link.invalidate_all();
+    {StereoPublishBypass bypass;stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;}
+    session_activation_gate.close();request_session_stop(SessionStop::proof_failure);
+#else
+    (void)reason;
+#endif
+}
 bool publish_session_activation_ready(bool prerequisites){
     if(!prerequisites||session_phase.load()!=SessionPhase::running||submitted_lifetime.stopping())return false;
     const auto ready_qpc=now();
@@ -2797,7 +2814,7 @@ void __fastcall hook_consume(void* renderer){
        !submitted_lifetime.stopping()&&(!native_surface_probe_tick(consume_frame.id)||!native_owned_probe_tick(consume_frame.id,renderer)||
        !native_owned_scene_tick(consume_frame.id)))
         request_session_stop(SessionStop::proof_failure);
-    if(!native_owned_scene_begin(renderer,consume_frame.id))request_session_stop(SessionStop::proof_failure);
+    if(!native_owned_scene_begin(renderer,consume_frame.id,consume_frame.world_generation,saved!=nullptr))request_session_stop(SessionStop::proof_failure);
     const bool saved_owned_scene=consuming_owned_scene;
     consuming_owned_scene=native_owned_scene_consuming(renderer,consume_frame.id);
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
@@ -2865,7 +2882,7 @@ void* __fastcall hook_destroy_renderer(void* renderer){
         submit_attempted.load()==2 && reinterpret_cast<uintptr_t>(renderer)==submit_root.load() && !submit_destroyed.load());
     if(submitted)record.test_state=77;
     void* result=original_destroy_renderer(renderer);
-    native_owned_scene_destroyed(renderer); // No dereference after native destruction.
+    native_owned_scene_destroyed(renderer,record.stereo_ticket); // Frozen value; no dereference after destruction.
     if(submitted) {
         ++submit_destroyed;
         // The submitted renderer can use its state until destruction returns.
@@ -2880,6 +2897,7 @@ void* __fastcall hook_destroy_renderer(void* renderer){
 }
 bool try_submit_pair(void* destination,void* family,void* canvas,void* transform,Record& record,void*& returned,
     gears_anchor::Receipt const* anchor=nullptr) {
+    native_owned_scene_pace(); // No session/frame locks or pair snapshot held here.
     note_world_progress(WorldProgress::try_pair);
     std::unique_lock<std::recursive_mutex> session_lock(session_native_mutex,std::defer_lock);
     if(continuous_session)session_lock.lock();
@@ -3014,7 +3032,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         // A retired world needs exactly one bootstrap renderer to reach RHI
         // recreation; keep the old ticket until that recreation actually runs.
         if(gears_owned_scene_live::trial.ticket&&!native_owned_scene_try_bootstrap()){
-            native_owned_scene_pending_fallback();return false;
+            native_owned_scene_pending_fallback(destination);return false;
         }
     }
 #endif
@@ -3240,7 +3258,10 @@ void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void*
     void* result=nullptr;
     bool handled=submit_pair_enabled && observe && family==submitting_family && record.caller==0x3a1595 && recording.load() &&
         try_submit_pair(destination,family,canvas,transform,record,result,anchor_associated?&associated_anchor:nullptr);
-    if(!handled)result=original_renderer(destination,family,canvas,transform);
+    if(!handled){
+        result=original_renderer(destination,family,canvas,transform);
+        native_owned_scene_fallback_built(destination,result);
+    }
     if(handled)record.test_state=77;
     if(anchor_associated){gears_submitted::FrameTicket frame{};
         auto registered=handled&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(destination),frame);
@@ -3960,7 +3981,7 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
     // any viewport/work/ticket filters; synthetic eye draws bypass this hook.
     observe_ui_index_callback(caller,{indices,instances,start,vertex,first_instance});
 #if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
-    if(recording.load()&&owned_ui_live::route.ticket&&gears_viewport::has_draw_work(indices,instances)){
+    if(recording.load()&&!gears_owned_scene_live::pipeline_failed&&owned_ui_live::route.ticket&&gears_viewport::has_draw_work(indices,instances)){
         const auto route=owned_ui_live::route;
         const auto binding=owned_target_stats.binding(canonical_identity(list));
         const auto saved=owned_target_stats.draw_state(canonical_identity(list));

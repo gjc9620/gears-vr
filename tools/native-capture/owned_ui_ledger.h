@@ -99,6 +99,15 @@ class Ledger {
   return true;
  }
 public:
+ bool can_bind(uintptr_t canvas,uintptr_t target,uintptr_t thread)const{
+  std::lock_guard<std::mutex> lock(mutex_);bool space=false;
+  if(!canvas||!target||!thread||retirement_fault_)return false;
+  for(auto const& c:cycles_){
+   if(!c.ticket)space=true;
+   if(c.ticket&&c.canvas==canvas&&c.thread==thread&&!c.closed)return false;
+  }
+  return space;
+ }
  bool retirement_ready(uint64_t cutoff,int64_t qpc,unsigned kind_mask)const{
   std::lock_guard<std::mutex> lock(mutex_);return retirement_ready_locked(cutoff,qpc,kind_mask);
  }

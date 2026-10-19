@@ -284,7 +284,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
    }
    if(consumed_count!=257||publication_attempts!=257||published_count!=257||stored_frames!=frame_limit||
       publication_count!=frame_limit||timing_count!=frame_limit||latest_completed_timing.ticket!=258||
-      latest_timing.ticket!=258||latest_cost_profiled||render_cost(258)||render_cost(2)!=first_cost||
+      !timing(258)||!timing(257)||timing(256)||latest_cost_profiled||render_cost(258)||render_cost(2)!=first_cost||
       !last_readback.result().saved||image_tickets.size()||!watching())return 67;
    wchar_t checkpoint[MAX_PATH]{};swprintf_s(checkpoint,L"%s\\owned-scene-%lu-last.ppm",directory,GetCurrentProcessId());DeleteFileW(checkpoint);
   }

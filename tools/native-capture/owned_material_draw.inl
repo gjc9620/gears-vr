@@ -3,7 +3,7 @@ namespace owned_material {
 // The CPU-side native upload certificate is tied to this TLS consumer and to
 // the exact command list. Actual OM/ticket identity is checked independently.
 bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::DrawArgs args){
- auto& c=*ui_material_context;if(!c.owned_ticket||c.owned_failed)return false;
+ auto& c=*ui_material_context;if(!c.owned_ticket||c.owned_failed||gears_owned_scene_live::pipeline_failed)return false;
  const auto binding=owned_target_stats.binding(canonical_identity(list));
  const auto saved=owned_target_stats.draw_state(canonical_identity(list));
  const auto ref=owned_scene_gpu::list_ref(canonical_identity(list));
