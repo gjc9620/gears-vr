@@ -14,7 +14,17 @@ as a preflight plan, not measured GPU output, and does not attribute them to old
 sessions. Invalid or inconsistent plans are omitted with a warning; arbitrary
 runtime paths are excluded. The diagnostics, launcher, render-size and portable
 stage/package suites passed 140 offline tests. This source change requires a
-fresh portable package; the previously archived ZIP below predates it.
+fresh portable package; the originally archived ZIP below predates it.
+
+The updated development archive is
+`analysis/runtime/GearsVR-0.0.1-development-RuntimeRelease2-feedback-20261019.zip`,
+SHA256 `56be16ccff0e3541a30e98fb8fda8f1362b43db8e280feeb92521f155db0c43e`.
+All 717 archive entries were verified, then extracted into a fresh path with
+spaces. The bundled isolated interpreter passed imports/PE/hash preflight for
+716 payload files. Receipt:
+`analysis/runtime/runtime-release2-feedback-extracted-preflight.json`.
+No game, simulator or GUI was launched. Native/XR binaries are unchanged; this
+updates the feedback export, not mounted/DLSS acceptance.
 
 RuntimeRelease2 is now the launcher default and named manifest
 `manifest-runtime-release2.json`. Native SHA
