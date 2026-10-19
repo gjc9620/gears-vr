@@ -200,8 +200,9 @@ void sparse_rejections(){
 void production_heap_boundary(){
     using DefaultBank=gears_ngx_mv::DescriptorBank<ResourceLease,HeapLease>;
     using ObserverBank=gears_ngx_mv::ObserverDescriptorBank<ResourceLease,HeapLease>;
-    static_assert(DefaultBank::heap_capacity==8,"generic fixture default stays small");
-    static_assert(ObserverBank::heap_capacity==96&&ObserverBank::cell_capacity==128,"explicit production bounds");
+    static_assert(DefaultBank::heap_capacity==8&&DefaultBank::cell_capacity==128&&DefaultBank::copy_capacity==128,"generic fixture defaults unchanged");
+    static_assert(ObserverBank::heap_capacity==96&&ObserverBank::cell_capacity==512&&ObserverBank::copy_capacity==128,"explicit production bounds");
+    static_assert(gears_ngx_mv::ObserverDescriptorBank<>::copy_scratch_bytes==gears_ngx_mv::DescriptorBank<>::copy_scratch_bytes,"production copy array scratch stays at the previous 128-cell size");
     const auto early=gears_ngx_mv::lifetime_scope(1,7);
     ObserverBank bank;assert(bank.begin(early));
     std::array<HeapFixture,97> heaps{};ResourceFixture mv;
@@ -239,7 +240,7 @@ void retained_mv_join(){
     s.bank.uncertain();calls=0;assert(!s.bank.visit_mv(scope,mv,visit)&&!calls);
 
     // A scalar collector can cap saved rows without silently undercounting
-    // matches. All live cells remain bounded by the production 128-cell bank.
+    // matches. All live cells remain bounded by the production cell bank.
     using ObserverBank=gears_ngx_mv::ObserverDescriptorBank<ResourceLease,HeapLease>;
     ObserverBank many;HeapFixture heap;heap.count=16;
     assert(many.begin(scope)&&many.observe_heap(scope,typed(heap)));
@@ -308,6 +309,35 @@ void reuse_copy_source_snapshot_and_validation(){
         assert(invalid.cell_counts().known_uav==3&&invalid.cell_counts().non_uav==1);
     }
 }
+void production_cell_and_copy_boundaries(){
+    using ObserverBank=gears_ngx_mv::ObserverDescriptorBank<ResourceLease,HeapLease>;
+    auto bank=std::make_unique<ObserverBank>();HeapFixture heap;heap.count=513;ResourceFixture mv;
+    const auto early=gears_ngx_mv::lifetime_scope(1,7);
+    assert(bank->begin(early)&&bank->observe_heap(early,typed(heap)));
+    for(unsigned i=0;i<128;++i)assert(bank->write_uav(early,1000+16*i,typed(mv),nullptr,{}));
+    auto original=bank->lookup(early,1000),last_source=bank->lookup(early,1000+16*127);
+    // Persistent occupancy may grow across bounded batches; each copy still
+    // freezes at most 128 sources and performs no heap allocation for scratch.
+    for(unsigned batch=1;batch<4;++batch){
+        assert(bank->copy_simple_sparse(early,1000+16*128*batch,1000,128));
+        assert(bank->cells()==128*(batch+1)&&bank->current(original));
+    }
+    auto last=bank->lookup(early,1000+16*511);
+    assert(last.retained_uav()&&last.source_version==last_source.version&&last.origin==last_source.origin&&bank->current(last));
+    assert(bank->cell_counts().known_uav==512&&!bank->cell_counts().non_uav&&!bank->cell_counts().unused&&!bank->cell_counts().reuses);
+    assert(!bank->write_uav(early,1000+16*512,typed(mv),nullptr,{})&&bank->loss()==Loss::capacity);
+    auto saturation=bank->saturation();assert(saturation.site==ObserverBank::CapacitySite::cells&&saturation.cells.known_uav==512);
+    assert(!bank->current(original)&&!bank->current(last)&&original.retained_uav()&&last.retained_uav());
+    assert(!bank->invalidate_if_tracked(early,1000)&&!bank->begin(early)); // No capacity recovery/reset.
+
+    auto oversized=std::make_unique<ObserverBank>();assert(oversized->begin(early)&&oversized->observe_heap(early,typed(heap)));
+    assert(oversized->copy_simple_sparse(early,1000+16*256,1000,128)&&!oversized->cells());
+    assert(!oversized->copy_simple_sparse(early,1000+16*256,1000,129)&&oversized->loss()==Loss::bad_range&&!oversized->cells());
+    auto ranges=std::make_unique<ObserverBank>();assert(ranges->begin(early)&&ranges->observe_heap(early,typed(heap)));
+    ObserverBank::CopyRanges d{},s{};d.count=129;
+    assert(!ranges->copy_sparse(early,d,s)&&ranges->loss()==Loss::capacity&&!ranges->cells());
+    assert(ranges->saturation().site==ObserverBank::CapacitySite::ranges&&ranges->saturation().cells.unused==512);
+}
 }
 int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     static_assert(!Bank::Snapshot::producer_authorized,"observation must not authorize producer");
@@ -316,5 +346,6 @@ int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     sparse_ranges_and_rewrites();sparse_capacity_and_lifetime_scope();sparse_rejections();
     production_heap_boundary();retained_mv_join();
     erased_cell_reuse_and_snapshot_aba();reuse_copy_source_snapshot_and_validation();
+    production_cell_and_copy_boundaries();
     std::puts("NGX MV descriptor CPU provenance tests passed; no GPU/Dispatch/producer proof");
 }

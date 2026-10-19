@@ -52,9 +52,9 @@ template<size_t N=128> struct Ranges {
 struct ViewDescription {bool readable=true,provided{};D3D12_UNORDERED_ACCESS_VIEW_DESC value{};};
 
 template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease,
-         size_t HeapCapacity=8,size_t CellCapacity=128,bool ReuseNonUav=false>
+         size_t HeapCapacity=8,size_t CellCapacity=128,bool ReuseNonUav=false,size_t CopyCapacity=CellCapacity>
 class DescriptorBank {
-    static_assert(HeapCapacity&&CellCapacity,"nonempty observation bounds");
+    static_assert(HeapCapacity&&CellCapacity&&CopyCapacity&&CopyCapacity<=CellCapacity,"nonempty bounded observation/copy limits");
     struct Cell {uintptr_t heap{};uint32_t index{};uint64_t version{},origin{},source_handle{},source_version{};
         ResourceLease resource{},counter{};ViewDescription view{};bool known_uav{};};
     Scope scope_{};Loss loss_{};bool begun_{};uint64_t serial_{};size_t heap_count_{},cell_count_{};
@@ -89,17 +89,21 @@ class DescriptorBank {
             capacity_loss(CapacitySite::cells);return nullptr;
         }auto& c=cells_[cell_count_++];c.heap=id;c.index=slot;return &c;
     }
-    bool flatten(Ranges<CellCapacity> const& ranges,bool source,std::array<uint64_t,CellCapacity>& handles,unsigned& total){
-        total=0;if(!ranges.readable)return lose(Loss::unreadable);if(ranges.count>CellCapacity)return capacity_loss(CapacitySite::ranges);
+    bool flatten(Ranges<CopyCapacity> const& ranges,bool source,std::array<uint64_t,CopyCapacity>& handles,unsigned& total){
+        total=0;if(!ranges.readable)return lose(Loss::unreadable);if(ranges.count>CopyCapacity)return capacity_loss(CapacitySite::ranges);
         for(unsigned r=0;r<ranges.count;++r){const unsigned n=ranges.sizes_present?ranges.sizes[r]:1;if(!n)continue;
             uint32_t slot{};auto* h=heap(ranges.starts[r],false,slot);if(!h)return lose(Loss::unknown_heap);
             if(source&&h->visible)return lose(Loss::bad_range); // D3D source descriptors cannot be in shader-visible heaps.
-            if(n>h->count-slot||n>CellCapacity-total)return lose(Loss::bad_range);
+            if(n>h->count-slot||n>CopyCapacity-total)return lose(Loss::bad_range);
             for(unsigned j=0;j<n;++j)handles[total++]=h->cpu+uint64_t(slot+j)*h->stride;
         }return true;
     }
 public:
-    static constexpr size_t heap_capacity=HeapCapacity,cell_capacity=CellCapacity;
+    static constexpr size_t heap_capacity=HeapCapacity,cell_capacity=CellCapacity,copy_capacity=CopyCapacity;
+    using CopyRanges=Ranges<CopyCapacity>;
+    // Copy scratch stays independent of persistent cell storage. The caller
+    // serializes callbacks; sources are all captured before any destination.
+    static constexpr size_t copy_scratch_bytes=sizeof(std::array<Cell,CopyCapacity>)+2*sizeof(std::array<uint64_t,CopyCapacity>);
     static constexpr bool reuse_non_uav=ReuseNonUav;
     enum class CapacitySite:unsigned {none,heaps,cells,ranges,serial};
     struct CellCounts {size_t known_uav{},non_uav{},unused{};uint64_t reuses{};};
@@ -165,12 +169,12 @@ public:
         return unknown_write(value,cpu);
     }
 private:
-    bool copy_impl(Scope value,Ranges<CellCapacity> const& destinations,Ranges<CellCapacity> const& sources,bool sparse){
-        if(!scope(value))return false;std::array<uint64_t,CellCapacity> dst{},src{};unsigned dn{},sn{};
+    bool copy_impl(Scope value,CopyRanges const& destinations,CopyRanges const& sources,bool sparse){
+        if(!scope(value))return false;std::array<uint64_t,CopyCapacity> dst{},src{};unsigned dn{},sn{};
         if(!flatten(destinations,false,dst,dn)||!flatten(sources,true,src,sn))return false;if(dn!=sn)return lose(Loss::bad_range);
         // Snapshot all sources before any destination write. Reject unsupported
         // overlapping copies rather than impose a guessed native write order.
-        std::array<Cell,CellCapacity> captured{};
+        std::array<Cell,CopyCapacity> captured{};
         for(unsigned i=0;i<dn;++i){for(unsigned j=0;j<dn;++j)if(dst[i]==src[j]||(j<i&&dst[i]==dst[j]))return lose(Loss::overlap);
             uint32_t slot{};auto* h=heap(src[i],false,slot);if(auto* c=find(h->canonical,slot))captured[i]=*c;}
         for(unsigned i=0;i<dn;++i){uint32_t slot{};auto* h=heap(dst[i],false,slot);
@@ -181,14 +185,14 @@ private:
         return true;
     }
 public:
-    bool copy(Scope value,Ranges<CellCapacity> const& destinations,Ranges<CellCapacity> const& sources){return copy_impl(value,destinations,sources,false);}
+    bool copy(Scope value,CopyRanges const& destinations,CopyRanges const& sources){return copy_impl(value,destinations,sources,false);}
     // Early observation: propagate known UAVs, erase tracked destinations on
     // unknown sources, but do not allocate cells for unrelated unknown copies.
     // All range/heap/overlap validation still applies, including skipped cells.
-    bool copy_sparse(Scope value,Ranges<CellCapacity> const& destinations,Ranges<CellCapacity> const& sources){return copy_impl(value,destinations,sources,true);}
-    bool copy_simple(Scope value,uint64_t dst,uint64_t src,unsigned count){Ranges<CellCapacity> d{},s{};
+    bool copy_sparse(Scope value,CopyRanges const& destinations,CopyRanges const& sources){return copy_impl(value,destinations,sources,true);}
+    bool copy_simple(Scope value,uint64_t dst,uint64_t src,unsigned count){CopyRanges d{},s{};
         d.count=s.count=1;d.sizes_present=s.sizes_present=true;d.starts[0]=dst;s.starts[0]=src;d.sizes[0]=s.sizes[0]=count;return copy(value,d,s);}
-    bool copy_simple_sparse(Scope value,uint64_t dst,uint64_t src,unsigned count){Ranges<CellCapacity> d{},s{};
+    bool copy_simple_sparse(Scope value,uint64_t dst,uint64_t src,unsigned count){CopyRanges d{},s{};
         d.count=s.count=1;d.sizes_present=s.sizes_present=true;d.starts[0]=dst;s.starts[0]=src;d.sizes[0]=s.sizes[0]=count;return copy_sparse(value,d,s);}
     Snapshot lookup(Scope value,uint64_t handle,bool gpu=false)const{
         Snapshot out;if(!begun_||failed()||!same(scope_,value))return out;uint32_t slot{};auto* h=heap(handle,gpu,slot);if(!h)return out;
@@ -218,7 +222,10 @@ public:
 // saw 60 cumulative CBV/SRV/UAV creations. Generic/small fixtures retain the
 // conservative default of 8. Production may reuse non-UAV tombstones; retained
 // known UAVs are never evicted, and a capacity failure never recovers/restarts.
-inline constexpr size_t observer_heap_capacity=96,observer_cell_capacity=128;
+// The next census saturated at 128 known UAV cells after eight safe tombstone
+// reuses. Increase persistent storage to 512, retaining the old 128-descriptor
+// per-copy bound so hooks do not quadruple their source-snapshot stack scratch.
+inline constexpr size_t observer_heap_capacity=96,observer_cell_capacity=512,observer_copy_capacity=128;
 template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease>
-using ObserverDescriptorBank=DescriptorBank<ResourceLease,DescriptorHeapLease,observer_heap_capacity,observer_cell_capacity,true>;
+using ObserverDescriptorBank=DescriptorBank<ResourceLease,DescriptorHeapLease,observer_heap_capacity,observer_cell_capacity,true,observer_copy_capacity>;
 }

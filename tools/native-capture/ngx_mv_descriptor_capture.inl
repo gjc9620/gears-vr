@@ -4,7 +4,7 @@
 namespace ngx_mv_descriptor_capture {
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
 using Bank=gears_ngx_mv::ObserverDescriptorBank<>;
-using Ranges=gears_ngx_mv::Ranges<128>;
+using Ranges=Bank::CopyRanges;
 using HeapFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device*,const D3D12_DESCRIPTOR_HEAP_DESC*,REFIID,void**);
 using CbvFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,const D3D12_CONSTANT_BUFFER_VIEW_DESC*,D3D12_CPU_DESCRIPTOR_HANDLE);
 using SrvFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,ID3D12Resource*,const D3D12_SHADER_RESOURCE_VIEW_DESC*,D3D12_CPU_DESCRIPTOR_HANDLE);
@@ -45,7 +45,7 @@ bool selected(ID3D12Device* device){
 Ranges read_ranges(UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* starts,const UINT* sizes){
     Ranges out;out.count=count;out.sizes_present=sizes!=nullptr;
     if(count>out.starts.size()){out.readable=false;return out;}
-    std::array<D3D12_CPU_DESCRIPTOR_HANDLE,128> handles{};
+    std::array<D3D12_CPU_DESCRIPTOR_HANDLE,Bank::copy_capacity> handles{};
     if(count&&(!safe_copy(handles.data(),starts,count*sizeof(handles[0]))||
        (sizes&&!safe_copy(out.sizes.data(),sizes,count*sizeof(out.sizes[0]))))){out.readable=false;return out;}
     for(unsigned i=0;i<count;++i)out.starts[i]=handles[i].ptr;return out;
@@ -107,9 +107,9 @@ void print(FILE* status){std::lock_guard<std::recursive_mutex> lock(mutex);if(!s
         failed||(bank?bank->failed():final_loss!=0)?1:0,bank?static_cast<unsigned>(bank->loss()):final_loss,released?1:0);
     const auto occupancy=bank?bank->cell_counts():final_cell_counts;
     const auto saturation=bank?bank->saturation():final_saturation;
-    fprintf(status,"ngx_mv_descriptor_cells known_uav=%zu non_uav=%zu unused=%zu reuses=%llu reuse_non_uav=%u saturation_site=%u saturation_schema=0:none,1:heaps,2:cells,3:ranges,4:serial saturation_heaps=%zu saturation_known_uav=%zu saturation_non_uav=%zu saturation_unused=%zu saturation_reuses=%llu known_uav_eviction=0 capacity_recovery=0 producer_authorized=0\n",
+    fprintf(status,"ngx_mv_descriptor_cells known_uav=%zu non_uav=%zu unused=%zu reuses=%llu reuse_non_uav=%u saturation_site=%u saturation_schema=0:none,1:heaps,2:cells,3:ranges,4:serial saturation_heaps=%zu saturation_known_uav=%zu saturation_non_uav=%zu saturation_unused=%zu saturation_reuses=%llu copy_range_capacity=%zu copy_descriptor_capacity=%zu copy_array_scratch_bytes=%zu known_uav_eviction=0 capacity_recovery=0 producer_authorized=0\n",
         occupancy.known_uav,occupancy.non_uav,occupancy.unused,occupancy.reuses,unsigned(Bank::reuse_non_uav),unsigned(saturation.site),saturation.heaps,
-        saturation.cells.known_uav,saturation.cells.non_uav,saturation.cells.unused,saturation.cells.reuses);
+        saturation.cells.known_uav,saturation.cells.non_uav,saturation.cells.unused,saturation.cells.reuses,Bank::copy_capacity,Bank::copy_capacity,Bank::copy_scratch_bytes);
     for(unsigned i=0;i<heap_census.snapshots().size();++i){auto const& s=heap_census.snapshots()[i];
         if(s.present)print_census(status,"accepted_eval",i,s.counts,s.use);}
     for(unsigned i=0;i<mv_joins.size();++i){auto const& j=mv_joins[i];if(!j.present)continue;
