@@ -16,6 +16,7 @@ gears_ngx_mv_census::Census heap_census;
 gears_ngx_mv::Scope lifetime{};
 bool armed{},accepting{},failed{},released{};
 unsigned final_loss{};size_t final_heaps{},final_cells{};
+Bank::CellCounts final_cell_counts{};Bank::Saturation final_saturation{};
 uint64_t heap_calls{},uav_calls{},invalidations{},copies{},other_devices{},missing_birth{},recursions{},uncertainties{};
 thread_local unsigned depth{};
 // Frozen scalar audit only; no extra COM owners survive the bank's existing
@@ -78,7 +79,8 @@ void release_drained(){
     std::unique_ptr<Bank> retired;
     {std::lock_guard<std::recursive_mutex> lock(mutex);
         if(accepting||active.load()||depth)return;
-        if(bank){final_loss=static_cast<unsigned>(bank->loss());final_heaps=bank->heaps();final_cells=bank->cells();retired=std::move(bank);}
+        if(bank){final_loss=static_cast<unsigned>(bank->loss());final_heaps=bank->heaps();final_cells=bank->cells();
+            final_cell_counts=bank->cell_counts();final_saturation=bank->saturation();retired=std::move(bank);}
         released=true;}
     // No observer lock across native Release: a closed passthrough callback
     // may still enter the DLL. It cannot access the detached bank.
@@ -103,6 +105,11 @@ void print(FILE* status){std::lock_guard<std::recursive_mutex> lock(mutex);if(!s
         static_cast<unsigned long long>(other_devices),static_cast<unsigned long long>(missing_birth),
         static_cast<unsigned long long>(recursions),static_cast<unsigned long long>(uncertainties),
         failed||(bank?bank->failed():final_loss!=0)?1:0,bank?static_cast<unsigned>(bank->loss()):final_loss,released?1:0);
+    const auto occupancy=bank?bank->cell_counts():final_cell_counts;
+    const auto saturation=bank?bank->saturation():final_saturation;
+    fprintf(status,"ngx_mv_descriptor_cells known_uav=%zu non_uav=%zu unused=%zu reuses=%llu reuse_non_uav=%u saturation_site=%u saturation_schema=0:none,1:heaps,2:cells,3:ranges,4:serial saturation_heaps=%zu saturation_known_uav=%zu saturation_non_uav=%zu saturation_unused=%zu saturation_reuses=%llu known_uav_eviction=0 capacity_recovery=0 producer_authorized=0\n",
+        occupancy.known_uav,occupancy.non_uav,occupancy.unused,occupancy.reuses,unsigned(Bank::reuse_non_uav),unsigned(saturation.site),saturation.heaps,
+        saturation.cells.known_uav,saturation.cells.non_uav,saturation.cells.unused,saturation.cells.reuses);
     for(unsigned i=0;i<heap_census.snapshots().size();++i){auto const& s=heap_census.snapshots()[i];
         if(s.present)print_census(status,"accepted_eval",i,s.counts,s.use);}
     for(unsigned i=0;i<mv_joins.size();++i){auto const& j=mv_joins[i];if(!j.present)continue;

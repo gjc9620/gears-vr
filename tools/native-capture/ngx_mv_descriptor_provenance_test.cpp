@@ -248,6 +248,66 @@ void retained_mv_join(){
         assert(snapshot.same_mv(mv));if(saved<8)++saved;});
     assert(total==10&&saved==8);
 }
+void erased_cell_reuse_and_snapshot_aba(){
+    using ReusingBank=gears_ngx_mv::DescriptorBank<ResourceLease,HeapLease,3,8,true>;
+    static_assert(!Bank::reuse_non_uav,"generic copies retain existing tombstone policy");
+    static_assert(gears_ngx_mv::ObserverDescriptorBank<ResourceLease,HeapLease>::reuse_non_uav,"production reuses only non-UAV cells");
+    ReusingBank bank;HeapFixture heap;heap.count=16;ResourceFixture mv;
+    assert(bank.begin(scope)&&bank.observe_heap(scope,typed(heap)));
+    for(unsigned i=0;i<8;++i)assert(bank.write_uav(scope,1000+16*i,typed(mv),nullptr,{}));
+    auto original=bank.lookup(scope,1000);assert(bank.cell_counts().known_uav==8);
+    assert(bank.invalidate_if_tracked(scope,1000));auto tombstone=bank.lookup(scope,1000);
+    assert(!bank.current(original)&&bank.current(tombstone)&&!tombstone.retained_uav());
+    assert(bank.cell_counts().known_uav==7&&bank.cell_counts().non_uav==1&&!bank.cell_counts().unused);
+    assert(bank.write_uav(scope,1128,typed(mv),nullptr,{}));auto reused=bank.lookup(scope,1128);
+    assert(bank.cells()==8&&bank.cell_counts().known_uav==8&&!bank.cell_counts().non_uav&&bank.cell_counts().reuses==1);
+    assert(reused.version>tombstone.version&&!bank.lookup(scope,1000).version&&!bank.current(tombstone));
+    assert(original.retained_uav()&&!bank.current(original)); // Historical owners remain valid.
+    assert(bank.invalidate_if_tracked(scope,1016));
+    assert(bank.write_uav(scope,1000,typed(mv),nullptr,{}));auto recreated=bank.lookup(scope,1000);
+    assert(recreated.version>reused.version&&bank.current(recreated)&&!bank.current(original)&&!bank.current(tombstone));
+    assert(bank.cell_counts().reuses==2);
+    // Every remaining slot is a known UAV; no live evidence may be evicted.
+    assert(!bank.write_uav(scope,1144,typed(mv),nullptr,{})&&bank.loss()==Loss::capacity);
+    auto saturation=bank.saturation();assert(saturation.site==ReusingBank::CapacitySite::cells);
+    assert(saturation.heaps==1&&saturation.cells.known_uav==8&&!saturation.cells.non_uav&&!saturation.cells.unused&&saturation.cells.reuses==2);
+    assert(!bank.current(recreated)&&!bank.lookup(scope,1128).version&&recreated.retained_uav());
+    assert(!bank.invalidate_if_tracked(scope,1000)&&bank.saturation().cells.known_uav==8); // Frozen first failure.
+    Bank generic;assert(generic.begin(scope)&&generic.observe_heap(scope,typed(heap)));
+    for(unsigned i=0;i<8;++i)assert(generic.unknown_write(scope,1000+16*i));
+    assert(!generic.unknown_write(scope,1128)&&generic.loss()==Loss::capacity);
+    const auto old_policy=generic.saturation();assert(old_policy.site==Bank::CapacitySite::cells);
+    assert(!old_policy.cells.known_uav&&old_policy.cells.non_uav==8&&!old_policy.cells.reuses);
+}
+void reuse_copy_source_snapshot_and_validation(){
+    using ReusingBank=gears_ngx_mv::DescriptorBank<ResourceLease,HeapLease,3,4,true>;
+    using CopyRanges=gears_ngx_mv::Ranges<4>;
+    HeapFixture cpu{},gpu{202,7,2000,10000,8,32,true,true};ResourceFixture mv;
+    ReusingBank bank;assert(bank.begin(scope)&&bank.observe_heap(scope,typed(cpu))&&bank.observe_heap(scope,typed(gpu)));
+    assert(bank.write_uav(scope,1000,typed(mv),nullptr,{})&&bank.write_uav(scope,1016,typed(mv),nullptr,{}));
+    assert(bank.write_uav(scope,1032,typed(mv),nullptr,{})&&bank.copy_simple_sparse(scope,2000,1000,1));
+    auto source=bank.lookup(scope,1000),historical=bank.lookup(scope,1032);
+    std::weak_ptr<unsigned> historical_hold=historical.resource.hold;
+    assert(bank.invalidate_if_tracked(scope,1032));auto erased=bank.lookup(scope,1032);
+    CopyRanges d{},s{};d.count=s.count=2;d.starts[0]=2032;d.starts[1]=2064;s.starts[0]=1000;s.starts[1]=1032;
+    assert(bank.copy_sparse(scope,d,s)); // First destination reuses the later source's tombstone.
+    auto copied=bank.lookup(scope,2032);assert(copied.retained_uav()&&copied.source_handle==1000&&copied.source_version==source.version);
+    assert(copied.resource.hold==source.resource.hold&&copied.origin==source.origin&&bank.current(source));
+    assert(historical.retained_uav()&&!bank.current(historical)&&!historical_hold.expired());
+    assert(!bank.current(erased)&&!bank.lookup(scope,1032).version&&!bank.lookup(scope,2064).version&&bank.cell_counts().reuses==1);
+    // Full copy sources were frozen first; missing/erased provenance never
+    // becomes the new UAV merely because its old storage slot was reused.
+    assert(bank.cell_counts().known_uav==4);
+    for(unsigned bad=0;bad<3;++bad){ReusingBank invalid;assert(invalid.begin(scope)&&invalid.observe_heap(scope,typed(cpu)));
+        for(unsigned i=0;i<4;++i)assert(invalid.write_uav(scope,1000+16*i,typed(mv),nullptr,{}));
+        assert(invalid.invalidate_if_tracked(scope,1048));
+        CopyRanges dst{},src{};dst.count=src.count=1;dst.starts[0]=1064;src.starts[0]=1000;
+        if(bad==0)dst.readable=false;if(bad==1)dst.starts[0]=1000;
+        if(bad==2){dst.count=src.count=2;dst.starts[1]=1064;src.starts[1]=1016;}
+        assert(!invalid.copy_sparse(scope,dst,src)&&invalid.failed()&&!invalid.cell_counts().reuses);
+        assert(invalid.cell_counts().known_uav==3&&invalid.cell_counts().non_uav==1);
+    }
+}
 }
 int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     static_assert(!Bank::Snapshot::producer_authorized,"observation must not authorize producer");
@@ -255,5 +315,6 @@ int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     early_lifetime_and_sparse_invalidations();
     sparse_ranges_and_rewrites();sparse_capacity_and_lifetime_scope();sparse_rejections();
     production_heap_boundary();retained_mv_join();
+    erased_cell_reuse_and_snapshot_aba();reuse_copy_source_snapshot_and_validation();
     std::puts("NGX MV descriptor CPU provenance tests passed; no GPU/Dispatch/producer proof");
 }

@@ -52,12 +52,13 @@ template<size_t N=128> struct Ranges {
 struct ViewDescription {bool readable=true,provided{};D3D12_UNORDERED_ACCESS_VIEW_DESC value{};};
 
 template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease,
-         size_t HeapCapacity=8,size_t CellCapacity=128>
+         size_t HeapCapacity=8,size_t CellCapacity=128,bool ReuseNonUav=false>
 class DescriptorBank {
     static_assert(HeapCapacity&&CellCapacity,"nonempty observation bounds");
     struct Cell {uintptr_t heap{};uint32_t index{};uint64_t version{},origin{},source_handle{},source_version{};
         ResourceLease resource{},counter{};ViewDescription view{};bool known_uav{};};
     Scope scope_{};Loss loss_{};bool begun_{};uint64_t serial_{};size_t heap_count_{},cell_count_{};
+    uint64_t cell_reuses_{};
     std::array<DescriptorHeapLease,HeapCapacity> heaps_{};std::array<Cell,CellCapacity> cells_{};
     // Snapshot owner identity survives bank destruction, preventing bank-address ABA.
     std::shared_ptr<unsigned> owner_{std::make_shared<unsigned>(0)};
@@ -79,10 +80,17 @@ class DescriptorBank {
     Cell const* find(uintptr_t id,uint32_t slot)const{for(size_t i=0;i<cell_count_;++i)if(cells_[i].heap==id&&cells_[i].index==slot)return &cells_[i];return nullptr;}
     Cell* destination(uintptr_t id,uint32_t slot){
         for(size_t i=0;i<cell_count_;++i)if(cells_[i].heap==id&&cells_[i].index==slot)return &cells_[i];
-        if(cell_count_==CellCapacity){lose(Loss::capacity);return nullptr;}auto& c=cells_[cell_count_++];c.heap=id;c.index=slot;return &c;
+        if(cell_count_==CellCapacity){
+            if constexpr(ReuseNonUav){for(auto& c:cells_)if(!c.known_uav){
+                // Only a known-erased/non-UAV cell is reusable. No retained
+                // UAV may be evicted. Global serials never restart, so neither
+                // same-address recreation nor slot reuse revives old snapshots.
+                c={};c.heap=id;c.index=slot;++cell_reuses_;return &c;}}
+            capacity_loss(CapacitySite::cells);return nullptr;
+        }auto& c=cells_[cell_count_++];c.heap=id;c.index=slot;return &c;
     }
     bool flatten(Ranges<CellCapacity> const& ranges,bool source,std::array<uint64_t,CellCapacity>& handles,unsigned& total){
-        total=0;if(!ranges.readable)return lose(Loss::unreadable);if(ranges.count>CellCapacity)return lose(Loss::capacity);
+        total=0;if(!ranges.readable)return lose(Loss::unreadable);if(ranges.count>CellCapacity)return capacity_loss(CapacitySite::ranges);
         for(unsigned r=0;r<ranges.count;++r){const unsigned n=ranges.sizes_present?ranges.sizes[r]:1;if(!n)continue;
             uint32_t slot{};auto* h=heap(ranges.starts[r],false,slot);if(!h)return lose(Loss::unknown_heap);
             if(source&&h->visible)return lose(Loss::bad_range); // D3D source descriptors cannot be in shader-visible heaps.
@@ -92,6 +100,17 @@ class DescriptorBank {
     }
 public:
     static constexpr size_t heap_capacity=HeapCapacity,cell_capacity=CellCapacity;
+    static constexpr bool reuse_non_uav=ReuseNonUav;
+    enum class CapacitySite:unsigned {none,heaps,cells,ranges,serial};
+    struct CellCounts {size_t known_uav{},non_uav{},unused{};uint64_t reuses{};};
+    struct Saturation {CapacitySite site{};size_t heaps{};CellCounts cells{};};
+private:
+    Saturation saturation_{};
+    bool capacity_loss(CapacitySite site){
+        if(loss_==Loss::none)saturation_={site,heap_count_,cell_counts()};
+        return lose(Loss::capacity);
+    }
+public:
     struct Snapshot {
         Scope scope{};std::shared_ptr<unsigned const> owner;
         DescriptorHeapLease heap{};ResourceLease resource{},counter{};ViewDescription view{};
@@ -105,6 +124,9 @@ public:
     DescriptorBank()=default;DescriptorBank(DescriptorBank const&)=delete;DescriptorBank& operator=(DescriptorBank const&)=delete;
     bool begin(Scope value){if(begun_||!valid(value))return lose(Loss::bad_scope);scope_=value;begun_=true;return true;}
     Loss loss()const{return loss_;}size_t heaps()const{return heap_count_;}size_t cells()const{return cell_count_;}
+    CellCounts cell_counts()const{CellCounts out;out.unused=CellCapacity-cell_count_;out.reuses=cell_reuses_;
+        for(size_t i=0;i<cell_count_;++i)if(cells_[i].known_uav)++out.known_uav;else ++out.non_uav;return out;}
+    Saturation saturation()const{return saturation_;}
     bool failed()const{return loss_!=Loss::none;}
     bool contains_cpu(uint64_t handle)const{uint32_t slot{};return begun_&&!failed()&&heap(handle,false,slot)!=nullptr;}
     void uncertain(){lose(Loss::unreadable);}
@@ -117,14 +139,14 @@ public:
         for(size_t i=0;i<heap_count_;++i){auto const& old=heaps_[i];uint64_t last{},last_gpu{};span(old.cpu,old.count,old.stride,last);
             if(h.cpu<=last&&old.cpu<=end)return lose(Loss::overlap);
             if(h.visible&&old.visible){span(old.gpu,old.count,old.stride,last_gpu);if(h.gpu<=last_gpu&&old.gpu<=gpu_end)return lose(Loss::overlap);}}
-        if(heap_count_==HeapCapacity)return lose(Loss::capacity);heaps_[heap_count_++]=std::move(h);return true;
+        if(heap_count_==HeapCapacity)return capacity_loss(CapacitySite::heaps);heaps_[heap_count_++]=std::move(h);return true;
     }
     // Call after the original typed CreateUAV returned, under the same ordering
     // lock as every descriptor writer. Desc is a guarded pre-call value copy.
     bool write_uav(Scope value,uint64_t cpu,ID3D12Resource* typed,ID3D12Resource* counter,ViewDescription description){
         if(!scope(value))return false;uint32_t slot{};auto* h=heap(cpu,false,slot);if(!h)return lose(Loss::unknown_heap);
         if(!description.readable)return lose(Loss::unreadable);auto* c=destination(h->canonical,slot);if(!c)return false;
-        if(serial_==UINT64_MAX)return lose(Loss::capacity);*c={h->canonical,slot,++serial_};
+        if(serial_==UINT64_MAX)return capacity_loss(CapacitySite::serial);*c={h->canonical,slot,++serial_};
         if(!typed)return true; // Null UAV descriptor: explicit unknown/nonmatching record, old provenance erased.
         auto resource=ResourceLease::observe(typed);ResourceLease counter_lease{};if(counter)counter_lease=ResourceLease::observe(counter);
         if(!resource.retained()||(counter&&!counter_lease.retained()))return lose(Loss::unreadable);
@@ -154,7 +176,7 @@ private:
         for(unsigned i=0;i<dn;++i){uint32_t slot{};auto* h=heap(dst[i],false,slot);
             if(sparse&&!captured[i].known_uav&&!find(h->canonical,slot))continue;
             auto* c=destination(h->canonical,slot);if(!c)return false;
-            if(serial_==UINT64_MAX)return lose(Loss::capacity);auto value_copy=std::move(captured[i]);value_copy.heap=h->canonical;value_copy.index=slot;
+            if(serial_==UINT64_MAX)return capacity_loss(CapacitySite::serial);auto value_copy=std::move(captured[i]);value_copy.heap=h->canonical;value_copy.index=slot;
             value_copy.source_handle=src[i];value_copy.source_version=value_copy.version;value_copy.version=++serial_;*c=std::move(value_copy);}
         return true;
     }
@@ -194,8 +216,9 @@ public:
 };
 // Production observation has a separate explicit bound: the first real census
 // saw 60 cumulative CBV/SRV/UAV creations. Generic/small fixtures retain the
-// conservative default of 8; no eviction, restart or capacity recovery exists.
+// conservative default of 8. Production may reuse non-UAV tombstones; retained
+// known UAVs are never evicted, and a capacity failure never recovers/restarts.
 inline constexpr size_t observer_heap_capacity=96,observer_cell_capacity=128;
 template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease>
-using ObserverDescriptorBank=DescriptorBank<ResourceLease,DescriptorHeapLease,observer_heap_capacity,observer_cell_capacity>;
+using ObserverDescriptorBank=DescriptorBank<ResourceLease,DescriptorHeapLease,observer_heap_capacity,observer_cell_capacity,true>;
 }
