@@ -153,8 +153,9 @@ List* known(ID3D12GraphicsCommandList* list){
     for(unsigned i=0;i<list_count;++i)if(lists[i].raw==raw)return &lists[i];return nullptr;
 }
 bool may_admit(CallerOperation operation,uintptr_t caller){
+    const auto phase=ngx_mv_target_capture::window.snapshot().phase;
     return operation==CallerOperation::root&&ngx_stereo_host::attested&&caller==base+0x22018d&&
-        ngx_mv_target_capture::window.snapshot().phase==gears_ngx_mv_target::Phase::capturing;
+        (phase==gears_ngx_mv_target::Phase::waiting||phase==gears_ngx_mv_target::Phase::capturing);
 }
 bool scoped_list(ID3D12GraphicsCommandList* list,CallerOperation operation,uintptr_t caller){
     if(known(list)||may_admit(operation,caller))return true;
@@ -342,7 +343,7 @@ void print(FILE* file){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!file)return;
     fprintf(file,"ngx_mv_compute enabled=1 lists=%u list_limit=16 rows=%u row_limit=32 failed=%u failure=%u core_loss=%u stopped=%u leases_released=%u dispatches=%llu unbound=%llu unrelated=%llu invalidations=%llu waiting_bindings=%llu capture_bindings=%llu row_scope=selected_mv_related table_membership_verified=0 gpu_execution_verified=0 producer_authorized=0\n",
         list_count,row_count,unsigned(failed),failure,unsigned(bindings.loss()),unsigned(stopped),unsigned(leases_released),dispatches,unbound,unrelated,invalidations,waiting_bindings,capture_bindings);
-    fprintf(file,"ngx_mv_compute_admission scope=new_admission_setup22018d incomplete_coverage=1 new_phase=capturing attestation_required=1 known_lookup=retained_typed_argument skip_scope=bank_pending_owned skipped_unknown_heaps=%llu skipped_unknown_root=%llu skipped_unknown_table=%llu skipped_unknown_dispatch=%llu selected_mv_inferred=0\n",
+    fprintf(file,"ngx_mv_compute_admission scope=new_admission_setup22018d incomplete_coverage=1 new_phase=waiting_or_capturing attestation_required=1 known_lookup=retained_typed_argument skip_scope=bank_pending_owned skipped_unknown_heaps=%llu skipped_unknown_root=%llu skipped_unknown_table=%llu skipped_unknown_dispatch=%llu selected_mv_inferred=0\n",
         unknown_skipped[unsigned(CallerOperation::heaps)],unknown_skipped[unsigned(CallerOperation::root)],unknown_skipped[unsigned(CallerOperation::table)],unknown_skipped[unsigned(CallerOperation::dispatch)]);
     auto const& o=capacity_occupancy;
     fprintf(file,"ngx_mv_compute_reuse attempts=%llu reused=%llu foreign_device_skips=%llu capacity_snapshot=%u occupied=%u eligible=%u partial_or_absent=%u pinned=%u busy=%u unrevoked=%u unknown_blocked=%u stale_blocked=%u blocker_counts_overlap=1\n",
