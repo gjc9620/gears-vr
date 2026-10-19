@@ -584,3 +584,19 @@ The seed API imports retained typed heap leases and re-reads a current source ce
 The independent CPU window excludes the selection ticket, permits a different renderer on the next newer consume, and requires stable world/Create revision/MV plus one or two successfully returned Eval calls. Deadline, nesting, identity changes and missing/unfinished Eval terminate the observation. A frozen window is scheduling evidence, not stereo or GPU producer proof.
 
 These cores are not yet wired into runtime command-list/Dispatch observation. No game was launched for this step; player default and release package remain unchanged. Next: integrate bounded selected-source descriptor capture and command-list state with attested runtime callers, then collect actual-game evidence.
+
+### Target runtime integration constraints
+
+Review of current WrapperScope and hook_consume confirms that the independent target tap must precede the diagnostic Eval quota return and must not depend on the completed epoch-pair probe. Selection retains the authenticated NativeCreateSource and typed MV lease. Later structure+0x20 values are compared only to that held lease; they never become COM pointers.
+
+Consume begin uses the installed frozen ticket and checked current ownership. Consume end uses saved identities, because original_consume can free the renderer. Wrapper checks must use native_create_matches: native_create_state deliberately rejects an active wrapper. Independent SDK receipts must require exactly one matching command/handle/parameter invocation, no callback, normal return, native_result_accepted, and matching low32 wrapper/SDK results. Merely returning from a wrapper is insufficient.
+
+All cross-layer checks keep frame_hook_mutex before descriptor mutex. Descriptor code must not acquire the frame lock. Waiting/capturing requires deadline polling outside render callbacks; Create/release/world changes invalidate it. Closing admission precedes hook drain and retained resource release. These are integration requirements, not evidence that runtime wiring is complete.
+
+### Selected descriptor callbacks validated
+
+Fresh `build-ngx-target-capture1` SHA256 `95fea68e3ee1b0ebbfbd6dc067e5300f14e9a2cc4668f57437edea8d25080025` passed457 dependency checks, startup suite, focused CPU tests and patched real-D3D12 descriptor fixture. Receipt `analysis/runtime/ngx-target-capture1-tests.json`; full log `ngx-target-capture1-selftests.log`.
+
+First accepted Eval now imports and seeds an independent selected-MV bank once. Complete seeding freezes source updates; later source/legacy failures cannot reopen or relabel the target. Native callbacks preserve selected-MV aliases, erase overwritten descriptors and skip unrelated allocations. stop_target freezes mutation while retaining ownership; drained shutdown releases typed leases outside the observer lock. Fixture verified late heap import, selected native rewrite, unrelated replacement, alias lineage, stopped admission and cleanup.
+
+This build has no consume-window/Dispatch wiring and was not launched in game. Its status explicitly identifies collection until explicit stop/close, not bounded complete-render evidence. Next implement authenticated consume/SDK return hooks and deadline polling before actual-game use. Player default unchanged.

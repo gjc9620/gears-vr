@@ -5,8 +5,10 @@ namespace ngx_mv_descriptor_capture {
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
 using Bank=gears_ngx_mv::ObserverDescriptorBank<>;
 using SourceBank=gears_ngx_mv::SourceDescriptorLedger<>;
+using TargetBank=gears_ngx_mv::SelectedMvDescriptorBank<>;
 using Ranges=Bank::CopyRanges;
 static_assert(Bank::copy_capacity==SourceBank::copy_capacity,"one guarded copy format for independently admitted observers");
+static_assert(Bank::copy_capacity==TargetBank::copy_capacity,"selected target uses the same guarded copy format");
 using HeapFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device*,const D3D12_DESCRIPTOR_HEAP_DESC*,REFIID,void**);
 using CbvFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,const D3D12_CONSTANT_BUFFER_VIEW_DESC*,D3D12_CPU_DESCRIPTOR_HANDLE);
 using SrvFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,ID3D12Resource*,const D3D12_SHADER_RESOURCE_VIEW_DESC*,D3D12_CPU_DESCRIPTOR_HANDLE);
@@ -15,17 +17,24 @@ HeapFn original_heap{};CbvFn original_cbv{};SrvFn original_srv{};UavFn original_
 std::recursive_mutex mutex;
 std::unique_ptr<Bank> bank;
 std::unique_ptr<SourceBank> source_bank;
+std::unique_ptr<TargetBank> target_bank;
+gears_ngx_stereo::TypedResourceLease target_mv;
 gears_ngx_mv_census::Census heap_census;
 gears_ngx_mv::Scope lifetime{};
 gears_ngx_mv::Scope source_lifetime{};
+gears_ngx_mv::Scope target_lifetime{};
 bool armed{},accepting{},failed{},released{};
 bool source_failed{};
+bool source_frozen{},target_attempted{},target_seeded{},target_failed{},target_stopped{};
 unsigned final_loss{};size_t final_heaps{},final_cells{};
 Bank::CellCounts final_cell_counts{};Bank::Saturation final_saturation{};
 unsigned source_final_loss{};size_t source_final_heaps{},source_final_cells{};
 SourceBank::CellCounts source_final_counts{};SourceBank::Saturation source_final_saturation{};
+unsigned target_final_loss{};size_t target_final_heaps{},target_final_cells{},target_seed_count{};
+TargetBank::CellCounts target_final_counts{};TargetBank::Saturation target_final_saturation{};
 uint64_t heap_calls{},uav_calls{},invalidations{},copies{},other_devices{},missing_birth{},recursions{},uncertainties{};
 uint64_t source_heaps{},source_uavs{},source_invalidations{},source_copies{},source_other_devices{},source_missing_birth{},source_uncertainties{};
+uint64_t target_heaps{},target_uavs{},target_invalidations{},target_copies{},target_other_devices{},target_unrelated_uavs{},target_uncertainties{};
 thread_local unsigned depth{};
 // Frozen scalar audit only; no extra COM owners survive the bank's existing
 // drained teardown. Identity is historical at accepted Eval, not later use.
@@ -43,20 +52,27 @@ struct SourceMatch {
 struct SourceJoin {MvJoin summary{};std::array<SourceMatch,8> rows{};bool legacy_failed_at_eval{};};
 SourceJoin source_join{}; // First accepted Eval only; scalar historical audit.
 bool legacy_live(){return accepting&&!failed&&(!bank||!bank->failed());}
-bool source_live(){return accepting&&!source_failed&&(!source_bank||!source_bank->failed());}
+bool source_live(){return accepting&&!source_frozen&&!source_failed&&(!source_bank||!source_bank->failed());}
+bool target_live(){return accepting&&!target_stopped&&target_seeded&&!target_failed&&target_bank&&!target_bank->failed();}
 void fail(){if(!legacy_live())return;failed=true;++uncertainties;if(bank)bank->uncertain();}
 void source_fail(){if(!source_live())return;source_failed=true;++source_uncertainties;if(source_bank)source_bank->uncertain();}
+void target_fail(){if(!accepting||target_failed)return;target_failed=true;++target_uncertainties;if(target_bank&&!target_bank->failed())target_bank->uncertain();}
+// Future window end/timeout may freeze admission without detaching any lease.
+// Only existing close/drain retirement below releases native ownership.
+void stop_target(){std::lock_guard<std::recursive_mutex> lock(mutex);target_stopped=true;}
 template<class F> void attempt(F&& fn){try{fn();}catch(...){fail();}}
 template<class F> void source_attempt(F&& fn){try{fn();}catch(...){source_fail();}}
+template<class F> void target_attempt(F&& fn){try{fn();}catch(...){target_fail();}}
 struct Call {
-    std::unique_lock<std::recursive_mutex> lock{mutex,std::defer_lock};bool entered{},admitted{},source_admitted{},census_admitted{};
+    std::unique_lock<std::recursive_mutex> lock{mutex,std::defer_lock};bool entered{},admitted{},source_admitted{},target_admitted{},census_admitted{};
     explicit Call(bool relevant=true){if(!relevant)return;lock.lock();if(!accepting)return;
-        entered=true;if(depth++){++recursions;fail();source_fail();return;}
-        census_admitted=true;admitted=legacy_live();source_admitted=source_live();}
+        entered=true;if(depth++){++recursions;fail();source_fail();if(target_live())target_fail();return;}
+        census_admitted=true;admitted=legacy_live();source_admitted=source_live();target_admitted=target_live();}
     ~Call(){if(entered)--depth;}
     bool legacy()const{return admitted&&legacy_live();}
     bool source()const{return source_admitted&&source_live();}
-    explicit operator bool()const{return legacy()||source();}
+    bool target()const{return target_admitted&&target_live();}
+    explicit operator bool()const{return legacy()||source()||target();}
 };
 bool selected(ID3D12Device* device){
     if(!bank)return false;const auto identity=canonical_identity(device);
@@ -67,6 +83,37 @@ bool source_selected(ID3D12Device* device){
     if(!source_bank)return false;const auto identity=canonical_identity(device);
     if(!identity){source_fail();return false;}
     if(identity!=source_lifetime.device){++source_other_devices;return false;}return true;
+}
+bool target_selected(ID3D12Device* device){
+    const auto identity=canonical_identity(device);if(!identity){target_fail();return false;}
+    if(identity!=target_lifetime.device){++target_other_devices;return false;}return true;
+}
+void seed_target(gears_ngx_stereo::TypedResourceLease const* mv){
+    if(target_attempted||target_stopped)return;target_attempted=true;
+    if(!source_live()||!source_bank||!mv||!mv->retained()||mv->device!=source_lifetime.device||!source_join.summary.matches)return;
+    target_attempt([&]{
+        // Independent CPU observation generation, not a future consume ticket.
+        target_lifetime=gears_ngx_mv::lifetime_scope(2,mv->device);target_mv=*mv;target_bank=std::make_unique<TargetBank>();
+        if(!target_bank->begin(target_lifetime))return;
+        if(!source_bank->visit_heap_leases(source_lifetime,[&](gears_ngx_mv::HeapLease const& lease){return target_bank->observe_heap_lease(target_lifetime,lease);})){
+            target_fail();return;}
+        bool complete=true;
+        const auto matches=source_bank->visit_mv(source_lifetime,*mv,[&](SourceBank::Snapshot const& snapshot){
+            if(complete){complete=target_bank->seed_current_mv(target_lifetime,*source_bank,snapshot,*mv);if(complete)++target_seed_count;}});
+        if(!complete||!matches||matches!=target_seed_count||matches!=source_join.summary.matches||target_bank->failed()){target_fail();return;}
+        target_seeded=true;source_frozen=true;
+    });
+}
+void target_uav(ID3D12Resource* resource,ID3D12Resource* counter,gears_ngx_mv::ViewDescription const& view,uint64_t cpu){
+    if(!view.readable){target_fail();return;}
+    // Exact equality with the retained typed interface needs no new probe.
+    // Distinct interface addresses may alias the same COM resource, so use only
+    // canonical QI for that fallback; unrelated UAVs never take a typed lease.
+    const auto identity=!resource?uintptr_t{}:reinterpret_cast<uintptr_t>(resource)==target_mv.raw?target_mv.canonical:canonical_identity(resource);
+    if(resource&&!identity){target_fail();return;}
+    if(resource&&identity==target_mv.canonical)
+        target_bank->write_uav(target_lifetime,cpu,resource,counter,view);
+    else{++target_unrelated_uavs;target_bank->invalidate_if_tracked(target_lifetime,cpu);}
 }
 Ranges read_ranges(UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* starts,const UINT* sizes){
     Ranges out;out.count=count;out.sizes_present=sizes!=nullptr;
@@ -81,6 +128,7 @@ void copied(ID3D12Device* device,Ranges const& destination,Ranges const& source)
         if(selected(device))bank->copy_sparse(lifetime,destination,source);});
     if(source_live())source_attempt([&]{++source_copies;if(!source_bank){++source_missing_birth;source_fail();return;}
         if(source_selected(device))source_bank->copy_sparse(source_lifetime,destination,source);});
+    if(target_live())target_attempt([&]{++target_copies;if(target_selected(device))target_bank->copy_sparse(target_lifetime,destination,source);});
 }
 void arm(){std::lock_guard<std::recursive_mutex> lock(mutex);if(!armed){armed=true;accepting=true;heap_census.arm();}}
 void close(){std::lock_guard<std::recursive_mutex> lock(mutex);accepting=false;heap_census.close();}
@@ -101,7 +149,8 @@ void accepted_eval(unsigned ordinal,uint64_t revision,uint64_t world,uint64_t ti
                 row.heap_raw=snapshot.heap.raw;row.resource=snapshot.resource.raw;row.counter_raw=snapshot.counter.raw;
                 row.counter=snapshot.counter.canonical;row.counter_device=snapshot.counter.device;
                 row.visible=snapshot.heap.visible;row.view=snapshot.view;
-            });}}
+            });}
+        seed_target(mv);}
     if(ordinal>=mv_joins.size()||mv_joins[ordinal].present)return;
     auto& join=mv_joins[ordinal];join.present=true;join.use={revision,world,ticket,renderer,handle,parameters};
     join.capture_generation=lifetime.epoch;join.typed_retained=mv&&mv->retained();
@@ -118,17 +167,21 @@ void accepted_eval(unsigned ordinal,uint64_t revision,uint64_t world,uint64_t ti
 void release_drained(){
     // Closing admission precedes disabling hooks. Taking this lock drains every
     // admitted original/post-call update; active additionally covers Scope.
-    std::unique_ptr<Bank> retired;std::unique_ptr<SourceBank> source_retired;
+    std::unique_ptr<Bank> retired;std::unique_ptr<SourceBank> source_retired;std::unique_ptr<TargetBank> target_retired;
+    gears_ngx_stereo::TypedResourceLease retired_mv;
     {std::lock_guard<std::recursive_mutex> lock(mutex);
         if(accepting||active.load()||depth)return;
         if(bank){final_loss=static_cast<unsigned>(bank->loss());final_heaps=bank->heaps();final_cells=bank->cells();
             final_cell_counts=bank->cell_counts();final_saturation=bank->saturation();retired=std::move(bank);}
         if(source_bank){source_final_loss=static_cast<unsigned>(source_bank->loss());source_final_heaps=source_bank->heaps();source_final_cells=source_bank->cells();
             source_final_counts=source_bank->cell_counts();source_final_saturation=source_bank->saturation();source_retired=std::move(source_bank);}
+        if(target_bank){target_final_loss=static_cast<unsigned>(target_bank->loss());target_final_heaps=target_bank->heaps();target_final_cells=target_bank->cells();
+            target_final_counts=target_bank->cell_counts();target_final_saturation=target_bank->saturation();target_retired=std::move(target_bank);}
+        retired_mv=std::move(target_mv);
         released=true;}
     // No observer lock across native Release: a closed passthrough callback
     // may still enter the DLL. It cannot access the detached bank.
-    retired.reset();source_retired.reset();
+    retired.reset();source_retired.reset();target_retired.reset();retired_mv.release();
 }
 void print_census(FILE* status,char const* stage,unsigned ordinal,gears_ngx_mv_census::Counts const& c,gears_ngx_mv_census::Use use={}){
     fprintf(status,"ngx_mv_heap_census stage=%s ordinal=%u revision=%llu world=%llu ticket=%llu renderer=%llx handle=%llx parameters=%llx all_devices=1 calls=%llu cumulative_creations=%llu visible_creations=%llu visible_descriptors_sum=%llu visible_descriptors_max=%llu nonvisible_creations=%llu nonvisible_descriptors_sum=%llu nonvisible_descriptors_max=%llu api_failures=%llu descriptor_unreadable=%llu output_unreadable=%llu non_creation=%llu other_heap_type=%llu saturated=%u reentrant_excluded_total=%llu cumulative_not_live_heaps=1 descriptors_not_vram_bytes=1 retained_extra_com=0 producer_authorized=0\n",
@@ -156,12 +209,20 @@ void print(FILE* status){std::lock_guard<std::recursive_mutex> lock(mutex);if(!s
         saturation.cells.known_uav,saturation.cells.non_uav,saturation.cells.unused,saturation.cells.reuses,Bank::copy_capacity,Bank::copy_capacity,Bank::copy_scratch_bytes);
     const auto source_counts=source_bank?source_bank->cell_counts():source_final_counts;
     const auto source_saturation=source_bank?source_bank->saturation():source_final_saturation;
-    fprintf(status,"ngx_mv_source_ledger enabled=1 independent_of_legacy_bank=1 admission=%u capture_generation=%llu device=%llx scope=device_lifetime world=0 ticket=0 heaps=%zu cells=%zu heap_capacity=%zu cell_capacity=%zu copy_capacity=%zu known_uav=%zu non_uav=%zu unused=%zu heap_calls=%llu uav_calls=%llu invalidations=%llu copies=%llu other_devices=%llu missing_birth=%llu uncertainties=%llu failed=%u loss=%u saturation_site=%u saturation_known_uav=%zu saturation_non_uav=%zu released=%u direct_visible_births_retained=1 new_visible_copy_replicas_retained=0 producer_authorized=0\n",
+    fprintf(status,"ngx_mv_source_ledger enabled=1 independent_of_legacy_bank=1 admission=%u capture_generation=%llu device=%llx scope=device_lifetime world=0 ticket=0 heaps=%zu cells=%zu heap_capacity=%zu cell_capacity=%zu copy_capacity=%zu known_uav=%zu non_uav=%zu unused=%zu heap_calls=%llu uav_calls=%llu invalidations=%llu copies=%llu other_devices=%llu missing_birth=%llu uncertainties=%llu failed=%u loss=%u saturation_site=%u saturation_known_uav=%zu saturation_non_uav=%zu released=%u frozen_after_seed=%u direct_visible_births_retained=1 new_visible_copy_replicas_retained=0 producer_authorized=0\n",
         unsigned(source_live()),source_lifetime.epoch,source_lifetime.device,source_bank?source_bank->heaps():source_final_heaps,source_bank?source_bank->cells():source_final_cells,
         SourceBank::heap_capacity,SourceBank::cell_capacity,SourceBank::copy_capacity,source_counts.known_uav,source_counts.non_uav,source_counts.unused,
         source_heaps,source_uavs,source_invalidations,source_copies,source_other_devices,source_missing_birth,source_uncertainties,
         unsigned(source_failed||(source_bank?source_bank->failed():source_final_loss!=0)),source_bank?unsigned(source_bank->loss()):source_final_loss,
-        unsigned(source_saturation.site),source_saturation.cells.known_uav,source_saturation.cells.non_uav,unsigned(released));
+        unsigned(source_saturation.site),source_saturation.cells.known_uav,source_saturation.cells.non_uav,unsigned(released),unsigned(source_frozen));
+    const auto target_counts=target_bank?target_bank->cell_counts():target_final_counts;
+    const auto target_saturation=target_bank?target_bank->saturation():target_final_saturation;
+    fprintf(status,"ngx_mv_target_bank attempted=%u seeded=%u admission=%u stopped=%u independent_of_legacy_bank=1 capture_generation=%llu scope=device_lifetime world=0 ticket=0 device=%llx mv_raw=%llx mv_canonical=%llx seeds=%zu heaps=%zu cells=%zu heap_capacity=%zu cell_capacity=%zu copy_capacity=%zu known_mv=%zu non_uav=%zu unused=%zu reuses=%llu heap_calls=%llu uav_calls=%llu unrelated_uavs=%llu invalidations=%llu copies=%llu other_devices=%llu uncertainties=%llu failed=%u loss=%u saturation_site=%u released=%u consume_window_wired=0 consume_scope_verified=0 collection_until_explicit_stop_or_close=1 dispatch_binding_verified=0 producer_authorized=0\n",
+        unsigned(target_attempted),unsigned(target_seeded),unsigned(target_live()),unsigned(target_stopped),target_lifetime.epoch,target_lifetime.device,
+        source_join.summary.raw,source_join.summary.canonical,target_seed_count,target_bank?target_bank->heaps():target_final_heaps,target_bank?target_bank->cells():target_final_cells,
+        TargetBank::heap_capacity,TargetBank::cell_capacity,TargetBank::copy_capacity,target_counts.known_uav,target_counts.non_uav,target_counts.unused,target_counts.reuses,
+        target_heaps,target_uavs,target_unrelated_uavs,target_invalidations,target_copies,target_other_devices,target_uncertainties,
+        unsigned(target_failed||(target_bank?target_bank->failed():target_final_loss!=0)),target_bank?unsigned(target_bank->loss()):target_final_loss,unsigned(target_saturation.site),unsigned(released));
     if(source_join.summary.present){auto const& j=source_join.summary;
         fprintf(status,"ngx_mv_source_eval ordinal=0 revision=%llu world=%llu ticket=%llu renderer=%llx handle=%llx parameters=%llx mv_raw=%llx mv_canonical=%llx mv_device=%llx typed_retained=%u ledger_ready=%u device_match=%u legacy_failed_at_eval=%u matches=%zu saved=%zu truncated=%u snapshot_at_eval=1 scalar_only=1 dispatch_binding_verified=0 producer_authorized=0\n",
             j.use.revision,j.use.world,j.use.ticket,j.use.renderer,j.use.handle,j.use.parameters,j.raw,j.canonical,j.device,unsigned(j.typed_retained),unsigned(j.bank_ready),unsigned(j.device_match),unsigned(source_join.legacy_failed_at_eval),j.matches,j.saved,unsigned(j.matches>j.saved));
@@ -197,12 +258,12 @@ HRESULT STDMETHODCALLTYPE heap(ID3D12Device* device,const D3D12_DESCRIPTOR_HEAP_
             (before.Flags&D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)!=0,before.NumDescriptors});
     }
     if(call){try{
-        if(!readable){if(call.legacy())fail();if(call.source())source_fail();return result;}
+        if(!readable){if(call.legacy())fail();if(call.source())source_fail();if(call.target())target_fail();return result;}
         if(before.Type!=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV||FAILED(result))return result;
-        if(call.legacy())++heap_calls;if(call.source())++source_heaps;
+        if(call.legacy())++heap_calls;if(call.source())++source_heaps;if(call.target())++target_heaps;
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> typed;
         if(!output_readable||!raw||FAILED(raw->QueryInterface(IID_PPV_ARGS(&typed)))){
-            if(call.legacy())fail();if(call.source())source_fail();return result;}
+            if(call.legacy())fail();if(call.source())source_fail();if(call.target())target_fail();return result;}
         if(call.legacy())attempt([&]{if(!bank){const auto identity=canonical_identity(device);if(!identity){fail();return;}
             // One immutable bank: no world-reset clearing or device rebinding.
             lifetime=gears_ngx_mv::lifetime_scope(1,identity);bank=std::make_unique<Bank>();
@@ -212,18 +273,21 @@ HRESULT STDMETHODCALLTYPE heap(ID3D12Device* device,const D3D12_DESCRIPTOR_HEAP_
             source_lifetime=gears_ngx_mv::lifetime_scope(1,identity);source_bank=std::make_unique<SourceBank>();
             if(!source_bank->begin(source_lifetime)){source_fail();return;}}
             if(source_selected(device))source_bank->observe_heap(source_lifetime,typed.Get());});
-        }catch(...){if(call.legacy())fail();if(call.source())source_fail();}
+        if(call.target())target_attempt([&]{if(target_selected(device))target_bank->observe_heap(target_lifetime,typed.Get());});
+        }catch(...){if(call.legacy())fail();if(call.source())source_fail();if(call.target())target_fail();}
     }return result;
 }
 void STDMETHODCALLTYPE cbv(ID3D12Device* device,const D3D12_CONSTANT_BUFFER_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle){
     Scope scope;auto frame_guard=frame_lock();Call call;original_cbv(device,desc,handle);
     if(call.legacy())attempt([&]{++invalidations;if(selected(device))bank->invalidate_if_tracked(lifetime,handle.ptr);});
     if(call.source())source_attempt([&]{++source_invalidations;if(source_selected(device))source_bank->invalidate_if_tracked(source_lifetime,handle.ptr);});
+    if(call.target())target_attempt([&]{++target_invalidations;if(target_selected(device))target_bank->invalidate_if_tracked(target_lifetime,handle.ptr);});
 }
 void STDMETHODCALLTYPE srv(ID3D12Device* device,ID3D12Resource* resource,const D3D12_SHADER_RESOURCE_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle){
     Scope scope;auto frame_guard=frame_lock();Call call;original_srv(device,resource,desc,handle);
     if(call.legacy())attempt([&]{++invalidations;if(selected(device))bank->invalidate_if_tracked(lifetime,handle.ptr);});
     if(call.source())source_attempt([&]{++source_invalidations;if(source_selected(device))source_bank->invalidate_if_tracked(source_lifetime,handle.ptr);});
+    if(call.target())target_attempt([&]{++target_invalidations;if(target_selected(device))target_bank->invalidate_if_tracked(target_lifetime,handle.ptr);});
 }
 void STDMETHODCALLTYPE uav(ID3D12Device* device,ID3D12Resource* resource,ID3D12Resource* counter,const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle){
     Scope scope;auto frame_guard=frame_lock();Call call;gears_ngx_mv::ViewDescription before;
@@ -235,6 +299,7 @@ void STDMETHODCALLTYPE uav(ID3D12Device* device,ID3D12Resource* resource,ID3D12R
     if(call.source())source_attempt([&]{++source_uavs;if(!source_bank){++source_missing_birth;source_fail();return;}
         if(source_selected(device)){if(!source_bank->contains_cpu(handle.ptr))++source_missing_birth;
             source_bank->write_uav(source_lifetime,handle.ptr,resource,counter,before);}});
+    if(call.target())target_attempt([&]{++target_uavs;if(target_selected(device))target_uav(resource,counter,before,handle.ptr);});
 }
 // Dedicated self-test only. All writes below enter the real patched D3D12
 // device methods; helper access is restricted to inspecting resulting evidence.
@@ -248,7 +313,8 @@ DWORD native_check(Bank::Snapshot& retained){
     for(unsigned i=0;i<4;++i)if(table[slots[i]]!=prime_targets[prime_hook_base_count+i])return 303;
     if(table[23]!=prime_targets[1]||table[24]!=prime_targets[2])return 304;
     {std::lock_guard<std::recursive_mutex> lock(mutex);
-        if(!armed||!accepting||failed||bank||heap_calls||uav_calls||copies||source_failed||source_bank||source_heaps||source_uavs||source_copies)return 305;}
+        if(!armed||!accepting||failed||bank||heap_calls||uav_calls||copies||source_failed||source_bank||source_heaps||source_uavs||source_copies||
+           target_bank||target_attempted||target_mv.retained())return 305;}
     D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;hd.NumDescriptors=4;
     if(FAILED(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&cpu_heap))))return 306;
     hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
@@ -358,12 +424,50 @@ DWORD native_check(Bank::Snapshot& retained){
            !source_join.legacy_failed_at_eval||!gears_ngx_mv::same(source_join.rows[0].scope,source_lifetime))return 336;
         if(bank->loss()!=gears_ngx_mv::Loss::unreadable||bank->cells()!=3||heap_calls!=2||uav_calls!=2||copies!=4||invalidations!=4||
            failed||uncertainties||recursions)return 337;}
+    TargetBank::Snapshot seeded_target,target_alias,target_visible;
+    {std::lock_guard<std::recursive_mutex> lock(mutex);
+        if(!target_seeded||target_failed||target_stopped||!source_frozen||source_live()||!target_live()||target_seed_count!=1||target_bank->heaps()!=2||target_bank->cells()!=1)return 339;
+        seeded_target=target_bank->lookup(target_lifetime,cpu.ptr);
+        if(!seeded_target.same_mv(typed_first)||!seeded_target.seed||!gears_ngx_mv::same(seeded_target.seed->scope,source_lifetime)||
+           !gears_ngx_mv::same(seeded_target.scope,target_lifetime)||target_lifetime.world||target_lifetime.ticket)return 340;}
+    device->CopyDescriptorsSimple(1,cpu1,cpu,hd.Type);
+    device->CopyDescriptorsSimple(1,gpu_cpu,cpu1,hd.Type);
+    {std::lock_guard<std::recursive_mutex> lock(mutex);
+        target_alias=target_bank->lookup(target_lifetime,cpu1.ptr);target_visible=target_bank->lookup(target_lifetime,gpu_cpu.ptr);
+        if(!target_alias.same_mv(typed_first)||!target_visible.same_mv(typed_first)||target_alias.seed!=seeded_target.seed||
+           target_visible.seed!=seeded_target.seed||target_visible.source_version!=target_alias.version)return 341;}
+    device->CreateUnorderedAccessView(second.Get(),nullptr,&uv,cpu2); // Unrelated native birth consumes no target cell.
+    device->CopyDescriptorsSimple(1,cpu3,cpu2,hd.Type); // Unrelated native copy consumes no target cell.
+    {std::lock_guard<std::recursive_mutex> lock(mutex);
+        if(target_bank->cells()!=3||target_bank->lookup(target_lifetime,cpu2.ptr).version||target_bank->lookup(target_lifetime,cpu3.ptr).version)return 342;}
+    device->CreateShaderResourceView(second.Get(),&sv,cpu1);
+    device->CopyDescriptorsSimple(1,gpu_cpu,cpu1,hd.Type);
+    device->CreateUnorderedAccessView(second.Get(),nullptr,&uv,cpu); // Unrelated replacement erases the tracked MV.
+    {std::lock_guard<std::recursive_mutex> lock(mutex);
+        if(target_bank->current(target_alias)||target_bank->current(target_visible)||target_bank->current(seeded_target)||target_bank->cell_counts().known_uav)return 343;}
+    device->CreateUnorderedAccessView(first.Get(),nullptr,&uv,cpu); // Selected typed native rewrite becomes fresh local provenance.
+    device->CopyDescriptorsSimple(1,gpu_cpu,cpu,hd.Type);
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> late_heap;hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    if(FAILED(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&late_heap))))return 344;
+    TargetBank::Snapshot frozen_target;
+    {std::lock_guard<std::recursive_mutex> lock(mutex);frozen_target=target_bank->lookup(target_lifetime,cpu.ptr);
+        if(!frozen_target.same_mv(typed_first)||frozen_target.seed||target_bank->heaps()!=3||target_bank->cells()!=3||target_bank->cell_counts().known_uav!=2||
+           target_heaps!=1||target_uavs!=3||target_unrelated_uavs!=2||target_invalidations!=1||target_copies!=5||target_other_devices||target_uncertainties||target_failed||target_bank->failed())return 345;}
+    stop_target();
+    device->CreateUnorderedAccessView(second.Get(),nullptr,&uv,cpu); // Admission stopped; keep only frozen historical evidence.
+    {std::lock_guard<std::recursive_mutex> lock(mutex);
+        if(target_live()||!target_stopped||!target_bank||!target_mv.retained()||target_uavs!=3||
+           target_bank->lookup(target_lifetime,cpu.ptr).version!=frozen_target.version)return 346;
+        if(source_heaps!=2||source_uavs!=4||source_copies!=7||source_invalidations!=5||source_bank->cells()!=3||
+           bank->loss()!=gears_ngx_mv::Loss::unreadable||heap_calls!=2||uav_calls!=2||copies!=4||invalidations!=4)return 347;}
     return 0;
 }
 DWORD native_closed_check(Bank::Snapshot const& retained){
     std::lock_guard<std::recursive_mutex> lock(mutex);
     if(accepting||!released||bank||active.load()||depth||failed||final_loss!=unsigned(gears_ngx_mv::Loss::unreadable)||final_heaps!=2||final_cells!=3)return 327;
     if(source_bank||source_failed||source_final_loss||source_final_heaps!=2||source_final_cells!=3||source_final_counts.known_uav!=1||source_final_counts.non_uav!=2)return 338;
+    if(target_bank||target_mv.retained()||target_failed||target_final_loss||target_final_heaps!=3||target_final_cells!=3||
+       target_final_counts.known_uav!=2||target_final_counts.non_uav!=1||!source_frozen||!target_stopped)return 348;
     if(!retained.retained_uav()||!gears_ngx_mv::same(retained.scope,lifetime)||retained.scope.world||retained.scope.ticket)return 328;
     return 0;
 }
