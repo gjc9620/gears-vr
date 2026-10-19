@@ -1,5 +1,13 @@
 # Automatic-test window placement
 
+User operating preference (2026-10-19): background game and simulator tests are
+authorized at any time; deferring a physical-headset test does not defer these
+tests. Keep audio muted and windows behind the user's applications. Do not
+activate or cover their current window. For unattended resolution tests, use a
+temporary 1280x720 windowed desktop setting, with exact pre-test settings/profile
+backup and restoration after the owned game exits. Do not change the normal
+player launch configuration or infer the VR eye dimensions from this window.
+
 This opt-in policy keeps the game's own automatically shown windows behind
 existing windows. It does not minimize, resize, move or activate windows, and
 does not poll or repeatedly repair desktop Z order. A user's foreground game
