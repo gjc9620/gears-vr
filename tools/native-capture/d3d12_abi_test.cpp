@@ -10,6 +10,7 @@ SLOT(ID3D12GraphicsCommandListVtbl,Reset,10);
 SLOT(ID3D12GraphicsCommandListVtbl,ClearState,11);
 SLOT(ID3D12GraphicsCommandListVtbl,DrawInstanced,12);
 SLOT(ID3D12GraphicsCommandListVtbl,DrawIndexedInstanced,13);
+SLOT(ID3D12GraphicsCommandListVtbl,Dispatch,14);
 SLOT(ID3D12GraphicsCommandListVtbl,CopyTextureRegion,16);
 SLOT(ID3D12GraphicsCommandListVtbl,CopyResource,17);
 SLOT(ID3D12GraphicsCommandListVtbl,ResolveSubresource,19);
@@ -19,6 +20,9 @@ SLOT(ID3D12GraphicsCommandListVtbl,OMSetStencilRef,24);
 SLOT(ID3D12GraphicsCommandListVtbl,SetPipelineState,25);
 SLOT(ID3D12GraphicsCommandListVtbl,ResourceBarrier,26);
 SLOT(ID3D12GraphicsCommandListVtbl,ExecuteBundle,27);
+SLOT(ID3D12GraphicsCommandListVtbl,SetDescriptorHeaps,28);
+SLOT(ID3D12GraphicsCommandListVtbl,SetComputeRootSignature,29);
+SLOT(ID3D12GraphicsCommandListVtbl,SetComputeRootDescriptorTable,31);
 SLOT(ID3D12GraphicsCommandListVtbl,OMSetRenderTargets,46);
 SLOT(ID3D12GraphicsCommandListVtbl,ClearRenderTargetView,48);
 SLOT(ID3D12GraphicsCommandListVtbl,DiscardResource,51);
@@ -40,4 +44,4 @@ SLOT(ID3D12Device8Vtbl,CreateCommittedResource2,69);
 SLOT(ID3D12Device8Vtbl,CreatePlacedResource1,70);
 SLOT(ID3D12Device10Vtbl,CreateCommittedResource3,76);
 SLOT(ID3D12Device10Vtbl,CreatePlacedResource2,77);
-int main(){std::puts("D3D12 ABI: 34 SDK vtable offsets verified, ClearState=11, SetPipelineState=25, ExecuteBundle=27, GetCachedBlob=8");}
+int main(){std::puts("D3D12 ABI: 38 SDK vtable offsets verified, Dispatch=14, SetDescriptorHeaps=28, SetComputeRootSignature=29, SetComputeRootDescriptorTable=31");}
