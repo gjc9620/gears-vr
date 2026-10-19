@@ -563,11 +563,14 @@ namespace GearsVrUi {
             try { var saved = Program.ReadConfig(config); game.Text = Convert.ToString(saved["game_path"]); if (hudSupported) hudSize.Value = Program.HudSize(saved); if (cameraSupported) cameraCloser.Value = Program.CameraCloser(saved); if(renderSupported)renderScale.Value=Program.RenderScale(saved); } catch (Exception e) { Log(Language.T(TextKey.ConfigReadError) + e.Message); }
             browseGame.Click += delegate { using (var dialog = new OpenFileDialog { Filter = Language.T(TextKey.GameFilter) }) if (dialog.ShowDialog(this) == DialogResult.OK) game.Text = dialog.FileName; };
             browseRuntime.Click += delegate { using (var dialog = new OpenFileDialog { Filter = "OpenXR manifest (*.json)|*.json" }) if (dialog.ShowDialog(this) == DialogResult.OK) runtime.Text = dialog.FileName; };
-            runtimeMode.SelectedIndexChanged += delegate { if (translating) return; runtime.Text = Program.DefaultRuntime(root, runtimeMode.SelectedIndex); UpdateButtons(); };
+            runtimeMode.SelectedIndexChanged += delegate { if (translating) return; renderInfo.Text=""; runtime.Text = Program.DefaultRuntime(root, runtimeMode.SelectedIndex); UpdateButtons(); };
+            runtime.TextChanged += delegate { renderInfo.Text=""; };
             renderPreview.Click += async delegate {
                 if(starting||owner!=null)return;
+                renderInfo.Text="";
                 try{Program.SaveRenderScale(config,renderScale.Value);starting=true;UpdateButtons();
-                    await Command("render-size",runtimeMode.SelectedIndex!=1?runtime.Text.Trim():null);
+                    int code=await Command("render-size",runtimeMode.SelectedIndex!=1?runtime.Text.Trim():null);
+                    if(code!=0)renderInfo.Text=Language.T(TextKey.StartupFailed);
                 }catch(Exception e){Log(e.Message);renderInfo.Text=Language.T(TextKey.StartupFailed);}
                 finally{starting=false;UpdateButtons();}
             };
@@ -675,6 +678,7 @@ namespace GearsVrUi {
         }
         async Task StartVr() {
             if (starting || owner != null) return;
+            renderInfo.Text="";
             try {
                 string path = game.Text.Trim(); string resolved = Path.IsPathRooted(path) ? path : Path.Combine(root, path);
                 if (!File.Exists(resolved)) throw new IOException(Language.T(TextKey.GameMissing));

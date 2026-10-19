@@ -8,6 +8,13 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+Launcher preview follow-up: changing runtime selection/path, checking size again,
+or starting VR clears the previous size label. A failed size command displays a
+failure instead of retaining the old runtime's dimensions. The GUI was rebuilt
+and its offline self-test passed; no interactive/headset test was performed.
+The repository launcher includes this fix; the feedback ZIP below predates this
+GUI-only change and must be refreshed before release.
+
 Diagnostics export now retains the latest launcher's recommended eye dimensions,
 selected multiplier, planned eye dimensions and SBS dimensions. It labels these
 as a preflight plan, not measured GPU output, and does not attribute them to older
