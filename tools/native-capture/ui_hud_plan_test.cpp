@@ -15,9 +15,12 @@ static void oracle(StereoSample const& s,unsigned eye,double x,double y,
     gears_viewport::OverlayPlan const& p, double depth=2,double hfov=65) {
     const double half=depth*std::tan(hfov*pi/360);
     const double px=(2*x/1920-1)*half,py=(1-2*y/1080)*half*1080/1920;
-    const auto inv=transpose(rotation_matrix(s.head.orientation));
-    const auto delta=transform(inv,{s.eyes[eye].pose.position.x-s.head.position.x,
-        s.eyes[eye].pose.position.y-s.head.position.y,s.eyes[eye].pose.position.z-s.head.position.z});
+    const Vector origin{(s.eyes[0].pose.position.x+s.eyes[1].pose.position.x)/2,
+        (s.eyes[0].pose.position.y+s.eyes[1].pose.position.y)/2,
+        (s.eyes[0].pose.position.z+s.eyes[1].pose.position.z)/2};
+    const auto inv=transpose(rotation_matrix(s.eyes[0].pose.orientation));
+    const auto delta=transform(inv,{s.eyes[eye].pose.position.x-origin.x,
+        s.eyes[eye].pose.position.y-origin.y,s.eyes[eye].pose.position.z-origin.z});
     const auto f=s.eyes[eye].fov;
     const double tangent_x=(px-delta.x)/(depth+delta.z),tangent_y=(py-delta.y)/(depth+delta.z);
     const double expected_x=eye*960+960*(tangent_x-std::tan(f.left))/(std::tan(f.right)-std::tan(f.left));
@@ -85,7 +88,27 @@ int main(){auto s=sample();auto saved=state();gears_viewport::OverlayPlan p{};
     assert(gears_ui_hud::plan(saved,1920,1080,scaled,signed_plan));assert(same(rotated,signed_plan));
     auto shifted=s;for(auto&e:shifted.eyes)e.pose.position.z=-.1;
     gears_viewport::OverlayPlan shifted_plan{};assert(gears_ui_hud::plan(saved,1920,1080,shifted,shifted_plan));
-    for(unsigned i=0;i<2;++i)oracle(shifted,i,700,300,shifted_plan);assert(shifted_plan.viewports[0].width>p.viewports[0].width);
+    for(unsigned i=0;i<2;++i)oracle(shifted,i,700,300,shifted_plan);assert(same(shifted_plan,p));
+    auto staggered=s;staggered.eyes[0].pose.position.z=-.01;staggered.eyes[1].pose.position.z=.01;
+    gears_ui_hud::Diagnostic diagnostic{};
+    assert(gears_ui_hud::plan(saved,1920,1080,staggered,shifted_plan,{},&diagnostic));
+    assert(diagnostic.reject==gears_ui_hud::Reject::none);
+    for(unsigned i=0;i<2;++i)oracle(staggered,i,700,300,shifted_plan);
+    auto one_sign=s;one_sign.eyes[1].pose.orientation={0,0,0,-1};
+    gears_viewport::OverlayPlan one_sign_plan{};
+    assert(gears_ui_hud::plan(saved,1920,1080,one_sign,one_sign_plan));assert(same(one_sign_plan,p));
+    // Independent head/VIEW-space queries can disagree with the exact stereo
+    // view. The HUD remains tied to the frozen binocular frame. Preserve the
+    // sample and all world camera data; only this local panel frame changes.
+    auto independent=moved;independent.head={{0,1.7,0},{0,0,0,1}};
+    const auto unchanged=independent;
+    gears_viewport::OverlayPlan coherent{};
+    assert(gears_ui_hud::plan(saved,1920,1080,independent,coherent));
+    for(unsigned i=0;i<2;++i){near(coherent.viewports[i].x,rotated.viewports[i].x);
+        near(coherent.viewports[i].y,rotated.viewports[i].y);
+        near(coherent.viewports[i].width,rotated.viewports[i].width);
+        near(coherent.viewports[i].height,rotated.viewports[i].height);}
+    assert(stereo_same(independent,unchanged));
     auto partial=saved;partial.scissor={101,203,701,401};gears_viewport::OverlayPlan clipped{};
     assert(gears_ui_hud::plan(partial,1920,1080,s,clipped));
     for(unsigned i=0;i<2;++i){auto v=clipped.viewports[i];auto c=clipped.scissors[i];
@@ -101,15 +124,16 @@ int main(){auto s=sample();auto saved=state();gears_viewport::OverlayPlan p{};
     bad=s;bad.head.orientation={0,0,0,0};reject(saved,bad);
     bad=s;bad.eyes[1].pose.position=bad.eyes[0].pose.position;reject(saved,bad);
     bad=s;bad.eyes[0].fov.up=std::numeric_limits<double>::quiet_NaN();reject(saved,bad);
-    bad=s;for(auto&e:bad.eyes)e.pose.position.z=-3;reject(saved,bad);
-    bad=s;for(auto&e:bad.eyes)e.pose.position.x+=100;reject(saved,bad); // empty fixed-eye intersection
+    bad=s;for(auto&e:bad.eyes)e.pose.position.z=-3;assert(gears_ui_hud::plan(saved,1920,1080,bad,coherent));assert(same(coherent,p));
+    bad=s;for(auto&e:bad.eyes)e.pose.position.x+=100;assert(gears_ui_hud::plan(saved,1920,1080,bad,coherent));
+    for(unsigned i=0;i<2;++i){near(coherent.viewports[i].x,p.viewports[i].x);near(coherent.viewports[i].y,p.viewports[i].y);}
     reject(saved,s,{0,2});reject(saved,s,{179,2});reject(saved,s,{70,0});reject(saved,s,{70,-1});
     reject(saved,s,{70,std::numeric_limits<double>::infinity()});reject(saved,s,{178.9,2}); // D3D bounds
     auto invalid=saved;invalid.viewport_count=2;reject(invalid,s);
     invalid=saved;invalid.scissor={0,0,0,1080};reject(invalid,s);
-    // A nonempty source clip can still be wholly outside the fixed eye region.
+    // With a large panel a nonempty edge clip can still miss an eye region.
     invalid=saved;invalid.scissor={0,0,1920,1};
-    bad=s;for(auto&e:bad.eyes)e.pose.position.y=-1.5;reject(invalid,bad);
+    reject(invalid,s,{120,2});
     unsigned draws=0;gears_viewport::Rect last_view,last_clip;float last_min=0,last_max=0;
     assert(gears_viewport::replay_overlay(saved,p,[&](auto r,float a,float b){last_view=r;last_min=a;last_max=b;},
         [&](auto r){last_clip=r;},[&](unsigned){++draws;})==3);

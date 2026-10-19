@@ -40,7 +40,9 @@ const char* fault_name(unsigned reason){
 }
 void progress(FILE* output);
 struct DrawRejection {uint64_t ticket{},pair_ticket{};uintptr_t caller{},actual{},expected{};unsigned flags{},width{},height{};
- gears_viewport::DrawState state{};};
+ gears_viewport::DrawState state{};unsigned source_width{},source_height{};
+ gears_ui_hud::Parameters parameters{};bool sample_valid{};gears_vr::StereoSample sample{};
+ gears_ui_hud::Diagnostic plan_diagnostic{};};
 DrawRejection first_draw_rejection{};std::mutex draw_rejection_mutex;
 void reject_draw(DrawRejection const& row){std::lock_guard<std::mutex> lock(draw_rejection_mutex);if(!first_draw_rejection.ticket)first_draw_rejection=row;}
 void fault(uint64_t ticket,unsigned reason){
@@ -96,6 +98,17 @@ void progress(FILE* output){
  fprintf(output,"owned_ui_draw_reject_ticket=%llu owned_ui_draw_reject_pair=%llu owned_ui_draw_reject_caller=%llx owned_ui_draw_reject_flags=%u owned_ui_draw_reject_actual=%llx owned_ui_draw_reject_expected=%llx owned_ui_draw_reject_width=%u owned_ui_draw_reject_height=%u owned_ui_draw_reject_tracked=%u owned_ui_draw_reject_vp_count=%u owned_ui_draw_reject_sc_count=%u owned_ui_draw_reject_depth_known=%u ",
   draw.ticket,draw.pair_ticket,draw.caller,draw.flags,draw.actual,draw.expected,draw.width,draw.height,
   draw.state.tracked,draw.state.viewport_count,draw.state.scissor_count,draw.state.depth_known);
+ const auto& d=draw.plan_diagnostic;const auto& p=draw.parameters;const auto& s=draw.sample;
+ fprintf(output,"owned_ui_draw_source_width=%u owned_ui_draw_source_height=%u owned_ui_draw_hud_fov=%.17g owned_ui_draw_hud_depth=%.17g owned_ui_draw_source_aspect=%.17g owned_ui_draw_plan_reject=%u owned_ui_draw_plan_reject_name=%s owned_ui_draw_plan_eye=%u owned_ui_draw_plan_rotation_difference=%.17g owned_ui_draw_plan_corner_error=%.17g,%.17g owned_ui_draw_sample_valid=%u ",
+  draw.source_width,draw.source_height,p.horizontal_fov_degrees,p.depth_metres,p.source_aspect,unsigned(d.reject),gears_ui_hud::reject_name(d.reject),d.eye,d.rotation_difference,d.corner_error_x,d.corner_error_y,unsigned(draw.sample_valid));
+ fprintf(output,"owned_ui_draw_sample_session=%llu owned_ui_draw_sample_sequence=%llu owned_ui_draw_sample_received_ns=%lld owned_ui_draw_sample_predicted_time=%lld owned_ui_draw_sample_space_epoch=%llu owned_ui_draw_sample_source=%u owned_ui_draw_sample_head_flags=%llu owned_ui_draw_sample_view_flags=%llu owned_ui_draw_sample_focused=%u owned_ui_draw_sample_visible=%u owned_ui_draw_sample_should_render=%u owned_ui_draw_sample_head=%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g ",
+  s.session,s.sequence,s.received_ns,s.predicted_time,s.space_epoch,unsigned(s.source),s.head_flags,s.view_flags,s.focused,s.visible,s.should_render,
+  s.head.position.x,s.head.position.y,s.head.position.z,s.head.orientation.x,s.head.orientation.y,s.head.orientation.z,s.head.orientation.w);
+ for(unsigned eye=0;eye<2;++eye){const auto& e=s.eyes[eye];
+  fprintf(output,"owned_ui_draw_sample_eye%u=%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g owned_ui_draw_sample_fov%u=%.17g,%.17g,%.17g,%.17g ",
+   eye,e.pose.position.x,e.pose.position.y,e.pose.position.z,e.pose.orientation.x,e.pose.orientation.y,e.pose.orientation.z,e.pose.orientation.w,
+   eye,e.fov.left,e.fov.right,e.fov.up,e.fov.down);
+ }
  fprintf(output,"owned_ui_flush_reject_reason=%u owned_ui_flush_reject_ticket=%llu owned_ui_flush_reject_caller=%llx owned_ui_flush_reject_table=%llx owned_ui_flush_reject_module_base=%llx owned_ui_flush_reject_total=%u owned_ui_flush_reject_batch=%u owned_ui_flush_reject_material=%u owned_ui_flush_reject_other=%u owned_ui_flush_reject_read_ok=%u ",
   flush_reason,flush.ticket,flush.caller,flush.first_other_table,base,flush.total,flush.batch,flush.material,flush.other,flush.read_ok);
 }

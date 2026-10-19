@@ -3972,16 +3972,18 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
             binding.target.width==target.width&&binding.target.height==target.height&&
             pair.linked&&pair.ticket==route.ticket&&chain;
         bool reticle=false,plane=false,sample_found=false;
+        gears_vr::StereoSample hud_sample{};
+        auto hud_parameters=ui_hud_parameters;
+        gears_ui_hud::Diagnostic hud_diagnostic{};
         if(admitted){
             reticle=prepare_ui_reticle_overlay(route.ticket,saved,target.width,target.height,plan);
             if(!reticle){
-                gears_vr::StereoSample sample{};
-                const auto parameters=gears_ui_hud::for_source(ui_hud_parameters,ui_source_aspect());
+                hud_parameters=gears_ui_hud::for_source(ui_hud_parameters,ui_source_aspect());
                 // Menu glyphs lack semantic sidecar labels but are still exact
                 // Canvas members. Use the same ticket's head-locked panel.
-                sample_found=ui_ticket_sample(route.ticket,sample);
+                sample_found=ui_ticket_sample(route.ticket,hud_sample);
                 plane=sample_found&&
-                    gears_ui_hud::plan(saved,target.width,target.height,sample,plan,parameters);
+                    gears_ui_hud::plan(saved,target.width,target.height,hud_sample,plan,hud_parameters,&hud_diagnostic);
             }
         }
         if(admitted&&(reticle||plane)){
@@ -4004,7 +4006,8 @@ void STDMETHODCALLTYPE hook_draw_indexed(ID3D12GraphicsCommandList* list,UINT in
         owned_ui_live::reject_draw({route.ticket,pair.ticket,caller-base,binding.target.resource,route.resource,
             unsigned(admitted)|(unsigned(chain)<<1)|(unsigned(pair.linked)<<2)|(unsigned(sample_found)<<3)|
             (unsigned(owned_target_stats.descriptor_capacity_lost())<<4)|(unsigned(binding.targets)<<8)|
-            (unsigned(binding.target.mip)<<16),unsigned(binding.target.width),binding.target.height,saved});
+            (unsigned(binding.target.mip)<<16),unsigned(binding.target.width),binding.target.height,saved,
+            route.source_width,route.source_height,hud_parameters,sample_found,hud_sample,hud_diagnostic});
         owned_ui_live::fault(route.ticket,9);
     }
 #endif
