@@ -8,6 +8,10 @@ namespace gears_ngx_mv_compute {
 // independently attested current generation, not a copy of the observed one.
 // Canonical identities are scalar keys, never reconstructed COM interfaces.
 struct Recording {uintptr_t canonical{};uint64_t generation{},attested_current_generation{};};
+constexpr bool reclaimable(bool revoked,bool busy,bool history_pinned,bool empty,
+                           uint64_t held_generation,uint64_t current_generation){
+    return revoked&&!busy&&!history_pinned&&empty&&held_generation==current_generation;
+}
 enum class Loss {none,invalid_recording,capacity,unreadable};
 struct Candidate {
     uintptr_t command{},shader_visible_heap{},compute_root_signature{};
@@ -49,6 +53,20 @@ public:
         for(size_t i=0;i<count_;++i)if(lists_[i].command==canonical){
             lists_[i].heap=0;lists_[i].root=0;lists_[i].table=0;return;
         }
+    }
+    bool binding_empty(uintptr_t canonical)const{
+        if(failed())return false;
+        for(size_t i=0;i<count_;++i)if(lists_[i].command==canonical)
+            return !lists_[i].heap&&!lists_[i].root&&!lists_[i].table;
+        return false;
+    }
+    bool erase_empty(uintptr_t canonical){
+        if(!binding_empty(canonical))return false;
+        for(size_t i=0;i<count_;++i)if(lists_[i].command==canonical){
+            for(size_t j=i+1;j<count_;++j)lists_[j-1]=lists_[j];
+            lists_[--count_]={};return true;
+        }
+        return false;
     }
     bool reset(Recording ref){return invalidate(ref);}
     bool clear_state(Recording ref){return invalidate(ref);}

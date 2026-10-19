@@ -97,9 +97,32 @@ void destructive_revocation(){
     assert(!changed.dispatch({100,2,2}).binding_observed&&!changed.failed());
     assert(!changed.dispatch({100,1,2}).binding_observed&&changed.failed());
 }
+void empty_retirement(){
+    using gears_ngx_mv_compute::reclaimable;
+    assert(reclaimable(true,false,false,true,0,0));
+    assert(reclaimable(true,false,false,true,4,4));
+    assert(!reclaimable(true,false,false,true,0,4));
+    assert(!reclaimable(true,false,false,true,4,0));
+    assert(!reclaimable(true,false,false,true,4,5));
+    assert(!reclaimable(false,false,false,true,4,4));
+    assert(!reclaimable(true,true,false,true,4,4));
+    assert(!reclaimable(true,false,true,true,4,4));
+    assert(!reclaimable(true,false,false,false,4,4));
+    Bindings b;
+    for(uintptr_t i=0;i<Bindings::capacity;++i)complete(b,{100+i,1,1});
+    assert(!b.erase_empty(100)&&!b.erase_empty(999)&&b.lists()==16);
+    b.forget_binding(100);assert(b.binding_empty(100)&&b.erase_empty(100)&&b.lists()==15);
+    complete(b,{999,2,2});assert(b.lists()==16);assert_complete(b.dispatch({101,1,1}),{101,1,1});
+    b.forget_binding(999);assert(b.erase_empty(999));
+    assert(b.shader_heap({100,3,3},200));assert(!b.binding_empty(100)&&!b.erase_empty(100));
+    b.forget_binding(100);assert(b.compute_root_signature({100,3,3},300));assert(!b.erase_empty(100));
+    b.forget_binding(100);assert(b.erase_empty(100));
+    assert(!b.dispatch({100,4,4}).binding_observed); // Re-admission cannot inherit bindings.
+    b.forget_binding(100);b.uncertain();assert(!b.erase_empty(100)&&b.failed());
+}
 }
 int main(){
     redundant_and_changed_bindings();table_preconditions_and_no_extent_inference();boundaries_and_new_generation();
-    invalid_generation_and_terminal_loss();list_isolation_and_capacity();destructive_revocation();
+    invalid_generation_and_terminal_loss();list_isolation_and_capacity();destructive_revocation();empty_retirement();
     std::puts("NGX MV compute binding CPU tests passed; scalar candidate only, no table extent/descriptor/GPU/producer proof");
 }
