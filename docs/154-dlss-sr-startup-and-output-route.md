@@ -1,5 +1,14 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19: typed MV join candidate actual boundary
+
+Fresh `build-ngx-descriptor-join1` SHA256 `d28c9d00e99d14fcf03e9cb7443efbc72e50d1011b7cac32aff7bf02eaaebda1` passed457 dependency checks, continuous startup suite, provenance/census/epoch CPU tests and real D3D12 descriptor fixture. Production heap cap96 is based on the previous60 creation census; generic test default remains8. Typed MV joins never cast NGX integer values to COM pointers.
+
+Native-menu session32716, world1/ticket1403 accepted two Evals with the same retained typed MV/device. The bank failed at43 heaps and128 cells (capacity loss3), with19 UAV writes,2259 invalidations and2067 copies; missing births, other devices, recursion and uncertainties were zero. Therefore both joins correctly report bank_ready0 and no matches. This removes the prior8-heap obstruction but does not establish the MV producer. Inspect invalidated cell retention before arbitrarily increasing cell capacity.
+
+Session phase incomplete, owner exit1; native cleanup/entry restoration, normal close and five-file restoration passed. No playable-DLSS or successful display claim. Native status archive now uses the actual prefix and succeeds: SHA256 `41a61e561ff9d38477e38a79fac822c6b2be3ee450732dfb0698994a1bb9ecce`; curated receipt ignored `analysis/runtime/dlss-descriptor-join1-evidence.json`. Default player manifest unaffected.
+
+
 ## 2026-10-19：早期 heap census 实际结果
 
 独立诊断 `build-ngx-descriptor-census1` DLL SHA256
