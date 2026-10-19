@@ -1,5 +1,14 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19: targeted source-ledger design review
+
+Astra review identified an important boundary: legacy Call admission closes after bank failure, so19 UAV writes is only a pre-failure prefix, not a complete creation census. The independent heap census survives but typed descriptor observations do not. The current frozen pair also stops after its selected ticket, so a future-ticket experiment cannot silently reuse its completed state.
+
+First implementation stage is an independently admitted source ledger, not more global replica storage. Preserve typed CreateUAV destinations and current non-shader-visible CPU aliases. Suppress allocation of ordinary shader-visible copy replicas; still update/erase every already tracked destination, including visible direct-UAV births. Unknown sources and other descriptor writes erase provenance. Validate ranges and snapshot sources before writes. The ledger has its own bounded capacity, failure state and drained COM ownership; legacy failure stays immutable. Accepted Eval may match only a retained typed MV lease against current healthy source cells, preserving original scope/version.
+
+This narrow stage tests whether usable MV source descriptors exist. It does not prove root3 binding, Dispatch, GPU execution or per-eye MV writes. Only after source matching works should a separate explicit targeted observation capture a subsequent complete ticket, bind current heap/root signature/table to Dispatch, and inspect the specific shader/constants. Player DLSS remains disabled until actual rendering acceptance.
+
+
 ## 2026-10-19: stop whole-device capacity escalation
 
 Fresh5121 DLL `97da3228d5601bf40696b64bec1e1bbed0043df6eeb94107f7d3c4eeb3bdfe74` passed457 dependencies, startup/descriptor fixtures and512/513 occupancy,128/129 copy boundary tests. Real COM copy scratch remains46080 bytes via separate128 copy limit. Actual session22752 again failed before acceptedEval join:44heaps,512 known UAV cells,0invalid/free,2529 reuses,19 UAV writes,18528 invalidations,27402 copies. Two Evals had retained MV, but bank_ready0. No missingbirth/device/recursion/uncertainty.
