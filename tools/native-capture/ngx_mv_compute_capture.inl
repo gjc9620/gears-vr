@@ -663,7 +663,6 @@ void print(FILE* file){
 struct ResetScope {explicit ResetScope(ID3D12GraphicsCommandList*){}void finish(HRESULT,gears_frame_link::ListRef={}){}};
 struct RevocationScope {RevocationScope(ID3D12GraphicsCommandList*,unsigned){}void finish(){}};
 struct SetScope {SetScope(ID3D12GraphicsCommandList*,ID3D12PipelineState*,uintptr_t,bool){}void finish(){}};
-bool snapshot_picked_pso(gears_vr::ComPtr<ID3D12PipelineState>&,gears_ngx_mv_compute::PsoWitnessKey&){return false;}
 void register_worker(){}void poll_picked_blob(){}
 void stop(){}void release_drained(){}void print(FILE*){}
 bool install_hooks(void**){return true;}

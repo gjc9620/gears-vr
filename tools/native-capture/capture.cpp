@@ -771,6 +771,7 @@ struct NativeOwnedShutdownRhiScope {
     NativeOwnedShutdownRhiScope& operator=(NativeOwnedShutdownRhiScope const&)=delete;
     ~NativeOwnedShutdownRhiScope(){native_owned_scene_shutdown_rhi();}
 };
+#include "desktop_mirror_readback.inl"
 void trace_rectangle(unsigned index,uintptr_t view) {
     if(!submit_pair_enabled || !view)return;
     unsigned expected=0;if(!rectangle_trace_phases[index].compare_exchange_strong(expected,1))return;
@@ -1578,6 +1579,7 @@ void stereo_publish_worker_tick() {
     owned_source_pixels::poll();
     death_pso_cache::poll();
     ngx_mv_compute_capture::poll_picked_blob();
+    desktop_mirror_readback::poll();
     if(!stereo_gpu_publish)return;
     if(continuous_session&&submitted_lifetime.stopping()&&!stereo_publish_counts.stopped.load()){
         stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;
@@ -1917,6 +1919,7 @@ void print_frame_link(FILE* status) {
     fprintf(status,"desktop_mirror enabled=1 state=%u captures=%llu presents=%llu busy=%llu stale=%llu rejected=%llu inventory_rejected=%llu present1_full=%llu ticket=%llu received_ns=%lld wait_ns=%llu max_wait_ns=%llu timeouts=%llu error=%lx unsafe=%u synchronous_present=1 destination_format=%u\n",
         mirror.state,mirror.captures,mirror.presents,mirror.busy,mirror.stale,mirror.rejected,mirror_inventory_rejected.load(),mirror_present1_full.load(),
         mirror.ticket,mirror.received_ns,mirror.wait_ns,mirror.max_wait_ns,mirror.timeouts,static_cast<unsigned long>(mirror.error),mirror.unsafe?1:0,mirror.destination_format);
+    desktop_mirror_readback::print(status);
 #endif
     auto overlay_stats=frame_link.snapshot();
     fprintf(status,"frame_link_unknown_coalesced count=%llu adjacent_same_target_only=1 unknown_rejection_preserved=1\n",overlay_stats.unknown_coalesced);
@@ -4405,6 +4408,7 @@ void reset_world_thread_context(){
     reset_ui_world_tls();
 }
 DWORD WINAPI worker(void*) {
+    desktop_mirror_readback::start_worker();
     ngx_mv_compute_capture::register_worker();
     // GearsCaptureStart's one-shot started flag forbids reopening this gate.
     struct ActivationExit {~ActivationExit(){session_activation_gate.close();}} activation_exit;
@@ -4887,7 +4891,7 @@ DWORD WINAPI worker(void*) {
         if(session_cleanup_expired())session_cleanup_timeout=true;
         write_session_status();Sleep(100);stereo_closed=close_stereo_publisher();
     }
-    ngx_mv_compute_capture::poll_picked_blob();death_pso_cache::poll();death_pso_cache::stop();
+    desktop_mirror_readback::poll();ngx_mv_compute_capture::poll_picked_blob();death_pso_cache::poll();death_pso_cache::stop();
     print_frame_link(status);
     print_outage(status,disabled==MH_OK);
     print_anchor(status,disabled==MH_OK);
