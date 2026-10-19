@@ -1581,6 +1581,7 @@ void stereo_publish_worker_tick() {
     owned_source_pixels::poll();
     death_pso_cache::poll();
     ngx_mv_compute_capture::poll_picked_blob();
+
     desktop_mirror_readback::poll();
     if(!stereo_gpu_publish)return;
     if(continuous_session&&submitted_lifetime.stopping()&&!stereo_publish_counts.stopped.load()){
@@ -1595,7 +1596,7 @@ void stereo_publish_worker_tick() {
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
     const auto mirror_state=desktop_mirror.status().state;
     if(!stereo_publish_counts.stopped.load()&&mirror_state==1)desktop_mirror.prepare();
-    if(mirror_state==3)desktop_mirror.poll();
+    if(mirror_state==2||mirror_state==3)desktop_mirror.poll();
 #endif
     if(!stereo_publish_counts.stopped.load()&&stereo_publisher.state.load()==1){
         if(stereo_publisher.prepare())++stereo_publish_counts.prepare_ok;else ++stereo_publish_counts.prepare_failed;
@@ -1658,10 +1659,12 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         now(),qpc_frequency,frame_link_diagnostics?1u:0u,frame_counts.presents.load(),
         frame_counts.tests.load(),frame_counts.present_failed.load());
     owned_scene_gpu::print_progress(output);
+    native_owned_scene_progress(output);
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
     const auto mirror=desktop_mirror.status();
-    fprintf(output,"mirror_state=%u mirror_captures=%llu mirror_presents=%llu mirror_stale=%llu mirror_busy=%llu mirror_inventory_rejected=%llu mirror_timeouts=%llu mirror_reason=%u mirror_held=%u mirror_format=%u ",
-        mirror.state,mirror.captures,mirror.presents,mirror.stale,mirror.busy,mirror_inventory_rejected.load(),mirror.timeouts,static_cast<unsigned>(mirror.reason),mirror.destination_held?1:0,mirror.destination_format);
+    fprintf(output,"mirror_state=%u mirror_captures=%llu mirror_presents=%llu mirror_stale=%llu mirror_busy=%llu mirror_inventory_rejected=%llu mirror_timeouts=%llu mirror_reason=%u mirror_held=%u mirror_format=%u mirror_async=%u mirror_pending_draws=%u mirror_wait_ns=%llu mirror_max_wait_ns=%llu ",
+        mirror.state,mirror.captures,mirror.presents,mirror.stale,mirror.busy,mirror_inventory_rejected.load(),mirror.timeouts,static_cast<unsigned>(mirror.reason),mirror.destination_held?1:0,mirror.destination_format,
+        gears_vr::DesktopMirror::asynchronous?1:0,mirror.pending_draws,mirror.wait_ns,mirror.max_wait_ns);
 #endif
     fprintf(output,"stop_recorded=%u stop_qpc=%lld stop_qpc_frequency=%lld stop_thread=%lu stop_source_file=%s stop_source_line=%u ",
         stop_recorded?1:0,stop_recorded?session_stop_qpc.load():0,qpc_frequency,
@@ -1922,9 +1925,9 @@ void print_frame_link(FILE* status) {
     auto bindings=swapchain_bindings.snapshot();
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
     const auto mirror=desktop_mirror.status();
-    fprintf(status,"desktop_mirror enabled=1 state=%u captures=%llu presents=%llu busy=%llu stale=%llu rejected=%llu inventory_rejected=%llu present1_full=%llu ticket=%llu received_ns=%lld wait_ns=%llu max_wait_ns=%llu timeouts=%llu error=%lx unsafe=%u synchronous_present=1 destination_format=%u\n",
+    fprintf(status,"desktop_mirror enabled=1 state=%u captures=%llu presents=%llu busy=%llu stale=%llu rejected=%llu inventory_rejected=%llu present1_full=%llu ticket=%llu received_ns=%lld wait_ns=%llu max_wait_ns=%llu timeouts=%llu error=%lx unsafe=%u synchronous_present=%u pending_draws=%u destination_format=%u\n",
         mirror.state,mirror.captures,mirror.presents,mirror.busy,mirror.stale,mirror.rejected,mirror_inventory_rejected.load(),mirror_present1_full.load(),
-        mirror.ticket,mirror.received_ns,mirror.wait_ns,mirror.max_wait_ns,mirror.timeouts,static_cast<unsigned long>(mirror.error),mirror.unsafe?1:0,mirror.destination_format);
+        mirror.ticket,mirror.received_ns,mirror.wait_ns,mirror.max_wait_ns,mirror.timeouts,static_cast<unsigned long>(mirror.error),mirror.unsafe?1:0,gears_vr::DesktopMirror::asynchronous?0:1,mirror.pending_draws,mirror.destination_format);
     desktop_mirror_readback::print(status);
 #endif
     auto overlay_stats=frame_link.snapshot();
@@ -3010,7 +3013,9 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         // ordinary native scene instead of building an unbound stereo clone.
         // A retired world needs exactly one bootstrap renderer to reach RHI
         // recreation; keep the old ticket until that recreation actually runs.
-        if(gears_owned_scene_live::trial.ticket&&!native_owned_scene_try_bootstrap())return false;
+        if(gears_owned_scene_live::trial.ticket&&!native_owned_scene_try_bootstrap()){
+            native_owned_scene_pending_fallback();return false;
+        }
     }
 #endif
     const gears_split_sources::FixedOutputBounds owned_bounds{gears_native_render_size::width(),gears_native_render_size::height()};
@@ -3422,9 +3427,9 @@ bool desktop_mirror_present(IDXGISwapChain* chain,UINT flags){
     }
     // The game is about to call Present on this queue. D3D12's documented
     // Present contract requires this backbuffer in PRESENT/COMMON here.
-    // The isolated mirror restores that state and finishes before returning,
-    // so success retains no backbuffer reference across a later ResizeBuffers.
-    // On timeout the worker releases that reference only after fence completion.
+    // Mirror commands restore that state on this same queue before Present.
+    // Async slots retain their backbuffers until fence completion; the resize
+    // wrapper drains those slots before forwarding ResizeBuffers.
     StereoPublishBypass bypass;
     return desktop_mirror.present(buffer.Get(),owned_scene_gpu::queue,gears_vr::monotonic_ns());
 #else

@@ -90,6 +90,83 @@ struct GPU {
         std::printf("debug_layer=available errors=0 corruption=0\n");
     }
 };
+#if GEARS_DESKTOP_MIRROR_ASYNC
+// Release artificial queue gates even when an assertion throws. No game or
+// visible desktop window participates in these scheduling/lifetime tests.
+struct QueueGate {
+    ComPtr<ID3D12Fence> fence;
+    explicit QueueGate(GPU& gpu){gpu_check(gpu.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&fence)),"gate fence");
+        gpu_check(gpu.queue->Wait(fence.Get(),1),"gate queue");}
+    void open(){gpu_check(fence->Signal(1),"open gate");}
+    ~QueueGate(){if(fence)fence->Signal(1);}
+};
+struct HiddenWindow {
+    HWND value{CreateWindowExW(0,L"STATIC",L"Mirror WARP resize fixture",WS_POPUP,0,0,32,32,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr)};
+    ~HiddenWindow(){if(value)DestroyWindow(value);}
+};
+static void async_checks(GPU& gpu){
+    auto source=gpu.texture(18,7,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(source.Get(),true);
+    {
+        DesktopMirror mirror;require(mirror.bind(gpu.queue.Get(),source.Get(),1)&&mirror.prepare(),"async prepare");
+        const auto stamp=monotonic_ns();require(mirror.capture(source.Get(),1,1,stamp,D3D12_RESOURCE_STATE_RENDER_TARGET)&&mirror.drain(),"async snapshot ready");
+        std::array<ComPtr<ID3D12Resource>,3> destinations={
+            gpu.texture(16,8,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_PRESENT),
+            gpu.texture(13,11,DXGI_FORMAT_R10G10B10A2_UNORM,D3D12_RESOURCE_STATE_PRESENT),
+            gpu.texture(8,16,DXGI_FORMAT_B8G8R8A8_UNORM,D3D12_RESOURCE_STATE_PRESENT)};
+        const auto wait_before=mirror.status().wait_ns;
+        QueueGate first(gpu);
+        require(mirror.present(destinations[0].Get(),gpu.queue.Get(),stamp+1),"first blocked draw returns success without CPU fence wait");
+        ComPtr<ID3D12Fence> first_done;gpu_check(gpu.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&first_done)),"first draw marker");
+        gpu_check(gpu.queue->Signal(first_done.Get(),1),"first draw marker signal");
+        QueueGate second(gpu);
+#if GEARS_DESKTOP_MIRROR_READBACK
+        require(mirror.arm_readback(),"arm second slot readback");DesktopMirror::Readback receipt;
+#endif
+        require(mirror.present(destinations[1].Get(),gpu.queue.Get(),stamp+2)&&mirror.present(destinations[2].Get(),gpu.queue.Get(),stamp+3),"all independent slots enqueue behind GPU gate");
+        const auto full=mirror.status();
+        require(full.pending_draws==DesktopMirror::draw_slot_count&&full.destination_held&&full.wait_ns==wait_before&&first_done->GetCompletedValue()==0,"all slots retained while GPU is blocked; no CPU waits");
+        require(!mirror.present(destinations[0].Get(),gpu.queue.Get(),stamp+4)&&mirror.status().reason==DesktopMirror::Reason::draw_busy&&mirror.status().presents==3,"full ring skips without resetting allocator or RTV");
+        first.open();gpu_check(first_done->SetEventOnCompletion(1,gpu.event),"first marker event");require(WaitForSingleObject(gpu.event,5000)==WAIT_OBJECT_0,"first slot finishes independently");
+        require(!mirror.poll()&&mirror.status().pending_draws==2,"poll releases only completed slot");
+#if GEARS_DESKTOP_MIRROR_READBACK
+        require(mirror.readback_status().state==DesktopMirror::ReadbackState::submitted&&!mirror.take_readback(receipt),"other slot completion cannot release second slot readback");
+#endif
+        require(mirror.present(destinations[0].Get(),gpu.queue.Get(),stamp+5)&&mirror.status().pending_draws==3&&mirror.status().wait_ns==wait_before,"only completed slot may be reused while others remain blocked");
+        second.open();gpu.finish();require(mirror.poll()&&!mirror.status().destination_held&&!mirror.status().pending_draws,"all completed slot references released");
+        for(auto const& destination:destinations){
+            const auto d=destination->GetDesc();const auto rectangle=mirror_rectangle(unsigned(d.Width),d.Height,9,7);const auto pixels=gpu.read(destination.Get(),D3D12_RESOURCE_STATE_PRESENT);
+            for(unsigned y=0;y<d.Height;++y)for(unsigned x=0;x<unsigned(d.Width);++x){const auto* pixel=&pixels[(size_t(y)*size_t(d.Width)+x)*4];
+                const bool inside=x>=rectangle.x&&x<rectangle.x+rectangle.width&&y>=rectangle.y&&y<rectangle.y+rectangle.height;
+                require(inside?(abs(int(pixel[0])-128)<=2&&abs(int(pixel[1])-32)<=2&&abs(int(pixel[2])-16)<=2):(pixel[0]==0&&pixel[1]==0&&pixel[2]==0),"each in-flight slot kept its own target and RTV");}
+        }
+        require(mirror.retire_source(1),"all draw slots retire safely");
+#if GEARS_DESKTOP_MIRROR_READBACK
+        require(mirror.take_readback(receipt)&&receipt.draw_serial==2&&receipt.destination.Format==DXGI_FORMAT_R10G10B10A2_UNORM&&receipt.footprint.Footprint.RowPitch>13*4,"second-slot RGB10 receipt survives other slot reuse and source retirement");
+        require(!read_completed(receipt).empty(),"asynchronous completed readback remains readable");
+#endif
+        require(mirror.close(0),"async retired close");
+    }
+    {
+        HiddenWindow window;require(window.value&&!IsWindowVisible(window.value),"resize fixture never shows a window");
+        ComPtr<IDXGIFactory4> factory;gpu_check(CreateDXGIFactory1(IID_PPV_ARGS(&factory)),"resize factory");
+        DXGI_SWAP_CHAIN_DESC1 description{};description.Width=32;description.Height=32;description.Format=DXGI_FORMAT_R8G8B8A8_UNORM;
+        description.SampleDesc.Count=1;description.BufferUsage=DXGI_USAGE_RENDER_TARGET_OUTPUT;description.BufferCount=2;description.SwapEffect=DXGI_SWAP_EFFECT_FLIP_DISCARD;
+        ComPtr<IDXGISwapChain1> swap;gpu_check(factory->CreateSwapChainForHwnd(gpu.queue.Get(),window.value,&description,nullptr,nullptr,&swap),"hidden resize swapchain");
+        DesktopMirror mirror;require(mirror.bind(gpu.queue.Get(),source.Get(),2)&&mirror.prepare(),"resize prepare");
+        const auto stamp=monotonic_ns();require(mirror.capture(source.Get(),2,2,stamp,D3D12_RESOURCE_STATE_RENDER_TARGET)&&mirror.drain(),"resize snapshot");
+        QueueGate gate(gpu);
+        // Without a real Present, only buffer zero is current. Two queued
+        // draws may reference it; touching the noncurrent flip buffer is invalid.
+        for(unsigned i=0;i<2;++i){ComPtr<ID3D12Resource> backbuffer;gpu_check(swap->GetBuffer(0,IID_PPV_ARGS(&backbuffer)),"resize buffer");
+            require(mirror.present(backbuffer.Get(),gpu.queue.Get(),stamp+1),"queue held swapchain buffer");}
+        require(mirror.status().pending_draws==2&&mirror.status().destination_held&&!mirror.poll(),"mirror retains both slot references after caller releases them");
+        require(!mirror.retire_source(2)&&mirror.status().state==5,"source retirement cannot release pending draw buffers");
+        gate.open();gpu.finish();require(mirror.drain(0)&&!mirror.status().destination_held,"resize drain releases every backbuffer");
+        gpu_check(swap->ResizeBuffers(2,48,24,DXGI_FORMAT_R8G8B8A8_UNORM,0),"ResizeBuffers succeeds after all slots drain");
+        require(mirror.retire_source(2)&&mirror.close(0)&&!mirror.status().unsafe,"retirement and close release all slots");
+    }
+}
+#endif
 int main(){try{
     GPU gpu;const DXGI_FORMAT formats[]={DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,DXGI_FORMAT_B8G8R8A8_UNORM_SRGB};
     const DXGI_FORMAT destinations[]={DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,DXGI_FORMAT_R10G10B10A2_UNORM};
@@ -136,6 +213,7 @@ int main(){try{
         require(mirror.bind(gpu.queue.Get(),source.Get(),17)&&mirror.prepare(),"readback mirror prepare");
         const auto received=monotonic_ns();
         require(mirror.capture(source.Get(),17,91,received,D3D12_RESOURCE_STATE_RENDER_TARGET)&&mirror.present(dest.Get(),gpu.queue.Get(),received+1),"readback draw");
+        require(mirror.drain(),"readback draw completion in either scheduling mode");
         require(mirror.readback_status().state==DesktopMirror::ReadbackState::ready&&!mirror.status().destination_held,"completed draw retains no destination");
         const auto expected=gpu.read(dest.Get(),D3D12_RESOURCE_STATE_PRESENT); // Also validates restored state.
         require(mirror.retire_source(17)&&mirror.readback_status().held,"completed readback survives source retirement");
@@ -168,8 +246,13 @@ int main(){try{
         gpu_check(gpu.queue->Wait(blocker.Get(),1),"controlled queue stall");
         const auto received=monotonic_ns();require(stalled.capture(source.Get(),1,1,received,D3D12_RESOURCE_STATE_RENDER_TARGET),"first queued copy");
         require(!stalled.capture(source.Get(),1,2,received,D3D12_RESOURCE_STATE_RENDER_TARGET)&&stalled.status().busy==1,"copy allocator busy skips without waiting");
-        require(!stalled.present(dest.Get(),gpu.queue.Get(),received+1),"bounded draw timeout");auto failed=stalled.status();
-        require(failed.state==3&&failed.timeouts==1&&FAILED(failed.error)&&failed.wait_ns&&failed.max_wait_ns,"timeout evidence");
+        if constexpr(DesktopMirror::asynchronous){
+            require(stalled.present(dest.Get(),gpu.queue.Get(),received+1)&&!stalled.status().wait_ns,"async draw queues without waiting");
+            require(!stalled.drain(0),"blocked async close preparation times out");
+        }else require(!stalled.present(dest.Get(),gpu.queue.Get(),received+1),"bounded draw timeout");
+        auto failed=stalled.status();
+        require(failed.state==3&&failed.timeouts>=1&&FAILED(failed.error),"timeout evidence");
+        if constexpr(!DesktopMirror::asynchronous)require(failed.wait_ns&&failed.max_wait_ns,"synchronous draw wait measured");
         require(!stalled.close(0)&&stalled.status().unsafe,"unconfirmed close retains all GPU references");
 #if GEARS_DESKTOP_MIRROR_READBACK
         require(stalled.readback_status().state==DesktopMirror::ReadbackState::unsafe&&!stalled.take_readback(abandoned),"unsafe close never hands off in-flight readback");
@@ -187,7 +270,10 @@ int main(){try{
         ComPtr<ID3D12Fence> blocker;gpu_check(gpu.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&blocker)),"recovery blocker");
         gpu_check(gpu.queue->Wait(blocker.Get(),1),"recovery queue stall");
         const auto received=monotonic_ns();require(recovered.capture(source.Get(),1,1,received,D3D12_RESOURCE_STATE_RENDER_TARGET),"recovery capture");
-        require(!recovered.present(dest.Get(),gpu.queue.Get(),received+1),"recovery draw timeout");
+        if constexpr(DesktopMirror::asynchronous){
+            require(recovered.present(dest.Get(),gpu.queue.Get(),received+1),"recovery async draw queued");
+            require(!recovered.drain(0),"recovery async drain timeout");
+        }else require(!recovered.present(dest.Get(),gpu.queue.Get(),received+1),"recovery draw timeout");
         require(recovered.status().destination_held&&!recovered.poll(),"pending draw retains destination without waiting");
 #if GEARS_DESKTOP_MIRROR_READBACK
         require(recovered.readback_status().state==DesktopMirror::ReadbackState::submitted&&recovered.readback_status().held&&!recovered.take_readback(delayed),"pending fence prohibits readback handoff");
@@ -229,5 +315,8 @@ int main(){try{
         require(mirror.status().captures==2&&mirror.status().ticket==42,"handoff preserves counters");
         require(mirror.close()&&!mirror.retire_source(8)&&!mirror.bind(gpu.queue.Get(),first.Get(),9),"terminal close cannot reopen");
     }
-    gpu.verify();std::printf("desktop mirror WARP: %u checks passed (SDR formats, snapshot, states, bars, stale/identity, close, timeout recovery, source handoff)\n",checks);return 0;
+#if GEARS_DESKTOP_MIRROR_ASYNC
+    async_checks(gpu);
+#endif
+    gpu.verify();std::printf("desktop mirror WARP: %u checks passed (async=%u, formats, snapshot, states, bars, close, timeout recovery, source handoff)\n",checks,DesktopMirror::asynchronous?1u:0u);return 0;
 }catch(std::exception const& error){std::fprintf(stderr,"mirror test: %s\n",error.what());return 1;}}

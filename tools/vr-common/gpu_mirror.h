@@ -6,6 +6,9 @@
 #include <atomic>
 #include <chrono>
 #include <algorithm>
+#ifndef GEARS_DESKTOP_MIRROR_ASYNC
+#define GEARS_DESKTOP_MIRROR_ASYNC 0
+#endif
 
 namespace gears_vr {
 // Caller certifies source state, scene/UI submission, current backbuffer state,
@@ -13,11 +16,14 @@ namespace gears_vr {
 // Wrap its API submissions in the capture integration's observer bypass.
 class DesktopMirror {
 public:
-    enum class Reason : unsigned { none,not_ready,lock_busy,copy_busy,source,generation,ticket,stale,queue,device,destination,api,timeout,closed };
+    static constexpr bool asynchronous=GEARS_DESKTOP_MIRROR_ASYNC!=0;
+    static constexpr unsigned draw_slot_count=asynchronous?3:1;
+    enum class Reason : unsigned { none,not_ready,lock_busy,copy_busy,source,generation,ticket,stale,queue,device,destination,api,timeout,closed,draw_busy };
     struct Status {
         unsigned state{},destination_format{}; // 0 empty, 1 bound, 2 ready, 3 failed, 4 closed, 5 retiring.
         uint64_t captures{},presents{},busy{},stale{},rejected{},wait_ns{},max_wait_ns{},timeouts{},ticket{};
         int64_t received_ns{};HRESULT error{S_OK};Reason reason{Reason::none};bool unsafe{},destination_held{};
+        unsigned pending_draws{};
     };
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
     // Private acceptance evidence. The completed buffer is independent of the
@@ -40,17 +46,26 @@ private:
     ComPtr<ID3D12CommandQueue> queue_;
     ComPtr<IUnknown> queue_identity_,source_identity_,device_identity_;
     ComPtr<ID3D12Device> device_;
-    ComPtr<ID3D12Resource> snapshot_,held_destination_;
+    ComPtr<ID3D12Resource> snapshot_;
     D3D12_RESOURCE_DESC source_desc_{};uint64_t generation_{};
-    ComPtr<ID3D12CommandAllocator> copy_allocator_,draw_allocator_;
-    ComPtr<ID3D12GraphicsCommandList> copy_list_,draw_list_;
-    ComPtr<ID3D12Fence> copy_fence_,draw_fence_;
+    ComPtr<ID3D12CommandAllocator> copy_allocator_;
+    ComPtr<ID3D12GraphicsCommandList> copy_list_;
+    ComPtr<ID3D12Fence> copy_fence_;
+    struct DrawSlot {
+        ComPtr<ID3D12CommandAllocator> allocator;
+        ComPtr<ID3D12GraphicsCommandList> list;
+        ComPtr<ID3D12DescriptorHeap> rtv;
+        ComPtr<ID3D12Fence> fence;
+        ComPtr<ID3D12Resource> destination;
+        uint64_t serial{};bool inflight{},signaled{};
+    };
+    std::array<DrawSlot,draw_slot_count> draws_;
     uint64_t copy_serial_{},draw_serial_{};
-    bool copy_inflight_{},draw_inflight_{},copy_signaled_{},draw_signaled_{},snapshot_valid_{};
+    bool copy_inflight_{},copy_signaled_{},snapshot_valid_{};
     HANDLE event_{};
     ComPtr<ID3D12RootSignature> root_;
     std::array<ComPtr<ID3D12PipelineState>,5> pipelines_;
-    ComPtr<ID3D12DescriptorHeap> srv_,rtv_;
+    ComPtr<ID3D12DescriptorHeap> srv_;
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
     Readback readback_;
     ReadbackState readback_state_{ReadbackState::idle};
@@ -114,9 +129,20 @@ private:
     }
     bool drain_locked(unsigned timeout_ms){
         const auto deadline=GetTickCount64()+(std::min)(timeout_ms,1000u);
-        if(!wait(copy_fence_,copy_serial_,copy_signaled_,copy_inflight_,deadline))return false;
-        if(!wait(draw_fence_,draw_serial_,draw_signaled_,draw_inflight_,deadline))return false;
-        held_destination_.Reset();return true;
+        bool safe=wait(copy_fence_,copy_serial_,copy_signaled_,copy_inflight_,deadline);
+        for(auto& draw:draws_){
+            if(wait(draw.fence,draw.serial,draw.signaled,draw.inflight,deadline))draw.destination.Reset();
+            else safe=false;
+        }
+        return safe;
+    }
+    bool poll_draws(){
+        bool done=true;
+        for(auto& draw:draws_){
+            if(complete(draw.fence,draw.serial,draw.signaled,draw.inflight))draw.destination.Reset();
+            else done=false;
+        }
+        return done;
     }
     void release(bool unsafe){
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
@@ -128,8 +154,9 @@ private:
         // Ready evidence deliberately survives source retirement and close.
 #endif
         auto clear=[&](auto& p){if(unsafe)p.Detach();else p.Reset();};
-        clear(held_destination_);clear(snapshot_);clear(copy_list_);clear(draw_list_);clear(copy_allocator_);clear(draw_allocator_);
-        clear(copy_fence_);clear(draw_fence_);clear(root_);for(auto& p:pipelines_)clear(p);clear(srv_);clear(rtv_);
+        clear(snapshot_);clear(copy_list_);clear(copy_allocator_);clear(copy_fence_);
+        for(auto& draw:draws_){clear(draw.destination);clear(draw.list);clear(draw.allocator);clear(draw.fence);clear(draw.rtv);}
+        clear(root_);for(auto& p:pipelines_)clear(p);clear(srv_);
         clear(source_identity_);clear(queue_identity_);clear(device_identity_);clear(queue_);clear(device_);
         if(event_&&!unsafe)CloseHandle(event_);event_=nullptr;
     }
@@ -171,7 +198,8 @@ float4 ps(V v):SV_Target {
 public:
     DesktopMirror()=default;DesktopMirror(DesktopMirror const&)=delete;
     ~DesktopMirror(){close(0);}
-    Status status(){AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};auto result=stats_;result.busy+=lock_busy_.load();result.destination_held=held_destination_!=nullptr;return result;}
+    Status status(){AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};auto result=stats_;result.busy+=lock_busy_.load();
+        for(auto const& draw:draws_){result.destination_held|=draw.destination!=nullptr;result.pending_draws+=draw.inflight?1u:0u;}return result;}
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
     bool arm_readback(){
         AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};
@@ -205,14 +233,18 @@ public:
             auto desc=source_desc_;desc.Flags=D3D12_RESOURCE_FLAG_NONE;D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_DEFAULT;
             gpu_check(device_->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&desc,D3D12_RESOURCE_STATE_COMMON,nullptr,IID_PPV_ARGS(&snapshot_)),"mirror snapshot");
             gpu_check(device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&copy_allocator_)),"mirror copy allocator");
-            gpu_check(device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&draw_allocator_)),"mirror draw allocator");
             gpu_check(device_->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,copy_allocator_.Get(),nullptr,IID_PPV_ARGS(&copy_list_)),"mirror copy list");gpu_check(copy_list_->Close(),"mirror copy close");
-            gpu_check(device_->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,draw_allocator_.Get(),nullptr,IID_PPV_ARGS(&draw_list_)),"mirror draw list");gpu_check(draw_list_->Close(),"mirror draw close");
-            gpu_check(device_->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&copy_fence_)),"mirror copy fence");gpu_check(device_->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&draw_fence_)),"mirror draw fence");
+            gpu_check(device_->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&copy_fence_)),"mirror copy fence");
+            for(auto& draw:draws_){
+                gpu_check(device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&draw.allocator)),"mirror draw allocator");
+                gpu_check(device_->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,draw.allocator.Get(),nullptr,IID_PPV_ARGS(&draw.list)),"mirror draw list");gpu_check(draw.list->Close(),"mirror draw close");
+                gpu_check(device_->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&draw.fence)),"mirror draw fence");
+                D3D12_DESCRIPTOR_HEAP_DESC rtv{};rtv.Type=D3D12_DESCRIPTOR_HEAP_TYPE_RTV;rtv.NumDescriptors=1;
+                gpu_check(device_->CreateDescriptorHeap(&rtv,IID_PPV_ARGS(&draw.rtv)),"mirror RTV");
+            }
             event_=CreateEventW(nullptr,FALSE,FALSE,nullptr);if(!event_)return failed(HRESULT_FROM_WIN32(GetLastError()));
             create_pipeline();D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;hd.NumDescriptors=1;hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-            gpu_check(device_->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&srv_)),"mirror SRV");hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_RTV;hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-            gpu_check(device_->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&rtv_)),"mirror RTV");D3D12_SHADER_RESOURCE_VIEW_DESC view{};
+            gpu_check(device_->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&srv_)),"mirror SRV");D3D12_SHADER_RESOURCE_VIEW_DESC view{};
             view.Format=(format_index(desc.Format)%2)?DXGI_FORMAT_B8G8R8A8_UNORM:DXGI_FORMAT_R8G8B8A8_UNORM;view.ViewDimension=D3D12_SRV_DIMENSION_TEXTURE2D;view.Shader4ComponentMapping=D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;view.Texture2D.MipLevels=1;
             device_->CreateShaderResourceView(snapshot_.Get(),&view,srv_->GetCPUDescriptorHandleForHeapStart());stats_.state=2;stats_.reason=Reason::none;return true;
         }catch(...){return failed(E_FAIL);}
@@ -242,50 +274,60 @@ public:
         if(index<0||d.Dimension!=D3D12_RESOURCE_DIMENSION_TEXTURE2D||!d.Width||!d.Height||d.Width>16384||d.Height>16384||d.DepthOrArraySize!=1||d.MipLevels!=1||d.SampleDesc.Count!=1||d.SampleDesc.Quality||!(d.Flags&D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)||same_object(destination,source_identity_.Get()))return reject(Reason::destination);
         ComPtr<ID3D12Device> device;ComPtr<IUnknown> identity;
         if(FAILED(destination->GetDevice(IID_PPV_ARGS(&device)))||FAILED(device.As(&identity))||identity.Get()!=device_identity_.Get())return reject(Reason::device);
+        // Poll every slot, but never wait or rewrite a descriptor in flight.
+        // Snapshot copies and all draws use the same certified queue: a later
+        // capture is ordered after earlier reads, even when their CPU slots live.
+        poll_draws();if(stats_.state==3)return false;
+        DrawSlot* available{};for(auto& slot:draws_)if(!slot.inflight){available=&slot;break;}
+        if(!available){++stats_.busy;stats_.reason=Reason::draw_busy;return false;}
+        auto& draw=*available;
         try{
             if(draw_serial_==UINT64_MAX)return failed(E_UNEXPECTED);
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
             const bool read_pixels=prepare_readback(d);
 #endif
-            gpu_check(draw_allocator_->Reset(),"mirror draw reset");gpu_check(draw_list_->Reset(draw_allocator_.Get(),pipelines_[index].Get()),"mirror draw list reset");
+            gpu_check(draw.allocator->Reset(),"mirror draw reset");gpu_check(draw.list->Reset(draw.allocator.Get(),pipelines_[index].Get()),"mirror draw list reset");
             D3D12_RENDER_TARGET_VIEW_DESC view{};view.Format=d.Format;view.ViewDimension=D3D12_RTV_DIMENSION_TEXTURE2D;
-            const auto handle=rtv_->GetCPUDescriptorHandleForHeapStart();device_->CreateRenderTargetView(destination,&view,handle);
-            transition(draw_list_.Get(),destination,D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_RENDER_TARGET);transition(draw_list_.Get(),snapshot_.Get(),D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            const float black[]={0,0,0,1};draw_list_->ClearRenderTargetView(handle,black,0,nullptr);draw_list_->OMSetRenderTargets(1,&handle,FALSE,nullptr);
+            const auto handle=draw.rtv->GetCPUDescriptorHandleForHeapStart();device_->CreateRenderTargetView(destination,&view,handle);
+            transition(draw.list.Get(),destination,D3D12_RESOURCE_STATE_PRESENT,D3D12_RESOURCE_STATE_RENDER_TARGET);transition(draw.list.Get(),snapshot_.Get(),D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            const float black[]={0,0,0,1};draw.list->ClearRenderTargetView(handle,black,0,nullptr);draw.list->OMSetRenderTargets(1,&handle,FALSE,nullptr);
             const auto rectangle=mirror_rectangle(unsigned(d.Width),d.Height,unsigned(source_desc_.Width/2),source_desc_.Height);
             if(!rectangle.width||!rectangle.height)return reject(Reason::destination);
             D3D12_VIEWPORT viewport{float(rectangle.x),float(rectangle.y),float(rectangle.width),float(rectangle.height),0,1};
             D3D12_RECT scissor{LONG(rectangle.x),LONG(rectangle.y),LONG(rectangle.x+rectangle.width),LONG(rectangle.y+rectangle.height)};
-            draw_list_->RSSetViewports(1,&viewport);draw_list_->RSSetScissorRects(1,&scissor);draw_list_->SetGraphicsRootSignature(root_.Get());
-            ID3D12DescriptorHeap* heaps[]={srv_.Get()};draw_list_->SetDescriptorHeaps(1,heaps);draw_list_->SetGraphicsRootDescriptorTable(0,srv_->GetGPUDescriptorHandleForHeapStart());
-            const unsigned extent[]={static_cast<unsigned>(source_desc_.Width),source_desc_.Height};draw_list_->SetGraphicsRoot32BitConstants(1,2,extent,0);
-            draw_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);draw_list_->DrawInstanced(3,1,0,0);
-            transition(draw_list_.Get(),snapshot_.Get(),D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,D3D12_RESOURCE_STATE_COMMON);
+            draw.list->RSSetViewports(1,&viewport);draw.list->RSSetScissorRects(1,&scissor);draw.list->SetGraphicsRootSignature(root_.Get());
+            ID3D12DescriptorHeap* heaps[]={srv_.Get()};draw.list->SetDescriptorHeaps(1,heaps);draw.list->SetGraphicsRootDescriptorTable(0,srv_->GetGPUDescriptorHandleForHeapStart());
+            const unsigned extent[]={static_cast<unsigned>(source_desc_.Width),source_desc_.Height};draw.list->SetGraphicsRoot32BitConstants(1,2,extent,0);
+            draw.list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);draw.list->DrawInstanced(3,1,0,0);
+            transition(draw.list.Get(),snapshot_.Get(),D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,D3D12_RESOURCE_STATE_COMMON);
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
             if(read_pixels){
-                transition(draw_list_.Get(),destination,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_COPY_SOURCE);
+                transition(draw.list.Get(),destination,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_COPY_SOURCE);
                 D3D12_TEXTURE_COPY_LOCATION to{},from{};to.pResource=readback_.buffer.Get();to.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;to.PlacedFootprint=readback_.footprint;
-                from.pResource=destination;from.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;draw_list_->CopyTextureRegion(&to,0,0,0,&from,nullptr);
-                transition(draw_list_.Get(),destination,D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_PRESENT);
+                from.pResource=destination;from.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;draw.list->CopyTextureRegion(&to,0,0,0,&from,nullptr);
+                transition(draw.list.Get(),destination,D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_PRESENT);
                 readback_.source=source_desc_;readback_.destination=d;readback_.rectangle=rectangle;
                 readback_.generation=generation_;readback_.ticket=stats_.ticket;readback_.received_ns=stats_.received_ns;readback_.present_ns=now_ns;
                 readback_.draw_serial=draw_serial_+1;readback_state_=ReadbackState::recorded;
             }else
 #endif
-                transition(draw_list_.Get(),destination,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PRESENT);
-            gpu_check(draw_list_->Close(),"mirror draw close");held_destination_=destination;draw_inflight_=true;draw_signaled_=false;
+                transition(draw.list.Get(),destination,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PRESENT);
+            gpu_check(draw.list->Close(),"mirror draw close");draw.destination=destination;draw.serial=++draw_serial_;draw.inflight=true;draw.signaled=false;
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
-            if(read_pixels){readback_fence_=draw_fence_;readback_state_=ReadbackState::submitted;}
+            if(read_pixels){readback_fence_=draw.fence;readback_state_=ReadbackState::submitted;}
 #endif
-            ID3D12CommandList* lists[]={draw_list_.Get()};queue_->ExecuteCommandLists(1,lists);gpu_check(queue_->Signal(draw_fence_.Get(),++draw_serial_),"mirror draw signal");draw_signaled_=true;
+            ID3D12CommandList* lists[]={draw.list.Get()};queue_->ExecuteCommandLists(1,lists);gpu_check(queue_->Signal(draw.fence.Get(),draw.serial),"mirror draw signal");draw.signaled=true;
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
             if(read_pixels)readback_signaled_=true;
 #endif
-            if(!wait(draw_fence_,draw_serial_,draw_signaled_,draw_inflight_,GetTickCount64()+1000))return false;
+            if constexpr(!asynchronous){
+                if(!wait(draw.fence,draw.serial,draw.signaled,draw.inflight,GetTickCount64()+1000))return false;
+                draw.destination.Reset();
+            }
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
             refresh_readback();
 #endif
-            held_destination_.Reset();++stats_.presents;stats_.reason=Reason::none;return true;
+            ++stats_.presents;stats_.reason=Reason::none;return true;
         }catch(...){
 #if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
             if(readback_state_==ReadbackState::recorded||
@@ -302,8 +344,8 @@ public:
         if(!TryAcquireSRWLockExclusive(&lock_))return false;Unlock unlock{&lock_};
         if(stats_.state==4)return !stats_.unsafe;
         const bool copied=complete(copy_fence_,copy_serial_,copy_signaled_,copy_inflight_);
-        const bool drawn=complete(draw_fence_,draw_serial_,draw_signaled_,draw_inflight_);
-        if(drawn)held_destination_.Reset();return copied&&drawn;
+        const bool drawn=poll_draws();
+        return copied&&drawn;
     }
     // Nonterminal source retirement. The caller has stopped old-world producers.
     // Freeze both copy and presentation before polling either fence; a pending
@@ -316,10 +358,10 @@ public:
         if(stats_.state!=1&&stats_.state!=2&&stats_.state!=5)return false;
         stats_.state=5;snapshot_valid_=false;
         const bool copied=complete(copy_fence_,copy_serial_,copy_signaled_,copy_inflight_);
-        const bool drawn=complete(draw_fence_,draw_serial_,draw_signaled_,draw_inflight_);
+        const bool drawn=poll_draws();
         if(!copied||!drawn||stats_.state==3)return false;
         release(false);source_desc_={};copy_serial_=draw_serial_=0;
-        copy_signaled_=draw_signaled_=false;
+        copy_signaled_=false;for(auto& draw:draws_)draw={};
         stats_.received_ns=0;stats_.state=0;stats_.reason=Reason::none;return true;
     }
     bool drain(unsigned timeout_ms=1000){AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};if(stats_.state==4)return !stats_.unsafe;return drain_locked(timeout_ms);}

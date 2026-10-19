@@ -14,6 +14,8 @@ gears_owned_retirement::Gate shutdown;
 gears_owned_retirement::Handoff handoff;
 uint64_t resource_world{};
 bool shutdown_conflict{};
+uint64_t pending_fallbacks{},pending_fallback_ticket{};unsigned pending_fallback_mask{};
+std::array<uint64_t,6> pending_conditions{};
 std::atomic<bool> shutdown_rhi_ready{};
 gears_native_owned::Snapshot created{};
 bool healthy(){const auto live=owner.snapshot();
@@ -58,6 +60,21 @@ uintptr_t native_owned_scene_candidate(){using namespace gears_owned_scene_live;
   if(!trial.advance(trial.ticket,true)){trial.error=12;return 0;}
  }
  return healthy()&&trial.candidate()?trial.adapter:0;}
+void native_owned_scene_pending_fallback(){using namespace gears_owned_scene_live;
+ // Called under frame_hook_mutex at the exact pending-ticket fallback branch.
+ unsigned mask=(!trial.returned?1u:0u)|(!trial.destroyed?2u:0u)|
+    (trial.draw_mask!=3?4u:0u)|(trial.submitted_mask!=3?8u:0u)|
+    (!owned_scene_gpu::can_advance(trial.ticket)?16u:0u)|(!owned_ui_ready(trial.ticket)?32u:0u);
+ ++pending_fallbacks;pending_fallback_ticket=trial.ticket;pending_fallback_mask=mask;
+ for(unsigned i=0;i<pending_conditions.size();++i)if(mask&(1u<<i))++pending_conditions[i];
+}
+void native_owned_scene_progress(FILE* output){using namespace gears_owned_scene_live;
+ uint64_t count{},ticket{};unsigned mask{};std::array<uint64_t,6> conditions{};
+ {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+  count=pending_fallbacks;ticket=pending_fallback_ticket;mask=pending_fallback_mask;conditions=pending_conditions;}
+ fprintf(output,"owned_pending_fallbacks=%llu owned_pending_ticket=%llu owned_pending_mask=%u owned_pending_return=%llu owned_pending_destroy=%llu owned_pending_draw=%llu owned_pending_submit=%llu owned_pending_consume=%llu owned_pending_ui=%llu ",
+  count,ticket,mask,conditions[0],conditions[1],conditions[2],conditions[3],conditions[4],conditions[5]);
+}
 bool native_owned_scene_try_bootstrap(){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
@@ -244,6 +261,8 @@ void print_native_owned_scene(FILE* file){using namespace gears_owned_scene_live
 void initialize_native_owned_scene(bool){}
 bool native_owned_scene_tick(uint64_t){return true;}
 uintptr_t native_owned_scene_candidate(){return 0;}
+void native_owned_scene_pending_fallback(){}
+void native_owned_scene_progress(FILE*){}
 bool native_owned_scene_try_bootstrap(){return false;}
 bool native_owned_scene_select(void*,uint64_t,uintptr_t){return false;}
 bool native_owned_scene_built(void*,uint64_t,bool){return true;}

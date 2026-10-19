@@ -10,6 +10,25 @@ ResizeFn original{};Resize1Fn original1{};
 thread_local unsigned depth{};
 struct Depth {Depth(){++depth;}~Depth(){--depth;}};
 struct LastErrorBoundary {DWORD value{GetLastError()};~LastErrorBoundary(){SetLastError(value);}};
+// An asynchronous mirror owns backbuffer references until its queue fence
+// completes. Keep capture submissions excluded through the original resize.
+struct MirrorResizeBoundary {
+    std::unique_lock<std::recursive_mutex> lock{frame_hook_mutex,std::defer_lock};
+    bool ready{true};
+    explicit MirrorResizeBoundary(IDXGISwapChain* chain){
+#if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
+        if constexpr(gears_vr::DesktopMirror::asynchronous){
+            if(depth!=1)return;
+            lock.lock();
+            if(!swapchain_bindings.registered(canonical_identity(chain)).chain){lock.unlock();return;}
+            StereoPublishBypass bypass;
+            ready=desktop_mirror.drain(1000);
+        }
+#else
+        (void)chain;
+#endif
+    }
+};
 #if GEARS_DXGI_RESIZE_TRANSPORT
 std::atomic<unsigned> calls{},completed{},failed{},rejected{},drain_failed{};
 struct ResizeTrace {
@@ -86,8 +105,9 @@ HRESULT STDMETHODCALLTYPE hook(IDXGISwapChain* chain,UINT count,UINT width,UINT 
     const auto boundary=begin(chain,0,count,width,height,format,flags);
 #endif
     const auto dimensions=gears_swapchain_startup::prepare_resize(startup,chain,width,height,depth==1);
+    MirrorResizeBoundary mirror_boundary(chain);
     SetLastError(error.value);
-    const auto result=original(chain,count,dimensions.width,dimensions.height,format,flags);
+    const auto result=mirror_boundary.ready?original(chain,count,dimensions.width,dimensions.height,format,flags):DXGI_ERROR_WAS_STILL_DRAWING;
     error.value=GetLastError();
     gears_swapchain_startup::finish(startup,result,chain);
 #if GEARS_DXGI_RESIZE_TRANSPORT
@@ -110,8 +130,9 @@ HRESULT STDMETHODCALLTYPE hook1(IDXGISwapChain3* chain,UINT count,UINT width,UIN
     }
 #endif
     const auto dimensions=gears_swapchain_startup::prepare_resize(startup,chain,width,height,depth==1);
+    MirrorResizeBoundary mirror_boundary(chain);
     SetLastError(error.value);
-    const auto result=original1(chain,count,dimensions.width,dimensions.height,format,flags,nodes,queues);
+    const auto result=mirror_boundary.ready?original1(chain,count,dimensions.width,dimensions.height,format,flags,nodes,queues):DXGI_ERROR_WAS_STILL_DRAWING;
     error.value=GetLastError();
     gears_swapchain_startup::finish(startup,result,chain);
 #if GEARS_DXGI_RESIZE_TRANSPORT
