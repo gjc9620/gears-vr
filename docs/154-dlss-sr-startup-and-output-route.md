@@ -469,3 +469,23 @@ the incompatible source-pixel observer, before any binary was produced.
 The observer-OFF configuration also passed a fresh build, CPU test and continuous
 startup suite: `build-ngx-descriptor-off1/GearsCaptureNgxDescriptorOff1.dll`,
 SHA256 `61fff9f378ac0f349c6a7faa8459176b5fa3089b464cd74dce8705fce6a44db8`.
+
+### Real-device descriptor callback fixture
+
+`CaptureSelfTest --ngx-mv-descriptors` now creates real CPU/shader-visible heaps
+and UAV resources through the prime-patched D3D12 device methods. It checks
+typed identity, both descriptor-copy APIs, overwrite versions, unknown-source
+invalidation, SRV/CBV replacement, retained historical snapshots and drained
+teardown with original entry-byte restoration. It issues no Dispatch and proves
+no shader coverage. The observer-OFF build explicitly returns unsupported.
+
+Root's fresh game-resolution diagnostic configuration with startup trace ON
+passed this fixture, CPU provenance tests, the live epoch fixture, continuous
+startup suite and all five prime modes plus continuous stop. Artifact:
+`build-ngx-descriptor-game1/GearsCaptureNgxDescriptorGame1.dll`, SHA256
+`47ad57ea19d74219eeedce555d89aaf31e0575deffce4642f43ab8efba41a1ae`.
+Evidence: `analysis/runtime/ngx-descriptor-game1-tests.json` and selftest log;
+build driver `analysis/runtime/build-ngx-descriptor-game1.py`.
+Constructor-input experimentation is OFF to isolate descriptor observation.
+Game-resolution output is private diagnostic isolation, not a change to the
+required runtime-recommended-resolution release default.

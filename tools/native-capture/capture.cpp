@@ -6219,6 +6219,30 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeHandoffCheck(void
     if(!prime_done.load()||prime_recording.load())result=68;
     return result;
 }
+extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureNgxMvDescriptorsCheck(void*) {
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+    FILETIME created{},exited{},kernel{},user{};
+    if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user))return 300;
+    gears_prime::OwnerArgument owner{24,1,GetCurrentProcessId(),0,gears_session::creation_time(created)};
+    if(MH_Initialize()!=MH_OK||begin_target_prime(&owner))return 301;
+    ngx_mv_descriptor_capture::Bank::Snapshot retained;
+    DWORD result=ngx_mv_descriptor_capture::native_check(retained);
+    if(!prime_event||!SetEvent(prime_event)){if(!result)result=323;}
+    const auto deadline=GetTickCount64()+5000;
+    while(!prime_done.load()&&GetTickCount64()<deadline)Sleep(1);
+    if(!result&&(!prime_done.load()||prime_recording.load()||active.load()))result=324;
+    std::array<unsigned char,32> bytes{};
+    if(!result)for(unsigned i=0;i<prime_targets.size();++i)
+        if(!safe_copy(bytes.data(),prime_targets[i],bytes.size())||bytes!=prime_original_bytes[i]){result=325;break;}
+    if(!result&&!graphics_lock_prime_restored())result=326;
+    if(!result)result=ngx_mv_descriptor_capture::native_closed_check(retained);
+    retained={}; // Last fixture snapshot is released after admission/drain checks.
+    printf("NGX MV descriptor callbacks self-test result=%lu CPU_only=1 selected_pair_proof=0 producer_authorized=0\n",result);
+    return result;
+#else
+    return ERROR_NOT_SUPPORTED;
+#endif
+}
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeOwnedCheck(void* argument) {
     DWORD mode{};if(!safe_copy(&mode,argument,sizeof(mode))||mode>2)return 220;
     FILETIME created{},exited{},kernel{},user{};

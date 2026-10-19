@@ -11,6 +11,7 @@ int wmain(int argc,wchar_t** argv) {
     bool ui_root_bypass=argc==3&&!wcscmp(argv[2],L"--ui-root-bypass");
     bool viewport=argc==3 && !wcscmp(argv[2],L"--viewport");
     bool prime=argc==3 && !wcscmp(argv[2],L"--prime");
+    bool ngx_mv_descriptors=argc==3&&!wcscmp(argv[2],L"--ngx-mv-descriptors");
     bool handoff=argc==3 && !wcscmp(argv[2],L"--prime-handoff");
     bool owned_cancel=argc==3&&!wcscmp(argv[2],L"--prime-owned-cancel");
     bool owned_exit=argc==3&&!wcscmp(argv[2],L"--prime-owned-exit");
@@ -24,10 +25,18 @@ int wmain(int argc,wchar_t** argv) {
     bool view_union_mask=argc==3 && !wcscmp(argv[2],L"--view-union-mask");
     bool frame_link=argc==3 && !wcscmp(argv[2],L"--frame-link");
     bool continuous=argc==3 && !wcscmp(argv[2],L"--continuous");
-    if(ui_bypass||ui_material_bypass||ui_root_bypass||quad||geometry||identity||color_copy||color_copy_system||first_view_mask||view_union_mask||frame_link||continuous||owned_cancel||owned_exit||owned_handoff)argc=2;
+    if(ui_bypass||ui_material_bypass||ui_root_bypass||quad||geometry||identity||color_copy||color_copy_system||first_view_mask||view_union_mask||frame_link||continuous||owned_cancel||owned_exit||owned_handoff||ngx_mv_descriptors)argc=2;
     bool gpu=argc==3 && !wcscmp(argv[2],L"--gpu"),family=argc==3 && !wcscmp(argv[2],L"--family"),clone=argc==3 && !wcscmp(argv[2],L"--clone"),renderer=argc==3 && !wcscmp(argv[2],L"--renderer"),lifetime=argc==3 && !wcscmp(argv[2],L"--lifetime"),prepare=argc==3 && !wcscmp(argv[2],L"--prepare"),state=argc==3 && !wcscmp(argv[2],L"--state");if(argc==3 && !gpu && !family && !clone && !renderer && !lifetime && !prepare && !state && !viewport && !prime && !handoff)return 2;
     HMODULE module=LoadLibraryW(argv[1]);
     if(!module) {printf("Load failed %lu\n",GetLastError());return 3;}
+    if(ngx_mv_descriptors){
+        auto descriptor_test=reinterpret_cast<DWORD(WINAPI*)(void*)>(GetProcAddress(module,"GearsCaptureNgxMvDescriptorsCheck"));
+        if(!descriptor_test)return 4;
+        DWORD result=descriptor_test(nullptr);
+        if(result==ERROR_NOT_SUPPORTED)printf("NGX MV descriptor self-test unsupported: observer flag OFF\n");
+        else printf("NGX MV descriptor self-test result=%lu (0=pass)\n",result);
+        return static_cast<int>(result);
+    }
     if(owned_cancel||owned_exit||owned_handoff){
         auto owned_test=reinterpret_cast<DWORD(WINAPI*)(void*)>(GetProcAddress(module,"GearsCapturePrimeOwnedCheck"));
         if(!owned_test)return 4;
