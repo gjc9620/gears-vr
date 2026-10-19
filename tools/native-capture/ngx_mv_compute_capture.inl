@@ -50,6 +50,7 @@ uint64_t mutation{};
 uint64_t foreign_device_skips{},reuse_attempts{},reused{};
 struct Occupancy {unsigned occupied{},eligible{},partial{},pinned{},busy{},unrevoked{},unknown_blocked{},stale_blocked{};} capacity_occupancy;
 enum class CallerOperation:unsigned {heaps,root,table,dispatch};
+std::array<uint64_t,4> unknown_skipped{};
 struct CallerRow {
     CallerOperation operation{};unsigned phase{};uintptr_t caller{},rva{};bool in_game_image{},historical_candidate{};
     uint64_t calls{},bank_failed_calls{},first_ticket{},last_ticket{};
@@ -140,13 +141,24 @@ void census(CallerOperation operation,uintptr_t caller,bool owned){
     ++row->calls;if(failed)++row->bank_failed_calls;row->last_ticket=consuming_frame_ticket;
 }
 struct Depth {
-    bool outer;int exceptions=std::uncaught_exceptions();
-    Depth():outer(depth++==0){if(!outer&&pending())lose(nested,"depth_enter");}
-    ~Depth(){--depth;if(std::uncaught_exceptions()!=exceptions&&pending())lose(unwinding,"depth_unwind");}
+    bool outer,relevant;int exceptions=std::uncaught_exceptions();
+    explicit Depth(bool observed):outer(depth++==0),relevant(observed){if(!outer&&relevant&&pending())lose(nested,"depth_enter");}
+    ~Depth(){--depth;if(relevant&&std::uncaught_exceptions()!=exceptions&&pending())lose(unwinding,"depth_unwind");}
 };
 List* known(ID3D12GraphicsCommandList* list){
-    if(!list)return nullptr;const auto id=canonical_identity(list);
-    for(unsigned i=0;i<list_count;++i)if(lists[i].canonical==id)return &lists[i];return nullptr;
+    // Unknown callbacks must not query COM just to determine their scope.
+    // Only exact retained typed arguments are known at this boundary; alias
+    // coverage is deliberately incomplete and is reported as such.
+    if(!list)return nullptr;const auto raw=reinterpret_cast<uintptr_t>(list);
+    for(unsigned i=0;i<list_count;++i)if(lists[i].raw==raw)return &lists[i];return nullptr;
+}
+bool may_admit(CallerOperation operation,uintptr_t caller){
+    return operation==CallerOperation::root&&ngx_stereo_host::attested&&caller==base+0x22018d&&
+        ngx_mv_target_capture::window.snapshot().phase==gears_ngx_mv_target::Phase::capturing;
+}
+bool scoped_list(ID3D12GraphicsCommandList* list,CallerOperation operation,uintptr_t caller){
+    if(known(list)||may_admit(operation,caller))return true;
+    ++unknown_skipped[unsigned(operation)];return false;
 }
 Recording ref(List const& list){return {list.canonical,list.generation,frame_link.current(list.canonical).generation};}
 List* reclaim(){
@@ -164,11 +176,12 @@ List* reclaim(){
         if(!identity_matches||(held.generation&&held.generation!=live.generation))++o.stale_blocked;
     }return victim;
 }
-List* track(ID3D12GraphicsCommandList* list,Retirement& retirement){
-    if(!list||list->GetType()!=D3D12_COMMAND_LIST_TYPE_DIRECT)return nullptr;
+List* track(ID3D12GraphicsCommandList* list,Retirement& retirement,CallerOperation operation,uintptr_t caller){
     auto* old=known(list);if(old){const auto observed=ref(*old);
         if(!old->generation||!observed.attested_current_generation||observed.attested_current_generation!=old->generation){
             lose(invalid_generation,"track_existing",old,reinterpret_cast<uintptr_t>(list));return nullptr;}return old;}
+    if(!may_admit(operation,caller))return nullptr;
+    if(!list||list->GetType()!=D3D12_COMMAND_LIST_TYPE_DIRECT)return nullptr;
     auto& id=retirement.identity;auto& device=retirement.device;auto& device_id=retirement.device_identity;
     if(FAILED(list->QueryInterface(IID_PPV_ARGS(&id)))||FAILED(list->GetDevice(IID_PPV_ARGS(&device)))||FAILED(device.As(&device_id))||!id||!device_id){
         lose(invalid_list,"track_identity",nullptr,reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(id.Get()));return nullptr;}
@@ -177,6 +190,10 @@ List* track(ID3D12GraphicsCommandList* list,Retirement& retirement){
     if(reinterpret_cast<uintptr_t>(device_id.Get())!=ngx_mv_target_capture::selected_mv.device){++foreign_device_skips;return nullptr;}
     const auto canonical=reinterpret_cast<uintptr_t>(id.Get());const auto current=frame_link.current(canonical);
     if(!canonical||current.identity!=canonical||!current.generation){lose(invalid_generation,"track_new_generation",nullptr,reinterpret_cast<uintptr_t>(list),canonical);return nullptr;}
+    // An unrecognized setup alias must not duplicate a canonical row or make
+    // later unrecognized alias calls appear covered by the retained argument.
+    for(unsigned i=0;i<list_count;++i)if(lists[i].canonical==canonical){
+        lose(invalid_list,"track_setup_alias",&lists[i],reinterpret_cast<uintptr_t>(list));return nullptr;}
     List* slot{};
     if(list_count==lists.size()){
         slot=reclaim();if(!slot){lose(list_capacity,"track_capacity",nullptr,reinterpret_cast<uintptr_t>(list),canonical);return nullptr;}
@@ -227,8 +244,9 @@ struct ResetScope {
 };
 void STDMETHODCALLTYPE heaps(ID3D12GraphicsCommandList* list,UINT count,ID3D12DescriptorHeap* const* native){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Retirement retirement;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::heaps,caller,scope.world());EvidenceScope evidence("heaps",list);Depth call;
-    List* held=call.outer&&observing(scope.world())?track(list,retirement):nullptr;ListUse use(held);
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::heaps,caller,scope.world());EvidenceScope evidence("heaps",list);
+    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(list,CallerOperation::heaps,caller);Depth call(known(list)||scoped);
+    List* held=call.outer&&scoped?track(list,retirement,CallerOperation::heaps,caller):nullptr;ListUse use(held);
     HeapLease selected;std::array<ID3D12DescriptorHeap*,2> values{};
     if(held){
         if(count>values.size()||(count&&!safe_copy(values.data(),native,count*sizeof(values[0]))))lose(invalid_heap,"heaps_array",held);
@@ -243,8 +261,9 @@ void STDMETHODCALLTYPE heaps(ID3D12GraphicsCommandList* list,UINT count,ID3D12De
 }
 void STDMETHODCALLTYPE root(ID3D12GraphicsCommandList* list,ID3D12RootSignature* native){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Retirement retirement;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::root,caller,scope.world());EvidenceScope evidence("root",list);Depth call;
-    List* held=call.outer&&observing(scope.world())?track(list,retirement):nullptr;ListUse use(held);
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::root,caller,scope.world());EvidenceScope evidence("root",list);
+    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(list,CallerOperation::root,caller);Depth call(known(list)||scoped);
+    List* held=call.outer&&scoped?track(list,retirement,CallerOperation::root,caller):nullptr;ListUse use(held);
     gears_vr::ComPtr<ID3D12RootSignature> owner;gears_vr::ComPtr<IUnknown> id;
     if(held&&native){gears_vr::ComPtr<ID3D12Device> device;gears_vr::ComPtr<IUnknown> di;owner=native;
         if(FAILED(native->QueryInterface(IID_PPV_ARGS(&id)))||FAILED(native->GetDevice(IID_PPV_ARGS(&device)))||FAILED(device.As(&di))||
@@ -256,17 +275,19 @@ void STDMETHODCALLTYPE root(ID3D12GraphicsCommandList* list,ID3D12RootSignature*
 }
 void STDMETHODCALLTYPE table(ID3D12GraphicsCommandList* list,UINT index,D3D12_GPU_DESCRIPTOR_HANDLE gpu){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Retirement retirement;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::table,caller,scope.world());EvidenceScope evidence("table",list);Depth call;
-    List* held=call.outer&&observing(scope.world())?track(list,retirement):nullptr;ListUse use(held);if(!held)invalidate(list,0);
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::table,caller,scope.world());EvidenceScope evidence("table",list);
+    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(list,CallerOperation::table,caller);Depth call(known(list)||scoped);
+    List* held=call.outer&&scoped?track(list,retirement,CallerOperation::table,caller):nullptr;ListUse use(held);if(!held)invalidate(list,0);
     const auto before=mutation;original_table(list,index,gpu);
     if(held&&current(*held)){if(before!=mutation){lose(changed,"table_post_mutation",held);return;}bindings.compute_root_table(ref(*held),index,gpu.ptr);noted(*held);}
 }
 void STDMETHODCALLTYPE dispatch(ID3D12GraphicsCommandList* list,UINT x,UINT y,UINT z){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;
-    Retirement retirement;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::dispatch,caller,scope.world());EvidenceScope evidence("dispatch",list);Depth call;
+    Retirement retirement;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::dispatch,caller,scope.world());EvidenceScope evidence("dispatch",list);
+    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(list,CallerOperation::dispatch,caller);Depth call(known(list)||scoped);
     Row* row{};List* held{};ListUse use;
-    if(call.outer&&observing(scope.world())&&ngx_mv_target_capture::window.snapshot().phase==gears_ngx_mv_target::Phase::capturing){
-        ++dispatches;held=track(list,retirement);use.attach(held);
+    if(call.outer&&observe&&ngx_mv_target_capture::window.snapshot().phase==gears_ngx_mv_target::Phase::capturing){
+        ++dispatches;if(scoped)held=track(list,retirement,CallerOperation::dispatch,caller);use.attach(held);
         if(held){const auto candidate=bindings.dispatch(ref(*held));
             if(!candidate.binding_observed)++unbound;
             else {auto observed=ngx_mv_descriptor_capture::lookup_target(candidate.shader_visible_heap,candidate.root3_gpu);
@@ -321,6 +342,8 @@ void print(FILE* file){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!file)return;
     fprintf(file,"ngx_mv_compute enabled=1 lists=%u list_limit=16 rows=%u row_limit=32 failed=%u failure=%u core_loss=%u stopped=%u leases_released=%u dispatches=%llu unbound=%llu unrelated=%llu invalidations=%llu waiting_bindings=%llu capture_bindings=%llu row_scope=selected_mv_related table_membership_verified=0 gpu_execution_verified=0 producer_authorized=0\n",
         list_count,row_count,unsigned(failed),failure,unsigned(bindings.loss()),unsigned(stopped),unsigned(leases_released),dispatches,unbound,unrelated,invalidations,waiting_bindings,capture_bindings);
+    fprintf(file,"ngx_mv_compute_admission scope=new_admission_setup22018d incomplete_coverage=1 new_phase=capturing attestation_required=1 known_lookup=retained_typed_argument skip_scope=bank_pending_owned skipped_unknown_heaps=%llu skipped_unknown_root=%llu skipped_unknown_table=%llu skipped_unknown_dispatch=%llu selected_mv_inferred=0\n",
+        unknown_skipped[unsigned(CallerOperation::heaps)],unknown_skipped[unsigned(CallerOperation::root)],unknown_skipped[unsigned(CallerOperation::table)],unknown_skipped[unsigned(CallerOperation::dispatch)]);
     auto const& o=capacity_occupancy;
     fprintf(file,"ngx_mv_compute_reuse attempts=%llu reused=%llu foreign_device_skips=%llu capacity_snapshot=%u occupied=%u eligible=%u partial_or_absent=%u pinned=%u busy=%u unrevoked=%u unknown_blocked=%u stale_blocked=%u blocker_counts_overlap=1\n",
         reuse_attempts,reused,foreign_device_skips,unsigned(reuse_attempts!=0),o.occupied,o.eligible,o.partial,o.pinned,o.busy,o.unrevoked,o.unknown_blocked,o.stale_blocked);

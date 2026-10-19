@@ -484,6 +484,12 @@ struct Contract {uintptr_t rva;unsigned size;char const* hash;};
 // identity. enable() hashes every complete current chunk before any host hook.
 constexpr Contract contracts[]{
 #if GEARS_NGX_MV_TARGET_CAPTURE
+    // Complete setup/initialization chunks. Admission uses the typed root
+    // callback's current return address, never a recovered native ABI.
+    {0x138020,438,"5f60a7a5281df647b8f6b37deb0fe5a725fee6a240d43712157baa5958d32f0c"},
+    {0x2200a8,140,"4e6733c8ab5e39dead5557842ad1d0c86eece582d424ce54b73a8192084c1783"},
+    {0x220134,136,"70b6ffde6ae8a12e5da60db390a0ca02cc7ed0ec2d79a765b814cbb66e1bb572"},
+    {0x8d786e,35,"710e19e7af3527d0a64ee51849aa3336ed2b0b9305d90386f31a238b32c4b289"},
     // Complete hot/cold chunks from artifact1 compute-chunks.json. These
     // authenticate the historical root-table/Dispatch caller candidates,
     // without asserting that the shader writes the selected MV resource.
@@ -556,3 +562,4 @@ void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mut
 }
 #endif
 }
+
