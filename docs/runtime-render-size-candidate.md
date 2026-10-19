@@ -8,6 +8,32 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+### Current default: engine-extent fix
+
+The default and named `manifest-runtime-extent-fix1.json` now select
+`GearsCaptureRuntimeExtentFix1.dll` SHA256
+`6ee31a6fbd48302ba99096d1fda77f0952099b5ad3df722773299c539eb7cd93`.
+In addition to the 0.71x counterfactual below, background regressions at1.0x and
+2.0x each passed two checkpoint reloads, cleanup/entry restoration and five-file
+restoration with a1280x720 desktop. The GPU sources were2560x1400 and5120x2800;
+saved image inspection confirms scenery beyond the old desktop edges, without
+the previous right/bottom rectangular holes. Evidence prefixes:
+`resolution-extent-fix1-scale{1,2}-20261019`, plus corresponding image/coverage
+receipts under ignored `analysis/runtime`. All168 launcher offline tests passed
+after promotion. Release2 remains a named historical rollback, not the default.
+
+Current development ZIP:
+`analysis/runtime/GearsVR-0.0.1-resolution-extent-fixed-20261019.zip`, SHA256
+`7e9deb70debafc7790b8608640fc0e18536dc65ddac98a0640549be2da5ce814`.
+Fresh stage and extracted-package isolated preflight passed; all717 ZIP members
+were verified against the payload inventory. Receipt:
+`analysis/runtime/resolution-extent-fixed-receipt.json`. This supersedes the
+earlier resolution-default-ready/feedback archives and remains a test package.
+
+The desktop Present surface still becomes8x8 in these background runs, producing
+a blurry desktop mirror. This is a separate known limitation; no claim that the
+desktop mirror, mounted gun, DLSS or physical-headset acceptance is complete.
+
 **Counterfactual restores the small-window missing scene region.** Candidate
 `build-runtime-extent-fix1/GearsCaptureRuntimeExtentFix1.dll`, SHA256
 `6ee31a6fbd48302ba99096d1fda77f0952099b5ad3df722773299c539eb7cd93`, freezes
@@ -27,8 +53,9 @@ not generic dark-frame classification. There were1570 clear applications and
 1570 restorations; both checkpoint recoveries, native cleanup, entry restoration
 and five-file settings/profile restoration passed. Evidence:
 `resolution-extent-fix1-coverage.json` and the run prefix under `analysis/runtime`.
-Default/portable manifests still select Release2 pending candidate regressions;
-the existing distributed development ZIP therefore still has the observed bug.
+At this counterfactual stage, default/portable manifests still selected Release2;
+the later promotion above supersedes that state. Older Release2 development ZIPs
+still contain the observed bug and should not be used for this acceptance.
 
 Targeted observation confirms the previously missing route: diagnostic DLL
 `47ada7fa94d7a47fd28008f28fbd65ebe9e1bc90c00d009314ba2c51569956d1`
