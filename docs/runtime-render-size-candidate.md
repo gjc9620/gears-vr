@@ -8,6 +8,28 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+**Counterfactual restores the small-window missing scene region.** Candidate
+`build-runtime-extent-fix1/GearsCaptureRuntimeExtentFix1.dll`, SHA256
+`6ee31a6fbd48302ba99096d1fda77f0952099b5ad3df722773299c539eb7cd93`, freezes
+authenticated original source output dimensions into each world/ticket before
+submission. It compares the clear viewport against that frozen engine extent,
+while retaining current inventory/queue/owned-resource/native-route checks.
+The source extent is scalar evidence, not DSV allocation proof.
+
+Fresh compilation with469 tracked dependencies, focused component tests and the
+continuous startup suite passed. Actual background run
+`resolution-extent-fix1-run1-20261019` retained1280x720 desktop /8x8 Present and
+1818x994 VR output. Both post-checkpoint GPU images were visually inspected:
+the old right/bottom rectangular black regions are replaced by scene geometry.
+Scene-specific bright occupancy right ofx1280 rose from0.061% to60.7%, and below
+y720 from7–8% to85–86%. These thresholds apply only to this known checkpoint,
+not generic dark-frame classification. There were1570 clear applications and
+1570 restorations; both checkpoint recoveries, native cleanup, entry restoration
+and five-file settings/profile restoration passed. Evidence:
+`resolution-extent-fix1-coverage.json` and the run prefix under `analysis/runtime`.
+Default/portable manifests still select Release2 pending candidate regressions;
+the existing distributed development ZIP therefore still has the observed bug.
+
 Targeted observation confirms the previously missing route: diagnostic DLL
 `47ada7fa94d7a47fd28008f28fbd65ebe9e1bc90c00d009314ba2c51569956d1`
 captured owned clear viewport 1280x720 on native returns 1af345/1ade10/27e752,
