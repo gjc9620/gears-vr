@@ -8,6 +8,17 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+Targeted observation confirms the previously missing route: diagnostic DLL
+`47ada7fa94d7a47fd28008f28fbd65ebe9e1bc90c00d009314ba2c51569956d1`
+captured owned clear viewport 1280x720 on native returns 1af345/1ade10/27e752,
+while the exact current same-queue Present inventory was 8x8 and VR plan1818x994.
+The existing desktop-extent guard rejected it (reason9). An unrelated80x56 depth
+clear has a different native route and must remain excluded. This confirms the
+guard mismatch; correcting it still needs a GPU counterfactual, not just counters.
+Fresh build, focused tests, continuous startup suite and the bounded background
+run's lifecycle/cleanup passed. The run remains visually failing by design:
+`resolution-extent-observe1-run1-20261019.final.native-status.txt` stores receipts.
+
 **Visual failure discovered after the small-window run:** user screenshot and
 inspection of saved world3 GPU source
 `continuous-stereo-44132-20261019-091759-f5419aaf.gpu.ppm.1.ppm` (see the run's
