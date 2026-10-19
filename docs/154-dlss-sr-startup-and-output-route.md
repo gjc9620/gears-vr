@@ -1,5 +1,14 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19: stop whole-device capacity escalation
+
+Fresh5121 DLL `97da3228d5601bf40696b64bec1e1bbed0043df6eeb94107f7d3c4eeb3bdfe74` passed457 dependencies, startup/descriptor fixtures and512/513 occupancy,128/129 copy boundary tests. Real COM copy scratch remains46080 bytes via separate128 copy limit. Actual session22752 again failed before acceptedEval join:44heaps,512 known UAV cells,0invalid/free,2529 reuses,19 UAV writes,18528 invalidations,27402 copies. Two Evals had retained MV, but bank_ready0. No missingbirth/device/recursion/uncertainty.
+
+This falsifies erased-cell reuse or modest persistent-capacity increases as sufficient fixes for the whole-device observer. Do not keep enlarging it blindly. Next review targets retained original UAV births and subsequent selected-MV descriptor copies, with distinct observation scope and no claim to repair lost history. Astra review requested; design is not yet implemented. This remains diagnostic work, not proven DLSS root cause.
+
+Native cleanup/entry restoration, normalclose and settings restoration passed; sessionincomplete/ownerexit1. Curated ignored receipt: `analysis/runtime/dlss-descriptor-5121-evidence.json`. Player default unchanged.
+
+
 ## 2026-10-19: descriptor reuse counterfactual
 
 Reuse1 DLL `ebec5cfbbbb36b81de7d0d6c11afd3db7ac8d7197fd961a00de2f228d68efd08` passed fresh457-dependency build, focused CPU and native descriptor fixture/startup tests. Same-address ABA, retained snapshots, source copying before reuse and all-known capacity failure are covered. Actual session32900 accepted two Eval observations with retained MV. Eight erased records were reused, but capacity still stopped at128 known UAV cells, zero invalid/free cells and43 heaps (19 UAV writes,2144 copies). Tombstones therefore contribute but do not explain remaining saturation; live copied descriptors exceed the bound. No known UAV was evicted and no failed bank recovered.
