@@ -91,6 +91,7 @@ class DescriptorBank {
         }return true;
     }
 public:
+    static constexpr size_t heap_capacity=HeapCapacity,cell_capacity=CellCapacity;
     struct Snapshot {
         Scope scope{};std::shared_ptr<unsigned const> owner;
         DescriptorHeapLease heap{};ResourceLease resource{},counter{};ViewDescription view{};
@@ -176,5 +177,25 @@ public:
     bool current(Snapshot const& captured)const{auto live=lookup(captured.scope,captured.cpu);
         return captured.owner&&captured.owner==owner_&&captured.version&&live.version==captured.version&&
             live.heap.canonical==captured.heap.canonical;}
+    // Diagnostic join at one serialized CPU observation point. Only an already
+    // retained typed MV lease may select cells; an NGX integer is never a COM
+    // argument. Visits are bounded by CellCapacity and include no unknown UAVs.
+    template<class Visit> size_t visit_mv(Scope value,ResourceLease const& mv,Visit visit)const{
+        if(!begun_||failed()||!same(scope_,value)||!mv.retained()||mv.device!=scope_.device)return 0;
+        size_t count{};
+        for(size_t i=0;i<cell_count_;++i){auto const& c=cells_[i];
+            if(!c.known_uav||!c.resource.retained()||c.resource.canonical!=mv.canonical||c.resource.device!=mv.device)continue;
+            for(size_t j=0;j<heap_count_;++j)if(heaps_[j].canonical==c.heap){
+                auto captured=lookup(value,heaps_[j].cpu+uint64_t(c.index)*heaps_[j].stride);
+                if(captured.same_mv(mv)){visit(captured);++count;}break;
+            }
+        }return count;
+    }
 };
+// Production observation has a separate explicit bound: the first real census
+// saw 60 cumulative CBV/SRV/UAV creations. Generic/small fixtures retain the
+// conservative default of 8; no eviction, restart or capacity recovery exists.
+inline constexpr size_t observer_heap_capacity=96,observer_cell_capacity=128;
+template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease>
+using ObserverDescriptorBank=DescriptorBank<ResourceLease,DescriptorHeapLease,observer_heap_capacity,observer_cell_capacity>;
 }

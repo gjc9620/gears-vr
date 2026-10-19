@@ -107,7 +107,12 @@ void eval_enter(uintptr_t scope,bool owned,uintptr_t caller,uintptr_t command,vo
     const bool had_rejection=probe.rejection.present;const auto prior_evals=probe.eval_count;probe.enter(in,concurrent,extra);
     if(probe.eval_count==prior_evals+1){eval_bounds[prior_evals]=sample_bounds(in.ticket,in.renderer,in.scope);
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
-        ngx_mv_descriptor_capture::accepted_eval(prior_evals,probe.revision,in.world,in.ticket,in.renderer,in.handle,in.parameters);
+        // Match the integer only to an existing typed D3D boundary lease. A
+        // missing MV stays missing; descriptor provenance never supplies it.
+        gears_ngx_stereo::TypedResourceLease const* mv{};
+        for(unsigned i=0;i<probe.resource_count;++i)if(in.resources[3]&&probe.resources[i].lease.raw==in.resources[3]&&probe.resources[i].lease.retained()){
+            mv=&probe.resources[i].lease;break;}
+        ngx_mv_descriptor_capture::accepted_eval(prior_evals,probe.revision,in.world,in.ticket,in.renderer,in.handle,in.parameters,mv);
 #endif
     }
     if(!had_rejection&&probe.rejection.present){auto& r=probe.rejection;r.lookup_reason=found.reason;r.saved=found.saved;r.current=found.current;

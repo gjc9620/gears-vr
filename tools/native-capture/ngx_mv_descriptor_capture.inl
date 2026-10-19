@@ -3,7 +3,7 @@
 // candidate device, never an attested game device or an NGX epoch/ticket.
 namespace ngx_mv_descriptor_capture {
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
-using Bank=gears_ngx_mv::DescriptorBank<>;
+using Bank=gears_ngx_mv::ObserverDescriptorBank<>;
 using Ranges=gears_ngx_mv::Ranges<128>;
 using HeapFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device*,const D3D12_DESCRIPTOR_HEAP_DESC*,REFIID,void**);
 using CbvFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,const D3D12_CONSTANT_BUFFER_VIEW_DESC*,D3D12_CPU_DESCRIPTOR_HANDLE);
@@ -18,6 +18,15 @@ bool armed{},accepting{},failed{},released{};
 unsigned final_loss{};size_t final_heaps{},final_cells{};
 uint64_t heap_calls{},uav_calls{},invalidations{},copies{},other_devices{},missing_birth{},recursions{},uncertainties{};
 thread_local unsigned depth{};
+// Frozen scalar audit only; no extra COM owners survive the bank's existing
+// drained teardown. Identity is historical at accepted Eval, not later use.
+struct MvMatch {uintptr_t heap{};uint64_t cpu{},gpu{},version{},origin{},source_handle{},source_version{};};
+struct MvJoin {
+    gears_ngx_mv_census::Use use{};uintptr_t raw{},canonical{},device{};uint64_t capture_generation{};
+    size_t matches{},saved{};bool present{},typed_retained{},bank_ready{},device_match{};
+    std::array<MvMatch,8> rows{};
+};
+std::array<MvJoin,2> mv_joins{};
 void fail(){failed=true;++uncertainties;if(bank)bank->uncertain();}
 template<class F> void attempt(F&& fn){try{fn();}catch(...){fail();}}
 struct Call {
@@ -46,9 +55,22 @@ void copied(ID3D12Device* device,Ranges const& destination,Ranges const& source)
 }
 void arm(){std::lock_guard<std::recursive_mutex> lock(mutex);if(!armed){armed=true;accepting=true;heap_census.arm();}}
 void close(){std::lock_guard<std::recursive_mutex> lock(mutex);accepting=false;heap_census.close();}
-void accepted_eval(unsigned ordinal,uint64_t revision,uint64_t world,uint64_t ticket,uintptr_t renderer,uintptr_t handle,uintptr_t parameters){
+void accepted_eval(unsigned ordinal,uint64_t revision,uint64_t world,uint64_t ticket,uintptr_t renderer,uintptr_t handle,uintptr_t parameters,
+    gears_ngx_stereo::TypedResourceLease const* mv){
     std::lock_guard<std::recursive_mutex> lock(mutex);
     heap_census.accepted(ordinal,{revision,world,ticket,renderer,handle,parameters});
+    if(ordinal>=mv_joins.size()||mv_joins[ordinal].present)return;
+    auto& join=mv_joins[ordinal];join.present=true;join.use={revision,world,ticket,renderer,handle,parameters};
+    join.capture_generation=lifetime.epoch;join.typed_retained=mv&&mv->retained();
+    join.bank_ready=accepting&&!failed&&bank&&!bank->failed();
+    if(!join.typed_retained)return;
+    join.raw=mv->raw;join.canonical=mv->canonical;join.device=mv->device;
+    join.device_match=join.bank_ready&&mv->device==lifetime.device;
+    if(!join.device_match)return;
+    join.matches=bank->visit_mv(lifetime,*mv,[&](Bank::Snapshot const& snapshot){
+        if(join.saved==join.rows.size())return;
+        join.rows[join.saved++]={snapshot.heap.canonical,snapshot.cpu,snapshot.gpu,snapshot.version,snapshot.origin,snapshot.source_handle,snapshot.source_version};
+    });
 }
 void release_drained(){
     // Closing admission precedes disabling hooks. Taking this lock drains every
@@ -73,9 +95,9 @@ void print_census(FILE* status,char const* stage,unsigned ordinal,gears_ngx_mv_c
         static_cast<unsigned long long>(c.non_creation),static_cast<unsigned long long>(c.other_type),c.overflow?1u:0u,static_cast<unsigned long long>(recursions));
 }
 void print(FILE* status){std::lock_guard<std::recursive_mutex> lock(mutex);if(!status)return;
-    fprintf(status,"ngx_mv_descriptors enabled=1 admission=%u scope=device_lifetime capture_generation=%llu device=%p device_selection=first_observed_cbv_heap_candidate device_attested=0 world=0 ticket=0 heaps=%zu cells=%zu heap_calls=%llu uav_calls=%llu invalidations=%llu copies=%llu other_devices=%llu missing_birth=%llu recursion=%llu uncertainties=%llu failed=%u loss=%u released=%u selected_pair_proof=0 producer_authorized=0\n",
+    fprintf(status,"ngx_mv_descriptors enabled=1 admission=%u scope=device_lifetime capture_generation=%llu device=%p device_selection=first_observed_cbv_heap_candidate device_attested=0 world=0 ticket=0 heaps=%zu cells=%zu heap_capacity=%zu cell_capacity=%zu heap_calls=%llu uav_calls=%llu invalidations=%llu copies=%llu other_devices=%llu missing_birth=%llu recursion=%llu uncertainties=%llu failed=%u loss=%u released=%u selected_pair_proof=0 producer_authorized=0\n",
         accepting?1:0,static_cast<unsigned long long>(lifetime.epoch),reinterpret_cast<void*>(lifetime.device),
-        bank?bank->heaps():final_heaps,bank?bank->cells():final_cells,
+        bank?bank->heaps():final_heaps,bank?bank->cells():final_cells,Bank::heap_capacity,Bank::cell_capacity,
         static_cast<unsigned long long>(heap_calls),static_cast<unsigned long long>(uav_calls),
         static_cast<unsigned long long>(invalidations),static_cast<unsigned long long>(copies),
         static_cast<unsigned long long>(other_devices),static_cast<unsigned long long>(missing_birth),
@@ -83,6 +105,13 @@ void print(FILE* status){std::lock_guard<std::recursive_mutex> lock(mutex);if(!s
         failed||(bank?bank->failed():final_loss!=0)?1:0,bank?static_cast<unsigned>(bank->loss()):final_loss,released?1:0);
     for(unsigned i=0;i<heap_census.snapshots().size();++i){auto const& s=heap_census.snapshots()[i];
         if(s.present)print_census(status,"accepted_eval",i,s.counts,s.use);}
+    for(unsigned i=0;i<mv_joins.size();++i){auto const& j=mv_joins[i];if(!j.present)continue;
+        fprintf(status,"ngx_mv_eval_join ordinal=%u revision=%llu world=%llu ticket=%llu renderer=%llx handle=%llx parameters=%llx capture_generation=%llu mv_raw=%llx mv_canonical=%llx mv_device=%llx typed_retained=%u bank_ready=%u device_match=%u matches=%zu saved=%zu row_capacity=%zu truncated=%u snapshot_at_eval=1 scalar_only=1 descriptor_bound_at_dispatch_verified=0 producer_authorized=0\n",
+            i,j.use.revision,j.use.world,j.use.ticket,j.use.renderer,j.use.handle,j.use.parameters,j.capture_generation,j.raw,j.canonical,j.device,
+            unsigned(j.typed_retained),unsigned(j.bank_ready),unsigned(j.device_match),j.matches,j.saved,j.rows.size(),unsigned(j.matches>j.saved));
+        for(size_t k=0;k<j.saved;++k){auto const& r=j.rows[k];
+            fprintf(status,"ngx_mv_eval_descriptor ordinal=%u index=%zu heap=%llx cpu=%llu gpu=%llu version=%llu origin=%llu source_handle=%llu source_version=%llu creation_world=0 creation_ticket=0 historical_cpu_provenance=1 producer_authorized=0\n",
+                i,k,r.heap,r.cpu,r.gpu,r.version,r.origin,r.source_handle,r.source_version);}}
     print_census(status,heap_census.active()?"current":"final",2,heap_census.counts());
 }
 HRESULT STDMETHODCALLTYPE heap(ID3D12Device* device,const D3D12_DESCRIPTOR_HEAP_DESC* desc,REFIID iid,void** output){

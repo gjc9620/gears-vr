@@ -197,11 +197,63 @@ void sparse_rejections(){
     Setup wrong;auto changed=scope;++changed.ticket;
     assert(!wrong.bank.copy_simple_sparse(changed,2000,1000,1)&&wrong.bank.loss()==Loss::bad_scope);
 }
+void production_heap_boundary(){
+    using DefaultBank=gears_ngx_mv::DescriptorBank<ResourceLease,HeapLease>;
+    using ObserverBank=gears_ngx_mv::ObserverDescriptorBank<ResourceLease,HeapLease>;
+    static_assert(DefaultBank::heap_capacity==8,"generic fixture default stays small");
+    static_assert(ObserverBank::heap_capacity==96&&ObserverBank::cell_capacity==128,"explicit production bounds");
+    const auto early=gears_ngx_mv::lifetime_scope(1,7);
+    ObserverBank bank;assert(bank.begin(early));
+    std::array<HeapFixture,97> heaps{};ResourceFixture mv;
+    for(size_t i=0;i<96;++i){auto& h=heaps[i];h.canonical=1000+i;h.cpu=10000+1024*i;
+        h.visible=i%2==0;h.gpu=h.visible?1000000+1024*i:0;
+        assert(bank.observe_heap(early,typed(h))&&bank.heaps()==i+1&&!bank.failed());
+        if(i==0)assert(bank.write_uav(early,h.cpu,typed(mv),nullptr,{}));
+        // The observed real-game census of 60 must remain readable, as must 96.
+        if(i==59||i==95)assert(bank.lookup(early,heaps[0].cpu).retained_uav());
+    }
+    auto captured=bank.lookup(early,heaps[0].cpu);assert(bank.current(captured));
+    assert(bank.observe_heap(early,typed(heaps[95]))&&bank.heaps()==96); // Existing identity at capacity.
+    auto& extra=heaps[96];extra.canonical=1096;extra.cpu=10000+1024*96;
+    assert(!bank.observe_heap(early,typed(extra))&&bank.loss()==Loss::capacity&&bank.heaps()==96);
+    assert(!bank.current(captured)&&!bank.lookup(early,heaps[0].cpu).version&&captured.retained_uav());
+    assert(!bank.observe_heap(early,typed(heaps[0]))&&!bank.begin(early)); // Sticky, no eviction/rearm.
+}
+void retained_mv_join(){
+    Setup s;s.write();s.write(1016,&s.other);s.write(1032);
+    assert(s.bank.copy_simple(scope,2000,1000,1));
+    auto mv=ResourceLease::observe(typed(s.mv));size_t calls{};
+    auto visit=[&](Bank::Snapshot const& snapshot){++calls;assert(snapshot.same_mv(mv)&&s.bank.current(snapshot));};
+    assert(s.bank.visit_mv(scope,mv,visit)==3&&calls==3);
+    auto wrong=scope;++wrong.ticket;calls=0;
+    assert(!s.bank.visit_mv(wrong,mv,visit)&&!calls);
+    assert(!s.bank.visit_mv(scope,ResourceLease{},visit)&&!calls);
+    auto foreign=mv;foreign.device=8;assert(!s.bank.visit_mv(scope,foreign,visit)&&!calls);
+    // Same resource through another retained interface address is an identity
+    // match, whereas another resource with identical dimensions is excluded.
+    auto alias=mv;++alias.raw;assert(s.bank.visit_mv(scope,alias,visit)==3&&calls==3);
+    assert(s.bank.invalidate_if_tracked(scope,1000));calls=0;
+    assert(s.bank.visit_mv(scope,mv,visit)==2&&calls==2);
+    assert(s.bank.copy_simple_sparse(scope,2000,1016,1));calls=0;
+    assert(s.bank.visit_mv(scope,mv,visit)==1&&calls==1);
+    s.bank.uncertain();calls=0;assert(!s.bank.visit_mv(scope,mv,visit)&&!calls);
+
+    // A scalar collector can cap saved rows without silently undercounting
+    // matches. All live cells remain bounded by the production 128-cell bank.
+    using ObserverBank=gears_ngx_mv::ObserverDescriptorBank<ResourceLease,HeapLease>;
+    ObserverBank many;HeapFixture heap;heap.count=16;
+    assert(many.begin(scope)&&many.observe_heap(scope,typed(heap)));
+    for(unsigned i=0;i<10;++i)assert(many.write_uav(scope,1000+16*i,typed(s.mv),nullptr,{}));
+    size_t saved{},total=many.visit_mv(scope,mv,[&](ObserverBank::Snapshot const& snapshot){
+        assert(snapshot.same_mv(mv));if(saved<8)++saved;});
+    assert(total==10&&saved==8);
+}
 }
 int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     static_assert(!Bank::Snapshot::producer_authorized,"observation must not authorize producer");
     rewrite_and_lifetime();ranges();invalid_ranges();scope_capacity_and_heap_aba();typed_boundaries();
     early_lifetime_and_sparse_invalidations();
     sparse_ranges_and_rewrites();sparse_capacity_and_lifetime_scope();sparse_rejections();
+    production_heap_boundary();retained_mv_join();
     std::puts("NGX MV descriptor CPU provenance tests passed; no GPU/Dispatch/producer proof");
 }

@@ -181,7 +181,7 @@ namespace death_constant_observer {void print(FILE*);}
 namespace dlss_route_observer {void print(FILE*);void draw(uintptr_t,uintptr_t,unsigned,unsigned,unsigned);}
 namespace ngx_route_observer {void print(FILE*);}
 namespace ngx_mv_descriptor_capture {void arm();void close();void release_drained();void print(FILE*);
-void accepted_eval(unsigned,uint64_t,uint64_t,uint64_t,uintptr_t,uintptr_t,uintptr_t);}
+void accepted_eval(unsigned,uint64_t,uint64_t,uint64_t,uintptr_t,uintptr_t,uintptr_t,gears_ngx_stereo::TypedResourceLease const*);}
 namespace death_dof_control {void print(FILE*);}
 namespace vr_dof_compat {void print(FILE*);void progress(FILE*);void retire();bool publication(uint64_t,uint64_t);bool retire_owned(uint64_t,uint64_t);}
 namespace death_pso_cache {void print(FILE*);void poll();}
