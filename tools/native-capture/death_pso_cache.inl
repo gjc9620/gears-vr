@@ -67,16 +67,14 @@ void STDMETHODCALLTYPE set(ID3D12GraphicsCommandList* list,ID3D12PipelineState* 
         else {transient[index]=held;bank.witness(index,generation,canonical,now());}}
 }
 void STDMETHODCALLTYPE clear(ID3D12GraphicsCommandList* list,ID3D12PipelineState* pso){
-    Scope scope;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const auto id=identity(list);++clears;invalidate(id);
-    ngx_mv_compute_capture::invalidate(list,1);
+    Scope scope;ngx_mv_compute_capture::RevocationScope revoke(list,1);std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const auto id=identity(list);++clears;invalidate(id);
     original_clear(list,pso);invalidate(id); // ClearState's initial PSO is deliberately never inferred.
-    ngx_mv_compute_capture::invalidate(list,1);
+    revoke.finish();
 }
 void STDMETHODCALLTYPE bundle(ID3D12GraphicsCommandList* list,ID3D12GraphicsCommandList* child){
-    Scope scope;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const auto id=identity(list);++bundles;invalidate(id);
-    ngx_mv_compute_capture::invalidate(list,2);
+    Scope scope;ngx_mv_compute_capture::RevocationScope revoke(list,2);std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const auto id=identity(list);++bundles;invalidate(id);
     original_bundle(list,child);invalidate(id); // No inference from bundle contents.
-    ngx_mv_compute_capture::invalidate(list,2);
+    revoke.finish();
 }
 void reset(ID3D12GraphicsCommandList* list,HRESULT hr){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++resets;if(FAILED(hr))++failed_resets;invalidate(identity(list));

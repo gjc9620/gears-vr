@@ -236,7 +236,7 @@ void sdk_leave(ngx_stereo_host::WrapperScope*,uint32_t);
 #endif
 }
 namespace ngx_mv_compute_capture {
-void stop();void release_drained();void print(FILE*);void invalidate(ID3D12GraphicsCommandList*,unsigned);
+void stop();void release_drained();void print(FILE*);
 }
 #include "owned_source_pixels.h"
 struct FrameLinkCounters {
@@ -2704,7 +2704,6 @@ void print_quad_draws(FILE*){}
 #include "first_view_mask_control.h"
 #include "death_source_control.inl"
 #include "death_hdr_pixels.inl"
-#include "death_pso_cache.inl"
 #include "death_constant_observer.inl"
 #include "dlss_route_observer.inl"
 #include "dlss_output_control.inl"
@@ -2724,6 +2723,7 @@ void execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,ngx_stereo_host:
 #include "ngx_stereo_host_live.inl"
 #include "ngx_mv_target_capture.inl"
 #include "ngx_mv_compute_capture.inl"
+#include "death_pso_cache.inl"
 #include "ngx_control_capture.inl"
 #include "ngx_output_pixels_native.inl"
 #include "owned_source_pixels.inl"
@@ -3687,6 +3687,9 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
 #endif
 #include "owned_scene_gpu_hooks.inl"
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
+    // Alias QI and its temporary Release must remain inside the teardown drain,
+    // including bypass/unowned paths and unwinding before the ordinary Scope.
+    NativeOwnedShutdownRhiScope::Activity compute_reset_activity;
     ngx_mv_compute_capture::ResetScope compute_reset(list);
     if(stereo_publish_bypass){const auto hr=owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);compute_reset.finish(hr);return hr;}
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();owned_ticket_size_trace::retire_attachments(reinterpret_cast<uintptr_t>(list));

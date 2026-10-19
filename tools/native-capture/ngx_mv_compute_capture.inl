@@ -146,19 +146,58 @@ struct Depth {
     ~Depth(){--depth;if(relevant&&std::uncaught_exceptions()!=exceptions&&pending())lose(unwinding,"depth_unwind");}
 };
 List* known(ID3D12GraphicsCommandList* list){
-    // Unknown callbacks must not query COM just to determine their scope.
-    // Only exact retained typed arguments are known at this boundary; alias
-    // coverage is deliberately incomplete and is reported as such.
     if(!list)return nullptr;const auto raw=reinterpret_cast<uintptr_t>(list);
     for(unsigned i=0;i<list_count;++i)if(lists[i].raw==raw)return &lists[i];return nullptr;
+}
+uint64_t resolved_raw{},resolved_alias{},resolved_unmatched{},resolve_qi_failed{},resolve_reentrant{};
+thread_local bool resolving{};
+struct Resolution {
+    List* held{};uintptr_t raw{},canonical{};unsigned kind{};
+    gears_vr::ComPtr<IUnknown> identity;
+    explicit Resolution(ID3D12GraphicsCommandList* list):raw(reinterpret_cast<uintptr_t>(list)){
+        {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+            if(!pending()||!list)return;
+            if(resolving){++resolve_reentrant;lose(nested,"resolve_reentrant",nullptr,raw);return;}
+            if((held=known(list))){++held->callback_busy;canonical=held->canonical;kind=1;++resolved_raw;return;}
+            // A callback nested under our native forward still owns its outer
+            // frame lock. Do not run an alias QI under that lock.
+            if(depth){++resolve_reentrant;lose(nested,"resolve_nested",nullptr,raw);return;}}
+        // Typed callback input only; never reconstruct COM from a scalar key.
+        // QI and its eventual temporary Release both run outside our lock.
+        resolving=true;HRESULT hr=E_FAIL;
+        try{hr=list->QueryInterface(IID_PPV_ARGS(&identity));}catch(...){resolving=false;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++resolve_qi_failed;if(pending())lose(unwinding,"resolve_qi_unwind",nullptr,raw);throw;}
+        resolving=false;canonical=reinterpret_cast<uintptr_t>(identity.Get());
+        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!pending())return;
+        if(FAILED(hr)||!canonical){++resolve_qi_failed;kind=4;lose(invalid_list,"resolve_qi_failed",nullptr,raw,canonical,hr);return;}
+        for(unsigned i=0;i<list_count;++i)if(lists[i].canonical==canonical){held=&lists[i];++held->callback_busy;kind=2;++resolved_alias;return;}
+        kind=3;++resolved_unmatched;
+    }
+    ~Resolution(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(held)--held->callback_busy;}
+    // identity releases after the destructor body's short lock has gone away.
+};
+struct DispatchIdentity {
+    uintptr_t raw{},canonical{},retained_raw{},current_identity{};
+    uint64_t stored_generation{},current_generation{},calls{};unsigned kind{},phase{};
+};
+std::array<DispatchIdentity,8> dispatch_identities;unsigned dispatch_identity_count{};uint64_t dispatch_identity_overflow{};
+void note_dispatch_identity(Resolution const& resolved){
+    DispatchIdentity value;value.raw=resolved.raw;value.canonical=resolved.canonical;value.kind=resolved.kind;
+    value.phase=unsigned(ngx_mv_target_capture::window.snapshot().phase);
+    if(resolved.held){value.retained_raw=resolved.held->raw;value.stored_generation=resolved.held->generation;}
+    if(value.canonical){const auto live=frame_link.current(value.canonical);value.current_identity=live.identity;value.current_generation=live.generation;}
+    for(unsigned i=0;i<dispatch_identity_count;++i){auto& old=dispatch_identities[i];
+        if(old.raw==value.raw&&old.canonical==value.canonical&&old.retained_raw==value.retained_raw&&old.current_identity==value.current_identity&&
+           old.stored_generation==value.stored_generation&&old.current_generation==value.current_generation&&old.kind==value.kind&&old.phase==value.phase){++old.calls;return;}}
+    if(dispatch_identity_count==dispatch_identities.size()){++dispatch_identity_overflow;return;}
+    value.calls=1;dispatch_identities[dispatch_identity_count++]=value;
 }
 bool may_admit(CallerOperation operation,uintptr_t caller){
     const auto phase=ngx_mv_target_capture::window.snapshot().phase;
     return operation==CallerOperation::root&&ngx_stereo_host::attested&&caller==base+0x22018d&&
         (phase==gears_ngx_mv_target::Phase::waiting||phase==gears_ngx_mv_target::Phase::capturing);
 }
-bool scoped_list(ID3D12GraphicsCommandList* list,CallerOperation operation,uintptr_t caller){
-    if(known(list)||may_admit(operation,caller))return true;
+bool scoped_list(Resolution const& resolved,CallerOperation operation,uintptr_t caller){
+    if(resolved.held||may_admit(operation,caller))return true;
     ++unknown_skipped[unsigned(operation)];return false;
 }
 Recording ref(List const& list){return {list.canonical,list.generation,frame_link.current(list.canonical).generation};}
@@ -177,24 +216,25 @@ List* reclaim(){
         if(!identity_matches||(held.generation&&held.generation!=live.generation))++o.stale_blocked;
     }return victim;
 }
-List* track(ID3D12GraphicsCommandList* list,Retirement& retirement,CallerOperation operation,uintptr_t caller){
-    auto* old=known(list);if(old){const auto observed=ref(*old);
+List* track(ID3D12GraphicsCommandList* list,Retirement& retirement,Resolution& resolved,CallerOperation operation,uintptr_t caller){
+    auto* old=resolved.held;if(old){const auto observed=ref(*old);
         if(!old->generation||!observed.attested_current_generation||observed.attested_current_generation!=old->generation){
             lose(invalid_generation,"track_existing",old,reinterpret_cast<uintptr_t>(list));return nullptr;}return old;}
     if(!may_admit(operation,caller))return nullptr;
     if(!list||list->GetType()!=D3D12_COMMAND_LIST_TYPE_DIRECT)return nullptr;
     auto& id=retirement.identity;auto& device=retirement.device;auto& device_id=retirement.device_identity;
-    if(FAILED(list->QueryInterface(IID_PPV_ARGS(&id)))||FAILED(list->GetDevice(IID_PPV_ARGS(&device)))||FAILED(device.As(&device_id))||!id||!device_id){
+    id=std::move(resolved.identity);
+    if(!id||FAILED(list->GetDevice(IID_PPV_ARGS(&device)))||FAILED(device.As(&device_id))||!device_id){
         lose(invalid_list,"track_identity",nullptr,reinterpret_cast<uintptr_t>(list),reinterpret_cast<uintptr_t>(id.Get()));return nullptr;}
     // A verified list belonging to another device cannot describe the selected
     // target. It neither consumes a row nor invalidates this device's evidence.
     if(reinterpret_cast<uintptr_t>(device_id.Get())!=ngx_mv_target_capture::selected_mv.device){++foreign_device_skips;return nullptr;}
     const auto canonical=reinterpret_cast<uintptr_t>(id.Get());const auto current=frame_link.current(canonical);
     if(!canonical||current.identity!=canonical||!current.generation){lose(invalid_generation,"track_new_generation",nullptr,reinterpret_cast<uintptr_t>(list),canonical);return nullptr;}
-    // An unrecognized setup alias must not duplicate a canonical row or make
-    // later unrecognized alias calls appear covered by the retained argument.
+    // Resolution ran before the callback lock. Another callback may have
+    // admitted this same canonical identity in that interval; reuse strictly.
     for(unsigned i=0;i<list_count;++i)if(lists[i].canonical==canonical){
-        lose(invalid_list,"track_setup_alias",&lists[i],reinterpret_cast<uintptr_t>(list));return nullptr;}
+        auto& held=lists[i];if(!held.generation||held.generation!=current.generation){lose(invalid_generation,"track_setup_alias",&held,reinterpret_cast<uintptr_t>(list));return nullptr;}return &held;}
     List* slot{};
     if(list_count==lists.size()){
         slot=reclaim();if(!slot){lose(list_capacity,"track_capacity",nullptr,reinterpret_cast<uintptr_t>(list),canonical);return nullptr;}
@@ -207,21 +247,27 @@ List* track(ID3D12GraphicsCommandList* list,Retirement& retirement,CallerOperati
 bool current(List const& list){ngx_mv_target_capture::poll();const auto r=ref(list);if(!r.attested_current_generation||r.generation!=r.attested_current_generation){lose(invalid_generation,"current",&list);return false;}return pending();}
 void noted(List& list){if(bindings.failed()){lose(invalid_generation,"noted_core",&list);return;}list.revoked=false;++mutation;
     if(ngx_mv_target_capture::window.snapshot().phase==gears_ngx_mv_target::Phase::waiting)++waiting_bindings;else ++capture_bindings;}
-void invalidate(ID3D12GraphicsCommandList* list,unsigned kind){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!pending())return;auto* held=known(list);if(!held)return;
+void invalidate_held(List* held,unsigned kind){
+    if(!pending()||!held)return;
     // Erasing knowledge requires only the retained identity. It cannot admit a
     // recording and must not validate a generation already replaced by Reset.
     ++invalidations;++mutation;held->revoked=true;bindings.forget_binding(held->canonical);
     (void)kind;
 }
+struct RevocationScope {
+    Resolution resolved;unsigned kind;bool finished{};
+    RevocationScope(ID3D12GraphicsCommandList* list,unsigned value):resolved(list),kind(value){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);invalidate_held(resolved.held,kind);}
+    void finish(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);finished=true;invalidate_held(resolved.held,kind);}
+    ~RevocationScope(){if(!finished){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);invalidate_held(resolved.held,kind);if(pending())lose(unwinding,"revoke_unwind",resolved.held,resolved.raw);}}
+};
 struct ResetScope {
-    ID3D12GraphicsCommandList* list;List* retained{};bool returned{};
-    explicit ResetScope(ID3D12GraphicsCommandList* l):list(l){
+    Resolution resolved;ID3D12GraphicsCommandList* list;List* retained{};bool returned{};
+    explicit ResetScope(ID3D12GraphicsCommandList* l):resolved(l),list(l){
         std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("reset_begin",list);
-        if(!pending())return;auto* held=known(list);if(!held)return;
+        if(!pending())return;auto* held=resolved.held;if(!held)return;
         retained=held;++held->reset_busy;
         held->reset_prior_generation=held->generation;held->reset_prior_known=true;
-        invalidate(list,0);held->generation=0;
+        invalidate_held(held,0);held->generation=0;
     }
     void finish(HRESULT hr,gears_frame_link::ListRef actual={}){
         EvidenceScope evidence("reset_finish",list);
@@ -244,10 +290,10 @@ struct ResetScope {
         auto* held=retained;if(held){--held->reset_busy;retained=nullptr;}if(pending())lose(unwinding,"reset_unwind",held,reinterpret_cast<uintptr_t>(list));}}
 };
 void STDMETHODCALLTYPE heaps(ID3D12GraphicsCommandList* list,UINT count,ID3D12DescriptorHeap* const* native){
-    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Retirement retirement;
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Resolution resolved(list);Retirement retirement;
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::heaps,caller,scope.world());EvidenceScope evidence("heaps",list);
-    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(list,CallerOperation::heaps,caller);Depth call(known(list)||scoped);
-    List* held=call.outer&&scoped?track(list,retirement,CallerOperation::heaps,caller):nullptr;ListUse use(held);
+    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(resolved,CallerOperation::heaps,caller);Depth call(resolved.held||scoped);
+    List* held=call.outer&&scoped?track(list,retirement,resolved,CallerOperation::heaps,caller):nullptr;ListUse use(held);
     HeapLease selected;std::array<ID3D12DescriptorHeap*,2> values{};
     if(held){
         if(count>values.size()||(count&&!safe_copy(values.data(),native,count*sizeof(values[0]))))lose(invalid_heap,"heaps_array",held);
@@ -255,40 +301,42 @@ void STDMETHODCALLTYPE heaps(ID3D12GraphicsCommandList* list,UINT count,ID3D12De
             const auto desc=values[i]->GetDesc();if(desc.Type!=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)continue;
             if(selected.retained()){lose(invalid_heap,"heaps_duplicate",held);break;}selected=HeapLease::observe(values[i]);
             if(!selected.retained()||!selected.visible||selected.device!=ngx_mv_target_capture::selected_mv.device){lose(invalid_heap,"heaps_identity",held);break;}}
-    }else invalidate(list,0);
+    }else invalidate_held(resolved.held,0);
     const auto before=mutation;original_heaps(list,count,native);
     if(held&&current(*held)){if(before!=mutation){lose(changed,"heaps_post_mutation",held);return;}
         held->heap=std::move(selected);bindings.shader_heap(ref(*held),held->heap.canonical);noted(*held);}
 }
 void STDMETHODCALLTYPE root(ID3D12GraphicsCommandList* list,ID3D12RootSignature* native){
-    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Retirement retirement;
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Resolution resolved(list);Retirement retirement;
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::root,caller,scope.world());EvidenceScope evidence("root",list);
-    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(list,CallerOperation::root,caller);Depth call(known(list)||scoped);
-    List* held=call.outer&&scoped?track(list,retirement,CallerOperation::root,caller):nullptr;ListUse use(held);
+    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(resolved,CallerOperation::root,caller);Depth call(resolved.held||scoped);
+    List* held=call.outer&&scoped?track(list,retirement,resolved,CallerOperation::root,caller):nullptr;ListUse use(held);
     gears_vr::ComPtr<ID3D12RootSignature> owner;gears_vr::ComPtr<IUnknown> id;
     if(held&&native){gears_vr::ComPtr<ID3D12Device> device;gears_vr::ComPtr<IUnknown> di;owner=native;
         if(FAILED(native->QueryInterface(IID_PPV_ARGS(&id)))||FAILED(native->GetDevice(IID_PPV_ARGS(&device)))||FAILED(device.As(&di))||
            reinterpret_cast<uintptr_t>(di.Get())!=ngx_mv_target_capture::selected_mv.device)lose(invalid_root,"root_identity",held);
-    }else if(!held)invalidate(list,0);
+    }else if(!held)invalidate_held(resolved.held,0);
     const auto before=mutation;original_root(list,native);
     if(held&&current(*held)){if(before!=mutation){lose(changed,"root_post_mutation",held);return;}held->root=std::move(owner);held->root_identity=std::move(id);
         bindings.compute_root_signature(ref(*held),reinterpret_cast<uintptr_t>(held->root_identity.Get()));noted(*held);}
 }
 void STDMETHODCALLTYPE table(ID3D12GraphicsCommandList* list,UINT index,D3D12_GPU_DESCRIPTOR_HANDLE gpu){
-    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Retirement retirement;
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Resolution resolved(list);Retirement retirement;
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::table,caller,scope.world());EvidenceScope evidence("table",list);
-    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(list,CallerOperation::table,caller);Depth call(known(list)||scoped);
-    List* held=call.outer&&scoped?track(list,retirement,CallerOperation::table,caller):nullptr;ListUse use(held);if(!held)invalidate(list,0);
+    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(resolved,CallerOperation::table,caller);Depth call(resolved.held||scoped);
+    List* held=call.outer&&scoped?track(list,retirement,resolved,CallerOperation::table,caller):nullptr;ListUse use(held);if(!held)invalidate_held(resolved.held,0);
     const auto before=mutation;original_table(list,index,gpu);
     if(held&&current(*held)){if(before!=mutation){lose(changed,"table_post_mutation",held);return;}bindings.compute_root_table(ref(*held),index,gpu.ptr);noted(*held);}
 }
 void STDMETHODCALLTYPE dispatch(ID3D12GraphicsCommandList* list,UINT x,UINT y,UINT z){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;
-    Retirement retirement;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::dispatch,caller,scope.world());EvidenceScope evidence("dispatch",list);
-    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(list,CallerOperation::dispatch,caller);Depth call(known(list)||scoped);
+    Resolution resolved(list);Retirement retirement;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::dispatch,caller,scope.world());EvidenceScope evidence("dispatch",list);
+    if(target_observing(scope.world()))note_dispatch_identity(resolved);
+    const bool observe=observing(scope.world()),scoped=observe&&scoped_list(resolved,CallerOperation::dispatch,caller);Depth call(resolved.held||scoped);
+    if(!observe)invalidate_held(resolved.held,0);
     Row* row{};List* held{};ListUse use;
     if(call.outer&&observe&&ngx_mv_target_capture::window.snapshot().phase==gears_ngx_mv_target::Phase::capturing){
-        ++dispatches;if(scoped)held=track(list,retirement,CallerOperation::dispatch,caller);use.attach(held);
+        ++dispatches;if(scoped)held=track(list,retirement,resolved,CallerOperation::dispatch,caller);use.attach(held);
         if(held){const auto candidate=bindings.dispatch(ref(*held));
             if(!candidate.binding_observed)++unbound;
             else {auto observed=ngx_mv_descriptor_capture::lookup_target(candidate.shader_visible_heap,candidate.root3_gpu);
@@ -311,10 +359,10 @@ void STDMETHODCALLTYPE dispatch(ID3D12GraphicsCommandList* list,UINT x,UINT y,UI
         if(!row->stable)lose(changed,"dispatch_post",held);}
 }
 void STDMETHODCALLTYPE clear(ID3D12GraphicsCommandList* list,ID3D12PipelineState* pso){
-    Scope scope;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("clear",list);invalidate(list,1);original_clear(list,pso);invalidate(list,1);
+    Scope scope;RevocationScope revoke(list,1);std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("clear",list);original_clear(list,pso);revoke.finish();
 }
 void STDMETHODCALLTYPE bundle(ID3D12GraphicsCommandList* list,ID3D12GraphicsCommandList* child){
-    Scope scope;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("bundle",list);invalidate(list,2);original_bundle(list,child);invalidate(list,2);
+    Scope scope;RevocationScope revoke(list,2);std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("bundle",list);original_bundle(list,child);revoke.finish();
 }
 bool install_hooks(void** vtable){
     constexpr unsigned first=viewport_hook_base_capacity+ngx_mv_descriptor_hooks;
@@ -343,8 +391,14 @@ void print(FILE* file){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!file)return;
     fprintf(file,"ngx_mv_compute enabled=1 lists=%u list_limit=16 rows=%u row_limit=32 failed=%u failure=%u core_loss=%u stopped=%u leases_released=%u dispatches=%llu unbound=%llu unrelated=%llu invalidations=%llu waiting_bindings=%llu capture_bindings=%llu row_scope=selected_mv_related table_membership_verified=0 gpu_execution_verified=0 producer_authorized=0\n",
         list_count,row_count,unsigned(failed),failure,unsigned(bindings.loss()),unsigned(stopped),unsigned(leases_released),dispatches,unbound,unrelated,invalidations,waiting_bindings,capture_bindings);
-    fprintf(file,"ngx_mv_compute_admission scope=new_admission_setup22018d incomplete_coverage=1 new_phase=waiting_or_capturing attestation_required=1 known_lookup=retained_typed_argument skip_scope=bank_pending_owned skipped_unknown_heaps=%llu skipped_unknown_root=%llu skipped_unknown_table=%llu skipped_unknown_dispatch=%llu selected_mv_inferred=0\n",
+    fprintf(file,"ngx_mv_compute_admission scope=new_admission_setup22018d incomplete_coverage=1 new_phase=waiting_or_capturing attestation_required=1 known_lookup=typed_raw_then_canonical_qi skip_scope=bank_pending_owned skipped_unknown_heaps=%llu skipped_unknown_root=%llu skipped_unknown_table=%llu skipped_unknown_dispatch=%llu selected_mv_inferred=0\n",
         unknown_skipped[unsigned(CallerOperation::heaps)],unknown_skipped[unsigned(CallerOperation::root)],unknown_skipped[unsigned(CallerOperation::table)],unknown_skipped[unsigned(CallerOperation::dispatch)]);
+    fprintf(file,"ngx_mv_compute_resolution raw_matches=%llu alias_matches=%llu unmatched=%llu qi_failures=%llu reentrant_rejections=%llu scope=bank_pending temporary_release_after_local_frame_lock=1 alias_bank=0\n",
+        resolved_raw,resolved_alias,resolved_unmatched,resolve_qi_failed,resolve_reentrant);
+    fprintf(file,"ngx_mv_compute_dispatch_identities rows=%u limit=8 overflow_calls=%llu kind_not_attempted=0 kind_raw=1 kind_alias=2 kind_unmatched=3 kind_qi_failed=4\n",dispatch_identity_count,dispatch_identity_overflow);
+    for(unsigned i=0;i<dispatch_identity_count;++i){auto const& d=dispatch_identities[i];
+        fprintf(file,"ngx_mv_compute_dispatch_identity row=%u raw=%llx canonical=%llx retained_raw=%llx stored_generation=%llu current_identity=%llx current_generation=%llu kind=%u phase=%u calls=%llu scalar_only=1\n",
+            i,d.raw,d.canonical,d.retained_raw,d.stored_generation,d.current_identity,d.current_generation,d.kind,d.phase,d.calls);}
     auto const& o=capacity_occupancy;
     fprintf(file,"ngx_mv_compute_reuse attempts=%llu reused=%llu foreign_device_skips=%llu capacity_snapshot=%u occupied=%u eligible=%u partial_or_absent=%u pinned=%u busy=%u unrevoked=%u unknown_blocked=%u stale_blocked=%u blocker_counts_overlap=1\n",
         reuse_attempts,reused,foreign_device_skips,unsigned(reuse_attempts!=0),o.occupied,o.eligible,o.partial,o.pinned,o.busy,o.unrevoked,o.unknown_blocked,o.stale_blocked);
@@ -373,7 +427,8 @@ void print(FILE* file){
 }
 #else
 struct ResetScope {explicit ResetScope(ID3D12GraphicsCommandList*){}void finish(HRESULT,gears_frame_link::ListRef={}){}};
-void stop(){}void release_drained(){}void print(FILE*){}void invalidate(ID3D12GraphicsCommandList*,unsigned){}
+struct RevocationScope {RevocationScope(ID3D12GraphicsCommandList*,unsigned){}void finish(){}};
+void stop(){}void release_drained(){}void print(FILE*){}
 bool install_hooks(void**){return true;}
 #endif
 }
