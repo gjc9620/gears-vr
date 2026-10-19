@@ -52,6 +52,9 @@ std::array<ReleaseRow,8> releases{};uint64_t sequence{},execute_sequence{},limit
 thread_local int current_row=-1,pending_row=-1;
 NativeCreateSource latest_native_create{};uint64_t native_create_revision{};
 thread_local WrapperScope* source_create_scope{};
+#if GEARS_NGX_MV_TARGET_CAPTURE
+thread_local WrapperScope* target_wrapper{};
+#endif
 std::shared_ptr<ControlOwner> control_owner;
 bool attach_control(std::shared_ptr<ControlOwner> const& owner){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
@@ -284,6 +287,11 @@ WrapperScope::WrapperScope(bool eval,bool owned,uintptr_t caller,uintptr_t comma
     current_row=-1;pending_row=-1;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(!attested||!recording.load())return;
     const bool concurrent=in_wrappers++!=0;counted=true;if(previous>=0)rows[unsigned(previous)].nested=true;
+#if GEARS_NGX_MV_TARGET_CAPTURE
+    if(eval){target_previous=target_wrapper;target_wrapper=this;target_linked=true;}
+    if(concurrent)ngx_mv_target_capture::invalidate(5);
+    else if(!eval)ngx_mv_target_capture::invalidate(1);
+#endif
     if(concurrent){latest_native_create={};++native_create_revision;}
 #if defined(GEARS_NGX_INPUT_RECT_EXPERIMENT) && GEARS_NGX_INPUT_RECT_EXPERIMENT
     // A late Create or changed feature cannot certify a previously constructed
@@ -307,6 +315,9 @@ WrapperScope::WrapperScope(bool eval,bool owned,uintptr_t caller,uintptr_t comma
         if(epochs<4)sampled_tickets=typed_observations=0;}
 #if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
     if(eval)ngx_epoch_pair::eval_enter(reinterpret_cast<uintptr_t>(this),owned,caller,command,structure,concurrent);
+#endif
+#if GEARS_NGX_MV_TARGET_CAPTURE
+    if(eval)ngx_mv_target_capture::eval_enter(*this,owned,caller,command,structure,concurrent);
 #endif
     if(epochs>=4||(eval&&epoch_evals>=2)||row_count==rows.size()){++limited;return;}
     gears_ngx_route::Row native;native.evaluate=eval;native.structure=reinterpret_cast<uintptr_t>(structure);
@@ -338,6 +349,10 @@ WrapperScope::~WrapperScope(){std::lock_guard<std::recursive_mutex> lock(frame_h
 #if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
     if(evaluate)ngx_epoch_pair::eval_leave(reinterpret_cast<uintptr_t>(this),returned&&std::uncaught_exceptions()==exceptions,result);
 #endif
+#if GEARS_NGX_MV_TARGET_CAPTURE
+    if(evaluate)ngx_mv_target_capture::eval_leave(*this,returned,std::uncaught_exceptions()!=exceptions,result);
+    if(target_linked)target_wrapper=target_previous;
+#endif
     if(counted&&in_wrappers)--in_wrappers;
     if(row>=0){auto& value=rows[unsigned(row)];gears_ngx_route::Row native;native.evaluate=evaluate;native.structure=value.structure;
         value.after=ngx_route_observer::sample(native,true);value.returned=returned;value.wrapper_result=result;
@@ -367,12 +382,18 @@ uint32_t __fastcall hook_create(uintptr_t command,uint32_t feature,uintptr_t par
 }
 uint32_t __fastcall hook_evaluate(uintptr_t command,uintptr_t handle,uintptr_t parameters,uintptr_t callback){
     Scope active_scope;int selected=-1;
+#if GEARS_NGX_MV_TARGET_CAPTURE
+    WrapperScope* target{};
+#endif
 #if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
     int pair_dispatch=-1;
 #endif
     {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
 #if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
         pair_dispatch=ngx_epoch_pair::dispatch(command,handle,parameters,callback);
+#endif
+#if GEARS_NGX_MV_TARGET_CAPTURE
+        target=target_wrapper;ngx_mv_target_capture::sdk_enter(target,command,handle,parameters,callback);
 #endif
         if(attested&&recording.load()&&current_row>=0&&rows[unsigned(current_row)].evaluate){selected=current_row;auto& row=rows[unsigned(selected)];++row.dispatches;
             row.dispatcher_entry=now();row.consumed_handle=handle;row.consumed_parameters=parameters;row.callback=callback;
@@ -381,6 +402,9 @@ uint32_t __fastcall hook_evaluate(uintptr_t command,uintptr_t handle,uintptr_t p
         else ++foreign_dispatches;}
     auto owner=current_control();const auto result=owner?owner->bridge().evaluate_dispatch(command,handle,parameters,callback,original_evaluate):
         original_evaluate(command,handle,parameters,callback);
+#if GEARS_NGX_MV_TARGET_CAPTURE
+    {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);ngx_mv_target_capture::sdk_leave(target,result);}
+#endif
     if(selected>=0){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& row=rows[unsigned(selected)];row.dispatch_result=result;row.dispatcher_returned=true;row.dispatcher_exit=now();}
 #if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
     {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);ngx_epoch_pair::dispatched(pair_dispatch,result);}
@@ -389,6 +413,9 @@ uint32_t __fastcall hook_evaluate(uintptr_t command,uintptr_t handle,uintptr_t p
 }
 uint32_t __fastcall hook_release(uintptr_t handle){Scope active_scope;int selected=-1;
     {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+#if GEARS_NGX_MV_TARGET_CAPTURE
+        if(handle==latest_native_create.handle||in_wrappers)ngx_mv_target_capture::invalidate(2);
+#endif
 #if defined(GEARS_NGX_EPOCH_PAIR_WIRING) && GEARS_NGX_EPOCH_PAIR_WIRING
         ngx_epoch_pair::released(handle);
 #endif

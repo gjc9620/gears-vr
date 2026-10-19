@@ -47,6 +47,11 @@
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
 #include "ngx_mv_descriptor_provenance.h"
 #include "ngx_mv_heap_census.h"
+#if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER && \
+    defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+#include "ngx_mv_target_window.h"
+#include "ngx_mv_sdk_receipt.h"
+#endif
 #endif
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
 #include "ngx_output_delayed_gate.h"
@@ -182,7 +187,12 @@ namespace death_constant_observer {void print(FILE*);}
 namespace dlss_route_observer {void print(FILE*);void draw(uintptr_t,uintptr_t,unsigned,unsigned,unsigned);}
 namespace ngx_route_observer {void print(FILE*);}
 namespace ngx_mv_descriptor_capture {void arm();void close();void release_drained();void print(FILE*);
-void accepted_eval(unsigned,uint64_t,uint64_t,uint64_t,uintptr_t,uintptr_t,uintptr_t,gears_ngx_stereo::TypedResourceLease const*);}
+void accepted_eval(unsigned,uint64_t,uint64_t,uint64_t,uintptr_t,uintptr_t,uintptr_t,gears_ngx_stereo::TypedResourceLease const*);
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+void stop_target();
+bool snapshot_target_seed(uint64_t&,gears_ngx_mv_census::Use&,gears_ngx_stereo::TypedResourceLease&);
+#endif
+}
 namespace death_dof_control {void print(FILE*);}
 namespace vr_dof_compat {void print(FILE*);void progress(FILE*);void retire();bool publication(uint64_t,uint64_t);bool retire_owned(uint64_t,uint64_t);}
 namespace death_pso_cache {void print(FILE*);void poll();}
@@ -203,6 +213,23 @@ void record_source_draw();void print(FILE*);
 }
 #include "dlss_output_control_live.h"
 #include "ngx_output_pixels_live.h"
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+// The integration wiring macro is intentionally declared later, next to the
+// implementation includes. Header layout must use the early build options.
+static_assert(GEARS_NGX_MV_TARGET_CAPTURE==1,"MV descriptor candidate must compile the target scheduler");
+#else
+static_assert(GEARS_NGX_MV_TARGET_CAPTURE==0,"Default capture must keep target scheduling disabled");
+#endif
+namespace ngx_mv_target_capture {
+void poll();void close();void release_drained();void print(FILE*);
+#if GEARS_NGX_MV_TARGET_CAPTURE
+void invalidate(unsigned);
+void eval_enter(ngx_stereo_host::WrapperScope&,bool,uintptr_t,uintptr_t,void const*,bool);
+void eval_leave(ngx_stereo_host::WrapperScope&,bool,bool,uint64_t);
+void sdk_enter(ngx_stereo_host::WrapperScope*,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
+void sdk_leave(ngx_stereo_host::WrapperScope*,uint32_t);
+#endif
+}
 #include "owned_source_pixels.h"
 struct FrameLinkCounters {
     std::atomic<uint64_t> resets{},reset_failed{},draws{},filtered{},unknown{},missing_target{},missing_ticket{},bad_quad{},
@@ -1123,6 +1150,7 @@ void release_bindings() {
     // Call only after all hooks are disabled and callbacks have drained. Holding
     // chain/queue identities prevents reuse; buffers are NEVER held long term.
     ngx_mv_descriptor_capture::release_drained();
+    ngx_mv_target_capture::release_drained();
     std::lock_guard<std::mutex> lock(binding_owner_mutex);
     for(auto& owner:binding_owners){if(owner.chain)owner.chain->Release();if(owner.queue)owner.queue->Release();owner={};}
 }
@@ -1524,6 +1552,7 @@ void retire_original_present_interval() {
     if(outage_diagnostics.load())outage_draws={}; // Isolated original-Present work cannot become next-frame evidence.
 }
 void stereo_publish_worker_tick() {
+    ngx_mv_target_capture::poll();
     death_hdr_pixels::poll();
     ngx_output_pixels::poll();
     owned_source_pixels::poll();
@@ -1829,6 +1858,7 @@ void print_frame_link(FILE* status) {
     dlss_route_observer::print(status);
     ngx_route_observer::print(status);
     ngx_mv_descriptor_capture::print(status);
+    ngx_mv_target_capture::print(status);
     ngx_stereo_host::print(status);
     ngx_output_pixels::print(status);
     owned_source_pixels::print(status);
@@ -2675,6 +2705,7 @@ void execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,ngx_stereo_host:
 #define GEARS_NGX_EPOCH_PAIR_WIRING 1
 #include "ngx_epoch_pair_probe.inl"
 #include "ngx_stereo_host_live.inl"
+#include "ngx_mv_target_capture.inl"
 #include "ngx_control_capture.inl"
 #include "ngx_output_pixels_native.inl"
 #include "owned_source_pixels.inl"
@@ -2722,6 +2753,7 @@ void __fastcall hook_consume(void* renderer){
     auto saved_frozen_frame=consuming_frozen_frame;
     consuming_frame_ticket=frame_link_diagnostics&&submitted_lifetime.frame(reinterpret_cast<uintptr_t>(renderer),consume_frame)?consume_frame.id:0;
     consuming_frozen_frame=consume_frame;check_ngx_constructor_source(consume_frame);
+    ngx_mv_target_capture::ConsumeScope target_consume(consume_frame,renderer,saved!=nullptr);
     const auto dof_consume=vr_dof_compat::begin(consume_frame,renderer!=nullptr);
     dlss_output_control::ConsumeScope dlss_consume(consume_frame.world_generation,consume_frame.id,renderer&&consume_frame.enabled);
     observe_unpossessed_ticket();
@@ -2736,6 +2768,7 @@ void __fastcall hook_consume(void* renderer){
     consuming_owned_scene=native_owned_scene_consuming(renderer,consume_frame.id);
       bool saved_draw_scope=trial_draw_scope;trial_draw_scope=record.test_state==77;
     {gears_render_cost::Window cost(owned_scene_gpu::render_cost(consume_frame.id));original_consume(renderer);}
+    target_consume.finish();
     owned_ticket_size_trace::finish(renderer,consume_frame);
     check_ngx_constructor_source(consume_frame);vr_dof_compat::finish(dof_consume);
     native_owned_scene_end(renderer,consume_frame.id); // Identity value only; original may have destroyed it.
@@ -4223,7 +4256,7 @@ DWORD WINAPI target_prime_watchdog(void* argument) {
         auto stats=viewport_stats.snapshot();
         fprintf(status,"handed_off creates=%llu copies=%llu evictions=%llu\n",stats.descriptor_creates,stats.descriptor_copies,stats.descriptor_evictions);
     }else{
-        ngx_mv_descriptor_capture::close();
+        ngx_mv_target_capture::close();ngx_mv_descriptor_capture::close();
         prime_recording=false;bool disabled=disable_graphics_lock_prime();
         for(auto target:prime_targets){auto result=MH_DisableHook(target);disabled=disabled&&(result==MH_OK||result==MH_ERROR_DISABLED);}
         // Apply can still be inside a native collector/commit when cancellation
@@ -4324,7 +4357,7 @@ DWORD begin_target_prime(const gears_prime::OwnerArgument* owner_argument=nullpt
     if(ok){ngx_mv_descriptor_capture::arm();prime_recording=true;ok=MH_ApplyQueued()==MH_OK;}
     HANDLE thread{};
     if(ok){thread=CreateThread(nullptr,0,target_prime_watchdog,status,0,nullptr);ok=thread!=nullptr;}
-    if(!ok){ngx_mv_descriptor_capture::close();prime_recording=false;disable_graphics_lock_prime();for(auto target:prime_targets){MH_QueueDisableHook(target);MH_DisableHook(target);}ngx_mv_descriptor_capture::release_drained();ngx_mv_descriptor_capture::print(status);fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
+    if(!ok){ngx_mv_target_capture::close();ngx_mv_descriptor_capture::close();prime_recording=false;disable_graphics_lock_prime();for(auto target:prime_targets){MH_QueueDisableHook(target);MH_DisableHook(target);}ngx_mv_descriptor_capture::release_drained();ngx_mv_descriptor_capture::print(status);fprintf(status,"prime_setup_failed\n");fclose(status);return ERROR_INVALID_STATE;}
     if(prime_owner.handle)fprintf(status,"capturing pid=%lu lifetime=owner owner_pid=%lu owner_creation_time=%llu native_hooks_enabled=%u graphics_hooks_enabled=%u scene_hooks_enabled=0 descriptor_hooks_enabled=%u factory_hooks_enabled=3\n",GetCurrentProcessId(),prime_owner_pid,static_cast<unsigned long long>(prime_owner_creation_time),graphics_lock_prime_count(),graphics_lock_prime_count(),3+ngx_mv_descriptor_hooks);
     else fprintf(status,"capturing pid=%lu seconds=180 native_hooks_enabled=0 descriptor_hooks_enabled=%u factory_hooks_enabled=3\n",GetCurrentProcessId(),3+ngx_mv_descriptor_hooks);fflush(status);
     prime_ready=true;CloseHandle(thread);return 0;
@@ -4717,7 +4750,7 @@ DWORD WINAPI worker(void*) {
     }
     if(!ok) {
         session_activation_gate.close();
-        ngx_mv_descriptor_capture::close();
+        ngx_mv_target_capture::close();ngx_mv_descriptor_capture::close();
         recording=false;MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
         close_quad_source_events();
         close_first_view_mask_events();
@@ -4798,7 +4831,7 @@ DWORD WINAPI worker(void*) {
     // Disable entry patches; leave the DLL and trampolines resident so delayed
     // in-flight execution can never jump into freed code.
     session_activation_gate.close();
-    ngx_mv_descriptor_capture::close();
+    ngx_mv_target_capture::close();ngx_mv_descriptor_capture::close();
     death_hdr_pixels::stop();
     ngx_output_pixels::stop();
     owned_source_pixels::stop();

@@ -9,6 +9,15 @@
 #include "ngx_native_create_source.h"
 #include "ngx_stereo_native_bridge.h"
 #include "ngx_stereo_native_api.h"
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER && \
+    defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER && \
+    defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+#define GEARS_NGX_MV_TARGET_CAPTURE 1
+#include "ngx_mv_target_window.h"
+#include "ngx_mv_sdk_receipt.h"
+#else
+#define GEARS_NGX_MV_TARGET_CAPTURE 0
+#endif
 namespace ngx_stereo_host {
 using NativeCreateSource = gears_ngx_create::NativeCreateSource;
 enum class NativeCreateAvailability {unavailable,inactive,ready};
@@ -73,6 +82,12 @@ struct WrapperScope {
     void normal_return(uint64_t raw){returned=true;result=raw;}
     NativeCreateSource source{};WrapperScope* previous_source{};uintptr_t source_command{},source_structure{};
     unsigned source_dispatches{};uint32_t source_result{};bool source_seen{},source_bad{},source_returned{};
+#if GEARS_NGX_MV_TARGET_CAPTURE
+    WrapperScope* target_previous{};bool target_linked{},target_admitted{},target_sdk_returned{};
+    uintptr_t target_structure{};unsigned target_ordinal{2};uint32_t target_sdk_result{};
+    gears_ngx_mv_target::Context target_context{};
+    gears_ngx_mv_target::SdkReceipt target_receipt{};
+#endif
     WrapperScope(WrapperScope const&)=delete;WrapperScope& operator=(WrapperScope const&)=delete;
 };
 bool enable(FILE*);bool install_hooks();void print(FILE*);

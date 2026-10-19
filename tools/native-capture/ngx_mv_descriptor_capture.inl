@@ -60,6 +60,14 @@ void target_fail(){if(!accepting||target_failed)return;target_failed=true;++targ
 // Future window end/timeout may freeze admission without detaching any lease.
 // Only existing close/drain retirement below releases native ownership.
 void stop_target(){std::lock_guard<std::recursive_mutex> lock(mutex);target_stopped=true;}
+// Copy only an already seeded retained identity. The scheduler calls this
+// under frame_hook_mutex, then validates Create after this lock is released.
+// This API never invokes host/frame callbacks while owning descriptor mutex.
+bool snapshot_target_seed(uint64_t& observation,gears_ngx_mv_census::Use& use,gears_ngx_stereo::TypedResourceLease& mv){
+    std::lock_guard<std::recursive_mutex> lock(mutex);
+    if(!target_live()||!target_mv.retained()||!source_join.summary.present)return false;
+    observation=target_lifetime.epoch;use=source_join.summary.use;mv=target_mv;return true;
+}
 template<class F> void attempt(F&& fn){try{fn();}catch(...){fail();}}
 template<class F> void source_attempt(F&& fn){try{fn();}catch(...){source_fail();}}
 template<class F> void target_attempt(F&& fn){try{fn();}catch(...){target_fail();}}
@@ -217,7 +225,7 @@ void print(FILE* status){std::lock_guard<std::recursive_mutex> lock(mutex);if(!s
         unsigned(source_saturation.site),source_saturation.cells.known_uav,source_saturation.cells.non_uav,unsigned(released),unsigned(source_frozen));
     const auto target_counts=target_bank?target_bank->cell_counts():target_final_counts;
     const auto target_saturation=target_bank?target_bank->saturation():target_final_saturation;
-    fprintf(status,"ngx_mv_target_bank attempted=%u seeded=%u admission=%u stopped=%u independent_of_legacy_bank=1 capture_generation=%llu scope=device_lifetime world=0 ticket=0 device=%llx mv_raw=%llx mv_canonical=%llx seeds=%zu heaps=%zu cells=%zu heap_capacity=%zu cell_capacity=%zu copy_capacity=%zu known_mv=%zu non_uav=%zu unused=%zu reuses=%llu heap_calls=%llu uav_calls=%llu unrelated_uavs=%llu invalidations=%llu copies=%llu other_devices=%llu uncertainties=%llu failed=%u loss=%u saturation_site=%u released=%u consume_window_wired=0 consume_scope_verified=0 collection_until_explicit_stop_or_close=1 dispatch_binding_verified=0 producer_authorized=0\n",
+    fprintf(status,"ngx_mv_target_bank attempted=%u seeded=%u admission=%u stopped=%u independent_of_legacy_bank=1 capture_generation=%llu scope=device_lifetime world=0 ticket=0 device=%llx mv_raw=%llx mv_canonical=%llx seeds=%zu heaps=%zu cells=%zu heap_capacity=%zu cell_capacity=%zu copy_capacity=%zu known_mv=%zu non_uav=%zu unused=%zu reuses=%llu heap_calls=%llu uav_calls=%llu unrelated_uavs=%llu invalidations=%llu copies=%llu other_devices=%llu uncertainties=%llu failed=%u loss=%u saturation_site=%u released=%u consume_window_status=separate_receipt consume_scope_verified=0 collection_until_explicit_stop_or_close=1 dispatch_binding_verified=0 producer_authorized=0\n",
         unsigned(target_attempted),unsigned(target_seeded),unsigned(target_live()),unsigned(target_stopped),target_lifetime.epoch,target_lifetime.device,
         source_join.summary.raw,source_join.summary.canonical,target_seed_count,target_bank?target_bank->heaps():target_final_heaps,target_bank?target_bank->cells():target_final_cells,
         TargetBank::heap_capacity,TargetBank::cell_capacity,TargetBank::copy_capacity,target_counts.known_uav,target_counts.non_uav,target_counts.unused,target_counts.reuses,
