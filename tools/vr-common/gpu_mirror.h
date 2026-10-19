@@ -19,6 +19,20 @@ public:
         uint64_t captures{},presents{},busy{},stale{},rejected{},wait_ns{},max_wait_ns{},timeouts{},ticket{};
         int64_t received_ns{};HRESULT error{S_OK};Reason reason{Reason::none};bool unsafe{},destination_held{};
     };
+#if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
+    // Private acceptance evidence. The completed buffer is independent of the
+    // swapchain/source lifetime; the worker owns mapping, conversion and I/O.
+    enum class ReadbackState : unsigned { idle,armed,recorded,submitted,ready,taken,failed,unsafe };
+    struct Readback {
+        ComPtr<ID3D12Resource> buffer;
+        D3D12_RESOURCE_DESC source{},destination{};
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
+        MirrorRectangle rectangle{};
+        uint64_t bytes{},generation{},ticket{},draw_serial{};
+        int64_t received_ns{},present_ns{};
+    };
+    struct ReadbackStatus {ReadbackState state{};HRESULT error{S_OK};bool held{},signaled{};uint64_t draw_serial{};};
+#endif
 private:
     SRWLOCK lock_=SRWLOCK_INIT;
     std::atomic<uint64_t> lock_busy_{};
@@ -37,6 +51,33 @@ private:
     ComPtr<ID3D12RootSignature> root_;
     std::array<ComPtr<ID3D12PipelineState>,5> pipelines_;
     ComPtr<ID3D12DescriptorHeap> srv_,rtv_;
+#if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
+    Readback readback_;
+    ReadbackState readback_state_{ReadbackState::idle};
+    HRESULT readback_error_{S_OK};
+    ComPtr<ID3D12Fence> readback_fence_;
+    bool readback_signaled_{};
+    void refresh_readback(){
+        if(readback_state_!=ReadbackState::submitted||!readback_signaled_)return;
+        const auto completed=readback_fence_->GetCompletedValue();
+        if(completed==UINT64_MAX){readback_error_=DXGI_ERROR_DEVICE_REMOVED;return;}
+        if(completed>=readback_.draw_serial){readback_state_=ReadbackState::ready;readback_fence_.Reset();}
+    }
+    bool prepare_readback(D3D12_RESOURCE_DESC const& destination){
+        if(readback_state_!=ReadbackState::armed)return false;
+        // Allocation is one-shot and bounded. Failure never suppresses a draw.
+        readback_state_=ReadbackState::failed;
+        UINT rows{};UINT64 row_bytes{};
+        device_->GetCopyableFootprints(&destination,0,1,0,&readback_.footprint,&rows,&row_bytes,&readback_.bytes);
+        if(!readback_.bytes||readback_.bytes>256ull*1024*1024||rows!=destination.Height||
+           row_bytes!=destination.Width*4||readback_.footprint.Footprint.RowPitch<row_bytes){readback_error_=E_INVALIDARG;return false;}
+        D3D12_HEAP_PROPERTIES heap{};heap.Type=D3D12_HEAP_TYPE_READBACK;
+        D3D12_RESOURCE_DESC buffer{};buffer.Dimension=D3D12_RESOURCE_DIMENSION_BUFFER;buffer.Width=readback_.bytes;
+        buffer.Height=1;buffer.DepthOrArraySize=1;buffer.MipLevels=1;buffer.SampleDesc.Count=1;buffer.Layout=D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        readback_error_=device_->CreateCommittedResource(&heap,D3D12_HEAP_FLAG_NONE,&buffer,D3D12_RESOURCE_STATE_COPY_DEST,nullptr,IID_PPV_ARGS(&readback_.buffer));
+        return SUCCEEDED(readback_error_);
+    }
+#endif
     struct Unlock {SRWLOCK* lock;~Unlock(){ReleaseSRWLockExclusive(lock);}};
     static int64_t clock_ns(){return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();}
     static int format_index(DXGI_FORMAT f){
@@ -78,6 +119,14 @@ private:
         held_destination_.Reset();return true;
     }
     void release(bool unsafe){
+#if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
+        refresh_readback();
+        if(readback_state_==ReadbackState::submitted){
+            // An unconfirmed Execute/Signal must never free its GPU storage.
+            readback_.buffer.Detach();readback_fence_.Detach();readback_state_=ReadbackState::unsafe;
+        }
+        // Ready evidence deliberately survives source retirement and close.
+#endif
         auto clear=[&](auto& p){if(unsafe)p.Detach();else p.Reset();};
         clear(held_destination_);clear(snapshot_);clear(copy_list_);clear(draw_list_);clear(copy_allocator_);clear(draw_allocator_);
         clear(copy_fence_);clear(draw_fence_);clear(root_);for(auto& p:pipelines_)clear(p);clear(srv_);clear(rtv_);
@@ -123,6 +172,22 @@ public:
     DesktopMirror()=default;DesktopMirror(DesktopMirror const&)=delete;
     ~DesktopMirror(){close(0);}
     Status status(){AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};auto result=stats_;result.busy+=lock_busy_.load();result.destination_held=held_destination_!=nullptr;return result;}
+#if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
+    bool arm_readback(){
+        AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};
+        if(readback_state_!=ReadbackState::idle||stats_.state==3||stats_.state==4||stats_.state==5)return false;
+        readback_state_=ReadbackState::armed;return true;
+    }
+    ReadbackStatus readback_status(){
+        AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};refresh_readback();
+        return {readback_state_,readback_error_,readback_.buffer!=nullptr,readback_signaled_,readback_.draw_serial};
+    }
+    bool take_readback(Readback& result){
+        if(!TryAcquireSRWLockExclusive(&lock_))return false;Unlock unlock{&lock_};refresh_readback();
+        if(readback_state_!=ReadbackState::ready||result.buffer)return false;
+        result=std::move(readback_);readback_state_=ReadbackState::taken;return true;
+    }
+#endif
     bool bind(ID3D12CommandQueue* queue,ID3D12Resource* source,uint64_t generation){
         AcquireSRWLockExclusive(&lock_);Unlock unlock{&lock_};if(stats_.state)return reject(Reason::not_ready);
         if(generation<=generation_)return reject(Reason::generation);
@@ -179,6 +244,9 @@ public:
         if(FAILED(destination->GetDevice(IID_PPV_ARGS(&device)))||FAILED(device.As(&identity))||identity.Get()!=device_identity_.Get())return reject(Reason::device);
         try{
             if(draw_serial_==UINT64_MAX)return failed(E_UNEXPECTED);
+#if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
+            const bool read_pixels=prepare_readback(d);
+#endif
             gpu_check(draw_allocator_->Reset(),"mirror draw reset");gpu_check(draw_list_->Reset(draw_allocator_.Get(),pipelines_[index].Get()),"mirror draw list reset");
             D3D12_RENDER_TARGET_VIEW_DESC view{};view.Format=d.Format;view.ViewDimension=D3D12_RTV_DIMENSION_TEXTURE2D;
             const auto handle=rtv_->GetCPUDescriptorHandleForHeapStart();device_->CreateRenderTargetView(destination,&view,handle);
@@ -192,12 +260,40 @@ public:
             ID3D12DescriptorHeap* heaps[]={srv_.Get()};draw_list_->SetDescriptorHeaps(1,heaps);draw_list_->SetGraphicsRootDescriptorTable(0,srv_->GetGPUDescriptorHandleForHeapStart());
             const unsigned extent[]={static_cast<unsigned>(source_desc_.Width),source_desc_.Height};draw_list_->SetGraphicsRoot32BitConstants(1,2,extent,0);
             draw_list_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);draw_list_->DrawInstanced(3,1,0,0);
-            transition(draw_list_.Get(),snapshot_.Get(),D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,D3D12_RESOURCE_STATE_COMMON);transition(draw_list_.Get(),destination,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PRESENT);
+            transition(draw_list_.Get(),snapshot_.Get(),D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,D3D12_RESOURCE_STATE_COMMON);
+#if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
+            if(read_pixels){
+                transition(draw_list_.Get(),destination,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_COPY_SOURCE);
+                D3D12_TEXTURE_COPY_LOCATION to{},from{};to.pResource=readback_.buffer.Get();to.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;to.PlacedFootprint=readback_.footprint;
+                from.pResource=destination;from.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;draw_list_->CopyTextureRegion(&to,0,0,0,&from,nullptr);
+                transition(draw_list_.Get(),destination,D3D12_RESOURCE_STATE_COPY_SOURCE,D3D12_RESOURCE_STATE_PRESENT);
+                readback_.source=source_desc_;readback_.destination=d;readback_.rectangle=rectangle;
+                readback_.generation=generation_;readback_.ticket=stats_.ticket;readback_.received_ns=stats_.received_ns;readback_.present_ns=now_ns;
+                readback_.draw_serial=draw_serial_+1;readback_state_=ReadbackState::recorded;
+            }else
+#endif
+                transition(draw_list_.Get(),destination,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PRESENT);
             gpu_check(draw_list_->Close(),"mirror draw close");held_destination_=destination;draw_inflight_=true;draw_signaled_=false;
+#if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
+            if(read_pixels){readback_fence_=draw_fence_;readback_state_=ReadbackState::submitted;}
+#endif
             ID3D12CommandList* lists[]={draw_list_.Get()};queue_->ExecuteCommandLists(1,lists);gpu_check(queue_->Signal(draw_fence_.Get(),++draw_serial_),"mirror draw signal");draw_signaled_=true;
+#if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
+            if(read_pixels)readback_signaled_=true;
+#endif
             if(!wait(draw_fence_,draw_serial_,draw_signaled_,draw_inflight_,GetTickCount64()+1000))return false;
+#if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
+            refresh_readback();
+#endif
             held_destination_.Reset();++stats_.presents;stats_.reason=Reason::none;return true;
-        }catch(...){return failed(E_FAIL);}
+        }catch(...){
+#if defined(GEARS_DESKTOP_MIRROR_READBACK) && GEARS_DESKTOP_MIRROR_READBACK
+            if(readback_state_==ReadbackState::recorded||
+               (readback_state_==ReadbackState::failed&&SUCCEEDED(readback_error_)&&readback_.buffer)){
+                readback_state_=ReadbackState::failed;readback_error_=E_FAIL;
+            }
+#endif
+            return failed(E_FAIL);}
     }
     // A timed-out draw stays disabled, but a later completed fence must release
     // its backbuffer reference so subsequent ResizeBuffers can succeed. Polling

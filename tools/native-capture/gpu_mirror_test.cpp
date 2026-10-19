@@ -1,3 +1,6 @@
+#ifndef GEARS_DESKTOP_MIRROR_READBACK
+#define GEARS_DESKTOP_MIRROR_READBACK 1
+#endif
 #include "../vr-common/gpu_mirror.h"
 #include <d3d12sdklayers.h>
 #include <cstdio>
@@ -6,6 +9,23 @@
 using namespace gears_vr;
 static unsigned checks{};
 static void require(bool ok,const char* message){++checks;if(!ok)throw std::runtime_error(message);}
+#if GEARS_DESKTOP_MIRROR_READBACK
+static std::vector<unsigned char> read_completed(DesktopMirror::Readback const& receipt){
+    require(receipt.buffer!=nullptr,"worker received readback ownership");
+    const auto width=static_cast<unsigned>(receipt.destination.Width),height=receipt.destination.Height;
+    std::vector<unsigned char> rgb(static_cast<size_t>(width)*height*3);void* mapped{};
+    D3D12_RANGE range{0,static_cast<SIZE_T>(receipt.bytes)};gpu_check(receipt.buffer->Map(0,&range,&mapped),"completed readback map");
+    const auto format=receipt.destination.Format;const bool bgra=format==DXGI_FORMAT_B8G8R8A8_UNORM||format==DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+    for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x){
+        const auto* pixel=static_cast<unsigned char*>(mapped)+receipt.footprint.Offset+size_t(y)*receipt.footprint.Footprint.RowPitch+x*4;
+        auto* out=rgb.data()+(size_t(y)*width+x)*3;
+        if(format==DXGI_FORMAT_R10G10B10A2_UNORM){uint32_t packed{};memcpy(&packed,pixel,4);
+            for(unsigned c=0;c<3;++c)out[c]=static_cast<unsigned char>((((packed>>(c*10))&1023)*255+511)/1023);
+        }else{out[0]=pixel[bgra?2:0];out[1]=pixel[1];out[2]=pixel[bgra?0:2];}
+    }
+    D3D12_RANGE written{0,0};receipt.buffer->Unmap(0,&written);return rgb;
+}
+#endif
 struct GPU {
     ComPtr<ID3D12Device> device;ComPtr<ID3D12CommandQueue> queue;
     ComPtr<ID3D12CommandAllocator> allocator;ComPtr<ID3D12GraphicsCommandList> list;
@@ -105,6 +125,34 @@ int main(){try{
         require(mirror.drain()&&mirror.close()&&!mirror.status().unsafe&&mirror.status().state==4,"drain close");
         require(!mirror.present(dest.Get(),gpu.queue.Get(),received+3),"closed rejected");
     }
+#if GEARS_DESKTOP_MIRROR_READBACK
+    for(auto format:destinations){
+        // Odd destination width forces row padding; the receipt must contain
+        // the actual post-draw RGB10/BGRA/sRGB destination, including its bars.
+        auto source=gpu.texture(18,7,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(source.Get(),true);
+        auto dest=gpu.texture(13,11,format,D3D12_RESOURCE_STATE_PRESENT);
+        DesktopMirror mirror;DesktopMirror::Readback receipt;
+        require(!mirror.take_readback(receipt)&&mirror.arm_readback()&&!mirror.arm_readback(),"one explicit diagnostic arm");
+        require(mirror.bind(gpu.queue.Get(),source.Get(),17)&&mirror.prepare(),"readback mirror prepare");
+        const auto received=monotonic_ns();
+        require(mirror.capture(source.Get(),17,91,received,D3D12_RESOURCE_STATE_RENDER_TARGET)&&mirror.present(dest.Get(),gpu.queue.Get(),received+1),"readback draw");
+        require(mirror.readback_status().state==DesktopMirror::ReadbackState::ready&&!mirror.status().destination_held,"completed draw retains no destination");
+        const auto expected=gpu.read(dest.Get(),D3D12_RESOURCE_STATE_PRESENT); // Also validates restored state.
+        require(mirror.retire_source(17)&&mirror.readback_status().held,"completed readback survives source retirement");
+        require(mirror.bind(gpu.queue.Get(),source.Get(),18)&&mirror.prepare(),"readback source rebind");
+        gpu.colors(source.Get(),false);const auto later=monotonic_ns();
+        require(mirror.capture(source.Get(),18,92,later,D3D12_RESOURCE_STATE_RENDER_TARGET)&&mirror.present(dest.Get(),gpu.queue.Get(),later+1),"later draw cannot replace receipt");
+        require(mirror.close()&&mirror.take_readback(receipt),"worker ownership survives safe close");
+        require(receipt.generation==17&&receipt.ticket==91&&receipt.received_ns==received&&receipt.present_ns==received+1&&receipt.draw_serial==1,"immutable frame receipt");
+        require(receipt.source.Width==18&&receipt.source.Height==7&&receipt.destination.Width==13&&receipt.destination.Height==11&&receipt.destination.Format==format,"immutable source and destination metadata");
+        require(receipt.footprint.Footprint.RowPitch>13*4&&receipt.bytes>=receipt.footprint.Offset+uint64_t(receipt.footprint.Footprint.RowPitch)*10+13*4,"readback uses padded footprint");
+        const auto rectangle=mirror_rectangle(13,11,9,7);
+        require(receipt.rectangle.x==rectangle.x&&receipt.rectangle.y==rectangle.y&&receipt.rectangle.width==rectangle.width&&receipt.rectangle.height==rectangle.height,"receipt preserves mirror rectangle");
+        const auto pixels=read_completed(receipt);
+        for(size_t i=0;i<pixels.size()/3;++i)for(unsigned c=0;c<3;++c)require(pixels[i*3+c]==expected[i*4+c],"post-draw destination readback pixels");
+        DesktopMirror::Readback second;require(!mirror.take_readback(second)&&!mirror.readback_status().held&&!mirror.arm_readback(),"completed handoff occurs once");
+    }
+#endif
     DesktopMirror invalid;auto non_square=gpu.texture(17,8,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);
     require(!invalid.bind(gpu.queue.Get(),non_square.Get(),1),"odd SBS width rejected");require(invalid.close(),"empty close");
     {
@@ -113,6 +161,9 @@ int main(){try{
         auto source=gpu.texture(16,8,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(source.Get(),true);
         auto dest=gpu.texture(8,8,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_PRESENT);
         DesktopMirror stalled;require(stalled.bind(gpu.queue.Get(),source.Get(),1)&&stalled.prepare(),"stalled mirror prepare");
+#if GEARS_DESKTOP_MIRROR_READBACK
+        require(stalled.arm_readback(),"arm unsafe-close receipt");DesktopMirror::Readback abandoned;
+#endif
         ComPtr<ID3D12Fence> blocker;gpu_check(gpu.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&blocker)),"blocker");
         gpu_check(gpu.queue->Wait(blocker.Get(),1),"controlled queue stall");
         const auto received=monotonic_ns();require(stalled.capture(source.Get(),1,1,received,D3D12_RESOURCE_STATE_RENDER_TARGET),"first queued copy");
@@ -120,6 +171,9 @@ int main(){try{
         require(!stalled.present(dest.Get(),gpu.queue.Get(),received+1),"bounded draw timeout");auto failed=stalled.status();
         require(failed.state==3&&failed.timeouts==1&&FAILED(failed.error)&&failed.wait_ns&&failed.max_wait_ns,"timeout evidence");
         require(!stalled.close(0)&&stalled.status().unsafe,"unconfirmed close retains all GPU references");
+#if GEARS_DESKTOP_MIRROR_READBACK
+        require(stalled.readback_status().state==DesktopMirror::ReadbackState::unsafe&&!stalled.take_readback(abandoned),"unsafe close never hands off in-flight readback");
+#endif
         gpu_check(blocker->Signal(1),"release controlled stall");gpu.finish();
         require(!stalled.close(0),"retention decision remains explicit after detach");
     }
@@ -127,14 +181,24 @@ int main(){try{
         auto source=gpu.texture(16,8,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_RENDER_TARGET);gpu.colors(source.Get(),true);
         auto dest=gpu.texture(8,8,DXGI_FORMAT_R8G8B8A8_UNORM,D3D12_RESOURCE_STATE_PRESENT);
         DesktopMirror recovered;require(recovered.bind(gpu.queue.Get(),source.Get(),1)&&recovered.prepare(),"recovery prepare");
+#if GEARS_DESKTOP_MIRROR_READBACK
+        require(recovered.arm_readback(),"arm recoverable receipt");DesktopMirror::Readback delayed;
+#endif
         ComPtr<ID3D12Fence> blocker;gpu_check(gpu.device->CreateFence(0,D3D12_FENCE_FLAG_NONE,IID_PPV_ARGS(&blocker)),"recovery blocker");
         gpu_check(gpu.queue->Wait(blocker.Get(),1),"recovery queue stall");
         const auto received=monotonic_ns();require(recovered.capture(source.Get(),1,1,received,D3D12_RESOURCE_STATE_RENDER_TARGET),"recovery capture");
         require(!recovered.present(dest.Get(),gpu.queue.Get(),received+1),"recovery draw timeout");
         require(recovered.status().destination_held&&!recovered.poll(),"pending draw retains destination without waiting");
+#if GEARS_DESKTOP_MIRROR_READBACK
+        require(recovered.readback_status().state==DesktopMirror::ReadbackState::submitted&&recovered.readback_status().held&&!recovered.take_readback(delayed),"pending fence prohibits readback handoff");
+#endif
         require(!recovered.drain(0)&&recovered.status().state==3&&!recovered.status().unsafe,"continuous shutdown can retry drain without detach");
         gpu_check(blocker->Signal(1),"resume timed-out queue");gpu.finish();
         require(recovered.poll()&&!recovered.status().destination_held,"worker releases completed destination");
+#if GEARS_DESKTOP_MIRROR_READBACK
+        require(recovered.take_readback(delayed)&&delayed.ticket==1,"late fence completion permits readback handoff");
+        const auto delayed_pixels=read_completed(delayed);require(!delayed_pixels.empty(),"late completed buffer is readable");
+#endif
         require(recovered.status().state==3,"timeout remains disabled after GPU recovery");
         require(recovered.drain(0)&&recovered.close(0)&&!recovered.status().unsafe,"continuous retry can close safely");
     }

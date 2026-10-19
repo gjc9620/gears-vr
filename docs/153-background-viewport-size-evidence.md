@@ -70,3 +70,9 @@ Independent desktop-mirror WARP pixel/state/handoff fixture passed10659 checks; 
 Default manifest and named manifest-runtime-mirror-fix1 now select this tested startup correction; previous extent-fix manifest remains rollback. Trace capacity64 is still bounded; exhaustion disables subsequent control. This fixes the demonstrated startup shrink path, not every later resize anomaly. Old ZIPs do not contain this update.
 
 Portable candidate now regenerated: `GearsVR-0.0.1-runtime-mirror-fixed-20261019.zip`, SHA256 `287d82d4decf6d24c1cf45d238680e86d42a117b3f71370d75c2b0a9d5f06b36`. Fresh stage and extraction into a path with spaces both passed isolated preflight;717 ZIP entries. This package includes the new default native DLL, recommended resolution/scale launcher and diagnostic export. It remains a candidate, not final0.0.1 acceptance. Receipt: ignored `analysis/runtime/runtime-mirror-fixed-receipt.json`.
+
+## Private post-mirror pixel readback seam
+
+A compile-gated GEARS_DESKTOP_MIRROR_READBACK seam now supports one explicitly armed copy of the actual destination immediately after the mirror draw on the same command list and fence. It retains pending GPU storage through timeout, hands off only after confirmed completion, and preserves completed evidence across source retirement without retaining the swapchain destination. No worker file output or production arming is wired yet; default behavior remains unchanged.
+
+The expanded GpuMirrorTest WARP fixture passed12896 checks, including all supported formats/RGB10, padded rows, destination pixel comparison, single handoff, source retirement and timeout recovery. Debug layer was unavailable. This is fixture acceptance only: actual-game pixel capture remains pending integration of the private worker writer.
