@@ -69,6 +69,14 @@ bool snapshot_target_seed(uint64_t& observation,gears_ngx_mv_census::Use& use,ge
     observation=target_lifetime.epoch;use=source_join.summary.use;mv=target_mv;return true;
 }
 #if GEARS_NGX_MV_TARGET_CAPTURE
+ExactTarget lookup_exact_target(uint64_t gpu){
+    std::lock_guard<std::recursive_mutex> lock(mutex);ExactTarget out;
+    if(!target_live()||!target_mv.retained()||!gpu)return out;
+    out.ready=true;const auto exact=target_bank->lookup(target_lifetime,gpu,true);
+    if(!exact.heap.visible||exact.gpu!=gpu||!exact.same_mv(target_mv))return out;
+    out.match=true;out.heap=exact.heap.canonical;out.resource=exact.resource.canonical;out.gpu=exact.gpu;
+    out.version=exact.version;out.origin=exact.origin;out.source_handle=exact.source_handle;out.source_version=exact.source_version;return out;
+}
 gears_ngx_mv_compute::DescriptorLookup lookup_target(uintptr_t heap,uint64_t gpu){
     std::lock_guard<std::recursive_mutex> lock(mutex);gears_ngx_mv_compute::DescriptorLookup out;
     if(!target_live()||!target_mv.retained()||!heap||!gpu)return out;
@@ -466,6 +474,11 @@ DWORD native_check(Bank::Snapshot& retained){
        selected_lookup.candidates[0].offset||selected_lookup.candidates[0].version!=target_visible.version)return 350;
     if(lookup_target(target_visible.heap.canonical+1,target_visible.gpu).count||
        lookup_target(target_visible.heap.canonical,target_visible.gpu+1).count)return 351;
+    const auto exact_lookup=lookup_exact_target(target_visible.gpu);
+    if(!exact_lookup.ready||!exact_lookup.match||exact_lookup.heap!=target_visible.heap.canonical||
+       exact_lookup.resource!=typed_first.canonical||exact_lookup.version!=target_visible.version||exact_lookup.origin!=target_visible.origin)return 353;
+    if(lookup_exact_target(target_visible.gpu+1).match||lookup_exact_target(target_visible.gpu+4*stride).match||
+       lookup_exact_target(0).match)return 354;
 #endif
     device->CreateUnorderedAccessView(second.Get(),nullptr,&uv,cpu2); // Unrelated native birth consumes no target cell.
     device->CopyDescriptorsSimple(1,cpu3,cpu2,hd.Type); // Unrelated native copy consumes no target cell.
@@ -480,6 +493,8 @@ DWORD native_check(Bank::Snapshot& retained){
     const auto invalidated_lookup=lookup_target(target_visible.heap.canonical,target_visible.gpu);
     if(!invalidated_lookup.ready||invalidated_lookup.exact_base_mv||invalidated_lookup.count||
        gears_ngx_mv_compute::same(selected_lookup,invalidated_lookup))return 352;
+    const auto erased_exact=lookup_exact_target(target_visible.gpu);
+    if(!erased_exact.ready||erased_exact.match||same_exact(exact_lookup,erased_exact))return 355;
 #endif
     device->CreateUnorderedAccessView(first.Get(),nullptr,&uv,cpu); // Selected typed native rewrite becomes fresh local provenance.
     device->CopyDescriptorsSimple(1,gpu_cpu,cpu,hd.Type);

@@ -2,6 +2,15 @@
 #include <array>
 #include <cstdint>
 namespace gears_ngx_mv_compute {
+// Scalar snapshot only; native descriptor/resource ownership stays in its bank.
+struct ExactTarget {
+    bool ready{},match{};uintptr_t heap{},resource{};
+    uint64_t gpu{},version{},origin{},source_handle{},source_version{};
+};
+inline bool same_exact(ExactTarget const& a,ExactTarget const& b){
+    return a.ready==b.ready&&a.match==b.match&&a.heap==b.heap&&a.resource==b.resource&&a.gpu==b.gpu&&
+        a.version==b.version&&a.origin==b.origin&&a.source_handle==b.source_handle&&a.source_version==b.source_version;
+}
 struct DescriptorCandidate {
     uint64_t cpu{},gpu{},version{},origin{},source_handle{},source_version{},offset{};
 };

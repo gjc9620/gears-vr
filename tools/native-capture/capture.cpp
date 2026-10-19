@@ -195,6 +195,9 @@ void stop_target();
 bool snapshot_target_seed(uint64_t&,gears_ngx_mv_census::Use&,gears_ngx_stereo::TypedResourceLease&);
 #if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER && defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
 gears_ngx_mv_compute::DescriptorLookup lookup_target(uintptr_t,uint64_t);
+using ExactTarget=gears_ngx_mv_compute::ExactTarget;
+using gears_ngx_mv_compute::same_exact;
+ExactTarget lookup_exact_target(uint64_t);
 #endif
 #endif
 }
