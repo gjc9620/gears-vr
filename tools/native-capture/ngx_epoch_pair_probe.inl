@@ -105,7 +105,11 @@ void eval_enter(uintptr_t scope,bool owned,uintptr_t caller,uintptr_t command,vo
     unsigned extra=found.reason?Probe::typed_lookup_failed:0u;
     if(!extra&&!Probe::input_rejection(in,concurrent)&&in.handle==probe.handle&&in.parameters==probe.parameters&&probe.eval_count<2&&!typed_lists.pin(found))extra|=Probe::pinning_failed;
     const bool had_rejection=probe.rejection.present;const auto prior_evals=probe.eval_count;probe.enter(in,concurrent,extra);
-    if(probe.eval_count==prior_evals+1)eval_bounds[prior_evals]=sample_bounds(in.ticket,in.renderer,in.scope);
+    if(probe.eval_count==prior_evals+1){eval_bounds[prior_evals]=sample_bounds(in.ticket,in.renderer,in.scope);
+#if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+        ngx_mv_descriptor_capture::accepted_eval(prior_evals,probe.revision,in.world,in.ticket,in.renderer,in.handle,in.parameters);
+#endif
+    }
     if(!had_rejection&&probe.rejection.present){auto& r=probe.rejection;r.lookup_reason=found.reason;r.saved=found.saved;r.current=found.current;
         const auto tracker=frame_link.snapshot();r.tracker_overflow=tracker.list_overflow;r.tracker_capacity_bad=tracker.capacity_bad;}
 

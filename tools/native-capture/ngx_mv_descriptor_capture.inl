@@ -12,6 +12,7 @@ using UavFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,ID3D12Resource*,ID3D12Resourc
 HeapFn original_heap{};CbvFn original_cbv{};SrvFn original_srv{};UavFn original_uav{};
 std::recursive_mutex mutex;
 std::unique_ptr<Bank> bank;
+gears_ngx_mv_census::Census heap_census;
 gears_ngx_mv::Scope lifetime{};
 bool armed{},accepting{},failed{},released{};
 unsigned final_loss{};size_t final_heaps{},final_cells{};
@@ -20,9 +21,9 @@ thread_local unsigned depth{};
 void fail(){failed=true;++uncertainties;if(bank)bank->uncertain();}
 template<class F> void attempt(F&& fn){try{fn();}catch(...){fail();}}
 struct Call {
-    std::unique_lock<std::recursive_mutex> lock{mutex,std::defer_lock};bool entered{},admitted{};
+    std::unique_lock<std::recursive_mutex> lock{mutex,std::defer_lock};bool entered{},admitted{},census_admitted{};
     explicit Call(bool relevant=true){if(!relevant)return;lock.lock();if(!accepting)return;
-        entered=true;if(depth++){++recursions;fail();return;}admitted=!failed&&(!bank||!bank->failed());}
+        entered=true;if(depth++){++recursions;fail();return;}census_admitted=true;admitted=!failed&&(!bank||!bank->failed());}
     ~Call(){if(entered)--depth;}
     explicit operator bool()const{return admitted&&!failed&&(!bank||!bank->failed());}
 };
@@ -43,8 +44,12 @@ void copied(ID3D12Device* device,Ranges const& destination,Ranges const& source)
     ++copies;if(!bank){++missing_birth;fail();return;}
     if(selected(device))bank->copy_sparse(lifetime,destination,source);
 }
-void arm(){std::lock_guard<std::recursive_mutex> lock(mutex);if(!armed){armed=true;accepting=true;}}
-void close(){std::lock_guard<std::recursive_mutex> lock(mutex);accepting=false;}
+void arm(){std::lock_guard<std::recursive_mutex> lock(mutex);if(!armed){armed=true;accepting=true;heap_census.arm();}}
+void close(){std::lock_guard<std::recursive_mutex> lock(mutex);accepting=false;heap_census.close();}
+void accepted_eval(unsigned ordinal,uint64_t revision,uint64_t world,uint64_t ticket,uintptr_t renderer,uintptr_t handle,uintptr_t parameters){
+    std::lock_guard<std::recursive_mutex> lock(mutex);
+    heap_census.accepted(ordinal,{revision,world,ticket,renderer,handle,parameters});
+}
 void release_drained(){
     // Closing admission precedes disabling hooks. Taking this lock drains every
     // admitted original/post-call update; active additionally covers Scope.
@@ -57,6 +62,16 @@ void release_drained(){
     // may still enter the DLL. It cannot access the detached bank.
     retired.reset();
 }
+void print_census(FILE* status,char const* stage,unsigned ordinal,gears_ngx_mv_census::Counts const& c,gears_ngx_mv_census::Use use={}){
+    fprintf(status,"ngx_mv_heap_census stage=%s ordinal=%u revision=%llu world=%llu ticket=%llu renderer=%llx handle=%llx parameters=%llx all_devices=1 calls=%llu cumulative_creations=%llu visible_creations=%llu visible_descriptors_sum=%llu visible_descriptors_max=%llu nonvisible_creations=%llu nonvisible_descriptors_sum=%llu nonvisible_descriptors_max=%llu api_failures=%llu descriptor_unreadable=%llu output_unreadable=%llu non_creation=%llu other_heap_type=%llu saturated=%u reentrant_excluded_total=%llu cumulative_not_live_heaps=1 descriptors_not_vram_bytes=1 retained_extra_com=0 producer_authorized=0\n",
+        stage,ordinal,static_cast<unsigned long long>(use.revision),static_cast<unsigned long long>(use.world),static_cast<unsigned long long>(use.ticket),
+        static_cast<unsigned long long>(use.renderer),static_cast<unsigned long long>(use.handle),static_cast<unsigned long long>(use.parameters),
+        static_cast<unsigned long long>(c.calls),static_cast<unsigned long long>(c.creations),
+        static_cast<unsigned long long>(c.visible.creations),static_cast<unsigned long long>(c.visible.descriptors),static_cast<unsigned long long>(c.visible.max_descriptors),
+        static_cast<unsigned long long>(c.nonvisible.creations),static_cast<unsigned long long>(c.nonvisible.descriptors),static_cast<unsigned long long>(c.nonvisible.max_descriptors),
+        static_cast<unsigned long long>(c.failed),static_cast<unsigned long long>(c.descriptor_unreadable),static_cast<unsigned long long>(c.output_unreadable),
+        static_cast<unsigned long long>(c.non_creation),static_cast<unsigned long long>(c.other_type),c.overflow?1u:0u,static_cast<unsigned long long>(recursions));
+}
 void print(FILE* status){std::lock_guard<std::recursive_mutex> lock(mutex);if(!status)return;
     fprintf(status,"ngx_mv_descriptors enabled=1 admission=%u scope=device_lifetime capture_generation=%llu device=%p device_selection=first_observed_cbv_heap_candidate device_attested=0 world=0 ticket=0 heaps=%zu cells=%zu heap_calls=%llu uav_calls=%llu invalidations=%llu copies=%llu other_devices=%llu missing_birth=%llu recursion=%llu uncertainties=%llu failed=%u loss=%u released=%u selected_pair_proof=0 producer_authorized=0\n",
         accepting?1:0,static_cast<unsigned long long>(lifetime.epoch),reinterpret_cast<void*>(lifetime.device),
@@ -66,17 +81,29 @@ void print(FILE* status){std::lock_guard<std::recursive_mutex> lock(mutex);if(!s
         static_cast<unsigned long long>(other_devices),static_cast<unsigned long long>(missing_birth),
         static_cast<unsigned long long>(recursions),static_cast<unsigned long long>(uncertainties),
         failed||(bank?bank->failed():final_loss!=0)?1:0,bank?static_cast<unsigned>(bank->loss()):final_loss,released?1:0);
+    for(unsigned i=0;i<heap_census.snapshots().size();++i){auto const& s=heap_census.snapshots()[i];
+        if(s.present)print_census(status,"accepted_eval",i,s.counts,s.use);}
+    print_census(status,heap_census.active()?"current":"final",2,heap_census.counts());
 }
 HRESULT STDMETHODCALLTYPE heap(ID3D12Device* device,const D3D12_DESCRIPTOR_HEAP_DESC* desc,REFIID iid,void** output){
     Scope scope;auto frame_guard=frame_lock();Call call;
     D3D12_DESCRIPTOR_HEAP_DESC before{};bool readable=false;
-    if(call)readable=safe_copy(&before,desc,sizeof(before));
+    if(call.census_admitted)readable=safe_copy(&before,desc,sizeof(before));
     const auto result=original_heap(device,desc,iid,output);
+    // Scalar census survives a failed provenance bank. Copy only the returned
+    // address; no QI/AddRef/GetDesc or retained object is needed for counting.
+    IUnknown* raw{};bool output_readable=true;
+    if(call.census_admitted){
+        const bool eligible=readable&&before.Type==D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        if(eligible&&SUCCEEDED(result)&&output)output_readable=safe_copy(&raw,output,sizeof(raw));
+        heap_census.record({readable,eligible,FAILED(result),output_readable,SUCCEEDED(result)&&raw!=nullptr,
+            (before.Flags&D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)!=0,before.NumDescriptors});
+    }
     if(call)attempt([&]{
         if(!readable){fail();return;}
         if(before.Type!=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV||FAILED(result))return;
-        ++heap_calls;IUnknown* raw{};Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> typed;
-        if(!safe_copy(&raw,output,sizeof(raw))||!raw||FAILED(raw->QueryInterface(IID_PPV_ARGS(&typed)))){fail();return;}
+        ++heap_calls;Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> typed;
+        if(!output_readable||!raw||FAILED(raw->QueryInterface(IID_PPV_ARGS(&typed)))){fail();return;}
         if(!bank){const auto identity=canonical_identity(device);if(!identity){fail();return;}
             // One immutable bank: no world-reset clearing or device rebinding.
             lifetime=gears_ngx_mv::lifetime_scope(1,identity);bank=std::make_unique<Bank>();
@@ -122,6 +149,10 @@ DWORD native_check(Bank::Snapshot& retained){
         if(!bank||bank->failed()||failed||heap_calls!=2||bank->heaps()!=2||bank->cells()||
            lifetime.kind!=gears_ngx_mv::ScopeKind::device_lifetime||!lifetime.epoch||
            lifetime.world||lifetime.ticket||lifetime.device!=device_id)return 308;}
+    {std::lock_guard<std::recursive_mutex> lock(mutex);auto const& c=heap_census.counts();
+        if(c.creations!=2||c.visible.creations!=1||c.nonvisible.creations!=1||
+           c.visible.descriptors!=4||c.nonvisible.descriptors!=4||c.visible.max_descriptors!=4||c.nonvisible.max_descriptors!=4||
+           c.failed||c.descriptor_unreadable||c.output_unreadable||c.overflow)return 329;}
     D3D12_HEAP_PROPERTIES hp{};hp.Type=D3D12_HEAP_TYPE_DEFAULT;
     D3D12_RESOURCE_DESC rd{};rd.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;rd.Width=16;rd.Height=16;
     rd.DepthOrArraySize=1;rd.MipLevels=1;rd.Format=DXGI_FORMAT_R32_UINT;rd.SampleDesc.Count=1;

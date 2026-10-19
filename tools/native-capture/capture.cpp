@@ -45,6 +45,7 @@
 #include "ngx_epoch_pair_probe.h"
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
 #include "ngx_mv_descriptor_provenance.h"
+#include "ngx_mv_heap_census.h"
 #endif
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
 #include "ngx_output_delayed_gate.h"
@@ -179,7 +180,8 @@ namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_fr
 namespace death_constant_observer {void print(FILE*);}
 namespace dlss_route_observer {void print(FILE*);void draw(uintptr_t,uintptr_t,unsigned,unsigned,unsigned);}
 namespace ngx_route_observer {void print(FILE*);}
-namespace ngx_mv_descriptor_capture {void arm();void close();void release_drained();void print(FILE*);}
+namespace ngx_mv_descriptor_capture {void arm();void close();void release_drained();void print(FILE*);
+void accepted_eval(unsigned,uint64_t,uint64_t,uint64_t,uintptr_t,uintptr_t,uintptr_t);}
 namespace death_dof_control {void print(FILE*);}
 namespace vr_dof_compat {void print(FILE*);void progress(FILE*);void retire();bool publication(uint64_t,uint64_t);bool retire_owned(uint64_t,uint64_t);}
 namespace death_pso_cache {void print(FILE*);void poll();}

@@ -856,3 +856,6 @@ add_executable(NgxMvDescriptorProvenanceTest ngx_mv_descriptor_provenance_test.c
 target_compile_options(NgxMvDescriptorProvenanceTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 target_link_libraries(NgxMvDescriptorProvenanceTest PRIVATE d3d12 dxgi)
 add_test(NAME NgxMvDescriptorProvenanceTest COMMAND NgxMvDescriptorProvenanceTest)
+add_executable(NgxMvHeapCensusTest ngx_mv_heap_census_test.cpp)
+target_compile_options(NgxMvHeapCensusTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_test(NAME NgxMvHeapCensusTest COMMAND NgxMvHeapCensusTest)
