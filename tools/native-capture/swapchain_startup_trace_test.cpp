@@ -142,6 +142,15 @@ int main(){
  for(auto& w:workers)w.join();assert(records.attempts.load()==105);
  for(auto& r:records.ready)assert(r.load());
  SetLastError(4321);assert(begin(create_hwnd,nullptr,0,nullptr,nullptr,false,false)==invalid&&GetLastError()==4321);
+ // Saturation disables the private control as well as evidence capture. No
+ // current COM/window query or unrecorded dimension substitution is allowed.
+ const auto saturated_desc_calls=chain.desc_calls,saturated_buffer_calls=chain.buffer_calls;
+ unsigned saturated_window_calls{};
+ const auto saturated=prepare_resize_with(invalid,&chain,0,0,true,
+  [&](HWND,gears_background_zero_extent::Evidence&){++saturated_window_calls;});
+ assert(!saturated.substituted&&!saturated.width&&!saturated.height);
+ assert(chain.desc_calls==saturated_desc_calls&&chain.buffer_calls==saturated_buffer_calls&&!saturated_window_calls);
+ assert(GetLastError()==4321&&chain.resource.refs==1);
 #else
  // Invalid addresses and a bogus FILE are deliberately safe in the OFF build:
  // no request dereference, COM call, stack capture, or output is performed.

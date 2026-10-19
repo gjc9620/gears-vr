@@ -22,6 +22,7 @@
 #include "render_cost.h"
 #include "atomic_status_file.h"
 #include "resource_resize_probe.h"
+#include "swapchain_resize_mode.h"
 #include "swapchain_startup_trace.h"
 #include "source_view_shadow.h"
 #include "native_source_view_args.h"
@@ -429,6 +430,7 @@ constexpr unsigned game_resize_hooks=2;
 #else
 constexpr unsigned game_resize_hooks=0;
 #endif
+constexpr unsigned dxgi_resize_hooks=GEARS_DXGI_RESIZE_HOOKS?2:0;
 #if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
 constexpr unsigned game_material_hooks=1;
 #else
@@ -499,7 +501,7 @@ constexpr unsigned ngx_stereo_host_hooks=3;
 #else
 constexpr unsigned ngx_stereo_host_hooks=0;
 #endif
-std::array<SessionHookEntry,ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+game_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+std::array<SessionHookEntry,ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+dxgi_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -4193,7 +4195,7 @@ bool present_hooks() {
                 success=install(present_target,reinterpret_cast<void*>(hook_present),reinterpret_cast<void**>(&original_present));
                 if(present1_target!=present_target)
                     success=install(present1_target,reinterpret_cast<void*>(hook_present1),reinterpret_cast<void**>(&original_present1)) && success;
-#if defined(GEARS_GAME_RESOLUTION) && GEARS_GAME_RESOLUTION
+#if GEARS_DXGI_RESIZE_HOOKS
                 success=game_resize::install_hooks(chain)&&success;
 #endif
                 success=success && execute_ok;

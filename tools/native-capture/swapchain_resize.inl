@@ -1,15 +1,17 @@
-// DXGI lifecycle handling for the game-resolution transport. No requested
-// queue arguments are changed. The explicit private zero-extent trial can
-// resolve zero dimensions from fresh evidence. Call the original API once.
-#if defined(GEARS_GAME_RESOLUTION) && GEARS_GAME_RESOLUTION
+// Shared DXGI call wrappers. Only game-resolution mode participates in its
+// transport lifecycle. A runtime-size startup candidate records the boundary
+// and may resolve zero dimensions from fresh evidence, without changing its
+// owned render-size plan. Queue arguments remain unchanged; forward once.
+#if GEARS_DXGI_RESIZE_HOOKS
 namespace game_resize {
 using ResizeFn=HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain*,UINT,UINT,UINT,DXGI_FORMAT,UINT);
 using Resize1Fn=HRESULT(STDMETHODCALLTYPE*)(IDXGISwapChain3*,UINT,UINT,UINT,DXGI_FORMAT,UINT,const UINT*,IUnknown* const*);
 ResizeFn original{};Resize1Fn original1{};
 thread_local unsigned depth{};
-std::atomic<unsigned> calls{},completed{},failed{},rejected{},drain_failed{};
 struct Depth {Depth(){++depth;}~Depth(){--depth;}};
 struct LastErrorBoundary {DWORD value{GetLastError()};~LastErrorBoundary(){SetLastError(value);}};
+#if GEARS_DXGI_RESIZE_TRANSPORT
+std::atomic<unsigned> calls{},completed{},failed{},rejected{},drain_failed{};
 struct ResizeTrace {
     unsigned method{},count{},width{},height{},format{},flags{};uintptr_t chain{};
     uint64_t generation_before{},generation_after{};long long begin_qpc{},end_qpc{};
@@ -75,23 +77,30 @@ void finish(Boundary const& boundary,IDXGISwapChain* chain,HRESULT result,bool q
     frame_link.invalidate_all();retire_stereo_window();frame_target_stats.clear_bindings();
     if(boundary.publisher){StereoPublishBypass bypass;stereo_publisher.end_resize();}
 }
+#endif
 HRESULT STDMETHODCALLTYPE hook(IDXGISwapChain* chain,UINT count,UINT width,UINT height,DXGI_FORMAT format,UINT flags){
     LastErrorBoundary error;Scope scope;Depth nested;
     const auto startup=gears_swapchain_startup::begin_resize(gears_swapchain_startup::resize,chain,count,width,height,format,flags,
         _ReturnAddress(),prime_recording.load(),recording.load());
+#if GEARS_DXGI_RESIZE_TRANSPORT
     const auto boundary=begin(chain,0,count,width,height,format,flags);
+#endif
     const auto dimensions=gears_swapchain_startup::prepare_resize(startup,chain,width,height,depth==1);
     SetLastError(error.value);
     const auto result=original(chain,count,dimensions.width,dimensions.height,format,flags);
     error.value=GetLastError();
     gears_swapchain_startup::finish(startup,result,chain);
-    finish(boundary,chain,result);return result;
+#if GEARS_DXGI_RESIZE_TRANSPORT
+    finish(boundary,chain,result);
+#endif
+    return result;
 }
 HRESULT STDMETHODCALLTYPE hook1(IDXGISwapChain3* chain,UINT count,UINT width,UINT height,DXGI_FORMAT format,UINT flags,
                                 const UINT* nodes,IUnknown* const* queues){
     LastErrorBoundary error;Scope scope;Depth nested;
     const auto startup=gears_swapchain_startup::begin_resize(gears_swapchain_startup::resize1,chain,count,width,height,format,flags,
         _ReturnAddress(),prime_recording.load(),recording.load(),nodes,queues);
+#if GEARS_DXGI_RESIZE_TRANSPORT
     const auto boundary=begin(chain,1,count,width,height,format,flags);bool same_queue=true;
     if(boundary.begun&&queues){
         DXGI_SWAP_CHAIN_DESC desc{};const auto n=count?count:(SUCCEEDED(chain->GetDesc(&desc))?desc.BufferCount:0);
@@ -99,12 +108,16 @@ HRESULT STDMETHODCALLTYPE hook1(IDXGISwapChain3* chain,UINT count,UINT width,UIN
         for(unsigned i=0;same_queue&&i<n;++i){IUnknown* value{};
             same_queue=safe_copy(&value,queues+i,sizeof(value))&&value&&canonical_identity(value)==boundary.queue;}
     }
+#endif
     const auto dimensions=gears_swapchain_startup::prepare_resize(startup,chain,width,height,depth==1);
     SetLastError(error.value);
     const auto result=original1(chain,count,dimensions.width,dimensions.height,format,flags,nodes,queues);
     error.value=GetLastError();
     gears_swapchain_startup::finish(startup,result,chain);
-    finish(boundary,chain,result,same_queue);return result;
+#if GEARS_DXGI_RESIZE_TRANSPORT
+    finish(boundary,chain,result,same_queue);
+#endif
+    return result;
 }
 bool install_hooks(IDXGISwapChain1* chain){
     auto table=*reinterpret_cast<void***>(chain);
@@ -114,6 +127,7 @@ bool install_hooks(IDXGISwapChain1* chain){
     auto table3=*reinterpret_cast<void***>(extended.Get());
     return install(table3[39],reinterpret_cast<void*>(hook1),reinterpret_cast<void**>(&original1))&&ok;
 }
+#if GEARS_DXGI_RESIZE_TRANSPORT
 void print(FILE* file){
     std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
     fprintf(file,"resize_trace_summary rows=%u limit=8 dimensions_source=live_api no_resource_refs_retained=1\n",resize_trace_count);
@@ -127,5 +141,6 @@ void print(FILE* file){
                 i,j,static_cast<unsigned long long>(t.identities[j]),static_cast<unsigned long long>(t.interfaces[j]),unsigned(d.Dimension),d.Width,d.Height,unsigned(d.Format),d.SampleDesc.Count);}
     }
 }
+#endif
 }
 #endif
