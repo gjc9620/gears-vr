@@ -457,7 +457,7 @@ constexpr unsigned ngx_mv_descriptor_hooks=0;
 #if defined(GEARS_DEATH_PSO_CACHE) && GEARS_DEATH_PSO_CACHE
 constexpr unsigned ngx_mv_compute_hooks=4;
 #else
-constexpr unsigned ngx_mv_compute_hooks=6;
+constexpr unsigned ngx_mv_compute_hooks=7;
 #endif
 #else
 constexpr unsigned ngx_mv_compute_hooks=0;

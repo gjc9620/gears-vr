@@ -11,8 +11,10 @@ using TableFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,D3D12_GPU
 using DispatchFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,UINT,UINT,UINT);
 using ClearFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,ID3D12PipelineState*);
 using BundleFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,ID3D12GraphicsCommandList*);
+using SetFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,ID3D12PipelineState*);
 HeapsFn original_heaps{};RootFn original_root{};TableFn original_table{};DispatchFn original_dispatch{};
 ClearFn original_clear{};BundleFn original_bundle{};
+SetFn original_set{};
 struct List {
     uintptr_t raw{},canonical{};uint64_t generation{};
     uint64_t reset_prior_generation{};bool reset_prior_known{};
@@ -50,15 +52,30 @@ uint64_t mutation{};
 uint64_t foreign_device_skips{},reuse_attempts{},reused{};
 struct Occupancy {unsigned occupied{},eligible{},partial{},pinned{},busy{},unrevoked{},unknown_blocked{},stale_blocked{};} capacity_occupancy;
 using ExactTarget=ngx_mv_descriptor_capture::ExactTarget;
+using PsoWitnessKey=gears_ngx_mv_compute::PsoWitnessKey;
+struct PsoWitness:gears_ngx_mv_compute::PsoWitnessValidity {
+    PsoWitnessKey key;
+    gears_vr::ComPtr<ID3D12GraphicsCommandList> list;
+    gears_vr::ComPtr<IUnknown> list_identity;
+    gears_vr::ComPtr<ID3D12PipelineState> pso;
+    gears_vr::ComPtr<IUnknown> pso_identity;
+};
+PsoWitness pso_pending,pso_promoted;
+uint64_t pso_serial{},pso_sets{},pso_candidates{},pso_discards{},pso_promotions{},pso_qi_failures{};unsigned pso_last_discard{};
+thread_local unsigned pso_set_depth{};
+void pso_invalidate(unsigned reason){
+    ++pso_serial;if(pso_pending.valid)++pso_discards;pso_pending.revoke();pso_promoted.revoke();pso_last_discard=reason;
+    // Owners and historical stable Dispatch evidence survive revocation.
+}
 struct ExactAssociation {bool active{};uintptr_t canonical{},renderer{};uint64_t generation{},ticket{},world{},serial{};ExactTarget descriptor;};
 ExactAssociation exact_association;
 gears_vr::ComPtr<ID3D12GraphicsCommandList> exact_list_owner;
 gears_vr::ComPtr<IUnknown> exact_identity_owner;
 bool exact_stopped{},exact_arming{};unsigned exact_reason{};uint64_t exact_serial{},exact_tables{},exact_misses{},exact_dispatches{},exact_overflow{};
 bool exact_pending(){return !exact_stopped&&ngx_mv_target_capture::pending();}
-void exact_stop(unsigned reason){if(!exact_stopped){exact_stopped=true;exact_reason=reason;++exact_serial;}exact_association.active=false;exact_arming=false;}
+void exact_stop(unsigned reason){if(!exact_stopped){exact_stopped=true;exact_reason=reason;++exact_serial;pso_invalidate(3);}exact_association.active=false;exact_arming=false;}
 void exact_mutation(unsigned reason){if(exact_pending()){++exact_serial;if(exact_association.active||exact_arming)exact_stop(reason);}}
-struct ExactDispatch {ExactAssociation association;ExactTarget after;uintptr_t caller{};std::array<UINT,3> groups{};bool returned{},stable{};};
+struct ExactDispatch {ExactAssociation association;ExactTarget after;uintptr_t caller{},pso{};uint64_t pso_serial{};std::array<UINT,3> groups{};bool returned{},stable{},pso_stable{};};
 std::array<ExactDispatch,8> exact_rows;unsigned exact_count{};
 enum class CallerOperation:unsigned {heaps,root,table,dispatch};
 std::array<uint64_t,4> unknown_skipped{};
@@ -203,6 +220,57 @@ bool exact_identity_current(ExactAssociation const& a){
     return a.canonical&&a.generation&&live.identity==a.canonical&&live.generation==a.generation&&
         w.phase==gears_ngx_mv_target::Phase::capturing&&w.selection.world==a.world&&w.consume.ticket==a.ticket&&w.consume.renderer==a.renderer;
 }
+bool witness_matches(PsoWitness const& witness,ExactAssociation const& a){
+    return gears_ngx_mv_compute::pso_witness_matches(witness.key,witness.valid,a.canonical,a.generation,a.world,a.ticket,a.renderer,pso_serial);
+}
+struct PsoSetActivity {
+    PsoWitness retired;bool outer{},entered{};
+    PsoSetActivity(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!ngx_mv_target_capture::pending())return;
+        entered=true;outer=pso_set_depth++==0;++pso_sets;
+        pso_invalidate(1);if(outer){retired=std::move(pso_pending);pso_pending=PsoWitness{};}}
+    ~PsoSetActivity(){if(entered)--pso_set_depth;}
+};
+struct SetScope {
+    // Activity revokes before alias QI can reenter. All local owners die after
+    // the enclosing callback lock; Scope must enclose this entire object.
+    PsoSetActivity activity;Resolution resolved;PsoWitness candidate;
+    gears_vr::ComPtr<ID3D12Device> device;gears_vr::ComPtr<IUnknown> device_identity;
+    bool owned{},attempted{},finished{};
+    SetScope(ID3D12GraphicsCommandList* list,ID3D12PipelineState* pso,uintptr_t caller,bool own):resolved(activity.outer?list:nullptr),owned(own){
+        {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+            if(!activity.outer||!pso||!ngx_stereo_host::attested||caller!=base+0x17b514||!target_observing(owned)||!resolved.canonical)return;
+            auto const& w=ngx_mv_target_capture::window.snapshot();const auto live=frame_link.current(resolved.canonical);
+            if(live.identity!=resolved.canonical||!live.generation){++pso_discards;pso_last_discard=6;return;}
+            candidate.key={resolved.canonical,0,reinterpret_cast<uintptr_t>(consuming_renderer),live.generation,w.selection.world,consuming_frame_ticket,pso_serial};}
+        try{if(!resolved.selected_device(list)){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++pso_discards;pso_last_discard=7;return;}}
+        catch(...){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++pso_discards;pso_invalidate(4);return;}
+        // Actual typed callback arguments only. Unknown PSO identity/device
+        // drops this witness, without stopping the exact-MV association.
+        resolving=true;HRESULT hr=E_FAIL;
+        try{hr=pso->QueryInterface(IID_PPV_ARGS(&candidate.pso_identity));
+            if(SUCCEEDED(hr))hr=pso->GetDevice(IID_PPV_ARGS(&device));
+            if(SUCCEEDED(hr))hr=device?device.As(&device_identity):E_FAIL;}
+        catch(...){resolving=false;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++pso_qi_failures;++pso_discards;pso_invalidate(4);return;}
+        resolving=false;
+        {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+            if(FAILED(hr)||!candidate.pso_identity||!device_identity){++pso_qi_failures;++pso_discards;pso_last_discard=4;return;}
+            if(reinterpret_cast<uintptr_t>(device_identity.Get())!=ngx_mv_target_capture::selected_mv.device){++pso_discards;pso_last_discard=7;return;}
+            candidate.key.pso=reinterpret_cast<uintptr_t>(candidate.pso_identity.Get());
+            IUnknown* id=resolved.identity?resolved.identity.Get():resolved.held?resolved.held->identity.Get():nullptr;
+            if(!id||reinterpret_cast<uintptr_t>(id)!=candidate.key.canonical)return;
+            candidate.list=list;candidate.list_identity=id;candidate.pso=pso;attempted=true;++pso_candidates;}
+    }
+    void finish(){
+        finished=true;if(!attempted)return;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        const auto live=frame_link.current(candidate.key.canonical);
+        if(!target_observing(owned)||live.identity!=candidate.key.canonical||live.generation!=candidate.key.generation||
+           !gears_ngx_mv_compute::pso_witness_matches(candidate.key,true,candidate.key.canonical,live.generation,
+                committed_world_generation.load(),consuming_frame_ticket,reinterpret_cast<uintptr_t>(consuming_renderer),pso_serial)){
+            ++pso_discards;pso_last_discard=3;return;}
+        candidate.valid=true;pso_pending=std::move(candidate);
+    }
+    ~SetScope(){if(activity.entered&&!finished){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);pso_invalidate(5);}}
+};
 struct ExactTableCall {
     Resolution& resolved;ID3D12GraphicsCommandList* list;ExactAssociation candidate;bool owned{},attempted{},finished{};
     ExactTableCall(Resolution& r,ID3D12GraphicsCommandList* l,UINT index,uint64_t gpu,uintptr_t caller,bool own,bool device):resolved(r),list(l),owned(own){
@@ -224,6 +292,8 @@ struct ExactTableCall {
         IUnknown* id=resolved.identity?resolved.identity.Get():resolved.held?resolved.held->identity.Get():nullptr;
         if(!id||reinterpret_cast<uintptr_t>(id)!=candidate.canonical||exact_list_owner){exact_stop(1);return;}
         exact_list_owner=list;exact_identity_owner=id;candidate.active=true;exact_association=candidate;exact_arming=false;
+        if(!pso_promoted.pso&&witness_matches(pso_pending,candidate)){pso_promoted=std::move(pso_pending);pso_pending=PsoWitness{};++pso_promotions;}
+        else if(pso_pending.valid)pso_invalidate(3);
     }
     ~ExactTableCall(){if(attempted&&!finished)exact_stop(5);}
 };
@@ -239,12 +309,15 @@ struct ExactDispatchCall {
         if(!ngx_mv_descriptor_capture::same_exact(exact_association.descriptor,current)){exact_stop(4);return;}
         ++exact_dispatches;if(exact_count==exact_rows.size()){++exact_overflow;exact_stop(6);return;}
         row=&exact_rows[exact_count++];row->association=exact_association;row->caller=caller;row->groups={x,y,z};
+        if(witness_matches(pso_promoted,exact_association)){row->pso=pso_promoted.key.pso;row->pso_serial=pso_serial;}
     }
     void finish(){
         finished=true;if(!row)return;row->returned=true;row->after=ngx_mv_descriptor_capture::lookup_exact_target(row->association.descriptor.gpu);
         row->stable=exact_pending()&&exact_association.active&&target_observing(owned)&&exact_identity_current(row->association)&&
             exact_serial==row->association.serial&&ngx_mv_descriptor_capture::same_exact(row->association.descriptor,row->after);
         if(!row->stable)exact_stop(4);
+        row->pso_stable=row->stable&&row->pso&&row->pso==pso_promoted.key.pso&&row->pso_serial==pso_serial&&witness_matches(pso_promoted,row->association);
+        pso_promoted.attest_stable_dispatch(row->pso_stable);
     }
     ~ExactDispatchCall(){if(row&&!finished)exact_stop(5);}
 };
@@ -329,7 +402,7 @@ void invalidate_held(List* held,unsigned kind){
 }
 struct RevocationScope {
     Resolution resolved;unsigned kind;bool finished{};
-    RevocationScope(ID3D12GraphicsCommandList* list,unsigned value):resolved(list),kind(value){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);exact_mutation(8);invalidate_held(resolved.held,kind);}
+    RevocationScope(ID3D12GraphicsCommandList* list,unsigned value):resolved(list),kind(value){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(ngx_mv_target_capture::pending())pso_invalidate(2);exact_mutation(8);invalidate_held(resolved.held,kind);}
     void finish(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);finished=true;invalidate_held(resolved.held,kind);}
     ~RevocationScope(){if(!finished){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);invalidate_held(resolved.held,kind);if(pending())lose(unwinding,"revoke_unwind",resolved.held,resolved.raw);}}
 };
@@ -337,6 +410,7 @@ struct ResetScope {
     Resolution resolved;ID3D12GraphicsCommandList* list;List* retained{};bool returned{};
     explicit ResetScope(ID3D12GraphicsCommandList* l):resolved(l),list(l){
         std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("reset_begin",list);
+        if(ngx_mv_target_capture::pending())pso_invalidate(2);
         exact_mutation(8);
         if(!pending())return;auto* held=resolved.held;if(!held)return;
         retained=held;++held->reset_busy;
@@ -440,6 +514,10 @@ void STDMETHODCALLTYPE dispatch(ID3D12GraphicsCommandList* list,UINT x,UINT y,UI
 void STDMETHODCALLTYPE clear(ID3D12GraphicsCommandList* list,ID3D12PipelineState* pso){
     Scope scope;RevocationScope revoke(list,1);std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("clear",list);original_clear(list,pso);revoke.finish();
 }
+void STDMETHODCALLTYPE set(ID3D12GraphicsCommandList* list,ID3D12PipelineState* pso){
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;SetScope witness(list,pso,caller,scope.world());
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);original_set(list,pso);witness.finish();
+}
 void STDMETHODCALLTYPE bundle(ID3D12GraphicsCommandList* list,ID3D12GraphicsCommandList* child){
     Scope scope;RevocationScope revoke(list,2);std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("bundle",list);original_bundle(list,child);revoke.finish();
 }
@@ -451,21 +529,33 @@ bool install_hooks(void** vtable){
     ok=install(viewport_targets[first+2],reinterpret_cast<void*>(ngx_mv_compute_capture::table),reinterpret_cast<void**>(&original_table))&&ok;
     ok=install(viewport_targets[first+3],reinterpret_cast<void*>(dispatch),reinterpret_cast<void**>(&original_dispatch))&&ok;
 #if !defined(GEARS_DEATH_PSO_CACHE) || !GEARS_DEATH_PSO_CACHE
-    viewport_targets[first+4]=vtable[11];viewport_targets[first+5]=vtable[27];
+    static_assert(ngx_mv_compute_hooks==7,"direct PSO witness adds one compute hook");
+    viewport_targets[first+4]=vtable[11];viewport_targets[first+5]=vtable[27];viewport_targets[first+6]=vtable[25];
     ok=install(viewport_targets[first+4],reinterpret_cast<void*>(clear),reinterpret_cast<void**>(&original_clear))&&ok;
     ok=install(viewport_targets[first+5],reinterpret_cast<void*>(bundle),reinterpret_cast<void**>(&original_bundle))&&ok;
+    ok=install(viewport_targets[first+6],reinterpret_cast<void*>(set),reinterpret_cast<void**>(&original_set))&&ok;
+#else
+    static_assert(ngx_mv_compute_hooks==4,"PSO cache owns Set/Clear/Bundle hooks");
 #endif
     return ok;
 }
 void stop(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);stopped=true;exact_stop(7);}
 void release_drained(){
     std::array<List,16> retired;
+    PsoWitness retired_pending,retired_promoted;
     gears_vr::ComPtr<ID3D12GraphicsCommandList> retired_exact_list;gears_vr::ComPtr<IUnknown> retired_exact_identity;
     {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
         if(!stopped||active.load()||recording.load()||exact_pending())return;
         for(unsigned i=0;i<list_count;++i)if(lists[i].callback_busy||lists[i].reset_busy)return;
-        lists.swap(retired);exact_list_owner.Swap(retired_exact_list);exact_identity_owner.Swap(retired_exact_identity);leases_released=true;}
+        lists.swap(retired);exact_list_owner.Swap(retired_exact_list);exact_identity_owner.Swap(retired_exact_identity);
+        retired_pending=std::move(pso_pending);retired_promoted=std::move(pso_promoted);leases_released=true;}
     // Local retired owners release after the observation lock is dropped.
+}
+bool snapshot_picked_pso(gears_vr::ComPtr<ID3D12PipelineState>& out,PsoWitnessKey& key){
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    if(out||leases_released||ngx_mv_target_capture::window.snapshot().phase!=gears_ngx_mv_target::Phase::frozen||
+       !pso_promoted.historical_stable||!pso_promoted.pso||!pso_promoted.pso_identity)return false;
+    out=pso_promoted.pso;key=pso_promoted.key;return true;
 }
 void print(FILE* file){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!file)return;
@@ -475,11 +565,14 @@ void print(FILE* file){
         unknown_skipped[unsigned(CallerOperation::heaps)],unknown_skipped[unsigned(CallerOperation::root)],unknown_skipped[unsigned(CallerOperation::table)],unknown_skipped[unsigned(CallerOperation::dispatch)]);
     fprintf(file,"ngx_mv_compute_resolution raw_matches=%llu alias_matches=%llu unmatched=%llu qi_failures=%llu reentrant_rejections=%llu scope=bank_or_exact_probe_pending temporary_release_after_local_frame_lock=1 alias_bank=0\n",
         resolved_raw,resolved_alias,resolved_unmatched,resolve_qi_failed,resolve_reentrant);
+    auto const& picked=pso_promoted.key;
+    fprintf(file,"ngx_mv_pso_witness sets=%llu candidates=%llu promotions=%llu discards=%llu qi_failures=%llu last_discard=%u serial=%llu pending_valid=%u pending_retained=%u promoted_current_valid=%u promoted_retained=%u historical_stable_dispatch=%u canonical=%llx pso=%llx generation=%llu world=%llu ticket=%llu renderer=%llx witness_serial=%llu scope=attested_set17b514_single_pending_single_promoted blob_calls=0 gpu_execution_verified=0 producer_authorized=0\n",
+        pso_sets,pso_candidates,pso_promotions,pso_discards,pso_qi_failures,pso_last_discard,pso_serial,unsigned(pso_pending.valid),unsigned(bool(pso_pending.pso)),unsigned(pso_promoted.valid),unsigned(bool(pso_promoted.pso)),unsigned(pso_promoted.historical_stable),picked.canonical,picked.pso,picked.generation,picked.world,picked.ticket,picked.renderer,picked.serial);
     fprintf(file,"ngx_mv_exact_probe tables=%llu misses=%llu dispatches=%llu rows=%u limit=8 overflow_calls=%llu active=%u arming=%u stopped=%u reason=%u serial=%llu typed_list_retained=%u identity_retained=%u scope=owned_capturing_attested_table17b99a_dispatch1ac833 independent_of_binding_bank=1 heap_observed=0 root_observed=0 full_bindings_verified=0 table_extent_verified=0 gpu_execution_verified=0 producer_authorized=0 reason_identity=1 reason_table_overwrite=2 reason_generation=3 reason_changed=4 reason_unwind=5 reason_capacity=6 reason_window_end=7 reason_reset_clear_bundle=8 reason_heap_root=9\n",
         exact_tables,exact_misses,exact_dispatches,exact_count,exact_overflow,unsigned(exact_association.active),unsigned(exact_arming),unsigned(exact_stopped),exact_reason,exact_serial,unsigned(bool(exact_list_owner)),unsigned(bool(exact_identity_owner)));
     for(unsigned i=0;i<exact_count;++i){auto const& r=exact_rows[i];auto const& a=r.association;auto const& d=a.descriptor;
-        fprintf(file,"ngx_mv_exact_dispatch row=%u world=%llu ticket=%llu renderer=%llx canonical=%llx generation=%llu serial=%llu heap=%llx resource=%llx gpu=%llx version=%llu origin=%llu source_handle=%llx source_version=%llu after_match=%u after_version=%llu after_origin=%llu caller=%llx groups=%u,%u,%u returned=%u stable=%u heap_observed=0 root_observed=0 full_bindings_verified=0 gpu_execution_verified=0 producer_authorized=0\n",
-            i,a.world,a.ticket,a.renderer,a.canonical,a.generation,a.serial,d.heap,d.resource,d.gpu,d.version,d.origin,d.source_handle,d.source_version,unsigned(r.after.match),r.after.version,r.after.origin,r.caller,r.groups[0],r.groups[1],r.groups[2],unsigned(r.returned),unsigned(r.stable));}
+        fprintf(file,"ngx_mv_exact_dispatch row=%u world=%llu ticket=%llu renderer=%llx canonical=%llx generation=%llu serial=%llu heap=%llx resource=%llx gpu=%llx version=%llu origin=%llu source_handle=%llx source_version=%llu after_match=%u after_version=%llu after_origin=%llu caller=%llx groups=%u,%u,%u returned=%u stable=%u pso=%llx pso_serial=%llu pso_stable=%u heap_observed=0 root_observed=0 full_bindings_verified=0 gpu_execution_verified=0 producer_authorized=0\n",
+            i,a.world,a.ticket,a.renderer,a.canonical,a.generation,a.serial,d.heap,d.resource,d.gpu,d.version,d.origin,d.source_handle,d.source_version,unsigned(r.after.match),r.after.version,r.after.origin,r.caller,r.groups[0],r.groups[1],r.groups[2],unsigned(r.returned),unsigned(r.stable),r.pso,r.pso_serial,unsigned(r.pso_stable));}
     fprintf(file,"ngx_mv_compute_dispatch_identities rows=%u limit=8 overflow_calls=%llu kind_not_attempted=0 kind_raw=1 kind_alias=2 kind_unmatched=3 kind_qi_failed=4\n",dispatch_identity_count,dispatch_identity_overflow);
     for(unsigned i=0;i<dispatch_identity_count;++i){auto const& d=dispatch_identities[i];
         fprintf(file,"ngx_mv_compute_dispatch_identity row=%u raw=%llx canonical=%llx retained_raw=%llx stored_generation=%llu current_identity=%llx current_generation=%llu kind=%u phase=%u calls=%llu scalar_only=1\n",
@@ -513,6 +606,8 @@ void print(FILE* file){
 #else
 struct ResetScope {explicit ResetScope(ID3D12GraphicsCommandList*){}void finish(HRESULT,gears_frame_link::ListRef={}){}};
 struct RevocationScope {RevocationScope(ID3D12GraphicsCommandList*,unsigned){}void finish(){}};
+struct SetScope {SetScope(ID3D12GraphicsCommandList*,ID3D12PipelineState*,uintptr_t,bool){}void finish(){}};
+bool snapshot_picked_pso(gears_vr::ComPtr<ID3D12PipelineState>&,gears_ngx_mv_compute::PsoWitnessKey&){return false;}
 void stop(){}void release_drained(){}void print(FILE*){}
 bool install_hooks(void**){return true;}
 #endif

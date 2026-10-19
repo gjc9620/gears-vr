@@ -54,7 +54,8 @@ bool list_methods(ID3D12GraphicsCommandList* list){
     return method(raw,25,targets[0])&&method(raw,11,targets[1])&&method(raw,27,targets[2]);
 }
 void STDMETHODCALLTYPE set(ID3D12GraphicsCommandList* list,ID3D12PipelineState* pso){
-    Scope scope;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;ngx_mv_compute_capture::SetScope witness(list,pso,caller,scope.world());
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     const auto id=identity(list);invalidate(id);
     ID3D12PipelineState* held{};uintptr_t canonical{};size_t index=list_limit;uint64_t generation{};
     if(scope.world()&&!stereo_publish_bypass&&selected()&&id&&list_methods(list)){
@@ -62,7 +63,7 @@ void STDMETHODCALLTYPE set(ID3D12GraphicsCommandList* list,ID3D12PipelineState* 
         if(generation&&hold(pso,held,canonical)){index=bank.slot(id);if(index==list_limit){held->Release();held=nullptr;invalidate(0);}}
         else ++rejected;
     }else ++untracked_sets;
-    const auto revision=bank.invalidations;original_set(list,pso);
+    const auto revision=bank.invalidations;original_set(list,pso);witness.finish();
     if(held){if(bank.invalidations!=revision)held->Release();
         else {transient[index]=held;bank.witness(index,generation,canonical,now());}}
 }

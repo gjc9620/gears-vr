@@ -2,6 +2,7 @@
 #undef NDEBUG
 #endif
 #include "ngx_mv_compute_binding.h"
+#include "ngx_mv_compute_snapshot.h"
 #include <cassert>
 #include <cstdio>
 
@@ -120,9 +121,27 @@ void empty_retirement(){
     assert(!b.dispatch({100,4,4}).binding_observed); // Re-admission cannot inherit bindings.
     b.forget_binding(100);b.uncertain();assert(!b.erase_empty(100)&&b.failed());
 }
+void pso_witness_identity_and_revocation(){
+    PsoWitnessKey key{100,200,300,4,5,6,7};
+    // Typed interface raw addresses are deliberately absent: a canonical alias
+    // with the same genuine generation/context is the same witness candidate.
+    assert(pso_witness_matches(key,true,100,4,5,6,300,7));
+    assert(!pso_witness_matches(key,true,101,4,5,6,300,7));
+    assert(!pso_witness_matches(key,true,100,8,5,6,300,7));
+    assert(!pso_witness_matches(key,true,100,0,5,6,300,7));
+    assert(!pso_witness_matches(key,true,100,4,8,6,300,7));
+    assert(!pso_witness_matches(key,true,100,4,5,8,300,7));
+    assert(!pso_witness_matches(key,true,100,4,5,6,301,7));
+    assert(!pso_witness_matches(key,true,100,4,5,6,300,8)); // Any Set/revocation advances serial.
+    assert(!pso_witness_matches(key,false,100,4,5,6,300,7));
+    PsoWitnessValidity state;state.valid=true;state.attest_stable_dispatch(true);
+    state.revoke();assert(!state.valid&&state.historical_stable);
+    state.attest_stable_dispatch(false);assert(state.historical_stable);
+    PsoWitnessValidity unknown;unknown.attest_stable_dispatch(true);assert(!unknown.historical_stable);
+}
 }
 int main(){
     redundant_and_changed_bindings();table_preconditions_and_no_extent_inference();boundaries_and_new_generation();
-    invalid_generation_and_terminal_loss();list_isolation_and_capacity();destructive_revocation();empty_retirement();
+    invalid_generation_and_terminal_loss();list_isolation_and_capacity();destructive_revocation();empty_retirement();pso_witness_identity_and_revocation();
     std::puts("NGX MV compute binding CPU tests passed; scalar candidate only, no table extent/descriptor/GPU/producer proof");
 }

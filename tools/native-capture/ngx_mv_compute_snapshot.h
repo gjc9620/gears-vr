@@ -2,6 +2,19 @@
 #include <array>
 #include <cstdint>
 namespace gears_ngx_mv_compute {
+struct PsoWitnessKey {
+    uintptr_t canonical{},pso{},renderer{};uint64_t generation{},world{},ticket{},serial{};
+};
+struct PsoWitnessValidity {
+    bool valid{},historical_stable{};
+    void revoke(){valid=false;}
+    void attest_stable_dispatch(bool stable){if(valid&&stable)historical_stable=true;}
+};
+inline bool pso_witness_matches(PsoWitnessKey const& key,bool valid,uintptr_t canonical,uint64_t generation,
+                                uint64_t world,uint64_t ticket,uintptr_t renderer,uint64_t serial){
+    return valid&&key.canonical&&key.pso&&key.generation&&key.world&&key.ticket&&key.renderer&&
+        key.canonical==canonical&&key.generation==generation&&key.world==world&&key.ticket==ticket&&key.renderer==renderer&&key.serial==serial;
+}
 // Scalar snapshot only; native descriptor/resource ownership stays in its bank.
 struct ExactTarget {
     bool ready{},match{};uintptr_t heap{},resource{};
