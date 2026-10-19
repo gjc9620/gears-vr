@@ -52,7 +52,7 @@ template<size_t N=128> struct Ranges {
 struct ViewDescription {bool readable=true,provided{};D3D12_UNORDERED_ACCESS_VIEW_DESC value{};};
 
 template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease,
-         size_t HeapCapacity=8,size_t CellCapacity=128,bool ReuseNonUav=false,size_t CopyCapacity=CellCapacity>
+         size_t HeapCapacity=8,size_t CellCapacity=128,bool ReuseNonUav=false,size_t CopyCapacity=CellCapacity,bool SourceLedger=false>
 class DescriptorBank {
     static_assert(HeapCapacity&&CellCapacity&&CopyCapacity&&CopyCapacity<=CellCapacity,"nonempty bounded observation/copy limits");
     struct Cell {uintptr_t heap{};uint32_t index{};uint64_t version{},origin{},source_handle{},source_version{};
@@ -105,6 +105,7 @@ public:
     // serializes callbacks; sources are all captured before any destination.
     static constexpr size_t copy_scratch_bytes=sizeof(std::array<Cell,CopyCapacity>)+2*sizeof(std::array<uint64_t,CopyCapacity>);
     static constexpr bool reuse_non_uav=ReuseNonUav;
+    static constexpr bool source_ledger=SourceLedger;
     enum class CapacitySite:unsigned {none,heaps,cells,ranges,serial};
     struct CellCounts {size_t known_uav{},non_uav{},unused{};uint64_t reuses{};};
     struct Saturation {CapacitySite site{};size_t heaps{};CellCounts cells{};};
@@ -178,7 +179,13 @@ private:
         for(unsigned i=0;i<dn;++i){for(unsigned j=0;j<dn;++j)if(dst[i]==src[j]||(j<i&&dst[i]==dst[j]))return lose(Loss::overlap);
             uint32_t slot{};auto* h=heap(src[i],false,slot);if(auto* c=find(h->canonical,slot))captured[i]=*c;}
         for(unsigned i=0;i<dn;++i){uint32_t slot{};auto* h=heap(dst[i],false,slot);
-            if(sparse&&!captured[i].known_uav&&!find(h->canonical,slot))continue;
+            const auto* tracked=find(h->canonical,slot);
+            // A source ledger retains direct CreateUAVs (including visible
+            // births) and CPU aliases, never ordinary visible copy fanout.
+            // Existing tracked visible destinations still update or erase.
+            // Every range/source/overlap check above also covers skipped rows.
+            if constexpr(SourceLedger){if(!tracked&&(h->visible||!captured[i].known_uav))continue;}
+            if(sparse&&!captured[i].known_uav&&!tracked)continue;
             auto* c=destination(h->canonical,slot);if(!c)return false;
             if(serial_==UINT64_MAX)return capacity_loss(CapacitySite::serial);auto value_copy=std::move(captured[i]);value_copy.heap=h->canonical;value_copy.index=slot;
             value_copy.source_handle=src[i];value_copy.source_version=value_copy.version;value_copy.version=++serial_;*c=std::move(value_copy);}
@@ -228,4 +235,8 @@ public:
 inline constexpr size_t observer_heap_capacity=96,observer_cell_capacity=512,observer_copy_capacity=128;
 template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease>
 using ObserverDescriptorBank=DescriptorBank<ResourceLease,DescriptorHeapLease,observer_heap_capacity,observer_cell_capacity,true,observer_copy_capacity>;
+// Independent observation scope; never repairs or restarts a failed whole-
+// device bank. Original direct UAV cells and nonvisible aliases only, no eviction.
+template<class ResourceLease=gears_ngx_stereo::TypedResourceLease,class DescriptorHeapLease=HeapLease>
+using SourceDescriptorLedger=DescriptorBank<ResourceLease,DescriptorHeapLease,96,128,false,128,true>;
 }

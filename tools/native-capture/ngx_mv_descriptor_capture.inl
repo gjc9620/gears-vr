@@ -4,7 +4,9 @@
 namespace ngx_mv_descriptor_capture {
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
 using Bank=gears_ngx_mv::ObserverDescriptorBank<>;
+using SourceBank=gears_ngx_mv::SourceDescriptorLedger<>;
 using Ranges=Bank::CopyRanges;
+static_assert(Bank::copy_capacity==SourceBank::copy_capacity,"one guarded copy format for independently admitted observers");
 using HeapFn=HRESULT(STDMETHODCALLTYPE*)(ID3D12Device*,const D3D12_DESCRIPTOR_HEAP_DESC*,REFIID,void**);
 using CbvFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,const D3D12_CONSTANT_BUFFER_VIEW_DESC*,D3D12_CPU_DESCRIPTOR_HANDLE);
 using SrvFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,ID3D12Resource*,const D3D12_SHADER_RESOURCE_VIEW_DESC*,D3D12_CPU_DESCRIPTOR_HANDLE);
@@ -12,12 +14,18 @@ using UavFn=void(STDMETHODCALLTYPE*)(ID3D12Device*,ID3D12Resource*,ID3D12Resourc
 HeapFn original_heap{};CbvFn original_cbv{};SrvFn original_srv{};UavFn original_uav{};
 std::recursive_mutex mutex;
 std::unique_ptr<Bank> bank;
+std::unique_ptr<SourceBank> source_bank;
 gears_ngx_mv_census::Census heap_census;
 gears_ngx_mv::Scope lifetime{};
+gears_ngx_mv::Scope source_lifetime{};
 bool armed{},accepting{},failed{},released{};
+bool source_failed{};
 unsigned final_loss{};size_t final_heaps{},final_cells{};
 Bank::CellCounts final_cell_counts{};Bank::Saturation final_saturation{};
+unsigned source_final_loss{};size_t source_final_heaps{},source_final_cells{};
+SourceBank::CellCounts source_final_counts{};SourceBank::Saturation source_final_saturation{};
 uint64_t heap_calls{},uav_calls{},invalidations{},copies{},other_devices{},missing_birth{},recursions{},uncertainties{};
+uint64_t source_heaps{},source_uavs{},source_invalidations{},source_copies{},source_other_devices{},source_missing_birth{},source_uncertainties{};
 thread_local unsigned depth{};
 // Frozen scalar audit only; no extra COM owners survive the bank's existing
 // drained teardown. Identity is historical at accepted Eval, not later use.
@@ -28,19 +36,37 @@ struct MvJoin {
     std::array<MvMatch,8> rows{};
 };
 std::array<MvJoin,2> mv_joins{};
-void fail(){failed=true;++uncertainties;if(bank)bank->uncertain();}
+struct SourceMatch {
+    gears_ngx_mv::Scope scope{};MvMatch descriptor{};uintptr_t heap_raw{},resource{},counter_raw{},counter{},counter_device{};
+    bool visible{};gears_ngx_mv::ViewDescription view{};
+};
+struct SourceJoin {MvJoin summary{};std::array<SourceMatch,8> rows{};bool legacy_failed_at_eval{};};
+SourceJoin source_join{}; // First accepted Eval only; scalar historical audit.
+bool legacy_live(){return accepting&&!failed&&(!bank||!bank->failed());}
+bool source_live(){return accepting&&!source_failed&&(!source_bank||!source_bank->failed());}
+void fail(){if(!legacy_live())return;failed=true;++uncertainties;if(bank)bank->uncertain();}
+void source_fail(){if(!source_live())return;source_failed=true;++source_uncertainties;if(source_bank)source_bank->uncertain();}
 template<class F> void attempt(F&& fn){try{fn();}catch(...){fail();}}
+template<class F> void source_attempt(F&& fn){try{fn();}catch(...){source_fail();}}
 struct Call {
-    std::unique_lock<std::recursive_mutex> lock{mutex,std::defer_lock};bool entered{},admitted{},census_admitted{};
+    std::unique_lock<std::recursive_mutex> lock{mutex,std::defer_lock};bool entered{},admitted{},source_admitted{},census_admitted{};
     explicit Call(bool relevant=true){if(!relevant)return;lock.lock();if(!accepting)return;
-        entered=true;if(depth++){++recursions;fail();return;}census_admitted=true;admitted=!failed&&(!bank||!bank->failed());}
+        entered=true;if(depth++){++recursions;fail();source_fail();return;}
+        census_admitted=true;admitted=legacy_live();source_admitted=source_live();}
     ~Call(){if(entered)--depth;}
-    explicit operator bool()const{return admitted&&!failed&&(!bank||!bank->failed());}
+    bool legacy()const{return admitted&&legacy_live();}
+    bool source()const{return source_admitted&&source_live();}
+    explicit operator bool()const{return legacy()||source();}
 };
 bool selected(ID3D12Device* device){
     if(!bank)return false;const auto identity=canonical_identity(device);
     if(!identity){fail();return false;}
     if(identity!=lifetime.device){++other_devices;return false;}return true;
+}
+bool source_selected(ID3D12Device* device){
+    if(!source_bank)return false;const auto identity=canonical_identity(device);
+    if(!identity){source_fail();return false;}
+    if(identity!=source_lifetime.device){++source_other_devices;return false;}return true;
 }
 Ranges read_ranges(UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* starts,const UINT* sizes){
     Ranges out;out.count=count;out.sizes_present=sizes!=nullptr;
@@ -51,8 +77,10 @@ Ranges read_ranges(UINT count,const D3D12_CPU_DESCRIPTOR_HANDLE* starts,const UI
     for(unsigned i=0;i<count;++i)out.starts[i]=handles[i].ptr;return out;
 }
 void copied(ID3D12Device* device,Ranges const& destination,Ranges const& source){
-    ++copies;if(!bank){++missing_birth;fail();return;}
-    if(selected(device))bank->copy_sparse(lifetime,destination,source);
+    if(legacy_live())attempt([&]{++copies;if(!bank){++missing_birth;fail();return;}
+        if(selected(device))bank->copy_sparse(lifetime,destination,source);});
+    if(source_live())source_attempt([&]{++source_copies;if(!source_bank){++source_missing_birth;source_fail();return;}
+        if(source_selected(device))source_bank->copy_sparse(source_lifetime,destination,source);});
 }
 void arm(){std::lock_guard<std::recursive_mutex> lock(mutex);if(!armed){armed=true;accepting=true;heap_census.arm();}}
 void close(){std::lock_guard<std::recursive_mutex> lock(mutex);accepting=false;heap_census.close();}
@@ -60,6 +88,20 @@ void accepted_eval(unsigned ordinal,uint64_t revision,uint64_t world,uint64_t ti
     gears_ngx_stereo::TypedResourceLease const* mv){
     std::lock_guard<std::recursive_mutex> lock(mutex);
     heap_census.accepted(ordinal,{revision,world,ticket,renderer,handle,parameters});
+    if(ordinal==0&&!source_join.summary.present){auto& j=source_join.summary;
+        source_join.legacy_failed_at_eval=failed||(bank&&bank->failed());
+        j.present=true;j.use={revision,world,ticket,renderer,handle,parameters};j.capture_generation=source_lifetime.epoch;
+        j.typed_retained=mv&&mv->retained();j.bank_ready=source_live()&&source_bank;
+        if(j.typed_retained){j.raw=mv->raw;j.canonical=mv->canonical;j.device=mv->device;
+            j.device_match=j.bank_ready&&mv->device==source_lifetime.device;
+            if(j.device_match)j.matches=source_bank->visit_mv(source_lifetime,*mv,[&](SourceBank::Snapshot const& snapshot){
+                if(j.saved==source_join.rows.size())return;
+                auto& row=source_join.rows[j.saved++];row.scope=snapshot.scope;
+                row.descriptor={snapshot.heap.canonical,snapshot.cpu,snapshot.gpu,snapshot.version,snapshot.origin,snapshot.source_handle,snapshot.source_version};
+                row.heap_raw=snapshot.heap.raw;row.resource=snapshot.resource.raw;row.counter_raw=snapshot.counter.raw;
+                row.counter=snapshot.counter.canonical;row.counter_device=snapshot.counter.device;
+                row.visible=snapshot.heap.visible;row.view=snapshot.view;
+            });}}
     if(ordinal>=mv_joins.size()||mv_joins[ordinal].present)return;
     auto& join=mv_joins[ordinal];join.present=true;join.use={revision,world,ticket,renderer,handle,parameters};
     join.capture_generation=lifetime.epoch;join.typed_retained=mv&&mv->retained();
@@ -76,15 +118,17 @@ void accepted_eval(unsigned ordinal,uint64_t revision,uint64_t world,uint64_t ti
 void release_drained(){
     // Closing admission precedes disabling hooks. Taking this lock drains every
     // admitted original/post-call update; active additionally covers Scope.
-    std::unique_ptr<Bank> retired;
+    std::unique_ptr<Bank> retired;std::unique_ptr<SourceBank> source_retired;
     {std::lock_guard<std::recursive_mutex> lock(mutex);
         if(accepting||active.load()||depth)return;
         if(bank){final_loss=static_cast<unsigned>(bank->loss());final_heaps=bank->heaps();final_cells=bank->cells();
             final_cell_counts=bank->cell_counts();final_saturation=bank->saturation();retired=std::move(bank);}
+        if(source_bank){source_final_loss=static_cast<unsigned>(source_bank->loss());source_final_heaps=source_bank->heaps();source_final_cells=source_bank->cells();
+            source_final_counts=source_bank->cell_counts();source_final_saturation=source_bank->saturation();source_retired=std::move(source_bank);}
         released=true;}
     // No observer lock across native Release: a closed passthrough callback
     // may still enter the DLL. It cannot access the detached bank.
-    retired.reset();
+    retired.reset();source_retired.reset();
 }
 void print_census(FILE* status,char const* stage,unsigned ordinal,gears_ngx_mv_census::Counts const& c,gears_ngx_mv_census::Use use={}){
     fprintf(status,"ngx_mv_heap_census stage=%s ordinal=%u revision=%llu world=%llu ticket=%llu renderer=%llx handle=%llx parameters=%llx all_devices=1 calls=%llu cumulative_creations=%llu visible_creations=%llu visible_descriptors_sum=%llu visible_descriptors_max=%llu nonvisible_creations=%llu nonvisible_descriptors_sum=%llu nonvisible_descriptors_max=%llu api_failures=%llu descriptor_unreadable=%llu output_unreadable=%llu non_creation=%llu other_heap_type=%llu saturated=%u reentrant_excluded_total=%llu cumulative_not_live_heaps=1 descriptors_not_vram_bytes=1 retained_extra_com=0 producer_authorized=0\n",
@@ -110,6 +154,23 @@ void print(FILE* status){std::lock_guard<std::recursive_mutex> lock(mutex);if(!s
     fprintf(status,"ngx_mv_descriptor_cells known_uav=%zu non_uav=%zu unused=%zu reuses=%llu reuse_non_uav=%u saturation_site=%u saturation_schema=0:none,1:heaps,2:cells,3:ranges,4:serial saturation_heaps=%zu saturation_known_uav=%zu saturation_non_uav=%zu saturation_unused=%zu saturation_reuses=%llu copy_range_capacity=%zu copy_descriptor_capacity=%zu copy_array_scratch_bytes=%zu known_uav_eviction=0 capacity_recovery=0 producer_authorized=0\n",
         occupancy.known_uav,occupancy.non_uav,occupancy.unused,occupancy.reuses,unsigned(Bank::reuse_non_uav),unsigned(saturation.site),saturation.heaps,
         saturation.cells.known_uav,saturation.cells.non_uav,saturation.cells.unused,saturation.cells.reuses,Bank::copy_capacity,Bank::copy_capacity,Bank::copy_scratch_bytes);
+    const auto source_counts=source_bank?source_bank->cell_counts():source_final_counts;
+    const auto source_saturation=source_bank?source_bank->saturation():source_final_saturation;
+    fprintf(status,"ngx_mv_source_ledger enabled=1 independent_of_legacy_bank=1 admission=%u capture_generation=%llu device=%llx scope=device_lifetime world=0 ticket=0 heaps=%zu cells=%zu heap_capacity=%zu cell_capacity=%zu copy_capacity=%zu known_uav=%zu non_uav=%zu unused=%zu heap_calls=%llu uav_calls=%llu invalidations=%llu copies=%llu other_devices=%llu missing_birth=%llu uncertainties=%llu failed=%u loss=%u saturation_site=%u saturation_known_uav=%zu saturation_non_uav=%zu released=%u direct_visible_births_retained=1 new_visible_copy_replicas_retained=0 producer_authorized=0\n",
+        unsigned(source_live()),source_lifetime.epoch,source_lifetime.device,source_bank?source_bank->heaps():source_final_heaps,source_bank?source_bank->cells():source_final_cells,
+        SourceBank::heap_capacity,SourceBank::cell_capacity,SourceBank::copy_capacity,source_counts.known_uav,source_counts.non_uav,source_counts.unused,
+        source_heaps,source_uavs,source_invalidations,source_copies,source_other_devices,source_missing_birth,source_uncertainties,
+        unsigned(source_failed||(source_bank?source_bank->failed():source_final_loss!=0)),source_bank?unsigned(source_bank->loss()):source_final_loss,
+        unsigned(source_saturation.site),source_saturation.cells.known_uav,source_saturation.cells.non_uav,unsigned(released));
+    if(source_join.summary.present){auto const& j=source_join.summary;
+        fprintf(status,"ngx_mv_source_eval ordinal=0 revision=%llu world=%llu ticket=%llu renderer=%llx handle=%llx parameters=%llx mv_raw=%llx mv_canonical=%llx mv_device=%llx typed_retained=%u ledger_ready=%u device_match=%u legacy_failed_at_eval=%u matches=%zu saved=%zu truncated=%u snapshot_at_eval=1 scalar_only=1 dispatch_binding_verified=0 producer_authorized=0\n",
+            j.use.revision,j.use.world,j.use.ticket,j.use.renderer,j.use.handle,j.use.parameters,j.raw,j.canonical,j.device,unsigned(j.typed_retained),unsigned(j.bank_ready),unsigned(j.device_match),unsigned(source_join.legacy_failed_at_eval),j.matches,j.saved,unsigned(j.matches>j.saved));
+        for(size_t i=0;i<j.saved;++i){auto const& row=source_join.rows[i];auto const& r=row.descriptor;
+            fprintf(status,"ngx_mv_source_match index=%zu creation_scope_kind=%u creation_generation=%llu creation_world=%llu creation_ticket=%llu creation_device=%llx heap_raw=%llx heap=%llx visible=%u cpu=%llu gpu=%llu version=%llu origin=%llu source_handle=%llu source_version=%llu resource_raw=%llx resource_canonical=%llx counter_raw=%llx counter_canonical=%llx counter_device=%llx view_readable=%u view_provided=%u view_bytes=",
+                i,unsigned(row.scope.kind),row.scope.epoch,row.scope.world,row.scope.ticket,row.scope.device,row.heap_raw,r.heap,unsigned(row.visible),r.cpu,r.gpu,r.version,r.origin,r.source_handle,r.source_version,row.resource,j.canonical,row.counter_raw,row.counter,row.counter_device,unsigned(row.view.readable),unsigned(row.view.provided));
+            auto const* bytes=reinterpret_cast<unsigned char const*>(&row.view.value);
+            for(size_t b=0;b<sizeof(row.view.value);++b)fprintf(status,"%02x",unsigned(bytes[b]));
+            fprintf(status," snapshot_current_at_eval=1 historical_cpu_provenance=1 producer_authorized=0\n");}}
     for(unsigned i=0;i<heap_census.snapshots().size();++i){auto const& s=heap_census.snapshots()[i];
         if(s.present)print_census(status,"accepted_eval",i,s.counts,s.use);}
     for(unsigned i=0;i<mv_joins.size();++i){auto const& j=mv_joins[i];if(!j.present)continue;
@@ -135,33 +196,45 @@ HRESULT STDMETHODCALLTYPE heap(ID3D12Device* device,const D3D12_DESCRIPTOR_HEAP_
         heap_census.record({readable,eligible,FAILED(result),output_readable,SUCCEEDED(result)&&raw!=nullptr,
             (before.Flags&D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE)!=0,before.NumDescriptors});
     }
-    if(call)attempt([&]{
-        if(!readable){fail();return;}
-        if(before.Type!=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV||FAILED(result))return;
-        ++heap_calls;Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> typed;
-        if(!output_readable||!raw||FAILED(raw->QueryInterface(IID_PPV_ARGS(&typed)))){fail();return;}
-        if(!bank){const auto identity=canonical_identity(device);if(!identity){fail();return;}
+    if(call){try{
+        if(!readable){if(call.legacy())fail();if(call.source())source_fail();return result;}
+        if(before.Type!=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV||FAILED(result))return result;
+        if(call.legacy())++heap_calls;if(call.source())++source_heaps;
+        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> typed;
+        if(!output_readable||!raw||FAILED(raw->QueryInterface(IID_PPV_ARGS(&typed)))){
+            if(call.legacy())fail();if(call.source())source_fail();return result;}
+        if(call.legacy())attempt([&]{if(!bank){const auto identity=canonical_identity(device);if(!identity){fail();return;}
             // One immutable bank: no world-reset clearing or device rebinding.
             lifetime=gears_ngx_mv::lifetime_scope(1,identity);bank=std::make_unique<Bank>();
             if(!bank->begin(lifetime)){fail();return;}}
-        if(selected(device))bank->observe_heap(lifetime,typed.Get());
-    });return result;
+            if(selected(device))bank->observe_heap(lifetime,typed.Get());});
+        if(call.source())source_attempt([&]{if(!source_bank){const auto identity=canonical_identity(device);if(!identity){source_fail();return;}
+            source_lifetime=gears_ngx_mv::lifetime_scope(1,identity);source_bank=std::make_unique<SourceBank>();
+            if(!source_bank->begin(source_lifetime)){source_fail();return;}}
+            if(source_selected(device))source_bank->observe_heap(source_lifetime,typed.Get());});
+        }catch(...){if(call.legacy())fail();if(call.source())source_fail();}
+    }return result;
 }
 void STDMETHODCALLTYPE cbv(ID3D12Device* device,const D3D12_CONSTANT_BUFFER_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle){
     Scope scope;auto frame_guard=frame_lock();Call call;original_cbv(device,desc,handle);
-    if(call)attempt([&]{++invalidations;if(selected(device))bank->invalidate_if_tracked(lifetime,handle.ptr);});
+    if(call.legacy())attempt([&]{++invalidations;if(selected(device))bank->invalidate_if_tracked(lifetime,handle.ptr);});
+    if(call.source())source_attempt([&]{++source_invalidations;if(source_selected(device))source_bank->invalidate_if_tracked(source_lifetime,handle.ptr);});
 }
 void STDMETHODCALLTYPE srv(ID3D12Device* device,ID3D12Resource* resource,const D3D12_SHADER_RESOURCE_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle){
     Scope scope;auto frame_guard=frame_lock();Call call;original_srv(device,resource,desc,handle);
-    if(call)attempt([&]{++invalidations;if(selected(device))bank->invalidate_if_tracked(lifetime,handle.ptr);});
+    if(call.legacy())attempt([&]{++invalidations;if(selected(device))bank->invalidate_if_tracked(lifetime,handle.ptr);});
+    if(call.source())source_attempt([&]{++source_invalidations;if(source_selected(device))source_bank->invalidate_if_tracked(source_lifetime,handle.ptr);});
 }
 void STDMETHODCALLTYPE uav(ID3D12Device* device,ID3D12Resource* resource,ID3D12Resource* counter,const D3D12_UNORDERED_ACCESS_VIEW_DESC* desc,D3D12_CPU_DESCRIPTOR_HANDLE handle){
     Scope scope;auto frame_guard=frame_lock();Call call;gears_ngx_mv::ViewDescription before;
     if(call){before.provided=desc!=nullptr;before.readable=!desc||safe_copy(&before.value,desc,sizeof(before.value));}
     original_uav(device,resource,counter,desc,handle);
-    if(call)attempt([&]{++uav_calls;if(!bank){++missing_birth;fail();return;}
+    if(call.legacy())attempt([&]{++uav_calls;if(!bank){++missing_birth;fail();return;}
         if(selected(device)){if(!bank->contains_cpu(handle.ptr))++missing_birth;
             bank->write_uav(lifetime,handle.ptr,resource,counter,before);}});
+    if(call.source())source_attempt([&]{++source_uavs;if(!source_bank){++source_missing_birth;source_fail();return;}
+        if(source_selected(device)){if(!source_bank->contains_cpu(handle.ptr))++source_missing_birth;
+            source_bank->write_uav(source_lifetime,handle.ptr,resource,counter,before);}});
 }
 // Dedicated self-test only. All writes below enter the real patched D3D12
 // device methods; helper access is restricted to inspecting resulting evidence.
@@ -175,7 +248,7 @@ DWORD native_check(Bank::Snapshot& retained){
     for(unsigned i=0;i<4;++i)if(table[slots[i]]!=prime_targets[prime_hook_base_count+i])return 303;
     if(table[23]!=prime_targets[1]||table[24]!=prime_targets[2])return 304;
     {std::lock_guard<std::recursive_mutex> lock(mutex);
-        if(!armed||!accepting||failed||bank||heap_calls||uav_calls||copies)return 305;}
+        if(!armed||!accepting||failed||bank||heap_calls||uav_calls||copies||source_failed||source_bank||source_heaps||source_uavs||source_copies)return 305;}
     D3D12_DESCRIPTOR_HEAP_DESC hd{};hd.Type=D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;hd.NumDescriptors=4;
     if(FAILED(device->CreateDescriptorHeap(&hd,IID_PPV_ARGS(&cpu_heap))))return 306;
     hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
@@ -185,6 +258,9 @@ DWORD native_check(Bank::Snapshot& retained){
         if(!bank||bank->failed()||failed||heap_calls!=2||bank->heaps()!=2||bank->cells()||
            lifetime.kind!=gears_ngx_mv::ScopeKind::device_lifetime||!lifetime.epoch||
            lifetime.world||lifetime.ticket||lifetime.device!=device_id)return 308;}
+    {std::lock_guard<std::recursive_mutex> lock(mutex);
+        if(!source_bank||source_bank->failed()||source_heaps!=2||source_bank->heaps()!=2||source_bank->cells()||
+           !gears_ngx_mv::same(source_lifetime,lifetime))return 330;}
     {std::lock_guard<std::recursive_mutex> lock(mutex);auto const& c=heap_census.counts();
         if(c.creations!=2||c.visible.creations!=1||c.nonvisible.creations!=1||
            c.visible.descriptors!=4||c.nonvisible.descriptors!=4||c.visible.max_descriptors!=4||c.nonvisible.max_descriptors!=4||
@@ -253,11 +329,41 @@ DWORD native_check(Bank::Snapshot& retained){
     {std::lock_guard<std::recursive_mutex> lock(mutex);
         if(!bank||failed||bank->failed()||bank->cells()!=3||heap_calls!=2||uav_calls!=2||copies!=4||
            invalidations!=4||other_devices||missing_birth||recursions||uncertainties)return 322;}
+    // Deliberate fixture-only loss: verify real patched device callbacks still
+    // feed the independent ledger while every legacy count/cell stays frozen.
+    {std::lock_guard<std::recursive_mutex> lock(mutex);
+        if(!source_bank||source_failed||source_bank->failed()||source_bank->cells()!=2||
+           source_bank->lookup(source_lifetime,gpu_cpu.ptr).version||source_uavs!=2||source_copies!=4||source_invalidations!=4)return 331;
+        bank->uncertain();}
+    device->CreateUnorderedAccessView(first.Get(),nullptr,&uv,cpu);
+    device->CopyDescriptorsSimple(1,cpu1,cpu,hd.Type);
+    SourceBank::Snapshot source_alias;
+    {std::lock_guard<std::recursive_mutex> lock(mutex);source_alias=source_bank->lookup(source_lifetime,cpu1.ptr);
+        if(!source_alias.same_mv(typed_first)||source_alias.source_handle!=cpu.ptr||!source_bank->current(source_alias))return 332;}
+    device->CreateShaderResourceView(second.Get(),&sv,cpu1);
+    device->CopyDescriptorsSimple(1,gpu_cpu,cpu,hd.Type); // Suppressed visible replica.
+    {std::lock_guard<std::recursive_mutex> lock(mutex);
+        if(source_bank->current(source_alias)||source_bank->lookup(source_lifetime,gpu_cpu.ptr).version||source_bank->cells()!=2)return 333;}
+    device->CreateUnorderedAccessView(first.Get(),nullptr,&uv,gpu_cpu); // Direct visible birth retained.
+    SourceBank::Snapshot visible_birth;
+    {std::lock_guard<std::recursive_mutex> lock(mutex);visible_birth=source_bank->lookup(source_lifetime,gpu_cpu.ptr);
+        if(!visible_birth.same_mv(typed_first)||!visible_birth.heap.visible)return 334;}
+    device->CopyDescriptorsSimple(1,gpu_cpu,cpu1,hd.Type); // Unknown alias erases tracked visible birth.
+    accepted_eval(0,1,2,3,4,5,6,&typed_first);
+    {std::lock_guard<std::recursive_mutex> lock(mutex);
+        if(source_failed||source_bank->failed()||source_bank->current(visible_birth)||source_bank->cells()!=3||
+           source_uavs!=4||source_copies!=7||source_invalidations!=5||source_other_devices||source_missing_birth||source_uncertainties)return 335;
+        auto const& j=source_join.summary;
+        if(!j.present||!j.bank_ready||!j.typed_retained||!j.device_match||j.matches!=1||j.saved!=1||
+           !source_join.legacy_failed_at_eval||!gears_ngx_mv::same(source_join.rows[0].scope,source_lifetime))return 336;
+        if(bank->loss()!=gears_ngx_mv::Loss::unreadable||bank->cells()!=3||heap_calls!=2||uav_calls!=2||copies!=4||invalidations!=4||
+           failed||uncertainties||recursions)return 337;}
     return 0;
 }
 DWORD native_closed_check(Bank::Snapshot const& retained){
     std::lock_guard<std::recursive_mutex> lock(mutex);
-    if(accepting||!released||bank||active.load()||depth||failed||final_loss||final_heaps!=2||final_cells!=3)return 327;
+    if(accepting||!released||bank||active.load()||depth||failed||final_loss!=unsigned(gears_ngx_mv::Loss::unreadable)||final_heaps!=2||final_cells!=3)return 327;
+    if(source_bank||source_failed||source_final_loss||source_final_heaps!=2||source_final_cells!=3||source_final_counts.known_uav!=1||source_final_counts.non_uav!=2)return 338;
     if(!retained.retained_uav()||!gears_ngx_mv::same(retained.scope,lifetime)||retained.scope.world||retained.scope.ticket)return 328;
     return 0;
 }

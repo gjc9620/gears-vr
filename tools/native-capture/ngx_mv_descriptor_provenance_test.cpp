@@ -338,6 +338,79 @@ void production_cell_and_copy_boundaries(){
     assert(!ranges->copy_sparse(early,d,s)&&ranges->loss()==Loss::capacity&&!ranges->cells());
     assert(ranges->saturation().site==ObserverBank::CapacitySite::ranges&&ranges->saturation().cells.unused==512);
 }
+void source_ledger_aliases_fanout_and_rewrites(){
+    using Ledger=gears_ngx_mv::SourceDescriptorLedger<ResourceLease,HeapLease>;
+    static_assert(Ledger::heap_capacity==96&&Ledger::cell_capacity==128&&Ledger::copy_capacity==128&&Ledger::source_ledger&&!Ledger::reuse_non_uav,"bounded independent source scope");
+    Ledger ledger;HeapFixture cpu{},aliases{202,7,100000,0,2048,16,false,true},gpu{203,7,1000000,10000000,4096,16,true,true};
+    ResourceFixture mv{},other{102,7,true};const auto early=gears_ngx_mv::lifetime_scope(1,7);
+    assert(ledger.begin(early)&&ledger.observe_heap(early,typed(cpu))&&ledger.observe_heap(early,typed(aliases))&&ledger.observe_heap(early,typed(gpu)));
+    gears_ngx_mv::ViewDescription view;view.provided=true;view.value.Format=DXGI_FORMAT_R32_UINT;view.value.ViewDimension=D3D12_UAV_DIMENSION_TEXTURE2D;
+    assert(ledger.write_uav(early,1000,typed(mv),typed(other),view));auto birth=ledger.lookup(early,1000);
+    assert(ledger.write_uav(early,1000000,typed(other),nullptr,view));auto visible_birth=ledger.lookup(early,1000000);
+    assert(visible_birth.retained_uav()&&visible_birth.heap.visible&&ledger.cells()==2);
+    assert(ledger.copy_simple_sparse(early,100000,1000,1));auto alias=ledger.lookup(early,100000);
+    assert(alias.retained_uav()&&alias.origin==birth.origin&&alias.source_version==birth.version&&alias.counter.canonical==other.canonical&&alias.view.provided);
+    assert(ledger.copy_simple_sparse(early,100016,100000,1));auto alias_chain=ledger.lookup(early,100016);
+    assert(alias_chain.origin==birth.origin&&alias_chain.source_version==alias.version&&ledger.cells()==4);
+    // More visible replicas than ledger capacity do not allocate source cells.
+    for(unsigned i=1;i<1024;++i)assert(ledger.copy_simple_sparse(early,1000000+16*i,100000,1));
+    assert(ledger.cells()==4&&!ledger.failed()&&!ledger.lookup(early,1000016).version);
+    // A direct-born visible cell remains tracked and must update on copy.
+    assert(ledger.copy_simple_sparse(early,1000000,1000,1));auto visible_updated=ledger.lookup(early,1000000);
+    assert(visible_updated.resource.canonical==mv.canonical&&!ledger.current(visible_birth)&&visible_updated.source_version==birth.version);
+    assert(ledger.write_uav(early,1000,typed(other),nullptr,view));assert(!ledger.current(birth)&&ledger.current(alias));
+    assert(ledger.copy_simple_sparse(early,100000,1000,1));assert(!ledger.current(alias)&&ledger.lookup(early,100000).resource.canonical==other.canonical);
+    // Unknown source overwrites an existing CPU alias or visible direct birth.
+    assert(ledger.copy_simple_sparse(early,100016,1016,1)&&!ledger.lookup(early,100016).retained_uav()&&!ledger.current(alias_chain));
+    assert(ledger.copy_simple_sparse(early,1000000,1016,1)&&!ledger.lookup(early,1000000).retained_uav()&&!ledger.current(visible_updated));
+    assert(ledger.invalidate_if_tracked(early,1000)&&ledger.invalidate_if_tracked(early,100000)); // SRV/CBV erasure.
+    auto mv_lease=ResourceLease::observe(typed(mv));size_t visits{};
+    assert(!ledger.visit_mv(early,mv_lease,[&](Ledger::Snapshot const&){++visits;})&&!visits);
+    assert(birth.retained_uav()&&visible_birth.retained_uav()&&!ledger.current(birth));
+}
+void source_ledger_independence_and_failed_no_join(){
+    using Legacy=gears_ngx_mv::DescriptorBank<ResourceLease,HeapLease,3,4>;
+    using Ledger=gears_ngx_mv::SourceDescriptorLedger<ResourceLease,HeapLease>;
+    Legacy legacy;Ledger ledger;HeapFixture cpu{},gpu{202,7,1000000,10000000,4096,16,true,true};ResourceFixture mv;
+    const auto early=gears_ngx_mv::lifetime_scope(1,7);
+    assert(legacy.begin(early)&&ledger.begin(early));
+    HeapFixture* const observed[]{&cpu,&gpu};
+    for(auto* h:observed)assert(legacy.observe_heap(early,typed(*h))&&ledger.observe_heap(early,typed(*h)));
+    assert(legacy.write_uav(early,1000,typed(mv),nullptr,{})&&ledger.write_uav(early,1000,typed(mv),nullptr,{}));
+    for(unsigned i=0;i<3;++i){assert(legacy.copy_simple_sparse(early,1000000+16*i,1000,1));assert(ledger.copy_simple_sparse(early,1000000+16*i,1000,1));}
+    assert(!legacy.copy_simple_sparse(early,1000048,1000,1)&&legacy.loss()==Loss::capacity);
+    // The caller continues admitting the independent ledger after legacy loss;
+    // this does not mutate or rehabilitate the frozen legacy observation.
+    const auto frozen=legacy.saturation();assert(ledger.copy_simple_sparse(early,1000048,1000,1));
+    assert(ledger.write_uav(early,1016,typed(mv),nullptr,{}));
+    auto typed_mv=ResourceLease::observe(typed(mv));size_t matched{};
+    assert(ledger.visit_mv(early,typed_mv,[&](Ledger::Snapshot const& snapshot){
+        ++matched;assert(snapshot.same_mv(typed_mv)&&ledger.current(snapshot)&&gears_ngx_mv::same(snapshot.scope,early)&&!snapshot.scope.world&&!snapshot.scope.ticket);})==2&&matched==2);
+    assert(legacy.failed()&&legacy.saturation().cells.known_uav==frozen.cells.known_uav&&!legacy.lookup(early,1000).version);
+    ledger.uncertain();matched=0;assert(!ledger.visit_mv(early,typed_mv,[&](Ledger::Snapshot const&){++matched;})&&!matched);
+}
+void source_ledger_skipped_copy_validation(){
+    using Ledger=gears_ngx_mv::SourceDescriptorLedger<ResourceLease,HeapLease>;
+    const auto early=gears_ngx_mv::lifetime_scope(1,7);HeapFixture cpu{},gpu{202,7,1000000,10000000,4096,16,true,true};ResourceFixture mv;
+    for(unsigned bad=0;bad<4;++bad){Ledger ledger;assert(ledger.begin(early)&&ledger.observe_heap(early,typed(cpu))&&ledger.observe_heap(early,typed(gpu)));
+        assert(ledger.write_uav(early,1000,typed(mv),nullptr,{}));auto original=ledger.lookup(early,1000);
+        Ledger::CopyRanges d{},s{};d.count=s.count=1;d.starts[0]=1000016;s.starts[0]=1000;
+        if(bad==0)d.readable=false;if(bad==1)d.starts[0]=1000017;
+        if(bad==2){d.count=s.count=2;d.starts[1]=1000016;s.starts[1]=1016;}
+        if(bad==3)s.starts[0]=1000000; // Shader-visible source prohibited even though destination is skipped.
+        assert(!ledger.copy_sparse(early,d,s)&&ledger.failed()&&ledger.cells()==1&&!ledger.current(original));
+    }
+    Ledger full;HeapFixture large=cpu;large.count=129;
+    assert(full.begin(early)&&full.observe_heap(early,typed(large)));
+    assert(full.write_uav(early,1000,typed(mv),nullptr,{}));
+    // Nonvisible aliases remain bounded, with no source-ledger eviction/rearm.
+    for(unsigned i=1;i<128;++i)assert(full.copy_simple_sparse(early,1000+16*i,1000,1));
+    auto old=full.lookup(early,1000);assert(full.cells()==128&&full.cell_counts().known_uav==128);
+    assert(!full.copy_simple_sparse(early,1000+16*128,1000,1)&&full.loss()==Loss::capacity);
+    size_t joined{};auto typed_mv=ResourceLease::observe(typed(mv));
+    assert(!full.visit_mv(early,typed_mv,[&](Ledger::Snapshot const&){++joined;})&&!joined&&!full.current(old)&&old.retained_uav());
+    assert(!full.begin(early)&&full.saturation().cells.known_uav==128);
+}
 }
 int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     static_assert(!Bank::Snapshot::producer_authorized,"observation must not authorize producer");
@@ -347,5 +420,6 @@ int main(){_set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     production_heap_boundary();retained_mv_join();
     erased_cell_reuse_and_snapshot_aba();reuse_copy_source_snapshot_and_validation();
     production_cell_and_copy_boundaries();
+    source_ledger_aliases_fanout_and_rewrites();source_ledger_independence_and_failed_no_join();source_ledger_skipped_copy_validation();
     std::puts("NGX MV descriptor CPU provenance tests passed; no GPU/Dispatch/producer proof");
 }

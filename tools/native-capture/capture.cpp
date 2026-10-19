@@ -4083,7 +4083,7 @@ void STDMETHODCALLTYPE hook_copy_descriptors(ID3D12Device* device,UINT destinati
 #endif
     original_copy_descriptors(device,destinations,destination_starts,destination_sizes,sources,source_starts,source_sizes,type);
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
-    if(observation)ngx_mv_descriptor_capture::attempt([&]{ngx_mv_descriptor_capture::copied(device,captured_dest,captured_src);});
+    if(observation)ngx_mv_descriptor_capture::copied(device,captured_dest,captured_src);
 #endif
     if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> dest{},src{};unsigned dc{},sc{};
         std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
@@ -4101,10 +4101,10 @@ void STDMETHODCALLTYPE hook_copy_simple(ID3D12Device* device,UINT count,D3D12_CP
 #endif
     original_copy_simple(device,count,dest,src,type);
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
-    if(observation)ngx_mv_descriptor_capture::attempt([&]{
+    if(observation){
         ngx_mv_descriptor_capture::Ranges d{},s{};d.count=s.count=1;d.sizes_present=s.sizes_present=true;
         d.starts[0]=dest.ptr;s.starts[0]=src.ptr;d.sizes[0]=s.sizes[0]=count;
-        ngx_mv_descriptor_capture::copied(device,d,s);});
+        ngx_mv_descriptor_capture::copied(device,d,s);}
 #endif
     if((recording.load()||prime_recording.load())&&type==D3D12_DESCRIPTOR_HEAP_TYPE_RTV){std::array<uintptr_t,128> destinations{},sources{};unsigned dc{},sc{};
         std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
