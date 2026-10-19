@@ -49,6 +49,13 @@ uint64_t dispatches{},unbound{},unrelated{},invalidations{},waiting_bindings{},c
 uint64_t mutation{};
 uint64_t foreign_device_skips{},reuse_attempts{},reused{};
 struct Occupancy {unsigned occupied{},eligible{},partial{},pinned{},busy{},unrevoked{},unknown_blocked{},stale_blocked{};} capacity_occupancy;
+enum class CallerOperation:unsigned {heaps,root,table,dispatch};
+struct CallerRow {
+    CallerOperation operation{};unsigned phase{};uintptr_t caller{},rva{};bool in_game_image{},historical_candidate{};
+    uint64_t calls{},bank_failed_calls{},first_ticket{},last_ticket{};
+};
+std::array<CallerRow,32> caller_rows;unsigned caller_row_count{};
+uint64_t caller_calls{},caller_overflow_calls{};unsigned caller_image_size{};bool caller_image_checked{};
 thread_local unsigned depth{};
 struct EvidenceContext {const char* operation="none";uintptr_t raw{};bool owned_known{},owned{};};
 thread_local EvidenceContext evidence_context;
@@ -90,16 +97,47 @@ void lose(unsigned reason,char const* site="unspecified",List const* held=nullpt
     }stopped=true;
 }
 bool pending(){return !stopped&&!failed&&ngx_mv_target_capture::pending();}
-bool observing(bool owned){
-    evidence_context.owned_known=true;evidence_context.owned=owned;
+bool target_observing(bool owned){
     ngx_mv_target_capture::poll();
-    if(!pending()||!owned||stereo_publish_bypass||!recording.load())return false;
+    if(!ngx_mv_target_capture::pending()||!owned||stereo_publish_bypass||!recording.load())return false;
     auto const& s=ngx_mv_target_capture::window.snapshot();
     if(!consuming_frozen_frame.enabled||!consuming_renderer||consuming_frozen_frame.world_generation!=s.selection.world||
        committed_world_generation.load()!=s.selection.world||consuming_frame_ticket!=consuming_frozen_frame.id)return false;
     if(s.phase==gears_ngx_mv_target::Phase::capturing)
         return consuming_frame_ticket==s.consume.ticket&&reinterpret_cast<uintptr_t>(consuming_renderer)==s.consume.renderer;
     return consuming_frame_ticket>=s.selection.ticket;
+}
+bool observing(bool owned){
+    evidence_context.owned_known=true;evidence_context.owned=owned;
+    return target_observing(owned)&&!stopped&&!failed;
+}
+void census(CallerOperation operation,uintptr_t caller,bool owned){
+    // Scalar call-site evidence remains useful after the binding bank fails.
+    // It never admits a list, retains COM, or extends the selected Window.
+    if(!target_observing(owned))return;
+    if(!caller_image_checked){
+        caller_image_checked=true;IMAGE_DOS_HEADER dos{};IMAGE_NT_HEADERS64 nt{};
+        if(base&&safe_copy(&dos,reinterpret_cast<void*>(base),sizeof(dos))&&dos.e_magic==IMAGE_DOS_SIGNATURE&&
+           dos.e_lfanew>0&&dos.e_lfanew<0x100000&&safe_copy(&nt,reinterpret_cast<void*>(base+dos.e_lfanew),sizeof(nt))&&
+           nt.Signature==IMAGE_NT_SIGNATURE&&nt.OptionalHeader.Magic==IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+            caller_image_size=nt.OptionalHeader.SizeOfImage;
+    }
+    ++caller_calls;const auto phase=unsigned(ngx_mv_target_capture::window.snapshot().phase);
+    const bool in_game=caller_image_size&&caller>=base&&caller-base<caller_image_size;
+    const auto rva=in_game?caller-base:0;
+    CallerRow* row{};
+    for(unsigned i=0;i<caller_row_count;++i){auto& candidate=caller_rows[i];
+        if(candidate.operation==operation&&candidate.phase==phase&&candidate.caller==caller){row=&candidate;break;}}
+    if(!row){
+        if(caller_row_count==caller_rows.size()){++caller_overflow_calls;return;}
+        row=&caller_rows[caller_row_count++];row->operation=operation;row->phase=phase;row->caller=caller;row->rva=rva;row->in_game_image=in_game;
+        // Current call location alone does not establish historical identity.
+        // Candidate labels also require the existing loaded-host attestation.
+        row->historical_candidate=in_game&&ngx_stereo_host::attested&&(
+            (operation==CallerOperation::table&&rva==0x17b99a)||(operation==CallerOperation::dispatch&&rva==0x1ac833));
+        row->first_ticket=consuming_frame_ticket;
+    }
+    ++row->calls;if(failed)++row->bank_failed_calls;row->last_ticket=consuming_frame_ticket;
 }
 struct Depth {
     bool outer;int exceptions=std::uncaught_exceptions();
@@ -188,7 +226,8 @@ struct ResetScope {
         auto* held=retained;if(held){--held->reset_busy;retained=nullptr;}if(pending())lose(unwinding,"reset_unwind",held,reinterpret_cast<uintptr_t>(list));}}
 };
 void STDMETHODCALLTYPE heaps(ID3D12GraphicsCommandList* list,UINT count,ID3D12DescriptorHeap* const* native){
-    Scope scope;Retirement retirement;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("heaps",list);Depth call;
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Retirement retirement;
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::heaps,caller,scope.world());EvidenceScope evidence("heaps",list);Depth call;
     List* held=call.outer&&observing(scope.world())?track(list,retirement):nullptr;ListUse use(held);
     HeapLease selected;std::array<ID3D12DescriptorHeap*,2> values{};
     if(held){
@@ -203,7 +242,8 @@ void STDMETHODCALLTYPE heaps(ID3D12GraphicsCommandList* list,UINT count,ID3D12De
         held->heap=std::move(selected);bindings.shader_heap(ref(*held),held->heap.canonical);noted(*held);}
 }
 void STDMETHODCALLTYPE root(ID3D12GraphicsCommandList* list,ID3D12RootSignature* native){
-    Scope scope;Retirement retirement;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("root",list);Depth call;
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Retirement retirement;
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::root,caller,scope.world());EvidenceScope evidence("root",list);Depth call;
     List* held=call.outer&&observing(scope.world())?track(list,retirement):nullptr;ListUse use(held);
     gears_vr::ComPtr<ID3D12RootSignature> owner;gears_vr::ComPtr<IUnknown> id;
     if(held&&native){gears_vr::ComPtr<ID3D12Device> device;gears_vr::ComPtr<IUnknown> di;owner=native;
@@ -215,14 +255,15 @@ void STDMETHODCALLTYPE root(ID3D12GraphicsCommandList* list,ID3D12RootSignature*
         bindings.compute_root_signature(ref(*held),reinterpret_cast<uintptr_t>(held->root_identity.Get()));noted(*held);}
 }
 void STDMETHODCALLTYPE table(ID3D12GraphicsCommandList* list,UINT index,D3D12_GPU_DESCRIPTOR_HANDLE gpu){
-    Scope scope;Retirement retirement;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("table",list);Depth call;
+    const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;Retirement retirement;
+    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::table,caller,scope.world());EvidenceScope evidence("table",list);Depth call;
     List* held=call.outer&&observing(scope.world())?track(list,retirement):nullptr;ListUse use(held);if(!held)invalidate(list,0);
     const auto before=mutation;original_table(list,index,gpu);
     if(held&&current(*held)){if(before!=mutation){lose(changed,"table_post_mutation",held);return;}bindings.compute_root_table(ref(*held),index,gpu.ptr);noted(*held);}
 }
 void STDMETHODCALLTYPE dispatch(ID3D12GraphicsCommandList* list,UINT x,UINT y,UINT z){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;
-    Retirement retirement;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("dispatch",list);Depth call;
+    Retirement retirement;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);census(CallerOperation::dispatch,caller,scope.world());EvidenceScope evidence("dispatch",list);Depth call;
     Row* row{};List* held{};ListUse use;
     if(call.outer&&observing(scope.world())&&ngx_mv_target_capture::window.snapshot().phase==gears_ngx_mv_target::Phase::capturing){
         ++dispatches;held=track(list,retirement);use.attach(held);
@@ -291,6 +332,12 @@ void print(FILE* file){
     auto const& fo=f.occupancy;
     fprintf(file,"ngx_mv_compute_first_failure_occupancy present=%u occupied=%u eligible=%u partial_or_absent=%u pinned=%u busy=%u unrevoked=%u unknown_blocked=%u stale_blocked=%u blocker_counts_overlap=1\n",
         unsigned(f.present),fo.occupied,fo.eligible,fo.partial,fo.pinned,fo.busy,fo.unrevoked,fo.unknown_blocked,fo.stale_blocked);
+    fprintf(file,"ngx_mv_compute_callers rows=%u limit=32 calls=%llu overflow_calls=%llu module_base=%llx module_size=%u scalar_only=1 scope=target_pending_owned_consume bank_failure_independent=1 table_membership_verified=0 gpu_execution_verified=0 producer_authorized=0\n",
+        caller_row_count,caller_calls,caller_overflow_calls,base,caller_image_size);
+    constexpr char const* operations[]={"heaps","root","table","dispatch"};
+    for(unsigned i=0;i<caller_row_count;++i){auto const& c=caller_rows[i];
+        fprintf(file,"ngx_mv_compute_caller row=%u operation=%s phase=%u caller=%llx rva=%llx rva_valid=%u calls=%llu bank_failed_calls=%llu first_ticket=%llu last_ticket=%llu historical_caller_candidate=%u semantics_verified=0\n",
+            i,operations[unsigned(c.operation)],c.phase,c.caller,c.rva,unsigned(c.in_game_image),c.calls,c.bank_failed_calls,c.first_ticket,c.last_ticket,unsigned(c.historical_candidate));}
     for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];
         fprintf(file,"ngx_mv_compute_dispatch row=%u world=%llu ticket=%llu renderer=%llx list_raw=%llx list=%llx generation=%llu root=%llx heap=%llx root3=%llx groups=%u,%u,%u caller=%llx historical_caller_candidate=%u returned=%u stable=%u exact_base_mv=%u candidates=%u table_membership_verified=0 gpu_execution_verified=0 producer_authorized=0\n",
             i,r.world,r.ticket,r.renderer,r.raw,r.canonical,r.generation,r.root,r.heap,r.root3,r.groups[0],r.groups[1],r.groups[2],r.caller,unsigned(r.caller_candidate),unsigned(r.returned),unsigned(r.stable),unsigned(r.before.exact_base_mv),r.before.count);
