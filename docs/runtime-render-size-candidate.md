@@ -8,6 +8,18 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+Fractional background regressions also passed: scale 0.7 produced 896x980 eyes
+and 1792x980 SBS after both checkpoint reloads. Scale 0.71 produced odd-width
+909x994 eyes and 1818x994 SBS after both reloads. The latter temporarily used
+1280x720 desktop settings; a read-only HWND client-size observation confirmed
+1280x720 while the VR GPU source remained 1818x994. Both runs passed cleanup,
+entry restoration and protected-file restoration. Evidence prefixes:
+`resolution-default-background-scale07-20261019` and
+`resolution-default-background-scale071-smallwindow-20261019`; actual desktop
+measurement: `resolution-default-smallwindow-client-size.json`. All are ignored
+runtime evidence. This covers fractional scaling/odd eye width and one smaller
+desktop size; it is not a physical-headset quality or performance measurement.
+
 Background default regression: `resolution-default-background-run1-20261019`
 passed with scale 1.0 and simulator recommendation 1280x1400 per eye. Two
 checkpoint reloads resumed new-world XR projection; both post-reload GPU source
