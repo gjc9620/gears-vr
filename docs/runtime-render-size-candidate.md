@@ -13,7 +13,16 @@ or starting VR clears the previous size label. A failed size command displays a
 failure instead of retaining the old runtime's dimensions. The GUI was rebuilt
 and its offline self-test passed; no interactive/headset test was performed.
 The repository launcher includes this fix; the feedback ZIP below predates this
-GUI-only change and must be refreshed before release.
+GUI-only change.
+
+The combined current test package is
+`analysis/runtime/GearsVR-0.0.1-resolution-default-ready-20261019.zip`, SHA256
+`6cab48aa895cb5eac2adf52b9a72f00c15f442ada09d22aebd2439aab06d36c2`.
+It includes both the preview fix and curated size diagnostics. Fresh staging,
+complete ZIP verification and isolated preflight after extraction passed;
+the extracted default is runtime sizing enabled, scale 1.0, English. Native/XR
+binaries are unchanged. Evidence: `resolution-default-ready-receipt.json` under
+ignored `analysis/runtime/`. This remains a development package, not a release.
 
 Diagnostics export now retains the latest launcher's recommended eye dimensions,
 selected multiplier, planned eye dimensions and SBS dimensions. It labels these
