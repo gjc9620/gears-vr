@@ -43,6 +43,13 @@ private:
 public:
     bool failed()const{return loss_!=Loss::none;}Loss loss()const{return loss_;}size_t lists()const{return count_;}
     void uncertain(){lose(Loss::unreadable);}
+    // Revocation needs only the retained identity, not proof that the old
+    // recording is still current. Never allocate or recover a failed model.
+    void forget_binding(uintptr_t canonical){
+        for(size_t i=0;i<count_;++i)if(lists_[i].command==canonical){
+            lists_[i].heap=0;lists_[i].root=0;lists_[i].table=0;return;
+        }
+    }
     bool reset(Recording ref){return invalidate(ref);}
     bool clear_state(Recording ref){return invalidate(ref);}
     // Bundle state effects are deliberately not reconstructed by this model.

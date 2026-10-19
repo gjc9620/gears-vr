@@ -83,9 +83,23 @@ void list_isolation_and_capacity(){
     assert(!bindings.shader_heap({999,1,1},200)&&bindings.loss()==Loss::capacity&&bindings.lists()==16);
     assert(!bindings.dispatch(second).binding_observed&&!bindings.compute_root_signature(second,300)&&!bindings.execute_bundle(second));
 }
+void destructive_revocation(){
+    Bindings bindings;complete(bindings);complete(bindings,{101,2,2});
+    bindings.forget_binding(100);assert(!bindings.failed()&&bindings.lists()==2);
+    assert(!bindings.dispatch(first).binding_observed);
+    assert_complete(bindings.dispatch({101,2,2}),{101,2,2});
+    bindings.forget_binding(999);assert(bindings.lists()==2&&!bindings.failed());
+    // Erasure cannot certify any new or missing generation.
+    assert(!bindings.dispatch({100,1,0}).binding_observed&&bindings.failed());
+    bindings.forget_binding(100);assert(bindings.failed());
+    assert(!bindings.shader_heap(first,200));
+    Bindings changed;complete(changed);changed.forget_binding(100);
+    assert(!changed.dispatch({100,2,2}).binding_observed&&!changed.failed());
+    assert(!changed.dispatch({100,1,2}).binding_observed&&changed.failed());
+}
 }
 int main(){
     redundant_and_changed_bindings();table_preconditions_and_no_extent_inference();boundaries_and_new_generation();
-    invalid_generation_and_terminal_loss();list_isolation_and_capacity();
+    invalid_generation_and_terminal_loss();list_isolation_and_capacity();destructive_revocation();
     std::puts("NGX MV compute binding CPU tests passed; scalar candidate only, no table extent/descriptor/GPU/producer proof");
 }

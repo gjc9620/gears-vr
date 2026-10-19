@@ -15,6 +15,7 @@ HeapsFn original_heaps{};RootFn original_root{};TableFn original_table{};Dispatc
 ClearFn original_clear{};BundleFn original_bundle{};
 struct List {
     uintptr_t raw{},canonical{};uint64_t generation{};
+    uint64_t reset_prior_generation{};bool reset_prior_known{};
     gears_vr::ComPtr<ID3D12GraphicsCommandList> held;
     gears_vr::ComPtr<IUnknown> identity;
     HeapLease heap;
@@ -60,7 +61,8 @@ void lose(unsigned reason,char const* site="unspecified",List const* held=nullpt
         f.raw=raw?raw:held?held->raw:evidence_context.raw;f.canonical=canonical?canonical:held?held->canonical:0;
         f.stored_generation=held?held->generation:0;
         if(f.canonical){const auto live=frame_link.current(f.canonical);f.current_identity=live.identity;f.current_generation=live.generation;}
-        f.prior_stored_generation=prior_stored;f.prior_stored_known=prior_known;f.result=result;
+        f.prior_stored_generation=prior_known?prior_stored:held?held->reset_prior_generation:0;
+        f.prior_stored_known=prior_known||(held&&held->reset_prior_known);f.result=result;
         f.owned_known=evidence_context.owned_known;f.owned=evidence_context.owned;f.bypass=stereo_publish_bypass!=0;
         f.ticket=consuming_frame_ticket;f.world=committed_world_generation.load();
         f.frozen_ticket=consuming_frozen_frame.id;f.frozen_world=consuming_frozen_frame.world_generation;
@@ -93,7 +95,9 @@ List* known(ID3D12GraphicsCommandList* list){
 Recording ref(List const& list){return {list.canonical,list.generation,frame_link.current(list.canonical).generation};}
 List* track(ID3D12GraphicsCommandList* list){
     if(!list||list->GetType()!=D3D12_COMMAND_LIST_TYPE_DIRECT)return nullptr;
-    auto* old=known(list);if(old){if(ref(*old).attested_current_generation!=old->generation){lose(invalid_generation,"track_existing",old,reinterpret_cast<uintptr_t>(list));return nullptr;}return old;}
+    auto* old=known(list);if(old){const auto observed=ref(*old);
+        if(!old->generation||!observed.attested_current_generation||observed.attested_current_generation!=old->generation){
+            lose(invalid_generation,"track_existing",old,reinterpret_cast<uintptr_t>(list));return nullptr;}return old;}
     if(list_count==lists.size()){lose(list_capacity,"track_capacity",nullptr,reinterpret_cast<uintptr_t>(list));return nullptr;}
     gears_vr::ComPtr<IUnknown> id;gears_vr::ComPtr<ID3D12Device> device;gears_vr::ComPtr<IUnknown> device_id;
     if(FAILED(list->QueryInterface(IID_PPV_ARGS(&id)))||FAILED(list->GetDevice(IID_PPV_ARGS(&device)))||FAILED(device.As(&device_id))||
@@ -108,20 +112,35 @@ void noted(List const& list){if(bindings.failed()){lose(invalid_generation,"note
     if(ngx_mv_target_capture::window.snapshot().phase==gears_ngx_mv_target::Phase::waiting)++waiting_bindings;else ++capture_bindings;}
 void invalidate(ID3D12GraphicsCommandList* list,unsigned kind){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!pending())return;auto* held=known(list);if(!held)return;
-    ++invalidations;++mutation;if(kind==2)bindings.execute_bundle(ref(*held));else bindings.clear_state(ref(*held));
-    if(bindings.failed())lose(invalid_generation,kind==2?"invalidate_bundle":kind==1?"invalidate_clear":"invalidate_reset_or_unobserved",held,reinterpret_cast<uintptr_t>(list));
+    // Erasing knowledge requires only the retained identity. It cannot admit a
+    // recording and must not validate a generation already replaced by Reset.
+    ++invalidations;++mutation;bindings.forget_binding(held->canonical);
+    (void)kind;
 }
 struct ResetScope {
     ID3D12GraphicsCommandList* list;bool returned{};
-    explicit ResetScope(ID3D12GraphicsCommandList* l):list(l){EvidenceScope evidence("reset_begin",list);invalidate(list,0);}
-    void finish(HRESULT hr){
+    explicit ResetScope(ID3D12GraphicsCommandList* l):list(l){
+        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("reset_begin",list);
+        if(!pending())return;auto* held=known(list);if(!held)return;
+        held->reset_prior_generation=held->generation;held->reset_prior_known=true;
+        invalidate(list,0);held->generation=0;
+    }
+    void finish(HRESULT hr,gears_frame_link::ListRef actual={}){
         EvidenceScope evidence("reset_finish",list);
         returned=true;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!pending())return;
         auto* held=known(list);if(!held)return;
         if(FAILED(hr)){lose(invalid_generation,"reset_finish_failed",held,reinterpret_cast<uintptr_t>(list),0,hr);return;}
-        const auto prior_stored=held->generation;
-        ++mutation;held->generation=frame_link.current(held->canonical).generation;bindings.reset(ref(*held));
-        if(bindings.failed())lose(invalid_generation,"reset_finish_core",held,reinterpret_cast<uintptr_t>(list),0,hr,prior_stored,true);
+        // A successful bypass/unowned Reset supplies no birth receipt. Leave
+        // this list unknown rather than borrowing a still-visible old tracker
+        // generation. Only this exact Reset invocation may supply `actual`.
+        if(!actual.identity&&!actual.generation)return;
+        const auto live=frame_link.current(held->canonical);
+        if(actual.identity!=held->canonical||!actual.generation||live.identity!=actual.identity||live.generation!=actual.generation){
+            lose(invalid_generation,"reset_finish_attestation",held,reinterpret_cast<uintptr_t>(list),0,hr);return;
+        }
+        ++mutation;held->generation=actual.generation;
+        bindings.reset({held->canonical,actual.generation,live.generation});
+        if(bindings.failed())lose(invalid_generation,"reset_finish_core",held,reinterpret_cast<uintptr_t>(list),0,hr);
     }
     ~ResetScope(){if(!returned){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);EvidenceScope evidence("reset_unwind",list);if(pending())lose(unwinding,"reset_unwind",nullptr,reinterpret_cast<uintptr_t>(list));}}
 };
@@ -231,7 +250,7 @@ void print(FILE* file){
     }
 }
 #else
-struct ResetScope {explicit ResetScope(ID3D12GraphicsCommandList*){}void finish(HRESULT){}};
+struct ResetScope {explicit ResetScope(ID3D12GraphicsCommandList*){}void finish(HRESULT,gears_frame_link::ListRef={}){}};
 void stop(){}void release_drained(){}void print(FILE*){}void invalidate(ID3D12GraphicsCommandList*,unsigned){}
 bool install_hooks(void**){return true;}
 #endif

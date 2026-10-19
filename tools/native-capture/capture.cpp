@@ -3709,10 +3709,11 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
     tracking=tracking||frame_link.owned_status().enabled;
 #endif
+    gears_frame_link::ListRef actual_reset{};
     if(tracking) {
         auto identity=canonical_identity(list);
         frame_seen_list(identity);
-        if(SUCCEEDED(result)){++frame_counts.resets;frame_link.reset_success(identity);
+        if(SUCCEEDED(result)){++frame_counts.resets;actual_reset=frame_link.reset_success(identity);
             ngx_capture_control::reset_command(list);
             if(!frame_target_stats.reset(reinterpret_cast<uintptr_t>(list)))frame_link.invalidate();}
         else {++frame_counts.reset_failed;frame_link.invalidate_list(identity);}
@@ -3720,7 +3721,7 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
 #if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
     ngx_epoch_pair::reset(epoch_reset_before,list,result);
 #endif
-    compute_reset.finish(result);
+    compute_reset.finish(result,actual_reset);
     return result;
 }
 void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count,const D3D12_VIEWPORT* values) {
