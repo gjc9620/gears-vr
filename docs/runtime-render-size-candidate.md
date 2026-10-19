@@ -8,6 +8,17 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+Background default regression: `resolution-default-background-run1-20261019`
+passed with scale 1.0 and simulator recommendation 1280x1400 per eye. Two
+checkpoint reloads resumed new-world XR projection; both post-reload GPU source
+images matched the planned 2560x1400 SBS size. Native cleanup, independent entry
+restoration, normal owner exit and restoration of five protected settings/profile
+files passed. The driver selected the opt-in behind-window game and simulator
+policies, muted game audio, and requested no foreground activation or movement.
+This is actual game/simulator evidence, not physical headset or mounted-gun
+acceptance. Full identity/status/image evidence remains under ignored
+`analysis/runtime/resolution-default-background-run1-20261019*`.
+
 Launcher preview follow-up: changing runtime selection/path, checking size again,
 or starting VR clears the previous size label. A failed size command displays a
 failure instead of retaining the old runtime's dimensions. The GUI was rebuilt
