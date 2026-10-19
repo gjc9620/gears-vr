@@ -188,6 +188,8 @@ namespace death_hdr_timeline {void print(FILE*);void executed(uintptr_t,gears_fr
 namespace death_constant_observer {void print(FILE*);}
 namespace dlss_route_observer {void print(FILE*);void draw(uintptr_t,uintptr_t,unsigned,unsigned,unsigned);}
 namespace ngx_route_observer {void print(FILE*);}
+namespace owned_ui_live {void progress(FILE*);}
+namespace owned_material {void progress(FILE*);}
 namespace ngx_mv_descriptor_capture {void arm();void close();void release_drained();void print(FILE*);
 void accepted_eval(unsigned,uint64_t,uint64_t,uint64_t,uintptr_t,uintptr_t,uintptr_t,gears_ngx_stereo::TypedResourceLease const*);
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
@@ -1642,6 +1644,10 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"profile_consume_thread=%lu ",gears_render_cost::first_thread.load(std::memory_order_relaxed));
     fprintf(output,"activation_ready_qpc=%lld activation_qpc_frequency=%lld ",session_activation_ready_qpc.load(),qpc_frequency);
     ui_scene_trial_live::progress(output);
+    owned_ui_live::progress(output);
+#if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
+    owned_material::progress(output);
+#endif
     path_choice_position_live::progress(output);
     path_choice_layout_observer::progress(output);
     path_choice_close_observer::progress(output);

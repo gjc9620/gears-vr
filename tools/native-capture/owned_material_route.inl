@@ -93,6 +93,11 @@ bool reserve(){
  return MH_CreateHook(produce_target,reinterpret_cast<void*>(hook_produce),reinterpret_cast<void**>(&original_produce))==MH_OK&&
   MH_CreateHook(upload_target,reinterpret_cast<void*>(hook_upload),reinterpret_cast<void**>(&original_upload))==MH_OK;
 }
+void progress(FILE* file){
+ DrawFailure d{};{std::lock_guard<std::mutex> lock(failure_mutex);d=first_draw_failure;}
+ fprintf(file,"owned_material_faults=%llu owned_material_first_fault=%u owned_material_draw_failure_reason=%u owned_material_draw_failure_ticket=%llu owned_material_draw_failure_pair=%llu owned_material_draw_failure_linked=%u owned_material_draw_failure_targets=%u owned_material_draw_failure_actual=%llx owned_material_draw_failure_expected=%llx owned_material_draw_failure_width=%u owned_material_draw_failure_height=%u owned_material_draw_failure_list=%llx owned_material_draw_failure_native_list=%llx owned_material_draw_failure_stride=%u owned_material_draw_failure_topology=%u ",
+  faults.load(),first_fault.load(),d.reason,d.ticket,d.pair_ticket,unsigned(d.linked),d.targets,d.actual,d.expected,d.width,d.height,d.list,d.native_list,d.stride,d.topology);
+}
 void print(FILE* file){fprintf(file,"owned_material produced=%llu executed=%llu completed=%llu uploads=%llu draws=%llu faults=%llu first_fault=%u\n",
  produced.load(),executed.load(),completed.load(),uploads.load(),draws.load(),faults.load(),first_fault.load());
  std::lock_guard<std::mutex> lock(failure_mutex);const auto& d=first_draw_failure;if(!d.reason)return;

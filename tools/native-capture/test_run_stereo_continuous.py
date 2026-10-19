@@ -35,6 +35,35 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_native_failure_snapshots_survive_incomplete_cleanup(self):
+        code,state,*_=self.run_mock(clean=False)
+        self.assertEqual(code,1)
+        self.assertFalse(state['native_cleanup_verified'])
+        self.assertIn('Native cleanup incomplete',state['native_cleanup_error'])
+        self.assertTrue(all(row['saved'] for row in state['native_diagnostics'].values()))
+        self.assertTrue(all(not row['acceptance_evidence'] for row in state['native_diagnostics'].values()))
+
+    def test_native_diagnostic_copy_failure_does_not_hide_other_file_or_cleanup_error(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=pathlib.Path(folder);build=root/'native';build.mkdir()
+            (build/'capture-status.txt').write_text('owned_ui_batch faults=1 first_fault=7\n')
+            state={'native_cleanup_error':'original failure','native_cleanup_verified':False}
+            self.assertFalse(runner.preserve_native_diagnostics(build,root/'session.json',state))
+            self.assertFalse(state['native_diagnostics']['session-status.txt']['saved'])
+            self.assertIn('error',state['native_diagnostics']['session-status.txt'])
+            self.assertTrue(state['native_diagnostics']['capture-status.txt']['saved'])
+            self.assertEqual((root/'session.native-status.txt').read_text(),'owned_ui_batch faults=1 first_fault=7\n')
+            self.assertEqual(state['native_cleanup_error'],'original failure')
+            self.assertFalse(state['native_cleanup_verified'])
+
+    def test_native_diagnostics_are_saved_when_cleanup_signal_raises(self):
+        with mock.patch.object(Control,'signal',side_effect=OSError('signal failed')):
+            code,state,*_=self.run_mock()
+        self.assertEqual(code,1)
+        self.assertFalse(state['native_cleanup_verified'])
+        self.assertIn('signal failed',state['native_cleanup_error'])
+        self.assertTrue(all(row['saved'] for row in state['native_diagnostics'].values()))
+
     def test_late_reticle_private_cli_and_native_only_forwarding(self):
         base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
         flag='--ui-reticle-late-sample'

@@ -95,6 +95,23 @@ def write_state(path,state):
             time.sleep(.02)
 
 
+def preserve_native_diagnostics(build,prefix,state):
+    """Raw failure evidence only; saving a file never verifies native cleanup."""
+    receipts={}
+    for name,suffix in (('session-status.txt','.session-status.txt'),('capture-status.txt','.native-status.txt')):
+        source=build/name;destination=prefix.with_suffix(suffix)
+        receipt={'source':str(source),'path':str(destination),'saved':False,
+                 'identity_verified':False,'acceptance_evidence':False}
+        try:
+            shutil.copyfile(source,destination)
+            receipt['saved']=True
+        except OSError as error:
+            receipt['error']=repr(error)
+        receipts[name]=receipt
+    state['native_diagnostics']=receipts
+    return all(receipt['saved'] for receipt in receipts.values())
+
+
 def checked_identity(control,expected,allow_exited=False):
     actual=control.identity(expected['pid'])
     if actual is None and allow_exited:return False
@@ -665,6 +682,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     except Exception as error:state['menu_monitor_close_error']=repr(error)
                 state['phase']='stopping';write_state(state_path,state)
                 if activation_attempted:
+                    diagnostics_attempted=False
                     try:
                         if checked_identity(control,state['game_identity'],allow_exited=True):
                             state['native_stop_signaled']=control.signal(f'Local\\GearsVR.Capture.Stop.{args.pid}')
@@ -674,13 +692,13 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                             if status and status.get('phase') in ('stopped','incomplete'):break
                             time.sleep(.2)
                         state['native_status']=status
+                        diagnostics_saved=preserve_native_diagnostics(args.build_dir.resolve(),prefix,state)
+                        diagnostics_attempted=True
                         if state.get('native_started_qpc') and status and status.get('started_qpc')!=state['native_started_qpc']:
                             raise RuntimeError('Native session started_qpc identity changed during cleanup')
                         state['native_cleanup_verified']=native_stopped_clean(status) and native_owner_matches(status,state['owner_identity'])
                         if not state['native_cleanup_verified']:raise RuntimeError('Native cleanup incomplete or deadline expired')
-                        shutil.copyfile(native_status,prefix.with_suffix('.session-status.txt'))
-                        capture=args.build_dir.resolve()/'capture-status.txt'
-                        shutil.copyfile(capture,prefix.with_suffix('.native-status.txt'))
+                        if not diagnostics_saved:raise RuntimeError('Native diagnostic preservation failed')
                         restored=prefix.with_suffix('.restored.json')
                         with prefix.with_suffix('.verify.log').open('w') as log:
                             verified=subprocess.run([sys.executable,str(ROOT/'tools/native-capture/verify_stopped.py'),
@@ -691,6 +709,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     except Exception as error:
                         state['native_cleanup_error']=repr(error)
                         state['native_cleanup_verified']=False
+                    finally:
+                        if not diagnostics_attempted:
+                            preserve_native_diagnostics(args.build_dir.resolve(),prefix,state)
                 if child:
                     cleanup_owned_xr(child,state['xr_owned_pid'],args.pid,args.cleanup_timeout,control,state)
                 finish_path_choice_position(path_center,state,control)

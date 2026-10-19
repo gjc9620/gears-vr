@@ -18,13 +18,38 @@ constexpr bool material_routing=false;
 #endif
 std::atomic<uint64_t> route_commands{},route_draws{},route_faults{},route_plane_draws{},route_reticle_draws{};
 std::atomic<unsigned> first_route_fault{};
+struct FirstFault {uint64_t ticket{};long long qpc{};unsigned thread{},reason{};};
+FirstFault first_fault{};
+std::atomic<bool> first_fault_claimed{},first_fault_ready{};
+const char* fault_name(unsigned reason){
+ switch(reason){
+ case 1:return "selected_binding";case 2:return "flush_inventory";case 3:return "flush_close";
+ case 4:return "produce_association";case 5:return "payload_transfer";case 6:return "execute_completion";
+ case 7:return "command_context";case 8:return "command_dimensions";case 9:return "draw_state";
+ case 10:return "draw_exception";case 11:return "draw_sequence";
+ case 20:return "material_produce";case 21:return "material_transfer";case 22:return "material_context";
+ case 23:return "material_completion";case 24:return "material_upload";case 25:return "material_draw_certificate";
+ case 26:return "material_indexed_draw";case 27:return "material_draw_target";case 28:return "material_overlay_plan";
+ case 29:return "material_draw_exception";case 30:return "material_draw_sequence";
+ case 41:return "material_view_read";case 42:return "material_view_extent";case 43:return "material_view_copy";
+ case 44:return "discard_or_material_view_nonfinite";case 45:return "material_view_identity";
+ case 46:return "material_view_xy_w";case 47:return "material_view_scale";case 48:return "material_view_offset";
+ case 49:return "material_view_changed";
+ case 0:return "none";default:return "unknown";
+ }
+}
+void progress(FILE* output);
 struct DrawRejection {uint64_t ticket{},pair_ticket{};uintptr_t caller{},actual{},expected{};unsigned flags{},width{},height{};
  gears_viewport::DrawState state{};};
 DrawRejection first_draw_rejection{};std::mutex draw_rejection_mutex;
 void reject_draw(DrawRejection const& row){std::lock_guard<std::mutex> lock(draw_rejection_mutex);if(!first_draw_rejection.ticket)first_draw_rejection=row;}
 void fault(uint64_t ticket,unsigned reason){
  if(!routing)return;
- ledger.invalidate(ticket);++route_faults;unsigned empty{};first_route_fault.compare_exchange_strong(empty,reason);
+ ledger.invalidate(ticket);++route_faults;bool empty=false;
+ if(first_fault_claimed.compare_exchange_strong(empty,true)){
+  first_fault={ticket,now(),GetCurrentThreadId(),reason};first_route_fault=reason;
+  first_fault_ready.store(true,std::memory_order_release);
+ }
  request_session_stop(SessionStop::proof_failure);
 }
 using Flush=uintptr_t(__fastcall*)(void*);
@@ -59,6 +84,21 @@ void selected(uint64_t ticket){
 struct FlushRow {uint64_t ticket{};uintptr_t canvas{},target{},caller{},first_other_table{};unsigned total{},batch{},material{},other{},read_ok{};};
 std::array<FlushRow,32> flush_rows{};unsigned flush_rows_count{};std::mutex flush_rows_mutex;
 FlushRow rejected_flush{};unsigned rejected_flush_reason{};
+void progress(FILE* output){
+ const bool ready=first_fault_ready.load(std::memory_order_acquire);
+ const auto row=ready?first_fault:FirstFault{};
+ DrawRejection draw{};FlushRow flush{};unsigned flush_reason{};
+ {std::lock_guard<std::mutex> lock(draw_rejection_mutex);draw=first_draw_rejection;}
+ {std::lock_guard<std::mutex> lock(flush_rows_mutex);flush=rejected_flush;flush_reason=rejected_flush_reason;}
+ // Never hold a callback's evidence mutex across status-file I/O.
+ fprintf(output,"owned_ui_fault_recorded=%u owned_ui_faults=%llu owned_ui_first_fault=%u owned_ui_first_fault_name=%s owned_ui_first_fault_ticket=%llu owned_ui_first_fault_qpc=%lld owned_ui_first_fault_qpc_frequency=%lld owned_ui_first_fault_thread=%u ",
+  ready?1u:0u,route_faults.load(),row.reason,fault_name(row.reason),row.ticket,row.qpc,qpc_frequency,row.thread);
+ fprintf(output,"owned_ui_draw_reject_ticket=%llu owned_ui_draw_reject_pair=%llu owned_ui_draw_reject_caller=%llx owned_ui_draw_reject_flags=%u owned_ui_draw_reject_actual=%llx owned_ui_draw_reject_expected=%llx owned_ui_draw_reject_width=%u owned_ui_draw_reject_height=%u owned_ui_draw_reject_tracked=%u owned_ui_draw_reject_vp_count=%u owned_ui_draw_reject_sc_count=%u owned_ui_draw_reject_depth_known=%u ",
+  draw.ticket,draw.pair_ticket,draw.caller,draw.flags,draw.actual,draw.expected,draw.width,draw.height,
+  draw.state.tracked,draw.state.viewport_count,draw.state.scissor_count,draw.state.depth_known);
+ fprintf(output,"owned_ui_flush_reject_reason=%u owned_ui_flush_reject_ticket=%llu owned_ui_flush_reject_caller=%llx owned_ui_flush_reject_table=%llx owned_ui_flush_reject_module_base=%llx owned_ui_flush_reject_total=%u owned_ui_flush_reject_batch=%u owned_ui_flush_reject_material=%u owned_ui_flush_reject_other=%u owned_ui_flush_reject_read_ok=%u ",
+  flush_reason,flush.ticket,flush.caller,flush.first_other_table,base,flush.total,flush.batch,flush.material,flush.other,flush.read_ok);
+}
 FlushRow inventory(FlushContext const& context,uintptr_t caller){
  FlushRow row{};row.ticket=context.ticket;row.canvas=context.canvas;row.target=context.target;row.caller=caller;
  gears_ui_batch::detail::Reader<decltype(&safe_copy)> read{safe_copy};gears_ui_batch::detail::Array elements{};
@@ -195,6 +235,7 @@ bool reserve(){
   safe_copy(checked.data(),produce_target,16)&&!memcmp(checked.data(),produce_bytes,16);
 }
 void print(FILE* file){
+ progress(file);fprintf(file,"\n");
  {std::lock_guard<std::mutex> lock(draw_rejection_mutex);const auto& r=first_draw_rejection;if(r.ticket){const auto& s=r.state;
   fprintf(file,"owned_ui_draw_rejected ticket=%llu pair=%llu caller=%llx actual=%llx expected=%llx width=%u height=%u flags=%u tracked=%u vp_count=%u sc_count=%u depth_known=%u depth=%.9g,%.9g viewport=%.9g,%.9g,%.9g,%.9g scissor=%.9g,%.9g,%.9g,%.9g\n",
    r.ticket,r.pair_ticket,r.caller,r.actual,r.expected,r.width,r.height,r.flags,s.tracked,s.viewport_count,s.scissor_count,s.depth_known,s.min_depth,s.max_depth,
@@ -246,6 +287,7 @@ bool owned_ui_world_retirement_current(gears_owned_ui_world::Guards guards,gears
 }
 #else
 namespace owned_ui_live {
+void progress(FILE* output){fprintf(output,"owned_ui_fault_recorded=0 owned_ui_faults=0 owned_ui_first_fault=0 owned_ui_first_fault_name=none owned_ui_first_fault_ticket=0 owned_ui_first_fault_qpc=0 owned_ui_first_fault_qpc_frequency=0 owned_ui_first_fault_thread=0 ");}
 struct FamilyScope {FamilyScope(void*,void*,bool){}};
 void selected(uint64_t){}
 uint64_t execute_begin(void*){return 0;}
