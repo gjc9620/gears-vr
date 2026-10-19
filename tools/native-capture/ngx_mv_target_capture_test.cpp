@@ -69,6 +69,7 @@ bool snapshot_target_seed(uint64_t& observation,gears_ngx_mv_census::Use& use,ge
     observation=2;use={2,3,40,0x800,0x100,0x200};mv={0x300,0x301,0xd00,true};return true;
 }
 }
+namespace ngx_mv_compute_capture {void stop(){}void release_drained(){}void print(FILE*){}}
 #include "ngx_mv_target_capture.inl"
 namespace {
 std::array<unsigned char,0x28> input{};

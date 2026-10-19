@@ -68,6 +68,22 @@ bool snapshot_target_seed(uint64_t& observation,gears_ngx_mv_census::Use& use,ge
     if(!target_live()||!target_mv.retained()||!source_join.summary.present)return false;
     observation=target_lifetime.epoch;use=source_join.summary.use;mv=target_mv;return true;
 }
+#if GEARS_NGX_MV_TARGET_CAPTURE
+gears_ngx_mv_compute::DescriptorLookup lookup_target(uintptr_t heap,uint64_t gpu){
+    std::lock_guard<std::recursive_mutex> lock(mutex);gears_ngx_mv_compute::DescriptorLookup out;
+    if(!target_live()||!target_mv.retained()||!heap||!gpu)return out;
+    out.ready=true;
+    const auto exact=target_bank->lookup(target_lifetime,gpu,true);
+    out.exact_base_mv=exact.heap.canonical==heap&&exact.same_mv(target_mv);
+    target_bank->visit_mv(target_lifetime,target_mv,[&](TargetBank::Snapshot const& s){
+        if(s.heap.canonical!=heap||!s.heap.visible||!s.heap.stride||gpu<s.heap.gpu||s.gpu<gpu)return;
+        const auto base_index=(gpu-s.heap.gpu)/s.heap.stride;
+        if((gpu-s.heap.gpu)%s.heap.stride||base_index>=s.heap.count||(s.gpu-gpu)%s.heap.stride)return;
+        if(out.count==out.candidates.size()){out.overflow=true;return;}
+        out.candidates[out.count++]={s.cpu,s.gpu,s.version,s.origin,s.source_handle,s.source_version,(s.gpu-gpu)/s.heap.stride};
+    });return out;
+}
+#endif
 template<class F> void attempt(F&& fn){try{fn();}catch(...){fail();}}
 template<class F> void source_attempt(F&& fn){try{fn();}catch(...){source_fail();}}
 template<class F> void target_attempt(F&& fn){try{fn();}catch(...){target_fail();}}
@@ -444,6 +460,13 @@ DWORD native_check(Bank::Snapshot& retained){
         target_alias=target_bank->lookup(target_lifetime,cpu1.ptr);target_visible=target_bank->lookup(target_lifetime,gpu_cpu.ptr);
         if(!target_alias.same_mv(typed_first)||!target_visible.same_mv(typed_first)||target_alias.seed!=seeded_target.seed||
            target_visible.seed!=seeded_target.seed||target_visible.source_version!=target_alias.version)return 341;}
+#if GEARS_NGX_MV_TARGET_CAPTURE
+    const auto selected_lookup=lookup_target(target_visible.heap.canonical,target_visible.gpu);
+    if(!selected_lookup.ready||!selected_lookup.exact_base_mv||selected_lookup.overflow||selected_lookup.count!=1||
+       selected_lookup.candidates[0].offset||selected_lookup.candidates[0].version!=target_visible.version)return 350;
+    if(lookup_target(target_visible.heap.canonical+1,target_visible.gpu).count||
+       lookup_target(target_visible.heap.canonical,target_visible.gpu+1).count)return 351;
+#endif
     device->CreateUnorderedAccessView(second.Get(),nullptr,&uv,cpu2); // Unrelated native birth consumes no target cell.
     device->CopyDescriptorsSimple(1,cpu3,cpu2,hd.Type); // Unrelated native copy consumes no target cell.
     {std::lock_guard<std::recursive_mutex> lock(mutex);
@@ -453,6 +476,11 @@ DWORD native_check(Bank::Snapshot& retained){
     device->CreateUnorderedAccessView(second.Get(),nullptr,&uv,cpu); // Unrelated replacement erases the tracked MV.
     {std::lock_guard<std::recursive_mutex> lock(mutex);
         if(target_bank->current(target_alias)||target_bank->current(target_visible)||target_bank->current(seeded_target)||target_bank->cell_counts().known_uav)return 343;}
+#if GEARS_NGX_MV_TARGET_CAPTURE
+    const auto invalidated_lookup=lookup_target(target_visible.heap.canonical,target_visible.gpu);
+    if(!invalidated_lookup.ready||invalidated_lookup.exact_base_mv||invalidated_lookup.count||
+       gears_ngx_mv_compute::same(selected_lookup,invalidated_lookup))return 352;
+#endif
     device->CreateUnorderedAccessView(first.Get(),nullptr,&uv,cpu); // Selected typed native rewrite becomes fresh local provenance.
     device->CopyDescriptorsSimple(1,gpu_cpu,cpu,hd.Type);
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> late_heap;hd.Flags=D3D12_DESCRIPTOR_HEAP_FLAG_NONE;

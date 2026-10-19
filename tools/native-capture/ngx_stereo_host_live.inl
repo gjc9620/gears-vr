@@ -483,6 +483,15 @@ struct Contract {uintptr_t rva;unsigned size;char const* hash;};
 // Full function chunks from the saved wrapper/release contracts, not disk-EXE
 // identity. enable() hashes every complete current chunk before any host hook.
 constexpr Contract contracts[]{
+#if GEARS_NGX_MV_TARGET_CAPTURE
+    // Complete hot/cold chunks from artifact1 compute-chunks.json. These
+    // authenticate the historical root-table/Dispatch caller candidates,
+    // without asserting that the shader writes the selected MV resource.
+    {0x1ac6e4,554,"f0d3877d9829b76031efa5fbd57aaffc087f85cc6dff5e119d10a70b5ce9cf6a"},
+    {0x8c2ad8,178,"e3c537f27a6eae88cea5c7aba7ed9661be5b1088bce04008c7b56ad306d1e0e1"},
+    {0x17b420,2554,"942d8c3413c5b4e3d076e2e0515992a4071db3a0167abfda1d2584a47a1d7e2e"},
+    {0x8b8b96,383,"12e23d12bb5c5579487b624c0bb61345dd709b6f066baa6cfa7b7f0f1cb3331d"},
+#endif
     // Native zero-offset/null-box Copy route and its state setup/restore.
     {0x1c5dd8,0x315,"038bef1d04e09846166ed3dd5479a71f6a9cc548469d5b8f1626553f1f137bf4"},
     {0x897f50,0x239,"ce26c00b6cd9d2148ec2f94f53e3ca11fab8127b943f08386d6d2a7c199e71c7"},

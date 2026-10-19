@@ -55,7 +55,11 @@ uint64_t __fastcall hook_evaluate(uintptr_t first,uintptr_t second,uintptr_t thi
     const auto result=ngx_stereo_host::evaluate_passthrough(scope.world(),first,second,third,structure,original_evaluate);host.normal_return(result);pixels.normal_return(result);if(call.row){call.row->result=result;call.row->returned=true;}return result;
 }
 bool verify(FILE* file,uintptr_t rva,unsigned size,const char* expected){
-    BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};std::array<unsigned char,evaluate_size> bytes{};
+    // Host contracts include complete compute helpers larger than the NGX
+    // Eval wrapper. Keep a bounded buffer, but do not truncate their hashes.
+    constexpr size_t contract_capacity=4096;
+    static_assert(evaluate_size<=contract_capacity,"NGX wrapper must fit contract verification");
+    BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};std::array<unsigned char,contract_capacity> bytes{};
     bool ok=size&&size<=bytes.size()&&BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0;
     if(ok)ok=BCryptCreateHash(algorithm,&hash,nullptr,0,nullptr,0,0)>=0;
     if(ok)ok=safe_copy(bytes.data(),reinterpret_cast<void*>(base+rva),size)&&BCryptHashData(hash,bytes.data(),size,0)>=0;

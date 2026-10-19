@@ -15,7 +15,7 @@ enum Stop:unsigned {create_changed=1,feature_released,world_changed,identity_los
 bool pending(){const auto p=window.snapshot().phase;return p==Phase::waiting||p==Phase::capturing;}
 void terminal(){
     const auto p=window.snapshot().phase;
-    if(p==Phase::frozen||p==Phase::failed)ngx_mv_descriptor_capture::stop_target();
+    if(p==Phase::frozen||p==Phase::failed){ngx_mv_compute_capture::stop();ngx_mv_descriptor_capture::stop_target();}
 }
 Context identity(){
     Context out;auto const& s=window.snapshot().selection;
@@ -115,7 +115,7 @@ void poll(){
 }
 void close(){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);closed=true;
-    invalidate(closed_capture);ngx_mv_descriptor_capture::stop_target();
+    invalidate(closed_capture);ngx_mv_compute_capture::stop();ngx_mv_descriptor_capture::stop_target();
 }
 void release_drained(){
     gears_ngx_stereo::TypedResourceLease retired;
@@ -124,9 +124,11 @@ void release_drained(){
         retired=std::move(selected_mv);leases_released=true;}
     // No observer lock across the final native Release.
     retired.release();
+    ngx_mv_compute_capture::release_drained();
 }
 void print(FILE* file){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!file)return;auto const& s=window.snapshot();
+    ngx_mv_compute_capture::print(file);
     fprintf(file,"ngx_mv_target_window enabled=1 phase=%u reason=%u stop_cause=%u observation=%llu revision=%llu world=%llu selection_ticket=%llu consume_ticket=%llu renderer=%llx handle=%llx parameters=%llx mv=%llx selected_tick_ms=%llu deadline_tick_ms=%llu last_tick_ms=%llu evals=%u completed_evals=%u eval_open=%u closed=%u leases_released=%u producer_domain_verified=0 gpu_completion_verified=0\n",
         unsigned(s.phase),unsigned(s.reason),stop_cause,s.selection.observation_id,s.selection.revision,s.selection.world,s.selection.ticket,
         s.consume.ticket,s.consume.renderer,s.selection.handle,s.selection.parameters,s.selection.mv,s.selected_at,s.deadline,s.last_now,

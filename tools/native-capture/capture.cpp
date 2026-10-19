@@ -51,6 +51,8 @@
     defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
 #include "ngx_mv_target_window.h"
 #include "ngx_mv_sdk_receipt.h"
+#include "ngx_mv_compute_binding.h"
+#include "ngx_mv_compute_snapshot.h"
 #endif
 #endif
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
@@ -191,6 +193,9 @@ void accepted_eval(unsigned,uint64_t,uint64_t,uint64_t,uintptr_t,uintptr_t,uintp
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
 void stop_target();
 bool snapshot_target_seed(uint64_t&,gears_ngx_mv_census::Use&,gears_ngx_stereo::TypedResourceLease&);
+#if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER && defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
+gears_ngx_mv_compute::DescriptorLookup lookup_target(uintptr_t,uint64_t);
+#endif
 #endif
 }
 namespace death_dof_control {void print(FILE*);}
@@ -229,6 +234,9 @@ void eval_leave(ngx_stereo_host::WrapperScope&,bool,bool,uint64_t);
 void sdk_enter(ngx_stereo_host::WrapperScope*,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 void sdk_leave(ngx_stereo_host::WrapperScope*,uint32_t);
 #endif
+}
+namespace ngx_mv_compute_capture {
+void stop();void release_drained();void print(FILE*);void invalidate(ID3D12GraphicsCommandList*,unsigned);
 }
 #include "owned_source_pixels.h"
 struct FrameLinkCounters {
@@ -442,7 +450,16 @@ constexpr unsigned ngx_mv_descriptor_hooks=4;
 #else
 constexpr unsigned ngx_mv_descriptor_hooks=0;
 #endif
-constexpr size_t viewport_hook_capacity=viewport_hook_base_capacity+ngx_mv_descriptor_hooks;
+#if GEARS_NGX_MV_TARGET_CAPTURE
+#if defined(GEARS_DEATH_PSO_CACHE) && GEARS_DEATH_PSO_CACHE
+constexpr unsigned ngx_mv_compute_hooks=4;
+#else
+constexpr unsigned ngx_mv_compute_hooks=6;
+#endif
+#else
+constexpr unsigned ngx_mv_compute_hooks=0;
+#endif
+constexpr size_t viewport_hook_capacity=viewport_hook_base_capacity+ngx_mv_descriptor_hooks+ngx_mv_compute_hooks;
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
 constexpr size_t session_hook_capacity=session_hook_base_capacity+4;
@@ -528,7 +545,7 @@ constexpr unsigned ngx_stereo_host_hooks=3;
 #else
 constexpr unsigned ngx_stereo_host_hooks=0;
 #endif
-std::array<SessionHookEntry,ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+dxgi_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
+std::array<SessionHookEntry,ngx_mv_compute_hooks+ngx_mv_descriptor_hooks+ngx_stereo_host_hooks+session_hook_capacity+dxgi_resize_hooks+game_material_hooks+crosshair_assignment_hooks+ui_call_boundary_hooks+ui_scene_root_hooks+path_layout_hooks+path_close_hooks+death_constant_hooks+dlss_route_hooks+dlss_input_bind_hooks+ngx_route_hooks+death_pso_hooks+death_dof_hooks+vr_dof_hooks> session_hook_entries{};
 unsigned session_hook_entry_count{};
 gears_submitted::Lifetime submitted_lifetime;
 std::atomic<bool> world_quiesce_requested{};
@@ -2706,6 +2723,7 @@ void execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,ngx_stereo_host:
 #include "ngx_epoch_pair_probe.inl"
 #include "ngx_stereo_host_live.inl"
 #include "ngx_mv_target_capture.inl"
+#include "ngx_mv_compute_capture.inl"
 #include "ngx_control_capture.inl"
 #include "ngx_output_pixels_native.inl"
 #include "owned_source_pixels.inl"
@@ -3669,8 +3687,10 @@ void STDMETHODCALLTYPE hook_resource_barrier(ID3D12GraphicsCommandList* list,UIN
 #endif
 #include "owned_scene_gpu_hooks.inl"
 HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state) {
-    if(stereo_publish_bypass)return owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);
-    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();owned_ticket_size_trace::retire_attachments(reinterpret_cast<uintptr_t>(list));return owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);}auto frame_guard=frame_lock();
+    ngx_mv_compute_capture::ResetScope compute_reset(list);
+    if(stereo_publish_bypass){const auto hr=owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);compute_reset.finish(hr);return hr;}
+    Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();owned_ticket_size_trace::retire_attachments(reinterpret_cast<uintptr_t>(list));
+        const auto hr=owned_source_pixels::reset_passthrough(list,allocator,state,death_pso_cache::reset_passthrough);compute_reset.finish(hr);return hr;}auto frame_guard=frame_lock();
 #if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
     const auto epoch_reset_before=ngx_epoch_pair::list(list);
 #endif
@@ -3700,6 +3720,7 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
 #if defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
     ngx_epoch_pair::reset(epoch_reset_before,list,result);
 #endif
+    compute_reset.finish(result);
     return result;
 }
 void STDMETHODCALLTYPE hook_viewports(ID3D12GraphicsCommandList* list,UINT count,const D3D12_VIEWPORT* values) {
@@ -4187,6 +4208,7 @@ bool viewport_hooks(ID3D12Device* device) {
         success=install(death_pso_cache::targets[1],reinterpret_cast<void*>(death_pso_cache::clear),reinterpret_cast<void**>(&death_pso_cache::original_clear))&&success;
         success=install(death_pso_cache::targets[2],reinterpret_cast<void*>(death_pso_cache::bundle),reinterpret_cast<void**>(&death_pso_cache::original_bundle))&&success;
 #endif
+        success=ngx_mv_compute_capture::install_hooks(table)&&success;
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
         success=install(viewport_targets[10],reinterpret_cast<void*>(hook_resource_barrier),reinterpret_cast<void**>(&original_resource_barrier))&&success;
 #endif
