@@ -557,6 +557,59 @@ bool snapshot_picked_pso(gears_vr::ComPtr<ID3D12PipelineState>& out,PsoWitnessKe
        !pso_promoted.historical_stable||!pso_promoted.pso||!pso_promoted.pso_identity)return false;
     out=pso_promoted.pso;key=pso_promoted.key;return true;
 }
+struct BlobReceipt {
+    PsoWitnessKey key;bool attempted{},completed{},saved{},details_readable{};HRESULT hr=E_PENDING;
+    size_t size{};DWORD error{},written{},worker{};wchar_t path[MAX_PATH]{};
+} blob_receipt;
+std::atomic<DWORD> blob_worker_thread{};
+void register_worker(){DWORD empty{};blob_worker_thread.compare_exchange_strong(empty,GetCurrentThreadId());}
+HRESULT picked_cached_blob(ID3D12PipelineState* pso,ID3DBlob** blob){
+    __try{return pso->GetCachedBlob(blob);}__except(EXCEPTION_EXECUTE_HANDLER){*blob=nullptr;return E_FAIL;}
+}
+bool picked_blob_data(ID3DBlob* blob,size_t& size,void*& data){
+    __try{size=blob->GetBufferSize();data=blob->GetBufferPointer();return true;}
+    __except(EXCEPTION_EXECUTE_HANDLER){size=0;data=nullptr;return false;}
+}
+void poll_picked_blob(){
+    const auto worker=blob_worker_thread.load();if(!worker||worker!=GetCurrentThreadId())return;
+    // This independent activity outlives every native Release below. Worker
+    // calls own no callback/frame lock; self-test/RHI callers are rejected.
+    NativeOwnedShutdownRhiScope::Activity activity;
+    gears_vr::ComPtr<ID3D12PipelineState> pso;gears_vr::ComPtr<ID3DBlob> blob;PsoWitnessKey key;
+    {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        if(blob_receipt.attempted||!snapshot_picked_pso(pso,key))return;
+        blob_receipt.attempted=true;blob_receipt.key=key;blob_receipt.worker=worker;}
+    BlobReceipt result;result.attempted=true;result.key=key;result.worker=worker;
+    ID3DBlob* returned{};result.hr=picked_cached_blob(pso.Get(),&returned);blob.Attach(returned);
+    if(SUCCEEDED(result.hr)&&blob){
+        void* data{};result.details_readable=picked_blob_data(blob.Get(),result.size,data);
+        if(!result.details_readable||!data||!result.size)result.error=ERROR_INVALID_DATA;
+        else if(!gears_ngx_mv_compute::pso_blob_save_size(result.size))result.error=ERROR_FILE_TOO_LARGE;
+        else {
+            wchar_t parent[MAX_PATH]{};const auto length=GetModuleFileNameW(own_module,parent,MAX_PATH);
+            auto* slash=length&&length<MAX_PATH?wcsrchr(parent,L'\\'):nullptr;
+            if(!slash)result.error=length>=MAX_PATH?ERROR_BUFFER_OVERFLOW:ERROR_PATH_NOT_FOUND;
+            else {*slash=0;
+                if(_snwprintf_s(result.path,MAX_PATH,_TRUNCATE,L"%s\\ngx-mv-picked-pso-%lu-%llu-%llu-%lld.raw",parent,GetCurrentProcessId(),key.world,key.ticket,now())<0)result.error=ERROR_BUFFER_OVERFLOW;
+                else {
+                    HANDLE file=CreateFileW(result.path,GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr);
+                    if(file==INVALID_HANDLE_VALUE)result.error=GetLastError();
+                    else {
+                        if(!WriteFile(file,data,static_cast<DWORD>(result.size),&result.written,nullptr))result.error=GetLastError();
+                        else if(result.written!=result.size)result.error=ERROR_WRITE_FAULT;
+                        else if(!FlushFileBuffers(file))result.error=GetLastError();
+                        else result.saved=true;
+                        if(!CloseHandle(file)){result.saved=false;if(!result.error)result.error=GetLastError();}
+                    }
+                }
+            }
+        }
+    }else if(SUCCEEDED(result.hr))result.error=ERROR_INVALID_DATA;
+    // Explicitly finish all COM ownership outside locks and before publishing
+    // completion. The activity guard remains alive through both Releases.
+    blob.Reset();pso.Reset();result.completed=true;
+    {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);blob_receipt=result;}
+}
 void print(FILE* file){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!file)return;
     fprintf(file,"ngx_mv_compute enabled=1 lists=%u list_limit=16 rows=%u row_limit=32 failed=%u failure=%u core_loss=%u stopped=%u leases_released=%u dispatches=%llu unbound=%llu unrelated=%llu invalidations=%llu waiting_bindings=%llu capture_bindings=%llu row_scope=selected_mv_related table_membership_verified=0 gpu_execution_verified=0 producer_authorized=0\n",
@@ -566,8 +619,11 @@ void print(FILE* file){
     fprintf(file,"ngx_mv_compute_resolution raw_matches=%llu alias_matches=%llu unmatched=%llu qi_failures=%llu reentrant_rejections=%llu scope=bank_or_exact_probe_pending temporary_release_after_local_frame_lock=1 alias_bank=0\n",
         resolved_raw,resolved_alias,resolved_unmatched,resolve_qi_failed,resolve_reentrant);
     auto const& picked=pso_promoted.key;
-    fprintf(file,"ngx_mv_pso_witness sets=%llu candidates=%llu promotions=%llu discards=%llu qi_failures=%llu last_discard=%u serial=%llu pending_valid=%u pending_retained=%u promoted_current_valid=%u promoted_retained=%u historical_stable_dispatch=%u canonical=%llx pso=%llx generation=%llu world=%llu ticket=%llu renderer=%llx witness_serial=%llu scope=attested_set17b514_single_pending_single_promoted blob_calls=0 gpu_execution_verified=0 producer_authorized=0\n",
-        pso_sets,pso_candidates,pso_promotions,pso_discards,pso_qi_failures,pso_last_discard,pso_serial,unsigned(pso_pending.valid),unsigned(bool(pso_pending.pso)),unsigned(pso_promoted.valid),unsigned(bool(pso_promoted.pso)),unsigned(pso_promoted.historical_stable),picked.canonical,picked.pso,picked.generation,picked.world,picked.ticket,picked.renderer,picked.serial);
+    fprintf(file,"ngx_mv_pso_witness sets=%llu candidates=%llu promotions=%llu discards=%llu qi_failures=%llu last_discard=%u serial=%llu pending_valid=%u pending_retained=%u promoted_current_valid=%u promoted_retained=%u historical_stable_dispatch=%u canonical=%llx pso=%llx generation=%llu world=%llu ticket=%llu renderer=%llx witness_serial=%llu scope=attested_set17b514_single_pending_single_promoted blob_calls=%u gpu_execution_verified=0 producer_authorized=0\n",
+        pso_sets,pso_candidates,pso_promotions,pso_discards,pso_qi_failures,pso_last_discard,pso_serial,unsigned(pso_pending.valid),unsigned(bool(pso_pending.pso)),unsigned(pso_promoted.valid),unsigned(bool(pso_promoted.pso)),unsigned(pso_promoted.historical_stable),picked.canonical,picked.pso,picked.generation,picked.world,picked.ticket,picked.renderer,picked.serial,unsigned(blob_receipt.attempted));
+    auto const& b=blob_receipt;auto const& k=b.key;
+    fprintf(file,"ngx_mv_pso_blob attempted=%u completed=%u saved=%u hr=%08lx size=%zu limit=4194304 written=%lu error=%lu details_readable=%u worker=%lu canonical=%llx pso=%llx generation=%llu world=%llu ticket=%llu renderer=%llx witness_serial=%llu path=%ls attempts_limit=1 create_new=1 worker_only=1 internal_allocation_bounded=0 interpretation=opaque_cache_only shader_identity_verified=0 gpu_execution_verified=0 producer_authorized=0\n",
+        unsigned(b.attempted),unsigned(b.completed),unsigned(b.saved),static_cast<unsigned long>(b.hr),b.size,b.written,b.error,unsigned(b.details_readable),b.worker,k.canonical,k.pso,k.generation,k.world,k.ticket,k.renderer,k.serial,b.path);
     fprintf(file,"ngx_mv_exact_probe tables=%llu misses=%llu dispatches=%llu rows=%u limit=8 overflow_calls=%llu active=%u arming=%u stopped=%u reason=%u serial=%llu typed_list_retained=%u identity_retained=%u scope=owned_capturing_attested_table17b99a_dispatch1ac833 independent_of_binding_bank=1 heap_observed=0 root_observed=0 full_bindings_verified=0 table_extent_verified=0 gpu_execution_verified=0 producer_authorized=0 reason_identity=1 reason_table_overwrite=2 reason_generation=3 reason_changed=4 reason_unwind=5 reason_capacity=6 reason_window_end=7 reason_reset_clear_bundle=8 reason_heap_root=9\n",
         exact_tables,exact_misses,exact_dispatches,exact_count,exact_overflow,unsigned(exact_association.active),unsigned(exact_arming),unsigned(exact_stopped),exact_reason,exact_serial,unsigned(bool(exact_list_owner)),unsigned(bool(exact_identity_owner)));
     for(unsigned i=0;i<exact_count;++i){auto const& r=exact_rows[i];auto const& a=r.association;auto const& d=a.descriptor;
@@ -608,6 +664,7 @@ struct ResetScope {explicit ResetScope(ID3D12GraphicsCommandList*){}void finish(
 struct RevocationScope {RevocationScope(ID3D12GraphicsCommandList*,unsigned){}void finish(){}};
 struct SetScope {SetScope(ID3D12GraphicsCommandList*,ID3D12PipelineState*,uintptr_t,bool){}void finish(){}};
 bool snapshot_picked_pso(gears_vr::ComPtr<ID3D12PipelineState>&,gears_ngx_mv_compute::PsoWitnessKey&){return false;}
+void register_worker(){}void poll_picked_blob(){}
 void stop(){}void release_drained(){}void print(FILE*){}
 bool install_hooks(void**){return true;}
 #endif

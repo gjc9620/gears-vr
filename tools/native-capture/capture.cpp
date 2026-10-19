@@ -239,7 +239,7 @@ void sdk_leave(ngx_stereo_host::WrapperScope*,uint32_t);
 #endif
 }
 namespace ngx_mv_compute_capture {
-void stop();void release_drained();void print(FILE*);
+void stop();void release_drained();void print(FILE*);void register_worker();void poll_picked_blob();
 }
 #include "owned_source_pixels.h"
 struct FrameLinkCounters {
@@ -1577,6 +1577,7 @@ void stereo_publish_worker_tick() {
     ngx_output_pixels::poll();
     owned_source_pixels::poll();
     death_pso_cache::poll();
+    ngx_mv_compute_capture::poll_picked_blob();
     if(!stereo_gpu_publish)return;
     if(continuous_session&&submitted_lifetime.stopping()&&!stereo_publish_counts.stopped.load()){
         stereo_publisher.mark_stopped();stereo_publish_counts.stopped=1;
@@ -4404,6 +4405,7 @@ void reset_world_thread_context(){
     reset_ui_world_tls();
 }
 DWORD WINAPI worker(void*) {
+    ngx_mv_compute_capture::register_worker();
     // GearsCaptureStart's one-shot started flag forbids reopening this gate.
     struct ActivationExit {~ActivationExit(){session_activation_gate.close();}} activation_exit;
     gears_session::Owner continuous_owner; // Retain the process object through all cleanup and early returns.
@@ -4885,7 +4887,7 @@ DWORD WINAPI worker(void*) {
         if(session_cleanup_expired())session_cleanup_timeout=true;
         write_session_status();Sleep(100);stereo_closed=close_stereo_publisher();
     }
-    death_pso_cache::poll();death_pso_cache::stop();
+    ngx_mv_compute_capture::poll_picked_blob();death_pso_cache::poll();death_pso_cache::stop();
     print_frame_link(status);
     print_outage(status,disabled==MH_OK);
     print_anchor(status,disabled==MH_OK);

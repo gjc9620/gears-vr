@@ -1,7 +1,10 @@
 #pragma once
 #include <array>
+#include <cstddef>
 #include <cstdint>
 namespace gears_ngx_mv_compute {
+constexpr std::size_t pso_blob_save_limit=4u*1024u*1024u;
+constexpr bool pso_blob_save_size(std::size_t size){return size&&size<=pso_blob_save_limit;}
 struct PsoWitnessKey {
     uintptr_t canonical{},pso{},renderer{};uint64_t generation{},world{},ticket{},serial{};
 };

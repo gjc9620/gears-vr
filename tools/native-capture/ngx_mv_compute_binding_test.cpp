@@ -122,6 +122,8 @@ void empty_retirement(){
     b.forget_binding(100);b.uncertain();assert(!b.erase_empty(100)&&b.failed());
 }
 void pso_witness_identity_and_revocation(){
+    assert(!pso_blob_save_size(0)&&pso_blob_save_size(1));
+    assert(pso_blob_save_size(pso_blob_save_limit)&&!pso_blob_save_size(pso_blob_save_limit+1));
     PsoWitnessKey key{100,200,300,4,5,6,7};
     // Typed interface raw addresses are deliberately absent: a canonical alias
     // with the same genuine generation/context is the same witness candidate.
