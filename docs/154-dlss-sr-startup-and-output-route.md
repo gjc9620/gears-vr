@@ -489,3 +489,24 @@ build driver `analysis/runtime/build-ngx-descriptor-game1.py`.
 Constructor-input experimentation is OFF to isolate descriptor observation.
 Game-resolution output is private diagnostic isolation, not a change to the
 required runtime-recommended-resolution release default.
+
+### Actual early-observer run: heap bound exhausted, not a producer failure
+
+`dlss-descriptor-menu1-20261019`, session36016, used the above exact Game1 DLL.
+The native-menu helper enabled SR and returned to gameplay. The selected
+world1/ticket1334 recorded two Evals with typed-before/final masks15 and completed
+the existing CPU pair probe (no GPU completion or producer-domain claim).
+
+The independent early descriptor observer failed at its ninth observed heap:
+heaps8, cells2, heap_calls9, UAV calls2, copies138, other devices0, missing births0,
+recursion0 and loss3 (capacity). Thus the heap limit, not the UAV cell limit,
+prevented meaningful selected-MV provenance. This does not show missing motion
+vectors or a vendor/runtime defect. Blindly interpreting the incomplete map
+would be incorrect; a bounded heap census or justified observation-capacity
+adjustment is needed before the selected-MV join experiment.
+
+Native cleanup, entry restoration, normal game close, owner exit0 and all five
+protected-file restores passed. Final observer status reports released1.
+Archived raw evidence: `analysis/runtime/dlss-descriptor-menu1-native-status.txt`
+and `dlss-descriptor-menu1-prime-status.txt`; lifecycle receipt:
+`analysis/runtime/dlss-descriptor-menu1-20261019.json`. No public default changed.
