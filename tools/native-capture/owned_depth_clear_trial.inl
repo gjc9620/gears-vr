@@ -6,7 +6,7 @@ namespace owned_depth_clear_trial {
 #error Owned depth-clear trial requires runtime render size and native owned pixels
 #endif
 using Input=gears_owned_depth_clear::Input;
-bool enabled{},attested{},initialized{};uint64_t attempts{},applied{},noops{},returned{},restored{},accepted_overflow{},rejected_overflow{};
+bool enabled{},attested{},initialized{};uint64_t attempts{},applied{},noops{},returned{},restored{},accepted_overflow{},rejected_overflow{},unowned_receipts_skipped{};
 uintptr_t observer_base{};unsigned module_size{},observer_size{};
 std::array<uint64_t,gears_owned_depth_clear::reason_count> rejects{};
 struct Row {Input input{};uintptr_t resource{};uint64_t generation{},last_ticket{},calls{};unsigned reason{};};
@@ -74,23 +74,30 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
         in.matched_generation=desktop.binding.generation;
     in.state=frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
     in.om=owned_ticket_size_trace::attachments.binding(reinterpret_cast<uintptr_t>(list));
-    // Stack walking is confined to an otherwise admitted candidate clear.
+    // Also retain the route for owned desktop-extent failures: a tiny Present
+    // surface can differ from the engine scene extent. Observation only; the
+    // admission policy remains unchanged.
     auto decision=gears_owned_depth_clear::plan(in);
-    if(decision.reason==gears_owned_depth_clear::route){std::array<void*,12> frames{};
+    if(decision.reason==gears_owned_depth_clear::route||decision.reason==gears_owned_depth_clear::desktop){std::array<void*,12> frames{};
         in.stack_count=CaptureStackBackTrace(0,static_cast<DWORD>(frames.size()),frames.data(),nullptr);
         for(unsigned i=0;i<in.stack_count;++i)in.stack[i]=reinterpret_cast<uintptr_t>(frames[i]);decision=gears_owned_depth_clear::plan(in);
     }
     const bool receipt=decision.apply()||decision.reason==gears_owned_depth_clear::already_correct;
+    // World-zero/ordinary desktop draws previously exhausted all rejection
+    // rows before any VR failure could be recorded. Keep their counters, but
+    // reserve bounded detail rows for the currently owned scene.
+    const bool record_receipt=receipt||in.owned_current;
+    if(!record_receipt)++unowned_receipts_skipped;
     auto& rows=receipt?accepted_rows:rejected_rows;auto& row_count=receipt?accepted_count:rejected_count;
     Row* row{};
-    for(unsigned i=0;i<row_count;++i){auto& candidate=rows[i];
+    for(unsigned i=0;record_receipt&&i<row_count;++i){auto& candidate=rows[i];
         if(candidate.reason==unsigned(decision.reason)&&candidate.input.world==in.world&&candidate.resource==owned.target.resource&&
            candidate.generation==owned.generation&&candidate.input.om.depth_handle==in.om.depth_handle&&
            candidate.input.desktop_chain==in.desktop_chain&&candidate.input.desktop_generation==in.desktop_generation&&
            candidate.input.state.viewport==in.state.viewport&&candidate.input.width==in.width&&candidate.input.height==in.height){row=&candidate;break;}
     }
-    if(!row&&row_count<rows.size()){row=&rows[row_count++];row->input=in;row->resource=owned.target.resource;row->generation=owned.generation;row->reason=decision.reason;}
-    if(row){++row->calls;row->last_ticket=in.ticket;}else if(receipt)++accepted_overflow;else ++rejected_overflow;
+    if(record_receipt&&!row&&row_count<rows.size()){row=&rows[row_count++];row->input=in;row->resource=owned.target.resource;row->generation=owned.generation;row->reason=decision.reason;}
+    if(row){++row->calls;row->last_ticket=in.ticket;}else if(receipt)++accepted_overflow;else if(record_receipt)++rejected_overflow;
     if(decision.apply())++applied;else if(decision.reason==gears_owned_depth_clear::already_correct)++noops;else ++rejects[decision.reason];
     auto viewport=[&](gears_owned_depth_clear::Viewport const& value){const auto& r=value.rectangle;
         const D3D12_VIEWPORT native{r.x,r.y,r.width,r.height,value.minimum,value.maximum};original_viewports(list,1,&native);
@@ -100,6 +107,7 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
 }
 void print(FILE* file){
     std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    fprintf(file,"owned_depth_clear_receipt_scope owned_scene_only=1 unowned_skipped=%llu admission_unchanged=1\n",unowned_receipts_skipped);
     fprintf(file,"owned_depth_clear_trial compiled=1 enabled=%u attested=%u attempts=%llu applied=%llu noops=%llu returned=%llu restored=%llu accepted_rows=%u accepted_limit=16 accepted_overflow=%llu rejected_rows=%u rejected_limit=16 rejected_overflow=%llu dsv_size_known=0 viewport_only=1 pixels_verified=0\n",unsigned(enabled),unsigned(attested),attempts,applied,noops,returned,restored,accepted_count,accepted_overflow,rejected_count,rejected_overflow);
     for(unsigned reason=1;reason<gears_owned_depth_clear::already_correct;++reason)fprintf(file,"owned_depth_clear_reject reason=%u count=%llu reasons=disabled:1,identity:2,arguments:3,owner:4,output:5,attachments:6,rectangles:7,route:8,desktop:9\n",reason,rejects[reason]);
     auto print_rows=[&](auto const& rows,unsigned row_count,const char* kind){
