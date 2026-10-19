@@ -8,6 +8,18 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+**Visual failure discovered after the small-window run:** user screenshot and
+inspection of saved world3 GPU source
+`continuous-stereo-44132-20261019-091759-f5419aaf.gpu.ppm.1.ppm` (see the run's
+visual path for exact selected sample) show large black right/bottom regions.
+The 1818x994 allocation and successful world handoffs do NOT prove full scene
+coverage. The automatic `passed` result only covered dimensions/lifecycle and
+missed this visual failure. Small-desktop independence is therefore NOT accepted;
+do not publish this candidate as resolution-complete. The abrupt coverage boundary
+appears consistent with the 1280x720 desktop extent, but the responsible render
+stage remains to be identified. Inspect actual viewport/scissor/depth/postprocess
+coverage rather than changing texture dimensions or declaring simulator failure.
+
 Fractional background regressions also passed: scale 0.7 produced 896x980 eyes
 and 1792x980 SBS after both checkpoint reloads. Scale 0.71 produced odd-width
 909x994 eyes and 1818x994 SBS after both reloads. The latter temporarily used
