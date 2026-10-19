@@ -1,5 +1,12 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19: descriptor reuse counterfactual
+
+Reuse1 DLL `ebec5cfbbbb36b81de7d0d6c11afd3db7ac8d7197fd961a00de2f228d68efd08` passed fresh457-dependency build, focused CPU and native descriptor fixture/startup tests. Same-address ABA, retained snapshots, source copying before reuse and all-known capacity failure are covered. Actual session32900 accepted two Eval observations with retained MV. Eight erased records were reused, but capacity still stopped at128 known UAV cells, zero invalid/free cells and43 heaps (19 UAV writes,2144 copies). Tombstones therefore contribute but do not explain remaining saturation; live copied descriptors exceed the bound. No known UAV was evicted and no failed bank recovered.
+
+Session remains incomplete/owner exit1, not playable DLSS evidence. Native/entry cleanup, normal close and settings restoration passed. Exact occupancy and identity evidence is under ignored `analysis/runtime/dlss-descriptor-reuse1-evidence.json`. Next candidate may increase the explicit production cell bound while retaining generic limits and rejecting overflow; it must account for range-array types and hook stack use.
+
+
 ## 2026-10-19: typed MV join candidate actual boundary
 
 Fresh `build-ngx-descriptor-join1` SHA256 `d28c9d00e99d14fcf03e9cb7443efbc72e50d1011b7cac32aff7bf02eaaebda1` passed457 dependency checks, continuous startup suite, provenance/census/epoch CPU tests and real D3D12 descriptor fixture. Production heap cap96 is based on the previous60 creation census; generic test default remains8. Typed MV joins never cast NGX integer values to COM pointers.
