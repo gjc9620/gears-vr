@@ -1,5 +1,14 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19: independent source ledger reaches actual MV
+
+Fresh SourceLedger1 DLL `602116a77c48f158271265a7292434677f9ea98a9d00d989288f82313ca2765a` passed457 dependencies, CPU source policy checks and real D3D12 fixture proving source continuation after intentional legacy loss. Actual session35632 firstEval world1/ticket604 retained a typed MV and found exactly1 current nonvisible source descriptor. ledger_ready1/device_match1/legacy_failed_at_eval1, version47/origin47, no copied-source predecessor, explicit view bytes retained. No integer-to-COM cast or legacy failure recovery.
+
+At teardown source ledger remained healthy:58heaps,40cells (32known UAV,8nonUAV,88unused),75observed UAV writes,7420289invalidations,11055932copies, zero otherdevice/missingbirth/uncertainty/loss. This establishes current source provenance and solves the instrumentation saturation obstruction; it does not establish a Dispatch binding or MV write domain. Next work can target only this retained resource with an explicitly separate bounded observation epoch.
+
+Native/entry cleanup, normal close and settings restoration passed. Session incomplete/ownerexit1, so no playable-DLSS claim. Exact identities/statushash and original scope are in ignored `analysis/runtime/dlss-source-ledger1-evidence.json`. Default player DLL/manifest unchanged.
+
+
 ## 2026-10-19: targeted source-ledger design review
 
 Astra review identified an important boundary: legacy Call admission closes after bank failure, so19 UAV writes is only a pre-failure prefix, not a complete creation census. The independent heap census survives but typed descriptor observations do not. The current frozen pair also stops after its selected ticket, so a future-ticket experiment cannot silently reuse its completed state.
