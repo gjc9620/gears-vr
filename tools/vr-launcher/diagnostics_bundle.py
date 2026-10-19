@@ -416,6 +416,27 @@ def _artifacts(data):
     return result
 
 
+def _render_size_plan(data):
+    """Export only a consistent launch plan, never infer measured GPU dimensions."""
+    if not isinstance(data, dict) or data.get('runtime_render_size_plan') is not True:
+        return None
+    scale = data.get('render_scale')
+    if type(scale) not in (int, float) or not math.isfinite(scale) or not .25 <= scale <= 2:
+        return None
+    for key in ('recommended', 'eye', 'source'):
+        values = data.get(key)
+        if not isinstance(values, list) or len(values) != 2 or any(type(v) is not int or not 1 <= v <= 32768 for v in values):
+            return None
+    rw, rh = data['recommended']
+    w, h = data['eye']
+    if (not 64 <= w <= 4096 or not 64 <= h <= 8192 or data['source'] != [2*w, h]
+            or w != math.ceil(rw*scale-1e-9) or h != math.ceil(rh*scale-1e-9)):
+        return None
+    return {'render_scale':scale, 'recommended':list(data['recommended']),
+            'eye':list(data['eye']), 'source':list(data['source']),
+            'evidence':'launcher_preflight_plan_not_gpu_measurement'}
+
+
 def _launcher_state(collector):
     data = collector.document(collector.root / 'analysis/runtime/vr-launcher-session.json', 'launcher state')
     if data.get('schema') != 1 or data.get('kind') != 'repository_vr_launcher':
@@ -424,6 +445,12 @@ def _launcher_state(collector):
     known = ('preflight', 'reserving', 'navigating_menu', 'waiting_for_level', 'session_owned',
              'cancelled_before_activation', 'finished', 'incomplete', 'failed', 'running', 'stopped', 'starting', 'stopping')
     result = {'recognized':True, 'phase':phase if phase in known else 'unknown'}
+    if 'render_size_plan' in data:
+        plan = _render_size_plan(data['render_size_plan'])
+        if plan is None:
+            collector.warn('launcher state', 'invalid render size plan omitted')
+        else:
+            result['render_size_plan'] = plan
     for key in ('native_activated', 'passed', 'prime_watchdog_pending'):
         if type(data.get(key)) is bool:
             result[key] = data[key]

@@ -466,6 +466,40 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(stats['game_present_calls_per_second'], {'valid_samples':3,'min':0,'mean':50,'max':90})
         self.assertEqual(stats['stereo_pairs_per_second'], {'valid_samples':0,'min':None,'mean':None,'max':None})
 
+    def test_render_plan_export_is_curated_and_not_attributed_to_old_sessions(self):
+        self.session()
+        plan = {'runtime_render_size_plan':True, 'render_scale':.7,
+                'recommended':[3072,3264], 'eye':[2151,2285], 'source':[4302,2285],
+                'runtime_path':'SECRET_RUNTIME_PATH'}
+        (self.runtime/'vr-launcher-session.json').write_text(json.dumps({
+            'schema':1,'kind':'repository_vr_launcher','phase':'preflight','render_size_plan':plan}))
+        self.export()
+        _, raw, docs = self.read_zip()
+        exported = docs['launcher-state.json']['render_size_plan']
+        self.assertEqual(exported['eye'],[2151,2285])
+        self.assertEqual(exported['recommended'],[3072,3264])
+        self.assertEqual(exported['render_scale'],.7)
+        self.assertEqual(exported['evidence'],'launcher_preflight_plan_not_gpu_measurement')
+        self.assertNotIn('SECRET_RUNTIME_PATH',raw)
+        self.assertNotIn('render_size_plan',docs['sessions/session-1.json'])
+
+    def test_render_plan_rejects_invalid_dimensions_scale_and_relationships(self):
+        valid = {'runtime_render_size_plan':True,'render_scale':1.,
+                 'recommended':[3072,3264],'eye':[3072,3264],'source':[6144,3264]}
+        for changes in ({'render_scale':True}, {'render_scale':float('nan')},
+                        {'render_scale':float('inf')}, {'render_scale':0},
+                        {'eye':[True,3264]}, {'eye':[3071,3264]},
+                        {'source':[3072,3264]}, {'recommended':[32769,3264]},
+                        {'recommended':[3072]}, {'runtime_render_size_plan':1}):
+            with self.subTest(changes=changes):
+                self.assertIsNone(bundle._render_size_plan({**valid,**changes}))
+        (self.runtime/'vr-launcher-session.json').write_text(json.dumps({
+            'schema':1,'kind':'repository_vr_launcher','render_size_plan':{'eye':[1,2]}}))
+        self.export()
+        _, raw, docs = self.read_zip()
+        self.assertNotIn('render_size_plan',docs['launcher-state.json'])
+        self.assertIn('invalid render size plan omitted',raw)
+
     def test_launcher_failure_before_continuous_session_is_retained_without_paths(self):
         index = self.runtime/'vr-launcher-session.json'
         index.write_text(json.dumps({'schema':1,'kind':'repository_vr_launcher','phase':'reserving',

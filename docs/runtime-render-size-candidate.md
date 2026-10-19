@@ -8,6 +8,14 @@ is release work for this default, not a reason to defer it to 0.0.2.
 
 ## Default configuration regression, 2026-10-19
 
+Diagnostics export now retains the latest launcher's recommended eye dimensions,
+selected multiplier, planned eye dimensions and SBS dimensions. It labels these
+as a preflight plan, not measured GPU output, and does not attribute them to older
+sessions. Invalid or inconsistent plans are omitted with a warning; arbitrary
+runtime paths are excluded. The diagnostics, launcher, render-size and portable
+stage/package suites passed 140 offline tests. This source change requires a
+fresh portable package; the previously archived ZIP below predates it.
+
 RuntimeRelease2 is now the launcher default and named manifest
 `manifest-runtime-release2.json`. Native SHA
 `249aeb07684891c1a7d1813b732a4e8e185b36b2df5827f99659527ee0b26b5f`;
