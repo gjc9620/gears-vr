@@ -1,5 +1,26 @@
 # V1 DLSS SR：隔离启动与输出分支
 
+## 2026-10-19：早期 heap census 实际结果
+
+独立诊断 `build-ngx-descriptor-census1` DLL SHA256
+`c546d426bdfe07535cae3e47cf8d70f1bf93007f48c9d38438655defd8a2dfa9`
+通过全新编译、CPU census/provenance/epoch 测试、真实 D3D12 描述符 fixture 和启动自测。
+后台小窗口、静音运行 session38876，通过游戏原生菜单启用 SR 后，同一 world1/ticket1434
+接受两个 Eval。每个冻结点累计创建60个 CBV/SRV/UAV heaps：19个 shader-visible
+（描述符累计75776、单heap最大4096）和41个非shader-visible（累计11352、最大2048）。
+另有20个其他类型 heap；API失败、读取失败、饱和和重入排除均为0。
+这是跨设备累计创建量，不是存活heap或显存字节数，也不是MV producer认证。
+
+原8-heap provenance bank仍在第9个创建处因容量失败；新的独立scalar census继续统计，
+因此现在可依据实际数量设置下一轮有限容量，而不是猜测。当前仍未关联MV资源与真实writer。
+GPU completion/domain仍为0。这轮XR场景提交为0、会话incomplete/owner exit1；不能算DLSS显示通过。
+native cleanup和入口恢复通过，游戏正常关闭，五份设置/profile恢复。
+
+私有驱动沿用了旧固定归档名，归档步骤报FileExistsError且未覆盖旧证据；协调者随后从本session
+专属native-status保存了新证据：`analysis/runtime/dlss-descriptor-census1-evidence.json`
+和`dlss-descriptor-census1-native-status.txt`。后续驱动须使用本轮prefix归档。
+默认玩家版本未改动，DLSS仍锁定关闭。
+
 ## 2026-10-19：Compute Dispatch 边界汇编核对
 
 KB查询后，在已有私有IDA副本只读导出 `1ac6e4` 与 `17b420` 的全部热/冷chunks；导出后关闭lease。证据为 ignored `analysis/ida/ngx-copy-contract-20261019/compute-chunks.json` 及同目录两份汇编。所有字节与历史blob `911ab9…` 一致，组合hash分别 `151372ef327a20c9c6d56d227d371601a80ea61e7f9d572858a41b4d60cd6761`、`c84b4ac0e66f5f17bd7465a26fd54a87017bbd0162f1b2be98b895e599721e43`。原始资料库hash仍为 `324248ac7cd0388a05907c29436fccf804eb82e5cb8433190806342c1cfcbb26`。
