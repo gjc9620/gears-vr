@@ -1,3 +1,5 @@
+![GearsVR](docs/images/gears-vr-banner.png)
+
 GearsVR 0.0.1
 
 Hey Gears! Welcome to GearsVR!
