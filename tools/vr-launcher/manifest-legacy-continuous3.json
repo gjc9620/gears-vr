@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "game_path": "game-installation/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe",
+  "game_sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+  "native_build": "tools/native-capture/build-continuous3",
+  "native_dll": "GearsCaptureContinuous3.dll",
+  "native_sha256": "F15F375E647B451858376183D7B9C4198CB931DB801DFE7841264BC06FB237B0",
+  "xr_build": "tools/openxr-probe/build-shutdown3",
+  "xr_sha256": "FA1DAD6A707C3C767695498F7988F6FEB8263ADC09DCD518548F7388E3C33EA3"
+}

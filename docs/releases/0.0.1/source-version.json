@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "release_zip_sha256": "944f02e9e0ebea8a785460072d7ee2bd091a4d671e9daec770d5610095131e1c",
+  "native_sha256": "94b73bb04b6f36d4a4bc16f84f1e95d49a1a3144792e0e41d004ef3b802b4304",
+  "xr_sha256": "0a2b7f7dc6a65f8ee23c255423e5fac841726ac6f2ef9bc249ac8e5f4902d56c",
+  "source_scope": "Audited release-aligned authored source; third-party dependencies external",
+  "native_source_file_count": 444,
+  "shared_native_source_file_count": 29,
+  "xr_source_file_count": 47,
+  "default_runtime": "System OpenXR runtime"
+}

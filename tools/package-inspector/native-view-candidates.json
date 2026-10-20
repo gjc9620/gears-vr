@@ -1,0 +1,27 @@
+{
+  "sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+  "status": "runtime-captured-view-path; gated-render-yaw-edit-visually-verified",
+  "rvas": {
+    "player_view_event_name": "0x1c37018",
+    "player_view_event_wrapper": "0x15c968",
+    "local_player_scene_view_candidate": "0x15cf08",
+    "player_view_call_in_scene_view": "0x15d0c5",
+    "after_player_view_call": "0x15d0ca",
+    "projection_matrix_builder_candidate": "0x15dd7c",
+    "view_object_constructor_candidate": "0x15e428",
+    "draw_path_candidate": "0x2c78f4",
+    "view_family_consumer_candidate": "0x26858c"
+  },
+  "candidate_view_object_offsets": {
+    "view_matrix": "0x70",
+    "projection_matrix": "0xb0"
+  },
+  "limitations": [
+    "Runtime capture observed 4115 scene-view calls on thread 4960 in PID 32532",
+    "No proof this path continues during a genuine VM camera stall; menu pauses were not distinguished",
+    "A 1.5-degree gated render-output yaw edit was visually verified in PID 15712 and stopped; other axes and translation unverified",
+    "Matrices were read before returning the view pointer to its caller; long-term object lifetime remains unverified",
+    "DXGI Present was captured; a one-to-one mapping between every view and submission is unverified",
+    "Do not use candidate RVAs or layouts on another executable build"
+  ]
+}

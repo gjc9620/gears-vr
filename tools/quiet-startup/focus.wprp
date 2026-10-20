@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WindowsPerformanceRecorder Version="1.0" Author="GearsVR">
+  <Profiles>
+    <EventCollector Id="FocusCollector" Name="GearsVR Focus Diagnostic">
+      <BufferSize Value="64" />
+      <Buffers Value="32" />
+    </EventCollector>
+    <EventProvider Id="Win32kFocus" Name="8c416c79-d49b-4f01-a467-e56d3aa8234c" NonPagedMemory="true" Stack="true" Level="5" Strict="true">
+      <Keywords><Keyword Value="0x22000" /></Keywords>
+    </EventProvider>
+    <Profile Id="QuietFocus.Verbose.Memory" Name="QuietFocus" Description="Bounded focus event attribution" LoggingMode="Memory" DetailLevel="Verbose">
+      <Collectors><EventCollectorId Value="FocusCollector"><EventProviders><EventProviderId Value="Win32kFocus" /></EventProviders></EventCollectorId></Collectors>
+    </Profile>
+  </Profiles>
+</WindowsPerformanceRecorder>

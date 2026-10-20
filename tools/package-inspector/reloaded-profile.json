@@ -1,0 +1,17 @@
+{
+  "description": "Locally validated GOWDE-Steam.exe build; all offsets require matching SHA256",
+  "sha256": "bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4",
+  "names_rva": "0x1c34800",
+  "objects_rva": "0x1c24730",
+  "name_entry_index": 0,
+  "name_entry_text": 20,
+  "object_internal_index": 8,
+  "object_outer": 64,
+  "object_name": 72,
+  "object_class": 80,
+  "field_super": 96,
+  "field_next": 104,
+  "struct_children": 128,
+  "property_offset_internal": 148,
+  "struct_property_struct": 208
+}
