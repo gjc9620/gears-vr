@@ -21,7 +21,7 @@ import startup_diagnostics
 sys.path.insert(0,str(ROOT/'tools/debug-launch'))
 import instance_policy
 INDEX=instance_policy.index_path()
-SESSION_OPTIONS=('anchor_observer','cinematic_camera','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','ui_reticle_late_sample','gpu_snapshot','menu_recovery','world_recovery','crosshair_assignment_observer','movie_display','path_choice_center')
+SESSION_OPTIONS=('anchor_observer','cinematic_camera','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','ui_reticle_late_sample','gpu_snapshot','menu_recovery','world_recovery','crosshair_assignment_observer','movie_display','path_choice_center','controller_input_observer')
 
 def atomic_json(path,value):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -185,6 +185,8 @@ def settings(config,manifest,root=ROOT):
         raise ValueError('Late reticle sampling requires UI observer and HUD plane in the continuous launcher')
     if manifest.get('crosshair_assignment_observer',False) and not all(manifest.get(key,False) for key in ('ui_observer','anchor_observer')):
         raise ValueError('Crosshair assignment observer requires UI observer and anchor observer')
+    if manifest.get('controller_input_observer',False) and not all(manifest.get(key,False) for key in ('crosshair_assignment_observer','ui_observer','anchor_observer')):
+        raise ValueError('Controller input requires the certified crosshair/UI/anchor observers')
     if manifest.get('world_recovery',False) and not all(manifest.get(key,False) for key in ('anchor_observer','ui_observer','cinematic_camera')):
         raise ValueError('World recovery requires anchor/UI observers and cinematic camera')
     if manifest.get('cinematic_camera',False) and not manifest.get('anchor_observer',False):
@@ -524,8 +526,10 @@ class Backend:
         from menu_navigation import navigate
         return navigate(pid,identity,self,cancel,deadline,log,check_live=check_live)
 
-def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sleep,auto_continue=False,foreground=False):
+def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sleep,auto_continue=False,foreground=False,remeasure_armspan=False):
     instance_policy.require_private_manifest(manifest)
+    if remeasure_armspan and not manifest.get('controller_input_observer',False):
+        raise ValueError('Armspan remeasurement requires a controller-input build')
     game,scale=settings(config,manifest)
     profile=verify_files(manifest,game) # Reject unsupported installs before startup side effects.
     selected_render_scale=render_scale(config,manifest)
@@ -630,6 +634,7 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         if handshake:
             args.startup_selftest_proof=handshake['path'];args.startup_selftest_digest=handshake['digest'];args.startup_selftest_nonce=handshake['nonce']
         for key in SESSION_OPTIONS:setattr(args,key,manifest.get(key,False))
+        args.remeasure_armspan=bool(remeasure_armspan)
         hud_fov=hud_horizontal_fov(config,manifest)
         if hud_fov is not None:args.hud_horizontal_fov_degrees=hud_fov
         for key,value in hud_layout(config,manifest).items():setattr(args,key,value)
@@ -808,11 +813,14 @@ def main():
     parser.add_argument('--runtime',type=pathlib.Path,help='Child-process OpenXR manifest override; no registry change')
     parser.add_argument('--auto-continue',action='store_true',help='Navigate the verified menu path into the existing campaign')
     parser.add_argument('--foreground',action='store_true',help='Use the ordinary foreground game startup policy')
+    parser.add_argument('--remeasure-armspan',action='store_true',help='Measure armspan again in a controller-input session; keep the old record if measurement fails')
     parser.add_argument('--output',type=pathlib.Path,help='Destination ZIP for export-logs')
     parser.add_argument('--overwrite',action='store_true',help='Explicitly replace an existing diagnostics ZIP')
     args=parser.parse_args()
     if args.command=='export-logs' and args.output is None:
         parser.error('export-logs requires --output')
+    if args.remeasure_armspan and args.command!='start':
+        parser.error('--remeasure-armspan is only valid with start')
     try:
         if args.command=='export-logs':
             # -I omits the script directory; use only our bundled sibling module.
@@ -834,7 +842,8 @@ def main():
             value=render_scale(config,manifest)
             if value is None:raise ValueError('This build does not support runtime render size')
             print(json.dumps(render_size_info(manifest,value)),flush=True);return 0
-        return start(json.loads(args.config.read_text()),json.loads(args.manifest.read_text()),backend,auto_continue=args.auto_continue,foreground=args.foreground)
+        return start(json.loads(args.config.read_text()),json.loads(args.manifest.read_text()),backend,
+                     auto_continue=args.auto_continue,foreground=args.foreground,remeasure_armspan=args.remeasure_armspan)
     except Exception as error:print(str(error),file=sys.stderr);return 1
 
 if __name__=='__main__':raise SystemExit(main())

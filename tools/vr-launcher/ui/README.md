@@ -25,6 +25,8 @@ Python 按 `GEARSVR_PYTHON`、随包 `runtime/python/python.exe`、当前用户 
 
 默认 `tools/vr-launcher/manifest.json` 的布尔能力 `hud_size_control` 为 `true` 时，窗口显示“HUD 大小”角宽控件：45–100°，未配置时为 65°，已有 `hud_horizontal_fov_degrees` 会读回。调大更易读，调小更集中；点击“启动 VR”时连同游戏路径保存，下次启动生效。保存保留其余配置键。旧清单没有该能力或值为 `false` 时，不显示控件，也不新增角宽字段；旧 DLL 不会因此获得调整能力。清单能力在窗口打开后变化时，需要重新打开启动器。
 
+武器 6DoF 开发清单显式启用 `controller_input_observer` 时，窗口另显示臂展测量行。没有有效的本机 `%LOCALAPPDATA%/GearsVR/weapon-calibration.json` 时首次测量为必选；已有有效记录时默认复用，玩家可勾选重新测量。点击启动会把重测选择交给 `launcher.py start --remeasure-armspan`，后端再交给现有双握持两秒测量器；失败不覆盖旧记录。清单还必须具备已认证的 crosshair／UI／anchor 观察能力，否则启动前拒绝。当前冻结的普通 `manifest.json` 不声明此手柄能力，因此普通启动器不显示这一开发中的选项，也不会在未经验证的默认 DLL 上假装完成校准。头显内的引导、槽位试抓确认及玩家真机验收仍待实现。
+
 “停止 VR”只运行 `launcher.py stop`；不直接终止游戏或 owner。很早收到停止请求时，若 Python 尚未启动则取消本次启动；否则保留请求，等待索引中的 owner PID/创建时间与本窗口启动的 Python 匹配。launcher 写入该索引前已建立停止 event，身份确认后才调用 stop；等待期间不会假报停止成功。关闭仍在运行的本窗口会询问是否请求停止，并保留窗口等待 owner 退出；选择“否”继续运行。清理未完成时保留窗口与日志，可继续查看状态或再次停止。不要用任务管理器强制终止 GUI；异常关机或外部强制结束不在此关闭策略覆盖范围内。
 
 “查看状态”调用现有身份检查状态接口，完整输出显示在窗口。日志保存在 `analysis/runtime/vr-launcher-ui.log`，可用“打开日志”定位目录。状态不自动刷新，需点击获取。启动按钮等待其 owner 完成后才能再次使用；原生资源退出限制与现有 launcher 相同。

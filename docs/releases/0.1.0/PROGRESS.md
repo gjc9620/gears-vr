@@ -54,6 +54,8 @@ Gnasher 实例骨骼入口复核：Astra Max 只读核对已有脚本／对象�
 
 Gnasher 完整霰弹模型原型：已查原版资源只有抛出的开口空壳，故新增纯程序化 `assets/weapon-6dof/gnasher-round.glb`，封口、底座、底火及四色材质均为新几何／材质，参考尺寸 33.7×113.5 mm，544 个三角形。`tools/weapon-models/build_gnasher_round.py --check` 逐字节复现提交的 GLB，结构与尺寸检查、本地侧面／斜视预览通过。该原型**尚未加载进游戏**，装填口配合、抓点、碰撞、纹理和头显尺度仍待验证；原空壳网格／检查图仍留在忽略的 `analysis/`。
 
+启动器校准入口增量：`launcher.py start --remeasure-armspan` 现在只在清单启用已认证的 controller／crosshair／UI／anchor 观察器时传给连续会话。双语 WinForms 界面在该清单下显示臂展行：无有效本机记录时首次测量必选且不可取消，有记录时默认复用并可选重测；测量仍由已有 OpenXR 双握持两秒逻辑执行，失败不覆盖旧值。普通冻结清单未启用该能力，界面不会误导玩家以为当前默认版已有 6DoF。启动器 Python 78 项测试、连续会话及校准 62 项测试、C# 编译与隐藏自检通过；私有 GUI 候选留在忽略的 `analysis/vr-launcher-ui/`，未安装到玩家默认入口。头显内进度／槽位确认与真机测量待完成。
+
 完美换弹期限复核：按项目规则先查逆向知识库与已保存的 UnrealScript 类默认值，Astra Max 只读复查了七把已定位武器。Lancer／Hammerburst 的 `AR_PossibleSuccessStartPoint` 默认 0.70 秒、`ReloadDuration` 2.50 秒；Gnasher 为 0.85／3.00，Longshot 为 1.00／3.00，Snub／Boltok 为 0.50／2.00；Boomshot 这两个值未取得。现有保存证据没有这些枪的**完美窗口终点**，开始可能点和普通时长均不得代用。体感换弹的逐枪截止值仍未配置，原版奖励／音效接入仍待完成；详见交互设计中的计时表。
 
 本轮离线验证还覆盖 `OriginalR2FireTest`、`OriginalL2AimTest`，并成功构建默认、仅 R2、R2+L2 三种私有 Playground DLL；导出表分别为无 VR 入口、仅 R2 入口和额外的 L2 状态入口。模拟发布器增加左扳机及双扳机测试动作，仍只用于置后静音测试，不进入默认启动清单。

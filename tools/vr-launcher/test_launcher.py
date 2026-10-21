@@ -112,6 +112,28 @@ class LauncherTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'boolean'):
             launcher.settings({},dict(guards,path_choice_center='true'))
 
+    def test_armspan_option_requires_controller_build_and_reaches_runner(self):
+        certified=dict(MANIFEST,controller_input_observer=True,anchor_observer=True,
+                       ui_observer=True,crosshair_assignment_observer=True)
+        launcher.settings({},certified)
+        for key in ('anchor_observer','ui_observer','crosshair_assignment_observer'):
+            with self.subTest(key=key),self.assertRaises(ValueError):
+                launcher.settings({},dict(certified,**{key:False}))
+        with self.assertRaisesRegex(ValueError,'boolean'):
+            launcher.settings({},dict(certified,controller_input_observer='true'))
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend()
+            with mock.patch.object(launcher,'verify_files',return_value={}),\
+                 mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                with self.assertRaisesRegex(ValueError,'controller-input build'):
+                    launcher.start({},MANIFEST,backend,pathlib.Path(directory)/'disabled.json',
+                                   sleep=lambda _:None,remeasure_armspan=True)
+                launcher.start({},certified,backend,pathlib.Path(directory)/'enabled.json',
+                               sleep=lambda _:None,remeasure_armspan=True)
+            args=backend.runner.run_session.call_args.args[0]
+            self.assertTrue(args.controller_input_observer)
+            self.assertTrue(args.remeasure_armspan)
+
     def test_prelaunch_selftest_option_requires_boolean_and_owned_startup(self):
         for value in (1,'true',None):
             with self.assertRaisesRegex(ValueError,'boolean'):
@@ -263,6 +285,15 @@ class LauncherTests(unittest.TestCase):
                     mock.patch.object(launcher,'start',return_value=0) as start:
                 self.assertEqual(launcher.main(),0)
                 self.assertIs(start.call_args.kwargs['foreground'],foreground)
+
+    def test_cli_armspan_remeasure_reaches_start(self):
+        argv=['launcher.py','start','--remeasure-armspan']
+        with mock.patch.object(launcher.sys,'argv',argv),\
+             mock.patch.object(launcher,'Backend',return_value=object()),\
+             mock.patch.object(launcher.pathlib.Path,'read_text',return_value='{}'),\
+             mock.patch.object(launcher,'start',return_value=0) as start:
+            self.assertEqual(launcher.main(),0)
+            self.assertTrue(start.call_args.kwargs['remeasure_armspan'])
 
     def test_cli_export_logs_is_independent_of_running_or_stopped_backend(self):
         import diagnostics_bundle
