@@ -21,6 +21,7 @@ Gears of War: Reloaded 第三人称同帧双目 VR Mod。2026-10-21 已生成 0.
 - [OpenXR 独立会话与提交验证](docs/08-openxr-independent-validation.md)
 - [六轴原生视点验证](docs/09-six-axis-render-validation.md)
 - [VR 交互方案记录（待实现）](docs/10-vr-interaction-design.md)
+- [武器 6DoF 交互设计与验收规格（2026-10-22，待实现）](docs/weapon-6dof-interaction-design-20261022.md)
 - [真实头显连接验证](docs/11-headset-connection-validation.md)
 - [实时头动接入验证](docs/14-live-head-camera-test.md)
 - [游戏窗口进入头显的显示原型](docs/15-game-screen-display.md)
