@@ -19,7 +19,7 @@ def split(raw, geometry, audited):
     skin = audited['lod0_skin']
     palette = [item['skeleton_index'] for item in skin['active_bones']]
     vertex_count = skin['vertex_count']
-    vertex_start = geometry['vertex_offset']
+    vertex_start = skin['vertex_offset_in_export']
     bone_by_vertex = []
     for vertex in range(vertex_count):
         offset = vertex_start + vertex * 64
@@ -59,7 +59,8 @@ def export_parts(raw, geometry, audited, grouped, output_dir):
             target.write('# source_sha256 ' + audited['source_sha256'] + '\n')
             target.write('# bone ' + bone + '\n')
             for vertex in used:
-                x, y, z = struct.unpack_from('<3f', raw, geometry['vertex_offset'] + vertex * 64)
+                x, y, z = struct.unpack_from('<3f', raw,
+                                             audited['lod0_skin']['vertex_offset_in_export'] + vertex * 64)
                 target.write(f'v {x:.9g} {y:.9g} {z:.9g}\n')
             for face in faces:
                 target.write('f ' + ' '.join(str(remap[index]) for index in face) + '\n')

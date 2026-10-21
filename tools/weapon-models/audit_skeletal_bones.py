@@ -48,6 +48,60 @@ def skeletal_bones(raw, end, names):
     return candidates[0]
 
 
+def reference_bones(raw, bounds_offset, bones):
+    """Read the inferred UE3 48-byte reference skeleton records.
+
+    Positions are raw parent-local package units, not calibrated VR metres.
+    This does not identify a hinge axis or prove an animation's travel.
+    """
+    materials = struct.unpack_from('<i', raw, bounds_offset + 28)[0]
+    start = bounds_offset + 32 + materials * 4 + 24 + 4
+    result = []
+    for index, bone in enumerate(bones):
+        name_index, name_number, flags, *pose = struct.unpack_from('<iii4f3fii', raw,
+                                                                     start + index * 48)
+        orientation, position, children, parent = pose[:4], pose[4:7], pose[7], pose[8]
+        length_sq = sum(value * value for value in orientation)
+        if (name_number != 0 or not 0 <= flags < 1024 or
+                not all(math.isfinite(value) and abs(value) < 1000
+                        for value in (*orientation, *position)) or
+                not .98 <= length_sq <= 1.02 or
+                not 0 <= children < len(bones) or
+                (index == 0 and parent != 0) or
+                (index > 0 and not 0 <= parent < index)):
+            raise ValueError(f'Invalid reference skeleton transform: {bone}')
+        result.append({'bone': bone, 'parent_index': parent, 'child_count': children,
+                       'orientation_xyzw': orientation, 'position_parent_local_raw': position,
+                       'flags': flags, 'name_index': name_index})
+    return result
+
+
+def lod0_vertex_offset(raw, geometry):
+    """Find the unique validated vertex-buffer header when inventory omitted it."""
+    if 'vertex_offset' in geometry:
+        return geometry['vertex_offset']
+    if geometry['decoded_stride'] != 64 or geometry['reported_stride'] not in (64, 68):
+        raise ValueError('Unsupported LOD0 vertex layout')
+    vertices = geometry['vertex_count']
+    header = struct.pack('<ii', vertices, geometry['reported_stride'])
+    matches = []
+    cursor = 0
+    while (cursor := raw.find(header, cursor)) >= 0:
+        start = cursor + len(header)
+        cursor += 1
+        if start + vertices * 64 > len(raw):
+            continue
+        sample_indices = {0, vertices // 4, vertices // 2, vertices * 3 // 4, vertices - 1}
+        if all(all(math.isfinite(value) and abs(value) < 1000
+                   for value in struct.unpack_from('<3f', raw, start + index * 64)) and
+               sum(raw[start + index * 64 + 60:start + index * 64 + 64]) == 255
+               for index in sample_indices):
+            matches.append(start)
+    if len(matches) != 1:
+        raise ValueError(f'Expected one LOD0 vertex buffer; found {len(matches)}')
+    return matches[0]
+
+
 def lod0_skin(raw, bones, bounds_offset, geometry):
     """Decode the inspected 64-byte LOD0 vertex format and active bone map."""
     if geometry['decoded_stride'] != 64:
@@ -76,7 +130,7 @@ def lod0_skin(raw, bones, bounds_offset, geometry):
     if len(set(palette)) != used_count or any(index >= len(bones) for index in palette):
         raise ValueError('Invalid LOD0 bone palette index')
     vertices = geometry['vertex_count']
-    start = geometry['vertex_offset']
+    start = lod0_vertex_offset(raw, geometry)
     if vertices <= 0 or start < 0 or start + vertices * 64 > len(raw):
         raise ValueError('Invalid LOD0 vertex range')
     dominant = Counter()
@@ -98,11 +152,45 @@ def lod0_skin(raw, bones, bounds_offset, geometry):
     if sum(dominant.values()) != vertices:
         raise ValueError('LOD0 vertex attribution incomplete')
     return {'vertex_count': vertices, 'index_count': index_count,
+            'vertex_offset_in_export': start,
             'index_offset_in_export': index_offset,
             'influence_layout': 'inferred 64-byte vertices; indices 56..59, weights 60..63',
             'active_bones': [{'bone': bones[index], 'skeleton_index': index,
                               'weighted_vertices': weighted[index], 'dominant_vertices': dominant[index]}
                              for index in palette]}
+
+
+def rigid_partition_summary(raw, skin):
+    """Count why an inspection-only rigid split is or is not lossless."""
+    palette = [item['skeleton_index'] for item in skin['active_bones']]
+    by_vertex = []
+    mixed = 0
+    for vertex in range(skin['vertex_count']):
+        offset = skin['vertex_offset_in_export'] + vertex * 64
+        indices = raw[offset + 56:offset + 60]
+        weights = raw[offset + 60:offset + 64]
+        active = [i for i, weight in enumerate(weights) if weight]
+        if len(active) != 1 or weights[active[0]] != 255:
+            mixed += 1
+            by_vertex.append(None)
+        else:
+            by_vertex.append(palette[indices[active[0]]])
+    indices = struct.unpack_from('<' + 'H' * skin['index_count'], raw,
+                                 skin['index_offset_in_export'])
+    rigid = mixed_faces = crossing = 0
+    for start in range(0, len(indices), 3):
+        bones = [by_vertex[vertex] for vertex in indices[start:start + 3]]
+        if None in bones:
+            mixed_faces += 1
+        elif len(set(bones)) != 1:
+            crossing += 1
+        else:
+            rigid += 1
+    if (rigid + mixed_faces + crossing) * 3 != skin['index_count']:
+        raise ValueError('Partition topology count mismatch')
+    return {'mixed_weight_vertices': mixed, 'mixed_weight_triangles': mixed_faces,
+            'cross_bone_triangles': crossing, 'rigid_triangles': rigid,
+            'rigid_split_eligible': mixed == 0 and crossing == 0}
 
 
 def audit(manifest, names, package, geometry=None):
@@ -121,11 +209,14 @@ def audit(manifest, names, package, geometry=None):
             result = {'path': asset['path'], 'source_sha256': digest,
                       'bounds_offset_in_export': offset, 'bone_count': len(bones),
                       'bone_names': bones, 'depth': depth, 'lod_count': lods,
-                      'animation_verified': False}
+                      'animation_verified': False,
+                      'reference_bones': reference_bones(raw, offset, bones),
+                      'reference_layout': 'inferred FName/flags/quat/position/children/parent; raw parent-local package units'}
             if geometry is not None:
                 if asset['path'] not in mesh_by_path or mesh_by_path[asset['path']]['sha256'] != digest:
                     raise ValueError('Missing or changed geometry inventory: ' + asset['path'])
                 result['lod0_skin'] = lod0_skin(raw, bones, offset, mesh_by_path[asset['path']])
+                result['rigid_partition'] = rigid_partition_summary(raw, result['lod0_skin'])
             results.append(result)
     return {'schema': 1, 'source_package': str(package), 'assets': results}
 
