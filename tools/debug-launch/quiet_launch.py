@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from game_install import validate_game
+from game_install import launch_environment, validate_game
 
 
 def windows_control():
@@ -34,9 +34,8 @@ def launch_quiet(game_path, game_args, build, *, popen=subprocess.Popen, main_no
     info = subprocess.STARTUPINFO()
     info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     info.wShowWindow = 0
-    child_environment = None
+    child_environment = launch_environment()
     if main_noactivate is not None:
-        child_environment = dict(os.environ)
         child_environment['GEARSVR_QUIET_MAIN_NOACTIVATE'] = '1' if main_noactivate else '0'
     bootstrap = popen([str(launcher), str(game), str(policy), *map(str, game_args)],
                       cwd=str(game.parent), startupinfo=info, creationflags=subprocess.CREATE_NO_WINDOW,
@@ -69,4 +68,5 @@ def launch_quiet(game_path, game_args, build, *, popen=subprocess.Popen, main_no
             not isinstance(identity.get('image'), str) or
             str(Path(identity['image']).resolve()).casefold() != str(game).casefold()):
         raise RuntimeError('Quiet startup game process identity mismatch or exited')
-    return dict(report, bootstrap_pid=bootstrap.pid, build=str(build))
+    return dict(report, bootstrap_pid=bootstrap.pid, build=str(build),
+                steam_app_id=child_environment.get('SteamAppId'), steam_game_id=child_environment.get('SteamGameId'))

@@ -2,6 +2,8 @@ param([switch]$DirectLevel, [switch]$PauseOnUnfocus, [switch]$Foreground,
       [switch]$DisableBackgroundInput = $true, [string]$GamePath, [switch]$PythonCheckOnly, [string]$LaunchReceipt,
       [switch]$ExperimentalPreserveUpscaler)
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+$OutputEncoding = [Console]::OutputEncoding
 $workspace = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 function Find-GearsVrPython([string]$Root) {
     $preferred = [Environment]::GetEnvironmentVariable('GEARSVR_PYTHON')
@@ -24,6 +26,9 @@ function Find-GearsVrPython([string]$Root) {
             $probe.StartInfo.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
             $probe.StartInfo.RedirectStandardOutput = $true
             $probe.StartInfo.RedirectStandardError = $true
+            $probe.StartInfo.StandardOutputEncoding = [Text.Encoding]::UTF8
+            $probe.StartInfo.StandardErrorEncoding = [Text.Encoding]::UTF8
+            $probe.StartInfo.EnvironmentVariables['PYTHONIOENCODING'] = 'utf-8'
             [void]$probe.Start()
             $output = $probe.StandardOutput.ReadToEndAsync()
             $errors = $probe.StandardError.ReadToEndAsync()

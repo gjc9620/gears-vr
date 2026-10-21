@@ -534,5 +534,108 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(docs['sessions/session-1.json']['diagnostics_artifacts'],{})
 
 
+    def test_startup_reservation_cause_survives_export_before_any_stereo_session(self):
+        import launcher
+        cause='RuntimeError: Persisted DLSS must be OFF before release startup'
+        detail=launcher.reservation_failure_detail('', 'Traceback (most recent call last):\n'+cause+'\n'
+            'subprocess.CalledProcessError: wrapper failed\n')
+        error=RuntimeError('Fresh reservation failed; no retry (exit code 1): '+detail+
+            '\nDetails: C:\\Users\\PrivateUser\\Mod\\analysis\\runtime\\vr-launcher-session.reserve.log')
+        (self.runtime/'vr-launcher-session.json').write_text(json.dumps({
+            'schema':1,'kind':'repository_vr_launcher','phase':'incomplete','error':repr(error)}))
+        (self.runtime/'vr-launcher-session.reserve.log').write_text('PROPRIETARY_NATIVE_CODE')
+        self.export()
+        names,raw,docs=self.read_zip()
+        self.assertIn(cause,raw)
+        self.assertNotIn('CalledProcessError',raw)
+        self.assertNotIn('PrivateUser',raw)
+        self.assertNotIn('PROPRIETARY_NATIVE_CODE',raw)
+        self.assertFalse(any(name.endswith('.reserve.log') for name in names))
+
+    def startup(self, number, events, **context):
+        attempt = f'{number:032x}'
+        path = self.runtime/f'vr-launcher-session.reserve.log.{attempt}.startup.jsonl'
+        base = dict(schema=1, kind='startup_diagnostic')
+        rows = [dict(base, event='context', phase='launcher_subprocess', attempt_id=attempt,
+                     context=dict(version='0.0.2', diagnostics_revision='startup-diagnostics-1', **context))]
+        rows += [dict(base, **event) for event in events]
+        path.write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        os.utime(path, (number, number))
+        return path
+
+    def test_startup_failure_exports_phase_codes_component_hashes_without_a_stereo_session(self):
+        self.startup(1, [dict(event='begin', phase='target_priming', elapsed_ms=100),
+            dict(event='complete', phase='target_priming', remote_thread_exit_code=1, duration_ms=12),
+            dict(event='failure', phase='target_priming', error='RuntimeError: Target priming failed (1)',
+                process=dict(state='exited', same_identity=True, pid=55, exit_code=1, exit_code_hex='0x00000001'),
+                prime_status=dict(state='captured', setup_failed=True, hooks=[dict(create='MH_ERROR_MEMORY_ALLOC', queue='MH_ERROR_NOT_CREATED')],
+                    raw='PRIVATE_NATIVE_BYTES'), raw='PROPRIETARY_NATIVE_CODE')],
+            python_version='3.12.7', bundled_python=True, steam_app_id='2523720', steam_game_id='2523720',
+            steam_environment_scope='child_process', script_hashes={'tools/native-capture/launch_reserve.py':'a'*64,
+                'C:/PrivateUser/private.py':'b'*64}, artifacts={'native_sha256':'c'*64},
+            environment={'PASSWORD':'PRIVATE_SECRET'})
+        self.export()
+        _, raw, docs = self.read_zip()
+        value = docs['startup-attempts.json']['attempts'][0]
+        self.assertEqual(value['context']['script_hashes'], {'tools/native-capture/launch_reserve.py':'a'*64})
+        self.assertTrue(value['context']['bundled_python'])
+        self.assertEqual(value['events'][1]['remote_thread_exit_code'], 1)
+        self.assertEqual(value['events'][2]['process']['exit_code'], 1)
+        self.assertEqual(value['events'][2]['prime_status']['hooks'][0]['create'], 'MH_ERROR_MEMORY_ALLOC')
+        self.assertEqual(docs['manifest.json']['sessions'], 0)
+        for forbidden in ('PRIVATE', 'PROPRIETARY', '"environment":', 'password'):
+            self.assertNotIn(forbidden, raw)
+        with zipfile.ZipFile(self.output) as archive:
+            summary = archive.read('startup-summary.txt').decode()
+        self.assertIn('target_priming: failure', summary)
+        self.assertIn('Game process: exited', summary)
+
+    def test_startup_keeps_latest_three_and_complete_rows_and_reads_only_correlated_launch(self):
+        for number in (1, 2, 3, 4):
+            path = self.startup(number, [dict(event='begin', phase='launch_script', elapsed_ms=number)])
+        with path.open('a') as stream:stream.write('{"partial":')
+        birth = dict(schema=1, kind='reservation_birth', injection_attempted=True, prime_attempted=True,
+                     game_identity=dict(pid=55, creation_time=123, image='C:/PrivateUser/game.exe'),
+                     record_path='C:/PrivateUser/must-not-follow.json')
+        path.with_name(path.name[:-len('.startup.jsonl')]+'.birth.json').write_text(json.dumps(birth))
+        (self.runtime/'background-launch-55.json').write_text(json.dumps(dict(pid=55, creation_time=123,
+            steam_app_id='2523720', steam_game_id='2523720', steam_environment_scope='child_process',
+            window_startup_policy='foreground', background_input_requested=False, raw='PRIVATE_BYTES')))
+        with mock.patch.object(bundle.startup_diagnostics, 'ProcessObservation', side_effect=AssertionError('export must not inspect games')):
+            self.export()
+        _, raw, docs = self.read_zip()
+        attempts = docs['startup-attempts.json']['attempts']
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual([a['events'][0]['elapsed_ms'] for a in attempts], [4,3,2])
+        self.assertTrue(attempts[0]['birth']['prime_attempted'])
+        self.assertEqual(attempts[0]['background_launch']['steam_game_id'], '2523720')
+        self.assertNotIn('PRIVATE', raw); self.assertNotIn('PrivateUser', raw)
+        self.assertNotIn('partial', raw)
+
+    def test_startup_reparse_candidates_and_bad_context_are_omitted(self):
+        path = self.startup(1, [])
+        info = path.lstat()
+        reparse = type('Info', (), dict(st_mode=info.st_mode, st_file_attributes=0x400))()
+        original = Path.lstat
+        def fake(item, *args, **kwargs):
+            return reparse if item == path else original(item, *args, **kwargs)
+        with mock.patch.object(Path, 'lstat', fake):
+            self.export()
+        _, raw, docs = self.read_zip()
+        self.assertFalse(docs['startup-attempts.json']['history_available'])
+        self.assertTrue(any('unsafe startup' in warning for warning in docs['manifest.json']['warnings']))
+        path.write_text(json.dumps(dict(schema=1, kind='startup_diagnostic', event='context', attempt_id='wrong'))+'\n')
+        self.export(overwrite=True)
+        _, _, docs = self.read_zip()
+        self.assertFalse(docs['startup-attempts.json']['history_available'])
+
+    def test_old_install_reports_missing_startup_trace_without_fabricated_exit_information(self):
+        self.export()
+        _, _, docs = self.read_zip()
+        self.assertFalse(docs['startup-attempts.json']['history_available'])
+        self.assertEqual(docs['startup-attempts.json']['attempts'], [])
+        self.assertEqual(docs['build-info.json']['diagnostics_revision'], 'startup-diagnostics-1')
+
+
 if __name__ == '__main__':
     unittest.main()

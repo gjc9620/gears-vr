@@ -261,12 +261,29 @@ class BackgroundLaunchTests(unittest.TestCase):
                         parent=dict(quiet_launch.os.environ);popen=mock.Mock(return_value=bootstrap)
                         quiet_launch.launch_quiet(self.game,[],build,popen=popen,main_noactivate=requested)
                         child=popen.call_args.kwargs['env']
-                        if requested is None:self.assertIsNone(child)
+                        if requested is None:self.assertEqual(child.get(key),parent.get(key))
                         else:
                             self.assertEqual(child[key],'1' if requested else '0')
-                            self.assertEqual(child['QUIET_TEST_KEEP'],'value')
-                            self.assertIsNot(child,quiet_launch.os.environ)
+                        self.assertEqual(child['SteamAppId'],'2523720')
+                        self.assertEqual(child['SteamGameId'],'2523720')
+                        self.assertEqual(child['QUIET_TEST_KEEP'],'value')
+                        self.assertIsNot(child,quiet_launch.os.environ)
                         self.assertEqual(dict(quiet_launch.os.environ),parent)
+
+    def test_foreground_sets_supported_steam_identity_only_in_child(self):
+        inherited = {'SteamAppId':'480', 'SteamGameId':'480', 'STEAM_TEST_KEEP':'value'}
+        with mock.patch.dict(background_launch.os.environ, inherited):
+            parent = dict(background_launch.os.environ)
+            popen = mock.Mock(return_value=Process(4200))
+            result = background_launch.launch(self.game, foreground=True, popen=popen, runtime=self.runtime)
+            child = popen.call_args.kwargs['env']
+            self.assertEqual(child['SteamAppId'], '2523720')
+            self.assertEqual(child['SteamGameId'], '2523720')
+            self.assertEqual(child['STEAM_TEST_KEEP'], 'value')
+            self.assertEqual(dict(background_launch.os.environ), parent)
+        self.assertEqual(result['steam_app_id'], '2523720')
+        self.assertEqual(result['steam_game_id'], '2523720')
+        self.assertEqual(result['steam_environment_scope'], 'child_process')
 
     def test_background_default_enforces_flag_even_if_parent_disabled_it(self):
         _, _, bootstrap = self.default_quiet_fixture()

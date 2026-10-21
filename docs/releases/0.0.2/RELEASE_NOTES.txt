@@ -1,0 +1,21 @@
+GearsVR 0.0.2 — Startup compatibility fixes
+
+- Fix the downloaded Windows startup helper being blocked by script execution policy. The change applies only to the launcher's child process.
+- Supply the correct Steam application context so the selected retail game can remain in the process started by the mod.
+- Select the active Steam account's graphics settings when multiple account files exist.
+- Find the game EXE beside the launcher, beside Binaries_x64, or through one mod subfolder, while preserving a valid saved path.
+- Keep detailed startup-helper output and show the underlying error in the launcher.
+- Keep interpreter probes in UTF-8 so non-English installation paths use the bundled Python correctly.
+- Export the latest three startup attempts with stage timings, component fingerprints, Steam child-process context, separate thread/process exit codes and a readable startup-summary.txt, even when VR has not started.
+
+The native renderer and OpenXR application are unchanged from 0.0.1. This is a startup hotfix; the 0.1.0 first-person and Playground work remains on its own development branch.
+Retail startup and menu submission were checked in a background simulator test. This does not add physical-headset or later-chapter acceptance. Existing limits remain: DLSS/DLAA off, roughly 2-second mounted-gun transitions, later chapters not fully verified.
+See README.txt for installation and update instructions.
+
+
+简体中文
+
+0.0.2 修复 Windows 下载脚本拦截、Steam 启动进程交接、多账号设置文件选择、EXE 自动识别及启动错误详情保留；解释器探测统一UTF-8，避免中文路径误判随包Python不可用。
+日志导出新增最近三次启动的阶段耗时、组件指纹、Steam子进程环境、独立的线程／游戏退出码及易读的startup-summary.txt，尚未进入VR也能留下诊断记录。
+原生渲染与 OpenXR 程序沿用 0.0.1；第一人称、Playground 等 0.1.0 开发内容保留在独立分支。
+已做正版后台启动和模拟器菜单提交验证，不新增真头显或后续章节验收结论。安装与更新步骤见 README.txt。

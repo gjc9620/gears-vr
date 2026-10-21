@@ -1,0 +1,11 @@
+{
+  "version": "0.0.2",
+  "baseline_version": "0.0.1",
+  "baseline_source_commit": "4b621fc430fa5f96eba3bf70399810d3fd51e202",
+  "release_zip_sha256": "37476ff5b12e3ceb06e4e7158674e15411de6c91184ab51bf4fe882b62f14352",
+  "native_sha256": "94b73bb04b6f36d4a4bc16f84f1e95d49a1a3144792e0e41d004ef3b802b4304",
+  "xr_sha256": "0a2b7f7dc6a65f8ee23c255423e5fac841726ac6f2ef9bc249ac8e5f4902d56c",
+  "native_or_xr_rebuilt": false,
+  "scope": "Startup compatibility, discovery and bounded startup diagnostics",
+  "default_runtime": "System OpenXR runtime"
+}

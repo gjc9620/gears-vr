@@ -21,7 +21,7 @@ namespace GearsVrUi {
             "HUD 大小必须在 45–100° 之间。",
             "未知",
             "未找到可用 Python 3。请将 GEARSVR_PYTHON 设置为 python.exe 完整路径。",
-            "GearsVR 0.0.1 启动器",
+            "GearsVR 0.0.2 启动器",
             "实验版本 · 跟随游戏当前分辨率渲染\r\nDLSS / DLAA 已禁用。手动进入关卡；不会自动结束测试。",
             "游戏路径",
             "浏览…",
@@ -89,7 +89,7 @@ namespace GearsVrUi {
             "HUD size must be between 45 and 100 degrees.",
             "Unknown",
             "Python 3 not found. Set GEARSVR_PYTHON to the full python.exe path.",
-            "GearsVR 0.0.1 Launcher",
+            "GearsVR 0.0.2 Launcher",
             "Experimental build - Uses the current game resolution\r\nDLSS / DLAA disabled. Enter a level manually; no automatic timeout.",
             "Game path",
             "Browse...",
@@ -270,8 +270,17 @@ namespace GearsVrUi {
                   catch (NotSupportedException) { }
                   catch (PathTooLongException) { }
             }
-            string nearby = Path.Combine(root, "Binaries_x64", "GOWDE-Steam.exe");
-            return File.Exists(nearby) ? Path.GetFullPath(nearby) : (saved ?? "");
+            // Accept both installation-root and EXE-directory placement, also
+            // when the ZIP was extracted into one Mod subdirectory. Never use
+            // the shortcut's working directory or scan unrelated libraries.
+            var directory = new DirectoryInfo(root);
+            for (int depth = 0; depth < 2 && directory != null; depth++, directory = directory.Parent) {
+                foreach (string nearby in new string[] {
+                    Path.Combine(directory.FullName, "GOWDE-Steam.exe"),
+                    Path.Combine(directory.FullName, "Binaries_x64", "GOWDE-Steam.exe") })
+                    if (File.Exists(nearby)) return Path.GetFullPath(nearby);
+            }
+            return saved ?? "";
         }
         internal static bool IsEnglish(Dictionary<string, object> config) {
             object language;
@@ -470,6 +479,22 @@ namespace GearsVrUi {
                     InitialGamePath(gameRoot, Path.Combine("elsewhere", "GOWDE-Steam.exe")) != selected) return 48;
                 File.Delete(nearby);
                 if (InitialGamePath(gameRoot, "missing.exe") != "missing.exe") return 49;
+                string beside = Path.Combine(gameRoot, "GOWDE-Steam.exe");
+                File.WriteAllText(beside, "same-directory path fixture; never executed");
+                if (InitialGamePath(gameRoot, "") != beside || InitialGamePath(gameRoot, "bad\0path") != beside ||
+                    InitialGamePath(gameRoot, selected) != selected) return 50;
+                File.WriteAllText(nearby, "installation-root path fixture; never executed");
+                if (InitialGamePath(gameRoot, "") != beside) return 51;
+                string mod = Path.Combine(gameRoot, "GearsVR"); Directory.CreateDirectory(mod);
+                if (InitialGamePath(mod, "") != beside) return 52;
+                File.Delete(beside);
+                if (InitialGamePath(mod, "") != nearby) return 53;
+                string binaryMod = Path.Combine(gameRoot, "Binaries_x64", "GearsVR"); Directory.CreateDirectory(binaryMod);
+                if (InitialGamePath(binaryMod, "") != nearby) return 54;
+                File.Delete(nearby);
+                string nested = Path.Combine(mod, "nested"); Directory.CreateDirectory(nested);
+                File.WriteAllText(beside, "outside the bounded search; never executed");
+                if (InitialGamePath(nested, "missing.exe") != "missing.exe") return 55;
             } finally {
                 Environment.CurrentDirectory = previousDirectory;
                 Directory.Delete(gameRoot, true);
@@ -566,7 +591,7 @@ namespace GearsVrUi {
                 if (!String.Equals(Python.Find(root).File, python.File, StringComparison.OrdinalIgnoreCase)) return 20;
             } finally { Environment.SetEnvironmentVariable("GEARSVR_PYTHON", previousPython); }
             File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "self-test.txt"),
-                "PASS: repository, embedded artwork/icon sizes, game path discovery/saved preference/relocation/unrelated working directory, quoting, start/stop/export arguments, export receipt validation, phase parsing, config preservation, HUD capability/range/save/readback/legacy behavior, bilingual catalog/language persistence, owner identity handshake, live FPS display source, Python probe\r\nPython: " + python.File);
+                "PASS: repository, embedded artwork/icon sizes, game path discovery/EXE-directory/Mod subdirectory/bounded search/saved preference/relocation/unrelated working directory, quoting, start/stop/export arguments, export receipt validation, phase parsing, config preservation, HUD capability/range/save/readback/legacy behavior, bilingual catalog/language persistence, owner identity handshake, live FPS display source, Python probe\r\nPython: " + python.File);
             return 0;
         }
     }
@@ -596,7 +621,9 @@ namespace GearsVrUi {
                     using (var process = new Process()) {
                         process.StartInfo = new ProcessStartInfo(file, prefix + "-c " + Program.Quote("import sys; print(sys.executable); print(sys.version_info[0])")) {
                             UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden,
-                            RedirectStandardOutput = true, RedirectStandardError = true };
+                            RedirectStandardOutput = true, RedirectStandardError = true,
+                            StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
+                        process.StartInfo.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
                         process.Start(); var output = process.StandardOutput.ReadToEndAsync(); var error = process.StandardError.ReadToEndAsync();
                         if (!process.WaitForExit(5000)) { process.Kill(); continue; } // Only the disposable Python locator probe.
                         string[] lines = output.Result.Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);

@@ -6,6 +6,7 @@ import json
 import math
 import os
 import pathlib
+import re
 import subprocess
 import struct
 import sys
@@ -15,6 +16,8 @@ from types import SimpleNamespace
 
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 HERE=pathlib.Path(__file__).resolve().parent
+sys.path.insert(0,str(HERE)) # Explicit sibling imports also work under Python -I.
+import startup_diagnostics
 sys.path.insert(0,str(ROOT/'tools/debug-launch'))
 import instance_policy
 INDEX=instance_policy.index_path()
@@ -33,6 +36,16 @@ def atomic_json(path,value):
 def rooted(value,root=ROOT):
     path=pathlib.Path(value)
     return (root/path).resolve() if not path.is_absolute() else path.resolve()
+
+def reservation_failure_detail(stdout,stderr):
+    # Prefer the original Python failure over a wrapping CalledProcessError.
+    # Keep the full child output in the local reserve log, with only a bounded
+    # explanation in the GUI and curated diagnostics.
+    lines=[line.strip() for line in (stderr.strip() or stdout.strip()).splitlines() if line.strip()]
+    causes=[line for line in lines if re.match(r'^[\w.]*(?:Error|Exception):',line)]
+    specific=[line for line in causes if not line.startswith('subprocess.CalledProcessError:')]
+    selected=specific[-3:] or causes[-1:] or lines[-8:]
+    return '\n'.join(selected)[-1500:] or 'Child process returned no error output.'
 
 def hud_horizontal_fov(config,manifest):
     supported=manifest.get('hud_size_control',False)
@@ -250,11 +263,17 @@ class Backend:
             return [current['pid']] if current and current['pid'] in pids and self.control.identity(current['pid'])==current else []
         return instance_policy.shared_game_pids(pids,identity=self.control.identity)
     def reserve(self,manifest,log,owner=None,game_path=None,foreground=False):
-        receipt=log.with_name(log.name+'.'+uuid.uuid4().hex+'.birth.json')
+        attempt=uuid.uuid4().hex
+        receipt=log.with_name(log.name+'.'+attempt+'.birth.json')
+        trace_path=log.with_name(log.name+'.'+attempt+'.startup.jsonl')
+        try:metadata=startup_diagnostics.context(ROOT,manifest)
+        except Exception:metadata={'version':startup_diagnostics.VERSION,'diagnostics_revision':startup_diagnostics.REVISION}
+        metadata['foreground']=foreground
+        trace=startup_diagnostics.StartupTrace(trace_path,metadata=metadata,attempt_id=attempt)
         preflight_nonce=uuid.uuid4().hex if owner and manifest.get('startup_selftests_prelaunch',False) else None
         cmd=[sys.executable,str(ROOT/'tools/native-capture/launch_reserve.py'),'--build-dir',str(rooted(manifest['native_build'])),
              '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link',
-             '--launch-receipt',str(receipt)]
+             '--launch-receipt',str(receipt),'--startup-diagnostics',str(trace_path)]
         if game_path is not None:cmd+=['--game-path',str(game_path)]
         if foreground:cmd+=['--foreground']
         if manifest.get('experimental_preserve_upscaler',False):cmd+=['--experimental-preserve-upscaler']
@@ -270,14 +289,18 @@ class Backend:
             with log.open('a',encoding='utf-8') as stream:stream.write('\n'+json.dumps({'reservation_failure_cleanup':cleanup})+'\n')
             return cleanup
         try:
-            result=subprocess.run(cmd,capture_output=True,text=True,timeout=120,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+            result=subprocess.run(cmd,capture_output=True,text=True,encoding='utf-8',errors='replace',env=dict(os.environ,PYTHONIOENCODING='utf-8'),timeout=120,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         except subprocess.TimeoutExpired as error:
             def decoded(value):return value.decode('utf-8',errors='replace') if isinstance(value,bytes) else value or ''
             log.write_text(decoded(error.stdout)+'\n'+decoded(error.stderr),encoding='utf-8')
+            trace.emit('owner_timeout',error=str(error)[:1500],returncode=None)
             error.reservation_failure_cleanup=failed_cleanup();raise
         log.write_text(result.stdout+'\n'+result.stderr,encoding='utf-8')
+        trace.emit('owner_result',returncode=result.returncode)
         if result.returncode:
-            error=RuntimeError('Fresh reservation failed; no retry: '+str(log))
+            detail=reservation_failure_detail(result.stdout,result.stderr)
+            trace.emit('owner_failure',error=detail)
+            error=RuntimeError('Fresh reservation failed; no retry (exit code '+str(result.returncode)+'): '+detail+'\nDetails: '+str(log))
             error.reservation_failure_cleanup=failed_cleanup()
             raise error
         reports=[]

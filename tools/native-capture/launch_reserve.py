@@ -21,6 +21,8 @@ sys.path.insert(0,str(ROOT/'tools/debug-launch'))
 from game_install import validate_game, debug_command
 import instance_policy
 from run_stereo_continuous import WindowsControl
+sys.path.insert(0,str(ROOT/'tools/vr-launcher'))
+from startup_diagnostics import StartupTrace
 k.SetEvent.argtypes=[w.HANDLE];k.SetEvent.restype=w.BOOL
 
 
@@ -111,10 +113,20 @@ def wait_loader_dependencies(exe,born,deadline,*,owner_pid=None,owner_creation_t
         if handle:k.CloseHandle(handle)
 
 
+def run_game_startup(command):
+    # A windowless PowerShell child may otherwise lose its inherited output.
+    # Relay both streams explicitly so a pre-birth failure retains its cause.
+    result=run_hidden(command,capture_output=True,text=True,encoding='utf-8',errors='replace')
+    if result.stdout:print(result.stdout,end='',flush=True)
+    if result.stderr:print(result.stderr,end='',file=sys.stderr,flush=True)
+    if result.returncode:
+        raise RuntimeError(f'Game startup script failed (exit code {result.returncode}); see preceding output')
+
 def main():
     command_started=time.monotonic()
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--build-dir',type=pathlib.Path,default=ROOT/'tools/native-capture/build-prepare')
+    parser.add_argument('--startup-diagnostics',type=pathlib.Path)
     parser.add_argument('--game-path',type=pathlib.Path,help='Supported installation EXE; defaults to repository installation')
     parser.add_argument('--foreground',action='store_true',help='Use the ordinary foreground game startup policy')
     parser.add_argument('--experimental-preserve-upscaler',action='store_true',help='Read-only preflight and preserve the fixed experimental DLSS SR startup profile')
@@ -142,9 +154,24 @@ def main():
     if args.graphics_startup_lock and not owned:parser.error('Startup graphics lock requires owned priming')
     if args.graphics_menu_lock and not args.graphics_startup_lock:parser.error('Menu lock requires startup graphics protection')
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
+    trace=StartupTrace(args.startup_diagnostics,append=True)
+    trace.status_path=args.build_dir.resolve()/'target-prime-status.txt'
+    try:
+        return reserve(args,owned,trace,command_started)
+    except BaseException as error:
+        trace.failure(error)
+        raise
+    finally:
+        trace.close()
+
+
+def reserve(args,owned,trace,command_started):
+    trace.begin('game_validation')
     exe=validate_game(args.game_path) # Before self-tests, launch, or startup policy writes.
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     build=args.build_dir.resolve();dll=build/args.dll_name
+    trace.end()
+    trace.begin('selftests')
     startup_proof=None
     scheduled=[]
     def schedule(command,**kwargs):scheduled.append((command,kwargs))
@@ -188,6 +215,7 @@ def main():
         print(json.dumps({'reservation_selftests_prelaunch_ms':(time.perf_counter_ns()-started)/1e6,'capture_suite_tests':len(suite)}),flush=True)
     else:
         for command,options in scheduled:run_hidden(command,**options)
+    trace.end(scheduled_tests=len(scheduled))
     isolated=instance_policy.context()
     if isolated and pathlib.Path(args.build_dir).resolve()!=(isolated/'native').resolve():
         raise RuntimeError('Concurrent reservation requires private native status/build files')
@@ -209,17 +237,23 @@ def main():
     pe.close()
     launch_command=debug_command(exe,foreground=args.foreground,experimental_preserve_upscaler=args.experimental_preserve_upscaler)
     if args.launch_receipt is not None:launch_command+=['-LaunchReceipt',str(args.launch_receipt)]
-    run_hidden(launch_command,check=True)
+    trace.begin('launch_script')
+    run_game_startup(launch_command)
+    trace.end(returncode=0)
     born=None
     if args.launch_receipt is not None:
         born=json.loads(args.launch_receipt.read_text(encoding='utf-8'))
         print(json.dumps({'reservation_birth':born}),flush=True)
+        trace.watch(born.get('game_identity'))
     # Four possible remote calls retain their existing15s limits. Keep70s of
     # the owner's120s subprocess bound for those calls and final verification.
     deadline=min(time.monotonic()+25,command_started+50)
+    trace.begin('loader_dependencies')
     pid,handle,loaded,game_identity,check_live=wait_loader_dependencies(exe,born,deadline,
         owner_pid=args.prime_owner_pid,owner_creation_time=args.prime_owner_creation_time,
         clock=time.monotonic,sleep=time.sleep)
+    if trace.observation is None:trace.watch(game_identity)
+    trace.end(loaded_modules=sorted(loaded)[:128],loaded_module_count=len(loaded))
     memory=None;finished=False;prime_attempted=False;reported=False
     try:
         if loaded['gowde-steam.exe'][1].resolve()!=exe.resolve():raise RuntimeError('Fresh executable path differs')
@@ -242,6 +276,7 @@ def main():
         # must treat an interrupted injection as unknown, never as safe to retry.
         check_live()
         if time.monotonic()>=deadline:raise RuntimeError('Reservation readiness deadline before injection')
+        trace.begin('dll_load')
         mark_launch_stage(args.launch_receipt,game_identity,'injection_attempted')
         check_live()
         if time.monotonic()>=deadline:raise RuntimeError('Reservation readiness deadline before injection')
@@ -252,17 +287,23 @@ def main():
         remote_call(handle,remote,memory);finished=True;loaded=modules(handle)
         resident=loaded.get(dll.name.lower())
         if not resident or resident[1].resolve()!=dll:raise RuntimeError('Reserve DLL load not confirmed; do not retry')
+        trace.end(dll_loaded=True)
+        trace.begin('reserve_trampolines')
         code=remote_call(handle,resident[0]+rva,None)
+        trace.end(remote_thread_exit_code=code)
         if code:raise RuntimeError(f'Reservation failed ({code}); no activation requested')
         event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.Reserved.{pid}')
         if not event:raise RuntimeError('Reservation event absent')
         k.CloseHandle(event)
         if args.check_mask_control:
+            trace.begin('reserve_mask')
             code=remote_call(handle,resident[0]+mask_rva,None)
+            trace.end(remote_thread_exit_code=code)
             if code:raise RuntimeError(f'Mask reservation failed ({code}); no activation requested')
             event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.FirstViewMaskReserved.{pid}')
             if not event:raise RuntimeError('Mask reservation event absent')
             k.CloseHandle(event)
+        trace.begin('entry_verification')
         signatures={0x15cf08:bytes.fromhex('488bc45356574154415541564157'),0x15c968:bytes.fromhex('488bc4488958084889681048897018'),0x3a148c:bytes.fromhex('48895c2408488974241855'),0x193d50:bytes.fromhex('488bc4488958104889681848897020')}
         signatures[0x116250]=bytes.fromhex('488bc44889581848897020574154')
         signatures[0x15a80c]=bytes.fromhex('48895c241055488bec4883ec70')
@@ -279,8 +320,10 @@ def main():
             entries=[{'rva':hex(offset),'matches':read_only.read(loaded['gowde-steam.exe'][0]+offset,len(value))==value} for offset,value in signatures.items()]
         finally:read_only.close()
         if not all(x['matches'] for x in entries):raise RuntimeError('Reservation changed an entry; do not activate')
+        trace.end(entry_checks=len(entries),entry_checks_passed=True)
         graphics_hooks=0
         if args.prime_targets:
+            trace.begin('target_priming')
             prime_memory=None;prime_finished=False
             try:
                 mark_launch_stage(args.launch_receipt,game_identity,'prime_attempted')
@@ -296,7 +339,9 @@ def main():
                 prime_finished=True
             finally:
                 if prime_memory and prime_finished:k.VirtualFreeEx(handle,prime_memory,0,0x8000)
+            trace.end(remote_thread_exit_code=code)
             if code:raise RuntimeError(f'Target priming failed ({code}); do not activate')
+            trace.begin('prime_readiness')
             prime_event=k.OpenEventW(0x100000,False,f'Local\\GearsVR.Capture.TargetPrime.{pid}')
             if not prime_event:raise RuntimeError('Target priming readiness absent')
             try:
@@ -306,7 +351,9 @@ def main():
                     raise RuntimeError('Target priming identity/readiness not confirmed')
                 graphics_hooks=graphics_prime_count(prime_status,args.graphics_startup_lock,args.graphics_menu_lock)
             finally:k.CloseHandle(prime_event)
+            trace.end(graphics_hooks=graphics_hooks)
         if control.identity(pid)!=game_identity:raise RuntimeError('Reserved process identity changed')
+        trace.begin('reservation_complete')
         report={'game_identity':game_identity,'game_sha256':profile['sha256'],'pid':pid,'dll':str(dll),'trampolines_reserved':True,'hooks_enabled':args.prime_targets,
                 'first_view_mask_reserved':args.check_mask_control,
                 'native_hooks_enabled':bool(graphics_hooks),'graphics_hooks_enabled':graphics_hooks,'scene_hooks_enabled':False,
@@ -322,6 +369,7 @@ def main():
         (folder/f'reserve-{pid}.json').write_text(json.dumps(report,indent=2))
         print(json.dumps(report))
         reported=True
+        trace.end()
     finally:
         if owned and prime_attempted and not reported:
             cancel=k.OpenEventW(0x2,False,f'Local\\GearsVR.Capture.TargetPrime.{pid}')

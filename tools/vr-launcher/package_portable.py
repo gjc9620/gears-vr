@@ -64,7 +64,7 @@ def allowed_paths(root):
                           object_pairs_hook=unique_object)
     if not isinstance(metadata, dict): raise ValueError('Invalid portable candidate metadata')
     if metadata.get('kind') == 'public-test-release':
-        if metadata.get('version') != '0.0.1': raise ValueError('Unsupported release version')
+        if metadata.get('version') not in staging.RELEASE_VERSIONS: raise ValueError('Unsupported release version')
         result.add('RELEASE_NOTES.txt')
     alias = metadata.get('candidate_manifest')
     if alias is not None:

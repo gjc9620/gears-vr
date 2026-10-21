@@ -11,6 +11,7 @@ import stat
 import subprocess
 import tempfile
 import zipfile
+import startup_diagnostics
 
 MAX_INPUT_BYTES = 512 * 1024
 MAX_ARCHIVE_BYTES = 2 * 1024 * 1024
@@ -462,6 +463,9 @@ def _launcher_state(collector):
     cleanup = data.get('prime_cleanup', {})
     result['prime_cleanup'] = {key:cleanup[key] for key in ('game_exited', 'handed_off', 'cancelled', 'entry_restore_verified')
                              if isinstance(cleanup, dict) and type(cleanup.get(key)) is bool}
+    cleanup = data.get('reservation_failure_cleanup')
+    if isinstance(cleanup, dict):
+        result['reservation_failure_cleanup'] = _pick(cleanup, ('status', 'error'))
     monitor = data.get('tiny_output_monitor_cleanup')
     if isinstance(monitor, dict):
         joined = monitor.get('joined')
@@ -469,6 +473,164 @@ def _launcher_state(collector):
         if isinstance(monitor.get('error'),str):
             result['tiny_output_monitor_cleanup']['error'] = _text(monitor['error'])
     return result
+
+
+def _startup_context(data):
+    if not isinstance(data, dict):
+        return {}
+    result = {}
+    for key in ('version', 'python_version'):
+        if isinstance(data.get(key), str) and re.fullmatch(r'\d{1,3}\.\d{1,3}\.\d{1,6}', data[key]):
+            result[key] = data[key]
+    if isinstance(data.get('diagnostics_revision'), str) and re.fullmatch(r'startup-diagnostics-\d{1,4}', data['diagnostics_revision']):
+        result['diagnostics_revision'] = data['diagnostics_revision']
+    for key in ('bundled_python', 'foreground'):
+        if type(data.get(key)) is bool:
+            result[key] = data[key]
+    if data.get('python_bits') in (32, 64):
+        result['python_bits'] = data['python_bits']
+    if data.get('runtime_selection') in ('system', 'override'):
+        result['runtime_selection'] = data['runtime_selection']
+    for key in ('steam_app_id', 'steam_game_id'):
+        if isinstance(data.get(key), str) and re.fullmatch(r'\d{1,10}', data[key]):
+            result[key] = data[key]
+    if data.get('steam_environment_scope') == 'child_process':
+        result['steam_environment_scope'] = 'child_process'
+    result['artifacts'] = _artifacts(data.get('artifacts'))
+    hashes = data.get('script_hashes', {})
+    result['script_hashes'] = {key:value.lower() for key, value in hashes.items()
+        if key in startup_diagnostics.CONTEXT_FILES and isinstance(value, str) and re.fullmatch(r'[a-fA-F0-9]{64}', value)} if isinstance(hashes, dict) else {}
+    return result
+
+
+def _startup_event(data):
+    events = ('context', 'begin', 'complete', 'game_birth', 'failure', 'observation_unavailable',
+              'owner_timeout', 'owner_result', 'owner_failure')
+    result = {'event':data.get('event') if data.get('event') in events else 'unknown',
+              'phase':data.get('phase') if data.get('phase') in startup_diagnostics.PHASES else 'unknown'}
+    result.update(_pick(data, ('elapsed_ms', 'duration_ms', 'scheduled_tests', 'returncode',
+        'remote_thread_exit_code', 'loaded_module_count', 'entry_checks', 'graphics_hooks', 'winerror'), numeric=True))
+    for key in ('dll_loaded', 'entry_checks_passed'):
+        if type(data.get(key)) is bool:
+            result[key] = data[key]
+    stamp = data.get('timestamp_utc')
+    if isinstance(stamp, str) and re.fullmatch(r'[0-9T:+.Z-]{19,40}', stamp):
+        result['timestamp_utc'] = stamp
+    if isinstance(data.get('error'), str):
+        result['error'] = _text(data['error'], 1500)
+    if isinstance(data.get('exception_type'), str) and re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{0,79}', data['exception_type']):
+        result['exception_type'] = data['exception_type']
+    names = data.get('loaded_modules')
+    if isinstance(names, list):
+        result['loaded_modules'] = [name for name in names[:128] if isinstance(name, str)
+            and re.fullmatch(r'[A-Za-z0-9_.-]{1,100}\.(?:dll|exe)', name, re.I)]
+    process = data.get('process')
+    if isinstance(process, dict):
+        state = process.get('state')
+        result['process'] = {'state':state if state in ('running', 'exited', 'identity_changed', 'unavailable', 'observed') else 'unknown'}
+        result['process'].update(_pick(process, ('pid', 'exit_code', 'winerror'), numeric=True))
+        if type(process.get('same_identity')) is bool:
+            result['process']['same_identity'] = process['same_identity']
+        if isinstance(process.get('exit_code_hex'), str) and re.fullmatch(r'0x[0-9A-Fa-f]{8}', process['exit_code_hex']):
+            result['process']['exit_code_hex'] = process['exit_code_hex']
+    status = data.get('prime_status')
+    if isinstance(status, dict):
+        state = status.get('state')
+        result['prime_status'] = {'state':state if state in ('captured', 'empty', 'missing', 'stale', 'pid_mismatch', 'unavailable') else 'unknown'}
+        result['prime_status'].update({key:status[key] for key in ('pid_verified', 'setup_failed', 'truncated') if type(status.get(key)) is bool})
+        hooks = status.get('hooks')
+        if isinstance(hooks, list):
+            result['prime_status']['hooks'] = [{key:value for key in ('create', 'queue')
+                if isinstance(value := row.get(key), str) and re.fullmatch(r'MH_[A-Z_]{1,64}', value)}
+                for row in hooks[:16] if isinstance(row, dict)]
+        rejection = status.get('graphics_rejection')
+        if isinstance(rejection, dict):
+            result['prime_status']['graphics_rejection'] = _pick(rejection, ('reason', 'policy_reason'), numeric=True)
+    return result
+
+
+def _startup_attempts(collector):
+    directory = collector.root / 'analysis/runtime'
+    pattern = re.compile(r'vr-launcher-session\.reserve\.log\.([a-f0-9]{32})\.startup\.jsonl\Z')
+    candidates = []
+    try:
+        _checked(directory, collector.root, directory=True)
+        with os.scandir(directory) as entries:
+            for count, entry in enumerate(entries):
+                if count >= MAX_SCAN or len(candidates) >= MAX_CANDIDATES:
+                    collector.warn('startup', 'directory/candidate limit reached')
+                    break
+                match = pattern.fullmatch(entry.name)
+                if not match:
+                    continue
+                try:
+                    path = Path(entry.path)
+                    info = _checked(path, collector.root)
+                    candidates.append((info.st_mtime_ns, path, match[1]))
+                except (OSError, ValueError):
+                    collector.warn('startup', 'unsafe startup candidate omitted')
+    except (OSError, ValueError):
+        collector.warn('startup', 'startup history unavailable')
+    attempts = []
+    for _, path, attempt in sorted(candidates, key=lambda row:row[0], reverse=True)[:3]:
+        text = collector.read(path, 'startup trace')
+        rows = []
+        for line in (text or '').splitlines(keepends=True):
+            if not line.endswith('\n') or len(line) > 32768:
+                continue
+            try:
+                row = json.loads(line)
+                if isinstance(row, dict) and type(row.get('schema')) is int and row['schema'] == 1 and row.get('kind') == 'startup_diagnostic':
+                    rows.append(row)
+            except (ValueError, RecursionError):
+                pass
+        if not rows or rows[0].get('event') != 'context' or rows[0].get('attempt_id') != attempt:
+            collector.warn('startup', 'unrecognized startup trace omitted')
+            continue
+        clean = dict(attempt_id=attempt[:12], context=_startup_context(rows[0].get('context')),
+                     events=[_startup_event(row) for row in rows[1:][-96:]])
+        birth_path = path.with_name(path.name[:-len('.startup.jsonl')] + '.birth.json')
+        birth = collector.document(birth_path, 'startup birth', optional=True)
+        if birth.get('kind') == 'reservation_birth' and birth.get('schema') == 1:
+            clean['birth'] = {key:birth[key] for key in ('injection_attempted', 'prime_attempted') if type(birth.get(key)) is bool}
+            identity = birth.get('game_identity')
+            pid = identity.get('pid') if isinstance(identity, dict) else None
+            if type(pid) is int and 0 < pid <= 0xffffffff:
+                clean['birth']['pid'] = pid
+                launch = collector.document(directory / f'background-launch-{pid}.json', 'background launch', optional=True)
+                if launch.get('pid') == pid and launch.get('creation_time') == identity.get('creation_time'):
+                    clean['background_launch'] = _pick(launch, ('window_startup_policy', 'background_input_requested', 'test_windows_behind_requested'))
+                    clean['background_launch'].update(_startup_context(launch))
+        attempts.append(clean)
+    return dict(schema=1, kind='startup_diagnostics_summary', attempts=attempts,
+                history_available=bool(attempts),
+                limitation='Remote thread exit code and game process exit code are separate observations; neither alone establishes a Steam restart or crash cause.')
+
+
+def _startup_text(summary):
+    lines = ['GearsVR startup diagnostics', summary['limitation'], '']
+    if not summary['attempts']:
+        lines.append('No startup trace from the enhanced logger is available. Reproduce with the updated launcher and export again.')
+    for attempt in summary['attempts']:
+        context = attempt['context']
+        lines.extend(['Attempt ' + attempt['attempt_id'],
+            'Version: ' + context.get('version', 'unknown') + '; diagnostics: ' + context.get('diagnostics_revision', 'unknown'),
+            'Python: ' + context.get('python_version', 'unknown') + '; bundled: ' + str(context.get('bundled_python', 'unknown'))])
+        for event in attempt['events']:
+            if event['event'] in ('begin', 'complete', 'failure', 'owner_timeout'):
+                line = event['phase'] + ': ' + event['event']
+                for key in ('elapsed_ms', 'duration_ms', 'remote_thread_exit_code'):
+                    if key in event:
+                        line += '; ' + key + '=' + str(event[key])
+                lines.append(line)
+            if 'process' in event:
+                process = event['process']
+                lines.append('Game process: ' + process['state'] + '; PID=' + str(process.get('pid', 'unknown')) +
+                    '; exit_code=' + str(process.get('exit_code', 'unavailable')) + ' ' + process.get('exit_code_hex', ''))
+        errors = [event['error'] for event in attempt['events'] if 'error' in event]
+        lines.extend('Error: ' + error for error in errors[-4:])
+        lines.append('')
+    return '\n'.join(lines) + '\n'
 
 
 def _csv(collector, path, label):
@@ -696,11 +858,16 @@ def export_bundle(root, output, overwrite=False, *, system_reader=None, settings
         system = {'available': False}
     settings_root = Path(settings_root) if settings_root is not None else Path(os.environ.get('LOCALAPPDATA', str(Path.home() / 'AppData/Local'))) / 'Coalition/WarGame/Config'
     settings = _settings(collector, settings_root)
+    startup = _startup_attempts(collector)
+    entries['startup-attempts.json'] = json.dumps(startup, indent=2).encode('utf-8')
+    entries['startup-summary.txt'] = _startup_text(startup).encode('utf-8')
+    entries['build-info.json'] = json.dumps(_startup_context(startup_diagnostics.context(collector.root, {}, include_hashes=False)), indent=2).encode('utf-8')
     entries['configuration.json'] = json.dumps(configuration, indent=2).encode('utf-8')
     entries['launcher-state.json'] = json.dumps(_launcher_state(collector), indent=2).encode('utf-8')
     entries['system.json'] = json.dumps(system, indent=2).encode('utf-8')
     entries['game-settings.json'] = json.dumps(settings, indent=2).encode('utf-8')
     entries['README.txt'] = ("Gears VR local diagnostics\nCurated summaries from up to three recent sessions. Failed/incomplete/live sessions are retained.\n"
+        "Start with startup-summary.txt for launch failures; startup-attempts.json retains the latest three startup timelines and recorded component hashes.\n"
         "No game binaries, native instruction logs, saves, profiles, screenshots or analysis databases are included.\n"
         "Missing rates are null/unavailable. XR prediction/publication cadence is not headset display FPS.\n"
         "Session files may change while a live session is being exported; this is not an atomic game snapshot.\n").encode()

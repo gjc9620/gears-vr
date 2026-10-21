@@ -10,6 +10,8 @@ import pathlib
 import subprocess
 import sys
 
+from game_install import launch_environment
+
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GAME_IO = ROOT / 'tools/game-io/background_input.py'
@@ -89,6 +91,7 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
         raise RuntimeError('Launch receipt must be fresh')
 
     quiet_report = None
+    child_environment = None
     if quiet_build is not None:
         verify_default_quiet_build(quiet_build)
         if test_windows_behind_requested(foreground):verify_test_behind_build(quiet_build)
@@ -98,8 +101,9 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
     else:
         creationflags = 0 if foreground else subprocess.CREATE_NO_WINDOW
         startupinfo = None if foreground else nonactivating_startupinfo()
+        child_environment = launch_environment()
         process = popen([str(game_path), *map(str, game_args)], cwd=str(game_path.parent),
-                        startupinfo=startupinfo, creationflags=creationflags)
+                        startupinfo=startupinfo, creationflags=creationflags, env=child_environment)
         game_pid, creation_time = process.pid, process_creation_time(process)
     if launch_receipt is not None:
         # The reservation owner supplies a fresh, per-invocation path. Publish
@@ -121,6 +125,9 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
         'window_startup_policy': 'quiet_startup' if quiet_report else 'foreground' if foreground else 'shown_no_activate',
         'background_input_requested': not disable_background_input,
         'test_windows_behind_requested': test_windows_behind_requested(foreground),
+        'steam_app_id': quiet_report.get('steam_app_id') if quiet_report else child_environment.get('SteamAppId'),
+        'steam_game_id': quiet_report.get('steam_game_id') if quiet_report else child_environment.get('SteamGameId'),
+        'steam_environment_scope': 'child_process',
     }
     runtime = pathlib.Path(runtime)
     runtime.mkdir(parents=True, exist_ok=True)

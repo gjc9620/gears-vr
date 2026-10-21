@@ -1,6 +1,9 @@
 """Installation validation and reservation argument tests; never launches the game."""
 import hashlib
+import contextlib
+import io
 import json
+import os
 import pathlib
 import sys
 import tempfile
@@ -15,6 +18,56 @@ import launch_reserve
 
 
 class InstallTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == 'nt', 'Windows downloaded-script handling')
+    def test_marked_downloaded_script_can_probe_python_without_starting_game(self):
+        import shutil
+        import subprocess
+        with tempfile.TemporaryDirectory(prefix='GearsVR downloaded script ') as directory:
+            root=pathlib.Path(directory)
+            script=root/'tools/debug-launch/Start-DebugGame.ps1'
+            script.parent.mkdir(parents=True)
+            shutil.copy2(HERE/'Start-DebugGame.ps1',script)
+            pathlib.Path(str(script)+':Zone.Identifier').write_text('[ZoneTransfer]\r\nZoneId=3\r\n',encoding='ascii')
+            command=game_install.debug_command(root/'never-started/Binaries_x64/GOWDE-Steam.exe',root)+['-PythonCheckOnly']
+            result=subprocess.run(command,env=dict(os.environ,GEARSVR_PYTHON=sys.executable),
+                capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=20,
+                creationflags=subprocess.CREATE_NO_WINDOW)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertIs(json.loads(result.stdout)['check_only'],True)
+
+    def test_windowless_startup_retains_error_output_before_birth(self):
+        from types import SimpleNamespace
+        command=['powershell','-File','startup fixture.ps1']
+        for code in (0,1):
+            stdout,stderr=io.StringIO(),io.StringIO()
+            result=SimpleNamespace(returncode=code,stdout='startup output\n',
+                stderr='RuntimeError: Expected exactly one user-settings file\n' if code else '')
+            with mock.patch.object(launch_reserve,'run_hidden',return_value=result) as run,\
+                    contextlib.redirect_stdout(stdout),contextlib.redirect_stderr(stderr):
+                if code:
+                    with self.assertRaisesRegex(RuntimeError,'Game startup script failed.*1'):
+                        launch_reserve.run_game_startup(command)
+                else:launch_reserve.run_game_startup(command)
+            run.assert_called_once_with(command,capture_output=True,text=True,encoding='utf-8',errors='replace')
+            self.assertEqual(stdout.getvalue(),result.stdout)
+            self.assertEqual(stderr.getvalue(),result.stderr)
+
+    def test_steam_launch_context_is_title_specific_and_does_not_modify_parent(self):
+        for supplied in ({}, {'SteamAppId':'480', 'SteamGameId':'480', 'KEEP':'yes'},
+                         {'STEAMAPPID':'480', 'steamgameid':'480', 'KEEP':'yes'}):
+            before = dict(supplied)
+            child = game_install.launch_environment(supplied)
+            expected = {k:v for k,v in before.items() if k.casefold() not in ('steamappid', 'steamgameid')}
+            self.assertEqual(child, dict(expected, SteamAppId='2523720', SteamGameId='2523720'))
+            self.assertEqual(supplied, before)
+            self.assertIsNot(child, supplied)
+        with mock.patch.dict(os.environ, {'SteamAppId':'480', 'SteamGameId':'480'}):
+            before = dict(os.environ)
+            child = game_install.launch_environment()
+            self.assertEqual(child['SteamAppId'], '2523720')
+            self.assertEqual(child['SteamGameId'], '2523720')
+            self.assertEqual(dict(os.environ), before)
+
     def test_experimental_upscaler_switch_is_explicit_and_preserves_background_flags(self):
         selected = pathlib.Path('X:/an install with spaces/Binaries_x64/GOWDE-Steam.exe')
         original = game_install.debug_command(selected)
@@ -23,6 +76,12 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(experimental, original + ['-ExperimentalPreserveUpscaler'])
         self.assertIn('-DisableBackgroundInput', experimental)
         self.assertNotIn('-Foreground', experimental)
+
+    def test_downloaded_startup_script_uses_only_child_execution_policy(self):
+        command=game_install.debug_command(pathlib.Path('X:/Steam Game/Binaries_x64/GOWDE-Steam.exe'))
+        self.assertEqual(command[command.index('-ExecutionPolicy')+1],'Bypass')
+        self.assertLess(command.index('-ExecutionPolicy'),command.index('-File'))
+        self.assertNotIn('Set-ExecutionPolicy',' '.join(command))
 
     def test_reserve_rejects_experimental_upscaler_lock_conflicts_before_preflight(self):
         for flag in ('--graphics-startup-lock', '--graphics-menu-lock'):

@@ -11,8 +11,9 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
+RELEASE_VERSIONS = ('0.0.1', '0.0.2')
 PROJECT_MODULES = {
-    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle game_audio_guard',
+    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle startup_diagnostics game_audio_guard',
     'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy tiny_output_recovery instance_policy',
     'game-io': 'background_input game_io menu_state menu_control movie_state scene_owner_snapshot',
     'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',
@@ -116,7 +117,7 @@ def stage(root, python_root, destination, *, manifest_path=None, launcher_path=N
     manifest = json.loads(selected_manifest.read_text())
     release_documents = {}
     if release_version is not None:
-        if release_version != '0.0.1': raise ValueError('Unsupported release version')
+        if release_version not in RELEASE_VERSIONS: raise ValueError('Unsupported release version')
         for name in ('README.txt', 'RELEASE_NOTES.txt'):
             release_documents[name] = contained(root, 'docs/releases/' + release_version + '/' + name).read_text(encoding='utf-8')
     candidate_launcher = no_links(launcher_path) if launcher_path is not None else None
@@ -175,6 +176,10 @@ def stage(root, python_root, destination, *, manifest_path=None, launcher_path=N
                     'Offline dependency preflight alone does not certify game/headset behavior'])
         # Public-test acceptance is recorded separately from the offline stager.
         metadata.pop('release_ready', None)
+        if release_version == '0.0.2':
+            metadata.update(baseline_version='0.0.1',
+                acceptance_scope='Gameplay/headset reports refer to the unchanged 0.0.1 renderer; 0.0.2 startup verified separately')
+            metadata['limits'].append('0.0.2 physical-headset regression pending')
     if alias is not None: generated[alias] = manifest
     for relative, value in generated.items():
         target = contained(destination, relative); target.parent.mkdir(parents=True, exist_ok=True)
@@ -256,7 +261,7 @@ def main():
     parser.add_argument('--root', type=Path, default=ROOT)
     parser.add_argument('--manifest', type=Path, help='Stage an explicit candidate without changing the local default')
     parser.add_argument('--launcher', type=Path, help='Use an independently compiled GUI without replacing the player EXE')
-    parser.add_argument('--release-version', choices=('0.0.1',), help='Include versioned public-test instructions')
+    parser.add_argument('--release-version', choices=RELEASE_VERSIONS, help='Include versioned public-test instructions')
     parser.add_argument('--preflight-output', type=Path, required=True)
     args = parser.parse_args()
     report = stage(args.root, args.python_root, args.destination, manifest_path=args.manifest, launcher_path=args.launcher,

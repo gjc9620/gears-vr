@@ -82,6 +82,14 @@ class PackageTests(unittest.TestCase):
         with zipfile.ZipFile(self.output) as archive:
             self.assertEqual(archive.read('RELEASE_NOTES.txt'), b'public test notes')
 
+    def test_startup_hotfix_002_packages_with_required_release_notes(self):
+        self.rows=[row for row in self.rows if row['path']!='portable-candidate.json']
+        self.add('portable-candidate.json',json.dumps({'kind':'public-test-release','version':'0.0.2'}).encode())
+        self.add('RELEASE_NOTES.txt',b'0.0.2 startup hotfix')
+        self.save();self.build()
+        with zipfile.ZipFile(self.output) as archive:
+            self.assertEqual(archive.read('RELEASE_NOTES.txt'),b'0.0.2 startup hotfix')
+
     def candidate_alias(self, alias, contents=None):
         self.rows = [row for row in self.rows if row['path'] != 'portable-candidate.json']
         self.add('portable-candidate.json', json.dumps({'candidate_manifest': alias}).encode())
