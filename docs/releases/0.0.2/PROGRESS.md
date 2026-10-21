@@ -19,3 +19,11 @@
 根目录原启动器窗口保持运行；旧EXE先移入忽略的备份目录，再安装通过最终QA的GUI，文件哈希与ZIP一致。下次重新打开根目录启动器即使用新版，安装回执为 `analysis/release-0.0.2/root-gui-install.json`。
 
 2026-10-22 用户对0.0.2反馈：“测了一下没什么问题了”。记录为本次启动修复的用户实测通过，本次修复收口。
+
+2026-10-22 按用户要求补充0.0.2启动诊断。每次预留独立保存有界JSONL，逐步记录游戏验证、自检、启动脚本、加载依赖、DLL加载、预留、入口核对、target priming及准备完成的时间；记录启动时版本、解释器、GUI／脚本SHA256及native/XR/game清单指纹。启动回执记录实际传给游戏／quiet bootstrap的SteamAppId、SteamGameId，只保留这两个环境字段。
+
+为新生游戏保留只查询的进程句柄，并按创建时间核对身份；失败时观察同一个进程是否退出及实际退出码，与远程线程返回码分开，不把返回1自动认作Steam重启或崩溃。前置准备状态仅提取本次prime调用后更新的Hook结果、图形准入失败编号，拒绝旧文件及其他PID，不导出地址、原始入口字节或完整native日志。诊断写入失败不改变启动错误或现有清理流程。
+
+Export logs新增build-info.json、startup-attempts.json和startup-summary.txt；最多保留最近三次启动的有界摘要，尚未创建VR会话、失败／超时及半行日志均可处理，读取路径本地推导，导出过程不查询游戏进程。88项debug-launch与189项vr-launcher检查通过，共277项；包含普通Python子进程真实退出码1、PID身份不符、日志写失败、旧prime状态、半行、隐私／链接边界和无VR会话导出检查。新版模块已加入便携白名单，随包Python的-I/-B隔离预检通过（718项库存文件）。未为本次日志修改另启游戏或增加头显验收结论。待验证提交冻结后交由用户指定的[发布]agent重打整包并发布，旧ZIP校验值不适用于即将重打的日志增强包。
+
+随包CLI实跑还核对了进入游戏前的真实失败路径：对不存在的EXE进行预留，预期返回1，在game_validation阶段写下原始异常；随后以随包Python -I/-B导出10文件诊断包，版本、bundled_python和失败阶段均符合预期。检查中修正了新模块在隔离模式下的导入顺序。最终离线预检回执为 `analysis/release-0.0.2/startup-diagnostics-verified-stage-preflight.json`，CLI／导出回执为 `analysis/release-0.0.2/startup-diagnostics-verified-smoke.receipt.json`，两个单测日志为同目录的 `startup-diagnostics-debug-tests.log` 和 `startup-diagnostics-launcher-tests.log`。用于CLI检查的stage含QA运行文件，发布时必须重新创建干净stage。

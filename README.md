@@ -33,7 +33,7 @@ Known limits
 - Later chapters have not all been verified.
 
 Click Stop VR, wait for cleanup, then exit the game normally. Exit the game before starting a new VR session.
-For a bug report, click Export logs and send the ZIP with your headset, GPU and a description. If startup fails, also include analysis/runtime/vr-launcher-session.reserve.log from the mod folder.
+For a bug report, click Export logs and send the ZIP with your headset, GPU and a description. The ZIP includes startup-summary.txt and the latest three startup attempts, including failures before VR starts.
 Before updating, close the game and launcher. Extract the new full ZIP into the same location, replacing the previous mod files. Keep runtime and tools together with the launcher.
 The game is not included. No separate Python installation is required.
 
@@ -53,6 +53,6 @@ Recenter 可按需使用，不需要每次进入关卡都按；视角舒服就�
 
 支持游戏 EXE 版本 1.0.381.6947。机枪进入/退出仍可能暂停约2秒，后续章节未全部验证，DLSS/DLAA 和 VR 景深模糊仍关闭。
 结束时点 Stop VR，等待清理后正常退出游戏。重新启动 VR 前先退出游戏。
-遇到问题请用 Export logs 导出 ZIP，附上头显、显卡和问题描述；启动失败时额外附上 Mod 目录下 analysis/runtime/vr-launcher-session.reserve.log。
+遇到问题请用 Export logs 导出 ZIP，附上头显、显卡和问题描述。ZIP内包含startup-summary.txt和最近三次启动记录，也能记录进入VR前的启动失败。
 更新前关闭游戏与启动器，将新整包解压到原位置并覆盖上一版 Mod 文件，让 runtime、tools 与启动器保持在一起。
 不包含游戏文件，不需要另装 Python。

@@ -13,7 +13,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE_VERSIONS = ('0.0.1', '0.0.2')
 PROJECT_MODULES = {
-    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle game_audio_guard',
+    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle startup_diagnostics game_audio_guard',
     'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy tiny_output_recovery instance_policy',
     'game-io': 'background_input game_io menu_state menu_control movie_state scene_owner_snapshot',
     'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',

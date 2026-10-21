@@ -282,6 +282,7 @@ class BackgroundLaunchTests(unittest.TestCase):
             self.assertEqual(child['STEAM_TEST_KEEP'], 'value')
             self.assertEqual(dict(background_launch.os.environ), parent)
         self.assertEqual(result['steam_app_id'], '2523720')
+        self.assertEqual(result['steam_game_id'], '2523720')
         self.assertEqual(result['steam_environment_scope'], 'child_process')
 
     def test_background_default_enforces_flag_even_if_parent_disabled_it(self):
