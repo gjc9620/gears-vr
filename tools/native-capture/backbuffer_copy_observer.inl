@@ -11,7 +11,7 @@ gears_backbuffer_copy::Recorder<BackbufferCopyPayload> backbuffer_copies;
 uint64_t backbuffer_copy_total{},backbuffer_copy_unmatched{},backbuffer_copy_invalid{};
 void observe_backbuffer_copy_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member){
     // Same frame lock and pre-original Execute observation as the late recorder.
-    std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> diagnostic_guard(frame_hook_mutex);
     if(!ref.identity||!ref.generation)return;
     for(unsigned i=0;i<backbuffer_copies.size;++i){auto& p=backbuffer_copies.rows[i].payload;
         if(!p.execute_order&&p.list.identity==ref.identity&&p.list.generation==ref.generation){
@@ -21,7 +21,7 @@ void observe_backbuffer_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE
     UINT x,UINT y,UINT z,const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box,uintptr_t caller){
     if(self_testing||!frame_link_diagnostics||!recording.load())return;
     // frame_lock is conditional; explicitly serialize even across flag races.
-    std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);++backbuffer_copy_total;
+    std::lock_guard<FrameHookMutex> diagnostic_guard(frame_hook_mutex);++backbuffer_copy_total;
     D3D12_TEXTURE_COPY_LOCATION src{},dst{};D3D12_BOX bounds{};gears_backbuffer_copy::Key key{};
     if(!safe_copy(&src,source,sizeof(src))||!safe_copy(&dst,destination,sizeof(dst))||
        (box&&!safe_copy(&bounds,box,sizeof(bounds)))||

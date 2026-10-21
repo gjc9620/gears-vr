@@ -324,8 +324,27 @@ int main() {
             memcpy(restored.bytes.data()+0x70,saved.data()+0x70,128);
             if(restored.bytes!=saved)return 66;
         }
+        // Native36 evidence: constructor integer targets follow the reduced
+        // source. Correct only unpublished output targets; keep all other data.
+        std::array<gears_source_args::Snapshot,2> before;
+        for(unsigned i=0;i<2;++i){const int32_t reduced[]{int32_t(i*(display.width/2)),0,int32_t(render.width),int32_t(render.height)};
+            memcpy(static_cast<unsigned char*>(result.views[i])+0x58,reduced,16);if(!read(before[i].bytes.data(),result.views[i],0x430))return 180;}
+        const auto write=[](void* to,void const* from,size_t size){memcpy(to,from,size);return true;};
+        const std::array<void*,2> owned_views{result.views[0],result.views[1]};
+        if(!set_owned_output_targets(api.read,owned_views,result.input_evidence.source,display,render,write))return 181;
+        for(unsigned i=0;i<2;++i){auto expected=before[i];const int32_t target[]{int32_t(i*(display.width/2)),0,int32_t(display.width/2),int32_t(display.height)};
+            memcpy(expected.bytes.data()+0x58,target,16);gears_source_args::Snapshot after;if(!read(after.bytes.data(),result.views[i],0x430)||after.bytes!=expected.bytes)return 182;}
+        if(memcmp(source,saved.data(),sizeof(source))||memcmp(family,family_before.data(),sizeof(family)))return 183;
+        // Already-correct targets are idempotent; a missing writer is rejected.
+        if(!set_owned_output_targets(api.read,owned_views,result.input_evidence.source,display,render,write)||set_owned_output_targets(api.read,owned_views,result.input_evidence.source,display,render,nullptr))return 184;
         if(!release(api,result))return 67;
     }
+    {const auto saved=untouched;gears_source_args::Snapshot saved_view;saved_view.bytes=saved;const FixedOutputBounds packed_output{1280,720};const RenderInputBounds packed_render{426,480,true};
+        result=create(api,family,source,reinterpret_cast<void*>(0x2000),true,false,false,Phase::a1,&custom,&packed_output,&packed_render);
+        if(result.checks!=63)return 185;
+        for(unsigned i=0;i<2;++i){const std::array<float,4> rectangle{saved_view.value<float>(0x48)+float(i*426),saved_view.value<float>(0x4c),426,480};
+            if(memcmp(result.inputs[i].bytes.data()+0x48,rectangle.data(),16))return 186;}
+        if(memcmp(source,saved.data(),sizeof(source))||!release(api,result))return 187;}
     const auto render_allocations=allocations,render_constructs=constructs;
     const FixedOutputBounds display{2560,1080};
     for(auto invalid:{RenderInputBounds{0,0},RenderInputBounds{63,720},RenderInputBounds{853,63},

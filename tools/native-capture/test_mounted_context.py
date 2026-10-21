@@ -477,7 +477,7 @@ class MountedContextTests(unittest.TestCase):
         self.assertTrue(all(x['retryable'] for x in evidence['attempts']))
 
     def test_timestamp_change_does_not_hide_other_boundary_mutation(self):
-        for target in (0x80800, 0x92094, 0x71060, 0x30604, 0x80000):
+        for target in (0x80800, 0x92094, 0x71060, 0x80000):
             with self.subTest(target=hex(target)):
                 f = MountedFixture(); original = f.read; counts = {}
                 def changing(address, size):
@@ -491,6 +491,26 @@ class MountedContextTests(unittest.TestCase):
                     with self.assertRaises((AnchorRejected, RuntimeError)) as failure:
                         MountedContextCertificate(f.sampler)
                 self.assertNotIsInstance(failure.exception, MountedTimestampChanged)
+
+    def test_pov_with_timestamp_rollover_retries_and_uses_new_frame(self):
+        f = MountedFixture();sampler = LiveRegistryAnchorSampler(f, clock_ns=lambda: 0)
+        original = f.read;hits = 0
+        new_pov = struct.pack('<3f3if', 400, 500, 600, 7, 8, 9, 90)
+        def changing(address, size):
+            nonlocal hits
+            if (address, size) == (sampler.pov, 28):
+                hits += 1
+                if hits == 2:
+                    f.put(sampler.pov, new_pov)
+                    f.put(sampler.stamp, struct.pack('<f', 11))
+            return original(address, size)
+        with mock.patch.object(f, 'read', side_effect=changing):
+            result = sampler.guard()
+        attempts = sampler.guard_acquisitions[-1]['attempts']
+        self.assertEqual(len(attempts), 2)
+        self.assertTrue(attempts[0]['retryable'])
+        self.assertFalse(attempts[0]['strict_guard_accepted'])
+        self.assertEqual(result['mounted_context']['camera_pov_raw'], new_pov.hex())
 
     def test_valid_header_change_keeps_registry_classification(self):
         from sample_player_anchor import RegistryHeaderChanged

@@ -14,11 +14,11 @@ thread_local gears_game_material::UploadCertificate* uploading{};
 struct ConsumerScope {
     UiMaterialContext* context{};ConsumerScope* previous{};bool entered{},drew{},bad{},ended{};
     explicit ConsumerScope(UiMaterialContext* c):context(c),previous(current){
-        if(c&&recording.load()&&frame_link_diagnostics&&stereo_gpu_publish){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        if(c&&recording.load()&&frame_link_diagnostics&&stereo_gpu_publish){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
             entered=completion.begin();if(entered){current=this;++consumers;}}
     }
     void end(bool complete){if(!entered||ended)return;
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
         if(completion.end(drew,complete&&!bad))frame_link.invalidate();
         if(complete&&!bad)++completed;else ++failed;ended=true;
     }
@@ -58,7 +58,7 @@ bool reserve(){
     upload_target=reinterpret_cast<void*>(base+0x1af054);
     return MH_CreateHook(upload_target,reinterpret_cast<void*>(hook_upload),reinterpret_cast<void**>(&original_upload))==MH_OK&&upload_hash_matches();
 }
-void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void print(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"game_ui_material enabled=1 consumers=%llu completed=%llu uploads=%llu draws=%llu ordinary_draws=%llu hud_draws=%llu rejected=%llu failed=%llu pending_presents=%llu pending=%u kind0_semantic_hud_proven=0 original_consumer_once=1\n",
     consumers.load(),completed.load(),uploads.load(),draws.load(),ordinary_draws.load(),hud_draws.load(),rejected.load(),failed.load(),pending_presents.load(),completion.pending());
     const char* names[]={"upload","upload_kind","quad_list","om_target","pair","view_plane","lookup","plan","registration"};

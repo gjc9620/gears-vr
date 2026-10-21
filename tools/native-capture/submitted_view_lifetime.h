@@ -22,9 +22,13 @@ struct FrameTicket {bool enabled{};std::uint64_t id{};gears_vr::StereoSample sam
     std::uint64_t reference_generation{};gears_vr::Pose reference{};gears_origin_trial::Metadata origin{};
     std::optional<gears_crosshair_scene::Metadata> crosshair;
     gears_vr::StereoFiniteAim finite_aim{};
+    bool aiming{};
     // Immutable completed Create parameters for reduced constructor inputs.
     // CPU identity only: owns no feature, resource, GPU work or producer proof.
-    gears_ngx_create::NativeCreateSource ngx_constructor_source{};};
+    gears_ngx_create::NativeCreateSource ngx_constructor_source{};
+    // Expected float inputs frozen before publishing this native renderer.
+    // FViewInfo later translates their common origin into integer GPU targets.
+    std::array<std::array<float,4>,2> ngx_constructor_rectangles{};};
 class Lifetime {
     std::mutex mutex;
     std::array<uintptr_t,64> roots{};

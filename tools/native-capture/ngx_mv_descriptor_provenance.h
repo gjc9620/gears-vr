@@ -217,7 +217,26 @@ public:
         return unknown_write(value,cpu);
     }
 private:
-    bool copy_impl(Scope value,CopyRanges const& destinations,CopyRanges const& sources,bool sparse){
+    bool copy_one_impl(uint64_t dst,uint64_t src,bool sparse){
+        uint32_t dst_slot{},src_slot{};
+        const auto* dh=heap(dst,false,dst_slot);if(!dh)return lose(Loss::unknown_heap);
+        const auto* sh=heap(src,false,src_slot);if(!sh)return lose(Loss::unknown_heap);
+        if(sh->visible)return lose(Loss::bad_range);
+        if(dst==src)return lose(Loss::overlap);
+        // Freeze the one source before destination reuse, exactly as the range
+        // path does. Avoid constructing/destructing CopyCapacity lease records
+        // for the common native one-descriptor copy.
+        Cell captured{};if(const auto* c=find(sh->canonical,src_slot))captured=*c;
+        const bool tracked=find(dh->canonical,dst_slot)!=nullptr;
+        if constexpr(SourceLedger){if(!tracked&&(dh->visible||!captured.known_uav))return true;}
+        if(sparse&&!captured.known_uav&&!tracked)return true;
+        auto* c=destination(dh->canonical,dst_slot);if(!c)return false;
+        if(serial_==UINT64_MAX)return capacity_loss(CapacitySite::serial);
+        captured.heap=dh->canonical;captured.index=dst_slot;
+        captured.source_handle=src;captured.source_version=captured.version;
+        captured.version=++serial_;*c=std::move(captured);return true;
+    }
+    bool copy_many_impl(Scope value,CopyRanges const& destinations,CopyRanges const& sources,bool sparse){
         if(!scope(value))return false;std::array<uint64_t,CopyCapacity> dst{},src{};unsigned dn{},sn{};
         if(!flatten(destinations,false,dst,dn)||!flatten(sources,true,src,sn))return false;if(dn!=sn)return lose(Loss::bad_range);
         // Snapshot all sources before any destination write. Reject unsupported
@@ -237,6 +256,12 @@ private:
             if(serial_==UINT64_MAX)return capacity_loss(CapacitySite::serial);auto value_copy=std::move(captured[i]);value_copy.heap=h->canonical;value_copy.index=slot;
             value_copy.source_handle=src[i];value_copy.source_version=value_copy.version;value_copy.version=++serial_;*c=std::move(value_copy);}
         return true;
+    }
+    bool copy_impl(Scope value,CopyRanges const& destinations,CopyRanges const& sources,bool sparse){
+        if(!scope(value))return false;
+        const auto one=[](CopyRanges const& r){return r.readable&&r.count==1&&(!r.sizes_present||r.sizes[0]==1);};
+        if(one(destinations)&&one(sources))return copy_one_impl(destinations.starts[0],sources.starts[0],sparse);
+        return copy_many_impl(value,destinations,sources,sparse);
     }
 public:
     bool copy(Scope value,CopyRanges const& destinations,CopyRanges const& sources){return copy_impl(value,destinations,sources,false);}

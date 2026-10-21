@@ -14,7 +14,7 @@ struct EyeDrawEvidence {
     std::array<float,8> args{};std::array<unsigned,4> dimensions{};
 };
 inline bool eye_caller(uintptr_t caller,bool source_attested=false,bool controlled=false){
-    return caller==0xd83b1c||caller==0xd808d8||(caller==0x2b11a0&&source_attested)||(caller==0xd83cbf&&controlled);
+    return caller==0xd83b1c||caller==0xd808d8||(caller==0x2b11a0&&source_attested)||((caller==0xd83cbf||caller==0xd80a7b)&&controlled);
 }
 // quad_valid includes the existing per-eye rectangle and (for 2b11a0)
 // identity UV/texture-size checks. The same attested eye pass can render into
@@ -27,7 +27,7 @@ inline bool eligible_eye_target(uintptr_t caller,bool quad_valid,uint64_t ticket
     if(!quad_valid||!ticket||binding.targets!=1||binding.target.mip||
        binding.target.width!=eye_width||binding.target.height!=eye_height)return false;
     if(caller==0x2b11a0)return attested&&binding.target.format==24;
-    if(caller==0xd83cbf){
+    if(caller==0xd83cbf||caller==0xd80a7b){
         if(!attested||!control.candidate||!current_world||control.world!=current_world||control.ticket!=ticket||control.eye>1||
            !control.list||!control.generation||!control.source||control.source==control.target||control.target!=binding.target.resource||
            binding.target.format!=24||!eye_width||eye_width%2||!eye_height||!control.dimensions[2]||control.dimensions[2]%2||!control.dimensions[3]||

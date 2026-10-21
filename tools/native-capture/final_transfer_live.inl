@@ -100,7 +100,7 @@ struct Scope {
     Scope(uintptr_t caller,std::array<float,8> args,std::array<unsigned,4> dimensions):saved(current),exceptions(std::uncaught_exceptions()){
         current=nullptr; // Nested unrelated quads never become outer evidence.
         if(caller!=0x9a7377||!enabled()||!outage_diagnostics.load()||!recording.load())return;
-        std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+        std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
         if(!budget.preflight())return;
         gears_final_transfer::Input input{};input.quad_caller=caller;input.args=args;input.dimensions=dimensions;
         auto value=entry(input);
@@ -113,28 +113,28 @@ struct Scope {
             row->pending_entry_reason=gears_final_transfer_bracket::pending_reason(row->pending_entry,value);}
     }
     ~Scope(){
-        if(row){std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+        if(row){std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
             row->exit_qpc=now();row->exited=true;row->unwinding=std::uncaught_exceptions()>exceptions;}
         current=saved;
     }
     Scope(Scope const&)=delete;Scope& operator=(Scope const&)=delete;
 };
 void draw_call(uintptr_t raw_list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances,bool bypass){
-    if(!current)return;std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    if(!current)return;std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
     current->calls.call({raw_list,caller,kind,elements,instances},bypass);
 }
 void consumed_target(uintptr_t list,unsigned count,const D3D12_CPU_DESCRIPTOR_HANDLE* handles,bool bypass){
-    if(!current||!pending_code_attested.load())return;std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    if(!current||!pending_code_attested.load())return;std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
     D3D12_CPU_DESCRIPTOR_HANDLE handle{};const bool readable=count==1&&safe_copy(&handle,handles,sizeof(handle));
     current->binds.consume(0,list==current->entry.raw_list,readable&&handle.ptr==current->pending_entry.handle,bypass);
 }
 void consumed_viewport(uintptr_t list,unsigned count,const D3D12_VIEWPORT* values,bool bypass){
-    if(!current||!pending_code_attested.load())return;std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    if(!current||!pending_code_attested.load())return;std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
     std::array<float,6> value{};const bool readable=count==1&&safe_copy(value.data(),values,sizeof(value));
     current->binds.consume(1,list==current->entry.raw_list,readable&&value==current->pending_entry.viewport,bypass);
 }
 void consumed_scissor(uintptr_t list,unsigned count,const D3D12_RECT* values,bool bypass){
-    if(!current||!pending_code_attested.load())return;std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    if(!current||!pending_code_attested.load())return;std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
     std::array<int32_t,4> value{};const bool readable=count==1&&safe_copy(value.data(),values,sizeof(value));
     current->binds.consume(2,list==current->entry.raw_list,readable&&value==current->pending_entry.scissor,bypass);
 }
@@ -213,7 +213,7 @@ struct Scope {
         if(saved){saved->nested=true;fault("nested_quad");current=nullptr;return;}
         if(caller!=0x9a7377||!gears_final_transfer_normalize::allowed_mode(enabled(),pending_code_attested.load(),
             recording.load(),world,self_testing,owned_bindings_enabled,faulted.load()))return;
-        guard=std::unique_lock<std::recursive_mutex>(frame_hook_mutex);
+        guard=std::unique_lock<FrameHookMutex>(frame_hook_mutex);
         if(faulted.load()){guard.unlock();return;}++considered;
         auto reject=[&](const char* stage){++preflight_rejected;if(!std::strcmp(first_preflight,"none"))first_preflight=stage;guard.unlock();};
         gears_final_transfer::Input input{};input.quad_caller=caller;input.args=args;input.dimensions=dimensions;
@@ -304,7 +304,7 @@ void linked(bool){}void print(FILE* file){fprintf(file,"final_transfer_normalize
 #endif
 }
 bool verify_range(FILE* file,uintptr_t rva,ULONG size,const char* expected,const char* label="final_transfer_identity"){
-    BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};std::array<unsigned char,0x723> bytes{};
+    BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};std::array<unsigned char,0x1000> bytes{};
     bool ok=size<=bytes.size()&&BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0;
     if(ok)ok=BCryptCreateHash(algorithm,&hash,nullptr,0,nullptr,0,0)>=0;
     if(ok)ok=safe_copy(bytes.data(),reinterpret_cast<void*>(base+rva),size)&&BCryptHashData(hash,bytes.data(),size,0)>=0;
@@ -375,7 +375,7 @@ bool observe(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned kind,unsi
 }
 void copy_destination(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination){
     if(!enabled()||!recording.load())return;
-    std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
     D3D12_TEXTURE_COPY_LOCATION value{};
     if(!safe_copy(&value,destination,sizeof(value))||!value.pResource){frame_link.invalidate();return;}
     const auto resource=canonical_identity(value.pResource);const auto ref=frame_link.current(canonical_identity(list));

@@ -1,0 +1,84 @@
+GearsVR 0.0.1 — 本地打包记录
+2026-10-21
+
+交付物
+releases/0.0.1/GearsVR-0.0.1.zip
+压缩大小：14,347,250 字节（约 13.69 MiB）
+成员数：718，包含逐文件 SHA256 清单 inventory.json。
+SHA256：d9586c3f04f37b513b0281b51b054de23f2afb3405c56f5e5cbcf95e226259af
+安装教程 README.txt、发布文案 RELEASE_NOTES.txt 在 ZIP 内，并各有一份放在 ZIP 旁。
+SHA256SUMS.txt 放在 ZIP 旁。不上传；下载地址与 Discord 链接由作者对外发布时添加。
+
+冻结基线
+当前默认 manifest 的源 SHA256：173ec758169200153250099d17cc4abcb3d92803354fca06f7a71ecc3a865624
+Native：tools/native-capture/build-ads-anchor2/GearsCaptureAdsAnchor2.dll
+SHA256：94b73bb04b6f36d4a4bc16f84f1e95d49a1a3144792e0e41d004ef3b802b4304
+XR：tools/openxr-probe/build-mounted-latency1/OpenXRPoseProbe.exe
+SHA256：0a2b7f7dc6a65f8ee23c255423e5fac841726ac6f2ef9bc249ac8e5f4902d56c
+支持的游戏文件版本：1.0.381.6947，实际以 EXE SHA256 匹配为准。
+支持的游戏 SHA256：bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4
+
+包内 GUI 使用 GearsVR 0.0.1 标题；自动游戏路径版本已同步至仓库根目录启动器。
+本轮未重新编译 native/XR，未带入 DLSS 实验原生构建。
+包内游戏路径已清空，内置 CPython 3.12 与可分发依赖/许可证。
+默认清单及本地用户配置保留；根目录启动器已同步更新，旧版本备份在修订回执目录。
+新增的 instance_policy.py 纳入运行模块白名单；不再要求当前启动套件不使用的 TwoViewRendererShadowTest.exe。
+
+验证
+- 139项：test_stage_portable、test_package_portable、test_diagnostics_bundle、test_launcher 全部通过。
+- GUI 编译及隐藏自检通过。
+- 暂存包使用包内 Python -I -B，严格检查项目模块、PE依赖、清单哈希、库存和来源。
+- 从最终ZIP解压到含中文与空格的路径，重复隔离检查通过。
+- 最终解压包23项原生启动检查通过；只在QA副本产生测试状态文件。
+- 最终解压包GUI隐藏自检通过，确认选择解压目录内的Python。
+- 最终解压包通过launcher.py export-logs生成有效诊断ZIP；空历史缺失提示符合未启动游戏的状态。
+- ZIP逐文件尺寸、SHA256及成员列表核验通过；没有analysis、游戏文件、存档、PDB、截图、历史日志或逆向数据库。
+- 正式ZIP来自未运行游戏的干净暂存目录；QA运行后的文件不重新加入ZIP。
+
+验证边界
+第一幕、KRVR+AVP、VD+Q3及准星修复由用户实测确认。
+本轮未另开游戏/头显会话，没有新的全流程或干净Windows机器验收。
+离线预检报告中的 release_ready=false 只表示该工具本身不签发玩法/发布验收；
+发布包元数据另行记录用户实测范围，不用离线检查冒充头显验证。
+保留机枪切换约2秒延迟、后续章节未全测与DLSS禁用限制。
+完整机器可读回执：analysis/release-0.0.1/final-package-audit.json。
+冻结默认清单：analysis/release-0.0.1/frozen/manifest.json。
+
+重建方式（PowerShell，工作目录为仓库根目录；目标目录必须不存在）
+
+$buildPython = 'C:\Users\11\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/vr-launcher/ui/build.ps1 -OutputDirectory analysis/release-rebuild/gui -NoInstall
+& $buildPython -B tools/vr-launcher/stage_portable.py --python-root (Split-Path $buildPython) --destination analysis/release-staging/GearsVR-0.0.1-rebuild --manifest analysis/release-0.0.1/frozen/manifest.json --launcher analysis/release-rebuild/gui/GearsVrLauncher.exe --release-version 0.0.1 --preflight-output analysis/release-rebuild/preflight.json
+& $buildPython -B tools/vr-launcher/package_portable.py --stage analysis/release-staging/GearsVR-0.0.1-rebuild --output analysis/release-rebuild/GearsVR-0.0.1.zip
+
+上述命令使用执行时的脚本与依赖，ZIP时间戳也可能不同，因此不承诺字节级重现。
+应重新执行隔离预检和解压检查，保留新的库存与SHA256；不要覆盖已冻结的0.0.1成品。
+
+README语气修订：改成面向玩家的第一人称中英文说明，Gears用作对玩家的称呼；同时移除发布文案中误写的作者名gear。
+只改README.txt、RELEASE_NOTES.txt及inventory.json，程序文件逐字节相同；重新打包和最终解压隔离预检通过。
+修订回执：J:\gearsVr\analysis\release-0.0.1\readme-tone-5pqk5d50
+
+英文优先修订：README与发布说明英文在前、中文在后，删除公开文案中的准星已修复说明。
+只改两份说明及库存；程序文件相同，重新打包及解压隔离预检通过。
+修订回执：J:\gearsVr\analysis\release-0.0.1\english-first-g99j0mzi
+
+自动游戏路径修订：保留已有有效路径，否则读取启动器旁Binaries_x64/GOWDE-Steam.exe。
+更新GUI、README及库存；原生/XR不变。隐藏GUI自检及暂存/解压隔离预检通过，默认GUI同步更新。
+HUD size仍保留现有设置，等待用户明确修改内容。修订回执：J:\gearsVr\analysis\release-0.0.1\gamepath-8lyno_gw
+
+图标/默认Runtime修订：用户原图嵌入EXE图标和窗口图标，右下角32px灰度淡化图案。
+默认使用系统OpenXR，不写系统注册表；VDXR仍可手动选择。更新GUI、暂存器Runtime说明、README和包元数据。
+35项打包回归、GUI隐藏自检、正常/最小窗口离屏布局与灰度小图检查、最终ZIP解压隔离预检通过；7档Win32图标资源核验通过。
+Native/XR不变，本地配置与默认manifest保留，根目录GUI同步。修订回执：J:\gearsVr\analysis\release-0.0.1\artwork-system-xr-6hjfr8vj
+
+发布审查：移除脚本中的本地发行包目录名称，音频助手收据只保留校验必需字段和源码哈希，移除本机构建命令与工具链路径。预检、解压检查及GUI自检通过。
+
+GitHub发布完成：main提交4b621fc430fa5f96eba3bf70399810d3fd51e202，公开源码726文件，标签v0.0.1。
+Release：https://github.com/gjc9620/gears-vr/releases/tag/v0.0.1
+压缩包和SHA256SUMS.txt已上传，GitHub资产摘要及公开下载重算哈希均与本地一致。
+公开仓库采用经过审查的首版源码快照，不推送原开发历史；原工作区保留。
+完整发布回执：analysis/github-publish-0.0.1/publication-receipt.json。
+
+安装文案精简：安装前窗口化/无边框、帧率不限制、DLSS/DLAA关闭，应用后退出；整包解压到游戏根目录，启动器与Binaries_x64并排。只改两份TXT及库存，程序完全不变；预检和解压检查通过。
+
+安装说明已同步公开GitHub首页、Release正文及包内README。文档提交075e8961ba6642d9cb4a12a936420d7aac82c965；两份新下载资产SHA256与本地一致，原程序文件逐字节不变。

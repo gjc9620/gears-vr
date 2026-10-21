@@ -1,5 +1,8 @@
 #include "dlss_route_observer.h"
 #include "dlss_output_control_live.h"
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+namespace ngx_capture_control {bool output_route_sample_ready();}
+#endif
 namespace dlss_route_observer {
 #if defined(GEARS_DLSS_ROUTE_OBSERVER) && GEARS_DLSS_ROUTE_OBSERVER
 #if defined(GEARS_DEATH_CONSTANT_OBSERVER) && GEARS_DEATH_CONSTANT_OBSERVER
@@ -9,6 +12,10 @@ using namespace gears_dlss_route;
 using OutputFn=uint32_t(__fastcall*)(void*,uintptr_t,void*);
 using SetterFn=uint64_t(__fastcall*)(uintptr_t,const uint16_t*,const void*,unsigned);
 OutputFn original_output{};SetterFn original_setter{};void* output_target{};void* setter_target{};
+#if (defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL) || defined(GEARS_DLSS_OWNED_DOF_HOOK_TEST)
+using OwnedDofFn=uint64_t(__fastcall*)(void*,uintptr_t,void*);
+OwnedDofFn original_owned_dof{};void* owned_dof_target{};
+#endif
 bool attested{},printed{};Recorder recorder;thread_local Context* current{};
 // Only allocation/counters are shared during capture. A reserved array element
 // never moves, is never reused in-session, and is written only by its TLS owner.
@@ -97,7 +104,7 @@ struct InputFinish {
 uint64_t __fastcall hook_bind(const uint16_t* descriptor,void* input_view,void* shader_owner,uint32_t selection,int32_t alternate){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;Scope scope;auto* row=current?current->row:nullptr;
     dlss_output_control::BindScope control(scope.world(),caller,descriptor,input_view,shader_owner,selection,alternate);
-    if(!scope.world()||!input_attested||caller!=0xd831c8||!row||!matching(*row))return original_bind(descriptor,input_view,shader_owner,selection,alternate);
+    if(!scope.world()||!input_attested||!row||caller!=gears_dlss_output::bind_caller(row->owned_dof)||!matching(*row))return original_bind(descriptor,input_view,shader_owner,selection,alternate);
     auto& b=row->input;if(b.present){++b.duplicates;return original_bind(descriptor,input_view,shader_owner,selection,alternate);}
     b.present=true;b.caller=caller;b.descriptor_address=reinterpret_cast<uintptr_t>(descriptor);b.view_address=reinterpret_cast<uintptr_t>(input_view);
     b.shader_owner=reinterpret_cast<uintptr_t>(shader_owner);b.selection=selection;b.alternate=alternate;b.entry=now();
@@ -111,7 +118,8 @@ void input_quad(Row& row,uintptr_t caller){auto& b=row.input;if(!b.present||b.qu
 void draw(uintptr_t raw_list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances){
     auto* row=current?current->row:nullptr;
     if(!input_attested||!row||!matching(*row)||!row->input.present||row->input.draw.present||!late_quad_candidate.active||
-       (late_quad_candidate.caller!=0xd83b1c&&late_quad_candidate.caller!=0xd83cbf))return;
+       (row->owned_dof?!gears_vr_dof::quad_caller(late_quad_candidate.caller):
+        (late_quad_candidate.caller!=0xd83b1c&&late_quad_candidate.caller!=0xd83cbf)))return;
     auto& b=row->input;auto& d=b.draw;d.present=true;d.caller=caller;d.raw_list=raw_list;d.kind=kind;d.elements=elements;d.instances=instances;
     d.qpc=now();d.sample=input_sample(b,true);
     uintptr_t owner{},table{},method{};
@@ -124,18 +132,42 @@ void draw(uintptr_t raw_list,uintptr_t caller,unsigned kind,unsigned elements,un
 void input_quad(Row&,uintptr_t){}
 void draw(uintptr_t,uintptr_t,unsigned,unsigned,unsigned){}
 #endif
+#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
+void print_input(FILE*,unsigned,InputBind const&);
+#endif
 struct OutputFinish {
     Context& context;int exceptions=std::uncaught_exceptions();
-    ~OutputFinish(){if(auto* r=context.row){r->after=view(context.view);r->exit=now();r->exited=true;r->unwinding=std::uncaught_exceptions()>exceptions;}}
+    ~OutputFinish(){if(auto* r=context.row){r->after=view(context.view);r->exit=now();r->exited=true;r->unwinding=std::uncaught_exceptions()>exceptions;
+#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
+        // This TLS owner has finished every write to its bounded row. Preserve
+        // the completed route without reading another thread's live recorder.
+        if(diagnostic_status){fprintf(diagnostic_status,"ngx_owned_output_route ticket=%llu owned_dof=%u flags=%x eye=%u caller=%llx setters=%u quads=%u source=%.9g,%.9g,%.9g,%.9g target=%d,%d,%d,%d entry=%lld exit=%lld\n",
+            r->ticket,unsigned(r->owned_dof),r->flags,r->eye,r->caller,r->setter_count,r->quad_count,r->before.source[0],r->before.source[1],r->before.source[2],r->before.source[3],
+            r->before.target[0],r->before.target[1],r->before.target[2],r->before.target[3],r->entry,r->exit);
+            for(unsigned i=0;i<r->quad_count&&i<r->quads.size();++i){auto const& q=r->quads[i];
+                fprintf(diagnostic_status,"ngx_owned_output_quad ticket=%llu eye=%u caller=%llx args=%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g dimensions=%u,%u,%u,%u\n",
+                    r->ticket,r->eye,q.caller,q.args[0],q.args[1],q.args[2],q.args[3],q.args[4],q.args[5],q.args[6],q.args[7],q.dimensions[0],q.dimensions[1],q.dimensions[2],q.dimensions[3]);}
+            for(unsigned i=0;i<r->setter_count&&i<r->setters.size();++i){auto const& s=r->setters[i];
+                fprintf(diagnostic_status,"ngx_owned_output_setter ticket=%llu eye=%u caller=%llx mask=%u index=%u descriptor=%u,%u,%u payload=%.9g,%.9g,%.9g,%.9g exited=%u unwinding=%u\n",
+                    r->ticket,r->eye,s.caller,s.mask,s.index,s.descriptor[0],s.descriptor[1],s.descriptor[2],s.payload[0],s.payload[1],s.payload[2],s.payload[3],unsigned(s.exited),unsigned(s.unwinding));}
+            print_input(diagnostic_status,unsigned(r-recorder.rows.data()),r->input);
+            fflush(diagnostic_status);}
+#endif
+    }}
 };
 uint32_t __fastcall hook_output(void* pass,uintptr_t unused,void* input_view){
     Scope scope;
     Context context{reinterpret_cast<uintptr_t>(pass),reinterpret_cast<uintptr_t>(input_view),nullptr};Binding binding(current,context);
     dlss_output_control::OutputScope output_control(scope.world(),context.pass,context.view);
     if(!eligible(scope.world()))return original_output(pass,unused,input_view);
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+    // Keep this bounded read-only bank for actual post-SDK output, rather than
+    // exhausting it on the fixture's earlier AA-off frames.
+    if(!ngx_capture_control::output_route_sample_ready())return original_output(pass,unused,input_view);
+#endif
     bool candidate=false;
     {
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
         if(binding.nested)++recorder.nested;
         else if(recorder.size==recorder.rows.size())++recorder.limited;
         else candidate=true;
@@ -144,7 +176,7 @@ uint32_t __fastcall hook_output(void* pass,uintptr_t unused,void* input_view){
     const auto before=view(context.view);uint32_t flags{};const bool flags_read=read(flags,context.pass,8);
     // Skip incomplete startup records without consuming one of the eight rows.
     {
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
         context.row=recorder.reserve(flags_read&&(before.mask&7)==7&&before.native.eye_valid);
     }
     if(!context.row)return original_output(pass,unused,input_view);
@@ -153,6 +185,26 @@ uint32_t __fastcall hook_output(void* pass,uintptr_t unused,void* input_view){
     row.thread=GetCurrentThreadId();row.eye=before.native.eye;row.entry=now();row.before=before;row.flags=flags;row.flags_read=flags_read;
     OutputFinish finish{context};row.result=original_output(pass,unused,input_view);return row.result;
 }
+#if (defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL) || defined(GEARS_DLSS_OWNED_DOF_HOOK_TEST)
+uint64_t __fastcall hook_owned_dof(void* pass,uintptr_t unused,void* input_view){
+    Scope scope;Context context{reinterpret_cast<uintptr_t>(pass),reinterpret_cast<uintptr_t>(input_view),nullptr,true};Binding binding(current,context);
+    dlss_output_control::OutputScope output_control(scope.world(),context.pass,context.view,true);
+    if(!eligible(scope.world()))return original_owned_dof(pass,unused,input_view);
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+    if(!ngx_capture_control::output_route_sample_ready())return original_owned_dof(pass,unused,input_view);
+#endif
+    const auto before=view(context.view);uint32_t flags{};const bool flags_read=read(flags,context.pass,8);
+    {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
+        if(binding.nested)++recorder.nested;
+        else if(recorder.size==recorder.rows.size())++recorder.limited;
+        else context.row=recorder.reserve(flags_read&&(before.mask&7)==7&&before.native.eye_valid);}
+    if(!context.row)return original_owned_dof(pass,unused,input_view);
+    auto& row=*context.row;row.owned_dof=true;row.pass=context.pass;row.renderer=reinterpret_cast<uintptr_t>(consuming_renderer);
+    row.caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;row.ticket=consuming_frame_ticket;row.world=consuming_frozen_frame.world_generation;
+    row.thread=GetCurrentThreadId();row.eye=before.native.eye;row.entry=now();row.before=before;row.flags=flags;row.flags_read=flags_read;
+    OutputFinish finish{context};const uint64_t result=original_owned_dof(pass,unused,input_view);row.result=uint32_t(result);return result;
+}
+#endif
 struct SetterFinish {
     Setter& row;int exceptions=std::uncaught_exceptions();
     ~SetterFinish(){row.exit=now();row.exited=true;row.unwinding=std::uncaught_exceptions()>exceptions;
@@ -161,7 +213,7 @@ struct SetterFinish {
 uint64_t __fastcall hook_setter(uintptr_t rcx,const uint16_t* descriptor,const void* payload,unsigned index){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
     Scope scope;dlss_output_control::SetterScope output_control(scope.world(),caller,descriptor,index);auto* row=current?current->row:nullptr;
-    if(!scope.world()||!row||setter_role(caller)>1||index||!matching(*row))return original_setter(rcx,descriptor,payload,index);
+    if(!scope.world()||!row||setter_role(caller,row->owned_dof)>1||index||!matching(*row))return original_setter(rcx,descriptor,payload,index);
     // This row belongs exclusively to the current thread's Output invocation.
     // Do not hold the global frame lock across the unchanged native setter.
     if(row->setter_count==row->setters.size()){++row->setter_overflow;return original_setter(rcx,descriptor,payload,index);}
@@ -175,7 +227,7 @@ uint64_t __fastcall hook_setter(uintptr_t rcx,const uint16_t* descriptor,const v
 }
 void quad(uintptr_t caller,std::array<float,8> const& args,std::array<unsigned,4> const& dimensions){
     auto* row=current?current->row:nullptr;
-    if(!row||!matching(*row)||(caller!=0xd83b1c&&caller!=0xd83cbf))return;
+    if(!row||!matching(*row)||(row->owned_dof?!gears_vr_dof::quad_caller(caller):(caller!=0xd83b1c&&caller!=0xd83cbf)))return;
     input_quad(*row,caller);
     if(row->quad_count==row->quads.size()){++row->quad_overflow;return;}
     auto& quad=row->quads[row->quad_count++];quad.caller=caller;quad.qpc=now();quad.args=args;quad.dimensions=dimensions;quad.view=view(current->view);
@@ -227,7 +279,12 @@ bool enable(FILE* file){
     const bool output=verify_chunk(file,0xd82f58,0xc78,"1efb10541bf56d87b31aae4f452da0d281afd552da16b4bfd16d653f2cd425ea");
     const bool continuation=verify_chunk(file,0xd83bd0,0x1e9,"e051a2d325a4d5ebc12be670d63cd8eae1eead437f33dfa39946de852e61e724");
     const bool setter=verify_chunk(file,0x1760b4,0xcd,"d7d20d3f5c510685b8b3ffb12d12d51ae583d4070e00cf11a39655c7e086c45b");
-    attested=output&&continuation&&setter;return attested&&enable_input_bind(file)&&dlss_output_control::enable(file,attested);
+    bool owned_dof=true;
+#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
+    owned_dof_target=reinterpret_cast<void*>(base+0xd7fd14);
+    owned_dof=verify_chunk(file,0xd7fd14,0xe61,"62ceae022db3ea1d7fd0994520e2cbff6c1b1dca288023d1a56bd957fbca7d5c");
+#endif
+    attested=output&&continuation&&setter&&owned_dof;return attested&&enable_input_bind(file)&&dlss_output_control::enable(file,attested);
 }
 void values(FILE* file,Float4 const& v){fprintf(file,"%.9g,%.9g,%.9g,%.9g",v[0],v[1],v[2],v[3]);}
 void print_view(FILE* file,const char* label,View const& v){
@@ -264,7 +321,7 @@ void print_input(FILE* file,unsigned row,InputBind const& b){
 }
 void print(FILE* file){
     // Cleanup can retain resources on timeout. Never inspect an unfinished row.
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(printed)return;printed=true;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(printed)return;printed=true;
     const bool quiescent=!recording.load()&&active.load()==0;
     fprintf(file,"dlss_route_observer enabled=1 attested=%u cpu_only=1 gpu_verified=0 semantic_verified=0 mutation=0 rows=%u rows_unavailable=%u limit=8 missing=%llu nested=%llu limited=%llu highwater_is_capacity=0 old_r8_read_at_quad=0\n",
         unsigned(attested),recorder.size,unsigned(!quiescent),recorder.missing,recorder.nested,recorder.limited);

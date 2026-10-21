@@ -7,6 +7,8 @@ import struct
 import sys
 import time
 import hashlib
+import math
+from concurrent.futures import ThreadPoolExecutor
 
 PACKET = struct.Struct('<IIIIQQQQQQ')
 UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU = range(5)
@@ -107,19 +109,43 @@ def pause_return_confirmation(sample, top):
 def main_menu(sample, top):
     # Observed campaign chain only: explicit whole-window 2D mirror, never a
     # claim about source image format. Other pages need separate evidence.
-    chain = [('DeltaMainMenu', 'WarUIScene_MainMenu'),
-             ('DeltaCampaignType', 'WarUIScene_CampaignType'),
-             ('DeltaCampaignMenu_ContinueGame', 'WarUIScene_Campaign')]
+    # VDXR session 30768 (2026-10-20) retains these parents while selecting a
+    # different chapter. The child pages use modal input_mode=1, unlike their
+    # mode=4 parents. UNKNOWN would revoke WGC until gameplay resumes.
+    chain = [('DeltaMainMenu', 'WarUIScene_MainMenu', 4),
+             ('DeltaCampaignType', 'WarUIScene_CampaignType', 4),
+             ('DeltaCampaignMenu_ContinueGame', 'WarUIScene_Campaign', 4),
+             ('DeltaSelectAct', 'WarUIScene', 1),
+             ('DeltaSelectMap', 'WarUIScene', 1),
+             ('DeltaSelectDifficulty', 'WarUIScene', 1),
+             ('WarfareConfirmation', 'UIScene_Confirmation', 1)]
     name = top.get('tag')
-    depth = next((i+1 for i, (scene_name, _) in enumerate(chain) if scene_name == name), 0)
+    depth = next((i+1 for i, (scene_name, _, _) in enumerate(chain) if scene_name == name), 0)
     if not depth:
         return False
     scenes = active_top(sample, top)
     if scenes is None or len(scenes) < depth:return False
-    for scene, (scene_name, cls) in zip(scenes[-depth:], chain[:depth]):
+    selected = scenes[-depth:]
+    for scene, (scene_name, cls, mode) in zip(selected, chain[:depth]):
         if (not isinstance(scene, dict) or scene.get('name') != scene_name or scene.get('cls') != cls or
-                type(scene.get('input_mode')) is not int or scene['input_mode'] != 4):
+                type(scene.get('input_mode')) is not int or scene['input_mode'] != mode):
             return False
+    if depth > 3:
+        # Authenticate the full observed parent chain. A similarly named page
+        # elsewhere, a partial/truncated stack or mixed scene clients is not
+        # display authority. No focus, dialog choice or game input is admitted.
+        if (sample.get('active_scenes_truncated', False) is not False or
+                sample.get('focus_chain_truncated', False) is not False):return False
+        addresses = []
+        for scene in selected:
+            address, outer = scene.get('address'), scene.get('outer')
+            if (not isinstance(address, str) or re.fullmatch(r'0x[0-9a-fA-F]{1,16}', address) is None or
+                    int(address, 16) == 0 or not isinstance(outer, str) or
+                    re.fullmatch(r'0x[0-9a-fA-F]{1,16}', outer) is None or int(outer, 16) == 0 or
+                    outer != top.get('outer') or type(scene.get('number')) is not int or scene['number'] < 0):
+                return False
+            addresses.append(int(address, 16))
+        if len(set(addresses)) != depth:return False
     if top.get('name') != name or type(top.get('input_mode')) is not int:return False
     return (type(top.get('number')) is int and top['number'] >= 0 and
             isinstance(top.get('outer'), str) and bool(top['outer']) and
@@ -336,3 +362,66 @@ class MenuDisplayMonitor:
         finally:
             if self.reader:self.reader.close();self.reader = None
             self.log.close()
+
+
+class BackgroundMenuDisplayMonitor:
+    """One read-only observer worker; owner polls never wait for menu RPM.
+
+    The observer still owns packet timestamps and all admission checks. Its
+    reader and publication remain serial, including the final UNKNOWN packet.
+    Only completed scalar observations are copied back to the session owner.
+    """
+    def __init__(self,monitor,*,interval=.1,clock=time.monotonic,executor_factory=ThreadPoolExecutor):
+        if not math.isfinite(interval) or not 0<interval<=.5:
+            raise ValueError('Invalid background menu observation interval')
+        self.monitor=monitor;self.interval=interval;self.clock=clock;self.factory=executor_factory
+        self.executor=None;self.future=None;self.next_poll=0.;self.closed=False;self.failure=None
+        self.last=None;self.last_menu_mode=UNKNOWN
+        self.completed=0;self.total_ms=0.;self.maximum_ms=0.;self.last_ms=None
+
+    def _observe(self):
+        started=self.clock();error=None
+        try:self.monitor.poll()
+        except Exception as failure:error=failure
+        finished=self.clock()
+        return self.monitor.last,self.monitor.last_menu_mode,finished,(finished-started)*1000,error
+
+    def _receive(self):
+        future=self.future;self.future=None
+        last,mode,finished,duration,error=future.result()
+        self.completed+=1;self.total_ms+=duration;self.maximum_ms=max(self.maximum_ms,duration);self.last_ms=duration
+        self.next_poll=finished+self.interval
+        if error is not None:
+            self.failure=error
+            raise error
+        self.last,self.last_menu_mode=last,mode
+
+    def poll(self):
+        if self.closed:return
+        if self.failure is not None:raise self.failure
+        if self.future is not None:
+            if not self.future.done():return
+            self._receive()
+        if self.clock()<self.next_poll:return
+        if self.executor is None:
+            self.executor=self.factory(max_workers=1,thread_name_prefix='menu-observer')
+        self.future=self.executor.submit(self._observe)
+
+    def summary(self):
+        return dict(background=True,closed=self.closed,completed=self.completed,total_ms=self.total_ms,
+                    maximum_ms=self.maximum_ms,last_ms=self.last_ms,
+                    failure=type(self.failure).__name__ if self.failure is not None else None)
+
+    def close(self):
+        if self.closed:return
+        self.closed=True
+        error=None
+        try:
+            if self.future is not None:
+                try:self._receive()
+                except Exception as failure:error=failure
+            if self.executor is None:self.monitor.close()
+            else:self.executor.submit(self.monitor.close).result()
+        finally:
+            if self.executor is not None:self.executor.shutdown(wait=True)
+        if error is not None:raise error

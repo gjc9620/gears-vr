@@ -6,6 +6,9 @@ using namespace gears_owned_scene;
 namespace {
 Pipeline prepared(){
  Pipeline p{};assert(p.active.ready(10,20,100));
+ // Warm-pipeline fixture: an earlier output in this resource generation
+ // already completed. Cold-generation ordering is exercised below.
+ p.output_observed=true;
  assert(p.select(30,101,20,false));
  assert(p.construction(30,101,true,20));
  assert(p.select(40,102,20,true));
@@ -39,6 +42,23 @@ void unchanged(Pipeline& p,Promotion expected,uintptr_t renderer=40,uint64_t tic
 int main(){
  {Pipeline p{};unchanged(p,Promotion::not_pending);}
  {
+  Pipeline p{};assert(p.active.ready(10,20,100));
+  assert(p.select(30,101,20,true));assert(p.construction(30,101,true,20));
+  assert(!p.output_boundary(101));assert(!p.output_boundary(102));
+  assert(!p.select(40,102,20,true));assert(!p.pending.ticket);
+  finish(p.active);assert(!p.output_boundary(102));assert(!p.output_observed);
+  assert(p.output_boundary(101)&&p.output_observed);
+  assert(p.select(40,102,20,true));assert(p.construction(40,102,true,20));
+  assert(p.promote(40,102,true)==Promotion::promoted);
+  assert(p.active.ticket==102&&p.active.completed==1);
+  // Use the same resource reset as native handoff; old warm-up cannot carry
+  // across, while the cumulative completed count remains available.
+  assert(p.reset_resource());
+  assert(!p.output_observed&&!p.pending.ticket&&!p.active.resource&&p.active.completed==1);
+  assert(p.active.ready(11,21,200));assert(p.select(50,201,21,true));
+  assert(!p.select(60,202,21,true));
+ }
+ {
   auto p=prepared();unchanged(p,Promotion::not_ready);finish(p.active);
   unchanged(p,Promotion::not_ready,40,102,false);
   unchanged(p,Promotion::identity_mismatch,41);unchanged(p,Promotion::identity_mismatch,40,103);
@@ -51,7 +71,22 @@ int main(){
   assert(p.promote(50,103,true)==Promotion::promoted&&p.active.completed==2);
  }
  {
+  // Once overlap is disabled after a consumer-thread move, the promoted frame
+  // must retire before the next ordinary renderer can be selected.
+  auto p=prepared();finish(p.active);
+  assert(p.promote(40,102,true)==Promotion::promoted);
+  finish(p.active);
+  assert(p.active.advance(102,true));
+  assert(!p.active.ticket&&!p.pending.ticket&&p.active.last_ticket==102);
+  assert(p.select(50,103,20,false));
+  assert(p.construction(50,103,true,20));
+  finish(p.active);
+  assert(p.active.advance(103,true)&&p.active.completed==3);
+ }
+ {
   auto p=prepared();finish(p.active);const auto before=p;
+  assert(!p.reset_resource());assert(p.output_observed);
+  assert(same(p.active,before.active)&&same(p.pending,before.pending));
   assert(!p.select(50,103,20,true));assert(same(p.active,before.active)&&same(p.pending,before.pending));
   assert(!p.construction(41,102,true,20));assert(same(p.pending,before.pending));
   assert(p.find(30,101)==&p.active&&p.find(40,102)==&p.pending&&!p.find(30,102));
@@ -80,6 +115,7 @@ int main(){
   Pipeline p{};assert(p.active.ready(10,20,100));
   assert(!p.select(30,100,20,true));assert(!p.active.ticket);
   assert(p.select(30,101,20,false));
+  assert(p.construction(30,101,true,20));finish(p.active);assert(p.output_boundary(101));
   const auto blank=p.pending;
   assert(!p.select(40,102,20,false));assert(!p.select(40,102,21,true));
   assert(!p.select(0,102,20,true));assert(!p.select(40,101,20,true));

@@ -297,7 +297,18 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
                 if 'registry_change' in failed_guard:
                     evidence['registry_change']=failed_guard['registry_change']
                     raise AnchorRegistryChanged(failed_guard['failure_reason'],evidence)
-                raise AnchorSamplingRejected(failed_guard['failure_reason'],evidence)
+                # An exhausted strict guard supplies no certificate for this
+                # attempt. A timestamp-only rejection can, however, be tried
+                # again from scratch within the outer 32/200 ms budget. Keep
+                # every failed guard in the receipt; never reuse its values.
+                timestamp_only=(failed_guard.get('failure_reason')==
+                                'Cross-frame camera timestamp during identity checks'
+                                and bool(failed_guard.get('attempts'))
+                                and all(row.get('retryable') is True
+                                        for row in failed_guard['attempts']))
+                evidence['attempts'][-1]['exhausted_guard_retryable']=bool(timestamp_only and not accepted)
+                if accepted or not timestamp_only:
+                    raise AnchorSamplingRejected(failed_guard['failure_reason'],evidence)
         if not accepted:
             # Guard identities/header bytes are finite bounded diagnostic data.
             # Keep their originals for independent retry-classification review.
@@ -310,7 +321,9 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
         if finished>deadline:
             last_reason='Anchor sample acquisition deadline exceeded';break
         if accepted:
-            evidence.update(accepted=True,finished_perf_counter_ns=finished)
+            evidence.update(accepted=True,stage='sample',reason=None,
+                            exception_type=None,exception_repr=None,
+                            raw_rejection=None,finished_perf_counter_ns=finished)
             return sample,evidence
         if temporary is None:
             evidence.update(finished_perf_counter_ns=finished,failure_reason=last_reason)
@@ -319,16 +332,17 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
     raise AnchorSamplingRejected(last_reason,evidence)
 
 
-def build_anchor_config(resolver, expected_camera=None, *, prepared_camera=None,cinematic_camera=False):
+def build_anchor_config(resolver, expected_camera=None, *, prepared_camera=None,cinematic_camera=False,sample_pose=True):
+    if type(sample_pose)is not bool:raise ValueError('sample_pose must be boolean')
     sampler=LiveRegistryAnchorSampler(resolver,prepared_camera=prepared_camera,cinematic_camera=cinematic_camera)
     started=time.perf_counter_ns()
-    try:return _assemble_anchor_config(sampler,resolver,expected_camera)
+    try:return _assemble_anchor_config(sampler,resolver,expected_camera,sample_pose=sample_pose)
     except AnchorSamplingRejected:raise
     except Exception as error:
         raise AnchorSamplingRejected(str(error),sampler.failure_evidence(sampler.guard_stage,error,started)) from error
 
 
-def _assemble_anchor_config(sampler,resolver,expected_camera):
+def _assemble_anchor_config(sampler,resolver,expected_camera,*,sample_pose=True):
     sampler.guard_stage='startup_validation'
     if sampler.view_target is None:
         raise AnchorRejected('Anchor observer requires reflected Camera.ViewTarget.Target')
@@ -336,10 +350,20 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
         for key in ('camera_address','controller_address','local_player_address','timestamp_address','pov_address'):
             if sampler.resolved[key] != expected_camera[key]:
                 raise AnchorRejected('Anchor camera changed during startup: '+key)
-    sampler.guard_stage='sample'
-    sample,acquisition=acquire_anchor_sample(sampler)
+    if sample_pose:
+        sampler.guard_stage='sample'
+        sample,acquisition=acquire_anchor_sample(sampler)
+        before=sample['guard_after']
+    else:
+        # Static identity/offset assembly uses no sampled position or rotation.
+        # Preserve the complete short identity/link/timestamp guard. Native
+        # admission and every rendered observation still validate live pose.
+        sampler.guard_stage='certificate_guard'
+        before=sampler.guard();sample=None
+        acquisition=dict(kind='static_certificate_identity_guards',pose_sampled=False,
+                         accepted=None,pose_observation_authority=False)
     sampler.guard_stage='certificate_assembly'
-    before=sample['guard_after'];identities=[];indices={}
+    identities=[];indices={}
     def add(address,check_super=False):
         identity=sampler.fresh(address)
         if address not in indices:
@@ -419,10 +443,12 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
     if cinematic is not None:config.update(schema=2,cinematic=cinematic)
     if mounted is not None:config.update(schema=3,mounted=mounted)
     metadata={'schema':1,'config':config,'sampler':sampler.metadata,'sample':sample,
+              'pose_sampled':sample_pose,
               'sample_acquisition':acquisition,
               'guard_acquisitions':sampler.guard_acquisitions,
               'strict_guard_attempts':sum(len(x['attempts']) for x in sampler.guard_acquisitions),
-              'acquisition_budget_semantics':'sample5/200ms; each guard independently5/200ms; not total5reads; late success rejected',
+              'acquisition_budget_semantics':('sample5/200ms; each guard independently5/200ms; not total5reads; late success rejected' if sample_pose else
+                  'No diagnostic pose sample; each complete identity guard independently5/200ms; native live pose guards remain required'),
               'registry_policy':'Refresh current data/count/capacity and validate selected slots; no startup count equality requirement',
               'read_only':True,'renderer_alignment_verified':False,
               'candidate_eye_formula':'CameraCache.POV; no Driver location substitution' if mounted else 'Pawn.Location + world-up EyeHeight; unverified hypothesis only',

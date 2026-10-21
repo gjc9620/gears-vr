@@ -100,7 +100,11 @@ def camera_preparation_transient(error):
         from anchor_config import _temporary_sample_rejection
         if not isinstance(error,AnchorSamplingRejected):return False
         evidence=getattr(error,'evidence',{})
-        attempts=evidence.get('attempts',[]) if evidence.get('stage')=='sample' else []
+        # A nested timestamp guard can exhaust, then the outer sample loop can
+        # continue and exhaust on measurement churn. Its receipt retains the
+        # nested stage; classify every raw attempt, rather than losing the
+        # existing bounded whole-acquisition retry solely because of that stage.
+        attempts=evidence.get('attempts',[]) if evidence.get('stage') in ('sample','sample_before','sample_after') else []
         return bool(attempts) and all(isinstance(a.get('raw_rejection'),dict) and
             _temporary_sample_rejection(a['raw_rejection']) is not None for a in attempts)
     # The strict sampler's initial construction reads Controller.Pawn before
@@ -208,7 +212,7 @@ class _InitialPreparationCamera:
 
 def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False,cinematic_camera=False,
                                  record_anchor_failure=True,preparation_deadline=None,check_live=None,entry_reader=None,
-                                 crosshair_assignment_observer=False):
+                                 crosshair_assignment_observer=False,camera_discovery=None,anchor_sample_pose=True):
     """Read-only, pre-activation acquisition; never retries identity failures.
 
     A new Resolver.resolve() prepares fresh registries/caches and roles on every
@@ -220,6 +224,9 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
     from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged,UIControlledPawnUnavailable
     from crosshair_assignment_config import CrosshairRegistryChanged,CrosshairControlledLinkChanged
     from anchor_config import AnchorRegistryChanged
+    if type(anchor_sample_pose)is not bool:raise ValueError('anchor_sample_pose must be boolean')
+    if not anchor_sample_pose and (not anchor_observer or entry_reader is None):
+        raise ValueError('Static-only anchor assembly requires an attested anchor observer')
     if crosshair_assignment_observer and not (anchor_observer and ui_observer):
         raise ValueError('Crosshair assignment observer requires UI/anchor observers')
     deadline=time.monotonic()+10 if preparation_deadline is None else preparation_deadline
@@ -231,7 +238,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
         try:
             r=Resolver(pid,profile)
             try:
-                refreshed=r.resolve()
+                refreshed=camera_discovery(r) if camera_discovery is not None else r.resolve()
                 expected=camera.expected(refreshed) if isinstance(camera,_InitialPreparationCamera) else camera
                 if refreshed['local_player_address']!=expected['local_player_address']:
                     raise RuntimeError('Local player changed during preparation')
@@ -245,6 +252,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                 if anchor_observer:
                     from anchor_config import build_anchor_config,anchor_ini,AnchorSamplingRejected
                     try:certificate,anchor_metadata=build_anchor_config(r,refreshed,prepared_camera=refreshed,
+                        **({'sample_pose':False} if not anchor_sample_pose else {}),
                         **({'cinematic_camera':True} if cinematic_camera else {}))
                     except AnchorSamplingRejected as error:
                         if record_anchor_failure:save_anchor_sampling_failure(dll,pid,error)
@@ -263,10 +271,12 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                         ui_section+=mounted_crosshair_ini(suspension)
                     elif crosshair_assignment_observer:
                         from crosshair_assignment_config import build_crosshair_assignment_config,crosshair_assignment_ini
-                        assignment=build_crosshair_assignment_config(r,refreshed,include_tick_roots=True,include_writer_view=True,
+                        assignment=build_crosshair_assignment_config(r,refreshed,include_tick_roots=True,include_writer_view=True,include_aim_state=True,
                             **({'entry_reader':entry_reader} if entry_reader is not None else {}))
                         ui_section+=crosshair_assignment_ini(assignment)
                         ui_metadata['crosshair_assignment']=assignment
+                finish=getattr(r,'finish_discovery_field_hints',None)
+                if callable(finish):finish()
                 if registry_retry and time.monotonic()>=deadline:
                     raise UIConfigRejected('UI acquisition exceeded retry deadline before activation') if ui_observer else TimeoutError('Anchor acquisition exceeded retry deadline before activation')
                 if check_live:check_live()

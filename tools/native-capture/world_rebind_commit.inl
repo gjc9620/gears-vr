@@ -8,23 +8,31 @@ bool world_old_state_retired(){
         state_destroyed.load()==1&&(state_delete_flags&1)&&submit_sources_released.load()==1;
 }
 enum class PendingFresh {fresh,transient,stale};
-PendingFresh pending_world_fresh(){
+PendingFresh pending_world_fresh(const char*& failure_stage){
+    auto stale=[&](const char* stage){
+        failure_stage=stage;
+        return PendingFresh::stale;
+    };
     if(!pending_world)return PendingFresh::stale;auto const& pending=*pending_world;
     if(pending.metadata.previous_generation!=committed_world_generation.load()||
        pending.metadata.generation!=pending.metadata.previous_generation+1)return PendingFresh::stale;
     gears_anchor::Anchor anchor{};std::uint32_t stamp{};gears_anchor::GuardDiagnostic diagnostic{};
     if(!gears_anchor::strict_guard(pending.anchor,safe_copy,anchor,stamp,&diagnostic))
-        return diagnostic.timestamp_only?PendingFresh::transient:PendingFresh::stale;
-    if(!gears_ui::validate(pending.ui,safe_copy,false))return PendingFresh::stale;
+        return diagnostic.timestamp_only?PendingFresh::transient:stale("anchor_before");
+    if(!gears_ui::validate(pending.ui,safe_copy,false))return stale("ui");
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
-    if(crosshair_live::enabled&&(!pending.crosshair||!crosshair_live::recovery_fresh(*pending.crosshair,pending.anchor,pending.ui)))return PendingFresh::stale;
+    if(crosshair_live::enabled){
+        if(!pending.crosshair)return stale("crosshair_missing");
+        if(!crosshair_live::recovery_fresh(*pending.crosshair,pending.anchor,pending.ui,&diagnostic))
+            return diagnostic.timestamp_only?PendingFresh::transient:stale("crosshair");
+    }
 #endif
     for(auto const& binding:pending.ui.bindings){std::array<unsigned char,16> entry{};
         if(binding.rva>UINTPTR_MAX-pending.ui.base||!read_attested_hook_entry(entry.data(),
-            reinterpret_cast<void const*>(pending.ui.base+binding.rva),entry.size())||entry!=binding.bytes)return PendingFresh::stale;
+            reinterpret_cast<void const*>(pending.ui.base+binding.rva),entry.size())||entry!=binding.bytes)return stale("hook_entry");
     }
     if(gears_anchor::strict_guard(pending.anchor,safe_copy,anchor,stamp,&diagnostic))return PendingFresh::fresh;
-    return diagnostic.timestamp_only?PendingFresh::transient:PendingFresh::stale;
+    return diagnostic.timestamp_only?PendingFresh::transient:stale("anchor_after");
 }
 void reset_retired_view_state(){
     state_attempted=state_created=state_release_started=state_release_returned=state_destroyed=0;
@@ -35,7 +43,12 @@ void reset_retired_view_state(){
     // submit_retained must already be zero; never erase failed ownership proof.
 }
 #include "owned_world_handoff.inl"
-void advance_world_handoff(FILE*){
+void advance_world_handoff(FILE* status){
+    // Construct before the close token/locks: report only after their RAII
+    // destructors reopen the world gate. Never perform file IO in that gate.
+    struct FreshFailureLog {FILE* out;const char* stage{};~FreshFailureLog(){
+        if(out&&stage){fprintf(out,"world_rebind_fresh rejected=1 stage=%s camera_retry=0\n",stage);fflush(out);}
+    }} failure_log{status};
     if(!pending_world||!pending_world->request||world_commit_request.load()!=pending_world->request||submitted_lifetime.stopping())return;
     const auto phase=world_handoff_phase.load();if(phase!=1&&phase!=2)return;
     const auto previous=committed_world_generation.load(),next=pending_world->metadata.generation;
@@ -45,7 +58,7 @@ void advance_world_handoff(FILE*){
     }
     if(phase!=2||!world_old_state_retired())return;
 #if defined(GEARS_OWNED_WORLD_HANDOFF) && GEARS_OWNED_WORLD_HANDOFF
-    const auto preparation_fresh=pending_world_fresh();
+    const auto preparation_fresh=pending_world_fresh(failure_log.stage);
     if(preparation_fresh==PendingFresh::transient)return;
     if(preparation_fresh==PendingFresh::stale){
         pending_world.reset();world_candidate_generation=0;world_commit_request=0;world_handoff_phase=4;return;
@@ -56,7 +69,7 @@ void advance_world_handoff(FILE*){
     gears_world::EpochGate::CloseToken closed{};if(!world_gate.try_close(closed))return;
     struct Reopen {gears_world::EpochGate::CloseToken token;~Reopen(){if(!world_gate.open(token))std::terminate();}} reopen{closed};
     std::unique_lock<std::recursive_mutex> native_lock(session_native_mutex,std::try_to_lock);
-    std::unique_lock<std::recursive_mutex> frame_lock_guard(frame_hook_mutex,std::try_to_lock);
+    std::unique_lock<FrameHookMutex> frame_lock_guard(frame_hook_mutex,std::try_to_lock);
     std::unique_lock<std::mutex> stereo_lock(stereo_mutex,std::try_to_lock);
     if(!native_lock.owns_lock()||!frame_lock_guard.owns_lock()||!stereo_lock.owns_lock()||
        !world_old_state_retired()||!frame_link.world_handoff_ready(previous,next))return;
@@ -66,7 +79,7 @@ void advance_world_handoff(FILE*){
 #else
     if(!ui_world_handoff_ready())return;
 #endif
-    const auto fresh=pending_world_fresh();if(fresh==PendingFresh::transient)return;
+    const auto fresh=pending_world_fresh(failure_log.stage);if(fresh==PendingFresh::transient)return;
     if(fresh==PendingFresh::stale){
         pending_world.reset();world_candidate_generation=0;world_commit_request=0;world_handoff_phase=4;return;
     }

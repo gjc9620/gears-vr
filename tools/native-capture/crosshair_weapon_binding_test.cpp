@@ -28,6 +28,20 @@ static bool unchanged(OwnedConfig const& out,OwnedConfig const& before){
 static void reject(WeaponFixture& x){OwnedConfig out=x.startup;out.pid=777;const OwnedConfig before=out;
     assert(!rebind_weapon(x.startup,x.f.read(),out)&&unchanged(out,before));}
 int main(){
+    // The startup certificate can outlive an equipment change. Activation uses
+    // the current same-Pawn weapon and still requires the unhooked entry bytes.
+    {WeaponFixture y;OwnedConfig out;ValidationFailure failure{};
+        assert(!validate_bindings(y.startup.assignment,y.f.read(),true,&failure)&&failure==ValidationFailure::schema);
+        assert(prepare_activation(y.startup,y.f.read(),out,&failure)&&failure==ValidationFailure::none);
+        assert(out.identities.identities[out.assignment.weapon].address==y.f.address(y.pistol));
+        y.f.m.put(y.f.identities.base+0x1d7ad0,std::uint8_t(0xe9));
+        const OwnedConfig before=out;assert(!prepare_activation(y.startup,y.f.read(),out,&failure)&&unchanged(out,before));
+    }
+    {WeaponFixture y;y.f.m.blocks.erase(y.f.address(y.f.c.weapon));OwnedConfig out;
+        assert(prepare_activation(y.startup,y.f.read(),out));}
+    {Fixture y;auto startup=startup_config(y);OwnedConfig out;
+        assert(prepare_activation(startup,y.read(),out));
+        assert(out.assignment.identities==&out.identities&&out.identities.identity_count==startup.identities.identity_count);}
     WeaponFixture x;OwnedConfig output;
     assert(rebind_weapon(x.startup,x.f.read(),output));
     const auto count=x.startup.identities.identity_count;
@@ -65,7 +79,9 @@ int main(){
         [](auto& y){y.f.m.put(y.f.address(y.f.c.pawn_weapon.property)+0x94,unsigned(0x110));},
         [](auto& y){y.startup.identities.super_count=1;y.startup.identities.supers[0]={y.f.c.war_weapon,y.f.address(y.f.c.war_pawn)};},
     };
-    for(auto const& mutate:faults){WeaponFixture y;mutate(y);reject(y);}
+    for(auto const& mutate:faults){WeaponFixture y;mutate(y);reject(y);
+        OwnedConfig out=y.startup;out.pid=777;const OwnedConfig before=out;
+        assert(!prepare_activation(y.startup,y.f.read(),out)&&unchanged(out,before));}
     // Two unknown classes can be imported, but a cycle cannot be certified.
     {WeaponFixture y;auto parent=y.f.add(L"PistolBase",0);
         y.f.m.put(y.f.address(y.pistol_class)+0x60,y.f.address(parent));

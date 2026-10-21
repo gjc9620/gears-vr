@@ -1,7 +1,51 @@
 #include "final_transfer_policy.h"
+#include "owned_plain_output.h"
 #include <cassert>
 #include <limits>
 int main(){
+    // Plain Output requires a current owned renderer, attested code and exact
+    // identity UVs. DLSS/control output retains its separate proof path.
+    const std::array<float,8> plain_args{0,0,3072,3264,0,0,3072,3264};
+    const std::array<unsigned,4> plain_sizes{6144,3264,6144,3264};
+    auto plain=[&](bool attested,bool owned,bool current,bool controlled,uintptr_t caller,
+                   auto args,auto sizes){return gears_owned_plain_output::eligible(attested,owned,current,controlled,caller,args,sizes);};
+    assert(plain(true,true,true,false,0xd83cbf,plain_args,plain_sizes));
+    auto right=plain_args;right[0]=right[4]=3072;
+    assert(plain(true,true,true,false,0xd83cbf,right,plain_sizes));
+    assert(!plain(false,true,true,false,0xd83cbf,plain_args,plain_sizes));
+    assert(!plain(true,false,true,false,0xd83cbf,plain_args,plain_sizes));
+    assert(!plain(true,true,false,false,0xd83cbf,plain_args,plain_sizes));
+    assert(!plain(true,true,true,true,0xd83cbf,plain_args,plain_sizes));
+    assert(!plain(true,true,true,false,0xd83cc0,plain_args,plain_sizes));
+    for(unsigned i=0;i<8;++i){auto args=plain_args;args[i]+=.5f;
+        assert(!plain(true,true,true,false,0xd83cbf,args,plain_sizes));
+        args[i]=std::numeric_limits<float>::quiet_NaN();
+        assert(!plain(true,true,true,false,0xd83cbf,args,plain_sizes));}
+    for(unsigned i=0;i<4;++i){auto sizes=plain_sizes;sizes[i]+=1;
+        assert(!plain(true,true,true,false,0xd83cbf,plain_args,sizes));}
+    // A wrapped DLSS destination or full-width source cannot use this path.
+    auto wrapped=plain_args;wrapped[0]=4294967296.0f;
+    assert(!plain(true,true,true,false,0xd83cbf,wrapped,plain_sizes));
+    auto full=plain_args;full[6]=6144;
+    assert(!plain(true,true,true,false,0xd83cbf,full,plain_sizes));
+    // Recorded Recovery5 ticket2: the final helper copies both eye pixel
+    // rectangles from a 3840x2160 pool into the 1792x980 owned target.
+    const std::array<unsigned,4> copied_sizes{1792,980,3840,2160};
+    const std::array<float,8> copied_left{0,0,896,980,0,0,896,980};
+    auto copied_right=copied_left;copied_right[0]=copied_right[4]=896;
+    assert(plain(true,true,true,false,0x2b11a0,copied_left,copied_sizes));
+    assert(plain(true,true,true,false,0x2b11a0,copied_right,copied_sizes));
+    assert(!plain(true,true,true,false,0xd83cbf,copied_left,copied_sizes));
+    for(unsigned key=0;key<8;++key){auto args=copied_left;args[key]+=.5f;
+        assert(!plain(true,true,true,false,0x2b11a0,args,copied_sizes));}
+    for(unsigned gate=0;gate<4;++gate)
+        assert(!plain(gate!=0,gate!=1,gate!=2,gate==3,0x2b11a0,copied_left,copied_sizes));
+    for(auto bad: {std::array<unsigned,4>{1792,980,1791,2160},
+                  std::array<unsigned,4>{1792,980,3840,979},
+                  std::array<unsigned,4>{1792,980,8193,2160},
+                  std::array<unsigned,4>{1792,980,3840,8193}})
+        assert(!plain(true,true,true,false,0x2b11a0,copied_left,bad));
+    // End of plain Output policy checks.
     using namespace gears_final_transfer;
     // Failed Ultra run: already classified left/right half-quad on the
     // current 3840x2160 backbuffer, with an authenticated consuming ticket.

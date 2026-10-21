@@ -5,13 +5,14 @@ import json
 import pathlib
 import re
 import subprocess
+import instance_policy
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-STATE = ROOT / 'analysis/graphics-policy'
+STATE = (instance_policy.context() / 'graphics-policy') if instance_policy.context() else ROOT / 'analysis/graphics-policy'
 
 
 def locate():
-    files = list((pathlib.Path.home() / 'AppData/Local/Coalition/WarGame/Config').glob('*EngineUserSettings.ini'))
+    files = list((instance_policy.local_appdata() / 'Coalition/WarGame/Config').glob('*EngineUserSettings.ini'))
     if len(files) != 1:
         raise RuntimeError('Expected exactly one user-settings file')
     return files[0].resolve()
@@ -39,9 +40,14 @@ def set_dlss(raw, value):
 
 
 def require_game_stopped():
-    result = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command',
-        "if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"], capture_output=True)
-    if result.returncode != 0:
+    if instance_policy.context():
+        index=instance_policy.index_path()
+        if index.exists():
+            state=json.loads(index.read_text(encoding='utf-8'))
+            if state.get('phase') not in ('finished','incomplete','preflight','cancelled_before_activation') and state.get('game_identity'):
+                raise RuntimeError('This private instance is already active')
+        return
+    if instance_policy.shared_game_pids(instance_policy.running_game_pids()):
         raise RuntimeError('Exit the game normally before applying the startup graphics policy')
 
 

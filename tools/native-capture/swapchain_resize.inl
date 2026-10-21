@@ -13,7 +13,7 @@ struct LastErrorBoundary {DWORD value{GetLastError()};~LastErrorBoundary(){SetLa
 // An asynchronous mirror owns backbuffer references until its queue fence
 // completes. Keep capture submissions excluded through the original resize.
 struct MirrorResizeBoundary {
-    std::unique_lock<std::recursive_mutex> lock{frame_hook_mutex,std::defer_lock};
+    std::unique_lock<FrameHookMutex> lock{frame_hook_mutex,std::defer_lock};
     bool ready{true};
     explicit MirrorResizeBoundary(IDXGISwapChain* chain){
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
@@ -50,7 +50,7 @@ Boundary begin(IDXGISwapChain* chain,unsigned method,UINT count,UINT width,UINT 
         if(!binding.chain)return {};
         // Bounded live snapshots, only while the caller owns the interfaces.
         // No saved resource address is queried after its lifetime ends.
-        {std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+        {std::lock_guard<FrameHookMutex> diagnostic_guard(frame_hook_mutex);
         if(resize_trace_count<resize_traces.size()){
             out.trace_index=resize_trace_count++;auto& trace=resize_traces[out.trace_index];
             trace.method=method;trace.count=count;trace.width=width;trace.height=height;
@@ -62,7 +62,7 @@ Boundary begin(IDXGISwapChain* chain,unsigned method,UINT count,UINT width,UINT 
         out.begun=swapchain_bindings.begin_resize(out.identity);
         frame_link.invalidate_all();retire_stereo_window();frame_target_stats.clear_bindings();
         if(!out.begun){++rejected;return out;}
-        if(stereo_gpu_publish&&!stereo_publish_counts.stopped.load()){
+        if(stereo_gpu_publish&&!ngx_final_xr::enabled()&&!stereo_publish_counts.stopped.load()){
             StereoPublishBypass bypass;out.publisher=stereo_publisher.begin_resize(chain);
             if(!out.publisher){++rejected;swapchain_bindings.invalidate();}
         }
@@ -76,7 +76,7 @@ Boundary begin(IDXGISwapChain* chain,unsigned method,UINT count,UINT width,UINT 
 void finish(Boundary const& boundary,IDXGISwapChain* chain,HRESULT result,bool queue_verified=true){
     if(!boundary.begun)return;
     auto guard=frame_lock();
-    std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> diagnostic_guard(frame_hook_mutex);
     DXGI_SWAP_CHAIN_DESC desc{};std::array<uintptr_t,16> resources{};
     ResizeTrace* trace=boundary.trace_index<resize_trace_count?&resize_traces[boundary.trace_index]:nullptr;
     bool readable=SUCCEEDED(chain->GetDesc(&desc))&&desc.BufferCount&&desc.BufferCount<=resources.size();
@@ -150,7 +150,7 @@ bool install_hooks(IDXGISwapChain1* chain){
 }
 #if GEARS_DXGI_RESIZE_TRANSPORT
 void print(FILE* file){
-    std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> diagnostic_guard(frame_hook_mutex);
     fprintf(file,"resize_trace_summary rows=%u limit=8 dimensions_source=live_api no_resource_refs_retained=1\n",resize_trace_count);
     for(unsigned i=0;i<resize_trace_count;++i){const auto& t=resize_traces[i];
         fprintf(file,"resize_trace row=%u method=%u chain=%llx generation=%llu,%llu qpc=%lld,%lld requested=%u,%u,%u,%u,%u pre_hr=%08lx pre_size=%u,%u pre_count=%u result=%08lx post_size=%u,%u post_count=%u readable=%u admitted=%u queue_verified=%u\n",

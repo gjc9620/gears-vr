@@ -16,7 +16,7 @@ struct FixedOutputBounds {std::uint32_t width{},height{};};
 // Optional per-eye render dimensions, independent of the final SBS output.
 // The caller supplies actual native SR dimensions, never a quality multiplier.
 // Input slots remain padded at output_width/2 so Copy0 cannot overwrite Input1.
-struct RenderInputBounds {std::uint32_t width{},height{};};
+struct RenderInputBounds {std::uint32_t width{},height{};bool packed{};};
 enum InputFailure:unsigned {read_failed=1,family_mismatch=2,missing_original_state=4,
     missing_right_state=8,aliased_state=16,field140_nonzero=32,field418_nonzero=64};
 struct InputEvidence {bool read_succeeded{};unsigned failure_mask{};
@@ -96,6 +96,7 @@ inline Result create(API api,void* family,void* source,void* right_state,bool ou
     // A fixed stereo profile does not inherit game/window origins or dimensions.
     // Only the local constructor arguments change; every source byte is retained.
     if(fixed_output){x=y=0;width=float(fixed.width);height=float(fixed.height);}
+    if(render_input&&render.packed){x=original.value<float>(0x48);y=original.value<float>(0x4c);width=float(2*render.width);height=float(render.height);}
     if(!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(width) || !std::isfinite(height) ||
        x<0 || y<0 || x+width>8192 || y+height>8192 || std::floor(x)!=x || std::floor(y)!=y ||
        width<64 || width>8192 || height<64 || height>8192 || std::floor(width)!=width ||
@@ -195,6 +196,27 @@ inline Result create(API api,void* family,void* source,void* right_state,bool ou
     if(safe){result.checks|=16;result.cleanup_safe=true;result.quarantined=false;}
     if(result.checks!=63)result.rejection=!safe?7:!matching?8:9;
     return result;
+}
+// Private SR seam: constructor source dimensions describe the reduced input,
+// while the native integer target rectangle must retain the display footprint.
+// Only unpublished, independently owned rendered views may be changed here. Preserve
+// every other byte, including source sampling/matrices and ownership fields.
+inline bool set_owned_output_targets(gears_shadow::Read read,std::array<void*,2> const& views,uintptr_t original_source,FixedOutputBounds output,RenderInputBounds input,
+    bool(*write)(void*,void const*,size_t)){
+    if(!read||!write||input.packed||!original_source||!views[0]||!views[1]||views[0]==views[1]||
+        output.width<128||output.width>8192||output.width%2||output.height<64||output.height>8192||input.width<64||input.width>output.width/2||input.height<64||input.height>output.height)return false;
+    for(unsigned eye=0;eye<2;++eye){
+        if(reinterpret_cast<uintptr_t>(views[eye])==original_source)return false;
+        gears_source_args::Snapshot before,expected,after;if(!read(before.bytes.data(),views[eye],before.bytes.size()))return false;
+        const std::array<float,4> source{float(eye*(output.width/2)),0,float(input.width),float(input.height)};
+        const std::array<int32_t,4> from{int32_t(eye*(output.width/2)),0,int32_t(input.width),int32_t(input.height)};
+        const std::array<int32_t,4> target{int32_t(eye*(output.width/2)),0,int32_t(output.width/2),int32_t(output.height)};
+        if(memcmp(before.bytes.data()+0x48,source.data(),16))return false;
+        if(!memcmp(before.bytes.data()+0x58,target.data(),16))continue;
+        if(memcmp(before.bytes.data()+0x58,from.data(),16))return false;
+        expected=before;memcpy(expected.bytes.data()+0x58,target.data(),16);
+        if(!write(static_cast<unsigned char*>(views[eye])+0x58,target.data(),16)||!read(after.bytes.data(),views[eye],after.bytes.size())||after.bytes!=expected.bytes)return false;
+    }return true;
 }
 inline bool release(API api,Result& result) {
     if(!result.cleanup_safe)return false;

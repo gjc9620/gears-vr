@@ -2,6 +2,7 @@
 #include "quiet_startup.h"
 #include "test_background_policy.h"
 #include <MinHook.h>
+#include "instance_policy.h"
 #include <array>
 #include <atomic>
 #include <type_traits>
@@ -328,6 +329,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsQuietInstall(void*) {
         for(unsigned i=0;i<created;++i)MH_RemoveHook(targets[selected[i]]);
         MH_Uninitialize();return selected[created]>=gears_quiet::count?ERROR_NOT_SUPPORTED:ERROR_INVALID_FUNCTION;
     }
+    if(!gears_instance::prepare()){MH_Uninitialize();return ERROR_INVALID_PARAMETER;}
+    if(!gears_instance::create_hooks()){MH_Uninitialize();return gears_instance::failure?gears_instance::failure:ERROR_MOD_NOT_FOUND;}
     if(tracing){
         const DWORD saved=GetLastError();LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);qpc_frequency=frequency.QuadPart;
         STARTUPINFOW info{sizeof(info)};GetStartupInfoW(&info);

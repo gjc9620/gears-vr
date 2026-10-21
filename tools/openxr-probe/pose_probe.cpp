@@ -529,6 +529,7 @@ int main(int argc, char** argv) {
         if(startup_window){
             shutdown_diagnostics::initialization("startup_game_screen_enter");
             startup_screen.reset(new GameScreen(device.Get(),queue.Get(),startup_window,startup_game_pid,argv[2],true,menu_game_creation));
+            if(diagnostic_outage)startup_screen->enable_performance_diagnostics();
             shutdown_diagnostics::initialization("startup_game_screen_completed");
         }
         StartupPanelPolicy startup_panel(startup_window!=nullptr,menu_state_file!=nullptr);
@@ -552,7 +553,7 @@ int main(int argc, char** argv) {
         MenuDisplayReader menu_display(menu_state_file,stereo_game_pid,menu_game_creation,continuous_owner_pid,continuous_owner_creation,movie_display);
         unsigned menu_quad_layers=0,menu_entries=0,menu_recoveries=0;
         unsigned main_menu_quad_layers=0,last_main_menu_entry=0,main_menu_snapshots=0;
-        unsigned eye_menu_quad_layers=0,last_eye_menu_entry=0;
+        unsigned pause_menu_projection_layers=0,last_pause_menu_entry=0;
         unsigned startup_quad_layers=0;
         std::unique_ptr<GameGpuScreen,shutdown_diagnostics::DeleteMarker<GameGpuScreen>> gpu_screen{nullptr,{"gpu_screen_reset_enter","gpu_screen_reset_completed"}};
         if(gpu_pid)gpu_screen.reset(new GameGpuScreen(device.Get(),queue.Get(),gpu_pid,gpu_snapshot));
@@ -656,7 +657,7 @@ int main(int argc, char** argv) {
             XrCompositionLayerQuad quad{XR_TYPE_COMPOSITION_LAYER_QUAD};
             const XrCompositionLayerBaseHeader* game_layers[]={reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quad)};
             ProjectionStatus projection_frame_status=ProjectionStatus::producer_unavailable;
-            bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false,eye_menu_queued=false,transition_panel_queued=false,startup_wait_card_queued=false,world_handoff_panel_queued=false,window_fallback_queued=false,tracking_recovery_card_queued=false;
+            bool outage_render_attempted=false,startup_quad_queued=false,startup_handoff_queued=false,pause_menu_queued=false,transition_panel_queued=false,startup_wait_card_queued=false,world_handoff_panel_queued=false,window_fallback_queued=false,tracking_recovery_card_queued=false;
             WorldHandoffDisplay::State world_handoff_panel_state{};
             const auto menu_now=gears_vr::monotonic_ns();
             const auto menu_mode=menu_display.poll(menu_now);
@@ -721,15 +722,25 @@ int main(int argc, char** argv) {
                 if(stereo_space_changed&&!continuous_session)result=ProjectionStatus::reference_space_changed;
                 else if(stereo_screen&&stereo_screen->reconfiguring())result=ProjectionStatus::source_reconfiguration;
                 else if(stereo_screen&&stereo_screen->producer_stopped())result=ProjectionStatus::producer_stopped;
-                else if(!startup_panel.allow_projection(window_fallback_enabled)&&!startup_panel.show_eye_menu())result=(menu_mode==gears_menu::Mode::death_menu||menu_mode==gears_menu::Mode::main_menu)?ProjectionStatus::menu_requested:ProjectionStatus::menu_recovery_pending;
+                else if(!startup_panel.allow_projection(window_fallback_enabled)&&!startup_panel.show_pause_projection())result=(menu_mode==gears_menu::Mode::death_menu||menu_mode==gears_menu::Mode::main_menu)?ProjectionStatus::menu_requested:ProjectionStatus::menu_recovery_pending;
                 else result=projection_current_status(frame.shouldRender,projection_session_visible(state),view_count,head.locationFlags,view_state.viewStateFlags,simulator_operator);
                 bool submitted=false;
                 if(result==ProjectionStatus::submitted){
                     if(!stereo_screen)result=ProjectionStatus::producer_unavailable;
                     else {outage_render_attempted=true;outage_copies_before=stereo_screen->copies;
-                        if(startup_panel.show_eye_menu()){
-                            eye_menu_queued=stereo_screen->render_eye_menu(quad,stereo_session,result,startup_panel.minimum_sample_ns(),space_epoch.epoch(),space_epoch.last_change_time());
-                            if(eye_menu_queued){end.layerCount=1;end.layers=game_layers;result=ProjectionStatus::menu_requested;}
+                        if(startup_panel.show_pause_projection()){
+                            const auto menu_boundary=startup_panel.minimum_sample_ns();
+                            pause_menu_queued=stereo_screen->render_pause_menu(projection,projection_views,stereo_session,result,menu_boundary,space_epoch.epoch(),space_epoch.last_change_time());
+                            if(pause_menu_queued){
+                                // A GPU copy can wait. Reject a changed/expired menu
+                                // lease and any new menu epoch before submission.
+                                const auto after_copy=gears_vr::monotonic_ns();
+                                const auto authorized=menu_display.poll(after_copy);
+                                observe_menu(authorized,after_copy);
+                                pause_menu_queued=startup_panel.show_pause_projection()&&startup_panel.minimum_sample_ns()==menu_boundary;
+                                if(pause_menu_queued){end.layerCount=1;end.layers=layers;}
+                                else result=ProjectionStatus::menu_recovery_pending;
+                            }
                         }else submitted=stereo_screen->render_projection(projection,projection_views,stereo_session,result,startup_panel.minimum_sample_ns(),space_epoch.epoch(),space_epoch.last_change_time());}
                 }
                 projection_frame_status=result;
@@ -859,7 +870,7 @@ int main(int argc, char** argv) {
             // still balancing the already begun XR frame with zero layers.
             if(continuous_session){if(const auto* reason=continuous_control.requested()){
                 startup_panel.cancel();stop_reason=reason;exiting=true;end.layerCount=0;
-                tracking_recovery_card_queued=world_handoff_panel_queued=startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=eye_menu_queued=false;
+                tracking_recovery_card_queued=world_handoff_panel_queued=startup_wait_card_queued=transition_panel_queued=startup_handoff_queued=startup_quad_queued=pause_menu_queued=false;
             }}
             const auto ended=xr_wait_diagnostics::recorder.measure(xr_wait_diagnostics::Operation::end_frame,
                 [&]{return xrEndFrame(session,&end);},[]{return xr_wait_diagnostics::current_context;},
@@ -878,6 +889,16 @@ int main(int argc, char** argv) {
             const bool world_handoff_projection=stereo_screen&&projection_frame_status==ProjectionStatus::submitted&&
                 projection_end_succeeded(startup_handoff_queued,ended,end.layerCount,end.layers==layers)&&
                 stereo_screen->handoff_projection_completed();
+            if(world_handoff_projection){
+                // A fast transition need not display a waiting card. Record
+                // the same admitted world/image and real xrEndFrame proof even
+                // when there was no card to retire.
+                const auto world=stereo_screen->handoff_display_state();
+                const auto image=stereo_screen->diagnostic_snapshot();
+                printf("{\"world_handoff_projection\":true,\"observed_ns\":%lld,\"generation\":%llu,\"world_valid\":%s,\"quiescing\":%s,\"ticket\":%llu,\"sample_ns\":%lld,\"end_frame_succeeded\":true,\"replacement_projection\":true}\n",
+                    gears_vr::monotonic_ns(),world.generation,world.valid?"true":"false",world.quiescing?"true":"false",
+                    image.ticket_id,image.received_ns);fflush(stdout);
+            }
             const bool world_handoff_shown=world_handoff_panel_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers;
             if(world_handoff_shown){
                 ++world_handoff_panel_layers;last_world_handoff_panel=world_handoff_panel_state;
@@ -919,14 +940,14 @@ int main(int argc, char** argv) {
                     gears_vr::monotonic_ns(),ended==XR_SUCCESS&&end.layerCount==1&&end.layers==layers?"true":"false");fflush(stdout);
             }
             transition_panel_active=transition_shown;
-            if(eye_menu_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==game_layers){
+            if(pause_menu_queued&&ended==XR_SUCCESS&&end.layerCount==1&&end.layers==layers){
                 startup_panel.menu_rendered();
-                ++eye_menu_quad_layers;
-                if(last_eye_menu_entry!=menu_entries){
-                    last_eye_menu_entry=menu_entries;const auto snapshot=stereo_screen->diagnostic_snapshot();
-                    printf("{\"eye_menu_first_frame\":true,\"epoch\":%u,\"end_frame_succeeded\":true,\"eye\":0,\"both_eyes_common_panel\":true,\"panel_counts_as_stereo\":false,\"ticket\":%llu,\"sample_ns\":%lld,\"minimum_sample_ns\":%lld,\"image_extent\":[%d,%d],\"quad_metres\":[%.9g,%.9g]}\n",
-                        menu_entries,snapshot.ticket_id,snapshot.received_ns,startup_panel.minimum_sample_ns(),
-                        quad.subImage.imageRect.extent.width,quad.subImage.imageRect.extent.height,quad.size.width,quad.size.height);fflush(stdout);
+                ++pause_menu_projection_layers;
+                if(last_pause_menu_entry!=menu_entries){
+                    last_pause_menu_entry=menu_entries;const auto snapshot=stereo_screen->diagnostic_snapshot();
+                    printf("{\"pause_menu_first_frame\":true,\"epoch\":%u,\"end_frame_succeeded\":true,\"layer_type\":\"projection\",\"view_count\":%u,\"both_eyes_common_panel\":false,\"ticket\":%llu,\"sample_ns\":%lld,\"minimum_sample_ns\":%lld,\"eye_extent\":[%d,%d]}\n",
+                        menu_entries,projection.viewCount,snapshot.ticket_id,snapshot.received_ns,startup_panel.minimum_sample_ns(),
+                        projection_views[0].subImage.imageRect.extent.width,projection_views[0].subImage.imageRect.extent.height);fflush(stdout);
                 }
             }
             if(stereo_game_pid&&ended==XR_SUCCESS&&projection_frame_status==ProjectionStatus::submitted&&
@@ -956,7 +977,7 @@ int main(int argc, char** argv) {
                     ++main_menu_quad_layers;
                     if(last_main_menu_entry!=menu_entries){
                         last_main_menu_entry=menu_entries;const auto image=startup_screen->window_snapshot();
-                        printf("{\"main_menu_first_frame\":true,\"epoch\":%u,\"source\":\"wgc_full_client\",\"owner_sequence\":%llu,\"capture_epoch_100ns\":%lld,\"captured_100ns\":%lld,\"source_generation\":%llu,\"hwnd\":%llu,\"extent\":[%u,%u],\"source_hash\":%llu,\"end_frame_succeeded\":true,\"both_eyes_common_panel\":true,\"panel_counts_as_stereo\":false}\n",
+                        printf("{\"main_menu_first_frame\":true,\"epoch\":%u,\"source\":\"wgc_full_client\",\"owner_sequence\":%llu,\"capture_epoch_100ns\":%lld,\"captured_100ns\":%lld,\"source_generation\":%llu,\"hwnd\":%llu,\"extent\":[%u,%u],\"source_hash_algorithm\":\"pixel_fnv4\",\"source_hash\":%llu,\"end_frame_succeeded\":true,\"both_eyes_common_panel\":true,\"panel_counts_as_stereo\":false}\n",
                             menu_entries,menu_display.sequence(),image.epoch_100ns,image.captured_100ns,
                             image.generation,image.hwnd,image.width,image.height,image.hash);fflush(stdout);
                         if(gpu_snapshot&&main_menu_snapshots<2){
@@ -992,8 +1013,8 @@ int main(int argc, char** argv) {
                 // stereo projection evidence. Keep the ticket recorder below
                 // on its original projection-only contract.
                 const char* layer_kind=end.layerCount==0?"none":
-                    end.layers==layers?"projection":
-                    end.layers==game_layers?(tracking_recovery_card_queued?"tracking_recovery_card":world_handoff_panel_queued?"world_handoff_card":startup_wait_card_queued?"startup_wait_card":transition_panel_queued?"transition_panel":eye_menu_queued?"eye_menu":
+                    end.layers==layers?(pause_menu_queued?"pause_menu_projection":"projection"):
+                    end.layers==game_layers?(tracking_recovery_card_queued?"tracking_recovery_card":world_handoff_panel_queued?"world_handoff_card":startup_wait_card_queued?"startup_wait_card":transition_panel_queued?"transition_panel":
                         (startup_quad_queued?"startup_panel":"quad")):"other";
                 row.menu_mode=static_cast<unsigned>(menu_mode);row.session_state=static_cast<int>(state);
                 row.should_render=frame.shouldRender!=0;row.panel_requested=menu_panel_requested;
@@ -1079,7 +1100,7 @@ int main(int argc, char** argv) {
         if(startup_window)printf("{\"startup_menu_evidence\":true,\"startup_quad_layers\":%u,\"stereo_handoff\":%s,\"panel_counts_as_stereo\":false}\n",startup_quad_layers,stereo_image_shown?"true":"false");
         if(menu_state_file)printf("{\"menu_recovery_evidence\":true,\"entries\":%u,\"quad_layers\":%u,\"recoveries\":%u,\"panel_counts_as_stereo\":false}\n",menu_entries,menu_quad_layers,menu_recoveries);
         if(menu_state_file)printf("{\"main_menu_evidence\":true,\"quad_layers\":%u,\"source\":\"wgc_full_client\",\"panel_counts_as_stereo\":false}\n",main_menu_quad_layers);
-        if(menu_state_file)printf("{\"eye_menu_evidence\":true,\"quad_layers\":%u,\"source_eye\":0,\"both_eyes_common_panel\":true,\"panel_counts_as_stereo\":false}\n",eye_menu_quad_layers);
+        if(menu_state_file)printf("{\"pause_menu_evidence\":true,\"projection_layers\":%u,\"view_count\":2,\"both_eyes_common_panel\":false}\n",pause_menu_projection_layers);
         if(startup_window)printf("{\"startup_wait_card_evidence\":true,\"quad_layers\":%u,\"uploads\":%u,\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",
             startup_wait_card_layers,startup_wait_card?startup_wait_card->uploads:0);
         if(menu_state_file)printf("{\"transition_panel_evidence\":true,\"quad_layers\":%u,\"uploads\":%u,\"source\":\"session_owned_card\",\"panel_counts_as_stereo\":false}\n",transition_panel_layers,transition_card?transition_card->uploads:0);

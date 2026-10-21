@@ -382,8 +382,8 @@ class MountedContextCertificate:
             if actual_target != struct.pack('<Q', controlled['address']):
                 raise AnchorRejected('Mounted target changed inside camera bracket')
             actual_pov = r.read(s.pov, 28)
-            if actual_pov != pov:
-                raise AnchorRejected('Mounted POV changed inside camera bracket')
+            if len(actual_pov) != 28:
+                raise AnchorRejected('Short mounted camera POV read')
             actual_headers = {}
             for header, registry in ((r.objects_header, 'objects'), (r.names_header, 'names')):
                 observed = r.read(header, 16); actual_headers[registry] = observed.hex()
@@ -402,8 +402,8 @@ class MountedContextCertificate:
         inner_before = inner_boundary()
         inner_after = inner_boundary()
         timestamp_changed = any(x['timestamp_raw'] != stamp.hex() for x in (inner_before, inner_after))
-        if ({k:v for k,v in inner_before.items() if k != 'timestamp_raw'} !=
-                {k:v for k,v in inner_after.items() if k != 'timestamp_raw'}):
+        if ({k:v for k,v in inner_before.items() if k not in ('timestamp_raw', 'pov_raw')} !=
+                {k:v for k,v in inner_after.items() if k not in ('timestamp_raw', 'pov_raw')}):
             raise AnchorRejected('Mounted inner endpoint values changed')
         # Finish the independent OUTER validation even on frame rollover, so
         # timestamp retries never hide identity/layout/link/registry failures.
@@ -431,6 +431,8 @@ class MountedContextCertificate:
             raise AnchorRejected('Mounted cinematic target validation changed')
         if timestamp_changed:
             raise MountedTimestampChanged('Mounted camera timestamp changed at bracket boundary')
+        if any(x['pov_raw'] != pov.hex() for x in (inner_before, inner_after)):
+            raise AnchorRejected('Mounted POV changed inside camera bracket')
         def digest(ids, memory):
             payload = dict(identities=ids, reads=[(a, n, v.hex()) for (a, n), v in sorted(memory.items())])
             return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()).hexdigest()

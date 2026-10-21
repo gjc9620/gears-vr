@@ -2,6 +2,7 @@
 // unchanged; control additionally requires certified native segment callbacks.
 #include "ui_segment_sources.h"
 #include "ui_hud_first_fault.h"
+#include "ui_aim_locked_plan.h"
 using UiExecute=uint32_t(__fastcall*)(void*);
 UiExecute ui_original_execute{};void* ui_execute_target{};
 uintptr_t ui_execute_observer_begin{},ui_execute_observer_end{};
@@ -20,13 +21,14 @@ std::atomic<uint64_t> ui_index_capture_ok{},ui_index_capture_rejected{},ui_index
 struct UiHudCounts {std::atomic<uint64_t> considered{},missing_context{},reticle_excluded{},unknown_or_mixed{},
     ticket_missing{},projection_rejected{},planned{},applied{};} ui_hud_counts;
 std::atomic<bool> ui_hud_sequence_fault{};
+std::atomic<uint64_t> ui_ads_anchor_planned{},ui_ads_anchor_finite{},ui_ads_anchor_direction{};
 gears_ui_fault::First ui_hud_first_fault;
 #if defined(GEARS_UI_RETICLE_DIRECTION) && GEARS_UI_RETICLE_DIRECTION
 constexpr bool ui_reticle_direction_enabled=true;
 #else
 constexpr bool ui_reticle_direction_enabled=false;
 #endif
-struct UiReticleCounts {std::atomic<uint64_t> considered{},center_rejected{},geometry_missing{},projection_rejected{},planned{},applied{},finite_planned{},finite_fallback{},finite_applied{};} ui_reticle_counts;
+struct UiReticleCounts {std::atomic<uint64_t> considered{},center_rejected{},geometry_missing{},projection_rejected{},planned{},applied{},finite_planned{},finite_suppressed{},finite_applied{};} ui_reticle_counts;
 struct UiLayoutContext {gears_ui_layout::Groups groups{};gears_ui_layout::Replay replay{};};
 struct UiIndexContext {
     uint64_t execute_sequence{};
@@ -212,8 +214,8 @@ uint32_t __fastcall hook_ui_execute(void* command){
 #else
     const uint32_t result=ui_original_execute(command);
 #endif
-    // Semantic contexts must finish before the owned ledger can make this
-    // ticket ready for publication. Unlabelled batches have no such cursor.
+    // Finish semantic HUD observation before recording the independent owned
+    // Canvas Execute result. Unlabelled batches have no semantic cursor.
     gears_ui_fault::FinishEvidence finish_evidence{};
     if(ui_index_context){
         finish_evidence.before_finish_valid=true;
@@ -224,6 +226,10 @@ uint32_t __fastcall hook_ui_execute(void* command){
     const bool sequence_complete=!ui_index_context||ui_index_context->cursor.finish();
     const bool binding_complete=semantic_scope.end(sequence_complete&&result==48);
     finish_evidence.binding_complete_valid=true;finish_evidence.binding_complete=binding_complete;
+    if(ui_index_context&&!binding_complete&&sequence_complete&&result==48){
+        ui_hud_sequence_fault=true;
+        record_ui_hud_first_fault(gears_ui_fault::Reason::finish,true,result,sequence_complete,finish_evidence);
+    }
     owned_ui_live::execute_end(owned_receipt,result,sequence_complete&&binding_complete);
     if(ui_observer_enabled&&result!=48)++ui_execute_bad_return;
     // Only our independent value copies remain live. The native command and
@@ -231,8 +237,8 @@ uint32_t __fastcall hook_ui_execute(void* command){
     if(ui_index_context){
         const bool complete=binding_complete&&sequence_complete&&result==48;
         if(complete)++ui_index_complete;else ++ui_index_incomplete;
-        // A changing live binding rejects only this publication window. Keep
-        // the permanent route fault for malformed GPU sequence/return values.
+        // A bad semantic sequence disables later HUD placement. The Canvas
+        // receipt above remains governed by its own Execute and GPU proof.
         if((!sequence_complete||result!=48)&&ui_hud_plane_enabled){
             ui_hud_sequence_fault=true;
             record_ui_hud_first_fault(result!=48?gears_ui_fault::Reason::return_value:gears_ui_fault::Reason::finish,
@@ -283,6 +289,17 @@ double ui_source_aspect(){
 #endif
     return 0;
 }
+bool prepare_ui_panel(uint64_t ticket,gears_viewport::DrawState const& saved,unsigned width,unsigned height,
+    gears_vr::StereoSample const& sample,gears_viewport::OverlayPlan& out,
+    gears_ui_hud::Parameters parameters,gears_ui_hud::Diagnostic* diagnostic=nullptr){
+    gears_vr::StereoTicketGeometry geometry{};
+    if(ui_ticket_geometry(ticket,geometry)&&geometry.aiming){
+        const bool planned=gears_ui_aim::plan(saved,width,height,sample,geometry,out,parameters,diagnostic);
+        if(planned){++ui_ads_anchor_planned;if(geometry.finite_aim.valid)++ui_ads_anchor_finite;else ++ui_ads_anchor_direction;}
+        return planned;
+    }
+    return gears_ui_hud::plan(saved,width,height,sample,out,parameters,diagnostic);
+}
 bool prepare_ui_reticle_overlay(uint64_t ticket,gears_viewport::DrawState const& saved,
         unsigned width,unsigned height,gears_viewport::OverlayPlan& out){
     if(ui_index_context)ui_index_context->finite_reticle=false;
@@ -298,18 +315,28 @@ bool prepare_ui_reticle_overlay(uint64_t ticket,gears_viewport::DrawState const&
 #if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
     if(owned_ui_live::route.ticket){source_width=owned_ui_live::route.source_width;source_height=owned_ui_live::route.source_height;}
 #endif
-    if(!gears_ui_reticle::centered(ui_index_context->reticle_extents[ordinal],source_width,source_height)){
-        ++ui_reticle_counts.center_rejected;return false;}
     gears_vr::StereoTicketGeometry geometry{};
     if(!ui_ticket_geometry(ticket,geometry)){
-        ++ui_reticle_counts.geometry_missing;return false;}
+        ++ui_reticle_counts.geometry_missing;
+        auto hidden=gears_viewport::overlay_plan(saved,width,height);if(!hidden.valid)return false;
+        for(unsigned eye=0;eye<2;++eye)hidden.scissors[eye]={float(eye*width/2),0,0,0};
+        out=hidden;return true;}
+    if(!gears_ui_reticle::centered(ui_index_context->reticle_extents[ordinal],source_width,source_height)){
+        ++ui_reticle_counts.center_rejected;
+        // Pure certified ADS segments (including isolated ring quadrants) share
+        // one source-center map. Never route them onto the head-locked HUD.
+        if(!geometry.aiming){auto hidden=gears_viewport::overlay_plan(saved,width,height);if(!hidden.valid)return false;
+            for(unsigned eye=0;eye<2;++eye)hidden.scissors[eye]={float(eye*width/2),0,0,0};out=hidden;return true;}}
     gears_viewport::OverlayPlan corrected{};
-    bool planned=gears_ui_reticle::plan(saved,width,height,geometry,corrected,ui_source_aspect());
+    bool suppressed=false;
+    bool planned=gears_ui_reticle::display_plan(saved,width,height,geometry,corrected,ui_source_aspect(),&suppressed);
     if(geometry.finite_aim.valid){
         if(planned){++ui_reticle_counts.finite_planned;ui_index_context->finite_reticle=true;}
-        else {++ui_reticle_counts.finite_fallback;geometry.finite_aim={};
-            planned=gears_ui_reticle::plan(saved,width,height,geometry,corrected,ui_source_aspect());}}
-    if(!planned){++ui_reticle_counts.projection_rejected;return false;}
+        if(suppressed)++ui_reticle_counts.finite_suppressed;}
+    if(!planned){++ui_reticle_counts.projection_rejected;
+        auto hidden=gears_viewport::overlay_plan(saved,width,height);if(!hidden.valid)return false;
+        for(unsigned eye=0;eye<2;++eye)hidden.scissors[eye]={float(eye*width/2),0,0,0};
+        out=hidden;return true;}
     out=corrected;++ui_reticle_counts.planned;return true;
 }
 
@@ -330,7 +357,7 @@ bool prepare_ui_hud_overlay(uint64_t ticket,gears_viewport::DrawState const& sav
     if(!ui_ticket_sample(ticket,sample)){++ui_hud_counts.ticket_missing;return false;}
     gears_viewport::OverlayPlan corrected{};
     const auto parameters=gears_ui_hud::for_source(ui_hud_parameters,ui_source_aspect());
-    if(!gears_ui_hud::plan(saved,width,height,sample,corrected,parameters)){++ui_hud_counts.projection_rejected;return false;}
+    if(!prepare_ui_panel(ticket,saved,width,height,sample,corrected,parameters)){++ui_hud_counts.projection_rejected;return false;}
     out=corrected;++ui_hud_counts.planned;return true;
 }
 
@@ -441,6 +468,8 @@ void observe_ui_gpu_payload(uint64_t ticket,gears_frame_link::ListRef list,gears
 
 void print_ui_payload_observer(FILE* status){
     ui_reticle_late_sample::print(status);
+    fprintf(status,"ui_ads_anchor planned=%llu finite=%llu direction=%llu head_locked_fallback=0 scope=certified_targeting_state\n",
+        ui_ads_anchor_planned.load(),ui_ads_anchor_finite.load(),ui_ads_anchor_direction.load());
     gears_ui_fault::print(status,ui_hud_first_fault);
     fprintf(status,"ui_subtitle_gpu calls=%llu layout_applied=%llu rows=%u dropped=%llu source_is_actual_index_membership=1 pixel_visibility_proven=0\n",ui_subtitle_gpu_calls,ui_subtitle_gpu_layout_applied,ui_subtitle_gpu_count,ui_subtitle_gpu_dropped);
     for(unsigned i=0;i<ui_subtitle_gpu_count;++i){auto const& row=ui_subtitle_gpu_rows[i];auto const& source=row.source;
@@ -450,8 +479,8 @@ void print_ui_payload_observer(FILE* status){
     fprintf(status,"ui_reticle_direction enabled=%u considered=%llu center_rejected=%llu geometry_missing=%llu projection_rejected=%llu planned=%llu applied=%llu finite_hit_proven=0 source_vertices_modified=0\n",
         ui_reticle_direction_enabled?1:0,ui_reticle_counts.considered.load(),ui_reticle_counts.center_rejected.load(),
         ui_reticle_counts.geometry_missing.load(),ui_reticle_counts.projection_rejected.load(),ui_reticle_counts.planned.load(),ui_reticle_counts.applied.load());
-    fprintf(status,"ui_reticle_finite_query plans=%llu applied=%llu direction_fallback=%llu camera_equivalence_proven=0 current_camera_aim_proven=0 bullet_impact_proven=0\n",
-        ui_reticle_counts.finite_planned.load(),ui_reticle_counts.finite_applied.load(),ui_reticle_counts.finite_fallback.load());
+    fprintf(status,"ui_reticle_finite_query plans=%llu applied=%llu direction_fallback=0 finite_suppressed=%llu camera_equivalence_proven=0 current_camera_aim_proven=0 bullet_impact_proven=0\n",
+        ui_reticle_counts.finite_planned.load(),ui_reticle_counts.finite_applied.load(),ui_reticle_counts.finite_suppressed.load());
     const auto store=ui_payload_store.stats();
     fprintf(status,"ui_payload_store published=%llu rejected=%llu capacity_rejected=%llu groups_poisoned=%llu claimed=%llu poison_claimed=%llu active_groups=%zu poisoned_groups=%zu disabled=%u resets=%llu groups_full=%llu capacity=%zu\n",
         store.published,store.rejected,store.capacity_rejected,store.groups_poisoned,store.claimed,store.poison_claimed,

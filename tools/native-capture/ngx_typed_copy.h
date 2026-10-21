@@ -32,6 +32,11 @@ private:
     uintptr_t canonical_{};uint64_t generation_{},ticket_{};unsigned ordinal_{};
     void* context_{};Current current_{};TypedCopyOriginal original_{};bool consumed_{},valid_{};
 public:
+    ID3D12GraphicsCommandList* command()const{return command_.Get();}
+    ID3D12Resource* source_resource()const{return source_.get();}
+    ID3D12Resource* target_resource()const{return target_.get();}
+    TypedCopyOriginal original_copy()const{return original_;}
+    bool active()const{return valid_&&current_(context_,command_.Get(),canonical_,generation_);}
     TypedCopyBoundary(ID3D12GraphicsCommandList* command,uintptr_t canonical,uint64_t generation,uint64_t ticket,unsigned ordinal,
         D3D12_TEXTURE_COPY_LOCATION const& destination,D3D12_TEXTURE_COPY_LOCATION const& source,
         void* context,Current current,TypedCopyOriginal original)

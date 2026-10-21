@@ -17,6 +17,7 @@ template<class Read> bool rebind_weapon(OwnedConfig const& startup,Read read,Own
         initial.vector_struct,initial.ww,initial.controller_pawn.property,initial.pawn_controller.property,
         initial.pawn_weapon.property,initial.weapon_instigator.property};
     for(auto role:roles)if(role>=original.identity_count)return false;
+    if(initial.aim.enabled&&initial.aim.property>=original.identity_count)return false;
     for(unsigned i=0;i<original.super_count;++i)if(original.supers[i].identity>=original.identity_count)return false;
     for(unsigned i=0;i<original.super_count;++i){
         for(unsigned j=0;j<i;++j)if(original.supers[i].identity==original.supers[j].identity)return false;
@@ -132,5 +133,22 @@ template<class Read> bool rebind_weapon(OwnedConfig const& startup,Read read,Own
        !r.field(final_weapon,pawn,c.pawn_weapon.offset)||final_weapon!=current)return false;
     if(!assignment_tokens_match())return false;
     out=candidate;return true;
+}
+
+// Activation happens after the external certificate was collected. Equipment
+// may have changed in that interval, before tick-time rebinding is available.
+// Reuse the same-Pawn proof, then require the original (not detoured) entry.
+// Never publish a partial candidate or relax an immutable startup check.
+template<class Read> bool prepare_activation(OwnedConfig const& startup,Read read,OwnedConfig& out,
+    ValidationFailure* failure=nullptr){
+    ValidationFailure initial{};
+    if(validate_bindings(startup.assignment,read,true,&initial)){
+        out=startup;if(failure)*failure=ValidationFailure::none;return true;
+    }
+    OwnedConfig candidate;
+    if(rebind_weapon(startup,read,candidate)&&validate_bindings(candidate.assignment,read,true)){
+        out=candidate;if(failure)*failure=ValidationFailure::none;return true;
+    }
+    if(failure)*failure=initial;return false;
 }
 }

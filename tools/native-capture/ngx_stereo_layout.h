@@ -23,6 +23,7 @@ struct Layout {
     Extent full_output{},input{},eye_output{};
     std::array<Point,2> input_base{};
     uint32_t stride{};
+    bool packed_input{}; // Distinct native input packing; output stride stays fixed.
 };
 // Native Create has dimensions/quality/flags, but no resource pointers. Its
 // logical geometry is valid independently of later typed physical bindings.
@@ -30,7 +31,7 @@ inline bool valid_create_geometry(Layout const& l){
     if(!bounded(l.full_output)||(l.full_output.width%2||l.full_output.height%2)||!bounded(l.input)||!bounded(l.eye_output))return false;
     if(l.stride!=l.full_output.width/2||!same(l.eye_output,{l.stride,l.full_output.height}))return false;
     if(l.input.width>l.stride||l.input.height>l.eye_output.height)return false;
-    if(!same(l.input_base[0],{0,0})||!same(l.input_base[1],{l.stride,0}))return false;
+    if(!same(l.input_base[0],{0,0})||!same(l.input_base[1],{l.packed_input?l.input.width:l.stride,0}))return false;
     return true;
 }
 inline bool valid(Layout const& l){
@@ -50,13 +51,16 @@ inline bool valid_create_layout(Layout const& l){
     return empty||valid(l); // Partial/guessed allocation metadata is rejected.
 }
 inline bool same(Layout const& a,Layout const& b){
-    if(!same(a.full_output,b.full_output)||!same(a.input,b.input)||!same(a.eye_output,b.eye_output)||a.stride!=b.stride)return false;
+    if(!same(a.full_output,b.full_output)||!same(a.input,b.input)||!same(a.eye_output,b.eye_output)||a.stride!=b.stride||a.packed_input!=b.packed_input)return false;
     for(unsigned i=0;i<4;++i)if(!same(a.physical[i],b.physical[i]))return false;
     return same(a.input_base[0],b.input_base[0])&&same(a.input_base[1],b.input_base[1]);
 }
 struct Resource {
     uint64_t identity{},device{};Extent extent{};
     uint32_t format{},mip{},samples{},subresource{};
+};
+struct BackupReceipt {
+    Identity identity{};uint64_t ticket{},list{},generation{},source{};Resource storage{};Rect region{};bool recorded{};
 };
 struct CopyFacts {
     Identity identity{};uint64_t ticket{},caller{},list{},generation{},list_device{};
@@ -67,6 +71,7 @@ struct CopyFacts {
     std::array<Point,2> input_base{};
     Extent feature_output{};Point output_base{};
     unsigned evaluated_ordinal{};
+    BackupReceipt input_backup{},output_backup{};
 };
 struct CopyPlan {
     std::array<uint32_t,6> source_box{};
@@ -83,7 +88,16 @@ inline bool plan_copy(Layout const& l,Identity id,CopyFacts const& f,unsigned ey
     }
     Rect dst{eye*l.stride,0,l.eye_output.width,l.eye_output.height};
     if(!contains(f.resources[3].extent,{0,0,l.eye_output.width,l.eye_output.height})||!contains(f.resources[0].extent,dst))return false;
-    for(unsigned later=eye+1;later<2;++later){auto p=f.input_base[later];if(overlap(dst,{p.x,p.y,l.input.width,l.input.height}))return false;}
+    for(unsigned later=eye+1;later<2;++later){auto p=f.input_base[later];if(overlap(dst,{p.x,p.y,l.input.width,l.input.height})){
+        if(!l.packed_input)return false;
+        auto backed=[&](BackupReceipt const& b,uint64_t source,Rect region){auto const& s=b.storage;
+            if(!b.recorded||!same(b.identity,id)||b.ticket!=f.ticket||b.list!=f.list||b.generation!=f.generation||b.source!=source||
+                b.region.x!=region.x||b.region.y!=region.y||b.region.width!=region.width||b.region.height!=region.height||
+                !s.identity||s.device!=id.device||s.format!=26||s.mip||s.samples!=1||s.subresource||!contains(s.extent,{0,0,region.width,region.height}))return false;
+            for(auto const& r:f.resources)if(s.identity==r.identity)return false;return true;};
+        if(!backed(f.input_backup,f.resources[0].identity,{p.x,p.y,l.input.width,l.input.height})||
+            !backed(f.output_backup,f.resources[3].identity,{0,0,l.eye_output.width,l.eye_output.height})||f.input_backup.storage.identity==f.output_backup.storage.identity)return false;
+    }}
     result={{0,0,0,l.eye_output.width,l.eye_output.height,1},{dst.x,0,0},f.resources[3].identity,f.resources[0].identity,f.list,f.generation,f.ticket,eye};return true;
 }
 // complete() attests admitted CPU plans only, not executed copies or GPU work.

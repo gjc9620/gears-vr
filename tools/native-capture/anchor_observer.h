@@ -354,6 +354,10 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
         !bytes(&anchor.base_eye_height,pawn+c.base_eye_height,4))return false;
     for(float v:anchor.location)if(!std::isfinite(v))return false;
     if(!std::isfinite(anchor.eye_height)||!std::isfinite(anchor.base_eye_height)||!std::isfinite(anchor.location[2]+anchor.eye_height))return false;
+    bool camera_pov_changed=false;
+    if(c.mounted_enabled){std::array<unsigned char,28> final_pov{};
+        if(!bytes(final_pov.data(),camera+c.camera_pov,final_pov.size()))return false;
+        camera_pov_changed=final_pov!=camera_pov;}
     Registry afterobjects{},afternames{};std::uint32_t after{};
     if(!verify_identities()||!registry(afterobjects,c.objects_header)||!registry(afternames,c.names_header)||
         std::memcmp(&objects,&afterobjects,sizeof(objects))||std::memcmp(&names,&afternames,sizeof(names))||
@@ -361,11 +365,18 @@ template<class Read> bool strict_guard(Config const& c,Read read,Anchor& out,std
     if(diagnostic)diagnostic->strict_after_stamp=after;
     // Complete non-timestamp checks before declaring a retryable time race.
     if(!links())return false;
-    if(c.mounted_enabled||unpossessed){std::array<unsigned char,28> final_pov{};
-        if((c.mounted_enabled&&!mounted_links(c,read))||!bytes(final_pov.data(),camera+c.camera_pov,final_pov.size())||final_pov!=camera_pov)return false;}
+    if(c.mounted_enabled&&!mounted_links(c,read))return false;
+    if(unpossessed){std::array<unsigned char,28> final_pov{};
+        if(!bytes(final_pov.data(),camera+c.camera_pov,final_pov.size())||final_pov!=camera_pov)return false;}
     if(c.cinematic_enabled){TargetBinding final_target{};
         if(!cinematic_target(c,read,c.identities[c.role_pawn],final_target)||!equal_target(target,final_target))return false;}
-    if(before!=after){if(diagnostic){diagnostic->reason=GuardReason::strict_timestamp_changed;diagnostic->timestamp_only=true;}return false;}
+    // Mounted POV can advance along with the camera timestamp. Finish every
+    // identity/link/target check before classifying a camera-only rollover.
+    bool timestamp_changed=before!=after;
+    if(c.mounted_enabled){std::uint32_t end{};if(!bytes(&end,camera+c.camera_timestamp,4))return false;after=end;timestamp_changed=timestamp_changed||before!=end;
+        if(diagnostic)diagnostic->strict_after_stamp=after;}
+    if(timestamp_changed){if(diagnostic){diagnostic->reason=GuardReason::strict_timestamp_changed;diagnostic->timestamp_only=true;}return false;}
+    if(camera_pov_changed)return false;
     // Registry growth between observations is legal. A change inside this
     // finite bracket rejects this observation only; the next reads fresh headers.
     out=anchor;stamp=before;if(diagnostic)diagnostic->reason=GuardReason::success;return true;

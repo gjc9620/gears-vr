@@ -32,7 +32,7 @@ void poll(wchar_t const* path,FILE* status){
     // are never overwritten/deleted; repeated identical content is not retried.
     std::string wire;if(!read_file(path,wire))return;if(wire==last_wire)return;last_wire=wire;
     LARGE_INTEGER frequency{};if(!QueryPerformanceFrequency(&frequency)||frequency.QuadPart<=0){++file_rejected;return;}
-    std::lock_guard<std::recursive_mutex> frame_lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> frame_lock(frame_hook_mutex);
     std::lock_guard<std::mutex> payload_lock(ui_payload_mutex);
     gears_reticle_sample::Rejection reason{};
     auto ack=[&](gears_reticle_sample::Gate const& gate){

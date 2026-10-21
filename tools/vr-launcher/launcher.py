@@ -6,6 +6,7 @@ import json
 import math
 import os
 import pathlib
+import re
 import subprocess
 import struct
 import sys
@@ -15,7 +16,9 @@ from types import SimpleNamespace
 
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 HERE=pathlib.Path(__file__).resolve().parent
-INDEX=ROOT/'analysis/runtime/vr-launcher-session.json'
+sys.path.insert(0,str(ROOT/'tools/debug-launch'))
+import instance_policy
+INDEX=instance_policy.index_path()
 SESSION_OPTIONS=('anchor_observer','cinematic_camera','outage_diagnostics','image_ticket_diagnostics','shutdown_diagnostics','ui_observer','ui_hud_plane','ui_reticle_late_sample','gpu_snapshot','menu_recovery','world_recovery','crosshair_assignment_observer','movie_display','path_choice_center')
 
 def atomic_json(path,value):
@@ -31,6 +34,16 @@ def atomic_json(path,value):
 def rooted(value,root=ROOT):
     path=pathlib.Path(value)
     return (root/path).resolve() if not path.is_absolute() else path.resolve()
+
+def reservation_failure_detail(stdout,stderr):
+    # Prefer the original Python failure over a wrapping CalledProcessError.
+    # Keep the full child output in the local reserve log, with only a bounded
+    # explanation in the GUI and curated diagnostics.
+    lines=[line.strip() for line in (stderr.strip() or stdout.strip()).splitlines() if line.strip()]
+    causes=[line for line in lines if re.match(r'^[\w.]*(?:Error|Exception):',line)]
+    specific=[line for line in causes if not line.startswith('subprocess.CalledProcessError:')]
+    selected=specific[-3:] or causes[-1:] or lines[-8:]
+    return '\n'.join(selected)[-1500:] or 'Child process returned no error output.'
 
 def hud_horizontal_fov(config,manifest):
     supported=manifest.get('hud_size_control',False)
@@ -240,7 +253,13 @@ class Backend:
         result=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',
             "Get-CimInstance Win32_Process -Filter 'Name=''GOWDE-Steam.exe''' | Select-Object -ExpandProperty ProcessId"],capture_output=True,text=True,check=True,
             creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-        return [int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
+        pids=[int(x) for x in result.stdout.splitlines() if x.strip().isdigit()]
+        if not pids:return []
+        if instance_policy.context():
+            if not INDEX.exists():return []
+            current=json.loads(INDEX.read_text(encoding='utf-8')).get('game_identity')
+            return [current['pid']] if current and current['pid'] in pids and self.control.identity(current['pid'])==current else []
+        return instance_policy.shared_game_pids(pids,identity=self.control.identity)
     def reserve(self,manifest,log,owner=None,game_path=None,foreground=False):
         receipt=log.with_name(log.name+'.'+uuid.uuid4().hex+'.birth.json')
         preflight_nonce=uuid.uuid4().hex if owner and manifest.get('startup_selftests_prelaunch',False) else None
@@ -262,14 +281,15 @@ class Backend:
             with log.open('a',encoding='utf-8') as stream:stream.write('\n'+json.dumps({'reservation_failure_cleanup':cleanup})+'\n')
             return cleanup
         try:
-            result=subprocess.run(cmd,capture_output=True,text=True,timeout=120,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+            result=subprocess.run(cmd,capture_output=True,text=True,errors='replace',timeout=120,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         except subprocess.TimeoutExpired as error:
             def decoded(value):return value.decode('utf-8',errors='replace') if isinstance(value,bytes) else value or ''
             log.write_text(decoded(error.stdout)+'\n'+decoded(error.stderr),encoding='utf-8')
             error.reservation_failure_cleanup=failed_cleanup();raise
         log.write_text(result.stdout+'\n'+result.stderr,encoding='utf-8')
         if result.returncode:
-            error=RuntimeError('Fresh reservation failed; no retry: '+str(log))
+            detail=reservation_failure_detail(result.stdout,result.stderr)
+            error=RuntimeError('Fresh reservation failed; no retry (exit code '+str(result.returncode)+'): '+detail+'\nDetails: '+str(log))
             error.reservation_failure_cleanup=failed_cleanup()
             raise error
         reports=[]
@@ -460,6 +480,7 @@ class Backend:
         return navigate(pid,identity,self,cancel,deadline,log,check_live=check_live)
 
 def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sleep,auto_continue=False,foreground=False):
+    instance_policy.require_private_manifest(manifest)
     game,scale=settings(config,manifest)
     profile=verify_files(manifest,game) # Reject unsupported installs before startup side effects.
     selected_render_scale=render_scale(config,manifest)
@@ -471,11 +492,12 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
     owner=backend.control.identity(os.getpid())
     if not owner:raise RuntimeError('Launcher process identity unavailable')
     ctypes.set_last_error(0)
-    lock=backend.control.k.CreateMutexW(None,False,'Local\\GearsVR.RepositoryLauncher.Owner')
+    lock=backend.control.k.CreateMutexW(None,False,instance_policy.owner_lock_name())
     if not lock:raise ctypes.WinError(ctypes.get_last_error())
     if ctypes.get_last_error()==183:
         backend.control.k.CloseHandle(lock);raise RuntimeError('Another repository launcher is active')
     state={'schema':1,'kind':'repository_vr_launcher','owner_identity':owner,'phase':'preflight','passed':False,'native_activated':False}
+    if instance_policy.context():state['instance_root']=str(instance_policy.context())
     if size_plan:state['render_size_plan']=size_plan
     audio_state_key='test_audio_guard'
     cancel=None;identity=None;tiny_output_monitor=None;test_audio_guard=None;owned_prime=manifest.get('startup_menu',False)

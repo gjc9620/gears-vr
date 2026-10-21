@@ -59,7 +59,7 @@ void reject(Reject reason,Gate const& g,uintptr_t descriptor_address,Descriptor 
 uint64_t __fastcall hook(uintptr_t rcx,const uint16_t* descriptor,const void* data,unsigned index){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
     Scope scope;if(!scope.world()||caller!=0xd803bf)return original(rcx,descriptor,data,index);
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     Gate g{attested&&!other_controls(),recording.load(),frame_link_diagnostics,consuming_frozen_frame.enabled,consuming_frozen_frame.unpossessed,false,
         consuming_frame_ticket,consuming_frozen_frame.id,committed_world_generation.load(),consuming_frozen_frame.world_generation,caller,descriptor_owner(reinterpret_cast<uintptr_t>(descriptor)),index,0};
     if(!g.enabled||!g.recording||!g.diagnostics||!g.frozen||!g.unpossessed){++rejected[configuration];return original(rcx,descriptor,data,index);}
@@ -90,7 +90,7 @@ uint64_t __fastcall hook(uintptr_t rcx,const uint16_t* descriptor,const void* da
 }
 void quad(uintptr_t caller,std::array<float,8> const& args,std::array<unsigned,4> const& dimensions){
     if(caller!=0xd80a7b||!attested||!recording.load()||!consuming_frozen_frame.enabled||!consuming_frozen_frame.unpossessed)return;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto* selected=current_unpossessed_quad_bank();
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto* selected=current_unpossessed_quad_bank();
     if(!selected||selected->ordinal!=49||consuming_frozen_frame.world_generation!=selected->ticket.world||consuming_frozen_frame.id!=selected->ticket.id)return;
     const auto current=view();if(!current.native.eye_valid)return;auto& row=finals[current.native.eye];if(row.present){++row.duplicates;return;}
     row.present=true;row.ticket=selected->ticket.id;row.world=selected->ticket.world;row.eye=current.native.eye;row.view=current;row.qpc=now();row.args=args;row.dimensions=dimensions;
@@ -107,7 +107,7 @@ void print_capture(FILE* file,const char* label,unsigned index,Capture const& r)
         label,index,r.ticket,r.world,r.ordinal,r.eye,unsigned(r.modified),unsigned(r.proof&&!duplicates),duplicates,static_cast<unsigned long long>(r.rcx),static_cast<unsigned long long>(r.descriptor_address),static_cast<unsigned long long>(r.source_address),static_cast<unsigned long long>(r.owner),r.descriptor[0],r.descriptor[1],r.descriptor[2],r.descriptor_after[0],r.descriptor_after[1],r.descriptor_after[2],unsigned(r.descriptor_after_valid),unsigned(r.source_after_valid),r.before_qpc,r.after_qpc,static_cast<unsigned long long>(r.result),static_cast<unsigned long long>(r.before_view.native.current_view),static_cast<unsigned long long>(r.before_view.native.renderer_views),r.before_view.native.renderer_count,static_cast<unsigned long long>(r.before_view.context),r.before_view.thread,r.before_view.source_rect[0],r.before_view.source_rect[1],r.before_view.source_rect[2],r.before_view.source_rect[3],r.before_view.target_rect[0],r.before_view.target_rect[1],r.before_view.target_rect[2],r.before_view.target_rect[3]);
     values(file,r.source);fprintf(file," forwarded=");values(file,r.forwarded);fprintf(file," source_after=");values(file,r.source_after,r.source_after_valid);path(file,"tls_before",r.before_destination);path(file,"tls_after",r.after_destination);fprintf(file,"\n");
 }
-void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void print(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"death_dof_control enabled=1 attested=%u experimental_only=1 product_fix=0 gpu_verified=0 changed_component=right_PS_cb0_12_x unique_modified=%u modified_limit=256 bound_world=%llu bound_owner=%llx left_forwarded=%llu duplicates=%llu capacity_drop=%llu detail_duplicates=%llu reject_rows=%u reject_drop=%llu original_source_written=0 other_components_changed=0 gpu_commands_added=0 ps_table_offset=13bc highwater_is_capacity=0 old_r8_read_at_quad=0\n",unsigned(attested),recorder.count,recorder.bound_world,static_cast<unsigned long long>(recorder.bound_owner),left_calls,recorder.duplicates,recorder.overflow,detail_duplicates,reject_size,reject_drop);
     for(unsigned i=1;i<reject_count;++i)fprintf(file,"death_dof_rejected reason=%u count=%llu\n",i,rejected[i]);
     for(unsigned i=0;i<reject_size;++i){auto const& r=reject_rows[i];fprintf(file,"death_dof_reject row=%u reason=%u ticket=%llu world=%llu eye=%u descriptor_address=%llx owner=%llx descriptor_read=%u descriptor=%u,%u,%u source_read=%u source=",i,r.reason,r.ticket,r.world,r.eye,static_cast<unsigned long long>(r.descriptor_address),static_cast<unsigned long long>(r.owner),unsigned(r.descriptor_read),r.descriptor[0],r.descriptor[1],r.descriptor[2],unsigned(r.source_read));values(file,r.source,r.source_read);fprintf(file,"\n");}

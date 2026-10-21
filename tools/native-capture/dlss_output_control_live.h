@@ -1,12 +1,16 @@
 #pragma once
+#include <optional>
 // Included inside capture's anonymous namespace, after the pure header.
 namespace dlss_output_control {
 using namespace gears_dlss_output;
 struct Output {
-    Key key{};uintptr_t pass{},view{},renderer{},descriptor{};unsigned thread{},flags{},setters{},quads{},draws{},binds{};
+    Key key{};uintptr_t pass{},view{},renderer{},descriptor{},setter_caller{};unsigned thread{},flags{},setters{},quads{},draws{},binds{};
+    bool owned_dof{};
     View before{};Descriptor expected{};bool valid{},site{},nested{},setter_proved{},quad_complete{},draw_complete{},failed{};
     bool binding_proved{},binding_failed{};gears_dlss_route::InputBind binding_capture{};
     Eye::BindingEvidence binding{};
+    std::optional<gears_ngx_stereo::RecordedOutput> sdk_output;
+    std::optional<NativeGap> native_gap;
     Eye proof{};
 };
 struct ListPath {uintptr_t owner{},raw{},table{},method{},canonical{};uint64_t generation{};bool valid{};};
@@ -23,13 +27,14 @@ struct OutputExitReceipt {
     Eye::BindingEvidence binding{};gears_dlss_route::InputSample input_before{};BindingTrace trace{},tail_trace{};
 };
 struct ConsumeScope {
-    Key key{},previous{};int exceptions{};
+    Key key{},previous{};int exceptions{};bool finished{};
     ConsumeScope(uint64_t world,uint64_t ticket,bool enabled);~ConsumeScope();
+    void finish(); // Close proof before an owned scene may publish at consume return.
     ConsumeScope(ConsumeScope const&)=delete;ConsumeScope& operator=(ConsumeScope const&)=delete;
 };
 struct OutputScope {
     Output value;Output* previous{};int exceptions{};
-    OutputScope(bool world,uintptr_t pass,uintptr_t view);~OutputScope();
+    OutputScope(bool world,uintptr_t pass,uintptr_t view,bool owned_dof=false);~OutputScope();
     OutputScope(OutputScope const&)=delete;OutputScope& operator=(OutputScope const&)=delete;
 };
 struct SetterScope {
@@ -43,7 +48,7 @@ struct BindScope {
     BindScope(BindScope const&)=delete;BindScope& operator=(BindScope const&)=delete;
 };
 struct QuadScope {
-    Output* output{};QuadScope* previous{};Args forwarded{};Dimensions dimensions{};bool changed{};int exceptions{};
+    Output* output{};QuadScope* previous{};Args forwarded{};Dimensions dimensions{};uintptr_t site{};bool changed{};int exceptions{};
     QuadScope(bool world,uintptr_t caller,Args const& args,Dimensions const& sizes);~QuadScope();
     bool candidate()const;
     void forward(float& x,float& y,float& w,float& h,float& u,float& v,float& uw,float& vh)const;
@@ -56,7 +61,11 @@ struct DrawCompletion {
 };
 bool enable(FILE*,bool observer_attested);
 bool scoped();
-bool publication(uint64_t world,uint64_t ticket);
+bool sdk_scoped();
+bool native_scoped();
+bool unpublished(uint64_t,uint64_t,gears_ngx_stereo::Identity);
+void print_current_gap(FILE*);
+bool publication(uint64_t world,uint64_t ticket,bool require_site=false);
 void retire();void progress(FILE*);void print(FILE*);
 gears_final_transfer::EyeDrawEvidence draw(uintptr_t list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances,
     gears_viewport::TargetDraw const& binding,gears_frame_link::ListRef ref,gears_viewport::DrawState const& rectangles);

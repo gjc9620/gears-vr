@@ -44,7 +44,7 @@ void fail(unsigned reason){if(!failure)failure=reason;}
 void release_unappended(unsigned i){auto& s=slots[i];if(!s.life.appended&&!s.released){backend().release(i);s.released=true;}}
 void copy_passthrough(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* dst,UINT x,UINT y,UINT z,
     const D3D12_TEXTURE_COPY_LOCATION* src,const D3D12_BOX* box,uintptr_t caller,CopyFn forward){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);int chosen=-1;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);int chosen=-1;
     if(enabled&&!stopped&&!failure&&recording.load()&&count<2&&caller==0x1c6093&&!x&&!y&&!z&&!box){
         auto o=owner();
         if(o.associated&&o.world>=2&&o.eye<2&&(!count||(o.world==world&&o.ticket==ticket&&o.renderer==renderer))){
@@ -76,7 +76,7 @@ void copy_passthrough(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_L
     eyes|=1u<<s.before.ownership.eye;
 }
 void execute_passthrough(ID3D12CommandQueue* queue,UINT n,ID3D12CommandList* const* members,ExecuteFn forward){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);unsigned token{};
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);unsigned token{};
     if(count){std::array<ID3D12CommandList*,gears_frame_link::Tracker::list_capacity> copied{};
         const bool readable=n<=copied.size()&&(!n||safe_copy(copied.data(),members,size_t(n)*sizeof(copied[0])));++execute_order;
         for(unsigned i=0;i<count;++i){auto& s=slots[i];if(!s.life.appended||s.life.failure||s.life.saved)continue;
@@ -91,7 +91,7 @@ void execute_passthrough(ID3D12CommandQueue* queue,UINT n,ID3D12CommandList* con
     for(unsigned i=0;i<count;++i)if(token&(1u<<i))slots[i].life.after(backend().signal(i,queue));
 }
 HRESULT reset_passthrough(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* pso,ResetFn forward){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);HRESULT hr{};
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);HRESULT hr{};
     try{hr=ngx_output_pixels::reset_passthrough(list,allocator,pso,forward);}catch(...){for(auto& s:slots)if(s.life.appended&&!s.life.saved)s.life.fail(gears_death_hdr_pixels::reset_failed);throw;}
     if(count){const auto id=backend().list_identity(list);for(auto& s:slots){if(!s.life.appended||s.life.failure||s.life.saved||s.life.retired)continue;
         if(id&&id!=s.life.held_identity&&list!=s.raw_list)continue;auto ref=backend().list_ref(s.life.held_identity);s.reset_hr=hr;s.reset_qpc=now();
@@ -102,11 +102,11 @@ bool enable(FILE* file){if(initialized)return false;
     enabled=!self_testing&&continuous_session&&frame_link_diagnostics&&color_copy_diagnostics&&attest(file);initialized=true;
     fprintf(file,"owned_source_pixels_identity enabled=1 attested=%u chunks=6 source_pixel_only=1 final_match_verified=0 slots=2 required_size=5120,2800 format=26 min_world=2\n",unsigned(enabled));return enabled;
 }
-void poll(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(stopped)return;
+void poll(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(stopped)return;
     for(unsigned i=0;i<count;++i){auto& s=slots[i];if(s.life.appended&&!s.life.failure&&!s.life.saved&&backend().poll(i,s)&&s.life.saved){backend().release(i);s.released=true;}}
 }
-void stop(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);stopped=true;for(auto& s:slots)s.life.stop();}
-void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void stop(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);stopped=true;for(auto& s:slots)s.life.stop();}
+void print(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"owned_source_pixels enabled=1 attested=%u ticket=%llu world=%llu renderer=%llx slots=%u eyes=%u rejected=%u failure=%u source_pixel_only=1 final_match_verified=0 same_copy_destination_is_not_final_content_proof=1 barriers_added=0\n",unsigned(enabled),ticket,world,renderer,count,eyes,rejected,failure);
     for(unsigned i=0;i<count;++i){auto const& s=slots[i];fprintf(file,"owned_source_pixel row=%u eye=%u view=%llx thread=%u copy_order=%llu qpc=%lld source_raw=%llx destination_raw=%llx source_canonical=%llx destination_canonical=%llx size=%llu,%u format=%u list_raw=%llx list_identity=%llx generation=%llu queue=%llx execute_order=%lld member=%u appended=%u executed=%u signalled=%u retired=%u gpu_complete=%u saved=%u failure=%u held_until_process=%u hr=%08lx path=%ls\n",
         i,s.before.ownership.eye,s.before.ownership.view,s.thread,s.sequence,s.copy_qpc,s.before.resources[1],s.before.resources[0],s.source_desc.canonical,s.destination_desc.canonical,s.source_desc.width,s.source_desc.height,s.source_desc.format,

@@ -23,6 +23,8 @@ enum Failure:unsigned {none,association_ambiguous=32,eval_changed,eval_exception
 struct Slot {
     gears_ngx_route::Sample before{},after{};uint64_t sequence{},copy_sequence{},result{};uintptr_t caller{},command{},structure{};unsigned thread{};
     long long entry{},exit{},copy_qpc{},execute_order{};unsigned execute_member{};bool normal{},active{},copy_seen{},inside_eval{},prepared{},released{};
+    bool transition_probe{},draw_probe{},pre_eval_probe{},baseline_probe{},final_probe{};unsigned native_state_before{},draw_role{};
+    std::array<unsigned,4> draw_rect{};
     ID3D12GraphicsCommandList* raw_list{};D3D12_TEXTURE_COPY_LOCATION source{},destination{};
     gears_death_hdr_pixels::Texture source_desc{},destination_desc{};gears_death_hdr_pixels::Lifetime life{};
     HRESULT hr{E_PENDING},reset_hr{E_PENDING};long long reset_qpc{};wchar_t path[MAX_PATH]{};
@@ -42,12 +44,24 @@ struct SuppressionReceipt {
 inline bool textures_supported(gears_death_hdr_pixels::Texture const& a,gears_death_hdr_pixels::Texture const& b){
     return gears_death_hdr_pixels::supported(a)&&gears_death_hdr_pixels::supported(b)&&a.canonical!=b.canonical&&a.width==b.width&&a.height==b.height;
 }
+inline bool final_textures_supported(gears_death_hdr_pixels::Texture const& a,gears_death_hdr_pixels::Texture const& b){
+    return gears_death_hdr_pixels::supported(b)&&a.canonical&&a.canonical!=b.canonical&&a.width==b.width&&a.height==b.height&&
+        a.format==24&&a.dimension==3&&a.array==1&&a.mips==1&&a.samples==1&&!a.quality;
+}
+inline bool final_footprint_valid(gears_death_hdr_pixels::Texture const& t,uint64_t total,uint64_t offset,unsigned pitch,unsigned rows,uint64_t row_bytes,
+    unsigned width,unsigned height,unsigned depth,unsigned format){
+    if(t.format!=24||t.dimension!=3||t.array!=1||t.mips!=1||t.samples!=1||t.quality||!t.canonical||t.width<2||t.width>8192||
+       !t.height||t.height>8192||!total||total>256ull*1024*1024||offset%512||offset>=total||pitch%256||rows!=t.height||row_bytes!=t.width*4||
+       pitch<row_bytes||width!=t.width||height!=t.height||depth!=1||format!=24)return false;
+    return row_bytes<=total-offset&&uint64_t(rows-1)*pitch<=total-offset-row_bytes;
+}
 // Native GPU operations are isolated from association/lifetime logic so actual
 // forwarding wrappers can be exercised offline without creating a GPU device.
 struct Backend {
     virtual ~Backend()=default;
     virtual bool start()=0;
     virtual bool prepare(unsigned,Slot&)=0;
+    virtual void append_before(unsigned,Slot&,CopyFn){}
     virtual void append(unsigned,Slot&,CopyFn)=0;
     virtual uintptr_t list_identity(ID3D12CommandList*)=0;
     virtual gears_frame_link::ListRef list_ref(uintptr_t)=0;
@@ -82,9 +96,12 @@ struct CreateScope {
 #endif
 };
 void end_ticket(uint64_t,bool);void worker_request(const wchar_t*,uint64_t,uint64_t,uint64_t,uint64_t);
+void barrier_capture(ID3D12GraphicsCommandList*,UINT,D3D12_RESOURCE_BARRIER const*,uintptr_t);
+void draw_capture(ID3D12GraphicsCommandList*,uintptr_t,unsigned,unsigned);
+void pre_evaluate_capture(ID3D12GraphicsCommandList*,ID3D12Resource*,ID3D12Resource*,unsigned,std::array<unsigned,4>);
 void end_ticket(uint64_t,bool,PresentContext const&);
 bool enable(FILE*);void poll();void stop();void print(FILE*);void print_control(FILE*);
-std::unique_lock<std::recursive_mutex> execution_lock();
+std::unique_lock<FrameHookMutex> execution_lock();
 void copy_passthrough(ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,UINT,UINT,UINT,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_BOX*,uintptr_t,CopyFn);
 unsigned prepare_execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);void after_execute(unsigned,ID3D12CommandQueue*);
 void execute_passthrough(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,ExecuteFn);
@@ -94,6 +111,9 @@ HRESULT reset_passthrough(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*,ID3
 struct EvalScope {EvalScope(bool,uintptr_t,uintptr_t,const void*){}void normal_return(uint64_t){}};
 struct CreateScope {CreateScope(bool,uintptr_t,uintptr_t,const void*){}void normal_return(){}};
 inline void create_boundary(bool,uintptr_t,uintptr_t,const void*){}inline bool enable(FILE*){return true;}inline void poll(){}inline void stop(){}inline void print(FILE*){}
+inline void barrier_capture(ID3D12GraphicsCommandList*,UINT,D3D12_RESOURCE_BARRIER const*,uintptr_t){}
+inline void draw_capture(ID3D12GraphicsCommandList*,uintptr_t,unsigned,unsigned){}
+inline void pre_evaluate_capture(ID3D12GraphicsCommandList*,ID3D12Resource*,ID3D12Resource*,unsigned,std::array<unsigned,4>){}
 inline void end_ticket(uint64_t,bool){}inline void worker_request(const wchar_t*,uint64_t,uint64_t,uint64_t,uint64_t){}
 inline void end_ticket(uint64_t,bool,PresentContext const&){}
 inline void print_control(FILE*){}

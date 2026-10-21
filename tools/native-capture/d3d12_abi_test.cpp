@@ -33,8 +33,10 @@ SLOT(ID3D12GraphicsCommandList7Vtbl,Barrier,80);
 SLOT(ID3D12CommandQueueVtbl,ExecuteCommandLists,10);
 SLOT(ID3D12PipelineStateVtbl,GetCachedBlob,8);
 SLOT(ID3D12DeviceVtbl,CreateCommandList,12);
+SLOT(ID3D12DeviceVtbl,CreateRootSignature,16);
 SLOT(ID3D12Device4Vtbl,CreateCommandList1,51);
 SLOT(ID3D12DeviceVtbl,CreateRenderTargetView,20);
+SLOT(ID3D12DeviceVtbl,CreateDepthStencilView,21);
 SLOT(ID3D12DeviceVtbl,CopyDescriptors,23);
 SLOT(ID3D12DeviceVtbl,CopyDescriptorsSimple,24);
 SLOT(ID3D12DeviceVtbl,CreateCommittedResource,27);
@@ -44,4 +46,4 @@ SLOT(ID3D12Device8Vtbl,CreateCommittedResource2,69);
 SLOT(ID3D12Device8Vtbl,CreatePlacedResource1,70);
 SLOT(ID3D12Device10Vtbl,CreateCommittedResource3,76);
 SLOT(ID3D12Device10Vtbl,CreatePlacedResource2,77);
-int main(){std::puts("D3D12 ABI: 38 SDK vtable offsets verified, Dispatch=14, SetDescriptorHeaps=28, SetComputeRootSignature=29, SetComputeRootDescriptorTable=31");}
+int main(){std::puts("D3D12 ABI: 40 SDK vtable offsets verified, CreateDepthStencilView=21, CreateRootSignature=16, Dispatch=14, SetDescriptorHeaps=28, SetComputeRootSignature=29, SetComputeRootDescriptorTable=31");}

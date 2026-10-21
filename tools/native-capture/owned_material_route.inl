@@ -46,7 +46,7 @@ void begin(UiMaterialContext& c,UiMaterialEntry const& entry){
  const auto& s=c.consumer;
  const auto id=s.command?owned_ui_live::ledger.execute(s.receipt.payload,s.target,now(),gears_owned_ui::Kind::Material):0;
  gears_owned_ui::Execution e{};
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  const auto& trial=gears_owned_scene_live::trial;
  if(id!=c.owned_receipt||!owned_ui_live::ledger.execution(id,e)||e.ticket!=c.owned_ticket||
     e.kind!=gears_owned_ui::Kind::Material||!gears_owned_scene_live::healthy()||

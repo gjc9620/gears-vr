@@ -1,4 +1,5 @@
 #include "ui_reticle_direction_plan.h"
+#include "../vr-common/ui_projection.h"
 #include <cassert>
 #include <cstdio>
 #include <limits>
@@ -148,14 +149,76 @@ static void finite_tests(){
         if(fault==3)bad.finite_aim.point[0]=std::numeric_limits<float>::infinity();
         if(fault==4)bad.finite_aim.world=0;if(fault==5)bad.finite_aim.tick=0;
         if(fault==6)bad.finite_aim.point[2]=-2;
-        if(fault==7)bad.finite_aim.point[0]=10; // Outside eye bounds.
+        if(fault==7)bad.finite_aim.point[0]=100000; // Exceeds legal D3D viewport range.
         if(fault==8)bad.eyes.view[1][14]=-3; // Behind only the second eye.
         if(fault==9)bad.finite_aim.point[2]=0;
         reject(bad); // Every failed plan leaves output unchanged.
     }
 }
+static void seated_projection_tests(){
+    // Independent world-point projection oracle: the rendered source center
+    // must land on the same point in both eyes, including asymmetric frusta,
+    // a shifted seat, head roll, nearby targets and camera distance adjustment.
+    unsigned checked=0,outside=0,behind=0;
+    auto s=state();
+    for(double x:{-.4,0.,.4})for(double y:{-.15,0.,.15})for(double z:{-.25,0.,.25})
+    for(double yaw:{-.5,0.,.5})for(double roll:{-.35,0.,.35})for(float depth:{60.f,200.f,800.f}){
+        auto g=geometry();StereoSample sample{};
+        sample.head={{x,1.7+y,z},multiply(Quaternion{0,std::sin(yaw/2),0,std::cos(yaw/2)},
+            Quaternion{0,0,std::sin(roll/2),std::cos(roll/2)})};
+        for(unsigned eye=0;eye<2;++eye){
+            const auto offset=transform(rotation_matrix(sample.head.orientation),{eye?.032:-.032,0,0});
+            sample.eyes[eye].pose={{x+offset.x,1.7+y+offset.y,z+offset.z},sample.head.orientation};
+            sample.eyes[eye].fov=eye?StereoFov{-.70,.94,.77,-.95}:StereoFov{-.94,.70,.77,-.95};
+        }
+        auto closer=g.source_view;closer[14]=-20;
+        assert(stereo_matrices(closer,g.source_projection,Pose{{0,1.7,0},{}},sample,100,g.eyes));
+        g.finite_aim={true,{0,0,depth},1,2};
+        UiStereoProjection expected{};
+        const bool in_front=project_ui_anchor(g.eyes,{0,0,depth},1920,2160,expected);
+        gears_viewport::OverlayPlan actual{};bool suppressed=true;
+        assert(gears_ui_reticle::display_plan(s,3840,2160,g,actual,0,&suppressed));
+        ++checked;
+        if(!in_front){
+            bool behind_eye=false;for(unsigned eye=0;eye<2;++eye)
+                behind_eye|=double(depth)*g.eyes.view[eye][10]+g.eyes.view[eye][14]<=0;
+            assert(behind_eye&&suppressed);
+            for(unsigned eye=0;eye<2;++eye)assert(actual.scissors[eye].width==0&&actual.scissors[eye].height==0);
+            ++behind;continue;
+        }
+        assert(!suppressed);
+        for(unsigned eye=0;eye<2;++eye){
+            near(actual.viewports[eye].x+960,eye*1920+expected.eyes[eye].x,.002);
+            near(actual.viewports[eye].y+1080,expected.eyes[eye].y,.002);
+            if(!expected.eyes[eye].in_viewport_xy)++outside;
+            auto clip=actual.scissors[eye];assert(clip.x>=eye*1920&&clip.x+clip.width<=(eye+1)*1920);
+            assert(clip.y>=0&&clip.y+clip.height<=2160);
+        }
+    }
+    assert(checked==729&&outside>0);
+    // The old live caller converted these failed finite plans to infinity.
+    // Behind-eye/invalid finite geometry now draws nothing and retains the
+    // finite target; it cannot masquerade as the valid infinite direction.
+    auto g=geometry();g.finite_aim={true,{0,0,2},1,2};g.eyes.view[1][14]=-3;
+    gears_viewport::OverlayPlan hidden{};bool suppressed=false;
+    assert(gears_ui_reticle::display_plan(s,3840,2160,g,hidden,0,&suppressed)&&suppressed);
+    for(unsigned eye=0;eye<2;++eye)assert((hidden.scissors[eye]==gears_viewport::Rect{float(eye*1920),0,0,0}));
+    auto invalid=s;invalid.viewport_count=2;const auto old=hidden;
+    assert(!gears_ui_reticle::display_plan(invalid,3840,2160,g,hidden)&&same(hidden,old));
+    g.finite_aim={};assert(gears_ui_reticle::display_plan(s,3840,2160,g,hidden,0,&suppressed)&&!suppressed);
+    near(hidden.viewports[0].x,0);near(hidden.viewports[1].x,1920);
+    g.eyes.view[1][0]=0;const auto unchanged=hidden;
+    assert(!gears_ui_reticle::display_plan(s,3840,2160,g,hidden)&&same(hidden,unchanged));
+    // Only one eye crosses the edge: preserve both projections, rather than
+    // shifting the still-visible eye to the unrelated infinite target.
+    g=geometry();g.finite_aim={true,{1.9f,0,2},1,2};g.eyes.view[0][12]=.125f;g.eyes.view[1][12]=-.125f;
+    assert(gears_ui_reticle::display_plan(s,3840,2160,g,hidden,0,&suppressed)&&!suppressed);
+    near(hidden.viewports[0].x+960,1932,.001);near(hidden.viewports[1].x+960,3732,.001);
+    std::printf("seated reticle projection: %u poses, %u outside-eye projections, %u behind-eye cases\n",checked,outside,behind);
+}
 int main(){auto g=geometry();auto s=state();gears_viewport::OverlayPlan p{};
     finite_tests();
+    seated_projection_tests();
     extent_tests();
     assert(gears_ui_reticle::plan(s,3840,2160,g,p));assert(same(p,gears_viewport::overlay_plan(s,3840,2160)));
     auto asym=g;asym.eyes.projection[0]=projection(-.942477763,.69813168,.767595768,-.947190166);
@@ -180,7 +243,7 @@ int main(){auto g=geometry();auto s=state();gears_viewport::OverlayPlan p{};
     bad=g;bad.eyes.view[1][0]=-1;bad.eyes.view[1][10]=-1;reject(bad); // Behind eye.
     bad=g;bad.source_view[12]=std::numeric_limits<float>::infinity();reject(bad);
     bad=g;bad.eyes.projection[0][8]=std::numeric_limits<float>::quiet_NaN();reject(bad);
-    bad=g;bad.eyes.projection[1][8]=2;reject(bad); // Direction outside eye bounds.
+    bad=g;bad.eyes.projection[1][8]=2;assert(gears_ui_reticle::plan(s,3840,2160,bad,p)); // Outside is clipping.
     bad=g;bad.source_projection[3]=1;reject(bad);bad=g;bad.eyes.view[0][3]=1;reject(bad);
     auto invalid=s;invalid.viewport_count=2;reject(g,invalid);invalid=s;invalid.scissor.width=0;reject(g,invalid);
     for(auto clip:std::array<gears_viewport::Rect,6>{{{0,0,40,0},{0,0,-1,40},{0,0,40,-1},

@@ -38,12 +38,15 @@ bool ui_binding_current(uint64_t token,gears_ui_binding::Binding const& current)
 }
 struct UiSemanticScope {
     gears_ui_binding::Binding binding{};bool entered{},finished{};
-    void begin(gears_ui_binding::Binding const& b){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    void begin(gears_ui_binding::Binding const& b){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
         binding=b;entered=true;++ui_semantic_consumer_pending;}
     bool end(bool complete){if(!entered||finished)return complete;
         gears_ui_binding::Binding after{};const bool valid=complete&&ui_capture_binding(after)&&gears_ui_binding::same(binding,after);
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);--ui_semantic_consumer_pending;finished=true;
-        if(!valid){++ui_binding_end_rejected;frame_link.invalidate();}return valid;
+        std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);--ui_semantic_consumer_pending;finished=true;
+        // A semantic binding change can invalidate HUD placement for this
+        // Execute, but it does not invalidate the independently observed GPU
+        // command-list and owned-output proof.
+        if(!valid)++ui_binding_end_rejected;return valid;
     }
     ~UiSemanticScope(){if(entered&&!finished)end(false);}
 };

@@ -49,12 +49,15 @@ class DiscoveryRegistryChanged(RuntimeError):
     """A validated registry header changed across a discovery read."""
 
 class Resolver:
+    FIELD_HINT_LIMIT=65536
+    CLASS_HINT_BLOCK_SIZE=65536
     def __init__(self,pid,profile):
         self.p=Process(pid)
         self.pid=pid
         self.profile=profile
         self.names_cache={}
         self.ident_cache={}
+        self._field_hint_links=None
     def read(self,address,size):
         raw=self.p.read(address,size)
         if len(raw)!=size:raise RuntimeError(f'Unreadable address {address:#x}; object/process may have changed')
@@ -136,7 +139,52 @@ class Resolver:
     def discovery_identity_reader(self):
         """Create a new scan-local hint capability; fresh reads never use it."""
         pages=_DiscoveryHintPages(self.read)
-        return lambda address:self.identity(address,reader=pages.read)
+        def discover(address):return self.identity(address,reader=pages.read)
+        # Class discovery need not decode the name of every gameplay instance.
+        # This uses the same scan-local pages and identity hints as discover;
+        # selected objects still go through the caller's fresh validation.
+        def class_identity(address):
+            raw=pages.read(address,0x60)
+            cls=struct.unpack_from('<Q',raw,self.profile['object_class'])[0]
+            if not cls:raise RuntimeError('Null discovery class')
+            return self.identity(cls,reader=pages.read)
+        discover.class_identity=class_identity
+        return discover
+    def discovery_class_candidates(self,pointers):
+        """Batch registered-object hints only; callers must freshly prove selection.
+
+        A bounded block replaces per-object Python/RPM dispatch. Unreadable
+        blocks fall back to the existing page/exact-object hint reader. Only
+        registered addresses are considered; no discovered bytes grant authority.
+        """
+        pages=_DiscoveryHintPages(self.read)
+        kinds={};block=None;raw=None;size=self.CLASS_HINT_BLOCK_SIZE
+        offset=self.profile['object_class']
+        def hint_read(address,count):
+            if raw is not None and block<=address and address+count<=block+len(raw):
+                return raw[address-block:address-block+count]
+            return pages.read(address,count)
+        for address in sorted(filter(None,pointers)):
+            start=address-address%size
+            if start!=block:
+                block=start
+                try:
+                    raw=self.read(block,size)
+                    if len(raw)!=size:raw=None
+                except DiscoveryRegistryChanged:raise
+                except (RuntimeError,OSError,ValueError):raw=None
+            try:
+                if raw is not None and address-block+0x60<=size:
+                    cls=struct.unpack_from('<Q',raw,address-block+offset)[0]
+                else:cls=struct.unpack_from('<Q',pages.read(address,0x60),offset)[0]
+                if not cls:continue
+                kind=kinds.get(cls)
+                if kind is None:
+                    kind=self.identity(cls,reader=hint_read)['name']=='Class'
+                    kinds[cls]=kind
+                if kind:yield address,self.identity(address,reader=hint_read)
+            except DiscoveryRegistryChanged:raise
+            except (RuntimeError,OSError,ValueError,UnicodeError):continue
     def class_name(self,obj):return self.identity(obj['cls'])['name']
     def find_camera_class(self):
         discover=self.discovery_identity_reader()
@@ -148,7 +196,8 @@ class Resolver:
                 return address
         raise RuntimeError('WarPlayerCamera class not loaded')
     def fields(self,owner):
-        ptr=self.u64(owner+self.profile['struct_children'])
+        read_link=self._discovery_field_link if getattr(self,'_field_hint_links',None) is not None else self.u64
+        ptr=read_link(owner+self.profile['struct_children'])
         seen=set()
         while ptr:
             if ptr in seen or len(seen)>4096:raise RuntimeError('Invalid reflected field chain')
@@ -156,7 +205,33 @@ class Resolver:
             obj=self.identity(ptr)
             if obj['outer']!=owner:raise RuntimeError('Reflected field owner mismatch')
             yield obj
-            ptr=self.u64(ptr+self.profile['field_next'])
+            ptr=read_link(ptr+self.profile['field_next'])
+    def begin_discovery_field_hints(self):
+        """One acquisition's link hints; selected fields still require fresh proof.
+
+        The caller must finish this scope before accepting any certificate.
+        Rejected acquisitions discard this Resolver, including all hints.
+        """
+        if getattr(self,'_field_hint_links',None) is not None:
+            raise RuntimeError('Discovery field hint scope already active')
+        self._field_hint_links={}
+    def _discovery_field_link(self,address):
+        links=self._field_hint_links
+        if links is None:return self.u64(address)
+        if address not in links:
+            value=self.u64(address)
+            if len(links)>=self.FIELD_HINT_LIMIT:return value
+            links[address]=value
+        return links[address]
+    def finish_discovery_field_hints(self):
+        """Re-read every retained head/next link; no hint survives this boundary."""
+        links=getattr(self,'_field_hint_links',None)
+        self._field_hint_links=None
+        if links is None:return 0
+        for address,expected in links.items():
+            if self.u64(address)!=expected:
+                raise DiscoveryRegistryChanged('Reflection field chain changed during discovery; reacquire')
+        return len(links)
     def property(self,owner,name,inherited=False):
         seen=set()
         while owner and owner not in seen:

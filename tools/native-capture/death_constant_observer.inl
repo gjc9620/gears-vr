@@ -43,7 +43,7 @@ uint64_t __fastcall hook(uintptr_t rcx,const uint16_t* descriptor,const void* da
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;
     Scope scope;if(!scope.world())return original(rcx,descriptor,data,index);
     if(role(caller)>1||!attested||!recording.load()||!consuming_frozen_frame.unpossessed)return original(rcx,descriptor,data,index);
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     auto* selected=current_unpossessed_quad_bank();
     if(!selected||!eligible(attested,recording.load(),frame_link_diagnostics,consuming_frozen_frame.enabled,consuming_frozen_frame.unpossessed,
         consuming_frame_ticket,consuming_frozen_frame.id,selected->ordinal,caller,index))return original(rcx,descriptor,data,index);
@@ -64,7 +64,7 @@ uint64_t __fastcall hook(uintptr_t rcx,const uint16_t* descriptor,const void* da
 }
 void quad(uintptr_t caller,std::array<float,8> const& args,std::array<unsigned,4> const& dimensions){
     if(caller!=0xd80a7b||!attested||!recording.load()||!consuming_frozen_frame.unpossessed)return;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto* selected=current_unpossessed_quad_bank();
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto* selected=current_unpossessed_quad_bank();
     if(!selected||selected->ordinal!=49)return;const auto current=view();if(!current.native.eye_valid){++recorder.rejected;return;}
     auto& final=recorder.finals[current.native.eye];if(final.present){++recorder.duplicate_finals;return;}
     final.present=true;final.eye=current.native.eye;final.view=current;final.ticket=selected->ticket.id;final.world=selected->ticket.world;
@@ -90,7 +90,7 @@ void print_destination(FILE* file,const char* label,Destination const& d){
     values(file,d.value,d.finite_value);
 }
 void print(FILE* file){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"death_constant_observer enabled=1 attested=%u cpu_only=1 gpu_verified=0 setters_limit=4 finals_limit=2 duplicate_setters=%llu duplicate_finals=%llu rejected=%llu role_offsets=ratio:0xb2,transform:0xaa setter_index=0 bank_bound=16 highwater_is_capacity=0 source_lifetime=setter_call_only old_r8_read_at_quad=0\n",
         unsigned(attested),recorder.duplicate_setters,recorder.duplicate_finals,recorder.rejected);
     for(unsigned i=0;i<recorder.setters.size();++i){auto const& r=recorder.setters[i];if(!r.present)continue;

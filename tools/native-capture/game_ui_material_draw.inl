@@ -34,7 +34,7 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
     if(!stereo_ticket_store.lookup(pair.ticket,sample,simulator_operator))return reject(6);
     if(kind==gears_game_material::Plan::ordinary)plan=gears_viewport::overlay_plan(saved,target.width,target.height);
     else {const auto parameters=gears_ui_hud::for_source(ui_hud_parameters,plane.aspect);
-        if(!gears_ui_hud::plan(saved,target.width,target.height,sample,plan,parameters))return reject(7);}
+        if(!prepare_ui_panel(pair.ticket,saved,target.width,target.height,sample,plan,parameters))return reject(7);}
     if(!plan.valid)return reject(7);
     bool layout_applied=false;
     if(kind==gears_game_material::Plan::hud&&!gears_ui_layout::identity(ui_hud_layout_parameters)){

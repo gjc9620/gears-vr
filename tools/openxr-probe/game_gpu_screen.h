@@ -3,7 +3,6 @@
 #include "../vr-common/gpu_blit.h"
 #include "outage_diagnostics.h"
 #include "eye_chain_policy.h"
-#include "menu_eye_panel.h"
 #include "world_handoff_display.h"
 #include "xr_wait_diagnostics.h"
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
@@ -512,20 +511,11 @@ private:
         return true;
     }
 public:
-    bool render_eye_menu(XrCompositionLayerQuad& quad,uint64_t expected_session,ProjectionStatus& status,int64_t menu_enter_ns,uint64_t space_epoch,int64_t space_change_time){
-        // Only the explicit pause-menu branch calls this. It is a common 2D
-        // panel from one completed eye, never a projection or a second consumer.
+    bool render_pause_menu(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status,int64_t menu_enter_ns,uint64_t space_epoch,int64_t space_change_time){
+        // Pause preserves the native pair, including the HUD's per-eye plane
+        // transform and world parallax. Never reuse one eye as a common quad.
         if(menu_enter_ns<=0){status=ProjectionStatus::menu_recovery_pending;return false;}
-        if(!prepare_ticketed_image(expected_session,status,menu_enter_ns,space_epoch,space_change_time))return false;
-        gears_menu_panel::Plan plan{};
-        if(!gears_menu_panel::make_plan(receiver->width,receiver->height,plan)){
-            status=ProjectionStatus::image_rectangle;return false;}
-        quad={XR_TYPE_COMPOSITION_LAYER_QUAD};quad.space=view_space;quad.eyeVisibility=XR_EYE_VISIBILITY_BOTH;
-        quad.pose.orientation.w=1;quad.pose.position.z=-2;
-        quad.size={plan.metres_width,plan.metres_height};
-        quad.subImage.swapchain=eyes[0].chain;
-        quad.subImage.imageRect={{plan.x,plan.y},{plan.width,plan.height}};
-        return true;
+        return render_projection(layer,views,expected_session,status,menu_enter_ns,space_epoch,space_change_time);
     }
     bool render_projection(XrCompositionLayerProjection& layer,XrCompositionLayerProjectionView (&views)[2],uint64_t expected_session,ProjectionStatus& status,int64_t minimum_sample_ns=0,uint64_t space_epoch=1,int64_t space_change_time=0){
         const auto copies_before=copies;

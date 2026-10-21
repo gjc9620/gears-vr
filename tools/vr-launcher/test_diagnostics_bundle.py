@@ -72,6 +72,24 @@ class BundleTests(unittest.TestCase):
         self.assertIsNone(summaries[1]['final_projection']['maximum_submission_gap_ms'])
         self.assertNotIn('PrivateUser', raw)
 
+    def test_startup_reservation_cause_survives_export_before_any_stereo_session(self):
+        import launcher
+        cause='RuntimeError: Persisted DLSS must be OFF before release startup'
+        detail=launcher.reservation_failure_detail('', 'Traceback (most recent call last):\n'+cause+'\n'
+            'subprocess.CalledProcessError: wrapper failed\n')
+        error=RuntimeError('Fresh reservation failed; no retry (exit code 1): '+detail+
+            '\nDetails: C:\\Users\\PrivateUser\\Mod\\analysis\\runtime\\vr-launcher-session.reserve.log')
+        (self.runtime/'vr-launcher-session.json').write_text(json.dumps({
+            'schema':1,'kind':'repository_vr_launcher','phase':'incomplete','error':repr(error)}))
+        (self.runtime/'vr-launcher-session.reserve.log').write_text('PROPRIETARY_NATIVE_CODE')
+        self.export()
+        names,raw,docs=self.read_zip()
+        self.assertIn(cause,raw)
+        self.assertNotIn('CalledProcessError',raw)
+        self.assertNotIn('PrivateUser',raw)
+        self.assertNotIn('PROPRIETARY_NATIVE_CODE',raw)
+        self.assertFalse(any(name.endswith('.reserve.log') for name in names))
+
     def test_numeric_csv_rates_are_labeled_and_unsafe_csv_is_not_archived(self):
         path = self.session()
         path.with_suffix('.csv').write_text('frame,predicted_time,stereo_sequence,published_ns,stereo_published\n'

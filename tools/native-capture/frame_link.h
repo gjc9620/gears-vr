@@ -106,6 +106,13 @@ private:
         Identity transfer_source{};
     };
     std::array<List, list_capacity> lists_{};
+    // Only the prefix is logically live. Seal/recovery drops it in O(1);
+    // slots appended into a later window are reset before any field is read.
+    // Holes inside the prefix retain the original reuse order.
+    size_t used_prefix_{};
+    template<class T> struct ListRange {T* first;T* last;T* begin() const{return first;}T* end() const{return last;}};
+    ListRange<List> used_lists(){return {lists_.data(),lists_.data()+used_prefix_};}
+    ListRange<const List> used_lists() const{return {lists_.data(),lists_.data()+used_prefix_};}
     std::array<Candidate, target_capacity> candidates_{};
     std::mutex mutex_;
     uint64_t generation_{}, maximum_ticket_{}, retired_ticket_{};
@@ -135,7 +142,7 @@ private:
     }
     bool owned_retirement_ready_locked() const {
         if(!owned_.enabled||!owned_.certified||pending_.active||window_bad_||capacity_bad_||revision_==UINT64_MAX||owned_revision_==UINT64_MAX)return false;
-        for(auto const& list:lists_)if(!list.executed)
+        for(auto const& list:used_lists())if(!list.executed)
             for(size_t i=0;i<list.count;++i){auto const& event=list.events[i];
                 if(event.target.resource==owned_.target.resource||event.transfer_source.resource==owned_.target.resource)return false;}
         return true;
@@ -171,7 +178,7 @@ private:
         state=event.after;return true;
     }
     List* find(ListRef ref) {
-        for (auto& list : lists_)
+        for (auto& list : used_lists())
             if (list.ref.identity == ref.identity && list.ref.generation == ref.generation && list.valid && list.world_epoch==world_epoch_)
                 return &list;
         return nullptr;
@@ -267,7 +274,7 @@ private:
         if(candidate){value.executed_mask=candidate->mask;value.executed_ticket=candidate->ticket;value.executed_queue=candidate->queue;}
         // Diagnostic only, first eight failures. Never select a recorded-only
         // pair as authorization or scan the entire inventory on every UI draw.
-        for(auto const& other:lists_)if(other.valid&&!other.executed&&
+        for(auto const& other:used_lists())if(other.valid&&!other.executed&&
             (other.ref.identity!=ref.identity||other.ref.generation!=ref.generation)){
             auto pair=recorded_pair_locked(other.ref,target);
             if(pair.linked){++value.other_complete_recorded_lists;
@@ -338,7 +345,7 @@ private:
             }
             // Unknown destination writes are never silently reclassified as
             // this transfer, even when recorded before its full-image draw.
-            for(auto const& list:lists_)if(list.executed)for(size_t i=0;i<list.count;++i){auto const& e=list.events[i];
+            for(auto const& list:used_lists())if(list.executed)for(size_t i=0;i<list.count;++i){auto const& e=list.events[i];
                 if(e.target.resource==event.target.resource&&!e.final&&!e.overlay&&!e.transfer&&!e.state_kind)rejection|=polluted;
             }
             if(rejection){window_bad_=true;window_rejection_|=rejection;return;}
@@ -443,7 +450,7 @@ public:
            window_bad_||capacity_bad_||pending_.active||revision_==UINT64_MAX)return false;
         // Detect contradictions to the birth proof before modifying anything.
         uint64_t discarded_events{},discarded_candidates{};
-        for(auto const& list:lists_){
+        for(auto const& list:used_lists()){
             for(size_t i=0;i<list.count;++i){
                 if(list.events[i].target.resource==target.resource)return false;
                 ++discarded_events;
@@ -453,7 +460,7 @@ public:
             if(candidate.target.resource==target.resource)return false;
             ++discarded_candidates;
         }
-        for(auto& list:lists_)list.count=0;
+        for(auto& list:used_lists())list.count=0;
         candidates_={};retired_ticket_=maximum_ticket_;
         stats_.owned_births=1;
         stats_.owned_birth_discarded_events=discarded_events; // Event records, not multiplicity/GPU draws.
@@ -495,7 +502,7 @@ public:
         // epoch zero is never admitted by find(). Only real Reset/Create can
         // restore admission. Clear old associations so a genuinely new resource
         // may reuse an address after the separately certified destruction.
-        for(auto& list:lists_){list.count=0;list.world_epoch=0;}
+        for(auto& list:used_lists()){list.count=0;list.world_epoch=0;}
         return true;
     }
     // Waiting hint only; never consumes evidence or changes certification.
@@ -505,7 +512,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         if(!resource||!owned_.enabled||resource!=owned_.target.resource)return false;
         if(pending_.active)return true;
-        for(auto const& list:lists_)if(!list.executed)
+        for(auto const& list:used_lists())if(!list.executed)
             for(size_t i=0;i<list.count;++i)if(list.events[i].target.resource==resource)return true;
         return false;
     }
@@ -588,7 +595,7 @@ public:
     }
     ListRef current(Identity identity) {
         std::lock_guard<std::mutex> lock(mutex_);
-        for (const auto& list : lists_) if (list.valid && list.ref.identity == identity) return list.ref;
+        for (const auto& list : used_lists()) if (list.valid && list.ref.identity == identity) return list.ref;
         return {};
     }
     uint64_t world_epoch(){std::lock_guard<std::mutex> lock(mutex_);return world_epoch_;}
@@ -619,8 +626,9 @@ public:
             window_bad_ = true; return {};
         }
         List* slot{};
-        for (auto& list : lists_) if (list.ref.identity == identity) { slot = &list; break; }
-        if (!slot) for (auto& list : lists_) if (!list.ref.identity) { slot = &list; break; }
+        for (auto& list : used_lists()) if (list.ref.identity == identity) { slot = &list; break; }
+        if (!slot) for (auto& list : used_lists()) if (!list.ref.identity) { slot = &list; break; }
+        if (!slot && used_prefix_ < list_capacity) {slot = &lists_[used_prefix_++];*slot={};}
         if (!slot) { ++stats_.list_overflow;capacity_bad_ = true; return {}; }
         if(!slot->ref.identity){++stats_.active_lists;if(stats_.active_lists>stats_.list_highwater)stats_.list_highwater=stats_.active_lists;}
         discard_recording(*slot);
@@ -640,8 +648,9 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);++stats_.list_creates;++revision_;
         if(!identity||generation_==UINT64_MAX){window_bad_=true;lose_owned();return {};}
         List* slot{};
-        for(auto& list:lists_)if(list.ref.identity==identity){slot=&list;break;}
-        if(!slot)for(auto& list:lists_)if(!list.ref.identity){slot=&list;break;}
+        for(auto& list:used_lists())if(list.ref.identity==identity){slot=&list;break;}
+        if(!slot)for(auto& list:used_lists())if(!list.ref.identity){slot=&list;break;}
+        if(!slot&&used_prefix_<list_capacity){slot=&lists_[used_prefix_++];*slot={};}
         if(!slot){++stats_.list_overflow;capacity_bad_=true;lose_owned();return {};}
         if(!slot->ref.identity){++stats_.active_lists;if(stats_.active_lists>stats_.list_highwater)stats_.list_highwater=stats_.active_lists;}
         discard_recording(*slot);
@@ -788,7 +797,7 @@ private:
         window_rejection_ = 0;
         // Explicit consumption retires all generations, including unsubmitted
         // recordings. Reclaim their slots; require fresh Reset next window.
-        for(auto& list:lists_)list={};stats_.active_lists=0;
+        used_prefix_=0;stats_.active_lists=0; // No list owns COM state; old bytes are unreachable.
         // Capacity faults remain sticky until explicit invalidate_all recovery.
         return result;
     }
@@ -810,8 +819,10 @@ public:
     // the certified submitted state. Never re-seed state from creation each frame.
     // Reject unfinished recordings to this resource; do not discard them to make
     // a frame appear complete. Failure is terminal for this output generation.
-    Result consume_owned_output(Identity resource,uint64_t generation,Identity verified_queue,uint64_t ticket) {
+    Result consume_owned_output(Identity resource,uint64_t generation,Identity verified_queue,uint64_t ticket,
+                                Identity* retired_executed=nullptr,size_t retired_capacity=0,size_t* retired_count=nullptr) {
         std::lock_guard<std::mutex> lock(mutex_);
+        if(retired_count)*retired_count=0;
         auto result=result_locked(resource,verified_queue,true);
         if(!owned_.enabled||!owned_.certified||resource!=owned_.target.resource||
            generation!=owned_.generation||verified_queue!=owned_.queue||pending_.active)
@@ -820,18 +831,25 @@ public:
             result.rejection|=ticket_conflict;
         for(auto const& candidate:candidates_)if(candidate.target.resource&&candidate.target.resource!=resource)
             result.rejection|=target_conflict;
-        for(auto const& list:lists_)if(list.count&&!list.executed){
+        for(auto const& list:used_lists())if(list.count&&!list.executed){
             for(size_t i=0;i<list.count;++i)if(list.events[i].target.resource==resource)
                 result.rejection|=metadata_lost;
         }
-        if(revision_==UINT64_MAX||stats_.owned_consumed_frames==UINT64_MAX)result.rejection|=capacity;
+        // A caller requesting reclamation must be able to receive every retired
+        // identity. Never drop a lease while the tracker still holds its slot.
+        if(revision_==UINT64_MAX||stats_.owned_consumed_frames==UINT64_MAX||
+           (retired_executed&&(!retired_count||retired_capacity<stats_.active_lists)))result.rejection|=capacity;
         if(!result.linked||result.rejection){
             result.linked=false;result.state_certified=false;lose_owned();return result;
         }
         // Executed recordings cannot be submitted again without a real Reset.
-        // Their association payload is consumed, but identity/generation/flags
-        // stay intact. Unsubmitted unrelated recordings remain untouched.
-        for(auto& list:lists_)if(list.executed)list.count=0;
+        // A caller with canonical identity leases may retire these slots and
+        // release matching leases after this successful consume. Re-execution
+        // without Reset remains a proof failure. Unsubmitted recordings stay.
+        for(auto& list:used_lists())if(list.executed){
+            if(retired_executed){retired_executed[(*retired_count)++]=list.ref.identity;list={};--stats_.active_lists;}
+            else list.count=0;
+        }
         candidates_={};retired_ticket_=ticket;
         ++revision_;change_owned();++stats_.owned_consumed_frames;
         return result;
@@ -856,7 +874,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         if(owned_.enabled||pending_.active||revision_==UINT64_MAX)return false;
         ++revision_;retired_ticket_=maximum_ticket_;candidates_={};
-        for(auto& list:lists_)list.count=0;
+        for(auto& list:used_lists())list.count=0;
         window_bad_=false;window_rejection_=0;
         return true;
     }
@@ -866,7 +884,7 @@ public:
     void invalidate_list(Identity identity) {
         std::lock_guard<std::mutex> lock(mutex_);
         ++revision_;lose_owned();
-        for (auto& list : lists_) if (list.ref.identity == identity) list.valid = false;
+        for (auto& list : used_lists()) if (list.ref.identity == identity) list.valid = false;
         window_bad_ = true;
     }
     // Recovery boundary: discard all tracked work and require fresh successful
@@ -874,7 +892,7 @@ public:
     void invalidate_all() {
         std::lock_guard<std::mutex> lock(mutex_);
         ++revision_;lose_owned();
-        for(auto& list:lists_)list={};
+        used_prefix_=0; // Reused slots are reset before their old bytes can be read.
         candidates_ = {};
         retired_ticket_ = maximum_ticket_;
         capacity_bad_ = false;

@@ -49,7 +49,7 @@ def _require(ok, reason):
         raise CrosshairConfigRejected(reason)
 
 
-def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False, entry_reader=None):
+def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False, include_aim_state=False, entry_reader=None):
     """Certify selected evidence, allowing only bounded registry count growth.
 
 Requires original execLet bytes, read directly at startup or through the
@@ -57,14 +57,14 @@ caller's bound owned-hook attestation capability during world recovery.
 Shared VM entry bytes are deliberately not certified (the UI owner may own it).
 """
     try:
-        return _build(resolver, camera, include_tick_roots, include_writer_view, entry_reader)
+        return _build(resolver, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader)
     except CrosshairConfigRejected:
         raise
     except (KeyError, TypeError, ValueError, RuntimeError, OSError, struct.error, UnicodeError) as e:
         raise CrosshairConfigRejected('Fresh certificate rejected: ' + str(e)) from e
 
 
-def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
+def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader):
     p = r.profile
     started = time.perf_counter_ns()
     _require(p.get('sha256') == camera.get('sha256') == GAME_SHA and
@@ -273,6 +273,22 @@ def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
             ranges.append((offset, 12)); view_roles[role] = add(prop); view_offsets[role] = offset
             view_shapes[role] = dict(dim=1, size=12, structure=add(structure))
         writer_view = dict(enabled=True, roles=view_roles, offsets=view_offsets, shapes=view_shapes)
+    aim_state = dict(enabled=False)
+    if include_aim_state:
+        _require(include_writer_view, 'Aiming state requires writer view')
+        from cinematic_anchor import BOOL_CODE
+        prop, offset = property_at(fresh(pc)['cls'], 'bIsTargeting', 'BoolProperty', True)
+        mask = number(prop + 0xd0, '<I')
+        _require(number(prop + 0x70, '<I') == 1 and number(prop + 0x74, '<I') == 4 and
+                 0 < mask < (1 << 32) and not mask & (mask - 1) and offset <= 65532,
+                 'Invalid aiming BoolProperty layout')
+        _require(number(r.base + 0x1b86280 + 0x2d * 8) == r.base + 0x1d6ea4 and
+                 number(number(prop) + 0x2a0) == r.base + 0x1daba0,
+                 'Aiming BoolProperty dispatch mismatch')
+        for rva, size, digest in BOOL_CODE:
+            _require(hashlib.sha256(stable(r.base + rva, size)).hexdigest() == digest,
+                     'Aiming BoolProperty code mismatch')
+        aim_state = dict(enabled=True, property=add(prop), offset=offset, mask=mask)
     expected = b'\x0f\x01' + struct.pack('<Q', lhs) + b'\x35' + struct.pack('<QQ', member, impact_struct) + bytes(3) + struct.pack('<Q', impact)
     _require(len(raw) >= 0x380 and raw[0x359:0x37f] == expected, 'Exact assignment tokens mismatch')
     native = []; attested_entry = None
@@ -341,7 +357,7 @@ def _build(r, camera, include_tick_roots, include_writer_view, entry_reader):
              impact_offset=impact_offset, member_offset=member_offset, ww_offset=ww_offset,
              impact_size=impact_size, property_structure=structure_offset,
              nativebyteschecks=native, native_slots=[dict(opcode=o, rva=v) for o,v in SLOTS.items()],
-             tick_roots=roots, writer_view=writer_view, read_only=True, runtime_coverage_proven=False,
+             tick_roots=roots, writer_view=writer_view, aim_state=aim_state, read_only=True, runtime_coverage_proven=False,
              provenance=dict(disk_exe_sha256=GAME_SHA, historical_code_sha256=HISTORICAL_CODE_SHA,
                              native_bytes_source='fresh process reads matched to bounded historical contract',
                              acquired_perf_counter_ns=started, finished_perf_counter_ns=time.perf_counter_ns()))
@@ -417,6 +433,23 @@ def validate_crosshair_assignment_config(c):
                 ranges.append((offset, 12))
         else:
             _require(set(view) == {'enabled'}, 'Disabled writer view has fields')
+        aim = c.get('aim_state', dict(enabled=False))
+        _require(type(aim) is dict and type(aim.get('enabled')) is bool, 'Invalid aiming state')
+        if aim['enabled']:
+            _require(set(aim) == {'enabled','property','offset','mask'} and view['enabled'], 'Incomplete aiming state')
+            index(aim['property']); prop = ids[aim['property']]
+            _require(prop['name'] == 'bIsTargeting' and prop['number'] == 0 and
+                     by_address[prop['cls']]['name'] == 'BoolProperty' and
+                     type(aim['offset']) is int and 0 <= aim['offset'] <= 65532 and
+                     type(aim['mask']) is int and 0 < aim['mask'] < (1 << 32) and
+                     not aim['mask'] & (aim['mask']-1), 'Invalid aiming property')
+            parent = ids[c['roles']['controller']]['cls']; seen = set()
+            parents = {ids[x['identity']]['address']:x['parent'] for x in c['supers']}
+            while parent and parent not in seen and parent != prop['outer']:
+                seen.add(parent); parent = parents.get(parent,0)
+            _require(parent == prop['outer'], 'Aiming property owner mismatch')
+        else:
+            _require(set(aim) == {'enabled'}, 'Disabled aiming state has fields')
         for f in c['fields'].values():
             index(f['property']); _require(type(f['offset']) is int and 0 <= f['offset'] < 65536, 'Invalid field offset')
         _require(set(c['layout']) == set(LAYOUT) and c['layout']['property_offset_internal'] == 0x94, 'Invalid layout')
@@ -477,6 +510,9 @@ def crosshair_assignment_ini(config):
     if view['enabled']:
         for role, index in view['roles'].items(): values['view_' + role] = index
         for role, offset in view['offsets'].items(): values['view_' + role + '_offset'] = offset
+    aim = c.get('aim_state', dict(enabled=False)); values['aim_enabled'] = int(aim['enabled'])
+    if aim['enabled']:
+        for key in ('property','offset','mask'): values['aim_'+key] = aim[key]
     for name,field in c['fields'].items():
         values[name+'_property']=field['property']; values[name+'_offset']=field['offset']
     for n,item in enumerate(c['identities']):

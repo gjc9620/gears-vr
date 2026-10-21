@@ -12,7 +12,10 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 $outputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
 $executable = Join-Path $outputDirectory 'GearsVrLauncher.exe'
-& $compiler /nologo /target:winexe /platform:x64 /optimize+ /codepage:65001 /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Web.Extensions.dll "/out:$executable" (Join-Path $PSScriptRoot 'GearsVrLauncher.cs')
+$icon = Join-Path $PSScriptRoot 'assets/launcher.ico'
+& (Join-Path $PSScriptRoot 'build-icon.ps1') -Destination $icon
+$artwork = [IO.Path]::ChangeExtension($icon, '.png')
+& $compiler /nologo /target:winexe /platform:x64 /optimize+ /codepage:65001 /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Web.Extensions.dll "/win32icon:$icon" "/resource:$icon,GearsVrUi.LauncherIcon" "/resource:$artwork,GearsVrUi.LauncherArtwork" "/out:$executable" (Join-Path $PSScriptRoot 'GearsVrLauncher.cs')
 if ($LASTEXITCODE -ne 0) { throw 'Launcher compilation failed.' }
 $test = Start-Process -FilePath $executable -ArgumentList '--self-test' -PassThru -Wait -WindowStyle Hidden
 if ($test.ExitCode -ne 0) { throw "Launcher self-test failed: $($test.ExitCode)" }

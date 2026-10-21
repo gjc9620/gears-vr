@@ -76,6 +76,17 @@ struct Fixture {
         m.put(identities.base+0x1d5efb,copy_route);m.block(identities.base+0x1d7ad0,32);m.put(identities.base+0x1d7ad0,execlet_entry);
     }
     auto read(){return [this](void* out,const void* a,std::size_t n){return m.read(out,a,n);};}
+    void enable_aim(){
+        enable_view();unsigned meta=0;
+        for(unsigned i=0;i<identities.identity_count;++i)if(!std::wcscmp(identities.identities[i].name.data(),L"Class"))meta=i;
+        const auto boolean=add(L"BoolProperty",meta);
+        c.aim={true,add(L"bIsTargeting",boolean,c.war_pc),0x90,0x20};
+        property(c.aim.property,c.aim.offset,4,c.aim.mask);
+        m.block(0xe0000,0x300);m.put(address(c.aim.property),std::uintptr_t(0xe0000));
+        m.put(0xe02a0,identities.base+0x1daba0);
+        m.put(identities.base+0x1b86280+0x2d*8,identities.base+0x1d6ea4);
+        m.put(address(c.controller)+c.aim.offset,unsigned(0x20));
+    }
     void enable_view(){
         auto class_index=[&](unsigned object){auto cls=identities.identities[object].cls;
             for(unsigned i=0;i<identities.identity_count;++i)if(address(i)==cls)return i;

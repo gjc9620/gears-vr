@@ -70,6 +70,18 @@ class PackageTests(unittest.TestCase):
             self.build()
         self.assert_clean()
 
+    def test_release_notes_required_only_for_versioned_public_release(self):
+        self.rows = [row for row in self.rows if row['path'] != 'portable-candidate.json']
+        self.add('portable-candidate.json', json.dumps({'kind': 'public-test-release', 'version': '0.0.1'}).encode())
+        self.save()
+        with self.assertRaisesRegex(ValueError, 'Missing required inventory members'):
+            self.build()
+        self.assert_clean()
+        self.add('RELEASE_NOTES.txt', b'public test notes'); self.save()
+        self.build()
+        with zipfile.ZipFile(self.output) as archive:
+            self.assertEqual(archive.read('RELEASE_NOTES.txt'), b'public test notes')
+
     def candidate_alias(self, alias, contents=None):
         self.rows = [row for row in self.rows if row['path'] != 'portable-candidate.json']
         self.add('portable-candidate.json', json.dumps({'candidate_manifest': alias}).encode())

@@ -56,7 +56,7 @@ void sample_source(Bank<ResourceIdentity>& bank,Row& row){
 }
 void draw(ID3D12GraphicsCommandList* list,uintptr_t caller){
     if(!recording.load()||!consuming_frozen_frame.unpossessed)return;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto* bank=current();if(!bank)return;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto* bank=current();if(!bank)return;
     const bool selected=late_quad_candidate.active&&(late_quad_candidate.caller==0x2ab6d9||late_quad_candidate.caller==0xd80a7b);
     const bool hdr=list&&frame_target_stats.binding(reinterpret_cast<uintptr_t>(list)).target.format==26;
     if(!selected&&!hdr)return;
@@ -71,7 +71,7 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller){
 }
 void targets_event(ID3D12GraphicsCommandList* list,unsigned count,bool single,uintptr_t caller){
     if(!recording.load()||!consuming_frozen_frame.unpossessed)return;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto* bank=current();if(!bank)return;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto* bank=current();if(!bank)return;
     Event e{};e.kind=targets;stamp(e,list,caller);e.target_count=count;e.flags=unsigned(single);
     if(bank->record(e,now())&&e.target.format==26)query(*bank,e.target.resource);
 }
@@ -81,7 +81,7 @@ Footprint footprint(D3D12_PLACED_SUBRESOURCE_FOOTPRINT const& p){
 void copy_event(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,UINT x,UINT y,UINT z,
     const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box,uintptr_t caller){
     if(!recording.load()||!consuming_frozen_frame.unpossessed)return;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto* bank=current();if(!bank)return;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto* bank=current();if(!bank)return;
     Event e{};e.kind=copy;stamp(e,list,caller);e.xyz={x,y,z};e.has_box=box!=nullptr;
     D3D12_TEXTURE_COPY_LOCATION src{},dst{};D3D12_BOX bounds{};
     if(safe_copy(&src,source,sizeof(src)))e.read_mask|=1;
@@ -101,7 +101,7 @@ void copy_event(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATIO
 }
 void barriers_event(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RESOURCE_BARRIER* values,uintptr_t caller){
     if(!recording.load()||!consuming_frozen_frame.unpossessed)return;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto* bank=current();if(!bank)return;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto* bank=current();if(!bank)return;
     const auto bounded=std::min(count,32u);
     for(unsigned i=0;i<bounded;++i){D3D12_RESOURCE_BARRIER b{};
         if(!safe_copy(&b,values?values+i:nullptr,sizeof(b))){bank->skip(barrier,count-i);++bank->read_failures;return;}
@@ -116,11 +116,11 @@ void barriers_event(ID3D12GraphicsCommandList* list,UINT count,const D3D12_RESOU
     if(count>bounded)bank->skip(barrier,count-bounded);
 }
 void executed(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     for(unsigned i=0;i<unpossessed_quads.size;++i)banks[i].executed({0,ref.identity,ref.generation},queue,order,member,now());
 }
 void print(FILE* file){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
 #if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
     constexpr unsigned barrier_available=1;
 #else

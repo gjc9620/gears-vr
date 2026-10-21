@@ -16,6 +16,7 @@
 #include "shutdown_diagnostics.h"
 #include "outage_diagnostics.h"
 #include "transition_card_layout.h"
+#include "menu_pixels.h"
 
 inline std::int64_t menu_capture_qpc_ticks(){
     LARGE_INTEGER counter{},frequency{};
@@ -35,6 +36,7 @@ class GameWindowFrames {
     winrt::com_ptr<ID3D11Device> device;
     winrt::com_ptr<ID3D11DeviceContext> context;
     winrt::com_ptr<ID3D11Texture2D> staging;
+    menu_pixels::Sampler pixel_sampler;
     winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool pool{nullptr};
     winrt::Windows::Graphics::Capture::GraphicsCaptureSession capture{nullptr};
     winrt::Windows::Graphics::Capture::GraphicsCaptureItem item{nullptr};
@@ -336,11 +338,8 @@ public:
         D3D11_BOX box{UINT(left),UINT(top),0,UINT(left+client.right),UINT(top+client.bottom),1};
         context->CopySubresourceRegion(staging.get(),0,0,0,0,texture.get(),0,&box);
         D3D11_MAPPED_SUBRESOURCE mapped{};check_hresult(context->Map(staging.get(),0,D3D11_MAP_READ,0,&mapped));
-        // Cheap diagnostic downsample; this is not the final GPU-only path.
-        for(unsigned y=0;y<height;++y)for(unsigned x=0;x<width;++x) {
-            const auto* input=static_cast<const unsigned char*>(mapped.pData)+size_t(uint64_t(y)*source_height/height)*mapped.RowPitch+size_t(uint64_t(x)*source_width/width)*4;
-            std::memcpy(pixels.data()+(size_t(y)*width+x)*4,input,4);
-        }
+        pixel_sampler.copy(pixels.data(),width,height,static_cast<const unsigned char*>(mapped.pData),
+                           mapped.RowPitch,source_width,source_height);
         context->Unmap(staging.get(),0);frame.Close();
         if(recover_window&&(!usable(hwnd)||state->closed())){
             retire_capture();menu_epoch.begin(menu_capture_qpc_ticks());return reject_capture(R::window_unavailable);
@@ -370,7 +369,25 @@ class GameScreen {
     uint64_t source_generation=0;
     unsigned chain_width{},chain_height{};
     outage_diagnostics::MenuSnapshot diagnostic_;
+    bool performance_diagnostics=false;
+    std::chrono::steady_clock::time_point performance_start{},render_start{};
+    unsigned performance_uploads=0,performance_calls=0,performance_rendered=0;
+    double performance_cpu_ms=0,performance_max_ms=0;
     bool finish_diagnostic(bool result){
+        if(performance_diagnostics){
+            const auto now=std::chrono::steady_clock::now();
+            const double cost=std::chrono::duration<double,std::milli>(now-render_start).count();
+            ++performance_calls;if(result)++performance_rendered;
+            performance_cpu_ms+=cost;performance_max_ms=std::max(performance_max_ms,cost);
+            const double seconds=std::chrono::duration<double>(now-performance_start).count();
+            if(seconds>=1){
+                printf("{\"menu_capture_performance\":true,\"observed_ns\":%lld,\"seconds\":%.6f,\"new_frames\":%u,\"render_calls\":%u,\"rendered\":%u,\"render_cpu_ms\":%.3f,\"maximum_render_ms\":%.3f,\"width\":%u,\"height\":%u}\n",
+                    gears_vr::monotonic_ns(),seconds,uploads-performance_uploads,performance_calls,performance_rendered,
+                    performance_cpu_ms,performance_max_ms,source.width,source.height);fflush(stdout);
+                performance_start=now;performance_uploads=uploads;performance_calls=performance_rendered=0;
+                performance_cpu_ms=performance_max_ms=0;
+            }
+        }
         diagnostic_.capture=source.diagnostic_snapshot();diagnostic_.current=current;return result;
     }
     void create_display_chain() {
@@ -465,10 +482,12 @@ public:
     outage_diagnostics::MenuSnapshot diagnostic_snapshot()const{
         return diagnostic_;
     }
+    void enable_performance_diagnostics(){performance_diagnostics=true;performance_start=std::chrono::steady_clock::now();}
     bool window_fresh(std::int64_t max_age){
         return startup&&current&&source.available()&&source_generation==source.generation()&&source.menu_fresh(nullptr,max_age);
     }
     bool render(XrCompositionLayerQuad& quad,std::int64_t max_age=MenuCaptureEpoch::maximum_age) {
+        if(performance_diagnostics)render_start=std::chrono::steady_clock::now();
         using Reason=outage_diagnostics::MenuRenderReason;
         diagnostic_={};diagnostic_.cached_only=false;diagnostic_.render_attempted=true;
         diagnostic_.reason=Reason::in_progress;
@@ -483,8 +502,11 @@ public:
             if(!available){current=false;diagnostic_.reason=Reason::window_unavailable;return finish_diagnostic(false);}
         }
         auto now=std::chrono::steady_clock::now();
-        if(now>=next_capture) {
-            next_capture=now+std::chrono::milliseconds(startup?33:67);
+        // Startup/recovery panels consume the latest available WGC frame on
+        // each XR tick. Missing or slightly future frames cost no extra 33 ms
+        // before retry; the mailbox and timestamp/epoch gates still apply.
+        if(startup||now>=next_capture) {
+            if(!startup)next_capture=now+std::chrono::milliseconds(67);
             diagnostic_.update_attempted=true;
             const bool updated=source.update();diagnostic_.updated=updated;
             if(startup&&source_generation!=source.generation()){
@@ -497,13 +519,13 @@ public:
                 current=false;if(updated)create_display_chain();
             }
             if(updated) {
-                uint64_t hash=14695981039346656037ULL;for(auto v:source.pixels)hash=(hash^v)*1099511628211ULL;
+                const auto hash=menu_pixels::fingerprint(source.pixels.data(),size_t(source.width)*source.height);
                 if(uploads && hash!=last_hash)++changes;last_hash=hash;if(!uploads)first_hash=hash;
                 void* mapped{};D3D12_RANGE read{0,0};dx_check(upload->Map(0,&read,&mapped),"map game upload");
                 for(unsigned y=0;y<source.height;++y) {
                     auto* dst=static_cast<unsigned char*>(mapped)+footprint.Offset+size_t(y)*footprint.Footprint.RowPitch;
                     const auto* src=source.pixels.data()+size_t(y)*source.width*4;
-                    for(unsigned x=0;x<source.width;++x){dst[x*4]=src[x*4+(format==DXGI_FORMAT_R8G8B8A8_UNORM?2:0)];dst[x*4+1]=src[x*4+1];dst[x*4+2]=src[x*4+(format==DXGI_FORMAT_R8G8B8A8_UNORM?0:2)];dst[x*4+3]=255;}
+                    menu_pixels::upload_row(dst,src,source.width,format==DXGI_FORMAT_R8G8B8A8_UNORM);
                 }
                 upload->Unmap(0,nullptr);
                 uint32_t index{};XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};xr_check(xrAcquireSwapchainImage(chain,&acquire,&index),"acquire game image");

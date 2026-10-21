@@ -39,6 +39,18 @@ def campaign_menu_sample(continue_game=False):
     return state
 
 
+def chapter_menu_sample(depth=4):
+    state = campaign_menu_sample(True)
+    for index, (name, cls) in enumerate((('DeltaSelectAct', 'WarUIScene'),
+            ('DeltaSelectMap', 'WarUIScene'), ('DeltaSelectDifficulty', 'WarUIScene'),
+            ('WarfareConfirmation', 'UIScene_Confirmation')), 4):
+        if index > depth:break
+        state['active_scenes'].append(dict(address=hex(0x1000+index*0x100), name=name,
+            cls=cls, number=index, outer=state['top']['outer'], input_mode=1))
+    state['top'] = dict(state['active_scenes'][-1], tag=state['active_scenes'][-1]['name'], tag_number=0)
+    return state
+
+
 SETTINGS = ('DeltaPause-Options', 'DeltaGameConfiguration', 'DeltaVideoSettings',
             'PenderGraphicsSettings', 'DeltaAudioVideoSettings', 'DeltaInputSettings')
 def settings_sample(name):
@@ -83,6 +95,65 @@ def loading_sample(blocked=2):
 
 
 class Tests(unittest.TestCase):
+    def test_chapter_selection_pages_keep_main_menu_display_without_input_authority(self):
+        with patch.object(sys, 'path', [str(pathlib.Path(__file__).resolve().parents[1]/'game-io'), *sys.path]):
+            from menu_control import allowed
+        for depth in range(4, 8):
+            for blocked in (0, 1):
+                state = dict(chapter_menu_sample(depth), input_block_count=blocked)
+                self.assertEqual(classify(state), MAIN_MENU)
+                self.assertFalse(allowed(state, 11))
+                # A standalone confirmation or a selector under Pause remains
+                # outside the exact main-menu chapter chain.
+                for index in range(len(state['active_scenes'])):
+                    changed = copy.deepcopy(state);changed['active_scenes'].pop(index)
+                    self.assertEqual(classify(changed), UNKNOWN)
+                for index in range(len(state['active_scenes'])):
+                    for key, value in (('name', 'Other'), ('cls', 'OtherClass'), ('input_mode', True),
+                            ('input_mode', 4.0), ('outer', '0x999'), ('address', '0x0'), ('number', True)):
+                        changed = copy.deepcopy(state);changed['active_scenes'][index][key] = value
+                        self.assertEqual(classify(changed), UNKNOWN, (depth, index, key))
+                for key, value in (('read_only', False), ('consistent_reread', False), ('input_block_count', 2),
+                        ('player_index', -1), ('player_index', True), ('active_scenes_truncated', True),
+                        ('focus_chain_truncated', True)):
+                    self.assertEqual(classify(dict(state, **{key: value})), UNKNOWN)
+                changed = copy.deepcopy(state);changed['active_scenes'][0]['address'] = changed['active_scenes'][1]['address']
+                self.assertEqual(classify(changed), UNKNOWN)
+                changed = copy.deepcopy(state);changed['active_scenes'][:2] = reversed(changed['active_scenes'][:2])
+                self.assertEqual(classify(changed), UNKNOWN)
+                changed = copy.deepcopy(state);changed['top']['number'] += 1
+                self.assertEqual(classify(changed), UNKNOWN)
+
+    def test_chapter_menu_publication_keeps_display_mode_until_gameplay(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = pathlib.Path(d)/'menu.bin';reader = Reader();monitor = self.monitor(path, reader)
+            states = [campaign_menu_sample(True), *[chapter_menu_sample(i) for i in range(4, 8)], sample(False)]
+            try:
+                for sequence, state in enumerate(states, 1):
+                    reader.sample = lambda state=state: state
+                    monitor.clock = lambda sequence=sequence: sequence*100
+                    monitor.poll()
+                    packet = PACKET.unpack(path.read_bytes())
+                    self.assertEqual(packet[3], GAMEPLAY if sequence == len(states) else MAIN_MENU)
+                    self.assertEqual(packet[-2:], (sequence, sequence*100))
+            finally:monitor.close()
+
+    @unittest.skipUnless((pathlib.Path(__file__).resolve().parents[2]/
+        'analysis/runtime/continuous-stereo-30768-20261020-153714-f929944f.menu.jsonl').exists(),
+        'local VDXR chapter-menu evidence unavailable')
+    def test_saved_headset_chapter_pages_are_main_menu_display(self):
+        path = pathlib.Path(__file__).resolve().parents[2]/'analysis/runtime/continuous-stereo-30768-20261020-153714-f929944f.menu.jsonl'
+        observed = set()
+        for line in path.read_text(encoding='utf-8').splitlines():
+            row = json.loads(line)
+            if not 461 <= row.get('sequence', 0) <= 1259:continue
+            state = row.get('state_evidence')
+            if not state:continue
+            self.assertEqual(row['mode'], UNKNOWN)  # Original fault receipt.
+            self.assertEqual(classify(state), MAIN_MENU)
+            observed.add(state['top']['tag'])
+        self.assertEqual(observed, {'DeltaSelectAct', 'DeltaSelectMap', 'DeltaSelectDifficulty', 'WarfareConfirmation'})
+
     def test_loading_display_exact_observed_stack_is_never_gameplay_or_input(self):
         # XR15 actual line9: same exact stack at block2 -> block1 -> block0.
         for blocked in (1,2):

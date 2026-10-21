@@ -5,7 +5,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
 #if !defined(GEARS_NATIVE_OWNED_PIXELS) || !GEARS_NATIVE_OWNED_PIXELS
  (void)input;return ERROR_NOT_SUPPORTED;
 #else
- if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>24)return 2;
+ if(!input)return 2;const unsigned mode=*static_cast<unsigned*>(input);if(mode>25)return 2;
  const bool xr_mode=(mode>=10&&mode<=12)||(mode>=19&&mode<=24);
  if(mode==19&&!owned_scene_gpu::sustained)return ERROR_NOT_SUPPORTED;
  gears_vr::RenderSizePlan fixture_size{2048,2048,2048,2048,4096,2048,1.};
@@ -44,23 +44,32 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
  owned_original_clear=reinterpret_cast<OwnedClearFn>(lt[48]);original_create_rtv=reinterpret_cast<CreateRtvFn>(dt[20]);
  self_testing=true;recording=true;frame_link_diagnostics=true;enabled=true;
  if(FAILED(list->Close())||FAILED(hook_reset_list(list.Get(),allocator.Get(),nullptr)))return 6;
- if(mode>=13&&mode<=18){
+ if((mode>=13&&mode<=18)||mode==25){
 #if defined(GEARS_NATIVE_OWNED_SCENE_PROBE) && GEARS_NATIVE_OWNED_SCENE_PROBE
   if(!continuous_probe)return ERROR_NOT_SUPPORTED;
   // Real WARP list lifetime, synthetic scene metadata. Exercise production
   // Draw/prepare/commit wiring; no scene resource or native Owner is created.
   ComPtr<ID3D12GraphicsCommandList> created_list;
   auto* observed=list.Get();
-  if(mode==14||mode==15){
+  if(mode==14||mode==15||mode==25){
    if(FAILED(list->Close()))return 53; // One recording list per allocator.
-   if(mode==14){
+   if(mode!=15){
     if(FAILED(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&created_list))))return 40;
    }else{
     ComPtr<ID3D12Device4> d4;if(FAILED(device.As(&d4))||
      FAILED(d4->CreateCommandList1(0,D3D12_COMMAND_LIST_TYPE_DIRECT,D3D12_COMMAND_LIST_FLAG_NONE,IID_PPV_ARGS(&created_list))))return 41;
    }
-   void* output=created_list.Get();list_created(S_OK,&output,mode==14);observed=created_list.Get();
+   void* output=created_list.Get();list_created(S_OK,&output,mode!=15);observed=created_list.Get();
    if(error)return 42;
+   const auto creates=tracker.snapshot().list_creates;
+   list_created(S_OK,&output,mode!=15);
+   if(error||list_creation_repeats!=1||tracker.snapshot().list_creates!=creates)return 74;
+   if(mode==25){
+    const gears_frame_link::Identity retired_id=canonical_identity(observed);
+    release_retired_list_leases(&retired_id,1);
+    return list_creation_active==0&&list_creation_retired==1&&
+      tracker.current(retired_id).identity==retired_id?0:75;
+   }
   }
   const auto identity=canonical_identity(observed);
   if(mode==13&&!frame_link.current(identity).identity)return 43;

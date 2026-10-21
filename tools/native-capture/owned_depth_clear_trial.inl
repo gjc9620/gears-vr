@@ -40,7 +40,7 @@ bool enable(FILE* file){
 }
 void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT instances,UINT start,UINT first_instance){
     if(caller!=base+0x1af345){original_draw(list,vertices,instances,start,first_instance);return;}
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++attempts;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);++attempts;
     Input in{};in.enabled=enabled;in.attested=attested;in.module_base=base;in.caller=caller;
     in.module_size=module_size;in.observer_base=observer_base;in.observer_size=observer_size;
     in.vertices=vertices;in.instances=instances;in.start=start;in.first_instance=first_instance;
@@ -107,7 +107,7 @@ void draw(ID3D12GraphicsCommandList* list,uintptr_t caller,UINT vertices,UINT in
     gears_owned_depth_clear::forward(decision,viewport,[&]{original_draw(list,vertices,instances,start,first_instance);++returned;});
 }
 void print(FILE* file){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"owned_depth_clear_receipt_scope owned_scene_only=1 unowned_skipped=%llu frozen_source_extent=1 present_extent_independent=1\n",unowned_receipts_skipped);
     fprintf(file,"owned_depth_clear_trial compiled=1 enabled=%u attested=%u attempts=%llu applied=%llu noops=%llu returned=%llu restored=%llu accepted_rows=%u accepted_limit=16 accepted_overflow=%llu rejected_rows=%u rejected_limit=16 rejected_overflow=%llu dsv_size_known=0 viewport_only=1 pixels_verified=0\n",unsigned(enabled),unsigned(attested),attempts,applied,noops,returned,restored,accepted_count,accepted_overflow,rejected_count,rejected_overflow);
     for(unsigned reason=1;reason<gears_owned_depth_clear::reason_count;++reason)if(reason!=gears_owned_depth_clear::already_correct)

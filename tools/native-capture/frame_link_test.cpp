@@ -363,6 +363,31 @@ int main() {
         CHECK(!t.present(buffer, queue).linked);
     }
     {
+        auto storage=std::make_unique<Tracker>();auto& t=*storage;
+        CHECK(t.configure_owned_output({buffer,1920,1080},queue,9,4,true));
+        const auto pending=t.reset_success(1);
+        CHECK(t.draw_unknown(pending,buffer+1)); // Unsubmitted recording survives every consume.
+        uint64_t last_generation{};
+        for(uint64_t frame=1;frame<=100;++frame){
+            std::array<ListRef,16> submitted{};
+            for(size_t i=0;i<submitted.size();++i){
+                submitted[i]=t.create_success(2+(frame-1)*submitted.size()+i,true);
+                CHECK(submitted[i].generation>last_generation);
+                last_generation=submitted[i].generation;
+            }
+            pair(t,submitted[0],frame);
+            ExecutionToken token{};CHECK(t.prepare_execute(queue,submitted.data(),submitted.size(),token));
+            CHECK(t.commit_execute(token));
+            std::array<Identity,Tracker::list_capacity> retired{};size_t count{};
+            const auto consumed=t.consume_owned_output(buffer,9,queue,frame,retired.data(),retired.size(),&count);
+            CHECK(consumed.linked&&consumed.state_certified&&count==submitted.size());
+            for(size_t i=0;i<count;++i)CHECK(retired[i]==submitted[i].identity&&!t.current(retired[i]).identity);
+            CHECK(t.current(pending.identity).generation==pending.generation);
+            CHECK(t.snapshot().active_lists==1&&!t.snapshot().list_overflow);
+        }
+        CHECK(t.snapshot().list_highwater==17&&!t.snapshot().capacity_bad);
+    }
+    {
         auto storage = std::make_unique<Tracker>(); auto& t = *storage;
         for (size_t i = 0; i <= Tracker::target_capacity; ++i) {
             auto a = t.reset_success(i + 1);

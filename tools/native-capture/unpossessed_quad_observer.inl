@@ -7,7 +7,7 @@ struct UnpossessedQuadPayload {
 gears_unpossessed_quad::Recorder<UnpossessedQuadPayload> unpossessed_quads;
 void observe_unpossessed_ticket(){
     if(!frame_link_diagnostics||!recording.load()||!consuming_frozen_frame.enabled||!consuming_frozen_frame.unpossessed)return;
-    std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
     unpossessed_quads.select(consuming_frozen_frame.unpossessed,{committed_world_generation.load(),consuming_frame_ticket});
 }
 auto* current_unpossessed_quad_bank(){
@@ -19,12 +19,12 @@ auto* current_unpossessed_quad_bank(){
 }
 void observe_unpossessed_quad_begin(){
     if(!late_quad_candidate.active||!recording.load()||!consuming_frozen_frame.unpossessed)return;
-    std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
     if(auto* bank=current_unpossessed_quad_bank())++bank->quad_calls;
 }
 void observe_unpossessed_quad_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned kind,unsigned elements,unsigned instances){
     if(!late_quad_candidate.active||!frame_link_diagnostics||!recording.load()||!consuming_frozen_frame.unpossessed)return;
-    std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
     auto* bank=current_unpossessed_quad_bank();if(!bank)return;
     gears_unpossessed_quad::Key key{};auto& k=key.call;
     k.args=late_quad_candidate.args;k.dimensions=late_quad_candidate.dimensions;k.quad_caller=late_quad_candidate.caller;
@@ -66,14 +66,14 @@ void observe_unpossessed_quad_draw(ID3D12GraphicsCommandList* list,uintptr_t cal
 }
 void observe_unpossessed_quad_execute(uintptr_t queue,gears_frame_link::ListRef ref,uint64_t order,unsigned member){
     if(!ref.identity||!ref.generation)return;
-    std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
     for(unsigned b=0;b<unpossessed_quads.size;++b){auto& bank=unpossessed_quads.banks[b];
         for(unsigned i=0;i<bank.size;++i){auto& r=bank.rows[i];auto& p=r.payload;
             if(!p.execute_order&&r.key.list_identity==ref.identity&&r.key.list_generation==ref.generation){
                 p.queue=queue;p.execute_order=order;p.execute_member=member;}}}
 }
 void print_unpossessed_quads(FILE* file){
-    std::lock_guard<std::recursive_mutex> guard(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
     fprintf(file,"unpossessed_quad_summary enabled=1 cpu_only=1 pixels_verified=0 admission=frozen_unpossessed_consumed_ticket selection=first3_and_49th consume_order=1 distinct_capped=%u selection_closed=%u banks=%u bank_limit=4 rows_per_bank=64 source_slots_limit=32 source_hints_limit=4 source_queries=new_rows_only engine_binding_hints=1 native_view_read_bits=current_view:1,renderer_views:2,renderer_count:4 native_view_stride=0xd30 native_view_required_count=2 final_quad_eye_source=existing_classification execute_source=cpu_pre_original execute_association=first_observed_matching_generation submission_completed=0\n",
         unpossessed_quads.distinct,unsigned(unpossessed_quads.distinct==49),unpossessed_quads.size);
     for(unsigned b=0;b<unpossessed_quads.size;++b){const auto& bank=unpossessed_quads.banks[b];

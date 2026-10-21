@@ -141,6 +141,18 @@ template<class Read> bool parse_config(Read read,unsigned expected_pid,std::uint
             for(unsigned j=0;j<i;++j)if(overlap(offsets[j],12))return false;
         }
     }
+    wchar_t aim_text[64]{};
+    if(read(L"aim_enabled",aim_text,64)){unsigned enabled{};
+        if(!load(L"aim_enabled",enabled)||enabled>1)return false;
+        c.aim.enabled=enabled!=0;
+    }
+    if(c.aim.enabled){
+        if(!c.view.enabled||!load(L"aim_property",c.aim.property)||c.aim.property>=ids.identity_count||
+           !load(L"aim_offset",c.aim.offset)||c.aim.offset>65532||!load(L"aim_mask",c.aim.mask)||
+           !c.aim.mask||(c.aim.mask&(c.aim.mask-1))||
+           !detail::named(c,c.aim.property,L"bIsTargeting",L"BoolProperty")||
+           !gears_ui::derives(ids,ids.identities[c.controller].cls,ids.identities[c.aim.property].outer))return false;
+    }
     auto link=[&](const wchar_t* key,const wchar_t* name,unsigned owner,Field& f){wchar_t k[64]{};
         std::swprintf(k,64,L"%ls_property",key);if(!load(k,f.property)||f.property>=ids.identity_count)return false;
         std::swprintf(k,64,L"%ls_offset",key);if(!load(k,f.offset)||f.offset>=65536)return false;

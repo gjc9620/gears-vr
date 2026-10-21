@@ -52,14 +52,14 @@ void initialize_native_owned_scene(bool image_verified){gears_owned_scene_live::
 }
 bool native_owned_scene_tick(uint64_t ticket){using namespace gears_owned_scene_live;
  std::lock_guard<std::recursive_mutex> native_guard(session_native_mutex);
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  if(handoff.armed()){
  if(shutdown_conflict||pipeline.pending.ticket||!handoff.can_recreate(committed_world_generation.load(),ticket,submitted_lifetime.stopping()))return false;
   owned_scene_gpu::CreateScope scope;
   const bool ok=owner.recreate_on_rhi(*ops,gears_native_render_size::width(),gears_native_render_size::height(),ticket);created=owner.snapshot();
   if(!ok){trial.error=8;return false;}
   owned_scene_gpu::accept(owner.borrow_resource(),ticket);
-  const auto completed=trial.completed;trial={};trial.completed=completed;
+  if(!pipeline.reset_resource()){trial.error=9;return false;}
   if(!trial.ready(canonical_identity(owner.borrow_resource()),reinterpret_cast<uintptr_t>(owner.borrow_adapter()),ticket)||
      !handoff.recreated(shutdown,committed_world_generation.load(),ticket)){trial.error=9;return false;}
   resource_world=committed_world_generation.load();owned_scene_gpu::handoff_recreated();return true;
@@ -75,14 +75,23 @@ bool native_owned_scene_tick(uint64_t ticket){using namespace gears_owned_scene_
   trial.error=9;return false;}return true;
 }
 uintptr_t native_owned_scene_candidate(){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  if(shutdown.stopping()||submitted_lifetime.stopping()||pipeline_failed)return 0;
  if(!pipeline.pending.ticket&&trial.complete()&&healthy()&&owned_scene_gpu::can_advance(trial.ticket)){
-  if(!trial.advance(trial.ticket,true)){trial.error=12;return 0;}
+  const auto completed_ticket=trial.ticket;
+  // The output can precede the CPU tail; certify warm-up again once both
+  // proofs are complete, before advance clears this ticket.
+  pipeline.output_boundary(completed_ticket);
+  if(!trial.advance(completed_ticket,true)){trial.error=12;return 0;}
+  // The queued pipeline and active proof must advance together when overlap
+  // is disabled after a consumer-thread change.
+  if(pipeline.active.ticket&&
+     (pipeline.active.ticket!=completed_ticket||!pipeline.active.advance(completed_ticket,true))){
+   native_owned_pipeline_failure(5);return 0;}
  }
  if(!healthy())return 0;
  if(trial.candidate())return trial.adapter;
- return pending_pipeline&&trial.ticket&&!pipeline.pending.ticket&&!handoff.requested()&&consumer_thread.load()&&!consumer_moved.load()&&
+ return pending_pipeline&&pipeline.output_observed&&trial.ticket&&!pipeline.pending.ticket&&!handoff.requested()&&consumer_thread.load()&&!consumer_moved.load()&&
    resource_world==committed_world_generation.load()&&owned_ui_can_bind_frame()?trial.adapter:0;}
 void native_owned_scene_pending_fallback(void* destination){using namespace gears_owned_scene_live;
  // Called under frame_hook_mutex at the exact pending-ticket fallback branch.
@@ -101,7 +110,7 @@ void native_owned_scene_pending_fallback(void* destination){using namespace gear
  row.pointer_occurrence=occurrence;row.ambiguous=ambiguous;
 }
 void native_owned_scene_fallback_built(void* destination,void* result){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  FallbackConsume* matched{};unsigned matches{};const auto pointer=reinterpret_cast<uintptr_t>(destination);
  const auto thread=GetCurrentThreadId();
  for(unsigned i=0;i<fallback_row_count;++i){auto& row=fallback_rows[i];
@@ -138,14 +147,14 @@ void native_owned_scene_fallback_consume(void* renderer,uint64_t input_ticket){u
 void native_owned_scene_progress(FILE* output){using namespace gears_owned_scene_live;
  uint64_t count{},ticket{};unsigned mask{};std::array<uint64_t,6> conditions{};
  unsigned rows{};uint64_t overflow{},ready{},notready{},mismatch{},unverified{},repeat{},return_mismatch{};
- {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
   count=pending_fallbacks;ticket=pending_fallback_ticket;mask=pending_fallback_mask;conditions=pending_conditions;
   rows=fallback_row_count;overflow=fallback_overflow;ready=fallback_ready;notready=fallback_notready;mismatch=fallback_mismatch;
   unverified=fallback_unverified;repeat=fallback_repeat;return_mismatch=fallback_return_mismatch;}
  fprintf(output,"owned_pending_fallbacks=%llu owned_pending_ticket=%llu owned_pending_mask=%u owned_pending_return=%llu owned_pending_destroy=%llu owned_pending_draw=%llu owned_pending_submit=%llu owned_pending_consume=%llu owned_pending_ui=%llu ",
   count,ticket,mask,conditions[0],conditions[1],conditions[2],conditions[3],conditions[4],conditions[5]);
  uint64_t selected{},promoted{},rejected{},pending{};bool failed{};unsigned failure{};
- {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);selected=pending_selections;promoted=pending_promotions;
+ {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);selected=pending_selections;promoted=pending_promotions;
   rejected=pending_rejections;pending=pipeline.pending.ticket;failed=pipeline_failed;failure=pipeline_failure_reason;}
  fprintf(output,"owned_pipeline_enabled=%u owned_pipeline_selected=%llu owned_pipeline_promoted=%llu owned_pipeline_rejected=%llu owned_pipeline_pending_ticket=%llu owned_pipeline_failed=%u owned_pipeline_failure_reason=%u ",
   pending_pipeline?1u:0u,selected,promoted,rejected,pending,failed?1u:0u,failure);
@@ -170,7 +179,7 @@ void native_owned_scene_pace(){
    // Never block on a mod lock while waiting for the RHI thread. In particular
    // the RHI create/destroy paths must be able to enter session_native_mutex.
    std::unique_lock<std::recursive_mutex> session(session_native_mutex,std::try_to_lock);
-   std::unique_lock<std::recursive_mutex> frame(frame_hook_mutex,std::defer_lock);
+   std::unique_lock<FrameHookMutex> frame(frame_hook_mutex,std::defer_lock);
    if(session.owns_lock())frame.try_lock();
    if(frame.owns_lock()){
     if(!trial.ticket||trial.error||shutdown.stopping()||handoff.requested()){outcome=3;break;}
@@ -198,7 +207,7 @@ void native_owned_scene_pace(){
 #endif
 }
 bool native_owned_scene_try_bootstrap(){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
 #if defined(GEARS_NATIVE_OWNED_PIXELS) && GEARS_NATIVE_OWNED_PIXELS
  const auto world=committed_world_generation.load();const auto life=submitted_lifetime.snapshot();
  if(shutdown_conflict||pipeline.pending.ticket||trial.error||!handoff.armed()||submitted_lifetime.stopping()||
@@ -215,18 +224,18 @@ bool native_owned_scene_try_bootstrap(){using namespace gears_owned_scene_live;
 #endif
 }
 bool native_owned_scene_select(void* renderer,uint64_t ticket,uintptr_t adapter){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  const bool ok=pipeline.select(reinterpret_cast<uintptr_t>(renderer),ticket,adapter,
    pending_pipeline&&consumer_thread.load()&&!consumer_moved.load()&&owned_ui_can_bind_frame());
  if(!ok&&pending_pipeline&&trial.ticket){++pending_rejections;native_owned_pipeline_failure(3);}
  if(ok){if(pipeline.pending_match(reinterpret_cast<uintptr_t>(renderer),ticket))++pending_selections;owned_scene_gpu::selected(ticket);}return ok;}
 bool native_owned_scene_built(void* renderer,uint64_t ticket,bool verified){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);uintptr_t target{};
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);uintptr_t target{};
  const bool read=safe_copy(&target,static_cast<unsigned char*>(renderer)+0x18,8);
  owned_scene_gpu::built(ticket);
  return pipeline.construction(reinterpret_cast<uintptr_t>(renderer),ticket,verified&&read&&healthy(),target);}
 bool native_owned_scene_begin(void* renderer,uint64_t ticket,uint64_t world,bool nested){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  native_owned_scene_fallback_consume(renderer,ticket);
  const auto address=reinterpret_cast<uintptr_t>(renderer);
  if(pending_pipeline&&((pipeline.pending.ticket&&pipeline.pending.renderer==address&&pipeline.pending.ticket!=ticket)||
@@ -234,7 +243,12 @@ bool native_owned_scene_begin(void* renderer,uint64_t ticket,uint64_t world,bool
   ++pending_rejections;native_owned_pipeline_failure(4);return false;
  }
  if(pending_pipeline&&pipeline.pending_match(reinterpret_cast<uintptr_t>(renderer),ticket)){
-  const bool identity=!nested&&!consumer_moved.load()&&consumer_thread.load()==GetCurrentThreadId()&&
+  // A pending renderer may already exist when the game's consumer moves to a
+  // different RHI thread. The old output/order proof remains required; retire
+  // this one pending renderer and disable further overlap after the move.
+  const auto previous_consumer=consumer_thread.load();
+  const bool moved=previous_consumer&&previous_consumer!=GetCurrentThreadId();
+  const bool identity=!nested&&previous_consumer&&
     world==resource_world&&world==committed_world_generation.load()&&world==frame_link.world_epoch()&&healthy()&&
     owner.snapshot().phase==gears_native_owned::Phase::live&&!shutdown.stopping()&&!handoff.requested();
   const auto result=identity?pipeline.promote(reinterpret_cast<uintptr_t>(renderer),ticket,
@@ -242,6 +256,7 @@ bool native_owned_scene_begin(void* renderer,uint64_t ticket,uint64_t world,bool
   if(result!=gears_owned_scene::Promotion::promoted){++pending_rejections;
     native_owned_pipeline_failure(result==gears_owned_scene::Promotion::identity_mismatch?2u:1u);return false;}
   ++pending_promotions;
+  if(moved){consumer_moved=true;consumer_thread=GetCurrentThreadId();}
  }
  const bool ok=healthy()&&trial.begin(reinterpret_cast<uintptr_t>(renderer),ticket);
  if(ok&&trial.renderer==reinterpret_cast<uintptr_t>(renderer)&&trial.ticket==ticket){
@@ -256,6 +271,9 @@ void native_owned_scene_copy(){using namespace gears_owned_scene_live;
  owned_scene_gpu::copy(healthy()&&trial.returned&&trial.destroyed&&trial.submitted_mask==3&&!trial.unknown_draws&&owned_ui_ready(trial.ticket),trial.ticket);
 #if defined(GEARS_OWNED_UI_ROUTE_PROBE) && GEARS_OWNED_UI_ROUTE_PROBE
  if(owned_scene_gpu::consumed_count>consumed_before){
+  // The GPU/output proof above, not a thread identifier from the previous
+  // world, permits overlap after resource recreation.
+  pipeline.output_boundary(trial.ticket); // An incomplete CPU tail keeps overlap disabled.
   if(owned_scene_gpu::published_count>published_before&&owned_scene_gpu::latest_publication.ticket==trial.ticket)
    owned_ui_published(trial.ticket);
   else owned_ui_discard_completed(trial.ticket);
@@ -263,25 +281,42 @@ void native_owned_scene_copy(){using namespace gears_owned_scene_live;
 #endif
 }
 bool native_owned_scene_consuming(void* renderer,uint64_t ticket){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  return trial.resource&&!trial.error&&trial.entered&&!trial.returned&&ticket&&
   trial.ticket==ticket&&trial.renderer==reinterpret_cast<uintptr_t>(renderer);}
 void native_owned_scene_end(void* renderer,uint64_t ticket){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  if(auto* row=pipeline.find(reinterpret_cast<uintptr_t>(renderer),ticket))row->end(reinterpret_cast<uintptr_t>(renderer),ticket);
  if(trial.renderer==reinterpret_cast<uintptr_t>(renderer)&&trial.ticket==ticket)owned_scene_gpu::returned(ticket);native_owned_scene_copy();}
 void native_owned_scene_destroyed(void* renderer,uint64_t ticket){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  if(auto* row=pipeline.find(reinterpret_cast<uintptr_t>(renderer),ticket))row->retire(reinterpret_cast<uintptr_t>(renderer));
  if(trial.renderer==reinterpret_cast<uintptr_t>(renderer)&&trial.ticket==ticket)owned_scene_gpu::destroyed(trial.ticket);native_owned_scene_copy();}
+#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
+bool native_owned_scene_dlss_target(uintptr_t target,uint64_t world,uint64_t ticket,unsigned width,unsigned height){
+ using namespace gears_owned_scene_live;
+ return target&&target==trial.resource&&!trial.error&&trial.built&&trial.entered&&!trial.returned&&
+  trial.renderer==reinterpret_cast<uintptr_t>(consuming_renderer)&&ticket&&ticket==trial.ticket&&
+  world&&world==resource_world&&world==committed_world_generation.load()&&!shutdown.stopping()&&
+  width==gears_native_render_size::width()&&height==gears_native_render_size::height();
+}
+#endif
 void native_owned_scene_draw(ID3D12GraphicsCommandList* list,gears_viewport::TargetDraw const& binding,
- uintptr_t caller,unsigned kind,unsigned elements,unsigned instances){using namespace gears_owned_scene_live;
+ uintptr_t caller,unsigned kind,unsigned elements,unsigned instances,gears_final_transfer::EyeDrawEvidence const& output={}){using namespace gears_owned_scene_live;
  if(shutdown.phase()==gears_owned_retirement::Phase::released)return;
  if(!trial.resource||binding.target.resource!=trial.resource)return;
  if(shutdown.stopping()){shutdown_conflict=true;return;}
  const auto state=owned_bindings_enabled?owned_target_stats.draw_state(canonical_identity(list)):
   frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
- const bool exact=final_eye.valid&&binding.targets==1&&!binding.target.mip&&final_eye.width==gears_native_render_size::width()&&final_eye.height==gears_native_render_size::height()&&
+ bool output_valid=true;
+#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
+ if(final_eye_candidate.caller==0xd83cbf||dlss_output_control::sdk_scoped()||dlss_output_control::native_scoped())output_valid=output.candidate&&output.world==resource_world&&
+  output.ticket==trial.ticket&&output.eye==final_eye.eye&&output.target==trial.resource&&
+  output.list==canonical_identity(list)&&output.generation==frame_link.current(output.list).generation;
+#else
+ (void)output;
+#endif
+ const bool exact=output_valid&&final_eye.valid&&binding.targets==1&&!binding.target.mip&&final_eye.width==gears_native_render_size::width()&&final_eye.height==gears_native_render_size::height()&&
   binding.target.width==gears_native_render_size::width()&&binding.target.height==gears_native_render_size::height()&&verified_stereo_draw(
    state,final_eye,caller,kind,elements,instances);
  trial.draw(binding.target.resource,owned_scene_gpu::list_ref(canonical_identity(list)),consuming_frame_ticket,final_eye.eye,exact);
@@ -300,14 +335,14 @@ void native_owned_scene_commit(gears_owned_scene::Receipt const& receipt){using 
  trial.commit(receipt,[](uintptr_t identity){return owned_scene_gpu::list_ref(identity);});
  if(trial.submitted_mask==3)owned_scene_gpu::submitted(trial.ticket);native_owned_scene_copy();}
 bool native_owned_scene_retained(){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  return attempted&&(owner.retained()||(handoff.requested()&&!owned_scene_gpu::handoff_retired(handoff.identity())));}
 // Caller holds session_native_mutex: native_cpu_drained includes closed entry
 // admission, no pending submitted renderers/state, and no producer build scope.
 // Canvas is independently derived from every active owned UI ledger receipt.
 bool native_owned_scene_shutdown_worker(bool native_cpu_drained,bool canvas_drained,bool bridges_closed){
  using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  if(!attempted||(!owner.retained()&&(!handoff.requested()||owned_scene_gpu::handoff_retired(handoff.identity()))))return true;
  if(shutdown_conflict)return false;
  if(pipeline.pending.ticket)return false; // Native queued renderer must drain before resource retirement.
@@ -331,7 +366,7 @@ void native_owned_scene_shutdown_rhi(){using namespace gears_owned_scene_live;
  thread_local bool servicing{};
  if(servicing||!shutdown_rhi_ready.load())return;
  std::lock_guard<std::recursive_mutex> native_guard(session_native_mutex);
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  if(shutdown.phase()!=gears_owned_retirement::Phase::gpu_drained||shutdown_conflict||GetCurrentThreadId()!=created.creation_thread)return;
  if(handoff.requested()&&!owned_scene_gpu::handoff_current()){shutdown_conflict=true;return;}
  servicing=true;if(shutdown.retire_on_rhi(owner)){
@@ -340,10 +375,10 @@ void native_owned_scene_shutdown_rhi(){using namespace gears_owned_scene_live;
  }servicing=false;
 }
 uint64_t native_owned_scene_resource_generation(){
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);return gears_owned_scene_live::created.generation;
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);return gears_owned_scene_live::created.generation;
 }
 bool native_owned_scene_handoff_prepare(uint64_t old_world,uint64_t cutoff,bool native_cpu_drained,bool canvas_drained){
- using namespace gears_owned_scene_live;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ using namespace gears_owned_scene_live;std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  if(submitted_lifetime.stopping()||shutdown_conflict||pipeline.pending.ticket||!attempted||resource_world!=old_world||
     old_world!=committed_world_generation.load()||!native_cpu_drained||!canvas_drained||
     cutoff<created.generation||cutoff<trial.ticket||cutoff<trial.last_ticket||
@@ -356,7 +391,7 @@ bool native_owned_scene_handoff_prepare(uint64_t old_world,uint64_t cutoff,bool 
  return owned_scene_gpu::prepare_handoff(old_world,cutoff);
 }
 bool native_owned_scene_handoff_step(bool bridge_sources_retired){
- using namespace gears_owned_scene_live;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ using namespace gears_owned_scene_live;std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  if(!handoff.requested()||shutdown_conflict)return false;
  if(shutdown.phase()==gears_owned_retirement::Phase::cpu_drained&&
     owned_scene_gpu::prepare_handoff(handoff.identity().world,handoff.identity().ticket_cutoff)&&owned_scene_gpu::drain_handoff(bridge_sources_retired))
@@ -364,26 +399,26 @@ bool native_owned_scene_handoff_step(bool bridge_sources_retired){
  return shutdown.phase()==gears_owned_retirement::Phase::released&&!owner.retained()&&owned_scene_gpu::handoff_retired(handoff.identity());
 }
 bool native_owned_scene_handoff_failed(){
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  return gears_owned_scene_live::shutdown_conflict||owned_scene_gpu::handoff_failed()||
   (gears_owned_scene_live::handoff.requested()&&gears_owned_scene_live::trial.error);
 }
 bool native_owned_scene_handoff_receipt(gears_owned_retirement::Handoff::Receipt& receipt){
- using namespace gears_owned_scene_live;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ using namespace gears_owned_scene_live;std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  return !shutdown_conflict&&handoff.receipt(shutdown,owner.retained(),owned_scene_gpu::handoff_retired(handoff.identity()),receipt);
 }
 bool native_owned_scene_handoff_current(gears_owned_retirement::Handoff::Receipt const& receipt){
- using namespace gears_owned_scene_live;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ using namespace gears_owned_scene_live;std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  return !shutdown_conflict&&!owner.retained()&&handoff.current(shutdown,receipt)&&owned_scene_gpu::handoff_retired(receipt.identity());
 }
 bool native_owned_scene_handoff_arm(gears_owned_retirement::Handoff::Receipt const& receipt,uint64_t next_world){
- using namespace gears_owned_scene_live;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ using namespace gears_owned_scene_live;std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  if(submitted_lifetime.stopping()||frame_link.world_epoch()!=next_world||!native_owned_scene_handoff_current(receipt))return false;
  if(!handoff.arm(shutdown,receipt,next_world,false)||!owned_scene_gpu::rearm_handoff(receipt.identity(),next_world))return false;
  shutdown_rhi_ready.store(false);return true;
 }
 void print_native_owned_scene(FILE* file){using namespace gears_owned_scene_live;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  owned_scene_gpu::poll();owned_scene_gpu::print(file);
  fprintf(file,"owned_fallback_consume_policy capacity=64 append_only=1 association=unique_destination_and_constructor_return constructor_qpc_scope=pending_fallback_before_original outcome=ready:1,notready:2,identity_mismatch:3,return_unverified:4 ready_requires=complete_and_can_advance ui_ready_is_independent_after_publication=1\n");
  for(unsigned i=0;i<fallback_row_count;++i){const auto& row=fallback_rows[i];
@@ -427,7 +462,7 @@ bool native_owned_scene_begin(void*,uint64_t,uint64_t,bool){return true;}
 bool native_owned_scene_consuming(void*,uint64_t){return false;}
 void native_owned_scene_end(void*,uint64_t){}
 void native_owned_scene_destroyed(void*,uint64_t){}
-void native_owned_scene_draw(ID3D12GraphicsCommandList*,gears_viewport::TargetDraw const&,uintptr_t,unsigned,unsigned,unsigned){}
+void native_owned_scene_draw(ID3D12GraphicsCommandList*,gears_viewport::TargetDraw const&,uintptr_t,unsigned,unsigned,unsigned,gears_final_transfer::EyeDrawEvidence const& ={}){}
 gears_owned_scene::Receipt native_owned_scene_prepare(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*){return {};}
 void native_owned_scene_commit(gears_owned_scene::Receipt const&){}
 bool native_owned_scene_retained(){return false;}

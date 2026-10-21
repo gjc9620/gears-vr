@@ -19,6 +19,7 @@ from start_capture import k, modules, remote_call, pefile, ROOT, run_hidden, pre
 from runtime_probe import Process
 sys.path.insert(0,str(ROOT/'tools/debug-launch'))
 from game_install import validate_game, debug_command
+import instance_policy
 from run_stereo_continuous import WindowsControl
 k.SetEvent.argtypes=[w.HANDLE];k.SetEvent.restype=w.BOOL
 
@@ -187,8 +188,11 @@ def main():
         print(json.dumps({'reservation_selftests_prelaunch_ms':(time.perf_counter_ns()-started)/1e6,'capture_suite_tests':len(suite)}),flush=True)
     else:
         for command,options in scheduled:run_hidden(command,**options)
-    result=run_hidden(['powershell','-NoProfile','-NonInteractive','-Command',"if(Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue){exit 1}else{exit 0}"],capture_output=True)
-    if result.returncode:raise RuntimeError('Existing game must exit normally first')
+    isolated=instance_policy.context()
+    if isolated and pathlib.Path(args.build_dir).resolve()!=(isolated/'native').resolve():
+        raise RuntimeError('Concurrent reservation requires private native status/build files')
+    if not isolated and instance_policy.shared_game_pids(instance_policy.running_game_pids()):
+        raise RuntimeError('Existing game must exit normally first')
     pe=pefile.PE(str(dll));export=next(x for x in pe.DIRECTORY_ENTRY_EXPORT.symbols if x.name==b'GearsCaptureReserve')
     frame_link_capable=any(x.name==b'GearsCaptureFrameLinkCheck' for x in pe.DIRECTORY_ENTRY_EXPORT.symbols)
     if export.forwarder:raise RuntimeError('Forwarded reserve export rejected')

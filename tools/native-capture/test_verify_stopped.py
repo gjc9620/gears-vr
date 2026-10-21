@@ -18,10 +18,10 @@ class VerifyStoppedTests(unittest.TestCase):
     def test_full_owned_inventory_keeps_every_entry_and_rejects_duplicates(self):
         def status(count):
             return ''.join(f'hook_target={0x140000000+i*32:x} create=MH_OK queue=MH_OK\n' for i in range(count))
-        for count in (2, 65, 87):
+        for count in (2, 65, 87, 91, 102):
             self.assertEqual(verify_stopped.hook_targets(status(count)),
                              [0x140000000+i*32 for i in range(count)])
-        for raw in (status(1), status(88), status(65)+status(2)):
+        for raw in (status(1), status(103), status(65)+status(2)):
             with self.assertRaises(RuntimeError):verify_stopped.hook_targets(raw)
 
     # Historical artifact 1 entry bytes, independent of status-file contents.
@@ -282,7 +282,7 @@ class VerifyStoppedTests(unittest.TestCase):
 
     def test_clean_status_and_inventory_preconditions_remain_required(self):
         cases = [dict(pid=322), dict(stopped=False), dict(rvas=(0x296178,)),
-                 dict(rvas=(0x296178, 0x296178)), dict(rvas=tuple(range(88)))]
+                 dict(rvas=(0x296178, 0x296178)), dict(rvas=tuple(range(103)))]
         for values in cases:
             with self.subTest(values=values):
                 self.write_status(**values)
@@ -294,12 +294,37 @@ class VerifyStoppedTests(unittest.TestCase):
                 self.assertFalse(self.output.exists())
 
     def test_dlss_default_ranges_are_fixed_complete_historical_chunks(self):
+        self.assertEqual(verify_stopped.DLSS_OWNED_DOF_RANGES, (
+            (0xd7fd14, 0xe61, '62ceae022db3ea1d7fd0994520e2cbff6c1b1dca288023d1a56bd957fbca7d5c'),))
         self.assertEqual(verify_stopped.DLSS_OUTPUT_RANGES, (
             (0xd82f58, 0xc78, '1efb10541bf56d87b31aae4f452da0d281afd552da16b4bfd16d653f2cd425ea'),
             (0xd83bd0, 0x1e9, 'e051a2d325a4d5ebc12be670d63cd8eae1eead437f33dfa39946de852e61e724'),
         ))
         self.assertEqual(verify_stopped.DLSS_INPUT_BIND_CHUNKS, ((0x1665dc, 0x1cc), (0x8b492c, 0x2b)))
         self.assertEqual(verify_stopped.DLSS_INPUT_BIND_SHA256, '566929fd4f84a21529de0ecb749d2dc75a1bf2ab3cc04876a65f65517222a339')
+
+    def test_owned_dof_full_body_and_tail_are_verified_independently(self):
+        rva, size, _ = verify_stopped.DLSS_OWNED_DOF_RANGES[0]
+        original = bytes(i % 251 for i in range(size))
+        ranges = ((rva, size, hashlib.sha256(original).hexdigest()),)
+        for changed_at in (None, 0, size - 1, 'short'):
+            with self.subTest(changed_at=changed_at):
+                current = bytearray(original)
+                if isinstance(changed_at, int):current[changed_at] ^= 1
+                if changed_at == 'short':current = current[:-1]
+                self.memory[self.base + rva] = bytes(current)
+                self.write_status((rva, 0x15cf08))
+                with self.status.open('a') as stream:stream.write('entries_restored=1 dlss_route_identity match=1\n')
+                with mock.patch.object(verify_stopped, 'DLSS_OWNED_DOF_RANGES', ranges):
+                    if changed_at is None:self.invoke()
+                    else:
+                        with self.assertRaises(SystemExit):self.invoke()
+                report = json.loads(self.output.read_text())
+                self.assertEqual(report['all_match'], changed_at is None)
+                self.assertEqual(report['checks'][0]['expected_size'], 0xe61)
+                self.assertEqual(report['checks'][0]['source_snapshot_sha256'],
+                                 '911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+                self.read.assert_any_call(self.base + rva, size)
 
     def dlss_fixture(self):
         # Synthetic test bytes and real SHA256; do not check proprietary chunks

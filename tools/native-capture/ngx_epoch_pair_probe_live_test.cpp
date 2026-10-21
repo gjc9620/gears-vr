@@ -11,6 +11,7 @@ namespace gears_submitted {struct FrameTicket {uint64_t id{},world_generation{};
 namespace gears_ngx_route {constexpr uintptr_t handle_cell_rva=0x1c20bd0,parameter_cell_rva=0x1c20bd8;}
 namespace ngx_stereo_host {struct NativeCreateSource {uint64_t revision{},world{};uintptr_t handle{},parameters{};std::array<uint32_t,7> fields{};};}
 namespace {
+using FrameHookMutex=std::recursive_mutex;
 std::recursive_mutex frame_hook_mutex;std::atomic<bool> recording{true};std::atomic<unsigned> active{0};std::atomic<uint64_t> committed_world_generation{2};
 std::vector<unsigned char> module(0x1c3b400),renderer_bytes(0x100),left_bytes(0x430),right_bytes(0x430);
 uintptr_t base=reinterpret_cast<uintptr_t>(module.data());void* consuming_renderer=renderer_bytes.data();uint64_t consuming_frame_ticket=10;

@@ -9,6 +9,45 @@
 #include "ngx_native_create_source.h"
 #include "ngx_stereo_native_bridge.h"
 #include "ngx_stereo_native_api.h"
+#include "ngx_owned_publication.h"
+#include "dlss_output_control.h"
+namespace ngx_capture_control {
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+bool trial_before_create();
+void print_trial(FILE*);
+bool pixel_capture_ready();
+bool preprocess_pixel_mode();
+bool preprocess_pixel_resources(std::array<uintptr_t,4>&);
+bool scene_color_pixel_mode();
+bool right_draw_pixel_mode();
+bool pre_eval_pixel_mode();
+bool baseline_pixel_mode();
+bool baseline_pixel_ready();
+bool input_union_mask_trial(uint64_t,uint64_t,uintptr_t,uintptr_t);
+bool constructor_source_enabled();
+void consumed(uint64_t,uint64_t,uintptr_t,bool);
+bool post_copy_color_pixels();
+bool output_route_sample_ready();
+#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
+gears_ngx_owned::Publication owned_publication(uint64_t,uint64_t);
+bool native_output_ticket(uint64_t,uint64_t,uintptr_t,uintptr_t,gears_dlss_output::NativeGap&,bool preserve_candidate=false);
+bool native_output_current(gears_dlss_output::NativeGap const&);
+void owned_draw_observe(ID3D12GraphicsCommandList*,gears_viewport::TargetDraw const&,uintptr_t,unsigned,unsigned,unsigned,bool);
+void owned_copy_observe(ID3D12GraphicsCommandList*,D3D12_TEXTURE_COPY_LOCATION const*,UINT,UINT,UINT,D3D12_TEXTURE_COPY_LOCATION const*,D3D12_BOX const*,uintptr_t,unsigned);
+#endif
+bool final_output_ticket(uint64_t,uint64_t,uintptr_t,uintptr_t,gears_ngx_stereo::RecordedOutput&);
+bool final_output_current(gears_ngx_stereo::RecordedOutput const&);
+bool final_target_pixel_mode();
+void acquire_final_target_barriers(UINT,D3D12_RESOURCE_BARRIER const*);
+bool final_target_pixel_pair(uintptr_t,ID3D12Resource*&,ID3D12Resource*&,unsigned&,gears_ngx_stereo::Rect&);
+bool right_draw_pixel_pair(uintptr_t,ID3D12Resource*&,ID3D12Resource*&,unsigned&,gears_ngx_stereo::Rect&);
+void right_draw_pixel_trace(unsigned,float,float,float,float,float,float,float,float);
+bool output_target_rect_trial();
+bool packed_input_trial();
+bool scene_color_pixel_pair(ID3D12Resource*,ID3D12Resource*&);
+void scene_color_transition_trace(unsigned,unsigned,unsigned,unsigned,uintptr_t,bool,uint64_t);
+#endif
+}
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER && \
     defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER && \
     defined(GEARS_NGX_EPOCH_PAIR_OBSERVER) && GEARS_NGX_EPOCH_PAIR_OBSERVER
@@ -26,16 +65,24 @@ using EvaluateWrapperFn=uint64_t(__fastcall*)(uintptr_t,uintptr_t,uintptr_t,void
 using CopyFn=void(STDMETHODCALLTYPE*)(ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,UINT,UINT,UINT,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_BOX*);
 using ExecuteFn=void(STDMETHODCALLTYPE*)(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*);
 #if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
+// Acquired before the wrapper's observation/frame locks. Extra GetOptimal
+// calls and complete native parameter setters share this serialization scope.
+// Acquired before any frame bookkeeping lock at wrapper/Execute/Copy/Reset
+// entry. It orders adapter operations without holding frame_hook_mutex over SDK.
+struct ApiOrderScope {std::unique_lock<std::recursive_mutex> lock;ApiOrderScope();};
+struct ParameterScope {std::unique_lock<std::recursive_mutex> lock;ApiOrderScope order;ParameterScope();};
 struct ControlConsumption {uint64_t world{},ticket{};uintptr_t renderer{};};
 struct ControlCreateBinding {
     gears_ngx_stereo::Identity identity{};gears_ngx_stereo::Layout layout{};gears_ngx_stereo::Command command{};
     gears_ngx_stereo::NativeOptimalSettings optimal{}; // One query covers two identically sized independent features.
+    uint64_t creation_ticket{};
 };
 struct ControlInputTicket {
     ControlConsumption consumption{};std::array<uintptr_t,2> original_views{};
     std::array<gears_ngx_stereo::ProducerObservation,2> producers{};
     // Adapter order Color,Depth,MV,Output; must come from retained typed bindings.
     std::array<uint64_t,4> raw_resources{};gears_ngx_stereo::Command command{};
+    bool native_transition{}; // Private, unpublished first pair; no fresh MV claim.
 };
 struct ControlCallbacks {
     // Retains the actual ticket/typed-resource/fence owner until drained detach.
@@ -53,12 +100,12 @@ class ControlOwner {
     gears_ngx_stereo::NativeDispatchBackend backend_;
     gears_ngx_stereo::StereoAdapter adapter_;
     gears_ngx_stereo::NativeWrapperBridge bridge_;
-    ControlCallbacks callbacks_;bool configured_{};
+    ControlCallbacks callbacks_;bool configured_{},packed_input_{};
     std::mutex metadata_mutex_;ControlCreateBinding creation_{};
 public:
     ControlOwner(gears_ngx_stereo::NativeDispatchFunctions functions,gears_ngx_stereo::AdapterPrerequisites prerequisites,ControlCallbacks callbacks)
         :backend_(functions),adapter_(backend_,prerequisites),bridge_(adapter_,true),callbacks_(std::move(callbacks)),
-         configured_(functions.ready()&&functions.optimal&&prerequisites.ready()&&callbacks_.lifetime&&callbacks_.create&&callbacks_.input&&callbacks_.completion&&callbacks_.admit){}
+         configured_(functions.ready()&&functions.optimal&&prerequisites.ready()&&callbacks_.lifetime&&callbacks_.create&&callbacks_.input&&callbacks_.completion&&callbacks_.admit),packed_input_(prerequisites.packed_input_staging){}
     ControlOwner(ControlOwner const&)=delete;
     bool configured()const{return configured_;}
     bool can_detach(){auto e=adapter_.enter();return e&&(!backend_.create_attempts()||adapter_.drained(e));}
@@ -69,7 +116,9 @@ public:
     uint64_t create(NativeCreateSource const&,uintptr_t,gears_ngx_stereo::CreateShadow const&,void const*,std::function<uint64_t(void const*)> const&);
     uint64_t evaluate(ControlConsumption,uintptr_t,uintptr_t,uintptr_t,gears_ngx_stereo::EvaluateShadow const&,void const*,std::function<uint64_t(void const*)> const&);
     uint32_t release(uint64_t handle,std::function<uint32_t(uint64_t)> const& original){
-        return bridge_.release_dispatch(handle,callbacks_.completion(callbacks_.lifetime.get(),handle),original);}
+        backend_.trace("release_wrapper_begin",0,handle);
+        const auto result=bridge_.release_dispatch(handle,callbacks_.completion(callbacks_.lifetime.get(),handle),original);
+        backend_.trace("release_wrapper_return",0,handle,result);return result;}
 };
 gears_ngx_stereo::NativeOptimalQuery native_optimal_query();
 bool attach_control(std::shared_ptr<ControlOwner> const&);
@@ -101,6 +150,8 @@ void draw(ID3D12GraphicsCommandList*,uintptr_t,unsigned,unsigned);
 void copy_passthrough(ID3D12GraphicsCommandList*,D3D12_TEXTURE_COPY_LOCATION const*,UINT,UINT,UINT,D3D12_TEXTURE_COPY_LOCATION const*,D3D12_BOX const*,uintptr_t,CopyFn);
 void execute_passthrough(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*,ExecuteFn);
 #else
+struct ApiOrderScope {};
+struct ParameterScope {};
 inline uint64_t create_passthrough(uintptr_t a,uintptr_t b,uintptr_t c,uintptr_t d,uintptr_t e,void const* p,CreateWrapperFn f){return f(a,b,c,d,e,p);}
 inline uint64_t evaluate_passthrough(bool,uintptr_t a,uintptr_t b,uintptr_t c,void const* p,EvaluateWrapperFn f){return f(a,b,c,p);}
 struct WrapperScope {WrapperScope(bool,bool,uintptr_t,uintptr_t,void const*){}void normal_return(uint64_t){}};

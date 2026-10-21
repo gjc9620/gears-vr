@@ -55,7 +55,7 @@ bool list_methods(ID3D12GraphicsCommandList* list){
 }
 void STDMETHODCALLTYPE set(ID3D12GraphicsCommandList* list,ID3D12PipelineState* pso){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress());Scope scope;ngx_mv_compute_capture::SetScope witness(list,pso,caller,scope.world());
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     const auto id=identity(list);invalidate(id);
     ID3D12PipelineState* held{};uintptr_t canonical{};size_t index=list_limit;uint64_t generation{};
     if(scope.world()&&!stereo_publish_bypass&&selected()&&id&&list_methods(list)){
@@ -68,20 +68,20 @@ void STDMETHODCALLTYPE set(ID3D12GraphicsCommandList* list,ID3D12PipelineState* 
         else {transient[index]=held;bank.witness(index,generation,canonical,now());}}
 }
 void STDMETHODCALLTYPE clear(ID3D12GraphicsCommandList* list,ID3D12PipelineState* pso){
-    Scope scope;ngx_mv_compute_capture::RevocationScope revoke(list,1);std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const auto id=identity(list);++clears;invalidate(id);
+    Scope scope;ngx_mv_compute_capture::RevocationScope revoke(list,1);std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);const auto id=identity(list);++clears;invalidate(id);
     original_clear(list,pso);invalidate(id); // ClearState's initial PSO is deliberately never inferred.
     revoke.finish();
 }
 void STDMETHODCALLTYPE bundle(ID3D12GraphicsCommandList* list,ID3D12GraphicsCommandList* child){
-    Scope scope;ngx_mv_compute_capture::RevocationScope revoke(list,2);std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const auto id=identity(list);++bundles;invalidate(id);
+    Scope scope;ngx_mv_compute_capture::RevocationScope revoke(list,2);std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);const auto id=identity(list);++bundles;invalidate(id);
     original_bundle(list,child);invalidate(id); // No inference from bundle contents.
     revoke.finish();
 }
 void reset(ID3D12GraphicsCommandList* list,HRESULT hr){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);++resets;if(FAILED(hr))++failed_resets;invalidate(identity(list));
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);++resets;if(FAILED(hr))++failed_resets;invalidate(identity(list));
 }
 HRESULT reset_passthrough(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator* allocator,ID3D12PipelineState* state){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     const auto hr=death_hdr_pixels::reset_passthrough(list,allocator,state);reset(list,hr);return hr;
 }
 gears_unpossessed_quad::NativeView native_view(){
@@ -94,7 +94,7 @@ gears_unpossessed_quad::NativeView native_view(){
 }
 void draw(ID3D12GraphicsCommandList* list){
     if(!late_quad_candidate.active||late_quad_candidate.caller!=0xd80a7b)return;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!selected())return;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!selected())return;
     const auto view=native_view();if(!view.eye_valid){++rejected;return;}
     auto& r=receipts[view.eye];if(r.present){++duplicate_draws;return;}
     auto* selected=current_unpossessed_quad_bank();r.present=true;r.eye=view.eye;r.ticket=selected->ticket.id;r.world=selected->ticket.world;
@@ -110,7 +110,7 @@ void draw(ID3D12GraphicsCommandList* list){
 }
 void poll(){
     for(size_t i=0;i<caches.size();++i){ID3D12PipelineState* pso{};uint64_t ticket{};
-        {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& c=caches[i];if(!c.held||c.attempted)continue;c.attempted=true;pso=c.held;ticket=c.ticket;}
+        {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto& c=caches[i];if(!c.held||c.attempted)continue;c.attempted=true;pso=c.held;ticket=c.ticket;}
         ID3DBlob* blob{};const HRESULT hr=cached_blob(pso,&blob);size_t size{};bool saved{};DWORD error{};wchar_t path[MAX_PATH]{};
         if(SUCCEEDED(hr)&&blob){size=blob->GetBufferSize();if(save_size(size)){
             const auto length=GetModuleFileNameW(own_module,path,MAX_PATH);auto* slash=length&&length<MAX_PATH?wcsrchr(path,L'\\'):nullptr;
@@ -125,11 +125,11 @@ void poll(){
         }else error=size?ERROR_FILE_TOO_LARGE:ERROR_INVALID_DATA;}
         else if(SUCCEEDED(hr))error=ERROR_INVALID_DATA;
         if(blob)blob->Release();
-        {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);auto& c=caches[i];c.hr=hr;c.size=size;c.saved=saved;c.error=error;wcscpy_s(c.path,path);}
+        {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);auto& c=caches[i];c.hr=hr;c.size=size;c.saved=saved;c.error=error;wcscpy_s(c.path,path);}
     }
 }
-void stop(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);stopped=true;invalidate(0);}
-void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void stop(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);stopped=true;invalidate(0);}
+void print(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"death_pso_cache enabled=1 cpu_only=1 gpu_commands_added=0 selection_ordinal=49 list_limit=64 transient_hold_limit=64 permanent_hold_limit=2 blob_save_limit=4194304 cache_internal_allocation_bounded=0 cache_attempts_per_pso=1 opaque_stops_attempt=1 list_overflow=%llu capacity_lost=%u pso_overflow=%llu rejected=%llu duplicate_draws=%llu resets=%llu failed_resets=%llu clears=%llu bundles=%llu untracked_sets=%llu all_mutating_hook_paths=1 inherit_reset_pso=0 infer_bundle_pso=0\n",
         bank.overflow,unsigned(bank.capacity_lost),captures.overflow,rejected,duplicate_draws,resets,failed_resets,clears,bundles,untracked_sets);
     for(auto const& r:receipts)if(r.present)fprintf(file,"death_pso_draw eye=%u ticket=%llu world=%llu list=%llx canonical=%llx generation=%llu native_view=%llx draw_qpc=%lld set_witness_qpc=%lld known=%u reason=%u pso=%llx cache=%zu reason_bits=unknown_generation_or_state:1,held_identity_failed:2,cache_capacity:3\n",

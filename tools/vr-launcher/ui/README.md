@@ -1,5 +1,11 @@
 # 双语实验启动器 / Bilingual experimental launcher
 
+2026-10-21 玩家安装反馈修复：自动查找同时支持启动器旁的 `GOWDE-Steam.exe`、`Binaries_x64/GOWDE-Steam.exe`，以及上述目录下的一层 Mod 子目录；保留已有有效路径，最多向上一层查找。启动预留失败时直接显示原始子进程错误和退出码，并继续保存完整本地日志；启动前失败也可在导出日志里保留原因。见[反馈处理记录](../../../docs/164-launcher-steam-install-feedback.md)。
+
+2026-10-21：默认 OpenXR 改为系统 Runtime；只有手动选择 VDXR 或模拟器时才覆盖子进程 Runtime。启动器 EXE/窗口图标使用用户提供的彩色图案，右下角为32px灰度淡化图案；ICO和小图嵌入EXE，不增加运行时外部图片依赖。原图保存在assets/launcher-artwork.png，build-icon.ps1生成16–256px图标及32px内嵌小图。以下旧日期的默认VDXR描述属于历史记录。
+
+2026-10-21：打开启动器时保留已有有效游戏路径；路径为空或文件已不存在时，自动查找启动器根目录下的 `Binaries_x64/GOWDE-Steam.exe` 并填入。查找不依赖快捷方式的工作目录，不扫描其他磁盘；正常启动时继续执行原有游戏版本检查。找不到时仍可浏览选择，点击启动后按既有方式保存。
+
 在仓库内用 Windows PowerShell 执行：
 
 ```powershell
@@ -22,6 +28,8 @@ Python 按 `GEARSVR_PYTHON`、随包 `runtime/python/python.exe`、当前用户 
 “停止 VR”只运行 `launcher.py stop`；不直接终止游戏或 owner。很早收到停止请求时，若 Python 尚未启动则取消本次启动；否则保留请求，等待索引中的 owner PID/创建时间与本窗口启动的 Python 匹配。launcher 写入该索引前已建立停止 event，身份确认后才调用 stop；等待期间不会假报停止成功。关闭仍在运行的本窗口会询问是否请求停止，并保留窗口等待 owner 退出；选择“否”继续运行。清理未完成时保留窗口与日志，可继续查看状态或再次停止。不要用任务管理器强制终止 GUI；异常关机或外部强制结束不在此关闭策略覆盖范围内。
 
 “查看状态”调用现有身份检查状态接口，完整输出显示在窗口。日志保存在 `analysis/runtime/vr-launcher-ui.log`，可用“打开日志”定位目录。状态不自动刷新，需点击获取。启动按钮等待其 owner 完成后才能再次使用；原生资源退出限制与现有 launcher 相同。
+
+启动器窗口中的“双目新帧”每秒读取当前会话的遥测，显示新发布的双目画面 FPS，并同时显示 OpenXR 循环 Hz。数据来自 `analysis/runtime/continuous-stereo-*.telemetry.jsonl`；只有会话 owner 匹配、样本新鲜且原生采样有效时才显示数字。启动前、采样中断或会话结束时显示等待数据。OpenXR 循环 Hz 不代表游戏新帧率，也不等于头显实际显示帧率。
 
 “视角回中”用于本窗口启动的VR会话，复用 `launcher.py recenter`。请求前核对启动器owner身份，后端继续核对运行阶段、游戏/XR身份和原生会话；未运行、正在停止或已有回中请求执行中时不可重复点击。成功提示只表示已请求，实际应用仍由有效追踪帧决定，可用“查看状态”检查 `reference_generation`。回中保留真实抬头和侧倾，不更改游戏存档或镜头距离。
 

@@ -1,6 +1,8 @@
-# GearsVR 研究原型
+# GearsVR 0.0.1
 
-目标是为 Gears of War: Reloaded 交付第三人称同帧双目 VR Mod，包含 6DoF 头部跟踪、菜单和游戏 UI。旧版已获真实头显游玩反馈；后续 UI、准星、字幕和 DLSS/DLAA 保护已有分项实现与证据，完整首版回归及便携发布包仍未完成。
+Gears of War: Reloaded 第三人称同帧双目 VR Mod。2026-10-21 已生成 0.0.1 本地公开测试包 `releases/0.0.1/GearsVR-0.0.1.zip`，已发布到 [GitHub Release](https://github.com/gjc9620/gears-vr/releases/tag/v0.0.1)。用户已确认第一幕通过、KRVR + AVP 与 VD + Quest 3 可玩，并确认准星问题解决。保留机枪切换约2秒延迟、后续章节未全部验证及DLSS禁用的限制。安装见[随包教程](docs/releases/0.0.1/README.txt)，发布文案见[发布说明](docs/releases/0.0.1/RELEASE_NOTES.txt)，构建与检查范围见[打包记录](docs/releases/0.0.1/PACKAGE_BUILD.txt)。
+
+当前包冻结 AdsAnchor2 native / MountedLatency1 XR，VR每眼尺寸为 OpenXR 推荐值 × 启动器 Render scale；游戏内分辨率控制桌面镜像。压缩包内置 Python，不要求玩家准备开发环境。以下日期记录及研究结果保留其历史范围。
 
 2026-10-15 玩家测试入口已按要求撤下 Low/High 固定分辨率，改用游戏输出尺寸。双击本机仓库根目录 `GearsVR Launcher.exe`，选择模拟器或系统 OpenXR Runtime，点击“启动 VR”后自行进入关卡。“停止 VR”正常停止会话，不自动结束测试或强杀游戏。1920×1080 游戏输出对应每眼 960×1080；更改游戏分辨率后请重启游戏和 VR。新组合已通过编译及离线检查，闪烁是否消失待用户实测。参见[启动器说明](tools/vr-launcher/ui/README.md)和[当前构建记录](docs/62-game-resolution-launcher.md)。
 

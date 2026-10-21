@@ -26,7 +26,7 @@ void observe_late_draw(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned
     if(!late_quad_candidate.active||!frame_link_diagnostics||!recording.load())return;
     // frame_lock is conditional: recording may have changed after it checked.
     // Always acquire here, as the final-eye diagnostic recorder does.
-    std::lock_guard<std::recursive_mutex> diagnostic_guard(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> diagnostic_guard(frame_hook_mutex);
     ++late_quad_candidate.draws;
     const auto raw=reinterpret_cast<uintptr_t>(list);const auto binding=frame_target_stats.binding(raw);
     const bool known=swapchain_bindings.known_buffer(binding.target.resource);

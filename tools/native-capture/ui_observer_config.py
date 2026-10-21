@@ -109,18 +109,30 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
     # fresh(), selected identities, registry bounds or the final checks below.
     # Providers without this optional capability retain their ordinary path.
     discover=getattr(r,'discovery_identity_reader',lambda:r.identity)()
-    for address in pointers:
-        if not address:continue
-        # Cached identity is a discovery hint only; every accepted item is fresh.
-        try:hint=discover(address)
-        except DiscoveryRegistryChanged:raise
-        except (RuntimeError,OSError,ValueError,UnicodeError):continue
+    discover_class=getattr(discover,'class_identity',None)
+    def ordinary_candidates():
+        for address in pointers:
+            if not address:continue
+            try:
+                if discover_class is not None and discover_class(address)['name']!='Class':continue
+                yield address,discover(address)
+            except DiscoveryRegistryChanged:raise
+            except (RuntimeError,OSError,ValueError,UnicodeError):continue
+    batched=getattr(r,'discovery_class_candidates',None)
+    candidates=batched(pointers) if callable(batched) else ordinary_candidates()
+    found={}
+    for address,hint in candidates:
         if hint['name'] not in class_names:continue
         item=fresh(address)
         if item['number'] or fresh(item['cls'])['name']!='Class':continue
         if item['name'] in classes:raise UIConfigRejected('Duplicate UI owner class')
-        is_class(address,item['name']);classes[item['name']]=address
+        classes[item['name']]=address;found[item['name']]=item
     if set(classes)!=class_names:raise UIConfigRejected('Required UI owner class missing')
+    # Keep the original registry ordering in the authoritative certificate.
+    # Re-prove the complete first identity before recording its ordered ID.
+    for name,item in sorted(found.items(),key=lambda pair:pair[1]['internal_index']):
+        if fresh(item['address'])!=item:raise UIRegistryChanged('UI class changed during discovery; reacquire')
+        is_class(item['address'],name)
     def property_info(owner,name,kind):
         prop=r.property(owner,name,True);field=fresh(prop['address'])
         if field['name']!=name or fresh(field['cls'])['name']!=kind or prop['type']!=kind:

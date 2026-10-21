@@ -38,7 +38,7 @@ Prepared prepare(gears_death_source::Args const& args,uintptr_t caller){
     using namespace gears_death_source;
     Prepared p;p.decision.forwarded=args;
     if(caller!=0xd80a7b)return p;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     Gate g{};g.enabled=true;g.attested=attested.load();g.recording=recording.load();g.diagnostics=frame_link_diagnostics;
     g.frozen_enabled=consuming_frozen_frame.enabled;g.unpossessed=consuming_frozen_frame.unpossessed;
     g.ticket=consuming_frame_ticket;g.frozen_ticket=consuming_frozen_frame.id;g.renderer=consuming_renderer!=nullptr;
@@ -73,17 +73,17 @@ Prepared prepare(gears_death_source::Args const& args,uintptr_t caller){
 }
 void complete(Prepared const& p){
     if(p.decision.rejection!=gears_death_source::accepted)return;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     receipts.completed(p.receipt); // Original CPU quad returned; no GPU claim.
 }
 void progress(FILE* file){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"death_source_enabled=1 death_source_attested=%u death_source_phase=%u death_source_a1_count=%llu death_source_b_count=%llu death_source_a2_count=%llu death_source_last_ticket=%llu death_source_last_qpc=%lld death_source_dropped=%llu ",
         unsigned(attested.load()),gears_death_source::phase_at(receipts.origin,now(),qpc_frequency),
         receipts.counts[0],receipts.counts[1],receipts.counts[2],receipts.last.ticket,receipts.last.qpc,receipts.dropped);
 }
 void print(FILE* file){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"death_source_control enabled=1 attested=%u diagnostic_only=1 product_fix=0 caller=d80a7b right_source_u=half_to_zero sole_modified_argument=u destination_unchanged=1 source_format=26 source_extent=full_sbs first_eligible_origin_qpc=%lld qpc_frequency=%lld a1_seconds=1 b_seconds=1.5 a2_after_seconds=2.5 clock_never_reset=1 completed_cpu_quad_only=1 gpu_completed=0 capacity=512 rows=%u dropped=%llu modified=%llu a1_count=%llu b_count=%llu a2_count=%llu\n",
         unsigned(attested.load()),receipts.origin,qpc_frequency,receipts.size,receipts.dropped,receipts.modified,receipts.counts[0],receipts.counts[1],receipts.counts[2]);
     for(unsigned i=0;i<receipts.size;++i){const auto& r=receipts.rows[i];

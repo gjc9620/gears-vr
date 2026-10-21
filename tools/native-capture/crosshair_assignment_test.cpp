@@ -101,5 +101,18 @@ int main(){
         if(fault==3){x.c.view.cam_loc_offset=x.c.impact_offset;x.m.put(x.address(x.c.view.cam_loc)+0x94,x.c.impact_offset);}
         if(fault==4)x.m.denied=x.locals+x.c.view.trace_dir_offset;
         assert(!snapshot(x.c,x.read(),x.address(x.c.controller),x.frame,out)&&same(out,saved));}
+    Fixture ads;ads.enable_aim();Snapshot ads_before{};
+    assert(snapshot(ads.c,ads.read(),ads.address(ads.c.controller),ads.frame,ads_before));
+    assert(ads_before.view.aiming_known&&ads_before.view.aiming);
+    ads.simulate_original();CompletedAssignmentReceipt ads_out{};
+    assert(completed(ads.c,ads.read(),ads_before,ads_out)&&ads_out.view.aiming);
+    ads.m.put(ads.address(ads.c.controller)+ads.c.aim.offset,unsigned(0));
+    assert(!completed(ads.c,ads.read(),ads_before,ads_out)); // Changed state cannot borrow the prior receipt.
+    for(unsigned fault=0;fault<4;++fault){Fixture a;a.enable_aim();
+        if(fault==0)a.m.put(a.address(a.c.aim.property)+0xd0,unsigned(3));
+        if(fault==1)a.m.put(a.address(a.c.aim.property)+0x74,unsigned(1));
+        if(fault==2)a.m.put(0xe02a0,a.identities.base+0x1daba1);
+        if(fault==3)a.m.denied=a.address(a.c.controller)+a.c.aim.offset;
+        Snapshot unused{};assert(!snapshot(a.c,a.read(),a.address(a.c.controller),a.frame,unused));}
     std::cout<<"crosshair_assignment_test passed\n";
 }

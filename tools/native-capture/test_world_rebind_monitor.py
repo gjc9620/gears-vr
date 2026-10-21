@@ -1,6 +1,7 @@
 import threading
 import time
 import unittest
+from unittest import mock
 import json
 import struct
 from dataclasses import replace
@@ -65,6 +66,112 @@ class Harness:
 
 
 class MonitorTests(unittest.TestCase):
+    def test_hinted_transaction_uses_one_acquisition_and_short_bounded_polling(self):
+        h=Harness();h.current=snapshot();observe=mock.Mock(side_effect=h.observe)
+        calls=[]
+        def changed(generation,request,accept,check):
+            check();calls.append(h.current)
+            return h.current,h.prepare(h.current,generation,request,check) if accept(h.current) else None
+        with h.monitor(probe_interval=2,changed_hint=lambda *_:True,observe=observe,
+                       prepare_changed=changed) as m:
+            self.assertEqual(m.poll_interval(.1),.1)
+            m.poll(h.status);h.finish_worker(m)
+            h.current=snapshot(9);h.now=.2;m.poll(h.status)
+            self.assertEqual(m.poll_interval(.1),.01)
+            h.finish_worker(m)
+            self.assertEqual(observe.call_count,1)
+            self.assertEqual(calls,[h.current]);self.assertEqual(len(h.builds),1)
+            self.assertTrue(m.work_timing['single_acquisition'])
+            self.assertEqual(m.state,'preparing');self.assertEqual(m.poll_interval(.25),.01)
+            h.status.update(world_prepare_requests='1',world_candidate_generation='2')
+            m.poll(h.status);self.assertEqual(m.state,'committing')
+            h.status.update(world_generation='2',world_candidate_generation='0')
+            m.poll(h.status)
+            self.assertEqual(m.state,'idle');self.assertEqual(m.baseline,h.current)
+            self.assertEqual(m.poll_interval(.1),.1)
+        self.assertEqual(m.poll_interval(.25),.25)
+
+    def test_false_hint_cannot_publish_unchanged_foreign_local_or_exhausted_target(self):
+        for case in ('unchanged','foreign_local','pawn_opt_out','exhausted'):
+            with self.subTest(case=case):
+                h=Harness();h.current=snapshot();accepted=[]
+                def changed(generation,request,accept,check):
+                    check();ok=accept(h.current);accepted.append(ok)
+                    return h.current,h.prepare(h.current,generation,request,check) if ok else None
+                with h.monitor(probe_interval=2,changed_hint=lambda *_:True,prepare_changed=changed) as m:
+                    m.poll(h.status);h.finish_worker(m)
+                    if case=='foreign_local':h.current=replace(h.current,local_player=obj(11))
+                    if case=='pawn_opt_out':h.current=snapshot(pawn=61)
+                    if case=='exhausted':
+                        h.current=snapshot(9);m.target=h.current;m.attempts=m.max_attempts
+                    h.now=.2;m.poll(h.status);h.finish_worker(m)
+                    self.assertEqual(accepted,[False]);self.assertEqual(m.state,'idle')
+                self.assertFalse(h.builds);self.assertFalse(h.signals)
+
+    def test_unchanged_periodic_observation_keeps_ordinary_polling(self):
+        for changed in (False,True):
+            h=Harness();h.current=snapshot(9) if changed else snapshot()
+            observing,observed,release=threading.Event(),threading.Event(),threading.Event()
+            def observe(check):
+                observing.set();release.wait(2);check();return h.current
+            def prepare(*args):
+                observed.set();release.wait(2);return h.prepare(*args)
+            with self.subTest(changed=changed),h.monitor(observe=observe,prepare=prepare) as m:
+                m.poll(h.status);self.assertTrue(observing.wait(2))
+                self.assertEqual(m.poll_interval(.1),.1)
+                release.set()
+                if changed:self.assertTrue(observed.wait(2))
+                # Before consuming a completed worker, only a full changed
+                # observation (or an explicit pointer hint) shortens building.
+                m.future.result(timeout=2)
+                self.assertEqual(m.poll_interval(.1),.01 if changed else .1)
+                h.finish_worker(m)
+
+    def test_short_polling_does_not_busy_wait_during_backoff_or_timeout(self):
+        h=Harness()
+        with h.monitor() as m:
+            for value in (0,-.1,float('nan'),float('inf')):
+                with self.assertRaises(ValueError):m.poll_interval(value)
+            m.state='send_prepare';m.next_poll=2
+            self.assertEqual(m.poll_interval(.25),.25)
+            h.now=2;self.assertEqual(m.poll_interval(.25),.01)
+            m.state='preparing';m.deadline=3
+            h.now=3;self.assertEqual(m.poll_interval(.25),.25)
+            m.deadline=10;m.timed_out=True
+            self.assertEqual(m.poll_interval(.25),.25)
+        with h.monitor(enabled=False) as m:
+            m.state='building';m.deadline=10
+            self.assertEqual(m.poll_interval(.25),.25);self.assertIsNone(m.executor)
+
+    def test_pointer_hint_skips_two_second_wait_but_requires_full_observation(self):
+        h=Harness();h.current=snapshot();hint=mock.Mock(return_value=False)
+        with h.monitor(probe_interval=2,include_pawn_changes=True,changed_hint=hint) as m:
+            m.poll(h.status);h.finish_worker(m)
+            self.assertEqual(m.next_poll,2)
+            h.now=.1;m.poll(h.status);self.assertIsNone(m.future)
+            hint.return_value=True;h.current=snapshot(9);h.now=.2
+            m.poll(h.status);self.assertEqual(m.state,'building')
+            h.finish_worker(m);self.assertEqual(len(h.builds),1)
+            self.assertEqual(m.state,'preparing')
+        # A false positive has no authority to publish or signal.
+        h=Harness();h.current=snapshot()
+        with h.monitor(probe_interval=2,changed_hint=lambda *_:True) as m:
+            m.poll(h.status);h.finish_worker(m);h.now=.1
+            m.poll(h.status);h.finish_worker(m)
+        self.assertFalse(h.builds);self.assertFalse(h.signals)
+
+    def test_hint_failure_and_backoff_cannot_bypass_rejection_or_session_identity(self):
+        h=Harness();h.current=snapshot();hint=mock.Mock(side_effect=OSError('unreadable'))
+        with h.monitor(probe_interval=2,changed_hint=hint) as m:
+            m.poll(h.status);h.finish_worker(m);h.now=.1
+            self.assertEqual(m.poll(h.status),[]);self.assertIsNone(m.future)
+            hint.reset_mock();h.status['owner_creation_time']='999';h.now=.3;m.poll(h.status)
+            hint.assert_not_called()
+        h=Harness();hint=mock.Mock(return_value=True)
+        with h.monitor(changed_hint=hint,prepare=lambda *_:(_ for _ in ()).throw(ValueError('reject'))) as m:
+            m.poll(h.status);h.finish_worker(m);h.now=.1;m.poll(h.status)
+            hint.assert_not_called();self.assertIsNone(m.future)
+
     def test_opt_in_and_capability_do_not_even_observe(self):
         h = Harness()
         for enabled, capability in ((False, '1'), (True, '0'), (True, None)):

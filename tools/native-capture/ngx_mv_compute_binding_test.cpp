@@ -2,6 +2,7 @@
 #undef NDEBUG
 #endif
 #include "ngx_mv_compute_binding.h"
+#include "ngx_mv_constant_snapshot.h"
 #include "ngx_mv_compute_snapshot.h"
 #include <cassert>
 #include <cstdio>
@@ -143,6 +144,34 @@ void pso_witness_identity_and_revocation(){
 }
 }
 int main(){
+    using namespace gears_ngx_mv_constants;
+    assert(bounded_upload(256,160,0x1000,0x2000));
+    assert(bounded_upload(ring_bytes-256,256,0x1000,0x2000));
+    assert(!bounded_upload(1,160,0x1000,0x2000));
+    assert(!bounded_upload(0,159,0x1000,0x2000));
+    assert(!bounded_upload(ring_bytes,160,0x1000,0x2000));
+    assert(!bounded_upload(256,65537,0x1000,0x2000));
+    assert(!bounded_upload(256,160,UINT64_MAX-255,0x2000));
+    assert(!bounded_upload(256,160,0x1000,UINT64_MAX-255));
+    assert(copied_slot_zero(0x2040,0x2000,0x1000,32,0x1040,8));
+    assert(!copied_slot_zero(0x2041,0x2000,0x1000,32,0x1040,8));
+    assert(!copied_slot_zero(0x2040,0x2000,0x1000,32,0x1060,8));
+    assert(!copied_slot_zero(0x2040,0x2000,0x1000,32,0x1040,9));
+    assert(range_contains(0x1040,0x1000,32,3));
+    assert(!range_contains(0x1060,0x1000,32,3));
+    assert(!range_contains(0x1041,0x1000,32,3));
+    assert(!range_contains(0x1000,0x1000,0,3));
+    RootWitnessKey root{100,200,400,300,4,5,6,7,0,160};
+    assert(root_witness_matches(root,true,100,4,5,6,300,7));
+    assert(!root_witness_matches(root,false,100,4,5,6,300,7));
+    assert(!root_witness_matches(root,true,101,4,5,6,300,7));
+    assert(!root_witness_matches(root,true,100,8,5,6,300,7));
+    assert(!root_witness_matches(root,true,100,4,8,6,300,7));
+    assert(!root_witness_matches(root,true,100,4,5,8,300,7));
+    assert(!root_witness_matches(root,true,100,4,5,6,301,7));
+    assert(!root_witness_matches(root,true,100,4,5,6,300,8));
+    root.device=0;assert(!root_witness_matches(root,true,100,4,5,6,300,7));
+    root.device=400;root.size=0;assert(!root_witness_matches(root,true,100,4,5,6,300,7));
     redundant_and_changed_bindings();table_preconditions_and_no_extent_inference();boundaries_and_new_generation();
     invalid_generation_and_terminal_loss();list_isolation_and_capacity();destructive_revocation();empty_retirement();pso_witness_identity_and_revocation();
     std::puts("NGX MV compute binding CPU tests passed; scalar candidate only, no table extent/descriptor/GPU/producer proof");

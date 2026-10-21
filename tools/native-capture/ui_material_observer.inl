@@ -95,6 +95,7 @@ uint32_t __fastcall hook_ui_material_execute(void* command){
  bool consumer_complete=false;
  if(ui_material_context){consumer_complete=gears_ui_material::finish_consumer(context.consumer,result);if(!consumer_complete)++ui_material_bad_return;complete_ui_material_rows(context.sequence,consumer_complete);}
  consumer_complete=semantic_scope.end(consumer_complete);
+ if(semantic_scope.entered&&!consumer_complete)ui_hud_sequence_fault=true;
 #if defined(GEARS_GAME_UI_MATERIAL) && GEARS_GAME_UI_MATERIAL
  material_scope.end(consumer_complete);
 #endif

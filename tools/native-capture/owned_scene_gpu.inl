@@ -103,6 +103,9 @@ bool copy_subtitle(uint64_t ticket){
 struct Publication {uint64_t ticket{},pose{},session{},serial{};unsigned reason{};};
 std::array<Publication,frame_limit> publications{};unsigned publication_count{};
 uint64_t publication_attempts{},published_count{};Publication latest_publication{};
+#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
+uint64_t ngx_candidate_discarded{};
+#endif
 uint64_t retained_images{},duplicate_images{};
 // Unlike the current TLS frame, this identity survives deferred Canvas/GPU
 // submission and remains attached to the one admitted owned scene.
@@ -119,7 +122,7 @@ gears_render_cost::Record* render_cost(uint64_t ticket){
 #if defined(GEARS_NATIVE_RENDER_COST_PROBE) && GEARS_NATIVE_RENDER_COST_PROBE
  // The game builder appends timings concurrently with RHI consumption. Only
  // lookup needs the lock: array storage stays fixed through callback drain.
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  // Only immutable-address, never-recycled first-window records are borrowed by
  // Window/Scope. The rolling latest timestamp record is never exposed to them.
  for(unsigned i=0;i<timing_count;++i)if(timings[i].ticket==ticket)return &timings[i].cost;return nullptr;
@@ -142,12 +145,15 @@ void submitted(uint64_t ticket){if(auto t=timing(ticket))if(!t->submitted)t->sub
 void returned(uint64_t ticket){if(auto t=timing(ticket))t->returned=gears_vr::monotonic_ns();}
 void destroyed(uint64_t ticket){if(auto t=timing(ticket))t->destroyed=gears_vr::monotonic_ns();}
 struct ExecuteFailure {
+ long long qpc{};
  uintptr_t caller{},module{},queue{},missing_list{},missing_reset{},missing_device{};unsigned count{},inside_present{},present_depth{},missing_type{};
  bool previously_certified{};gears_frame_link::Snapshot stats{};
  wchar_t module_path[MAX_PATH]{};std::array<void*,12> stack{};unsigned stack_count{};
 } execute_failure;
+std::atomic<bool> execute_failure_ready{};
 std::array<IUnknown*,gears_frame_link::Tracker::list_capacity> created_lists{};
-unsigned list_creation_count{},list_creation_closed{};
+unsigned list_creation_count{},list_creation_closed{},list_creation_active{},list_creation_highwater{};
+uint64_t list_creation_repeats{},list_creation_retired{};
 struct ListCreationFailure {
  unsigned subtype{},count{},closed{};uintptr_t object{},identity{};HRESULT hr{};bool open{},tracker_called{};
  gears_frame_link::Snapshot before{},after{};
@@ -171,6 +177,9 @@ gears_frame_link::ListRef list_ref(uintptr_t identity){
 }
 void list_created(HRESULT hr,void** out,bool open){
  if(FAILED(hr))return;
+ // Device callbacks may arrive on different game threads. Keep the diagnostic
+ // identity leases and the tracker update in one serialized transaction.
+ std::lock_guard<FrameHookMutex> guard(frame_hook_mutex);
  const bool bindings=owned_bindings_enabled&&(recording.load()||prime_recording.load());
  const bool proof=continuous_probe&&watching();if(!bindings&&!proof)return;
  IUnknown* object{};IUnknown* identity{};
@@ -178,17 +187,33 @@ void list_created(HRESULT hr,void** out,bool open){
  if(!object){record_list_creation_failure(2,hr,object,identity,open);fault(14);return;}
  const HRESULT identity_hr=object->QueryInterface(IID_PPV_ARGS(&identity));
  if(FAILED(identity_hr)){record_list_creation_failure(3,identity_hr,object,identity,open);fault(14);return;}
+ // A retained COM identity cannot be destroyed and reused. Seeing it again
+ // means a duplicate observation of the same live list, not a new Reset
+ // generation. Leave both trackers untouched; actual Reset has its own hook.
+ IUnknown** free_lease{};
+ if(proof)for(auto& previous:created_lists){
+  if(previous==identity){++list_creation_repeats;identity->Release();return;}
+  if(!previous&&!free_lease)free_lease=&previous;
+ }
  if(bindings){if(open)owned_target_stats.reset(reinterpret_cast<uintptr_t>(identity));
   else owned_target_stats.retire(reinterpret_cast<uintptr_t>(identity));}
  if(!proof){identity->Release();return;}
- for(auto* previous:created_lists)if(previous==identity){record_list_creation_failure(4,hr,object,identity,open);identity->Release();fault(14);return;}
- if(list_creation_count==created_lists.size()){record_list_creation_failure(5,hr,object,identity,open);identity->Release();fault(14);return;}
- created_lists[list_creation_count++]=identity; // Diagnostic lease until process exit; no pointer reuse.
+ if(!free_lease){record_list_creation_failure(5,hr,object,identity,open);identity->Release();fault(14);return;}
+ *free_lease=identity; // Hold identity while its recording slot remains live.
+ ++list_creation_count;++list_creation_active;
+ if(list_creation_active>list_creation_highwater)list_creation_highwater=list_creation_active;
  if(!open)++list_creation_closed;
  const auto before=tracker.snapshot();
  const auto created=tracker.create_success(reinterpret_cast<uintptr_t>(identity),open);
  const auto after=tracker.snapshot();
  if(!created.identity){record_list_creation_failure(6,hr,object,identity,open,&before,&after);fault(14);}
+}
+void release_retired_list_leases(const gears_frame_link::Identity* retired,size_t count){
+ for(auto& lease:created_lists)if(lease){
+  for(size_t i=0;i<count;++i)if(reinterpret_cast<uintptr_t>(lease)==retired[i]){
+   auto* old=lease;lease=nullptr;--list_creation_active;++list_creation_retired;old->Release();break;
+  }
+ }
 }
 struct CreateScope {CreateScope(){++creating;}~CreateScope(){--creating;}};
 void created(ID3D12Device* device,HRESULT hr,void** out,D3D12_RESOURCE_STATES state,unsigned api,bool legacy=true,unsigned layout=0){
@@ -271,7 +296,7 @@ void retain_image(){
  if(!owned_xr_probe||!stereo_gpu_publish||!watching())return;
  auto const& frame=consuming_frozen_frame;
  if(!birth_ok||!frame.enabled||!frame.id||frame.id!=consuming_frame_ticket){fault(17);return;}
- gears_vr::StereoTicketGeometry geometry{frame.source_view,frame.source_projection,frame.expected,frame.finite_aim};
+ gears_vr::StereoTicketGeometry geometry{frame.source_view,frame.source_projection,frame.expected,frame.finite_aim,frame.aiming};
  auto result=image_tickets.retain(frame.id,frame.sample,simulator_operator,&geometry);
  if(!gears_vr::StereoTicketStore::accepted(result)){fault(17);return;}
  if(result==gears_vr::TicketRetainResult::retained)++retained_images;else ++duplicate_images;
@@ -290,6 +315,22 @@ bool publish_image(){
 #if defined(GEARS_VR_DOF_COMPAT) && GEARS_VR_DOF_COMPAT
  if(publication_ticket!=image.id||!publication_world||publication_world!=committed_world_generation.load()||
     !vr_dof_compat::publication(publication_world,image.id)){fault(22);return false;}
+#endif
+#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
+ // The owned proof covers real scene/UI submission. DLSS additionally needs
+ // both complete native Output scopes from this exact world/ticket.
+ const auto sdk=ngx_capture_control::owned_publication(publication_world,image.id);
+ if(sdk==gears_ngx_owned::Publication::rejected){fault(24);return false;}
+ if(sdk==gears_ngx_owned::Publication::discard_candidate){
+  // Real owned/UI/queue proof permits retiring this image, not publishing it.
+  if(!image_tickets.retire_through(image.id)){fault(20);return false;}
+  if(!vr_dof_compat::retire_owned(publication_world,image.id)){fault(23);return false;}
+  ++ngx_candidate_discarded;
+  if(diagnostic_status){fprintf(diagnostic_status,"ngx_owned_candidate_discarded ticket=%llu world=%llu count=%llu submitted_to_publisher=0\n",
+      image.id,publication_world,ngx_candidate_discarded);fflush(diagnostic_status);}
+  return true;
+ }
+ if(!dlss_output_control::publication(publication_world,image.id,sdk==gears_ngx_owned::Publication::controlled)){fault(24);return false;}
 #endif
  gears_vr::GpuCaptureTrace trace{};bool published=false;
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
@@ -374,7 +415,8 @@ Submission prepare(ID3D12CommandQueue* q,UINT count,ID3D12CommandList* const* me
  if(birth_ok){
   const bool was_certified=tracker.owned_status().certified;
   if(!tracker.prepare_execute(canonical_identity(q),refs.data(),count,token)){
-   auto& f=execute_failure;f.caller=caller;f.queue=canonical_identity(q);f.count=count;f.previously_certified=was_certified;
+   if(!execute_failure_ready.load(std::memory_order_acquire)){
+   auto& f=execute_failure;f.qpc=now();f.caller=caller;f.queue=canonical_identity(q);f.count=count;f.previously_certified=was_certified;
    f.inside_present=frame_inside_original_present;f.present_depth=frame_present_depth;f.stats=tracker.snapshot();
    for(unsigned i=0;i<count;++i)if(!refs[i].identity){
     f.missing_list=canonical_identity(lists[i]);f.missing_type=lists[i]->GetType();
@@ -385,7 +427,9 @@ Submission prepare(ID3D12CommandQueue* q,UINT count,ID3D12CommandList* const* me
    }
    HMODULE module{};if(caller&&GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
     reinterpret_cast<LPCWSTR>(caller),&module)){f.module=reinterpret_cast<uintptr_t>(module);GetModuleFileNameW(module,f.module_path,MAX_PATH);}
-   f.stack_count=CaptureStackBackTrace(0,static_cast<DWORD>(f.stack.size()),f.stack.data(),nullptr);fault(12);
+   f.stack_count=CaptureStackBackTrace(0,static_cast<DWORD>(f.stack.size()),f.stack.data(),nullptr);
+   execute_failure_ready.store(true,std::memory_order_release);
+   }fault(12);
   }
  }
  else {tracker.execute(canonical_identity(q),refs.data(),count);receipt.prebirth=continuous_probe;receipt.count=count;}
@@ -406,9 +450,15 @@ void copy(bool ready,uint64_t ticket){
 #endif
  sealed=true;
  if(auto t=timing(ticket))t->ready=gears_vr::monotonic_ns();
- proof=continuous_probe?tracker.consume_owned_output(resource,generation,canonical_identity(queue),ticket):
+ std::array<gears_frame_link::Identity,gears_frame_link::Tracker::list_capacity> retired_lists{};
+ size_t retired_count{};
+ proof=continuous_probe?tracker.consume_owned_output(resource,generation,canonical_identity(queue),ticket,
+  retired_lists.data(),retired_lists.size(),&retired_count):
   tracker.seal_owned_output(resource,generation,canonical_identity(queue));
  if(!proof.linked||!proof.state_certified||proof.ticket!=ticket){fault(9);return;}
+ // The tracker has discarded only successfully executed, consumed recordings.
+ // Remove their exact COM identity leases before another Create can reuse slots.
+ release_retired_list_leases(retired_lists.data(),retired_count);
 #if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
  if(!copy_subtitle(ticket)){fault(21);return;}
 #endif
@@ -480,7 +530,7 @@ bool drain_shutdown(bool bridges_closed){
  for(auto& probe:subtitle_readbacks)closed=probe.close()&&closed;
 #endif
  if(!closed)return false;
- for(auto& list:created_lists)if(list){list->Release();list=nullptr;}
+ for(auto& list:created_lists)if(list){list->Release();list=nullptr;}list_creation_active=0;
  texture=nullptr;queue->Release();queue=nullptr;
  if(!shutdown_fence.close())return false;
  shutdown_closed=true;return true;
@@ -540,7 +590,7 @@ bool finish_handoff(gears_owned_retirement::ResourceIdentity identity){
   handoff_reclaims[handoff_reclaim_count++]={handoff_world,generation,handoff_cutoff,reclaim_before,reclaim_after};
  else ++handoff_reclaim_overflow;
  if(image_tickets.highest_id()>handoff_cutoff||!image_tickets.retire_through(image_tickets.highest_id())){handoff_fault=true;return false;}
- for(auto& list:created_lists)if(list){list->Release();list=nullptr;}
+ for(auto& list:created_lists)if(list){list->Release();list=nullptr;}list_creation_active=0;
  texture=nullptr;queue->Release();queue=nullptr;
  if(!shutdown_fence.close()){handoff_fault=true;return false;}
  publication_world=publication_ticket=0;handoff_tracker_retired=true;finished=true;
@@ -571,14 +621,18 @@ bool rearm_handoff(gears_owned_retirement::ResourceIdentity identity,uint64_t ne
  creations={};creation_count=0;creation={};proof={};resource=0;generation=0;
  prebirth_faults=birth_attempts=device_dispatch_available=device_dispatch_match=0;
  finished=sealed=birth_ok=shutdown_started=shutdown_closed=false;resource_consumed=0;++resource_cycles;
- list_creation_count=list_creation_closed=0;late_sample_ticket=0;handoff_rearmed=true;return true;
+ list_creation_count=list_creation_closed=list_creation_active=list_creation_highwater=0;
+ list_creation_repeats=list_creation_retired=0;late_sample_ticket=0;handoff_rearmed=true;return true;
 }
 void handoff_recreated(){
  handoff_snapshot={};handoff_cutoff=handoff_world=0;
  handoff_prepared=handoff_gpu_drained=handoff_tracker_retired=handoff_rearmed=handoff_fault=false;
 }
 void print_progress(FILE* file){
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
+#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
+ fprintf(file,"ngx_owned_candidate_discarded=%llu ",ngx_candidate_discarded);
+#endif
  fprintf(file,"owned_shutdown_started=%u owned_shutdown_closed=%u owned_shutdown_fence=%u owned_shutdown_hr=%ld owned_shutdown_unsubmitted=%u ",
   shutdown_started?1:0,shutdown_closed?1:0,shutdown_fence.state(),long(shutdown_fence.error()),tracker.has_unsubmitted_owned_events(resource)?1:0);
  fprintf(file,"owned_resource_cycles=%llu owned_resource_frames=%llu owned_handoff_prepared=%u owned_handoff_retired=%u owned_handoff_fault=%u ",
@@ -589,6 +643,23 @@ void print_progress(FILE* file){
 #endif
  fprintf(file,"owned_sustained=%u owned_consumed=%llu owned_last_ticket=%llu owned_published=%llu owned_error=%u owned_stored_frames=%u ",
   sustained,consumed_count,last_consumed_ticket,published_count,error,stored_frames);
+ const bool execute_ready=execute_failure_ready.load(std::memory_order_acquire);
+ fprintf(file,"owned_execute_failure_qpc=%lld owned_execute_failure_count=%u owned_execute_failure_caller=%llx owned_execute_failure_missing=%llx owned_execute_failure_certified=%u ",
+  execute_ready?execute_failure.qpc:0,execute_ready?execute_failure.count:0,execute_ready?execute_failure.caller:0,
+  execute_ready?execute_failure.missing_list:0,execute_ready&&execute_failure.previously_certified?1u:0u);
+ // The full diagnostic print runs only after native cleanup. A proof failure
+ // can retain GPU resources, so keep the first list-creation fault in the
+ // continuously written session status as well.
+ {
+  std::lock_guard<std::mutex> failure_lock(list_creation_failure_mutex);
+  const auto& f=list_creation_failure;
+  fprintf(file,"owned_list_creation_count=%u owned_list_creation_closed=%u owned_list_creation_active=%u owned_list_creation_highwater=%u owned_list_creation_retired=%llu owned_list_creation_repeats=%llu owned_list_failure_subtype=%u owned_list_failure_hr=%08lx owned_list_failure_object=%llx owned_list_failure_identity=%llx owned_list_failure_open=%u owned_list_failure_count=%u owned_list_failure_tracker_called=%u owned_list_failure_before_active=%zu owned_list_failure_after_active=%zu owned_list_failure_before_overflow=%llu owned_list_failure_after_overflow=%llu ",
+   list_creation_count,list_creation_closed,list_creation_active,list_creation_highwater,
+   static_cast<unsigned long long>(list_creation_retired),static_cast<unsigned long long>(list_creation_repeats),f.subtype,static_cast<unsigned long>(f.hr),
+   static_cast<unsigned long long>(f.object),static_cast<unsigned long long>(f.identity),
+   f.open?1u:0u,f.count,f.tracker_called?1u:0u,f.before.active_lists,f.after.active_lists,
+   static_cast<unsigned long long>(f.before.list_overflow),static_cast<unsigned long long>(f.after.list_overflow));
+ }
 }
 void print(FILE* file){
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
@@ -614,7 +685,9 @@ void print(FILE* file){
  fprintf(file,"native_owned_pixels width=%u height=%u left_nonblack=%llu right_nonblack=%llu different=%llu left_hash=%llx right_hash=%llx\n",
   r.width,r.height,r.eyes[0].nonblack,r.eyes[1].nonblack,r.differing_pixels,r.eyes[0].hash,r.eyes[1].hash);
  fprintf(file,"native_owned_gpu_dispatch available=%u match=%u\n",device_dispatch_available,device_dispatch_match);
- if(continuous_probe)fprintf(file,"native_owned_list_creation count=%u closed=%u tracker_creates=%llu retained_until_exit=1\n",list_creation_count,list_creation_closed,s.list_creates);
+ if(continuous_probe)fprintf(file,"native_owned_list_creation count=%u closed=%u active=%u highwater=%u retired=%llu tracker_creates=%llu\n",
+  list_creation_count,list_creation_closed,list_creation_active,list_creation_highwater,
+  static_cast<unsigned long long>(list_creation_retired),s.list_creates);
  fprintf(file,"native_owned_tracker list_capacity=%zu active_lists=%zu list_highwater=%zu list_overflow=%llu event_overflow=%llu target_overflow=%llu capacity_bad=%u\n",
   gears_frame_link::Tracker::list_capacity,s.active_lists,s.list_highwater,s.list_overflow,s.event_overflow,s.target_overflow,s.capacity_bad);
  fprintf(file,"native_owned_handoff_reclaims count=%u limit=%zu overflow=%llu association_only=1 world_commit_proven=0\n",

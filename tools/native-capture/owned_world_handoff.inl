@@ -19,7 +19,7 @@ gears_owned_ui_world::Guards owned_world_ui_guards(bool resources_retired){
 }
 bool prepare_owned_world_handoff(uint64_t previous){
     std::unique_lock<std::recursive_mutex> native_lock(session_native_mutex,std::try_to_lock);
-    std::unique_lock<std::recursive_mutex> frame_lock(frame_hook_mutex,std::try_to_lock);
+    std::unique_lock<FrameHookMutex> frame_lock(frame_hook_mutex,std::try_to_lock);
     if(!native_lock.owns_lock()||!frame_lock.owns_lock()||submitted_lifetime.stopping()||!world_old_state_retired())return false;
     if(!owned_world_handoff.world){
         owned_world_handoff.world=previous;owned_world_handoff.cutoff=stereo_ticket_counter.load();

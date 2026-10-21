@@ -6,6 +6,23 @@ from resolve_camera import Resolver,_DiscoveryHintPages
 
 
 class DiscoveryHintTests(unittest.TestCase):
+    def test_class_hint_avoids_decoding_instance_names_and_shares_scan_pages(self):
+        raw=bytearray(4096)
+        for address,index,cls in ((0x100,0,0x500),(0x180,1,0x580),(0x500,2,0x580),(0x580,3,0x580)):
+            struct.pack_into('<I',raw,address+8,index)
+            struct.pack_into('<IIQ',raw,address+72,index,0,cls)
+        r=Resolver.__new__(Resolver);r.ident_cache={}
+        r.profile=dict(object_internal_index=8,object_outer=64,object_name=72,object_class=80)
+        r.name=mock.Mock(side_effect=lambda i:('Instance','Canvas','Pawn','Class')[i])
+        r.read=mock.Mock(side_effect=lambda a,n:bytes(raw[a:a+n]))
+        discover=r.discovery_identity_reader()
+        self.assertEqual(discover.class_identity(0x100)['name'],'Pawn')
+        self.assertEqual(discover.class_identity(0x180)['name'],'Class')
+        self.assertEqual(discover(0x180)['name'],'Canvas')
+        self.assertNotIn(mock.call(0),r.name.call_args_list)
+        self.assertEqual(r.read.call_args_list,[mock.call(0,4096)])
+        with self.assertRaisesRegex(RuntimeError,'Null discovery class'):discover.class_identity(0x200)
+
     def test_camera_class_scan_matches_exact_results_and_rejections_with_fewer_reads(self):
         for outcome in ('found','missing','bad_index'):
             with self.subTest(outcome=outcome):

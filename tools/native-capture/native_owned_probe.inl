@@ -52,7 +52,7 @@ bool run(uint64_t frame,void* renderer){
 }
 void initialize_native_owned_probe(bool verified_image){gears_owned_probe::image_verified=verified_image;}
 bool native_owned_probe_tick(uint64_t ticket,void* renderer){using namespace gears_owned_probe;
- std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+ std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
  unsigned expected=0;if(!phase.compare_exchange_strong(expected,1))return phase.load()!=3;
  const bool ok=run(ticket,renderer);phase.store(ok?2:3,std::memory_order_release);return ok;}
 bool native_owned_probe_retained(){using namespace gears_owned_probe;

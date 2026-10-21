@@ -57,13 +57,13 @@ Geometry geometry(void* renderer,gears_submitted::FrameTicket const& frame,Recor
     return g;
 }
 void built(void* renderer,gears_submitted::FrameTicket const& frame,Record const& record,bool verified,void const* left,void const* right){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!enabled||!probe.armed||probe.selected||probe.finished)return;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!enabled||!probe.armed||probe.selected||probe.finished)return;
     auto g=geometry(renderer,frame,record);
     if(left&&safe_copy(g.constructor[0].data(),left,16))g.constructor_valid|=1;
     if(right&&safe_copy(g.constructor[1].data(),right,16))g.constructor_valid|=2;probe.built(g,verified);
 }
 void prepare(unsigned stage,void* renderer,Record const& record){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!selected()||renderer!=consuming_renderer)return;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!selected()||renderer!=consuming_renderer)return;
     probe.prepared(stage,geometry(renderer,consuming_frozen_frame,record));
 }
 bool list_collection(){return enabled&&!cleanup_pending&&recording.load()&&probe.armed&&!probe.finished&&probe.world==committed_world_generation.load();}
@@ -72,7 +72,7 @@ void created_list(ID3D12CommandList* command,bool open,bool tracked){
     typed_lists.boundary(command,list(command),committed_world_generation.load(),!tracked?TypedLists::generation_missing:!open?TypedLists::closed:TypedLists::ok);
 }
 void creation_failed(){if(list_collection())++typed_lists.create_failures;}
-void reset_capture(bool ready){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void reset_capture(bool ready){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     // Existing observations may still be in callbacks. Disable collection but
     // preserve their audit and leases until a drained print/reset can release.
     bool held=typed_lists.held()!=0;for(auto const& r:probe.resources)held=held||r.lease.retained();
@@ -134,7 +134,7 @@ struct BarrierScope {
 struct CopyScope {
     int index=-1;D3D12_TEXTURE_COPY_LOCATION src{},dst{};D3D12_BOX box{};bool has_box{};
     CopyScope(ID3D12GraphicsCommandList* c,D3D12_TEXTURE_COPY_LOCATION const* d,UINT x,UINT y,UINT z,D3D12_TEXTURE_COPY_LOCATION const* s,D3D12_BOX const* b,uintptr_t caller){
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
         // Copy passthrough supplies _ReturnAddress()-base, unlike Eval's absolute caller.
         if(!selected()||caller!=0x1c6093)return;
         if(!safe_copy(&src,s,sizeof(src))||!safe_copy(&dst,d,sizeof(dst))||(b&&!safe_copy(&box,b,sizeof(box)))){probe.gap();return;}
@@ -142,7 +142,7 @@ struct CopyScope {
     }
     void returned(ID3D12GraphicsCommandList* c,D3D12_TEXTURE_COPY_LOCATION const* d,D3D12_TEXTURE_COPY_LOCATION const* s,D3D12_BOX const* b){
         if(index<0)return; // An unselected copy owns no observation or typed list lease.
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);D3D12_TEXTURE_COPY_LOCATION sd{},dd{};bool valid=safe_copy(&sd,s,sizeof(sd))&&safe_copy(&dd,d,sizeof(dd))&&
+        std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);D3D12_TEXTURE_COPY_LOCATION sd{},dd{};bool valid=safe_copy(&sd,s,sizeof(sd))&&safe_copy(&dd,d,sizeof(dd))&&
             sd.pResource==src.pResource&&dd.pResource==dst.pResource&&sd.Type==src.Type&&dd.Type==dst.Type;
         if(valid&&src.Type==D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX)valid=sd.SubresourceIndex==src.SubresourceIndex;
         if(valid&&dst.Type==D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX)valid=dd.SubresourceIndex==dst.SubresourceIndex;
@@ -153,11 +153,11 @@ struct CopyScope {
 struct ExecuteScope {
     uint64_t order{};uintptr_t queue{};unsigned count{};std::array<List,64> before{};std::array<ID3D12CommandList*,64> raw{};
     ExecuteScope(ID3D12CommandQueue* q,UINT n,ID3D12CommandList* const* commands){
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(enabled&&probe.armed&&probe.world!=committed_world_generation.load())probe.changed(2);
+        std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(enabled&&probe.armed&&probe.world!=committed_world_generation.load())probe.changed(2);
         if(!enabled||!probe.observing())return;if(n>raw.size()||(n&&!safe_copy(raw.data(),commands,n*sizeof(raw[0])))){probe.gap();return;}
         queue=canonical_identity(q);count=n;for(unsigned i=0;i<n;++i)before[i]=list(raw[i]);order=probe.execute_begin(queue,before.data(),count);
     }
-    void returned(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!order)return;std::array<List,64> after{};for(unsigned i=0;i<count;++i)if(probe.executing(order,i,before[i]))after[i]=list(raw[i]);probe.execute_end(order,queue,before.data(),after.data(),count);}
+    void returned(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!order)return;std::array<List,64> after{};for(unsigned i=0;i<count;++i)if(probe.executing(order,i,before[i]))after[i]=list(raw[i]);probe.execute_end(order,queue,before.data(),after.data(),count);}
 };
 void reset(List before,ID3D12CommandList* command,HRESULT result){
     if(!enabled)return;const bool collecting=list_collection();if(!collecting&&!probe.observing())return;
@@ -172,7 +172,7 @@ void print_geometry(FILE* file,char const* stage,Geometry const& g){
         g.source[i][0],g.source[i][1],g.source[i][2],g.source[i][3],g.target[i][0],g.target[i][1],g.target[i][2],g.target[i][3],g.sampling[i][0],g.sampling[i][1],g.sampling[i][2],g.sampling[i][3],g.constructor[i][0],g.constructor[i][1],g.constructor[i][2],g.constructor[i][3]);
 }
 void print(FILE* file){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!enabled||printed)return;if(probe.armed&&probe.world!=committed_world_generation.load())probe.changed(2);const bool drained=!recording.load()&&active.load()==0;printed=drained;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!enabled||printed)return;if(probe.armed&&probe.world!=committed_world_generation.load())probe.changed(2);const bool drained=!recording.load()&&active.load()==0;printed=drained;
     fprintf(file,"ngx_epoch_pair enabled=1 armed=%u selected=%u finished=%u stop=%u end_reason=%u empty_epochs=%u candidate_complete=%u drained=%u revision=%llu world=%llu ticket=%llu renderer=%llx handle=%llx parameters=%llx dropped=%u unknown=%u skipped_initial=%u resources=%u events=%u evals=%u gpu_completion_verified=0 producer_domain_verified=0 sdk_mutation=0 gpu_commands_added=0\n",unsigned(probe.armed),unsigned(probe.selected),unsigned(probe.finished),probe.stop,probe.end_reason,probe.empty_epoch_count,unsigned(drained&&probe.complete()),unsigned(drained),probe.revision,probe.world,probe.ticket,probe.renderer,probe.handle,probe.parameters,probe.dropped,probe.unknown,probe.skipped,probe.resource_count,probe.event_count,probe.eval_count);
     fprintf(file,"ngx_epoch_scope execute_members_excluded=%llu resets_excluded=%llu filter=selected_barrier_eval_copy_recordings membership_frozen_at_execute_begin=1 earlier_history_complete=0\n",probe.excluded_execute_members,probe.excluded_resets);
     fprintf(file,"ngx_epoch_lists candidates_limit=64 pinned_limit=2 held=%u pinned=%u evicted=%llu create_failures=%llu lookup_source=typed_create_reset gpu_completion_verified=0\n",typed_lists.held(),typed_lists.pinned,typed_lists.evicted,typed_lists.create_failures);

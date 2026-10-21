@@ -14,7 +14,8 @@
 namespace {
 uint64_t tick=100;uint64_t GetTickCount64(){return tick;}
 uintptr_t base=0x140000000;
-std::recursive_mutex frame_hook_mutex;
+using FrameHookMutex=std::recursive_mutex;
+FrameHookMutex frame_hook_mutex;
 std::atomic<uint64_t> committed_world_generation{3};
 std::atomic<bool> recording{true};std::atomic<unsigned> active{};
 bool safe_copy(void* out,void const* in,size_t size){if(!in)return false;std::memcpy(out,in,size);return true;}
@@ -69,7 +70,7 @@ bool snapshot_target_seed(uint64_t& observation,gears_ngx_mv_census::Use& use,ge
     observation=2;use={2,3,40,0x800,0x100,0x200};mv={0x300,0x301,0xd00,true};return true;
 }
 }
-namespace ngx_mv_compute_capture {void stop(){}void release_drained(){}void print(FILE*){}}
+namespace ngx_mv_compute_capture {void stop(){}void release_drained(){}void print(FILE*){}void sdk_eval(uintptr_t,unsigned){}}
 #include "ngx_mv_target_capture.inl"
 namespace {
 std::array<unsigned char,0x28> input{};

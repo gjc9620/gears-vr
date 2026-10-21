@@ -29,6 +29,9 @@ DLSS_OUTPUT_RANGES = (
     (0xd82f58, 0xc78, '1efb10541bf56d87b31aae4f452da0d281afd552da16b4bfd16d653f2cd425ea'),
     (0xd83bd0, 0x1e9, 'e051a2d325a4d5ebc12be670d63cd8eae1eead437f33dfa39946de852e61e724'),
 )
+DLSS_OWNED_DOF_RANGES = (
+    (0xd7fd14, 0xe61, '62ceae022db3ea1d7fd0994520e2cbff6c1b1dca288023d1a56bd957fbca7d5c'),
+)
 DLSS_INPUT_BIND_CHUNKS = ((0x1665dc, 0x1cc), (0x8b492c, 0x2b))
 DLSS_INPUT_BIND_SHA256 = '566929fd4f84a21529de0ecb749d2dc75a1bf2ab3cc04876a65f65517222a339'
 NGX_WRAPPER_RANGES = (
@@ -91,10 +94,11 @@ def check_path_close(read, base, target, native_pointer_addresses=()):
 
 def hook_targets(status):
     targets = [int(value, 16) for value in re.findall(r'hook_target=([0-9A-Fa-f]+) create=MH_OK queue=MH_OK', status)]
-    # capture.cpp: largest base 60 + owned UI 4 + optional hook slots 23.
+    # capture.cpp: largest base 60 + owned UI 4 + optional hook slots 38.
     # This is only an inventory bound; every entry still requires independent
-    # byte verification below. The runtime-size candidate installs 65 hooks.
-    if not 2 <= len(targets) <= 87 or len(set(targets)) != len(targets):
+    # byte verification below. The combined owned/NGX candidate installs 91
+    # unique entries; mutually exclusive options make 102 a capacity bound.
+    if not 2 <= len(targets) <= 102 or len(set(targets)) != len(targets):
         raise RuntimeError('Unexpected hook target inventory')
     return targets
 
@@ -281,6 +285,14 @@ def main():
                 checks.append(dict(target=hex(target), source='artifact 1 runtime snapshot death constant setter',
                                    bytes_checked=len(current), expected_sha256=expected_hash,
                                    actual_sha256=actual_hash, matches=actual_hash == expected_hash))
+                continue
+            if rva == 0xd7fd14:
+                values = check_runtime_ranges(resolver.read, resolver.base, target, DLSS_OWNED_DOF_RANGES,
+                              'artifact 1 runtime snapshot owned DOF renderer complete body')
+                for check in values:
+                    check.update(module_base=hex(resolver.base), historical_module_base='0x140000000',
+                                 source_snapshot_sha256='911ab9bcb24cc078420400369a78ffd3f747d915e42c4935a5c82c2dcecc6ae6')
+                checks.extend(values)
                 continue
             if rva == 0xd82f58:
                 checks.extend(check_runtime_ranges(resolver.read, resolver.base, target, DLSS_OUTPUT_RANGES,

@@ -58,9 +58,13 @@ $exe = [string]$validated
 $defaultExe = Join-Path $game 'Binaries_x64/GOWDE-Steam.exe'
 # A windowless helper can remain after the main game exits. Do not count it as
 # a playable instance; still refuse a second visible game, including a hung one.
-if (Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowHandle -ne 0}) {
-    throw 'Exit the current game first; this launcher does not terminate it.'
+$isolatedInstance = -not [string]::IsNullOrEmpty($env:GEARSVR_INSTANCE_ROOT)
+if ($isolatedInstance) {
+    & $python (Join-Path $PSScriptRoot 'instance_policy.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Invalid isolated instance; no game startup actions taken.' }
 }
+& $python (Join-Path $PSScriptRoot 'instance_policy.py') --check-startup
+if ($LASTEXITCODE -ne 0) { throw 'A shared-profile game is already active; use the isolated multi-instance launcher.' }
 # Preserve the default reversible OFF policy. The explicit SR experiment only
 # checks its fixed profile and leaves the player's upscaler settings unchanged.
 # Other installs require DLSS already OFF unless that experiment is selected.
@@ -70,7 +74,7 @@ $graphicsAction = if ($ExperimentalPreserveUpscaler) { 'check-experimental-sr' }
 if ($LASTEXITCODE -ne 0) { throw 'Upscaler startup policy failed.' }
 # Custom installations are read-only: validation above accepts original or known
 # patched config; never apply repository backups to another installation.
-if ($isDefault) {
+if ($isDefault -and -not $isolatedInstance) {
     & $python (Join-Path $PSScriptRoot 'configure_startup.py') apply
     if ($LASTEXITCODE -ne 0) { throw 'Startup config validation failed.' }
 }

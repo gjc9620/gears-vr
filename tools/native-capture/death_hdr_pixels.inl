@@ -56,7 +56,7 @@ bool make_paths(){
 bool prepare_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,UINT x,UINT y,UINT z,
     const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box,uintptr_t caller){
     if(!attested||!recording.load()||!consuming_frozen_frame.unpossessed)return false;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(attempted||stopped)return false;
     auto* selected=current_unpossessed_quad_bank();auto* bank=death_hdr_timeline::current();
     if(!selected||!bank||selected->ordinal!=49||bank->dropped[gears_death_hdr::sample]||bank->dropped[gears_death_hdr::copy]||
@@ -106,7 +106,7 @@ bool prepare_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCAT
 }
 void append_after_original(bool token,ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,const D3D12_TEXTURE_COPY_LOCATION* source){
     if(!token)return;
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     D3D12_TEXTURE_COPY_LOCATION src{},dst{};
     if(stopped||!prepared||life.appended||list!=list_hold||!safe_copy(&src,source,sizeof(src))||!safe_copy(&dst,destination,sizeof(dst))||
        !exact_locations(src,dst)||src.pResource!=original_source.pResource||dst.pResource!=original_destination.pResource){
@@ -116,7 +116,7 @@ void append_after_original(bool token,ID3D12GraphicsCommandList* list,const D3D1
     original_color_copy(list,&own,0,0,0,&original_source,nullptr); // Same source contract, immediately adjacent; no transitions.
     matched_ticket.publish(ticket,world,copy_seq); // One immutable request; ticket is the atomic LAST commit.
 }
-std::unique_lock<std::recursive_mutex> execution_lock(){return std::unique_lock<std::recursive_mutex>(frame_hook_mutex);}
+std::unique_lock<FrameHookMutex> execution_lock(){return std::unique_lock<FrameHookMutex>(frame_hook_mutex);}
 bool prepare_execute(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* members){
     if(!life.appended||life.failure||life.saved)return false;
     std::array<ID3D12CommandList*,gears_frame_link::Tracker::list_capacity> copied{};
@@ -136,7 +136,7 @@ void execute_passthrough(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList*
     auto lock=execution_lock();const bool token=prepare_execute(queue,count,members);original_execute(queue,count,members);after_execute(token,queue);
 }
 void reset_after_original(ID3D12GraphicsCommandList* list,HRESULT hr){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(!life.appended||life.failure||life.saved)return;
     const auto id=identity(list);
     // A known unrelated object cannot retire the held list. An unidentified
@@ -150,7 +150,7 @@ HRESULT reset_passthrough(ID3D12GraphicsCommandList* list,ID3D12CommandAllocator
     auto lock=execution_lock();auto hr=original_reset_list(list,allocator,state);reset_after_original(list,hr);return hr;
 }
 void poll(){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(!life.appended||life.failure||life.saved||!life.signalled)return;
     result=device->GetDeviceRemovedReason();if(FAILED(result)){life.fail(device_removed);return;}
     life.completion(fence->GetCompletedValue());if(!life.may_map())return;
@@ -169,10 +169,10 @@ void poll(){
         if(!CloseHandle(meta))ok=false;}
     if(ok){life.saved=true;release_safe();}else life.fail(file_failed);
 }
-void stop(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);stopped=true;life.stop();matched_ticket.close();}
-void progress(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void stop(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);stopped=true;life.stop();matched_ticket.close();}
+void progress(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"death_hdr_pixels_saved=%u death_hdr_pixels_appended=%u death_hdr_pixels_failure=%u ",unsigned(life.saved),unsigned(life.appended),life.failure);}
-void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void print(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"death_hdr_pixels enabled=1 attested=%u attempted=%u eyes=%u matching_copies=%u ticket=%llu world=%llu copy_seq=%llu appended=%u executed=%u signalled=%u retired=%u gpu_complete=%u saved=%u failure=%u hr=%08lx held_until_process=%u original_forwarded_once=1 appended_source_copy_count=%u separate_list=0 separate_queue=0 engine_barriers_added=0 source_state_source=adjacent_original_copy_contract all_execute_reset_branches=1 unknown_execution_quarantines=1 raw_path=%ls metadata_path=%ls\n",
         unsigned(attested),unsigned(attempted),trigger.eyes,trigger.copies,ticket,world,copy_seq,unsigned(life.appended),unsigned(life.executed),unsigned(life.signalled),unsigned(life.retired),unsigned(life.gpu_complete),unsigned(life.saved),life.failure,static_cast<unsigned long>(result),unsigned(life.appended&&!released),unsigned(life.appended),raw_path,metadata_path);
     const auto& r=life.reset_receipt;
@@ -189,7 +189,7 @@ bool enable(FILE*){return true;}
 void sample(gears_death_hdr::Event const&,uintptr_t){}
 bool prepare_copy(ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,UINT,UINT,UINT,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_BOX*,uintptr_t){return false;}
 void append_after_original(bool,ID3D12GraphicsCommandList*,const D3D12_TEXTURE_COPY_LOCATION*,const D3D12_TEXTURE_COPY_LOCATION*){}
-std::unique_lock<std::recursive_mutex> execution_lock(){return std::unique_lock<std::recursive_mutex>(frame_hook_mutex,std::defer_lock);}
+std::unique_lock<FrameHookMutex> execution_lock(){return std::unique_lock<FrameHookMutex>(frame_hook_mutex,std::defer_lock);}
 bool prepare_execute(ID3D12CommandQueue*,UINT,ID3D12CommandList* const*){return false;}
 void after_execute(bool,ID3D12CommandQueue*){}
 void execute_passthrough(ID3D12CommandQueue* queue,UINT count,ID3D12CommandList* const* members){original_execute(queue,count,members);}

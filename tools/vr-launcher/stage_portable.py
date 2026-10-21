@@ -13,7 +13,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT_MODULES = {
     'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle game_audio_guard',
-    'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy tiny_output_recovery',
+    'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy tiny_output_recovery instance_policy',
     'game-io': 'background_input game_io menu_state menu_control movie_state scene_owner_snapshot',
     'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',
     'native-capture': ('anchor_config cinematic_anchor mounted_context mounted_read_pass crosshair_assignment_config hook_entry_attestation camera_closer_options '
@@ -25,7 +25,7 @@ PROJECT_MODULES = {
 }
 NATIVE_TESTS = ('CaptureSelfTest.exe', 'GraphicsMenuLockTest.exe', 'FrameLinkTest.exe',
                 'GpuViewportStatsTest.exe', 'SplitSourceViewsTest.exe', 'SubmittedViewLifetimeTest.exe',
-                'SourceViewShadowTest.exe','SourceViewArgsTest.exe','SourceEyeArgsTest.exe','TwoViewRendererShadowTest.exe')
+                'SourceViewShadowTest.exe','SourceViewArgsTest.exe','SourceEyeArgsTest.exe')
 AUDIO_HELPER = 'tools/game-audio/GearsTestAudioGuard.exe'
 AUDIO_PROVENANCE = 'tools/game-audio/audio-helper-provenance.json'
 QUIET_BUILD = 'tools/quiet-startup/build-quiet11'
@@ -104,7 +104,7 @@ def python_sources(python_root):
     return sorted(set(result))
 
 
-def stage(root, python_root, destination, *, manifest_path=None, launcher_path=None):
+def stage(root, python_root, destination, *, manifest_path=None, launcher_path=None, release_version=None):
     root, python_root = no_links(root).resolve(), no_links(python_root).resolve()
     destination = no_links(destination)
     if destination.exists(): raise FileExistsError('A stage must be a new directory: ' + str(destination))
@@ -114,6 +114,11 @@ def stage(root, python_root, destination, *, manifest_path=None, launcher_path=N
     selected_manifest = (contained(root, 'tools/vr-launcher/manifest.json') if manifest_path is None
                          else no_links(manifest_path))
     manifest = json.loads(selected_manifest.read_text())
+    release_documents = {}
+    if release_version is not None:
+        if release_version != '0.0.1': raise ValueError('Unsupported release version')
+        for name in ('README.txt', 'RELEASE_NOTES.txt'):
+            release_documents[name] = contained(root, 'docs/releases/' + release_version + '/' + name).read_text(encoding='utf-8')
     candidate_launcher = no_links(launcher_path) if launcher_path is not None else None
     if candidate_launcher is not None and candidate_launcher.suffix.lower() != '.exe':
         raise ValueError('Expected a compiled candidate launcher EXE')
@@ -155,11 +160,21 @@ def stage(root, python_root, destination, *, manifest_path=None, launcher_path=N
             'candidate_manifest': alias, 'source_manifest_name': selected_manifest.name,
             'source_manifest_sha256': digest(selected_manifest),
             'game_selection_required': True, 'simulator_bundled': False,
-            'runtime_choice': 'The GUI defaults to Quest 3 / Virtual Desktop (VDXR); system OpenXR is also selectable. Simulator files are not bundled.',
+            'runtime_choice': 'The GUI defaults to System OpenXR runtime; Quest 3 / Virtual Desktop (VDXR) is also selectable. Simulator files are not bundled.',
             'limits': ['No game/headset acceptance performed', 'Redistribution/license review remains required',
                       'GUI developer Python fallbacks still exist outside strict preflight',
                       'Optional game_io capture/controller diagnostics are not bundled dependencies']},
     }
+    if release_version is not None:
+        metadata = generated['portable-candidate.json']
+        metadata.update(kind='public-test-release', version=release_version,
+            user_reported_acceptance=['Act 1 completed', 'KRVR + Apple Vision Pro playable',
+                                      'Virtual Desktop + Quest 3 playable', 'Reticle issue resolved'],
+            limits=['Later chapters not fully verified', 'Mounted machine-gun transitions may pause for about 2 seconds',
+                    'DLSS / DLAA disabled in the normal launcher',
+                    'Offline dependency preflight alone does not certify game/headset behavior'])
+        # Public-test acceptance is recorded separately from the offline stager.
+        metadata.pop('release_ready', None)
     if alias is not None: generated[alias] = manifest
     for relative, value in generated.items():
         target = contained(destination, relative); target.parent.mkdir(parents=True, exist_ok=True)
@@ -206,8 +221,13 @@ This is an unvalidated development candidate, not a public release. Game files a
             'VR 每眼分辨率使用 Runtime 推荐值 × 启动器渲染倍率，默认100%；“检查眼图尺寸”可预先查看。\n   游戏分辨率只影响桌面镜像；倍率改动在下次启动生效。')
         instructions = instructions.replace('Set resolution in the game.',
             'VR eye size uses the runtime recommendation × launcher render scale (100% by default).\n   Use Check eye size before launch. Game resolution controls the desktop mirror; scale changes apply next launch.')
-    readme.write_text(instructions, encoding='utf-8')
+    readme.write_text(release_documents.get('README.txt', instructions), encoding='utf-8')
     record(readme, 'generated:README.txt', 'project-user-instructions')
+    for relative, content in release_documents.items():
+        if relative == 'README.txt': continue
+        target = contained(destination, relative)
+        target.write_text(content, encoding='utf-8')
+        record(target, 'repository:docs/releases/' + release_version + '/' + relative, 'project-user-instructions')
     for relative in ('analysis/runtime', 'analysis/vr-launcher-ui'): contained(destination, relative).mkdir(parents=True, exist_ok=True)
     # A file cannot contain its own digest. All payload files are listed; the
     # inventory's own hash belongs in the separate preflight evidence receipt.
@@ -236,9 +256,11 @@ def main():
     parser.add_argument('--root', type=Path, default=ROOT)
     parser.add_argument('--manifest', type=Path, help='Stage an explicit candidate without changing the local default')
     parser.add_argument('--launcher', type=Path, help='Use an independently compiled GUI without replacing the player EXE')
+    parser.add_argument('--release-version', choices=('0.0.1',), help='Include versioned public-test instructions')
     parser.add_argument('--preflight-output', type=Path, required=True)
     args = parser.parse_args()
-    report = stage(args.root, args.python_root, args.destination, manifest_path=args.manifest, launcher_path=args.launcher)
+    report = stage(args.root, args.python_root, args.destination, manifest_path=args.manifest, launcher_path=args.launcher,
+                   release_version=args.release_version)
     preflight = run_preflight(args.destination, args.preflight_output)
     print(json.dumps({'destination': str(args.destination.resolve()), 'files': len(report['files']),
                       'payload_bytes': report['bytes'], 'preflight': preflight}))

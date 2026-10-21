@@ -28,7 +28,7 @@ Context identity(){
     out.enabled=true;return out;
 }
 void invalidate(unsigned cause){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(!pending())return;
     if(!stop_cause)stop_cause=cause;
     auto c=identity();c.current=false;c.nested=cause==nested_wrapper;
@@ -61,17 +61,17 @@ Context consumption(gears_submitted::FrameTicket const& frame,void* renderer,boo
 struct ConsumeScope {
     gears_submitted::FrameTicket frame;void* renderer{};bool nested{},finished{};
     ConsumeScope(gears_submitted::FrameTicket const& f,void* r,bool n):frame(f),renderer(r),nested(n){
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+        std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
         if(pending()){window.consume_begin(consumption(frame,renderer,nested,true),GetTickCount64());terminal();}
     }
     void finish(){
-        std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);finished=true;
+        std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);finished=true;
         if(pending()){window.consume_end(consumption(frame,renderer,nested,false),GetTickCount64());terminal();}
     }
     ~ConsumeScope(){if(!finished)invalidate(consume_unwound);}
 };
 void eval_enter(ngx_stereo_host::WrapperScope& scope,bool owned,uintptr_t caller,uintptr_t command,void const* structure,bool concurrent){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     select_seed(ngx_stereo_host::latest_native_create);
     if(!pending())return;
     auto c=consumption(consuming_frozen_frame,consuming_renderer,concurrent,true);
@@ -81,6 +81,7 @@ void eval_enter(ngx_stereo_host::WrapperScope& scope,bool owned,uintptr_t caller
     if(window.eval_enter(c,reinterpret_cast<uintptr_t>(&scope),GetTickCount64())){
         scope.target_admitted=true;scope.target_context=c;scope.target_structure=address;
         scope.target_ordinal=window.snapshot().eval_count-1;
+        ngx_mv_compute_capture::sdk_eval(command,scope.target_ordinal);
         scope.target_receipt.begin(command,c.handle,c.parameters);
     }
     terminal();
@@ -93,7 +94,7 @@ void sdk_leave(ngx_stereo_host::WrapperScope* scope,uint32_t raw){
     scope->target_sdk_result=raw;scope->target_sdk_returned=true;scope->target_receipt.dispatch_leave(true,raw);
 }
 void eval_leave(ngx_stereo_host::WrapperScope& scope,bool returned,bool unwinding,uint64_t raw){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(!scope.target_admitted)return;
     auto c=consumption(consuming_frozen_frame,consuming_renderer,false,true);
     uintptr_t mv{};
@@ -104,7 +105,7 @@ void eval_leave(ngx_stereo_host::WrapperScope& scope,bool returned,bool unwindin
     window.eval_leave(c,reinterpret_cast<uintptr_t>(&scope),normal,accepted,GetTickCount64());terminal();
 }
 void poll(){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(!pending())return;
     if(committed_world_generation.load()!=window.snapshot().selection.world){invalidate(world_changed);return;}
     // A worker can run while the original SDK call is in flight. Its Create
@@ -114,12 +115,12 @@ void poll(){
     terminal();
 }
 void close(){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);closed=true;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);closed=true;
     invalidate(closed_capture);ngx_mv_compute_capture::stop();ngx_mv_descriptor_capture::stop_target();
 }
 void release_drained(){
     gears_ngx_stereo::TypedResourceLease retired;
-    {std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    {std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
         if(!closed||active.load()||recording.load())return;
         retired=std::move(selected_mv);leases_released=true;}
     // No observer lock across the final native Release.
@@ -127,7 +128,7 @@ void release_drained(){
     ngx_mv_compute_capture::release_drained();
 }
 void print(FILE* file){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!file)return;auto const& s=window.snapshot();
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!file)return;auto const& s=window.snapshot();
     ngx_mv_compute_capture::print(file);
     fprintf(file,"ngx_mv_target_window enabled=1 phase=%u reason=%u stop_cause=%u observation=%llu revision=%llu world=%llu selection_ticket=%llu consume_ticket=%llu renderer=%llx handle=%llx parameters=%llx mv=%llx selected_tick_ms=%llu deadline_tick_ms=%llu last_tick_ms=%llu evals=%u completed_evals=%u eval_open=%u closed=%u leases_released=%u producer_domain_verified=0 gpu_completion_verified=0\n",
         unsigned(s.phase),unsigned(s.reason),stop_cause,s.selection.observation_id,s.selection.revision,s.selection.world,s.selection.ticket,

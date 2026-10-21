@@ -16,7 +16,7 @@ constexpr bool material_routing=true;
 #else
 constexpr bool material_routing=false;
 #endif
-std::atomic<uint64_t> route_commands{},route_draws{},route_faults{},route_plane_draws{},route_reticle_draws{};
+std::atomic<uint64_t> route_commands{},route_draws{},route_faults{},route_plane_draws{},route_reticle_draws{},semantic_incomplete{};
 std::atomic<unsigned> first_route_fault{};
 struct FirstFault {uint64_t ticket{};long long qpc{};unsigned thread{},reason{};};
 FirstFault first_fault{};
@@ -44,6 +44,9 @@ struct DrawRejection {uint64_t ticket{},pair_ticket{};uintptr_t caller{},actual{
  gears_ui_hud::Parameters parameters{};bool sample_valid{};gears_vr::StereoSample sample{};
  gears_ui_hud::Diagnostic plan_diagnostic{};};
 DrawRejection first_draw_rejection{};std::mutex draw_rejection_mutex;
+struct CommandRejection {uint64_t ticket{},receipt{},active{},pending{},world{},last_consumed{},resource_consumed{};
+ long long qpc{};uintptr_t caller{},resource{},adapter{};unsigned stage{},trial_error{},gpu_error{};bool watching{};};
+CommandRejection first_command_rejection{};std::mutex command_rejection_mutex;
 void reject_draw(DrawRejection const& row){std::lock_guard<std::mutex> lock(draw_rejection_mutex);if(!first_draw_rejection.ticket)first_draw_rejection=row;}
 void fault(uint64_t ticket,unsigned reason){
  if(!routing)return;
@@ -51,6 +54,12 @@ void fault(uint64_t ticket,unsigned reason){
  if(first_fault_claimed.compare_exchange_strong(empty,true)){
   first_fault={ticket,now(),GetCurrentThreadId(),reason};first_route_fault=reason;
   first_fault_ready.store(true,std::memory_order_release);
+#if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
+  // The process may exit before the periodic status sample. Preserve only the
+  // first exact UI refusal; this diagnostic grants no rendering permission.
+  if(diagnostic_status){fprintf(diagnostic_status,"ngx_owned_ui_first_fault ticket=%llu reason=%u name=%s thread=%lu consume_ticket=%llu\n",
+      ticket,reason,fault_name(reason),GetCurrentThreadId(),consuming_frame_ticket);fflush(diagnostic_status);}
+#endif
  }
  request_session_stop(SessionStop::proof_failure);
 }
@@ -92,9 +101,14 @@ void progress(FILE* output){
  DrawRejection draw{};FlushRow flush{};unsigned flush_reason{};
  {std::lock_guard<std::mutex> lock(draw_rejection_mutex);draw=first_draw_rejection;}
  {std::lock_guard<std::mutex> lock(flush_rows_mutex);flush=rejected_flush;flush_reason=rejected_flush_reason;}
+ CommandRejection command{};{std::lock_guard<std::mutex> lock(command_rejection_mutex);command=first_command_rejection;}
+ fprintf(output,"owned_ui_command_stage=%u owned_ui_command_ticket=%llu owned_ui_command_receipt=%llu owned_ui_command_active=%llu owned_ui_command_pending=%llu owned_ui_command_world=%llu owned_ui_command_qpc=%lld owned_ui_command_caller=%llx owned_ui_command_resource=%llx owned_ui_command_adapter=%llx owned_ui_command_trial_error=%u owned_ui_command_gpu_error=%u owned_ui_command_watching=%u owned_ui_command_last_consumed=%llu owned_ui_command_resource_consumed=%llu ",
+  command.stage,command.ticket,command.receipt,command.active,command.pending,command.world,command.qpc,command.caller,command.resource,command.adapter,
+  command.trial_error,command.gpu_error,command.watching?1u:0u,command.last_consumed,command.resource_consumed);
  // Never hold a callback's evidence mutex across status-file I/O.
  fprintf(output,"owned_ui_fault_recorded=%u owned_ui_faults=%llu owned_ui_first_fault=%u owned_ui_first_fault_name=%s owned_ui_first_fault_ticket=%llu owned_ui_first_fault_qpc=%lld owned_ui_first_fault_qpc_frequency=%lld owned_ui_first_fault_thread=%u ",
   ready?1u:0u,route_faults.load(),row.reason,fault_name(row.reason),row.ticket,row.qpc,qpc_frequency,row.thread);
+ fprintf(output,"owned_ui_semantic_incomplete=%llu ",semantic_incomplete.load());
  fprintf(output,"owned_ui_draw_reject_ticket=%llu owned_ui_draw_reject_pair=%llu owned_ui_draw_reject_caller=%llx owned_ui_draw_reject_flags=%u owned_ui_draw_reject_actual=%llx owned_ui_draw_reject_expected=%llx owned_ui_draw_reject_width=%u owned_ui_draw_reject_height=%u owned_ui_draw_reject_tracked=%u owned_ui_draw_reject_vp_count=%u owned_ui_draw_reject_sc_count=%u owned_ui_draw_reject_depth_known=%u ",
   draw.ticket,draw.pair_ticket,draw.caller,draw.flags,draw.actual,draw.expected,draw.width,draw.height,
   draw.state.tracked,draw.state.viewport_count,draw.state.scissor_count,draw.state.depth_known);
@@ -185,8 +199,13 @@ uint64_t execute_begin(void* command){
 }
 void execute_end(uint64_t id,uint32_t result,bool sequence_complete){
  if(!id)return;gears_owned_ui::Execution e{};ledger.execution(id,e);
- const bool recorded=ledger.complete(id,result==48&&sequence_complete,now());
- if(result!=48||!sequence_complete||!recorded)fault(e.ticket,6);
+ // The semantic cursor and live UI binding govern optional HUD placement.
+ // The owned Canvas receipt is certified by its own producer, command route,
+ // native Execute result and GPU submission proof. A semantic mismatch must
+ // disable HUD placement without tearing down the whole stereo session.
+ if(!sequence_complete)++semantic_incomplete;
+ const bool recorded=ledger.complete(id,result==48,now());
+ if(result!=48||!recorded)fault(e.ticket,6);
 }
 #if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
 struct Route {uint64_t ticket{},receipt{};uintptr_t resource{};unsigned source_width{},source_height{};};
@@ -197,12 +216,27 @@ struct CommandScope {
  void* argument{};
  CommandScope(uint64_t receipt,void* original,uintptr_t caller):argument(original){
   route={};if(!receipt)return;
-  gears_owned_ui::Execution e{};std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+  gears_owned_ui::Execution e{};std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
   const auto& trial=gears_owned_scene_live::trial;
   unsigned dimensions[2]{};
-  if(!ledger.execution(receipt,e)||caller!=base+0x19f2f3||!safe_copy(header.data(),original,sizeof(header))||
-     header[0]!=base+0x13394f0||header[1]!=e.payload||header[4]!=e.target||header[5]||
-     !gears_owned_scene_live::healthy()||trial.ticket!=e.ticket||!trial.adapter||!trial.resource||!owned_scene_gpu::watching()){
+  unsigned rejected{};
+  if(!ledger.execution(receipt,e))rejected=1;
+  else if(caller!=base+0x19f2f3)rejected=2;
+  else if(!safe_copy(header.data(),original,sizeof(header)))rejected=3;
+  else if(header[0]!=base+0x13394f0)rejected=4;
+  else if(header[1]!=e.payload)rejected=5;
+  else if(header[4]!=e.target)rejected=6;
+  else if(header[5])rejected=7;
+  else if(!gears_owned_scene_live::healthy())rejected=8;
+  else if(trial.ticket!=e.ticket)rejected=9;
+  else if(!trial.adapter)rejected=10;
+  else if(!trial.resource)rejected=11;
+  else if(!owned_scene_gpu::watching())rejected=12;
+  if(rejected){
+   {std::lock_guard<std::mutex> evidence(command_rejection_mutex);
+    if(!first_command_rejection.stage)first_command_rejection={e.ticket,receipt,trial.ticket,gears_owned_scene_live::pipeline.pending.ticket,
+     committed_world_generation.load(),owned_scene_gpu::last_consumed_ticket,owned_scene_gpu::resource_consumed,
+     now(),caller,trial.resource,trial.adapter,rejected,trial.error,owned_scene_gpu::error,owned_scene_gpu::watching()};}
    fault(e.ticket,7);return;
   }
   memcpy(dimensions,header.data()+2,sizeof(dimensions));

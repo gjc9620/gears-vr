@@ -64,17 +64,17 @@ bool attest(FILE* file){
 bool current(Key key){return attested&&recording.load()&&!other_controls()&&key&&active_key==key&&consuming_renderer&&consuming_frozen_frame.enabled&&
     consuming_frame_ticket==key.id&&consuming_frozen_frame.id==key.id&&consuming_frozen_frame.world_generation==key.world&&committed_world_generation.load()==key.world;}
 Consume begin(gears_submitted::FrameTicket const& frame,bool renderer){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);Consume token{{},active_key};active_key={};
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);Consume token{{},active_key};active_key={};
     if(attested&&recording.load()&&renderer&&frame.enabled&&frame.id&&frame.id==consuming_frame_ticket&&frame.world_generation&&frame.world_generation==committed_world_generation.load()){
         token.key={frame.world_generation,frame.id};active_key=token.key;store.begin(token.key);
     }
     return token;
 }
-void finish(Consume const& token){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);store.finish(token.key);active_key=token.previous;}
+void finish(Consume const& token){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);store.finish(token.key);active_key=token.previous;}
 uint64_t __fastcall hook(uintptr_t rcx,const uint16_t* descriptor,const void* data,unsigned index){
     const auto caller=reinterpret_cast<uintptr_t>(_ReturnAddress())-base;Scope scope;
     if(caller!=0xd803bf)return original(rcx,descriptor,data,index);
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(!active_key)return original(rcx,descriptor,data,index);const auto key=active_key;
     auto* entry=store.participate(key);++site_calls; // Participation precedes every payload/view/descriptor check.
     if(!entry)return original(rcx,descriptor,data,index);
@@ -96,7 +96,7 @@ uint64_t __fastcall hook(uintptr_t rcx,const uint16_t* descriptor,const void* da
     if(change)++modified[before.eye];else ++already_zero[before.eye];return result;
 }
 void quad(uintptr_t caller,bool world){
-    if(!gears_vr_dof::quad_caller(caller))return;std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!active_key)return;
+    if(!gears_vr_dof::quad_caller(caller))return;std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!active_key)return;
     const auto key=active_key;auto* entry=store.participate(key);++site_calls; // A quad without a supported setter is a participating failure.
     if(!entry)return;if(!world||!current(key)){entry->fail(Failure::identity_changed);return;}
     const auto now=view();if(!now.valid){entry->fail(Failure::read_failed);return;}
@@ -109,19 +109,26 @@ void quad(uintptr_t caller,bool world){
     entry->proved(now.eye,false,proof);if(proof){entry->payload.eyes[now.eye].quad_caller=caller;
         ++quad_proved[now.eye];++quad_site_proved[site][now.eye];} // No old R8 memory is read here.
 }
+bool current_quad_zero_proved(uint64_t world,uint64_t ticket,unsigned eye,uintptr_t caller){
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);const Key key{world,ticket};
+    auto* entry=store.find(key);if(eye>1||!current(key)||!entry||entry->complete||entry->failure!=Failure::none||
+       !(entry->setter_mask&(1u<<eye))||!(entry->quad_mask&(1u<<eye)))return false;
+    auto const& e=entry->payload.eyes[eye];const auto live=view();const auto path=destination();
+    return e.quad_caller==caller&&e.after==live&&path.same(e.post)&&finite(path.value)&&path.value[0]==0&&equal(path.value,e.forwarded);
+}
 bool publication(uint64_t world,uint64_t ticket){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);const Key key{world,ticket};const auto decision=store.decision(key);++decisions[static_cast<unsigned>(decision)];
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);const Key key{world,ticket};const auto decision=store.decision(key);++decisions[static_cast<unsigned>(decision)];
     Receipt receipt;receipt.valid=true;receipt.world=world;receipt.ticket=ticket;receipt.decision=static_cast<unsigned>(decision);
     if(auto* entry=store.find(key)){receipt.complete=entry->complete;receipt.site=entry->site;receipt.failure=static_cast<unsigned>(entry->failure);receipt.setters=entry->setter_mask;receipt.quads=entry->quad_mask;
         for(unsigned eye=0;eye<2;++eye)receipt.quad_callers[eye]=entry->payload.eyes[eye].quad_caller;}
     (allowed(decision)?last_allowed:last_rejected)=receipt;
     if(!allowed(decision))++capture_rejected;return allowed(decision);
 }
-void retire(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void retire(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     // Desktop Present is not the completed owned Canvas/publication boundary.
     if(owned_xr_probe&&runtime_size_transport())return;
     store.retire_window();}
-bool retire_owned(uint64_t world,uint64_t ticket){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+bool retire_owned(uint64_t world,uint64_t ticket){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     const Key key{world,ticket};
     if(!owned_xr_probe||!runtime_size_transport()||!allowed(store.decision(key)))return false;
     return store.retire_through(ticket);
@@ -129,15 +136,15 @@ bool retire_owned(uint64_t world,uint64_t ticket){std::lock_guard<std::recursive
 // Memory-only closed-world transaction, after independent resource retirement.
 // No active_key access: Consume begin/finish retain ownership on their thread.
 bool world_retirement_ready(uint64_t old_world,uint64_t cutoff){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     return store.world_retirement_ready(old_world,cutoff);
 }
 bool retire_world(uint64_t old_world,uint64_t cutoff){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     return store.retire_world(old_world,cutoff);
 }
-void progress(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);fprintf(file,"vr_dof_capture_rejected=%llu vr_dof_no_site=%llu vr_dof_zero_proved=%llu ",capture_rejected,decisions[0],decisions[1]);}
-void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void progress(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);fprintf(file,"vr_dof_capture_rejected=%llu vr_dof_no_site=%llu vr_dof_zero_proved=%llu ",capture_rejected,decisions[0],decisions[1]);}
+void print(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     fprintf(file,"vr_dof_compat enabled=1 attested=%u both_owned_eyes=1 outside_owned_unchanged=1 store_capacity=128 capacity_lost=%u overflow=%llu late=%llu invalid=%llu begun=%llu completed=%llu retired_through=%llu observed_through=%llu site_calls=%llu modified_left=%llu modified_right=%llu already_zero_left=%llu already_zero_right=%llu setter_proved_left=%llu setter_proved_right=%llu quad_proved_left=%llu quad_proved_right=%llu no_site_allowed=%llu zero_proved_allowed=%llu capture_rejected=%llu missing=%llu incomplete=%llu proof_rejected=%llu overflow_rejected=%llu no_gpu_commands=1 source_memory_written=0 old_r8_read_at_quad=0 highwater_is_capacity=0 runtime_owned_supported=1 owned_publication_proof_required=1\n",
         unsigned(attested),unsigned(store.capacity_lost),store.overflow,store.late,store.invalid,store.begins,store.finishes,store.retired,store.observed,site_calls,modified[0],modified[1],already_zero[0],already_zero[1],setter_proved[0],setter_proved[1],quad_proved[0],quad_proved[1],decisions[0],decisions[1],capture_rejected,decisions[2],decisions[3],decisions[4],decisions[5]);
     fprintf(file,"vr_dof_quad_sites site0=d808d8 calls=%llu,%llu proved=%llu,%llu site1=d80a7b calls=%llu,%llu proved=%llu,%llu eye_order=left,right call_counts_require_valid_view=1\n",

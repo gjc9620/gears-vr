@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Globalization;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace GearsVrUi {
-    enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid, ExportLogs, ExportingLogs, LogsExported, ExportLogsFailed, ExportFilter, ExportInvalidResult, ExportWarnings, RenderScale, RenderHint, RenderPreview, RenderInvalid, RenderIntro }
+    enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid, ExportLogs, ExportingLogs, LogsExported, ExportLogsFailed, ExportFilter, ExportInvalidResult, ExportWarnings, RenderScale, RenderHint, RenderPreview, RenderInvalid, RenderIntro, StereoFpsUnavailable, StereoFpsPrefix, XrRatePrefix }
     static class Language {
         internal static volatile bool English = true;
         internal static readonly string[] Chinese = new string[] {
@@ -20,7 +21,7 @@ namespace GearsVrUi {
             "HUD 大小必须在 45–100° 之间。",
             "未知",
             "未找到可用 Python 3。请将 GEARSVR_PYTHON 设置为 python.exe 完整路径。",
-            "Gears VR 实验启动器 v0.1",
+            "GearsVR 0.0.1 启动器",
             "实验版本 · 跟随游戏当前分辨率渲染\r\nDLSS / DLAA 已禁用。手动进入关卡；不会自动结束测试。",
             "游戏路径",
             "浏览…",
@@ -76,6 +77,9 @@ namespace GearsVrUi {
             "查看实际尺寸",
             "渲染倍率必须为 0.25–2.0 的数字；构建能力必须为布尔值。",
             "实验版本 · VR 使用运行时推荐尺寸 × 渲染倍率\r\n桌面镜像尺寸独立；请手动进入关卡。",
+            "双目新帧：-- FPS（等待数据）",
+            "双目新帧：",
+            "OpenXR 循环：",
         };
         internal static readonly string[] Translations = new string[] {
             "Gears VR startup failed",
@@ -85,7 +89,7 @@ namespace GearsVrUi {
             "HUD size must be between 45 and 100 degrees.",
             "Unknown",
             "Python 3 not found. Set GEARSVR_PYTHON to the full python.exe path.",
-            "Gears VR Experimental Launcher v0.1",
+            "GearsVR 0.0.1 Launcher",
             "Experimental build - Uses the current game resolution\r\nDLSS / DLAA disabled. Enter a level manually; no automatic timeout.",
             "Game path",
             "Browse...",
@@ -141,6 +145,9 @@ namespace GearsVrUi {
             "Check eye size",
             "Render scale must be a number from 0.25 to 2.0; build capability must be boolean.",
             "Experimental build · VR uses runtime recommended size × render scale\r\nDesktop mirror resolution is independent. Enter a level manually.",
+            "New stereo frames: -- FPS (waiting for data)",
+            "New stereo frames: ",
+            "OpenXR loop: ",
         };
         internal static string T(TextKey key) { return English ? Translations[(int)key] : Chinese[(int)key]; }
         internal static string TranslateVisible(string text, bool english) {
@@ -156,7 +163,43 @@ namespace GearsVrUi {
             return best < 0 ? text : target[best] + text.Substring(source[best].Length);
         }
     }
+    static class LauncherBrand {
+        internal static Icon LoadIcon(Size size) {
+            using (Stream stream = typeof(LauncherBrand).Assembly.GetManifestResourceStream("GearsVrUi.LauncherIcon")) {
+                if (stream == null) throw new IOException("The embedded launcher icon is missing.");
+                using (var icon = new Icon(stream, size)) return (Icon)icon.Clone();
+            }
+        }
+    }
+    sealed class CornerMark : Control {
+        readonly Bitmap artwork;
+        internal CornerMark() {
+            artwork = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (Stream stream = typeof(CornerMark).Assembly.GetManifestResourceStream("GearsVrUi.LauncherArtwork"))
+            using (var source = new Bitmap(stream)) {
+                for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) {
+                    Color pixel = source.GetPixel(x, y);
+                    double opacity = pixel.A / 255.0 * .48;
+                    int gray = (int)Math.Round((pixel.R * .2126 + pixel.G * .7152 + pixel.B * .0722) * opacity +
+                                              SystemColors.Control.R * (1 - opacity));
+                    artwork.SetPixel(x, y, Color.FromArgb(gray, gray, gray));
+                }
+            }
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            TabStop = false; AccessibleName = "GearsVR artwork";
+        }
+        protected override void OnPaint(PaintEventArgs e) {
+            base.OnPaint(e);
+            e.Graphics.DrawImageUnscaled(artwork, ClientSize.Width - artwork.Width, ClientSize.Height - artwork.Height);
+        }
+        protected override void Dispose(bool disposing) {
+            if (disposing) artwork.Dispose();
+            base.Dispose(disposing);
+        }
+    }
     static class Program {
+        internal const int DefaultRuntimeMode = 1;
         [STAThread] static int Main(string[] args) {
             bool selfTest = args.Length == 1 && args[0] == "--self-test";
             try {
@@ -217,6 +260,27 @@ namespace GearsVrUi {
         }
         internal static Dictionary<string, object> ReadConfig(string path) {
             return new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(File.ReadAllText(path));
+        }
+        internal static string InitialGamePath(string root, string saved) {
+            if (!String.IsNullOrWhiteSpace(saved)) {
+                try {
+                    string resolved = Path.GetFullPath(Path.IsPathRooted(saved) ? saved : Path.Combine(root, saved));
+                    if (File.Exists(resolved)) return resolved;
+                } catch (ArgumentException) { }
+                  catch (NotSupportedException) { }
+                  catch (PathTooLongException) { }
+            }
+            // Accept both installation-root and EXE-directory placement, also
+            // when the ZIP was extracted into one Mod subdirectory. Never use
+            // the shortcut's working directory or scan unrelated libraries.
+            var directory = new DirectoryInfo(root);
+            for (int depth = 0; depth < 2 && directory != null; depth++, directory = directory.Parent) {
+                foreach (string nearby in new string[] {
+                    Path.Combine(directory.FullName, "GOWDE-Steam.exe"),
+                    Path.Combine(directory.FullName, "Binaries_x64", "GOWDE-Steam.exe") })
+                    if (File.Exists(nearby)) return Path.GetFullPath(nearby);
+            }
+            return saved ?? "";
         }
         internal static bool IsEnglish(Dictionary<string, object> config) {
             object language;
@@ -324,7 +388,52 @@ namespace GearsVrUi {
             return owner != null && owner.TryGetValue("pid", out p) && owner.TryGetValue("creation_time", out c) &&
                 Convert.ToInt32(p) == pid && Convert.ToInt64(c) == creation;
         }
+        internal static double?[] LiveRates(string root, int pid, long creation) {
+            string runtime = Path.GetFullPath(Path.Combine(root, "analysis", "runtime")) + Path.DirectorySeparatorChar;
+            var index = ReadConfig(Path.Combine(runtime, "vr-launcher-session.json"));
+            if (!OwnIndexReady(new JavaScriptSerializer().Serialize(index), pid, creation)) return null;
+            object reportValue;
+            if (!index.TryGetValue("session_report", out reportValue) || !(reportValue is string)) return null;
+            string report = Path.GetFullPath((string)reportValue);
+            if (!report.StartsWith(runtime, StringComparison.OrdinalIgnoreCase) ||
+                !Path.GetFileName(report).StartsWith("continuous-stereo-", StringComparison.OrdinalIgnoreCase) ||
+                !report.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) return null;
+            string path = report.Substring(0, report.Length - 5) + ".telemetry.jsonl";
+            if (DateTime.UtcNow - File.GetLastWriteTimeUtc(path) > TimeSpan.FromSeconds(4)) return null;
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)) {
+                long start = Math.Max(0, stream.Length - 32768);
+                stream.Seek(start, SeekOrigin.Begin);
+                string content;
+                using (var reader = new StreamReader(stream, Encoding.UTF8)) content = reader.ReadToEnd();
+                if (start > 0) { int first = content.IndexOf('\n'); if (first < 0) return null; content = content.Substring(first + 1); }
+                if (!content.EndsWith("\n", StringComparison.Ordinal)) { int last = content.LastIndexOf('\n'); if (last < 0) return null; content = content.Substring(0, last + 1); }
+                string[] lines = content.TrimEnd('\r', '\n').Split('\n');
+                if (lines.Length == 0) return null;
+                var sample = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(lines[lines.Length - 1]);
+                object kind, ratesValue, statesValue;
+                if (!sample.TryGetValue("event", out kind) || Convert.ToString(kind) != "sample" ||
+                    !sample.TryGetValue("rates", out ratesValue) || !sample.TryGetValue("source_states", out statesValue)) return null;
+                var rates = ratesValue as Dictionary<string, object>;
+                var states = statesValue as Dictionary<string, object>;
+                object native, stereo, xr;
+                if (rates == null || states == null || !states.TryGetValue("native", out native) ||
+                    Convert.ToString(native) != "fresh" || !rates.TryGetValue("stereo_pairs_per_second", out stereo) || stereo == null) return null;
+                double fps = Convert.ToDouble(stereo, CultureInfo.InvariantCulture);
+                if (Double.IsNaN(fps) || Double.IsInfinity(fps) || fps < 0 || fps > 1000) return null;
+                double? xrRate = null;
+                if (rates.TryGetValue("xr_loop_hz", out xr) && xr != null &&
+                    states.TryGetValue("xr", out native) && Convert.ToString(native) == "fresh") {
+                    double hz = Convert.ToDouble(xr, CultureInfo.InvariantCulture);
+                    if (!Double.IsNaN(hz) && !Double.IsInfinity(hz) && hz >= 0 && hz <= 1000) xrRate = hz;
+                }
+                return new double?[] { fps, xrRate };
+            }
+        }
         static int SelfTest(string root) {
+            if (DefaultRuntime(root, DefaultRuntimeMode) != "") return 51;
+            using (var smallIcon = LauncherBrand.LoadIcon(new Size(16, 16)))
+            using (var largeIcon = LauncherBrand.LoadIcon(new Size(128, 128)))
+                if (smallIcon.Size != new Size(16, 16) || largeIcon.Size != new Size(128, 128)) return 50;
             if (Language.Chinese.Length != Enum.GetValues(typeof(TextKey)).Length || Language.Translations.Length != Language.Chinese.Length) return 33;
             if (!DefaultRuntime(root, 0).EndsWith("virtualdesktop-openxr.json") || DefaultRuntime(root, 1) != "" || !DefaultRuntime(root, 2).EndsWith("openxr_simulator.json")) return 20;
             string args = Arguments(root, "start", "C:\\runtime with spaces\\openxr.json");
@@ -353,6 +462,57 @@ namespace GearsVrUi {
             const string ready = "{\"kind\":\"repository_vr_launcher\",\"owner_identity\":{\"pid\":123,\"creation_time\":456}}";
             if (OwnIndexReady("{}",123,456) || OwnIndexReady(ready,124,456) || OwnIndexReady(ready,123,457) ||
                 !OwnIndexReady(ready,123,456)) return 7;
+            string gameRoot = Path.Combine(Path.GetTempPath(), "gearsvr-path-中文 space-" + Guid.NewGuid().ToString("N"));
+            string previousDirectory = Environment.CurrentDirectory;
+            try {
+                Directory.CreateDirectory(Path.Combine(gameRoot, "Binaries_x64"));
+                Directory.CreateDirectory(Path.Combine(gameRoot, "elsewhere"));
+                string nearby = Path.Combine(gameRoot, "Binaries_x64", "GOWDE-Steam.exe");
+                if (InitialGamePath(gameRoot, null) != "" || InitialGamePath(gameRoot, "missing.exe") != "missing.exe") return 46;
+                File.WriteAllText(nearby, "path fixture; never executed");
+                Environment.CurrentDirectory = Path.Combine(gameRoot, "elsewhere");
+                if (InitialGamePath(gameRoot, "") != nearby || InitialGamePath(gameRoot, "missing.exe") != nearby ||
+                    InitialGamePath(gameRoot, "bad\0path") != nearby) return 47;
+                string selected = Path.Combine(gameRoot, "elsewhere", "GOWDE-Steam.exe");
+                File.WriteAllText(selected, "selected path fixture; never executed");
+                if (InitialGamePath(gameRoot, selected) != selected ||
+                    InitialGamePath(gameRoot, Path.Combine("elsewhere", "GOWDE-Steam.exe")) != selected) return 48;
+                File.Delete(nearby);
+                if (InitialGamePath(gameRoot, "missing.exe") != "missing.exe") return 49;
+                string beside = Path.Combine(gameRoot, "GOWDE-Steam.exe");
+                File.WriteAllText(beside, "same-directory path fixture; never executed");
+                if (InitialGamePath(gameRoot, "") != beside || InitialGamePath(gameRoot, "bad\0path") != beside ||
+                    InitialGamePath(gameRoot, selected) != selected) return 50;
+                File.WriteAllText(nearby, "installation-root path fixture; never executed");
+                if (InitialGamePath(gameRoot, "") != beside) return 51;
+                string mod = Path.Combine(gameRoot, "GearsVR"); Directory.CreateDirectory(mod);
+                if (InitialGamePath(mod, "") != beside) return 52;
+                File.Delete(beside);
+                if (InitialGamePath(mod, "") != nearby) return 53;
+                string binaryMod = Path.Combine(gameRoot, "Binaries_x64", "GearsVR"); Directory.CreateDirectory(binaryMod);
+                if (InitialGamePath(binaryMod, "") != nearby) return 54;
+                File.Delete(nearby);
+                string nested = Path.Combine(mod, "nested"); Directory.CreateDirectory(nested);
+                File.WriteAllText(beside, "outside the bounded search; never executed");
+                if (InitialGamePath(nested, "missing.exe") != "missing.exe") return 55;
+            } finally {
+                Environment.CurrentDirectory = previousDirectory;
+                Directory.Delete(gameRoot, true);
+            }
+            string fpsRoot = Path.Combine(Path.GetTempPath(), "gearsvr-fps-selftest-" + Guid.NewGuid().ToString("N"));
+            try {
+                string runtime = Path.Combine(fpsRoot, "analysis", "runtime"); Directory.CreateDirectory(runtime);
+                string report = Path.Combine(runtime, "continuous-stereo-selftest.json");
+                File.WriteAllText(Path.Combine(runtime, "vr-launcher-session.json"),
+                    "{\"kind\":\"repository_vr_launcher\",\"owner_identity\":{\"pid\":123,\"creation_time\":456},\"session_report\":" +
+                    new JavaScriptSerializer().Serialize(report) + "}");
+                string telemetry = Path.Combine(runtime, "continuous-stereo-selftest.telemetry.jsonl");
+                File.WriteAllText(telemetry, "{\"event\":\"sample\",\"source_states\":{\"native\":\"fresh\",\"xr\":\"fresh\"},\"rates\":{\"stereo_pairs_per_second\":37.7,\"xr_loop_hz\":120}}\n");
+                var live = LiveRates(fpsRoot, 123, 456);
+                if (live == null || Math.Abs(live[0].Value - 37.7) > .01 || live[1] != 120 || LiveRates(fpsRoot, 124, 456) != null) return 44;
+                File.AppendAllText(telemetry, "{\"event\":\"stopped\"}\n");
+                if (LiveRates(fpsRoot, 123, 456) != null) return 45;
+            } finally { Directory.Delete(fpsRoot, true); }
             if (!Language.English || !IsEnglish(new Dictionary<string, object>())) return 31;
             string temp = Path.GetTempFileName();
             try {
@@ -431,7 +591,7 @@ namespace GearsVrUi {
                 if (!String.Equals(Python.Find(root).File, python.File, StringComparison.OrdinalIgnoreCase)) return 20;
             } finally { Environment.SetEnvironmentVariable("GEARSVR_PYTHON", previousPython); }
             File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "self-test.txt"),
-                "PASS: repository, quoting, start/stop/export arguments, export receipt validation, phase parsing, config preservation, HUD capability/range/save/readback/legacy behavior, bilingual catalog/language persistence, owner identity handshake, Python probe\r\nPython: " + python.File);
+                "PASS: repository, embedded artwork/icon sizes, game path discovery/EXE-directory/Mod subdirectory/bounded search/saved preference/relocation/unrelated working directory, quoting, start/stop/export arguments, export receipt validation, phase parsing, config preservation, HUD capability/range/save/readback/legacy behavior, bilingual catalog/language persistence, owner identity handshake, live FPS display source, Python probe\r\nPython: " + python.File);
             return 0;
         }
     }
@@ -481,7 +641,8 @@ namespace GearsVrUi {
         TextBox game = new TextBox(), runtime = new TextBox(), output = new TextBox();
         ComboBox runtimeMode = new ComboBox(), languageMode = new ComboBox();
         Button start = new Button(), stop = new Button(), recenter = new Button(), status = new Button(), browseGame = new Button(), browseRuntime = new Button(), exportLogs = new Button();
-        Label state = new Label(), renderInfo = new Label();
+        Label state = new Label(), renderInfo = new Label(), fpsInfo = new Label();
+        readonly Timer fpsTimer = new Timer { Interval = 1000 };
         Button renderPreview = new Button();
         NumericUpDown renderScale = new NumericUpDown { Minimum = .25m, Maximum = 2, Value = 1m, DecimalPlaces = 2, Increment = .05m, Width = 75 };
         NumericUpDown hudSize = new NumericUpDown { Minimum = 45, Maximum = 100, Value = 65, DecimalPlaces = 2, Increment = 1, Width = 85 };
@@ -501,8 +662,9 @@ namespace GearsVrUi {
             cameraSupported = Program.SupportsCameraDistance(Program.ReadConfig(Program.ManifestPath(root)));
             renderSupported = Program.SupportsRenderSize(Program.ReadConfig(Program.ManifestPath(root)));
             Text = Language.T(TextKey.WindowTitle); ClientSize = new Size(960, 610); MinimumSize = new Size(940, 520);
+            Icon = LauncherBrand.LoadIcon(SystemInformation.IconSize);
             Font = new Font("Microsoft YaHei UI", 9F); StartPosition = FormStartPosition.CenterScreen;
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 3, RowCount = 11 };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 3, RowCount = 12 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 62));
             for (int i = 1; i < 4; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
@@ -510,7 +672,8 @@ namespace GearsVrUi {
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, cameraSupported ? 38 : 0));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, renderSupported ? 66 : 0));
             for (int i = 7; i < 9; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
             var info = new Label { Text = Language.T(TextKey.Intro), Dock = DockStyle.Fill };
             layout.Controls.Add(info, 0, 0); layout.SetColumnSpan(info, 2);
             languageMode.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -521,11 +684,11 @@ namespace GearsVrUi {
             layout.Controls.Add(new Label { Text = Language.T(TextKey.GamePath), AutoSize = true }, 0, 1); game.Dock = DockStyle.Fill; layout.Controls.Add(game, 1, 1);
             browseGame.Text = Language.T(TextKey.Browse); layout.Controls.Add(browseGame, 2, 1);
             layout.Controls.Add(new Label { Text = "OpenXR", AutoSize = true }, 0, 2);
-            runtimeMode.DropDownStyle = ComboBoxStyle.DropDownList; runtimeMode.Items.AddRange(new object[] { "Quest 3 / Virtual Desktop (VDXR)", Language.T(TextKey.SystemRuntime), Language.T(TextKey.Simulator) }); runtimeMode.SelectedIndex = 0; runtimeMode.Dock = DockStyle.Fill;
+            runtimeMode.DropDownStyle = ComboBoxStyle.DropDownList; runtimeMode.Items.AddRange(new object[] { "Quest 3 / Virtual Desktop (VDXR)", Language.T(TextKey.SystemRuntime), Language.T(TextKey.Simulator) }); runtimeMode.SelectedIndex = Program.DefaultRuntimeMode; runtimeMode.Dock = DockStyle.Fill;
             layout.Controls.Add(runtimeMode, 1, 2);
             layout.Controls.Add(new Label { Text = Language.T(TextKey.RuntimeFile), AutoSize = true }, 0, 3); runtime.Dock = DockStyle.Fill; layout.Controls.Add(runtime, 1, 3);
             browseRuntime.Text = Language.T(TextKey.Browse); layout.Controls.Add(browseRuntime, 2, 3);
-            runtime.Text = Program.DefaultRuntime(root, 0);
+            runtime.Text = Program.DefaultRuntime(root, Program.DefaultRuntimeMode);
             if (hudSupported) {
                 layout.Controls.Add(new Label { Text = Language.T(TextKey.HudSize), AutoSize = true }, 0, 4);
                 var hud = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false };
@@ -556,11 +719,18 @@ namespace GearsVrUi {
             foreach (var button in new[] { start, stop, recenter, status, logs, exportLogs }) { button.AutoSize = true; buttons.Controls.Add(button); }
             layout.Controls.Add(buttons, 0, 7); layout.SetColumnSpan(buttons, 3);
             state.Text = Language.T(TextKey.Ready); state.Dock = DockStyle.Fill; layout.Controls.Add(state, 0, 8); layout.SetColumnSpan(state, 3);
+            fpsInfo.Text = Language.T(TextKey.StereoFpsUnavailable); fpsInfo.Dock = DockStyle.Fill;
+            fpsInfo.AccessibleName = Language.T(TextKey.StereoFpsPrefix).Trim();
+            layout.Controls.Add(fpsInfo, 0, 9); layout.SetColumnSpan(fpsInfo, 3);
             output.Multiline = true; output.ReadOnly = true; output.ScrollBars = ScrollBars.Both; output.WordWrap = false; output.Dock = DockStyle.Fill;
-            layout.Controls.Add(output, 0, 9); layout.SetColumnSpan(output, 3);
-            var footer = new Label { Text = Language.T(TextKey.StopHint), Dock = DockStyle.Fill };
-            layout.Controls.Add(footer, 0, 10); layout.SetColumnSpan(footer, 3); Controls.Add(layout);
+            layout.Controls.Add(output, 0, 10); layout.SetColumnSpan(output, 3);
+            var footer = new Label { Text = Language.T(TextKey.StopHint), Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft };
+            layout.Controls.Add(footer, 0, 11); layout.SetColumnSpan(footer, 2);
+            layout.Controls.Add(new CornerMark { Size = new Size(32, 32), Anchor = AnchorStyles.Right | AnchorStyles.Bottom,
+                Margin = Padding.Empty }, 2, 11);
+            Controls.Add(layout);
             try { var saved = Program.ReadConfig(config); game.Text = Convert.ToString(saved["game_path"]); if (hudSupported) hudSize.Value = Program.HudSize(saved); if (cameraSupported) cameraCloser.Value = Program.CameraCloser(saved); if(renderSupported)renderScale.Value=Program.RenderScale(saved); } catch (Exception e) { Log(Language.T(TextKey.ConfigReadError) + e.Message); }
+            game.Text = Program.InitialGamePath(root, game.Text);
             browseGame.Click += delegate { using (var dialog = new OpenFileDialog { Filter = Language.T(TextKey.GameFilter) }) if (dialog.ShowDialog(this) == DialogResult.OK) game.Text = dialog.FileName; };
             browseRuntime.Click += delegate { using (var dialog = new OpenFileDialog { Filter = "OpenXR manifest (*.json)|*.json" }) if (dialog.ShowDialog(this) == DialogResult.OK) runtime.Text = dialog.FileName; };
             runtimeMode.SelectedIndexChanged += delegate { if (translating) return; renderInfo.Text=""; runtime.Text = Program.DefaultRuntime(root, runtimeMode.SelectedIndex); UpdateButtons(); };
@@ -590,11 +760,21 @@ namespace GearsVrUi {
                     MessageBox.Show(this, e.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error); return;
                 }
                 Language.English = english; TranslateControls(this, english);
+                RefreshFps();
                 translating = true;
                 try { runtimeMode.Items[1] = Language.T(TextKey.SystemRuntime); runtimeMode.Items[2] = Language.T(TextKey.Simulator); }
                 finally { translating = false; }
             };
+            fpsTimer.Tick += delegate { RefreshFps(); };
+            fpsTimer.Start();
             FormClosing += OnClosingRequested; UpdateButtons();
+        }
+        void RefreshFps() {
+            double?[] rates = null;
+            if (owner != null) try { rates = Program.LiveRates(root, ownerPid, ownerCreation); } catch (Exception) { /* Optional telemetry must never interrupt the launcher. */ }
+            if (rates == null) { fpsInfo.Text = Language.T(TextKey.StereoFpsUnavailable); return; }
+            fpsInfo.Text = Language.T(TextKey.StereoFpsPrefix) + rates[0].Value.ToString("F1", CultureInfo.CurrentCulture) + " FPS" +
+                (rates[1].HasValue ? "    |    " + Language.T(TextKey.XrRatePrefix) + rates[1].Value.ToString("F0", CultureInfo.CurrentCulture) + " Hz" : "");
         }
         void TranslateControls(Control control, bool english) {
             if (control != output && control != game && control != runtime && control != languageMode && control != runtimeMode)

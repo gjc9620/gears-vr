@@ -163,7 +163,12 @@ def validate_sources(camera, anchor, ui, local, pid, digest, *, crosshair_assign
 
 
 def build_candidate(pid,profile,previous_local_identity,expected_generation,owner_identity,dll,*,signatures,check_live=None,attestation=None,
-                    crosshair_assignment_observer=False):
+                    crosshair_assignment_observer=False,camera_discovery=None,sample_pose=True):
+    if type(sample_pose)is not bool:raise ValueError('sample_pose must be boolean')
+    if not sample_pose and attestation is None:
+        raise ValueError('Static-only anchor assembly requires live entry attestation')
+    if camera_discovery is not None and (attestation is None or not callable(camera_discovery)):
+        raise ValueError('Camera discovery hint requires live entry attestation')
     pid = uint(pid,'game PID',32,True)
     previous = uint(expected_generation,'previous generation',positive=True)
     if previous == (1 << 64)-1:raise ValueError('Generation exhausted')
@@ -205,7 +210,9 @@ def build_candidate(pid,profile,previous_local_identity,expected_generation,owne
     camera,anchor,anchor_section,ui,ui_section = acquire_observer_preparation(
         pid,profile,camera,signatures,Path(dll),anchor_observer=True,ui_observer=True,cinematic_camera=True,
         record_anchor_failure=False,check_live=live,
+        **({'camera_discovery':camera_discovery} if camera_discovery is not None else {}),
         **({'crosshair_assignment_observer':True} if crosshair_assignment_observer else {}),
+        **({'anchor_sample_pose':False} if not sample_pose else {}),
         **({'entry_reader':attestation.read_entry} if attestation is not None else {}))
     live()
     if crosshair_assignment_observer:

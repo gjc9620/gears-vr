@@ -63,6 +63,9 @@ def allowed_paths(root):
     metadata = json.loads(read_bounded(staging.contained(root, 'portable-candidate.json'), 1024 * 1024),
                           object_pairs_hook=unique_object)
     if not isinstance(metadata, dict): raise ValueError('Invalid portable candidate metadata')
+    if metadata.get('kind') == 'public-test-release':
+        if metadata.get('version') != '0.0.1': raise ValueError('Unsupported release version')
+        result.add('RELEASE_NOTES.txt')
     alias = metadata.get('candidate_manifest')
     if alias is not None:
         if not isinstance(alias, str) or not re.fullmatch(r'tools/vr-launcher/manifest-[A-Za-z0-9_-]+\.json', alias):

@@ -631,9 +631,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 print(json.dumps({'continuous_running':True,'session_report':str(state_path)}),flush=True)
                 observe_first_stereo(native_started)
                 if getattr(args,'menu_recovery',False):
-                    from menu_display_monitor import MenuDisplayMonitor
-                    menu_monitor=MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity,
-                        movie_display=getattr(args,'movie_display',False))
+                    from menu_display_monitor import MenuDisplayMonitor,BackgroundMenuDisplayMonitor
+                    menu_monitor=BackgroundMenuDisplayMonitor(MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity,
+                        movie_display=getattr(args,'movie_display',False)))
                 if getattr(args,'world_recovery',False):
                     from world_rebind_runtime import RuntimePreparation
                     from world_rebind_monitor import WorldRebindMonitor
@@ -643,7 +643,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     world_monitor=WorldRebindMonitor(game=state['game_identity'],owner=state['owner_identity'],
                         started_qpc=state['native_started_qpc'],baseline=adapter.baseline,observe=adapter.observe,
                         prepare=adapter.prepare,signal=control.signal,identity=control.identity,enabled=True,
-                        probe_interval=2.0,include_pawn_changes=getattr(args,'crosshair_assignment_observer',False))
+                        probe_interval=2.0,include_pawn_changes=getattr(args,'crosshair_assignment_observer',False),
+                        changed_hint=adapter.changed_hint,prepare_changed=adapter.prepare_changed)
                 path_center=start_path_choice_position(args,state,native_status,floor,control)
                 while child.poll() is None:
                     observe_first_stereo(native_started)
@@ -664,7 +665,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     if world_monitor:
                         for event in world_monitor.poll(status,menu_monitor.last_menu_mode if menu_monitor and menu_monitor.last else None):
                             world_log.write(json.dumps(dict(observed_ns=time.perf_counter_ns(),**event))+'\n');world_log.flush()
-                    time.sleep(.1 if getattr(args,'movie_display',False) else .25)
+                    ordinary_interval=.1 if getattr(args,'movie_display',False) else .25
+                    time.sleep(world_monitor.poll_interval(ordinary_interval) if world_monitor else ordinary_interval)
             except StartupCancelled:
                 state['stop_requested_by']='startup_cancel'
             except KeyboardInterrupt:
@@ -680,6 +682,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 if menu_monitor:
                     try:menu_monitor.close()
                     except Exception as error:state['menu_monitor_close_error']=repr(error)
+                    state['menu_observation_worker']=menu_monitor.summary()
                 state['phase']='stopping';write_state(state_path,state)
                 if activation_attempted:
                     diagnostics_attempted=False

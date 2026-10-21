@@ -1,5 +1,6 @@
 // Exercise actual opt-in host/wrapper code with synthetic memory and typed
 // boundary injection. No detours, COM, SDK, GPU or game execution.
+#include <thread>
 #define GEARS_NGX_STEREO_HOST_OBSERVER 1
 #define GEARS_OWNED_OUTPUT_TRACKING 1
 #define GEARS_NGX_STEREO_HOST_TEST 1
@@ -81,6 +82,20 @@ void source_cases(){
     w=7;h=9;assert(!source.split_input(4096,2048,w,h)&&w==7&&h==9); // No ratio scaling to owned output.
     auto invalid=source;invalid.fields[0]=1707;assert(!invalid.split_input(2560,1080,w,h));
     invalid=source;invalid.fields[1]=1081;assert(!invalid.split_input(2560,1080,w,h));
+    // Actual family Quality can return an odd width (853 for output1280).
+    // A separate observed per-eye query supplies input427 for output640. The
+    // family width and its min/max must never be divided or rounded to pass.
+    auto queried=source;queried.fields={853,480,1280,720,2,67,0};
+    queried.eye_optimal={{640,720},{427,480},{640,720},{320,360},2,0.0f,1,true};
+    gears_ngx_stereo::Layout eye_layout;
+    assert(queried.create_layout(eye_layout)&&eye_layout.input.width==427&&eye_layout.eye_output.width==640);
+    assert(queried.split_input(1280,720,w,h)&&w==427&&h==480&&queried.fields[0]==853);
+    auto different=queried;++different.eye_optimal.optimal.width;
+    assert(different.eye_optimal.supports(different.eye_optimal.optimal)&&!queried.matches(different));
+    different=queried;different.eye_optimal.quality=1;assert(!different.create_layout(eye_layout));
+    different=queried;different.eye_optimal.minimum.width=428;assert(!different.create_layout(eye_layout));
+    different=queried;different.eye_optimal.output.width=1280;assert(!different.create_layout(eye_layout));
+    different=queried;different.eye_optimal.result=0xbad0000c;assert(!different.create_layout(eye_layout));
     // Diagnostic quotas can exhaust; actual latest Create semantics remain fresh.
     const auto first=source.revision;for(unsigned i=0;i<5;++i)complete();
     assert(epochs>=4&&native_create_source(9,source)&&source.revision>first);
@@ -241,6 +256,7 @@ void control_cases(){
         assert(actual[0]==853&&actual[1]==720&&actual[2]==1280&&actual[3]==1080);
         {auto entry=owner->adapter().enter();Layout physical;assert(!owner->adapter().bound_layout(entry,physical));}
         NativeCreateSource family_source;assert(native_create_source(9,family_source)&&family_source.fields[0]==1706&&family_source.fields[2]==2560);
+        assert(family_source.eye_optimal.called&&family_source.eye_optimal.optimal.width==853&&family_source.eye_optimal.output.width==1280);
         assert(!detach_control(owner));{auto e=owner->adapter().enter();assert(owner->adapter().submitted_creation(e,ControlFixture::execution(0,1)));}
         // Actual TLS stays on right view for BOTH evaluations, matching O/P.
         put(context,0x14c0,reinterpret_cast<uintptr_t>(views.data())+0xd30);
@@ -360,4 +376,12 @@ void host_cases(){
     host_reset();FILE* rejected{};assert(!tmpfile_s(&rejected));assert(!ngx_stereo_host::enable(rejected)&&!ngx_stereo_host::attested);fclose(rejected);
 }
 }
-int main(){assert(route_observer_test_main()==0);source_cases();constructor_source_cases();control_cases();optimal_host_failures();host_cases();std::puts("NgxStereoHostLiveTest passed (forwarding/provenance only; no SDK/GPU completion claims)");return 0;}
+void api_order_case(){
+    bool entered{};
+    {ngx_stereo_host::ParameterScope wrapper;ngx_stereo_host::ParameterScope nested;
+        std::thread submission([&]{entered=frame_hook_mutex.try_lock();if(entered)frame_hook_mutex.unlock();});submission.join();
+        assert(entered); // Original SDK forwarding keeps the frame lock free.
+        std::thread adapter([&]{entered=ngx_stereo_host::control_api_mutex.try_lock();if(entered)ngx_stereo_host::control_api_mutex.unlock();});adapter.join();assert(!entered);}
+    std::thread after([&]{entered=ngx_stereo_host::control_api_mutex.try_lock();if(entered)ngx_stereo_host::control_api_mutex.unlock();});after.join();assert(entered);
+}
+int main(){assert(route_observer_test_main()==0);api_order_case();source_cases();constructor_source_cases();control_cases();optimal_host_failures();host_cases();std::puts("NgxStereoHostLiveTest passed (forwarding/provenance only; no SDK/GPU completion claims)");return 0;}

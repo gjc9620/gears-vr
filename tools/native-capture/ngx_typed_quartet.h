@@ -61,6 +61,12 @@ public:
         out=values;return true;
     }
     bool failed()const{return failed_;}
+    // Borrow only an already bound typed native interface. The SDK's integer
+    // fields never become COM pointers; identity/ticket remain exact.
+    bool retained_native(Identity id,uint64_t ticket,unsigned index,Lease& out)const{
+        out={};if(failed_||!bound_||!same(id,identity_)||ticket!=ticket_||index>=native_.size()||!native_[index].retained())return false;
+        out=native_[index];return true;
+    }
     bool bound()const{return bound_;}
     size_t held()const{return bound_?4:count_;}
     // Acquisition failure invalidates admission, never destroys held leases.

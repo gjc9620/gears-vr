@@ -149,6 +149,27 @@ class AnchorConfigTests(unittest.TestCase):
         self.assertEqual(evidence['attempts'][0]['strict_guard_attempts'],3)
         self.assertEqual(sample['guard_before'],sample['guard_after'])
 
+    def test_exhausted_timestamp_guard_then_fresh_strict_sample(self):
+        sampler=LiveRegistryAnchorSampler(Fixture())
+        original=sampler._strict_guard
+        attempts=0
+        def crossing():
+            nonlocal attempts
+            attempts+=1
+            if attempts<=5:
+                raise AnchorRejected('Cross-frame camera timestamp during identity checks')
+            return original()
+        with mock.patch.object(sampler,'_strict_guard',side_effect=crossing):
+            sample,evidence=acquire_anchor_sample(sampler)
+        self.assertTrue(sample['accepted'])
+        self.assertEqual(len(evidence['attempts']),2)
+        self.assertEqual(evidence['attempts'][0]['strict_guard_attempts'],5)
+        self.assertEqual(evidence['attempts'][0]['raw_rejection']['rejection'],
+                         'Cross-frame camera timestamp during identity checks')
+        self.assertTrue(evidence['attempts'][1]['strict_sample_accepted'])
+        self.assertEqual(evidence['stage'],'sample')
+        self.assertEqual(sample['guard_before'],sample['guard_after'])
+
     def test_identity_and_unknown_rejection_are_not_retried(self):
         for reason in ('Pawn.Controller reciprocal link mismatch','Camera view target is not controlled Pawn','Unknown read error'):
             sampler=mock.Mock();sampler.sample.return_value={'accepted':False,'rejection':reason}
@@ -312,13 +333,14 @@ class AnchorConfigTests(unittest.TestCase):
                 self.assertEqual(failure.exception.evidence['reason'],str(error))
                 self.assertEqual(failure.exception.evidence['exception_type'],type(error).__name__)
 
-    def test_guard_attempts_exhaustion_not_retried_by_sample_layer(self):
+    def test_timestamp_guard_exhaustion_stays_bounded_across_fresh_samples(self):
         sampler=LiveRegistryAnchorSampler(Fixture())
         with mock.patch.object(sampler,'_strict_guard',side_effect=AnchorRejected('Cross-frame camera timestamp during identity checks')) as strict:
-            with self.assertRaises(AnchorSamplingRejected) as failure:acquire_anchor_sample(sampler)
-        self.assertEqual(strict.call_count,5)
-        self.assertEqual(len(failure.exception.evidence['attempts']),1)
-        self.assertEqual(failure.exception.evidence['strict_guard_attempts'],6)
+            clock=iter(range(0,1000000000,1000000))
+            with self.assertRaises(AnchorSamplingRejected) as failure:acquire_anchor_sample(sampler,lambda:next(clock))
+        self.assertEqual(strict.call_count,5*32)
+        self.assertEqual(len(failure.exception.evidence['attempts']),32)
+        self.assertEqual(failure.exception.evidence['strict_guard_attempts'],1+5*32)
         self.assertEqual(failure.exception.evidence['stage'],'sample_before')
 
     def test_sample_after_guard_exhaustion_keeps_actual_partial_sample(self):
@@ -331,8 +353,9 @@ class AnchorConfigTests(unittest.TestCase):
         with mock.patch.object(sampler,'_strict_guard',side_effect=after_crossing),mock.patch.object(sampler,'sample',wraps=sampler.sample) as sample:
             with self.assertRaises(AnchorSamplingRejected) as failure:acquire_anchor_sample(sampler)
         evidence=failure.exception.evidence
-        self.assertEqual(sample.call_count,1)
-        self.assertEqual(len(evidence['attempts']),1)
+        self.assertGreater(sample.call_count,1)
+        self.assertLessEqual(sample.call_count,32)
+        self.assertEqual(len(evidence['attempts']),sample.call_count)
         self.assertEqual(evidence['stage'],'sample_after')
         self.assertEqual(len(evidence['guard_acquisitions'][-1]['attempts']),5)
         raw=evidence['raw_rejection']
@@ -340,7 +363,7 @@ class AnchorConfigTests(unittest.TestCase):
         self.assertEqual(raw['guard_before'],sampler.initial)
         self.assertEqual(raw['raw_values']['pawn_location'],sampler.r.read(sampler.pawn+sampler.layout['pawn_location']['offset'],12).hex())
         self.assertIsNone(raw['guard_after'])
-        self.assertEqual(evidence['attempts'][0]['raw_rejection'],raw)
+        self.assertEqual(evidence['attempts'][-1]['raw_rejection'],raw)
 
     def test_guard_deadline_and_late_success_reject(self):
         sampler=LiveRegistryAnchorSampler(Fixture())

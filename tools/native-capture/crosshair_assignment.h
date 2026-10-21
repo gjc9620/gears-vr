@@ -14,6 +14,7 @@ inline constexpr std::array<unsigned char,21> copy_route{{
     0x8b,0x41,0x74,0x48,0x8b,0xd6,0x0f,0xaf,0x41,0x70,0x48,0x8b,0xcd,
     0x4c,0x63,0xc0,0xe8,0x4f,0x1f,0x3a,0x00}};
 struct Field {unsigned property{},offset{};};
+struct AimStateConfig {bool enabled{};unsigned property{},offset{},mask{};};
 struct WriterViewConfig {
     bool enabled{};
     unsigned cam_loc{},cam_rot{},start_trace{},trace_dir{},rotator_struct{};
@@ -31,6 +32,7 @@ struct Config {
     unsigned property_structure{};
     Field controller_pawn{},pawn_controller{},pawn_weapon{},weapon_instigator{};
     WriterViewConfig view{};
+    AimStateConfig aim{};
 };
 struct Snapshot {
     std::uintptr_t self{},frame{},node{},locals{},pawn{},weapon{},destination{},source{},script{};
@@ -123,6 +125,19 @@ template<class Read> bool schema(Config const& c,gears_ui::Reader<Read> const& r
             for(unsigned j=0;j<i;++j)if(offsets[i]<offsets[j]+12&&offsets[j]<offsets[i]+12)return false;
         }
     }
+    if(c.aim.enabled){auto const& a=c.aim;unsigned dimension{},size{},offset{},mask{};
+        std::uintptr_t vtable{},accessor{},dispatch{};
+        if(!c.view.enabled||a.offset>65532||!a.mask||(a.mask&(a.mask-1))||
+           !named(c,a.property,L"bIsTargeting",L"BoolProperty")||
+           !gears_ui::derives(ids,ids.identities[c.controller].cls,id(c,a.property)->outer)||
+           !r.field(dimension,addr(a.property),0x70)||dimension!=1||
+           !r.field(size,addr(a.property),0x74)||size!=4||
+           !r.field(offset,addr(a.property),0x94)||offset!=a.offset||
+           !r.field(mask,addr(a.property),0xd0)||mask!=a.mask||
+           !r.field(vtable,addr(a.property),0)||!vtable||
+           !r.field(accessor,vtable,0x2a0)||accessor!=ids.base+0x1daba0||
+           !r.field(dispatch,ids.base,0x1b86280+0x2d*8)||dispatch!=ids.base+0x1d6ea4)return false;
+    }
     auto link=[&](std::uintptr_t object,Field field,std::uintptr_t target,const wchar_t* name){
         auto property=id(c,field.property);unsigned offset{};std::uintptr_t actual{};
         auto cls=property?gears_ui::known(ids,property->cls):nullptr;
@@ -188,6 +203,8 @@ template<class Read> bool state(Config const& c,gears_ui::Reader<Read> const& r,
         for(auto const& vector:{value.view.location,value.view.start,value.view.direction})
             for(float f:vector)if(!std::isfinite(f))return false;
         value.view.valid=true;
+        if(c.aim.enabled){unsigned flags{};if(!r.field(flags,self,c.aim.offset))return false;
+            value.view.aiming_known=true;value.view.aiming=(flags&c.aim.mask)!=0;}
     }
     std::uintptr_t final_node{},final_object{},final_code{},final_locals{},final_ww{};unsigned final_scratch{};
     if(!r.field(final_node,frame,0x18)||final_node!=value.node||!r.field(final_object,frame,0x20)||final_object!=self||

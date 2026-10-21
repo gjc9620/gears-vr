@@ -25,6 +25,74 @@ def initial_guard():
 
 
 class Tests(unittest.TestCase):
+    def test_topology_hint_only_reads_two_links_and_always_closes(self):
+        import struct
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=self.adapter(directory);adapter._topology_fields={'controller_pawn':548,'player_camera':892}
+            baseline=adapter.baseline;check=mock.Mock()
+            for pawn,camera,changed in ((baseline.pawn[0],baseline.camera[0],False),
+                    (999,baseline.camera[0],True),(baseline.pawn[0],999,True),(0,baseline.camera[0],False)):
+                reader=SimpleNamespace(read=mock.Mock(side_effect=[struct.pack('<Q',pawn),struct.pack('<Q',camera)]),
+                    p=SimpleNamespace(close=mock.Mock()))
+                with mock.patch.object(runtime,'Resolver',return_value=reader):
+                    self.assertIs(adapter.changed_hint(baseline,check),changed)
+                self.assertEqual(reader.read.call_count,2);reader.p.close.assert_called_once()
+            reader.read.side_effect=OSError('gone');reader.p.close.reset_mock()
+            with mock.patch.object(runtime,'Resolver',return_value=reader),self.assertRaises(OSError):adapter.changed_hint(baseline,check)
+            reader.p.close.assert_called_once()
+
+    def test_preparation_hint_discards_generation_changes_before_fresh_retry(self):
+        from test_mounted_integration import MountedUIFixture
+        import cinematic_anchor
+        f=MountedUIFixture();f.p=SimpleNamespace(close=mock.Mock())
+        adapter=runtime.RuntimePreparation.__new__(runtime.RuntimePreparation)
+        adapter.game={'pid':f.pid};adapter.profile=f.profile
+        with mock.patch.object(runtime,'Resolver',return_value=f),mock.patch.object(cinematic_anchor,'BOOL_CODE',tuple(f.code)),\
+                mock.patch.object(f,'prepare',create=True),mock.patch.object(f,'resolve',wraps=f.resolve) as resolve:
+            adapter.observe(lambda:None)
+            adapter._preparation_camera(f);self.assertEqual(resolve.call_count,1)
+            f.word(f.sampler.camera+76,1)
+            with self.assertRaises(runtime.DiscoveryRegistryChanged):adapter._preparation_camera(f)
+            self.assertIsNone(adapter._camera_hint)
+            adapter._preparation_camera(f);self.assertEqual(resolve.call_count,2)
+
+    def test_cached_discovery_keeps_live_mount_guard_and_skips_global_scan(self):
+        from test_mounted_integration import MountedUIFixture
+        import cinematic_anchor
+        f=MountedUIFixture();f.p=SimpleNamespace(close=mock.Mock())
+        adapter=runtime.RuntimePreparation.__new__(runtime.RuntimePreparation)
+        adapter.game={'pid':f.pid};adapter.profile=f.profile
+        with mock.patch.object(runtime,'Resolver',return_value=f), \
+             mock.patch.object(cinematic_anchor,'BOOL_CODE',tuple(f.code)), \
+             mock.patch.object(f,'resolve',wraps=f.resolve) as resolve, \
+             mock.patch.object(f,'prepare',create=True) as prepare:
+            first=adapter.observe(lambda:None)
+            self.assertEqual(adapter.observe(lambda:None),first)
+            self.assertEqual(resolve.call_count,1);prepare.assert_called_once()
+            # Camera/controller/local roles are unchanged while mounting state
+            # changes: the fresh guard must still observe the new human Pawn.
+            f.dismount();human=adapter.observe(lambda:None)
+            self.assertNotEqual(human.pawn,first.pawn)
+            self.assertFalse(human.mounted_context)
+            self.assertEqual(resolve.call_count,1)
+
+    def test_changed_cached_role_discards_reader_and_rediscovers(self):
+        from test_mounted_integration import MountedUIFixture
+        import cinematic_anchor
+        f=MountedUIFixture();f.p=SimpleNamespace(close=mock.Mock())
+        adapter=runtime.RuntimePreparation.__new__(runtime.RuntimePreparation)
+        adapter.game={'pid':f.pid};adapter.profile=f.profile
+        with mock.patch.object(runtime,'Resolver',return_value=f), \
+             mock.patch.object(cinematic_anchor,'BOOL_CODE',tuple(f.code)), \
+             mock.patch.object(f,'resolve',wraps=f.resolve) as resolve, \
+             mock.patch.object(f,'prepare',create=True):
+            first=adapter.observe(lambda:None)
+            f.word(f.sampler.camera+76,1)
+            second=adapter.observe(lambda:None)
+            self.assertNotEqual(first.camera,second.camera)
+            self.assertEqual(resolve.call_count,2)
+            self.assertEqual(f.p.close.call_count,3)
+
     def adapter(self, directory, crosshair=None):
         path=Path(directory)
         (path/'anchor-observer-config.json').write_text(json.dumps(dict(pid=7,read_only=True,config=config())))
@@ -56,10 +124,60 @@ class Tests(unittest.TestCase):
                 if enabled:self.assertIs(build.call_args.kwargs['crosshair_assignment_observer'],True)
                 else:self.assertNotIn('crosshair_assignment_observer',build.call_args.kwargs)
 
+    def test_one_acquisition_applies_fresh_snapshot_predicate_before_publication(self):
+        for accepted in (False,True):
+            with self.subTest(accepted=accepted),tempfile.TemporaryDirectory() as directory:
+                adapter=self.adapter(directory)
+                value=config();value['identities'][value['roles']['pawn']]['number']=7
+                candidate=SimpleNamespace(anchor_metadata=dict(config=value))
+                accept=mock.Mock(return_value=accepted)
+                with mock.patch.object(runtime,'HookEntryAttestation') as proof, \
+                     mock.patch.object(runtime,'build_candidate',return_value=candidate) as build, \
+                     mock.patch.object(runtime,'publish_candidate') as publish, \
+                     mock.patch.object(adapter,'observe',side_effect=AssertionError('No separate discovery')):
+                    actual,receipt=adapter.prepare_changed(1,3,accept,lambda:None)
+                self.assertEqual(actual,runtime.snapshot(value));accept.assert_called_once_with(actual)
+                build.assert_called_once()
+                self.assertIs(build.call_args.kwargs['attestation'],proof.return_value.__enter__.return_value)
+                if accepted:
+                    self.assertEqual(receipt.snapshot,actual)
+                    self.assertEqual((receipt.previous_generation,receipt.request),(1,3))
+                    publish.assert_called_once_with(candidate,receipt.path)
+                else:
+                    self.assertIsNone(receipt);publish.assert_not_called()
+
+    def test_one_acquisition_identity_or_candidate_failure_cannot_publish(self):
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=self.adapter(directory)
+            with mock.patch.object(runtime,'HookEntryAttestation') as proof, \
+                 mock.patch.object(runtime,'build_candidate') as build, \
+                 mock.patch.object(runtime,'publish_candidate') as publish:
+                proof.return_value.__enter__.side_effect=RuntimeError('Wrong owner')
+                with self.assertRaisesRegex(RuntimeError,'Wrong owner'):
+                    adapter.prepare_changed(1,3,lambda _:True,lambda:None)
+                build.assert_not_called();publish.assert_not_called()
+                proof.return_value.__enter__.side_effect=None
+                build.side_effect=ValueError('Invalid anchor')
+                with self.assertRaisesRegex(ValueError,'Invalid anchor'):
+                    adapter.prepare_changed(1,3,lambda _:True,lambda:None)
+                publish.assert_not_called()
+
+    def test_normal_prepare_still_rejects_missing_observation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=self.adapter(directory)
+            candidate=SimpleNamespace(anchor_metadata=dict(config=config()))
+            with mock.patch.object(runtime,'HookEntryAttestation'), \
+                 mock.patch.object(runtime,'build_candidate',return_value=candidate), \
+                 mock.patch.object(runtime,'publish_candidate') as publish:
+                with self.assertRaisesRegex(RuntimeError,'World changed'):
+                    adapter.prepare(None,1,3,lambda:None)
+                publish.assert_not_called()
+
     def test_observation_closes_rpm_lease_on_success_and_rejection(self):
         with tempfile.TemporaryDirectory() as directory:
             adapter=self.adapter(directory)
             for error in (False,True):
+                adapter._camera_hint=None
                 reader=SimpleNamespace(resolve=mock.Mock(return_value={}),p=SimpleNamespace(close=mock.Mock()))
                 with mock.patch.object(runtime,'Resolver',return_value=reader),mock.patch.object(runtime,'LiveRegistryAnchorSampler',
                     side_effect=RuntimeError('load changed') if error else None,return_value=SimpleNamespace(initial=initial_guard())):

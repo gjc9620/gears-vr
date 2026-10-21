@@ -8,6 +8,16 @@ constexpr bool pso_blob_save_size(std::size_t size){return size&&size<=pso_blob_
 struct PsoWitnessKey {
     uintptr_t canonical{},pso{},renderer{};uint64_t generation{},world{},ticket{},serial{};
 };
+struct RootWitnessKey {
+    uintptr_t canonical{},root{},device{},renderer{};
+    uint64_t generation{},world{},ticket{},serial{};
+    unsigned provenance{};std::size_t size{};
+};
+inline bool root_witness_matches(RootWitnessKey const& key,bool valid,uintptr_t canonical,uint64_t generation,
+                                 uint64_t world,uint64_t ticket,uintptr_t renderer,uint64_t serial){
+    return valid&&key.canonical&&key.root&&key.device&&key.generation&&key.world&&key.ticket&&key.renderer&&key.size&&
+        key.canonical==canonical&&key.generation==generation&&key.world==world&&key.ticket==ticket&&key.renderer==renderer&&key.serial==serial;
+}
 struct PsoWitnessValidity {
     bool valid{},historical_stable{};
     void revoke(){valid=false;}

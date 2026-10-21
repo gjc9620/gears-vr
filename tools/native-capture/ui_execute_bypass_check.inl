@@ -151,6 +151,29 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureUiBypassCheck(void*) {
     gears_ui_receipts::Claim claimed{};
     if(!ui_payload_store.claim(payload.payload,claimed)||claimed.generation!=payload.generation||claimed.count!=1||
        claimed.entries[0].root_invocation!=777||claimed.entries[0].receipt.payload!=payload.payload)return 317;
+#if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
+    // A HUD semantic cursor may reject one menu transition even when the
+    // native Canvas Execute and its independently tracked receipt succeeded.
+    // Such a mismatch must remain diagnostic and leave stereo admission open.
+    const auto semantic_before=owned_ui_live::semantic_incomplete.load();
+    const auto faults_before=owned_ui_live::route_faults.load();
+    const auto executing=owned_ui_live::ledger.execute(payload.payload,0x9000,5);
+    if(!executing)return 318;
+    owned_ui_live::execute_end(executing,48,false);
+    if(!owned_ui_live::ledger.ready(101)||owned_ui_live::semantic_incomplete.load()!=semantic_before+1||
+       owned_ui_live::route_faults.load()!=faults_before)return 319;
+    if(!owned_ui_live::ledger.bind(102,0x1000,0x9000,thread,6)||
+       owned_ui_live::ledger.begin_flush(0x1000,0x9000,thread,0x2a6b9f,7)!=102||
+       !owned_ui_live::ledger.expect(102,1))return 320;
+    const auto failed_receipt=owned_ui_live::ledger.produce(102,0x5000,8);
+    if(!failed_receipt||!owned_ui_live::ledger.transferred(failed_receipt,true)||
+       !owned_ui_live::ledger.close(102,9))return 321;
+    const auto failed_execution=owned_ui_live::ledger.execute(0x5000,0x9000,10);
+    if(!failed_execution)return 322;
+    owned_ui_live::execute_end(failed_execution,47,true);
+    if(owned_ui_live::route_faults.load()!=faults_before+1||
+       owned_ui_live::first_route_fault.load()!=6||owned_ui_live::ledger.ready(102))return 323;
+#endif
     printf("UI Execute bypass actual hooks: open world gate, observer-on control, owning parent cursor/receipt/TLS, indexed draw, non48, nested, exception, counters/fault preserved; owned_batch=%u\n",
 #if defined(GEARS_OWNED_UI_BATCH) && GEARS_OWNED_UI_BATCH
         1u

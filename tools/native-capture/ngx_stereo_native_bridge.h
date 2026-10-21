@@ -18,6 +18,7 @@ struct EvaluationBinding {
     // Raw pointers whose association with producer.resources was established
     // through typed native resource bindings, ordered Color, Depth, MV, Output.
     std::array<uint64_t,4> raw_resources{};
+    bool native_transition{};
 };
 class NativeWrapperBridge {
     StereoAdapter& adapter_;bool enabled_{};Layout layout_{};
@@ -50,10 +51,11 @@ public:
     // When enabled, the host must copy source safely before calling, and pass an
     // authenticated writable handle cell whose lifetime encloses this call.
     template<class Forward> WrapperOutcome create_wrapper(Identity id,Layout const& layout,Command command,
-        uint64_t* public_slot,CreateShadow const& source,void const* original_pointer,Forward&& original){
+        uint64_t* public_slot,CreateShadow const& source,void const* original_pointer,Forward&& original,
+        NativeOptimalSettings const* settings=nullptr){
         if(!enabled_)return {original(original_pointer),true,true,false};
         auto entry=adapter_.enter();if(!entry)return {};
-        if(current_||!public_slot||*public_slot||!valid(command,id)||!adapter_.begin_epoch(entry,id,layout)){
+        if(current_||!public_slot||*public_slot||!valid(command,id)||!adapter_.begin_epoch(entry,id,layout,settings)){
             adapter_.invalidate(entry);return {};}
         CreateShadow owned;if(!patch_create(source.bytes,owned.bytes,layout)){adapter_.invalidate(entry);return {};}
         layout_=layout;Scope scope(*this,entry,Kind::create,command,id.parameters,0,public_slot);
@@ -75,8 +77,10 @@ public:
         // producer observation supplies the replacement render dimensions.
         bool resources=true;constexpr std::array<size_t,4> offsets{0,0x18,0x20,8};
         for(unsigned i=0;i<4;++i)resources=resources&&binding.raw_resources[i]&&pointer(source,offsets[i])==binding.raw_resources[i];
-        if(current_||!resources||!select_input_eye(layout_,layout_.input,bases,eye)||eye!=use.eye||
-           !adapter_.observe_producer(entry,binding.producer)){adapter_.invalidate(entry);return {};}
+        auto rendered_layout=layout_;rendered_layout.input={binding.producer.rendered[0].width,binding.producer.rendered[0].height};
+        if(rendered_layout.packed_input)rendered_layout.input_base[1]={rendered_layout.input.width,0};
+        if(current_||!resources||!select_input_eye(rendered_layout,rendered_layout.input,bases,eye)||eye!=use.eye||
+           !(binding.native_transition?adapter_.observe_native_transition(entry,binding.producer,bases):adapter_.observe_producer(entry,binding.producer))){adapter_.invalidate(entry);return {};}
         // First actual Evaluate binds physical resources; Create deliberately
         // had no such arguments. Never patch/call Eval with an unbound layout.
         if(!adapter_.bound_layout(entry,layout_)){adapter_.invalidate(entry);return {};}

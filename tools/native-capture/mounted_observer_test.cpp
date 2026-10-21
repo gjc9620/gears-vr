@@ -3,7 +3,7 @@
 #include <windows.h>
 #include "anchor_config_loader.h"
 #include "ui_runtime_binding.h"
-#include "crosshair_assignment_config_loader.h"
+#include "mounted_recovery_guard.h"
 #include <unordered_map>
 #include <fstream>
 #include <string>
@@ -50,7 +50,30 @@ int main(){unsigned checks{};Fixture f;CHECK(f.load(L"mounted"));auto read=[&](v
     gears_crosshair_assignment::OwnedConfig suspended;
     auto get=[&](const wchar_t* key,wchar_t* out,unsigned size){return GetPrivateProfileStringW(L"CrosshairAssignment",key,L"",out,size,f.path.c_str());};
     CHECK(gears_crosshair_assignment::parse_config(get,123,0x140000000,suspended)&&suspended.mounted_suspended&&suspended.suspended_controlled==anchor.pawn);
+    CHECK(gears_crosshair_assignment::mounted_recovery_fresh(suspended,f.anchor,f.ui,123,0x140000000,read));
     const auto baseline=f.memory;
+    // An advancing mounted camera is a discarded frame, not a stale identity.
+    // Simulate the engine updating POV after the first camera buffer was read.
+    for(bool roll_time:{false,true})for(bool break_link:{false,true}){
+        f.memory=baseline;unsigned pov_reads{};
+        auto camera_race=[&](void* dest,const void* source,size_t size){
+            const auto address=reinterpret_cast<std::uintptr_t>(source);
+            if(address==f.anchor.identities[f.anchor.role_camera].address+f.anchor.camera_pov&&++pov_reads==2){
+                f.put(address,400.f);
+                if(roll_time)f.put(f.anchor.identities[f.anchor.role_camera].address+f.anchor.camera_timestamp,11.f);
+                if(break_link)f.put(0x20810,std::uintptr_t(0));
+            }
+            return read(dest,source,size);
+        };
+        gears_anchor::GuardDiagnostic diagnostic{};
+        CHECK(!gears_anchor::strict_guard(f.anchor,camera_race,anchor,stamp,&diagnostic));
+        CHECK(diagnostic.timestamp_only==(roll_time&&!break_link));
+        if(roll_time&&!break_link)CHECK(gears_anchor::strict_guard(f.anchor,read,anchor,stamp)&&anchor.location[0]==400.f);
+        f.memory=baseline;pov_reads=0;
+        CHECK(!gears_crosshair_assignment::mounted_recovery_fresh(suspended,f.anchor,f.ui,123,0x140000000,camera_race,&diagnostic));
+        CHECK(diagnostic.timestamp_only==(roll_time&&!break_link));
+    }
+    f.memory=baseline;
     // Native wire4 cannot silently consume legacy mounted wire3 or omit Owner.
     for(auto mode:{0,1}){
         auto incompatible=[&](const wchar_t* key,wchar_t* out,unsigned size){

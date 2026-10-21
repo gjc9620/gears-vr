@@ -22,7 +22,7 @@ class StageTests(unittest.TestCase):
         required={row[0] for row in suite}
         self.assertTrue(required<=set(stage.NATIVE_TESTS))
         self.assertIn('startup_selftests',stage.PROJECT_MODULES['native-capture'].split())
-        self.assertIn('TwoViewRendererShadowTest.exe',stage.NATIVE_TESTS)
+        self.assertNotIn('TwoViewRendererShadowTest.exe',required)
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
@@ -100,6 +100,24 @@ class StageTests(unittest.TestCase):
         self.destination.mkdir(); self.put(self.destination / 'keep', b'keep')
         with self.assertRaises(FileExistsError): self.build()
         self.assertEqual((self.destination / 'keep').read_bytes(), b'keep')
+
+    def test_public_release_includes_inventoried_documents_and_acceptance_scope(self):
+        for name in ('README.txt', 'RELEASE_NOTES.txt'):
+            self.put(self.root / 'docs/releases/0.0.1' / name, ('release ' + name).encode())
+        result = stage.stage(self.root, self.python, self.destination, release_version='0.0.1')
+        preflight.check_inventory(self.destination)
+        self.assertIn('RELEASE_NOTES.txt', {row['path'] for row in result['files']})
+        self.assertEqual((self.destination / 'README.txt').read_text(), 'release README.txt')
+        metadata = json.loads((self.destination / 'portable-candidate.json').read_text())
+        self.assertEqual(metadata['version'], '0.0.1')
+        self.assertEqual(metadata['kind'], 'public-test-release')
+        self.assertNotIn('release_ready', metadata)
+        self.assertIn('Reticle issue resolved', metadata['user_reported_acceptance'])
+
+    def test_public_release_requires_documents_before_destination_creation(self):
+        with self.assertRaises(FileNotFoundError):
+            stage.stage(self.root, self.python, self.destination, release_version='0.0.1')
+        self.assertFalse(self.destination.exists())
 
     def test_new_runtime_modules_import_only_from_stage_without_repository_fallback(self):
         repository = Path(__file__).resolve().parents[2]

@@ -110,7 +110,10 @@ inline bool plan(gears_viewport::DrawState const& saved,unsigned full_width,unsi
             if(!std::isfinite(clip[col]))return false;}
         if(clip[3]<=0)return false;
         const double nx=clip[0]/clip[3],ny=clip[1]/clip[3];
-        if(!std::isfinite(nx)||!std::isfinite(ny)||nx<-1||nx>1||ny<-1||ny>1)return false;
+        // Leaving either eye's frustum is ordinary clipping, not loss of the
+        // world target. Rejecting here made the caller retry an infinite ray,
+        // dropping seated/head translation and near-target binocular parallax.
+        if(!std::isfinite(nx)||!std::isfinite(ny))return false;
         auto& viewport=result.viewports[eye];auto& scissor=result.scissors[eye];
         const double origin=eye*eye_width;
         const double dx=eye_width*nx/2,dy=-double(full_height)*ny/2;
@@ -137,5 +140,20 @@ inline bool plan(gears_viewport::DrawState const& saved,unsigned full_width,unsi
         scissor={float(std::floor(l)),float(std::floor(t)),float(std::ceil(r)-std::floor(l)),float(std::ceil(b)-std::floor(t))};
     }
     out=result;return true;
+}
+// A finite target must never turn into an unrelated infinite direction when
+// it crosses/gets behind an eye or cannot fit a legal D3D viewport. Keep the
+// owning target and suppress this draw until it can be projected again. The
+// caller still replays/restores both eyes' original draw state normally.
+inline bool display_plan(gears_viewport::DrawState const& saved,unsigned width,unsigned height,
+    gears_vr::StereoTicketGeometry const& geometry,gears_viewport::OverlayPlan& out,
+    double source_aspect=0,bool* suppressed=nullptr){
+    if(suppressed)*suppressed=false;
+    if(plan(saved,width,height,geometry,out,source_aspect))return true;
+    if(!geometry.finite_aim.valid)return false;
+    auto hidden=gears_viewport::overlay_plan(saved,width,height);
+    if(!hidden.valid)return false;
+    for(unsigned eye=0;eye<2;++eye)hidden.scissors[eye]={float(eye*width/2),0,0,0};
+    out=hidden;if(suppressed)*suppressed=true;return true;
 }
 }

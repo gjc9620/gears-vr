@@ -13,6 +13,38 @@ import run_stereo_continuous as continuous
 
 
 class AnchorStartTests(unittest.TestCase):
+    def test_field_hint_validation_precedes_return_and_reader_close(self):
+        import ui_observer_config as ui
+        events=[];camera=dict(local_player_address='0x1',module_base='0x1000')
+        r=mock.Mock();r.base=0x1000;r.resolve.return_value=camera;r.read.return_value=b'ok'
+        r.finish_discovery_field_hints.side_effect=lambda:events.append('finish')
+        r.p.close.side_effect=lambda:events.append('close')
+        with mock.patch.object(start,'Resolver',return_value=r),\
+             mock.patch.object(ui,'build_ui_observer_config',return_value=({},{})),\
+             mock.patch.object(ui,'ui_observer_ini',return_value='ui'),\
+             mock.patch.object(start.time,'monotonic',return_value=0):
+            result=start.acquire_observer_preparation(1,{},camera,{1:b'ok'},pathlib.Path('Unused.dll'),
+                ui_observer=True,check_live=lambda:events.append('live'))
+        self.assertEqual(result[4],'ui')
+        self.assertEqual(events[-3:],['finish','live','close'])
+
+    def test_changed_field_chain_discards_every_partial_certificate(self):
+        import ui_observer_config as ui
+        from resolve_camera import DiscoveryRegistryChanged
+        readers=[];camera=dict(local_player_address='0x1',module_base='0x1000')
+        def reader(*args):
+            r=mock.Mock();r.base=0x1000;r.resolve.return_value=dict(camera);r.read.return_value=b'ok'
+            r.finish_discovery_field_hints.side_effect=DiscoveryRegistryChanged('Reflection field chain changed')
+            readers.append(r);return r
+        with mock.patch.object(start,'Resolver',side_effect=reader),\
+             mock.patch.object(ui,'build_ui_observer_config',return_value=({},{})) as build,\
+             mock.patch.object(ui,'ui_observer_ini',return_value='discard'),\
+             mock.patch.object(start.time,'monotonic',return_value=0),mock.patch.object(start.time,'sleep'),\
+             contextlib.redirect_stderr(io.StringIO()),self.assertRaises(DiscoveryRegistryChanged):
+            start.acquire_observer_preparation(1,{},camera,{1:b'ok'},pathlib.Path('Unused.dll'),ui_observer=True)
+        self.assertEqual(len(readers),3);self.assertEqual(build.call_count,3)
+        for r in readers:r.p.close.assert_called_once()
+
     def test_late_reticle_dependencies_reject_before_ini_or_activation(self):
         for extra in ([],['--ui-observer'],['--ui-observer','--ui-hud-plane']):
             with mock.patch.object(sys,'argv',['start_capture.py','--pid','1','--ui-reticle-late-sample',*extra]),\
@@ -124,7 +156,7 @@ class AnchorStartTests(unittest.TestCase):
         certificate={'fresh_certificate':True}
         with mock.patch.object(start,'Resolver',return_value=r),mock.patch.object(anchor,'build_anchor_config',return_value=({},{})),mock.patch.object(anchor,'anchor_ini',return_value='anchor\n'),mock.patch.object(ui,'build_ui_observer_config',return_value=({},{'existing':'kept'})) as ui_build,mock.patch.object(ui,'ui_observer_ini',return_value='ui\n'),mock.patch.object(assignment,'build_crosshair_assignment_config',return_value=certificate) as build,mock.patch.object(assignment,'crosshair_assignment_ini',return_value='assignment\n') as ini,mock.patch.object(start.time,'monotonic',return_value=0):
             result=start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),anchor_observer=True,ui_observer=True,crosshair_assignment_observer=True)
-            build.assert_called_once_with(r,result[0],include_tick_roots=True,include_writer_view=True)
+            build.assert_called_once_with(r,result[0],include_tick_roots=True,include_writer_view=True,include_aim_state=True)
             self.assertIs(ui_build.call_args.args[1],result[0]);ini.assert_called_once_with(certificate)
             build.reset_mock();ini.reset_mock();ui_build.return_value=({},{'legacy':True})
             legacy=start.acquire_observer_preparation(1,{},baseline,{1:b'ok'},pathlib.Path('Unused.dll'),anchor_observer=True,ui_observer=True)
@@ -173,7 +205,7 @@ class AnchorStartTests(unittest.TestCase):
                 native.OpenProcess.return_value=1;native.OpenEventW.side_effect=[1,1,1,0];native.WaitForSingleObject.return_value=0x102
                 remote=stack.enter_context(mock.patch.object(start,'remote_call'))
                 with contextlib.redirect_stdout(io.StringIO()),self.assertRaises(assignment.CrosshairConfigRejected):start.main()
-                builder.assert_called_once_with(resolver,camera,include_tick_roots=True,include_writer_view=True)
+                builder.assert_called_once_with(resolver,camera,include_tick_roots=True,include_writer_view=True,include_aim_state=True)
                 resolver.resolve.assert_called_once();resolver.p.close.assert_called_once();first_resolve.assert_not_called()
                 remote.assert_not_called();native.VirtualAllocEx.assert_not_called();native.WriteProcessMemory.assert_not_called()
                 self.assertFalse((build/'capture.ini').exists());self.assertFalse((build/'ui-observer-config.json').exists())
@@ -332,6 +364,37 @@ class AnchorStartTests(unittest.TestCase):
                         {'stage':'sample','attempts':[{'temporary_reason':'cross_frame_timestamp'}]}):
             self.assertFalse(start.camera_preparation_transient(AnchorSamplingRejected(deadline_reason,changed)))
         self.assertFalse(start.camera_preparation_transient(RuntimeError(reason)))
+
+    def test_nested_timestamp_then_measurement_churn_reacquires_before_activation(self):
+        import copy
+        from anchor_config import AnchorSamplingRejected
+        reason='Cross-frame or identity/pointer change during measurement'
+        guard={k:k for k in ('controller','local_player','camera','pawn','level','outer_chain','view_target','target_proof')}
+        measurement=dict(rejection=reason,guard_before=dict(guard,timestamp_raw='00000000'),
+                         guard_after=dict(guard,timestamp_raw='0000803f'))
+        for stage in ('sample_before','sample_after'):
+            evidence=dict(stage=stage,attempts=[
+                dict(exhausted_guard_retryable=True,raw_rejection={
+                    'rejection':'Cross-frame camera timestamp during identity checks'}),
+                dict(raw_rejection=measurement)])
+            error=AnchorSamplingRejected(reason,evidence)
+            clock=[0.0]
+            def pause(seconds):clock[0]+=seconds
+            acquire=mock.Mock(side_effect=[error,'fresh complete certificate'])
+            with self.subTest(stage=stage),mock.patch.object(start,'remote_call') as remote,\
+                 mock.patch.object(start.subprocess,'run') as activate,contextlib.redirect_stdout(io.StringIO()):
+                result=start.wait_camera_preparation(acquire,lambda:None,2,
+                    clock=lambda:clock[0],sleep=pause)
+                self.assertEqual(result,'fresh complete certificate')
+                self.assertEqual(acquire.call_count,2)
+                remote.assert_not_called();activate.assert_not_called()
+            for key in guard:
+                changed=copy.deepcopy(evidence)
+                changed['attempts'][-1]['raw_rejection']['guard_after'][key]='changed'
+                self.assertFalse(start.camera_preparation_transient(AnchorSamplingRejected(reason,changed)))
+            for invalid_stage in ('initial','assembly_after','final_boundary','unknown'):
+                changed=dict(evidence,stage=invalid_stage)
+                self.assertFalse(start.camera_preparation_transient(AnchorSamplingRejected(reason,changed)))
 
     def test_registry_churn_retries_beyond_three_attempts_with_shared_deadline(self):
         import crosshair_assignment_config as assignment

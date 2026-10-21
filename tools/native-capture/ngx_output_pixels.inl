@@ -1,6 +1,7 @@
 namespace ngx_output_pixels {
 #if defined(GEARS_NGX_OUTPUT_PIXELS) && GEARS_NGX_OUTPUT_PIXELS
 bool enabled{},stopped{},published{},initialized{};std::array<Slot,2> slots{};unsigned count{},failure{};
+unsigned transition_census{},draw_roles{};
 uint64_t world{},ticket{},eval_sequence{},copy_sequence{},execute_sequence{},bypassed{},unrelated{},limited{};unsigned owner_thread{};
 thread_local int active_eval=-1,pending_eval=-1;
 struct GapReceipt {bool boundary{},copy{};int pending{-1};long long boundary_qpc{},copy_qpc{};uintptr_t caller{},command{},structure{},copy_caller{},copy_list{},source{},destination{};unsigned thread{},copy_thread{};uint64_t world{},ticket{};};
@@ -32,6 +33,9 @@ void foreign_boundary(bool owned,uintptr_t caller,uintptr_t command,const void* 
 bool current_owner(Slot const& s){return !stopped&&enabled&&!failure&&recording.load()&&s.thread==GetCurrentThreadId()&&
     same_owner(s.before.ownership,ngx_route_observer::ownership(true));}
 void publish_pair(){
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+    if(ngx_capture_control::preprocess_pixel_mode()||ngx_capture_control::scene_color_pixel_mode()||ngx_capture_control::right_draw_pixel_mode()||ngx_capture_control::pre_eval_pixel_mode()||ngx_capture_control::baseline_pixel_mode()||ngx_capture_control::final_target_pixel_mode())return;
+#endif
     if(published||stopped||failure||count!=2)return;
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
     if(!delayed.closed)return;
@@ -42,7 +46,7 @@ void publish_pair(){
     published=backend().publish(ticket,world,slots[1].copy_sequence);
 }
 EvalScope::EvalScope(bool owned,uintptr_t caller,uintptr_t command,const void* structure):parent(active_eval),exceptions(std::uncaught_exceptions()){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);active_eval=-1;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);active_eval=-1;
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
     int delayed_index=-1;
     if(enabled&&!stopped){observed_structure=reinterpret_cast<uintptr_t>(structure);observed=eval_sample(observed_structure,owned);gate_observed=true;
@@ -54,6 +58,10 @@ EvalScope::EvalScope(bool owned,uintptr_t caller,uintptr_t command,const void* s
     if(pending_eval>=0){ambiguous_boundary(pending_eval,owned,caller,command,structure);pending_eval=-1;}
     if(parent>=0)quarantine(nested_eval);
     if(!enabled||stopped||failure||!recording.load()||!ngx_route_observer::attested||caller!=base+0x9a35d3){++bypassed;return;}
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+    if(ngx_capture_control::preprocess_pixel_mode()||ngx_capture_control::scene_color_pixel_mode()||ngx_capture_control::right_draw_pixel_mode()||ngx_capture_control::pre_eval_pixel_mode()||ngx_capture_control::baseline_pixel_mode()||ngx_capture_control::final_target_pixel_mode()){++bypassed;return;}
+    if(!ngx_capture_control::pixel_capture_ready()){++bypassed;return;}
+#endif
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
     if(delayed_index<0){++bypassed;return;}
     if(unsigned(delayed_index)!=count){quarantine(association_ambiguous);return;}
@@ -79,7 +87,7 @@ EvalScope::EvalScope(bool owned,uintptr_t caller,uintptr_t command,const void* s
     s.epoch=delayed.epoch;
 #endif
 }
-EvalScope::~EvalScope(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+EvalScope::~EvalScope(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(index>=0){auto& s=slots[unsigned(index)];s.after=eval_sample(s.structure,true);s.exit=now();s.result=raw_result;s.active=false;
         const bool normal=returned&&std::uncaught_exceptions()==exceptions&&active_eval==index&&!failure&&
             s.after.fields_mask==0x7ffff&&s.after.slots_mask==3&&same_owner(s.before.ownership,s.after.ownership)&&
@@ -93,19 +101,19 @@ EvalScope::~EvalScope(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mu
 }
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
 CreateScope::CreateScope(bool owned,uintptr_t caller,uintptr_t command,const void* input):structure(reinterpret_cast<uintptr_t>(input)),exceptions(std::uncaught_exceptions()){
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     // Revoke first, independently of the bounded observer row allocation.
     if(enabled&&!stopped){serial=delayed.begin_create(uint64_t(now()),ngx_route_observer::ownership(owned));delayed_failure();gears_ngx_route::Row row;row.structure=structure;before=ngx_route_observer::sample(row,owned);}
     create_boundary(owned,caller,command,input);
 }
-CreateScope::~CreateScope(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!serial)return;
+CreateScope::~CreateScope(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!serial)return;
     gears_ngx_route::Row row;row.structure=structure;const auto after=ngx_route_observer::sample(row,true);
     delayed.end_create(serial,returned&&std::uncaught_exceptions()==exceptions&&recording.load()&&ngx_route_observer::attested,before,after);delayed_failure();
 }
 #endif
 void end_ticket(uint64_t ended,bool linked,PresentContext const& present_context){
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!enabled||stopped)return;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!enabled||stopped)return;
     const gears_ngx_delayed::PresentEvidence present{present_context.known,present_context.linked,present_context.contaminated,present_context.rejection,present_context.buffer};
     if(delayed.end_ticket(ended,linked,uint64_t(now()),present))publish_pair();delayed_failure();
 #else
@@ -113,17 +121,145 @@ void end_ticket(uint64_t ended,bool linked,PresentContext const& present_context
 #endif
 }
 void end_ticket(uint64_t ended,bool linked){end_ticket(ended,linked,{});}
-void create_boundary(bool owned,uintptr_t caller,uintptr_t command,const void* structure){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void create_boundary(bool owned,uintptr_t caller,uintptr_t command,const void* structure){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     foreign_boundary(owned,caller,command,structure);
     if(enabled&&(active_eval>=0||pending_eval>=0))quarantine(association_ambiguous);pending_eval=-1;}
-std::unique_lock<std::recursive_mutex> execution_lock(){return std::unique_lock<std::recursive_mutex>(frame_hook_mutex);}
+std::unique_lock<FrameHookMutex> execution_lock(){return std::unique_lock<FrameHookMutex>(frame_hook_mutex);}
+void pre_evaluate_capture(ID3D12GraphicsCommandList* list,ID3D12Resource* output,ID3D12Resource* color,unsigned eye,std::array<unsigned,4> rect){
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+    if(!enabled||stopped||failure||!recording.load()||count==slots.size()||!ngx_capture_control::pre_eval_pixel_mode()||
+       !original_color_copy||eye>1||(!count&&eye)||count!=eye||!output||!color)return;
+    auto ownership=ngx_route_observer::ownership(true);if(!ownership.associated)return;
+    if(count&&(ownership.world!=world||ownership.ticket!=ticket)){quarantine(association_ambiguous);return;}
+    const auto selected=count++;auto& s=slots[selected];if(!selected){world=ownership.world;ticket=ownership.ticket;owner_thread=GetCurrentThreadId();}
+    s.before.ownership=ownership;s.before.resources[0]=reinterpret_cast<uintptr_t>(color);s.before.resources[1]=reinterpret_cast<uintptr_t>(output);
+    s.normal=true;s.thread=GetCurrentThreadId();s.raw_list=list;s.copy_qpc=now();s.copy_sequence=++copy_sequence;s.sequence=s.copy_sequence;
+    s.transition_probe=s.pre_eval_probe=true;s.draw_role=eye+1;s.draw_rect=rect;
+    // Native SDK Eval output is in UAV state at this authenticated wrapper
+    // boundary. Restore that contract before forwarding any SDK parameter work.
+    s.native_state_before=unsigned(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    s.source.Type=s.destination.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;s.source.pResource=output;s.destination.pResource=color;
+    if(!backend().prepare(selected,s)){quarantine(prepare_failed);backend().release(selected);s.released=true;return;}
+    s.life.appended=true;
+    try{backend().append(selected,s,original_color_copy);s.copy_seen=true;}catch(...){quarantine(append_exception);throw;}
+#else
+    (void)list;(void)output;(void)color;(void)eye;(void)rect;
+#endif
+}
+void draw_capture(ID3D12GraphicsCommandList* list,uintptr_t caller,unsigned elements,unsigned instances){
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+    if(ngx_capture_control::final_target_pixel_mode()){
+        if(!enabled||stopped||failure||!recording.load()||!elements||!instances||count==slots.size()||!original_color_copy)return;
+        const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
+        if(frame_target_stats.descriptor_capacity_lost()||binding.targets!=1||binding.target.mip||binding.target.format!=24)return;
+        ID3D12Resource *source{},*color{};unsigned eye{};gears_ngx_stereo::Rect destination{};
+        if(!ngx_capture_control::final_target_pixel_pair(binding.target.resource,source,color,eye,destination)||eye>1||count!=eye)return;
+        auto ownership=ngx_route_observer::ownership(true);if(!ownership.associated)return;
+        if(count&&(ownership.world!=world||ownership.ticket!=ticket)){quarantine(association_ambiguous);return;}
+        const auto selected=count++;auto& s=slots[selected];if(!selected){world=ownership.world;ticket=ownership.ticket;owner_thread=GetCurrentThreadId();}
+        s.before.ownership=ownership;s.before.resources[0]=reinterpret_cast<uintptr_t>(color);s.before.resources[1]=reinterpret_cast<uintptr_t>(source);
+        s.normal=true;s.thread=GetCurrentThreadId();s.raw_list=list;s.caller=caller;s.copy_qpc=now();s.copy_sequence=++copy_sequence;s.sequence=s.copy_sequence;
+        s.transition_probe=s.draw_probe=s.final_probe=true;s.draw_role=eye+1;s.draw_rect={destination.x,destination.y,destination.width,destination.height};
+        s.native_state_before=unsigned(D3D12_RESOURCE_STATE_RENDER_TARGET);
+        s.source.Type=s.destination.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;s.source.pResource=source;s.destination.pResource=color;
+        if(!backend().prepare(selected,s)){quarantine(prepare_failed);backend().release(selected);s.released=true;return;}
+        s.life.appended=true;
+        try{backend().append(selected,s,original_color_copy);s.copy_seen=true;}catch(...){quarantine(append_exception);throw;}
+        return;
+    }
+    if(!enabled||stopped||failure||!recording.load()||!elements||!instances||count==slots.size()||
+       !ngx_capture_control::right_draw_pixel_mode()||!original_color_copy)return;
+    const auto binding=frame_target_stats.binding(reinterpret_cast<uintptr_t>(list));
+    if(frame_target_stats.descriptor_capacity_lost()||binding.targets!=1||binding.target.mip)return;
+    ID3D12Resource *source{},*paired{};unsigned role{};gears_ngx_stereo::Rect right{};
+    if(!ngx_capture_control::right_draw_pixel_pair(binding.target.resource,source,paired,role,right)||(draw_roles&role))return;
+    const auto draw=frame_target_stats.draw_state(reinterpret_cast<uintptr_t>(list));
+    if(!draw.tracked||draw.viewport_count!=1||draw.scissor_count!=1)return;
+    const auto& v=draw.viewport;const auto& sc=draw.scissor;
+    const float x=std::max(v.x,sc.x),y=std::max(v.y,sc.y),end_x=std::min(v.x+v.width,sc.x+sc.width),end_y=std::min(v.y+v.height,sc.y+sc.height);
+    if(x>=right.x&&x<right.x+right.width)ngx_capture_control::right_draw_pixel_trace(role,v.x,v.y,v.width,v.height,sc.x,sc.y,sc.width,sc.height);
+    if(x!=right.x||y!=right.y||end_x!=right.x+right.width||end_y!=right.y+right.height)return;
+    auto ownership=ngx_route_observer::ownership(true);if(!ownership.associated)return;
+    const auto selected=count++;auto& s=slots[selected];draw_roles|=role;
+    if(!selected){world=ownership.world;ticket=ownership.ticket;owner_thread=GetCurrentThreadId();}
+    s.before.ownership=ownership;s.before.resources[0]=reinterpret_cast<uintptr_t>(paired);s.before.resources[1]=reinterpret_cast<uintptr_t>(source);
+    s.normal=true;s.thread=GetCurrentThreadId();s.raw_list=list;s.caller=caller;s.copy_qpc=now();s.copy_sequence=++copy_sequence;s.sequence=s.copy_sequence;
+    // This state contract comes from the actual bound RTV and just-forwarded
+    // native draw. It is not a fabricated native ResourceBarrier observation.
+    s.transition_probe=s.draw_probe=true;s.draw_role=role;s.draw_rect={right.x,right.y,right.width,right.height};
+    s.native_state_before=unsigned(D3D12_RESOURCE_STATE_RENDER_TARGET);
+    s.source.Type=s.destination.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;s.source.pResource=source;s.destination.pResource=paired;
+    if(!backend().prepare(selected,s)){quarantine(prepare_failed);backend().release(selected);s.released=true;return;}
+    s.life.appended=true;
+    try{backend().append(selected,s,original_color_copy);s.copy_seen=true;}catch(...){quarantine(append_exception);throw;}
+#else
+    (void)list;(void)caller;(void)elements;(void)instances;
+#endif
+}
+void barrier_capture(ID3D12GraphicsCommandList* list,UINT n,D3D12_RESOURCE_BARRIER const* values,uintptr_t caller){
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+    if(!enabled||stopped||failure||!recording.load()||count==slots.size()||!ngx_capture_control::scene_color_pixel_mode()||!original_color_copy||n>1024||(n&&!values))return;
+    for(UINT i=0;i<n&&count<slots.size();++i){D3D12_RESOURCE_BARRIER b{};ID3D12Resource* paired{};
+        if(!safe_copy(&b,values+i,sizeof(b))){quarantine(typed_mismatch);return;}
+        if(b.Type!=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION||!ngx_capture_control::scene_color_pixel_pair(b.Transition.pResource,paired))continue;
+        auto ownership=ngx_route_observer::ownership(true);
+        if(transition_census++<24)ngx_capture_control::scene_color_transition_trace(unsigned(b.Transition.StateBefore),unsigned(b.Transition.StateAfter),unsigned(b.Flags),b.Transition.Subresource,caller,ownership.associated,ownership.ticket);
+        if(b.Flags!=D3D12_RESOURCE_BARRIER_FLAG_NONE||b.Transition.StateBefore!=D3D12_RESOURCE_STATE_RENDER_TARGET||b.Transition.StateAfter==D3D12_RESOURCE_STATE_RENDER_TARGET||
+            (b.Transition.Subresource!=D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES&&b.Transition.Subresource))continue;
+        const auto selected=count++;auto& s=slots[selected];if(!selected){world=ownership.world;ticket=ownership.ticket;owner_thread=GetCurrentThreadId();}
+        s.before.ownership=ownership;s.before.resources[0]=reinterpret_cast<uintptr_t>(paired);s.before.resources[1]=reinterpret_cast<uintptr_t>(b.Transition.pResource);
+        s.normal=true;s.thread=GetCurrentThreadId();s.raw_list=list;s.caller=caller;s.copy_qpc=now();s.copy_sequence=++copy_sequence;s.sequence=s.copy_sequence;
+        s.transition_probe=true;s.native_state_before=unsigned(b.Transition.StateBefore);
+        s.source.Type=s.destination.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;s.source.pResource=b.Transition.pResource;s.destination.pResource=paired;
+        if(!backend().prepare(selected,s)){quarantine(prepare_failed);backend().release(selected);s.released=true;return;}
+        s.life.appended=true;
+        try{backend().append(selected,s,original_color_copy);s.copy_seen=true;}catch(...){quarantine(append_exception);throw;}
+    }
+#else
+    (void)list;(void)n;(void)values;(void)caller;
+#endif
+}
 int prepare_copy(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_LOCATION* destination,UINT x,UINT y,UINT z,
     const D3D12_TEXTURE_COPY_LOCATION* source,const D3D12_BOX* box,uintptr_t caller){
     if(!enabled||stopped||!recording.load())return -1;
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+    if(ngx_capture_control::baseline_pixel_mode()){
+        if(failure||count==slots.size()||!ngx_capture_control::baseline_pixel_ready())return -1;
+        ColorCopyLinks links{};D3D12_TEXTURE_COPY_LOCATION src{},dst{};
+        if(caller!=0x1c6093||x||y||z||box||!safe_copy(&src,source,sizeof(src))||!safe_copy(&dst,destination,sizeof(dst))||
+           src.Type!=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX||dst.Type!=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX||src.SubresourceIndex||dst.SubresourceIndex||
+           !color_copy_links(base+0x1c3b420,base+0x1c3b410,links)||links.source!=reinterpret_cast<uintptr_t>(src.pResource)||links.destination!=reinterpret_cast<uintptr_t>(dst.pResource))return -1;
+        auto ownership=ngx_route_observer::ownership(true);if(!ownership.associated)return -1;
+        const auto selected=count++;auto& s=slots[selected];if(!selected){world=ownership.world;ticket=ownership.ticket;owner_thread=GetCurrentThreadId();}
+        s.before.ownership=ownership;s.before.resources[0]=links.destination;s.before.resources[1]=links.source;
+        s.normal=s.baseline_probe=true;s.thread=GetCurrentThreadId();s.raw_list=list;s.caller=caller;s.source=src;s.destination=dst;
+        s.copy_qpc=now();s.copy_sequence=++copy_sequence;s.sequence=s.copy_sequence;
+        if(!backend().prepare(selected,s)){quarantine(prepare_failed);backend().release(selected);s.released=true;return -1;}
+        s.prepared=true;return int(selected);
+    }
+    if(ngx_capture_control::scene_color_pixel_mode()||ngx_capture_control::right_draw_pixel_mode()||ngx_capture_control::pre_eval_pixel_mode()||ngx_capture_control::baseline_pixel_mode()||ngx_capture_control::final_target_pixel_mode())return -1;
+#endif
     if(failure){if(failure==association_ambiguous&&count&&!gap.copy){D3D12_TEXTURE_COPY_LOCATION src{},dst{};
             if(safe_copy(&src,source,sizeof(src))&&safe_copy(&dst,destination,sizeof(dst))&&reinterpret_cast<uintptr_t>(src.pResource)==slots[0].before.resources[1]&&reinterpret_cast<uintptr_t>(dst.pResource)==slots[0].before.resources[0]){
                 gap.copy=true;gap.copy_qpc=now();gap.copy_caller=caller;gap.copy_list=reinterpret_cast<uintptr_t>(list);gap.source=reinterpret_cast<uintptr_t>(src.pResource);gap.destination=reinterpret_cast<uintptr_t>(dst.pResource);gap.copy_thread=GetCurrentThreadId();}}
         return -1;}
+#if defined(GEARS_NGX_ISOLATED_STEREO_TRIAL) && GEARS_NGX_ISOLATED_STEREO_TRIAL
+    if(ngx_capture_control::preprocess_pixel_mode()){
+        std::array<uintptr_t,4> resources{};
+        if(count==slots.size()||!ngx_capture_control::preprocess_pixel_resources(resources))return -1;
+        D3D12_TEXTURE_COPY_LOCATION src{},dst{};
+        if(!safe_copy(&src,source,sizeof(src))||!safe_copy(&dst,destination,sizeof(dst))||caller!=0x1c6093||x||y||z||box||
+            src.Type!=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX||dst.Type!=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX||src.SubresourceIndex||dst.SubresourceIndex||
+            reinterpret_cast<uintptr_t>(src.pResource)!=resources[1]||reinterpret_cast<uintptr_t>(dst.pResource)!=resources[0])return -1;
+        auto ownership=ngx_route_observer::ownership(true);if(!ownership.associated||ownership.ticket<32)return -1;
+        if(!count){world=ownership.world;ticket=ownership.ticket;owner_thread=GetCurrentThreadId();}
+        if(world!=ownership.world||ticket!=ownership.ticket||owner_thread!=GetCurrentThreadId()){quarantine(association_ambiguous);return -1;}
+        const auto selected=count++;auto& s=slots[selected];s.before.ownership=ownership;s.before.resources=resources;
+        s.normal=true;s.thread=GetCurrentThreadId();s.raw_list=list;s.source=src;s.destination=dst;s.copy_qpc=now();s.copy_sequence=++copy_sequence;s.sequence=s.copy_sequence;
+        if(!backend().prepare(selected,s)){quarantine(prepare_failed);backend().release(selected);s.released=true;return -1;}
+        s.prepared=true;return int(selected);
+    }
+#endif
     const int selected=active_eval>=0?active_eval:pending_eval;if(selected<0)return -1;auto& s=slots[unsigned(selected)];
     if(!current_owner(s)){quarantine(association_ambiguous);return -1;}
     D3D12_TEXTURE_COPY_LOCATION src{},dst{};
@@ -180,7 +316,9 @@ void copy_passthrough(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_L
     omitted=suppress_first_copy(selected,list,x,y,z,box,caller);
     if(selected>=0&&!omitted)slots[unsigned(selected)].original_forwarded=true;
 #endif
-    try{if(!omitted)ngx_stereo_host::copy_passthrough(list,destination,x,y,z,source,box,caller,forward);}catch(...){if(selected>=0){quarantine(copy_exception);backend().release(unsigned(selected));slots[unsigned(selected)].released=true;}throw;}
+    try{if(selected>=0){auto& s=slots[unsigned(selected)];s.life.appended=true;backend().append_before(unsigned(selected),s,forward);}
+        if(!omitted)ngx_stereo_host::copy_passthrough(list,destination,x,y,z,source,box,caller,forward);
+    }catch(...){if(selected>=0){quarantine(copy_exception);auto& s=slots[unsigned(selected)];if(!s.life.appended){backend().release(unsigned(selected));s.released=true;}}throw;}
 #if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
     if(selected>=0&&!omitted)slots[unsigned(selected)].original_returned=true;
 #endif
@@ -205,10 +343,10 @@ void copy_passthrough(ID3D12GraphicsCommandList* list,const D3D12_TEXTURE_COPY_L
 unsigned prepare_execute(ID3D12CommandQueue* queue,UINT n,ID3D12CommandList* const* members){
     std::array<ID3D12CommandList*,gears_frame_link::Tracker::list_capacity> copied{};const bool readable=n<=copied.size()&&(!n||safe_copy(copied.data(),members,size_t(n)*sizeof(copied[0])));
     const auto order=++execute_sequence;unsigned token{};
-    for(unsigned i=0;i<count;++i){auto& s=slots[i];if(!s.life.appended||s.life.failure||s.life.saved)continue;
+    for(unsigned i=0;i<count;++i){auto& s=slots[i];if(!s.life.appended||s.life.failure||s.life.saved||(s.transition_probe&&s.life.retired))continue;
         bool valid=readable,exact=true;unsigned occurrences{},member{};
         if(valid)for(unsigned k=0;k<n;++k){const auto id=backend().list_identity(copied[k]);if(!id){valid=false;break;}
-            if(id==s.life.held_identity){++occurrences;member=k;const auto ref=backend().list_ref(id);exact=exact&&ref.identity==s.life.list.identity&&ref.generation==s.life.list.generation;}}
+            if(id==s.life.held_identity){++occurrences;member=k;const auto ref=backend().list_ref(id);exact=exact&&(s.transition_probe||(ref.identity==s.life.list.identity&&ref.generation==s.life.list.generation));}}
         uintptr_t identity{};if(occurrences&&!backend().queue_valid(i,queue,identity)){s.life.fail(gears_death_hdr_pixels::cross_queue);continue;}
         if(s.life.before(valid,occurrences,identity,exact)){token|=1u<<i;s.execute_member=member;s.execute_order=order;}
     }return token;
@@ -219,7 +357,7 @@ void execute_passthrough(ID3D12CommandQueue* queue,UINT n,ID3D12CommandList* con
     try{ngx_stereo_host::execute_passthrough(queue,n,members,forward);}catch(...){for(auto& s:slots)if(s.life.appended)s.life.fail(gears_death_hdr_pixels::unknown_membership);throw;}
     after_execute(token,queue);
 }
-void reset_after_original(ID3D12GraphicsCommandList* list,HRESULT hr){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void reset_after_original(ID3D12GraphicsCommandList* list,HRESULT hr){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     const auto id=backend().list_identity(list);
     for(unsigned i=0;i<count;++i){auto& s=slots[i];if(!s.life.appended||s.life.failure||s.life.saved||s.life.retired)continue;
         if(id&&id!=s.life.held_identity&&list!=s.raw_list)continue;const auto ref=backend().list_ref(s.life.held_identity);
@@ -259,7 +397,7 @@ void worker_request(const wchar_t* path,uint64_t pid,uint64_t creation_stamp,uin
     if(previous_size==size.QuadPart&&previous_bytes==bytes&&previous==text)return;
     previous=text;previous_bytes=bytes;previous_size=size.QuadPart;
     gears_ngx_delayed::Request request;const bool parsed=readable&&gears_ngx_delayed::parse(std::string_view(text.data(),bytes),request);
-    std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);if(!enabled||stopped)return;
+    std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);if(!enabled||stopped)return;
     if(!parsed){++delayed.rejected;delayed.rejection=gears_ngx_delayed::Reason::bad_request;return;}
     if(frequency>UINT64_MAX/30){++delayed.rejected;delayed.rejection=gears_ngx_delayed::Reason::bad_request;return;}
     gears_ngx_delayed::Request identity;identity.pid=pid;identity.creation=creation_stamp;identity.started=started;
@@ -268,7 +406,7 @@ void worker_request(const wchar_t* path,uint64_t pid,uint64_t creation_stamp,uin
     (void)path;(void)pid;(void)creation_stamp;(void)started;(void)frequency;
 #endif
 }
-void poll(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void poll(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
     if(!enabled||stopped||failure)return;
 #if defined(GEARS_NGX_OUTPUT_DELAYED_CAPTURE) && GEARS_NGX_OUTPUT_DELAYED_CAPTURE
     delayed.tick(uint64_t(now()));delayed_failure();if(failure||!delayed.closed)return;
@@ -279,8 +417,8 @@ void poll(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
     if(published&&count==2&&slots[0].life.saved&&slots[1].life.saved){delayed.finished=true;delayed.reason=gears_ngx_delayed::Reason::complete;}
 #endif
 }
-void stop(){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);stopped=true;for(auto& s:slots)s.life.stop();backend().close();}
-void print_control(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);
+void stop(){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);stopped=true;for(auto& s:slots)s.life.stop();backend().close();}
+void print_control(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
 #if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
     fprintf(file,"ngx_output_preserve_pair_input enabled=1 diagnostic_only=1 omission_count=%u preserve_suppressed=%u preserve_original_forwarded=%u preserve_readback_started=%u preserve_readback_returned=%u preserve_epoch=%llu preserve_world=%llu preserve_ticket=%llu preserve_ordinal=%u preserve_eval_sequence=%llu preserve_copy_sequence=%llu preserve_qpc=%lld preserve_thread=%u preserve_caller=%llx preserve_source_raw=%llx preserve_destination_raw=%llx preserve_source_canonical=%llx preserve_destination_canonical=%llx preserve_list_raw=%llx preserve_list_canonical=%llx preserve_generation=%llu preserve_source_type=%u preserve_destination_type=%u preserve_source_subresource=%u preserve_destination_subresource=%u preserve_x=%u preserve_y=%u preserve_z=%u preserve_box_null=%u preserve_width=%llu preserve_height=%u preserve_format=%u causal_pixels_verified=0 sr_verified=0 temporal_history_verified=0\n",
         unsigned(suppression.valid),unsigned(suppression.suppressed),unsigned(suppression.original_forwarded),unsigned(suppression.readback_started),unsigned(suppression.readback_returned),
@@ -304,12 +442,15 @@ void print_control(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_
     (void)file;
 #endif
 }
-void print(FILE* file){std::lock_guard<std::recursive_mutex> lock(frame_hook_mutex);print_control(file);
+void print(FILE* file){std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);print_control(file);
+#if defined(GEARS_NGX_TRIAL_COLOR_READBACK) && GEARS_NGX_TRIAL_COLOR_READBACK
+    fprintf(file,"ngx_trial_color_readback enabled=1 barriers_added_per_slot=2 destination_state_restored=COPY_DEST after_packed_restoration=%u pixel_input_before_sdk_verified=0\n",unsigned(ngx_capture_control::packed_input_trial()));
+#endif
     LARGE_INTEGER frequency{};QueryPerformanceFrequency(&frequency);
     fprintf(file,"ngx_output_pixel_clock qpc_frequency=%lld gap_boundary=%u pending_row=%d boundary_qpc=%lld boundary_caller=%llx boundary_command=%llx boundary_structure=%llx boundary_thread=%u boundary_world=%llu boundary_ticket=%llu later_matching_copy=%u copy_qpc=%lld copy_caller=%llx copy_list=%llx copy_source=%llx copy_destination=%llx copy_thread=%u association_not_recovered=1\n",
         frequency.QuadPart,unsigned(gap.boundary),gap.pending,gap.boundary_qpc,static_cast<unsigned long long>(gap.caller),static_cast<unsigned long long>(gap.command),static_cast<unsigned long long>(gap.structure),gap.thread,gap.world,gap.ticket,
         unsigned(gap.copy),gap.copy_qpc,static_cast<unsigned long long>(gap.copy_caller),static_cast<unsigned long long>(gap.copy_list),static_cast<unsigned long long>(gap.source),static_cast<unsigned long long>(gap.destination),gap.copy_thread);
-    fprintf(file,"ngx_output_pixels enabled=1 active=%u world=%llu ticket=%llu slots=%u limit=2 failure=%u match_request_published=%u bypassed=%llu limited=%llu unrelated=%llu barriers_added=0 same_original_list=1 matching_xr_snapshot_verified=0 logical_eye_verified=0 quad_pixels_verified=0 temporal_history_verified=0 sr_verified=0\n",unsigned(enabled),world,ticket,count,failure,unsigned(published),bypassed,limited,unrelated);
+    fprintf(file,"ngx_output_pixels enabled=1 active=%u world=%llu ticket=%llu slots=%u limit=2 failure=%u match_request_published=%u bypassed=%llu limited=%llu unrelated=%llu output_readback_barriers_added=0 same_original_list=1 matching_xr_snapshot_verified=0 logical_eye_verified=0 quad_pixels_verified=0 temporal_history_verified=0 sr_verified=0\n",unsigned(enabled),world,ticket,count,failure,unsigned(published),bypassed,limited,unrelated);
     for(unsigned i=0;i<count;++i){auto const& s=slots[i];auto const& v=s.before.values;
 #if defined(GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT) && GEARS_NGX_OUTPUT_PRESERVE_PAIR_INPUT
         fprintf(file,"ngx_output_copy_forward row=%u original_forwarded=%u original_returned=%u original_suppressed=%u readback_returned=%u\n",i,unsigned(s.original_forwarded),unsigned(s.original_returned),unsigned(s.original_suppressed),unsigned(s.readback_returned));

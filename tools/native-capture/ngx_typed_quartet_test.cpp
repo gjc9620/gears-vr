@@ -35,6 +35,9 @@ int main(){
      check(acquire_quartet_barrier(q,id(),7,b));check(q.bind(id(),7,raw(),out));
      check(out[0].identity==objects[0].canonical&&out[1].identity==objects[2].canonical&&out[2].identity==objects[3].canonical&&out[3].identity==objects[1].canonical);
      check(q.bound()&&q.held()==4);for(unsigned i=0;i<4;++i)check(objects[i].life.use_count()==2);
+     {FakeLease borrowed;check(q.retained_native(id(),7,3,borrowed)&&borrowed.raw==objects[3].raw&&objects[3].life.use_count()==3);
+      check(!q.retained_native(id(),8,3,borrowed)&&!borrowed.retained()&&objects[3].life.use_count()==2);
+      auto foreign=id();++foreign.epoch;check(!q.retained_native(foreign,7,3,borrowed));check(!q.retained_native(id(),7,4,borrowed));}
      for(unsigned i=4;i<80;++i)check(q.observe_resource(id(),8,resource(i)));check(q.held()==4&&objects[79].life.use_count()==1);
      check(q.bind(id(),8,raw(),out));q.uncertain();check(!q.bind(id(),9,raw(),out));check(q.held()==4);
      // Uncertain/reset/stop does not imply detach or release.
