@@ -35,6 +35,33 @@ def terminal(phase='stopped'):
 
 
 class ContinuousTests(unittest.TestCase):
+    def test_controller_input_private_cli_requires_certified_observers_and_forwards_to_both_processes(self):
+        base=['start','--pid','123','--build-dir','native','--dll-name','Continuous.dll','--xr-build-dir','xr']
+        flag='--controller-input-observer'
+        with mock.patch.object(runner,'run_session',return_value=0) as run:
+            runner.main(base)
+            ordinary=run.call_args.args[0]
+            self.assertNotIn(flag,runner.native_command(ordinary,identity(100)))
+            self.assertNotIn('--controller-input',runner.xr_command(ordinary,pathlib.Path('x.csv'),identity(100)))
+            for prerequisites in ([],['--anchor-observer'],['--anchor-observer','--ui-observer']):
+                run.reset_mock()
+                with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):
+                    runner.main(base+[flag,*prerequisites])
+                run.assert_not_called()
+            runner.main(base+[flag,'--anchor-observer','--ui-observer','--crosshair-assignment-observer'])
+            args=run.call_args.args[0]
+            self.assertEqual(runner.native_command(args,identity(100)).count(flag),1)
+            self.assertEqual(runner.xr_command(args,pathlib.Path('x.csv'),identity(100)).count('--controller-input'),1)
+            args.armspan_calibration={'schema':1,'armspan_metres':1.7,'hands_below_head_metres':-.15}
+            native=runner.native_command(args,identity(100))
+            self.assertEqual(native[native.index('--armspan-metres')+1],'1.7')
+            self.assertEqual(native[native.index('--hands-below-head-metres')+1],'-0.15')
+            runner.main(base+[flag,'--remeasure-armspan','--anchor-observer','--ui-observer','--crosshair-assignment-observer'])
+            run.reset_mock()
+            with contextlib.redirect_stderr(io.StringIO()),self.assertRaises(SystemExit):
+                runner.main(base+['--remeasure-armspan'])
+            run.assert_not_called()
+
     def test_native_failure_snapshots_survive_incomplete_cleanup(self):
         code,state,*_=self.run_mock(clean=False)
         self.assertEqual(code,1)
@@ -888,6 +915,17 @@ class ContinuousTests(unittest.TestCase):
                      mock.patch.object(start_capture.subprocess,'run') as spawn,contextlib.redirect_stderr(io.StringIO()):
                     with self.assertRaises(SystemExit) as error:start_capture.main()
                     self.assertEqual(error.exception.code,2);spawn.assert_not_called()
+            controller=['--continuous-session',*owner_flags,'--anchor-observer','--ui-observer',
+                        '--crosshair-assignment-observer','--controller-input-observer']
+            for values in ([],['--armspan-metres','1.7','--hands-below-head-metres','-.15']):
+                with mock.patch.object(start_capture.sys,'argv',base+controller+values):
+                    with self.assertRaisesRegex(RuntimeError,'Build capture DLL'):start_capture.main()
+            for values in (['--armspan-metres','1.7'],
+                           ['--armspan-metres','1.7','--hands-below-head-metres','nan'],
+                           ['--armspan-metres','.3','--hands-below-head-metres','-.15']):
+                with mock.patch.object(start_capture.sys,'argv',base+controller+values),contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as error:start_capture.main()
+                    self.assertEqual(error.exception.code,2)
 
     def test_recenter_only_signals_an_identical_running_owner_game_xr(self):
         with tempfile.TemporaryDirectory() as folder:

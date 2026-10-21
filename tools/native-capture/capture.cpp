@@ -323,6 +323,7 @@ std::atomic<unsigned long long> camera_closer_applied{},camera_closer_inactive{}
 gears_vr::StereoBridge stereo_bridge;
 gears_vr::ControllerInputBridge controller_input_bridge;
 gears_weapon::ArmspanCalibrator controller_armspan_observer;
+gears_weapon::ArmspanCalibration controller_armspan_saved{};
 gears_vr::StereoGate stereo_gate;
 std::mutex stereo_mutex;
 uint64_t controller_input_matched{},controller_input_missing{},controller_input_tracked_left{},controller_input_tracked_right{};
@@ -1166,6 +1167,7 @@ void print_stereo(FILE* file) {
         fprintf(file,"controller_armspan_observer measured=%u progress=%.6g armspan_metres=%.6g hands_below_head_metres=%.6g saved=0\n",
             measured?1u:0u,controller_armspan_observer.progress(),
             measured?measured->armspan_metres:0.,measured?measured->hands_below_head_metres:0.);
+        fprintf(file,"controller_armspan_loaded valid=%u\n",controller_armspan_saved.valid()?1u:0u);
         fprintf(file,"controller_intent_observer shoulder_ammo=%llu weapon_2=%llu weapon_1=%llu pistol=%llu grenade=%llu recenter=%llu reload=%llu aim_down=%llu fire_down=%llu game_actions_called=0 body_origin=diagnostic_head_translation\n",
             controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::grab_ammo)].load(),
             controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::weapon_2)].load(),
@@ -3117,7 +3119,8 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         if(controller_input_observer){
             gears_vr::ControllerInputFrame hands{};
             if(controller_input_bridge.read_matching(sample,gears_vr::monotonic_ns(),hands,simulator_operator)){
-                if(!simulator_operator)controller_armspan_observer.observe(hands,sample,gears_vr::monotonic_ns());
+                if(!simulator_operator&&!controller_armspan_saved.valid())
+                    controller_armspan_observer.observe(hands,sample,gears_vr::monotonic_ns());
                 if(!controller_input_matched)controller_input_first_sequence=hands.sequence;
                 ++controller_input_matched;controller_input_last_sequence=hands.sequence;
                 controller_input_profile_generation=hands.profile_generation;
@@ -4766,6 +4769,23 @@ DWORD WINAPI worker(void*) {
     stereo_xr=GetPrivateProfileIntW(L"Capture",L"stereo_xr",0,ini)==1;
     controller_input_observer=GetPrivateProfileIntW(L"Capture",L"controller_input_observer",0,ini)==1;
     if(controller_input_observer&&!stereo_xr){fprintf(status,"rejected: controller input observer requires stereo XR\n");fclose(status);return 3;}
+#if !defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) || !GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    if(controller_input_observer){fprintf(status,"rejected: controller input observer requires certified tick build\n");fclose(status);return 3;}
+#endif
+    {wchar_t armspan[64]{},height[64]{};
+        GetPrivateProfileStringW(L"Capture",L"weapon_armspan_metres",L"",armspan,64,ini);
+        GetPrivateProfileStringW(L"Capture",L"weapon_hands_below_head_metres",L"",height,64,ini);
+        if((armspan[0]!=0)!=(height[0]!=0)||((armspan[0]||height[0])&&!controller_input_observer)){
+            fprintf(status,"rejected: incomplete or inactive stored armspan calibration\n");fclose(status);return 3;}
+        if(armspan[0]){
+            wchar_t *span_end{},*height_end{};
+            gears_weapon::ArmspanCalibration measured{1,wcstod(armspan,&span_end),wcstod(height,&height_end)};
+            if(span_end==armspan||*span_end||height_end==height||*height_end||!measured.valid()){
+                fprintf(status,"rejected: invalid stored armspan calibration\n");fclose(status);return 3;}
+            controller_armspan_saved=measured;
+            controller_input_mailbox_calibration=measured;
+        }
+    }
     simulator_operator=GetPrivateProfileIntW(L"Capture",L"simulator_operator",0,ini)==1;
     frame_link_diagnostics=GetPrivateProfileIntW(L"Capture",L"frame_link_diagnostics",0,ini)==1;
     stereo_gpu_publish=GetPrivateProfileIntW(L"Capture",L"stereo_gpu_publish",0,ini)==1;

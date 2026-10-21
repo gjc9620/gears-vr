@@ -429,6 +429,9 @@ def main():
     parser.add_argument('--ui-hud-plane',action='store_true',help='Experimental HUD plane; requires UI observer, anchor observer and continuous session')
     parser.add_argument('--ui-reticle-late-sample',action='store_true',help=argparse.SUPPRESS)
     parser.add_argument('--crosshair-assignment-observer',action='store_true',help='Observe certified crosshair assignments; no reticle correction')
+    parser.add_argument('--controller-input-observer',action='store_true',help='Read-only matched controller input; requires stereo and certified PlayerTick observers')
+    parser.add_argument('--armspan-metres',type=float)
+    parser.add_argument('--hands-below-head-metres',type=float)
     parser.add_argument('--hud-horizontal-fov-degrees',type=float)
     parser.add_argument('--camera-closer-metres',type=float,default=0.)
     parser.add_argument('--first-person-preview',action='store_true')
@@ -439,6 +442,16 @@ def main():
     configure_anchor_options(args,parser)
     if args.ui_observer and not (args.anchor_observer and args.continuous_session):
         parser.error('UI observer requires continuous stereo with anchor observer')
+    if args.controller_input_observer and not (args.stereo_xr and args.continuous_session and
+            args.anchor_observer and args.ui_observer and args.crosshair_assignment_observer):
+        parser.error('Controller input observer requires continuous stereo and certified anchor/UI/crosshair observers')
+    if args.armspan_metres is not None or args.hands_below_head_metres is not None:
+        if not args.controller_input_observer or args.armspan_metres is None or args.hands_below_head_metres is None:
+            parser.error('Stored armspan calibration requires both values and controller input observer')
+        from weapon_calibration import validate
+        try:validate({'schema':1,'armspan_metres':args.armspan_metres,
+                      'hands_below_head_metres':args.hands_below_head_metres})
+        except ValueError as error:parser.error(str(error))
     args.gpu_diagnostics=args.gpu_diagnostics or args.viewport_diagnostics
     if args.continuous_session:
         if (args.continuous_owner_pid is None or not 0<args.continuous_owner_pid<=0xffffffff
@@ -576,6 +589,10 @@ def main():
         config+=f'anchor_observer={int(args.anchor_observer)}\n'
         config+=f'ui_observer={int(args.ui_observer)}\n'
         config+=f'crosshair_assignment_observer={int(args.crosshair_assignment_observer)}\n'
+        config+=f'controller_input_observer={int(args.controller_input_observer)}\n'
+        if args.armspan_metres is not None:
+            config+=f'weapon_armspan_metres={args.armspan_metres:.9g}\n'
+            config+=f'weapon_hands_below_head_metres={args.hands_below_head_metres:.9g}\n'
         config+=f'ui_hud_plane={int(getattr(args,"ui_hud_plane",False))}\n'
         config+=f'ui_reticle_late_sample={int(getattr(args,"ui_reticle_late_sample",False))}\n'
         config+=hud_size_ini(args)

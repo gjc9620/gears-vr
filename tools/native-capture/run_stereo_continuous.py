@@ -21,6 +21,7 @@ import uuid
 
 from run_stereo_probe import ROOT, complete_csv_rows, collect_xr_evidence
 from camera_closer_options import camera_closer_metres
+import weapon_calibration
 from session_telemetry import SessionTelemetry
 
 class WindowsControl:
@@ -185,6 +186,11 @@ def validate_ui_hud_plane(args):
     if getattr(args,'crosshair_assignment_observer',False) and (not all(
             getattr(args,key,False) for key in ('ui_observer','anchor_observer')) or getattr(args,'origin_trial',False)):
         raise ValueError('Crosshair assignment observer requires continuous UI/anchor observers and cannot use origin trial')
+    if getattr(args,'controller_input_observer',False) and not all(
+            getattr(args,key,False) for key in ('ui_observer','anchor_observer','crosshair_assignment_observer')):
+        raise ValueError('Controller input observer requires authenticated UI, anchor and crosshair observers')
+    if getattr(args,'remeasure_armspan',False) and not getattr(args,'controller_input_observer',False):
+        raise ValueError('Remeasuring armspan requires controller input observer')
     value=getattr(args,'hud_horizontal_fov_degrees',None)
     if value is not None:
         if not getattr(args,'ui_hud_plane',False):raise ValueError('HUD size requires --ui-hud-plane')
@@ -233,6 +239,14 @@ def native_command(args,owner):
     if getattr(args,'ui_hud_plane',False):command.append('--ui-hud-plane')
     if getattr(args,'ui_reticle_late_sample',False):command.append('--ui-reticle-late-sample')
     if getattr(args,'crosshair_assignment_observer',False):command.append('--crosshair-assignment-observer')
+    if getattr(args,'controller_input_observer',False):command.append('--controller-input-observer')
+    calibration=getattr(args,'armspan_calibration',None)
+    if calibration:
+        if not getattr(args,'controller_input_observer',False):
+            raise ValueError('Stored armspan calibration requires controller input observer')
+        calibration=weapon_calibration.validate(calibration)
+        command+=['--armspan-metres',str(calibration['armspan_metres']),
+                  '--hands-below-head-metres',str(calibration['hands_below_head_metres'])]
     if getattr(args,'hud_horizontal_fov_degrees',None) is not None:
         command+=['--hud-horizontal-fov-degrees',str(args.hud_horizontal_fov_degrees)]
     for key in ('hud_element_scale','hud_center_scale'):
@@ -252,6 +266,7 @@ def xr_command(args,csv_path,owner):
             '--stereo-game-pid',str(args.pid),'--continuous-session',
             '--owner-pid',str(owner['pid']),'--owner-creation-time',str(owner['creation_time'])]
     if validate_render_scale(args) is not None:command+=['--render-scale',str(args.render_scale)]
+    if getattr(args,'controller_input_observer',False):command.append('--controller-input')
     if getattr(args,'startup_menu_window',0):
         command+=['--startup-menu-window',str(args.startup_menu_window),str(args.pid)]
     if getattr(args,'menu_recovery',False):
@@ -497,6 +512,11 @@ def cleanup_owned_xr(child,owned_pid,game_pid,timeout,control,state):
 def run_session(args,control=None,on_report=None,cancel_requested=None,before_native_activation=None):
     timing_origin=time.perf_counter_ns()
     validate_ui_hud_plane(args)
+    calibration_path=getattr(args,'weapon_calibration_path',None) or pathlib.Path(
+        os.environ.get('LOCALAPPDATA',str(ROOT/'analysis/runtime')))/'GearsVR'/'weapon-calibration.json'
+    if getattr(args,'controller_input_observer',False):
+        args.armspan_calibration=(None if getattr(args,'remeasure_armspan',False)
+                                  else weapon_calibration.load(calibration_path))
     control=control or WindowsControl()
     lock=control.owner_lock(args.pid)
     token=uuid.uuid4().hex
@@ -520,6 +540,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'ui_hud_plane_enabled':bool(getattr(args,'ui_hud_plane',False)),
            'ui_reticle_late_sample_enabled':bool(getattr(args,'ui_reticle_late_sample',False)),
            'crosshair_assignment_observer_enabled':bool(getattr(args,'crosshair_assignment_observer',False)),
+           'controller_input_observer_enabled':bool(getattr(args,'controller_input_observer',False)),
+           'armspan_calibration_loaded':bool(getattr(args,'armspan_calibration',None)),
            'hud_horizontal_fov_degrees':getattr(args,'hud_horizontal_fov_degrees',None),
            'camera_closer_metres':camera_closer_metres(args),
            'gpu_snapshot_requested':bool(getattr(args,'gpu_snapshot',False)),
@@ -744,6 +766,15 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             if isinstance(value,dict) and value.get('startup_menu_handoff'):state['startup_menu_handoff']=value
             if isinstance(value,dict) and value.get('menu_recovery_evidence'):state['menu_recovery_evidence']=value
         state['passed']=continuous_passed(state)
+        state['armspan_calibration_saved']=False
+        if (state['passed'] and getattr(args,'controller_input_observer',False) and
+                not state['simulation_not_physical_tracking'] and
+                os.environ.get('GEARSVR_TEST_WINDOWS_BEHIND')!='1'):
+            measured=weapon_calibration.measured_from_native(
+                prefix.with_suffix('.native-status.txt').read_text(encoding='utf-8',errors='replace'))
+            if measured:
+                weapon_calibration.save(calibration_path,measured)
+                state['armspan_calibration_saved']=True
         # Cancellation before native activation is a control result, not proof
         # of stereo output. The launcher still owns startup-prime verification.
         xr_shutdown=state.get('continuous_session_evidence',{}).get('shutdown_completed') is True
@@ -788,6 +819,8 @@ def main(argv=None):
     start.add_argument('--ui-hud-plane',action='store_true')
     start.add_argument('--ui-reticle-late-sample',action='store_true',help=argparse.SUPPRESS)
     start.add_argument('--crosshair-assignment-observer',action='store_true')
+    start.add_argument('--controller-input-observer',action='store_true',help='Private read-only 6DoF input observation; requires certified tick observer build')
+    start.add_argument('--remeasure-armspan',action='store_true',help='Ignore prior armspan record for this 6DoF session; keep it if a new measurement fails')
     start.add_argument('--hud-horizontal-fov-degrees',type=float)
     start.add_argument('--hud-element-scale',type=float)
     start.add_argument('--hud-center-scale',type=float)
