@@ -1,5 +1,11 @@
 # Project reverse-engineering workflow
 
+## Current development version (2026-10-21)
+
+- Current development targets 0.1.0 on `codex/0.1.0`. Record subsequent fixes and validation in `docs/releases/0.1.0/PROGRESS.md`.
+- Local commit `5787a48` preserves the current source at the 0.0.1 closeout, including ongoing development. It is not the published `v0.0.1` source tag.
+- Preserve the published `v0.0.1` tag and release package. A 0.1.0 development checkpoint does not constitute a new release or headset acceptance.
+
 ## Delivery scope confirmed by the user on 2026-10-20
 
 - DLSS is optional for the first version. A separate CMD launcher for DLSS testing/use is acceptable; it does not have to be enabled in the normal launcher.
