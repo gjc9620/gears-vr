@@ -267,9 +267,9 @@ Longshot 瞄准镜另设光学渲染任务。单纯放大原有双眼画面会�
 
 Gnasher 与 Boltok 的完整未发射单发弹药仍未在已有调查中确认。若需要补建模型，应明确其为新建／修改资源。逐枪调查先检索现有知识库，再用既有 IDA 工具链做有界核对；磁盘 EXE、历史运行时证据和脚本声明保持各自来源。
 
-原版武器网格不能按查看用的灰模 GLB 判断为一整块：该导出只保留 LOD0 三角形，丢失了骨骼与蒙皮。对六件已定位的原始 `SkeletalMesh` 做来源哈希和骨骼层级核验后，Gnasher 含 `b_Shotgun_Lever`，Lancer 含 `b_AR_Magazine`／`b_AR_Latch`／`b_AR_Receiver`，Hammerburst 含 `b_HB_Mag`／`b_HB_MagLatch`，Longshot 含 `b_LS_Bolt`／`b_LS_Scope`，Snub 含 `b_HG_Magazine`／`b_HG_Slide`。Boltok 有 12 根名称不表达部件功能的骨骼，需按动画与蒙皮验证。审核脚本为 `tools/weapon-models/audit_skeletal_bones.py`，完整本地报告保存在忽略目录 `analysis/weapon-bone-audit.json`；骨骼名称只证明层级存在，不证明哪些三角形受它影响、游戏动画幅度或 VR 可抓取性。
+原版武器网格不能按查看用的灰模 GLB 判断为一整块：该导出只保留 LOD0 三角形，丢失了骨骼与蒙皮。对六件已定位的原始 `SkeletalMesh` 做来源哈希、骨骼层级和 LOD0 蒙皮核验后，Gnasher 的 `b_Shotgun_Lever` 关联 1,192 个顶点／1,260 个三角形，能与主体无交叉三角形地分出检查用灰模；Hammerburst 弹匣、Longshot 枪栓和 Snub 滑套／弹匣也可按骨骼刚性分组。Lancer 的弹匣与主体交界有 36 个混合权重顶点，自动完整刚性拆分会被拒绝，须处理过渡区。Longshot 虽有 `b_LS_Scope` 和 `b_LS_LensCap` 骨骼，当前 LOD0 活动骨骼表只有主体与枪栓，不能声称镜体网格已可单独运动。Boltok 的 12 根骨骼名称不表达部件功能，需结合动画核验。审核脚本为 `tools/weapon-models/audit_skeletal_bones.py`，保守刚性拆分工具为 `tools/weapon-models/split_rigid_lod0.py`；完整报告与拆出的检查用 OBJ 留在忽略的 `analysis/weapon-bone-audit.json`、`analysis/weapon-partitions/`。这些结果尚不证明游戏动画行程或 VR 可抓取性。
 
-机械件先检查原始骨骼、顶点权重与动画行程，优先用受控骨骼变换驱动原来的可动件；黄色引导跟随该部件而非照亮整枪。只有原始模型确实把应活动的几何焊在不可分的主体上时，才在本地工作副本中按三角形和材质边界拆件、补封切口、设枢轴与碰撞，并逐枪检查缝隙、贴图、阴影和 LOD。原始游戏包、灰模和拆分衍生资源留在忽略的 `analysis/`，不能直接塞进公开发行包；最终运行时资源来源与许可另行核对。
+机械件先检查原始骨骼、顶点权重与动画行程，优先用受控骨骼变换驱动原来的可动件；黄色引导跟随该部件而非照亮整枪。不能刚性拆开的部位（如 Lancer 混合权重边界、Longshot 独立镜体）需要在本地工作副本中按蒙皮／材质边界处理、补封切口或补做部件，并逐枪检查枢轴、碰撞、缝隙、贴图、阴影和 LOD。原始游戏包、灰模和拆分衍生资源留在忽略的 `analysis/`，不能直接塞进公开发行包；最终运行时资源来源与许可另行核对。
 
 ## 实施顺序与验收条件
 

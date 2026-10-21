@@ -20,7 +20,9 @@ Gnasher 杠杆手势增量：新增纯逻辑的双手行程识别器，要求左
 
 枪姿态增量：加入只消费同一 XR 双目 ticket 的双手枪体求解器。右手握把决定枪体锚点；左手确实握住副握点且追踪与臂距合理时参与方向修正；枪口位置及轴线由逐枪局部挂点计算，并能用冻结的回中参考转换为游戏世界射线。纯逻辑测试覆盖单／双手、仅头动不改变枪线、错帧和失去追踪后的拒绝或单手回退。当前没有已核对的逐枪握点／枪口局部坐标，也未写入游戏枪模或开火函数；测试只证明数学与数据门控，不证明实际弹道改变。
 
-模型拆件核验增量：原版六件已定位的武器 `SkeletalMesh` 通过包内哈希和骨骼层级审核；Gnasher 确有独立命名的杠杆骨骼，Lancer／Hammerburst 的弹匣、Longshot 的枪栓／镜体、Snub 的滑套／弹匣也有相应骨骼。查看用 GLB 丢失蒙皮，不能由其外观看出原版部件是否独立。新增可复现的只读审核脚本，报告放在忽略的 `analysis/weapon-bone-audit.json`。蒙皮权重、动画行程和游戏内控制未验证；Boltok 骨骼命名不具部件语义，其余武器仍待逐件调查。
+模型拆件核验增量：原版六件已定位的武器 `SkeletalMesh` 通过包内哈希和骨骼层级审核；Gnasher 确有独立命名的杠杆骨骼，Lancer／Hammerburst 的弹匣、Longshot 的枪栓／镜体、Snub 的滑套／弹匣也有相应骨骼。查看用 GLB 丢失蒙皮，不能由其外观看出原版部件是否独立。新增可复现的只读审核脚本，报告放在忽略的 `analysis/weapon-bone-audit.json`。动画行程和游戏内控制未验证；Boltok 骨骼命名不具部件语义，其余武器仍待逐件调查。
+
+模型蒙皮增量：继续解析经哈希验证的 LOD0 活动骨骼表及 64 字节顶点权重，发现 Gnasher 杠杆对应 1,192 顶点、1,260 三角形，与主体三角形无交叉。已用保守工具把 Gnasher、Hammerburst、Longshot、Snub、Boltok 的可刚性分组灰模导出到忽略目录 `analysis/weapon-partitions/`，并逐件核对三角形总数和输出哈希。Lancer 有 36 个弹匣／主体混合权重顶点，工具拒绝整件刚性拆分；Longshot 镜体／镜盖骨骼不在当前 LOD0 活动骨骼表内。导出仅有几何，不含贴图、骨骼动画或运行时替换；实际动画与 VR 操作仍待验证。
 
 开火链只读观察增量：为现有脚本身份凭证增加可选的六函数序列（`WarWeapon`／`Engine.Weapon.InstantFire`、`WarPawn.GetAdjustedAimFor`、`WarWeapon.GetAdjustedAim`、`Engine.Weapon.CalcWeaponFire`、`WarWeapon.ProcessInstantHit`）。仅在私有手柄观察会话申请；原始角色、包、脚本地址／大小与入口每次由当前进程核验。复用已有 VM 调用边界，不设第二个 detour，不调用武器函数，也不读取结果缓冲或参数。普通 `WarPC.PlayerTick` 的同步调用栈中，记录原始调用前后元数据；子调用必须有实际 `Engine.Weapon.InstantFire` 函数体祖先，才标作射击体内观察。完整 Tick 结束后再次验证身份和世界代次才提交有限行数；世界重绑定也申请同样凭证。纯内存测试通过；尚无实际游戏开火轨迹，因此不证明该 Tick 覆盖连发计时器，也未取得射线数值、更改弹道或接通枪口。
 
