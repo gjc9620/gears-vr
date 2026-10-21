@@ -23,6 +23,25 @@ int main(){
     assert(short_reload.pending_action()==MechanismAction::lever_down_return);
     assert(short_reload.cycle(11,1050,MechanismAction::lever_down_return)==ReloadEvent::cycled&&short_reload.can_fire());
 
+    ReloadModel already_equipped;
+    assert(already_equipped.prime(51,shotgun,3,4));
+    assert(already_equipped.can_fire());
+    assert(already_equipped.after_shot(51,2)&&!already_equipped.can_fire());
+    assert(!already_equipped.prime(51,shotgun,2,4)); // Cannot erase the pending lever.
+    assert(already_equipped.pending_action()==MechanismAction::lever_down_return);
+    assert(already_equipped.cycle(51,1050,MechanismAction::bolt)==ReloadEvent::rejected);
+    assert(already_equipped.cycle(51,1050,MechanismAction::lever_down_return)==ReloadEvent::cycled);
+    assert(already_equipped.can_fire()&&already_equipped.loaded()==2);
+    assert(!already_equipped.after_shot(52,1));
+    assert(already_equipped.after_shot(51,1)&&!already_equipped.can_fire());
+    already_equipped.reset();
+    auto deadline_unknown=shotgun;deadline_unknown.perfect_end_ticks=0;
+    assert(already_equipped.prime(52,deadline_unknown,1,0));
+    assert(already_equipped.can_fire()&&already_equipped.after_shot(52,0));
+    assert(!already_equipped.can_fire());
+    assert(already_equipped.cycle(52,1051,MechanismAction::lever_down_return)==ReloadEvent::cycled);
+    assert(already_equipped.begin(52,deadline_unknown,0,1,1052)==ReloadEvent::invalid);
+
     ReloadModel sparse;
     assert(sparse.begin(12,shotgun,2,1,1000)==ReloadEvent::started);
     assert(sparse.target()==1); // Reserve fewer than three shells.
@@ -86,5 +105,5 @@ int main(){
     ReloadPolicy broken=shotgun;broken.shot_action=MechanismAction::none;
     assert(empty.begin(40,broken,3,2,0)==ReloadEvent::invalid);
     assert(empty.stage()==ReloadStage::idle&&full.stage()==ReloadStage::idle);
-    std::puts("reload count conservation, shortage, exclusive deadline, identity and interruption checks passed");
+    std::puts("reload count conservation, equipped shotgun priming, exclusive deadline and interruption checks passed");
 }

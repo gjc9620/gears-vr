@@ -46,6 +46,21 @@ class ReloadModel {
     }
 public:
     void reset() noexcept {*this=ReloadModel{};}
+    // Seed an already-equipped original weapon before its first VR shot.
+    // The adapter must reset on weapon/world change and obtain both counts
+    // from the same authenticated game-thread inventory snapshot. Re-priming
+    // an armed model would erase a pending post-shot mechanism, so it fails.
+    bool prime(std::uint64_t weapon,ReloadPolicy policy,std::uint32_t loaded,
+               std::uint32_t reserve) noexcept {
+        if(weapon_||!weapon||policy.capacity==0||policy.capacity>10000||
+           policy.maximum_per_cycle==0||policy.maximum_per_cycle>policy.capacity||
+           loaded>policy.capacity||reserve>1000000||
+           (policy.final_mechanism&&policy.reload_action==MechanismAction::none)||
+           (policy.cycle_after_each_shot&&policy.shot_action==MechanismAction::none)||
+           (policy.unit!=LoadUnit::round&&policy.unit!=LoadUnit::magazine))return false;
+        policy_=policy;weapon_=weapon;loaded_=loaded;reserve_=reserve;
+        stage_=ReloadStage::idle;feed_present_=true;return true;
+    }
     ReloadEvent begin(std::uint64_t weapon,ReloadPolicy policy,std::uint32_t loaded,
                       std::uint32_t reserve,std::int64_t game_tick) noexcept {
         if(stage_==ReloadStage::feed_port||stage_==ReloadStage::holding_ammo||stage_==ReloadStage::mechanism)
