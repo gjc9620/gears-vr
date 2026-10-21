@@ -56,6 +56,14 @@ class Tests(unittest.TestCase):
                   expected_dll_sha256=self.dll_hash,backend=self.backend)
         args.update(kwargs);return HookEntryAttestation(self.path,**args)
 
+    def test_owned_backend_binds_the_two_sealed_bases_and_closes_its_lease(self):
+        import hook_entry_attestation
+        self.backend.close=mock.Mock()
+        with mock.patch.object(hook_entry_attestation,'WindowsReadOnly',return_value=self.backend):
+            proof=self.load(backend=None)
+        self.assertEqual(self.backend.module_bases,frozenset((self.base,self.native)))
+        proof.reverify();proof.close();self.backend.close.assert_called_once()
+
     def test_exact_entry_only_original_read_and_real_fallback(self):
         proof=self.load();entry=proof.entries[0];fallback=mock.Mock(return_value=b'actual')
         for size in (1,16,32):self.assertEqual(proof.read_entry(entry.target,size,fallback),entry.original[:size])

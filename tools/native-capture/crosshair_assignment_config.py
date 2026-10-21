@@ -49,22 +49,27 @@ def _require(ok, reason):
         raise CrosshairConfigRejected(reason)
 
 
-def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False, include_aim_state=False, entry_reader=None):
+def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False, include_aim_state=False, entry_reader=None,
+                                     reuse_assembly_identities=True):
     """Certify selected evidence, allowing only bounded registry count growth.
 
 Requires original execLet bytes, read directly at startup or through the
 caller's bound owned-hook attestation capability during world recovery.
 Shared VM entry bytes are deliberately not certified (the UI owner may own it).
 """
+    if type(reuse_assembly_identities) is not bool:
+        raise ValueError('reuse_assembly_identities must be boolean')
     try:
-        return _build(resolver, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader)
+        return _build(resolver, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader,
+                      reuse_assembly_identities)
     except CrosshairConfigRejected:
         raise
     except (KeyError, TypeError, ValueError, RuntimeError, OSError, struct.error, UnicodeError) as e:
         raise CrosshairConfigRejected('Fresh certificate rejected: ' + str(e)) from e
 
 
-def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader):
+def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader,
+           reuse_assembly_identities):
     p = r.profile
     started = time.perf_counter_ns()
     _require(p.get('sha256') == camera.get('sha256') == GAME_SHA and
@@ -128,7 +133,7 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
     objects, oc = registry(r.objects_header)
     names, nc = registry(r.names_header)
 
-    def fresh(a):
+    def fresh_read(a):
         idx = number(a + p['object_internal_index'], '<I')
         ni, serial = struct.unpack('<II', stable(a + p['object_name'], 8))
         cls = number(a + p['object_class']); outer = number(a + p['object_outer'])
@@ -142,6 +147,17 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
         _require(not any(c in name for c in '\r\n\0='), 'Invalid name')
         return dict(address=a, internal_index=idx, name_index=ni, number=serial,
                     name=name, cls=cls, outer=outer)
+
+    assembly_identities = {}
+    def fresh(a):
+        # Attempt-local assembly hints only. fresh_read records every identity,
+        # selected slot and name byte in checks; the final uncached read of all
+        # checks below still rejects any change before admitting this candidate.
+        if not reuse_assembly_identities:return fresh_read(a)
+        if a not in assembly_identities:
+            _require(len(assembly_identities) < 256, 'Assembly identity capacity exceeded')
+            assembly_identities[a] = fresh_read(a)
+        return assembly_identities[a]
 
     ids = []; indexes = {}; supers = {}
 

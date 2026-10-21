@@ -16,6 +16,8 @@ import subprocess
 import sys
 import time
 ROOT=pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT/'tools/debug-launch'))
+from game_install import launch_environment
 sys.path.insert(0,str(ROOT/'tools/native-capture'))
 from start_capture import k,modules,pefile
 from runtime_probe import Process, MBI
@@ -36,7 +38,7 @@ def main():
     parser.add_argument('--manifest',type=pathlib.Path,required=True)
     args=parser.parse_args()
     if pids():raise RuntimeError('Existing game must exit normally first')
-    game=ROOT/'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
+    game=ROOT/'Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
     profile=json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text())
     if hashlib.sha256(game.read_bytes()).hexdigest()!=profile['sha256']:raise RuntimeError('Game hash differs')
     rd_dir=ROOT/'tools/third-party/renderdoc/RenderDoc_1.46_64';manifest=json.loads(args.manifest.read_text())
@@ -49,7 +51,7 @@ def main():
     (ROOT/'analysis/renderdoc').mkdir(parents=True,exist_ok=True)
     command=[str(rd_dir/'renderdoccmd.exe'),'capture','--opt-soft-memory-limit','1024',
         '-d',str(game.parent),'-c',str(ROOT/'analysis/renderdoc/game-bridged'),str(game),'-NoPauseUnfocus']
-    launch=subprocess.run(command,capture_output=True,text=True)
+    launch=subprocess.run(command,capture_output=True,text=True,env=launch_environment())
     print(launch.stdout,flush=True)
     # renderdoccmd's capture return value is not a reliable success code; require
     # the actual process, executable path, modules, bytes and pointers below.

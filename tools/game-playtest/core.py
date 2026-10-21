@@ -301,7 +301,7 @@ class Evidence:
         report = dict(schema=1, phase=self.phase, mode=self.mode, assisted=self.assisted,
                       provenance=self.provenance, samples=self.samples, actions=self.actions,
                       event_counts=dict(self.counts), issues=list(self.issues.values()),
-                      coverage=self.coverage, image_capture=False,
+                      coverage=self.coverage, image_capture=bool(self.provenance.get('explicit_gpu_snapshots',False)),
                       automatic_full_campaign_verified=False,
                       headset_verified=False, **extra)
         atomic_json(self.directory / 'report.json', report)

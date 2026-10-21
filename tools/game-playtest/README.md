@@ -2,8 +2,11 @@
 
 This runner starts a private, background VR test session, performs bounded game
 actions, checks their effect through reflected state, and writes issues and
-coverage evidence under ignored `analysis/playtest/`. It does not capture images,
-record video, or send images to a model. Normal game/VR rendering still runs.
+coverage evidence under ignored `analysis/playtest/`. The default run does not
+capture images, record video, or send images to a model. Normal game/VR rendering
+still runs. An explicit `--gpu-snapshots` run enables the existing simulator eye
+image snapshot controls for visual feature verification. It records this choice
+in provenance; it does not capture the desktop or other windows.
 
 The current implementation exercises movement and turning, aim/fire response,
 pause/resume, ordinary checkpoint reload, cinematic control inhibition, and

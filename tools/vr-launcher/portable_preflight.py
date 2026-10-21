@@ -29,7 +29,7 @@ def check_inventory(root):
 def resolve_pe_dependency(root, binary, name, manifest, system_directory):
     """Model the owned loader contexts, never PATH or an unrelated package DLL.
 
-    The injected capture/quiet DLLs use remote LoadLibraryW: their own directory
+    The injected capture/quiet/playground DLLs use remote LoadLibraryW: their own directory
     is not automatically added to the game's DLL search. Without a selected
     game's directory proof, only Windows imports are admitted for those DLLs.
     """
@@ -41,6 +41,9 @@ def resolve_pe_dependency(root, binary, name, manifest, system_directory):
     capture = contained(root, Path(manifest['native_build']) / manifest['native_dll'])
     quiet = contained(root, QUIET_BUILD + '/GearsQuietStartup.dll')
     injected = binary in (capture, quiet)
+    if manifest.get('playground_menu', False):
+        from playground_loader import relative_artifact
+        injected = injected or binary == contained(root, relative_artifact(manifest))
     if binary.is_relative_to(python):
         # CPython extensions are loaded with DLL_LOAD_DIR; the Python EXE
         # directory remains the application directory for VC/python DLLs.

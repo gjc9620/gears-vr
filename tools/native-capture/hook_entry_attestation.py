@@ -40,13 +40,14 @@ class WindowsReadOnly:
         from runtime_probe import Process
         from run_stereo_continuous import WindowsControl
         self.process=Process(pid)
+        self.module_bases=None
         try:self.control=WindowsControl()
         except BaseException:self.process.close();raise
     def read(self,address,size):return self.process.read(address,size)
     def identity(self,pid):return self.control.identity(pid)
     def modules(self):
         from start_capture import modules
-        return modules(self.process.handle)
+        return modules(self.process.handle,bases=self.module_bases)
     def handle_identity(self):
         kernel=c.WinDLL('kernel32',use_last_error=True)
         kernel.GetProcessId.argtypes=[w.HANDLE];kernel.GetProcessId.restype=w.DWORD
@@ -95,6 +96,10 @@ class HookEntryAttestation:
             if (manifest['pid'],manifest['game_creation'],manifest['owner_pid'],manifest['owner_creation'])!=(pid,game_creation,self.owner['pid'],self.owner['creation_time']):
                 raise AttestationRejected('Manifest process/owner identity mismatch')
             self.module_base=manifest['module_base'];self.native_base=manifest['native_base']
+            # The envelope authenticates these two exact loaded bases/paths.
+            # Re-enumerate the complete live base list at every boundary, but
+            # do not query filenames for unrelated system/game modules.
+            if self.owns_backend:self.backend.module_bases=frozenset((self.module_base,self.native_base))
             self.generation=manifest['manifest_generation']
             entries=manifest['entries']
             if not isinstance(entries,list) or not 1<=len(entries)<=128:raise AttestationRejected('Invalid entry count')

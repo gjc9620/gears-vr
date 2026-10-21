@@ -267,6 +267,13 @@ class WorldRebindMonitor:
                 self.identity(self.owner['pid']) != self.owner):
             raise Cancelled('Process identity changed')
 
+    def _check_hint_live(self):
+        # A hint runs on the idle owner, before _start creates a new worker
+        # cancellation scope. A previous failed worker must remain cancelled;
+        # it must not also cancel every subsequent read-only discovery hint.
+        if not self.enabled or self.state!='idle':raise Cancelled('Hint observer is no longer idle')
+        self._check_processes()
+
     def _valid_status(self, status):
         expected = dict(pid=str(self.game['pid']), owner_pid=str(self.owner['pid']),
                         owner_creation_time=str(self.owner['creation_time']),
@@ -465,14 +472,18 @@ class WorldRebindMonitor:
                     self._notice_timeout(events)
             elif self.state == 'idle':
                 hinted=False
-                if now < self.next_poll:
-                    if self.changed_hint is None or now < max(self.next_hint,self.hint_retry_after):return events
+                probe_due=now>=self.next_poll
+                if (self.changed_hint is not None and now>=self.hint_retry_after and
+                        (probe_due or now>=self.next_hint)):
                     self.next_hint=now+self.hint_interval
-                    try:changed=self.changed_hint(self.baseline,self._check_live)
+                    try:changed=self.changed_hint(self.baseline,self._check_hint_live)
                     except Cancelled:raise
                     except (RuntimeError,OSError,ValueError):changed=False
-                    if changed is not True:return events
-                    hinted=True
+                    hinted=changed is True
+                # A due periodic observation can use the same single-acquisition
+                # path as an early pointer hint. False/failed hints retain full
+                # periodic discovery, including same-address identity changes.
+                if not probe_due and not hinted:return events
                 # Never overlap a cancelled worker, overwrite an existing pending
                 # candidate, or recycle a path after a failed native request.
                 if self.future is not None:

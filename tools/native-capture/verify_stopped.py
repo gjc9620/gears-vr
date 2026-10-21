@@ -103,6 +103,29 @@ def hook_targets(status):
     return targets
 
 
+def prime_preinstall_entries(status):
+    """Keep only complete, unique pre-hook and post-stop snapshots of one entry.
+
+    The native hook records `before` immediately before MH_CreateHook, then checks
+    the same 32 bytes after disabling hooks. The verifier still reads the stopped
+    process independently; a native `restored=1` claim alone never passes.
+    """
+    initial, stopped, duplicates = {}, {}, set()
+    for line in status.splitlines():
+        before = re.fullmatch(r'prime_entry target=([0-9A-Fa-f]+) before=([0-9A-Fa-f]{64})', line)
+        after = re.fullmatch(r'prime_entry target=([0-9A-Fa-f]+) restored=([01]) before=([0-9A-Fa-f]{64})', line)
+        if before:
+            target, data = int(before[1], 16), bytes.fromhex(before[2])
+            if target in initial:duplicates.add(target)
+            initial[target] = data
+        elif after:
+            target, restored, data = int(after[1], 16), after[2] == '1', bytes.fromhex(after[3])
+            if target in stopped:duplicates.add(target)
+            stopped[target] = restored, data
+    return {target: data for target, data in initial.items()
+            if target not in duplicates and stopped.get(target) == (True, data)}
+
+
 class SystemEntryCache:
     """PE resources and relocation indices owned by ONE verification run.
 
@@ -170,6 +193,7 @@ def main():
     if f'capturing pid={args.pid} ' not in status or 'stopped disable_status=0 active=0' not in status:
         raise RuntimeError('Matching PID and clean stopped status required')
     targets = hook_targets(status)
+    preinstall_entries = prime_preinstall_entries(status)
     # UI observer adds four VM/Canvas entries, Canvas/subtitle consumers, and
     # optionally the Material consumer, three graphics settings callbacks, and
     # the UIOptionList selection transaction and optional ResourceBarrier entry.
@@ -348,6 +372,17 @@ def main():
                 source = 'validated runtime camera signature'
             else:
                 expected, source = system_entries.expected(loaded, target)
+                actual = resolver.read(target, len(expected))
+                original = preinstall_entries.get(target)
+                matches_disk = actual == expected
+                matches_preinstall = original is not None and actual == original
+                checks.append(dict(target=hex(target), source=source,
+                                   bytes_checked=len(expected), matches=matches_disk or matches_preinstall,
+                                   matches_disk=matches_disk, matches_preinstall=matches_preinstall,
+                                   disk_sha256=hashlib.sha256(expected).hexdigest(),
+                                   observed_sha256=hashlib.sha256(actual).hexdigest(),
+                                   preinstall_sha256=(hashlib.sha256(original).hexdigest() if original else None)))
+                continue
             actual = resolver.read(target, len(expected))
             checks.append(dict(target=hex(target), source=source, bytes_checked=len(expected), matches=actual == expected))
     finally:

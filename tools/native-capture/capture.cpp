@@ -72,6 +72,8 @@
 #include "pawnless_camera_observer.h"
 #endif
 #include "camera_closer.h"
+#include "first_person_view.h"
+#include "first_person_weapon.h"
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
 #include "../vr-common/sixdof_ticket_mailbox.h"
 #endif
@@ -188,7 +190,7 @@ thread_local uint64_t consuming_frame_ticket{};
 struct FinalEye {bool valid{}; unsigned eye{}; gears_frame_link::Rect rect{}; unsigned width{},height{};};
 bool owned_plain_output_attested{};
 FinalEye classify_final_eye(uintptr_t caller,uint64_t ticket,float x,float y,float width,float height,unsigned target_width,unsigned target_height,bool source_attested=false,bool output_controlled=false,bool owned_plain=false) {
-    bool exact=(gears_final_transfer::eye_caller(caller,source_attested,output_controlled)||(owned_plain&&(caller==0xd83cbf||caller==0x2b11a0)))&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
+    bool exact=(gears_final_transfer::eye_caller(caller,source_attested,output_controlled)||(owned_plain&&(caller==0xd83cbf||caller==0x2b11a0||caller==0xe27709)))&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
         std::isfinite(y)&&std::isfinite(width)&&std::isfinite(height)&&y==0&&height==float(target_height)&&
         width==float(target_width/2)&&(x==0||x==float(target_width/2));
     if(!exact)return {};
@@ -1095,6 +1097,7 @@ void print_stereo_pose(FILE* file,const gears_vr::Pose& pose) {
         pose.orientation.x,pose.orientation.y,pose.orientation.z,pose.orientation.w);
 }
 unsigned foreground();
+namespace first_person_live {void print(FILE*);void close();}
 bool create_stereo_recenter_event() {
     if(!stereo_xr)return true;
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Stereo.Recenter.%lu",GetCurrentProcessId());
@@ -1106,7 +1109,7 @@ bool create_stereo_recenter_event() {
 void close_stereo_recenter_event() {
     // A failed hook installation may still have a callback in flight. Retain
     // the handle until process exit in that failure case, never race a wait.
-    if(stereo_recenter_event&&!active.load()){CloseHandle(stereo_recenter_event);stereo_recenter_event=nullptr;}
+    if(stereo_recenter_event&&!active.load()){CloseHandle(stereo_recenter_event);stereo_recenter_event=nullptr;first_person_live::close();}
 }
 void poll_stereo_recenter() {
     // Called under stereo_mutex, once before freezing a pair. No worker or
@@ -1128,6 +1131,7 @@ void record_stereo_reference(const gears_submitted::FrameTicket& frame,long long
 void print_stereo(FILE* file) {
     if(!stereo_xr)return;
     std::lock_guard<std::mutex> lock(stereo_mutex);
+    first_person_live::print(file);
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
     // Final requests remain serviceable even if rendering stopped immediately
     // after the last GPU snapshot. Output is bounded to eight pinned tickets.
@@ -1182,6 +1186,7 @@ struct Scope {
 #include "graphics_lock_observer.inl"
 bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "ui_observer_hooks.inl"
+#include "first_person_live.inl"
 #include "path_choice_close_observer.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
@@ -3075,7 +3080,8 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                 ++origin_prepare_failed;request_session_stop(SessionStop::proof_failure);service_session_stop_native();return false;}
             view=frame.origin.base;
         }
-        if(camera_closer_metres>0){
+        const bool first_person_applied=first_person_live::prepare(anchor,view);
+        if(camera_closer_metres>0&&!first_person_applied){
             const bool gameplay=anchor&&!anchor->anchor.unpossessed&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
                 !anchor->anchor.cinematic&&anchor->anchor.target_identity.address==anchor->anchor.pawn;
             gears_vr::Vector pawn_eye{};
@@ -4695,6 +4701,7 @@ DWORD WINAPI worker(void*) {
     simulator_operator=GetPrivateProfileIntW(L"Capture",L"simulator_operator",0,ini)==1;
     frame_link_diagnostics=GetPrivateProfileIntW(L"Capture",L"frame_link_diagnostics",0,ini)==1;
     stereo_gpu_publish=GetPrivateProfileIntW(L"Capture",L"stereo_gpu_publish",0,ini)==1;
+    first_person_live::enabled=GetPrivateProfileIntW(L"Capture",L"first_person_preview",0,ini)==1;
     anchor_observer_enabled=GetPrivateProfileIntW(L"Capture",L"anchor_observer",0,ini)==1;
     if(anchor_observer_enabled&&(!family_diagnostics||!stereo_xr||!frame_link_diagnostics||!load_anchor_config(ini))){
         fprintf(status,"rejected: anchor observer requires stereo frame-link family diagnostics and fresh reflection certificate\n");fclose(status);return 2;}
@@ -4902,8 +4909,9 @@ DWORD WINAPI worker(void*) {
         owned_plain_output_attested=final_transfer_live::verify_range(status,0xd82f58,0xc78,"1efb10541bf56d87b31aae4f452da0d281afd552da16b4bfd16d653f2cd425ea")&&
             final_transfer_live::verify_range(status,0xd83bd0,0x1e9,"e051a2d325a4d5ebc12be670d63cd8eae1eead437f33dfa39946de852e61e724")&&
             final_transfer_live::verify_range(status,0x2b0c04,0x651,"5088f5f7fb8c718769016b98194413e42aa466a30bfdfeab01d081c07075515d")&&
+            final_transfer_live::verify_range(status,0xe27500,0x272,"31691ed732d3d4a05ecb63ec4a7a03cc1c68f5afc8bf851c9d876c9fafc2f6e5")&&
             final_transfer_live::verify_range(status,0x8ee78c,0x3ee,"024e4777801ff3236360d5ead3b10a2a02717438020dd634537a47723453e138");
-        fprintf(status,"owned_plain_output_identity attested=%u caller=d83cbf identity_uv_only=1 runtime_owned_only=1\n",unsigned(owned_plain_output_attested));
+        fprintf(status,"owned_plain_output_identity attested=%u callers=d83cbf,2b11a0,e27709 identity_uv_only=1 runtime_owned_only=1\n",unsigned(owned_plain_output_attested));
         ok=owned_plain_output_attested;
     }
     if(ok)ok=dlss_route_observer::enable(status);
@@ -4996,6 +5004,7 @@ DWORD WINAPI worker(void*) {
     if(ok)ok=create_quad_source_events();
     if(ok)ok=create_first_view_mask_events();
     if(ok)ok=create_stereo_recenter_event();
+    if(ok)ok=first_person_live::initialize();
     fprintf(status,"present_hooks_created=%d\n",graphics);
     if(ok) {
         std::lock_guard<std::mutex> lock(prime_mutex);
@@ -6226,6 +6235,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFrameLinkCheck(void* t
            classify_final_eye(controlled_caller,1,0,0,640,480,640,480,false,true).valid)return 140;
     }
     auto source_left=classify_final_eye(0x2b11a0,1,0,0,1920,2160,3840,2160,true);
+    const auto playground_left=classify_final_eye(0xe27709,1,0,0,320,350,640,350,false,false,true);
+    const auto playground_right=classify_final_eye(0xe27709,1,320,0,320,350,640,350,false,false,true);
+    if(!playground_left.valid||playground_left.eye||!playground_right.valid||playground_right.eye!=1||
+       classify_final_eye(0xe27709,1,0,0,320,350,640,350).valid||
+       classify_final_eye(0xe27709,1,0,0,640,350,640,350,false,false,true).valid||
+       classify_final_eye(0xe27709,0,0,0,320,350,640,350,false,false,true).valid)return 140;
     auto source_right=classify_final_eye(0x2b11a0,1,1920,0,1920,2160,3840,2160,true);
     if(!source_left.valid||source_left.eye||!source_right.valid||source_right.eye!=1||
        classify_final_eye(0x2b11a0,1,0,0,1920,2160,3840,2160).valid||

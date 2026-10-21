@@ -332,17 +332,20 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
     raise AnchorSamplingRejected(last_reason,evidence)
 
 
-def build_anchor_config(resolver, expected_camera=None, *, prepared_camera=None,cinematic_camera=False,sample_pose=True):
+def build_anchor_config(resolver, expected_camera=None, *, prepared_camera=None,cinematic_camera=False,sample_pose=True,
+                        reuse_assembly_identities=True):
     if type(sample_pose)is not bool:raise ValueError('sample_pose must be boolean')
+    if type(reuse_assembly_identities)is not bool:raise ValueError('reuse_assembly_identities must be boolean')
     sampler=LiveRegistryAnchorSampler(resolver,prepared_camera=prepared_camera,cinematic_camera=cinematic_camera)
     started=time.perf_counter_ns()
-    try:return _assemble_anchor_config(sampler,resolver,expected_camera,sample_pose=sample_pose)
+    try:return _assemble_anchor_config(sampler,resolver,expected_camera,sample_pose=sample_pose,
+                                      reuse_assembly_identities=reuse_assembly_identities)
     except AnchorSamplingRejected:raise
     except Exception as error:
         raise AnchorSamplingRejected(str(error),sampler.failure_evidence(sampler.guard_stage,error,started)) from error
 
 
-def _assemble_anchor_config(sampler,resolver,expected_camera,*,sample_pose=True):
+def _assemble_anchor_config(sampler,resolver,expected_camera,*,sample_pose=True,reuse_assembly_identities=True):
     sampler.guard_stage='startup_validation'
     if sampler.view_target is None:
         raise AnchorRejected('Anchor observer requires reflected Camera.ViewTarget.Target')
@@ -365,6 +368,14 @@ def _assemble_anchor_config(sampler,resolver,expected_camera,*,sample_pose=True)
     sampler.guard_stage='certificate_assembly'
     identities=[];indices={}
     def add(address,check_super=False):
+        # The full guards surrounding assembly and final per-identity live
+        # reads below remain mandatory. Avoid repeatedly assembling the same
+        # class identity/superchain; no hint survives this one acquisition.
+        if reuse_assembly_identities and address in indices:
+            stored=identities[indices[address]]
+            if check_super and not stored['check_super']:
+                stored['check_super']=1;stored['super']=resolver.u64(address+resolver.profile['field_super'])
+            return indices[address]
         identity=sampler.fresh(address)
         if address not in indices:
             if len(identities)>=128:raise AnchorRejected('Observer identity certificate exceeds128')

@@ -6,6 +6,13 @@
 - Local commit `5787a48` preserves the current source at the 0.0.1 closeout, including ongoing development. It is not the published `v0.0.1` source tag.
 - Preserve the published `v0.0.1` tag and release package. A 0.1.0 development checkpoint does not constitute a new release or headset acceptance.
 
+## Retail game baseline (2026-10-21)
+
+- All subsequent Mod development and runtime tests use the user's purchased Steam game. The default working copy is `J:\gearsVr\Gears of War Reloaded`; the untouched Steam-managed copy is `J:\SteamLibrary\steamapps\common\Gears of War Reloaded`. Do not launch the former P2P directory for new tests. Historical manifests and evidence retain their recorded paths and identity.
+- Both retail copies were completely hashed before testing: all 3,609 files match. The core EXE also matches the historical supported SHA256. This does not establish runtime/GPU/headset acceptance.
+- The user stopped additional compatibility runtime tests after the hash comparison. Do not restart this investigation's game tests merely to recheck compatibility. This does not cancel the standing authorization for future requested Mod development tests on the retail game.
+- Current save progress was copied to the signed-in retail account's four profile filenames, with source and prior retail backups under ignored `analysis/retail-compatibility-20261021/`. Keep account identifiers and save contents out of release packages and public documentation. Do not overwrite the migrated progress with historical autoplay fixtures outside a protected test.
+
 ## Delivery scope confirmed by the user on 2026-10-20
 
 - DLSS is optional for the first version. A separate CMD launcher for DLSS testing/use is acceptable; it does not have to be enabled in the normal launcher.

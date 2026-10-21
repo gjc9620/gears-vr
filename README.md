@@ -1,5 +1,7 @@
 # GearsVR 0.0.1
 
+当前开发为 `codex/0.1.0`。2026-10-21 起开发与测试使用已购买的Steam正版，默认工作目录 `J:\gearsVr\Gears of War Reloaded`，旧进度已备份并迁移到正版账号。两份正版完整3,609文件哈希一致；本地已补Steam启动身份与多账号设置兼容。用户已停止追加兼容性游戏测试，本次未新增正版双目／头显验收，不更新下述已发布0.0.1包。见[迁移记录](docs/retail-steam-compatibility-20261021.md)。
+
 Gears of War: Reloaded 第三人称同帧双目 VR Mod。2026-10-21 已生成 0.0.1 本地公开测试包 `releases/0.0.1/GearsVR-0.0.1.zip`，已发布到 [GitHub Release](https://github.com/gjc9620/gears-vr/releases/tag/v0.0.1)。用户已确认第一幕通过、KRVR + AVP 与 VD + Quest 3 可玩，并确认准星问题解决。保留机枪切换约2秒延迟、后续章节未全部验证及DLSS禁用的限制。安装见[随包教程](docs/releases/0.0.1/README.txt)，发布文案见[发布说明](docs/releases/0.0.1/RELEASE_NOTES.txt)，构建与检查范围见[打包记录](docs/releases/0.0.1/PACKAGE_BUILD.txt)。
 
 当前包冻结 AdsAnchor2 native / MountedLatency1 XR，VR每眼尺寸为 OpenXR 推荐值 × 启动器 Render scale；游戏内分辨率控制桌面镜像。压缩包内置 Python，不要求玩家准备开发环境。以下日期记录及研究结果保留其历史范围。

@@ -2,11 +2,49 @@ import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 import graphics_policy as policy
 
 
 class GraphicsPolicyTests(unittest.TestCase):
+    def test_multiple_profiles_select_only_the_active_steam_account_read_only(self):
+        folder = self.root / 'Coalition/WarGame/Config'
+        folder.mkdir(parents=True)
+        old = folder / '76561197960271872EngineUserSettings.ini'
+        active = folder / '76561197960266962EngineUserSettings.ini'
+        old.write_bytes(b'DLSS=True\n')
+        active.write_bytes(b'DLSS=False\n')
+        before = {file.name:file.read_bytes() for file in folder.iterdir()}
+        with mock.patch.object(policy.instance_policy, 'local_appdata', return_value=self.root), \
+                mock.patch.object(policy, 'active_steam_id', return_value='76561197960266962'):
+            self.assertEqual(policy.locate(), active.resolve())
+        for account in (None, '76561197960269999'):
+            with mock.patch.object(policy.instance_policy, 'local_appdata', return_value=self.root), \
+                    mock.patch.object(policy, 'active_steam_id', return_value=account):
+                with self.assertRaisesRegex(RuntimeError, 'Multiple user-settings'):
+                    policy.locate()
+        self.assertEqual({file.name:file.read_bytes() for file in folder.iterdir()}, before)
+
+    def test_single_profile_preserves_existing_offline_selection(self):
+        folder = self.root / 'Coalition/WarGame/Config'
+        folder.mkdir(parents=True)
+        selected = folder / '76561197960271872EngineUserSettings.ini'
+        selected.write_bytes(b'DLSS=False\n')
+        with mock.patch.object(policy.instance_policy, 'local_appdata', return_value=self.root), \
+                mock.patch.object(policy, 'active_steam_id', side_effect=AssertionError('unneeded account lookup')):
+            self.assertEqual(policy.locate(), selected.resolve())
+
+    def test_active_steam_account_id_is_individual_public_universe_and_rejects_invalid_values(self):
+        import winreg
+        for value, kind, expected in ((1234, winreg.REG_DWORD, '76561197960266962'),
+                                     (0, winreg.REG_DWORD, None),
+                                     ('1234', winreg.REG_SZ, None),
+                                     (0x100000000, winreg.REG_DWORD, None)):
+            with mock.patch.object(winreg, 'OpenKey'), \
+                    mock.patch.object(winreg, 'QueryValueEx', return_value=(value, kind)):
+                self.assertEqual(policy.active_steam_id(), expected)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

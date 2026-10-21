@@ -229,12 +229,13 @@ class Tests(unittest.TestCase):
             candidate=SimpleNamespace(anchor_metadata=dict(config=config()))
             proof=mock.MagicMock()
             with mock.patch.object(runtime,'HookEntryAttestation',return_value=proof) as attest,\
-                 mock.patch.object(runtime,'build_candidate',return_value=candidate),\
+                 mock.patch.object(runtime,'build_candidate',return_value=candidate)as build,\
                  mock.patch.object(runtime,'publish_candidate') as publish:
                 result=adapter.prepare(adapter.baseline,1,3,lambda:None)
                 self.assertIsInstance(result,PreparedRebind)
                 self.assertEqual(result.path.name,'world-rebind-70-2-3.ini')
                 self.assertEqual(attest.call_args.kwargs['expected_dll_sha256'],'a'*64)
+                self.assertIs(build.call_args.kwargs['sample_pose'],False)
                 proof.__exit__.assert_called_once()
                 publish.assert_called_once_with(candidate,result.path)
 

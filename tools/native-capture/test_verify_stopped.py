@@ -87,6 +87,42 @@ class VerifyStoppedTests(unittest.TestCase):
                 self.assertTrue(all(row['bytes_checked']==32 for row in report['checks']))
                 self.closed.assert_called_once();dxgi.close.assert_called_once();core.close.assert_called_once()
 
+    def test_preexisting_system_detour_requires_matching_preinstall_and_remote_bytes(self):
+        address = 0x70000100
+        disk = bytes(range(32))
+        preinstalled = b'\xe9\x01\x02\x03\x04' + disk[5:]
+        changed = preinstalled[:-1] + b'X'
+        cases = (
+            ('restored', preinstalled, '1', False, True),
+            ('different_after_stop', changed, '1', False, False),
+            ('native_restore_failed', preinstalled, '0', False, False),
+            ('duplicate_snapshot', preinstalled, '1', True, False),
+        )
+        for name, observed, native_restored, duplicate, accepted in cases:
+            with self.subTest(name=name):
+                self.closed.reset_mock();self.resolver.prepare.reset_mock()
+                self.memory[address] = observed
+                self.write_status((0x296178, address - self.base))
+                initial = f'prime_entry target={address:016X} before={preinstalled.hex()}\n'
+                final = (f'prime_entry target={address:016X} restored={native_restored} '
+                         f'before={preinstalled.hex()}\n')
+                text = self.status.read_text().replace('stopped disable_status=0 active=0\n',
+                                                       initial + (initial if duplicate else '') + final
+                                                       + 'stopped disable_status=0 active=0\n')
+                self.status.write_text(text)
+                with mock.patch.object(verify_stopped.pefile, 'PE', return_value=self.fake_pe(disk)):
+                    if accepted:self.invoke({'dxgi.dll':(0x70000000, 'dxgi.dll')})
+                    else:
+                        with self.assertRaises(SystemExit):
+                            self.invoke({'dxgi.dll':(0x70000000, 'dxgi.dll')})
+                report = json.loads(self.output.read_text())
+                system = report['checks'][-1]
+                self.assertEqual(report['all_match'], accepted)
+                self.assertFalse(system['matches_disk'])
+                self.assertEqual(system['matches_preinstall'], accepted)
+                self.assertEqual(system['matches'], accepted)
+                self.closed.assert_called_once()
+
     def test_relocation_index_preserves_original_rules_and_application_order(self):
         offset=0x100;raw=bytes(range(32))
         cases=[([],0), ([(offset,10),(offset+24,10)],0x1234),

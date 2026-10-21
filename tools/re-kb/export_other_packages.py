@@ -9,7 +9,7 @@ from export_scripts import ROOT, sha
 
 
 def main():
-    cooked=ROOT/'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/WarGame/CookedPC'
+    cooked=ROOT/'Gears of War Reloaded/WarGame/CookedPC'
     output=ROOT/'analysis/re-kb/other-packages-v2'
     output.mkdir(exist_ok=True)
     runtime=Path('C:/Users/11/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe')

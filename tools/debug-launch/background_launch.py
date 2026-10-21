@@ -10,6 +10,8 @@ import pathlib
 import subprocess
 import sys
 
+from game_install import STEAM_APP_ID, launch_environment
+
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GAME_IO = ROOT / 'tools/game-io/background_input.py'
@@ -99,7 +101,7 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
         creationflags = 0 if foreground else subprocess.CREATE_NO_WINDOW
         startupinfo = None if foreground else nonactivating_startupinfo()
         process = popen([str(game_path), *map(str, game_args)], cwd=str(game_path.parent),
-                        startupinfo=startupinfo, creationflags=creationflags)
+                        startupinfo=startupinfo, creationflags=creationflags, env=launch_environment())
         game_pid, creation_time = process.pid, process_creation_time(process)
     if launch_receipt is not None:
         # The reservation owner supplies a fresh, per-invocation path. Publish
@@ -121,6 +123,8 @@ def launch(game_path, game_args=(), *, foreground=False, disable_background_inpu
         'window_startup_policy': 'quiet_startup' if quiet_report else 'foreground' if foreground else 'shown_no_activate',
         'background_input_requested': not disable_background_input,
         'test_windows_behind_requested': test_windows_behind_requested(foreground),
+        'steam_app_id': STEAM_APP_ID,
+        'steam_environment_scope': 'child_process',
     }
     runtime = pathlib.Path(runtime)
     runtime.mkdir(parents=True, exist_ok=True)

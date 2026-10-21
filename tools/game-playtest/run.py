@@ -904,7 +904,8 @@ def owned_run(args, report):
     stopped()
     source_manifest = args.manifest.resolve()
     manifest = json.loads(source_manifest.read_text(encoding='utf8'))
-    manifest['gpu_snapshot'] = False
+    manifest['gpu_snapshot'] = bool(getattr(args,'gpu_snapshots',False))
+    report.provenance['explicit_gpu_snapshots']=manifest['gpu_snapshot']
     config = json.loads(args.config.read_text(encoding='utf8'))
     game, _ = launcher.settings(config, manifest)
     launcher.verify_files(manifest, game)
@@ -1085,6 +1086,7 @@ def main():
     parser.add_argument('--config', type=Path, default=ROOT / 'tools/vr-launcher/config.json')
     parser.add_argument('--fixture', type=Path, help='Explicit hashed test-profile manifest; originals restored after exit')
     parser.add_argument('--flows', action='store_true', help='Exercise aim/fire, pause/resume and checkpoint reload before exploration')
+    parser.add_argument('--gpu-snapshots', action='store_true', help='Explicitly enable requested GPU snapshot readbacks for visual feature tests')
     parser.add_argument('--navigation', action='store_true', help='Collect current navigation hints and select ordinary walking routes')
     parser.add_argument('--branch-side', choices=('left', 'right', 'none'), default='left')
     parser.add_argument('--target', type=float, nargs=3, help='World-coordinate navigation hint; ordinary walking only')

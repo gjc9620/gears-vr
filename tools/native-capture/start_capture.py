@@ -42,13 +42,18 @@ def run_hidden(*args,**kwargs):
     return subprocess.run(*args,**kwargs)
 
 
-def modules(handle):
+def modules(handle,*,bases=None):
+    selected=None if bases is None else frozenset(bases)
+    if selected is not None and (not selected or len(selected)>2048 or
+            any(type(value)is not int or not 0<value<1<<64 for value in selected)):
+        raise ValueError('Invalid module base selection')
     slots=(w.HMODULE*2048)();size=w.DWORD()
     if not psapi.EnumProcessModulesEx(handle,slots,c.sizeof(slots),c.byref(size),3):
         raise c.WinError(c.get_last_error())
     if size.value>c.sizeof(slots):raise RuntimeError('Module list exceeds bounded buffer')
     result={}
     for address in slots[:size.value//c.sizeof(w.HMODULE)]:
+        if selected is not None and address not in selected:continue
         name=c.create_unicode_buffer(32768)
         if psapi.GetModuleFileNameExW(handle,address,name,len(name)):
             result[pathlib.Path(name.value).name.lower()]=(address,pathlib.Path(name.value))
@@ -313,7 +318,11 @@ def save_anchor_sampling_failure(dll,pid,error,*,preparation_failures=None,prepa
 
 def hud_size_ini(args):
     from camera_closer_options import camera_closer_metres
-    result=''
+    preview=getattr(args,'first_person_preview',False)
+    if type(preview) is not bool:raise ValueError('First person preview must be boolean')
+    if preview and not all(getattr(args,key,False) for key in ('anchor_observer','cinematic_camera','crosshair_assignment_observer','continuous_session','stereo_xr')):
+        raise ValueError('First person preview requires continuous stereo and certified gameplay/weapon observers')
+    result='first_person_preview=1\n' if preview else ''
     closer=camera_closer_metres(args)
     if closer>0:
         if not getattr(args,'continuous_session',False) or not getattr(args,'stereo_xr',False):
@@ -422,6 +431,7 @@ def main():
     parser.add_argument('--crosshair-assignment-observer',action='store_true',help='Observe certified crosshair assignments; no reticle correction')
     parser.add_argument('--hud-horizontal-fov-degrees',type=float)
     parser.add_argument('--camera-closer-metres',type=float,default=0.)
+    parser.add_argument('--first-person-preview',action='store_true')
     parser.add_argument('--hud-element-scale',type=float,help='Experimental certified HUD group size, 1..2; identity default')
     parser.add_argument('--hud-center-scale',type=float,help='Experimental HUD group center displacement, 0..1; identity default')
     parser.add_argument('--outage-diagnostics',action='store_true',help='Record a bounded missing-image window in the existing stereo publication path; disabled by default')

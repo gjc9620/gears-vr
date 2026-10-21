@@ -171,6 +171,7 @@ class RuntimePreparation:
                 expected_dll_sha256=self.expected_hash) as proof:
             candidate = build_candidate(self.game['pid'],self.profile,self.local,previous_generation,
                 self.owner,self.dll,signatures=self.signatures,attestation=proof,check_live=check_live,
+                sample_pose=False,
                 camera_discovery=self._preparation_camera,
                 **({'crosshair_assignment_observer':True} if self.crosshair_assignment_observer else {}))
             actual = snapshot(thaw(candidate.anchor_metadata)['config'])

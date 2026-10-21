@@ -111,6 +111,16 @@ def wait_loader_dependencies(exe,born,deadline,*,owner_pid=None,owner_creation_t
         if handle:k.CloseHandle(handle)
 
 
+def run_game_startup(command):
+    # A windowless PowerShell child may otherwise lose its inherited output.
+    # Relay both streams explicitly so a pre-birth failure retains its cause.
+    result=run_hidden(command,capture_output=True,text=True,encoding='utf-8',errors='replace')
+    if result.stdout:print(result.stdout,end='',flush=True)
+    if result.stderr:print(result.stderr,end='',file=sys.stderr,flush=True)
+    if result.returncode:
+        raise RuntimeError(f'Game startup script failed (exit code {result.returncode}); see preceding output')
+
+
 def main():
     command_started=time.monotonic()
     parser=argparse.ArgumentParser(description=__doc__)
@@ -209,7 +219,7 @@ def main():
     pe.close()
     launch_command=debug_command(exe,foreground=args.foreground,experimental_preserve_upscaler=args.experimental_preserve_upscaler)
     if args.launch_receipt is not None:launch_command+=['-LaunchReceipt',str(args.launch_receipt)]
-    run_hidden(launch_command,check=True)
+    run_game_startup(launch_command)
     born=None
     if args.launch_receipt is not None:
         born=json.loads(args.launch_receipt.read_text(encoding='utf-8'))

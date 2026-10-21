@@ -72,7 +72,7 @@ class MonitorTests(unittest.TestCase):
         def changed(generation,request,accept,check):
             check();calls.append(h.current)
             return h.current,h.prepare(h.current,generation,request,check) if accept(h.current) else None
-        with h.monitor(probe_interval=2,changed_hint=lambda *_:True,observe=observe,
+        with h.monitor(probe_interval=2,changed_hint=lambda *_:h.current!=snapshot(),observe=observe,
                        prepare_changed=changed) as m:
             self.assertEqual(m.poll_interval(.1),.1)
             m.poll(h.status);h.finish_worker(m)
@@ -98,8 +98,10 @@ class MonitorTests(unittest.TestCase):
                 def changed(generation,request,accept,check):
                     check();ok=accept(h.current);accepted.append(ok)
                     return h.current,h.prepare(h.current,generation,request,check) if ok else None
-                with h.monitor(probe_interval=2,changed_hint=lambda *_:True,prepare_changed=changed) as m:
+                hint=mock.Mock(return_value=False)
+                with h.monitor(probe_interval=2,changed_hint=hint,prepare_changed=changed) as m:
                     m.poll(h.status);h.finish_worker(m)
+                    hint.return_value=True
                     if case=='foreign_local':h.current=replace(h.current,local_player=obj(11))
                     if case=='pawn_opt_out':h.current=snapshot(pawn=61)
                     if case=='exhausted':
@@ -169,8 +171,54 @@ class MonitorTests(unittest.TestCase):
             hint.assert_not_called()
         h=Harness();hint=mock.Mock(return_value=True)
         with h.monitor(changed_hint=hint,prepare=lambda *_:(_ for _ in ()).throw(ValueError('reject'))) as m:
-            m.poll(h.status);h.finish_worker(m);h.now=.1;m.poll(h.status)
+            m.poll(h.status);h.finish_worker(m);hint.reset_mock();h.now=.1;m.poll(h.status)
             hint.assert_not_called();self.assertIsNone(m.future)
+
+    def test_due_periodic_probe_prefers_single_acquisition_for_changed_pointer(self):
+        h=Harness();h.current=snapshot(pawn=61);observe=mock.Mock(side_effect=AssertionError('Redundant observation'))
+        def changed(generation,request,accept,check):
+            check();self.assertTrue(accept(h.current))
+            return h.current,h.prepare(h.current,generation,request,check)
+        with h.monitor(observe=observe,changed_hint=lambda *_:True,prepare_changed=changed,include_pawn_changes=True)as m:
+            m.poll(h.status);h.finish_worker(m)
+            self.assertTrue(m.work_timing['single_acquisition']);observe.assert_not_called()
+            self.assertEqual(m.state,'preparing');self.assertEqual(len(h.builds),1)
+
+    def test_false_or_unreadable_hint_preserves_due_full_identity_probe(self):
+        for failure in (None,OSError('Unavailable')):
+            h=Harness();h.current=snapshot(9);observe=mock.Mock(side_effect=h.observe)
+            hint=mock.Mock(return_value=False,side_effect=failure)
+            with self.subTest(failure=failure),h.monitor(observe=observe,changed_hint=hint)as m:
+                m.poll(h.status);h.finish_worker(m)
+                self.assertFalse(m.work_timing['single_acquisition']);observe.assert_called_once()
+                self.assertEqual(m.state,'preparing');self.assertEqual(len(h.builds),1)
+
+    def test_due_hint_after_failed_worker_uses_a_new_cancellation_scope(self):
+        h=Harness();calls=[]
+        def hint(baseline,check):check();return True
+        def changed(generation,request,accept,check):
+            check();calls.append(request)
+            if len(calls)==1:raise ValueError('Temporary read failure')
+            return h.current,h.prepare(h.current,generation,request,check)
+        with h.monitor(changed_hint=hint,prepare_changed=changed)as m:
+            m.poll(h.status);h.finish_worker(m)
+            self.assertEqual(m.state,'idle');old_cancel=m.cancel;self.assertTrue(old_cancel.is_set())
+            h.now=m.next_poll;m.poll(h.status)
+            self.assertEqual(m.state,'building');h.finish_worker(m)
+            self.assertEqual(m.state,'preparing');self.assertEqual(calls,[1,1])
+            self.assertTrue(old_cancel.is_set());self.assertIsNot(m.cancel,old_cancel)
+
+    def test_idle_hint_does_not_uncancel_an_old_inflight_worker(self):
+        from concurrent.futures import Future
+        h=Harness();calls=[]
+        def hint(baseline,check):check();calls.append(True);return True
+        with h.monitor(changed_hint=hint)as m:
+            old=Future();m.future=old;m.cancel.set();old_cancel=m.cancel
+            m.poll(h.status)
+            self.assertEqual(calls,[True]);self.assertIs(m.future,old)
+            self.assertIs(m.cancel,old_cancel);self.assertTrue(old_cancel.is_set())
+            self.assertFalse(h.builds);self.assertFalse(h.signals)
+            old.set_result((None,None,None))
 
     def test_opt_in_and_capability_do_not_even_observe(self):
         h = Harness()

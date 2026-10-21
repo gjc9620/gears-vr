@@ -12,11 +12,12 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT_MODULES = {
-    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle game_audio_guard',
+    'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle game_audio_guard playground_loader',
+    'playground': 'runtime',
     'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy tiny_output_recovery instance_policy',
     'game-io': 'background_input game_io menu_state menu_control movie_state scene_owner_snapshot',
     'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',
-    'native-capture': ('anchor_config cinematic_anchor mounted_context mounted_read_pass crosshair_assignment_config hook_entry_attestation camera_closer_options '
+    'native-capture': ('anchor_config cinematic_anchor mounted_context mounted_read_pass crosshair_assignment_config hook_entry_attestation camera_closer_options right_stick_policy '
         'launch_reserve menu_display_monitor prime_owner run_stereo_continuous run_stereo_probe startup_selftests '
         'session_telemetry start_capture ui_observer_config verify_stopped world_rebind world_rebind_monitor world_rebind_runtime '
         'path_choice_center_monitor path_choice_layout path_choice_trial_config '
@@ -83,6 +84,9 @@ def payload_paths(manifest):
     result += [(xr / name).as_posix() for name in ('OpenXRPoseProbe.exe', 'openxr_loader.dll')]
     result += [f'{QUIET_BUILD}/{name}' for name in QUIET_HASHES]
     result += [AUDIO_HELPER, AUDIO_PROVENANCE]
+    if manifest.get('playground_menu',False):
+        from playground_loader import relative_artifact
+        result.append(relative_artifact(manifest).as_posix())
     result += ['tools/package-inspector/python-libs/pefile.py', 'tools/package-inspector/python-libs/peutils.py']
     result += [f'tools/package-inspector/python-libs/ordlookup/{name}.py' for name in ('__init__', 'oleaut32', 'ws2_32', 'wsock32')]
     return result
@@ -134,6 +138,9 @@ def stage(root, python_root, destination, *, manifest_path=None, launcher_path=N
     for key, relative in (('native_sha256', Path(manifest['native_build']) / manifest['native_dll']),
                           ('xr_sha256', Path(manifest['xr_build']) / 'OpenXRPoseProbe.exe')):
         if digest(contained(root, relative)) != manifest[key]: raise ValueError('Manifest artifact hash mismatch: ' + str(relative))
+    if manifest.get('playground_menu',False):
+        from playground_loader import artifact
+        artifact(manifest,root)
     for name, expected in QUIET_HASHES.items():
         if digest(contained(root, f'{QUIET_BUILD}/{name}')) != expected: raise ValueError('Quiet11 hash mismatch')
     from game_audio_guard import verify_manual_helper
@@ -153,6 +160,8 @@ def stage(root, python_root, destination, *, manifest_path=None, launcher_path=N
              if re.fullmatch(r'manifest-[A-Za-z0-9_-]+\.json', selected_manifest.name) else None)
     config = {'game_path': '', 'stereo_units_per_metre': 100, 'launcher_language': 'en'}
     if manifest.get('runtime_render_size') is True: config['render_scale'] = 1.0
+    if manifest.get('first_person_preview') is True: config['first_person_preview'] = True
+    if manifest.get('right_stick_deadzone_control') is True: config['right_stick_deadzone_percent'] = 2.0
     generated = {
         'tools/vr-launcher/manifest.json': manifest,
         'tools/vr-launcher/config.json': config,

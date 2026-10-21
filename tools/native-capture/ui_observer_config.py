@@ -38,8 +38,11 @@ class UIControlledPawnUnavailable(UIConfigRejected):
         super().__init__('UI controlled Pawn unavailable; reacquire')
         self.evidence=dict(controller=controller,field=field,offset=offset,pointer=0)
 
-def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anchor=None):
+def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anchor=None,
+                             reuse_assembly_identities=True):
     r=resolver;p=r.profile;started=time.perf_counter_ns()
+    if type(reuse_assembly_identities) is not bool:
+        raise ValueError('reuse_assembly_identities must be boolean')
     mounted=mounted_anchor is not None
     if mounted:
         from anchor_config import validate_anchor_config
@@ -63,7 +66,7 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
     names,nc,ncap=struct.unpack('<Qii',names_header);objects,oc,ocap=struct.unpack('<Qii',objects_header)
     if not names or not objects or not 1000<nc<=ncap<4000000 or not 1000<oc<=ocap<4000000:
         raise UIConfigRejected('Invalid UI registry headers')
-    def fresh(address):
+    def fresh_read(address):
         if not address:raise UIConfigRejected('Null UI object')
         def identity_fields(raw):
             return (struct.unpack_from('<I',raw,p['object_internal_index'])[0],
@@ -88,6 +91,23 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
             raise UIConfigRejected('Invalid UI certificate name')
         return dict(address=address,internal_index=index,name_index=ni,number=number,name=name,
                     cls=cls,outer=outer)
+    assembly_identities={};assembly_uncached_reads=0
+    def fresh(address):
+        # Repeated class/property lookups use this attempt's first complete,
+        # double-read identity. This is an assembly hint, not final authority.
+        # Every selected identity is read again below without this dictionary,
+        # against the closing registry headers, including slots and live names.
+        nonlocal assembly_uncached_reads
+        if not reuse_assembly_identities:return fresh_read(address)
+        if address in assembly_identities:return assembly_identities[address]
+        item=fresh_read(address)
+        if len(assembly_identities)<256:assembly_identities[address]=item
+        else:
+            # Function discovery can visit many unselected fields. Exhausting
+            # this optional hint cache must not reject an otherwise valid
+            # certificate; retain its bound and use the original live read.
+            assembly_uncached_reads+=1
+        return item
     ids=[];by_address={};supers={};checks=[];entry_checks=[]
     def add(address):
         item=fresh(address)
@@ -131,7 +151,7 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
     # Keep the original registry ordering in the authoritative certificate.
     # Re-prove the complete first identity before recording its ordered ID.
     for name,item in sorted(found.items(),key=lambda pair:pair[1]['internal_index']):
-        if fresh(item['address'])!=item:raise UIRegistryChanged('UI class changed during discovery; reacquire')
+        if fresh_read(item['address'])!=item:raise UIRegistryChanged('UI class changed during discovery; reacquire')
         is_class(item['address'],name)
     def property_info(owner,name,kind):
         prop=r.property(owner,name,True);field=fresh(prop['address'])
@@ -255,7 +275,7 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
     if not names or not objects or not 1000<nc<=ncap<4000000 or not 1000<oc<=ocap<4000000:
         raise UIConfigRejected('Invalid final UI registry headers')
     for item in ids:
-        if fresh(item['address'])!=item:raise UIConfigRejected('UI final identity mismatch')
+        if fresh_read(item['address'])!=item:raise UIConfigRejected('UI final identity mismatch')
     for address,parent in supers.items():
         if r.u64(address+p['field_super'])!=parent:raise UIConfigRejected('UI superclass changed')
     for address,value in checks+links:
@@ -266,7 +286,7 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
         raise UIRegistryChanged('UI registry changed during assembly; reacquire')
     config=dict(schema=1,pid=r.pid,base=r.base,sha256=GAME_SHA,objects_header=r.objects_header,
                 names_header=r.names_header,layout={key:p[key] for key in LAYOUT},identities=ids,
-                supers=[dict(identity=add(a),parent=b) for a,b in sorted(supers.items())],roles=roles,
+                supers=[dict(identity=by_address[a],parent=b) for a,b in sorted(supers.items())],roles=roles,
                 fields=fields,field_ids=field_ids,scopes=scopes,bindings=bindings,
                 frame_node=0x18,frame_object=0x20,frame_code=0x28,frame_locals=0x30,frame_previous=0x38,
                 function_script=0x8c,function_entry=0x114)
@@ -275,6 +295,8 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
     text=ui_observer_ini(config)
     metadata=dict(schema=1,accepted=True,read_only=True,pid=r.pid,sha256=GAME_SHA,
                   acquired_perf_counter_ns=started,finished_perf_counter_ns=time.perf_counter_ns(),
+                  assembly_identity_hints=dict(enabled=reuse_assembly_identities,capacity=256,
+                      entries=len(assembly_identities),uncached_reads=assembly_uncached_reads),
                   ini_sha256=hashlib.sha256(text.encode('utf-8')).hexdigest(),config=config,
                   native_runtime_observation=False,frame_locals_are_native_arguments=False,
                   limitation='Fresh activation certificate, not a live draw observation. Native must revalidate selected registry slots/names, owners, scripts and links before recording.')

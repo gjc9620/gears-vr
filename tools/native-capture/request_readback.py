@@ -18,7 +18,7 @@ def main():
     process = Process(args.pid)
     try:
         loaded = modules(process.handle)
-        expected = ROOT / 'Gears.of.War.Reloaded.v1.0.1.3816947-P2P/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
+        expected = ROOT / 'Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
         game = loaded.get('gowde-steam.exe')
         if not game or game[1].resolve() != expected.resolve() or 'gearsgpubinding.dll' not in loaded:
             raise RuntimeError('Expected game and observer are not resident')

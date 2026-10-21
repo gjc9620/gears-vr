@@ -222,6 +222,7 @@ def native_command(args,owner):
             '--stereo-xr','--stereo-units-per-metre',str(args.stereo_units_per_metre),
             '--frame-link-diagnostics','--require-target-prime','--stereo-gpu-publish']
     if camera_closer_metres(args)>0:command+=['--camera-closer-metres',str(camera_closer_metres(args))]
+    if getattr(args,'first_person_preview',False):command.append('--first-person-preview')
     if getattr(args,'outage_diagnostics',False):command.append('--outage-diagnostics')
     for key in ('startup_selftest_proof','startup_selftest_digest','startup_selftest_nonce'):
         if getattr(args,key,None) is not None:command+=['--'+key.replace('_','-'),str(getattr(args,key))]
@@ -527,7 +528,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
     state.update({key:getattr(args,key) for key in ('hud_element_scale','hud_center_scale') if getattr(args,key,None) is not None})
     state['diagnostics_artifacts']=getattr(args,'diagnostics_artifacts',{})
-    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None
+    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None;right_stick_policy=None
     state['path_choice_center_enabled']=bool(getattr(args,'path_choice_center',False))
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
@@ -646,7 +647,15 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         probe_interval=2.0,include_pawn_changes=getattr(args,'crosshair_assignment_observer',False),
                         changed_hint=adapter.changed_hint,prepare_changed=adapter.prepare_changed)
                 path_center=start_path_choice_position(args,state,native_status,floor,control)
+                if getattr(args,'right_stick_deadzone_percent',None) is not None:
+                    from right_stick_policy import Policy
+                    right_stick_policy=Policy(args.pid,args.right_stick_deadzone_percent,control.identity)
+                    right_stick_policy.tick()
+                    state['right_stick_policy']=dict(right_stick_policy.report)
+                    if not right_stick_policy.report['applied']:
+                        raise RuntimeError('Right-stick dead zone was not applied: '+repr(right_stick_policy.report['errors']))
                 while child.poll() is None:
+                    if right_stick_policy:right_stick_policy.tick()
                     observe_first_stereo(native_started)
                     if cancel_requested and cancel_requested():
                         state['stop_requested_by']='launcher_cancel';break
@@ -674,6 +683,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             except Exception as error:
                 state['error']=repr(error)
             finally:
+                if right_stick_policy:
+                    try:state['right_stick_policy']=right_stick_policy.close()
+                    except Exception as error:state['right_stick_policy_close_error']=repr(error)
                 close_path_choice_position(path_center,state)
                 if world_monitor:
                     try:world_monitor.close()
@@ -761,6 +773,8 @@ def main(argv=None):
     start.add_argument('--stereo-units-per-metre',type=float,default=100.)
     start.add_argument('--render-scale',type=float,help='Runtime recommended eye size multiplier per dimension; requires matching native build')
     start.add_argument('--camera-closer-metres',type=float,default=0.)
+    start.add_argument('--first-person-preview',action='store_true')
+    start.add_argument('--right-stick-deadzone-percent',type=float)
     start.add_argument('--startup-timeout',type=float,default=45.)
     start.add_argument('--cleanup-timeout',type=float,default=35.)
     start.add_argument('--anchor-observer','--anchor-diagnostics',dest='anchor_observer',action='store_true')
