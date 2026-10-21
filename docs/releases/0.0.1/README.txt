@@ -17,7 +17,7 @@ Gears of War Reloaded/
 Place the launcher beside Binaries_x64, not inside it. Don't leave the mod inside an extra GearsVR subfolder.
 
 3. Connect your headset and open GearsVR Launcher.exe. Game path should fill in automatically. System OpenXR runtime is the default; VD users can select Quest 3 / Virtual Desktop (VDXR) if needed.
-4. Click Start VR, enter a level, then click Recenter. Use your usual keyboard/mouse or gamepad.
+4. Click Start VR and play with your keyboard/mouse or gamepad.
 
 Quick notes
 
@@ -34,6 +34,6 @@ Quick notes
 1. 安装前先正常打开游戏：显示模式改为窗口化或无边框窗口，帧率限制改为不限制，DLSS / DLAA 完全关闭。应用并保存设置，然后彻底退出游戏。
 2. 将压缩包的全部内容直接解压到游戏根目录，目录结构见上方示例。GearsVR Launcher.exe 必须和 Binaries_x64 文件夹并排，不要放进 Binaries_x64，也不要再套一层 GearsVR 文件夹。runtime、tools 要一起保留。
 3. 连好头显，打开启动器。游戏路径会自动填入，默认使用系统 OpenXR；VD 用户也可手动选择 VDXR。
-4. 点 Start VR，进入关卡后点 Recenter 回中，使用原来的键鼠或手柄操作。
+4. 点 Start VR，使用键鼠或手柄游玩。
 
 卡顿就降低 Render scale；想拉近镜头可试 Camera closer = 0.4，修改后重启游戏。已测试通过第一幕，机枪进入/退出仍可能延迟约 2 秒。遇到 Bug，请用 Export logs 导出 ZIP，连同头显、显卡和问题描述发给我或 Discord。
