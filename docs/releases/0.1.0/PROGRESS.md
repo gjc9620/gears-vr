@@ -40,6 +40,8 @@ Gnasher 杠杆手势增量：新增纯逻辑的双手行程识别器，要求左
 
 原版 L2 与候选接入：单独零售版实测 `WarPC.ButtonPress/Release('L2')` 在 `bToggleTargeting=false` 的 Hammerburst 上建立／退出 `bPressingTargetingKey` 与 `bIsTargeting`，不需要额外调用 Pre；这一样本的 `FOVAngle` 未变化，不代表真实狙击镜已处理。隔离回执 `analysis/playground-20261021/l2-semantic-1022a/l2-button-receipt.json` 通过，游戏退出、桥接 Shutdown、八个音频会话恢复已核实。新增可选 `GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2`，在现有候选共享帧上处理左扳机边沿，原版切换开镜设置会被阻止；短按、共用输入状态、追踪丢失和身份改变的纯逻辑测试通过，默认 DLL 无相关导出。合并候选的后台联测在菜单视口尚未出现时超时，未投送模拟输入，故没有游戏内 L2 桥接通过结论；`analysis/playground-20261021/vr-l2-bridge-1022a/` 记录关闭与音频守护，独立游戏进程随后按身份清理。Gnasher 的两次 `SG_Chamber` 运行骨骼采样也未到达菜单入口，仍需在正常启动后读取主骨／杠杆矩阵；此时静态分件证据仍有效，但没有动画行程或逐实例骨骼控制证据。
 
+Gnasher／Longshot 原版动画静态核验：新增 `tools/weapon-models/audit_animation_tracks.py`，用源包与导出各自的 SHA256 检查有界读取 `AnimSet` 和 `AnimSequence`，选定一根骨骼才解码采样，衍生结果留在忽略的 `analysis/`。购买版身份已核对的 `WarfareGame.u` 中，Gnasher `SG_Chamber` 的杠杆骨骼有 18 个旋转键，枪身仅 1 个；压缩键的杠杆父局部峰值约 32.40°，先转到约 24.02°、再回位。`SG_Reload`／失败／成功序列另有 45／60／27 个杠杆旋转键。Longshot `LS_Reload`／失败序列的枪栓各有 50／160 个旋转键，镜体和镜盖各只有 1 个。Python 语法检查与两枪完整轨道审核通过，Gnasher 18 键解码曲线复核通过。动画存储四元数还需转换到网格／世界坐标，游戏播放速率与完美窗口也须另证；零售游戏启动未进入菜单视口，因此本轮没有新增运行时骨骼或头显验收。此时无需真的裁切原版 Gnasher 枪模；优先复用独立蒙皮骨骼，Lancer 的混合权重交界另行处理。
+
 本轮离线验证还覆盖 `OriginalR2FireTest`、`OriginalL2AimTest`，并成功构建默认、仅 R2、R2+L2 三种私有 Playground DLL；导出表分别为无 VR 入口、仅 R2 入口和额外的 L2 状态入口。模拟发布器增加左扳机及双扳机测试动作，仍只用于置后静音测试，不进入默认启动清单。
 
 ## 合并0.0.2启动修复（2026-10-22）
