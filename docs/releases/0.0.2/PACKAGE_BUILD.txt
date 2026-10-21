@@ -1,0 +1,71 @@
+GearsVR 0.0.2 — 已发布启动修复与日志增强包
+2026-10-22
+
+线上发布
+Release：https://github.com/gjc9620/gears-vr/releases/tag/v0.0.2
+ZIP：https://github.com/gjc9620/gears-vr/releases/download/v0.0.2/GearsVR-0.0.2.zip
+Changelog：https://github.com/gjc9620/gears-vr/blob/v0.0.2/CHANGELOG.md
+GitHub公开源码提交：88136d82a664112f5c6671c57685e3584fdf5193。
+公开源码基于原main的b8a3ac05fee2e6ae1836ecb61fecbee302f92d41，保留既有安装说明与banner。
+本地运行代码提交：4693593a21e6ed08e58d0d1a96d937cc34f17158；后续发布记录提交不修改运行文件。
+公开仓库不包含本地开发历史、个人配置、analysis、游戏、存档或逆向衍生物。
+
+交付物
+releases/0.0.2/GearsVR-0.0.2.zip
+压缩大小：14,357,748字节，719个文件成员。
+载荷大小：42,233,342字节；inventory.json不列入其自身库存。
+SHA256：37476ff5b12e3ceb06e4e7158674e15411de6c91184ab51bf4fe882b62f14352
+同目录提供README.txt、RELEASE_NOTES.txt、SHA256SUMS.txt。
+日志增强前的本地0.0.2包0ff1a69e…已保留在忽略的analysis/github-publish-0.0.2/previous-local-package/，没有上传。
+
+组件基线
+Native：AdsAnchor2，SHA256 94b73bb04b6f36d4a4bc16f84f1e95d49a1a3144792e0e41d004ef3b802b4304。
+XR：MountedLatency1，SHA256 0a2b7f7dc6a65f8ee23c255423e5fac841726ac6f2ef9bc249ac8e5f4902d56c。
+与最终0.0.1包逐字节比较，除GUI外的所有EXE、DLL、PYD均相同。
+GUI SHA256 4ada332934176fc026e4a9f798e43bafd9f46320ec74ad444285871e40e2a89d，与根目录启动器一致。
+没有带入0.1.0第一人称、Playground或渲染修改。
+包内游戏路径为空；默认系统OpenXR；包含随包Python及依赖许可证。
+
+修复与日志
+执行策略只作用于启动器拥有的PowerShell子进程；支持带下载标记的脚本，不更改系统策略或删除下载标记。
+为真实Steam游戏提供正确App ID上下文；多设置文件时按当前Steam账号选择。
+EXE自动识别覆盖游戏根目录、EXE同目录和一层Mod子目录，已有有效路径优先。
+启动脚本输出显式保留，GUI展示失败原因；解释器探测统一UTF-8，支持中文目录的随包Python。
+新startup_diagnostics模块记录逐阶段耗时、组件指纹和实际Steam子进程上下文；按创建时间核对同一个游戏进程。
+线程返回码与游戏进程退出状态分别记录；仅提取当前prime的有界状态，不导出地址或入口字节。
+Export logs新增build-info.json、startup-attempts.json、startup-summary.txt，包含最近三次启动，无VR会话也能导出。
+诊断写入失败不改变启动和清理。完整中英文变更记录见根目录CHANGELOG.md及线上Release。
+
+验证
+公开源码的88项debug-launch、189项vr-launcher检查通过，共277项；pefile使用已声明的外部依赖，不纳入源码仓库。
+公开源码GUI编译与隐藏自检通过，53个运行模块与ZIP的Python语义逐一一致。
+新建干净stage，随包Python -I/-B隔离预检、库存、模块来源、PE依赖与manifest哈希检查通过。
+最终ZIP成员列表、长度、逐文件SHA256及许可白名单通过，共719个成员，没有QA产生的运行文件。
+最终ZIP解压到中文/空格目录后，隔离预检、GUI自检与随包Python选择、下载标记脚本探测、23项原生启动自检通过。
+无会话日志导出通过；不存在EXE的真实预留CLI按预期退出1，在game_validation阶段记录失败，随后导出10文件增强诊断包。
+GitHub上传摘要与本地一致；发布后无认证重新下载ZIP与SHA256SUMS逐字节计算校验值通过。
+公开源码树的733个文件与本地审计库存一致；Release为v0.0.2且为latest。
+原v0.0.1标签、Release正文与资产ID/大小/SHA256保持不变；本地0.0.1原包与codex/0.1.0的963d965检查点保留。
+
+实际游戏与验收边界
+此前同一启动修复层在正版游戏到达AttractLauncher，35帧预检、229次菜单提交，退出与受保护文件恢复通过。
+用户2026-10-22反馈“测了一下没什么问题了”，记录为启动修复用户实测通过。
+本次新增日志与最终打包检查没有另启游戏，不新增关卡双目GPU、后续章节或真头显验收。
+0.0.2独立真头显回归仍待复测；第一幕及既有头显组合结果属于0.0.1。
+
+证据（本地忽略，不发布）
+analysis/github-publish-0.0.2/publication-receipt.json
+analysis/github-publish-0.0.2/source-export-audit.json
+analysis/github-publish-0.0.2/public-debug-tests.log
+analysis/github-publish-0.0.2/public-launcher-tests.log
+analysis/github-publish-0.0.2/public-gui-build.log
+analysis/github-publish-0.0.2/stage-preflight.json
+analysis/release-0.0.2/final-package-audit.json
+最终解压检查目录：J:\gearsVr\analysis\release-0.0.2\final-qa-809e35cb
+
+重建（PowerShell，项目根目录，目标目录必须尚不存在）
+$buildPython = 'C:/Users/11/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/vr-launcher/ui/build.ps1 -OutputDirectory analysis/release-0.0.2-rebuild/gui -NoInstall
+& $buildPython -B tools/vr-launcher/stage_portable.py --python-root (Split-Path $buildPython) --destination analysis/release-0.0.2-rebuild/stage --manifest tools/vr-launcher/manifest.json --launcher analysis/release-0.0.2-rebuild/gui/GearsVrLauncher.exe --release-version 0.0.2 --preflight-output analysis/release-0.0.2-rebuild/preflight.json
+& $buildPython -B tools/vr-launcher/package_portable.py --stage analysis/release-0.0.2-rebuild/stage --output analysis/release-0.0.2-rebuild/GearsVR-0.0.2.zip
+重建后需独立最终解压检查。时间戳及编译产物可能不同，不承诺ZIP字节级重现。

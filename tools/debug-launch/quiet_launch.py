@@ -68,4 +68,5 @@ def launch_quiet(game_path, game_args, build, *, popen=subprocess.Popen, main_no
             not isinstance(identity.get('image'), str) or
             str(Path(identity['image']).resolve()).casefold() != str(game).casefold()):
         raise RuntimeError('Quiet startup game process identity mismatch or exited')
-    return dict(report, bootstrap_pid=bootstrap.pid, build=str(build))
+    return dict(report, bootstrap_pid=bootstrap.pid, build=str(build),
+                steam_app_id=child_environment.get('SteamAppId'), steam_game_id=child_environment.get('SteamGameId'))

@@ -18,6 +18,23 @@ import launch_reserve
 
 
 class InstallTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == 'nt', 'Windows downloaded-script handling')
+    def test_marked_downloaded_script_can_probe_python_without_starting_game(self):
+        import shutil
+        import subprocess
+        with tempfile.TemporaryDirectory(prefix='GearsVR downloaded script ') as directory:
+            root=pathlib.Path(directory)
+            script=root/'tools/debug-launch/Start-DebugGame.ps1'
+            script.parent.mkdir(parents=True)
+            shutil.copy2(HERE/'Start-DebugGame.ps1',script)
+            pathlib.Path(str(script)+':Zone.Identifier').write_text('[ZoneTransfer]\r\nZoneId=3\r\n',encoding='ascii')
+            command=game_install.debug_command(root/'never-started/Binaries_x64/GOWDE-Steam.exe',root)+['-PythonCheckOnly']
+            result=subprocess.run(command,env=dict(os.environ,GEARSVR_PYTHON=sys.executable),
+                capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=20,
+                creationflags=subprocess.CREATE_NO_WINDOW)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertIs(json.loads(result.stdout)['check_only'],True)
+
     def test_windowless_startup_retains_error_output_before_birth(self):
         from types import SimpleNamespace
         command=['powershell','-File','startup fixture.ps1']

@@ -1,10 +1,12 @@
 # Project reverse-engineering workflow
 
-## Current development version (2026-10-21)
+## Current development version (2026-10-22)
 
 - Current development targets 0.1.0 on `codex/0.1.0`. Record subsequent fixes and validation in `docs/releases/0.1.0/PROGRESS.md`.
+- At the user's request, the 0.0.2 startup compatibility, executable discovery and diagnostics fixes from `codex/0.0.2` are merged into this branch. Preserve the 0.1.0 first-person, Playground and renderer changes and its frozen native/XR manifests.
+- The public 0.0.1 source snapshot `4b621fc430fa5f96eba3bf70399810d3fd51e202` is the content merge baseline; the two branches have separate root histories. Preserve both histories and the pre-merge 0.1.0 checkpoint `963d965b8590555bae31d047bef6ccc27d3e6469`.
 - Local commit `5787a48` preserves the current source at the 0.0.1 closeout, including ongoing development. It is not the published `v0.0.1` source tag.
-- Preserve the published `v0.0.1` tag and release package. A 0.1.0 development checkpoint does not constitute a new release or headset acceptance.
+- Preserve the published `v0.0.1` and `v0.0.2` tags/packages and the `codex/0.0.2` hotfix branch. A 0.1.0 development checkpoint does not constitute a new release or headset acceptance.
 
 ## Retail game baseline (2026-10-21)
 

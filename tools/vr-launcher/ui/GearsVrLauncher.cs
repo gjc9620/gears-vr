@@ -21,7 +21,7 @@ namespace GearsVrUi {
             "HUD 大小必须在 45–100° 之间。",
             "未知",
             "未找到可用 Python 3。请将 GEARSVR_PYTHON 设置为 python.exe 完整路径。",
-            "GearsVR 0.0.1 启动器",
+            "GearsVR 0.0.2 启动器",
             "实验版本 · 跟随游戏当前分辨率渲染\r\nDLSS / DLAA 已禁用。手动进入关卡；不会自动结束测试。",
             "游戏路径",
             "浏览…",
@@ -94,7 +94,7 @@ namespace GearsVrUi {
             "HUD size must be between 45 and 100 degrees.",
             "Unknown",
             "Python 3 not found. Set GEARSVR_PYTHON to the full python.exe path.",
-            "GearsVR 0.0.1 Launcher",
+            "GearsVR 0.0.2 Launcher",
             "Experimental build - Uses the current game resolution\r\nDLSS / DLAA disabled. Enter a level manually; no automatic timeout.",
             "Game path",
             "Browse...",
@@ -663,7 +663,9 @@ namespace GearsVrUi {
                     using (var process = new Process()) {
                         process.StartInfo = new ProcessStartInfo(file, prefix + "-c " + Program.Quote("import sys; print(sys.executable); print(sys.version_info[0])")) {
                             UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden,
-                            RedirectStandardOutput = true, RedirectStandardError = true };
+                            RedirectStandardOutput = true, RedirectStandardError = true,
+                            StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
+                        process.StartInfo.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
                         process.Start(); var output = process.StandardOutput.ReadToEndAsync(); var error = process.StandardError.ReadToEndAsync();
                         if (!process.WaitForExit(5000)) { process.Kill(); continue; } // Only the disposable Python locator probe.
                         string[] lines = output.Result.Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);

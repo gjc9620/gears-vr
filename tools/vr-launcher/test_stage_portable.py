@@ -119,6 +119,16 @@ class StageTests(unittest.TestCase):
             stage.stage(self.root, self.python, self.destination, release_version='0.0.1')
         self.assertFalse(self.destination.exists())
 
+    def test_startup_hotfix_uses_002_documents_and_records_baseline_acceptance(self):
+        for name in ('README.txt', 'RELEASE_NOTES.txt'):
+            self.put(self.root/'docs/releases/0.0.2'/name,('0.0.2 '+name).encode())
+        stage.stage(self.root,self.python,self.destination,release_version='0.0.2')
+        preflight.check_inventory(self.destination)
+        metadata=json.loads((self.destination/'portable-candidate.json').read_text())
+        self.assertEqual(metadata['version'],'0.0.2')
+        self.assertEqual(metadata['baseline_version'],'0.0.1')
+        self.assertEqual((self.destination/'README.txt').read_text(),'0.0.2 README.txt')
+
     def test_new_runtime_modules_import_only_from_stage_without_repository_fallback(self):
         repository = Path(__file__).resolve().parents[2]
         modules = {'vr-launcher':'game_audio_guard', 'debug-launch': 'tiny_output_recovery', 'game-io': 'movie_state',

@@ -26,6 +26,9 @@ function Find-GearsVrPython([string]$Root) {
             $probe.StartInfo.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
             $probe.StartInfo.RedirectStandardOutput = $true
             $probe.StartInfo.RedirectStandardError = $true
+            $probe.StartInfo.StandardOutputEncoding = [Text.Encoding]::UTF8
+            $probe.StartInfo.StandardErrorEncoding = [Text.Encoding]::UTF8
+            $probe.StartInfo.EnvironmentVariables['PYTHONIOENCODING'] = 'utf-8'
             [void]$probe.Start()
             $output = $probe.StandardOutput.ReadToEndAsync()
             $errors = $probe.StandardError.ReadToEndAsync()

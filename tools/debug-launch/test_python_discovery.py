@@ -15,7 +15,7 @@ ROOT = SCRIPT.parents[2]
 class PythonDiscoveryTests(unittest.TestCase):
     def run_ps(self, arguments, env):
         return subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', *arguments],
-            env=env, capture_output=True, text=True, timeout=20,
+            env=env, capture_output=True, text=True, encoding='utf-8', timeout=20,
             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
 
     def check_only(self, preferred):

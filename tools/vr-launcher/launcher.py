@@ -16,6 +16,8 @@ from types import SimpleNamespace
 
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 HERE=pathlib.Path(__file__).resolve().parent
+sys.path.insert(0,str(HERE)) # Explicit sibling imports also work under Python -I.
+import startup_diagnostics
 sys.path.insert(0,str(ROOT/'tools/debug-launch'))
 import instance_policy
 INDEX=instance_policy.index_path()
@@ -288,11 +290,17 @@ class Backend:
             return [current['pid']] if current and current['pid'] in pids and self.control.identity(current['pid'])==current else []
         return instance_policy.shared_game_pids(pids,identity=self.control.identity)
     def reserve(self,manifest,log,owner=None,game_path=None,foreground=False):
-        receipt=log.with_name(log.name+'.'+uuid.uuid4().hex+'.birth.json')
+        attempt=uuid.uuid4().hex
+        receipt=log.with_name(log.name+'.'+attempt+'.birth.json')
+        trace_path=log.with_name(log.name+'.'+attempt+'.startup.jsonl')
+        try:metadata=startup_diagnostics.context(ROOT,manifest)
+        except Exception:metadata={'version':startup_diagnostics.VERSION,'diagnostics_revision':startup_diagnostics.REVISION}
+        metadata['foreground']=foreground
+        trace=startup_diagnostics.StartupTrace(trace_path,metadata=metadata,attempt_id=attempt)
         preflight_nonce=uuid.uuid4().hex if owner and manifest.get('startup_selftests_prelaunch',False) else None
         cmd=[sys.executable,str(ROOT/'tools/native-capture/launch_reserve.py'),'--build-dir',str(rooted(manifest['native_build'])),
              '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link',
-             '--launch-receipt',str(receipt)]
+             '--launch-receipt',str(receipt),'--startup-diagnostics',str(trace_path)]
         if game_path is not None:cmd+=['--game-path',str(game_path)]
         if foreground:cmd+=['--foreground']
         if manifest.get('experimental_preserve_upscaler',False):cmd+=['--experimental-preserve-upscaler']
@@ -312,10 +320,13 @@ class Backend:
         except subprocess.TimeoutExpired as error:
             def decoded(value):return value.decode('utf-8',errors='replace') if isinstance(value,bytes) else value or ''
             log.write_text(decoded(error.stdout)+'\n'+decoded(error.stderr),encoding='utf-8')
+            trace.emit('owner_timeout',error=str(error)[:1500],returncode=None)
             error.reservation_failure_cleanup=failed_cleanup();raise
         log.write_text(result.stdout+'\n'+result.stderr,encoding='utf-8')
+        trace.emit('owner_result',returncode=result.returncode)
         if result.returncode:
             detail=reservation_failure_detail(result.stdout,result.stderr)
+            trace.emit('owner_failure',error=detail)
             error=RuntimeError('Fresh reservation failed; no retry (exit code '+str(result.returncode)+'): '+detail+'\nDetails: '+str(log))
             error.reservation_failure_cleanup=failed_cleanup()
             raise error
