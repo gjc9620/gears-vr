@@ -229,8 +229,12 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
             controller_input_tick_sequence=hands.sequence;++controller_input_tick_accepted;
             const auto routed=controller_input_intent_router.advance(hands,stereo,calibration,body,time,simulator_operator);
             if(routed.status==gears_weapon::RouterStatus::accepted)
-                for(unsigned i=0;i<routed.count;++i)
-                    ++controller_input_intents[static_cast<unsigned>(routed.intents[i])];
+                for(unsigned i=0;i<routed.count;++i){
+                    const auto intent=routed.intents[i];
+                    ++controller_input_intents[static_cast<unsigned>(intent)];
+                    if(intent==gears_weapon::WeaponIntent::recenter)
+                        controller_recenter_request.submit(snapshot_world,hands.session,hands.space_epoch);
+                }
         }
     }
 #endif

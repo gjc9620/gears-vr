@@ -17,6 +17,7 @@
 #include "../vr-common/controller_input_bridge.h"
 #include "../vr-common/body_slots.h"
 #include "../vr-common/weapon_input_router.h"
+#include "../vr-common/controller_recenter_request.h"
 #include "../vr-common/gpu_share.h"
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
 #include "../vr-common/gpu_mirror.h"
@@ -435,6 +436,7 @@ gears_vr::StereoSample stereo_first_sample{},stereo_last_sample{};
 gears_vr::Pose stereo_reference{};
 HANDLE stereo_recenter_event{};
 bool stereo_recenter_key_down{};
+gears_weapon::ControllerRecenterRequest controller_recenter_request;
 std::atomic<unsigned long long> stereo_recenter_requests{},stereo_heading_deferred{},stereo_reference_generation{};
 struct StereoReferenceEvent {
     std::uint64_t generation{},ticket{},session{},sequence{};
@@ -1131,6 +1133,7 @@ bool create_stereo_recenter_event() {
 void close_stereo_recenter_event() {
     // A failed hook installation may still have a callback in flight. Retain
     // the handle until process exit in that failure case, never race a wait.
+    controller_recenter_request.reset();
     if(stereo_recenter_event&&!active.load()){CloseHandle(stereo_recenter_event);stereo_recenter_event=nullptr;first_person_live::close();}
 }
 void poll_stereo_recenter() {
@@ -3110,12 +3113,19 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
 #if defined(GEARS_RUNTIME_RENDER_SIZE) && GEARS_RUNTIME_RENDER_SIZE
         if(!gears_native_render_size::matches_session(sample.session)){++stereo_rejections[8];return false;}
 #endif
-        auto result=stereo_gate.update(sample,gears_vr::monotonic_ns(),simulator_operator);
+        const auto sample_time=gears_vr::monotonic_ns();
+        auto result=stereo_gate.update(sample,sample_time,simulator_operator);
         if(result.heading_deferred)++stereo_heading_deferred;
         if(!result){++stereo_rejections[static_cast<unsigned>(result.status)];
             if(continuous_session&&(result.status==gears_vr::StereoStatus::session_changed||result.status==gears_vr::StereoStatus::invalid)){
                 request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
             return false;}
+        // The game tick has already authenticated the L3 edge. Apply it only
+        // after this exact stereo sample has passed the gate; a rejected frame
+        // must not carry a pending recenter into a later world or session.
+        if(controller_input_observer&&gears_weapon::apply_controller_recenter(
+            controller_recenter_request,frame.world_generation,committed_world_generation.load(),
+            sample,sample_time,simulator_operator,stereo_gate,result))++stereo_recenter_requests;
         if(controller_input_observer){
             gears_vr::ControllerInputFrame hands{};
             if(controller_input_bridge.read_matching(sample,gears_vr::monotonic_ns(),hands,simulator_operator)){
