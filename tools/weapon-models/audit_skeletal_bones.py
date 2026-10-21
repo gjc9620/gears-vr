@@ -102,6 +102,96 @@ def lod0_vertex_offset(raw, geometry):
     return matches[0]
 
 
+def lod0_chunks(raw, cursor, vertex_count, vertex_start, bones):
+    """Recover GoWU LOD0 per-chunk BoneMaps from a bounded verified export.
+
+    UsedBones/ActiveBoneIndices is *not* the palette of every GPU vertex.
+    Each chunk has a separate BoneMap; the section names its chunk. The
+    serialized CPU vertices are cross-checked against every GPU vertex.
+    """
+    chunk_count = struct.unpack_from('<i', raw, cursor)[0]
+    if not 0 < chunk_count <= 32:
+        raise ValueError('Invalid LOD0 chunk count')
+    cursor += 4
+    chunks = []
+    for number in range(chunk_count):
+        if cursor + 8 > vertex_start:
+            raise ValueError('Truncated LOD0 chunk header')
+        first_vertex, rigid_vertices = struct.unpack_from('<ii', raw, cursor)
+        if (first_vertex != (chunks[-1]['last_vertex_exclusive'] if chunks else 0) or
+                rigid_vertices < 0 or first_vertex + rigid_vertices > vertex_count):
+            raise ValueError('Noncontiguous LOD0 chunk vertices')
+        # In the verified GoWU package the serialized rigid vertex is 57 bytes:
+        # position(12), packed tangents(12), four float UVs(32), bone index(1).
+        rigid_start = cursor + 8
+        rigid_end = rigid_start + rigid_vertices * 57
+        if rigid_end > vertex_start:
+            raise ValueError('Rigid vertices exceed LOD0 source')
+        if rigid_end + 12 > vertex_start:
+            raise ValueError('Truncated LOD0 soft vertex header')
+        element_size, soft_vertices, reported_stride = struct.unpack_from('<iii', raw, rigid_end)
+        if (element_size, reported_stride) not in ((0, 0), (4, 68)) or \
+                (element_size == 0 and soft_vertices != 0) or soft_vertices < 0:
+            raise ValueError('Unsupported LOD0 soft vertex layout')
+        last_vertex = first_vertex + rigid_vertices + soft_vertices
+        soft_start = rigid_end + 12
+        map_count_start = soft_start + soft_vertices * 64
+        if last_vertex > vertex_count or map_count_start + 4 > vertex_start:
+            raise ValueError('Soft vertices exceed LOD0 source')
+        for local in range(rigid_vertices):
+            cpu_at = rigid_start + local * 57
+            gpu_at = vertex_start + (first_vertex + local) * 64
+            if (raw[cpu_at:cpu_at + 56] != raw[gpu_at:gpu_at + 56] or
+                    raw[cpu_at + 56] != raw[gpu_at + 56] or
+                    raw[gpu_at + 60:gpu_at + 64] != bytes((255, 0, 0, 0))):
+                raise ValueError('Rigid CPU/GPU LOD0 vertex mismatch')
+        for local in range(soft_vertices):
+            cpu_at = soft_start + local * 64
+            gpu_at = vertex_start + (first_vertex + rigid_vertices + local) * 64
+            if raw[cpu_at:cpu_at + 64] != raw[gpu_at:gpu_at + 64]:
+                raise ValueError('Soft CPU/GPU LOD0 vertex mismatch')
+        count = struct.unpack_from('<i', raw, map_count_start)[0]
+        if not 0 < count <= len(bones):
+            raise ValueError('Invalid LOD0 chunk BoneMap count')
+        map_start = map_count_start + 4
+        footer = map_start + count * 2
+        if footer + 12 > vertex_start:
+            raise ValueError('Truncated LOD0 chunk BoneMap')
+        mapping = struct.unpack_from('<' + 'h' * count, raw, map_start)
+        if any(index < 0 or index >= len(bones) for index in mapping) or len(set(mapping)) != count:
+            raise ValueError('Invalid LOD0 chunk BoneMap')
+        footer_rigid, footer_soft, maximum_influences = struct.unpack_from('<iii', raw, footer)
+        if (footer_rigid != rigid_vertices or footer_soft != soft_vertices or
+                not 1 <= maximum_influences <= 4):
+            raise ValueError('LOD0 chunk footer disagrees with vertex header')
+        for vertex in range(first_vertex, last_vertex):
+            at = vertex_start + vertex * 64
+            if any(index >= count for index, weight in zip(raw[at + 56:at + 60],
+                                                            raw[at + 60:at + 64]) if weight):
+                raise ValueError('LOD0 skin index outside chunk BoneMap')
+        if number + 1 < chunk_count:
+            if struct.unpack_from('<i', raw, footer + 12)[0] != last_vertex:
+                raise ValueError('Next LOD0 chunk is not contiguous')
+        elif last_vertex != vertex_count or struct.unpack_from('<i', raw, footer + 16)[0] != vertex_count:
+            raise ValueError('LOD0 chunk vertices differ from GPU header')
+        chunks.append({'first_vertex': first_vertex,
+                       'last_vertex_exclusive': first_vertex + rigid_vertices + soft_vertices,
+                       'rigid_vertices': rigid_vertices, 'soft_vertices': soft_vertices,
+                       'maximum_influences': maximum_influences,
+                       'bone_map': list(mapping),
+                       'bone_names': [bones[index] for index in mapping],
+                       'footer_offset_in_export': footer})
+        cursor = footer + 12
+    return chunks
+
+
+def vertex_bone_map(skin, vertex):
+    for chunk in skin['chunks']:
+        if chunk['first_vertex'] <= vertex < chunk['last_vertex_exclusive']:
+            return chunk['bone_map']
+    raise ValueError('Vertex outside all LOD0 chunks')
+
+
 def lod0_skin(raw, bones, bounds_offset, geometry):
     """Decode the inspected 64-byte LOD0 vertex format and active bone map."""
     if geometry['decoded_stride'] != 64:
@@ -113,8 +203,11 @@ def lod0_skin(raw, bones, bounds_offset, geometry):
         raise ValueError('Invalid LOD0 section count')
     cursor += 4
     triangles = 0
+    section_rows = []
     for _ in range(sections):
-        _, _, _, count = struct.unpack_from('<HHIH', raw, cursor)
+        material, chunk, first_index, count = struct.unpack_from('<HHIH', raw, cursor)
+        section_rows.append({'material_index': material, 'chunk_index': chunk,
+                             'first_index': first_index, 'triangles': count})
         triangles += count
         cursor += 10
     element_size, index_count = struct.unpack_from('<ii', raw, cursor)
@@ -129,10 +222,34 @@ def lod0_skin(raw, bones, bounds_offset, geometry):
     palette = struct.unpack_from('<' + 'H' * used_count, raw, cursor)
     if len(set(palette)) != used_count or any(index >= len(bones) for index in palette):
         raise ValueError('Invalid LOD0 bone palette index')
+    cursor += used_count * 2
     vertices = geometry['vertex_count']
     start = lod0_vertex_offset(raw, geometry)
     if vertices <= 0 or start < 0 or start + vertices * 64 > len(raw):
         raise ValueError('Invalid LOD0 vertex range')
+    chunks = lod0_chunks(raw, cursor, vertices, start, bones)
+    if {index for chunk in chunks for index in chunk['bone_map']} != set(palette):
+        raise ValueError('LOD0 active bones differ from chunk BoneMaps')
+    indices = struct.unpack_from('<' + 'H' * index_count, raw, index_offset)
+    covered = 0
+    for section in section_rows:
+        first, count = section['first_index'], section['triangles'] * 3
+        chunk_index = section['chunk_index']
+        if first != covered or first + count > index_count or chunk_index >= len(chunks):
+            raise ValueError('Invalid LOD0 section topology')
+        chunk = chunks[chunk_index]
+        if any(not chunk['first_vertex'] <= vertex < chunk['last_vertex_exclusive']
+               for vertex in indices[first:first + count]):
+            raise ValueError('LOD0 section indexes outside its chunk')
+        covered += count
+    if covered != index_count:
+        raise ValueError('Uncovered LOD0 index buffer')
+    chunk_by_vertex = [None] * vertices
+    for chunk in chunks:
+        for vertex in range(chunk['first_vertex'], chunk['last_vertex_exclusive']):
+            chunk_by_vertex[vertex] = chunk['bone_map']
+    if any(mapping is None for mapping in chunk_by_vertex):
+        raise ValueError('LOD0 chunk vertex gap')
     dominant = Counter()
     weighted = Counter()
     for vertex in range(vertices):
@@ -144,17 +261,20 @@ def lod0_skin(raw, bones, bounds_offset, geometry):
         active = set()
         for index, weight in zip(indices, weights):
             if weight:
-                if index >= used_count:
-                    raise ValueError('LOD0 skin index outside bone palette')
-                active.add(palette[index])
+                mapping = chunk_by_vertex[vertex]
+                if index >= len(mapping):
+                    raise ValueError('LOD0 skin index outside chunk BoneMap')
+                active.add(mapping[index])
         weighted.update(active)
-        dominant[palette[indices[max(range(4), key=lambda i: weights[i])]]] += 1
+        dominant[chunk_by_vertex[vertex][indices[max(range(4), key=lambda i: weights[i])]]] += 1
     if sum(dominant.values()) != vertices:
         raise ValueError('LOD0 vertex attribution incomplete')
     return {'vertex_count': vertices, 'index_count': index_count,
             'vertex_offset_in_export': start,
             'index_offset_in_export': index_offset,
-            'influence_layout': 'inferred 64-byte vertices; indices 56..59, weights 60..63',
+            'influence_layout': 'verified GoWU LOD0 chunks; indices 56..59 map through per-chunk BoneMap, weights 60..63',
+            'sections': section_rows, 'chunks': chunks,
+            'active_bone_indices': list(palette),
             'active_bones': [{'bone': bones[index], 'skeleton_index': index,
                               'weighted_vertices': weighted[index], 'dominant_vertices': dominant[index]}
                              for index in palette]}
@@ -162,7 +282,6 @@ def lod0_skin(raw, bones, bounds_offset, geometry):
 
 def rigid_partition_summary(raw, skin):
     """Count why an inspection-only rigid split is or is not lossless."""
-    palette = [item['skeleton_index'] for item in skin['active_bones']]
     by_vertex = []
     mixed = 0
     for vertex in range(skin['vertex_count']):
@@ -174,7 +293,10 @@ def rigid_partition_summary(raw, skin):
             mixed += 1
             by_vertex.append(None)
         else:
-            by_vertex.append(palette[indices[active[0]]])
+            mapping = vertex_bone_map(skin, vertex)
+            if indices[active[0]] >= len(mapping):
+                raise ValueError('Rigid influence outside chunk BoneMap')
+            by_vertex.append(mapping[indices[active[0]]])
     indices = struct.unpack_from('<' + 'H' * skin['index_count'], raw,
                                  skin['index_offset_in_export'])
     rigid = mixed_faces = crossing = 0

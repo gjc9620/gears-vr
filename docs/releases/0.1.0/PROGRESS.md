@@ -26,13 +26,13 @@ Gnasher 杠杆手势增量：新增纯逻辑的双手行程识别器，要求左
 
 装填几何增量：增加弹药件从装填口外沿指定轴向连续插入的判定及装填口／枪栓／杠杆单步引导状态；合成姿态验证了对准、行程、瞬移、误触和回中失效。原模型局部坐标、高亮渲染及实际弹药事务仍未接入。
 
-模型覆盖增量：在已定位的另外四件地图包网格及 Frag／Smoke 手雷上复用来源哈希、骨骼参考姿态与 LOD0 蒙皮审核。清单中已有 12 件模型获静态核验；其中 10 件可刚性分出检查用部件，Lancer 的 36 个混合权重顶点和 Torque Bow 的 48 个跨骨骼三角形阻止无缝逐骨拆分。Boomshot 弹匣、Hammer of Dawn 扳机、Troika 多个活动部件及 Bolo 手雷分节链条已有原骨骼证据。Mulcher、Ink 的网格与所有武器的动画行程／游戏内操控仍待核验。
+模型覆盖增量：在已定位的另外四件地图包网格及 Frag／Smoke 手雷上复用来源哈希、骨骼参考姿态与 LOD0 蒙皮审核。清单中已有 12 件模型获静态核验；其中 10 件可刚性分出检查用部件，Lancer 的 36 个混合权重顶点和 Torque Bow 的 48 个跨骨骼三角形阻止**整件网格**无缝逐骨拆分。后续逐区段复核确认 Lancer 的混合权重只在电锯模糊特效，不在弹匣。Boomshot 弹匣、Hammer of Dawn 扳机、Troika 多个活动部件及 Bolo 手雷分节链条已有原骨骼证据。Mulcher、Ink 的网格与所有武器的动画行程／游戏内操控仍待核验。
 
 零售包身份增量：只读解压购买版工作副本的 `WarfareGame.u` 与 `MP_WarMachine.war` 后，两个解压包的完整 SHA256 均与既有模型分析来源逐字节一致。临时解压文件已清除；这是静态包核验，不是运行或头显验收。
 
 原版 R2 输入实测：独立、静音、窗口置后的零售版测试场中，Hammerburst 仅一次 `WarPC.ButtonPress('R2')` 就建立原版持续开火状态，约 1.2 秒弹药消耗 15 发；仅一次对应 Release 即清除控制器开火／按住状态。此前诊断脚本为机枪显式双调 Pre+ButtonPress，不能当作最小调用证明；本轮独立证据支持后续 VR 扳机采用单次 ButtonPress/Release 语义。测试停止后独立游戏进程退出，菜单桥接 Shutdown 返回 0，游戏音频恢复。其他武器、追踪丢失和输入来源去重仍待实现与验证。
 
-模型蒙皮增量：继续解析经哈希验证的 LOD0 活动骨骼表及 64 字节顶点权重，发现 Gnasher 杠杆对应 1,192 顶点、1,260 三角形，与主体三角形无交叉。已用保守工具把 Gnasher、Hammerburst、Longshot、Snub、Boltok 的可刚性分组灰模导出到忽略目录 `analysis/weapon-partitions/`，并逐件核对三角形总数和输出哈希。Lancer 有 36 个弹匣／主体混合权重顶点，工具拒绝整件刚性拆分；Longshot 镜体／镜盖骨骼不在当前 LOD0 活动骨骼表内。导出仅有几何，不含贴图、骨骼动画或运行时替换；实际动画与 VR 操作仍待验证。
+模型蒙皮增量：继续解析经哈希验证的 LOD0 活动骨骼表及 64 字节顶点权重，发现 Gnasher 杠杆对应 1,192 顶点、1,260 三角形，与主体三角形无交叉。已用保守工具把 Gnasher、Hammerburst、Longshot、Snub、Boltok 的可刚性分组灰模导出到忽略目录 `analysis/weapon-partitions/`，并逐件核对三角形总数和输出哈希。Lancer 整件有 36 个混合权重顶点，保守工具拒绝整件刚性拆分；后续已查明这些顶点属于电锯模糊特效，弹匣本身可刚性分出。Longshot 镜体／镜盖骨骼不在当前 LOD0 活动骨骼表内。导出仅有几何，不含贴图、骨骼动画或运行时替换；实际动画与 VR 操作仍待验证。
 
 开火链只读观察增量：为现有脚本身份凭证增加可选的六函数序列（`WarWeapon`／`Engine.Weapon.InstantFire`、`WarPawn.GetAdjustedAimFor`、`WarWeapon.GetAdjustedAim`、`Engine.Weapon.CalcWeaponFire`、`WarWeapon.ProcessInstantHit`）。仅在私有手柄观察会话申请；原始角色、包、脚本地址／大小与入口每次由当前进程核验。复用已有 VM 调用边界，不设第二个 detour，不调用武器函数，也不读取结果缓冲或参数。普通 `WarPC.PlayerTick` 的同步调用栈中，记录原始调用前后元数据；子调用必须有实际 `Engine.Weapon.InstantFire` 函数体祖先，才标作射击体内观察。完整 Tick 结束后再次验证身份和世界代次才提交有限行数；世界重绑定也申请同样凭证。纯内存测试通过；尚无实际游戏开火轨迹，因此不证明该 Tick 覆盖连发计时器，也未取得射线数值、更改弹道或接通枪口。
 
@@ -40,7 +40,7 @@ Gnasher 杠杆手势增量：新增纯逻辑的双手行程识别器，要求左
 
 原版 L2 与候选接入：单独零售版实测 `WarPC.ButtonPress/Release('L2')` 在 `bToggleTargeting=false` 的 Hammerburst 上建立／退出 `bPressingTargetingKey` 与 `bIsTargeting`，不需要额外调用 Pre；这一样本的 `FOVAngle` 未变化，不代表真实狙击镜已处理。隔离回执 `analysis/playground-20261021/l2-semantic-1022a/l2-button-receipt.json` 通过，游戏退出、桥接 Shutdown、八个音频会话恢复已核实。新增可选 `GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2`，在现有候选共享帧上处理左扳机边沿，原版切换开镜设置会被阻止；短按、共用输入状态、追踪丢失和身份改变的纯逻辑测试通过，默认 DLL 无相关导出。合并候选的后台联测在菜单视口尚未出现时超时，未投送模拟输入，故没有游戏内 L2 桥接通过结论；`analysis/playground-20261021/vr-l2-bridge-1022a/` 记录关闭与音频守护，独立游戏进程随后按身份清理。Gnasher 的两次 `SG_Chamber` 运行骨骼采样也未到达菜单入口，仍需在正常启动后读取主骨／杠杆矩阵；此时静态分件证据仍有效，但没有动画行程或逐实例骨骼控制证据。
 
-Gnasher／Longshot 原版动画静态核验：新增 `tools/weapon-models/audit_animation_tracks.py`，用源包与导出各自的 SHA256 检查有界读取 `AnimSet` 和 `AnimSequence`，选定一根骨骼才解码采样，衍生结果留在忽略的 `analysis/`。购买版身份已核对的 `WarfareGame.u` 中，Gnasher `SG_Chamber` 的杠杆骨骼有 18 个旋转键，枪身仅 1 个；压缩键的杠杆父局部峰值约 32.40°，先转到约 24.02°、再回位。`SG_Reload`／失败／成功序列另有 45／60／27 个杠杆旋转键。Longshot `LS_Reload`／失败序列的枪栓各有 50／160 个旋转键，镜体和镜盖各只有 1 个。Python 语法检查与两枪完整轨道审核通过，Gnasher 18 键解码曲线复核通过。动画存储四元数还需转换到网格／世界坐标，游戏播放速率与完美窗口也须另证；零售游戏启动未进入菜单视口，因此本轮没有新增运行时骨骼或头显验收。此时无需真的裁切原版 Gnasher 枪模；优先复用独立蒙皮骨骼，Lancer 的混合权重交界另行处理。
+Gnasher／Longshot 原版动画静态核验：新增 `tools/weapon-models/audit_animation_tracks.py`，用源包与导出各自的 SHA256 检查有界读取 `AnimSet` 和 `AnimSequence`，选定一根骨骼才解码采样，衍生结果留在忽略的 `analysis/`。购买版身份已核对的 `WarfareGame.u` 中，Gnasher `SG_Chamber` 的杠杆骨骼有 18 个旋转键，枪身仅 1 个；压缩键的杠杆父局部峰值约 32.40°，先转到约 24.02°、再回位。`SG_Reload`／失败／成功序列另有 45／60／27 个杠杆旋转键。Longshot `LS_Reload`／失败序列的枪栓各有 50／160 个旋转键，镜体和镜盖各只有 1 个。Python 语法检查与两枪完整轨道审核通过，Gnasher 18 键解码曲线复核通过。动画存储四元数还需转换到网格／世界坐标，游戏播放速率与完美窗口也须另证；零售游戏启动未进入菜单视口，因此本轮没有新增运行时骨骼或头显验收。此时无需真的裁切原版 Gnasher 枪模；优先复用独立蒙皮骨骼。Lancer 混合权重位置已在后续复核中更正为电锯模糊特效，而非弹匣交界。
 
 扩展动画审核：允许某些序列省略压缩格式属性时只读取明确写入的轨道偏移／键数，不推断未写的默认格式，也不做该轨道的四元数采样。Lancer、Hammerburst、Snub、Bolo 四组 AnimSet 的完整有界审计通过。Lancer 原版装填同时驱动弹匣、机匣、卡扣；Hammerburst 装填活动锁扣而弹匣骨骼常量；Snub 开火时滑套有 6 个平移键；Bolo 准备动作驱动多节链条。相应哈希与计数回执位于忽略的 `analysis/{lancer,hammerburst,snub,bolo}-animation-tracks.json`。这进一步限定了哪些部件应复用原动画／蒙皮、哪些独立手持弹药需另建交互，但不构成游戏内操作通过。
 
@@ -62,7 +62,11 @@ Gnasher 完整霰弹模型原型：已查原版资源只有抛出的开口空壳
 
 L3 回中接线增量：认证的游戏 Tick 仅将已接受的 L3 边沿写入一次性请求，包含当前世界、XR 会话和 LOCAL 空间代次。渲染线程先验证实际冻结的立体帧，再把匹配的请求应用到原有 `StereoGate` 回中参考；首帧已以当前头姿建参考时不重复回中，拒绝帧、换世界／会话／空间或重放均不能消费为有效动作。私有认证 Tick Native DLL 构建、立体参考测试和新增请求边界测试通过；普通冻结清单及玩家默认 DLL 未更换，真实手柄、游戏内身体槽与枪体同步效果仍待验收。
 
-Lancer 弹匣接缝预览：在原包哈希与 LOD0 蒙皮校验后，新增分析专用的混合权重切面工具。按弹匣骨权重 50% 分割 10 个跨界三角形，13,397 个源三角形对应 218 个弹匣侧、13,199 个枪身侧预览三角形，原表面积守恒；合成接缝、精确阈值和错误输入的 3 项单测通过。OBJ 与派生报告仅写忽略的 `analysis/weapon-partitions/Lancer-weighted/`。切口未封、UV／材质／蒙皮／碰撞缺失，尚不是可装卸的游戏内模型；原始游戏包和默认版本均未改。
+Lancer 弹匣拆件复核：原先分析工具错误地把整件网格的活动骨骼表用作每个区段的顶点骨骼映射，由此得出的“10 个弹匣接缝三角形、218 面弹匣侧”结论**已撤回**。经原包哈希、LOD0 区段索引、各 chunk 的 `BoneMap` 及 CPU／GPU 顶点逐项核对，13,397 个原始三角形中真正归属弹匣骨的是 156 面，另外 13,241 面归属枪身／其他部件；弹匣边界无需权重裁切。更正后检查用 OBJ 与报告在忽略的 `analysis/weapon-partitions/Lancer-corrected/`。这仍不是可直接游戏装卸的模型，原包和默认版本未改。
+
+Lancer 拆件错误来源已定位：先前 62 面的 `X≈0` 片状块位于材质 `BlurringBlades_Delta_MAT` 的电锯模糊区段，不能归入弹匣。正确弹匣是 120 个刚性顶点／156 面的单一连通块；整枪其余 36 个混合顶点、40 个关联面和 8 个跨骨面都在电锯特效区段。审核器与两个拆件工具现按 chunk 自身的 `BoneMap` 取骨骼，并逐顶点校验源 CPU／GPU 几何和影响；12 件已定位网格重新审核通过，只有 Lancer 的旧骨骼归属计数变化。旧错误派生预览已移至 `analysis/weapon-partitions/Lancer-weighted-invalid-20261022/` 并标记无效，新工具 5 项单测通过。要做可装卸件，仍需原 UV／材质、碰撞和运行时动画／显示核对；已有 `MagazineMesh` 可优先复用。
+
+刚性部件 UV 导出增量：`tools/weapon-models/extract_rigid_bone_lod0.py` 仅接受目标骨骼所有有效顶点权重为 255 且目标三角形不跨界的模型，保留源主 UV 与材质槽编号，源哈希和派生 OBJ 哈希一并记录。已离线导出并核对 Lancer 弹匣 120 顶点／156 面、Gnasher 杠杆 1,192／1,260、Hammerburst 弹匣 271／272、Snub 弹匣 279／314、Longshot 枪栓 687／894、Boomshot 弹匣 700／1,236、Hammer of Dawn 扳机 164／156、Troika 两个旋转件各 488／600；Lancer 弹匣在两角度灰模预览中位于枪身下方，形状和位置符合弹匣候选。跨 chunk 相同局部骨骼索引、无关部位混合权重、目标自身混合权重和跨界面均有合成单测，7 项通过。输出仅在忽略的 `analysis/weapon-partitions/`，未产生任何可游戏加载的新资产，也未更换默认启动器。
 
 原版库存槽位映射增量：经知识库索引与已保存脚本核对 `WarPC.WeaponSlotFromDpadDirection`、`WarPawn.SetSlotAttachment`，将 VR 左裤兜手枪、右裤兜手雷、左肩武器 2、右肩武器 1 分别映射到原版 0／1／2／3 号槽；取弹位置无库存武器槽。`BodySlotsTest` 编译和校准／位置／编号断言通过。镜像角色的视觉肩位会交换，且没有调用原版切枪；游戏内装备动作仍待单独验证。
 

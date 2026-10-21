@@ -12,12 +12,11 @@ import pathlib
 import re
 import struct
 
-from audit_skeletal_bones import audit, name_table
+from audit_skeletal_bones import audit, name_table, vertex_bone_map
 
 
 def split(raw, geometry, audited):
     skin = audited['lod0_skin']
-    palette = [item['skeleton_index'] for item in skin['active_bones']]
     vertex_count = skin['vertex_count']
     vertex_start = skin['vertex_offset_in_export']
     bone_by_vertex = []
@@ -25,10 +24,11 @@ def split(raw, geometry, audited):
         offset = vertex_start + vertex * 64
         indices = raw[offset + 56:offset + 60]
         weights = raw[offset + 60:offset + 64]
+        bone_map = vertex_bone_map(skin, vertex)
         nonzero = [i for i, weight in enumerate(weights) if weight]
-        if len(nonzero) != 1 or weights[nonzero[0]] != 255 or indices[nonzero[0]] >= len(palette):
+        if len(nonzero) != 1 or weights[nonzero[0]] != 255 or indices[nonzero[0]] >= len(bone_map):
             raise ValueError('Non-rigid or invalid bone influence; manual review required')
-        bone_by_vertex.append(palette[indices[nonzero[0]]])
+        bone_by_vertex.append(bone_map[indices[nonzero[0]]])
     index_count = skin['index_count']
     indices = struct.unpack_from('<' + 'H' * index_count, raw, skin['index_offset_in_export'])
     grouped = defaultdict(list)

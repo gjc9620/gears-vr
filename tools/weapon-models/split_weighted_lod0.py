@@ -6,13 +6,14 @@ The resulting OBJ files lack UVs, materials, closed seams and animation; they
 must never be substituted for the purchased game's mesh.
 """
 import argparse
+from collections import defaultdict
 import hashlib
 import json
 import math
 from pathlib import Path
 import struct
 
-from audit_skeletal_bones import audit, name_table
+from audit_skeletal_bones import audit, name_table, vertex_bone_map
 
 
 def area(triangle):
@@ -90,8 +91,7 @@ def read_lod0(raw, audited, target_bone):
     if target_bone not in bones:
         raise ValueError('Target bone absent from original skeleton')
     target_index = bones.index(target_bone)
-    palette = [item['skeleton_index'] for item in skin['active_bones']]
-    if target_index not in palette:
+    if not any(target_index in chunk['bone_map'] for chunk in skin['chunks']):
         raise ValueError('Target bone has no active LOD0 skin influence')
     positions, weights = [], []
     for vertex in range(skin['vertex_count']):
@@ -102,11 +102,12 @@ def read_lod0(raw, audited, target_bone):
         if not all(math.isfinite(value) for value in position) or sum(influences) != 255:
             raise ValueError('Invalid LOD0 skinned vertex')
         weight = 0
+        bone_map = vertex_bone_map(skin, vertex)
         for index, influence in zip(indices, influences):
             if influence:
-                if index >= len(palette):
-                    raise ValueError('LOD0 active bone index outside palette')
-                if palette[index] == target_index:
+                if index >= len(bone_map):
+                    raise ValueError('LOD0 bone index outside chunk BoneMap')
+                if bone_map[index] == target_index:
                     weight += influence
         positions.append(position)
         weights.append(weight / 255)
@@ -125,6 +126,50 @@ def write_obj(path, triangles, source_sha256, bone):
         for index in range(len(triangles)):
             start = index * 3 + 1
             target.write(f'f {start} {start + 1} {start + 2}\n')
+
+
+def connected_components(triangles, precision=5):
+    """Separate vertex-connected shells without claiming they are game parts.
+
+    Quantization is only used to reconnect the per-face OBJ vertices made by
+    clipping. The source triangles remain unchanged in the exported shells.
+    """
+    if not triangles or not 0 <= precision <= 8:
+        raise ValueError('Invalid partition shell input')
+    parents = list(range(len(triangles)))
+
+    def root(index):
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    first = {}
+    for index, triangle in enumerate(triangles):
+        if len(triangle) != 3:
+            raise ValueError('Partition shell has a non-triangle')
+        for vertex in triangle:
+            if len(vertex) != 3 or not all(math.isfinite(value) for value in vertex):
+                raise ValueError('Partition shell has a non-finite vertex')
+            key = tuple(round(value, precision) for value in vertex)
+            previous = first.setdefault(key, index)
+            parents[root(index)] = root(previous)
+    groups = defaultdict(list)
+    for index, triangle in enumerate(triangles):
+        groups[root(index)].append(triangle)
+    return sorted(groups.values(), key=lambda group: -len(group))
+
+
+def component_bounds(triangles):
+    vertices = [vertex for triangle in triangles for vertex in triangle]
+    bounds = [(min(vertex[axis] for vertex in vertices),
+               max(vertex[axis] for vertex in vertices)) for axis in range(3)]
+    extents = [high - low for low, high in bounds]
+    # A zero-thickness connected surface is a review flag, not proof that it
+    # belongs to the gun or that it should be deleted.
+    flat_axes = [axis for axis, extent in enumerate(extents) if extent <= 1e-4]
+    return {'raw_bounds': bounds, 'raw_extents': extents,
+            'near_zero_thickness_axes': flat_axes}
 
 
 def main():
@@ -167,11 +212,22 @@ def main():
         write_obj(path, triangles, audited['source_sha256'], args.target_bone)
         exported[name] = {'triangles': len(triangles), 'sha256':
                           hashlib.sha256(path.read_bytes()).hexdigest()}
+    components = []
+    for index, triangles in enumerate(connected_components(parts['detachable']), 1):
+        path = output_dir / f'detachable-component-{index:02d}.obj'
+        write_obj(path, triangles, audited['source_sha256'], args.target_bone)
+        components.append({'rank': index, 'triangles': len(triangles),
+                           **component_bounds(triangles),
+                           'obj': path.name,
+                           'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
+    if sum(item['triangles'] for item in components) != len(parts['detachable']):
+        raise ValueError('Partition shell triangle count changed')
     manifest = {'schema': 1, 'source_path': audited['path'],
                 'source_sha256': audited['source_sha256'], 'target_bone': args.target_bone,
                 'weight_threshold': .5, 'geometry_only': True, 'closed_seams': False,
                 'requires_materials_and_runtime_fit': True,
-                'counts': counts, 'parts': exported}
+                'counts': counts, 'parts': exported,
+                'detachable_components': components}
     (output_dir / 'parts.json').write_text(json.dumps(manifest, indent=2) + '\n',
                                            encoding='utf-8')
     print(json.dumps(counts, sort_keys=True))
