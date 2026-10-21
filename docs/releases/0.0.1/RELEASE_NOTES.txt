@@ -1,60 +1,11 @@
-GearsVR 0.0.1 — Release notes
-2026-10-21
+GearsVR 0.0.1
 
-Hey Gears! GearsVR 0.0.1 is here!
+VR mod for Gears of War: Reloaded.
+See README.txt for the short installation guide and folder layout.
+Before installing: windowed/borderless mode, unlimited frame rate, DLSS/DLAA off; apply and exit the game.
+Tested: Act 1, KRVR + Apple Vision Pro, VD + Quest 3.
+Known issue: mounted machine-gun entry/exit may pause for about 2 seconds.
+For bugs, use Export logs and send the ZIP with your headset, GPU and a description.
 
-This is the first public test release of my third-person VR mod for Gears of War: Reloaded.
-I've played through Act 1 and tested these two OpenXR setups:
-- KRVR + Apple Vision Pro
-- Virtual Desktop + Meta Quest 3
-
-I tested with in-game 4K, medium settings, and DLSS off.
-If it feels choppy, try lowering Render scale in the launcher to 0.8 or 0.7.
-VR eye resolution follows your OpenXR runtime's recommendation and Render scale;
-the in-game 4K setting is for the desktop mirror, not 4K per eye.
-
-Want the camera a little closer to the action? Try Camera closer. I like 0.4,
-but see what feels right for you. Restart the game and VR after changing these settings.
-
-A few things to know:
-- Getting on or off a mounted machine gun may still pause for about 2 seconds.
-- DLSS isn't compatible yet, so I've disabled it in the mod. Enabling it in the game menu won't turn it on.
-- I've completed Act 1, but haven't tested all the later chapters yet. Let me know how you get on!
-
-For setup, take a look at README.txt in the download.
-If you find a bug, click Export logs in the launcher and send me the ZIP or post it on Discord.
-Let me know your headset, GPU, and what happened. Screenshots or a video help too.
-
-Thanks for playing and helping out, Gears. Have fun!
-
-
-简体中文
-
-Hey Gears！
-
-GearsVR 的首个公开测试版本 0.0.1 来了！
-现在可以在 VR 中以第三人称视角体验《战争机器：重装上阵》。
-
-我已经亲自测试通过 Act 1（第一幕），并验证以下 OpenXR 组合可以游玩：
-- KRVR + Apple Vision Pro
-- Virtual Desktop（VD）+ Meta Quest 3
-
-本次测试设置：游戏内 4K 分辨率、中等画质、DLSS 关闭。
-实际流畅度取决于电脑配置、头显与串流设置；这里的 4K 不代表每眼 4K。
-
-已知问题：
-- 进入或退出固定机枪时，仍可能有约 2 秒延迟。
-- DLSS 尚不兼容，已在底层禁用；在游戏菜单内开启也不会实际生效。
-- 后续章节与更多游玩场景仍需验证。
-
-如果觉得卡顿，可以把启动器中的 Render scale 调低一些，例如 0.8 或 0.7。
-如果觉得镜头偏远、代入感不够，可以用 Camera closer 拉近镜头，我个人觉得 0.4 比较舒服。
-修改这些参数后，请正常退出游戏，再重新启动游戏与 VR。
-
-完整安装与启动步骤见同目录 README.txt。
-
-发现 Bug 后，请通过启动器 Export logs / 导出日志保存诊断 ZIP，
-附上问题描述，发送给我或发到 Discord。
-非常感谢大家的体验与反馈！
-
-谢谢各位 Gears，玩得开心！
+安装方法见 README.txt。安装前先在游戏里改为窗口化/无边框、帧率不限制、DLSS/DLAA关闭，保存后完全退出游戏。
+将整包解压到游戏根目录，启动器与 Binaries_x64 文件夹并排。
