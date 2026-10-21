@@ -70,6 +70,8 @@ Lancer 拆件错误来源已定位：先前 62 面的 `X≈0` 片状块位于材
 
 原版库存槽位映射增量：经知识库索引与已保存脚本核对 `WarPC.WeaponSlotFromDpadDirection`、`WarPawn.SetSlotAttachment`，将 VR 左裤兜手枪、右裤兜手雷、左肩武器 2、右肩武器 1 分别映射到原版 0／1／2／3 号槽；取弹位置无库存武器槽。`BodySlotsTest` 编译和校准／位置／编号断言通过。镜像角色的视觉肩位会交换，且没有调用原版切枪；游戏内装备动作仍待单独验证。
 
+取放枪所有权状态增量：新增 `WeaponEquipmentModel`，将右手 RGrip 槽位点按与原版库存快照绑定。空槽只返回一次反馈请求；非空槽先请求原版切枪，待当前武器身份和动画结束同时确认才锁定持有；原槽再次点按请求收枪，RGrip 松开不改变持有。原版拾取动画期间双手由动画占用，结束后按实际槽位和当前武器交还；世界／角色切换、武器移除及原版拒绝切换会清除挂起状态。独立 MSVC `/W4 /WX` 用例通过，覆盖空槽、切枪等待、收枪、拾取交接与身份突变。此模块尚未接入游戏线程库存读取、原版切枪、枪模显隐或音效，不能当成游戏内取枪已完成。
+
 取枪动画边界复核：Astra Max 仅用已保存的 UnrealScript 和现有 VM 观察文档确认，原版 `SetCurrentWeapon`／`ChangedWeapon`／`WeaponPuttingDown`／`Active` 负责复制、挂接及计时，不能跳过；身体取放枪姿态分别在 `TimeWeaponPutDown/TimeWeaponEquipping` 内调用。姿态函数还被手雷重装与其他动作复用；现有 CallFunction 入口的参数尚由 caller frame 在函数内求值，直接吞掉调用会错过参数消费。未新增危险的全局动画抑制或同步完成装备 Hook，下一步先做原游戏 caller／callee 边界与参数消费的只读验证。
 
 ## 合并0.0.2启动修复（2026-10-22）

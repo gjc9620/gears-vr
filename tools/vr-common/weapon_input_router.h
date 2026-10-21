@@ -8,6 +8,15 @@ enum class WeaponIntent : std::uint8_t {
     recenter,reload,aim_down,aim_up,fire_down,fire_up,
     xbox_a,xbox_b,xbox_x,xbox_y
 };
+inline BodySlot equipment_body_slot(WeaponIntent intent) noexcept {
+    switch(intent){
+        case WeaponIntent::weapon_2:return BodySlot::weapon_2;
+        case WeaponIntent::weapon_1:return BodySlot::weapon_1;
+        case WeaponIntent::pistol:return BodySlot::pistol;
+        case WeaponIntent::grenade:return BodySlot::grenade;
+        default:return BodySlot::none;
+    }
+}
 enum class RouterStatus : std::uint8_t { rejected,baseline,accepted,ambiguous };
 struct RoutedInput {
     RouterStatus status{RouterStatus::rejected};
