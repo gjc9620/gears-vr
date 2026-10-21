@@ -11,8 +11,27 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 STATE = (instance_policy.context() / 'graphics-policy') if instance_policy.context() else ROOT / 'analysis/graphics-policy'
 
 
+def active_steam_id():
+    """Read only the signed-in account number, never credentials or login files."""
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam\ActiveProcess') as key:
+            account, kind = winreg.QueryValueEx(key, 'ActiveUser')
+        if kind == winreg.REG_DWORD and type(account) is int and 0 < account <= 0xffffffff:
+            return str(0x0110000100000000 | account)
+    except OSError:
+        pass
+    return None
+
+
 def locate():
     files = list((instance_policy.local_appdata() / 'Coalition/WarGame/Config').glob('*EngineUserSettings.ini'))
+    if len(files) > 1:
+        active = active_steam_id()
+        matches = [file for file in files if file.name == str(active) + 'EngineUserSettings.ini']
+        if len(matches) == 1:
+            return matches[0].resolve()
+        raise RuntimeError('Multiple user-settings files; sign in to the Steam account whose settings should be checked')
     if len(files) != 1:
         raise RuntimeError('Expected exactly one user-settings file')
     return files[0].resolve()

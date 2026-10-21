@@ -1162,4 +1162,43 @@ class LauncherTests(unittest.TestCase):
             with mock.patch('builtins.print'):value=launcher.status(backend,index)
             self.assertIsNone(value['reference_generation']);self.assertFalse(value['native_status_matched'])
 
+    def test_reservation_failure_exposes_original_cause_and_keeps_full_log_and_cleanup(self):
+        backend=launcher.Backend.__new__(launcher.Backend)
+        backend.close_uninjected_reservation=mock.Mock(return_value={'status':'no_birth_receipt'})
+        stderr=('Traceback (most recent call last):\n  File "graphics_policy.py", line 1\n'
+                'RuntimeError: Persisted DLSS must be OFF before release startup\n'
+                'At C:\\Mod folder\\Start-DebugGame.ps1:1 char:1\n'
+                'Traceback (most recent call last):\n'
+                'subprocess.CalledProcessError: Command powershell returned non-zero exit status 1.\n')
+        result=SimpleNamespace(returncode=1,stdout='startup checks passed\n',stderr=stderr)
+        with tempfile.TemporaryDirectory() as directory:
+            log=pathlib.Path(directory)/'reserve.log'
+            with mock.patch.object(launcher.subprocess,'run',return_value=result) as spawn:
+                with self.assertRaises(RuntimeError) as failed:backend.reserve(MANIFEST,log)
+            message=str(failed.exception)
+            self.assertIn('exit code 1',message)
+            self.assertIn('RuntimeError: Persisted DLSS must be OFF before release startup',message)
+            self.assertNotIn('CalledProcessError',message)
+            self.assertIn(str(log),message)
+            self.assertIn(stderr,log.read_text())
+            self.assertIn('reservation_failure_cleanup',log.read_text())
+            self.assertEqual(failed.exception.reservation_failure_cleanup,{'status':'no_birth_receipt'})
+            self.assertEqual(spawn.call_count,1)
+            self.assertEqual(spawn.call_args.kwargs['errors'],'replace')
+
+
+    def test_reservation_error_summary_fallback_and_output_bound(self):
+        self.assertEqual(launcher.reservation_failure_detail('stdout cause',''),'stdout cause')
+        self.assertEqual(launcher.reservation_failure_detail('stdout cause','stderr cause'),'stderr cause')
+        self.assertIn('no error output',launcher.reservation_failure_detail('',' \n'))
+        self.assertEqual(launcher.reservation_failure_detail('', 'OSError: Access denied'),'OSError: Access denied')
+        self.assertEqual(launcher.reservation_failure_detail('', 'Traceback:\nException: failed\nwrapper'),'Exception: failed')
+        wrapper='subprocess.CalledProcessError: command exited with code 1'
+        self.assertEqual(launcher.reservation_failure_detail('',wrapper),wrapper)
+        detail=launcher.reservation_failure_detail('','omitted prefix\n'+'x'*5000+'\nlast line')
+        self.assertLessEqual(len(detail),1500)
+        self.assertNotIn('omitted prefix',detail)
+        self.assertTrue(detail.endswith('last line'))
+
+
 if __name__=='__main__':unittest.main()

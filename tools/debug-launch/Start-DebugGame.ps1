@@ -2,6 +2,8 @@ param([switch]$DirectLevel, [switch]$PauseOnUnfocus, [switch]$Foreground,
       [switch]$DisableBackgroundInput = $true, [string]$GamePath, [switch]$PythonCheckOnly, [string]$LaunchReceipt,
       [switch]$ExperimentalPreserveUpscaler)
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+$OutputEncoding = [Console]::OutputEncoding
 $workspace = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 function Find-GearsVrPython([string]$Root) {
     $preferred = [Environment]::GetEnvironmentVariable('GEARSVR_PYTHON')
