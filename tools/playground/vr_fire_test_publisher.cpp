@@ -45,9 +45,12 @@ int main(int argc,char** argv){
         frame.sequence=sample.sequence;frame.space_epoch=sample.space_epoch;
         frame.predicted_time=sample.predicted_time;frame.focused=1;
         frame.sync_ns=now-1000;frame.received_ns=now;
+        auto& left=frame.hands[0];
+        left.grip_active=1;left.grip_flags=15;left.grip.orientation.w=1;
+        left.trigger_active=1;left.trigger=(action=="aim"||action=="both")?.9f:0.f;
         auto& right=frame.hands[1];
         right.grip_active=1;right.grip_flags=15;right.grip.orientation.w=1;
-        right.trigger_active=1;right.trigger=action=="press"?.9f:0.f;
+        right.trigger_active=1;right.trigger=(action=="press"||action=="both")?.9f:0.f;
         edges.update(frame);
         if(!hands.publish(frame)||!stereo.publish(sample)){
             ++total_misses;

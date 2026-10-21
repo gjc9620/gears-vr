@@ -8,24 +8,31 @@ std::atomic<unsigned> last_status{};
 gears_vr::StereoBridge stereo;
 gears_vr::ControllerInputBridge hands;
 gears_weapon::OriginalR2Fire fire;
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+gears_weapon::OriginalL2Aim aim;
+std::atomic<unsigned> last_aim_status{};
+#endif
 gears_vr::StereoSample last_stereo{};
 gears_vr::ControllerInputFrame last_input{};
 bool have_last{};
 Name r2{};
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+Name l2{};
+#endif
 #if defined(GEARS_PLAYGROUND_VR_R2_SIM_TEST)
 constexpr bool simulated=true;
 #else
 constexpr bool simulated=false;
 #endif
 
-bool find_r2(Name& out){
+bool find_button(const wchar_t first,const wchar_t second,Name& out){
     const auto names=get<Array>(base+0x1c34800);
     if(!names.data||names.count<1000||names.count>names.capacity||names.capacity>4000000)return false;
     for(int index=0;index<names.count;++index){
         const auto entry=get<uptr>(names.data+size_t(index)*8);
         if(!entry||get<unsigned>(entry)!=unsigned(index))continue;
         wchar_t value[4]{};
-        if(copy(value,entry+20,6)&&value[0]==L'R'&&value[1]==L'2'&&!value[2]){
+        if(copy(value,entry+20,6)&&value[0]==first&&value[1]==second&&!value[2]){
             out={unsigned(index),0};return true;
         }
     }
@@ -57,6 +64,21 @@ bool execute(gears_weapon::OriginalR2Action action,std::uint64_t controller){
         L"ButtonPress":L"ButtonRelease");
     return call.set(L"ButtonName",r2).run();
 }
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+gears_weapon::OriginalL2Context aim_context(uptr pc,
+                                             gears_weapon::OriginalR2Context const& current){
+    return {current.world,current.controller,current.weapon,current.ordinary_player,
+        game_bool(pc,L"bPressingTargetingKey"),game_bool(pc,L"bToggleTargeting"),
+        current.allow_press};
+}
+bool execute_aim(gears_weapon::OriginalL2Action action,std::uint64_t controller){
+    const auto pc=static_cast<uptr>(controller);
+    if(!playground::instance(pc,L"WarPC"))return false;
+    playground::Args call(pc,action==gears_weapon::OriginalL2Action::press?
+        L"ButtonPress":L"ButtonRelease");
+    return call.set(L"ButtonName",l2).run();
+}
+#endif
 void tick(uptr pc){
     const auto state=mode.load(std::memory_order_acquire);
     if(state!=running&&state!=stopping)return;
@@ -74,10 +96,28 @@ void tick(uptr pc){
     }
     const auto outcome=fire.advance(input,sample,current,now,execute,simulated);
     last_status.store(unsigned(outcome),std::memory_order_release);
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+    const auto aim_outcome=aim.advance(input,sample,aim_context(pc,current),now,execute_aim,simulated);
+    last_aim_status.store(unsigned(aim_outcome),std::memory_order_release);
+#endif
     if(outcome==gears_weapon::OriginalR2Status::abort_required){
         playground::message(L"vr_r2_abort_required");
         mode.store(fault,std::memory_order_release);return;
     }
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+    if(aim_outcome==gears_weapon::OriginalL2Status::abort_required){
+        playground::message(L"vr_l2_abort_required");
+        mode.store(fault,std::memory_order_release);return;
+    }
+    if(aim_outcome==gears_weapon::OriginalL2Status::pressed)
+        playground::message(L"vr_l2_pressed");
+    else if(aim_outcome==gears_weapon::OriginalL2Status::released)
+        playground::message(L"vr_l2_released");
+    else if(aim_outcome==gears_weapon::OriginalL2Status::recovered)
+        playground::message(L"vr_l2_recovered");
+    else if(aim_outcome==gears_weapon::OriginalL2Status::tapped)
+        playground::message(L"vr_l2_tapped");
+#endif
     if(outcome==gears_weapon::OriginalR2Status::pressed)
         playground::message(L"vr_r2_pressed");
     else if(outcome==gears_weapon::OriginalR2Status::released)
@@ -87,11 +127,20 @@ void tick(uptr pc){
     else if(outcome==gears_weapon::OriginalR2Status::tapped)
         playground::message(L"vr_r2_tapped");
     if(state==stopping){
-        if(fire.owns_press()){
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+        const bool still_owned=fire.owns_press()||aim.owns_press();
+#else
+        const bool still_owned=fire.owns_press();
+#endif
+        if(still_owned){
             playground::message(L"vr_r2_stop_still_owned");
             mode.store(fault,std::memory_order_release);
         }else{
-            fire.reset();mode.store(stopped,std::memory_order_release);
+            fire.reset();
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+            aim.reset();
+#endif
+            mode.store(stopped,std::memory_order_release);
         }
     }
 }
@@ -103,12 +152,24 @@ DWORD enable(){
     if(GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)!=1||behind[0]!=L'1'||
        GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)!=1||muted[0]!=L'1')return 2;
 #endif
-    if(!find_r2(r2))return 3;
+    if(!find_button(L'R',L'2',r2))return 3;
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+    if(!find_button(L'L',L'2',l2))return 6;
+#endif
     const auto pid=GetCurrentProcessId();
     if(!stereo.open(pid,false))return 4;
     if(!hands.open(pid,false)){stereo.close();return 5;}
-    fire.reset();have_last=false;mode.store(running,std::memory_order_release);
-    playground::message(L"vr_r2_enabled_hammerburst_only");return 0;
+    fire.reset();
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+    aim.reset();last_aim_status.store(0,std::memory_order_release);
+#endif
+    have_last=false;mode.store(running,std::memory_order_release);
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+    playground::message(L"vr_r2_l2_enabled_hammerburst_hold_aim_only");
+#else
+    playground::message(L"vr_r2_enabled_hammerburst_only");
+#endif
+    return 0;
 }
 DWORD disable(){
     auto state=mode.load(std::memory_order_acquire);

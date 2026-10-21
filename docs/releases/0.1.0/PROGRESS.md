@@ -38,6 +38,10 @@ Gnasher 杠杆手势增量：新增纯逻辑的双手行程识别器，要求左
 
 实验性游戏线程 R2 接入：独立的 `OriginalR2Fire` 状态机只消费精确匹配的 XR 帧与累计边沿，核对原版 PC／Pawn／当前枪身份；处理漏帧内的短按、已有游戏按键占用、追踪失效和 100 ms 过期。只有已实测持续开火的 Hammerburst 被私有 `Playground` 候选允许调用原版 `ButtonPress/Release('R2')`，Torque Bow 等松开可能发射的武器仍禁止。候选入口需要显式启用，默认构建编译选项为关闭。最终候选的隔离购买版测试场以模拟来源完整经过共享帧、游戏线程及原版开火链：按住约 1.2 秒使用 15 发，55 ms 输入空档未误松开，正常 Release 清空 `bFire`／`bHoldingButton_R2`；再次按住后终止发布端，过期恢复清空两项且弹药停在 24 发。`analysis/playground-20261021/vr-fire-bridge-1022f/vr-fire-bridge-receipt.json` 标记通过，游戏、工作者退出和八个音频会话恢复已核实。中间一轮因测试控制文件共享错误在开火前停止，另一轮测试发布器把单次共享锁竞争当作永久故障提前退出；均完成桥接停机和进程清理，修复测试发布器后最终回执通过。离线状态机及候选／默认两种 DLL 构建通过；这尚非真机、全部武器、枪口弹道或默认启动器验收。
 
+原版 L2 与候选接入：单独零售版实测 `WarPC.ButtonPress/Release('L2')` 在 `bToggleTargeting=false` 的 Hammerburst 上建立／退出 `bPressingTargetingKey` 与 `bIsTargeting`，不需要额外调用 Pre；这一样本的 `FOVAngle` 未变化，不代表真实狙击镜已处理。隔离回执 `analysis/playground-20261021/l2-semantic-1022a/l2-button-receipt.json` 通过，游戏退出、桥接 Shutdown、八个音频会话恢复已核实。新增可选 `GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2`，在现有候选共享帧上处理左扳机边沿，原版切换开镜设置会被阻止；短按、共用输入状态、追踪丢失和身份改变的纯逻辑测试通过，默认 DLL 无相关导出。合并候选的后台联测在菜单视口尚未出现时超时，未投送模拟输入，故没有游戏内 L2 桥接通过结论；`analysis/playground-20261021/vr-l2-bridge-1022a/` 记录关闭与音频守护，独立游戏进程随后按身份清理。Gnasher 的两次 `SG_Chamber` 运行骨骼采样也未到达菜单入口，仍需在正常启动后读取主骨／杠杆矩阵；此时静态分件证据仍有效，但没有动画行程或逐实例骨骼控制证据。
+
+本轮离线验证还覆盖 `OriginalR2FireTest`、`OriginalL2AimTest`，并成功构建默认、仅 R2、R2+L2 三种私有 Playground DLL；导出表分别为无 VR 入口、仅 R2 入口和额外的 L2 状态入口。模拟发布器增加左扳机及双扳机测试动作，仍只用于置后静音测试，不进入默认启动清单。
+
 ## 合并0.0.2启动修复（2026-10-22）
 
 按用户要求切回 `codex/0.1.0`，将 `codex/0.0.2` 的完整修复与发布记录并入。合并前开发检查点为 `963d965b8590555bae31d047bef6ccc27d3e6469`，热修复源为 `a0a39b0`。公开0.0.1是独立根提交，两分支没有共同祖先；以公开源码 `4b621fc430fa5f96eba3bf70399810d3fd51e202` 为明确的内容基准进行三方合并，并保留两个原始父历史，不改写既有提交或发布标签。

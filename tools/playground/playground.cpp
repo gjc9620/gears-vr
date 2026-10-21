@@ -14,6 +14,9 @@
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "../vr-common/controller_input_bridge.h"
 #include "../vr-common/original_r2_fire.h"
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+#include "../vr-common/original_l2_aim.h"
+#endif
 #include "../vr-common/pose_bridge.h"
 #include "../vr-common/stereo_bridge.h"
 #endif
@@ -211,6 +214,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrFireStatus(void*){
     return (vrfire::mode.load(std::memory_order_acquire)<<16)|
            vrfire::last_status.load(std::memory_order_acquire);
 }
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2)
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrAimStatus(void*){
+    return (vrfire::mode.load(std::memory_order_acquire)<<16)|
+           vrfire::last_aim_status.load(std::memory_order_acquire);
+}
+#endif
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)

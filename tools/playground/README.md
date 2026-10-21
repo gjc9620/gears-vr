@@ -51,3 +51,14 @@ The default build excludes these exports and does not forward VR fire.
 behind-windows test child. It is a verification tool, not a launcher option or
 headset acceptance. Other weapons remain gated until their original
 press/release, cancellation, and co-input behavior are verified.
+
+The additional `GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2=ON` candidate requires
+the R2 frame bridge. The same explicit `PlaygroundVrFireEnable/Disable` session
+then forwards left-trigger edges to the original `ButtonPress/Release('L2')`
+and exposes `PlaygroundVrAimStatus`. It is limited to Hammerburst while the
+game's `bToggleTargeting` setting is false. Toggle-to-aim is gated because a
+release does not cancel its latched state. One direct original-button retail
+probe confirmed hold-to-aim, and the edge state machine passes isolated tests;
+the combined XR-frame-to-game L2 candidate still needs a successful running
+game test and headset acceptance. The default DLL excludes all VR input
+exports.
