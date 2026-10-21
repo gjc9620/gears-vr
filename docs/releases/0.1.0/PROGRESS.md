@@ -48,6 +48,8 @@ Gnasher／Longshot 原版动画静态核验：新增 `tools/weapon-models/audit_
 
 Gnasher 实例骨骼入口复核：Astra Max 只读核对已有脚本／对象证据，确认默认 `WeaponMesh.Animations` 直接为 `AnimNodeSequence`；`WarWeapon.SetWeaponAnim`、`FreezeWeaponAnim`、`SetWeaponAnimPosition` 为先验证原 `SG_Chamber` 姿态映射的最小原脚本路径。它接管整条序列且 `SetPosition(..., false)` 不触发通知，不能冒充单骨覆盖或完整音效流程。真正叠加单骨的 `AnimTree`＋`SkelControlSingleBone` 仅有声明和原脚本兼容路径，实例创建、`bIgnoreControllers`、GC 与更新顺序尚未验证；现有 Playground 请求在原 Tick 前执行，不是已证实的动画后修改点。下一次能稳定进入菜单的隔离零售版测试，先读当前枪实例与原序列主骨／杠杆相对矩阵，再决定最小控制候选。
 
+模型运动测试入口已落地为 `tools/playground/gnasher_sequence_probe.py`：使用已拥有的置后、静音私有购买版进程，通过原版拾取／装备与 `SetWeaponAnim`、`FreezeWeaponAnim`、`SetWeaponAnimPosition` 在 35 个位置取主骨／杠杆矩阵，运行时按骨名校验索引，停用 Playground 后通知测试启动器收尾；失败回执与衍生骨骼矩阵都只写忽略的 `analysis/`。脚本语法和命令入口通过，**尚无新的游戏样本**；此前两次菜单未就绪的结果仍不构成动画控制证据。Gnasher 本体不需预先切割，真正交互接线还要先拿到有效实例矩阵与手柄方向映射。
+
 本轮离线验证还覆盖 `OriginalR2FireTest`、`OriginalL2AimTest`，并成功构建默认、仅 R2、R2+L2 三种私有 Playground DLL；导出表分别为无 VR 入口、仅 R2 入口和额外的 L2 状态入口。模拟发布器增加左扳机及双扳机测试动作，仍只用于置后静音测试，不进入默认启动清单。
 
 ## 合并0.0.2启动修复（2026-10-22）
