@@ -27,3 +27,9 @@
 Export logs新增build-info.json、startup-attempts.json和startup-summary.txt；最多保留最近三次启动的有界摘要，尚未创建VR会话、失败／超时及半行日志均可处理，读取路径本地推导，导出过程不查询游戏进程。88项debug-launch与189项vr-launcher检查通过，共277项；包含普通Python子进程真实退出码1、PID身份不符、日志写失败、旧prime状态、半行、隐私／链接边界和无VR会话导出检查。新版模块已加入便携白名单，随包Python的-I/-B隔离预检通过（718项库存文件）。未为本次日志修改另启游戏或增加头显验收结论。待验证提交冻结后交由用户指定的[发布]agent重打整包并发布，旧ZIP校验值不适用于即将重打的日志增强包。
 
 随包CLI实跑还核对了进入游戏前的真实失败路径：对不存在的EXE进行预留，预期返回1，在game_validation阶段写下原始异常；随后以随包Python -I/-B导出10文件诊断包，版本、bundled_python和失败阶段均符合预期。检查中修正了新模块在隔离模式下的导入顺序。最终离线预检回执为 `analysis/release-0.0.2/startup-diagnostics-verified-stage-preflight.json`，CLI／导出回执为 `analysis/release-0.0.2/startup-diagnostics-verified-smoke.receipt.json`，两个单测日志为同目录的 `startup-diagnostics-debug-tests.log` 和 `startup-diagnostics-launcher-tests.log`。用于CLI检查的stage含QA运行文件，发布时必须重新创建干净stage。
+
+2026-10-22 正式发布已完成：以运行代码`4693593`重新创建干净stage，含启动日志增强的最终包为719个成员、14,357,748字节，SHA256 `37476ff5b12e3ceb06e4e7158674e15411de6c91184ab51bf4fe882b62f14352`。旧本地包已备份，未上传。最终中文/空格目录解压、随包Python -I/-B预检、GUI实际选择随包Python、带下载标记脚本、23项原生自检和增强日志导出均通过；不存在EXE的真实失败路径在game_validation阶段留下记录，随后导出10文件诊断包。无新增游戏运行。
+
+中英文[CHANGELOG](../../../CHANGELOG.md)已补全启动兼容性、EXE识别及启动诊断增强。公开源码从既有main独立提交为`88136d82a664112f5c6671c57685e3584fdf5193`，53个运行模块与ZIP语义一致；88+189共277项检查及公开源码GUI编译/隐藏自检通过。公开树733个文件通过远端库存核对，没有发布本地历史、个人配置或分析衍生物。
+
+GitHub [v0.0.2 Release](https://github.com/gjc9620/gears-vr/releases/tag/v0.0.2) 已公开并设为latest，附完整ZIP和SHA256SUMS。上传服务器摘要与发布后无认证重新下载的校验值均一致。原v0.0.1标签、Release正文与资产保持不变；本地0.0.1原包和0.1.0的963d965检查点保留。新增日志不扩展头显/关卡/GPU验收。详情见[打包记录](PACKAGE_BUILD.txt)，机器发布回执在忽略的`analysis/github-publish-0.0.2/publication-receipt.json`。

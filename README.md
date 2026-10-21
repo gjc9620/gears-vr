@@ -22,6 +22,8 @@ Lower Render scale if performance is poor. Camera closer = 0.4 is a suggested st
 
 What's changed
 
+See [CHANGELOG.md](CHANGELOG.md) for the complete version history.
+
 0.0.2 fixes Windows blocking the downloaded startup helper, Steam restarting the selected game into another process, multiple Steam-account settings files, and EXE auto-detection beside the launcher. Startup failures now retain the helper's detailed error output.
 The renderer is unchanged from 0.0.1. Act 1, KRVR + Apple Vision Pro and VD + Quest 3 were tested with that version. The 0.0.2 changes were checked for startup on the retail game; a new physical-headset regression is pending.
 
