@@ -621,7 +621,9 @@ namespace GearsVrUi {
                     using (var process = new Process()) {
                         process.StartInfo = new ProcessStartInfo(file, prefix + "-c " + Program.Quote("import sys; print(sys.executable); print(sys.version_info[0])")) {
                             UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden,
-                            RedirectStandardOutput = true, RedirectStandardError = true };
+                            RedirectStandardOutput = true, RedirectStandardError = true,
+                            StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8 };
+                        process.StartInfo.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
                         process.Start(); var output = process.StandardOutput.ReadToEndAsync(); var error = process.StandardError.ReadToEndAsync();
                         if (!process.WaitForExit(5000)) { process.Kill(); continue; } // Only the disposable Python locator probe.
                         string[] lines = output.Result.Trim().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
