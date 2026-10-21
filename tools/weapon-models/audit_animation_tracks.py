@@ -118,9 +118,13 @@ def audit(package, inventory_path, names_path, prefix, animset_path=None,
                 raise ValueError('Export hash mismatch: ' + row['Path'])
             properties, end, _, start = locate_defaults(raw, names, exports)
             required = ('SequenceName', 'SequenceLength', 'NumFrames',
-                        'RotationCompressionFormat', 'CompressedTrackOffsets')
+                        'CompressedTrackOffsets')
             if not all(key in properties for key in required):
                 raise ValueError('Missing animation metadata: ' + row['Path'])
+            # A missing compression tag means the class default applies. We
+            # cannot name that default from this export alone, but key counts
+            # remain available from CompressedTrackOffsets.
+            rotation_compression = properties.get('RotationCompressionFormat', {}).get('value')
             encoded = properties['CompressedTrackOffsets']['value']['hex']
             offsets = bytes.fromhex(encoded)
             if len(offsets) < 4 or len(offsets) % 4:
@@ -154,7 +158,7 @@ def audit(package, inventory_path, names_path, prefix, animset_path=None,
                 matching = [track for track in tracks if track['bone_name'] == sample_bone]
                 if len(matching) != 1:
                     raise ValueError('Expected exactly one matching bone in ' + row['Path'])
-                if properties['RotationCompressionFormat']['value'] != 'ACF_IntervalFixed32NoW':
+                if rotation_compression != 'ACF_IntervalFixed32NoW':
                     raise ValueError('Unsupported sampled rotation compression: ' + row['Path'])
                 track = matching[0]
                 sampled_rotation = {
@@ -171,7 +175,7 @@ def audit(package, inventory_path, names_path, prefix, animset_path=None,
                 'sequence_name': properties['SequenceName']['value'],
                 'sequence_length_seconds': properties['SequenceLength']['value'],
                 'frames': properties['NumFrames']['value'],
-                'rotation_compression': properties['RotationCompressionFormat']['value'],
+                'rotation_compression': rotation_compression,
                 'compressed_stream_bytes': stream_size,
                 'tracks': tracks,
                 **({'sampled_rotation': sampled_rotation} if sampled_rotation is not None else {}),

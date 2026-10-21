@@ -42,6 +42,8 @@ Gnasher 杠杆手势增量：新增纯逻辑的双手行程识别器，要求左
 
 Gnasher／Longshot 原版动画静态核验：新增 `tools/weapon-models/audit_animation_tracks.py`，用源包与导出各自的 SHA256 检查有界读取 `AnimSet` 和 `AnimSequence`，选定一根骨骼才解码采样，衍生结果留在忽略的 `analysis/`。购买版身份已核对的 `WarfareGame.u` 中，Gnasher `SG_Chamber` 的杠杆骨骼有 18 个旋转键，枪身仅 1 个；压缩键的杠杆父局部峰值约 32.40°，先转到约 24.02°、再回位。`SG_Reload`／失败／成功序列另有 45／60／27 个杠杆旋转键。Longshot `LS_Reload`／失败序列的枪栓各有 50／160 个旋转键，镜体和镜盖各只有 1 个。Python 语法检查与两枪完整轨道审核通过，Gnasher 18 键解码曲线复核通过。动画存储四元数还需转换到网格／世界坐标，游戏播放速率与完美窗口也须另证；零售游戏启动未进入菜单视口，因此本轮没有新增运行时骨骼或头显验收。此时无需真的裁切原版 Gnasher 枪模；优先复用独立蒙皮骨骼，Lancer 的混合权重交界另行处理。
 
+扩展动画审核：允许某些序列省略压缩格式属性时只读取明确写入的轨道偏移／键数，不推断未写的默认格式，也不做该轨道的四元数采样。Lancer、Hammerburst、Snub、Bolo 四组 AnimSet 的完整有界审计通过。Lancer 原版装填同时驱动弹匣、机匣、卡扣；Hammerburst 装填活动锁扣而弹匣骨骼常量；Snub 开火时滑套有 6 个平移键；Bolo 准备动作驱动多节链条。相应哈希与计数回执位于忽略的 `analysis/{lancer,hammerburst,snub,bolo}-animation-tracks.json`。这进一步限定了哪些部件应复用原动画／蒙皮、哪些独立手持弹药需另建交互，但不构成游戏内操作通过。
+
 本轮离线验证还覆盖 `OriginalR2FireTest`、`OriginalL2AimTest`，并成功构建默认、仅 R2、R2+L2 三种私有 Playground DLL；导出表分别为无 VR 入口、仅 R2 入口和额外的 L2 状态入口。模拟发布器增加左扳机及双扳机测试动作，仍只用于置后静音测试，不进入默认启动清单。
 
 ## 合并0.0.2启动修复（2026-10-22）
