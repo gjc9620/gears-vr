@@ -63,7 +63,20 @@ def sample_owned_game(args, receipt):
     identity = owned['game']
     bridge = None
     try:
-        bridge = Bridge(identity, args.dll, expected_sha256=args.dll_sha256)
+        # The owned launcher publishes its child identity before UE3 registries
+        # exist. Retry only these exact transient headers; all other resolver,
+        # version and loader failures remain fatal.
+        registry_deadline = time.monotonic() + 90
+        while True:
+            try:
+                bridge = Bridge(identity, args.dll, expected_sha256=args.dll_sha256)
+                break
+            except RuntimeError as error:
+                if str(error) not in ('Invalid name array header', 'Invalid object array header'):
+                    raise
+                if time.monotonic() >= registry_deadline:
+                    raise TimeoutError('Original UE3 registries never became ready') from error
+                time.sleep(.5)
         wait_for(lambda: bridge.export('PlaygroundEnable') == 0,
                  60, 'Playground menu viewport not available')
         if bridge.export('PlaygroundTestEnter') != 0:

@@ -191,6 +191,20 @@ Longshot 瞄准镜另设光学渲染任务。单纯放大原有双眼画面会�
 
 这些时长以本轮有效装填起点为零，读取当前版本、武器及装填状态实际生效的参数。动画总长度、历史一次成功按键间隔和字段名称本身都不能替代原版完美截止线；若参数随状态变化，不能只按枪名写死一个常数。
 
+对已保存的 `WarfareGame.u` UnrealScript 声明和逆向知识库做有界复核后，**尚未取得任何一把枪实际生效的完美窗口终点**。下表只是类默认值，不是体感换弹可直接使用的期限；`AR_PossibleSuccessStartPoint` 表示可能的成功起点，`ReloadDuration` 是普通装填时长，两者都不能冒充终点。基类相关窗口时长默认值为 `-1`，具体覆盖／原生计算路径仍需核对。
+
+| 原版武器类 | `AR_PossibleSuccessStartPoint` 默认值 | `ReloadDuration` 默认值 |
+| --- | ---: | ---: |
+| Lancer／`Weap_AssaultRifle` | 0.70 s | 2.50 s |
+| Hammerburst／`Weap_LocustAssaultRifle` | 0.70 s | 2.50 s |
+| Gnasher／`Weap_Shotgun` | 0.85 s | 3.00 s |
+| Longshot／`Weap_SniperRifle` | 1.00 s | 3.00 s |
+| Snub／`Weap_COGPistol` | 0.50 s | 2.00 s |
+| Boltok／`Weap_LocustPistol` | 0.50 s | 2.00 s |
+| Boomshot／`Weap_Boomer_base` | 尚未取得 | 尚未取得 |
+
+上述证据是已保存类默认值和脚本声明，既不证明运行时参数，也不证明原版判定函数。逐枪完美期限保持未配置，直到能从当前零售版的实际结果或完整原生判定路径确定窗口终点。
+
 - `t0`：R3 被当前武器接受并正式开始本轮装填的时刻，包含弹出／开膛与取弹耗时。
 - `t1`：本轮最后必要机械动作被确认完成的时刻；仅拿到弹药、只插入而未完成上膛都不算完成。
 - `Δt = t1 - t0`。规定数量和所有步骤均完成，且 `Δt < T_perfect_end` 时判完美；提前于 `T_perfect_start` 也可成功。
@@ -291,7 +305,7 @@ Gnasher 与 Boltok 的完整未发射单发弹药仍未在已有调查中确认�
 
 最小运行验证可先在**隔离测试子进程当前持有的 Gnasher 实例**上调用原脚本 `SetWeaponAnim('SG_Chamber')`、`FreezeWeaponAnim()`、`SetWeaponAnimPosition(位置)`，读取主骨／杠杆的相对矩阵并在测试后退出该子进程。该路径使用游戏现成的 `AnimNodeSequence`，可以先核对静态键和实际杠杆方向；它会接管整个序列且 `SetPosition(..., false)` 不触发动画通知，不能直接充当完整换弹／音效方案。若后续需在其他原动画上附加单骨控制，再验证以原序列为第一个子节点的 `AnimTree` 与 `SkelControlSingleBone`：本版 `Engine.Weapon.GetWeaponAnimNodeSeq` 脚本能寻址该结构，但树的逐实例创建、生命周期、`bIgnoreControllers` 和更新时序均尚未证实。当前 Playground 调用发生在原 `Tick/PlayerTick` 之前，不能当成已验证的“动画更新后改骨骼”入口；不要直接写 `LocalAtoms`／`SpaceBases`。
 
-为这一步准备了 `tools/playground/gnasher_sequence_probe.py`：仅接收已由测试启动器创建的私有、置后、静音购买版进程，按原版 `GiveTo`／装备流程拿到当前 Gnasher，运行 35 个受控序列位置，并按运行时骨骼名核对索引后记录主骨与杠杆矩阵。记录只写到忽略的 `analysis/`；探针会停用 Playground 并通知测试启动器关闭子进程。它已做语法与入口检查，尚未取得新的有效游戏样本，不能把这个工具的存在当作杠杆已随手运动。这个独立测试会暂时接管测试枪实例的整条 `SG_Chamber` 序列，退出私有子进程而不把该状态带到玩家游戏。
+为这一步准备了 `tools/playground/gnasher_sequence_probe.py`：仅接收已由测试启动器创建的私有、置后、静音购买版进程，按原版 `GiveTo`／装备流程拿到当前 Gnasher，运行 35 个受控序列位置，并按运行时骨骼名核对索引后记录主骨与杠杆矩阵。记录只写到忽略的 `analysis/`；探针会停用 Playground 并通知测试启动器关闭子进程。首次实测在 UE3 名称／对象表就绪前构建桥接而失败；探针现只对这两种明确的瞬时表头错误有限重试。第二次实测通过桥接建立，却在 60 秒内始终没有游戏菜单视口，因而未执行拾取或骨骼采样，`samples=[]`；私有游戏子进程和音频守护均正常收尾。不能把这两次失败解释为杠杆可动或不可动。这个独立测试会暂时接管测试枪实例的整条 `SG_Chamber` 序列，退出私有子进程而不把该状态带到玩家游戏；先查清菜单未就绪的原因，再重复采样。
 
 Longshot 的原版 `LS_Reload`／`LS_Reload_Fail` 中，`b_LS_Bolt` 各有 50／160 个旋转键，镜盖与镜体在这两条序列中各仅 1 个。枪栓有可复用动画证据，但该证据没有解决镜片内远景渲染，也没有把 LOD0 不活动的镜体骨骼变成独立可动几何。
 
