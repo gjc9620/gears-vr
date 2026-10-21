@@ -42,6 +42,8 @@ add_executable(ControllerInputBridgeTest ../vr-common/controller_input_bridge_te
 target_compile_options(ControllerInputBridgeTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(WeaponReloadModelTest ../vr-common/weapon_reload_model_test.cpp)
 target_compile_options(WeaponReloadModelTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(GnasherLeverTest ../vr-common/gnasher_lever_test.cpp)
+target_compile_options(GnasherLeverTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(BodySlotsTest ../vr-common/body_slots_test.cpp)
 target_compile_options(BodySlotsTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(WeaponInputRouterTest ../vr-common/weapon_input_router_test.cpp)
