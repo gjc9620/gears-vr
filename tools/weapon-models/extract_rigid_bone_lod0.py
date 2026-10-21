@@ -120,6 +120,49 @@ def raw_bone_reference(audited, bone):
             'mesh_space_pivot_verified': False}
 
 
+def _quaternion_multiply(a, b):
+    x, y, z, w = a
+    u, v, t, s = b
+    return (w*u+x*s+y*t-z*v, w*v-x*t+y*s+z*u,
+            w*t+x*v-y*u+z*s, w*s-x*u-y*v-z*t)
+
+
+def _quaternion_rotate(q, vector):
+    inverse = (-q[0], -q[1], -q[2], q[3])
+    product = _quaternion_multiply(_quaternion_multiply(q, (*vector, 0.)), inverse)
+    return product[:3]
+
+
+def mesh_space_reference_pivot(audited, bone):
+    """Compose audited parent-local reference poses into a static pivot candidate.
+
+    The original game component's live bone matrix and lever axis have not been
+    sampled, so the result must not be treated as a calibrated runtime hinge.
+    """
+    index = audited['bone_names'].index(bone)
+    poses = []
+    for number, reference in enumerate(audited['reference_bones'][:index + 1]):
+        if reference['bone'] != audited['bone_names'][number]:
+            raise ValueError('Reference bone ordering differs from audited names')
+        position = reference['position_parent_local_raw']
+        orientation = reference['orientation_xyzw']
+        magnitude = math.sqrt(sum(value*value for value in orientation))
+        if not .98 <= magnitude <= 1.02:
+            raise ValueError('Invalid reference bone orientation')
+        orientation = tuple(value/magnitude for value in orientation)
+        if number:
+            parent = reference['parent_index']
+            if not 0 <= parent < number:
+                raise ValueError('Invalid reference bone parent')
+            parent_position, parent_orientation = poses[parent]
+            translated = _quaternion_rotate(parent_orientation, position)
+            position = tuple(parent_position[axis] + translated[axis]
+                             for axis in range(3))
+            orientation = _quaternion_multiply(parent_orientation, orientation)
+        poses.append((position, orientation))
+    return list(poses[index][0])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-manifest', required=True, type=Path)
@@ -174,6 +217,9 @@ def main():
                 'material_face_counts': extracted['material_face_counts'],
                 'source_material_object_refs': list(references),
                 'raw_reference_bone': raw_bone_reference(audited, args.target_bone),
+                'mesh_space_reference_pivot_candidate_raw':
+                    mesh_space_reference_pivot(audited, args.target_bone),
+                'runtime_pivot_and_axis_verified': False,
                 'geometry_only': True, 'runtime_ready': False,
                 'obj': path.name, 'obj_sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
     (output_dir / 'part.json').write_text(json.dumps(metadata, indent=2) + '\n',

@@ -1,9 +1,10 @@
 import pathlib
+import math
 import struct
 import tempfile
 import unittest
 
-from extract_rigid_bone_lod0 import extract, write_obj
+from extract_rigid_bone_lod0 import extract, mesh_space_reference_pivot, write_obj
 
 
 def fixture():
@@ -36,6 +37,20 @@ def fixture():
 
 
 class RigidBoneExtractionTests(unittest.TestCase):
+    def test_parent_local_reference_pose_composes_into_mesh_space(self):
+        quarter_turn = math.sqrt(.5)
+        audited = {'bone_names': ['root', 'body', 'hinge'], 'reference_bones': [
+            {'bone': 'root', 'parent_index': 0, 'position_parent_local_raw': (10., 20., 0.),
+             'orientation_xyzw': (0., 0., quarter_turn, quarter_turn)},
+            {'bone': 'body', 'parent_index': 0, 'position_parent_local_raw': (2., 0., 0.),
+             'orientation_xyzw': (0., 0., 0., 1.)},
+            {'bone': 'hinge', 'parent_index': 1, 'position_parent_local_raw': (0., 3., 0.),
+             'orientation_xyzw': (0., 0., 0., 1.)}]}
+        result = mesh_space_reference_pivot(audited, 'hinge')
+        self.assertAlmostEqual(result[0], 7.)
+        self.assertAlmostEqual(result[1], 22.)
+        self.assertAlmostEqual(result[2], 0.)
+
     def test_target_is_extracted_with_primary_uv_despite_other_mixed_chunk(self):
         raw, audited = fixture()
         result = extract(raw, audited, 'magazine')
