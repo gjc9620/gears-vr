@@ -18,9 +18,14 @@ int main(){
     auto empty=hands.tap(BodySlot::grenade,game);
     assert(empty.event==EquipmentEvent::empty_slot&&empty.inventory_slot==1&&!empty.weapon);
     game.weapon_in_slot[1]=404;
+    assert(hands.tap(BodySlot::grenade,game).event==EquipmentEvent::empty_slot);
     game.throwable_count_known=true;
     game.throwable_count=0;
     assert(hands.tap(BodySlot::grenade,game).event==EquipmentEvent::empty_slot);
+    game.throwable_count=2;
+    assert(hands.tap(BodySlot::grenade,game).event==EquipmentEvent::request_original_switch);
+    assert(hands.switch_rejected(game).event==EquipmentEvent::interrupted);
+    game.throwable_count=0;
     auto switch_to_left=hands.tap(BodySlot::weapon_2,game);
     assert(switch_to_left.event==EquipmentEvent::request_original_switch&&
            switch_to_left.inventory_slot==2&&switch_to_left.weapon==202);

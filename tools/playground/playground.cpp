@@ -20,6 +20,9 @@
 #include "../vr-common/pose_bridge.h"
 #include "../vr-common/stereo_bridge.h"
 #endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
+#include "../vr-common/weapon_equipment_model.h"
+#endif
 
 namespace {
 using uptr=std::uintptr_t;
@@ -121,6 +124,9 @@ bool invoke(Request* r){
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 #include "playground_controller.inl"
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
+#include "vr_equipment_snapshot.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "vr_fire_adapter.inl"
 #endif
@@ -145,6 +151,10 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
             if(auto r=pending.exchange(nullptr)){
                 const auto ok=invoke(r);InterlockedExchange(&r->state,ok?2:-1);
             }
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
+            if(playground::automatic&&!wcscmp(f,L"PlayerTick")&&
+               object==playground::pointer(playground::player,L"Actor"))vrequip::tick(object);
+#endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
             if(playground::automatic&&!wcscmp(f,L"PlayerTick")&&
                object==playground::pointer(playground::player,L"Actor"))vrfire::tick(object);

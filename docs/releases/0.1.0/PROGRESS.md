@@ -74,6 +74,10 @@ Lancer 拆件错误来源已定位：先前 62 面的 `X≈0` 片状块位于材
 
 取枪动画边界复核：Astra Max 仅用已保存的 UnrealScript 和现有 VM 观察文档确认，原版 `SetCurrentWeapon`／`ChangedWeapon`／`WeaponPuttingDown`／`Active` 负责复制、挂接及计时，不能跳过；身体取放枪姿态分别在 `TimeWeaponPutDown/TimeWeaponEquipping` 内调用。姿态函数还被手雷重装与其他动作复用；现有 CallFunction 入口的参数尚由 caller frame 在函数内求值，直接吞掉调用会错过参数消费。未新增危险的全局动画抑制或同步完成装备 Hook，下一步先做原游戏 caller／callee 边界与参数消费的只读验证。
 
+库存只读候选增量：新增默认关闭的 `GEARS_PLAYGROUND_EQUIPMENT_OBSERVE`，只在本地 `WarPC.PlayerTick` 游戏线程上每 500 ms 调原版 `GetWeaponInSlot`、`CanSwitchWeapons` 与手雷 `HasAnyAmmo`，并核验 `WarPC`／`WarPawn`／`WarInventoryManager`、`CharacterSlot`、当前枪和 `bSwitchingWeapons`。手雷数量取 `SpareAmmoCount`，按原版人类玩家 `HasAnyAmmo` 判定是否可取；若原版无限备用弹药允许使用，则标记为无上限。之前考虑的 `GetTotalAmmoInGun` 包含当前弹仓，不适合手雷选择门槛，已弃用。查询或类型不符即丢弃快照；`WeaponEquipmentModel` 对未知手雷数量改为按空槽处理。独立状态单测、私有候选 DLL 和默认关闭的 DLL 均完成 MSVC Release 构建。尚未拿到实际购买版运行时快照，且只读候选不执行取枪、收枪、黄色提示或音效，默认启动器未改。
+
+库存观察运行尝试：独立购买版测试子进程 PID `31700` 按置后、静音、禁后台物理手柄输入策略启动，私有候选 DLL `b607bb7e…16d35b` 注入后 `PlaygroundInitialize` 成功，但 120 秒内 `PlaygroundEnable` 一直找不到菜单视口，未进入场景，日志也没有有效 `equipment_snapshot`。`PlaygroundShutdown=0`、测试游戏退出、音频守护恢复，回执在忽略的 `analysis/weapon-equipment-snapshot/owned-probe-receipt.json`。这与先前 Gnasher 探针的菜单未就绪同类，不能推断库存查询成功或失败；在拿到启动原因／不同的启动路径之前不再按同样条件重复。默认 DLL、启动器及用户配置均未更换。
+
 ## 合并0.0.2启动修复（2026-10-22）
 
 按用户要求切回 `codex/0.1.0`，将 `codex/0.0.2` 的完整修复与发布记录并入。合并前开发检查点为 `963d965b8590555bae31d047bef6ccc27d3e6469`，热修复源为 `a0a39b0`。公开0.0.1是独立根提交，两分支没有共同祖先；以公开源码 `4b621fc430fa5f96eba3bf70399810d3fd51e202` 为明确的内容基准进行三方合并，并保留两个原始父历史，不改写既有提交或发布标签。

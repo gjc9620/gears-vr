@@ -95,7 +95,9 @@ public:
         if(phase_==Phase::pickup||phase_==Phase::switching||
            game.animation_busy||!game.can_switch)return {EquipmentEvent::busy};
         const auto item=game.weapon_in_slot[*slot];
-        if(!item||(*slot==1&&game.throwable_count_known&&!game.throwable_count))
+        // A grenade actor may outlive its last charge. If the authoritative
+        // count cannot be read, fail closed instead of creating a throwable.
+        if(!item||(*slot==1&&(!game.throwable_count_known||!game.throwable_count)))
             return {EquipmentEvent::empty_slot,*slot};
         if(phase_==Phase::held&&slot_==*slot&&weapon_==item&&
            game.current_weapon==item){

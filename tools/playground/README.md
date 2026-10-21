@@ -62,3 +62,15 @@ probe confirmed hold-to-aim, and the edge state machine passes isolated tests;
 the combined XR-frame-to-game L2 candidate still needs a successful running
 game test and headset acceptance. The default DLL excludes all VR input
 exports.
+
+For private inventory verification, build with
+`GEARS_PLAYGROUND_EQUIPMENT_OBSERVE=ON` and a distinct
+`GEARS_PLAYGROUND_OUTPUT_NAME`. Every 500 ms on the local player's game
+thread, the observer checks the four original inventory slots, current weapon,
+switch permission, switch animation flag and grenade charges. It writes
+changes to the PID-specific Playground log. The grenade charge read follows
+the original human-player `HasAnyAmmo`/spare-ammo rule; unknown quantities
+fail closed in the equipment state model. This candidate only observes: it
+does not move a gun, suppress an animation, play a sound or call
+`SetWeaponFromSlot`. The default build excludes the observer, and a successful
+compile does not establish a valid retail runtime snapshot.
