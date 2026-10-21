@@ -29,13 +29,18 @@ int main() {
 
     ControllerEdgeCounter edges;
     auto edge=frame;edge.hands[1].buttons=0;edge.hands[1].buttons_active=controller_stick_click;
+    edge.hands[1].squeeze_active=1;edge.hands[1].squeeze=0;
     edge.hands[1].trigger=0;edges.update(edge); // first focused frame is a baseline
     CHECK(edge.hands[1].pressed[control_stick]==0&&edge.hands[1].pressed[control_trigger]==0);
     edge.hands[1].buttons=controller_stick_click;edge.hands[1].trigger=.9f;
+    edge.hands[1].squeeze=.9f;edge.hands[1].grip.position.x=.25;
     edges.update(edge);
     CHECK(edge.hands[1].pressed[control_stick]==1&&edge.hands[1].pressed[control_trigger]==1);
-    edge.hands[1].buttons=0;edge.hands[1].trigger=0;edges.update(edge);
+    CHECK(edge.hands[1].pressed[control_squeeze]==1&&edge.hands[1].last_squeeze_press_grip.position.x==.25);
+    edge.hands[1].buttons=0;edge.hands[1].trigger=0;edge.hands[1].squeeze=0;
+    edge.hands[1].grip.position.x=1.25;edges.update(edge);
     CHECK(edge.hands[1].released[control_stick]==1&&edge.hands[1].released[control_trigger]==1);
+    CHECK(edge.hands[1].last_squeeze_press_grip.position.x==.25);
     // A game tick that only saw baseline and this third XR frame still sees
     // both transitions through cumulative counts.
     edge.focused=0;edges.update(edge);
@@ -44,6 +49,8 @@ int main() {
     CHECK(edge.hands[1].pressed[control_stick]==0); // focus regain must not click
     edges.profile_changed();edges.update(edge);
     CHECK(edge.input_epoch==3&&edge.hands[1].pressed[control_stick]==0);
+    edge.space_epoch=3;edges.update(edge);
+    CHECK(edge.input_epoch==4&&edge.hands[1].pressed[control_stick]==0);
 
     ControllerInputBridge publisher,duplicate,reader;
     const auto pid=GetCurrentProcessId();

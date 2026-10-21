@@ -26,6 +26,8 @@ struct ControllerHand {
     // Cumulative within input_epoch. A skipped XR frame cannot erase a brief
     // press/release; the game may compare these counters at its own tick rate.
     std::uint32_t pressed[control_count]{},released[control_count]{};
+    Pose last_squeeze_press_grip{};
+    std::uint64_t last_squeeze_press_flags{},last_squeeze_press_sequence{};
 };
 struct ControllerInputFrame {
     StereoSource source{StereoSource::RuntimeTracked};
@@ -58,6 +60,8 @@ inline bool controller_hand_shape_valid(ControllerHand const& hand,unsigned inde
                   hand.pressed[control_y]||hand.released[control_y]))return false;
     if(hand.grip_active&&(hand.grip_flags&3)==3&&!stereo_pose_valid(hand.grip))return false;
     if(hand.aim_active&&(hand.aim_flags&3)==3&&!stereo_pose_valid(hand.aim))return false;
+    if(hand.last_squeeze_press_sequence&&(hand.last_squeeze_press_flags&3)==3&&
+       !stereo_pose_valid(hand.last_squeeze_press_grip))return false;
     return true;
 }
 inline bool controller_frame_shape_valid(ControllerInputFrame const& frame) {
@@ -66,6 +70,7 @@ inline bool controller_frame_shape_valid(ControllerInputFrame const& frame) {
        frame.sync_ns>frame.received_ns||frame.focused>1)return false;
     for(unsigned i=0;i<2;++i){
         if(!controller_hand_shape_valid(frame.hands[i],i))return false;
+        if(frame.hands[i].last_squeeze_press_sequence>frame.sequence)return false;
         for(unsigned control=0;control<control_count;++control){
             const auto presses=frame.hands[i].pressed[control],releases=frame.hands[i].released[control];
             if(presses>frame.sequence||releases>frame.sequence||
@@ -87,8 +92,11 @@ inline bool controller_frame_matches(ControllerInputFrame const& frame,StereoSam
 // baseline, not an action; counters reset whenever focus/profile changes.
 class ControllerEdgeCounter {
     std::uint64_t epoch_{1};
+    std::uint64_t session_{},space_epoch_{};
     bool focused_{},down_[2][control_count]{};
     std::uint32_t pressed_[2][control_count]{},released_[2][control_count]{};
+    Pose last_squeeze_press_grip_[2]{};
+    std::uint64_t last_squeeze_press_flags_[2]{},last_squeeze_press_sequence_[2]{};
     static bool down(ControllerHand const& hand,unsigned control,bool previous) noexcept {
         constexpr std::uint32_t bits[]={controller_a,controller_b,controller_x,controller_y,controller_stick_click};
         if(control<5)return (hand.buttons_active&bits[control])&&(hand.buttons&bits[control]);
@@ -103,25 +111,47 @@ class ControllerEdgeCounter {
         for(unsigned hand=0;hand<2;++hand)for(unsigned control=0;control<control_count;++control){
             down_[hand][control]=false;pressed_[hand][control]=released_[hand][control]=0;
         }
+        for(unsigned hand=0;hand<2;++hand){
+            last_squeeze_press_grip_[hand]={};last_squeeze_press_flags_[hand]=0;
+            last_squeeze_press_sequence_[hand]=0;
+        }
     }
 public:
     void profile_changed() noexcept {boundary();}
     void update(ControllerInputFrame& frame) noexcept {
+        if(session_&&(session_!=frame.session||space_epoch_!=frame.space_epoch))boundary();
+        session_=frame.session;space_epoch_=frame.space_epoch;
         if(!frame.focused){
             if(focused_)boundary();
-            for(auto& hand:frame.hands)for(unsigned control=0;control<control_count;++control)
-                hand.pressed[control]=hand.released[control]=0;
+            for(auto& hand:frame.hands){
+                for(unsigned control=0;control<control_count;++control)
+                    hand.pressed[control]=hand.released[control]=0;
+                hand.last_squeeze_press_grip={};hand.last_squeeze_press_flags=0;
+                hand.last_squeeze_press_sequence=0;
+            }
             frame.input_epoch=epoch_;return;
         }
         const bool baseline=!focused_;
         for(unsigned hand=0;hand<2;++hand)for(unsigned control=0;control<control_count;++control){
             const bool current=down(frame.hands[hand],control,down_[hand][control]);
             if(!baseline&&current!=down_[hand][control]){
-                if(current)++pressed_[hand][control];else ++released_[hand][control];
+                if(current){
+                    ++pressed_[hand][control];
+                    if(control==control_squeeze){
+                        last_squeeze_press_grip_[hand]=frame.hands[hand].grip;
+                        last_squeeze_press_flags_[hand]=frame.hands[hand].grip_flags;
+                        last_squeeze_press_sequence_[hand]=frame.sequence;
+                    }
+                }else ++released_[hand][control];
             }
             down_[hand][control]=current;
             frame.hands[hand].pressed[control]=pressed_[hand][control];
             frame.hands[hand].released[control]=released_[hand][control];
+        }
+        for(unsigned hand=0;hand<2;++hand){
+            frame.hands[hand].last_squeeze_press_grip=last_squeeze_press_grip_[hand];
+            frame.hands[hand].last_squeeze_press_flags=last_squeeze_press_flags_[hand];
+            frame.hands[hand].last_squeeze_press_sequence=last_squeeze_press_sequence_[hand];
         }
         focused_=true;frame.input_epoch=epoch_;
     }

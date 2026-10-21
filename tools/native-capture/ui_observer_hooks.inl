@@ -197,15 +197,20 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
     crosshair_live::TickScope crosshair_tick(self,frame);
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
     if(controller_input_observer&&crosshair_tick.entered){
-        gears_vr::ControllerInputFrame hands{};uint64_t snapshot_world{};
+        gears_vr::ControllerInputFrame hands{};gears_vr::StereoSample stereo{};
+        gears_weapon::ArmspanCalibration calibration{};gears_vr::Pose body{};uint64_t snapshot_world{};
         {std::lock_guard<std::mutex> mailbox(controller_input_mailbox_mutex);
-            hands=controller_input_mailbox;snapshot_world=controller_input_mailbox_world;}
+            hands=controller_input_mailbox;stereo=controller_input_mailbox_stereo;
+            calibration=controller_input_mailbox_calibration;body=controller_input_mailbox_body;
+            snapshot_world=controller_input_mailbox_world;}
         const auto time=gears_vr::monotonic_ns();
         std::lock_guard<std::mutex> tick_guard(controller_input_tick_mutex);
         if(snapshot_world!=committed_world_generation.load()){
-            controller_input_tick_session=0;++controller_input_tick_world_rejected;
+            controller_input_tick_session=0;controller_input_intent_router.reset();
+            ++controller_input_tick_world_rejected;
         }else if(!hands.focused||!hands.received_ns||time<hands.received_ns||time-hands.received_ns>100000000){
-            controller_input_tick_session=0;++controller_input_tick_stale;
+            controller_input_tick_session=0;controller_input_intent_router.reset();
+            ++controller_input_tick_stale;
         }
         else if(hands.session!=controller_input_tick_session||hands.space_epoch!=controller_input_tick_epoch||
                 hands.profile_generation!=controller_input_tick_profile||
@@ -214,9 +219,16 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
             controller_input_tick_profile=hands.profile_generation;
             controller_input_tick_input_epoch=hands.input_epoch;
             controller_input_tick_sequence=hands.sequence;
+            controller_input_intent_router.advance(hands,stereo,calibration,body,time,simulator_operator);
             ++controller_input_tick_baseline;
         }else if(hands.sequence<=controller_input_tick_sequence)++controller_input_tick_replayed;
-        else {controller_input_tick_sequence=hands.sequence;++controller_input_tick_accepted;}
+        else {
+            controller_input_tick_sequence=hands.sequence;++controller_input_tick_accepted;
+            const auto routed=controller_input_intent_router.advance(hands,stereo,calibration,body,time,simulator_operator);
+            if(routed.status==gears_weapon::RouterStatus::accepted)
+                for(unsigned i=0;i<routed.count;++i)
+                    ++controller_input_intents[static_cast<unsigned>(routed.intents[i])];
+        }
     }
 #endif
     if(ui_observer_enabled&&recording.load()){

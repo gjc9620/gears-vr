@@ -12,8 +12,8 @@ inline std::uint64_t controller_process_start(HANDLE process) noexcept {
     return (std::uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime;
 }
 struct ControllerInputPacket {
-    static constexpr std::uint32_t magic_value=0x47564332; // GVC2
-    static constexpr std::uint32_t version_value=2;
+    static constexpr std::uint32_t magic_value=0x47564333; // GVC3
+    static constexpr std::uint32_t version_value=3;
     static constexpr unsigned capacity=8;
     std::uint32_t magic{magic_value},version{version_value},size{sizeof(ControllerInputPacket)},game_pid{};
     std::uint64_t game_start{},publisher_pid{},publisher_start{};
@@ -44,8 +44,8 @@ class ControllerInputBridge {
             packet.qpc_frequency==frequency.QuadPart;
     }
     static void name(wchar_t (&out)[128],DWORD pid,std::uint64_t created,bool lock) noexcept {
-        swprintf_s(out,lock?L"Local\\GearsVR.ControllerInputLock.v2.%lu.%llu":
-                           L"Local\\GearsVR.ControllerInput.v2.%lu.%llu",
+        swprintf_s(out,lock?L"Local\\GearsVR.ControllerInputLock.v3.%lu.%llu":
+                           L"Local\\GearsVR.ControllerInput.v3.%lu.%llu",
                    pid,static_cast<unsigned long long>(created));
     }
     static bool lock_now(HANDLE mutex) noexcept {

@@ -16,6 +16,7 @@
 #include "../vr-common/stereo_bridge.h"
 #include "../vr-common/controller_input_bridge.h"
 #include "../vr-common/body_slots.h"
+#include "../vr-common/weapon_input_router.h"
 #include "../vr-common/gpu_share.h"
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
 #include "../vr-common/gpu_mirror.h"
@@ -328,12 +329,17 @@ uint64_t controller_input_matched{},controller_input_missing{},controller_input_
 uint64_t controller_input_first_sequence{},controller_input_last_sequence{},controller_input_profile_generation{};
 std::mutex controller_input_mailbox_mutex;
 gears_vr::ControllerInputFrame controller_input_mailbox{};
+gears_vr::StereoSample controller_input_mailbox_stereo{};
+gears_weapon::ArmspanCalibration controller_input_mailbox_calibration{};
+gears_vr::Pose controller_input_mailbox_body{};
 uint64_t controller_input_mailbox_world{};
 std::atomic<uint64_t> controller_input_tick_accepted{},controller_input_tick_baseline{},
     controller_input_tick_stale{},controller_input_tick_replayed{},controller_input_tick_world_rejected{};
 std::mutex controller_input_tick_mutex;
 uint64_t controller_input_tick_session{},controller_input_tick_epoch{},controller_input_tick_profile{},
     controller_input_tick_input_epoch{},controller_input_tick_sequence{};
+gears_weapon::WeaponInputRouter controller_input_intent_router;
+std::array<std::atomic<uint64_t>,16> controller_input_intents{};
 std::atomic<bool> outage_diagnostics{false};
 gears_outage::ActivitySnapshot outage_built;
 gears_outage::Window outage_window;
@@ -1160,6 +1166,16 @@ void print_stereo(FILE* file) {
         fprintf(file,"controller_armspan_observer measured=%u progress=%.6g armspan_metres=%.6g hands_below_head_metres=%.6g saved=0\n",
             measured?1u:0u,controller_armspan_observer.progress(),
             measured?measured->armspan_metres:0.,measured?measured->hands_below_head_metres:0.);
+        fprintf(file,"controller_intent_observer shoulder_ammo=%llu weapon_2=%llu weapon_1=%llu pistol=%llu grenade=%llu recenter=%llu reload=%llu aim_down=%llu fire_down=%llu game_actions_called=0 body_origin=diagnostic_head_translation\n",
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::grab_ammo)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::weapon_2)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::weapon_1)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::pistol)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::grenade)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::recenter)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::reload)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::aim_down)].load(),
+            controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::fire_down)].load());
     }
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
     // Final requests remain serviceable even if rendering stopped immediately
@@ -3111,6 +3127,10 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                     ++controller_input_tracked_right;
                 {std::lock_guard<std::mutex> mailbox(controller_input_mailbox_mutex);
                     controller_input_mailbox=hands;
+                    controller_input_mailbox_stereo=sample;
+                    if(const auto measured=controller_armspan_observer.result())
+                        controller_input_mailbox_calibration=*measured;
+                    controller_input_mailbox_body={sample.head.position,result.reference.orientation};
                     controller_input_mailbox_world=committed_world_generation.load();}
             }else {++controller_input_missing;
                 if(!controller_armspan_observer.result())controller_armspan_observer.reset();}
