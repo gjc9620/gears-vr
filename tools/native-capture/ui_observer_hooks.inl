@@ -6,6 +6,7 @@ gears_ui_layout::Parameters ui_hud_layout_parameters{};
 struct UiLayoutCounts {std::atomic<uint64_t> considered{},planned{},fallback{},applied{};} ui_layout_counts;
 gears_ui::Config ui_config;
 #include "crosshair_assignment_live.inl"
+#include "weapon_call_live.inl"
 #include "ui_runtime_binding.h"
 #include "ui_canvas_tile_batch.h"
 std::mutex ui_binding_mutex;
@@ -127,6 +128,7 @@ bool retire_ui_world(gears_owned_ui_world::Guards const* owned_guards=nullptr,
 // Only on the owning thread's next outer Scope, after old readers drained.
 void reset_ui_world_tls(){
     ui_call_boundary::reset_tls();
+    weapon_call_live::reset_tls();
     ui_logical_group_live::reset_tls();
     ui_scene_root_live::reset_tls();
     ui_invocation={};ui_payload_context=nullptr;ui_index_context=nullptr;ui_execute_entry_return=0;
@@ -195,6 +197,7 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeCon
 void __fastcall hook_ui_vm(void* self,void* frame,void* result){
     Scope active_scope;if(!active_scope.world()){ui_original[0](self,frame,result);return;}
     crosshair_live::TickScope crosshair_tick(self,frame);
+    weapon_call_live::TickScope weapon_tick(crosshair_tick);
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
     if(controller_input_observer&&crosshair_tick.entered){
         gears_vr::ControllerInputFrame hands{};gears_vr::StereoSample stereo{};
@@ -509,6 +512,7 @@ void print_ui_observer(FILE* status,bool disabled){
         ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_hud_plane_enabled?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;
     ui_call_boundary::print(status);
+    weapon_call_live::print(status);
     ui_scene_root_live::print(status);
     ui_logical_group_live::print(status);
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER

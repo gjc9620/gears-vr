@@ -22,6 +22,8 @@ Gnasher 杠杆手势增量：新增纯逻辑的双手行程识别器，要求左
 
 模型拆件核验增量：原版六件已定位的武器 `SkeletalMesh` 通过包内哈希和骨骼层级审核；Gnasher 确有独立命名的杠杆骨骼，Lancer／Hammerburst 的弹匣、Longshot 的枪栓／镜体、Snub 的滑套／弹匣也有相应骨骼。查看用 GLB 丢失蒙皮，不能由其外观看出原版部件是否独立。新增可复现的只读审核脚本，报告放在忽略的 `analysis/weapon-bone-audit.json`。蒙皮权重、动画行程和游戏内控制未验证；Boltok 骨骼命名不具部件语义，其余武器仍待逐件调查。
 
+开火链只读观察增量：为现有脚本身份凭证增加可选的六函数序列（`WarWeapon`／`Engine.Weapon.InstantFire`、`WarPawn.GetAdjustedAimFor`、`WarWeapon.GetAdjustedAim`、`Engine.Weapon.CalcWeaponFire`、`WarWeapon.ProcessInstantHit`）。仅在私有手柄观察会话申请；原始角色、包、脚本地址／大小与入口每次由当前进程核验。复用已有 VM 调用边界，不设第二个 detour，不调用武器函数，也不读取结果缓冲或参数。普通 `WarPC.PlayerTick` 的同步调用栈中，记录原始调用前后元数据；子调用必须有实际 `Engine.Weapon.InstantFire` 函数体祖先，才标作射击体内观察。完整 Tick 结束后再次验证身份和世界代次才提交有限行数；世界重绑定也申请同样凭证。纯内存测试通过；尚无实际游戏开火轨迹，因此不证明该 Tick 覆盖连发计时器，也未取得射线数值、更改弹道或接通枪口。
+
 ## 合并0.0.2启动修复（2026-10-22）
 
 按用户要求切回 `codex/0.1.0`，将 `codex/0.0.2` 的完整修复与发布记录并入。合并前开发检查点为 `963d965b8590555bae31d047bef6ccc27d3e6469`，热修复源为 `a0a39b0`。公开0.0.1是独立根提交，两分支没有共同祖先；以公开源码 `4b621fc430fa5f96eba3bf70399810d3fd51e202` 为明确的内容基准进行三方合并，并保留两个原始父历史，不改写既有提交或发布标签。

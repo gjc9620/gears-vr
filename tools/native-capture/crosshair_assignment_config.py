@@ -23,6 +23,14 @@ ROLES = ('writer war_pc controller pawn weapon war_pawn war_weapon lhs member '
 LINKS = ('controller_pawn pawn_controller pawn_weapon weapon_instigator').split()
 VIEW_FIELDS = dict(cam_loc=('CamLoc', 'Vector'), cam_rot=('CamRot', 'Rotator'),
                    start_trace=('StartTrace', 'Vector'), trace_dir=('TraceDir', 'Vector'))
+WEAPON_CALLS = (
+    ('war_instant_fire', 'WarWeapon', 'InstantFire', 'weapon'),
+    ('engine_instant_fire', 'Weapon', 'InstantFire', 'weapon'),
+    ('pawn_adjusted_aim', 'WarPawn', 'GetAdjustedAimFor', 'pawn'),
+    ('weapon_adjusted_aim', 'WarWeapon', 'GetAdjustedAim', 'weapon'),
+    ('calc_weapon_fire', 'Weapon', 'CalcWeaponFire', 'weapon'),
+    ('process_instant_hit', 'WarWeapon', 'ProcessInstantHit', 'weapon'),
+)
 
 
 class CrosshairConfigRejected(RuntimeError):
@@ -49,7 +57,7 @@ def _require(ok, reason):
         raise CrosshairConfigRejected(reason)
 
 
-def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False, include_aim_state=False, entry_reader=None,
+def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False, include_aim_state=False, include_weapon_calls=False, entry_reader=None,
                                      reuse_assembly_identities=True):
     """Certify selected evidence, allowing only bounded registry count growth.
 
@@ -60,7 +68,7 @@ Shared VM entry bytes are deliberately not certified (the UI owner may own it).
     if type(reuse_assembly_identities) is not bool:
         raise ValueError('reuse_assembly_identities must be boolean')
     try:
-        return _build(resolver, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader,
+        return _build(resolver, camera, include_tick_roots, include_writer_view, include_aim_state, include_weapon_calls, entry_reader,
                       reuse_assembly_identities)
     except CrosshairConfigRejected:
         raise
@@ -68,7 +76,7 @@ Shared VM entry bytes are deliberately not certified (the UI owner may own it).
         raise CrosshairConfigRejected('Fresh certificate rejected: ' + str(e)) from e
 
 
-def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader,
+def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state, include_weapon_calls, entry_reader,
            reuse_assembly_identities):
     p = r.profile
     started = time.perf_counter_ns()
@@ -333,6 +341,24 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
             fn = child(owner, 'PlayerTick', 'Function'); sm, _ = script(fn)
             roots.append(dict(name=name, function=add(fn), owner=add(owner), script=sm,
                               runtime_coverage_proven=False))
+    weapon_calls = []
+    if include_weapon_calls:
+        _require(include_tick_roots, 'Weapon call observation requires certified Tick roots')
+        weapon_chain = list(ancestors(war_weapon))
+        engine_owners = [a for a in weapon_chain if fresh(a)['name'] == 'Weapon' and
+                         fresh(fresh(a)['outer'])['name'] == 'Engine']
+        _require(len(engine_owners) == 1, 'Exact Engine.Weapon owner unavailable')
+        engine_weapon = engine_owners[0]
+        for owner, package in ((war_weapon, 'WarfareGame'), (war_pawn, 'WarfareGame'),
+                               (engine_weapon, 'Engine')):
+            exact(fresh(owner)['outer'], package, 'Package')
+        owners = {'WarWeapon': war_weapon, 'WarPawn': war_pawn, 'Weapon': engine_weapon}
+        for role, owner_name, function_name, receiver in WEAPON_CALLS:
+            owner = owners[owner_name]
+            fn = child(owner, function_name, 'Function')
+            sm, _ = script(fn)
+            weapon_calls.append(dict(role=role, owner=add(owner), function=add(fn),
+                                     receiver=receiver, script=sm, runtime_coverage_proven=False))
     # Class identity closure required by the native helper; selected class
     # superchains are certified, never inferred from an old resolver cache.
     cursor = 0
@@ -373,7 +399,8 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
              impact_offset=impact_offset, member_offset=member_offset, ww_offset=ww_offset,
              impact_size=impact_size, property_structure=structure_offset,
              nativebyteschecks=native, native_slots=[dict(opcode=o, rva=v) for o,v in SLOTS.items()],
-             tick_roots=roots, writer_view=writer_view, aim_state=aim_state, read_only=True, runtime_coverage_proven=False,
+             tick_roots=roots, weapon_calls=weapon_calls, writer_view=writer_view, aim_state=aim_state,
+             read_only=True, runtime_coverage_proven=False,
              provenance=dict(disk_exe_sha256=GAME_SHA, historical_code_sha256=HISTORICAL_CODE_SHA,
                              native_bytes_source='fresh process reads matched to bounded historical contract',
                              acquired_perf_counter_ns=started, finished_perf_counter_ns=time.perf_counter_ns()))
@@ -503,6 +530,32 @@ def validate_crosshair_assignment_config(c):
             _require(type(sm['address']) is int and sm['address'] > 0 and
                      0 < sm['size'] <= sm['capacity'] <= 131072 and len(bytes.fromhex(sm['sha256'])) == 32,
                      'Invalid tick script')
+        calls = c.get('weapon_calls', [])
+        _require(type(calls) is list and len(calls) in (0, len(WEAPON_CALLS)) and
+                 (not calls or len(c['tick_roots']) == 2), 'Partial weapon call certificate')
+        for pos, call in enumerate(calls):
+            role, owner_name, function_name, receiver = WEAPON_CALLS[pos]
+            _require(set(call) == {'role', 'owner', 'function', 'receiver', 'script',
+                                   'runtime_coverage_proven'} and
+                     call['role'] == role and call['receiver'] == receiver and
+                     call['runtime_coverage_proven'] is False,
+                     'Invalid weapon call role')
+            index(call['owner']); index(call['function'])
+            owner = ids[call['owner']]; fn = ids[call['function']]
+            package = by_address.get(owner['outer'])
+            _require(owner['name'] == owner_name and owner['number'] == 0 and
+                     by_address[owner['cls']]['name'] == 'Class' and package is not None and
+                     package['name'] == ('Engine' if owner_name == 'Weapon' else 'WarfareGame') and
+                     by_address[package['cls']]['name'] == 'Package' and
+                     fn['name'] == function_name and fn['number'] == 0 and
+                     fn['outer'] == owner['address'] and by_address[fn['cls']]['name'] == 'Function' and
+                     (owner['address'] == addr('war_weapon') if owner_name == 'WarWeapon' else True) and
+                     (owner['address'] == addr('war_pawn') if owner_name == 'WarPawn' else True),
+                     'Invalid weapon call identity')
+            sm = call['script']
+            _require(type(sm['address']) is int and sm['address'] > 0 and
+                     0 < sm['size'] <= sm['capacity'] <= 131072 and
+                     len(bytes.fromhex(sm['sha256'])) == 32, 'Invalid weapon call script')
         _require(c['read_only'] is True and c['runtime_coverage_proven'] is False, 'Invalid evidence authority')
     except (KeyError, TypeError, ValueError) as e:
         raise CrosshairConfigRejected('Malformed certificate') from e
@@ -520,7 +573,7 @@ def crosshair_assignment_ini(config):
     values={k:c[k] for k in ('schema','pid','base','sha256','objects_header','names_header',
             'script','script_size','impact_offset','member_offset','ww_offset','impact_size','property_structure')}
     values.update(native_contract=1, identity_count=len(c['identities']), super_count=len(c['supers']),
-                  tick_root_count=len(c['tick_roots']))
+                  tick_root_count=len(c['tick_roots']), weapon_call_count=len(c.get('weapon_calls', [])))
     values.update(c['layout']); values.update(c['roles'])
     view = c.get('writer_view', dict(enabled=False)); values['view_enabled'] = int(view['enabled'])
     if view['enabled']:
@@ -540,4 +593,8 @@ def crosshair_assignment_ini(config):
         for key in ('owner','function'): values[f'root{n}_{key}']=item[key]
         values[f'root{n}_script']=item['script']['address']
         values[f'root{n}_size']=item['script']['size']
+    for n,item in enumerate(c.get('weapon_calls', [])):
+        for key in ('owner','function'): values[f'weapon_call{n}_{key}']=item[key]
+        values[f'weapon_call{n}_script']=item['script']['address']
+        values[f'weapon_call{n}_size']=item['script']['size']
     return '[CrosshairAssignment]\n' + ''.join(f'{key}={value}\n' for key,value in values.items())

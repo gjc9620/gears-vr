@@ -67,6 +67,7 @@ class RuntimePreparation:
         if settings.getint('Capture','pid') != game['pid']:
             raise ValueError('Startup configuration process mismatch')
         self.crosshair_assignment_observer = settings.getboolean('Capture','crosshair_assignment_observer',fallback=False)
+        self.weapon_call_observer = settings.getboolean('Capture','controller_input_observer',fallback=False)
         flags = SimpleNamespace(**{key:settings.getboolean('Capture',key,fallback=False) for key in (
             'family_diagnostics','viewport_diagnostics','first_view_mask_control','view_union_mask_fix',
             'shadow_view','shadow_state','shadow_constructor')})
@@ -173,7 +174,8 @@ class RuntimePreparation:
                 self.owner,self.dll,signatures=self.signatures,attestation=proof,check_live=check_live,
                 sample_pose=False,
                 camera_discovery=self._preparation_camera,
-                **({'crosshair_assignment_observer':True} if self.crosshair_assignment_observer else {}))
+                **({'crosshair_assignment_observer':True} if self.crosshair_assignment_observer else {}),
+                **({'weapon_call_observer':True} if self.weapon_call_observer else {}))
             actual = snapshot(thaw(candidate.anchor_metadata)['config'])
             if accept_snapshot is None and actual != observed:
                 raise RuntimeError('World changed during automatic certificate preparation')

@@ -35,7 +35,9 @@ uintptr_t __fastcall hook(void* self,void* caller_frame,void* result,void* calle
     Scope scope;if(!scope.world()||!ui_observer_enabled||!recording.load())return original(self,caller_frame,result,callee);
     ui_logical_group_live::ChildScope logical(self,caller_frame,callee,
         ui_logical_group_live::boundary_candidate()&&ui_invocation.frozen&&ui_invocation_current());
-    auto invoke=[&]{return logical.invoke([&]{return original(self,caller_frame,result,callee);});};
+    weapon_call_live::CallScope weapon(self,caller_frame,result,callee);
+    auto invoke=[&]{const auto value=logical.invoke([&]{return original(self,caller_frame,result,callee);});
+        weapon.returned(value);return value;};
     ++calls;gears_ui_call_boundary::Nest nest(nesting);
     // Pointer-only frozen candidate lookup precedes expensive parent validation.
     constexpr unsigned no_candidate=(std::numeric_limits<unsigned>::max)();

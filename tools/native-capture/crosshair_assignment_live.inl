@@ -42,6 +42,21 @@ bool root_binding(gears_crosshair_assignment::OwnedConfig const& config,unsigned
         safe_copy(&entry,reinterpret_cast<void*>(function+0x114),8)&&entry==base+0x1d6ca0;
 }
 bool root_binding(unsigned index){return root_binding(current(),index);}
+bool weapon_call_binding(gears_crosshair_assignment::OwnedConfig const& checked,unsigned index){
+    if(index>=checked.weapon_call_count||index>=checked.weapon_calls.size())return false;
+    auto const& call=checked.weapon_calls[index];auto const& ids=checked.identities;
+    if(call.owner>=ids.identity_count||call.function>=ids.identity_count)return false;
+    gears_ui::Reader<decltype(&safe_copy)> read{safe_copy};
+    gears_ui::Registry objects{},names{},script{};uintptr_t entry{};
+    auto const& owner=ids.identities[call.owner];auto const& function=ids.identities[call.function];
+    return gears_ui::registry(read,ids.objects_header,objects)&&gears_ui::registry(read,ids.names_header,names)&&
+        gears_ui::fresh_identity(ids,read,objects,names,owner)&&
+        gears_ui::fresh_identity(ids,read,objects,names,function)&&
+        function.outer==owner.address&&
+        read.field(script,function.address,0x8c)&&script.data==call.script&&
+        script.count==int(call.size)&&script.count>0&&script.count<=script.capacity&&script.capacity<=131072&&
+        read.field(entry,function.address,0x114)&&entry==base+0x1d6ca0;
+}
 bool recovery_fresh(gears_crosshair_assignment::OwnedConfig const&,gears_anchor::Config const&,gears_ui::Config const&,gears_anchor::GuardDiagnostic* diagnostic=nullptr);
 bool load(const wchar_t* ini,FILE* status=nullptr){
     auto reject=[&](const char* stage,const char* reason="none"){
@@ -53,6 +68,7 @@ bool load(const wchar_t* ini,FILE* status=nullptr){
     if(candidate.mounted_suspended){if(!recovery_fresh(candidate,anchor_config,ui_config))return reject("mounted_recovery");
         config=candidate;config_generation=committed_world_generation.load();return reserve()||reject("reserve");}
     if(candidate.tick_root_count!=2)return reject("tick_root_count");
+    if(controller_input_observer&&candidate.weapon_call_count!=6)return reject("weapon_call_count");
     if(candidate.identities.identities[candidate.assignment.controller].address!=expected_pc)return reject("controller");
     gears_crosshair_assignment::ValidationFailure failure{};
     gears_crosshair_assignment::OwnedConfig admitted;
@@ -79,6 +95,8 @@ bool load(const wchar_t* ini,FILE* status=nullptr){
     // path must not acquire a dependency on an unused global opcode handler.
     if(!root_binding(0))return reject("root0");
     if(!root_binding(1))return reject("root1");
+    if(controller_input_observer)for(unsigned i=0;i<config.weapon_call_count;++i)
+        if(!weapon_call_binding(config,i))return reject("weapon_call_binding");
     return reserve()||reject("reserve");
 }
 void append(unsigned kind,gears_crosshair_tick::Sealed const& value,long long scene){
@@ -115,6 +133,10 @@ bool recovery_fresh(gears_crosshair_assignment::OwnedConfig const& candidate,gea
     if(!camera||!same_object(*camera,anchor.identities[anchor.role_camera])||
        !root_binding(candidate,0)||!root_binding(candidate,1)||
        !gears_crosshair_assignment::validate_bindings(c,safe_copy,false))return false;
+    if(controller_input_observer){
+        if(candidate.weapon_call_count!=6)return false;
+        for(unsigned i=0;i<candidate.weapon_call_count;++i)if(!weapon_call_binding(candidate,i))return false;
+    }
     std::array<unsigned char,32> original_entry{};
     if(!read_attested_hook_entry(original_entry.data(),reinterpret_cast<void*>(base+0x1d7ad0),original_entry.size())||
        original_entry!=gears_crosshair_assignment::execlet_entry)return false;

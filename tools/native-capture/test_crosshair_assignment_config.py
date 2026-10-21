@@ -53,6 +53,23 @@ class Fixture(UIBase):
             self.put(0xc00000+n*0x100, b'\x04\x0b\x53')
         self.finish_registry()
 
+    def add_weapon_call_functions(self):
+        self.cls('Package', self.classes['Object'])
+        packages={name:self.obj(name,self.classes['Package']) for name in ('Engine','WarfareGame')}
+        self.cls('Weapon',self.classes['Actor'])
+        self.put(self.classes['WarWeapon']+96,struct.pack('<Q',self.classes['Weapon']))
+        for owner,package in (('Weapon','Engine'),('WarWeapon','WarfareGame'),('WarPawn','WarfareGame')):
+            self.put(self.classes[owner]+64,struct.pack('<Q',packages[package]))
+        functions=(('WarWeapon','InstantFire'),('Weapon','InstantFire'),
+                   ('WarPawn','GetAdjustedAimFor'),('WarWeapon','GetAdjustedAim'),
+                   ('Weapon','CalcWeaponFire'),('WarWeapon','ProcessInstantHit'))
+        for i,(owner,name) in enumerate(functions):
+            fn=self.function(owner,name,0x1d6ca0)
+            script=0xd00000+i*0x100
+            self.put(fn+0x8c,struct.pack('<Qii',script,4,4))
+            self.put(script,b'\x04\x0b\x53\x00')
+        self.finish_registry()
+
     def field(self, owner, name, offset, size, target, kind='StructProperty'):
         a = self.obj(name, self.classes[kind], owner)
         self.children.setdefault(owner, []).append(a)
@@ -457,6 +474,26 @@ class CertificateTests(unittest.TestCase):
         self.assertEqual(s.getint('pawn_weapon_property'),c['fields']['pawn_weapon']['property'])
         self.assertEqual(s.getint('property_structure'),0xd0)
         self.assertEqual(s.getint('script_size'),c['script_size'])
+
+    def test_optional_weapon_call_certificate_is_exact_and_read_only(self):
+        r=Fixture();r.add_weapon_call_functions()
+        c=build_crosshair_assignment_config(r,r.camera,include_tick_roots=True,include_weapon_calls=True)
+        self.assertEqual(len(c['weapon_calls']),6)
+        self.assertLessEqual(len(c['identities']),96)
+        self.assertTrue(all(not call['runtime_coverage_proven'] for call in c['weapon_calls']))
+        import configparser
+        ini=configparser.ConfigParser();ini.read_string(crosshair_assignment_ini(c))
+        self.assertEqual(ini['CrosshairAssignment'].getint('weapon_call_count'),6)
+        self.assertEqual(ini['CrosshairAssignment'].getint('weapon_call4_function'),
+                         c['weapon_calls'][4]['function'])
+        for mutate in (lambda x:x['weapon_calls'].pop(),
+                       lambda x:x['weapon_calls'][1].update(owner=x['weapon_calls'][0]['owner']),
+                       lambda x:x['weapon_calls'][2].update(receiver='weapon'),
+                       lambda x:x['weapon_calls'][5]['script'].update(size=0)):
+            bad=copy.deepcopy(c);mutate(bad)
+            with self.assertRaises(CrosshairConfigRejected):validate_crosshair_assignment_config(bad)
+        with self.assertRaises(CrosshairConfigRejected):
+            build_crosshair_assignment_config(r,r.camera,include_weapon_calls=True)
 
     def test_identity_type_pointer_script_and_native_fail_closed(self):
         mutations = {

@@ -217,7 +217,8 @@ class _InitialPreparationCamera:
 
 def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False,cinematic_camera=False,
                                  record_anchor_failure=True,preparation_deadline=None,check_live=None,entry_reader=None,
-                                 crosshair_assignment_observer=False,camera_discovery=None,anchor_sample_pose=True):
+                                 crosshair_assignment_observer=False,weapon_call_observer=False,
+                                 camera_discovery=None,anchor_sample_pose=True):
     """Read-only, pre-activation acquisition; never retries identity failures.
 
     A new Resolver.resolve() prepares fresh registries/caches and roles on every
@@ -234,6 +235,8 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
         raise ValueError('Static-only anchor assembly requires an attested anchor observer')
     if crosshair_assignment_observer and not (anchor_observer and ui_observer):
         raise ValueError('Crosshair assignment observer requires UI/anchor observers')
+    if weapon_call_observer and not crosshair_assignment_observer:
+        raise ValueError('Weapon call observer requires certified crosshair Tick roots')
     deadline=time.monotonic()+10 if preparation_deadline is None else preparation_deadline
     registry_retry=anchor_observer or ui_observer;attempts=3 if registry_retry else 1
     for attempt in range(attempts):
@@ -277,6 +280,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                     elif crosshair_assignment_observer:
                         from crosshair_assignment_config import build_crosshair_assignment_config,crosshair_assignment_ini
                         assignment=build_crosshair_assignment_config(r,refreshed,include_tick_roots=True,include_writer_view=True,include_aim_state=True,
+                            **({'include_weapon_calls':True} if weapon_call_observer else {}),
                             **({'entry_reader':entry_reader} if entry_reader is not None else {}))
                         ui_section+=crosshair_assignment_ini(assignment)
                         ui_metadata['crosshair_assignment']=assignment
@@ -575,7 +579,8 @@ def main():
             cinematic_camera=args.cinematic_camera,
             record_anchor_failure=not(args.continuous_session and args.anchor_observer),
             preparation_deadline=preparation_deadline,check_live=check_preparation,
-            **({'crosshair_assignment_observer':True} if args.crosshair_assignment_observer else {})))
+            **({'crosshair_assignment_observer':True} if args.crosshair_assignment_observer else {}),
+            **({'weapon_call_observer':True} if args.controller_input_observer else {})))
         check_preparation()
         preparation_timing('certificate_acquisition_including_retry',certificates_started)
         activation_started=time.perf_counter_ns()

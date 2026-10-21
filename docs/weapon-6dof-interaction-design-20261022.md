@@ -263,6 +263,8 @@ Longshot 瞄准镜另设光学渲染任务。单纯放大原有双眼画面会�
 | [瞄准与命中链](weapon-aim-hit-chain.md) | 射击起点、基础方向、散布与碰撞的候选边界 | 控制器驱动最终枪口及实际开火射线的一致性、近墙阻挡 |
 | [原版完美换弹样本](77-active-reload-startup-regression.md) | 既有原版结果与弹药转移的采样方法 | 每枪完整完美区间；既有一次成功的按键间隔不能当通用阈值 |
 
+私有 6DoF 观察会话现已能用当前进程的新鲜凭证，在现有 VM 调用边界只读记录六个关键武器函数的进入／返回和开火函数体祖先。它用于决定下一步实际枪口射线接入点，尚未在游戏中证明覆盖任何一枪；更没有改动原版弹药、散布、伤害或结果缓冲。
+
 Gnasher 与 Boltok 的完整未发射单发弹药仍未在已有调查中确认。若需要补建模型，应明确其为新建／修改资源。逐枪调查先检索现有知识库，再用既有 IDA 工具链做有界核对；磁盘 EXE、历史运行时证据和脚本声明保持各自来源。
 
 原版武器网格不能按查看用的灰模 GLB 判断为一整块：该导出只保留 LOD0 三角形，丢失了骨骼与蒙皮。对六件已定位的原始 `SkeletalMesh` 做来源哈希和骨骼层级核验后，Gnasher 含 `b_Shotgun_Lever`，Lancer 含 `b_AR_Magazine`／`b_AR_Latch`／`b_AR_Receiver`，Hammerburst 含 `b_HB_Mag`／`b_HB_MagLatch`，Longshot 含 `b_LS_Bolt`／`b_LS_Scope`，Snub 含 `b_HG_Magazine`／`b_HG_Slide`。Boltok 有 12 根名称不表达部件功能的骨骼，需按动画与蒙皮验证。审核脚本为 `tools/weapon-models/audit_skeletal_bones.py`，完整本地报告保存在忽略目录 `analysis/weapon-bone-audit.json`；骨骼名称只证明层级存在，不证明哪些三角形受它影响、游戏动画幅度或 VR 可抓取性。

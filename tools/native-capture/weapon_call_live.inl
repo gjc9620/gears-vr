@@ -1,0 +1,155 @@
+// Included after crosshair_live, before the existing ui_call_boundary hook.
+// Read-only shot-call metadata; no game call, Result read, or input injection.
+#include "weapon_call_trace.h"
+namespace weapon_call_live {
+#if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER && defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+struct Row {
+    uint64_t id{},fire_id{},tick{},world{};
+    unsigned role{},thread{};uintptr_t receiver{},caller{},callee{},result_address{},opaque_rax{};
+    gears_ui_call_boundary::Frame before{},after{};
+    long long begin{},end{};bool before_valid{},after_valid{},returned{},body_verified{};
+};
+struct Context {
+    bool active{},poisoned{},fire_active{};
+    uint64_t generation{},world{},tick{},fire_id{};
+    unsigned thread{};uintptr_t tick_frame{},controller{},pawn{},weapon{},fire_caller{};
+    std::array<Row,48> staged{};unsigned count{};
+};
+thread_local Context context;
+std::mutex rows_mutex;std::array<Row,96> rows{};unsigned row_count{};
+std::atomic<uint64_t> next_call{},tick_seen{},tick_sealed{},tick_rejected{},
+    call_rejected{},target_seen_outside_tick{},staged_dropped{},rows_dropped{};
+std::array<std::atomic<uint64_t>,6> seen{},accepted{};
+struct TickScope {
+    bool entered{};Context saved{};
+    explicit TickScope(crosshair_live::TickScope const& tick){
+        if(!tick.entered)return;
+        entered=true;saved=context;context={};++tick_seen;
+        if(saved.active){saved.poisoned=true;++tick_rejected;return;}
+        const auto& c=crosshair_live::current();
+        if(!controller_input_observer||c.mounted_suspended||c.weapon_call_count!=6||
+           tick.previous_frame||tick.world!=committed_world_generation.load()||
+           tick.token!=crosshair_live::state.token||!recording.load()||!crosshair_live::root_binding(0)){
+            ++tick_rejected;return;
+        }
+        gears_ui_call_boundary::Frame root{};
+        if(!gears_ui_call_boundary::frame(safe_copy,crosshair_live::state.frame,root)||
+           root.node!=c.identities.identities[c.tick_roots[0].function].address||
+           root.object!=c.identities.identities[c.assignment.controller].address||
+           !gears_weapon_call_trace::script_pc(root.code,c.tick_roots[0].script,c.tick_roots[0].size)){
+            ++tick_rejected;return;
+        }
+        context.active=true;context.generation=crosshair_live::config_generation.load();
+        context.world=tick.world;context.tick=tick.token;context.thread=GetCurrentThreadId();
+        context.tick_frame=crosshair_live::state.frame;
+        context.controller=c.identities.identities[c.assignment.controller].address;
+        context.pawn=c.identities.identities[c.assignment.pawn].address;
+        context.weapon=c.identities.identities[c.assignment.weapon].address;
+    }
+    ~TickScope(){
+        if(!entered)return;
+        bool valid=context.active&&!context.poisoned&&recording.load()&&
+            context.world==committed_world_generation.load()&&
+            context.generation==crosshair_live::config_generation.load()&&
+            context.thread==GetCurrentThreadId()&&!context.fire_active;
+        if(valid){const auto& c=crosshair_live::current();
+            valid=!c.mounted_suspended&&c.weapon_call_count==6&&
+                c.identities.identities[c.assignment.controller].address==context.controller&&
+                c.identities.identities[c.assignment.pawn].address==context.pawn&&
+                c.identities.identities[c.assignment.weapon].address==context.weapon&&
+                gears_crosshair_assignment::validate_bindings(c.assignment,safe_copy,false);
+        }
+        if(valid){++tick_sealed;std::lock_guard<std::mutex> lock(rows_mutex);
+            for(unsigned i=0;i<context.count;++i){
+                if(row_count<rows.size())rows[row_count++]=context.staged[i];else ++rows_dropped;
+            }
+        }else if(context.active)++tick_rejected;
+        context=saved;
+        if(saved.active)context.poisoned=true;
+    }
+};
+struct CallScope {
+    bool admitted{},fire_owned{};unsigned role{};Row row{};
+    CallScope(void* self,void* caller,void* result,void* callee){
+        if(!controller_input_observer||!recording.load())return;
+        auto const& c=crosshair_live::current();
+        if(c.mounted_suspended||c.weapon_call_count!=6||c.identities.identity_count>c.identities.identities.size())return;
+        constexpr unsigned none=6;unsigned candidate=none;
+        for(unsigned i=0;i<6;++i){auto const& call=c.weapon_calls[i];
+            if(call.function<c.identities.identity_count&&
+               c.identities.identities[call.function].address==reinterpret_cast<uintptr_t>(callee)){
+                candidate=i;break;
+            }
+        }
+        if(candidate==none)return;
+        role=candidate;++seen[role];
+        if(!context.active){++target_seen_outside_tick;return;}
+        auto const& tick_root=c.tick_roots[0];
+        const bool current=context.thread==GetCurrentThreadId()&&!context.poisoned&&
+            context.world==committed_world_generation.load()&&
+            context.generation==crosshair_live::config_generation.load()&&
+            context.tick==crosshair_live::state.token&&
+            context.tick_frame==crosshair_live::state.frame&&
+            reinterpret_cast<uintptr_t>(self)==(role==2?context.pawn:context.weapon)&&
+            crosshair_live::weapon_call_binding(c,role);
+        if(!current){++call_rejected;return;}
+        const auto caller_address=reinterpret_cast<uintptr_t>(caller);
+        bool ancestry=false;
+        if(role<=1){
+            ancestry=gears_weapon_call_trace::tick_ancestry(safe_copy,caller_address,
+                context.tick_frame,c.identities.identities[tick_root.function].address,context.controller,
+                tick_root.script,tick_root.size);
+            if(role==1&&context.fire_active)ancestry=false;
+        }else if(context.fire_active){
+            auto const& fire=c.weapon_calls[1];
+            ancestry=gears_weapon_call_trace::fire_body_ancestry(safe_copy,caller_address,
+                context.fire_caller,c.identities.identities[fire.function].address,context.weapon,
+                fire.script,fire.size,context.tick_frame,
+                c.identities.identities[tick_root.function].address,context.controller,
+                tick_root.script,tick_root.size);
+        }
+        if(!ancestry){++call_rejected;return;}
+        admitted=true;++accepted[role];row.id=++next_call;row.fire_id=context.fire_id;
+        row.tick=context.tick;row.world=context.world;row.role=role;row.thread=context.thread;
+        row.receiver=reinterpret_cast<uintptr_t>(self);row.caller=caller_address;
+        row.callee=reinterpret_cast<uintptr_t>(callee);row.result_address=reinterpret_cast<uintptr_t>(result);
+        row.begin=now();row.before_valid=gears_ui_call_boundary::frame(safe_copy,caller_address,row.before);
+        row.body_verified=role>1;
+        if(role==1){context.fire_active=true;context.fire_caller=caller_address;
+            context.fire_id=row.id;row.fire_id=row.id;fire_owned=true;}
+    }
+    void returned(std::uintptr_t value){
+        if(!admitted)return;
+        row.opaque_rax=value;row.end=now();row.returned=true;
+        row.after_valid=gears_ui_call_boundary::frame(safe_copy,row.caller,row.after);
+        if(context.active&&!context.poisoned&&context.count<context.staged.size())
+            context.staged[context.count++]=row;
+        else ++staged_dropped;
+        if(fire_owned){context.fire_active=false;context.fire_id=0;context.fire_caller=0;fire_owned=false;}
+    }
+    ~CallScope(){if(fire_owned){context.fire_active=false;context.fire_id=0;context.fire_caller=0;}}
+};
+void reset_tls(){context={};}
+void print(FILE* status){
+    fprintf(status,"weapon_call_observer compiled=1 observation_only=1 tick_seen=%llu tick_sealed=%llu tick_rejected=%llu call_rejected=%llu outside_tick=%llu staged_dropped=%llu rows=%u rows_dropped=%llu result_unread=1 arguments_unread=1 game_actions_called=0\n",
+        tick_seen.load(),tick_sealed.load(),tick_rejected.load(),call_rejected.load(),
+        target_seen_outside_tick.load(),staged_dropped.load(),row_count,rows_dropped.load());
+    for(unsigned i=0;i<seen.size();++i)fprintf(status,
+        "weapon_call_role role=%u seen=%llu accepted=%llu\n",i,seen[i].load(),accepted[i].load());
+    std::lock_guard<std::mutex> lock(rows_mutex);
+    for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];
+        fprintf(status,"weapon_call_row id=%llu fire_id=%llu role=%u body_verified=%u tick=%llu world=%llu thread=%u receiver=%p caller=%p callee=%p result_address=%p opaque_rax=%p enter=%lld exit=%lld returned=%u caller_before_valid=%u caller_node_before=%p caller_code_before=%p caller_after_valid=%u caller_node_after=%p caller_code_after=%p\n",
+            r.id,r.fire_id,r.role,r.body_verified?1:0,r.tick,r.world,r.thread,
+            reinterpret_cast<void*>(r.receiver),reinterpret_cast<void*>(r.caller),reinterpret_cast<void*>(r.callee),
+            reinterpret_cast<void*>(r.result_address),reinterpret_cast<void*>(r.opaque_rax),r.begin,r.end,
+            r.returned?1:0,r.before_valid?1:0,reinterpret_cast<void*>(r.before.node),reinterpret_cast<void*>(r.before.code),
+            r.after_valid?1:0,reinterpret_cast<void*>(r.after.node),reinterpret_cast<void*>(r.after.code));
+    }
+}
+#else
+struct TickScope {explicit TickScope(crosshair_live::TickScope const&) {}};
+struct CallScope {CallScope(void*,void*,void*,void*){}void returned(std::uintptr_t){}};
+void reset_tls(){}
+void print(FILE* status){fprintf(status,"weapon_call_observer compiled=0 observation_only=1\n");}
+#endif
+}
