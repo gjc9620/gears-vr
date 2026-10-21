@@ -66,6 +66,8 @@ Lancer 弹匣接缝预览：在原包哈希与 LOD0 蒙皮校验后，新增分�
 
 原版库存槽位映射增量：经知识库索引与已保存脚本核对 `WarPC.WeaponSlotFromDpadDirection`、`WarPawn.SetSlotAttachment`，将 VR 左裤兜手枪、右裤兜手雷、左肩武器 2、右肩武器 1 分别映射到原版 0／1／2／3 号槽；取弹位置无库存武器槽。`BodySlotsTest` 编译和校准／位置／编号断言通过。镜像角色的视觉肩位会交换，且没有调用原版切枪；游戏内装备动作仍待单独验证。
 
+取枪动画边界复核：Astra Max 仅用已保存的 UnrealScript 和现有 VM 观察文档确认，原版 `SetCurrentWeapon`／`ChangedWeapon`／`WeaponPuttingDown`／`Active` 负责复制、挂接及计时，不能跳过；身体取放枪姿态分别在 `TimeWeaponPutDown/TimeWeaponEquipping` 内调用。姿态函数还被手雷重装与其他动作复用；现有 CallFunction 入口的参数尚由 caller frame 在函数内求值，直接吞掉调用会错过参数消费。未新增危险的全局动画抑制或同步完成装备 Hook，下一步先做原游戏 caller／callee 边界与参数消费的只读验证。
+
 ## 合并0.0.2启动修复（2026-10-22）
 
 按用户要求切回 `codex/0.1.0`，将 `codex/0.0.2` 的完整修复与发布记录并入。合并前开发检查点为 `963d965b8590555bae31d047bef6ccc27d3e6469`，热修复源为 `a0a39b0`。公开0.0.1是独立根提交，两分支没有共同祖先；以公开源码 `4b621fc430fa5f96eba3bf70399810d3fd51e202` 为明确的内容基准进行三方合并，并保留两个原始父历史，不改写既有提交或发布标签。

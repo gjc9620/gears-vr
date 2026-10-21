@@ -39,6 +39,8 @@
 
 原版脚本的库存槽位编号已核对：0 是枪套、1 是腰带、2 是左肩、3 是右肩。VR 身体位置到原版库存身份的纯逻辑映射已加入 `body_slots.h`，左肩取弹不映射为武器。`WarPawn.IsSlotLeftShoulder/RightShoulder` 在 `bIsMirrored` 时会交换原版可视肩位，因此实际模型挂点仍需逐实例处理；当前映射并未触发游戏切枪。
 
+原版装备链由 `InventoryManager.SetCurrentWeapon`、`ChangedWeapon`、武器的 `WeaponPuttingDown`／`Active` 状态与计时器共同维护库存、复制、挂接和可开火时机。`WarWeapon.TimeWeaponPutDown/TimeWeaponEquipping` 各自在必要状态与通知之外调用一次身体取放枪姿态；VR 若隐藏这段姿态，应只针对本次 VR 槽位切换的对应调用，保留原状态和计时器。`PlayBodyStanceByDuration` 还被手雷重新装备、掩体等流程复用，不能按动画名称全局屏蔽。现有共享 VM/CallFunction 观察入口还未证明可以安全跳过已构建参数的函数正文，故**尚未写入动画抑制 Hook**；需先做只读 caller／callee 和参数消费验证，再加入私有候选。
+
 ## 身体槽位与无弹药反馈
 
 | 手与身体区域 | 取出的物品 | 数量与身份依据 |
