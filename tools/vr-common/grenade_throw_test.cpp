@@ -41,12 +41,12 @@ int main(){
             GameGrenadeLaunch game{};
             const Pose reference{{0,1.65,0},{0,0,0,1}};
             const Viewpoint base{{100,20,30},{0,0,0}};
-            assert(grenade_world_launch(*result,reference,base,100,game));
+            assert(grenade_world_launch(*result,reference,base,100,game,{50,-20,0}));
             assert(near(game.position.x,111)&&near(game.position.y,64)&&
                    near(game.position.z,37));
-            assert(near(game.velocity.x,100)&&near(game.velocity.y,400)&&
+            assert(near(game.velocity.x,150)&&near(game.velocity.y,380)&&
                    near(game.velocity.z,200));
-            assert(near(game.impulse.y,1200)&&near(game.gravity.z,-981));
+            assert(near(game.impulse.y,1140)&&near(game.gravity.z,-981));
             assert(!tracker.armed());
         }
     }
@@ -82,5 +82,17 @@ int main(){
     now=frame(32,{0,1.5,0});
     assert(!tracker.advance(hands,stereo,77,99,9,now,true));
     assert(!tracker.armed()); // One sample is not a throw trajectory.
+    assert(tracker.begin(77,99,1,10,{.2,0,0}));
+    for(unsigned i=33;i<=44;++i){
+        const double angle=.1*double(i-33);
+        hands.hands[1].grip.orientation={0,0,std::sin(angle/2),std::cos(angle/2)};
+        now=frame(i,{0,1.5,0});
+        const auto result=tracker.advance(hands,stereo,77,99,10,now,i==44);
+        if(i==44){
+            assert(result&&result->velocity_mps.y>1.0);
+            assert(result->release_position.y>1.65);
+        }else assert(!result);
+    }
+    assert(!tracker.armed()); // Wrist motion moves the grenade even with a fixed grip origin.
     std::puts("grenade hand-history velocity, 3 kg impulse, arc and discontinuity checks passed");
 }

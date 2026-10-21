@@ -48,13 +48,15 @@ struct GameGrenadeLaunch {
 inline bool grenade_world_launch(GrenadeThrowSolution const& tracked,
                                   Pose const& reference,
                                   gears_vr::Viewpoint const& game_base,
-                                  double units_per_metre,GameGrenadeLaunch& out) noexcept {
+                                  double units_per_metre,GameGrenadeLaunch& out,
+                                  Vector pawn_velocity_world_units_per_second={}) noexcept {
     if(!tracked.weapon||!tracked.world||!tracked.session||!tracked.space_epoch||
        !tracked.reference_generation||tracked.predicted_time<=0||
        !gears_vr::stereo_pose_valid(reference)||
        !gears_vr::finite(tracked.release_position)||
        !gears_vr::finite(tracked.velocity_mps)||
        !gears_vr::finite(game_base.position)||
+       !gears_vr::finite(pawn_velocity_world_units_per_second)||
        !std::isfinite(game_base.rotation.pitch)||
        !std::isfinite(game_base.rotation.yaw)||
        !std::isfinite(game_base.rotation.roll)||
@@ -68,7 +70,8 @@ inline bool grenade_world_launch(GrenadeThrowSolution const& tracked,
     GameGrenadeLaunch result{};
     result.position=sum(game_base.position,scaled(to_game(difference(
         tracked.release_position,reference.position)),units_per_metre));
-    result.velocity=scaled(to_game(tracked.velocity_mps),units_per_metre);
+    result.velocity=sum(scaled(to_game(tracked.velocity_mps),units_per_metre),
+                        pawn_velocity_world_units_per_second);
     result.impulse=scaled(result.velocity,tracked.mass_kg);
     result.gravity={0,0,-tracked.gravity_mps2*units_per_metre};
     result.mass_kg=tracked.mass_kg;
@@ -94,6 +97,7 @@ class GrenadeThrowTracker {
     std::uint64_t weapon_{},world_{},reference_generation_{};
     std::uint64_t session_{},space_epoch_{},profile_generation_{},input_epoch_{},last_sequence_{};
     unsigned hand_{2};
+    Vector grenade_centre_in_grip_m_{};
     bool armed_{};
 
     void clear_samples() noexcept {count_=0;last_sequence_=0;}
@@ -141,10 +145,14 @@ class GrenadeThrowTracker {
 public:
     void reset() noexcept {*this=GrenadeThrowTracker{};}
     bool begin(std::uint64_t weapon,std::uint64_t world,unsigned hand,
-               std::uint64_t reference_generation) noexcept {
+               std::uint64_t reference_generation,
+               Vector grenade_centre_in_grip_m={}) noexcept {
         reset();
-        if(!weapon||!world||hand>1||!reference_generation)return false;
+        if(!weapon||!world||hand>1||!reference_generation||
+           !gears_vr::finite(grenade_centre_in_grip_m)||
+           length(grenade_centre_in_grip_m)>.3)return false;
         weapon_=weapon;world_=world;hand_=hand;
+        grenade_centre_in_grip_m_=grenade_centre_in_grip_m;
         reference_generation_=reference_generation;armed_=true;return true;
     }
     bool armed() const noexcept {return armed_;}
@@ -174,7 +182,11 @@ public:
            hands.predicted_time<=samples_[count_-1].time)){
             reset();return std::nullopt;
         }
-        const Sample latest{hands.predicted_time,hands.hands[hand_].grip.position};
+        const auto& grip=hands.hands[hand_].grip;
+        // Fit the grenade centre, not the bare controller origin. Its arc
+        // therefore includes wrist rotation around the measured grip offset.
+        const Sample latest{hands.predicted_time,sum(grip.position,
+            rotate(grip.orientation,grenade_centre_in_grip_m_))};
         if(count_){
             const auto gap=latest.time-samples_[count_-1].time;
             if(gap>config.maximum_sample_gap_ns||
