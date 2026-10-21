@@ -46,6 +46,8 @@ Gnasher／Longshot 原版动画静态核验：新增 `tools/weapon-models/audit_
 
 地图包动画审核：已与购买版逐字节比对的 `MP_WarMachine.war` 另有 Boomshot、Torque Bow、Troika 的 AnimSet。工具在该源包哈希下完整读取三组轨道；Boomshot 装填枪管有 86 个平移键、弹匣骨骼为常量，Torque Bow 张弓在八根弓臂骨骼上各有 54 个旋转键，Troika 双旋转件各有 10 个旋转键。结果在忽略的 `analysis/{boomshot,torquebow,troika}-animation-tracks.json`；Torque Bow 的跨骨三角形继续使用蒙皮，不能通过逐骨刚性切割代替。
 
+Gnasher 实例骨骼入口复核：Astra Max 只读核对已有脚本／对象证据，确认默认 `WeaponMesh.Animations` 直接为 `AnimNodeSequence`；`WarWeapon.SetWeaponAnim`、`FreezeWeaponAnim`、`SetWeaponAnimPosition` 为先验证原 `SG_Chamber` 姿态映射的最小原脚本路径。它接管整条序列且 `SetPosition(..., false)` 不触发通知，不能冒充单骨覆盖或完整音效流程。真正叠加单骨的 `AnimTree`＋`SkelControlSingleBone` 仅有声明和原脚本兼容路径，实例创建、`bIgnoreControllers`、GC 与更新顺序尚未验证；现有 Playground 请求在原 Tick 前执行，不是已证实的动画后修改点。下一次能稳定进入菜单的隔离零售版测试，先读当前枪实例与原序列主骨／杠杆相对矩阵，再决定最小控制候选。
+
 本轮离线验证还覆盖 `OriginalR2FireTest`、`OriginalL2AimTest`，并成功构建默认、仅 R2、R2+L2 三种私有 Playground DLL；导出表分别为无 VR 入口、仅 R2 入口和额外的 L2 状态入口。模拟发布器增加左扳机及双扳机测试动作，仍只用于置后静音测试，不进入默认启动清单。
 
 ## 合并0.0.2启动修复（2026-10-22）
