@@ -4,6 +4,12 @@
 using namespace gears_vr;
 using namespace gears_weapon;
 int main(){
+    assert(!original_inventory_slot(BodySlot::none));
+    assert(!original_inventory_slot(BodySlot::shoulder_ammo));
+    assert(original_inventory_slot(BodySlot::pistol)==0);
+    assert(original_inventory_slot(BodySlot::grenade)==1);
+    assert(original_inventory_slot(BodySlot::weapon_2)==2);
+    assert(original_inventory_slot(BodySlot::weapon_1)==3);
     ArmspanCalibrator calibrator;
     StereoSample stereo{};stereo.session=4;stereo.space_epoch=1;stereo.focused=1;
     stereo.head={{0,1.65,0},{0,0,0,1}};

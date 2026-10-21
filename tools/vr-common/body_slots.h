@@ -9,6 +9,19 @@ using gears_vr::Vector;
 using gears_vr::Pose;
 enum class BodySlot : std::uint8_t { none, shoulder_ammo, weapon_2, weapon_1, pistol, grenade };
 
+// WarPC.WeaponSlotFromDpadDirection and WarPawn.SetSlotAttachment in the
+// verified retail scripts identify 0=holster, 1=belt, 2=left shoulder and
+// 3=right shoulder. This is inventory identity, not a rendered hand pose.
+inline std::optional<std::uint8_t> original_inventory_slot(BodySlot slot) noexcept {
+    switch(slot){
+        case BodySlot::pistol:return std::uint8_t{0};
+        case BodySlot::grenade:return std::uint8_t{1};
+        case BodySlot::weapon_2:return std::uint8_t{2};
+        case BodySlot::weapon_1:return std::uint8_t{3};
+        default:return std::nullopt;
+    }
+}
+
 struct ArmspanCalibration {
     std::uint32_t version{1};
     double armspan_metres{};
