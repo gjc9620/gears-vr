@@ -48,6 +48,8 @@ add_executable(WeaponMechanismGeometryTest ../vr-common/weapon_mechanism_geometr
 target_compile_options(WeaponMechanismGeometryTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(WeaponReloadGeometryTest ../vr-common/weapon_reload_geometry_test.cpp)
 target_compile_options(WeaponReloadGeometryTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(OriginalR2FireTest ../vr-common/original_r2_fire_test.cpp)
+target_compile_options(OriginalR2FireTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(BodySlotsTest ../vr-common/body_slots_test.cpp)
 target_compile_options(BodySlotsTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(WeaponInputRouterTest ../vr-common/weapon_input_router_test.cpp)

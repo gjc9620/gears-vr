@@ -34,3 +34,20 @@ the explicit muted, behind-windows autonomous test environment.
 Game-version offsets, layouts, and observed behavior are specific to the checked
 Reloaded executable. See the development record in `docs/releases/0.1.0/PROGRESS.md`
 for completed validation and remaining headset acceptance.
+
+The weapon-6DoF branch also has a **private, opt-in Hammerburst R2 candidate**.
+Build with `GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2=ON` and a distinct
+`GEARS_PLAYGROUND_OUTPUT_NAME`; this exposes `PlaygroundVrFireEnable`,
+`PlaygroundVrFireDisable`, and `PlaygroundVrFireStatus`. Enable it only after
+the matching stereo and controller-input publishers are live. It consumes exact
+XR frame keys on the local player's `PlayerTick` and forwards right-trigger
+edges to the original `ButtonPress/Release('R2')`. Short bridge gaps keep the
+last valid frame until its 100 ms limit; longer loss safely releases this
+verified automatic weapon. Disable the adapter before `PlaygroundShutdown`.
+The default build excludes these exports and does not forward VR fire.
+
+`GEARS_PLAYGROUND_VR_R2_SIM_TEST=ON` additionally builds the isolated
+`VrFireTestPublisher` and accepts simulated input only in the muted,
+behind-windows test child. It is a verification tool, not a launcher option or
+headset acceptance. Other weapons remain gated until their original
+press/release, cancellation, and co-input behavior are verified.

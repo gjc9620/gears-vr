@@ -1,0 +1,133 @@
+// Private opt-in bridge from an exact XR input frame to the game's own R2
+// semantic. This is deliberately limited to the Hammerburst proved in the
+// retail playground. Other weapons require their own release/abort checks.
+namespace vrfire {
+enum : unsigned {off=0,running=1,stopping=2,stopped=3,fault=4};
+std::atomic<unsigned> mode{off};
+std::atomic<unsigned> last_status{};
+gears_vr::StereoBridge stereo;
+gears_vr::ControllerInputBridge hands;
+gears_weapon::OriginalR2Fire fire;
+gears_vr::StereoSample last_stereo{};
+gears_vr::ControllerInputFrame last_input{};
+bool have_last{};
+Name r2{};
+#if defined(GEARS_PLAYGROUND_VR_R2_SIM_TEST)
+constexpr bool simulated=true;
+#else
+constexpr bool simulated=false;
+#endif
+
+bool find_r2(Name& out){
+    const auto names=get<Array>(base+0x1c34800);
+    if(!names.data||names.count<1000||names.count>names.capacity||names.capacity>4000000)return false;
+    for(int index=0;index<names.count;++index){
+        const auto entry=get<uptr>(names.data+size_t(index)*8);
+        if(!entry||get<unsigned>(entry)!=unsigned(index))continue;
+        wchar_t value[4]{};
+        if(copy(value,entry+20,6)&&value[0]==L'R'&&value[1]==L'2'&&!value[2]){
+            out={unsigned(index),0};return true;
+        }
+    }
+    return false;
+}
+bool game_bool(uptr object,const wchar_t* field_name){
+    const auto field=playground::property(object,field_name);
+    if(!field||!playground::named(get<uptr>(field+0x50),L"BoolProperty"))return false;
+    return (get<unsigned>(object+get<unsigned>(field+0x94))&get<unsigned>(field+0xd0))!=0;
+}
+gears_weapon::OriginalR2Context context(uptr pc){
+    const auto pawn=playground::pointer(pc,L"Pawn");
+    const auto weapon=playground::pointer(pawn,L"Weapon");
+    const auto world=playground::pointer(pc,L"WorldInfo");
+    const bool ordinary=playground::instance(pc,L"WarPC")&&
+        playground::instance(pawn,L"WarPawn")&&
+        playground::pointer(pawn,L"Controller")==pc&&
+        playground::instance(weapon,L"WarWeapon")&&
+        playground::instance(world,L"WorldInfo")&&
+        !playground::deleted(pawn)&&!playground::deleted(weapon);
+    const bool proved=ordinary&&playground::instance(weapon,L"Weap_LocustAssaultRifle");
+    return {world,pc,weapon,ordinary,game_bool(pc,L"bHoldingButton_R2"),
+            proved,proved};
+}
+bool execute(gears_weapon::OriginalR2Action action,std::uint64_t controller){
+    const auto pc=static_cast<uptr>(controller);
+    if(!playground::instance(pc,L"WarPC"))return false;
+    playground::Args call(pc,action==gears_weapon::OriginalR2Action::press?
+        L"ButtonPress":L"ButtonRelease");
+    return call.set(L"ButtonName",r2).run();
+}
+void tick(uptr pc){
+    const auto state=mode.load(std::memory_order_acquire);
+    if(state!=running&&state!=stopping)return;
+    auto current=context(pc);
+    const auto now=gears_vr::monotonic_ns();
+    gears_vr::StereoSample sample{};
+    gears_vr::ControllerInputFrame input{};
+    const bool matched=state==running&&stereo.read(sample)&&
+        hands.read_matching(sample,now,input,simulated);
+    if(matched){last_stereo=sample;last_input=input;have_last=true;}
+    else if(state==running&&have_last){
+        // A lock collision or one late packet is not lost tracking. The frame
+        // itself still expires after 100 ms and then releases safe fire.
+        sample=last_stereo;input=last_input;
+    }
+    const auto outcome=fire.advance(input,sample,current,now,execute,simulated);
+    last_status.store(unsigned(outcome),std::memory_order_release);
+    if(outcome==gears_weapon::OriginalR2Status::abort_required){
+        playground::message(L"vr_r2_abort_required");
+        mode.store(fault,std::memory_order_release);return;
+    }
+    if(outcome==gears_weapon::OriginalR2Status::pressed)
+        playground::message(L"vr_r2_pressed");
+    else if(outcome==gears_weapon::OriginalR2Status::released)
+        playground::message(L"vr_r2_released");
+    else if(outcome==gears_weapon::OriginalR2Status::recovered)
+        playground::message(L"vr_r2_recovered");
+    else if(outcome==gears_weapon::OriginalR2Status::tapped)
+        playground::message(L"vr_r2_tapped");
+    if(state==stopping){
+        if(fire.owns_press()){
+            playground::message(L"vr_r2_stop_still_owned");
+            mode.store(fault,std::memory_order_release);
+        }else{
+            fire.reset();mode.store(stopped,std::memory_order_release);
+        }
+    }
+}
+DWORD enable(){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       mode.load(std::memory_order_acquire)!=off)return 1;
+#if defined(GEARS_PLAYGROUND_VR_R2_SIM_TEST)
+    wchar_t behind[4]{},muted[4]{};
+    if(GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)!=1||behind[0]!=L'1'||
+       GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)!=1||muted[0]!=L'1')return 2;
+#endif
+    if(!find_r2(r2))return 3;
+    const auto pid=GetCurrentProcessId();
+    if(!stereo.open(pid,false))return 4;
+    if(!hands.open(pid,false)){stereo.close();return 5;}
+    fire.reset();have_last=false;mode.store(running,std::memory_order_release);
+    playground::message(L"vr_r2_enabled_hammerburst_only");return 0;
+}
+DWORD disable(){
+    auto state=mode.load(std::memory_order_acquire);
+    if(state==off)return 0;
+    if(state==fault)return 4;
+    if(state==running){mode.store(stopping,std::memory_order_release);state=stopping;}
+    if(state==stopping){
+        const auto deadline=GetTickCount64()+2000;
+        while(GetTickCount64()<deadline){
+            state=mode.load(std::memory_order_acquire);
+            if(state!=stopping)break;
+            Sleep(1);
+        }
+        if(state==stopping)return 2;
+        if(state==fault)return 4;
+    }
+    if(state!=stopped)return 3;
+    hands.close();stereo.close();have_last=false;
+    mode.store(off,std::memory_order_release);
+    playground::message(L"vr_r2_disabled");return 0;
+}
+}

@@ -11,6 +11,12 @@
 #include <algorithm>
 #include <cmath>
 #include "MinHook.h"
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
+#include "../vr-common/controller_input_bridge.h"
+#include "../vr-common/original_r2_fire.h"
+#include "../vr-common/pose_bridge.h"
+#include "../vr-common/stereo_bridge.h"
+#endif
 
 namespace {
 using uptr=std::uintptr_t;
@@ -112,6 +118,9 @@ bool invoke(Request* r){
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 #include "playground_controller.inl"
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
+#include "vr_fire_adapter.inl"
+#endif
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
     if(inside||!enabled.load(std::memory_order_acquire)){original(object,function,params);return;}
@@ -133,6 +142,10 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
             if(auto r=pending.exchange(nullptr)){
                 const auto ok=invoke(r);InterlockedExchange(&r->state,ok?2:-1);
             }
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
+            if(playground::automatic&&!wcscmp(f,L"PlayerTick")&&
+               object==playground::pointer(playground::player,L"Actor"))vrfire::tick(object);
+#endif
             if(playground::automatic)playground::tick();
         }
     }
@@ -187,7 +200,22 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundTestEnter(void*){
     if(!enabled.load()||!playground::automatic)return 2;
     playground::test_enter_pending=true;return 0;
 }
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrFireEnable(void*){
+    return vrfire::enable();
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrFireDisable(void*){
+    return vrfire::disable();
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrFireStatus(void*){
+    return (vrfire::mode.load(std::memory_order_acquire)<<16)|
+           vrfire::last_status.load(std::memory_order_acquire);
+}
+#endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
+#if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
+    if(const auto stopped=vrfire::disable())return 10+stopped;
+#endif
     enabled.store(false,std::memory_order_release);
     if(auto r=pending.exchange(nullptr))InterlockedExchange(&r->state,-2);
     if(MH_DisableHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK)return 1;

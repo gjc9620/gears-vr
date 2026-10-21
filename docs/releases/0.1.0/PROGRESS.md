@@ -30,9 +30,13 @@ Gnasher 杠杆手势增量：新增纯逻辑的双手行程识别器，要求左
 
 零售包身份增量：只读解压购买版工作副本的 `WarfareGame.u` 与 `MP_WarMachine.war` 后，两个解压包的完整 SHA256 均与既有模型分析来源逐字节一致。临时解压文件已清除；这是静态包核验，不是运行或头显验收。
 
+原版 R2 输入实测：独立、静音、窗口置后的零售版测试场中，Hammerburst 仅一次 `WarPC.ButtonPress('R2')` 就建立原版持续开火状态，约 1.2 秒弹药消耗 15 发；仅一次对应 Release 即清除控制器开火／按住状态。此前诊断脚本为机枪显式双调 Pre+ButtonPress，不能当作最小调用证明；本轮独立证据支持后续 VR 扳机采用单次 ButtonPress/Release 语义。测试停止后独立游戏进程退出，菜单桥接 Shutdown 返回 0，游戏音频恢复。其他武器、追踪丢失和输入来源去重仍待实现与验证。
+
 模型蒙皮增量：继续解析经哈希验证的 LOD0 活动骨骼表及 64 字节顶点权重，发现 Gnasher 杠杆对应 1,192 顶点、1,260 三角形，与主体三角形无交叉。已用保守工具把 Gnasher、Hammerburst、Longshot、Snub、Boltok 的可刚性分组灰模导出到忽略目录 `analysis/weapon-partitions/`，并逐件核对三角形总数和输出哈希。Lancer 有 36 个弹匣／主体混合权重顶点，工具拒绝整件刚性拆分；Longshot 镜体／镜盖骨骼不在当前 LOD0 活动骨骼表内。导出仅有几何，不含贴图、骨骼动画或运行时替换；实际动画与 VR 操作仍待验证。
 
 开火链只读观察增量：为现有脚本身份凭证增加可选的六函数序列（`WarWeapon`／`Engine.Weapon.InstantFire`、`WarPawn.GetAdjustedAimFor`、`WarWeapon.GetAdjustedAim`、`Engine.Weapon.CalcWeaponFire`、`WarWeapon.ProcessInstantHit`）。仅在私有手柄观察会话申请；原始角色、包、脚本地址／大小与入口每次由当前进程核验。复用已有 VM 调用边界，不设第二个 detour，不调用武器函数，也不读取结果缓冲或参数。普通 `WarPC.PlayerTick` 的同步调用栈中，记录原始调用前后元数据；子调用必须有实际 `Engine.Weapon.InstantFire` 函数体祖先，才标作射击体内观察。完整 Tick 结束后再次验证身份和世界代次才提交有限行数；世界重绑定也申请同样凭证。纯内存测试通过；尚无实际游戏开火轨迹，因此不证明该 Tick 覆盖连发计时器，也未取得射线数值、更改弹道或接通枪口。
+
+实验性游戏线程 R2 接入：独立的 `OriginalR2Fire` 状态机只消费精确匹配的 XR 帧与累计边沿，核对原版 PC／Pawn／当前枪身份；处理漏帧内的短按、已有游戏按键占用、追踪失效和 100 ms 过期。只有已实测持续开火的 Hammerburst 被私有 `Playground` 候选允许调用原版 `ButtonPress/Release('R2')`，Torque Bow 等松开可能发射的武器仍禁止。候选入口需要显式启用，默认构建编译选项为关闭。最终候选的隔离购买版测试场以模拟来源完整经过共享帧、游戏线程及原版开火链：按住约 1.2 秒使用 15 发，55 ms 输入空档未误松开，正常 Release 清空 `bFire`／`bHoldingButton_R2`；再次按住后终止发布端，过期恢复清空两项且弹药停在 24 发。`analysis/playground-20261021/vr-fire-bridge-1022f/vr-fire-bridge-receipt.json` 标记通过，游戏、工作者退出和八个音频会话恢复已核实。中间一轮因测试控制文件共享错误在开火前停止，另一轮测试发布器把单次共享锁竞争当作永久故障提前退出；均完成桥接停机和进程清理，修复测试发布器后最终回执通过。离线状态机及候选／默认两种 DLL 构建通过；这尚非真机、全部武器、枪口弹道或默认启动器验收。
 
 ## 合并0.0.2启动修复（2026-10-22）
 
