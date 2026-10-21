@@ -44,6 +44,8 @@ Gnasher／Longshot 原版动画静态核验：新增 `tools/weapon-models/audit_
 
 扩展动画审核：允许某些序列省略压缩格式属性时只读取明确写入的轨道偏移／键数，不推断未写的默认格式，也不做该轨道的四元数采样。Lancer、Hammerburst、Snub、Bolo 四组 AnimSet 的完整有界审计通过。Lancer 原版装填同时驱动弹匣、机匣、卡扣；Hammerburst 装填活动锁扣而弹匣骨骼常量；Snub 开火时滑套有 6 个平移键；Bolo 准备动作驱动多节链条。相应哈希与计数回执位于忽略的 `analysis/{lancer,hammerburst,snub,bolo}-animation-tracks.json`。这进一步限定了哪些部件应复用原动画／蒙皮、哪些独立手持弹药需另建交互，但不构成游戏内操作通过。
 
+地图包动画审核：已与购买版逐字节比对的 `MP_WarMachine.war` 另有 Boomshot、Torque Bow、Troika 的 AnimSet。工具在该源包哈希下完整读取三组轨道；Boomshot 装填枪管有 86 个平移键、弹匣骨骼为常量，Torque Bow 张弓在八根弓臂骨骼上各有 54 个旋转键，Troika 双旋转件各有 10 个旋转键。结果在忽略的 `analysis/{boomshot,torquebow,troika}-animation-tracks.json`；Torque Bow 的跨骨三角形继续使用蒙皮，不能通过逐骨刚性切割代替。
+
 本轮离线验证还覆盖 `OriginalR2FireTest`、`OriginalL2AimTest`，并成功构建默认、仅 R2、R2+L2 三种私有 Playground DLL；导出表分别为无 VR 入口、仅 R2 入口和额外的 L2 状态入口。模拟发布器增加左扳机及双扳机测试动作，仍只用于置后静音测试，不进入默认启动清单。
 
 ## 合并0.0.2启动修复（2026-10-22）
