@@ -50,6 +50,8 @@ Gnasher 实例骨骼入口复核：Astra Max 只读核对已有脚本／对象�
 
 模型运动测试入口已落地为 `tools/playground/gnasher_sequence_probe.py`：使用已拥有的置后、静音私有购买版进程，通过原版拾取／装备与 `SetWeaponAnim`、`FreezeWeaponAnim`、`SetWeaponAnimPosition` 在 35 个位置取主骨／杠杆矩阵，运行时按骨名校验索引，停用 Playground 后通知测试启动器收尾；失败回执与衍生骨骼矩阵都只写忽略的 `analysis/`。脚本语法和命令入口通过，**尚无新的游戏样本**；此前两次菜单未就绪的结果仍不构成动画控制证据。Gnasher 本体不需预先切割，真正交互接线还要先拿到有效实例矩阵与手柄方向映射。
 
+Gnasher 完整霰弹模型原型：已查原版资源只有抛出的开口空壳，故新增纯程序化 `assets/weapon-6dof/gnasher-round.glb`，封口、底座、底火及四色材质均为新几何／材质，参考尺寸 33.7×113.5 mm，544 个三角形。`tools/weapon-models/build_gnasher_round.py --check` 逐字节复现提交的 GLB，结构与尺寸检查、本地侧面／斜视预览通过。该原型**尚未加载进游戏**，装填口配合、抓点、碰撞、纹理和头显尺度仍待验证；原空壳网格／检查图仍留在忽略的 `analysis/`。
+
 本轮离线验证还覆盖 `OriginalR2FireTest`、`OriginalL2AimTest`，并成功构建默认、仅 R2、R2+L2 三种私有 Playground DLL；导出表分别为无 VR 入口、仅 R2 入口和额外的 L2 状态入口。模拟发布器增加左扳机及双扳机测试动作，仍只用于置后静音测试，不进入默认启动清单。
 
 ## 合并0.0.2启动修复（2026-10-22）
