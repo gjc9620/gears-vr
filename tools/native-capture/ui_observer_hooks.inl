@@ -195,6 +195,30 @@ void observe_ui_canvas(unsigned draw,void* canvas,void* frame,gears_ui::ScopeCon
 void __fastcall hook_ui_vm(void* self,void* frame,void* result){
     Scope active_scope;if(!active_scope.world()){ui_original[0](self,frame,result);return;}
     crosshair_live::TickScope crosshair_tick(self,frame);
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+    if(controller_input_observer&&crosshair_tick.entered){
+        gears_vr::ControllerInputFrame hands{};uint64_t snapshot_world{};
+        {std::lock_guard<std::mutex> mailbox(controller_input_mailbox_mutex);
+            hands=controller_input_mailbox;snapshot_world=controller_input_mailbox_world;}
+        const auto time=gears_vr::monotonic_ns();
+        std::lock_guard<std::mutex> tick_guard(controller_input_tick_mutex);
+        if(snapshot_world!=committed_world_generation.load()){
+            controller_input_tick_session=0;++controller_input_tick_world_rejected;
+        }else if(!hands.focused||!hands.received_ns||time<hands.received_ns||time-hands.received_ns>100000000){
+            controller_input_tick_session=0;++controller_input_tick_stale;
+        }
+        else if(hands.session!=controller_input_tick_session||hands.space_epoch!=controller_input_tick_epoch||
+                hands.profile_generation!=controller_input_tick_profile||
+                hands.input_epoch!=controller_input_tick_input_epoch){
+            controller_input_tick_session=hands.session;controller_input_tick_epoch=hands.space_epoch;
+            controller_input_tick_profile=hands.profile_generation;
+            controller_input_tick_input_epoch=hands.input_epoch;
+            controller_input_tick_sequence=hands.sequence;
+            ++controller_input_tick_baseline;
+        }else if(hands.sequence<=controller_input_tick_sequence)++controller_input_tick_replayed;
+        else {controller_input_tick_sequence=hands.sequence;++controller_input_tick_accepted;}
+    }
+#endif
     if(ui_observer_enabled&&recording.load()){
         ++ui_vm_calls;uintptr_t node{};
         if(frame&&safe_copy(&node,static_cast<unsigned char*>(frame)+0x18,sizeof(node))){

@@ -14,6 +14,8 @@
 #include "MinHook.h"
 #include "../vr-common/pose_bridge.h"
 #include "../vr-common/stereo_bridge.h"
+#include "../vr-common/controller_input_bridge.h"
+#include "../vr-common/body_slots.h"
 #include "../vr-common/gpu_share.h"
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
 #include "../vr-common/gpu_mirror.h"
@@ -143,6 +145,7 @@ bool renderer_pair_enabled{};
 bool submit_pair_enabled{};
 bool projection_control{};
 bool stereo_xr{};
+bool controller_input_observer{};
 bool simulator_operator{};
 bool frame_link_diagnostics{};
 bool stereo_gpu_publish{};
@@ -317,8 +320,20 @@ double stereo_units_per_metre=100;
 double camera_closer_metres{};
 std::atomic<unsigned long long> camera_closer_applied{},camera_closer_inactive{},camera_closer_rejected{};
 gears_vr::StereoBridge stereo_bridge;
+gears_vr::ControllerInputBridge controller_input_bridge;
+gears_weapon::ArmspanCalibrator controller_armspan_observer;
 gears_vr::StereoGate stereo_gate;
 std::mutex stereo_mutex;
+uint64_t controller_input_matched{},controller_input_missing{},controller_input_tracked_left{},controller_input_tracked_right{};
+uint64_t controller_input_first_sequence{},controller_input_last_sequence{},controller_input_profile_generation{};
+std::mutex controller_input_mailbox_mutex;
+gears_vr::ControllerInputFrame controller_input_mailbox{};
+uint64_t controller_input_mailbox_world{};
+std::atomic<uint64_t> controller_input_tick_accepted{},controller_input_tick_baseline{},
+    controller_input_tick_stale{},controller_input_tick_replayed{},controller_input_tick_world_rejected{};
+std::mutex controller_input_tick_mutex;
+uint64_t controller_input_tick_session{},controller_input_tick_epoch{},controller_input_tick_profile{},
+    controller_input_tick_input_epoch{},controller_input_tick_sequence{};
 std::atomic<bool> outage_diagnostics{false};
 gears_outage::ActivitySnapshot outage_built;
 gears_outage::Window outage_window;
@@ -1132,6 +1147,20 @@ void print_stereo(FILE* file) {
     if(!stereo_xr)return;
     std::lock_guard<std::mutex> lock(stereo_mutex);
     first_person_live::print(file);
+    if(controller_input_observer)fprintf(file,
+        "controller_input_observer enabled=1 matched=%llu missing=%llu tracked_left=%llu tracked_right=%llu first_sequence=%llu last_sequence=%llu profile_generation=%llu tick_accepted=%llu tick_baseline=%llu tick_stale=%llu tick_replayed=%llu tick_world_rejected=%llu game_input_injected=0\n",
+        controller_input_matched,controller_input_missing,controller_input_tracked_left,
+        controller_input_tracked_right,controller_input_first_sequence,
+        controller_input_last_sequence,controller_input_profile_generation,
+        controller_input_tick_accepted.load(),controller_input_tick_baseline.load(),
+        controller_input_tick_stale.load(),controller_input_tick_replayed.load(),
+        controller_input_tick_world_rejected.load());
+    if(controller_input_observer){
+        const auto measured=controller_armspan_observer.result();
+        fprintf(file,"controller_armspan_observer measured=%u progress=%.6g armspan_metres=%.6g hands_below_head_metres=%.6g saved=0\n",
+            measured?1u:0u,controller_armspan_observer.progress(),
+            measured?measured->armspan_metres:0.,measured?measured->hands_below_head_metres:0.);
+    }
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
     // Final requests remain serviceable even if rendering stopped immediately
     // after the last GPU snapshot. Output is bounded to eight pinned tickets.
@@ -3069,6 +3098,23 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             if(continuous_session&&(result.status==gears_vr::StereoStatus::session_changed||result.status==gears_vr::StereoStatus::invalid)){
                 request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
             return false;}
+        if(controller_input_observer){
+            gears_vr::ControllerInputFrame hands{};
+            if(controller_input_bridge.read_matching(sample,gears_vr::monotonic_ns(),hands,simulator_operator)){
+                if(!simulator_operator)controller_armspan_observer.observe(hands,sample,gears_vr::monotonic_ns());
+                if(!controller_input_matched)controller_input_first_sequence=hands.sequence;
+                ++controller_input_matched;controller_input_last_sequence=hands.sequence;
+                controller_input_profile_generation=hands.profile_generation;
+                if(gears_vr::controller_pose_usable(hands.hands[0].grip,hands.hands[0].grip_flags,hands.hands[0].grip_active))
+                    ++controller_input_tracked_left;
+                if(gears_vr::controller_pose_usable(hands.hands[1].grip,hands.hands[1].grip_flags,hands.hands[1].grip_active))
+                    ++controller_input_tracked_right;
+                {std::lock_guard<std::mutex> mailbox(controller_input_mailbox_mutex);
+                    controller_input_mailbox=hands;
+                    controller_input_mailbox_world=committed_world_generation.load();}
+            }else {++controller_input_missing;
+                if(!controller_armspan_observer.result())controller_armspan_observer.reset();}
+        }
         gears_vr::StereoMatrix view{},projection{};memcpy(view.data(),original_source.bytes.data()+0x70,64);
         memcpy(projection.data(),original_source.bytes.data()+0xb0,64);
         // The original camera defines Canvas screen placement. Retain its
@@ -4698,6 +4744,8 @@ DWORD WINAPI worker(void*) {
     view_union_mask_fix=GetPrivateProfileIntW(L"Capture",L"view_union_mask_fix",0,ini)==1;
     projection_control=GetPrivateProfileIntW(L"Capture",L"projection_control",0,ini)==1;
     stereo_xr=GetPrivateProfileIntW(L"Capture",L"stereo_xr",0,ini)==1;
+    controller_input_observer=GetPrivateProfileIntW(L"Capture",L"controller_input_observer",0,ini)==1;
+    if(controller_input_observer&&!stereo_xr){fprintf(status,"rejected: controller input observer requires stereo XR\n");fclose(status);return 3;}
     simulator_operator=GetPrivateProfileIntW(L"Capture",L"simulator_operator",0,ini)==1;
     frame_link_diagnostics=GetPrivateProfileIntW(L"Capture",L"frame_link_diagnostics",0,ini)==1;
     stereo_gpu_publish=GetPrivateProfileIntW(L"Capture",L"stereo_gpu_publish",0,ini)==1;
@@ -4811,6 +4859,9 @@ DWORD WINAPI worker(void*) {
         live_gate.arm(true);
     }
     if(stereo_xr && !stereo_bridge.open(GetCurrentProcessId(),false)){fprintf(status,"rejected: stereo XR producer unavailable\n");fclose(status);return 3;}
+    if(controller_input_observer&&!controller_input_bridge.open(GetCurrentProcessId(),false)){
+        fprintf(status,"rejected: controller input producer unavailable\n");fclose(status);return 3;
+    }
     uintptr_t linked{};
     if(!expected_local || !expected_pc || !safe_copy(&linked,reinterpret_cast<void*>(expected_local+0x68),8) || linked!=expected_pc) {
         fprintf(status,"rejected: local player/controller link mismatch\n");fclose(status);return 3;
@@ -5284,6 +5335,7 @@ DWORD WINAPI worker(void*) {
         shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),
         state_done?state_delete_flags:0,state_done?state_delete_thread:0,
         static_cast<unsigned long long>(state_done?state_delete_caller:0),static_cast<unsigned long long>(state_temporary.load()));
+    controller_input_bridge.close();
     stereo_bridge.close();
     diagnostic_status=nullptr;fclose(file);fclose(status);
     // Terminal publication promises the complete, formerly exclusive report is readable.

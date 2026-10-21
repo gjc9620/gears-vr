@@ -18,6 +18,8 @@
 #include "../vr-common/pose_bridge.h"
 #include "reference_space_epoch.h"
 #include "../vr-common/stereo_bridge.h"
+#include "../vr-common/controller_input_bridge.h"
+#include "controller_actions.h"
 #include "../vr-common/render_size_bridge.h"
 #include "continuous_session.h"
 #include "shutdown_diagnostics.h"
@@ -33,6 +35,7 @@ XrInstance instance = XR_NULL_HANDLE;
 XrSession session = XR_NULL_HANDLE;
 XrSpace local = XR_NULL_HANDLE;
 XrSpace view_space = XR_NULL_HANDLE;
+gears_controller_xr::Actions controller_actions;
 bool xr_gpu_teardown_unsafe=false;
 void xr_check(XrResult result, const char* action) {
     if (XR_FAILED(result)) {
@@ -118,6 +121,7 @@ bool cleanup() {
     if(xr_gpu_teardown_unsafe){fprintf(stderr,"Unsafe XR teardown: submitted image GPU work is unconfirmed; XR objects retained until process exit\n");
         printf("{\"unsafe_xr_teardown\":true,\"xr_objects_destroyed\":false}\n");fflush(stdout);shutdown_diagnostics::marker("cleanup_retained_unsafe");return false;}
     bool ok=true;
+    controller_actions.close();
     if(view_space){shutdown_diagnostics::marker("destroy_view_space_enter");auto result=xrDestroySpace(view_space);
         shutdown_diagnostics::marker("destroy_view_space_returned",true,result);ok=XR_SUCCEEDED(result)&&ok;view_space=XR_NULL_HANDLE;}
     if(local){shutdown_diagnostics::marker("destroy_local_space_enter");auto result=xrDestroySpace(local);
@@ -347,6 +351,7 @@ int main(int argc, char** argv) {
     unsigned stereo_producer_seconds=30;bool explicit_stereo_duration=false;
     double render_scale{};bool explicit_render_scale=false;
     bool simulator_operator=false,continuous_session=false,diagnostic_shutdown=false,diagnostic_outage=false,diagnostic_image_tickets=false,movie_display=false;
+    bool controller_input=false;
     DWORD continuous_owner_pid=0;std::uint64_t continuous_owner_creation=0;
     for(int i=3;i<argc;++i) {
         if(!strcmp(argv[i],"--render"))test_render=true;
@@ -361,6 +366,7 @@ int main(int argc, char** argv) {
             if(*value<'0'||*value>'9'||*end||errno==ERANGE||!menu_game_creation)return 2;
         }
         else if(!strcmp(argv[i],"--simulator-operator")){if(simulator_operator)return 2;simulator_operator=true;}
+        else if(!strcmp(argv[i],"--controller-input")){if(controller_input)return 2;controller_input=true;}
         else if(!strcmp(argv[i],"--continuous-session")){if(continuous_session)return 2;continuous_session=true;}
         else if(!strcmp(argv[i],"--shutdown-diagnostics")){if(diagnostic_shutdown)return 2;diagnostic_shutdown=true;}
         else if(!strcmp(argv[i],"--outage-diagnostics")){if(diagnostic_outage)return 2;diagnostic_outage=true;}
@@ -408,6 +414,7 @@ int main(int argc, char** argv) {
     if(!continuous_session&&(continuous_owner_pid||continuous_owner_creation))return 2;
     if(explicit_stereo_duration&&(!stereo_game_pid||seconds<int(stereo_producer_seconds+10)))return 2;
     if(simulator_operator&&!stereo_game_pid)return 2;
+    if(controller_input&&!stereo_pid)return 2;
     if(explicit_render_scale&&!stereo_game_pid)return 2;
     if(diagnostic_outage&&!stereo_game_pid)return 2;
     if(diagnostic_image_tickets&&!stereo_game_pid)return 2;
@@ -430,8 +437,13 @@ int main(int argc, char** argv) {
     gears_vr::RenderSizeBridge render_size_bridge;
     gears_vr::StereoBridge stereo_bridge;
     if(stereo_pid && !stereo_bridge.open(stereo_pid,true)){fprintf(stderr,"Stereo bridge creation rejected\n");return 2;}
+    gears_vr::ControllerInputBridge controller_bridge;
+    if(controller_input&&!controller_bridge.open(stereo_pid,true)){
+        fprintf(stderr,"Controller input bridge creation rejected\n");return 2;
+    }
     const uint64_t stereo_session=static_cast<uint64_t>(gears_vr::monotonic_ns());
     uint64_t stereo_published=0,stereo_publish_skipped=0;
+    uint64_t controller_published=0,controller_publish_skipped=0;
     bool stereo_space_changed=false;
     gears_xr::ReferenceSpaceEpoch space_epoch;
     std::uint64_t last_submitted_space_epoch{};
@@ -521,6 +533,7 @@ int main(int argc, char** argv) {
         XrReferenceSpaceCreateInfo space{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};space.poseInReferenceSpace.orientation.w=1;
         space.referenceSpaceType=XR_REFERENCE_SPACE_TYPE_LOCAL;xr_check(xrCreateReferenceSpace(session,&space,&local),"LOCAL space");
         space.referenceSpaceType=XR_REFERENCE_SPACE_TYPE_VIEW;xr_check(xrCreateReferenceSpace(session,&space,&view_space),"VIEW space");
+        if(controller_input)controller_actions.initialize(instance,session);
         std::unique_ptr<TestPattern,shutdown_diagnostics::DeleteMarker<TestPattern>> pattern{nullptr,{"pattern_reset_enter","pattern_reset_completed"}};
         if(test_render&&!continuous_session)pattern.reset(new TestPattern(device.Get(),queue.Get(),argv[2]));
         std::unique_ptr<GameScreen,shutdown_diagnostics::DeleteMarker<GameScreen>> screen{nullptr,{"screen_reset_enter","screen_reset_completed"}};
@@ -589,6 +602,10 @@ int main(int argc, char** argv) {
                     session_exit.loss_observed=true;
                     stop_reason="instance_lost";
                     if(stereo_game_pid)projection_evidence.record(ProjectionStatus::session_lost,gears_vr::monotonic_ns());}
+                else if(event.type==XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED && controller_input){
+                    const auto* change=reinterpret_cast<const XrEventDataInteractionProfileChanged*>(&event);
+                    if(change->session==session)controller_actions.profile_changed();
+                }
                 else if(event.type==XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING && stereo_pid){
                     const auto* change=reinterpret_cast<const XrEventDataReferenceSpaceChangePending*>(&event);
                     if(change->session==session&&change->referenceSpaceType==XR_REFERENCE_SPACE_TYPE_LOCAL){
@@ -647,6 +664,22 @@ int main(int argc, char** argv) {
                 stereo_sample.head=pose(head.pose);
                 for(unsigned i=0;i<2;++i){const auto& f=views[i].fov;
                     stereo_sample.eyes[i]={pose(views[i].pose),{f.angleLeft,f.angleRight,f.angleUp,f.angleDown}};}
+                if(controller_input){
+                    gears_vr::ControllerInputFrame hands{};
+                    hands.source=stereo_sample.source;
+                    hands.session=stereo_sample.session;
+                    hands.sequence=stereo_sample.sequence;
+                    hands.space_epoch=stereo_sample.space_epoch;
+                    hands.profile_generation=controller_actions.profile_generation();
+                    hands.predicted_time=stereo_sample.predicted_time;
+                    if(!controller_actions.sample(local,frame.predictedDisplayTime,
+                                                  state==XR_SESSION_STATE_FOCUSED,hands))
+                        throw std::runtime_error("Controller input sampling rejected");
+                    if(controller_bridge.publish(hands))++controller_published;
+                    else ++controller_publish_skipped;
+                }
+                // Publish the eyes last, so a receiver never sees a new eye
+                // frame before its exact hand frame is available.
                 stereo_sent=stereo_bridge.publish(stereo_sample);
                 if(stereo_sent)++stereo_published;else ++stereo_publish_skipped;
             }
@@ -1083,6 +1116,8 @@ int main(int argc, char** argv) {
         if(gpu_screen)printf("{\"gpu_game_quad_layers\":%u,\"gpu_game_copies\":%u,\"per_frame_cpu_readback\":false,\"stereo_scene_rendering\":false}\n",gpu_screen->rendered,gpu_screen->copies);
         if(stereo_pid)printf("{\"stereo_bridge_session\":%llu,\"published\":%llu,\"publish_skipped\":%llu,\"reference_space_changed\":%s,\"game_projection_layer\":%s}\n",
             stereo_session,stereo_published,stereo_publish_skipped,stereo_space_changed?"true":"false",stereo_screen&&stereo_screen->projection_rendered?"true":"false");
+        if(controller_input)printf("{\"controller_input_bridge\":true,\"published\":%llu,\"publish_skipped\":%llu,\"profile_generation\":%llu,\"game_input_injected\":false}\n",
+            controller_published,controller_publish_skipped,controller_actions.profile_generation());
         if(stereo_game_pid)printf("{\"stereo_game_projection_layers\":%u,\"stereo_game_copies\":%u,\"matching_render_ticket_required\":true}\n",
             retired_stereo_projections+(stereo_screen?stereo_screen->projection_rendered:0),retired_stereo_copies+(stereo_screen?stereo_screen->copies:0));
         if(stereo_game_pid)printf("{\"image_continuity_evidence\":true,\"continuous_mode\":%s,\"retained_over_100ms\":%u,\"late_images_rejected\":%u,\"new_image_max_age_ns\":%lld,\"retained_max_age_ns\":%lld,\"original_render_pose_preserved\":true}\n",

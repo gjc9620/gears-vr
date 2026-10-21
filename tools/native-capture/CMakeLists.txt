@@ -9,11 +9,14 @@ add_executable(FirstPersonWeaponTest first_person_weapon_test.cpp)
 target_compile_options(FirstPersonWeaponTest PRIVATE /UNDEBUG)
 add_test(NAME FirstPersonWeaponTest COMMAND FirstPersonWeaponTest)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-add_subdirectory(../third-party/minhook minhook)
+set(MH_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/minhook" CACHE PATH "Existing MinHook source root")
+if(NOT EXISTS "${MH_SOURCE_DIR}/src/buffer.c" OR NOT EXISTS "${MH_SOURCE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "MH_SOURCE_DIR must point to the existing MinHook source")
+endif()
+add_subdirectory("${MH_SOURCE_DIR}" minhook)
 # This build has heavily fragmented low address space; the nearest aligned free
 # page can sit just beyond MinHook's default 1 GiB search. 1.5 GiB retains margin
 # within rel32's 2 GiB range. Generate a build-local copy, keeping vendor pristine.
-set(MH_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/minhook")
 file(READ "${MH_SOURCE_DIR}/src/buffer.c" MH_BUFFER)
 string(FIND "${MH_BUFFER}" "#define MAX_MEMORY_RANGE 0x40000000" MH_RANGE_POSITION)
 if(MH_RANGE_POSITION LESS 0)
