@@ -122,7 +122,9 @@ def lod0_chunks(raw, cursor, vertex_count, vertex_start, bones):
                 rigid_vertices < 0 or first_vertex + rigid_vertices > vertex_count):
             raise ValueError('Noncontiguous LOD0 chunk vertices')
         # In the verified GoWU package the serialized rigid vertex is 57 bytes:
-        # position(12), packed tangents(12), four float UVs(32), bone index(1).
+        # position(12), packed tangent/normal(8), four float UVs(32),
+        # vertex color(4), bone index(1). The GPU vertex then has four bone
+        # indices and four weights instead of the single rigid index.
         rigid_start = cursor + 8
         rigid_end = rigid_start + rigid_vertices * 57
         if rigid_end > vertex_start:

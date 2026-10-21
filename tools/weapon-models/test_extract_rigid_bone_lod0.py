@@ -13,7 +13,9 @@ def fixture():
     for vertex, position in enumerate(positions):
         at = vertex * 64
         struct.pack_into('<3f', raw, at, *position)
-        struct.pack_into('<2f', raw, at + 24, vertex / 10, vertex / 20)
+        raw[at + 16:at + 20] = bytes((127, 127, 0, 0))
+        struct.pack_into('<2f', raw, at + 20, vertex / 10, vertex / 20)
+        struct.pack_into('<f', raw, at + 28, 900 + vertex)  # UV1 must not become UV0.v.
         raw[at + 60] = 255
     # Local index zero is the magazine in chunk zero, chainsaw in chunk one.
     raw[3 * 64 + 60:3 * 64 + 62] = bytes((128, 127))
@@ -45,8 +47,10 @@ class RigidBoneExtractionTests(unittest.TestCase):
             write_obj(path, result, 'deadbeef', 'magazine')
             obj = path.read_text(encoding='ascii')
             self.assertEqual(obj.count('\nvt '), 3)
+            self.assertEqual(obj.count('\nvn '), 3)
             self.assertIn('vt 0.100000001 0.0500000007', obj)
-            self.assertIn('f 1/1 2/2 3/3', obj)
+            self.assertIn('vn -0.00392150832 -0.00392150832 -0.999984622', obj)
+            self.assertIn('f 3/3/3 2/2/2 1/1/1', obj)
 
     def test_target_mixed_weight_and_crossing_face_fail_closed(self):
         raw, audited = fixture()

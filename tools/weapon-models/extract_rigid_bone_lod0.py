@@ -1,4 +1,4 @@
-"""Export one verified rigid LOD0 bone group with its original primary UVs.
+"""Export one verified rigid LOD0 bone group with UV0 and packed normals.
 
 This is inspection geometry derived from a purchased game package. Outputs are
 restricted to the checkout's ignored analysis/ directory. The OBJ has no
@@ -25,15 +25,25 @@ def extract(raw, audited, bone):
     vertices = skin['vertex_count']
     first = skin['vertex_offset_in_export']
     belonging = [False] * vertices
-    positions, uvs = [], []
+    positions, uvs, normals = [], [], []
     for vertex in range(vertices):
         at = first + vertex * 64
         position = struct.unpack_from('<3f', raw, at)
-        uv = struct.unpack_from('<2f', raw, at + 24)
+        # This game's verified 64-byte GPU vertex places two packed tangent
+        # vectors at 12..19, then UV0 at 20..27. Offset 24 alone is UV0.v;
+        # the former 24..31 read wrongly paired UV0.v with UV1.u.
+        packed_normal = raw[at + 16:at + 19]
+        normal = tuple((value - 127.5) / 127.5 for value in packed_normal)
+        normal_length = math.sqrt(sum(value * value for value in normal))
+        if not .75 <= normal_length <= 1.25:
+            raise ValueError('Invalid packed LOD0 normal')
+        normal = tuple(value / normal_length for value in normal)
+        uv = struct.unpack_from('<2f', raw, at + 20)
         if not all(math.isfinite(value) and abs(value) < 10000 for value in (*position, *uv)):
             raise ValueError('Invalid original LOD0 position or primary UV')
         positions.append(position)
         uvs.append(uv)
+        normals.append(normal)
         indices = raw[at + 56:at + 60]
         weights = raw[at + 60:at + 64]
         mapping = vertex_bone_map(skin, vertex)
@@ -69,7 +79,7 @@ def extract(raw, audited, bone):
     used = sorted({vertex for face, _, _ in faces for vertex in face})
     if len(used) != sum(belonging):
         raise ValueError('Target bone has unreferenced LOD0 vertices')
-    return {'positions': positions, 'uvs': uvs, 'used_vertices': used,
+    return {'positions': positions, 'uvs': uvs, 'normals': normals, 'used_vertices': used,
             'faces': faces, 'material_face_counts': dict(sorted(materials.items()))}
 
 
@@ -83,12 +93,31 @@ def write_obj(path, extracted, digest, bone):
             output.write('v ' + ' '.join(f'{value:.9g}' for value in extracted['positions'][vertex]) + '\n')
         for vertex in used:
             output.write('vt ' + ' '.join(f'{value:.9g}' for value in extracted['uvs'][vertex]) + '\n')
+        for vertex in used:
+            output.write('vn ' + ' '.join(f'{value:.9g}' for value in extracted['normals'][vertex]) + '\n')
         active = None
         for face, section, material in extracted['faces']:
             if active != (section, material):
                 output.write(f'g section_{section}_material_{material}\n')
                 active = (section, material)
-            output.write('f ' + ' '.join(f'{remap[vertex]}/{remap[vertex]}' for vertex in face) + '\n')
+            # In these original arrays the face winding is opposite the
+            # stored normal. Reverse it for OBJ's front-face convention.
+            output.write('f ' + ' '.join(f'{remap[vertex]}/{remap[vertex]}/{remap[vertex]}'
+                                         for vertex in reversed(face)) + '\n')
+
+
+def raw_bone_reference(audited, bone):
+    """Retain the parent-local source pose, without claiming a mesh-space hinge."""
+    index = audited['bone_names'].index(bone)
+    record = audited['reference_bones'][index]
+    parent = record['parent_index']
+    if record['bone'] != bone or not 0 <= parent < len(audited['bone_names']):
+        raise ValueError('Reference bone hierarchy differs from audited names')
+    return {'skeleton_index': index, 'parent_bone': audited['bone_names'][parent],
+            'parent_index': parent,
+            'position_parent_local_raw': record['position_parent_local_raw'],
+            'orientation_xyzw_raw': record['orientation_xyzw'],
+            'mesh_space_pivot_verified': False}
 
 
 def main():
@@ -134,14 +163,17 @@ def main():
     references = struct.unpack_from('<' + 'i' * count, raw, bounds + 32)
     if any(section['material_index'] >= count for section in audited['lod0_skin']['sections']):
         raise ValueError('LOD0 section material index outside source material slots')
-    metadata = {'schema': 1, 'source_path': audited['path'],
+    metadata = {'schema': 2, 'source_path': audited['path'],
                 'source_sha256': audited['source_sha256'],
                 'bone': args.target_bone, 'lod': 0,
                 'original_vertices': len(extracted['used_vertices']),
                 'original_triangles': len(extracted['faces']),
-                'primary_uv_preserved': True, 'normals_preserved': False,
+                'primary_uv_preserved': True, 'uv0_vertex_offset': 20,
+                'normals_preserved': True, 'packed_normal_vertex_offset': 16,
+                'obj_face_winding_reversed': True,
                 'material_face_counts': extracted['material_face_counts'],
                 'source_material_object_refs': list(references),
+                'raw_reference_bone': raw_bone_reference(audited, args.target_bone),
                 'geometry_only': True, 'runtime_ready': False,
                 'obj': path.name, 'obj_sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
     (output_dir / 'part.json').write_text(json.dumps(metadata, indent=2) + '\n',

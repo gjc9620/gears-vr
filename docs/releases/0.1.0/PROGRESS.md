@@ -66,7 +66,9 @@ Lancer 弹匣拆件复核：原先分析工具错误地把整件网格的活动�
 
 Lancer 拆件错误来源已定位：先前 62 面的 `X≈0` 片状块位于材质 `BlurringBlades_Delta_MAT` 的电锯模糊区段，不能归入弹匣。正确弹匣是 120 个刚性顶点／156 面的单一连通块；整枪其余 36 个混合顶点、40 个关联面和 8 个跨骨面都在电锯特效区段。审核器与两个拆件工具现按 chunk 自身的 `BoneMap` 取骨骼，并逐顶点校验源 CPU／GPU 几何和影响；12 件已定位网格重新审核通过，只有 Lancer 的旧骨骼归属计数变化。旧错误派生预览已移至 `analysis/weapon-partitions/Lancer-weighted-invalid-20261022/` 并标记无效，新工具 5 项单测通过。要做可装卸件，仍需原 UV／材质、碰撞和运行时动画／显示核对；已有 `MagazineMesh` 可优先复用。
 
-刚性部件 UV 导出增量：`tools/weapon-models/extract_rigid_bone_lod0.py` 仅接受目标骨骼所有有效顶点权重为 255 且目标三角形不跨界的模型，保留源主 UV 与材质槽编号，源哈希和派生 OBJ 哈希一并记录。已离线导出并核对 Lancer 弹匣 120 顶点／156 面、Gnasher 杠杆 1,192／1,260、Hammerburst 弹匣 271／272、Snub 弹匣 279／314、Longshot 枪栓 687／894、Boomshot 弹匣 700／1,236、Hammer of Dawn 扳机 164／156、Troika 两个旋转件各 488／600；Lancer 弹匣在两角度灰模预览中位于枪身下方，形状和位置符合弹匣候选。跨 chunk 相同局部骨骼索引、无关部位混合权重、目标自身混合权重和跨界面均有合成单测，7 项通过。输出仅在忽略的 `analysis/weapon-partitions/`，未产生任何可游戏加载的新资产，也未更换默认启动器。
+刚性部件首次导出增量：`tools/weapon-models/extract_rigid_bone_lod0.py` 仅接受目标骨骼所有有效顶点权重为 255 且目标三角形不跨界的模型，记录源材质槽、源哈希与派生 OBJ 哈希。已离线导出 Lancer 弹匣 120 顶点／156 面、Gnasher 杠杆 1,192／1,260、Hammerburst 弹匣 271／272、Snub 弹匣 279／314、Longshot 枪栓 687／894、Boomshot 弹匣 700／1,236、Hammer of Dawn 扳机 164／156、Troika 两个旋转件各 488／600；Lancer 弹匣在两角度灰模预览中位于枪身下方。跨 chunk 相同局部骨骼索引、无关部位混合权重、目标自身混合权重和跨界面均有合成单测，7 项通过。当时声称“保留源主 UV”**已撤回**：首次导出读取了错误偏移，几何归属和面数有效，旧 OBJ 的贴图坐标无效；更正如下。
+
+刚性部件 UV／法线更正：购买版包内三件不同骨骼部件的面法线核对及 [UEViewer UE3 顶点结构](https://github.com/gildor2/UEViewer/blob/master/Unreal/UnrealMesh/UnMesh3.cpp) 均指向此 64 字节 GPU 顶点的两组打包方向位于偏移 12、16，UV0 始于偏移 20；旧工具从 24 读取两个浮点，实际是 UV0.v 与 UV1.u。工具现按 20–27 读取 UV0、按 16–19 解码法线并反转 OBJ 面序。九个刚性部件重新导出到忽略的 `analysis/weapon-partitions/uv-normal-fixed-20261022/`，源哈希、顶点与三角形数量逐件保持一致，导出面与法线平均点积为 0.698–0.984；旧 `*-uv/` 目录有失效说明，不能用于贴图。提取工具的 7 项合成检查通过；新的元数据保存原骨骼父级和原始父局部姿态，但尚未把它校准为网格空间枢轴。新 OBJ 仍不含原材质贴图、蒙皮、碰撞或游戏内显隐控制，不能直接装入 Mod 或公开包。
 
 原版库存槽位映射增量：经知识库索引与已保存脚本核对 `WarPC.WeaponSlotFromDpadDirection`、`WarPawn.SetSlotAttachment`，将 VR 左裤兜手枪、右裤兜手雷、左肩武器 2、右肩武器 1 分别映射到原版 0／1／2／3 号槽；取弹位置无库存武器槽。`BodySlotsTest` 编译和校准／位置／编号断言通过。镜像角色的视觉肩位会交换，且没有调用原版切枪；游戏内装备动作仍待单独验证。
 
