@@ -420,6 +420,171 @@ def sample_owned_game(args, receipt):
                 'DetachComponent': reflected_function(pawn_mesh, 'DetachComponent'),
                 'IsComponentAttached': reflected_function(pawn_mesh, 'IsComponentAttached'),
             }
+        elif args.mode == 'pawn_ik':
+            # The original WarPawn caches existing named hand controls. Read
+            # their current instance and coordinate-space fields; never call
+            # SetSkelControlActive or write an effector in this probe.
+            def named_field(obj, field):
+                meta = property_of(obj, field)
+                if meta['type'] != 'NameProperty':
+                    raise RuntimeError(f'{field} name type changed')
+                index, number = struct.unpack('<II', resolver.read(obj + meta['offset'], 8))
+                return {'text': resolver.name(index), 'number': number}
+
+            def scalar_field(obj, field, kind):
+                meta = property_of(obj, field)
+                if meta['type'] != kind:
+                    raise RuntimeError(f'{field} scalar type changed')
+                size = 1 if kind == 'ByteProperty' else 4
+                raw = resolver.read(obj + meta['offset'], size)
+                if kind == 'ByteProperty':
+                    return raw[0]
+                if kind == 'FloatProperty':
+                    return struct.unpack('<f', raw)[0]
+                if kind == 'BoolProperty':
+                    mask = resolver.u32(meta['address'] + 0xd0)
+                    if not mask or mask & (mask - 1):
+                        raise RuntimeError(f'{field} bool mask changed')
+                    return bool(struct.unpack('<I', raw)[0] & mask)
+                raise RuntimeError(f'{field} scalar kind not supported')
+
+            def struct_field(obj, field, expected):
+                meta = property_of(obj, field)
+                if meta['type'] != 'StructProperty' or \
+                        resolver.u32(meta['address'] + 0x74) != 12:
+                    raise RuntimeError(f'{field} original struct changed')
+                structure = resolver.struct_type(meta)
+                if resolver.identity(structure)['name'] != expected:
+                    raise RuntimeError(f'{field} original struct kind changed')
+                raw = resolver.read(obj + meta['offset'], 12)
+                values = struct.unpack('<fff' if expected == 'Vector' else '<iii', raw)
+                if expected == 'Vector' and not all(math.isfinite(v) for v in values):
+                    raise RuntimeError(f'{field} nonfinite original vector')
+                return list(values)
+
+            names = ('IKCtrl_RightHand', 'IKCtrl_LeftHand',
+                     'IKRotCtrl_RightHand', 'IKRotCtrl_LeftHand',
+                     'IKBoneCtrl_RightHand', 'IKBoneCtrl_LeftHand',
+                     'IKBoneRotCtrl_RightHand', 'IKBoneRotCtrl_LeftHand')
+            controls = {}
+            for name in names:
+                meta = property_of(pawn, name)
+                if meta['type'] != 'ObjectProperty':
+                    raise RuntimeError(f'{name} cache property changed')
+                current = pointer(pawn, name)
+                if not current:
+                    controls[name] = None
+                    continue
+                kind = class_name(current)
+                wanted = 'SkelControlLimb' if 'RotCtrl' not in name else \
+                    'SkelControlSingleBone'
+                if kind != wanted:
+                    raise RuntimeError(f'{name} current control class changed')
+                component = pointer(current, 'SkelComponent')
+                row = {'identity': resolver.identity(current),
+                       'control_name': named_field(current, 'ControlName'),
+                       'skel_component': resolver.identity(component) if component else None,
+                       'same_component': component == pawn_mesh,
+                       'next_control': hex(pointer(current, 'NextControl')),
+                       'control_strength': scalar_field(current, 'ControlStrength', 'FloatProperty'),
+                       'strength_target': scalar_field(current, 'StrengthTarget', 'FloatProperty'),
+                       'blend_time_to_go': scalar_field(
+                           current, 'BlendTimeToGo', 'FloatProperty'),
+                       'blend_in': scalar_field(current, 'BlendInTime', 'FloatProperty'),
+                       'blend_out': scalar_field(current, 'BlendOutTime', 'FloatProperty'),
+                       'strength_from_anim_node': scalar_field(
+                           current, 'bSetStrengthFromAnimNode', 'BoolProperty'),
+                       'propagate_set_active': scalar_field(
+                           current, 'bPropagateSetActive', 'BoolProperty'),
+                       'ignore_when_not_rendered': scalar_field(
+                           current, 'bIgnoreWhenNotRendered', 'BoolProperty')}
+                if kind == 'SkelControlLimb':
+                    row['effector_location'] = struct_field(current, 'EffectorLocation', 'Vector')
+                    row['effector_space'] = scalar_field(current, 'EffectorLocationSpace', 'ByteProperty')
+                    row['effector_space_bone'] = named_field(current, 'EffectorSpaceBoneName')
+                    row['joint_target_location'] = struct_field(current, 'JointTargetLocation', 'Vector')
+                    row['joint_target_space'] = scalar_field(current, 'JointTargetLocationSpace', 'ByteProperty')
+                    row['joint_target_space_bone'] = named_field(
+                        current, 'JointTargetSpaceBoneName')
+                    row['take_effector_rotation'] = scalar_field(
+                        current, 'bTakeRotationFromEffectorSpace', 'BoolProperty')
+                    row['maintain_effector_relative_rotation'] = scalar_field(
+                        current, 'bMaintainEffectorRelRot', 'BoolProperty')
+                else:
+                    row['bone_rotation'] = struct_field(current, 'BoneRotation', 'Rotator')
+                    row['rotation_space'] = scalar_field(current, 'BoneRotationSpace', 'ByteProperty')
+                    row['rotation_space_bone'] = named_field(current, 'RotationSpaceBoneName')
+                    row['add_rotation'] = scalar_field(current, 'bAddRotation', 'BoolProperty')
+                    row['apply_rotation'] = scalar_field(current, 'bApplyRotation', 'BoolProperty')
+                controls[name] = row
+
+            tree = pointer(pawn_mesh, 'Animations')
+            if not tree or class_name(tree) != 'AnimTree':
+                raise RuntimeError('Current player pawn has no AnimTree')
+            lists = property_of(tree, 'SkelControlLists')
+            indices = property_of(pawn_mesh, 'SkelControlIndex')
+            if lists['type'] != 'ArrayProperty' or indices['type'] != 'ArrayProperty':
+                raise RuntimeError('Current hand control arrays changed')
+            list_data, list_count, list_capacity = struct.unpack(
+                '<Qii', resolver.read(tree + lists['offset'], 16))
+            index_data, index_count, index_capacity = struct.unpack(
+                '<Qii', resolver.read(pawn_mesh + indices['offset'], 16))
+            if (not 0 < list_count <= list_capacity <= 64 or not list_data or
+                    not 36 < index_count <= index_capacity <= 512 or not index_data):
+                raise RuntimeError('Current hand control array bounds changed')
+            inner = resolver.u64(lists['address'] + resolver.profile['struct_property_struct'])
+            if not inner or class_name(inner) != 'StructProperty':
+                raise RuntimeError('Current hand control-list element changed')
+            structure = resolver.struct_type({'address': inner, 'type': 'StructProperty'})
+            stride = resolver.u32(structure + 0x88)
+            offsets = {}
+            for field in resolver.fields(structure):
+                if field['name'] in ('BoneName', 'ControlHead'):
+                    offsets[field['name']] = resolver.u32(field['address'] + 0x94)
+            if (not 16 <= stride <= 64 or set(offsets) != {'BoneName', 'ControlHead'} or
+                    max(offsets.values()) + 8 > stride):
+                raise RuntimeError('Current hand control-list layout changed')
+            list_rows, in_tree = [], set()
+            for position in range(list_count):
+                base = list_data + position * stride
+                bone_name_index, bone_name_number = struct.unpack(
+                    '<II', resolver.read(base + offsets['BoneName'], 8))
+                current = resolver.u64(base + offsets['ControlHead'])
+                chain, seen = [], set()
+                while current:
+                    if current in seen or len(chain) >= 32:
+                        raise RuntimeError('Current hand control chain changed')
+                    seen.add(current)
+                    in_tree.add(current)
+                    chain.append({'identity': resolver.identity(current),
+                                  'class': class_name(current),
+                                  'name': named_field(current, 'ControlName')})
+                    current = pointer(current, 'NextControl')
+                list_rows.append({'index': position,
+                                  'bone_name': {'text': resolver.name(bone_name_index),
+                                                'number': bone_name_number},
+                                  'chain': chain})
+            index_bytes = list(resolver.read(index_data, index_count))
+            ignore = property_of(pawn_mesh, 'bIgnoreControllers')
+            if ignore['type'] != 'IntProperty':
+                raise RuntimeError('Current pawn controller-ignore field changed')
+            receipt['current_pawn_ik'] = {
+                'tree': resolver.identity(tree),
+                'controls': controls,
+                'ignore_controllers': resolver.u32(pawn_mesh + ignore['offset']),
+                'ignore_when_not_rendered': scalar_field(
+                    pawn_mesh, 'bIgnoreControllersWhenNotRendered', 'BoolProperty'),
+                'control_list_count': list_count,
+                'control_list_capacity': list_capacity,
+                'control_lists': list_rows,
+                'cached_in_current_tree': {
+                    name: bool(controls[name] and controls[name]['identity']['address'] in in_tree)
+                    for name in names},
+                'skel_control_index': {'count': index_count, 'capacity': index_capacity,
+                                       'left_hand_bone_11': index_bytes[11],
+                                       'right_hand_bone_35': index_bytes[35],
+                                       'values': index_bytes},
+            }
         elif args.mode == 'anim_tree':
             # Read the equipped Lancer's existing animation graph. The saved
             # class declares an AnimTreeTemplate, but only this instance can
@@ -1254,6 +1419,17 @@ def sample_owned_game(args, receipt):
         if len(api['SetAbsolute']['parameters']) != 3 or any(
                 item['type'] != 'BoolProperty' for item in api['SetAbsolute']['parameters']):
             raise RuntimeError('Original SetAbsolute signature differs')
+    elif args.mode == 'pawn_ik':
+        ik = receipt['current_pawn_ik']
+        present = [name for name, control in ik['controls'].items() if control]
+        ik['present_controls'] = present
+        if (len(ik['controls']) != 8 or not present or
+                ik['control_list_count'] < 2 or
+                ik['skel_control_index']['count'] < 36):
+            raise RuntimeError('Current pawn hand-control certificate incomplete')
+        receipt['source_limit'] = ('current player hand-control cache and target spaces read '
+                                   'only; does not prove control ownership, a safe write, '
+                                   'XR-driven hands or headset rendering')
     elif args.mode == 'anim_tree':
         tree = receipt['current_lancer_anim_tree']
         if (not tree['children']['count'] or not tree['control_lists']['count'] or
@@ -1552,7 +1728,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('api', 'anim_tree', 'reload_values', 'chainsaw_api', 'chainsaw_target_eligibility', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'chainsaw_xr_no_pose', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('api', 'pawn_ik', 'anim_tree', 'reload_values', 'chainsaw_api', 'chainsaw_target_eligibility', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'chainsaw_xr_no_pose', 'reload_visual', 'reload_hold',
                                           'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

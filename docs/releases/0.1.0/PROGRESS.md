@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+当前人物双手 IK 边界只读取证：购买版自有置后静音 PID 60744 的当前 WarPawn 缓存了左右各四个手部控制器，均指向当前角色网格且都在其六条 AnimTree 骨骼控制列表中；左手骨 11 对应列表 0，右手骨 35 对应列表 2。每侧链顺序为 `IKBone_*Hand → IKBoneRot_*Hand → IK_*Hand → IKRot_*Hand`。末端 `IKCtrl_*Hand` 位置及 `IKRotCtrl_*Hand` 旋转均以 World 空间为目标，当前强度／目标强度／剩余混合时间都是 0；两侧链首控制器仍受原版动画驱动，左侧取样时尚有约 0.05 秒混合。角色网格未全局忽略控制器。资料在忽略的 `analysis/pawn-ik-runtime-1022b.json`，探针 `PlaygroundShutdown=0`、11 个音频会话恢复和自有游戏退出通过。这只认证了当前实例的可复用入口，尚未做手骨目标写入、原版动作争用或回滚验证；默认自由双手候选继续 `apply_mask=0`，不能称可见双手已自由移动。
+
 并行候选已纳入本独立工作树：`GEARS_PLAYGROUND_FREE_HANDS_PROBE` 默认关闭，消费 GVE6 同票据左右手完整世界位姿，在原版 `PlayerTick` 后只读记录原角色双手骨骼矩阵和固定动作状态；离线状态机覆盖双手独立失追、拾取／近战／切枪动画接管、新票据恢复、角色／会话／空间变化。候选与默认 Playground Release 构建、`FreeHandControlTest`、`PlaygroundHookTest` 和五项 Python 日志解析测试通过；导出只存在于候选 DLL。随后自有购买版置后静音 PID 56756 的原角色手骨探针完成 160/160 帧：左手 `b_MF_Hand_L=11`、右手 `b_MF_Hand_R=35`，当前角色 `SkelControlIndex` 长 115、动画树控制列表 6 条；160 帧双手骨矩阵均有效，因没有 XR 姿态 `xr_samples=0`，写入与 `apply_mask` 均为 0。忽略回执 `analysis/free-hands-probe-runtime-1022a.json`，`PlaygroundShutdown=0`、11 个音频会话恢复、自有游戏退出通过。当前 `ownership_proved=false`，**游戏内可见双手并未被驱动**。原版拾取完整生命周期、可恢复的双手骨骼写入、掌心标定、空手 GVE6 发布及头显运行仍待解决。
 
 枪上弹数卡片新增默认关闭的独立 OpenXR 候选：从经认证的原版 `GetMagazineSize − AmmoUsedCount` 与 `SpareAmmoCount` 生成“枪内／备用”纹理，在当前枪体局部挂点姿态上构造双眼 Quad，前后向及过期／错票据均拒绝；手雷独立显示可用数，不放完美换弹条。MSVC `/W4 /WX` 候选测试 3/3 通过，默认 `OpenXRPoseProbe` 构建通过，CPU 预览已核对。当前没有经认证的游戏线程弹药快照跨进程桥、同票据枪模位姿和逐枪挂点，也没有原 HUD 弹数／完美条各自绘制归属的证据；所以卡片尚未进入生产 XR 循环，右上角原 HUD 尚未移除，不能声称头显可读。
