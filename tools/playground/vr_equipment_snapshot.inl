@@ -477,6 +477,9 @@ bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned 
 #if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
 #include "vr_lancer_chainsaw_hold.inl"
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
+#include "vr_lancer_blade_probe.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
 #include "vr_lancer_magazine_follow.inl"
 #endif

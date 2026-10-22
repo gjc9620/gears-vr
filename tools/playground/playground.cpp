@@ -198,6 +198,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
        game_thread.load()==GetCurrentThreadId()){
         inside=true;
         vrequip::support_probe_post_tick(object);
+#if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
+        vrequip::lancer_blade_probe_post_tick(object);
+#endif
         vrequip::reload_visual_post_tick(object);
         vrequip::lancer_socket_post_tick(object);
         vrequip::mesh_follow_trial_prepare(object);
@@ -428,6 +431,45 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawHoldStatus(void
         (vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)?0x10000u:0u);
 }
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
+// Read-only original mesh and blade bones sampled after one PlayerTick.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerBladeProbeStart(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment())return 1;
+    if(vrequip::lancer_blade_probe_requested.load(std::memory_order_acquire)||
+       vrequip::mesh_follow_requested.load(std::memory_order_acquire)||
+       vrequip::mesh_follow_active_visible.load(std::memory_order_acquire)||
+       vrequip::support_probe_requested.load(std::memory_order_acquire)||
+       vrequip::reload_visual_requested.load(std::memory_order_acquire)||
+       vrequip::lancer_saw_active_visible.load(std::memory_order_acquire))return 2;
+    unsigned expected=0;
+    if(!vrequip::lancer_blade_probe_status.compare_exchange_strong(expected,1))return 3;
+    vrequip::lancer_blade_probe_count.store(0,std::memory_order_release);
+    vrequip::lancer_blade_probe_expected_hold.store(false,std::memory_order_release);
+    vrequip::lancer_blade_probe_requested.store(true,std::memory_order_release);
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerBladeProbeStartHeld(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment()||
+       !vrequip::lancer_saw_active_visible.load(std::memory_order_acquire))return 1;
+    if(vrequip::lancer_blade_probe_requested.load(std::memory_order_acquire)||
+       vrequip::mesh_follow_requested.load(std::memory_order_acquire)||
+       vrequip::mesh_follow_active_visible.load(std::memory_order_acquire)||
+       vrequip::support_probe_requested.load(std::memory_order_acquire)||
+       vrequip::reload_visual_requested.load(std::memory_order_acquire))return 2;
+    unsigned expected=0;
+    if(!vrequip::lancer_blade_probe_status.compare_exchange_strong(expected,1))return 3;
+    vrequip::lancer_blade_probe_count.store(0,std::memory_order_release);
+    vrequip::lancer_blade_probe_expected_hold.store(true,std::memory_order_release);
+    vrequip::lancer_blade_probe_requested.store(true,std::memory_order_release);
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerBladeProbeStatus(void*){
+    return (vrequip::lancer_blade_probe_status.load(std::memory_order_acquire)<<16)|
+        (vrequip::lancer_blade_probe_count.load(std::memory_order_acquire)&0xffffu);
+}
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
 // Bit 16: original mesh override active; bit 17: left support grip latched.
 // 1 waiting for a held Lancer and fresh hand pose, 2 moving original mesh,
@@ -618,6 +660,13 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     vrequip::lancer_saw_test_stop=false;
     vrequip::lancer_saw_hold={};
     vrequip::lancer_saw_status.store(0,std::memory_order_release);
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
+    vrequip::lancer_blade_probe_requested=false;
+    vrequip::lancer_blade_probe_expected_hold=false;
+    vrequip::lancer_blade_probe={};
+    vrequip::lancer_blade_probe_status.store(0,std::memory_order_release);
+    vrequip::lancer_blade_probe_count.store(0,std::memory_order_release);
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
     vrequip::lancer_magazine_test_active=false;

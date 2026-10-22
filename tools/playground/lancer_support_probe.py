@@ -421,6 +421,42 @@ def sample_owned_game(args, receipt):
                     weapon, 'IsTargetValidForSpecialMeleeAttack'),
                 'MeleeAttackImpact': signature(weapon, 'MeleeAttackImpact'),
             }
+        elif args.mode in ('chainsaw_bones', 'chainsaw_bones_held'):
+            held = args.mode == 'chainsaw_bones_held'
+            if held:
+                if bridge.export('PlaygroundLancerSawHoldStartTest') != 0:
+                    raise RuntimeError('Private original saw hold rejected')
+            try:
+                if held:
+                    def saw_hold_started():
+                        return bridge.export('PlaygroundLancerSawHoldStatus') == 0x10002
+                    wait_for(saw_hold_started, 5, 'Original saw hold did not start')
+                    running = property_of(weapon, 'bChainSawRunning')
+                    if running['type'] != 'BoolProperty':
+                        raise RuntimeError('Original saw running field changed')
+                    mask = resolver.u32(running['address'] + 0xd0)
+                    if not mask:
+                        raise RuntimeError('Original saw running bit mask missing')
+                    wait_for(lambda: bool(resolver.u32(weapon + running['offset']) & mask),
+                             5, 'Original blade did not enter running state')
+                start = ('PlaygroundLancerBladeProbeStartHeld' if held else
+                         'PlaygroundLancerBladeProbeStart')
+                if bridge.export(start) != 0:
+                    raise RuntimeError('Private same-tick blade probe rejected')
+                def blade_probe_done():
+                    result = bridge.export('PlaygroundLancerBladeProbeStatus')
+                    status, count = result >> 16, result & 0xffff
+                    if status == 4:
+                        raise RuntimeError(f'Original blade probe failed after {count} samples')
+                    return status == 3 and count == 16
+                wait_for(blade_probe_done, 10,
+                         'Original same-tick blade probe did not finish')
+            finally:
+                if held:
+                    if bridge.export('PlaygroundLancerSawHoldStopTest') != 0:
+                        raise RuntimeError('Private saw hold stop rejected')
+                    wait_for(lambda: bridge.export('PlaygroundLancerSawHoldStatus') == 3,
+                             5, 'Original saw hold did not release after blade probe')
         elif args.mode == 'component_motion':
             magazine = pointer(weapon, 'MagazineMesh')
             if (class_name(magazine) != 'StaticMeshComponent' or
@@ -810,6 +846,25 @@ def sample_owned_game(args, receipt):
         if any(not entry['path'] or entry['parameter_bytes'] > 128
                for entry in api.values()):
             raise RuntimeError('Original Lancer chainsaw function metadata incomplete')
+    elif args.mode in ('chainsaw_bones', 'chainsaw_bones_held'):
+        begins = [line for line in lines if line.startswith('lancer_blade_probe_begin ')]
+        rows = []
+        for line in lines:
+            if not line.startswith('lancer_blade_pose '):
+                continue
+            fields = dict(item.split('=', 1) for item in line.split()[1:])
+            if set(fields) != {'sample', 'qpc', 'gun', 'root', 'tip'}:
+                raise RuntimeError('Unexpected original blade-bone row')
+            rows.append({'sample': int(fields['sample']), 'qpc': int(fields['qpc']),
+                         **{key: matrix(fields[key]) for key in
+                            ('gun', 'root', 'tip')}})
+        if (len(begins) != 1 or len(rows) != 16 or
+                [row['sample'] for row in rows] != list(range(16)) or
+                any(rows[index]['qpc'] <= rows[index - 1]['qpc']
+                    for index in range(1, len(rows)))):
+            raise RuntimeError('Original same-tick Lancer blade-bone sample incomplete')
+        receipt.update(blade_bone_begin=begins[0], blade_bone_samples=rows,
+                       source_limit='same game-thread tick, original Lancer; no contact target')
     elif args.mode == 'component_motion':
         motion = receipt['component_motion']
         if (not motion['attached_after_original_call'] or
@@ -1007,7 +1062,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('api', 'chainsaw_api', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('api', 'chainsaw_api', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'reload_visual', 'reload_hold',
                                           'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

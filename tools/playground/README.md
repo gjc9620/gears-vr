@@ -122,6 +122,16 @@ confirmed the original B, melee and blade states returned to idle. This is
 not yet driven by the hand-pull solver and does not perform blade contact,
 paired execution, visual starter placement, or headset verification.
 
+`GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST=ON` additionally requires the private
+mesh-follow helpers and adds a read-only, post-PlayerTick sample of the
+original `b_AR_Chainsaw` and `b_AR_ChainsawEnd` bone matrices with the original
+gun matrix in the same game-thread tick. Separate start exports sample an idle
+or already-running original saw. Both observed 16-frame retail trials found
+stable pivots about 22.47 original units apart. This locates bone pivots only;
+the visible tooth edge, target collision, occlusion, and paired execution
+remain unverified. The sequential remote-reflection attempt was discarded
+because the original gun component moved between calls.
+
 While certified hand poses are being observed, the private bridge also logs a
 read-only `weapon_magazine_probe` beside `weapon_mesh_probe`. It validates the
 current weapon's original `MagazineMesh` component, names its `StaticMesh`,

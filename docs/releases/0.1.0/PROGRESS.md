@@ -20,6 +20,8 @@ Lancer 启动件原创模型原型：新增 `assets/weapon-6dof/lancer-starter.g
 
 另一次购买版自有置后静音只读探针 PID 61168 核对了原版 Lancer 电锯函数签名：`AcquiredVictim(VictimPawn)` 的参数区为 8 字节对象引用；`IsTargetValidForSpecialMeleeAttack(P)` 为对象入参加布尔返回。`MeleeAttackImpact` 有伤害和命中输出参数，不能当成实体锯刃接触入口。本次未调用目标获取或处决；回执仅在忽略的 `analysis/lancer-saw-api-runtime-1022c.json`，自有进程退出、音频恢复。下一步仍须逐帧定位原枪锯刃骨骼、验证敌方碰撞和遮挡后，才允许对同一有效受害者做一次原版动画移交。
 
+原枪锯刃骨骼只读采样改用同一游戏线程帧，排除第一次跨反射调用时枪组件在两次读之间更新的无效尝试。购买版 PID 53752 普通持枪及 PID 36516 原版锯链运转各采 16 帧，`b_AR_Chainsaw`／`b_AR_ChainsawEnd` 索引均为 1／2；枪体局部枢轴约 `(0.008,34.127,5.651)`、`(0.008,56.562,4.476)`，距离约 22.466 原始单位，两组漂移均小于 0.001。PID 52172 的增强采样逐帧复核原版 B、锯链和人物近战确实持续为真，仍得到相同枢轴。启动电锯没有改变枢轴相对枪体的静态位置。原始矩阵仅留在忽略的 `analysis/lancer-saw-bones-runtime-1022e.json`、`analysis/lancer-saw-bones-held-runtime-1022f.json`、`analysis/lancer-saw-bones-held-runtime-1022g.json`；`tools/weapon-models/analyze_lancer_blade_bones.py` 可重算摘要。三次有效试验 Playground 关闭码 0、精确自有游戏进程退出，音频守护恢复。枢轴不等于可见锯齿外缘，不能凭此认定敌方碰撞或处决已实现；默认 DLL 未启用探针。
+
 范围更正：玩家确认先前清单误列 Mulcher 和 Ink Grenade，本轮只实施交互设计中剩余的 12 件武器／投掷物。此前“14 种”与这两件待查模型的条目属于当时的历史记录，已由本条和更新后的设计清单取代；无需再为它们追索模型或开发交互。
 
 Lancer 下一机构边界审核：已核验原包的 `AR_Reload` 中 `b_AR_Latch` 与 `b_AR_Receiver` 各有 38 个旋转键、仅一个平移键，`AR_Reload_Fumble` 各有 60 个旋转键；`b_AR_Latch` 的原 LOD0 是 298 个刚性顶点／276 面，位于枪下方，源骨枢轴候选在枪体局部约 `(0.008,21.391,-7.540)`。有界解码显示 Latch 的存储局部姿态经历约 114.5° 相对旋转，但尚未验证动画键时间、游戏运行骨矩阵和可见操作面，因此不能只凭名字把它叫作枪栓。解码回执和检查用 OBJ 只留在忽略的 `analysis/lancer-support-probe-20261022/`、`analysis/weapon-partitions/Lancer-latch-uv/`，没有接入发行模型。

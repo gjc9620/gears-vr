@@ -128,6 +128,8 @@
 
 另一次购买版只读反射核对（PID 61168）确认当前 Lancer 的 `AcquiredVictim` 参数区为 8 字节，唯一参数 `VictimPawn` 是偏移 0 的对象引用；`IsTargetValidForSpecialMeleeAttack` 接收对象 `P` 并返回布尔值。`MeleeAttackImpact` 则含命中输出和伤害参数，属于原版前方寻敌流程，不能代替 VR 锯刃几何判定。脚本导出对参数类型有未解析占位，实际适配须以这次运行时签名为准；本次只读，没有调用处决或制造伤害。回执仅在忽略的 `analysis/lancer-saw-api-runtime-1022c.json`，自有进程退出且音频恢复。
 
+为定位原枪锯刃的接触线，私有只读探针在同一 `PlayerTick` 后顺序采原版枪组件和 `b_AR_Chainsaw`／`b_AR_ChainsawEnd` 两骨的矩阵。购买版 PID 53752 的普通持枪与 PID 36516 的原版电锯运转状态各有 16 帧；两者的骨骼索引均为 1／2，枪体局部两枢轴中位数约 `(0.008,34.127,5.651)` 和 `(0.008,56.562,4.476)` 原始单位，中心距约 22.466，单组最大漂移小于 0.001。运行时电锯启动未使这两枢轴相对枪体发生可测位移。增强探针又在 PID 52172 的 16 帧里逐帧核对原版 B 按住、锯链运转及人物近战状态，同时得到同样的枢轴位置。首次尝试跨反射调用串行读取时枪组件在两次调用间更新，未作为同帧证据；后改为游戏线程一次采样。`tools/weapon-models/analyze_lancer_blade_bones.py` 可从忽略的 `analysis/lancer-saw-bones-runtime-1022e.json`、`analysis/lancer-saw-bones-held-runtime-1022f.json` 与 `analysis/lancer-saw-bones-held-runtime-1022g.json` 重算摘要。三次有效试验的自有进程退出、音频恢复、Playground 关闭码 0。**枢轴线不是已核实的可见锯齿边缘或物理伤害体积**；锯刃半径、敌方碰撞、遮挡和原版受害者移交仍待验证。
+
 另已做不复制原枪几何的程序化拉柄原型 `assets/weapon-6dof/lancer-starter.glb`：固定插座、跟左手移动的 T 形握柄、可拉长绳分别为三个节点，局部 +X 是拉动方向，704 个三角形。生成器为 `tools/weapon-models/build_lancer_starter.py`，确定性重建检查通过，本地预览留在忽略的 `analysis/lancer-support-probe-20261022/lancer-starter-preview.png`。资产目前没有接入游戏或定位到原枪；头显内的可见性、握持范围、拉绳长度与高亮仍待核对。
 
 ## 物理装填与黄色引导
