@@ -6,6 +6,8 @@
 
 Snub 静态拆件复核：在已验证的原包上用同一刚性骨骼提取器分出滑套 445 面、左右翼片各 60 面，三个目标各自与剩余枪体恰好覆盖原 LOD0 的 3,045 面；UV0／法线与来源哈希记录在忽略的 `analysis/weapon-partitions/snub-b_HG_*/`。这补齐原先只拆出 Snub 弹匣的检查预览，不是游戏内可抓取、动画驱动或发行资源。
 
+Boltok 模型／动画绑定复核：SHA256 核验的原版 `Weap_LocustPistol.WeaponMesh` 显式引用 `Geist_Pistol.Boltock_Pistol` 网格与 `COG_Pistol.COG_Pistol` 动画集；前者 12 根通用命名骨骼，后者 `HG_Fire`／`AR_Reload`／`AR_Reload_Fail` 只有五根 `b_HG_*` 轨道且无同名项。暂不把 Snub 活动件方案移植到 Boltok；先查运行时实际动画和可见部件，必要时逐件控制或做覆盖件。包内轨道回执位于忽略的 `analysis/boltok-pistol-animation-audit-20261022.json`，并非运行时验证。
+
 完美窗口静态复核增量：新增只读、哈希约束的原版默认对象字段审计，重新确认 WarWeapon 基类 `AR_SweetSpotDuration`／`AR_SuperSweetSpotDuration`／`AR_PreReactionWindowDuration` 为 `-1`，Lancer、Hammerburst、Gnasher、Longshot、Snub、Boltok 具体类未显式覆盖这三项；已有 `AR_PossibleSuccessStartPoint` 和 `ReloadDuration` 数值重现。结果位于忽略的 `analysis/active-reload-explicit-defaults-20261022.json`。这仍未确定原版 SuperSuccess 窗口终点，不给逐枪体感期限填猜测数值。
 
 继续按保存的原版 HUD 脚本核对出显示层的完美区终点候选为 `ActiveReloadStartTime + SuperSweetSpotDuration`（均为 `GetActiveReloadValues` 的实际输出），普通成功区另加 `SweetSpotDuration`；历史真实 SuperSuccess 样本仍见对象上的三项时长为 `-1`。因此下一步只分析两个原生函数的有界 getter／判定路径，或在受控零售会话只读截取其真实输出，不用显示层公式冒充原生严格边界，也不主动调用未知副作用的原生函数来声称只读。
