@@ -1,5 +1,6 @@
 #pragma once
 #include "controller_input_bridge.h"
+#include "pose_math.h"
 #include <windows.h>
 #include <cstdint>
 #include <cstring>
@@ -13,13 +14,20 @@ struct EquipmentIntentEvent {
     std::uint8_t inventory_slot{4};
     EquipmentIntentKind kind{EquipmentIntentKind::slot};
 };
+struct HandWorldFrame {
+    std::uint64_t serial{},created_ms{},session{},sequence{},space_epoch{},world_generation{};
+    std::uintptr_t controller{},pawn{},weapon{};
+    gears_vr::Viewpoint left{},right{};
+    std::uint8_t valid_mask{}; // bit 0 left, bit 1 right
+};
 struct EquipmentIntentPacket {
-    static constexpr std::uint32_t magic_value=0x47564532; // GVE2
-    static constexpr std::uint32_t version_value=2;
+    static constexpr std::uint32_t magic_value=0x47564533; // GVE3
+    static constexpr std::uint32_t version_value=3;
     static constexpr unsigned capacity=8;
     std::uint32_t magic{magic_value},version{version_value},size{sizeof(EquipmentIntentPacket)},game_pid{};
-    std::uint64_t game_start{},publisher_pid{},publisher_start{},latest_serial{};
+    std::uint64_t game_start{},publisher_pid{},publisher_start{},latest_serial{},latest_pose_serial{};
     EquipmentIntentEvent events[capacity]{};
+    HandWorldFrame pose{};
 };
 static_assert(std::is_standard_layout_v<EquipmentIntentPacket> &&
               std::is_trivially_copyable_v<EquipmentIntentPacket>);
@@ -46,9 +54,19 @@ class EquipmentIntentBridge {
             event.controller&&event.pawn&&event.weapon&&event.world_generation&&
             event.input_session&&event.input_sequence;
     }
+    static bool pose_valid(HandWorldFrame const& pose) noexcept {
+        auto viewpoint=[](gears_vr::Viewpoint const& v){
+            return gears_vr::finite(v.position)&&std::isfinite(v.rotation.pitch)&&
+                std::isfinite(v.rotation.yaw)&&std::isfinite(v.rotation.roll);
+        };
+        return pose.session&&pose.sequence&&pose.space_epoch&&pose.world_generation&&
+            pose.controller&&pose.pawn&&pose.weapon&&pose.valid_mask&&!(pose.valid_mask&~3u)&&
+            (!(pose.valid_mask&1)||viewpoint(pose.left))&&
+            (!(pose.valid_mask&2)||viewpoint(pose.right));
+    }
     static void name(wchar_t (&out)[128],DWORD pid,std::uint64_t start,bool lock) noexcept {
-        swprintf_s(out,lock?L"Local\\GearsVR.EquipmentIntentLock.v2.%lu.%llu":
-                           L"Local\\GearsVR.EquipmentIntent.v2.%lu.%llu",
+        swprintf_s(out,lock?L"Local\\GearsVR.EquipmentIntentLock.v3.%lu.%llu":
+                           L"Local\\GearsVR.EquipmentIntent.v3.%lu.%llu",
                    pid,static_cast<unsigned long long>(start));
     }
     bool lock_now() const noexcept {return mutex_&&WaitForSingleObject(mutex_,0)==WAIT_OBJECT_0;}
@@ -100,6 +118,15 @@ public:
         }
         ReleaseMutex(mutex_);return ok;
     }
+    bool publish_pose(HandWorldFrame pose) noexcept {
+        if(!producer_||!data_||!pose_valid(pose)||!lock_now())return false;
+        const bool ok=valid(*data_)&&data_->latest_pose_serial!=UINT64_MAX;
+        if(ok){
+            pose.serial=++data_->latest_pose_serial;pose.created_ms=GetTickCount64();
+            data_->pose=pose;
+        }
+        ReleaseMutex(mutex_);return ok;
+    }
     // Caller starts its cursor at UINT64_MAX. Its first read discards all older
     // events, so a newly attached adapter cannot replay a pre-attachment grip.
     bool read_next(std::uint64_t& cursor,EquipmentIntentEvent& out) noexcept {
@@ -119,6 +146,19 @@ public:
         if(event.serial!=serial||!event_valid(event)||
            now<event.created_ms||now-event.created_ms>250)return false;
         out=event;return true;
+    }
+    bool read_pose(std::uint64_t& cursor,HandWorldFrame& out) noexcept {
+        if(producer_||!data_||!lock_now())return false;
+        EquipmentIntentPacket packet{};
+        std::memcpy(&packet,data_,sizeof(packet));ReleaseMutex(mutex_);
+        if(!valid(packet))return false;
+        if(cursor==UINT64_MAX){cursor=packet.latest_pose_serial;return false;}
+        if(packet.latest_pose_serial<=cursor)return false;
+        cursor=packet.latest_pose_serial;
+        const auto now=GetTickCount64();
+        if(packet.pose.serial!=cursor||!pose_valid(packet.pose)||
+           now<packet.pose.created_ms||now-packet.pose.created_ms>100)return false;
+        out=packet.pose;return true;
     }
     void close() noexcept {
         if(data_)UnmapViewOfFile(data_);data_=nullptr;

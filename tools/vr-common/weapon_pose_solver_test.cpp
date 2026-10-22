@@ -1,4 +1,5 @@
 #include "weapon_pose_solver.h"
+#include "view_origin.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>
@@ -41,6 +42,40 @@ int main(){
     WeaponAimLine aim{};
     assert(weapon_world_aim(one,reference,base,100,aim));
     assert(close(aim.start,{110,20,130})&&close(aim.direction,{1,0,0}));
+    StereoMatrix native_view{0,0,1,0,1,0,0,0,0,1,0,0,0,0,0,1};
+    assert(view_with_origin(native_view,{10,20,30},native_view));
+    Viewpoint world_pose{};
+    assert(xr_pose_in_game_world(one.gun,reference,native_view,100,world_pose));
+    assert(close(world_pose.position,{10,20,130}));
+    assert(close(world_pose.rotation.pitch,0)&&close(world_pose.rotation.yaw,0));
+    StereoMatrix turned{-1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1};
+    assert(view_with_origin(turned,{10,20,30},turned));
+    assert(xr_pose_in_game_world(one.gun,reference,turned,100,world_pose));
+    assert(close(world_pose.position,{10,20,130}));
+    assert(close(world_pose.rotation.yaw,1.5707963267948966));
+    // A pitched/rolled source camera must preserve the complete UE basis,
+    // including the XR-to-UE axis permutation and nonzero relative position.
+    const Rotator oblique{.23,.61,-.17};
+    const auto basis=ue_matrix(oblique);
+    StereoMatrix oblique_view{
+        float(basis[0][1]),float(basis[0][2]),float(basis[0][0]),0,
+        float(basis[1][1]),float(basis[1][2]),float(basis[1][0]),0,
+        float(basis[2][1]),float(basis[2][2]),float(basis[2][0]),0,
+        0,0,0,1};
+    assert(view_with_origin(oblique_view,{10,20,30},oblique_view));
+    Pose offset{{.1,.2,-.3},{0,0,0,1}};
+    assert(xr_pose_in_game_world(offset,reference,oblique_view,100,world_pose));
+    const auto delta=transform(basis,{30,10,20});
+    assert(std::abs(world_pose.position.x-10-delta.x)<1e-4&&
+           std::abs(world_pose.position.y-20-delta.y)<1e-4&&
+           std::abs(world_pose.position.z-30-delta.z)<1e-4);
+    const auto reconstructed=ue_matrix(world_pose.rotation);
+    for(int row=0;row<3;++row)for(int col=0;col<3;++col)
+        assert(std::abs(reconstructed[row][col]-basis[row][col])<1e-5);
+    const auto previous=world_pose;
+    oblique_view[0]=0; // Invalid matrix must not change the last certified pose.
+    assert(!xr_pose_in_game_world(one.gun,reference,oblique_view,100,world_pose));
+    assert(close(world_pose.position,previous.position)&&close(world_pose.rotation.yaw,previous.rotation.yaw));
     WeaponAimLine moved{};
     assert(weapon_world_aim(head_moved,reference,base,100,moved));
     stereo.sequence=3; // A different stereo ticket cannot consume this hand pose.

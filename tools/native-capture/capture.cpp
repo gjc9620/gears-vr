@@ -17,6 +17,7 @@
 #include "../vr-common/controller_input_bridge.h"
 #include "../vr-common/body_slots.h"
 #include "../vr-common/weapon_input_router.h"
+#include "../vr-common/weapon_pose_solver.h"
 #include "../vr-common/equipment_intent_bridge.h"
 #include "../vr-common/controller_recenter_request.h"
 #include "../vr-common/gpu_share.h"
@@ -344,6 +345,7 @@ uint64_t controller_input_tick_session{},controller_input_tick_epoch{},controlle
 gears_weapon::WeaponInputRouter controller_input_intent_router;
 gears_weapon::EquipmentIntentBridge controller_equipment_intent_bridge;
 std::atomic<uint64_t> controller_equipment_intent_published{},controller_equipment_intent_rejected{};
+std::atomic<uint64_t> controller_hand_pose_published{},controller_hand_pose_rejected{};
 std::array<std::atomic<uint64_t>,16> controller_input_intents{};
 std::atomic<bool> outage_diagnostics{false};
 gears_outage::ActivitySnapshot outage_built;
@@ -1184,8 +1186,9 @@ void print_stereo(FILE* file) {
             controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::reload)].load(),
             controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::aim_down)].load(),
             controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::fire_down)].load());
-        fprintf(file,"controller_equipment_intent_bridge published=%llu rejected=%llu original_switch_called=0\n",
-            controller_equipment_intent_published.load(),controller_equipment_intent_rejected.load());
+        fprintf(file,"controller_equipment_intent_bridge published=%llu rejected=%llu hand_pose_published=%llu hand_pose_rejected=%llu original_switch_called=0\n",
+            controller_equipment_intent_published.load(),controller_equipment_intent_rejected.load(),
+            controller_hand_pose_published.load(),controller_hand_pose_rejected.load());
     }
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
     // Final requests remain serviceable even if rendering stopped immediately
@@ -3131,9 +3134,12 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         if(controller_input_observer&&gears_weapon::apply_controller_recenter(
             controller_recenter_request,frame.world_generation,committed_world_generation.load(),
             sample,sample_time,simulator_operator,stereo_gate,result))++stereo_recenter_requests;
+        gears_vr::ControllerInputFrame matched_hands{};
+        bool have_matched_hands=false;
         if(controller_input_observer){
             gears_vr::ControllerInputFrame hands{};
             if(controller_input_bridge.read_matching(sample,gears_vr::monotonic_ns(),hands,simulator_operator)){
+                matched_hands=hands;have_matched_hands=true;
                 if(!simulator_operator&&!controller_armspan_saved.valid())
                     controller_armspan_observer.observe(hands,sample,gears_vr::monotonic_ns());
                 if(!controller_input_matched)controller_input_first_sequence=hands.sequence;
@@ -3181,6 +3187,40 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             ++stereo_rejections[9];
             if(origin_trial_enabled){request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
             return false;}
+#if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
+        if(controller_input_observer&&have_matched_hands&&first_person_live::ordinary(anchor)&&
+           crosshair_live::enabled){
+            auto const& owned=crosshair_live::current();auto const& c=owned.assignment;
+            std::uintptr_t weapon{},instigator{};
+            const auto pawn=anchor->anchor.pawn,pc=anchor->anchor.controller;
+            if(c.pawn<owned.identities.identity_count&&c.controller<owned.identities.identity_count&&
+               c.weapon<owned.identities.identity_count&&c.pawn_weapon.offset<=0xfff8&&
+               c.weapon_instigator.offset<=0xfff8&&
+               owned.identities.identities[c.pawn].address==pawn&&
+               owned.identities.identities[c.controller].address==pc&&
+               safe_copy(&weapon,reinterpret_cast<void*>(pawn+c.pawn_weapon.offset),sizeof(weapon))&&
+               weapon==owned.identities.identities[c.weapon].address&&
+               safe_copy(&instigator,reinterpret_cast<void*>(weapon+c.weapon_instigator.offset),sizeof(instigator))&&
+               instigator==pawn){
+                gears_weapon::HandWorldFrame pose{};
+                pose.session=sample.session;pose.sequence=sample.sequence;
+                pose.space_epoch=sample.space_epoch;pose.world_generation=frame.world_generation;
+                pose.controller=pc;pose.pawn=pawn;pose.weapon=weapon;
+                for(unsigned hand=0;hand<2;++hand){
+                    const auto& h=matched_hands.hands[hand];
+                    if(!gears_vr::controller_pose_usable(h.grip,h.grip_flags,h.grip_active))continue;
+                    gears_vr::Viewpoint world_pose{};
+                    if(!gears_weapon::xr_pose_in_game_world(h.grip,result.reference,view,
+                            stereo_units_per_metre,world_pose))continue;
+                    (hand?pose.right:pose.left)=world_pose;pose.valid_mask|=std::uint8_t(1u<<hand);
+                }
+                if(pose.valid_mask){
+                    if(controller_equipment_intent_bridge.publish_pose(pose))++controller_hand_pose_published;
+                    else ++controller_hand_pose_rejected;
+                }
+            }else ++controller_hand_pose_rejected;
+        }
+#endif
         frame.enabled=true;frame.sample=result.sample;frame_reference=result.reference;
         frame.reference_generation=result.reference_generation;frame.reference=result.reference;
     }

@@ -95,6 +95,27 @@ inline bool solve_weapon_pose(gears_vr::ControllerInputFrame const& hands,
 }
 
 struct WeaponAimLine {Vector start{},direction{};}; // game world units
+// Use the per-ticket camera view actually used to build the XR eyes (after any
+// configured first-person/origin adjustment). Its columns are native
+// right/up/forward in UE world axes.
+// Convert a tracked hand or solved weapon pose without using current HMD yaw.
+inline bool xr_pose_in_game_world(Pose const& xr_pose,Pose const& reference,
+                                  gears_vr::StereoMatrix const& source_view,
+                                  double units_per_metre,gears_vr::Viewpoint& out) {
+    if(!gears_vr::stereo_pose_valid(xr_pose)||!gears_vr::stereo_pose_valid(reference)||
+       !gears_vr::stereo_rigid(source_view)||!std::isfinite(units_per_metre)||
+       units_per_metre<10||units_per_metre>500)return false;
+    const gears_vr::Matrix game_basis={{{source_view[2],source_view[0],source_view[1]},
+        {source_view[6],source_view[4],source_view[5]},
+        {source_view[10],source_view[8],source_view[9]}}};
+    const gears_vr::Viewpoint base{gears_vr::stereo_camera_position(source_view),
+                                   gears_vr::ue_angles(game_basis)};
+    const auto candidate=gears_vr::relative_view(base,reference,xr_pose,units_per_metre);
+    if(!gears_vr::finite(candidate.position)||
+       !std::isfinite(candidate.rotation.pitch)||!std::isfinite(candidate.rotation.yaw)||
+       !std::isfinite(candidate.rotation.roll))return false;
+    out=candidate;return true;
+}
 // The game adapter supplies the same frozen recenter reference and original
 // world camera basis used by stereo rendering. The current HMD is absent here.
 inline bool weapon_world_aim(WeaponPoseSolution const& weapon,Pose const& reference,

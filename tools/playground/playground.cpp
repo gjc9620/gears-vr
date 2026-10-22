@@ -249,6 +249,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchStatus(vo
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundAmmoGrabStatus(void*){
     return vrequip::last_ammo_status.load(std::memory_order_acquire);
 }
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandPoseStatus(void*){
+    return DWORD((vrequip::pose_accepted.load(std::memory_order_acquire)&0xffff)<<16)|
+           DWORD(vrequip::pose_rejected.load(std::memory_order_acquire)&0xffff);
+}
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundTestEnter(void*){
     // Available only in the user's explicit unattended, muted test child.

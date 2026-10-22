@@ -13,9 +13,12 @@ ULONGLONG switch_deadline{};
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
 gears_weapon::EquipmentIntentBridge intent_bridge;
 std::uint64_t intent_cursor=UINT64_MAX;
+std::uint64_t pose_cursor=UINT64_MAX;
 ULONGLONG next_intent_open{};
 bool intent_open{};
 std::atomic<unsigned> last_ammo_status{};
+std::atomic<std::uint64_t> pose_accepted{},pose_rejected{};
+ULONGLONG next_pose_log{};
 bool test_environment(){
     wchar_t behind[4]{},muted[4]{};
     return GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)==1&&behind[0]==L'1'&&
@@ -38,7 +41,8 @@ void reset_switch_test(){
     switch_deadline=0;
     model.reset();
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
-    intent_bridge.close();intent_open=false;intent_cursor=UINT64_MAX;next_intent_open=0;
+    intent_bridge.close();intent_open=false;intent_cursor=pose_cursor=UINT64_MAX;
+    next_intent_open=next_pose_log=0;
     last_ammo_status.store(0,std::memory_order_release);
 #endif
 }
@@ -200,7 +204,27 @@ void tick(uptr pc){
     if(playground::ready&&test_environment()){
         if(!intent_open&&now>=next_intent_open){
             intent_open=intent_bridge.open(false);next_intent_open=now+500;
-            intent_cursor=UINT64_MAX;
+            intent_cursor=pose_cursor=UINT64_MAX;
+        }
+        gears_weapon::HandWorldFrame world_hands{};
+        if(intent_open&&intent_bridge.read_pose(pose_cursor,world_hands)){
+            const auto pawn=playground::pointer(pc,L"Pawn");
+            const bool same=pc==playground::arena_pc&&pawn==playground::arena_pawn&&
+                playground::pointer(pc,L"WorldInfo")==playground::arena_world&&
+                playground::pointer(pawn,L"Weapon")==world_hands.weapon&&
+                world_hands.controller==pc&&world_hands.pawn==pawn;
+            if(same){
+                ++pose_accepted;
+                if(log_file&&now>=next_pose_log){
+                    next_pose_log=now+500;
+                    fwprintf(log_file,L"hand_world_pose sequence=%llu world_generation=%llu mask=%u "
+                        L"left=%.3f,%.3f,%.3f right=%.3f,%.3f,%.3f\n",
+                        world_hands.sequence,world_hands.world_generation,unsigned(world_hands.valid_mask),
+                        world_hands.left.position.x,world_hands.left.position.y,world_hands.left.position.z,
+                        world_hands.right.position.x,world_hands.right.position.y,world_hands.right.position.z);
+                    fflush(log_file);
+                }
+            }else ++pose_rejected;
         }
         if(intent_open&&requested_slot>=4&&intent_bridge.read_next(intent_cursor,grip_event)){
             from_grip=true;
