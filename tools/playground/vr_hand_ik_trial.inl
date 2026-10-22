@@ -17,8 +17,8 @@ struct Snapshot {
     std::array<float,16> mesh_world{},left{},right{};
     std::uint64_t ms{};
     float world_time{},last_render_time{};
-    int mesh_tick{},control_tick{};
-    bool tick_known{},action_idle{};
+    int mesh_tick{};
+    bool control_tick_tag{},mesh_tick_known{},control_tag_known{},action_idle{};
 };
 struct Trial {
     unsigned phase{}; // 0 idle, 1 stability, 2 pulse, 3 restored observation.
@@ -350,8 +350,10 @@ bool read_snapshot(uptr pc,Snapshot& out){
     if(!freehands::bone_matrix(out.mesh,right,out.right))return false;
     mark(L"finite_matrix",out.mesh,L"LocalToWorld");
     for(float value:out.mesh_world)if(!std::isfinite(value))return false;
-    out.tick_known=checked_field(out.mesh,L"TickTag",L"IntProperty",&out.mesh_tick,sizeof(int))&&
-        checked_field(out.controls[right_ik].object,L"ControlTickTag",L"IntProperty",&out.control_tick,sizeof(int));
+    out.mesh_tick_known=checked_field(out.mesh,L"TickTag",L"IntProperty",&out.mesh_tick,sizeof(int));
+    // The shipped Engine.SkelControlBase.ControlTickTag is a BoolProperty.
+    // Its value is telemetry, not a per-frame counter or effect proof.
+    out.control_tag_known=checked_bool(out.controls[right_ik].object,L"ControlTickTag",out.control_tick_tag);
     out.ms=GetTickCount64();return true;
 }
 bool snapshot(uptr pc,Snapshot& out){
@@ -382,10 +384,11 @@ void log_sample(const wchar_t* phase,Snapshot const& value){
     const auto& right=value.controls[right_ik];
     LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);
     fwprintf(log_file,L"hand_ik_trial_sample phase=%ls sample=%u qpc=%lld ms=%llu world_time=%.9g "
-        L"last_render_time=%.9g tick_known=%u mesh_tick=%d control_tick=%d action_idle=%u "
+        L"last_render_time=%.9g mesh_tick_known=%u control_tag_known=%u mesh_tick=%d control_tag=%u action_idle=%u "
         L"strength=%.9g target=%.9g blend=%.9g effector=%.9g,%.9g,%.9g stable_ticks=%u",
         phase,samples.load(),stamp.QuadPart,value.ms,value.world_time,value.last_render_time,
-        unsigned(value.tick_known),value.mesh_tick,value.control_tick,unsigned(value.action_idle),
+        unsigned(value.mesh_tick_known),unsigned(value.control_tag_known),value.mesh_tick,
+        unsigned(value.control_tick_tag),unsigned(value.action_idle),
         right.strength[0],right.strength[1],right.strength[2],right.effector[0],right.effector[1],right.effector[2],
         trial.stability.ticks());
     freehands::print_matrix(L"mesh",value.mesh_world);freehands::print_matrix(L"left",value.left);
@@ -447,12 +450,10 @@ void pre_tick(uptr pc){
         current.world_time-current.last_render_time<=.1f&&
         std::memcmp(current.mesh_world.data(),trial.original.mesh_world.data(),sizeof(current.mesh_world))==0;
     trial.render_evidence=render;
-    // Tags alone never certify an effect. If they are unavailable or did not
-    // advance naturally, even a small correlated bone delta stays inconclusive.
-    const bool natural_bone_progress=render&&current.tick_known&&trial.original.tick_known&&
-        current.mesh_tick!=trial.original.mesh_tick&&current.control_tick!=trial.original.control_tick;
-    trial.effect_evidence=gears_hand_ik::directional_effect(position(trial.original.right),position(current.right),
-        position(trial.original.left),position(current.left),natural_bone_progress);
+    // This single pulse has no sham or animation-drift baseline. A changing
+    // mesh tick, render time, or BoolProperty tag cannot attribute bone motion
+    // to the IK setter, so this diagnostic trial must remain inconclusive.
+    trial.effect_evidence=false;
     if(!set_strength(current.controls[right_ik].object,0.f)){
         end(8,L"zero_strength_call_failed",false);return;
     }
