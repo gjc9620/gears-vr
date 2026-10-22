@@ -18,7 +18,9 @@ PG 的 `GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL` 默认 OFF，必须显
 
 离线验证已通过：XR ON／OFF构建和5项检查；Native ON构建和7项检查，OFF构建和7项检查、缺 observer 拒配；PG 新候选、关闭候选的联合版和普通默认版三种构建，11项组件检查和4种拒配。旧25场景测试源码未改，新12组覆盖过龄保留、无票据暂停、隐藏单手失追、各类边界、重放／坏证书不能复活、两路源时间最终过龄、Plan逐字段篡改和模式隔离。忽略目录回执为 `analysis/controller-continuity-20261023/verification.json`、`analysis/hand-certified-policy-20261023/verification.json`、`analysis/build-xr-hand-continuity-trial/build-validation.json`、`analysis/build-native-hand-continuity-default-off/validation-summary.json` 和 `analysis/hand-certified-build-checks-20261023.json`。机械提取实际提交helper另有31例CPU回归全部通过；删除最终guard的变异出现17个反例，仅删NS回退检查的变异出现1个反例，这些是测试变异，不是历史生产版本。对应回执为 `analysis/hand-certified-commit-guard-20261023/report.json`。Native 原有 shadow／窄化告警另列，没有把它们写成新代码无告警。
 
-此候选尚未运行购买版游戏，也尚未替换冻结默认 Native／XR／loader。f／g 的持续运动失败、独立 Native entry verifier 与图像链失败回执保持原样；下一步须将三份私有产物和新源清单完整配套，再进行静音、后台、只读窗口观察的实际联合测试。
+对应代码分两项提交保存：`7ddb0f3` 为来源／参考证书通道，`c5262b3` 为认证校准保留与PG接线。737份项目源码、PG／Native／XR三份候选、loader、所需Native helpers及检查回执已封存在忽略目录 `analysis/hand-continuity-candidates/b28d12a80495ef15683199c6fd6c52b5627902ce2b9f726c2d968e95e4d3ffe0/`；源码基点为 `c5262b3`，manifest SHA256 `7d1714efd92ceebec200ee9f4a0ca45670609452c6f4958e586ef441818b3e70`。PG DLL为 `6004449e…8fdcfe2`、Native为 `ecd30c01…79c262a`、XR为 `886362d5…9c9032c`，三者均为新私有产物。8个 reserve／continuous 启动helpers只完成构建与哈希记录，尚未执行完整启动自检。
+
+此候选尚未运行购买版游戏，也尚未替换冻结默认 Native／XR／loader。f／g 的持续运动失败、独立 Native entry verifier 与图像链失败回执保持原样；下一步使用这套配套产物和新的一次性运行目录，先完成启动链预检，再进行静音、后台、只读窗口观察的实际联合测试。
 
 `GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL` 默认关闭，须同时启用原逐帧试验基础和两个原动画观察边界。它替换合成轨迹循环，以 `PlaygroundHandIkXrStreamTrialStart` 接收一次性启动参数；该构建不导出合成轨迹 Start。Stop／Status 和原有恢复、关闭协议复用。
 
