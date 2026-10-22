@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：诊断提交6467b1d／ccda候选的实际d局 PID31544 完整23写23恢复／11→10→11→10／Shutdown0，独立QPC块通过（23开始22完成1尾部pending）。phase2旧binding票据在observe平均126.667ms／最大140ms，9次明确age撤销；新票据平均48.556ms。pre_restore→observe平均35.275ms，restore9.806、单次三处装备认证约7.1、dirty stow2.149、原Tick8.241ms；这些inclusive分项样本不同、不可相加推FPS。写前证据约0.085ms，主成本不是该flush。组件唯一motion门仍false；8控件／44附件／两Hook、game_absent、9会话静音恢复均通过，Native entry verifier／XR1整局失败保留。原receipt`c867d64b…b1034c`、独立计时`7772c813…3e6306`不改写；尚未声称优化或完整6DoF完成。见 [测量详情](../../hand-ik-xr-stream-trial-20261023.md)。
+
 2026-10-23：联合候选新增仅观测的15项内存QPC聚合和Policy逐原因／手别年龄诊断，终端一次输出，覆盖写前／写后证据flush与实际lease acquire；不改100ms created_ms续龄、15秒／256预算、Plan／authorize或任何装备门。12组Policy边界扩展断言、五种相关构建、九检查／三拒配通过，尚无新成本测量或跟手修复结论。后台测试继续显式Mute1＋置后／窗口只读，Guard保留至独立确认精确游戏退出；普通启动音频不变。见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
 
 2026-10-23：新候选64b的联合c实际 PID38884 完整11→10→11→10，23写／23恢复，取回新绑定、最终stowDirty0x10005直接Shutdown0及8控件／44附件／Call32＋Event64恢复均通过；FPP累计88，9音频会话无写入／错误／待恢复且Guard在game_absent后结束。**组件仍false：唯一失败是收枪phase2移动响应**，lease6–14全bind3，尚未保持同一绑定连续跟手；不得把完整交接流程称完整6DoF通过。receipt`a4336048…75ea83`／audit`eec68346…96c63c`保留。strict Native年龄等待实际两次约11.64／23.15ms取得≤1秒新状态，预算不延；23 runner／38 audit／10 pure检查与Popen0准备通过。Native clean但独立entry verifier false、GPU0／XR exit1和整局failed继续保留。下一步测量剩余认证／stow tick成本，100ms绑定语义不改；见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。

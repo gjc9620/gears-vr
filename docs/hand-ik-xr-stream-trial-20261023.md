@@ -93,3 +93,28 @@ c 实际购买版 PID38884 已走完整槽确认 `11→10→11→10`：原手至
 Astra Max 后续只读核对指出：c 的收枪 lease6–14 在 pre_restore 时旧票据已为 93–94 ms，余量约 6–7 ms。静态路径中的 dirty stow tick 加三次完整 phase 认证含 7 次 read_state／3 次 equipment snapshot，合计 40 次 GetWeaponInSlot；这是调用数量，不是成本测量。前置 stow tick 在原 PlayerTick 之前，phase 认证在其后，不能将前者缓存为后者的资格。下一步应仅增加按 phase 的内存聚合 QPC 计时与撤权原因计数：pre_restore→observe、stow tick、原 PlayerTick、三个 phase 认证及其中 read_state／snapshot 分段，终端统一输出，不在关键路径逐条日志／fflush；测到热点后才做单次认证内部的数据去重，末尾独立读回、idle／Active、epoch 与日志后认证保留。
 
 计时实现已接入默认关闭的联合候选：15 个 inclusive span 按进入时已知 phase 记录 count／sum／max QPC，包括上述路径、手部恢复／snapshot／quiet、写前证据 flush、lease acquire 及写后 snapshot／written flush。嵌套 span 不能相加当作总耗时或 FPS；pre_restore→下一常规 observe 的区间可在 Stop 时保留 pending，不补造完成值。终端由游戏线程在所有计时 scope 退出后只输出一次，输出完才递减外层 callback，保持 Shutdown 等待与原恢复顺序。Policy 新增只读 last_observe 诊断，记录实际经过分支的手别 mask、旧票据／当前及前一 Context／新票据年龄和 future 标识；no_receipt／not_newer 可以只是当前 lease 交还，原因可重叠，不统称为重绑次数。Plan、current／authorize、游标消费、created_ms 续龄、100ms／15s／256 及所有装备认证门均保持原语义。12 组 Policy 边界场景扩展断言、联合／独立 XR／合成／独立暂收／默认构建、九检查与三拒配通过。此时只完成诊断接线，尚无新候选实际成本或运动修复结论。
+
+上述诊断提交 `6467b1d`，封存 DLL `ccda4103695deb1afeff194a644b480dee06f2db9ea1ff24cceace48f5aeaca0`、160 源码 manifest `3ea8c42b84f3e829b4789c94a55d3a2336125e21d05e61bed27377da6cee64ca`。Astra Max 补复核了写后证据计时、游戏线程／重入 dump 与 Policy 原授权语义，未见有限范围内阻断。新 d runner 只替 c 的目录／候选／manifest 常量，audit 只替两个工件常量；23 runner／38 audit 自检及 Popen0 prepare 通过，186 依赖／24 实际模块固定，25 项 a／b／c 历史文件哈希保持。prep SHA256 `3f9b9a89818c95763a64408e4c886f673e3df8bdda7f5b5dc7d5b10dbddfd97d`，runner `a917ad2599618b691de81043d03ab84ba8e7c9ea544b159c9022efbd036a0e11`，独立 timing audit `8b6cb9c9dd61d4f99371eefaa7185797466928cdde1a87c731d7397b42c8846a` 的 36 项自检通过。
+
+d 购买版 PID31544 的完整联合流程仍为 23 写／23 恢复、四个槽确认 `11→10→11→10`、最终 stow dirty 后 Shutdown=0；8 控件／44 附件／Call32／Event64 精确恢复，本局累计 FPP applied=101。组件唯一失败仍是 phase2_motion_response，未以计时成功代替跟手通过。独立计时块结构通过：QPC 10MHz，23 个恢复区间启动／22 个完成／1 个停止尾部 pending，invalid_clock=0，新增诊断热路径文本写入为零。收枪阶段的实际分项如下，均为进入时 phase2 的 inclusive elapsed time，样本数不同且包含嵌套，**不能相加推算整帧、FPS 或 CPU 使用率**。
+
+| 分项 | 样本 | 平均 ms | 最大 ms |
+| --- | ---: | ---: | ---: |
+| pre_restore→下一常规 observe | 9 | 35.275 | 38.349 |
+| 手部 restore | 10 | 9.806 | 10.202 |
+| dirty stow tick | 36 | 2.149 | 2.451 |
+| 原 PlayerTick | 36 | 8.241 | 9.334 |
+| 首次手部 snapshot＋identity | 36 | 4.317 | 4.717 |
+| observed 装备认证 | 36 | 7.106 | 7.747 |
+| prewrite 装备认证 | 10 | 7.072 | 7.415 |
+| postflush 装备认证 | 10 | 7.189 | 7.831 |
+| 认证内首次 read_state | 56 | 1.973 | 2.300 |
+| 认证内 equipment snapshot | 56 | 2.629 | 3.159 |
+| 认证内末尾独立 read_state | 56 | 1.990 | 2.466 |
+| 写前 sample／pose／flush | 10 | 0.085 | 0.145 |
+| lease acquire | 10 | 6.234 | 6.545 |
+| 写后 snapshot／written／flush | 10 | 3.441 | 3.894 |
+
+phase2 的 binding_age 分支实际发生 9 次、mask 均为 both；左右旧票据各平均 126.667ms、最大 140ms，当次新票据平均 48.556ms、最大 62ms，当前 Context 最大 16ms。它直接支持旧 binding 的 source-age 撤销，不能将所有相互重叠的 Policy 原因相加当作重绑次数。写前证据 I/O 在本局不是主耗时；重复认证与恢复检查均有实际成本，尚未根据这些分项证明某一去重方案足以修复运动。
+
+d 原 failed receipt `c867d64b2624ef9cc87014b49e7c323c5e81e511d84a5dac0c29808024b1034c`、组件 audit `54be97d8fabfcc17557da18d1d41ab6d23a141635ba8ee55f0931a2a94369681`、日志 `e05871b9a420aadd99e971bdec9655e86d85bff71c4a9396571dc0f75bb87900`、独立计时报告 `7772c81341a530bd28b503b81d0b071c70829db9eba99bb23aaa40017d3e6306` 保存在 ignored `analysis/hand-equipment-1023d/`。Native clean 但独立 entry verifier false、XR exit1／整局 false 继续保留，没有补窗口调整。精确 game_absent 后才关闭 Guard，9 个匹配会话无 mute／restore 写入、read／mute 错误或待恢复，音频收尾报告 `38853b46108139606bc95d66e62f5d263a7bb3bf057f02bbe2dce469e444024a`；自有游戏、Guard、XR 和 owner 均已退出。
