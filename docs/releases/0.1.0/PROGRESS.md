@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+Lancer 启动件原创模型原型：新增 `assets/weapon-6dof/lancer-starter.glb` 与确定性生成器，将固定插座、跟手 T 形拉柄和可延长绳分成三个节点；704 三角形，不含原游戏模型或贴图。忽略目录内的静态预览已经检查。尚未在游戏中定位、渲染、拉伸绳或用头显验证，不能把资产原型称为体感电锯完成。
+
 购买版自有置后静音测试场 PID 51388 复核原版电锯边界：对已装备 Lancer 调用一次原版 `ButtonPress('B')`，按住约 0.85 秒期间控制器 B 与人物近战意图为真、`bDoingMeleeAttack=true`、`CurrentFireMode=2`、`SpecialMove=33`、锯链运转，`CheckForMeleeTarget` 计时器有效且没有受害者。清除该原版寻敌计时器后再保持 0.45 秒，近战／锯链继续，计时器没有自行重建；调用原版 `ButtonRelease('B')` 后近战、锯链、计时器和意图均恢复。回执只在忽略的 `analysis/lancer-support-probe-20261022/capture-chainsaw-semantics-retail-3.json`。反射直接调用类方法 `IsMeleeing` 即使处在上述状态也返回 false，不能拿它作为状态判据。这只证明无目标场景中的按键与计时器边界，尚未验证接触受害者后的原版处决、VR 拉柄或头显画面。Playground 入口／静音恢复通过，停止命令后仍留存该自有测试进程，已核对路径和创建时间再结束；完整 VR 会话未完成。
 
 新增 Lancer 体感电锯目标：左手抓拉柄并完成连续拉程后启动，锯刃实际接触有效敌人时调用原版双方处决，原版动画结束后恢复双手 6DoF。原包静态脚本核对了 `WarPC.PreButtonPress('B')`、`Weap_AssaultRifleBase.MeleeAttacking.BeginState/CheckForMeleeTarget/AcquiredVictim` 及原版清理链；原版前方寻敌计时器不能在 VR 交互期间抢先取得目标。原枪 `b_AR_Chainsaw_Handle` 是 685 顶点／1,089 面的既有独立刚性部位，尚无证据可作为启动拉柄，检查 OBJ 仅在忽略的 `analysis/weapon-partitions/Lancer-chainsaw-handle-audit/`。独立分支新增 `weapon_lancer_chainsaw.h`：按握持边沿、拉程、方向、连续性和身份做启动候选，原枪锯刃线段／敌方胶囊接触候选必须再经原版有效目标与遮挡确认，明确在处决期间让原版动画持有双手、结束后再交还。合成测试通过；游戏线程 B 状态适配、原版寻敌计时器抑制、可见拉柄／拉绳、真实接触与头显测试仍未完成，不接入默认启动器。

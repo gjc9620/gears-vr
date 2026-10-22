@@ -122,6 +122,8 @@
 
 购买版 PID 51388 的原版按键实测确认：`ButtonPress('B')` 持续时 `bDoingMeleeAttack=true`、`CurrentFireMode=2`、`SpecialMove=33`、电锯运转且 `CheckForMeleeTarget` 计时器在场；清除计时器后再保持约 0.45 秒，电锯待机仍持续且计时器未重建；`ButtonRelease('B')` 后近战、锯链与计时器复原。没有敌人，也没有触发处决。反射桥直接调用类方法 `IsMeleeing` 在这段状态仍返回 false，因此实际接线须核对原版状态字段／状态函数，不能用这个类方法证明是否在近战。该测试提供了待机和寻敌计时器抑制的运行边界，但尚未实测安全地把实际锯刃接触交给原版 `AcquiredVictim`。
 
+另已做不复制原枪几何的程序化拉柄原型 `assets/weapon-6dof/lancer-starter.glb`：固定插座、跟左手移动的 T 形握柄、可拉长绳分别为三个节点，局部 +X 是拉动方向，704 个三角形。生成器为 `tools/weapon-models/build_lancer_starter.py`，确定性重建检查通过，本地预览留在忽略的 `analysis/lancer-support-probe-20261022/lancer-starter-preview.png`。资产目前没有接入游戏或定位到原枪；头显内的可见性、握持范围、拉绳长度与高亮仍待核对。
+
 ## 物理装填与黄色引导
 
 每把武器有自己的步骤表，R3 启动的是该枪对应的装填操作。当前可操作部位显示亮黄色，完成后立即转移到下一部位；未轮到的部件不能提前记为完成。
