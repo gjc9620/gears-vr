@@ -91,3 +91,8 @@ original local playback function. Status 9 means neither cue could be played.
 This is a wiring test: original switch animation, visible stow, an audio cue
 when neither weapon has one, and weapon pose transfer are not yet implemented.
 The default DLL has no XR equipment-intent consumer.
+The same private bridge also carries left-shoulder ammo-grab presses. The
+adapter checks the held weapon's original spare count and infinite-spare rule:
+status 1 means ammo exists, 2 means empty with the original cue, 3 means empty
+without a cue, and 4 means the game identity or count could not be validated.
+No round or magazine is spawned or deducted at this stage.

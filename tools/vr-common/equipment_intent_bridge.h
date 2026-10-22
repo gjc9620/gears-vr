@@ -6,14 +6,16 @@
 #include <type_traits>
 
 namespace gears_weapon {
+enum class EquipmentIntentKind : std::uint8_t { slot,grab_ammo };
 struct EquipmentIntentEvent {
     std::uint64_t serial{},created_ms{},input_session{},input_sequence{},space_epoch{},world_generation{};
     std::uintptr_t controller{},pawn{},weapon{};
     std::uint8_t inventory_slot{4};
+    EquipmentIntentKind kind{EquipmentIntentKind::slot};
 };
 struct EquipmentIntentPacket {
-    static constexpr std::uint32_t magic_value=0x47564531; // GVE1
-    static constexpr std::uint32_t version_value=1;
+    static constexpr std::uint32_t magic_value=0x47564532; // GVE2
+    static constexpr std::uint32_t version_value=2;
     static constexpr unsigned capacity=8;
     std::uint32_t magic{magic_value},version{version_value},size{sizeof(EquipmentIntentPacket)},game_pid{};
     std::uint64_t game_start{},publisher_pid{},publisher_start{},latest_serial{};
@@ -22,9 +24,9 @@ struct EquipmentIntentPacket {
 static_assert(std::is_standard_layout_v<EquipmentIntentPacket> &&
               std::is_trivially_copyable_v<EquipmentIntentPacket>);
 
-// Native's certified game-thread input router publishes a slot number and its
-// original game identities. The receiving game-thread adapter must still read
-// the inventory and revalidate every identity before calling the game.
+// Native's certified game-thread input router publishes a body-slot or left
+// shoulder ammo-grab intent with original game identities. The receiving
+// adapter must still read inventory and revalidate identity before acting.
 class EquipmentIntentBridge {
     HANDLE mapping_{},mutex_{};
     EquipmentIntentPacket* data_{};
@@ -38,9 +40,15 @@ class EquipmentIntentBridge {
             packet.game_start==game_start_&&packet.publisher_pid==pid_&&
             packet.publisher_start==game_start_;
     }
+    static bool event_valid(EquipmentIntentEvent const& event) noexcept {
+        return ((event.kind==EquipmentIntentKind::slot&&event.inventory_slot<4)||
+                (event.kind==EquipmentIntentKind::grab_ammo&&event.inventory_slot==4))&&
+            event.controller&&event.pawn&&event.weapon&&event.world_generation&&
+            event.input_session&&event.input_sequence;
+    }
     static void name(wchar_t (&out)[128],DWORD pid,std::uint64_t start,bool lock) noexcept {
-        swprintf_s(out,lock?L"Local\\GearsVR.EquipmentIntentLock.v1.%lu.%llu":
-                           L"Local\\GearsVR.EquipmentIntent.v1.%lu.%llu",
+        swprintf_s(out,lock?L"Local\\GearsVR.EquipmentIntentLock.v2.%lu.%llu":
+                           L"Local\\GearsVR.EquipmentIntent.v2.%lu.%llu",
                    pid,static_cast<unsigned long long>(start));
     }
     bool lock_now() const noexcept {return mutex_&&WaitForSingleObject(mutex_,0)==WAIT_OBJECT_0;}
@@ -83,8 +91,7 @@ public:
         return true;
     }
     bool publish(EquipmentIntentEvent event) noexcept {
-        if(!producer_||!data_||event.inventory_slot>=4||!event.controller||!event.pawn||
-           !event.weapon||!event.world_generation||!event.input_session||!event.input_sequence||
+        if(!producer_||!data_||!event_valid(event)||
            !lock_now())return false;
         const bool ok=valid(*data_)&&data_->latest_serial!=UINT64_MAX;
         if(ok){
@@ -109,8 +116,7 @@ public:
         const auto event=packet.events[serial%EquipmentIntentPacket::capacity];
         cursor=serial;
         const auto now=GetTickCount64();
-        if(event.serial!=serial||event.inventory_slot>=4||!event.controller||!event.pawn||
-           !event.weapon||!event.world_generation||!event.input_session||!event.input_sequence||
+        if(event.serial!=serial||!event_valid(event)||
            now<event.created_ms||now-event.created_ms>250)return false;
         out=event;return true;
     }

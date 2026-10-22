@@ -15,6 +15,7 @@ gears_weapon::EquipmentIntentBridge intent_bridge;
 std::uint64_t intent_cursor=UINT64_MAX;
 ULONGLONG next_intent_open{};
 bool intent_open{};
+std::atomic<unsigned> last_ammo_status{};
 bool test_environment(){
     wchar_t behind[4]{},muted[4]{};
     return GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)==1&&behind[0]==L'1'&&
@@ -38,6 +39,7 @@ void reset_switch_test(){
     model.reset();
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
     intent_bridge.close();intent_open=false;intent_cursor=UINT64_MAX;next_intent_open=0;
+    last_ammo_status.store(0,std::memory_order_release);
 #endif
 }
 #endif
@@ -99,6 +101,21 @@ bool read_throwable_count(uptr weapon,uptr pawn,bool usable,std::uint32_t& count
     count=usable?(charges?std::uint32_t(charges):~std::uint32_t{0}):0;
     return true;
 }
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+bool read_ammo_supply(uptr weapon,bool& available){
+    if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return false;
+    const auto spare=playground::property(weapon,L"SpareAmmoCount");
+    if(!spare||get<unsigned>(spare+0x74)!=4||
+       !playground::named(get<uptr>(spare+0x50),L"IntProperty"))return false;
+    const int count=get<int>(weapon+get<unsigned>(spare+0x94));
+    if(count<0||count>1000000)return false;
+    playground::Args infinite(weapon,L"HasInfiniteSpareAmmo");
+    if(!result_property(infinite,L"BoolProperty",4)||!infinite.run())return false;
+    const auto mask=get<unsigned>(infinite.prop(L"ReturnValue")+0xd0);
+    available=count>0||(infinite.output<unsigned>()&mask)!=0;
+    return true;
+}
+#endif
 bool snapshot(uptr pc,gears_weapon::EquipmentSnapshot& game,const wchar_t*& error){
     game={};error=L"identity";
     if(!playground::instance(pc,L"WarPC")||playground::deleted(pc))return false;
@@ -155,7 +172,7 @@ bool changed(gears_weapon::EquipmentSnapshot const& a,
 bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned slot){
     // The original slot function skips feedback when the slot has no actor.
     // Reuse a real equipped/slot weapon's own empty-clip cue, locally only.
-    const uptr candidates[]={static_cast<uptr>(game.weapon_in_slot[slot]),
+    const uptr candidates[]={slot<4?static_cast<uptr>(game.weapon_in_slot[slot]):0,
                              static_cast<uptr>(game.current_weapon)};
     for(const auto weapon:candidates){
         if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))continue;
@@ -179,18 +196,25 @@ void tick(uptr pc){
     unsigned requested_slot=queued_slot.exchange(4,std::memory_order_acq_rel);
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
     gears_weapon::EquipmentIntentEvent grip_event{};
-    bool from_grip=false;
+    bool from_grip=false,ammo_request=false;
     if(playground::ready&&test_environment()){
         if(!intent_open&&now>=next_intent_open){
             intent_open=intent_bridge.open(false);next_intent_open=now+500;
             intent_cursor=UINT64_MAX;
         }
         if(intent_open&&requested_slot>=4&&intent_bridge.read_next(intent_cursor,grip_event)){
-            requested_slot=grip_event.inventory_slot;from_grip=true;
+            from_grip=true;
+            if(grip_event.kind==gears_weapon::EquipmentIntentKind::slot)
+                requested_slot=grip_event.inventory_slot;
+            else ammo_request=true;
         }
     }
 #endif
-    if(now<next_probe&&requested_slot>=4)return;
+    if(now<next_probe&&requested_slot>=4
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+       &&!ammo_request
+#endif
+       )return;
 #else
     if(now<next_probe)return;
 #endif
@@ -220,6 +244,25 @@ void tick(uptr pc){
         }
 #endif
     }
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+    if(ammo_request){
+        unsigned status=4;
+        if(ok&&playground::ready&&pc==playground::arena_pc&&
+           game.world==playground::arena_world&&game.pawn==playground::arena_pawn&&
+           grip_event.controller==pc&&grip_event.pawn==game.pawn&&
+           grip_event.weapon==game.current_weapon){
+            bool available{};
+            if(read_ammo_supply(static_cast<uptr>(game.current_weapon),available)){
+                // A positive check only proves that a physical round/magazine
+                // may be offered later; it does not consume or create one.
+                status=available?1:(play_empty_slot_sound(game,4)?2:3);
+            }
+        }
+        last_ammo_status.store(status,std::memory_order_release);
+        if(log_file){fwprintf(log_file,L"ammo_grab_test status=%u weapon=%p\n",status,
+            reinterpret_cast<void*>(static_cast<uptr>(game.current_weapon)));fflush(log_file);}
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     if(requested_slot<4){
         // Only an owned private arena may exercise the original state path.

@@ -243,6 +243,13 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchStatus(vo
     return vrequip::last_switch_status.load(std::memory_order_acquire);
 }
 #endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+// 0 no grab yet, 1 spare ammo present (no object spawned), 2 empty with cue,
+// 3 empty without cue, 4 invalidated game identity or unreadable ammo supply.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundAmmoGrabStatus(void*){
+    return vrequip::last_ammo_status.load(std::memory_order_acquire);
+}
+#endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundTestEnter(void*){
     // Available only in the user's explicit unattended, muted test child.
     wchar_t behind[4]{},muted[4]{};
