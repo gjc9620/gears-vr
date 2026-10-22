@@ -56,12 +56,44 @@ int main(){
     assert(reader.read_next(cursor,received));
     assert(received.kind==gears_weapon::EquipmentIntentKind::grab_ammo&&
            received.inventory_slot==4);
+    auto matching_pose=world_pose;
+    matching_pose.session=received.input_session;
+    matching_pose.sequence=received.input_sequence;
+    matching_pose.space_epoch=received.space_epoch;
+    matching_pose.input_epoch=received.input_epoch;
+    matching_pose.world_generation=received.world_generation;
+    matching_pose.valid_mask=3;
+    matching_pose.created_ms=GetTickCount64();
+    const auto receipt_time=GetTickCount64();
+    assert(gears_weapon::equipment_intent_matches_pose(received,matching_pose,
+        receipt_time,0x1000,0x2000,0x3000));
+    auto changed_pose=matching_pose;
+    changed_pose.input_epoch++;
+    assert(!gears_weapon::equipment_intent_matches_pose(received,changed_pose,
+        receipt_time,0x1000,0x2000,0x3000));
+    changed_pose=matching_pose;changed_pose.world_generation++;
+    assert(!gears_weapon::equipment_intent_matches_pose(received,changed_pose,
+        receipt_time,0x1000,0x2000,0x3000));
+    changed_pose=matching_pose;changed_pose.sequence=received.input_sequence-1;
+    assert(!gears_weapon::equipment_intent_matches_pose(received,changed_pose,
+        receipt_time,0x1000,0x2000,0x3000));
+    changed_pose=matching_pose;changed_pose.valid_mask=2;
+    assert(!gears_weapon::equipment_intent_matches_pose(received,changed_pose,
+        receipt_time,0x1000,0x2000,0x3000));
+    assert(!gears_weapon::equipment_intent_matches_pose(received,matching_pose,
+        receipt_time+251,0x1000,0x2000,0x3000));
+    assert(!gears_weapon::equipment_intent_matches_pose(received,matching_pose,
+        receipt_time,0x1000,0x2000,0x3001));
     event.kind=gears_weapon::EquipmentIntentKind::reload;
     event.input_sequence=14;
     assert(publisher.publish(event));
     assert(reader.read_next(cursor,received));
     assert(received.kind==gears_weapon::EquipmentIntentKind::reload&&
            received.input_epoch==2&&received.inventory_slot==4);
+    matching_pose.sequence=received.input_sequence;
+    matching_pose.valid_mask=1;
+    assert(!gears_weapon::equipment_intent_matches_pose(received,matching_pose,
+        receipt_time,0x1000,0x2000,0x3000));
     event.input_epoch=0;
     assert(!publisher.publish(event));
     event.input_epoch=2;

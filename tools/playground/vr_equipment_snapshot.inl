@@ -474,6 +474,9 @@ bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned 
 #if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
 #include "vr_lancer_reload_hold.inl"
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
+#include "vr_lancer_magazine_follow.inl"
+#endif
 void tick(uptr pc){
     const auto now=GetTickCount64();
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
@@ -588,19 +591,10 @@ void tick(uptr pc){
     }
     if(reload_request){
         const auto& pose=last_intent_pose;
-        const bool pose_fresh=last_intent_pose_known&&now>=pose.created_ms&&
-            now-pose.created_ms<=100;
         const bool certified=test_reload_start||
-            (from_grip&&pose_fresh&&grip_event.controller==pc&&
-             grip_event.pawn==game.pawn&&
-             grip_event.weapon==game.current_weapon&&
-             grip_event.world_generation==pose.world_generation&&
-             grip_event.input_session==pose.session&&
-             grip_event.space_epoch==pose.space_epoch&&
-             grip_event.input_epoch==pose.input_epoch&&
-             grip_event.input_sequence<=pose.sequence&&
-             pose.controller==pc&&pose.pawn==game.pawn&&
-             pose.weapon==game.current_weapon);
+            (from_grip&&last_intent_pose_known&&
+             gears_weapon::equipment_intent_matches_pose(grip_event,pose,now,
+                 pc,game.pawn,game.current_weapon));
         const auto status=ok&&certified?lancer_begin(pc,game):2u;
         lancer_reload_status.store(status,std::memory_order_release);
         if(log_file){fwprintf(log_file,L"lancer_reload_hold_begin status=%u weapon=%p source=%ls\n",
@@ -608,7 +602,14 @@ void tick(uptr pc){
             test_reload_start?L"test":L"r3");fflush(log_file);}
     }
     if(reload_complete_request){
-        const auto status=ok?lancer_complete(pc,game):2u;
+        unsigned status=2;
+        if(ok){
+#if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
+            status=lancer_magazine_restore()?lancer_complete(pc,game):7u;
+#else
+            status=lancer_complete(pc,game);
+#endif
+        }
         lancer_reload_status.store(status,std::memory_order_release);
         if(log_file){fwprintf(log_file,L"lancer_reload_hold_complete status=%u weapon=%p\n",
             status,reinterpret_cast<void*>(static_cast<uptr>(game.current_weapon)));fflush(log_file);}
@@ -684,18 +685,27 @@ void tick(uptr pc){
         fflush(log_file);
     }
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
+    if(ok)lancer_magazine_test_tick(pc,game);
+#endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
     if(ammo_request){
         unsigned status=4;
         if(ok&&playground::ready&&pc==playground::arena_pc&&
            game.world==playground::arena_world&&game.pawn==playground::arena_pawn&&
-           grip_event.controller==pc&&grip_event.pawn==game.pawn&&
-           grip_event.weapon==game.current_weapon){
+           from_grip&&last_intent_pose_known&&
+           gears_weapon::equipment_intent_matches_pose(grip_event,last_intent_pose,
+               now,pc,game.pawn,game.current_weapon)){
             bool available{};
             if(read_ammo_supply(static_cast<uptr>(game.current_weapon),available)){
                 // A positive check only proves that a physical round/magazine
                 // may be offered later; it does not consume or create one.
                 status=available?1:(play_empty_slot_sound(game,4)?2:3);
+#if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
+                if(available&&lancer_reload_hold.active){
+                    status=lancer_magazine_grab(pc,game,last_intent_pose)?5:4;
+                }
+#endif
             }
         }
         last_ammo_status.store(status,std::memory_order_release);
@@ -711,8 +721,9 @@ void tick(uptr pc){
         if(!ok||!playground::ready||pc!=playground::arena_pc||
            game.world!=playground::arena_world||game.pawn!=playground::arena_pawn
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
-           ||(from_grip&&(grip_event.controller!=pc||grip_event.pawn!=game.pawn||
-                           grip_event.weapon!=game.current_weapon))
+           ||(from_grip&&(!last_intent_pose_known||
+               !gears_weapon::equipment_intent_matches_pose(grip_event,last_intent_pose,
+                   now,pc,game.pawn,game.current_weapon)))
 #endif
            ){
             last_switch_status.store(2,std::memory_order_release);

@@ -21,6 +21,25 @@ struct HandWorldFrame {
     std::uint8_t valid_mask{}; // bit 0 left, bit 1 right
     std::uint8_t grip_down_mask{}; // Same XR ticket; only tracked hands may be down.
 };
+
+// A consumer must bind the queued edge to a recent pose from the same XR and
+// game generation before changing inventory or creating a hand-held object.
+// The pose may be from a later frame, but never an earlier input ticket.
+inline bool equipment_intent_matches_pose(EquipmentIntentEvent const& event,
+        HandWorldFrame const& pose,std::uint64_t now,
+        std::uintptr_t controller,std::uintptr_t pawn,std::uintptr_t weapon) noexcept {
+    const auto hand=event.kind==EquipmentIntentKind::grab_ammo?1u:2u;
+    return event.controller==controller&&event.pawn==pawn&&event.weapon==weapon&&
+        pose.controller==controller&&pose.pawn==pawn&&pose.weapon==weapon&&
+        event.world_generation&&event.world_generation==pose.world_generation&&
+        event.input_session&&event.input_session==pose.session&&
+        event.space_epoch&&event.space_epoch==pose.space_epoch&&
+        event.input_epoch&&event.input_epoch==pose.input_epoch&&
+        event.input_sequence&&event.input_sequence<=pose.sequence&&
+        (pose.valid_mask&hand)!=0&&
+        now>=event.created_ms&&now-event.created_ms<=250&&
+        now>=pose.created_ms&&now-pose.created_ms<=100;
+}
 struct EquipmentIntentPacket {
     static constexpr std::uint32_t magic_value=0x47564535; // GVE5
     static constexpr std::uint32_t version_value=5;

@@ -30,6 +30,9 @@
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
 #include "../vr-common/weapon_mesh_follow.h"
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
+#include "../vr-common/weapon_lancer_magazine_pose.h"
+#endif
 #endif
 #endif
 extern "C" DWORD GearsPlaygroundAllocationAttempts(void);
@@ -196,6 +199,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         vrequip::support_probe_post_tick(object);
         vrequip::reload_visual_post_tick(object);
         vrequip::lancer_socket_post_tick(object);
+#if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
+        vrequip::lancer_magazine_post_tick(object);
+#endif
         vrequip::mesh_follow_post_tick(object);
         inside=false;
     }
@@ -338,13 +344,28 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchStatus(vo
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
 // 0 no grab yet, 1 spare ammo present (no object spawned), 2 empty with cue,
-// 3 empty without cue, 4 invalidated game identity or unreadable ammo supply.
+// 3 empty without cue, 4 invalidated/unavailable, 5 original Lancer component
+// mounted to the left hand in the explicitly gated private visual trial.
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundAmmoGrabStatus(void*){
     return vrequip::last_ammo_status.load(std::memory_order_acquire);
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandPoseStatus(void*){
     return DWORD((vrequip::pose_accepted.load(std::memory_order_acquire)&0xffff)<<16)|
            DWORD(vrequip::pose_rejected.load(std::memory_order_acquire)&0xffff);
+}
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
+// Synthetic left-hand path solely for the owned muted arena. It cannot be
+// enabled by the normal launcher or be mistaken for Quest controller input.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineFollowStartTest(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment())return 1;
+    bool expected=false;
+    if(!vrequip::lancer_magazine_test_request.compare_exchange_strong(expected,true))return 2;
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineFollowStatus(void*){
+    return vrequip::lancer_magazine_status.load(std::memory_order_acquire);
 }
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
@@ -491,10 +512,17 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     vrequip::lancer_socket_reload_mode.store(false,std::memory_order_release);
     vrequip::mesh_follow_shutdown_requested.store(true,std::memory_order_release);
     vrequip::mesh_follow_requested.store(false,std::memory_order_release);
+#if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
+    vrequip::lancer_magazine_test_request.store(false,std::memory_order_release);
+#endif
     const auto follow_until=GetTickCount64()+2000;
     while(callbacks.load(std::memory_order_acquire)&&GetTickCount64()<follow_until)Sleep(1);
     if(callbacks.load(std::memory_order_acquire)||
-       vrequip::mesh_follow_active_visible.load(std::memory_order_acquire))
+       vrequip::mesh_follow_active_visible.load(std::memory_order_acquire)
+#if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
+       ||vrequip::lancer_magazine_active_visible.load(std::memory_order_acquire)
+#endif
+       )
         return 20; // Game thread must restore first.
 #endif
     enabled.store(false,std::memory_order_release);
@@ -513,6 +541,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     vrequip::lancer_reload_test_start=false;
     vrequip::lancer_reload_test_complete=false;
     vrequip::lancer_reload_hold={};
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
+    vrequip::lancer_magazine_test_active=false;
+    vrequip::lancer_magazine_test_pose={};
+    vrequip::lancer_magazine_status.store(0,std::memory_order_release);
 #endif
     if(hook_created){
         if(MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK)return 3;

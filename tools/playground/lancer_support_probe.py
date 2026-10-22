@@ -126,6 +126,27 @@ def parse_fixed_feed_row(line):
             'point': point, 'outward': outward}
 
 
+def parse_magazine_follow_row(line):
+    fields = dict(item.split('=', 1) for item in line.split()[1:])
+    if set(fields) != {'weapon', 'component', 'left', 'world', 'matrix',
+                       'attached', 'ammo_control', 'target', 'reattached'}:
+        raise ValueError('Unexpected Lancer independent magazine follow row')
+    flags = {key: fields[key] == '1' for key in
+             ('matrix', 'attached', 'ammo_control', 'reattached')}
+    if any(fields[key] not in ('0', '1') for key in flags):
+        raise ValueError('Invalid Lancer magazine follow flag')
+    vectors = {key: [float(value) for value in fields[key].split(',')]
+               for key in ('left', 'world')}
+    if any(len(value) != 3 or not all(math.isfinite(item) for item in value)
+           for value in vectors.values()):
+        raise ValueError('Invalid Lancer magazine follow vector')
+    target = float(fields['target'])
+    if not math.isfinite(target):
+        raise ValueError('Invalid Lancer magazine control target')
+    return {'weapon': fields['weapon'], 'component': fields['component'],
+            **vectors, **flags, 'target': target}
+
+
 def original_state_function(resolver, weapon, state_name, function_name):
     owner = resolver.identity(weapon)['cls']
     seen = set()
@@ -298,7 +319,105 @@ def sample_owned_game(args, receipt):
             return bridge.call(pawn, 'ShouldLeftHandIKBeOn')
         receipt['left_hand_ik_on'] = bool(wait_for(
             settled_left_hand, 10, 'Original Lancer left-hand IK did not settle'))
-        if args.mode == 'socket':
+        if args.mode == 'api':
+            magazine = pointer(weapon, 'MagazineMesh')
+            if class_name(magazine) != 'StaticMeshComponent':
+                raise RuntimeError('Original Lancer independent magazine component missing')
+
+            def reflected_function(obj, function_name):
+                function = bridge.function(resolver.identity(obj)['cls'], function_name)
+                address = function['address']
+                parameter_bytes = struct.unpack('<H', resolver.read(address + 0x106, 2))[0]
+                parameters = []
+                for field in resolver.fields(address):
+                    flags = resolver.u64(field['address'] + 0x78)
+                    if not flags & 0x80:
+                        continue
+                    parameter = {'name': field['name'], 'type': resolver.class_name(field),
+                                 'offset': resolver.u32(field['address'] + 0x94),
+                                 'size': resolver.u32(field['address'] + 0x74),
+                                 'flags': hex(flags)}
+                    if parameter['type'] == 'BoolProperty':
+                        parameter['mask'] = hex(resolver.u32(field['address'] + 0xd0))
+                    parameters.append(parameter)
+                if not all(item['offset'] + item['size'] <= parameter_bytes
+                           for item in parameters):
+                    raise RuntimeError(f'{function_name} parameter exceeds reflected size')
+                return {'address': hex(address), 'parameter_bytes': parameter_bytes,
+                        'parameters': parameters}
+
+            receipt['magazine_component'] = resolver.identity(magazine)
+            receipt['magazine_asset'] = resolver.identity(pointer(magazine, 'StaticMesh'))
+            receipt['original_component_api'] = {
+                'SetPawnAmmoAttachment': reflected_function(weapon, 'SetPawnAmmoAttachment'),
+                'SetWeaponAmmoBoneDisplay': reflected_function(weapon, 'SetWeaponAmmoBoneDisplay'),
+                'SetAbsolute': reflected_function(magazine, 'SetAbsolute'),
+                'SetTranslation': reflected_function(magazine, 'SetTranslation'),
+                'SetRotation': reflected_function(magazine, 'SetRotation'),
+                'SetHidden': reflected_function(magazine, 'SetHidden'),
+                'AttachComponentToSocket': reflected_function(pawn_mesh, 'AttachComponentToSocket'),
+                'DetachComponent': reflected_function(pawn_mesh, 'DetachComponent'),
+                'IsComponentAttached': reflected_function(pawn_mesh, 'IsComponentAttached'),
+            }
+        elif args.mode == 'component_motion':
+            magazine = pointer(weapon, 'MagazineMesh')
+            if (class_name(magazine) != 'StaticMeshComponent' or
+                    resolver.identity(pointer(magazine, 'StaticMesh'))['name'] !=
+                    'Assault_Rifle_Magazine'):
+                raise RuntimeError('Original Lancer independent magazine identity changed')
+
+            def component_struct(field, format):
+                meta = property_of(magazine, field)
+                if meta['type'] != 'StructProperty':
+                    raise RuntimeError(f'Original {field} is not a struct')
+                return struct.unpack(format, resolver.read(magazine + meta['offset'],
+                                                            struct.calcsize(format)))
+
+            before_matrix = component_struct('LocalToWorld', '<16f')
+            before_translation = component_struct('Translation', '<3f')
+            before_rotation = component_struct('Rotation', '<3i')
+            before_absolute = tuple(bool(resolver.u32(magazine + property_of(
+                magazine, field)['offset']) & resolver.u32(property_of(
+                magazine, field)['address'] + 0xd0))
+                for field in ('AbsoluteTranslation', 'AbsoluteRotation', 'AbsoluteScale'))
+            before_attached = bool(bridge.call(pawn_mesh, 'IsComponentAttached', Component=magazine))
+            if before_attached:
+                raise RuntimeError('Idle Lancer magazine unexpectedly attached')
+            try:
+                bridge.call(weapon, 'SetPawnAmmoAttachment', bAttach=True)
+                wait_for(lambda: bridge.call(pawn_mesh, 'IsComponentAttached', Component=magazine),
+                         2, 'Original Lancer magazine failed to attach')
+                attached_matrix = component_struct('LocalToWorld', '<16f')
+                bridge.call(weapon, 'SetWeaponAmmoBoneDisplay', bShow=False)
+                bridge.call(magazine, 'SetAbsolute', NewAbsoluteTranslation=True,
+                            NewAbsoluteRotation=True, NewAbsoluteScale=False)
+                target = (attached_matrix[12] + 5, attached_matrix[13], attached_matrix[14])
+                bridge.call(magazine, 'SetTranslation', NewTranslation=struct.pack('<3f', *target))
+                wait_for(lambda: abs(component_struct('LocalToWorld', '<16f')[12] - target[0]) < .1,
+                         2, 'Original Lancer magazine did not follow world translation')
+                moved_matrix = component_struct('LocalToWorld', '<16f')
+                receipt['component_motion'] = {
+                    'before_attached': before_attached,
+                    'attached_after_original_call': True,
+                    'before_world_origin': before_matrix[12:15],
+                    'attached_world_origin': attached_matrix[12:15],
+                    'requested_world_origin': target,
+                    'moved_world_origin': moved_matrix[12:15],
+                }
+            finally:
+                bridge.call(weapon, 'SetPawnAmmoAttachment', bAttach=False)
+                bridge.call(weapon, 'SetWeaponAmmoBoneDisplay', bShow=True)
+                bridge.call(magazine, 'SetAbsolute',
+                            NewAbsoluteTranslation=before_absolute[0],
+                            NewAbsoluteRotation=before_absolute[1],
+                            NewAbsoluteScale=before_absolute[2])
+                bridge.call(magazine, 'SetTranslation',
+                            NewTranslation=struct.pack('<3f', *before_translation))
+                bridge.call(magazine, 'SetRotation',
+                            NewRotation=struct.pack('<3i', *before_rotation))
+            receipt['component_motion']['detached_after_restore'] = not bridge.call(
+                pawn_mesh, 'IsComponentAttached', Component=magazine)
+        elif args.mode == 'socket':
             if bridge.export('PlaygroundLancerMagazineSocketProbeEnable') != 0:
                 raise RuntimeError('Private Lancer same-tick socket probe refused to start')
 
@@ -356,7 +475,7 @@ def sample_owned_game(args, receipt):
                 time.sleep(.12)
                 if bridge.export('PlaygroundLancerMagazineSocketProbeStatus') >> 16 == 4:
                     raise RuntimeError('Original socket reload probe failed before ForceReload')
-            if args.mode == 'reload_adapter':
+            if args.mode in ('reload_adapter', 'follow_adapter'):
                 if bridge.export('PlaygroundLancerReloadHoldStartTest') != 0:
                     raise RuntimeError('Private game-thread Lancer reload start queue rejected')
 
@@ -372,6 +491,17 @@ def sample_owned_game(args, receipt):
                 bridge.call(weapon, 'ForceReload')
             wait_for(lambda: bridge.call(weapon, 'IsReloading'), 2,
                      'Original Lancer did not enter Reloading after ForceReload')
+            if args.mode == 'follow_adapter':
+                if bridge.export('PlaygroundLancerMagazineFollowStartTest') != 0:
+                    raise RuntimeError('Private synthetic left-hand motion queue rejected')
+                wait_for(lambda: bridge.export('PlaygroundLancerMagazineFollowStatus') == 2,
+                         2, 'Original Lancer magazine never followed synthetic left hand')
+                wait_for(lambda: bridge.export('PlaygroundLancerMagazineFollowStatus') == 3,
+                         4, 'Original Lancer magazine did not restore on left-grip release')
+                magazine = pointer(weapon, 'MagazineMesh')
+                receipt['magazine_detached_after_release'] = not bool(bridge.call(
+                    pawn_mesh, 'IsComponentAttached', Component=magazine))
+                receipt['magazine_follow_finish_status'] = 3
             if args.mode == 'reload_visual':
                 def reload_probe_done():
                     value = bridge.export('PlaygroundLancerReloadVisualProbeStatus')
@@ -451,7 +581,21 @@ def sample_owned_game(args, receipt):
         raise RuntimeError('Playground shutdown was not clean')
     log_path = args.dll.with_name(f'playground-{identity["pid"]}.log')
     lines = log_path.read_text(encoding='utf-8-sig').splitlines()
-    if args.mode == 'socket':
+    if args.mode == 'api':
+        api = receipt['original_component_api']
+        for name in ('SetPawnAmmoAttachment', 'SetWeaponAmmoBoneDisplay'):
+            if len(api[name]['parameters']) != 1 or api[name]['parameters'][0]['type'] != 'BoolProperty':
+                raise RuntimeError(f'Original {name} bool signature differs')
+        if len(api['SetAbsolute']['parameters']) != 3 or any(
+                item['type'] != 'BoolProperty' for item in api['SetAbsolute']['parameters']):
+            raise RuntimeError('Original SetAbsolute signature differs')
+    elif args.mode == 'component_motion':
+        motion = receipt['component_motion']
+        if (not motion['attached_after_original_call'] or
+                not motion['detached_after_restore'] or
+                abs(motion['moved_world_origin'][0] - motion['requested_world_origin'][0]) >= .1):
+            raise RuntimeError('Original Lancer independent component motion incomplete')
+    elif args.mode == 'socket':
         begins = [line for line in lines if line.startswith('lancer_socket_begin ')]
         rows = [parse_socket_row(line) for line in lines
                 if line.startswith('lancer_socket_sample ')]
@@ -507,7 +651,7 @@ def sample_owned_game(args, receipt):
         if (receipt.get('timer_active_before_clear') is not True or
                 (args.mode == 'reload_hold' and
                  receipt.get('timer_active_after_clear') is not False) or
-                (args.mode == 'reload_adapter' and
+                (args.mode in ('reload_adapter', 'follow_adapter') and
                  (receipt.get('fallback_timer_active') is not True or
                   receipt.get('adapter_start_status') != 1 or
                   receipt.get('adapter_finish_status') != 6)) or
@@ -516,7 +660,7 @@ def sample_owned_game(args, receipt):
                 receipt.get('finished_ammo_used') != 0 or
                 receipt.get('finished_reloading') is not False):
             raise RuntimeError('Original held reload and explicit completion evidence incomplete')
-        if args.mode == 'reload_adapter':
+        if args.mode in ('reload_adapter', 'follow_adapter'):
             anchors = [parse_fixed_feed_row(line) for line in lines
                        if line.startswith('lancer_fixed_feed_anchor ')]
             if (len(anchors) < 2 or
@@ -524,6 +668,31 @@ def sample_owned_game(args, receipt):
                     len({row['mesh'] for row in anchors}) != 1):
                 raise RuntimeError('Fixed Lancer feed anchor did not remain on one gun mesh')
             receipt['fixed_feed_anchors'] = anchors
+        if args.mode == 'follow_adapter':
+            followed = [parse_magazine_follow_row(line) for line in lines
+                        if line.startswith('lancer_magazine_follow ')]
+            # LocalToWorld may still contain the preceding scene update in the
+            # first row after SetAbsolute. Subsequent rows must be rigidly
+            # locked to the moving test hand, even across original detachment.
+            steady = followed[1:]
+            offsets = [[row['world'][axis] - row['left'][axis] for axis in range(3)]
+                       for row in steady]
+            if (receipt.get('magazine_follow_finish_status') != 3 or
+                    receipt.get('magazine_detached_after_release') is not True or
+                    len(followed) < 3 or
+                    len({row['weapon'] for row in followed}) != 1 or
+                    len({row['component'] for row in followed}) != 1 or
+                    any(not row['matrix'] or not row['attached'] or
+                        not row['ammo_control'] or row['target'] < .9 for row in followed) or
+                    not any(row['reattached'] for row in followed) or
+                    math.dist(steady[0]['world'], steady[-1]['world']) < 6 or
+                    max(math.dist(offset, offsets[0]) for offset in offsets) > .2):
+                raise RuntimeError('Original Lancer synthetic hand-follow evidence incomplete')
+            receipt['magazine_follow_rows'] = followed
+            receipt['steady_world_travel_raw'] = math.dist(
+                steady[0]['world'], steady[-1]['world'])
+            receipt['maximum_steady_hand_offset_drift_raw'] = max(
+                math.dist(offset, offsets[0]) for offset in offsets)
     receipt.update(game_thread_log=str(log_path),
                    log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest())
     receipt['passed'] = True
@@ -538,8 +707,8 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('socket', 'socket_reload', 'support', 'reload_visual', 'reload_hold',
-                                          'reload_adapter'), default='support')
+    parser.add_argument('--mode', choices=('api', 'component_motion', 'socket', 'socket_reload', 'support', 'reload_visual', 'reload_hold',
+                                          'reload_adapter', 'follow_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     output = args.output.resolve()

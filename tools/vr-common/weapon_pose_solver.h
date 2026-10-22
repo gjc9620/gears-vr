@@ -20,7 +20,7 @@ inline double length(Vector a) noexcept {return std::sqrt(dot(a,a));}
 inline Vector rotate(Quaternion q,Vector v) {return gears_vr::transform(gears_vr::rotation_matrix(q),v);}
 
 // Offsets are metres in the verified weapon-mesh frame, not a single generic
-// offset shared by all fourteen weapons. The live adapter must determine them
+// offset shared by every weapon. The live adapter must determine them
 // from each actual mesh/animation before enabling weapon fire.
 struct WeaponMount {
     Pose right_grip_in_weapon{};
