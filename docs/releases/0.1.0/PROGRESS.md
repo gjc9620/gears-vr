@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+自由手动画交接边界已用保存的原版脚本作窄范围复核：拾取可能先 `GrabPickup` 改变库存再进入 `SM_WeaponKickup`／`SM_WeaponPickup`，正常结束须由本动作身体动画的结束通知退出特殊动作，取消可直接替换下一特殊动作；近战从武器 `MeleeAttacking` 状态进入／退出，Lancer 结束后还会有约 0.2 秒身体槽退混合，受伤可能转入踉跄。仅见 `SpecialMove=0`、`bDoingMeleeAttack=false`、武器 `Active` 或 `CanSwitchWeapons=true` 均不能证明双手已交还。后续需在购买版只读记录同一次动作的开始、正常结束／取消序号、相关身体动画槽的实际／目标权重和剩余混合、八个当前控制器身份；丢失任一边界继续保持 `ownership_proved=false`。目前只有脚本与声明证据，尚无这些路径的完整零售运行序列。
+
 当前人物双手 IK 边界只读取证：购买版自有置后静音 PID 60744 的当前 WarPawn 缓存了左右各四个手部控制器，均指向当前角色网格且都在其六条 AnimTree 骨骼控制列表中；左手骨 11 对应列表 0，右手骨 35 对应列表 2。每侧链顺序为 `IKBone_*Hand → IKBoneRot_*Hand → IK_*Hand → IKRot_*Hand`。末端 `IKCtrl_*Hand` 位置及 `IKRotCtrl_*Hand` 旋转均以 World 空间为目标，当前强度／目标强度／剩余混合时间都是 0；两侧链首控制器仍受原版动画驱动，左侧取样时尚有约 0.05 秒混合。角色网格未全局忽略控制器。资料在忽略的 `analysis/pawn-ik-runtime-1022b.json`，探针 `PlaygroundShutdown=0`、11 个音频会话恢复和自有游戏退出通过。这只认证了当前实例的可复用入口，尚未做手骨目标写入、原版动作争用或回滚验证；默认自由双手候选继续 `apply_mask=0`，不能称可见双手已自由移动。
 
 并行候选已纳入本独立工作树：`GEARS_PLAYGROUND_FREE_HANDS_PROBE` 默认关闭，消费 GVE6 同票据左右手完整世界位姿，在原版 `PlayerTick` 后只读记录原角色双手骨骼矩阵和固定动作状态；离线状态机覆盖双手独立失追、拾取／近战／切枪动画接管、新票据恢复、角色／会话／空间变化。候选与默认 Playground Release 构建、`FreeHandControlTest`、`PlaygroundHookTest` 和五项 Python 日志解析测试通过；导出只存在于候选 DLL。随后自有购买版置后静音 PID 56756 的原角色手骨探针完成 160/160 帧：左手 `b_MF_Hand_L=11`、右手 `b_MF_Hand_R=35`，当前角色 `SkelControlIndex` 长 115、动画树控制列表 6 条；160 帧双手骨矩阵均有效，因没有 XR 姿态 `xr_samples=0`，写入与 `apply_mask` 均为 0。忽略回执 `analysis/free-hands-probe-runtime-1022a.json`，`PlaygroundShutdown=0`、11 个音频会话恢复、自有游戏退出通过。当前 `ownership_proved=false`，**游戏内可见双手并未被驱动**。原版拾取完整生命周期、可恢复的双手骨骼写入、掌心标定、空手 GVE6 发布及头显运行仍待解决。
