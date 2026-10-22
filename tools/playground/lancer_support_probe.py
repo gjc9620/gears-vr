@@ -392,6 +392,35 @@ def sample_owned_game(args, receipt):
                 'DetachComponent': reflected_function(pawn_mesh, 'DetachComponent'),
                 'IsComponentAttached': reflected_function(pawn_mesh, 'IsComponentAttached'),
             }
+        elif args.mode == 'chainsaw_api':
+            def signature(object_address, function_name):
+                function = bridge.function(resolver.identity(object_address)['cls'],
+                                           function_name)
+                address = function['address']
+                parameter_bytes = struct.unpack('<H', resolver.read(address + 0x106, 2))[0]
+                if parameter_bytes > 128:
+                    raise RuntimeError(f'{function_name} parameter budget changed')
+                parameters = []
+                for field in resolver.fields(address):
+                    flags = resolver.u64(field['address'] + 0x78)
+                    if not flags & 0x80:
+                        continue
+                    item = {'name': field['name'], 'type': resolver.class_name(field),
+                            'offset': resolver.u32(field['address'] + 0x94),
+                            'size': resolver.u32(field['address'] + 0x74),
+                            'return': bool(flags & 0x400)}
+                    if item['offset'] + item['size'] > parameter_bytes:
+                        raise RuntimeError(f'{function_name} parameter outside reflected size')
+                    parameters.append(item)
+                return {'path': function['name'], 'parameter_bytes': parameter_bytes,
+                        'parameters': parameters}
+
+            receipt['original_chainsaw_api'] = {
+                'AcquiredVictim': signature(weapon, 'AcquiredVictim'),
+                'IsTargetValidForSpecialMeleeAttack': signature(
+                    weapon, 'IsTargetValidForSpecialMeleeAttack'),
+                'MeleeAttackImpact': signature(weapon, 'MeleeAttackImpact'),
+            }
         elif args.mode == 'component_motion':
             magazine = pointer(weapon, 'MagazineMesh')
             if (class_name(magazine) != 'StaticMeshComponent' or
@@ -501,7 +530,8 @@ def sample_owned_game(args, receipt):
                      'Original Lancer mesh trial did not move and restore')
             receipt['mesh_follow_trial_status'] = bridge.export(
                 'PlaygroundWeaponMeshFollowStatus')
-        elif args.mode == 'chainsaw_semantics':
+        elif args.mode in ('chainsaw_semantics', 'chainsaw_hold_adapter',
+                           'chainsaw_hold_shutdown'):
             def fname(value):
                 for index, address in enumerate(resolver.name_pointers):
                     if not address:
@@ -555,33 +585,66 @@ def sample_owned_game(args, receipt):
             if (receipt['before_chainsaw']['holding_b'] or
                     receipt['before_chainsaw']['doing_melee']):
                 raise RuntimeError('Original Lancer was already in melee state')
-            button = fname('B')
-            pressed = False
-            try:
-                bridge.call(pc, 'ButtonPress', ButtonName=button)
-                pressed = True
-                samples = []
-                started = time.monotonic()
-                while time.monotonic() - started < .85:
-                    samples.append({'elapsed': round(time.monotonic() - started, 3),
-                                    **snapshot()})
-                    time.sleep(.06)
-                receipt['held_chainsaw_samples'] = samples
-                if not any(row['target_timer'] for row in samples):
-                    raise RuntimeError('Original Lancer target timer never appeared')
-                bridge.call(weapon, 'ClearTimer',
-                            inTimerFunc=fname('CheckForMeleeTarget'))
-                receipt['cleared_chainsaw_timer'] = snapshot()
-                time.sleep(.45)
-                receipt['held_after_timer_clear'] = snapshot()
-            finally:
-                if pressed:
-                    bridge.call(pc, 'ButtonRelease', ButtonName=button)
-            receipt['released_chainsaw'] = snapshot()
-            wait_for(lambda: not original_bool(pawn, 'bDoingMeleeAttack') and
-                     original_integer(weapon, 'CurrentFireMode') == 0,
-                     5, 'Original Lancer did not leave melee after B release')
-            receipt['settled_chainsaw'] = snapshot()
+            if args.mode in ('chainsaw_hold_adapter', 'chainsaw_hold_shutdown'):
+                if bridge.export('PlaygroundLancerSawHoldStartTest') != 0:
+                    raise RuntimeError('Private game-thread Lancer B hold was not queued')
+                try:
+                    def held_status():
+                        value = bridge.export('PlaygroundLancerSawHoldStatus')
+                        return value if value == 0x10002 else None
+                    wait_for(held_status, 5, 'Private Lancer B hold did not become active')
+                    def held_original_state():
+                        row = snapshot()
+                        return row if row['doing_melee'] and row['blade_running'] else None
+                    wait_for(held_original_state, 5,
+                             'Original Lancer did not enter its held melee state')
+                    samples = []
+                    started = time.monotonic()
+                    while time.monotonic() - started < 1.2:
+                        samples.append({'elapsed': round(time.monotonic() - started, 3),
+                                        'adapter_status': bridge.export(
+                                            'PlaygroundLancerSawHoldStatus'), **snapshot()})
+                        time.sleep(.06)
+                    receipt['held_chainsaw_samples'] = samples
+                finally:
+                    if args.mode == 'chainsaw_hold_adapter':
+                        if bridge.export('PlaygroundLancerSawHoldStopTest') != 0:
+                            receipt['stop_request_failed'] = True
+                        else:
+                            def stopped_status():
+                                value = bridge.export('PlaygroundLancerSawHoldStatus')
+                                return value if value == 3 else None
+                            wait_for(stopped_status, 5,
+                                     'Private Lancer B hold did not release')
+            else:
+                button = fname('B')
+                pressed = False
+                try:
+                    bridge.call(pc, 'ButtonPress', ButtonName=button)
+                    pressed = True
+                    samples = []
+                    started = time.monotonic()
+                    while time.monotonic() - started < .85:
+                        samples.append({'elapsed': round(time.monotonic() - started, 3),
+                                        **snapshot()})
+                        time.sleep(.06)
+                    receipt['held_chainsaw_samples'] = samples
+                    if not any(row['target_timer'] for row in samples):
+                        raise RuntimeError('Original Lancer target timer never appeared')
+                    bridge.call(weapon, 'ClearTimer',
+                                inTimerFunc=fname('CheckForMeleeTarget'))
+                    receipt['cleared_chainsaw_timer'] = snapshot()
+                    time.sleep(.45)
+                    receipt['held_after_timer_clear'] = snapshot()
+                finally:
+                    if pressed:
+                        bridge.call(pc, 'ButtonRelease', ButtonName=button)
+            if args.mode != 'chainsaw_hold_shutdown':
+                receipt['released_chainsaw'] = snapshot()
+                wait_for(lambda: not original_bool(pawn, 'bDoingMeleeAttack') and
+                         original_integer(weapon, 'CurrentFireMode') == 0,
+                         5, 'Original Lancer did not leave melee after B release')
+                receipt['settled_chainsaw'] = snapshot()
         else:
             def read_int(obj, field):
                 meta = property_of(obj, field)
@@ -716,6 +779,17 @@ def sample_owned_game(args, receipt):
         if bridge:
             try:
                 receipt['shutdown'] = bridge.export('PlaygroundShutdown')
+                if (args.mode == 'chainsaw_hold_shutdown' and
+                        receipt.get('held_chainsaw_samples')):
+                    time.sleep(.15)
+                    receipt['shutdown_chainsaw'] = {
+                        'holding_b': original_bool(pc, 'bHoldingButton_B'),
+                        'wants_melee': original_bool(pawn, 'bWantsToMelee'),
+                        'doing_melee': original_bool(pawn, 'bDoingMeleeAttack'),
+                        'blade_running': original_bool(weapon, 'bChainSawRunning'),
+                        'current_fire_mode': original_integer(weapon,
+                                                              'CurrentFireMode'),
+                    }
             except BaseException:
                 receipt['shutdown_error'] = traceback.format_exc()
             bridge.close()
@@ -731,6 +805,11 @@ def sample_owned_game(args, receipt):
         if len(api['SetAbsolute']['parameters']) != 3 or any(
                 item['type'] != 'BoolProperty' for item in api['SetAbsolute']['parameters']):
             raise RuntimeError('Original SetAbsolute signature differs')
+    elif args.mode == 'chainsaw_api':
+        api = receipt['original_chainsaw_api']
+        if any(not entry['path'] or entry['parameter_bytes'] > 128
+               for entry in api.values()):
+            raise RuntimeError('Original Lancer chainsaw function metadata incomplete')
     elif args.mode == 'component_motion':
         motion = receipt['component_motion']
         if (not motion['attached_after_original_call'] or
@@ -788,6 +867,28 @@ def sample_owned_game(args, receipt):
                 receipt['settled_chainsaw']['doing_melee'] or
                 receipt['settled_chainsaw']['current_fire_mode'] != 0):
             raise RuntimeError('Original Lancer B/hold/target-timer semantics incomplete')
+    elif args.mode == 'chainsaw_hold_adapter':
+        rows = receipt['held_chainsaw_samples']
+        if (len(rows) < 8 or any(row['adapter_status'] != 0x10002 or
+                                 not row['holding_b'] or not row['doing_melee'] or
+                                 not row['blade_running'] or row['target_timer'] or
+                                 row['victim'] != '0x0' for row in rows) or
+                receipt.get('stop_request_failed') or
+                receipt['settled_chainsaw']['holding_b'] or
+                receipt['settled_chainsaw']['doing_melee'] or
+                receipt['settled_chainsaw']['current_fire_mode'] != 0):
+            raise RuntimeError('Private Lancer saw hold/timer/release incomplete')
+    elif args.mode == 'chainsaw_hold_shutdown':
+        rows = receipt['held_chainsaw_samples']
+        after = receipt.get('shutdown_chainsaw', {})
+        if (len(rows) < 8 or any(row['adapter_status'] != 0x10002 or
+                                 not row['holding_b'] or not row['doing_melee'] or
+                                 not row['blade_running'] or row['target_timer'] or
+                                 row['victim'] != '0x0' for row in rows) or
+                not after or any(after.get(key) for key in (
+                    'holding_b', 'wants_melee', 'doing_melee', 'blade_running')) or
+                after.get('current_fire_mode') != 0):
+            raise RuntimeError('Private Lancer saw shutdown did not release original state')
     elif args.mode == 'socket_reload':
         beginnings = [line for line in lines if line.startswith('lancer_socket_reload_begin ')]
         rows = [parse_socket_row(line) for line in lines
@@ -906,7 +1007,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('api', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('api', 'chainsaw_api', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'reload_visual', 'reload_hold',
                                           'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

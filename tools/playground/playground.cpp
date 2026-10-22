@@ -406,6 +406,28 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerReloadHoldStatus(v
     return vrequip::lancer_reload_status.load(std::memory_order_acquire);
 }
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
+// These exports exercise the original B/timer boundary only in an owned muted
+// arena. A physical pull and blade contact are not yet connected to them.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawHoldStartTest(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment()||
+       vrequip::lancer_saw_active_visible.load(std::memory_order_acquire))return 1;
+    bool expected=false;
+    if(!vrequip::lancer_saw_test_start.compare_exchange_strong(expected,true))return 2;
+    vrequip::lancer_saw_status.store(1,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawHoldStopTest(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment())return 1;
+    vrequip::lancer_saw_test_start.store(false,std::memory_order_release);
+    vrequip::lancer_saw_test_stop.store(true,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawHoldStatus(void*){
+    return vrequip::lancer_saw_status.load(std::memory_order_acquire)|
+        (vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)?0x10000u:0u);
+}
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
 // Bit 16: original mesh override active; bit 17: left support grip latched.
 // 1 waiting for a held Lancer and fresh hand pose, 2 moving original mesh,
@@ -540,6 +562,16 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrAimStatus(void*){
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     LifecycleScope lifecycle;
+#if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
+    vrequip::lancer_saw_test_start.store(false,std::memory_order_release);
+    if(vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)){
+        vrequip::lancer_saw_test_stop.store(true,std::memory_order_release);
+        const auto stop_until=GetTickCount64()+2000;
+        while(vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)&&
+              GetTickCount64()<stop_until)Sleep(1);
+        if(vrequip::lancer_saw_active_visible.load(std::memory_order_acquire))return 30;
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
     if(const auto stopped=vrfire::disable())return 10+stopped;
 #endif
@@ -580,6 +612,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     vrequip::lancer_reload_test_start=false;
     vrequip::lancer_reload_test_complete=false;
     vrequip::lancer_reload_hold={};
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
+    vrequip::lancer_saw_test_start=false;
+    vrequip::lancer_saw_test_stop=false;
+    vrequip::lancer_saw_hold={};
+    vrequip::lancer_saw_status.store(0,std::memory_order_release);
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
     vrequip::lancer_magazine_test_active=false;

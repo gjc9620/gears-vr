@@ -474,11 +474,17 @@ bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned 
 #if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
 #include "vr_lancer_reload_hold.inl"
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
+#include "vr_lancer_chainsaw_hold.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
 #include "vr_lancer_magazine_follow.inl"
 #endif
 void tick(uptr pc){
     const auto now=GetTickCount64();
+#if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
+    lancer_saw_hold_tick(pc);
+#endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     unsigned requested_slot=queued_slot.exchange(4,std::memory_order_acq_rel);
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)

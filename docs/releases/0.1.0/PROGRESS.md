@@ -16,6 +16,10 @@ Lancer 启动件原创模型原型：新增 `assets/weapon-6dof/lancer-starter.g
 
 新增 Lancer 体感电锯目标：左手抓拉柄并完成连续拉程后启动，锯刃实际接触有效敌人时调用原版双方处决，原版动画结束后恢复双手 6DoF。原包静态脚本核对了 `WarPC.PreButtonPress('B')`、`Weap_AssaultRifleBase.MeleeAttacking.BeginState/CheckForMeleeTarget/AcquiredVictim` 及原版清理链；原版前方寻敌计时器不能在 VR 交互期间抢先取得目标。原枪 `b_AR_Chainsaw_Handle` 是 685 顶点／1,089 面的既有独立刚性部位，尚无证据可作为启动拉柄，检查 OBJ 仅在忽略的 `analysis/weapon-partitions/Lancer-chainsaw-handle-audit/`。独立分支新增 `weapon_lancer_chainsaw.h`：按握持边沿、拉程、方向、连续性和身份做启动候选，原枪锯刃线段／敌方胶囊接触候选必须再经原版有效目标与遮挡确认，明确在处决期间让原版动画持有双手、结束后再交还。合成测试通过；游戏线程 B 状态适配、原版寻敌计时器抑制、可见拉柄／拉绳、真实接触与头显测试仍未完成，不接入默认启动器。
 
+后续私有 Lancer 电锯待机适配已补齐原版 B 键保持、每个自有游戏帧清除 `CheckForMeleeTarget` 自动寻敌计时器、身份丢失时释放，以及退出时等待原版 B 按住字段清零。购买版自有置后静音测试 PID 39340 的 9 个持续样本均为原版 B 按住／近战／锯链运转／模式 2，计时器关闭且没有受害者；明确停止后原版状态恢复。PID 61196 在 B 仍按住时执行 `PlaygroundShutdown`，关闭码 0，原版 B、近战、锯链与模式均恢复空闲。两次自有进程退出且音频守护恢复；证据只在忽略的 `analysis/lancer-saw-hold-runtime-1022a.json`、`analysis/lancer-saw-shutdown-runtime-1022b.json`。此结果不覆盖 XR 手拉启动、可见拉柄、实体锯刃接触、原版双方处决或动画后 6DoF 恢复；默认 DLL 未启用该测试选项。
+
+另一次购买版自有置后静音只读探针 PID 61168 核对了原版 Lancer 电锯函数签名：`AcquiredVictim(VictimPawn)` 的参数区为 8 字节对象引用；`IsTargetValidForSpecialMeleeAttack(P)` 为对象入参加布尔返回。`MeleeAttackImpact` 有伤害和命中输出参数，不能当成实体锯刃接触入口。本次未调用目标获取或处决；回执仅在忽略的 `analysis/lancer-saw-api-runtime-1022c.json`，自有进程退出、音频恢复。下一步仍须逐帧定位原枪锯刃骨骼、验证敌方碰撞和遮挡后，才允许对同一有效受害者做一次原版动画移交。
+
 范围更正：玩家确认先前清单误列 Mulcher 和 Ink Grenade，本轮只实施交互设计中剩余的 12 件武器／投掷物。此前“14 种”与这两件待查模型的条目属于当时的历史记录，已由本条和更新后的设计清单取代；无需再为它们追索模型或开发交互。
 
 Lancer 下一机构边界审核：已核验原包的 `AR_Reload` 中 `b_AR_Latch` 与 `b_AR_Receiver` 各有 38 个旋转键、仅一个平移键，`AR_Reload_Fumble` 各有 60 个旋转键；`b_AR_Latch` 的原 LOD0 是 298 个刚性顶点／276 面，位于枪下方，源骨枢轴候选在枪体局部约 `(0.008,21.391,-7.540)`。有界解码显示 Latch 的存储局部姿态经历约 114.5° 相对旋转，但尚未验证动画键时间、游戏运行骨矩阵和可见操作面，因此不能只凭名字把它叫作枪栓。解码回执和检查用 OBJ 只留在忽略的 `analysis/lancer-support-probe-20261022/`、`analysis/weapon-partitions/Lancer-latch-uv/`，没有接入发行模型。

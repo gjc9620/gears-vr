@@ -110,6 +110,18 @@ events include input epoch and are rejected against a stale hand-pose epoch;
 each certified hand pose also carries the same XR ticket's game units per metre
 for physical gesture distances. Older GVE5 publishers cannot open this bridge.
 
+`GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST=ON` is a separate, default-off
+original-input boundary trial in the owned muted arena. Its test exports queue
+one Lancer `ButtonPress('B')` on the game thread, clear the original
+`CheckForMeleeTarget` timer immediately and on each owned tick, and release B
+on explicit stop, identity loss, timer failure, or Playground shutdown. A
+release is accepted only after the original `bHoldingButton_B` field clears.
+The retail no-victim trial confirmed sustained original blade/melee state and
+timer suppression; a second trial closed Playground while B was held and
+confirmed the original B, melee and blade states returned to idle. This is
+not yet driven by the hand-pull solver and does not perform blade contact,
+paired execution, visual starter placement, or headset verification.
+
 While certified hand poses are being observed, the private bridge also logs a
 read-only `weapon_magazine_probe` beside `weapon_mesh_probe`. It validates the
 current weapon's original `MagazineMesh` component, names its `StaticMesh`,

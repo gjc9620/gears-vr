@@ -124,6 +124,10 @@
 
 购买版 PID 51388 的原版按键实测确认：`ButtonPress('B')` 持续时 `bDoingMeleeAttack=true`、`CurrentFireMode=2`、`SpecialMove=33`、电锯运转且 `CheckForMeleeTarget` 计时器在场；清除计时器后再保持约 0.45 秒，电锯待机仍持续且计时器未重建；`ButtonRelease('B')` 后近战、锯链与计时器复原。没有敌人，也没有触发处决。反射桥直接调用类方法 `IsMeleeing` 在这段状态仍返回 false，因此实际接线须核对原版状态字段／状态函数，不能用这个类方法证明是否在近战。该测试提供了待机和寻敌计时器抑制的运行边界，但尚未实测安全地把实际锯刃接触交给原版 `AcquiredVictim`。
 
+私有 `GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST` 已把上述边界放到受身份约束的游戏线程适配器。购买版置后静音测试 PID 39340 中，测试入口只请求一次原版 B 按下；持续约 1.2 秒的 9 个样本均观察到 B 按住、人物近战、原版锯链运转、当前开火模式 2，而自动前方寻敌计时器始终关闭，受害者为空；明确停止后返回空闲。第二次 PID 61196 在仍按住 B 时直接关闭私有模组，关闭码 0，之后原版 B、近战意图、锯链和开火模式也全部为空闲。两次自有游戏进程均退出，音频恢复；回执仅在忽略的 `analysis/lancer-saw-hold-runtime-1022a.json` 和 `analysis/lancer-saw-shutdown-runtime-1022b.json`。**这仅证明无敌人场景的原版待机、计时器抑制及退出边界**；实际左手拉绳尚未驱动该入口，锯刃碰撞、双方处决动画、动画后手部 6DoF 恢复和头显效果仍待接线与验证，默认 DLL 未启用。
+
+另一次购买版只读反射核对（PID 61168）确认当前 Lancer 的 `AcquiredVictim` 参数区为 8 字节，唯一参数 `VictimPawn` 是偏移 0 的对象引用；`IsTargetValidForSpecialMeleeAttack` 接收对象 `P` 并返回布尔值。`MeleeAttackImpact` 则含命中输出和伤害参数，属于原版前方寻敌流程，不能代替 VR 锯刃几何判定。脚本导出对参数类型有未解析占位，实际适配须以这次运行时签名为准；本次只读，没有调用处决或制造伤害。回执仅在忽略的 `analysis/lancer-saw-api-runtime-1022c.json`，自有进程退出且音频恢复。
+
 另已做不复制原枪几何的程序化拉柄原型 `assets/weapon-6dof/lancer-starter.glb`：固定插座、跟左手移动的 T 形握柄、可拉长绳分别为三个节点，局部 +X 是拉动方向，704 个三角形。生成器为 `tools/weapon-models/build_lancer_starter.py`，确定性重建检查通过，本地预览留在忽略的 `analysis/lancer-support-probe-20261022/lancer-starter-preview.png`。资产目前没有接入游戏或定位到原枪；头显内的可见性、握持范围、拉绳长度与高亮仍待核对。
 
 ## 物理装填与黄色引导
