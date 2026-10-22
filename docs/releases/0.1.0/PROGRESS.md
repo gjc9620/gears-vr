@@ -8,6 +8,8 @@ Snub 静态拆件复核：在已验证的原包上用同一刚性骨骼提取器
 
 完美窗口静态复核增量：新增只读、哈希约束的原版默认对象字段审计，重新确认 WarWeapon 基类 `AR_SweetSpotDuration`／`AR_SuperSweetSpotDuration`／`AR_PreReactionWindowDuration` 为 `-1`，Lancer、Hammerburst、Gnasher、Longshot、Snub、Boltok 具体类未显式覆盖这三项；已有 `AR_PossibleSuccessStartPoint` 和 `ReloadDuration` 数值重现。结果位于忽略的 `analysis/active-reload-explicit-defaults-20261022.json`。这仍未确定原版 SuperSuccess 窗口终点，不给逐枪体感期限填猜测数值。
 
+继续按保存的原版 HUD 脚本核对出显示层的完美区终点候选为 `ActiveReloadStartTime + SuperSweetSpotDuration`（均为 `GetActiveReloadValues` 的实际输出），普通成功区另加 `SweetSpotDuration`；历史真实 SuperSuccess 样本仍见对象上的三项时长为 `-1`。因此下一步只分析两个原生函数的有界 getter／判定路径，或在受控零售会话只读截取其真实输出，不用显示层公式冒充原生严格边界，也不主动调用未知副作用的原生函数来声称只读。
+
 从 `codex/0.1.0` 提交 `315473dca5008e753011ae905783079de6f04770` 创建独立工作树与 `codex/weapon-6dof` 分支；原工作目录仍由其他会话用于 0.1.0 开发。仅将本次[武器 6DoF 交互设计与验收规格](../../weapon-6dof-interaction-design-20261022.md)及相关文档索引迁入新分支，未复制原目录中其他会话尚未提交的 native、Playground 或启动器改动。后续完成功能并验证时，以届时最新默认版本为集成基线。
 
 规格记录自由双手、身体槽位取枪取弹、R3 物理装填、逐枪黄色引导、霰弹数量不足与射后循环、枪口弹道及原版后坐力、武器弹药卡片、手雷手势投掷、动画接管、臂展校准、可配置转向与普通行走去惯性。用户确认的完美规则为原版该武器完美窗口结束前完成全部动作；提前完成也算，超时为普通装填且不加卡壳惩罚。

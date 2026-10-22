@@ -205,6 +205,8 @@ Longshot 瞄准镜另设光学渲染任务。单纯放大原有双眼画面会�
 
 现用 `tools/weapon-models/audit_active_reload_defaults.py` 对哈希匹配的本机 `WarfareGame.u` 和逐导出 SHA256 重新读取显式属性标签，结果留在忽略的 `analysis/active-reload-explicit-defaults-20261022.json`：`WarWeapon` 基类的 `AR_SweetSpotDuration`、`AR_SuperSweetSpotDuration`、`AR_PreReactionWindowDuration` 均显式为 `-1`，下表六个具体类都**没有显式覆盖**这三项；Boomer、Bow、Troika 基类默认对象只有属性终止符。缺失标签只表示该对象未覆盖，不能解释为零或从 `ReloadDuration` 推出 SuperSuccess 终点。`GetActiveReloadValues` 与最终判定仍是原生函数声明，需后续有界原生分析或实际窗口采样。
 
+保存的原版 `WarHUD.DrawActionReloadBar` 脚本进一步给出**显示层**的两个区域：`GetActiveReloadValues` 输出的 `ActiveReloadStartTime + SuperSweetSpotDuration` 是完美区右边界，而再加 `SweetSpotDuration` 才是普通成功区右边界。用户要以前者作为体感截止候选，不能把两个区间合并。HUD 画法尚不能代替 `DetermineActiveReloadSuccessOrFailure` 的原生比较；严格／非严格边界、反应窗口修正和动态值来源仍需复核。历史 Lancer 完美结果样本里三个 `AR_*Duration` 成员仍全为 `-1`，证实不能在对象上直接读这些成员并计算。该历史回执保存在忽略的 `analysis/runtime/active-reload37-candidate2.watch.json`，不是本次零售版运行样本。
+
 | 原版武器类 | `AR_PossibleSuccessStartPoint` 默认值 | `ReloadDuration` 默认值 |
 | --- | ---: | ---: |
 | Lancer／`Weap_AssaultRifle` | 0.70 s | 2.50 s |
