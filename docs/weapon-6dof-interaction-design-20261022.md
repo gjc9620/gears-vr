@@ -203,6 +203,8 @@ Longshot 瞄准镜另设光学渲染任务。单纯放大原有双眼画面会�
 
 对已保存的 `WarfareGame.u` UnrealScript 声明和逆向知识库做有界复核后，**尚未取得任何一把枪实际生效的完美窗口终点**。下表只是类默认值，不是体感换弹可直接使用的期限；`AR_PossibleSuccessStartPoint` 表示可能的成功起点，`ReloadDuration` 是普通装填时长，两者都不能冒充终点。基类相关窗口时长默认值为 `-1`，具体覆盖／原生计算路径仍需核对。
 
+现用 `tools/weapon-models/audit_active_reload_defaults.py` 对哈希匹配的本机 `WarfareGame.u` 和逐导出 SHA256 重新读取显式属性标签，结果留在忽略的 `analysis/active-reload-explicit-defaults-20261022.json`：`WarWeapon` 基类的 `AR_SweetSpotDuration`、`AR_SuperSweetSpotDuration`、`AR_PreReactionWindowDuration` 均显式为 `-1`，下表六个具体类都**没有显式覆盖**这三项；Boomer、Bow、Troika 基类默认对象只有属性终止符。缺失标签只表示该对象未覆盖，不能解释为零或从 `ReloadDuration` 推出 SuperSuccess 终点。`GetActiveReloadValues` 与最终判定仍是原生函数声明，需后续有界原生分析或实际窗口采样。
+
 | 原版武器类 | `AR_PossibleSuccessStartPoint` 默认值 | `ReloadDuration` 默认值 |
 | --- | ---: | ---: |
 | Lancer／`Weap_AssaultRifle` | 0.70 s | 2.50 s |

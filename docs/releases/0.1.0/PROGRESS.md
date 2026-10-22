@@ -4,6 +4,8 @@
 
 模型原件观察增量：在只限私有认证手部／装备测试的游戏线程回调里，加入对原 `MagazineMesh` 的只读检查，记录当前武器是否有独立弹匣组件、其静态模型名、显隐与是否挂在角色骨架上。它与已有原枪组件姿态观察配对，用于避免未来实体换弹时同时显示枪上和左手两份弹匣。私有装备意图、枪模跟手及默认禁用构建通过；没有新的零售运行样本，枪上 `AmmoControl` 实时状态尚未读取，不能据此认定换弹视觉交接完成。
 
+完美窗口静态复核增量：新增只读、哈希约束的原版默认对象字段审计，重新确认 WarWeapon 基类 `AR_SweetSpotDuration`／`AR_SuperSweetSpotDuration`／`AR_PreReactionWindowDuration` 为 `-1`，Lancer、Hammerburst、Gnasher、Longshot、Snub、Boltok 具体类未显式覆盖这三项；已有 `AR_PossibleSuccessStartPoint` 和 `ReloadDuration` 数值重现。结果位于忽略的 `analysis/active-reload-explicit-defaults-20261022.json`。这仍未确定原版 SuperSuccess 窗口终点，不给逐枪体感期限填猜测数值。
+
 从 `codex/0.1.0` 提交 `315473dca5008e753011ae905783079de6f04770` 创建独立工作树与 `codex/weapon-6dof` 分支；原工作目录仍由其他会话用于 0.1.0 开发。仅将本次[武器 6DoF 交互设计与验收规格](../../weapon-6dof-interaction-design-20261022.md)及相关文档索引迁入新分支，未复制原目录中其他会话尚未提交的 native、Playground 或启动器改动。后续完成功能并验证时，以届时最新默认版本为集成基线。
 
 规格记录自由双手、身体槽位取枪取弹、R3 物理装填、逐枪黄色引导、霰弹数量不足与射后循环、枪口弹道及原版后坐力、武器弹药卡片、手雷手势投掷、动画接管、臂展校准、可配置转向与普通行走去惯性。用户确认的完美规则为原版该武器完美窗口结束前完成全部动作；提前完成也算，超时为普通装填且不加卡壳惩罚。
