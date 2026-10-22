@@ -35,6 +35,11 @@
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
 #include "../vr-common/hand_ik_stream_lease.h"
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+#include "../vr-common/hand_stream_grip_binding.h"
+#include "../vr-common/hand_stream_ticket_policy.h"
+#include "hand_ik_xr_stream_request.h"
+#endif
 #if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
 #include "../vr-common/weapon_lancer_blade_outline.h"
 #endif
@@ -675,11 +680,21 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkControlledTrialSta
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
 // Private single-use recording only; public hand ownership remains unproved.
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkXrStreamTrialStart(void* argument){
+#else
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkStreamTrialStart(void*){
+#endif
     LifecycleScope lifecycle;
     if(!enabled.load(std::memory_order_acquire)||!playground::automatic||!playground::ready||
        !freehands::test_environment()||!handanimcall::reserved||!log_file||ferror(log_file)||
        handstream::shutdown_requested.load(std::memory_order_acquire))return 1;
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+    // A rejected second Start must not replace the first request while its
+    // game-thread begin is still queued. LifecycleScope serializes callers.
+    if(handstream::used.load(std::memory_order_acquire))return 2;
+    if(!handstream::prepare_xr_request(argument))return 3;
+#endif
     bool unused=false;
     if(!handstream::used.compare_exchange_strong(unused,true))return 2;
     handstream::stop_requested=false;handstream::safe_to_unload=false;

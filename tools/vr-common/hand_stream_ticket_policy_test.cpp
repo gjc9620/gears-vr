@@ -1,0 +1,261 @@
+#include "hand_stream_ticket_policy.h"
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+#include <cassert>
+#include <cstdio>
+#include <initializer_list>
+#include <limits>
+#include <type_traits>
+using namespace gears_hand_stream;
+static_assert(std::is_trivially_copyable<GameKey>::value&&std::is_standard_layout<GameKey>::value);
+static_assert(std::is_trivially_copyable<Ticket>::value&&std::is_standard_layout<Ticket>::value);
+static_assert(std::is_trivially_copyable<Plan>::value&&std::is_standard_layout<Plan>::value);
+static_assert(std::is_trivially_copyable<Policy>::value&&std::is_standard_layout<Policy>::value);
+namespace {
+Context context(std::uint64_t now=1000){return {{11,12,13,14,0},7,1,now,true,true};}
+Ticket ticket(Context const& c,std::uint64_t serial,std::uint64_t sequence,std::uint64_t now){
+    return {{1,2,3,c.expected_native_world_generation},serial,sequence,now,
+        c.game.controller,c.game.pawn,c.game.weapon,100.,both_hands};
+}
+struct Live {
+    Policy policy;Context ctx=context();Ticket receipt{};Plan plan{};std::uint64_t now=1000;
+    Live(){
+        receipt=ticket(ctx,1,1,now);plan=policy.observe(ctx,&receipt,now);
+        assert(plan.baseline_mask==3&&plan.accept_mask==0&&plan.bind_mask==0);
+        assert(!policy.commit_binding(plan,3)&&policy.authorize(plan,ctx,now)==0);
+        feed(2,2);assert(plan.accept_mask==3&&plan.bind_mask==3);
+        assert(policy.commit_binding(plan,3)&&policy.authorize(plan,ctx,now)==3);
+    }
+    void feed(std::uint64_t serial,std::uint64_t sequence,unsigned mask=3){
+        ctx.observed_ms=++now;receipt=ticket(ctx,serial,sequence,now);receipt.valid_mask=mask;
+        plan=policy.observe(ctx,&receipt,now);
+    }
+};
+void baseline_and_per_hand_commit(){
+    Policy policy;auto c=context();auto t=ticket(c,1,1,1000);
+    auto p=policy.observe(c,&t,1000);
+    assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3);
+    assert(!policy.commit_binding(p,1)&&policy.bound_mask()==0);
+    t.serial=t.sequence=2;p=policy.observe(c,&t,1000);
+    assert(p.accept_mask==3&&p.bind_mask==3&&policy.authorize(p,c,1000)==0);
+    assert(!policy.commit_binding(p,4)&&!policy.commit_binding(p,0));
+    assert(policy.commit_binding(p,right_hand)&&policy.authorize(p,c,1000)==right_hand);
+    assert(!policy.commit_binding(p,right_hand));
+    assert(policy.commit_binding(p,left_hand)&&policy.authorize(p,c,1000)==3);
+    // weapon==0 is a valid identity, not a missing owner.
+    assert(c.game.weapon==0&&p.ticket.weapon==0);
+}
+void no_receipt_never_reuses_pose_and_old_plans_die(){
+    Live live;const auto old=live.plan;
+    auto p=live.policy.observe(live.ctx,nullptr,live.now);
+    assert(!p.has_ticket&&p.accept_mask==0&&p.bind_mask==0&&p.restore_mask==3&&p.reset_binding_mask==0);
+    assert(live.policy.bound_mask()==3&&live.policy.authorize(p,live.ctx,live.now)==0);
+    assert(live.policy.authorize(old,live.ctx,live.now)==0&&!live.policy.commit_binding(old,1));
+    live.feed(3,3);assert(live.plan.accept_mask==3&&live.plan.bind_mask==0);
+    assert(live.policy.authorize(live.plan,live.ctx,live.now)==3);
+}
+void plans_cannot_be_modified_or_used_after_new_observation(){
+    Live live;auto altered=live.plan;altered.ticket.serial++;
+    assert(live.policy.authorize(altered,live.ctx,live.now)==0);
+    altered=live.plan;altered.accept_mask=1;
+    assert(live.policy.authorize(altered,live.ctx,live.now)==0);
+    altered=live.plan;altered.context.action_epoch++;
+    assert(live.policy.authorize(altered,live.ctx,live.now)==0);
+    auto current=live.ctx;current.observed_ms=live.now+1;
+    assert(live.policy.authorize(live.plan,current,live.now+1)==3);
+    current.action_epoch++;
+    assert(live.policy.authorize(live.plan,current,live.now+1)==0);
+    current=live.ctx;current.game.mesh++;
+    assert(live.policy.authorize(live.plan,current,live.now)==0);
+    current=live.ctx;current.clean=false;
+    assert(live.policy.authorize(live.plan,current,live.now)==0);
+    current=live.ctx;current.idle_ready=false;
+    assert(live.policy.authorize(live.plan,current,live.now)==0);
+    current=live.ctx;current.observed_ms--;
+    assert(live.policy.authorize(live.plan,current,live.now)==0);
+    assert(live.policy.authorize(live.plan,live.ctx,live.now-1)==0);
+    const auto previous=live.plan;live.feed(3,3);
+    assert(live.policy.authorize(previous,live.ctx,live.now)==0);
+}
+void serial_and_sequence_each_strictly_advance(){
+    Live live;
+    live.feed(3,2);assert(live.plan.accept_mask==0&&live.policy.bound_mask()==3);
+    live.feed(3,3);assert(live.plan.accept_mask==0); // Rejected serial 3 was consumed.
+    live.feed(4,3);assert(live.plan.accept_mask==0); // Rejected sequence 3 was consumed.
+    live.feed(5,4);assert(live.plan.accept_mask==3);
+    live.feed(4,5);assert(live.plan.accept_mask==0);
+    live.feed(6,5);assert(live.plan.accept_mask==0);
+    live.feed(7,6);assert(live.plan.accept_mask==3);
+    live.feed(0,7);assert(live.plan.accept_mask==0&&live.plan.restore_mask==3);
+    live.feed(8,0);assert(live.plan.accept_mask==0);
+}
+void single_hand_loss_and_fresh_recovery(){
+    Live live;live.feed(3,3,left_hand);
+    assert(live.plan.accept_mask==left_hand&&live.plan.bind_mask==0);
+    assert(live.plan.reset_binding_mask==right_hand&&live.plan.restore_mask==right_hand);
+    assert(live.policy.bound_mask()==left_hand&&live.policy.authorize(live.plan,live.ctx,live.now)==left_hand);
+    live.receipt.valid_mask=both_hands;
+    auto stale=live.policy.observe(live.ctx,&live.receipt,live.now);
+    assert(stale.accept_mask==0&&stale.bind_mask==0&&live.policy.bound_mask()==left_hand);
+    live.feed(4,4,both_hands);
+    assert(live.plan.accept_mask==3&&live.plan.bind_mask==right_hand);
+    assert(live.policy.authorize(live.plan,live.ctx,live.now)==left_hand);
+    assert(!live.policy.commit_binding(live.plan,3)); // Already-bound left cannot be re-committed.
+    assert(live.policy.commit_binding(live.plan,right_hand));
+    assert(live.policy.authorize(live.plan,live.ctx,live.now)==3);
+    live.feed(5,5,0);
+    assert(live.plan.accept_mask==0&&live.plan.restore_mask==3&&live.policy.bound_mask()==0);
+    live.feed(6,6,3);
+    assert(live.plan.accept_mask==3&&live.plan.bind_mask==3&&live.policy.commit_binding(live.plan,3));
+}
+void missing_baseline_and_readiness_boundaries(){
+    Policy policy;auto c=context();auto p=policy.observe(c,nullptr,1000);
+    assert(p.accept_mask==0&&p.reset_binding_mask==3);
+    auto t=ticket(c,1,1,1000);p=policy.observe(c,&t,1000);
+    assert(p.accept_mask==0&&p.baseline_mask==3);
+    t.serial=t.sequence=2;p=policy.observe(c,&t,1000);
+    assert(p.bind_mask==3&&policy.commit_binding(p,3));
+    c.idle_ready=false;t.serial=t.sequence=3;p=policy.observe(c,&t,1000);
+    assert(p.accept_mask==0&&p.restore_mask==3&&policy.bound_mask()==0);
+    c.idle_ready=true;p=policy.observe(c,nullptr,1000);
+    assert(p.accept_mask==0&&p.restore_mask==3);
+    p=policy.observe(c,&t,1000);assert(p.accept_mask==0&&p.baseline_mask==0); // During-action receipt cannot be reused.
+    t.serial=t.sequence=4;p=policy.observe(c,&t,1000);
+    assert(p.accept_mask==0&&p.baseline_mask==3);
+    t.serial=t.sequence=5;p=policy.observe(c,&t,1000);
+    assert(p.bind_mask==3&&policy.commit_binding(p,3)&&policy.authorize(p,c,1000)==3);
+    c.clean=false;t.serial=t.sequence=6;p=policy.observe(c,&t,1000);
+    assert(p.accept_mask==0&&p.restore_mask==3&&policy.bound_mask()==0);
+    c.clean=true;t.serial=t.sequence=7;p=policy.observe(c,&t,1000);
+    assert(p.accept_mask==0&&p.baseline_mask==3);
+    t.serial=t.sequence=8;p=policy.observe(c,&t,1000);
+    assert(p.bind_mask==3&&policy.commit_binding(p,3));
+}
+void game_and_action_changes_seal_the_current_receipt(){
+    for(unsigned field=0;field<7;++field){
+        Live live;
+        switch(field){
+        case 0:++live.ctx.game.world;break;case 1:++live.ctx.game.controller;break;
+        case 2:++live.ctx.game.pawn;break;case 3:++live.ctx.game.mesh;break;
+        case 4:++live.ctx.game.weapon;break;case 5:++live.ctx.action_epoch;break;
+        case 6:++live.ctx.expected_native_world_generation;break;
+        }
+        live.feed(3,3);
+        assert(live.plan.accept_mask==0&&live.plan.baseline_mask==3&&live.plan.restore_mask==3);
+        assert(live.policy.bound_mask()==0&&!live.policy.commit_binding(live.plan,3));
+        live.feed(4,4);assert(live.plan.bind_mask==3&&live.policy.commit_binding(live.plan,3));
+    }
+    Live live;++live.ctx.action_epoch;
+    auto p=live.policy.observe(live.ctx,nullptr,live.now);
+    assert(p.restore_mask==3&&p.accept_mask==0);
+    live.feed(3,3);assert(live.plan.accept_mask==0&&live.plan.baseline_mask==3);
+    live.feed(4,4);assert(live.plan.bind_mask==3);
+}
+void each_stream_key_change_allows_new_counters_but_only_after_baseline(){
+    for(unsigned field=0;field<4;++field){
+        Live live;auto next=live.receipt;next.serial=next.sequence=1;
+        switch(field){
+        case 0:++next.stream.session;break;case 1:++next.stream.space_epoch;break;
+        case 2:++next.stream.input_epoch;break;
+        case 3:++next.stream.world_generation;live.ctx.expected_native_world_generation=next.stream.world_generation;break;
+        }
+        auto p=live.policy.observe(live.ctx,&next,live.now);
+        assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3);
+        next.serial=next.sequence=2;p=live.policy.observe(live.ctx,&next,live.now);
+        assert(p.accept_mask==3&&p.bind_mask==3&&live.policy.commit_binding(p,3));
+    }
+    Live live;auto wrong=live.receipt;wrong.serial=wrong.sequence=3;++wrong.stream.world_generation;
+    auto p=live.policy.observe(live.ctx,&wrong,live.now);
+    assert(p.accept_mask==0&&p.restore_mask==3&&live.policy.bound_mask()==0);
+}
+void rejected_receipts_never_become_fresh_later(){
+    Live live;auto future=live.receipt;future.serial=future.sequence=3;future.created_ms=live.now+10;
+    auto p=live.policy.observe(live.ctx,&future,live.now);
+    assert(p.accept_mask==0&&p.restore_mask==3);
+    live.now=future.created_ms;live.ctx.observed_ms=live.now;
+    p=live.policy.observe(live.ctx,&future,live.now);assert(p.accept_mask==0&&p.baseline_mask==0);
+    live.feed(4,4);assert(live.plan.accept_mask==0&&live.plan.baseline_mask==3);
+    live.feed(5,5);assert(live.plan.bind_mask==3&&live.policy.commit_binding(live.plan,3));
+    auto wrong=live.receipt;wrong.serial=wrong.sequence=6;++wrong.controller;
+    p=live.policy.observe(live.ctx,&wrong,live.now);assert(p.accept_mask==0&&p.restore_mask==3);
+    wrong.controller=live.ctx.game.controller;
+    p=live.policy.observe(live.ctx,&wrong,live.now);assert(p.accept_mask==0&&p.baseline_mask==0);
+    // The first receipt of a different stream is consumed even when rejected.
+    ++wrong.stream.session;wrong.serial=wrong.sequence=1;wrong.units_per_metre=0;
+    p=live.policy.observe(live.ctx,&wrong,live.now);assert(p.accept_mask==0);
+    wrong.units_per_metre=100.;p=live.policy.observe(live.ctx,&wrong,live.now);
+    assert(p.accept_mask==0&&p.baseline_mask==0);
+    wrong.serial=wrong.sequence=2;p=live.policy.observe(live.ctx,&wrong,live.now);
+    assert(p.accept_mask==0&&p.baseline_mask==3);
+}
+void age_boundaries_and_long_gap_cannot_teleport_old_binding(){
+    Live live;const auto acquired=live.now;
+    auto current=live.ctx;current.observed_ms=acquired+100;
+    assert(live.policy.authorize(live.plan,current,acquired+100)==3);
+    current.observed_ms=acquired+101;
+    assert(live.policy.authorize(live.plan,current,acquired+101)==0);
+    live.ctx.observed_ms=acquired+100;
+    auto p=live.policy.observe(live.ctx,nullptr,acquired+100);
+    assert(p.accept_mask==0&&p.restore_mask==3&&p.reset_binding_mask==0&&live.policy.bound_mask()==3);
+    live.ctx.observed_ms=acquired+101;
+    auto fresh=ticket(live.ctx,3,3,acquired+101);
+    p=live.policy.observe(live.ctx,&fresh,acquired+101);
+    assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3&&live.policy.bound_mask()==0);
+    fresh.serial=fresh.sequence=4;p=live.policy.observe(live.ctx,&fresh,acquired+101);
+    assert(p.bind_mask==3&&live.policy.commit_binding(p,3));
+    // An arriving fresh receipt does not bypass expiry when there was no
+    // intermediate observe(nullptr) call during the long gap.
+    Live silent;silent.now+=101;silent.ctx.observed_ms=silent.now;
+    fresh=ticket(silent.ctx,3,3,silent.now);p=silent.policy.observe(silent.ctx,&fresh,silent.now);
+    assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3);
+}
+void game_age_pose_age_and_future_context_are_independent(){
+    Live live;auto t=live.receipt;t.serial=t.sequence=3;
+    t.created_ms=live.now-100;auto p=live.policy.observe(live.ctx,&t,live.now);
+    assert(p.accept_mask==3&&live.policy.authorize(p,live.ctx,live.now)==3);
+    t.serial=t.sequence=4;t.created_ms=live.now-101;
+    p=live.policy.observe(live.ctx,&t,live.now);assert(p.accept_mask==0&&p.restore_mask==3);
+    Live stale_game;stale_game.now+=100;
+    t=ticket(stale_game.ctx,3,3,stale_game.now);
+    p=stale_game.policy.observe(stale_game.ctx,&t,stale_game.now);
+    assert(p.accept_mask==3); // Exactly 100 ms old game facts still qualify.
+    ++stale_game.now;t=ticket(stale_game.ctx,4,4,stale_game.now);
+    p=stale_game.policy.observe(stale_game.ctx,&t,stale_game.now);
+    assert(p.accept_mask==0&&p.restore_mask==3); // Fresh pose cannot rescue old game facts.
+    Live future_game;future_game.ctx.observed_ms=future_game.now+1;
+    t=ticket(future_game.ctx,3,3,future_game.now);
+    p=future_game.policy.observe(future_game.ctx,&t,future_game.now);
+    assert(p.accept_mask==0&&p.restore_mask==3);
+}
+void scale_changes_and_invalid_flags_fail_closed(){
+    Live live;auto t=live.receipt;t.serial=t.sequence=3;
+    t.units_per_metre=std::nextafter(100.,101.);
+    auto p=live.policy.observe(live.ctx,&t,live.now);
+    assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3);
+    t.serial=t.sequence=4;p=live.policy.observe(live.ctx,&t,live.now);
+    assert(p.bind_mask==3&&live.policy.commit_binding(p,3));
+    for(double scale:{0.,-1.,std::numeric_limits<double>::infinity(),
+                       std::numeric_limits<double>::quiet_NaN()}){
+        Live invalid;auto bad=invalid.receipt;bad.serial=bad.sequence=3;bad.units_per_metre=scale;
+        p=invalid.policy.observe(invalid.ctx,&bad,invalid.now);
+        assert(p.accept_mask==0&&p.restore_mask==3&&invalid.policy.bound_mask()==0);
+    }
+    for(unsigned mask:{4u,7u,~0u}){
+        Live invalid;invalid.feed(3,3,mask);
+        assert(invalid.plan.accept_mask==0&&invalid.plan.restore_mask==3);
+    }
+    Live invalid;invalid.ctx.game.mesh=0;invalid.feed(3,3);
+    assert(invalid.plan.accept_mask==0&&invalid.plan.restore_mask==3);
+}
+} // namespace
+int main(){
+    baseline_and_per_hand_commit();no_receipt_never_reuses_pose_and_old_plans_die();
+    plans_cannot_be_modified_or_used_after_new_observation();serial_and_sequence_each_strictly_advance();
+    single_hand_loss_and_fresh_recovery();missing_baseline_and_readiness_boundaries();
+    game_and_action_changes_seal_the_current_receipt();
+    each_stream_key_change_allows_new_counters_but_only_after_baseline();
+    rejected_receipts_never_become_fresh_later();age_boundaries_and_long_gap_cannot_teleport_old_binding();
+    game_age_pose_age_and_future_context_are_independent();scale_changes_and_invalid_flags_fail_closed();
+    std::puts("hand stream ticket policy: 12 boundary scenarios passed");
+}

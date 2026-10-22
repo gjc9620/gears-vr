@@ -11,6 +11,7 @@ std::atomic<unsigned> status{},leases{};
 struct Trial {
     unsigned phase{},restored{},action_yields{},setter_calls{},target_writes{},epoch{},tick_epoch{};
     unsigned quiet_slots{},samples{};
+    unsigned applied_mask{};
     bool anchored{},ended{},immediate_pending{},immediate_test{},stop_sent{},resumed{},releasing{};
     bool melee_seen{},slot_play_seen{};
     std::uint64_t began{},deadline{},action_ms{},final_ms{},next_wait{},next_slot_log{},sequence{};
@@ -22,6 +23,16 @@ struct Trial {
     std::array<policy::Target,4> targets{};
     std::array<uptr,320> action_objects{};
     unsigned action_object_count{};
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+    gears_hand_xr_trial::Start xr_start{};
+    gears_hand_stream::Policy xr_policy;
+    std::array<gears_hand_stream::GripHandBinding,2> xr_binding{};
+    std::array<gears_vr::Viewpoint,2> xr_grips{},xr_targets{};
+    std::uint64_t xr_next_open{},xr_cursor{UINT64_MAX};
+    unsigned xr_fresh{},xr_none{},xr_resets{},xr_binds{},xr_masks[4]{};
+    bool xr_open{},xr_ready{};
+    float xr_world_time{};
+#endif
 };
 Trial trial{};
 
@@ -179,13 +190,23 @@ void end(unsigned code,const wchar_t* reason){
         unsigned(trial.melee_seen),unsigned(trial.slot_play_seen),unsigned(trial.resumed),
         trial.setter_calls,trial.target_writes,0u,unsigned(!clean),unsigned(trial.lease.faulted()),unsigned(clean),reason);
         fflush(log_file);}
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+    if(log_file){fwprintf(log_file,L"hand_ik_xr_stream_end fresh=%u missing=%u binding_resets=%u "
+        L"bindings=%u left_leases=%u right_leases=%u both_leases=%u "
+        L"external_frozen_native_epoch=%llu native_started_qpc=%llu "
+        L"world_handoff_supported=0 ownership_proved=0\n",
+        trial.xr_fresh,trial.xr_none,trial.xr_resets,trial.xr_binds,
+        trial.xr_masks[1],trial.xr_masks[2],trial.xr_masks[3],
+        trial.xr_start.expected_native_world_generation,trial.xr_start.native_started_qpc);
+        fflush(log_file);}
+#endif
 }
 bool restore(const wchar_t* reason){
     if(!trial.lease.dirty())return true;
     trial.releasing=true;
     const auto lease=leases.load();Snapshot current{};
     const bool sampled=handik::snapshot(trial.lease_anchor.pc,current);
-    if(sampled)sample(L"pre_restore",current,lease,3);
+    if(sampled)sample(L"pre_restore",current,lease,trial.applied_mask);
     Backend backend{};
     const bool clean=trial.lease.restore(backend);trial.releasing=false;
     if(clean)++trial.restored;
@@ -216,11 +237,16 @@ void before_action(uptr object,uptr function){
         L"PlayBodyStance",L"PlayBodyStanceByDuration",L"SetBodyStance",L"StopBodyStance",L"StopAllBodyStances",
         L"StartMeleeAttack",L"StopMeleeAttack",L"ForceStopMeleeAttack",L"ForciblyStopMeleeAttack",
         L"ClientStopMeleeAttack",L"MeleeAttackStarted",L"MeleeAttackEnded",L"BeginState",L"EndState",
+        L"SetWeaponTemporarilyHolstered",L"HolsterWeaponTemporarily",
         L"PlayCustomAnim",L"PlayCustomAnimByDuration",L"StopCustomAnim"};
     bool watched=false;for(const auto item:actions)if(!wcscmp(item,label)){watched=true;break;}
     if(!watched)return;
     if(trial.phase==3&&(!wcscmp(label,L"PlayCustomAnim")||!wcscmp(label,L"PlayCustomAnimByDuration")))
         trial.slot_play_seen=true;
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+    if(!wcscmp(label,L"StartMeleeAttack"))trial.melee_seen=true;
+    if(!wcscmp(label,L"PlayCustomAnim")||!wcscmp(label,L"PlayCustomAnimByDuration"))trial.slot_play_seen=true;
+#endif
     ++trial.epoch;trial.stability.reset();
     const bool dirty=trial.lease.dirty();
     if(dirty){
@@ -230,8 +256,18 @@ void before_action(uptr object,uptr function){
             L"dirty_before=1 dirty_after=%u restored=%u\n",label,trial.epoch,
             unsigned(trial.lease.dirty()),unsigned(restored));fflush(log_file);}
         if(!restored)return;
+#if !defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
         if(!trial.immediate_pending)end(7,L"unexpected_action_yield");
+#endif
     }
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+    // Block the old plan synchronously, even when the observer log is full.
+    gears_hand_stream::Context blocked{};
+    blocked.action_epoch=trial.epoch;blocked.observed_ms=GetTickCount64();blocked.clean=!trial.lease.dirty();
+    trial.xr_policy.observe(blocked,nullptr,blocked.observed_ms);
+    for(auto& binding:trial.xr_binding)binding.reset();
+    trial.xr_ready=false;trial.phase=1;status=1;
+#endif
 }
 bool melee_signature(uptr pawn,bool stop){
     playground::Args call(pawn,stop?L"StopMeleeAttack":L"StartMeleeAttack");
@@ -241,6 +277,7 @@ bool melee_signature(uptr pawn,bool stop){
     return call.r.size<=8&&freehands::argument(call,L"bForcedByDamage",L"BoolProperty",4)&&
         freehands::argument(call,L"bForceStopFire",L"BoolProperty",4);
 }
+#if !defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
 bool make_targets(Snapshot const& value){
     gears_weapon::FreeHandGameState game{};unsigned known{};std::uint8_t special{};
     if(!freehands::game_state(value.pc,game,known,special)||known!=15)return false;
@@ -366,6 +403,7 @@ void post_tick(uptr pc){
     if(!trial.lease.acquire(trial.targets,1.f,backend)){
         end(trial.lease.dirty()?8:7,L"lease_acquisition_failed");return;
     }
+    trial.applied_mask=3;
     leases=lease;
     Snapshot written{};
     if(!handik::snapshot(pc,written)||!same_layout(check,written)){
@@ -374,7 +412,13 @@ void post_tick(uptr pc){
     sample(L"written",written,lease,3);
     if(lease==16)immediate_action();
 }
+#else
+#include "vr_hand_ik_xr_stream_trial.inl"
+#endif
 void reset(){
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+    xr_bridge.close();xr_pending={};
+#endif
     trial={};requested=false;stop_requested=false;used=false;shutdown_requested=false;
     active_visible=false;safe_to_unload=true;status=0;leases=0;handik::reset();
 }

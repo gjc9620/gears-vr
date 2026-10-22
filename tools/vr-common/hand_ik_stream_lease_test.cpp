@@ -19,6 +19,7 @@ struct Backend {
     std::array<Value,4> values{};
     std::array<Value,4> original{};
     int target_call{},strength_call{},read_call{},mutations{};
+    unsigned read_mask{},target_mask{},strength_mask{},first_mutation_reads{};
     int fail_target{-1},fail_strength{-1},fail_read{-1};
     Mode target_mode{Mode::normal},strength_mode{Mode::normal};
     Backend(){
@@ -26,18 +27,25 @@ struct Backend {
         original=values;
     }
     bool read(unsigned i,Value& value){
+        read_mask|=1u<<i;
         if(read_call++==fail_read)return false;
         value=values[i];return true;
     }
     bool write_target(unsigned i,Target const& expected,Target const& wanted){
+        target_mask|=1u<<i;
         const auto mode=target_call++==fail_target?target_mode:Mode::normal;
         if(!exact(values[i].target,expected)||mode==Mode::fail_before)return false;
-        if(mode!=Mode::no_change){values[i].target=wanted;++mutations;}
+        if(mode!=Mode::no_change){
+            if(!mutations)first_mutation_reads=read_mask;
+            values[i].target=wanted;++mutations;
+        }
         return mode!=Mode::fail_after;
     }
     bool set_strength(unsigned i,float value){
+        strength_mask|=1u<<i;
         const auto mode=strength_call++==fail_strength?strength_mode:Mode::normal;
         if(mode==Mode::fail_before)return false;
+        if(mode!=Mode::no_change&&!mutations)first_mutation_reads=read_mask;
         if(mode==Mode::partial){values[i].strength[0]=value;++mutations;return false;}
         if(mode!=Mode::no_change){values[i].strength={{value,value,0.f}};++mutations;}
         return mode!=Mode::fail_after;
@@ -90,6 +98,38 @@ void preflight_has_no_writes(){
     }
     Backend backend;Lease lease;backend.values[3].strength[2]=-0.f;
     assert(!lease.acquire(targets(),weight,backend)&&backend.mutations==0);
+}
+void selected_channels_are_independent(){
+    for(const unsigned selected:{3u,12u}){
+        Backend backend;Lease lease;
+        // An original or foreign owner may drive the other hand. Its values
+        // need not satisfy this lease's +0 precondition and must stay unread.
+        for(unsigned i=0;i<4;++i)if(!(selected&(1u<<i))){
+            backend.values[i].strength={{1.f,std::numeric_limits<float>::quiet_NaN(),-0.f}};
+            backend.values[i].target=target(201+i);
+        }
+        backend.original=backend.values;
+        assert(lease.acquire(selected,targets(),weight,backend));
+        assert(backend.first_mutation_reads==selected);
+        assert(backend.read_mask==selected&&backend.target_mask==selected&&backend.strength_mask==selected);
+        assert(lease.restore(backend)&&backend.all_original());
+        assert(backend.read_mask==selected&&backend.target_mask==selected&&backend.strength_mask==selected);
+        assert(!lease.dirty()&&!lease.faulted());
+    }
+    for(const unsigned selected:{3u,12u}){
+        Backend backend;Lease lease;
+        backend.fail_target=1;backend.target_mode=Backend::Mode::fail_after;
+        assert(!lease.acquire(selected,targets(),weight,backend));
+        assert(lease.faulted()&&!lease.dirty()&&backend.all_original());
+        assert(backend.first_mutation_reads==selected);
+        assert(backend.read_mask==selected&&backend.target_mask==selected&&backend.strength_mask==selected);
+    }
+    for(const unsigned invalid:{0u,16u,31u,~0u}){
+        Backend backend;Lease lease;
+        assert(!lease.acquire(invalid,targets(),weight,backend));
+        assert(lease.faulted()&&!lease.dirty()&&backend.mutations==0&&backend.read_call==0);
+        assert(backend.all_original());
+    }
 }
 void partial_acquire_rolls_back_all_channels(){
     for(int i=0;i<4;++i)for(auto mode:{Backend::Mode::fail_before,
@@ -193,8 +233,9 @@ void inactive_loop_is_not_pose_contribution(){
 } // namespace
 int main(){
     success_and_reset();preflight_has_no_writes();partial_acquire_rolls_back_all_channels();
+    selected_channels_are_independent();
     foreign_channel_preserves_values();partial_strength_stays_unresolved();
     restore_retries_and_false_after_write();
     inactive_loop_is_not_pose_contribution();
-    std::puts("Four-channel hand IK ownership, partial failure and exact rollback passed");
+    std::puts("Selected-channel hand IK ownership, partial failure and exact rollback passed");
 }

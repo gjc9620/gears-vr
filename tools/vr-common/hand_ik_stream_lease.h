@@ -56,17 +56,26 @@ public:
     }
     template<class Backend>
     bool acquire(std::array<Target,4> const& targets,float strength,Backend& backend) {
+        return acquire(0xfu,targets,strength,backend);
+    }
+    // A hand owns its position/rotation pair. The caller may select either
+    // pair independently; unselected controllers are never read or mutated.
+    template<class Backend>
+    bool acquire(unsigned channel_mask,std::array<Target,4> const& targets,float strength,Backend& backend) {
         if(faulted_||dirty())return fail(backend);
+        if(!channel_mask||(channel_mask&~0xfu))return fail(backend);
         if(!std::isfinite(strength)||strength<=0.f||strength>1.f)return fail(backend);
-        // Finish all four snapshots before the first mutation. Require the
+        // Finish every selected snapshot before the first mutation. Require the
         // exact +0 tuple, since set_strength(0) must restore these same bits.
         for(unsigned i=0;i<channels_.size();++i){
+            if(!(channel_mask&(1u<<i)))continue;
             Value current{};
             if(!backend.read(i,current)||!exact(current.strength,zero()))return fail(backend);
             channels_[i].original=current;channels_[i].wanted=targets[i];
         }
         strength_={{strength,strength,0.f}};
         for(unsigned i=0;i<channels_.size();++i){
+            if(!(channel_mask&(1u<<i)))continue;
             auto& channel=channels_[i];
             channel.pending=true; // A false helper may still have mutated.
             if(!backend.write_target(i,channel.original.target,channel.wanted))return fail(backend);
@@ -76,6 +85,7 @@ public:
             if(!backend.set_strength(i,strength))return fail(backend);
         }
         for(unsigned i=0;i<channels_.size();++i){
+            if(!(channel_mask&(1u<<i)))continue;
             Value current{};
             if(!backend.read(i,current)||!exact(current.target,channels_[i].wanted)||
                !exact(current.strength,strength_))return fail(backend);
