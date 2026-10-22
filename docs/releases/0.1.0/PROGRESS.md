@@ -4,6 +4,8 @@
 
 模型原件观察增量：在只限私有认证手部／装备测试的游戏线程回调里，加入对原 `MagazineMesh` 的只读检查，记录当前武器是否有独立弹匣组件、其静态模型名、显隐与是否挂在角色骨架上。它与已有原枪组件姿态观察配对，用于避免未来实体换弹时同时显示枪上和左手两份弹匣。私有装备意图、枪模跟手及默认禁用构建通过；没有新的零售运行样本，枪上 `AmmoControl` 实时状态尚未读取，不能据此认定换弹视觉交接完成。
 
+Snub 静态拆件复核：在已验证的原包上用同一刚性骨骼提取器分出滑套 445 面、左右翼片各 60 面，三个目标各自与剩余枪体恰好覆盖原 LOD0 的 3,045 面；UV0／法线与来源哈希记录在忽略的 `analysis/weapon-partitions/snub-b_HG_*/`。这补齐原先只拆出 Snub 弹匣的检查预览，不是游戏内可抓取、动画驱动或发行资源。
+
 完美窗口静态复核增量：新增只读、哈希约束的原版默认对象字段审计，重新确认 WarWeapon 基类 `AR_SweetSpotDuration`／`AR_SuperSweetSpotDuration`／`AR_PreReactionWindowDuration` 为 `-1`，Lancer、Hammerburst、Gnasher、Longshot、Snub、Boltok 具体类未显式覆盖这三项；已有 `AR_PossibleSuccessStartPoint` 和 `ReloadDuration` 数值重现。结果位于忽略的 `analysis/active-reload-explicit-defaults-20261022.json`。这仍未确定原版 SuperSuccess 窗口终点，不给逐枪体感期限填猜测数值。
 
 从 `codex/0.1.0` 提交 `315473dca5008e753011ae905783079de6f04770` 创建独立工作树与 `codex/weapon-6dof` 分支；原工作目录仍由其他会话用于 0.1.0 开发。仅将本次[武器 6DoF 交互设计与验收规格](../../weapon-6dof-interaction-design-20261022.md)及相关文档索引迁入新分支，未复制原目录中其他会话尚未提交的 native、Playground 或启动器改动。后续完成功能并验证时，以届时最新默认版本为集成基线。
