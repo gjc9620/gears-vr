@@ -1,6 +1,7 @@
 import unittest
 
-from lancer_support_probe import parse_fixed_feed_row, parse_pose_row, parse_socket_row
+from lancer_support_probe import (parse_fixed_feed_row, parse_magazine_pose_row,
+                                  parse_pose_row, parse_socket_row)
 
 
 class LancerSupportProbeRows(unittest.TestCase):
@@ -40,6 +41,14 @@ class LancerSupportProbeRows(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_fixed_feed_row('lancer_fixed_feed_anchor weapon=0x1 mesh=0x2 '
                                  'point=1,2,3 outward=0,0,0')
+
+    def test_held_magazine_matrix_row(self):
+        matrix = ','.join(str(1 if i in (0, 5, 10, 15) else 0) for i in range(16))
+        row = parse_magazine_pose_row('lancer_reload_magazine_pose sample=9 qpc=12345 ' +
+                                      ' '.join(f'{key}={matrix}' for key in
+                                               ('gun', 'pawn', 'left', 'magazine')))
+        self.assertEqual(row['sample'], 9)
+        self.assertEqual(row['magazine'][15], 1)
 
 
 if __name__ == '__main__':

@@ -78,6 +78,14 @@ def parse_reload_visual_row(line):
         key: fields[key] == '1' for key in ('reloading', 'mag_hidden', 'mag_pawn')} | floats
 
 
+def parse_magazine_pose_row(line):
+    fields = dict(item.split('=', 1) for item in line.split()[1:])
+    if set(fields) != {'sample', 'qpc', 'gun', 'pawn', 'left', 'magazine'}:
+        raise ValueError('Unexpected held Lancer magazine pose row')
+    return {'sample': int(fields['sample']), 'qpc': int(fields['qpc']),
+            **{key: matrix(fields[key]) for key in ('gun', 'pawn', 'left', 'magazine')}}
+
+
 def parse_socket_row(line):
     fields = dict(item.split('=', 1) for item in line.split()[1:])
     reload = line.startswith('lancer_socket_reload_sample ')
@@ -481,13 +489,20 @@ def sample_owned_game(args, receipt):
         beginnings = [line for line in lines if line.startswith('lancer_reload_visual_begin ')]
         rows = [parse_reload_visual_row(line) for line in lines
                 if line.startswith('lancer_reload_visual sample=')]
+        poses = [parse_magazine_pose_row(line) for line in lines
+                 if line.startswith('lancer_reload_magazine_pose ')]
         first_reload = next((index for index, row in enumerate(rows) if row['reloading']), None)
         if (len(beginnings) != 1 or len(rows) < 3 or
                 [row['sample'] for row in rows] != list(range(len(rows))) or
                 any(rows[index]['qpc'] <= rows[index - 1]['qpc'] for index in range(1, len(rows))) or
                 first_reload is None or not any(not row['reloading'] for row in rows[first_reload + 1:])):
             raise RuntimeError('Bounded original Lancer reload sequence missing from private log')
-        receipt.update(game_thread_probe=beginnings[0], reload_visual_timeline=rows)
+        if (len(poses) < 2 or len({pose['sample'] for pose in poses}) != len(poses) or
+                any(pose['sample'] >= len(rows) or not rows[pose['sample']]['mag_pawn'] or
+                    pose['qpc'] != rows[pose['sample']]['qpc'] for pose in poses)):
+            raise RuntimeError('Original hand-held magazine pose sequence missing')
+        receipt.update(game_thread_probe=beginnings[0], reload_visual_timeline=rows,
+                       held_magazine_poses=poses)
     else:
         if (receipt.get('timer_active_before_clear') is not True or
                 (args.mode == 'reload_hold' and

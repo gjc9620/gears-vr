@@ -4,7 +4,8 @@
 std::atomic<bool> reload_visual_requested{};
 std::atomic<unsigned> reload_visual_status{},reload_visual_count{};
 struct ReloadVisualState {
-    uptr world{},pawn{},weapon{},gun_mesh{},magazine{};
+    uptr world{},pawn{},weapon{},gun_mesh{},magazine{},pawn_mesh{};
+    int left_hand_bone{-1};
     ULONGLONG start_ms{},next_ms{};
     bool saw_reloading{},saw_finish{};
 };
@@ -61,20 +62,30 @@ void reload_visual_post_tick(uptr pc){
         reload_visual_fail(L"original_components_unavailable");return;
     }
     if(!reload_visual.weapon){
+        const auto pawn_mesh=playground::pointer(pawn,L"Mesh");
+        std::array<Name,3> hand_names{};int left_hand_bone{};
+        if(!playground::instance(pawn_mesh,L"SkeletalMeshComponent")||
+           !support_probe_names(hand_names)||
+           !support_probe_bone_index(pawn_mesh,hand_names[1],left_hand_bone)){
+            reload_visual_fail(L"left_hand_bone_unavailable");return;
+        }
         reload_visual={};
         reload_visual.world=playground::arena_world;
         reload_visual.pawn=pawn;reload_visual.weapon=weapon;
         reload_visual.gun_mesh=gun.mesh;reload_visual.magazine=magazine.component;
+        reload_visual.pawn_mesh=pawn_mesh;reload_visual.left_hand_bone=left_hand_bone;
         reload_visual.start_ms=now;
         if(!log_file){reload_visual_fail(L"log_unavailable");return;}
         fwprintf(log_file,L"lancer_reload_visual_begin pawn=%p weapon=%p gun_mesh=%p "
-            L"magazine=%p asset=%ls\n",reinterpret_cast<void*>(pawn),
+            L"magazine=%p asset=%ls pawn_mesh=%p left_bone=%d\n",reinterpret_cast<void*>(pawn),
             reinterpret_cast<void*>(weapon),reinterpret_cast<void*>(gun.mesh),
-            reinterpret_cast<void*>(magazine.component),magazine.asset_name);fflush(log_file);
+            reinterpret_cast<void*>(magazine.component),magazine.asset_name,
+            reinterpret_cast<void*>(pawn_mesh),left_hand_bone);fflush(log_file);
     }
     if(reload_visual.world!=playground::arena_world||reload_visual.pawn!=pawn||
        reload_visual.weapon!=weapon||reload_visual.gun_mesh!=gun.mesh||
-       reload_visual.magazine!=magazine.component){
+       reload_visual.magazine!=magazine.component||
+       reload_visual.pawn_mesh!=playground::pointer(pawn,L"Mesh")){
         reload_visual_fail(L"component_identity_changed");return;
     }
     int ammo_used{},spare{};
@@ -98,6 +109,31 @@ void reload_visual_post_tick(uptr pc){
         unsigned(reloading),ammo_used,spare,unsigned(magazine.hidden),
         unsigned(magazine.attached_to_pawn),ammo_bone.strength,ammo_bone.target,
         ammo_bone.bone_scale);fflush(log_file);
+    if(magazine.attached_to_pawn){
+        std::array<float,16> gun_before{},gun_after{},pawn_before{},pawn_after{};
+        std::array<float,16> magazine_before{},magazine_after{},left{};
+        if(!support_probe_component_matrix(gun.mesh,gun_before)||
+           !support_probe_component_matrix(reload_visual.pawn_mesh,pawn_before)||
+           !support_probe_component_matrix(magazine.component,magazine_before)||
+           !support_probe_bone_matrix(reload_visual.pawn_mesh,
+                                      reload_visual.left_hand_bone,left)||
+           !support_probe_component_matrix(gun.mesh,gun_after)||
+           !support_probe_component_matrix(reload_visual.pawn_mesh,pawn_after)||
+           !support_probe_component_matrix(magazine.component,magazine_after)||
+           std::memcmp(gun_before.data(),gun_after.data(),sizeof(gun_before))||
+           std::memcmp(pawn_before.data(),pawn_after.data(),sizeof(pawn_before))||
+           std::memcmp(magazine_before.data(),magazine_after.data(),
+                       sizeof(magazine_before))){
+            reload_visual_fail(L"held_magazine_matrix_changed");return;
+        }
+        fwprintf(log_file,L"lancer_reload_magazine_pose sample=%u qpc=%lld",
+            sample,stamp.QuadPart);
+        support_probe_print_matrix(L"gun",gun_before.data());
+        support_probe_print_matrix(L"pawn",pawn_before.data());
+        support_probe_print_matrix(L"left",left.data());
+        support_probe_print_matrix(L"magazine",magazine_before.data());
+        fwprintf(log_file,L"\n");fflush(log_file);
+    }
     reload_visual_count.store(sample+1,std::memory_order_release);
     reload_visual.next_ms=now+15;
     if(now-reload_visual.start_ms>=5000||sample+1>=400){

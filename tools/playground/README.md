@@ -228,3 +228,11 @@ original eight-second fallback timer in place if the mesh becomes invalid.
 An owned retail trial captured seven bounded world-anchor rows while the
 original explicit completion still settled ammo. These rows do not represent
 a tracked left-hand magazine or a physical insertion.
+
+The read-only original-reload visual probe now records matrices for the
+separate `Assault_Rifle_Magazine`, original left-hand bone, and gun in one
+callback while the magazine is attached to the pawn. The offline grip
+analyzer finds the near-rigid middle hold and reports the moving pickup/return
+portions separately. One retail run yielded 43 attached frames and a 21-frame
+stable middle hold. This reference is in the original hand-bone frame, not a
+Quest controller grip frame; it cannot commit a VR insertion on its own.
