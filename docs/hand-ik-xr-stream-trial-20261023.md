@@ -64,4 +64,10 @@ VS18／MSVC 19.51 Release 的 XR、原合成与默认禁用 Playground 构建通
 
 联合候选、默认关闭及原独立暂收构建均通过，VS18 x64 Release `/W4 /WX`；九项断言检查通过，缺 XR、缺显式联合开关以及并发枪体 writer 三个配置按预期拒绝。默认构建无手／暂收导出，独立暂收无手部导出，联合仅有 XR Start、没有合成 Start。Astra Max 最终只读复核未发现本次有限试验范围内剩余确定阻断；子任务未启用 Fast。
 
-DLL SHA256 `159947f1f83e30da826cac43e000de829e626b8a1c6e453706fc604a2c97229d`，160 份源码、检查／配置和导出记录封存在忽略的 `analysis/hand-equipment-candidates/<SHA256>/`；source.json SHA256 `181c60fca9221294fc25c387a183749902327abebfca57eeb9329603e7345993`。**尚未启动联合游戏试验**。首个私有 runner 正在准备，不延长原预算；使用同一实际 XR 客户端和原已保存私有 Native／模拟器，先验证原手→稳定 owned-detached→取回重新绑定及联合停止，不启动独立按钮发布器、不启用 R2／L2。既有 8×8 图像失败仍保留，联合组件成功也不能替代整局图像或头显验收。
+DLL SHA256 `159947f1f83e30da826cac43e000de829e626b8a1c6e453706fc604a2c97229d`，160 份源码、检查／配置和导出记录封存在忽略的 `analysis/hand-equipment-candidates/<SHA256>/`；source.json SHA256 `181c60fca9221294fc25c387a183749902327abebfca57eeb9329603e7345993`。对应源码提交 `e8b3cf5`，live 与保存源码的 160 项哈希均匹配。首个私有 runner 已准备，使用同一实际 XR 客户端和原已保存私有 Native／模拟器，先验证原手→稳定 owned-detached→取回重新绑定及联合停止，不启动独立按钮发布器、不启用 R2／L2，不延长原预算。既有 8×8 图像失败仍保留，联合组件成功也不能替代整局图像或头显验收。
+
+运行器的 17 项离线检查和独立组件审计的 30 项自检通过；默认 prepare 在禁止所有 Popen 的环境中完成，实际创建进程为零。准备回执 SHA256 `a34c4706f89bca4357043f2fc9a52a4681dc19ff458fc1f15df2b0c807c31d96`，运行器 `c440a7534bdd9b1ed55387953c55cf66f9123ad764cfdf27e887ec6927b7db0d`，审计脚本 `a1784d0506e3402f0cd60c91001d64b4e0a5a7efa268084db5da9f0471294b24`，保存在忽略的 `analysis/hand-equipment-1023a/` 及对应审计脚本。准备固定 182 项依赖与 23 个实际加载模块的来源，旧 d／b／c 回执原字节不变。Astra Max 窄复核确认：结束 FPP 生效值接入硬门、失败 HandStop 不跳过唯一 Shutdown，以及清理异常不能跳过精确游戏退出与静音守护收尾。
+
+后台子进程显式设置 `GEARSVR_TEST_MUTE_GAME=1`、`GEARSVR_TEST_WINDOWS_BEHIND=1` 和 `GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY=1`，使用已核哈希的 J 盘音频 Guard。游戏关闭或诊断输出失败时保留 owner 与 Guard，只有独立证明精确自有游戏已退出后才恢复原静音状态。第一人称在 Start 前只记录切换事件与自然 Tick，结束后的本局 `applied>0` 为组件硬门；累计值不能归因于每一个 lease。Shutdown 前的顺序读数只证明 stow dirty 与已有新手部写入，不证明入口瞬间两个 journal 同时 dirty。关闭后的附件采用原始唯一 raw52／pose44 与身份锚点核对，不伪称再次调用 getter 或新读了完整对象头。
+
+首次 `--run` 在最前只读 idle 检查发现其他会话的游戏／launcher／Guard，已拒绝启动；没有 run-started、私有实例、注入或本局游戏。**联合游戏尚未开始**，不将该前置拒绝当作组件试验失败，也不干预已有实例。待其自然退出后才能开展这唯一实际联合局。
