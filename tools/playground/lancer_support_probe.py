@@ -1,4 +1,4 @@
-"""Collect bounded original Lancer support or reload visuals in an owned range.
+"""Collect bounded original Lancer support, socket, or reload evidence in an owned range.
 
 After the original GiveTo/SetCurrentWeapon path, a private game-thread callback
 captures either the pawn bones/unchanged gun matrix or the original reload's
@@ -76,6 +76,30 @@ def parse_reload_visual_row(line):
         raise ValueError('Nonfinite original reload visual value')
     return {key: int(fields[key]) for key in ('sample', 'qpc', 'ms', 'ammo_used', 'spare')} | {
         key: fields[key] == '1' for key in ('reloading', 'mag_hidden', 'mag_pawn')} | floats
+
+
+def parse_socket_row(line):
+    fields = dict(item.split('=', 1) for item in line.split()[1:])
+    reload = line.startswith('lancer_socket_reload_sample ')
+    expected = {'sample', 'qpc', 'gun', 'world', 'rotation'}
+    if reload:
+        expected |= {'time', 'start', 'reloading'}
+    if set(fields) != expected:
+        raise ValueError('Unexpected original Lancer socket row')
+    world = [float(item) for item in fields['world'].split(',')]
+    rotation = [int(item) for item in fields['rotation'].split(',')]
+    if len(world) != 3 or len(rotation) != 3 or not all(math.isfinite(x) for x in world):
+        raise ValueError('Invalid original Lancer socket transform')
+    row = {'sample': int(fields['sample']), 'qpc': int(fields['qpc']),
+           'gun': matrix(fields['gun']), 'world': world, 'rotation': rotation}
+    if reload:
+        if fields['reloading'] not in ('0', '1'):
+            raise ValueError('Invalid original Lancer reload state')
+        row.update(time=float(fields['time']), start=float(fields['start']),
+                   reloading=fields['reloading'] == '1')
+        if not all(math.isfinite(row[key]) for key in ('time', 'start')):
+            raise ValueError('Nonfinite original Lancer reload time')
+    return row
 
 
 def original_state_function(resolver, weapon, state_name, function_name):
@@ -250,7 +274,20 @@ def sample_owned_game(args, receipt):
             return bridge.call(pawn, 'ShouldLeftHandIKBeOn')
         receipt['left_hand_ik_on'] = bool(wait_for(
             settled_left_hand, 10, 'Original Lancer left-hand IK did not settle'))
-        if args.mode == 'support':
+        if args.mode == 'socket':
+            if bridge.export('PlaygroundLancerMagazineSocketProbeEnable') != 0:
+                raise RuntimeError('Private Lancer same-tick socket probe refused to start')
+
+            def socket_probe_done():
+                value = bridge.export('PlaygroundLancerMagazineSocketProbeStatus')
+                state, count = value >> 16, value & 0xffff
+                if state == 4:
+                    raise RuntimeError(f'Original Lancer socket probe failed after {count} samples')
+                return state == 3 and count == 16
+
+            wait_for(socket_probe_done, 8,
+                     'Same-tick original Lancer socket sampling did not finish')
+        elif args.mode == 'support':
             if bridge.export('PlaygroundLancerSupportProbeEnable') != 0:
                 raise RuntimeError('Private game-thread Lancer probe refused to start')
 
@@ -289,6 +326,12 @@ def sample_owned_game(args, receipt):
                 time.sleep(.12)  # One idle sample before invoking the original reload.
                 if bridge.export('PlaygroundLancerReloadVisualProbeStatus') >> 16 == 4:
                     raise RuntimeError('Original reload visual probe failed before ForceReload')
+            elif args.mode == 'socket_reload':
+                if bridge.export('PlaygroundLancerMagazineSocketReloadProbeEnable') != 0:
+                    raise RuntimeError('Private Lancer socket reload probe refused to start')
+                time.sleep(.12)
+                if bridge.export('PlaygroundLancerMagazineSocketProbeStatus') >> 16 == 4:
+                    raise RuntimeError('Original socket reload probe failed before ForceReload')
             if args.mode == 'reload_adapter':
                 if bridge.export('PlaygroundLancerReloadHoldStartTest') != 0:
                     raise RuntimeError('Private game-thread Lancer reload start queue rejected')
@@ -314,6 +357,15 @@ def sample_owned_game(args, receipt):
                     return state == 3
 
                 wait_for(reload_probe_done, 8, 'Original reload visual timeline did not finish')
+            elif args.mode == 'socket_reload':
+                def socket_reload_done():
+                    value = bridge.export('PlaygroundLancerMagazineSocketProbeStatus')
+                    state, count = value >> 16, value & 0xffff
+                    if state == 4:
+                        raise RuntimeError(f'Original Lancer socket reload failed after {count} samples')
+                    return state == 3 and count >= 3
+
+                wait_for(socket_reload_done, 8, 'Original Lancer socket reload did not finish')
             else:
                 fn = bridge.function(resolver.identity(weapon)['cls'], 'EndOfReloadTimer')
                 name_offset = int(resolver.profile['object_name'])
@@ -375,7 +427,17 @@ def sample_owned_game(args, receipt):
         raise RuntimeError('Playground shutdown was not clean')
     log_path = args.dll.with_name(f'playground-{identity["pid"]}.log')
     lines = log_path.read_text(encoding='utf-8-sig').splitlines()
-    if args.mode == 'support':
+    if args.mode == 'socket':
+        begins = [line for line in lines if line.startswith('lancer_socket_begin ')]
+        rows = [parse_socket_row(line) for line in lines
+                if line.startswith('lancer_socket_sample ')]
+        if (len(begins) != 1 or len(rows) != 16 or
+                [row['sample'] for row in rows] != list(range(16)) or
+                any(rows[index]['qpc'] <= rows[index - 1]['qpc']
+                    for index in range(1, 16))):
+            raise RuntimeError('Original Lancer socket evidence incomplete')
+        receipt.update(socket_begin=begins[0], socket_samples=rows)
+    elif args.mode == 'support':
         beginnings = [line for line in lines if line.startswith('lancer_support_probe_begin ')]
         poses = [parse_pose_row(line) for line in lines if line.startswith('lancer_support_pose ')]
         visuals = [parse_visual_row(line) for line in lines
@@ -385,6 +447,20 @@ def sample_owned_game(args, receipt):
             raise RuntimeError('Bounded same-tick original pose rows missing from private log')
         receipt.update(game_thread_probe=beginnings[0], samples=poses,
                        original_visual=visuals[0])
+    elif args.mode == 'socket_reload':
+        beginnings = [line for line in lines if line.startswith('lancer_socket_reload_begin ')]
+        rows = [parse_socket_row(line) for line in lines
+                if line.startswith('lancer_socket_reload_sample ')]
+        first_reload = next((index for index, row in enumerate(rows)
+                             if row['reloading']), None)
+        if (len(beginnings) != 1 or len(rows) < 3 or
+                [row['sample'] for row in rows] != list(range(len(rows))) or
+                any(rows[index]['qpc'] <= rows[index - 1]['qpc']
+                    for index in range(1, len(rows))) or
+                first_reload is None or
+                not any(not row['reloading'] for row in rows[first_reload + 1:])):
+            raise RuntimeError('Original Lancer socket reload sequence incomplete')
+        receipt.update(socket_reload_begin=beginnings[0], socket_reload_samples=rows)
     elif args.mode == 'reload_visual':
         beginnings = [line for line in lines if line.startswith('lancer_reload_visual_begin ')]
         rows = [parse_reload_visual_row(line) for line in lines
@@ -423,7 +499,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('support', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('socket', 'socket_reload', 'support', 'reload_visual', 'reload_hold',
                                           'reload_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

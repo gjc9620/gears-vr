@@ -333,6 +333,7 @@ bool read_bool(uptr object,const wchar_t* field,bool& value){
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
 #include "vr_weapon_mesh_follow.inl"
 #include "vr_lancer_reload_visual_probe.inl"
+#include "vr_lancer_socket_probe.inl"
 #endif
 bool read_slot(uptr inv,std::uint8_t slot,uptr& weapon){
     playground::Args call(inv,L"GetWeaponInSlot");

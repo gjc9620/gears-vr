@@ -201,3 +201,15 @@ attached at 0.774–0.791 s, both reverted at 1.479–1.500 s, and original
 reload/one-round ammo commit finished at 2.497–2.510 s. These are sampled
 intervals from one original animation, not VR interaction deadlines. The
 normal DLL does not export this probe.
+
+`lancer_support_probe.py --mode socket` samples the original Lancer
+`Magazine` socket and the gun component matrix in the same bounded game-thread
+callback. `--mode socket_reload` repeats this during one original `ForceReload`.
+Both modes require the same private, owned retail test range; their reports
+remain under ignored `analysis/`. Use
+`tools/weapon-models/analyze_lancer_socket_runtime.py` to project the samples
+into the gun frame. The original socket is stable at idle but follows the
+magazine bone far away during the reload animation. A VR feed-port guide must
+freeze a gun-frame reference instead of following that animated socket. The
+probe establishes neither insertion direction nor controller grip calibration,
+and the normal DLL exports none of its controls.

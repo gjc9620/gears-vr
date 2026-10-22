@@ -1,6 +1,6 @@
 import unittest
 
-from lancer_support_probe import parse_pose_row
+from lancer_support_probe import parse_pose_row, parse_socket_row
 
 
 class LancerSupportProbeRows(unittest.TestCase):
@@ -18,6 +18,16 @@ class LancerSupportProbeRows(unittest.TestCase):
                 parse_pose_row('lancer_support_pose sample=0 qpc=1 ' +
                                ' '.join(f'{name}={value}' for name in
                                         ('pawn', 'gun', 'ik_left', 'hand_left', 'hand_right')))
+
+    def test_same_tick_socket_row(self):
+        matrix = ','.join(str(1 if i in (0, 5, 10, 15) else 0) for i in range(16))
+        row = parse_socket_row('lancer_socket_sample sample=2 qpc=12345 ' +
+                               f'gun={matrix} world=1.5,2.5,3.5 rotation=0,100,200')
+        self.assertEqual(row['sample'], 2)
+        self.assertEqual(row['world'], [1.5, 2.5, 3.5])
+        with self.assertRaises(ValueError):
+            parse_socket_row('lancer_socket_sample sample=2 qpc=12345 ' +
+                             f'gun={matrix} world=nan,2.5,3.5 rotation=0,100,200')
 
 
 if __name__ == '__main__':

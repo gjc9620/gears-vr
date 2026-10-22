@@ -192,6 +192,7 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         inside=true;
         vrequip::support_probe_post_tick(object);
         vrequip::reload_visual_post_tick(object);
+        vrequip::lancer_socket_post_tick(object);
         vrequip::mesh_follow_post_tick(object);
         inside=false;
     }
@@ -262,6 +263,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     vrequip::reload_visual_status.store(0,std::memory_order_release);
     vrequip::reload_visual_count.store(0,std::memory_order_release);
     vrequip::reload_visual={};
+    vrequip::lancer_socket_requested.store(false,std::memory_order_release);
+    vrequip::lancer_socket_reload_mode.store(false,std::memory_order_release);
+    vrequip::lancer_socket_status.store(0,std::memory_order_release);
+    vrequip::lancer_socket_count.store(0,std::memory_order_release);
+    vrequip::lancer_socket={};
 #endif
     base=reinterpret_cast<uptr>(GetModuleHandleW(nullptr));
     if(!registered(get<uptr>(get<Array>(base+0x1c24730).data+8)))return 1;
@@ -415,6 +421,34 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerReloadVisualProbeS
     return (vrequip::reload_visual_status.load(std::memory_order_acquire)<<16)|
         (vrequip::reload_visual_count.load(std::memory_order_acquire)&0xffffu);
 }
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineSocketProbeEnable(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment())return 1;
+    if(vrequip::mesh_follow_requested.load(std::memory_order_acquire)||
+       vrequip::mesh_follow_active_visible.load(std::memory_order_acquire)||
+       vrequip::support_probe_requested.load(std::memory_order_acquire)||
+       vrequip::reload_visual_requested.load(std::memory_order_acquire))return 2;
+    unsigned expected=0;
+    if(!vrequip::lancer_socket_status.compare_exchange_strong(expected,1))return 3;
+    vrequip::lancer_socket_reload_mode.store(false,std::memory_order_release);
+    vrequip::lancer_socket_requested.store(true,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineSocketReloadProbeEnable(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment())return 1;
+    if(vrequip::mesh_follow_requested.load(std::memory_order_acquire)||
+       vrequip::mesh_follow_active_visible.load(std::memory_order_acquire)||
+       vrequip::support_probe_requested.load(std::memory_order_acquire)||
+       vrequip::reload_visual_requested.load(std::memory_order_acquire))return 2;
+    unsigned expected=0;
+    if(!vrequip::lancer_socket_status.compare_exchange_strong(expected,1))return 3;
+    vrequip::lancer_socket_reload_mode.store(true,std::memory_order_release);
+    vrequip::lancer_socket_requested.store(true,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineSocketProbeStatus(void*){
+    return (vrequip::lancer_socket_status.load(std::memory_order_acquire)<<16)|
+           (vrequip::lancer_socket_count.load(std::memory_order_acquire)&0xffffu);
+}
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundTestEnter(void*){
     // Available only in the user's explicit unattended, muted test child.
@@ -450,6 +484,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
     vrequip::support_probe_requested.store(false,std::memory_order_release);
     vrequip::reload_visual_requested.store(false,std::memory_order_release);
+    vrequip::lancer_socket_requested.store(false,std::memory_order_release);
+    vrequip::lancer_socket_reload_mode.store(false,std::memory_order_release);
     vrequip::mesh_follow_shutdown_requested.store(true,std::memory_order_release);
     vrequip::mesh_follow_requested.store(false,std::memory_order_release);
     const auto follow_until=GetTickCount64()+2000;
