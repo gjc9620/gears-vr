@@ -13,6 +13,13 @@ namespace gears_weapon {
 inline constexpr Vector gnasher_lever_reference_pivot_raw{
     .014789434,20.622207420,-2.920573568};
 inline constexpr Vector gnasher_lever_reference_axis{-1,0,0};
+// A separate 24-frame purchased-game held pose measured these original pawn
+// hand-bone origins in the same Gnasher main-bone frame. They are candidate
+// palm references, not proven XR controller offsets or handle mesh contacts.
+inline constexpr Vector gnasher_idle_left_hand_bone_raw{
+    8.554029983,25.987054533,-9.762721862};
+inline constexpr Vector gnasher_idle_right_hand_bone_raw{
+    -2.316310263,-17.539562252,-9.911082264};
 // The Gnasher main body is held by the left/front hand during a lever stroke.
 // All offsets are in that verified mesh's reference pose, in metres. A model
 // bone name alone is not enough to fill these values: the lever pivot, hinge

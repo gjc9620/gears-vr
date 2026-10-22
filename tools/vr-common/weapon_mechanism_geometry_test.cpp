@@ -75,18 +75,24 @@ int main(){
     hands.received_ns=tick-100;hands.sync_ns=tick-200;
     assert(gnasher_lever_sample(hands,stereo,mount,10,20,tick,true,true,sample));
     assert(close(sample.lever_angle_radians,.5));
-    // The purchased game's lever moves about -X through 32.4 degrees. A
-    // synthetic contact 20 cm from its measured pivot must complete a 27.5
-    // degree stroke with that sign. The true handle contact is still unknown.
+    // The purchased game's lever moves about -X through 32.4 degrees. Use
+    // its measured pivot and resting pawn hand-bone origins for a synthetic
+    // controller arc. True controller offsets and mesh contact are unknown.
     LeverMount original_axis_mount=mount;
     original_axis_mount.hinge_axis_in_main=gnasher_lever_reference_axis;
     const auto pivot_metres=scaled(gnasher_lever_reference_pivot_raw,.01);
     assert(std::abs(pivot_metres.y-.2062220742)<1e-8);
+    original_axis_mount.left_front_grip_in_main.position=
+        scaled(gnasher_idle_left_hand_bone_raw,.01);
     original_axis_mount.pivot_in_main=pivot_metres;
-    original_axis_mount.right_handle_home_in_main=sum(pivot_metres,{0,-.2,0});
+    original_axis_mount.right_handle_home_in_main=
+        scaled(gnasher_idle_right_hand_bone_raw,.01);
     assert(original_axis_mount.valid());
+    const auto arm=difference(original_axis_mount.right_handle_home_in_main,pivot_metres);
+    assert(std::hypot(arm.y,arm.z)>.38&&std::hypot(arm.y,arm.z)<.40);
     hands.hands[0].grip.orientation={0,0,0,1};
-    hands.hands[0].grip.position={0,1,-.2};
+    hands.hands[0].grip.position=sum({0,1,0},
+        original_axis_mount.left_front_grip_in_main.position);
     GnasherLever original_cycle;
     assert(original_cycle.arm(10,20,3));
     const double original_stroke[]={0,.1,.2,.34,.48,.34,.2,.1,0};
@@ -94,8 +100,10 @@ int main(){
     for(double angle:original_stroke){
         ++hands.sequence;stereo.sequence=hands.sequence;tick+=20000000;
         hands.received_ns=tick-100;hands.sync_ns=tick-200;
-        hands.hands[1].grip.position=sum({0,1,0},
-            sum(pivot_metres,{0,-.2*std::cos(angle),.2*std::sin(angle)}));
+        const Vector bent{arm.x,
+            arm.y*std::cos(angle)+arm.z*std::sin(angle),
+            -arm.y*std::sin(angle)+arm.z*std::cos(angle)};
+        hands.hands[1].grip.position=sum({0,1,0},sum(pivot_metres,bent));
         assert(gnasher_lever_sample(hands,stereo,original_axis_mount,10,20,tick,
             true,true,sample));
         original_completed=original_cycle.observe(sample,original_gnasher_lever_travel);

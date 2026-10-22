@@ -1,10 +1,10 @@
-"""Sample the original Gnasher lever in an owned, test-only retail Playground.
+"""Sample the original Gnasher lever or held hand bones in an owned retail test.
 
 The caller must start the private, behind-windows, muted game child and pass
 its ``owned.json``. This probe never edits packages or publishes an asset. It
-uses the game's own animation node and writes only bounded bone matrices to
-the ignored analysis directory. A receipt is evidence only when ``passed`` is
-true; a menu/startup timeout is not an animation result.
+uses the game's own animation node or original equipped pawn hand bones and
+writes only bounded matrices to ignored analysis/. A receipt is evidence only
+when ``passed`` is true; a startup timeout is not a motion result.
 """
 import argparse
 import json
@@ -37,6 +37,8 @@ def argument_parser():
     parser.add_argument('--runtime-root', type=Path, default=ROOT,
                         help='Checkout providing the existing Playground runtime and private Python libraries')
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--held-grips-only', action='store_true',
+                        help='Capture original resting character hands relative to the held Gnasher')
     return parser
 
 
@@ -95,6 +97,19 @@ def sample_owned_game(args, receipt):
             raise RuntimeError('Playground arena setup reported failures')
         resolver = bridge.r
 
+        # The owned arena allocates pickups after Bridge initialized its name
+        # and object snapshots. Refresh once the status reports those objects;
+        # a concurrent registry growth is a transient discovery race only.
+        def refreshed():
+            try:
+                resolver.prepare()
+                return True
+            except RuntimeError as error:
+                if str(error) != 'Name registry changed during discovery':
+                    raise
+                return False
+        wait_for(refreshed, 10, 'Original UE3 registry never stabilized')
+
         def property_of(obj, field):
             return resolver.property(resolver.identity(obj)['cls'], field, True)
 
@@ -106,8 +121,13 @@ def sample_owned_game(args, receipt):
 
         def fname(value):
             for index, address in enumerate(resolver.name_pointers):
-                if address and resolver.name(index) == value:
-                    return index, 0
+                if not address:
+                    continue
+                try:
+                    if resolver.name(index) == value:
+                        return index, 0
+                except (RuntimeError, UnicodeError):
+                    continue
             raise RuntimeError('FName absent: ' + value)
 
         pawn = int(ready['pawn'], 0)
@@ -172,19 +192,48 @@ def sample_owned_game(args, receipt):
                        mesh=resolver.identity(mesh), anim_node=node_identity,
                        bone_indices={'main': main, 'lever': lever})
 
-        # SetPosition(false) suppresses sequence notifies. The active sequence
-        # is modified only inside this private game child and then discarded.
-        bridge.call(shotgun, 'SetWeaponAnim', AnimName=fname('SG_Chamber'))
-        bridge.call(shotgun, 'FreezeWeaponAnim')
-        for frame in range(35):
-            position = SEQUENCE_LENGTH * frame / 34
-            bridge.call(shotgun, 'SetWeaponAnimPosition', NewPosition=position)
-            time.sleep(.025)  # allow one game animation update before sampling
-            receipt['samples'].append({'frame': frame, 'position_seconds': position,
-                                       'main': matrix(bridge, mesh, main),
-                                       'lever': matrix(bridge, mesh, lever)})
-        if len(receipt['samples']) != 35:
-            raise RuntimeError('Incomplete bounded sequence sample')
+        if args.held_grips_only:
+            pawn_mesh = pointer(pawn, 'Mesh')
+            if class_name(pawn_mesh) != 'SkeletalMeshComponent':
+                raise RuntimeError('Original equipped pawn mesh is not skeletal')
+            hand_names = ('b_MF_Hand_R', 'b_MF_Hand_L', 'b_MF_IK_Hand_L')
+            hand_indices = {name: bridge.call(pawn_mesh, 'MatchRefBone',
+                                             BoneName=fname(name)) for name in hand_names}
+            if any(index < 0 for index in hand_indices.values()) or \
+                    len(set(hand_indices.values())) != len(hand_indices):
+                raise RuntimeError('Original pawn hand bones unavailable or aliased')
+            receipt['pawn_mesh'] = resolver.identity(pawn_mesh)
+            receipt['hand_indices'] = hand_indices
+            receipt['held_grips'] = []
+            receipt['left_hand_ik_on'] = bool(wait_for(
+                lambda: bridge.call(pawn, 'ShouldLeftHandIKBeOn'), 10,
+                'Original Gnasher left-hand IK did not settle'))
+            for frame in range(24):
+                receipt['held_grips'].append({
+                    'frame': frame,
+                    'main': matrix(bridge, mesh, main),
+                    'lever': matrix(bridge, mesh, lever),
+                    'hand_right': matrix(bridge, pawn_mesh, hand_indices['b_MF_Hand_R']),
+                    'hand_left': matrix(bridge, pawn_mesh, hand_indices['b_MF_Hand_L']),
+                    'ik_left': matrix(bridge, pawn_mesh, hand_indices['b_MF_IK_Hand_L']),
+                })
+                time.sleep(.025)
+            if len(receipt['held_grips']) != 24:
+                raise RuntimeError('Incomplete original held-grip sample')
+        else:
+            # SetPosition(false) suppresses sequence notifies. The active
+            # sequence changes only inside this private, discarded game child.
+            bridge.call(shotgun, 'SetWeaponAnim', AnimName=fname('SG_Chamber'))
+            bridge.call(shotgun, 'FreezeWeaponAnim')
+            for frame in range(35):
+                position = SEQUENCE_LENGTH * frame / 34
+                bridge.call(shotgun, 'SetWeaponAnimPosition', NewPosition=position)
+                time.sleep(.025)  # allow one game animation update before sampling
+                receipt['samples'].append({'frame': frame, 'position_seconds': position,
+                                           'main': matrix(bridge, mesh, main),
+                                           'lever': matrix(bridge, mesh, lever)})
+            if len(receipt['samples']) != 35:
+                raise RuntimeError('Incomplete bounded sequence sample')
     finally:
         if bridge:
             try:
@@ -202,9 +251,12 @@ def main():
     output = args.output.resolve()
     if not output.is_relative_to((ROOT / 'analysis').resolve()):
         raise ValueError('Derived bone evidence must remain under analysis/')
-    receipt = {'schema': 1, 'passed': False, 'source': 'owned retail runtime',
-               'animation': 'SG_Chamber', 'length_seconds_from_package': SEQUENCE_LENGTH,
+    receipt = {'schema': 2 if args.held_grips_only else 1,
+               'passed': False, 'source': 'owned retail runtime',
+               'animation': 'held idle' if args.held_grips_only else 'SG_Chamber',
                'samples': []}
+    if not args.held_grips_only:
+        receipt['length_seconds_from_package'] = SEQUENCE_LENGTH
     owned = False
     try:
         owned = args.owned_json.is_file()
