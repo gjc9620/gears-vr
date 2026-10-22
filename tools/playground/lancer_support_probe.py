@@ -420,6 +420,99 @@ def sample_owned_game(args, receipt):
                 'DetachComponent': reflected_function(pawn_mesh, 'DetachComponent'),
                 'IsComponentAttached': reflected_function(pawn_mesh, 'IsComponentAttached'),
             }
+        elif args.mode == 'anim_tree':
+            # Read the equipped Lancer's existing animation graph. The saved
+            # class declares an AnimTreeTemplate, but only this instance can
+            # show which child and control lists are actually active.
+            def name_value(address):
+                index, number = struct.unpack('<II', resolver.read(address, 8))
+                return {'text': resolver.name(index), 'number': number}
+
+            def bitfield(obj, field):
+                meta = property_of(obj, field)
+                if meta['type'] != 'BoolProperty':
+                    raise RuntimeError(f'{field} is not an original bool')
+                mask = resolver.u32(meta['address'] + 0xd0)
+                if not mask:
+                    raise RuntimeError(f'{field} has no original mask')
+                return bool(resolver.u32(obj + meta['offset']) & mask)
+
+            def struct_array(obj, field, maximum):
+                meta = property_of(obj, field)
+                if meta['type'] != 'ArrayProperty':
+                    raise RuntimeError(f'{field} is not an original array')
+                inner = resolver.u64(meta['address'] + resolver.profile['struct_property_struct'])
+                if not inner or class_name(inner) != 'StructProperty':
+                    raise RuntimeError(f'{field} has no reflected struct element')
+                structure = resolver.struct_type({'address': inner, 'type': 'StructProperty'})
+                stride = resolver.u32(structure + 0x88)
+                if not 8 <= stride <= 256:
+                    raise RuntimeError(f'{field} struct stride is outside budget')
+                members = {}
+                for member in resolver.fields(structure):
+                    kind = class_name(member['address'])
+                    if kind not in ('NameProperty', 'ObjectProperty'):
+                        continue
+                    offset = resolver.u32(member['address'] + 0x94)
+                    if offset + 8 > stride:
+                        raise RuntimeError(f'{field} member exceeds reflected stride')
+                    members[member['name']] = (kind, offset)
+                data, count, capacity = struct.unpack('<Qii', resolver.read(obj + meta['offset'], 16))
+                if not 0 <= count <= capacity <= maximum or (count and not data):
+                    raise RuntimeError(f'{field} array header changed')
+                rows = []
+                for index in range(count):
+                    base = data + index * stride
+                    row = {'index': index}
+                    for label, (kind, offset) in members.items():
+                        address = base + offset
+                        if kind == 'NameProperty':
+                            row[label] = name_value(address)
+                        else:
+                            value = resolver.u64(address)
+                            row[label] = resolver.identity(value) if value else None
+                            row[label + '_address'] = hex(value)
+                    rows.append(row)
+                return {'structure': resolver.identity(structure), 'stride': stride,
+                        'count': count, 'members': sorted(members), 'rows': rows}
+
+            template = pointer(weapon_mesh, 'AnimTreeTemplate')
+            tree = pointer(weapon_mesh, 'Animations')
+            if not template or not tree or class_name(tree) != 'AnimTree':
+                raise RuntimeError('Current Lancer does not own an AnimTree instance')
+            controls = struct_array(tree, 'SkelControlLists', 64)
+            children = struct_array(tree, 'Children', 16)
+            chains = []
+            for row in controls['rows']:
+                current = int(row.get('ControlHead_address', '0'), 16)
+                seen = set()
+                chain = []
+                while current:
+                    if current in seen or len(chain) >= 16:
+                        raise RuntimeError('Current Lancer control chain is cyclic or oversized')
+                    seen.add(current)
+                    control_name = property_of(current, 'ControlName')
+                    if control_name['type'] != 'NameProperty':
+                        raise RuntimeError('Original control name type changed')
+                    chain.append({'identity': resolver.identity(current),
+                                  'class': class_name(current),
+                                  'control_name': name_value(current + control_name['offset'])})
+                    current = pointer(current, 'NextControl')
+                chains.append(chain)
+            ignore = property_of(weapon_mesh, 'bIgnoreControllers')
+            if ignore['type'] != 'IntProperty':
+                raise RuntimeError('Original controller-ignore field changed')
+            receipt['current_lancer_anim_tree'] = {
+                'template': resolver.identity(template),
+                'instance': resolver.identity(tree),
+                'same_object_as_template': tree == template,
+                'children': children,
+                'control_lists': controls,
+                'control_chains': chains,
+                'ignore_controllers': resolver.u32(weapon_mesh + ignore['offset']),
+                'ignore_when_not_rendered': bitfield(
+                    weapon_mesh, 'bIgnoreControllersWhenNotRendered'),
+            }
         elif args.mode == 'chainsaw_api':
             def signature(object_address, function_name):
                 function = bridge.function(resolver.identity(object_address)['cls'],
@@ -1006,6 +1099,16 @@ def sample_owned_game(args, receipt):
         if len(api['SetAbsolute']['parameters']) != 3 or any(
                 item['type'] != 'BoolProperty' for item in api['SetAbsolute']['parameters']):
             raise RuntimeError('Original SetAbsolute signature differs')
+    elif args.mode == 'anim_tree':
+        tree = receipt['current_lancer_anim_tree']
+        if (not tree['children']['count'] or not tree['control_lists']['count'] or
+                'Anim' not in tree['children']['members'] or
+                not {'BoneName', 'ControlHead'} <= set(tree['control_lists']['members']) or
+                not any(control['control_name']['text'] == 'AmmoControl'
+                        for chain in tree['control_chains'] for control in chain)):
+            raise RuntimeError('Current Lancer animation graph/control certificate incomplete')
+        receipt['source_limit'] = ('current equipped Lancer graph read only; no new controller '
+                                   'created, attached, evaluated or rendered')
     elif args.mode == 'chainsaw_api':
         api = receipt['original_chainsaw_api']
         if any(not entry['path'] or entry['parameter_bytes'] > 128
@@ -1273,7 +1376,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('api', 'chainsaw_api', 'chainsaw_target_eligibility', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'chainsaw_xr_no_pose', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('api', 'anim_tree', 'chainsaw_api', 'chainsaw_target_eligibility', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'chainsaw_xr_no_pose', 'reload_visual', 'reload_hold',
                                           'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
