@@ -321,6 +321,8 @@ Gnasher 与 Boltok 的完整未发射单发弹药仍未在已有调查中确认�
 
 随后对 Snub 的另外三根活动骨做相同的原包哈希、刚性权重和源面互补检查：滑套 `b_HG_Slide` 为 511 顶点／445 面，两侧翼片 `b_HG_Wing_L`、`b_HG_Wing_R` 各 53 顶点／60 面。每件与其余枪体的面数均恰好相加为该枪 LOD0 的 3,045 面，UV0 和法线随检查用 OBJ 保存于忽略的 `analysis/weapon-partitions/snub-b_HG_*/`。这说明它们可以按原骨骼归属独立观察，不要求把整支手枪强行切成单一刚体；运行时依然优先驱动原蒙皮骨骼，OBJ 不可直接发布或替换枪模。
 
+Boltok 的 11 个 `Object01`–`Object11` 骨骼也已逐个按原包哈希、完整权重与三角形边界导出成 UV0／法线／材质槽仍可核对的检查用活动件与剩余枪体 OBJ，位于忽略的 `analysis/weapon-partitions/boltok-verified-Object*/`。11 件合计 2,417 面，`alow_poly` 主体 4,325 面，合计正好是原 LOD0 的 6,742 面；每件单独提取时与其余枪体也恰好互补。它证明静态几何确实可分，不证明这些通用命名件各自对应弹巢、闭锁或握把，也不能将 OBJ 直接替换进游戏。
+
 Boltok 不能照抄 Snub 的滑套／弹匣方案：哈希核验的 `Weap_LocustPistol.WeaponMesh` 默认对象引用 `Geist_Pistol.Boltock_Pistol` 网格，却把 `AnimSets` 指向 `COG_Pistol.COG_Pistol`。后者的原版 `HG_Fire`、`AR_Reload`、`AR_Reload_Fail` 仅有 `b_HG_*` 五根轨道，与 Boltok 的 `alow_poly`／`Object01`–`Object11` 十二根骨骼没有同名项。这证明默认资源绑定不能用来给 Boltok 的通用命名部件指定换弹动作；不证明运行时从未替换动画集。物理换弹前需核对实际播放动画及 `Object*` 的空间动作，必要时为其制作逐件骨骼控制或独立覆盖件。原包有 `EjectClip`、`InsertClip`、`CockOpen`／`CockClose` 音效入口，仍需与可见机构逐步对照。静态轨道回执留在忽略的 `analysis/boltok-pistol-animation-audit-20261022.json`。
 
 上述首次导出的九个 `*-uv/` OBJ **贴图坐标无效**：工具当时从顶点偏移 24 开始读两个浮点，错把 UV0 的第二分量与 UV1 的第一分量配成一组。源包顶点和表面法线核验后，现从偏移 20 读取完整 UV0、偏移 16 解码法线，并反转 OBJ 面顺序以与原法线一致；九个部件都在忽略的 `analysis/weapon-partitions/uv-normal-fixed-20261022/` 重导，顶点／面数和源哈希未变，几何面与导出法线平均对齐度为 0.698–0.984。旧目录有失效说明，不能用于贴图。新元数据还保留原骨骼父级及父局部姿态，并逐级组合得到**静态参考枢轴候选**；九件候选距各自几何包围盒中心均小于包围盒对角线的 0.43 倍。这个几何一致性尚不能代替游戏运行时骨矩阵、铰链旋转轴或手柄行程的核验。新 UV、法线与材质槽引用也不等于贴图已经接入；这些源衍生 OBJ 缺蒙皮层级、动画、碰撞与游戏内取放逻辑，不能进入公开发行包。
