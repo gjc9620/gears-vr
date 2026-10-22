@@ -15,6 +15,9 @@ import time
 import traceback
 
 ROOT = Path(__file__).resolve().parents[2]
+LANCER_EDGE_LOCAL = ((0, 28, 5), (0, 32, 9), (0, 55, 9), (0, 69, 8),
+                     (0, 74, 6), (0, 75, 2), (0, 74, -1), (0, 69, -5),
+                     (0, 62, -7), (0, 49, -6.5), (0, 35, -5), (0, 29, -2))
 
 
 def wait_for(callback, seconds, reason):
@@ -34,6 +37,23 @@ def matrix(text):
     if not all(math.isfinite(value) for value in values):
         raise ValueError('Nonfinite original matrix')
     return values
+
+
+def verify_lancer_edge_rows(rows):
+    maximum = 0.0
+    for row in rows:
+        gun = row['gun']
+        edge = row['visible_edge_candidate']
+        if len(edge) != len(LANCER_EDGE_LOCAL):
+            raise RuntimeError('Visible edge sample count changed')
+        for local, actual in zip(LANCER_EDGE_LOCAL, edge):
+            expected = (gun[12] + gun[0] * local[0] + gun[4] * local[1] + gun[8] * local[2],
+                        gun[13] + gun[1] * local[0] + gun[5] * local[1] + gun[9] * local[2],
+                        gun[14] + gun[2] * local[0] + gun[6] * local[1] + gun[10] * local[2])
+            maximum = max(maximum, *(abs(a - b) for a, b in zip(actual, expected)))
+    if maximum > .01:
+        raise RuntimeError('Visible edge does not match same-tick gun matrix')
+    return maximum
 
 
 def parse_pose_row(line):
@@ -421,6 +441,103 @@ def sample_owned_game(args, receipt):
                     weapon, 'IsTargetValidForSpecialMeleeAttack'),
                 'MeleeAttackImpact': signature(weapon, 'MeleeAttackImpact'),
             }
+        elif args.mode == 'chainsaw_target_eligibility':
+            # This mode never calls AcquiredVictim. It establishes the original
+            # controller/target-validation boundary in one owned retail arena.
+            def input_parameters(obj, function_name):
+                function = bridge.function(resolver.identity(obj)['cls'], function_name)
+                fields = []
+                for field in resolver.fields(function['address']):
+                    flags = resolver.u64(field['address'] + 0x78)
+                    if flags & 0x80 and not flags & 0x400:
+                        fields.append((field['name'], resolver.class_name(field)))
+                return fields
+
+            def original_validator(obj, function_name, target, with_revival=False):
+                fields = input_parameters(obj, function_name)
+                if len(fields) != (2 if with_revival else 1) or \
+                        fields[0][1] != 'ObjectProperty' or \
+                        (with_revival and fields[1][1] != 'BoolProperty'):
+                    raise RuntimeError(f'Original {function_name} signature changed: {fields}')
+                values = {fields[0][0]: target}
+                if with_revival:
+                    values[fields[1][0]] = True
+                return bool(bridge.call(obj, function_name, **values))
+
+            dummy = 0
+            locust_class = 0
+            for obj in resolver.object_pointers:
+                if not obj:
+                    continue
+                try:
+                    identity_row = resolver.identity(obj)
+                    if (identity_row['name'] == 'Pawn_GeistLocust' and
+                            class_name(obj) == 'Class'):
+                        locust_class = obj
+                    if (class_name(obj) == 'Pawn_GeistLocust' and
+                            pointer(obj, 'WorldInfo') == world and
+                            not pointer(obj, 'Controller')):
+                        dummy = obj
+                except (RuntimeError, TypeError, KeyError):
+                    continue
+            if not dummy or not locust_class:
+                raise RuntimeError('Controllerless arena target or original class absent')
+            receipt['controllerless_original_validator'] = original_validator(
+                weapon, 'IsTargetValidForSpecialMeleeAttack', dummy)
+            if receipt['controllerless_original_validator']:
+                raise RuntimeError('Original unexpectedly accepted controllerless target')
+            location_field = property_of(pawn, 'Location')
+            if (location_field['type'] != 'StructProperty' or
+                    resolver.u32(location_field['address'] + 0x74) != 12):
+                raise RuntimeError('Original pawn Location layout changed')
+            location = struct.unpack('<3f', resolver.read(
+                pawn + location_field['offset'], 12))
+            if not all(math.isfinite(v) for v in location):
+                raise RuntimeError('Original pawn Location is nonfinite')
+            position = (location[0] + 120., location[1], location[2])
+            target = bridge.call(pc, 'Spawn', SpawnClass=locust_class,
+                                 SpawnLocation=struct.pack('<3f', *position),
+                                 SpawnRotation=struct.pack('<3i', 0, 32768, 0),
+                                 bNoCollisionFail=True)
+            if not target:
+                raise RuntimeError('Original Pawn_GeistLocust spawn failed')
+            try:
+                resolver.prepare()  # refresh registry after a game-thread spawn
+                if class_name(target) != 'Pawn_GeistLocust' or \
+                        pointer(target, 'WorldInfo') != world:
+                    raise RuntimeError('Spawned target class/world changed')
+                if not pointer(target, 'Controller'):
+                    bridge.call(target, 'SpawnDefaultController')
+                resolver.prepare()
+                controller = wait_for(lambda: pointer(target, 'Controller'), 3,
+                                      'Original SpawnDefaultController did not possess target')
+                ancestry = []
+                cls = resolver.identity(controller)['cls']
+                for _ in range(20):
+                    if not cls:
+                        break
+                    ancestry.append(resolver.identity(cls)['name'])
+                    cls = resolver.u64(cls + 0x60)
+                if ('WarAI_Drone' not in ancestry or
+                        pointer(controller, 'Pawn') != target or
+                        pointer(controller, 'MyWP') != target or
+                        pointer(controller, 'WorldInfo') != world):
+                    raise RuntimeError('Original AI controller reciprocal identity failed')
+                receipt['controlled_target'] = {
+                    'pawn': hex(target), 'controller': hex(controller),
+                    'controller_ancestry': ancestry, 'position': position,
+                    'health': struct.unpack('<i', resolver.read(
+                        target + property_of(target, 'Health')['offset'], 4))[0],
+                    'pawn_validator': original_validator(
+                        pawn, 'IsValidMeleeTarget', target, True),
+                    'weapon_validator': original_validator(
+                        weapon, 'IsTargetValidForSpecialMeleeAttack', target),
+                }
+            finally:
+                try:
+                    bridge.call(target, 'Destroy')
+                except BaseException:
+                    receipt['target_cleanup_error'] = traceback.format_exc()
         elif args.mode in ('chainsaw_bones', 'chainsaw_bones_held'):
             held = args.mode == 'chainsaw_bones_held'
             if held:
@@ -886,6 +1003,16 @@ def sample_owned_game(args, receipt):
         if any(not entry['path'] or entry['parameter_bytes'] > 128
                for entry in api.values()):
             raise RuntimeError('Original Lancer chainsaw function metadata incomplete')
+    elif args.mode == 'chainsaw_target_eligibility':
+        if (receipt['controllerless_original_validator'] or
+                'controlled_target' not in receipt or
+                'WarAI_Drone' not in receipt['controlled_target']['controller_ancestry'] or
+                not receipt['controlled_target']['pawn_validator'] or
+                not receipt['controlled_target']['weapon_validator'] or
+                receipt.get('target_cleanup_error')):
+            raise RuntimeError('Original Lancer target eligibility boundary incomplete')
+        receipt['source_limit'] = ('original controller and validator game-thread calls; '
+                                   'no blade contact or paired execution')
     elif args.mode in ('chainsaw_bones', 'chainsaw_bones_held'):
         begins = [line for line in lines if line.startswith('lancer_blade_probe_begin ')]
         rows = []
@@ -893,18 +1020,27 @@ def sample_owned_game(args, receipt):
             if not line.startswith('lancer_blade_pose '):
                 continue
             fields = dict(item.split('=', 1) for item in line.split()[1:])
-            if set(fields) != {'sample', 'qpc', 'gun', 'root', 'tip'}:
+            edge_keys = {f'edge{index}' for index in range(12)}
+            if set(fields) != {'sample', 'qpc', 'gun', 'root', 'tip'} | edge_keys:
                 raise RuntimeError('Unexpected original blade-bone row')
+            edge = [tuple(float(value) for value in fields[f'edge{index}'].split(','))
+                    for index in range(12)]
+            if any(len(point) != 3 or not all(math.isfinite(value) for value in point)
+                   for point in edge):
+                raise RuntimeError('Invalid transformed visible-edge candidate')
             rows.append({'sample': int(fields['sample']), 'qpc': int(fields['qpc']),
                          **{key: matrix(fields[key]) for key in
-                            ('gun', 'root', 'tip')}})
+                            ('gun', 'root', 'tip')}, 'visible_edge_candidate': edge})
         if (len(begins) != 1 or len(rows) != 16 or
                 [row['sample'] for row in rows] != list(range(16)) or
                 any(rows[index]['qpc'] <= rows[index - 1]['qpc']
                     for index in range(1, len(rows)))):
             raise RuntimeError('Original same-tick Lancer blade-bone sample incomplete')
+        edge_projection_error = verify_lancer_edge_rows(rows)
         receipt.update(blade_bone_begin=begins[0], blade_bone_samples=rows,
-                       source_limit='same game-thread tick, original Lancer; no contact target')
+                       edge_projection_max_error_raw=edge_projection_error,
+                       source_limit=('same game-thread tick, original Lancer; visible edge '
+                                     'is a sparse model approximation, no contact target'))
     elif args.mode == 'component_motion':
         motion = receipt['component_motion']
         if (not motion['attached_after_original_call'] or
@@ -1123,7 +1259,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('api', 'chainsaw_api', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'chainsaw_xr_no_pose', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('api', 'chainsaw_api', 'chainsaw_target_eligibility', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'chainsaw_xr_no_pose', 'reload_visual', 'reload_hold',
                                           'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

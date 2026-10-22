@@ -35,18 +35,44 @@ void pull(gears_weapon::LancerChainsawInteraction& interaction,
 int main() {
     using namespace gears_weapon;
     LancerSawContact contact{};
-    contact.victim=44;contact.original_target_valid=contact.unobstructed=true;
-    contact.blade_base_raw={0,0,0};contact.blade_tip_raw={0,40,0};
-    contact.target_a_raw={10,20,-20};contact.target_b_raw={10,20,20};
-    contact.target_radius_raw=9;contact.blade_radius_raw=2;
-    assert(lancer_saw_blade_contact(contact)); // blade side reaches target
+    contact.victim=44;
+    contact.original={true,true,true,true,true,true,true,true,true,true,true};
+    std::array<float,16> gun_matrix{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    assert(!lancer_chain_outline_from_mesh(gun_matrix,false,contact.blade));
+    assert(!lancer_saw_blade_contact(contact)); // no authenticated source mesh
+    assert(lancer_chain_outline_from_mesh(gun_matrix,true,contact.blade));
+    assert(contact.blade.world_raw[0].y==28);
+    contact.target_a_raw={0,60,-20};contact.target_b_raw={0,60,20};
+    contact.target_radius_raw=2;contact.blade_radius_raw=1.5;
+    assert(lancer_saw_blade_contact(contact)); // chain edge reaches target
+    contact.target_a_raw={0,50,1};contact.target_b_raw={0,50,3};
+    assert(!lancer_saw_blade_contact(contact)); // housing centre is not the edge
+    contact.target_a_raw={0,60,-20};contact.target_b_raw={0,60,20};
     contact.target_a_raw.x=30;contact.target_b_raw.x=30;
     assert(!lancer_saw_blade_contact(contact)); // view-facing is not contact
-    contact.target_a_raw.x=10;contact.target_b_raw.x=10;
-    contact.unobstructed=false;
+    contact.target_a_raw.x=0;contact.target_b_raw.x=0;
+    contact.original.blade_path_unobstructed=false;
     assert(!lancer_saw_blade_contact(contact)); // wall blocks blade
-    contact.unobstructed=true;contact.original_target_valid=false;
+    contact.original.blade_path_unobstructed=true;
+    contact.original.weapon_target_valid=false;
     assert(!lancer_saw_blade_contact(contact)); // original rules still apply
+    contact.original.weapon_target_valid=true;
+    contact.original.target_controller_valid=false;
+    assert(!lancer_saw_blade_contact(contact)); // controllerless dummy is ineligible
+    contact.original.target_controller_valid=true;
+    auto invalid=gun_matrix;invalid[0]=-1;
+    assert(!lancer_chain_outline_from_mesh(invalid,true,contact.blade));
+    invalid=gun_matrix;invalid[4]=.5f;
+    assert(!lancer_chain_outline_from_mesh(invalid,true,contact.blade));
+    invalid=gun_matrix;invalid[12]=100;
+    LancerBladeOutline moved{};
+    assert(lancer_chain_outline_from_mesh(invalid,true,moved));
+    assert(moved.world_raw[0].x==100&&moved.world_raw[0].y==28);
+    std::array<float,16> turned{0,1,0,0, -1,0,0,0, 0,0,1,0,
+                                100,200,300,1};
+    assert(lancer_chain_outline_from_mesh(turned,true,moved));
+    assert(moved.world_raw[0].x==72&&moved.world_raw[0].y==200&&
+           moved.world_raw[0].z==305);
 
     LancerChainsawInteraction interaction;
     auto s=sample();
@@ -55,10 +81,10 @@ int main() {
     assert(interaction.observe(s).event==LancerSawEvent::hold_started);
     assert(interaction.phase()==LancerSawPhase::running);
     s.game_can_melee=false; // original entry gate can close after B is held
-    advance(s);contact.original_target_valid=true;s.contact=contact;
+    advance(s);s.contact=contact;
     s.contact.target_a_raw.x=30;s.contact.target_b_raw.x=30;
     assert(interaction.observe(s).event==LancerSawEvent::none);
-    advance(s);s.contact.target_a_raw.x=10;s.contact.target_b_raw.x=10;
+    advance(s);s.contact.target_a_raw.x=0;s.contact.target_b_raw.x=0;
     auto d=interaction.observe(s);
     assert(d.event==LancerSawEvent::request_original_acquire&&d.victim==44);
     assert(interaction.suppress_original_auto_target());

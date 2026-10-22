@@ -79,12 +79,20 @@ void lancer_blade_probe_post_tick(uptr pc){
        std::memcmp(before.data(),after.data(),sizeof(before))){
         lancer_blade_probe_fail(L"same_tick_matrix_unstable");return;
     }
+    gears_weapon::LancerBladeOutline cutting_edge{};
+    if(!gears_weapon::lancer_chain_outline_from_mesh(before,true,cutting_edge)){
+        lancer_blade_probe_fail(L"visible_edge_matrix_invalid");return;
+    }
     LARGE_INTEGER qpc{};QueryPerformanceCounter(&qpc);
     const auto index=lancer_blade_probe_count.load(std::memory_order_relaxed);
     fwprintf(log_file,L"lancer_blade_pose sample=%u qpc=%lld",index,qpc.QuadPart);
     support_probe_print_matrix(L"gun",before.data());
     support_probe_print_matrix(L"root",root.data());
     support_probe_print_matrix(L"tip",tip.data());
+    for(std::size_t i=0;i<cutting_edge.world_raw.size();++i){
+        const auto p=cutting_edge.world_raw[i];
+        fwprintf(log_file,L" edge%u=%.4f,%.4f,%.4f",unsigned(i),p.x,p.y,p.z);
+    }
     fwprintf(log_file,L"\n");fflush(log_file);
     lancer_blade_probe_count.store(index+1,std::memory_order_release);
     state.next_ms=now+50;

@@ -5,7 +5,7 @@
 #include <cmath>
 
 namespace gears_weapon {
-enum class GuidePart : std::uint8_t { none,feed_port,bolt,lever_handle };
+enum class GuidePart : std::uint8_t { none,feed_port,bolt,lever_handle,left_shoulder };
 
 inline GuidePart reload_guide(ReloadModel const& reload) noexcept {
     switch(reload.stage()){

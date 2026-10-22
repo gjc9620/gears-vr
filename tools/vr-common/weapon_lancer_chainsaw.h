@@ -1,5 +1,5 @@
 #pragma once
-#include "weapon_pose_solver.h"
+#include "weapon_lancer_blade_outline.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -27,15 +27,33 @@ struct LancerSawDecision {
     bool animation_owns_hands{},restore_6dof{},unexpected_original_target{};
 };
 
-// Positions and radii here are original game-world units. The caller derives
-// blade endpoints from the current Lancer mesh bones and the target capsule
-// from the original collision/validity query. A view-center enemy is not a
-// contact merely because it is visible.
+// AcquiredVictim does not re-run these original checks. The game-thread
+// adapter must take the same-tick pawn/weapon snapshot, call both original
+// validators, and only then hand off the exact contacted victim once.
+struct LancerSawOriginalTargetGate {
+    bool authoritative{},attacker_alive{},original_hold_move{},
+         attacker_not_victim{},no_current_victim{},target_live{},
+         target_controller_valid{},pawn_target_valid{},weapon_target_valid{},
+         adhesion_clear_or_same{},blade_path_unobstructed{};
+    bool valid() const noexcept {
+        return authoritative&&attacker_alive&&original_hold_move&&
+            attacker_not_victim&&no_current_victim&&target_live&&
+            target_controller_valid&&pawn_target_valid&&weapon_target_valid&&
+            adhesion_clear_or_same&&blade_path_unobstructed;
+    }
+};
+
+// Positions and radii here are original game-world units. The caller must
+// verify the current gun component and use its same-tick transform to build
+// the visible chain outline. The two chainsaw bone pivots sit *inside* the
+// saw housing and must never be substituted for its cutting edge. The target
+// capsule and original validity/occlusion results come from the game thread.
 struct LancerSawContact {
     std::uint64_t victim{};
-    Vector blade_base_raw{},blade_tip_raw{},target_a_raw{},target_b_raw{};
-    double blade_radius_raw{6},target_radius_raw{};
-    bool original_target_valid{},unobstructed{};
+    LancerBladeOutline blade{};
+    Vector target_a_raw{},target_b_raw{};
+    double blade_radius_raw{1.5},target_radius_raw{};
+    LancerSawOriginalTargetGate original{};
 };
 
 // XR local positions are in metres. This sample must already be tied to the
@@ -72,21 +90,31 @@ inline double segment_distance_squared(Vector p0,Vector p1,
     return dot(gap,gap);
 }
 inline bool lancer_saw_blade_contact(LancerSawContact const& contact) noexcept {
-    if(!contact.victim||!contact.original_target_valid||!contact.unobstructed||
-       !gears_vr::finite(contact.blade_base_raw)||
-       !gears_vr::finite(contact.blade_tip_raw)||
+    if(!contact.victim||!contact.blade.verified_current_mesh||
+       !contact.original.valid()||
        !gears_vr::finite(contact.target_a_raw)||
        !gears_vr::finite(contact.target_b_raw)||
        !std::isfinite(contact.blade_radius_raw)||
        !std::isfinite(contact.target_radius_raw)||
        contact.blade_radius_raw<0||contact.blade_radius_raw>20||
-       contact.target_radius_raw<=0||contact.target_radius_raw>200||
-       length(difference(contact.blade_tip_raw,contact.blade_base_raw))<5)
+       contact.target_radius_raw<=0||contact.target_radius_raw>200)
         return false;
     const double radius=contact.blade_radius_raw+contact.target_radius_raw;
-    return segment_distance_squared(contact.blade_base_raw,contact.blade_tip_raw,
-                                    contact.target_a_raw,contact.target_b_raw)<=
-           radius*radius;
+    for(std::size_t i=0;i<contact.blade.world_raw.size();++i){
+        const auto a=contact.blade.world_raw[i];
+        const auto b=contact.blade.world_raw[(i+1)%contact.blade.world_raw.size()];
+        if(!gears_vr::finite(a)||!gears_vr::finite(b)||
+           length(difference(a,b))<.5||length(difference(a,b))>80)
+            return false;
+    }
+    for(std::size_t i=0;i<contact.blade.world_raw.size();++i){
+        const auto a=contact.blade.world_raw[i];
+        const auto b=contact.blade.world_raw[(i+1)%contact.blade.world_raw.size()];
+        if(segment_distance_squared(a,b,contact.target_a_raw,
+                                    contact.target_b_raw)<=radius*radius)
+            return true;
+    }
+    return false;
 }
 
 class LancerChainsawInteraction {

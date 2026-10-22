@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <cmath>
 #include "MinHook.h"
+#if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
+#include "../vr-common/weapon_lancer_blade_outline.h"
+#endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "../vr-common/controller_input_bridge.h"
 #include "../vr-common/original_r2_fire.h"
