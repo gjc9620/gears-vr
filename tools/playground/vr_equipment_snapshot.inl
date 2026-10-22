@@ -19,6 +19,8 @@ bool intent_open{};
 std::atomic<unsigned> last_ammo_status{};
 std::atomic<std::uint64_t> pose_accepted{},pose_rejected{};
 ULONGLONG next_pose_log{};
+ULONGLONG next_reload_native_probe{};
+uptr last_reload_native_weapon{};
 bool test_environment(){
     wchar_t behind[4]{},muted[4]{};
     return GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)==1&&behind[0]==L'1'&&
@@ -174,6 +176,45 @@ bool ammo_bone_visual_probe(uptr weapon,AmmoBoneVisualProbe& out){
         read_control_float(out.control,L"StrengthTarget",out.target)&&
         read_control_float(out.control,L"BoneScale",out.bone_scale);
 }
+// Locate the original UFunction wrappers without calling either function.
+// The historical disk EXE is protected, so a live, validated module-relative
+// address is needed before bounded native analysis can proceed.
+struct ReloadNativeProbe {
+    uptr function{},entry{};
+    unsigned native_index{},parameter_bytes{};
+    bool reflected{},executable_in_game{};
+};
+bool game_executable(uptr address){
+    if(!address)return false;
+    MEMORY_BASIC_INFORMATION page{};
+    if(!VirtualQuery(reinterpret_cast<void*>(address),&page,sizeof(page))||
+       page.State!=MEM_COMMIT||page.Type!=MEM_IMAGE||
+       page.AllocationBase!=reinterpret_cast<void*>(base)||
+       (page.Protect&(PAGE_GUARD|PAGE_NOACCESS)))return false;
+    switch(page.Protect&0xff){
+        case PAGE_EXECUTE:case PAGE_EXECUTE_READ:
+        case PAGE_EXECUTE_READWRITE:case PAGE_EXECUTE_WRITECOPY:return true;
+        default:return false;
+    }
+}
+ReloadNativeProbe reload_native_probe(uptr war_weapon,const wchar_t* function_name){
+    ReloadNativeProbe result{};
+    if(!registered(war_weapon)||
+       !playground::named(war_weapon,L"WarWeapon")||
+       !playground::named(get<uptr>(war_weapon+0x50),L"Class"))return result;
+    result.function=playground::field(war_weapon,function_name,L"Function");
+    if(!registered(result.function)||
+       get<uptr>(result.function+0x40)!=war_weapon)return result;
+    result.reflected=true;
+    result.native_index=get<unsigned short>(result.function+0xf8);
+    result.parameter_bytes=get<unsigned short>(result.function+0x106);
+    const auto first=get<uptr>(result.function+0x114);
+    const auto second=get<uptr>(result.function+0x114);
+    if(first&&first==second&&game_executable(first)){
+        result.entry=first;result.executable_in_game=true;
+    }
+    return result;
+}
 #endif
 
 gears_weapon::BodySlot body_for_inventory_slot(unsigned slot){
@@ -193,6 +234,7 @@ void reset_switch_test(){
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
     intent_bridge.close();intent_open=false;intent_cursor=pose_cursor=UINT64_MAX;
     next_intent_open=next_pose_log=0;
+    next_reload_native_probe=0;last_reload_native_weapon=0;
     last_ammo_status.store(0,std::memory_order_release);
 #endif
 }
@@ -468,6 +510,35 @@ void tick(uptr pc){
         }
 #endif
     }
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+    // This identity-bound lookup needs a live equipped weapon, but no hand
+    // tracking or XR input. It can therefore run in an owned simulator arena.
+    if(ok&&log_file&&playground::ready&&test_environment()&&
+       pc==playground::arena_pc&&game.world==playground::arena_world&&
+       game.pawn==playground::arena_pawn&&game.current_weapon&&
+       (now>=next_reload_native_probe||
+        static_cast<uptr>(game.current_weapon)!=last_reload_native_weapon)){
+        next_reload_native_probe=now+5000;
+        last_reload_native_weapon=static_cast<uptr>(game.current_weapon);
+        const auto war_weapon=playground::find_class(L"WarWeapon");
+        const auto values=reload_native_probe(war_weapon,L"GetActiveReloadValues");
+        const auto result=reload_native_probe(
+            war_weapon,L"DetermineActiveReloadSuccessOrFailure");
+        const auto print_entry=[&](const wchar_t* label,ReloadNativeProbe const& entry){
+            fwprintf(log_file,L"weapon_reload_native_probe weapon=%p function=%ls "
+                L"reflected=%u ufunction=%p native_index=%u "
+                L"parameter_bytes=%u executable_in_game=%u entry_rva=%llx\n",
+                reinterpret_cast<void*>(static_cast<uptr>(game.current_weapon)),label,
+                unsigned(entry.reflected),reinterpret_cast<void*>(entry.function),
+                entry.native_index,entry.parameter_bytes,
+                unsigned(entry.executable_in_game),
+                entry.executable_in_game?entry.entry-base:0);
+        };
+        print_entry(L"GetActiveReloadValues",values);
+        print_entry(L"DetermineActiveReloadSuccessOrFailure",result);
+        fflush(log_file);
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
     if(ammo_request){
         unsigned status=4;

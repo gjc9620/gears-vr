@@ -110,6 +110,17 @@ recorded separately from an invalid reflection layout. These values are
 not by themselves proof of rendered magazine visibility. Neither probe
 changes meshes or reload state; a retail runtime sample is still required.
 
+In the same private owned arena, `weapon_reload_native_probe` reads the
+original `WarWeapon` UFunction objects for `GetActiveReloadValues` and
+`DetermineActiveReloadSuccessOrFailure`. It validates their class ownership
+and executable entry pointers inside the current game image, then logs only
+module-relative addresses, native indices, and parameter sizes. It does not
+call, detour, or patch either function. Unlike the hand-pose probes, this
+lookup needs only an authenticated equipped weapon, so simulator sessions
+without physical controllers can reach it. A build pass alone provides no
+retail address or perfect-reload deadline; a valid runtime log and byte
+comparison are required before native analysis or timing claims.
+
 `GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST=ON` adds an even narrower private
 Lancer trial to the equipment-intent build. It requires an owned, muted,
 behind-windows Playground range and an already held Lancer. Call
