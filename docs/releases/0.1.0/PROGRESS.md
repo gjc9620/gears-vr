@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+Lancer 控制索引继续只读核验：自有购买版置后静音 PID 58808 的当前枪模 `SkelControlIndex` 长度 9，骨骼 0–7 均为原始字节 `255`，骨骼 8（弹匣）为 `0`；`RequiredBones` 为 0–8，`AnimTickArray` 正好是当前 `AnimTree` 与其 `AnimNodeSequence`，原 `AmmoControl.SkelComponent` 指向该枪模组件。实时 UFunction 元数据确认 `SetAnimTreeTemplate(NewTemplate)`、`UpdateAnimations()`、`SetSkelControlStrength(NewStrength, InBlendTime)` 的参数结构，但没有调用它们。这个索引使“仅追加卡扣 7、机匣 5 的控制链就生效”的假设不成立；仍须引擎管理的对象创建、数组维护、索引重建与 GC／恢复证明。忽略回执 `analysis/lancer-anim-tree-runtime-1022c.json`，`PlaygroundShutdown=0`、11 个音频会话恢复及游戏退出通过。
+
 完美换弹期限从推导推进到当前实例实测：自有购买版置后静音 PID 57472 在一次原版 Lancer 换弹中，经游戏线程调用原 HUD 本来使用的 `GetActiveReloadValues`，两次分别于换弹约 0.201／0.463 秒取得相同四值：起点约 `0.700000`、预反应 `0.25`、完美宽度约 `0.100000`、普通成功宽度 `0.25` 秒。按已匹配原版判定函数的 `elapsed ≤ start + super`，这次 Lancer 的完美**终点**为约 `0.800000` 秒，自 `ReloadStartTime` 起算；这不是所有枪或所有游戏状态的常数。两次 Getter 调用前后主动换弹尝试标志均未变化；原版换弹随后自行结束、已耗弹从 1 归零。数值回执在忽略的 `analysis/lancer-reload-getter-runtime-1022a.json`，`PlaygroundShutdown=0`、11 个音频会话恢复、自有游戏退出均已核对。没有用实体动作结算完美奖励，也没有头显验收。
 
 Lancer 动画树当前实例只读核验：购买版自有置后静音 PID 46552 的 `Weapon.Mesh.AnimTreeTemplate` 为 `AT_COG_AssaultRifle`，`Animations` 是另一份当前实例 `AnimTree`，仅有一个 `AnimNodeSequence` 子节点；其 `SkelControlLists` 只有 `b_AR_Magazine → AmmoControl`，`bIgnoreControllers=0`、`bIgnoreControllersWhenNotRendered=false`。这为保留原动画通知并另加卡扣／机匣骨骼控制提供真实拓扑，但**没有创建或挂接新控制器**，也未证明动画计算顺序／GC。只读回执在忽略的 `analysis/lancer-anim-tree-runtime-1022b.json`，私有 `PlaygroundShutdown=0`、11 个音频会话恢复、游戏退出通过；先行试验把模板字段误查到武器而非其 `Weapon.Mesh`，在图读取前停止，没有作为通过证据。后续仅在引擎对象创建、列表所有权和恢复路径认证后做默认关闭的单控制器试验；不能直接改骨数组或把现有 `AmmoControl` 换掉。

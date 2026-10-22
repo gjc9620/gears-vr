@@ -474,7 +474,49 @@ def sample_owned_game(args, receipt):
                             row[label + '_address'] = hex(value)
                     rows.append(row)
                 return {'structure': resolver.identity(structure), 'stride': stride,
-                        'count': count, 'members': sorted(members), 'rows': rows}
+                        'count': count, 'capacity': capacity,
+                        'members': sorted(members), 'rows': rows}
+
+            def primitive_array(obj, field, kind, maximum):
+                meta = property_of(obj, field)
+                if meta['type'] != 'ArrayProperty':
+                    raise RuntimeError(f'{field} is not an original array')
+                inner = resolver.u64(meta['address'] + resolver.profile['struct_property_struct'])
+                if not inner or class_name(inner) != kind:
+                    raise RuntimeError(f'{field} element type changed')
+                data, count, capacity = struct.unpack('<Qii', resolver.read(
+                    obj + meta['offset'], 16))
+                if not 0 <= count <= capacity <= maximum or (count and not data):
+                    raise RuntimeError(f'{field} array header changed')
+                stride = 1 if kind == 'ByteProperty' else 8
+                raw = resolver.read(data, count * stride) if count else b''
+                if kind == 'ByteProperty':
+                    values = list(raw)
+                else:
+                    values = []
+                    for index in range(count):
+                        item = struct.unpack_from('<Q', raw, index * stride)[0]
+                        values.append(resolver.identity(item) if item else None)
+                return {'count': count, 'capacity': capacity, 'values': values}
+
+            def function_info(obj, name):
+                function = bridge.function(resolver.identity(obj)['cls'], name)
+                size = struct.unpack('<H', resolver.read(function['address'] + 0x106, 2))[0]
+                if size > 128:
+                    raise RuntimeError(f'{name} exceeds function parameter budget')
+                parameters = []
+                for field in resolver.fields(function['address']):
+                    flags = resolver.u64(field['address'] + 0x78)
+                    if flags & 0x80:
+                        parameters.append({'name': field['name'],
+                                           'type': resolver.class_name(field),
+                                           'offset': resolver.u32(field['address'] + 0x94),
+                                           'size': resolver.u32(field['address'] + 0x74),
+                                           'flags': hex(flags)})
+                if any(row['offset'] + row['size'] > size for row in parameters):
+                    raise RuntimeError(f'{name} parameter exceeds function size')
+                return {'identity': resolver.identity(function['address']),
+                        'parameter_bytes': size, 'parameters': parameters}
 
             template = pointer(weapon_mesh, 'AnimTreeTemplate')
             tree = pointer(weapon_mesh, 'Animations')
@@ -496,12 +538,27 @@ def sample_owned_game(args, receipt):
                         raise RuntimeError('Original control name type changed')
                     chain.append({'identity': resolver.identity(current),
                                   'class': class_name(current),
-                                  'control_name': name_value(current + control_name['offset'])})
+                                  'control_name': name_value(current + control_name['offset']),
+                                  'skel_component': resolver.identity(pointer(
+                                      current, 'SkelComponent')) if pointer(
+                                          current, 'SkelComponent') else None})
                     current = pointer(current, 'NextControl')
                 chains.append(chain)
             ignore = property_of(weapon_mesh, 'bIgnoreControllers')
             if ignore['type'] != 'IntProperty':
                 raise RuntimeError('Original controller-ignore field changed')
+            required = property_of(weapon_mesh, 'bRequiredBonesUpToDate')
+            if required['type'] != 'IntProperty':
+                raise RuntimeError('Original required-bones flag type changed')
+            sequence = int(children['rows'][0]['Anim_address'], 16) if children['count'] else 0
+            if not sequence or class_name(sequence) != 'AnimNodeSequence':
+                raise RuntimeError('Current Lancer anim child is not a sequence')
+            time_field = property_of(sequence, 'CurrentTime')
+            rate_field = property_of(sequence, 'Rate')
+            name_field = property_of(sequence, 'AnimSeqName')
+            if any(field['type'] != 'FloatProperty' for field in (time_field, rate_field)) or \
+                    name_field['type'] != 'NameProperty':
+                raise RuntimeError('Current sequence metadata changed')
             receipt['current_lancer_anim_tree'] = {
                 'template': resolver.identity(template),
                 'instance': resolver.identity(tree),
@@ -512,6 +569,28 @@ def sample_owned_game(args, receipt):
                 'ignore_controllers': resolver.u32(weapon_mesh + ignore['offset']),
                 'ignore_when_not_rendered': bitfield(
                     weapon_mesh, 'bIgnoreControllersWhenNotRendered'),
+                'skel_control_index': primitive_array(
+                    weapon_mesh, 'SkelControlIndex', 'ByteProperty', 512),
+                'required_bones': primitive_array(
+                    weapon_mesh, 'RequiredBones', 'ByteProperty', 512),
+                'anim_tick_array': primitive_array(
+                    weapon_mesh, 'AnimTickArray', 'ObjectProperty', 64),
+                'required_bones_up_to_date': resolver.u32(
+                    weapon_mesh + required['offset']),
+                'sequence': {'identity': resolver.identity(sequence),
+                             'name': name_value(sequence + name_field['offset']),
+                             'time': struct.unpack('<f', resolver.read(
+                                 sequence + time_field['offset'], 4))[0],
+                             'rate': struct.unpack('<f', resolver.read(
+                                 sequence + rate_field['offset'], 4))[0],
+                             'playing': bitfield(sequence, 'bPlaying')},
+                'api': {'SetAnimTreeTemplate': function_info(
+                            weapon_mesh, 'SetAnimTreeTemplate'),
+                        'UpdateAnimations': function_info(
+                            weapon_mesh, 'UpdateAnimations'),
+                        'SetSkelControlStrength': function_info(
+                            int(controls['rows'][0]['ControlHead_address'], 16),
+                            'SetSkelControlStrength')},
             }
         elif args.mode == 'reload_values':
             # The original HUD calls this getter for its reload bar. Invoke
@@ -1181,10 +1260,15 @@ def sample_owned_game(args, receipt):
                 'Anim' not in tree['children']['members'] or
                 not {'BoneName', 'ControlHead'} <= set(tree['control_lists']['members']) or
                 not any(control['control_name']['text'] == 'AmmoControl'
-                        for chain in tree['control_chains'] for control in chain)):
+                        for chain in tree['control_chains'] for control in chain) or
+                tree['skel_control_index']['count'] < 9 or
+                tree['required_bones']['count'] < 9 or
+                set(tree['api']) != {'SetAnimTreeTemplate', 'UpdateAnimations',
+                                     'SetSkelControlStrength'}):
             raise RuntimeError('Current Lancer animation graph/control certificate incomplete')
-        receipt['source_limit'] = ('current equipped Lancer graph read only; no new controller '
-                                   'created, attached, evaluated or rendered')
+        receipt['source_limit'] = ('current equipped Lancer graph and bone-index caches read '
+                                   'only; no new controller created, attached, evaluated or '
+                                   'rendered; no engine mutation UFunction called')
     elif args.mode == 'reload_values':
         getter = receipt['original_reload_getter']
         first, second = getter['samples']
