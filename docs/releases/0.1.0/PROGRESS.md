@@ -92,6 +92,8 @@ Gnasher 首发杠杆门槛补齐：`ReloadModel::prime` 可用同一原版库存
 
 私有库存入口细分验证：仅在 `GEARS_PLAYGROUND_EQUIPMENT_OBSERVE` 候选中新增只读 `PlaygroundEquipmentReadiness` 位码，分别观察 Hook、视口、`PlayerController` 类、`PlayerTick` 和 `WarLocalPlayer`；默认关闭的 DLL 不导出它。候选与默认 DLL 均重新编译，导出隔离核对通过。一次不同条件的购买版置后静音测试 `equip-snapshot-1022d` 将候选注入延后 20 秒，120 秒观察后仍仅得位码 `1`（Hook 已启用，其余四项均未出现）；`PlaygroundEnable=2` 计 278 次，没有有效库存快照。回执在忽略的 `analysis/weapon-equipment-snapshot/equip-snapshot-1022d-receipt.json`；`PlaygroundShutdown=0`，测试 PID `52392` 已退出，音频守护已恢复。延后注入未解决本次初始化未就绪，不能归咎于库存查询，也不能据此否定过去成功进入场景的独立样本。相同条件不再重跑；下次须先找到游戏初始化条件变化的证据。
 
+库存切换私有候选：核对已保存的 `WarInventoryManager.SetWeaponFromSlot` 脚本，确认原版槽位选择由它处理无弹药反馈和 `SetCurrentWeapon`，而非直接改当前枪指针。新增默认关闭、必须同时启用库存观察的 `GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST`：外部只提交 0–3 号槽；游戏线程重新读取有效快照，仅限已创建的私有 Playground 场，才调用原版 `SetWeaponFromSlot`，并观察装备完成、身份中断或 5 秒超时。测试子进程还须带置后和静音标记。私有测试 DLL 和默认关闭版均编译通过，导出表证明测试入口仅在前者，`WeaponEquipmentModelTest` 通过。当前购买版启动尚未达到游戏线程库存边界，**此候选没有游戏内调用证据**；不接入默认启动器，不视为可玩的取枪实现。
+
 ## 合并0.0.2启动修复（2026-10-22）
 
 按用户要求切回 `codex/0.1.0`，将 `codex/0.0.2` 的完整修复与发布记录并入。合并前开发检查点为 `963d965b8590555bae31d047bef6ccc27d3e6469`，热修复源为 `a0a39b0`。公开0.0.1是独立根提交，两分支没有共同祖先；以公开源码 `4b621fc430fa5f96eba3bf70399810d3fd51e202` 为明确的内容基准进行三方合并，并保留两个原始父历史，不改写既有提交或发布标签。

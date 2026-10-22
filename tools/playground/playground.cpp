@@ -219,6 +219,26 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentReadiness(void*
     return bits;
 }
 #endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
+// Status: 0 queued, 1 original call sent, 2 invalidated, 3 ignored/busy,
+// 4 empty slot, 5 model-only stow/unholster, 6 equipped, 7 timed out,
+// 8 reflected original call failed. Only the private test build exports this.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchTest(void* slot_arg){
+    wchar_t behind[4]{},muted[4]{};
+    if(GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)!=1||behind[0]!=L'1'||
+       GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)!=1||muted[0]!=L'1'||
+       !enabled.load(std::memory_order_acquire)||!playground::automatic)return 1;
+    const auto slot=reinterpret_cast<uptr>(slot_arg);
+    if(slot>=4)return 2;
+    unsigned empty=4;
+    if(!vrequip::queued_slot.compare_exchange_strong(empty,unsigned(slot)))return 3;
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchStatus(void*){
+    if(vrequip::queued_slot.load(std::memory_order_acquire)<4)return 0;
+    return vrequip::last_switch_status.load(std::memory_order_acquire);
+}
+#endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundTestEnter(void*){
     // Available only in the user's explicit unattended, muted test child.
     wchar_t behind[4]{},muted[4]{};
@@ -255,6 +275,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     const auto until=GetTickCount64()+2000;
     while(callbacks.load()&&GetTickCount64()<until)Sleep(1);
     if(callbacks.load())return 2;
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
+    vrequip::reset_switch_test();
+#endif
     MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8));MH_Uninitialize();
     playground::automatic=false;playground::ready=false;playground::requested=false;
     playground::phase=L"stopped";playground::status();

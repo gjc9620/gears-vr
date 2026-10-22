@@ -1,11 +1,32 @@
-// Private, opt-in game-thread inventory observer. It performs no equipment
-// action. All function calls below are original read-only UnrealScript queries.
+// Private, opt-in game-thread inventory observer. The separately gated switch
+// test may invoke the game's original slot function in an owned test arena.
 namespace vrequip {
 gears_weapon::WeaponEquipmentModel model;
 gears_weapon::EquipmentSnapshot previous{};
 const wchar_t* previous_error{};
 bool have_previous{};
 ULONGLONG next_probe{};
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
+std::atomic<unsigned> queued_slot{4};
+std::atomic<unsigned> last_switch_status{};
+ULONGLONG switch_deadline{};
+
+gears_weapon::BodySlot body_for_inventory_slot(unsigned slot){
+    switch(slot){
+        case 0:return gears_weapon::BodySlot::pistol;
+        case 1:return gears_weapon::BodySlot::grenade;
+        case 2:return gears_weapon::BodySlot::weapon_2;
+        case 3:return gears_weapon::BodySlot::weapon_1;
+        default:return gears_weapon::BodySlot::none;
+    }
+}
+void reset_switch_test(){
+    queued_slot.store(4,std::memory_order_release);
+    last_switch_status.store(0,std::memory_order_release);
+    switch_deadline=0;
+    model.reset();
+}
+#endif
 
 bool result_property(playground::Args& call,const wchar_t* kind,unsigned size){
     const auto p=call.prop(L"ReturnValue");
@@ -108,13 +129,74 @@ bool changed(gears_weapon::EquipmentSnapshot const& a,
 }
 void tick(uptr pc){
     const auto now=GetTickCount64();
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
+    const unsigned requested_slot=queued_slot.exchange(4,std::memory_order_acq_rel);
+    if(now<next_probe&&requested_slot>=4)return;
+#else
     if(now<next_probe)return;
+#endif
     next_probe=now+500;
     gears_weapon::EquipmentSnapshot game{};
     const wchar_t* error{};
     const bool ok=snapshot(pc,game,error);
-    if(!ok){model.reset();game={};}
-    else model.observe(game);
+    if(!ok){model.reset();game={};
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
+        if(switch_deadline)
+            last_switch_status.store(2,std::memory_order_release);
+        switch_deadline=0;
+#endif
+    }
+    else{
+        const auto observed=model.observe(game);
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
+        if(observed.event==gears_weapon::EquipmentEvent::equipped){
+            switch_deadline=0;
+            last_switch_status.store(6,std::memory_order_release);
+        }else if(observed.event==gears_weapon::EquipmentEvent::interrupted&&switch_deadline){
+            switch_deadline=0;
+            last_switch_status.store(2,std::memory_order_release);
+        }else if(model.switch_pending()&&switch_deadline&&now>=switch_deadline){
+            model.switch_rejected(game);switch_deadline=0;
+            last_switch_status.store(7,std::memory_order_release);
+        }
+#endif
+    }
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
+    if(requested_slot<4){
+        // Only an owned private arena may exercise the original state path.
+        // Recheck all identities on the game thread; the external request
+        // carries a slot number, never a weapon pointer.
+        if(!ok||!playground::ready||pc!=playground::arena_pc||
+           game.world!=playground::arena_world||game.pawn!=playground::arena_pawn){
+            last_switch_status.store(2,std::memory_order_release);
+        }else{
+            const auto decision=model.tap(body_for_inventory_slot(requested_slot),game);
+            unsigned status=3;
+            if(decision.event==gears_weapon::EquipmentEvent::empty_slot)status=4;
+            else if(decision.event==gears_weapon::EquipmentEvent::request_unholster||
+                    decision.event==gears_weapon::EquipmentEvent::request_stow)status=5;
+            else if(decision.event==gears_weapon::EquipmentEvent::request_original_switch){
+                const auto inv=playground::pointer(static_cast<uptr>(game.pawn),L"InvManager");
+                playground::Args switch_slot(inv,L"SetWeaponFromSlot");
+                const auto parameter=switch_slot.prop(L"Slot");
+                const bool valid=playground::instance(inv,L"WarInventoryManager")&&
+                    parameter&&get<unsigned>(parameter+0x74)==1&&
+                    playground::named(get<uptr>(parameter+0x50),L"ByteProperty")&&
+                    (get<unsigned long long>(parameter+0x78)&0x80)!=0;
+                if(valid&&switch_slot.set(L"Slot",static_cast<std::uint8_t>(requested_slot)).run()){
+                    switch_deadline=now+5000;status=1;
+                }else{
+                    model.switch_rejected(game);switch_deadline=0;status=8;
+                }
+            }
+            last_switch_status.store(status,std::memory_order_release);
+            if(log_file){fwprintf(log_file,L"equipment_switch_test slot=%u status=%u weapon=%p\n",
+                requested_slot,status,reinterpret_cast<void*>(static_cast<uptr>(decision.weapon)));
+                fflush(log_file);}
+        }
+    }
+    if(model.switch_pending())next_probe=now+50;
+#endif
     if(have_previous&&previous_error==error&&!changed(previous,game))return;
     have_previous=true;previous_error=error;previous=game;
     if(!log_file)return;
