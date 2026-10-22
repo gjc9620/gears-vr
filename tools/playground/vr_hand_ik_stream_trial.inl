@@ -30,6 +30,9 @@ struct Trial {
     std::array<gears_vr::Viewpoint,2> xr_grips{},xr_targets{};
     std::uint64_t xr_next_open{},xr_cursor{UINT64_MAX};
     unsigned xr_fresh{},xr_none{},xr_resets{},xr_binds{},xr_masks[4]{};
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    unsigned xr_equipment_phase{},xr_equipment_changes{};
+#endif
     bool xr_open{},xr_ready{};
     float xr_world_time{};
 #endif
@@ -168,6 +171,9 @@ void sample(const wchar_t* phase,Snapshot const& value,unsigned lease,unsigned m
         phase,lease,(lease-1)/8,trial.samples++,trial.sequence,stamp.QuadPart,value.ms,
         value.world_time,value.last_render_time,unsigned(value.mesh_tick_known),value.mesh_tick,
         unsigned(value.action_idle),trial.epoch,mask);
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    fwprintf(log_file,L" equipment_phase=%u",trial.xr_equipment_phase);
+#endif
     freehands::print_matrix(L"mesh",value.mesh_world);freehands::print_matrix(L"left",value.left);
     freehands::print_matrix(L"right",value.right);
     for(unsigned i=0;i<4;++i){fwprintf(log_file,L" target%u=",i);
@@ -199,6 +205,12 @@ void end(unsigned code,const wchar_t* reason){
         trial.xr_masks[1],trial.xr_masks[2],trial.xr_masks[3],
         trial.xr_start.expected_native_world_generation,trial.xr_start.native_started_qpc);
         fflush(log_file);}
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    if(log_file){fwprintf(log_file,L"hand_ik_equipment_end equipment_phase=%u phase_changes=%u "
+        L"leases=%u dirty=%u faulted=%u ownership_proved=0\n",trial.xr_equipment_phase,
+        trial.xr_equipment_changes,leases.load(),unsigned(trial.lease.dirty()),unsigned(trial.lease.faulted()));
+        fflush(log_file);}
+#endif
 #endif
 }
 bool restore(const wchar_t* reason){
@@ -216,6 +228,42 @@ bool restore(const wchar_t* reason){
     if(!sampled){end(7,L"restored_but_pre_restore_sample_unknown");return false;}
     return true;
 }
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+// Game-thread hand journal readiness only. Stop/ended status must not prevent
+// the equipment owner from completing its original attachment restoration.
+bool equipment_ready(){return !trial.lease.dirty()&&!trial.lease.faulted();}
+bool yield_for_equipment(const wchar_t* reason){
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
+    const bool dirty=trial.lease.dirty(),faulted=trial.lease.faulted();
+    if(!used.load(std::memory_order_acquire)&&!dirty&&!faulted)return true;
+    // Revoke geometry and all previously issued plans before rollback, even
+    // when rollback fails. Never reopen a stopped trial or its write budget.
+    ++trial.epoch;trial.stability.reset();trial.xr_ready=false;
+    gears_hand_stream::Context blocked{};
+    blocked.action_epoch=trial.epoch;blocked.observed_ms=GetTickCount64();
+    blocked.clean=!dirty&&!faulted;
+    trial.xr_policy.observe(blocked,nullptr,blocked.observed_ms);
+    for(auto& binding:trial.xr_binding){binding.reset();++trial.xr_resets;}
+    if(!trial.ended&&!stop_requested.load(std::memory_order_acquire)&&
+       active_visible.load(std::memory_order_acquire)&&(trial.phase==1||trial.phase==2)){
+        trial.phase=1;status=1;
+    }
+    if(dirty)++trial.action_yields;
+    const bool restored=!dirty||(!trial.releasing&&restore(reason?reason:L"equipment_boundary"));
+    // A diagnostic sample failure can end the hand trial after a verified
+    // clean rollback. It must not strand the equipment owner's attachment.
+    const bool ready=equipment_ready();
+    if(!trial.lease.dirty())trial.applied_mask=0;
+    if(log_file){fwprintf(log_file,L"hand_ik_equipment_yield reason=%ls equipment_phase=%u "
+        L"epoch=%u dirty_before=%u faulted_before=%u dirty_after=%u faulted_after=%u "
+        L"restored=%u helper_clean=%u bindings_cleared=3 leases=%u stopped=%u ended=%u\n",
+        reason?reason:L"equipment_boundary",trial.xr_equipment_phase,trial.epoch,unsigned(dirty),unsigned(faulted),
+        unsigned(trial.lease.dirty()),unsigned(trial.lease.faulted()),unsigned(restored),unsigned(ready),
+        leases.load(),unsigned(stop_requested.load(std::memory_order_acquire)),unsigned(trial.ended));
+        fflush(log_file);}
+    return ready;
+}
+#endif
 bool related(uptr object){
     for(unsigned i=0;i<trial.action_object_count;++i)if(trial.action_objects[i]==object)return registered(object);
     if(!registered(object)||playground::deleted(object))return false;
@@ -238,6 +286,12 @@ void before_action(uptr object,uptr function){
         L"StartMeleeAttack",L"StopMeleeAttack",L"ForceStopMeleeAttack",L"ForciblyStopMeleeAttack",
         L"ClientStopMeleeAttack",L"MeleeAttackStarted",L"MeleeAttackEnded",L"BeginState",L"EndState",
         L"SetWeaponTemporarilyHolstered",L"HolsterWeaponTemporarily",
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        L"SetWeaponFromSlot",L"SetCurrentWeapon",L"ChangedWeapon",L"ClientWeaponSet",
+        L"AttachWeaponToHand",L"DetachWeapon",L"AttachWeaponToSlot",L"DetachWeaponFromSlot",
+        L"AttachComponent",L"AttachComponentToSocket",L"DetachComponent",L"DetachComponentFromSocket",
+        L"ForceReload",L"Died",L"Destroyed",
+#endif
         L"PlayCustomAnim",L"PlayCustomAnimByDuration",L"StopCustomAnim"};
     bool watched=false;for(const auto item:actions)if(!wcscmp(item,label)){watched=true;break;}
     if(!watched)return;
@@ -247,6 +301,13 @@ void before_action(uptr object,uptr function){
     if(!wcscmp(label,L"StartMeleeAttack"))trial.melee_seen=true;
     if(!wcscmp(label,L"PlayCustomAnim")||!wcscmp(label,L"PlayCustomAnimByDuration"))trial.slot_play_seen=true;
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    const bool dirty=trial.lease.dirty();
+    const bool restored=yield_for_equipment(label);
+    if(log_file){fwprintf(log_file,L"hand_ik_stream_trial_action function=%ls epoch=%u "
+        L"dirty_before=%u dirty_after=%u restored=%u equipment_phase=%u\n",label,trial.epoch,
+        unsigned(dirty),unsigned(trial.lease.dirty()),unsigned(restored),trial.xr_equipment_phase);fflush(log_file);}
+#else
     ++trial.epoch;trial.stability.reset();
     const bool dirty=trial.lease.dirty();
     if(dirty){
@@ -267,6 +328,7 @@ void before_action(uptr object,uptr function){
     trial.xr_policy.observe(blocked,nullptr,blocked.observed_ms);
     for(auto& binding:trial.xr_binding)binding.reset();
     trial.xr_ready=false;trial.phase=1;status=1;
+#endif
 #endif
 }
 bool melee_signature(uptr pawn,bool stop){

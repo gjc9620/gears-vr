@@ -42,13 +42,32 @@ bool xr_identity(Snapshot const& value){
         value.world_time>=trial.xr_world_time&&
         (!trial.anchored||same_layout(trial.anchor,value));
 }
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+bool xr_equipment_gate(Snapshot const& value,unsigned expected,const wchar_t* stage){
+    const unsigned current=vrequip::hand_equipment_phase(value.pc,value.pawn,value.weapon);
+    if(expected&&expected<=2&&trial.xr_equipment_phase==expected&&current==expected)return true;
+    const bool clean=yield_for_equipment(stage);
+    if(log_file){fwprintf(log_file,L"hand_ik_equipment_gate stage=%ls expected_phase=%u current_phase=%u "
+        L"saved_phase=%u hand_clean=%u writes=0 epoch=%u\n",stage,expected,current,
+        trial.xr_equipment_phase,unsigned(clean),trial.epoch);fflush(log_file);}
+    return false;
+}
+#endif
 gears_hand_stream::Context xr_context(Snapshot const& value,bool ready){
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    if(ready&&!xr_equipment_gate(value,trial.xr_equipment_phase,L"plan_context"))ready=false;
+    ready=ready&&trial.xr_ready;
+#endif
     gears_hand_stream::Context context{};
     context.game={trial.xr_start.objects[gears_hand_xr_trial::world_info].address,
         value.pc,value.pawn,value.mesh,value.weapon};
     context.expected_native_world_generation=trial.xr_start.expected_native_world_generation;
     context.action_epoch=trial.epoch;context.observed_ms=value.ms;
-    context.idle_ready=ready;context.clean=!trial.lease.dirty();return context;
+    context.idle_ready=ready;context.clean=!trial.lease.dirty();
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    context.clean=context.clean&&!trial.lease.faulted();
+#endif
+    return context;
 }
 void xr_reset_bindings(unsigned mask){
     for(unsigned hand=0;hand<2;++hand)if(mask&(1u<<hand)){
@@ -77,6 +96,9 @@ void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigne
         L"units_per_metre=%.9g tracked_mask=%u planned_mask=%u bind_mask=%u",
         leases.load()+1,frame.serial,frame.sequence,frame.session,frame.space_epoch,frame.input_epoch,
         frame.world_generation,frame.created_ms,frame.units_per_metre,unsigned(frame.valid_mask),mask,bind_mask);
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    fwprintf(log_file,L" equipment_phase=%u action_epoch=%u",trial.xr_equipment_phase,trial.epoch);
+#endif
     for(unsigned hand=0;hand<2;++hand){
         const auto& grip=trial.xr_grips[hand];const auto& target=trial.xr_targets[hand];
         fwprintf(log_file,L" grip%u=%.12g,%.12g,%.12g,%.12g,%.12g,%.12g "
@@ -105,6 +127,10 @@ void post_tick(uptr pc){
             L"external_frozen_native_epoch=%llu native_started_qpc=%llu world_handoff_supported=0\n",
             xr_max_leases,trial.xr_start.expected_native_world_generation,trial.xr_start.native_started_qpc);
             fflush(log_file);}
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        if(log_file){fwprintf(log_file,L"hand_ik_equipment_begin original_hand_phase=1 owned_detached_phase=2 "
+            L"blocked_phase=0 max_leases=%u budget_ms=15000 ownership_proved=0\n",xr_max_leases);fflush(log_file);}
+#endif
     }
     if(!active_visible.load(std::memory_order_acquire)||trial.ended||!trial.phase)return;
     const auto now=GetTickCount64();
@@ -123,9 +149,27 @@ void post_tick(uptr pc){
     }
     trial.xr_world_time=value.world_time;
     if(!trial.anchored){trial.anchor=value;trial.anchored=true;}
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    const unsigned observed_phase=vrequip::hand_equipment_phase(pc,value.pawn,value.weapon);
+    const unsigned equipment_phase=observed_phase<=2?observed_phase:0;
+    const bool equipment_changed=equipment_phase!=trial.xr_equipment_phase;
+    if(equipment_changed){
+        const auto previous=trial.xr_equipment_phase;
+        const bool clean=yield_for_equipment(L"equipment_phase_changed");
+        trial.xr_equipment_phase=equipment_phase;++trial.xr_equipment_changes;
+        if(log_file){fwprintf(log_file,L"hand_ik_equipment_phase previous=%u current=%u hand_clean=%u "
+            L"epoch=%u leases=%u consume_blocked_baseline=1 writes=0\n",previous,equipment_phase,
+            unsigned(clean),trial.epoch,leases.load());fflush(log_file);}
+        if(!clean){if(!trial.ended)end(trial.lease.dirty()?8:7,L"equipment_phase_handback_failed");return;}
+    }
+#endif
     const bool quiet=slots_quiet(value);
     const bool qualified=value.mesh_tick_known&&value.action_idle&&
-        handik::baseline_strengths(value)&&quiet&&trial.tick_epoch==trial.epoch;
+        handik::baseline_strengths(value)&&quiet&&trial.tick_epoch==trial.epoch
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        &&equipment_phase&&!equipment_changed&&equipment_phase==trial.xr_equipment_phase
+#endif
+        ;
     if(!qualified){
         trial.stability.reset();trial.xr_ready=false;trial.phase=1;status=1;
     }else if(!trial.xr_ready&&value.mesh_tick!=trial.previous.mesh_tick){
@@ -170,24 +214,43 @@ void post_tick(uptr pc){
     trial.sequence=frame.sequence;
     const auto lease=leases.load()+1;
     Snapshot check{};
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    const bool checked=handik::snapshot(pc,check)&&xr_identity(check);
+    if(checked&&!xr_equipment_gate(check,equipment_phase,L"prewrite_snapshot"))return;
+    if(!checked||!check.action_idle||
+#else
     if(!handik::snapshot(pc,check)||!xr_identity(check)||!check.action_idle||
+#endif
        !handik::baseline_strengths(check)||!handik::same_controls(value,check)||
        value.mesh_world!=check.mesh_world||value.left!=check.left||value.right!=check.right||
        !slots_quiet(check)||trial.tick_epoch!=trial.epoch){
         end(7,L"xr_prewrite_state_changed");return;
     }
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    const auto authorize_context=xr_context(check,trial.xr_ready);
+    const unsigned mask=trial.xr_policy.authorize(plan,authorize_context,GetTickCount64());
+#else
     const unsigned mask=trial.xr_policy.authorize(plan,xr_context(check,trial.xr_ready),GetTickCount64());
+#endif
     if(!mask)return;
     if(!log_file||ferror(log_file)){end(7,L"xr_log_unavailable_before_write");return;}
     sample(L"before",value,lease,0);
     xr_log_pose(frame,mask,plan.bind_mask);
     // fflush may block. Recheck the receipt and game sample after all logging,
     // immediately before the first journal snapshot or mutation.
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    if(!xr_equipment_gate(check,equipment_phase,L"after_log_flush"))return;
+    const auto final_context=xr_context(check,trial.xr_ready);
+#endif
     const auto write_now=GetTickCount64();
     if(stop_requested.load(std::memory_order_acquire)){end(6,L"xr_stopped_before_write");return;}
     if(write_now>trial.deadline){end(7,L"xr_deadline_before_write");return;}
     if(ferror(log_file)||trial.tick_epoch!=trial.epoch||
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+       trial.xr_policy.authorize(plan,final_context,write_now)!=mask){
+#else
        trial.xr_policy.authorize(plan,xr_context(check,trial.xr_ready),write_now)!=mask){
+#endif
         end(7,L"xr_receipt_or_log_expired_before_write");return;
     }
     trial.lease_anchor=check;Backend backend{};

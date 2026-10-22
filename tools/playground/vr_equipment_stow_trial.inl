@@ -32,6 +32,16 @@ ULONGLONG pending_until{};
 std::array<unsigned char,44> hand_attachment{};
 bool have_hand_attachment{};
 
+bool yield_hands(const wchar_t* reason){
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    const bool clean=handstream::yield_for_equipment(reason);
+    if(log_file){fwprintf(log_file,L"hand_equipment_handback reason=%ls clean=%u\n",reason,unsigned(clean));fflush(log_file);}
+    return clean;
+#else
+    (void)reason;return true;
+#endif
+}
+
 bool field(uptr object,const wchar_t* label,const wchar_t* kind,void* output,unsigned bytes){
     const auto property=playground::property(object,label);
     const auto cls=get<uptr>(object+0x50);
@@ -210,7 +220,14 @@ struct Backend {
             unsigned(value),epoch);fflush(log_file);}
         // Logging can block while an external Stop arrives. Validate after it,
         // using the original request deadline/key, immediately before true.
-        const bool allowed=!value||(enforce_expected&&commit_allowed(expected,commit_until));
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        if(log_file){fwprintf(log_file,L"hand_equipment_helper holstered=%u hand_clean=%u\n",
+            unsigned(value),unsigned(handstream::equipment_ready()));fflush(log_file);}
+        const bool hand_clean=handstream::equipment_ready();
+#else
+        constexpr bool hand_clean=true;
+#endif
+        const bool allowed=hand_clean&&(!value||(enforce_expected&&commit_allowed(expected,commit_until)));
         // acquire pre-journals dirty before entering this backend. If no true
         // was attempted, a newly detached mesh must never grant rollback false.
         if(!allowed)lease.revoke();
@@ -223,6 +240,8 @@ struct Backend {
 void publish(){dirty_visible.store(lease.dirty(),std::memory_order_release);}
 bool restore(const wchar_t* reason){
     const bool was_dirty=lease.dirty();Backend backend{};
+    const bool hands=!was_dirty||yield_hands(reason);
+    if(!hands){lease.revoke();stop_requested=true;}
     const bool ok=lease.restore(backend);publish();
     if(was_dirty){
         model.reset();deadline=0;
@@ -230,7 +249,20 @@ bool restore(const wchar_t* reason){
         if(log_file){fwprintf(log_file,L"equipment_stow_restore reason=%ls clean=%u fault=%u revoked=%u epoch=%llu\n",
             reason,unsigned(!lease.dirty()),unsigned(lease.faulted()),unsigned(lease.revoked()),epoch);fflush(log_file);}
     }
-    return ok;
+    return ok&&hands;
+}
+bool relinquish_original_hand(const wchar_t* reason){
+    Backend backend{};
+    // No handback engine call precedes revocation of the old stow journal.
+    const bool ok=lease.relinquish(backend);publish();
+    model.reset();deadline=0;
+    if(!ok)stop_requested=true;
+    const bool hands=yield_hands(reason);
+    if(!hands)stop_requested=true;
+    status=ok&&hands?6u:8u;
+    if(log_file){fwprintf(log_file,L"equipment_stow_relinquish reason=%ls clean=%u hand_clean=%u fault=%u revoked=%u epoch=%llu\n",
+        reason,unsigned(!lease.dirty()),unsigned(hands),unsigned(lease.faulted()),unsigned(lease.revoked()),epoch);fflush(log_file);}
+    return ok&&hands;
 }
 bool idle_flags(gears_weapon::EquipmentSnapshot const& game){
     bool melee{},special{},mirrored{},wants{},reload{},transition{};std::uint8_t move{};int health{};
@@ -266,7 +298,11 @@ bool commit_allowed(Key const& expected,ULONGLONG until){
        current.attachment!=gears_weapon::StowAttachment::original_hand)return false;
     // This final decision is the commit point. A later Stop observes dirty
     // and drains its restore before hooks can be disabled.
-    return !stop_requested.load()&&!shutdown_requested.load()&&GetTickCount64()<until;
+    return !stop_requested.load()&&!shutdown_requested.load()&&GetTickCount64()<until
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        &&handstream::equipment_ready()
+#endif
+        ;
 }
 bool acquire(Key const& expected,ULONGLONG until){
     Backend backend{expected,until,true};
@@ -281,6 +317,7 @@ bool acquire(Key const& expected,ULONGLONG until){
 void finish_pending(bool success,const wchar_t* reason,WeaponState state){
     const auto slot=pending_slot;
     if(slot>=4)return;
+    if(!success&&!yield_hands(reason))stop_requested=true;
     const auto weapon=pending.key().objects[6].address;
     if(success)model=pending_model;else model.reset();
     const unsigned result=success?10u:12u;
@@ -309,6 +346,7 @@ Transition transition(uptr pc,gears_weapon::EquipmentSnapshot const& game,bool h
     controller=pc;
     // Seal permission before the synchronous releases can re-enter game code.
     struct YieldScope {YieldScope(){yielding=true;}~YieldScope(){yielding=false;}} scope;
+    if(!yield_hands(L"before_body_slot_transition"))return Transition::failed;
     gears_weapon::StowState<Key> before{};
     if(holster){
         if(lease.dirty())return Transition::failed;
@@ -347,6 +385,12 @@ Transition transition(uptr pc,gears_weapon::EquipmentSnapshot const& game,bool h
     if(log_file){fwprintf(log_file,L"equipment_stow_deferred slot=%u state=%u yield=%u timeout_ms=1000 epoch=%llu\n",
         slot,unsigned(state),unsigned(released),epoch);fflush(log_file);}
     return Transition::deferred;
+}
+bool before_switch(uptr pc,uptr weapon){
+    struct YieldScope {YieldScope(){yielding=true;}~YieldScope(){yielding=false;}} scope;
+    return yield_hands(L"before_body_slot_switch")&&
+        (!weapon||vrfire::yield_for_equipment(pc,weapon)==vrfire::EquipmentYield::ready)&&
+        restore(L"before_body_slot_switch");
 }
 bool advance_pending(uptr pc){
     if(!pending.active())return false;
@@ -428,10 +472,11 @@ void tick(){
     if(!read_state(current)||!(current.key==lease.key())||
        (current.attachment!=gears_weapon::StowAttachment::detached&&
         current.attachment!=gears_weapon::StowAttachment::original_hand)){
-        lease.revoke();status=8;stop_requested=true;return;
+        lease.revoke();status=8;stop_requested=true;
+        yield_hands(L"stow_authentication_lost");return;
     }
     if(current.attachment==gears_weapon::StowAttachment::original_hand)
-        restore(L"original_hand_already_restored");
+        relinquish_original_hand(L"original_hand_already_restored");
 }
 void reset(){
     if(!lease.reset())return;
@@ -441,10 +486,61 @@ void reset(){
     hand_attachment={};have_hand_attachment=false;
 }
 } // namespace stow
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+unsigned hand_equipment_phase(uptr pc,uptr pawn,uptr weapon){
+    // This is private evidence for the same fixed arena, not a new public
+    // animation ownership bit. A bare detached component grants no authority.
+    if(GetCurrentThreadId()!=game_thread.load()||pc!=playground::arena_pc||
+       pawn!=playground::arena_pawn||!weapon||stow::yielding||
+       stow::pending_visible.load()||stow::stop_requested.load()||
+       stow::shutdown_requested.load()||stow::lease.faulted()||
+       (stow::controller&&stow::controller!=pc))return 0;
+    stow::controller=pc;
+    if(stow::lease.dirty()&&GetTickCount64()>=stow::deadline){
+        stow::restore(L"hand_phase_stow_deadline");return 0;
+    }
+    gears_weapon::StowState<stow::Key> current{};
+    const bool known=stow::read_state(current)&&current.key.objects[2].address==pc&&
+        current.key.objects[3].address==pawn&&current.key.objects[6].address==weapon;
+    if(stow::lease.dirty()){
+        if(known&&current.key==stow::lease.key()&&
+           current.attachment==gears_weapon::StowAttachment::original_hand){
+            stow::relinquish_original_hand(L"hand_phase_original_hand_restored");return 0;
+        }
+        if(!known||!(current.key==stow::lease.key())||stow::lease.revoked()||
+           current.attachment!=gears_weapon::StowAttachment::detached){
+            stow::lease.revoke();stow::status=8;stow::stop_requested=true;
+            stow::yield_hands(L"hand_phase_stow_authentication_lost");return 0;
+        }
+    }else if(!known||current.attachment!=gears_weapon::StowAttachment::original_hand)return 0;
+    const auto expected=current.key;
+    const bool owned=stow::lease.dirty();
+    gears_weapon::EquipmentSnapshot fresh{};const wchar_t* error{};
+    if(!snapshot(pc,fresh,error)||fresh.current_weapon!=weapon||!stow::idle_flags(fresh)||
+       stow::weapon_state(weapon)!=stow::WeaponState::active||stow::yielding||
+       stow::pending_visible.load()||stow::stop_requested.load()||stow::shutdown_requested.load())return 0;
+    gears_weapon::StowState<stow::Key> final{};
+    const auto wanted=owned?gears_weapon::StowAttachment::detached:gears_weapon::StowAttachment::original_hand;
+    if(!stow::read_state(final)||!(final.key==expected)||final.attachment!=wanted||
+       stow::lease.dirty()!=owned){
+        if(owned&&stow::lease.dirty()){
+            stow::lease.revoke();stow::status=8;stow::stop_requested=true;
+            stow::yield_hands(L"hand_phase_final_authentication_lost");
+        }
+        return 0;
+    }
+    if(stow::stop_requested.load()||stow::shutdown_requested.load()||
+       stow::lease.faulted()||(owned&&(stow::lease.revoked()||GetTickCount64()>=stow::deadline)))return 0;
+    return owned?2u:1u;
+}
+#endif
 bool stow_fire_permitted(uptr pc,uptr weapon){
     return !stow::shutdown_requested.load()&&!stow::stop_requested.load()&&
         !stow::yielding&&!stow::pending_visible.load()&&
         !stow::lease.dirty()&&!stow::lease.faulted()&&playground::ready&&test_environment()&&
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        handstream::equipment_ready()&&
+#endif
         pc==playground::arena_pc&&model.held_weapon()==weapon&&
         playground::pointer(pc,L"Pawn")==playground::arena_pawn&&
         playground::pointer(playground::arena_pawn,L"Weapon")==weapon;

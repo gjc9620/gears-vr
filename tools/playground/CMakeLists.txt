@@ -71,6 +71,13 @@ option(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE "Private bounded read-only pickup/m
 option(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE "Private read-only CallFunction animation observer, without another native hook owner" OFF)
 option(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL "Private bounded four-channel dual-hand IK driver and immediate action hand-back" OFF)
 option(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL "Private bounded GVE6 grip to dual-hand IK recording in a fixed owned arena" OFF)
+option(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL "Private bounded dual-hand and owned weapon-stow coexistence trial" OFF)
+if(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    if(NOT GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL OR NOT GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+        message(FATAL_ERROR "Combined hand/equipment trial requires XR handstream and owned weapon stow")
+    endif()
+    target_compile_definitions(GearsPlayground PRIVATE GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL=1)
+endif()
 if(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
     if(NOT GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
         message(FATAL_ERROR "XR hand recording requires the reversible stream trial infrastructure")
@@ -82,14 +89,17 @@ if(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
         message(FATAL_ERROR "Dual-hand stream trial requires both original animation observation boundaries")
     endif()
     if(GEARS_PLAYGROUND_HAND_IK_TRIAL OR GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL OR
-       GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2 OR GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 OR
-       GEARS_PLAYGROUND_VR_R2_SIM_TEST OR GEARS_PLAYGROUND_FREE_HANDS_PROBE OR
-       GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST OR GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST OR
+       GEARS_PLAYGROUND_FREE_HANDS_PROBE OR
        GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST OR GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST OR
        GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST OR GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST OR
        GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL OR GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST OR
        GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
         message(FATAL_ERROR "Dual-hand stream trial must be isolated from other private input/skeletal writers")
+    endif()
+    if((GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2 OR GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 OR
+        GEARS_PLAYGROUND_VR_R2_SIM_TEST OR GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST OR
+        GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST) AND NOT GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        message(FATAL_ERROR "Dual-hand input/equipment coexistence requires the explicit combined trial")
     endif()
     target_compile_definitions(GearsPlayground PRIVATE GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL=1)
     target_compile_options(GearsPlayground PRIVATE /W4 /WX /EHsc)
@@ -182,11 +192,14 @@ if(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
         message(FATAL_ERROR "Stow trial requires original equipment, R2/L2 and CallFunction action boundaries")
     endif()
     if(GEARS_PLAYGROUND_HAND_IK_TRIAL OR GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL OR
-       GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL OR GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST OR
+       GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST OR
        GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST OR GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST OR
        GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST OR GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL OR
        GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST OR GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
         message(FATAL_ERROR "Stow trial must be isolated from other private skeletal/component writers")
+    endif()
+    if(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL AND NOT GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        message(FATAL_ERROR "Weapon stow with dual-hand writes requires the explicit combined trial")
     endif()
     target_compile_definitions(GearsPlayground PRIVATE GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST=1)
     target_compile_options(GearsPlayground PRIVATE /W4 /WX /EHsc)

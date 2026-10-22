@@ -28,6 +28,18 @@ struct GuardRejectedBackend:Backend {
         return false;
     }
 };
+struct RelinquishBackend:Backend {
+    WeaponStowLease<unsigned>* journal{};
+    bool check_revoked{},reentered{};
+    bool read(StowState<unsigned>& out){
+        if(check_revoked){
+            assert(journal->revoked());
+            check_revoked=false;reentered=true;
+            assert(!journal->restore(*this)); // Reentrant detached cannot call false.
+        }
+        return Backend::read(out);
+    }
+};
 int main(){
     {
         Backend b;WeaponStowLease<unsigned> lease;
@@ -125,6 +137,24 @@ int main(){
             b.state.attachment=StowAttachment::original_hand;
             assert(lease.restore(b)&&!lease.dirty()&&b.calls.empty());
         }
+    }
+    {
+        WeaponStowLease<unsigned> lease;Backend b;
+        assert(lease.acquire(b));b.state.attachment=StowAttachment::original_hand;
+        assert(lease.relinquish(b)&&!lease.dirty()&&lease.revoked()&&!lease.faulted());
+        assert(b.calls==std::vector<bool>{true});
+        assert(lease.restore(b)&&lease.revoked()); // Restore never reopens authority.
+        assert(lease.acquire(b)&&lease.dirty()&&!lease.revoked()); // A new explicit lease only.
+        assert(lease.restore(b)&&b.calls==(std::vector<bool>{true,true,false}));
+    }
+    {
+        WeaponStowLease<unsigned> lease;RelinquishBackend b;b.journal=&lease;
+        assert(lease.acquire(b));b.check_revoked=true;
+        assert(!lease.relinquish(b)&&b.reentered&&lease.dirty()&&lease.faulted()&&lease.revoked());
+        assert(b.calls==std::vector<bool>{true});
+        b.state.attachment=StowAttachment::original_hand;
+        assert(lease.relinquish(b)&&!lease.dirty()&&lease.faulted());
+        assert(!lease.acquire(b)&&b.calls==std::vector<bool>{true});
     }
     std::puts("stow journal partial-call rollback, foreign state, identity and exact hand restoration passed");
 }

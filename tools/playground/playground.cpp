@@ -153,6 +153,10 @@ enum class EquipmentYield:unsigned {failed,settling,ready};
 EquipmentYield yield_for_equipment(uptr,uptr);
 }
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+namespace handstream {bool yield_for_equipment(const wchar_t*);bool equipment_ready();}
+namespace vrequip {unsigned hand_equipment_phase(uptr,uptr,uptr);}
+#endif
 bool invoke_engine(Request* r){
     if(!r||r->size>sizeof(r->params)||!registered(r->object)||!registered(r->function))return false;
     wchar_t cls[64]{};if(!name(get<uptr>(r->function+0x50),cls,64)||wcscmp(cls,L"Function"))return false;
@@ -613,6 +617,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchStatus(vo
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentStowStop(void*){
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    handstream::stop_requested.store(true,std::memory_order_release);
+#endif
     vrequip::stow::stop_requested.store(true,std::memory_order_release);return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentStowStatus(void*){
@@ -1008,6 +1015,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     // Do not acquire the lifecycle lock while the other caller may be holding
     // it and waiting for this game-thread callback to return.
     if(game_thread.load(std::memory_order_acquire)==GetCurrentThreadId()){
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        handstream::shutdown_requested.store(true,std::memory_order_release);
+        handstream::stop_requested.store(true,std::memory_order_release);
+#endif
         vrequip::stow::shutdown_requested.store(true,std::memory_order_release);
         vrequip::stow::stop_requested.store(true,std::memory_order_release);return 51;
     }
@@ -1031,6 +1042,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     }
 #endif
     LifecycleScope lifecycle;
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    // Stop both producers before either drain. Hand restoration precedes the
+    // attachment helper, including the game-thread cleanup path.
+    handstream::shutdown_requested.store(true,std::memory_order_release);
+    handstream::stop_requested.store(true,std::memory_order_release);
+#endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
     vrequip::stow::shutdown_requested.store(true,std::memory_order_release);
     vrequip::stow::stop_requested.store(true,std::memory_order_release);

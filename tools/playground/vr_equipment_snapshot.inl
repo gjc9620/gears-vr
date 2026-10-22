@@ -794,8 +794,7 @@ void tick(uptr pc){
                 bool may_switch=true;
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
                 // Release before changing the identity owned by an XR press.
-                if((game.current_weapon&&vrfire::yield_for_equipment(pc,game.current_weapon)!=vrfire::EquipmentYield::ready)||
-                   !stow::restore(L"before_body_slot_switch")){
+                if(!stow::before_switch(pc,game.current_weapon)){
                     model.reset();status=12;may_switch=false;
                 }
 #endif

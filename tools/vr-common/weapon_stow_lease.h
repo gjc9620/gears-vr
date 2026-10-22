@@ -38,7 +38,7 @@ public:
         StowState<Key> before{};
         if(!backend.read(before)||!before.ready||
            before.attachment!=StowAttachment::original_hand)return false;
-        key_=before.key;
+        key_=before.key;revoked_=false; // A new explicit, authenticated lease.
         // Even a failed reflected call may have detached the mesh.
         dirty_=true;
         const bool called=backend.set_holstered(true);
@@ -47,6 +47,18 @@ public:
            (after.attachment!=StowAttachment::detached&&
             after.attachment!=StowAttachment::original_hand))revoke();
         if(revoked_||after.attachment!=StowAttachment::detached||!called)return fail(backend);
+        return true;
+    }
+    template<class Backend> bool relinquish(Backend& backend) {
+        if(!dirty_)return true;
+        // The adapter has already observed the original hand. End all writes
+        // before this read can re-enter engine code; detached must never turn
+        // that observation back into permission to call false.
+        revoked_=true;
+        StowState<Key> current{};
+        if(!backend.read(current)||!current.ready||!(current.key==key_)||
+           current.attachment!=StowAttachment::original_hand){faulted_=true;return false;}
+        dirty_=false;
         return true;
     }
     template<class Backend> bool restore(Backend& backend) {
