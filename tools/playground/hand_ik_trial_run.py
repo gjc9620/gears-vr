@@ -215,6 +215,20 @@ def main():
         receipt['error'] = traceback.format_exc()
         raise
     finally:
+        # Preserve a rejected-before-write reason in the private receipt too.
+        # A failed run must never be promoted to a successful effect result.
+        try:
+            pid = json.loads(args.owned_json.read_text(encoding='utf-8'))['game']['pid']
+            log = args.dll.with_name(f'playground-{pid}.log')
+            raw = log.read_bytes()
+            receipt['log'] = str(log)
+            receipt['log_sha256'] = hashlib.sha256(raw).hexdigest()
+            terminal = [line for line in raw.decode('utf-8-sig').splitlines()
+                        if line.startswith('hand_ik_trial_end ')]
+            if terminal:
+                receipt['terminal_line'] = terminal[-1]
+        except (FileNotFoundError, KeyError, ValueError, UnicodeError):
+            pass
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
         (args.owned_json.parent / 'stop').write_text('stop', encoding='ascii')
