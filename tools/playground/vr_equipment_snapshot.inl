@@ -64,6 +64,52 @@ bool mesh_pose_probe(uptr weapon,MeshPoseProbe& out){
         read_bool(out.mesh,L"AbsoluteScale",out.absolute_scale)&&
         read_bool(out.mesh,L"HiddenGame",out.hidden);
 }
+// The shipped weapon can own both a skinned magazine on its gun mesh and a
+// separate StaticMeshComponent for the left hand. Observe the latter before
+// deciding whether a VR reload needs any derived mesh at all. This does not
+// attach, hide, duplicate, or otherwise change either original component.
+struct MagazineVisualProbe {
+    uptr component{},asset{};
+    wchar_t component_name[96]{},asset_name[96]{};
+    bool present{},attached_to_pawn{},hidden{};
+};
+bool magazine_visual_probe(uptr weapon,uptr pawn,MagazineVisualProbe& out){
+    out={};
+    if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon)||
+       !playground::instance(pawn,L"WarPawn")||playground::deleted(pawn)||
+       playground::pointer(weapon,L"Instigator")!=pawn)return false;
+    const auto field=playground::property(weapon,L"MagazineMesh");
+    if(!field||get<unsigned>(field+0x74)!=sizeof(uptr)||
+       !playground::named(get<uptr>(field+0x50),L"ComponentProperty"))return false;
+    out.component=playground::pointer(weapon,L"MagazineMesh");
+    if(!out.component)return true;
+    if(!playground::instance(out.component,L"StaticMeshComponent")||
+       playground::deleted(out.component))return false;
+    out.present=true;
+    name(out.component,out.component_name,96);
+    out.asset=playground::pointer(out.component,L"StaticMesh");
+    if(out.asset){
+        if(!playground::instance(out.asset,L"StaticMesh")||
+           playground::deleted(out.asset))return false;
+        name(out.asset,out.asset_name,96);
+    }
+    if(!read_bool(out.component,L"HiddenGame",out.hidden))return false;
+    const auto pawn_mesh=playground::pointer(pawn,L"Mesh");
+    if(!playground::instance(pawn_mesh,L"SkeletalMeshComponent")||
+       playground::deleted(pawn_mesh))return false;
+    playground::Args attached(pawn_mesh,L"IsComponentAttached");
+    const auto input=attached.prop(L"Component"),result=attached.prop(L"ReturnValue");
+    if(!attached.valid||!input||!result||
+       get<unsigned>(input+0x74)!=sizeof(uptr)||
+       !playground::named(get<uptr>(input+0x50),L"ComponentProperty")||
+       get<unsigned>(result+0x74)!=4||
+       !playground::named(get<uptr>(result+0x50),L"BoolProperty")||
+       !attached.set(L"Component",out.component).run())return false;
+    const auto mask=get<unsigned>(result+0xd0);
+    if(!mask)return false;
+    out.attached_to_pawn=(attached.output<unsigned>()&mask)!=0;
+    return true;
+}
 #endif
 
 gears_weapon::BodySlot body_for_inventory_slot(unsigned slot){
@@ -291,6 +337,17 @@ void tick(uptr pc){
                         mesh.local_to_world[12],mesh.local_to_world[13],mesh.local_to_world[14],
                         unsigned(mesh.absolute_translation),unsigned(mesh.absolute_rotation),
                         unsigned(mesh.absolute_scale),unsigned(mesh.hidden));
+                    MagazineVisualProbe magazine{};
+                    const bool magazine_known=magazine_visual_probe(
+                        world_hands.weapon,pawn,magazine);
+                    fwprintf(log_file,L"weapon_magazine_probe weapon=%p known=%u present=%u "
+                        L"component=%p name=%ls asset=%p asset_name=%ls "
+                        L"attached_to_pawn=%u hidden=%u\n",
+                        reinterpret_cast<void*>(world_hands.weapon),unsigned(magazine_known),
+                        unsigned(magazine.present),reinterpret_cast<void*>(magazine.component),
+                        magazine.component_name,reinterpret_cast<void*>(magazine.asset),
+                        magazine.asset_name,unsigned(magazine.attached_to_pawn),
+                        unsigned(magazine.hidden));
                     fflush(log_file);
                 }
             }else ++pose_rejected;
