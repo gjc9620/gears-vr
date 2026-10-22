@@ -110,6 +110,70 @@ bool magazine_visual_probe(uptr weapon,uptr pawn,MagazineVisualProbe& out){
     out.attached_to_pawn=(attached.output<unsigned>()&mask)!=0;
     return true;
 }
+// The original SetWeaponAmmoBoneDisplay resolves AmmoControl on the weapon's
+// current skinned mesh, then changes its active strength. Mirror only the
+// lookup and read the current/target strengths; never call the setter here.
+struct AmmoBoneVisualProbe {
+    uptr mesh{},control{};
+    wchar_t control_name[96]{};
+    bool present{};
+    float strength{},target{},bone_scale{};
+};
+bool ammo_control_name(Name& out){
+    static Name cached{};
+    static bool found{};
+    if(found){out=cached;return true;}
+    const auto names=get<Array>(base+0x1c34800);
+    if(!names.data||names.count<1000||names.count>names.capacity||names.capacity>4000000)
+        return false;
+    constexpr wchar_t wanted[]=L"AmmoControl";
+    for(int index=0;index<names.count;++index){
+        const auto entry=get<uptr>(names.data+size_t(index)*8);
+        if(!entry||get<unsigned>(entry)!=unsigned(index))continue;
+        wchar_t value[sizeof(wanted)/sizeof(wchar_t)]{};
+        if(!copy(value,entry+20,sizeof(value))||
+           std::memcmp(value,wanted,sizeof(value)))continue;
+        cached={unsigned(index),0};found=true;out=cached;return true;
+    }
+    return false;
+}
+bool read_control_float(uptr control,const wchar_t* field,float& out){
+    const auto property=playground::property(control,field);
+    const auto cls=get<uptr>(control+0x50);
+    if(!property||!cls||get<unsigned>(property+0x74)!=sizeof(float)||
+       !playground::named(get<uptr>(property+0x50),L"FloatProperty"))return false;
+    const auto offset=get<unsigned>(property+0x94),size=get<unsigned>(cls+0x88);
+    return offset<=size&&sizeof(float)<=size-offset&&
+        copy(&out,control+offset,sizeof(out))&&std::isfinite(out);
+}
+bool ammo_bone_visual_probe(uptr weapon,AmmoBoneVisualProbe& out){
+    out={};
+    if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return false;
+    out.mesh=playground::pointer(weapon,L"Mesh");
+    if(!playground::instance(out.mesh,L"SkeletalMeshComponent")||
+       playground::deleted(out.mesh))return false;
+    Name control_name{};
+    if(!ammo_control_name(control_name))return false;
+    playground::Args find(out.mesh,L"FindSkelControl");
+    const auto input=find.prop(L"InControlName"),result=find.prop(L"ReturnValue");
+    if(!find.valid||!input||!result||
+       get<unsigned>(input+0x74)!=sizeof(Name)||
+       !playground::named(get<uptr>(input+0x50),L"NameProperty")||
+       get<unsigned>(result+0x74)!=sizeof(uptr)||
+       !playground::named(get<uptr>(result+0x50),L"ObjectProperty")||
+       get<unsigned>(result+0x94)>find.r.size||
+       sizeof(uptr)>find.r.size-get<unsigned>(result+0x94)||
+       !find.set(L"InControlName",control_name).run())return false;
+    out.control=find.output<uptr>();
+    if(!out.control)return true;
+    if(!playground::instance(out.control,L"SkelControlBase")||
+       playground::deleted(out.control))return false;
+    out.present=true;
+    name(out.control,out.control_name,96);
+    return read_control_float(out.control,L"ControlStrength",out.strength)&&
+        read_control_float(out.control,L"StrengthTarget",out.target)&&
+        read_control_float(out.control,L"BoneScale",out.bone_scale);
+}
 #endif
 
 gears_weapon::BodySlot body_for_inventory_slot(unsigned slot){
@@ -348,6 +412,16 @@ void tick(uptr pc){
                         magazine.component_name,reinterpret_cast<void*>(magazine.asset),
                         magazine.asset_name,unsigned(magazine.attached_to_pawn),
                         unsigned(magazine.hidden));
+                    AmmoBoneVisualProbe ammo_bone{};
+                    const bool ammo_bone_known=ammo_bone_visual_probe(
+                        world_hands.weapon,ammo_bone);
+                    fwprintf(log_file,L"weapon_ammo_bone_probe weapon=%p known=%u present=%u "
+                        L"mesh=%p control=%p name=%ls strength=%.3f target=%.3f "
+                        L"bone_scale=%.3f\n",
+                        reinterpret_cast<void*>(world_hands.weapon),unsigned(ammo_bone_known),
+                        unsigned(ammo_bone.present),reinterpret_cast<void*>(ammo_bone.mesh),
+                        reinterpret_cast<void*>(ammo_bone.control),ammo_bone.control_name,
+                        ammo_bone.strength,ammo_bone.target,ammo_bone.bone_scale);
                     fflush(log_file);
                 }
             }else ++pose_rejected;

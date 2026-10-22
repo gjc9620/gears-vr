@@ -103,8 +103,12 @@ current weapon's original `MagazineMesh` component, names its `StaticMesh`,
 reads `HiddenGame`, and asks the pawn's skeletal mesh whether the component is
 attached there. `known=0` rejects an incomplete or unexpected layout; `present=0`
 with `known=1` means this weapon has no current independent magazine component.
-This does not read the gun's `AmmoControl` visibility or alter either mesh, and
-requires a retail runtime sample before it can guide a reload adapter.
+The adjacent read-only `weapon_ammo_bone_probe` now uses the original
+`FindSkelControl(AmmoControl)` lookup and records `ControlStrength`,
+`StrengthTarget`, and `BoneScale` when present. A missing control is
+recorded separately from an invalid reflection layout. These values are
+not by themselves proof of rendered magazine visibility. Neither probe
+changes meshes or reload state; a retail runtime sample is still required.
 
 `GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST=ON` adds an even narrower private
 Lancer trial to the equipment-intent build. It requires an owned, muted,
