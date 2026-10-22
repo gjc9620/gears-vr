@@ -19,6 +19,9 @@
 #include "reference_space_epoch.h"
 #include "../vr-common/stereo_bridge.h"
 #include "../vr-common/controller_input_bridge.h"
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+#include "../vr-common/controller_continuity_bridge.h"
+#endif
 #include "controller_actions.h"
 #include "../vr-common/render_size_bridge.h"
 #include "continuous_session.h"
@@ -36,6 +39,40 @@ XrSession session = XR_NULL_HANDLE;
 XrSpace local = XR_NULL_HANDLE;
 XrSpace view_space = XR_NULL_HANDLE;
 gears_controller_xr::Actions controller_actions;
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+// One tracker for the complete sampling loop, including focus/session changes.
+// Its source history advances even when the nonblocking mapping publish skips.
+struct HandContinuityCandidate {
+    gears_hand_continuity::InputBridge bridge;
+    gears_hand_continuity::SourceTracker tracker;
+    std::uint64_t sampled{},published{},skipped{},rejected{},stream_epoch{},tracking_epoch[2]{},last_sequence{};
+    bool requested{},opened{};
+    bool open(DWORD pid) {
+        requested=true;opened=bridge.open(pid,true);return opened;
+    }
+    void observe_and_publish(gears_vr::ControllerInputFrame const& input) {
+        ++sampled;
+        gears_hand_continuity::TrackedInput tracked{};
+        if(!tracker.update(input,tracked)){
+            ++rejected;
+            throw std::runtime_error("Hand continuity candidate source tracker rejected or overflowed");
+        }
+        stream_epoch=tracked.stream_epoch;
+        for(unsigned hand=0;hand<2;++hand)tracking_epoch[hand]=tracked.tracking_epoch[hand];
+        last_sequence=tracked.input.sequence;
+        if(bridge.publish(tracked))++published;else ++skipped;
+    }
+    ~HandContinuityCandidate() {
+        bridge.close();
+        if(requested){
+            printf("{\"hand_continuity_candidate\":true,\"opened\":%s,\"source_samples\":%llu,\"published\":%llu,\"publish_skipped\":%llu,\"tracker_rejected\":%llu,\"stream_epoch\":%llu,\"left_tracking_epoch\":%llu,\"right_tracking_epoch\":%llu,\"last_tracked_sequence\":%llu,\"game_input_injected\":false,\"hand_application_proved\":false}\n",
+                opened?"true":"false",sampled,published,skipped,rejected,stream_epoch,
+                tracking_epoch[0],tracking_epoch[1],last_sequence);
+            fflush(stdout);
+        }
+    }
+};
+#endif
 bool xr_gpu_teardown_unsafe=false;
 void xr_check(XrResult result, const char* action) {
     if (XR_FAILED(result)) {
@@ -441,6 +478,12 @@ int main(int argc, char** argv) {
     if(controller_input&&!controller_bridge.open(stereo_pid,true)){
         fprintf(stderr,"Controller input bridge creation rejected\n");return 2;
     }
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+    HandContinuityCandidate hand_continuity;
+    if(controller_input&&!hand_continuity.open(stereo_pid)){
+        fprintf(stderr,"Hand continuity candidate bridge creation rejected\n");return 2;
+    }
+#endif
     const uint64_t stereo_session=static_cast<uint64_t>(gears_vr::monotonic_ns());
     uint64_t stereo_published=0,stereo_publish_skipped=0;
     uint64_t controller_published=0,controller_publish_skipped=0;
@@ -675,6 +718,9 @@ int main(int argc, char** argv) {
                     if(!controller_actions.sample(local,frame.predictedDisplayTime,
                                                   state==XR_SESSION_STATE_FOCUSED,hands))
                         throw std::runtime_error("Controller input sampling rejected");
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+                    hand_continuity.observe_and_publish(hands);
+#endif
                     if(controller_bridge.publish(hands))++controller_published;
                     else ++controller_publish_skipped;
                 }

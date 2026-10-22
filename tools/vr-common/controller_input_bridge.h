@@ -123,6 +123,16 @@ public:
         if(!controller_frame_matches(selected,stereo,now_ns,allow_sim))return false;
         out=selected;return true;
     }
+    // Read-only identity of the same retained process handle authenticated by
+    // read_matching. No packet layout, mapping or publication behavior changes.
+    bool publisher_identity(std::uint64_t& pid,std::uint64_t& start) const noexcept {
+        pid=start=0;
+        if(producer_||!publisher_process_||WaitForSingleObject(publisher_process_,0)!=WAIT_TIMEOUT)return false;
+        const auto observed_pid=GetProcessId(publisher_process_);
+        const auto observed_start=controller_process_start(publisher_process_);
+        if(!observed_pid||!observed_start)return false;
+        pid=observed_pid;start=observed_start;return true;
+    }
     void close() noexcept {
         if(data_)UnmapViewOfFile(data_);data_=nullptr;
         if(mapping_)CloseHandle(mapping_);mapping_=nullptr;

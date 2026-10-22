@@ -1,4 +1,5 @@
 #pragma once
+#include "hand_reference_continuity.h"
 #include "pose_math.h"
 #include <cstdint>
 #include <optional>
@@ -91,11 +92,14 @@ class StereoGate {
     std::optional<Pose> reference_;
     std::uint64_t reference_generation_{};
     bool recenter_pending_{};
+    ReferenceContinuityCounter continuity_;
 public:
-    void reset(){last_.reset();reference_.reset();reference_generation_=0;recenter_pending_=false;}
-    void request_recenter(){recenter_pending_=true;}
+    void reset(){continuity_.boundary();last_.reset();reference_.reset();reference_generation_=0;recenter_pending_=false;}
+    void request_recenter(){continuity_.boundary();recenter_pending_=true;}
+    ReferenceContinuity continuity() const noexcept {return continuity_.snapshot(reference_.has_value(),recenter_pending_);}
     StereoResult update(StereoSample const& s,std::int64_t now_ns,bool allow_sim=false) {
         auto reject=[&](StereoStatus status){StereoResult result;result.status=status;
+            if(status!=StereoStatus::stale)continuity_.break_observed();
             if(reference_)result.reference=*reference_;
             result.reference_generation=reference_generation_;return result;};
         if(last_&&s.session!=last_->session)return reject(StereoStatus::session_changed);
@@ -108,16 +112,26 @@ public:
             return reject(StereoStatus::replayed);
         if(!stereo_render_active(s))return reject(StereoStatus::inactive);
         if(!stereo_tracking_valid(s,allow_sim))return reject(StereoStatus::untracked);
-        if(now_ns<=0||s.received_ns<=0||s.received_ns>now_ns||now_ns-s.received_ns>100000000)
+        if(now_ns<=0||s.received_ns<=0||s.received_ns>now_ns){
+            continuity_.break_observed();return reject(StereoStatus::stale);
+        }
+        if(now_ns-s.received_ns>100000000){
+            // Preserve the old status order, but only a genuinely age-only
+            // failure may keep a continuity certificate. Already observed bad
+            // geometry or a different LOCAL origin cannot hide behind age.
+            if(!stereo_geometry_valid(s)||(last_&&s.space_epoch!=last_->space_epoch))
+                continuity_.break_observed();
             return reject(StereoStatus::stale);
+        }
         if(!stereo_geometry_valid(s))return reject(StereoStatus::invalid);
         const bool new_space=last_&&s.space_epoch!=last_->space_epoch;
-        if(new_space)reference_.reset(); // No old-origin reference survives this boundary.
+        if(new_space){continuity_.boundary();reference_.reset();} // No old-origin reference survives this boundary.
         bool first=!reference_,recentered=false,deferred=false;
         last_=s; // Even an unavailable initial heading cannot erase replay guards.
         if(first||recenter_pending_){
             Pose heading{};
             if(stereo_heading_reference(s.head,heading)){
+                continuity_.boundary();
                 reference_=heading;++reference_generation_;recentered=!first||new_space;
                 // A request before initialization is satisfied by generation1.
                 recenter_pending_=false;
@@ -125,6 +139,7 @@ public:
         }
         if(!reference_){auto result=reject(StereoStatus::heading_unavailable);
             result.sample=s;result.heading_deferred=true;return result;}
+        if(!deferred&&!recenter_pending_)continuity_.accepted();
         return {first?StereoStatus::initial:StereoStatus::accepted,s,*reference_,reference_generation_,recentered,deferred};
     }
 };

@@ -20,6 +20,10 @@
 #include "../vr-common/weapon_pose_solver.h"
 #include "../vr-common/equipment_intent_bridge.h"
 #include "../vr-common/controller_recenter_request.h"
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+#include "../vr-common/controller_continuity_bridge.h"
+#include "../vr-common/hand_world_continuity_bridge.h"
+#endif
 #include "../vr-common/gpu_share.h"
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
 #include "../vr-common/gpu_mirror.h"
@@ -331,6 +335,11 @@ gears_vr::ControllerInputBridge controller_input_bridge;
 gears_weapon::ArmspanCalibrator controller_armspan_observer;
 gears_weapon::ArmspanCalibration controller_armspan_saved{};
 gears_vr::StereoGate stereo_gate;
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+gears_hand_continuity::InputBridge hand_continuity_input;
+gears_hand_continuity::WorldBridge hand_continuity_world;
+std::uint64_t hand_continuity_matched{},hand_continuity_missing{},hand_continuity_published{},hand_continuity_rejected{};
+#endif
 std::mutex stereo_mutex;
 uint64_t controller_input_matched{},controller_input_missing{},controller_input_tracked_left{},controller_input_tracked_right{};
 uint64_t controller_input_first_sequence{},controller_input_last_sequence{},controller_input_profile_generation{};
@@ -3137,6 +3146,11 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         if(controller_input_observer&&gears_weapon::apply_controller_recenter(
             controller_recenter_request,frame.world_generation,committed_world_generation.load(),
             sample,sample_time,simulator_operator,stereo_gate,result))++stereo_recenter_requests;
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+        // Freeze under the gate's original mutex, after the same-ticket L3
+        // request. This is the reference used below, not a diagnostic mirror.
+        const auto hand_reference_continuity=stereo_gate.continuity();
+#endif
         gears_vr::ControllerInputFrame matched_hands{};
         bool have_matched_hands=false;
         if(controller_input_observer){
@@ -3162,6 +3176,18 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             }else {++controller_input_missing;
                 if(!controller_armspan_observer.result())controller_armspan_observer.reset();}
         }
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+        gears_hand_continuity::TrackedInput continuous_hands{};
+        gears_hand_continuity::Publisher hand_publisher{};
+        std::uint64_t original_publisher_pid{},original_publisher_start{};
+        const bool have_continuous_hands=have_matched_hands&&
+            hand_continuity_input.read_matching(sample,gears_vr::monotonic_ns(),
+                continuous_hands,hand_publisher,simulator_operator)&&
+            gears_hand_continuity::same_input(continuous_hands.input,matched_hands)&&
+            controller_input_bridge.publisher_identity(original_publisher_pid,original_publisher_start)&&
+            original_publisher_pid==hand_publisher.pid&&original_publisher_start==hand_publisher.start;
+        if(have_continuous_hands)++hand_continuity_matched;else ++hand_continuity_missing;
+#endif
         gears_vr::StereoMatrix view{},projection{};memcpy(view.data(),original_source.bytes.data()+0x70,64);
         memcpy(projection.data(),original_source.bytes.data()+0xb0,64);
         // The original camera defines Canvas screen placement. Retain its
@@ -3254,6 +3280,30 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
 #endif
                        controller_equipment_intent_bridge.publish_pose(pose))++controller_hand_pose_published;
                     else ++controller_hand_pose_rejected;
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+                    gears_hand_continuity::WorldFrame certified{};
+                    certified.pose=pose;
+                    auto& certificate=certified.certificate;
+                    certificate.native_started_qpc=hand_continuity_world.native_started_qpc();
+                    certificate.xr_publisher_pid=hand_publisher.pid;
+                    certificate.xr_publisher_start=hand_publisher.start;
+                    certificate.stream_epoch=continuous_hands.stream_epoch;
+                    certificate.reference_epoch=hand_reference_continuity.epoch;
+                    certificate.reference_generation=result.reference_generation;
+                    for(unsigned hand=0;hand<2;++hand)
+                        certificate.tracking_epoch[hand]=continuous_hands.tracking_epoch[hand];
+                    certificate.profile_generation=matched_hands.profile_generation;
+                    certificate.stereo_received_ns=sample.received_ns;
+                    certificate.input_received_ns=matched_hands.received_ns;
+                    certificate.source=static_cast<std::uint32_t>(sample.source);
+                    const auto certificate_time=gears_vr::monotonic_ns();
+                    if(have_continuous_hands&&hand_reference_continuity.stable&&
+                       !hand_reference_continuity.pending&&!hand_reference_continuity.exhausted&&
+                       frame.world_generation==committed_world_generation.load()&&
+                       gears_vr::controller_frame_matches(matched_hands,sample,certificate_time,simulator_operator)&&
+                       hand_continuity_world.publish(certified))++hand_continuity_published;
+                    else ++hand_continuity_rejected;
+#endif
                 }
             }else ++controller_hand_pose_rejected;
         }
@@ -4997,6 +5047,12 @@ DWORD WINAPI worker(void*) {
     if(controller_input_observer&&!controller_equipment_intent_bridge.open(true)){
         fprintf(status,"rejected: equipment intent bridge unavailable\n");fclose(status);return 3;
     }
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+    if(!continuous_session||!controller_input_observer||!stereo_xr||
+       !hand_continuity_input.open(GetCurrentProcessId(),false)){
+        fprintf(status,"rejected: private hand continuity requires continuous XR input companion\n");fclose(status);return 3;
+    }
+#endif
     uintptr_t linked{};
     if(!expected_local || !expected_pc || !safe_copy(&linked,reinterpret_cast<void*>(expected_local+0x68),8) || linked!=expected_pc) {
         fprintf(status,"rejected: local player/controller link mismatch\n");fclose(status);return 3;
@@ -5226,6 +5282,11 @@ DWORD WINAPI worker(void*) {
     const ULONGLONG deadline=GetTickCount64()+static_cast<ULONGLONG>(seconds)*1000;
     if(continuous_session){
         session_started_qpc=now();write_session_status();
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+        {std::lock_guard<std::mutex> lock(stereo_mutex);
+            if(!hand_continuity_world.open(true,static_cast<std::uint64_t>(session_started_qpc)))
+                request_session_stop(SessionStop::proof_failure);}
+#endif
         WorldRebindPrepareRequest world_rebind_request;
         if(!session_status_available||!stop_event)request_session_stop(SessionStop::proof_failure);
         publish_session_activation_ready(session_status_available&&stop_event);
@@ -5470,6 +5531,12 @@ DWORD WINAPI worker(void*) {
         shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),
         state_done?state_delete_flags:0,state_done?state_delete_thread:0,
         static_cast<unsigned long long>(state_done?state_delete_caller:0),static_cast<unsigned long long>(state_temporary.load()));
+#if defined(GEARS_HAND_CONTINUITY_CANDIDATE) && GEARS_HAND_CONTINUITY_CANDIDATE
+    fprintf(status,"hand_continuity matched=%llu missing=%llu published=%llu rejected=%llu\n",
+        static_cast<unsigned long long>(hand_continuity_matched),static_cast<unsigned long long>(hand_continuity_missing),
+        static_cast<unsigned long long>(hand_continuity_published),static_cast<unsigned long long>(hand_continuity_rejected));
+    hand_continuity_world.close();hand_continuity_input.close();
+#endif
     controller_equipment_intent_bridge.close();
     controller_input_bridge.close();
     stereo_bridge.close();
