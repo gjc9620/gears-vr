@@ -141,6 +141,28 @@ bool changed(gears_weapon::EquipmentSnapshot const& a,
         a.animation_busy!=b.animation_busy||a.throwable_count!=b.throwable_count||
         a.throwable_count_known!=b.throwable_count_known;
 }
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
+bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned slot){
+    // The original slot function skips feedback when the slot has no actor.
+    // Reuse a real equipped/slot weapon's own empty-clip cue, locally only.
+    const uptr candidates[]={static_cast<uptr>(game.weapon_in_slot[slot]),
+                             static_cast<uptr>(game.current_weapon)};
+    for(const auto weapon:candidates){
+        if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))continue;
+        const auto sound_property=playground::property(weapon,L"FireNoAmmoSound");
+        if(!sound_property||get<unsigned>(sound_property+0x74)!=sizeof(uptr)||
+           !playground::named(get<uptr>(sound_property+0x50),L"ObjectProperty"))continue;
+        const auto sound=get<uptr>(weapon+get<unsigned>(sound_property+0x94));
+        if(!playground::instance(sound,L"SoundCue")||playground::deleted(sound))continue;
+        playground::Args play(weapon,L"WeaponPlaySoundLocal");
+        const auto parameter=play.prop(L"Sound");
+        if(!parameter||get<unsigned>(parameter+0x74)!=sizeof(uptr)||
+           !playground::named(get<uptr>(parameter+0x50),L"ObjectProperty"))continue;
+        if(play.set(L"Sound",sound).run())return true;
+    }
+    return false;
+}
+#endif
 void tick(uptr pc){
     const auto now=GetTickCount64();
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
@@ -204,7 +226,9 @@ void tick(uptr pc){
         }else{
             const auto decision=model.tap(body_for_inventory_slot(requested_slot),game);
             unsigned status=3;
-            if(decision.event==gears_weapon::EquipmentEvent::empty_slot)status=4;
+            if(decision.event==gears_weapon::EquipmentEvent::empty_slot){
+                status=play_empty_slot_sound(game,requested_slot)?4:9;
+            }
             else if(decision.event==gears_weapon::EquipmentEvent::request_unholster||
                     decision.event==gears_weapon::EquipmentEvent::request_stow)status=5;
             else if(decision.event==gears_weapon::EquipmentEvent::request_original_switch){

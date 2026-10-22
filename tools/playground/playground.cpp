@@ -224,8 +224,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentReadiness(void*
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
 // Status: 0 queued, 1 original call sent, 2 invalidated, 3 ignored/busy,
-// 4 empty slot, 5 model-only stow/unholster, 6 equipped, 7 timed out,
-// 8 reflected original call failed. Only the private test build exports this.
+// 4 empty slot with original cue, 5 model-only stow/unholster, 6 equipped, 7 timed out,
+// 8 reflected original call failed, 9 empty slot without a usable original
+// empty-clip cue. Only the private test build exports this.
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchTest(void* slot_arg){
     wchar_t behind[4]{},muted[4]{};
     if(GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)!=1||behind[0]!=L'1'||

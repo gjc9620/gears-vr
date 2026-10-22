@@ -83,6 +83,9 @@ slot number plus current game identities. Playground discards old or overflowed
 events, then re-reads the local player's inventory on the game thread and
 requires the private owned arena, behind-windows and muted test environment
 before calling the original slot function. Empty grenade charges fail closed.
-This is a wiring test: original switch animation, visible stow, empty-slot
-audio and weapon pose transfer are not yet overridden. The default DLL has no
-XR equipment-intent consumer.
+When a requested slot is empty, the private adapter tries the slot weapon's
+original `FireNoAmmoSound` cue, then the current weapon's cue, through the
+original local playback function. Status 9 means neither cue could be played.
+This is a wiring test: original switch animation, visible stow, an audio cue
+when neither weapon has one, and weapon pose transfer are not yet implemented.
+The default DLL has no XR equipment-intent consumer.
