@@ -88,7 +88,7 @@
 
 后续购买版只读 `pawn_ik` 试验核实当前角色左右手各有一条四控制器链：`IKBone_*Hand → IKBoneRot_*Hand → IK_*Hand → IKRot_*Hand`，分别挂在手骨 11／35 对应的骨骼控制列表；WarPawn 缓存的八个控制器均指向当前角色网格并在当前动画树中。链尾的左右 `IKCtrl_*Hand` 与 `IKRotCtrl_*Hand` 分别接收世界空间位置与旋转目标，当前强度、目标强度和剩余混合时间均为 0；两侧链首 `IKBone*` 控制器仍可能由原版动画混合，左侧采样时尚未稳定。资料及私有回执位于忽略的 `analysis/pawn-ik-runtime-1022b.json`。这证明当前实例有复用入口，但**不证明头显可见手骨会持续跟随或与原版动作不会争用**。当前运行候选仍固定 `ownership_proved=false`、`apply_mask=0`；原版拾取完整起止／取消、双手持续写入及掌心标定仍待完成，**可见双手还不能自由移动**。
 
-独立的 `GEARS_FREE_HAND_POSE_OBSERVER` 默认关闭候选现可在 XR 会话聚焦、双手追踪和相机／玩家身份有效时，将空手（当前武器为空）以及固定动画期间的双手世界姿态作为只读 GVE6 帧发布；仍要求当前 PC↔Pawn／世界关联和字段布局认证，武器为空不会触发装备意图。动画接管期间只保留目标，退出后等待新票据才考虑交还。`HandPosePublicationTest`、`EquipmentIntentBridgeTest`、`FreeHandControlTest`、默认／候选 native 构建通过；候选未经过购买版或头显运行，XR 失焦时仍不发布有效姿态。它解决了发布端先前“必须已持枪”的门槛，**尚未让游戏内双手自由移动**。
+独立的 `GEARS_FREE_HAND_POSE_OBSERVER` 默认关闭候选现可在 XR 会话聚焦、对应手追踪和相机／玩家身份有效时，将空手（当前武器为空）以及固定动画期间的双手世界姿态作为只读 GVE6 帧发布；仍要求当前 PC↔Pawn／世界关联和字段布局认证，武器为空不会触发装备意图。动画接管期间只保留目标，退出后等待新票据才考虑交还。`HandPosePublicationTest`、`EquipmentIntentBridgeTest`、`FreeHandControlTest`、默认／候选 native 构建通过；候选未经过购买版或头显运行，XR 失焦时仍不发布有效姿态。它解决了发布端先前“必须已持枪”的门槛，**尚未让游戏内双手自由移动**。
 
 默认关闭的 `GEARS_PLAYGROUND_HAND_IK_TRIAL` 单脉冲先证明原右手 World 目标和强度可受控写入、下一帧归零并恢复原目标；但原待机动画也在移动，单次约 `0.093` 单位位移不能归因为 IK。旧探针把实际为 `BoolProperty` 的 `ControlTickTag` 当整数读取，已修正。随后默认关闭的六窗对照候选在两局购买版测试场取得完整 `S,+X,−X,−X,+X,S` 序列；按前后自然 Tick 夹取、同跨度无写入对照及原定五倍噪声阈值，四个活动窗口在两局都给出约 `±0.10` 原始单位的方向性右手骨输出，假操作接近零。原目标／强度字段均回滚，骨姿态首个新 Tick 的少量残差未全部落入噪声，第二个新 Tick 才全部回到自然量级。具体六窗数字、采集器保持的 `inconclusive` 终行及复算方法见 [受控 IK 对照记录](hand-ik-controlled-trial-20261022.md)。这支持继续开发**当前实例的短脉冲骨输出入口**，仍不能启用两手 XR 持续驱动，更不能替代拾取／近战动画所有权与头显可见性证明；默认 `apply_mask=0`。
 
