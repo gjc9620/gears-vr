@@ -90,6 +90,8 @@ Gnasher 首发杠杆门槛补齐：`ReloadModel::prime` 可用同一原版库存
 
 入口返回码勘误：源码中 `PlaygroundEnable=2` 既可能是 `WarGameViewportClient` 未找到，也可能是 `PlayerController.PlayerTick` 函数未找到。此前将 `1022a/1022b` 的返回码直接写成“未创建菜单视口”超出了现有回执，应改读为**测试入口未就绪，原因未区分**。这不影响“没有取得有效库存或骨骼运行样本”的结论；下一次在确有不同启动条件时，应分别记录这两个寻址结果，再决定是否进一步诊断游戏启动。
 
+私有库存入口细分验证：仅在 `GEARS_PLAYGROUND_EQUIPMENT_OBSERVE` 候选中新增只读 `PlaygroundEquipmentReadiness` 位码，分别观察 Hook、视口、`PlayerController` 类、`PlayerTick` 和 `WarLocalPlayer`；默认关闭的 DLL 不导出它。候选与默认 DLL 均重新编译，导出隔离核对通过。一次不同条件的购买版置后静音测试 `equip-snapshot-1022d` 将候选注入延后 20 秒，120 秒观察后仍仅得位码 `1`（Hook 已启用，其余四项均未出现）；`PlaygroundEnable=2` 计 278 次，没有有效库存快照。回执在忽略的 `analysis/weapon-equipment-snapshot/equip-snapshot-1022d-receipt.json`；`PlaygroundShutdown=0`，测试 PID `52392` 已退出，音频守护已恢复。延后注入未解决本次初始化未就绪，不能归咎于库存查询，也不能据此否定过去成功进入场景的独立样本。相同条件不再重跑；下次须先找到游戏初始化条件变化的证据。
+
 ## 合并0.0.2启动修复（2026-10-22）
 
 按用户要求切回 `codex/0.1.0`，将 `codex/0.0.2` 的完整修复与发布记录并入。合并前开发检查点为 `963d965b8590555bae31d047bef6ccc27d3e6469`，热修复源为 `a0a39b0`。公开0.0.1是独立根提交，两分支没有共同祖先；以公开源码 `4b621fc430fa5f96eba3bf70399810d3fd51e202` 为明确的内容基准进行三方合并，并保留两个原始父历史，不改写既有提交或发布标签。

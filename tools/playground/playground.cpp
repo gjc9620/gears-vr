@@ -205,6 +205,20 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEnable(void*){
     playground::player=playground::find_instance(L"WarLocalPlayer");
     playground::automatic=true;return 0;
 }
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
+// Private diagnostics only. A return code of 2 from PlaygroundEnable alone
+// cannot distinguish an absent viewport from an unresolved PlayerTick.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentReadiness(void*){
+    if(!enabled.load(std::memory_order_acquire))return 0;
+    DWORD bits=1;
+    if(playground::find_instance(L"WarGameViewportClient"))bits|=2;
+    const auto pc_class=playground::find_class(L"PlayerController");
+    if(pc_class)bits|=4;
+    if(pc_class&&playground::field(pc_class,L"PlayerTick",L"Function"))bits|=8;
+    if(playground::find_instance(L"WarLocalPlayer"))bits|=16;
+    return bits;
+}
+#endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundTestEnter(void*){
     // Available only in the user's explicit unattended, muted test child.
     wchar_t behind[4]{},muted[4]{};
