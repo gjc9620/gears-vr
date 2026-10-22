@@ -34,7 +34,8 @@
 #include "../vr-common/weapon_lancer_magazine_pose.h"
 #include "../vr-common/weapon_lancer_insertion.h"
 #endif
-#if defined(GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL)
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL) || \
+    defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
 #include "../vr-common/weapon_lancer_chainsaw_pose.h"
 #include "../vr-common/weapon_lancer_starter_mount.h"
 #endif
@@ -339,7 +340,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentReadiness(void*
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawGestureTrialStart(void*){
     if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
        !playground::ready||!vrequip::test_environment()||
-       vrequip::lancer_saw_active_visible.load(std::memory_order_acquire))return 1;
+       vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+       ||vrequip::lancer_saw_xr_visible.load(std::memory_order_acquire)
+#endif
+       )return 1;
     unsigned expected=0;
     if(!vrequip::lancer_saw_gesture_trial_status.compare_exchange_strong(expected,1))return 2;
     vrequip::lancer_saw_gesture_trial_requested.store(true,std::memory_order_release);
@@ -347,6 +352,30 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawGestureTrialSta
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawGestureTrialStatus(void*){
     return vrequip::lancer_saw_gesture_trial_status.load(std::memory_order_acquire);
+}
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawXrPullArm(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment()||
+       vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)||
+       vrequip::lancer_saw_xr_visible.load(std::memory_order_acquire)
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL)
+       ||vrequip::lancer_saw_gesture_trial_status.load(std::memory_order_acquire)==1
+       ||vrequip::lancer_saw_gesture_trial_status.load(std::memory_order_acquire)==2
+#endif
+       )return 1;
+    bool expected=false;
+    if(!vrequip::lancer_saw_xr_arm.compare_exchange_strong(expected,true))return 2;
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawXrPullStop(void*){
+    vrequip::lancer_saw_xr_arm.store(false,std::memory_order_release);
+    vrequip::lancer_saw_xr_stop.store(true,std::memory_order_release);
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawXrPullStatus(void*){
+    return vrequip::lancer_saw_xr_status.load(std::memory_order_acquire);
 }
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
@@ -433,7 +462,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerReloadHoldStatus(v
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawHoldStartTest(void*){
     if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
        !playground::ready||!vrequip::test_environment()||
-       vrequip::lancer_saw_active_visible.load(std::memory_order_acquire))return 1;
+       vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+       ||vrequip::lancer_saw_xr_visible.load(std::memory_order_acquire)
+#endif
+       )return 1;
     bool expected=false;
     if(!vrequip::lancer_saw_test_start.compare_exchange_strong(expected,true))return 2;
     vrequip::lancer_saw_status.store(1,std::memory_order_release);return 0;
@@ -442,6 +475,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawHoldStopTest(vo
     if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
        !playground::ready||!vrequip::test_environment())return 1;
     vrequip::lancer_saw_test_start.store(false,std::memory_order_release);
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+    vrequip::lancer_saw_xr_arm.store(false,std::memory_order_release);
+    vrequip::lancer_saw_xr_stop.store(true,std::memory_order_release);
+#endif
     vrequip::lancer_saw_test_stop.store(true,std::memory_order_release);return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawHoldStatus(void*){
@@ -624,12 +661,30 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     LifecycleScope lifecycle;
 #if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
     vrequip::lancer_saw_test_start.store(false,std::memory_order_release);
-    if(vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)){
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+    vrequip::lancer_saw_xr_arm.store(false,std::memory_order_release);
+    vrequip::lancer_saw_xr_stop.store(true,std::memory_order_release);
+#endif
+    if(vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+       ||vrequip::lancer_saw_xr_visible.load(std::memory_order_acquire)
+#endif
+       ){
         vrequip::lancer_saw_test_stop.store(true,std::memory_order_release);
         const auto stop_until=GetTickCount64()+2000;
-        while(vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)&&
-              GetTickCount64()<stop_until)Sleep(1);
-        if(vrequip::lancer_saw_active_visible.load(std::memory_order_acquire))return 30;
+        while(GetTickCount64()<stop_until){
+            if(!vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+               &&!vrequip::lancer_saw_xr_visible.load(std::memory_order_acquire)
+#endif
+               )break;
+            Sleep(1);
+        }
+        if(vrequip::lancer_saw_active_visible.load(std::memory_order_acquire)
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+           ||vrequip::lancer_saw_xr_visible.load(std::memory_order_acquire)
+#endif
+           )return 30;
     }
 #endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
@@ -690,6 +745,13 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     vrequip::lancer_saw_gesture_trial_requested=false;
     vrequip::lancer_saw_gesture_trial={};
     vrequip::lancer_saw_gesture_trial_status.store(0,std::memory_order_release);
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+    vrequip::lancer_saw_xr_arm=false;
+    vrequip::lancer_saw_xr_stop=false;
+    vrequip::lancer_saw_xr={};
+    vrequip::lancer_saw_xr_visible.store(false,std::memory_order_release);
+    vrequip::lancer_saw_xr_status.store(0,std::memory_order_release);
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
     vrequip::lancer_magazine_test_active=false;

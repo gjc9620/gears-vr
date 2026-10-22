@@ -11,7 +11,7 @@ struct LancerSawGamePose {
     std::uintptr_t controller{},pawn{},weapon{};
     Vector starter_anchor_raw{},pull_axis_world{};
     bool lancer_active{},right_owns_weapon{},game_can_melee{},original_hold{},
-         original_execution{},original_ready{};
+         original_execution{},original_ready{},original_button_held{};
     std::uint64_t original_victim{};
     LancerSawContact contact{};
 };
@@ -52,6 +52,7 @@ inline bool lancer_saw_sample_from_world(HandWorldFrame const& pose,
     candidate.original_hold=game.original_hold;
     candidate.original_execution=game.original_execution;
     candidate.original_ready=game.original_ready;
+    candidate.original_button_held=game.original_button_held;
     candidate.original_victim=game.original_victim;
     candidate.contact=game.contact;
     out=candidate;return true;

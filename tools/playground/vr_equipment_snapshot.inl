@@ -480,6 +480,9 @@ bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned 
 #if defined(GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL)
 #include "vr_lancer_chainsaw_gesture_trial.inl"
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+#include "vr_lancer_chainsaw_xr_pull.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
 #include "vr_lancer_blade_probe.inl"
 #endif
@@ -583,6 +586,9 @@ void tick(uptr pc){
                 reload_request=true;
         }
     }
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
+    lancer_saw_xr_tick(pc,now);
 #endif
     if(now<next_probe&&requested_slot>=4
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)

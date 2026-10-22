@@ -51,7 +51,7 @@ int main() {
     LancerChainsawInteraction interaction;
     auto s=sample();
     pull(interaction,s);
-    advance(s);s.original_hold=true;
+    advance(s);s.original_hold=true;s.original_button_held=true;
     assert(interaction.observe(s).event==LancerSawEvent::hold_started);
     assert(interaction.phase()==LancerSawPhase::running);
     s.game_can_melee=false; // original entry gate can close after B is held
@@ -68,7 +68,7 @@ int main() {
     advance(s);s.original_execution=true;s.original_victim=44;
     d=interaction.observe(s);
     assert(d.event==LancerSawEvent::animation_handoff);
-    assert(d.release_original_melee&&d.animation_owns_hands);
+    assert(!d.release_original_melee&&d.animation_owns_hands);
     assert(!d.unexpected_original_target);
     assert(!interaction.suppress_original_auto_target());
     advance(s);++s.space_epoch;s.right_tracked=false;
@@ -77,10 +77,35 @@ int main() {
     advance(s);s.original_execution=false;s.original_hold=false;
     d=interaction.observe(s);
     assert(d.animation_owns_hands&&!d.restore_6dof);
-    advance(s);s.original_ready=true;s.right_tracked=true;
+    advance(s);s.original_ready=true;
+    d=interaction.observe(s);
+    assert(d.event==LancerSawEvent::request_original_release);
+    assert(d.release_original_melee&&d.animation_owns_hands&&!d.restore_6dof);
+    advance(s);
+    d=interaction.observe(s);
+    assert(d.event==LancerSawEvent::none&&!d.release_original_melee&&
+           d.animation_owns_hands&&!d.restore_6dof);
+    advance(s);s.original_button_held=false;
+    d=interaction.observe(s);
+    assert(d.animation_owns_hands&&!d.restore_6dof);
+    advance(s);s.right_tracked=true;
     d=interaction.observe(s);
     assert(d.event==LancerSawEvent::restored&&d.restore_6dof);
     assert(interaction.phase()==LancerSawPhase::idle);
+
+    // If the original attack has ended after the gun was stowed, clear the
+    // animation lock without restoring a gun that the player no longer owns.
+    interaction.reset();s=sample();pull(interaction,s);
+    advance(s);s.original_button_held=true;s.original_execution=true;
+    d=interaction.observe(s);
+    assert(d.event==LancerSawEvent::animation_handoff);
+    advance(s);s.original_execution=false;s.original_ready=true;
+    d=interaction.observe(s);
+    assert(d.event==LancerSawEvent::request_original_release);
+    advance(s);s.original_button_held=false;s.right_owns_weapon=false;
+    d=interaction.observe(s);
+    assert(d.event==LancerSawEvent::interrupted&&!d.restore_6dof&&
+           !d.animation_owns_hands&&interaction.phase()==LancerSawPhase::idle);
 
     // A grip already held on the first frame is a baseline, not a fresh tug.
     s=sample();s.left_grip_down=true;
@@ -127,6 +152,15 @@ int main() {
     advance(s);s.original_execution=true;s.original_victim=99;
     d=interaction.observe(s);
     assert(d.animation_owns_hands&&d.unexpected_original_target);
-    assert(d.release_original_melee);
+    assert(!d.release_original_melee);
+
+    // Attack entry and a lost XR frame in the same tick still belongs to the
+    // original paired animation; releasing B here would cut it short.
+    interaction.reset();s=sample();pull(interaction,s);
+    advance(s,120);s.original_execution=true;s.original_victim=99;
+    ++s.space_epoch;s.right_tracked=false;
+    d=interaction.observe(s);
+    assert(d.event==LancerSawEvent::animation_handoff&&
+           d.animation_owns_hands&&!d.release_original_melee);
     std::puts("Lancer chainsaw VR gesture, contact and handoff passed");
 }

@@ -116,6 +116,17 @@ one Lancer `ButtonPress('B')` on the game thread, clear the original
 `CheckForMeleeTarget` timer immediately and on each owned tick, and release B
 on explicit stop, identity loss, timer failure, or Playground shutdown. A
 release is accepted only after the original `bHoldingButton_B` field clears.
+The separate `GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST=ON` option compiles a
+default-disarmed `PlaygroundLancerSawXrPullArm/Stop/Status` trial. Only a fresh
+GVE6 same-ticket left-hand pull near the provisional Lancer starter requests
+the existing original B hold; no enemy contact, visible starter or default
+launcher input is enabled. Status 2 is armed, 3 pulling, 4 B sent, 5 original
+hold, 6 original animation/deferred stop, 7 restored, 8 stopped, and 9 a state
+or release failure. The private trial auto-requests stop after 15 seconds.
+Once the original attack special move 34 begins, Stop and shutdown defer B
+release until the original attack state leaves; an animation longer than the
+shutdown wait can make shutdown refuse, preserving the live hook until a
+later safe retry.
 The retail no-victim trial confirmed sustained original blade/melee state and
 timer suppression; a second trial closed Playground while B was held and
 confirmed the original B, melee and blade states returned to idle. This is

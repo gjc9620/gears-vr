@@ -16,7 +16,8 @@ enum class LancerSawPhase : std::uint8_t {
 };
 enum class LancerSawEvent : std::uint8_t {
     none, pull_began, request_original_hold, hold_started,
-    request_original_acquire, animation_handoff, restored, interrupted
+    request_original_acquire, animation_handoff, request_original_release,
+    restored, interrupted
 };
 struct LancerSawDecision {
     LancerSawEvent event{LancerSawEvent::none};
@@ -46,7 +47,7 @@ struct LancerSawSample {
     Vector left_palm_m{},starter_anchor_m{},pull_axis_m{1,0,0};
     bool lancer_active{},right_owns_weapon{},right_tracked{},left_tracked{},
          left_grip_down{},game_can_melee{},original_hold{},
-         original_execution{},original_ready{};
+         original_execution{},original_ready{},original_button_held{};
     std::uint64_t original_victim{};
     LancerSawContact contact{};
 };
@@ -95,7 +96,7 @@ class LancerChainsawInteraction {
                   phase_start_ms_{},victim_{};
     Vector start_left_{},start_anchor_{},start_relative_{},start_axis_{},
            last_left_{},last_anchor_{};
-    bool previous_left_grip_{},owns_original_melee_{};
+    bool previous_left_grip_{},owns_original_melee_{},release_requested_{};
 
     void clear() noexcept {*this={};}
     bool identity_matches(LancerSawSample const& s) const noexcept {
@@ -130,17 +131,52 @@ public:
 
     LancerSawDecision observe(LancerSawSample const& s) noexcept {
         // Keep the original paired animation in charge through an XR tracking
-        // outage or recenter. Only the original game can declare it finished.
+        // outage or recenter. Releasing B at the entry edge can call the
+        // original EndFire and cancel the attack. Wait until the original
+        // melee state and attack special move have both exited, then release
+        // our button once and wait for the game to confirm it is clear.
         if(phase_==LancerSawPhase::animation){
             if(!s.world||s.world!=world_||s.pawn!=pawn_||s.weapon!=weapon_)
                 return interrupted();
-            if(s.original_ready&&!s.original_execution&&!s.original_hold&&
-               s.lancer_active&&s.right_owns_weapon&&s.right_tracked){
-                clear();
-                return {LancerSawEvent::restored,LancerSawPhase::idle,0,
-                        false,false,false,true};
+            if(s.original_ready&&!s.original_execution&&!s.original_hold){
+                if(owns_original_melee_){
+                    if(s.original_button_held){
+                        if(!release_requested_){
+                            release_requested_=true;
+                            return {LancerSawEvent::request_original_release,
+                                    phase_,victim_,false,true,true};
+                        }
+                        return {LancerSawEvent::none,phase_,victim_,false,false,true};
+                    }
+                    owns_original_melee_=false;
+                    release_requested_=false;
+                }
+                if(!s.original_button_held){
+                    if(!s.lancer_active||!s.right_owns_weapon){
+                        clear();
+                        return {LancerSawEvent::interrupted,LancerSawPhase::idle};
+                    }
+                    if(s.right_tracked){
+                        clear();
+                        return {LancerSawEvent::restored,LancerSawPhase::idle,0,
+                                false,false,false,true};
+                    }
+                }
             }
             return {LancerSawEvent::none,phase_,victim_,false,false,true};
+        }
+        // An original attack may begin in the same game tick that XR tracking
+        // expires or recenters. The game-owned paired animation wins that
+        // race; its identity is checked against the already bound game actors.
+        if(s.original_execution&&phase_!=LancerSawPhase::idle){
+            if(s.world!=world_||s.pawn!=pawn_||s.weapon!=weapon_)
+                return interrupted();
+            const bool unexpected=phase_!=LancerSawPhase::waiting_for_execution||
+                (s.original_victim&&s.original_victim!=victim_);
+            phase_=LancerSawPhase::animation;
+            if(s.original_victim)victim_=s.original_victim;
+            return {LancerSawEvent::animation_handoff,phase_,victim_,false,
+                    false,true,false,unexpected};
         }
         if(!s.world||!s.pawn||!s.weapon||!s.session||!s.space_epoch||
            !s.input_epoch||!s.world_generation||!s.sequence||!s.created_ms||
@@ -165,17 +201,6 @@ public:
         const bool grip_pressed=s.left_grip_down&&!previous_left_grip_;
         previous_left_grip_=s.left_grip_down;
 
-        // Once the original paired execution starts, it controls both arms
-        // until its own weapon/special-move completion is observed.
-        if(s.original_execution&&phase_!=LancerSawPhase::idle&&
-           phase_!=LancerSawPhase::animation){
-            const bool unexpected=phase_!=LancerSawPhase::waiting_for_execution||
-                (s.original_victim&&s.original_victim!=victim_);
-            phase_=LancerSawPhase::animation;victim_=s.original_victim;
-            const bool release=owns_original_melee_;owns_original_melee_=false;
-            return {LancerSawEvent::animation_handoff,phase_,victim_,false,
-                    release,true,false,unexpected};
-        }
         if(phase_==LancerSawPhase::idle){
             if(grip_pressed&&s.left_tracked&&s.game_can_melee&&
                !s.original_hold&&!s.original_execution&&

@@ -567,7 +567,8 @@ def sample_owned_game(args, receipt):
             receipt['mesh_follow_trial_status'] = bridge.export(
                 'PlaygroundWeaponMeshFollowStatus')
         elif args.mode in ('chainsaw_semantics', 'chainsaw_hold_adapter',
-                           'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter'):
+                           'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter',
+                           'chainsaw_xr_no_pose'):
             def fname(value):
                 for index, address in enumerate(resolver.name_pointers):
                     if not address:
@@ -621,7 +622,29 @@ def sample_owned_game(args, receipt):
             if (receipt['before_chainsaw']['holding_b'] or
                     receipt['before_chainsaw']['doing_melee']):
                 raise RuntimeError('Original Lancer was already in melee state')
-            if args.mode in ('chainsaw_hold_adapter', 'chainsaw_hold_shutdown',
+            if args.mode == 'chainsaw_xr_no_pose':
+                if bridge.export('PlaygroundEquipmentSwitchTest', 2) != 0:
+                    raise RuntimeError('Private held-Lancer slot tap was rejected')
+                wait_for(lambda: bridge.export('PlaygroundEquipmentSwitchStatus') == 5,
+                         3, 'VR equipment model did not latch Lancer')
+                if bridge.export('PlaygroundLancerSawXrPullArm') != 0:
+                    raise RuntimeError('Private XR pull Arm was rejected')
+                wait_for(lambda: bridge.export('PlaygroundLancerSawXrPullStatus') == 2,
+                         3, 'Private XR pull trial did not arm')
+                time.sleep(.45)
+                receipt['xr_no_pose_armed'] = {
+                    'status': bridge.export('PlaygroundLancerSawXrPullStatus'),
+                    **snapshot(),
+                }
+                if bridge.export('PlaygroundLancerSawXrPullStop') != 0:
+                    raise RuntimeError('Private XR pull Stop was rejected')
+                wait_for(lambda: bridge.export('PlaygroundLancerSawXrPullStatus') == 8,
+                         3, 'Private XR pull trial did not stop')
+                receipt['xr_no_pose_stopped'] = {
+                    'status': bridge.export('PlaygroundLancerSawXrPullStatus'),
+                    **snapshot(),
+                }
+            elif args.mode in ('chainsaw_hold_adapter', 'chainsaw_hold_shutdown',
                              'chainsaw_gesture_adapter'):
                 gesture = args.mode == 'chainsaw_gesture_adapter'
                 if gesture:
@@ -950,6 +973,14 @@ def sample_owned_game(args, receipt):
                 receipt['settled_chainsaw']['doing_melee'] or
                 receipt['settled_chainsaw']['current_fire_mode'] != 0):
             raise RuntimeError('Private Lancer saw hold/timer/release incomplete')
+    elif args.mode == 'chainsaw_xr_no_pose':
+        armed = receipt['xr_no_pose_armed']
+        stopped = receipt['xr_no_pose_stopped']
+        if (armed['status'] != 2 or stopped['status'] != 8 or
+                any(row['holding_b'] or row['doing_melee'] or
+                    row['blade_running'] or row['target_timer'] or
+                    row['victim'] != '0x0' for row in (armed, stopped))):
+            raise RuntimeError('Untracked XR pull started original Lancer saw')
     elif args.mode == 'chainsaw_gesture_adapter':
         rows = receipt['held_chainsaw_samples']
         pulls = [line for line in lines if line.startswith('lancer_saw_gesture_trial_pull ')]
@@ -1092,7 +1123,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('api', 'chainsaw_api', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('api', 'chainsaw_api', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'chainsaw_xr_no_pose', 'reload_visual', 'reload_hold',
                                           'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

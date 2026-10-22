@@ -28,10 +28,12 @@ int main(){
     game.controller=10;game.pawn=20;game.weapon=30;
     game.starter_anchor_raw={100,200,300};game.pull_axis_world={1,0,0};
     game.lancer_active=game.right_owns_weapon=game.game_can_melee=true;
+    game.original_button_held=true;
     LancerSawSample sample{};
     assert(lancer_saw_sample_from_world(frame,game,1000,sample));
     assert(sample.left_palm_m.x==1&&sample.starter_anchor_m.z==3&&
-           sample.right_tracked&&sample.left_tracked&&sample.world==40);
+           sample.right_tracked&&sample.left_tracked&&sample.world==40&&
+           sample.original_button_held);
     frame.units_per_metre=200;frame.left.position={200,400,600};
     game.starter_anchor_raw={200,400,600};
     assert(lancer_saw_sample_from_world(frame,game,1000,sample));
