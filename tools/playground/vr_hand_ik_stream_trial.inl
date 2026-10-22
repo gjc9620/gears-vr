@@ -89,6 +89,54 @@ struct EquipmentShadowState {
     unsigned count{},pending{UINT32_MAX};
 };
 EquipmentShadowState shadow;
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+struct EquipmentTransportRow {
+    std::uint64_t now{},epoch{},serial{},sequence{},created_ms{},writer_before{},writer_after{};
+    std::uint64_t policy_serial_before{},policy_serial_after{},policy_sequence_before{},policy_sequence_after{};
+    std::uint64_t before_stamp[2]{},after_stamp[2]{},read_qpc{},refresh_qpc{};
+    unsigned phase{},before_bound{},after_bound{},refreshed{},reset{},tracked{},reason{15};
+    bool fresh{},called{},state_unchanged{},capacity_exhausted{};
+    gears_hand_stream::ObserveAge before[2]{},after[2]{},source{};
+};
+struct EquipmentTransportState {
+    std::array<EquipmentTransportRow,1024> rows{};
+    std::uint64_t cursor{UINT64_MAX},dropped{},invalid_clock{};
+    unsigned count{};
+    bool reader_rejected{};
+};
+EquipmentTransportState transport_trial;
+void transport_reset(){
+    transport_trial.cursor=UINT64_MAX;transport_trial.dropped=transport_trial.invalid_clock=0;
+    transport_trial.count=0;transport_trial.reader_rejected=false;
+}
+void transport_dump(){
+    fwprintf(log_file,L"hand_ik_equipment_transport_begin schema=1 capacity=%zu count=%u dropped=%llu "
+        L"invalid_clock=%llu frequency=%llu rejected_reads=%u new_plans=0 writer_cursor_updates=0\n",transport_trial.rows.size(),
+        transport_trial.count,transport_trial.dropped,transport_trial.invalid_clock,trial.timing.frequency,
+        unsigned(transport_trial.reader_rejected));
+    for(unsigned i=0;i<transport_trial.count;++i){const auto& row=transport_trial.rows[i];
+        fwprintf(log_file,L"hand_ik_equipment_transport row=%u phase=%u now_ms=%llu epoch=%llu "
+            L"fresh=%u called=%u serial=%llu sequence=%llu created_ms=%llu "
+            L"writer_before=%llu writer_after=%llu policy_serial_before=%llu policy_serial_after=%llu "
+            L"policy_sequence_before=%llu policy_sequence_after=%llu "
+            L"before_bound=%u after_bound=%u refreshed=%u reset=%u tracked=%u reason=%u state_unchanged=%u "
+            L"capacity_exhausted=%u before_left_stamp=%llu before_right_stamp=%llu "
+            L"after_left_stamp=%llu after_right_stamp=%llu read_qpc=%llu refresh_qpc=%llu",
+            i,row.phase,row.now,row.epoch,unsigned(row.fresh),unsigned(row.called),row.serial,row.sequence,row.created_ms,
+            row.writer_before,row.writer_after,row.policy_serial_before,row.policy_serial_after,
+            row.policy_sequence_before,row.policy_sequence_after,row.before_bound,row.after_bound,row.refreshed,
+            row.reset,row.tracked,row.reason,unsigned(row.state_unchanged),unsigned(row.capacity_exhausted),
+            row.before_stamp[0],row.before_stamp[1],row.after_stamp[0],row.after_stamp[1],row.read_qpc,row.refresh_qpc);
+        const auto print_age=[&](const wchar_t* label,gears_hand_stream::ObserveAge const& age){
+            fwprintf(log_file,L" %ls_known=%u %ls_future=%u %ls_ms=%llu",label,unsigned(age.known),label,unsigned(age.future),label,age.ms);
+        };
+        print_age(L"before_left",row.before[0]);print_age(L"before_right",row.before[1]);
+        print_age(L"after_left",row.after[0]);print_age(L"after_right",row.after[1]);print_age(L"source",row.source);
+        fwprintf(log_file,L"\n");
+    }
+    fwprintf(log_file,L"hand_ik_equipment_transport_end schema=1\n");
+}
+#endif
 void shadow_reset(){
     // Old buffer contents are never emitted: every row below count is replaced.
     shadow.cursor=UINT64_MAX;shadow.dropped=shadow.invalid_clock=shadow.writer_changes=0;
@@ -153,6 +201,9 @@ void shadow_pair(gears_hand_stream::ContinuitySnapshot const& before,
         gears_hand_stream::same(early.stream,before.stream)&&
         early.serial==before.serial&&early.sequence==before.sequence&&early.bound_mask==before.bound_mask&&
         early.units_per_metre==before.units_per_metre;
+    for(unsigned hand=0;hand<2;++hand)
+        row.same_state=row.same_state&&early.source_stamp[hand]==before.source_stamp[hand]&&
+            early.old_ticket_age[hand].known==before.old_ticket_age[hand].known;
     row.expired=diagnostic.mask(gears_hand_stream::ObserveReason::binding_age);
     for(unsigned reason=0;reason<gears_hand_stream::observe_reason_count;++reason){
         const auto mask=diagnostic.reason_masks[reason];
@@ -198,6 +249,9 @@ unsigned timing_phase(){return trial.xr_equipment_phase<=2?trial.xr_equipment_ph
 bool timing_active(){return trial.phase&&!trial.ended&&trial.timing.frequency&&!trial.timing.dumped;}
 void timing_begin(){
     shadow_reset();
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+    transport_reset();
+#endif
     LARGE_INTEGER frequency{};
     if(QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0)
         trial.timing.frequency=std::uint64_t(frequency.QuadPart);
@@ -284,7 +338,11 @@ void timing_dump_if_ended(){
             timing_print_age(L"new_ticket",value.new_ticket);fwprintf(log_file,L"\n");
         }
     }
-    fwprintf(log_file,L"hand_ik_equipment_timing_end schema=1\n");shadow_dump();fflush(log_file);
+    fwprintf(log_file,L"hand_ik_equipment_timing_end schema=1\n");shadow_dump();
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+    transport_dump();
+#endif
+    fflush(log_file);
 }
 // Nested actions may end the trial inside a measured span. Delay the one dump
 // until the outer event returns and every live span has added its final sample.

@@ -36,6 +36,14 @@ enum class ObserveReason : unsigned {
     not_newer,ticket_age,scale_changed,tracking_loss,revision_exhausted,count
 };
 constexpr unsigned observe_reason_count=static_cast<unsigned>(ObserveReason::count);
+constexpr unsigned transport_stream_capacity=8;
+struct TransportResult {
+    unsigned refreshed_mask{},reset_binding_mask{};
+    // count means no rejection/revocation reason. Mixed results keep the first
+    // reason, including old binding age before a remaining hand is refreshed.
+    ObserveReason reason{ObserveReason::count};
+    bool capacity_exhausted{}; // Permanent fence failure; reason is not_newer.
+};
 struct ObserveAge {
     std::uint64_t ms{}; // Absolute distance; future means the stamp is ahead of now.
     bool known{},future{};
@@ -47,6 +55,7 @@ struct ContinuitySnapshot {
     double units_per_metre{};
     unsigned bound_mask{};
     bool context_known{},stream_known{},ready{}; // Historical ready_, not recomputed.
+    std::uint64_t source_stamp[2]{}; // Known iff the corresponding old_ticket_age is known.
     ObserveAge old_ticket_age[2]{},context_age{};
 };
 struct ObserveDiagnostic {
@@ -77,12 +86,20 @@ inline bool recent(std::uint64_t stamp,std::uint64_t now) noexcept {
 }
 
 class Policy {
+    struct TransportFence {
+        StreamKey stream{};
+        std::uint64_t serial{},sequence{},writer_serial{},writer_sequence{};
+        bool known{};
+    };
     Context context_{};StreamKey stream_{};Plan current_{};
     ObserveDiagnostic diagnostic_{};
     std::uint64_t revision_{},serial_{},sequence_{},last_present_ms_[2]{};
     double units_{};
     unsigned bound_{},baseline_pending_{both_hands},last_valid_{};
     bool context_known_{},stream_known_{},ready_{};
+    TransportFence transport_fences_[transport_stream_capacity]{};
+    Ticket transport_writer_ticket_{};
+    bool transport_enabled_{},transport_exhausted_{},transport_writer_known_{};
     static bool game_valid(GameKey const& game) noexcept {
         return game.world&&game.controller&&game.pawn&&game.mesh;
     }
@@ -115,6 +132,29 @@ class Policy {
         bound_&=~mask;baseline_pending_|=mask;
         plan.reset_binding_mask|=mask;plan.restore_mask|=mask;
     }
+    void invalidate(TransportResult& result,unsigned mask) noexcept {
+        bound_&=~mask;baseline_pending_|=mask;result.reset_binding_mask|=mask;
+    }
+    static void reason(TransportResult& result,ObserveReason value) noexcept {
+        if(result.reason==ObserveReason::count)result.reason=value;
+    }
+    TransportFence* transport_fence(StreamKey const& stream) noexcept {
+        for(auto& fence:transport_fences_)
+            if(fence.known&&same(fence.stream,stream))return &fence;
+        if(!transport_exhausted_)
+            for(auto& fence:transport_fences_)
+                if(!fence.known){fence.known=true;fence.stream=stream;return &fence;}
+        transport_exhausted_=true;transport_writer_known_=false;return nullptr;
+    }
+    static void consume_writer(TransportFence& fence,std::uint64_t serial,std::uint64_t sequence) noexcept {
+        if(serial>fence.writer_serial)fence.writer_serial=serial;
+        if(sequence>fence.writer_sequence)fence.writer_sequence=sequence;
+    }
+    bool stamp_regresses(Ticket const& ticket) const noexcept {
+        for(unsigned hand=0;hand<2;++hand)
+            if((bound_&ticket.valid_mask&(1u<<hand))&&ticket.created_ms<last_present_ms_[hand])return true;
+        return false;
+    }
     void diagnose(ObserveReason reason,unsigned mask=both_hands) noexcept {
         diagnostic_.reason_masks[static_cast<unsigned>(reason)]|=mask;
     }
@@ -140,10 +180,75 @@ public:
         snapshot.serial=serial_;snapshot.sequence=sequence_;
         snapshot.units_per_metre=units_;snapshot.bound_mask=bound_;
         snapshot.context_known=context_known_;snapshot.stream_known=stream_known_;snapshot.ready=ready_;
-        for(unsigned hand=0;hand<2;++hand)
+        for(unsigned hand=0;hand<2;++hand){
+            if(bound_&(1u<<hand))snapshot.source_stamp[hand]=last_present_ms_[hand];
             snapshot.old_ticket_age[hand]=observe_age(last_present_ms_[hand],now,(bound_&(1u<<hand))!=0);
+        }
         snapshot.context_age=observe_age(context_.observed_ms,now,context_known_);
         return snapshot;
+    }
+    // Continuity only: never returns a Plan or grants a write/binding. The
+    // caller still restores its journals and makes a regular fresh observation.
+    TransportResult refresh_bound_transport(Ticket const& ticket,std::uint64_t action_epoch,std::uint64_t now) noexcept {
+        current_.revision=0; // Incrementing revision_ alone would leave current_ usable.
+        TransportResult result{};
+        for(unsigned hand=0;hand<2;++hand)
+            if((bound_&(1u<<hand))&&!recent(last_present_ms_[hand],now)){
+                reason(result,ObserveReason::binding_age);invalidate(result,1u<<hand);
+            }
+        if(!transport_enabled_){
+            transport_enabled_=true;
+            if(stream_known_){
+                auto* previous=transport_fence(stream_);
+                if(previous)consume_writer(*previous,serial_,sequence_);
+            }
+        }
+        auto* fence=transport_exhausted_?nullptr:transport_fence(ticket.stream);
+        if(!fence){
+            result.capacity_exhausted=true;reason(result,ObserveReason::not_newer);
+            invalidate(result,both_hands);return result;
+        }
+        const bool newer=ticket.serial>fence->serial&&ticket.sequence>fence->sequence;
+        if(ticket.serial>fence->serial)fence->serial=ticket.serial;
+        if(ticket.sequence>fence->sequence)fence->sequence=ticket.sequence;
+        // Do not let a duplicate clear a prior rejection or replace the one
+        // legitimate same-ticket writer exception. A later attempted cursor
+        // supersedes that exception even when the attempt is rejected.
+        if(newer||!ticket_same(ticket,transport_writer_ticket_))transport_writer_known_=false;
+        const auto reject=[&](ObserveReason why) noexcept {
+            reason(result,why);transport_writer_known_=false;invalidate(result,both_hands);
+        };
+        if(revision_==(std::numeric_limits<std::uint64_t>::max)()){
+            reject(ObserveReason::revision_exhausted);return result;
+        }
+        if(!context_known_||!game_valid(context_.game)||action_epoch!=context_.action_epoch){
+            reject(ObserveReason::context_identity);return result;
+        }
+        if(!ready_||!context_.idle_ready||!context_.clean){reject(ObserveReason::not_ready);return result;}
+        if(!stream_valid(ticket.stream)){reject(ObserveReason::stream_invalid);return result;}
+        if(!stream_known_||!same(stream_,ticket.stream)){reject(ObserveReason::stream_changed);return result;}
+        const bool scale=std::isfinite(ticket.units_per_metre)&&ticket.units_per_metre>0.;
+        if(!ticket.serial||!ticket.sequence||(ticket.valid_mask&~both_hands)||!scale){
+            reject(ObserveReason::ticket_shape);return result;
+        }
+        if(ticket.controller!=context_.game.controller||ticket.pawn!=context_.game.pawn||ticket.weapon!=context_.game.weapon){
+            reject(ObserveReason::ticket_owner);return result;
+        }
+        if(ticket.stream.world_generation!=context_.expected_native_world_generation){
+            reject(ObserveReason::ticket_world);return result;
+        }
+        if(units_!=ticket.units_per_metre){reject(ObserveReason::scale_changed);return result;}
+        if(!newer||ticket.serial<=fence->writer_serial||ticket.sequence<=fence->writer_sequence){
+            reason(result,ObserveReason::not_newer);return result;
+        }
+        if(!recent(ticket.created_ms,now)||stamp_regresses(ticket)){reject(ObserveReason::ticket_age);return result;}
+        const auto lost=both_hands&~ticket.valid_mask;
+        if(lost){reason(result,ObserveReason::tracking_loss);invalidate(result,lost);}
+        result.refreshed_mask=bound_&ticket.valid_mask;
+        for(unsigned hand=0;hand<2;++hand)
+            if(result.refreshed_mask&(1u<<hand))last_present_ms_[hand]=ticket.created_ms;
+        transport_writer_ticket_=ticket;transport_writer_known_=true;
+        return result;
     }
     // Pass only this frame's successful source read. nullptr never reuses the
     // stored ticket. Every observation also revokes all earlier plans.
@@ -165,6 +270,7 @@ public:
             context.idle_ready&&context.clean;
         const bool context_changed=!context_known_||!identity(context_,context);
         if(context_changed||ready!=ready_){
+            transport_writer_known_=false;
             if(context_changed)diagnose(ObserveReason::context_identity);
             if(ready!=ready_)diagnose(ObserveReason::context_readiness);
             invalidate(plan,both_hands);
@@ -177,8 +283,11 @@ public:
                 diagnose(ObserveReason::binding_age,1u<<hand);invalidate(plan,1u<<hand);
             }
         if(!ready){diagnose(ObserveReason::not_ready);invalidate(plan,both_hands);}
+        if(transport_exhausted_){diagnose(ObserveReason::not_newer);invalidate(plan,both_hands);return seal(plan);}
         if(!fresh){diagnose(ObserveReason::no_receipt);return seal(plan);}
         const auto& ticket=*fresh;
+        auto* fence=transport_enabled_?transport_fence(ticket.stream):nullptr;
+        if(transport_exhausted_){diagnose(ObserveReason::not_newer);invalidate(plan,both_hands);return seal(plan);}
         const bool owner=game_valid(context.game)&&ticket.controller==context.game.controller&&
             ticket.pawn==context.game.pawn&&ticket.weapon==context.game.weapon;
         const bool scale=std::isfinite(ticket.units_per_metre)&&ticket.units_per_metre>0.;
@@ -187,6 +296,7 @@ public:
         const bool world=ticket.stream.world_generation==context.expected_native_world_generation;
         const bool changed=!stream_known_||!same(stream_,ticket.stream);
         if(changed){
+            transport_writer_known_=false;
             diagnose(ObserveReason::stream_changed);
             if(!stream_valid(ticket.stream)){
                 diagnose(ObserveReason::stream_invalid);invalidate(plan,both_hands);return seal(plan);
@@ -196,17 +306,25 @@ public:
         }
         // A rejected read still consumes its same-stream cursors. In particular,
         // a future receipt cannot become writable when the clock catches up.
-        const bool newer=ticket.serial>serial_&&ticket.sequence>sequence_;
+        const bool newer=ticket.serial>serial_&&ticket.sequence>sequence_&&
+            (!fence||(ticket.serial>fence->writer_serial&&ticket.sequence>fence->writer_sequence));
         if(ticket.serial>serial_)serial_=ticket.serial;
         if(ticket.sequence>sequence_)sequence_=ticket.sequence;
+        if(fence)consume_writer(*fence,ticket.serial,ticket.sequence);
         if(!shape||!owner||!world){
+            transport_writer_known_=false;
             if(!shape)diagnose(ObserveReason::ticket_shape);
             if(!owner)diagnose(ObserveReason::ticket_owner);
             if(!world)diagnose(ObserveReason::ticket_world);
             invalidate(plan,both_hands);return seal(plan);
         }
         if(!newer){diagnose(ObserveReason::not_newer);return seal(plan);}
-        if(!recent(ticket.created_ms,now)){
+        const bool same_transport=transport_writer_known_&&ticket_same(ticket,transport_writer_ticket_);
+        if(fence&&!(ticket.serial>fence->serial&&ticket.sequence>fence->sequence)&&!same_transport){
+            diagnose(ObserveReason::not_newer);return seal(plan);
+        }
+        transport_writer_known_=false; // A legal transport ticket can enter the writer path only once.
+        if(!recent(ticket.created_ms,now)||(transport_enabled_&&stamp_regresses(ticket))){
             diagnose(ObserveReason::ticket_age);invalidate(plan,both_hands);return seal(plan);
         }
         if(units_!=ticket.units_per_metre){

@@ -77,6 +77,73 @@ void xr_reset_bindings(unsigned mask){
         trial.xr_binding[hand].reset();++trial.xr_resets;
     }
 }
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+constexpr bool transport_consumed_rejection(bool fresh,std::uint64_t before,std::uint64_t after) noexcept {
+    return !fresh&&before!=UINT64_MAX&&after>before;
+}
+static_assert(transport_consumed_rejection(false,7,8)); // Rejected newer receipt, including a future stamp.
+static_assert(!transport_consumed_rejection(false,UINT64_MAX,8)); // Initial attachment discards old receipts.
+static_assert(!transport_consumed_rejection(false,7,7)); // No new frame or mutex contention.
+static_assert(!transport_consumed_rejection(true,7,8)); // Accepted fresh receipt follows the Policy path.
+static_assert(!transport_consumed_rejection(false,8,7)); // Not a cursor advance.
+void refresh_transport_before_restore(){
+    EquipmentTransportRow row{};row.phase=trial.xr_equipment_phase;row.epoch=trial.epoch;
+    row.writer_before=trial.xr_cursor;
+    const auto reader_before=transport_trial.cursor;
+    const auto read_begin=timing_clock();
+    gears_weapon::HandWorldFrame frame{};
+    row.fresh=trial.xr_open&&xr_bridge.read_pose(transport_trial.cursor,frame);
+    const auto read_end=timing_clock();row.now=GetTickCount64();
+    if(!read_begin||read_end<read_begin)++transport_trial.invalid_clock;else row.read_qpc=read_end-read_begin;
+    if(transport_consumed_rejection(row.fresh,reader_before,transport_trial.cursor)){
+        // The bridge consumed but filtered this receipt without returning its
+        // identity. Do not let the independent late reader retry it after a
+        // future stamp catches up. Seal writes now; restore before terminating.
+        transport_trial.reader_rejected=true;
+        stop_requested.store(true,std::memory_order_release);
+    }
+    const auto before=trial.xr_policy.continuity_snapshot(row.now);row.before_bound=before.bound_mask;
+    row.policy_serial_before=before.serial;row.policy_sequence_before=before.sequence;
+    if(row.fresh){
+        row.serial=frame.serial;row.sequence=frame.sequence;row.created_ms=frame.created_ms;row.tracked=frame.valid_mask;
+        row.source=gears_hand_stream::observe_age(frame.created_ms,row.now);
+    }
+    // This reader is independent of both the diagnostic and writer cursors.
+    // It can preserve existing transport continuity, never grant a write plan.
+    if(row.fresh&&before.bound_mask&&!stop_requested.load(std::memory_order_acquire)&&
+       !shutdown_requested.load(std::memory_order_acquire)&&!trial.ended){
+        gears_hand_stream::Ticket ticket{};
+        ticket.stream={frame.session,frame.space_epoch,frame.input_epoch,frame.world_generation};
+        ticket.serial=frame.serial;ticket.sequence=frame.sequence;ticket.created_ms=frame.created_ms;
+        ticket.controller=frame.controller;ticket.pawn=frame.pawn;ticket.weapon=frame.weapon;
+        ticket.units_per_metre=frame.units_per_metre;ticket.valid_mask=frame.valid_mask;
+        const auto refresh_begin=timing_clock();
+        const auto result=trial.xr_policy.refresh_bound_transport(ticket,trial.epoch,row.now);
+        const auto refresh_end=timing_clock();
+        if(!refresh_begin||refresh_end<refresh_begin)++transport_trial.invalid_clock;
+        else row.refresh_qpc=refresh_end-refresh_begin;
+        row.called=true;row.refreshed=result.refreshed_mask;row.reset=result.reset_binding_mask;
+        row.reason=unsigned(result.reason);row.capacity_exhausted=result.capacity_exhausted;
+        xr_reset_bindings(result.reset_binding_mask);
+    }
+    const auto after=trial.xr_policy.continuity_snapshot(row.now);row.after_bound=after.bound_mask;
+    row.writer_after=trial.xr_cursor;row.policy_serial_after=after.serial;row.policy_sequence_after=after.sequence;
+    row.state_unchanged=gears_hand_stream::same(before.context.game,after.context.game)&&
+        before.context.expected_native_world_generation==after.context.expected_native_world_generation&&
+        before.context.action_epoch==after.context.action_epoch&&before.context.observed_ms==after.context.observed_ms&&
+        before.context.idle_ready==after.context.idle_ready&&before.context.clean==after.context.clean&&
+        before.context_known==after.context_known&&before.stream_known==after.stream_known&&before.ready==after.ready&&
+        gears_hand_stream::same(before.stream,after.stream)&&before.units_per_metre==after.units_per_metre;
+    for(unsigned hand=0;hand<2;++hand){
+        row.before[hand]=before.old_ticket_age[hand];row.after[hand]=after.old_ticket_age[hand];
+        row.before_stamp[hand]=before.source_stamp[hand];row.after_stamp[hand]=after.source_stamp[hand];
+    }
+    if(transport_trial.count<transport_trial.rows.size())transport_trial.rows[transport_trial.count++]=row;
+    else ++transport_trial.dropped;
+    // Always return to the caller's original dirty-journal restoration path,
+    // including rejection, tracking loss, expiry or diagnostic buffer overflow.
+}
+#endif
 bool xr_targets(gears_weapon::HandWorldFrame const& frame,unsigned mask){
     trial.xr_grips={{frame.left,frame.right}};
     for(unsigned hand=0;hand<2;++hand)if(mask&(1u<<hand)){
@@ -123,6 +190,12 @@ void pre_tick(uptr){
         const auto finish=timing_clock();
         shadow_sample(fresh?&early:nullptr,GetTickCount64(),writer_before,begin,finish);
     }
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+    if(trial.phase&&!stop_requested.load(std::memory_order_acquire)&&
+       !shutdown_requested.load(std::memory_order_acquire)){
+        refresh_transport_before_restore();
+    }
+#endif
 #endif
     if(trial.lease.dirty()){
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
@@ -130,6 +203,13 @@ void pre_tick(uptr){
 #endif
         if(!restore(L"pre_tick"))return;
     }
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+    if(transport_trial.reader_rejected){
+        yield_for_equipment(L"xr_transport_consumed_pose_rejected");
+        if(!trial.ended)end(7,L"xr_transport_consumed_pose_rejected");
+        return;
+    }
+#endif
     if(stop_requested.load(std::memory_order_acquire)){end(6,L"xr_stopped_after_restore");return;}
     trial.tick_epoch=trial.epoch;
 }
