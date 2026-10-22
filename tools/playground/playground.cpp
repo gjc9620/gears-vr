@@ -11,14 +11,23 @@
 #include <algorithm>
 #include <cmath>
 #include "MinHook.h"
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL) && defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+#error The single-pulse and controlled IK candidates cannot be combined
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL) || defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+#define GEARS_PLAYGROUND_HAND_IK_HELPERS 1
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
 #include "../vr-common/hand_animation_observation.h"
 #endif
-#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)
 #include "../vr-common/free_hand_control.h"
 #endif
-#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)
 #include "../vr-common/hand_ik_trial_policy.h"
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+#include "../vr-common/hand_ik_controlled_trial_policy.h"
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
 #include "../vr-common/weapon_lancer_blade_outline.h"
@@ -178,11 +187,14 @@ bool invoke(Request* r){
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
 #include "hand_animation_probe.inl"
 #endif
-#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)
 #include "vr_free_hands.inl"
 #endif
-#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)
 #include "vr_hand_ik_trial.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+#include "vr_hand_ik_controlled_trial.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
 #include "vr_equipment_snapshot.inl"
@@ -196,6 +208,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     // Observe before both the recursion bypass and automatic-mode filter.
     // This independent scope never consumes, alters or invokes an engine call.
     handanim::HookScope hand_animation_observation(object,function,params);
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+    handikcontrolled::TickScope controlled_ik_tick_observation(object,function);
 #endif
     if(inside||!enabled.load(std::memory_order_acquire)){original(object,function,params);return;}
     if(playground::automatic&&object!=playground::viewport&&object!=playground::menu_button&&
@@ -217,6 +232,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     bool post_hand_ik_tick=false;
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+    bool post_controlled_hand_ik_tick=false;
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     bool post_hand_animation_tick=false;
 #endif
@@ -233,6 +251,11 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
             post_hand_ik_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
                 object==playground::pointer(playground::player,L"Actor");
             if(post_hand_ik_tick)handik::pre_tick(object);
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+            post_controlled_hand_ik_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
+                object==playground::pointer(playground::player,L"Actor");
+            if(post_controlled_hand_ik_tick)handikcontrolled::pre_tick(object);
 #endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
             post_free_hand_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
@@ -269,6 +292,12 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     if(post_hand_ik_tick&&enabled.load(std::memory_order_acquire)&&
        game_thread.load()==GetCurrentThreadId()){
         inside=true;handik::post_tick(object);inside=false;
+    }
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+    if(post_controlled_hand_ik_tick&&enabled.load(std::memory_order_acquire)&&
+       game_thread.load()==GetCurrentThreadId()){
+        inside=true;handikcontrolled::post_tick(object);inside=false;
     }
 #endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
@@ -347,11 +376,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     handanim::reset();
 #endif
-#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)
     freehands::reset();
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     handik::reset();
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+    handikcontrolled::reset();
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
     vrequip::lancer_reload_test_start=false;
@@ -550,6 +582,32 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkTrialStop(void*){
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkTrialStatus(void*){
     return DWORD((handik::samples.load(std::memory_order_acquire)&0xffff)<<16)|
         DWORD(handik::status.load(std::memory_order_acquire));
+}
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+// Recording is single-use per initialization. Status 5 means recording ended;
+// it always remains inconclusive about causal bone effects or visible 6DoF.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkControlledTrialStart(void*){
+    LifecycleScope lifecycle;
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||!playground::ready||
+       !freehands::test_environment()||!log_file||ferror(log_file)||
+       freehands::active_visible.load(std::memory_order_acquire)||
+       handikcontrolled::shutdown_requested.load(std::memory_order_acquire))return 1;
+    bool unused=false;
+    if(!handikcontrolled::used.compare_exchange_strong(unused,true))return 2;
+    handikcontrolled::stop_requested=false;handikcontrolled::safe_to_unload=false;
+    handikcontrolled::status=1;handikcontrolled::samples=0;
+    handikcontrolled::requested.store(true,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkControlledTrialStop(void*){
+    if(game_thread.load(std::memory_order_acquire)==GetCurrentThreadId()){
+        handikcontrolled::stop_requested.store(true,std::memory_order_release);return 41;
+    }
+    LifecycleScope lifecycle;return handikcontrolled::stop_and_wait();
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkControlledTrialStatus(void*){
+    return DWORD((handikcontrolled::samples.load(std::memory_order_acquire)&0xffff)<<16)|
+        DWORD(handikcontrolled::status.load(std::memory_order_acquire));
 }
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
@@ -811,6 +869,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrAimStatus(void*){
 #endif
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+    if(game_thread.load(std::memory_order_acquire)==GetCurrentThreadId()){
+        handikcontrolled::shutdown_requested.store(true,std::memory_order_release);
+        handikcontrolled::stop_requested.store(true,std::memory_order_release);return 41;
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     if(game_thread.load(std::memory_order_acquire)==GetCurrentThreadId()){
         handik::shutdown_requested.store(true,std::memory_order_release);
@@ -818,6 +882,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     }
 #endif
     LifecycleScope lifecycle;
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+    handikcontrolled::shutdown_requested.store(true,std::memory_order_release);
+    if(const auto pending_restore=handikcontrolled::stop_and_wait())return pending_restore;
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     handik::shutdown_requested.store(true,std::memory_order_release);
     if(const auto pending_restore=handik::stop_and_wait())return pending_restore;
@@ -889,11 +957,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     if(handanim::probe.active)handanim::finish(4,L"shutdown");
     handanim::reset();
 #endif
-#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)
     freehands::reset();
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     handik::reset();
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+    handikcontrolled::reset();
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     vrequip::reset_switch_test();

@@ -65,7 +65,21 @@ option(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 "Private opt-in game-thread XR L2 hol
 option(GEARS_PLAYGROUND_VR_R2_SIM_TEST "Private simulated-input verification only" OFF)
 option(GEARS_PLAYGROUND_FREE_HANDS_PROBE "Private read-only XR two-hand targets and original hand lifecycle probe" OFF)
 option(GEARS_PLAYGROUND_HAND_IK_TRIAL "Private single-use original right-hand IK pulse and verified rollback" OFF)
+option(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL "Private six-window right-hand IK sham/reversal recording with verified rollback" OFF)
 option(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE "Private bounded read-only pickup/melee animation lifecycle observer" OFF)
+if(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
+    if(GEARS_PLAYGROUND_HAND_IK_TRIAL OR GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2 OR
+       GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 OR GEARS_PLAYGROUND_VR_R2_SIM_TEST OR
+       GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST OR GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST OR
+       GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST OR GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST OR
+       GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST OR GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST OR
+       GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL OR GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST OR
+       GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
+        message(FATAL_ERROR "Controlled IK recording must be isolated from other private input/skeletal writers")
+    endif()
+    target_compile_definitions(GearsPlayground PRIVATE GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL=1)
+    target_compile_options(GearsPlayground PRIVATE /W4 /WX /EHsc)
+endif()
 if(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     target_compile_definitions(GearsPlayground PRIVATE GEARS_PLAYGROUND_HAND_ANIMATION_PROBE=1)
     target_compile_options(GearsPlayground PRIVATE /W4 /WX /EHsc)
@@ -81,6 +95,11 @@ target_compile_definitions(FreeHandControlTest PRIVATE WIN32_LEAN_AND_MEAN NOMIN
 target_compile_options(FreeHandControlTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(HandIkTrialPolicyTest ../vr-common/hand_ik_trial_policy_test.cpp)
 target_compile_options(HandIkTrialPolicyTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(HandIkControlledTrialPolicyTest ../vr-common/hand_ik_controlled_trial_policy_test.cpp)
+target_compile_options(HandIkControlledTrialPolicyTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(HandIkControlledTrialOfflineTest hand_ik_controlled_trial_offline_test.cpp)
+target_compile_definitions(HandIkControlledTrialOfflineTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(HandIkControlledTrialOfflineTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(HandAnimationObservationTest ../vr-common/hand_animation_observation_test.cpp)
 target_compile_options(HandAnimationObservationTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 if(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 AND NOT GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
