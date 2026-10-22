@@ -8,6 +8,7 @@ std::atomic<unsigned> status{},samples{};
 struct Control {
     uptr object{};
     Triple strength{},effector{};
+    playground::Rotation rotation{};
     std::vector<unsigned char> fixed;
 };
 struct Snapshot {
@@ -217,16 +218,17 @@ bool read_control(uptr pawn,uptr mesh,uptr tree,unsigned index,Control& out){
     }
     std::uint8_t space{};Name bone{};
     if(rotation){
-        playground::Rotation value{};bool add{},apply{};
-        if(!structure(out.object,L"BoneRotation",L"Rotator",&value,sizeof(value))||
+        bool add{},apply{},translate{};
+        if(!structure(out.object,L"BoneRotation",L"Rotator",&out.rotation,sizeof(out.rotation))||
            !checked_field(out.object,L"BoneRotationSpace",L"ByteProperty",&space,1)||
            space!=(tail?0:5)||!checked_field(out.object,L"RotationSpaceBoneName",
                L"NameProperty",&bone,sizeof(bone))||
            !name_is(bone,tail?L"None":left?L"b_MF_IK_Hand_L":L"b_MF_IK_Hand_R")||
            !checked_bool(out.object,L"bAddRotation",add)||add||
-           !checked_bool(out.object,L"bApplyRotation",apply)||!apply)return false;
-        append(out.fixed,value);append(out.fixed,space);append(out.fixed,bone);
-        append(out.fixed,add);append(out.fixed,apply);
+           !checked_bool(out.object,L"bApplyRotation",apply)||!apply||
+           !checked_bool(out.object,L"bApplyTranslation",translate)||(tail&&translate))return false;
+        append(out.fixed,space);append(out.fixed,bone);
+        append(out.fixed,add);append(out.fixed,apply);append(out.fixed,translate);
     }else{
         Triple joint{};std::uint8_t joint_space{};Name joint_bone{};bool take{},maintain{};
         if(!structure(out.object,L"EffectorLocation",L"Vector",out.effector.data(),sizeof(out.effector))||
@@ -367,7 +369,8 @@ bool same_controls(Snapshot const& a,Snapshot const& b,bool skip_right=false){
         if(a.controls[i].fixed!=b.controls[i].fixed)return false;
         if(skip_right&&i==right_ik)continue;
         if(!gears_hand_ik::exact(a.controls[i].strength,b.controls[i].strength)||
-           !gears_hand_ik::exact(a.controls[i].effector,b.controls[i].effector))return false;
+           !gears_hand_ik::exact(a.controls[i].effector,b.controls[i].effector)||
+           std::memcmp(&a.controls[i].rotation,&b.controls[i].rotation,sizeof(playground::Rotation)))return false;
     }
     return true;
 }

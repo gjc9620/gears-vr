@@ -61,3 +61,5 @@ cmake --build analysis/build-hand-animation-probe --config Release --target Gear
 购买版 PID 59828 通过原版 `ServerUse` 取得原先没有的 Longshot，再做两次普通近战。新增入口取得 **44 对完整调用、零 caller frame 拒绝、11 次槽播放**，原观察器总计 53 对调用、274 个快照，无溢出。slots 3／10／14 的三个 `PlayCustomAnimByDuration` 先将相同子节点改为 `AR_*Holster_Rt`，后续三个配对调用（18／19／20）在同样对象上改为 `AR_*Equip_Lt`，目标权重均为 1；此前只有周期帧能看到的复用，现在已取得真实同步调用边界。主 Kickup 和 A／C 近战的五次槽播放也已观察。这个结果解决本次正常路径的具体漏钩，不等于所有 Native 直接调用、取消或处决都已覆盖，也尚未把这些事件接入持续写骨。
 
 DLL SHA256 `cb74b6d3c03aab59b07217362eacd013a141c979ce4c71de952e14670aa8781f`；私有回执 `analysis/hand-animation-call-runtime-1023a.json`、同帧变化摘要 `analysis/hand-animation-call-transitions-1023a.json`，原日志 SHA256 `433605e0aed03bfa33df34c04663c7930b97fb1c4fac892da93139b16bdd0a47`。`PlaygroundShutdown=0`，两入口独立还原比较、11 个音频会话恢复、自有游戏退出通过。私有／默认禁用构建、调用转发／占用入口／恢复失败离线测试、观察器和 Hook 测试、23 项 Python 验证器检查通过；默认 DLL 无观察器导出。这是游戏线程调用证据，未验证最终画面或头显。
+
+后续 [双手连续 IK 试验](hand-ik-stream-trial-20261023.md) 已在这三个动作入口接入独立的游戏线程恢复回调。它在原动作执行前恢复 private dirty lease，独立于本观察器是否活动、日志限额和结束时间；本只读探针及其 `writes=0` 仍仅描述观察器自身，不能代替整个私有驱动的写入计数。新的有限四通道候选和原观察候选须分开按 DLL 哈希及回执解释，未提升全局动画所有权证明。

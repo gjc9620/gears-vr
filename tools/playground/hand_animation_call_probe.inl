@@ -9,6 +9,9 @@ bool reserved{};
 uptr target{};
 uptr __fastcall hook(uptr self,uptr caller,uptr result,uptr callee){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
+#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
+    handstream::before_action(self,callee);
+#endif
     const auto token=handanim::enter(self,callee,nullptr,handanim::Source::call_function,caller);
     const auto value=original(self,caller,result,callee);
     handanim::leave(token,self,callee,nullptr,caller);

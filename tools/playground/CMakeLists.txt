@@ -68,6 +68,24 @@ option(GEARS_PLAYGROUND_HAND_IK_TRIAL "Private single-use original right-hand IK
 option(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL "Private six-window right-hand IK sham/reversal recording with verified rollback" OFF)
 option(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE "Private bounded read-only pickup/melee animation lifecycle observer" OFF)
 option(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE "Private read-only CallFunction animation observer, without another native hook owner" OFF)
+option(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL "Private bounded four-channel dual-hand IK driver and immediate action hand-back" OFF)
+if(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
+    if(NOT GEARS_PLAYGROUND_HAND_ANIMATION_PROBE OR NOT GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+        message(FATAL_ERROR "Dual-hand stream trial requires both original animation observation boundaries")
+    endif()
+    if(GEARS_PLAYGROUND_HAND_IK_TRIAL OR GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL OR
+       GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2 OR GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 OR
+       GEARS_PLAYGROUND_VR_R2_SIM_TEST OR GEARS_PLAYGROUND_FREE_HANDS_PROBE OR
+       GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST OR GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST OR
+       GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST OR GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST OR
+       GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST OR GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST OR
+       GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL OR GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST OR
+       GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
+        message(FATAL_ERROR "Dual-hand stream trial must be isolated from other private input/skeletal writers")
+    endif()
+    target_compile_definitions(GearsPlayground PRIVATE GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL=1)
+    target_compile_options(GearsPlayground PRIVATE /W4 /WX /EHsc)
+endif()
 if(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
     if(NOT GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
         message(FATAL_ERROR "Animation CallFunction observer requires the original lifecycle observer")
@@ -111,6 +129,8 @@ target_compile_definitions(HandIkControlledTrialOfflineTest PRIVATE WIN32_LEAN_A
 target_compile_options(HandIkControlledTrialOfflineTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(HandAnimationObservationTest ../vr-common/hand_animation_observation_test.cpp)
 target_compile_options(HandAnimationObservationTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(HandIkStreamLeaseTest ../vr-common/hand_ik_stream_lease_test.cpp)
+target_compile_options(HandIkStreamLeaseTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 if(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 AND NOT GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
     message(FATAL_ERROR "Private XR L2 candidate requires the shared XR R2 frame bridge")
 endif()
