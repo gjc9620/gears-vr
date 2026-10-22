@@ -34,7 +34,7 @@ struct MeshPoseProbe {
     playground::Vector translation{};
     playground::Rotation rotation{};
     float local_to_world[16]{};
-    bool transform_known{},absolute_translation{},absolute_rotation{},hidden{};
+    bool transform_known{},absolute_translation{},absolute_rotation{},absolute_scale{},hidden{};
 };
 bool mesh_pose_probe(uptr weapon,MeshPoseProbe& out){
     out={};
@@ -61,6 +61,7 @@ bool mesh_pose_probe(uptr weapon,MeshPoseProbe& out){
         read_struct(L"LocalToWorld",out.local_to_world,sizeof(out.local_to_world));
     return out.transform_known&&read_bool(out.mesh,L"AbsoluteTranslation",out.absolute_translation)&&
         read_bool(out.mesh,L"AbsoluteRotation",out.absolute_rotation)&&
+        read_bool(out.mesh,L"AbsoluteScale",out.absolute_scale)&&
         read_bool(out.mesh,L"HiddenGame",out.hidden);
 }
 #endif
@@ -101,6 +102,9 @@ bool read_bool(uptr object,const wchar_t* field,bool& value){
     value=(get<unsigned>(object+get<unsigned>(p+0x94))&get<unsigned>(p+0xd0))!=0;
     return true;
 }
+#if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+#include "vr_weapon_mesh_follow.inl"
+#endif
 bool read_slot(uptr inv,std::uint8_t slot,uptr& weapon){
     playground::Args call(inv,L"GetWeaponInSlot");
     const auto p=call.prop(L"Slot");
@@ -254,6 +258,9 @@ void tick(uptr pc){
                 world_hands.controller==pc&&world_hands.pawn==pawn;
             if(same){
                 ++pose_accepted;
+#if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+                mesh_follow_hands=world_hands;mesh_follow_hands_known=true;
+#endif
                 if(log_file&&now>=next_pose_log){
                     next_pose_log=now+500;
                     fwprintf(log_file,L"hand_world_pose sequence=%llu world_generation=%llu mask=%u "
@@ -268,14 +275,15 @@ void tick(uptr pc){
                     fwprintf(log_file,L"weapon_mesh_probe weapon=%p mesh=%p weapon_mesh=%p "
                         L"component=%ls asset=%ls known=%u "
                         L"translation=%.3f,%.3f,%.3f rotation=%d,%d,%d "
-                        L"world_origin=%.3f,%.3f,%.3f absolute=%u,%u hidden=%u\n",
+                        L"world_origin=%.3f,%.3f,%.3f absolute=%u,%u,%u hidden=%u\n",
                         reinterpret_cast<void*>(world_hands.weapon),reinterpret_cast<void*>(mesh.mesh),
                         reinterpret_cast<void*>(mesh.weapon_mesh),mesh.component_name,mesh.asset_name,
                         unsigned(known),
                         mesh.translation.x,mesh.translation.y,mesh.translation.z,
                         mesh.rotation.pitch,mesh.rotation.yaw,mesh.rotation.roll,
                         mesh.local_to_world[12],mesh.local_to_world[13],mesh.local_to_world[14],
-                        unsigned(mesh.absolute_translation),unsigned(mesh.absolute_rotation),unsigned(mesh.hidden));
+                        unsigned(mesh.absolute_translation),unsigned(mesh.absolute_rotation),
+                        unsigned(mesh.absolute_scale),unsigned(mesh.hidden));
                     fflush(log_file);
                 }
             }else ++pose_rejected;

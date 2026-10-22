@@ -24,6 +24,9 @@
 #include "../vr-common/weapon_equipment_model.h"
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
 #include "../vr-common/equipment_intent_bridge.h"
+#if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+#include "../vr-common/weapon_mesh_follow.h"
+#endif
 #endif
 #endif
 
@@ -146,6 +149,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     // Tick/PlayerTick are dispatched by the main game loop in menu and gameplay.
     // Bind once, then never execute a request on another thread.
     wchar_t f[128]{};name(function,f,128);
+#if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+    bool post_weapon_tick=false;
+#endif
     if((!wcscmp(f,L"PlayerTick")||!wcscmp(f,L"Tick"))&&
         (!playground::automatic||object==playground::viewport||
             (!wcscmp(f,L"PlayerTick")&&object==playground::pointer(playground::player,L"Actor")))){
@@ -156,7 +162,12 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
             }
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
             if(playground::automatic&&!wcscmp(f,L"PlayerTick")&&
-               object==playground::pointer(playground::player,L"Actor"))vrequip::tick(object);
+               object==playground::pointer(playground::player,L"Actor")){
+                vrequip::tick(object);
+#if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+                post_weapon_tick=true;
+#endif
+            }
 #endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
             if(playground::automatic&&!wcscmp(f,L"PlayerTick")&&
@@ -167,11 +178,22 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     }
     inside=false;
     original(object,function,params);
+#if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+    if(post_weapon_tick&&enabled.load(std::memory_order_acquire)&&
+       game_thread.load()==GetCurrentThreadId()){
+        inside=true;vrequip::mesh_follow_post_tick(object);inside=false;
+    }
+#endif
 }
 }
 
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     if(enabled.load())return 0;
+#if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+    vrequip::mesh_follow_shutdown_requested.store(false,std::memory_order_release);
+    vrequip::mesh_follow_requested.store(false,std::memory_order_release);
+    vrequip::mesh_follow_status.store(0,std::memory_order_release);
+#endif
     base=reinterpret_cast<uptr>(GetModuleHandleW(nullptr));
     if(get<unsigned short>(base)!=0x5a4d||!registered(get<uptr>(get<Array>(base+0x1c24730).data+8)))return 1;
     // Matches the original ProcessEvent entry; full live-code provenance is
@@ -254,6 +276,25 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandPoseStatus(void*){
            DWORD(vrequip::pose_rejected.load(std::memory_order_acquire)&0xffff);
 }
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+// 1 waiting for a held Lancer and fresh hand pose, 2 moving original mesh,
+// 3 mesh unavailable, 4 invalid mount, 5 component call failed,
+// 6 restored, 7 component destroyed, 8 restore failed.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowEnable(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment()||
+       vrequip::mesh_follow_shutdown_requested.load(std::memory_order_acquire))return 1;
+    vrequip::mesh_follow_requested.store(true,std::memory_order_release);
+    vrequip::mesh_follow_status.store(1,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowDisable(void*){
+    vrequip::mesh_follow_requested.store(false,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowStatus(void*){
+    return (vrequip::mesh_follow_active_visible.load(std::memory_order_acquire)?0x10000u:0u)|
+        vrequip::mesh_follow_status.load(std::memory_order_acquire);
+}
+#endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundTestEnter(void*){
     // Available only in the user's explicit unattended, muted test child.
     wchar_t behind[4]{},muted[4]{};
@@ -283,6 +324,15 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrAimStatus(void*){
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
     if(const auto stopped=vrfire::disable())return 10+stopped;
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+    vrequip::mesh_follow_shutdown_requested.store(true,std::memory_order_release);
+    vrequip::mesh_follow_requested.store(false,std::memory_order_release);
+    const auto follow_until=GetTickCount64()+2000;
+    while(callbacks.load(std::memory_order_acquire)&&GetTickCount64()<follow_until)Sleep(1);
+    if(callbacks.load(std::memory_order_acquire)||
+       vrequip::mesh_follow_active_visible.load(std::memory_order_acquire))
+        return 20; // Game thread must restore first.
 #endif
     enabled.store(false,std::memory_order_release);
     if(auto r=pending.exchange(nullptr))InterlockedExchange(&r->state,-2);

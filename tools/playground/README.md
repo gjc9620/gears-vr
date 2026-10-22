@@ -89,10 +89,24 @@ private adapter tries the slot weapon's
 original `FireNoAmmoSound` cue, then the current weapon's cue, through the
 original local playback function. Status 9 means neither cue could be played.
 This is a wiring test: original switch animation, visible stow, an audio cue
-when neither weapon has one, and weapon pose transfer are not yet implemented.
+when neither weapon has one, and playable weapon pose transfer are not yet validated.
 The default DLL has no XR equipment-intent consumer.
 The same private bridge also carries left-shoulder ammo-grab presses. The
 adapter checks the held weapon's original spare count and infinite-spare rule:
 status 1 means ammo exists, 2 means empty with the original cue, 3 means empty
 without a cue, and 4 means the game identity or count could not be validated.
 No round or magazine is spawned or deducted at this stage.
+
+`GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST=ON` adds an even narrower private
+Lancer trial to the equipment-intent build. It requires an owned, muted,
+behind-windows Playground range and an already held Lancer. Call
+`PlaygroundWeaponMeshFollowEnable` after the certified hand-pose publisher is
+live; `PlaygroundWeaponMeshFollowStatus` returns bit 16 for an active component
+override and a low status of 2 while the original `Weapon.Mesh` is following
+the right hand. Call `PlaygroundWeaponMeshFollowDisable`, wait until bit 16 is
+clear and status 6 reports restored (or 7 reports a destroyed component), then
+call `PlaygroundShutdown`. Shutdown returns 20 while restoration is still
+pending. The first tracked frame retains the game's current gun pose, so this
+trial checks component motion without claiming a correct per-weapon grip mount.
+It has pure transform and build coverage, but no successful retail runtime or
+headset result yet; the normal DLL contains none of these exports.
