@@ -567,7 +567,7 @@ def sample_owned_game(args, receipt):
             receipt['mesh_follow_trial_status'] = bridge.export(
                 'PlaygroundWeaponMeshFollowStatus')
         elif args.mode in ('chainsaw_semantics', 'chainsaw_hold_adapter',
-                           'chainsaw_hold_shutdown'):
+                           'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter'):
             def fname(value):
                 for index, address in enumerate(resolver.name_pointers):
                     if not address:
@@ -621,10 +621,27 @@ def sample_owned_game(args, receipt):
             if (receipt['before_chainsaw']['holding_b'] or
                     receipt['before_chainsaw']['doing_melee']):
                 raise RuntimeError('Original Lancer was already in melee state')
-            if args.mode in ('chainsaw_hold_adapter', 'chainsaw_hold_shutdown'):
-                if bridge.export('PlaygroundLancerSawHoldStartTest') != 0:
+            if args.mode in ('chainsaw_hold_adapter', 'chainsaw_hold_shutdown',
+                             'chainsaw_gesture_adapter'):
+                gesture = args.mode == 'chainsaw_gesture_adapter'
+                if gesture:
+                    if bridge.export('PlaygroundEquipmentSwitchTest', 2) != 0:
+                        raise RuntimeError('Private right-hand Lancer grab was rejected')
+                    wait_for(lambda: bridge.export('PlaygroundEquipmentSwitchStatus') == 5,
+                             3, 'VR equipment model did not latch Lancer')
+                    if bridge.export('PlaygroundLancerSawGestureTrialStart') != 0:
+                        raise RuntimeError('Private synthetic saw pull was rejected')
+                elif bridge.export('PlaygroundLancerSawHoldStartTest') != 0:
                     raise RuntimeError('Private game-thread Lancer B hold was not queued')
                 try:
+                    if gesture:
+                        def gesture_running():
+                            value = bridge.export('PlaygroundLancerSawGestureTrialStatus')
+                            if value in (5, 6):
+                                raise RuntimeError(f'Synthetic pull failed with status {value}')
+                            return value == 4
+                        wait_for(gesture_running, 5,
+                                 'Synthetic Lancer hand pull did not start original saw')
                     def held_status():
                         value = bridge.export('PlaygroundLancerSawHoldStatus')
                         return value if value == 0x10002 else None
@@ -643,7 +660,7 @@ def sample_owned_game(args, receipt):
                         time.sleep(.06)
                     receipt['held_chainsaw_samples'] = samples
                 finally:
-                    if args.mode == 'chainsaw_hold_adapter':
+                    if args.mode != 'chainsaw_hold_shutdown':
                         if bridge.export('PlaygroundLancerSawHoldStopTest') != 0:
                             receipt['stop_request_failed'] = True
                         else:
@@ -933,6 +950,19 @@ def sample_owned_game(args, receipt):
                 receipt['settled_chainsaw']['doing_melee'] or
                 receipt['settled_chainsaw']['current_fire_mode'] != 0):
             raise RuntimeError('Private Lancer saw hold/timer/release incomplete')
+    elif args.mode == 'chainsaw_gesture_adapter':
+        rows = receipt['held_chainsaw_samples']
+        pulls = [line for line in lines if line.startswith('lancer_saw_gesture_trial_pull ')]
+        if (len(pulls) != 1 or len(rows) < 8 or
+                any(row['adapter_status'] != 0x10002 or not row['holding_b'] or
+                    not row['doing_melee'] or not row['blade_running'] or
+                    row['target_timer'] or row['victim'] != '0x0' for row in rows) or
+                receipt.get('stop_request_failed') or
+                receipt['settled_chainsaw']['holding_b'] or
+                receipt['settled_chainsaw']['doing_melee'] or
+                receipt['settled_chainsaw']['current_fire_mode'] != 0):
+            raise RuntimeError('Synthetic pull to original Lancer saw was incomplete')
+        receipt['gesture_pull_log'] = pulls[0]
     elif args.mode == 'chainsaw_hold_shutdown':
         rows = receipt['held_chainsaw_samples']
         after = receipt.get('shutdown_chainsaw', {})
@@ -1062,7 +1092,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('api', 'chainsaw_api', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('api', 'chainsaw_api', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'reload_visual', 'reload_hold',
                                           'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

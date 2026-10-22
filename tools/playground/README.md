@@ -132,6 +132,15 @@ the visible tooth edge, target collision, occlusion, and paired execution
 remain unverified. The sequential remote-reflection attempt was discarded
 because the original gun component moved between calls.
 
+`GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL=ON` is another private, default-off
+trial. It uses the current original gun matrix and a provisional housing-side
+starter anchor, feeds a 19 cm synthetic left-hand pull through the same
+world-scale gesture model, then requests the original B hold only when the
+gesture qualifies. The owned retail trial observed one pull request at about
+18.81 cm in 297 ms, nine subsequent original blade/melee samples with the
+automatic target timer off, and clean B release. The test publishes no XR
+hand frame and draws no starter; the mount is not calibrated for a Quest hand.
+
 While certified hand poses are being observed, the private bridge also logs a
 read-only `weapon_magazine_probe` beside `weapon_mesh_probe`. It validates the
 current weapon's original `MagazineMesh` component, names its `StaticMesh`,

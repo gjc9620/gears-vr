@@ -226,7 +226,9 @@ public:
             return {LancerSawEvent::none,phase_};
         }
         if(phase_==LancerSawPhase::running){
-            if(!s.original_hold||!s.game_can_melee)return interrupted();
+            // CanDoSpecialMeleeAttack is an entry gate. It may turn false
+            // once the original weapon is already in its held melee state.
+            if(!s.original_hold)return interrupted();
             if(lancer_saw_blade_contact(s.contact)){
                 victim_=s.contact.victim;
                 phase_=LancerSawPhase::waiting_for_execution;

@@ -477,6 +477,9 @@ bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned 
 #if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
 #include "vr_lancer_chainsaw_hold.inl"
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL)
+#include "vr_lancer_chainsaw_gesture_trial.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
 #include "vr_lancer_blade_probe.inl"
 #endif
@@ -487,6 +490,9 @@ void tick(uptr pc){
     const auto now=GetTickCount64();
 #if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
     lancer_saw_hold_tick(pc);
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_SAW_GESTURE_TRIAL)
+    lancer_saw_gesture_trial_tick(pc);
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     unsigned requested_slot=queued_slot.exchange(4,std::memory_order_acq_rel);

@@ -54,6 +54,7 @@ int main() {
     advance(s);s.original_hold=true;
     assert(interaction.observe(s).event==LancerSawEvent::hold_started);
     assert(interaction.phase()==LancerSawPhase::running);
+    s.game_can_melee=false; // original entry gate can close after B is held
     advance(s);contact.original_target_valid=true;s.contact=contact;
     s.contact.target_a_raw.x=30;s.contact.target_b_raw.x=30;
     assert(interaction.observe(s).event==LancerSawEvent::none);

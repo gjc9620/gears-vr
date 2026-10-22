@@ -1,10 +1,22 @@
 #include "weapon_lancer_chainsaw_pose.h"
+#include "weapon_lancer_starter_mount.h"
 #include <cassert>
 #include <cmath>
 #include <cstdio>
 
 int main(){
     using namespace gears_weapon;
+    std::array<float,16> gun{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    LancerStarterWorld mount{};
+    assert(lancer_starter_world(gun,mount));
+    assert(mount.anchor_raw.x==6&&mount.anchor_raw.y==26&&
+           mount.anchor_raw.z==10.65&&mount.pull_axis.x==1);
+    gun={0,1,0,0, -1,0,0,0, 0,0,1,0, 0,0,0,1};
+    assert(lancer_starter_world(gun,mount));
+    assert(mount.anchor_raw.x==-26&&mount.anchor_raw.y==6&&
+           mount.pull_axis.x==0&&mount.pull_axis.y==1);
+    gun[1]=-1;
+    assert(!lancer_starter_world(gun,mount)); // reflected gun frame
     HandWorldFrame frame{};
     frame.created_ms=1000;frame.session=1;frame.sequence=1;
     frame.space_epoch=2;frame.input_epoch=3;frame.world_generation=4;
