@@ -16,6 +16,8 @@ Boltok 模型／动画绑定复核：SHA256 核验的原版 `Weap_LocustPistol.W
 
 继续按保存的原版 HUD 脚本核对出显示层的完美区终点候选为 `ActiveReloadStartTime + SuperSweetSpotDuration`（均为 `GetActiveReloadValues` 的实际输出），普通成功区另加 `SweetSpotDuration`；历史真实 SuperSuccess 样本仍见对象上的三项时长为 `-1`。因此下一步只分析两个原生函数的有界 getter／判定路径，或在受控零售会话只读截取其真实输出，不用显示层公式冒充原生严格边界，也不主动调用未知副作用的原生函数来声称只读。
 
+完美窗口原生定位增量：先查 `knowledge.sqlite` 后在私有 IDA 库中补入并 SHA256 核验历史运行时的代码与五个数据节，确认 `GetActiveReloadValues`／`DetermineActiveReloadSuccessOrFailure` 名称字面量分别位于 `0x14174ed60`／`0x14174edb0`。同 RVA 的零售磁盘 EXE 是 Themida 保护字节，不能与历史运行时内容等同。当前字面量没有直接 IDA xref、绝对指针或指向精确字符串的 RIP 相对 LEA 命中，尚未定位两个原生函数体或证明完美截止值。私有报告 `analysis/ida-reload-window-20261022/lookup.json` 保存来源与失败边界；IDA 租约已关闭。
+
 从 `codex/0.1.0` 提交 `315473dca5008e753011ae905783079de6f04770` 创建独立工作树与 `codex/weapon-6dof` 分支；原工作目录仍由其他会话用于 0.1.0 开发。仅将本次[武器 6DoF 交互设计与验收规格](../../weapon-6dof-interaction-design-20261022.md)及相关文档索引迁入新分支，未复制原目录中其他会话尚未提交的 native、Playground 或启动器改动。后续完成功能并验证时，以届时最新默认版本为集成基线。
 
 规格记录自由双手、身体槽位取枪取弹、R3 物理装填、逐枪黄色引导、霰弹数量不足与射后循环、枪口弹道及原版后坐力、武器弹药卡片、手雷手势投掷、动画接管、臂展校准、可配置转向与普通行走去惯性。用户确认的完美规则为原版该武器完美窗口结束前完成全部动作；提前完成也算，超时为普通装填且不加卡壳惩罚。
