@@ -1,15 +1,14 @@
 """Collect bounded original left-hand and Lancer transforms in an owned retail range.
 
-This is a read-only pose probe after the original GiveTo/SetCurrentWeapon path.
-The sequential ProcessEvent calls do not prove that the returned matrices came
-from one render frame. Output stays in ignored analysis/ and is not a grip mount.
+After the original GiveTo/SetCurrentWeapon path, a private game-thread callback
+captures the pawn bones and unchanged gun matrix after one PlayerTick. Output
+stays in ignored analysis/ and is not yet a VR grip mount.
 """
 import argparse
 import hashlib
 import json
 import math
 from pathlib import Path
-import struct
 import sys
 import time
 import traceback
@@ -27,13 +26,21 @@ def wait_for(callback, seconds, reason):
     raise TimeoutError(reason)
 
 
-def matrix(raw):
-    if len(raw) != 64:
-        raise ValueError('Expected a 64-byte original bone/component matrix')
-    values = struct.unpack('<16f', raw)
+def matrix(text):
+    values = [float(value) for value in text.split(',')]
+    if len(values) != 16:
+        raise ValueError('Expected 16 original bone/component matrix values')
     if not all(math.isfinite(value) for value in values):
         raise ValueError('Nonfinite original matrix')
-    return list(values)
+    return values
+
+
+def parse_pose_row(line):
+    fields = dict(item.split('=', 1) for item in line.split()[1:])
+    if set(fields) != {'sample', 'qpc', 'pawn', 'gun', 'ik_left', 'hand_left', 'hand_right'}:
+        raise ValueError('Unexpected game-thread Lancer pose row')
+    return {'sample': int(fields['sample']), 'qpc': int(fields['qpc']),
+            **{key: matrix(fields[key]) for key in ('pawn', 'gun', 'ik_left', 'hand_left', 'hand_right')}}
 
 
 def sample_owned_game(args, receipt):
@@ -84,21 +91,6 @@ def sample_owned_game(args, receipt):
         def class_name(obj):
             return resolver.class_name(resolver.identity(obj))
 
-        def fname(value):
-            for index, address in enumerate(resolver.name_pointers):
-                if address and resolver.name(index) == value:
-                    return index, 0
-            raise RuntimeError('FName absent: ' + value)
-
-        def component_matrix(component):
-            prop = property_of(component, 'LocalToWorld')
-            if prop['type'] != 'StructProperty' or resolver.u32(prop['address'] + 0x74) != 64:
-                raise RuntimeError('Unexpected LocalToWorld property layout')
-            return matrix(resolver.read(component + prop['offset'], 64))
-
-        def bone_matrix(component, index):
-            return matrix(bytes.fromhex(bridge.call(component, 'GetBoneMatrix', BoneIndex=index)))
-
         pawn = int(ready['pawn'], 0)
         pc = pointer(pawn, 'Controller')
         inventory = pointer(pawn, 'InvManager')
@@ -141,32 +133,28 @@ def sample_owned_game(args, receipt):
         weapon_mesh = pointer(weapon, 'Mesh')
         if class_name(pawn_mesh) != 'SkeletalMeshComponent' or class_name(weapon_mesh) != 'SkeletalMeshComponent':
             raise RuntimeError('Held pawn/weapon mesh is not skeletal')
-        bones = {}
-        for bone in ('b_MF_IK_Hand_L', 'b_MF_Hand_L', 'b_MF_Hand_R'):
-            index = bridge.call(pawn_mesh, 'MatchRefBone', BoneName=fname(bone))
-            if index < 0:
-                raise RuntimeError('Original pawn bone absent: ' + bone)
-            bones[bone] = index
         receipt.update(game_pid=identity['pid'], pawn_mesh=resolver.identity(pawn_mesh),
                        weapon_mesh=resolver.identity(weapon_mesh),
                        pawn_mesh_asset=resolver.identity(pointer(pawn_mesh, 'SkeletalMesh')),
                        weapon_mesh_asset=resolver.identity(pointer(weapon_mesh, 'SkeletalMesh')),
-                       bone_indices=bones, left_hand_ik_on=bridge.call(pawn, 'ShouldLeftHandIKBeOn'))
+                       left_hand_ik_on=bridge.call(pawn, 'ShouldLeftHandIKBeOn'))
         if not receipt['left_hand_ik_on']:
             raise RuntimeError('Original left-hand IK is not active in this pose')
-        for sample in range(24):
-            if pointer(pawn, 'Weapon') != weapon or pointer(pc, 'WorldInfo') != world:
-                raise RuntimeError('Original weapon/world identity changed during sampling')
-            started_ns = time.monotonic_ns()
-            frames = {bone: bone_matrix(pawn_mesh, index) for bone, index in bones.items()}
-            frames['pawn_local_to_world'] = component_matrix(pawn_mesh)
-            frames['weapon_local_to_world'] = component_matrix(weapon_mesh)
-            frames.update(sample=sample, started_ns=started_ns,
-                          finished_ns=time.monotonic_ns())
-            receipt['samples'].append(frames)
-            time.sleep(.05)
-        if len(receipt['samples']) != 24:
-            raise RuntimeError('Incomplete bounded original pose sample')
+        if bridge.export('PlaygroundLancerSupportProbeEnable') != 0:
+            raise RuntimeError('Private game-thread Lancer probe refused to start')
+
+        def probe_done():
+            value = bridge.export('PlaygroundLancerSupportProbeStatus')
+            state, count = value >> 16, value & 0xffff
+            if state == 4:
+                raise RuntimeError(f'Game-thread Lancer probe rejected after {count} samples')
+            if state == 3:
+                if count != 24:
+                    raise RuntimeError(f'Game-thread Lancer probe stopped after {count} samples')
+                return True
+            return False
+
+        wait_for(probe_done, 15, 'Game-thread Lancer pose sampling did not finish')
     finally:
         if bridge:
             try:
@@ -176,6 +164,14 @@ def sample_owned_game(args, receipt):
             bridge.close()
     if receipt.get('shutdown') != 0:
         raise RuntimeError('Playground shutdown was not clean')
+    log_path = args.dll.with_name(f'playground-{identity["pid"]}.log')
+    lines = log_path.read_text(encoding='utf-8-sig').splitlines()
+    beginnings = [line for line in lines if line.startswith('lancer_support_probe_begin ')]
+    poses = [parse_pose_row(line) for line in lines if line.startswith('lancer_support_pose ')]
+    if len(beginnings) != 1 or len(poses) != 24 or [row['sample'] for row in poses] != list(range(24)):
+        raise RuntimeError('Bounded same-tick original pose rows missing from private log')
+    receipt.update(game_thread_probe=beginnings[0], game_thread_log=str(log_path), samples=poses,
+                   log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest())
     receipt['passed'] = True
 
 

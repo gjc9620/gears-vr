@@ -110,3 +110,14 @@ pending. The first tracked frame retains the game's current gun pose, so this
 trial checks component motion without claiming a correct per-weapon grip mount.
 It has pure transform and build coverage, but no successful retail runtime or
 headset result yet; the normal DLL contains none of these exports.
+
+The same private DLL has a separate read-only Lancer support-hand probe.
+`lancer_support_probe.py` equips the original Lancer in an owned muted range,
+calls `PlaygroundLancerSupportProbeEnable`, and requires status 3 with 24 samples
+before accepting the ignored `analysis/` receipt. The callback captures the
+original character's left IK, left/right hand bone matrices, and unchanged
+pawn/gun component matrices after each original `PlayerTick`. Status 4 means a game
+identity, bone, matrix, or test-environment guard rejected the probe. Do not
+enable mesh following during this sample; either export refuses that overlap.
+The matrices are evidence for later grip-point calibration, not a validated
+grip offset or a component to ship with the Mod.

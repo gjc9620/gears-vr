@@ -148,3 +148,153 @@ void mesh_follow_post_tick(uptr pc){
     }
     mesh_follow_status.store(2,std::memory_order_release);
 }
+
+// One bounded, opt-in original-animation probe. It runs after the original
+// PlayerTick on the same game thread, before this candidate moves the gun.
+// No sampled transform is used as a grip mount or written back to the game.
+std::atomic<bool> support_probe_requested{};
+std::atomic<unsigned> support_probe_status{},support_probe_count{};
+struct SupportProbeState {
+    uptr world{},pawn{},weapon{},pawn_mesh{},weapon_mesh{};
+    std::array<int,3> bones{};
+    ULONGLONG next_ms{};
+};
+SupportProbeState support_probe{};
+
+bool support_probe_names(std::array<Name,3>& names){
+    constexpr const wchar_t* wanted[]={L"b_MF_IK_Hand_L",L"b_MF_Hand_L",L"b_MF_Hand_R"};
+    const auto array=get<Array>(base+0x1c34800);
+    if(!array.data||array.count<1000||array.count>array.capacity||array.capacity>4000000)return false;
+    unsigned found=0;
+    for(int i=0;i<array.count&&found!=7;++i){
+        const auto entry=get<uptr>(array.data+size_t(i)*8);
+        if(!entry||get<unsigned>(entry)!=unsigned(i))continue;
+        wchar_t value[40]{};
+        if(!copy(&value[0],entry+20,2)||value[0]!=L'b')continue;
+        bool complete=false;
+        for(unsigned n=1;n<40;++n){
+            if(!copy(&value[n],entry+20+n*2,2))break;
+            if(!value[n]){complete=true;break;}
+        }
+        if(!complete)continue;
+        for(unsigned n=0;n<3;++n)if(!wcscmp(value,wanted[n])){
+            names[n]={unsigned(i),0};found|=1u<<n;
+        }
+    }
+    return found==7;
+}
+bool support_probe_bone_index(uptr mesh,Name name_value,int& out){
+    playground::Args call(mesh,L"MatchRefBone");
+    const auto input=call.prop(L"BoneName"),result=call.prop(L"ReturnValue");
+    if(!call.valid||!input||!result||get<unsigned>(input+0x74)!=sizeof(Name)||
+       !playground::named(get<uptr>(input+0x50),L"NameProperty")||
+       get<unsigned>(result+0x74)!=sizeof(int)||
+       !playground::named(get<uptr>(result+0x50),L"IntProperty")||
+       !call.set(L"BoneName",name_value).run())return false;
+    out=call.output<int>();return out>=0&&out<256;
+}
+bool support_probe_bone_matrix(uptr mesh,int bone,std::array<float,16>& out){
+    playground::Args call(mesh,L"GetBoneMatrix");
+    const auto input=call.prop(L"BoneIndex"),result=call.prop(L"ReturnValue");
+    if(!call.valid||!input||!result||get<unsigned>(input+0x74)!=sizeof(int)||
+       !playground::named(get<uptr>(input+0x50),L"IntProperty")||
+       get<unsigned>(result+0x74)!=sizeof(out)||
+       !playground::named(get<uptr>(result+0x50),L"StructProperty")||
+       !call.set(L"BoneIndex",bone).run())return false;
+    out=call.output<std::array<float,16>>();
+    for(float value:out)if(!std::isfinite(value))return false;
+    return true;
+}
+bool support_probe_component_matrix(uptr mesh,std::array<float,16>& out){
+    const auto property=playground::property(mesh,L"LocalToWorld");
+    const auto cls=get<uptr>(mesh+0x50);
+    if(!property||get<unsigned>(property+0x74)!=sizeof(out)||
+       !playground::named(get<uptr>(property+0x50),L"StructProperty"))return false;
+    const auto offset=get<unsigned>(property+0x94),size=get<unsigned>(cls+0x88);
+    if(offset>size||sizeof(out)>size-offset||!copy(out.data(),mesh+offset,sizeof(out)))return false;
+    for(float value:out)if(!std::isfinite(value))return false;
+    return true;
+}
+void support_probe_fail(const wchar_t* reason){
+    support_probe_requested.store(false,std::memory_order_release);
+    support_probe_status.store(4,std::memory_order_release);
+    if(log_file){fwprintf(log_file,L"lancer_support_probe_failed reason=%ls samples=%u\n",
+        reason,support_probe_count.load());fflush(log_file);}
+}
+void support_probe_print_matrix(const wchar_t* label,float const* values){
+    fwprintf(log_file,L" %ls=",label);
+    for(unsigned i=0;i<16;++i)fwprintf(log_file,L"%ls%.9g",i?L",":L"",values[i]);
+}
+void support_probe_post_tick(uptr pc){
+    if(!support_probe_requested.load(std::memory_order_acquire))return;
+    if(!playground::ready||!test_environment()||
+       mesh_follow_requested.load(std::memory_order_acquire)||mesh_follow.active){
+        support_probe_fail(L"environment_or_mesh_follow");return;
+    }
+    const auto pawn=playground::pointer(pc,L"Pawn");
+    const auto weapon=playground::pointer(pawn,L"Weapon");
+    if(pc!=playground::arena_pc||pawn!=playground::arena_pawn||
+       playground::pointer(pc,L"WorldInfo")!=playground::arena_world||
+       !playground::instance(weapon,L"Weap_AssaultRifle"))return;
+    bool switching{};
+    if(!read_bool(pawn,L"bSwitchingWeapons",switching)||switching)return;
+    const auto pawn_mesh=playground::pointer(pawn,L"Mesh");
+    MeshPoseProbe gun{};
+    if(!playground::instance(pawn_mesh,L"SkeletalMeshComponent")||
+       playground::deleted(pawn_mesh)||!mesh_pose_probe(weapon,gun)||gun.hidden)return;
+    if(!log_file){support_probe_fail(L"log_unavailable");return;}
+    if(!support_probe.pawn){
+        std::array<Name,3> names{};
+        if(!support_probe_names(names)){support_probe_fail(L"bone_names_missing");return;}
+        SupportProbeState candidate{};
+        candidate.world=playground::arena_world;candidate.pawn=pawn;
+        candidate.weapon=weapon;candidate.pawn_mesh=pawn_mesh;candidate.weapon_mesh=gun.mesh;
+        for(unsigned i=0;i<3;++i)if(!support_probe_bone_index(pawn_mesh,names[i],candidate.bones[i])){
+            support_probe_fail(L"bone_index_missing");return;
+        }
+        if(candidate.bones[0]==candidate.bones[1]||candidate.bones[0]==candidate.bones[2]||
+           candidate.bones[1]==candidate.bones[2]){
+            support_probe_fail(L"bone_indices_alias");return;
+        }
+        support_probe=candidate;
+        fwprintf(log_file,L"lancer_support_probe_begin pawn=%p weapon=%p pawn_mesh=%p gun_mesh=%p bones=%d,%d,%d\n",
+            reinterpret_cast<void*>(pawn),reinterpret_cast<void*>(weapon),
+            reinterpret_cast<void*>(pawn_mesh),reinterpret_cast<void*>(gun.mesh),
+            candidate.bones[0],candidate.bones[1],candidate.bones[2]);fflush(log_file);
+    }
+    if(support_probe.world!=playground::arena_world||support_probe.pawn!=pawn||
+       support_probe.weapon!=weapon||support_probe.pawn_mesh!=pawn_mesh||
+       support_probe.weapon_mesh!=gun.mesh){support_probe_fail(L"identity_changed");return;}
+    const auto now_ms=GetTickCount64();
+    if(now_ms<support_probe.next_ms)return;
+    std::array<float,16> pawn_before{},pawn_after{};
+    if(!support_probe_component_matrix(pawn_mesh,pawn_before)){
+        support_probe_fail(L"pawn_matrix_unreadable");return;
+    }
+    std::array<std::array<float,16>,3> bone_matrices{};
+    for(unsigned i=0;i<3;++i)if(!support_probe_bone_matrix(pawn_mesh,support_probe.bones[i],bone_matrices[i])){
+        support_probe_fail(L"bone_matrix_unreadable");return;
+    }
+    MeshPoseProbe after{};
+    if(!support_probe_component_matrix(pawn_mesh,pawn_after)||
+       std::memcmp(pawn_before.data(),pawn_after.data(),sizeof(pawn_before))||
+       !mesh_pose_probe(weapon,after)||after.mesh!=gun.mesh||
+       std::memcmp(gun.local_to_world,after.local_to_world,sizeof(gun.local_to_world))){
+        support_probe_fail(L"component_changed_during_sample");return;
+    }
+    const auto sample=support_probe_count.load(std::memory_order_relaxed);
+    LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);
+    fwprintf(log_file,L"lancer_support_pose sample=%u qpc=%lld",sample,stamp.QuadPart);
+    support_probe_print_matrix(L"pawn",pawn_before.data());
+    support_probe_print_matrix(L"gun",gun.local_to_world);
+    support_probe_print_matrix(L"ik_left",bone_matrices[0].data());
+    support_probe_print_matrix(L"hand_left",bone_matrices[1].data());
+    support_probe_print_matrix(L"hand_right",bone_matrices[2].data());
+    fwprintf(log_file,L"\n");fflush(log_file);
+    support_probe_count.store(sample+1,std::memory_order_release);
+    support_probe.next_ms=now_ms+50;
+    if(sample+1==24){
+        support_probe_requested.store(false,std::memory_order_release);
+        support_probe_status.store(3,std::memory_order_release);
+    }else support_probe_status.store(2,std::memory_order_release);
+}

@@ -181,7 +181,10 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
     if(post_weapon_tick&&enabled.load(std::memory_order_acquire)&&
        game_thread.load()==GetCurrentThreadId()){
-        inside=true;vrequip::mesh_follow_post_tick(object);inside=false;
+        inside=true;
+        vrequip::support_probe_post_tick(object);
+        vrequip::mesh_follow_post_tick(object);
+        inside=false;
     }
 #endif
 }
@@ -193,6 +196,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     vrequip::mesh_follow_shutdown_requested.store(false,std::memory_order_release);
     vrequip::mesh_follow_requested.store(false,std::memory_order_release);
     vrequip::mesh_follow_status.store(0,std::memory_order_release);
+    vrequip::support_probe_requested.store(false,std::memory_order_release);
+    vrequip::support_probe_status.store(0,std::memory_order_release);
+    vrequip::support_probe_count.store(0,std::memory_order_release);
+    vrequip::support_probe={};
 #endif
     base=reinterpret_cast<uptr>(GetModuleHandleW(nullptr));
     if(get<unsigned short>(base)!=0x5a4d||!registered(get<uptr>(get<Array>(base+0x1c24730).data+8)))return 1;
@@ -284,6 +291,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowEnable(v
     if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
        !playground::ready||!vrequip::test_environment()||
        vrequip::mesh_follow_shutdown_requested.load(std::memory_order_acquire))return 1;
+    if(vrequip::support_probe_requested.load(std::memory_order_acquire))return 2;
     vrequip::mesh_follow_requested.store(true,std::memory_order_release);
     vrequip::mesh_follow_status.store(1,std::memory_order_release);return 0;
 }
@@ -293,6 +301,22 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowDisable(
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowStatus(void*){
     return (vrequip::mesh_follow_active_visible.load(std::memory_order_acquire)?0x10000u:0u)|
         vrequip::mesh_follow_status.load(std::memory_order_acquire);
+}
+// Private read-only original-animation sample. 0 accepted, 1 wrong test
+// environment, 2 candidate is moving the mesh, 3 already pending.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSupportProbeEnable(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment())return 1;
+    if(vrequip::mesh_follow_requested.load(std::memory_order_acquire)||
+       vrequip::mesh_follow_active_visible.load(std::memory_order_acquire))return 2;
+    unsigned expected=0;
+    if(!vrequip::support_probe_status.compare_exchange_strong(expected,1))return 3;
+    vrequip::support_probe_requested.store(true,std::memory_order_release);
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSupportProbeStatus(void*){
+    return (vrequip::support_probe_status.load(std::memory_order_acquire)<<16)|
+        (vrequip::support_probe_count.load(std::memory_order_acquire)&0xffffu);
 }
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundTestEnter(void*){
@@ -326,6 +350,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     if(const auto stopped=vrfire::disable())return 10+stopped;
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+    vrequip::support_probe_requested.store(false,std::memory_order_release);
     vrequip::mesh_follow_shutdown_requested.store(true,std::memory_order_release);
     vrequip::mesh_follow_requested.store(false,std::memory_order_release);
     const auto follow_until=GetTickCount64()+2000;
