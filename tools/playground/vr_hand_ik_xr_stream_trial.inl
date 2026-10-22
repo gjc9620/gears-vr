@@ -55,7 +55,9 @@ bool xr_equipment_gate(Snapshot const& value,unsigned expected,const wchar_t* st
 #endif
 gears_hand_stream::Context xr_context(Snapshot const& value,bool ready){
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
-    if(ready&&!xr_equipment_gate(value,trial.xr_equipment_phase,L"plan_context"))ready=false;
+    // Context construction must not repeat engine queries. The observed,
+    // prewrite and post-flush gates already authenticate equipment explicitly;
+    // action epochs and the final authorize still reject any intervening yield.
     ready=ready&&trial.xr_ready;
 #endif
     gears_hand_stream::Context context{};
