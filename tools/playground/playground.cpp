@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <cmath>
 #include "MinHook.h"
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+#include "../vr-common/hand_animation_observation.h"
+#endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
 #include "../vr-common/free_hand_control.h"
 #endif
@@ -110,7 +113,10 @@ void record(uptr object,uptr function){
     }
     ReleaseSRWLockExclusive(&log_lock);
 }
-bool invoke(Request* r){
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+namespace handanim {unsigned bridge_before(Request*);void bridge_after(Request*,unsigned);}
+#endif
+bool invoke_engine(Request* r){
     if(!r||r->size>sizeof(r->params)||!registered(r->object)||!registered(r->function))return false;
     wchar_t cls[64]{};if(!name(get<uptr>(r->function+0x50),cls,64)||wcscmp(cls,L"Function"))return false;
     const auto bytes=get<unsigned short>(r->function+0x106);
@@ -158,7 +164,20 @@ bool invoke(Request* r){
     }
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
+bool invoke(Request* r){
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+    const auto observation=handanim::bridge_before(r);
+#endif
+    const auto result=invoke_engine(r);
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+    handanim::bridge_after(r,observation);
+#endif
+    return result;
+}
 #include "playground_controller.inl"
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+#include "hand_animation_probe.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
 #include "vr_free_hands.inl"
 #endif
@@ -173,6 +192,11 @@ bool invoke(Request* r){
 #endif
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+    // Observe before both the recursion bypass and automatic-mode filter.
+    // This independent scope never consumes, alters or invokes an engine call.
+    handanim::HookScope hand_animation_observation(object,function,params);
+#endif
     if(inside||!enabled.load(std::memory_order_acquire)){original(object,function,params);return;}
     if(playground::automatic&&object!=playground::viewport&&object!=playground::menu_button&&
         get<Name>(function+0x48).index!=playground::player_tick_index){
@@ -193,11 +217,18 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     bool post_hand_ik_tick=false;
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+    bool post_hand_animation_tick=false;
+#endif
     if((!wcscmp(f,L"PlayerTick")||!wcscmp(f,L"Tick"))&&
         (!playground::automatic||object==playground::viewport||
             (!wcscmp(f,L"PlayerTick")&&object==playground::pointer(playground::player,L"Actor")))){
         DWORD zero=0;game_thread.compare_exchange_strong(zero,GetCurrentThreadId());
         if(game_thread.load()==GetCurrentThreadId()){
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+            post_hand_animation_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
+                object==playground::pointer(playground::player,L"Actor");
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
             post_hand_ik_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
                 object==playground::pointer(playground::player,L"Actor");
@@ -228,6 +259,12 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     }
     inside=false;
     original(object,function,params);
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+    if(post_hand_animation_tick&&enabled.load(std::memory_order_acquire)&&
+       game_thread.load()==GetCurrentThreadId()){
+        inside=true;handanim::post_tick(object);inside=false;
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     if(post_hand_ik_tick&&enabled.load(std::memory_order_acquire)&&
        game_thread.load()==GetCurrentThreadId()){
@@ -307,6 +344,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundReserve(void*){
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     LifecycleScope lifecycle;
     if(enabled.load())return 0;
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+    handanim::reset();
+#endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     freehands::reset();
 #endif
@@ -445,6 +485,27 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchTest(void
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchStatus(void*){
     if(vrequip::queued_slot.load(std::memory_order_acquire)<4)return 0;
     return vrequip::last_switch_status.load(std::memory_order_acquire);
+}
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+// Low word: 0 idle, 1 queued, 2 sampling, 3 bounded complete, 4 explicit stop,
+// 5 invalidated. High word: periodic frames, at most 1500. No status grants
+// ownership; the probe is read-only and has nothing to restore.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandAnimationProbeStart(void*){
+    LifecycleScope lifecycle;
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||!playground::ready||
+       !handanim::test_environment()||!log_file)return 1;
+    bool inactive=false;
+    if(!handanim::active_visible.compare_exchange_strong(inactive,true,std::memory_order_acq_rel))return 2;
+    handanim::stop_requested=false;handanim::frames=0;handanim::status=1;
+    handanim::requested.store(true,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandAnimationProbeStop(void*){
+    handanim::stop_requested.store(true,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandAnimationProbeStatus(void*){
+    return DWORD((handanim::frames.load(std::memory_order_acquire)&0xffff)<<16)|
+        DWORD(handanim::status.load(std::memory_order_acquire));
 }
 #endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
@@ -822,6 +883,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     const auto until=GetTickCount64()+2000;
     while(callbacks.load()&&GetTickCount64()<until)Sleep(1);
     if(callbacks.load())return 2;
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+    // All callbacks are drained. Finalize the read-only observation before
+    // closing its log; no game-thread cleanup or engine call is required.
+    if(handanim::probe.active)handanim::finish(4,L"shutdown");
+    handanim::reset();
+#endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     freehands::reset();
 #endif

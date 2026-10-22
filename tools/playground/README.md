@@ -316,3 +316,10 @@ analyzer finds the near-rigid middle hold and reports the moving pickup/return
 portions separately. One retail run yielded 43 attached frames and a 21-frame
 stable middle hold. This reference is in the original hand-bone frame, not a
 Quest controller grip frame; it cannot commit a VR insertion on its own.
+
+`GEARS_PLAYGROUND_HAND_ANIMATION_PROBE` is a separate default-OFF, read-only
+pickup/melee lifecycle observer. Its Start/Stop/Status exports sample only the
+owned, behind-windows, muted test arena. It separates real ProcessEvent Hook
+hits from bridge calls that bypass that Hook, logs current body-slot child
+weights/targets/blends and eight original hand controls, and always leaves
+`ownership_proved=0`. See the [probe schema and limits](../../docs/hand-animation-probe-20261022.md).
