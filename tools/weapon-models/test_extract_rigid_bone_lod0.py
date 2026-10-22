@@ -56,6 +56,9 @@ class RigidBoneExtractionTests(unittest.TestCase):
         result = extract(raw, audited, 'magazine')
         self.assertEqual(result['used_vertices'], [0, 1, 2])
         self.assertEqual(len(result['faces']), 1)
+        self.assertEqual(result['remainder_used_vertices'], [3, 4, 5])
+        self.assertEqual(len(result['remainder_faces']), 1)
+        self.assertEqual((len(result['faces']) + len(result['remainder_faces'])) * 3, 6)
         self.assertEqual(result['material_face_counts'], {0: 1})
         with tempfile.TemporaryDirectory() as directory:
             path = pathlib.Path(directory) / 'part.obj'
@@ -66,6 +69,11 @@ class RigidBoneExtractionTests(unittest.TestCase):
             self.assertIn('vt 0.100000001 0.0500000007', obj)
             self.assertIn('vn -0.00392150832 -0.00392150832 -0.999984622', obj)
             self.assertIn('f 3/3/3 2/2/2 1/1/1', obj)
+            remainder_path = pathlib.Path(directory) / 'remainder.obj'
+            write_obj(remainder_path, result, 'deadbeef', 'magazine', remainder=True)
+            remainder_obj = remainder_path.read_text(encoding='ascii')
+            self.assertEqual(remainder_obj.count('\nf '), 1)
+            self.assertIn('# part remainder', remainder_obj)
 
     def test_target_mixed_weight_and_crossing_face_fail_closed(self):
         raw, audited = fixture()

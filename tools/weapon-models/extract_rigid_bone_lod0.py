@@ -1,8 +1,9 @@
-"""Export one verified rigid LOD0 bone group with UV0 and packed normals.
+"""Export a verified rigid LOD0 bone group and complementary body preview.
 
 This is inspection geometry derived from a purchased game package. Outputs are
-restricted to the checkout's ignored analysis/ directory. The OBJ has no
-textures, skinned hierarchy, collision, animation or runtime attachment.
+restricted to the checkout's ignored analysis/ directory. The complementary
+OBJ can still contain originally skinned vertices, so neither OBJ has its
+source hierarchy, collision, animation or runtime attachment.
 """
 import argparse
 from collections import Counter
@@ -59,8 +60,8 @@ def extract(raw, audited, bone):
         belonging[vertex] = target_weight == 255
     indices = struct.unpack_from('<' + 'H' * skin['index_count'], raw,
                                  skin['index_offset_in_export'])
-    faces = []
-    materials = Counter()
+    faces, remainder_faces = [], []
+    materials, remainder_materials = Counter(), Counter()
     for section_number, section in enumerate(skin['sections']):
         begin = section['first_index']
         end = begin + section['triangles'] * 3
@@ -74,21 +75,33 @@ def extract(raw, audited, bone):
                     raise ValueError('Target bone crosses a triangle; preserve skinning')
                 faces.append((face, section_number, section['material_index']))
                 materials[section['material_index']] += 1
+            else:
+                remainder_faces.append((face, section_number, section['material_index']))
+                remainder_materials[section['material_index']] += 1
     if not faces:
         raise ValueError('Target bone has no complete LOD0 triangles')
+    if 3 * (len(faces) + len(remainder_faces)) != skin['index_count']:
+        raise ValueError('Target and remainder do not cover original LOD0 indices')
     used = sorted({vertex for face, _, _ in faces for vertex in face})
     if len(used) != sum(belonging):
         raise ValueError('Target bone has unreferenced LOD0 vertices')
+    remainder_used = sorted({vertex for face, _, _ in remainder_faces for vertex in face})
+    if set(used) & set(remainder_used):
+        raise ValueError('Target and remainder share a vertex')
     return {'positions': positions, 'uvs': uvs, 'normals': normals, 'used_vertices': used,
-            'faces': faces, 'material_face_counts': dict(sorted(materials.items()))}
+            'faces': faces, 'material_face_counts': dict(sorted(materials.items())),
+            'remainder_used_vertices': remainder_used, 'remainder_faces': remainder_faces,
+            'remainder_material_face_counts': dict(sorted(remainder_materials.items()))}
 
 
-def write_obj(path, extracted, digest, bone):
-    used = extracted['used_vertices']
+def write_obj(path, extracted, digest, bone, *, remainder=False):
+    used = extracted['remainder_used_vertices'] if remainder else extracted['used_vertices']
+    faces = extracted['remainder_faces'] if remainder else extracted['faces']
     remap = {vertex: index + 1 for index, vertex in enumerate(used)}
     with path.open('w', encoding='ascii', newline='\n') as output:
         output.write('# Verified source-derived inspection geometry; not a game asset\n')
         output.write(f'# source_sha256 {digest}\n# bone {bone}\n')
+        output.write(f'# part {"remainder" if remainder else "target"}\n')
         for vertex in used:
             output.write('v ' + ' '.join(f'{value:.9g}' for value in extracted['positions'][vertex]) + '\n')
         for vertex in used:
@@ -96,7 +109,7 @@ def write_obj(path, extracted, digest, bone):
         for vertex in used:
             output.write('vn ' + ' '.join(f'{value:.9g}' for value in extracted['normals'][vertex]) + '\n')
         active = None
-        for face, section, material in extracted['faces']:
+        for face, section, material in faces:
             if active != (section, material):
                 output.write(f'g section_{section}_material_{material}\n')
                 active = (section, material)
@@ -201,12 +214,15 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / (args.target_bone + '.obj')
     write_obj(path, extracted, audited['source_sha256'], args.target_bone)
+    remainder_path = output_dir / (args.target_bone + '-remainder.obj')
+    write_obj(remainder_path, extracted, audited['source_sha256'], args.target_bone,
+              remainder=True)
     bounds = audited['bounds_offset_in_export']
     count = struct.unpack_from('<i', raw, bounds + 28)[0]
     references = struct.unpack_from('<' + 'i' * count, raw, bounds + 32)
     if any(section['material_index'] >= count for section in audited['lod0_skin']['sections']):
         raise ValueError('LOD0 section material index outside source material slots')
-    metadata = {'schema': 2, 'source_path': audited['path'],
+    metadata = {'schema': 3, 'source_path': audited['path'],
                 'source_sha256': audited['source_sha256'],
                 'bone': args.target_bone, 'lod': 0,
                 'original_vertices': len(extracted['used_vertices']),
@@ -215,13 +231,22 @@ def main():
                 'normals_preserved': True, 'packed_normal_vertex_offset': 16,
                 'obj_face_winding_reversed': True,
                 'material_face_counts': extracted['material_face_counts'],
+                'remainder_vertices': len(extracted['remainder_used_vertices']),
+                'remainder_triangles': len(extracted['remainder_faces']),
+                'remainder_material_face_counts':
+                    extracted['remainder_material_face_counts'],
+                'original_lod0_triangles': audited['lod0_skin']['index_count'] // 3,
+                'target_plus_remainder_exactly_cover_lod0': True,
+                'remainder_original_skinning_preserved': False,
                 'source_material_object_refs': list(references),
                 'raw_reference_bone': raw_bone_reference(audited, args.target_bone),
                 'mesh_space_reference_pivot_candidate_raw':
                     mesh_space_reference_pivot(audited, args.target_bone),
                 'runtime_pivot_and_axis_verified': False,
                 'geometry_only': True, 'runtime_ready': False,
-                'obj': path.name, 'obj_sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+                'obj': path.name, 'obj_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                'remainder_obj': remainder_path.name,
+                'remainder_obj_sha256': hashlib.sha256(remainder_path.read_bytes()).hexdigest()}
     (output_dir / 'part.json').write_text(json.dumps(metadata, indent=2) + '\n',
                                           encoding='utf-8')
     print(json.dumps({key: metadata[key] for key in
