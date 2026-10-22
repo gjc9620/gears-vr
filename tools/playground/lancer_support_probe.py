@@ -1,14 +1,15 @@
-"""Collect bounded original left-hand and Lancer transforms in an owned retail range.
+"""Collect bounded original Lancer support or reload visuals in an owned range.
 
 After the original GiveTo/SetCurrentWeapon path, a private game-thread callback
-captures the pawn bones and unchanged gun matrix after one PlayerTick. Output
-stays in ignored analysis/ and is not yet a VR grip mount.
+captures either the pawn bones/unchanged gun matrix or the original reload's
+magazine/control state after PlayerTick. Output stays in ignored analysis/.
 """
 import argparse
 import hashlib
 import json
 import math
 from pathlib import Path
+import struct
 import sys
 import time
 import traceback
@@ -61,6 +62,22 @@ def parse_visual_row(line):
         'magazine_asset': fields['magazine_asset'], **floats}
 
 
+def parse_reload_visual_row(line):
+    fields = dict(item.split('=', 1) for item in line.split()[1:])
+    expected = {'sample', 'qpc', 'ms', 'world', 'reload_start', 'reloading',
+                'ammo_used', 'spare', 'mag_hidden', 'mag_pawn', 'control',
+                'target', 'scale'}
+    if set(fields) != expected or any(fields[key] not in ('0', '1') for key in
+                                      ('reloading', 'mag_hidden', 'mag_pawn')):
+        raise ValueError('Unexpected original Lancer reload visual row')
+    floats = {key: float(fields[key]) for key in ('world', 'reload_start',
+                                                 'control', 'target', 'scale')}
+    if not all(math.isfinite(value) for value in floats.values()):
+        raise ValueError('Nonfinite original reload visual value')
+    return {key: int(fields[key]) for key in ('sample', 'qpc', 'ms', 'ammo_used', 'spare')} | {
+        key: fields[key] == '1' for key in ('reloading', 'mag_hidden', 'mag_pawn')} | floats
+
+
 def sample_owned_game(args, receipt):
     sys.path.insert(0, str(args.runtime_root.resolve() / 'tools/playground'))
     from runtime import Bridge
@@ -96,8 +113,9 @@ def sample_owned_game(args, receipt):
                     # the owned launcher may already have shut this test DLL
                     # down after an earlier bounded probe in the same child.
                     bridge.r.prepare()
-                    if bridge.export('PlaygroundInitialize') != 0:
-                        raise RuntimeError('Owned Playground could not initialize')
+                    initialized = bridge.export('PlaygroundInitialize')
+                    if initialized != 0:
+                        raise RuntimeError(f'Owned Playground could not initialize: {initialized}')
                 break
             except RuntimeError as error:
                 if str(error) not in ('Invalid name array header', 'Invalid object array header'):
@@ -117,11 +135,18 @@ def sample_owned_game(args, receipt):
             except (FileNotFoundError, json.JSONDecodeError):
                 return {}
 
-        ready = wait_for(lambda: status() if status().get('ready') else None,
-                         120, 'Playground arena not ready')
+        def arena_with_pickups():
+            current = status()
+            return current if current.get('ready') and current.get('pickups', 0) > 0 else None
+
+        ready = wait_for(arena_with_pickups,
+                         120, 'Playground arena/pickups not ready')
         if ready.get('failures'):
             raise RuntimeError('Playground arena setup failed')
         resolver = bridge.r
+        # attach_only prepared the object registry before TestEnter. Refresh
+        # after pickups exist so the scan includes arena-spawned objects.
+        resolver.prepare()
 
         def property_of(obj, field):
             return resolver.property(resolver.identity(obj)['cls'], field, True)
@@ -185,21 +210,56 @@ def sample_owned_game(args, receipt):
             return bridge.call(pawn, 'ShouldLeftHandIKBeOn')
         receipt['left_hand_ik_on'] = bool(wait_for(
             settled_left_hand, 10, 'Original Lancer left-hand IK did not settle'))
-        if bridge.export('PlaygroundLancerSupportProbeEnable') != 0:
-            raise RuntimeError('Private game-thread Lancer probe refused to start')
+        if args.mode == 'support':
+            if bridge.export('PlaygroundLancerSupportProbeEnable') != 0:
+                raise RuntimeError('Private game-thread Lancer probe refused to start')
 
-        def probe_done():
-            value = bridge.export('PlaygroundLancerSupportProbeStatus')
-            state, count = value >> 16, value & 0xffff
-            if state == 4:
-                raise RuntimeError(f'Game-thread Lancer probe rejected after {count} samples')
-            if state == 3:
-                if count != 24:
-                    raise RuntimeError(f'Game-thread Lancer probe stopped after {count} samples')
-                return True
-            return False
+            def probe_done():
+                value = bridge.export('PlaygroundLancerSupportProbeStatus')
+                state, count = value >> 16, value & 0xffff
+                if state == 4:
+                    raise RuntimeError(f'Game-thread Lancer probe rejected after {count} samples')
+                if state == 3:
+                    if count != 24:
+                        raise RuntimeError(f'Game-thread Lancer probe stopped after {count} samples')
+                    return True
+                return False
 
-        wait_for(probe_done, 15, 'Game-thread Lancer pose sampling did not finish')
+            wait_for(probe_done, 15, 'Game-thread Lancer pose sampling did not finish')
+        else:
+            def read_int(obj, field):
+                meta = property_of(obj, field)
+                if meta['type'] != 'IntProperty':
+                    raise RuntimeError(f'{field} is not an original integer property')
+                return struct.unpack('<i', resolver.read(obj + meta['offset'], 4))[0]
+
+            used = read_int(weapon, 'AmmoUsedCount')
+            spare = read_int(weapon, 'SpareAmmoCount')
+            receipt.update(original_ammo_used=used, original_spare=spare)
+            if used == 0:
+                bridge.call(weapon, 'SetAmmoUsedCount', NewValue=1)
+                if read_int(weapon, 'AmmoUsedCount') != 1:
+                    raise RuntimeError('Original test-arena ammo seed did not stick')
+                receipt['seeded_ammo_used'] = 1
+            if not bridge.call(weapon, 'CanReload'):
+                raise RuntimeError('Original Lancer cannot reload in owned arena')
+            if bridge.export('PlaygroundLancerReloadVisualProbeEnable') != 0:
+                raise RuntimeError('Private Lancer reload visual probe refused to start')
+            time.sleep(.12)  # One idle sample before invoking the original reload.
+            if bridge.export('PlaygroundLancerReloadVisualProbeStatus') >> 16 == 4:
+                raise RuntimeError('Original reload visual probe failed before ForceReload')
+            bridge.call(weapon, 'ForceReload')
+            wait_for(lambda: bridge.call(weapon, 'IsReloading'), 2,
+                     'Original Lancer did not enter Reloading after ForceReload')
+
+            def reload_probe_done():
+                value = bridge.export('PlaygroundLancerReloadVisualProbeStatus')
+                state, count = value >> 16, value & 0xffff
+                if state == 4:
+                    raise RuntimeError(f'Original reload visual probe failed after {count} samples')
+                return state == 3
+
+            wait_for(reload_probe_done, 8, 'Original reload visual timeline did not finish')
     finally:
         if bridge:
             try:
@@ -211,15 +271,28 @@ def sample_owned_game(args, receipt):
         raise RuntimeError('Playground shutdown was not clean')
     log_path = args.dll.with_name(f'playground-{identity["pid"]}.log')
     lines = log_path.read_text(encoding='utf-8-sig').splitlines()
-    beginnings = [line for line in lines if line.startswith('lancer_support_probe_begin ')]
-    poses = [parse_pose_row(line) for line in lines if line.startswith('lancer_support_pose ')]
-    visuals = [parse_visual_row(line) for line in lines
-               if line.startswith('lancer_support_visual ')]
-    if (len(beginnings) != 1 or len(poses) != 24 or len(visuals) != 1 or
-            [row['sample'] for row in poses] != list(range(24))):
-        raise RuntimeError('Bounded same-tick original pose rows missing from private log')
-    receipt.update(game_thread_probe=beginnings[0], game_thread_log=str(log_path), samples=poses,
-                   original_visual=visuals[0],
+    if args.mode == 'support':
+        beginnings = [line for line in lines if line.startswith('lancer_support_probe_begin ')]
+        poses = [parse_pose_row(line) for line in lines if line.startswith('lancer_support_pose ')]
+        visuals = [parse_visual_row(line) for line in lines
+                   if line.startswith('lancer_support_visual ')]
+        if (len(beginnings) != 1 or len(poses) != 24 or len(visuals) != 1 or
+                [row['sample'] for row in poses] != list(range(24))):
+            raise RuntimeError('Bounded same-tick original pose rows missing from private log')
+        receipt.update(game_thread_probe=beginnings[0], samples=poses,
+                       original_visual=visuals[0])
+    else:
+        beginnings = [line for line in lines if line.startswith('lancer_reload_visual_begin ')]
+        rows = [parse_reload_visual_row(line) for line in lines
+                if line.startswith('lancer_reload_visual sample=')]
+        first_reload = next((index for index, row in enumerate(rows) if row['reloading']), None)
+        if (len(beginnings) != 1 or len(rows) < 3 or
+                [row['sample'] for row in rows] != list(range(len(rows))) or
+                any(rows[index]['qpc'] <= rows[index - 1]['qpc'] for index in range(1, len(rows))) or
+                first_reload is None or not any(not row['reloading'] for row in rows[first_reload + 1:])):
+            raise RuntimeError('Bounded original Lancer reload sequence missing from private log')
+        receipt.update(game_thread_probe=beginnings[0], reload_visual_timeline=rows)
+    receipt.update(game_thread_log=str(log_path),
                    log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest())
     receipt['passed'] = True
 
@@ -233,12 +306,14 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
+    parser.add_argument('--mode', choices=('support', 'reload_visual'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     output = args.output.resolve()
     if not output.is_relative_to((ROOT / 'analysis').resolve()):
-        raise ValueError('Proprietary bone evidence must remain under analysis/')
+        raise ValueError('Retail game evidence must remain under analysis/')
     receipt = {'schema': 1, 'passed': False, 'source': 'owned retail runtime',
+               'mode': args.mode,
                'probe_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                'samples': []}
     owned = args.owned_json is not None and args.owned_json.is_file()

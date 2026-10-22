@@ -392,6 +392,8 @@ Mulcher 与 Ink Grenade 尚未在当前 `WarfareGame.u` 和先前选取的三个
 
 为查清两份原件的实际状态，私有游戏线程观察器随认证手部样本只读检查当前武器的 `MagazineMesh`：核对组件和 `StaticMesh` 身份、`HiddenGame` 以及它是否挂在当前角色骨架上；没有该组件也会明确记录。现在还按原版 `FindSkelControl(AmmoControl)` 路径只读记录枪上骨骼控制器的 `ControlStrength`、`StrengthTarget` 和 `BoneScale`。购买版普通持枪的 Lancer 样本中，独立组件确实存在，资源名 `Assault_Rifle_Magazine`，`HiddenGame=false`，但未挂在人物骨架；`AmmoControl` 存在，强度／目标／骨缩放均为 0。这是一次未换弹的游戏线程状态，不能单独证明最终画面可见性或装填中何时交接。探针不调用装填通知或控制器 setter，不更改骨骼、贴图或库存；实际模型交接仍需对同一次装填的枪上件、手持件和可见画面成对验证。
 
+随后在购买版私有测试场完成一次原版 Lancer 换弹时间线采样：原枪临时设为已耗 1 发后走 `ForceReload`，只读记录 318 个游戏线程样本。相对 `ReloadStartTime`，枪上 `AmmoControl` 变为 1 落在 `0.258–0.275 s`，独立 `MagazineMesh` 挂到人物骨架在 `0.774–0.791 s`，其卸下与枪上控制器复位同时落在 `1.479–1.500 s`，自动计时结束、已耗弹量归零在 `2.497–2.510 s`。`HiddenGame` 全程为 false；原版脚本 `SetWeaponAmmoBoneDisplay` 用 `AmmoControl` 隐藏枪上骨骼件，独立件则按挂接状态交给人物左手。上述范围是两帧之间的采样边界，不能把约 0.79 秒当 VR 拿弹期限，也未目视确认每一帧的最终渲染。VR 接管应复用枪上骨骼显隐和独立弹匣资源，但实际玩家从肩部取出后，独立弹匣必须随左手控制器而不是沿原版人物手骨播放；阶段完成前还要阻止原版约 2.5 秒的自动弹药提交。逐帧原始数据及由 `tools/weapon-models/analyze_lancer_reload_visual_runtime.py` 得到的摘要留在忽略的 `analysis/lancer-support-probe-20261022/`。
+
 库存读取已有私有只读接线：Playground 的可选观察器从原版四槽查询武器，并按 `WarWeapon.HasAnyAmmo` 的人类玩家规则核对手雷备用数量。它只记录游戏线程快照，且静态构建已通过；尚无购买版运行时快照，不能据此把模型状态机判为已接通。实际取枪还需要验证原版切枪时序、手部 6DoF 枪模与原动画姿态的交接。
 
 新增的私有入口细分位码证明一次延后 20 秒注入的零售测试里仅 Hook 就绪，视口、`PlayerController` 类、`PlayerTick` 和本地玩家对象都未寻址；观察 120 秒后仍无库存快照。这个样本只能说明该次游戏初始化未到达库存查询边界，不能作为库存读取失败或取枪交互成功的证据。测试进程、桥接和音频均已收尾。

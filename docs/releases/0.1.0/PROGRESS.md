@@ -6,6 +6,8 @@ Lancer 左手副握点运行样本：购买版私有置后静音测试场 PID 47
 
 模型运行时只读增量：第二个购买版私有置后静音测试场 PID 37984 再次完成 24 帧原版持枪样本，并记录当前 Lancer 的独立 `MagazineMesh` 确实指向 `Assault_Rifle_Magazine`；`HiddenGame=false`、未挂在人物骨架，枪上 `AmmoControl` 存在且 `ControlStrength`／`StrengthTarget`／`BoneScale` 都为 0。一次原版静止持枪不能说明弹匣最终渲染可见性或装填交接时刻；下一步在原版换弹的同一条时间线上观察两份组件。首轮对象扫描遇到已失效对象类引用后已改为跳过该槽，复跑成功。私有探针退出码 0，游戏进程退出、Playground 入口恢复及游戏音频恢复均核对；完整 VR 会话仍是 `incomplete`，默认构建和发行包未替换。
 
+Lancer 原版换弹视觉交接实测：购买版私有置后静音测试场 PID 34536 在测试场把原枪已耗弹量临时设为 1，调用原版 `ForceReload`，私有游戏线程只读采集 318 个顺序样本。相对原版 `ReloadStartTime` 的采样间隔：枪上 `AmmoControl` 由 0 到 1 为 `0.258–0.275 s`；独立 `MagazineMesh` 挂上角色骨架为 `0.774–0.791 s`；独立件卸下且枪上控制器回到 0 为 `1.479–1.500 s`；原版退出 `Reloading`、已耗弹量由 1 归 0 为 `2.497–2.510 s`。这些是连续两帧之间的事件范围，不是动画通知的精确时间，也不是 VR 完美期限。`HiddenGame` 全程为 false，但挂接和渲染可见性不同；正常 VR 弹匣仍需绑定左手控制器并验证画面。原始逐帧数据与派生摘要留在忽略的 `analysis/lancer-support-probe-20261022/`。此次游戏进程、Playground 入口和音频均清理，完整 VR 会话仍为 `incomplete`。默认启动器／DLL 未更换。
+
 购买版实例补充：私有置后静音测试场 PID 47308 的当前 Lancer 实例，只读反射验证了装填时长 `2.5 s`、起点约 `0.7 s`、三个未覆盖宽度字段 `-1`、完美宽度数组 `0.1／0.075／0.05 s` 和角色索引 0。据已匹配的 Getter 主块与历史尾块推导此实例候选终点约 `0.800000012 s`；未调用 Getter，也未触发装填奖励，不把候选值配置为正式期限。回执在忽略的 `analysis/weapon-reload-probe-20261022/reload-window-instance-47308.json`。私有组件编译、入口还原、原生清理、音频恢复和游戏正常退出通过；完整 VR 会话仍为 `incomplete`。正常启动器及正式 DLL 未更换。
 
 完美边界原生核验增量：仅分析已与购买版当前 Lancer 虚表目标逐字节匹配的判定函数主代码块，确认完美条件为 `elapsed ≤ start + super`，包含窗口右边界；独立分支纯装填事务已按此修正，恰好到点／晚一步测试通过。Getter 主块使用默认对象上的难度索引数组作为未显式设置时的完美宽度；其分离尾块目前仅为历史快照。哈希核对的购买版 `WarfareGame.u` 基类数组为索引 0／1／2 对应 `0.100／0.075／0.050 s`，六把枪及中间基类未显式覆盖。报告在忽略的 `analysis/weapon-reload-probe-20261022/active-reload-defaults-with-difficulty.json`。逐枪当前游戏实例输出和索引尚未读取，这些默认值推导的候选期限不写入正式配置。数组解码单测与 `WeaponReloadModelTest` 通过；未替换默认 DLL 或启动器。

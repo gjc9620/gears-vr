@@ -178,3 +178,15 @@ The same bounded callback can read the original `MagazineMesh` component and
 the pawn mesh; `AmmoControl` was present with strength, target, and bone scale
 all zero. These idle-state fields do not establish final rendered visibility
 or the handoff timing during the original reload.
+
+Run `lancer_support_probe.py --mode reload_visual` in a separate owned range
+to seed one missing round in the private arena and invoke the original
+`ForceReload`. The private game-thread callback records up to five seconds of
+`AmmoControl`, `MagazineMesh` pawn attachment, original state, and ammo counts;
+`tools/weapon-models/analyze_lancer_reload_visual_runtime.py` reports sampled
+event intervals. One retail Lancer run captured 318 samples: gun magazine
+control turned on at elapsed 0.258–0.275 s, the separate hand magazine
+attached at 0.774–0.791 s, both reverted at 1.479–1.500 s, and original
+reload/one-round ammo commit finished at 2.497–2.510 s. These are sampled
+intervals from one original animation, not VR interaction deadlines. The
+normal DLL does not export this probe.
