@@ -7,9 +7,9 @@
 #include <type_traits>
 
 namespace gears_weapon {
-enum class EquipmentIntentKind : std::uint8_t { slot,grab_ammo };
+enum class EquipmentIntentKind : std::uint8_t { slot,grab_ammo,reload };
 struct EquipmentIntentEvent {
-    std::uint64_t serial{},created_ms{},input_session{},input_sequence{},space_epoch{},world_generation{};
+    std::uint64_t serial{},created_ms{},input_session{},input_sequence{},space_epoch{},input_epoch{},world_generation{};
     std::uintptr_t controller{},pawn{},weapon{};
     std::uint8_t inventory_slot{4};
     EquipmentIntentKind kind{EquipmentIntentKind::slot};
@@ -22,8 +22,8 @@ struct HandWorldFrame {
     std::uint8_t grip_down_mask{}; // Same XR ticket; only tracked hands may be down.
 };
 struct EquipmentIntentPacket {
-    static constexpr std::uint32_t magic_value=0x47564534; // GVE4
-    static constexpr std::uint32_t version_value=4;
+    static constexpr std::uint32_t magic_value=0x47564535; // GVE5
+    static constexpr std::uint32_t version_value=5;
     static constexpr unsigned capacity=8;
     std::uint32_t magic{magic_value},version{version_value},size{sizeof(EquipmentIntentPacket)},game_pid{};
     std::uint64_t game_start{},publisher_pid{},publisher_start{},latest_serial{},latest_pose_serial{};
@@ -33,8 +33,8 @@ struct EquipmentIntentPacket {
 static_assert(std::is_standard_layout_v<EquipmentIntentPacket> &&
               std::is_trivially_copyable_v<EquipmentIntentPacket>);
 
-// Native's certified game-thread input router publishes a body-slot or left
-// shoulder ammo-grab intent with original game identities. The receiving
+// Native's certified game-thread input router publishes a body-slot, left
+// shoulder ammo-grab, or R3 reload intent with original game identities. The receiving
 // adapter must still read inventory and revalidate identity before acting.
 class EquipmentIntentBridge {
     HANDLE mapping_{},mutex_{};
@@ -51,9 +51,10 @@ class EquipmentIntentBridge {
     }
     static bool event_valid(EquipmentIntentEvent const& event) noexcept {
         return ((event.kind==EquipmentIntentKind::slot&&event.inventory_slot<4)||
-                (event.kind==EquipmentIntentKind::grab_ammo&&event.inventory_slot==4))&&
+                (event.kind==EquipmentIntentKind::grab_ammo&&event.inventory_slot==4)||
+                (event.kind==EquipmentIntentKind::reload&&event.inventory_slot==4))&&
             event.controller&&event.pawn&&event.weapon&&event.world_generation&&
-            event.input_session&&event.input_sequence;
+            event.input_session&&event.input_sequence&&event.space_epoch&&event.input_epoch;
     }
     static bool pose_valid(HandWorldFrame const& pose) noexcept {
         auto viewpoint=[](gears_vr::Viewpoint const& v){
@@ -67,8 +68,8 @@ class EquipmentIntentBridge {
             (!(pose.valid_mask&2)||viewpoint(pose.right));
     }
     static void name(wchar_t (&out)[128],DWORD pid,std::uint64_t start,bool lock) noexcept {
-        swprintf_s(out,lock?L"Local\\GearsVR.EquipmentIntentLock.v4.%lu.%llu":
-                           L"Local\\GearsVR.EquipmentIntent.v4.%lu.%llu",
+        swprintf_s(out,lock?L"Local\\GearsVR.EquipmentIntentLock.v5.%lu.%llu":
+                           L"Local\\GearsVR.EquipmentIntent.v5.%lu.%llu",
                    pid,static_cast<unsigned long long>(start));
     }
     bool lock_now() const noexcept {return mutex_&&WaitForSingleObject(mutex_,0)==WAIT_OBJECT_0;}

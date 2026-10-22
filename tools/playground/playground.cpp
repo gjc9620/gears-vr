@@ -244,6 +244,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundReserve(void*){
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     LifecycleScope lifecycle;
     if(enabled.load())return 0;
+#if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
+    vrequip::lancer_reload_test_start=false;
+    vrequip::lancer_reload_test_complete=false;
+    vrequip::lancer_reload_status=0;
+    vrequip::lancer_reload_hold={};
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
     vrequip::mesh_follow_shutdown_requested.store(false,std::memory_order_release);
     vrequip::mesh_follow_requested.store(false,std::memory_order_release);
@@ -330,6 +336,27 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundAmmoGrabStatus(void*){
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandPoseStatus(void*){
     return DWORD((vrequip::pose_accepted.load(std::memory_order_acquire)&0xffff)<<16)|
            DWORD(vrequip::pose_rejected.load(std::memory_order_acquire)&0xffff);
+}
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
+// Test-only queue: exercises the same game-thread start/completion helpers as
+// an authenticated R3, without claiming a calibrated physical insertion.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerReloadHoldStartTest(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment())return 1;
+    bool expected=false;
+    if(!vrequip::lancer_reload_test_start.compare_exchange_strong(expected,true))return 2;
+    vrequip::lancer_reload_status.store(0,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerReloadHoldCompleteTest(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment())return 1;
+    bool expected=false;
+    if(!vrequip::lancer_reload_test_complete.compare_exchange_strong(expected,true))return 2;
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerReloadHoldStatus(void*){
+    return vrequip::lancer_reload_status.load(std::memory_order_acquire);
 }
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
@@ -442,6 +469,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     if(callbacks.load())return 2;
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     vrequip::reset_switch_test();
+#endif
+#if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
+    vrequip::lancer_reload_test_start=false;
+    vrequip::lancer_reload_test_complete=false;
+    vrequip::lancer_reload_hold={};
 #endif
     if(hook_created){
         if(MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK)return 3;

@@ -18,6 +18,8 @@ ULONGLONG next_intent_open{};
 bool intent_open{};
 std::atomic<unsigned> last_ammo_status{};
 std::atomic<std::uint64_t> pose_accepted{},pose_rejected{};
+gears_weapon::HandWorldFrame last_intent_pose{};
+bool last_intent_pose_known{};
 ULONGLONG next_pose_log{};
 ULONGLONG next_reload_native_probe{};
 uptr last_reload_native_weapon{};
@@ -306,6 +308,7 @@ void reset_switch_test(){
     model.reset();
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
     intent_bridge.close();intent_open=false;intent_cursor=pose_cursor=UINT64_MAX;
+    last_intent_pose={};last_intent_pose_known=false;
     next_intent_open=next_pose_log=0;
     next_reload_native_probe=0;last_reload_native_weapon=0;
     last_ammo_status.store(0,std::memory_order_release);
@@ -467,13 +470,21 @@ bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned 
     return false;
 }
 #endif
+#if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
+#include "vr_lancer_reload_hold.inl"
+#endif
 void tick(uptr pc){
     const auto now=GetTickCount64();
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     unsigned requested_slot=queued_slot.exchange(4,std::memory_order_acq_rel);
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
     gears_weapon::EquipmentIntentEvent grip_event{};
-    bool from_grip=false,ammo_request=false;
+    bool from_grip=false,ammo_request=false,reload_request=false;
+#if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
+    const bool test_reload_start=lancer_reload_test_start.exchange(false,std::memory_order_acq_rel);
+    reload_request=test_reload_start;
+    const bool reload_complete_request=lancer_reload_test_complete.exchange(false,std::memory_order_acq_rel);
+#endif
     if(playground::ready&&test_environment()){
         if(!intent_open&&now>=next_intent_open){
             intent_open=intent_bridge.open(false);next_intent_open=now+500;
@@ -488,6 +499,7 @@ void tick(uptr pc){
                 world_hands.controller==pc&&world_hands.pawn==pawn;
             if(same){
                 ++pose_accepted;
+                last_intent_pose=world_hands;last_intent_pose_known=true;
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
                 mesh_follow_hands=world_hands;mesh_follow_hands_known=true;
 #endif
@@ -546,13 +558,19 @@ void tick(uptr pc){
             from_grip=true;
             if(grip_event.kind==gears_weapon::EquipmentIntentKind::slot)
                 requested_slot=grip_event.inventory_slot;
-            else ammo_request=true;
+            else if(grip_event.kind==gears_weapon::EquipmentIntentKind::grab_ammo)
+                ammo_request=true;
+            else if(grip_event.kind==gears_weapon::EquipmentIntentKind::reload)
+                reload_request=true;
         }
     }
 #endif
     if(now<next_probe&&requested_slot>=4
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
-       &&!ammo_request
+       &&!ammo_request&&!reload_request
+#if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
+       &&!reload_complete_request&&!lancer_reload_hold.active
+#endif
 #endif
        )return;
 #else
@@ -562,6 +580,39 @@ void tick(uptr pc){
     gears_weapon::EquipmentSnapshot game{};
     const wchar_t* error{};
     const bool ok=snapshot(pc,game,error);
+#if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
+    if(ok)lancer_refresh(pc,game);
+    else if(lancer_reload_hold.active){
+        lancer_reload_hold={};lancer_reload_status.store(8,std::memory_order_release);
+    }
+    if(reload_request){
+        const auto& pose=last_intent_pose;
+        const bool pose_fresh=last_intent_pose_known&&now>=pose.created_ms&&
+            now-pose.created_ms<=100;
+        const bool certified=test_reload_start||
+            (from_grip&&pose_fresh&&grip_event.controller==pc&&
+             grip_event.pawn==game.pawn&&
+             grip_event.weapon==game.current_weapon&&
+             grip_event.world_generation==pose.world_generation&&
+             grip_event.input_session==pose.session&&
+             grip_event.space_epoch==pose.space_epoch&&
+             grip_event.input_epoch==pose.input_epoch&&
+             grip_event.input_sequence<=pose.sequence&&
+             pose.controller==pc&&pose.pawn==game.pawn&&
+             pose.weapon==game.current_weapon);
+        const auto status=ok&&certified?lancer_begin(pc,game):2u;
+        lancer_reload_status.store(status,std::memory_order_release);
+        if(log_file){fwprintf(log_file,L"lancer_reload_hold_begin status=%u weapon=%p source=%ls\n",
+            status,reinterpret_cast<void*>(static_cast<uptr>(game.current_weapon)),
+            test_reload_start?L"test":L"r3");fflush(log_file);}
+    }
+    if(reload_complete_request){
+        const auto status=ok?lancer_complete(pc,game):2u;
+        lancer_reload_status.store(status,std::memory_order_release);
+        if(log_file){fwprintf(log_file,L"lancer_reload_hold_complete status=%u weapon=%p\n",
+            status,reinterpret_cast<void*>(static_cast<uptr>(game.current_weapon)));fflush(log_file);}
+    }
+#endif
     if(!ok){model.reset();game={};
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
         if(switch_deadline)

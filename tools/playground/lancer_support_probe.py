@@ -78,6 +78,39 @@ def parse_reload_visual_row(line):
         key: fields[key] == '1' for key in ('reloading', 'mag_hidden', 'mag_pawn')} | floats
 
 
+def original_state_function(resolver, weapon, state_name, function_name):
+    owner = resolver.identity(weapon)['cls']
+    seen = set()
+    while owner and owner not in seen:
+        seen.add(owner)
+        for state in resolver.fields(owner):
+            if state['name'] != state_name or resolver.class_name(state) != 'State':
+                continue
+            for function in resolver.fields(state['address']):
+                if (function['name'] == function_name and
+                        resolver.class_name(function) == 'Function' and
+                        struct.unpack('<H', resolver.read(function['address'] + 0x106, 2))[0] == 0):
+                    return function
+        owner = resolver.u64(owner + 0x60)
+    raise RuntimeError(f'Original state function {state_name}.{function_name} missing')
+
+
+def call_exact_state_function(bridge, weapon, function):
+    # Bridge.call already invokes the selected UFunction on its validated game
+    # thread. Replace only this one lookup in this single-use test harness;
+    # never change the game object, reflected function, or global dispatcher.
+    lookup = bridge.function
+    def exact(owner, name):
+        if name != function['name']:
+            raise RuntimeError('Exact state function lookup mismatch')
+        return function
+    try:
+        bridge.function = exact
+        bridge.call(weapon, function['name'])
+    finally:
+        bridge.function = lookup
+
+
 def sample_owned_game(args, receipt):
     sys.path.insert(0, str(args.runtime_root.resolve() / 'tools/playground'))
     from runtime import Bridge
@@ -85,7 +118,14 @@ def sample_owned_game(args, receipt):
     if args.launcher_session:
         session = json.loads(args.launcher_session.read_text(encoding='utf-8'))
         playground = session.get('playground', {})
-        if (session.get('phase') != 'session_owned' or
+        phase = session.get('phase')
+        report_path = Path(session.get('session_report', ''))
+        report = json.loads(report_path.read_text(encoding='utf-8')) if (
+            phase == 'waiting_for_level' and report_path.is_file()) else {}
+        running = phase == 'session_owned' or (
+            phase == 'waiting_for_level' and report.get('phase') == 'running' and
+            report.get('game_identity') == session.get('game_identity'))
+        if (not running or
                 not session.get('test_audio_guard', {}).get('enabled') or
                 not playground.get('enabled') or
                 Path(playground.get('dll', '')).resolve() != args.dll.resolve() or
@@ -243,23 +283,87 @@ def sample_owned_game(args, receipt):
                 receipt['seeded_ammo_used'] = 1
             if not bridge.call(weapon, 'CanReload'):
                 raise RuntimeError('Original Lancer cannot reload in owned arena')
-            if bridge.export('PlaygroundLancerReloadVisualProbeEnable') != 0:
-                raise RuntimeError('Private Lancer reload visual probe refused to start')
-            time.sleep(.12)  # One idle sample before invoking the original reload.
-            if bridge.export('PlaygroundLancerReloadVisualProbeStatus') >> 16 == 4:
-                raise RuntimeError('Original reload visual probe failed before ForceReload')
-            bridge.call(weapon, 'ForceReload')
+            if args.mode == 'reload_visual':
+                if bridge.export('PlaygroundLancerReloadVisualProbeEnable') != 0:
+                    raise RuntimeError('Private Lancer reload visual probe refused to start')
+                time.sleep(.12)  # One idle sample before invoking the original reload.
+                if bridge.export('PlaygroundLancerReloadVisualProbeStatus') >> 16 == 4:
+                    raise RuntimeError('Original reload visual probe failed before ForceReload')
+            if args.mode == 'reload_adapter':
+                if bridge.export('PlaygroundLancerReloadHoldStartTest') != 0:
+                    raise RuntimeError('Private game-thread Lancer reload start queue rejected')
+
+                def adapter_started():
+                    state = bridge.export('PlaygroundLancerReloadHoldStatus')
+                    if state > 1:
+                        raise RuntimeError(f'Private Lancer reload start rejected: {state}')
+                    return state == 1
+
+                wait_for(adapter_started, 3, 'Private Lancer reload adapter did not start')
+                receipt['adapter_start_status'] = 1
+            else:
+                bridge.call(weapon, 'ForceReload')
             wait_for(lambda: bridge.call(weapon, 'IsReloading'), 2,
                      'Original Lancer did not enter Reloading after ForceReload')
+            if args.mode == 'reload_visual':
+                def reload_probe_done():
+                    value = bridge.export('PlaygroundLancerReloadVisualProbeStatus')
+                    state, count = value >> 16, value & 0xffff
+                    if state == 4:
+                        raise RuntimeError(f'Original reload visual probe failed after {count} samples')
+                    return state == 3
 
-            def reload_probe_done():
-                value = bridge.export('PlaygroundLancerReloadVisualProbeStatus')
-                state, count = value >> 16, value & 0xffff
-                if state == 4:
-                    raise RuntimeError(f'Original reload visual probe failed after {count} samples')
-                return state == 3
-
-            wait_for(reload_probe_done, 8, 'Original reload visual timeline did not finish')
+                wait_for(reload_probe_done, 8, 'Original reload visual timeline did not finish')
+            else:
+                fn = bridge.function(resolver.identity(weapon)['cls'], 'EndOfReloadTimer')
+                name_offset = int(resolver.profile['object_name'])
+                timer_index = resolver.u32(fn['address'] + name_offset)
+                if resolver.name(timer_index) != 'EndOfReloadTimer':
+                    raise RuntimeError('Original reload timer name identity mismatch')
+                timer_name = (timer_index, 0)
+                receipt['timer_active_before_clear'] = bool(bridge.call(
+                    weapon, 'IsTimerActive', inTimerFunc=timer_name))
+                if not receipt['timer_active_before_clear']:
+                    raise RuntimeError('Original EndOfReloadTimer was not active')
+                if args.mode == 'reload_hold':
+                    bridge.call(weapon, 'ClearTimer', inTimerFunc=timer_name)
+                    receipt['timer_active_after_clear'] = bool(bridge.call(
+                        weapon, 'IsTimerActive', inTimerFunc=timer_name))
+                    if receipt['timer_active_after_clear']:
+                        raise RuntimeError('Original EndOfReloadTimer did not clear')
+                else:
+                    receipt['fallback_timer_active'] = receipt['timer_active_before_clear']
+                def read_float(obj, field):
+                    meta = property_of(obj, field)
+                    if meta['type'] != 'FloatProperty':
+                        raise RuntimeError(f'{field} is not an original float property')
+                    return struct.unpack('<f', resolver.read(obj + meta['offset'], 4))[0]
+                reload_start = read_float(weapon, 'ReloadStartTime')
+                wait_for(lambda: read_float(world, 'TimeSeconds') - reload_start >= 3.2,
+                         6, 'Original game clock did not pass the normal reload duration')
+                receipt['held_elapsed_game_seconds'] = read_float(world, 'TimeSeconds') - reload_start
+                receipt['held_reloading'] = bool(bridge.call(weapon, 'IsReloading'))
+                receipt['held_ammo_used'] = read_int(weapon, 'AmmoUsedCount')
+                if not receipt['held_reloading'] or receipt['held_ammo_used'] != 1:
+                    raise RuntimeError('Original reload auto-committed after timer clearance')
+                if args.mode == 'reload_hold':
+                    state_function = original_state_function(
+                        resolver, weapon, 'Reloading', 'EndOfReloadTimer')
+                    receipt['state_function'] = {
+                        'address': hex(state_function['address']),
+                        'outer': hex(state_function['outer']), 'name': state_function['name']}
+                    call_exact_state_function(bridge, weapon, state_function)
+                else:
+                    if bridge.export('PlaygroundLancerReloadHoldCompleteTest') != 0:
+                        raise RuntimeError('Private game-thread Lancer completion queue rejected')
+                    wait_for(lambda: bridge.export('PlaygroundLancerReloadHoldStatus') == 6,
+                             2, 'Private Lancer completion did not finish')
+                    receipt['adapter_finish_status'] = 6
+                wait_for(lambda: not bridge.call(weapon, 'IsReloading') and
+                         read_int(weapon, 'AmmoUsedCount') == 0,
+                         2, 'Original state completion did not commit ammo and return Active')
+                receipt['finished_ammo_used'] = read_int(weapon, 'AmmoUsedCount')
+                receipt['finished_reloading'] = bool(bridge.call(weapon, 'IsReloading'))
     finally:
         if bridge:
             try:
@@ -281,7 +385,7 @@ def sample_owned_game(args, receipt):
             raise RuntimeError('Bounded same-tick original pose rows missing from private log')
         receipt.update(game_thread_probe=beginnings[0], samples=poses,
                        original_visual=visuals[0])
-    else:
+    elif args.mode == 'reload_visual':
         beginnings = [line for line in lines if line.startswith('lancer_reload_visual_begin ')]
         rows = [parse_reload_visual_row(line) for line in lines
                 if line.startswith('lancer_reload_visual sample=')]
@@ -292,6 +396,19 @@ def sample_owned_game(args, receipt):
                 first_reload is None or not any(not row['reloading'] for row in rows[first_reload + 1:])):
             raise RuntimeError('Bounded original Lancer reload sequence missing from private log')
         receipt.update(game_thread_probe=beginnings[0], reload_visual_timeline=rows)
+    else:
+        if (receipt.get('timer_active_before_clear') is not True or
+                (args.mode == 'reload_hold' and
+                 receipt.get('timer_active_after_clear') is not False) or
+                (args.mode == 'reload_adapter' and
+                 (receipt.get('fallback_timer_active') is not True or
+                  receipt.get('adapter_start_status') != 1 or
+                  receipt.get('adapter_finish_status') != 6)) or
+                receipt.get('held_reloading') is not True or
+                receipt.get('held_ammo_used') != 1 or
+                receipt.get('finished_ammo_used') != 0 or
+                receipt.get('finished_reloading') is not False):
+            raise RuntimeError('Original held reload and explicit completion evidence incomplete')
     receipt.update(game_thread_log=str(log_path),
                    log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest())
     receipt['passed'] = True
@@ -306,7 +423,8 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('support', 'reload_visual'), default='support')
+    parser.add_argument('--mode', choices=('support', 'reload_visual', 'reload_hold',
+                                          'reload_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     output = args.output.resolve()

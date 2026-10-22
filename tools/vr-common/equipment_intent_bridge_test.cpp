@@ -42,7 +42,7 @@ int main(){
     gears_weapon::EquipmentIntentEvent received{};
     assert(!reader.read_next(cursor,received)&&cursor==0);
     gears_weapon::EquipmentIntentEvent event{};
-    event.input_session=7;event.input_sequence=12;event.space_epoch=3;
+    event.input_session=7;event.input_sequence=12;event.space_epoch=3;event.input_epoch=2;
     event.world_generation=4;event.controller=0x1000;event.pawn=0x2000;
     event.weapon=0x3000;event.inventory_slot=2;
     assert(publisher.publish(event));
@@ -56,20 +56,31 @@ int main(){
     assert(reader.read_next(cursor,received));
     assert(received.kind==gears_weapon::EquipmentIntentKind::grab_ammo&&
            received.inventory_slot==4);
+    event.kind=gears_weapon::EquipmentIntentKind::reload;
+    event.input_sequence=14;
+    assert(publisher.publish(event));
+    assert(reader.read_next(cursor,received));
+    assert(received.kind==gears_weapon::EquipmentIntentKind::reload&&
+           received.input_epoch==2&&received.inventory_slot==4);
+    event.input_epoch=0;
+    assert(!publisher.publish(event));
+    event.input_epoch=2;
+    event.inventory_slot=3;
+    assert(!publisher.publish(event));
     event.kind=gears_weapon::EquipmentIntentKind::slot;
     event.inventory_slot=4;
     assert(!publisher.publish(event));
     event.inventory_slot=3;
     for(unsigned i=0;i<gears_weapon::EquipmentIntentPacket::capacity+1;++i){
-        event.input_sequence=14+i;
+        event.input_sequence=15+i;
         assert(publisher.publish(event));
     }
     assert(!reader.read_next(cursor,received)); // no replay after overflow
-    assert(cursor==gears_weapon::EquipmentIntentPacket::capacity+3);
+    assert(cursor==gears_weapon::EquipmentIntentPacket::capacity+4);
     event.input_sequence=100;
     assert(publisher.publish(event));
     Sleep(260);
     assert(!reader.read_next(cursor,received)); // no stale grip actuation
-    assert(cursor==gears_weapon::EquipmentIntentPacket::capacity+4);
+    assert(cursor==gears_weapon::EquipmentIntentPacket::capacity+5);
     std::puts("equipment intent bridge passed");
 }

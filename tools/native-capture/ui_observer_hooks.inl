@@ -236,15 +236,19 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
                         controller_recenter_request.submit(snapshot_world,hands.session,hands.space_epoch);
                     const auto slot=gears_weapon::original_inventory_slot(
                         gears_weapon::equipment_body_slot(intent));
-                    if(slot||intent==gears_weapon::WeaponIntent::grab_ammo){
+                    if(slot||intent==gears_weapon::WeaponIntent::grab_ammo||
+                       intent==gears_weapon::WeaponIntent::reload){
                         auto const& binding=crosshair_live::state.binding;
                         gears_weapon::EquipmentIntentEvent event{};
                         event.input_session=hands.session;event.input_sequence=hands.sequence;
-                        event.space_epoch=hands.space_epoch;event.world_generation=snapshot_world;
+                        event.space_epoch=hands.space_epoch;event.input_epoch=hands.input_epoch;
+                        event.world_generation=snapshot_world;
                         event.controller=binding.controller;event.pawn=binding.pawn;
                         event.weapon=binding.weapon;
                         event.kind=slot?gears_weapon::EquipmentIntentKind::slot:
-                            gears_weapon::EquipmentIntentKind::grab_ammo;
+                            intent==gears_weapon::WeaponIntent::reload?
+                                gears_weapon::EquipmentIntentKind::reload:
+                                gears_weapon::EquipmentIntentKind::grab_ammo;
                         event.inventory_slot=slot?*slot:4;
                         if(binding.world==snapshot_world&&
                            controller_equipment_intent_bridge.publish(event))

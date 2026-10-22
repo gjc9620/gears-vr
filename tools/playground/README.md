@@ -97,6 +97,17 @@ status 1 means ammo exists, 2 means empty with the original cue, 3 means empty
 without a cue, and 4 means the game identity or count could not be validated.
 No round or magazine is spawned or deducted at this stage.
 
+The separate `GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST` option requires the
+certified equipment-intent candidate and remains off in the default DLL. A
+fresh R3 event can start the original Lancer `Reloading` state in the owned,
+muted, behind-windows arena; the adapter replaces its 2.5-second completion
+timer with an eight-second original-game fallback. The test-only start and
+complete exports exercise the same game-thread path without physical input.
+Explicit completion invokes the original `Reloading.EndOfReloadTimer` state
+function, which performs the original ammo settlement. No VR magazine stroke,
+bolt stroke, perfect reward, or default-launcher behavior is implied. GVE5
+events include input epoch and are rejected against a stale hand-pose epoch.
+
 While certified hand poses are being observed, the private bridge also logs a
 read-only `weapon_magazine_probe` beside `weapon_mesh_probe`. It validates the
 current weapon's original `MagazineMesh` component, names its `StaticMesh`,
