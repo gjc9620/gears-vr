@@ -189,6 +189,9 @@ bool snapshot(uptr pc,gears_weapon::EquipmentSnapshot& game,const wchar_t*& erro
             error=L"slot_ammo_query";
             if(!read_has_any_ammo(item,game.ammo_available[slot]))return false;
             game.ammo_known[slot]=true;
+            error=L"slot_dry_selection_query";
+            if(!read_bool(item,L"bCanSelectWithoutAmmo",
+                          game.can_select_without_ammo[slot]))return false;
             error=L"inventory_slot_query";
         }
     }
@@ -212,6 +215,7 @@ bool changed(gears_weapon::EquipmentSnapshot const& a,
     return a.world!=b.world||a.pawn!=b.pawn||a.current_weapon!=b.current_weapon||
         a.weapon_in_slot!=b.weapon_in_slot||a.can_switch!=b.can_switch||
         a.ammo_available!=b.ammo_available||a.ammo_known!=b.ammo_known||
+        a.can_select_without_ammo!=b.can_select_without_ammo||
         a.animation_busy!=b.animation_busy||a.throwable_count!=b.throwable_count||
         a.throwable_count_known!=b.throwable_count_known;
 }
@@ -404,7 +408,7 @@ void tick(uptr pc){
     have_previous=true;previous_error=error;previous=game;
     if(!log_file)return;
     fwprintf(log_file,L"equipment_snapshot status=%ls world=%p pawn=%p current=%p "
-        L"slots=%p,%p,%p,%p grenades=%u known=%u ammo=%u%u%u%u switch=%u anim=%u\n",
+        L"slots=%p,%p,%p,%p grenades=%u known=%u ammo=%u%u%u%u dry_select=%u%u%u%u switch=%u anim=%u\n",
         error,reinterpret_cast<void*>(static_cast<uptr>(game.world)),
         reinterpret_cast<void*>(static_cast<uptr>(game.pawn)),
         reinterpret_cast<void*>(static_cast<uptr>(game.current_weapon)),
@@ -415,6 +419,8 @@ void tick(uptr pc){
         game.throwable_count,unsigned(game.throwable_count_known),
         unsigned(game.ammo_available[0]),unsigned(game.ammo_available[1]),
         unsigned(game.ammo_available[2]),unsigned(game.ammo_available[3]),
+        unsigned(game.can_select_without_ammo[0]),unsigned(game.can_select_without_ammo[1]),
+        unsigned(game.can_select_without_ammo[2]),unsigned(game.can_select_without_ammo[3]),
         unsigned(game.can_switch),unsigned(game.animation_busy));
     fflush(log_file);
 }

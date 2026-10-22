@@ -15,6 +15,10 @@ struct EquipmentSnapshot {
     // the same game thread. Unknown is allowed for isolated model fixtures;
     // live snapshot acquisition fails rather than asserting availability.
     std::array<bool,4> ammo_available{},ammo_known{};
+    // SetWeaponFromSlot also accepts a dry weapon when its original
+    // bCanSelectWithoutAmmo flag is set. The live snapshot must read this
+    // alongside HasAnyAmmo; an unknown flag fails closed as false.
+    std::array<bool,4> can_select_without_ammo{};
     // The grenade slot can retain a weapon actor after its throwable count is
     // zero. Only a game-thread inventory read may assert count_known.
     std::uint32_t throwable_count{};
@@ -107,7 +111,8 @@ public:
         }
         // A grenade actor may outlive its last charge. If the authoritative
         // count cannot be read, fail closed instead of creating a throwable.
-        if(!item||(game.ammo_known[*slot]&&!game.ammo_available[*slot])||
+        if(!item||(game.ammo_known[*slot]&&!game.ammo_available[*slot]&&
+                   !game.can_select_without_ammo[*slot])||
            (*slot==1&&(!game.throwable_count_known||!game.throwable_count)))
             return {EquipmentEvent::empty_slot,*slot};
         if(game.current_weapon==item){

@@ -67,6 +67,12 @@ int main(){
     game.ammo_known[2]=true;game.ammo_available[2]=false;
     assert(hands.tap(BodySlot::weapon_2,game).event==EquipmentEvent::empty_slot);
     assert(!hands.switch_pending());
+    game.can_select_without_ammo[2]=true;
+    auto dry_allowed=hands.tap(BodySlot::weapon_2,game);
+    assert(dry_allowed.event==EquipmentEvent::request_original_switch&&
+           dry_allowed.weapon==202&&hands.switch_pending());
+    assert(hands.switch_rejected(game).event==EquipmentEvent::interrupted);
+    game.can_select_without_ammo[2]=false;
     game.ammo_available[2]=true;
 
     assert(hands.begin_pickup(game).event==EquipmentEvent::pickup_animation);

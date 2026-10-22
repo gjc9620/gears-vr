@@ -368,9 +368,9 @@ Mulcher 与 Ink Grenade 尚未在当前 `WarfareGame.u` 和先前选取的三个
 
 新增的私有入口细分位码证明一次延后 20 秒注入的零售测试里仅 Hook 就绪，视口、`PlayerController` 类、`PlayerTick` 和本地玩家对象都未寻址；观察 120 秒后仍无库存快照。这个样本只能说明该次游戏初始化未到达库存查询边界，不能作为库存读取失败或取枪交互成功的证据。测试进程、桥接和音频均已收尾。
 
-原版 `WarInventoryManager.SetWeaponFromSlot` 会重新按槽寻找武器，在该槽有武器对象但无弹药时触发原版反馈，再转入 `SetCurrentWeapon`。私有 `GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST` 仅接受槽位编号，在游戏线程及私有测试场身份复核后调用原函数。新增的私有 `GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST` 把已认证 XR 帧的右手抓握边沿经同进程、带进程创建时间和新鲜度限制的桥传给它；游戏侧还会复核 PC／Pawn／当前武器、原版库存及测试场，之后才可能调用切槽。桥的溢出、重放和过期事件会丢弃，静态测试及候选／默认构建通过。原函数对**完全空槽**不播提示，因此私有适配器改从该槽武器或当前武器的原版 `FireNoAmmoSound` 取提示，再调用原版 `WeaponPlaySoundLocal`；没有有效音源则记录状态 9，不凭空发声。当前购买版测试仍未到视口或库存快照，**没有真实 RGrip 切枪或提示音证据**。原版切换动画目前仍会运行；原槽收枪只有状态机记录而没有枪模显隐。
+原版 `WarInventoryManager.SetWeaponFromSlot` 会重新按槽寻找武器，在该槽有武器对象但无弹药时触发原版反馈；仅当 `HasAnyAmmo` 或该枪 `bCanSelectWithoutAmmo` 为真时才转入 `SetCurrentWeapon`。私有 `GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST` 仅接受槽位编号，在游戏线程及私有测试场身份复核后调用原函数。新增的私有 `GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST` 把已认证 XR 帧的右手抓握边沿经同进程、带进程创建时间和新鲜度限制的桥传给它；游戏侧还会复核 PC／Pawn／当前武器、原版库存及测试场，之后才可能调用切槽。桥的溢出、重放和过期事件会丢弃，静态测试及候选／默认构建通过。原函数对**完全空槽**不播提示，因此私有适配器改从该槽武器或当前武器的原版 `FireNoAmmoSound` 取提示，再调用原版 `WeaponPlaySoundLocal`；没有有效音源则记录状态 9，不凭空发声。当前购买版测试仍未到视口或库存快照，**没有真实 RGrip 切枪或提示音证据**。原版切换动画目前仍会运行；原槽收枪只有状态机记录而没有枪模显隐。
 
-库存快照现在还逐槽调用原版 `HasAnyAmmo`。有枪对象但弹药耗尽时先走空槽反馈，避免发起原版不会完成的切换并等 5 秒超时；已拿在手中的枪即使打完最后一发，仍允许放回原槽。`WeaponEquipmentModelTest` 覆盖这两个分支，Playground 私有候选重新编译通过；这些判断仍缺真实购买版库存与声音回执。
+库存快照逐槽调用原版 `HasAnyAmmo`，并读取 `bCanSelectWithoutAmmo`。完全无弹且该标志为假的枪先走空槽反馈，避免发起原版不会完成的切换并等 5 秒超时；标志为真则依原版仍可切出。已拿在手中的枪即使打完最后一发，仍允许放回原槽。`WeaponEquipmentModelTest` 覆盖这些分支；实际游戏内的标志读取、切枪与声音仍需零售版运行回执。
 
 左手在左肩的抓握边沿也进入同一认证桥，但使用独立事件种类，不会误当作第 5 个武器槽。私有游戏线程适配器检查当前枪和角色身份，再按原版 `SpareAmmoCount`／`HasInfiniteSpareAmmo` 判断是否能提供实体弹药：有则只记录可供给状态，尚不生成或扣除一发；无则尝试原版空仓音效。桥单元测试、native／Playground 私有构建及默认 Playground 导出隔离通过；尚未有实际游戏音频和握取物体验证。
 
