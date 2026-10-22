@@ -71,3 +71,7 @@ DLL SHA256 `159947f1f83e30da826cac43e000de829e626b8a1c6e453706fc604a2c97229d`，
 后台子进程显式设置 `GEARSVR_TEST_MUTE_GAME=1`、`GEARSVR_TEST_WINDOWS_BEHIND=1` 和 `GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY=1`，使用已核哈希的 J 盘音频 Guard。游戏关闭或诊断输出失败时保留 owner 与 Guard，只有独立证明精确自有游戏已退出后才恢复原静音状态。第一人称在 Start 前只记录切换事件与自然 Tick，结束后的本局 `applied>0` 为组件硬门；累计值不能归因于每一个 lease。Shutdown 前的顺序读数只证明 stow dirty 与已有新手部写入，不证明入口瞬间两个 journal 同时 dirty。关闭后的附件采用原始唯一 raw52／pose44 与身份锚点核对，不伪称再次调用 getter 或新读了完整对象头。
 
 首次 `--run` 在最前只读 idle 检查发现其他会话的游戏／launcher／Guard，已拒绝启动；没有 run-started、私有实例、注入或本局游戏。**联合游戏尚未开始**，不将该前置拒绝当作组件试验失败，也不干预已有实例。待其自然退出后才能开展这唯一实际联合局。
+
+已有实例自然退出后，实际 `hand-equipment-1023a` 购买版 PID 46048 在双手 Start 前停止：运行器错误要求八个控制器强度均为 `(+0,+0,+0)`，而冻结 C++ `handik::baseline_strengths` 明确要求索引 0／1／4／5 为 `(+1,+1,+0)`、2／3／6／7 为 `(+0,+0,+0)`。真实八组位模式完全满足后者，故这次是私有运行器基线错误，尚无手部／暂收联合交互结果；没有发出 Start、槽请求或启动 Native／XR session。原失败 receipt SHA256 `d845dbf907a04d4891d6e7927f96e4ac6e81314602926543bbd3551ed1399fad`、组件 audit `77ec7fdabada2364cd893e231fd24820fe6c95a1841b59a999f1a9659939c268` 保留。
+
+该局 Shutdown=0，八控制器全字段与原 44 字节附件精确恢复，CallFunction32／ProcessEvent64 独立原字节匹配，精确游戏退出；Guard 匹配 9 个会话、mute／restore 写入均为零，read_failed／mute_failed／restore_pending 均为零，关闭顺序在 game_absent 之后。原日志 SHA256 `eae566703e5a677d1bbf7c9e875f26273ccc9cb60249decd414e79e1b461f10c`。仅在新的 `analysis/hand-equipment-1023b/` 准备严格对齐冻结原生位模式的运行器／审计修正，不改候选、旧脚本或旧回执，不降低身份／动作／新鲜度门限。

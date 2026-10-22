@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：其他实例自然退出后，联合a实际购买版 PID46048 在双手Start前因运行器误要求全部8 strength为+0停止；冻结C++要求0／1／4／5为(+1,+1,+0)、尾2／3／6／7为(+0,+0,+0)，真实读数完全满足原生门。未Start、未槽请求、未Native／XR session，原失败receipt `d845dbf9…399fad`和audit保留。Shutdown0，8控件全字段／44附件精确恢复，Call32／Event64独立匹配、game_absent；9音频会话无mute／restore写入或错误，Guard在游戏退出后结束。正在新b目录仅修运行器／审计位模式，候选159947不变，尚无联合交互结论。
+
 2026-10-23：联合源码已提交 `e8b3cf5`，候选160项 live／保存源码再次匹配。私有 runner 17检查、独立审计30自检、禁止Popen的默认prepare均通过，固定182依赖／23实际模块；Astra Max窄复核的FPP硬门、Stop异常仍Shutdown及静音Guard异常保活问题已修。三项后台标志显式开启，只有精确game_absent后才恢复原静音状态。准备回执 `a34c4706…31d96`；首次run在注入／私有实例创建前被另会话活动游戏的idle门拒绝，**尚无联合游戏结果**，不干预其他实例。详情见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
 
 2026-10-23：双手／暂收联合候选已接线并封存 `159947f1…97229d`（160源码），默认关闭，须显式 combined＋XR stream＋stow，其他 writer 仍禁配。稳定 owned-detached 可重新取得双手资格，pending／切换先清旧计划与绑定；助手前要求手journal clean，Shutdown 先封两方。foreign 撤权先于可重入 handback，已回原手路径新增只读 relinquish，旧收枪写权不随再detached复活；新显式acquire才可开新lease。strict联合／独立stow／默认构建、九检查、三拒配和导出隔离通过，Astra Max最终源码复核无剩余确定阻断。私有联合runner正在准备，**未跑联合游戏**，未变更冻结Native／XR、普通启动器或公开ownership；详见 [联合接线记录](../../hand-ik-xr-stream-trial-20261023.md)。
