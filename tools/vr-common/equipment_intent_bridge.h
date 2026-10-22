@@ -16,10 +16,12 @@ struct EquipmentIntentEvent {
 };
 struct HandWorldFrame {
     std::uint64_t serial{},created_ms{},session{},sequence{},space_epoch{},input_epoch{},world_generation{};
+    // weapon==0 is an authenticated unarmed pose: read-only hand targets only.
+    // It cannot bind an equipment intent. Packet layout and GVE6 stay unchanged.
     std::uintptr_t controller{},pawn{},weapon{};
     double units_per_metre{}; // World-pose unit scale frozen with this XR ticket.
     gears_vr::Viewpoint left{},right{};
-    std::uint8_t valid_mask{}; // bit 0 left, bit 1 right
+    std::uint8_t valid_mask{}; // bit 0 left, bit 1 right; zero explicitly clears tracking.
     std::uint8_t grip_down_mask{}; // Same XR ticket; only tracked hands may be down.
 };
 
@@ -30,7 +32,8 @@ inline bool equipment_intent_matches_pose(EquipmentIntentEvent const& event,
         HandWorldFrame const& pose,std::uint64_t now,
         std::uintptr_t controller,std::uintptr_t pawn,std::uintptr_t weapon) noexcept {
     const auto hand=event.kind==EquipmentIntentKind::grab_ammo?1u:2u;
-    return event.controller==controller&&event.pawn==pawn&&event.weapon==weapon&&
+    return controller&&pawn&&weapon&&
+        event.controller==controller&&event.pawn==pawn&&event.weapon==weapon&&
         pose.controller==controller&&pose.pawn==pawn&&pose.weapon==weapon&&
         std::isfinite(pose.units_per_metre)&&pose.units_per_metre>=10&&
         pose.units_per_metre<=500&&
@@ -86,7 +89,7 @@ class EquipmentIntentBridge {
         return pose.session&&pose.sequence&&pose.space_epoch&&pose.input_epoch&&pose.world_generation&&
             std::isfinite(pose.units_per_metre)&&pose.units_per_metre>=10&&
             pose.units_per_metre<=500&&
-            pose.controller&&pose.pawn&&pose.weapon&&pose.valid_mask&&!(pose.valid_mask&~3u)&&
+            pose.controller&&pose.pawn&&!(pose.valid_mask&~3u)&&
             !(pose.grip_down_mask&~pose.valid_mask)&&
             (!(pose.valid_mask&1)||viewpoint(pose.left))&&
             (!(pose.valid_mask&2)||viewpoint(pose.right));

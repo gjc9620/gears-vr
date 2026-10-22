@@ -96,6 +96,9 @@
 #include "crosshair_tick_evidence.h"
 #include "crosshair_finite_query.h"
 #include "crosshair_weapon_binding.h"
+#if defined(GEARS_FREE_HAND_POSE_OBSERVER) && GEARS_FREE_HAND_POSE_OBSERVER
+#include "hand_pose_publication.h"
+#endif
 #endif
 #include "ui_canvas_batch.h"
 #include "ui_canvas_text_batch.h"
@@ -3188,12 +3191,27 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             if(origin_trial_enabled){request_session_stop(SessionStop::proof_failure);service_session_stop_native();}
             return false;}
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
-        if(controller_input_observer&&have_matched_hands&&first_person_live::ordinary(anchor)&&
+        const bool hand_pose_context=
+#if defined(GEARS_FREE_HAND_POSE_OBSERVER) && GEARS_FREE_HAND_POSE_OBSERVER
+            anchor_observer_enabled&&anchor&&!anchor_config.mounted_enabled&&!anchor->anchor.unpossessed;
+#else
+            first_person_live::ordinary(anchor);
+#endif
+        if(controller_input_observer&&have_matched_hands&&hand_pose_context&&
            crosshair_live::enabled){
             auto const& owned=crosshair_live::current();auto const& c=owned.assignment;
-            std::uintptr_t weapon{},instigator{};
+            std::uintptr_t weapon{};
+#if !defined(GEARS_FREE_HAND_POSE_OBSERVER) || !GEARS_FREE_HAND_POSE_OBSERVER
+            std::uintptr_t instigator{};
+#endif
             const auto pawn=anchor->anchor.pawn,pc=anchor->anchor.controller;
-            if(c.pawn<owned.identities.identity_count&&c.controller<owned.identities.identity_count&&
+            const bool hand_pose_binding=
+#if defined(GEARS_FREE_HAND_POSE_OBSERVER) && GEARS_FREE_HAND_POSE_OBSERVER
+                gears_hand_pose::current_weapon(c,anchor->anchor,frame.world_generation,
+                    committed_world_generation.load(),safe_copy,weapon)&&
+                frame.world_generation==committed_world_generation.load();
+#else
+                c.pawn<owned.identities.identity_count&&c.controller<owned.identities.identity_count&&
                c.weapon<owned.identities.identity_count&&c.pawn_weapon.offset<=0xfff8&&
                c.weapon_instigator.offset<=0xfff8&&
                owned.identities.identities[c.pawn].address==pawn&&
@@ -3201,7 +3219,9 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                safe_copy(&weapon,reinterpret_cast<void*>(pawn+c.pawn_weapon.offset),sizeof(weapon))&&
                weapon==owned.identities.identities[c.weapon].address&&
                safe_copy(&instigator,reinterpret_cast<void*>(weapon+c.weapon_instigator.offset),sizeof(instigator))&&
-               instigator==pawn){
+               instigator==pawn;
+#endif
+            if(hand_pose_binding){
                 gears_weapon::HandWorldFrame pose{};
                 pose.session=sample.session;pose.sequence=sample.sequence;
                 pose.space_epoch=sample.space_epoch;pose.input_epoch=matched_hands.input_epoch;
@@ -3221,8 +3241,18 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                             h.released[gears_vr::control_squeeze])
                         pose.grip_down_mask|=std::uint8_t(1u<<hand);
                 }
+#if defined(GEARS_FREE_HAND_POSE_OBSERVER) && GEARS_FREE_HAND_POSE_OBSERVER
+                { // A zero mask is a fresh tracking-loss receipt, never a hand target.
+#else
                 if(pose.valid_mask){
-                    if(controller_equipment_intent_bridge.publish_pose(pose))++controller_hand_pose_published;
+#endif
+                    if(
+#if defined(GEARS_FREE_HAND_POSE_OBSERVER) && GEARS_FREE_HAND_POSE_OBSERVER
+                       // The extra identity reads must not retimestamp an expired XR ticket.
+                       frame.world_generation==committed_world_generation.load()&&
+                       gears_vr::controller_frame_matches(matched_hands,sample,gears_vr::monotonic_ns(),simulator_operator)&&
+#endif
+                       controller_equipment_intent_bridge.publish_pose(pose))++controller_hand_pose_published;
                     else ++controller_hand_pose_rejected;
                 }
             }else ++controller_hand_pose_rejected;

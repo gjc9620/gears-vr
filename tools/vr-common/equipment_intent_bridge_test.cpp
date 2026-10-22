@@ -43,7 +43,14 @@ int main(){
     assert(reader.read_pose(pose_cursor,world_pose)&&world_pose.valid_mask==3&&
            world_pose.grip_down_mask==1&&world_pose.left.position.z==6);
     published_pose.valid_mask=0;
-    assert(!publisher.publish_pose(published_pose));
+    published_pose.grip_down_mask=0;
+    assert(publisher.publish_pose(published_pose));
+    assert(reader.read_pose(pose_cursor,world_pose)&&world_pose.valid_mask==0);
+    published_pose.weapon=0;published_pose.valid_mask=3;
+    assert(publisher.publish_pose(published_pose));
+    assert(reader.read_pose(pose_cursor,world_pose)&&world_pose.weapon==0&&world_pose.valid_mask==3);
+    published_pose.weapon=0x3000;
+    assert(publisher.publish_pose(published_pose)&&reader.read_pose(pose_cursor,world_pose));
     std::uint64_t cursor=UINT64_MAX;
     gears_weapon::EquipmentIntentEvent received{};
     assert(!reader.read_next(cursor,received)&&cursor==0);
@@ -72,6 +79,14 @@ int main(){
     matching_pose.created_ms=GetTickCount64();
     const auto receipt_time=GetTickCount64();
     assert(gears_weapon::equipment_intent_matches_pose(received,matching_pose,
+        receipt_time,0x1000,0x2000,0x3000));
+    auto unarmed_event=received;unarmed_event.weapon=0;
+    auto unarmed_pose=matching_pose;unarmed_pose.weapon=0;
+    assert(!publisher.publish(unarmed_event));
+    assert(!gears_weapon::equipment_intent_matches_pose(unarmed_event,unarmed_pose,
+        receipt_time,0x1000,0x2000,0));
+    auto lost_pose=matching_pose;lost_pose.valid_mask=0;
+    assert(!gears_weapon::equipment_intent_matches_pose(received,lost_pose,
         receipt_time,0x1000,0x2000,0x3000));
     auto changed_pose=matching_pose;
     changed_pose.input_epoch++;

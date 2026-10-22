@@ -67,7 +67,7 @@ class FreeHandControl {
             pose.pawn==game.pawn&&pose.weapon==game.weapon&&
             pose.created_ms&&now>=pose.created_ms&&now-pose.created_ms<=100&&
             std::isfinite(pose.units_per_metre)&&pose.units_per_metre>=10&&
-            pose.units_per_metre<=500&&pose.valid_mask&&!(pose.valid_mask&~3u)&&
+            pose.units_per_metre<=500&&!(pose.valid_mask&~3u)&&
             !(pose.grip_down_mask&~pose.valid_mask)&&
             (!(pose.valid_mask&1)||viewpoint_valid(pose.left))&&
             (!(pose.valid_mask&2)||viewpoint_valid(pose.right));
@@ -91,7 +91,10 @@ public:
         if(!same_player(game)){
             const bool had_player=player_known_||last_sequence_!=0;
             boundary();player_=game;player_known_=true;
-            animation_owned_=false;proof_known_=false;
+            // Retain the last observed animation owner across weapon/mesh
+            // changes. Otherwise an animation ending with that identity
+            // change could reuse a pose collected before hand-back.
+            proof_known_=false;
             wait_new_pose_=had_player;after_sequence_=last_sequence_;
         }
 
@@ -130,7 +133,7 @@ public:
         out.generation=generation_;
         if(fixed_action){out.phase=FreeHandPhase::original_animation;return out;}
         if(!proof_known_){out.phase=FreeHandPhase::unproved_animation_state;return out;}
-        if(!matched){out.phase=FreeHandPhase::missing_tracking;return out;}
+        if(!matched||!out.tracked_mask){out.phase=FreeHandPhase::missing_tracking;return out;}
         if(wait_new_pose_&&pose->sequence<=after_sequence_){
             out.phase=FreeHandPhase::waiting_new_pose;return out;
         }

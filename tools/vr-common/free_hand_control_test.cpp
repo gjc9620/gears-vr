@@ -46,7 +46,11 @@ int main(){
         next();game.fixed_animation_mask=reason;
         frame=control.advance(game,&pose,now,true);
         const auto animation_generation=frame.generation;
-        assert(frame.phase==FreeHandPhase::original_animation&&!frame.eligible_mask);
+        assert(frame.phase==FreeHandPhase::original_animation&&frame.tracked_mask==2&&!frame.eligible_mask);
+        next();pose.right.position.x+=1;
+        frame=control.advance(game,&pose,now,true);
+        assert(frame.phase==FreeHandPhase::original_animation&&frame.tracked_mask==2&&
+               frame.world[1].position.x==pose.right.position.x&&!frame.apply_mask);
         frame=control.advance(game,nullptr,now,true);
         assert(frame.phase==FreeHandPhase::original_animation&&!frame.apply_mask);
         game.fixed_animation_mask=0;
@@ -70,6 +74,41 @@ int main(){
     game.ownership_proved=true;
     assert(control.advance(game,&pose,now,true).phase==FreeHandPhase::waiting_new_pose);
     next();assert(control.advance(game,&pose,now,true).eligible_mask==2);
+
+    // Certified unarmed tickets retain independent 6DoF targets through fixed
+    // actions. Their zero weapon never grants equipment or skeletal writes.
+    next();game.weapon=pose.weapon=0;pose.valid_mask=3;
+    frame=control.advance(game,&pose,now,true);
+    assert(frame.tracked_mask==3&&frame.eligible_mask==3&&!frame.apply_mask);
+    next();game.fixed_animation_mask=hand_pickup|hand_melee;
+    frame=control.advance(game,&pose,now,true);
+    assert(frame.phase==FreeHandPhase::original_animation&&frame.tracked_mask==3&&!frame.eligible_mask);
+    next();pose.left.position.x+=17;pose.right.rotation.yaw+=.3;
+    frame=control.advance(game,&pose,now,true);
+    assert(frame.world[0].position.x==pose.left.position.x&&frame.world[1].rotation.yaw==pose.right.rotation.yaw&&
+           frame.tracked_mask==3&&!frame.eligible_mask&&!frame.apply_mask);
+    game.fixed_animation_mask=0;
+    assert(control.advance(game,&pose,now,true).phase==FreeHandPhase::waiting_new_pose);
+    next();assert(control.advance(game,&pose,now,true).eligible_mask==3);
+    next();pose.valid_mask=0;pose.grip_down_mask=0;
+    frame=control.advance(game,&pose,now,true);
+    assert(frame.phase==FreeHandPhase::missing_tracking&&!frame.tracked_mask&&!frame.eligible_mask&&
+           frame.sequence==pose.sequence&&frame.world[0].position.x==0&&frame.world[1].position.x==0);
+    next();game.weapon=pose.weapon=0x3000;pose.valid_mask=2;
+    assert(control.advance(game,&pose,now,true).eligible_mask==2);
+    // Switching to/from empty hands (or replacing a mesh) on the exact
+    // hand-back tick must not erase the previous original-animation owner.
+    for(unsigned identity=0;identity<2;++identity){
+        next();game.fixed_animation_mask=hand_weapon_switch;
+        assert(control.advance(game,&pose,now,true).phase==FreeHandPhase::original_animation);
+        next();game.fixed_animation_mask=0;
+        if(identity==0)game.weapon=pose.weapon=0;else ++game.mesh;
+        frame=control.advance(game,&pose,now,true);
+        assert(frame.phase==FreeHandPhase::waiting_new_pose&&frame.tracked_mask==2&&!frame.eligible_mask);
+        next();assert(control.advance(game,&pose,now,true).eligible_mask==2);
+    }
+    next();game.weapon=pose.weapon=0x3000;
+    assert(control.advance(game,&pose,now,true).eligible_mask==2);
 
     // Freshness, source/identity boundaries, no stale hand when tracking drops.
     now+=101;game.observed_ms=now;
