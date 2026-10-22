@@ -158,6 +158,131 @@ void mesh_follow_post_tick(uptr pc){
     mesh_follow_status.store(2,std::memory_order_release);
 }
 
+// A one-shot, private game-thread trial of the same mesh-follow path. The
+// synthetic pose is never published to the XR bridge and cannot be enabled in
+// the normal DLL. It checks component motion and restoration only, not headset
+// tracking or calibrated hand placement.
+std::atomic<bool> mesh_follow_trial_requested{};
+std::atomic<unsigned> mesh_follow_trial_status{},mesh_follow_trial_samples{};
+struct MeshFollowTrial {
+    uptr weapon{},mesh{};
+    playground::Vector origin{};
+    ULONGLONG started_ms{},next_ms{},sample_started_ms{};
+    unsigned sample{};
+    bool restoring{},prepared{},motion_ok{true};
+};
+MeshFollowTrial mesh_follow_trial{};
+constexpr std::array<float,12> mesh_follow_trial_offsets{
+    0.f,4.f,8.f,12.f,16.f,12.f,8.f,4.f,0.f,-4.f,-8.f,0.f};
+void mesh_follow_trial_fail(const wchar_t* reason){
+    mesh_follow_trial.motion_ok=false;
+    mesh_follow_trial.restoring=true;
+    mesh_follow_requested.store(false,std::memory_order_release);
+    if(log_file){fwprintf(log_file,L"lancer_mesh_trial_failed reason=%ls sample=%u\n",
+        reason,mesh_follow_trial.sample);fflush(log_file);}
+}
+void mesh_follow_trial_prepare(uptr pc){
+    if(!mesh_follow_trial_requested.load(std::memory_order_acquire))return;
+    const auto now=GetTickCount64();
+    if(!mesh_follow_trial.started_ms)mesh_follow_trial.started_ms=now;
+    if(mesh_follow_trial.restoring||mesh_follow_trial.prepared||
+       now<mesh_follow_trial.next_ms)return;
+    if(!playground::ready||!test_environment()||
+       pc!=playground::arena_pc||
+       playground::pointer(pc,L"WorldInfo")!=playground::arena_world||
+       playground::pointer(pc,L"Pawn")!=playground::arena_pawn){
+        mesh_follow_trial_fail(L"environment_or_identity");return;
+    }
+    const auto pawn=playground::arena_pawn;
+    const auto weapon=playground::pointer(pawn,L"Weapon");
+    if(!playground::instance(weapon,L"Weap_AssaultRifle")||
+       model.held_weapon()!=weapon||
+       (mesh_follow_trial.weapon&&mesh_follow_trial.weapon!=weapon)){
+        if(mesh_follow_trial.started_ms&&now-mesh_follow_trial.started_ms>3000)
+            mesh_follow_trial_fail(L"held_lancer_missing");
+        return;
+    }
+    bool switching{};
+    MeshPoseProbe gun{};
+    if(!read_bool(pawn,L"bSwitchingWeapons",switching)||switching||
+       !mesh_pose_probe(weapon,gun)||gun.hidden||!gun.asset||
+       !playground::instance(gun.asset,L"SkeletalMesh")||
+       wcscmp(gun.asset_name,L"COGAssaultRifle")||
+       (mesh_follow_trial.mesh&&mesh_follow_trial.mesh!=gun.mesh)){
+        mesh_follow_trial_fail(L"gun_unavailable");return;
+    }
+    if(!mesh_follow_trial.weapon){
+        mesh_follow_trial.weapon=weapon;mesh_follow_trial.mesh=gun.mesh;
+        mesh_follow_trial.origin={gun.local_to_world[12],gun.local_to_world[13],
+            gun.local_to_world[14]};
+        mesh_follow_requested.store(true,std::memory_order_release);
+        mesh_follow_trial_status.store(2,std::memory_order_release);
+    }
+    if(mesh_follow_trial.sample>=mesh_follow_trial_offsets.size()){
+        mesh_follow_trial.restoring=true;
+        mesh_follow_requested.store(false,std::memory_order_release);return;
+    }
+    gears_weapon::HandWorldFrame pose{};
+    pose.created_ms=now;pose.session=1;pose.sequence=mesh_follow_trial.sample+1;
+    pose.space_epoch=pose.input_epoch=pose.world_generation=1;
+    pose.controller=pc;pose.pawn=pawn;pose.weapon=weapon;
+    pose.valid_mask=2;
+    pose.right.position={double(mesh_follow_trial.origin.x)+
+            mesh_follow_trial_offsets[mesh_follow_trial.sample],
+        mesh_follow_trial.origin.y,mesh_follow_trial.origin.z};
+    pose.right.rotation.yaw=double(mesh_follow_trial_offsets[mesh_follow_trial.sample])*
+        (.4*3.14159265358979323846/180.);
+    mesh_follow_hands=pose;mesh_follow_hands_known=true;
+    mesh_follow_trial.prepared=true;
+    mesh_follow_trial.sample_started_ms=now;
+    mesh_follow_trial.next_ms=now+50;
+}
+void mesh_follow_trial_finish(uptr pc){
+    if(!mesh_follow_trial_requested.load(std::memory_order_acquire))return;
+    if(mesh_follow_trial.restoring){
+        if(mesh_follow.active)return;
+        const bool restored=mesh_follow_status.load(std::memory_order_acquire)==6;
+        mesh_follow_trial_status.store(mesh_follow_trial.motion_ok&&restored?3:4,
+            std::memory_order_release);
+        mesh_follow_trial_requested.store(false,std::memory_order_release);
+        if(log_file){fwprintf(log_file,L"lancer_mesh_trial_end samples=%u motion_ok=%u "
+            L"restored=%u status=%u\n",mesh_follow_trial.sample,
+            unsigned(mesh_follow_trial.motion_ok),unsigned(restored),
+            mesh_follow_status.load(std::memory_order_acquire));fflush(log_file);}
+        return;
+    }
+    if(!mesh_follow_trial.prepared||
+       GetTickCount64()-mesh_follow_trial.sample_started_ms<32)return;
+    mesh_follow_trial.prepared=false;
+    MeshPoseProbe gun{};
+    if(pc!=playground::arena_pc||!mesh_pose_probe(mesh_follow_trial.weapon,gun)||
+       gun.mesh!=mesh_follow_trial.mesh||
+       mesh_follow_status.load(std::memory_order_acquire)!=2){
+        mesh_follow_trial_fail(L"follow_call_or_mesh");return;
+    }
+    const float expected=mesh_follow_trial.origin.x+
+        mesh_follow_trial_offsets[mesh_follow_trial.sample];
+    const float observed=gun.local_to_world[12];
+    const float error=std::abs(expected-observed);
+    if(log_file){fwprintf(log_file,L"lancer_mesh_trial_sample index=%u "
+        L"expected_x=%.5f observed_x=%.5f error=%.5f "
+        L"world_y=%.5f world_z=%.5f translation_x=%.5f "
+        L"absolute_translation=%u rotation=%d,%d,%d\n",
+        mesh_follow_trial.sample,expected,observed,error,
+        gun.local_to_world[13],gun.local_to_world[14],gun.translation.x,
+        unsigned(gun.absolute_translation),
+        gun.rotation.pitch,gun.rotation.yaw,gun.rotation.roll);fflush(log_file);}
+    if(!std::isfinite(error)||error>.5f){
+        mesh_follow_trial_fail(L"component_origin_mismatch");return;
+    }
+    ++mesh_follow_trial.sample;
+    mesh_follow_trial_samples.store(mesh_follow_trial.sample,std::memory_order_release);
+    if(mesh_follow_trial.sample==mesh_follow_trial_offsets.size()){
+        mesh_follow_trial.restoring=true;
+        mesh_follow_requested.store(false,std::memory_order_release);
+    }
+}
+
 // One bounded, opt-in original-animation probe. It runs after the original
 // PlayerTick on the same game thread, before this candidate moves the gun.
 // No sampled transform is used as a grip mount or written back to the game.

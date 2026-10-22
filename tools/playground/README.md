@@ -169,6 +169,21 @@ comes from the 24-frame retail sample described below. It has pure transform
 and build coverage, but no successful mesh-motion runtime or headset result
 yet; the normal DLL contains none of these exports.
 
+The private `PlaygroundWeaponMeshFollowTrialStart` entry exercises the same
+game-thread component path without pretending that the simulator supplies a
+Quest controller. In a muted, behind-windows owned arena, first use the
+private slot-2 tap to establish VR ownership of the equipped Lancer. The
+trial then applies twelve bounded synthetic right-hand poses, holds each long
+enough for the original component world matrix to update, checks translation
+and rotation, disables the override, and requires restoration. Its status
+encodes stage in the high 16 bits and completed samples in the low 16 bits;
+3/12 means the trial passed, 4 means failed. The retail PID 40068 sample
+passed with a maximum stable X error of 0.00977 original units and returned
+`PlaygroundShutdown=0`. This verifies component motion/restoration only;
+the actual OpenXR hand publisher, headset rendering, firing ray and recoil
+still need their own tests. `lancer_support_probe.py --mode mesh_follow_trial`
+records the bounded evidence under ignored `analysis/`.
+
 The same private DLL has a separate read-only Lancer support-hand probe.
 `lancer_support_probe.py` equips the original Lancer in an owned muted range,
 calls `PlaygroundLancerSupportProbeEnable`, and requires status 3 with 24 samples

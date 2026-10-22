@@ -200,7 +200,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         vrequip::support_probe_post_tick(object);
         vrequip::reload_visual_post_tick(object);
         vrequip::lancer_socket_post_tick(object);
+        vrequip::mesh_follow_trial_prepare(object);
         vrequip::mesh_follow_post_tick(object);
+        vrequip::mesh_follow_trial_finish(object);
 #if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
         vrequip::lancer_magazine_post_tick(object);
 #endif
@@ -265,6 +267,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     vrequip::mesh_follow_shutdown_requested.store(false,std::memory_order_release);
     vrequip::mesh_follow_requested.store(false,std::memory_order_release);
     vrequip::mesh_follow_status.store(0,std::memory_order_release);
+    vrequip::mesh_follow_trial_requested.store(false,std::memory_order_release);
+    vrequip::mesh_follow_trial_status.store(0,std::memory_order_release);
+    vrequip::mesh_follow_trial_samples.store(0,std::memory_order_release);
+    vrequip::mesh_follow_trial={};
     vrequip::support_probe_requested.store(false,std::memory_order_release);
     vrequip::support_probe_status.store(0,std::memory_order_release);
     vrequip::support_probe_count.store(0,std::memory_order_release);
@@ -422,6 +428,26 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowStatus(v
         (vrequip::mesh_follow_support_visible.load(std::memory_order_acquire)?0x20000u:0u)|
         vrequip::mesh_follow_status.load(std::memory_order_acquire);
 }
+// Synthetic game-thread transform check, isolated from real XR pose publication.
+// One request runs 12 short positions and restores the original component.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowTrialStart(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment()||
+       vrequip::mesh_follow_shutdown_requested.load(std::memory_order_acquire))return 1;
+    if(vrequip::mesh_follow_requested.load(std::memory_order_acquire)||
+       vrequip::mesh_follow_active_visible.load(std::memory_order_acquire)||
+       vrequip::support_probe_requested.load(std::memory_order_acquire)||
+       vrequip::reload_visual_requested.load(std::memory_order_acquire)||
+       vrequip::mesh_follow_trial_requested.load(std::memory_order_acquire))return 2;
+    unsigned expected=0;
+    if(!vrequip::mesh_follow_trial_status.compare_exchange_strong(expected,1))return 3;
+    vrequip::mesh_follow_trial_requested.store(true,std::memory_order_release);
+    return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowTrialStatus(void*){
+    return (vrequip::mesh_follow_trial_status.load(std::memory_order_acquire)<<16)|
+        (vrequip::mesh_follow_trial_samples.load(std::memory_order_acquire)&0xffffu);
+}
 // Private read-only original-animation sample. 0 accepted, 1 wrong test
 // environment, 2 candidate is moving the mesh, 3 already pending.
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSupportProbeEnable(void*){
@@ -466,6 +492,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineSocketProb
     unsigned expected=0;
     if(!vrequip::lancer_socket_status.compare_exchange_strong(expected,1))return 3;
     vrequip::lancer_socket_reload_mode.store(false,std::memory_order_release);
+    vrequip::mesh_follow_trial_requested.store(false,std::memory_order_release);
     vrequip::lancer_socket_requested.store(true,std::memory_order_release);return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineSocketReloadProbeEnable(void*){

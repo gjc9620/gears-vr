@@ -44,6 +44,25 @@ def parse_pose_row(line):
             **{key: matrix(fields[key]) for key in ('pawn', 'gun', 'ik_left', 'hand_left', 'hand_right')}}
 
 
+def parse_mesh_trial_row(line):
+    fields = dict(item.split('=', 1) for item in line.split()[1:])
+    if set(fields) != {'index', 'expected_x', 'observed_x', 'error',
+                       'world_y', 'world_z', 'translation_x',
+                       'absolute_translation', 'rotation'}:
+        raise ValueError('Unexpected original Lancer mesh trial row')
+    rotations = [int(value) for value in fields['rotation'].split(',')]
+    values = {key: float(fields[key]) for key in
+              ('expected_x', 'observed_x', 'error', 'world_y', 'world_z',
+               'translation_x')}
+    if (len(rotations) != 3 or
+            fields['absolute_translation'] not in ('0', '1') or
+            not all(math.isfinite(value) for value in values.values())):
+        raise ValueError('Invalid original Lancer mesh trial row')
+    return {'index': int(fields['index']), **values,
+            'absolute_translation': fields['absolute_translation'] == '1',
+            'rotation': rotations}
+
+
 def parse_visual_row(line):
     fields = dict(item.split('=', 1) for item in line.split()[1:])
     expected = {'magazine_known', 'magazine_present', 'magazine_hidden',
@@ -460,6 +479,28 @@ def sample_owned_game(args, receipt):
                 return False
 
             wait_for(probe_done, 15, 'Game-thread Lancer pose sampling did not finish')
+        elif args.mode == 'mesh_follow_trial':
+            # The VR equipment model deliberately starts neutral after an
+            # ordinary game pickup. Simulate the explicit right-hand grab at
+            # the Lancer's observed original slot before testing mesh follow.
+            if bridge.export('PlaygroundEquipmentSwitchTest', 2) != 0:
+                raise RuntimeError('Private held-Lancer slot tap was rejected')
+            wait_for(lambda: bridge.export('PlaygroundEquipmentSwitchStatus') == 5,
+                     3, 'Private held-Lancer slot tap did not latch the weapon')
+            if bridge.export('PlaygroundWeaponMeshFollowTrialStart') != 0:
+                raise RuntimeError('Private game-thread Lancer mesh trial refused to start')
+
+            def mesh_trial_done():
+                value = bridge.export('PlaygroundWeaponMeshFollowTrialStatus')
+                state, count = value >> 16, value & 0xffff
+                if state == 4:
+                    raise RuntimeError(f'Original Lancer mesh trial failed after {count} samples')
+                return state == 3 and count == 12
+
+            wait_for(mesh_trial_done, 12,
+                     'Original Lancer mesh trial did not move and restore')
+            receipt['mesh_follow_trial_status'] = bridge.export(
+                'PlaygroundWeaponMeshFollowStatus')
         elif args.mode == 'chainsaw_semantics':
             def fname(value):
                 for index, address in enumerate(resolver.name_pointers):
@@ -716,6 +757,21 @@ def sample_owned_game(args, receipt):
             raise RuntimeError('Bounded same-tick original pose rows missing from private log')
         receipt.update(game_thread_probe=beginnings[0], samples=poses,
                        original_visual=visuals[0])
+    elif args.mode == 'mesh_follow_trial':
+        rows = [parse_mesh_trial_row(line) for line in lines
+                if line.startswith('lancer_mesh_trial_sample ')]
+        ends = [line for line in lines if line.startswith('lancer_mesh_trial_end ')]
+        if (len(rows) != 12 or [row['index'] for row in rows] != list(range(12)) or
+                len(ends) != 1 or 'motion_ok=1 restored=1 status=6' not in ends[0] or
+                any(row['error'] > .5 for row in rows) or
+                any(not row['absolute_translation'] or
+                    abs(row['translation_x'] - row['expected_x']) > .5 for row in rows) or
+                rows[4]['observed_x'] - rows[0]['observed_x'] < 15 or
+                rows[10]['observed_x'] - rows[0]['observed_x'] > -7 or
+                rows[4]['rotation'] == rows[0]['rotation']):
+            raise RuntimeError('Original Lancer mesh transform/restoration evidence incomplete')
+        receipt.update(mesh_follow_trial_rows=rows, mesh_follow_trial_end=ends[0],
+                       source_limit='synthetic hand pose on original game thread; no Quest controller')
     elif args.mode == 'chainsaw_semantics':
         rows = receipt['held_chainsaw_samples']
         if (not rows or not any(row['holding_b'] and row['wants_melee'] for row in rows) or
@@ -850,7 +906,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('api', 'component_motion', 'socket', 'socket_reload', 'support', 'chainsaw_semantics', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('api', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'reload_visual', 'reload_hold',
                                           'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

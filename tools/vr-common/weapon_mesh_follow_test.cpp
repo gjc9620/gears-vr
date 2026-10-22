@@ -82,5 +82,37 @@ int main(){
     const Viewpoint scaled_left{{contact.x*1.25,contact.y*1.25,contact.z*1.25},{0,0,0}};
     assert(scaled.solve_with_support(right,scaled_left,true,true,contact,actual,used));
     assert(used&&scaled.support_latched());
+    // Retail Lancer's settled right-hand bone is about +90 degrees yaw in
+    // the gun frame, with its palm center 2.3226 units behind the gun origin.
+    // This checks mount algebra only; a Quest controller-to-palm calibration
+    // is still needed before enabling it for physical tracking.
+    constexpr double quarter_turn=1.5707963267948966;
+    const Vector lancer_palm{-2.322615648,0,0};
+    const auto original_hand=ue_matrix({0,quarter_turn,0});
+    const auto controller_to_palm=ue_matrix({0,0,0});
+    const Rotator gun_angle{.08,.42,-.04};
+    const Vector gun_origin{110,220,330};
+    const auto gun_basis=ue_matrix(gun_angle);
+    const auto grip_shift=transform(gun_basis,lancer_palm);
+    const Viewpoint grip{{gun_origin.x+grip_shift.x,gun_origin.y+grip_shift.y,
+        gun_origin.z+grip_shift.z},
+        ue_angles(multiply(gun_basis,original_hand))};
+    WeaponMeshFollow mounted;
+    assert(mounted.bind_mount(grip,mesh_matrix(gun_angle,gun_origin),lancer_palm,
+        original_hand,controller_to_palm));
+    assert(mounted.solve(grip,actual));
+    assert(near(actual.position.x,gun_origin.x)&&near(actual.position.y,gun_origin.y)&&
+           near(actual.position.z,gun_origin.z));
+    const auto mounted_basis=ue_matrix(actual.rotation);
+    for(int row=0;row<3;++row)for(int col=0;col<3;++col)
+        assert(near(mounted_basis[row][col],gun_basis[row][col]));
+    auto translated_grip=grip;translated_grip.position.x+=12;
+    assert(mounted.solve(translated_grip,actual));
+    assert(near(actual.position.x,gun_origin.x+12));
+    WeaponMeshFollow invalid_mount;
+    auto reflected=controller_to_palm;reflected[0][0]=-1;
+    assert(!invalid_mount.bind_mount(grip,mesh_matrix(gun_angle,gun_origin),
+        lancer_palm,original_hand,reflected));
+    assert(!invalid_mount.bound());
     std::puts("weapon mesh follow calibration and invalid geometry gates passed");
 }

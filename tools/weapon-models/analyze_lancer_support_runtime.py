@@ -37,6 +37,32 @@ def gun_local_point(gun, hand):
             for i in range(3)]
 
 
+def hand_basis_in_gun(gun, hand):
+    """Return each unit hand-bone axis expressed in the original gun frame."""
+    origin(gun)
+    origin(hand)
+    gun_rows = [gun[index:index + 3] for index in (0, 4, 8)]
+    hand_rows = [hand[index:index + 3] for index in (0, 4, 8)]
+    gun_scale = [math.sqrt(sum(value * value for value in row)) for row in gun_rows]
+    hand_scale = [math.sqrt(sum(value * value for value in row)) for row in hand_rows]
+    if any(not math.isfinite(value) or value < .1 or value > 10
+           for value in gun_scale + hand_scale):
+        raise ValueError('Invalid original hand/gun basis scale')
+    basis = [[sum(hand_rows[i][k] * gun_rows[j][k] for k in range(3)) /
+              (hand_scale[i] * gun_scale[j]) for j in range(3)] for i in range(3)]
+    for i in range(3):
+        for j in range(i, 3):
+            dot = sum(basis[i][k] * basis[j][k] for k in range(3))
+            if abs(dot - (1 if i == j else 0)) > .002:
+                raise ValueError('Original hand/gun basis is not rigid')
+    determinant = (basis[0][0] * (basis[1][1] * basis[2][2] - basis[1][2] * basis[2][1]) -
+                   basis[0][1] * (basis[1][0] * basis[2][2] - basis[1][2] * basis[2][0]) +
+                   basis[0][2] * (basis[1][0] * basis[2][1] - basis[1][1] * basis[2][0]))
+    if abs(determinant - 1) > .002:
+        raise ValueError('Original hand/gun basis is reflected')
+    return basis
+
+
 def centered(points):
     center = [statistics.median(point[axis] for point in points) for axis in range(3)]
     return center, max(math.dist(point, center) for point in points)
@@ -53,6 +79,12 @@ def summarize(capture):
     local = {name: [gun_local_point(row['gun'], row[name]) for row in rows]
              for name in ('ik_left', 'hand_left', 'hand_right')}
     centers = {name: centered(points) for name, points in local.items()}
+    right_bases = [hand_basis_in_gun(row['gun'], row['hand_right']) for row in rows]
+    right_basis = [[statistics.median(basis[axis][component] for basis in right_bases)
+                    for component in range(3)] for axis in range(3)]
+    right_basis_drift = max(abs(basis[axis][component] - right_basis[axis][component])
+                            for basis in right_bases for axis in range(3)
+                            for component in range(3))
     maximum_ik_palm_error = max(math.dist(origin(row['ik_left']), origin(row['hand_left']))
                                 for row in rows)
     world_travel = math.dist(origin(rows[0]['gun']), origin(rows[-1]['gun']))
@@ -61,6 +93,8 @@ def summarize(capture):
             'left_palm_in_gun_raw': centers['hand_left'][0],
             'left_ik_in_gun_raw': centers['ik_left'][0],
             'right_palm_in_gun_raw': centers['hand_right'][0],
+            'right_hand_basis_in_gun_rows': right_basis,
+            'maximum_right_hand_basis_component_drift': right_basis_drift,
             'maximum_left_palm_local_drift_raw': centers['hand_left'][1],
             'maximum_left_ik_local_drift_raw': centers['ik_left'][1],
             'maximum_right_palm_local_drift_raw': centers['hand_right'][1],

@@ -21,6 +21,23 @@ class WeaponMeshFollow {
             std::isfinite(pose.rotation.pitch)&&std::isfinite(pose.rotation.yaw)&&
             std::isfinite(pose.rotation.roll);
     }
+    static bool rigid_basis(gears_vr::Matrix const& matrix) noexcept {
+        for(int row=0;row<3;++row)for(int column=0;column<3;++column)
+            if(!std::isfinite(matrix[row][column]))return false;
+        for(int i=0;i<3;++i)for(int j=i;j<3;++j){
+            double product=0;
+            for(int row=0;row<3;++row)
+                product+=matrix[row][i]*matrix[row][j];
+            if(std::abs(product-(i==j?1.:0.))>1e-3)return false;
+        }
+        const auto cross=gears_vr::Vector{
+            matrix[1][0]*matrix[2][1]-matrix[2][0]*matrix[1][1],
+            matrix[2][0]*matrix[0][1]-matrix[0][0]*matrix[2][1],
+            matrix[0][0]*matrix[1][1]-matrix[1][0]*matrix[0][1]};
+        const double determinant=cross.x*matrix[0][2]+cross.y*matrix[1][2]+
+            cross.z*matrix[2][2];
+        return determinant>.999&&determinant<1.001;
+    }
 public:
     void reset() noexcept {bound_=left_was_down_=support_latched_=false;mesh_scale_=1;}
     bool bound() const noexcept {return bound_;}
@@ -67,6 +84,32 @@ public:
         mesh_scale_=(scale[0]+scale[1]+scale[2])/3;
         left_was_down_=left_down_at_bind;
         bound_=true;return true;
+    }
+    // A measured weapon grip replaces the first-frame trial offset. The
+    // original hand basis is measured in the gun mesh; the controller-to-palm
+    // basis is a separate headset calibration and must be supplied explicitly.
+    // A mesh probe is still required to authenticate this weapon and its scale.
+    bool bind_mount(gears_vr::Viewpoint const& right_controller,
+                    std::array<float,16> const& mesh_local_to_world,
+                    gears_vr::Vector palm_in_mesh_raw,
+                    gears_vr::Matrix const& original_hand_in_mesh,
+                    gears_vr::Matrix const& controller_to_palm,
+                    bool left_down_at_bind=false) noexcept {
+        if(!gears_vr::finite(palm_in_mesh_raw)||
+           std::hypot(std::hypot(palm_in_mesh_raw.x,palm_in_mesh_raw.y),
+                      palm_in_mesh_raw.z)>100||
+           !rigid_basis(original_hand_in_mesh)||
+           !rigid_basis(controller_to_palm)||
+           !bind(right_controller,mesh_local_to_world,left_down_at_bind))return false;
+        hand_to_mesh_rotation_=gears_vr::multiply(controller_to_palm,
+            gears_vr::transpose(original_hand_in_mesh));
+        hand_to_mesh_=gears_vr::transform(hand_to_mesh_rotation_,
+            {-palm_in_mesh_raw.x*mesh_scale_,-palm_in_mesh_raw.y*mesh_scale_,
+             -palm_in_mesh_raw.z*mesh_scale_});
+        if(!gears_vr::finite(hand_to_mesh_)||
+           std::hypot(std::hypot(hand_to_mesh_.x,hand_to_mesh_.y),
+                      hand_to_mesh_.z)>250){reset();return false;}
+        return true;
     }
     bool solve(gears_vr::Viewpoint const& right_hand,gears_vr::Viewpoint& out) const noexcept {
         if(!bound_||!plausible(right_hand))return false;
