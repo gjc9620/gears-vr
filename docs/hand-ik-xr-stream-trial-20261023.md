@@ -2,9 +2,25 @@
 
 本记录属于 `codex/weapon-6dof` 独立开发分支。前一阶段的小幅合成手骨目标、原版近战交接和精确恢复已有购买版记录，见 [逐帧 IK 试验](hand-ik-stream-trial-20261023.md)。这里新增实际 GVE6 grip 世界姿态的消费路径。购买版后台两局已用模拟器、真实 OpenXR 客户端与 Native 串通双手数据和手骨写入／恢复；整局图像链未通过，不作为物理手柄或头显验收。
 
+## source 0购买版联合结果h（2026-10-23）
+
+新的GHW1来源0候选已完成一次后台购买版测试：owner39432／game23528／XR44324，PG `fcaeca76…5e44e6d`，manifest `19af0b18…4b900ebd`。只在独立h目录准备和运行，没有改写f／g原始证据。运行前等待另一游戏／XR测试自然退出，实际入口重新核对空闲状态；Mute1／Behind1／ObserveOnly1、实体后台输入关闭，全程没有移动、放大或激活窗口。准备阶段Popen0，正式运行使用已核对的prep SHA `1564f4488db546e3893c74e459e339765802ae5c0b63ab368bb0428f30bd7a44`。独立预检不是缓存通行证：本局start_capture未传旧proof参数，仍走同次run_suite后才激活Native。
+
+组件24项检查及运行后独立复算全部通过：25个written lease均有跨网格Tick样本和对应恢复，50个双手样本的位置残差最大 `3.910064697265625e-5` 原始单位，完整旋转角差最大 `0.0213450333°`。未放宽0.1原始单位／0.1°阈值。收枪阶段在绑定后改变两手位置及旋转，lease8–15提供8个新响应样本，左右手的位置和完整旋转运动门均通过；取回武器后lease16建立新绑定，lease16–24有9个新样本。四次唯一装备回执为11→10→11→10，Shutdown0；25次恢复、原8控制器全部字段与44字节附件、CallFunction32／ProcessEvent64两原入口的独立字节核对通过。末次Shutdown前证明收枪journal dirty；仍没有原子证据证明两个journal在Shutdown入口同时dirty。
+
+25张pose证书关联本局Native activation `3130411681690` 和实际XR PID44324／creation `134371865867405158`；Native新通道matched104／missing0／published98／rejected6，XR新通道source_samples1126／published1126／skipped0／tracker_rejected0。6次Native rejection包含去重语义，不能归因到具体lease。stream／reference／双手loss epoch本局均为1，没有运行失追或参考变更边界的覆盖。written处GHW1 receipt年龄为47–79ms；该年龄不是两个源NS在最终提交瞬间的年龄，未独立记录commit_ns，相关coverage仍false。source0只表示wire profile，实际命令仍是模拟器姿态输入，不能称真实手柄跟踪。
+
+静音守护核对9个专属会话；它们已经静音，所以muted写入0、restore_attempted0、read_failed0、mute_failed0、pending0。清理顺序为PG恢复和关闭→Native drain／XR退出→确切游戏退出→Guard关闭，Guard exit0。运行后独立CIM没有发现这三个已知owner／game／XR PID。整局原始结论继续为 `passed=false / whole_session_passed=false`：实际输出仍为8×8，抽样的后处理源纹理为3840×2160，frame-link未关联、GPU capture_attempts=0、XR没有图像layer／copy并exit1；Native自身cleanup通过，但其五项DXGI入口磁盘verifier false原样保留。PG两原入口恢复与Native verifier为不同证据，不能相互代替。没有进行黑输出窗口恢复或把数据层结果写成可见双手／头显验收。
+
+私有不可改写证据位于 `analysis/hand-equipment-1023h/`：receipt SHA256 `c5a2d0ec184e22338301a247baeae2180fb5b35178f099df9d19f4ec1792c141`，PG log `365b552ee9b8f967040a70ea62d672a419472c968ac8c4b57be31f00cdc79b2f`，component audit `38524b14a23ad1f35f7ab2168d85c79b4ca0b16139fdd656b69ceddd1689d9c3`；独立复算和进程退出摘要为 `verification-summary.json`，SHA256 `eea5888148020b2df77d905188382c8c88d80c1d6f03568a349a7c620661e546`。Astra对新增GHW1身份、统计及工件来源门的只读复核未发现确定误判问题。此局支持固定测试场15秒／256上限内的连续双手与装备往返组件；永久运行、跨世界、正式动画所有权、掌心标定及最终渲染仍待实现或验收。以下保留运行前设计、预检与历史记录。
+
 ## 接线与临时绑定
 
 ### 后续 GHW1 连续性候选（2026-10-23，默认关闭）
+
+运行前更正：当前连续host的wire profile固定为runtime source 0，并拒绝simulator-operator模式；`GEARS_PLAYGROUND_VR_R2_SIM_TEST` 是另一路可选调试入口，不能据此选择本通道来源。提交 `911c172` 将PG初始化固定为 `StereoSource::RuntimeTracked`；真实初始化块提取回归在该宏为1时验证source 0 baseline→binding和source 1拒绝。来源0只描述wire profile，不能据此称为物理跟踪。新的PG三种构建、11项组件检查、4项配置拒绝、31项真实提交helper场景与两项删guard变异检查通过。737份源码与新PG已配套封存为 `analysis/hand-continuity-candidates/222a9b2f5538a42777003485c6c6d9289be7bd4a74e2efdd69d011204467bae2/`，基线 `911c172`，manifest SHA256 `19af0b187e5cdcf4984e87f144aee5d0293d2ae71a43b5215e5953ed4b900ebd`；PG SHA256 `fcaeca76e1e680d0620ed7398936f5627f7a473f4419188b79a60eecc5e44e6d`，Native／XR分别保持 `ecd30c01…`／`886362d5…`。旧b28封存不改写，后续h必须使用新source 0封存。
+
+独立启动链预检在 `analysis/hand-certified-startup-preflight-20261023/` 完成22/22项：17项CPU／ABI／状态，5项独立DXGI／D3D12检查；44份stdout／stderr已记录hash，没有启动游戏或XR。FrameLink测试窗口不带WS_VISIBLE，采用隐藏进程和Mute1／Behind1／ObserveOnly1。该记录只验证给定Native helpers；实际连续owner仍须执行同次22项检查。新source 0封存本身仍标记runtime_tested=false，h尚待准备审阅和一次性实际执行，不能先宣称连续手部运动或整局图像通过。私有构建／回归回执分别为 `analysis/hand-certified-source0-build-checks-20261023.json`、`analysis/hand-certified-commit-guard-source0-20261023/report.json`、`source0-init-report.json` 和 `analysis/hand-certified-source0-frozen-20261023.json`。
 
 f／g 实测表明旧绑定有时在最早入口已经超过100ms，单纯前移读取无法解决重绑。本候选把 grip 到手骨的刚体校准与单次写入许可分开：历史采样过龄或本次没有新包，可以保留**不可写**的几何 mount；只有新的、完整认证的票据和当前游戏状态，才可能生成本次 Plan。每次观察仍撤销旧 Plan，原 PlayerTick 前仍先恢复全部 dirty journal。旧 GVE6 路径、原25场景和现有100ms写入门继续保留。
 
