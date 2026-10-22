@@ -48,8 +48,14 @@ int main(){
     assert(sparse.grab(12)==ReloadEvent::grabbed);
     assert(sparse.total()==3&&sparse.loaded()==2&&sparse.reserve()==0&&sparse.held()==1);
     assert(sparse.insert(12,1010)==ReloadEvent::mechanism_needed);
-    assert(sparse.cycle(12,1100,MechanismAction::lever_down_return)==ReloadEvent::ordinary); // Deadline is exclusive.
+    assert(sparse.cycle(12,1100,MechanismAction::lever_down_return)==ReloadEvent::perfect); // The original right edge is inclusive.
     assert(sparse.total()==3);
+
+    ReloadModel just_late;
+    assert(just_late.begin(13,shotgun,2,1,1000)==ReloadEvent::started);
+    assert(just_late.grab(13)==ReloadEvent::grabbed);
+    assert(just_late.insert(13,1010)==ReloadEvent::mechanism_needed);
+    assert(just_late.cycle(13,1101,MechanismAction::lever_down_return)==ReloadEvent::ordinary);
 
     constexpr ReloadPolicy magazine{LoadUnit::magazine,30,30,true,false,250};
     ReloadModel rifle;
@@ -105,5 +111,5 @@ int main(){
     ReloadPolicy broken=shotgun;broken.shot_action=MechanismAction::none;
     assert(empty.begin(40,broken,3,2,0)==ReloadEvent::invalid);
     assert(empty.stage()==ReloadStage::idle&&full.stage()==ReloadStage::idle);
-    std::puts("reload count conservation, equipped shotgun priming, exclusive deadline and interruption checks passed");
+    std::puts("reload count conservation, equipped shotgun priming, inclusive deadline and interruption checks passed");
 }

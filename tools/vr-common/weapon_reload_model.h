@@ -42,7 +42,9 @@ class ReloadModel {
         if(stage_!=ReloadStage::mechanism || tick<start_tick_ || reward_issued_)return ReloadEvent::rejected;
         stage_=ReloadStage::complete;reward_issued_=true;pending_mechanism_=false;
         pending_action_=MechanismAction::none;
-        return tick-start_tick_<policy_.perfect_end_ticks?ReloadEvent::perfect:ReloadEvent::ordinary;
+        // The original native judge includes the right edge of its perfect
+        // interval (vcomiss followed by jbe). VR also accepts earlier finish.
+        return tick-start_tick_<=policy_.perfect_end_ticks?ReloadEvent::perfect:ReloadEvent::ordinary;
     }
 public:
     void reset() noexcept {*this=ReloadModel{};}

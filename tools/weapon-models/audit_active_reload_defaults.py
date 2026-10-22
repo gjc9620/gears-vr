@@ -7,6 +7,7 @@ reload window or a live instance's effective configuration.
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import struct
 import sys
@@ -16,7 +17,8 @@ from compare_default_properties import locate_defaults, table
 
 
 WEAPONS = (
-    'WarWeapon', 'Weap_AssaultRifle', 'Weap_LocustAssaultRifle',
+    'WarWeapon', 'Weap_AssaultRifleBase', 'Weap_MeleeComboBase',
+    'Weap_PistolBase', 'Weap_AssaultRifle', 'Weap_LocustAssaultRifle',
     'Weap_Shotgun', 'Weap_SniperRifle', 'Weap_COGPistol',
     'Weap_LocustPistol', 'Weap_Boomer_base', 'Weap_Bow_base',
     'Weap_Troika_base',
@@ -26,6 +28,27 @@ FIELDS = (
     'AR_SuperSweetSpotDuration', 'AR_PreReactionWindowDuration',
     'AR_MagicBulletsTimeoutDuration', 'ReloadDuration',
 )
+
+
+def decode_super_sweet_durations(tag):
+    """Decode the explicit default struct's bounded float array, if present."""
+    if tag is None:
+        return None
+    if tag['type'] != 'StructProperty':
+        raise ValueError('Unexpected super-sweet duration property type')
+    value = tag['value']
+    if not isinstance(value, dict) or not isinstance(value.get('Value'), dict):
+        raise ValueError('Unexpected super-sweet duration struct')
+    payload = bytes.fromhex(value['Value']['hex'])
+    if len(payload) < 8:
+        raise ValueError('Truncated super-sweet duration array')
+    count = struct.unpack_from('<I', payload)[0]
+    if not 1 <= count <= 8 or len(payload) != 4 + count * 4:
+        raise ValueError('Invalid super-sweet duration array length')
+    durations = list(struct.unpack_from('<' + 'f' * count, payload, 4))
+    if any(not math.isfinite(duration) or duration <= 0 for duration in durations):
+        raise ValueError('Invalid super-sweet duration value')
+    return durations
 
 
 def sha256_file(path):
@@ -76,6 +99,8 @@ def audit(package, inventory, names_file):
             result['weapons'][weapon] = {
                 'found': True, 'source_export_sha256': digest,
                 'explicit_values': values,
+                'explicit_super_sweet_durations': decode_super_sweet_durations(
+                    tags.get('ActiveReload_SuperSweetSpotDurations')),
             }
     return result
 

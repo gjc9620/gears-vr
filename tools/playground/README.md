@@ -130,6 +130,12 @@ The first 4 KiB at each target matched the corresponding historical runtime
 snapshot byte for byte. This covers the main function blocks, but not the
 getter's separate tail block. The probe remains read-only; this match does
 not establish any weapon's perfect-reload deadline.
+The adjacent `weapon_reload_window_probe` validates the current weapon's
+reflected float offsets and reads the original duration array and owner index
+on the same authenticated game thread. It never calls the getter or the judge.
+One owned retail Lancer instance yielded start `0.7`, array index 0 and width
+`0.1`, giving a derived endpoint near `0.8` seconds. This is a checkable
+candidate, pending a direct original getter-output comparison.
 
 `GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST=ON` adds an even narrower private
 Lancer trial to the equipment-intent build. It requires an owned, muted,

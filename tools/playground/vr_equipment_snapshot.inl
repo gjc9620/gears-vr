@@ -231,6 +231,63 @@ uptr reload_virtual_target(uptr weapon,unsigned slot){
     const auto first=get<uptr>(table+slot),second=get<uptr>(table+slot);
     return first&&first==second&&game_executable(first)?first:0;
 }
+// Read the fields selected by the byte-matched native getter, without
+// invoking it. The final value remains a candidate until its separate tail
+// block and a real getter output have been checked in the current process.
+struct ReloadWindowProbe {
+    bool valid{};
+    float reload_duration{},start_field{},pre_field{},super_field{},sweet_field{};
+    unsigned owner_index{},duration_count{};
+    float durations[8]{};
+    float derived_start{},derived_super{},derived_end{};
+};
+bool reload_float_field(uptr weapon,const wchar_t* field,unsigned expected,float& out){
+    const auto property=playground::property(weapon,field);
+    const auto cls=get<uptr>(weapon+0x50);
+    if(!property||!cls||!playground::named(get<uptr>(property+0x50),L"FloatProperty")||
+       get<unsigned>(property+0x74)!=sizeof(float)||
+       get<unsigned>(property+0x94)!=expected||
+       expected>get<unsigned>(cls+0x88)||
+       sizeof(float)>get<unsigned>(cls+0x88)-expected)return false;
+    return copy(&out,weapon+expected,sizeof(out))&&std::isfinite(out);
+}
+ReloadWindowProbe reload_window_probe(uptr weapon){
+    ReloadWindowProbe out{};
+    if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return out;
+    const auto cls=get<uptr>(weapon+0x50);
+    if(!reload_float_field(weapon,L"ReloadDuration",0x614,out.reload_duration)||
+       !reload_float_field(weapon,L"AR_PossibleSuccessStartPoint",0x780,out.start_field)||
+       !reload_float_field(weapon,L"AR_PreReactionWindowDuration",0x77c,out.pre_field)||
+       !reload_float_field(weapon,L"AR_SuperSweetSpotDuration",0x784,out.super_field)||
+       !reload_float_field(weapon,L"AR_SweetSpotDuration",0x788,out.sweet_field))return out;
+    const auto property=playground::property(weapon,L"ActiveReload_SuperSweetSpotDurations");
+    if(!property||!playground::named(get<uptr>(property+0x50),L"StructProperty")||
+       get<unsigned>(property+0x94)!=0x7a4||
+       get<unsigned>(property+0x74)<sizeof(Array)||
+       0x7a4>get<unsigned>(cls+0x88)||
+       sizeof(Array)>get<unsigned>(cls+0x88)-0x7a4)return out;
+    Array durations{};
+    if(!copy(&durations,weapon+0x7a4,sizeof(durations))||!durations.data||
+       durations.count<1||durations.count>8||
+       durations.capacity<durations.count||durations.capacity>8||
+       !copy(out.durations,durations.data,size_t(durations.count)*sizeof(float)))return out;
+    out.duration_count=unsigned(durations.count);
+    for(unsigned i=0;i<out.duration_count;++i)
+        if(!std::isfinite(out.durations[i])||out.durations[i]<=0)return out;
+    const auto owner=playground::pointer(weapon,L"Instigator");
+    if(!playground::instance(owner,L"WarPawn")||playground::deleted(owner)||
+       owner!=get<uptr>(weapon+0x8c))return out;
+    const auto owner_cls=get<uptr>(owner+0x50);
+    unsigned char index{};
+    if(get<unsigned>(owner_cls+0x88)<=0x47d||
+       !copy(&index,owner+0x47d,sizeof(index))||index>=out.duration_count)return out;
+    out.owner_index=index;
+    out.derived_start=out.start_field==-1.0f?out.reload_duration*0.5f:out.start_field;
+    out.derived_super=out.super_field==-1.0f?out.durations[index]:out.super_field;
+    out.derived_end=out.derived_start+out.derived_super;
+    out.valid=std::isfinite(out.derived_end)&&out.derived_end>0;
+    return out;
+}
 #endif
 
 gears_weapon::BodySlot body_for_inventory_slot(unsigned slot){
@@ -559,6 +616,18 @@ void tick(uptr pc){
             L"getter_slot=638 getter_rva=%llx judge_slot=630 judge_rva=%llx\n",
             reinterpret_cast<void*>(weapon),getter_target?getter_target-base:0,
             judge_target?judge_target-base:0);
+        const auto window=reload_window_probe(weapon);
+        fwprintf(log_file,L"weapon_reload_window_probe weapon=%p valid=%u "
+            L"reload_duration=%.9g start_field=%.9g pre_field=%.9g "
+            L"super_field=%.9g sweet_field=%.9g owner_index=%u "
+            L"duration_count=%u duration_0=%.9g duration_1=%.9g duration_2=%.9g "
+            L"derived_start=%.9g derived_super=%.9g derived_end=%.9g\n",
+            reinterpret_cast<void*>(weapon),unsigned(window.valid),
+            window.reload_duration,window.start_field,window.pre_field,
+            window.super_field,window.sweet_field,window.owner_index,
+            window.duration_count,window.durations[0],window.durations[1],
+            window.durations[2],window.derived_start,window.derived_super,
+            window.derived_end);
         fflush(log_file);
     }
 #endif
