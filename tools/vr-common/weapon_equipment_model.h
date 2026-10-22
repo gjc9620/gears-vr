@@ -11,6 +11,10 @@ struct EquipmentSnapshot {
     std::uint64_t world{},pawn{},current_weapon{};
     std::array<std::uint64_t,4> weapon_in_slot{};
     bool can_switch{},animation_busy{};
+    // The live adapter reads each occupied weapon's original HasAnyAmmo on
+    // the same game thread. Unknown is allowed for isolated model fixtures;
+    // live snapshot acquisition fails rather than asserting availability.
+    std::array<bool,4> ammo_available{},ammo_known{};
     // The grenade slot can retain a weapon actor after its throwable count is
     // zero. Only a game-thread inventory read may assert count_known.
     std::uint32_t throwable_count{};
@@ -95,14 +99,17 @@ public:
         if(phase_==Phase::pickup||phase_==Phase::switching||
            game.animation_busy||!game.can_switch)return {EquipmentEvent::busy};
         const auto item=game.weapon_in_slot[*slot];
-        // A grenade actor may outlive its last charge. If the authoritative
-        // count cannot be read, fail closed instead of creating a throwable.
-        if(!item||(*slot==1&&(!game.throwable_count_known||!game.throwable_count)))
-            return {EquipmentEvent::empty_slot,*slot};
-        if(phase_==Phase::held&&slot_==*slot&&weapon_==item&&
+        // Returning a held weapon to its original slot must still work after
+        // the player has spent its last round.
+        if(item&&phase_==Phase::held&&slot_==*slot&&weapon_==item&&
            game.current_weapon==item){
             clear_hold();return {EquipmentEvent::request_stow,*slot,item};
         }
+        // A grenade actor may outlive its last charge. If the authoritative
+        // count cannot be read, fail closed instead of creating a throwable.
+        if(!item||(game.ammo_known[*slot]&&!game.ammo_available[*slot])||
+           (*slot==1&&(!game.throwable_count_known||!game.throwable_count)))
+            return {EquipmentEvent::empty_slot,*slot};
         if(game.current_weapon==item){
             phase_=Phase::held;slot_=*slot;weapon_=item;previous_weapon_=0;
             return {EquipmentEvent::request_unholster,*slot,item};

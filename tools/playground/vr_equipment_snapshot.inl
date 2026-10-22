@@ -78,7 +78,14 @@ bool read_can_switch(uptr pc,bool& value){
     value=(call.output<unsigned>()&mask)!=0;
     return true;
 }
-bool read_throwable_count(uptr weapon,uptr pawn,std::uint32_t& count){
+bool read_has_any_ammo(uptr weapon,bool& value){
+    playground::Args call(weapon,L"HasAnyAmmo");
+    if(!result_property(call,L"BoolProperty",4)||!call.run())return false;
+    const auto mask=get<unsigned>(call.prop(L"ReturnValue")+0xd0);
+    value=(call.output<unsigned>()&mask)!=0;
+    return true;
+}
+bool read_throwable_count(uptr weapon,uptr pawn,bool usable,std::uint32_t& count){
     // For human-controlled grenade weapons HasAnyAmmo checks spare charges,
     // not GetTotalAmmoInGun's spare + current magazine expression.
     if(playground::pointer(weapon,L"Instigator")!=pawn)return false;
@@ -87,10 +94,6 @@ bool read_throwable_count(uptr weapon,uptr pawn,std::uint32_t& count){
        !playground::named(get<uptr>(spare+0x50),L"IntProperty"))return false;
     const auto charges=get<int>(weapon+get<unsigned>(spare+0x94));
     if(charges<0||charges>10000)return false;
-    playground::Args call(weapon,L"HasAnyAmmo");
-    if(!result_property(call,L"BoolProperty",4)||!call.run())return false;
-    const auto mask=get<unsigned>(call.prop(L"ReturnValue")+0xd0);
-    const bool usable=(call.output<unsigned>()&mask)!=0;
     // Infinite spare ammo (used by the private Playground) is selectable even
     // if the stored finite spare count is zero.
     count=usable?(charges?std::uint32_t(charges):~std::uint32_t{0}):0;
@@ -118,6 +121,12 @@ bool snapshot(uptr pc,gears_weapon::EquipmentSnapshot& game,const wchar_t*& erro
         for(std::uint8_t earlier=0;earlier<slot;++earlier)
             if(item&&game.weapon_in_slot[earlier]==item)return false;
         game.weapon_in_slot[slot]=item;
+        if(item){
+            error=L"slot_ammo_query";
+            if(!read_has_any_ammo(item,game.ammo_available[slot]))return false;
+            game.ammo_known[slot]=true;
+            error=L"inventory_slot_query";
+        }
     }
     error=L"switch_query";
     if(!read_can_switch(pc,game.can_switch))return false;
@@ -128,7 +137,7 @@ bool snapshot(uptr pc,gears_weapon::EquipmentSnapshot& game,const wchar_t*& erro
     if(grenade){
         error=L"grenade_type_or_count";
         if(!playground::instance(grenade,L"Weap_Grenade")||
-           !read_throwable_count(grenade,pawn,game.throwable_count))return false;
+           !read_throwable_count(grenade,pawn,game.ammo_available[1],game.throwable_count))return false;
         game.throwable_count_known=true;
     }else game.throwable_count_known=true;
     error=L"ok";
@@ -138,6 +147,7 @@ bool changed(gears_weapon::EquipmentSnapshot const& a,
              gears_weapon::EquipmentSnapshot const& b){
     return a.world!=b.world||a.pawn!=b.pawn||a.current_weapon!=b.current_weapon||
         a.weapon_in_slot!=b.weapon_in_slot||a.can_switch!=b.can_switch||
+        a.ammo_available!=b.ammo_available||a.ammo_known!=b.ammo_known||
         a.animation_busy!=b.animation_busy||a.throwable_count!=b.throwable_count||
         a.throwable_count_known!=b.throwable_count_known;
 }
@@ -262,7 +272,7 @@ void tick(uptr pc){
     have_previous=true;previous_error=error;previous=game;
     if(!log_file)return;
     fwprintf(log_file,L"equipment_snapshot status=%ls world=%p pawn=%p current=%p "
-        L"slots=%p,%p,%p,%p grenades=%u known=%u switch=%u anim=%u\n",
+        L"slots=%p,%p,%p,%p grenades=%u known=%u ammo=%u%u%u%u switch=%u anim=%u\n",
         error,reinterpret_cast<void*>(static_cast<uptr>(game.world)),
         reinterpret_cast<void*>(static_cast<uptr>(game.pawn)),
         reinterpret_cast<void*>(static_cast<uptr>(game.current_weapon)),
@@ -271,6 +281,8 @@ void tick(uptr pc){
         reinterpret_cast<void*>(static_cast<uptr>(game.weapon_in_slot[2])),
         reinterpret_cast<void*>(static_cast<uptr>(game.weapon_in_slot[3])),
         game.throwable_count,unsigned(game.throwable_count_known),
+        unsigned(game.ammo_available[0]),unsigned(game.ammo_available[1]),
+        unsigned(game.ammo_available[2]),unsigned(game.ammo_available[3]),
         unsigned(game.can_switch),unsigned(game.animation_busy));
     fflush(log_file);
 }

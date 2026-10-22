@@ -66,8 +66,9 @@ exports.
 For private inventory verification, build with
 `GEARS_PLAYGROUND_EQUIPMENT_OBSERVE=ON` and a distinct
 `GEARS_PLAYGROUND_OUTPUT_NAME`. Every 500 ms on the local player's game
-thread, the observer checks the four original inventory slots, current weapon,
-switch permission, switch animation flag and grenade charges. It writes
+thread, the observer checks the four original inventory slots, each occupied
+weapon's `HasAnyAmmo`, current weapon, switch permission, switch animation flag
+and grenade charges. It writes
 changes to the PID-specific Playground log. The grenade charge read follows
 the original human-player `HasAnyAmmo`/spare-ammo rule; unknown quantities
 fail closed in the equipment state model. This candidate only observes: it
@@ -83,7 +84,8 @@ slot number plus current game identities. Playground discards old or overflowed
 events, then re-reads the local player's inventory on the game thread and
 requires the private owned arena, behind-windows and muted test environment
 before calling the original slot function. Empty grenade charges fail closed.
-When a requested slot is empty, the private adapter tries the slot weapon's
+When a requested slot is empty or its weapon has no usable ammunition, the
+private adapter tries the slot weapon's
 original `FireNoAmmoSound` cue, then the current weapon's cue, through the
 original local playback function. Status 9 means neither cue could be played.
 This is a wiring test: original switch animation, visible stow, an audio cue

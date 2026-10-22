@@ -42,8 +42,10 @@ int main(){
     assert(hands.observe(game).event==EquipmentEvent::ignored&&hands.held());
     assert(hands.tap(BodySlot::grenade,game).event==EquipmentEvent::empty_slot);
     assert(hands.held_weapon()==202);
+    game.ammo_known[2]=true;game.ammo_available[2]=false;
     auto stow=hands.tap(BodySlot::weapon_2,game);
     assert(stow.event==EquipmentEvent::request_stow&&stow.weapon==202&&!hands.held());
+    game.ammo_available[2]=true;
     auto take_again=hands.tap(BodySlot::weapon_2,game);
     assert(take_again.event==EquipmentEvent::request_unholster&&hands.held_weapon()==202);
 
@@ -61,6 +63,11 @@ int main(){
     assert(hands.tap(BodySlot::weapon_2,game).event==EquipmentEvent::request_original_switch);
     assert(hands.switch_rejected(game).event==EquipmentEvent::interrupted);
     assert(!hands.switch_pending()&&!hands.animation_owns_hands()&&!hands.held());
+
+    game.ammo_known[2]=true;game.ammo_available[2]=false;
+    assert(hands.tap(BodySlot::weapon_2,game).event==EquipmentEvent::empty_slot);
+    assert(!hands.switch_pending());
+    game.ammo_available[2]=true;
 
     assert(hands.begin_pickup(game).event==EquipmentEvent::pickup_animation);
     assert(hands.animation_owns_hands());
