@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：182e7b0／c37e入口测量候选 g 购买版 PID31604 已完成25写25恢复／完整槽位往返／Shutdown0，4份诊断有效。66条entry全部known且same_state，PE入口→transport平均0.016773ms／最大0.0389ms，所有入口ms与transport相同；6次phase2旧票据在入口已经109／110／109／109／109／125ms，新15–16ms，age-only potential为0。**实测排除了仅前移当前refresh能补足余量的假设**；组件仍唯一motion失败，原failed receipt `978f271d…453d66` 不改。FPP累计80、原8控件／44附件／两Hook恢复及9个已静音会话零修改／错误／待恢复通过，game／owner／XR／Guard均已退出；Native entry verifier false／XR1／整局false仍保留。下一步应单独验证校准保留与当前写权限的区别，先补独立参考／失追边界证据，不能把未见loss或status镜像当区间连续性；详见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
+
 2026-10-23：PE入口到现transport的只读测量已接线：最外层TLS scope先核GT，只保存const快照／时钟，本地指针仅沿当前调用配对；独立1024行缓冲，same_state比较原始stamp，零覆盖或clock错误不影响原权限与恢复。Astra静态复核无阻断，相关五种构建和65项独立entry审计自检通过；新候选尚未运行。late created_ms≤entry_ms仅作年龄条件，未在入口读取bridge，不能证明那张票据当时已发布／可读。另明确手柄→手骨刚体校准本身无100ms数学期限，之后可单独评估age-only suspend，但当前latest-only会遗漏中间loss且GVE6未包含Native reference_generation，不因此直接放宽现有候选。详见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
 
 2026-10-23：bf95959／d456 连续性候选 f 购买版 PID56488 完整 25写／25恢复、11→10→11→10、Shutdown0 和原8控件／44附件／两Hook恢复；FPP累计86，静音9会话无错误／待恢复，精确游戏退出后Guard结束，自有进程全部退出。三份独立 timing／shadow／transport 审计有效，65条 transport 中24次调用、21次双手续龄；普通持枪／取回 phase1 的14次均续龄且零超龄，收枪 phase2 的10次为7续龄＋3早期过期（旧109／110／109ms，新15／16／16ms）。**组件仍仅持续运动门失败**，部分重绑发生在新姿态到达时，不能据此称跟手通过。原failed receipt `560457d5…330dfc2` 和原审计保留；Native entry verifier false／XR1／整局false不改。下一步仅测PE入口到现transport点的前缀时间、同Tick状态与早期票据可用性；Astra指出现有计时在transport之后才开始，不能直接证明前移能追回余量。100ms及三道装备／最终写入门均保留，详见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
