@@ -54,7 +54,7 @@ option(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2 "Private opt-in game-thread XR R2 ada
 option(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE "Private read-only game-thread equipment snapshot" OFF)
 option(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST "Private test-only original slot switch from a validated inventory snapshot" OFF)
 option(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST "Private XR grip to original slot switch, with game-thread identity checks" OFF)
-option(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST "Private Lancer original-mesh right-hand follow trial" OFF)
+option(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST "Private Lancer original-mesh hand-follow trial" OFF)
 option(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 "Private opt-in game-thread XR L2 hold-aim adapter" OFF)
 option(GEARS_PLAYGROUND_VR_R2_SIM_TEST "Private simulated-input verification only" OFF)
 if(GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 AND NOT GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)

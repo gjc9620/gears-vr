@@ -11,7 +11,9 @@ namespace gears_weapon {
 class WeaponMeshFollow {
     gears_vr::Vector hand_to_mesh_{};
     gears_vr::Matrix hand_to_mesh_rotation_{};
+    double mesh_scale_{1};
     bool bound_{};
+    bool left_was_down_{},support_latched_{};
     static bool plausible(gears_vr::Viewpoint const& pose) noexcept {
         return gears_vr::finite(pose.position)&&
             std::abs(pose.position.x)<1e7&&std::abs(pose.position.y)<1e7&&
@@ -20,10 +22,12 @@ class WeaponMeshFollow {
             std::isfinite(pose.rotation.roll);
     }
 public:
-    void reset() noexcept {bound_=false;}
+    void reset() noexcept {bound_=left_was_down_=support_latched_=false;mesh_scale_=1;}
     bool bound() const noexcept {return bound_;}
+    bool support_latched() const noexcept {return support_latched_;}
     bool bind(gears_vr::Viewpoint const& right_hand,
-              std::array<float,16> const& mesh_local_to_world) noexcept {
+              std::array<float,16> const& mesh_local_to_world,
+              bool left_down_at_bind=false) noexcept {
         if(bound_||!plausible(right_hand))return false;
         for(float x:mesh_local_to_world)if(!std::isfinite(x))return false;
         const auto& m=mesh_local_to_world;
@@ -60,6 +64,8 @@ public:
         if(!gears_vr::finite(offset)||std::hypot(std::hypot(offset.x,offset.y),offset.z)>250)return false;
         hand_to_mesh_=offset;
         hand_to_mesh_rotation_=gears_vr::multiply(gears_vr::transpose(hand_basis),mesh_basis);
+        mesh_scale_=(scale[0]+scale[1]+scale[2])/3;
+        left_was_down_=left_down_at_bind;
         bound_=true;return true;
     }
     bool solve(gears_vr::Viewpoint const& right_hand,gears_vr::Viewpoint& out) const noexcept {
@@ -72,6 +78,70 @@ public:
             gears_vr::ue_angles(mesh_basis)};
         if(!plausible(candidate))return false;
         out=candidate;return true;
+    }
+    // Private trial: the contact is the original character's Lancer left-palm
+    // center measured in this exact mesh frame. A fresh LGrip press must occur
+    // near it; holding LGrip elsewhere cannot seize the gun. The controller's
+    // own grip-to-palm offset still needs headset calibration.
+    bool solve_with_support(gears_vr::Viewpoint const& right_hand,
+                            gears_vr::Viewpoint const& left_hand,bool left_tracked,
+                            bool left_down,gears_vr::Vector contact_in_mesh,
+                            gears_vr::Viewpoint& out,bool& support_used) noexcept {
+        support_used=false;
+        gears_vr::Viewpoint base{};
+        if(!solve(right_hand,base)){
+            support_latched_=false;left_was_down_=left_down;return false;
+        }
+        out=base;
+        if(!left_tracked||!left_down||!plausible(left_hand)||
+           !gears_vr::finite(contact_in_mesh)){
+            support_latched_=false;left_was_down_=left_down;return true;
+        }
+        const auto basis=gears_vr::ue_matrix(base.rotation);
+        const auto contact_shift=gears_vr::transform(basis,
+            {contact_in_mesh.x*mesh_scale_,contact_in_mesh.y*mesh_scale_,
+             contact_in_mesh.z*mesh_scale_});
+        const gears_vr::Vector expected{
+            base.position.x+contact_shift.x-right_hand.position.x,
+            base.position.y+contact_shift.y-right_hand.position.y,
+            base.position.z+contact_shift.z-right_hand.position.z};
+        const gears_vr::Vector actual{
+            left_hand.position.x-right_hand.position.x,
+            left_hand.position.y-right_hand.position.y,
+            left_hand.position.z-right_hand.position.z};
+        const gears_vr::Vector error{actual.x-expected.x,actual.y-expected.y,
+                                     actual.z-expected.z};
+        const auto distance=std::hypot(std::hypot(error.x,error.y),error.z);
+        const bool rising=!left_was_down_;
+        left_was_down_=true;
+        if(!std::isfinite(distance)){support_latched_=false;return true;}
+        if(!support_latched_){
+            if(!rising||distance>10.0)return true;
+            support_latched_=true;
+        }else if(distance>18.0){support_latched_=false;return true;}
+        const auto from_length=std::hypot(std::hypot(expected.x,expected.y),expected.z);
+        const auto to_length=std::hypot(std::hypot(actual.x,actual.y),actual.z);
+        if(from_length<15||to_length<15){support_latched_=false;return true;}
+        const gears_vr::Vector from{expected.x/from_length,expected.y/from_length,
+                                    expected.z/from_length};
+        const gears_vr::Vector to{actual.x/to_length,actual.y/to_length,
+                                  actual.z/to_length};
+        const auto cosine=(std::clamp)(from.x*to.x+from.y*to.y+from.z*to.z,-1.,1.);
+        if(cosine<std::cos(.8)){support_latched_=false;return true;}
+        const gears_vr::Quaternion correction_q{
+            from.y*to.z-from.z*to.y,from.z*to.x-from.x*to.z,
+            from.x*to.y-from.y*to.x,1+cosine};
+        const auto correction=gears_vr::rotation_matrix(correction_q);
+        const gears_vr::Vector offset{base.position.x-right_hand.position.x,
+                                      base.position.y-right_hand.position.y,
+                                      base.position.z-right_hand.position.z};
+        const auto shifted=gears_vr::transform(correction,offset);
+        gears_vr::Viewpoint candidate{
+            {right_hand.position.x+shifted.x,right_hand.position.y+shifted.y,
+             right_hand.position.z+shifted.z},
+            gears_vr::ue_angles(gears_vr::multiply(correction,basis))};
+        if(!plausible(candidate)){support_latched_=false;return true;}
+        out=candidate;support_used=true;return true;
     }
 };
 

@@ -47,16 +47,39 @@ def sample_owned_game(args, receipt):
     sys.path.insert(0, str(args.runtime_root.resolve() / 'tools/playground'))
     from runtime import Bridge
 
-    owned = json.loads(args.owned_json.read_text(encoding='utf-8'))
-    if not owned.get('private_root') or not owned.get('launch', {}).get('test_windows_behind_requested'):
-        raise ValueError('Not an owned behind-windows test game')
-    identity = owned['game']
+    if args.launcher_session:
+        session = json.loads(args.launcher_session.read_text(encoding='utf-8'))
+        playground = session.get('playground', {})
+        if (session.get('phase') != 'session_owned' or
+                not session.get('test_audio_guard', {}).get('enabled') or
+                not playground.get('enabled') or
+                Path(playground.get('dll', '')).resolve() != args.dll.resolve() or
+                playground.get('sha256') != args.dll_sha256):
+            raise ValueError('Live launcher session does not own this muted Playground DLL')
+        identity = session['game_identity']
+        if playground.get('pid') != identity.get('pid'):
+            raise ValueError('Live launcher Playground/game identity mismatch')
+        attach_only = True
+    else:
+        owned = json.loads(args.owned_json.read_text(encoding='utf-8'))
+        if not owned.get('private_root') or not owned.get('launch', {}).get('test_windows_behind_requested'):
+            raise ValueError('Not an owned behind-windows test game')
+        identity = owned['game']
+        attach_only = False
     bridge = None
     try:
         registry_deadline = time.monotonic() + 90
         while True:
             try:
-                bridge = Bridge(identity, args.dll, expected_sha256=args.dll_sha256)
+                bridge = Bridge(identity, args.dll, expected_sha256=args.dll_sha256,
+                                attach_only=attach_only)
+                if attach_only:
+                    # attach_only skips Resolver.prepare and component init;
+                    # the owned launcher may already have shut this test DLL
+                    # down after an earlier bounded probe in the same child.
+                    bridge.r.prepare()
+                    if bridge.export('PlaygroundInitialize') != 0:
+                        raise RuntimeError('Owned Playground could not initialize')
                 break
             except RuntimeError as error:
                 if str(error) not in ('Invalid name array header', 'Invalid object array header'):
@@ -136,10 +159,14 @@ def sample_owned_game(args, receipt):
         receipt.update(game_pid=identity['pid'], pawn_mesh=resolver.identity(pawn_mesh),
                        weapon_mesh=resolver.identity(weapon_mesh),
                        pawn_mesh_asset=resolver.identity(pointer(pawn_mesh, 'SkeletalMesh')),
-                       weapon_mesh_asset=resolver.identity(pointer(weapon_mesh, 'SkeletalMesh')),
-                       left_hand_ik_on=bridge.call(pawn, 'ShouldLeftHandIKBeOn'))
-        if not receipt['left_hand_ik_on']:
-            raise RuntimeError('Original left-hand IK is not active in this pose')
+                       weapon_mesh_asset=resolver.identity(pointer(weapon_mesh, 'SkeletalMesh')))
+        # Pawn.Weapon changes before its original switching stance ends. The
+        # original ShouldLeftHandIKBeOn explicitly returns false while
+        # bSwitchingWeapons is set, so wait for the playable held pose.
+        def settled_left_hand():
+            return bridge.call(pawn, 'ShouldLeftHandIKBeOn')
+        receipt['left_hand_ik_on'] = bool(wait_for(
+            settled_left_hand, 10, 'Original Lancer left-hand IK did not settle'))
         if bridge.export('PlaygroundLancerSupportProbeEnable') != 0:
             raise RuntimeError('Private game-thread Lancer probe refused to start')
 
@@ -177,7 +204,10 @@ def sample_owned_game(args, receipt):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--owned-json', required=True, type=Path)
+    owner = parser.add_mutually_exclusive_group(required=True)
+    owner.add_argument('--owned-json', type=Path)
+    owner.add_argument('--launcher-session', type=Path,
+                       help='Attach to an already owned and muted private launcher session')
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
@@ -189,7 +219,7 @@ def main():
     receipt = {'schema': 1, 'passed': False, 'source': 'owned retail runtime',
                'probe_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                'samples': []}
-    owned = args.owned_json.is_file()
+    owned = args.owned_json is not None and args.owned_json.is_file()
     try:
         sample_owned_game(args, receipt)
     except BaseException:

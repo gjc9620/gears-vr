@@ -42,5 +42,45 @@ int main(){
     assert(!follow.bind(first,matrix));
     matrix=mesh_matrix(mesh_rotation,{1000,2000,3000});
     assert(!follow.bind(first,matrix));
+    WeaponMeshFollow support;
+    const Viewpoint right{{0,0,0},{0,0,0}};
+    const Vector contact{8.55624,43.52518,.16516};
+    assert(support.bind(right,mesh_matrix({0,0,0},{0,0,0})));
+    bool used{};
+    const Viewpoint near_left{contact,{0,0,0}};
+    assert(support.solve_with_support(right,near_left,true,false,contact,actual,used));
+    assert(!used&&!support.support_latched());
+    const Viewpoint far_left{{40,43.5,0},{0,0,0}};
+    assert(support.solve_with_support(right,far_left,true,true,contact,actual,used));
+    assert(!used&&!support.support_latched());
+    assert(support.solve_with_support(right,near_left,true,true,contact,actual,used));
+    assert(!used); // Moving close with LGrip already held is not a new grab.
+    assert(support.solve_with_support(right,near_left,true,false,contact,actual,used));
+    assert(support.solve_with_support(right,near_left,true,true,contact,actual,used));
+    assert(used&&support.support_latched());
+    const Viewpoint moved_left{{contact.x+5,contact.y,contact.z},{0,0,0}};
+    assert(support.solve_with_support(right,moved_left,true,true,contact,actual,used));
+    assert(used&&support.support_latched()&&std::abs(actual.rotation.yaw)>.01);
+    assert(support.solve_with_support(right,near_left,false,true,contact,actual,used));
+    assert(!used&&!support.support_latched()); // Tracking loss releases support.
+    assert(support.solve_with_support(right,near_left,true,true,contact,actual,used));
+    assert(!used); // Tracking recovery cannot replay the held press.
+    assert(support.solve_with_support(right,near_left,true,false,contact,actual,used));
+    assert(support.solve_with_support(right,near_left,true,true,contact,actual,used));
+    assert(used);
+    assert(support.solve_with_support(right,far_left,true,true,contact,actual,used));
+    assert(!used&&!support.support_latched());
+    WeaponMeshFollow held_on_bind;
+    assert(held_on_bind.bind(right,mesh_matrix({0,0,0},{0,0,0}),true));
+    assert(held_on_bind.solve_with_support(right,near_left,true,true,contact,actual,used));
+    assert(!used&&!held_on_bind.support_latched());
+    assert(held_on_bind.solve_with_support(right,near_left,true,false,contact,actual,used));
+    assert(held_on_bind.solve_with_support(right,near_left,true,true,contact,actual,used));
+    assert(used&&held_on_bind.support_latched());
+    WeaponMeshFollow scaled;
+    assert(scaled.bind(right,mesh_matrix({0,0,0},{0,0,0},1.25)));
+    const Viewpoint scaled_left{{contact.x*1.25,contact.y*1.25,contact.z*1.25},{0,0,0}};
+    assert(scaled.solve_with_support(right,scaled_left,true,true,contact,actual,used));
+    assert(used&&scaled.support_latched());
     std::puts("weapon mesh follow calibration and invalid geometry gates passed");
 }

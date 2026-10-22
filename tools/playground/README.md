@@ -142,14 +142,21 @@ Lancer trial to the equipment-intent build. It requires an owned, muted,
 behind-windows Playground range and an already held Lancer. Call
 `PlaygroundWeaponMeshFollowEnable` after the certified hand-pose publisher is
 live; `PlaygroundWeaponMeshFollowStatus` returns bit 16 for an active component
-override and a low status of 2 while the original `Weapon.Mesh` is following
-the right hand. Call `PlaygroundWeaponMeshFollowDisable`, wait until bit 16 is
+override, bit 17 while the left support grip is latched, and a low status of 2
+while the original `Weapon.Mesh` is following the right hand. Only the
+`COGAssaultRifle` asset is accepted. A fresh LGrip press near the measured
+left-palm point on that mesh enables two-hand steering; tracking loss, grip
+release, or moving out of range drops back to the right-hand pose. Holding
+LGrip through component binding does not count as a new press. Call
+`PlaygroundWeaponMeshFollowDisable`, wait until bit 16 is
 clear and status 6 reports restored (or 7 reports a destroyed component), then
 call `PlaygroundShutdown`. Shutdown returns 20 while restoration is still
 pending. The first tracked frame retains the game's current gun pose, so this
-trial checks component motion without claiming a correct per-weapon grip mount.
-It has pure transform and build coverage, but no successful retail runtime or
-headset result yet; the normal DLL contains none of these exports.
+trial checks component motion without claiming a correct per-weapon grip mount
+or a measured controller-to-palm offset. The original-pose contact coordinate
+comes from the 24-frame retail sample described below. It has pure transform
+and build coverage, but no successful mesh-motion runtime or headset result
+yet; the normal DLL contains none of these exports.
 
 The same private DLL has a separate read-only Lancer support-hand probe.
 `lancer_support_probe.py` equips the original Lancer in an owned muted range,
@@ -160,4 +167,8 @@ pawn/gun component matrices after each original `PlayerTick`. Status 4 means a g
 identity, bone, matrix, or test-environment guard rejected the probe. Do not
 enable mesh following during this sample; either export refuses that overlap.
 The matrices are evidence for later grip-point calibration, not a validated
-grip offset or a component to ship with the Mod.
+grip offset or a component to ship with the Mod. An owned retail capture did
+complete 24 settled Lancer frames with left-hand IK active. The median left
+palm point in the original gun frame was `(8.556242, 43.525180, 0.165157)`
+raw game units; maximum frame drift was `0.000231` units. The capture and
+derived report stay under ignored `analysis/lancer-support-probe-20261022/`.

@@ -3,6 +3,7 @@
 std::atomic<bool> mesh_follow_requested{};
 std::atomic<bool> mesh_follow_shutdown_requested{};
 std::atomic<bool> mesh_follow_active_visible{};
+std::atomic<bool> mesh_follow_support_visible{};
 std::atomic<unsigned> mesh_follow_status{};
 gears_weapon::HandWorldFrame mesh_follow_hands{};
 bool mesh_follow_hands_known{};
@@ -56,6 +57,7 @@ bool mesh_follow_restore(){
     if(!mesh_follow.active)return true;
     if(!mesh_follow_component_alive()){
         mesh_follow={};mesh_follow_active_visible.store(false,std::memory_order_release);
+        mesh_follow_support_visible.store(false,std::memory_order_release);
         mesh_follow_status.store(7,std::memory_order_release);return true;
     }
     auto const& saved=mesh_follow.original;
@@ -75,6 +77,7 @@ bool mesh_follow_restore(){
         mesh_follow_status.store(8,std::memory_order_release);return false;
     }
     mesh_follow={};mesh_follow_active_visible.store(false,std::memory_order_release);
+    mesh_follow_support_visible.store(false,std::memory_order_release);
     mesh_follow_status.store(6,std::memory_order_release);return true;
 }
 bool mesh_follow_pose_current(uptr pc,gears_weapon::HandWorldFrame const& pose){
@@ -108,13 +111,14 @@ void mesh_follow_post_tick(uptr pc){
         MeshPoseProbe probe{};
         if(!playground::instance(pose.weapon,L"Weap_AssaultRifle")||
            !mesh_pose_probe(pose.weapon,probe)||probe.hidden||!probe.asset||
-           !playground::instance(probe.asset,L"SkeletalMesh")){
+           !playground::instance(probe.asset,L"SkeletalMesh")||
+           wcscmp(probe.asset_name,L"COGAssaultRifle")){
             mesh_follow_status.store(3,std::memory_order_release);return;
         }
         std::array<float,16> matrix{};
         std::memcpy(matrix.data(),probe.local_to_world,sizeof(probe.local_to_world));
         gears_weapon::WeaponMeshFollow solver;
-        if(!solver.bind(pose.right,matrix)){
+        if(!solver.bind(pose.right,matrix,(pose.grip_down_mask&1)!=0)){
             mesh_follow_status.store(4,std::memory_order_release);return;
         }
         mesh_follow.world=playground::arena_world;
@@ -130,7 +134,11 @@ void mesh_follow_post_tick(uptr pc){
         }
     }
     gears_vr::Viewpoint target{};
-    if(!mesh_follow.solver.solve(pose.right,target)){
+    bool support_used{};
+    constexpr gears_vr::Vector lancer_left_palm_in_gun{8.556242,43.525180,.165157};
+    if(!mesh_follow.solver.solve_with_support(pose.right,pose.left,
+        (pose.valid_mask&1)!=0,(pose.grip_down_mask&1)!=0,
+        lancer_left_palm_in_gun,target,support_used)){
         mesh_follow_restore();mesh_follow_status.store(4,std::memory_order_release);return;
     }
     if(std::abs(target.position.x)>1e7||std::abs(target.position.y)>1e7||
@@ -146,6 +154,7 @@ void mesh_follow_post_tick(uptr pc){
     if(!mesh_follow_transform(mesh_follow.mesh,translation,rotation)){
         mesh_follow_restore();mesh_follow_status.store(5,std::memory_order_release);return;
     }
+    mesh_follow_support_visible.store(support_used,std::memory_order_release);
     mesh_follow_status.store(2,std::memory_order_release);
 }
 

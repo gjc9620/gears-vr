@@ -328,6 +328,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandPoseStatus(void*){
 }
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
+// Bit 16: original mesh override active; bit 17: left support grip latched.
 // 1 waiting for a held Lancer and fresh hand pose, 2 moving original mesh,
 // 3 mesh unavailable, 4 invalid mount, 5 component call failed,
 // 6 restored, 7 component destroyed, 8 restore failed.
@@ -344,6 +345,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowDisable(
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponMeshFollowStatus(void*){
     return (vrequip::mesh_follow_active_visible.load(std::memory_order_acquire)?0x10000u:0u)|
+        (vrequip::mesh_follow_support_visible.load(std::memory_order_acquire)?0x20000u:0u)|
         vrequip::mesh_follow_status.load(std::memory_order_acquire);
 }
 // Private read-only original-animation sample. 0 accepted, 1 wrong test
