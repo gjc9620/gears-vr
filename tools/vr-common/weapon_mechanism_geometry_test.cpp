@@ -75,5 +75,31 @@ int main(){
     hands.received_ns=tick-100;hands.sync_ns=tick-200;
     assert(gnasher_lever_sample(hands,stereo,mount,10,20,tick,true,true,sample));
     assert(close(sample.lever_angle_radians,.5));
+    // The purchased game's lever moves about -X through 32.4 degrees. A
+    // synthetic contact 20 cm from its measured pivot must complete a 27.5
+    // degree stroke with that sign. The true handle contact is still unknown.
+    LeverMount original_axis_mount=mount;
+    original_axis_mount.hinge_axis_in_main=gnasher_lever_reference_axis;
+    const auto pivot_metres=scaled(gnasher_lever_reference_pivot_raw,.01);
+    assert(std::abs(pivot_metres.y-.2062220742)<1e-8);
+    original_axis_mount.pivot_in_main=pivot_metres;
+    original_axis_mount.right_handle_home_in_main=sum(pivot_metres,{0,-.2,0});
+    assert(original_axis_mount.valid());
+    hands.hands[0].grip.orientation={0,0,0,1};
+    hands.hands[0].grip.position={0,1,-.2};
+    GnasherLever original_cycle;
+    assert(original_cycle.arm(10,20,3));
+    const double original_stroke[]={0,.1,.2,.34,.48,.34,.2,.1,0};
+    bool original_completed=false;
+    for(double angle:original_stroke){
+        ++hands.sequence;stereo.sequence=hands.sequence;tick+=20000000;
+        hands.received_ns=tick-100;hands.sync_ns=tick-200;
+        hands.hands[1].grip.position=sum({0,1,0},
+            sum(pivot_metres,{0,-.2*std::cos(angle),.2*std::sin(angle)}));
+        assert(gnasher_lever_sample(hands,stereo,original_axis_mount,10,20,tick,
+            true,true,sample));
+        original_completed=original_cycle.observe(sample,original_gnasher_lever_travel);
+    }
+    assert(original_completed);
     std::puts("Gnasher lever hand geometry, radius, tracking and HMD independence passed");
 }

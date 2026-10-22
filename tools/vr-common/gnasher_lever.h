@@ -8,15 +8,25 @@ namespace gears_weapon {
 struct LeverTravel {
     double home_max_radians{},down_min_radians{},maximum_speed_radians_per_second{};
     std::int64_t minimum_cycle_ns{},maximum_cycle_ns{},maximum_sample_gap_ns{};
+    double maximum_angle_radians{3.14};
     bool valid() const noexcept {
         return std::isfinite(home_max_radians)&&std::isfinite(down_min_radians)&&
-            std::isfinite(maximum_speed_radians_per_second)&&home_max_radians>=0&&
-            down_min_radians>home_max_radians&&down_min_radians<=3.14&&
+            std::isfinite(maximum_speed_radians_per_second)&&
+            std::isfinite(maximum_angle_radians)&&home_max_radians>=0&&
+            down_min_radians>home_max_radians&&
+            maximum_angle_radians>=down_min_radians&&maximum_angle_radians<=3.14&&
             maximum_speed_radians_per_second>0&&minimum_cycle_ns>0&&
             maximum_cycle_ns>minimum_cycle_ns&&maximum_sample_gap_ns>0&&
             maximum_sample_gap_ns<=maximum_cycle_ns;
     }
 };
+// The purchased Reloaded Gnasher's SG_Chamber sequence reached 32.4273° at
+// frame 16/34 and returned to within 0.1302° of home. The 25.2° completion
+// threshold tolerates a shortened physical stroke; the 40.1° ceiling rejects
+// hand paths beyond the original lever. Timing is a VR interaction candidate,
+// not an original animation duration or perfect-reload deadline.
+inline constexpr LeverTravel original_gnasher_lever_travel{
+    .08,.44,12.,140000000,1500000000,100000000,.70};
 struct LeverPoseSample {
     std::uint64_t weapon{},world{},space_epoch{},sequence{};
     std::int64_t monotonic_ns{};
@@ -49,7 +59,8 @@ public:
         if(sample.weapon!=weapon_||sample.world!=world_||sample.space_epoch!=space_epoch_||
            !sample.tracked||!sample.left_front_held||!sample.right_handle_held||
            !std::isfinite(sample.lever_angle_radians)||sample.lever_angle_radians<0||
-           sample.lever_angle_radians>3.14||sample.monotonic_ns<=0){reset();return false;}
+           sample.lever_angle_radians>travel.maximum_angle_radians||
+           sample.monotonic_ns<=0){reset();return false;}
         if(!last_sequence_){restart(sample,travel);return false;}
         if(sample.sequence<=last_sequence_||sample.monotonic_ns<=last_ns_){reset();return false;}
         const auto gap=sample.monotonic_ns-last_ns_;

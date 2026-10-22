@@ -5,6 +5,14 @@
 #include <cmath>
 
 namespace gears_weapon {
+// Same held-instance SG_Chamber sample as original_gnasher_lever_travel. The
+// pivot is in raw gun units; convert using the current stereo units/metre.
+// The bone's downstroke rotation axis was (-.999997,.002315,-.000390), so -X
+// is the stable reference direction. Neither value identifies the player's
+// right-hand contact point on the lever.
+inline constexpr Vector gnasher_lever_reference_pivot_raw{
+    .014789434,20.622207420,-2.920573568};
+inline constexpr Vector gnasher_lever_reference_axis{-1,0,0};
 // The Gnasher main body is held by the left/front hand during a lever stroke.
 // All offsets are in that verified mesh's reference pose, in metres. A model
 // bone name alone is not enough to fill these values: the lever pivot, hinge
@@ -13,7 +21,7 @@ struct LeverMount {
     Pose left_front_grip_in_main{};
     Vector pivot_in_main{};
     Vector right_handle_home_in_main{};
-    Vector hinge_axis_in_main{1,0,0}; // sign chooses the downward travel
+    Vector hinge_axis_in_main{gnasher_lever_reference_axis};
     double radial_tolerance_metres{.04};
     double axial_tolerance_metres{.04};
     bool valid() const noexcept {
