@@ -105,8 +105,10 @@ timer with an eight-second original-game fallback. The test-only start and
 complete exports exercise the same game-thread path without physical input.
 Explicit completion invokes the original `Reloading.EndOfReloadTimer` state
 function, which performs the original ammo settlement. No VR magazine stroke,
-bolt stroke, perfect reward, or default-launcher behavior is implied. GVE5
-events include input epoch and are rejected against a stale hand-pose epoch.
+bolt stroke, perfect reward, or default-launcher behavior is implied. GVE6
+events include input epoch and are rejected against a stale hand-pose epoch;
+each certified hand pose also carries the same XR ticket's game units per metre
+for physical gesture distances. Older GVE5 publishers cannot open this bridge.
 
 While certified hand poses are being observed, the private bridge also logs a
 read-only `weapon_magazine_probe` beside `weapon_mesh_probe`. It validates the

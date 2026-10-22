@@ -15,19 +15,25 @@ int main(){
     published_pose.input_epoch=2;
     published_pose.world_generation=4;published_pose.controller=0x1000;
     published_pose.pawn=0x2000;published_pose.weapon=0x3000;
+    published_pose.units_per_metre=100;
     published_pose.right={{10,20,30},{0,.5,0}};
     published_pose.valid_mask=2;published_pose.grip_down_mask=2;
     assert(publisher.publish_pose(published_pose));
     assert(reader.read_pose(pose_cursor,world_pose));
     assert(world_pose.serial==1&&world_pose.right.position.x==10&&
            world_pose.right.rotation.yaw==.5&&world_pose.input_epoch==2&&
-           world_pose.grip_down_mask==2);
+           world_pose.grip_down_mask==2&&world_pose.units_per_metre==100);
     assert(!reader.read_pose(pose_cursor,world_pose));
     published_pose.grip_down_mask=1; // The left hand has no tracked pose.
     assert(!publisher.publish_pose(published_pose));
     published_pose.grip_down_mask=0;published_pose.input_epoch=0;
     assert(!publisher.publish_pose(published_pose));
     published_pose.input_epoch=3;
+    published_pose.units_per_metre=0;
+    assert(!publisher.publish_pose(published_pose));
+    published_pose.units_per_metre=501;
+    assert(!publisher.publish_pose(published_pose));
+    published_pose.units_per_metre=100;
     assert(publisher.publish_pose(published_pose));
     assert(reader.read_pose(pose_cursor,world_pose)&&world_pose.input_epoch==3&&
            world_pose.grip_down_mask==0);
@@ -78,6 +84,9 @@ int main(){
     assert(!gears_weapon::equipment_intent_matches_pose(received,changed_pose,
         receipt_time,0x1000,0x2000,0x3000));
     changed_pose=matching_pose;changed_pose.valid_mask=2;
+    assert(!gears_weapon::equipment_intent_matches_pose(received,changed_pose,
+        receipt_time,0x1000,0x2000,0x3000));
+    changed_pose=matching_pose;changed_pose.units_per_metre=0;
     assert(!gears_weapon::equipment_intent_matches_pose(received,changed_pose,
         receipt_time,0x1000,0x2000,0x3000));
     assert(!gears_weapon::equipment_intent_matches_pose(received,matching_pose,

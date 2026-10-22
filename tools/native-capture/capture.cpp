@@ -3207,6 +3207,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                 pose.space_epoch=sample.space_epoch;pose.input_epoch=matched_hands.input_epoch;
                 pose.world_generation=frame.world_generation;
                 pose.controller=pc;pose.pawn=pawn;pose.weapon=weapon;
+                pose.units_per_metre=stereo_units_per_metre;
                 for(unsigned hand=0;hand<2;++hand){
                     const auto& h=matched_hands.hands[hand];
                     if(!gears_vr::controller_pose_usable(h.grip,h.grip_flags,h.grip_active))continue;

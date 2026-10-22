@@ -172,6 +172,7 @@ void lancer_magazine_test_tick(uptr pc,gears_weapon::EquipmentSnapshot const& ga
     pose.created_ms=GetTickCount64();pose.session=pose.sequence=1;
     pose.space_epoch=pose.input_epoch=pose.world_generation=1;
     pose.controller=pc;pose.pawn=game.pawn;pose.weapon=game.current_weapon;
+    pose.units_per_metre=100;
     pose.valid_mask=pose.grip_down_mask=1;
     if(insert){
         if(!lancer_magazine_aligned_test_pose(game.current_weapon,12.,pose)){

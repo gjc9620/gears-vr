@@ -17,6 +17,7 @@ struct EquipmentIntentEvent {
 struct HandWorldFrame {
     std::uint64_t serial{},created_ms{},session{},sequence{},space_epoch{},input_epoch{},world_generation{};
     std::uintptr_t controller{},pawn{},weapon{};
+    double units_per_metre{}; // World-pose unit scale frozen with this XR ticket.
     gears_vr::Viewpoint left{},right{};
     std::uint8_t valid_mask{}; // bit 0 left, bit 1 right
     std::uint8_t grip_down_mask{}; // Same XR ticket; only tracked hands may be down.
@@ -31,6 +32,8 @@ inline bool equipment_intent_matches_pose(EquipmentIntentEvent const& event,
     const auto hand=event.kind==EquipmentIntentKind::grab_ammo?1u:2u;
     return event.controller==controller&&event.pawn==pawn&&event.weapon==weapon&&
         pose.controller==controller&&pose.pawn==pawn&&pose.weapon==weapon&&
+        std::isfinite(pose.units_per_metre)&&pose.units_per_metre>=10&&
+        pose.units_per_metre<=500&&
         event.world_generation&&event.world_generation==pose.world_generation&&
         event.input_session&&event.input_session==pose.session&&
         event.space_epoch&&event.space_epoch==pose.space_epoch&&
@@ -41,8 +44,8 @@ inline bool equipment_intent_matches_pose(EquipmentIntentEvent const& event,
         now>=pose.created_ms&&now-pose.created_ms<=100;
 }
 struct EquipmentIntentPacket {
-    static constexpr std::uint32_t magic_value=0x47564535; // GVE5
-    static constexpr std::uint32_t version_value=5;
+    static constexpr std::uint32_t magic_value=0x47564536; // GVE6
+    static constexpr std::uint32_t version_value=6;
     static constexpr unsigned capacity=8;
     std::uint32_t magic{magic_value},version{version_value},size{sizeof(EquipmentIntentPacket)},game_pid{};
     std::uint64_t game_start{},publisher_pid{},publisher_start{},latest_serial{},latest_pose_serial{};
@@ -81,14 +84,16 @@ class EquipmentIntentBridge {
                 std::isfinite(v.rotation.yaw)&&std::isfinite(v.rotation.roll);
         };
         return pose.session&&pose.sequence&&pose.space_epoch&&pose.input_epoch&&pose.world_generation&&
+            std::isfinite(pose.units_per_metre)&&pose.units_per_metre>=10&&
+            pose.units_per_metre<=500&&
             pose.controller&&pose.pawn&&pose.weapon&&pose.valid_mask&&!(pose.valid_mask&~3u)&&
             !(pose.grip_down_mask&~pose.valid_mask)&&
             (!(pose.valid_mask&1)||viewpoint(pose.left))&&
             (!(pose.valid_mask&2)||viewpoint(pose.right));
     }
     static void name(wchar_t (&out)[128],DWORD pid,std::uint64_t start,bool lock) noexcept {
-        swprintf_s(out,lock?L"Local\\GearsVR.EquipmentIntentLock.v5.%lu.%llu":
-                           L"Local\\GearsVR.EquipmentIntent.v5.%lu.%llu",
+        swprintf_s(out,lock?L"Local\\GearsVR.EquipmentIntentLock.v6.%lu.%llu":
+                           L"Local\\GearsVR.EquipmentIntent.v6.%lu.%llu",
                    pid,static_cast<unsigned long long>(start));
     }
     bool lock_now() const noexcept {return mutex_&&WaitForSingleObject(mutex_,0)==WAIT_OBJECT_0;}

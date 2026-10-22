@@ -226,6 +226,7 @@ void mesh_follow_trial_prepare(uptr pc){
     pose.created_ms=now;pose.session=1;pose.sequence=mesh_follow_trial.sample+1;
     pose.space_epoch=pose.input_epoch=pose.world_generation=1;
     pose.controller=pc;pose.pawn=pawn;pose.weapon=weapon;
+    pose.units_per_metre=100;
     pose.valid_mask=2;
     pose.right.position={double(mesh_follow_trial.origin.x)+
             mesh_follow_trial_offsets[mesh_follow_trial.sample],
