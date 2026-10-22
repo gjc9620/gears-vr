@@ -24,6 +24,45 @@ bool test_environment(){
     return GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)==1&&behind[0]==L'1'&&
         GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)==1&&muted[0]==L'1';
 }
+bool read_bool(uptr object,const wchar_t* field,bool& value);
+// Read only: identify which original component is being rendered before any
+// attempt to move the weapon. A named WeaponMesh default subobject need not be
+// the current actor's Mesh property in every equip state.
+struct MeshPoseProbe {
+    uptr mesh{},weapon_mesh{},asset{};
+    wchar_t component_name[96]{},asset_name[96]{};
+    playground::Vector translation{};
+    playground::Rotation rotation{};
+    float local_to_world[16]{};
+    bool transform_known{},absolute_translation{},absolute_rotation{},hidden{};
+};
+bool mesh_pose_probe(uptr weapon,MeshPoseProbe& out){
+    out={};
+    if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return false;
+    out.mesh=playground::pointer(weapon,L"Mesh");
+    out.weapon_mesh=playground::pointer(weapon,L"WeaponMesh");
+    if(!playground::instance(out.mesh,L"SkeletalMeshComponent")||
+       playground::deleted(out.mesh))return false;
+    name(out.mesh,out.component_name,96);
+    out.asset=playground::pointer(out.mesh,L"SkeletalMesh");
+    if(out.asset)name(out.asset,out.asset_name,96);
+    const auto read_struct=[&](const wchar_t* field,void* destination,unsigned bytes){
+        const auto property=playground::property(out.mesh,field);
+        if(!property)return false;
+        const auto cls=get<uptr>(out.mesh+0x50);
+        const auto offset=get<unsigned>(property+0x94);
+        const auto size=get<unsigned>(cls+0x88);
+        return get<unsigned>(property+0x74)==bytes&&
+            playground::named(get<uptr>(property+0x50),L"StructProperty")&&
+            offset<=size&&bytes<=size-offset&&copy(destination,out.mesh+offset,bytes);
+    };
+    out.transform_known=read_struct(L"Translation",&out.translation,sizeof(out.translation))&&
+        read_struct(L"Rotation",&out.rotation,sizeof(out.rotation))&&
+        read_struct(L"LocalToWorld",out.local_to_world,sizeof(out.local_to_world));
+    return out.transform_known&&read_bool(out.mesh,L"AbsoluteTranslation",out.absolute_translation)&&
+        read_bool(out.mesh,L"AbsoluteRotation",out.absolute_rotation)&&
+        read_bool(out.mesh,L"HiddenGame",out.hidden);
+}
 #endif
 
 gears_weapon::BodySlot body_for_inventory_slot(unsigned slot){
@@ -218,10 +257,25 @@ void tick(uptr pc){
                 if(log_file&&now>=next_pose_log){
                     next_pose_log=now+500;
                     fwprintf(log_file,L"hand_world_pose sequence=%llu world_generation=%llu mask=%u "
-                        L"left=%.3f,%.3f,%.3f right=%.3f,%.3f,%.3f\n",
+                        L"left=%.3f,%.3f,%.3f right=%.3f,%.3f,%.3f "
+                        L"right_rot=%.4f,%.4f,%.4f\n",
                         world_hands.sequence,world_hands.world_generation,unsigned(world_hands.valid_mask),
                         world_hands.left.position.x,world_hands.left.position.y,world_hands.left.position.z,
-                        world_hands.right.position.x,world_hands.right.position.y,world_hands.right.position.z);
+                        world_hands.right.position.x,world_hands.right.position.y,world_hands.right.position.z,
+                        world_hands.right.rotation.pitch,world_hands.right.rotation.yaw,world_hands.right.rotation.roll);
+                    MeshPoseProbe mesh{};
+                    const bool known=mesh_pose_probe(world_hands.weapon,mesh);
+                    fwprintf(log_file,L"weapon_mesh_probe weapon=%p mesh=%p weapon_mesh=%p "
+                        L"component=%ls asset=%ls known=%u "
+                        L"translation=%.3f,%.3f,%.3f rotation=%d,%d,%d "
+                        L"world_origin=%.3f,%.3f,%.3f absolute=%u,%u hidden=%u\n",
+                        reinterpret_cast<void*>(world_hands.weapon),reinterpret_cast<void*>(mesh.mesh),
+                        reinterpret_cast<void*>(mesh.weapon_mesh),mesh.component_name,mesh.asset_name,
+                        unsigned(known),
+                        mesh.translation.x,mesh.translation.y,mesh.translation.z,
+                        mesh.rotation.pitch,mesh.rotation.yaw,mesh.rotation.roll,
+                        mesh.local_to_world[12],mesh.local_to_world[13],mesh.local_to_world[14],
+                        unsigned(mesh.absolute_translation),unsigned(mesh.absolute_rotation),unsigned(mesh.hidden));
                     fflush(log_file);
                 }
             }else ++pose_rejected;
