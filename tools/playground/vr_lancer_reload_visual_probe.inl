@@ -6,10 +6,30 @@ std::atomic<unsigned> reload_visual_status{},reload_visual_count{};
 struct ReloadVisualState {
     uptr world{},pawn{},weapon{},gun_mesh{},magazine{},pawn_mesh{};
     int left_hand_bone{-1};
+    int latch_bone{-1},receiver_bone{-1};
     ULONGLONG start_ms{},next_ms{};
     bool saw_reloading{},saw_finish{};
 };
 ReloadVisualState reload_visual{};
+
+bool reload_visual_name(const wchar_t* wanted,Name& out){
+    if(!wanted)return false;
+    const auto length=wcslen(wanted)+1;
+    if(length<2||length>64)return false;
+    const auto names=get<Array>(base+0x1c34800);
+    if(!names.data||names.count<1000||names.count>names.capacity||
+       names.capacity>4000000)return false;
+    for(int index=0;index<names.count;++index){
+        const auto entry=get<uptr>(names.data+size_t(index)*8);
+        if(!entry||get<unsigned>(entry)!=unsigned(index))continue;
+        wchar_t value[64]{};
+        if(copy(value,entry+20,length*sizeof(wchar_t))&&
+           !std::memcmp(value,wanted,length*sizeof(wchar_t))){
+            out={unsigned(index),0};return true;
+        }
+    }
+    return false;
+}
 
 void reload_visual_fail(const wchar_t* reason){
     reload_visual_requested.store(false,std::memory_order_release);
@@ -64,23 +84,32 @@ void reload_visual_post_tick(uptr pc){
     if(!reload_visual.weapon){
         const auto pawn_mesh=playground::pointer(pawn,L"Mesh");
         std::array<Name,3> hand_names{};int left_hand_bone{};
+        Name latch_name{},receiver_name{};
+        int latch_bone{},receiver_bone{};
         if(!playground::instance(pawn_mesh,L"SkeletalMeshComponent")||
            !support_probe_names(hand_names)||
-           !support_probe_bone_index(pawn_mesh,hand_names[1],left_hand_bone)){
-            reload_visual_fail(L"left_hand_bone_unavailable");return;
+           !support_probe_bone_index(pawn_mesh,hand_names[1],left_hand_bone)||
+           !reload_visual_name(L"b_AR_Latch",latch_name)||
+           !reload_visual_name(L"b_AR_Receiver",receiver_name)||
+           !support_probe_bone_index(gun.mesh,latch_name,latch_bone)||
+           !support_probe_bone_index(gun.mesh,receiver_name,receiver_bone)||
+           latch_bone==receiver_bone){
+            reload_visual_fail(L"original_reload_bones_unavailable");return;
         }
         reload_visual={};
         reload_visual.world=playground::arena_world;
         reload_visual.pawn=pawn;reload_visual.weapon=weapon;
         reload_visual.gun_mesh=gun.mesh;reload_visual.magazine=magazine.component;
         reload_visual.pawn_mesh=pawn_mesh;reload_visual.left_hand_bone=left_hand_bone;
+        reload_visual.latch_bone=latch_bone;
+        reload_visual.receiver_bone=receiver_bone;
         reload_visual.start_ms=now;
         if(!log_file){reload_visual_fail(L"log_unavailable");return;}
         fwprintf(log_file,L"lancer_reload_visual_begin pawn=%p weapon=%p gun_mesh=%p "
-            L"magazine=%p asset=%ls pawn_mesh=%p left_bone=%d\n",reinterpret_cast<void*>(pawn),
+            L"magazine=%p asset=%ls pawn_mesh=%p left_bone=%d latch_bone=%d receiver_bone=%d\n",reinterpret_cast<void*>(pawn),
             reinterpret_cast<void*>(weapon),reinterpret_cast<void*>(gun.mesh),
             reinterpret_cast<void*>(magazine.component),magazine.asset_name,
-            reinterpret_cast<void*>(pawn_mesh),left_hand_bone);fflush(log_file);
+            reinterpret_cast<void*>(pawn_mesh),left_hand_bone,latch_bone,receiver_bone);fflush(log_file);
     }
     if(reload_visual.world!=playground::arena_world||reload_visual.pawn!=pawn||
        reload_visual.weapon!=weapon||reload_visual.gun_mesh!=gun.mesh||
@@ -109,6 +138,21 @@ void reload_visual_post_tick(uptr pc){
         unsigned(reloading),ammo_used,spare,unsigned(magazine.hidden),
         unsigned(magazine.attached_to_pawn),ammo_bone.strength,ammo_bone.target,
         ammo_bone.bone_scale);fflush(log_file);
+    // Sample the original moving parts and gun component within one PlayerTick.
+    // The reload animation still owns both bones; this probe never moves them.
+    std::array<float,16> gun_before{},gun_after{},latch{},receiver{};
+    if(!support_probe_component_matrix(gun.mesh,gun_before)||
+       !support_probe_bone_matrix(gun.mesh,reload_visual.latch_bone,latch)||
+       !support_probe_bone_matrix(gun.mesh,reload_visual.receiver_bone,receiver)||
+       !support_probe_component_matrix(gun.mesh,gun_after)||
+       std::memcmp(gun_before.data(),gun_after.data(),sizeof(gun_before))){
+        reload_visual_fail(L"same_tick_reload_bone_matrix_unstable");return;
+    }
+    fwprintf(log_file,L"lancer_reload_bone_pose sample=%u qpc=%lld",sample,stamp.QuadPart);
+    support_probe_print_matrix(L"gun",gun_before.data());
+    support_probe_print_matrix(L"latch",latch.data());
+    support_probe_print_matrix(L"receiver",receiver.data());
+    fwprintf(log_file,L"\n");fflush(log_file);
     if(magazine.attached_to_pawn){
         std::array<float,16> gun_before{},gun_after{},pawn_before{},pawn_after{};
         std::array<float,16> magazine_before{},magazine_after{},left{};
