@@ -344,6 +344,7 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
     weapon_calls = []
     weapon_rotator_struct = None
     weapon_rotator_members = []
+    weapon_fire_trace = None
     if include_weapon_calls:
         _require(include_tick_roots, 'Weapon call observation requires certified Tick roots')
         weapon_chain = list(ancestors(war_weapon))
@@ -385,6 +386,43 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
                      number(rotator_member+0x74,'<I')==4,
                      'Unsupported Rotator member layout')
             weapon_rotator_members.append(add(rotator_member))
+        fire_fn=ids[weapon_calls[1]['function']]['address']
+        calc_fn=ids[weapon_calls[4]['function']]['address']
+        locals_size=number(fire_fn+0x88,'<I')
+        _require(36<=locals_size<=65536,'Unsupported InstantFire locals size')
+        fire_fields={}
+        for key,field_name,offset in (('start','StartTrace',0),
+                                      ('end','EndTrace',12),
+                                      ('pushed','PushedForwardStartTrace',24)):
+            property_address=child(fire_fn,field_name,'StructProperty')
+            resolved,actual=property_at(fire_fn,field_name,'StructProperty')
+            _require(resolved==property_address and actual==offset and
+                     actual+12<=locals_size and
+                     number(property_address+0x70,'<I')==1 and
+                     number(property_address+0x74,'<I')==12 and
+                     number(property_address+0x78,'<Q')==0 and
+                     number(property_address+structure_offset)==vector,
+                     'Unsupported InstantFire trace local')
+            fire_fields[key]=dict(property=add(property_address),offset=offset,
+                                  dim=1,size=12,flags=0,structure=add(vector))
+        _,fire_script=script(fire_fn)
+        calc_name=fresh(calc_fn)['name_index']
+        # The third argument is ImpactList, a dynamic array/out parameter that
+        # this observer does not inspect. Authenticate its token separately.
+        impact_list=child(fire_fn,'ImpactList','ArrayProperty')
+        _require(number(impact_list+0x94,'<I')==36 and
+                 number(impact_list+0x70,'<I')==1 and
+                 number(impact_list+0x74,'<I')==16 and
+                 number(impact_list+0x78,'<Q')==0x400000 and
+                 52<=locals_size,'Unsupported ImpactList token identity')
+        callsite_expected=(b'\x1b'+struct.pack('<II',calc_name,0)+
+                  b'\x00'+struct.pack('<Q',ids[fire_fields['pushed']['property']]['address'])+
+                  b'\x00'+struct.pack('<Q',ids[fire_fields['end']['property']]['address'])+
+                  b'\x00'+struct.pack('<Q',impact_list)+b'\x16')
+        _require(fire_script[0x95:0xba]==callsite_expected,
+                 'InstantFire CalcWeaponFire callsite changed')
+        weapon_fire_trace=dict(locals_size=locals_size,callsite=0x95,
+                               fields=fire_fields,impact_list=add(impact_list))
     # Class identity closure required by the native helper; selected class
     # superchains are certified, never inferred from an old resolver cache.
     cursor = 0
@@ -428,6 +466,7 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
              tick_roots=roots, weapon_calls=weapon_calls,
              weapon_rotator_struct=weapon_rotator_struct,
              weapon_rotator_members=weapon_rotator_members,
+             weapon_fire_trace=weapon_fire_trace,
              writer_view=writer_view, aim_state=aim_state,
              read_only=True, runtime_coverage_proven=False,
              provenance=dict(disk_exe_sha256=GAME_SHA, historical_code_sha256=HISTORICAL_CODE_SHA,
@@ -623,6 +662,41 @@ def validate_crosshair_assignment_config(c):
                          'Invalid aim result certificate')
             else:
                 _require(result is None,'Unexpected weapon result')
+        trace=c.get('weapon_fire_trace')
+        if calls:
+            _require(type(trace) is dict and set(trace)==
+                     {'locals_size','callsite','fields','impact_list'} and
+                     type(trace['locals_size']) is int and 52<=trace['locals_size']<=65536 and
+                     trace['callsite']==0x95 and
+                     type(trace['fields']) is dict and
+                     set(trace['fields'])=={'start','end','pushed'},
+                     'Invalid InstantFire trace certificate')
+            fire_fn=ids[calls[1]['function']]['address']
+            for key,name,offset in (('start','StartTrace',0),
+                                    ('end','EndTrace',12),
+                                    ('pushed','PushedForwardStartTrace',24)):
+                field=trace['fields'][key]
+                _require(type(field) is dict and set(field)==
+                         {'property','offset','dim','size','flags','structure'},
+                         'Incomplete trace local')
+                index(field['property'])
+                prop=ids[field['property']]
+                _require(prop['name']==name and prop['number']==0 and
+                         prop['outer']==fire_fn and
+                         by_address[prop['cls']]['name']=='StructProperty' and
+                         field['offset']==offset and field['dim']==1 and
+                         field['size']==12 and field['flags']==0 and
+                         field['structure']==c['roles']['vector_struct'] and
+                         offset+12<=trace['locals_size'],
+                         'Invalid trace local')
+            index(trace['impact_list'])
+            impact=ids[trace['impact_list']]
+            _require(impact['name']=='ImpactList' and impact['number']==0 and
+                     impact['outer']==fire_fn and
+                     by_address[impact['cls']]['name']=='ArrayProperty',
+                     'Invalid ImpactList token identity')
+        else:
+            _require(trace is None,'Unexpected trace certificate')
         _require(c['read_only'] is True and c['runtime_coverage_proven'] is False, 'Invalid evidence authority')
     except (KeyError, TypeError, ValueError) as e:
         raise CrosshairConfigRejected('Malformed certificate') from e
@@ -645,6 +719,12 @@ def crosshair_assignment_ini(config):
     if c.get('weapon_calls'):
         for i,member in enumerate(c['weapon_rotator_members']):
             values[f'weapon_rotator_member{i}']=member
+        trace=c['weapon_fire_trace']
+        values['weapon_fire_locals_size']=trace['locals_size']
+        values['weapon_fire_impact_list']=trace['impact_list']
+        for key,field in trace['fields'].items():
+            values[f'weapon_fire_{key}_property']=field['property']
+            values[f'weapon_fire_{key}_offset']=field['offset']
     values.update(c['layout']); values.update(c['roles'])
     view = c.get('writer_view', dict(enabled=False)); values['view_enabled'] = int(view['enabled'])
     if view['enabled']:

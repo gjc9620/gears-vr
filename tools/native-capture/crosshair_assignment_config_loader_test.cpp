@@ -96,6 +96,9 @@ int main(int argc,char** argv){
         bad=valid;bad[L"weapon_call3_result_offset"]=L"20";reject(bad);
         bad=valid;bad[L"weapon_rotator_struct"]=bad[L"vector_struct"];reject(bad);
         bad=valid;bad[L"weapon_rotator_member1"]=bad[L"weapon_rotator_member0"];reject(bad);
+        bad=valid;bad[L"weapon_fire_pushed_offset"]=L"12";reject(bad);
+        bad=valid;bad[L"weapon_fire_impact_list"]=bad[L"vector_struct"];reject(bad);
+        bad=valid;bad[L"weapon_fire_locals_size"]=L"24";reject(bad);
     }
     {auto bad=valid;bad[L"pawn"]=bad[L"controller"];reject(bad);}
     {auto bad=valid;bad[L"id1_address"]=bad[L"id0_address"];reject(bad);}

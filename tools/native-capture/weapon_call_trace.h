@@ -1,5 +1,6 @@
 #pragma once
 #include "ui_call_boundary.h"
+#include <cmath>
 
 // Synchronous, bounded FFrame ancestry checks for read-only shot observation.
 // These addresses are not persisted as authority and never cause a new call.
@@ -16,6 +17,37 @@ template<class Read> bool direct_caller(Read read,std::uintptr_t caller,
         gears_ui_call_boundary::frame(read,caller,value)&&
         value.node==expected_node&&value.object==expected_object&&
         value.previous==expected_previous&&script_pc(value.code,script,size);
+}
+struct FireInput {std::array<float,3> start{},end{},pushed{};};
+// The entry frame belongs to Engine.Weapon.InstantFire. Capture only the
+// three fixed locals already computed for its direct CalcWeaponFire call.
+// Never inspect callee parameters, ImpactList or a frame after this call ends.
+template<class Read> bool direct_fire_input(Read read,std::uintptr_t caller,
+    std::uintptr_t fire_function,std::uintptr_t weapon,std::uintptr_t parent,
+    std::uintptr_t script,unsigned script_size,unsigned locals_size,
+    std::array<unsigned,3> offsets,FireInput& out){
+    if(!caller||caller>UINTPTR_MAX-0x38||!fire_function||!weapon||!parent||
+       !script_pc(script+0x9e,script,script_size)||
+       locals_size<52||locals_size>65536||offsets!=std::array<unsigned,3>{0,12,24})return false;
+    Frame before{},after{};std::uintptr_t locals{},after_locals{};
+    if(!gears_ui_call_boundary::frame(read,caller,before)||
+       before.node!=fire_function||before.object!=weapon||
+       before.previous!=parent||before.code!=script+0x9e||
+       !read(&locals,reinterpret_cast<void const*>(caller+0x30),8)||
+       !locals||(locals&3)||locals>UINTPTR_MAX-locals_size)return false;
+    FireInput value{};
+    if(!read(value.start.data(),reinterpret_cast<void const*>(locals+offsets[0]),12)||
+       !read(value.end.data(),reinterpret_cast<void const*>(locals+offsets[1]),12)||
+       !read(value.pushed.data(),reinterpret_cast<void const*>(locals+offsets[2]),12)||
+       !gears_ui_call_boundary::frame(read,caller,after)||
+       !read(&after_locals,reinterpret_cast<void const*>(caller+0x30),8)||
+       after.node!=before.node||after.object!=before.object||
+       after.code!=before.code||after.previous!=before.previous||
+       after_locals!=locals)return false;
+    for(float component:value.start)if(!std::isfinite(component)||std::abs(component)>1e8f)return false;
+    for(float component:value.end)if(!std::isfinite(component)||std::abs(component)>1e8f)return false;
+    for(float component:value.pushed)if(!std::isfinite(component)||std::abs(component)>1e8f)return false;
+    out=value;return true;
 }
 template<class Read> bool tick_ancestry(Read read,std::uintptr_t frame,
     std::uintptr_t tick_frame,std::uintptr_t tick_fn,std::uintptr_t controller,

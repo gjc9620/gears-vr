@@ -7,6 +7,10 @@
 namespace gears_crosshair_assignment {
 struct TickRoot {unsigned owner{},function{};std::uintptr_t script{};unsigned size{};};
 struct WeaponCall {unsigned owner{},function{},result_property{},result_offset{};std::uintptr_t script{};unsigned size{};};
+struct WeaponFireTrace {
+    unsigned locals_size{},impact_list{};
+    std::array<unsigned,3> properties{},offsets{}; // StartTrace, EndTrace, PushedForwardStartTrace.
+};
 // Stable owned storage. Copy/move always rebind the internal pointer.
 struct OwnedConfig {
     gears_ui::Config identities{}; Config assignment{};
@@ -14,6 +18,7 @@ struct OwnedConfig {
     unsigned pid{},tick_root_count{};std::array<TickRoot,2> tick_roots{};
     unsigned weapon_call_count{},weapon_rotator_struct{};
     std::array<unsigned,3> weapon_rotator_members{};std::array<WeaponCall,6> weapon_calls{};
+    WeaponFireTrace weapon_fire_trace{};
     OwnedConfig(){assignment.identities=&identities;}
     OwnedConfig(OwnedConfig const& x){*this=x;}
     OwnedConfig& operator=(OwnedConfig const& x){
@@ -24,6 +29,7 @@ struct OwnedConfig {
         weapon_call_count=x.weapon_call_count;weapon_rotator_struct=x.weapon_rotator_struct;
         weapon_rotator_members=x.weapon_rotator_members;
         weapon_calls=x.weapon_calls;
+        weapon_fire_trace=x.weapon_fire_trace;
         assignment.identities=&identities;return *this;
     }
     OwnedConfig(OwnedConfig&& x) noexcept {*this=x;}
@@ -223,6 +229,28 @@ template<class Read> bool parse_config(Read read,unsigned expected_pid,std::uint
                !detail::named(c,call.result_property,L"ReturnValue",L"StructProperty",
                               addr(call.function),true))return false;
         }
+    }
+    if(parsed.weapon_call_count){
+        if(!load(L"weapon_fire_locals_size",parsed.weapon_fire_trace.locals_size)||
+           parsed.weapon_fire_trace.locals_size<52||
+           parsed.weapon_fire_trace.locals_size>65536)return false;
+        constexpr const wchar_t* names[]{L"StartTrace",L"EndTrace",L"PushedForwardStartTrace"};
+        constexpr const wchar_t* keys[]{L"weapon_fire_start",L"weapon_fire_end",L"weapon_fire_pushed"};
+        const auto owner=addr(parsed.weapon_calls[1].function);
+        for(unsigned i=0;i<3;++i){wchar_t key[64]{};
+            auto& property=parsed.weapon_fire_trace.properties[i];
+            auto& offset=parsed.weapon_fire_trace.offsets[i];
+            std::swprintf(key,64,L"%ls_property",keys[i]);
+            if(!load(key,property)||property>=ids.identity_count||
+               !detail::named(c,property,names[i],L"StructProperty",owner,true))return false;
+            std::swprintf(key,64,L"%ls_offset",keys[i]);
+            if(!load(key,offset)||offset!=12*i||
+               offset+12>parsed.weapon_fire_trace.locals_size)return false;
+        }
+        if(!load(L"weapon_fire_impact_list",parsed.weapon_fire_trace.impact_list)||
+           parsed.weapon_fire_trace.impact_list>=ids.identity_count||
+           !detail::named(c,parsed.weapon_fire_trace.impact_list,L"ImpactList",
+                          L"ArrayProperty",owner,true))return false;
     }
 #undef CH_W
 #undef CH_W_

@@ -98,7 +98,9 @@
 
 原版脚本核对发现 `WarPC.StartFire` 的覆盖体为空，直接对它发调用不能证明会射击；有效下游涉及 Pawn、InventoryManager 和当前武器的状态分派。Snub 的射速／延迟逻辑以及 Torque Bow 在 `EndFire` 时可能释放箭矢，说明不能逐帧重复 `StartFire`，也不能在追踪丢失时一律调用 `StopFire`。VR 右扳机要在经过验证的原版 R2 输入语义层接入，并与原键鼠／手柄来源去重。现有私有观察器在认证的开火调用链里可只读记录散布前后瞄准返回值，不额外调用瞄准函数；除已验证的 Hammerburst 外，还需检查 Lancer、Snub、Longshot、Torque Bow 等特例及丢失追踪时的处理。
 
-此只读返回值采样在同一个共享 VM Hook 中完成：逐次认证两个函数的 `ReturnValue` 为 12 字节 `Rotator`，并要求 `Engine.Weapon.InstantFire → WarWeapon.GetAdjustedAim → WarPawn.GetAdjustedAimFor` 直接父帧匹配。入口 R8 是返回表达式目的地址，RAX 不是角度值；任何条件不符都不读取。现阶段还未在零售版游戏里采到一枪，`CalcWeaponFire` 的起点／终点、枪口遮挡和命中仍待接线；不能由返回角度推断已经实现枪口弹道。
+此只读返回值采样在同一个共享 VM Hook 中完成：逐次认证两个函数的 `ReturnValue` 为 12 字节 `Rotator`，并要求 `Engine.Weapon.InstantFire → WarWeapon.GetAdjustedAim → WarPawn.GetAdjustedAimFor` 直接父帧匹配。入口 R8 是返回表达式目的地址，RAX 不是角度值；任何条件不符都不读取。现阶段还未在零售版游戏里采到一枪，不能由返回角度推断已经实现枪口弹道。
+
+同一观察器现还限定原版 `Engine.Weapon.InstantFire` 对 `CalcWeaponFire` 的直接调用点：当前进程必须重新证明三个局部字段的类型／偏移、调用点字节码内的字段指针及局部区大小。只有调用者执行帧稳定且代码指针位于首个起点参数处时，才只读复制原始 `StartTrace`、前推后的 `PushedForwardStartTrace` 和 `EndTrace`。这给后续枪口对照提供**原版传入碰撞查询的射线候选值**，不读取 `ImpactList`、递归穿透结果或实际命中，也没有改动发射起点；仍需一次购买版真实开火回执。
 
 已有一轮隔离的零售版测试场实测了 Hammerburst：只调用一次 `WarPC.ButtonPress('R2')`，不额外调用 `PreButtonPress` 或逐帧 `StartFire`，原版控制器 `bFire` 与 `bHoldingButton_R2` 随按下保持为有效，约 1.2 秒内 `AmmoUsedCount` 从 0 增至 15；只调用一次 `WarPC.ButtonRelease('R2')` 后两项按住状态均清零。此结果证明该枪在该次普通场景中可沿原版 R2 语义持续射击，不代表其他枪或 VR 帧桥已通过。后台游戏进程、菜单桥接和音频守护完成正常停止；测试回执保留在忽略的 `analysis/playground-20261021/fire-semantic-1022a/`。
 

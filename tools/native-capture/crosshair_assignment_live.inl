@@ -56,6 +56,64 @@ bool weapon_call_binding(gears_crosshair_assignment::OwnedConfig const& checked,
         read.field(script,function.address,0x8c)&&script.data==call.script&&
         script.count==int(call.size)&&script.count>0&&script.count<=script.capacity&&script.capacity<=131072&&
         read.field(entry,function.address,0x114)&&entry==base+0x1d6ca0))return false;
+    if(index==1){
+        auto const& trace=checked.weapon_fire_trace;
+        if(trace.locals_size<52||trace.locals_size>65536||call.size<0xba||
+           checked.assignment.vector_struct>=ids.identity_count||
+           checked.weapon_calls[4].function>=ids.identity_count||
+           trace.impact_list>=ids.identity_count)return false;
+        unsigned current_locals_size{};
+        if(!read.field(current_locals_size,function.address,0x88)||
+           current_locals_size!=trace.locals_size)return false;
+        auto const& vector=ids.identities[checked.assignment.vector_struct];
+        auto const& calc=ids.identities[checked.weapon_calls[4].function];
+        if(std::wcscmp(vector.name.data(),L"Vector")||
+           std::wcscmp(calc.name.data(),L"CalcWeaponFire")||calc.number||
+           !gears_ui::fresh_identity(ids,read,objects,names,vector)||
+           !gears_ui::fresh_identity(ids,read,objects,names,calc))return false;
+        constexpr const wchar_t* local_names[]{L"StartTrace",L"EndTrace",L"PushedForwardStartTrace"};
+        std::array<std::uintptr_t,3> properties{};
+        for(unsigned i=0;i<3;++i){
+            const auto property_index=trace.properties[i];
+            if(property_index>=ids.identity_count||trace.offsets[i]!=12*i||
+               trace.offsets[i]+12>trace.locals_size)return false;
+            auto const& local=ids.identities[property_index];
+            auto const* kind=gears_ui::known(ids,local.cls);
+            unsigned offset{},dimension{},size{};std::uint64_t flags{};uintptr_t structure{};
+            if(!kind||std::wcscmp(kind->name.data(),L"StructProperty")||
+               std::wcscmp(local.name.data(),local_names[i])||local.number||
+               local.outer!=function.address||
+               !gears_ui::fresh_identity(ids,read,objects,names,local)||
+               !read.field(offset,local.address,0x94)||offset!=trace.offsets[i]||
+               !read.field(dimension,local.address,0x70)||dimension!=1||
+               !read.field(size,local.address,0x74)||size!=12||
+               !read.field(flags,local.address,0x78)||flags!=0||
+               !read.field(structure,local.address,checked.assignment.property_structure)||
+               structure!=vector.address)return false;
+            properties[i]=local.address;
+        }
+        auto const& impact=ids.identities[trace.impact_list];
+        auto const* impact_kind=gears_ui::known(ids,impact.cls);
+        unsigned impact_offset{},impact_dim{},impact_size{};std::uint64_t impact_flags{};
+        if(!impact_kind||std::wcscmp(impact_kind->name.data(),L"ArrayProperty")||
+           std::wcscmp(impact.name.data(),L"ImpactList")||impact.number||
+           impact.outer!=function.address||
+           !gears_ui::fresh_identity(ids,read,objects,names,impact)||
+           !read.field(impact_offset,impact.address,0x94)||impact_offset!=36||
+           !read.field(impact_dim,impact.address,0x70)||impact_dim!=1||
+           !read.field(impact_size,impact.address,0x74)||impact_size!=16||
+           !read.field(impact_flags,impact.address,0x78)||impact_flags!=0x400000)return false;
+        std::array<unsigned char,37> expected{},actual{};
+        expected[0]=0x1b;std::memcpy(expected.data()+1,&calc.name_index,4);
+        std::memcpy(expected.data()+5,&calc.number,4);
+        expected[9]=expected[18]=expected[27]=0;
+        std::memcpy(expected.data()+10,&properties[2],8);
+        std::memcpy(expected.data()+19,&properties[1],8);
+        std::memcpy(expected.data()+28,&impact.address,8);
+        expected[36]=0x16;
+        if(!safe_copy(actual.data(),reinterpret_cast<void const*>(call.script+0x95),actual.size())||
+           actual!=expected)return false;
+    }
     if(index!=2&&index!=3)return true;
     if(call.result_property>=ids.identity_count||checked.weapon_rotator_struct>=ids.identity_count||
        call.result_offset!=(index==2?0x14u:0x0cu))return false;

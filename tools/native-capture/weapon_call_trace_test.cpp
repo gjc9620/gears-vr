@@ -35,6 +35,28 @@ int main(){
     assert(!direct_caller(read,fire,fire_fn,weapon,tick,0xa000,0x200));
     assert(!direct_caller(read,fire,fire_fn,controller,wrapper,0xa000,0x200));
     assert(!direct_caller(read,child,fire_fn,weapon,fire,0xa000,0x200));
+    set(fire,fire_fn,weapon,0xa09e,wrapper);write(fire+0x30,0x5000);
+    auto write_float=[&](std::uintptr_t at,float value){std::uint32_t bits{};
+        std::memcpy(&bits,&value,sizeof(bits));
+        for(unsigned i=0;i<4;++i)bytes[at+i]=static_cast<unsigned char>(bits>>(8*i));};
+    for(unsigned i=0;i<9;++i)write_float(0x5000+4*i,float(i+1));
+    FireInput input{};
+    assert(direct_fire_input(read,fire,fire_fn,weapon,wrapper,0xa000,0x200,
+        160,{0,12,24},input));
+    assert(input.start[0]==1.f&&input.end[0]==4.f&&input.pushed[0]==7.f);
+    assert(!direct_fire_input(read,fire,fire_fn,weapon,tick,0xa000,0x200,
+        160,{0,12,24},input));
+    write_float(0x5000,std::numeric_limits<float>::quiet_NaN());
+    assert(!direct_fire_input(read,fire,fire_fn,weapon,wrapper,0xa000,0x200,
+        160,{0,12,24},input));
+    write_float(0x5000,1.f);write(fire+0x30,0);
+    assert(!direct_fire_input(read,fire,fire_fn,weapon,wrapper,0xa000,0x200,
+        160,{0,12,24},input));
+    write(fire+0x30,0x5000);
+    set(fire,fire_fn,weapon,0xa09f,wrapper);
+    assert(!direct_fire_input(read,fire,fire_fn,weapon,wrapper,0xa000,0x200,
+        160,{0,12,24},input));
+    set(fire,fire_fn,weapon,0xa100,wrapper);
     assert(!fire_body_ancestry(read,wrapper,wrapper,fire_fn,weapon,
         0xa000,0x200,tick,tick_fn,controller,0x9000,0x200));
     set(fire,fire_fn,weapon,0xa100,tick);assert(!accepted());
