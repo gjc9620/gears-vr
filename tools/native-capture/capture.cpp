@@ -3204,7 +3204,8 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                instigator==pawn){
                 gears_weapon::HandWorldFrame pose{};
                 pose.session=sample.session;pose.sequence=sample.sequence;
-                pose.space_epoch=sample.space_epoch;pose.world_generation=frame.world_generation;
+                pose.space_epoch=sample.space_epoch;pose.input_epoch=matched_hands.input_epoch;
+                pose.world_generation=frame.world_generation;
                 pose.controller=pc;pose.pawn=pawn;pose.weapon=weapon;
                 for(unsigned hand=0;hand<2;++hand){
                     const auto& h=matched_hands.hands[hand];
@@ -3213,6 +3214,11 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                     if(!gears_weapon::xr_pose_in_game_world(h.grip,result.reference,view,
                             stereo_units_per_metre,world_pose))continue;
                     (hand?pose.right:pose.left)=world_pose;pose.valid_mask|=std::uint8_t(1u<<hand);
+                    // Edge counters reset at focus/profile/space boundaries. A held
+                    // grip on the first frame after a boundary is only a baseline.
+                    if(h.squeeze_active&&h.pressed[gears_vr::control_squeeze]>
+                            h.released[gears_vr::control_squeeze])
+                        pose.grip_down_mask|=std::uint8_t(1u<<hand);
                 }
                 if(pose.valid_mask){
                     if(controller_equipment_intent_bridge.publish_pose(pose))++controller_hand_pose_published;

@@ -15,14 +15,15 @@ struct EquipmentIntentEvent {
     EquipmentIntentKind kind{EquipmentIntentKind::slot};
 };
 struct HandWorldFrame {
-    std::uint64_t serial{},created_ms{},session{},sequence{},space_epoch{},world_generation{};
+    std::uint64_t serial{},created_ms{},session{},sequence{},space_epoch{},input_epoch{},world_generation{};
     std::uintptr_t controller{},pawn{},weapon{};
     gears_vr::Viewpoint left{},right{};
     std::uint8_t valid_mask{}; // bit 0 left, bit 1 right
+    std::uint8_t grip_down_mask{}; // Same XR ticket; only tracked hands may be down.
 };
 struct EquipmentIntentPacket {
-    static constexpr std::uint32_t magic_value=0x47564533; // GVE3
-    static constexpr std::uint32_t version_value=3;
+    static constexpr std::uint32_t magic_value=0x47564534; // GVE4
+    static constexpr std::uint32_t version_value=4;
     static constexpr unsigned capacity=8;
     std::uint32_t magic{magic_value},version{version_value},size{sizeof(EquipmentIntentPacket)},game_pid{};
     std::uint64_t game_start{},publisher_pid{},publisher_start{},latest_serial{},latest_pose_serial{};
@@ -59,14 +60,15 @@ class EquipmentIntentBridge {
             return gears_vr::finite(v.position)&&std::isfinite(v.rotation.pitch)&&
                 std::isfinite(v.rotation.yaw)&&std::isfinite(v.rotation.roll);
         };
-        return pose.session&&pose.sequence&&pose.space_epoch&&pose.world_generation&&
+        return pose.session&&pose.sequence&&pose.space_epoch&&pose.input_epoch&&pose.world_generation&&
             pose.controller&&pose.pawn&&pose.weapon&&pose.valid_mask&&!(pose.valid_mask&~3u)&&
+            !(pose.grip_down_mask&~pose.valid_mask)&&
             (!(pose.valid_mask&1)||viewpoint(pose.left))&&
             (!(pose.valid_mask&2)||viewpoint(pose.right));
     }
     static void name(wchar_t (&out)[128],DWORD pid,std::uint64_t start,bool lock) noexcept {
-        swprintf_s(out,lock?L"Local\\GearsVR.EquipmentIntentLock.v3.%lu.%llu":
-                           L"Local\\GearsVR.EquipmentIntent.v3.%lu.%llu",
+        swprintf_s(out,lock?L"Local\\GearsVR.EquipmentIntentLock.v4.%lu.%llu":
+                           L"Local\\GearsVR.EquipmentIntent.v4.%lu.%llu",
                    pid,static_cast<unsigned long long>(start));
     }
     bool lock_now() const noexcept {return mutex_&&WaitForSingleObject(mutex_,0)==WAIT_OBJECT_0;}

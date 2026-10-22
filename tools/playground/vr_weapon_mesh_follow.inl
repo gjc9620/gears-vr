@@ -8,7 +8,7 @@ gears_weapon::HandWorldFrame mesh_follow_hands{};
 bool mesh_follow_hands_known{};
 struct MeshFollowState {
     uptr world{},pawn{},weapon{},mesh{};
-    std::uint64_t session{},space_epoch{},world_generation{};
+    std::uint64_t session{},space_epoch{},input_epoch{},world_generation{};
     MeshPoseProbe original{};
     gears_weapon::WeaponMeshFollow solver;
     bool active{};
@@ -98,6 +98,7 @@ void mesh_follow_post_tick(uptr pc){
        (mesh_follow.active&&(mesh_follow.world!=playground::arena_world||
          mesh_follow.pawn!=pose.pawn||mesh_follow.weapon!=pose.weapon||
          mesh_follow.session!=pose.session||mesh_follow.space_epoch!=pose.space_epoch||
+         mesh_follow.input_epoch!=pose.input_epoch||
          mesh_follow.world_generation!=pose.world_generation))){
         mesh_follow_restore();
         if(requested&&!mesh_follow.active)mesh_follow_status.store(1,std::memory_order_release);
@@ -120,6 +121,7 @@ void mesh_follow_post_tick(uptr pc){
         mesh_follow.pawn=pose.pawn;mesh_follow.weapon=pose.weapon;
         mesh_follow.mesh=probe.mesh;mesh_follow.original=probe;
         mesh_follow.session=pose.session;mesh_follow.space_epoch=pose.space_epoch;
+        mesh_follow.input_epoch=pose.input_epoch;
         mesh_follow.world_generation=pose.world_generation;
         mesh_follow.solver=solver;mesh_follow.active=true;
         mesh_follow_active_visible.store(true,std::memory_order_release);

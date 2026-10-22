@@ -12,14 +12,30 @@ int main(){
     assert(!reader.read_pose(pose_cursor,world_pose)&&pose_cursor==0);
     gears_weapon::HandWorldFrame published_pose{};
     published_pose.session=7;published_pose.sequence=12;published_pose.space_epoch=3;
+    published_pose.input_epoch=2;
     published_pose.world_generation=4;published_pose.controller=0x1000;
     published_pose.pawn=0x2000;published_pose.weapon=0x3000;
-    published_pose.right={{10,20,30},{0,.5,0}};published_pose.valid_mask=2;
+    published_pose.right={{10,20,30},{0,.5,0}};
+    published_pose.valid_mask=2;published_pose.grip_down_mask=2;
     assert(publisher.publish_pose(published_pose));
     assert(reader.read_pose(pose_cursor,world_pose));
     assert(world_pose.serial==1&&world_pose.right.position.x==10&&
-           world_pose.right.rotation.yaw==.5);
+           world_pose.right.rotation.yaw==.5&&world_pose.input_epoch==2&&
+           world_pose.grip_down_mask==2);
     assert(!reader.read_pose(pose_cursor,world_pose));
+    published_pose.grip_down_mask=1; // The left hand has no tracked pose.
+    assert(!publisher.publish_pose(published_pose));
+    published_pose.grip_down_mask=0;published_pose.input_epoch=0;
+    assert(!publisher.publish_pose(published_pose));
+    published_pose.input_epoch=3;
+    assert(publisher.publish_pose(published_pose));
+    assert(reader.read_pose(pose_cursor,world_pose)&&world_pose.input_epoch==3&&
+           world_pose.grip_down_mask==0);
+    published_pose.left={{4,5,6},{0,0,0}};
+    published_pose.valid_mask=3;published_pose.grip_down_mask=1;
+    assert(publisher.publish_pose(published_pose));
+    assert(reader.read_pose(pose_cursor,world_pose)&&world_pose.valid_mask==3&&
+           world_pose.grip_down_mask==1&&world_pose.left.position.z==6);
     published_pose.valid_mask=0;
     assert(!publisher.publish_pose(published_pose));
     std::uint64_t cursor=UINT64_MAX;

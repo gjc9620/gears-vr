@@ -263,10 +263,13 @@ void tick(uptr pc){
 #endif
                 if(log_file&&now>=next_pose_log){
                     next_pose_log=now+500;
-                    fwprintf(log_file,L"hand_world_pose sequence=%llu world_generation=%llu mask=%u "
+                    fwprintf(log_file,L"hand_world_pose sequence=%llu input_epoch=%llu "
+                        L"world_generation=%llu mask=%u grip=%u "
                         L"left=%.3f,%.3f,%.3f right=%.3f,%.3f,%.3f "
                         L"right_rot=%.4f,%.4f,%.4f\n",
-                        world_hands.sequence,world_hands.world_generation,unsigned(world_hands.valid_mask),
+                        world_hands.sequence,world_hands.input_epoch,
+                        world_hands.world_generation,unsigned(world_hands.valid_mask),
+                        unsigned(world_hands.grip_down_mask),
                         world_hands.left.position.x,world_hands.left.position.y,world_hands.left.position.z,
                         world_hands.right.position.x,world_hands.right.position.y,world_hands.right.position.z,
                         world_hands.right.rotation.pitch,world_hands.right.rotation.yaw,world_hands.right.rotation.roll);
