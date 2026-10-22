@@ -40,6 +40,15 @@ struct ObserveAge {
     std::uint64_t ms{}; // Absolute distance; future means the stamp is ahead of now.
     bool known{},future{};
 };
+struct ContinuitySnapshot {
+    // Historical observe state only, never a fresh context or write permission.
+    Context context{};StreamKey stream{};
+    std::uint64_t serial{},sequence{}; // Already-consumed stream cursors.
+    double units_per_metre{};
+    unsigned bound_mask{};
+    bool context_known{},stream_known{},ready{}; // Historical ready_, not recomputed.
+    ObserveAge old_ticket_age[2]{},context_age{};
+};
 struct ObserveDiagnostic {
     std::uint64_t observed_now{};
     ObserveAge old_ticket_age[2]{},context_age{},previous_context_age{},new_ticket_age{};
@@ -123,6 +132,19 @@ public:
     // bound_after value precedes any later commit_binding. No permission state
     // is read back from this diagnostic, and authorize never changes it.
     ObserveDiagnostic const& last_observe() const noexcept {return diagnostic_;}
+    // Sample ages against now without observing a receipt, renewing timestamps,
+    // consuming cursors, invalidating plans or changing the historical state.
+    ContinuitySnapshot continuity_snapshot(std::uint64_t now) const noexcept {
+        ContinuitySnapshot snapshot{};
+        snapshot.context=context_;snapshot.stream=stream_;
+        snapshot.serial=serial_;snapshot.sequence=sequence_;
+        snapshot.units_per_metre=units_;snapshot.bound_mask=bound_;
+        snapshot.context_known=context_known_;snapshot.stream_known=stream_known_;snapshot.ready=ready_;
+        for(unsigned hand=0;hand<2;++hand)
+            snapshot.old_ticket_age[hand]=observe_age(last_present_ms_[hand],now,(bound_&(1u<<hand))!=0);
+        snapshot.context_age=observe_age(context_.observed_ms,now,context_known_);
+        return snapshot;
+    }
     // Pass only this frame's successful source read. nullptr never reuses the
     // stored ticket. Every observation also revokes all earlier plans.
     Plan observe(Context const& context,Ticket const* fresh,std::uint64_t now) noexcept {

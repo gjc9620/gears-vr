@@ -73,6 +73,123 @@ struct Trial {
 Trial trial{};
 
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+// Bounded observation buffer only. It has its own receipt cursor and never
+// supplies a Context, receipt, binding or plan to the writer. Flush at end.
+struct EquipmentShadowRow {
+    std::uint64_t early_ms{},late_ms{},epoch{},late_epoch{},old_serial{},old_sequence{};
+    std::uint64_t serial{},sequence{},created_ms{},writer_before{},writer_after{},read_qpc{};
+    unsigned phase{},late_phase{},bound{},checks{},tracked{},candidate{},expired{},other_reset{},useful{},reason_bits[2]{};
+    bool fresh{},paired{},same_state{};
+    gears_hand_stream::ObserveAge old[2]{},context{},source{},late_old[2]{},late_source{};
+};
+struct EquipmentShadowState {
+    std::array<EquipmentShadowRow,1024> rows{};
+    gears_hand_stream::ContinuitySnapshot pending_state{};
+    std::uint64_t cursor{UINT64_MAX},dropped{},invalid_clock{},writer_changes{};
+    unsigned count{},pending{UINT32_MAX};
+};
+EquipmentShadowState shadow;
+void shadow_reset(){
+    // Old buffer contents are never emitted: every row below count is replaced.
+    shadow.cursor=UINT64_MAX;shadow.dropped=shadow.invalid_clock=shadow.writer_changes=0;
+    shadow.count=0;shadow.pending=UINT32_MAX;shadow.pending_state={};
+}
+bool shadow_recent(gears_hand_stream::ObserveAge const& age){
+    return age.known&&!age.future&&age.ms<=gears_hand_stream::maximum_age_ms;
+}
+void shadow_sample(gears_weapon::HandWorldFrame const* frame,std::uint64_t now,
+    std::uint64_t writer_before,std::uint64_t begin,std::uint64_t finish){
+    if(shadow.count==shadow.rows.size()){++shadow.dropped;shadow.pending=UINT32_MAX;return;}
+    auto& row=shadow.rows[shadow.count];row={};row.early_ms=now;row.phase=trial.xr_equipment_phase;
+    row.epoch=trial.epoch;row.writer_before=writer_before;row.writer_after=trial.xr_cursor;
+    if(row.writer_before!=row.writer_after)++shadow.writer_changes;
+    if(!begin||finish<begin)++shadow.invalid_clock;else row.read_qpc=finish-begin;
+    const auto state=trial.xr_policy.continuity_snapshot(now);
+    row.old_serial=state.serial;row.old_sequence=state.sequence;row.bound=state.bound_mask;
+    row.context=state.context_age;for(unsigned hand=0;hand<2;++hand)row.old[hand]=state.old_ticket_age[hand];
+    row.fresh=frame!=nullptr;
+    if(frame){
+        row.serial=frame->serial;row.sequence=frame->sequence;row.created_ms=frame->created_ms;
+        row.tracked=frame->valid_mask;row.source=gears_hand_stream::observe_age(frame->created_ms,now);
+        const auto& context=state.context;
+        const gears_hand_stream::GameKey expected{
+            trial.xr_start.objects[gears_hand_xr_trial::world_info].address,
+            trial.xr_start.objects[gears_hand_xr_trial::controller].address,
+            trial.xr_start.objects[gears_hand_xr_trial::pawn].address,
+            trial.xr_start.objects[gears_hand_xr_trial::mesh].address,
+            trial.xr_start.objects[gears_hand_xr_trial::weapon].address};
+        const gears_hand_stream::StreamKey stream{frame->session,frame->space_epoch,
+            frame->input_epoch,frame->world_generation};
+        // These are shadow predicates, never write permissions. In particular
+        // state.context and state.ready remain historical observations.
+        if(state.context_known&&state.stream_known&&state.ready&&
+           context.action_epoch==trial.epoch&&gears_hand_stream::same(context.game,expected)&&
+           context.expected_native_world_generation==trial.xr_start.expected_native_world_generation)row.checks|=1;
+        if(frame->controller==context.game.controller&&frame->pawn==context.game.pawn&&
+           frame->weapon==context.game.weapon)row.checks|=2;
+        if(gears_hand_stream::same(stream,state.stream))row.checks|=4;
+        if(std::isfinite(frame->units_per_metre)&&frame->units_per_metre>0.&&
+           frame->units_per_metre==state.units_per_metre)row.checks|=8;
+        if(frame->serial>state.serial&&frame->sequence>state.sequence)row.checks|=16;
+        if(shadow_recent(row.source))row.checks|=32;
+        if(row.checks==63)for(unsigned hand=0;hand<2;++hand)
+            if((row.bound&row.tracked&(1u<<hand))&&shadow_recent(row.old[hand]))row.candidate|=1u<<hand;
+    }
+    shadow.pending_state=state;shadow.pending=shadow.count++;
+}
+void shadow_pair(gears_hand_stream::ContinuitySnapshot const& before,
+    gears_hand_stream::ObserveDiagnostic const& diagnostic){
+    if(shadow.pending==UINT32_MAX)return;
+    auto& row=shadow.rows[shadow.pending];shadow.pending=UINT32_MAX;
+    const auto& early=shadow.pending_state;
+    row.paired=true;row.late_ms=diagnostic.observed_now;row.late_phase=trial.xr_equipment_phase;row.late_epoch=trial.epoch;
+    row.same_state=row.phase==row.late_phase&&row.epoch==row.late_epoch&&
+        early.context_known==before.context_known&&early.stream_known==before.stream_known&&
+        early.ready==before.ready&&gears_hand_stream::same(early.context.game,before.context.game)&&
+        early.context.action_epoch==before.context.action_epoch&&
+        early.context.expected_native_world_generation==before.context.expected_native_world_generation&&
+        early.context.observed_ms==before.context.observed_ms&&
+        early.context.idle_ready==before.context.idle_ready&&early.context.clean==before.context.clean&&
+        gears_hand_stream::same(early.stream,before.stream)&&
+        early.serial==before.serial&&early.sequence==before.sequence&&early.bound_mask==before.bound_mask&&
+        early.units_per_metre==before.units_per_metre;
+    row.expired=diagnostic.mask(gears_hand_stream::ObserveReason::binding_age);
+    for(unsigned reason=0;reason<gears_hand_stream::observe_reason_count;++reason){
+        const auto mask=diagnostic.reason_masks[reason];
+        for(unsigned hand=0;hand<2;++hand)if(mask&(1u<<hand))row.reason_bits[hand]|=1u<<reason;
+        const auto kind=gears_hand_stream::ObserveReason(reason);
+        if(kind!=gears_hand_stream::ObserveReason::binding_age&&
+           kind!=gears_hand_stream::ObserveReason::no_receipt&&kind!=gears_hand_stream::ObserveReason::not_newer)
+            row.other_reset|=mask;
+    }
+    for(unsigned hand=0;hand<2;++hand)row.late_old[hand]=diagnostic.old_ticket_age[hand];
+    row.late_source=gears_hand_stream::observe_age(row.created_ms,row.late_ms,row.fresh);
+    if(row.same_state&&shadow_recent(row.late_source))row.useful=row.candidate&row.expired&~row.other_reset;
+}
+void shadow_print_age(const wchar_t* label,gears_hand_stream::ObserveAge const& age){
+    fwprintf(log_file,L" %ls_known=%u %ls_future=%u %ls_ms=%llu",label,unsigned(age.known),label,unsigned(age.future),label,age.ms);
+}
+void shadow_dump(){
+    fwprintf(log_file,L"hand_ik_equipment_shadow_begin schema=1 capacity=%zu count=%u dropped=%llu "
+        L"invalid_clock=%llu writer_changes=%llu frequency=%llu policy_mutations=0 geometry_mutations=0\n",
+        shadow.rows.size(),shadow.count,shadow.dropped,shadow.invalid_clock,shadow.writer_changes,trial.timing.frequency);
+    for(unsigned i=0;i<shadow.count;++i){const auto& row=shadow.rows[i];
+        fwprintf(log_file,L"hand_ik_equipment_shadow row=%u phase=%u early_ms=%llu late_ms=%llu "
+            L"epoch=%llu late_epoch=%llu old_serial=%llu old_sequence=%llu serial=%llu sequence=%llu created_ms=%llu "
+            L"writer_before=%llu writer_after=%llu read_qpc=%llu bound=%u checks=%u tracked=%u candidate=%u "
+            L"fresh=%u paired=%u same_state=%u late_phase=%u expired=%u other_reset=%u useful=%u "
+            L"reason_left=%u reason_right=%u",
+            i,row.phase,row.early_ms,row.late_ms,row.epoch,row.late_epoch,row.old_serial,row.old_sequence,
+            row.serial,row.sequence,row.created_ms,row.writer_before,row.writer_after,row.read_qpc,row.bound,
+            row.checks,row.tracked,row.candidate,unsigned(row.fresh),unsigned(row.paired),unsigned(row.same_state),
+            row.late_phase,row.expired,row.other_reset,row.useful,row.reason_bits[0],row.reason_bits[1]);
+        shadow_print_age(L"old_left",row.old[0]);shadow_print_age(L"old_right",row.old[1]);
+        shadow_print_age(L"context",row.context);shadow_print_age(L"source",row.source);
+        shadow_print_age(L"late_old_left",row.late_old[0]);shadow_print_age(L"late_old_right",row.late_old[1]);
+        shadow_print_age(L"late_source",row.late_source);fwprintf(log_file,L"\n");
+    }
+    fwprintf(log_file,L"hand_ik_equipment_shadow_end schema=1\n");
+}
 std::uint64_t timing_clock(){
     LARGE_INTEGER stamp{};
     return QueryPerformanceCounter(&stamp)&&stamp.QuadPart>0?std::uint64_t(stamp.QuadPart):0;
@@ -80,6 +197,7 @@ std::uint64_t timing_clock(){
 unsigned timing_phase(){return trial.xr_equipment_phase<=2?trial.xr_equipment_phase:0;}
 bool timing_active(){return trial.phase&&!trial.ended&&trial.timing.frequency&&!trial.timing.dumped;}
 void timing_begin(){
+    shadow_reset();
     LARGE_INTEGER frequency{};
     if(QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0)
         trial.timing.frequency=std::uint64_t(frequency.QuadPart);
@@ -166,7 +284,7 @@ void timing_dump_if_ended(){
             timing_print_age(L"new_ticket",value.new_ticket);fwprintf(log_file,L"\n");
         }
     }
-    fwprintf(log_file,L"hand_ik_equipment_timing_end schema=1\n");fflush(log_file);
+    fwprintf(log_file,L"hand_ik_equipment_timing_end schema=1\n");shadow_dump();fflush(log_file);
 }
 // Nested actions may end the trial inside a measured span. Delay the one dump
 // until the outer event returns and every live span has added its final sample.
@@ -174,10 +292,16 @@ struct EquipmentTimingHookScope {~EquipmentTimingHookScope(){timing_dump_if_ende
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
 gears_hand_stream::Plan observe_xr_policy(gears_hand_stream::Context const& context,
-    gears_hand_stream::Ticket const* fresh,std::uint64_t now){
+    gears_hand_stream::Ticket const* fresh,std::uint64_t now,bool regular=false){
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    const auto before=trial.xr_policy.continuity_snapshot(now);
+#else
+    (void)regular;
+#endif
     const auto plan=trial.xr_policy.observe(context,fresh,now);
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     timing_policy(trial.xr_policy.last_observe());
+    if(regular)shadow_pair(before,trial.xr_policy.last_observe());
 #endif
     return plan;
 }

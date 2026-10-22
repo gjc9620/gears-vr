@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：restore前的独立cursor只读shadow已接线，最多1024条内存记录、结束后一次输出；常规observe后配对真实binding_age，并检查动作代次／phase／历史状态未变及早期新票据到晚期仍≤100ms。Policy新增const按值continuity_snapshot只查询，不续龄／消费游标或改计划；15纯场景、五种相关构建、九检查／三拒配通过。尚未跑新候选，也未实现liveness接口，不把诊断候选当作跟手修复。详见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
+
 2026-10-23：诊断提交6467b1d／ccda候选的实际d局 PID31544 完整23写23恢复／11→10→11→10／Shutdown0，独立QPC块通过（23开始22完成1尾部pending）。phase2旧binding票据在observe平均126.667ms／最大140ms，9次明确age撤销；新票据平均48.556ms。pre_restore→observe平均35.275ms，restore9.806、单次三处装备认证约7.1、dirty stow2.149、原Tick8.241ms；这些inclusive分项样本不同、不可相加推FPS。写前证据约0.085ms，主成本不是该flush。组件唯一motion门仍false；8控件／44附件／两Hook、game_absent、9会话静音恢复均通过，Native entry verifier／XR1整局失败保留。原receipt`c867d64b…b1034c`、独立计时`7772c813…3e6306`不改写；尚未声称优化或完整6DoF完成。见 [测量详情](../../hand-ik-xr-stream-trial-20261023.md)。
 
 Astra Max指出认证内部去重不足以独自补上26.7／40ms余量；下一步先在restore前用独立shadow cursor只读测传输连续性并配对稍后撤权，不改Policy／writer／Context。仅证实最早时刻仍≤100ms后才评估单独liveness接口，始终保留真实created_ms与后置完整写入授权；该shadow与接口当前均未实现。

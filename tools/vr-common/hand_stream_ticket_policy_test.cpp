@@ -15,6 +15,9 @@ static_assert(std::is_trivially_copyable<Plan>::value&&std::is_standard_layout<P
 static_assert(std::is_trivially_copyable<Policy>::value&&std::is_standard_layout<Policy>::value);
 static_assert(std::is_trivially_copyable<ObserveDiagnostic>::value&&std::is_standard_layout<ObserveDiagnostic>::value);
 static_assert(std::is_same<decltype(std::declval<Policy const&>().last_observe()),ObserveDiagnostic const&>::value);
+static_assert(std::is_trivially_copyable<ContinuitySnapshot>::value&&std::is_standard_layout<ContinuitySnapshot>::value);
+static_assert(std::is_same<decltype(std::declval<Policy const&>().continuity_snapshot(0)),ContinuitySnapshot>::value);
+static_assert(noexcept(std::declval<Policy const&>().continuity_snapshot(0)));
 namespace {
 Context context(std::uint64_t now=1000){return {{11,12,13,14,0},7,1,now,true,true};}
 Ticket ticket(Context const& c,std::uint64_t serial,std::uint64_t sequence,std::uint64_t now){
@@ -323,6 +326,91 @@ void scale_changes_and_invalid_flags_fail_closed(){
     Live invalid;invalid.ctx.game.mesh=0;invalid.feed(3,3);
     assert(invalid.plan.accept_mask==0&&invalid.plan.restore_mask==3);
 }
+void continuity_is_historical_and_returned_by_value(){
+    Policy empty;const auto unknown=empty.continuity_snapshot(1000);
+    assert(!unknown.context_known&&!unknown.stream_known&&!unknown.ready&&unknown.bound_mask==0);
+    assert(unknown.serial==0&&unknown.sequence==0&&unknown.units_per_metre==0.);
+    assert(!unknown.context_age.known&&!unknown.old_ticket_age[0].known&&!unknown.old_ticket_age[1].known);
+    Live live;const Policy& policy=live.policy;
+    assert(policy.authorize(live.plan,live.ctx,live.now)==3);
+    auto snapshot=policy.continuity_snapshot(live.now+101);
+    assert(snapshot.context_known&&snapshot.stream_known&&snapshot.ready&&snapshot.bound_mask==3);
+    assert(same(snapshot.context.game,live.ctx.game)&&snapshot.context.observed_ms==live.now);
+    assert(snapshot.context.action_epoch==live.ctx.action_epoch&&snapshot.context.clean&&snapshot.context.idle_ready);
+    assert(snapshot.context.expected_native_world_generation==live.ctx.expected_native_world_generation);
+    assert(same(snapshot.stream,live.receipt.stream)&&snapshot.serial==2&&snapshot.sequence==2);
+    assert(snapshot.units_per_metre==100.&&snapshot.context_age.ms==101);
+    // Mutating the returned value cannot alter stored identities, cursors,
+    // readiness, binding or the still-current plan's authorization.
+    snapshot.context.game.mesh=0;snapshot.context.observed_ms=0;
+    snapshot.context.clean=false;snapshot.stream.session=0;
+    snapshot.serial=snapshot.sequence=999;snapshot.units_per_metre=1.;
+    snapshot.bound_mask=0;snapshot.ready=snapshot.context_known=snapshot.stream_known=false;
+    snapshot.old_ticket_age[0].ms=0;snapshot.context_age.ms=0;
+    const auto intact=policy.continuity_snapshot(live.now);
+    assert(intact.context_known&&intact.stream_known&&intact.ready&&intact.bound_mask==3);
+    assert(same(intact.context.game,live.ctx.game)&&intact.context.clean&&intact.context.observed_ms==live.now);
+    assert(same(intact.stream,live.receipt.stream)&&intact.serial==2&&intact.sequence==2&&intact.units_per_metre==100.);
+    assert(intact.old_ticket_age[0].ms==0&&intact.context_age.ms==0);
+    assert(policy.authorize(live.plan,live.ctx,live.now)==3);
+    live.ctx.clean=false;live.feed(3,3);
+    const auto blocked=policy.continuity_snapshot(live.now);
+    assert(blocked.context_known&&blocked.stream_known&&!blocked.ready&&!blocked.context.clean&&blocked.bound_mask==0);
+    assert(!blocked.old_ticket_age[0].known&&!blocked.old_ticket_age[1].known);
+}
+void continuity_queries_do_not_renew_age_or_revoke_plans(){
+    Live live;const auto acquired=live.now;
+    const auto observed=live.policy.last_observe();
+    auto current=live.ctx;current.observed_ms=acquired+100;
+    assert(live.policy.authorize(live.plan,current,acquired+100)==3);
+    const auto boundary=live.policy.continuity_snapshot(acquired+100);
+    assert(boundary.context_age.known&&boundary.context_age.ms==100&&!boundary.context_age.future);
+    for(const auto& age:boundary.old_ticket_age)assert(age.known&&age.ms==100&&!age.future);
+    assert(live.policy.authorize(live.plan,current,acquired+100)==3);
+    const auto expired=live.policy.continuity_snapshot(acquired+101);
+    assert(expired.ready&&expired.bound_mask==3&&expired.context.observed_ms==acquired); // Historical only.
+    assert(expired.context_age.ms==101&&!expired.context_age.future);
+    for(const auto& age:expired.old_ticket_age)assert(age.known&&age.ms==101&&!age.future);
+    current.observed_ms=acquired+101;
+    assert(live.policy.authorize(live.plan,current,acquired+101)==0);
+    assert(live.policy.authorize(live.plan,live.ctx,acquired)==3); // The query did not revoke it.
+    const auto future=live.policy.continuity_snapshot(acquired-1);
+    assert(future.context_age.known&&future.context_age.future&&future.context_age.ms==1);
+    for(const auto& age:future.old_ticket_age)assert(age.known&&age.future&&age.ms==1);
+    assert(live.policy.last_observe().observed_now==observed.observed_now);
+    assert(live.policy.last_observe().old_ticket_age[0].ms==observed.old_ticket_age[0].ms);
+    assert(live.policy.last_observe().old_ticket_age[0].known==observed.old_ticket_age[0].known);
+    // None of the queries renewed last_present_ms_ or consumed the arriving
+    // receipt: the original age101 binding must still take a fresh baseline.
+    live.ctx.observed_ms=acquired+101;auto fresh=ticket(live.ctx,3,3,acquired+101);
+    const auto plan=live.policy.observe(live.ctx,&fresh,acquired+101);
+    assert(plan.accept_mask==0&&plan.baseline_mask==3&&plan.restore_mask==3);
+    assert(live.policy.last_observe().mask(ObserveReason::binding_age)==3);
+    assert(live.policy.last_observe().old_ticket_age[0].ms==101&&live.policy.last_observe().old_ticket_age[1].ms==101);
+    fresh.serial=fresh.sequence=4;
+    const auto next=live.policy.observe(live.ctx,&fresh,acquired+101);
+    assert(next.accept_mask==3&&next.bind_mask==3&&live.policy.commit_binding(next,3));
+}
+void continuity_tracks_each_bound_hand_and_consumed_cursors(){
+    Live live;live.feed(3,3,left_hand);
+    const auto one=live.policy.continuity_snapshot(live.now+17);
+    assert(one.bound_mask==left_hand&&one.old_ticket_age[0].known&&one.old_ticket_age[0].ms==17);
+    assert(!one.old_ticket_age[0].future&&!one.old_ticket_age[1].known&&one.context_age.ms==17);
+    assert(live.policy.authorize(live.plan,live.ctx,live.now)==left_hand);
+    const auto future=live.policy.continuity_snapshot(live.now-1);
+    assert(future.old_ticket_age[0].known&&future.old_ticket_age[0].future&&future.old_ticket_age[0].ms==1);
+    assert(!future.old_ticket_age[1].known&&future.context_age.future);
+    live.feed(4,4);const auto uncommitted=live.policy.continuity_snapshot(live.now);
+    assert(uncommitted.bound_mask==left_hand&&!uncommitted.old_ticket_age[1].known);
+    assert(live.policy.commit_binding(live.plan,right_hand)); // Query preserved the current bind plan.
+    const auto both=live.policy.continuity_snapshot(live.now);
+    assert(both.bound_mask==3&&both.old_ticket_age[1].known&&both.old_ticket_age[1].ms==0);
+    live.feed(5,4);assert(live.plan.accept_mask==0);
+    const auto consumed=live.policy.continuity_snapshot(live.now);
+    assert(consumed.serial==5&&consumed.sequence==4&&consumed.bound_mask==3);
+    live.feed(5,5);assert(live.plan.accept_mask==0); // Rejected serial5 remains consumed.
+    live.feed(6,6);assert(live.plan.accept_mask==3&&live.plan.bind_mask==0);
+}
 } // namespace
 int main(){
     baseline_and_per_hand_commit();no_receipt_never_reuses_pose_and_old_plans_die();
@@ -332,5 +420,7 @@ int main(){
     each_stream_key_change_allows_new_counters_but_only_after_baseline();
     rejected_receipts_never_become_fresh_later();age_boundaries_and_long_gap_cannot_teleport_old_binding();
     game_age_pose_age_and_future_context_are_independent();scale_changes_and_invalid_flags_fail_closed();
-    std::puts("hand stream ticket policy: 12 boundary scenarios passed");
+    continuity_is_historical_and_returned_by_value();continuity_queries_do_not_renew_age_or_revoke_plans();
+    continuity_tracks_each_bound_hand_and_consumed_cursors();
+    std::puts("hand stream ticket policy: 15 boundary scenarios passed");
 }

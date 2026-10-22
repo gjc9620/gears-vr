@@ -115,6 +115,15 @@ void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigne
 }
 void pre_tick(uptr){
     if(!active_visible.load(std::memory_order_acquire)||trial.ended)return;
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    if(trial.phase&&trial.timing.frequency&&!stop_requested.load(std::memory_order_acquire)){
+        const auto writer_before=trial.xr_cursor,begin=timing_clock();
+        gears_weapon::HandWorldFrame early{};
+        const bool fresh=trial.xr_open&&xr_bridge.read_pose(shadow.cursor,early);
+        const auto finish=timing_clock();
+        shadow_sample(fresh?&early:nullptr,GetTickCount64(),writer_before,begin,finish);
+    }
+#endif
     if(trial.lease.dirty()){
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
         timing_pre_restore();
@@ -224,7 +233,7 @@ void post_tick(uptr pc){
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     timing_observation();
 #endif
-    const auto plan=observe_xr_policy(context,fresh?&ticket:nullptr,GetTickCount64());
+    const auto plan=observe_xr_policy(context,fresh?&ticket:nullptr,GetTickCount64(),true);
     xr_reset_bindings(plan.reset_binding_mask);
     if(!plan.accept_mask)return;
     for(unsigned hand=0;hand<2;++hand)if(plan.bind_mask&(1u<<hand)){
