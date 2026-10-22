@@ -6,6 +6,8 @@ It only reports bounded raw evidence; this trial cannot certify a skeletal
 effect or visible hands without a separate drift/sham analysis.
 """
 import argparse
+import ctypes
+from ctypes import wintypes
 import hashlib
 import json
 from pathlib import Path
@@ -14,6 +16,72 @@ import time
 import traceback
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def decline_owned_private_settings_prompt(pid):
+    """Dismiss only the exact prior-launch prompt in this owned game process.
+
+    The test's private profile must retain its prepared settings. BM_CLICK does
+    not activate, move, resize or reorder the user's windows.
+    """
+    user32 = ctypes.WinDLL('user32', use_last_error=True)
+    callback = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    user32.EnumWindows.argtypes = [callback, wintypes.LPARAM]
+    user32.EnumChildWindows.argtypes = [wintypes.HWND, callback, wintypes.LPARAM]
+    user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND,
+                                                 ctypes.POINTER(wintypes.DWORD)]
+    user32.GetWindowTextLengthW.argtypes = [wintypes.HWND]
+    user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user32.GetDlgCtrlID.argtypes = [wintypes.HWND]
+    user32.SendMessageTimeoutW.argtypes = [wintypes.HWND, wintypes.UINT,
+                                            wintypes.WPARAM, wintypes.LPARAM,
+                                            wintypes.UINT, wintypes.UINT,
+                                            ctypes.POINTER(ctypes.c_size_t)]
+
+    def title(hwnd):
+        size = user32.GetWindowTextLengthW(hwnd)
+        buffer = ctypes.create_unicode_buffer(size + 1)
+        user32.GetWindowTextW(hwnd, buffer, len(buffer))
+        return buffer.value
+
+    def class_name(hwnd):
+        buffer = ctypes.create_unicode_buffer(128)
+        user32.GetClassNameW(hwnd, buffer, len(buffer))
+        return buffer.value
+
+    matches = []
+
+    def top(hwnd, _):
+        owner = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+        if owner.value != pid or class_name(hwnd) != '#32770' or title(hwnd) != 'Message':
+            return True
+        children = []
+
+        def child(candidate, _):
+            children.append((candidate, class_name(candidate), title(candidate),
+                             user32.GetDlgCtrlID(candidate)))
+            return True
+
+        user32.EnumChildWindows(hwnd, callback(child), 0)
+        if any(kind == 'Static' and caption ==
+               'Last launch did not complete successfully. Revert to default settings?'
+               for _, kind, caption, _ in children):
+            matches.extend(candidate for candidate, kind, _, control_id in children
+                           if kind == 'Button' and control_id == 7)  # IDNO
+        return True
+
+    user32.EnumWindows(callback(top), 0)
+    if not matches:
+        return False
+    if len(matches) != 1:
+        raise RuntimeError('Ambiguous owned private-settings prompt')
+    result = ctypes.c_size_t()
+    if not user32.SendMessageTimeoutW(matches[0], 0xF5, 0, 0, 2, 2000,
+                                      ctypes.byref(result)):  # BM_CLICK
+        raise ctypes.WinError(ctypes.get_last_error())
+    return True
 
 
 def wait_for(check, seconds, reason):
@@ -81,7 +149,8 @@ def run(args, receipt):
         def attach():
             nonlocal bridge
             try:
-                bridge = Bridge(identity, args.dll, expected_sha256=args.dll_sha256)
+                bridge = Bridge(identity, args.dll,
+                                expected_sha256=args.dll_sha256.lower())
                 return True
             except RuntimeError as error:
                 if str(error) not in ('Invalid name array header',
@@ -90,8 +159,13 @@ def run(args, receipt):
                 return False
 
         wait_for(attach, 90, 'Original object registries did not become ready')
-        wait_for(lambda: bridge.export('PlaygroundEnable') == 0,
-                 60, 'Playground menu viewport unavailable')
+        def enable():
+            bridge.verify()
+            if decline_owned_private_settings_prompt(identity['pid']):
+                receipt['private_settings_restore_declined'] = True
+            return bridge.export('PlaygroundEnable') == 0
+
+        wait_for(enable, 60, 'Playground menu viewport unavailable')
         if bridge.export('PlaygroundTestEnter') != 0:
             raise RuntimeError('Private arena entry rejected')
         status_path = args.dll.with_name(f'playground-status-{identity["pid"]}.json')
