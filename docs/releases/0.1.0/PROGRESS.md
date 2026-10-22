@@ -2,6 +2,10 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：同一 `121f116`／dc870候选的购买版 PID 18776 按钮联调 **passed=true**，36 正式读数＋6 pending 样本。实际 owned R2／L2 各自 Release 成功并变 up，随后原 BurstDelaying EndState→Active BeginState，自然完成 pending，再原助手暂收；4 槽确认 `11→10→11→10` 均有本请求唯一 ack/API。持续 both 的收枪／取回阶段各 0.6913／0.6744 秒，原键 up／AmmoUsedCount=6 不变；松开后新 both 才再次 pressed／耗弹。最终 dirty0x10005 Shutdown0，先恢复原44字节挂点再卸Hook，两入口独立还原、publisher/game/owner正常退出；九个原已静音会话无错，Guard 持续到 game_absent。修正的 private runner 28检查通过，fresh discovery首次0.2224秒成功，未实际覆盖churn重取。原 failed a/b 不改写；c receipt SHA `e9c1b0e6…07a1e4d`。候选仍默认关闭，开始双手驱动与稳定 owned-detached 的联合接线；Quest／最终画面与完整6DoF未验收。
+
+2026-10-23：原开火结束等待与原子请求仲裁已提交 `121f116`，候选 `dc870cd1…1111f2` 封存 160 源码、七项纯检查及默认导出隔离通过。实际新局 PID 42312 在首个 Pawn.Controller 只读字段发现中因 Name registry changed 中止，Publisher／Enable／tap／helper／pending 均未开始；原收据 failed 保留，不能判定新功能结果或附件往返。Shutdown0、两入口原字节匹配、精确游戏退出、owner0和九个已静音会话无错清理通过；未抢占之前轮换的其他游戏实例。正在修正私有 runner 的启动期完整只读发现重取，不修改共享 Resolver 或重放在途请求，之后继续同一候选联调。
+
 2026-10-23：真实原 R2／L2 联调 PID 57152 成功按下两键并消耗 Hammerburst 弹药，但开火中的身体槽请求被旧候选返回 12，整局收据保持失败；当时为 BurstDelaying，缺少 yield 分阶段日志，尚不能唯一归因。清理成功，静音保护持续至精确游戏退出。新修订增加逐手 Release 回执、最多 1 秒的原开火状态自然结束等待；等待先封新 press、没有附件写权，身份／挂点／原状态／按键认证失败即取消，Stop／Shutdown 排空后才卸钩。外部与 XR intent 统一原子 claim，等待保持 processing，终值只在读回与日志后公布。严格候选／默认关闭构建和新增 mailbox／pending 纯检查通过，尚待封存后实机联调；详见 [暂收试验](../../equipment-stow-trial-20261023.md)。
 
 2026-10-23：请求确认竞态已由单请求 mailbox 修复，reserved／queued／processing 期间始终返回 0，原调用／读回／模型／完成日志结束才公开结果；真实跨线程暂停和 producer 竞争回归通过。新候选 SHA256 `81601d4b…80cdec` 的购买版 PID 36000 补测 **passed=true**：Hammerburst 槽 3 完整往返，外部 true 交还后 35 份样本持续 11.5607865 秒 detached／dirty=0、无旧 deadline 拔回；再取回／暂收后在 `0x10005` dirty 状态直接 Shutdown。日志先恢复原 44 字节挂点、clean／fault=0／revoked=0，再还原 Hook；Shutdown=0，两入口原字节独立匹配、精确游戏退出、owner0、九个已静音会话无错误／无待恢复。源封存 158 份，严格候选／默认隔离及六项纯检查通过；启动前私有 ini 原字节快照保存，未补 resize／前台恢复。回执在 `analysis/equipment-stow-runtime-1023b/`，前局失败不改写。两局均仅外部槽请求且 R2／L2 mode off；下一项为原按钮联调。XR intent 与外部请求还需原子仲裁，实际身体命中、肩部图像、与手骨 writer 共存及头显仍未验收，详见 [暂收试验](../../equipment-stow-trial-20261023.md)。

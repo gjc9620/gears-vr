@@ -79,3 +79,13 @@
 外部槽请求和 XR intent 现共用 mailbox 的原子 processing claim，先占用才能读 intent，异步等待期间持续保持请求占用；完成读回、模型更新和唯一终行日志后才发布结果。私有 StowStatus 低位 13 表示等待，SwitchStatus 在等待中持续为 0，终值仍为 10／12。纯模块覆盖真实线程竞争、处理期间的排他性、身份复现不复活、deadline／时钟边界和停止优先于 ready。
 
 本修订候选 SHA256 为 `dc870cd148b6dc88b5fbd1942c287de4fa224774c94b6536560491fd761111f2`，160 份源码及七个纯检查结果封存在对应忽略目录；source.json SHA256 为 `986f6e032f55bdbc58b3ca42681f0fbc5b7d0ef67e2a7403b1e9a56b061649ad`。严格候选／默认关闭构建和导出隔离通过；Astra Max 最终源码复核未发现剩余确定阻断。后台持键联调单独使用新 tag，旧失败回执不改写。实际 RGrip 空间命中、肩部代理渲染、与持续双手 IK 共存及头显效果均仍待完成。
+
+修订首局 PID 42312 在第一项 Pawn.Controller 反射发现时遇到真实 `DiscoveryRegistryChanged`，名称表在读取过程中发生变化，初始化没有完成。publisher 未创建、Enable／tap／按钮边沿／暂收 helper／pending 日志均为零；因此没有进入本修订的功能验证。`analysis/equipment-stow-buttons-runtime-1023b/receipt.json` 保持 failed，SHA256 `42ef757fbf325de1cac3ea846e77ed170a5c75d01cb5bdcc951d94dd0c803ed2`，机械 audit SHA256 `df4e2fc9d47c08408327471e1cbd095d89fce1c3d391730e416dca030f0cc7f1`。Shutdown=0，CallFunction32／ProcessEvent64 原字节匹配、精确 game_absent、owner0；九个原已静音会话无错误／待恢复，Guard 在游戏退出后结束。初始基线未完成，不能声称这一局核验了原附件 44 字节恢复。下一次私有 runner 将只在任何输入／槽请求开始前，对这一明确的 discovery churn 有界重新取得完整只读 reader 和字段发现；不改共享 Resolver，不重放已在途请求，不把失败解析的缓存带入新尝试。
+
+修正后的私有 c runner 通过 28 项离线检查，真实购买版 PID 18776 的完整联调 **passed=true**。本局新 reader 首次发现成功，耗时 0.2224 秒，未触发重取；不能把该局当成实际 churn 恢复分支覆盖。共 36 份正式阶段读取与 6 份 pending 样本。四次槽确认均由本请求唯一新增日志及 API 对应完成，依次为 `11→10→11→10`。
+
+本次持键收枪前原状态为 BurstDelaying、AmmoUsedCount=6。日志第 16 行确认 R2／L2 各自 owned_before=1，实际 Release called=1／ok=1，原 held 和 ownership 随即都为 0；第 17→18→19→26→27 行依次为 deferred、原 EndState(state3)、BeginState(Active1)、成功 pending complete、唯一 terminal10。六份等待样本均为 StowStatus13、dirty0、SwitchStatus0。没有清 timer 或强制改 state。
+
+保持输入源 both 不松开时，收枪后 4 样本跨 0.6913092 秒、取回后 5 样本跨 0.6744149 秒，原两键始终 up、AmmoUsedCount 始终为 6；明确松开后新的 both 才重新 pressed／耗弹至 11。两手 pressed 终计各 2 次，tapped／abort 均为 0。取回后原 hand 挂点 44 字节完全一致。最后在 `0x10005` dirty 状态直接 Shutdown，第 51→52→53→54→56 行证明 false-before、调用成功、原挂点读回、clean，之后才恢复 hook；Shutdown0，两入口 32／64 字节独立匹配，原两键 up、模式 off。发布器 406 帧、零 transient miss、退出0，精确 game_absent、owner0、九个原已静音会话无错误／待恢复，Guard 到游戏退出后才结束。私有 ini 原字节快照保留。
+
+原收据位于 `analysis/equipment-stow-buttons-runtime-1023c/receipt.json`，SHA256 `e9c1b0e6feeb3655d4cbe11c9ec97aae58adbae31fc8c770cc07e246507a1e4d`；机械 audit SHA256 `6662df51ad1582459f06b1c8df8d66a3dd0c1a218e8025f41cd85e61c93dd967`，运行日志 SHA256 `2565b4244c7e8d68b77af0da93c7d14e2e61146d1ebd5272fd07e920e5e75f1f`。这验证了 MetaOperatorSimulated 输入下当前 Hammerburst 的原按钮交还、自然开火状态结束、持续按压阻断和新边沿恢复；pending Stop／Shutdown、其他武器、Native／XR／双手共存、Quest 和最终画面仍未覆盖。

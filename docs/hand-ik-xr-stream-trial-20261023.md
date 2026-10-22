@@ -49,3 +49,11 @@ VS18／MSVC 19.51 Release 的 XR、原合成与默认禁用 Playground 构建通
 - 私有 Start 的进程身份、ABI、外部 epoch、状态采样／启动时间边界和非法对象字段。
 
 导出隔离已核对：默认禁用 DLL 没有手部试验／动画观察导出，XR 候选没有合成 Start，合成候选没有 XR Start；缺少原逐帧基础时，XR 构建在 CMake 配置阶段拒绝。Astra Max 复核了重复 Start、日志后的最后授权、按手通道与恢复顺序，并区分了 GPU 断链和 DXGI 安装前基准；本轮子任务不启用 Fast。公开 `FreeHandControl` 的 ownership／eligible／apply 门及 GVE6 ABI 没有改变；普通启动器、冻结 Native／XR 和发布包未替换。
+
+## 与身体槽暂收接合的下一步
+
+首个联合候选仍需新增明确开关和联合回执，目前没有移除两套试验的 CMake 互斥。原 Tick 前手骨恢复的顺序保持；收枪助手执行前还须确认手部 journal 已清，Shutdown 须先同时封住两方的新写入。yielding、pending 和实际助手调用期间阻止新手部计划，并废弃旧绑定。
+
+稳定的暂收阶段可以作为有限共存验证的目标：枪仍是同一当前 Weapon，暂收 lease 必须 dirty、未 fault／revoked、未停止／过期，完整对象键一致且实时 attachment 仍 detached，再叠加原手链元数据、原强度／目标、Active／quiet 和新鲜 GVE6 绑定。不能凭 detached 或 status5 取得手骨许可，也不应要求已收枪的武器仍在原手挂点。Astra Max 复核认为附件与手部尾控件没有直接写入冲突；先前暂收记录中的八控制器稳定支持开展有界实验，但尚未证明 detached 时实际双手骨输出响应。
+
+联合候选还须在暂收权限丢失／原动作交还时显式通知 handstream，先尝试恢复手部 journal 并清 binding；不能仅依赖 helper(false) 触发动作观察，因为 foreign／unknown 或已回原手的只读清除可能不调用助手，两套动作表也有差异。联合运行使用同一真实 XR 客户端发布手与输入，不与独立按钮测试发布器抢写同一映射。验收需要同一局取得助手前手骨 clean、稳定 owned-detached 时的双手目标／骨矩阵响应、取回后的新帧重新绑定，以及两个 journal 和原入口的独立恢复证据；不能把旧的分项成功拼接为共存通过。
