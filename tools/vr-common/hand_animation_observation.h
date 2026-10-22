@@ -4,7 +4,7 @@
 #include <cstdint>
 
 namespace gears_hand_animation {
-enum class Source : unsigned { hook, bridge_invoke };
+enum class Source : unsigned { hook, bridge_invoke, call_function };
 enum class Kind : unsigned {
     use_request, grab_pickup, dictate_special, do_special, end_special,
     special_start, special_stop, body_end, on_anim_end, body_play, body_stop,
@@ -29,9 +29,10 @@ struct Transition {
 class Ledger {
 public:
     Token enter(Kind kind,Source source){
-        if(calls_>=max_calls||depth_>=max_depth){overflow_=true;return {};}
+        if(unsigned(kind)>=unsigned(Kind::count)||unsigned(source)>unsigned(Source::call_function)||
+           calls_>=max_calls||depth_>=max_depth){overflow_=true;return {};}
         const auto bit=std::uint64_t{1}<<unsigned(kind);
-        (source==Source::hook?hook_mask_:bridge_mask_)|=bit;
+        (source==Source::hook?hook_mask_:source==Source::bridge_invoke?bridge_mask_:call_mask_)|=bit;
         if(kind==Kind::use_request)++pickup_request_;
         if(kind==Kind::melee_request)++melee_request_;
         Token token{++calls_,depth_?stack_[depth_-1]:0,depth_,
@@ -72,6 +73,7 @@ public:
     unsigned melee_changes()const{return melee_changes_;}
     std::uint64_t hook_mask()const{return hook_mask_;}
     std::uint64_t bridge_mask()const{return bridge_mask_;}
+    std::uint64_t call_mask()const{return call_mask_;}
     bool overflow()const{return overflow_;}
     bool started_active()const{return started_active_;}
     static constexpr bool ownership_proved(){return false;}
@@ -79,7 +81,7 @@ private:
     std::array<unsigned,max_depth> stack_{};
     unsigned calls_{},depth_{},pickup_request_{},melee_request_{};
     unsigned pickup_episode_{},melee_episode_{},special_changes_{},melee_changes_{};
-    std::uint64_t hook_mask_{},bridge_mask_{};
+    std::uint64_t hook_mask_{},bridge_mask_{},call_mask_{};
     State state_{};bool have_state_{},overflow_{},started_active_{};
 };
 } // namespace gears_hand_animation

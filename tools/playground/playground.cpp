@@ -20,6 +20,9 @@
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
 #include "../vr-common/hand_animation_observation.h"
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#include "../native-capture/ui_call_boundary.h"
+#endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)
 #include "../vr-common/free_hand_control.h"
 #endif
@@ -187,6 +190,9 @@ bool invoke(Request* r){
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
 #include "hand_animation_probe.inl"
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#include "hand_animation_call_probe.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)
 #include "vr_free_hands.inl"
 #endif
@@ -330,6 +336,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 
 static DWORD reserve_playground_hook(){
     if(hook_created)return 0;
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+    if(!handanim::test_environment())return 34;
+#endif
     base=reinterpret_cast<uptr>(GetModuleHandleW(nullptr));
     if(get<unsigned short>(base)!=0x5a4d)return 1;
     // Reservation precedes the engine registries. Independently attest the
@@ -363,6 +372,13 @@ static DWORD reserve_playground_hook(){
         if(log_file){fwprintf(log_file,L"relay_range_rejected delta=%lld\n",delta);fclose(log_file);log_file=nullptr;}
         return 7;
     }
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+    if(!handanimcall::reserve()){
+        handanimcall::remove();MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8));MH_Uninitialize();
+        if(log_file){fwprintf(log_file,L"hand_animation_call_hook_reservation_failed\n");fclose(log_file);log_file=nullptr;}
+        return 30;
+    }
+#endif
     if(log_file){fwprintf(log_file,L"hook_created relay_delta=%lld allocation_attempts=%lu allocation_last_error=%lu\n",delta,GearsPlaygroundAllocationAttempts(),GearsPlaygroundAllocationError());fflush(log_file);}
     hook_created=true;return 0;
 }
@@ -417,8 +433,22 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     if(!registered(get<uptr>(get<Array>(base+0x1c24730).data+8)))return 1;
     const auto reserved=reserve_playground_hook();if(reserved)return reserved;
     enabled.store(true,std::memory_order_release);
-    if(MH_EnableHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK){
-        enabled.store(false);MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8));MH_Uninitialize();
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+    const auto activated=MH_EnableHook(MH_ALL_HOOKS);
+#else
+    const auto activated=MH_EnableHook(reinterpret_cast<void*>(base+0x1d8dd8));
+#endif
+    if(activated!=MH_OK){
+        enabled.store(false);
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+        const auto disabled=MH_DisableHook(MH_ALL_HOOKS);
+        if(disabled!=MH_OK&&disabled!=MH_ERROR_DISABLED)return 31;
+        const auto until=GetTickCount64()+2000;
+        while(callbacks.load(std::memory_order_acquire)&&GetTickCount64()<until)Sleep(1);
+        if(callbacks.load(std::memory_order_acquire))return 31;
+        if(!handanimcall::remove())return 32;
+#endif
+        MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8));MH_Uninitialize();
         hook_created=false;
         if(log_file){fclose(log_file);log_file=nullptr;}return 6;
     }
@@ -945,7 +975,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     enabled.store(false,std::memory_order_release);
     if(auto r=pending.exchange(nullptr))InterlockedExchange(&r->state,-2);
     if(hook_created){
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+        const auto disabled=MH_DisableHook(MH_ALL_HOOKS);
+#else
         const auto disabled=MH_DisableHook(reinterpret_cast<void*>(base+0x1d8dd8));
+#endif
         if(disabled!=MH_OK&&disabled!=MH_ERROR_DISABLED)return 1;
     }
     const auto until=GetTickCount64()+2000;
@@ -1006,6 +1040,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     vrequip::lancer_magazine_status.store(0,std::memory_order_release);
 #endif
     if(hook_created){
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+        if(!handanimcall::remove())return 33;
+#endif
         if(MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK)return 3;
         if(MH_Uninitialize()!=MH_OK)return 4;
         hook_created=false;

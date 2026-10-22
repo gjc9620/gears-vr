@@ -11,6 +11,10 @@ int main(){
     assert(ledger.bridge_mask()==(std::uint64_t{1}<<unsigned(Kind::use_request)));
     assert(ledger.hook_mask()==(std::uint64_t{1}<<unsigned(Kind::grab_pickup)));
     assert(ledger.leave(pickup)&&ledger.leave(request));
+    const auto internal=ledger.enter(Kind::slot_play,Source::call_function);
+    assert(internal&&internal.source==Source::call_function&&ledger.leave(internal));
+    assert(ledger.call_mask()==(std::uint64_t{1}<<unsigned(Kind::slot_play)));
+    assert(ledger.bridge_mask()==(std::uint64_t{1}<<unsigned(Kind::use_request)));
     ledger.poll({true,true,0,false});
     auto start=ledger.poll({true,true,53,false});
     assert(start.mask==1&&start.pickup_episode==1);
@@ -44,5 +48,7 @@ int main(){
     const auto a=wrong_order.enter(Kind::melee_begin,Source::hook);
     wrong_order.enter(Kind::melee_end,Source::hook);
     assert(!wrong_order.leave(a)&&wrong_order.overflow());
+    Ledger invalid;
+    assert(!invalid.enter(Kind::count,Source::hook)&&invalid.overflow());
     std::puts("HandAnimationObservationTest passed: source isolation, correlation, missed boundaries and bounds");
 }

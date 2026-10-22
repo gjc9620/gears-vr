@@ -67,6 +67,15 @@ option(GEARS_PLAYGROUND_FREE_HANDS_PROBE "Private read-only XR two-hand targets 
 option(GEARS_PLAYGROUND_HAND_IK_TRIAL "Private single-use original right-hand IK pulse and verified rollback" OFF)
 option(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL "Private six-window right-hand IK sham/reversal recording with verified rollback" OFF)
 option(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE "Private bounded read-only pickup/melee animation lifecycle observer" OFF)
+option(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE "Private read-only CallFunction animation observer, without another native hook owner" OFF)
+if(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+    if(NOT GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+        message(FATAL_ERROR "Animation CallFunction observer requires the original lifecycle observer")
+    endif()
+    target_compile_definitions(GearsPlayground PRIVATE GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE=1)
+    add_executable(HandAnimationCallProbeOfflineTest hand_animation_call_probe_offline_test.cpp)
+    target_compile_options(HandAnimationCallProbeOfflineTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+endif()
 if(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
     if(GEARS_PLAYGROUND_HAND_IK_TRIAL OR GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2 OR
        GEARS_PLAYGROUND_EXPERIMENTAL_VR_L2 OR GEARS_PLAYGROUND_VR_R2_SIM_TEST OR

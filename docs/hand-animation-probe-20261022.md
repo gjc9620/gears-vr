@@ -51,3 +51,13 @@ cmake --build analysis/build-hand-animation-probe --config Release --target Gear
 `slot.known` 位值分别为：1 当前有效 AnimNodeSlot、2 SkelComponent、4 NodeName、8 NodeTotalWeight、16 BlendTimeToGo、32 PendingBlendOutTime、64 CustomChildIndex、128 TargetChildIndex、256 bIsPlayingCustomAnim、512 Children 布局／数量、1024 TargetWeight 布局／数量。`child_data` 为逗号分隔，每个子项是 `object:known:Weight:TotalWeight:TargetWeight:AnimSeqNameIndex:AnimSeqNameNumber:AnimSeqNameText:CurrentTime:bPlaying`。子项 known 位 1 为对象／两种实际权重可读，2 为目标权重可读，4／8／16 为序列名／当前时间／播放标志可读。每帧重新读取当前槽和子节点身份，槽被复用时不能把新动画的淡出当作原动作结束。
 
 购买版自有测试场 PID 57480 已观察到一局正常拾取与普通近战：Longshot `ServerUse` 后进入特殊动作 53，原版 `OnAnimEnd` 命中 `Custom_FullBody` 的 `AR_Idle_Ready_Kickup` 子节点，返回时动作归零且其实际／目标权重为零；随后两次普通 `MeleeAttacking` BeginState／EndState 分别对应 `AR_Melee_Smack_A`／`C`，每次结束后人物相关槽子节点权重归零。189 个快照读到同 19 个身体槽与八个稳定手部控制器身份，探针写入仍为零。私有回执 `analysis/hand-animation-probe-runtime-1022e.json`；游戏退出、Playground 关闭和 11 个静音会话恢复均完成。保存脚本提示拾取可先改库存再进动作，取消可接下一动作；普通近战姿态也可能继续退混合。此探针只认证该次正常路径的可观察边界，不认证完整所有权协议。VM 内部调用、取消／受伤、Lancer 电锯、其他固定动作、XR 手部驱动与头显画面仍须分别验证；缺任一必要证据时保持原版持有双手。
+
+## 内部动画槽调用的购买版验证
+
+另加默认关闭的 `GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE`，要求同时启用本观察器。它复用已有 [四参数 CallFunction 证据](91-reticle-inline-call-boundary.md)，仅在自有置后静音环境安装，并要求 RVA `0x1d6f30` 当前入口与既有 32 字节证书完全相同；入口已被其他 Native 所有者改写时拒绝叠加。调用者 FFrame 是未消费的参数表达式来源，不能作为参数缓冲；候选只读其 node／object／code／locals／previous 和脚本区间，四个参数及返回 RAX 位保持原样透传。新的 `source=call_function` 与 Hook／桥接来源分别记账，仍固定 `ownership_proved=0 writes=0`。
+
+构建时增加 `-DGEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE=ON`；测试驱动增加 `--require-call-boundary`。该模式在加载前独立核对 CallFunction 原字节，停机后独立重读 CallFunction 的 32 字节及 ProcessEvent 的 64 字节；还要求完整配对的实际 `kind=17` 槽播放调用。`hand_animation_call_probe_end` 记录 callbacks／accepted／completed／frame_rejected／十六进制 mask／writes；事件中的 `param_transport=caller_frame_unconsumed` 明示未解码参数。
+
+购买版 PID 59828 通过原版 `ServerUse` 取得原先没有的 Longshot，再做两次普通近战。新增入口取得 **44 对完整调用、零 caller frame 拒绝、11 次槽播放**，原观察器总计 53 对调用、274 个快照，无溢出。slots 3／10／14 的三个 `PlayCustomAnimByDuration` 先将相同子节点改为 `AR_*Holster_Rt`，后续三个配对调用（18／19／20）在同样对象上改为 `AR_*Equip_Lt`，目标权重均为 1；此前只有周期帧能看到的复用，现在已取得真实同步调用边界。主 Kickup 和 A／C 近战的五次槽播放也已观察。这个结果解决本次正常路径的具体漏钩，不等于所有 Native 直接调用、取消或处决都已覆盖，也尚未把这些事件接入持续写骨。
+
+DLL SHA256 `cb74b6d3c03aab59b07217362eacd013a141c979ce4c71de952e14670aa8781f`；私有回执 `analysis/hand-animation-call-runtime-1023a.json`、同帧变化摘要 `analysis/hand-animation-call-transitions-1023a.json`，原日志 SHA256 `433605e0aed03bfa33df34c04663c7930b97fb1c4fac892da93139b16bdd0a47`。`PlaygroundShutdown=0`，两入口独立还原比较、11 个音频会话恢复、自有游戏退出通过。私有／默认禁用构建、调用转发／占用入口／恢复失败离线测试、观察器和 Hook 测试、23 项 Python 验证器检查通过；默认 DLL 无观察器导出。这是游戏线程调用证据，未验证最终画面或头显。
