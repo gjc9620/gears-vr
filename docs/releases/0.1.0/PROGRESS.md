@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：联合b购买版 PID47248 Start0、槽11→10，原手4＋owned-detached4共8次双手写入／跨Tick采样并全部恢复，FPP累计63；但每次bind_mask3，移动被重绑吸收，未达持续运动／取回／dirty联合Shutdown验收。host Native复合新鲜度检查停止，失败四数缺失，不能唯一归因；原failed receipt `95a42eb4…3e18fa`保留。Shutdown0、8控件／44附件／Call32＋Event64恢复、自有game_absent和9会话静音收尾通过；Native clean但entry verifier false、图像8×8／GPU0／XR exit1均保留。Astra Max确认旧票据125／125／109ms触发按设计撤权；`f8ec02f`仅将Context变为纯构造，将六次装备认证去重为三个显式门。新候选`64b965a9…ca6798`（160源码、manifest`5e15c276…b2f40e`）strict构建／九检查／三拒配通过，100ms／15s／256不改，尚未跑新局。
+
 2026-10-23：其他实例自然退出后，联合a实际购买版 PID46048 在双手Start前因运行器误要求全部8 strength为+0停止；冻结C++要求0／1／4／5为(+1,+1,+0)、尾2／3／6／7为(+0,+0,+0)，真实读数完全满足原生门。未Start、未槽请求、未Native／XR session，原失败receipt `d845dbf9…399fad`和audit保留。Shutdown0，8控件全字段／44附件精确恢复，Call32／Event64独立匹配、game_absent；9音频会话无mute／restore写入或错误，Guard在游戏退出后结束。正在新b目录仅修运行器／审计位模式，候选159947不变，尚无联合交互结论。
 
 2026-10-23：联合源码已提交 `e8b3cf5`，候选160项 live／保存源码再次匹配。私有 runner 17检查、独立审计30自检、禁止Popen的默认prepare均通过，固定182依赖／23实际模块；Astra Max窄复核的FPP硬门、Stop异常仍Shutdown及静音Guard异常保活问题已修。三项后台标志显式开启，只有精确game_absent后才恢复原静音状态。准备回执 `a34c4706…31d96`；首次run在注入／私有实例创建前被另会话活动游戏的idle门拒绝，**尚无联合游戏结果**，不干预其他实例。详情见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
