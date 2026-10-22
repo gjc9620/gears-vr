@@ -2,6 +2,10 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+并行候选已纳入本独立工作树：`GEARS_PLAYGROUND_FREE_HANDS_PROBE` 默认关闭，消费 GVE6 同票据左右手完整世界位姿，在原版 `PlayerTick` 后只读记录原角色双手骨骼矩阵和固定动作状态；离线状态机覆盖双手独立失追、拾取／近战／切枪动画接管、新票据恢复、角色／会话／空间变化。候选与默认 Playground Release 构建、`FreeHandControlTest`、`PlaygroundHookTest` 和五项 Python 日志解析测试通过；导出只存在于候选 DLL。当前 `ownership_proved=false`、`apply_mask=0`，**游戏内可见双手并未被驱动**。原版拾取完整生命周期、可恢复的双手骨骼写入、掌心标定、空手 GVE6 发布及头显运行仍待解决；当前另有游戏实例在运行，本轮没有启动新的购买版手部探针。
+
+枪上弹数卡片新增默认关闭的独立 OpenXR 候选：从经认证的原版 `GetMagazineSize − AmmoUsedCount` 与 `SpareAmmoCount` 生成“枪内／备用”纹理，在当前枪体局部挂点姿态上构造双眼 Quad，前后向及过期／错票据均拒绝；手雷独立显示可用数，不放完美换弹条。MSVC `/W4 /WX` 候选测试 3/3 通过，默认 `OpenXRPoseProbe` 构建通过，CPU 预览已核对。当前没有经认证的游戏线程弹药快照跨进程桥、同票据枪模位姿和逐枪挂点，也没有原 HUD 弹数／完美条各自绘制归属的证据；所以卡片尚未进入生产 XR 循环，右上角原 HUD 尚未移除，不能声称头显可读。
+
 Lancer 控制索引继续只读核验：自有购买版置后静音 PID 58808 的当前枪模 `SkelControlIndex` 长度 9，骨骼 0–7 均为原始字节 `255`，骨骼 8（弹匣）为 `0`；`RequiredBones` 为 0–8，`AnimTickArray` 正好是当前 `AnimTree` 与其 `AnimNodeSequence`，原 `AmmoControl.SkelComponent` 指向该枪模组件。实时 UFunction 元数据确认 `SetAnimTreeTemplate(NewTemplate)`、`UpdateAnimations()`、`SetSkelControlStrength(NewStrength, InBlendTime)` 的参数结构，但没有调用它们。这个索引使“仅追加卡扣 7、机匣 5 的控制链就生效”的假设不成立；仍须引擎管理的对象创建、数组维护、索引重建与 GC／恢复证明。忽略回执 `analysis/lancer-anim-tree-runtime-1022c.json`，`PlaygroundShutdown=0`、11 个音频会话恢复及游戏退出通过。
 
 完美换弹期限从推导推进到当前实例实测：自有购买版置后静音 PID 57472 在一次原版 Lancer 换弹中，经游戏线程调用原 HUD 本来使用的 `GetActiveReloadValues`，两次分别于换弹约 0.201／0.463 秒取得相同四值：起点约 `0.700000`、预反应 `0.25`、完美宽度约 `0.100000`、普通成功宽度 `0.25` 秒。按已匹配原版判定函数的 `elapsed ≤ start + super`，这次 Lancer 的完美**终点**为约 `0.800000` 秒，自 `ReloadStartTime` 起算；这不是所有枪或所有游戏状态的常数。两次 Getter 调用前后主动换弹尝试标志均未变化；原版换弹随后自行结束、已耗弹从 1 归零。数值回执在忽略的 `analysis/lancer-reload-getter-runtime-1022a.json`，`PlaygroundShutdown=0`、11 个音频会话恢复、自有游戏退出均已核对。没有用实体动作结算完美奖励，也没有头显验收。

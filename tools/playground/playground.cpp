@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <cmath>
 #include "MinHook.h"
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+#include "../vr-common/free_hand_control.h"
+#endif
 #if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
 #include "../vr-common/weapon_lancer_blade_outline.h"
 #endif
@@ -153,6 +156,9 @@ bool invoke(Request* r){
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 #include "playground_controller.inl"
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+#include "vr_free_hands.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
 #include "vr_equipment_snapshot.inl"
 #endif
@@ -175,11 +181,18 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
     bool post_weapon_tick=false;
 #endif
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+    bool post_free_hand_tick=false;
+#endif
     if((!wcscmp(f,L"PlayerTick")||!wcscmp(f,L"Tick"))&&
         (!playground::automatic||object==playground::viewport||
             (!wcscmp(f,L"PlayerTick")&&object==playground::pointer(playground::player,L"Actor")))){
         DWORD zero=0;game_thread.compare_exchange_strong(zero,GetCurrentThreadId());
         if(game_thread.load()==GetCurrentThreadId()){
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+            post_free_hand_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
+                object==playground::pointer(playground::player,L"Actor");
+#endif
             if(auto r=pending.exchange(nullptr)){
                 const auto ok=invoke(r);InterlockedExchange(&r->state,ok?2:-1);
             }
@@ -201,6 +214,12 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     }
     inside=false;
     original(object,function,params);
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+    if(post_free_hand_tick&&enabled.load(std::memory_order_acquire)&&
+       game_thread.load()==GetCurrentThreadId()){
+        inside=true;freehands::post_tick(object);inside=false;
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
     if(post_weapon_tick&&enabled.load(std::memory_order_acquire)&&
        game_thread.load()==GetCurrentThreadId()){
@@ -268,6 +287,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundReserve(void*){
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     LifecycleScope lifecycle;
     if(enabled.load())return 0;
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+    freehands::reset();
+#endif
 #if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
     vrequip::lancer_reload_test_start=false;
     vrequip::lancer_reload_test_complete=false;
@@ -400,6 +422,25 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchTest(void
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchStatus(void*){
     if(vrequip::queued_slot.load(std::memory_order_acquire)<4)return 0;
     return vrequip::last_switch_status.load(std::memory_order_acquire);
+}
+#endif
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+// Bounded read-only probe; no skeletal writer is compiled. Status 1 queued/
+// waiting, 2 sampling, 3 complete, 4 stopped, 5 invalidated. The high word of
+// status is the number of recorded samples (up to 160).
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundFreeHandsProbeStart(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!freehands::test_environment()||
+       freehands::active_visible.load(std::memory_order_acquire))return 1;
+    bool expected=false;
+    return freehands::requested.compare_exchange_strong(expected,true)?0:2;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundFreeHandsProbeStop(void*){
+    freehands::stop_requested.store(true,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundFreeHandsProbeStatus(void*){
+    return DWORD(freehands::sample_count.load(std::memory_order_acquire)<<16)|
+        DWORD(freehands::status.load(std::memory_order_acquire));
 }
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
@@ -723,6 +764,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     const auto until=GetTickCount64()+2000;
     while(callbacks.load()&&GetTickCount64()<until)Sleep(1);
     if(callbacks.load())return 2;
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+    freehands::reset();
+#endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     vrequip::reset_switch_test();
 #endif
