@@ -460,6 +460,87 @@ def sample_owned_game(args, receipt):
                 return False
 
             wait_for(probe_done, 15, 'Game-thread Lancer pose sampling did not finish')
+        elif args.mode == 'chainsaw_semantics':
+            def fname(value):
+                for index, address in enumerate(resolver.name_pointers):
+                    if not address:
+                        continue
+                    try:
+                        if resolver.name(index) == value:
+                            return index, 0
+                    except (RuntimeError, UnicodeError):
+                        continue
+                raise RuntimeError(f'Original name absent: {value}')
+
+            def original_bool(obj, field):
+                meta = property_of(obj, field)
+                if meta['type'] != 'BoolProperty':
+                    raise RuntimeError(f'{field} is not an original bool')
+                mask = resolver.u32(meta['address'] + 0xd0)
+                if not mask:
+                    raise RuntimeError(f'{field} has no original bool mask')
+                return bool(resolver.u32(obj + meta['offset']) & mask)
+
+            def original_integer(obj, field):
+                meta = property_of(obj, field)
+                if meta['type'] == 'ByteProperty':
+                    return resolver.read(obj + meta['offset'], 1)[0]
+                if meta['type'] == 'IntProperty':
+                    return struct.unpack('<i', resolver.read(
+                        obj + meta['offset'], 4))[0]
+                raise RuntimeError(f'{field} is not an original integer')
+
+            def snapshot():
+                return {
+                    'holding_b': original_bool(pc, 'bHoldingButton_B'),
+                    'wants_melee': original_bool(pawn, 'bWantsToMelee'),
+                    # Bridge.call resolves the class method, not a current
+                    # state's method. Record it, but use the original state
+                    # fields for the test assertion.
+                    'class_is_meleeing': bool(bridge.call(weapon, 'IsMeleeing')),
+                    'doing_melee': original_bool(pawn, 'bDoingMeleeAttack'),
+                    'current_fire_mode': original_integer(weapon, 'CurrentFireMode'),
+                    'special_move': original_integer(pawn, 'SpecialMove'),
+                    'blade_running': original_bool(weapon, 'bChainSawRunning'),
+                    'target_timer': bool(bridge.call(
+                        weapon, 'IsTimerActive',
+                        inTimerFunc=fname('CheckForMeleeTarget'))),
+                    'victim': hex(pointer(weapon, 'SpecialMeleeAttackVictim')),
+                }
+
+            if not bridge.call(weapon, 'CanDoSpecialMeleeAttack'):
+                raise RuntimeError('Original Lancer melee is not available in owned arena')
+            receipt['before_chainsaw'] = snapshot()
+            if (receipt['before_chainsaw']['holding_b'] or
+                    receipt['before_chainsaw']['doing_melee']):
+                raise RuntimeError('Original Lancer was already in melee state')
+            button = fname('B')
+            pressed = False
+            try:
+                bridge.call(pc, 'ButtonPress', ButtonName=button)
+                pressed = True
+                samples = []
+                started = time.monotonic()
+                while time.monotonic() - started < .85:
+                    samples.append({'elapsed': round(time.monotonic() - started, 3),
+                                    **snapshot()})
+                    time.sleep(.06)
+                receipt['held_chainsaw_samples'] = samples
+                if not any(row['target_timer'] for row in samples):
+                    raise RuntimeError('Original Lancer target timer never appeared')
+                bridge.call(weapon, 'ClearTimer',
+                            inTimerFunc=fname('CheckForMeleeTarget'))
+                receipt['cleared_chainsaw_timer'] = snapshot()
+                time.sleep(.45)
+                receipt['held_after_timer_clear'] = snapshot()
+            finally:
+                if pressed:
+                    bridge.call(pc, 'ButtonRelease', ButtonName=button)
+            receipt['released_chainsaw'] = snapshot()
+            wait_for(lambda: not original_bool(pawn, 'bDoingMeleeAttack') and
+                     original_integer(weapon, 'CurrentFireMode') == 0,
+                     5, 'Original Lancer did not leave melee after B release')
+            receipt['settled_chainsaw'] = snapshot()
         else:
             def read_int(obj, field):
                 meta = property_of(obj, field)
@@ -635,6 +716,22 @@ def sample_owned_game(args, receipt):
             raise RuntimeError('Bounded same-tick original pose rows missing from private log')
         receipt.update(game_thread_probe=beginnings[0], samples=poses,
                        original_visual=visuals[0])
+    elif args.mode == 'chainsaw_semantics':
+        rows = receipt['held_chainsaw_samples']
+        if (not rows or not any(row['holding_b'] and row['wants_melee'] for row in rows) or
+                not any(row['doing_melee'] and row['current_fire_mode'] == 2
+                        for row in rows) or
+                not any(row['target_timer'] for row in rows) or
+                any(row['victim'] != '0x0' for row in rows) or
+                receipt['cleared_chainsaw_timer']['target_timer'] or
+                receipt['held_after_timer_clear']['target_timer'] or
+                not receipt['held_after_timer_clear']['blade_running'] or
+                not receipt['held_after_timer_clear']['doing_melee'] or
+                receipt['released_chainsaw']['holding_b'] or
+                receipt['released_chainsaw']['wants_melee'] or
+                receipt['settled_chainsaw']['doing_melee'] or
+                receipt['settled_chainsaw']['current_fire_mode'] != 0):
+            raise RuntimeError('Original Lancer B/hold/target-timer semantics incomplete')
     elif args.mode == 'socket_reload':
         beginnings = [line for line in lines if line.startswith('lancer_socket_reload_begin ')]
         rows = [parse_socket_row(line) for line in lines
@@ -753,7 +850,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('api', 'component_motion', 'socket', 'socket_reload', 'support', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('api', 'component_motion', 'socket', 'socket_reload', 'support', 'chainsaw_semantics', 'reload_visual', 'reload_hold',
                                           'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

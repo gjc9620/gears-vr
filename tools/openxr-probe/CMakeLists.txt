@@ -72,6 +72,8 @@ add_executable(WeaponLancerMagazinePoseTest ../vr-common/weapon_lancer_magazine_
 target_compile_options(WeaponLancerMagazinePoseTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(WeaponLancerInsertionTest ../vr-common/weapon_lancer_insertion_test.cpp)
 target_compile_options(WeaponLancerInsertionTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(WeaponLancerChainsawTest ../vr-common/weapon_lancer_chainsaw_test.cpp)
+target_compile_options(WeaponLancerChainsawTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(XrWaitDiagnosticsTest xr_wait_diagnostics_test.cpp)
 target_compile_options(XrWaitDiagnosticsTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(DeathHdrMatchTest ../vr-common/death_hdr_match_test.cpp)

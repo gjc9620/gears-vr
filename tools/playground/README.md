@@ -235,6 +235,13 @@ owned retail test. Both use simulated hand poses, not Quest controllers. An
 insertion candidate only writes a private
 status/log: it cannot settle ammo, complete a reload or grant a perfect bonus.
 
+`lancer_support_probe.py --mode chainsaw_semantics` is a bounded owned-retail
+test of the original Lancer melee input. It presses and releases original B,
+reads the pawn/weapon's melee and blade state, clears the original
+`CheckForMeleeTarget` timer in an empty arena, and confirms that the blade
+continues until release without acquiring a victim. It does not implement a
+VR pull gesture or exercise the paired execution.
+
 The opt-in Lancer R3 reload-hold trial also projects this fixed upper anchor
 through the current original weapon mesh matrix while the original reload is
 held. It verifies the same mesh identity on every update and leaves the
