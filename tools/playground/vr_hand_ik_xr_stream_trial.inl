@@ -267,12 +267,9 @@ void post_tick(uptr pc){
         trial.xr_world_time=xr_pending.baseline_world_time;
         trial.phase=1;trial.began=GetTickCount64();trial.deadline=trial.began+15000;
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
-        constexpr unsigned continuity_source=
-#if defined(GEARS_PLAYGROUND_VR_R2_SIM_TEST)
-            1u;
-#else
-            0u;
-#endif
+        // The continuous host admits the runtime wire profile. The unrelated
+        // optional R2 test path does not select this hand stream's provenance.
+        constexpr unsigned continuity_source=static_cast<unsigned>(gears_vr::StereoSource::RuntimeTracked);
         if(!trial.xr_policy.enable_certified_calibration(trial.xr_start.native_started_qpc,continuity_source)){
             end(7,L"xr_certified_policy_initialization_rejected");return;
         }
