@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：联合候选新增仅观测的15项内存QPC聚合和Policy逐原因／手别年龄诊断，终端一次输出，覆盖写前／写后证据flush与实际lease acquire；不改100ms created_ms续龄、15秒／256预算、Plan／authorize或任何装备门。12组Policy边界扩展断言、五种相关构建、九检查／三拒配通过，尚无新成本测量或跟手修复结论。后台测试继续显式Mute1＋置后／窗口只读，Guard保留至独立确认精确游戏退出；普通启动音频不变。见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
+
 2026-10-23：新候选64b的联合c实际 PID38884 完整11→10→11→10，23写／23恢复，取回新绑定、最终stowDirty0x10005直接Shutdown0及8控件／44附件／Call32＋Event64恢复均通过；FPP累计88，9音频会话无写入／错误／待恢复且Guard在game_absent后结束。**组件仍false：唯一失败是收枪phase2移动响应**，lease6–14全bind3，尚未保持同一绑定连续跟手；不得把完整交接流程称完整6DoF通过。receipt`a4336048…75ea83`／audit`eec68346…96c63c`保留。strict Native年龄等待实际两次约11.64／23.15ms取得≤1秒新状态，预算不延；23 runner／38 audit／10 pure检查与Popen0准备通过。Native clean但独立entry verifier false、GPU0／XR exit1和整局failed继续保留。下一步测量剩余认证／stow tick成本，100ms绑定语义不改；见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
 
 2026-10-23：联合b购买版 PID47248 Start0、槽11→10，原手4＋owned-detached4共8次双手写入／跨Tick采样并全部恢复，FPP累计63；但每次bind_mask3，移动被重绑吸收，未达持续运动／取回／dirty联合Shutdown验收。host Native复合新鲜度检查停止，失败四数缺失，不能唯一归因；原failed receipt `95a42eb4…3e18fa`保留。Shutdown0、8控件／44附件／Call32＋Event64恢复、自有game_absent和9会话静音收尾通过；Native clean但entry verifier false、图像8×8／GPU0／XR exit1均保留。Astra Max确认旧票据125／125／109ms触发按设计撤权；`f8ec02f`仅将Context变为纯构造，将六次装备认证去重为三个显式门。新候选`64b965a9…ca6798`（160源码、manifest`5e15c276…b2f40e`）strict构建／九检查／三拒配通过，100ms／15s／256不改，尚未跑新局。

@@ -464,6 +464,9 @@ void before_action(uptr object,uptr function){
 }
 void tick(){
     if(!lease.dirty())return;
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    handstream::EquipmentTimingScope timing(handstream::EquipmentTiming::dirty_stow_tick);
+#endif
     if(stop_requested.load()||shutdown_requested.load()||GetTickCount64()>=deadline){
         restore(L"stop_or_bounded_deadline");return;
     }
@@ -500,8 +503,12 @@ unsigned hand_equipment_phase(uptr pc,uptr pawn,uptr weapon){
         stow::restore(L"hand_phase_stow_deadline");return 0;
     }
     gears_weapon::StowState<stow::Key> current{};
-    const bool known=stow::read_state(current)&&current.key.objects[2].address==pc&&
-        current.key.objects[3].address==pawn&&current.key.objects[6].address==weapon;
+    bool known{};
+    {
+        handstream::EquipmentTimingScope timing(handstream::EquipmentTiming::phase_read_before);
+        known=stow::read_state(current)&&current.key.objects[2].address==pc&&
+            current.key.objects[3].address==pawn&&current.key.objects[6].address==weapon;
+    }
     if(stow::lease.dirty()){
         if(known&&current.key==stow::lease.key()&&
            current.attachment==gears_weapon::StowAttachment::original_hand){
@@ -516,12 +523,22 @@ unsigned hand_equipment_phase(uptr pc,uptr pawn,uptr weapon){
     const auto expected=current.key;
     const bool owned=stow::lease.dirty();
     gears_weapon::EquipmentSnapshot fresh{};const wchar_t* error{};
-    if(!snapshot(pc,fresh,error)||fresh.current_weapon!=weapon||!stow::idle_flags(fresh)||
+    bool snapshot_known{};
+    {
+        handstream::EquipmentTimingScope timing(handstream::EquipmentTiming::phase_snapshot);
+        snapshot_known=snapshot(pc,fresh,error);
+    }
+    if(!snapshot_known||fresh.current_weapon!=weapon||!stow::idle_flags(fresh)||
        stow::weapon_state(weapon)!=stow::WeaponState::active||stow::yielding||
        stow::pending_visible.load()||stow::stop_requested.load()||stow::shutdown_requested.load())return 0;
     gears_weapon::StowState<stow::Key> final{};
     const auto wanted=owned?gears_weapon::StowAttachment::detached:gears_weapon::StowAttachment::original_hand;
-    if(!stow::read_state(final)||!(final.key==expected)||final.attachment!=wanted||
+    bool final_known{};
+    {
+        handstream::EquipmentTimingScope timing(handstream::EquipmentTiming::phase_read_after);
+        final_known=stow::read_state(final);
+    }
+    if(!final_known||!(final.key==expected)||final.attachment!=wanted||
        stow::lease.dirty()!=owned){
         if(owned&&stow::lease.dirty()){
             stow::lease.revoke();stow::status=8;stow::stop_requested=true;

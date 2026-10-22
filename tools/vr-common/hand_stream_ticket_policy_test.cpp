@@ -7,11 +7,14 @@
 #include <initializer_list>
 #include <limits>
 #include <type_traits>
+#include <utility>
 using namespace gears_hand_stream;
 static_assert(std::is_trivially_copyable<GameKey>::value&&std::is_standard_layout<GameKey>::value);
 static_assert(std::is_trivially_copyable<Ticket>::value&&std::is_standard_layout<Ticket>::value);
 static_assert(std::is_trivially_copyable<Plan>::value&&std::is_standard_layout<Plan>::value);
 static_assert(std::is_trivially_copyable<Policy>::value&&std::is_standard_layout<Policy>::value);
+static_assert(std::is_trivially_copyable<ObserveDiagnostic>::value&&std::is_standard_layout<ObserveDiagnostic>::value);
+static_assert(std::is_same<decltype(std::declval<Policy const&>().last_observe()),ObserveDiagnostic const&>::value);
 namespace {
 Context context(std::uint64_t now=1000){return {{11,12,13,14,0},7,1,now,true,true};}
 Ticket ticket(Context const& c,std::uint64_t serial,std::uint64_t sequence,std::uint64_t now){
@@ -36,9 +39,15 @@ void baseline_and_per_hand_commit(){
     Policy policy;auto c=context();auto t=ticket(c,1,1,1000);
     auto p=policy.observe(c,&t,1000);
     assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3);
+    const auto first=policy.last_observe();
+    assert(first.mask(ObserveReason::context_identity)==3&&first.mask(ObserveReason::context_readiness)==3);
+    assert(first.mask(ObserveReason::stream_changed)==3&&!first.previous_context_age.known);
+    assert(first.context_age.known&&first.context_age.ms==0&&!first.context_age.future);
+    assert(first.new_ticket_age.known&&first.new_ticket_age.ms==0&&!first.old_ticket_age[0].known);
     assert(!policy.commit_binding(p,1)&&policy.bound_mask()==0);
     t.serial=t.sequence=2;p=policy.observe(c,&t,1000);
     assert(p.accept_mask==3&&p.bind_mask==3&&policy.authorize(p,c,1000)==0);
+    for(auto mask:policy.last_observe().reason_masks)assert(mask==0); // Reasons reset each observe.
     assert(!policy.commit_binding(p,4)&&!policy.commit_binding(p,0));
     assert(policy.commit_binding(p,right_hand)&&policy.authorize(p,c,1000)==right_hand);
     assert(!policy.commit_binding(p,right_hand));
@@ -52,6 +61,8 @@ void no_receipt_never_reuses_pose_and_old_plans_die(){
     assert(!p.has_ticket&&p.accept_mask==0&&p.bind_mask==0&&p.restore_mask==3&&p.reset_binding_mask==0);
     assert(live.policy.bound_mask()==3&&live.policy.authorize(p,live.ctx,live.now)==0);
     assert(live.policy.authorize(old,live.ctx,live.now)==0&&!live.policy.commit_binding(old,1));
+    assert(live.policy.last_observe().mask(ObserveReason::no_receipt)==3);
+    assert(!live.policy.last_observe().new_ticket_age.known&&live.policy.last_observe().bound_after==3);
     live.feed(3,3);assert(live.plan.accept_mask==3&&live.plan.bind_mask==0);
     assert(live.policy.authorize(live.plan,live.ctx,live.now)==3);
 }
@@ -81,6 +92,8 @@ void plans_cannot_be_modified_or_used_after_new_observation(){
 void serial_and_sequence_each_strictly_advance(){
     Live live;
     live.feed(3,2);assert(live.plan.accept_mask==0&&live.policy.bound_mask()==3);
+    assert(live.policy.last_observe().mask(ObserveReason::not_newer)==3);
+    assert(live.policy.last_observe().mask(ObserveReason::ticket_shape)==0);
     live.feed(3,3);assert(live.plan.accept_mask==0); // Rejected serial 3 was consumed.
     live.feed(4,3);assert(live.plan.accept_mask==0); // Rejected sequence 3 was consumed.
     live.feed(5,4);assert(live.plan.accept_mask==3);
@@ -88,6 +101,8 @@ void serial_and_sequence_each_strictly_advance(){
     live.feed(6,5);assert(live.plan.accept_mask==0);
     live.feed(7,6);assert(live.plan.accept_mask==3);
     live.feed(0,7);assert(live.plan.accept_mask==0&&live.plan.restore_mask==3);
+    assert(live.policy.last_observe().mask(ObserveReason::ticket_shape)==3);
+    assert(live.policy.last_observe().mask(ObserveReason::not_newer)==0); // Shape returns first.
     live.feed(8,0);assert(live.plan.accept_mask==0);
 }
 void single_hand_loss_and_fresh_recovery(){
@@ -95,6 +110,8 @@ void single_hand_loss_and_fresh_recovery(){
     assert(live.plan.accept_mask==left_hand&&live.plan.bind_mask==0);
     assert(live.plan.reset_binding_mask==right_hand&&live.plan.restore_mask==right_hand);
     assert(live.policy.bound_mask()==left_hand&&live.policy.authorize(live.plan,live.ctx,live.now)==left_hand);
+    assert(live.policy.last_observe().mask(ObserveReason::tracking_loss)==right_hand);
+    assert(live.policy.last_observe().bound_before==3&&live.policy.last_observe().bound_after==left_hand);
     live.receipt.valid_mask=both_hands;
     auto stale=live.policy.observe(live.ctx,&live.receipt,live.now);
     assert(stale.accept_mask==0&&stale.bind_mask==0&&live.policy.bound_mask()==left_hand);
@@ -106,6 +123,7 @@ void single_hand_loss_and_fresh_recovery(){
     assert(live.policy.authorize(live.plan,live.ctx,live.now)==3);
     live.feed(5,5,0);
     assert(live.plan.accept_mask==0&&live.plan.restore_mask==3&&live.policy.bound_mask()==0);
+    assert(live.policy.last_observe().mask(ObserveReason::tracking_loss)==3);
     live.feed(6,6,3);
     assert(live.plan.accept_mask==3&&live.plan.bind_mask==3&&live.policy.commit_binding(live.plan,3));
 }
@@ -118,6 +136,9 @@ void missing_baseline_and_readiness_boundaries(){
     assert(p.bind_mask==3&&policy.commit_binding(p,3));
     c.idle_ready=false;t.serial=t.sequence=3;p=policy.observe(c,&t,1000);
     assert(p.accept_mask==0&&p.restore_mask==3&&policy.bound_mask()==0);
+    assert(policy.last_observe().mask(ObserveReason::context_readiness)==3);
+    assert(policy.last_observe().mask(ObserveReason::context_identity)==0);
+    assert(policy.last_observe().mask(ObserveReason::not_ready)==3);
     c.idle_ready=true;p=policy.observe(c,nullptr,1000);
     assert(p.accept_mask==0&&p.restore_mask==3);
     p=policy.observe(c,&t,1000);assert(p.accept_mask==0&&p.baseline_mask==0); // During-action receipt cannot be reused.
@@ -144,6 +165,7 @@ void game_and_action_changes_seal_the_current_receipt(){
         live.feed(3,3);
         assert(live.plan.accept_mask==0&&live.plan.baseline_mask==3&&live.plan.restore_mask==3);
         assert(live.policy.bound_mask()==0&&!live.policy.commit_binding(live.plan,3));
+        assert(live.policy.last_observe().mask(ObserveReason::context_identity)==3);
         live.feed(4,4);assert(live.plan.bind_mask==3&&live.policy.commit_binding(live.plan,3));
     }
     Live live;++live.ctx.action_epoch;
@@ -162,23 +184,35 @@ void each_stream_key_change_allows_new_counters_but_only_after_baseline(){
         }
         auto p=live.policy.observe(live.ctx,&next,live.now);
         assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3);
+        assert(live.policy.last_observe().mask(ObserveReason::stream_changed)==3);
         next.serial=next.sequence=2;p=live.policy.observe(live.ctx,&next,live.now);
         assert(p.accept_mask==3&&p.bind_mask==3&&live.policy.commit_binding(p,3));
     }
     Live live;auto wrong=live.receipt;wrong.serial=wrong.sequence=3;++wrong.stream.world_generation;
     auto p=live.policy.observe(live.ctx,&wrong,live.now);
     assert(p.accept_mask==0&&p.restore_mask==3&&live.policy.bound_mask()==0);
+    assert(live.policy.last_observe().mask(ObserveReason::ticket_world)==3);
+    Live invalid;auto bad=invalid.receipt;bad.serial=bad.sequence=3;bad.stream.session=0;
+    p=invalid.policy.observe(invalid.ctx,&bad,invalid.now);
+    assert(p.accept_mask==0&&p.restore_mask==3);
+    assert(invalid.policy.last_observe().mask(ObserveReason::stream_invalid)==3);
+    assert(invalid.policy.last_observe().mask(ObserveReason::ticket_shape)==0); // Earlier stream branch.
 }
 void rejected_receipts_never_become_fresh_later(){
     Live live;auto future=live.receipt;future.serial=future.sequence=3;future.created_ms=live.now+10;
     auto p=live.policy.observe(live.ctx,&future,live.now);
     assert(p.accept_mask==0&&p.restore_mask==3);
+    assert(live.policy.last_observe().mask(ObserveReason::ticket_age)==3);
+    assert(live.policy.last_observe().new_ticket_age.future&&live.policy.last_observe().new_ticket_age.ms==10);
     live.now=future.created_ms;live.ctx.observed_ms=live.now;
     p=live.policy.observe(live.ctx,&future,live.now);assert(p.accept_mask==0&&p.baseline_mask==0);
+    assert(live.policy.last_observe().mask(ObserveReason::not_newer)==3);
+    assert(live.policy.last_observe().mask(ObserveReason::ticket_age)==0);
     live.feed(4,4);assert(live.plan.accept_mask==0&&live.plan.baseline_mask==3);
     live.feed(5,5);assert(live.plan.bind_mask==3&&live.policy.commit_binding(live.plan,3));
     auto wrong=live.receipt;wrong.serial=wrong.sequence=6;++wrong.controller;
     p=live.policy.observe(live.ctx,&wrong,live.now);assert(p.accept_mask==0&&p.restore_mask==3);
+    assert(live.policy.last_observe().mask(ObserveReason::ticket_owner)==3);
     wrong.controller=live.ctx.game.controller;
     p=live.policy.observe(live.ctx,&wrong,live.now);assert(p.accept_mask==0&&p.baseline_mask==0);
     // The first receipt of a different stream is consumed even when rejected.
@@ -198,10 +232,16 @@ void age_boundaries_and_long_gap_cannot_teleport_old_binding(){
     live.ctx.observed_ms=acquired+100;
     auto p=live.policy.observe(live.ctx,nullptr,acquired+100);
     assert(p.accept_mask==0&&p.restore_mask==3&&p.reset_binding_mask==0&&live.policy.bound_mask()==3);
+    assert(live.policy.last_observe().old_ticket_age[0].known&&live.policy.last_observe().old_ticket_age[0].ms==100);
+    assert(live.policy.last_observe().mask(ObserveReason::binding_age)==0);
     live.ctx.observed_ms=acquired+101;
     auto fresh=ticket(live.ctx,3,3,acquired+101);
     p=live.policy.observe(live.ctx,&fresh,acquired+101);
     assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3&&live.policy.bound_mask()==0);
+    const auto expired=live.policy.last_observe();
+    assert(expired.mask(ObserveReason::binding_age)==3&&expired.bound_before==3&&expired.bound_after==0);
+    assert(expired.old_ticket_age[0].ms==101&&expired.old_ticket_age[1].ms==101);
+    assert(!expired.old_ticket_age[0].future&&expired.new_ticket_age.ms==0&&expired.context_age.ms==0);
     fresh.serial=fresh.sequence=4;p=live.policy.observe(live.ctx,&fresh,acquired+101);
     assert(p.bind_mask==3&&live.policy.commit_binding(p,3));
     // An arriving fresh receipt does not bypass expiry when there was no
@@ -209,30 +249,62 @@ void age_boundaries_and_long_gap_cannot_teleport_old_binding(){
     Live silent;silent.now+=101;silent.ctx.observed_ms=silent.now;
     fresh=ticket(silent.ctx,3,3,silent.now);p=silent.policy.observe(silent.ctx,&fresh,silent.now);
     assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3);
+    assert(silent.policy.last_observe().mask(ObserveReason::binding_age)==3);
+    assert(silent.policy.last_observe().previous_context_age.ms==101);
+    Live one;one.feed(3,3,left_hand);one.now+=101;one.ctx.observed_ms=one.now;
+    fresh=ticket(one.ctx,4,4,one.now);fresh.valid_mask=left_hand;
+    p=one.policy.observe(one.ctx,&fresh,one.now);
+    assert(p.accept_mask==0&&one.policy.last_observe().mask(ObserveReason::binding_age)==left_hand);
+    assert(one.policy.last_observe().old_ticket_age[0].known&&!one.policy.last_observe().old_ticket_age[1].known);
+    // A receipt accepted at age100 retains created_ms, not its receive time:
+    // the next fresh arrival one millisecond later must baseline the old binding.
+    Live stamped;fresh=ticket(stamped.ctx,3,3,stamped.now-100);
+    p=stamped.policy.observe(stamped.ctx,&fresh,stamped.now);assert(p.accept_mask==3);
+    ++stamped.now;stamped.ctx.observed_ms=stamped.now;fresh=ticket(stamped.ctx,4,4,stamped.now);
+    p=stamped.policy.observe(stamped.ctx,&fresh,stamped.now);
+    assert(p.accept_mask==0&&p.baseline_mask==3&&stamped.policy.last_observe().old_ticket_age[0].ms==101);
+    assert(stamped.policy.last_observe().mask(ObserveReason::binding_age)==3&&stamped.policy.last_observe().new_ticket_age.ms==0);
+    // Clock reversal is observable without unsigned age underflow or any
+    // change to the existing recent()/baseline behavior.
+    Live backwards;--backwards.now;backwards.ctx.observed_ms=backwards.now;
+    fresh=ticket(backwards.ctx,3,3,backwards.now);
+    p=backwards.policy.observe(backwards.ctx,&fresh,backwards.now);
+    assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3);
+    assert(backwards.policy.last_observe().mask(ObserveReason::binding_age)==3);
+    assert(backwards.policy.last_observe().old_ticket_age[0].future&&backwards.policy.last_observe().old_ticket_age[0].ms==1);
+    assert(backwards.policy.last_observe().previous_context_age.future);
 }
 void game_age_pose_age_and_future_context_are_independent(){
     Live live;auto t=live.receipt;t.serial=t.sequence=3;
     t.created_ms=live.now-100;auto p=live.policy.observe(live.ctx,&t,live.now);
     assert(p.accept_mask==3&&live.policy.authorize(p,live.ctx,live.now)==3);
+    assert(live.policy.last_observe().new_ticket_age.ms==100&&live.policy.last_observe().mask(ObserveReason::ticket_age)==0);
     t.serial=t.sequence=4;t.created_ms=live.now-101;
     p=live.policy.observe(live.ctx,&t,live.now);assert(p.accept_mask==0&&p.restore_mask==3);
+    assert(live.policy.last_observe().new_ticket_age.ms==101&&live.policy.last_observe().mask(ObserveReason::ticket_age)==3);
     Live stale_game;stale_game.now+=100;
     t=ticket(stale_game.ctx,3,3,stale_game.now);
     p=stale_game.policy.observe(stale_game.ctx,&t,stale_game.now);
     assert(p.accept_mask==3); // Exactly 100 ms old game facts still qualify.
+    assert(stale_game.policy.last_observe().context_age.ms==100&&!stale_game.policy.last_observe().context_age.future);
     ++stale_game.now;t=ticket(stale_game.ctx,4,4,stale_game.now);
     p=stale_game.policy.observe(stale_game.ctx,&t,stale_game.now);
     assert(p.accept_mask==0&&p.restore_mask==3); // Fresh pose cannot rescue old game facts.
+    assert(stale_game.policy.last_observe().context_age.ms==101&&stale_game.policy.last_observe().new_ticket_age.ms==0);
+    assert(stale_game.policy.last_observe().mask(ObserveReason::not_ready)==3);
     Live future_game;future_game.ctx.observed_ms=future_game.now+1;
     t=ticket(future_game.ctx,3,3,future_game.now);
     p=future_game.policy.observe(future_game.ctx,&t,future_game.now);
     assert(p.accept_mask==0&&p.restore_mask==3);
+    assert(future_game.policy.last_observe().context_age.future&&future_game.policy.last_observe().context_age.ms==1);
+    assert(future_game.policy.last_observe().mask(ObserveReason::not_ready)==3);
 }
 void scale_changes_and_invalid_flags_fail_closed(){
     Live live;auto t=live.receipt;t.serial=t.sequence=3;
     t.units_per_metre=std::nextafter(100.,101.);
     auto p=live.policy.observe(live.ctx,&t,live.now);
     assert(p.accept_mask==0&&p.baseline_mask==3&&p.restore_mask==3);
+    assert(live.policy.last_observe().mask(ObserveReason::scale_changed)==3);
     t.serial=t.sequence=4;p=live.policy.observe(live.ctx,&t,live.now);
     assert(p.bind_mask==3&&live.policy.commit_binding(p,3));
     for(double scale:{0.,-1.,std::numeric_limits<double>::infinity(),
@@ -240,10 +312,13 @@ void scale_changes_and_invalid_flags_fail_closed(){
         Live invalid;auto bad=invalid.receipt;bad.serial=bad.sequence=3;bad.units_per_metre=scale;
         p=invalid.policy.observe(invalid.ctx,&bad,invalid.now);
         assert(p.accept_mask==0&&p.restore_mask==3&&invalid.policy.bound_mask()==0);
+        assert(invalid.policy.last_observe().mask(ObserveReason::ticket_shape)==3);
+        assert(invalid.policy.last_observe().mask(ObserveReason::scale_changed)==0);
     }
     for(unsigned mask:{4u,7u,~0u}){
         Live invalid;invalid.feed(3,3,mask);
         assert(invalid.plan.accept_mask==0&&invalid.plan.restore_mask==3);
+        assert(invalid.policy.last_observe().mask(ObserveReason::ticket_shape)==3);
     }
     Live invalid;invalid.ctx.game.mesh=0;invalid.feed(3,3);
     assert(invalid.plan.accept_mask==0&&invalid.plan.restore_mask==3);

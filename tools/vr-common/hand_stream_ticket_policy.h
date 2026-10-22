@@ -30,6 +30,31 @@ struct Plan {
     unsigned accept_mask{},bind_mask{},reset_binding_mask{},restore_mask{},baseline_mask{};
     bool has_ticket{};
 };
+enum class ObserveReason : unsigned {
+    context_identity,context_readiness,binding_age,not_ready,no_receipt,
+    stream_changed,stream_invalid,ticket_shape,ticket_owner,ticket_world,
+    not_newer,ticket_age,scale_changed,tracking_loss,revision_exhausted,count
+};
+constexpr unsigned observe_reason_count=static_cast<unsigned>(ObserveReason::count);
+struct ObserveAge {
+    std::uint64_t ms{}; // Absolute distance; future means the stamp is ahead of now.
+    bool known{},future{};
+};
+struct ObserveDiagnostic {
+    std::uint64_t observed_now{};
+    ObserveAge old_ticket_age[2]{},context_age{},previous_context_age{},new_ticket_age{};
+    unsigned bound_before{},bound_after{};
+    // Masks describe branches actually reached, including lease-only yields
+    // (no_receipt/not_newer). Several reasons can describe the same hand.
+    unsigned reason_masks[observe_reason_count]{};
+    unsigned mask(ObserveReason reason) const noexcept {
+        const auto index=static_cast<unsigned>(reason);
+        return index<observe_reason_count?reason_masks[index]:0u;
+    }
+};
+inline ObserveAge observe_age(std::uint64_t stamp,std::uint64_t now,bool known=true) noexcept {
+    return known?ObserveAge{stamp>now?stamp-now:now-stamp,true,stamp>now}:ObserveAge{};
+}
 inline bool same(GameKey const& a,GameKey const& b) noexcept {
     return a.world==b.world&&a.controller==b.controller&&a.pawn==b.pawn&&
         a.mesh==b.mesh&&a.weapon==b.weapon;
@@ -44,6 +69,7 @@ inline bool recent(std::uint64_t stamp,std::uint64_t now) noexcept {
 
 class Policy {
     Context context_{};StreamKey stream_{};Plan current_{};
+    ObserveDiagnostic diagnostic_{};
     std::uint64_t revision_{},serial_{},sequence_{},last_present_ms_[2]{};
     double units_{};
     unsigned bound_{},baseline_pending_{both_hands},last_valid_{};
@@ -80,33 +106,56 @@ class Policy {
         bound_&=~mask;baseline_pending_|=mask;
         plan.reset_binding_mask|=mask;plan.restore_mask|=mask;
     }
+    void diagnose(ObserveReason reason,unsigned mask=both_hands) noexcept {
+        diagnostic_.reason_masks[static_cast<unsigned>(reason)]|=mask;
+    }
     Plan seal(Plan plan) noexcept {
         // No accepted new pose means yield the corresponding active lease,
         // while an otherwise recent geometry binding may remain available.
         plan.restore_mask|=both_hands&~plan.accept_mask;
+        diagnostic_.bound_after=bound_;
         current_=plan;return plan;
     }
 public:
     unsigned bound_mask() const noexcept {return bound_;}
+    // The last observe only. Ages are sampled before any invalidation or
+    // renewal; old_ticket_age is known only for hands bound on entry. The
+    // bound_after value precedes any later commit_binding. No permission state
+    // is read back from this diagnostic, and authorize never changes it.
+    ObserveDiagnostic const& last_observe() const noexcept {return diagnostic_;}
     // Pass only this frame's successful source read. nullptr never reuses the
     // stored ticket. Every observation also revokes all earlier plans.
     Plan observe(Context const& context,Ticket const* fresh,std::uint64_t now) noexcept {
+        diagnostic_={};diagnostic_.observed_now=now;diagnostic_.bound_before=bound_;
+        diagnostic_.context_age=observe_age(context.observed_ms,now);
+        diagnostic_.previous_context_age=observe_age(context_.observed_ms,now,context_known_);
+        diagnostic_.new_ticket_age=observe_age(fresh?fresh->created_ms:0,now,fresh!=nullptr);
+        for(unsigned hand=0;hand<2;++hand)
+            diagnostic_.old_ticket_age[hand]=observe_age(last_present_ms_[hand],now,(bound_&(1u<<hand))!=0);
         Plan plan{};plan.context=context;plan.observed_now=now;
         plan.has_ticket=fresh!=nullptr;if(fresh)plan.ticket=*fresh;
         if(revision_==(std::numeric_limits<std::uint64_t>::max)()){
+            diagnose(ObserveReason::revision_exhausted);
             invalidate(plan,both_hands);return seal(plan); // Never wrap a plan identity.
         }
         plan.revision=++revision_;
         const bool ready=game_valid(context.game)&&recent(context.observed_ms,now)&&
             context.idle_ready&&context.clean;
-        if(!context_known_||!identity(context_,context)||ready!=ready_)invalidate(plan,both_hands);
+        const bool context_changed=!context_known_||!identity(context_,context);
+        if(context_changed||ready!=ready_){
+            if(context_changed)diagnose(ObserveReason::context_identity);
+            if(ready!=ready_)diagnose(ObserveReason::context_readiness);
+            invalidate(plan,both_hands);
+        }
         context_=context;context_known_=true;ready_=ready;
         // Check the old binding BEFORE a new ticket can renew its age. A long
         // gap requires a new baseline and a later receipt, even on immediate read success.
         for(unsigned hand=0;hand<2;++hand)
-            if((bound_&(1u<<hand))&&!recent(last_present_ms_[hand],now))invalidate(plan,1u<<hand);
-        if(!ready)invalidate(plan,both_hands);
-        if(!fresh)return seal(plan);
+            if((bound_&(1u<<hand))&&!recent(last_present_ms_[hand],now)){
+                diagnose(ObserveReason::binding_age,1u<<hand);invalidate(plan,1u<<hand);
+            }
+        if(!ready){diagnose(ObserveReason::not_ready);invalidate(plan,both_hands);}
+        if(!fresh){diagnose(ObserveReason::no_receipt);return seal(plan);}
         const auto& ticket=*fresh;
         const bool owner=game_valid(context.game)&&ticket.controller==context.game.controller&&
             ticket.pawn==context.game.pawn&&ticket.weapon==context.game.weapon;
@@ -116,7 +165,10 @@ public:
         const bool world=ticket.stream.world_generation==context.expected_native_world_generation;
         const bool changed=!stream_known_||!same(stream_,ticket.stream);
         if(changed){
-            if(!stream_valid(ticket.stream)){invalidate(plan,both_hands);return seal(plan);}
+            diagnose(ObserveReason::stream_changed);
+            if(!stream_valid(ticket.stream)){
+                diagnose(ObserveReason::stream_invalid);invalidate(plan,both_hands);return seal(plan);
+            }
             stream_=ticket.stream;stream_known_=true;serial_=sequence_=0;last_valid_=0;
             units_=scale?ticket.units_per_metre:0.;invalidate(plan,both_hands);
         }
@@ -125,11 +177,21 @@ public:
         const bool newer=ticket.serial>serial_&&ticket.sequence>sequence_;
         if(ticket.serial>serial_)serial_=ticket.serial;
         if(ticket.sequence>sequence_)sequence_=ticket.sequence;
-        if(!shape||!owner||!world){invalidate(plan,both_hands);return seal(plan);}
-        if(!newer)return seal(plan);
-        if(!recent(ticket.created_ms,now)){invalidate(plan,both_hands);return seal(plan);}
-        if(units_!=ticket.units_per_metre){units_=ticket.units_per_metre;invalidate(plan,both_hands);}
+        if(!shape||!owner||!world){
+            if(!shape)diagnose(ObserveReason::ticket_shape);
+            if(!owner)diagnose(ObserveReason::ticket_owner);
+            if(!world)diagnose(ObserveReason::ticket_world);
+            invalidate(plan,both_hands);return seal(plan);
+        }
+        if(!newer){diagnose(ObserveReason::not_newer);return seal(plan);}
+        if(!recent(ticket.created_ms,now)){
+            diagnose(ObserveReason::ticket_age);invalidate(plan,both_hands);return seal(plan);
+        }
+        if(units_!=ticket.units_per_metre){
+            diagnose(ObserveReason::scale_changed);units_=ticket.units_per_metre;invalidate(plan,both_hands);
+        }
         const auto lost=ticket.valid_mask?(last_valid_&~ticket.valid_mask):both_hands;
+        diagnose(ObserveReason::tracking_loss,lost);
         invalidate(plan,lost);last_valid_=ticket.valid_mask;
         if(!ready)return seal(plan);
         // A loss receipt seals the missing hand too. Its return needs a newer

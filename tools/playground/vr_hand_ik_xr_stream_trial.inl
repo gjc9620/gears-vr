@@ -43,7 +43,8 @@ bool xr_identity(Snapshot const& value){
         (!trial.anchored||same_layout(trial.anchor,value));
 }
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
-bool xr_equipment_gate(Snapshot const& value,unsigned expected,const wchar_t* stage){
+bool xr_equipment_gate(Snapshot const& value,unsigned expected,const wchar_t* stage,EquipmentTiming measured_stage){
+    EquipmentTimingScope timing(measured_stage);
     const unsigned current=vrequip::hand_equipment_phase(value.pc,value.pawn,value.weapon);
     if(expected&&expected<=2&&trial.xr_equipment_phase==expected&&current==expected)return true;
     const bool clean=yield_for_equipment(stage);
@@ -114,7 +115,12 @@ void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigne
 }
 void pre_tick(uptr){
     if(!active_visible.load(std::memory_order_acquire)||trial.ended)return;
-    if(trial.lease.dirty()&&!restore(L"pre_tick"))return;
+    if(trial.lease.dirty()){
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        timing_pre_restore();
+#endif
+        if(!restore(L"pre_tick"))return;
+    }
     if(stop_requested.load(std::memory_order_acquire)){end(6,L"xr_stopped_after_restore");return;}
     trial.tick_epoch=trial.epoch;
 }
@@ -123,6 +129,9 @@ void post_tick(uptr pc){
         xr_bridge.close();trial={};trial.xr_start=xr_pending;
         trial.xr_world_time=xr_pending.baseline_world_time;
         trial.phase=1;trial.began=GetTickCount64();trial.deadline=trial.began+15000;
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        timing_begin();
+#endif
         if(trial.began>trial.xr_start.arm_deadline_ms){end(7,L"xr_arm_deadline_expired_before_tick");return;}
         if(log_file){fwprintf(log_file,L"hand_ik_stream_trial_begin source=GVE6_grip_world "
             L"max_leases=%u head_controllers_untouched=1 force_evaluation=0 ownership_proved=0 "
@@ -145,14 +154,24 @@ void post_tick(uptr pc){
         if(now-trial.final_ms>=250)end(5,L"bounded_xr_dual_hand_recording_complete");
         return;
     }
-    Snapshot value{};
-    if(!handik::snapshot(pc,value)||!xr_identity(value)){
+    Snapshot value{};bool known{};
+    {
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        EquipmentTimingScope timing(EquipmentTiming::hand_snapshot_identity);
+#endif
+        known=handik::snapshot(pc,value)&&xr_identity(value);
+    }
+    if(!known){
         end(7,L"xr_frozen_player_world_or_layout_changed");return;
     }
     trial.xr_world_time=value.world_time;
     if(!trial.anchored){trial.anchor=value;trial.anchored=true;}
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
-    const unsigned observed_phase=vrequip::hand_equipment_phase(pc,value.pawn,value.weapon);
+    unsigned observed_phase{};
+    {
+        EquipmentTimingScope timing(EquipmentTiming::observed_phase);
+        observed_phase=vrequip::hand_equipment_phase(pc,value.pawn,value.weapon);
+    }
     const unsigned equipment_phase=observed_phase<=2?observed_phase:0;
     const bool equipment_changed=equipment_phase!=trial.xr_equipment_phase;
     if(equipment_changed){
@@ -202,7 +221,10 @@ void post_tick(uptr pc){
         ticket.units_per_metre=frame.units_per_metre;ticket.valid_mask=frame.valid_mask;
     }else ++trial.xr_none;
     const auto context=xr_context(value,qualified&&trial.xr_ready);
-    const auto plan=trial.xr_policy.observe(context,fresh?&ticket:nullptr,GetTickCount64());
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    timing_observation();
+#endif
+    const auto plan=observe_xr_policy(context,fresh?&ticket:nullptr,GetTickCount64());
     xr_reset_bindings(plan.reset_binding_mask);
     if(!plan.accept_mask)return;
     for(unsigned hand=0;hand<2;++hand)if(plan.bind_mask&(1u<<hand)){
@@ -218,7 +240,7 @@ void post_tick(uptr pc){
     Snapshot check{};
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     const bool checked=handik::snapshot(pc,check)&&xr_identity(check);
-    if(checked&&!xr_equipment_gate(check,equipment_phase,L"prewrite_snapshot"))return;
+    if(checked&&!xr_equipment_gate(check,equipment_phase,L"prewrite_snapshot",EquipmentTiming::prewrite_phase))return;
     if(!checked||!check.action_idle||
 #else
     if(!handik::snapshot(pc,check)||!xr_identity(check)||!check.action_idle||
@@ -236,12 +258,17 @@ void post_tick(uptr pc){
 #endif
     if(!mask)return;
     if(!log_file||ferror(log_file)){end(7,L"xr_log_unavailable_before_write");return;}
-    sample(L"before",value,lease,0);
-    xr_log_pose(frame,mask,plan.bind_mask);
+    {
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        EquipmentTimingScope timing(EquipmentTiming::write_evidence);
+#endif
+        sample(L"before",value,lease,0);
+        xr_log_pose(frame,mask,plan.bind_mask);
+    }
     // fflush may block. Recheck the receipt and game sample after all logging,
     // immediately before the first journal snapshot or mutation.
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
-    if(!xr_equipment_gate(check,equipment_phase,L"after_log_flush"))return;
+    if(!xr_equipment_gate(check,equipment_phase,L"after_log_flush",EquipmentTiming::postflush_phase))return;
     const auto final_context=xr_context(check,trial.xr_ready);
 #endif
     const auto write_now=GetTickCount64();
@@ -257,10 +284,20 @@ void post_tick(uptr pc){
     }
     trial.lease_anchor=check;Backend backend{};
     const unsigned channels=((mask&1)?12u:0u)|((mask&2)?3u:0u);
-    if(!trial.lease.acquire(channels,trial.targets,1.f,backend)){
+    bool acquired{};
+    {
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+        EquipmentTimingScope timing(EquipmentTiming::lease_acquire);
+#endif
+        acquired=trial.lease.acquire(channels,trial.targets,1.f,backend);
+    }
+    if(!acquired){
         end(trial.lease.dirty()?8:7,L"xr_lease_acquisition_failed");return;
     }
     trial.applied_mask=mask;leases=lease;++trial.xr_masks[mask];
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    EquipmentTimingScope timing(EquipmentTiming::written_snapshot_evidence);
+#endif
     Snapshot written{};
     if(!handik::snapshot(pc,written)||!same_layout(check,written)){
         restore(L"xr_failed_written_snapshot");end(7,L"xr_written_snapshot_unknown");return;

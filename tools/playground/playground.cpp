@@ -248,6 +248,9 @@ bool invoke(Request* r){
 #endif
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    handstream::EquipmentTimingHookScope equipment_timing_dump;
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     // Release before any original action dispatch, including recursive calls.
     handstream::before_action(object,function);
@@ -340,7 +343,14 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         }
     }
     inside=false;
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    {
+        handstream::EquipmentTimingScope timing(handstream::EquipmentTiming::original_player_tick,post_stream_hand_ik_tick);
+        original(object,function,params);
+    }
+#else
     original(object,function,params);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     if(post_hand_animation_tick&&enabled.load(std::memory_order_acquire)&&
        game_thread.load()==GetCurrentThreadId()){

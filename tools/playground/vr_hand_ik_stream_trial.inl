@@ -8,6 +8,38 @@ using handik::Snapshot;
 constexpr std::array<unsigned,4> indices{{2,3,6,7}}; // R position/rotation, L position/rotation.
 std::atomic<bool> requested{},stop_requested{},used{},safe_to_unload{true},shutdown_requested{},active_visible{};
 std::atomic<unsigned> status{},leases{};
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+// Private, game-thread-only measurement. These counters never participate in
+// permission decisions, and no measured span writes or flushes diagnostic text.
+enum class EquipmentTiming:unsigned {
+    pre_restore_to_observe,restore,dirty_stow_tick,original_player_tick,
+    hand_snapshot_identity,slots_quiet,observed_phase,prewrite_phase,postflush_phase,
+    phase_read_before,phase_snapshot,phase_read_after,write_evidence,lease_acquire,written_snapshot_evidence,count
+};
+constexpr unsigned equipment_timing_count=unsigned(EquipmentTiming::count);
+struct EquipmentTimingStat {
+    std::uint64_t count{},sum{},maximum{};
+    void add(std::uint64_t value){++count;sum+=value;maximum=(std::max)(maximum,value);}
+};
+struct EquipmentAgeStat {
+    EquipmentTimingStat past;
+    std::uint64_t future{};
+    void add(gears_hand_stream::ObserveAge const& age){
+        if(age.known){if(age.future)++future;else past.add(age.ms);}
+    }
+};
+struct EquipmentReasonStat {
+    std::uint64_t masks[4]{};
+    EquipmentAgeStat old_ticket[2],context,previous_context,new_ticket;
+};
+struct EquipmentTimingState {
+    EquipmentTimingStat spans[3][equipment_timing_count];
+    EquipmentReasonStat reasons[3][gears_hand_stream::observe_reason_count];
+    std::uint64_t frequency{},pending_restore{},interval_started{},interval_completed{},invalid_clock{};
+    unsigned pending_phase{},open_scopes{};
+    bool dumped{};
+};
+#endif
 struct Trial {
     unsigned phase{},restored{},action_yields{},setter_calls{},target_writes{},epoch{},tick_epoch{};
     unsigned quiet_slots{},samples{};
@@ -32,6 +64,7 @@ struct Trial {
     unsigned xr_fresh{},xr_none{},xr_resets{},xr_binds{},xr_masks[4]{};
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     unsigned xr_equipment_phase{},xr_equipment_changes{};
+    EquipmentTimingState timing;
 #endif
     bool xr_open{},xr_ready{};
     float xr_world_time{};
@@ -39,6 +72,116 @@ struct Trial {
 };
 Trial trial{};
 
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+std::uint64_t timing_clock(){
+    LARGE_INTEGER stamp{};
+    return QueryPerformanceCounter(&stamp)&&stamp.QuadPart>0?std::uint64_t(stamp.QuadPart):0;
+}
+unsigned timing_phase(){return trial.xr_equipment_phase<=2?trial.xr_equipment_phase:0;}
+bool timing_active(){return trial.phase&&!trial.ended&&trial.timing.frequency&&!trial.timing.dumped;}
+void timing_begin(){
+    LARGE_INTEGER frequency{};
+    if(QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0)
+        trial.timing.frequency=std::uint64_t(frequency.QuadPart);
+}
+void timing_record(EquipmentTiming stage,unsigned phase,std::uint64_t begin,std::uint64_t finish){
+    auto& timing=trial.timing;
+    if(timing.dumped)return;
+    if(!begin||finish<begin){++timing.invalid_clock;return;}
+    timing.spans[phase][unsigned(stage)].add(finish-begin);
+}
+struct EquipmentTimingScope {
+    EquipmentTiming stage;
+    unsigned phase{};
+    std::uint64_t begin{};
+    bool active{};
+    explicit EquipmentTimingScope(EquipmentTiming value,bool measure=true):stage(value){
+        active=measure&&timing_active();
+        if(active){phase=timing_phase();begin=timing_clock();++trial.timing.open_scopes;}
+    }
+    ~EquipmentTimingScope(){
+        if(active){timing_record(stage,phase,begin,timing_clock());--trial.timing.open_scopes;}
+    }
+};
+void timing_pre_restore(){
+    if(!timing_active())return;
+    auto& timing=trial.timing;
+    // A missing next observation is left visibly incomplete, never fabricated.
+    timing.pending_restore=timing_clock();timing.pending_phase=timing_phase();++timing.interval_started;
+}
+void timing_observation(){
+    auto& timing=trial.timing;
+    if(!timing.pending_restore)return;
+    timing_record(EquipmentTiming::pre_restore_to_observe,timing.pending_phase,
+        timing.pending_restore,timing_clock());
+    timing.pending_restore=0;++timing.interval_completed;
+}
+void timing_policy(gears_hand_stream::ObserveDiagnostic const& diagnostic){
+    if(!trial.timing.frequency||trial.timing.dumped)return;
+    for(unsigned reason=0;reason<gears_hand_stream::observe_reason_count;++reason){
+        const auto mask=diagnostic.reason_masks[reason];
+        if(!mask||mask>3)continue;
+        auto& value=trial.timing.reasons[timing_phase()][reason];++value.masks[mask];
+        for(unsigned hand=0;hand<2;++hand)value.old_ticket[hand].add(diagnostic.old_ticket_age[hand]);
+        value.context.add(diagnostic.context_age);value.previous_context.add(diagnostic.previous_context_age);
+        value.new_ticket.add(diagnostic.new_ticket_age);
+    }
+}
+void timing_print_age(const wchar_t* label,EquipmentAgeStat const& value){
+    fwprintf(log_file,L" %ls_count=%llu %ls_sum_ms=%llu %ls_max_ms=%llu %ls_future=%llu",
+        label,value.past.count,label,value.past.sum,label,value.past.maximum,label,value.future);
+}
+void timing_dump_if_ended(){
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return;
+    auto& timing=trial.timing;
+    if(!trial.ended||timing.dumped||!timing.frequency||timing.open_scopes)return;
+    timing.dumped=true;
+    if(!log_file)return;
+    constexpr const wchar_t* stages[]={L"pre_restore_to_observe",L"restore",L"dirty_stow_tick",
+        L"original_player_tick",L"hand_snapshot_identity",L"slots_quiet",L"observed_phase",
+        L"prewrite_phase",L"postflush_phase",L"phase_read_before",L"phase_snapshot",L"phase_read_after",
+        L"write_evidence",L"lease_acquire",L"written_snapshot_evidence"};
+    constexpr const wchar_t* reasons[]={L"context_identity",L"context_readiness",L"binding_age",
+        L"not_ready",L"no_receipt",L"stream_changed",L"stream_invalid",L"ticket_shape",L"ticket_owner",
+        L"ticket_world",L"not_newer",L"ticket_age",L"scale_changed",L"tracking_loss",L"revision_exhausted"};
+    static_assert(std::size(stages)==equipment_timing_count);
+    static_assert(std::size(reasons)==gears_hand_stream::observe_reason_count);
+    fwprintf(log_file,L"hand_ik_equipment_timing_begin schema=1 frequency=%llu phase_at_span_entry=1 "
+        L"interval_started=%llu interval_completed=%llu interval_pending=%u invalid_clock=%llu "
+        L"permission_changes=0 timing_hot_path_text_writes=0\n",timing.frequency,timing.interval_started,
+        timing.interval_completed,unsigned(timing.pending_restore!=0),timing.invalid_clock);
+    for(unsigned phase=0;phase<3;++phase){
+        for(unsigned stage=0;stage<equipment_timing_count;++stage){
+            const auto& value=timing.spans[phase][stage];if(!value.count)continue;
+            fwprintf(log_file,L"hand_ik_equipment_timing phase=%u stage=%ls count=%llu sum_qpc=%llu max_qpc=%llu\n",
+                phase,stages[stage],value.count,value.sum,value.maximum);
+        }
+        for(unsigned reason=0;reason<gears_hand_stream::observe_reason_count;++reason){
+            const auto& value=timing.reasons[phase][reason];
+            if(!value.masks[1]&&!value.masks[2]&&!value.masks[3])continue;
+            fwprintf(log_file,L"hand_ik_equipment_policy phase=%u reason=%ls left=%llu right=%llu both=%llu",
+                phase,reasons[reason],value.masks[1],value.masks[2],value.masks[3]);
+            timing_print_age(L"old_left",value.old_ticket[0]);timing_print_age(L"old_right",value.old_ticket[1]);
+            timing_print_age(L"context",value.context);timing_print_age(L"previous_context",value.previous_context);
+            timing_print_age(L"new_ticket",value.new_ticket);fwprintf(log_file,L"\n");
+        }
+    }
+    fwprintf(log_file,L"hand_ik_equipment_timing_end schema=1\n");fflush(log_file);
+}
+// Nested actions may end the trial inside a measured span. Delay the one dump
+// until the outer event returns and every live span has added its final sample.
+struct EquipmentTimingHookScope {~EquipmentTimingHookScope(){timing_dump_if_ended();}};
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+gears_hand_stream::Plan observe_xr_policy(gears_hand_stream::Context const& context,
+    gears_hand_stream::Ticket const* fresh,std::uint64_t now){
+    const auto plan=trial.xr_policy.observe(context,fresh,now);
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    timing_policy(trial.xr_policy.last_observe());
+#endif
+    return plan;
+}
+#endif
 bool same_layout(Snapshot const& a,Snapshot const& b){
     if(a.identity!=b.identity)return false;
     for(unsigned i=0;i<8;++i)
@@ -120,6 +263,9 @@ bool quiet_reject(int index,handanim::Slot const& slot,int child,const wchar_t* 
     fwprintf(log_file,L"\n");fflush(log_file);return false;
 }
 bool slots_quiet(Snapshot const& value){
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    EquipmentTimingScope timing(EquipmentTiming::slots_quiet);
+#endif
     Array slots{};trial.action_object_count=0;trial.quiet_slots=0;
     for(const auto object:{value.pc,value.pawn,value.mesh,value.tree,value.weapon})watch(object);
     if(!handanim::array(value.pawn,L"BodyStanceNodes",L"ObjectProperty",8,
@@ -215,6 +361,9 @@ void end(unsigned code,const wchar_t* reason){
 }
 bool restore(const wchar_t* reason){
     if(!trial.lease.dirty())return true;
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    EquipmentTimingScope timing(EquipmentTiming::restore);
+#endif
     trial.releasing=true;
     const auto lease=leases.load();Snapshot current{};
     const bool sampled=handik::snapshot(trial.lease_anchor.pc,current);
@@ -242,7 +391,7 @@ bool yield_for_equipment(const wchar_t* reason){
     gears_hand_stream::Context blocked{};
     blocked.action_epoch=trial.epoch;blocked.observed_ms=GetTickCount64();
     blocked.clean=!dirty&&!faulted;
-    trial.xr_policy.observe(blocked,nullptr,blocked.observed_ms);
+    observe_xr_policy(blocked,nullptr,blocked.observed_ms);
     for(auto& binding:trial.xr_binding){binding.reset();++trial.xr_resets;}
     if(!trial.ended&&!stop_requested.load(std::memory_order_acquire)&&
        active_visible.load(std::memory_order_acquire)&&(trial.phase==1||trial.phase==2)){
@@ -325,7 +474,7 @@ void before_action(uptr object,uptr function){
     // Block the old plan synchronously, even when the observer log is full.
     gears_hand_stream::Context blocked{};
     blocked.action_epoch=trial.epoch;blocked.observed_ms=GetTickCount64();blocked.clean=!trial.lease.dirty();
-    trial.xr_policy.observe(blocked,nullptr,blocked.observed_ms);
+    observe_xr_policy(blocked,nullptr,blocked.observed_ms);
     for(auto& binding:trial.xr_binding)binding.reset();
     trial.xr_ready=false;trial.phase=1;status=1;
 #endif
