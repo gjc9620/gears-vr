@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：只读shadow63317ca／ad22候选的e实际PID35740取得74条完整配对、0异常；phase2的9次双手age撤销在最早入口旧78–94ms／新0–16ms，晚期旧125–141ms但早期新仍46–63ms，全部same_state且无其他撤权；phase1另7次也全部early可用。54项shadow审计和实际结构检查通过，证据支持独立transport-liveness设计，尚未实现续龄或修复motion。23写23恢复／完整交接／Shutdown0及原字段恢复通过，component仍仅motion失败；FPP99、Native entry verifier false／XR1整局false保留，9会话静音正确收尾，所有自有进程退出。原failed receipt`0464570b…23be51`／shadow`ec76cc17…18af5db`保留，83项历史文件未改；详见 [早期连续性证据](../../hand-ik-xr-stream-trial-20261023.md)。
+
 2026-10-23：restore前的独立cursor只读shadow已接线，最多1024条内存记录、结束后一次输出；常规observe后配对真实binding_age，并检查动作代次／phase／历史状态未变及早期新票据到晚期仍≤100ms。Policy新增const按值continuity_snapshot只查询，不续龄／消费游标或改计划；15纯场景、五种相关构建、九检查／三拒配通过。尚未跑新候选，也未实现liveness接口，不把诊断候选当作跟手修复。详见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
 
 2026-10-23：诊断提交6467b1d／ccda候选的实际d局 PID31544 完整23写23恢复／11→10→11→10／Shutdown0，独立QPC块通过（23开始22完成1尾部pending）。phase2旧binding票据在observe平均126.667ms／最大140ms，9次明确age撤销；新票据平均48.556ms。pre_restore→observe平均35.275ms，restore9.806、单次三处装备认证约7.1、dirty stow2.149、原Tick8.241ms；这些inclusive分项样本不同、不可相加推FPS。写前证据约0.085ms，主成本不是该flush。组件唯一motion门仍false；8控件／44附件／两Hook、game_absent、9会话静音恢复均通过，Native entry verifier／XR1整局失败保留。原receipt`c867d64b…b1034c`、独立计时`7772c813…3e6306`不改写；尚未声称优化或完整6DoF完成。见 [测量详情](../../hand-ik-xr-stream-trial-20261023.md)。
