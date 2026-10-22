@@ -74,3 +74,15 @@ fail closed in the equipment state model. This candidate only observes: it
 does not move a gun, suppress an animation, play a sound or call
 `SetWeaponFromSlot`. The default build excludes the observer, and a successful
 compile does not establish a valid retail runtime snapshot.
+
+The private `GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST` candidate additionally
+requires the inventory observer and `GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST`.
+With the certified native controller observer active, a right-grip press near
+the left/right shoulder or trouser holster publishes only the matching original
+slot number plus current game identities. Playground discards old or overflowed
+events, then re-reads the local player's inventory on the game thread and
+requires the private owned arena, behind-windows and muted test environment
+before calling the original slot function. Empty grenade charges fail closed.
+This is a wiring test: original switch animation, visible stow, empty-slot
+audio and weapon pose transfer are not yet overridden. The default DLL has no
+XR equipment-intent consumer.

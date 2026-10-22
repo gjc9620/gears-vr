@@ -96,6 +96,8 @@ Gnasher 首发杠杆门槛补齐：`ReloadModel::prime` 可用同一原版库存
 
 库存切换私有候选：核对已保存的 `WarInventoryManager.SetWeaponFromSlot` 脚本，确认原版槽位选择由它处理无弹药反馈和 `SetCurrentWeapon`，而非直接改当前枪指针。新增默认关闭、必须同时启用库存观察的 `GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST`：外部只提交 0–3 号槽；游戏线程重新读取有效快照，仅限已创建的私有 Playground 场，才调用原版 `SetWeaponFromSlot`，并观察装备完成、身份中断或 5 秒超时。测试子进程还须带置后和静音标记。私有测试 DLL 和默认关闭版均编译通过，导出表证明测试入口仅在前者，`WeaponEquipmentModelTest` 通过。当前购买版启动尚未达到游戏线程库存边界，**此候选没有游戏内调用证据**；不接入默认启动器，不视为可玩的取枪实现。
 
+右手抓取到原版槽位的私有接线：原生已认证游戏 Tick 中的 XR 输入路由现在可把右肩／左肩／左右裤兜四种抓握意图，经新的进程绑定、8 事件环形桥发布给 Playground。桥按序号消费并拒绝溢出、重放、超过 250 ms 的事件；Playground 在原版游戏线程再次比对 PC、Pawn、当前武器及四槽库存，仅在置后静音的私有场里调用已有 `SetWeaponFromSlot` 候选。`EquipmentIntentBridgeTest`、启用与关闭候选的 Playground 构建、启用与关闭认证 Tick 的 native 构建均通过；默认 Playground 导出表仍无测试入口。当前未取得购买版游戏中的有效库存 Tick，不把此接线视为真实 RGrip 切枪验收。原版切换动画、收枪显隐、空槽提示音和持枪 6DoF 姿态尚未完成；原版脚本的无弹药反馈只覆盖有武器对象的槽。
+
 ## 合并0.0.2启动修复（2026-10-22）
 
 按用户要求切回 `codex/0.1.0`，将 `codex/0.0.2` 的完整修复与发布记录并入。合并前开发检查点为 `963d965b8590555bae31d047bef6ccc27d3e6469`，热修复源为 `a0a39b0`。公开0.0.1是独立根提交，两分支没有共同祖先；以公开源码 `4b621fc430fa5f96eba3bf70399810d3fd51e202` 为明确的内容基准进行三方合并，并保留两个原始父历史，不改写既有提交或发布标签。

@@ -1,0 +1,37 @@
+#include "equipment_intent_bridge.h"
+#include <cassert>
+#include <cstdio>
+
+int main(){
+    gears_weapon::EquipmentIntentBridge publisher,reader,duplicate;
+    assert(publisher.open(true));
+    assert(!duplicate.open(true));
+    assert(reader.open(false));
+    std::uint64_t cursor=UINT64_MAX;
+    gears_weapon::EquipmentIntentEvent received{};
+    assert(!reader.read_next(cursor,received)&&cursor==0);
+    gears_weapon::EquipmentIntentEvent event{};
+    event.input_session=7;event.input_sequence=12;event.space_epoch=3;
+    event.world_generation=4;event.controller=0x1000;event.pawn=0x2000;
+    event.weapon=0x3000;event.inventory_slot=2;
+    assert(publisher.publish(event));
+    assert(reader.read_next(cursor,received));
+    assert(received.serial==1&&received.input_sequence==12&&
+           received.controller==event.controller&&received.inventory_slot==2);
+    assert(!reader.read_next(cursor,received));
+    event.inventory_slot=4;
+    assert(!publisher.publish(event));
+    event.inventory_slot=3;
+    for(unsigned i=0;i<gears_weapon::EquipmentIntentPacket::capacity+1;++i){
+        event.input_sequence=13+i;
+        assert(publisher.publish(event));
+    }
+    assert(!reader.read_next(cursor,received)); // no replay after overflow
+    assert(cursor==gears_weapon::EquipmentIntentPacket::capacity+2);
+    event.input_sequence=100;
+    assert(publisher.publish(event));
+    Sleep(260);
+    assert(!reader.read_next(cursor,received)); // no stale grip actuation
+    assert(cursor==gears_weapon::EquipmentIntentPacket::capacity+3);
+    std::puts("equipment intent bridge passed");
+}

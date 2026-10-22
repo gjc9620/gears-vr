@@ -234,6 +234,19 @@ void __fastcall hook_ui_vm(void* self,void* frame,void* result){
                     ++controller_input_intents[static_cast<unsigned>(intent)];
                     if(intent==gears_weapon::WeaponIntent::recenter)
                         controller_recenter_request.submit(snapshot_world,hands.session,hands.space_epoch);
+                    if(const auto slot=gears_weapon::original_inventory_slot(
+                            gears_weapon::equipment_body_slot(intent))){
+                        auto const& binding=crosshair_live::state.binding;
+                        gears_weapon::EquipmentIntentEvent event{};
+                        event.input_session=hands.session;event.input_sequence=hands.sequence;
+                        event.space_epoch=hands.space_epoch;event.world_generation=snapshot_world;
+                        event.controller=binding.controller;event.pawn=binding.pawn;
+                        event.weapon=binding.weapon;event.inventory_slot=*slot;
+                        if(binding.world==snapshot_world&&
+                           controller_equipment_intent_bridge.publish(event))
+                            ++controller_equipment_intent_published;
+                        else ++controller_equipment_intent_rejected;
+                    }
                 }
         }
     }

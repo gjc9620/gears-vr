@@ -10,6 +10,17 @@ ULONGLONG next_probe{};
 std::atomic<unsigned> queued_slot{4};
 std::atomic<unsigned> last_switch_status{};
 ULONGLONG switch_deadline{};
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+gears_weapon::EquipmentIntentBridge intent_bridge;
+std::uint64_t intent_cursor=UINT64_MAX;
+ULONGLONG next_intent_open{};
+bool intent_open{};
+bool test_environment(){
+    wchar_t behind[4]{},muted[4]{};
+    return GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)==1&&behind[0]==L'1'&&
+        GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)==1&&muted[0]==L'1';
+}
+#endif
 
 gears_weapon::BodySlot body_for_inventory_slot(unsigned slot){
     switch(slot){
@@ -25,6 +36,9 @@ void reset_switch_test(){
     last_switch_status.store(0,std::memory_order_release);
     switch_deadline=0;
     model.reset();
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+    intent_bridge.close();intent_open=false;intent_cursor=UINT64_MAX;next_intent_open=0;
+#endif
 }
 #endif
 
@@ -130,7 +144,20 @@ bool changed(gears_weapon::EquipmentSnapshot const& a,
 void tick(uptr pc){
     const auto now=GetTickCount64();
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
-    const unsigned requested_slot=queued_slot.exchange(4,std::memory_order_acq_rel);
+    unsigned requested_slot=queued_slot.exchange(4,std::memory_order_acq_rel);
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+    gears_weapon::EquipmentIntentEvent grip_event{};
+    bool from_grip=false;
+    if(playground::ready&&test_environment()){
+        if(!intent_open&&now>=next_intent_open){
+            intent_open=intent_bridge.open(false);next_intent_open=now+500;
+            intent_cursor=UINT64_MAX;
+        }
+        if(intent_open&&requested_slot>=4&&intent_bridge.read_next(intent_cursor,grip_event)){
+            requested_slot=grip_event.inventory_slot;from_grip=true;
+        }
+    }
+#endif
     if(now<next_probe&&requested_slot>=4)return;
 #else
     if(now<next_probe)return;
@@ -167,7 +194,12 @@ void tick(uptr pc){
         // Recheck all identities on the game thread; the external request
         // carries a slot number, never a weapon pointer.
         if(!ok||!playground::ready||pc!=playground::arena_pc||
-           game.world!=playground::arena_world||game.pawn!=playground::arena_pawn){
+           game.world!=playground::arena_world||game.pawn!=playground::arena_pawn
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+           ||(from_grip&&(grip_event.controller!=pc||grip_event.pawn!=game.pawn||
+                           grip_event.weapon!=game.current_weapon))
+#endif
+           ){
             last_switch_status.store(2,std::memory_order_release);
         }else{
             const auto decision=model.tap(body_for_inventory_slot(requested_slot),game);
@@ -190,7 +222,12 @@ void tick(uptr pc){
                 }
             }
             last_switch_status.store(status,std::memory_order_release);
-            if(log_file){fwprintf(log_file,L"equipment_switch_test slot=%u status=%u weapon=%p\n",
+            if(log_file){fwprintf(log_file,L"equipment_switch_test source=%ls slot=%u status=%u weapon=%p\n",
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+                from_grip?L"xr_grip":L"external",
+#else
+                L"external",
+#endif
                 requested_slot,status,reinterpret_cast<void*>(static_cast<uptr>(decision.weapon)));
                 fflush(log_file);}
         }

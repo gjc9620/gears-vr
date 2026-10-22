@@ -22,6 +22,9 @@
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
 #include "../vr-common/weapon_equipment_model.h"
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
+#include "../vr-common/equipment_intent_bridge.h"
+#endif
 #endif
 
 namespace {

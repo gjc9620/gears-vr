@@ -17,6 +17,7 @@
 #include "../vr-common/controller_input_bridge.h"
 #include "../vr-common/body_slots.h"
 #include "../vr-common/weapon_input_router.h"
+#include "../vr-common/equipment_intent_bridge.h"
 #include "../vr-common/controller_recenter_request.h"
 #include "../vr-common/gpu_share.h"
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
@@ -341,6 +342,8 @@ std::mutex controller_input_tick_mutex;
 uint64_t controller_input_tick_session{},controller_input_tick_epoch{},controller_input_tick_profile{},
     controller_input_tick_input_epoch{},controller_input_tick_sequence{};
 gears_weapon::WeaponInputRouter controller_input_intent_router;
+gears_weapon::EquipmentIntentBridge controller_equipment_intent_bridge;
+std::atomic<uint64_t> controller_equipment_intent_published{},controller_equipment_intent_rejected{};
 std::array<std::atomic<uint64_t>,16> controller_input_intents{};
 std::atomic<bool> outage_diagnostics{false};
 gears_outage::ActivitySnapshot outage_built;
@@ -1181,6 +1184,8 @@ void print_stereo(FILE* file) {
             controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::reload)].load(),
             controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::aim_down)].load(),
             controller_input_intents[static_cast<unsigned>(gears_weapon::WeaponIntent::fire_down)].load());
+        fprintf(file,"controller_equipment_intent_bridge published=%llu rejected=%llu original_switch_called=0\n",
+            controller_equipment_intent_published.load(),controller_equipment_intent_rejected.load());
     }
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
     // Final requests remain serviceable even if rendering stopped immediately
@@ -4912,6 +4917,9 @@ DWORD WINAPI worker(void*) {
     if(controller_input_observer&&!controller_input_bridge.open(GetCurrentProcessId(),false)){
         fprintf(status,"rejected: controller input producer unavailable\n");fclose(status);return 3;
     }
+    if(controller_input_observer&&!controller_equipment_intent_bridge.open(true)){
+        fprintf(status,"rejected: equipment intent bridge unavailable\n");fclose(status);return 3;
+    }
     uintptr_t linked{};
     if(!expected_local || !expected_pc || !safe_copy(&linked,reinterpret_cast<void*>(expected_local+0x68),8) || linked!=expected_pc) {
         fprintf(status,"rejected: local player/controller link mismatch\n");fclose(status);return 3;
@@ -5385,6 +5393,7 @@ DWORD WINAPI worker(void*) {
         shadow_state_enabled,state_attempted.load(),state_created.load(),state_release_returned.load(),state_done,state_original_preserved.load(),
         state_done?state_delete_flags:0,state_done?state_delete_thread:0,
         static_cast<unsigned long long>(state_done?state_delete_caller:0),static_cast<unsigned long long>(state_temporary.load()));
+    controller_equipment_intent_bridge.close();
     controller_input_bridge.close();
     stereo_bridge.close();
     diagnostic_status=nullptr;fclose(file);fclose(status);
