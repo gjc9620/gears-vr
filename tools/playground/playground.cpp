@@ -11,8 +11,11 @@
 #include <algorithm>
 #include <cmath>
 #include "MinHook.h"
-#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
 #include "../vr-common/free_hand_control.h"
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+#include "../vr-common/hand_ik_trial_policy.h"
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
 #include "../vr-common/weapon_lancer_blade_outline.h"
@@ -156,8 +159,11 @@ bool invoke(Request* r){
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 #include "playground_controller.inl"
-#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
 #include "vr_free_hands.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+#include "vr_hand_ik_trial.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
 #include "vr_equipment_snapshot.inl"
@@ -184,11 +190,19 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
     bool post_free_hand_tick=false;
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+    bool post_hand_ik_tick=false;
+#endif
     if((!wcscmp(f,L"PlayerTick")||!wcscmp(f,L"Tick"))&&
         (!playground::automatic||object==playground::viewport||
             (!wcscmp(f,L"PlayerTick")&&object==playground::pointer(playground::player,L"Actor")))){
         DWORD zero=0;game_thread.compare_exchange_strong(zero,GetCurrentThreadId());
         if(game_thread.load()==GetCurrentThreadId()){
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+            post_hand_ik_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
+                object==playground::pointer(playground::player,L"Actor");
+            if(post_hand_ik_tick)handik::pre_tick(object);
+#endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
             post_free_hand_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
                 object==playground::pointer(playground::player,L"Actor");
@@ -214,6 +228,12 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     }
     inside=false;
     original(object,function,params);
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+    if(post_hand_ik_tick&&enabled.load(std::memory_order_acquire)&&
+       game_thread.load()==GetCurrentThreadId()){
+        inside=true;handik::post_tick(object);inside=false;
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
     if(post_free_hand_tick&&enabled.load(std::memory_order_acquire)&&
        game_thread.load()==GetCurrentThreadId()){
@@ -287,8 +307,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundReserve(void*){
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     LifecycleScope lifecycle;
     if(enabled.load())return 0;
-#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     freehands::reset();
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+    handik::reset();
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
     vrequip::lancer_reload_test_start=false;
@@ -441,6 +464,31 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundFreeHandsProbeStop(void*
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundFreeHandsProbeStatus(void*){
     return DWORD(freehands::sample_count.load(std::memory_order_acquire)<<16)|
         DWORD(freehands::status.load(std::memory_order_acquire));
+}
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+// This is single-use per initialized private DLL. A zero Start result queues
+// an observation; it does not attest a setter, bone evaluation or restoration.
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkTrialStart(void*){
+    LifecycleScope lifecycle;
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||!playground::ready||
+       !freehands::test_environment()||!log_file||
+       handik::shutdown_requested.load(std::memory_order_acquire))return 1;
+    bool unused=false;
+    if(!handik::used.compare_exchange_strong(unused,true))return 2;
+    handik::stop_requested=false;handik::safe_to_unload=false;handik::status=1;handik::samples=0;
+    handik::requested.store(true,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkTrialStop(void*){
+    if(game_thread.load(std::memory_order_acquire)==GetCurrentThreadId()){
+        handik::stop_requested.store(true,std::memory_order_release);return 41;
+    }
+    LifecycleScope lifecycle;
+    return handik::stop_and_wait();
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkTrialStatus(void*){
+    return DWORD((handik::samples.load(std::memory_order_acquire)&0xffff)<<16)|
+        DWORD(handik::status.load(std::memory_order_acquire));
 }
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
@@ -702,7 +750,17 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrAimStatus(void*){
 #endif
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+    if(game_thread.load(std::memory_order_acquire)==GetCurrentThreadId()){
+        handik::shutdown_requested.store(true,std::memory_order_release);
+        handik::stop_requested.store(true,std::memory_order_release);return 41;
+    }
+#endif
     LifecycleScope lifecycle;
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+    handik::shutdown_requested.store(true,std::memory_order_release);
+    if(const auto pending_restore=handik::stop_and_wait())return pending_restore;
+#endif
 #if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
     vrequip::lancer_saw_test_start.store(false,std::memory_order_release);
 #if defined(GEARS_PLAYGROUND_LANCER_SAW_XR_PULL_TEST)
@@ -764,8 +822,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     const auto until=GetTickCount64()+2000;
     while(callbacks.load()&&GetTickCount64()<until)Sleep(1);
     if(callbacks.load())return 2;
-#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)
+#if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
     freehands::reset();
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL)
+    handik::reset();
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     vrequip::reset_switch_test();
