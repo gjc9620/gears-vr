@@ -513,6 +513,82 @@ def sample_owned_game(args, receipt):
                 'ignore_when_not_rendered': bitfield(
                     weapon_mesh, 'bIgnoreControllersWhenNotRendered'),
             }
+        elif args.mode == 'reload_values':
+            # The original HUD calls this getter for its reload bar. Invoke
+            # the same UFunction on the owned Lancer during an original reload.
+            function = bridge.function(resolver.identity(weapon)['cls'],
+                                       'GetActiveReloadValues')
+            expected = ('ActiveReloadStartTime', 'PreReactionWindowDuration',
+                        'SuperSweetSpotDuration', 'SweetSpotDuration')
+            fields = {}
+            for field in resolver.fields(function['address']):
+                flags = resolver.u64(field['address'] + 0x78)
+                if not flags & 0x80:
+                    continue
+                if (field['name'] not in expected or
+                        resolver.class_name(field) != 'FloatProperty' or
+                        not flags & 0x100 or flags & 0x400 or
+                        resolver.u32(field['address'] + 0x74) != 4):
+                    raise RuntimeError('Original reload getter signature changed')
+                fields[field['name']] = {'offset': resolver.u32(field['address'] + 0x94),
+                                         'flags': hex(flags)}
+            size = struct.unpack('<H', resolver.read(function['address'] + 0x106, 2))[0]
+            if set(fields) != set(expected) or size != 16 or sorted(
+                    field['offset'] for field in fields.values()) != [0, 4, 8, 12]:
+                raise RuntimeError('Original reload getter outputs are not four floats')
+
+            def scalar(obj, name, kind):
+                prop = property_of(obj, name)
+                if prop['type'] != kind:
+                    raise RuntimeError(f'Original {name} type changed')
+                raw = resolver.read(obj + prop['offset'], 4)
+                if kind == 'BoolProperty':
+                    mask = resolver.u32(prop['address'] + 0xd0)
+                    return bool(struct.unpack('<I', raw)[0] & mask)
+                return struct.unpack('<f' if kind == 'FloatProperty' else '<i', raw)[0]
+
+            before = {'used': scalar(weapon, 'AmmoUsedCount', 'IntProperty'),
+                      'spare': scalar(weapon, 'SpareAmmoCount', 'IntProperty')}
+            if before['used'] == 0:
+                bridge.call(weapon, 'SetAmmoUsedCount', NewValue=1)
+            if not bridge.call(weapon, 'CanReload'):
+                raise RuntimeError('Owned original Lancer cannot reload')
+            bridge.call(weapon, 'ForceReload')
+            wait_for(lambda: bridge.call(weapon, 'IsReloading'), 2,
+                     'Owned original Lancer did not start reload')
+            start = scalar(weapon, 'ReloadStartTime', 'FloatProperty')
+            samples = []
+            for minimum_elapsed in (.10, .40):
+                wait_for(lambda: scalar(world, 'TimeSeconds', 'FloatProperty') - start >=
+                         minimum_elapsed, 2, 'Original reload clock did not advance')
+                attempted_before = scalar(weapon, 'bActiveReloadAttempted', 'BoolProperty')
+                bridge.call(weapon, 'GetActiveReloadValues')
+                outputs = bridge.last_outputs.copy()
+                if set(outputs) != set(expected):
+                    raise RuntimeError('Original reload getter returned different outputs')
+                decoded = {name: struct.unpack('<f', bytes.fromhex(outputs[name]))[0]
+                           for name in expected}
+                if not all(math.isfinite(item) for item in decoded.values()):
+                    raise RuntimeError('Original reload getter returned nonfinite values')
+                attempted_after = scalar(weapon, 'bActiveReloadAttempted', 'BoolProperty')
+                if attempted_after != attempted_before:
+                    raise RuntimeError('Original getter changed active-reload attempt flag')
+                elapsed = scalar(world, 'TimeSeconds', 'FloatProperty') - start
+                samples.append({'elapsed': elapsed, 'values': decoded,
+                                'attempted_before': attempted_before,
+                                'attempted_after': attempted_after,
+                                'used': scalar(weapon, 'AmmoUsedCount', 'IntProperty')})
+            wait_for(lambda: not bridge.call(weapon, 'IsReloading'), 5,
+                     'Original Lancer reload did not finish after getter samples')
+            receipt['original_reload_getter'] = {
+                'function': resolver.identity(function['address']),
+                'parameter_bytes': size, 'parameters': fields,
+                'reload_duration': scalar(weapon, 'ReloadDuration', 'FloatProperty'),
+                'reload_start': start, 'samples': samples,
+                'ammo_before': before,
+                'ammo_after': {'used': scalar(weapon, 'AmmoUsedCount', 'IntProperty'),
+                               'spare': scalar(weapon, 'SpareAmmoCount', 'IntProperty')},
+            }
         elif args.mode == 'chainsaw_api':
             def signature(object_address, function_name):
                 function = bridge.function(resolver.identity(object_address)['cls'],
@@ -1109,6 +1185,22 @@ def sample_owned_game(args, receipt):
             raise RuntimeError('Current Lancer animation graph/control certificate incomplete')
         receipt['source_limit'] = ('current equipped Lancer graph read only; no new controller '
                                    'created, attached, evaluated or rendered')
+    elif args.mode == 'reload_values':
+        getter = receipt['original_reload_getter']
+        first, second = getter['samples']
+        values = first['values']
+        if (not 0 < first['elapsed'] < second['elapsed'] < getter['reload_duration'] or
+                first['used'] != 1 or second['used'] != 1 or
+                getter['ammo_after']['used'] != 0 or
+                first['values'] != second['values'] or
+                not 0 < values['ActiveReloadStartTime'] < getter['reload_duration'] or
+                not 0 < values['SuperSweetSpotDuration'] < .5 or
+                not 0 < values['SweetSpotDuration'] < 1):
+            raise RuntimeError('Original Lancer getter/window certificate incomplete')
+        getter['perfect_end_elapsed'] = (values['ActiveReloadStartTime'] +
+                                         values['SuperSweetSpotDuration'])
+        receipt['source_limit'] = ('actual original getter outputs on owned Lancer; no physical '
+                                   'reload completion, perfect reward or headset acceptance')
     elif args.mode == 'chainsaw_api':
         api = receipt['original_chainsaw_api']
         if any(not entry['path'] or entry['parameter_bytes'] > 128
@@ -1376,7 +1468,7 @@ def main():
     parser.add_argument('--dll', required=True, type=Path)
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
-    parser.add_argument('--mode', choices=('api', 'anim_tree', 'chainsaw_api', 'chainsaw_target_eligibility', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'chainsaw_xr_no_pose', 'reload_visual', 'reload_hold',
+    parser.add_argument('--mode', choices=('api', 'anim_tree', 'reload_values', 'chainsaw_api', 'chainsaw_target_eligibility', 'chainsaw_bones', 'chainsaw_bones_held', 'component_motion', 'socket', 'socket_reload', 'support', 'mesh_follow_trial', 'chainsaw_semantics', 'chainsaw_hold_adapter', 'chainsaw_hold_shutdown', 'chainsaw_gesture_adapter', 'chainsaw_xr_no_pose', 'reload_visual', 'reload_hold',
                                           'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

@@ -261,6 +261,8 @@ Longshot 瞄准镜另设光学渲染任务。单纯放大原有双眼画面会�
 
 随后购买版私有置后静音测试场 PID 47308 的当前 Lancer 实例，由同一游戏线程只读反射核对了 `ReloadDuration=2.5`、起点字段约 `0.7`、其余三个宽度字段均为 `-1`；默认对象数组在实例内为 `0.1／0.075／0.05`，原生代码所读角色索引为 0。依上述已匹配主块与历史尾块计算，该实例的**推导候选终点**约为 `0.800000012 s`。字段回执在忽略的 `analysis/weapon-reload-probe-20261022/reload-window-instance-47308.json`；本次仍没有主动调用 Getter 获取其四个输出，也没有以 VR 动作触发原版奖励，因此该数字先用于核对，不作为已验收的游戏内完美期限。测试组件关闭、入口还原、音频恢复与游戏正常退出各自通过；整段 VR 会话结果仍为 `incomplete`。
 
+随后在另一自有购买版 Lancer 实例（PID 57472）按原版 `ForceReload`，游戏线程通过 HUD 使用的 UFunction 两次调用 `GetActiveReloadValues`，分别于原版开始后约 `0.201`／`0.463 s` 读得稳定四值：`ActiveReloadStartTime≈0.699999988`、`PreReactionWindowDuration=0.25`、`SuperSweetSpotDuration≈0.1000000015`、`SweetSpotDuration=0.25 s`。两次输出相同，调用前后 `bActiveReloadAttempted=false`，原版计时器随后自行完成换弹。这将上述**当前 Lancer 实例**的完美终点由字段推导提升为实际 Getter 输出与已匹配判定公式共同支持的 `≈0.799999990 s`；用户要求的提前完成也算完美对应原函数的 `≤`，但还没有物理动作触发奖励的运行证明。其余枪支、难度状态和玩家控制状态仍须逐实例获取，不能把 `0.8 s` 写死到通用换弹协议。回执留在忽略的 `analysis/lancer-reload-getter-runtime-1022a.json`；`PlaygroundShutdown=0`、11 个音频会话恢复、私有进程退出已核对。
+
 - `t0`：R3 被当前武器接受并正式开始本轮装填的时刻，包含弹出／开膛与取弹耗时。
 - `t1`：本轮最后必要机械动作被确认完成的时刻；仅拿到弹药、只插入而未完成上膛都不算完成。
 - `Δt = t1 - t0`。规定数量和所有步骤均完成，且 `Δt ≤ T_perfect_end` 时判完美；提前于 `T_perfect_start` 也可成功。原生判定在窗口右边界使用包含等号的比较。

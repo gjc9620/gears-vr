@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+完美换弹期限从推导推进到当前实例实测：自有购买版置后静音 PID 57472 在一次原版 Lancer 换弹中，经游戏线程调用原 HUD 本来使用的 `GetActiveReloadValues`，两次分别于换弹约 0.201／0.463 秒取得相同四值：起点约 `0.700000`、预反应 `0.25`、完美宽度约 `0.100000`、普通成功宽度 `0.25` 秒。按已匹配原版判定函数的 `elapsed ≤ start + super`，这次 Lancer 的完美**终点**为约 `0.800000` 秒，自 `ReloadStartTime` 起算；这不是所有枪或所有游戏状态的常数。两次 Getter 调用前后主动换弹尝试标志均未变化；原版换弹随后自行结束、已耗弹从 1 归零。数值回执在忽略的 `analysis/lancer-reload-getter-runtime-1022a.json`，`PlaygroundShutdown=0`、11 个音频会话恢复、自有游戏退出均已核对。没有用实体动作结算完美奖励，也没有头显验收。
+
 Lancer 动画树当前实例只读核验：购买版自有置后静音 PID 46552 的 `Weapon.Mesh.AnimTreeTemplate` 为 `AT_COG_AssaultRifle`，`Animations` 是另一份当前实例 `AnimTree`，仅有一个 `AnimNodeSequence` 子节点；其 `SkelControlLists` 只有 `b_AR_Magazine → AmmoControl`，`bIgnoreControllers=0`、`bIgnoreControllersWhenNotRendered=false`。这为保留原动画通知并另加卡扣／机匣骨骼控制提供真实拓扑，但**没有创建或挂接新控制器**，也未证明动画计算顺序／GC。只读回执在忽略的 `analysis/lancer-anim-tree-runtime-1022b.json`，私有 `PlaygroundShutdown=0`、11 个音频会话恢复、游戏退出通过；先行试验把模板字段误查到武器而非其 `Weapon.Mesh`，在图读取前停止，没有作为通过证据。后续仅在引擎对象创建、列表所有权和恢复路径认证后做默认关闭的单控制器试验；不能直接改骨数组或把现有 `AmmoControl` 换掉。
 
 控制器接线审查确认当前证据还不能安全实现新增 `SkelControlSingleBone`：缺少当前构建的引擎对象创建入口、`SkelControlLists` 的引擎管理扩容、`SkelControlIndex` 重建和新对象的 GC／解绑证明。现有 `SetAnimTreeTemplate`、`UpdateAnimations`、`SetSkelControlStrength` 声明不等于这些路径已经验证。下一步只读记录当前实例控制索引、相关数组和实时接口签名，之后才考虑默认关闭、零强度的单控制器试验；不直接串改 `AmmoControl.NextControl` 或用 DLL 内存替代引擎数组。
