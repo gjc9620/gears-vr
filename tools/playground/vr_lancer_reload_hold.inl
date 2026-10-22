@@ -5,12 +5,26 @@
 std::atomic<bool> lancer_reload_test_start{},lancer_reload_test_complete{};
 std::atomic<unsigned> lancer_reload_status{};
 struct LancerReloadHold {
-    uptr world{},pawn{},weapon{},finish_function{};
+    uptr world{},pawn{},weapon{},finish_function{},mesh{};
     Name timer{};
     int ammo_used{};
     bool active{};
+    gears_weapon::LancerFeedWorld feed{};
+    ULONGLONG next_anchor_log{};
 };
 LancerReloadHold lancer_reload_hold{};
+
+bool lancer_fixed_feed(uptr weapon,uptr expected_mesh,
+                       gears_weapon::LancerFeedWorld& feed,uptr& mesh){
+    MeshPoseProbe gun{};
+    if(!mesh_pose_probe(weapon,gun)||gun.hidden||
+       wcscmp(gun.asset_name,L"COGAssaultRifle")||
+       (expected_mesh&&gun.mesh!=expected_mesh))return false;
+    std::array<float,16> matrix{};
+    std::memcpy(matrix.data(),gun.local_to_world,sizeof(gun.local_to_world));
+    if(!gears_weapon::lancer_feed_world(matrix,feed))return false;
+    mesh=gun.mesh;return true;
+}
 
 bool lancer_int(uptr object,const wchar_t* field,int& value){
     const auto p=playground::property(object,field);
@@ -87,6 +101,8 @@ unsigned lancer_begin(uptr pc,gears_weapon::EquipmentSnapshot const& game){
        !lancer_bool_call(weapon,L"IsReloading",already)||already)return 3;
     const auto finish=lancer_finish_function(weapon);
     if(!finish)return 4;
+    gears_weapon::LancerFeedWorld feed{};uptr mesh{};
+    if(!lancer_fixed_feed(weapon,0,feed,mesh))return 4;
     const auto timer=get<Name>(finish+0x48);
     playground::Args start(weapon,L"ForceReload");
     if(!start.valid||!start.run()||
@@ -98,7 +114,8 @@ unsigned lancer_begin(uptr pc,gears_weapon::EquipmentSnapshot const& game){
         if(!lancer_finish_now(weapon,finish))return 6;
         return 7;
     }
-    lancer_reload_hold={game.world,game.pawn,weapon,finish,timer,used,true};
+    lancer_reload_hold={game.world,game.pawn,weapon,finish,mesh,timer,used,true,
+        feed,GetTickCount64()};
     return 1;
 }
 unsigned lancer_complete(uptr pc,gears_weapon::EquipmentSnapshot const& game){
@@ -125,6 +142,23 @@ void lancer_refresh(uptr pc,gears_weapon::EquipmentSnapshot const& game){
        game.pawn!=hold.pawn||game.current_weapon!=hold.weapon){
         // The eight-second original timer remains armed for this old weapon.
         hold={};lancer_reload_status.store(8,std::memory_order_release);return;
+    }
+    uptr mesh{};
+    gears_weapon::LancerFeedWorld feed{};
+    if(!lancer_fixed_feed(hold.weapon,hold.mesh,feed,mesh)){
+        // Keep the original fallback timer; reject further VR interaction.
+        hold={};lancer_reload_status.store(8,std::memory_order_release);return;
+    }
+    hold.feed=feed;
+    const auto now=GetTickCount64();
+    if(log_file&&now>=hold.next_anchor_log){
+        hold.next_anchor_log=now+500;
+        fwprintf(log_file,L"lancer_fixed_feed_anchor weapon=%p mesh=%p "
+            L"point=%.6f,%.6f,%.6f outward=%.6f,%.6f,%.6f\n",
+            reinterpret_cast<void*>(hold.weapon),reinterpret_cast<void*>(mesh),
+            feed.point_raw.x,feed.point_raw.y,feed.point_raw.z,
+            feed.outward_axis.x,feed.outward_axis.y,feed.outward_axis.z);
+        fflush(log_file);
     }
     bool reloading{};
     if(lancer_bool_call(hold.weapon,L"IsReloading",reloading)&&!reloading){

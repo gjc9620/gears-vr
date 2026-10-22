@@ -213,3 +213,18 @@ magazine bone far away during the reload animation. A VR feed-port guide must
 freeze a gun-frame reference instead of following that animated socket. The
 probe establishes neither insertion direction nor controller grip calibration,
 and the normal DLL exports none of its controls.
+
+The same private callback now also samples `b_AR_Magazine`'s original bone
+matrix. An owned retail idle capture placed its pivot near the top of the
+magazine and the socket near the bottom, separated along the gun's local `-Z`
+axis. The pivot is a candidate upper feed-port anchor; controller-held item
+orientation and the visible receiver opening still need validation before a
+physical insertion can commit inventory.
+
+The opt-in Lancer R3 reload-hold trial also projects this fixed upper anchor
+through the current original weapon mesh matrix while the original reload is
+held. It verifies the same mesh identity on every update and leaves the
+original eight-second fallback timer in place if the mesh becomes invalid.
+An owned retail trial captured seven bounded world-anchor rows while the
+original explicit completion still settled ammo. These rows do not represent
+a tracked left-hand magazine or a physical insertion.

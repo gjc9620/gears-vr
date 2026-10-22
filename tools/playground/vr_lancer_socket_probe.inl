@@ -8,6 +8,7 @@ struct LancerSocketState {
     Name socket_name{};
     ULONGLONG next_ms{},start_ms{};
     bool reload_sequence{},saw_reloading{},saw_finish{};
+    int bone_index{-1};
 };
 LancerSocketState lancer_socket{};
 
@@ -64,19 +65,23 @@ bool lancer_socket_bind(uptr pc,uptr pawn,uptr weapon,MeshPoseProbe const& gun){
     }
     if(!selected||!std::isfinite(relative.x)||!std::isfinite(relative.y)||
        !std::isfinite(relative.z))return false;
-    wchar_t bone[64]{};
-    if(!lancer_socket_name(selected_bone,bone)||!log_file)return false;
+    wchar_t bone[64]{};int bone_index{};
+    if(!lancer_socket_name(selected_bone,bone)||
+       wcscmp(bone,L"b_AR_Magazine")||
+       !support_probe_bone_index(gun.mesh,selected_bone,bone_index)||
+       bone_index!=8||!log_file)return false;
     lancer_socket={playground::arena_world,pawn,weapon,gun.mesh,asset,selected,selected_name,
-        0,GetTickCount64(),lancer_socket_reload_mode.load(std::memory_order_acquire),false,false};
+        0,GetTickCount64(),lancer_socket_reload_mode.load(std::memory_order_acquire),false,false,
+        bone_index};
     fwprintf(log_file,L"%ls pc=%p pawn=%p weapon=%p mesh=%p "
         L"asset=%p socket=%p name=Magazine bone=%ls relative=%.9g,%.9g,%.9g "
-        L"rotation=%d,%d,%d count=%d\n",
+        L"rotation=%d,%d,%d count=%d bone_index=%d\n",
         lancer_socket.reload_sequence?L"lancer_socket_reload_begin":L"lancer_socket_begin",
         reinterpret_cast<void*>(pc),
         reinterpret_cast<void*>(pawn),reinterpret_cast<void*>(weapon),
         reinterpret_cast<void*>(gun.mesh),reinterpret_cast<void*>(asset),
         reinterpret_cast<void*>(selected),bone,relative.x,relative.y,relative.z,
-        rotation.pitch,rotation.yaw,rotation.roll,sockets.count);
+        rotation.pitch,rotation.yaw,rotation.roll,sockets.count,bone_index);
     fflush(log_file);return true;
 }
 bool lancer_socket_world(uptr mesh,Name socket,playground::Vector& location,
@@ -125,9 +130,10 @@ void lancer_socket_post_tick(uptr pc){
        lancer_socket.asset!=gun.asset){lancer_socket_fail(L"component_changed");return;}
     const auto now=GetTickCount64();
     if(now<lancer_socket.next_ms)return;
-    std::array<float,16> before{},after{};
+    std::array<float,16> before{},after{},bone{};
     playground::Vector location{};playground::Rotation rotation{};
     if(!support_probe_component_matrix(gun.mesh,before)||
+       !support_probe_bone_matrix(gun.mesh,lancer_socket.bone_index,bone)||
        !lancer_socket_world(gun.mesh,lancer_socket.socket_name,location,rotation)||
        !support_probe_component_matrix(gun.mesh,after)||
        std::memcmp(before.data(),after.data(),sizeof(before))){
@@ -149,6 +155,7 @@ void lancer_socket_post_tick(uptr pc){
         lancer_socket.reload_sequence?L"lancer_socket_reload_sample":L"lancer_socket_sample",
         sample,stamp.QuadPart);
     support_probe_print_matrix(L"gun",before.data());
+    support_probe_print_matrix(L"bone",bone.data());
     fwprintf(log_file,L" world=%.9g,%.9g,%.9g rotation=%d,%d,%d",
         location.x,location.y,location.z,rotation.pitch,rotation.yaw,rotation.roll);
     if(lancer_socket.reload_sequence)

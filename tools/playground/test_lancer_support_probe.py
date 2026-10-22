@@ -1,6 +1,6 @@
 import unittest
 
-from lancer_support_probe import parse_pose_row, parse_socket_row
+from lancer_support_probe import parse_fixed_feed_row, parse_pose_row, parse_socket_row
 
 
 class LancerSupportProbeRows(unittest.TestCase):
@@ -25,9 +25,21 @@ class LancerSupportProbeRows(unittest.TestCase):
                                f'gun={matrix} world=1.5,2.5,3.5 rotation=0,100,200')
         self.assertEqual(row['sample'], 2)
         self.assertEqual(row['world'], [1.5, 2.5, 3.5])
+        with_bone = parse_socket_row('lancer_socket_sample sample=2 qpc=12345 ' +
+                                     f'gun={matrix} bone={matrix} '
+                                     'world=1.5,2.5,3.5 rotation=0,100,200')
+        self.assertEqual(with_bone['bone'][15], 1)
         with self.assertRaises(ValueError):
             parse_socket_row('lancer_socket_sample sample=2 qpc=12345 ' +
                              f'gun={matrix} world=nan,2.5,3.5 rotation=0,100,200')
+
+    def test_fixed_feed_world_row(self):
+        row = parse_fixed_feed_row('lancer_fixed_feed_anchor weapon=0x1 mesh=0x2 '
+                                   'point=1,2,3 outward=0,0,-1')
+        self.assertEqual(row['point'], [1, 2, 3])
+        with self.assertRaises(ValueError):
+            parse_fixed_feed_row('lancer_fixed_feed_anchor weapon=0x1 mesh=0x2 '
+                                 'point=1,2,3 outward=0,0,0')
 
 
 if __name__ == '__main__':

@@ -25,7 +25,8 @@ def original_socket_fields(begin):
     fields = dict(item.split('=', 1) for item in begin.split()[1:])
     expected = {'pc', 'pawn', 'weapon', 'mesh', 'asset', 'socket', 'name', 'bone',
                 'relative', 'rotation', 'count'}
-    if (set(fields) != expected or fields['name'] != 'Magazine' or
+    if (set(fields) not in (expected, expected | {'bone_index'}) or
+            fields['name'] != 'Magazine' or
             fields['bone'] != 'b_AR_Magazine' or int(fields['count']) != 2):
         raise ValueError('Original Lancer socket identity changed')
     relative = [float(value) for value in fields['relative'].split(',')]
@@ -72,6 +73,27 @@ def summarize(capture, partition=None):
         predicted = [a + b for a, b in zip(pivot, relative)]
         result['static_reference_plus_socket_raw'] = predicted
         result['runtime_to_static_candidate_distance_raw'] = math.dist(center, predicted)
+    with_bone = ['bone' in row for row in rows]
+    if any(with_bone):
+        if not all(with_bone) or int(fields.get('bone_index', -1)) != 8:
+            raise ValueError('Original Lancer magazine bone evidence incomplete')
+        pivots = [local_socket(row['gun'], row['bone'][12:15]) for row in rows]
+        pivot = [statistics.median(point[axis] for point in pivots)
+                 for axis in range(3)]
+        delta = [center[axis] - pivot[axis] for axis in range(3)]
+        distance = math.dist(center, pivot)
+        if not 1 < distance < 100:
+            raise ValueError('Original Lancer socket/bone separation invalid')
+        result.update(bone_index=8, bone_pivot_in_gun_raw=pivot,
+                      maximum_bone_pivot_local_drift_raw=max(
+                          math.dist(point, pivot) for point in pivots),
+                      socket_from_pivot_in_gun_raw=delta,
+                      pivot_to_socket_distance_raw=distance,
+                      pivot_to_socket_axis_in_gun=[value / distance for value in delta],
+                      socket_offset_length_error_raw=abs(distance - math.dist(relative, [0, 0, 0])))
+        if partition is not None:
+            result['runtime_to_static_pivot_distance_raw'] = math.dist(
+                pivot, partition['mesh_space_reference_pivot_candidate_raw'])
     return result
 
 

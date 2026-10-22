@@ -84,7 +84,7 @@ def parse_socket_row(line):
     expected = {'sample', 'qpc', 'gun', 'world', 'rotation'}
     if reload:
         expected |= {'time', 'start', 'reloading'}
-    if set(fields) != expected:
+    if set(fields) not in (expected, expected | {'bone'}):
         raise ValueError('Unexpected original Lancer socket row')
     world = [float(item) for item in fields['world'].split(',')]
     rotation = [int(item) for item in fields['rotation'].split(',')]
@@ -92,6 +92,8 @@ def parse_socket_row(line):
         raise ValueError('Invalid original Lancer socket transform')
     row = {'sample': int(fields['sample']), 'qpc': int(fields['qpc']),
            'gun': matrix(fields['gun']), 'world': world, 'rotation': rotation}
+    if 'bone' in fields:
+        row['bone'] = matrix(fields['bone'])
     if reload:
         if fields['reloading'] not in ('0', '1'):
             raise ValueError('Invalid original Lancer reload state')
@@ -100,6 +102,20 @@ def parse_socket_row(line):
         if not all(math.isfinite(row[key]) for key in ('time', 'start')):
             raise ValueError('Nonfinite original Lancer reload time')
     return row
+
+
+def parse_fixed_feed_row(line):
+    fields = dict(item.split('=', 1) for item in line.split()[1:])
+    if set(fields) != {'weapon', 'mesh', 'point', 'outward'}:
+        raise ValueError('Unexpected fixed Lancer feed row')
+    point = [float(value) for value in fields['point'].split(',')]
+    outward = [float(value) for value in fields['outward'].split(',')]
+    if (len(point) != 3 or len(outward) != 3 or
+            not all(math.isfinite(value) for value in point + outward) or
+            not .999 < math.dist(outward, [0, 0, 0]) < 1.001):
+        raise ValueError('Invalid fixed Lancer feed pose')
+    return {'weapon': fields['weapon'], 'mesh': fields['mesh'],
+            'point': point, 'outward': outward}
 
 
 def original_state_function(resolver, weapon, state_name, function_name):
@@ -485,6 +501,14 @@ def sample_owned_game(args, receipt):
                 receipt.get('finished_ammo_used') != 0 or
                 receipt.get('finished_reloading') is not False):
             raise RuntimeError('Original held reload and explicit completion evidence incomplete')
+        if args.mode == 'reload_adapter':
+            anchors = [parse_fixed_feed_row(line) for line in lines
+                       if line.startswith('lancer_fixed_feed_anchor ')]
+            if (len(anchors) < 2 or
+                    len({row['weapon'] for row in anchors}) != 1 or
+                    len({row['mesh'] for row in anchors}) != 1):
+                raise RuntimeError('Fixed Lancer feed anchor did not remain on one gun mesh')
+            receipt['fixed_feed_anchors'] = anchors
     receipt.update(game_thread_log=str(log_path),
                    log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest())
     receipt['passed'] = True
