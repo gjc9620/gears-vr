@@ -161,7 +161,7 @@ def settings(config,manifest,root=ROOT):
     hud_horizontal_fov(config,manifest)
     hud_layout(config,manifest)
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
-    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'startup_menu','startup_selftests_prelaunch','graphics_startup_lock','graphics_menu_lock','experimental_preserve_upscaler','playground_menu')):
+    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'armspan_startup_calibration','startup_menu','startup_selftests_prelaunch','graphics_startup_lock','graphics_menu_lock','experimental_preserve_upscaler','playground_menu')):
         raise ValueError('Manifest session options must be boolean')
     if manifest.get('playground_menu',False) and not manifest.get('startup_menu',False):
         raise ValueError('Playground menu requires owned startup')
@@ -187,6 +187,8 @@ def settings(config,manifest,root=ROOT):
         raise ValueError('Crosshair assignment observer requires UI observer and anchor observer')
     if manifest.get('controller_input_observer',False) and not all(manifest.get(key,False) for key in ('crosshair_assignment_observer','ui_observer','anchor_observer')):
         raise ValueError('Controller input requires the certified crosshair/UI/anchor observers')
+    if manifest.get('armspan_startup_calibration',False) and not all(manifest.get(key,False) for key in ('controller_input_observer','startup_menu')):
+        raise ValueError('Armspan startup calibration requires controller input and owned startup menu')
     if manifest.get('world_recovery',False) and not all(manifest.get(key,False) for key in ('anchor_observer','ui_observer','cinematic_camera')):
         raise ValueError('World recovery requires anchor/UI observers and cinematic camera')
     if manifest.get('cinematic_camera',False) and not manifest.get('anchor_observer',False):
@@ -521,6 +523,9 @@ class Backend:
         return TinyOutputMonitor(rooted(manifest['native_build'])/'swapchain-output-status.txt',
                                  diagnostic,identity,
                                  allow_recovery=os.environ.get('GEARSVR_TEST_TINY_OUTPUT_OBSERVE_ONLY')!='1').start()
+    def calibrate_armspan(self,args,game,owner,cancel):
+        from armspan_startup import prepare
+        return prepare(args,game,owner,self.control,self.runner,cancel,ROOT)
     def navigate(self,pid,identity,cancel,deadline,log,check_live=None):
         sys.path.insert(0,str(HERE))
         from menu_navigation import navigate
@@ -655,6 +660,24 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
             else:
                 state['startup_window_last_diagnostic']=last_window_diagnostic
                 raise TimeoutError('Game window unavailable for startup VR panel')
+        expected_armspan=None
+        if manifest.get('armspan_startup_calibration',False):
+            state['phase']='calibrating_armspan';atomic_json(index,state)
+            calibration=backend.calibrate_armspan(args,identity,owner,lambda:backend.cancelled(cancel))
+            if calibration is None:
+                state.update(phase='cancelled_before_activation',native_activated=False)
+                atomic_json(index,state);return 0
+            state['armspan_calibration']=calibration
+            # The dedicated calibration session has already saved a valid
+            # record. The normal runner must load it before building its native
+            # command, including after an explicitly requested remeasurement.
+            args.weapon_calibration_path=pathlib.Path(calibration['path'])
+            args.remeasure_armspan=False
+            from armspan_calibration import load as load_armspan
+            expected_armspan=load_armspan(args.weapon_calibration_path).value
+            if expected_armspan is None:
+                raise RuntimeError('Armspan record disappeared or became invalid before handoff; Native remains inactive')
+            atomic_json(index,state)
         def on_report(path,reported_owner,reported_game):
             report=pathlib.Path(path).resolve()
             if report.parent!=(ROOT/'analysis/runtime').resolve() or reported_owner!=owner or reported_game!=identity:
@@ -667,6 +690,13 @@ def start(config,manifest,backend,index=INDEX,clock=time.monotonic,sleep=time.sl
         if owned_prime:
             def before_activation(check_live):
                 if prepare_level(check_live) is None:raise backend.runner.StartupCancelled()
+                if expected_armspan is not None:
+                    from armspan_calibration import validate as validate_armspan
+                    try:loaded=validate_armspan(getattr(args,'armspan_calibration',None))
+                    except (ValueError,TypeError):
+                        raise RuntimeError('Native command has no valid armspan record; Native remains inactive') from None
+                    if loaded!=expected_armspan:
+                        raise RuntimeError('Armspan record changed during handoff; Native remains inactive')
             extra['before_native_activation']=before_activation
         code=backend.runner.run_session(args,backend.control,on_report=on_report,cancel_requested=lambda:backend.cancelled(cancel),**extra)
         report=json.loads(pathlib.Path(state['session_report']).read_text()) if state.get('session_report') else {}

@@ -5,12 +5,13 @@ using System.Drawing;
 using System.IO;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
 namespace GearsVrUi {
-    enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid, ExportLogs, ExportingLogs, LogsExported, ExportLogsFailed, ExportFilter, ExportInvalidResult, ExportWarnings, RenderScale, RenderHint, RenderPreview, RenderInvalid, RenderIntro, StereoFpsUnavailable, StereoFpsPrefix, XrRatePrefix, FirstPerson, FirstPersonHint, RightStickDeadzone, RightStickHint, GameplayInvalid, Armspan, ArmspanMeasure, ArmspanRequired, ArmspanSaved }
+    enum TextKey { StartupError, RepositoryMissing, HudCapabilityInvalid, HudNumberInvalid, HudRangeInvalid, Unknown, PythonMissing, WindowTitle, Intro, GamePath, Browse, SystemRuntime, Simulator, RuntimeFile, HudSize, HudHint, StartVr, StopVr, Recenter, Status, OpenLogs, Ready, StopHint, ConfigReadError, GameFilter, RecenterNotReady, RecenterRequested, RecenterFailed, GameMissing, ManifestMissing, RuntimeMissing, ManifestChanged, Starting, StartupFailed, StartupFailedPrefix, Cancelling, Cancelled, Stopping, StopFailed, WaitingForStop, RunningCommand, CancelBeforeLaunch, CurrentPhase, SessionEnded, SessionExit, ExitCode, CommandFailed, ConfirmStop, CameraDistance, CameraHint, CameraInvalid, ExportLogs, ExportingLogs, LogsExported, ExportLogsFailed, ExportFilter, ExportInvalidResult, ExportWarnings, RenderScale, RenderHint, RenderPreview, RenderInvalid, RenderIntro, StereoFpsUnavailable, StereoFpsPrefix, XrRatePrefix, FirstPerson, FirstPersonHint, RightStickDeadzone, RightStickHint, GameplayInvalid, Armspan, ArmspanMeasure, ArmspanRequired, ArmspanSaved, ArmspanWaiting, ArmspanHolding, ArmspanComplete }
     static class Language {
         internal static volatile bool English = true;
         internal static readonly string[] Chinese = new string[] {
@@ -86,9 +87,12 @@ namespace GearsVrUi {
             "%（0–50）；默认 2%，下次启动生效",
             "第一人称与摇杆死区配置无效。",
             "臂展校准",
-            "测量臂展：双手张开，按住两个抓握键 2 秒",
-            "首次使用必须测量；成功后自动保存",
+            "测量／重测：长按 LGrip＋RGrip 2 秒",
+            "首次必测；完成并保存后才进入游戏",
             "已有有效记录；勾选可重新测量",
+            "请张开双臂，长按 LGrip＋RGrip",
+            "保持双手稳定：",
+            "臂展已保存；下次自动复用",
         };
         internal static readonly string[] Translations = new string[] {
             "Gears VR startup failed",
@@ -163,9 +167,12 @@ namespace GearsVrUi {
             "% (0-50); default 2%, applies next launch",
             "First-person or right-stick settings are invalid.",
             "Arm span",
-            "Measure arm span: hold both grips with arms out for 2 seconds",
-            "First use requires measurement; saved automatically on success",
+            "Measure/re-measure: hold LGrip + RGrip for 2 seconds",
+            "First use: measure and save before entering the game",
             "Valid measurement saved; check to measure again",
+            "Arms out; hold LGrip + RGrip",
+            "Hold both hands steady: ",
+            "Arm span saved; reused next time",
         };
         internal static string T(TextKey key) { return English ? Translations[(int)key] : Chinese[(int)key]; }
         internal static string TranslateVisible(string text, bool english) {
@@ -322,28 +329,62 @@ namespace GearsVrUi {
             return (bool)value;
         }
         internal static bool SupportsArmspan(Dictionary<string, object> manifest) {
-            object value;
-            if (!manifest.TryGetValue("controller_input_observer", out value)) return false;
-            if (!(value is bool)) throw new InvalidDataException("controller_input_observer must be boolean");
-            return (bool)value;
+            object controller, startup;
+            bool hasController = manifest.TryGetValue("controller_input_observer", out controller);
+            bool hasStartup = manifest.TryGetValue("armspan_startup_calibration", out startup);
+            if ((hasController && !(controller is bool)) || (hasStartup && !(startup is bool)))
+                throw new InvalidDataException("Armspan capabilities must be boolean");
+            return hasController && hasStartup && (bool)controller && (bool)startup;
         }
         internal static bool ValidArmspanCalibration(string path) {
             try {
-                var record = ReadConfig(path);
-                if (record.Count != 3 || !record.ContainsKey("schema") ||
-                    !record.ContainsKey("armspan_metres") || !record.ContainsKey("hands_below_head_metres") ||
-                    !(record["schema"] is int) || (int)record["schema"] != 1) return false;
-                object span = record["armspan_metres"], below = record["hands_below_head_metres"];
-                if (!(span is int || span is long || span is double || span is decimal || span is float) ||
-                    !(below is int || below is long || below is double || below is decimal || below is float)) return false;
-                double s = Convert.ToDouble(span), b = Convert.ToDouble(below);
-                return !Double.IsNaN(s) && !Double.IsInfinity(s) && s >= .9 && s <= 2.4 &&
-                    !Double.IsNaN(b) && !Double.IsInfinity(b) && b >= -.35 && b <= .1;
+                // This small numeric record needs duplicate-key rejection and
+                // strict UTF-8. JavaScriptSerializer silently keeps duplicates.
+                string text = new UTF8Encoding(false, true).GetString(File.ReadAllBytes(path));
+                if (text.Length != 0 && text[0] == '\uFEFF') return false; // Frozen Native reader accepts UTF-8 without BOM.
+                var start = Regex.Match(text, @"\A[ \t\r\n]*\{");
+                if (!start.Success) return false;
+                int offset = start.Length;
+                var record = new Dictionary<string, double>();
+                var property = new Regex("\\G[ \\t\\r\\n]*\"(?<key>(?:[^\"\\\\\\x00-\\x1F]|\\\\(?:[\"\\\\/bfnrt]|u[0-9a-fA-F]{4}))*)\"[ \\t\\r\\n]*:[ \\t\\r\\n]*(?<number>-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)[ \\t\\r\\n]*(?<end>[,}])");
+                for (;;) {
+                    var match = property.Match(text, offset);
+                    if (!match.Success) return false;
+                    offset = match.Index + match.Length;
+                    string key = new JavaScriptSerializer().Deserialize<string>("\"" + match.Groups["key"].Value + "\"");
+                    if (record.ContainsKey(key) || (key != "schema" && key != "armspan_metres" && key != "hands_below_head_metres")) return false;
+                    string number = match.Groups["number"].Value;
+                    double value;
+                    if (!Double.TryParse(number, NumberStyles.Float, CultureInfo.InvariantCulture, out value) ||
+                        Double.IsNaN(value) || Double.IsInfinity(value) || (key == "schema" && number != "1")) return false;
+                    record.Add(key, value);
+                    if (match.Groups["end"].Value == "}") break;
+                    if (record.Count >= 3) return false;
+                }
+                return record.Count == 3 && Regex.IsMatch(text.Substring(offset), @"\A[ \t\r\n]*\z") &&
+                    record["armspan_metres"] >= .9 && record["armspan_metres"] <= 2.4 &&
+                    record["hands_below_head_metres"] >= -.35 && record["hands_below_head_metres"] <= .1;
             } catch { return false; }
         }
         internal static bool HasArmspanCalibration() {
             return ValidArmspanCalibration(Path.Combine(Environment.GetFolderPath(
                 Environment.SpecialFolder.LocalApplicationData), "GearsVR", "weapon-calibration.json"));
+        }
+        internal static string ArmspanProgressText(string line) {
+            var value = new JavaScriptSerializer().DeserializeObject(line) as Dictionary<string, object>;
+            object nested;
+            if (value == null || !value.TryGetValue("armspan_calibration", out nested)) return null;
+            var row = nested as Dictionary<string, object>; object phase, progress;
+            if (row == null || !row.TryGetValue("phase", out phase) || !(phase is string) ||
+                !row.TryGetValue("progress", out progress) || !(progress is int || progress is double || progress is decimal))
+                throw new InvalidDataException("Invalid armspan progress");
+            double p = Convert.ToDouble(progress);
+            if (Double.IsNaN(p) || Double.IsInfinity(p) || p < 0 || p > 1) throw new InvalidDataException("Invalid armspan progress");
+            if ((string)phase == "holding") return Language.T(TextKey.ArmspanHolding) + Math.Round(p * 100).ToString("0") + "%";
+            if ((string)phase == "saved" || (string)phase == "reused") return Language.T(TextKey.ArmspanComplete);
+            if ((string)phase == "waiting") return Language.T(TextKey.ArmspanWaiting);
+            if ((string)phase == "cancelled") return Language.T(TextKey.Cancelled);
+            throw new InvalidDataException("Invalid armspan phase");
         }
         internal static decimal HudSize(Dictionary<string, object> config) {
             object value;
@@ -593,13 +634,36 @@ namespace GearsVrUi {
             string temp = Path.GetTempFileName();
             try {
                 if (SupportsArmspan(new Dictionary<string, object>()) ||
-                    !SupportsArmspan(new Dictionary<string, object>{{"controller_input_observer", true}})) return 66;
+                    SupportsArmspan(new Dictionary<string, object>{{"controller_input_observer", true}}) ||
+                    !SupportsArmspan(new Dictionary<string, object>{{"controller_input_observer", true},{"armspan_startup_calibration", true}})) return 66;
                 try { SupportsArmspan(new Dictionary<string, object>{{"controller_input_observer", "true"}}); return 67; }
                 catch (InvalidDataException) { }
                 File.WriteAllText(temp, "{\"schema\":1,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}");
                 if (!ValidArmspanCalibration(temp)) return 68;
+                foreach (string whitespace in new string[]{" ", "\t", "\r", "\n", " \t\r\n "}) {
+                    File.WriteAllText(temp, "{\"schema\":1" + whitespace + ",\"armspan_metres\":1.72" + whitespace +
+                        ",\"hands_below_head_metres\":-0.14" + whitespace + "}");
+                    if (!ValidArmspanCalibration(temp)) return 77;
+                }
                 File.WriteAllText(temp, "{\"schema\":1,\"armspan_metres\":0.3,\"hands_below_head_metres\":-0.14}");
                 if (ValidArmspanCalibration(temp)) return 69;
+                foreach (string invalid in new string[]{
+                    "{\"schema\":1,\"schema\":1,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}",
+                    "{\"schema\":1.0,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}",
+                    "{\"schema\":true,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}",
+                    "{\"schema\":1,\"armspan_metres\":NaN,\"hands_below_head_metres\":-0.14}",
+                    "{\"schema\":1,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14,}",
+                    "{\"schema\":1,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}x"}) {
+                    File.WriteAllText(temp, invalid); if (ValidArmspanCalibration(temp)) return 72;
+                }
+                File.WriteAllBytes(temp, new byte[]{0xff}); if (ValidArmspanCalibration(temp)) return 73;
+                File.WriteAllText(temp, "{\"schema\":1,\"armspan_metres\":1.72,\"hands_below_head_metres\":-0.14}", new UTF8Encoding(true));
+                if (ValidArmspanCalibration(temp)) return 76;
+                if (ArmspanProgressText("{\"armspan_calibration\":{\"phase\":\"holding\",\"progress\":0.5}}") != Language.T(TextKey.ArmspanHolding) + "50%" ||
+                    ArmspanProgressText("{\"armspan_calibration\":{\"phase\":\"saved\",\"progress\":1}}") != Language.T(TextKey.ArmspanComplete) ||
+                    ArmspanProgressText("{\"other\":true}") != null) return 74;
+                try { ArmspanProgressText("{\"armspan_calibration\":{\"phase\":\"holding\",\"progress\":true}}"); return 75; }
+                catch (InvalidDataException) { }
                 File.WriteAllText(temp, "{\"game_path\":\"old\",\"stereo_units_per_metre\":100,\"extra\":{\"keep\":true}}");
                 SaveGame(temp, "C:\\game path\\game.exe"); var config = ReadConfig(temp);
                 if (!config.ContainsKey("extra") || Convert.ToInt32(config["stereo_units_per_metre"]) != 100 ||
@@ -685,6 +749,7 @@ namespace GearsVrUi {
             try {
                 var candidate = ReadConfig(ManifestPath(root));
                 candidate["controller_input_observer"] = true;
+                candidate["armspan_startup_calibration"] = true;
                 File.WriteAllText(layoutManifest, new JavaScriptSerializer().Serialize(candidate));
                 Environment.SetEnvironmentVariable("GEARSVR_MANIFEST", layoutManifest);
                 using (var form = new Launcher(root)) {
@@ -1076,6 +1141,7 @@ namespace GearsVrUi {
                         var stdout = new StringBuilder();
                         process.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e) { if (e.Data != null) { if (command == "status") stdout.AppendLine(e.Data);
                             if(renderSupported&&(command=="start"||command=="render-size")){try{string dimensions=Program.RenderSizeText(e.Data);if(dimensions!=null)Ui(delegate{renderInfo.Text=dimensions;});}catch{}}
+                            if(armspanSupported&&command=="start"){try{string progress=Program.ArmspanProgressText(e.Data);if(progress!=null)Ui(delegate{armspanInfo.Text=progress;});}catch{}}
                             Log(e.Data); } };
                         process.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e) { if (e.Data != null) Log(e.Data); };
                         Log(Language.T(TextKey.RunningCommand) + command);
