@@ -54,6 +54,12 @@
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
 #include "../vr-common/weapon_equipment_model.h"
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
+#include "../vr-common/equipment_switch_mailbox.h"
+#endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+#include "../vr-common/weapon_stow_lease.h"
+#endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
 #include "../vr-common/equipment_intent_bridge.h"
 #if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
@@ -139,6 +145,10 @@ namespace handanim {unsigned bridge_before(Request*);void bridge_after(Request*,
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
 namespace handstream {void before_action(uptr,uptr);}
 #endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+namespace vrequip {namespace stow {void before_action(uptr,uptr);}}
+namespace vrfire {bool yield_for_equipment(uptr,uptr);}
+#endif
 bool invoke_engine(Request* r){
     if(!r||r->size>sizeof(r->params)||!registered(r->object)||!registered(r->function))return false;
     wchar_t cls[64]{};if(!name(get<uptr>(r->function+0x50),cls,64)||wcscmp(cls,L"Function"))return false;
@@ -191,6 +201,9 @@ bool invoke(Request* r){
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     if(r)handstream::before_action(r->object,r->function);
 #endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+    if(r)vrequip::stow::before_action(r->object,r->function);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     const auto observation=handanim::bridge_before(r);
 #endif
@@ -230,6 +243,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     // Release before any original action dispatch, including recursive calls.
     handstream::before_action(object,function);
+#endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+    vrequip::stow::before_action(object,function);
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     // Observe before both the recursion bypass and automatic-mode filter.
@@ -570,21 +586,34 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerSawXrPullStatus(vo
 // Status: 0 queued, 1 original call sent, 2 invalidated, 3 ignored/busy,
 // 4 empty slot with original cue, 5 model-only stow/unholster, 6 equipped, 7 timed out,
 // 8 reflected original call failed, 9 empty slot without a usable original
-// empty-clip cue. Only the private test build exports this.
+// empty-clip cue. Stow candidate additionally reports 10 verified stowed,
+// 11 verified in hand, 12 stow/unholster rejected. Private test exports only.
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchTest(void* slot_arg){
+    // Remote test producer only. Serialize teardown against publishing slot_
+    // so the drained-only mailbox reset cannot race an in-flight producer.
+    // A game callback must not wait on a shutdown caller that is draining it.
+    if(GetCurrentThreadId()==game_thread.load(std::memory_order_acquire))return 4;
+    LifecycleScope lifecycle;
     wchar_t behind[4]{},muted[4]{};
     if(GetEnvironmentVariableW(L"GEARSVR_TEST_WINDOWS_BEHIND",behind,4)!=1||behind[0]!=L'1'||
        GetEnvironmentVariableW(L"GEARSVR_TEST_MUTE_GAME",muted,4)!=1||muted[0]!=L'1'||
        !enabled.load(std::memory_order_acquire)||!playground::automatic)return 1;
     const auto slot=reinterpret_cast<uptr>(slot_arg);
     if(slot>=4)return 2;
-    unsigned empty=4;
-    if(!vrequip::queued_slot.compare_exchange_strong(empty,unsigned(slot)))return 3;
+    if(!vrequip::switch_requests.enqueue(unsigned(slot)))return 3;
     return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentSwitchStatus(void*){
-    if(vrequip::queued_slot.load(std::memory_order_acquire)<4)return 0;
-    return vrequip::last_switch_status.load(std::memory_order_acquire);
+    return vrequip::switch_requests.status();
+}
+#endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentStowStop(void*){
+    vrequip::stow::stop_requested.store(true,std::memory_order_release);return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundEquipmentStowStatus(void*){
+    return vrequip::stow::status.load(std::memory_order_acquire)|
+        (vrequip::stow::dirty_visible.load(std::memory_order_acquire)?0x10000u:0u);
 }
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
@@ -971,6 +1000,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrAimStatus(void*){
 #endif
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+    // Do not acquire the lifecycle lock while the other caller may be holding
+    // it and waiting for this game-thread callback to return.
+    if(game_thread.load(std::memory_order_acquire)==GetCurrentThreadId()){
+        vrequip::stow::shutdown_requested.store(true,std::memory_order_release);
+        vrequip::stow::stop_requested.store(true,std::memory_order_release);return 51;
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     if(game_thread.load(std::memory_order_acquire)==GetCurrentThreadId()){
         handstream::shutdown_requested.store(true,std::memory_order_release);
@@ -990,6 +1027,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     }
 #endif
     LifecycleScope lifecycle;
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+    vrequip::stow::shutdown_requested.store(true,std::memory_order_release);
+    vrequip::stow::stop_requested.store(true,std::memory_order_release);
+    const auto stow_until=GetTickCount64()+2000;
+    while((vrequip::stow::dirty_visible.load(std::memory_order_acquire)||callbacks.load(std::memory_order_acquire))&&
+          GetTickCount64()<stow_until)Sleep(1);
+    if(vrequip::stow::dirty_visible.load(std::memory_order_acquire)||callbacks.load(std::memory_order_acquire))return 50;
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     handstream::shutdown_requested.store(true,std::memory_order_release);
     if(const auto pending_restore=handstream::stop_and_wait())return pending_restore;
@@ -1087,6 +1132,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     vrequip::reset_switch_test();
+#endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+    vrequip::stow::reset();
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
     vrequip::lancer_reload_test_start=false;

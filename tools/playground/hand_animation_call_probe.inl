@@ -12,6 +12,9 @@ uptr __fastcall hook(uptr self,uptr caller,uptr result,uptr callee){
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     handstream::before_action(self,callee);
 #endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+    vrequip::stow::before_action(self,callee);
+#endif
     const auto token=handanim::enter(self,callee,nullptr,handanim::Source::call_function,caller);
     const auto value=original(self,caller,result,callee);
     handanim::leave(token,self,callee,nullptr,caller);

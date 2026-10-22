@@ -54,8 +54,13 @@ gears_weapon::OriginalR2Context context(uptr pc){
         playground::instance(world,L"WorldInfo")&&
         !playground::deleted(pawn)&&!playground::deleted(weapon);
     const bool proved=ordinary&&playground::instance(weapon,L"Weap_LocustAssaultRifle");
+    const bool permitted=proved
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+        &&vrequip::stow_fire_permitted(pc,weapon)
+#endif
+        ;
     return {world,pc,weapon,ordinary,game_bool(pc,L"bHoldingButton_R2"),
-            proved,proved};
+            permitted,proved};
 }
 bool execute(gears_weapon::OriginalR2Action action,std::uint64_t controller){
     const auto pc=static_cast<uptr>(controller);
@@ -77,6 +82,27 @@ bool execute_aim(gears_weapon::OriginalL2Action action,std::uint64_t controller)
     playground::Args call(pc,action==gears_weapon::OriginalL2Action::press?
         L"ButtonPress":L"ButtonRelease");
     return call.set(L"ButtonName",l2).run();
+}
+#endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+bool yield_for_equipment(uptr pc,uptr weapon){
+    const auto state=mode.load(std::memory_order_acquire);
+    if(state==fault||state==stopping)return false;
+    const auto current=context(pc);
+    if(!current.ordinary_player||current.weapon!=weapon)return false;
+    if(state==running){
+        const auto released=fire.yield(current,execute);
+        last_status.store(unsigned(released),std::memory_order_release);
+        if(released==gears_weapon::OriginalR2Status::abort_required){mode=fault;return false;}
+        const auto aim_released=aim.yield(aim_context(pc,current),execute_aim);
+        last_aim_status.store(unsigned(aim_released),std::memory_order_release);
+        if(aim_released==gears_weapon::OriginalL2Status::abort_required){mode=fault;return false;}
+    }else if(fire.owns_press()||aim.owns_press())return false;
+    // A never-owned original press is not ours to release or hide behind a
+    // body-slot operation. The original fields must actually be up now.
+    bool r2_held{},l2_held{};
+    return vrequip::read_bool(pc,L"bHoldingButton_R2",r2_held)&&!r2_held&&
+        vrequip::read_bool(pc,L"bPressingTargetingKey",l2_held)&&!l2_held;
 }
 #endif
 void tick(uptr pc){

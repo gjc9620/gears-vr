@@ -7,8 +7,7 @@ const wchar_t* previous_error{};
 bool have_previous{};
 ULONGLONG next_probe{};
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
-std::atomic<unsigned> queued_slot{4};
-std::atomic<unsigned> last_switch_status{};
+gears_weapon::EquipmentSwitchMailbox switch_requests;
 ULONGLONG switch_deadline{};
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
 gears_weapon::EquipmentIntentBridge intent_bridge;
@@ -302,8 +301,7 @@ gears_weapon::BodySlot body_for_inventory_slot(unsigned slot){
     }
 }
 void reset_switch_test(){
-    queued_slot.store(4,std::memory_order_release);
-    last_switch_status.store(0,std::memory_order_release);
+    switch_requests.reset();
     switch_deadline=0;
     model.reset();
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
@@ -471,6 +469,9 @@ bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned 
     return false;
 }
 #endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+#include "vr_equipment_stow_trial.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_LANCER_RELOAD_HOLD_TEST)
 #include "vr_lancer_reload_hold.inl"
 #endif
@@ -491,6 +492,9 @@ bool play_empty_slot_sound(gears_weapon::EquipmentSnapshot const& game,unsigned 
 #endif
 void tick(uptr pc){
     const auto now=GetTickCount64();
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+    stow::tick();
+#endif
 #if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
     lancer_saw_hold_tick(pc);
 #endif
@@ -498,7 +502,8 @@ void tick(uptr pc){
     lancer_saw_gesture_trial_tick(pc);
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
-    unsigned requested_slot=queued_slot.exchange(4,std::memory_order_acq_rel);
+    unsigned requested_slot=switch_requests.take();
+    const bool external_slot_request=requested_slot<4;
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
     gears_weapon::EquipmentIntentEvent grip_event{};
     bool from_grip=false,ammo_request=false,reload_request=false;
@@ -576,7 +581,8 @@ void tick(uptr pc){
                 }
             }else ++pose_rejected;
         }
-        if(intent_open&&requested_slot>=4&&intent_bridge.read_next(intent_cursor,grip_event)){
+        if(intent_open&&requested_slot>=4&&!switch_requests.pending()&&
+           intent_bridge.read_next(intent_cursor,grip_event)){
             from_grip=true;
             if(grip_event.kind==gears_weapon::EquipmentIntentKind::slot)
                 requested_slot=grip_event.inventory_slot;
@@ -639,22 +645,22 @@ void tick(uptr pc){
     if(!ok){model.reset();game={};
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
         if(switch_deadline)
-            last_switch_status.store(2,std::memory_order_release);
+            switch_requests.observe(2);
         switch_deadline=0;
 #endif
     }
     else{
-        const auto observed=model.observe(game);
+        [[maybe_unused]] const auto equipment_observation=model.observe(game);
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
-        if(observed.event==gears_weapon::EquipmentEvent::equipped){
+        if(equipment_observation.event==gears_weapon::EquipmentEvent::equipped){
             switch_deadline=0;
-            last_switch_status.store(6,std::memory_order_release);
-        }else if(observed.event==gears_weapon::EquipmentEvent::interrupted&&switch_deadline){
+            switch_requests.observe(6);
+        }else if(equipment_observation.event==gears_weapon::EquipmentEvent::interrupted&&switch_deadline){
             switch_deadline=0;
-            last_switch_status.store(2,std::memory_order_release);
+            switch_requests.observe(2);
         }else if(model.switch_pending()&&switch_deadline&&now>=switch_deadline){
             model.switch_rejected(game);switch_deadline=0;
-            last_switch_status.store(7,std::memory_order_release);
+            switch_requests.observe(7);
         }
 #endif
     }
@@ -747,30 +753,54 @@ void tick(uptr pc){
                    now,pc,game.pawn,game.current_weapon)))
 #endif
            ){
-            last_switch_status.store(2,std::memory_order_release);
+            switch_requests.observe(2);
         }else{
-            const auto decision=model.tap(body_for_inventory_slot(requested_slot),game);
+            // A native rejection must not commit the proposed hold/stow latch.
+            auto proposed=model;
+            const auto decision=proposed.tap(body_for_inventory_slot(requested_slot),game);
             unsigned status=3;
             if(decision.event==gears_weapon::EquipmentEvent::empty_slot){
                 status=play_empty_slot_sound(game,requested_slot)?4:9;
             }
             else if(decision.event==gears_weapon::EquipmentEvent::request_unholster||
-                    decision.event==gears_weapon::EquipmentEvent::request_stow)status=5;
-            else if(decision.event==gears_weapon::EquipmentEvent::request_original_switch){
-                const auto inv=playground::pointer(static_cast<uptr>(game.pawn),L"InvManager");
-                playground::Args switch_slot(inv,L"SetWeaponFromSlot");
-                const auto parameter=switch_slot.prop(L"Slot");
-                const bool valid=playground::instance(inv,L"WarInventoryManager")&&
-                    parameter&&get<unsigned>(parameter+0x74)==1&&
-                    playground::named(get<uptr>(parameter+0x50),L"ByteProperty")&&
-                    (get<unsigned long long>(parameter+0x78)&0x80)!=0;
-                if(valid&&switch_slot.set(L"Slot",static_cast<std::uint8_t>(requested_slot)).run()){
-                    switch_deadline=now+5000;status=1;
+                    decision.event==gears_weapon::EquipmentEvent::request_stow){
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+                const bool holster=decision.event==gears_weapon::EquipmentEvent::request_stow;
+                if(stow::transition(pc,game,holster)){
+                    model=proposed;status=holster?10u:11u;
                 }else{
-                    model.switch_rejected(game);switch_deadline=0;status=8;
+                    if(stow::lease.dirty()||stow::lease.faulted())model.reset();
+                    status=12;
+                }
+#else
+                model=proposed;status=5;
+#endif
+            }
+            else if(decision.event==gears_weapon::EquipmentEvent::request_original_switch){
+                bool may_switch=true;
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+                // Release before changing the identity owned by an XR press.
+                if((game.current_weapon&&!vrfire::yield_for_equipment(pc,game.current_weapon))||
+                   !stow::restore(L"before_body_slot_switch")){
+                    model.reset();status=12;may_switch=false;
+                }
+#endif
+                if(may_switch){
+                    const auto inv=playground::pointer(static_cast<uptr>(game.pawn),L"InvManager");
+                    playground::Args switch_slot(inv,L"SetWeaponFromSlot");
+                    const auto parameter=switch_slot.prop(L"Slot");
+                    const bool valid=playground::instance(inv,L"WarInventoryManager")&&
+                        parameter&&get<unsigned>(parameter+0x74)==1&&
+                        playground::named(get<uptr>(parameter+0x50),L"ByteProperty")&&
+                        (get<unsigned long long>(parameter+0x78)&0x80)!=0;
+                    if(valid&&switch_slot.set(L"Slot",static_cast<std::uint8_t>(requested_slot)).run()){
+                        model=proposed;switch_deadline=now+5000;status=1;
+                    }else{
+                        proposed.switch_rejected(game);model=proposed;switch_deadline=0;status=8;
+                    }
                 }
             }
-            last_switch_status.store(status,std::memory_order_release);
+            switch_requests.observe(status);
             if(log_file){fwprintf(log_file,L"equipment_switch_test source=%ls slot=%u status=%u weapon=%p\n",
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
                 from_grip?L"xr_grip":L"external",
@@ -780,6 +810,9 @@ void tick(uptr pc){
                 requested_slot,status,reinterpret_cast<void*>(static_cast<uptr>(decision.weapon)));
                 fflush(log_file);}
         }
+        // take() keeps the request in progress until all native calls,
+        // readbacks, model updates and its completion log are finished.
+        if(external_slot_request)switch_requests.complete();
     }
     if(model.switch_pending())next_probe=now+50;
 #endif
