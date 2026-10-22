@@ -172,3 +172,9 @@ complete 24 settled Lancer frames with left-hand IK active. The median left
 palm point in the original gun frame was `(8.556242, 43.525180, 0.165157)`
 raw game units; maximum frame drift was `0.000231` units. The capture and
 derived report stay under ignored `analysis/lancer-support-probe-20261022/`.
+The same bounded callback can read the original `MagazineMesh` component and
+`AmmoControl` without changing them. One owned retail held-Lancer sample found
+`Assault_Rifle_Magazine` present and `HiddenGame=false`, but not attached to
+the pawn mesh; `AmmoControl` was present with strength, target, and bone scale
+all zero. These idle-state fields do not establish final rendered visibility
+or the handoff timing during the original reload.

@@ -43,6 +43,24 @@ def parse_pose_row(line):
             **{key: matrix(fields[key]) for key in ('pawn', 'gun', 'ik_left', 'hand_left', 'hand_right')}}
 
 
+def parse_visual_row(line):
+    fields = dict(item.split('=', 1) for item in line.split()[1:])
+    expected = {'magazine_known', 'magazine_present', 'magazine_hidden',
+                'magazine_attached', 'magazine_asset', 'ammo_known', 'ammo_present',
+                'ammo_strength', 'ammo_target', 'ammo_scale'}
+    if set(fields) != expected:
+        raise ValueError('Unexpected original Lancer magazine/control row')
+    booleans = {key: fields[key] for key in expected
+                if key.endswith(('known', 'present', 'hidden', 'attached'))}
+    if any(value not in ('0', '1') for value in booleans.values()):
+        raise ValueError('Invalid original visual flag')
+    floats = {key: float(fields[key]) for key in ('ammo_strength', 'ammo_target', 'ammo_scale')}
+    if not all(math.isfinite(value) for value in floats.values()):
+        raise ValueError('Nonfinite original visual value')
+    return {key: value == '1' for key, value in booleans.items()} | {
+        'magazine_asset': fields['magazine_asset'], **floats}
+
+
 def sample_owned_game(args, receipt):
     sys.path.insert(0, str(args.runtime_root.resolve() / 'tools/playground'))
     from runtime import Bridge
@@ -132,7 +150,7 @@ def sample_owned_game(args, receipt):
                 if item_class and resolver.identity(item_class)['name'] == 'Weap_AssaultRifle':
                     pickup = obj
                     break
-            except RuntimeError:
+            except (RuntimeError, TypeError, KeyError):
                 continue
         if not pickup:
             raise RuntimeError('Original Lancer pickup missing in owned arena')
@@ -195,9 +213,13 @@ def sample_owned_game(args, receipt):
     lines = log_path.read_text(encoding='utf-8-sig').splitlines()
     beginnings = [line for line in lines if line.startswith('lancer_support_probe_begin ')]
     poses = [parse_pose_row(line) for line in lines if line.startswith('lancer_support_pose ')]
-    if len(beginnings) != 1 or len(poses) != 24 or [row['sample'] for row in poses] != list(range(24)):
+    visuals = [parse_visual_row(line) for line in lines
+               if line.startswith('lancer_support_visual ')]
+    if (len(beginnings) != 1 or len(poses) != 24 or len(visuals) != 1 or
+            [row['sample'] for row in poses] != list(range(24))):
         raise RuntimeError('Bounded same-tick original pose rows missing from private log')
     receipt.update(game_thread_probe=beginnings[0], game_thread_log=str(log_path), samples=poses,
+                   original_visual=visuals[0],
                    log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest())
     receipt['passed'] = True
 

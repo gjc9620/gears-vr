@@ -390,7 +390,7 @@ Mulcher 与 Ink Grenade 尚未在当前 `WarfareGame.u` 和先前选取的三个
 
 为检验“拆出活动件后枪体是否完整”，九个已验证的刚性部件现在都能成对导出活动件与剩余枪体预览。每对的源面被两份 OBJ 恰好覆盖，UV0、法线与源材质槽分组保留；这只证明静态参考姿态下几何归属，剩余枪体若有混合权重仍须使用原版蒙皮。Gnasher 是杠杆 1,260 面加其余 5,060 面；Lancer 是弹匣 156 面加其余 13,241 面。实际 VR 不应简单把整支原模型复制两次：原版 `SetWeaponAmmoBoneDisplay` 通过 `AmmoControl` 控制枪上弹匣，Lancer、Hammerburst、Boomshot 的装填通知使用它；`SetPawnAmmoAttachment` 将独立 `MagazineMesh` 挂在左手套接点，部分武器还生成弹出的物理弹匣。接入时优先按原版状态接管一份枪上件、一份手持件及必要的弹出件，再验证手柄坐标、时序和可见性；静态 OBJ 不能直接充当游戏资源。
 
-为查清两份原件的实际状态，私有游戏线程观察器随认证手部样本只读检查当前武器的 `MagazineMesh`：核对组件和 `StaticMesh` 身份、`HiddenGame` 以及它是否挂在当前角色骨架上；没有该组件也会明确记录。现在还按原版 `FindSkelControl(AmmoControl)` 路径只读记录枪上骨骼控制器的 `ControlStrength`、`StrengthTarget` 和 `BoneScale`。这些数值可帮助复核原版隐藏／显示过程，却不能单独证明最终渲染可见性。探针不调用装填通知或控制器 setter，不更改骨骼、贴图或库存；购买版尚无有效运行样本。因此实际模型交接仍需对同一次装填的两份原件和可见画面成对验证。
+为查清两份原件的实际状态，私有游戏线程观察器随认证手部样本只读检查当前武器的 `MagazineMesh`：核对组件和 `StaticMesh` 身份、`HiddenGame` 以及它是否挂在当前角色骨架上；没有该组件也会明确记录。现在还按原版 `FindSkelControl(AmmoControl)` 路径只读记录枪上骨骼控制器的 `ControlStrength`、`StrengthTarget` 和 `BoneScale`。购买版普通持枪的 Lancer 样本中，独立组件确实存在，资源名 `Assault_Rifle_Magazine`，`HiddenGame=false`，但未挂在人物骨架；`AmmoControl` 存在，强度／目标／骨缩放均为 0。这是一次未换弹的游戏线程状态，不能单独证明最终画面可见性或装填中何时交接。探针不调用装填通知或控制器 setter，不更改骨骼、贴图或库存；实际模型交接仍需对同一次装填的枪上件、手持件和可见画面成对验证。
 
 库存读取已有私有只读接线：Playground 的可选观察器从原版四槽查询武器，并按 `WarWeapon.HasAnyAmmo` 的人类玩家规则核对手雷备用数量。它只记录游戏线程快照，且静态构建已通过；尚无购买版运行时快照，不能据此把模型状态机判为已接通。实际取枪还需要验证原版切枪时序、手部 6DoF 枪模与原动画姿态的交接。
 

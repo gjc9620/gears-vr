@@ -270,6 +270,18 @@ void support_probe_post_tick(uptr pc){
             reinterpret_cast<void*>(pawn),reinterpret_cast<void*>(weapon),
             reinterpret_cast<void*>(pawn_mesh),reinterpret_cast<void*>(gun.mesh),
             candidate.bones[0],candidate.bones[1],candidate.bones[2]);fflush(log_file);
+        MagazineVisualProbe magazine{};
+        AmmoBoneVisualProbe ammo_bone{};
+        const bool magazine_known=magazine_visual_probe(weapon,pawn,magazine);
+        const bool ammo_known=ammo_bone_visual_probe(weapon,ammo_bone);
+        fwprintf(log_file,L"lancer_support_visual magazine_known=%u magazine_present=%u "
+            L"magazine_hidden=%u magazine_attached=%u magazine_asset=%ls "
+            L"ammo_known=%u ammo_present=%u ammo_strength=%.6g ammo_target=%.6g "
+            L"ammo_scale=%.6g\n",unsigned(magazine_known),unsigned(magazine.present),
+            unsigned(magazine.hidden),unsigned(magazine.attached_to_pawn),
+            magazine.asset_name[0]?magazine.asset_name:L"none",
+            unsigned(ammo_known),unsigned(ammo_bone.present),ammo_bone.strength,
+            ammo_bone.target,ammo_bone.bone_scale);fflush(log_file);
     }
     if(support_probe.world!=playground::arena_world||support_probe.pawn!=pawn||
        support_probe.weapon!=weapon||support_probe.pawn_mesh!=pawn_mesh||
