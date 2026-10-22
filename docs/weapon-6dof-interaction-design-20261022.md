@@ -221,7 +221,7 @@ Longshot 瞄准镜另设光学渲染任务。单纯放大原有双眼画面会�
 
 为缩小原生判定分析范围，私有 Playground 增加了只读 `weapon_reload_native_probe`：仅在置后静音的自有测试场和已认证的当前武器上，验证 `WarWeapon` 两个原生 UFunction 的所属类及入口是否位于当前游戏映像的可执行页，然后记录入口 RVA、native 索引和参数大小。它无需实体手柄位姿，不主动调用、改写或 Hook 两个装填函数。首轮只完成私有／默认构建；即使随后取得 RVA，仍须比对实际运行字节，不能把历史快照或磁盘保护字节直接当成本次原生函数体。
 
-购买版 PID 52656 的自有置后静音测试场现给出实际入口：`GetActiveReloadValues` 为 RVA `0x3e7ffc`、参数区 16 字节，`DetermineActiveReloadSuccessOrFailure` 为 RVA `0x39bfcc`、参数区 0 字节；两个 UFunction 的 native 索引均为 0，入口均落在当前游戏映像可执行页。前者首 256 字节、后者完整 47 字节与历史 PID 16812 的运行时代码节逐字节一致，哈希回执保存在忽略的 `analysis/weapon-reload-probe-20261022/native-entry-byte-check.json`。这些入口是调用包装层：有界反编译显示它们进一步分别经当前武器虚表的 `0x638`／`0x630` 槽分派。私有观察器已增加对当前武器这两处实际目标的只读读取和映像页验证；该增量尚无运行样本。Getter 剩余约 179 字节也未与本次进程核对，不能凭包装层 RVA 推出完美截止或直接改奖励。
+购买版 PID 52656 的自有置后静音测试场给出实际入口：`GetActiveReloadValues` 为 RVA `0x3e7ffc`、参数区 16 字节，`DetermineActiveReloadSuccessOrFailure` 为 RVA `0x39bfcc`、参数区 0 字节；两个 UFunction 的 native 索引均为 0，入口均落在当前游戏映像可执行页。前者首 256 字节、后者完整 47 字节与历史 PID 16812 的运行时代码节逐字节一致，哈希回执保存在忽略的 `analysis/weapon-reload-probe-20261022/native-entry-byte-check.json`。这些入口是调用包装层：有界反编译显示它们进一步分别经当前武器虚表的 `0x638`／`0x630` 槽分派。另一次购买版自有测试场 PID 44876 只读验证了当前 Lancer 实例的两个虚表目标：Getter RVA `0x3e81b0`、判定 RVA `0x3e7d28`，每处连续 4 KiB 均与历史运行时代码快照逐字节一致，回执在忽略的 `analysis/weapon-reload-probe-20261022/native-virtual-byte-check.json`。这覆盖两个函数的主代码块，不覆盖 Getter 位于其他 RVA 的尾块；包装 Getter 余下约 179 字节也未在本次进程核对。当前确认的是零售版代码身份，不是各枪真实窗口输出或完美期限，不能直接改奖励。
 
 - `t0`：R3 被当前武器接受并正式开始本轮装填的时刻，包含弹出／开膛与取弹耗时。
 - `t1`：本轮最后必要机械动作被确认完成的时刻；仅拿到弹药、只插入而未完成上膛都不算完成。

@@ -124,8 +124,12 @@ The retail owned-arena sample located the two UFunction wrappers and matched
 their first 256 bytes to the historical runtime snapshot (the shorter judge
 wrapper was matched in full). Those wrappers dispatch to virtual slots `0x638`
 and `0x630` on the equipped weapon. The probe now also validates and logs the
-two live virtual targets as RVAs; this extension has compile coverage but no
-retail log yet. It remains read-only and does not establish the reload window.
+two live virtual targets as RVAs. In a later owned retail arena, the equipped
+Lancer resolved the getter to RVA `0x3e81b0` and the judge to RVA `0x3e7d28`.
+The first 4 KiB at each target matched the corresponding historical runtime
+snapshot byte for byte. This covers the main function blocks, but not the
+getter's separate tail block. The probe remains read-only; this match does
+not establish any weapon's perfect-reload deadline.
 
 `GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST=ON` adds an even narrower private
 Lancer trial to the equipment-intent build. It requires an owned, muted,
