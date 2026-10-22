@@ -49,13 +49,49 @@ bool weapon_call_binding(gears_crosshair_assignment::OwnedConfig const& checked,
     gears_ui::Reader<decltype(&safe_copy)> read{safe_copy};
     gears_ui::Registry objects{},names{},script{};uintptr_t entry{};
     auto const& owner=ids.identities[call.owner];auto const& function=ids.identities[call.function];
-    return gears_ui::registry(read,ids.objects_header,objects)&&gears_ui::registry(read,ids.names_header,names)&&
+    if(!(gears_ui::registry(read,ids.objects_header,objects)&&gears_ui::registry(read,ids.names_header,names)&&
         gears_ui::fresh_identity(ids,read,objects,names,owner)&&
         gears_ui::fresh_identity(ids,read,objects,names,function)&&
         function.outer==owner.address&&
         read.field(script,function.address,0x8c)&&script.data==call.script&&
         script.count==int(call.size)&&script.count>0&&script.count<=script.capacity&&script.capacity<=131072&&
-        read.field(entry,function.address,0x114)&&entry==base+0x1d6ca0;
+        read.field(entry,function.address,0x114)&&entry==base+0x1d6ca0))return false;
+    if(index!=2&&index!=3)return true;
+    if(call.result_property>=ids.identity_count||checked.weapon_rotator_struct>=ids.identity_count||
+       call.result_offset!=(index==2?0x14u:0x0cu))return false;
+    auto const& property=ids.identities[call.result_property];
+    auto const& rotator=ids.identities[checked.weapon_rotator_struct];
+    auto const* kind=gears_ui::known(ids,property.cls);
+    auto const* struct_kind=gears_ui::known(ids,rotator.cls);
+    unsigned offset{},dimension{},size{};std::uint64_t flags{};uintptr_t structure{};
+    if(!(kind&&struct_kind&&!std::wcscmp(kind->name.data(),L"StructProperty")&&
+        !std::wcscmp(struct_kind->name.data(),L"ScriptStruct")&&
+        !std::wcscmp(property.name.data(),L"ReturnValue")&&!property.number&&
+        property.outer==function.address&&!std::wcscmp(rotator.name.data(),L"Rotator")&&
+        !rotator.number&&gears_ui::fresh_identity(ids,read,objects,names,property)&&
+        gears_ui::fresh_identity(ids,read,objects,names,rotator)&&
+        read.field(offset,property.address,0x94)&&offset==call.result_offset&&
+        read.field(dimension,property.address,0x70)&&dimension==1&&
+        read.field(size,property.address,0x74)&&size==12&&
+        read.field(flags,property.address,0x78)&&flags==0x580&&
+        read.field(structure,property.address,checked.assignment.property_structure)&&
+        structure==rotator.address))return false;
+    constexpr const wchar_t* member_names[]{L"Pitch",L"Yaw",L"Roll"};
+    for(unsigned i=0;i<3;++i){
+        const auto member_index=checked.weapon_rotator_members[i];
+        if(member_index>=ids.identity_count)return false;
+        auto const& member=ids.identities[member_index];
+        auto const* member_kind=gears_ui::known(ids,member.cls);
+        unsigned member_offset{},member_dim{},member_size{};
+        if(!member_kind||std::wcscmp(member_kind->name.data(),L"IntProperty")||
+           std::wcscmp(member.name.data(),member_names[i])||member.number||
+           member.outer!=rotator.address||
+           !gears_ui::fresh_identity(ids,read,objects,names,member)||
+           !read.field(member_offset,member.address,0x94)||member_offset!=4*i||
+           !read.field(member_dim,member.address,0x70)||member_dim!=1||
+           !read.field(member_size,member.address,0x74)||member_size!=4)return false;
+    }
+    return true;
 }
 bool recovery_fresh(gears_crosshair_assignment::OwnedConfig const&,gears_anchor::Config const&,gears_ui::Config const&,gears_anchor::GuardDiagnostic* diagnostic=nullptr);
 bool load(const wchar_t* ini,FILE* status=nullptr){

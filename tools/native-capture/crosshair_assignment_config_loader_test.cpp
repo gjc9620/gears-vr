@@ -92,6 +92,10 @@ int main(int argc,char** argv){
         bad=valid;bad[L"weapon_call1_function"]=bad[L"weapon_call0_function"];reject(bad);
         bad=valid;bad[L"weapon_call2_owner"]=bad[L"weapon_call0_owner"];reject(bad);
         bad=valid;bad[L"weapon_call4_size"]=L"0";reject(bad);
+        bad=valid;bad[L"weapon_call2_result_property"]=bad[L"weapon_call2_function"];reject(bad);
+        bad=valid;bad[L"weapon_call3_result_offset"]=L"20";reject(bad);
+        bad=valid;bad[L"weapon_rotator_struct"]=bad[L"vector_struct"];reject(bad);
+        bad=valid;bad[L"weapon_rotator_member1"]=bad[L"weapon_rotator_member0"];reject(bad);
     }
     {auto bad=valid;bad[L"pawn"]=bad[L"controller"];reject(bad);}
     {auto bad=valid;bad[L"id1_address"]=bad[L"id0_address"];reject(bad);}

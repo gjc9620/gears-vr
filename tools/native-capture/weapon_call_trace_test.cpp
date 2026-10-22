@@ -31,6 +31,10 @@ int main(){
         0xa000,0x200,tick,tick_fn,controller,0x9000,0x200);};
     assert(tick_ancestry(read,wrapper,tick,tick_fn,controller,0x9000,0x200));
     assert(accepted());
+    assert(direct_caller(read,fire,fire_fn,weapon,wrapper,0xa000,0x200));
+    assert(!direct_caller(read,fire,fire_fn,weapon,tick,0xa000,0x200));
+    assert(!direct_caller(read,fire,fire_fn,controller,wrapper,0xa000,0x200));
+    assert(!direct_caller(read,child,fire_fn,weapon,fire,0xa000,0x200));
     assert(!fire_body_ancestry(read,wrapper,wrapper,fire_fn,weapon,
         0xa000,0x200,tick,tick_fn,controller,0x9000,0x200));
     set(fire,fire_fn,weapon,0xa100,tick);assert(!accepted());

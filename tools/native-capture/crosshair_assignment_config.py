@@ -342,6 +342,8 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
             roots.append(dict(name=name, function=add(fn), owner=add(owner), script=sm,
                               runtime_coverage_proven=False))
     weapon_calls = []
+    weapon_rotator_struct = None
+    weapon_rotator_members = []
     if include_weapon_calls:
         _require(include_tick_roots, 'Weapon call observation requires certified Tick roots')
         weapon_chain = list(ancestors(war_weapon))
@@ -353,12 +355,36 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
                                (engine_weapon, 'Engine')):
             exact(fresh(owner)['outer'], package, 'Package')
         owners = {'WarWeapon': war_weapon, 'WarPawn': war_pawn, 'Weapon': engine_weapon}
-        for role, owner_name, function_name, receiver in WEAPON_CALLS:
+        for index, (role, owner_name, function_name, receiver) in enumerate(WEAPON_CALLS):
             owner = owners[owner_name]
             fn = child(owner, function_name, 'Function')
             sm, _ = script(fn)
+            result = None
+            if index in (2, 3):
+                value = child(fn, 'ReturnValue', 'StructProperty')
+                resolved, offset = property_at(fn, 'ReturnValue', 'StructProperty')
+                _require(resolved == value and offset == (0x14 if index == 2 else 0x0c) and
+                         number(value + 0x70, '<I') == 1 and
+                         number(value + 0x74, '<I') == 12 and
+                         number(value + 0x78, '<Q') == 0x580,
+                         'Unsupported weapon aim return shape')
+                rotator = number(value + structure_offset)
+                exact(rotator, 'Rotator', 'ScriptStruct')
+                if weapon_rotator_struct is None: weapon_rotator_struct = add(rotator)
+                _require(weapon_rotator_struct == add(rotator), 'Different aim return structures')
+                result = dict(property=add(value), offset=offset, dim=1, size=12,
+                              flags=0x580, structure=weapon_rotator_struct)
             weapon_calls.append(dict(role=role, owner=add(owner), function=add(fn),
-                                     receiver=receiver, script=sm, runtime_coverage_proven=False))
+                                     receiver=receiver, script=sm, result=result,
+                                     runtime_coverage_proven=False))
+        rotator_address = ids[weapon_rotator_struct]['address']
+        for member_name, member_offset in (('Pitch',0),('Yaw',4),('Roll',8)):
+            rotator_member = child(rotator_address, member_name, 'IntProperty')
+            _require(number(rotator_member+0x94,'<I')==member_offset and
+                     number(rotator_member+0x70,'<I')==1 and
+                     number(rotator_member+0x74,'<I')==4,
+                     'Unsupported Rotator member layout')
+            weapon_rotator_members.append(add(rotator_member))
     # Class identity closure required by the native helper; selected class
     # superchains are certified, never inferred from an old resolver cache.
     cursor = 0
@@ -399,7 +425,10 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
              impact_offset=impact_offset, member_offset=member_offset, ww_offset=ww_offset,
              impact_size=impact_size, property_structure=structure_offset,
              nativebyteschecks=native, native_slots=[dict(opcode=o, rva=v) for o,v in SLOTS.items()],
-             tick_roots=roots, weapon_calls=weapon_calls, writer_view=writer_view, aim_state=aim_state,
+             tick_roots=roots, weapon_calls=weapon_calls,
+             weapon_rotator_struct=weapon_rotator_struct,
+             weapon_rotator_members=weapon_rotator_members,
+             writer_view=writer_view, aim_state=aim_state,
              read_only=True, runtime_coverage_proven=False,
              provenance=dict(disk_exe_sha256=GAME_SHA, historical_code_sha256=HISTORICAL_CODE_SHA,
                              native_bytes_source='fresh process reads matched to bounded historical contract',
@@ -533,9 +562,30 @@ def validate_crosshair_assignment_config(c):
         calls = c.get('weapon_calls', [])
         _require(type(calls) is list and len(calls) in (0, len(WEAPON_CALLS)) and
                  (not calls or len(c['tick_roots']) == 2), 'Partial weapon call certificate')
+        _require(c.get('weapon_rotator_struct') is None if not calls else
+                 type(c.get('weapon_rotator_struct')) is int,
+                 'Invalid weapon return structure')
+        if calls:
+            index(c['weapon_rotator_struct'])
+            rotator=ids[c['weapon_rotator_struct']]
+            _require(rotator['name']=='Rotator' and rotator['number']==0 and
+                     by_address[rotator['cls']]['name']=='ScriptStruct',
+                     'Invalid weapon Rotator identity')
+            members=c.get('weapon_rotator_members')
+            _require(type(members) is list and len(members)==3,
+                     'Missing Rotator members')
+            for position,(member_name,offset) in enumerate((('Pitch',0),('Yaw',4),('Roll',8))):
+                index(members[position])
+                member=ids[members[position]]
+                _require(member['name']==member_name and member['number']==0 and
+                         member['outer']==rotator['address'] and
+                         by_address[member['cls']]['name']=='IntProperty',
+                         'Invalid Rotator member identity')
+        else:
+            _require(c.get('weapon_rotator_members')==[], 'Unexpected Rotator members')
         for pos, call in enumerate(calls):
             role, owner_name, function_name, receiver = WEAPON_CALLS[pos]
-            _require(set(call) == {'role', 'owner', 'function', 'receiver', 'script',
+            _require(set(call) == {'role', 'owner', 'function', 'receiver', 'script', 'result',
                                    'runtime_coverage_proven'} and
                      call['role'] == role and call['receiver'] == receiver and
                      call['runtime_coverage_proven'] is False,
@@ -556,6 +606,23 @@ def validate_crosshair_assignment_config(c):
             _require(type(sm['address']) is int and sm['address'] > 0 and
                      0 < sm['size'] <= sm['capacity'] <= 131072 and
                      len(bytes.fromhex(sm['sha256'])) == 32, 'Invalid weapon call script')
+            result=call['result']
+            if pos in (2,3):
+                _require(type(result) is dict and set(result)==
+                         {'property','offset','dim','size','flags','structure'},
+                         'Missing aim result')
+                index(result['property'])
+                prop=ids[result['property']]
+                _require(prop['name']=='ReturnValue' and prop['number']==0 and
+                         prop['outer']==fn['address'] and
+                         by_address[prop['cls']]['name']=='StructProperty' and
+                         result['offset']==(0x14 if pos==2 else 0x0c) and
+                         result['dim']==1 and result['size']==12 and
+                         result['flags']==0x580 and
+                         result['structure']==c['weapon_rotator_struct'],
+                         'Invalid aim result certificate')
+            else:
+                _require(result is None,'Unexpected weapon result')
         _require(c['read_only'] is True and c['runtime_coverage_proven'] is False, 'Invalid evidence authority')
     except (KeyError, TypeError, ValueError) as e:
         raise CrosshairConfigRejected('Malformed certificate') from e
@@ -574,6 +641,10 @@ def crosshair_assignment_ini(config):
             'script','script_size','impact_offset','member_offset','ww_offset','impact_size','property_structure')}
     values.update(native_contract=1, identity_count=len(c['identities']), super_count=len(c['supers']),
                   tick_root_count=len(c['tick_roots']), weapon_call_count=len(c.get('weapon_calls', [])))
+    if c.get('weapon_calls'): values['weapon_rotator_struct']=c['weapon_rotator_struct']
+    if c.get('weapon_calls'):
+        for i,member in enumerate(c['weapon_rotator_members']):
+            values[f'weapon_rotator_member{i}']=member
     values.update(c['layout']); values.update(c['roles'])
     view = c.get('writer_view', dict(enabled=False)); values['view_enabled'] = int(view['enabled'])
     if view['enabled']:
@@ -597,4 +668,7 @@ def crosshair_assignment_ini(config):
         for key in ('owner','function'): values[f'weapon_call{n}_{key}']=item[key]
         values[f'weapon_call{n}_script']=item['script']['address']
         values[f'weapon_call{n}_size']=item['script']['size']
+        if item['result'] is not None:
+            values[f'weapon_call{n}_result_property']=item['result']['property']
+            values[f'weapon_call{n}_result_offset']=item['result']['offset']
     return '[CrosshairAssignment]\n' + ''.join(f'{key}={value}\n' for key,value in values.items())

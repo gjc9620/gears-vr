@@ -8,6 +8,15 @@ using gears_ui_call_boundary::Frame;
 inline bool script_pc(std::uintptr_t pc,std::uintptr_t script,unsigned size){
     return script&&size&&size<=131072&&pc>=script&&pc-script<size;
 }
+template<class Read> bool direct_caller(Read read,std::uintptr_t caller,
+    std::uintptr_t expected_node,std::uintptr_t expected_object,
+    std::uintptr_t expected_previous,std::uintptr_t script,unsigned size){
+    Frame value{};
+    return caller&&expected_previous&&
+        gears_ui_call_boundary::frame(read,caller,value)&&
+        value.node==expected_node&&value.object==expected_object&&
+        value.previous==expected_previous&&script_pc(value.code,script,size);
+}
 template<class Read> bool tick_ancestry(Read read,std::uintptr_t frame,
     std::uintptr_t tick_frame,std::uintptr_t tick_fn,std::uintptr_t controller,
     std::uintptr_t tick_script,unsigned tick_size){

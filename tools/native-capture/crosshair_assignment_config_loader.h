@@ -6,13 +6,14 @@
 
 namespace gears_crosshair_assignment {
 struct TickRoot {unsigned owner{},function{};std::uintptr_t script{};unsigned size{};};
-struct WeaponCall {unsigned owner{},function{};std::uintptr_t script{};unsigned size{};};
+struct WeaponCall {unsigned owner{},function{},result_property{},result_offset{};std::uintptr_t script{};unsigned size{};};
 // Stable owned storage. Copy/move always rebind the internal pointer.
 struct OwnedConfig {
     gears_ui::Config identities{}; Config assignment{};
     bool mounted_suspended{};std::uintptr_t suspended_controller{},suspended_controlled{},suspended_driver{},suspended_camera{};
     unsigned pid{},tick_root_count{};std::array<TickRoot,2> tick_roots{};
-    unsigned weapon_call_count{};std::array<WeaponCall,6> weapon_calls{};
+    unsigned weapon_call_count{},weapon_rotator_struct{};
+    std::array<unsigned,3> weapon_rotator_members{};std::array<WeaponCall,6> weapon_calls{};
     OwnedConfig(){assignment.identities=&identities;}
     OwnedConfig(OwnedConfig const& x){*this=x;}
     OwnedConfig& operator=(OwnedConfig const& x){
@@ -20,7 +21,9 @@ struct OwnedConfig {
         suspended_driver=x.suspended_driver;suspended_camera=x.suspended_camera;
         identities=x.identities;assignment=x.assignment;pid=x.pid;
         tick_root_count=x.tick_root_count;tick_roots=x.tick_roots;
-        weapon_call_count=x.weapon_call_count;weapon_calls=x.weapon_calls;
+        weapon_call_count=x.weapon_call_count;weapon_rotator_struct=x.weapon_rotator_struct;
+        weapon_rotator_members=x.weapon_rotator_members;
+        weapon_calls=x.weapon_calls;
         assignment.identities=&identities;return *this;
     }
     OwnedConfig(OwnedConfig&& x) noexcept {*this=x;}
@@ -180,6 +183,19 @@ template<class Read> bool parse_config(Read read,unsigned expected_pid,std::uint
            (parsed.weapon_call_count!=0&&parsed.weapon_call_count!=parsed.weapon_calls.size())||
            (parsed.weapon_call_count&&parsed.tick_root_count!=2))return false;
     }
+    if(parsed.weapon_call_count&&(!load(L"weapon_rotator_struct",parsed.weapon_rotator_struct)||
+       parsed.weapon_rotator_struct>=ids.identity_count||
+       !detail::named(c,parsed.weapon_rotator_struct,L"Rotator",L"ScriptStruct")))return false;
+    if(parsed.weapon_call_count){
+        constexpr const wchar_t* members[]{L"Pitch",L"Yaw",L"Roll"};
+        for(unsigned i=0;i<3;++i){wchar_t key[40]{};
+            std::swprintf(key,40,L"weapon_rotator_member%u",i);
+            auto& member=parsed.weapon_rotator_members[i];
+            if(!load(key,member)||member>=ids.identity_count||
+               !detail::named(c,member,members[i],L"IntProperty",
+                              addr(parsed.weapon_rotator_struct),true))return false;
+        }
+    }
     constexpr const wchar_t* owners[]{L"WarWeapon",L"Weapon",L"WarPawn",L"WarWeapon",L"Weapon",L"WarWeapon"};
     constexpr const wchar_t* functions[]{L"InstantFire",L"InstantFire",L"GetAdjustedAimFor",L"GetAdjustedAim",L"CalcWeaponFire",L"ProcessInstantHit"};
     for(unsigned i=0;i<parsed.weapon_call_count;++i){auto& call=parsed.weapon_calls[i];wchar_t k[64]{};
@@ -199,6 +215,14 @@ template<class Read> bool parse_config(Read read,unsigned expected_pid,std::uint
         if(!package||!package_class||std::wcscmp(package_class->name.data(),L"Package")||
            std::wcscmp(package->name.data(),(i==1||i==4)?L"Engine":L"WarfareGame"))return false;
         for(unsigned j=0;j<i;++j)if(call.function==parsed.weapon_calls[j].function)return false;
+        if(i==2||i==3){
+            if(!field(L"result_property",call.result_property)||
+               !field(L"result_offset",call.result_offset)||
+               call.result_property>=ids.identity_count||
+               call.result_offset!=(i==2?0x14u:0x0cu)||
+               !detail::named(c,call.result_property,L"ReturnValue",L"StructProperty",
+                              addr(call.function),true))return false;
+        }
     }
 #undef CH_W
 #undef CH_W_

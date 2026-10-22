@@ -29,6 +29,9 @@ class Fixture(UIBase):
         self.impact = self.field(self.writer, 'Impact', 0x40, 84, self.impact_struct)
         self.ww = self.field(self.writer, 'WW', 0x10, 8, self.classes['WarWeapon'], 'ObjectProperty')
         self.rotator = self.obj('Rotator', self.classes['ScriptStruct'])
+        self.rotator_members=[]
+        for name,offset in (('Pitch',0),('Yaw',4),('Roll',8)):
+            self.rotator_members.append(self.field(self.rotator,name,offset,4,0,'IntProperty'))
         self.view = {}
         for name, offset, structure in (('CamLoc',0xa0,self.vector),('CamRot',0xb0,self.rotator),
                                         ('StartTrace',0xc0,self.vector),('TraceDir',0xd0,self.vector)):
@@ -63,11 +66,17 @@ class Fixture(UIBase):
         functions=(('WarWeapon','InstantFire'),('Weapon','InstantFire'),
                    ('WarPawn','GetAdjustedAimFor'),('WarWeapon','GetAdjustedAim'),
                    ('Weapon','CalcWeaponFire'),('WarWeapon','ProcessInstantHit'))
+        self.weapon_results={}
         for i,(owner,name) in enumerate(functions):
             fn=self.function(owner,name,0x1d6ca0)
             script=0xd00000+i*0x100
             self.put(fn+0x8c,struct.pack('<Qii',script,4,4))
             self.put(script,b'\x04\x0b\x53\x00')
+            if i in (2,3):
+                result=self.field(fn,'ReturnValue',0x14 if i==2 else 0x0c,
+                                  12,self.rotator)
+                self.put(result+0x78,struct.pack('<Q',0x580))
+                self.weapon_results[i]=result
         self.finish_registry()
 
     def field(self, owner, name, offset, size, target, kind='StructProperty'):
@@ -486,14 +495,31 @@ class CertificateTests(unittest.TestCase):
         self.assertEqual(ini['CrosshairAssignment'].getint('weapon_call_count'),6)
         self.assertEqual(ini['CrosshairAssignment'].getint('weapon_call4_function'),
                          c['weapon_calls'][4]['function'])
+        self.assertEqual(ini['CrosshairAssignment'].getint('weapon_call2_result_property'),
+                         c['weapon_calls'][2]['result']['property'])
         for mutate in (lambda x:x['weapon_calls'].pop(),
                        lambda x:x['weapon_calls'][1].update(owner=x['weapon_calls'][0]['owner']),
                        lambda x:x['weapon_calls'][2].update(receiver='weapon'),
-                       lambda x:x['weapon_calls'][5]['script'].update(size=0)):
+                       lambda x:x['weapon_calls'][5]['script'].update(size=0),
+                       lambda x:x['weapon_calls'][2]['result'].update(flags=0),
+                       lambda x:x['weapon_calls'][3]['result'].update(offset=0x14),
+                       lambda x:x['weapon_rotator_members'].__setitem__(1,x['roles']['vector_struct'])):
             bad=copy.deepcopy(c);mutate(bad)
             with self.assertRaises(CrosshairConfigRejected):validate_crosshair_assignment_config(bad)
         with self.assertRaises(CrosshairConfigRejected):
             build_crosshair_assignment_config(r,r.camera,include_weapon_calls=True)
+        for index,field,value in ((2,0x78,0),(3,0x74,16),(2,0xd0,r.vector)):
+            damaged=Fixture();damaged.add_weapon_call_functions()
+            damaged.put(damaged.weapon_results[index]+field,
+                        struct.pack('<Q' if field!=0x74 else '<I',value))
+            with self.assertRaises(CrosshairConfigRejected):
+                build_crosshair_assignment_config(damaged,damaged.camera,
+                    include_tick_roots=True,include_weapon_calls=True)
+        damaged=Fixture();damaged.add_weapon_call_functions()
+        damaged.put(damaged.rotator_members[1]+0x94,struct.pack('<I',8))
+        with self.assertRaises(CrosshairConfigRejected):
+            build_crosshair_assignment_config(damaged,damaged.camera,
+                include_tick_roots=True,include_weapon_calls=True)
 
     def test_identity_type_pointer_script_and_native_fail_closed(self):
         mutations = {
