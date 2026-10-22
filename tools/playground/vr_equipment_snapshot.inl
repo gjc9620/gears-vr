@@ -184,13 +184,18 @@ struct ReloadNativeProbe {
     unsigned native_index{},parameter_bytes{};
     bool reflected{},executable_in_game{};
 };
-bool game_executable(uptr address){
+bool game_image_readable(uptr address){
     if(!address)return false;
     MEMORY_BASIC_INFORMATION page{};
-    if(!VirtualQuery(reinterpret_cast<void*>(address),&page,sizeof(page))||
-       page.State!=MEM_COMMIT||page.Type!=MEM_IMAGE||
-       page.AllocationBase!=reinterpret_cast<void*>(base)||
-       (page.Protect&(PAGE_GUARD|PAGE_NOACCESS)))return false;
+    return VirtualQuery(reinterpret_cast<void*>(address),&page,sizeof(page))&&
+        page.State==MEM_COMMIT&&page.Type==MEM_IMAGE&&
+        page.AllocationBase==reinterpret_cast<void*>(base)&&
+        !(page.Protect&(PAGE_GUARD|PAGE_NOACCESS));
+}
+bool game_executable(uptr address){
+    if(!game_image_readable(address))return false;
+    MEMORY_BASIC_INFORMATION page{};
+    if(!VirtualQuery(reinterpret_cast<void*>(address),&page,sizeof(page)))return false;
     switch(page.Protect&0xff){
         case PAGE_EXECUTE:case PAGE_EXECUTE_READ:
         case PAGE_EXECUTE_READWRITE:case PAGE_EXECUTE_WRITECOPY:return true;
@@ -214,6 +219,17 @@ ReloadNativeProbe reload_native_probe(uptr war_weapon,const wchar_t* function_na
         result.entry=first;result.executable_in_game=true;
     }
     return result;
+}
+// These are the two virtual call offsets in the independently verified
+// retail wrappers, not the UFunction entry points themselves. Read the
+// authenticated current weapon's own vtable to resolve any class override.
+uptr reload_virtual_target(uptr weapon,unsigned slot){
+    if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return 0;
+    const auto table=get<uptr>(weapon);
+    if(!game_image_readable(table)||!game_image_readable(table+slot)||
+       table!=get<uptr>(weapon))return 0;
+    const auto first=get<uptr>(table+slot),second=get<uptr>(table+slot);
+    return first&&first==second&&game_executable(first)?first:0;
 }
 #endif
 
@@ -524,6 +540,9 @@ void tick(uptr pc){
         const auto values=reload_native_probe(war_weapon,L"GetActiveReloadValues");
         const auto result=reload_native_probe(
             war_weapon,L"DetermineActiveReloadSuccessOrFailure");
+        const auto weapon=static_cast<uptr>(game.current_weapon);
+        const auto getter_target=reload_virtual_target(weapon,0x638);
+        const auto judge_target=reload_virtual_target(weapon,0x630);
         const auto print_entry=[&](const wchar_t* label,ReloadNativeProbe const& entry){
             fwprintf(log_file,L"weapon_reload_native_probe weapon=%p function=%ls "
                 L"reflected=%u ufunction=%p native_index=%u "
@@ -536,6 +555,10 @@ void tick(uptr pc){
         };
         print_entry(L"GetActiveReloadValues",values);
         print_entry(L"DetermineActiveReloadSuccessOrFailure",result);
+        fwprintf(log_file,L"weapon_reload_virtual_probe weapon=%p "
+            L"getter_slot=638 getter_rva=%llx judge_slot=630 judge_rva=%llx\n",
+            reinterpret_cast<void*>(weapon),getter_target?getter_target-base:0,
+            judge_target?judge_target-base:0);
         fflush(log_file);
     }
 #endif

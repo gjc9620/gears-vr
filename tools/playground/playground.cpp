@@ -29,6 +29,8 @@
 #endif
 #endif
 #endif
+extern "C" DWORD GearsPlaygroundAllocationAttempts(void);
+extern "C" DWORD GearsPlaygroundAllocationError(void);
 
 namespace {
 using uptr=std::uintptr_t;
@@ -43,6 +45,12 @@ HMODULE module{};
 std::atomic<Request*> pending{};
 std::atomic<DWORD> game_thread{};
 std::atomic<bool> enabled{};
+bool hook_created{};
+SRWLOCK lifecycle_lock=SRWLOCK_INIT;
+struct LifecycleScope {
+    LifecycleScope(){AcquireSRWLockExclusive(&lifecycle_lock);}
+    ~LifecycleScope(){ReleaseSRWLockExclusive(&lifecycle_lock);}
+};
 std::atomic<unsigned> callbacks{};
 thread_local bool inside{};
 FILE* log_file{};
@@ -190,7 +198,50 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 }
 }
 
+static DWORD reserve_playground_hook(){
+    if(hook_created)return 0;
+    base=reinterpret_cast<uptr>(GetModuleHandleW(nullptr));
+    if(get<unsigned short>(base)!=0x5a4d)return 1;
+    // Reservation precedes the engine registries. Independently attest the
+    // same complete entry as the loader, then leave the hook disabled.
+    const unsigned char expected[]={
+        0x40,0x55,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57,0x48,0x81,0xec,0xa0,0x00,0x00,
+        0x00,0x48,0x8d,0x6c,0x24,0x30,0x48,0x89,0x9d,0xa0,0x00,0x00,0x00,0x48,0x89,0xb5,
+        0xa8,0x00,0x00,0x00,0x48,0x89,0xbd,0xb0,0x00,0x00,0x00,0x48,0x8b,0x05,0x36,0x26,
+        0x8f,0x01,0x48,0x33,0xc5,0x48,0x89,0x45,0x60,0x4d,0x8b,0xe0,0x48,0x8b,0xda,0x4c};
+    static_assert(sizeof(expected)==64);
+    unsigned char bytes[sizeof(expected)]{};
+    if(!copy(bytes,base+0x1d8dd8,sizeof(bytes))||memcmp(bytes,expected,sizeof(bytes)))return 2;
+    wchar_t path[32768]{};GetModuleFileNameW(module,path,32768);
+    auto slash=wcsrchr(path,L'\\');if(!slash)return 3;
+    swprintf_s(slash+1,32768-(slash+1-path),L"playground-%lu.log",GetCurrentProcessId());
+    log_file=_wfsopen(path,L"w, ccs=UTF-8",_SH_DENYNO);
+    if(MH_Initialize()!=MH_OK){if(log_file){fclose(log_file);log_file=nullptr;}return 4;}
+    const auto created=MH_CreateHook(reinterpret_cast<void*>(base+0x1d8dd8),reinterpret_cast<void*>(event_hook),reinterpret_cast<void**>(&original));
+    if(created!=MH_OK){
+        const auto allocation_error=GetLastError();
+        if(log_file){fwprintf(log_file,L"create_hook_failed=%u allocation_stage=%ls win32=%lu allocation_attempts=%lu allocation_last_error=%lu\n",unsigned(created),
+            allocation_error==ERROR_NOT_ENOUGH_MEMORY?L"trampoline":allocation_error==ERROR_OUTOFMEMORY?L"hook_table":L"other",allocation_error,
+            GearsPlaygroundAllocationAttempts(),GearsPlaygroundAllocationError());fclose(log_file);log_file=nullptr;}
+        MH_Uninitialize();return 5;
+    }
+    // MinHook's relay lives in the same 64-byte slot as the trampoline. Verify
+    // the entire slot is reachable before allowing a five-byte rel32 patch.
+    const auto delta=static_cast<std::int64_t>(reinterpret_cast<uptr>(original))-static_cast<std::int64_t>(base+0x1d8dd8+5);
+    if(delta<INT32_MIN||delta>INT32_MAX-64){
+        MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8));MH_Uninitialize();
+        if(log_file){fwprintf(log_file,L"relay_range_rejected delta=%lld\n",delta);fclose(log_file);log_file=nullptr;}
+        return 7;
+    }
+    if(log_file){fwprintf(log_file,L"hook_created relay_delta=%lld allocation_attempts=%lu allocation_last_error=%lu\n",delta,GearsPlaygroundAllocationAttempts(),GearsPlaygroundAllocationError());fflush(log_file);}
+    hook_created=true;return 0;
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundReserve(void*){
+    LifecycleScope lifecycle;
+    return reserve_playground_hook();
+}
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
+    LifecycleScope lifecycle;
     if(enabled.load())return 0;
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
     vrequip::mesh_follow_shutdown_requested.store(false,std::memory_order_release);
@@ -202,21 +253,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     vrequip::support_probe={};
 #endif
     base=reinterpret_cast<uptr>(GetModuleHandleW(nullptr));
-    if(get<unsigned short>(base)!=0x5a4d||!registered(get<uptr>(get<Array>(base+0x1c24730).data+8)))return 1;
-    // Matches the original ProcessEvent entry; full live-code provenance is
-    // checked by the version-gated loader before loading this DLL.
-    const unsigned char expected[]={0x40,0x55,0x41,0x54,0x41,0x55,0x41,0x56,0x41,0x57};
-    unsigned char bytes[sizeof(expected)]{};
-    if(!copy(bytes,base+0x1d8dd8,sizeof(bytes))||memcmp(bytes,expected,sizeof(bytes)))return 2;
-    wchar_t path[32768]{};GetModuleFileNameW(module,path,32768);
-    auto slash=wcsrchr(path,L'\\');if(!slash)return 3;
-    swprintf_s(slash+1,32768-(slash+1-path),L"playground-%lu.log",GetCurrentProcessId());
-    log_file=_wfsopen(path,L"w, ccs=UTF-8",_SH_DENYNO);
-    if(MH_Initialize()!=MH_OK)return 4;
-    const auto created=MH_CreateHook(reinterpret_cast<void*>(base+0x1d8dd8),reinterpret_cast<void*>(event_hook),reinterpret_cast<void**>(&original));
-    if(created!=MH_OK){if(log_file){fwprintf(log_file,L"create_hook_failed=%u\n",unsigned(created));fflush(log_file);}MH_Uninitialize();return 5;}
+    if(!registered(get<uptr>(get<Array>(base+0x1c24730).data+8)))return 1;
+    const auto reserved=reserve_playground_hook();if(reserved)return reserved;
     enabled.store(true,std::memory_order_release);
-    if(MH_EnableHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK){enabled.store(false);return 6;}
+    if(MH_EnableHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK){
+        enabled.store(false);MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8));MH_Uninitialize();
+        hook_created=false;
+        if(log_file){fclose(log_file);log_file=nullptr;}return 6;
+    }
     return 0;
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundSubmit(void* data){
@@ -346,6 +390,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrAimStatus(void*){
 #endif
 #endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
+    LifecycleScope lifecycle;
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
     if(const auto stopped=vrfire::disable())return 10+stopped;
 #endif
@@ -361,14 +406,21 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
 #endif
     enabled.store(false,std::memory_order_release);
     if(auto r=pending.exchange(nullptr))InterlockedExchange(&r->state,-2);
-    if(MH_DisableHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK)return 1;
+    if(hook_created){
+        const auto disabled=MH_DisableHook(reinterpret_cast<void*>(base+0x1d8dd8));
+        if(disabled!=MH_OK&&disabled!=MH_ERROR_DISABLED)return 1;
+    }
     const auto until=GetTickCount64()+2000;
     while(callbacks.load()&&GetTickCount64()<until)Sleep(1);
     if(callbacks.load())return 2;
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     vrequip::reset_switch_test();
 #endif
-    MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8));MH_Uninitialize();
+    if(hook_created){
+        if(MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK)return 3;
+        if(MH_Uninitialize()!=MH_OK)return 4;
+        hook_created=false;
+    }
     playground::automatic=false;playground::ready=false;playground::requested=false;
     playground::phase=L"stopped";playground::status();
     if(log_file){fclose(log_file);log_file=nullptr;}

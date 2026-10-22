@@ -120,6 +120,12 @@ lookup needs only an authenticated equipped weapon, so simulator sessions
 without physical controllers can reach it. A build pass alone provides no
 retail address or perfect-reload deadline; a valid runtime log and byte
 comparison are required before native analysis or timing claims.
+The retail owned-arena sample located the two UFunction wrappers and matched
+their first 256 bytes to the historical runtime snapshot (the shorter judge
+wrapper was matched in full). Those wrappers dispatch to virtual slots `0x638`
+and `0x630` on the equipped weapon. The probe now also validates and logs the
+two live virtual targets as RVAs; this extension has compile coverage but no
+retail log yet. It remains read-only and does not establish the reload window.
 
 `GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST=ON` adds an even narrower private
 Lancer trial to the equipment-intent build. It requires an owned, muted,

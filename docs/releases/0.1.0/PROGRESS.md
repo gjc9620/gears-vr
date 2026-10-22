@@ -2,7 +2,9 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
-原生换弹入口定位接线：私有 Playground 在已认证武器和自有置后静音测试场读取 `WarWeapon.GetActiveReloadValues`／`DetermineActiveReloadSuccessOrFailure` 的 UFunction 入口，验证当前游戏映像可执行页后仅记录 RVA、native 索引及参数大小；不调用或修改装填函数，也不依赖实体手柄。装备意图候选和默认禁用构建通过；尚无零售版入口地址或完美期限运行证据。模型方面继续按已核验的骨骼／独立弹匣组件处理，不将检查用拆件 OBJ 直接覆盖原游戏资源。
+模型与装填原生实测增量：从当前 0.1.0 工作区选择性移植早期 Playground 预留及菜单定位修复到独立分支的测试组件，保留本分支私有观察器；`PlaygroundHookTest` 的邻近窗口／全窗口占用正反例、装备意图和默认禁用构建通过，未替换正式默认 DLL。购买版私有置后静音测试场 PID 52656 读到原版换弹包装入口 RVA `0x3e7ffc`／`0x39bfcc`；前者前 256 字节、后者完整 47 字节与历史运行时代码快照相同。两者分别转经武器虚表 `0x638`／`0x630`，现增加仅对认证当前武器读取这两个目标的只读探针，目标尚无运行回执；不能据包装层算完美期限。PID 43448 成功取得 Gnasher 原版 `SG_Chamber` 的 35 组真实骨骼矩阵，相对枪身最大转角约 32.43°、局部 −X 转轴，骨原点对应原参考枢轴。原杠杆骨骼可直接作为模型运动源，仍未接手柄、黄色引导或装填奖励。上述原始字节与矩阵仅在忽略的 `analysis/weapon-reload-probe-20261022/`；完整 VR 会话保持 `incomplete`，Playground 入口还原、原生清理、XR 退出 0、音频恢复和测试游戏正常退出分别核对，不当作头显验收。
+
+原生换弹入口定位接线：私有 Playground 在已认证武器和自有置后静音测试场读取 `WarWeapon.GetActiveReloadValues`／`DetermineActiveReloadSuccessOrFailure` 的 UFunction 入口，验证当前游戏映像可执行页后仅记录 RVA、native 索引及参数大小；不调用或修改装填函数，也不依赖实体手柄。装备意图候选和默认禁用构建通过；此时尚无零售版入口地址或完美期限运行证据。模型方面继续按已核验的骨骼／独立弹匣组件处理，不将检查用拆件 OBJ 直接覆盖原游戏资源。
 
 枪上弹匣控制器观察增量：只在私有认证手部／装备测试中沿原版 `FindSkelControl(AmmoControl)` 查询当前枪模，只读记录 `ControlStrength`、`StrengthTarget`、`BoneScale` 与是否存在。`Engine.u` 中该函数的参数和返回类型分别为 `NameProperty`／`ObjectProperty`，调用前还按运行时反射复核。私有装备意图和默认禁用构建通过；尚无零售版有效运行样本，控制器数值也不能代替实际画面可见性。
 
