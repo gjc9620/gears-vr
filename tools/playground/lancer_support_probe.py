@@ -147,6 +147,20 @@ def parse_magazine_follow_row(line):
             **vectors, **flags, 'target': target}
 
 
+def parse_insertion_candidate_row(line):
+    fields = dict(item.split('=', 1) for item in line.split()[1:])
+    if set(fields) != {'result', 'sequence', 'depth', 'lateral', 'alignment', 'clock'}:
+        raise ValueError('Unexpected Lancer insertion candidate row')
+    result = int(fields['result'])
+    sequence = int(fields['sequence'])
+    values = {key: float(fields[key]) for key in
+              ('depth', 'lateral', 'alignment', 'clock')}
+    if result not in (1, 2) or sequence <= 0 or not all(
+            math.isfinite(value) for value in values.values()):
+        raise ValueError('Invalid Lancer insertion candidate')
+    return {'result': result, 'sequence': sequence, **values}
+
+
 def original_state_function(resolver, weapon, state_name, function_name):
     owner = resolver.identity(weapon)['cls']
     seen = set()
@@ -475,7 +489,7 @@ def sample_owned_game(args, receipt):
                 time.sleep(.12)
                 if bridge.export('PlaygroundLancerMagazineSocketProbeStatus') >> 16 == 4:
                     raise RuntimeError('Original socket reload probe failed before ForceReload')
-            if args.mode in ('reload_adapter', 'follow_adapter'):
+            if args.mode in ('reload_adapter', 'follow_adapter', 'insert_adapter'):
                 if bridge.export('PlaygroundLancerReloadHoldStartTest') != 0:
                     raise RuntimeError('Private game-thread Lancer reload start queue rejected')
 
@@ -491,17 +505,23 @@ def sample_owned_game(args, receipt):
                 bridge.call(weapon, 'ForceReload')
             wait_for(lambda: bridge.call(weapon, 'IsReloading'), 2,
                      'Original Lancer did not enter Reloading after ForceReload')
-            if args.mode == 'follow_adapter':
-                if bridge.export('PlaygroundLancerMagazineFollowStartTest') != 0:
+            if args.mode in ('follow_adapter', 'insert_adapter'):
+                start = ('PlaygroundLancerMagazineInsertStartTest'
+                         if args.mode == 'insert_adapter' else
+                         'PlaygroundLancerMagazineFollowStartTest')
+                if bridge.export(start) != 0:
                     raise RuntimeError('Private synthetic left-hand motion queue rejected')
-                wait_for(lambda: bridge.export('PlaygroundLancerMagazineFollowStatus') == 2,
-                         2, 'Original Lancer magazine never followed synthetic left hand')
+                expected = 6 if args.mode == 'insert_adapter' else 2
+                wait_for(lambda: bridge.export('PlaygroundLancerMagazineFollowStatus') == expected,
+                         3, 'Original Lancer magazine did not reach expected synthetic stage')
                 wait_for(lambda: bridge.export('PlaygroundLancerMagazineFollowStatus') == 3,
                          4, 'Original Lancer magazine did not restore on left-grip release')
                 magazine = pointer(weapon, 'MagazineMesh')
                 receipt['magazine_detached_after_release'] = not bool(bridge.call(
                     pawn_mesh, 'IsComponentAttached', Component=magazine))
                 receipt['magazine_follow_finish_status'] = 3
+                if args.mode == 'insert_adapter':
+                    receipt['insertion_stage_observed'] = True
             if args.mode == 'reload_visual':
                 def reload_probe_done():
                     value = bridge.export('PlaygroundLancerReloadVisualProbeStatus')
@@ -651,7 +671,7 @@ def sample_owned_game(args, receipt):
         if (receipt.get('timer_active_before_clear') is not True or
                 (args.mode == 'reload_hold' and
                  receipt.get('timer_active_after_clear') is not False) or
-                (args.mode in ('reload_adapter', 'follow_adapter') and
+                (args.mode in ('reload_adapter', 'follow_adapter', 'insert_adapter') and
                  (receipt.get('fallback_timer_active') is not True or
                   receipt.get('adapter_start_status') != 1 or
                   receipt.get('adapter_finish_status') != 6)) or
@@ -660,7 +680,7 @@ def sample_owned_game(args, receipt):
                 receipt.get('finished_ammo_used') != 0 or
                 receipt.get('finished_reloading') is not False):
             raise RuntimeError('Original held reload and explicit completion evidence incomplete')
-        if args.mode in ('reload_adapter', 'follow_adapter'):
+        if args.mode in ('reload_adapter', 'follow_adapter', 'insert_adapter'):
             anchors = [parse_fixed_feed_row(line) for line in lines
                        if line.startswith('lancer_fixed_feed_anchor ')]
             if (len(anchors) < 2 or
@@ -671,6 +691,8 @@ def sample_owned_game(args, receipt):
         if args.mode == 'follow_adapter':
             followed = [parse_magazine_follow_row(line) for line in lines
                         if line.startswith('lancer_magazine_follow ')]
+            inserted = [line for line in lines
+                        if line.startswith('lancer_magazine_insertion_candidate result=2 ')]
             # LocalToWorld may still contain the preceding scene update in the
             # first row after SetAbsolute. Subsequent rows must be rigidly
             # locked to the moving test hand, even across original detachment.
@@ -685,14 +707,38 @@ def sample_owned_game(args, receipt):
                     any(not row['matrix'] or not row['attached'] or
                         not row['ammo_control'] or row['target'] < .9 for row in followed) or
                     not any(row['reattached'] for row in followed) or
+                    inserted or
                     math.dist(steady[0]['world'], steady[-1]['world']) < 6 or
                     max(math.dist(offset, offsets[0]) for offset in offsets) > .2):
                 raise RuntimeError('Original Lancer synthetic hand-follow evidence incomplete')
             receipt['magazine_follow_rows'] = followed
+            receipt['unexpected_insertion_candidates'] = len(inserted)
             receipt['steady_world_travel_raw'] = math.dist(
                 steady[0]['world'], steady[-1]['world'])
             receipt['maximum_steady_hand_offset_drift_raw'] = max(
                 math.dist(offset, offsets[0]) for offset in offsets)
+        if args.mode == 'insert_adapter':
+            followed = [parse_magazine_follow_row(line) for line in lines
+                        if line.startswith('lancer_magazine_follow ')]
+            strokes = [parse_insertion_candidate_row(line) for line in lines
+                       if line.startswith('lancer_magazine_insertion_candidate ')]
+            inserted = [row for row in strokes if row['result'] == 2]
+            if (receipt.get('insertion_stage_observed') is not True or
+                    receipt.get('magazine_follow_finish_status') != 3 or
+                    receipt.get('magazine_detached_after_release') is not True or
+                    len(followed) < 2 or len(strokes) < 2 or len(inserted) != 1 or
+                    len({row['weapon'] for row in followed}) != 1 or
+                    len({row['component'] for row in followed}) != 1 or
+                    any(not row['matrix'] or not row['attached'] or
+                        not row['ammo_control'] or row['target'] < .9 for row in followed) or
+                    any(strokes[index]['sequence'] <= strokes[index - 1]['sequence']
+                        for index in range(1, len(strokes))) or
+                    strokes[0]['depth'] < 4.5 or inserted[0]['depth'] > 2.5 or
+                    inserted[0]['lateral'] > 4 or inserted[0]['alignment'] < .85 or
+                    inserted[0]['clock'] < .8):
+                raise RuntimeError('Original Lancer aligned insertion trial incomplete')
+            receipt['magazine_follow_rows'] = followed
+            receipt['insertion_candidate_rows'] = strokes
     receipt.update(game_thread_log=str(log_path),
                    log_sha256=hashlib.sha256(log_path.read_bytes()).hexdigest())
     receipt['passed'] = True
@@ -708,7 +754,7 @@ def main():
     parser.add_argument('--dll-sha256', required=True)
     parser.add_argument('--runtime-root', type=Path, default=ROOT)
     parser.add_argument('--mode', choices=('api', 'component_motion', 'socket', 'socket_reload', 'support', 'reload_visual', 'reload_hold',
-                                          'reload_adapter', 'follow_adapter'), default='support')
+                                          'reload_adapter', 'follow_adapter', 'insert_adapter'), default='support')
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     output = args.output.resolve()

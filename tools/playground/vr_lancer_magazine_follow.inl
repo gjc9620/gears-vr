@@ -4,7 +4,9 @@
 std::atomic<bool> lancer_magazine_active_visible{};
 std::atomic<unsigned> lancer_magazine_status{};
 std::atomic<bool> lancer_magazine_test_request{};
+std::atomic<bool> lancer_magazine_insert_test_request{};
 bool lancer_magazine_test_active{};
+bool lancer_magazine_test_insert_mode{};
 ULONGLONG lancer_magazine_test_started{};
 gears_weapon::HandWorldFrame lancer_magazine_test_pose{};
 gears_vr::Vector lancer_magazine_test_axis{};
@@ -54,6 +56,7 @@ bool lancer_magazine_restore(){
     if(!state.active)return true;
     if(!lancer_magazine_component_alive()){
         lancer_magazine_test_active=false;
+        lancer_magazine_test_insert_mode=false;
         state={};lancer_magazine_active_visible.store(false,std::memory_order_release);
         lancer_magazine_status.store(7,std::memory_order_release);return true;
     }
@@ -69,6 +72,7 @@ bool lancer_magazine_restore(){
         lancer_magazine_status.store(8,std::memory_order_release);return false;
     }
     lancer_magazine_test_active=false;
+    lancer_magazine_test_insert_mode=false;
     state={};lancer_magazine_active_visible.store(false,std::memory_order_release);
     lancer_magazine_status.store(3,std::memory_order_release);return true;
 }
@@ -128,8 +132,37 @@ bool lancer_magazine_grab(uptr pc,gears_weapon::EquipmentSnapshot const& game,
     }
     lancer_magazine_status.store(1,std::memory_order_release);return true;
 }
+bool lancer_magazine_aligned_test_pose(uptr weapon,double depth,
+                                       gears_weapon::HandWorldFrame& pose){
+    MeshPoseProbe gun{};
+    if(!mesh_pose_probe(weapon,gun)||gun.mesh!=lancer_reload_hold.mesh||
+       gun.hidden||wcscmp(gun.asset_name,L"COGAssaultRifle"))return false;
+    std::array<float,16> matrix{};
+    std::memcpy(matrix.data(),gun.local_to_world,sizeof(gun.local_to_world));
+    gears_weapon::LancerFeedWorld feed{};
+    if(!gears_weapon::lancer_feed_world(matrix,feed))return false;
+    const auto unit=[](float x,float y,float z){
+        const double length=std::hypot(std::hypot(double(x),double(y)),double(z));
+        return gears_vr::Vector{x/length,y/length,z/length};
+    };
+    const auto forward=unit(matrix[0],matrix[1],matrix[2]);
+    const auto right=unit(matrix[4],matrix[5],matrix[6]);
+    gears_vr::Matrix orientation{};
+    orientation[0]={right.x,forward.x,feed.outward_axis.x};
+    orientation[1]={right.y,forward.y,feed.outward_axis.y};
+    orientation[2]={right.z,forward.z,feed.outward_axis.z};
+    gears_vr::Viewpoint magazine{};
+    magazine.position={feed.point_raw.x+feed.outward_axis.x*depth+forward.x*1.8,
+                       feed.point_raw.y+feed.outward_axis.y*depth+forward.y*1.8,
+                       feed.point_raw.z+feed.outward_axis.z*depth+forward.z*1.8};
+    magazine.rotation=gears_vr::ue_angles(orientation);
+    return gears_weapon::lancer_left_for_magazine(magazine,pose.left);
+}
 void lancer_magazine_test_tick(uptr pc,gears_weapon::EquipmentSnapshot const& game){
-    if(!lancer_magazine_test_request.exchange(false,std::memory_order_acq_rel))return;
+    const bool follow=lancer_magazine_test_request.exchange(false,std::memory_order_acq_rel);
+    const bool insert=lancer_magazine_insert_test_request.exchange(false,std::memory_order_acq_rel);
+    if(!follow&&!insert)return;
+    if(follow&&insert){lancer_magazine_status.store(8,std::memory_order_release);return;}
     if(lancer_magazine.active||!lancer_reload_hold.active||
        !lancer_same_game(pc,game)){
         lancer_magazine_status.store(8,std::memory_order_release);return;
@@ -140,9 +173,15 @@ void lancer_magazine_test_tick(uptr pc,gears_weapon::EquipmentSnapshot const& ga
     pose.space_epoch=pose.input_epoch=pose.world_generation=1;
     pose.controller=pc;pose.pawn=game.pawn;pose.weapon=game.current_weapon;
     pose.valid_mask=pose.grip_down_mask=1;
-    pose.left.position={feed.point_raw.x+feed.outward_axis.x*35,
-                        feed.point_raw.y+feed.outward_axis.y*35,
-                        feed.point_raw.z+feed.outward_axis.z*35};
+    if(insert){
+        if(!lancer_magazine_aligned_test_pose(game.current_weapon,12.,pose)){
+            lancer_magazine_status.store(8,std::memory_order_release);return;
+        }
+    }else{
+        pose.left.position={feed.point_raw.x+feed.outward_axis.x*35,
+                            feed.point_raw.y+feed.outward_axis.y*35,
+                            feed.point_raw.z+feed.outward_axis.z*35};
+    }
     if(!lancer_magazine_grab(pc,game,pose)){
         lancer_magazine_status.store(8,std::memory_order_release);return;
     }
@@ -150,6 +189,7 @@ void lancer_magazine_test_tick(uptr pc,gears_weapon::EquipmentSnapshot const& ga
     lancer_magazine_test_axis=feed.outward_axis;
     lancer_magazine_test_started=pose.created_ms;
     lancer_magazine_test_active=true;
+    lancer_magazine_test_insert_mode=insert;
 }
 void lancer_magazine_post_tick(uptr pc){
     auto& state=lancer_magazine;
@@ -159,11 +199,23 @@ void lancer_magazine_post_tick(uptr pc){
     if(lancer_magazine_test_active){
         pose=lancer_magazine_test_pose;pose.created_ms=now;
         const auto elapsed=now-lancer_magazine_test_started;
-        const auto travel=double(std::min<ULONGLONG>(elapsed,1600))*15./1600.;
-        pose.left.position.x+=lancer_magazine_test_axis.x*travel;
-        pose.left.position.y+=lancer_magazine_test_axis.y*travel;
-        pose.left.position.z+=lancer_magazine_test_axis.z*travel;
-        if(elapsed>=1800){pose.grip_down_mask=0;lancer_magazine_test_active=false;}
+        if(lancer_magazine_test_insert_mode){
+            const double progress=double(std::min<ULONGLONG>(
+                elapsed>200?elapsed-200:0,700))/700.;
+            const double depth=12.-10.5*progress;
+            if(!lancer_magazine_aligned_test_pose(state.weapon,depth,pose)){
+                lancer_magazine_restore();lancer_magazine_status.store(8,std::memory_order_release);
+                return;
+            }
+            pose.sequence=2+elapsed;
+            if(elapsed>=1250){pose.grip_down_mask=0;lancer_magazine_test_active=false;}
+        }else{
+            const auto travel=double(std::min<ULONGLONG>(elapsed,1600))*15./1600.;
+            pose.left.position.x+=lancer_magazine_test_axis.x*travel;
+            pose.left.position.y+=lancer_magazine_test_axis.y*travel;
+            pose.left.position.z+=lancer_magazine_test_axis.z*travel;
+            if(elapsed>=1800){pose.grip_down_mask=0;lancer_magazine_test_active=false;}
+        }
     }
     const bool fresh=(lancer_magazine_test_active||last_intent_pose_known)&&
         now>=pose.created_ms&&

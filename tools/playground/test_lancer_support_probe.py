@@ -1,6 +1,8 @@
 import unittest
 
-from lancer_support_probe import (parse_fixed_feed_row, parse_magazine_pose_row,
+from lancer_support_probe import (parse_fixed_feed_row, parse_insertion_candidate_row,
+                                  parse_magazine_follow_row,
+                                  parse_magazine_pose_row,
                                   parse_pose_row, parse_socket_row)
 
 
@@ -49,6 +51,26 @@ class LancerSupportProbeRows(unittest.TestCase):
                                                ('gun', 'pawn', 'left', 'magazine')))
         self.assertEqual(row['sample'], 9)
         self.assertEqual(row['magazine'][15], 1)
+
+    def test_original_component_follow_row(self):
+        source = ('lancer_magazine_follow weapon=0x1 component=0x2 '
+                  'left=1,2,3 world=4,5,6 matrix=1 attached=1 '
+                  'ammo_control=1 target=1.0 reattached=1')
+        row = parse_magazine_follow_row(source)
+        self.assertEqual(row['world'], [4., 5., 6.])
+        self.assertTrue(row['reattached'])
+        with self.assertRaises(ValueError):
+            parse_magazine_follow_row(source.replace('matrix=1', 'matrix=2'))
+
+    def test_insertion_candidate_row(self):
+        row = parse_insertion_candidate_row(
+            'lancer_magazine_insertion_candidate result=2 sequence=33 '
+            'depth=1.5 lateral=1.8 alignment=0.99 clock=0.98')
+        self.assertEqual((row['result'], row['sequence']), (2, 33))
+        with self.assertRaises(ValueError):
+            parse_insertion_candidate_row(
+                'lancer_magazine_insertion_candidate result=2 sequence=33 '
+                'depth=nan lateral=1.8 alignment=0.99 clock=0.98')
 
 
 if __name__ == '__main__':

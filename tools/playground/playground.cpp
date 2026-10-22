@@ -365,6 +365,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineFollowStar
     if(!vrequip::lancer_magazine_test_request.compare_exchange_strong(expected,true))return 2;
     return 0;
 }
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineInsertStartTest(void*){
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||
+       !playground::ready||!vrequip::test_environment())return 1;
+    bool expected=false;
+    if(!vrequip::lancer_magazine_insert_test_request.compare_exchange_strong(
+           expected,true))return 2;
+    return 0;
+}
 // Status 6 records an insertion-shaped trajectory only. No original reload
 // completion, ammo settlement, or active-reload reward follows from it.
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineFollowStatus(void*){
@@ -517,6 +525,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     vrequip::mesh_follow_requested.store(false,std::memory_order_release);
 #if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
     vrequip::lancer_magazine_test_request.store(false,std::memory_order_release);
+    vrequip::lancer_magazine_insert_test_request.store(false,std::memory_order_release);
 #endif
     const auto follow_until=GetTickCount64()+2000;
     while(callbacks.load(std::memory_order_acquire)&&GetTickCount64()<follow_until)Sleep(1);
@@ -547,6 +556,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
     vrequip::lancer_magazine_test_active=false;
+    vrequip::lancer_magazine_test_insert_mode=false;
     vrequip::lancer_magazine_test_pose={};
     vrequip::lancer_magazine_status.store(0,std::memory_order_release);
 #endif

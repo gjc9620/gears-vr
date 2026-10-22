@@ -228,8 +228,11 @@ motion and release restoration. Its subsequent insertion-stroke observer
 compares the held magazine against the current fixed gun-frame feed anchor,
 requiring aligned, continuous movement from outside the port to a near-seated
 position. The thresholds and hand mount remain uncalibrated for Quest; the
-new observer has synthetic geometry tests and compiles, but has not yet been
-retested in the retail game. An insertion candidate only writes a private
+new observer has synthetic geometry tests and compiles. A retail follow-path
+rerun showed no false insertion for an unaligned synthetic hand trajectory;
+a separate aligned trajectory yielded exactly one arrival candidate in the
+owned retail test. Both use simulated hand poses, not Quest controllers. An
+insertion candidate only writes a private
 status/log: it cannot settle ammo, complete a reload or grant a perfect bonus.
 
 The opt-in Lancer R3 reload-hold trial also projects this fixed upper anchor
