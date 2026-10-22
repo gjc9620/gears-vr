@@ -105,9 +105,97 @@ struct EquipmentTransportState {
     bool reader_rejected{};
 };
 EquipmentTransportState transport_trial;
+struct EquipmentEntryObservation {
+    gears_hand_stream::ContinuitySnapshot state{};
+    std::uint64_t now{},qpc{},epoch{};
+    unsigned phase{};
+    bool known{};
+};
+thread_local unsigned equipment_entry_depth{};
+class EquipmentEntryScope {
+    EquipmentEntryObservation observation_{};
+public:
+    EquipmentEntryScope(uptr object,uptr function) noexcept {
+        const bool outer=equipment_entry_depth++==0;
+        const auto thread=game_thread.load(std::memory_order_acquire);
+        // Check the known game thread before touching ordinary trial state.
+        if(!outer||inside||!thread||thread!=GetCurrentThreadId()||
+           !enabled.load(std::memory_order_acquire)||!playground::automatic||
+           !active_visible.load(std::memory_order_acquire))return;
+        if(trial.ended||!trial.phase||stop_requested.load(std::memory_order_acquire)||
+           shutdown_requested.load(std::memory_order_acquire)||
+           object!=trial.xr_start.objects[gears_hand_xr_trial::controller].address||
+           !playground::player_tick_index||get<Name>(function+0x48).index!=playground::player_tick_index)return;
+        observation_.known=true;observation_.phase=trial.xr_equipment_phase;observation_.epoch=trial.epoch;
+        observation_.now=GetTickCount64();
+        LARGE_INTEGER stamp{};
+        if(QueryPerformanceCounter(&stamp)&&stamp.QuadPart>0)observation_.qpc=std::uint64_t(stamp.QuadPart);
+        observation_.state=trial.xr_policy.continuity_snapshot(observation_.now);
+    }
+    ~EquipmentEntryScope(){--equipment_entry_depth;}
+    EquipmentEntryScope(EquipmentEntryScope const&)=delete;
+    EquipmentEntryScope& operator=(EquipmentEntryScope const&)=delete;
+    EquipmentEntryObservation const* observation() const noexcept {return observation_.known?&observation_:nullptr;}
+};
+struct EquipmentEntryRow {
+    std::uint64_t epoch{},ms{},qpc{},transport_qpc{},prefix_qpc{},stamp[2]{};
+    unsigned transport_row{},phase{},bound{};
+    bool known{},same_state{};
+};
+struct EquipmentEntryState {
+    std::array<EquipmentEntryRow,1024> rows{};
+    std::uint64_t dropped{},invalid_clock{};
+    unsigned count{};
+};
+EquipmentEntryState entry_trial;
+static_assert(std::size(entry_trial.rows)==std::size(transport_trial.rows));
+bool entry_same_state(EquipmentEntryObservation const& entry,gears_hand_stream::ContinuitySnapshot const& before,
+    unsigned phase,std::uint64_t epoch) noexcept {
+    const auto& state=entry.state;
+    if(entry.phase!=phase||entry.epoch!=epoch||
+       !gears_hand_stream::same(state.context.game,before.context.game)||
+       state.context.expected_native_world_generation!=before.context.expected_native_world_generation||
+       state.context.action_epoch!=before.context.action_epoch||state.context.observed_ms!=before.context.observed_ms||
+       state.context.idle_ready!=before.context.idle_ready||state.context.clean!=before.context.clean||
+       state.context_known!=before.context_known||state.stream_known!=before.stream_known||state.ready!=before.ready||
+       !gears_hand_stream::same(state.stream,before.stream)||state.serial!=before.serial||state.sequence!=before.sequence||
+       state.units_per_metre!=before.units_per_metre||state.bound_mask!=before.bound_mask)return false;
+    for(unsigned hand=0;hand<2;++hand)
+        if(state.source_stamp[hand]!=before.source_stamp[hand]||
+           state.old_ticket_age[hand].known!=before.old_ticket_age[hand].known)return false;
+    return true; // Ages at different times are deliberately not compared.
+}
+void entry_record(EquipmentEntryObservation const* entry,gears_hand_stream::ContinuitySnapshot const& before,
+    unsigned phase,std::uint64_t epoch,std::uint64_t transport_qpc,unsigned transport_row){
+    if(transport_row>=entry_trial.rows.size()){++entry_trial.dropped;return;}
+    auto& row=entry_trial.rows[transport_row];row={};
+    row.transport_row=transport_row;row.transport_qpc=transport_qpc;
+    if(entry&&entry->known){
+        row.known=true;row.phase=entry->phase;row.epoch=entry->epoch;row.ms=entry->now;row.qpc=entry->qpc;
+        row.bound=entry->state.bound_mask;row.stamp[0]=entry->state.source_stamp[0];row.stamp[1]=entry->state.source_stamp[1];
+        row.same_state=entry_same_state(*entry,before,phase,epoch);
+        if(!entry->qpc||!transport_qpc||transport_qpc<entry->qpc)++entry_trial.invalid_clock;
+        else row.prefix_qpc=transport_qpc-entry->qpc;
+    }
+    entry_trial.count=transport_row+1;
+}
+void entry_dump(){
+    fwprintf(log_file,L"hand_ik_equipment_entry_begin schema=1 capacity=%zu count=%u dropped=%llu "
+        L"invalid_clock=%llu frequency=%llu\n",entry_trial.rows.size(),entry_trial.count,
+        entry_trial.dropped,entry_trial.invalid_clock,trial.timing.frequency);
+    for(unsigned i=0;i<entry_trial.count;++i){const auto& row=entry_trial.rows[i];
+        fwprintf(log_file,L"hand_ik_equipment_entry row=%u transport_row=%u known=%u same_state=%u "
+            L"entry_phase=%u entry_epoch=%llu entry_ms=%llu entry_qpc=%llu transport_qpc=%llu prefix_qpc=%llu "
+            L"entry_bound=%u entry_left_stamp=%llu entry_right_stamp=%llu\n",i,row.transport_row,
+            unsigned(row.known),unsigned(row.same_state),row.phase,row.epoch,row.ms,row.qpc,row.transport_qpc,
+            row.prefix_qpc,row.bound,row.stamp[0],row.stamp[1]);
+    }
+    fwprintf(log_file,L"hand_ik_equipment_entry_end schema=1\n");
+}
 void transport_reset(){
     transport_trial.cursor=UINT64_MAX;transport_trial.dropped=transport_trial.invalid_clock=0;
     transport_trial.count=0;transport_trial.reader_rejected=false;
+    entry_trial.count=0;entry_trial.dropped=entry_trial.invalid_clock=0;
 }
 void transport_dump(){
     fwprintf(log_file,L"hand_ik_equipment_transport_begin schema=1 capacity=%zu count=%u dropped=%llu "
@@ -134,7 +222,7 @@ void transport_dump(){
         print_age(L"after_left",row.after[0]);print_age(L"after_right",row.after[1]);print_age(L"source",row.source);
         fwprintf(log_file,L"\n");
     }
-    fwprintf(log_file,L"hand_ik_equipment_transport_end schema=1\n");
+    fwprintf(log_file,L"hand_ik_equipment_transport_end schema=1\n");entry_dump();
 }
 #endif
 void shadow_reset(){

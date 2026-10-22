@@ -86,7 +86,7 @@ static_assert(!transport_consumed_rejection(false,UINT64_MAX,8)); // Initial att
 static_assert(!transport_consumed_rejection(false,7,7)); // No new frame or mutex contention.
 static_assert(!transport_consumed_rejection(true,7,8)); // Accepted fresh receipt follows the Policy path.
 static_assert(!transport_consumed_rejection(false,8,7)); // Not a cursor advance.
-void refresh_transport_before_restore(){
+void refresh_transport_before_restore(EquipmentEntryObservation const* entry){
     EquipmentTransportRow row{};row.phase=trial.xr_equipment_phase;row.epoch=trial.epoch;
     row.writer_before=trial.xr_cursor;
     const auto reader_before=transport_trial.cursor;
@@ -138,6 +138,7 @@ void refresh_transport_before_restore(){
         row.before[hand]=before.old_ticket_age[hand];row.after[hand]=after.old_ticket_age[hand];
         row.before_stamp[hand]=before.source_stamp[hand];row.after_stamp[hand]=after.source_stamp[hand];
     }
+    entry_record(entry,before,row.phase,row.epoch,read_begin,transport_trial.count);
     if(transport_trial.count<transport_trial.rows.size())transport_trial.rows[transport_trial.count++]=row;
     else ++transport_trial.dropped;
     // Always return to the caller's original dirty-journal restoration path,
@@ -180,7 +181,11 @@ void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigne
     }
     fwprintf(log_file,L"\n");fflush(log_file);
 }
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+void pre_tick(uptr,EquipmentEntryObservation const* entry){
+#else
 void pre_tick(uptr){
+#endif
     if(!active_visible.load(std::memory_order_acquire)||trial.ended)return;
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     if(trial.phase&&trial.timing.frequency&&!stop_requested.load(std::memory_order_acquire)){
@@ -193,7 +198,7 @@ void pre_tick(uptr){
 #if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
     if(trial.phase&&!stop_requested.load(std::memory_order_acquire)&&
        !shutdown_requested.load(std::memory_order_acquire)){
-        refresh_transport_before_restore();
+        refresh_transport_before_restore(entry);
     }
 #endif
 #endif

@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：PE入口到现transport的只读测量已接线：最外层TLS scope先核GT，只保存const快照／时钟，本地指针仅沿当前调用配对；独立1024行缓冲，same_state比较原始stamp，零覆盖或clock错误不影响原权限与恢复。Astra静态复核无阻断，相关五种构建和65项独立entry审计自检通过；新候选尚未运行。late created_ms≤entry_ms仅作年龄条件，未在入口读取bridge，不能证明那张票据当时已发布／可读。另明确手柄→手骨刚体校准本身无100ms数学期限，之后可单独评估age-only suspend，但当前latest-only会遗漏中间loss且GVE6未包含Native reference_generation，不因此直接放宽现有候选。详见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
+
 2026-10-23：bf95959／d456 连续性候选 f 购买版 PID56488 完整 25写／25恢复、11→10→11→10、Shutdown0 和原8控件／44附件／两Hook恢复；FPP累计86，静音9会话无错误／待恢复，精确游戏退出后Guard结束，自有进程全部退出。三份独立 timing／shadow／transport 审计有效，65条 transport 中24次调用、21次双手续龄；普通持枪／取回 phase1 的14次均续龄且零超龄，收枪 phase2 的10次为7续龄＋3早期过期（旧109／110／109ms，新15／16／16ms）。**组件仍仅持续运动门失败**，部分重绑发生在新姿态到达时，不能据此称跟手通过。原failed receipt `560457d5…330dfc2` 和原审计保留；Native entry verifier false／XR1／整局false不改。下一步仅测PE入口到现transport点的前缀时间、同Tick状态与早期票据可用性；Astra指出现有计时在transport之后才开始，不能直接证明前移能追回余量。100ms及三道装备／最终写入门均保留，详见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
 
 2026-10-23：按 e 的早期新帧证据实现独立 transport continuity 候选，开关默认关闭且必须显式联合试验。最早入口以第三个独立 cursor 读取，只给尚未超龄且仍 tracked 的既有手绑定保存真实 created_ms；旧 101ms／future 先撤销，不能由新帧复活。调用必撤旧 Plan，不生成 Plan、不创建绑定或消费 baseline、不改历史 Context／ready 或 writer 游标；后置三次装备认证及最终 authorize 均保留。8 个固定 stream fence 阻止跨路径重放，合法完整同票据只允许正常 writer 重验一次，身份／action／ready 变化清例外。25 组 Policy 边界、九项组件检查／四拒配、连续性开启／关闭两种联合及默认／独立 stow 构建通过。Astra 发现的 bridge 消费后拒绝而未返回 Ticket 的跨 reader 缺口已补：首次建基以外的拒读先封写、按原路径恢复、再清计划／绑定并失败结束，不改 ABI；5 个编译期分类断言通过，最终只读复核无剩余确定阻断。独立 transport 审计 75 自检通过。尚未跑新候选，不能据此宣布持续跟手修复或完整 6DoF 完成；后台联调继续 Mute1／Behind1／ObserveOnly1 与精确退出后音频恢复。见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。

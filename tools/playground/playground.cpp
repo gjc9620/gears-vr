@@ -248,6 +248,9 @@ bool invoke(Request* r){
 #endif
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+    handstream::EquipmentEntryScope equipment_entry_observation(object,function);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     handstream::EquipmentTimingHookScope equipment_timing_dump;
 #endif
@@ -303,7 +306,13 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
             post_stream_hand_ik_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
                 object==playground::pointer(playground::player,L"Actor");
-            if(post_stream_hand_ik_tick)handstream::pre_tick(object);
+            if(post_stream_hand_ik_tick){
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+                handstream::pre_tick(object,equipment_entry_observation.observation());
+#else
+                handstream::pre_tick(object);
+#endif
+            }
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
             post_hand_animation_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
