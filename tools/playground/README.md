@@ -221,6 +221,17 @@ axis. The pivot is a candidate upper feed-port anchor; controller-held item
 orientation and the visible receiver opening still need validation before a
 physical insertion can commit inventory.
 
+The opt-in `GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST` candidate reuses the
+original independent `MagazineMesh` after the private R3 reload hold starts.
+An owned retail synthetic-left-hand trial established component attachment,
+motion and release restoration. Its subsequent insertion-stroke observer
+compares the held magazine against the current fixed gun-frame feed anchor,
+requiring aligned, continuous movement from outside the port to a near-seated
+position. The thresholds and hand mount remain uncalibrated for Quest; the
+new observer has synthetic geometry tests and compiles, but has not yet been
+retested in the retail game. An insertion candidate only writes a private
+status/log: it cannot settle ammo, complete a reload or grant a perfect bonus.
+
 The opt-in Lancer R3 reload-hold trial also projects this fixed upper anchor
 through the current original weapon mesh matrix while the original reload is
 held. It verifies the same mesh identity on every update and leaves the

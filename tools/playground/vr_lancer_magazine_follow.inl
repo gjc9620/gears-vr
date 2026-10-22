@@ -14,6 +14,9 @@ struct LancerMagazineFollow {
     playground::Vector translation{};
     playground::Rotation rotation{};
     bool absolute_translation{},absolute_rotation{},absolute_scale{},active{};
+    gears_weapon::LancerMagazineInsertionStroke insertion{};
+    bool insertion_seen{};
+    std::uint64_t last_insertion_sequence{};
     ULONGLONG next_log{};
 };
 LancerMagazineFollow lancer_magazine{};
@@ -99,7 +102,13 @@ bool lancer_magazine_grab(uptr pc,gears_weapon::EquipmentSnapshot const& game,
     state.pawn_mesh=playground::pointer(game.pawn,L"Mesh");
     state.session=pose.session;state.space_epoch=pose.space_epoch;
     state.input_epoch=pose.input_epoch;state.world_generation=pose.world_generation;
+    gears_weapon::LancerInsertionSample initial{};
+    initial.weapon=state.weapon;initial.component=state.component;
+    initial.world=state.world;initial.session=state.session;
+    initial.space_epoch=state.space_epoch;initial.input_epoch=state.input_epoch;
+    initial.world_generation=state.world_generation;
     if(!playground::instance(state.pawn_mesh,L"SkeletalMeshComponent")||
+       !state.insertion.arm(initial)||
        !lancer_magazine_read_struct(state.component,L"Translation",state.translation)||
        !lancer_magazine_read_struct(state.component,L"Rotation",state.rotation)||
        !read_bool(state.component,L"AbsoluteTranslation",state.absolute_translation)||
@@ -188,7 +197,37 @@ void lancer_magazine_post_tick(uptr pc){
         lancer_magazine_restore();lancer_magazine_status.store(8,std::memory_order_release);
         return;
     }
-    lancer_magazine_status.store(2,std::memory_order_release);
+    if(pose.sequence!=state.last_insertion_sequence){
+        MeshPoseProbe gun{};
+        gears_vr::Viewpoint held_magazine{};
+        if(!mesh_pose_probe(state.weapon,gun)||gun.mesh!=lancer_reload_hold.mesh||
+           gun.hidden||wcscmp(gun.asset_name,L"COGAssaultRifle")||
+           !gears_weapon::lancer_magazine_from_left(pose.left,held_magazine)){
+            lancer_magazine_restore();lancer_magazine_status.store(8,std::memory_order_release);
+            return;
+        }
+        gears_weapon::LancerInsertionSample sample{};
+        sample.weapon=state.weapon;sample.component=state.component;
+        sample.world=state.world;sample.session=state.session;
+        sample.space_epoch=state.space_epoch;sample.input_epoch=state.input_epoch;
+        sample.world_generation=state.world_generation;
+        sample.sequence=pose.sequence;sample.created_ms=pose.created_ms;
+        sample.magazine=held_magazine;sample.tracked=true;sample.grip_down=true;
+        std::memcpy(sample.gun_mesh.data(),gun.local_to_world,sizeof(gun.local_to_world));
+        gears_weapon::LancerInsertionGeometry geometry{};
+        const auto result=state.insertion.observe(sample,&geometry);
+        state.last_insertion_sequence=pose.sequence;
+        if(result==gears_weapon::LancerInsertResult::inserted)
+            state.insertion_seen=true;
+        if(log_file&&result!=gears_weapon::LancerInsertResult::rejected){
+            fwprintf(log_file,L"lancer_magazine_insertion_candidate result=%u "
+                L"sequence=%llu depth=%.3f lateral=%.3f alignment=%.3f clock=%.3f\n",
+                unsigned(result),pose.sequence,geometry.depth_raw,
+                geometry.lateral_raw,geometry.axis_alignment,
+                geometry.clock_alignment);fflush(log_file);
+        }
+    }
+    lancer_magazine_status.store(state.insertion_seen?6u:2u,std::memory_order_release);
     if(log_file&&(now>=state.next_log||!magazine.attached_to_pawn)){
         state.next_log=now+500;
         MagazineVisualProbe after{};

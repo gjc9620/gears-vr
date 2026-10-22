@@ -32,6 +32,7 @@
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
 #include "../vr-common/weapon_lancer_magazine_pose.h"
+#include "../vr-common/weapon_lancer_insertion.h"
 #endif
 #endif
 #endif
@@ -199,10 +200,10 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
         vrequip::support_probe_post_tick(object);
         vrequip::reload_visual_post_tick(object);
         vrequip::lancer_socket_post_tick(object);
+        vrequip::mesh_follow_post_tick(object);
 #if defined(GEARS_PLAYGROUND_LANCER_MAGAZINE_FOLLOW_TEST)
         vrequip::lancer_magazine_post_tick(object);
 #endif
-        vrequip::mesh_follow_post_tick(object);
         inside=false;
     }
 #endif
@@ -364,6 +365,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineFollowStar
     if(!vrequip::lancer_magazine_test_request.compare_exchange_strong(expected,true))return 2;
     return 0;
 }
+// Status 6 records an insertion-shaped trajectory only. No original reload
+// completion, ammo settlement, or active-reload reward follows from it.
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundLancerMagazineFollowStatus(void*){
     return vrequip::lancer_magazine_status.load(std::memory_order_acquire);
 }
