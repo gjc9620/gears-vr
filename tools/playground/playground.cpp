@@ -39,6 +39,9 @@
 #include "../vr-common/hand_stream_grip_binding.h"
 #include "../vr-common/hand_stream_ticket_policy.h"
 #include "hand_ik_xr_stream_request.h"
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#include "../vr-common/hand_world_continuity_bridge.h"
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_BLADE_PROBE_TEST)
 #include "../vr-common/weapon_lancer_blade_outline.h"

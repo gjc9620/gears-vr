@@ -426,7 +426,12 @@ void timing_dump_if_ended(){
             timing_print_age(L"new_ticket",value.new_ticket);fwprintf(log_file,L"\n");
         }
     }
-    fwprintf(log_file,L"hand_ik_equipment_timing_end schema=1\n");shadow_dump();
+    fwprintf(log_file,L"hand_ik_equipment_timing_end schema=1\n");
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    fwprintf(log_file,L"hand_ik_equipment_shadow_skipped schema=1 source=GHW1 reason=legacy_lane_not_paired\n");
+#else
+    shadow_dump();
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
     transport_dump();
 #endif
@@ -439,15 +444,21 @@ struct EquipmentTimingHookScope {~EquipmentTimingHookScope(){timing_dump_if_ende
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
 gears_hand_stream::Plan observe_xr_policy(gears_hand_stream::Context const& context,
     gears_hand_stream::Ticket const* fresh,std::uint64_t now,bool regular=false){
-#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL) && !defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     const auto before=trial.xr_policy.continuity_snapshot(now);
 #else
     (void)regular;
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    const auto plan=trial.xr_policy.observe_certified(context,fresh,now,gears_vr::monotonic_ns());
+#else
     const auto plan=trial.xr_policy.observe(context,fresh,now);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     timing_policy(trial.xr_policy.last_observe());
+#if !defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     if(regular)shadow_pair(before,trial.xr_policy.last_observe());
+#endif
 #endif
     return plan;
 }

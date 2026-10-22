@@ -1,4 +1,5 @@
 #pragma once
+#include "hand_continuity_certificate.h"
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -18,6 +19,7 @@ struct Ticket {
     std::uint64_t serial{},sequence{},created_ms{},controller{},pawn{},weapon{};
     double units_per_metre{};
     unsigned valid_mask{}; // Bit 0 left, bit 1 right; not skeletal ownership.
+    gears_hand_continuity::Certificate certificate{};
 };
 struct Context {
     GameKey game{};
@@ -100,6 +102,11 @@ class Policy {
     TransportFence transport_fences_[transport_stream_capacity]{};
     Ticket transport_writer_ticket_{};
     bool transport_enabled_{},transport_exhausted_{},transport_writer_known_{};
+    gears_hand_continuity::Certificate certified_{};
+    std::uint64_t expected_native_qpc_{};
+    std::int64_t certified_observed_ns_{};
+    std::uint32_t expected_source_{};
+    bool used_{},certified_enabled_{},certified_known_{},certified_failed_{};
     static bool game_valid(GameKey const& game) noexcept {
         return game.world&&game.controller&&game.pawn&&game.mesh;
     }
@@ -118,7 +125,8 @@ class Policy {
     static bool ticket_same(Ticket const& a,Ticket const& b) noexcept {
         return same(a.stream,b.stream)&&a.serial==b.serial&&a.sequence==b.sequence&&
             a.created_ms==b.created_ms&&a.controller==b.controller&&a.pawn==b.pawn&&
-            a.weapon==b.weapon&&a.units_per_metre==b.units_per_metre&&a.valid_mask==b.valid_mask;
+            a.weapon==b.weapon&&a.units_per_metre==b.units_per_metre&&a.valid_mask==b.valid_mask&&
+            gears_hand_continuity::same_certificate(a.certificate,b.certificate);
     }
     bool current(Plan const& plan) const noexcept {
         return plan.revision&&plan.revision==current_.revision&&
@@ -158,6 +166,24 @@ class Policy {
     void diagnose(ObserveReason reason,unsigned mask=both_hands) noexcept {
         diagnostic_.reason_masks[static_cast<unsigned>(reason)]|=mask;
     }
+    void certified_diagnostic(Context const& context,Ticket const* fresh,std::uint64_t now) noexcept {
+        diagnostic_={};diagnostic_.observed_now=now;diagnostic_.bound_before=bound_;
+        diagnostic_.context_age=observe_age(context.observed_ms,now);
+        diagnostic_.previous_context_age=observe_age(context_.observed_ms,now,context_known_);
+        diagnostic_.new_ticket_age=observe_age(fresh?fresh->created_ms:0,now,fresh!=nullptr);
+        for(unsigned hand=0;hand<2;++hand)
+            diagnostic_.old_ticket_age[hand]=observe_age(last_present_ms_[hand],now,(bound_&(1u<<hand))!=0);
+    }
+    Plan blocked_observation(Context const& context,Ticket const* fresh,std::uint64_t now) noexcept {
+        current_.revision=0;certified_diagnostic(context,fresh,now);
+        Plan plan{};plan.context=context;plan.observed_now=now;
+        diagnose(ObserveReason::not_ready);invalidate(plan,both_hands);return seal(plan);
+    }
+    Plan reject_certified(Plan plan,ObserveReason why) noexcept {
+        // One bounded, permanent fence covers even malformed/future attempts;
+        // no rejected incarnation can return through another stream or clock.
+        certified_failed_=true;diagnose(why);invalidate(plan,both_hands);return seal(plan);
+    }
     Plan seal(Plan plan) noexcept {
         // No accepted new pose means yield the corresponding active lease,
         // while an otherwise recent geometry binding may remain available.
@@ -167,6 +193,14 @@ class Policy {
     }
 public:
     unsigned bound_mask() const noexcept {return bound_;}
+    bool certified_failed() const noexcept {return certified_failed_;}
+    // Opt in once, before either observation path or transport has been used.
+    // A read-only snapshot does not consume this initial state.
+    bool enable_certified_calibration(std::uint64_t expected_native_qpc,std::uint32_t expected_source) noexcept {
+        if(used_||certified_enabled_||!expected_native_qpc||expected_source>1)return false;
+        expected_native_qpc_=expected_native_qpc;expected_source_=expected_source;
+        certified_enabled_=true;return true;
+    }
     // The last observe only. Ages are sampled before any invalidation or
     // renewal; old_ticket_age is known only for hands bound on entry. The
     // bound_after value precedes any later commit_binding. No permission state
@@ -190,8 +224,12 @@ public:
     // Continuity only: never returns a Plan or grants a write/binding. The
     // caller still restores its journals and makes a regular fresh observation.
     TransportResult refresh_bound_transport(Ticket const& ticket,std::uint64_t action_epoch,std::uint64_t now) noexcept {
+        used_=true;
         current_.revision=0; // Incrementing revision_ alone would leave current_ usable.
         TransportResult result{};
+        if(certified_enabled_){
+            reason(result,ObserveReason::not_ready);invalidate(result,both_hands);return result;
+        }
         for(unsigned hand=0;hand<2;++hand)
             if((bound_&(1u<<hand))&&!recent(last_present_ms_[hand],now)){
                 reason(result,ObserveReason::binding_age);invalidate(result,1u<<hand);
@@ -253,6 +291,8 @@ public:
     // Pass only this frame's successful source read. nullptr never reuses the
     // stored ticket. Every observation also revokes all earlier plans.
     Plan observe(Context const& context,Ticket const* fresh,std::uint64_t now) noexcept {
+        used_=true;
+        if(certified_enabled_)return blocked_observation(context,fresh,now);
         diagnostic_={};diagnostic_.observed_now=now;diagnostic_.bound_before=bound_;
         diagnostic_.context_age=observe_age(context.observed_ms,now);
         diagnostic_.previous_context_age=observe_age(context_.observed_ms,now,context_known_);
@@ -343,6 +383,86 @@ public:
             if(ticket.valid_mask&(1u<<hand))last_present_ms_[hand]=ticket.created_ms;
         return seal(plan);
     }
+    // Certified continuity may retain geometry through historical age alone.
+    // Only a newly authenticated receipt may grant this observation a write.
+    Plan observe_certified(Context const& context,Ticket const* fresh,std::uint64_t now_ms,std::int64_t now_ns) noexcept {
+        used_=true;
+        if(!certified_enabled_)return blocked_observation(context,fresh,now_ms);
+        current_.revision=0;certified_diagnostic(context,fresh,now_ms);certified_observed_ns_=now_ns;
+        Plan plan{};plan.context=context;plan.observed_now=now_ms;
+        plan.has_ticket=fresh!=nullptr;if(fresh)plan.ticket=*fresh;
+        if(revision_==(std::numeric_limits<std::uint64_t>::max)())
+            return reject_certified(plan,ObserveReason::revision_exhausted);
+        plan.revision=++revision_;
+        const bool changed=!context_known_||!identity(context_,context);
+        const bool flags_changed=context_known_&&(context_.idle_ready!=context.idle_ready||context_.clean!=context.clean);
+        const bool clock_bad=context.observed_ms>now_ms||(context_known_&&context_.observed_ms>now_ms)||now_ns<=0;
+        const bool structural_ready=game_valid(context.game)&&context.idle_ready&&context.clean;
+        if(changed){diagnose(ObserveReason::context_identity);invalidate(plan,both_hands);}
+        if(flags_changed||clock_bad){diagnose(ObserveReason::context_readiness);invalidate(plan,both_hands);}
+        if(!structural_ready){diagnose(ObserveReason::not_ready);invalidate(plan,both_hands);}
+        ready_=structural_ready&&!clock_bad&&recent(context.observed_ms,now_ms);
+        context_=context;context_known_=true;
+        for(unsigned hand=0;hand<2;++hand)if(bound_&(1u<<hand)){
+            if(!recent(last_present_ms_[hand],now_ms))diagnose(ObserveReason::binding_age,1u<<hand);
+            if(last_present_ms_[hand]>now_ms)invalidate(plan,1u<<hand);
+        }
+        if(!ready_)diagnose(ObserveReason::not_ready);
+        if(certified_failed_)return reject_certified(plan,ObserveReason::not_newer);
+        if(!fresh){diagnose(ObserveReason::no_receipt);return seal(plan);}
+        auto const& ticket=*fresh;auto const& certificate=ticket.certificate;
+        const bool newer_serial=ticket.serial>serial_;
+        if(ticket.serial>serial_)serial_=ticket.serial; // Global lane cursor; never reset on a stream change.
+        const bool scale=std::isfinite(ticket.units_per_metre)&&ticket.units_per_metre>0.;
+        if(!stream_valid(ticket.stream)||!ticket.serial||!ticket.sequence||
+           (ticket.valid_mask&~both_hands)||!scale||!gears_hand_continuity::certificate_shape_valid(certificate))
+            return reject_certified(plan,ObserveReason::ticket_shape);
+        if(!game_valid(context.game)||ticket.controller!=context.game.controller||ticket.pawn!=context.game.pawn||
+           ticket.weapon!=context.game.weapon||certificate.native_started_qpc!=expected_native_qpc_||
+           (certified_known_&&(certificate.xr_publisher_pid!=certified_.xr_publisher_pid||
+                               certificate.xr_publisher_start!=certified_.xr_publisher_start)))
+            return reject_certified(plan,ObserveReason::ticket_owner);
+        if(ticket.stream.world_generation!=context.expected_native_world_generation)
+            return reject_certified(plan,ObserveReason::ticket_world);
+        if(certificate.source!=expected_source_)return reject_certified(plan,ObserveReason::stream_invalid);
+        const bool stream_advanced=certified_known_&&certificate.stream_epoch>certified_.stream_epoch;
+        const bool reference_advanced=certified_known_&&certificate.reference_epoch>certified_.reference_epoch;
+        const bool raw_restart=stream_advanced&&ticket.stream.session!=stream_.session;
+        if(!newer_serial||(certified_known_&&!raw_restart&&ticket.sequence<=sequence_))
+            return reject_certified(plan,ObserveReason::not_newer);
+        if(certified_known_&&(certificate.stream_epoch<certified_.stream_epoch||
+           certificate.reference_epoch<certified_.reference_epoch||
+           certificate.tracking_epoch[0]<certified_.tracking_epoch[0]||
+           certificate.tracking_epoch[1]<certified_.tracking_epoch[1]||
+           (!reference_advanced&&certificate.reference_generation!=certified_.reference_generation)||
+           certificate.stereo_received_ns<certified_.stereo_received_ns||
+           certificate.input_received_ns<certified_.input_received_ns))
+            return reject_certified(plan,ObserveReason::not_newer);
+        if(!recent(ticket.created_ms,now_ms)||stamp_regresses(ticket)||
+           !gears_hand_continuity::certificate_recent(certificate,now_ns))
+            return reject_certified(plan,ObserveReason::ticket_age);
+        const bool global=!certified_known_||!same(stream_,ticket.stream)||stream_advanced||reference_advanced||
+            certificate.source!=certified_.source||certificate.profile_generation!=certified_.profile_generation;
+        if(global){diagnose(ObserveReason::stream_changed);invalidate(plan,both_hands);}
+        if(certified_known_&&units_!=ticket.units_per_metre){
+            diagnose(ObserveReason::scale_changed);invalidate(plan,both_hands);
+        }
+        if(certified_known_)for(unsigned hand=0;hand<2;++hand)
+            if(certificate.tracking_epoch[hand]>certified_.tracking_epoch[hand]){
+                diagnose(ObserveReason::tracking_loss,1u<<hand);invalidate(plan,1u<<hand);
+            }
+        const auto lost=ticket.valid_mask?(last_valid_&~ticket.valid_mask):both_hands;
+        diagnose(ObserveReason::tracking_loss,lost);invalidate(plan,lost);
+        certified_=certificate;certified_known_=true;stream_=ticket.stream;stream_known_=true;
+        sequence_=ticket.sequence;units_=ticket.units_per_metre;last_valid_=ticket.valid_mask;
+        if(!ready_)return seal(plan); // Consume the fresh receipt, but never use an aged/unready context to write.
+        plan.baseline_mask=baseline_pending_;baseline_pending_=0;
+        plan.accept_mask=ticket.valid_mask&~plan.baseline_mask;
+        plan.bind_mask=plan.accept_mask&~bound_;
+        for(unsigned hand=0;hand<2;++hand)
+            if(ticket.valid_mask&(1u<<hand))last_present_ms_[hand]=ticket.created_ms;
+        return seal(plan);
+    }
     // Commit only after the separate geometry binder actually succeeded for
     // these hands. Binding a baseline, old plan, already-bound hand or a hand
     // omitted from bind_mask is rejected as a whole.
@@ -354,12 +474,22 @@ public:
     // context check. It is not animation ownership or a dirty-journal assertion.
     // restore_mask means "yield these hands"; the driver inspects its journals.
     unsigned authorize(Plan const& plan,Context const& current_context,std::uint64_t now) const noexcept {
-        if(!current(plan)||!plan.has_ticket||!ready_||!plan.accept_mask||
+        if(certified_enabled_||!current(plan)||!plan.has_ticket||!ready_||!plan.accept_mask||
            now<plan.observed_now||!identity(plan.context,current_context)||
            !current_context.idle_ready||!current_context.clean||
            current_context.observed_ms<plan.context.observed_ms||
            !recent(plan.context.observed_ms,now)||!recent(current_context.observed_ms,now)||
            !recent(plan.ticket.created_ms,now))return 0;
+        return plan.accept_mask&bound_;
+    }
+    unsigned authorize_certified(Plan const& plan,Context const& current_context,std::uint64_t now_ms,std::int64_t now_ns) const noexcept {
+        if(!certified_enabled_||certified_failed_||!certified_known_||!current(plan)||!plan.has_ticket||!ready_||
+           !plan.accept_mask||now_ms<plan.observed_now||now_ns<certified_observed_ns_||
+           !identity(plan.context,current_context)||!current_context.idle_ready||!current_context.clean||
+           current_context.observed_ms<plan.context.observed_ms||!recent(plan.context.observed_ms,now_ms)||
+           !recent(current_context.observed_ms,now_ms)||!recent(plan.ticket.created_ms,now_ms)||
+           !gears_hand_continuity::same_certificate(plan.ticket.certificate,certified_)||
+           !gears_hand_continuity::certificate_recent(plan.ticket.certificate,now_ns))return 0;
         return plan.accept_mask&bound_;
     }
 };

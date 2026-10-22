@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：新增默认关闭的 GHC1→GHW1 双手连续性候选，分开保存几何校准与每次写入权限。XR 对每张源样本先累计 stream／每手 loss epoch，发布失败或 Native 跳帧不能抹掉中间失追；Native 在原 stereo_mutex 内、同票据回正后冻结实际参考 epoch／generation，逐字段比对新旧输入和真实 XR publisher，再连同两个原始源时间提交独立世界姿态。纯过龄可以暂停并保留不可写 mount；失追、回正、坐标／动作／身份等边界仍重建相应 baseline，坏新包永久封闭本次 Policy。写前仍有三道装备认证、日志后的当前 Context／双源 100ms／Stop／deadline 检查；旧 GVC3、GVE6、FrameLink 和 304-byte Start 布局保持。XR ON／OFF 构建及5项离线检查、Native ON构建及7项检查、Native OFF构建及7项检查／1种拒配、PG三种构建及11项检查／4种拒配通过；旧25场景原字节测试和新12组认证场景通过；机械提取实际提交helper的31个调度／停止／年龄／时钟回归全过，删除guard的17个、仅删NS回退检查的1个变异反例均被检出。冻结默认 Native／XR／loader 未变，当前未启动新游戏局，不能据此改写 f／g 的 motion 失败或宣布自由双手／完整6DoF已验收。后台实测继续 Mute1／Behind1／ObserveOnly1 与精确退出后音频恢复。协议与限制见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
+
 2026-10-23：182e7b0／c37e入口测量候选 g 购买版 PID31604 已完成25写25恢复／完整槽位往返／Shutdown0，4份诊断有效。66条entry全部known且same_state，PE入口→transport平均0.016773ms／最大0.0389ms，所有入口ms与transport相同；6次phase2旧票据在入口已经109／110／109／109／109／125ms，新15–16ms，age-only potential为0。**实测排除了仅前移当前refresh能补足余量的假设**；组件仍唯一motion失败，原failed receipt `978f271d…453d66` 不改。FPP累计80、原8控件／44附件／两Hook恢复及9个已静音会话零修改／错误／待恢复通过，game／owner／XR／Guard均已退出；Native entry verifier false／XR1／整局false仍保留。下一步应单独验证校准保留与当前写权限的区别，先补独立参考／失追边界证据，不能把未见loss或status镜像当区间连续性；详见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。
 
 2026-10-23：PE入口到现transport的只读测量已接线：最外层TLS scope先核GT，只保存const快照／时钟，本地指针仅沿当前调用配对；独立1024行缓冲，same_state比较原始stamp，零覆盖或clock错误不影响原权限与恢复。Astra静态复核无阻断，相关五种构建和65项独立entry审计自检通过；新候选尚未运行。late created_ms≤entry_ms仅作年龄条件，未在入口读取bridge，不能证明那张票据当时已发布／可读。另明确手柄→手骨刚体校准本身无100ms数学期限，之后可单独评估age-only suspend，但当前latest-only会遗漏中间loss且GVE6未包含Native reference_generation，不因此直接放宽现有候选。详见 [联合记录](../../hand-ik-xr-stream-trial-20261023.md)。

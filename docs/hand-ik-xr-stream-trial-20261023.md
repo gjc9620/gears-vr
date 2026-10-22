@@ -4,6 +4,22 @@
 
 ## 接线与临时绑定
 
+### 后续 GHW1 连续性候选（2026-10-23，默认关闭）
+
+f／g 实测表明旧绑定有时在最早入口已经超过100ms，单纯前移读取无法解决重绑。本候选把 grip 到手骨的刚体校准与单次写入许可分开：历史采样过龄或本次没有新包，可以保留**不可写**的几何 mount；只有新的、完整认证的票据和当前游戏状态，才可能生成本次 Plan。每次观察仍撤销旧 Plan，原 PlayerTick 前仍先恢复全部 dirty journal。旧 GVE6 路径、原25场景和现有100ms写入门继续保留。
+
+新增 `ControllerContinuity.v1`（GHC1）是与 GVC3 并存的独立 ring 8 通道。每个 XR publisher 生命周期只有一个 SourceTracker，对每张采样先更新再尝试发布；两手 loss epoch 独立累计。因此即使中间的3→0→3未被 Native 消费，恢复帧仍能暴露那次失追。完整相同的最后合法帧可幂等重读，改内容的重复帧、倒退或计数溢出均拒绝；mapping 重开和发布失败不能重置来源历史。XR 仍按新通道→原 GVC3→eyes 的顺序发布，不改原 CSV。
+
+Native 的 StereoGate 另保存单调 reference continuity epoch。reset、回正、LOCAL origin 变化、实际参考建立，以及已观察到的非过龄失败都会留下边界；重复失败只锁存一次中断。纯过龄保留参考证书，过龄同时伴随坏几何或不同原点则不能隐藏该边界，原 StereoStatus 返回顺序保持。Native 在原 stereo_mutex 内、同票据 L3 处理之后冻结实际 gate 状态与 `result.reference/reference_generation`；仅 stable、无 pending、未耗尽的参考可发布候选。
+
+`WorldHandContinuity.v1`（GHW1）独立提交世界姿态与完整证书，自行分配 serial／created_ms；不把旧 GVE6 调用方尚未赋值的局部 serial 拼回来。证书包含固定 Native activation QPC、实际 XR PID／creation、stream／reference／两手 tracking epoch、profile、source，以及原 Stereo 和 Controller 两个 received_ns。Native 必须将 GHC1 输入与本次 GVC3 输入逐字段比对，并核对两通道的真实 publisher 身份。发布持锁、读取复制后各自取得实时源时钟，两份源时间都必须有效且不超过100ms。同 publisher／source／session 的重复或倒退 sequence 不推进 GHW1 serial；Native 重复使用同一眼部采样、包括同票据 recenter，都等下一张真实源帧才发布，避免把合法重复渲染变成 PG 的重放失败。读取明确区分无新包、首次丢弃历史、有效新包和拒绝；已消费坏包不能等时钟追上后复活。证书只证明这张姿态使用的参考，不是 PG 写入瞬间的 Native 当前参考 getter。
+
+PG 的 `GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL` 默认 OFF，必须显式启用联合试验，并排斥旧 transport 续龄候选。它固定 Start 的 Native activation，首次合法 XR publisher 后不换源；global／reference 边界清双方，tracking epoch 增加只清对应手。新包的认证失败、重放、epoch／源时间倒退、future／过龄会永久封闭本次 Policy，再沿原交还流程结束。最终 authorize 再验两份源时间，返回 mask 前重新检查 Stop、Shutdown、有限试验 deadline 及当前 Context／票据年龄。原三次装备认证、最多15秒／256次 Lease、逐帧恢复和原动画交还顺序保留。新模式不读取或配对旧 GVE6 shadow，日志明确标为 GHW1并记录证书，旧模式的诊断格式保留。公开 FreeHandControl 的 ownership／apply 条件没有因此放开。
+
+离线验证已通过：XR ON／OFF构建和5项检查；Native ON构建和7项检查，OFF构建和7项检查、缺 observer 拒配；PG 新候选、关闭候选的联合版和普通默认版三种构建，11项组件检查和4种拒配。旧25场景测试源码未改，新12组覆盖过龄保留、无票据暂停、隐藏单手失追、各类边界、重放／坏证书不能复活、两路源时间最终过龄、Plan逐字段篡改和模式隔离。忽略目录回执为 `analysis/controller-continuity-20261023/verification.json`、`analysis/hand-certified-policy-20261023/verification.json`、`analysis/build-xr-hand-continuity-trial/build-validation.json`、`analysis/build-native-hand-continuity-default-off/validation-summary.json` 和 `analysis/hand-certified-build-checks-20261023.json`。机械提取实际提交helper另有31例CPU回归全部通过；删除最终guard的变异出现17个反例，仅删NS回退检查的变异出现1个反例，这些是测试变异，不是历史生产版本。对应回执为 `analysis/hand-certified-commit-guard-20261023/report.json`。Native 原有 shadow／窄化告警另列，没有把它们写成新代码无告警。
+
+此候选尚未运行购买版游戏，也尚未替换冻结默认 Native／XR／loader。f／g 的持续运动失败、独立 Native entry verifier 与图像链失败回执保持原样；下一步须将三份私有产物和新源清单完整配套，再进行静音、后台、只读窗口观察的实际联合测试。
+
 `GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL` 默认关闭，须同时启用原逐帧试验基础和两个原动画观察边界。它替换合成轨迹循环，以 `PlaygroundHandIkXrStreamTrialStart` 接收一次性启动参数；该构建不导出合成轨迹 Start。Stop／Status 和原有恢复、关闭协议复用。
 
 每次原 `PlayerTick` 前先恢复上一帧的全部 dirty journal，原 Tick 与桥接请求在恢复后运行。post Tick 只接受本次成功读取的新 GVE6 帧；没有新帧不复用缓存姿态。四个尾控件可按手选择：左手使用通道 2／3，右手使用通道 0／1；选中通道先全部快照，再写入并回读，未选中通道不参与 Lease 的读写。原四个头控件不写，也不强制动画求值。
