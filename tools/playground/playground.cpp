@@ -59,6 +59,7 @@
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
 #include "../vr-common/weapon_stow_lease.h"
+#include "../vr-common/equipment_stow_pending.h"
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
 #include "../vr-common/equipment_intent_bridge.h"
@@ -147,7 +148,10 @@ namespace handstream {void before_action(uptr,uptr);}
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
 namespace vrequip {namespace stow {void before_action(uptr,uptr);}}
-namespace vrfire {bool yield_for_equipment(uptr,uptr);}
+namespace vrfire {
+enum class EquipmentYield:unsigned {failed,settling,ready};
+EquipmentYield yield_for_equipment(uptr,uptr);
+}
 #endif
 bool invoke_engine(Request* r){
     if(!r||r->size>sizeof(r->params)||!registered(r->object)||!registered(r->function))return false;
@@ -1031,9 +1035,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     vrequip::stow::shutdown_requested.store(true,std::memory_order_release);
     vrequip::stow::stop_requested.store(true,std::memory_order_release);
     const auto stow_until=GetTickCount64()+2000;
-    while((vrequip::stow::dirty_visible.load(std::memory_order_acquire)||callbacks.load(std::memory_order_acquire))&&
+    while((vrequip::stow::dirty_visible.load(std::memory_order_acquire)||
+           vrequip::stow::pending_visible.load(std::memory_order_acquire)||callbacks.load(std::memory_order_acquire))&&
           GetTickCount64()<stow_until)Sleep(1);
-    if(vrequip::stow::dirty_visible.load(std::memory_order_acquire)||callbacks.load(std::memory_order_acquire))return 50;
+    if(vrequip::stow::dirty_visible.load(std::memory_order_acquire)||
+       vrequip::stow::pending_visible.load(std::memory_order_acquire)||callbacks.load(std::memory_order_acquire))return 50;
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     handstream::shutdown_requested.store(true,std::memory_order_release);

@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：真实原 R2／L2 联调 PID 57152 成功按下两键并消耗 Hammerburst 弹药，但开火中的身体槽请求被旧候选返回 12，整局收据保持失败；当时为 BurstDelaying，缺少 yield 分阶段日志，尚不能唯一归因。清理成功，静音保护持续至精确游戏退出。新修订增加逐手 Release 回执、最多 1 秒的原开火状态自然结束等待；等待先封新 press、没有附件写权，身份／挂点／原状态／按键认证失败即取消，Stop／Shutdown 排空后才卸钩。外部与 XR intent 统一原子 claim，等待保持 processing，终值只在读回与日志后公布。严格候选／默认关闭构建和新增 mailbox／pending 纯检查通过，尚待封存后实机联调；详见 [暂收试验](../../equipment-stow-trial-20261023.md)。
+
 2026-10-23：请求确认竞态已由单请求 mailbox 修复，reserved／queued／processing 期间始终返回 0，原调用／读回／模型／完成日志结束才公开结果；真实跨线程暂停和 producer 竞争回归通过。新候选 SHA256 `81601d4b…80cdec` 的购买版 PID 36000 补测 **passed=true**：Hammerburst 槽 3 完整往返，外部 true 交还后 35 份样本持续 11.5607865 秒 detached／dirty=0、无旧 deadline 拔回；再取回／暂收后在 `0x10005` dirty 状态直接 Shutdown。日志先恢复原 44 字节挂点、clean／fault=0／revoked=0，再还原 Hook；Shutdown=0，两入口原字节独立匹配、精确游戏退出、owner0、九个已静音会话无错误／无待恢复。源封存 158 份，严格候选／默认隔离及六项纯检查通过；启动前私有 ini 原字节快照保存，未补 resize／前台恢复。回执在 `analysis/equipment-stow-runtime-1023b/`，前局失败不改写。两局均仅外部槽请求且 R2／L2 mode off；下一项为原按钮联调。XR intent 与外部请求还需原子仲裁，实际身体命中、肩部图像、与手骨 writer 共存及头显仍未验收，详见 [暂收试验](../../equipment-stow-trial-20261023.md)。
 
 2026-10-23：暂收候选首局购买版 PID 47872 的真实 Hammerburst 槽日志 `11→10→11→10→11`，原手附件往返 44 字节一致；外部 true 进入前按内部 false／附件读回／clean／action 的顺序交还，随后 35 份样本持续 11.698669 秒保持 detached、dirty=0，跨过旧 10 秒截止且无内部 helper 拔回。49 份外部读数的库存／Active／八控件位模式保持。**原收据仍失败**：取走队列后、写回本次结果前的确认窗口暴露旧状态 10，runner 在本次真实 11 完成前提前退出；当时 journal 已 clean，不能当 dirty Shutdown 通过。Shutdown=0、原附件及两入口独立还原、精确进程退出与静音清理通过；失败收据／机械 audit 保持在 `analysis/equipment-stow-runtime-1023a/`。正在修复请求全处理期的 mailbox 回执，并补本请求新日志确认；不以同局组件证据改写整局状态。

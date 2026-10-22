@@ -62,4 +62,20 @@
 
 修复后的购买版 PID 36000 补测通过，原收据 `passed=true`、无清理错误。同一初始 Hammerburst 槽 3 完成完整往返、外部 true 交还、35 份样本保持 11.5607865 秒不被旧 deadline 拔回、外部 false 后重新取回／暂收；最后在 `0x10005`（暂收且 dirty）时直接 Shutdown。日志确认先恢复原 44 字节挂点、clean／fault=0／revoked=0，随后才还原 CallFunction Hook；Shutdown=0，两个入口原字节独立匹配，精确游戏进程退出、owner=0。九个原已静音会话无静音／读取失败、无待恢复；守护器到游戏消失后结束。启动前私有 ini 原字节快照另存，没有额外调整窗口或配置。证据位于忽略的 `analysis/equipment-stow-runtime-1023b/`，原收据 SHA256 `8c1b57e89ae06553976a615e0553374f23f8444395eb648bd9864398c03ca273`。
 
-这两局均只发外部槽请求，R2／L2 mode 为 off。XR intent 的 pending 检查与读取还不是一个原子 claim；与外部 producer 并发时可能分别执行两个请求，须在真实身体槽联调前统一仲裁。独立实际 R2／L2 持续按压联调、实际 RGrip 空间命中、肩部代理渲染、与持续双手 IK 共存及头显效果均仍待完成。
+这两局均只发外部槽请求，R2／L2 mode 为 off。当时 XR intent 的 pending 检查与读取还不是一个原子 claim；与外部 producer 并发时可能分别执行两个请求。
+
+## 持续开火时的暂收等待
+
+随后购买版 PID 57152 用独立模拟输入发布器实际按下 R2／L2，原字段均为 down，Hammerburst 的 AmmoUsedCount 从 0 增至 6；同局读到 `WeaponFiring`，身体槽请求前为 `BurstDelaying`，其余 idle 条件满足。旧候选返回槽结果 12，未调用暂收助手。原收据在 `analysis/equipment-stow-buttons-runtime-1023a/` 保持 **passed=false**；缺少 yield 分阶段日志，不能把拒绝唯一归因于 Active 条件，也不能用随后 publisher 松键／Shutdown 后的 up 值证明当时 yield 已成功。该局 Shutdown=0、原挂点 44 字节及两入口匹配、发布器和精确游戏进程退出、九个原已静音会话无错误／无待恢复。
+
+修订候选先封住新 press，再分别交还本桥拥有的按键，严格记录每手调用前后的 known／held／ownership、实际 Release 调用与结果。Never-owned down 直接拒绝。成功交还但按钮尚未 up 只能基于该手原 ownership 及成功 Release 回执进入 settling，不能把未知读数当作抬键。
+
+若同一 Hammerburst 仍处于已观察的 `WeaponFiring`／`BurstDelaying`，以同一完整身份和原手挂点等待原版自然返回 Active，最多 1,000 毫秒，不逐 Tick 续期，不改 timer 或强制 state。等待本身没有附件恢复权，不调用 true／false；完成前重新认证八对象、库存、44 字节挂点、idle 条件、Active 和两原键 up，才可 acquire 暂收 journal。等待期间原键的 down 位只能减少，新 down、unknown、未知状态、固定动作或身份丢失均取消。
+
+只有绑定的同一 Hammerburst 在许可状态中的 BeginState／EndState 可以自然完成；Pawn／PC／库存对象上的同名动作没有该豁免。其他已知原动作在转发前取消等待，原动作结束也不会自动复活该请求。Stop／Shutdown 独立等待 pending 可见标记清除，不因 dirty=0 提前卸钩。
+
+原 1 秒期限从本次请求进入时固定，包含最初的交还和查询时间。真正执行 true 前，在参数构造及前置日志 flush 之后再次认证完整 expected Key、原挂点、fresh idle、Active、按键 up，最后检查 Stop／Shutdown／原期限，以该检查作为提交决定；随后到来的停止由 dirty journal 排空恢复。如果这个最终检查拒绝，立即 revoke 预记的 journal，保证“尚未调用 true”时新出现的 detached 不会被误当作自己的暂收而补发 false；原 hand 只能只读清除 dirty，foreign detached 保持撤权并拒绝正常卸钩。新增回归分别覆盖这两个分支。
+
+外部槽请求和 XR intent 现共用 mailbox 的原子 processing claim，先占用才能读 intent，异步等待期间持续保持请求占用；完成读回、模型更新和唯一终行日志后才发布结果。私有 StowStatus 低位 13 表示等待，SwitchStatus 在等待中持续为 0，终值仍为 10／12。纯模块覆盖真实线程竞争、处理期间的排他性、身份复现不复活、deadline／时钟边界和停止优先于 ready。
+
+本修订候选 SHA256 为 `dc870cd148b6dc88b5fbd1942c287de4fa224774c94b6536560491fd761111f2`，160 份源码及七个纯检查结果封存在对应忽略目录；source.json SHA256 为 `986f6e032f55bdbc58b3ca42681f0fbc5b7d0ef67e2a7403b1e9a56b061649ad`。严格候选／默认关闭构建和导出隔离通过；Astra Max 最终源码复核未发现剩余确定阻断。后台持键联调单独使用新 tag，旧失败回执不改写。实际 RGrip 空间命中、肩部代理渲染、与持续双手 IK 共存及头显效果均仍待完成。

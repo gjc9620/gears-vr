@@ -85,24 +85,103 @@ bool execute_aim(gears_weapon::OriginalL2Action action,std::uint64_t controller)
 }
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
-bool yield_for_equipment(uptr pc,uptr weapon){
+EquipmentYield yield_for_equipment(uptr pc,uptr weapon){
+    struct Evidence {
+        bool before_known{},before_held{},owned_before{},yield_called{};
+        bool release_called{},release_ok{},after_known{},after_held{},owned_after{};
+        unsigned yield_status{~0u}; // Not called; yield_called disambiguates it.
+    } r2_evidence,l2_evidence;
     const auto state=mode.load(std::memory_order_acquire);
-    if(state==fault||state==stopping)return false;
-    const auto current=context(pc);
-    if(!current.ordinary_player||current.weapon!=weapon)return false;
-    if(state==running){
-        const auto released=fire.yield(current,execute);
-        last_status.store(unsigned(released),std::memory_order_release);
-        if(released==gears_weapon::OriginalR2Status::abort_required){mode=fault;return false;}
-        const auto aim_released=aim.yield(aim_context(pc,current),execute_aim);
-        last_aim_status.store(unsigned(aim_released),std::memory_order_release);
-        if(aim_released==gears_weapon::OriginalL2Status::abort_required){mode=fault;return false;}
-    }else if(fire.owns_press()||aim.owns_press())return false;
-    // A never-owned original press is not ours to release or hide behind a
-    // body-slot operation. The original fields must actually be up now.
-    bool r2_held{},l2_held{};
-    return vrequip::read_bool(pc,L"bHoldingButton_R2",r2_held)&&!r2_held&&
-        vrequip::read_bool(pc,L"bPressingTargetingKey",l2_held)&&!l2_held;
+    r2_evidence.before_known=vrequip::stow::boolean(pc,L"bHoldingButton_R2",r2_evidence.before_held);
+    l2_evidence.before_known=vrequip::stow::boolean(pc,L"bPressingTargetingKey",l2_evidence.before_held);
+    r2_evidence.owned_before=fire.owns_press();l2_evidence.owned_before=aim.owns_press();
+    bool toggle_known{},toggle{},eligible{};
+    const wchar_t* reason=L"before_unknown";
+    if(r2_evidence.before_known&&l2_evidence.before_known){
+        if((r2_evidence.before_held&&!r2_evidence.owned_before)||
+           (l2_evidence.before_held&&!l2_evidence.owned_before)){
+            reason=L"never_owned_held";
+        }else if(state==fault||state==stopping){
+            reason=L"mode_not_yieldable";
+        }else{
+            auto current=context(pc);
+            current.game_r2_held=r2_evidence.before_held;
+            if(!current.ordinary_player||current.weapon!=weapon){
+                reason=L"identity_rejected";
+            }else if(state==running){
+                toggle_known=vrequip::stow::boolean(pc,L"bToggleTargeting",toggle);
+                if(!toggle_known){
+                    reason=L"toggle_unknown";
+                }else{
+                    r2_evidence.yield_called=true;
+                    const auto released=fire.yield(current,[&](gears_weapon::OriginalR2Action action,std::uint64_t controller){
+                        if(action!=gears_weapon::OriginalR2Action::release)return false;
+                        r2_evidence.release_called=true;
+                        r2_evidence.release_ok=execute(action,controller);
+                        return r2_evidence.release_ok;
+                    });
+                    r2_evidence.yield_status=unsigned(released);
+                    last_status.store(unsigned(released),std::memory_order_release);
+                    const bool r2_abort=released==gears_weapon::OriginalR2Status::abort_required;
+                    if(r2_abort)mode.store(fault,std::memory_order_release);
+                    // Attempt the other ledger even after R2 abort. It can
+                    // release only its own press and preserves owns on failure.
+                    auto aim_current=aim_context(pc,current);
+                    aim_current.game_target_key=l2_evidence.before_held;
+                    aim_current.toggle_targeting=toggle;
+                    l2_evidence.yield_called=true;
+                    const auto aim_released=aim.yield(aim_current,[&](gears_weapon::OriginalL2Action action,std::uint64_t controller){
+                        if(action!=gears_weapon::OriginalL2Action::release)return false;
+                        l2_evidence.release_called=true;
+                        l2_evidence.release_ok=execute_aim(action,controller);
+                        return l2_evidence.release_ok;
+                    });
+                    l2_evidence.yield_status=unsigned(aim_released);
+                    last_aim_status.store(unsigned(aim_released),std::memory_order_release);
+                    const bool l2_abort=aim_released==gears_weapon::OriginalL2Status::abort_required;
+                    if(l2_abort)mode.store(fault,std::memory_order_release);
+                    eligible=!r2_abort&&!l2_abort;
+                    reason=eligible?L"yielded":L"ledger_abort";
+                }
+            }else if(r2_evidence.owned_before||l2_evidence.owned_before){
+                reason=L"owned_while_not_running";
+            }else{
+                eligible=true;reason=L"unowned";
+            }
+        }
+    }
+    r2_evidence.after_known=vrequip::stow::boolean(pc,L"bHoldingButton_R2",r2_evidence.after_held);
+    l2_evidence.after_known=vrequip::stow::boolean(pc,L"bPressingTargetingKey",l2_evidence.after_held);
+    r2_evidence.owned_after=fire.owns_press();l2_evidence.owned_after=aim.owns_press();
+    auto result=EquipmentYield::failed;
+    if(eligible){
+        if(!r2_evidence.after_known||!l2_evidence.after_known){
+            reason=L"after_unknown";
+        }else if(!r2_evidence.after_held&&!l2_evidence.after_held){
+            result=EquipmentYield::ready;reason=L"keys_up";
+        }else if((!r2_evidence.after_held||(r2_evidence.owned_before&&r2_evidence.release_called&&r2_evidence.release_ok))&&
+                 (!l2_evidence.after_held||(l2_evidence.owned_before&&l2_evidence.release_called&&l2_evidence.release_ok))){
+            result=EquipmentYield::settling;reason=L"owned_release_settling";
+        }else reason=L"held_without_owned_release";
+    }
+    if(log_file){
+        fwprintf(log_file,L"equipment_stow_yield mode_before=%u mode_after=%u pc=%p weapon=%p "
+            L"r2_before_known=%u r2_before_held=%u r2_owned_before=%u r2_yield_called=%u r2_yield_status=%u "
+            L"r2_release_called=%u r2_release_ok=%u r2_after_known=%u r2_after_held=%u r2_owned_after=%u "
+            L"l2_before_known=%u l2_before_held=%u l2_owned_before=%u l2_yield_called=%u l2_yield_status=%u "
+            L"l2_release_called=%u l2_release_ok=%u l2_after_known=%u l2_after_held=%u l2_owned_after=%u "
+            L"toggle_known=%u toggle=%u result=%u reason=%ls\n",
+            state,mode.load(std::memory_order_acquire),reinterpret_cast<void*>(pc),reinterpret_cast<void*>(weapon),
+            unsigned(r2_evidence.before_known),unsigned(r2_evidence.before_held),unsigned(r2_evidence.owned_before),
+            unsigned(r2_evidence.yield_called),r2_evidence.yield_status,unsigned(r2_evidence.release_called),
+            unsigned(r2_evidence.release_ok),unsigned(r2_evidence.after_known),unsigned(r2_evidence.after_held),unsigned(r2_evidence.owned_after),
+            unsigned(l2_evidence.before_known),unsigned(l2_evidence.before_held),unsigned(l2_evidence.owned_before),
+            unsigned(l2_evidence.yield_called),l2_evidence.yield_status,unsigned(l2_evidence.release_called),
+            unsigned(l2_evidence.release_ok),unsigned(l2_evidence.after_known),unsigned(l2_evidence.after_held),unsigned(l2_evidence.owned_after),
+            unsigned(toggle_known),unsigned(toggle),unsigned(result),reason);
+        fflush(log_file);
+    }
+    return result;
 }
 #endif
 void tick(uptr pc){

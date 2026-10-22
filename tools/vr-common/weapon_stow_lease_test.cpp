@@ -16,6 +16,18 @@ struct Backend {
         return call_ok;
     }
 };
+struct GuardRejectedBackend:Backend {
+    WeaponStowLease<unsigned>* journal{};
+    StowAttachment encountered{StowAttachment::original_hand};
+    bool set_holstered(bool value){
+        if(!value)return Backend::set_holstered(false);
+        // The final guard refuses before any true call. Another game owner
+        // may already have detached the same mesh during the preceding read.
+        state.attachment=encountered;
+        journal->revoke();
+        return false;
+    }
+};
 int main(){
     {
         Backend b;WeaponStowLease<unsigned> lease;
@@ -101,6 +113,18 @@ int main(){
         Backend b;WeaponStowLease<unsigned> lease;assert(lease.acquire(b));
         lease.revoke();
         assert(!lease.restore(b)&&lease.dirty()&&lease.revoked()&&b.calls.size()==1);
+    }
+    for(const auto attachment:{StowAttachment::original_hand,StowAttachment::detached}){
+        WeaponStowLease<unsigned> lease;GuardRejectedBackend b;
+        b.journal=&lease;b.encountered=attachment;
+        assert(!lease.acquire(b)&&lease.faulted()&&lease.revoked()&&b.calls.empty());
+        if(attachment==StowAttachment::original_hand){
+            assert(!lease.dirty()&&lease.restore(b)&&b.calls.empty());
+        }else{
+            assert(lease.dirty()&&!lease.restore(b)&&b.calls.empty());
+            b.state.attachment=StowAttachment::original_hand;
+            assert(lease.restore(b)&&!lease.dirty()&&b.calls.empty());
+        }
     }
     std::puts("stow journal partial-call rollback, foreign state, identity and exact hand restoration passed");
 }

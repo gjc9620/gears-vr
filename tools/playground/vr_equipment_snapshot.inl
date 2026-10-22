@@ -494,6 +494,7 @@ void tick(uptr pc){
     const auto now=GetTickCount64();
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
     stow::tick();
+    if(stow::advance_pending(pc))return;
 #endif
 #if defined(GEARS_PLAYGROUND_LANCER_CHAINSAW_HOLD_TEST)
     lancer_saw_hold_tick(pc);
@@ -503,7 +504,11 @@ void tick(uptr pc){
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
     unsigned requested_slot=switch_requests.take();
-    const bool external_slot_request=requested_slot<4;
+    struct RequestCompletion {
+        bool owned{};
+        void release(){if(owned){switch_requests.complete();owned=false;}}
+        ~RequestCompletion(){release();}
+    } request_completion{requested_slot<4};
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)
     gears_weapon::EquipmentIntentEvent grip_event{};
     bool from_grip=false,ammo_request=false,reload_request=false;
@@ -581,15 +586,17 @@ void tick(uptr pc){
                 }
             }else ++pose_rejected;
         }
-        if(intent_open&&requested_slot>=4&&!switch_requests.pending()&&
-           intent_bridge.read_next(intent_cursor,grip_event)){
-            from_grip=true;
-            if(grip_event.kind==gears_weapon::EquipmentIntentKind::slot)
-                requested_slot=grip_event.inventory_slot;
-            else if(grip_event.kind==gears_weapon::EquipmentIntentKind::grab_ammo)
-                ammo_request=true;
-            else if(grip_event.kind==gears_weapon::EquipmentIntentKind::reload)
-                reload_request=true;
+        if(intent_open&&requested_slot>=4&&switch_requests.claim_idle()){
+            request_completion.owned=true;
+            if(intent_bridge.read_next(intent_cursor,grip_event)){
+                from_grip=true;
+                if(grip_event.kind==gears_weapon::EquipmentIntentKind::slot)
+                    requested_slot=grip_event.inventory_slot;
+                else if(grip_event.kind==gears_weapon::EquipmentIntentKind::grab_ammo)
+                    ammo_request=true;
+                else if(grip_event.kind==gears_weapon::EquipmentIntentKind::reload)
+                    reload_request=true;
+            }else request_completion.release();
         }
     }
 #endif
@@ -766,7 +773,14 @@ void tick(uptr pc){
                     decision.event==gears_weapon::EquipmentEvent::request_stow){
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
                 const bool holster=decision.event==gears_weapon::EquipmentEvent::request_stow;
-                if(stow::transition(pc,game,holster)){
+                const auto result=stow::transition(pc,game,holster,proposed,requested_slot,from_grip);
+                if(result==stow::Transition::deferred){
+                    // Transfer this processing claim to the bounded game-thread
+                    // wait. Its terminal readback/log owns complete().
+                    request_completion.owned=false;
+                    return;
+                }
+                if(result==stow::Transition::complete){
                     model=proposed;status=holster?10u:11u;
                 }else{
                     if(stow::lease.dirty()||stow::lease.faulted())model.reset();
@@ -780,7 +794,7 @@ void tick(uptr pc){
                 bool may_switch=true;
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
                 // Release before changing the identity owned by an XR press.
-                if((game.current_weapon&&!vrfire::yield_for_equipment(pc,game.current_weapon))||
+                if((game.current_weapon&&vrfire::yield_for_equipment(pc,game.current_weapon)!=vrfire::EquipmentYield::ready)||
                    !stow::restore(L"before_body_slot_switch")){
                     model.reset();status=12;may_switch=false;
                 }
@@ -810,9 +824,8 @@ void tick(uptr pc){
                 requested_slot,status,reinterpret_cast<void*>(static_cast<uptr>(decision.weapon)));
                 fflush(log_file);}
         }
-        // take() keeps the request in progress until all native calls,
-        // readbacks, model updates and its completion log are finished.
-        if(external_slot_request)switch_requests.complete();
+        // RAII completes either producer only after readback and logging;
+        // a deferred stow explicitly transfers that responsibility above.
     }
     if(model.switch_pending())next_probe=now+50;
 #endif

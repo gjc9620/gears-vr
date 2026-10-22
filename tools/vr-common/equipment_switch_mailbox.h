@@ -3,7 +3,7 @@
 
 namespace gears_weapon {
 // One outstanding request, including the entire consumer operation. This
-// ledger owns no game state; the take() winner must call complete() only after
+// ledger owns no game state; the take()/claim_idle() winner must complete only after
 // the original call, readback, model update and completion log have finished.
 class EquipmentSwitchMailbox {
     enum class Phase : unsigned { idle,reserved,queued,processing };
@@ -30,6 +30,15 @@ public:
         if(!phase_.compare_exchange_strong(expected,Phase::processing,
                 std::memory_order_acq_rel,std::memory_order_acquire))return no_slot;
         return slot_;
+    }
+
+    // Claim an intent/deferred operation without an external slot. This uses
+    // the same exclusion as enqueue/take and preserves the observed result.
+    // The winner owns completion, including any explicit deferred transfer.
+    bool claim_idle() noexcept {
+        auto expected=Phase::idle;
+        return phase_.compare_exchange_strong(expected,Phase::processing,
+            std::memory_order_acq_rel,std::memory_order_acquire);
     }
 
     // Observations may update an idle result too, for later original-game
