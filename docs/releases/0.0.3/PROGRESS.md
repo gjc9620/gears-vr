@@ -384,3 +384,11 @@ root与独立源码审查通过；实际边界、资格条件和原恢复片段�
 主机在phase2／lease5时请求计划停止，Stop0、Shutdown0；最终raw327687为5个lease／phase7，原因continuous_post_tick_without_fresh_joint_commit，first_failure_known=1／first_failure=7、dirty=0／faulted=0／safe=1。原scope／update／cleanup整体判断均保持false。终止tick2449／attempt6实际上已有新serial33／sequence840、Plan revision33／accept_mask3，final_auth_called=0；源码与日志推断相关出口是首次prewrite授权返回0后静默返回，再由PostTick析构保守记7。该次授权的准确拒绝位已被恢复阶段环形日志覆盖；Stop store时刻未记录，不能凭主机调用相近就认定停止竞态，也不能断言TTL过期。窄审394010e0…7632仅提出后续局部捕获本调用原拒绝分类，不重标AC，不按晚到Stop抹掉其他失败。
 
 root独立核对三组组件raw、8控制器、44字节挂接和入口恢复，8音频session已恢复且pending／read_failed／mute_failed均0；按精确PID与creation time只读确认owner／game／XR全部退出。Native／XR独立子会话97层／54拷贝、跨度1.0544409秒、最大提交间隔14.5587ms通过，XR exit0；不作为FPS或头显验收。AC原receipt f7648519…5e6、正式失败审计和110项封存保持，seal1720be63…cc26、root-result e15c1004…f1a；没有自动重放。下一步只修正有直接证据的写前取消分类，保留未知、时钟／Policy拒绝和既有失败的7／8，以及原100ms、15秒／256和恢复顺序。全武器、实际0.7伤害与头显仍待完成。
+
+## 2026-10-24 — 写前授权取消分类通过受影响测试并接入独立分支
+
+仅XRstream一份源变化，其余778源原字节保持，源树ead5b55c…62f3。CONT在原有首次prewrite授权调用外使用全新局部AuthObservation，调用次数、参数、时钟与原检查顺序不变，返回后先恢复上层observer再记录或结束。只有本调用确切早期Stop／Shutdown拒绝，或已具备当前Plan内有效右手授权的晚期Stop／Shutdown拒绝，才请求状态6；缺失观察、cutoff／时钟／年龄／证书失败、Policy0或缺右手权限均请求7。原PostTick保守兜底、failure sticky和恢复失败7／8升级保持，没有读取晚到Stop重标旧失败。
+
+真实授权、capture／classifier与原生命周期片段组成13类／350项主机检查，首次严格MSVC编译和运行均0，CPU e3e67d3b…1c79；覆盖原检查顺序、父observer恢复、当前调用包、有效权限子集、已有7与清理7／8及原手部恢复。7个旧片段原字节沿用、5个新片段核对实际源边界，Policy返回／时钟调度／快照与组件恢复仍是声明过的host seam；不是完整certified XR、实际引擎动作或消费证明，未重跑旧AC／dispatch测试。
+
+运行前发现新增纯诊断行名落在旧auditor保留的continuous命名空间内，会被unknown-prefix检查拒绝；保留48个未执行准备文件后，仅将源、提取片段和fixture读行前缀同步改为hand_weapon_component_prewrite_rejection，审计器原字节保持。修正前没有执行CPU或游戏，不称为一次运行失败。原五pin检查器另保留未执行版，AD新OFF适配为单个已审XR delta加四份两侧同一冻结父上下文；唯一一组两次/EP均0，严格完整非空行字节相等，proof083cc697…660a，仍非完整TU／ABI。root新源审314c1725…fd4a、fixture审185367d6…fa66、集成7032c751…189d、原字节应用e6559d32…98b均通过。完整新PG构建与AD实际局尚待进行，AC110项封存和失败不改写，默认入口未安装。

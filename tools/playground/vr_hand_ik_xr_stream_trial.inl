@@ -530,6 +530,18 @@ unsigned authorize_current_xr_plan(gears_hand_stream::Plan const& plan,
     return authorize_xr_plan(plan,context,now,write_until);
 }
 
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+// Classification of this original call only; no pose/write authority or new clock.
+bool continuous_prewrite_cancelled(component_trace::AuthObservation const& observation,unsigned intended_mask) noexcept {
+    auto const& auth=observation.value;
+    if(!observation.known||auth.result||!(intended_mask&2u)||(intended_mask&~3u))return false;
+    if(auth.known==67u&&auth.mask==0u)
+        return (auth.checked==7u&&auth.rejected==4u)||(auth.checked==15u&&auth.rejected==8u);
+    if(auth.known!=127u||!(auth.mask&2u)||(auth.mask&~3u)||(auth.mask&~intended_mask))return false;
+    return (auth.checked==4095u&&auth.rejected==2048u)||(auth.checked==8191u&&auth.rejected==4096u);
+}
+#endif
+
 bool prepare_xr_request(void* argument){
     gears_hand_xr_trial::Start value{};
     LARGE_INTEGER now{},frequency{};QueryPerformanceCounter(&now);QueryPerformanceFrequency(&frequency);
@@ -1048,6 +1060,36 @@ void post_tick(uptr pc){
        !slots_quiet(check)||trial.tick_epoch!=trial.epoch){
         end(7,L"xr_prewrite_state_changed");return;
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    const auto authorize_context=xr_context(check,trial.xr_ready);
+    component_trace::AuthObservation prewrite_authorization{};
+    unsigned mask{};
+    {
+        struct PrewriteAuthorizationCapture {
+            component_trace::AuthObservation* previous;
+            explicit PrewriteAuthorizationCapture(component_trace::AuthObservation& destination):previous(component_trace::observed_authorization){
+                component_trace::observed_authorization=&destination;
+            }
+            ~PrewriteAuthorizationCapture(){component_trace::observed_authorization=previous;}
+        } capture(prewrite_authorization);
+        mask=authorize_current_xr_plan(plan,authorize_context,GetTickCount64());
+    } // Restore the caller's observer before any diagnostic, end or drain.
+    if(!mask){
+        const bool cancel_only=continuous_prewrite_cancelled(prewrite_authorization,plan.accept_mask);
+        if(log_file){
+            auto const& auth_packet=prewrite_authorization.value;
+            fwprintf(log_file,L"hand_weapon_component_prewrite_rejection schema=1 observation_known=%u "
+                L"cancel_only=%u auth_fields_known=%u auth_checked=%u auth_rejected=%u now=%llu live_now=%llu "
+                L"commit_now=%llu write_until=%llu authorize_ns=%lld commit_ns=%lld ticket_ms=%llu plan_ms=%llu "
+                L"context_ms=%llu stereo_ns=%lld input_ns=%lld intended_mask=%u policy_mask=%u returned_mask=%u\n",
+                unsigned(prewrite_authorization.known),unsigned(cancel_only),auth_packet.known,auth_packet.checked,
+                auth_packet.rejected,auth_packet.now,auth_packet.live_now,auth_packet.commit_now,auth_packet.write_until,
+                auth_packet.authorize_ns,auth_packet.commit_ns,auth_packet.ticket_ms,auth_packet.plan_ms,auth_packet.context_ms,
+                auth_packet.stereo_ns,auth_packet.input_ns,plan.accept_mask,auth_packet.mask,auth_packet.result);fflush(log_file);
+        }
+        end(cancel_only?6u:7u,cancel_only?L"xr_stopped_before_write":L"continuous_prewrite_authorization_rejected");return;
+    }
+#else
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     const auto authorize_context=xr_context(check,trial.xr_ready);
     const unsigned mask=authorize_current_xr_plan(plan,authorize_context,GetTickCount64());
@@ -1055,6 +1097,7 @@ void post_tick(uptr pc){
     const unsigned mask=authorize_current_xr_plan(plan,xr_context(check,trial.xr_ready),GetTickCount64());
 #endif
     if(!mask)return;
+#endif
     if(!log_file||ferror(log_file)){end(7,L"xr_log_unavailable_before_write");return;}
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
     trial.record_lease=trial.session.record_lease(GetTickCount64());
