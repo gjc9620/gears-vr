@@ -109,3 +109,11 @@ n 实际 Steam 后台会话的 Native／XR 再次通过：57 个 projection laye
 原／新真实 helper 的 36 个稳定 metadata fixture、547 项检查通过；相关 property 遍历 boolean 2→1、absolute_storage 6→3、read 局部区段 10→5，不包含 current 内部。首次严格编译仅因测试 fixture 全局 mesh 同名失败，改 fixture 名后保持 /W4 /WX 通过，生产 stage 未因该错误改变。Astra 窄审 9f6d3716…a96a 通过；CPU／旧套件未重跑。root 私有反向证明先被 Windows 反斜杠拒绝，再因 git autocrlf 的 LF→CRLF 未逐字相等；标准化后完全一致，两项证明错误保留，不涉及代码失败或游戏重试。真实提速及 100ms 授权仍待新候选实测；不会据此宣称自由手／枪已完成。stage 和集成证明位于忽略的 analysis/hand-mesh-local-property-coalesce-20261023/ 及对应 integration 目录。
 
 Astra 后续核对 n 的拒绝位 1024 为 commit 时的 certificate_recent：原 stereo 实际年龄 109.0797ms、input 109.0562ms；authorize 采样年龄 109.0792ms，tick 票据 94ms 不能覆盖源姿态过期。current 扣除四个 slot 分项后 34.7356ms 仍包含其他身份／链接／类型检查及计时开销，不能全部归因给某一 property。
+
+## 2026-10-23 — current 热点的局部删除属性复用
+
+按 n 实测与 Astra 源码诊断，在一次无 engine 调用的 fast object_key 内复用第一次非零 bDeleteMe property 及其解析 class。保留两次实时 registration／offset／mask／删除位读取、所有 header／outer／class 检查；加入 header 与末次 live class 不一致时拒绝。首次 property 为零仍完整走原 deleted 再解析，没有负缓存；句柄随该次函数返回失效。按 n 路径最多可少 234 次 property 遍历，零命中会保留重试，因此不宣称实际全部减少。计时、字段 coalesce、所有 current／getter、原 Plan／100ms、setter／journal／rollback 保持。
+
+25 个稳定及失败等价场景、2 个额外 class 变化拒绝场景共 160 项 CPU 检查在 /W4 /WX 下通过；新增 class 变化拒绝不是对任意并发 metadata 修改的原／新等价保证。为明确加入 missing 解析计数断言，窄 target 两次构建／运行都通过，旧套件未重跑。Astra 窄审 f8e666cc…04b9 无阻断，root 读完整 diff 并核对原件／stage／报告后按字节应用 0aa6294b…d5d0；root 首次误读短报告顶层 passed 字段，在源码写入前失败，随后按实际 CPU 结果结构核对，错误保留。非零查找 2→1，missing 保持 2→2，两个 live 位读保留；没有新 RE。来源在忽略的 analysis/hand-mesh-object-key-property-20261023/。
+
+此前小字段 coalesce 的 PG 已首次构建并冻结 e9c1b79b…93ea（774／27／34），但 o 未 prepare 或进入游戏；因 read 字段段包络较小，下一实际会话将同时验证本热点优化。不得把 o 的编译／冻结称为运行通过。组合候选仍需首次真实交接、运动／取放覆盖及完整清理验证。

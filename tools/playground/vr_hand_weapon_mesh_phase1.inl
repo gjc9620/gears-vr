@@ -48,10 +48,22 @@ uptr field(uptr cls,const wchar_t* value,const wchar_t* kind=nullptr){
     return 0;
 }
 uptr property(uptr object,const wchar_t* value){return registered(object)?field(get<uptr>(object+0x50),value):0;}
-bool deleted(uptr object){
+bool deleted(uptr object,uptr* resolved=nullptr,uptr* resolved_class=nullptr){
     if(!registered(object))return true;
-    const auto p=property(object,L"bDeleteMe");
+    uptr p{};
+    if(resolved_class){
+        if(registered(object)){
+            *resolved_class=get<uptr>(object+0x50);
+            p=field(*resolved_class,L"bDeleteMe");
+        }
+    }else p=property(object,L"bDeleteMe");
+    if(resolved)*resolved=p;
     return p&&(get<unsigned>(object+get<unsigned>(p+0x94))&get<unsigned>(p+0xd0));
+}
+bool deleted_at(uptr object,uptr p,uptr object_class){
+    if(!registered(object))return true;
+    return registered(object)&&(get<uptr>(object+0x50)!=object_class||
+        (p&&(get<unsigned>(object+get<unsigned>(p+0x94))&get<unsigned>(p+0xd0))));
 }
 bool field_at(uptr object,uptr property,const wchar_t* kind,void* output,unsigned bytes){
     const auto cls=get<uptr>(object+0x50);
@@ -77,14 +89,16 @@ bool boolean(uptr object,const wchar_t* label,bool& out){
 }
 bool object_key(uptr object,ObjectKey& key){
     key={};
-    if(!registered(object)||lookup::deleted(object))return false;
+    uptr delete_property{},delete_class{};
+    if(!registered(object)||lookup::deleted(object,&delete_property,&delete_class))return false;
     Name n{};
     key.address=object;
     if(!copy(&key.index,object+8,4)||!copy(&key.outer,object+0x40,8)||
        !copy(&n,object+0x48,8)||!copy(&key.object_class,object+0x50,8)||
        !registered(key.object_class)||!registered(key.outer))return false;
+    if(delete_property&&key.object_class!=delete_class)return false;
     key.name_index=n.index;key.name_number=n.number;
-    return registered(object)&&!lookup::deleted(object);
+    return registered(object)&&!(delete_property?lookup::deleted_at(object,delete_property,delete_class):lookup::deleted(object));
 }
 } // namespace lookup
 
