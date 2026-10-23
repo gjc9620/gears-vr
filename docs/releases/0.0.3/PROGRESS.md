@@ -170,3 +170,15 @@ Stop／Shutdown 均 0；8 控制、44 字节挂接、3 组件组和两个入口�
 根据 s 实际尾段，在同一候选合并有界降本：仅私有 HAND_WEAPON 宏且 component_names::enabled 时，global named／derives／field 使用 query 长度＋真实 NUL 上限（最多128），walk 外只计算一次纯 query 长度；默认 scope／宏关闭和直接 name 保持。after_component 的既有 Attempt 内仅 phase1/right-mask 开启 Scope，在失败 drain 和手 lease 前析构。component_owned 默认 forward=false，原 fault 位置只采样一次，显式 forward 与该故障位共同选择已有 fast read；只有原 phase1/right 调用传 true，全部 current／slot getter／exact-owned／relinquish 保持。invoke 原 opt-out 不改，直接 drain_journals／stow restore 入口明确 Scope(false)，保留回滚正文和次序。Scope 只选解析算法，原 Plan／100ms／采样位置和 s 计时保持。
 
 六文件 patch ec0bb35a…6682、producer feb7bf53…8702，Astra 9b6e63a9…20f9 窄审无阻断。真实 helper 抽取的24类／227项严格CPU检查通过，覆盖默认／宏关闭、短路、嵌套及默认 owned 遮蔽父TLS。两次编译／执行中首轮仅测试事件字符串指针比较误判，改为文本值比较后通过，候选源未改，原日志保留。Root读完整patch并核实报告／日志与全部776源，首次核对仅误设 producer 原件目录名称、在任何源码写入前停止；改用既有不可变parent源核对原件后，应用六份原字节，其余770项保持。PAGE_GUARD后缀访问轨迹差异及有效内部query前提继续明确；fixture读取量减少不是实机节省。新的PG构建及100ms实际结果待验证，不把候选称为已修复超时。
+
+## 2026-10-24 — 首次联合写入及两个后续失败边界
+
+以 6a976d2 的 776 源首次 configure／PG build 通过，PG 4d9605db…2925 保持原 26 选项及 23 导出；Native d54ecf18…82c9、XR 0463e75f…2eff、loader 及已通过的 CPU 沿用。新 bundle 0b52ed15…cda0、manifest 0708d06b…1a8c 为 776 源／27 依赖／61 工件／865 实际文件。父 bundle 的 57 份其余工件逐字不变，仅替换 PG 并新增三份来源证明。三次空闲后 t 单次静音、置后、observe-only/source0 进入，禁用物理后台手柄输入。
+
+t 首次取得并恢复一次联合 hand lease；双手 setter_calls=8、target_writes=8、restored=1，component acquired=1／restored=1／setter_calls=6，两边 dirty／faulted 均为 0。最终尾段四主段为 snapshot 2.1426ms、guards 4.0528ms、component_owned 1.5520ms（子段 owned_live_read 1.5516ms）、authorize 0.0007ms，合计 7.7481ms；父／子段不可相加。授权结果为 1，原 stereo 源龄在该授权 span 为 91.4009–91.4016ms，精确 commit 时刻没有保存在本次固定诊断中。written 诊断观测源龄 101.9439ms、毫秒票龄 109ms，不能当作 setter 授权时刻或下一包读取失败原因，写后新鲜度验收仍未通过。
+
+随后 `WorldBridge::read` 返回 rejected，终止原因 xr_certified_pose_rejected；下一份 ticket／Plan／policy 检查尚未执行。此读取器对相同 serial 返回 none，所以若属于新包过龄，须是 serial 大于 20 的新包；不能把旧 sequence 942 自然变旧写成确定原因。现有日志缺拒绝分支和被拒包，lock／header／serial／shape／源龄等子因仍未知。Astra 只读诊断 91ca3202…8b84 建议仅补固定首失败记录，保留原短路、100ms 和清理，不做猜测性性能修改。
+
+独立按 t 的冻结 parser／math 复算：下一 Tick 双手位置残差均为 7.629e-6 原始单位，完整旋转右手 0.019797°、左手 0.005469°，均在原 0.1 阈值内。枪体同 Tick written 对目标为位置 0／完整旋转 0.002990°，到下一 Tick pre_restore 为位置 0.000492／完整旋转 **90.010196°**；约等于局部轴变为 [-written.Y, written.X, written.Z]，该模型余差 0.014516°。两次组件属性字节相同，首 bind 输入矩阵未单独记录，同 Tick LocalToWorld 可能仍是旧值；故不能宣称首绑定正确、持续几何通过，亦不能把此旋转问题归因为 reader 拒绝。只读报告 5ea9ccce…b405 位于 t 目录之外，原封存工件哈希保持。
+
+Native／XR 实际通过 60 projection layer、33 scene copy、约 0.658 秒有效提交，left_history 创建／释放／销毁均 1、failure 0，drain／entries restored 和 XR exit 0。这是短会话功能与生命周期证据，不能替代闪烁图像、FPS 或头显验收。Stop／Shutdown 均 0；8 控件、44 字节挂接、3 组件组、两入口逐字恢复，8 音频 session 恢复／pending 0。精确身份 owner 9000／game 23536／XR 29924 均终止，game exit 1。13 项实际交互／覆盖断言仍失败。t 的 107 文件加 seal 封存，seal 07fb240d…2c35、root result 235746d0…52e0；未重跑游戏或修改原失败审计。默认产物与公开包未安装候选。
