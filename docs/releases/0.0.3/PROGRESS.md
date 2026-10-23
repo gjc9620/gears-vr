@@ -230,3 +230,13 @@ Native／XR 此局通过 219 层／66 次场景拷贝、跨度 2.4120402 秒、�
 根据 v 同帧记录，只在枪体显式恢复与 dirty pre_restore 日志中启用现有、实时且无 metadata 缓存的 scoped 名称解析算法。Backend 新增默认 false 的 restore_names；两处名称 scope 按 forward ? !faulted : restore_names 选择，仅显式 nullptr restore 单点传 true。原 Owner 与 read-fast 表达式保持，因此显式恢复仍走完整 fast=false；内部 faulted-forward rollback、drain／stow／invoke 及递归回调继续 opt-out。所有 current／getter／schema／VM 次数、原字段所有权和三组恢复次序保持，written 日志、手恢复、几何与原 100ms 时钟不改。
 
 实际抽取新旧 Backend／read／lease／invoke／Scope／恢复 wrappers 的有限 CPU 对照通过 18 场景、28634 次逐事件检查（不是同等数量独立场景），覆盖父 TLS 两态、完整／部分／撤权／失败写后清理和内部故障回滚。首次 strict 编译因 fixture if constexpr stub 缺 else 触发 C4702，保留原件，仅修 stub 后第二编译及唯一执行通过；生产 stage 不变，旧 24／227 算法 suite 未重跑。producer 813317d8…30f6，Astra 1602f5a0…d7a 无阻断；报告原句把 ticket110ms 误称 Plan 年龄已修正，原报告保留，实际 Plan context 32ms。root 核对 42 份 producer 工件和原 777 源后仅按原始 stage 字节替换 phase1，其余 776 源保持。原件 CRLF 与新增 3 处 lone LF 明确区分，精确局部逆变换可还原原 raw 文件。候选尚未完成 PG 构建或实测，不能据此宣称节省量或 TTL 通过。
+
+## 2026-10-24 — 显式恢复候选完成构建，第二次应用仍因源姿态超时退出
+
+基于提交 656bf77d…40ab3，新目录首次 configure／完整 PG TU build／freeze 均通过，保留 /W4 /WX、C++17、原 26 项配置和 23 个导出。PG bc1f7fa5…e335，组合 manifest eadd3a44…50a；777 源、27 依赖、99 工件／904 实体逐项核对，其余 86 份父工件逐字保留，新增 12 份来源证据。Native d54ecf18…82c9、XR 0463e75f…2eff、loader 66946ea6…2df 未重建；父 OFF 证明仅按原 SHA 继承，没有重复预处理或 CPU suite。未安装默认入口。
+
+全新 w 入口绑定 209 依赖、26 复制和 24 个实际模块，在连续三次空闲观察后进行一次购买版后台运行，保持 mute／behind／observe-only 和实体手柄后台输入关闭。双手 lease／restore 各 1、setter 8；枪体 acquire／restore 各 1、setter 6，第二次尝试在第一个组件 setter 之前被拒。唯一 later-Tick 枪体相对物理 D 的位置误差 0.00342669 原始单位、完整旋转误差 0.00067336°，raw 配方与资产协议通过。这不构成持续运动；原计划的基线 4 次、每移动阶段至少 8 次、收枪与取回均未完成，整局保留 9 项失败。
+
+实际 terminal tick2445／site0／attempt2／sequence827 的 postflush 授权是通过的：全部 127 已知字段、checked8191／rejected0。随后同原 ticket／stereo／input 时间的组件 group1 授权 ordinal339 才在 certificate_recent／1024 被拒；commit 时 stereo 源龄 107.8788ms、input 源龄 107.8628ms，MS ticket 年龄 94ms、距其截止尚有 6ms。因此此次是 NS 源姿态过期，不是把 postflush 通过误记为拒绝，亦不能用历史 first_failure 代替关联。该帧 pre→drain 40.7516ms、drain→post 7.3301ms；postflush commit 时原 stereo 已 89.6541ms，到组件 group1 commit 又经过 18.2247ms。各值属于相应观测区间，不能相加嵌套桶，或把相对 v 的跨局差值当作确定节省。100ms、原始时钟与 Plan、全部 getter／guards／恢复次序保持。
+
+Native／XR 子会话通过 67 层、42 次场景拷贝、跨度 0.7163702 秒、最大提交间隔 16.0716ms；left history 创建／释放／销毁各 1、失败 0。Stop／Shutdown 均 0；8 控制、44 字节挂接、3 raw 组件组和原入口恢复相符。组件 faulted=1 如实保留，dirty／owned／revoked 均 0，不把安全卸载写成无故障整局通过。root 以创建时间和终止状态核实确切 owner／game／XR 均退出，game exit1；8 个音频 session 恢复，pending／read_failed／mute_failed 均 0。w 共 126 证据加 seal，经 root 重哈希闭包通过，seal c5b02126…2d8b、result 07845c6b…da5e；原 v／u 封存保持。新的 collector 分别保留 terminal callback 的 postflush 结果和按原时间戳关联的组件拒绝，明确 gate 行自身没有 tick ID。后续只定位剩余开销，尚未证明持续双手／枪体、完整暂收返回或全武器功能。
