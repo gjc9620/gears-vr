@@ -314,3 +314,16 @@ root核producer21份支持工件、Astra pins及原冻结777源，按原raw字�
 首次严格MSVC编译通过，首次执行完成32场景／175检查后，在递归终止测试的旧预期status7处失败。真实完整end在枪journal仍dirty时按原规则选择status8，随后枪清理成功，外层ended guard保留8。仅该fixture改为严格要求8、真实FILE sink的内层reason、无status5及clean/safe闭包；不改生产源或实际函数片段。首次失败b0af8848…b764及原输入／日志保留，第二次编译／执行通过39场景／202检查，结果4aa833b4…757a；未重跑已有宽suite。
 
 一组实际MSVC `/EP` 对比通过：以原26项配置、HOLD未定义，在原位置展开四份PG源码的三条include，其余依赖include两侧同规则剥离；所有非空行字节一致。该证据b799a053…8ede仅证明这组源文本预处理，不能当完整TU／布局／ABI或运行证明。producer7648069…c328、Astra e9bae3ca…bad4及root9cca3058…3f0e通过；root应用五份raw stage，其余774份已跟踪源保持，共779源。新持续组件header仍未被runtime引用。完整PG构建、冻结和新的两Tick后台实测待执行，默认启动器及发布包未安装此试验，单手0.7／双手1.0的实际伤害链也仍待接入。
+
+
+## 2026-10-24 — 两 Tick 私有候选完成构建，z 在试验前预检拒绝
+
+以8c523b1b…9fa源码首次完整PG configure／build／freeze通过，保留strict编译及23个导出。PG a60c17ac…7094、manifest25eae851…0487；779源、27依赖、171工件／978实体经root三方字节及完整闭包核对，父125份非PG工件逐字保留，Native／XR／loader不重建。新增HOLD的源文本OFF证明单独绑定，不扩大为完整TU或运行证明。runner新增四个限定HOLD观察及关闭helper，原启动、15秒预算、100ms与清理路径保持；有限真实helper测试14类／132检查、独立审计39方法首次执行通过。候选未安装到默认启动器。
+
+z 一次性入口在连续三次空闲后运行购买版，保持mute／behind／observe-only及实体后台输入关闭，真实返回失败码1。在初始component_baseline的owner-link读取中，原preflight._identity的两次0x60对象头一致性检查拒绝：object header changed during fresh read。失败owner及两份raw未保存，不能认定具体对象或字节、坏asset或HOLD缺陷。此前Native预留与图形hooks已真实启用；baseline_latch、Start304、15秒Budget、后续continuous Native/XR session及HOLD均尚未进入，五类HOLD日志为0行。
+
+Shutdown返回0；8控制器、44字节挂接及两处hook入口前后原字节一致。post-Shutdown完整快照第一次成功，但初始component_baseline缺失，因此receipt的restored_component3_exact=false表示无法证明，collector明确保持known=false／passed=null，不能写成观察到未恢复，也不能补造基准。正式receipt和HOLD审计失败原样保留。音频8个session恢复、pending／read_failed／mute_failed为0；root以PID加creation time独立验证owner44692已不存在、game41796确切对象signaled且exit1，未启动后续XR进程。
+
+z共84份证据加seal，seal edf7f29f…5d5e、result e2c82a33…ef60、receipt bbeaaf25…f0a1、独立诊断e6b4a0c5…e555。root collector没有改写既有证据或重跑游戏。下一步仅在新aa入口为这一初始只读位置增加最多3次完整快照重读；每次保留原身份、typed schema与来源guard，只有snapshot阶段的精确原异常可追加，不重做任何准备或写入，也不新建期限。两Tick、运动、图像和头显结论仍待实测。
+
+单双手伤害规则的Astra有界复核5bce308d…4a8c确认候选位置：即时命中在原版伤害修饰后、原整数转换前；投射物在首次可能致伤前关联开火快照。现有回调的Result ABI、实际射击边界与投射物生命周期仍未认证，不能仅靠扳机状态或弹体返回后打标实现正确倍率；实际伤害接线继续待做。
