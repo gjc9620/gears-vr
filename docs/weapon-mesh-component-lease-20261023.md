@@ -2,6 +2,16 @@
 
 此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3的c局及R4/R5的d/e局取得部分组件更新与交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
 
+## R6前向调用范围内的名称读取候选
+
+R6只改全局name的私有文本复制分支与三处scope接线，仍由既有phase1宏保护。Backend read／set入口的RAII明确赋值为forward且未faulted，false也覆盖外层true，离开时恢复；invoke入口显式false，覆盖admission、原函数、递归回调及after observer。这样Args／schema、Forward的普通反射及四槽Args／output可使用页内复制，实际原生调用与回调交还仍旧路径。R5组件私有lookup不改；不缓存字段地址、元数据、动态值或检查结果，不减少原槽查询／setter／认证，不改100ms、Plan或Stop。
+
+全局name的Name／Array／entry／index前缀及检查顺序原样，count0在分派前拒绝；泛化页内复制至实际count，末位NUL可成功，无NUL时终止out[count−1]并返回false，奇地址跨页保持原2-byte读取，失败不重试。Astra对最终两源复核无阻断；移除3个新增私有宏区与2条Backend scope后，分别精确还原R5原文件。实际Scope与完整invoke提取的102断言14场景首编首跑通过，覆盖false覆盖、fault／null、回调关闭、提前返回与恢复；独立Win32页测试33场景396调用首编首跑通过，count0／1／64／96／128、保护页、请求长度后sentinel及原名称规则均核对。该结果不证明Names并发原子快照或实际性能。
+
+PG ON严格W4／WX／EHsc／C++17唯一构建成功，23导出与R5相同，DLL SHA `8079a0d347d41ef7a0bc3d0f4a037b1708af3a7c71890dfd756ccac75cefdbb8`。OFF与default的实际完整EP原bytes不相同；仅删除纯空白行后，其余每行bytes完全相等。初次raw比较断言失败和原输出保留，不计作PG编译失败，不为此改稳定源或重编OFF／default。真实build base为 `41d7c96025c4714ff6a2e5edf4584d818d0dffb5`，742源／16vendor构建前后相同。
+
+协调者独立核对59份支持工件、742源／16vendor、实际MSVC工程／输入路径／23导出及旧e的58份证据后，按字节应用两源；当前742与成功staged编译输入完全相同，直接复用该DLL，不做同输入重编。报告SHA `3954136c6bc6fe9228eaf2ad3845adf94de399f130a10532bb7eb18d151666bc`，Astra复核 `598b3ebbd867b119577705b10cd732cb28f13ad55749ed17fb6bf3a833f2a776`，应用复核 `925b4976e86708bf7c014b4baf3ff42dd44f665401f885c4d20e73a04c6d27d5`，均在ignored `analysis/hand-component-scoped-name-20261023/`。尚无R6实际游戏局，不宣称追回e的9ms；旧d／e原失败、Native／XR冻结候选、公开写权限和普通启动器保持。
+
 ## R5购买版e：仍在旋转提交前超期
 
 R5封存 `analysis/hand-mesh-phase1-r5-candidates/b7edd9f7…5b46606/`含742源／161实际工件，PG `dde8242e…edc45133`、source.json SHA `67a931aca1f332b27f15270a5d8662d60ba3326d545195246b94269ed3bf73ab`。真实build base696892d、应用commit `09e7acb515dc3831916c3f884329489e594a3c46`与成功staged来源分别保留，未应用后重编。e只改OUT／TAG、pins与真实工件数；Popen0准备191依赖／26复制／24模块，186共用依赖及24模块与d全同，固定15s／256／3s reserve及三后台标志不改。

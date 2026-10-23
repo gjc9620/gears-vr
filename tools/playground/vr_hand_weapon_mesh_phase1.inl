@@ -251,6 +251,7 @@ struct Backend {
     Key expected_key{};
     Forward* forward{}; // nullptr is rollback, authenticated by old Key/value only.
     bool read(State& state){
+        component_names::Scope names_scope(forward&&!lease.faulted());
         component_trace::Scope scope;
         const bool ok=component::read(expected_key,state,forward&&!lease.faulted());
         const auto saved=component_trace::state.meta;
@@ -293,6 +294,7 @@ struct Backend {
             gate(Stage::schema_triple,triple_schema(call.prop(field),group==4));
     }
     bool set(Key const& key,Value const& expected,Value const& wanted,unsigned group){
+        component_names::Scope names_scope(forward&&!lease.faulted());
         using component_trace::gate;using component_trace::Stage;
         component_trace::SetScope scope(group,forward!=nullptr,expected,wanted,
             (component_trace::mismatch(wanted,lease.original_value())&group)==0);

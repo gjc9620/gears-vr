@@ -136,12 +136,47 @@ bool registered(uptr object){
     return object&&a.data&&a.count>1000&&a.count<=a.capacity&&a.capacity<4000000&&
         i<unsigned(a.count)&&get<uptr>(a.data+i*8)==object;
 }
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+// Scoped parsing algorithm only. No metadata, object, value or permission is
+// cached; native invocation and its recursive callbacks explicitly opt out.
+namespace component_names {
+thread_local bool enabled{};
+struct Scope {
+    bool saved;
+    explicit Scope(bool value) noexcept:saved(enabled){enabled=value;}
+    ~Scope(){enabled=saved;}
+    Scope(Scope const&)=delete;
+    Scope& operator=(Scope const&)=delete;
+};
+std::size_t page_bytes(){
+    static const std::size_t bytes=[](){SYSTEM_INFO info{};GetSystemInfo(&info);return std::size_t(info.dwPageSize);}();
+    return bytes;
+}
+bool text(uptr from,wchar_t* out,size_t count){
+    const auto page=page_bytes();if(!page)return false;
+    for(size_t at=0;at<count;){
+        const auto address=from+at*sizeof(wchar_t);
+        const auto room=page-std::size_t(address%page);
+        auto chars=(std::min)(count-at,room/sizeof(wchar_t));
+        // Preserve the old two-byte copy for a wchar straddling the page.
+        if(!chars)chars=1;
+        if(!copy(out+at,address,chars*sizeof(wchar_t)))return false;
+        for(size_t i=0;i<chars;++i)if(!out[at+i])return true;
+        at+=chars;
+    }
+    out[count-1]=0;return false;
+}
+} // namespace component_names
+#endif
 bool name(uptr object,wchar_t* out,size_t count){
     if(!object||!count)return false;
     const auto n=get<Name>(object+0x48);const auto a=get<Array>(base+0x1c34800);
     if(!a.data||a.count<1000||a.count>a.capacity||a.capacity>4000000||n.index>=unsigned(a.count))return false;
     const auto entry=get<uptr>(a.data+n.index*8);
     if(!entry||get<unsigned>(entry)!=n.index)return false;
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(component_names::enabled)return component_names::text(entry+20,out,count);
+#endif
     for(size_t i=0;i<count;++i){if(!copy(&out[i],entry+20+i*2,2))return false;if(!out[i])return true;}
     out[count-1]=0;return false;
 }
@@ -229,6 +264,9 @@ bool invoke_engine(Request* r){
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 bool invoke(Request* r){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_names::Scope names_scope(false);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(r&&!handstream::bridge_before_allowed(r->object,r->function))return false;
