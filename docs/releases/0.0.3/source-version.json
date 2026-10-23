@@ -9,5 +9,7 @@
   "scope": "First-person preview, Playground, controls, recovery, stereo delivery and startup compatibility",
   "xr_color_policy": "Original capability negotiation: VDXR UNORM; SteamVR sRGB with the observed format lists",
   "source_scope": "Frozen native/XR authored source with matching runtime Python; external dependencies",
-  "default_runtime": "System OpenXR runtime"
+  "default_runtime": "System OpenXR runtime",
+  "public_source_commit": "39d35bcbc0705b1310b1d37a38bb2578c8407b19",
+  "local_source_checkpoint": "94822f09a046fab86e9298132fa953330657697f"
 }
