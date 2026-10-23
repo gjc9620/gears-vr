@@ -248,3 +248,17 @@ Native／XR 子会话通过 67 层、42 次场景拷贝、跨度 0.7163702 秒�
 只在 post_tick 原 active／session／clock／deadline 检查之后、首次 Snapshot 之前增加 phase1 名称 Scope，在 component_apply 之前用第二只 Scope 恢复入口保存的 TLS。非 phase1 继承原入口值；两声明都只在 HAND／CERTIFIED／COMBINED 同时开启时存在。原 Plan／时间戳／声明位置、read-fast、全部 getter／guard／VM 顺序、100ms、现有 tail Scope 和 invoke／drain／stow opt-out 逐字保持，只有两处共六行插入，无新缓存、权限或时钟。
 
 实际 Scope／InvokePause／invoke 和两处 literal 声明的有限 CPU 生命周期 fixture 首次严格编译、首次执行通过 46 场景／5680 检查；8 宏组合是同一 fixture 中的声明 guard probe，不是八个完整 PG 构建。它验证父 TLS 两态、phase0／1／2、早返、临时 opt-out、递归 callback、component 入口和两 Scope 逆序析构，不运行整个 post_tick 或真实 getter／engine，不能证明性能或 TTL。两次准备脚本因 CRLF 假设及残留 marker 在任何源码副本写入前拒绝，原件保留；root 初次只读 extraction guard 误将 fixture 独立 namespace 闭括号当作生产连续片段而拒绝，修正比较边界后通过，未重跑 CPU。producer f2f895cf…aa80、Astra b2951336…c225 无阻断，root 验证 36 工件及原 777 源，仅按 raw stage cad39e77…d7cf 替换 stream 文件，其余 776 源保持。原 LF 换行保留，删除两块可逐字还原旧源。本轮完整 PG 构建与实际后台复测仍待执行，默认入口保持原发布组件。
+
+## 2026-10-24 — 前置名称候选完成完整构建，第二次枪体写入通过但手部交还仍超时
+
+以提交 35f1b19a…1f27 首次完整 PG configure／build／freeze 通过，保持 /W4 /WX、C++17、/MT 和 23 个导出。PG 41684207…2f50、组合 manifest 85ec227f…c24a；777 源、27 依赖、114 工件／919 实体经 root 三方字节及精确闭包核对，保留父 98 份非 PG 工件，新增 15 份来源证据。Native／XR／loader、CPU helpers 与原配置未重建；OFF 证明仅继承原件，未重复预处理。新 x 入口只变 tag／构建来源等顶层常量，原 54 个 runner 和 25 个 audit 函数／class AST 均相同；209 依赖、26 复制、24 实际模块和独立 prep 核对通过。
+
+连续三次空闲后完成一次静音／behind／observe-only 的购买版后台 x。双手 lease／restore 各 1、setter8；枪体 acquire／restore 各 2、setter12，第二次三组组件设置均成功，随后 after-component 的手部再次授权拒绝，reason=hand_reauthorize_after_component。dirty／faulted／relinquish 均 0，日志安全卸载成立。原计划的基线4次、两移动阶段各至少8次、收枪和取回未完成，正式审计保留12项失败。
+
+actual terminal 为 tick2544／site0／attempt2／serial31／sequence811。ring 中较早的 postflush 是 PASS；末次 tail authorize 的 QPC 区间 [437956789156,437956789161] 精确夹住完整授权 ordinal449／group0 的 authorize_ns 与 commit_ns，且 frozen ticket／plan／stereo／input 与 terminal 一致。因此这次不是用历史首次失败替代原因：已知字段127、checked2047、rejected1024，commit 时原 stereo 源龄105.6435ms、input105.6284ms；MS ticket年龄94、其截止尚余6ms。该 Tick pre→drain36.0678ms，其中手恢复总段10.2637ms；余下25.8041ms只是剩余窗口，不能直接称作单个组件函数耗时。post→原 reader 时钟5.6105ms、reader→postflush8.3708ms，总前缀13.9813ms；对比 w 的33.0697ms仅作跨局观测。postflush时原源龄59.1361ms、尚余40.8639ms，而该次组件 initial→tail commit 又用46.5072ms；原100ms门与所有时钟保持。
+
+退出后的独立三组组件快照在 preflight._identity 的两次0x60对象头读取不一致时拒绝，未取得最终快照，restored_component3_exact 缺失。没有保存具体变化对象／字节，原因保持未知，不推断成组件未恢复或忽略该错误。正式 component_protocol／geometry 因独立快照缺失失败，component_rows 未生成；collector 将已审计行数与几何最大值均保留 null。外部只读数学诊断 d9420286…4889 从首枪 written→pre_restore 的 Tick2545→2546 重算：位置0.00855038原始单位、完整旋转对D为0.01546852°，raw C=[-1660,-4910,398]符合从未量化D逆组合后只量化一次。第二枪仅有pre_restore、没有对应written或后续独立Tick，不能计为第二个几何样本。该诊断不提升正式协议／几何／整局结论，2/2 journal totals 也不替代最终 raw 恢复证明。
+
+Native／XR 子会话通过59层、42次拷贝、跨度0.6471454秒、最大提交间隔13.9737ms；left history创建／释放／销毁各1、失败0。Stop／Shutdown均0，8控制、44字节挂接和原入口恢复通过；确切owner／game／XR已退出，game exit1，8音频session恢复且pending／read_failed／mute_failed为0。x共108证据加seal，root逐项重哈希闭包通过，seal ca377c6f…73e7、result49c77c48…1f26。首次collector因失败审计根本未生成component_rows而KeyError拒绝，其脚本与说明保留；只修正缺失键表达并保持unknown后封存，receipt／audit／游戏未重跑或改写。下一步继续定位手恢复中的实时名称解析和后置快照拒绝，未放宽任何期限、原始身份或恢复校验；默认入口和公开包保持。
+
+Astra 独立诊断 8d0bbf1f…884c 以完整授权 NS 与 tail QPC 夹取确认末次原因，并分别记录 postflush→tail commit46.5074ms 和 component initial→tail commit46.5072ms。唯一建议是仅在 pre_tick 显式 drain 的手恢复词法区间选择现有名称算法，其他动作／终止入口默认关闭，原外层 false、递归 opt-out、全套恢复顺序与100ms保持。手恢复10.2637ms是整个观测段，尚未分测可省比例；不能预先承诺覆盖5.6435ms缺口。当前没有该候选 stage 或新一轮构建／游戏，14项诊断输入重哈希保持，外部报告不修改x封存。
