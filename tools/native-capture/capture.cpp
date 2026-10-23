@@ -76,6 +76,9 @@ gears_support::Recorder support_diagnostics;
 #include "camera_closer.h"
 #include "first_person_view.h"
 #include "first_person_weapon.h"
+#if defined(GEARS_COVER_CALL_OBSERVER) && GEARS_COVER_CALL_OBSERVER
+#include "cover_call_wire.h"
+#endif
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
 #include "../vr-common/sixdof_ticket_mailbox.h"
 #endif
@@ -4751,6 +4754,8 @@ DWORD WINAPI worker(void*) {
     if(anchor_observer_enabled&&(!family_diagnostics||!stereo_xr||!frame_link_diagnostics||!load_anchor_config(ini))){
         fprintf(status,"rejected: anchor observer requires stereo frame-link family diagnostics and fresh reflection certificate\n");fclose(status);return 2;}
     ui_observer_enabled=GetPrivateProfileIntW(L"Capture",L"ui_observer",0,ini)==1;
+    if(!cover_call_live::configure(ini,status)){
+        fprintf(status,"rejected: cover call observer requires a current passive certificate\n");fclose(status);return 2;}
     if(ui_observer_enabled&&(!ui_reserved||!continuous_session||!anchor_observer_enabled||!load_ui_config(ini))){
         fprintf(status,"rejected: UI observer requires reserved entries, continuous stereo and fresh UI identities\n");fclose(status);return 2;}
     crosshair_live::enabled=GetPrivateProfileIntW(L"Capture",L"crosshair_assignment_observer",0,ini)==1;
@@ -5015,7 +5020,7 @@ DWORD WINAPI worker(void*) {
         install(path_choice_close_observer::target,reinterpret_cast<void*>(path_choice_close_observer::hook),reinterpret_cast<void**>(&path_choice_close_observer::original));
 #endif
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
-    if(ok&&ui_observer_enabled)ok=install(ui_call_boundary::target,reinterpret_cast<void*>(ui_call_boundary::hook),reinterpret_cast<void**>(&ui_call_boundary::original));
+    if(ok&&(ui_observer_enabled||cover_call_live::enabled))ok=install(ui_call_boundary::target,reinterpret_cast<void*>(ui_call_boundary::hook),reinterpret_cast<void**>(&ui_call_boundary::original));
 #endif
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
     if(ok&&crosshair_live::enabled)ok=install(crosshair_live::target,reinterpret_cast<void*>(crosshair_live::hook),reinterpret_cast<void**>(&crosshair_live::original));

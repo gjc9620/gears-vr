@@ -71,6 +71,7 @@ bool ui_invocation_current(){
         target==(c.mounted?c.identities[c.role_controlled].address:ui_invocation.binding.pawn.address));
 }
 #include "ui_logical_group_observer_live.inl"
+#include "cover_call_live.inl"
 #include "ui_call_boundary_live.inl"
 #include "ui_scene_root_live.inl"
 struct UiRow {
@@ -469,6 +470,7 @@ bool load_ui_config(const wchar_t* ini){
     ui_config=candidate;return true;
 }
 void print_ui_observer(FILE* status,bool disabled){
+    cover_call_live::print(status,disabled);
     fprintf(status,"ui_observer enabled=%u available=%u source_vertices_modified=0 hud_plane_enabled=%u vm_calls=%llu qpc_frequency=%lld\n",
         ui_observer_enabled?1:0,disabled&&!active.load()?1:0,ui_hud_plane_enabled?1:0,ui_vm_calls.load(),qpc_frequency);
     if(!ui_observer_enabled||!disabled||active.load())return;

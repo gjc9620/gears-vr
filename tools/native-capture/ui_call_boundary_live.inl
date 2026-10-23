@@ -32,10 +32,13 @@ bool selected_entry(gears_ui::Config const& c,unsigned index,uintptr_t self){
         gears_ui::live_scope_object(c,read,index,self);
 }
 uintptr_t __fastcall hook(void* self,void* caller_frame,void* result,void* callee){
-    Scope scope;if(!scope.world()||!ui_observer_enabled||!recording.load())return original(self,caller_frame,result,callee);
+    Scope scope;if(!scope.world()||!recording.load())return original(self,caller_frame,result,callee);
+    cover_call_live::CallScope cover(self,caller_frame,result,callee);
+    auto native=[&]{const uintptr_t value=original(self,caller_frame,result,callee);cover.returned(value);return value;};
+    if(!ui_observer_enabled)return native();
     ui_logical_group_live::ChildScope logical(self,caller_frame,callee,
         ui_logical_group_live::boundary_candidate()&&ui_invocation.frozen&&ui_invocation_current());
-    auto invoke=[&]{return logical.invoke([&]{return original(self,caller_frame,result,callee);});};
+    auto invoke=[&]{return logical.invoke(native);};
     ++calls;gears_ui_call_boundary::Nest nest(nesting);
     // Pointer-only frozen candidate lookup precedes expensive parent validation.
     constexpr unsigned no_candidate=(std::numeric_limits<unsigned>::max)();

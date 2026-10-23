@@ -8,6 +8,7 @@ import ctypes as c
 from ctypes import wintypes as w
 import json
 import math
+import os
 import pathlib
 import subprocess
 import sys
@@ -618,6 +619,9 @@ def main():
         config+=f'submit_duplicate_control={int(args.submit_duplicate_control)}\n'
         config+=anchor_section
         config+=ui_section
+        if os.environ.get('GEARSVR_TEST_COVER_CALL_OBSERVER')=='1':
+            from cover_call_setup import prepare_ini
+            config+=prepare_ini(args.pid,profile,dll,camera,check_live=check_preparation)
         if ui_metadata is not None:
             dll.with_name('ui-observer-config.json').write_text(json.dumps(ui_metadata,indent=2,allow_nan=False)+'\n',encoding='utf-8')
         if anchor_metadata is not None:
