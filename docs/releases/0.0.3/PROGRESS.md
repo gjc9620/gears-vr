@@ -152,3 +152,15 @@ Stop／Shutdown 均 0，8 控制、44 字节挂接、3 组件组与两入口精�
 Astra 对 r 的原源码链复核确认，after_component Snapshot.ms 采样时距原 cutoff 尚余 6ms，其后 identity／baseline／same-controls／slots／phase gate 及 component_owned 的完整实时 read 继续执行，到最终采样又前进 16ms。component_owned 默认 fast=false，位于原 acquisition 桶之外，不能将 16ms 全归于某项。为区分它们，仅添加固定 8 个 attempt × 5 stage：snapshot、原 guards、条件 owned、内嵌 owned_live_read 和原 final authorize；保持调用／短路顺序、原时间实参、100ms、全部 getter／VM 与恢复，不扩 parsing scope、不改 fast=false。容量满仅丢诊断，父／子段不可相加，仅 clean 且没有打开的 attempt 时从既有结束 dump 输出。
 
 原／新真实片段抽取的 24 场景／276 项 CPU 检查在 /W4 /WX /Od 下通过，覆盖拒绝点、跳过、异常展开、时钟失败／倒退、容量和饱和；Astra b85ee92f…779e 源审无阻断，producer 0a4afedb…a6be3。两项编译前 harness 设置错误及首次测试 wrapper 的未使用参数告警保留，修正不涉及 stage。root 核实原件、stage、全部报告／日志及完整 776 源，再按字节应用两份 PG 源；其余 774 源保持。尚未进行新的 PG 链接或游戏运行，不能据此声称超时已修复。
+
+## 2026-10-24 — 左眼 history 与尾段计时的组合后台实测
+
+以 94fe3aa 的完整 776 源首次 configure／PG build 通过（低优先级、parallel1），新 PG ba73729a…8d45 保持原 26 选项及 23 导出。与已验证的 Native d54ecf18…82c9 合并冻结 bundle 65d0c39d…43a2，manifest 373228f2…8c45（776 源／27 依赖／58 工件／862 实际文件）。八个既有 CPU 产物换成本次 Native 的实际版本，新增 IndependentViewHistoryTest；九份既有 CPU 日志与来源纳入，没有重跑。XR／loader／其余 helper 沿用。root 独立核对完整源／产物／配置、构建日志和专用 PG 三份相同副本，s 准备绑定 209 依赖、26 复制和 24 模块；入口／audit 函数和 class 的 AST 与 r 相同，仅候选等常量更新。三次空闲检查后单次静音、置后、observe-only/source0 进入。
+
+s 实际 Native／XR 通过，65 projection layer、43 scene copy、约 0.712 秒有效提交。新 left_history 的 attempted／created／release_started／release_returned／delete_started／destroyed／delete_flags 均为 1、failure 为 0，drain／entries restored、XR exit 0；这是组合候选的实际短会话及生命周期证据，不是原会话闪烁图像结果的继承，也不是 FPS 或实体头显验收。
+
+component acquired=1、restored=1、setter_calls=6，三组都已设置并恢复；手部 lease 仍为 0。末次 group0 authorize 此次通过毫秒 cutoff 后在 check10 certificate_recent 拒绝（1024）：原 ticket／Plan 年龄均 94ms、截止尚余 6ms，原 stereo 在 authorize 为 112.1465ms、commit 为 112.1470ms，input 为 112.1228ms。区别于 r 的 check1 毫秒超时，不能混写。全流程原 100ms、不可变原始源及调用顺序保持。
+
+一条完整有效 tail row 无丢弃／饱和：snapshot 3.2835ms，原 guards 8.2262ms，component_owned 4.4244ms（其中 owned_live_read 4.4240ms），authorize 0.0011ms。owned 与子段不可相加；四主段合计 15.9352ms。开始 tail 时原源已 96.2114ms，guards 结束已 107.7214ms，因此只缩短 owned 不足以让本次通过。acquisition 桶 30 次 current 26.9683ms、14 次 read 24.4605ms，嵌套不可相加；120 次 slot args／preflight／完整 run-invoke／post 分别 0.1773／0.0403／0.1268／7.4737ms。initial＋三 snapshot 合计 14.1815ms、跨度 44.4303ms；均为单局诊断观测。
+
+Stop／Shutdown 均 0；8 控制、44 字节挂接、3 组件组和两个入口逐字恢复，root 独立确切身份核实 owner／game／XR 终止，game exit 1；8 个音频 session 全部恢复、pending 0。工件／环境取证通过，15 项真实交互覆盖仍失败。协调者收尾首次仅因 Windows relative path 分隔符匹配失败，复用并逐字核对已复制证据后完成封存，没有重试游戏或替换原始证据。s 的 124 文件加 seal 保留，seal 5a631abe…0969，root result f58b1b8a…e18e。下一步评估现有 scoped 名称解析与最终只向前复核的局部算法降本，不能重锚证书或删减校验。
