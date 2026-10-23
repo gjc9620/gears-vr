@@ -53,3 +53,13 @@ Astra 对 Native／XR 源码与两份 CMake 的双向增量保留窄审通过，
 新的 k 入口经 Astra 发现并修正两项接线问题：完整 reservation 回执应从生产者实际 `WORK/analysis/runtime` 读取，并在得到确切 birth identity 后就确定真实 PG 日志路径，以便 attach／Enable／arena 早期失败也能在游戏退出后归档。修前失败报告 `c25643c4…780b1` 保留，修后窄审 `4aa728c5…09067` 通过。root 只绑定常量且逐函数／class AST 不变；最终 runner `b53e8b71…4f18b`、audit `00a9feef…14131`，绑定后的 runner＋idle 52 项及 audit 58 个纯 mock 检查通过。这些 mock 结果不构成实际手／枪或整局通过。
 
 新 `analysis/hand-mesh-runtime-1023k/prep.json` 摘要 `738f5fde…096d1` 已复核，绑定 210 依赖、24 份复制、24 个实际加载模块和 8 个 helper 来源，保留 source0、R2／L2 模式关闭、禁物理后台手柄、behind／observe-only／mute。当前发现另一局游戏及其 launcher／XR／audio worker 正在运行，未干预。已排队一项自有后台等待（初始 owner PID 44968），要求连续三次空闲、再次校验同一 prep 后才进入单次运行；源码或配置漂移会拒绝，不自动重试已进入的会话。排队时本分支尚未启动新游戏／模拟器；实际结果以后续 receipt 为准。等待状态及可取消标记仅在该忽略目录，未形成新的发布或头显验收。
+
+## 2026-10-23 — 合并后首次后台运行及入口参数修正
+
+现有会话正常结束、连续三次空闲后，k 实际启动了自有 Steam 正版游戏。启动经过本次所要求的原生自检、DLL／mask 预留及入口字节检查，到 owned target priming 后失败：runner 的 reservation 命令遗漏 `--graphics-startup-lock` 和 `--graphics-menu-lock`，检查器因此期望 0 项图形钩子，而与 0.0.3 一致的 Native 候选正确启用了 4 项，scene 钩子为 0。Astra 只读核对 CLI、manifest、构建选项和实际 status，确认应在下一独立入口补齐两参数，并加入其要求的 `GraphicsMenuLockTest.exe`；保留检查器和已发布的图形保护。后续 continuous session 只接管现有预留，不需要增加不受消费的 graphics 参数。
+
+本次没有进入手／枪 trial，也未启动 XR 主程序，component／whole session 均为失败。Native 取消状态为 `disable_status=0 active=0 entries_match=1`。协调者用确切创建时间及进程等待状态确认原游戏已终止；退出码为 `0xc0000005`，不能记为正常退出。原 owner PID 已被其他进程复用，未对复用进程执行操作。音频守护正常收尾，`matched=1 muted=0 restore_pending=0 read_failed=0 mute_failed=0`；本次未发生静音写入，无待恢复音量状态。生产者在预留完全成功后才写完整 reserve 回执，所以本次没有该完整回执，保留实际 birth、原始 stderr／stdout 和 PG 日志。
+
+失败证据封存为 k 的 139 个文件，seal `866e9347…1e99`，协调者结果 `ff884bd6…3c8`；原 j 的 51 份封存文件仍逐一匹配。独立退出核对第一次误把仍被句柄引用的已退出进程对象当作仍在运行，已改用 Windows 的 signaled 终止状态核实，并保留这项核对错误说明，没有因此重启游戏。私有候选的 774 源／26 工件保持，未重编已成功的三个组件。
+
+运行结束后另一个会话切换了共享 `J:\gearsVr` 的分支，原 k 准备时依赖的五份共享配置／Python 输入发生变化或移除。没有恢复或改写该会话的文件。后续 l 改用本独立 worktree 的 Bridge／Resolver 和从已发布提交逐字冻结的 manifest，配置也从 k 实际使用的私有副本冻结，以免测试再次依赖其他会话的分支切换。l 是新的单次入口，k 的失败记录不复用、不重写。
