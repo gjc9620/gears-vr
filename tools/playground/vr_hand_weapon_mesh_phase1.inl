@@ -388,8 +388,9 @@ struct Forward {
 struct Backend {
     Key expected_key{};
     Forward* forward{}; // nullptr is rollback, authenticated by old Key/value only.
+    bool restore_names{}; // Explicit null-forward restore only; names algorithm, no fast read or authority.
     bool read(State& state){
-        component_names::Scope names_scope(forward&&!lease.faulted());
+        component_names::Scope names_scope(forward ? !lease.faulted() : restore_names);
         component_cost::Owner cost_owner(component_trace::state.meta.group,forward&&!lease.faulted());
         component_trace::Scope scope;
         const bool ok=component::read(expected_key,state,forward&&!lease.faulted());
@@ -433,7 +434,7 @@ struct Backend {
             gate(Stage::schema_triple,triple_schema(call.prop(field),group==4));
     }
     bool set(Key const& key,Value const& expected,Value const& wanted,unsigned group){
-        component_names::Scope names_scope(forward&&!lease.faulted());
+        component_names::Scope names_scope(forward ? !lease.faulted() : restore_names);
         using component_trace::gate;using component_trace::Stage;
         component_trace::SetScope scope(group,forward!=nullptr,expected,wanted,
             (component_trace::mismatch(wanted,lease.original_value())&group)==0);
@@ -604,12 +605,14 @@ void component_reset_binding(unsigned mask){if(mask&2)component::mount.reset();}
 void component_relinquish(){
     component::lease.relinquish();component::mount.reset();count_add(component::relinquished);
 }
-void component_pre_restore(){if(component_dirty())component::log(L"pre_restore");}
+void component_pre_restore(){if(component_dirty()){
+    component_names::Scope names_scope(true);component::log(L"pre_restore");
+}}
 void component_log_written(){if(component_dirty())component::log(L"written");}
 bool component_restore(){
     if(!component_dirty())return true;
     component_trace::Scope trace_scope;component_trace::gate(component_trace::Stage::restore_enter,true);
-    component::Backend backend{component::lease.key(),nullptr};
+    component::Backend backend{component::lease.key(),nullptr,true};
     const bool clean=component::lease.restore(backend);
     if(clean)count_add(component::restored);
     component::recorded=false;publish_journals();

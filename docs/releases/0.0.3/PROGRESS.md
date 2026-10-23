@@ -224,3 +224,9 @@ Native／XR 此局通过 219 层／66 次场景拷贝、跨度 2.4120402 秒、�
 ## 2026-10-24 — 新增单双手射击伤害规则
 
 用户确认单手和双手持枪均可射击，单手伤害为相同条件双手的 0.7 倍，双手以原版 1.0 倍为基准。已补入设计正文、弹道约束和验收表：按开火瞬间有效副握点抓握状态确定倍率，倍率随该发子弹／投射物冻结，同发霰弹共用，每个伤害包只应用一次；整数伤害的原版舍入规则在接入时核对。该要求尚未接入实际伤害链，不将当前几何试验当作伤害实现。原显式恢复名称解析候选继续并行开发，此次只修改文档，没有运行测试或游戏。
+
+## 2026-10-24 — 显式恢复的名称解析候选
+
+根据 v 同帧记录，只在枪体显式恢复与 dirty pre_restore 日志中启用现有、实时且无 metadata 缓存的 scoped 名称解析算法。Backend 新增默认 false 的 restore_names；两处名称 scope 按 forward ? !faulted : restore_names 选择，仅显式 nullptr restore 单点传 true。原 Owner 与 read-fast 表达式保持，因此显式恢复仍走完整 fast=false；内部 faulted-forward rollback、drain／stow／invoke 及递归回调继续 opt-out。所有 current／getter／schema／VM 次数、原字段所有权和三组恢复次序保持，written 日志、手恢复、几何与原 100ms 时钟不改。
+
+实际抽取新旧 Backend／read／lease／invoke／Scope／恢复 wrappers 的有限 CPU 对照通过 18 场景、28634 次逐事件检查（不是同等数量独立场景），覆盖父 TLS 两态、完整／部分／撤权／失败写后清理和内部故障回滚。首次 strict 编译因 fixture if constexpr stub 缺 else 触发 C4702，保留原件，仅修 stub 后第二编译及唯一执行通过；生产 stage 不变，旧 24／227 算法 suite 未重跑。producer 813317d8…30f6，Astra 1602f5a0…d7a 无阻断；报告原句把 ticket110ms 误称 Plan 年龄已修正，原报告保留，实际 Plan context 32ms。root 核对 42 份 producer 工件和原 777 源后仅按原始 stage 字节替换 phase1，其余 776 源保持。原件 CRLF 与新增 3 处 lone LF 明确区分，精确局部逆变换可还原原 raw 文件。候选尚未完成 PG 构建或实测，不能据此宣称节省量或 TTL 通过。
