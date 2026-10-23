@@ -919,7 +919,12 @@ void post_tick(uptr pc){
     const bool equipment_changed=equipment_phase!=trial.xr_equipment_phase;
     if(equipment_changed){
         const auto previous=trial.xr_equipment_phase;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+        const bool clean=(previous==0&&equipment_phase==1)?
+            yield_for_equipment(L"equipment_phase_changed",true):yield_for_equipment(L"equipment_phase_changed");
+#else
         const bool clean=yield_for_equipment(L"equipment_phase_changed");
+#endif
         if(trial.ended)return; // A clean rollback may still terminate the session.
         trial.xr_equipment_phase=equipment_phase;count_add(trial.xr_equipment_changes);
         if(log_file&&diagnostic_event()){fwprintf(log_file,L"hand_ik_equipment_phase previous=%u current=%u hand_clean=%u "

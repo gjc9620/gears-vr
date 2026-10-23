@@ -1060,7 +1060,11 @@ bool equipment_ready(){return !trial.lease.dirty()
     &&!trial.lease.faulted()
 #endif
     ;}
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+bool yield_for_equipment(const wchar_t* reason,bool initial_phase_hint){
+#else
 bool yield_for_equipment(const wchar_t* reason){
+#endif
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
     const bool dirty=trial.lease.dirty()
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
@@ -1129,11 +1133,27 @@ bool yield_for_equipment(const wchar_t* reason){
     // Clean attachment restoration remains admissible even after a sticky
     // experiment fault. A busy stack is never reported as synchronous handback.
     if(component_continuous::state.terminal)component_continuous::finish();
-    return ready&&!component_continuous::state.operation_depth&&!trial.releasing&&!dual_draining;
+    // Keep all original quiescent synchronous handbacks, including callers
+    // outside PostTick. The hint only admits the clean never-held depth1 case.
+    if(ready&&!component_continuous::state.operation_depth&&!trial.releasing&&!dual_draining)return true;
+    return initial_phase_hint&&ready&&component_continuous::state.operation_depth==1&&
+        !component_continuous::state.action_depth&&!component_continuous::state.begun&&
+        !component_continuous::state.closed&&!component_continuous::state.terminal&&
+        !component_continuous::state.deferred&&!component_continuous::state.finishing&&
+        !trial.ended&&active_visible.load(std::memory_order_acquire)&&trial.phase==1&&trial.xr_equipment_phase==0&&
+        leases.load(std::memory_order_acquire)==0&&!component_has_interval()&&
+        !dirty&&!faulted&&!journals_dirty()&&!trial.lease.faulted()&&!component_faulted()&&
+        !trial.releasing&&!dual_draining&&!stop_requested.load(std::memory_order_acquire)&&
+        !shutdown_requested.load(std::memory_order_acquire);
 #else
     return ready;
 #endif
 }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+// All old callers keep the original strict busy result. The initial hint is
+// explicit only at the observed0-to1 branch; it grants no pose/write authority.
+bool yield_for_equipment(const wchar_t* reason){return yield_for_equipment(reason,false);}
+#endif
 #endif
 bool related(uptr object){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)

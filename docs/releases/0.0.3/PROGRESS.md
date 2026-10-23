@@ -366,3 +366,11 @@ AB新流程经独立源审与root核对，实际8类Python helper／parser检查
 失败Stop0、Shutdown0；三组组件raw、8控制器、44字节挂接和入口独立核对一致，8音频session恢复且pending／read_failed／mute_failed均0。root按PID与creation time只读核对owner／game／XR确切对象均退出。Native／XR独立子会话35层／34次拷贝、跨度0.3514457秒、最大提交间隔15.1906ms，通过不代表CONT或FPS／头显验收。AB正式scope／update／cleanup审计仍false，原receipt8a8e2f4f…6d77和失败不改写；外部root只确认原字节与进程清理，未替代计划Stop6的验收。
 
 AB共142项含seal87067093…3109，root-result dd795275…6e7，全部闭包核对。下一步在独立stage区分未曾持有且全部clean的初始设备交接与真实busy持有，保留epoch撤销、原时限、已持有后的立即关闭和延后恢复；不重跑本局、不放宽drain guard或实际写入校验。
+
+## 2026-10-24 — 修正CONT首次装备交接，受影响生命周期测试首轮通过
+
+仅stream与XRstream两处源码变化，其余777源保持，源树cc7595a9…dc40。CONT私有双参helper只在观测到previous0／current1时收到初始提示；原单参入口仍传false，unused-clean早返回与同步depth0行为保持。新增depth1分支必须从未begun、lease0、无component快照、全部clean／无fault，且无action／closed／terminal／deferred／finishing／Stop／Shutdown／releasing／dual，保持原active与phase。提示仅表示初始干净交还，epoch推进、blocked观察和binding reset仍执行，当帧仍由equipment_changed与tick_epoch阻写；后续新票与真正Permit不变。begun后的动作与装备变化仍立即关闭，busy drain和一次恢复标志均未放宽。
+
+root与独立源码审查通过；实际边界、资格条件和原恢复片段的生命周期测试14类／426检查首轮strict compile／run均0，含18种拒绝变体、snapshot与dirty独立、旧单参语义、后续纯Policy新票及begun阶段一次交还。CPU44109b61…1a38；未变dispatch11类／138不重跑，明确只沿用旧attempt3中通过的dispatch项，aggregate cd55d5ed…33a4为25类／564检查。纯Policy与component snapshot／restore等host seam不当作真实certified XR或引擎资格。
+
+新OFF唯一pair两次/EP均0，26配置／15ON／11OFF、CONT与HOLD都undefined，完整非空行字节相等，proof35b32c68…1105。两侧同一受CONT保护include及全部移除签名清单相同；不是完整TU／ABI证明。root源审845ea1d7…a8aa7、独立ab3bf94b…b6a7、集成ba24778d…748b及原字节复制9bd15bcb…f1f2通过。源码已应用，修后完整PG构建与新AC实际测试尚待进行；AB失败保持封存，默认入口未安装试验。
