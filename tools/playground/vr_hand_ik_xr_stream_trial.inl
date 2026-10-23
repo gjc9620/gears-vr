@@ -884,9 +884,11 @@ void post_tick(uptr pc){
     if(!active_visible.load(std::memory_order_acquire)||trial.ended||!trial.phase)return;
     const auto now=GetTickCount64();
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+#if !defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     if(!component_forward_open()){end(7,L"continuous_writer_closed");return;}
     // This one diagnostic interval cannot outlive the original finite capture.
     if(now>trial.deadline||leases.load()>=xr_max_leases){end(5,L"continuous_component_interval_complete");return;}
+#endif
 #endif
     if(stop_requested.load(std::memory_order_acquire)){end(6,L"xr_stopped_in_clean_phase");return;}
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
@@ -942,6 +944,9 @@ void post_tick(uptr pc){
         if(log_file&&diagnostic_event()){fwprintf(log_file,L"hand_ik_equipment_phase previous=%u current=%u hand_clean=%u "
             L"epoch=%u leases=%u consume_blocked_baseline=1 writes=0\n",previous,equipment_phase,
             unsigned(clean),trial.epoch,leases.load());fflush(log_file);}
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+        if(component_continuous::pause_pending()){continuous_tick.suspending=true;return;}
+#endif
         if(!clean){if(!trial.ended)end(trial.lease.dirty()?8:7,L"equipment_phase_handback_failed");return;}
     }
 #endif
@@ -954,6 +959,9 @@ void post_tick(uptr pc){
         ;
     if(!qualified){
         trial.stability.reset();trial.xr_ready=false;trial.phase=1;status=1;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+        component_continuous::state.resume_stable=false;
+#endif
     }else if(!trial.xr_ready&&value.mesh_tick!=trial.previous.mesh_tick){
         if(trial.stability.observe(now,true,handik::same_controls(trial.previous,value))){
             for(unsigned channel=0;channel<4;++channel)
@@ -962,8 +970,18 @@ void post_tick(uptr pc){
                 }
             if(trial.epoch)trial.resumed=true;
             trial.xr_ready=true;trial.phase=2;status=2;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+            component_continuous::state.resume_stable=true;
+#endif
         }
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    // Age-only suspension does not invalidate a still-authenticated hand mount.
+    // Its component resume still waits for the original stability gate.
+    if(qualified&&trial.xr_ready&&component_continuous::state.interval==component_continuous::Interval::waiting&&
+       !component_continuous::state.resume_stable&&value.mesh_tick!=trial.previous.mesh_tick)
+        component_continuous::state.resume_stable=trial.stability.observe(now,true,handik::same_controls(trial.previous,value));
+#endif
     trial.previous=value;
     if(!trial.xr_open&&now>=trial.xr_next_open){
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
@@ -1017,15 +1035,40 @@ void post_tick(uptr pc){
 #endif
     xr_reset_bindings(plan.reset_binding_mask);
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(trial.ended)return; // Still evaluate certified_failed before any recoverable pause.
+#else
     if(!component_forward_open()||trial.ended)return;
     if(component_continuous::state.begun&&!(plan.accept_mask&2)){
         end(7,L"continuous_no_fresh_right_plan");return;
     }
 #endif
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     if(trial.xr_policy.certified_failed()){
         yield_for_equipment(L"xr_continuity_certificate_rejected");
         if(!trial.ended)end(7,L"xr_continuity_certificate_rejected");return;
+    }
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(!component_forward_open()){
+        if(component_continuous::pause_pending()){continuous_tick.suspending=true;return;}
+        // A quiescent action in original PlayerTick can already have drained
+        // both journals. Only next pre_tick may reset that closed interval.
+        if(component_continuous::state.interval==component_continuous::Interval::suspended&&
+           !journals_dirty()&&!trial.lease.faulted()&&!component_faulted()&&
+           !component_continuous::state.failure_known&&!component_continuous::state.cleanup_failed){
+            continuous_tick.waiting=true;return;
+        }
+        end(7,L"persistent_writer_closed_without_pause");return;
+    }
+    if(!(plan.accept_mask&2)||equipment_phase!=1||!component_continuous::state.resume_stable){
+        if(component_continuous::state.interval==component_continuous::Interval::owned){
+            const bool age_only=!fresh&&qualified&&trial.xr_ready&&!(plan.reset_binding_mask&2);
+            component_continuous::suspend_interval(age_only?L"persistent_no_receipt":L"persistent_right_not_ready",age_only);
+            continuous_tick.suspending=true;
+        }else continuous_tick.waiting=true;
+        return;
     }
 #endif
     if(!plan.accept_mask)return;
@@ -1050,7 +1093,14 @@ void post_tick(uptr pc){
     Snapshot check{};
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     const bool checked=handik::snapshot(pc,check)&&xr_identity(check);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(checked&&!xr_equipment_gate(check,equipment_phase,L"prewrite_snapshot",EquipmentTiming::prewrite_phase)){
+        if(component_continuous::pause_pending())continuous_tick.suspending=true;
+        return;
+    }
+#else
     if(checked&&!xr_equipment_gate(check,equipment_phase,L"prewrite_snapshot",EquipmentTiming::prewrite_phase))return;
+#endif
     if(!checked||!check.action_idle||
 #else
     if(!handik::snapshot(pc,check)||!xr_identity(check)||!check.action_idle||
@@ -1116,7 +1166,14 @@ void post_tick(uptr pc){
     // fflush may block. Recheck the receipt and game sample after all logging,
     // immediately before the first journal snapshot or mutation.
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(!xr_equipment_gate(check,equipment_phase,L"after_log_flush",EquipmentTiming::postflush_phase)){
+        if(component_continuous::pause_pending())continuous_tick.suspending=true;
+        return;
+    }
+#else
     if(!xr_equipment_gate(check,equipment_phase,L"after_log_flush",EquipmentTiming::postflush_phase))return;
+#endif
     const auto final_context=xr_context(check,trial.xr_ready);
 #endif
     const auto write_now=GetTickCount64();

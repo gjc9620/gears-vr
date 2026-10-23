@@ -957,10 +957,21 @@ bool component_related(uptr object){
 }
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
 void component_reset_binding(unsigned mask){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(mask&2){
+        auto& lifecycle=component_continuous::state;
+        if(lifecycle.interval==component_continuous::Interval::owned&&!lifecycle.closed)
+            component_continuous::suspend_interval(L"persistent_right_binding_reset",false);
+        else if(lifecycle.interval==component_continuous::Interval::waiting&&component::mount.bound()){
+            lifecycle.pause=component_continuous::Pause::boundary;lifecycle.resume_stable=false;trial.stability.reset();
+        }
+    }
+#else
     if((mask&2)&&component_continuous::state.begun&&!component_continuous::state.closed){
         component_continuous::close(L"continuous_right_binding_reset",true);
         end(7,L"continuous_right_binding_reset");
     }
+#endif
     if(mask&2)component::mount.reset();
 }
 #else
@@ -977,6 +988,29 @@ void component_log_written(){if(component_dirty())component::log(L"written");}
 void component_cancel_forward(){component::lease.cancel_forward();}
 bool component_has_interval(){return component::lease.has_snapshot();}
 bool component_forward_open(){return !component_continuous::state.closed&&!component_continuous::state.terminal;}
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+bool component_resume_interval(){
+    auto& lifecycle=component_continuous::state;
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire)||
+       lifecycle.interval!=component_continuous::Interval::suspended||!lifecycle.closed||
+       lifecycle.terminal||trial.ended||lifecycle.failure_known||lifecycle.cleanup_failed||
+       lifecycle.operation_depth||lifecycle.action_depth||lifecycle.finishing||dual_draining||trial.releasing||
+       !lifecycle.drain_attempted||!lifecycle.last_drain_result||journals_dirty()||
+       trial.lease.faulted()||component_faulted()||hand_writes_relinquished||
+       component::lease.relinquished()||component::lease.revoked_mask()||
+       stop_requested.load(std::memory_order_acquire)||shutdown_requested.load(std::memory_order_acquire))return false;
+    // Only the closed, healthy journal is reset. Session/failure/diagnostic
+    // state and the fixed-instance identity survive; no old Plan is reused.
+    if(!component::lease.reset())return false;
+    if(lifecycle.pause!=component_continuous::Pause::age){
+        component::mount.reset();component::target_geometry={};
+    }
+    component::recorded=false;
+    lifecycle.closed=false;lifecycle.deferred=false;lifecycle.drain_attempted=false;lifecycle.last_drain_result=false;
+    lifecycle.reason={};lifecycle.interval=component_continuous::Interval::waiting;
+    return true;
+}
+#endif
 #endif
 bool component_restore(){
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
@@ -1068,6 +1102,13 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
         component::fixed_key=key;component::key_known=true;
         std::array<float,16> matrix{};int tick{};
         if(!component_trace::gate(component_trace::Stage::world,component::world(key,matrix,tick)))return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+        if(component_continuous::state.interval==component_continuous::Interval::waiting&&
+           component_continuous::state.pause==component_continuous::Pause::age&&component::mount.bound()){
+            if(trial.epoch!=component::action_epoch||(plan.bind_mask&2)||(plan.reset_binding_mask&2)||
+               !component::target_geometry.known||!component::asset_input_matches(key,component::target_geometry.input))return false;
+        }
+#endif
         bool record_first_bind{};
         if(!component::mount.bound()){
             record_first_bind=!component::first_bind.attempted;
@@ -1145,8 +1186,19 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
     initial_cost.finish(true);
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
     component::ContinuousAuthorize authorize{forward,update_frame};backend.continuous_authorize=&authorize;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    const bool updating=component::lease.has_snapshot();
+    auto& lifecycle=component_continuous::state;
+    if(!updating){
+        if(lifecycle.interval!=component_continuous::Interval::waiting||!lifecycle.resume_stable||
+           lifecycle.interval_id==std::numeric_limits<std::uint64_t>::max())return false;
+        ++lifecycle.interval_id;lifecycle.interval=component_continuous::Interval::owned;lifecycle.pause=component_continuous::Pause::none;
+    }else if(lifecycle.interval!=component_continuous::Interval::owned)return false;
+    lifecycle.begun=true;
+#else
     component_continuous::state.begun=true;
     const bool updating=component::lease.has_snapshot();
+#endif
     if(updating)count_add(component_continuous::state.update_attempts);else count_add(component_continuous::state.acquire_attempts);
     const bool ok=updating?component::lease.update(key,wanted,update_frame,authorize,backend):
         component::lease.acquire(key,wanted,update_frame,authorize,backend);

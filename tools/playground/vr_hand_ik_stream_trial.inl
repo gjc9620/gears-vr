@@ -111,22 +111,38 @@ bool restore(const wchar_t*);
 void component_cancel_forward();
 bool component_has_interval();
 bool component_forward_open();
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+bool component_resume_interval();
+#endif
 bool component_after_hand(Snapshot const&,Snapshot const&,unsigned,unsigned,unsigned,unsigned,
                           std::array<policy::Target,4> const&);
 void end(unsigned,const wchar_t*);
 namespace component_continuous {
 // Adapter lifecycle only. These flags never replace a Plan, raw read or Permit.
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+enum class Interval {waiting,owned,closing,suspended};
+enum class Pause {none,age,boundary};
+#endif
 struct State {
     bool begun{},closed{},deferred{},finishing{},terminal{},finalized{},cleanup_failed{},failure_known{};
     bool drain_attempted{},last_drain_result{};
     unsigned operation_depth{},action_depth{},terminal_code{},first_failure{};
     std::uint64_t acquire_attempts{},update_attempts{},commits{};
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    Interval interval{Interval::waiting};Pause pause{Pause::none};
+    bool resume_stable{};
+    std::uint64_t interval_id{},clean_closes{},last_clean_interval{};
+#endif
     std::array<wchar_t,96> reason{},failure_reason{};
 };
 State state;
 void close(const wchar_t*,bool force=false);
 bool finish();
 void request_terminal(unsigned,const wchar_t*);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+void suspend_interval(const wchar_t*,bool keep_geometry);
+bool pause_pending();
+#endif
 void terminal(unsigned,const wchar_t*);
 bool normal_tick();
 struct Operation {
@@ -136,6 +152,9 @@ struct Operation {
 };
 struct PostTick {
     bool committed{};
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    bool waiting{},suspending{}; // Set only at a classified no-write branch.
+#endif
     PostTick(){++state.operation_depth;safe_to_unload.store(false,std::memory_order_release);}
     ~PostTick();
 };
@@ -897,6 +916,22 @@ void close(const wchar_t* reason,bool force){
     component_cancel_forward();
     if(journals_dirty())state.deferred=true;
 }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+void suspend_interval(const wchar_t* reason,bool keep_geometry){
+    if(state.terminal||trial.ended)return;
+    if(!keep_geometry)state.pause=Pause::boundary;
+    else if(state.interval!=Interval::closing)state.pause=Pause::age;
+    if(state.interval!=Interval::closing){
+        state.interval=Interval::closing;state.resume_stable=false;trial.stability.reset();
+    }
+    close(reason,true);state.deferred=true;
+}
+bool pause_pending(){
+    return state.interval==Interval::closing&&state.deferred&&!state.terminal&&
+        !state.failure_known&&!state.cleanup_failed&&!trial.lease.faulted()&&!component_faulted()&&
+        state.operation_depth&&!state.action_depth&&!trial.releasing&&!dual_draining;
+}
+#endif
 void record_failure(unsigned code,const wchar_t* reason){
     if(code>=7&&!state.failure_known){
         state.failure_known=true;state.first_failure=code;remember(state.failure_reason,reason);
@@ -911,12 +946,20 @@ void finalize(){
     if(!clean)code=8;
     const wchar_t* reason=state.failure_known?state.failure_reason.data():state.reason.data();
     safe_to_unload.store(clean,std::memory_order_release);status.store(code,std::memory_order_release);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(log_file){fwprintf(log_file,L"hand_weapon_component_persistent_end schema=1 intervals=%llu clean_closes=%llu "
+        L"acquire_attempts=%llu update_attempts=%llu commits=%llu cleanup_failed=%u first_failure_known=%u first_failure=%u "
+        L"dirty=%u faulted=%u safe_to_unload=%u consumer_proved=0\n",state.interval_id,state.clean_closes,
+        state.acquire_attempts,state.update_attempts,state.commits,unsigned(state.cleanup_failed),unsigned(state.failure_known),
+        state.first_failure,unsigned(!clean),unsigned(trial.lease.faulted()||component_faulted()),unsigned(clean));fflush(log_file);}
+#else
     if(log_file){fwprintf(log_file,L"hand_weapon_component_continuous_end schema=1 acquire_attempts=%llu update_attempts=%llu "
         L"commits=%llu closed=%u drain_attempted=%u drain_result=%u cleanup_failed=%u first_failure_known=%u first_failure=%u "
         L"dirty=%u faulted=%u safe_to_unload=%u single_interval=1 hand_restore_each_tick=1 component_restore_at_close=1 "
         L"consumer_proved=0\n",state.acquire_attempts,state.update_attempts,state.commits,unsigned(state.closed),
         unsigned(state.drain_attempted),unsigned(state.last_drain_result),unsigned(state.cleanup_failed),unsigned(state.failure_known),
         state.first_failure,unsigned(!clean),unsigned(trial.lease.faulted()||component_faulted()),unsigned(clean));fflush(log_file);}
+#endif
     if(log_file){fwprintf(log_file,L"hand_ik_stream_trial_end status=%u leases=%u restored_leases=%u "
         L"action_yields=%u immediate_action_test=%u original_melee_seen=%u original_slot_play_seen=%u "
         L"resumed=%u setter_calls=%u target_writes=%u "
@@ -966,7 +1009,19 @@ bool finish(){
     state.deferred=false;
     if(!restored||trial.lease.faulted()||component_faulted()){
         state.cleanup_failed=true;record_failure(journals_dirty()?8u:7u,L"continuous_handback_failed");
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+        request_terminal(journals_dirty()?8u:7u,L"continuous_handback_failed");
+#endif
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(!state.terminal&&restored&&!journals_dirty()&&!state.cleanup_failed&&
+       !trial.lease.faulted()&&!component_faulted()&&state.interval==Interval::closing){
+        state.interval=Interval::suspended;
+        if(component_has_interval()&&state.interval_id!=state.last_clean_interval){
+            count_add(state.clean_closes);state.last_clean_interval=state.interval_id;
+        }
+    }
+#endif
     state.finishing=false;
     if(state.terminal)finalize();
     return restored&&!journals_dirty()&&!state.cleanup_failed&&!trial.lease.faulted()&&!component_faulted();
@@ -985,8 +1040,13 @@ void terminal(unsigned code,const wchar_t* reason){
     finish();
 }
 bool normal_tick(){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(trial.ended||state.terminal||stop_requested.load(std::memory_order_acquire)||
+       shutdown_requested.load(std::memory_order_acquire)||trial.lease.faulted()||component_faulted()){
+#else
     if(state.closed||trial.ended||stop_requested.load(std::memory_order_acquire)||
        shutdown_requested.load(std::memory_order_acquire)||trial.lease.faulted()||component_faulted()){
+#endif
         if(!state.terminal){
             const unsigned code=(stop_requested.load(std::memory_order_acquire)||
                 shutdown_requested.load(std::memory_order_acquire))?6u:7u;
@@ -997,6 +1057,13 @@ bool normal_tick(){
     if(state.operation_depth||trial.releasing||dual_draining){
         end(8,L"continuous_recursive_pre_tick");return false;
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if((state.interval==Interval::closing||state.deferred)&&!finish())return false;
+    if(trial.ended||state.terminal)return false;
+    if(state.interval==Interval::suspended&&!component_resume_interval()){
+        end(journals_dirty()?8u:7u,L"persistent_interval_reset_rejected");return false;
+    }
+#endif
     Operation operation;
     bool hand=true;
     dual_draining=true;
@@ -1007,14 +1074,27 @@ bool normal_tick(){
     dual_draining=false;
     if(!hand||trial.lease.dirty()||trial.lease.faulted())end(8,L"continuous_hand_restore_failed");
     if(trial.ended||state.closed)return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(state.interval==Interval::owned&&(!component_has_interval()||!component_owned())){
+#else
     if(component_has_interval()&&!component_owned()){
+#endif
         end(journals_dirty()?8u:7u,L"continuous_retained_component_changed");return false;
     }
     if(trial.ended||state.closed||trial.lease.dirty()||trial.lease.faulted()||component_faulted())return false;
     publish_journals();return true;
 }
 PostTick::~PostTick(){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(state.begun&&!state.terminal&&!committed){
+        const bool pending=suspending&&pause_pending();
+        const bool clean_wait=waiting&&(state.interval==Interval::waiting||state.interval==Interval::suspended)&&!journals_dirty()&&
+            !state.failure_known&&!state.cleanup_failed&&!trial.lease.faulted()&&!component_faulted();
+        if(!pending&&!clean_wait)end(7,L"continuous_post_tick_without_fresh_joint_commit");
+    }
+#else
     if(state.begun&&!state.terminal&&(state.closed||!committed))end(7,L"continuous_post_tick_without_fresh_joint_commit");
+#endif
     --state.operation_depth;
     if(!state.operation_depth){finish();publish_journals();}
 }
@@ -1077,8 +1157,12 @@ bool yield_for_equipment(const wchar_t* reason){
         ;
     if(!used.load(std::memory_order_acquire)&&!dirty&&!faulted)return true;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    component_continuous::suspend_interval(reason?reason:L"equipment_boundary",false);
+#else
     if(component_continuous::state.begun)
         component_continuous::request_terminal(7,reason?reason:L"equipment_boundary");
+#endif
 #endif
     // Revoke geometry and all previously issued plans before rollback, even
     // when rollback fails. Never reopen a stopped trial or its write budget.
@@ -1126,10 +1210,17 @@ bool yield_for_equipment(const wchar_t* reason){
     if(!epoch_available&&!trial.ended)end(ready?7u:8u,L"xr_action_epoch_exhausted");
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if((!restored&&!component_continuous::pause_pending())||trial.lease.faulted()||component_faulted()){
+        component_continuous::state.cleanup_failed=true;
+        component_continuous::request_terminal(ready?7u:8u,L"continuous_equipment_handback_failed");
+    }
+#else
     if(!restored||trial.lease.faulted()||component_faulted()){
         component_continuous::state.cleanup_failed=true;
         component_continuous::record_failure(ready?7u:8u,L"continuous_equipment_handback_failed");
     }
+#endif
     // Clean attachment restoration remains admissible even after a sticky
     // experiment fault. A busy stack is never reported as synchronous handback.
     if(component_continuous::state.terminal)component_continuous::finish();
@@ -1216,7 +1307,11 @@ void before_action(uptr object,uptr function
     if(!component_action_name(label)||!related(object))return;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
     component_continuous::Action continuous_action;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    component_continuous::suspend_interval(label,false);
+#else
     component_continuous::request_terminal(7,label);
+#endif
 #endif
 #else
     constexpr const wchar_t* actions[]={L"ServerUse",L"GrabPickup",L"ServerDictateSpecialMove",L"DoSpecialMove",
