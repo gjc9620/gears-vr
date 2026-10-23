@@ -270,3 +270,13 @@ Astra 独立诊断 8d0bbf1f…884c 以完整授权 NS 与 tail QPC 夹取确认�
 实际旧／新 wrapper、原手 restore 与 GT admission 片段的有限 CPU 对照通过34场景／13604次逐事件检查，默认与显式false均等价于旧 wrapper。首次编译因提取头CRCRLF触发 /WX C4335，确切输入和失败日志保留；仅修三份提取头换行后第二编译／唯一执行通过，生产stage不变，旧算法及宽suite未重跑。producer0acc9930…bdeb、Astra ffd654e0…cb5c无阻断；root核43工件及原777源后应用两份raw stage，其余775源保持。原LF及三处精确逆变换可还原旧源，不宣称实测节省或TTL通过。本轮完整PG构建和实际运行仍待执行。
 
 另作有界架构复核1af597ef…7420：逐Tick完整恢复／重新acquire及正常三组恢复中的96次slot getter是当前一帧试验协议，尚非引擎必须如此的证据；现有clean-only policy与lease也不能直接跳过。持续owner、逐帧owned→owned更新是后续候选方向，每次仍须新Plan、live guard及100ms；跨Tick持有的原动画反馈、字段覆盖和动作边界需先做受控实证。x中240次slot Args::run/invoke累计0.162ms属于嵌套forward桶，不能把主要成本归为getter执行或叠加桶。通过100ms和有限几何仍不等于流畅、完整的6DoF交互。本轮开始发现另一局游戏与音频守护，离线工作未干预它们；后台运行仍需新的空闲核验。
+
+## 2026-10-24 — 手恢复候选构建完成，增加严格后置快照观察并等待空闲
+
+以提交b8943521…97aa首次完整PG configure／build／freeze通过，/W4 /WX、C++17、/MT及23个导出保持。PG ea35935b…0838、组合manifest295883c3…9557；777源、27依赖、126工件／931实体经root三方字节与精确闭包核对，父113份非PG工件逐字保留，Native／XR／loader及CPU helpers未重建，旧OFF证据只继承未重跑。两份被修改的PG include以原raw stage冻结；普通启动器及公开包未安装此候选。
+
+新的y测试入口在原Shutdown后的唯一组件观察位置，内联最多三次完整快照尝试，仅snapshot阶段的精确PreflightError及原header错误文案允许追加。每次新建MeshPreflight并前后核原Bridge／Reader／identity／profile／source guard，仍使用原Resolver与缓存；失败partial不返回或拼接。只有完整成功结果才进入原三组raw比较与正式audit，其他类型／身份／来源错误立即停止。首次观察保留旧预算行为；追加尝试用同一个原Budget作准入、读前与接受检查，不创建新deadline或sleep，不能抢占同步读取，晚结果保持unknown。原preflight c827942d…67d及x封存不改，旧x的独立raw恢复仍未知。
+
+实际原完整MeshPreflight.snapshot与既有内存fixture的首轮17类／60检查通过，覆盖churn后成功、持续失败、typed／identity／link拒绝、预算不足、晚结果与partial丢弃。producer078a3a31…0c3c、Astra177f5b74…1634通过；root独立AST核对新增一个inline helper、仅run函数改变，其余53既有定义保持，包括Budget创建点、prepare／verify、原raw比较及清理helpers。root第一次重核历史输入因刚应用的独立XR C++源码增量而拒绝，已保留该只读guard失败；改按旧冻结源与已批准应用证明核对该项，所有Python／helper／runner实际输入仍匹配，没有重跑旧suite或改写producer历史。
+
+y的runner e50712bc…40dc、audit4e2be1f6…fde1、prep69c06d71…355e已绑定并核209依赖／26复制／24实际模块；绑定阶段55个runner与25个audit定义逐一保持stage AST。新的后台等待程序已启动，要求三次连续空闲后才进入一次性测试，并再次核原prep；保持mute／behind／observe-only、禁实体后台手柄和无自动重试。实际观察到另一组game／launcher／XR／audio仍活动，本轮准备核验时尚未启动自己的游戏，未干预外部进程。此处记录的是准备与活等待，不是y运行通过；之后以新receipt和封存为准。
