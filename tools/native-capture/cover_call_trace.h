@@ -13,6 +13,20 @@
 namespace gears_cover_call_trace {
 static_assert(sizeof(std::uintptr_t)==8,"Cover FFrame observations require the certified 64-bit layout");
 inline constexpr unsigned locals_limit=4096,raw_limit=128,window_limit=32,script_limit=131072;
+struct RegistryHeader {std::uintptr_t data{};std::int32_t count{},capacity{};};
+static_assert(sizeof(RegistryHeader)==16,"Certified registry header layout changed");
+// Appending unrelated objects/names keeps the initial selected cohort valid.
+// Every selected slot/identity/source is still compared separately. A moved
+// allocation, capacity change, shrink or invalid header never matches.
+inline bool same_registry_cohort(RegistryHeader initial,RegistryHeader observed,std::int32_t last_count){
+    auto valid=[](RegistryHeader h){
+        return h.data&&!(h.data&7)&&h.count>1000&&h.count<=h.capacity&&h.capacity<4000000&&
+            h.data<=(std::numeric_limits<std::uintptr_t>::max)()-static_cast<std::uintptr_t>(h.capacity)*8;
+    };
+    return valid(initial)&&valid(observed)&&last_count>=0&&
+        initial.data==observed.data&&initial.capacity==observed.capacity&&
+        observed.count>=initial.count&&observed.count>=last_count;
+}
 struct Local {unsigned offset{},width{};};
 struct Function {
     std::uintptr_t address{},script{};

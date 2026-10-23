@@ -122,6 +122,11 @@ class CoverCallConfigTests(unittest.TestCase):
         self.assertEqual(r.memory, before)
         self.assertFalse(config['mutation_authorized'])
         self.assertFalse(config['callsite_aliasing_verified'])
+        self.assertEqual(config['registry_closing_snapshots'], config['registry_snapshots'])
+        self.assertEqual(config['registry_growth_policy'],
+                         dict(header_size=16, headers=dict(objects=r.objects_header, names=r.names_header),
+                              same_data_pointer=True, same_capacity=True, count_nondecreasing=True,
+                              selection_uses_initial_counts=True, selected_sources_exact=True, cohort_atomic=False))
         self.assertTrue(provenance['read_only'])
         self.assertFalse(provenance['native_runtime_observation'])
         self.assertEqual(hashlib.sha256(json.dumps(config, sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest(), provenance['config_sha256'])
@@ -287,6 +292,149 @@ class CoverCallConfigTests(unittest.TestCase):
         r.link_fields()
         with self.assertRaises(cover.CoverCallConfigRejected):
             cover.prepare(r.sampler)
+
+    def test_same_allocation_registry_growth_preserves_initial_bounds_and_records_closing_headers(self):
+        for registry in ('objects', 'names'):
+            for phase in ('double_read', 'closing'):
+                with self.subTest(registry=registry, phase=phase):
+                    r = Fixture()
+                    r.object_count = r.name_count = 1101  # Resolver caches must not be changed.
+                    address = getattr(r, registry + '_header')
+                    pointer = r.od if registry == 'objects' else r.nd
+                    baseline = struct.pack('<Qii', pointer, 1101, 1300)
+                    r.put(address, baseline)
+                    read, counts, before = r.read, [], dict(r.memory)
+
+                    def growing(a, size):
+                        if (a, size) == (address, 16):
+                            counts.append(1)
+                            values = (1101, 1102, 1104) if phase == 'double_read' else (1101, 1101, 1103)
+                            return struct.pack('<Qii', pointer, values[min(len(counts) - 1, 2)], 1300)
+                        return read(a, size)
+
+                    r.read = growing
+                    config, _ = cover.prepare(r.sampler)
+                    final_count = 1104 if phase == 'double_read' else 1103
+                    self.assertEqual(config['registry_snapshots'][registry], baseline.hex())
+                    self.assertEqual(config['registry_closing_snapshots'][registry],
+                                     struct.pack('<Qii', pointer, final_count, 1300).hex())
+                    check = next(x for x in config['source_checks'] if (x['address'], x['size']) == (address, 16))
+                    self.assertEqual(check['bytes'], baseline.hex())
+                    self.assertEqual(len(counts), 3)
+                    self.assertEqual((r.object_count, r.name_count), (1101, 1101))
+                    self.assertEqual(r.memory, before)
+                    self.assertTrue(all(x['internal_index'] < 1101 and x['name_index'] < 1101
+                                        for x in config['identities']))
+
+    def test_registry_shrink_reallocation_capacity_and_invalid_bounds_reject(self):
+        kinds = ('shrink', 'shrink_after_growth', 'pointer', 'capacity_grow', 'capacity_shrink',
+                 'count_zero', 'count_negative', 'count_past_capacity', 'capacity_negative',
+                 'capacity_limit', 'pointer_null', 'pointer_alignment', 'pointer_overflow')
+        for registry in ('objects', 'names'):
+            for phase in ('double_read', 'closing'):
+                for kind in kinds:
+                    with self.subTest(registry=registry, phase=phase, kind=kind):
+                        r = Fixture()
+                        address = getattr(r, registry + '_header')
+                        pointer = r.od if registry == 'objects' else r.nd
+                        r.put(address, struct.pack('<Qii', pointer, 1101, 1300))
+                        read, hits = r.read, []
+
+                        def changing(a, size):
+                            if (a, size) != (address, 16):
+                                return read(a, size)
+                            hits.append(1)
+                            observed = [pointer, 1101, 1300]
+                            if kind == 'shrink_after_growth' and len(hits) == 2:
+                                observed[1] = 1104
+                            trigger = 3 if kind == 'shrink_after_growth' or phase == 'closing' else 2
+                            if len(hits) >= trigger:
+                                mutations = {'shrink': (1, 1100), 'shrink_after_growth': (1, 1102),
+                                             'pointer': (0, pointer + 0x400000), 'capacity_grow': (2, 1301),
+                                             'capacity_shrink': (2, 1299), 'count_zero': (1, 0),
+                                             'count_negative': (1, -1), 'count_past_capacity': (1, 1301),
+                                             'capacity_negative': (2, -1), 'capacity_limit': (2, 4000000),
+                                             'pointer_null': (0, 0), 'pointer_alignment': (0, pointer + 1),
+                                             'pointer_overflow': (0, (1 << 64) - 8)}
+                                index, value = mutations[kind]
+                                observed[index] = value
+                            return struct.pack('<Qii', *observed)
+
+                        r.read = changing
+                        with self.assertRaises(cover.CoverCallRegistryChanged):
+                            cover.prepare(r.sampler)
+
+    def test_valid_registry_growth_does_not_relax_selected_sources(self):
+        for kind in ('identity', 'object_slot', 'name_slot', 'name_entry', 'property_flags',
+                     'script', 'script_header', 'field_link'):
+            with self.subTest(kind=kind):
+                r = Fixture()
+                for header, pointer in ((r.objects_header, r.od), (r.names_header, r.nd)):
+                    r.put(header, struct.pack('<Qii', pointer, 1101, 1300))
+                move = r.cover_functions[cover.STATES[0] + '.PlayerMove']
+                prop = r.cover_fields[cover.STATES[0] + '.PlayerMove.PawnCT']
+                index, ni = r.u32(move + 8), r.u32(move + 72)
+                entry = r.u64(r.nd + ni * 8)
+                selected = {'identity': (move + 72, 8), 'object_slot': (r.od + index * 8, 8),
+                            'name_slot': (r.nd + ni * 8, 8), 'name_entry': (entry + 20, 128),
+                            'property_flags': (prop + 0x78, 8), 'script': (0xd00000, 4),
+                            'script_header': (move + 0x8c, 16), 'field_link': (prop + 0x68, 8)}[kind]
+                original_finish = cover._Capture.finish
+
+                def change_at_finish(cap):
+                    for header, pointer in ((r.objects_header, r.od), (r.names_header, r.nd)):
+                        r.put(header, struct.pack('<Qii', pointer, 1102, 1300))
+                    address, size = selected
+                    raw = bytearray(r.read(address, size))
+                    raw[0] ^= 1
+                    r.put(address, raw)
+                    return original_finish(cap)
+
+                with patch.object(cover._Capture, 'finish', change_at_finish):
+                    with self.assertRaises(cover.CoverCallConfigRejected) as rejected:
+                        cover.prepare(r.sampler)
+                self.assertNotIsInstance(rejected.exception, cover.CoverCallRegistryChanged)
+
+    def test_growth_exception_has_exact_address_size_and_never_admits_new_indices(self):
+        r = Fixture()
+        for header, pointer in ((r.objects_header, r.od), (r.names_header, r.nd)):
+            r.put(header, struct.pack('<Qii', pointer, 1101, 1300))
+        read, hits = r.read, {r.objects_header: 0, r.names_header: 0}
+
+        def growing(address, size):
+            if size == 16 and address in hits:
+                hits[address] += 1
+                pointer = r.od if address == r.objects_header else r.nd
+                return struct.pack('<Qii', pointer, 1100 + hits[address], 1300)
+            return read(address, size)
+
+        r.read = growing
+        cap = cover._Capture(r.sampler)
+        self.assertEqual((cap.object_count, cap.name_count), (1101, 1101))
+        for target, offset in ((r.pc, 8), (r.cam, 72)):
+            before = read(target + offset, 4)
+            r.put(target + offset, struct.pack('<I', 1101))
+            with self.assertRaisesRegex(cover.CoverCallConfigRejected, 'registry slot differs'):
+                cap.fresh(target)
+            r.put(target + offset, before)
+        move = r.cover_functions[cover.STATES[0] + '.PlayerMove']
+        for address, size, byte_offset in ((move + 0x8c, 16, 8), (r.objects_header + 8, 4, 0)):
+            calls = []
+
+            def other_changing(a, n):
+                raw = read(a, n)
+                if (a, n) == (address, size):
+                    calls.append(1)
+                    if len(calls) == 2:
+                        changed = bytearray(raw)
+                        changed[byte_offset] += 1
+                        return bytes(changed)
+                return raw
+
+            r.read = other_changing
+            with self.assertRaises(cover.CoverCallConfigRejected) as rejected:
+                cap.stable(address, size)
+            self.assertNotIsInstance(rejected.exception, cover.CoverCallRegistryChanged)
 
     def test_existing_boundary_source_certificate_change_rejects(self):
         r = Fixture()

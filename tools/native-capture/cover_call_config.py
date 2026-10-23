@@ -38,7 +38,7 @@ class CoverCallConfigRejected(RuntimeError):
 
 
 class CoverCallRegistryChanged(CoverCallConfigRejected):
-    """Reject the whole acquisition; the caller may reacquire a fresh sampler."""
+    """Reject registry replacement, invalid bounds or decreasing observed count."""
 
 
 def _require(condition, reason):
@@ -62,27 +62,52 @@ class _Capture:
     def __init__(self, sampler):
         self.sampler, self.r, self.p = sampler, sampler.r, dict(sampler.r.profile)
         self.checks, self.ids, self.by_address, self.supers, self.structures = {}, [], {}, {}, {}
-        self.object_header = self.stable(self.r.objects_header, 16)
-        self.name_header = self.stable(self.r.names_header, 16)
+        self.header_addresses = dict(objects=self.r.objects_header, names=self.r.names_header)
+        _require(self.header_addresses['objects'] != self.header_addresses['names'],
+                 'Cover-call registry headers share an address')
+        self.header_latest, self.closing_headers = {}, {}
+        self.object_header = self.stable(self.header_addresses['objects'], 16)
+        self.name_header = self.stable(self.header_addresses['names'], 16)
         self.objects, self.object_count = self.registry(self.object_header)
         self.names, self.name_count = self.registry(self.name_header)
 
     @staticmethod
     def registry(raw):
         pointer, count, capacity = struct.unpack('<Qii', raw)
-        _require(pointer and not pointer % 8 and 1000 < count <= capacity < 4000000, 'Invalid cover-call registry')
+        _require(pointer and not pointer % 8 and 1000 < count <= capacity < 4000000
+                 and pointer <= (1 << 64) - 1 - capacity * 8, 'Invalid cover-call registry')
         return pointer, count
+
+    def registry_observation(self, address, raw):
+        if len(raw) != 16:
+            raise CoverCallRegistryChanged('Incomplete cover-call registry header')
+        try:
+            self.registry(raw)
+        except CoverCallConfigRejected as error:
+            raise CoverCallRegistryChanged('Invalid cover-call registry header') from error
+        previous = self.header_latest.get(address)
+        if previous is not None:
+            data, count, capacity = struct.unpack('<Qii', raw)
+            old_data, old_count, old_capacity = struct.unpack('<Qii', previous)
+            if data != old_data or capacity != old_capacity or count < old_count:
+                raise CoverCallRegistryChanged('Cover-call registry allocation/capacity changed or count decreased')
+        self.header_latest[address] = raw
 
     def stable(self, address, size):
         _require(type(address) is int and type(size) is int and 0 < size <= MAX_SCRIPT
                  and 0 < address < (1 << 64) - size, 'Invalid cover-call read range')
         first, second = self.r.read(address, size), self.r.read(address, size)
-        _require(len(first) == len(second) == size, 'Incomplete cover-call source read')
         key = address, size
-        if first != second or (key in self.checks and self.checks[key] != first):
-            error = CoverCallRegistryChanged if address in (self.r.objects_header, self.r.names_header) else CoverCallConfigRejected
-            raise error('Cover-call source/header changed during acquisition')
         _require(len(self.checks) < 32768 or key in self.checks, 'Cover-call source-check bound exceeded')
+        if size == 16 and address in self.header_addresses.values():
+            self.registry_observation(address, first)
+            self.registry_observation(address, second)
+            # Keep the earliest count as the selected-index bound and original
+            # source-check bytes; later growth never admits additional indices.
+            return self.checks.setdefault(key, first)
+        _require(len(first) == len(second) == size, 'Incomplete cover-call source read')
+        if first != second or (key in self.checks and self.checks[key] != first):
+            raise CoverCallConfigRejected('Cover-call source changed during acquisition')
         self.checks[key] = first
         return first
 
@@ -258,9 +283,16 @@ class _Capture:
         for item in self.ids:
             _require(self.fresh(item['address']) == item, 'Cover-call selected identity changed at closing boundary')
         for (address, size), expected in self.checks.items():
+            if size == 16 and address in self.header_addresses.values():
+                continue
             if self.r.read(address, size) != expected:
-                error = CoverCallRegistryChanged if address in (self.r.objects_header, self.r.names_header) else CoverCallConfigRejected
-                raise error('Cover-call source/header changed before completion')
+                raise CoverCallConfigRejected('Cover-call source changed before completion')
+        _require(self.header_addresses == dict(objects=self.r.objects_header, names=self.r.names_header),
+                 'Cover-call Resolver registry header addresses changed')
+        for name, address in self.header_addresses.items():
+            raw = self.r.read(address, 16)
+            self.registry_observation(address, raw)
+            self.closing_headers[name] = raw.hex()
 
 
 def prepare(sampler):
@@ -315,6 +347,11 @@ def prepare(sampler):
                       mutation_authorized=False, callsite_aliasing_verified=False, runtime_observation=False,
                       objects_header=r.objects_header, names_header=r.names_header,
                       registry_snapshots=dict(objects=cap.object_header.hex(), names=cap.name_header.hex()),
+                      registry_closing_snapshots=cap.closing_headers,
+                      registry_growth_policy=dict(header_size=16, headers=cap.header_addresses,
+                                                  same_data_pointer=True, same_capacity=True, count_nondecreasing=True,
+                                                  selection_uses_initial_counts=True, selected_sources_exact=True,
+                                                  cohort_atomic=False),
                       layout=LAYOUT.copy(),
                       frame=FRAME.copy(), function_layout=FUNCTION.copy(), identities=cap.ids, roles=roles,
                       supers=[dict(identity=cap.by_address[a], parent=b) for a, b in sorted(cap.supers.items())],
@@ -329,7 +366,7 @@ def prepare(sampler):
                           started_perf_counter_ns=started, finished_perf_counter_ns=time.perf_counter_ns(),
                           camera_stamp_before=before.get('timestamp_raw'), camera_stamp_after=after.get('timestamp_raw'),
                           flags_interpretation='raw bytes only; parameter/out/local flag semantics are not certified',
-                          limits='Fresh reflection/source snapshot only; no FFrame observations, code PCs, callsite aliasing, setter enum semantics, hooks or writes are certified.')
+                          limits='Fresh reflection/source snapshot only; monotonic same-allocation registry count growth does not make the selected cohort atomic. No FFrame observations, code PCs, callsite aliasing, setter enum semantics, hooks or writes are certified.')
         return copy.deepcopy(config), provenance
     except CoverCallConfigRejected:
         raise

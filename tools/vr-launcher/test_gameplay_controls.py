@@ -20,5 +20,13 @@ class GameplayControls(unittest.TestCase):
                          dict(first_person_preview=False))
         broken=dict(self.manifest,cinematic_camera=False)
         with self.assertRaises(ValueError):launcher.gameplay_controls(dict(first_person_preview=True),broken)
+    def test_run_camera_requires_explicit_supported_manifest(self):
+        enabled=launcher.gameplay_controls({},dict(self.manifest,run_camera_stabilization=True))
+        self.assertIs(enabled['run_camera_stabilization'],True)
+        self.assertNotIn('run_camera_stabilization',launcher.gameplay_controls({},self.manifest))
+        self.assertNotIn('run_camera_stabilization',launcher.gameplay_controls({},dict(self.manifest,run_camera_stabilization=False)))
+        for value in (None,1,'true'):
+            with self.subTest(value=value),self.assertRaises(ValueError):
+                launcher.gameplay_controls({},dict(self.manifest,run_camera_stabilization=value))
 
 if __name__=='__main__':unittest.main()

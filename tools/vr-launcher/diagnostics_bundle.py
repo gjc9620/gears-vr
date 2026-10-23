@@ -1101,9 +1101,13 @@ def _session(collector, path, label):
         out['stop_requested_by'] = _debug_text(data['stop_requested_by'])
     out['support_collection'] = _debug_clean(data.get('support_diagnostics',{}))
     out['requested_configuration']={key:value for key,value in _pick(data.get('requested_configuration'),
-        ('render_scale','stereo_units_per_metre','camera_closer_metres','first_person_preview','right_stick_deadzone_percent',
+        ('render_scale','stereo_units_per_metre','camera_closer_metres','first_person_preview','right_stick_deadzone_percent','run_camera_stabilization',
          'hud_horizontal_fov_degrees','hud_element_scale','hud_center_scale')).items() if isinstance(value,(bool,int,float))}
     out['native_lifecycle'] = _debug_clean(data.get('native_status', {}))
+    out['run_camera_policy'] = _pick(data.get('run_camera_policy'),
+        ('applied','applications','writes','restored','ownership_lost','released','closed','suspended',
+         'session_stopping','session_closed'), numeric=True)
+    out['run_camera_cleanup_pending'] = data.get('run_camera_cleanup_pending') is True
     out['errors'] = {k:_text(data[k]) for k in ERROR_FIELDS if isinstance(data.get(k), str)}
     out['native_counters'] = _pick(data.get('native_status'), COUNTERS, numeric=True)
     out['lifecycle'] = _pick(data.get('session_exit_evidence'), ('last_state', 'stopping_observed', 'end_session_succeeded',

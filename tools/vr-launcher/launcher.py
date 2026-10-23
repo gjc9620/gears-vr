@@ -95,7 +95,7 @@ def camera_closer(config,manifest):
 
 def gameplay_controls(config,manifest):
     result={}
-    for capability in ('first_person_preview','right_stick_deadzone_control'):
+    for capability in ('first_person_preview','right_stick_deadzone_control','run_camera_stabilization'):
         if type(manifest.get(capability,False)) is not bool:raise ValueError('Gameplay capability must be boolean: '+capability)
     requested=config.get('first_person_preview',manifest.get('first_person_preview',False))
     if type(requested) is not bool:raise ValueError('First person preview must be boolean')
@@ -106,6 +106,7 @@ def gameplay_controls(config,manifest):
             ('anchor_observer','cinematic_camera','crosshair_assignment_observer')):
         raise ValueError('First person preview requires a supported build and gameplay/weapon observers')
     result['first_person_preview']=preview
+    if manifest.get('run_camera_stabilization',False):result['run_camera_stabilization']=True
     if manifest.get('right_stick_deadzone_control',False) or 'right_stick_deadzone_percent' in config:
         value=config.get('right_stick_deadzone_percent',2.)
         if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not 0<=value<=50:

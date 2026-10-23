@@ -144,6 +144,28 @@ int main(){
         CHECK(returned.snapshot.locals==next_locals&&returned.snapshot.code_offset==80);
         for(auto const& span:f.memory.spans)CHECK(span.first<f.locals||span.first>=f.locals+f.function.locals_size);
     }
-    std::printf("CoverCallTraceTest passed: %u checks; bounded readonly snapshots, endpoint consistency, invalid ranges and failures\n",checks);
+    {
+        trace::RegistryHeader initial{0x100000,2000,4096},observed=initial;
+        CHECK(trace::same_registry_cohort(initial,observed,0));
+        observed.count=3000;CHECK(trace::same_registry_cohort(initial,observed,2500));
+        CHECK(!trace::same_registry_cohort(initial,observed,3001));
+        for(unsigned mutation=0;mutation<9;++mutation){
+            auto bad=observed;
+            if(mutation==0)bad.data+=8;
+            if(mutation==1)bad.data=0;
+            if(mutation==2)bad.data+=1;
+            if(mutation==3)bad.count=1999;
+            if(mutation==4)bad.count=-1;
+            if(mutation==5)bad.count=4097;
+            if(mutation==6)bad.capacity=8192;
+            if(mutation==7)bad.capacity=-1;
+            if(mutation==8)bad.data=(std::numeric_limits<std::uintptr_t>::max)()-7;
+            CHECK(!trace::same_registry_cohort(initial,bad,0));
+            if(mutation==3)CHECK(trace::same_registry_cohort(bad,observed,0)); // A smaller valid initial cohort may grow.
+            else CHECK(!trace::same_registry_cohort(bad,observed,0));
+        }
+        CHECK(!trace::same_registry_cohort(initial,observed,-1));
+    }
+    std::printf("CoverCallTraceTest passed: %u checks; bounded readonly snapshots, endpoint consistency, registry cohorts, invalid ranges and failures\n",checks);
     return 0;
 }
