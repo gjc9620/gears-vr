@@ -2,6 +2,89 @@
 // The mount is geometry; only the currently scoped hand Plan can grant a write.
 namespace component {
 namespace stow=vrequip::stow;
+// Private name parsing only. No game metadata, success, or field address is
+// cached. Every lookup follows the original live first-match traversal.
+namespace lookup {
+using ObjectKey=stow::ObjectKey;
+std::size_t page_bytes(){
+    static const std::size_t bytes=[](){SYSTEM_INFO info{};GetSystemInfo(&info);return std::size_t(info.dwPageSize);}();
+    return bytes;
+}
+bool name(uptr object,wchar_t (&out)[128]){
+    if(!object)return false;
+    const auto n=get<Name>(object+0x48);const auto a=get<Array>(base+0x1c34800);
+    if(!a.data||a.count<1000||a.count>a.capacity||a.capacity>4000000||n.index>=unsigned(a.count))return false;
+    const auto entry=get<uptr>(a.data+n.index*8);
+    if(!entry||get<unsigned>(entry)!=n.index)return false;
+    const auto page=page_bytes();if(!page)return false;
+    for(std::size_t at=0;at<128;){
+        const auto address=entry+20+at*sizeof(wchar_t);
+        const auto room=page-std::size_t(address%page);
+        auto chars=(std::min)(std::size_t(128-at),room/sizeof(wchar_t));
+        // An unaligned wchar may straddle the page. Preserve the original
+        // single two-byte copy and its failure; never retry a guarded page.
+        if(!chars)chars=1;
+        if(!copy(out+at,address,chars*sizeof(wchar_t)))return false;
+        for(std::size_t i=0;i<chars;++i)if(!out[at+i])return true;
+        at+=chars;
+    }
+    out[127]=0;return false;
+}
+bool named(uptr object,const wchar_t* value){wchar_t text[128]{};return name(object,text)&&!_wcsicmp(text,value);}
+bool derives(uptr cls,const wchar_t* value){
+    for(unsigned n=0;cls&&n<40;++n,cls=get<uptr>(cls+0x60))if(named(cls,value))return true;
+    return false;
+}
+bool instance(uptr object,const wchar_t* cls){
+    if(!registered(object)||!derives(get<uptr>(object+0x50),cls))return false;
+    wchar_t text[128]{};return name(object,text)&&wcsncmp(text,L"Default__",9);
+}
+uptr field(uptr cls,const wchar_t* value,const wchar_t* kind=nullptr){
+    for(unsigned depth=0;cls&&depth<40;++depth,cls=get<uptr>(cls+0x60)){
+        auto f=get<uptr>(cls+0x80);
+        for(unsigned n=0;f&&n<4096;++n,f=get<uptr>(f+0x68))
+            if(named(f,value)&&(!kind||named(get<uptr>(f+0x50),kind)))return f;
+    }
+    return 0;
+}
+uptr property(uptr object,const wchar_t* value){return registered(object)?field(get<uptr>(object+0x50),value):0;}
+bool deleted(uptr object){
+    if(!registered(object))return true;
+    const auto p=property(object,L"bDeleteMe");
+    return p&&(get<unsigned>(object+get<unsigned>(p+0x94))&get<unsigned>(p+0xd0));
+}
+bool field(uptr object,const wchar_t* label,const wchar_t* kind,void* output,unsigned bytes){
+    const auto property=lookup::property(object,label);
+    const auto cls=get<uptr>(object+0x50);
+    if(!registered(property)||!registered(cls)||get<unsigned>(property+0x70)!=1||
+       get<unsigned>(property+0x74)!=bytes||
+       !lookup::named(get<uptr>(property+0x50),kind))return false;
+    const auto offset=get<unsigned>(property+0x94),size=get<unsigned>(cls+0x88);
+    return offset<=size&&bytes<=size-offset&&copy(output,object+offset,bytes);
+}
+bool pointer(uptr object,const wchar_t* label,uptr& out,bool component=false){
+    return field(object,label,component?L"ComponentProperty":L"ObjectProperty",&out,sizeof(out));
+}
+bool boolean(uptr object,const wchar_t* label,bool& out){
+    unsigned bits{};
+    if(!field(object,label,L"BoolProperty",&bits,4))return false;
+    const auto mask=get<unsigned>(lookup::property(object,label)+0xd0);
+    if(!mask||(mask&(mask-1)))return false;
+    out=(bits&mask)!=0;return true;
+}
+bool object_key(uptr object,ObjectKey& key){
+    key={};
+    if(!registered(object)||lookup::deleted(object))return false;
+    Name n{};
+    key.address=object;
+    if(!copy(&key.index,object+8,4)||!copy(&key.outer,object+0x40,8)||
+       !copy(&n,object+0x48,8)||!copy(&key.object_class,object+0x50,8)||
+       !registered(key.object_class)||!registered(key.outer))return false;
+    key.name_index=n.index;key.name_number=n.number;
+    return registered(object)&&!lookup::deleted(object);
+}
+} // namespace lookup
+
 using Value=gears_weapon::WeaponMeshComponentValue;
 using Bytes=gears_weapon::MeshComponentBytes12;
 using Absolute=gears_weapon::MeshComponentAbsolute;
@@ -35,11 +118,11 @@ Value target{};
 std::array<unsigned,3> baseline_absolute_storage{},target_absolute_storage{};
 
 bool absolute_storage(Key const& key,std::array<unsigned,3>& bits,std::array<uptr,3>* addresses=nullptr,
-                      std::array<unsigned,3>* masks=nullptr){
+                      std::array<unsigned,3>* masks=nullptr,bool fast=false){
     const wchar_t* fields[]={L"AbsoluteTranslation",L"AbsoluteRotation",L"AbsoluteScale"};
     for(unsigned i=0;i<3;++i){
-        const auto object=key.objects[7].address,property=playground::property(object,fields[i]);
-        if(!stow::field(object,fields[i],L"BoolProperty",&bits[i],4))return false;
+        const auto object=key.objects[7].address,property=fast?lookup::property(object,fields[i]):playground::property(object,fields[i]);
+        if(!(fast?lookup::field(object,fields[i],L"BoolProperty",&bits[i],4):stow::field(object,fields[i],L"BoolProperty",&bits[i],4)))return false;
         const auto mask=get<unsigned>(property+0xd0);
         if(!mask||(mask&(mask-1)))return false;
         if(addresses)(*addresses)[i]=object+get<unsigned>(property+0x94);
@@ -65,35 +148,38 @@ bool consume_self(uptr object,uptr function){
     if(!self.armed||self.object!=object||self.function!=function)return false;
     self.armed=false;return true;
 }
-bool current(Key const& expected){
+bool current(Key const& expected,bool fast=false){
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
+    const auto identify=[fast](uptr object,stow::ObjectKey& key){return fast?lookup::object_key(object,key):stow::object_key(object,key);};
+    const auto link=[fast](uptr object,const wchar_t* label,uptr& value,bool component=false){return fast?lookup::pointer(object,label,value,component):stow::pointer(object,label,value,component);};
+    const auto instance=[fast](uptr object,const wchar_t* label){return fast?lookup::instance(object,label):playground::instance(object,label);};
     for(auto const& old:expected.objects){
         stow::ObjectKey found{};
-        if(!stow::object_key(old.address,found)||std::memcmp(&old,&found,sizeof(old)))return false;
+        if(!identify(old.address,found)||std::memcmp(&old,&found,sizeof(old)))return false;
     }
     stow::ObjectKey asset{};
-    if(!stow::object_key(expected.asset.address,asset)||
+    if(!identify(expected.asset.address,asset)||
        std::memcmp(&asset,&expected.asset,sizeof(asset)))return false;
     const auto address=[&](unsigned i){return expected.objects[i].address;};
     uptr pointer{};
-    if(!stow::pointer(address(2),L"WorldInfo",pointer)||pointer!=address(0)||
-       !stow::pointer(address(2),L"Pawn",pointer)||pointer!=address(3)||
-       !stow::pointer(address(3),L"Controller",pointer)||pointer!=address(2)||
-       !stow::pointer(address(3),L"InvManager",pointer)||pointer!=address(4)||
-       !stow::pointer(address(3),L"Mesh",pointer,true)||pointer!=address(5)||
-       !stow::pointer(address(3),L"Weapon",pointer)||pointer!=address(6)||
-       !stow::pointer(address(6),L"Instigator",pointer)||pointer!=address(3)||
-       !stow::pointer(address(6),L"Mesh",pointer,true)||pointer!=address(7)||
-       !stow::pointer(address(7),L"SkeletalMesh",pointer)||pointer!=expected.asset.address||
+    if(!link(address(2),L"WorldInfo",pointer)||pointer!=address(0)||
+       !link(address(2),L"Pawn",pointer)||pointer!=address(3)||
+       !link(address(3),L"Controller",pointer)||pointer!=address(2)||
+       !link(address(3),L"InvManager",pointer)||pointer!=address(4)||
+       !link(address(3),L"Mesh",pointer,true)||pointer!=address(5)||
+       !link(address(3),L"Weapon",pointer)||pointer!=address(6)||
+       !link(address(6),L"Instigator",pointer)||pointer!=address(3)||
+       !link(address(6),L"Mesh",pointer,true)||pointer!=address(7)||
+       !link(address(7),L"SkeletalMesh",pointer)||pointer!=expected.asset.address||
        get<uptr>(address(0)+0x40)!=address(1)||get<uptr>(address(2)+0x40)!=address(1)||
        get<uptr>(address(3)+0x40)!=address(1))return false;
     for(std::uint8_t i=0;i<4;++i){
         uptr slot{};if(!vrequip::read_slot(address(4),i,slot)||slot!=expected.slots[i])return false;
     }
-    return playground::instance(address(6),L"Weap_AssaultRifle")&&
-        playground::instance(address(7),L"SkeletalMeshComponent")&&
-        playground::instance(expected.asset.address,L"SkeletalMesh")&&
-        playground::named(expected.asset.address,L"COGAssaultRifle");
+    return instance(address(6),L"Weap_AssaultRifle")&&
+        instance(address(7),L"SkeletalMeshComponent")&&
+        instance(expected.asset.address,L"SkeletalMesh")&&
+        (fast?lookup::named(expected.asset.address,L"COGAssaultRifle"):playground::named(expected.asset.address,L"COGAssaultRifle"));
 }
 bool capture(Snapshot const& hand,Key& key){
     gears_weapon::StowState<stow::Key> state{};
@@ -118,21 +204,21 @@ bool triple_schema(uptr property,bool rotation){
     }
     return true;
 }
-bool read(Key const& key,State& out){
+bool read(Key const& key,State& out,bool fast=false){
     out={};
-    if(!current(key))return false;
+    if(!current(key,fast))return false;
     const auto mesh=key.objects[7].address;
     for(unsigned i=0;i<3;++i){
         const wchar_t* fields[]={L"AbsoluteTranslation",L"AbsoluteRotation",L"AbsoluteScale"};
-        if(!stow::boolean(mesh,fields[i],out.value.absolute[i]))return false;
+        if(!(fast?lookup::boolean(mesh,fields[i],out.value.absolute[i]):stow::boolean(mesh,fields[i],out.value.absolute[i])))return false;
     }
-    if(!triple_schema(playground::property(mesh,L"Translation"),false)||
-       !triple_schema(playground::property(mesh,L"Rotation"),true)||
-       !stow::field(mesh,L"Translation",L"StructProperty",out.value.translation.data(),12)||
-       !stow::field(mesh,L"Rotation",L"StructProperty",out.value.rotation.data(),12))return false;
+    if(!triple_schema((fast?lookup::property(mesh,L"Translation"):playground::property(mesh,L"Translation")),false)||
+       !triple_schema((fast?lookup::property(mesh,L"Rotation"):playground::property(mesh,L"Rotation")),true)||
+       !(fast?lookup::field(mesh,L"Translation",L"StructProperty",out.value.translation.data(),12):stow::field(mesh,L"Translation",L"StructProperty",out.value.translation.data(),12))||
+       !(fast?lookup::field(mesh,L"Rotation",L"StructProperty",out.value.rotation.data(),12):stow::field(mesh,L"Rotation",L"StructProperty",out.value.rotation.data(),12)))return false;
     std::array<float,3> position{};std::memcpy(position.data(),out.value.translation.data(),12);
     for(float x:position)if(!std::isfinite(x)||std::abs(x)>1e7f)return false;
-    out.key=key;out.known=true;return current(key);
+    out.key=key;out.known=true;return current(key,fast);
 }
 bool world(Key const& key,std::array<float,16>& value,int& tick){
     return current(key)&&handik::structure(key.objects[7].address,L"LocalToWorld",L"Matrix",value.data(),64)&&
@@ -166,7 +252,7 @@ struct Backend {
     Forward* forward{}; // nullptr is rollback, authenticated by old Key/value only.
     bool read(State& state){
         component_trace::Scope scope;
-        const bool ok=component::read(expected_key,state);
+        const bool ok=component::read(expected_key,state,forward&&!lease.faulted());
         const auto saved=component_trace::state.meta;
         component_trace::state.meta.forward=forward!=nullptr;
         if(!component_trace::state.meta.group)component_trace::state.meta.expected=lease.owned_value();
@@ -363,11 +449,11 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
     gears_vr::Viewpoint pose{};
     if(!component_trace::gate(component_trace::Stage::mount_solve,component::mount.solve(frame.right,pose)))return false;
     component::State before{};
-    if(!component_trace::gate(component_trace::Stage::initial_read,component::read(key,before)))return false;
+    if(!component_trace::gate(component_trace::Stage::initial_read,component::read(key,before,true)))return false;
     auto wanted=before.value;wanted.absolute[0]=wanted.absolute[1]=true;
     std::array<uptr,3> flag_addresses{};std::array<unsigned,3> flag_masks{};
     if(!component_trace::gate(component_trace::Stage::absolute_storage,
-        component::absolute_storage(key,component::baseline_absolute_storage,&flag_addresses,&flag_masks)))return false;
+        component::absolute_storage(key,component::baseline_absolute_storage,&flag_addresses,&flag_masks,true)))return false;
     component::target_absolute_storage=component::baseline_absolute_storage;
     for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)if(flag_addresses[i]==flag_addresses[j]){
         auto& bits=component::target_absolute_storage[i];

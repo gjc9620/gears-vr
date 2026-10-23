@@ -2,6 +2,18 @@
 
 此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3的c局取得一次部分absolute标志更新及交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
 
+## R5私有页内名称解析候选
+
+R5采用比元数据描述符更窄的改动，只在组件adapter内增加私有lookup。保留原Name→Array→entry→entry.index检查、忽略Name.number、128 wchar上限及大小写比较；按当前系统页内的完整wchar分块copy，在本地遇NUL就停止，无NUL才读下一页，奇地址跨页仅原2-byte copy，任何读取失败直接false不重试。只冷读一次OS页大小，不缓存游戏字段地址、元数据、动态值或检查成功。内存与页保护稳定时保持旧返回和所触及保护页集合，不新增并发Names原子快照保证。
+
+原40／4096首匹配、缺失bDeleteMe返回false、typed字段及Key前后读取顺序不变。Backend仅forward且lease未faulted时选快路径，pure fail内部恢复虽有forward指针但sticky fault已置位，因而与外部null回滚、诊断读一起保留旧resolver；apply初始read／absolute_storage显式fast。capture／world、四槽原getter、stow read_state、Args／Forward／schema／triple子字段、SelfScope与100ms最终门均未改。
+
+实际源码提取的动态检查111断言／35场景通过，非名称字符读取及槽查询序列相同。独立Win32 VirtualAlloc页测试33场景／132次gold-fast×name-named调用通过，exe仅执行一次：页末NUL后的NOACCESS／GUARD零触碰，首文本GUARD／奇地址跨GUARD一次fault且false，不发生fallback；127索引NUL、128无NUL、大小写与坏元数据等通过。页fixture计数wrapper的一次ADL编译失败单独保留，未修改提取函数体。短名7→1、跨页25→2仅是copy调用计数，不能作实际耗时或游戏性能结论。Astra对稳定源 `c2549e97e3857cbc10fee44f94a40918af7857e917cf921b615c28e605a38bac`窄复核无阻断。
+
+PG ON首编成功，严格Level4／WX／EHsc／C++17，23导出与R4相同，DLL SHA `dde8242e4cfe0fd74716c9efcde8731e0147be8ef27576af6ac42af7edc45133`；default与phase1 OFF的实际预处理均原字节相同，未重复这两构建。报告 `analysis/hand-component-fast-lookup-20261023/report.json` SHA `86651a1fad9fa3685479129fee640c1f296c87d9c4ad2f57169e758d15edd39b`；协调者核对742源／16vendor、59支持工件、真实项目／PE及旧d58文件／外部清单后应用一源，live742与实际staged编译输入完全相同，应用复核SHA `27db3cd97c89039dcfc35fa3b547f14d4ad2b080eaa50424fc52370acd22e3bd`。成功DLL可直接复用，无应用后重编；真实构建base `696892db8631bd608e8065490beec3197a79c46d`与后续应用commit分开记录。
+
+R5尚无实际游戏局，d的25ms首失败仍保留；不能仅凭解析检查通过宣布枪体跟随修复。下一局继续固定预算与静音／置后／只读输出，不刷新事务内票据或放宽任何时限。
+
 ## R4购买版d：旋转提交前时限拒绝
 
 购买版后台静音d/PID5612使用上述R4 PG `a8276f74…67c1af8`、manifest `e87ed90cc8171e48352d9d1f6f7726a6765c24e9ca40ca334ff8542c13f69919`，配套封存为 `analysis/hand-mesh-phase1-r4-candidates/53e64808…e4c342/`，742源／178实际工件。构建base17709c3、应用commit `5662a7e6fe95297dbbfd1ed6435c6a31fc4609c7`分别保留，未应用后重编。Popen0准备固定191依赖／26复制／24模块，与c的186共用依赖和24实际模块均无变化；只绑定OUT／TAG、候选pins与真实工件数，原15s／256／3s reserve、几何审计、Mute1／Behind1／ObserveOnly1及后台物理输入关闭不改。
