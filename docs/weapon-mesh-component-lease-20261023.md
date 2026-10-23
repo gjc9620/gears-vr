@@ -1,6 +1,6 @@
 # 枪体组件变换的可恢复租约候选
 
-此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2已进行两次购买版测试，均未进入枪体写入；现有结果只支持真实结构读取和零写入后的清理。公开手部或枪体写权限仍未授予，普通启动器未启用。
+此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3的c局取得一次部分absolute标志更新及交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
 
 ## R3分类前置候选
 
@@ -10,7 +10,15 @@ Astra逐集合及两文件差异复核无阻断。实际提取入口的合成bac
 
 协调者核对报告、实际742项目源及16 vendor、25份支持工件、原live742和旧证据后按字节应用两源，应用后live742全部匹配真实staged编译输入；因此可复用该DLL，未再编译相同输入。报告 `analysis/hand-mesh-passive-classification-20261023/report.json` SHA `bfcecb70a96ca565a0b79db601eaa2afdab679e39007546609ff05aa35b9e94c`，应用复核 `coordinator-apply-review.json` SHA `1d94db80ffa0e06fd92b878fb1d39089a913237e32bb00c018122d5d7a002515`。构建时base为 `a8532ce12724a972730b0f56e83aca095b607fd6`，当时两份staged源与base不同；后续提交／封存必须保留这一来源事实。
 
-R3尚未运行新游戏局。这些结果支持减少无关读取及源码边界等价，不能证明b的最终拒绝只有耗时这一原因，也不能声称实际枪体跟随或写后恢复已经通过。
+R3封存目录为 `analysis/hand-mesh-phase1-r3-candidates/7e027f31…12bccdf/`，source.json SHA `cf760058406f7ae935b6146b28c521a957c5886a7bc876828bb3c3d06d488550`；742源／146工件，Native／XR／loader原字节继承R2。manifest分开记录旧构建base、两份staged差异和后续应用commit，未把它改写成新commit上的live build。
+
+购买版置后静音c局PID8120以Popen0准备 `c815cc19…85a0570` 启动。Start0，首次authorize和postflush已通过，产生一张planned pose，之后 `component_acquire_failed`；没有手部written样本或完成lease。组件终态为acquired0／restored1／setter_calls2／faulted1，最终dirty／owned／revoked均0、safe1。setter_calls在实际调用前递增，还混合forward、内部fail回滚和外层null rollback尝试，不能解释成“两个setter成功”。
+
+唯一component pre_restore记录dirty=owned=1，absolute逻辑标志由000变为110，Translation／Rotation的12字节仍与原值相同；外层交还后，独立raw快照确认三组原值和九个对象Key均与基线一致。这支持本次部分absolute更新后的交还，不证明三个setter完整执行或跨Tick跟随。日志中没有本局related action／yield打断，当前仍缺失败gate与时刻，不能在超时、expected差异或call结果之间唯一归因。
+
+Stop／Shutdown均0，原8控件／44附件／两PG入口保持；FPP累计61，Native GHW1发布50。9个会话的静音守护read／mute错误与pending均0，精确游戏退出后Guard exit0，独立CIM未见owner／game／XR／Guard残留。协调者21项只读收尾通过，scope=`partial_component_acquire_failure_and_rollback`；原component／whole=false及Native／XR画面失败均保留。
+
+原c receipt SHA `be31b13bd4c9ca8c217ed0a74fe01317f5be45478a42643de6dc2e729adcd367`、log `9eb88756cfb6b93271d86a3f52a1399de53b6c7c91bb7628e151fab50e9faaf0`、独立摘要 `2944a33ddf3f3f7423d2bd5b88e1fc43f04951852710ab1ef5d9dbb343b19edf`。证据位于ignored `analysis/hand-mesh-runtime-1023c/`，54文件原字节清单另存；a／b全部原证据不改。下一步仅记录首个组件失败gate、既有时钟和已知比较结果，不增加写权限、重读、续龄或扩大100ms。
 
 ## R2购买版测试结果
 
