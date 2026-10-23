@@ -53,8 +53,7 @@ bool deleted(uptr object){
     const auto p=property(object,L"bDeleteMe");
     return p&&(get<unsigned>(object+get<unsigned>(p+0x94))&get<unsigned>(p+0xd0));
 }
-bool field(uptr object,const wchar_t* label,const wchar_t* kind,void* output,unsigned bytes){
-    const auto property=lookup::property(object,label);
+bool field_at(uptr object,uptr property,const wchar_t* kind,void* output,unsigned bytes){
     const auto cls=get<uptr>(object+0x50);
     if(!registered(property)||!registered(cls)||get<unsigned>(property+0x70)!=1||
        get<unsigned>(property+0x74)!=bytes||
@@ -62,13 +61,17 @@ bool field(uptr object,const wchar_t* label,const wchar_t* kind,void* output,uns
     const auto offset=get<unsigned>(property+0x94),size=get<unsigned>(cls+0x88);
     return offset<=size&&bytes<=size-offset&&copy(output,object+offset,bytes);
 }
+bool field(uptr object,const wchar_t* label,const wchar_t* kind,void* output,unsigned bytes){
+    return field_at(object,lookup::property(object,label),kind,output,bytes);
+}
 bool pointer(uptr object,const wchar_t* label,uptr& out,bool component=false){
     return field(object,label,component?L"ComponentProperty":L"ObjectProperty",&out,sizeof(out));
 }
 bool boolean(uptr object,const wchar_t* label,bool& out){
+    const auto property=lookup::property(object,label);
     unsigned bits{};
-    if(!field(object,label,L"BoolProperty",&bits,4))return false;
-    const auto mask=get<unsigned>(lookup::property(object,label)+0xd0);
+    if(!field_at(object,property,L"BoolProperty",&bits,4))return false;
+    const auto mask=get<unsigned>(property+0xd0);
     if(!mask||(mask&(mask-1)))return false;
     out=(bits&mask)!=0;return true;
 }
@@ -122,7 +125,7 @@ bool absolute_storage(Key const& key,std::array<unsigned,3>& bits,std::array<upt
     const wchar_t* fields[]={L"AbsoluteTranslation",L"AbsoluteRotation",L"AbsoluteScale"};
     for(unsigned i=0;i<3;++i){
         const auto object=key.objects[7].address,property=fast?lookup::property(object,fields[i]):playground::property(object,fields[i]);
-        if(!(fast?lookup::field(object,fields[i],L"BoolProperty",&bits[i],4):stow::field(object,fields[i],L"BoolProperty",&bits[i],4)))return false;
+        if(!(fast?lookup::field_at(object,property,L"BoolProperty",&bits[i],4):stow::field(object,fields[i],L"BoolProperty",&bits[i],4)))return false;
         const auto mask=get<unsigned>(property+0xd0);
         if(!mask||(mask&(mask-1)))return false;
         if(addresses)(*addresses)[i]=object+get<unsigned>(property+0x94);
@@ -217,10 +220,17 @@ bool read(Key const& key,State& out,bool fast=false){
         const wchar_t* fields[]={L"AbsoluteTranslation",L"AbsoluteRotation",L"AbsoluteScale"};
         if(!(fast?lookup::boolean(mesh,fields[i],out.value.absolute[i]):stow::boolean(mesh,fields[i],out.value.absolute[i])))return false;
     }
-    if(!triple_schema((fast?lookup::property(mesh,L"Translation"):playground::property(mesh,L"Translation")),false)||
-       !triple_schema((fast?lookup::property(mesh,L"Rotation"):playground::property(mesh,L"Rotation")),true)||
-       !(fast?lookup::field(mesh,L"Translation",L"StructProperty",out.value.translation.data(),12):stow::field(mesh,L"Translation",L"StructProperty",out.value.translation.data(),12))||
-       !(fast?lookup::field(mesh,L"Rotation",L"StructProperty",out.value.rotation.data(),12):stow::field(mesh,L"Rotation",L"StructProperty",out.value.rotation.data(),12)))return false;
+    if(fast){
+        const auto translation=lookup::property(mesh,L"Translation");
+        if(!triple_schema(translation,false))return false;
+        const auto rotation=lookup::property(mesh,L"Rotation");
+        if(!triple_schema(rotation,true)||
+           !lookup::field_at(mesh,translation,L"StructProperty",out.value.translation.data(),12)||
+           !lookup::field_at(mesh,rotation,L"StructProperty",out.value.rotation.data(),12))return false;
+    }else if(!triple_schema(playground::property(mesh,L"Translation"),false)||
+       !triple_schema(playground::property(mesh,L"Rotation"),true)||
+       !stow::field(mesh,L"Translation",L"StructProperty",out.value.translation.data(),12)||
+       !stow::field(mesh,L"Rotation",L"StructProperty",out.value.rotation.data(),12))return false;
     std::array<float,3> position{};std::memcpy(position.data(),out.value.translation.data(),12);
     for(float x:position)if(!std::isfinite(x)||std::abs(x)>1e7f)return false;
     out.key=key;out.known=true;return current(key,fast);
