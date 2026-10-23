@@ -208,3 +208,5 @@ u 的封存 root result.failure 将历史首次授权拒绝误写成末次停止
 同帧诊断保留末尾 8 条 completion-order 行，完整路径只在 pre 进入、原双 journal 恢复后和 post 进入新增 3 次 QPC；成功 read 复制原 now／now_ns 与同一 out，原票据／Plan 和所有权限时钟保持。当前终止行及其实际授权单独冻结，短路未执行的授权与 NS 阶段保持 unknown，不引用历史 first_failure。合法游戏线程与 Shutdown callback drain 前提明确，默认宏 OFF 的原 read／class 与源码在 8 对预处理比对中保持。
 
 纯 helper 33／107、实时资产接线 19／43、同帧诊断 29／119 及新几何审计 34／37 的有限验证均通过；各自实际首次 fixture 编译或 patch 包装失败照实保留。新 schema2 审计将 raw C 的字节配方与物理 D 的跨 Tick 方向及刚体 mount 分开，原 0.1 和两个移动阶段各至少 8 次响应等门限保持。Astra 独立复核资产接线、Sol 独立复核诊断均无阻断；root 核对 61 份 producer 工件和全部原 776 源，仅修改 4 源并新增 1 header，其余 772 项保持。应用证明 ec4f5fa1…c140，源树 44a43c9c…d6b9。root 首次合并前 guard 因 include 锚点出现两次而拒绝，未写生产文件；改用唯一的完整私有 include 块后完成应用。PG-only 构建及补偿后的实际几何、持续运动和整局覆盖仍待本轮后续执行，没有安装默认入口。
+
+首次完整 PG TU 严格构建在 configure 通过后失败：新 geometry_log 参数与 log 局部变量 observed 遮蔽主文件原有全局 observed，/WX 将 C4459 视为错误。原 source／build／日志 3f6be687…a705 全部保留，尚未启动游戏。仅将两处局部作用域内共 10 个标识符改为 asset_observation，字符串与 observed 日志前缀保持；逆向标识符替换可逐字还原原源码，不降低警告等级。下一次使用全新构建目录，有限 CPU 不因此重复执行。

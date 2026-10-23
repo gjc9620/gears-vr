@@ -495,21 +495,21 @@ void asset_input_log(const wchar_t* label,AssetInput const& input,bool known){
     fwprintf(log_file,L" %ls_origin_schema=",label);if(known)asset_schema_log(input.origin_schema);else fwprintf(log_file,L"unknown");
     fwprintf(log_file,L" %ls_rot_origin_schema=",label);if(known)asset_schema_log(input.rotation_schema);else fwprintf(log_file,L"unknown");
 }
-void geometry_log(AssetInput const& observed,bool observation_known){
+void geometry_log(AssetInput const& asset_observation,bool observation_known){
     const bool known=target_geometry.known&&target_geometry.input.known;
-    observation_known=observation_known&&observed.known;
+    observation_known=observation_known&&asset_observation.known;
     fwprintf(log_file,L" geometry_target_known=%u geometry_non_atomic=1 asset_observation_known=%u "
         L"asset_identity_schema_match=%u asset_values_match=%u asset_observation_origin_zero=%u",
-        unsigned(known),unsigned(observation_known),unsigned(known&&observation_known&&same_asset_identity_schema(target_geometry.input,observed)),
-        unsigned(known&&observation_known&&target_geometry.input.origin==observed.origin&&target_geometry.input.rotation==observed.rotation),
-        unsigned(observation_known&&zero_asset_origin(observed)));
+        unsigned(known),unsigned(observation_known),unsigned(known&&observation_known&&same_asset_identity_schema(target_geometry.input,asset_observation)),
+        unsigned(known&&observation_known&&target_geometry.input.origin==asset_observation.origin&&target_geometry.input.rotation==asset_observation.rotation),
+        unsigned(observation_known&&zero_asset_origin(asset_observation)));
     if(known){
         auto const& model=target_geometry.model;auto const& control=target_geometry.control;
         fwprintf(log_file,L" model_position=%.17g,%.17g,%.17g model_rotation_radians=%.17g,%.17g,%.17g "
             L"control_rotation_radians=%.17g,%.17g,%.17g",model.position.x,model.position.y,model.position.z,
             model.rotation.pitch,model.rotation.yaw,model.rotation.roll,control.pitch,control.yaw,control.roll);
     }else fwprintf(log_file,L" model_position=unknown model_rotation_radians=unknown control_rotation_radians=unknown");
-    asset_input_log(L"frozen",target_geometry.input,known);asset_input_log(L"observed",observed,observation_known);
+    asset_input_log(L"frozen",target_geometry.input,known);asset_input_log(L"observed",asset_observation,observation_known);
 }
 void dump_first_bind(bool clean){
     if(!clean||dual_draining||component_trace::state.depth||!log_file||!first_bind.attempted||first_bind.dumped)return;
@@ -543,7 +543,7 @@ void log(const wchar_t* phase){
     std::array<float,16> matrix{};int tick{};
     const bool world_known=world(lease.key(),matrix,tick);
     std::array<unsigned,3> raw{};const bool raw_known=known&&absolute_storage(lease.key(),raw);
-    AssetInput observed{};const bool asset_known=known&&world_known&&read_asset_input(lease.key(),observed);
+    AssetInput asset_observation{};const bool asset_known=known&&world_known&&read_asset_input(lease.key(),asset_observation);
     fwprintf(log_file,L"hand_weapon_component_sample schema=2 phase=%ls hand_lease=%u plan_revision=%llu "
         L"sequence=%llu action_epoch=%llu equipment_phase=%u readback_known=%u world_known=%u mesh_tick=%d "
         L"native_started_qpc=%llu xr_pid=%llu xr_start=%llu stream_epoch=%llu reference_epoch=%llu "
@@ -566,7 +566,7 @@ void log(const wchar_t* phase){
     for(auto bits:baseline_absolute_storage)fwprintf(log_file,L"%08x",bits);
     fwprintf(log_file,L" target_absolute_storage=");for(auto bits:target_absolute_storage)fwprintf(log_file,L"%08x",bits);
     fwprintf(log_file,L" readback_absolute_storage=");for(auto bits:raw)fwprintf(log_file,L"%08x",bits);
-    freehands::print_matrix(L"gun",matrix);geometry_log(observed,asset_known);fwprintf(log_file,L"\n");fflush(log_file);
+    freehands::print_matrix(L"gun",matrix);geometry_log(asset_observation,asset_known);fwprintf(log_file,L"\n");fflush(log_file);
 }
 } // namespace component
 
