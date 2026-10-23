@@ -1,6 +1,25 @@
 # 枪体组件变换的可恢复租约候选
 
-此记录属于 `codex/weapon-6dof`。当前包含纯C++组件，以及默认关闭、已编译但尚未实际运行的同GHW1枪体适配器。公开手部或枪体写权限仍未授予，普通启动器未启用。
+此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2已进行两次购买版测试，均未进入枪体写入；现有结果只支持真实结构读取和零写入后的清理。公开手部或枪体写权限仍未授予，普通启动器未启用。
+
+## R2购买版测试结果
+
+两次均使用原封存 DLL `25c9b9ed…7086ce2` 和742份源码，强制 Mute1／Behind1／ObserveOnly1，物理手柄后台输入关闭。每局有独立目录和一次性入口，没有覆盖失败回执或自动重复原版拾取／装备调用。
+
+| 运行 | 已取得的证据 | 中止位置 |
+|---|---|---|
+| a，PID17996 | 原版 GiveTo／SetCurrentWeapon 各完成一次，原枪 Lancer 已装备 | 独立读取器额外查询不存在的 `Weapon.WeaponMesh`；第九个 asset Key 及 setter schema 尚未读取，未执行 Start 或启动 Native／XR 会话 |
+| b，PID27712 | 真正 `Weapon.Mesh`、八条 links、九个 Key、资源 `COGAssaultRifle`，以及原组件三组和三个 setter schema 的完整独立基线 | Start返回0；38次 prewrite 后未取得最后写入权限，最终 WorldBridge read rejected，以 `xr_certified_pose_rejected` 结束；手与枪均0 leases／0 setter calls |
+
+b的 `SetAbsolute` 参数为三个4字节 Bool、偏移0／4／8、flags `0x90`；`SetTranslation`／`SetRotation` 各为一个12字节 Struct、flags `0x80`，三个参数区均12字节、无返回值。独立脚本重新解码保存的函数头／参数元数据和身份数值，并核对基线、Start前、Shutdown后三份快照；这不证明 setter 被实际调用。b的原组件三组值保持，不能用零写入清理代替写后恢复测试。
+
+a 的读取器修补只在新b副本删除多余字段，真实游戏适配器一直使用正确的 `Weapon.Mesh`，无须为此重编DLL。此前另修正了读取器的bound receiver验证与runner/audit范围匹配；原版本和回执均保留。b的 helper／runner／audit CPU检查为38／35／56项，尚不能代替枪体运行结果。
+
+两局 Shutdown均0，原8控件／44字节附件／两PG入口保持；b另核对完整组件身份和三组原值。静音守护各匹配9个专属会话，未发生静音写入或恢复写入，read_failed／mute_failed／restore_pending均0，精确游戏退出后Guard exit0；独立CIM未见自有owner／game／XR／Guard残留。a／b协调者独立收尾分别20／19项通过，scope分别为 `pretrial_baseline_failure_and_cleanup` 与 `actual_lancer_schema_zero_write_rejection_and_cleanup`；原component／whole均false，b的Native entry verifier false和XR exit1保留。
+
+原始a／b receipt SHA分别 `26cc48523649edd093ecb0420221493e05e40e60f62764a333872ec6f341ceec`／`9e894c074468aa3cb014908a3f2be78b44a83a918ec5a98a5b96b4e071ef6775`，独立摘要分别 `cd6e54c2074e9a3ed0256c7e5fbc02f1299e17d448a21e7ab0901e04eea3bfbf`／`22dfb6e4429e6f08d55e36958a9bf75b0bc999a1795371d8d3e83c5317c60e39`。全部原始证据留在ignored `analysis/hand-mesh-runtime-1023a/` 和 `…1023b/`；两目录另有48／54文件原字节清单。
+
+下一步只缩减新增hook在确认函数名之前对被动getter反复做的组件关联读取。Policy／WorldBridge／Session与C1的源码哈希相同；不能把37次binding_age诊断误认成撤销绑定，38次prewrite也不是“没有Plan”。b没有记录最终read rejected的分支或包时刻，因此不能确定其唯一原因。两局武器／非空槽数量不同，分段耗时只支持热点假设，不能作同条件性能对比。100ms、动作名集合、InvManager边界、同Plan最后授权及双journal交还均须保留，再用新候选实测。
 
 ## 同GHW1 phase1 Lancer适配器候选
 
@@ -12,7 +31,7 @@ Astra复核发现初版只关联Weapon.Mesh，遗漏phase1／stow clean时由Inv
 
 staged ON／OFF／默认三构建及278项pure检查通过，实际提取生命周期41项检查通过；这些检查使用合成backend，不是游戏结果。R2报告 `analysis/hand-mesh-component-adapter-20261023/report-r2.json` SHA `fb0f1d2df07445d6c0dea30552302a312bb98655dcf43f5116048e0805df5e48`。协调者另核对7份源码、8份回执记录、R1工件及16份独立vendor来源后按字节接入独立分支。live新目录只构建一次ON候选，23个导出与C1一致，四种错误组合均在配置阶段拒绝；live报告 `analysis/hand-mesh-phase1-live-20261023/report.json` SHA `e32fb274e778be42eb26cbccf816e44a158094a7483fb2d5404bdf7efbf2d917`，DLL `25c9b9edf8aeadf5eac959c8eaadc08bbef6a731306e6bab3121e1f567086ce2`。742份源before／after不变，没有重跑已通过的CPU／OFF／默认构建或Native／XR，也未替换另一会话的默认文件。
 
-下一局仍须Start前通过原版pickup准备Lancer，重做完整身份、8控件、附件44字节、组件三组和真实SkeletalMeshComponent的setter schema基线。新日志提供同lease／证书的written与pre_restore枪矩阵及全局journal计数；尚无实际跨Tick位置、完整旋转或原字段恢复结果。同步setter读回不是最终可见跟随证明，C1的双手通过也不能作为本枪体候选验收。
+后续每局仍须Start前通过原版pickup准备Lancer，重做完整身份、8控件、附件44字节、组件三组和真实SkeletalMeshComponent的setter schema基线，不能复用b的实例地址。日志接口提供同lease／证书的written与pre_restore枪矩阵及全局journal计数；当前尚无实际枪体写入／跨Tick位置、完整旋转或写后恢复结果。同步setter读回不是最终可见跟随证明，C1的双手通过也不能作为本枪体候选验收。
 
 旧 `vr_weapon_mesh_follow.inl` 会修改 `Weapon.Mesh` 的absolute标志、Translation及Rotation；stow journal则管理人物Mesh.Attachments中的44字节附件姿态。两个位置不是同一份状态。h的双手与附件恢复通过，不能证明旧mesh-follow的组件变换也恢复；旧adapter的地址存活检查也不能证明完整对象代次。因此暂不解除combined与旧mesh-follow的互斥。
 
@@ -32,4 +51,4 @@ backend必须用完整对象代次及调用上下文认证Key；每个setter在�
 
 项目CMake另加 `WeaponMeshComponentLeaseTest` 两行目标定义，在全新目录重建持续ON DLL和该测试目标；flags与C1 trial逐项相同，新目标只执行一次，268 checks通过。9份源码before／after快照及10份记录hash已独立核对，旧C1三DLL和旧报告未变；没有重跑旧CPU或OFF／default构建。集成报告为 `analysis/hand-continuous-session-integrated-20261023/report.json`，SHA256 `ac7f10c2c2a6c386b343b9730ccc769d9be9f59b970fe2a0b72bb4efe70b4f59`；当前CMake `de450edc…` 机械移除新增目标两行可精确重构旧 `86dd65f2…`。新持续候选DLL为 `425f6868aef6d05b24ce153172386c8bb15f658348ad6950f4867f23443e8a0a`；它尚未跑游戏，不替换既有h验收身份。
 
-后续最小运行切片是固定Lancer实例、phase1右手枪体：消费与handstream同一张认证GHW1票据，先取得组件租约再重新认证手部写入；原Tick、动作和stow helper前必须同步交还手部及组件两个journal。phase0／稳定phase2不写枪体。需要同局完整身份、原组件三组值与附件44字节基线，以及实际SetAbsolute／Translation／Rotation行为的证据。当前尚未实现这条adapter、左手副握、射线或正式武器切换，CPU检查不能作为游戏／GPU／头显验收。
+纯组件阶段确定的最小运行切片是固定Lancer实例、phase1右手枪体：消费与handstream同一张认证GHW1票据，先取得组件租约再重新认证手部写入；原Tick、动作和stow helper前必须同步交还手部及组件两个journal。phase0／稳定phase2不写枪体。当前adapter已实现并进入上述R2测试，实际SetAbsolute／Translation／Rotation行为及跨Tick跟随仍待证明；左手副握、射线和正式武器切换尚未接入，CPU检查不能作为游戏／GPU／头显验收。
