@@ -356,3 +356,13 @@ CONT源码经root逐项审查后原字节复制五份文件，779源中其余774
 默认OFF预处理首组仅三个格式差异导致严格对比失败，原件保留；修正格式后新一组两次/EP均0，完整复合输入的非空行字节一致，proof d7fd0c49…020。该证据只覆盖源文本，非完整TU／ABI或运行证明。CONT仍是一个有限Lancer owner区间，完整PG构建、实际更新与原生消费、全武器、0.7真实伤害和头显未验收，未集成默认启动器。
 
 随后以e30e9a30…ce49源码完成一次完整PG configure／build／exports及私有冻结，原W4／WX、C++17、EHsc与MT保持，23导出相同。PG9c86ef31…c021、manifest9ffbdec0…a4d、bundle0b9b8910…cb80；779源、27依赖、333工件／1140实体经root完整核对，父170份非PG工件逐字保留，Native／XR／loader与CPU工具没有重建。新候选没有继承HOLD运行验收，也没有安装到默认入口。新的AB单区间更新测试源码及8类fixture已准备并独立源审通过；实际游戏测试尚未启动。
+
+## 2026-10-24 — ab 首次CONT运行在初始装备交接停止，原值与进程清理核对通过
+
+AB新流程经独立源审与root核对，实际8类Python helper／parser检查完成：首组7类通过，test05的ACK fixture设置20ns文件时间戳后等待失败；未记录实际stat返回值，时间戳量化仅为源码支持的解释。仅把该fixture改为完整2秒后，单独执行test05通过，其他7类未重跑，aggregate f25c3900…1420；runner／auditor不变。候选与208依赖、26复制、24实际模块绑定通过，prep965c4d72…d33，保持mute／behind／observe-only、实体后台输入关闭，连续三次空闲后只运行一局。
+
+实际Start返回0，初始设备阶段0→1的yield日志dirty／fault均0、restored=1、helper_clean=1；CONT的PostTick此时operation_depth=1，最终同步交还判断因此返回false，外层以equipment_phase_handback_failed结束，terminal7／lease0。component acquire_attempts／update_attempts／commits均0，没有执行P0／P1命令。此时!dirty分支没有调用drain_journals；末尾drain_attempted=1／result=1来自clean no-op，不表示发生过枪体恢复。原有限片段测试未覆盖这条完整初始阶段路径，不能把21类通过扩大为运行通过。
+
+失败Stop0、Shutdown0；三组组件raw、8控制器、44字节挂接和入口独立核对一致，8音频session恢复且pending／read_failed／mute_failed均0。root按PID与creation time只读核对owner／game／XR确切对象均退出。Native／XR独立子会话35层／34次拷贝、跨度0.3514457秒、最大提交间隔15.1906ms，通过不代表CONT或FPS／头显验收。AB正式scope／update／cleanup审计仍false，原receipt8a8e2f4f…6d77和失败不改写；外部root只确认原字节与进程清理，未替代计划Stop6的验收。
+
+AB共142项含seal87067093…3109，root-result dd795275…6e7，全部闭包核对。下一步在独立stage区分未曾持有且全部clean的初始设备交接与真实busy持有，保留epoch撤销、原时限、已持有后的立即关闭和延后恢复；不重跑本局、不放宽drain guard或实际写入校验。

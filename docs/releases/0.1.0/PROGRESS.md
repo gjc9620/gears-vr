@@ -1503,3 +1503,5 @@ SteamVR正常重启后18:45:46日志确认加载krvr_native、HmdDriver::Activat
 五份默认OFF的CONT接线源码经root审查并原字节应用，其余774源保持。实际dispatch／生命周期片段合计21类／287主机检查通过，默认关闭的新一组严格源文本/EP对比通过；原失败和测试替身修正记录保留，已通过的dispatch未因lifecycle编译字面量修复而重跑。原100ms、15秒／256次和手部先于枪体恢复的次序保持。当前仅有限Lancer区间，完整DLL构建、游戏持续更新、全武器、0.7伤害与头显仍待完成，默认入口未安装。详情见0.0.3后续进度，本补记不构成0.1.0发布。
 
 e30e9a30…ce49随后完整PG严格构建与23导出核对通过，私有bundle0b9b8910…cb80冻结779源／27依赖／333工件／1140实体，PG9c86ef31…c021；父170份非PG工件保留，Native／XR／loader没有重建，root闭包核对通过。新的AB单区间更新运行流程已完成源码准备与独立源审，尚未启动游戏；不继承HOLD验收，不改变默认入口。
+
+AB随后完成8类helper／parser检查并在三次空闲后实际运行一局，Start0后初始设备0→1的clean交还被PostTick自身operation_depth1误拒，terminal7／lease0，尚无枪体持有和两次姿态命令。失败保留，142项含seal87067093…3109；root独立核对raw3／8控制器／44挂接／入口／8音频session恢复和确切owner／game／XR退出。Native／XR独立35层／34拷贝通过，CONT正式审计仍false；只准备新stage修正初始阶段判断，不放宽busy drain、原100ms或已持有后的动作关闭。详情见0.0.3后续进度，本补记不构成0.1.0发布。
