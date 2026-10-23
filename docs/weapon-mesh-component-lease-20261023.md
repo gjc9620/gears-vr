@@ -1,6 +1,18 @@
 # 枪体组件变换的可恢复租约候选
 
-此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3至R6的c／d／e／f局取得部分组件更新与交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
+此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3至R7的c至g局取得部分组件更新与交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
+
+## R7购买版g：源证书提交拒绝与三类实际成本
+
+R7封存 `analysis/hand-mesh-phase1-r7-candidates/a7bbc8bc…f4ad4fc/`含742源／162工件，PG `ba40192d…ec8fe1b7`，source manifest SHA `11113b4c9de9bb107602e60aa7f92962bbd7e3c91ed7ef8edc5f7156b8973cf8`；真实build base2327f52、应用commit432dd53分开，未应用后重编。g入口仅OUT／TAG、pins与工件数161→162变化；受影响两入口检查通过，Popen0准备191依赖／26复制／24模块，186共用依赖与模块均和f同源同SHA。15s／256／3s reserve及Mute1／Behind1／ObserveOnly1、后台物理输入关闭保持。
+
+购买版g/PID8620 Start0，仍在Rotation前结束。首次失败ordinal165／group4、known127／checks2047／reject1024，实际为authorize_xr_plan的check10：commit时certificate_recent为false。本次now／live／commit338683531，until338683537，毫秒期限仍余6ms；ticket_ms与plan_ms均338683437，仅支持94ms的本域快照／票据年龄，最新Context年龄0。authorize_ns338683698854600、commit_ns338683698855000，stereo_ns338683594941100、input_ns338683595029700；同NS域源接收年龄分别103.9139／103.8253ms，均超过原100ms。Policy实际求值且mask0，但未记录其所有内部路径，不唯一归因；后Stop11／Shutdown12因短路未执行，不假造结果。R6→R7不同首失败位置不是本诊断候选带来稳定加速的证明。
+
+成本header为QPF10MHz、10／64行、pending1／frozen1／full0；十行均闭合、时钟已知，同lease1／sequence793／revision20。initial8.8377ms，三组snapshot为2.4178／2.3178／2.3091ms，六个name_scan共1.0138ms（包含于snapshot、约占其14.39%），本局不足以支持先优化骨名扫描。initial.begin→末snapshot.finish的纯QPC窗口60.9642ms，initial＋三snapshot非重叠实测15.8824ms，段间45.0818ms尚未唯一归因。沿本版pose_bridge.h:13直接QPC/QPF公式并采用同系统10MHz频率，initial.begin→commit69.7245ms，其中53.8421ms未由这四段覆盖，stereo接收时间在initial.begin时已老34.1894ms；不与GetTickCount64混算，不直接把未覆盖间隙命名为某一函数耗时。逐字段成本复核在 `coordinator-cost-analysis.json`，SHA `4f1c09e28e5e94a3f65c31b003ffc155b5bd0d4604697b8ed06505cd0e078325`。
+
+组件与f同为部分Absolute＋Translation更新、Rotation前向未调用，acquired0／restored1／setter_calls4尝试／fault1；最终dirty／owned／revoked0、safe1，手部0写。独立30项核验确认本次失败、raw三组／三份九Key、8控件／44附件／32和64字节入口原值、冻结742源／162工件／191依赖与实际复制，Stop／Shutdown0及CIM无自有残留；新增成本记录检查不构成性能或整局验收。FPP47、GHW1 matched66／published52／rejected14只确认本局发布。9专属会话已静音、守护读／静音错误及pending0，精确游戏退出后Guard0。component／whole=false、Native入口verifier false、XR1／图像0保持。
+
+原receipt SHA `781f7696438f7f1fbbedc9992b4c3e8dfbe79db7f70bc4d4703e9d254751a19a`，PG log `489285ab56f44f45b69c594f7c0c40c764ed85384b43591dd4dea01e3d9c226e`，独立摘要 `7a7eb69612581dc1b14887912be30a89604bfa7d683f1bf13dacc53c4198aff3`；57文件＋7外部证据封存SHA `bb16f521ec1c287231899064583e4d7431997d201f59d77b495c797718cb26c3`，均位于ignored `analysis/hand-mesh-runtime-1023g/`。旧f的56文件／7外部工件重新核对不变。下一步只把现有component_names scope扩至初始准备块，在lease.acquire前明确析构；所有提前返回恢复TLS，invoke全段关闭、内部失败和外部回滚保持旧范围，不缓存或减认证。它只能影响initial中的解析部分，不能承诺节省整个8.8377ms或足够过关，目前尚无R8源码。
 
 ## R7三类分项计时候选
 
