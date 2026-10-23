@@ -101,3 +101,11 @@ n 实际 Steam 后台会话的 Native／XR 再次通过：57 个 projection laye
 新增固定桶均有有效时钟且未饱和：28 次 current 总计 41.8484ms，13 次 read 总计 40.6419ms；二者嵌套不可相加。112 次 slot getter 的 Args／preflight／完整 run-invoke／postresult 分项分别为 0.1714／0.0401／0.1050／6.7963ms。原始 initial＋三个 snapshot 合计 15.8540ms，初段开始至末 snapshot 跨度 62.8192ms。数据支持继续减少身份／属性反复遍历，不能把真实 getter 执行体当作主要瓶颈，亦不构成 FPS 结论。
 
 失败 Stop／Shutdown 均为 0，原始 8 控制、44 字节 attachment、3 组件组逐字恢复，CallFunction／ProcessEvent 入口精确恢复；Native drain／entries restored、XR exit 0，独立确切创建时间核对原 owner／game／XR 已退出，game exit 1。8 个音频 session 静音并全部恢复，pending 0。修正后的 audit 工件／环境取证通过，保留 15 项真实交互覆盖失败。n 共 108 份证据加 seal，seal 2aea7640…ed40，root result e08025e3…5249；未重开或改写 m。下一步仅对确定的局部 metadata 重复查询做等价优化，不跳过 current/getter 或放宽授权。
+
+## 2026-10-23 — 保留实时校验的局部属性查询合并
+
+将已独立验证的局部 property coalesce 最小 patch 应用到计时源，保留计时改动；私有反向还原在 CRLF 标准化后与应用前原件完全一致。仅新增 field_at 并在 boolean、fast absolute_storage、fast read 的无 engine 调用局部区段复用解析的 property；Translation／Rotation 句柄块在末 current 前结束。所有 registration／类型／维数／大小／offset／mask／live value 检查、首尾 current、所有 getter、VM 顺序、Plan／100ms、setter 及恢复保留。
+
+原／新真实 helper 的 36 个稳定 metadata fixture、547 项检查通过；相关 property 遍历 boolean 2→1、absolute_storage 6→3、read 局部区段 10→5，不包含 current 内部。首次严格编译仅因测试 fixture 全局 mesh 同名失败，改 fixture 名后保持 /W4 /WX 通过，生产 stage 未因该错误改变。Astra 窄审 9f6d3716…a96a 通过；CPU／旧套件未重跑。root 私有反向证明先被 Windows 反斜杠拒绝，再因 git autocrlf 的 LF→CRLF 未逐字相等；标准化后完全一致，两项证明错误保留，不涉及代码失败或游戏重试。真实提速及 100ms 授权仍待新候选实测；不会据此宣称自由手／枪已完成。stage 和集成证明位于忽略的 analysis/hand-mesh-local-property-coalesce-20261023/ 及对应 integration 目录。
+
+Astra 后续核对 n 的拒绝位 1024 为 commit 时的 certificate_recent：原 stereo 实际年龄 109.0797ms、input 109.0562ms；authorize 采样年龄 109.0792ms，tick 票据 94ms 不能覆盖源姿态过期。current 扣除四个 slot 分项后 34.7356ms 仍包含其他身份／链接／类型检查及计时开销，不能全部归因给某一 property。
