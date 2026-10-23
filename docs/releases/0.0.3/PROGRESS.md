@@ -85,3 +85,9 @@ m 实际启动、原版 Lancer 准备、Native 激活和第一帧双目提交均
 另修正了一处独立审计接线错误：旧 collector 仍要求 146 工件，而新固定 manifest 为 28。只在新副本把两个数量断言绑定至显式 `ARTIFACT_COUNT=28`，保留数量唯一性、全部 hash／flags／路径／依赖和 Guard 检查；28 项含重复及 27／29 项仍拒绝。对已退出 m 的只读重算不再有 source 采集异常，artifacts／environment 通过，15 项真实 trial 断言继续失败，没有改写 m。原 106 个文件前后逐一相同；副本及结果在忽略的 `analysis/hand-mesh-audit-count-fix-20261023/`，报告 `ed81ee0e…d72a8`。
 
 Astra 对超时调用顺序的诊断 `f9ef058c…d49f` 表明，不能给同一不可变 Plan 或 certificate 重置原始时间：现有代码本来就在每次 setter 前重新认证，末次 snapshot 完成时原 stereo 已约 98.534 ms。尤其 `component::read` 首尾的 `current()` 会各调用四次真实 `GetWeaponInSlot.run()`；按成功分支，到本次 Rotation 认证前已有 96 次该 getter，不能视为纯内存读取而跨 engine 调用复用“校验通过”。下一步只在私有候选补有界分项计时，区分 metadata 与真实 invoke，再决定最小降本；100 ms、原始源时间、现有调用顺序与恢复逻辑保持。
+
+## 2026-10-23 — 首次组件超时的私有分段计时
+
+根据 m 实际首次 acquisition 的严格 100ms 超时，在现有 component_cost 诊断中追加 6 类 × 4 组的固定 24 桶，覆盖 current/read 总段及原有 GetWeaponInSlot 的 Args、preflight、run/invoke 和结果检查。保留原 64 行、所有真实 getter 次数／短路／顺序、原始 Plan 与证书时间、setter 授权及恢复；没有热路径文本和额外游戏调用。统计累计到首次故障或原有 stop dump，可能跨多个 acquisition，没有独立 lease 标记；嵌套统计不可相加，run/invoke 包含现有 guards/wrappers。
+
+独立 stage 的真实 PG TU 在同 26 项配置和 /W4 /WX 下首次 object 编译通过，实际抽取计时器的 15 场景／91 检查通过。Astra 窄审 5bf582db…3e76 无阻断，root 核对三份原件／stage／复核哈希后应用。本次尚未链接新主 DLL 或采集真实引擎分段耗时；不能据此判定瓶颈或认为 100ms 问题已修。原 m、父 bundle 和默认启动器保持。证据保存在忽略的 analysis/hand-mesh-component-cost-next-20261023/。

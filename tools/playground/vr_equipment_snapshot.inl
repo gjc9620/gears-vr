@@ -334,12 +334,28 @@ bool read_bool(uptr object,const wchar_t* field,bool& value){
 #include "vr_lancer_socket_probe.inl"
 #endif
 bool read_slot(uptr inv,std::uint8_t slot,uptr& weapon){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_cost::AggregateSpan args_cost(component_cost::AggregateKind::slot_args,component_cost::slot_owner);
+#endif
     playground::Args call(inv,L"GetWeaponInSlot");
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    args_cost.close();
+    component_cost::AggregateSpan preflight_cost(component_cost::AggregateKind::slot_preflight,component_cost::slot_owner);
+#endif
     const auto p=call.prop(L"Slot");
     if(!p||get<unsigned>(p+0x74)!=1||
        !playground::named(get<uptr>(p+0x50),L"ByteProperty")||
        !result_property(call,L"ObjectProperty",sizeof(uptr)))return false;
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    call.set(L"Slot",slot);
+    preflight_cost.close();
+    component_cost::AggregateSpan vm_cost(component_cost::AggregateKind::slot_vm_run,component_cost::slot_owner);
+    if(!call.run())return false;
+    vm_cost.close();
+    component_cost::AggregateSpan postresult_cost(component_cost::AggregateKind::slot_postresult,component_cost::slot_owner);
+#else
     if(!call.set(L"Slot",slot).run())return false;
+#endif
     weapon=call.output<uptr>();
     if(!weapon)return true;
     if(!playground::instance(weapon,L"WarWeapon")||playground::deleted(weapon))return false;

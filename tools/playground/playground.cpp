@@ -167,11 +167,18 @@ bool text(uptr from,wchar_t* out,size_t count){
     out[count-1]=0;return false;
 }
 } // namespace component_names
-// Three nested diagnostic spans only. These clocks and results never grant
-// authority. Rows reserve bounded storage; no diagnostic text is written here.
+// Three original nested row spans and fixed component/getter aggregates only.
+// These clocks and results never grant authority; no hot-path text is written.
 namespace component_cost {
 enum class Kind:unsigned {initial,snapshot,name_scan};
 constexpr unsigned capacity=64;
+enum class AggregateKind:unsigned {current_total,read_total,slot_args,slot_preflight,slot_vm_run,slot_postresult,count};
+constexpr unsigned aggregate_groups=4;
+constexpr unsigned aggregate_capacity=unsigned(AggregateKind::count)*aggregate_groups;
+struct Aggregate {
+    std::uint64_t count{},valid_count{},invalid_clock{},sum{},maximum{};
+    bool saturated{};
+};
 struct Row {
     Kind kind{};unsigned group{},lease{};
     std::uint64_t sequence{},revision{},begin{},finish{};
@@ -180,6 +187,7 @@ struct Row {
 };
 struct State {
     std::array<Row,capacity> rows{};
+    std::array<Aggregate,aggregate_capacity> aggregates{};
     unsigned count{},open{},initial_open{},lease{};
     std::uint64_t frequency{},sequence{},revision{};
     bool enabled{},pending{},frozen{},full{},dumped{};
@@ -187,11 +195,16 @@ struct State {
 State state;
 thread_local bool invoke_paused{},snapshot_owner{};
 thread_local unsigned snapshot_group{};
+thread_local bool aggregate_owner{},slot_owner{};
+thread_local unsigned aggregate_group{};
 std::uint64_t stamp() noexcept {
     LARGE_INTEGER value{};
     return QueryPerformanceCounter(&value)&&value.QuadPart>0?std::uint64_t(value.QuadPart):0;
 }
-void reset(){state={};snapshot_owner=invoke_paused=false;snapshot_group=0;}
+void reset(){
+    state={};snapshot_owner=invoke_paused=aggregate_owner=slot_owner=false;
+    snapshot_group=aggregate_group=0;
+}
 void begin(std::uint64_t sequence,std::uint64_t revision,unsigned lease){
     if(invoke_paused||state.pending||state.frozen||state.dumped||state.open)return;
     if(!state.enabled){
@@ -205,6 +218,50 @@ void failure(bool forward,bool faulted){
     if(invoke_paused||faulted||(!forward&&!state.initial_open)||!state.enabled||state.pending||state.frozen||state.dumped)return;
     state.pending=true;freeze_if_closed();
 }
+// Saturation keeps a long diagnostic session bounded without wrapped totals.
+void aggregate_add(std::uint64_t& target,std::uint64_t value,bool& saturated){
+    constexpr auto limit=~std::uint64_t{};
+    if(value>limit-target){target=limit;saturated=true;}else target+=value;
+}
+struct Owner {
+    bool saved_owner,saved_slot;unsigned saved_group;
+    Owner(unsigned group,bool eligible):saved_owner(aggregate_owner),saved_slot(slot_owner),saved_group(aggregate_group){
+        aggregate_owner=eligible&&!invoke_paused;aggregate_group=aggregate_owner?group:0;slot_owner=false;
+    }
+    ~Owner(){aggregate_owner=saved_owner;slot_owner=saved_slot;aggregate_group=saved_group;}
+    Owner(Owner const&)=delete;Owner& operator=(Owner const&)=delete;
+};
+struct SlotOwner {
+    bool saved;
+    SlotOwner():saved(slot_owner){slot_owner=aggregate_owner&&!invoke_paused;}
+    ~SlotOwner(){slot_owner=saved;}
+    SlotOwner(SlotOwner const&)=delete;SlotOwner& operator=(SlotOwner const&)=delete;
+};
+struct AggregateSpan {
+    unsigned index=aggregate_capacity;std::uint64_t begin{};
+    explicit AggregateSpan(AggregateKind kind,bool eligible=true){
+        // No owner on other threads or in the ordinary/default equipment path.
+        if(!eligible||!aggregate_owner||invoke_paused)return;
+        if(!state.enabled||state.pending||state.frozen||state.dumped)return;
+        const unsigned group=aggregate_group==0?0:aggregate_group==1?1:aggregate_group==2?2:aggregate_group==4?3:aggregate_groups;
+        if(unsigned(kind)>=unsigned(AggregateKind::count)||group==aggregate_groups)return;
+        index=unsigned(kind)*aggregate_groups+group;begin=stamp();++state.open;
+    }
+    void close(){
+        if(index==aggregate_capacity)return;
+        const auto finish=stamp();auto& aggregate=state.aggregates[index];
+        aggregate_add(aggregate.count,1,aggregate.saturated);
+        if(state.frequency&&begin&&finish>=begin){
+            const auto ticks=finish-begin;
+            aggregate_add(aggregate.valid_count,1,aggregate.saturated);
+            aggregate_add(aggregate.sum,ticks,aggregate.saturated);
+            aggregate.maximum=(std::max)(aggregate.maximum,ticks);
+        }else aggregate_add(aggregate.invalid_clock,1,aggregate.saturated);
+        --state.open;index=aggregate_capacity;freeze_if_closed();
+    }
+    ~AggregateSpan(){close();}
+    AggregateSpan(AggregateSpan const&)=delete;AggregateSpan& operator=(AggregateSpan const&)=delete;
+};
 struct Span {
     unsigned index=capacity;
     explicit Span(Kind kind,unsigned group,bool eligible=true){
@@ -273,6 +330,18 @@ void dump(bool clean){
             L"names_count_known=%u names_count=%d hit_known=%u hit_index=%d\n",i,unsigned(row.kind),row.group,row.lease,
             row.sequence,row.revision,row.begin,row.finish,unsigned(row.closed),unsigned(row.clock_known),
             unsigned(row.result_known),unsigned(row.result),unsigned(row.count_known),row.names_count,unsigned(row.hit_known),row.hit_index);
+    }
+    constexpr const wchar_t* aggregate_names[]={L"current_total",L"read_total",L"slot_args",L"slot_preflight",L"slot_vm_run",L"slot_postresult"};
+    constexpr unsigned groups[]={0,1,2,4};
+    for(unsigned i=0;i<aggregate_capacity;++i){const auto& aggregate=state.aggregates[i];
+        if(!aggregate.count)continue;
+        // slot_vm_run is the complete existing Args::run/invoke boundary,
+        // including its guards/wrappers; it is not a pure native-body timer.
+        fwprintf(log_file,L"hand_weapon_component_cost_aggregate schema=1 kind=%ls group=%u count=%llu valid_count=%llu "
+            L"invalid_clock=%llu sum_qpc=%llu max_qpc=%llu frequency=%llu saturated=%u nested_not_additive=1 "
+            L"vm_boundary_args_run_invoke=%u extra_getters=0\n",aggregate_names[i/aggregate_groups],groups[i%aggregate_groups],
+            aggregate.count,aggregate.valid_count,aggregate.invalid_clock,aggregate.sum,aggregate.maximum,state.frequency,
+            unsigned(aggregate.saturated),unsigned(i/aggregate_groups==unsigned(AggregateKind::slot_vm_run)));
     }
     fwprintf(log_file,L"hand_weapon_component_cost_end schema=1\n");fflush(log_file);
 }

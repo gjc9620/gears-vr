@@ -150,6 +150,7 @@ bool consume_self(uptr object,uptr function){
 }
 bool current(Key const& expected,bool fast=false){
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
+    component_cost::AggregateSpan cost(component_cost::AggregateKind::current_total);
     const auto identify=[fast](uptr object,stow::ObjectKey& key){return fast?lookup::object_key(object,key):stow::object_key(object,key);};
     const auto link=[fast](uptr object,const wchar_t* label,uptr& value,bool component=false){return fast?lookup::pointer(object,label,value,component):stow::pointer(object,label,value,component);};
     const auto instance=[fast](uptr object,const wchar_t* label){return fast?lookup::instance(object,label):playground::instance(object,label);};
@@ -173,8 +174,11 @@ bool current(Key const& expected,bool fast=false){
        !link(address(7),L"SkeletalMesh",pointer)||pointer!=expected.asset.address||
        get<uptr>(address(0)+0x40)!=address(1)||get<uptr>(address(2)+0x40)!=address(1)||
        get<uptr>(address(3)+0x40)!=address(1))return false;
-    for(std::uint8_t i=0;i<4;++i){
-        uptr slot{};if(!vrequip::read_slot(address(4),i,slot)||slot!=expected.slots[i])return false;
+    {
+        component_cost::SlotOwner slot_cost;
+        for(std::uint8_t i=0;i<4;++i){
+            uptr slot{};if(!vrequip::read_slot(address(4),i,slot)||slot!=expected.slots[i])return false;
+        }
     }
     return instance(address(6),L"Weap_AssaultRifle")&&
         instance(address(7),L"SkeletalMeshComponent")&&
@@ -205,6 +209,7 @@ bool triple_schema(uptr property,bool rotation){
     return true;
 }
 bool read(Key const& key,State& out,bool fast=false){
+    component_cost::AggregateSpan cost(component_cost::AggregateKind::read_total);
     out={};
     if(!current(key,fast))return false;
     const auto mesh=key.objects[7].address;
@@ -253,6 +258,7 @@ struct Backend {
     Forward* forward{}; // nullptr is rollback, authenticated by old Key/value only.
     bool read(State& state){
         component_names::Scope names_scope(forward&&!lease.faulted());
+        component_cost::Owner cost_owner(component_trace::state.meta.group,forward&&!lease.faulted());
         component_trace::Scope scope;
         const bool ok=component::read(expected_key,state,forward&&!lease.faulted());
         const auto saved=component_trace::state.meta;
@@ -447,6 +453,7 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
     component::Value wanted{};
     {
         component_names::Scope names_scope(!component::lease.faulted());
+        component_cost::Owner cost_owner(0,!component::lease.faulted());
         if(!component_trace::gate(component_trace::Stage::capture,component::capture(hand,key))||
            !component_trace::gate(component_trace::Stage::component_clean,!component_dirty())||
            !component_trace::gate(component_trace::Stage::component_not_faulted,!component_faulted()))return false;
