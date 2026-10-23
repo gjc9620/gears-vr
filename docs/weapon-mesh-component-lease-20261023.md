@@ -1,6 +1,18 @@
 # 枪体组件变换的可恢复租约候选
 
-此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3的c局及R4/R5的d/e局取得部分组件更新与交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
+此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3至R6的c／d／e／f局取得部分组件更新与交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
+
+## R6购买版f：仍超期，下一步先分项计时
+
+R6封存 `analysis/hand-mesh-phase1-r6-candidates/c7faadd2…350aa2b/`含742源／161实际工件，PG `8079a0d3…5cefdbb8`、manifest SHA `08c4bf810c1ca57b8421396da579b52843616aad93e88ffd98739c88965986c6`；build base41d7c96与应用commit `4d00626`分别保留，没有应用后重编。f入口仅OUT／TAG与候选pins相对e改变，工件数仍161；两项受影响入口检查通过。Popen0准备191依赖／26复制／24模块，186共用依赖及24模块与e同源同SHA，15s／256／3s reserve、Mute1／Behind1／ObserveOnly1与物理后台输入关闭不变。
+
+购买版f/PID57956 Start0，终止于component_acquire_failed，手部0写。首失败ordinal165／group4最早deadline门，known67／checks3／reject2：live_now334506796比write_until334506787晚9ms；ticket_ms334506687、plan_ms334506703、context_ms334506781。后续NS／Policy／commit／Stop条件未执行，不把unknown0解释为实际检查结果。**plan_ms实际来自plan.context.observed_ms，是所携带游戏快照的观测时刻，并非Plan构造入口。** 本局ticket年龄109ms、该快照年龄93ms、两观测间隔16ms、最新Context年龄15ms；此前按plan_ms计算的“Plan age”也只能按快照年龄理解。e／f的109／93不能作为稳定加速16ms或组件耗时的证明，未混用ms与sourceNS推算源年龄。
+
+pre_restore支持Absolute000→110、Translation到目标、Rotation保持原值，dirty／owned mask3；终态acquired0／restored1／setter_calls4／sticky fault1，最终dirty／owned／revoked0、safe1。四次为调用尝试，不是四次成功；本次未完成acquire或跨Tick枪体运动。独立只读25项确认raw三组／三份九Key、8控件／44附件、32-byte CallFunction与64-byte ProcessEvent原值保持，Stop／Shutdown0及CIM无自有残留。FPP44、GHW1 matched57／missing0／published45／rejected12，仅确认本局发布，未按rejected计数归因。原component／whole=false、Native入口verifier false、XR exit1／图像提交0保留。
+
+9个专属会话已静音，守护muted／read_failed／mute_failed／restore_pending均0，精确游戏退出后Guard exit0。独立摘要SHA `64fb853309c2f955b3afc2f49f67e0109ce5fc1294c1fd216819d1ee00b7374a`明确不是整局验收；原receipt `e5f483ebf424fd8fd25c6bd2af5b6937e8fce4bf5ddb45947c059acde1e90185`，PG log `8169a33d46138d2050edacbec9286c66d1cee4e89a02df43383ed10a4244d534`。56文件＋7外部证据封存SHA `dd6938cc63138203cfc19ce835e33e6084d9a0a384331d8f2e9b6052d2b8f139`，位于ignored `analysis/hand-mesh-runtime-1023f/`；旧e的55文件／7外部工件重新核对不变。
+
+现有f的write_evidence为0.1031ms，顶层hand_snapshot_identity均值5.0533ms，但不是各组Forward快照分项。源码仍在每次read_snapshot中进行左右手name_value全局名称扫描，组件capture／world／initial_read／absolute_storage也处于Backend TLS之外；现有聚合不能判定哪项主导剩余开销。下一步只加初始块、Forward快照与其中骨名扫描三类有界QPC诊断，按group隔离前向与恢复，首失败冻结、终端输出；快照与扫描为嵌套项不能相加，不新增getter或逐entry计时，不放宽100ms或缓存元数据。
 
 ## R6前向调用范围内的名称读取候选
 
