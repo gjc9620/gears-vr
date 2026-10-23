@@ -73,3 +73,15 @@ l 后台实测已成功通过原生预留，完整回执确认 4 项图形保护
 退出时 `PlaygroundShutdown=0`，八控制器、44 字节挂接和三组武器组件原始状态逐一相符，原生 CallFunction 入口恢复记录保留。8 个游戏音频会话已静音并恢复，`restore_pending=0`，未修改普通启动器音量。协调者核实确切 game／owner／XR 均不在运行；游戏退出码 1，本次没有把它写成正常 exit 0 或完整 Native cleanup 通过。l 的 96 份文件封存，seal `4c2300ba…0142a`，结果 `9275a7d2…6b02b`，原始外部 Native／XR 状态、CSV、stdout、stderr 及回执均复制保存。
 
 直接原因由原源码链确认：测试的 session 参数遗漏 `render_scale`，XR 因而没有 `--render-scale`，不会发布 `RenderSizeBridge`；新 Native 的 owned transport 必须取得当前分辨率信息，故在代码段哈希校验之前就短路拒绝。`runtime_ranges_match=0` 在这里不能当作游戏二进制哈希不匹配。下一独立 m 入口从已冻结配置传入该参数，沿用相同候选与检查器，不关闭发布版 VR DOF 或运行时分辨率机制。此前对已结束 agent 使用普通消息没有启动新的复核任务，root 已纠正为正式 follow-up；l 的实际放行依据是协调者源码与实物复核，没有虚构一次未执行的 Astra 通过报告。
+
+## 2026-10-23 — 双目实际提交恢复，定位首个手／枪姿态事务超时
+
+m 仅从已校验的冻结配置补传 `render_scale=1`；两个针对性检查调用真实 XR／Native command builder，确认 XR 只增加该参数对、Native 命令逐项保持，非法比例仍拒绝。协调者核对新 helper 和这一 keyword 之外的全部函数／class、finally 与 audit 保持。Astra 独立源码诊断确认缺失参数的完整发布／读取链，报告 `8f94ad69…a27ff`。本轮未重编主要组件或重跑已通过的 54／58 组。
+
+m 实际启动、原版 Lancer 准备、Native 激活和第一帧双目提交均通过。Native／XR 子会话退出时自身为 passed，短窗口实际提交 59 个 projection layers、完成 32 次 scene copies，跨度约 0.635 秒；不是长时帧率、实体头显或完整交互验收。Native 同会话 FPP 累计 applied=42、hand publication=45、continuity publication=39，原生入口恢复、drain、状态资源回收和 XR exit 0 均得到回执。
+
+手／枪 trial Start 返回 0，但首个枪体 acquisition 在 Rotation setter 认证前结束，完成 hand lease 为 0。Absolute 和 Translation 曾暂时设置，Rotation 尚未调用；原计划 `created_ms=21246656`，`write_until=21246756`，认证时 `now=21246765`，超过原 100 ms 时限 9 ms。事务已回退，独立原始字节比较确认八控制器、44 字节挂接和三组枪组件恢复，32／64 字节原入口匹配，8 个音频会话恢复。component 和 whole-session 仍是失败。m 的 105 证据加 seal 均保留，seal `ab3a48a5…5f910`，协调者结果 `83a2a519…5cfc9`；确切 game／owner／XR 都已退出。
+
+另修正了一处独立审计接线错误：旧 collector 仍要求 146 工件，而新固定 manifest 为 28。只在新副本把两个数量断言绑定至显式 `ARTIFACT_COUNT=28`，保留数量唯一性、全部 hash／flags／路径／依赖和 Guard 检查；28 项含重复及 27／29 项仍拒绝。对已退出 m 的只读重算不再有 source 采集异常，artifacts／environment 通过，15 项真实 trial 断言继续失败，没有改写 m。原 106 个文件前后逐一相同；副本及结果在忽略的 `analysis/hand-mesh-audit-count-fix-20261023/`，报告 `ed81ee0e…d72a8`。
+
+Astra 对超时调用顺序的诊断 `f9ef058c…d49f` 表明，不能给同一不可变 Plan 或 certificate 重置原始时间：现有代码本来就在每次 setter 前重新认证，末次 snapshot 完成时原 stereo 已约 98.534 ms。尤其 `component::read` 首尾的 `current()` 会各调用四次真实 `GetWeaponInSlot.run()`；按成功分支，到本次 Rotation 认证前已有 96 次该 getter，不能视为纯内存读取而跨 engine 调用复用“校验通过”。下一步只在私有候选补有界分项计时，区分 metadata 与真实 invoke，再决定最小降本；100 ms、原始源时间、现有调用顺序与恢复逻辑保持。
