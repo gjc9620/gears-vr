@@ -102,7 +102,7 @@ bool dual_draining{},hand_writes_relinquished{};
 bool journals_dirty(){return trial.lease.dirty()||component_dirty();}
 void publish_journals(){safe_to_unload.store(!journals_dirty(),std::memory_order_release);}
 bool restore(const wchar_t*);
-bool drain_journals(const wchar_t* reason){
+bool drain_journals(const wchar_t* reason,bool hand_restore_names=false){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     component_names::Scope names_scope(false);
 #endif
@@ -110,7 +110,11 @@ bool drain_journals(const wchar_t* reason){
     if(dual_draining)return false;
     dual_draining=true;
     component_pre_restore();
-    const bool hand=restore(reason);
+    bool hand{};
+    {
+        component_names::Scope hand_names_scope(hand_restore_names);
+        hand=restore(reason);
+    }
     const bool component=component_restore(); // Always attempted, even after hand failure/end.
     dual_draining=false;publish_journals();
     if(trial.ended)component_dump_end(); // Diagnostic retry after both journals have been attempted.

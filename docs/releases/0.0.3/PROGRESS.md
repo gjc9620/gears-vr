@@ -262,3 +262,11 @@ actual terminal 为 tick2544／site0／attempt2／serial31／sequence811。ring 
 Native／XR 子会话通过59层、42次拷贝、跨度0.6471454秒、最大提交间隔13.9737ms；left history创建／释放／销毁各1、失败0。Stop／Shutdown均0，8控制、44字节挂接和原入口恢复通过；确切owner／game／XR已退出，game exit1，8音频session恢复且pending／read_failed／mute_failed为0。x共108证据加seal，root逐项重哈希闭包通过，seal ca377c6f…73e7、result49c77c48…1f26。首次collector因失败审计根本未生成component_rows而KeyError拒绝，其脚本与说明保留；只修正缺失键表达并保持unknown后封存，receipt／audit／游戏未重跑或改写。下一步继续定位手恢复中的实时名称解析和后置快照拒绝，未放宽任何期限、原始身份或恢复校验；默认入口和公开包保持。
 
 Astra 独立诊断 8d0bbf1f…884c 以完整授权 NS 与 tail QPC 夹取确认末次原因，并分别记录 postflush→tail commit46.5074ms 和 component initial→tail commit46.5072ms。唯一建议是仅在 pre_tick 显式 drain 的手恢复词法区间选择现有名称算法，其他动作／终止入口默认关闭，原外层 false、递归 opt-out、全套恢复顺序与100ms保持。手恢复10.2637ms是整个观测段，尚未分测可省比例；不能预先承诺覆盖5.6435ms缺口。当前没有该候选 stage 或新一轮构建／游戏，14项诊断输入重哈希保持，外部报告不修改x封存。
+
+## 2026-10-24 — 显式 pre_tick 手部恢复的名称解析接线
+
+仅在 drain_journals 增加默认 false 的手恢复名称参数，并给原手 restore 调用套入局部 Scope；GT 检查后的唯一 pre_tick 调用显式传 true，其他五处动作／失败清理调用保持默认 false。原最外 Scope(false)、dual_draining guard、枪 prelog→手恢复→枪恢复的顺序与返回式保持；手恢复失败或结束仍先退出局部 Scope 再尝试枪恢复。Stop／ended 不成为恢复准入门，实际 restore 整函数、Backend／lease、getter／read-fast／guards、原100ms、invoke及递归 opt-out逐字保持。手 Scope 内可能执行原 end/dump 日志，其真实闭包未增加引擎写入或权限。异常只恢复 TLS，不新增原协议没有的异常清理。
+
+实际旧／新 wrapper、原手 restore 与 GT admission 片段的有限 CPU 对照通过34场景／13604次逐事件检查，默认与显式false均等价于旧 wrapper。首次编译因提取头CRCRLF触发 /WX C4335，确切输入和失败日志保留；仅修三份提取头换行后第二编译／唯一执行通过，生产stage不变，旧算法及宽suite未重跑。producer0acc9930…bdeb、Astra ffd654e0…cb5c无阻断；root核43工件及原777源后应用两份raw stage，其余775源保持。原LF及三处精确逆变换可还原旧源，不宣称实测节省或TTL通过。本轮完整PG构建和实际运行仍待执行。
+
+另作有界架构复核1af597ef…7420：逐Tick完整恢复／重新acquire及正常三组恢复中的96次slot getter是当前一帧试验协议，尚非引擎必须如此的证据；现有clean-only policy与lease也不能直接跳过。持续owner、逐帧owned→owned更新是后续候选方向，每次仍须新Plan、live guard及100ms；跨Tick持有的原动画反馈、字段覆盖和动作边界需先做受控实证。x中240次slot Args::run/invoke累计0.162ms属于嵌套forward桶，不能把主要成本归为getter执行或叠加桶。通过100ms和有限几何仍不等于流畅、完整的6DoF交互。本轮开始发现另一局游戏与音频守护，离线工作未干预它们；后台运行仍需新的空闲核验。

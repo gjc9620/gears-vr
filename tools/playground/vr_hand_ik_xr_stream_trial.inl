@@ -745,7 +745,7 @@ void pre_tick(uptr){
     tick_diagnostic.stamp(tick_boundary_diagnostic::Boundary::pre_entry);
 #endif
     if(journals_dirty()){
-        if(!drain_journals(L"pre_tick_dual_drain")&&!trial.ended)end(8,L"dual_drain_failed");
+        if(!drain_journals(L"pre_tick_dual_drain",true)&&!trial.ended)end(8,L"dual_drain_failed");
     }else publish_journals();
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     tick_diagnostic.stamp(tick_boundary_diagnostic::Boundary::after_drain);
