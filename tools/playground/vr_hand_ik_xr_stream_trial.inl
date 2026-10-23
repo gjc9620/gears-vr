@@ -867,6 +867,9 @@ void post_tick(uptr pc){
         return;
     }
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL) && defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    component_names::Scope prefix_names_scope(trial.xr_equipment_phase==1 ? true : component_names::enabled);
+#endif
     Snapshot value{};bool known{};
     {
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
@@ -1066,6 +1069,9 @@ void post_tick(uptr pc){
     }
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL) && defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    component_names::Scope restore_prefix_names_scope(prefix_names_scope.saved);
+#endif
     safe_to_unload.store(false,std::memory_order_release);
     if(!component_apply(plan,frame,check,mask,lease)){
         drain_journals(L"component_acquire_failed");

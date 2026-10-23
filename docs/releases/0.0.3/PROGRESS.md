@@ -240,3 +240,11 @@ Native／XR 此局通过 219 层／66 次场景拷贝、跨度 2.4120402 秒、�
 实际 terminal tick2445／site0／attempt2／sequence827 的 postflush 授权是通过的：全部 127 已知字段、checked8191／rejected0。随后同原 ticket／stereo／input 时间的组件 group1 授权 ordinal339 才在 certificate_recent／1024 被拒；commit 时 stereo 源龄 107.8788ms、input 源龄 107.8628ms，MS ticket 年龄 94ms、距其截止尚有 6ms。因此此次是 NS 源姿态过期，不是把 postflush 通过误记为拒绝，亦不能用历史 first_failure 代替关联。该帧 pre→drain 40.7516ms、drain→post 7.3301ms；postflush commit 时原 stereo 已 89.6541ms，到组件 group1 commit 又经过 18.2247ms。各值属于相应观测区间，不能相加嵌套桶，或把相对 v 的跨局差值当作确定节省。100ms、原始时钟与 Plan、全部 getter／guards／恢复次序保持。
 
 Native／XR 子会话通过 67 层、42 次场景拷贝、跨度 0.7163702 秒、最大提交间隔 16.0716ms；left history 创建／释放／销毁各 1、失败 0。Stop／Shutdown 均 0；8 控制、44 字节挂接、3 raw 组件组和原入口恢复相符。组件 faulted=1 如实保留，dirty／owned／revoked 均 0，不把安全卸载写成无故障整局通过。root 以创建时间和终止状态核实确切 owner／game／XR 均退出，game exit1；8 个音频 session 恢复，pending／read_failed／mute_failed 均 0。w 共 126 证据加 seal，经 root 重哈希闭包通过，seal c5b02126…2d8b、result 07845c6b…da5e；原 v／u 封存保持。新的 collector 分别保留 terminal callback 的 postflush 结果和按原时间戳关联的组件拒绝，明确 gate 行自身没有 tick ID。后续只定位剩余开销，尚未证明持续双手／枪体、完整暂收返回或全武器功能。
+
+## 2026-10-24 — 同帧前置检查的名称解析接线
+
+独立几何复核 5d8d1a4a…607c 确认 w 仅一个 later-Tick 样本通过，连续运动／收回／取回均未覆盖；Astra 的真实时序诊断 53fda8d4…97b9 明确区分 postflush 通过与后续组件拒绝。w 未开名称 scope 的 post→原 reader 时钟为 12.0372ms、reader→postflush 为 21.0325ms；这是可定位的原检查窗口，不能把全部 33.0697ms 当作可省时间。第一笔成功的组件 initial→tail authorize 仍需 54.6277ms，因此下一候选也不能预先声称足够完成整局。
+
+只在 post_tick 原 active／session／clock／deadline 检查之后、首次 Snapshot 之前增加 phase1 名称 Scope，在 component_apply 之前用第二只 Scope 恢复入口保存的 TLS。非 phase1 继承原入口值；两声明都只在 HAND／CERTIFIED／COMBINED 同时开启时存在。原 Plan／时间戳／声明位置、read-fast、全部 getter／guard／VM 顺序、100ms、现有 tail Scope 和 invoke／drain／stow opt-out 逐字保持，只有两处共六行插入，无新缓存、权限或时钟。
+
+实际 Scope／InvokePause／invoke 和两处 literal 声明的有限 CPU 生命周期 fixture 首次严格编译、首次执行通过 46 场景／5680 检查；8 宏组合是同一 fixture 中的声明 guard probe，不是八个完整 PG 构建。它验证父 TLS 两态、phase0／1／2、早返、临时 opt-out、递归 callback、component 入口和两 Scope 逆序析构，不运行整个 post_tick 或真实 getter／engine，不能证明性能或 TTL。两次准备脚本因 CRLF 假设及残留 marker 在任何源码副本写入前拒绝，原件保留；root 初次只读 extraction guard 误将 fixture 独立 namespace 闭括号当作生产连续片段而拒绝，修正比较边界后通过，未重跑 CPU。producer f2f895cf…aa80、Astra b2951336…c225 无阻断，root 验证 36 工件及原 777 源，仅按 raw stage cad39e77…d7cf 替换 stream 文件，其余 776 源保持。原 LF 换行保留，删除两块可逐字还原旧源。本轮完整 PG 构建与实际后台复测仍待执行，默认入口保持原发布组件。
