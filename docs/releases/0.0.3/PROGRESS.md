@@ -392,3 +392,15 @@ root独立核对三组组件raw、8控制器、44字节挂接和入口恢复，8
 真实授权、capture／classifier与原生命周期片段组成13类／350项主机检查，首次严格MSVC编译和运行均0，CPU e3e67d3b…1c79；覆盖原检查顺序、父observer恢复、当前调用包、有效权限子集、已有7与清理7／8及原手部恢复。7个旧片段原字节沿用、5个新片段核对实际源边界，Policy返回／时钟调度／快照与组件恢复仍是声明过的host seam；不是完整certified XR、实际引擎动作或消费证明，未重跑旧AC／dispatch测试。
 
 运行前发现新增纯诊断行名落在旧auditor保留的continuous命名空间内，会被unknown-prefix检查拒绝；保留48个未执行准备文件后，仅将源、提取片段和fixture读行前缀同步改为hand_weapon_component_prewrite_rejection，审计器原字节保持。修正前没有执行CPU或游戏，不称为一次运行失败。原五pin检查器另保留未执行版，AD新OFF适配为单个已审XR delta加四份两侧同一冻结父上下文；唯一一组两次/EP均0，严格完整非空行字节相等，proof083cc697…660a，仍非完整TU／ABI。root新源审314c1725…fd4a、fixture审185367d6…fa66、集成7032c751…189d、原字节应用e6559d32…98b均通过。完整新PG构建与AD实际局尚待进行，AC110项封存和失败不改写，默认入口未安装。
+
+## 2026-10-24 — ad单个持枪区间的连续更新、正常停止与恢复审计通过
+
+提交95705a8b…2180随后完成唯一完整PG严格构建，23导出保持；PG28ce0a16…73f7，私有bundle d2ad1c9a…20af／manifest9739413d…3521冻结779源、27依赖、479工件／1286实体，其中新增78份必要证据、父400份非PG工件原字节保留。Native／XR／loader与原配置没有重建或替换，root闭包报告99b94d92…8d5a通过。root元数据核对的Windows路径分隔符、派生manifest来源标签解释错误在游戏前保留并修正；没有重跑通过的CPU／构建，候选本身未因此改写。
+
+AD runner仅变更AC的OUT／TAG，auditor原字节2be21ee5…1470；已通过的AB helper8类沿用，不重复执行。prep3fd3adc3…4881绑定208依赖、26复制（含一份按固定私有DLL路径派生的模拟器manifest）、24实际模块，root复核af883884…92dc；quiet三项仍为mute／behind／observe-only、物理后台输入关闭。三次新鲜空闲后只运行一局，没有自动重放。
+
+实际Start0，同一个owner记录acquire_attempts1／update_attempts3／commits4，枪体setter10／restore1；双手lease4／restore4。P0和P1各一次且后续新源与同身份枪体字段确认两组相邻变化，正式changed_owner_update通过；4次提交不表示4种姿态。计划Stop0／Shutdown0、最终raw262150为lease4／phase6，结束原因xr_stopped_after_restore；无first_failure、dirty或fault，safe_to_unload1。原正式scope、update、cleanup审计均通过，receipt0e10eb95…2faf保持其受限scope，不称整局／全功能验收。
+
+本局新prewrite_rejection行数为0，因此不能称新写前取消分支已在游戏中演练；它仍由13类／350主机检查覆盖，AC原准确拒绝原因也仍未知。此次实际成功证明当前有界Lancer owner可以跟随新输入、正常关闭并恢复；不是生产会话重新开区间、原生重新消费、完整动作交还、流畅度、全武器、0.7真实伤害或头显结论。
+
+root另外比较原组件Key／links／资产身份、三组值、完整8控制器与44字节挂接，入口证书审计通过；8音频session恢复，pending／read_failed／mute_failed均0。用Win32只读PID＋精确creation time核对owner／game／XR确切对象均退出，无终止或窗口动作。Native／XR独立子会话passed与XR exit0保留，不扩展CONT范围。AD共87项含seal5a7c27c0…bc90，root-result35ceafb8…db5b，外部Native／waiter证据已复制入封存并逐字核对；AC110项及其失败不改写。普通启动器未安装未完成的6DoF候选。
