@@ -247,15 +247,19 @@ flowchart TD
 
 Longshot 瞄准镜另设光学渲染任务。单纯放大原有双眼画面会放大像素与已有渲染模糊，不能代表远处目标细节；应在瞄具局部建立与枪轴对齐的独立远景视图，并以合适的渲染分辨率显示在镜片内。专用 `weapon_longshot_scope.h` 已算出每眼独立相机、离轴投影、有限虚像焦面、镜筒遮挡与眼盒门禁，且可投影外部认证的真实瞄准线交点；合成几何测试 136 项通过。这是离线数学基础，镜片尺寸／倍率没有购买版标定，GPU 场景通道、逐像素遮挡、实际枪口对齐、性能和头显验收尚未完成；不把已有近眼 HUD 缩放算作狙击镜。
 
+原生接线分三步推进。先把同一冻结姿态的瞄准镜相机转换为引擎矩阵，为两只 scope view 分别提供独立于主画面的 view state 和专用场景目标；再复用现有原生 family 提交包装，单独追踪 scope renderer 的构造、异线程消费与销毁；最后将真实场景结果显示到枪上镜片，闭合深度遮挡、镜筒遮罩及 GPU 生产与读取依赖。已保存的原生证据支持复用现有提交包装，无需重建队列调用约定；先提交 scope 只表示调用顺序，不能据此认定 GPU 已完成。
+
+独立 view state 的私有离线候选已完成：在任何 factory 回调前冻结主画面左右和 scope 左右四个身份，拒绝空值及交叉复用，构造和输出匹配使用同一冻结快照。新增 30 场景／2,028 检查与既有 factory OFF／ON 检查通过。该候选仍在忽略目录暂存，默认关闭，没有接入当前冻结 Native，也没有分配或拥有原生 state 的生命周期；真实主右眼认证、专用目标、renderer 路由与镜片仍待接。按用户安排，游戏／模拟器验证先等待 0.1.0 发布与分支合并。
+
 ## 完美换弹计时与弹药记账
 
 用户已选定“原版完美窗口结束时刻或更早完成”的规则。分别记录普通装填时长 `T_normal`、原版完美窗口起点 `T_perfect_start` 和终点 `T_perfect_end`，不能将这三个值混为一个时间。
 
 这些时长以本轮有效装填起点为零，读取当前版本、武器及装填状态实际生效的参数。动画总长度、历史一次成功按键间隔和字段名称本身都不能替代原版完美截止线；若参数随状态变化，不能只按枪名写死一个常数。
 
-对已保存的 `WarfareGame.u` UnrealScript 声明和逆向知识库做有界复核后，**尚未取得任何一把枪在当前游戏实例中实际生效的完美窗口终点**。下表只是类默认值，不是体感换弹可直接使用的期限；`AR_PossibleSuccessStartPoint` 表示可能的成功起点，`ReloadDuration` 是普通装填时长，两者都不能单独冒充终点。基类相关窗口时长默认值为 `-1`；后续有界原生分析已厘清回退计算路径，见下文。
+最初仅复核已保存的 `WarfareGame.u` UnrealScript 声明和逆向知识库，不能取得实例实际生效的完美窗口终点。后续已在一个购买版 Lancer 实例中实际调用 Getter，结合已匹配的原生判定，确认该实例终点约为 `0.8 s`，详见下文；其他武器和状态仍须逐实例取得。下表只是类默认值，不是体感换弹可直接使用的期限；`AR_PossibleSuccessStartPoint` 表示可能的成功起点，`ReloadDuration` 是普通装填时长，两者都不能单独冒充终点。基类相关窗口时长默认值为 `-1`，也不能直接参与期限计算。
 
-现用 `tools/weapon-models/audit_active_reload_defaults.py` 对哈希匹配的本机 `WarfareGame.u` 和逐导出 SHA256 重新读取显式属性标签，结果留在忽略的 `analysis/active-reload-explicit-defaults-20261022.json`：`WarWeapon` 基类的 `AR_SweetSpotDuration`、`AR_SuperSweetSpotDuration`、`AR_PreReactionWindowDuration` 均显式为 `-1`，下表六个具体类都**没有显式覆盖**这三项；Boomer、Bow、Troika 基类默认对象只有属性终止符。缺失标签只表示该对象未覆盖，不能解释为零或从 `ReloadDuration` 推出 SuperSuccess 终点。`GetActiveReloadValues` 与最终判定仍是原生函数声明，需后续有界原生分析或实际窗口采样。
+现用 `tools/weapon-models/audit_active_reload_defaults.py` 对哈希匹配的本机 `WarfareGame.u` 和逐导出 SHA256 重新读取显式属性标签，结果留在忽略的 `analysis/active-reload-explicit-defaults-20261022.json`：`WarWeapon` 基类的 `AR_SweetSpotDuration`、`AR_SuperSweetSpotDuration`、`AR_PreReactionWindowDuration` 均显式为 `-1`，下表六个具体类都**没有显式覆盖**这三项；Boomer、Bow、Troika 基类默认对象只有属性终止符。缺失标签只表示该对象未覆盖，不能解释为零或从 `ReloadDuration` 推出 SuperSuccess 终点。声明本身不包含 `GetActiveReloadValues` 与最终判定的实现；下文将其与随后取得的原生代码和 Lancer 实例输出分开记录。
 
 保存的原版 `WarHUD.DrawActionReloadBar` 脚本进一步给出**显示层**的两个区域：`GetActiveReloadValues` 输出的 `ActiveReloadStartTime + SuperSweetSpotDuration` 是完美区右边界，而再加 `SweetSpotDuration` 才是普通成功区右边界。用户要以前者作为体感截止候选，不能把两个区间合并。HUD 画法尚不能代替 `DetermineActiveReloadSuccessOrFailure` 的原生比较；严格／非严格边界、反应窗口修正和动态值来源仍需复核。历史 Lancer 完美结果样本里三个 `AR_*Duration` 成员仍全为 `-1`，证实不能在对象上直接读这些成员并计算。该历史回执保存在忽略的 `analysis/runtime/active-reload37-candidate2.watch.json`，不是本次零售版运行样本。
 
@@ -517,7 +521,7 @@ Lancer 私有候选又增加一个**仅观察**的插入行程检查。它以当
 | 单手与双手 | 左手可随时脱离副握点，右手继续控制；原版后坐力和散布仍在 |
 | 开火与头动 | 同一次开火关联枪口、最终起点、基础方向、散布与命中；仅头动不改基础方向 |
 | 近墙 | 枪身／枪口受阻时无法从墙后射出；视觉、准星与伤害结果一致 |
-| 换弹时限 | 截止前完成为完美，边界及超时为普通；超时不自动补弹或卡壳 |
+| 换弹时限 | 截止时刻或之前完成为完美，超过截止时刻为普通；超时不自动补弹或卡壳 |
 | 原版成功反馈 | 不止显示成功，真实奖励、弹药效果和原版反馈只触发一次 |
 | 霰弹数量 | 缺 1、2、3、超过 3 发及备用不足各有正确流程；每发后的循环不可跳过 |
 | Gnasher 杠杆 | 左手支撑前端，右手握把下掰并回位才允许下一发；高亮跟随杠杆步骤，泵动手势不能误判 |
