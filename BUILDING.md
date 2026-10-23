@@ -1,50 +1,34 @@
-# Building GearsVR 0.0.2
+# Building GearsVR 0.0.3
 
-Players should download the ready-to-play ZIP from Releases. This guide is for source builds.
+Players should use the complete ZIP from Releases. This repository contains authored source for the frozen native renderer, XR application, Playground bridge and launcher/runtime scripts. Local research data and private development history are excluded.
 
-The native source matches the AdsAnchor2 release freeze. The OpenXR source matches
-MountedLatency1. Both native/XR components retain the published 0.0.1 binaries.
-Runtime Python modules and the launcher include the 0.0.2 startup hotfixes.
-The launcher includes local game discovery, the supplied artwork, and System OpenXR as its default.
+## Dependencies
 
-## Tools and dependencies
+- Windows x64, MSVC, CMake 3.21+ and Ninja; .NET Framework C# compiler and Windows PowerShell for the launcher.
+- MinHook 1.3.3 in tools/third-party/minhook: https://github.com/TsudaKageyu/minhook
+- OpenXR headers and x64 loader 1.1.63 in tools/third-party/openxr-loader (include/openxr, x64/lib, x64/bin): https://github.com/KhronosGroup/OpenXR-SDK
+- Python 3.12 and pefile 2024.8.26. Tooling expects pefile and its supporting modules in tools/package-inspector/python-libs.
 
-- Windows x64, an MSVC developer command prompt, CMake 3.21+ and Ninja.
-- .NET Framework's C# compiler for the WinForms launcher; Windows PowerShell.
-- MinHook 1.3.3 source at `tools/third-party/minhook`.
-  Upstream: https://github.com/TsudaKageyu/minhook
-- OpenXR headers and x64 loader 1.1.63 at `tools/third-party/openxr-loader`:
-  `include/openxr`, `x64/lib/openxr_loader.lib`, `x64/bin/openxr_loader.dll`.
-  Upstream: https://github.com/KhronosGroup/OpenXR-SDK
-- Python 3.12 and pefile 2024.8.26 for the launcher tooling. Place pefile and its
-  supporting modules at `tools/package-inspector/python-libs`, as required by the tooling.
+Dependencies are not vendored in this source repository. The downloadable ZIP includes its Python runtime and dependency notices.
 
-Third-party dependency downloads, game files and local research data are not in Git.
+## Build
 
-## Compile
-
-Run from an x64 MSVC developer PowerShell at the repository root:
+From an x64 MSVC developer PowerShell at the repository root:
 
 ```powershell
-cmake -S tools/native-capture --preset gears-vr-0.0.1
-cmake --build tools/native-capture/build-ads-anchor2
-ctest --test-dir tools/native-capture/build-ads-anchor2 --output-on-failure
-cmake -S tools/openxr-probe --preset gears-vr-0.0.1
-cmake --build tools/openxr-probe/build-mounted-latency1
-ctest --test-dir tools/openxr-probe/build-mounted-latency1 --output-on-failure
+cmake -S tools/native-capture --preset gears-vr-0.0.3
+cmake --build tools/native-capture/build-avp90-two-slot-ready1
+ctest --test-dir tools/native-capture/build-avp90-two-slot-ready1 --output-on-failure
+cmake -S tools/openxr-probe --preset gears-vr-0.0.3
+cmake --build tools/openxr-probe/build-runtime-colors1
+ctest --test-dir tools/openxr-probe/build-runtime-colors1 --output-on-failure
+cmake -S tools/playground -B tools/playground/build-playground6
+cmake --build tools/playground/build-playground6 --config Release
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/vr-launcher/ui/build.ps1
 ```
 
-The launcher source references embedded artwork built by `build-icon.ps1`.
-The native/XR presets preserve the release feature switches. Paths are repository-relative.
-The complete portable package also uses the quiet-startup and game-audio helpers;
-their build tooling is in the respective folders. The portable stager verifies the
-helper provenance, expected DLL/EXE hashes, bundled Python and required startup tests.
+The presets retain the feature switches of the frozen release builds. The launcher embeds the supplied icon/artwork. The complete portable package also requires the quiet-startup and game-audio helpers and their verified provenance.
 
-Locally rebuilt binaries can have different hashes. Review and update the matching
-manifest/provenance values after validating a build; do not disable version checks.
-The distributed ZIP is the verified 0.0.2 artifact. Native/XR build presets keep their
-0.0.1 names because those components are unchanged in this hotfix.
+Source builds may produce different hashes. Review and validate rebuilt artifacts before updating manifest/provenance values; do not disable checks. The published ZIP is the verified artifact. Offline tests do not establish complete game, GPU or headset acceptance.
 
-This source export excludes local research reports, runtime snapshots, decompilation
-output, private databases, local settings and the development Git history.
+For Python unit tests, supply the declared pefile dependency and create the ignored analysis/runtime directory used by test fixtures. The release test record identifies the exact checks executed.

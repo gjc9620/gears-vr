@@ -7,6 +7,7 @@ import ctypes as c
 from ctypes import wintypes as w
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
 from dataclasses import dataclass
@@ -40,13 +41,14 @@ class WindowsReadOnly:
         from runtime_probe import Process
         from run_stereo_continuous import WindowsControl
         self.process=Process(pid)
+        self.module_bases=None
         try:self.control=WindowsControl()
         except BaseException:self.process.close();raise
     def read(self,address,size):return self.process.read(address,size)
     def identity(self,pid):return self.control.identity(pid)
     def modules(self):
         from start_capture import modules
-        return modules(self.process.handle)
+        return modules(self.process.handle,bases=self.module_bases)
     def handle_identity(self):
         kernel=c.WinDLL('kernel32',use_last_error=True)
         kernel.GetProcessId.argtypes=[w.HANDLE];kernel.GetProcessId.restype=w.DWORD
@@ -95,6 +97,10 @@ class HookEntryAttestation:
             if (manifest['pid'],manifest['game_creation'],manifest['owner_pid'],manifest['owner_creation'])!=(pid,game_creation,self.owner['pid'],self.owner['creation_time']):
                 raise AttestationRejected('Manifest process/owner identity mismatch')
             self.module_base=manifest['module_base'];self.native_base=manifest['native_base']
+            # The envelope authenticates these two exact loaded bases/paths.
+            # Re-enumerate the complete live base list at every boundary, but
+            # do not query filenames for unrelated system/game modules.
+            if self.owns_backend:self.backend.module_bases=frozenset((self.module_base,self.native_base))
             self.generation=manifest['manifest_generation']
             entries=manifest['entries']
             if not isinstance(entries,list) or not 1<=len(entries)<=128:raise AttestationRejected('Invalid entry count')
@@ -134,7 +140,15 @@ class HookEntryAttestation:
                 not main or main[0]!=self.module_base or
                 str(Path(main[1]).resolve()).casefold()!=str(game['image']).casefold()):
             raise AttestationRejected('Loaded module identity mismatch')
-        with self.dll.open('rb') as stream:data=stream.read(67108865)
+        with self.dll.open('rb') as stream:
+            # BufferedReader.read(limit) may allocate for that entire request,
+            # even when the DLL is small. Bound first, then size this read to
+            # the open file; still hash every byte at every envelope boundary.
+            disk_size=os.fstat(stream.fileno()).st_size
+            if not 0<disk_size<=67108864:raise AttestationRejected('Loaded DLL disk hash mismatch')
+            data=stream.read(disk_size+1)
+            if len(data)!=disk_size or os.fstat(stream.fileno()).st_size!=disk_size:
+                raise AttestationRejected('Loaded DLL disk hash mismatch')
         if len(data)>67108864 or hashlib.sha256(data).hexdigest()!=self.dll_hash:
             raise AttestationRejected('Loaded DLL disk hash mismatch')
         # Authenticate the detour range from this exact expected PE, not a guessed

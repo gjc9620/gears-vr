@@ -100,7 +100,8 @@ bool copy_subtitle(uint64_t ticket){
  return true;
 }
 #endif
-struct Publication {uint64_t ticket{},pose{},session{},serial{};unsigned reason{};};
+struct Publication {uint64_t ticket{},pose{},session{},serial{};unsigned reason{},slot{gears_gpu_slots::none};
+ uint64_t slot_serial_before{},slot_serial_after{},ready_completed{},done_completed{};};
 std::array<Publication,frame_limit> publications{};unsigned publication_count{};
 uint64_t publication_attempts{},published_count{};Publication latest_publication{};
 uint64_t retained_images{},duplicate_images{};
@@ -252,8 +253,8 @@ void accept(ID3D12Resource* value,uint64_t ticket){
   d.Flags!=D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET||(creation.state!=4&&creation.state!=128)){fault(3);return;}
  if(identity!=creation.device){fault(4);return;}
 }
-void reset(ID3D12GraphicsCommandList* list,HRESULT hr){
- if(!watching())return;auto identity=canonical_identity(list);
+void reset(uintptr_t identity,HRESULT hr){
+ if(!watching())return;
  if(SUCCEEDED(hr))tracker.reset_success(identity);else tracker.invalidate_list(identity);
 }
 void present(){if(watching()&&!birth_ok){
@@ -328,16 +329,14 @@ bool publish_image(){
        D3D12_RESOURCE_STATES(proof.final_state),image,&trace);}
  if(stamp){stamp->publish_end=gears_vr::monotonic_ns();latest_completed_timing=*stamp;
   latest_cost_profiled=false;for(unsigned i=0;i<timing_count;++i)if(timings[i].ticket==image.id)latest_cost_profiled=true;}
- latest_publication={image.id,image.sample.sequence,image.sample.session,trace.serial_after,unsigned(trace.reason)};
+ latest_publication={image.id,image.sample.sequence,image.sample.session,trace.serial_after,unsigned(trace.reason),trace.slot_index,
+  trace.slot_serial_before,trace.slot_serial_after,trace.ready_completed,trace.done_completed};
  ++publication_attempts;
  if(publication_count<publications.size())publications[publication_count++]=latest_publication;
  if(published){++published_count;stereo_publish_counts.last_ticket=image.id;}
  else {
   ++stereo_publish_counts.capture_skipped;
-  using R=gears_vr::GpuCaptureReason;
-  const bool skip=trace.reason==R::lock_busy||trace.reason==R::no_consumer||trace.reason==R::producer_in_flight||
-   trace.reason==R::consumer_not_done||trace.reason==R::native_stopped||trace.reason==R::native_deadline||trace.reason==R::world_quiescing||
-   (trace.reason==R::not_ready&&(trace.state==1||(trace.state==4&&stereo_publish_counts.stopped.load())));
+  const bool skip=gears_vr::gpu_capture_recoverable(trace,stereo_publish_counts.stopped.load());
   if(!skip){fault(19);return false;}
  }
  // capture_resource copied the value or made an explicit no-submit decision.
@@ -716,9 +715,12 @@ void print(FILE* file){
    latest_publication.ticket,latest_publication.pose,gears_vr::gpu_capture_reason_name(gears_vr::GpuCaptureReason(latest_publication.reason)),
    latest.received,latest.selected,latest.begin,latest.ready,latest.publish_begin,latest.publish_end,
    latest_cost_profiled?1:0);
+  fprintf(file,"native_owned_latest_slot slot=%u slot_serial_before=%llu slot_serial_after=%llu ready_completed=%llu done_completed=%llu both_slots_busy=%u\n",
+   latest_publication.slot,latest_publication.slot_serial_before,latest_publication.slot_serial_after,
+   latest_publication.ready_completed,latest_publication.done_completed,stereo_publisher.busy.load());
   for(unsigned i=0;i<publication_count;++i){auto const& p=publications[i];
-   fprintf(file,"native_owned_publication ticket=%llu pose=%llu session=%llu serial=%llu reason=%s\n",p.ticket,p.pose,p.session,p.serial,
-    gears_vr::gpu_capture_reason_name(gears_vr::GpuCaptureReason(p.reason)));}
+   fprintf(file,"native_owned_publication ticket=%llu pose=%llu session=%llu serial=%llu reason=%s slot=%u slot_serial_before=%llu slot_serial_after=%llu ready_completed=%llu done_completed=%llu\n",p.ticket,p.pose,p.session,p.serial,
+    gears_vr::gpu_capture_reason_name(gears_vr::GpuCaptureReason(p.reason)),p.slot,p.slot_serial_before,p.slot_serial_after,p.ready_completed,p.done_completed);}
   for(unsigned i=0;i<timing_count;++i){auto const& t=timings[i];
    fprintf(file,"native_owned_timing ticket=%llu received_ns=%lld selected_ns=%lld built_ns=%lld begin_ns=%lld left_ns=%lld right_ns=%lld submitted_ns=%lld returned_ns=%lld destroyed_ns=%lld ready_ns=%lld publish_begin_ns=%lld publish_end_ns=%lld\n",
     t.ticket,t.received,t.selected,t.built,t.begin,t.draw[0],t.draw[1],t.submitted,t.returned,t.destroyed,t.ready,t.publish_begin,t.publish_end);
@@ -739,10 +741,11 @@ void print(FILE* file){
 #else
 namespace owned_scene_gpu {
 struct CreateScope{};
+bool watching(){return false;}
 gears_frame_link::ListRef list_ref(uintptr_t identity){return frame_link.current(identity);}
 void accept(ID3D12Resource*,uint64_t){}
 void activate(){}
-void reset(ID3D12GraphicsCommandList*,HRESULT){}
+void reset(uintptr_t,HRESULT){}
 void present(){}
 void draw(ID3D12GraphicsCommandList*,uintptr_t,bool,unsigned,gears_frame_link::Rect,uint64_t){}
 void retain_image(){}

@@ -234,6 +234,59 @@ template<class Read> bool validate_bindings(Config const& c,Read read,bool check
     if(!detail::bindings(c,r,check_execlet_entry)){if(failure)*failure=ValidationFailure::bindings;return false;}
     return true;
 }
+// Read targeting at scene construction, independently of UpdateHUDActions.
+// Cover transitions and active HUD actions may omit/reject that query's receipt;
+// its absence must not make a raised weapon's HUD follow the HMD again.
+// The expected actors come from this scene's anchor, not a retained query.
+template<class Read> bool scene_aiming(Config const& c,Read read,std::uintptr_t controller,
+    std::uintptr_t pawn,bool& out) {
+    if(!c.identities||!c.aim.enabled||!controller||!pawn)return false;
+    auto const& ids=*c.identities;auto const& a=c.aim;
+    if(!ids.base||ids.base>(std::numeric_limits<std::uintptr_t>::max)()-0x1b86400||
+       ids.identity_count>ids.identities.size()||ids.super_count>ids.supers.size()||
+       ids.object_internal_index>92||ids.object_name>88||ids.object_class>88||ids.object_outer>88||
+       ids.field_super>=65536||ids.name_entry_index>=65536||ids.name_entry_text>=65536||
+       a.offset>65532||!a.mask||(a.mask&(a.mask-1)))return false;
+    const unsigned roles[]{c.controller,c.pawn,c.war_pc,c.war_pawn,a.property,
+        c.controller_pawn.property,c.pawn_controller.property};
+    for(auto role:roles)if(role>=ids.identity_count)return false;
+    auto addr=[&](unsigned role){return ids.identities[role].address;};
+    if(addr(c.controller)!=controller||addr(c.pawn)!=pawn||
+       !detail::named(c,c.war_pc,L"WarPC",L"Class")||!detail::named(c,c.war_pawn,L"WarPawn",L"Class")||
+       !detail::named(c,a.property,L"bIsTargeting",L"BoolProperty"))return false;
+    gears_ui::Reader<Read> r{read};unsigned before{},after{};
+    auto observe=[&](unsigned& flags){
+        gears_ui::Registry objects{},names{},final_objects{},final_names{};
+        if(!gears_ui::registry(r,ids.objects_header,objects)||!gears_ui::registry(r,ids.names_header,names))return false;
+        for(auto role:roles){auto const& id=ids.identities[role];auto cls=gears_ui::known(ids,id.cls);
+            if(!cls||!gears_ui::fresh_identity(ids,r,objects,names,id)||
+               !gears_ui::fresh_identity(ids,r,objects,names,*cls))return false;}
+        if(!gears_ui::live_derives(ids,r,ids.identities[c.controller].cls,addr(c.war_pc))||
+           !gears_ui::live_derives(ids,r,ids.identities[c.pawn].cls,addr(c.war_pawn))||
+           !gears_ui::live_derives(ids,r,ids.identities[c.controller].cls,ids.identities[a.property].outer))return false;
+        auto link=[&](std::uintptr_t object,unsigned role,Field field,std::uintptr_t target,wchar_t const* name){
+            unsigned dim{},size{},offset{};std::uintptr_t actual{};
+            return field.offset<=65528&&detail::named(c,field.property,name,L"ObjectProperty")&&
+                gears_ui::live_derives(ids,r,ids.identities[role].cls,ids.identities[field.property].outer)&&
+                r.field(dim,addr(field.property),0x70)&&dim==1&&r.field(size,addr(field.property),0x74)&&size==8&&
+                r.field(offset,addr(field.property),0x94)&&offset==field.offset&&
+                r.field(actual,object,field.offset)&&actual==target;};
+        unsigned dim{},size{},offset{},mask{};std::uintptr_t vtable{},accessor{},dispatch{};
+        if(!link(controller,c.controller,c.controller_pawn,pawn,L"Pawn")||
+           !link(pawn,c.pawn,c.pawn_controller,controller,L"Controller")||
+           !r.field(dim,addr(a.property),0x70)||dim!=1||!r.field(size,addr(a.property),0x74)||size!=4||
+           !r.field(offset,addr(a.property),0x94)||offset!=a.offset||!r.field(mask,addr(a.property),0xd0)||mask!=a.mask||
+           !r.field(vtable,addr(a.property),0)||!vtable||!r.field(accessor,vtable,0x2a0)||accessor!=ids.base+0x1daba0||
+           !r.field(dispatch,ids.base,0x1b86280+0x2d*8)||dispatch!=ids.base+0x1d6ea4||
+           !r.field(flags,controller,a.offset))return false;
+        return gears_ui::registry(r,ids.objects_header,final_objects)&&gears_ui::registry(r,ids.names_header,final_names)&&
+            objects.data==final_objects.data&&objects.count==final_objects.count&&objects.capacity==final_objects.capacity&&
+            names.data==final_names.data&&names.count==final_names.count&&names.capacity==final_names.capacity;
+    };
+    if(!observe(before)||!observe(after)||((before^after)&a.mask))return false;
+    out=(after&a.mask)!=0;return true;
+}
+
 template<class Read> bool snapshot(Config const& c,Read read,std::uintptr_t self,std::uintptr_t frame,Snapshot& out) {
     gears_ui::Reader<Read> r{read};Snapshot a{},b{};
     if(!detail::state(c,r,self,frame,0x35a,a)||!detail::state(c,r,self,frame,0x35a,b)||

@@ -64,6 +64,50 @@ class LiveRegistryAnchorSampler(AnchorSampler):
         if not self.derives(pawn['cls'],'Turret'):
             raise AnchorRejected('Controlled object is neither WarPawn nor certified Turret')
 
+    def controlled_identity(self,controller):
+        if self.pawn:return super().controlled_identity(controller)
+        r=self.r;p=r.profile;started=self.guard_clock_ns()
+        def headers():
+            for name,prefix in (('objects','object'),('names','name')):
+                expected=(getattr(r,name+'_data'),getattr(r,prefix+'_count'),getattr(r,prefix+'_capacity'))
+                observed=_header(r,getattr(r,name+'_header'))
+                if observed!=expected:
+                    reason='Registry changed during anchor unpossession check'
+                    evidence=self.failure_evidence('initial',AnchorRejected(reason),started)
+                    evidence['registry_change']=dict(registry=name,expected_header=list(expected),observed_header=list(observed))
+                    raise AnchorRegistryChanged(reason,evidence)
+        headers()
+        prop=self.layout['controller_pawn'];offset=_offset(prop['offset'],'controller_pawn')
+        field=self.fresh(prop['address']);kind=self.fresh(field['cls'])
+        metaclass=self.fresh(kind['cls'])
+        if (controller['name'].startswith('Default__') or field['name']!='Pawn' or field['number'] or
+                prop['type']!='ObjectProperty' or kind['name']!='ObjectProperty' or kind['number'] or
+                metaclass['name']!='Class' or metaclass['number']):
+            raise AnchorRejected('Invalid reflected controller Pawn during unpossession')
+        supers=[];seen=set();current=controller['cls']
+        while current and current not in seen and len(seen)<64:
+            seen.add(current);item=self.fresh(current)
+            if item['number']or self.fresh(item['cls'])!=metaclass:raise AnchorRejected('Invalid controller class during unpossession')
+            parent=r.u64(current+p['field_super']);supers.append((item,parent))
+            if current==field['outer']:break
+            current=parent
+        else:raise AnchorRejected('Controller Pawn property outer mismatch during unpossession')
+        def layout():return (struct.unpack('<II',r.read(field['address']+0x70,8)),r.u32(field['address']+p['property_offset_internal']))
+        if layout()!=((1,8),offset):raise AnchorRejected('Controller Pawn property layout mismatch during unpossession')
+        after=self.pointer(self.controller,'controller_pawn')
+        if (self.fresh(self.controller)!=controller or self.fresh(field['address'])!=field or
+                self.fresh(kind['address'])!=kind or self.fresh(metaclass['address'])!=metaclass or
+                layout()!=((1,8),offset) or any(self.fresh(item['address'])!=item or
+                    r.u64(item['address']+p['field_super'])!=parent for item,parent in supers)):
+            raise AnchorRejected('Controller Pawn identity/field changed during unpossession')
+        headers()
+        if after:self.validate_controlled(self.fresh(after))
+        reason='Controller Pawn changed after initial null'if after else'Controller Pawn unavailable during anchor construction'
+        evidence=self.failure_evidence('initial',AnchorRejected(reason),started)
+        evidence['controlled_link']=dict(controller=controller,field=field,offset=offset,before=0,after=after)
+        rejection=AnchorControlledLinkChanged if after else AnchorControlledPawnUnavailable
+        raise rejection(reason,evidence)
+
     def failure_evidence(self,stage,error,started):
         return {'accepted':False,'stage':stage,'reason':str(error),
                 'exception_type':type(error).__name__,'exception_repr':repr(error),
@@ -225,6 +269,38 @@ class AnchorRegistryChanged(AnchorSamplingRejected):
     """Strict registry header mismatch; requires full Resolver reacquisition."""
 
 
+class AnchorControlledPawnUnavailable(AnchorSamplingRejected):
+    """A recertified controller/property link remains null; no anchor accepted."""
+
+
+class AnchorControlledLinkChanged(AnchorSamplingRejected):
+    """The recertified null link now selects a valid Pawn; reacquire in full."""
+
+
+def timestamp_guard_retryable(error):
+    """Authorize a fresh read-only acquisition, never a rejected certificate.
+
+    Require the real sampler exception and every failed strict attempt. Public
+    diagnostic summaries and a matching message alone grant no retry policy.
+    """
+    if type(error)is not AnchorSamplingRejected:return False
+    evidence=getattr(error,'evidence',None)
+    if not isinstance(evidence,dict):return False
+    guards=evidence.get('guard_acquisitions')
+    if not isinstance(guards,list) or not guards or not isinstance(guards[-1],dict):return False
+    guard=guards[-1];attempts=guard.get('attempts')
+    if guard.get('accepted')is not False or not isinstance(attempts,list) or not 1<=len(attempts)<=5:return False
+    allowed={('AnchorRejected','Cross-frame camera timestamp during identity checks'),
+             ('MountedTimestampChanged','Mounted camera timestamp changed at bracket boundary'),
+             ('MountedTimestampChanged','Mounted camera frame changed during anchor bracket')}
+    reason=error.args[0] if len(error.args)==1 else None
+    reasons={item[1]for item in allowed}|{'Anchor guard acquisition deadline exceeded'}
+    if type(reason)is not str or reason not in reasons or guard.get('failure_reason')!=reason:return False
+    return all(isinstance(item,dict) and item.get('strict_guard_accepted')is False and
+        item.get('retryable')is True and type(item.get('exception_type'))is str and type(item.get('reason'))is str and
+        (item['exception_type'],item['reason'])in allowed for item in attempts)
+
+
 def _temporary_sample_rejection(sample):
     reason=sample.get('rejection','Unknown anchor sampling failure')
     if reason=='Cross-frame camera timestamp during identity checks':return 'cross_frame_timestamp'
@@ -297,7 +373,18 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
                 if 'registry_change' in failed_guard:
                     evidence['registry_change']=failed_guard['registry_change']
                     raise AnchorRegistryChanged(failed_guard['failure_reason'],evidence)
-                raise AnchorSamplingRejected(failed_guard['failure_reason'],evidence)
+                # An exhausted strict guard supplies no certificate for this
+                # attempt. A timestamp-only rejection can, however, be tried
+                # again from scratch within the outer 32/200 ms budget. Keep
+                # every failed guard in the receipt; never reuse its values.
+                timestamp_only=(failed_guard.get('failure_reason')==
+                                'Cross-frame camera timestamp during identity checks'
+                                and bool(failed_guard.get('attempts'))
+                                and all(row.get('retryable') is True
+                                        for row in failed_guard['attempts']))
+                evidence['attempts'][-1]['exhausted_guard_retryable']=bool(timestamp_only and not accepted)
+                if accepted or not timestamp_only:
+                    raise AnchorSamplingRejected(failed_guard['failure_reason'],evidence)
         if not accepted:
             # Guard identities/header bytes are finite bounded diagnostic data.
             # Keep their originals for independent retry-classification review.
@@ -310,7 +397,9 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
         if finished>deadline:
             last_reason='Anchor sample acquisition deadline exceeded';break
         if accepted:
-            evidence.update(accepted=True,finished_perf_counter_ns=finished)
+            evidence.update(accepted=True,stage='sample',reason=None,
+                            exception_type=None,exception_repr=None,
+                            raw_rejection=None,finished_perf_counter_ns=finished)
             return sample,evidence
         if temporary is None:
             evidence.update(finished_perf_counter_ns=finished,failure_reason=last_reason)
@@ -319,16 +408,20 @@ def acquire_anchor_sample(sampler,clock_ns=time.perf_counter_ns):
     raise AnchorSamplingRejected(last_reason,evidence)
 
 
-def build_anchor_config(resolver, expected_camera=None, *, prepared_camera=None,cinematic_camera=False):
+def build_anchor_config(resolver, expected_camera=None, *, prepared_camera=None,cinematic_camera=False,sample_pose=True,
+                        reuse_assembly_identities=True):
+    if type(sample_pose)is not bool:raise ValueError('sample_pose must be boolean')
+    if type(reuse_assembly_identities)is not bool:raise ValueError('reuse_assembly_identities must be boolean')
     sampler=LiveRegistryAnchorSampler(resolver,prepared_camera=prepared_camera,cinematic_camera=cinematic_camera)
     started=time.perf_counter_ns()
-    try:return _assemble_anchor_config(sampler,resolver,expected_camera)
+    try:return _assemble_anchor_config(sampler,resolver,expected_camera,sample_pose=sample_pose,
+                                      reuse_assembly_identities=reuse_assembly_identities)
     except AnchorSamplingRejected:raise
     except Exception as error:
         raise AnchorSamplingRejected(str(error),sampler.failure_evidence(sampler.guard_stage,error,started)) from error
 
 
-def _assemble_anchor_config(sampler,resolver,expected_camera):
+def _assemble_anchor_config(sampler,resolver,expected_camera,*,sample_pose=True,reuse_assembly_identities=True):
     sampler.guard_stage='startup_validation'
     if sampler.view_target is None:
         raise AnchorRejected('Anchor observer requires reflected Camera.ViewTarget.Target')
@@ -336,11 +429,29 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
         for key in ('camera_address','controller_address','local_player_address','timestamp_address','pov_address'):
             if sampler.resolved[key] != expected_camera[key]:
                 raise AnchorRejected('Anchor camera changed during startup: '+key)
-    sampler.guard_stage='sample'
-    sample,acquisition=acquire_anchor_sample(sampler)
+    if sample_pose:
+        sampler.guard_stage='sample'
+        sample,acquisition=acquire_anchor_sample(sampler)
+        before=sample['guard_after']
+    else:
+        # Static identity/offset assembly uses no sampled position or rotation.
+        # Preserve the complete short identity/link/timestamp guard. Native
+        # admission and every rendered observation still validate live pose.
+        sampler.guard_stage='certificate_guard'
+        before=sampler.guard();sample=None
+        acquisition=dict(kind='static_certificate_identity_guards',pose_sampled=False,
+                         accepted=None,pose_observation_authority=False)
     sampler.guard_stage='certificate_assembly'
-    before=sample['guard_after'];identities=[];indices={}
+    identities=[];indices={}
     def add(address,check_super=False):
+        # The full guards surrounding assembly and final per-identity live
+        # reads below remain mandatory. Avoid repeatedly assembling the same
+        # class identity/superchain; no hint survives this one acquisition.
+        if reuse_assembly_identities and address in indices:
+            stored=identities[indices[address]]
+            if check_super and not stored['check_super']:
+                stored['check_super']=1;stored['super']=resolver.u64(address+resolver.profile['field_super'])
+            return indices[address]
         identity=sampler.fresh(address)
         if address not in indices:
             if len(identities)>=128:raise AnchorRejected('Observer identity certificate exceeds128')
@@ -419,10 +530,12 @@ def _assemble_anchor_config(sampler,resolver,expected_camera):
     if cinematic is not None:config.update(schema=2,cinematic=cinematic)
     if mounted is not None:config.update(schema=3,mounted=mounted)
     metadata={'schema':1,'config':config,'sampler':sampler.metadata,'sample':sample,
+              'pose_sampled':sample_pose,
               'sample_acquisition':acquisition,
               'guard_acquisitions':sampler.guard_acquisitions,
               'strict_guard_attempts':sum(len(x['attempts']) for x in sampler.guard_acquisitions),
-              'acquisition_budget_semantics':'sample5/200ms; each guard independently5/200ms; not total5reads; late success rejected',
+              'acquisition_budget_semantics':('sample5/200ms; each guard independently5/200ms; not total5reads; late success rejected' if sample_pose else
+                  'No diagnostic pose sample; each complete identity guard independently5/200ms; native live pose guards remain required'),
               'registry_policy':'Refresh current data/count/capacity and validate selected slots; no startup count equality requirement',
               'read_only':True,'renderer_alignment_verified':False,
               'candidate_eye_formula':'CameraCache.POV; no Driver location substitution' if mounted else 'Pawn.Location + world-up EyeHeight; unverified hypothesis only',

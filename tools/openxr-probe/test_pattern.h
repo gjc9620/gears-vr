@@ -3,6 +3,7 @@
 #include <memory>
 #include <algorithm>
 #include <cstdint>
+#include "menu_swapchain_format.h"
 
 // Deliberately tiny diagnostic eye images. This is not stereo scene rendering.
 class TestPattern {
@@ -42,8 +43,9 @@ public:
         uint32_t count{};xr_check(xrEnumerateSwapchainFormats(session,0,&count,nullptr),"enumerate formats");
         std::vector<int64_t> formats(count);xr_check(xrEnumerateSwapchainFormats(session,count,&count,formats.data()),"read formats");
         for(auto candidate:{DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,DXGI_FORMAT_B8G8R8A8_UNORM_SRGB})
-            if(std::find(formats.begin(),formats.end(),int64_t(candidate))!=formats.end()) {format=candidate;break;}
+            if(std::find(formats.begin(),formats.end(),int64_t(candidate))!=formats.end()){format=candidate;break;}
         if(!format)throw std::runtime_error("No 8-bit diagnostic swapchain format");
+        printf("{\"xr_color_policy\":\"%s\",\"path\":\"test_pattern\",\"selected_format\":%u}\n",menu_swapchain_format::srgb(format)?"srgb":"unorm",unsigned(format));fflush(stdout);
         for(auto& eye:eyes) {
             XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};
             create.usageFlags=XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT|XR_SWAPCHAIN_USAGE_TRANSFER_SRC_BIT;

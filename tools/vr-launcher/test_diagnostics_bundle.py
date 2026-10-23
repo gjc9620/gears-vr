@@ -13,6 +13,18 @@ import diagnostics_bundle as bundle
 
 
 class BundleTests(unittest.TestCase):
+    def test_local_install_profile_bindings_are_not_exported(self):
+        config = self.root / 'tools/vr-launcher/config.json'
+        config.write_text(json.dumps({'game_settings_paths': {'private-install': 'private-account-profile'},
+                                      'game_path_history': ['private-history-game-path']}))
+        self.export()
+        names, raw, docs = self.read_zip()
+        self.assertNotIn('game_settings_paths', raw)
+        self.assertNotIn('private-install', raw)
+        self.assertNotIn('private-account-profile', raw)
+        self.assertNotIn('game_path_history', raw)
+        self.assertNotIn('private-history-game-path', raw)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -71,6 +83,24 @@ class BundleTests(unittest.TestCase):
         self.assertIsNone(summaries[1]['csv']['xr_prediction_hz'])
         self.assertIsNone(summaries[1]['final_projection']['maximum_submission_gap_ms'])
         self.assertNotIn('PrivateUser', raw)
+
+    def test_startup_reservation_cause_survives_export_before_any_stereo_session(self):
+        import launcher
+        cause='RuntimeError: Persisted DLSS must be OFF before release startup'
+        detail=launcher.reservation_failure_detail('', 'Traceback (most recent call last):\n'+cause+'\n'
+            'subprocess.CalledProcessError: wrapper failed\n')
+        error=RuntimeError('Fresh reservation failed; no retry (exit code 1): '+detail+
+            '\nDetails: C:\\Users\\PrivateUser\\Mod\\analysis\\runtime\\vr-launcher-session.reserve.log')
+        (self.runtime/'vr-launcher-session.json').write_text(json.dumps({
+            'schema':1,'kind':'repository_vr_launcher','phase':'incomplete','error':repr(error)}))
+        (self.runtime/'vr-launcher-session.reserve.log').write_text('PROPRIETARY_NATIVE_CODE')
+        self.export()
+        names,raw,docs=self.read_zip()
+        self.assertIn(cause,raw)
+        self.assertNotIn('CalledProcessError',raw)
+        self.assertNotIn('PrivateUser',raw)
+        self.assertNotIn('PROPRIETARY_NATIVE_CODE',raw)
+        self.assertFalse(any(name.endswith('.reserve.log') for name in names))
 
     def test_numeric_csv_rates_are_labeled_and_unsafe_csv_is_not_archived(self):
         path = self.session()
@@ -534,23 +564,6 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(docs['sessions/session-1.json']['diagnostics_artifacts'],{})
 
 
-    def test_startup_reservation_cause_survives_export_before_any_stereo_session(self):
-        import launcher
-        cause='RuntimeError: Persisted DLSS must be OFF before release startup'
-        detail=launcher.reservation_failure_detail('', 'Traceback (most recent call last):\n'+cause+'\n'
-            'subprocess.CalledProcessError: wrapper failed\n')
-        error=RuntimeError('Fresh reservation failed; no retry (exit code 1): '+detail+
-            '\nDetails: C:\\Users\\PrivateUser\\Mod\\analysis\\runtime\\vr-launcher-session.reserve.log')
-        (self.runtime/'vr-launcher-session.json').write_text(json.dumps({
-            'schema':1,'kind':'repository_vr_launcher','phase':'incomplete','error':repr(error)}))
-        (self.runtime/'vr-launcher-session.reserve.log').write_text('PROPRIETARY_NATIVE_CODE')
-        self.export()
-        names,raw,docs=self.read_zip()
-        self.assertIn(cause,raw)
-        self.assertNotIn('CalledProcessError',raw)
-        self.assertNotIn('PrivateUser',raw)
-        self.assertNotIn('PROPRIETARY_NATIVE_CODE',raw)
-        self.assertFalse(any(name.endswith('.reserve.log') for name in names))
 
     def startup(self, number, events, **context):
         attempt = f'{number:032x}'

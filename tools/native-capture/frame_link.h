@@ -95,6 +95,12 @@ private:
         size_t count{};
         std::array<Event, events_per_list> events{};
     };
+    // Events are read only below count, and append writes a complete Event.
+    // Retiring a recording only needs to clear the live header.
+    static void clear_list(List& list) {
+        list.ref={};list.world_epoch=0;
+        list.valid=false;list.executed=false;list.count=0;
+    }
     struct Candidate {
         Target target{};
         Identity queue{};
@@ -106,6 +112,37 @@ private:
         Identity transfer_source{};
     };
     std::array<List, list_capacity> lists_{};
+    // Only the prefix is logically live. Seal/recovery drops it in O(1);
+    // slots appended into a later window are reset before any field is read.
+    // Holes inside the prefix retain the original reuse order.
+    size_t used_prefix_{};
+    template<class T> struct ListRange {T* first;T* last;T* begin() const{return first;}T* end() const{return last;}};
+    ListRange<List> used_lists(){return {lists_.data(),lists_.data()+used_prefix_};}
+    ListRange<const List> used_lists() const{return {lists_.data(),lists_.data()+used_prefix_};}
+    // Advisory identity index. Every hit checks the live slot; reset, owned
+    // consumption and world sealing may reuse slots without cache maintenance.
+    static constexpr size_t list_cache_capacity=2048;
+    struct ListCacheEntry {Identity identity{};size_t index{};};
+    std::array<ListCacheEntry,list_cache_capacity> list_cache_{};
+    static size_t list_cache_bucket(Identity identity){
+        const auto value=static_cast<uint64_t>(identity)>>4; // COM pointers are aligned.
+        return static_cast<size_t>((value*11400714819323198485ull)>>(64-11));
+    }
+    List* cached_list(Identity identity){
+        if(!identity)return nullptr;
+        const auto& entry=list_cache_[list_cache_bucket(identity)];
+        return entry.identity==identity&&entry.index<used_prefix_&&lists_[entry.index].ref.identity==identity
+            ?&lists_[entry.index]:nullptr;
+    }
+    void cache_list(List* list){
+        if(list&&list->ref.identity)list_cache_[list_cache_bucket(list->ref.identity)]={list->ref.identity,
+            static_cast<size_t>(list-lists_.data())};
+    }
+    List* find_identity(Identity identity){
+        if(auto* list=cached_list(identity))return list;
+        for(auto& list:used_lists())if(list.ref.identity==identity){cache_list(&list);return &list;}
+        return nullptr;
+    }
     std::array<Candidate, target_capacity> candidates_{};
     std::mutex mutex_;
     uint64_t generation_{}, maximum_ticket_{}, retired_ticket_{};
@@ -135,7 +172,7 @@ private:
     }
     bool owned_retirement_ready_locked() const {
         if(!owned_.enabled||!owned_.certified||pending_.active||window_bad_||capacity_bad_||revision_==UINT64_MAX||owned_revision_==UINT64_MAX)return false;
-        for(auto const& list:lists_)if(!list.executed)
+        for(auto const& list:used_lists())if(!list.executed)
             for(size_t i=0;i<list.count;++i){auto const& event=list.events[i];
                 if(event.target.resource==owned_.target.resource||event.transfer_source.resource==owned_.target.resource)return false;}
         return true;
@@ -171,9 +208,13 @@ private:
         state=event.after;return true;
     }
     List* find(ListRef ref) {
-        for (auto& list : lists_)
-            if (list.ref.identity == ref.identity && list.ref.generation == ref.generation && list.valid && list.world_epoch==world_epoch_)
+        if(auto* list=cached_list(ref.identity))
+            if(list->ref.generation==ref.generation&&list->valid&&list->world_epoch==world_epoch_)return list;
+        for (auto& list : used_lists())
+            if (list.ref.identity == ref.identity && list.ref.generation == ref.generation && list.valid && list.world_epoch==world_epoch_){
+                cache_list(&list);
                 return &list;
+            }
         return nullptr;
     }
     bool append(ListRef ref, Event event) {
@@ -267,7 +308,7 @@ private:
         if(candidate){value.executed_mask=candidate->mask;value.executed_ticket=candidate->ticket;value.executed_queue=candidate->queue;}
         // Diagnostic only, first eight failures. Never select a recorded-only
         // pair as authorization or scan the entire inventory on every UI draw.
-        for(auto const& other:lists_)if(other.valid&&!other.executed&&
+        for(auto const& other:used_lists())if(other.valid&&!other.executed&&
             (other.ref.identity!=ref.identity||other.ref.generation!=ref.generation)){
             auto pair=recorded_pair_locked(other.ref,target);
             if(pair.linked){++value.other_complete_recorded_lists;
@@ -338,7 +379,7 @@ private:
             }
             // Unknown destination writes are never silently reclassified as
             // this transfer, even when recorded before its full-image draw.
-            for(auto const& list:lists_)if(list.executed)for(size_t i=0;i<list.count;++i){auto const& e=list.events[i];
+            for(auto const& list:used_lists())if(list.executed)for(size_t i=0;i<list.count;++i){auto const& e=list.events[i];
                 if(e.target.resource==event.target.resource&&!e.final&&!e.overlay&&!e.transfer&&!e.state_kind)rejection|=polluted;
             }
             if(rejection){window_bad_=true;window_rejection_|=rejection;return;}
@@ -443,7 +484,7 @@ public:
            window_bad_||capacity_bad_||pending_.active||revision_==UINT64_MAX)return false;
         // Detect contradictions to the birth proof before modifying anything.
         uint64_t discarded_events{},discarded_candidates{};
-        for(auto const& list:lists_){
+        for(auto const& list:used_lists()){
             for(size_t i=0;i<list.count;++i){
                 if(list.events[i].target.resource==target.resource)return false;
                 ++discarded_events;
@@ -453,7 +494,7 @@ public:
             if(candidate.target.resource==target.resource)return false;
             ++discarded_candidates;
         }
-        for(auto& list:lists_)list.count=0;
+        for(auto& list:used_lists())list.count=0;
         candidates_={};retired_ticket_=maximum_ticket_;
         stats_.owned_births=1;
         stats_.owned_birth_discarded_events=discarded_events; // Event records, not multiplicity/GPU draws.
@@ -495,7 +536,7 @@ public:
         // epoch zero is never admitted by find(). Only real Reset/Create can
         // restore admission. Clear old associations so a genuinely new resource
         // may reuse an address after the separately certified destruction.
-        for(auto& list:lists_){list.count=0;list.world_epoch=0;}
+        for(auto& list:used_lists()){list.count=0;list.world_epoch=0;}
         return true;
     }
     // Waiting hint only; never consumes evidence or changes certification.
@@ -505,7 +546,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         if(!resource||!owned_.enabled||resource!=owned_.target.resource)return false;
         if(pending_.active)return true;
-        for(auto const& list:lists_)if(!list.executed)
+        for(auto const& list:used_lists())if(!list.executed)
             for(size_t i=0;i<list.count;++i)if(list.events[i].target.resource==resource)return true;
         return false;
     }
@@ -588,7 +629,8 @@ public:
     }
     ListRef current(Identity identity) {
         std::lock_guard<std::mutex> lock(mutex_);
-        for (const auto& list : lists_) if (list.valid && list.ref.identity == identity) return list.ref;
+        if(auto* list=cached_list(identity))if(list->valid)return list->ref;
+        for (auto& list : used_lists()) if (list.valid && list.ref.identity == identity){cache_list(&list);return list.ref;}
         return {};
     }
     uint64_t world_epoch(){std::lock_guard<std::mutex> lock(mutex_);return world_epoch_;}
@@ -619,17 +661,19 @@ public:
             window_bad_ = true; return {};
         }
         List* slot{};
-        for (auto& list : lists_) if (list.ref.identity == identity) { slot = &list; break; }
-        if (!slot) for (auto& list : lists_) if (!list.ref.identity) { slot = &list; break; }
+        slot=find_identity(identity);
+        if (!slot) for (auto& list : used_lists()) if (!list.ref.identity) { slot = &list; break; }
+        if (!slot && used_prefix_ < list_capacity) {slot = &lists_[used_prefix_++];clear_list(*slot);}
         if (!slot) { ++stats_.list_overflow;capacity_bad_ = true; return {}; }
         if(!slot->ref.identity){++stats_.active_lists;if(stats_.active_lists>stats_.list_highwater)stats_.list_highwater=stats_.active_lists;}
         discard_recording(*slot);
         // Reset discards unsubmitted old recording, while already submitted events
         // remain copied in candidates. Generation IDs are never reused.
-        *slot = {};
+        clear_list(*slot);
         slot->ref = {identity, ++generation_};
         slot->world_epoch=world_epoch_;
         slot->valid = true;
+        cache_list(slot);
         return slot->ref;
     }
     // Actual successful API creation, not a synthetic Reset. CreateCommandList
@@ -640,12 +684,14 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);++stats_.list_creates;++revision_;
         if(!identity||generation_==UINT64_MAX){window_bad_=true;lose_owned();return {};}
         List* slot{};
-        for(auto& list:lists_)if(list.ref.identity==identity){slot=&list;break;}
-        if(!slot)for(auto& list:lists_)if(!list.ref.identity){slot=&list;break;}
+        slot=find_identity(identity);
+        if(!slot)for(auto& list:used_lists())if(!list.ref.identity){slot=&list;break;}
+        if(!slot&&used_prefix_<list_capacity){slot=&lists_[used_prefix_++];clear_list(*slot);}
         if(!slot){++stats_.list_overflow;capacity_bad_=true;lose_owned();return {};}
         if(!slot->ref.identity){++stats_.active_lists;if(stats_.active_lists>stats_.list_highwater)stats_.list_highwater=stats_.active_lists;}
         discard_recording(*slot);
-        *slot={};slot->ref={identity,++generation_};slot->valid=initially_open;slot->world_epoch=world_epoch_;
+        clear_list(*slot);slot->ref={identity,++generation_};slot->valid=initially_open;slot->world_epoch=world_epoch_;
+        cache_list(slot);
         return slot->ref;
     }
     bool draw_final(ListRef ref, uint64_t ticket, unsigned eye, Target target, Rect rect) {
@@ -788,7 +834,7 @@ private:
         window_rejection_ = 0;
         // Explicit consumption retires all generations, including unsubmitted
         // recordings. Reclaim their slots; require fresh Reset next window.
-        for(auto& list:lists_)list={};stats_.active_lists=0;
+        used_prefix_=0;stats_.active_lists=0; // No list owns COM state; old bytes are unreachable.
         // Capacity faults remain sticky until explicit invalidate_all recovery.
         return result;
     }
@@ -822,7 +868,7 @@ public:
             result.rejection|=ticket_conflict;
         for(auto const& candidate:candidates_)if(candidate.target.resource&&candidate.target.resource!=resource)
             result.rejection|=target_conflict;
-        for(auto const& list:lists_)if(list.count&&!list.executed){
+        for(auto const& list:used_lists())if(list.count&&!list.executed){
             for(size_t i=0;i<list.count;++i)if(list.events[i].target.resource==resource)
                 result.rejection|=metadata_lost;
         }
@@ -837,8 +883,8 @@ public:
         // A caller with canonical identity leases may retire these slots and
         // release matching leases after this successful consume. Re-execution
         // without Reset remains a proof failure. Unsubmitted recordings stay.
-        for(auto& list:lists_)if(list.executed){
-            if(retired_executed){retired_executed[(*retired_count)++]=list.ref.identity;list={};--stats_.active_lists;}
+        for(auto& list:used_lists())if(list.executed){
+            if(retired_executed){retired_executed[(*retired_count)++]=list.ref.identity;clear_list(list);--stats_.active_lists;}
             else list.count=0;
         }
         candidates_={};retired_ticket_=ticket;
@@ -865,7 +911,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         if(owned_.enabled||pending_.active||revision_==UINT64_MAX)return false;
         ++revision_;retired_ticket_=maximum_ticket_;candidates_={};
-        for(auto& list:lists_)list.count=0;
+        for(auto& list:used_lists())list.count=0;
         window_bad_=false;window_rejection_=0;
         return true;
     }
@@ -875,7 +921,7 @@ public:
     void invalidate_list(Identity identity) {
         std::lock_guard<std::mutex> lock(mutex_);
         ++revision_;lose_owned();
-        for (auto& list : lists_) if (list.ref.identity == identity) list.valid = false;
+        for (auto& list : used_lists()) if (list.ref.identity == identity) list.valid = false;
         window_bad_ = true;
     }
     // Recovery boundary: discard all tracked work and require fresh successful
@@ -883,7 +929,7 @@ public:
     void invalidate_all() {
         std::lock_guard<std::mutex> lock(mutex_);
         ++revision_;lose_owned();
-        for(auto& list:lists_)list={};
+        used_prefix_=0; // Reused slots are reset before their old bytes can be read.
         candidates_ = {};
         retired_ticket_ = maximum_ticket_;
         capacity_bad_ = false;

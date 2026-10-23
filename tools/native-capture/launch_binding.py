@@ -38,7 +38,7 @@ def main():
         "if (Get-Process -Name 'GOWDE-Steam' -ErrorAction SilentlyContinue) {exit 1} else {exit 0}"], capture_output=True)
     if closed.returncode:
         raise RuntimeError('Exit the existing game first; launcher does not kill it')
-    game = ROOT / 'game-installation/Gears of War Reloaded'
+    game = ROOT / 'Gears of War Reloaded'
     exe = game / 'Binaries_x64/GOWDE-Steam.exe'
     profile = json.loads((ROOT / 'tools/package-inspector/reloaded-profile.json').read_text())
     if hashlib.sha256(exe.read_bytes()).hexdigest() != profile['sha256']:

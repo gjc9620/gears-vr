@@ -127,9 +127,9 @@ public:
             if(!count)throw std::runtime_error("No transition-card formats");
             std::vector<std::int64_t> formats(count);
             exact(xrEnumerateSwapchainFormats(owner_session,count,&count,formats.data()),"Read transition-card formats");
-            for(auto candidate:{DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM})
-                if(std::find(formats.begin(),formats.end(),std::int64_t(candidate))!=formats.end()){format=candidate;break;}
-            if(!format)throw std::runtime_error("No transition-card 8-bit UNORM format");
+            format=menu_swapchain_format::choose(formats);
+            if(!format)throw std::runtime_error("No transition-card 8-bit SDR format");
+            std::printf("{\"xr_color_policy\":\"%s\",\"path\":\"transition_card\",\"selected_format\":%u}\n",menu_swapchain_format::srgb(format)?"srgb":"unorm",unsigned(format));std::fflush(stdout);
             XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};create.createFlags=XR_SWAPCHAIN_CREATE_STATIC_IMAGE_BIT;
             create.usageFlags=XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT|XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT;
             create.format=format;create.sampleCount=1;create.width=transition_card_pixels::width;create.height=transition_card_pixels::height;
@@ -165,7 +165,7 @@ public:
             for(unsigned y=0;y<transition_card_pixels::height;++y){
                 auto* destination=static_cast<unsigned char*>(mapped)+footprint.Offset+std::size_t(y)*footprint.Footprint.RowPitch;
                 const auto* source=pixels.data()+std::size_t(y)*transition_card_pixels::width*4;
-                for(unsigned x=0;x<transition_card_pixels::width;++x){const bool bgra=format==DXGI_FORMAT_B8G8R8A8_UNORM;
+                for(unsigned x=0;x<transition_card_pixels::width;++x){const bool bgra=menu_swapchain_format::bgra(format);
                     destination[x*4]=source[x*4+(bgra?2:0)];destination[x*4+1]=source[x*4+1];
                     destination[x*4+2]=source[x*4+(bgra?0:2)];destination[x*4+3]=source[x*4+3];}
             }

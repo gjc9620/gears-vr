@@ -5,8 +5,12 @@ prepare builds and exclusively publishes an immutable world_rebind Candidate usi
 HookEntryAttestation and a DLL digest from trusted launch-manifest configuration.
 It must NOT derive that expected digest from the currently loaded/on-disk DLL.
 Both callbacks must call check_live between bounded operations and close their
-own process/attestation leases. Neither callback may signal events. No process,
+own process/attestation leases. Neither callback may signal native control events. No process,
 input, focus, injection, or XR lifecycle operations belong in these callbacks.
+Optional prepare_changed acquires a full candidate once after a pointer hint or
+an exact-session native receipt requiring recovery of a quiesced old world.
+It must apply the supplied snapshot predicate before exclusive publication;
+a rejected/unchanged snapshot returns (snapshot, None) without creating a file.
 prepare must check_live immediately before exclusive publication. After a
 successful publication it must return the receipt, even if cancellation arrives;
 exceptions mean no file was published. This prevents orphaned exclusive paths.
@@ -25,6 +29,15 @@ import math
 
 class Cancelled(RuntimeError):
     pass
+
+
+class RetryablePreparation(RuntimeError):
+    """Adapter-only marker for a rejected, unpublished read-only acquisition."""
+    def __init__(self,error,*,scope='timestamp_sample'):
+        if not isinstance(error,Exception):raise TypeError('Original preparation error required')
+        if type(scope)is not str or scope not in ('timestamp_sample','acquisition_churn'):
+            raise ValueError('Invalid read-only retry scope')
+        super().__init__(str(error));self.error=error;self.scope=scope
 
 
 def _guard_failure(error):
@@ -197,17 +210,19 @@ class WorldRebindMonitor:
                  signal, identity, enabled=False, clock=time.monotonic,
                  probe_interval=1.0, build_timeout=15.0, prepare_timeout=12.0,
                  commit_timeout=25.0, max_attempts=3, backoff=2.0, include_pawn_changes=False,
-                 changed_hint=None,hint_interval=0.1):
+                 changed_hint=None,hint_interval=0.1,prepare_changed=None):
         if not isinstance(baseline, WorldSnapshot):
             raise ValueError('Full startup world identities required')
         if type(enabled) is not bool or type(include_pawn_changes) is not bool or int(started_qpc) <= 0:
             raise ValueError('Invalid opt-in/session')
-        if any(v <= 0 for v in (probe_interval, build_timeout, prepare_timeout, commit_timeout, backoff)):
+        if any(not math.isfinite(v) or v <= 0 for v in (probe_interval, build_timeout, prepare_timeout, commit_timeout, backoff)):
             raise ValueError('Timeouts must be positive')
         if type(max_attempts) is not int or not 1 <= max_attempts <= 10:
             raise ValueError('Invalid attempt bound')
         if (changed_hint is not None and not callable(changed_hint)) or not math.isfinite(hint_interval) or hint_interval<=0:
             raise ValueError('Invalid discovery hint')
+        if prepare_changed is not None and not callable(prepare_changed):
+            raise ValueError('Invalid changed-world preparation')
         self.game, self.owner = dict(game), dict(owner)
         self.started_qpc, self.baseline = str(started_qpc), baseline
         self.observe, self.prepare, self.signal, self.identity = observe, prepare, signal, identity
@@ -222,9 +237,21 @@ class WorldRebindMonitor:
         self.target, self.attempts, self.prepared = None, 0, None
         self.generation, self.request, self.rejections = 0, 0, 0
         self.force_recovery, self.timed_out, self.signal_attempts = False, False, 0
+        self.signal_retry_started=0.0
+        self.signal_regular_attempts=0
+        self.native_retry_attempts=0
+        self.native_prepare_retry_attempts=0
+        self.sampling_retry_attempts=0
+        self.sampling_retry_due=None
+        self.sampling_retry_regular=False
         self.changed_hint,self.hint_interval=changed_hint,hint_interval
+        self.prepare_changed=prepare_changed
         self.next_hint,self.hint_retry_after=0.0,0.0
         self.work_timing={}
+        self.work_requested_ns=0
+        self.fast_build_poll=False
+        self.hint_ready=False
+        self.work_complete=None
 
     def _check_live(self):
         if self.cancel.is_set():
@@ -239,10 +266,61 @@ class WorldRebindMonitor:
                 (snapshot.changed_from(self.baseline) or
                  (self.include_pawn_changes and snapshot.pawn != self.baseline.pawn)))
 
+    def _needs_preparation(self, snapshot):
+        return (isinstance(snapshot,WorldSnapshot) and snapshot.local_player==self.baseline.local_player and
+                (self.force_recovery or self._changed_from_baseline(snapshot)) and
+                # A rejected native handoff has already quiesced the old world.
+                # It needs fresh proof even after the ordinary attempt budget;
+                # _fail supplies bounded backoff, never a relaxed validation.
+                (self.force_recovery or snapshot!=self.target or self.attempts<self.max_attempts))
+
+    def poll_interval(self, ordinary_interval):
+        """Honor a cheap hint's deadline without accelerating invalid sessions."""
+        if not math.isfinite(ordinary_interval) or ordinary_interval<=0:
+            raise ValueError('Invalid ordinary poll interval')
+        if not self.enabled or self.timed_out:return ordinary_interval
+        now=self.clock()
+        waiting=(self.state in ('preparing','committing') or
+                 (self.state=='building' and self.fast_build_poll)) and now<self.deadline
+        sending=self.state in ('send_prepare','send_commit') and now>=self.next_poll
+        short_retry=(0<self.native_retry_attempts<=self.max_attempts or
+                     0<self.native_prepare_retry_attempts<=self.max_attempts or
+                     self.sampling_retry_attempts>0)
+        if self.state in ('send_prepare','send_commit') and now<self.next_poll:
+            return min(ordinary_interval,max(.01,self.next_poll-now))
+        if self.state=='idle' and short_retry and now<self.next_poll:
+            return min(ordinary_interval,max(.01,self.next_poll-now))
+        if self.state=='idle' and self.hint_ready and self.changed_hint is not None:
+            # A due full observation also checks the hint. Backoff remains an
+            # absolute lower bound; an expired hint must not create a spin.
+            due=max(self.hint_retry_after,min(self.next_hint,self.next_poll))
+            return min(ordinary_interval,max(.01,due-now))
+        return min(ordinary_interval,.01) if waiting or sending else ordinary_interval
+
     def _check_processes(self):
         if (self.identity(self.game['pid']) != self.game or
                 self.identity(self.owner['pid']) != self.owner):
             raise Cancelled('Process identity changed')
+
+    def wait(self, ordinary_interval):
+        """Wake for one completed worker; poll alone may consume or authorize it."""
+        interval=self.poll_interval(ordinary_interval)
+        complete=self.work_complete
+        if self.enabled and self.state=='building' and self.future is not None and complete is not None:
+            signalled=complete.wait(interval)
+            # A status gap may defer consumption of a completed receipt. Take
+            # its notification once so that gap cannot create an immediate loop.
+            complete.clear()
+            return signalled
+        time.sleep(interval)
+        return False
+
+    def _check_hint_live(self):
+        # A hint runs on the idle owner, before _start creates a new worker
+        # cancellation scope. A previous failed worker must remain cancelled;
+        # it must not also cancel every subsequent read-only discovery hint.
+        if not self.enabled or self.state!='idle':raise Cancelled('Hint observer is no longer idle')
+        self._check_processes()
 
     def _valid_status(self, status):
         expected = dict(pid=str(self.game['pid']), owner_pid=str(self.owner['pid']),
@@ -257,57 +335,122 @@ class WorldRebindMonitor:
         if self.executor is None:
             self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='world-rebind')
         self.cancel = threading.Event()
+        self.timed_out = False
+        self.work_requested_ns=time.perf_counter_ns()
+        # A separate notification per worker prevents a late callback from an
+        # earlier request waking the current request or shortening backoff.
+        complete=threading.Event()
+        self.work_complete=complete
         self.future = self.executor.submit(function)
+        self.future.add_done_callback(lambda _future:complete.set())
         self.deadline = self.clock() + self.build_timeout
 
-    def _work(self):
+    def _work(self, single_requested=False):
         snapshot = prepared = None
-        started=time.perf_counter();observed=None
+        started=time.perf_counter_ns();observed=None
+        single=single_requested and self.prepare_changed is not None
         try:
             self._check_live()
-            snapshot = self.observe(self._check_live)
-            observed=time.perf_counter()
-            self._check_live()
-            if snapshot is None:
-                return None, None, None
-            if not isinstance(snapshot, WorldSnapshot):
-                raise ValueError('Observer did not return full identities')
-            if snapshot.local_player != self.baseline.local_player:
-                return snapshot, None, None
-            if not self.force_recovery and not self._changed_from_baseline(snapshot):
-                return snapshot, None, None
-            if snapshot == self.target and self.attempts >= self.max_attempts:
-                return snapshot, None, None
-            prepared = self.prepare(snapshot, self.generation, self.request, self._check_live)
+            if single:
+                observed=started
+                snapshot,prepared=self.prepare_changed(self.generation,self.request,
+                    self._needs_preparation,self._check_live)
+                if not isinstance(snapshot,WorldSnapshot):raise ValueError('Preparation did not return full identities')
+                if prepared is None:return snapshot,None,None
+                if not self._needs_preparation(snapshot):raise ValueError('Unexpected changed-world publication')
+            else:
+                snapshot = self.observe(self._check_live)
+                observed=time.perf_counter_ns()
+                self._check_live()
+                if snapshot is None:return None, None, None
+                if not isinstance(snapshot, WorldSnapshot):raise ValueError('Observer did not return full identities')
+                if not self._needs_preparation(snapshot):return snapshot, None, None
+                self.fast_build_poll=True
+                prepared = self.prepare(snapshot, self.generation, self.request, self._check_live)
             if (not isinstance(prepared, PreparedRebind) or prepared.snapshot != snapshot or
                     prepared.previous_generation != self.generation or prepared.request != self.request or
                     Path(prepared.path).name != self.request_filename):
                 raise ValueError('Prepared candidate/request mismatch')
             return snapshot, prepared, None
         except Exception as error:
+            retryable=isinstance(error,RetryablePreparation)
+            read_scope=error.scope if retryable else None
+            if retryable:error=error.error
             failure = (type(error).__name__, _error_detail(error))
             summary = _guard_failure(error)
+            if retryable:return snapshot,prepared,failure+(summary,True,read_scope)
             return snapshot, prepared, failure + (summary,) if summary is not None else failure
         finally:
-            ended=time.perf_counter()
-            self.work_timing=dict(observe_ms=((observed or ended)-started)*1000,
-                prepare_ms=(ended-observed)*1000 if observed is not None else 0,worker_ms=(ended-started)*1000)
+            ended=time.perf_counter_ns()
+            self.work_timing=dict(observe_ms=((observed or ended)-started)/1e6,
+                prepare_ms=(ended-observed)/1e6 if observed is not None else 0,worker_ms=(ended-started)/1e6,
+                single_acquisition=single,clock='qpc_monotonic_ns',requested_ns=self.work_requested_ns,
+                worker_started_ns=started,worker_finished_ns=ended)
 
     @property
     def request_filename(self):
         return f'world-rebind-{self.game["creation_time"]}-{self.generation + 1}-{self.request}.ini'
 
-    def _fail(self, reason, events, detail='', guard_failure=None):
+    def _fail(self, reason, events, detail='', guard_failure=None, *, handoff_rejected=False, transient_read=False,native_timestamp=False,read_scope='timestamp_sample'):
         self.cancel.set()
+        self.hint_ready=False
         self.prepared = None
         self.state = 'idle'
-        self.next_poll = self.clock() + self.backoff * max(1, self.attempts)
+        self.timed_out=False
+        delay=self._retry_delay(self.attempts)
+        now=self.clock()
+        fast_retry=False
+        if handoff_rejected:
+            # The exact native transaction cleared its candidate after fully
+            # quiescing the old world. Try a fresh package promptly; only this
+            # receipt authorizes a short bounded burst, never a blind resend.
+            self.native_retry_attempts+=1
+            if self.native_retry_attempts<=self.max_attempts:
+                delay=min(delay,.1*self.native_retry_attempts);fast_retry=True
+        if transient_read:
+            self.sampling_retry_attempts+=1
+            # Keep the existing bounded probe schedule. If it finishes before
+            # the original ordinary deadline, add one earlier full acquisition
+            # while retaining the post-burst retry for a just-later recovery.
+            if self.sampling_retry_due is None:self.sampling_retry_due=now+delay
+            fast_retry=self.sampling_retry_attempts<=self.max_attempts
+            if fast_retry:delay=min(delay,.05*self.sampling_retry_attempts)
+            else:
+                previous_due=now+delay if not self.sampling_retry_regular else None
+                if now<self.sampling_retry_due:delay=self.sampling_retry_due-now
+                self.sampling_retry_due=previous_due if previous_due is not None else now+delay
+                self.sampling_retry_regular=True
+        else:
+            # A hard failure establishes its own ordinary delay. Keep the
+            # spent short-probe budget, but discard the old read deadline.
+            self.sampling_retry_due=None
+        if native_timestamp:
+            # Exactly this publication was rejected for a completed timestamp
+            # bracket. Do not spend the structural failure budget on it. Every
+            # retry still reacquires and publishes a new full certificate.
+            self.attempts=max(0,self.attempts-1)
+            self.native_prepare_retry_attempts+=1
+            delay=self._retry_delay(self.attempts)
+            if self.native_prepare_retry_attempts<=self.max_attempts:
+                delay=min(delay,.05*self.native_prepare_retry_attempts);fast_retry=True
+        self.next_poll = now + delay
         self.hint_retry_after=self.next_poll
         events.append(dict(event='world_rebind_failed', reason=reason, request=self.request))
+        if handoff_rejected:
+            events[-1].update(fast_retry=fast_retry,retry_after_ms=round(delay*1000,3))
+        if transient_read:
+            events[-1].update(fast_retry=fast_retry,retry_after_ms=round(delay*1000,3),retry_scope=read_scope,
+                worker_timing=dict(self.work_timing))
+        if native_timestamp:
+            events[-1].update(fast_retry=fast_retry,retry_after_ms=round(delay*1000,3),retry_scope='native_timestamp_sample',
+                worker_timing=dict(self.work_timing))
         if detail:
             events[-1]['detail'] = detail
         if guard_failure is not None:
             events[-1]['guard_failure'] = guard_failure
+
+    def _retry_delay(self, attempts):
+        return self.backoff * min(max(1, attempts), self.max_attempts)
 
     def _send(self, kind, status, events):
         """One event per accepted signal; no blind Prepare resend on timeout."""
@@ -315,20 +458,43 @@ class WorldRebindMonitor:
         if now < self.next_poll:
             return
         self._check_processes()
+        if self.signal_attempts==0:self.signal_retry_started,self.signal_regular_attempts=now,0
         self.signal_attempts += 1
-        if self.signal(f'Local\\GearsVR.Capture.WorldRebind{kind}.{self.game["pid"]}'):
+        try:
+            signalled=self.signal(f'Local\\GearsVR.Capture.WorldRebind{kind}.{self.game["pid"]}')
+        except OSError:
+            # Control.signal raises only when SetEvent itself failed. No
+            # accepted request exists in this case; retain the same receipt.
+            signalled=False
+        if signalled:
             self.state = 'preparing' if kind == 'Prepare' else 'committing'
             self.deadline = now + (self.prepare_timeout if kind == 'Prepare' else self.commit_timeout)
             self.timed_out = False
             events.append(dict(event='world_rebind_' + kind.lower(), request=self.request))
             if kind=='Prepare':events[-1]['worker_timing']=dict(self.work_timing)
-        elif self.signal_attempts >= self.max_attempts:
-            # Keep the receipt: native has no Abort. A failed event must not
-            # permit another candidate to overwrite or strand this transaction.
-            self.state = 'blocked'
-            events.append(dict(event='world_rebind_blocked', reason=kind.lower() + '_signal_failed', request=self.request))
         else:
-            self.next_poll = now + self.backoff * self.signal_attempts
+            # False means SetEvent was not accepted, unlike a receipt timeout.
+            # Retain exactly one immutable package and retry only this signal;
+            # transient event unavailability must not permanently strand VR.
+            first_regular=self.signal_retry_started+self._retry_delay(1)
+            fast_retry=(self.signal_attempts<=self.max_attempts and self.signal_regular_attempts==0 and now<first_regular)
+            if fast_retry:
+                delay=min(.05*self.signal_attempts,first_regular-now)
+            else:
+                # Preserve the ordinary retry timeline for every supported
+                # attempt bound/backoff, including a burst cut short by it.
+                if self.signal_regular_attempts==0 and now>=first_regular:self.signal_regular_attempts=1
+                self.signal_regular_attempts+=1
+                delay=self._retry_delay(self.signal_regular_attempts)
+                if self.signal_regular_attempts==1:delay=max(.01,first_regular-now)
+            self.next_poll = now + delay
+            # No accepted request exists for this stage. A timeout from an
+            # earlier Prepare receipt must not suppress its retry deadline.
+            self.timed_out=False
+            if self.signal_attempts>=self.max_attempts:
+                events.append(dict(event='world_rebind_waiting', reason=kind.lower()+'_signal_retry',
+                                   request=self.request, attempts=self.signal_attempts,
+                                   fast_retry=fast_retry,retry_after_ms=round(delay*1000,3),retry_scope='control_signal'))
 
     def _notice_timeout(self, events):
         if not self.timed_out and self.clock() >= self.deadline:
@@ -338,6 +504,7 @@ class WorldRebindMonitor:
 
     def _conflict(self, reason, events):
         self.cancel.set()
+        self.hint_ready=False
         self.state = 'blocked'
         events.append(dict(event='world_rebind_blocked', reason=reason, request=self.request))
 
@@ -348,6 +515,7 @@ class WorldRebindMonitor:
             return events
         try:
             if not self._valid_status(status):
+                self.hint_ready=False
                 if self.state == 'building':
                     self.cancel.set()
                 # Keep a published/signalled transaction for exact-session
@@ -361,12 +529,18 @@ class WorldRebindMonitor:
             if (min(generation, requests, rejected, candidate) < 0 or generation == 0 or
                     max(generation, requests, rejected, candidate) >= (1 << 64) - 1):
                 raise ValueError('Invalid native counters')
+            self.hint_ready=candidate==0
             now = self.clock()
             if self.state != 'idle' and generation != self.generation:
                 if (self.state == 'committing' and generation == self.generation + 1 and
                         requests == self.request and rejected == self.rejections):
                     self.baseline = self.prepared.snapshot
                     self.prepared, self.target, self.attempts = None, None, 0
+                    self.native_retry_attempts=0
+                    self.native_prepare_retry_attempts=0
+                    self.sampling_retry_attempts=0
+                    self.sampling_retry_due=None
+                    self.sampling_retry_regular=False
                     self.state, self.next_poll = 'idle', now + self.interval
                     events.append(dict(event='world_rebind_committed', generation=generation, request=self.request))
                 else:
@@ -381,16 +555,23 @@ class WorldRebindMonitor:
             if self.state == 'building' and self.future.done():
                 snapshot, prepared, error = self.future.result()
                 self.future = None
+                self.work_complete=None
+                transient_read=bool(error and len(error)>3 and error[3]is True)
+                if error is None:
+                    self.sampling_retry_attempts=0
+                    self.sampling_retry_due=None
+                    self.sampling_retry_regular=False
                 if snapshot is not None and (self.force_recovery or self._changed_from_baseline(snapshot)):
                     if snapshot != self.target:
                         self.target, self.attempts = snapshot, 0
-                    if prepared is not None or error:
+                    if prepared is not None or (error and not transient_read):
                         self.attempts += 1
                 if error and prepared is not None:
                     self.prepared, self.state = prepared, 'blocked'
                     events.append(dict(event='world_rebind_blocked', reason=error[0], request=self.request))
                 elif error:
-                    self._fail(error[0], events, error[1], error[2] if len(error) > 2 else None)
+                    self._fail(error[0], events, error[1], error[2] if len(error) > 2 else None,transient_read=transient_read,
+                        read_scope=error[4]if transient_read and len(error)>4 else'timestamp_sample')
                 elif prepared is None:
                     self.state, self.next_poll = 'idle', now + self.interval
                 elif requests != self.request - 1 or candidate != 0:
@@ -412,10 +593,13 @@ class WorldRebindMonitor:
                     if candidate:
                         self._conflict('prepare_request_conflict', events)
                     else:
-                        self._fail('prepare_rejected_or_request_race', events)
+                        self._fail('prepare_rejected_or_request_race', events,native_timestamp=(
+                            requests==self.request and rejected==self.rejections+1 and
+                            status.get('world_prepare_timestamp_request')==str(self.request)))
                 elif requests == self.request and candidate == self.generation + 1:
                     # Native revalidates AFTER draining old scopes and GPU work;
                     # an owner-side re-observation cannot replace that guard.
+                    self.native_prepare_retry_attempts=0
                     self.state, self.signal_attempts, self.next_poll = 'send_commit', 0, now
                     self._send('Commit', status, events)
                 else:
@@ -427,23 +611,31 @@ class WorldRebindMonitor:
                     if candidate:
                         self._conflict('commit_request_conflict', events)
                     else:
-                        self._fail('commit_candidate_lost', events)
+                        self._fail('commit_candidate_lost', events,handoff_rejected=(
+                            status.get('world_handoff_phase')=='4' and requests==self.request and rejected==self.rejections))
             elif self.state == 'committing':
                 if requests != self.request or candidate == 0 or rejected != self.rejections:
                     if candidate:
                         self._conflict('commit_request_conflict', events)
                     else:
-                        self._fail('commit_rejected_or_request_race', events)
+                        self._fail('commit_rejected_or_request_race', events,handoff_rejected=(
+                            status.get('world_handoff_phase')=='4' and requests==self.request and rejected==self.rejections))
                 else:
                     self._notice_timeout(events)
             elif self.state == 'idle':
-                if now < self.next_poll:
-                    if self.changed_hint is None or now < max(self.next_hint,self.hint_retry_after):return events
+                hinted=False
+                probe_due=now>=self.next_poll
+                if (self.changed_hint is not None and now>=self.hint_retry_after and
+                        (probe_due or now>=self.next_hint)):
                     self.next_hint=now+self.hint_interval
-                    try:changed=self.changed_hint(self.baseline,self._check_live)
+                    try:changed=self.changed_hint(self.baseline,self._check_hint_live)
                     except Cancelled:raise
                     except (RuntimeError,OSError,ValueError):changed=False
-                    if changed is not True:return events
+                    hinted=changed is True
+                # A due periodic observation can use the same single-acquisition
+                # path as an early pointer hint. False/failed hints retain full
+                # periodic discovery, including same-address identity changes.
+                if not probe_due and not hinted:return events
                 # Never overlap a cancelled worker, overwrite an existing pending
                 # candidate, or recycle a path after a failed native request.
                 if self.future is not None:
@@ -462,7 +654,10 @@ class WorldRebindMonitor:
                     return events
                 self.rejections = rejected
                 self.state = 'building'
-                self._start(self._work)
+                self.fast_build_poll=hinted or self.force_recovery or self.sampling_retry_attempts>0 or self.native_prepare_retry_attempts>0
+                # A quiesced world already requires a full new certificate;
+                # another preliminary observation adds no authorization.
+                self._start(lambda:self._work(hinted or self.force_recovery))
         except Exception as error:
             if self.prepared is not None or self.future is not None:
                 self._conflict(type(error).__name__, events)
@@ -476,6 +671,7 @@ class WorldRebindMonitor:
         if self.executor is not None:
             self.executor.shutdown(wait=True, cancel_futures=True)
             self.executor = None
+        self.work_complete=None
 
     def __enter__(self):
         return self

@@ -1,4 +1,5 @@
 #include "material_overlay_plan.h"
+#include "material_reticle_plan.h"
 namespace owned_material {
 // The CPU-side native upload certificate is tied to this TLS consumer and to
 // the exact command list. Actual OM/ticket identity is checked independently.
@@ -11,12 +12,14 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
  const auto pair=owned_scene_gpu::tracker.overlay_pair(ref,target);
  gears_ui_material::Quad quad{};gears_ui_material::Candidate candidate{};
  gears_ui_material::ViewPlane plane{};gears_ui_material::ViewPlaneReject reject{};
- uintptr_t wrapper{},native_list{};unsigned stride{},topology{};
+ uintptr_t wrapper{},native_list{};unsigned stride{},topology{},plan_stage{};
+ gears_material_reticle::Reject reticle_reject{};
  auto reject_draw=[&](unsigned reason){
   {std::lock_guard<std::mutex> lock(failure_mutex);if(!first_draw_failure.reason){auto& d=first_draw_failure;
    d.reason=reason;d.ticket=c.owned_ticket;d.pair_ticket=pair.ticket;d.linked=pair.linked;
    d.targets=binding.targets;d.actual=binding.target.resource;d.expected=target.resource;d.width=unsigned(binding.target.width);d.height=binding.target.height;
    d.list=reinterpret_cast<uintptr_t>(list);d.native_list=native_list;d.stride=stride;d.topology=topology;
+   d.kind=c.consumer.receipt.kind;d.plan_stage=plan_stage;d.reticle_reject=unsigned(reticle_reject);
    safe_copy(d.rect.data(),reinterpret_cast<void*>(c.consumer.view+0x48),sizeof(d.rect));
    safe_copy(d.projection.data(),reinterpret_cast<void*>(c.consumer.view+0xb0),sizeof(d.projection));
   }}fail(c,reason);return false;
@@ -34,9 +37,23 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
  if(!gears_ui_material::material_view_plane(safe_copy,c.consumer,plane,&reject))return reject_draw(40+unsigned(reject));
  gears_vr::StereoSample sample{};gears_material_overlay::Result overlay{};
  gears_ui_layout::Matrix matrix{};std::memcpy(matrix.data(),c.consumer.receipt.transform.data(),sizeof(matrix));
- if(!owned_scene_gpu::image_tickets.lookup(c.owned_ticket,sample,simulator_operator)||
-    !gears_material_overlay::plan(c.consumer.receipt.kind,ui_hud_plane_enabled,saved,target.width,target.height,
+ plan_stage=1;
+ if(!owned_scene_gpu::image_tickets.lookup(c.owned_ticket,sample,simulator_operator))return reject_draw(28);
+ bool reticle_suppressed=false;
+ if(c.consumer.receipt.kind==1){
+  gears_vr::StereoTicketGeometry geometry{};gears_material_reticle::Result reticle{};
+  const bool directional=ui_reticle_direction_enabled&&ui_hud_plane_enabled;
+  plan_stage=2;
+  if(directional&&!owned_scene_gpu::image_tickets.lookup_geometry(c.owned_ticket,geometry,simulator_operator))return reject_draw(28);
+  plan_stage=3;
+  if(!gears_material_reticle::plan(c.consumer.receipt.kind,directional,saved,target.width,target.height,
+      plane,quad,matrix,directional?&geometry:nullptr,reticle,&reticle_reject))return reject_draw(28);
+  overlay.plan=reticle.plan;reticle_suppressed=reticle.suppressed;
+ }else{
+  plan_stage=4;
+  if(!gears_material_overlay::plan(c.consumer.receipt.kind,ui_hud_plane_enabled,saved,target.width,target.height,
       sample,plane.aspect,ui_hud_parameters,ui_hud_layout_parameters,quad,matrix,overlay))return reject_draw(28);
+ }
  if(overlay.layout_considered){++ui_layout_counts.considered;
   if(overlay.layout_applied)++ui_layout_counts.planned;else ++ui_layout_counts.fallback;
  }
@@ -47,6 +64,7 @@ bool draw(ID3D12GraphicsCommandList* list,uintptr_t caller,gears_ui_material::Dr
  catch(...){fail(c,29);throw;}
  if(!owned_scene_gpu::tracker.draw_overlay_pair(ref,pair.ticket,target,pair.eyes,mask)){fail(c,30);return true;}
  if(overlay.layout_applied&&mask==3)++ui_layout_counts.applied;
+ if(c.consumer.receipt.kind==1){++reticle_draws;if(reticle_suppressed)++reticle_suppressed_draws;}
  ++c.owned_draws;++draws;owned_scene_gpu::material_candidate(c.owned_ticket);return true;
 }
 }

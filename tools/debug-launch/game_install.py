@@ -6,12 +6,10 @@ import os
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-DEFAULT_GAME = ROOT / 'game-installation/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
+DEFAULT_GAME = ROOT / 'Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
 CONFIG_HASHES = frozenset((
     '6cf7a0c3a59d85ae6fedf5fc49d8bb406edda9adda7429448d27510e729a8f16',
     '799723628b465552bc2f1847f91370c10c35e98dbd9460695e5f369956da70de'))
-
-
 STEAM_APP_ID = '2523720'
 
 
@@ -49,13 +47,9 @@ def validate_game(path=None, root=ROOT, expected=None):
 
 
 def debug_command(exe, root=ROOT, *, foreground=False, experimental_preserve_upscaler=False):
-
     return ['powershell', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File',
-
             str(root / 'tools/debug-launch/Start-DebugGame.ps1'), '-DisableBackgroundInput',
-
             '-GamePath', str(exe)] + (['-Foreground'] if foreground else []) + (
-
                 ['-ExperimentalPreserveUpscaler'] if experimental_preserve_upscaler else [])
 
 

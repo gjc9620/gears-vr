@@ -217,6 +217,43 @@ class LauncherTests(unittest.TestCase):
                 self.assertIn('reservation_failure_cleanup',log.read_text())
             self.assertNotEqual(paths[0],paths[1])
 
+    def test_reservation_failure_exposes_original_cause_and_keeps_full_log_and_cleanup(self):
+        backend=launcher.Backend.__new__(launcher.Backend)
+        backend.close_uninjected_reservation=mock.Mock(return_value={'status':'no_birth_receipt'})
+        stderr=('Traceback (most recent call last):\n  File "graphics_policy.py", line 1\n'
+                'RuntimeError: Persisted DLSS must be OFF before release startup\n'
+                'At C:\\Mod folder\\Start-DebugGame.ps1:1 char:1\n'
+                'Traceback (most recent call last):\n'
+                'subprocess.CalledProcessError: Command powershell returned non-zero exit status 1.\n')
+        result=SimpleNamespace(returncode=1,stdout='startup checks passed\n',stderr=stderr)
+        with tempfile.TemporaryDirectory() as directory:
+            log=pathlib.Path(directory)/'reserve.log'
+            with mock.patch.object(launcher.subprocess,'run',return_value=result) as spawn:
+                with self.assertRaises(RuntimeError) as failed:backend.reserve(MANIFEST,log)
+            message=str(failed.exception)
+            self.assertIn('exit code 1',message)
+            self.assertIn('RuntimeError: Persisted DLSS must be OFF before release startup',message)
+            self.assertNotIn('CalledProcessError',message)
+            self.assertIn(str(log),message)
+            self.assertIn(stderr,log.read_text())
+            self.assertIn('reservation_failure_cleanup',log.read_text())
+            self.assertEqual(failed.exception.reservation_failure_cleanup,{'status':'no_birth_receipt'})
+            self.assertEqual(spawn.call_count,1)
+            self.assertEqual(spawn.call_args.kwargs['errors'],'replace')
+
+    def test_reservation_error_summary_fallback_and_output_bound(self):
+        self.assertEqual(launcher.reservation_failure_detail('stdout cause',''),'stdout cause')
+        self.assertEqual(launcher.reservation_failure_detail('stdout cause','stderr cause'),'stderr cause')
+        self.assertIn('no error output',launcher.reservation_failure_detail('',' \n'))
+        self.assertEqual(launcher.reservation_failure_detail('', 'OSError: Access denied'),'OSError: Access denied')
+        self.assertEqual(launcher.reservation_failure_detail('', 'Traceback:\nException: failed\nwrapper'),'Exception: failed')
+        wrapper='subprocess.CalledProcessError: command exited with code 1'
+        self.assertEqual(launcher.reservation_failure_detail('',wrapper),wrapper)
+        detail=launcher.reservation_failure_detail('','omitted prefix\n'+'x'*5000+'\nlast line')
+        self.assertLessEqual(len(detail),1500)
+        self.assertNotIn('omitted prefix',detail)
+        self.assertTrue(detail.endswith('last line'))
+
     def test_cli_foreground_reaches_start(self):
         for foreground in (False,True):
             argv=['launcher.py','start']+(['--foreground'] if foreground else [])
@@ -587,6 +624,36 @@ class LauncherTests(unittest.TestCase):
             for invalid in ('','fr','EN',None,True,123,[],{}):
                 with self.subTest(language=invalid),self.assertRaisesRegex(ValueError,'launcher_language'):
                     launcher.settings(dict(base,launcher_language=invalid),manifest)
+
+    def test_persisted_game_history_preserves_selected_settings(self):
+        current=json.loads(pathlib.Path(__file__).with_name('manifest.json').read_text())
+        base=dict(game_path='selected/game.exe',stereo_units_per_metre=123)
+        metadata=dict(game_path_history=['missing/old.exe','other/game.exe'],
+                      game_settings_paths={'J:/install/game.exe':'J:/profiles/EngineUserSettings.ini'})
+        for manifest in (MANIFEST,current):
+            with self.subTest(manifest=manifest['native_build']),tempfile.TemporaryDirectory() as directory:
+                path=pathlib.Path(directory)/'config.json'
+                launcher.atomic_json(path,dict(base,**metadata))
+                before=path.read_bytes();config=json.loads(before)
+                self.assertEqual(launcher.settings(config,manifest),launcher.settings(base,manifest))
+                self.assertEqual(config,dict(base,**metadata))
+                self.assertEqual(path.read_bytes(),before)
+                with self.assertRaisesRegex(ValueError,'Unknown configuration field: game_path_histroy'):
+                    launcher.settings(dict(config,game_path_histroy=[]),manifest)
+
+    def test_saved_game_history_reaches_start_without_selecting_history(self):
+        config=dict(game_path=MANIFEST['game_path'],stereo_units_per_metre=123,
+                    game_path_history=['missing/old.exe','other/game.exe'])
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend()
+            with mock.patch.object(launcher,'verify_files',return_value={}) as verify,\
+                 mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                launcher.start(config,MANIFEST,backend,pathlib.Path(directory)/'index.json',sleep=lambda _:None)
+            verify.assert_called_once_with(MANIFEST,launcher.rooted(config['game_path']))
+            self.assertEqual(backend.selected_path,launcher.rooted(config['game_path']))
+            self.assertEqual(backend.reserve_calls,1)
+            backend.runner.run_session.assert_called_once()
+            self.assertEqual(backend.runner.run_session.call_args.args[0].stereo_units_per_metre,123)
 
     def test_scale_and_fixed_path(self):
         for value in (float('nan'),float('inf'),9,501,True,'100'):
@@ -961,7 +1028,6 @@ class LauncherTests(unittest.TestCase):
             backend.runner.run_session.assert_not_called();self.assertEqual(backend.reserve_calls,1)
 
     def test_runner_cancel_exit_zero_is_not_vr_pass(self):
-        (launcher.ROOT/'analysis/runtime').mkdir(parents=True,exist_ok=True)
         with tempfile.TemporaryDirectory(dir=launcher.ROOT/'analysis/runtime') as directory:
             backend=FakeBackend();index=pathlib.Path(directory)/'index.json'
             def cancelled(args,control,on_report,cancel_requested):
@@ -1161,44 +1227,5 @@ class LauncherTests(unittest.TestCase):
             fields['started_qpc']='778'
             with mock.patch('builtins.print'):value=launcher.status(backend,index)
             self.assertIsNone(value['reference_generation']);self.assertFalse(value['native_status_matched'])
-
-    def test_reservation_failure_exposes_original_cause_and_keeps_full_log_and_cleanup(self):
-        backend=launcher.Backend.__new__(launcher.Backend)
-        backend.close_uninjected_reservation=mock.Mock(return_value={'status':'no_birth_receipt'})
-        stderr=('Traceback (most recent call last):\n  File "graphics_policy.py", line 1\n'
-                'RuntimeError: Persisted DLSS must be OFF before release startup\n'
-                'At C:\\Mod folder\\Start-DebugGame.ps1:1 char:1\n'
-                'Traceback (most recent call last):\n'
-                'subprocess.CalledProcessError: Command powershell returned non-zero exit status 1.\n')
-        result=SimpleNamespace(returncode=1,stdout='startup checks passed\n',stderr=stderr)
-        with tempfile.TemporaryDirectory() as directory:
-            log=pathlib.Path(directory)/'reserve.log'
-            with mock.patch.object(launcher.subprocess,'run',return_value=result) as spawn:
-                with self.assertRaises(RuntimeError) as failed:backend.reserve(MANIFEST,log)
-            message=str(failed.exception)
-            self.assertIn('exit code 1',message)
-            self.assertIn('RuntimeError: Persisted DLSS must be OFF before release startup',message)
-            self.assertNotIn('CalledProcessError',message)
-            self.assertIn(str(log),message)
-            self.assertIn(stderr,log.read_text())
-            self.assertIn('reservation_failure_cleanup',log.read_text())
-            self.assertEqual(failed.exception.reservation_failure_cleanup,{'status':'no_birth_receipt'})
-            self.assertEqual(spawn.call_count,1)
-            self.assertEqual(spawn.call_args.kwargs['errors'],'replace')
-
-
-    def test_reservation_error_summary_fallback_and_output_bound(self):
-        self.assertEqual(launcher.reservation_failure_detail('stdout cause',''),'stdout cause')
-        self.assertEqual(launcher.reservation_failure_detail('stdout cause','stderr cause'),'stderr cause')
-        self.assertIn('no error output',launcher.reservation_failure_detail('',' \n'))
-        self.assertEqual(launcher.reservation_failure_detail('', 'OSError: Access denied'),'OSError: Access denied')
-        self.assertEqual(launcher.reservation_failure_detail('', 'Traceback:\nException: failed\nwrapper'),'Exception: failed')
-        wrapper='subprocess.CalledProcessError: command exited with code 1'
-        self.assertEqual(launcher.reservation_failure_detail('',wrapper),wrapper)
-        detail=launcher.reservation_failure_detail('','omitted prefix\n'+'x'*5000+'\nlast line')
-        self.assertLessEqual(len(detail),1500)
-        self.assertNotIn('omitted prefix',detail)
-        self.assertTrue(detail.endswith('last line'))
-
 
 if __name__=='__main__':unittest.main()

@@ -2,12 +2,12 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "gears-vr-0.0.1",
+      "name": "gears-vr-0.0.3",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-ads-anchor2",
+      "binaryDir": "${sourceDir}/build-avp90-two-slot-ready1",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CAPTURE_OUTPUT_NAME": "GearsCaptureAdsAnchor2",
+        "CAPTURE_OUTPUT_NAME": "GearsCaptureAvp90TwoSlot",
         "GEARS_BACKGROUND_ZERO_EXTENT_CONTROL": "ON",
         "GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER": "ON",
         "GEARS_DEATH_CONSTANT_OBSERVER": "OFF",

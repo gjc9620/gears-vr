@@ -45,8 +45,24 @@ int main(){
                   std::array<unsigned,4>{1792,980,8193,2160},
                   std::array<unsigned,4>{1792,980,3840,8193}})
         assert(!plain(true,true,true,false,0x2b11a0,copied_left,bad));
+    // Recorded playground ticket2, both eye rectangles in a larger 1280x720
+    // pool. A full-frame/shifted/cross-eye copy cannot certify either eye.
+    const std::array<unsigned,4> playground_sizes{640,350,1280,720};
+    const std::array<float,8> playground_left{0,0,320,350,0,0,320,350};
+    auto playground_right=playground_left;playground_right[0]=playground_right[4]=320;
+    assert(plain(true,true,true,false,0xe27709,playground_left,playground_sizes));
+    assert(plain(true,true,true,false,0xe27709,playground_right,playground_sizes));
+    for(unsigned gate=0;gate<4;++gate)
+        assert(!plain(gate!=0,gate!=1,gate!=2,gate==3,0xe27709,playground_left,playground_sizes));
+    auto cross_eye=playground_left;cross_eye[4]=320;
+    assert(!plain(true,true,true,false,0xe27709,cross_eye,playground_sizes));
+    auto full_frame=playground_left;full_frame[2]=full_frame[6]=640;
+    assert(!plain(true,true,true,false,0xe27709,full_frame,playground_sizes));
+    for(auto bad:{std::array<unsigned,4>{640,350,639,720},std::array<unsigned,4>{640,350,1280,349},
+                  std::array<unsigned,4>{640,350,8193,720},std::array<unsigned,4>{640,350,1280,8193}})
+        assert(!plain(true,true,true,false,0xe27709,playground_left,bad));
+    assert(!plain(true,true,true,false,0xe2770a,playground_left,playground_sizes));
     // End of plain Output policy checks.
-
     using namespace gears_final_transfer;
     // Failed Ultra run: already classified left/right half-quad on the
     // current 3840x2160 backbuffer, with an authenticated consuming ticket.

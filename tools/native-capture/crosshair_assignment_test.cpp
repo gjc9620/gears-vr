@@ -114,5 +114,28 @@ int main(){
         if(fault==2)a.m.put(0xe02a0,a.identities.base+0x1daba1);
         if(fault==3)a.m.denied=a.address(a.c.controller)+a.c.aim.offset;
         Snapshot unused{};assert(!snapshot(a.c,a.read(),a.address(a.c.controller),a.frame,unused));}
+    // Scene targeting remains readable when a HUD action skipped the query or
+    // the query's frame/locals are unavailable. Cover and ordinary ADS share
+    // the game-owned targeting bit; releasing it must apply immediately.
+    Fixture cover;cover.enable_aim();cover.m.denied=cover.frame+0x30;bool raised=false;
+    assert(scene_aiming(cover.c,cover.read(),cover.address(cover.c.controller),cover.address(cover.c.pawn),raised)&&raised);
+    cover.m.put(cover.address(cover.c.controller)+cover.c.aim.offset,unsigned(0));
+    assert(scene_aiming(cover.c,cover.read(),cover.address(cover.c.controller),cover.address(cover.c.pawn),raised)&&!raised);
+    Fixture swapped;swapped.enable_aim();swapped.m.denied=swapped.address(swapped.c.weapon);
+    swapped.m.put(swapped.address(swapped.c.pawn)+swapped.c.pawn_weapon.offset,std::uintptr_t(0xbad000));
+    assert(scene_aiming(swapped.c,swapped.read(),swapped.address(swapped.c.controller),swapped.address(swapped.c.pawn),raised)&&raised);
+    for(unsigned fault=0;fault<8;++fault){Fixture a;a.enable_aim();bool unchanged=true;unsigned reads=0;
+        if(fault==0)a.c.aim.enabled=false;
+        if(fault==1)a.m.denied=a.address(a.c.controller)+a.c.aim.offset;
+        if(fault==2)a.m.put(a.address(a.c.aim.property)+0xd0,unsigned(3));
+        if(fault==3)a.m.put(a.address(a.c.controller)+a.c.controller_pawn.offset,std::uintptr_t(0));
+        if(fault==4)a.m.put(0x10000+a.c.pawn*8,std::uintptr_t(0));
+        auto changing=[&](void* dest,void const* source,std::size_t size){
+            if(fault==7&&reinterpret_cast<std::uintptr_t>(source)==a.address(a.c.controller)+a.c.aim.offset&&++reads==2)
+                a.m.put(a.address(a.c.controller)+a.c.aim.offset,unsigned(0));
+            return a.m.read(dest,source,size);};
+        assert(!scene_aiming(a.c,changing,a.address(a.c.controller)+(fault==5?8:0),
+            a.address(a.c.pawn)+(fault==6?8:0),unchanged)&&unchanged);
+    }
     std::cout<<"crosshair_assignment_test passed\n";
 }

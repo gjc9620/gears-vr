@@ -122,6 +122,7 @@ def run_game_startup(command):
     if result.returncode:
         raise RuntimeError(f'Game startup script failed (exit code {result.returncode}); see preceding output')
 
+
 def main():
     command_started=time.monotonic()
     parser=argparse.ArgumentParser(description=__doc__)
@@ -132,6 +133,9 @@ def main():
     parser.add_argument('--experimental-preserve-upscaler',action='store_true',help='Read-only preflight and preserve the fixed experimental DLSS SR startup profile')
     parser.add_argument('--dll-name',default='GearsCapturePrepare.dll')
     parser.add_argument('--launch-receipt',type=pathlib.Path,help=argparse.SUPPRESS)
+    parser.add_argument('--playground-build',help=argparse.SUPPRESS)
+    parser.add_argument('--playground-dll',help=argparse.SUPPRESS)
+    parser.add_argument('--playground-sha256',help=argparse.SUPPRESS)
     parser.add_argument('--startup-preflight-nonce',help=argparse.SUPPRESS)
     parser.add_argument('--check-shadow-copy',action='store_true',help='Require the bounded source-view copy self-test before startup; does not enable the experiment')
     parser.add_argument('--check-shadow-state',action='store_true',help='Require the independent state lifecycle self-test before startup')
@@ -154,6 +158,9 @@ def main():
     if args.graphics_startup_lock and not owned:parser.error('Startup graphics lock requires owned priming')
     if args.graphics_menu_lock and not args.graphics_startup_lock:parser.error('Menu lock requires startup graphics protection')
     if pathlib.Path(args.dll_name).name!=args.dll_name:parser.error('DLL basename required')
+    playground_fields=(args.playground_build,args.playground_dll,args.playground_sha256)
+    if any(playground_fields) and (not all(playground_fields) or not owned):
+        parser.error('Early playground reservation requires paired artifacts and an owned startup')
     trace=StartupTrace(args.startup_diagnostics,append=True)
     trace.status_path=args.build_dir.resolve()/'target-prime-status.txt'
     try:
@@ -254,7 +261,7 @@ def reserve(args,owned,trace,command_started):
         clock=time.monotonic,sleep=time.sleep)
     if trace.observation is None:trace.watch(game_identity)
     trace.end(loaded_modules=sorted(loaded)[:128],loaded_module_count=len(loaded))
-    memory=None;finished=False;prime_attempted=False;reported=False
+    memory=None;finished=False;prime_attempted=False;reported=False;playground_reservation=None
     try:
         if loaded['gowde-steam.exe'][1].resolve()!=exe.resolve():raise RuntimeError('Fresh executable path differs')
         control=WindowsControl()
@@ -265,6 +272,16 @@ def reserve(args,owned,trace,command_started):
             if artifacts(dll,startup_proof['suite'])!=startup_proof['artifacts']:
                 raise RuntimeError('Prelaunch self-test artifacts changed before reservation')
         validate_game(exe) # Recheck selected bytes before any injection.
+        if getattr(args,'playground_build',None):
+            from playground_loader import reserve as reserve_playground
+            trace.begin('playground_reservation');check_live()
+            mark_launch_stage(args.launch_receipt,game_identity,'injection_attempted')
+            playground_reservation=reserve_playground(dict(playground_build=args.playground_build,
+                playground_dll=args.playground_dll,playground_sha256=args.playground_sha256),game_identity,check_live=check_live)
+            trace.end(**playground_reservation)
+            # Keep the original capture's preparation budget after the two
+            # additional bounded remote calls used by the optional reservation.
+            deadline+=30
         check_live()
         if time.monotonic()>=deadline:raise RuntimeError('Reservation readiness deadline before injection')
         if dll.name.lower() in loaded:raise RuntimeError('Reservation DLL already loaded')
@@ -365,6 +382,7 @@ def reserve(args,owned,trace,command_started):
         if args.prime_targets:
             report['prime_lifetime']='owner' if owned else '180_seconds'
             if owned:report.update(prime_owner_pid=args.prime_owner_pid,prime_owner_creation_time=args.prime_owner_creation_time)
+        if playground_reservation is not None:report['playground_reservation']=playground_reservation
         folder=ROOT/'analysis/runtime';folder.mkdir(parents=True,exist_ok=True)
         (folder/f'reserve-{pid}.json').write_text(json.dumps(report,indent=2))
         print(json.dumps(report))

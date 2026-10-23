@@ -222,6 +222,7 @@ def native_command(args,owner):
             '--stereo-xr','--stereo-units-per-metre',str(args.stereo_units_per_metre),
             '--frame-link-diagnostics','--require-target-prime','--stereo-gpu-publish']
     if camera_closer_metres(args)>0:command+=['--camera-closer-metres',str(camera_closer_metres(args))]
+    if getattr(args,'first_person_preview',False):command.append('--first-person-preview')
     if getattr(args,'outage_diagnostics',False):command.append('--outage-diagnostics')
     for key in ('startup_selftest_proof','startup_selftest_digest','startup_selftest_nonce'):
         if getattr(args,key,None) is not None:command+=['--'+key.replace('_','-'),str(getattr(args,key))]
@@ -527,7 +528,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
     state.update({key:getattr(args,key) for key in ('hud_element_scale','hud_center_scale') if getattr(args,key,None) is not None})
     state['diagnostics_artifacts']=getattr(args,'diagnostics_artifacts',{})
-    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None
+    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None;right_stick_policy=None
     state['path_choice_center_enabled']=bool(getattr(args,'path_choice_center',False))
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
@@ -631,9 +632,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 print(json.dumps({'continuous_running':True,'session_report':str(state_path)}),flush=True)
                 observe_first_stereo(native_started)
                 if getattr(args,'menu_recovery',False):
-                    from menu_display_monitor import MenuDisplayMonitor
-                    menu_monitor=MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity,
-                        movie_display=getattr(args,'movie_display',False))
+                    from menu_display_monitor import MenuDisplayMonitor,BackgroundMenuDisplayMonitor
+                    menu_monitor=BackgroundMenuDisplayMonitor(MenuDisplayMonitor(args.menu_state_file,state['game_identity'],state['owner_identity'],control.identity,
+                        movie_display=getattr(args,'movie_display',False)))
                 if getattr(args,'world_recovery',False):
                     from world_rebind_runtime import RuntimePreparation
                     from world_rebind_monitor import WorldRebindMonitor
@@ -644,9 +645,17 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         started_qpc=state['native_started_qpc'],baseline=adapter.baseline,observe=adapter.observe,
                         prepare=adapter.prepare,signal=control.signal,identity=control.identity,enabled=True,
                         probe_interval=2.0,include_pawn_changes=getattr(args,'crosshair_assignment_observer',False),
-                        changed_hint=adapter.changed_hint)
+                        changed_hint=adapter.changed_hint,hint_interval=.05,prepare_changed=adapter.prepare_changed)
                 path_center=start_path_choice_position(args,state,native_status,floor,control)
+                if getattr(args,'right_stick_deadzone_percent',None) is not None:
+                    from right_stick_policy import Policy
+                    right_stick_policy=Policy(args.pid,args.right_stick_deadzone_percent,control.identity)
+                    right_stick_policy.tick()
+                    state['right_stick_policy']=dict(right_stick_policy.report)
+                    if not right_stick_policy.report['applied']:
+                        raise RuntimeError('Right-stick dead zone was not applied: '+repr(right_stick_policy.report['errors']))
                 while child.poll() is None:
+                    if right_stick_policy:right_stick_policy.tick()
                     observe_first_stereo(native_started)
                     if cancel_requested and cancel_requested():
                         state['stop_requested_by']='launcher_cancel';break
@@ -665,7 +674,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     if world_monitor:
                         for event in world_monitor.poll(status,menu_monitor.last_menu_mode if menu_monitor and menu_monitor.last else None):
                             world_log.write(json.dumps(dict(observed_ns=time.perf_counter_ns(),**event))+'\n');world_log.flush()
-                    time.sleep(.1 if getattr(args,'movie_display',False) else .25)
+                    ordinary_interval=.1 if getattr(args,'movie_display',False) else .25
+                    if world_monitor:world_monitor.wait(ordinary_interval)
+                    else:time.sleep(ordinary_interval)
             except StartupCancelled:
                 state['stop_requested_by']='startup_cancel'
             except KeyboardInterrupt:
@@ -673,6 +684,9 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             except Exception as error:
                 state['error']=repr(error)
             finally:
+                if right_stick_policy:
+                    try:state['right_stick_policy']=right_stick_policy.close()
+                    except Exception as error:state['right_stick_policy_close_error']=repr(error)
                 close_path_choice_position(path_center,state)
                 if world_monitor:
                     try:world_monitor.close()
@@ -681,6 +695,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 if menu_monitor:
                     try:menu_monitor.close()
                     except Exception as error:state['menu_monitor_close_error']=repr(error)
+                    state['menu_observation_worker']=menu_monitor.summary()
                 state['phase']='stopping';write_state(state_path,state)
                 if activation_attempted:
                     diagnostics_attempted=False
@@ -701,10 +716,24 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         if not state['native_cleanup_verified']:raise RuntimeError('Native cleanup incomplete or deadline expired')
                         if not diagnostics_saved:raise RuntimeError('Native diagnostic preservation failed')
                         restored=prefix.with_suffix('.restored.json')
+                        prime_source=args.build_dir.resolve()/'target-prime-status.txt'
+                        prime_args=[]
+                        if prime_source.is_file():
+                            prime_copy=prefix.with_suffix('.prime-status.txt')
+                            shutil.copyfile(prime_source,prime_copy)
+                            state['prime_status_saved']=str(prime_copy)
+                            prime_args=['--prime-status',str(prime_copy)]
+                        manifest_source=args.build_dir.resolve()/'hook-entry-manifest.json'
+                        if manifest_source.is_file():
+                            manifest_copy=prefix.with_suffix('.hook-entry-manifest.json')
+                            shutil.copyfile(manifest_source,manifest_copy)
+                            state['hook_manifest_saved']=str(manifest_copy)
+                            prime_args += ['--hook-manifest',str(manifest_copy),
+                                           '--game-creation-time',str(state['game_identity']['creation_time'])]
                         with prefix.with_suffix('.verify.log').open('w') as log:
                             verified=subprocess.run([sys.executable,str(ROOT/'tools/native-capture/verify_stopped.py'),
                                 '--pid',str(args.pid),'--status',str(prefix.with_suffix('.native-status.txt')),
-                                '--output',str(restored)],stdout=log,stderr=subprocess.STDOUT,timeout=20,
+                                '--output',str(restored),*prime_args],stdout=log,stderr=subprocess.STDOUT,timeout=20,
                                 creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
                         state['entry_restore_verified']=verified.returncode==0 and json.loads(restored.read_text())['all_match']
                     except Exception as error:
@@ -759,6 +788,8 @@ def main(argv=None):
     start.add_argument('--stereo-units-per-metre',type=float,default=100.)
     start.add_argument('--render-scale',type=float,help='Runtime recommended eye size multiplier per dimension; requires matching native build')
     start.add_argument('--camera-closer-metres',type=float,default=0.)
+    start.add_argument('--first-person-preview',action='store_true')
+    start.add_argument('--right-stick-deadzone-percent',type=float)
     start.add_argument('--startup-timeout',type=float,default=45.)
     start.add_argument('--cleanup-timeout',type=float,default=35.)
     start.add_argument('--anchor-observer','--anchor-diagnostics',dest='anchor_observer',action='store_true')

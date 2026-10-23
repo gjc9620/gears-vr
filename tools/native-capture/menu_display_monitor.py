@@ -7,6 +7,8 @@ import struct
 import sys
 import time
 import hashlib
+import math
+from concurrent.futures import ThreadPoolExecutor
 
 PACKET = struct.Struct('<IIIIQQQQQQ')
 UNKNOWN, GAMEPLAY, DEATH_MENU, PAUSE_MENU, MAIN_MENU = range(5)
@@ -360,3 +362,66 @@ class MenuDisplayMonitor:
         finally:
             if self.reader:self.reader.close();self.reader = None
             self.log.close()
+
+
+class BackgroundMenuDisplayMonitor:
+    """One read-only observer worker; owner polls never wait for menu RPM.
+
+    The observer still owns packet timestamps and all admission checks. Its
+    reader and publication remain serial, including the final UNKNOWN packet.
+    Only completed scalar observations are copied back to the session owner.
+    """
+    def __init__(self,monitor,*,interval=.1,clock=time.monotonic,executor_factory=ThreadPoolExecutor):
+        if not math.isfinite(interval) or not 0<interval<=.5:
+            raise ValueError('Invalid background menu observation interval')
+        self.monitor=monitor;self.interval=interval;self.clock=clock;self.factory=executor_factory
+        self.executor=None;self.future=None;self.next_poll=0.;self.closed=False;self.failure=None
+        self.last=None;self.last_menu_mode=UNKNOWN
+        self.completed=0;self.total_ms=0.;self.maximum_ms=0.;self.last_ms=None
+
+    def _observe(self):
+        started=self.clock();error=None
+        try:self.monitor.poll()
+        except Exception as failure:error=failure
+        finished=self.clock()
+        return self.monitor.last,self.monitor.last_menu_mode,finished,(finished-started)*1000,error
+
+    def _receive(self):
+        future=self.future;self.future=None
+        last,mode,finished,duration,error=future.result()
+        self.completed+=1;self.total_ms+=duration;self.maximum_ms=max(self.maximum_ms,duration);self.last_ms=duration
+        self.next_poll=finished+self.interval
+        if error is not None:
+            self.failure=error
+            raise error
+        self.last,self.last_menu_mode=last,mode
+
+    def poll(self):
+        if self.closed:return
+        if self.failure is not None:raise self.failure
+        if self.future is not None:
+            if not self.future.done():return
+            self._receive()
+        if self.clock()<self.next_poll:return
+        if self.executor is None:
+            self.executor=self.factory(max_workers=1,thread_name_prefix='menu-observer')
+        self.future=self.executor.submit(self._observe)
+
+    def summary(self):
+        return dict(background=True,closed=self.closed,completed=self.completed,total_ms=self.total_ms,
+                    maximum_ms=self.maximum_ms,last_ms=self.last_ms,
+                    failure=type(self.failure).__name__ if self.failure is not None else None)
+
+    def close(self):
+        if self.closed:return
+        self.closed=True
+        error=None
+        try:
+            if self.future is not None:
+                try:self._receive()
+                except Exception as failure:error=failure
+            if self.executor is None:self.monitor.close()
+            else:self.executor.submit(self.monitor.close).result()
+        finally:
+            if self.executor is not None:self.executor.shutdown(wait=True)
+        if error is not None:raise error

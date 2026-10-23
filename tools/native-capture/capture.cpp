@@ -67,6 +67,8 @@
 #include "pawnless_camera_observer.h"
 #endif
 #include "camera_closer.h"
+#include "first_person_view.h"
+#include "first_person_weapon.h"
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
 #include "../vr-common/sixdof_ticket_mailbox.h"
 #endif
@@ -75,6 +77,8 @@
 #include "world_rebind_metadata.h"
 #include "world_epoch_gate.h"
 #include "world_status_cadence.h"
+#include "world_control_wait.h"
+#include "world_profile_snapshot.h"
 #include "ui_observer.h"
 #include <exception>
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
@@ -170,7 +174,7 @@ std::mutex binding_owner_mutex;
 class FrameHookMutex {
     CRITICAL_SECTION section_{};
 public:
-    FrameHookMutex(){InitializeCriticalSection(&section_);SetCriticalSectionSpinCount(&section_,400);}
+    FrameHookMutex(){InitializeCriticalSection(&section_);SetCriticalSectionSpinCount(&section_,0);}
     ~FrameHookMutex(){DeleteCriticalSection(&section_);}
     FrameHookMutex(const FrameHookMutex&)=delete;
     FrameHookMutex& operator=(const FrameHookMutex&)=delete;
@@ -183,7 +187,7 @@ thread_local uint64_t consuming_frame_ticket{};
 struct FinalEye {bool valid{}; unsigned eye{}; gears_frame_link::Rect rect{}; unsigned width{},height{};};
 bool owned_plain_output_attested{};
 FinalEye classify_final_eye(uintptr_t caller,uint64_t ticket,float x,float y,float width,float height,unsigned target_width,unsigned target_height,bool source_attested=false,bool output_controlled=false,bool owned_plain=false) {
-    bool exact=(gears_final_transfer::eye_caller(caller,source_attested,output_controlled)||(owned_plain&&(caller==0xd83cbf||caller==0x2b11a0)))&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
+    bool exact=(gears_final_transfer::eye_caller(caller,source_attested,output_controlled)||(owned_plain&&(caller==0xd83cbf||caller==0x2b11a0||caller==0xe27709)))&&ticket&&target_width&&!(target_width%2)&&target_height&&std::isfinite(x)&&
         std::isfinite(y)&&std::isfinite(width)&&std::isfinite(height)&&y==0&&height==float(target_height)&&
         width==float(target_width/2)&&(x==0||x==float(target_width/2));
     if(!exact)return {};
@@ -327,6 +331,7 @@ void configure_unpossessed_camera(gears_anchor::Config& c){
 #endif
 }
 std::atomic<uint64_t> world_candidate_generation{},world_prepare_requests{},world_prepare_rejected{};
+std::atomic<uint64_t> world_prepare_timestamp_request{}; // Exact rejected request; zero on all other outcomes.
 std::atomic<uint64_t> committed_world_generation{1};
 #if defined(GEARS_OWNED_WORLD_HANDOFF) && GEARS_OWNED_WORLD_HANDOFF
 constexpr bool world_handoff_supported=true;
@@ -1072,6 +1077,7 @@ void print_stereo_pose(FILE* file,const gears_vr::Pose& pose) {
         pose.orientation.x,pose.orientation.y,pose.orientation.z,pose.orientation.w);
 }
 unsigned foreground();
+namespace first_person_live {void print(FILE*);void close();}
 bool create_stereo_recenter_event() {
     if(!stereo_xr)return true;
     wchar_t name[128];swprintf_s(name,L"Local\\GearsVR.Stereo.Recenter.%lu",GetCurrentProcessId());
@@ -1083,7 +1089,7 @@ bool create_stereo_recenter_event() {
 void close_stereo_recenter_event() {
     // A failed hook installation may still have a callback in flight. Retain
     // the handle until process exit in that failure case, never race a wait.
-    if(stereo_recenter_event&&!active.load()){CloseHandle(stereo_recenter_event);stereo_recenter_event=nullptr;}
+    if(stereo_recenter_event&&!active.load()){CloseHandle(stereo_recenter_event);stereo_recenter_event=nullptr;first_person_live::close();}
 }
 void poll_stereo_recenter() {
     // Called under stereo_mutex, once before freezing a pair. No worker or
@@ -1105,6 +1111,7 @@ void record_stereo_reference(const gears_submitted::FrameTicket& frame,long long
 void print_stereo(FILE* file) {
     if(!stereo_xr)return;
     std::lock_guard<std::mutex> lock(stereo_mutex);
+    first_person_live::print(file);
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
     // Final requests remain serviceable even if rendering stopped immediately
     // after the last GPU snapshot. Output is bounded to eight pinned tickets.
@@ -1159,6 +1166,7 @@ struct Scope {
 #include "graphics_lock_observer.inl"
 bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "ui_observer_hooks.inl"
+#include "first_person_live.inl"
 #include "path_choice_close_observer.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
@@ -1596,6 +1604,7 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
                 diagnostic->capture_state=capture_trace.state;diagnostic->consumer=static_cast<unsigned>(capture_trace.consumer);
                 diagnostic->serial_before=capture_trace.serial_before;diagnostic->serial_after=capture_trace.serial_after;
                 diagnostic->ready_completed=capture_trace.ready_completed;diagnostic->done_completed=capture_trace.done_completed;
+                diagnostic->capture_slot=capture_trace.slot_index;diagnostic->slot_serial_before=capture_trace.slot_serial_before;diagnostic->slot_serial_after=capture_trace.slot_serial_after;
                 diagnostic->capture_result=capture_trace.result;
                 if(captured){diagnostic->published=true;diagnostic->published_qpc=now();diagnostic->valid|=gears_outage::publication;}}
         }
@@ -1723,9 +1732,10 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     death_hdr_pixels::progress(output);
     vr_dof_compat::progress(output);
     dlss_output_control::progress(output);
-    fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu ",
+    fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu world_prepare_timestamp_request=%llu ",
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
-        static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()));
+        static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()),
+        static_cast<unsigned long long>(world_prepare_timestamp_request.load()));
     fprintf(output,"world_handoff_supported=%u world_handoff_phase=%u world_handoff_commits=%llu world_quiesce_requested=%u state_release_started=%u epoch_submit_total=%llu ",
         world_handoff_supported?1:0,
         world_handoff_phase.load(),static_cast<unsigned long long>(world_handoff_commits.load()),world_quiesce_requested.load()?1:0,
@@ -1917,6 +1927,7 @@ void print_outage(FILE* status,bool hooks_disabled) {
         fprintf(status,"outage_row index=%u valid=%u enter_qpc=%lld original_begin_qpc=%lld original_end_qpc=%lld present_result=%ld previous_publish_qpc=%lld published_qpc=%lld published=%u pub_before=%llu pub_after=%llu buffer=%p queue=%p ticket=%llu reject=%u linked=%u contaminated=%u image_session=%llu image_sequence=%llu image_received_ns=%lld capture_reason=%s capture_valid=%u capture_state=%u capture_result=%ld consumer=%u serial_before=%llu serial_after=%llu ready_completed=%llu done_completed=%llu",
             i,a.valid,a.enter_qpc,a.original_begin_qpc,a.original_end_qpc,static_cast<long>(a.present_result),a.previous_publish_qpc,a.published_qpc,a.published?1:0,a.pub_before,a.pub_after,reinterpret_cast<void*>(a.buffer),reinterpret_cast<void*>(a.queue),a.ticket,a.rejection,a.linked?1:0,a.contaminated?1:0,a.image_session,a.image_sequence,a.image_received_ns,
             gears_vr::gpu_capture_reason_name(static_cast<gears_vr::GpuCaptureReason>(a.capture_reason)),a.capture_valid,a.capture_state,static_cast<long>(a.capture_result),a.consumer,a.serial_before,a.serial_after,a.ready_completed,a.done_completed);
+        fprintf(status," capture_slot=%u slot_serial_before=%llu slot_serial_after=%llu",a.capture_slot,a.slot_serial_before,a.slot_serial_after);
         auto activity=[&](const char* name,gears_outage::Activity const& b){fprintf(status," %s_ticket=%llu %s_count=%llu %s_sequence=%llu %s_qpc=%lld %s_received_ns=%lld",name,b.ticket,name,b.count,name,b.sequence,name,b.qpc,name,b.received_ns);};
         activity("built_pre",a.built_pre);activity("built_post",a.built_post);activity("left_draw",a.draw[0]);activity("right_draw",a.draw[1]);fprintf(status,"\n");
     }
@@ -3008,7 +3019,8 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                 ++origin_prepare_failed;request_session_stop(SessionStop::proof_failure);service_session_stop_native();return false;}
             view=frame.origin.base;
         }
-        if(camera_closer_metres>0){
+        const bool first_person_view_owned=first_person_live::prepare(anchor,view);
+        if(camera_closer_metres>0&&!first_person_view_owned){
             const bool gameplay=anchor&&!anchor->anchor.unpossessed&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
                 !anchor->anchor.cinematic&&anchor->anchor.target_identity.address==anchor->anchor.pawn;
             gears_vr::Vector pawn_eye{};
@@ -3768,19 +3780,20 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
     death_hdr_pixels::reset_after_original(list,result);
     death_pso_cache::reset(list,result);
     gears_render_cost::Scope cost(gears_render_cost::reset_tracking);
-    owned_scene_gpu::reset(list,result);
-    if(owned_bindings_enabled&&(recording.load()||prime_recording.load())){
-        const auto identity=canonical_identity(list);
+    const bool tracking_owned_bindings=owned_bindings_enabled&&(recording.load()||prime_recording.load());
+    bool tracking_frame_link=frame_link_diagnostics&&recording.load();
+#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+    tracking_frame_link=tracking_frame_link||frame_link.owned_status().enabled;
+#endif
+    const auto identity=(owned_scene_gpu::watching()||tracking_owned_bindings||tracking_frame_link)
+        ?canonical_identity(list):uintptr_t{};
+    owned_scene_gpu::reset(identity,result);
+    if(tracking_owned_bindings){
         if(SUCCEEDED(result))owned_target_stats.reset(identity);else owned_target_stats.retire(identity);
     }
     if(recording.load()&&SUCCEEDED(result))viewport_stats.reset(reinterpret_cast<uintptr_t>(list));
-    bool tracking=frame_link_diagnostics&&recording.load();
-#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
-    tracking=tracking||frame_link.owned_status().enabled;
-#endif
     gears_frame_link::ListRef actual_reset{};
-    if(tracking) {
-        auto identity=canonical_identity(list);
+    if(tracking_frame_link) {
         frame_seen_list(identity);
         if(SUCCEEDED(result)){++frame_counts.resets;actual_reset=frame_link.reset_success(identity);
             ngx_capture_control::reset_command(list);
@@ -4226,8 +4239,20 @@ void STDMETHODCALLTYPE hook_copy_descriptors(ID3D12Device* device,UINT destinati
             if(owned_bindings_enabled)owned_target_stats.copy(dest.data(),src.data(),dc,descriptor_epoch);}
         else {viewport_stats.reject_copy();frame_target_stats.reject_copy();if(owned_bindings_enabled)owned_target_stats.reject_copy();if(frame_link_diagnostics)frame_link.invalidate();}}
 }
+std::atomic<uint64_t> copy_simple_allthreads_samples{}; // 1/256 eligible calls, test only.
 void STDMETHODCALLTYPE hook_copy_simple(ID3D12Device* device,UINT count,D3D12_CPU_DESCRIPTOR_HANDLE dest,D3D12_CPU_DESCRIPTOR_HANDLE src,D3D12_DESCRIPTOR_HEAP_TYPE type) {
-    Scope scope;auto frame_guard=frame_lock();
+    Scope scope;
+#if !defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) || !GEARS_NGX_MV_DESCRIPTOR_OBSERVER
+    // CBV/SRV/UAV has no enabled descriptor observer or RTV tracking.
+    // Scope still covers teardown; the original driver call stays inline.
+    if(scope.world()&&recording.load()&&!stereo_publish_bypass&&
+       type==D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV){
+        thread_local unsigned sample_counter{};
+        if((++sample_counter&255u)==0)copy_simple_allthreads_samples.fetch_add(1,std::memory_order_relaxed);
+        original_copy_simple(device,count,dest,src,type);return;
+    }
+#endif
+    auto frame_guard=frame_lock();
 #if defined(GEARS_NGX_MV_DESCRIPTOR_OBSERVER) && GEARS_NGX_MV_DESCRIPTOR_OBSERVER
     ngx_mv_descriptor_capture::Call observation(type==D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 #endif
@@ -4557,6 +4582,7 @@ DWORD WINAPI worker(void*) {
     simulator_operator=GetPrivateProfileIntW(L"Capture",L"simulator_operator",0,ini)==1;
     frame_link_diagnostics=GetPrivateProfileIntW(L"Capture",L"frame_link_diagnostics",0,ini)==1;
     stereo_gpu_publish=GetPrivateProfileIntW(L"Capture",L"stereo_gpu_publish",0,ini)==1;
+    first_person_live::enabled=GetPrivateProfileIntW(L"Capture",L"first_person_preview",0,ini)==1;
     anchor_observer_enabled=GetPrivateProfileIntW(L"Capture",L"anchor_observer",0,ini)==1;
     if(anchor_observer_enabled&&(!family_diagnostics||!stereo_xr||!frame_link_diagnostics||!load_anchor_config(ini))){
         fprintf(status,"rejected: anchor observer requires stereo frame-link family diagnostics and fresh reflection certificate\n");fclose(status);return 2;}
@@ -4764,8 +4790,9 @@ DWORD WINAPI worker(void*) {
         owned_plain_output_attested=final_transfer_live::verify_range(status,0xd82f58,0xc78,"1efb10541bf56d87b31aae4f452da0d281afd552da16b4bfd16d653f2cd425ea")&&
             final_transfer_live::verify_range(status,0xd83bd0,0x1e9,"e051a2d325a4d5ebc12be670d63cd8eae1eead437f33dfa39946de852e61e724")&&
             final_transfer_live::verify_range(status,0x2b0c04,0x651,"5088f5f7fb8c718769016b98194413e42aa466a30bfdfeab01d081c07075515d")&&
+            final_transfer_live::verify_range(status,0xe27500,0x272,"31691ed732d3d4a05ecb63ec4a7a03cc1c68f5afc8bf851c9d876c9fafc2f6e5")&&
             final_transfer_live::verify_range(status,0x8ee78c,0x3ee,"024e4777801ff3236360d5ead3b10a2a02717438020dd634537a47723453e138");
-        fprintf(status,"owned_plain_output_identity attested=%u caller=d83cbf identity_uv_only=1 runtime_owned_only=1\n",unsigned(owned_plain_output_attested));
+        fprintf(status,"owned_plain_output_identity attested=%u callers=d83cbf,2b11a0,e27709 identity_uv_only=1 runtime_owned_only=1\n",unsigned(owned_plain_output_attested));
         ok=owned_plain_output_attested;
     }
     if(ok)ok=dlss_route_observer::enable(status);
@@ -4852,6 +4879,7 @@ DWORD WINAPI worker(void*) {
     if(ok)ok=create_quad_source_events();
     if(ok)ok=create_first_view_mask_events();
     if(ok)ok=create_stereo_recenter_event();
+    if(ok)ok=first_person_live::initialize();
     fprintf(status,"present_hooks_created=%d\n",graphics);
     if(ok) {
         std::lock_guard<std::mutex> lock(prime_mutex);
@@ -4945,8 +4973,10 @@ DWORD WINAPI worker(void*) {
             const bool world_progress=world_status.changed({committed_world_generation.load(),world_prepare_requests.load(),
                 world_prepare_rejected.load(),world_candidate_generation.load(),world_handoff_phase.load()});
             if(world_progress||GetTickCount64()>=next_status){write_session_status();next_status=GetTickCount64()+death_source_live::status_interval_ms();}
-            flush(file,4);Sleep(20);
+            flush(file,4);
+            if(!world_rebind_request.wait(stop_event))request_session_stop(SessionStop::proof_failure);
         }
+        world_rebind_request.print(status);
         session_phase=SessionPhase::draining;write_session_status();
     }else while(GetTickCount64()<deadline && (!stop_event || WaitForSingleObject(stop_event,20)!=WAIT_OBJECT_0)) {
         stereo_publish_worker_tick();
@@ -5038,6 +5068,8 @@ DWORD WINAPI worker(void*) {
           print_view_union_mask(status);
           print_projection(status);
           print_stereo(status);
+          fprintf(status,"copy_simple_allthreads sampled_eligible=%llu multiplier=256 observer_disabled=1 world_recording_only=1\n",
+              static_cast<unsigned long long>(copy_simple_allthreads_samples.load(std::memory_order_relaxed)));
           fprintf(status,"gpu_output_quad_overflow=%llu limit=64\n",quad_overflow);
           for(const auto& entry:quad_traces)if(entry.calls)fprintf(status,
               "gpu_output_quad caller=%llx dest=%.9g,%.9g,%.9g,%.9g source=%.9g,%.9g,%.9g,%.9g target_dimensions=%u,%u texture_dimensions=%u,%u calls=%llu\n",
@@ -6072,6 +6104,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureFrameLinkCheck(void* t
        classify_final_eye(0xd808d8,1,0,0,640,480,640,480).valid||
        classify_final_eye(0xd808d8,0,0,0,320,480,640,480).valid)return 140;
     auto source_left=classify_final_eye(0x2b11a0,1,0,0,1920,2160,3840,2160,true);
+    const auto playground_left=classify_final_eye(0xe27709,1,0,0,320,350,640,350,false,false,true);
+    const auto playground_right=classify_final_eye(0xe27709,1,320,0,320,350,640,350,false,false,true);
+    if(!playground_left.valid||playground_left.eye||!playground_right.valid||playground_right.eye!=1||
+       classify_final_eye(0xe27709,1,0,0,320,350,640,350).valid||
+       classify_final_eye(0xe27709,1,0,0,640,350,640,350,false,false,true).valid||
+       classify_final_eye(0xe27709,0,0,0,320,350,640,350,false,false,true).valid)return 140;
     auto source_right=classify_final_eye(0x2b11a0,1,1920,0,1920,2160,3840,2160,true);
     if(!source_left.valid||source_left.eye||!source_right.valid||source_right.eye!=1||
        classify_final_eye(0x2b11a0,1,0,0,1920,2160,3840,2160).valid||
@@ -6479,6 +6517,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeOwnedCheck(void* 
 #include "ui_execute_bypass_check.inl"
 #include "ui_material_bypass_check.inl"
 #include "ui_scene_root_bypass_check.inl"
+#include "class_discovery_export.inl"
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {
     // Keep CRT thread notifications enabled for the statically linked runtime.
     if(reason==DLL_PROCESS_ATTACH) own_module=module;

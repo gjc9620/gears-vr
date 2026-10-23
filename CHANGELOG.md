@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.0.3](https://github.com/gjc9620/gears-vr/releases/tag/v0.0.3) — 2026-10-23
+
+### Added
+
+- Switchable first-person preview: L3 + R3 on a gamepad or E + R on the keyboard. Unscoped sniper weapons support the preview; scoped aiming retains the original camera.
+- Right-stick deadzone control from 0 to 50 percent, default 2 percent.
+- A main-menu happyotaku playground with eleven weapons/throwables, six respawning targets, a mounted gun and unlimited reserve ammunition. Normal magazine use, reloads and active reloads remain.
+- An editable game-path history dropdown with browsing, autocomplete and up to ten recent installations.
+
+### Fixed and improved
+
+- Improved cover-aim state handling and added the missing binocular sniper-scope material path.
+- Improved mounted-gun/world transitions, stale-pose handling, recovery retries and configuration preparation. The user considers the current transition delay acceptable; zero delay remains a future goal.
+- Optimized stereo frame tracking and shared-image delivery. No universal FPS gain or 90 FPS guarantee is claimed.
+- Improved Steam online/offline settings selection and per-installation configuration handling, including compatible versions found "elsewhere". 😉
+- Added SteamVR menu-format compatibility. The release keeps the original runtime-dependent color selection after the requested rollback.
+- Retained 0.0.2 startup compatibility, non-English path handling and startup exports; launcher/build reports identify as 0.0.3.
+
+### Validation and limits
+
+This is the same development feature set previously called 0.1.0, renumbered to 0.0.3 at the user's request. First-person and Playground have recorded game/simulator validation; individual fixes retain their documented physical-headset limits. A local left-eye-edge white-flash observation remains tracked, and color selection/offline GPU tests do not certify that it is fixed. DLSS/DLAA remain disabled; full 6DoF weapon handling and physical reloading are not included. Later chapters and every headset/runtime combination have not all been verified.
+
+Close the game and launcher before updating. Extract the complete new ZIP over the previous mod installation, keeping runtime and tools together with GearsVR Launcher.exe. See the bundled README.txt for controls and reporting problems.
+
+### 简体中文
+
+- 新增第一人称预览，L3＋R3／E＋R切换；未开镜持狙击枪可用预览，开镜保留原镜内相机。
+- 新增右摇杆死区0–50%，默认2%。
+- 新增happyotaku playground：11种武器／投掷物、6个重生靶、固定机枪和无限备用弹药，保留正常及主动装填。
+- 新增最近十条游戏路径的可编辑下拉历史、浏览与自动补全。
+- 改善掩体瞄准、狙击镜双眼绘制、上下机枪／场景恢复及双目帧传输。用户确认当前机枪切换延迟已可接受，继续优化完全无延迟的目标。
+- 改善 Steam 在线／离线启动体验，也顺手照顾了一下玩家从“其他地方”找来的兼容版本。😉
+- 补齐SteamVR菜单格式兼容，按用户要求回到原有的按运行时能力选择颜色格式的路径。
+- 保留0.0.2启动、中文路径与诊断修复，统一标识0.0.3；原0.1.0开发功能改以本版本发布。
+
+第一人称仍是预览。局部左眼边缘闪白保留跟踪，不能仅凭颜色路径回滚或离屏检查宣称已解决；DLSS／DLAA关闭，不含6DoF体感持枪与体感装填，不承诺90FPS，后续章节和各头显组合保留验证边界。
+
 ## [0.0.2](https://github.com/gjc9620/gears-vr/releases/tag/v0.0.2) — 2026-10-22
 
 Startup compatibility hotfix for the 0.0.1 public test release.

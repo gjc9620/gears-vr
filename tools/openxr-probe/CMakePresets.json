@@ -2,14 +2,14 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "gears-vr-0.0.1",
+      "name": "gears-vr-0.0.3",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build-mounted-latency1",
+      "binaryDir": "${sourceDir}/build-runtime-colors1",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "GEARS_HDR_MATCHED_SNAPSHOT": "OFF",
         "GEARS_SIXDOF_TICKET_DIAGNOSTICS": "OFF",
-        "GEARS_XR_WAIT_DIAGNOSTICS": "OFF"
+        "GEARS_XR_WAIT_DIAGNOSTICS": "ON"
       }
     }
   ]

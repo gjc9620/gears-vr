@@ -391,9 +391,9 @@ bool reserve_ui_hooks(){
     ui_reserved=true;return true;
 }
 
-bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t controller,uintptr_t camera,bool attested_entries=false){
+bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t controller,uintptr_t camera,bool attested_entries=false,gears_profile::Snapshot const* profile=nullptr){
     auto load=[&](const wchar_t* key,auto& out){
-        wchar_t text[64]{};GetPrivateProfileStringW(L"UIObserver",key,L"",text,64,ini);
+        wchar_t text[64]{};gears_profile::get(profile,L"UIObserver",key,text,64,ini);
         if(!*text||*text==L'-'||*text==L'+')return false;
         wchar_t* end{};auto value=_wcstoui64(text,&end,0);
         using T=std::remove_reference_t<decltype(out)>;
@@ -401,7 +401,7 @@ bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t contr
         out=static_cast<T>(value);return true;
     };
     unsigned schema{},pid{};wchar_t sha[66]{};
-    GetPrivateProfileStringW(L"UIObserver",L"sha256",L"",sha,66,ini);
+    gears_profile::get(profile,L"UIObserver",L"sha256",sha,66,ini);
     if(!load(L"schema",schema)||(schema!=1&&schema!=2)||!load(L"pid",pid)||pid!=GetCurrentProcessId()||
        wcscmp(sha,L"bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4"))return false;
     const std::pair<const wchar_t*,unsigned> layout[]={{L"frame_node",0x18},{L"frame_object",0x20},
@@ -432,7 +432,7 @@ bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t contr
         if(!field(L"address",id.address)||!field(L"index",id.index)||!field(L"name_index",id.name_index)||
            !field(L"number",id.number)||!field(L"cls",id.cls)||!field(L"outer",id.outer))return false;
         swprintf_s(key,L"id%u_name",i);wchar_t name[65]{};
-        auto n=GetPrivateProfileStringW(L"UIObserver",key,L"",name,65,ini);
+        auto n=gears_profile::get(profile,L"UIObserver",key,name,65,ini);
         if(!n||n>=64)return false;std::copy(name,name+n+1,id.name.begin());
     }
     for(unsigned i=0;i<c.super_count;++i){wchar_t key[64]{};auto& value=c.supers[i];
@@ -448,7 +448,7 @@ bool parse_ui_config(const wchar_t* ini,gears_ui::Config& output,uintptr_t contr
     for(unsigned i=0;i<4;++i){auto& b=c.bindings[i];wchar_t key[64]{},hex[34]{};
         swprintf_s(key,L"binding_%s_rva",names[i]);if(!load(key,b.rva)||b.rva!=gears_ui::binding_rvas[i])return false;
         if(i){swprintf_s(key,L"binding_%s_function",names[i]);if(!load(key,b.function))return false;}
-        swprintf_s(key,L"binding_%s_bytes",names[i]);if(GetPrivateProfileStringW(L"UIObserver",key,L"",hex,34,ini)!=32)return false;
+        swprintf_s(key,L"binding_%s_bytes",names[i]);if(gears_profile::get(profile,L"UIObserver",key,hex,34,ini)!=32)return false;
         for(unsigned j=0;j<16;++j){wchar_t expected[3]{};swprintf_s(expected,L"%02x",gears_ui::binding_bytes[i][j]);
             if(hex[j*2]!=expected[0]||hex[j*2+1]!=expected[1])return false;b.bytes[j]=gears_ui::binding_bytes[i][j];}
     }

@@ -1,10 +1,12 @@
 #pragma once
 #include "../vr-common/gpu_share.h"
 #include "../vr-common/gpu_blit.h"
+#include "menu_swapchain_format.h"
 #include "outage_diagnostics.h"
 #include "eye_chain_policy.h"
 #include "world_handoff_display.h"
 #include "xr_wait_diagnostics.h"
+#include "xr_delivery_counter.h"
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
 #include "../vr-common/sixdof_ticket_mailbox.h"
 #endif
@@ -74,6 +76,7 @@ class GameGpuScreen {
     // A newer receiver ticket can be rejected without changing these pixels.
     gears_vr::StereoImageTicket copied_ticket{};
     uint64_t copied_sequence{},copied_world_generation{},observed_world_generation{};
+    unsigned copied_slot{gears_gpu_slots::none};
     WorldHandoffDisplay handoff_display;
     ComPtr<ID3D12Resource> snapshot_buffer;
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT snapshot_layout{};
@@ -219,13 +222,10 @@ public:
             throw std::runtime_error("Stereo source exceeds advertised XR per-eye/system size or sample limits");
         uint32_t count{};xr_check(xrEnumerateSwapchainFormats(session,0,&count,nullptr),"GPU game formats");
         std::vector<int64_t> formats(count);xr_check(xrEnumerateSwapchainFormats(session,count,&count,formats.data()),"GPU game formats read");
-        DXGI_FORMAT format=receiver->format;
-        if(std::find(formats.begin(),formats.end(),int64_t(format))==formats.end()){
-            format=DXGI_FORMAT_UNKNOWN;
-            for(auto candidate:{DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM})
-                if(std::find(formats.begin(),formats.end(),int64_t(candidate))!=formats.end()){format=candidate;break;}
-            if(!format)throw std::runtime_error("No supported SDR GPU conversion target");
-        }
+        const DXGI_FORMAT format=menu_swapchain_format::choose_gpu(formats,receiver->format);
+        if(!format)throw std::runtime_error("No supported SDR GPU swapchain format");
+        printf("{\"xr_color_policy\":\"%s\",\"path\":\"gpu_game\",\"source_format\":%u,\"selected_format\":%u,\"gpu_conversion\":%s}\n",menu_swapchain_format::srgb(format)?"srgb":"unorm",
+               unsigned(receiver->format),unsigned(format),format!=receiver->format?"true":"false");fflush(stdout);
         for(unsigned i=0;i<(stereo?2u:1u);++i) {
             auto& eye=eyes[i];
             // Each conversion has immutable descriptor storage for this submit.
@@ -312,7 +312,7 @@ public:
             // Only the existing completion path may retire that work.
             if(world.valid&&!in_flight){
                 bool owned=false;for(auto const& eye:eyes)owned|=eye.acquired;
-                if(!owned&&receiver->acquire(queue.Get()))receiver->acknowledge(queue.Get());
+                if(!owned&&receiver->acquire(queue.Get()))receiver->discard(queue.Get());
             }
             return false;
         }
@@ -322,11 +322,11 @@ public:
         if(!poll_world_handoff()){if(status)*status=ProjectionStatus::source_reconfiguration;return false;}
         if(receiver->stopped()||in_flight)return false;
         auto now=std::chrono::steady_clock::now();
-        if(receiver->acquire(queue.Get())){
+        if(receiver->acquire(queue.Get(),stereo)){
             const auto world=receiver->world_state();
             if(!world.valid||world.quiescing||receiver->acquired_world_generation()!=world.generation||
                ((stereo||world.minimum_sample_ns>0)&&!gears_vr::gpu_world_image_current(world,receiver->acquired_world_generation(),receiver->ticket().sample.received_ns))){
-                receiver->acknowledge(queue.Get());current=false;if(status)*status=ProjectionStatus::source_reconfiguration;return false;
+                receiver->discard(queue.Get());current=false;if(status)*status=ProjectionStatus::source_reconfiguration;return false;
             }
             if(stereo) {
                 const auto& ticket=receiver->ticket();
@@ -335,7 +335,7 @@ public:
                 if(validity==ProjectionStatus::submitted&&!gears_eye_chain::ticket_crops_match(eye_plan,ticket))validity=ProjectionStatus::image_rectangle;
                 if(validity==ProjectionStatus::submitted&&ticket.sample.received_ns<=minimum_sample_ns)validity=ProjectionStatus::menu_recovery_pending;
                 if(validity!=ProjectionStatus::submitted) {
-                    receiver->acknowledge(queue.Get());if(status)*status=validity;
+                    receiver->discard(queue.Get());if(status)*status=validity;
                     if(retain_stereo_image&&validity==ProjectionStatus::stale_ticket){
                         ++rejected_late_images;
                         // render_projection must still validate the original
@@ -435,6 +435,7 @@ public:
                 xr_check(xrReleaseSwapchainImage(eye.chain,&release),"GPU game release");eye.acquired=eye.waited=false;
             }
             copied_ticket=receiver->ticket();copied_sequence=receiver->sequence();copied_world_generation=receiver->acquired_world_generation();
+            copied_slot=receiver->acquired_slot();
             ++copies;current=true;last_frame=now;
         }
         const auto world=receiver->world_state();
@@ -449,6 +450,12 @@ public:
         quad.pose.orientation.w=1;quad.pose.position.z=-2;quad.size={1.6f,1.6f*receiver->height/receiver->width};
         quad.subImage.swapchain=eyes[0].chain;quad.subImage.imageRect.extent={int32_t(receiver->width),int32_t(receiver->height)};++rendered;return true;
     }
+    std::uint64_t transport_ready_deferred()const{return receiver->ready_deferred_count;}
+    std::uint64_t transport_acquired()const{return receiver->acquired_count;}
+    std::uint64_t transport_acknowledged()const{return receiver->acknowledged_count;}
+    std::uint64_t transport_discarded()const{return receiver->discarded_count;}
+    gears_xr_delivery::Key delivery_key()const{return {copied_ticket.sample.session,receiver->generation(),copied_world_generation,copied_sequence,copied_ticket.id};}
+    unsigned delivery_slot()const{return copied_slot;}
     bool producer_stopped() const{return receiver->stopped();}
     WorldHandoffDisplay::State handoff_display_state()const{return handoff_display.state();}
     bool handoff_display_eligible(bool refresh=false){

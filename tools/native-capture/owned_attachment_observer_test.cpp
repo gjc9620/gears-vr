@@ -29,4 +29,17 @@ int main(){
     tracker.bind(1,a);tracker.bind(2,a);tracker.bind(3,a);assert(tracker.overflow()==1&&!tracker.binding(3).observed);
     tracker.retire(1);tracker.bind(3,a);assert(tracker.binding(3).observed);
     tracker.clear();assert(!tracker.binding(2).observed&&!tracker.binding(3).observed);
+
+    // Force direct-mapped cache collisions, then reuse a retired slot. A stale
+    // cache entry must never return the old command list's attachments.
+    Tracker<128> many;
+    for(uintptr_t i=1;i<=100;++i)many.bind(i<<4,a);
+    for(uintptr_t i=100;i>=1;--i)assert(many.binding(i<<4).observed);
+    many.retire(17<<4);
+    assert(!many.binding(17<<4).observed);
+    many.bind(101<<4,none);
+    assert(many.binding(101<<4).observed&&many.binding(101<<4).count==0);
+    assert(!many.binding(17<<4).observed);
+    many.clear();
+    for(uintptr_t i=1;i<=101;++i)assert(!many.binding(i<<4).observed);
 }

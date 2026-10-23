@@ -55,7 +55,8 @@ struct Fixture {
         c.property_structure=0xd0;c.impact_offset=0x40;c.member_offset=0x10;c.impact_size=64;c.ww_offset=0x10;
         property(c.lhs,0x136c,12,address(c.vector_struct));property(c.member,c.member_offset,12,address(c.vector_struct));
         property(c.impact,c.impact_offset,c.impact_size,address(c.impact_struct));property(c.ww,c.ww_offset,8,address(c.war_weapon));
-        for(auto field:{c.controller_pawn,c.pawn_controller,c.pawn_weapon,c.weapon_instigator})m.put(address(field.property)+0x94,field.offset);
+        for(auto field:{c.controller_pawn,c.pawn_controller,c.pawn_weapon,c.weapon_instigator})
+            property(field.property,field.offset,8,0);
         m.put(address(c.controller)+0x100,address(c.pawn));m.put(address(c.pawn)+0x100,address(c.controller));
         m.put(address(c.pawn)+0x108,address(c.weapon));m.put(address(c.weapon)+0x100,address(c.pawn));
         c.script=0x80000;c.script_size=0x16a7;m.block(c.script,c.script_size);

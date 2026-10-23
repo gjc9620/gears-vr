@@ -5,14 +5,15 @@ int main(){
     gears_vr::GpuPacket p{};
     p.magic=0x47564731;p.version=gears_vr::gpu_packet_version;p.size=sizeof(p);
     p.pid=123;p.generation=4;p.width=1920;p.height=1080;p.format=28;p.ready=1;
+    p.slot_count=gears_gpu_slots::count;
     const auto valid=[&]{return gears_vr::gpu_display_identity_matches(p,123,4,1920,1080,28,false);};
     assert(valid());
     p.world_generation=2;p.world_quiescing=1;assert(valid()); // World handoff is not resource replacement.
-    for(unsigned i=0;i<11;++i){const auto saved=p;
+    for(unsigned i=0;i<12;++i){const auto saved=p;
         switch(i){case 0:p.ready=0;break;case 1:p.ready=2;break;case 2:p.stopped=1;break;
         case 3:++p.pid;break;case 4:++p.generation;break;case 5:++p.width;break;
         case 6:++p.height;break;case 7:++p.format;break;case 8:++p.allow_simulated;break;
-        case 9:++p.version;break;case 10:--p.size;break;}
+        case 9:++p.version;break;case 10:--p.size;break;case 11:--p.slot_count;break;}
         assert(!valid());p=saved;
     }
     assert(valid());

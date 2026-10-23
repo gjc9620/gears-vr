@@ -113,6 +113,11 @@ private:
         bool depth_known{};float min_depth{},max_depth{};BindingProvenance provenance{};};
     struct Descriptor {uintptr_t handle{};Target target{};DescriptorTrace trace{};};
     std::array<Slot,list_capacity> slots{};
+    // Advisory slot pointers, checked against current identity on every use.
+    // All reads and mutations remain under the existing tracker mutex.
+    static constexpr std::size_t recent_capacity=2048;
+    std::array<Slot*,recent_capacity> recent{};
+    std::size_t used_prefix_{};
     std::array<Descriptor,4096> descriptors{};
     Snapshot data{};
     uint64_t cleared_binding_overflow{};
@@ -132,9 +137,15 @@ private:
     }
     Slot* find(uintptr_t list,bool insert) {
         if(!list)return nullptr;
+        const auto bucket=static_cast<std::size_t>(((static_cast<uint64_t>(list)>>4)*11400714819323198485ull)>>(64-11));
+        auto& cached=recent[bucket];
+        if(cached&&cached->list==list)return cached;
         Slot* empty{};
-        for(auto& slot:slots){if(slot.list==list)return &slot;if(!slot.list&&!empty)empty=&slot;}
-        if(insert&&empty){empty->list=list;++data.active_lists;
+        for(std::size_t i=0;i<used_prefix_;++i){auto& slot=slots[i];
+            if(slot.list==list){cached=&slot;return &slot;}
+            if(!slot.list&&!empty)empty=&slot;}
+        if(insert&&!empty&&used_prefix_<slots.size())empty=&slots[used_prefix_++];
+        if(insert&&empty){empty->list=list;cached=empty;++data.active_lists;
             if(data.active_lists>data.list_highwater)data.list_highwater=data.active_lists;
             return empty;}
         if(insert){++data.overflow;if(!data.first_failed_list)data.first_failed_list=list;}
@@ -150,7 +161,7 @@ public:
         if(auto slot=find(list,false)){*slot={};--data.active_lists;return true;}return false;}
     // A consuming observer may retire a whole recording window while keeping
     // descriptor provenance from startup priming. The legacy tracker never calls this.
-    bool clear_bindings(){std::lock_guard<std::mutex> lock(mutex);slots={};data.active_lists=0;
+    bool clear_bindings(){std::lock_guard<std::mutex> lock(mutex);slots={};used_prefix_=0;recent={};data.active_lists=0;
         bool overflowed=data.overflow!=cleared_binding_overflow;cleared_binding_overflow=data.overflow;return overflowed;}
     // Provenance loss is sticky for this tracker lifetime. Present/anchor cannot
     // recover evicted startup metadata merely by clearing command-list bindings.

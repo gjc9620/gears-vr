@@ -1,5 +1,6 @@
 """Independent mocked RPM and disk artifacts; never opens a real process."""
 import copy
+import contextlib
 import hashlib
 import json
 from pathlib import Path
@@ -28,6 +29,61 @@ class Memory:
 
 
 class Tests(unittest.TestCase):
+    @contextlib.contextmanager
+    def dll_reads(self,after_read=None):
+        original=Path.open;sizes=[]
+        @contextlib.contextmanager
+        def opened(path,*args,**kwargs):
+            with original(path,*args,**kwargs) as stream:
+                if path==self.dll and args and args[0]=='rb':
+                    class Reader:
+                        def fileno(inner):return stream.fileno()
+                        def read(inner,size):
+                            sizes.append(size);data=stream.read(size)
+                            if after_read:after_read(data)
+                            return data
+                    yield Reader()
+                else:yield stream
+        with mock.patch.object(Path,'open',new=opened):yield sizes
+
+    def test_dll_reads_follow_actual_size_and_hash_every_envelope(self):
+        import hook_entry_attestation as attestation
+        expected_size=self.dll.stat().st_size;sha=hashlib.sha256
+        with self.dll_reads() as reads,mock.patch.object(attestation.hashlib,'sha256',wraps=sha) as digest:
+            with self.load() as proof:proof.reverify();proof.reverify()
+        self.assertEqual(reads,[expected_size+1]*6)
+        self.assertEqual(digest.call_count,6)
+        self.assertTrue(all(len(call.args[0])==expected_size for call in digest.call_args_list))
+
+    def test_invalid_dll_sizes_reject_before_allocating_the_read(self):
+        import hook_entry_attestation as attestation
+        for invalid in (0,-1,67108865):
+            with self.dll_reads() as reads,mock.patch.object(attestation.os,'fstat',return_value=types.SimpleNamespace(st_size=invalid)):
+                with self.assertRaisesRegex(AttestationRejected,'DLL disk hash'):self.load()
+            self.assertEqual(reads,[])
+
+    def test_dll_growth_during_open_file_read_rejects(self):
+        changed=[]
+        def append_after_read(data):
+            if not changed:
+                changed.append(True)
+                with open(self.dll,'ab') as stream:stream.write(b'x')
+        with self.dll_reads(append_after_read):
+            with self.assertRaisesRegex(AttestationRejected,'DLL disk hash'):self.load()
+        self.assertEqual(changed,[True])
+
+    def test_same_size_dll_mutation_is_detected_at_the_final_envelope(self):
+        import hook_entry_attestation as attestation
+        changed=[];sha=hashlib.sha256
+        def alter_after_read(data):
+            if not changed:
+                changed.append(True)
+                with open(self.dll,'r+b') as stream:
+                    stream.seek(len(data)-1);stream.write(bytes((data[-1]^1,)))
+        with self.dll_reads(alter_after_read),mock.patch.object(attestation.hashlib,'sha256',wraps=sha) as digest:
+            with self.assertRaisesRegex(AttestationRejected,'DLL disk hash'):self.load()
+        self.assertEqual(digest.call_count,2);self.assertTrue(self.backend.reads)
+
     def setUp(self):
         directory=tempfile.TemporaryDirectory();self.addCleanup(directory.cleanup)
         self.dll=Path(directory.name)/'GearsCapture.dll';self.path=self.dll.with_name('hook-entry-manifest.json')
@@ -55,6 +111,14 @@ class Tests(unittest.TestCase):
         args=dict(pid=123,game_creation=12,owner_identity=dict(self.backend.owner),dll=self.dll,
                   expected_dll_sha256=self.dll_hash,backend=self.backend)
         args.update(kwargs);return HookEntryAttestation(self.path,**args)
+
+    def test_owned_backend_binds_the_two_sealed_bases_and_closes_its_lease(self):
+        import hook_entry_attestation
+        self.backend.close=mock.Mock()
+        with mock.patch.object(hook_entry_attestation,'WindowsReadOnly',return_value=self.backend):
+            proof=self.load(backend=None)
+        self.assertEqual(self.backend.module_bases,frozenset((self.base,self.native)))
+        proof.reverify();proof.close();self.backend.close.assert_called_once()
 
     def test_exact_entry_only_original_read_and_real_fallback(self):
         proof=self.load();entry=proof.entries[0];fallback=mock.Mock(return_value=b'actual')

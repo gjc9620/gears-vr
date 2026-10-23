@@ -6,32 +6,59 @@ import pathlib
 import re
 import subprocess
 import instance_policy
+import steam_account
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 STATE = (instance_policy.context() / 'graphics-policy') if instance_policy.context() else ROOT / 'analysis/graphics-policy'
 
 
 def active_steam_id():
-    """Read only the signed-in account number, never credentials or login files."""
+    """Prefer the online account, then a verified offline client selection."""
     import winreg
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam\ActiveProcess') as key:
             account, kind = winreg.QueryValueEx(key, 'ActiveUser')
         if kind == winreg.REG_DWORD and type(account) is int and 0 < account <= 0xffffffff:
             return str(0x0110000100000000 | account)
+        if kind == winreg.REG_DWORD and type(account) is int and account == 0:
+            return steam_account.offline_steam_id()
     except OSError:
         pass
     return None
 
 
-def locate():
-    files = list((instance_policy.local_appdata() / 'Coalition/WarGame/Config').glob('*EngineUserSettings.ini'))
+def locate(game_path=None):
+    folder = (instance_policy.local_appdata() / 'Coalition/WarGame/Config').resolve()
+    # An explicit per-install binding supports installations using a different
+    # local profile. A game-path change cannot silently reuse another binding.
+    if game_path is not None and not instance_policy.context():
+        config_path = ROOT / 'tools/vr-launcher/config.json'
+        config = json.loads(config_path.read_text(encoding='utf-8')) if config_path.exists() else {}
+        bindings = config.get('game_settings_paths', {})
+        if (not isinstance(bindings, dict) or any(
+                not isinstance(key, str) or not pathlib.Path(key).is_absolute()
+                or not isinstance(value, str) or not pathlib.Path(value).is_absolute()
+                for key, value in bindings.items())):
+            raise RuntimeError('game_settings_paths must map absolute game paths to settings files')
+        selected = str(pathlib.Path(game_path).resolve()).casefold()
+        matches = [value for key, value in bindings.items()
+                   if pathlib.Path(key).is_absolute() and str(pathlib.Path(key).resolve()).casefold() == selected]
+        if len(matches) > 1:
+            raise RuntimeError('Multiple settings bindings for the selected installation')
+        if matches:
+            target = pathlib.Path(matches[0]).resolve()
+            if (target.parent != folder or not target.is_file()
+                    or not re.fullmatch(r'(?:[0-9]{17})?EngineUserSettings\.ini', target.name)):
+                raise RuntimeError('Settings binding must select an existing game settings file in the local Config directory')
+            return target
+    files = list(folder.glob('*EngineUserSettings.ini'))
     if len(files) > 1:
         active = active_steam_id()
         matches = [file for file in files if file.name == str(active) + 'EngineUserSettings.ini']
         if len(matches) == 1:
             return matches[0].resolve()
-        raise RuntimeError('Multiple user-settings files; sign in to the Steam account whose settings should be checked')
+        raise RuntimeError('Multiple user-settings files; cannot identify the online/offline Steam profile. '
+                           'Select a per-install profile with game_settings_paths in the launcher config')
     if len(files) != 1:
         raise RuntimeError('Expected exactly one user-settings file')
     return files[0].resolve()
@@ -159,17 +186,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('status', 'check', 'apply', 'restore', 'check-experimental-sr'))
     parser.add_argument('--manifest', help='Explicit backup manifest required for restore')
+    parser.add_argument('--game-path', type=pathlib.Path, help='Selected installation for an optional settings binding')
     args = parser.parse_args()
+    target = locate(args.game_path)
     if args.action == 'check-experimental-sr':
-        result = check_experimental_sr()
+        result = check_experimental_sr(target)
     elif args.action == 'restore':
         if not args.manifest:
             parser.error('restore requires --manifest')
-        result = restore(args.manifest)
+        result = restore(args.manifest, target)
     elif args.action == 'apply':
-        result = enforce_off_before_launch()
+        result = enforce_off_before_launch(target)
     else:
-        result = status()
+        result = status(target)
         if args.action == 'check' and result['persisted_dlss'].lower() != 'false':
             raise RuntimeError('Persisted DLSS must be OFF before release startup')
     print(json.dumps(result, indent=2))

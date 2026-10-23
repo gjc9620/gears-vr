@@ -175,7 +175,7 @@ void produce(DXGI_FORMAT format,bool stereo=false,bool allow_sim=false){
                         const unsigned expected=capture_state_valid|capture_serial_valid|capture_consumer_valid|capture_ready_valid|capture_done_valid;
                         if(trace.reason!=GpuCaptureReason::published||(trace.valid&expected)!=expected||trace.serial_after!=serial||trace.serial_before+1!=trace.serial_after||trace.state!=2)
                             throw std::runtime_error("Successful capture trace inconsistent");
-                    }else if(trace.reason==GpuCaptureReason::producer_in_flight||trace.reason==GpuCaptureReason::consumer_not_done){++trace_busy;
+                    }else if(trace.reason==GpuCaptureReason::both_slots_busy){++trace_busy;
                         if((trace.valid&(capture_serial_valid|capture_ready_valid|capture_done_valid))!=(capture_serial_valid|capture_ready_valid|capture_done_valid)||trace.serial_before!=trace.serial_after)
                             throw std::runtime_error("Busy capture trace inconsistent");
                     }else if(trace.reason!=GpuCaptureReason::rate_limited)throw std::runtime_error("Unexpected capture trace rejection");
@@ -208,7 +208,10 @@ void produce(DXGI_FORMAT format,bool stereo=false,bool allow_sim=false){
     printf("{\"format\":%u,\"published\":%u,\"busy_skips\":%u,\"rate_limited\":%u,\"consumer_exit\":%lu,\"resources_released\":%s}\n",format,publisher.frames.load(),publisher.busy.load(),publisher.rate_limited.load(),code,released?"true":"false");
     if(stereo?publisher.rate_limited.load()!=0:publisher.rate_limited.load()==0)throw std::runtime_error("Stereo/legacy pacing policy violated");
     if(code || !released || !publisher.busy)throw std::runtime_error("Cross-process GPU self-test failed");
-    if(trace_success!=6||!trace_busy)throw std::runtime_error("Trace/null success and busy branches not exercised");
+    // With two slots the deliberately delayed first read usually makes odd
+    // (null-trace) frame 3 busy. Do not depend on scheduling making an even
+    // frame busy; OwnedGpuShareTest deterministically stalls both slot fences.
+    if(trace_success!=6)throw std::runtime_error("Trace/null success branches not exercised");
     printf("{\"trace_success\":%u,\"trace_busy\":%u,\"null_success\":6}\n",trace_success,trace_busy);
     if(!busy_ticket_checks)throw std::runtime_error("Busy ticket preservation not exercised");
     printf("{\"stereo_tickets\":%s,\"simulated_source\":%s,\"invalid_ticket_cases\":13,\"busy_ticket_checks\":%u}\n",stereo?"true":"false",allow_sim?"true":"false",busy_ticket_checks);
@@ -329,6 +332,7 @@ void resize_transport_test(){
     auto wrong=test_ticket(3,640,360);resize_check(!publisher.capture(chain.Get(),&wrong),"old-sized ticket admitted to resized image");
     read(publish(3,.45f),.45f,false);
     (void)publish(4,.60f); // Intentionally unacquired: nobody can ack this slot after ready becomes 2.
+    (void)publish(40,.65f); // Both slots now hold unread images; resize must retire both inventories.
     rebuild(640,360,false,false);
     read(publish(5,.75f),.75f,false);
     rebuild(1280,720,true,false); // Real failed ResizeBuffers, original 640x360 extent remains valid.
@@ -353,6 +357,7 @@ void resize_transport_test(){
         resize_check(receiver.sequence()==0&&stereo_image_ticket_empty(receiver.ticket())&&!receiver.acquire(consumer.queue.Get()),"consecutive resize retained an old image");
         read(publish(7,.65f),.65f,false);
     }
+    (void)publish(8,.85f);(void)publish(9,.95f); // Stop with both final publications unacquired.
     publisher.mark_stopped();resize_check(publisher.drain(1000)&&publisher.close(),"resize final publisher close failed");
     receiver.close();producer.verify();consumer.verify();
     printf("{\"resize_transport\":true,\"checks\":%u,\"sizes\":\"640x360->1280x720->640x360\",\"failed_resize_rebuilt\":true,\"pixels_and_tickets_verified\":true,\"unacquired_slot_retired\":true,\"consumer_gpu_done_required\":true,\"consecutive_resize_before_prepare\":true}\n",resize_checks);

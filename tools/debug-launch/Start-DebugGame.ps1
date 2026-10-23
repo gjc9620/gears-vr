@@ -54,7 +54,7 @@ if ($PythonCheckOnly) {
     @{python=$python; check_only=$true} | ConvertTo-Json -Compress
     exit 0
 }
-$game = Join-Path $workspace 'game-installation/Gears of War Reloaded'
+$game = Join-Path $workspace 'Gears of War Reloaded'
 $exe = Join-Path $game 'Binaries_x64/GOWDE-Steam.exe'
 if ($GamePath) { $exe = $GamePath }
 $validated = & $python (Join-Path $PSScriptRoot 'game_install.py') --game-path $exe
@@ -75,7 +75,7 @@ if ($LASTEXITCODE -ne 0) { throw 'A shared-profile game is already active; use t
 # Other installs require DLSS already OFF unless that experiment is selected.
 $isDefault = [IO.Path]::GetFullPath($exe) -eq [IO.Path]::GetFullPath($defaultExe)
 $graphicsAction = if ($ExperimentalPreserveUpscaler) { 'check-experimental-sr' } elseif ($isDefault) { 'apply' } else { 'check' }
-& $python (Join-Path $PSScriptRoot 'graphics_policy.py') $graphicsAction
+& $python (Join-Path $PSScriptRoot 'graphics_policy.py') $graphicsAction --game-path $exe
 if ($LASTEXITCODE -ne 0) { throw 'Upscaler startup policy failed.' }
 # Custom installations are read-only: validation above accepts original or known
 # patched config; never apply repository backups to another installation.

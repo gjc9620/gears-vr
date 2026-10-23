@@ -105,7 +105,8 @@ void advance_world_handoff(FILE* status){
 #endif
         auto const& m=pending_world->metadata;
         expected_local=m.local_player;expected_pc=m.controller;expected_camera=m.camera;camera_cache=m.timestamp;camera_yaw=m.camera_yaw;
-        reset_retired_view_state();stereo_gate.request_recenter();
+        reset_retired_view_state();
+        if(!stereo_gate.advance_world(minimum)){request_session_stop(SessionStop::proof_failure);return false;}
         if(!submitted_lifetime.reopen(destroyed)){request_session_stop(SessionStop::proof_failure);return false;}
         world_quiesce_token={};committed_world_generation=next;return true;
     });

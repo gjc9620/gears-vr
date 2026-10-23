@@ -103,6 +103,61 @@ def hook_targets(status):
     return targets
 
 
+def prime_preinstall_entries(status, prime_status=None):
+    """Keep only complete, unique pre-hook and post-stop snapshots of one entry.
+
+    The native hook records `before` immediately before MH_CreateHook, then checks
+    the same 32 bytes after disabling hooks. The verifier still reads the stopped
+    process independently; a native `restored=1` claim alone never passes.
+    """
+    initial, stopped, duplicates = {}, {}, set()
+    for line in (prime_status if prime_status is not None else status).splitlines():
+        before = re.fullmatch(r'prime_entry target=([0-9A-Fa-f]+) before=([0-9A-Fa-f]{64})', line)
+        if before:
+            target, data = int(before[1], 16), bytes.fromhex(before[2])
+            if target in initial:duplicates.add(target)
+            initial[target] = data
+    for line in status.splitlines():
+        after = re.fullmatch(r'prime_entry target=([0-9A-Fa-f]+) restored=([01]) before=([0-9A-Fa-f]{64})', line)
+        if after:
+            target, restored, data = int(after[1], 16), after[2] == '1', bytes.fromhex(after[3])
+            if target in stopped:duplicates.add(target)
+            stopped[target] = restored, data
+    return {target: data for target, data in initial.items()
+            if target not in duplicates and stopped.get(target) == (True, data)}
+
+
+def session_preinstall_entries(manifest, pid, owner_pid, owner_creation_time,
+                               game_creation_time=None):
+    """Use a sealed session's pre-hook bytes only for its exact process owner.
+
+    The independent remote read below still decides whether hooks were restored.
+    This snapshot supplies an expected value when graphics functions already had
+    a third-party detour before our hook was installed.
+    """
+    if (manifest.get('schema') != 1 or manifest.get('pid') != pid
+            or manifest.get('owner_pid') != owner_pid
+            or manifest.get('owner_creation') != owner_creation_time
+            or (game_creation_time is not None
+                and manifest.get('game_creation') != game_creation_time)):
+        raise RuntimeError('Hook manifest process/owner identity mismatch')
+    entries = manifest.get('entries')
+    if not isinstance(entries, list) or not 1 <= len(entries) <= 102:
+        raise RuntimeError('Unexpected hook manifest entry inventory')
+    original = {}
+    for item in entries:
+        target = item.get('target')
+        data = item.get('original')
+        if (not isinstance(target, int) or target <= 0 or target in original
+                or not isinstance(data, str) or len(data) != 64):
+            raise RuntimeError('Invalid or duplicate hook manifest entry')
+        try:
+            original[target] = bytes.fromhex(data)
+        except ValueError as error:
+            raise RuntimeError('Invalid hook manifest original bytes') from error
+    return original
+
+
 class SystemEntryCache:
     """PE resources and relocation indices owned by ONE verification run.
 
@@ -164,12 +219,41 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--pid', type=int, required=True)
     parser.add_argument('--status', type=pathlib.Path, required=True)
+    parser.add_argument('--prime-status', type=pathlib.Path)
+    parser.add_argument('--hook-manifest', type=pathlib.Path)
+    parser.add_argument('--game-creation-time', type=int)
     parser.add_argument('--output', type=pathlib.Path, required=True)
     args = parser.parse_args()
     status = args.status.read_text()
     if f'capturing pid={args.pid} ' not in status or 'stopped disable_status=0 active=0' not in status:
         raise RuntimeError('Matching PID and clean stopped status required')
     targets = hook_targets(status)
+    prime_status = args.prime_status.read_text() if args.prime_status else None
+    owner = None
+    if prime_status is not None:
+        owner = re.search(r'^continuous_owner_verified=1 owner_pid=(\d+) owner_creation_time=(\d+)$',
+                          status, re.MULTILINE)
+        prime_owner = re.search(r'^capturing pid=(\d+) lifetime=owner owner_pid=(\d+) '
+                                r'owner_creation_time=(\d+)\b', prime_status, re.MULTILINE)
+        if (not owner or not prime_owner or int(prime_owner[1]) != args.pid
+                or prime_owner.groups()[1:] != owner.groups()):
+            raise RuntimeError('Prime status PID/owner identity does not match stopped capture')
+    preinstall_entries = prime_preinstall_entries(status, prime_status)
+    if args.hook_manifest:
+        if not owner:
+            owner = re.search(r'^continuous_owner_verified=1 owner_pid=(\d+) owner_creation_time=(\d+)$',
+                              status, re.MULTILINE)
+        if not owner:
+            raise RuntimeError('Stopped capture lacks matching owner identity')
+        manifest = json.loads(args.hook_manifest.read_text())
+        session_entries = session_preinstall_entries(
+            manifest, args.pid, int(owner[1]), int(owner[2]), args.game_creation_time)
+        if not set(session_entries).issubset(set(targets)):
+            raise RuntimeError('Hook manifest contains targets outside stopped capture')
+        for target, original in session_entries.items():
+            if target in preinstall_entries and preinstall_entries[target] != original:
+                raise RuntimeError('Prime and hook manifest originals disagree')
+            preinstall_entries[target] = original
     # UI observer adds four VM/Canvas entries, Canvas/subtitle consumers, and
     # optionally the Material consumer, three graphics settings callbacks, and
     # the UIOptionList selection transaction and optional ResourceBarrier entry.
@@ -348,6 +432,17 @@ def main():
                 source = 'validated runtime camera signature'
             else:
                 expected, source = system_entries.expected(loaded, target)
+                actual = resolver.read(target, len(expected))
+                original = preinstall_entries.get(target)
+                matches_disk = actual == expected
+                matches_preinstall = original is not None and actual == original
+                checks.append(dict(target=hex(target), source=source,
+                                   bytes_checked=len(expected), matches=matches_disk or matches_preinstall,
+                                   matches_disk=matches_disk, matches_preinstall=matches_preinstall,
+                                   disk_sha256=hashlib.sha256(expected).hexdigest(),
+                                   observed_sha256=hashlib.sha256(actual).hexdigest(),
+                                   preinstall_sha256=(hashlib.sha256(original).hexdigest() if original else None)))
+                continue
             actual = resolver.read(target, len(expected))
             checks.append(dict(target=hex(target), source=source, bytes_checked=len(expected), matches=actual == expected))
     finally:

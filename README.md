@@ -1,57 +1,74 @@
 ![GearsVR](docs/images/gears-vr-banner.png)
 
-# GearsVR
+# GearsVR 0.0.3
 
-VR mod for Gears of War: Reloaded.
-
-[**Download v0.0.2**](https://github.com/gjc9620/gears-vr/releases/download/v0.0.2/GearsVR-0.0.2.zip)
-
-0.0.2 fixes Windows startup-script blocking, Steam process handoff, multiple-account settings, EXE discovery, and non-English paths. Startup diagnostics now include stage timings and component fingerprints. See [CHANGELOG.md](CHANGELOG.md) for the full changes.
-
-**Updating:** close the game and launcher, then extract the complete new ZIP into the same location and replace the previous mod files. Keep `runtime` and `tools` together with the launcher.
+[**Download GearsVR-0.0.3.zip**](https://github.com/gjc9620/gears-vr/releases/download/v0.0.3/GearsVR-0.0.3.zip) · [Changelog](CHANGELOG.md)
 
 ## Install and play
 
-1. **Before installing, open the game normally.** Set **Display mode** to **Windowed / Borderless**, **Frame rate limit** to **Unlimited**, and **DLSS / DLAA** to **Off**. Apply the settings, then **exit the game completely**. Keep Steam running and signed in.
-2. Extract **everything** from the mod ZIP directly into the **game's root folder**. **GearsVR Launcher.exe and the Binaries_x64 folder must be next to each other.** Keep `runtime` and `tools` with the launcher.
+1. Open the game normally first. Set Display mode to Windowed / Borderless, Frame rate limit to Unlimited, and DLSS / DLAA to Off. Apply, then exit the game completely. Keep Steam running in your usual online or offline mode.
+2. Extract the complete ZIP into the game's root folder. Keep GearsVR Launcher.exe, runtime and tools together, beside Binaries_x64.
 
 ```text
 Gears of War Reloaded/
-├── GearsVR Launcher.exe
-├── Binaries_x64/
-│   └── GOWDE-Steam.exe
-├── WarGame/
-├── runtime/
-└── tools/
+  GearsVR Launcher.exe
+  Binaries_x64/GOWDE-Steam.exe
+  WarGame/
+  runtime/
+  tools/
 ```
 
-The launcher also supports placement beside the game EXE, or in one GearsVR subfolder under either location. If the path is empty, use **Browse** to select `Binaries_x64/GOWDE-Steam.exe`.
+The launcher can also find the game when placed beside its EXE, or in one mod subfolder under either location. Use Browse if needed. Game path now remembers up to ten installations and also accepts direct input.
 
-3. Connect your headset and open **GearsVR Launcher.exe**. Game path should fill in automatically. **System OpenXR runtime** is the default; VD users can select **Quest 3 / Virtual Desktop (VDXR)** if needed.
-4. Click **Start VR** and play with your keyboard/mouse or gamepad.
+3. Connect your headset and open GearsVR Launcher.exe. System OpenXR runtime is the default. Use your preferred OpenXR runtime; Virtual Desktop users can also select Quest 3 / Virtual Desktop (VDXR).
+4. Click Start VR, enter a level, and play with your usual keyboard/mouse or gamepad. Keep the game in the foreground for gamepad input.
 
-## Quick notes
+## New in 0.0.3
 
-- **Tested:** retail startup and simulator menu submission for 0.0.2; startup fixes also passed user testing. Act 1, KRVR + Apple Vision Pro, and VD + Quest 3 results come from the unchanged 0.0.1 renderer. A separate 0.0.2 physical-headset regression remains pending. Supported game EXE: `1.0.381.6947`.
-- **Adjust:** lower **Render scale** if it feels choppy; try **Camera closer = 0.4** for a closer view. Restart the game after changing these.
-- **Known issues:** mounted machine-gun entry/exit may pause for about 2 seconds. Keep DLSS / DLAA off. Later chapters have not all been verified.
-- **Bugs:** click **Export logs** and send the ZIP with your headset, GPU, and what happened. It includes a readable `startup-summary.txt` and the latest three startup attempts, even if VR never started. For startup failures, also include `analysis/runtime/vr-launcher-session.reserve.log` from the mod folder.
+- First-person preview: enabled in the launcher by default. Each new game starts in third person; press L3 + R3 on a gamepad or E + R on the keyboard to switch, then release both keys before switching again. This uses the original game controls, not tracked motion-controller aiming.
+- Right-stick deadzone: adjustable from 0 to 50 percent; default 2 percent.
+- happyotaku playground: select the new main-menu entry to try eleven weapons/throwables, six respawning targets, a mounted gun and unlimited reserve ammunition. Normal magazine use, reloads and active reloads remain.
+- Improved cover aiming, sniper-scope handling, mounted-gun/world recovery, stereo frame delivery, Steam offline settings selection and game-path history.
+
+Recenter is optional. Lower Render scale if performance is poor; Camera closer = 0.4 is a suggested third-person starting point. Restart the game and VR after changing these options.
+
+## Updating
+
+Close the game and launcher, then extract the full 0.0.3 ZIP into the same location and replace the previous mod files. Keep runtime and tools together with the launcher. Recheck your game path and preferences after updating.
+
+## Known limits and reports
+
+- Supported game EXE: 1.0.381.6947. Other builds, including Windows Store, have not been established as compatible.
+- First-person is a preview. Close walls, cover, movement animations, weapon sights and comfort still have testing limits. Full 6DoF weapon handling and physical reloading are not included.
+- Mounted transitions have improved and the user considers their current delay acceptable. Zero delay is not claimed.
+- DLSS / DLAA remain disabled. Later chapters and every headset/runtime combination have not all been verified.
+- A local left-eye-edge white-flash report remains tracked; color-path changes and offline GPU checks do not by themselves certify a headset fix.
+
+Click Stop VR, wait for cleanup, then exit the game normally. Exit the game before starting another VR session.
+For problems, click Export logs and send the ZIP with your headset, GPU and a description. It includes the latest three startup attempts and startup-summary.txt, even if VR never started. For startup failures also include analysis/runtime/vr-launcher-session.reserve.log from the mod folder.
+The game is not included. No separate Python installation is required.
 
 <details>
 <summary>简体中文</summary>
 
-0.0.2 修复下载脚本拦截、Steam 进程交接、多账号设置、EXE 查找和中文路径问题，并增强启动阶段耗时、组件指纹和退出状态记录。完整更新内容见 [CHANGELOG.md](CHANGELOG.md)。
+安装与启动
 
-更新前关闭游戏与启动器，将新版整包解压到原位置并覆盖 Mod 文件。
+1. 先正常打开游戏，将显示模式设为窗口化或无边框、帧率限制设为不限制，并关闭 DLSS / DLAA。应用后完全退出游戏，保持 Steam 运行，可使用正常在线或离线模式。
+2. 将整个 ZIP 解压到游戏根目录，让 GearsVR Launcher.exe、runtime、tools 与 Binaries_x64 并排。也支持 EXE 同目录或上述位置下的一层 Mod 子目录。未自动识别时用 Browse 选游戏；路径输入框现支持最近十条历史和直接输入。
+3. 连好头显，打开启动器。默认使用系统 OpenXR；VD 用户也可选择 VDXR。
+4. 点 Start VR，正常进入关卡，用原来的键鼠或手柄操作；使用手柄时保持游戏在前台。
 
-### 安装与启动
+本版新增第一人称预览：启动器默认启用切换能力，每次新游戏仍从第三人称开始，L3＋R3 或 E＋R 切换，松开组合键后可再次切换。右摇杆死区可调0–50%，默认2%。主菜单新增 happyotaku playground，提供11种武器／投掷物、6个重生靶、固定机枪和无限备用弹药，保留正常与主动装填。
 
-1. **安装前先正常打开游戏**：显示模式改为**窗口化或无边框窗口**，帧率限制改为**不限制**，**DLSS / DLAA 完全关闭**。应用并保存设置，然后**彻底退出游戏**，保持 Steam 运行并登录。
-2. 将压缩包的**全部内容直接解压到游戏根目录**，目录结构见上图。**推荐让 GearsVR Launcher.exe 和 Binaries_x64 文件夹并排**；也支持 EXE 同目录或上述位置下的一层 GearsVR 子目录。`runtime`、`tools` 要一起保留。
-3. 连好头显，打开启动器。游戏路径会自动填入，默认使用**系统 OpenXR**；VD 用户也可手动选择 VDXR。
-4. 点 **Start VR**，使用键鼠或手柄游玩。
+改善掩体瞄准、狙击镜、上下机枪／场景恢复、双目帧传输及 Steam 离线配置识别。也顺手照顾了一下玩家从“其他地方”找来的兼容版本。😉
 
-卡顿就降低 **Render scale**；想拉近镜头可试 **Camera closer = 0.4**，修改后重启游戏。第一幕、KRVR + AVP、VD + Quest 3 的既有结果属于 0.0.1；0.0.2 已验证正版启动且用户反馈实测正常，独立真头显回归仍待复测。机枪进入/退出仍可能延迟约 2 秒，后续章节未全部验证。遇到 Bug，请用 **Export logs** 导出 ZIP，附上头显、显卡和问题描述；尚未进入 VR 也能导出最近三次启动记录及 `startup-summary.txt`。启动失败时请额外附上 Mod 目录的 `analysis/runtime/vr-launcher-session.reserve.log`。
+Recenter 按需使用。卡顿可降低 Render scale；第三人称想拉近镜头可试 Camera closer = 0.4。修改后重启游戏和 VR。
+更新前关闭游戏与启动器，把新版整包解压到原位置并覆盖 Mod 文件，保留 runtime、tools 与启动器；更新后核对路径和偏好。
+
+支持的 EXE 为1.0.381.6947，未建立其他构建／Windows Store版兼容结论。第一人称仍是预览，不包含6DoF体感持枪或体感装填。上下机枪延迟用户反馈已可接受，但不宣称完全无延迟。DLSS/DLAA仍关闭；后续章节、近墙／动画／瞄具及各头显组合保留测试边界。已记录的左眼边缘局部闪白仍需跟踪，颜色路径调整和离屏检查不等于真头显问题已解决。
+
+结束时点 Stop VR，等待清理后正常退出游戏。遇到问题请用 Export logs 导出ZIP，附头显、显卡和问题描述；未进入VR也可导出最近三次启动记录及 startup-summary.txt。启动失败时额外附上 analysis/runtime/vr-launcher-session.reserve.log。
+不含游戏，无需另外安装 Python。
 
 </details>
 

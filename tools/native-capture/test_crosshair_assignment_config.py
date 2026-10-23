@@ -64,6 +64,26 @@ class Fixture(UIBase):
 
 
 class CertificateTests(unittest.TestCase):
+    def test_fresh_aim_state_certificate_and_tampering(self):
+        import hashlib
+        r=Fixture();r.cls('BoolProperty',r.classes['Object'])
+        prop=r.field(r.classes['WarPC'],'bIsTargeting',0x330,4,0x20,'BoolProperty')
+        r.put(prop,struct.pack('<Q',0xb10000));r.put(0xb102a0,struct.pack('<Q',r.base+0x1daba0))
+        r.put(r.base+0x1b86280+0x2d*8,struct.pack('<Q',r.base+0x1d6ea4))
+        code=[]
+        for rv,n in ((0x1d6ea4,127),(0x1daba0,25)):
+            raw=bytes([0x90])*n;r.put(r.base+rv,raw);code.append((rv,n,hashlib.sha256(raw).hexdigest()))
+        r.finish_registry()
+        with mock.patch('cinematic_anchor.BOOL_CODE',tuple(code)):
+            c=build_crosshair_assignment_config(r,r.camera,include_writer_view=True,include_aim_state=True)
+            self.assertEqual(c['aim_state']['mask'],0x20)
+            self.assertIn('aim_enabled=1',crosshair_assignment_ini(c))
+            for change in ({'mask':3},{'offset':65533},{'property':c['roles']['lhs']}):
+                bad=copy.deepcopy(c);bad['aim_state'].update(change)
+                with self.assertRaises(CrosshairConfigRejected):validate_crosshair_assignment_config(bad)
+            r.put(prop+0xd0,struct.pack('<I',3))
+            with self.assertRaises(CrosshairConfigRejected):
+                build_crosshair_assignment_config(r,r.camera,include_writer_view=True,include_aim_state=True)
     def registry_reads(self, r, header_name, observations):
         """Supply the initial double read and final read, without real registries."""
         read=r.read;header=getattr(r,header_name);calls=[]

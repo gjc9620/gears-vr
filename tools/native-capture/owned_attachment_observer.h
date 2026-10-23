@@ -45,16 +45,37 @@ template<size_t Capacity=gears_recording_capacity::command_lists>
 class Tracker {
     struct Slot {uintptr_t list{};Snapshot binding{};};
     std::array<Slot,Capacity> slots{};uint64_t serial_{},overflow_{};
+    std::size_t used_prefix_{};
+    static constexpr unsigned cache_bits=Capacity<=64?6:11;
+    static constexpr std::size_t cache_capacity=std::size_t{1}<<cache_bits;
+    struct CacheEntry {uintptr_t list{};std::size_t index{};};
+    mutable std::array<CacheEntry,cache_capacity> cache_{};
+    static std::size_t bucket(uintptr_t list){
+        return static_cast<std::size_t>(((static_cast<uint64_t>(list)>>4)*11400714819323198485ull)>>(64-cache_bits));
+    }
+    const Slot* find(uintptr_t list)const{
+        if(!list)return nullptr;
+        auto& cached=cache_[bucket(list)];
+        if(cached.list==list&&cached.index<used_prefix_&&slots[cached.index].list==list)
+            return &slots[cached.index];
+        for(std::size_t i=0;i<used_prefix_;++i)if(slots[i].list==list){cached={list,i};return &slots[i];}
+        return nullptr;
+    }
+    Slot* find_mutable(uintptr_t list){return const_cast<Slot*>(find(list));}
 public:
     void bind(uintptr_t list,Snapshot binding){
-        binding.serial=++serial_;Slot* empty{};
+        binding.serial=++serial_;
         if(!list){++overflow_;return;}
-        for(auto& slot:slots){if(slot.list==list){slot.binding=binding;return;}if(!slot.list&&!empty)empty=&slot;}
-        if(empty)*empty={list,binding};else ++overflow_;
+        if(auto* slot=find_mutable(list)){slot->binding=binding;return;}
+        Slot* empty{};
+        for(std::size_t i=0;i<used_prefix_;++i)if(!slots[i].list){empty=&slots[i];break;}
+        if(!empty&&used_prefix_<Capacity)empty=&slots[used_prefix_++];
+        if(empty){*empty={list,binding};cache_[bucket(list)]={list,static_cast<std::size_t>(empty-slots.data())};}
+        else ++overflow_;
     }
-    Snapshot binding(uintptr_t list)const{for(auto const& slot:slots)if(list&&slot.list==list)return slot.binding;return {};}
-    void retire(uintptr_t list){for(auto& slot:slots)if(slot.list==list){slot={};return;}}
-    void clear(){slots={};}
+    Snapshot binding(uintptr_t list)const{if(auto* slot=find(list))return slot->binding;return {};}
+    void retire(uintptr_t list){if(auto* slot=find_mutable(list))*slot={};}
+    void clear(){slots={};used_prefix_=0;cache_={};}
     uint64_t overflow()const{return overflow_;}
 };
 }

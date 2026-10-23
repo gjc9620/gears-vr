@@ -17,7 +17,7 @@ ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools/package-inspector'))
 sys.path.insert(0,str(ROOT/'tools/package-inspector/python-libs'))
 import pefile
-from resolve_camera import Resolver,psapi,DiscoveryRegistryChanged
+from resolve_camera import Resolver,psapi,DiscoveryRegistryChanged,DiscoveryHintChanged
 
 k=c.WinDLL('kernel32',use_last_error=True)
 k.OpenProcess.argtypes=[w.DWORD,w.BOOL,w.DWORD];k.OpenProcess.restype=w.HANDLE
@@ -42,13 +42,18 @@ def run_hidden(*args,**kwargs):
     return subprocess.run(*args,**kwargs)
 
 
-def modules(handle):
+def modules(handle,*,bases=None):
+    selected=None if bases is None else frozenset(bases)
+    if selected is not None and (not selected or len(selected)>2048 or
+            any(type(value)is not int or not 0<value<1<<64 for value in selected)):
+        raise ValueError('Invalid module base selection')
     slots=(w.HMODULE*2048)();size=w.DWORD()
     if not psapi.EnumProcessModulesEx(handle,slots,c.sizeof(slots),c.byref(size),3):
         raise c.WinError(c.get_last_error())
     if size.value>c.sizeof(slots):raise RuntimeError('Module list exceeds bounded buffer')
     result={}
     for address in slots[:size.value//c.sizeof(w.HMODULE)]:
+        if selected is not None and address not in selected:continue
         name=c.create_unicode_buffer(32768)
         if psapi.GetModuleFileNameExW(handle,address,name,len(name)):
             result[pathlib.Path(name.value).name.lower()]=(address,pathlib.Path(name.value))
@@ -67,16 +72,23 @@ def remote_call(handle,address,parameter):
     finally:k.CloseHandle(thread)
 
 
-def camera_preparation_transient(error):
-    # Exact known transition failures only. Schema, code, certificate identity,
-    # process identity and unknown memory errors remain hard rejections.
-    from anchor_config import AnchorRegistryChanged,AnchorSamplingRejected
+def observer_preparation_churn(error):
+    """Known invalidation reports only; a retry must reacquire every proof."""
+    from anchor_config import AnchorRegistryChanged,AnchorControlledPawnUnavailable,AnchorControlledLinkChanged
     from ui_observer_config import UIConfigRejected,UIRegistryChanged,UIControlledPawnUnavailable
     from crosshair_assignment_config import CrosshairRegistryChanged,CrosshairControlledLinkChanged
     if type(error) is CrosshairControlledLinkChanged:return True
     if isinstance(error,(AnchorRegistryChanged,UIRegistryChanged,CrosshairRegistryChanged,DiscoveryRegistryChanged)):return True
     if type(error) is UIControlledPawnUnavailable:return True
-    if type(error) is UIConfigRejected and str(error)=='UI certificate read changed':return True
+    if type(error)in(AnchorControlledPawnUnavailable,AnchorControlledLinkChanged):return True
+    return type(error) is UIConfigRejected and str(error)=='UI certificate read changed'
+
+
+def camera_preparation_transient(error):
+    # Exact known transition failures only. Schema, code, certificate identity,
+    # process identity and unknown memory errors remain hard rejections.
+    from anchor_config import AnchorSamplingRejected
+    if observer_preparation_churn(error):return True
     reason=str(error)
     if reason in {
         'Camera view target is not controlled Pawn',
@@ -100,7 +112,11 @@ def camera_preparation_transient(error):
         from anchor_config import _temporary_sample_rejection
         if not isinstance(error,AnchorSamplingRejected):return False
         evidence=getattr(error,'evidence',{})
-        attempts=evidence.get('attempts',[]) if evidence.get('stage')=='sample' else []
+        # A nested timestamp guard can exhaust, then the outer sample loop can
+        # continue and exhaust on measurement churn. Its receipt retains the
+        # nested stage; classify every raw attempt, rather than losing the
+        # existing bounded whole-acquisition retry solely because of that stage.
+        attempts=evidence.get('attempts',[]) if evidence.get('stage') in ('sample','sample_before','sample_after') else []
         return bool(attempts) and all(isinstance(a.get('raw_rejection'),dict) and
             _temporary_sample_rejection(a['raw_rejection']) is not None for a in attempts)
     # The strict sampler's initial construction reads Controller.Pawn before
@@ -208,7 +224,7 @@ class _InitialPreparationCamera:
 
 def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_observer=False,ui_observer=False,cinematic_camera=False,
                                  record_anchor_failure=True,preparation_deadline=None,check_live=None,entry_reader=None,
-                                 crosshair_assignment_observer=False,camera_discovery=None):
+                                 crosshair_assignment_observer=False,camera_discovery=None,anchor_sample_pose=True):
     """Read-only, pre-activation acquisition; never retries identity failures.
 
     A new Resolver.resolve() prepares fresh registries/caches and roles on every
@@ -219,7 +235,10 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
     """
     from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged,UIControlledPawnUnavailable
     from crosshair_assignment_config import CrosshairRegistryChanged,CrosshairControlledLinkChanged
-    from anchor_config import AnchorRegistryChanged
+    from anchor_config import AnchorRegistryChanged,AnchorControlledPawnUnavailable,AnchorControlledLinkChanged
+    if type(anchor_sample_pose)is not bool:raise ValueError('anchor_sample_pose must be boolean')
+    if not anchor_sample_pose and (not anchor_observer or entry_reader is None):
+        raise ValueError('Static-only anchor assembly requires an attested anchor observer')
     if crosshair_assignment_observer and not (anchor_observer and ui_observer):
         raise ValueError('Crosshair assignment observer requires UI/anchor observers')
     deadline=time.monotonic()+10 if preparation_deadline is None else preparation_deadline
@@ -245,6 +264,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                 if anchor_observer:
                     from anchor_config import build_anchor_config,anchor_ini,AnchorSamplingRejected
                     try:certificate,anchor_metadata=build_anchor_config(r,refreshed,prepared_camera=refreshed,
+                        **({'sample_pose':False} if not anchor_sample_pose else {}),
                         **({'cinematic_camera':True} if cinematic_camera else {}))
                     except AnchorSamplingRejected as error:
                         if record_anchor_failure:save_anchor_sampling_failure(dll,pid,error)
@@ -267,22 +287,26 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                             **({'entry_reader':entry_reader} if entry_reader is not None else {}))
                         ui_section+=crosshair_assignment_ini(assignment)
                         ui_metadata['crosshair_assignment']=assignment
+                finish=getattr(r,'finish_discovery_field_hints',None)
+                if callable(finish):finish()
                 if registry_retry and time.monotonic()>=deadline:
                     raise UIConfigRejected('UI acquisition exceeded retry deadline before activation') if ui_observer else TimeoutError('Anchor acquisition exceeded retry deadline before activation')
                 if check_live:check_live()
                 return refreshed,anchor_metadata,anchor_section,ui_metadata,ui_section
             finally:r.p.close()
-        except (UIConfigRejected,CrosshairRegistryChanged,CrosshairControlledLinkChanged,AnchorRegistryChanged,DiscoveryRegistryChanged) as error:
+        except (UIConfigRejected,CrosshairRegistryChanged,CrosshairControlledLinkChanged,AnchorRegistryChanged,
+                AnchorControlledPawnUnavailable,AnchorControlledLinkChanged,DiscoveryRegistryChanged) as error:
             # Only known read churn, typed unpossession and registry mismatches join
             # this budget. Identity/code/unknown failures remain hard; every
             # retry discards the Resolver and all certificates.
-            if not (isinstance(error,(UIRegistryChanged,CrosshairRegistryChanged,AnchorRegistryChanged,DiscoveryRegistryChanged)) or
-                    type(error) is CrosshairControlledLinkChanged or
-                    type(error) is UIControlledPawnUnavailable or
-                    (type(error) is UIConfigRejected and str(error)=='UI certificate read changed')):raise
+            if not observer_preparation_churn(error):raise
             if attempt+1==attempts or time.monotonic()>=deadline:raise
             print(f'Observer preparation changed ({error}); reacquiring all certificates ({attempt+2}/{attempts})',file=sys.stderr)
-            time.sleep((min)(.05,(max)(0,deadline-time.monotonic())))
+            # An invalid optional location is discarded once. Its fresh-reader
+            # fallback needs no settling pause; the same attempt/deadline and
+            # full proof requirements still apply. Other churn keeps its wait.
+            if type(error)is not DiscoveryHintChanged:
+                time.sleep((min)(.05,(max)(0,deadline-time.monotonic())))
 
 
 def save_anchor_sampling_failure(dll,pid,error,*,preparation_failures=None,preparation_receipt=None):
@@ -303,7 +327,11 @@ def save_anchor_sampling_failure(dll,pid,error,*,preparation_failures=None,prepa
 
 def hud_size_ini(args):
     from camera_closer_options import camera_closer_metres
-    result=''
+    preview=getattr(args,'first_person_preview',False)
+    if type(preview) is not bool:raise ValueError('First person preview must be boolean')
+    if preview and not all(getattr(args,key,False) for key in ('anchor_observer','cinematic_camera','crosshair_assignment_observer','continuous_session','stereo_xr')):
+        raise ValueError('First person preview requires continuous stereo and certified gameplay/weapon observers')
+    result='first_person_preview=1\n' if preview else ''
     closer=camera_closer_metres(args)
     if closer>0:
         if not getattr(args,'continuous_session',False) or not getattr(args,'stereo_xr',False):
@@ -412,6 +440,7 @@ def main():
     parser.add_argument('--crosshair-assignment-observer',action='store_true',help='Observe certified crosshair assignments; no reticle correction')
     parser.add_argument('--hud-horizontal-fov-degrees',type=float)
     parser.add_argument('--camera-closer-metres',type=float,default=0.)
+    parser.add_argument('--first-person-preview',action='store_true')
     parser.add_argument('--hud-element-scale',type=float,help='Experimental certified HUD group size, 1..2; identity default')
     parser.add_argument('--hud-center-scale',type=float,help='Experimental HUD group center displacement, 0..1; identity default')
     parser.add_argument('--outage-diagnostics',action='store_true',help='Record a bounded missing-image window in the existing stereo publication path; disabled by default')

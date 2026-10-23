@@ -7,7 +7,7 @@ import re
 import struct
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-GAME = ROOT / 'game-installation/Gears of War Reloaded'
+GAME = ROOT / 'Gears of War Reloaded'
 CONFIG = GAME / 'WarGame/Config/Steam/Cooked/Coalesced.ini'
 STATE = ROOT / 'analysis/startup-config'
 EXPECTED_ORIGINAL = '6cf7a0c3a59d85ae6fedf5fc49d8bb406edda9adda7429448d27510e729a8f16'

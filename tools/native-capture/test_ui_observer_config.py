@@ -103,6 +103,56 @@ class Fixture:
         raise RuntimeError('Fixture property not found')
 
 class UIObserverConfigTests(unittest.TestCase):
+    def batched_fixture(self):
+        import types
+        from resolve_camera import Resolver
+        r=Fixture();r.objects.reverse()
+        for index,address in enumerate(r.objects):r.put(address+8,struct.pack('<I',index))
+        r.finish_registry();r.CLASS_HINT_BLOCK_SIZE=Resolver.CLASS_HINT_BLOCK_SIZE
+        r.discovery_class_candidates=types.MethodType(Resolver.discovery_class_candidates,r)
+        return r
+    def test_batched_class_discovery_keeps_complete_certificate_and_registry_order(self):
+        r=self.batched_fixture()
+        expected=build_ui_observer_config(r,r.camera)[0]
+        del r.discovery_class_candidates
+        self.assertEqual(expected,build_ui_observer_config(r,r.camera)[0])
+    def test_batched_class_discovery_rejects_duplicate_owner(self):
+        r=self.batched_fixture();r.obj('Canvas',r.classes['Class']);r.finish_registry()
+        with self.assertRaisesRegex(UIConfigRejected,'Duplicate UI owner class'):
+            build_ui_observer_config(r,r.camera)
+    def test_batched_class_hint_cannot_authorize_stale_identity(self):
+        r=self.batched_fixture();discover=r.discovery_class_candidates
+        def stale(pointers):
+            for address,item in discover(pointers):
+                if address==r.classes['Canvas']:
+                    r.put(address+76,struct.pack('<I',1))
+                yield address,item
+        r.discovery_class_candidates=stale
+        with self.assertRaisesRegex(UIConfigRejected,'Required UI owner class missing'):
+            build_ui_observer_config(r,r.camera)
+
+    def test_batched_selected_class_change_before_ordering_rejects_certificate(self):
+        from ui_observer_config import UIRegistryChanged
+        r=self.batched_fixture();discover=r.discovery_class_candidates
+        def changing(pointers):
+            for address,item in discover(pointers):
+                yield address,item
+                if address==r.classes['Canvas']:r.put(address+76,struct.pack('<I',1))
+        r.discovery_class_candidates=changing
+        with self.assertRaisesRegex(UIRegistryChanged,'UI class changed during discovery'):
+            build_ui_observer_config(r,r.camera)
+
+    def test_class_prefilter_preserves_certificate_and_fresh_rejections(self):
+        import types
+        from resolve_camera import Resolver
+        original=Fixture();filtered=Fixture()
+        filtered.discovery_identity_reader=types.MethodType(Resolver.discovery_identity_reader,filtered)
+        self.assertEqual(build_ui_observer_config(original,original.camera)[0],
+                         build_ui_observer_config(filtered,filtered.camera)[0])
+        filtered.put(filtered.props[filtered.classes['Canvas'],'ClipX']['address']+80,
+                     struct.pack('<Q',filtered.classes['IntProperty']))
+        with self.assertRaises(UIConfigRejected):build_ui_observer_config(filtered,filtered.camera)
+
     def test_false_discovery_class_hint_cannot_authorize_identity(self):
         r=Fixture();ordinary=r.identity
         def discover(address):

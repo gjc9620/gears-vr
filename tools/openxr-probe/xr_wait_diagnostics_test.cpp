@@ -51,5 +51,9 @@ int main(){
     file=temporary();timeout.dump(file);assert(contents(file).find("should_render_false")!=std::string::npos);fclose(file);
     Recorder<true> unused;file=temporary();unused.dump(file);assert(contents(file).empty());fclose(file);
     file=temporary();disabled.dump(file);assert(contents(file).empty());fclose(file);
+    assert(enabled.total(Operation::wait_eye0).count==1&&enabled.total(Operation::wait_eye0).ns==11112000);
+    enabled.values[unsigned(Operation::wait_eye0)][unsigned(Context::unknown)].observe(1,11,Outcome::success);
+    assert(enabled.total(Operation::wait_eye0).count==2&&enabled.total(Operation::wait_eye0).ns==11112010);
+    assert(disabled.total(Operation::wait_frame).count==0&&disabled.total(Operation::wait_frame).ns==0);
     puts("XR wait diagnostics checks passed");
 }

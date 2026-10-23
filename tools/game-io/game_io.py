@@ -18,7 +18,7 @@ import uuid
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HERE = pathlib.Path(__file__).resolve().parent
 STATE = ROOT / 'analysis/game-io'
-GAME = ROOT / 'game-installation/Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
+GAME = ROOT / 'Gears of War Reloaded/Binaries_x64/GOWDE-Steam.exe'
 user = c.WinDLL('user32', use_last_error=True)
 kernel = c.WinDLL('kernel32', use_last_error=True)
 user.GetForegroundWindow.restype = w.HWND

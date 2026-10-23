@@ -4,6 +4,7 @@
 #include "anchor_config_loader.h"
 #include "ui_runtime_binding.h"
 #include "mounted_recovery_guard.h"
+#include "world_profile_snapshot.h"
 #include <unordered_map>
 #include <fstream>
 #include <string>
@@ -11,13 +12,17 @@
 #define CHECK(x) do{++checks;if(!(x)){std::printf("failed %d: %s\n",__LINE__,#x);return 1;}}while(0)
 struct Fixture {
     std::unordered_map<std::uintptr_t,unsigned char> memory;
-    std::wstring path;gears_anchor::Config anchor{};gears_ui::Config ui{};
-    bool load(const wchar_t* name){wchar_t current[MAX_PATH]{};GetCurrentDirectoryW(MAX_PATH,current);path=std::wstring(current)+L"\\"+name+L".ini";
+    std::wstring path;gears_anchor::Config anchor{};gears_ui::Config ui{};gears_profile::Snapshot profile;bool cached{};
+    DWORD text(const wchar_t* section,const wchar_t* key,wchar_t* out,unsigned size){return gears_profile::get(cached?&profile:nullptr,section,key,out,size,path.c_str());}
+    bool load(const wchar_t* name,bool cache=true){wchar_t current[MAX_PATH]{};GetCurrentDirectoryW(MAX_PATH,current);path=std::wstring(current)+L"\\"+name+L".ini";
+        cached=cache;
+        if(cached){HANDLE file=CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,0,nullptr);
+            const bool loaded=profile.load(file);if(file!=INVALID_HANDLE_VALUE)CloseHandle(file);if(!loaded)return false;}
         std::ifstream input((std::wstring(current)+L"\\"+name+L".memory").c_str(),std::ios::binary);memory.clear();
         std::uintptr_t address{};unsigned char byte{};while(input.read(reinterpret_cast<char*>(&address),8)&&input.read(reinterpret_cast<char*>(&byte),1))memory[address]=byte;
-        auto get=[&](const wchar_t* key,wchar_t* out,unsigned size){return GetPrivateProfileStringW(L"AnchorObserver",key,L"",out,size,path.c_str());};
+        auto get=[&](const wchar_t* key,wchar_t* out,unsigned size){return text(L"AnchorObserver",key,out,size);};
         if(!gears_anchor::parse_config(get,0x140000000,anchor))return false;
-        auto number=[&](const wchar_t* key,auto& value){wchar_t text[64]{};if(!GetPrivateProfileStringW(L"UIObserver",key,L"",text,64,path.c_str()))return false;
+        auto number=[&](const wchar_t* key,auto& value){wchar_t text[64]{};if(!this->text(L"UIObserver",key,text,64))return false;
             value=static_cast<std::remove_reference_t<decltype(value)>>(std::wcstoull(text,nullptr,0));return true;};
         ui={};auto& c=ui;unsigned schema{};if(!number(L"schema",schema))return false;c.mounted=schema==2;
 #define LOAD(x) if(!number(L## #x,c.x))return false
@@ -33,7 +38,7 @@ struct Fixture {
         for(unsigned i=0;i<c.identity_count;++i){auto& id=c.identities[i];wchar_t key[64]{};
             auto field=[&](const wchar_t* label,auto& value){std::swprintf(key,64,L"id%u_%ls",i,label);return number(key,value);};
             if(!field(L"address",id.address)||!field(L"index",id.index)||!field(L"name_index",id.name_index)||!field(L"number",id.number)||!field(L"cls",id.cls)||!field(L"outer",id.outer))return false;
-            std::swprintf(key,64,L"id%u_name",i);if(!GetPrivateProfileStringW(L"UIObserver",key,L"",id.name.data(),64,path.c_str()))return false;
+            std::swprintf(key,64,L"id%u_name",i);if(!text(L"UIObserver",key,id.name.data(),64))return false;
         }
         for(unsigned i=0;i<c.super_count;++i){wchar_t key[64]{};std::swprintf(key,64,L"super%u_identity",i);if(!number(key,c.supers[i].identity))return false;
             std::swprintf(key,64,L"super%u_parent",i);if(!number(key,c.supers[i].parent))return false;}
@@ -48,7 +53,7 @@ int main(){unsigned checks{};Fixture f;CHECK(f.load(L"mounted"));auto read=[&](v
     CHECK(anchor.pawn==0x80000&&(anchor.location==std::array<float,3>{100,200,300})&&anchor.eye_height==0&&anchor.base_eye_height==0);
     gears_ui_binding::Binding binding{};CHECK(gears_ui_binding::acquire(f.ui,f.anchor,read,binding));CHECK(binding.pawn.address==0x20000&&binding.inventory.address==0x81000);
     gears_crosshair_assignment::OwnedConfig suspended;
-    auto get=[&](const wchar_t* key,wchar_t* out,unsigned size){return GetPrivateProfileStringW(L"CrosshairAssignment",key,L"",out,size,f.path.c_str());};
+    auto get=[&](const wchar_t* key,wchar_t* out,unsigned size){return f.text(L"CrosshairAssignment",key,out,size);};
     CHECK(gears_crosshair_assignment::parse_config(get,123,0x140000000,suspended)&&suspended.mounted_suspended&&suspended.suspended_controlled==anchor.pawn);
     CHECK(gears_crosshair_assignment::mounted_recovery_fresh(suspended,f.anchor,f.ui,123,0x140000000,read));
     const auto baseline=f.memory;
@@ -72,8 +77,29 @@ int main(){unsigned checks{};Fixture f;CHECK(f.load(L"mounted"));auto read=[&](v
         f.memory=baseline;pov_reads=0;
         CHECK(!gears_crosshair_assignment::mounted_recovery_fresh(suspended,f.anchor,f.ui,123,0x140000000,camera_race,&diagnostic));
         CHECK(diagnostic.timestamp_only==(roll_time&&!break_link));
+        CHECK(gears_anchor::timestamp_retryable(diagnostic)==(roll_time&&!break_link));
+        if(roll_time&&!break_link){
+            auto altered=diagnostic;altered.reason=gears_anchor::GuardReason::read_failure;
+            CHECK(!gears_anchor::timestamp_retryable(altered));
+            altered=diagnostic;altered.timestamp_only=false;CHECK(!gears_anchor::timestamp_retryable(altered));
+        }
     }
     f.memory=baseline;
+    // A previous timestamp receipt cannot survive success, role mismatch or a
+    // hard read failure. The caller must not retry these as stale diagnostics.
+    for(unsigned fault=0;fault<4;++fault){
+        auto candidate=suspended;
+        gears_anchor::GuardDiagnostic diagnostic{};
+        diagnostic.timestamp_only=true;diagnostic.reason=gears_anchor::GuardReason::strict_timestamp_changed;
+        if(fault==1)candidate.suspended_driver+=8;
+        if(fault==2)candidate.suspended_camera+=8;
+        auto checked_read=[&](void* dest,const void* source,size_t size){
+            if(fault==3&&reinterpret_cast<std::uintptr_t>(source)==f.anchor.objects_header)return false;
+            return read(dest,source,size);
+        };
+        CHECK(gears_crosshair_assignment::mounted_recovery_fresh(candidate,f.anchor,f.ui,123,0x140000000,checked_read,&diagnostic)==(fault==0));
+        CHECK(!gears_anchor::timestamp_retryable(diagnostic));
+    }
     // Native wire4 cannot silently consume legacy mounted wire3 or omit Owner.
     for(auto mode:{0,1}){
         auto incompatible=[&](const wchar_t* key,wchar_t* out,unsigned size){
@@ -138,5 +164,9 @@ int main(){unsigned checks{};Fixture f;CHECK(f.load(L"mounted"));auto read=[&](v
     }
     CHECK(f.load(L"normal"));CHECK(!f.anchor.mounted_enabled&&!f.ui.mounted);CHECK(gears_anchor::guard(f.anchor,read,anchor,stamp));
     CHECK(gears_ui_binding::acquire(f.ui,f.anchor,read,binding)&&binding.pawn.address==0x20000);
+    for(auto name:{L"mounted",L"streamed",L"streamed_cinematic",L"normal"})for(bool cached:{false,true}){
+        CHECK(f.load(name,cached));CHECK(gears_anchor::guard(f.anchor,read,anchor,stamp));
+        CHECK(gears_ui_binding::acquire(f.ui,f.anchor,read,binding));
+    }
     std::printf("mounted anchor/UI/config, link/layout races and dismount restoration: %u checks passed\n",checks);return 0;
 }

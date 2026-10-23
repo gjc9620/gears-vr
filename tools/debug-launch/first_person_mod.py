@@ -12,7 +12,7 @@ import shutil
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-GAME = ROOT / 'game-installation/Gears of War Reloaded'
+GAME = ROOT / 'Gears of War Reloaded'
 COOKED = GAME / 'WarGame/CookedPC'
 SOURCE = ROOT / 'First Person-21-1-0-1764109229'
 BACKUP = ROOT / 'analysis/backups/first-person-1.0'

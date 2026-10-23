@@ -49,9 +49,13 @@ class StartupSelftestTests(unittest.TestCase):
                 '--check-frame-link','--startup-preflight-nonce','a'*32]
             with mock.patch.object(sys,'argv',argv),mock.patch.object(reserve,'validate_game',return_value=root/'GOWDE-Steam.exe'),\
                  mock.patch.object(reserve,'run_hidden',side_effect=run),mock.patch.object(reserve,'k') as native,\
+                 mock.patch.object(reserve.pefile,'PE',side_effect=RuntimeError('stop after prelaunch tests')),\
+                 mock.patch.object(reserve.instance_policy,'context',return_value=None),\
+                 mock.patch.object(reserve.instance_policy,'shared_game_pids',return_value=[]),\
+                 mock.patch.object(reserve,'run_game_startup',side_effect=AssertionError('No game launch')) as launch,\
                  mock.patch.object(reserve,'WindowsControl',return_value=SimpleNamespace(identity=lambda pid:dict(pid=7,creation_time=8))):
                 with self.assertRaisesRegex(RuntimeError,'stop after prelaunch'):reserve.main()
-                native.OpenProcess.assert_not_called();native.VirtualAllocEx.assert_not_called()
+                native.OpenProcess.assert_not_called();native.VirtualAllocEx.assert_not_called();launch.assert_not_called()
             for name,arguments,_ in tests.continuous_suite():self.assertEqual(calls.count((name,tuple(arguments))),1)
             self.assertEqual(len(calls),len(set(calls)))
             self.assertIn(('CaptureSelfTest.exe',('@dll','--prime-owned-handoff')),calls)

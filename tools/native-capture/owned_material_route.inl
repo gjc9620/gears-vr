@@ -6,8 +6,9 @@ using Upload=uintptr_t(__fastcall*)(void*,unsigned,unsigned,void*,unsigned);
 Produce original_produce{};Upload original_upload{};
 void* produce_target{};void* upload_target{};
 std::atomic<uint64_t> produced{},executed{},completed{},uploads{},draws{},faults{};
+std::atomic<uint64_t> reticle_draws{},reticle_suppressed_draws{};
 std::atomic<unsigned> first_fault{};
-struct DrawFailure {unsigned reason{},targets{},width{},height{},stride{},topology{};uintptr_t actual{},expected{},list{},native_list{};
+struct DrawFailure {unsigned reason{},targets{},width{},height{},stride{},topology{},kind{},plan_stage{},reticle_reject{};uintptr_t actual{},expected{},list{},native_list{};
  uint64_t ticket{},pair_ticket{};bool linked{};std::array<float,4> rect{};std::array<float,16> projection{};};
 DrawFailure first_draw_failure{};std::mutex failure_mutex;
 struct UploadContext {UiMaterialContext* material{};uintptr_t native_context{};gears_ui_material::Quad quad{};};
@@ -95,11 +96,14 @@ bool reserve(){
 }
 void progress(FILE* file){
  DrawFailure d{};{std::lock_guard<std::mutex> lock(failure_mutex);d=first_draw_failure;}
+ fprintf(file,"owned_material_reticle_draws=%llu owned_material_reticle_suppressed=%llu owned_material_draw_failure_kind=%u owned_material_draw_failure_plan_stage=%u owned_material_draw_failure_reticle_reject=%u ",
+  reticle_draws.load(),reticle_suppressed_draws.load(),d.kind,d.plan_stage,d.reticle_reject);
  fprintf(file,"owned_material_faults=%llu owned_material_first_fault=%u owned_material_draw_failure_reason=%u owned_material_draw_failure_ticket=%llu owned_material_draw_failure_pair=%llu owned_material_draw_failure_linked=%u owned_material_draw_failure_targets=%u owned_material_draw_failure_actual=%llx owned_material_draw_failure_expected=%llx owned_material_draw_failure_width=%u owned_material_draw_failure_height=%u owned_material_draw_failure_list=%llx owned_material_draw_failure_native_list=%llx owned_material_draw_failure_stride=%u owned_material_draw_failure_topology=%u ",
   faults.load(),first_fault.load(),d.reason,d.ticket,d.pair_ticket,unsigned(d.linked),d.targets,d.actual,d.expected,d.width,d.height,d.list,d.native_list,d.stride,d.topology);
 }
 void print(FILE* file){fprintf(file,"owned_material produced=%llu executed=%llu completed=%llu uploads=%llu draws=%llu faults=%llu first_fault=%u\n",
  produced.load(),executed.load(),completed.load(),uploads.load(),draws.load(),faults.load(),first_fault.load());
+ fprintf(file,"owned_material_reticle draws=%llu suppressed=%llu\n",reticle_draws.load(),reticle_suppressed_draws.load());
  std::lock_guard<std::mutex> lock(failure_mutex);const auto& d=first_draw_failure;if(!d.reason)return;
  fprintf(file,"owned_material_draw_failure reason=%u ticket=%llu pair=%llu linked=%u targets=%u actual=%llx expected=%llx width=%u height=%u list=%llx native_list=%llx stride=%u topology=%u rect=%.9g,%.9g,%.9g,%.9g projection=",
   d.reason,d.ticket,d.pair_ticket,d.linked,d.targets,d.actual,d.expected,d.width,d.height,d.list,d.native_list,d.stride,d.topology,d.rect[0],d.rect[1],d.rect[2],d.rect[3]);

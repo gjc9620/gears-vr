@@ -2,5 +2,7 @@
   "game_path": "",
   "stereo_units_per_metre": 100,
   "launcher_language": "en",
-  "render_scale": 1.0
+  "render_scale": 1.0,
+  "first_person_preview": true,
+  "right_stick_deadzone_percent": 2.0
 }

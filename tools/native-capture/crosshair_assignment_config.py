@@ -49,22 +49,28 @@ def _require(ok, reason):
         raise CrosshairConfigRejected(reason)
 
 
-def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False, include_aim_state=False, entry_reader=None):
+def build_crosshair_assignment_config(resolver, camera, *, include_tick_roots=False, include_writer_view=False, include_aim_state=False, entry_reader=None,
+                                     reuse_assembly_identities=True,coalesce_reads=True):
     """Certify selected evidence, allowing only bounded registry count growth.
 
 Requires original execLet bytes, read directly at startup or through the
 caller's bound owned-hook attestation capability during world recovery.
 Shared VM entry bytes are deliberately not certified (the UI owner may own it).
 """
+    if type(reuse_assembly_identities) is not bool:
+        raise ValueError('reuse_assembly_identities must be boolean')
+    if type(coalesce_reads) is not bool:raise ValueError('coalesce_reads must be boolean')
     try:
-        return _build(resolver, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader)
+        return _build(resolver, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader,
+                      reuse_assembly_identities,coalesce_reads)
     except CrosshairConfigRejected:
         raise
     except (KeyError, TypeError, ValueError, RuntimeError, OSError, struct.error, UnicodeError) as e:
         raise CrosshairConfigRejected('Fresh certificate rejected: ' + str(e)) from e
 
 
-def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader):
+def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state, entry_reader,
+           reuse_assembly_identities,coalesce_reads):
     p = r.profile
     started = time.perf_counter_ns()
     _require(p.get('sha256') == camera.get('sha256') == GAME_SHA and
@@ -127,21 +133,67 @@ def _build(r, camera, include_tick_roots, include_writer_view, include_aim_state
 
     objects, oc = registry(r.objects_header)
     names, nc = registry(r.names_header)
+    identity_spans=tuple((p[key],size)for key,size in (
+        ('object_internal_index',4),('object_name',8),('object_class',8),('object_outer',8)))
+    identity_begin=min(offset for offset,_ in identity_spans)
+    identity_end=max(offset+size for offset,size in identity_spans)
+    if coalesce_reads:_require(identity_end<=0x60,'Unsupported identity span')
 
-    def fresh(a):
-        idx = number(a + p['object_internal_index'], '<I')
-        ni, serial = struct.unpack('<II', stable(a + p['object_name'], 8))
-        cls = number(a + p['object_class']); outer = number(a + p['object_outer'])
+    def fresh_read(a):
+        if coalesce_reads:
+            # Read one complete identity cohort twice instead of four separate
+            # double-reads. Keep every original span in checks for the unchanged
+            # final live boundary; unrelated mutable UObject bytes are ignored.
+            size=identity_end-identity_begin
+            first=r.read(a+identity_begin,size);second=r.read(a+identity_begin,size)
+            _require(len(first)==len(second)==size,'Incomplete object identity read')
+            for offset,size in identity_spans:
+                begin=offset-identity_begin
+                x=first[begin:begin+size];y=second[begin:begin+size];span=(a+offset,size)
+                if x!=y:changed(*span,'Certificate double-read changed')
+                if span in checks and checks[span]!=x:changed(*span,'Certificate read changed during assembly')
+                checks[span]=x
+            idx=struct.unpack_from('<I',first,p['object_internal_index']-identity_begin)[0]
+            ni,serial=struct.unpack_from('<II',first,p['object_name']-identity_begin)
+            cls=struct.unpack_from('<Q',first,p['object_class']-identity_begin)[0]
+            outer=struct.unpack_from('<Q',first,p['object_outer']-identity_begin)[0]
+        else:
+            idx = number(a + p['object_internal_index'], '<I')
+            ni, serial = struct.unpack('<II', stable(a + p['object_name'], 8))
+            cls = number(a + p['object_class']); outer = number(a + p['object_outer'])
         _require(idx < oc and number(objects + idx * 8) == a and ni < nc, 'Object registry identity mismatch')
         entry = number(names + ni * 8)
-        _require(entry and number(entry + p['name_entry_index'], '<I') == ni, 'Name registry mismatch')
-        raw = stable(entry + p['name_entry_text'], 128)
+        _require(entry,'Name registry mismatch')
+        if coalesce_reads and (p['name_entry_index'],p['name_entry_text'])==(0,20):
+            first=r.read(entry,148);second=r.read(entry,148)
+            _require(len(first)==len(second)==148,'Incomplete name identity read')
+            for offset,size in ((0,4),(20,128)):
+                x=first[offset:offset+size];y=second[offset:offset+size];span=(entry+offset,size)
+                if x!=y:changed(*span,'Certificate double-read changed')
+                if span in checks and checks[span]!=x:changed(*span,'Certificate read changed during assembly')
+                checks[span]=x
+            entry_index=struct.unpack_from('<I',first)[0];raw=first[20:]
+        else:
+            entry_index=number(entry+p['name_entry_index'],'<I')
+            raw=stable(entry+p['name_entry_text'],128)
+        _require(entry_index==ni,'Name registry mismatch')
         end = next((i for i in range(0, 128, 2) if raw[i:i+2] == b'\0\0'), None)
         _require(end is not None and end > 0, 'Invalid bounded name')
         name = raw[:end].decode('utf-16-le')
         _require(not any(c in name for c in '\r\n\0='), 'Invalid name')
         return dict(address=a, internal_index=idx, name_index=ni, number=serial,
                     name=name, cls=cls, outer=outer)
+
+    assembly_identities = {}
+    def fresh(a):
+        # Attempt-local assembly hints only. fresh_read records every identity,
+        # selected slot and name byte in checks; the final uncached read of all
+        # checks below still rejects any change before admitting this candidate.
+        if not reuse_assembly_identities:return fresh_read(a)
+        if a not in assembly_identities:
+            _require(len(assembly_identities) < 256, 'Assembly identity capacity exceeded')
+            assembly_identities[a] = fresh_read(a)
+        return assembly_identities[a]
 
     ids = []; indexes = {}; supers = {}
 
