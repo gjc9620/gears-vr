@@ -127,3 +127,9 @@ p 的 Native／XR 短会话通过，71 projection layer、43 scene copy、约 0.
 与 n 相同调用计数下，本轮 28 次 current 总计 33.8867ms（n 41.8484），13 次 read 总计 31.9711ms（n 40.6419），112 次 slot args／preflight／run-invoke／post 分项 0.1670／0.0385／0.1149／6.4742ms。嵌套总段不可相加；这是两个功能会话的具体观测，不是稳定性能或 FPS 比较。原 initial＋三 snapshot 合计 14.5073ms、跨度 53.1420ms；仍需继续减少重复遍历，不能将局部提速称为交互通过。
 
 Stop／Shutdown 均 0；8 控制、44 字节挂接、3 组件组与两原生入口精确恢复，Native drain／entries restored、XR exit 0。确切创建时间独立核对 owner／game／XR 已退出，game exit 1；8 个音频 session 全部恢复，pending 0。工件／环境取证通过，15 项交互覆盖失败保留。p 共 122 份文件加 seal，seal b6af1935…bc31、root result 02c192ee…aafe，未重试本会话、未改 n 或默认启动器。下一候选只评估有界字符串匹配等不缓存 game metadata／成功结果的解析优化。
+
+## 2026-10-23 — 有界属性名称匹配候选
+
+后续候选仅缩小 fast lookup::named 为判断名称相等所需的读取上限：纯 query 字符循环最多 127 个 wchar_t，field／derives 每次遍历外计算长度，name 的上限为 query 长度＋真实 NUL 且最多 128。其他 name 调用仍默认 128；耗尽后补写的 NUL 仍返回 false，保留 _wcsicmp 的原大小写／locale 语义、FName 表／entry 身份、page／copy 失败检查。未缓存 name 索引、metadata 或校验成功；所有 current／getter／VM、原始 Plan／100ms、setter 和恢复保持。named 局部缓冲区仍清零，没有混入可选微改。
+
+25 个有界字符串／页模型场景、137 检查首次 /W4 /WX 编译和运行通过；覆盖前缀／长名／空／大小写／Unicode／UTF16／126–128／缺 NUL／跨页及保护页。Astra 窄审 3ee7d303…2050 无阻断，root 读完整实际差异并核对报告后应用 a505df6b…1339。短查询 copy 请求 256→8 字节、示例 field 1280→94 字节仅为 fixture 观测，尚非真实提速。较长不匹配名称会提前拒绝，可能少触碰后续 PAGE_GUARD 页；这会改变一次性 guard 消耗／访问轨迹，不声称这种状态下完整执行可观察等价，也没有补读或重试。证据位于忽略的 analysis/hand-mesh-bounded-name-match-20261023/，组合游戏验证待新候选。

@@ -10,17 +10,17 @@ std::size_t page_bytes(){
     static const std::size_t bytes=[](){SYSTEM_INFO info{};GetSystemInfo(&info);return std::size_t(info.dwPageSize);}();
     return bytes;
 }
-bool name(uptr object,wchar_t (&out)[128]){
-    if(!object)return false;
+bool name(uptr object,wchar_t (&out)[128],std::size_t limit=128){
+    if(!object||!limit||limit>128)return false;
     const auto n=get<Name>(object+0x48);const auto a=get<Array>(base+0x1c34800);
     if(!a.data||a.count<1000||a.count>a.capacity||a.capacity>4000000||n.index>=unsigned(a.count))return false;
     const auto entry=get<uptr>(a.data+n.index*8);
     if(!entry||get<unsigned>(entry)!=n.index)return false;
     const auto page=page_bytes();if(!page)return false;
-    for(std::size_t at=0;at<128;){
+    for(std::size_t at=0;at<limit;){
         const auto address=entry+20+at*sizeof(wchar_t);
         const auto room=page-std::size_t(address%page);
-        auto chars=(std::min)(std::size_t(128-at),room/sizeof(wchar_t));
+        auto chars=(std::min)(std::size_t(limit-at),room/sizeof(wchar_t));
         // An unaligned wchar may straddle the page. Preserve the original
         // single two-byte copy and its failure; never retry a guarded page.
         if(!chars)chars=1;
@@ -28,11 +28,21 @@ bool name(uptr object,wchar_t (&out)[128]){
         for(std::size_t i=0;i<chars;++i)if(!out[at+i])return true;
         at+=chars;
     }
-    out[127]=0;return false;
+    out[limit-1]=0;return false;
 }
-bool named(uptr object,const wchar_t* value){wchar_t text[128]{};return name(object,text)&&!_wcsicmp(text,value);}
+std::size_t query_limit(const wchar_t* value){
+    if(!value)return 0;
+    std::size_t len{};while(len<127&&value[len])++len;
+    return len<127?len+1:128;
+}
+bool named(uptr object,const wchar_t* value,std::size_t limit){
+    wchar_t text[128]{};return value&&name(object,text,limit)&&!_wcsicmp(text,value);
+}
+bool named(uptr object,const wchar_t* value){return object&&named(object,value,query_limit(value));}
 bool derives(uptr cls,const wchar_t* value){
-    for(unsigned n=0;cls&&n<40;++n,cls=get<uptr>(cls+0x60))if(named(cls,value))return true;
+    if(!cls)return false;
+    const auto limit=query_limit(value);
+    for(unsigned n=0;cls&&n<40;++n,cls=get<uptr>(cls+0x60))if(named(cls,value,limit))return true;
     return false;
 }
 bool instance(uptr object,const wchar_t* cls){
@@ -40,10 +50,12 @@ bool instance(uptr object,const wchar_t* cls){
     wchar_t text[128]{};return name(object,text)&&wcsncmp(text,L"Default__",9);
 }
 uptr field(uptr cls,const wchar_t* value,const wchar_t* kind=nullptr){
+    if(!cls)return 0;
+    const auto value_limit=query_limit(value),kind_limit=kind?query_limit(kind):0;
     for(unsigned depth=0;cls&&depth<40;++depth,cls=get<uptr>(cls+0x60)){
         auto f=get<uptr>(cls+0x80);
         for(unsigned n=0;f&&n<4096;++n,f=get<uptr>(f+0x68))
-            if(named(f,value)&&(!kind||named(get<uptr>(f+0x50),kind)))return f;
+            if(named(f,value,value_limit)&&(!kind||named(get<uptr>(f+0x50),kind,kind_limit)))return f;
     }
     return 0;
 }
