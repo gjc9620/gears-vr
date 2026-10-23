@@ -1,5 +1,7 @@
 # GearsVR 0.0.3
 
+2026-10-24：当前独立功能工作区使用 `6dof-cover` 分支，已整理[6DoF 掩体交互与实现规格](docs/6dof-cover-interaction-design-20261024.md)，继承0.0.4开发基线。此处仅完成规格和实现准备，新的抓边探身行为尚未实现。下文保留0.0.3发布背景。
+
 按用户2026-10-23的要求，原0.1.0开发内容改以0.0.3发布，当前分支为 `codex/0.0.3`，原0.1.0分支已删除，内容和提交历史保留。本次发布进度见[0.0.3记录](docs/releases/0.0.3/PROGRESS.md)，此前[0.1.0记录](docs/releases/0.1.0/PROGRESS.md)保留为历史证据。
 
 本机开发版使用仓库根目录 `J:\gearsVr\GearsVR Launcher.exe`，游戏主菜单的 `happyotaku playground` 入口由当前开发清单加载。解压到游戏目录的公开包使用独立清单，功能以该包版本为准。2026-10-22已修复Playground初始化失败中断VR启动的问题，见[定位与验证](docs/playground-startup-reservation-20261022.md)。

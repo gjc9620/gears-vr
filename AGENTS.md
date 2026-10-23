@@ -1,5 +1,13 @@
 # Project reverse-engineering workflow
 
+## 6DoF cover feature worktree (2026-10-24)
+
+- This worktree is the user-requested `6dof-cover` branch. Follow `docs/6dof-cover-interaction-design-20261024.md` for the current cover interaction contract; it supersedes the conflicting cover rules in `docs/10-vr-interaction-design.md`.
+- Preserve native cover entry, adhesion, movement along cover, side exit and backward exit. Replace LT/RT-triggered automatic left/right/up peeks with actual HMD translation and left-hand LGrip edge dragging. Face the body toward cover, retain independent head viewing, and use a protected cover-specific eye anchor instead of the preview's unconditional raised/forward offset.
+- Left edge: move the gripping left hand right to lean left; right edge: move it left to lean right; eligible low-cover top: move it down to rise. Reverse the hand motion to retract. The user explicitly confirmed that releasing LGrip retains the current virtual body offset; regrabbing starts from that position, without a snap or automatic return.
+- Keep aiming/fire separate from automatic peeking. Share left-hand ownership with the independent weapon feature; a rendered camera offset alone does not establish valid shooting, collision or hit exposure. Existing weapon candidates are not implicitly accepted or merged by this plan.
+- Local commit `85fc2b31c9f294e1726d192dd5c5af365acc3e01` preserves the relevant uncommitted 0.0.4 working source without modifying the root checkout. Actual support1 frozen sources and receipts were copied under ignored `analysis/`; working source and frozen build source remain distinct. Recheck the latest default before any later promotion. Record implementation and validation in `docs/releases/0.0.4/PROGRESS.md`.
+
 ## Current development version (2026-10-23)
 
 - At the user's request, discard the uncommitted 0.0.2 comparison-only startup changes, switch back to `codex/0.0.3`, and create `codex/0.0.4` from its current HEAD `9ffa710`. Current work targets fixing the left-eye blur/sharp fluctuation on `codex/0.0.4`; record subsequent fixes and validation in `docs/releases/0.0.4/PROGRESS.md`. Preserve the published 0.0.3 package and the 0.0.2 comparison branch.
