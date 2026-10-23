@@ -2,6 +2,18 @@
 
 此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3的c局取得一次部分absolute标志更新及交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
 
+## R4购买版d：旋转提交前时限拒绝
+
+购买版后台静音d/PID5612使用上述R4 PG `a8276f74…67c1af8`、manifest `e87ed90cc8171e48352d9d1f6f7726a6765c24e9ca40ca334ff8542c13f69919`，配套封存为 `analysis/hand-mesh-phase1-r4-candidates/53e64808…e4c342/`，742源／178实际工件。构建base17709c3、应用commit `5662a7e6fe95297dbbfd1ed6435c6a31fc4609c7`分别保留，未应用后重编。Popen0准备固定191依赖／26复制／24模块，与c的186共用依赖和24实际模块均无变化；只绑定OUT／TAG、候选pins与真实工件数，原15s／256／3s reserve、几何审计、Mute1／Behind1／ObserveOnly1及后台物理输入关闭不改。
+
+Start0后手部0写入，以component_acquire_failed结束。首失败ordinal165为group4、forward、wanted非original的authorize：auth known67（args／cutoff／live）、checks3、rejected2，now＝live_now328843921，write_until328843896，ticket_ms328843796。最早live_now>write_until条件超25ms即短路，未执行该次authorizeNS／Policy／commit clocks及后续Stop／Shutdown条件；保留这些字段unknown，不能把默认0当执行结果或将ms和sourceNS跨时钟域相减。该记录证明d的旋转setter在调用前被有限时限拒绝，不能据此为旧c补写未观测首因。
+
+诊断观察339行，63条尾部已覆盖276行，但固定首失败仍完整。组件终态acquired0／restored1／setter_calls4／fault1，dirty／owned／revoked0、safe1。调用计数包含forward和回滚尝试，不等于四个成功setter。唯一pre_restore中dirty＝owned3、Absolute000→110、Translation与目标字节相同、Rotation仍原值；外层回滚后独立raw三组及九Key均与原基线一致，仅支持本次部分更新与交还，没有完成三组acquire或跨Tick运动。
+
+Stop／Shutdown0，原8控件／44附件和两PG入口保持；FPP累计55、Native GHW1 matched58／published47／rejected11，未单凭rejected计数归因。9个专属音频会话已静音，守护read／mute错误、restore_pending均0，精确游戏退出后Guard exit0；独立CIM未见owner12524／game5612／XR19344及Guard／launcher残留。协调者25项仅只读收尾通过，scope=`rotation_precall_deadline_rejection_partial_component_and_rollback`；原component／whole=false、Native entry verifier false、XR exit1／无提交图像仍保留。
+
+ignored `analysis/hand-mesh-runtime-1023d/`的原receipt SHA `da10f0c4229a9dcdafdb3e5842dd81901ff5a03fd0a2c36592ba143d7d643ea9`，PG log `07acaf6d73bb9e4d0de49f168921d6e57e28da45fd3b966af9e298f5ac9cecad`，独立摘要 `100824dbf275b9510fca9adc7faa5fb2da42ceb6cdf2ec69b1bf2a60f2a93234`，55文件封存SHA `0fa1a65d80d7fc54601e000e6149838752fd7129a620b316a32cf8b017cb7998`并固定7个外部证据。c的54文件及外部清单再次核对不变。下一步只降低组件重复反射／名称解析成本：缓存须有完整解析路径与元数据身份守卫，动态Key、链接、槽值、schema、expected及最终同Plan授权仍逐次重读；实际节省时间要另测，不能用静态调用次数宣称性能通过。
+
 ## R4首失败诊断候选
 
 R4只改三份私有适配源码，保持原100ms、同Plan最终认证、逐setter schema／完整Key／expected检查、原返回值、短路顺序、真实hook转发及unsafe卸载规则。它不修复c的运行根因，仅增加固定首失败和63条有序尾部记录；字段来自原有game读取、原有clock／atomic与授权调用，不额外重采样或续龄。输出为独立gate前缀，原written／pre_restore／end schema不变。
