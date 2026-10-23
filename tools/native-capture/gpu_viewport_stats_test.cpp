@@ -40,7 +40,35 @@ static int strict_lifecycle_tests(){
     if(!t.reset(rejected)||!t.bind(rejected,1,32)||!(t.binding(rejected).target==target)||t.snapshot().active_lists!=1)return 60;
     return 0;
 }
+static int indexed_slot_lifecycle_tests(){
+    using namespace gears_viewport;
+    auto storage=std::make_unique<Tracker>(true);auto& t=*storage;
+    constexpr uintptr_t a=0x1000,b=0x1400,c=0x1800;
+    const Target small{11,640,480,28,0},large{22,1280,960,28,0};
+    const Rect left_rect{0,0,640,480},right_rect{640,0,640,480};
+    t.create(32,small);t.create(64,large);
+    if(!t.reset(a)||!t.reset(b)||!t.bind(a,1,32)||!t.bind(b,1,64)||
+       !t.set(a,left,false,left_rect)||!t.set(b,right,false,right_rect))return 61;
+    for(unsigned i=0;i<8;++i){
+        if(!(t.binding(a).target==small)||t.binding(a).viewport!=left||
+           !(t.draw_state(a).viewport==left_rect)||
+           !(t.binding(b).target==large)||t.binding(b).viewport!=right||
+           !(t.draw_state(b).viewport==right_rect))return 62;
+    }
+    if(!t.reset(a)||t.binding(a).targets||t.draw_state(a).depth_known||
+       !t.bind(a,1,64)||!t.set(a,right,false,right_rect)||
+       !(t.binding(a).target==large)||!(t.draw_state(a).viewport==right_rect))return 63;
+    // Retire and slot reuse must not expose the old identity's state.
+    if(!t.retire(a)||!t.reset(c)||!t.bind(c,1,32)||
+       t.binding(a).targets||t.draw_state(a).tracked||t.set(a,left,false,left_rect)||
+       !(t.binding(c).target==small)||!(t.binding(b).target==large))return 64;
+    if(!t.reset(a)||!t.bind(a,1,64)||!(t.binding(a).target==large))return 65;
+    if(t.clear_bindings()||t.binding(a).targets||t.draw_state(b).tracked||t.binding(c).targets||
+       !t.reset(b)||!t.bind(b,1,32)||!(t.binding(b).target==small)||t.snapshot().active_lists!=1)return 66;
+    return 0;
+}
 int main(){
+    if(int error=indexed_slot_lifecycle_tests())return error;
     if(int error=strict_lifecycle_tests())return error;
     using namespace gears_viewport;
     if(classify(0,0,1920,1080)!=full||classify(0,0,960,1080)!=left||classify(960,0,960,1080)!=right)return 1;

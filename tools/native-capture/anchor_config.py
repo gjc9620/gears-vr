@@ -64,6 +64,50 @@ class LiveRegistryAnchorSampler(AnchorSampler):
         if not self.derives(pawn['cls'],'Turret'):
             raise AnchorRejected('Controlled object is neither WarPawn nor certified Turret')
 
+    def controlled_identity(self,controller):
+        if self.pawn:return super().controlled_identity(controller)
+        r=self.r;p=r.profile;started=self.guard_clock_ns()
+        def headers():
+            for name,prefix in (('objects','object'),('names','name')):
+                expected=(getattr(r,name+'_data'),getattr(r,prefix+'_count'),getattr(r,prefix+'_capacity'))
+                observed=_header(r,getattr(r,name+'_header'))
+                if observed!=expected:
+                    reason='Registry changed during anchor unpossession check'
+                    evidence=self.failure_evidence('initial',AnchorRejected(reason),started)
+                    evidence['registry_change']=dict(registry=name,expected_header=list(expected),observed_header=list(observed))
+                    raise AnchorRegistryChanged(reason,evidence)
+        headers()
+        prop=self.layout['controller_pawn'];offset=_offset(prop['offset'],'controller_pawn')
+        field=self.fresh(prop['address']);kind=self.fresh(field['cls'])
+        metaclass=self.fresh(kind['cls'])
+        if (controller['name'].startswith('Default__') or field['name']!='Pawn' or field['number'] or
+                prop['type']!='ObjectProperty' or kind['name']!='ObjectProperty' or kind['number'] or
+                metaclass['name']!='Class' or metaclass['number']):
+            raise AnchorRejected('Invalid reflected controller Pawn during unpossession')
+        supers=[];seen=set();current=controller['cls']
+        while current and current not in seen and len(seen)<64:
+            seen.add(current);item=self.fresh(current)
+            if item['number']or self.fresh(item['cls'])!=metaclass:raise AnchorRejected('Invalid controller class during unpossession')
+            parent=r.u64(current+p['field_super']);supers.append((item,parent))
+            if current==field['outer']:break
+            current=parent
+        else:raise AnchorRejected('Controller Pawn property outer mismatch during unpossession')
+        def layout():return (struct.unpack('<II',r.read(field['address']+0x70,8)),r.u32(field['address']+p['property_offset_internal']))
+        if layout()!=((1,8),offset):raise AnchorRejected('Controller Pawn property layout mismatch during unpossession')
+        after=self.pointer(self.controller,'controller_pawn')
+        if (self.fresh(self.controller)!=controller or self.fresh(field['address'])!=field or
+                self.fresh(kind['address'])!=kind or self.fresh(metaclass['address'])!=metaclass or
+                layout()!=((1,8),offset) or any(self.fresh(item['address'])!=item or
+                    r.u64(item['address']+p['field_super'])!=parent for item,parent in supers)):
+            raise AnchorRejected('Controller Pawn identity/field changed during unpossession')
+        headers()
+        if after:self.validate_controlled(self.fresh(after))
+        reason='Controller Pawn changed after initial null'if after else'Controller Pawn unavailable during anchor construction'
+        evidence=self.failure_evidence('initial',AnchorRejected(reason),started)
+        evidence['controlled_link']=dict(controller=controller,field=field,offset=offset,before=0,after=after)
+        rejection=AnchorControlledLinkChanged if after else AnchorControlledPawnUnavailable
+        raise rejection(reason,evidence)
+
     def failure_evidence(self,stage,error,started):
         return {'accepted':False,'stage':stage,'reason':str(error),
                 'exception_type':type(error).__name__,'exception_repr':repr(error),
@@ -223,6 +267,38 @@ class AnchorSamplingRejected(AnchorRejected):
 
 class AnchorRegistryChanged(AnchorSamplingRejected):
     """Strict registry header mismatch; requires full Resolver reacquisition."""
+
+
+class AnchorControlledPawnUnavailable(AnchorSamplingRejected):
+    """A recertified controller/property link remains null; no anchor accepted."""
+
+
+class AnchorControlledLinkChanged(AnchorSamplingRejected):
+    """The recertified null link now selects a valid Pawn; reacquire in full."""
+
+
+def timestamp_guard_retryable(error):
+    """Authorize a fresh read-only acquisition, never a rejected certificate.
+
+    Require the real sampler exception and every failed strict attempt. Public
+    diagnostic summaries and a matching message alone grant no retry policy.
+    """
+    if type(error)is not AnchorSamplingRejected:return False
+    evidence=getattr(error,'evidence',None)
+    if not isinstance(evidence,dict):return False
+    guards=evidence.get('guard_acquisitions')
+    if not isinstance(guards,list) or not guards or not isinstance(guards[-1],dict):return False
+    guard=guards[-1];attempts=guard.get('attempts')
+    if guard.get('accepted')is not False or not isinstance(attempts,list) or not 1<=len(attempts)<=5:return False
+    allowed={('AnchorRejected','Cross-frame camera timestamp during identity checks'),
+             ('MountedTimestampChanged','Mounted camera timestamp changed at bracket boundary'),
+             ('MountedTimestampChanged','Mounted camera frame changed during anchor bracket')}
+    reason=error.args[0] if len(error.args)==1 else None
+    reasons={item[1]for item in allowed}|{'Anchor guard acquisition deadline exceeded'}
+    if type(reason)is not str or reason not in reasons or guard.get('failure_reason')!=reason:return False
+    return all(isinstance(item,dict) and item.get('strict_guard_accepted')is False and
+        item.get('retryable')is True and type(item.get('exception_type'))is str and type(item.get('reason'))is str and
+        (item['exception_type'],item['reason'])in allowed for item in attempts)
 
 
 def _temporary_sample_rejection(sample):

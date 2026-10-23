@@ -1,0 +1,13 @@
+{
+  "version": "0.0.3",
+  "baseline_version": "0.0.2",
+  "release_zip_sha256": "b9068e926db17a3f95f323e3e8c05ebd0c91c405483cf126d784eaac19cdd0e2",
+  "native_sha256": "7571fee615d413b7250bed794d2917d79e9aed7fe1da52d07f5098e76756bab9",
+  "xr_sha256": "58ef6c397af8facc5ae50c8adba659005a13efd603e7bcfee73ba890d1e2539a",
+  "playground_sha256": "a7b4f3fbe1a900afb5222d5a7ba463bb19bad0cb8b1c859485354e703a4c0535",
+  "gui_sha256": "45cf2da24a390e31b5956d8c1d8ae75e1b6bd8158b93aeaa68a547cebe487fb6",
+  "scope": "First-person preview, Playground, controls, recovery, stereo delivery and startup compatibility",
+  "xr_color_policy": "Original capability negotiation: VDXR UNORM; SteamVR sRGB with the observed format lists",
+  "source_scope": "Frozen native/XR authored source with matching runtime Python; external dependencies",
+  "default_runtime": "System OpenXR runtime"
+}

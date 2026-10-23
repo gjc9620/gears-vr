@@ -625,6 +625,36 @@ class LauncherTests(unittest.TestCase):
                 with self.subTest(language=invalid),self.assertRaisesRegex(ValueError,'launcher_language'):
                     launcher.settings(dict(base,launcher_language=invalid),manifest)
 
+    def test_persisted_game_history_preserves_selected_settings(self):
+        current=json.loads(pathlib.Path(__file__).with_name('manifest.json').read_text())
+        base=dict(game_path='selected/game.exe',stereo_units_per_metre=123)
+        metadata=dict(game_path_history=['missing/old.exe','other/game.exe'],
+                      game_settings_paths={'J:/install/game.exe':'J:/profiles/EngineUserSettings.ini'})
+        for manifest in (MANIFEST,current):
+            with self.subTest(manifest=manifest['native_build']),tempfile.TemporaryDirectory() as directory:
+                path=pathlib.Path(directory)/'config.json'
+                launcher.atomic_json(path,dict(base,**metadata))
+                before=path.read_bytes();config=json.loads(before)
+                self.assertEqual(launcher.settings(config,manifest),launcher.settings(base,manifest))
+                self.assertEqual(config,dict(base,**metadata))
+                self.assertEqual(path.read_bytes(),before)
+                with self.assertRaisesRegex(ValueError,'Unknown configuration field: game_path_histroy'):
+                    launcher.settings(dict(config,game_path_histroy=[]),manifest)
+
+    def test_saved_game_history_reaches_start_without_selecting_history(self):
+        config=dict(game_path=MANIFEST['game_path'],stereo_units_per_metre=123,
+                    game_path_history=['missing/old.exe','other/game.exe'])
+        with tempfile.TemporaryDirectory() as directory:
+            backend=FakeBackend()
+            with mock.patch.object(launcher,'verify_files',return_value={}) as verify,\
+                 mock.patch.object(launcher.ctypes,'get_last_error',return_value=0):
+                launcher.start(config,MANIFEST,backend,pathlib.Path(directory)/'index.json',sleep=lambda _:None)
+            verify.assert_called_once_with(MANIFEST,launcher.rooted(config['game_path']))
+            self.assertEqual(backend.selected_path,launcher.rooted(config['game_path']))
+            self.assertEqual(backend.reserve_calls,1)
+            backend.runner.run_session.assert_called_once()
+            self.assertEqual(backend.runner.run_session.call_args.args[0].stereo_units_per_metre,123)
+
     def test_scale_and_fixed_path(self):
         for value in (float('nan'),float('inf'),9,501,True,'100'):
             with self.subTest(value=value),self.assertRaises(ValueError):launcher.settings({'stereo_units_per_metre':value},MANIFEST)

@@ -545,9 +545,23 @@ int main(){
         return read(dest,ptr,size);};
     CHECK(!bounded_guard(cfg,constant_race,clock,pause,anchor,stamp,&diagnostic));
     CHECK(diagnostic.attempts==5&&sleeps==4&&diagnostic.reason==GuardReason::attempt_limit&&unchanged());
+    CHECK(bounded_timestamp_retryable(diagnostic));
+    const auto timestamp_failure=diagnostic;
+    for(unsigned invalid=0;invalid<7;++invalid){
+        auto altered=timestamp_failure;
+        if(invalid==0)altered.attempts=0;
+        if(invalid==1)altered.attempts=6;
+        if(invalid==2)altered.last.timestamp_only=false;
+        if(invalid==3)altered.last.reason=GuardReason::read_failure;
+        if(invalid==4)altered.reason=GuardReason::success;
+        if(invalid==5)altered.attempts=4;
+        if(invalid==6)altered.elapsed_ms=200;
+        CHECK(!bounded_timestamp_retryable(altered));
+    }
     reset();auto invalidate_during_pause=[&](unsigned ms){milliseconds+=ms;++sleeps;put(pc+24,uintptr_t(123));};
     CHECK(!bounded_guard(cfg,race_once,clock,invalidate_during_pause,anchor,stamp,&diagnostic));
     CHECK(diagnostic.attempts==2&&sleeps==1&&diagnostic.reason==GuardReason::strict_validation&&unchanged());
+    CHECK(!bounded_timestamp_retryable(diagnostic));
     reset();put(new_pawn+24,uintptr_t(123));CHECK(!bounded_guard(cfg,read,clock,pause,anchor,stamp,&diagnostic));
     CHECK(diagnostic.attempts==1&&!sleeps&&diagnostic.reason==GuardReason::initial_binding&&unchanged());
     reset();put(pc+24,uintptr_t(123));CHECK(!bounded_guard(cfg,read,clock,pause,anchor,stamp,&diagnostic));
@@ -556,6 +570,7 @@ int main(){
         if(reinterpret_cast<uintptr_t>(ptr)==new_pawn+140)return false;return read(dest,ptr,size);};
     CHECK(!bounded_guard(cfg,hard_read,clock,pause,anchor,stamp,&diagnostic));
     CHECK(diagnostic.attempts==1&&!sleeps&&diagnostic.reason==GuardReason::read_failure&&diagnostic.last.stage==GuardStage::strict_validation&&unchanged());
+    CHECK(!bounded_timestamp_retryable(diagnostic));
     reset();auto initial_read_fail=[&](void* dest,const void* ptr,std::size_t size){
         if(reinterpret_cast<uintptr_t>(ptr)==cfg.objects_header)return false;return read(dest,ptr,size);};
     CHECK(!bounded_guard(cfg,initial_read_fail,clock,pause,anchor,stamp,&diagnostic));
@@ -577,12 +592,15 @@ int main(){
     reset();unsigned clock_calls=0;auto late_clock=[&]()->std::uint64_t{return ++clock_calls>=3?200:0;};
     CHECK(!bounded_guard(cfg,read,late_clock,pause,anchor,stamp,&diagnostic));
     CHECK(diagnostic.attempts==1&&diagnostic.reason==GuardReason::deadline&&diagnostic.last.reason==GuardReason::success&&unchanged());
+    CHECK(!bounded_timestamp_retryable(diagnostic));
     reset();auto over_budget_pause=[&](unsigned){milliseconds=200;++sleeps;};
     CHECK(!bounded_guard(cfg,constant_race,clock,over_budget_pause,anchor,stamp,&diagnostic));
     CHECK(diagnostic.attempts==1&&diagnostic.reason==GuardReason::deadline&&sleeps==1&&unchanged());
+    CHECK(bounded_timestamp_retryable(diagnostic));
     reset();auto slow_race=[&](void* dest,const void* ptr,std::size_t size){auto ok=constant_race(dest,ptr,size);
         if(reinterpret_cast<uintptr_t>(ptr)==camera+140&&stamp_reads%3==0)milliseconds+=80;return ok;};
     CHECK(!bounded_guard(cfg,slow_race,clock,pause,anchor,stamp,&diagnostic));
     CHECK(diagnostic.attempts==2&&diagnostic.reason==GuardReason::deadline&&unchanged());
+    CHECK(bounded_timestamp_retryable(diagnostic));
     std::printf("anchor scope/binding/submission, unpossessed CameraPOV and bounded startup timestamp-race CPU tests passed\n");return 0;
 }

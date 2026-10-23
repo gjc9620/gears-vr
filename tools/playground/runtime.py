@@ -16,23 +16,44 @@ from resolve_camera import Resolver
 from run_stereo_continuous import WindowsControl
 
 
+ENTRY_RVA=0x1d8dd8
+ENTRY=bytes.fromhex('405541544155415641574881eca0000000488d6c243048899da00000004889b5a80000004889bdb0000000488b0536268f014833c5488945604d8be0488bda4c')
+
+
+class InitializationError(RuntimeError):
+    def __init__(self,code,entry_restored):
+        super().__init__('Playground initialization failed: '+str(code))
+        self.code=code
+        self.entry_restored=entry_restored
+
+
 class Bridge:
-    def __init__(self,identity,dll,*,expected_sha256=None):
+    def __init__(self,identity,dll,*,expected_sha256=None,reserve_only=False,attach_only=False):
         self.identity=identity;self.dll=Path(dll).resolve();self.control=WindowsControl()
         if expected_sha256 is not None and hashlib.sha256(self.dll.read_bytes()).hexdigest()!=expected_sha256:
             raise RuntimeError('Playground DLL SHA256 mismatch')
         self.r=Resolver(identity['pid'],json.loads((ROOT/'tools/package-inspector/reloaded-profile.json').read_text()))
         self.handle=None;self.pending_address=None
         try:
-            self.verify();self.r.prepare()
+            self.verify()
+            if reserve_only or attach_only:
+                selected=Path(identity['image'])
+                if selected.name.lower()!='gowde-steam.exe' or hashlib.sha256(selected.read_bytes()).hexdigest()!=self.r.profile['sha256']:
+                    raise RuntimeError('Playground reservation executable differs from validated build')
+            else:self.r.prepare()
             self.handle=k.OpenProcess(0x143a,False,identity['pid'])
             if not self.handle:raise c.WinError(c.get_last_error())
             self.exports={e.name.decode():e.address for e in pefile.PE(str(self.dll)).DIRECTORY_ENTRY_EXPORT.symbols if e.name and not e.forwarder}
             loaded=modules(self.handle)
+            if reserve_only or attach_only:
+                game=loaded.get('gowde-steam.exe')
+                if not game or game[1].resolve()!=selected.resolve():raise RuntimeError('Playground reservation module identity mismatch')
+                self.r.base=game[0]
+                if self.r.read(self.r.base,2)!=b'MZ':raise RuntimeError('Playground reservation module header mismatch')
             if self.dll.name.lower() not in loaded:
+                if attach_only:raise RuntimeError('Playground cleanup module absent; no injection attempted')
                 # Validate live bytes against the retained entry certificate.
-                expected=bytes.fromhex('405541544155415641574881eca0000000488d6c243048899da00000004889b5a80000004889bdb0000000488b0536268f014833c5488945604d8be0488bda4c')
-                if self.r.read(self.r.base+0x1d8dd8,len(expected))!=expected:
+                if self.r.read(self.r.base+ENTRY_RVA,len(ENTRY))!=ENTRY:
                     raise RuntimeError('Playground ProcessEvent entry differs from validated source')
                 local=k.GetProcAddress(k.GetModuleHandleW('kernel32.dll'),b'LoadLibraryW')
                 owner=w.HMODULE()
@@ -41,20 +62,32 @@ class Bridge:
                 owner_name=Path(path.value).name.lower()
                 if owner_name not in loaded:raise RuntimeError('Remote loader owner absent')
                 raw=(str(self.dll)+'\0').encode('utf-16-le');address=self.allocate(raw)
-                try:remote_call(self.handle,loaded[owner_name][0]+local-owner.value,address)
-                finally:self.free(address)
+                loader_returned=False
+                try:
+                    remote_call(self.handle,loaded[owner_name][0]+local-owner.value,address);loader_returned=True
+                finally:
+                    # A timed-out remote loader may still read its argument.
+                    if loader_returned:self.free(address)
                 loaded=modules(self.handle)
                 if self.dll.name.lower() not in loaded:raise RuntimeError('Playground DLL did not load')
                 self.base,actual=loaded[self.dll.name.lower()]
                 if actual.resolve()!=self.dll:raise RuntimeError('Playground module path mismatch')
-                status=self.export('PlaygroundInitialize')
-                if status:raise RuntimeError('Playground initialization failed: '+str(status))
             else:
                 self.base,actual=loaded[self.dll.name.lower()]
                 if actual.resolve()!=self.dll:raise RuntimeError('Playground module path mismatch')
-                status=self.export('PlaygroundInitialize')
-                if status:raise RuntimeError('Playground initialization failed: '+str(status))
+            if not attach_only:
+                status=self.export('PlaygroundReserve' if reserve_only else 'PlaygroundInitialize')
+                if status:self.initialization_failed(status)
         except BaseException:self.close();raise
+    def initialization_failed(self,status):
+        # A failed optional component may be isolated only with independent live
+        # proof that its full attested entry is still original. Read failure is
+        # not restoration; the launcher must then retain its normal failure path.
+        restored=False
+        try:
+            self.verify();restored=self.r.read(self.r.base+ENTRY_RVA,len(ENTRY))==ENTRY
+        except (OSError,RuntimeError):pass
+        raise InitializationError(status,restored)
     def verify(self):
         if self.control.identity(self.identity['pid'])!=self.identity:raise RuntimeError('Playground process identity changed')
     def allocate(self,raw):

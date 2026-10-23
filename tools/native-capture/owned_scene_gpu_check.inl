@@ -73,7 +73,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureOwnedSceneGpuCheck(voi
   }
   const auto identity=canonical_identity(observed);
   if(mode==13&&!frame_link.current(identity).identity)return 43;
-  if(mode==16)reset(observed,E_FAIL); // Inject failed-Reset observation; never submit it.
+  if(mode==16)reset(identity,E_FAIL); // Inject failed-Reset observation; never submit it.
   frame_link.retire_present_interval();present();
   if(frame_link.current(identity).identity)return 44;
   auto& t=gears_owned_scene_live::trial;

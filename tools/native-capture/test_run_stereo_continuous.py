@@ -564,11 +564,12 @@ class ContinuousTests(unittest.TestCase):
             self.assertEqual(diagnostic['reason'],'stale_file')
             self.assertEqual(runner.read_session_status(path,123,old_time+1000000000)['generation'],'B')
 
-    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False,hud_layout=None,path_center=False):
+    def run_mock(self,clean=True,xr_timeout=False,early_exit=False,cancel_at=0,diagnostics=False,origin_trial=False,image_ticket_diagnostics=False,startup_callback=None,startup_menu=False,panel_submitted=True,ui_hud_plane=False,first_stereo=False,world_recovery=False,crosshair=False,hud_layout=None,path_center=False,hook_manifest=False,owner_ticks=0):
         with tempfile.TemporaryDirectory() as folder:
             root=pathlib.Path(folder);build=root/'native';build.mkdir()
             (build/'capture-status.txt').write_text('capturing pid=123 stopped disable_status=0 active=0')
             (build/'session-status.txt').write_text(' '.join(k+'='+v for k,v in terminal().items()))
+            if hook_manifest:(build/'hook-entry-manifest.json').write_text('{"schema":1}')
             args=types.SimpleNamespace(pid=123,build_dir=build,dll_name='Continuous.dll',xr_build_dir=root/'xr',
                                        stereo_units_per_metre=100,startup_timeout=1,cleanup_timeout=.01)
             if diagnostics:args.outage_diagnostics=True;args.shutdown_diagnostics=True
@@ -609,7 +610,7 @@ class ContinuousTests(unittest.TestCase):
             def native(command,**kwargs):
                 self.assertEqual(kwargs['creationflags'],getattr(subprocess,'CREATE_NO_WINDOW',0))
                 if command[1].endswith('verify_stopped.py'):
-                    pathlib.Path(command[-1]).write_text(json.dumps({'all_match':True}))
+                    pathlib.Path(command[command.index('--output')+1]).write_text(json.dumps({'all_match':True}))
                 elif first_stereo:
                     path=next((root/'analysis/runtime').glob('*.stdout.txt'))
                     with path.open('a') as stream:
@@ -617,6 +618,7 @@ class ContinuousTests(unittest.TestCase):
                             monotonic_ns=runner.time.perf_counter_ns()))+'\n')
                 return types.SimpleNamespace(returncode=0)
             stages=[dict(terminal(),phase='running'),dict(terminal(),phase='stop_requested'),terminal('stopped' if clean else 'incomplete')]
+            stages[1:1]=[dict(terminal(),phase='running')for _ in range(owner_ticks)]
             if path_center:
                 stages[0]['path_position_service_compiled']='1'
                 stages.insert(1,dict(terminal(),phase='running',path_position_service_compiled='1'))
@@ -630,7 +632,7 @@ class ContinuousTests(unittest.TestCase):
                  mock.patch.object(runner,'read_session_status',side_effect=stages),contextlib.redirect_stdout(io.StringIO()):
                 code=runner.run_session(args,control,on_report=report,cancel_requested=cancelled if cancel_at else None,
                                         before_native_activation=startup_callback)
-            state=json.loads(next((root/'analysis/runtime').glob('*.json')).read_text())
+            state=json.loads(pathlib.Path(reports[0]).read_text())
             return code,state,popen.call_args,native_run,control,child
 
     def test_one_owner_orders_native_cleanup_before_xr_and_verifies_entries(self):
@@ -649,6 +651,17 @@ class ContinuousTests(unittest.TestCase):
             self.assertEqual(command[command.index(pid_flag)+1],str(os.getpid()))
             self.assertEqual(command[command.index(time_flag)+1],str(identity(os.getpid())['creation_time']))
 
+    def test_preserves_session_hook_manifest_for_independent_restoration_check(self):
+        code,state,_,native,_,_=self.run_mock(hook_manifest=True)
+        self.assertEqual(code,0)
+        self.assertIn('hook_manifest_saved',state)
+        verify=next(call.args[0] for call in native.call_args_list
+                    if call.args[0][1].endswith('verify_stopped.py'))
+        self.assertIn('--hook-manifest',verify)
+        self.assertIn('--game-creation-time',verify)
+        self.assertEqual(verify[verify.index('--game-creation-time')+1],
+                         str(state['game_identity']['creation_time']))
+
     def test_world_monitor_pawn_change_policy_is_enabled_only_for_crosshair_observer(self):
         import world_rebind_runtime
         import world_rebind_monitor
@@ -661,7 +674,17 @@ class ContinuousTests(unittest.TestCase):
                 self.assertEqual(code,0)
                 self.assertIs(monitor.call_args.kwargs['include_pawn_changes'],enabled)
                 self.assertIs(monitor.call_args.kwargs['baseline'],adapter.return_value.baseline)
+                self.assertEqual(monitor.call_args.kwargs['hint_interval'],.05)
                 monitor.return_value.close.assert_called_once()
+
+    def test_world_owner_uses_completion_wait_during_a_running_iteration(self):
+        import world_rebind_runtime,world_rebind_monitor
+        with mock.patch.object(world_rebind_runtime,'RuntimePreparation'),\
+             mock.patch.object(world_rebind_monitor,'WorldRebindMonitor') as monitor:
+            monitor.return_value.poll.return_value=[]
+            code,*_=self.run_mock(world_recovery=True,owner_ticks=1)
+        self.assertEqual(code,0);monitor.return_value.wait.assert_called_once_with(.25)
+        monitor.return_value.poll_interval.assert_not_called();monitor.return_value.close.assert_called_once()
 
     def test_path_choice_monitor_is_opt_in_and_closes_before_session_cleanup(self):
         import path_choice_position_monitor,menu_display_monitor

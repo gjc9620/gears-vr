@@ -82,6 +82,8 @@
 #include "world_rebind_metadata.h"
 #include "world_epoch_gate.h"
 #include "world_status_cadence.h"
+#include "world_control_wait.h"
+#include "world_profile_snapshot.h"
 #include "ui_observer.h"
 #include <exception>
 #if defined(GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER) && GEARS_CROSSHAIR_ASSIGNMENT_OBSERVER
@@ -348,6 +350,7 @@ void configure_unpossessed_camera(gears_anchor::Config& c){
 #endif
 }
 std::atomic<uint64_t> world_candidate_generation{},world_prepare_requests{},world_prepare_rejected{};
+std::atomic<uint64_t> world_prepare_timestamp_request{}; // Exact rejected request; zero on all other outcomes.
 std::atomic<uint64_t> committed_world_generation{1};
 #if defined(GEARS_OWNED_WORLD_HANDOFF) && GEARS_OWNED_WORLD_HANDOFF
 constexpr bool world_handoff_supported=true;
@@ -1638,6 +1641,7 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
                 diagnostic->capture_state=capture_trace.state;diagnostic->consumer=static_cast<unsigned>(capture_trace.consumer);
                 diagnostic->serial_before=capture_trace.serial_before;diagnostic->serial_after=capture_trace.serial_after;
                 diagnostic->ready_completed=capture_trace.ready_completed;diagnostic->done_completed=capture_trace.done_completed;
+                diagnostic->capture_slot=capture_trace.slot_index;diagnostic->slot_serial_before=capture_trace.slot_serial_before;diagnostic->slot_serial_after=capture_trace.slot_serial_after;
                 diagnostic->capture_result=capture_trace.result;
                 if(captured){diagnostic->published=true;diagnostic->published_qpc=now();diagnostic->valid|=gears_outage::publication;}}
         }
@@ -1765,9 +1769,10 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     death_hdr_pixels::progress(output);
     vr_dof_compat::progress(output);
     dlss_output_control::progress(output);
-    fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu ",
+    fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu world_prepare_timestamp_request=%llu ",
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
-        static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()));
+        static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()),
+        static_cast<unsigned long long>(world_prepare_timestamp_request.load()));
     fprintf(output,"world_handoff_supported=%u world_handoff_phase=%u world_handoff_commits=%llu world_quiesce_requested=%u state_release_started=%u epoch_submit_total=%llu ",
         world_handoff_supported?1:0,
         world_handoff_phase.load(),static_cast<unsigned long long>(world_handoff_commits.load()),world_quiesce_requested.load()?1:0,
@@ -1959,6 +1964,7 @@ void print_outage(FILE* status,bool hooks_disabled) {
         fprintf(status,"outage_row index=%u valid=%u enter_qpc=%lld original_begin_qpc=%lld original_end_qpc=%lld present_result=%ld previous_publish_qpc=%lld published_qpc=%lld published=%u pub_before=%llu pub_after=%llu buffer=%p queue=%p ticket=%llu reject=%u linked=%u contaminated=%u image_session=%llu image_sequence=%llu image_received_ns=%lld capture_reason=%s capture_valid=%u capture_state=%u capture_result=%ld consumer=%u serial_before=%llu serial_after=%llu ready_completed=%llu done_completed=%llu",
             i,a.valid,a.enter_qpc,a.original_begin_qpc,a.original_end_qpc,static_cast<long>(a.present_result),a.previous_publish_qpc,a.published_qpc,a.published?1:0,a.pub_before,a.pub_after,reinterpret_cast<void*>(a.buffer),reinterpret_cast<void*>(a.queue),a.ticket,a.rejection,a.linked?1:0,a.contaminated?1:0,a.image_session,a.image_sequence,a.image_received_ns,
             gears_vr::gpu_capture_reason_name(static_cast<gears_vr::GpuCaptureReason>(a.capture_reason)),a.capture_valid,a.capture_state,static_cast<long>(a.capture_result),a.consumer,a.serial_before,a.serial_after,a.ready_completed,a.done_completed);
+        fprintf(status," capture_slot=%u slot_serial_before=%llu slot_serial_after=%llu",a.capture_slot,a.slot_serial_before,a.slot_serial_after);
         auto activity=[&](const char* name,gears_outage::Activity const& b){fprintf(status," %s_ticket=%llu %s_count=%llu %s_sequence=%llu %s_qpc=%lld %s_received_ns=%lld",name,b.ticket,name,b.count,name,b.sequence,name,b.qpc,name,b.received_ns);};
         activity("built_pre",a.built_pre);activity("built_post",a.built_post);activity("left_draw",a.draw[0]);activity("right_draw",a.draw[1]);fprintf(status,"\n");
     }
@@ -3080,8 +3086,8 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                 ++origin_prepare_failed;request_session_stop(SessionStop::proof_failure);service_session_stop_native();return false;}
             view=frame.origin.base;
         }
-        const bool first_person_applied=first_person_live::prepare(anchor,view);
-        if(camera_closer_metres>0&&!first_person_applied){
+        const bool first_person_view_owned=first_person_live::prepare(anchor,view);
+        if(camera_closer_metres>0&&!first_person_view_owned){
             const bool gameplay=anchor&&!anchor->anchor.unpossessed&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
                 !anchor->anchor.cinematic&&anchor->anchor.target_identity.address==anchor->anchor.pawn;
             gears_vr::Vector pawn_eye{};
@@ -3877,19 +3883,20 @@ HRESULT STDMETHODCALLTYPE hook_reset_list(ID3D12GraphicsCommandList* list,ID3D12
     death_hdr_pixels::reset_after_original(list,result);
     death_pso_cache::reset(list,result);
     gears_render_cost::Scope cost(gears_render_cost::reset_tracking);
-    owned_scene_gpu::reset(list,result);
-    if(owned_bindings_enabled&&(recording.load()||prime_recording.load())){
-        const auto identity=canonical_identity(list);
+    const bool tracking_owned_bindings=owned_bindings_enabled&&(recording.load()||prime_recording.load());
+    bool tracking_frame_link=frame_link_diagnostics&&recording.load();
+#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
+    tracking_frame_link=tracking_frame_link||frame_link.owned_status().enabled;
+#endif
+    const auto identity=(owned_scene_gpu::watching()||tracking_owned_bindings||tracking_frame_link)
+        ?canonical_identity(list):uintptr_t{};
+    owned_scene_gpu::reset(identity,result);
+    if(tracking_owned_bindings){
         if(SUCCEEDED(result))owned_target_stats.reset(identity);else owned_target_stats.retire(identity);
     }
     if(recording.load()&&SUCCEEDED(result))viewport_stats.reset(reinterpret_cast<uintptr_t>(list));
-    bool tracking=frame_link_diagnostics&&recording.load();
-#if defined(GEARS_OWNED_OUTPUT_TRACKING) && GEARS_OWNED_OUTPUT_TRACKING
-    tracking=tracking||frame_link.owned_status().enabled;
-#endif
     gears_frame_link::ListRef actual_reset{};
-    if(tracking) {
-        auto identity=canonical_identity(list);
+    if(tracking_frame_link) {
         frame_seen_list(identity);
         if(SUCCEEDED(result)){++frame_counts.resets;actual_reset=frame_link.reset_success(identity);
             ngx_capture_control::reset_command(list);
@@ -5098,8 +5105,10 @@ DWORD WINAPI worker(void*) {
             const bool world_progress=world_status.changed({committed_world_generation.load(),world_prepare_requests.load(),
                 world_prepare_rejected.load(),world_candidate_generation.load(),world_handoff_phase.load()});
             if(world_progress||GetTickCount64()>=next_status){write_session_status();next_status=GetTickCount64()+death_source_live::status_interval_ms();}
-            flush(file,4);Sleep(20);
+            flush(file,4);
+            if(!world_rebind_request.wait(stop_event))request_session_stop(SessionStop::proof_failure);
         }
+        world_rebind_request.print(status);
         session_phase=SessionPhase::draining;write_session_status();
     }else while(GetTickCount64()<deadline && (!stop_event || WaitForSingleObject(stop_event,20)!=WAIT_OBJECT_0)) {
         stereo_publish_worker_tick();
@@ -6648,6 +6657,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI GearsCapturePrimeOwnedCheck(void* 
 #include "ui_execute_bypass_check.inl"
 #include "ui_material_bypass_check.inl"
 #include "ui_scene_root_bypass_check.inl"
+#include "class_discovery_export.inl"
 BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,void*) {
     // Keep CRT thread notifications enabled for the statically linked runtime.
     if(reason==DLL_PROCESS_ATTACH) own_module=module;

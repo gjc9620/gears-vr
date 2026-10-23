@@ -51,6 +51,10 @@ public:
             return result;
         }
     }
+    struct Total {std::uint64_t count{},ns{};};
+    Total total(Operation operation)const noexcept {
+        Total result;for(auto const& value:values[unsigned(operation)]){add(result.count,value.count);add(result.ns,value.total_ns);}return result;
+    }
     void dump(FILE* output=stdout) noexcept {
         if constexpr(Enabled){
             if(dumped_)return;dumped_=true;

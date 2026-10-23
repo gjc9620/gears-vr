@@ -7,6 +7,7 @@ import ctypes as c
 from ctypes import wintypes as w
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
 from dataclasses import dataclass
@@ -139,7 +140,15 @@ class HookEntryAttestation:
                 not main or main[0]!=self.module_base or
                 str(Path(main[1]).resolve()).casefold()!=str(game['image']).casefold()):
             raise AttestationRejected('Loaded module identity mismatch')
-        with self.dll.open('rb') as stream:data=stream.read(67108865)
+        with self.dll.open('rb') as stream:
+            # BufferedReader.read(limit) may allocate for that entire request,
+            # even when the DLL is small. Bound first, then size this read to
+            # the open file; still hash every byte at every envelope boundary.
+            disk_size=os.fstat(stream.fileno()).st_size
+            if not 0<disk_size<=67108864:raise AttestationRejected('Loaded DLL disk hash mismatch')
+            data=stream.read(disk_size+1)
+            if len(data)!=disk_size or os.fstat(stream.fileno()).st_size!=disk_size:
+                raise AttestationRejected('Loaded DLL disk hash mismatch')
         if len(data)>67108864 or hashlib.sha256(data).hexdigest()!=self.dll_hash:
             raise AttestationRejected('Loaded DLL disk hash mismatch')
         # Authenticate the detour range from this exact expected PE, not a guessed

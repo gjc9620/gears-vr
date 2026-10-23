@@ -645,7 +645,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         started_qpc=state['native_started_qpc'],baseline=adapter.baseline,observe=adapter.observe,
                         prepare=adapter.prepare,signal=control.signal,identity=control.identity,enabled=True,
                         probe_interval=2.0,include_pawn_changes=getattr(args,'crosshair_assignment_observer',False),
-                        changed_hint=adapter.changed_hint,prepare_changed=adapter.prepare_changed)
+                        changed_hint=adapter.changed_hint,hint_interval=.05,prepare_changed=adapter.prepare_changed)
                 path_center=start_path_choice_position(args,state,native_status,floor,control)
                 if getattr(args,'right_stick_deadzone_percent',None) is not None:
                     from right_stick_policy import Policy
@@ -675,7 +675,8 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         for event in world_monitor.poll(status,menu_monitor.last_menu_mode if menu_monitor and menu_monitor.last else None):
                             world_log.write(json.dumps(dict(observed_ns=time.perf_counter_ns(),**event))+'\n');world_log.flush()
                     ordinary_interval=.1 if getattr(args,'movie_display',False) else .25
-                    time.sleep(world_monitor.poll_interval(ordinary_interval) if world_monitor else ordinary_interval)
+                    if world_monitor:world_monitor.wait(ordinary_interval)
+                    else:time.sleep(ordinary_interval)
             except StartupCancelled:
                 state['stop_requested_by']='startup_cancel'
             except KeyboardInterrupt:
@@ -715,10 +716,24 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                         if not state['native_cleanup_verified']:raise RuntimeError('Native cleanup incomplete or deadline expired')
                         if not diagnostics_saved:raise RuntimeError('Native diagnostic preservation failed')
                         restored=prefix.with_suffix('.restored.json')
+                        prime_source=args.build_dir.resolve()/'target-prime-status.txt'
+                        prime_args=[]
+                        if prime_source.is_file():
+                            prime_copy=prefix.with_suffix('.prime-status.txt')
+                            shutil.copyfile(prime_source,prime_copy)
+                            state['prime_status_saved']=str(prime_copy)
+                            prime_args=['--prime-status',str(prime_copy)]
+                        manifest_source=args.build_dir.resolve()/'hook-entry-manifest.json'
+                        if manifest_source.is_file():
+                            manifest_copy=prefix.with_suffix('.hook-entry-manifest.json')
+                            shutil.copyfile(manifest_source,manifest_copy)
+                            state['hook_manifest_saved']=str(manifest_copy)
+                            prime_args += ['--hook-manifest',str(manifest_copy),
+                                           '--game-creation-time',str(state['game_identity']['creation_time'])]
                         with prefix.with_suffix('.verify.log').open('w') as log:
                             verified=subprocess.run([sys.executable,str(ROOT/'tools/native-capture/verify_stopped.py'),
                                 '--pid',str(args.pid),'--status',str(prefix.with_suffix('.native-status.txt')),
-                                '--output',str(restored)],stdout=log,stderr=subprocess.STDOUT,timeout=20,
+                                '--output',str(restored),*prime_args],stdout=log,stderr=subprocess.STDOUT,timeout=20,
                                 creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
                         state['entry_restore_verified']=verified.returncode==0 and json.loads(restored.read_text())['all_match']
                     except Exception as error:

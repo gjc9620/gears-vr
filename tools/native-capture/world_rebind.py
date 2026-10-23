@@ -241,7 +241,18 @@ def serialize_candidate(candidate):
     previous = uint(candidate.previous_generation,'previous generation',positive=True)
     if previous == (1 << 64)-1 or uint(candidate.generation,'generation',positive=True) != previous+1:
         raise ValueError('Invalid candidate generation')
-    camera,anchor,ui = (thaw(value) for value in (candidate.current_camera,candidate.anchor_metadata,candidate.ui_metadata))
+    if not isinstance(candidate.anchor_metadata,Mapping) or not isinstance(candidate.ui_metadata,Mapping):
+        raise ValueError('Invalid candidate metadata')
+    camera=thaw(candidate.current_camera)
+    # Validators need mutable config lists/dicts, while diagnostic graphs stay
+    # on the original immutable candidate. Preserve all top-level requirements.
+    anchor=dict(candidate.anchor_metadata);anchor['config']=thaw(anchor['config'])
+    guard=anchor['certificate_final_guard']
+    anchor['certificate_final_guard']=dict(guard,**{name:thaw(guard[name])for name in ('local_player','controller','camera')})
+    sampler=anchor['sampler'];anchor['sampler']=dict(sampler,resolver=thaw(sampler['resolver']))
+    ui=dict(candidate.ui_metadata);ui['config']=thaw(ui['config'])
+    for key in ('crosshair_assignment','crosshair_assignment_suspended'):
+        if key in ui:ui[key]=thaw(ui[key])
     base,yaw = validate_sources(camera,anchor,ui,identity(thaw(candidate.local_identity)),game['pid'],candidate.disk_sha256)
     if base != candidate.module_base or owner['pid']==game['pid']:raise ValueError('Candidate identity mismatch')
     if anchor_ini(anchor['config']) != candidate.anchor_ini or ui_bundle_ini(ui) != candidate.ui_ini:

@@ -42,8 +42,73 @@ class GraphicsPolicyTests(unittest.TestCase):
                                      ('1234', winreg.REG_SZ, None),
                                      (0x100000000, winreg.REG_DWORD, None)):
             with mock.patch.object(winreg, 'OpenKey'), \
-                    mock.patch.object(winreg, 'QueryValueEx', return_value=(value, kind)):
+                    mock.patch.object(winreg, 'QueryValueEx', return_value=(value, kind)), \
+                    mock.patch.object(policy.steam_account, 'offline_steam_id', return_value=None):
                 self.assertEqual(policy.active_steam_id(), expected)
+
+    def test_online_account_wins_and_only_zero_dword_can_use_offline_fallback(self):
+        import winreg
+        for value, kind, expected, calls in ((1234, winreg.REG_DWORD, '76561197960266962', 0),
+                                             (0, winreg.REG_DWORD, '76561197960266963', 1),
+                                             (0, winreg.REG_SZ, None, 0)):
+            with mock.patch.object(winreg, 'OpenKey'), \
+                    mock.patch.object(winreg, 'QueryValueEx', return_value=(value, kind)), \
+                    mock.patch.object(policy.steam_account, 'offline_steam_id', return_value='76561197960266963') as offline:
+                self.assertEqual(policy.active_steam_id(), expected)
+                self.assertEqual(offline.call_count, calls)
+
+    def test_explicit_install_binding_is_scoped_and_does_not_change_files(self):
+        folder = self.root / 'Coalition/WarGame/Config'
+        folder.mkdir(parents=True)
+        old = folder / '76561197960266963EngineUserSettings.ini'
+        active = folder / '76561197960266962EngineUserSettings.ini'
+        old.write_bytes(b'DLSS=False\n')
+        active.write_bytes(b'DLSS=False\n')
+        config = self.root / 'tools/vr-launcher/config.json'
+        config.parent.mkdir(parents=True)
+        legacy = self.root / 'legacy/Binaries_x64/GOWDE-Steam.exe'
+        retail = self.root / 'retail/Binaries_x64/GOWDE-Steam.exe'
+        config.write_text(json.dumps({'game_settings_paths': {str(legacy): str(old)}}))
+        with mock.patch.object(policy, 'ROOT', self.root), \
+                mock.patch.object(policy.instance_policy, 'local_appdata', return_value=self.root), \
+                mock.patch.object(policy.instance_policy, 'context', return_value=None), \
+                mock.patch.object(policy, 'active_steam_id', return_value='76561197960266962'):
+            self.assertEqual(policy.locate(legacy), old.resolve())
+            self.assertEqual(policy.locate(retail), active.resolve())
+            self.assertEqual(policy.locate(), active.resolve())
+            with mock.patch.object(policy, 'active_steam_id', return_value=None):
+                self.assertEqual(policy.locate(legacy), old.resolve())
+                with self.assertRaisesRegex(RuntimeError, 'Multiple user-settings'):
+                    policy.locate(retail)
+            for target in (self.root / 'outside.ini', folder / 'unrelated.ini'):
+                target.write_bytes(b'DLSS=False\n')
+                config.write_text(json.dumps({'game_settings_paths': {str(legacy): str(target)}}))
+                with self.assertRaisesRegex(RuntimeError, 'Settings binding'):
+                    policy.locate(legacy)
+        self.assertEqual(old.read_bytes(), b'DLSS=False\n')
+        self.assertEqual(active.read_bytes(), b'DLSS=False\n')
+
+    def test_binding_rejects_invalid_types_relative_paths_and_duplicate_install_keys(self):
+        config = self.root / 'tools/vr-launcher/config.json'
+        config.parent.mkdir(parents=True)
+        exe = str(self.root / 'legacy/Binaries_x64/GOWDE-Steam.exe')
+        for bindings in ([], {exe: 12}, {'relative.exe': str(self.target)},
+                         {exe: 'relative.ini'}, {exe: str(self.target), exe.upper(): str(self.target)}):
+            config.write_text(json.dumps({'game_settings_paths': bindings}))
+            with mock.patch.object(policy, 'ROOT', self.root), \
+                    mock.patch.object(policy.instance_policy, 'context', return_value=None), \
+                    mock.patch.object(policy.instance_policy, 'local_appdata', return_value=self.root), \
+                    self.assertRaises(RuntimeError):
+                policy.locate(exe)
+
+    def test_isolated_instance_ignores_shared_settings_bindings(self):
+        folder = self.root / 'Coalition/WarGame/Config'
+        folder.mkdir(parents=True)
+        settings = folder / 'EngineUserSettings.ini'
+        settings.write_bytes(b'DLSS=False\n')
+        with mock.patch.object(policy.instance_policy, 'local_appdata', return_value=self.root), \
+                mock.patch.object(policy.instance_policy, 'context', return_value=self.root):
+            self.assertEqual(policy.locate(self.root / 'game.exe'), settings.resolve())
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

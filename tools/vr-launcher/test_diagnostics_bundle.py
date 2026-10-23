@@ -13,6 +13,18 @@ import diagnostics_bundle as bundle
 
 
 class BundleTests(unittest.TestCase):
+    def test_local_install_profile_bindings_are_not_exported(self):
+        config = self.root / 'tools/vr-launcher/config.json'
+        config.write_text(json.dumps({'game_settings_paths': {'private-install': 'private-account-profile'},
+                                      'game_path_history': ['private-history-game-path']}))
+        self.export()
+        names, raw, docs = self.read_zip()
+        self.assertNotIn('game_settings_paths', raw)
+        self.assertNotIn('private-install', raw)
+        self.assertNotIn('private-account-profile', raw)
+        self.assertNotIn('game_path_history', raw)
+        self.assertNotIn('private-history-game-path', raw)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

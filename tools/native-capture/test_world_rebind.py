@@ -9,6 +9,7 @@ import pathlib
 import tempfile
 import unittest
 import types
+from collections.abc import Mapping
 from unittest import mock
 
 import world_rebind as rebind
@@ -143,6 +144,39 @@ class Tests(unittest.TestCase):
         self.assertEqual(dict(parsed['Capture']),dict(pid='7',local_player='0x1000',controller='0x2000',
                          camera='0x3000',timestamp='0x3010',camera_yaw='0x3030'))
         self.assertIn(bundle.anchor_ini+bundle.ui_ini,data.decode('utf-16'))
+
+    def test_serialization_keeps_diagnostics_without_traversing_their_graphs(self):
+        bundle=self.build();expected=rebind.serialize_candidate(bundle);walked=[]
+        class Tracked(Mapping):
+            def __init__(self,label):self.label=label;self.value=rebind.freeze({'attempts':[{'records':list(range(100))}]})
+            def __getitem__(self,key):return self.value[key]
+            def __iter__(self):walked.append(self.label);return iter(self.value)
+            def __len__(self):return len(self.value)
+        anchor_diag=Tracked('anchor');ui_diag=Tracked('ui')
+        anchor=types.MappingProxyType(dict(bundle.anchor_metadata,diagnostic_records=anchor_diag))
+        ui=types.MappingProxyType(dict(bundle.ui_metadata,diagnostic_records=ui_diag))
+        changed=dataclasses.replace(bundle,anchor_metadata=anchor,ui_metadata=ui)
+        self.assertEqual(rebind.serialize_candidate(changed),expected)
+        self.assertEqual(walked,[])
+        self.assertIs(changed.anchor_metadata['diagnostic_records'],anchor_diag)
+        self.assertIs(changed.ui_metadata['diagnostic_records'],ui_diag)
+
+    def test_serialization_rejects_non_mapping_metadata_even_with_valid_pairs(self):
+        bundle=self.build()
+        for field in ('anchor_metadata','ui_metadata'):
+            for value in (None,list(getattr(bundle,field).items())):
+                with self.subTest(field=field,value_type=type(value).__name__),self.assertRaises((ValueError,TypeError)):
+                    rebind.serialize_candidate(dataclasses.replace(bundle,**{field:value}))
+
+    def test_serialization_still_rejects_changed_source_flags_and_observer_requirement(self):
+        bundle=self.build()
+        for source,key,value in (('anchor','pid',8),('anchor','read_only',False),
+                ('ui','pid',8),('ui','read_only',False),('ui','accepted',False),
+                ('ui','sha256','b'*64),('ui','crosshair_assignment_observer_enabled',True),
+                ('ui','crosshair_assignment_observer_enabled',1)):
+            field=source+'_metadata';metadata=rebind.thaw(getattr(bundle,field));metadata[key]=value
+            changed=dataclasses.replace(bundle,**{field:rebind.freeze(metadata)})
+            with self.subTest(source=source,key=key),self.assertRaises(ValueError):rebind.serialize_candidate(changed)
 
     def test_all_certificates_follow_new_camera_not_initial_discovery(self):
         baseline=self.resolve.return_value

@@ -17,7 +17,7 @@ ROOT=pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'tools/package-inspector'))
 sys.path.insert(0,str(ROOT/'tools/package-inspector/python-libs'))
 import pefile
-from resolve_camera import Resolver,psapi,DiscoveryRegistryChanged
+from resolve_camera import Resolver,psapi,DiscoveryRegistryChanged,DiscoveryHintChanged
 
 k=c.WinDLL('kernel32',use_last_error=True)
 k.OpenProcess.argtypes=[w.DWORD,w.BOOL,w.DWORD];k.OpenProcess.restype=w.HANDLE
@@ -72,16 +72,23 @@ def remote_call(handle,address,parameter):
     finally:k.CloseHandle(thread)
 
 
-def camera_preparation_transient(error):
-    # Exact known transition failures only. Schema, code, certificate identity,
-    # process identity and unknown memory errors remain hard rejections.
-    from anchor_config import AnchorRegistryChanged,AnchorSamplingRejected
+def observer_preparation_churn(error):
+    """Known invalidation reports only; a retry must reacquire every proof."""
+    from anchor_config import AnchorRegistryChanged,AnchorControlledPawnUnavailable,AnchorControlledLinkChanged
     from ui_observer_config import UIConfigRejected,UIRegistryChanged,UIControlledPawnUnavailable
     from crosshair_assignment_config import CrosshairRegistryChanged,CrosshairControlledLinkChanged
     if type(error) is CrosshairControlledLinkChanged:return True
     if isinstance(error,(AnchorRegistryChanged,UIRegistryChanged,CrosshairRegistryChanged,DiscoveryRegistryChanged)):return True
     if type(error) is UIControlledPawnUnavailable:return True
-    if type(error) is UIConfigRejected and str(error)=='UI certificate read changed':return True
+    if type(error)in(AnchorControlledPawnUnavailable,AnchorControlledLinkChanged):return True
+    return type(error) is UIConfigRejected and str(error)=='UI certificate read changed'
+
+
+def camera_preparation_transient(error):
+    # Exact known transition failures only. Schema, code, certificate identity,
+    # process identity and unknown memory errors remain hard rejections.
+    from anchor_config import AnchorSamplingRejected
+    if observer_preparation_churn(error):return True
     reason=str(error)
     if reason in {
         'Camera view target is not controlled Pawn',
@@ -228,7 +235,7 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
     """
     from ui_observer_config import build_ui_observer_config,ui_observer_ini,UIConfigRejected,UIRegistryChanged,UIControlledPawnUnavailable
     from crosshair_assignment_config import CrosshairRegistryChanged,CrosshairControlledLinkChanged
-    from anchor_config import AnchorRegistryChanged
+    from anchor_config import AnchorRegistryChanged,AnchorControlledPawnUnavailable,AnchorControlledLinkChanged
     if type(anchor_sample_pose)is not bool:raise ValueError('anchor_sample_pose must be boolean')
     if not anchor_sample_pose and (not anchor_observer or entry_reader is None):
         raise ValueError('Static-only anchor assembly requires an attested anchor observer')
@@ -287,17 +294,19 @@ def acquire_observer_preparation(pid,profile,camera,signatures,dll,*,anchor_obse
                 if check_live:check_live()
                 return refreshed,anchor_metadata,anchor_section,ui_metadata,ui_section
             finally:r.p.close()
-        except (UIConfigRejected,CrosshairRegistryChanged,CrosshairControlledLinkChanged,AnchorRegistryChanged,DiscoveryRegistryChanged) as error:
+        except (UIConfigRejected,CrosshairRegistryChanged,CrosshairControlledLinkChanged,AnchorRegistryChanged,
+                AnchorControlledPawnUnavailable,AnchorControlledLinkChanged,DiscoveryRegistryChanged) as error:
             # Only known read churn, typed unpossession and registry mismatches join
             # this budget. Identity/code/unknown failures remain hard; every
             # retry discards the Resolver and all certificates.
-            if not (isinstance(error,(UIRegistryChanged,CrosshairRegistryChanged,AnchorRegistryChanged,DiscoveryRegistryChanged)) or
-                    type(error) is CrosshairControlledLinkChanged or
-                    type(error) is UIControlledPawnUnavailable or
-                    (type(error) is UIConfigRejected and str(error)=='UI certificate read changed')):raise
+            if not observer_preparation_churn(error):raise
             if attempt+1==attempts or time.monotonic()>=deadline:raise
             print(f'Observer preparation changed ({error}); reacquiring all certificates ({attempt+2}/{attempts})',file=sys.stderr)
-            time.sleep((min)(.05,(max)(0,deadline-time.monotonic())))
+            # An invalid optional location is discarded once. Its fresh-reader
+            # fallback needs no settling pause; the same attempt/deadline and
+            # full proof requirements still apply. Other churn keeps its wait.
+            if type(error)is not DiscoveryHintChanged:
+                time.sleep((min)(.05,(max)(0,deadline-time.monotonic())))
 
 
 def save_anchor_sampling_failure(dll,pid,error,*,preparation_failures=None,preparation_receipt=None):

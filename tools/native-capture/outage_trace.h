@@ -32,6 +32,7 @@ struct Sample {
     bool linked{},contaminated{},published{};
     Activity built_pre{},built_post{};std::array<Activity,2> draw{};
     std::uint64_t pub_before{},pub_after{},serial_before{},serial_after{},ready_completed{},done_completed{};
+    unsigned capture_slot{UINT32_MAX};std::uint64_t slot_serial_before{},slot_serial_after{};
 };
 // Bit2 means last-publication -> post-original-Present age exceeds100ms;
 // it is not proof that original Present alone took100ms. Use begin/end for that.

@@ -24,6 +24,7 @@ std::array<Row,32> rows{};
 std::atomic<uint64_t> anchor_associated{},anchor_association_rejected{},ticket_registered{},association_row_count{};
 std::array<std::atomic<uint64_t>,6> finite_reasons{};
 std::atomic<uint64_t> finite_registered{};
+std::atomic<uint64_t> aim_observed{},aim_raised{},aim_without_query{},aim_rejected{};
 struct DiagnosticPose {gears_vr::StereoMatrix view{},projection{};uint64_t ticket{},world{},tick{};unsigned thread{};};
 struct AssociationRow {gears_crosshair_scene::Metadata data{};gears_vr::StereoMatrix view{},projection{};
     DiagnosticPose previous{};bool previous_valid{},finite{};};
@@ -124,10 +125,11 @@ bool recovery_fresh(gears_crosshair_assignment::OwnedConfig const& candidate,gea
         gears_crosshair_assignment::validate_bindings(c,safe_copy,false);
 }
 bool prepare_recovery(const wchar_t* ini,gears_anchor::Config const& anchor,gears_ui::Config const& ui,
-    gears_crosshair_assignment::OwnedConfig& output){
-    auto read=[&](const wchar_t* key,wchar_t* buffer,unsigned capacity){return GetPrivateProfileStringW(L"CrosshairAssignment",key,L"",buffer,capacity,ini);};
+    gears_crosshair_assignment::OwnedConfig& output,gears_anchor::GuardDiagnostic* diagnostic=nullptr,gears_profile::Snapshot const* profile=nullptr){
+    if(diagnostic)*diagnostic={};
+    auto read=[&](const wchar_t* key,wchar_t* buffer,unsigned capacity){return gears_profile::get(profile,L"CrosshairAssignment",key,buffer,capacity,ini);};
     gears_crosshair_assignment::OwnedConfig candidate;
-    if(!gears_crosshair_assignment::parse_config(read,GetCurrentProcessId(),base,candidate)||!recovery_fresh(candidate,anchor,ui))return false;
+    if(!gears_crosshair_assignment::parse_config(read,GetCurrentProcessId(),base,candidate)||!recovery_fresh(candidate,anchor,ui,diagnostic))return false;
     output=std::move(candidate);return true;
 }
 // Caller owns the closed world gate and has drained every prior native lease.
@@ -244,15 +246,23 @@ void attach(std::optional<gears_crosshair_scene::Metadata> value,gears_anchor::R
 void accepted(gears_anchor::Receipt const& receipt){if(receipt.crosshair)++anchor_associated;}
 void freeze(gears_submitted::FrameTicket& frame,gears_anchor::Receipt const* anchor){
     auto const& config=current();
+    if(!enabled||config.mounted_suspended||!frame.enabled||!anchor||anchor->anchor.unpossessed||!recording.load())return;
+    const auto aim_started=now();bool aiming{};
+    if(gears_crosshair_assignment::scene_aiming(config.assignment,safe_copy,
+        anchor->anchor.controller,anchor->anchor.pawn,aiming)){
+        frame.aiming=aiming;++aim_observed;
+        if(aiming){++aim_raised;if(!frame.crosshair)++aim_without_query;}
+    }else ++aim_rejected;
+    cost(now()-aim_started);
 #if defined(GEARS_UI_RETICLE_FINITE_QUERY) && GEARS_UI_RETICLE_FINITE_QUERY
-    if(!enabled||config.mounted_suspended||!frame.enabled||!frame.crosshair||!anchor||anchor->anchor.unpossessed||!recording.load()||budget_exceeded.load())return;
+    if(!frame.crosshair||budget_exceeded.load())return;
     const auto started=now();
     gears_crosshair_finite_query::Authority authority{
         anchor->anchor.controller,anchor->anchor.pawn,address(config.assignment.weapon),anchor->anchor.camera,
         anchor->key.local,anchor->anchor.level,anchor->key.family,anchor->key.source,anchor->key.owner,
         committed_world_generation.load(),anchor->invocation,GetCurrentThreadId(),anchor->key.stamp};
     const auto reason=gears_crosshair_assignment::validate_bindings(config.assignment,safe_copy,false)?
-        gears_crosshair_finite_query::authorize(*frame.crosshair,authority,frame.source_view,now(),qpc_frequency,frame.finite_aim,&frame.aiming):
+        gears_crosshair_finite_query::authorize(*frame.crosshair,authority,frame.source_view,now(),qpc_frequency,frame.finite_aim):
         gears_crosshair_finite_query::Reason::binding;
     ++finite_reasons[static_cast<unsigned>(reason)];cost(now()-started);
 #else
@@ -277,6 +287,8 @@ void print(FILE* out){
         sealed.load(),scene_calls.load(),consumed.load(),overhead_qpc.load(),maximum_overhead_qpc.load(),qpc_frequency,(std::min)(row_count.load(),uint64_t(rows.size())));
     fprintf(out,"crosshair_assignment_mounted_suspended=%u human_weapon_aim_used=0\n",config.mounted_suspended?1u:0u);
     fprintf(out,"crosshair_assignment_scene_binding_rejected=%llu\n",scene_binding_rejected.load());
+    fprintf(out,"crosshair_scene_aim observed=%llu raised=%llu raised_without_query=%llu rejected=%llu independent_of_hud_query=1 source=current_scene_controller\n",
+        aim_observed.load(),aim_raised.load(),aim_without_query.load(),aim_rejected.load());
     fprintf(out,"crosshair_assignment_budget_exceeded=%u per_observation_budget_ms=5\n",budget_exceeded.load()?1:0);
     fprintf(out,"crosshair_weapon_binding thread_local=1 rebinds=%llu rejected=%llu same_pawn_only=1 universal_object_aba_proven=0\n",weapon_rebinds.load(),weapon_rejected.load());
     fprintf(out,"crosshair_world_certificate generation=%llu commits=%llu\n",config_generation.load(),world_certificates.load());

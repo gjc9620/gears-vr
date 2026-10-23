@@ -1,6 +1,10 @@
-# GearsVR 0.1.0 开发
+# GearsVR 0.0.3 发布准备
 
-当前开发为 `codex/0.1.0`。2026-10-22 已合并 `codex/0.0.2` 的启动兼容、EXE识别、中文路径／UTF-8及启动诊断修复，保留本分支第一人称、Playground和渲染改动。公开最新版本为 [0.0.2](https://github.com/gjc9620/gears-vr/releases/tag/v0.0.2)，变更见[CHANGELOG](CHANGELOG.md)；本次开发合并不构成0.1.0发布，验证与限制记录在[开发进度](docs/releases/0.1.0/PROGRESS.md)。下文0.0.1包及验证结果保留其历史范围。
+按用户2026-10-23的要求，原0.1.0开发内容改以0.0.3发布，当前分支为 `codex/0.0.3`，原0.1.0分支已删除，内容和提交历史保留。本次发布进度见[0.0.3记录](docs/releases/0.0.3/PROGRESS.md)，此前[0.1.0记录](docs/releases/0.1.0/PROGRESS.md)保留为历史证据。
+
+本机开发版使用仓库根目录 `J:\gearsVr\GearsVR Launcher.exe`，游戏主菜单的 `happyotaku playground` 入口由当前开发清单加载。解压到游戏目录的公开包使用独立清单，功能以该包版本为准。2026-10-22已修复Playground初始化失败中断VR启动的问题，见[定位与验证](docs/playground-startup-reservation-20261022.md)。
+
+2026-10-22 已合并 `codex/0.0.2` 的启动兼容、EXE识别、中文路径／UTF-8及启动诊断修复，保留第一人称、Playground和渲染改动。公开最新版本为 [0.0.2](https://github.com/gjc9620/gears-vr/releases/tag/v0.0.2)，本次准备发布0.0.3，变更见[CHANGELOG](CHANGELOG.md)。下文0.0.1包及验证结果保留其历史范围。
 
 2026-10-21 起开发与测试使用已购买的Steam正版，默认工作目录 `J:\gearsVr\Gears of War Reloaded`，旧进度已备份并迁移到正版账号。两份正版完整3,609文件哈希一致；本地已补Steam启动身份与多账号设置兼容。用户已停止追加兼容性游戏测试，本次未新增正版双目／头显验收，不更新下述已发布0.0.1包。见[迁移记录](docs/retail-steam-compatibility-20261021.md)。
 

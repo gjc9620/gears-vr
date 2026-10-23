@@ -27,6 +27,7 @@
 #include "window_fallback_policy.h"
 #include "menu_display_reader.h"
 #include "xr_wait_diagnostics.h"
+#include "xr_delivery_counter.h"
 
 using Microsoft::WRL::ComPtr;
 XrInstance instance = XR_NULL_HANDLE;
@@ -436,10 +437,11 @@ int main(int argc, char** argv) {
     gears_xr::ReferenceSpaceEpoch space_epoch;
     std::uint64_t last_submitted_space_epoch{};
     std::uint64_t last_submitted_resource_generation{};
+    gears_xr_delivery::Counter delivered_images;
     // Permit the bounded runner to read flushed readiness rows while sampling.
     FILE* csv=_fsopen(argv[2],"w",_SH_DENYWR);
     if(!csv) return 2;
-    fprintf(csv,"frame,predicted_time,session_state,should_render,view_flags,head_flags,head_x,head_y,head_z,qx,qy,qz,qw,left_x,left_y,left_z,right_x,right_y,right_z,left_angle_left,left_angle_right,left_angle_up,left_angle_down,left_qx,left_qy,left_qz,left_qw,right_qx,right_qy,right_qz,right_qw,right_angle_left,right_angle_right,right_angle_up,right_angle_down,stereo_session,stereo_sequence,published_ns,stereo_published,stereo_source\n");
+    fprintf(csv,"frame,predicted_time,session_state,should_render,view_flags,head_flags,head_x,head_y,head_z,qx,qy,qz,qw,left_x,left_y,left_z,right_x,right_y,right_z,left_angle_left,left_angle_right,left_angle_up,left_angle_down,left_qx,left_qy,left_qz,left_qw,right_qx,right_qy,right_qz,right_qw,right_angle_left,right_angle_right,right_angle_up,right_angle_down,stereo_session,stereo_sequence,published_ns,stereo_published,stereo_source,observed_monotonic_ns,xr_distinct_stereo_submissions,xr_repeated_stereo_submissions,xr_invalid_submission_keys,transport_acquired,transport_acknowledged,transport_discarded,xr_copied_stereo_images,xr_submitted_generation,xr_submitted_sequence,xr_submitted_ticket,xr_copied_slot,transport_ready_deferred,xr_local_fence_wait_count,xr_local_fence_wait_ns,xr_eye0_wait_count,xr_eye0_wait_ns,xr_eye1_wait_count,xr_eye1_wait_ns,xr_wait_frame_count,xr_wait_frame_ns,xr_end_frame_count,xr_end_frame_ns\n");
     bool running=false;
     gears_vr::SessionExitState session_exit;
     bool simulated_runtime=false;
@@ -562,6 +564,7 @@ int main(int argc, char** argv) {
         auto stereo_retry=std::chrono::steady_clock::now();
         unsigned retired_stereo_copies{},retired_stereo_projections{},source_rebuilds{};
         unsigned retired_retained_projections{},retired_late_images{};
+        std::uint64_t retired_transport_acquired{},retired_transport_acknowledged{},retired_transport_discarded{},retired_ready_deferred{};
         unsigned frames=0,valid=0,tracked=0,render=0,focused=0;XrSessionState state=XR_SESSION_STATE_UNKNOWN;
         auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(seconds);
         auto next_csv=std::chrono::steady_clock::now();
@@ -702,6 +705,10 @@ int main(int argc, char** argv) {
                         retired_stereo_projections+=stereo_screen->projection_rendered;
                         retired_retained_projections+=stereo_screen->retained_projections;
                         retired_late_images+=stereo_screen->rejected_late_images;
+                        retired_transport_acquired+=stereo_screen->transport_acquired();
+                        retired_transport_acknowledged+=stereo_screen->transport_acknowledged();
+                        retired_transport_discarded+=stereo_screen->transport_discarded();
+                        retired_ready_deferred+=stereo_screen->transport_ready_deferred();
                         stereo_screen.reset();stereo_retry=current;++source_rebuilds;
                         printf("{\"stereo_source_retired\":true,\"resource_generation\":%llu,\"rebuilds\":%u}\n",generation,source_rebuilds);fflush(stdout);
                     }
@@ -998,6 +1005,8 @@ int main(int argc, char** argv) {
                 movie_fallback_diagnostics.report(gears_vr::monotonic_ns());
             }
             if(stereo_game_pid)projection_evidence.record(ended==XR_SUCCESS?projection_frame_status:ProjectionStatus::session_lost,gears_vr::monotonic_ns());
+            if(stereo_game_pid)delivered_images.observe(ended==XR_SUCCESS&&projection_frame_status==ProjectionStatus::submitted&&
+                end.layerCount==1&&end.layers==layers&&stereo_screen,stereo_screen?stereo_screen->delivery_key():gears_xr_delivery::Key{});
             if(diagnostic_outage||diagnostic_image_tickets){
                 outage_diagnostics::Row row;
                 // Observation follows xrEndFrame. Ticket validation used an earlier
@@ -1038,11 +1047,26 @@ int main(int argc, char** argv) {
                 p.position.x,p.position.y,p.position.z,p.orientation.x,p.orientation.y,p.orientation.z,p.orientation.w,
                 left.pose.position.x,left.pose.position.y,left.pose.position.z,right.pose.position.x,right.pose.position.y,right.pose.position.z,
                 left.fov.angleLeft,left.fov.angleRight,left.fov.angleUp,left.fov.angleDown);
-            fprintf(csv,",%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%llu,%llu,%lld,%u,%u\n",
+            fprintf(csv,",%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%llu,%llu,%lld,%u,%u",
                 left.pose.orientation.x,left.pose.orientation.y,left.pose.orientation.z,left.pose.orientation.w,
                 right.pose.orientation.x,right.pose.orientation.y,right.pose.orientation.z,right.pose.orientation.w,
                 right.fov.angleLeft,right.fov.angleRight,right.fov.angleUp,right.fov.angleDown,
                 stereo_sample.session,stereo_sample.sequence,stereo_sample.received_ns,unsigned(stereo_sent),unsigned(stereo_sample.source));
+            const auto local_wait=xr_wait_diagnostics::recorder.total(xr_wait_diagnostics::Operation::local_fence);
+            const auto eye0_wait=xr_wait_diagnostics::recorder.total(xr_wait_diagnostics::Operation::wait_eye0);
+            const auto eye1_wait=xr_wait_diagnostics::recorder.total(xr_wait_diagnostics::Operation::wait_eye1);
+            const auto frame_wait=xr_wait_diagnostics::recorder.total(xr_wait_diagnostics::Operation::wait_frame);
+            const auto end_wait=xr_wait_diagnostics::recorder.total(xr_wait_diagnostics::Operation::end_frame);
+            fprintf(csv,",%lld,%llu,%llu,%llu,%llu,%llu,%llu,%u,%llu,%llu,%llu,%u,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n",gears_vr::monotonic_ns(),
+                delivered_images.distinct,delivered_images.repeated,delivered_images.rejected,
+                retired_transport_acquired+(stereo_screen?stereo_screen->transport_acquired():0),
+                retired_transport_acknowledged+(stereo_screen?stereo_screen->transport_acknowledged():0),
+                retired_transport_discarded+(stereo_screen?stereo_screen->transport_discarded():0),
+                retired_stereo_copies+(stereo_screen?stereo_screen->copies:0),
+                delivered_images.last.generation,delivered_images.last.sequence,delivered_images.last.ticket,stereo_screen?stereo_screen->delivery_slot():gears_gpu_slots::none,
+                retired_ready_deferred+(stereo_screen?stereo_screen->transport_ready_deferred():0),
+                local_wait.count,local_wait.ns,eye0_wait.count,eye0_wait.ns,eye1_wait.count,eye1_wait.ns,
+                frame_wait.count,frame_wait.ns,end_wait.count,end_wait.ns);
             if(continuous_session||frames%60==0)fflush(csv);
             next_csv=csv_now+std::chrono::seconds(1);
             }
@@ -1094,6 +1118,11 @@ int main(int argc, char** argv) {
         if(stereo_game_pid)printf("{\"source_rebuild_evidence\":true,\"rebuilds\":%u,\"last_submitted_generation\":%llu,\"current_generation\":%llu,\"current_generation_submitted\":%s}\n",
             source_rebuilds,last_submitted_resource_generation,stereo_screen?stereo_screen->resource_generation():0,
             stereo_screen&&last_submitted_resource_generation==stereo_screen->resource_generation()?"true":"false");
+        if(stereo_game_pid)printf("{\"xr_delivery\":true,\"packet_version\":%u,\"slot_count\":%u,\"distinct_submissions\":%llu,\"repeated_submissions\":%llu,\"invalid_submission_keys\":%llu,\"transport_acquired\":%llu,\"transport_acknowledged\":%llu,\"transport_discarded\":%llu,\"successful_xrEndFrame_required\":true}\n",
+            gears_vr::gpu_packet_version,gears_gpu_slots::count,delivered_images.distinct,delivered_images.repeated,delivered_images.rejected,
+            retired_transport_acquired+(stereo_screen?stereo_screen->transport_acquired():0),
+            retired_transport_acknowledged+(stereo_screen?stereo_screen->transport_acknowledged():0),
+            retired_transport_discarded+(stereo_screen?stereo_screen->transport_discarded():0));
         if(stereo_game_pid&&!continuous_session)projection_evidence.print();
         bool display_ok=!screen || (screen->rendered && screen->gpu_pixels_verified);
         if(movie_display)movie_fallback_diagnostics.report(gears_vr::monotonic_ns(),true);

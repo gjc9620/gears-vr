@@ -95,6 +95,12 @@ private:
         size_t count{};
         std::array<Event, events_per_list> events{};
     };
+    // Events are read only below count, and append writes a complete Event.
+    // Retiring a recording only needs to clear the live header.
+    static void clear_list(List& list) {
+        list.ref={};list.world_epoch=0;
+        list.valid=false;list.executed=false;list.count=0;
+    }
     struct Candidate {
         Target target{};
         Identity queue{};
@@ -113,6 +119,30 @@ private:
     template<class T> struct ListRange {T* first;T* last;T* begin() const{return first;}T* end() const{return last;}};
     ListRange<List> used_lists(){return {lists_.data(),lists_.data()+used_prefix_};}
     ListRange<const List> used_lists() const{return {lists_.data(),lists_.data()+used_prefix_};}
+    // Advisory identity index. Every hit checks the live slot; reset, owned
+    // consumption and world sealing may reuse slots without cache maintenance.
+    static constexpr size_t list_cache_capacity=2048;
+    struct ListCacheEntry {Identity identity{};size_t index{};};
+    std::array<ListCacheEntry,list_cache_capacity> list_cache_{};
+    static size_t list_cache_bucket(Identity identity){
+        const auto value=static_cast<uint64_t>(identity)>>4; // COM pointers are aligned.
+        return static_cast<size_t>((value*11400714819323198485ull)>>(64-11));
+    }
+    List* cached_list(Identity identity){
+        if(!identity)return nullptr;
+        const auto& entry=list_cache_[list_cache_bucket(identity)];
+        return entry.identity==identity&&entry.index<used_prefix_&&lists_[entry.index].ref.identity==identity
+            ?&lists_[entry.index]:nullptr;
+    }
+    void cache_list(List* list){
+        if(list&&list->ref.identity)list_cache_[list_cache_bucket(list->ref.identity)]={list->ref.identity,
+            static_cast<size_t>(list-lists_.data())};
+    }
+    List* find_identity(Identity identity){
+        if(auto* list=cached_list(identity))return list;
+        for(auto& list:used_lists())if(list.ref.identity==identity){cache_list(&list);return &list;}
+        return nullptr;
+    }
     std::array<Candidate, target_capacity> candidates_{};
     std::mutex mutex_;
     uint64_t generation_{}, maximum_ticket_{}, retired_ticket_{};
@@ -178,9 +208,13 @@ private:
         state=event.after;return true;
     }
     List* find(ListRef ref) {
+        if(auto* list=cached_list(ref.identity))
+            if(list->ref.generation==ref.generation&&list->valid&&list->world_epoch==world_epoch_)return list;
         for (auto& list : used_lists())
-            if (list.ref.identity == ref.identity && list.ref.generation == ref.generation && list.valid && list.world_epoch==world_epoch_)
+            if (list.ref.identity == ref.identity && list.ref.generation == ref.generation && list.valid && list.world_epoch==world_epoch_){
+                cache_list(&list);
                 return &list;
+            }
         return nullptr;
     }
     bool append(ListRef ref, Event event) {
@@ -595,7 +629,8 @@ public:
     }
     ListRef current(Identity identity) {
         std::lock_guard<std::mutex> lock(mutex_);
-        for (const auto& list : used_lists()) if (list.valid && list.ref.identity == identity) return list.ref;
+        if(auto* list=cached_list(identity))if(list->valid)return list->ref;
+        for (auto& list : used_lists()) if (list.valid && list.ref.identity == identity){cache_list(&list);return list.ref;}
         return {};
     }
     uint64_t world_epoch(){std::lock_guard<std::mutex> lock(mutex_);return world_epoch_;}
@@ -626,18 +661,19 @@ public:
             window_bad_ = true; return {};
         }
         List* slot{};
-        for (auto& list : used_lists()) if (list.ref.identity == identity) { slot = &list; break; }
+        slot=find_identity(identity);
         if (!slot) for (auto& list : used_lists()) if (!list.ref.identity) { slot = &list; break; }
-        if (!slot && used_prefix_ < list_capacity) {slot = &lists_[used_prefix_++];*slot={};}
+        if (!slot && used_prefix_ < list_capacity) {slot = &lists_[used_prefix_++];clear_list(*slot);}
         if (!slot) { ++stats_.list_overflow;capacity_bad_ = true; return {}; }
         if(!slot->ref.identity){++stats_.active_lists;if(stats_.active_lists>stats_.list_highwater)stats_.list_highwater=stats_.active_lists;}
         discard_recording(*slot);
         // Reset discards unsubmitted old recording, while already submitted events
         // remain copied in candidates. Generation IDs are never reused.
-        *slot = {};
+        clear_list(*slot);
         slot->ref = {identity, ++generation_};
         slot->world_epoch=world_epoch_;
         slot->valid = true;
+        cache_list(slot);
         return slot->ref;
     }
     // Actual successful API creation, not a synthetic Reset. CreateCommandList
@@ -648,13 +684,14 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);++stats_.list_creates;++revision_;
         if(!identity||generation_==UINT64_MAX){window_bad_=true;lose_owned();return {};}
         List* slot{};
-        for(auto& list:used_lists())if(list.ref.identity==identity){slot=&list;break;}
+        slot=find_identity(identity);
         if(!slot)for(auto& list:used_lists())if(!list.ref.identity){slot=&list;break;}
-        if(!slot&&used_prefix_<list_capacity){slot=&lists_[used_prefix_++];*slot={};}
+        if(!slot&&used_prefix_<list_capacity){slot=&lists_[used_prefix_++];clear_list(*slot);}
         if(!slot){++stats_.list_overflow;capacity_bad_=true;lose_owned();return {};}
         if(!slot->ref.identity){++stats_.active_lists;if(stats_.active_lists>stats_.list_highwater)stats_.list_highwater=stats_.active_lists;}
         discard_recording(*slot);
-        *slot={};slot->ref={identity,++generation_};slot->valid=initially_open;slot->world_epoch=world_epoch_;
+        clear_list(*slot);slot->ref={identity,++generation_};slot->valid=initially_open;slot->world_epoch=world_epoch_;
+        cache_list(slot);
         return slot->ref;
     }
     bool draw_final(ListRef ref, uint64_t ticket, unsigned eye, Target target, Rect rect) {
@@ -847,7 +884,7 @@ public:
         // release matching leases after this successful consume. Re-execution
         // without Reset remains a proof failure. Unsubmitted recordings stay.
         for(auto& list:used_lists())if(list.executed){
-            if(retired_executed){retired_executed[(*retired_count)++]=list.ref.identity;list={};--stats_.active_lists;}
+            if(retired_executed){retired_executed[(*retired_count)++]=list.ref.identity;clear_list(list);--stats_.active_lists;}
             else list.count=0;
         }
         candidates_={};retired_ticket_=ticket;

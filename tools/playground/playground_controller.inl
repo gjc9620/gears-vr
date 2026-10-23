@@ -6,11 +6,13 @@ std::atomic<bool> test_enter_pending{};
 uptr viewport{},menu_button{},player{},arena_world{},arena_pc{},arena_pawn{},turret{};
 uptr scene_client{},menu_scene{};
 unsigned player_tick_index{};
-bool requested{},ready{};unsigned failures{},pickup_respawns{},target_respawns{};
+bool requested{},ready{},menu_layout_valid{};unsigned failures{},pickup_respawns{},target_respawns{};
 ULONGLONG next_tick{},requested_at{};
 const wchar_t* phase=L"menu";
 struct Vector {float x,y,z;};
 struct Rotation {int pitch,yaw,roll;};
+struct MenuBounds {float left,top,right,bottom;};
+MenuBounds menu_bounds{};
 struct String {const wchar_t* data;int count,capacity;};
 const wchar_t* weapon_names[]={L"Weap_AssaultRifle",L"Weap_LocustAssaultRifle",L"Weap_Shotgun",
     L"Weap_SniperRifle",L"Weap_COGPistol",L"Weap_LocustPistol",L"Weap_Boomer",L"Weap_Bow",
@@ -95,8 +97,8 @@ void status(){
     unsigned live_guns=0,live_targets=0;
     if(ready){for(auto const& s:guns)if(!deleted(s.actor))++live_guns;for(auto const& s:targets)if(!deleted(s.actor)&&scalar<int>(s.actor,L"Health")>0)++live_targets;}
     auto file=_wfsopen(path,L"wb",_SH_DENYNO);if(!file)return;
-    fprintf(file,"{\"schema\":1,\"pid\":%lu,\"phase\":\"%ls\",\"ready\":%s,\"menu_button\":\"0x%llx\",\"world\":\"0x%llx\",\"pawn\":\"0x%llx\",\"pickups\":%u,\"targets\":%u,\"turret\":\"0x%llx\",\"failures\":%u,\"pickup_respawns\":%u,\"target_respawns\":%u}\n",
-        GetCurrentProcessId(),phase,ready?"true":"false",menu_button,arena_world,arena_pawn,live_guns,live_targets,turret,failures,pickup_respawns,target_respawns);
+    fprintf(file,"{\"schema\":1,\"pid\":%lu,\"phase\":\"%ls\",\"ready\":%s,\"menu_button\":\"0x%llx\",\"menu_layout_valid\":%s,\"menu_bounds\":[%.3f,%.3f,%.3f,%.3f],\"world\":\"0x%llx\",\"pawn\":\"0x%llx\",\"pickups\":%u,\"targets\":%u,\"turret\":\"0x%llx\",\"failures\":%u,\"pickup_respawns\":%u,\"target_respawns\":%u}\n",
+        GetCurrentProcessId(),phase,ready?"true":"false",menu_button,menu_layout_valid?"true":"false",menu_bounds.left,menu_bounds.top,menu_bounds.right,menu_bounds.bottom,arena_world,arena_pawn,live_guns,live_targets,turret,failures,pickup_respawns,target_respawns);
     fclose(file);
 }
 bool in_map(uptr object){
@@ -202,6 +204,13 @@ bool add_menu(){
     for(int i=scenes.count-1;i>=0;--i){const auto s=get<uptr>(scenes.data+i*8);
         if(instance(s,L"WarUIScene_MainMenu")){scene=s;break;}}
     if(!scene)return false;
+    if(scene==menu_scene&&instance(menu_button,L"UILabelButton")&&pointer(menu_button,L"OwnerScene")==scene){
+        const auto bounds=scalar<MenuBounds>(menu_button,L"RenderBounds");
+        const bool valid=std::isfinite(bounds.left)&&std::isfinite(bounds.top)&&std::isfinite(bounds.right)&&std::isfinite(bounds.bottom)&&
+            bounds.right-bounds.left>80.f&&bounds.bottom-bounds.top>8.f;
+        if(valid&&!menu_layout_valid){menu_bounds=bounds;menu_layout_valid=true;message(L"menu_layout_ready");status();}
+        return true;
+    }
     const auto p=property(scene,L"CampaignButton");const auto campaign=p?pointer(scene,L"CampaignButton"):0;
     if(!instance(campaign,L"UILabelButton"))return false;
     const auto parent=pointer(campaign,L"Owner");if(!parent)return false;
@@ -215,12 +224,11 @@ bool add_menu(){
     if(!clicked_fn)return false;
     struct Delegate {uptr object;Name fn;} delegate{button,get<Name>(clicked_fn+0x48)};
     if(!put(button,L"__OnClicked__Delegate",delegate))return false;
-    const auto docks=property(button,L"DockTargets");unsigned char zero[128]{};
-    if(docks){const auto size=get<unsigned>(docks+0x74);if(size<=128)write_field(button,L"DockTargets",zero,size);}
     Args insert(parent,L"InsertChild");insert.set(L"NewChild",button).set(L"InsertIndex",-1).flag(L"bRenameExisting",false);
     if(!insert.run()||insert.output<int>()<0)return false;
-    const float positions[]={.31f,.78f,.74f,.83f};
-    for(unsigned char face=0;face<4;++face){Args position(button,L"SetPosition");position.set(L"NewValue",positions[face]).set(L"Face",face).set(L"InputType",static_cast<unsigned char>(4)).flag(L"bZeroOrigin",true);if(!position.run())return false;}
+    // Zero is UIFACE_Left, not an empty docking target. Clear links through the
+    // engine so all faces use UIFACE_MAX and OwnerWidget remains initialized.
+    for(unsigned char face=0;face<4;++face){Args dock(button,L"SetDockTarget");dock.set(L"SourceFace",face).set(L"Target",uptr{}).set(L"TargetFace",static_cast<unsigned char>(4));if(!dock.run()||!dock.output<unsigned>())return false;}
     Args caption(button,L"SetCaption");caption.text(L"NewText",L"happyotaku playground");if(!caption.run())return false;
     // Existing menu rows have explicit links and a forced end stop. Insert the
     // new entry into that same controller/keyboard cycle in both directions.
@@ -231,10 +239,19 @@ bool add_menu(){
         const auto index=scalar<int>(child,L"TabIndex");const auto hidden=property(child,L"bHidden");
         const bool invisible=hidden&&(get<unsigned>(child+get<unsigned>(hidden+0x94))&get<unsigned>(hidden+0xd0));
         if(!invisible&&index>=0&&index<=7&&index>last_index){last_index=index;last=child;}}
+    // Follow the existing menu column and row height across resolutions/safe
+    // regions instead of placing an unrelated fixed rectangle on the screen.
+    auto coordinate=[](uptr widget,unsigned char face,float& value){Args a(widget,L"GetPosition");a.set(L"Face",face).set(L"OutputType",static_cast<unsigned char>(4)).flag(L"bIncludeOrigin",true).flag(L"bIgnoreDockPadding",true);if(!a.run())return false;value=a.output<float>();return std::isfinite(value);};
+    float left{},right{},top{},bottom{};
+    if(!coordinate(campaign,0,left)||!coordinate(campaign,2,right)||!coordinate(last,1,top)||!coordinate(last,3,bottom))return false;
+    const float height=bottom-top;
+    if(right-left<.1f||height<.005f||height>.15f)return false;
+    const float positions[]={left,bottom+height*.25f,right,bottom+height*1.25f};
+    for(unsigned char face=0;face<4;++face){Args position(button,L"SetPosition");position.set(L"NewValue",positions[face]).set(L"Face",face).set(L"InputType",static_cast<unsigned char>(4)).flag(L"bZeroOrigin",true);if(!position.run())return false;}
     if(!navigation(last,3,button)||!navigation(button,1,last)||!navigation(button,3,campaign)||!navigation(campaign,1,button))return false;
-    Args update(scene,L"RequestSceneUpdate");update.flag(L"bNavLinksOutdated",true).flag(L"bPositionsChanged",true);update.run();
+    Args update(scene,L"RequestSceneUpdate");update.flag(L"bDockingStackChanged",true).flag(L"bNavLinksOutdated",true).flag(L"bPositionsChanged",true).flag(L"bWidgetStylesChanged",true);update.run();
     Args owner(scene,L"GetPlayerOwner");if(owner.run())player=owner.output<uptr>();
-    menu_button=button;menu_scene=scene;phase=L"menu";message(L"menu_added");status();return true;
+    menu_button=button;menu_scene=scene;menu_layout_valid=false;menu_bounds={};phase=L"menu";message(L"menu_added");status();return true;
 }
 bool clicked(uptr object,uptr function,void* params){
     if(!automatic||object!=menu_button||!named(function,L"OnClicked"))return false;
@@ -251,7 +268,7 @@ void tick(){
     try{
         if(!viewport)viewport=find_instance(L"WarGameViewportClient");
         if(!viewport)return;
-        if(!instance(menu_button,L"UILabelButton"))add_menu();
+        add_menu();
         if(!requested)return;
         if(!registered(player)){phase=L"player_missing";status();return;}
         auto pc=pointer(player,L"Actor");

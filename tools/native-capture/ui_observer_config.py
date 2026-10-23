@@ -39,10 +39,11 @@ class UIControlledPawnUnavailable(UIConfigRejected):
         self.evidence=dict(controller=controller,field=field,offset=offset,pointer=0)
 
 def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anchor=None,
-                             reuse_assembly_identities=True):
+                             reuse_assembly_identities=True,coalesce_reads=True):
     r=resolver;p=r.profile;started=time.perf_counter_ns()
     if type(reuse_assembly_identities) is not bool:
         raise ValueError('reuse_assembly_identities must be boolean')
+    if type(coalesce_reads) is not bool:raise ValueError('coalesce_reads must be boolean')
     mounted=mounted_anchor is not None
     if mounted:
         from anchor_config import validate_anchor_config
@@ -82,8 +83,19 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
         if index>=oc or r.u64(objects+index*8)!=address:raise UIConfigRejected('UI object registry slot mismatch')
         if ni>=nc:raise UIConfigRejected('UI name index outside registry')
         entry=r.u64(names+ni*8)
-        if not entry or r.u32(entry+p['name_entry_index'])!=ni:raise UIConfigRejected('UI name registry identity mismatch')
-        text=stable(entry+p['name_entry_text'],128)
+        if not entry:raise UIConfigRejected('UI name registry identity mismatch')
+        if coalesce_reads and (p['name_entry_index'],p['name_entry_text'])==(0,20):
+            # Compare precisely the same selected name bytes in two fresh
+            # snapshots; padding/state between index and text is not identity.
+            first=r.read(entry,148);second=r.read(entry,148)
+            if len(first)!=148 or len(second)!=148:raise UIConfigRejected('Incomplete UI name read')
+            if first[:4]!=second[:4] or first[20:]!=second[20:]:
+                raise UIConfigRejected('UI certificate read changed')
+            entry_index=struct.unpack_from('<I',first)[0];text=first[20:]
+        else:
+            entry_index=r.u32(entry+p['name_entry_index'])
+            text=stable(entry+p['name_entry_text'],128)
+        if entry_index!=ni:raise UIConfigRejected('UI name registry identity mismatch')
         end=next((i for i in range(0,128,2) if text[i:i+2]==b'\0\0'),None)
         if end is None:raise UIConfigRejected('UI name exceeds bounded read')
         name=text[:end].decode('utf-16-le')
@@ -124,7 +136,11 @@ def build_ui_observer_config(resolver, camera, *, entry_reader=None,mounted_anch
         add(address);return item
     class_names={x[0] for x in SCOPES}|{'Canvas'};classes={}
     # One bounded registry traversal; no heap scan or generic UObject dump.
-    pointers=struct.unpack('<'+'Q'*oc,stable(objects,oc*8))
+    raw_pointers=stable(objects,oc*8)
+    view=getattr(r,'discovery_pointer_view',None)
+    pointers=view(raw_pointers,oc)if callable(view)else None
+    if pointers is None:pointers=struct.unpack(f'<{oc}Q',raw_pointers)
+    del raw_pointers
     # This capability batches discovery hints only. It has no authority over
     # fresh(), selected identities, registry bounds or the final checks below.
     # Providers without this optional capability retain their ordinary path.

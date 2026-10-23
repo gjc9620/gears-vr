@@ -39,6 +39,7 @@ class _DiscoveryHintPages:
             return self.read_exact(address,size)
         if page not in self.pages:
             try:raw=self.read_exact(page,self.PAGE_SIZE)
+            except DiscoveryRegistryChanged:raise
             except (RuntimeError,OSError):return self.read_exact(address,size)
             if len(raw)!=self.PAGE_SIZE:return self.read_exact(address,size)
             if len(self.pages)>=self.MAX_PAGES:self.pages.pop(next(iter(self.pages)))
@@ -47,6 +48,28 @@ class _DiscoveryHintPages:
 
 class DiscoveryRegistryChanged(RuntimeError):
     """A validated registry header changed across a discovery read."""
+
+class DiscoveryHintChanged(DiscoveryRegistryChanged):
+    """Discard this optional hint and reader, then perform fresh discovery."""
+
+class _DiscoveryFieldHintPages:
+    """Dense field hints; fields() supplies the exact-read warmup."""
+    WARMUP_READS=2
+    DENSITY_PROBE_FIELDS=32
+    def __init__(self,read):
+        self.read_exact=read
+        self.cache=_DiscoveryHintPages(read)
+        self.failed={}
+    def read(self,address,size):
+        page=address-address%self.cache.PAGE_SIZE
+        if size!=0x60 or address-page+size>self.cache.PAGE_SIZE:
+            return self.read_exact(address,size)
+        if page in self.failed:return self.read_exact(address,size)
+        raw=self.cache.read(address,size)
+        if page not in self.cache.pages:
+            if len(self.failed)>=self.cache.MAX_PAGES:self.failed.pop(next(iter(self.failed)))
+            self.failed[page]=True
+        return raw
 
 class Resolver:
     FIELD_HINT_LIMIT=65536
@@ -58,6 +81,9 @@ class Resolver:
         self.names_cache={}
         self.ident_cache={}
         self._field_hint_links=None
+        self._field_hint_properties=None
+        self._field_hint_property_count=0
+        self._field_hint_pages=None
     def read(self,address,size):
         raw=self.p.read(address,size)
         if len(raw)!=size:raise RuntimeError(f'Unreadable address {address:#x}; object/process may have changed')
@@ -86,8 +112,8 @@ class Resolver:
         self.objects_data,self.object_count,self.object_capacity=struct.unpack('<Qii',self.read(self.objects_header,16))
         if not 1000<self.name_count<=self.name_capacity<4000000:raise RuntimeError('Invalid name array header')
         if not 1000<self.object_count<=self.object_capacity<4000000:raise RuntimeError('Invalid object array header')
-        self.name_pointers=struct.unpack('<'+'Q'*self.name_count,self.read(self.names_data,self.name_count*8))
-        self.object_pointers=struct.unpack('<'+'Q'*self.object_count,self.read(self.objects_data,self.object_count*8))
+        self.name_pointers=struct.unpack(f'<{self.name_count}Q',self.read(self.names_data,self.name_count*8))
+        self.object_pointers=struct.unpack(f'<{self.object_count}Q',self.read(self.objects_data,self.object_count*8))
         if self.name(0)!='None':raise RuntimeError('Name registry zero entry is not None')
     def name(self,index):
         if index not in self.names_cache:
@@ -157,6 +183,15 @@ class Resolver:
         blocks fall back to the existing page/exact-object hint reader. Only
         registered addresses are considered; no discovered bytes grant authority.
         """
+        native=getattr(self,'_native_class_discovery',None)
+        if callable(native):
+            addresses=native(self,pointers)
+            if addresses is not None:
+                for address in addresses:
+                    try:yield address,self.identity(address)
+                    except DiscoveryRegistryChanged:raise
+                    except (RuntimeError,OSError,ValueError,UnicodeError):continue
+                return
         pages=_DiscoveryHintPages(self.read)
         kinds={};block=None;raw=None;size=self.CLASS_HINT_BLOCK_SIZE
         offset=self.profile['object_class']
@@ -198,11 +233,23 @@ class Resolver:
     def fields(self,owner):
         read_link=self._discovery_field_link if getattr(self,'_field_hint_links',None) is not None else self.u64
         ptr=read_link(owner+self.profile['struct_children'])
-        seen=set()
+        seen=set();page=None;in_page=sampled=0;dense=False
+        pages=getattr(self,'_field_hint_pages',None)
+        hint_read=pages.read if pages is not None else None
         while ptr:
             if ptr in seen or len(seen)>4096:raise RuntimeError('Invalid reflected field chain')
             seen.add(ptr)
-            obj=self.identity(ptr)
+            if pages is not None and self._field_hint_pages is pages:
+                current_page=ptr//4096
+                in_page=in_page+1 if current_page==page else 1;page=current_page
+                sampled+=1
+                if in_page>pages.WARMUP_READS:
+                    dense=True;obj=self.identity(ptr,reader=hint_read)
+                else:obj=self.identity(ptr)
+                # Stop tracking a sparse prefix for the rest of this walk.
+                # Later fields retain the original discovery reads and proofs.
+                if sampled>=pages.DENSITY_PROBE_FIELDS and not dense:pages=None
+            else:obj=self.identity(ptr)
             if obj['outer']!=owner:raise RuntimeError('Reflected field owner mismatch')
             yield obj
             ptr=read_link(ptr+self.profile['field_next'])
@@ -215,6 +262,9 @@ class Resolver:
         if getattr(self,'_field_hint_links',None) is not None:
             raise RuntimeError('Discovery field hint scope already active')
         self._field_hint_links={}
+        self._field_hint_properties={}
+        self._field_hint_property_count=0
+        self._field_hint_pages=_DiscoveryFieldHintPages(self.read)
     def _discovery_field_link(self,address):
         links=self._field_hint_links
         if links is None:return self.u64(address)
@@ -227,16 +277,47 @@ class Resolver:
         """Re-read every retained head/next link; no hint survives this boundary."""
         links=getattr(self,'_field_hint_links',None)
         self._field_hint_links=None
+        self._field_hint_properties=None
+        self._field_hint_property_count=0
+        self._field_hint_pages=None
         if links is None:return 0
         for address,expected in links.items():
             if self.u64(address)!=expected:
                 raise DiscoveryRegistryChanged('Reflection field chain changed during discovery; reacquire')
         return len(links)
+    def _discovery_property_fields(self,owner,name):
+        hints=getattr(self,'_field_hint_properties',None)
+        if hints is None:
+            yield from self.fields(owner);return
+        if owner not in hints:
+            if len(hints)>=self.FIELD_HINT_LIMIT:
+                self._field_hint_properties=None
+                yield from self.fields(owner);return
+            hints[owner]=({},iter(self.fields(owner)))
+        names,remaining=hints[owner]
+        # Reuse only this scope's visited prefix. Keep duplicate names ordered
+        # and classify them only when requested, as the ordinary search does.
+        yield from names.get(name,())
+        try:
+            for field in remaining:
+                if (self._field_hint_property_count>=self.FIELD_HINT_LIMIT or
+                        len(self._field_hint_links)>=self.FIELD_HINT_LIMIT):
+                    self._field_hint_properties=None
+                    yield from self.fields(owner);return
+                names.setdefault(field['name'],[]).append(field)
+                self._field_hint_property_count+=1
+                yield field
+        except Exception:
+            # A failed iterator is exhausted by Python. Do not let a later
+            # lookup mistake that terminal iterator for an absent property.
+            self._field_hint_properties=None
+            raise
     def property(self,owner,name,inherited=False):
         seen=set()
         while owner and owner not in seen:
             seen.add(owner)
-            for field in self.fields(owner):
+            fields=self.fields(owner) if getattr(self,'_field_hint_properties',None) is None else self._discovery_property_fields(owner,name)
+            for field in fields:
                 if field['name']==name and self.class_name(field).endswith('Property'):
                     offset=self.u32(field['address']+self.profile['property_offset_internal'])
                     if offset>1024*1024:raise RuntimeError('Implausible property offset')

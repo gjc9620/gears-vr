@@ -41,7 +41,7 @@ class StageTests(unittest.TestCase):
         self.manifest['native_sha256'] = stage.digest(self.root / self.manifest['native_build'] / 'Mod.dll')
         self.manifest['xr_sha256'] = stage.digest(self.root / self.manifest['xr_build'] / 'OpenXRPoseProbe.exe')
         self.put(self.root / 'tools/vr-launcher/manifest.json', json.dumps(self.manifest).encode())
-        self.put(self.root / 'tools/vr-launcher/config.json', b'{"game_path":"private","launcher_language":"zh-CN"}')
+        self.put(self.root / 'tools/vr-launcher/config.json', b'{"game_path":"private","launcher_language":"zh-CN","game_settings_paths":{"private-install":"private-profile"},"game_path_history":["private-install"]}')
         self.put(self.root / 'analysis/private.sqlite', b'private')
         hashes = {name: stage.digest(self.root / stage.QUIET_BUILD / name) for name in stage.QUIET_HASHES}
         patcher = mock.patch.object(stage, 'QUIET_HASHES', hashes); patcher.start(); self.addCleanup(patcher.stop)
@@ -66,6 +66,9 @@ class StageTests(unittest.TestCase):
         manifest = json.loads((self.destination / 'tools/vr-launcher/manifest.json').read_text())
         self.assertEqual(config['game_path'], ''); self.assertEqual(manifest['game_path'], 'SELECT_GAME_EXECUTABLE')
         self.assertEqual(config['launcher_language'], 'en')
+        self.assertNotIn('game_settings_paths', config)
+        self.assertNotIn('game_path_history', config)
+        self.assertIn('tools/debug-launch/steam_account.py', names)
         self.assertEqual((self.root / 'tools/vr-launcher/config.json').read_bytes(), original)
         self.assertTrue(all({'path', 'source', 'license_category', 'size', 'sha256'} <= item.keys() for item in result['files']))
 
@@ -129,9 +132,23 @@ class StageTests(unittest.TestCase):
         self.assertEqual(metadata['baseline_version'],'0.0.1')
         self.assertEqual((self.destination/'README.txt').read_text(),'0.0.2 README.txt')
 
+    def test_003_release_uses_current_documents_and_scoped_acceptance(self):
+        for name in ('README.txt', 'RELEASE_NOTES.txt'):
+            self.put(self.root/'docs/releases/0.0.3'/name,('0.0.3 '+name).encode())
+        stage.stage(self.root,self.python,self.destination,release_version='0.0.3')
+        preflight.check_inventory(self.destination)
+        metadata=json.loads((self.destination/'portable-candidate.json').read_text())
+        self.assertEqual(metadata['version'],'0.0.3')
+        self.assertEqual(metadata['baseline_version'],'0.0.2')
+        self.assertEqual((self.destination/'README.txt').read_text(),'0.0.3 README.txt')
+        self.assertNotIn('Act 1 completed',metadata['user_reported_acceptance'])
+        self.assertTrue(any('white flashes' in item for item in metadata['limits']))
+        self.assertTrue(any('zero delay' in item for item in metadata['limits']))
+        self.assertNotIn('release_ready',metadata)
+
     def test_new_runtime_modules_import_only_from_stage_without_repository_fallback(self):
         repository = Path(__file__).resolve().parents[2]
-        modules = {'vr-launcher':'game_audio_guard', 'debug-launch': 'tiny_output_recovery', 'game-io': 'movie_state',
+        modules = {'vr-launcher':'game_audio_guard', 'debug-launch': 'tiny_output_recovery steam_account instance_policy graphics_policy', 'game-io': 'movie_state',
                    'native-capture': 'camera_closer_options startup_selftests path_choice_group_fit'}
         paths = ['tools/vr-launcher/' + name + '.py' for name in ('stage_portable', 'portable_preflight')]
         paths += ['tools/' + folder + '/' + name + '.py' for folder, names in modules.items() for name in names.split()]
@@ -149,7 +166,7 @@ class StageTests(unittest.TestCase):
         result = subprocess.run(command, cwd=self.destination, capture_output=True, text=True, timeout=30,
                                 creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(set(json.loads(result.stdout)), {'game_audio_guard','tiny_output_recovery', 'movie_state', 'camera_closer_options','startup_selftests','path_choice_group_fit'})
+        self.assertEqual(set(json.loads(result.stdout)), {'game_audio_guard','tiny_output_recovery', 'steam_account', 'instance_policy', 'graphics_policy', 'movie_state', 'camera_closer_options','startup_selftests','path_choice_group_fit'})
         # Removing a required staged helper must fail instead of finding this
         # developer checkout, an environment path, or a cached imported module.
         (self.destination / 'tools/debug-launch/tiny_output_recovery.py').unlink()

@@ -146,7 +146,45 @@ static int heading_tests(){
     }
     std::printf("heading-only initial/recenter/defer/guard/six-axis point-oracle tests passed\n");return 0;
 }
+static int world_recovery_tests(){
+    StereoGate gate;auto current=posed({{1,2,3},axis(1,.2)});
+    auto accepted=gate.update(current,current.received_ns);CHECK(accepted);
+    CHECK(!gate.advance_world(0)&&!gate.advance_world(-1));
+    for(unsigned world=0;world<64;++world){
+        const auto minimum=current.received_ns+2000000;
+        CHECK(gate.advance_world(minimum));
+        CHECK(!gate.advance_world(minimum)&&!gate.advance_world(minimum-1));
+        // An identical previous sample and a newer sequence at the exact
+        // boundary cannot latch the new reference. Neither is a fatal proof.
+        auto old=gate.update(current,minimum);
+        CHECK(old.status==StereoStatus::stale&&old.reference_generation==accepted.reference_generation);
+        auto boundary=posed({{99,98,97},axis(1,.9)},current.sequence+1);
+        boundary.received_ns=minimum;
+        auto rejected=gate.update(boundary,minimum);
+        CHECK(rejected.status==StereoStatus::stale&&rejected.reference_generation==accepted.reference_generation);
+        CHECK(stereo_same_pose(rejected.reference,accepted.reference));
+        auto bad=boundary;bad.head.orientation.w=2;
+        CHECK(gate.update(bad,minimum).status==StereoStatus::invalid);
+        bad=boundary;++bad.session;
+        CHECK(gate.update(bad,minimum).status==StereoStatus::session_changed);
+        bad=boundary;bad.sequence=current.sequence-1;
+        if(bad.sequence)CHECK(gate.update(bad,minimum).status==StereoStatus::replayed);
+        // The first eligible sample consumes the recenter exactly once, with
+        // the fresh head position rather than any skipped boundary sample.
+        current=posed({{double(world+4),5,6},axis(1,-.4)},current.sequence+2);
+        current.received_ns=minimum+1;
+        auto resumed=gate.update(current,current.received_ns);
+        CHECK(resumed&&resumed.recentered&&resumed.reference_generation==accepted.reference_generation+1);
+        CHECK(resumed.reference.position.x==current.head.position.x&&resumed.reference.position.y==5);
+        CHECK(gate.update(current,current.received_ns).reference_generation==resumed.reference_generation);
+        accepted=resumed;
+    }
+    gate.reset();auto initial=sample();
+    CHECK(gate.update(initial,initial.received_ns).status==StereoStatus::initial);
+    puts("64 repeated world cutoffs preserve replay guards and recenter only on fresh samples");return 0;
+}
 int main(){
+    if(auto failure=world_recovery_tests())return failure;
     if(auto failure=heading_tests())return failure;
     {
         StereoGate visibility_gate;auto visible=sample();visible.focused=0;visible.visible=1;
