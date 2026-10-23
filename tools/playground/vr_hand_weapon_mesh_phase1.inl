@@ -417,10 +417,12 @@ void log(const wchar_t* phase){
 
 bool component_dirty(){return component::lease.dirty();}
 bool component_faulted(){return component::lease.faulted();}
-bool component_owned(){
+bool component_owned(bool forward){
     component::State state{};
-    if(component_faulted()||!component::lease.has_snapshot()||
-       !component_tail_cost::test(component_tail_cost::Stage::owned_read,[&]{return component::read(component::lease.key(),state);})||
+    const bool faulted=component_faulted();
+    component_names::Scope names_scope(forward&&!faulted);
+    if(faulted||!component::lease.has_snapshot()||
+       !component_tail_cost::test(component_tail_cost::Stage::owned_read,[&]{return component::read(component::lease.key(),state,forward&&!faulted);})||
        !gears_weapon::mesh_component_exact(state.value,component::lease.owned_value())){
         component::lease.relinquish();return false;
     }

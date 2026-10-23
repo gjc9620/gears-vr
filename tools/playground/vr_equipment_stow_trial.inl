@@ -243,6 +243,9 @@ struct Backend {
 };
 void publish(){dirty_visible.store(lease.dirty(),std::memory_order_release);}
 bool restore(const wchar_t* reason){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_names::Scope names_scope(false);
+#endif
     const bool was_dirty=lease.dirty();Backend backend{};
     const bool hands=!was_dirty||yield_hands(reason);
     if(!hands){lease.revoke();stop_requested=true;}

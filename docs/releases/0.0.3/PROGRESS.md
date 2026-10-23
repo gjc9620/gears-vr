@@ -164,3 +164,9 @@ component acquired=1、restored=1、setter_calls=6，三组都已设置并恢复
 一条完整有效 tail row 无丢弃／饱和：snapshot 3.2835ms，原 guards 8.2262ms，component_owned 4.4244ms（其中 owned_live_read 4.4240ms），authorize 0.0011ms。owned 与子段不可相加；四主段合计 15.9352ms。开始 tail 时原源已 96.2114ms，guards 结束已 107.7214ms，因此只缩短 owned 不足以让本次通过。acquisition 桶 30 次 current 26.9683ms、14 次 read 24.4605ms，嵌套不可相加；120 次 slot args／preflight／完整 run-invoke／post 分别 0.1773／0.0403／0.1268／7.4737ms。initial＋三 snapshot 合计 14.1815ms、跨度 44.4303ms；均为单局诊断观测。
 
 Stop／Shutdown 均 0；8 控制、44 字节挂接、3 组件组和两个入口逐字恢复，root 独立确切身份核实 owner／game／XR 终止，game exit 1；8 个音频 session 全部恢复、pending 0。工件／环境取证通过，15 项真实交互覆盖仍失败。协调者收尾首次仅因 Windows relative path 分隔符匹配失败，复用并逐字核对已复制证据后完成封存，没有重试游戏或替换原始证据。s 的 124 文件加 seal 保留，seal 5a631abe…0969，root result f58b1b8a…e18e。下一步评估现有 scoped 名称解析与最终只向前复核的局部算法降本，不能重锚证书或删减校验。
+
+## 2026-10-24 — 持枪事务内的组合名称解析候选
+
+根据 s 实际尾段，在同一候选合并有界降本：仅私有 HAND_WEAPON 宏且 component_names::enabled 时，global named／derives／field 使用 query 长度＋真实 NUL 上限（最多128），walk 外只计算一次纯 query 长度；默认 scope／宏关闭和直接 name 保持。after_component 的既有 Attempt 内仅 phase1/right-mask 开启 Scope，在失败 drain 和手 lease 前析构。component_owned 默认 forward=false，原 fault 位置只采样一次，显式 forward 与该故障位共同选择已有 fast read；只有原 phase1/right 调用传 true，全部 current／slot getter／exact-owned／relinquish 保持。invoke 原 opt-out 不改，直接 drain_journals／stow restore 入口明确 Scope(false)，保留回滚正文和次序。Scope 只选解析算法，原 Plan／100ms／采样位置和 s 计时保持。
+
+六文件 patch ec0bb35a…6682、producer feb7bf53…8702，Astra 9b6e63a9…20f9 窄审无阻断。真实 helper 抽取的24类／227项严格CPU检查通过，覆盖默认／宏关闭、短路、嵌套及默认 owned 遮蔽父TLS。两次编译／执行中首轮仅测试事件字符串指针比较误判，改为文本值比较后通过，候选源未改，原日志保留。Root读完整patch并核实报告／日志与全部776源，首次核对仅误设 producer 原件目录名称、在任何源码写入前停止；改用既有不可变parent源核对原件后，应用六份原字节，其余770项保持。PAGE_GUARD后缀访问轨迹差异及有效内部query前提继续明确；fixture读取量减少不是实机节省。新的PG构建及100ms实际结果待验证，不把候选称为已修复超时。

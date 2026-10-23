@@ -90,7 +90,7 @@ bool component_dirty();
 bool component_faulted();
 bool component_related(uptr);
 bool component_restore();
-bool component_owned();
+bool component_owned(bool forward=false);
 bool component_reset();
 void component_reset_binding(unsigned);
 void component_relinquish();
@@ -103,6 +103,9 @@ bool journals_dirty(){return trial.lease.dirty()||component_dirty();}
 void publish_journals(){safe_to_unload.store(!journals_dirty(),std::memory_order_release);}
 bool restore(const wchar_t*);
 bool drain_journals(const wchar_t* reason){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_names::Scope names_scope(false);
+#endif
     // Terminal producer state is deliberately absent from rollback admission.
     if(dual_draining)return false;
     dual_draining=true;

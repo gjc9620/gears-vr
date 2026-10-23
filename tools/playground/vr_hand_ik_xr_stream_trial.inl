@@ -776,6 +776,7 @@ void post_tick(uptr pc){
     bool after_component_valid{};
     {
         component_tail_cost::Attempt timing(plan.ticket.sequence,plan.revision,lease,equipment_phase,mask);
+        component_names::Scope names_scope(equipment_phase==1&&(mask&2));
         after_component_valid=
             component_tail_cost::test(component_tail_cost::Stage::snapshot,[&]{return handik::snapshot(pc,after_component);})&&
             component_tail_cost::test(component_tail_cost::Stage::guards,[&]{
@@ -785,7 +786,7 @@ void post_tick(uptr pc){
                     !xr_equipment_gate(after_component,equipment_phase,L"after_component",EquipmentTiming::prewrite_phase));
             })&&
             (!(equipment_phase==1&&(mask&2))||
-                component_tail_cost::test(component_tail_cost::Stage::owned,[&]{return component_owned();}))&&
+                component_tail_cost::test(component_tail_cost::Stage::owned,[&]{return component_owned(true);}))&&
             component_tail_cost::test(component_tail_cost::Stage::authorize,[&]{
                 return authorize_current_xr_plan(plan,xr_context(after_component,trial.xr_ready),GetTickCount64())==mask;
             });

@@ -148,6 +148,11 @@ struct Scope {
     Scope(Scope const&)=delete;
     Scope& operator=(Scope const&)=delete;
 };
+std::size_t query_limit(const wchar_t* value){
+    if(!value)return 0;
+    std::size_t len{};while(len<127&&value[len])++len;
+    return len<127?len+1:128;
+}
 std::size_t page_bytes(){
     static const std::size_t bytes=[](){SYSTEM_INFO info{};GetSystemInfo(&info);return std::size_t(info.dwPageSize);}();
     return bytes;
