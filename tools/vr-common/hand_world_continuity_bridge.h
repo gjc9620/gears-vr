@@ -50,6 +50,13 @@ struct WorldReadObservation {
     std::int64_t frequency{},now_ns{};
     std::uint64_t cursor_before{},cursor_after{},expected_game_start{},expected_native_started_qpc{},now{};
 };
+// Success-only evidence from the original post-copy clocks. No new clock or mapping read.
+struct WorldReadSuccess {
+    unsigned known{};
+    std::uint64_t now{};
+    std::int64_t now_ns{};
+};
+static_assert(std::is_standard_layout_v<WorldReadSuccess> && std::is_trivially_copyable_v<WorldReadSuccess>);
 struct WorldReadRejection {
     static constexpr unsigned schema=1;
     unsigned size{sizeof(WorldReadRejection)},known{};
@@ -184,8 +191,8 @@ public:
         ReleaseMutex(mutex_);return ok;
     }
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
-    WorldRead read(std::uint64_t& cursor,WorldFrame& out) noexcept {
-        out={};
+    WorldRead read(std::uint64_t& cursor,WorldFrame& out,WorldReadSuccess* success=nullptr) noexcept {
+        out={};if(success)*success={};
         WorldReadObservation o{};o.cursor_before=o.cursor_after=cursor;o.expected_pid=pid_;
         o.expected_game_start=game_start_;o.expected_native_started_qpc=native_started_qpc_;
         if(observe(o,WorldRejectCheck::consumer,producer_,true)||
@@ -214,7 +221,9 @@ public:
            observe(o,WorldRejectCheck::pose_recent,now-frame.pose.created_ms>100,true)||
            observe(o,WorldRejectCheck::certificate_recent,!certificate_recent(frame.certificate,now_ns),true))
             return read_rejected(WorldRejectBranch::frame,o,cursor,&packet);
-        out=frame;return WorldRead::received;
+        out=frame;
+        if(success)*success={1,now,now_ns};
+        return WorldRead::received;
     }
     WorldReadRejection const& first_read_rejection() const noexcept {return first_read_rejection_;}
     // Explicit trial lifecycle reset; close/open do not erase a pending first rejection.

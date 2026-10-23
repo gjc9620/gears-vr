@@ -251,6 +251,83 @@ bool triple_schema(uptr property,bool rotation){
     }
     return true;
 }
+// Geometry input only. These copies own no asset fields or component groups.
+// Descriptors are resolved afresh inside one non-engine local read; retained
+// identities/layouts are comparison evidence, never reusable property handles.
+struct AssetSchema {
+    stow::ObjectKey property{},structure{};
+    std::array<unsigned,5> layout{}; // dimension, bytes, offset, class bytes, struct bytes
+};
+struct AssetInput {
+    stow::ObjectKey mesh{},asset{};
+    AssetSchema origin_schema{},rotation_schema{};
+    Bytes origin{},rotation{};
+    bool known{};
+};
+struct TargetGeometry {
+    AssetInput input{};
+    gears_vr::Viewpoint model{};
+    gears_vr::Rotator control{};
+    bool known{};
+};
+TargetGeometry target_geometry;
+bool same_asset_schema(AssetSchema const& a,AssetSchema const& b){
+    return !std::memcmp(&a.property,&b.property,sizeof(a.property))&&
+        !std::memcmp(&a.structure,&b.structure,sizeof(a.structure))&&a.layout==b.layout;
+}
+bool same_asset_identity_schema(AssetInput const& a,AssetInput const& b){
+    return a.known&&b.known&&!std::memcmp(&a.mesh,&b.mesh,sizeof(a.mesh))&&
+        !std::memcmp(&a.asset,&b.asset,sizeof(a.asset))&&
+        same_asset_schema(a.origin_schema,b.origin_schema)&&same_asset_schema(a.rotation_schema,b.rotation_schema);
+}
+bool asset_identity(Key const& key,stow::ObjectKey& mesh,stow::ObjectKey& asset){
+    uptr pointer{};
+    return lookup::object_key(key.objects[7].address,mesh)&&
+        !std::memcmp(&mesh,&key.objects[7],sizeof(mesh))&&
+        lookup::object_key(key.asset.address,asset)&&!std::memcmp(&asset,&key.asset,sizeof(asset))&&
+        lookup::pointer(mesh.address,L"SkeletalMesh",pointer)&&pointer==asset.address;
+}
+bool asset_schema(uptr asset,uptr property,bool rotation,AssetSchema& out){
+    out={};
+    if(!triple_schema(property,rotation))return false;
+    const auto structure=get<uptr>(property+0xd0),cls=get<uptr>(asset+0x50);
+    if(!lookup::object_key(property,out.property)||!lookup::object_key(structure,out.structure))return false;
+    out.layout={get<unsigned>(property+0x70),get<unsigned>(property+0x74),get<unsigned>(property+0x94),
+        get<unsigned>(cls+0x88),get<unsigned>(structure+0x88)};
+    return true;
+}
+bool asset_triple(uptr asset,const wchar_t* label,bool rotation,Bytes& bytes,AssetSchema& schema){
+    const auto property=lookup::property(asset,label);
+    if(!asset_schema(asset,property,rotation,schema)||
+       !lookup::field_at(asset,property,L"StructProperty",bytes.data(),12))return false;
+    AssetSchema after{};
+    return lookup::property(asset,label)==property&&asset_schema(asset,property,rotation,after)&&
+        same_asset_schema(schema,after);
+}
+// Caller has just passed its existing full current/read guard. This adds no
+// engine call or full-current/getter traversal and is not an atomic snapshot.
+bool read_asset_input(Key const& key,AssetInput& out){
+    out={};AssetInput sample{};
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire)||
+       !asset_identity(key,sample.mesh,sample.asset)||
+       !asset_triple(key.asset.address,L"Origin",false,sample.origin,sample.origin_schema)||
+       !asset_triple(key.asset.address,L"RotOrigin",true,sample.rotation,sample.rotation_schema))return false;
+    std::array<float,3> origin{};std::memcpy(origin.data(),sample.origin.data(),12);
+    for(float x:origin)if(!std::isfinite(x))return false;
+    stow::ObjectKey mesh{},asset{};
+    if(!asset_identity(key,mesh,asset))return false;
+    sample.known=true;out=sample;return true;
+}
+bool zero_asset_origin(AssetInput const& input){
+    if(!input.known)return false;
+    std::array<float,3> origin{};std::memcpy(origin.data(),input.origin.data(),12);
+    return std::all_of(origin.begin(),origin.end(),[](float x){return std::isfinite(x)&&x==0.f;});
+}
+bool asset_input_matches(Key const& key,AssetInput const& expected){
+    AssetInput live{};
+    return expected.known&&read_asset_input(key,live)&&zero_asset_origin(live)&&
+        same_asset_identity_schema(expected,live)&&expected.origin==live.origin&&expected.rotation==live.rotation;
+}
 bool read(Key const& key,State& out,bool fast=false){
     component_cost::AggregateSpan cost(component_cost::AggregateKind::read_total);
     out={};
@@ -283,6 +360,8 @@ struct Forward {
     gears_hand_stream::Plan const& plan;
     unsigned mask;
     gears_hand_stream::Context context{};
+    Key const& expected_key;
+    AssetInput const& asset_input;
     bool prepare(Key const& key){
         using component_trace::gate;using component_trace::Stage;
         Snapshot hand{};
@@ -300,6 +379,9 @@ struct Forward {
         return gate(Stage::authorize_ended,!trial.ended)&&gate(Stage::authorize_phase,trial.xr_equipment_phase==1)&&
             gate(Stage::authorize_tick,trial.tick_epoch==trial.epoch)&&gate(Stage::authorize_epoch,trial.epoch==plan.context.action_epoch)&&
             gate(Stage::authorize_hand,(mask&2)!=0)&&
+            // acquire's internal failure cleanup reuses this backend after
+            // setting faulted. Asset geometry cannot become a rollback gate.
+            (lease.faulted()||asset_input_matches(expected_key,asset_input))&&
             gate(Stage::authorize,authorize_current_xr_plan(plan,context,GetTickCount64())==mask);
     }
 };
@@ -397,6 +479,38 @@ void value(const wchar_t* label,Value const& value){
         unsigned(value.absolute[0]),unsigned(value.absolute[1]),unsigned(value.absolute[2]),label);
     bytes(value.translation);fwprintf(log_file,L" %ls_rotation=",label);bytes(value.rotation);
 }
+void asset_key_log(stow::ObjectKey const& key){
+    fwprintf(log_file,L"%llx:%llx:%llx:%u:%u:%u:%u",key.address,key.object_class,key.outer,
+        key.index,key.name_index,key.name_number,key.reserved);
+}
+void asset_schema_log(AssetSchema const& schema){
+    asset_key_log(schema.property);fwprintf(log_file,L"@");asset_key_log(schema.structure);
+    fwprintf(log_file,L"@%u:%u:%u:%u:%u",schema.layout[0],schema.layout[1],schema.layout[2],schema.layout[3],schema.layout[4]);
+}
+void asset_input_log(const wchar_t* label,AssetInput const& input,bool known){
+    fwprintf(log_file,L" %ls_asset_key=",label);if(known)asset_key_log(input.asset);else fwprintf(log_file,L"unknown");
+    fwprintf(log_file,L" %ls_weapon_mesh_key=",label);if(known)asset_key_log(input.mesh);else fwprintf(log_file,L"unknown");
+    fwprintf(log_file,L" %ls_origin_hex=",label);if(known)bytes(input.origin);else fwprintf(log_file,L"unknown");
+    fwprintf(log_file,L" %ls_rot_origin_hex=",label);if(known)bytes(input.rotation);else fwprintf(log_file,L"unknown");
+    fwprintf(log_file,L" %ls_origin_schema=",label);if(known)asset_schema_log(input.origin_schema);else fwprintf(log_file,L"unknown");
+    fwprintf(log_file,L" %ls_rot_origin_schema=",label);if(known)asset_schema_log(input.rotation_schema);else fwprintf(log_file,L"unknown");
+}
+void geometry_log(AssetInput const& observed,bool observation_known){
+    const bool known=target_geometry.known&&target_geometry.input.known;
+    observation_known=observation_known&&observed.known;
+    fwprintf(log_file,L" geometry_target_known=%u geometry_non_atomic=1 asset_observation_known=%u "
+        L"asset_identity_schema_match=%u asset_values_match=%u asset_observation_origin_zero=%u",
+        unsigned(known),unsigned(observation_known),unsigned(known&&observation_known&&same_asset_identity_schema(target_geometry.input,observed)),
+        unsigned(known&&observation_known&&target_geometry.input.origin==observed.origin&&target_geometry.input.rotation==observed.rotation),
+        unsigned(observation_known&&zero_asset_origin(observed)));
+    if(known){
+        auto const& model=target_geometry.model;auto const& control=target_geometry.control;
+        fwprintf(log_file,L" model_position=%.17g,%.17g,%.17g model_rotation_radians=%.17g,%.17g,%.17g "
+            L"control_rotation_radians=%.17g,%.17g,%.17g",model.position.x,model.position.y,model.position.z,
+            model.rotation.pitch,model.rotation.yaw,model.rotation.roll,control.pitch,control.yaw,control.roll);
+    }else fwprintf(log_file,L" model_position=unknown model_rotation_radians=unknown control_rotation_radians=unknown");
+    asset_input_log(L"frozen",target_geometry.input,known);asset_input_log(L"observed",observed,observation_known);
+}
 void dump_first_bind(bool clean){
     if(!clean||dual_draining||component_trace::state.depth||!log_file||!first_bind.attempted||first_bind.dumped)return;
     first_bind.dumped=true;auto const& row=first_bind;
@@ -429,7 +543,8 @@ void log(const wchar_t* phase){
     std::array<float,16> matrix{};int tick{};
     const bool world_known=world(lease.key(),matrix,tick);
     std::array<unsigned,3> raw{};const bool raw_known=known&&absolute_storage(lease.key(),raw);
-    fwprintf(log_file,L"hand_weapon_component_sample schema=1 phase=%ls hand_lease=%u plan_revision=%llu "
+    AssetInput observed{};const bool asset_known=known&&world_known&&read_asset_input(lease.key(),observed);
+    fwprintf(log_file,L"hand_weapon_component_sample schema=2 phase=%ls hand_lease=%u plan_revision=%llu "
         L"sequence=%llu action_epoch=%llu equipment_phase=%u readback_known=%u world_known=%u mesh_tick=%d "
         L"native_started_qpc=%llu xr_pid=%llu xr_start=%llu stream_epoch=%llu reference_epoch=%llu "
         L"reference_generation=%llu left_tracking_epoch=%llu right_tracking_epoch=%llu "
@@ -451,7 +566,7 @@ void log(const wchar_t* phase){
     for(auto bits:baseline_absolute_storage)fwprintf(log_file,L"%08x",bits);
     fwprintf(log_file,L" target_absolute_storage=");for(auto bits:target_absolute_storage)fwprintf(log_file,L"%08x",bits);
     fwprintf(log_file,L" readback_absolute_storage=");for(auto bits:raw)fwprintf(log_file,L"%08x",bits);
-    freehands::print_matrix(L"gun",matrix);fwprintf(log_file,L"\n");fflush(log_file);
+    freehands::print_matrix(L"gun",matrix);geometry_log(observed,asset_known);fwprintf(log_file,L"\n");fflush(log_file);
 }
 } // namespace component
 
@@ -466,7 +581,10 @@ bool component_owned(bool forward){
        !gears_weapon::mesh_component_exact(state.value,component::lease.owned_value())){
         component::lease.relinquish();return false;
     }
-    return true;
+    // A geometry-only rejection must leave exact raw ownership available to
+    // the existing drain. Default/rollback checks remain the original path.
+    return !forward||(component::target_geometry.known&&
+        component::asset_input_matches(component::lease.key(),component::target_geometry.input));
 }
 bool component_related(uptr object){
     if(component::key_known){
@@ -500,6 +618,7 @@ bool component_restore(){
 bool component_reset(){
     if(!component::lease.reset())return false;
     component_trace::reset();component_cost::reset();component_tail_cost::reset();component::reset_first_bind();
+    component::target_geometry={};
     component::mount.reset();component::fixed_key={};component::key_known=component::recorded=false;
     component::terminal_dumped=component::terminal_clean_dumped=false;
     component::acquired=component::restored=component::setter_calls=component::relinquished=0;
@@ -532,6 +651,7 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
     component_trace::gate(component_trace::Stage::acquire_enter,true);
     component::Key key{};
     component::Value wanted{};
+    component::TargetGeometry geometry{};
     {
         component_names::Scope names_scope(!component::lease.faulted());
         component_cost::Owner cost_owner(0,!component::lease.faulted());
@@ -567,6 +687,11 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
             component::first_bind.initial_read_state_known=before.known;component::first_bind.initial_read_after_bind=before.value;
         }
         if(!component_trace::gate(component_trace::Stage::initial_read,initial_read))return false;
+        if(!component::read_asset_input(key,geometry.input)||!component::zero_asset_origin(geometry.input))return false;
+        std::array<std::int32_t,3> rot_origin{};std::memcpy(rot_origin.data(),geometry.input.rotation.data(),12);
+        geometry.model=pose;
+        if(!gears_weapon::model_to_component_rotation(pose.rotation,rot_origin,geometry.control))return false;
+        geometry.known=true;
         wanted=before.value;wanted.absolute[0]=wanted.absolute[1]=true;
         std::array<uptr,3> flag_addresses{};std::array<unsigned,3> flag_masks{};
         if(!component_trace::gate(component_trace::Stage::absolute_storage,
@@ -577,12 +702,13 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
             bits=wanted.absolute[j]?bits|flag_masks[j]:bits&~flag_masks[j];
         }
         const playground::Vector position{float(pose.position.x),float(pose.position.y),float(pose.position.z)};
-        const playground::Rotation rotation{gears_vr::to_rotator_units(pose.rotation.pitch),
-            gears_vr::to_rotator_units(pose.rotation.yaw),gears_vr::to_rotator_units(pose.rotation.roll)};
+        const playground::Rotation rotation{gears_vr::to_rotator_units(geometry.control.pitch),
+            gears_vr::to_rotator_units(geometry.control.yaw),gears_vr::to_rotator_units(geometry.control.roll)};
         std::memcpy(wanted.translation.data(),&position,12);std::memcpy(wanted.rotation.data(),&rotation,12);
         if(record_first_bind){component::first_bind.quantized_wanted=wanted;component::first_bind.quantized_wanted_known=true;}
     }
-    component::Forward forward{plan,mask,{}};component::Backend backend{key,&forward};
+    component::Forward forward{plan,mask,{},key,geometry.input};component::Backend backend{key,&forward};
+    component::target_geometry=geometry;
     component::target=wanted;component::hand_lease=lease_number;component::plan_sequence=plan.ticket.sequence;
     component::plan_revision=plan.revision;component::action_epoch=plan.context.action_epoch;
     component::certificate=plan.ticket.certificate;

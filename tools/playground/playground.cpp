@@ -37,6 +37,7 @@
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
 #include "../vr-common/weapon_mesh_component_lease.h"
 #include "../vr-common/weapon_mesh_follow.h"
+#include "../vr-common/weapon_component_rotation.h"
 #if !defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
 #error Phase1 component lease requires certified combined hands
 #endif
@@ -503,6 +504,9 @@ namespace handstream {
 #endif
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    handstream::tick_boundary_diagnostic::Token tick_diagnostic(object,function);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
     handstream::EquipmentEntryScope equipment_entry_observation(object,function);
 #endif
@@ -562,10 +566,18 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
             post_stream_hand_ik_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
                 object==playground::pointer(playground::player,L"Actor");
             if(post_stream_hand_ik_tick){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+                handstream::pre_tick(object,equipment_entry_observation.observation(),tick_diagnostic);
+#else
+                handstream::pre_tick(object,tick_diagnostic);
+#endif
+#else
 #if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
                 handstream::pre_tick(object,equipment_entry_observation.observation());
 #else
                 handstream::pre_tick(object);
+#endif
 #endif
             }
 #endif
@@ -636,7 +648,11 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
     if(post_stream_hand_ik_tick&&enabled.load(std::memory_order_acquire)&&
        game_thread.load()==GetCurrentThreadId()){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+        inside=true;handstream::post_tick(object,tick_diagnostic);inside=false;
+#else
         inside=true;handstream::post_tick(object);inside=false;
+#endif
     }
 #endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE)

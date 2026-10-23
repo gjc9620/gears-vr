@@ -55,6 +55,9 @@ void dump(){
 } // namespace world_reader_diagnostic
 #endif
 
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+namespace tick_boundary_diagnostic {void reset();void dump();}
+#endif
 namespace component_trace {
 using Value=gears_weapon::WeaponMeshComponentValue;
 enum class Stage:unsigned {
@@ -82,6 +85,10 @@ struct Auth {
     std::uint64_t now{},live_now{},commit_now{},write_until{},ticket_ms{},plan_ms{},context_ms{};
     std::int64_t authorize_ns{},commit_ns{},stereo_ns{},input_ns{};
 };
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+struct AuthObservation {Auth value{};bool known{};};
+thread_local AuthObservation* observed_authorization{};
+#endif
 struct Meta {unsigned group{};bool forward{},wanted_known{},wanted_original{};Value expected{},wanted{};};
 struct Row {
     std::uint64_t ordinal{};
@@ -116,6 +123,9 @@ bool gate(Stage stage,bool passed,unsigned detail=0,unsigned bits=0){
     Row row{};row.stage=stage;row.passed=passed;row.detail=detail;row.bits=bits;add(row);return passed;
 }
 void authorization(Auth const& value,Stage stage=Stage::authorize){
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    if(observed_authorization){observed_authorization->value=value;observed_authorization->known=true;}
+#endif
     state.last_auth=value;state.last_auth_known=true;
     Row row{};row.stage=stage;row.passed=value.result!=0;row.auth_known=true;row.auth=value;add(row);
 }
@@ -141,7 +151,7 @@ void begin(){
 }
 void reset(){state={};
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
-    world_reader_diagnostic::reset();
+    world_reader_diagnostic::reset();tick_boundary_diagnostic::reset();
 #endif
 }
 void print_value(const wchar_t* label,Value const& value){
@@ -167,7 +177,7 @@ void print(Row const& row,const wchar_t* kind){
 }
 void dump(){
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
-    world_reader_diagnostic::dump();
+    world_reader_diagnostic::dump();tick_boundary_diagnostic::dump();
 #endif
     if(!state.enabled||state.dumped||state.depth||dual_draining||!log_file)return;
     state.dumped=true;
@@ -181,6 +191,194 @@ void dump(){
 }
 struct DumpAtExit {~DumpAtExit(){dump();}};
 } // namespace component_trace
+
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+// Fixed tail evidence only. The stack token never authorizes, consumes, restores,
+// or resamples an MS/NS clock. Inert recursive callbacks mask the parent token.
+namespace tick_boundary_diagnostic {
+enum class Boundary:unsigned {pre_entry,after_drain,post_entry,count};
+constexpr unsigned capacity=8,boundaries=unsigned(Boundary::count);
+struct Source {
+    std::uint64_t serial{},sequence{},created_ms{},session{},space_epoch{},input_epoch{},world_generation{};
+    std::uintptr_t controller{},pawn{},weapon{};
+    unsigned valid_mask{},grip_down_mask{};
+    gears_hand_continuity::Certificate certificate{};
+};
+struct Row {
+    std::uint64_t generation{},tick{},parent_tick{},qpc[boundaries]{},snapshot_ms{};
+    uptr object{},function{},pc{},pawn{},mesh{},weapon{};
+    unsigned sampled{},qpc_known{},epoch{},tick_epoch{},phase{},lease{},terminal_site{};
+    int mesh_tick{};float world_time{};
+    bool closed{},terminal{},snapshot_known{},mesh_tick_known{},plan_known{},attempt_known{};
+    bool read_outcome_known{},final_auth_called{},final_auth_known{};
+    gears_hand_continuity::WorldRead read_result{};
+    gears_hand_continuity::WorldReadSuccess success{};
+    Source source{};gears_hand_stream::Plan plan_value{};
+    component_trace::Auth final_auth{};unsigned final_result{};
+};
+struct State {
+    std::array<Row,capacity> rows{};
+    std::uint64_t generation{1},next_tick{},overwritten{},terminal_tick{};
+    unsigned next{},count{},open{},reset_open{};
+    bool frozen{},dumped{},counter_saturated{},disabled{},terminal_context_known{};
+};
+State state;
+struct Token;
+thread_local Token* current{};
+void flush();
+struct Token {
+    Token* previous;uptr object,function;bool active{};
+    union {Row row;}; // No large row initialization for an inert engine callback.
+    Token(uptr object_value,uptr function_value) noexcept:
+        previous(current),object(object_value),function(function_value){current=this;}
+    Token(Token const&)=delete;Token& operator=(Token const&)=delete;
+    void activate() noexcept {
+        if(active||state.disabled)return;
+        if(state.open==(std::numeric_limits<unsigned>::max)()||state.next_tick==UINT64_MAX){state.counter_saturated=true;return;}
+        ::new(static_cast<void*>(&row)) Row{}; // Placement only; storage is in this stack token.
+        row.generation=state.generation;row.tick=++state.next_tick;
+        if(previous&&previous->active&&previous->row.generation==state.generation)row.parent_tick=previous->row.tick;
+        row.object=object;row.function=function;row.epoch=trial.epoch;row.tick_epoch=trial.tick_epoch;row.phase=trial.phase;
+        ++state.open;active=true;
+    }
+    void stamp(Boundary which) noexcept {
+        activate();if(!active)return;
+        const unsigned index=unsigned(which),bit=1u<<index;
+        if(row.sampled&bit)return;
+        row.sampled|=bit;LARGE_INTEGER qpc{};
+        if(QueryPerformanceCounter(&qpc)&&qpc.QuadPart>0){row.qpc[index]=std::uint64_t(qpc.QuadPart);row.qpc_known|=bit;}
+    }
+    void adopt_generation() noexcept {
+        if(!active)return;
+        const auto saved=row;
+        row={};row.generation=state.generation;row.tick=saved.tick;row.object=object;row.function=function;
+        row.sampled=saved.sampled;row.qpc_known=saved.qpc_known;
+        for(unsigned i=0;i<boundaries;++i)row.qpc[i]=saved.qpc[i];
+        // A reset cannot give an old parent a new-session identity.
+        if(previous&&previous->active&&previous->row.generation==state.generation)row.parent_tick=previous->row.tick;
+    }
+    bool writable() const noexcept {return active&&!state.disabled&&row.generation==state.generation&&!state.frozen;}
+    void snapshot(Snapshot const& value) noexcept {
+        if(!writable())return;
+        row.snapshot_known=true;row.snapshot_ms=value.ms;row.mesh_tick_known=value.mesh_tick_known;
+        row.mesh_tick=value.mesh_tick;row.world_time=value.world_time;
+        row.pc=value.pc;row.pawn=value.pawn;row.mesh=value.mesh;row.weapon=value.weapon;
+        row.epoch=trial.epoch;row.tick_epoch=trial.tick_epoch;row.phase=trial.phase;
+    }
+    void read(gears_hand_continuity::WorldRead result,gears_hand_continuity::WorldReadSuccess const& success,
+              gears_hand_continuity::WorldFrame const& frame) noexcept {
+        if(!writable())return;
+        row.read_outcome_known=true;row.read_result=result;
+        if(result!=gears_hand_continuity::WorldRead::received||!success.known)return;
+        row.success=success;auto const& p=frame.pose;
+        row.source={p.serial,p.sequence,p.created_ms,p.session,p.space_epoch,p.input_epoch,p.world_generation,
+            p.controller,p.pawn,p.weapon,unsigned(p.valid_mask),unsigned(p.grip_down_mask),frame.certificate};
+    }
+    void plan(gears_hand_stream::Plan const& value) noexcept {
+        if(writable()){row.plan_known=true;row.plan_value=value;}
+    }
+    void attempt(unsigned lease) noexcept {if(writable()){row.attempt_known=true;row.lease=lease;}}
+    void terminal(unsigned site) noexcept {
+        if(state.frozen||state.disabled)return;
+        activate();
+        state.frozen=true;
+        if(active&&row.generation==state.generation){
+            row.terminal=true;row.terminal_site=site;state.terminal_context_known=true;state.terminal_tick=row.tick;
+        }
+    }
+    ~Token(){
+        current=previous;
+        if(!active)return;
+        row.closed=true;--state.open;
+        if(!state.disabled&&row.generation==state.generation&&(!state.frozen||row.terminal)){
+            state.rows[state.next]=row;state.next=(state.next+1)%capacity;
+            if(state.count<capacity)++state.count;
+            else if(state.overwritten!=UINT64_MAX)++state.overwritten;else state.counter_saturated=true;
+        }
+        flush();
+    }
+};
+void reset(){
+    // Called only by the existing successful component_reset. Do not destroy
+    // live stack tokens or their open count; post_tick adopts its current token.
+    const auto generation=state.generation,next_tick=state.next_tick;const auto open=state.open;
+    const bool saturated=state.counter_saturated;
+    state={};state.next_tick=next_tick;state.open=open;state.reset_open=open;state.counter_saturated=saturated;
+    if(generation==UINT64_MAX){state.generation=generation;state.disabled=true;state.counter_saturated=true;}
+    else state.generation=generation+1;
+}
+template<class Call> unsigned final_authorize(Token& token,Call&& call){
+    component_trace::AuthObservation observation{};
+    struct Capture {
+        component_trace::AuthObservation* previous;
+        explicit Capture(component_trace::AuthObservation& value):previous(component_trace::observed_authorization){
+            component_trace::observed_authorization=&value;
+        }
+        ~Capture(){component_trace::observed_authorization=previous;}
+    } capture(observation);
+    if(token.writable())token.row.final_auth_called=true;
+    const unsigned result=call();
+    if(token.writable()){
+        token.row.final_result=result;token.row.final_auth_known=observation.known;
+        if(observation.known)token.row.final_auth=observation.value;
+    }
+    return result;
+}
+void flush(){
+    if(state.dumped||!state.frozen||state.open||!trial.ended||dual_draining||component_trace::state.depth||!log_file)return;
+    if(journals_dirty())return;
+    state.dumped=true;
+    std::uint64_t frequency{};
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    frequency=trial.timing.frequency; // Original trial QPF; no diagnostic QPF call.
+#endif
+    fwprintf(log_file,L"hand_tick_boundary_begin schema=1 capacity=8 count=%u generation=%llu overwritten=%llu "
+        L"terminal_context_known=%u terminal_tick=%llu open=%u reset_open=%u counter_saturated=%u "
+        L"frequency=%llu frequency_resampled=0 ms_ns_resampled=0 extra_authorizations=0\n",
+        state.count,state.generation,state.overwritten,unsigned(state.terminal_context_known),state.terminal_tick,
+        state.open,state.reset_open,unsigned(state.counter_saturated),frequency);
+    const unsigned start=state.count==capacity?state.next:0;
+    for(unsigned i=0;i<state.count;++i){
+        auto const& r=state.rows[(start+i)%capacity];auto const& s=r.source;auto const& c=s.certificate;
+        auto const& p=r.plan_value;auto const& a=r.final_auth;
+        fwprintf(log_file,L"hand_tick_boundary schema=1 generation=%llu tick=%llu parent_tick=%llu object=%p function=%p "
+            L"closed=%u terminal=%u terminal_site=%u sampled=%u qpc_known=%u pre_qpc=%llu drain_qpc=%llu post_qpc=%llu "
+            L"snapshot_known=%u snapshot_ms=%llu mesh_tick_known=%u mesh_tick=%d world_time=%.9g pc=%p pawn=%p mesh=%p weapon=%p "
+            L"phase=%u epoch=%u tick_epoch=%u attempt_known=%u lease=%u read_outcome_known=%u read_result=%u read_success_known=%u "
+            L"read_now=%llu read_now_ns=%lld serial=%llu sequence=%llu created_ms=%llu session=%llu space_epoch=%llu input_epoch=%llu "
+            L"world_generation=%llu source_controller=%p source_pawn=%p source_weapon=%p valid_mask=%u grip_down_mask=%u "
+            L"native_started_qpc=%llu xr_pid=%llu xr_start=%llu stream_epoch=%llu reference_epoch=%llu reference_generation=%llu "
+            L"tracking_left=%llu tracking_right=%llu profile_generation=%llu source=%u stereo_ns=%lld input_ns=%lld "
+            L"plan_known=%u revision=%llu observed_now=%llu plan_ms=%llu plan_has_ticket=%u plan_serial=%llu plan_sequence=%llu "
+            L"plan_created_ms=%llu accept_mask=%u bind_mask=%u reset_mask=%u final_auth_called=%u final_auth_known=%u "
+            L"auth_fields_known=%u auth_checked=%u auth_rejected=%u now=%llu live_now=%llu commit_now=%llu write_until=%llu "
+            L"authorize_ns=%lld commit_ns=%lld ticket_ms=%llu auth_plan_ms=%llu context_ms=%llu auth_stereo_ns=%lld "
+            L"auth_input_ns=%lld policy_mask=%u auth_result=%u final_result=%u\n",
+            r.generation,r.tick,r.parent_tick,reinterpret_cast<void*>(r.object),reinterpret_cast<void*>(r.function),
+            unsigned(r.closed),unsigned(r.terminal),r.terminal_site,r.sampled,r.qpc_known,r.qpc[0],r.qpc[1],r.qpc[2],
+            unsigned(r.snapshot_known),r.snapshot_ms,unsigned(r.mesh_tick_known),r.mesh_tick,r.world_time,
+            reinterpret_cast<void*>(r.pc),reinterpret_cast<void*>(r.pawn),reinterpret_cast<void*>(r.mesh),reinterpret_cast<void*>(r.weapon),
+            r.phase,r.epoch,r.tick_epoch,unsigned(r.attempt_known),r.lease,unsigned(r.read_outcome_known),unsigned(r.read_result),r.success.known,
+            r.success.now,r.success.now_ns,s.serial,s.sequence,s.created_ms,s.session,s.space_epoch,s.input_epoch,s.world_generation,
+            reinterpret_cast<void*>(s.controller),reinterpret_cast<void*>(s.pawn),reinterpret_cast<void*>(s.weapon),s.valid_mask,s.grip_down_mask,
+            c.native_started_qpc,c.xr_publisher_pid,c.xr_publisher_start,c.stream_epoch,c.reference_epoch,c.reference_generation,
+            c.tracking_epoch[0],c.tracking_epoch[1],c.profile_generation,c.source,c.stereo_received_ns,c.input_received_ns,
+            unsigned(r.plan_known),p.revision,p.observed_now,p.context.observed_ms,unsigned(p.has_ticket),p.ticket.serial,p.ticket.sequence,
+            p.ticket.created_ms,p.accept_mask,p.bind_mask,p.reset_binding_mask,unsigned(r.final_auth_called),unsigned(r.final_auth_known),
+            a.known,a.checked,a.rejected,a.now,a.live_now,a.commit_now,a.write_until,a.authorize_ns,a.commit_ns,a.ticket_ms,a.plan_ms,
+            a.context_ms,a.stereo_ns,a.input_ns,a.mask,a.result,r.final_result);
+    }
+    fwprintf(log_file,L"hand_tick_boundary_end schema=1\n");fflush(log_file);
+}
+void dump(){
+    if(trial.ended&&!state.frozen){
+        if(current)current->terminal(0); // Exact current callback; no latest/first-failure substitution.
+        else state.frozen=true; // A termination without a hook token has no claimed terminal row.
+    }
+    flush();
+}
+} // namespace tick_boundary_diagnostic
+#endif
 
 // Separate from component_cost's acquisition-owned aggregates. These fixed
 // rows only observe the post-component short circuit; QPC grants no authority.
@@ -528,16 +726,30 @@ void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigne
 #endif
     fwprintf(log_file,L"\n");fflush(log_file);
 }
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
+void pre_tick(uptr,EquipmentEntryObservation const* entry,tick_boundary_diagnostic::Token& tick_diagnostic){
+#else
+void pre_tick(uptr,tick_boundary_diagnostic::Token& tick_diagnostic){
+#endif
+#else
 #if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
 void pre_tick(uptr,EquipmentEntryObservation const* entry){
 #else
 void pre_tick(uptr){
 #endif
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return;
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    tick_diagnostic.stamp(tick_boundary_diagnostic::Boundary::pre_entry);
+#endif
     if(journals_dirty()){
         if(!drain_journals(L"pre_tick_dual_drain")&&!trial.ended)end(8,L"dual_drain_failed");
     }else publish_journals();
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    tick_diagnostic.stamp(tick_boundary_diagnostic::Boundary::after_drain);
+#endif
     if(trial.ended){component_dump_end();return;}
     if(journals_dirty()||component_faulted()){
         end(journals_dirty()?8:7,L"component_restore_fault");component_dump_end();return;
@@ -577,10 +789,18 @@ void pre_tick(uptr){
     if(stop_requested.load(std::memory_order_acquire)){end(6,L"xr_stopped_after_restore");return;}
     trial.tick_epoch=trial.epoch;
 }
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+void post_tick(uptr pc,tick_boundary_diagnostic::Token& tick_diagnostic){
+    tick_diagnostic.stamp(tick_boundary_diagnostic::Boundary::post_entry);
+#else
 void post_tick(uptr pc){
+#endif
     if(requested.exchange(false,std::memory_order_acq_rel)){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
         if(journals_dirty()||!component_reset()){end(8,L"component_start_not_clean");return;}
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+        tick_diagnostic.adopt_generation();
+#endif
         hand_writes_relinquished=false;
 #endif
         xr_bridge.close();trial={};trial.xr_start=xr_pending;
@@ -657,6 +877,9 @@ void post_tick(uptr pc){
     if(!known){
         end(7,L"xr_frozen_player_world_or_layout_changed");return;
     }
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    tick_diagnostic.snapshot(value);
+#endif
     trial.xr_world_time=value.world_time;
     if(!trial.anchored){trial.anchor=value;trial.anchored=true;}
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
@@ -708,8 +931,15 @@ void post_tick(uptr pc){
     gears_weapon::HandWorldFrame frame{};
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     gears_hand_continuity::WorldFrame continuous_frame{};
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    gears_hand_continuity::WorldReadSuccess read_success{};
+    const auto read_result=trial.xr_open?xr_bridge.read(trial.xr_cursor,continuous_frame,&read_success):
+        gears_hand_continuity::WorldRead::none;
+    tick_diagnostic.read(read_result,read_success,continuous_frame);
+#else
     const auto read_result=trial.xr_open?xr_bridge.read(trial.xr_cursor,continuous_frame):
         gears_hand_continuity::WorldRead::none;
+#endif
     if(read_result==gears_hand_continuity::WorldRead::rejected){
         yield_for_equipment(L"xr_certified_pose_rejected");
         if(!trial.ended)end(7,L"xr_certified_pose_rejected");return;
@@ -738,6 +968,9 @@ void post_tick(uptr pc){
     timing_observation();
 #endif
     const auto plan=observe_xr_policy(context,fresh?&ticket:nullptr,GetTickCount64(),true);
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    tick_diagnostic.plan(plan);
+#endif
     xr_reset_bindings(plan.reset_binding_mask);
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     if(trial.xr_policy.certified_failed()){
@@ -761,6 +994,9 @@ void post_tick(uptr pc){
     }
 #endif
     const auto lease=leases.load()+1;
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    tick_diagnostic.attempt(lease);
+#endif
     Snapshot check{};
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     const bool checked=handik::snapshot(pc,check)&&xr_identity(check);
@@ -807,6 +1043,19 @@ void post_tick(uptr pc){
 #if !defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
     if(write_now>trial.deadline){end(7,L"xr_deadline_before_write");return;}
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    if(ferror(log_file)||trial.tick_epoch!=trial.epoch||
+       tick_boundary_diagnostic::final_authorize(tick_diagnostic,[&]{
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+           return authorize_current_xr_plan(plan,final_context,write_now);
+#else
+           return authorize_current_xr_plan(plan,xr_context(check,trial.xr_ready),write_now);
+#endif
+       })!=mask){
+        tick_diagnostic.terminal(1); // This call site; an OR-short-circuited auth remains unknown.
+        end(7,L"xr_receipt_or_log_expired_before_write");return;
+    }
+#else
     if(ferror(log_file)||trial.tick_epoch!=trial.epoch||
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
        authorize_current_xr_plan(plan,final_context,write_now)!=mask){
@@ -815,6 +1064,7 @@ void post_tick(uptr pc){
 #endif
         end(7,L"xr_receipt_or_log_expired_before_write");return;
     }
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     safe_to_unload.store(false,std::memory_order_release);
     if(!component_apply(plan,frame,check,mask,lease)){

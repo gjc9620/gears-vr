@@ -188,3 +188,23 @@ Native／XR 实际通过 60 projection layer、33 scene copy、约 0.658 秒有�
 根据 t 缺失的证据，只新增三个私有源的诊断。GHW1 reader 固定保存第一次 rejected 的原分支、实际执行／通过掩码、cursor、原锁与时钟结果及可用性；仅对已有本地 packet 保存完整 336 字节，清理后输出一次。宏 OFF 的原 read 签名／正文逐字相同、整类非空行相同，packet 和 open／publish／close 保持。首次实际 mount.bind 单独锁定既有 matrix、完整 Key、右 grip、pawn mesh TickTag 和已有 hand snapshot tick；同次 acquire 的 bind／solve／initial_read_after_bind 返回及量化目标分别标 known。不同阶段不作原子同时值，记录不能授予写权。两记录在原成功 reset 后清零、沿既有清理结束出口输出，保留原短路、时钟调用、100ms、VM 与恢复次序；新增固定复制仍会占用 CPU，不声称性能改善或失败原因已修复。
 
 reader 首次严格 CPU 编译／运行通过 34 场景／366 项对照检查，首 bind 首次通过 11 场景／60 项；没有重跑原 suite 或构建主 DLL。producer c191a821…5f32／d4ebaa06…6728，Astra 组合窄审 463a2d5b…d6e3 无阻断。协调者核对两报告的 50 份工件、完整 776 源及两个 patch，按字节应用三份源码，其余 773 项保持，应用证明 843e50c1…8aff 位于忽略的 analysis/hand-mesh-diagnostics-integration-20261024/。u 入口另在 Native 启动与手部 Start 之前，通过既有 typed reader 独立观察资产 Origin／RotOrigin，保存身份、schema、原字节与错误；缺失或不合法保持 unknown，不填零、不作为验收条件或 bind 当刻值。此入口新增 9 项有限离线检查通过，Astra b89a37ff…5552 无阻断。下一步 PG-only 构建和实际读取仍待执行，尚未新增游戏或几何通过结果。
+
+## 2026-10-24 — 两次联合接管、实际模型旋转与末次时限边界
+
+上述诊断完成一次 PG-only 严格构建和组合封存，PG 720bd5c7…f20c，组合 manifest 263727f2…57d4；776 源、27 依赖、67 工件／871 实体文件经 root 核对，Native d54ecf18…82c9、XR 0463e75f…2eff 与 loader 沿用已冻结来源。旧 60 份非 PG 工件逐字保留，没有重建或安装默认入口。入口第一次绑定因 CRLF 匹配失败，UNBOUND 检查在运行前拒绝；修正后才准备并进入 u，没有重试游戏。不能将整条准备链表述为零失败。
+
+购买版后台 u 完成双手 lease=2、restored=2、setter=16；枪体 acquired=2、restored=2、setter=12，均无 dirty／fault／relinquish。独立手部跨 Tick 几何和枪体协议通过，枪体实际完整旋转及移动／收回／返回等整局覆盖仍失败，保留 9 项真实失败。Native／XR 实际提交 80 层、38 次场景拷贝、跨度 0.8662066 秒，最大提交间隔 15.6608ms；left history 创建、释放和销毁各 1 次、失败 0。该结果只覆盖此局的生命周期和提交，不构成闪烁图像、FPS 或头显验收。8 个音频 session 均恢复；8 控制、44 字节挂接、3 组件组与入口恢复通过，自有 owner／game／XR 的确切身份均已退出。u 的 105 文件加 seal 保留，seal 1279a452…0593，root result 9439d95c…63b。
+
+u 的封存 root result.failure 将历史首次授权拒绝误写成末次停止原因，原件不修改；外部 correction 1ece16dc…76e9 和独立诊断 28dd8e68…25c9 明确区分：ordinal 276 的 certificate_recent／1024 拒绝发生在第二次成功 lease 之前；真正末次 ordinal 554 在毫秒检查 2 被拒，原 ticket 年龄 109ms、超出原截止 9ms，后面的 NS 与 policy 阶段未执行，零值不能解释为采样时间。此前 ordinal 553 授权通过时原 stereo 已 98.3052ms。文本证据段最大仅 0.1218ms；末次 postflush 的原实时设备检查耗时只能界定为 5.4870–6.7864ms，第二次 pre_restore 到第三次 before 的 85.0009ms 尚缺同帧分段，不能据此删除检查或声称微优化足以修复。u reader 未留拒绝记录，也不能反推 t 的原因已解决。
+
+实际 typed 资产读取取得 Origin=[0,0,0]、RotOrigin=[0,-16384,0]，完整资产身份与首个真实 bind 记录一致；预检值并不冒充 bind 当刻值。首 bind 原始 matrix、右 grip 与未量化 solve 均已记录。两次后续 Tick 的枪体残差约 90.015°；按模型旋转叠加到组件旋转的完整矩阵关系预测，残差降到约 0.02474°。这支持下一步在当前资产认证下按列轴 C=D×transpose(O) 求组件旋转，不能只加 yaw：后者仍约 12° 错误。非零 Origin 的平移关系尚未建立，不作推测。
+
+纯旋转 helper stage 的独立物理向量 oracle 单次执行通过 33 场景／107 检查；u 未量化目标只在最终量化一次得到 [-1218,-5134,1001]，提前量化再补偿的反例得到不同结果。首次严格编译因 fixture 注释 Unicode 在 CP936 下触发 C4819，仅改 ASCII 注释后编译通过，生产 helper 未变。此时仍未接入实际 setter。正在接线实时资产 schema／身份复核并补充同 PlayerTick 的三段 QPC 诊断，保留原 100ms、原票据／Plan、raw 三组所有权和恢复顺序；新审计须分别验证 raw 组件控制量与物理模型目标，原 0.1 阈值和运动覆盖要求保持。
+
+## 2026-10-24 — 实时资产旋转补偿与同帧时间诊断接线
+
+将纯旋转 helper、实时 Origin／RotOrigin 接线和同 PlayerTick 诊断合并到独立武器源码。初始 raw read 成功后认证当前资产与 typed 字段，Origin 必须已知、有限且数值为零；以未量化模型目标 D 和实际 O 求 C 后只量化一次。每次 forward setter 在原时钟前复核资产，tail 在原 raw exact 成功后复核；几何变化拒绝继续写入但保留仍拥有的 raw 字段供原 drain 恢复。内部 faulted rollback 和显式 restore 不加新几何门，原 Backend、lease 和原 bind／solve／translation 路径保持。
+
+同帧诊断保留末尾 8 条 completion-order 行，完整路径只在 pre 进入、原双 journal 恢复后和 post 进入新增 3 次 QPC；成功 read 复制原 now／now_ns 与同一 out，原票据／Plan 和所有权限时钟保持。当前终止行及其实际授权单独冻结，短路未执行的授权与 NS 阶段保持 unknown，不引用历史 first_failure。合法游戏线程与 Shutdown callback drain 前提明确，默认宏 OFF 的原 read／class 与源码在 8 对预处理比对中保持。
+
+纯 helper 33／107、实时资产接线 19／43、同帧诊断 29／119 及新几何审计 34／37 的有限验证均通过；各自实际首次 fixture 编译或 patch 包装失败照实保留。新 schema2 审计将 raw C 的字节配方与物理 D 的跨 Tick 方向及刚体 mount 分开，原 0.1 和两个移动阶段各至少 8 次响应等门限保持。Astra 独立复核资产接线、Sol 独立复核诊断均无阻断；root 核对 61 份 producer 工件和全部原 776 源，仅修改 4 源并新增 1 header，其余 772 项保持。应用证明 ec4f5fa1…c140，源树 44a43c9c…d6b9。root 首次合并前 guard 因 include 锚点出现两次而拒绝，未写生产文件；改用唯一的完整私有 include 块后完成应用。PG-only 构建及补偿后的实际几何、持续运动和整局覆盖仍待本轮后续执行，没有安装默认入口。
