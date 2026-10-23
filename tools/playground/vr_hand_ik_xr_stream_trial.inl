@@ -744,6 +744,9 @@ void pre_tick(uptr){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     tick_diagnostic.stamp(tick_boundary_diagnostic::Boundary::pre_entry);
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    if(component_hold::pre_tick())return;
+#endif
     if(journals_dirty()){
         if(!drain_journals(L"pre_tick_dual_drain",true)&&!trial.ended)end(8,L"dual_drain_failed");
     }else publish_journals();
@@ -794,6 +797,9 @@ void post_tick(uptr pc,tick_boundary_diagnostic::Token& tick_diagnostic){
     tick_diagnostic.stamp(tick_boundary_diagnostic::Boundary::post_entry);
 #else
 void post_tick(uptr pc){
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    if(component_hold::post_tick())return;
 #endif
     if(requested.exchange(false,std::memory_order_acq_rel)){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
@@ -1135,5 +1141,8 @@ void post_tick(uptr pc){
     sample(L"written",written,lease,mask);
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     component_log_written();
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    component_hold::arm(plan,mask,written);
+#endif
 #endif
 }

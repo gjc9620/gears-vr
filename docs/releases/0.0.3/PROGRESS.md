@@ -303,3 +303,14 @@ Astra独立时序报告d8a7fefb…1640核对封存及9份冻结源码，明确�
 root核producer21份支持工件、Astra pins及原冻结777源，按原raw字节加入header与同字节测试，CMake只新增对应target和strict选项两行，原776源保持。工作源现779项，before6cf1b603…5435、applied0c6583c2…9dd1；新增header未被运行代码include，旧lease／policy／PG／Native／XR／默认入口保持，没有重建或重复旧suite。该次入库只提供可供后续适配的协议代码，不等于游戏内持续持枪、性能或头显通过。
 
 同时对已有全量KB作有界查询，核对4份保存脚本：instant hit存在GetFireModeDamage→原int转换→TakeDamage的候选边界，Gnasher有自己的transient damage覆盖，投射物另走spawn／Init。来源注记4d8fcef1…718a仅是历史导出候选，含未解决token／type标记；未打开IDA或新增反编译，没有认证当前Result ABI、舍入、投射物伤害入口或实际0.7倍结算。单双手新规则继续标为设计确认、运行接线待做。
+
+
+## 2026-10-24 — 默认关闭的两 Tick 持枪观察接线与有限测试
+
+新增 `GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL`，CMake 默认 OFF，仅用于独立私有候选。第一次正常、完整的 phase1 枪体与双手应用及 written 回读完成后，分支关闭普通 reader／Plan／acquire 通路，保留真实 dirty 的枪 journal；下一 pre_tick 按原流程恢复手部，仅观察后续两次完整的最外层原版 PlayerTick。没有第三次、重新装载期限、新目标或新 forward setter；保留的证书仅作历史标签，首次应用的100ms门和原始source clocks保持。原版动作、Stop／Shutdown、身份／字段／schema／epoch异常和原15秒watchdog均进入原手→枪清理，不阻止原动作。
+
+两个源码复核问题已在未运行的stage内修正：最终dump等待Token链退出，避免原动作尚未返回时把returned状态提前冻结；status5另行要求首／末清理结果已知且成功、两个journal无fault，raw恢复成原值不能掩盖false-after-complete。复制记录增加可解析raw3、完整Key／slots、矩阵、typed asset schema及计数；written未保存的专用比较标为unknown，不伪造mismatch。观察自身通常跨12个slot getter引擎边界，记录非原子；两Tick字段保持也不证明引擎重新消费了矩阵或连续姿态更新。
+
+首次严格MSVC编译通过，首次执行完成32场景／175检查后，在递归终止测试的旧预期status7处失败。真实完整end在枪journal仍dirty时按原规则选择status8，随后枪清理成功，外层ended guard保留8。仅该fixture改为严格要求8、真实FILE sink的内层reason、无status5及clean/safe闭包；不改生产源或实际函数片段。首次失败b0af8848…b764及原输入／日志保留，第二次编译／执行通过39场景／202检查，结果4aa833b4…757a；未重跑已有宽suite。
+
+一组实际MSVC `/EP` 对比通过：以原26项配置、HOLD未定义，在原位置展开四份PG源码的三条include，其余依赖include两侧同规则剥离；所有非空行字节一致。该证据b799a053…8ede仅证明这组源文本预处理，不能当完整TU／布局／ABI或运行证明。producer7648069…c328、Astra e9bae3ca…bad4及root9cca3058…3f0e通过；root应用五份raw stage，其余774份已跟踪源保持，共779源。新持续组件header仍未被runtime引用。完整PG构建、冻结和新的两Tick后台实测待执行，默认启动器及发布包未安装此试验，单手0.7／双手1.0的实际伤害链也仍待接入。

@@ -102,9 +102,60 @@ bool dual_draining{},hand_writes_relinquished{};
 bool journals_dirty(){return trial.lease.dirty()||component_dirty();}
 void publish_journals(){safe_to_unload.store(!journals_dirty(),std::memory_order_release);}
 bool restore(const wchar_t*);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+// HOLD_STATE_BEGIN: private diagnostic, not an authority or a new lease.
+namespace component_hold {
+constexpr unsigned target_ticks=2;
+struct Token;
+void token_exit(Token*);
+void dump();
+thread_local Token* current{};
+struct Token {
+    Token* previous;uptr object,function;
+    Token(uptr object_value,uptr function_value) noexcept:
+        previous(current),object(object_value),function(function_value){current=this;}
+    Token(Token const&)=delete;Token& operator=(Token const&)=delete;
+    bool outer() const noexcept {return previous==nullptr;}
+    ~Token(){
+        const bool owning_thread=GetCurrentThreadId()==game_thread.load(std::memory_order_acquire);
+        if(owning_thread)token_exit(this);current=previous;if(owning_thread)dump();
+    }
+};
+struct State {
+    bool closed{},arming{},armed{},observer_busy{},ending{},dumped{},complete{};
+    bool written_ok{},hand_before{},hand_after{},hand_restore_observed{},drain_called{},hand_result{},component_result{},reason_truncated{};
+    bool last_hand_result{},last_component_result{};
+    unsigned completed{},epoch{},written_epoch{},written_lease{},mask{},hand_setters{},hand_writes{};
+    std::uint64_t generation{},dispatch_serial{},written_sequence{},written_revision{},deadline{},began{},component_setters{};
+    uptr pc{},function{};Token* dispatch{};
+    std::array<wchar_t,96> reason{}; // Owned copy: watched-action labels can be stack locals.
+};
+State state;
+// Only the observer is recursion-masked. before_action still precedes the
+// event_hook recursion bypass, and the real original dispatch is unmasked.
+struct ObserverScope {
+    bool saved_inside,saved_busy;
+    ObserverScope():saved_inside(inside),saved_busy(state.observer_busy){inside=true;state.observer_busy=true;}
+    ~ObserverScope(){state.observer_busy=saved_busy;inside=saved_inside;dump();}
+};
+bool stream_tick_allowed(Token const& token){return !state.closed||token.outer();}
+void cancel(const wchar_t*);
+void before_end(const wchar_t*);
+bool pre_tick();
+bool post_tick();
+void arm(gears_hand_stream::Plan const&,unsigned,Snapshot const&);
+void before_original(Token&,bool);
+void after_original(Token&,bool);
+void reset();
+} // namespace component_hold
+// HOLD_STATE_END
+#endif
 bool drain_journals(const wchar_t* reason,bool hand_restore_names=false){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     component_names::Scope names_scope(false);
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    component_hold::cancel(reason);
 #endif
     // Terminal producer state is deliberately absent from rollback admission.
     if(dual_draining)return false;
@@ -116,6 +167,12 @@ bool drain_journals(const wchar_t* reason,bool hand_restore_names=false){
         hand=restore(reason);
     }
     const bool component=component_restore(); // Always attempted, even after hand failure/end.
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    if(component_hold::state.closed){
+        if(!component_hold::state.drain_called){component_hold::state.hand_result=hand;component_hold::state.component_result=component;}
+        component_hold::state.drain_called=true;component_hold::state.last_hand_result=hand;component_hold::state.last_component_result=component;
+    }
+#endif
     dual_draining=false;publish_journals();
     if(trial.ended)component_dump_end(); // Diagnostic retry after both journals have been attempted.
     return hand&&component&&!journals_dirty();
@@ -677,6 +734,9 @@ void sample(const wchar_t* phase,Snapshot const& value,unsigned lease,unsigned m
     fwprintf(log_file,L"\n");fflush(log_file);
 }
 void end(unsigned code,const wchar_t* reason){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    component_hold::before_end(reason);
+#endif
     if(trial.ended)return;
     trial.ended=true;trial.phase=0;requested=false;active_visible=false;
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
@@ -689,6 +749,14 @@ void end(unsigned code,const wchar_t* reason){
         &&!component_dirty()
 #endif
         ;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    // Two recorded pairs do not certify cleanup. Preserve all earlier failures,
+    // including a false setter/restore that nevertheless returned exact originals.
+    if(code==5&&component_hold::state.closed&&
+       (!component_hold::state.drain_called||!component_hold::state.hand_result||!component_hold::state.component_result||
+        !component_hold::state.last_hand_result||!component_hold::state.last_component_result||
+        trial.lease.faulted()||component_faulted()))code=7;
+#endif
     if(!clean)code=8;
     safe_to_unload.store(clean,std::memory_order_release);status.store(code,std::memory_order_release);
     if(log_file){fwprintf(log_file,L"hand_ik_stream_trial_end status=%u leases=%u restored_leases=%u "
@@ -808,6 +876,9 @@ bool yield_for_equipment(const wchar_t* reason){
     // A diagnostic sample failure can end the hand trial after a verified
     // clean rollback. It must not strand the equipment owner's attachment.
     const bool ready=equipment_ready();
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    if(component_hold::state.closed&&!trial.ended)end(ready?7u:8u,L"hold_action_cancelled");
+#endif
     if(!trial.lease.dirty())trial.applied_mask=0;
     if(log_file&&diagnostic_event()){fwprintf(log_file,L"hand_ik_equipment_yield reason=%ls equipment_phase=%u "
         L"epoch=%u dirty_before=%u faulted_before=%u dirty_after=%u faulted_after=%u "
@@ -1099,6 +1170,9 @@ void reset(){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(journals_dirty()||!component_reset())return;
     dual_draining=hand_writes_relinquished=false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    component_hold::reset();
+#endif
 #endif
     trial={};requested=false;stop_requested=false;used=false;shutdown_requested=false;
     active_visible=false;safe_to_unload=true;status=0;leases=0;handik::reset();

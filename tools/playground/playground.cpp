@@ -32,6 +32,11 @@
 #if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
 #include "../vr-common/hand_ik_controlled_trial_policy.h"
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+#if !defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+#error Component HOLD requires certified combined continuous phase1 hands
+#endif
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
 #include "../vr-common/hand_ik_stream_lease.h"
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
@@ -504,6 +509,9 @@ namespace handstream {
 #endif
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    handstream::component_hold::Token component_hold_token(object,function);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     handstream::tick_boundary_diagnostic::Token tick_diagnostic(object,function);
 #endif
@@ -565,6 +573,9 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
             post_stream_hand_ik_tick=playground::automatic&&!wcscmp(f,L"PlayerTick")&&
                 object==playground::pointer(playground::player,L"Actor");
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+            if(!handstream::component_hold::stream_tick_allowed(component_hold_token))post_stream_hand_ik_tick=false;
+#endif
             if(post_stream_hand_ik_tick){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
 #if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
@@ -620,10 +631,18 @@ void __fastcall event_hook(uptr object,uptr function,void* params){
     }
     inside=false;
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    if(post_stream_hand_ik_tick){handstream::component_hold::ObserverScope hold_observer;
+        handstream::component_hold::before_original(component_hold_token,true);}
+#endif
     {
         handstream::EquipmentTimingScope timing(handstream::EquipmentTiming::original_player_tick,post_stream_hand_ik_tick);
         original(object,function,params);
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    if(post_stream_hand_ik_tick){handstream::component_hold::ObserverScope hold_observer;
+        handstream::component_hold::after_original(component_hold_token,true);}
+#endif
 #else
     original(object,function,params);
 #endif

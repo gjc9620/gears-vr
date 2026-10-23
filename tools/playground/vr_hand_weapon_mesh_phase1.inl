@@ -356,6 +356,45 @@ bool world(Key const& key,std::array<float,16>& value,int& tick){
     return current(key)&&handik::structure(key.objects[7].address,L"LocalToWorld",L"Matrix",value.data(),64)&&
         stow::field(key.objects[5].address,L"TickTag",L"IntProperty",&tick,4);
 }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+// HOLD_EVIDENCE_BEGIN: copied bytes only; none of these fields grant a write.
+namespace hold_detail {
+struct Observation {
+    State raw{};AssetInput asset{};std::array<float,16> matrix{};
+    std::array<unsigned,3> packed{};
+    std::uint64_t begin_ms{},end_ms{},qpc_begin{},qpc_end{},component_setters{};
+    unsigned epoch{},hand_setters{},hand_writes{},pending{},owned{},revoked{};
+    DWORD thread{};int mesh_tick{};
+    bool attempted{},read_known{},world_known{},asset_known{},packed_known{},comparison_known{},exact{},asset_match{},valid{};
+    bool hand_dirty{},component_fault{},stop{},shutdown{},ended{};
+};
+struct Pair {
+    Observation before{},after{};std::uint64_t serial{},generation{};
+    uptr token{},object{},function{};unsigned ordinal{};
+    bool entered{},returned{},completed{};
+};
+struct HandWritten {
+    uptr pc{},pawn{},mesh{},tree{},weapon{};std::array<uptr,8> controls{};
+    std::array<unsigned char,1024> identity{};unsigned identity_bytes{};
+    std::array<std::array<unsigned char,256>,8> fixed{};std::array<unsigned,8> fixed_bytes{};
+    std::array<std::array<float,3>,8> strength{},effector{};std::array<Bytes,8> rotation{};
+    std::array<float,16> mesh_world{},left{},right{};
+    std::uint64_t ms{};float world_time{},last_render_time{};int mesh_tick{};
+    bool control_tick_tag{},mesh_tick_known{},control_tag_known{},action_idle{},known{};
+};
+struct Evidence {
+    Observation written{};Key key{};Value original{},owned{};TargetGeometry geometry{};
+    gears_hand_continuity::Certificate certificate{};
+    HandWritten hand_written{};
+    State final_read{};bool final_read_attempted{},final_read_ok{};
+    std::uint64_t sequence{},revision{};unsigned lease{},mask{},epoch{},dirty{},owned_mask{},revoked{};
+    std::array<unsigned,3> baseline_packed{},target_packed{};
+    std::array<Pair,component_hold::target_ticks> pairs{};
+};
+Evidence evidence;
+} // namespace hold_detail
+// HOLD_EVIDENCE_END
+#endif
 struct Forward {
     gears_hand_stream::Plan const& plan;
     unsigned mask;
@@ -408,6 +447,12 @@ struct Backend {
         if(ok&&state.known&&row.key_equal&&!component_trace::state.meta.group&&forward&&lease.has_snapshot()&&!lease.faulted()){
             row.stage=component_trace::Stage::pure_acquire_value;row.passed=row.mismatch==0;component_trace::add(row);
         }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+        if(!forward&&component_hold::state.closed){
+            hold_detail::evidence.final_read_attempted=true;hold_detail::evidence.final_read_ok=ok;
+            hold_detail::evidence.final_read=state; // Last actual rollback read, no new engine call.
+        }
+#endif
         component_trace::state.meta=saved;return ok;
     }
     bool schema(playground::Args& call,unsigned group){
@@ -540,6 +585,13 @@ void dump_first_bind(bool clean){
 }
 void log(const wchar_t* phase){
     if(!recorded||!log_file)return;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    const bool hold_written_candidate=!component_hold::state.closed&&!wcscmp(phase,L"written");
+    const auto hold_written_epoch=trial.epoch,hold_written_lease=hand_lease;
+    const auto hold_written_sequence=plan_sequence,hold_written_revision=plan_revision;
+    const auto hold_written_key=lease.key();
+    if(hold_written_candidate)component_hold::state.written_ok=false;
+#endif
     State readback{};const bool known=read(lease.key(),readback);
     std::array<float,16> matrix{};int tick{};
     const bool world_known=world(lease.key(),matrix,tick);
@@ -568,6 +620,29 @@ void log(const wchar_t* phase){
     fwprintf(log_file,L" target_absolute_storage=");for(auto bits:target_absolute_storage)fwprintf(log_file,L"%08x",bits);
     fwprintf(log_file,L" readback_absolute_storage=");for(auto bits:raw)fwprintf(log_file,L"%08x",bits);
     freehands::print_matrix(L"gun",matrix);geometry_log(asset_observation,asset_known);fwprintf(log_file,L"\n");fflush(log_file);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    // Only this completed written sample may support arm. A nested action or
+    // pre_restore log can never replace it or revive the closed writer.
+    if(hold_written_candidate){
+        auto& observation=hold_detail::evidence.written;observation={};
+        observation.attempted=true;observation.raw=readback;observation.asset=asset_observation;
+        observation.matrix=matrix;observation.mesh_tick=tick;observation.packed=raw;
+        observation.read_known=known;observation.world_known=world_known;observation.packed_known=raw_known;
+        observation.asset_known=asset_known;
+        observation.valid=known&&world_known&&raw_known&&asset_known&&target_geometry.known&&
+            readback.known&&readback.key==hold_written_key&&
+            gears_weapon::mesh_component_exact(readback.value,lease.owned_value())&&
+            same_asset_identity_schema(target_geometry.input,asset_observation)&&
+            target_geometry.input.origin==asset_observation.origin&&target_geometry.input.rotation==asset_observation.rotation;
+        component_hold::state.written_ok=observation.valid&&!component_hold::state.closed&&
+            trial.epoch==hold_written_epoch&&hand_lease==hold_written_lease&&plan_sequence==hold_written_sequence&&
+            plan_revision==hold_written_revision&&lease.key()==hold_written_key&&lease.has_snapshot()&&
+            lease.dirty()&&!lease.faulted()&&!lease.revoked_mask()&&!trial.ended&&
+            !stop_requested.load(std::memory_order_acquire)&&!shutdown_requested.load(std::memory_order_acquire);
+        component_hold::state.written_epoch=hold_written_epoch;component_hold::state.written_lease=hold_written_lease;
+        component_hold::state.written_sequence=hold_written_sequence;component_hold::state.written_revision=hold_written_revision;
+    }
+#endif
 }
 } // namespace component
 
@@ -629,6 +704,9 @@ bool component_reset(){
 }
 void component_dump_end(){
     if(!trial.ended||!log_file)return;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+    component_hold::dump();
+#endif
     const bool first_bind_clean=!journals_dirty();
     component_cost::dump(first_bind_clean);
     component_tail_cost::dump(!journals_dirty());
@@ -741,3 +819,307 @@ bool bridge_before_allowed(uptr object,uptr function){
     wchar_t label[96]{};if(!name(function,label,96))return false;
     return !component_action_name(label)||equipment_ready();
 }
+
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
+// HOLD_IMPLEMENTATION_BEGIN
+namespace component_hold {
+// No new ticket is consumed. This single blocked observation invalidates the
+// acquire Plan; the retained certificate/sequence are historical evidence only.
+void set_reason(const wchar_t* reason){
+    if(!reason)reason=L"cancelled";
+    state.reason={};std::size_t i{};
+    for(;i+1<state.reason.size()&&reason[i];++i)state.reason[i]=reason[i];
+    state.reason_truncated=reason[i]!=0;
+}
+void cancel(const wchar_t* reason){
+    if(!state.closed)return;
+    if(state.armed||state.arming){
+        state.armed=state.arming=false;++state.generation;
+        set_reason(reason);
+    }
+    state.dispatch=nullptr;
+}
+void before_end(const wchar_t* reason){
+    if(!state.closed)return;
+    cancel(reason);
+    if(!dual_draining&&!state.ending&&journals_dirty()){
+        state.ending=true;drain_journals(L"hold_terminal_drain");state.ending=false;
+    }
+}
+void finish(const wchar_t* reason,bool complete=false){
+    if(trial.ended){before_end(reason);return;}
+    state.complete=complete;cancel(reason);
+    // end's prehook drains first, including when restore recursively ends.
+    end(complete?5u:7u,reason);
+}
+bool live(std::uint64_t generation){
+    const auto now=GetTickCount64();
+    return state.closed&&state.armed&&!state.arming&&state.generation==generation&&
+        !trial.ended&&active_visible.load(std::memory_order_acquire)&&
+        !stop_requested.load(std::memory_order_acquire)&&!shutdown_requested.load(std::memory_order_acquire)&&
+        now>=state.began&&now<=state.deadline&&trial.epoch==state.epoch&&
+        trial.xr_equipment_phase==1&&component::lease.has_snapshot()&&component::lease.dirty()&&
+        !component::lease.faulted()&&!component::lease.revoked_mask()&&
+        component::lease.key()==component::hold_detail::evidence.key&&
+        gears_weapon::mesh_component_exact(component::lease.original_value(),component::hold_detail::evidence.original)&&
+        gears_weapon::mesh_component_exact(component::lease.owned_value(),component::hold_detail::evidence.owned)&&
+        component::setter_calls==state.component_setters;
+}
+bool same_asset(component::AssetInput const& value){
+    const auto& frozen=component::hold_detail::evidence.geometry.input;
+    return component::same_asset_identity_schema(frozen,value)&&
+        frozen.origin==value.origin&&frozen.rotation==value.rotation;
+}
+bool copy_hand(Snapshot const& value,component::hold_detail::HandWritten& out){
+    // Fixed evidence storage, never a copied vector/heap owner. Overflow is
+    // explicitly unknown and cannot arm; no partial/truncated passing record.
+    if(value.identity.size()>out.identity.size())return false;
+    for(unsigned i=0;i<8;++i)if(value.controls[i].fixed.size()>out.fixed[i].size())return false;
+    out.pc=value.pc;out.pawn=value.pawn;out.mesh=value.mesh;out.tree=value.tree;out.weapon=value.weapon;
+    out.identity_bytes=static_cast<unsigned>(value.identity.size());
+    std::copy(value.identity.begin(),value.identity.end(),out.identity.begin());
+    for(unsigned i=0;i<8;++i){
+        const auto& control=value.controls[i];out.controls[i]=control.object;
+        out.strength[i]=control.strength;out.effector[i]=control.effector;
+        static_assert(sizeof(control.rotation)==12);std::memcpy(out.rotation[i].data(),&control.rotation,12);
+        out.fixed_bytes[i]=static_cast<unsigned>(control.fixed.size());
+        std::copy(control.fixed.begin(),control.fixed.end(),out.fixed[i].begin());
+    }
+    out.mesh_world=value.mesh_world;out.left=value.left;out.right=value.right;
+    out.ms=value.ms;out.world_time=value.world_time;out.last_render_time=value.last_render_time;out.mesh_tick=value.mesh_tick;
+    out.control_tick_tag=value.control_tick_tag;out.mesh_tick_known=value.mesh_tick_known;
+    out.control_tag_known=value.control_tag_known;out.action_idle=value.action_idle;out.known=true;return true;
+}
+void observe(component::hold_detail::Observation& row,std::uint64_t generation){
+    row.attempted=true;row.begin_ms=GetTickCount64();
+    LARGE_INTEGER qpc{};if(QueryPerformanceCounter(&qpc)&&qpc.QuadPart>0)row.qpc_begin=std::uint64_t(qpc.QuadPart);
+    const auto key=component::hold_detail::evidence.key;
+    // Full original read (fast=false): normally eight slot VM getters. world
+    // adds four more. These are engine boundaries inside the observer itself.
+    row.read_known=component::read(key,row.raw,false);
+    if(live(generation)&&row.read_known){
+        row.world_known=component::world(key,row.matrix,row.mesh_tick);
+        if(live(generation)&&row.world_known){
+            row.packed_known=component::absolute_storage(key,row.packed);
+            row.asset_known=component::read_asset_input(key,row.asset);
+        }
+    }
+    row.end_ms=GetTickCount64();qpc={};
+    if(QueryPerformanceCounter(&qpc)&&qpc.QuadPart>0)row.qpc_end=std::uint64_t(qpc.QuadPart);
+    row.thread=GetCurrentThreadId();row.epoch=trial.epoch;row.hand_dirty=trial.lease.dirty();
+    row.component_fault=component::lease.faulted();row.pending=component::lease.dirty_mask();
+    row.owned=component::lease.owned_mask();row.revoked=component::lease.revoked_mask();
+    row.hand_setters=trial.setter_calls;row.hand_writes=trial.target_writes;row.component_setters=component::setter_calls;
+    row.stop=stop_requested.load(std::memory_order_acquire);row.shutdown=shutdown_requested.load(std::memory_order_acquire);
+    row.ended=trial.ended;
+    row.exact=row.read_known&&row.raw.known&&row.raw.key==key&&
+        gears_weapon::mesh_component_exact(row.raw.value,component::hold_detail::evidence.owned);
+    row.asset_match=row.asset_known&&same_asset(row.asset);
+    row.comparison_known=row.read_known&&row.raw.known&&row.asset_known&&row.asset.known;
+    // Recheck after every possible recursive engine callback, never a cached
+    // admission from the beginning of the observer. This grants no write.
+    row.valid=live(generation)&&!row.hand_dirty&&row.exact&&row.world_known&&row.packed_known&&row.asset_match;
+}
+void arm(gears_hand_stream::Plan const& plan,unsigned mask,Snapshot const& written){
+    if(state.closed||trial.xr_equipment_phase!=1||!(mask&2)||component::acquired!=1)return;
+    // Fence before any prospective additional engine boundary. This version
+    // reuses the actual written log copies and performs no arm getter.
+    state.closed=true;state.arming=true;set_reason(L"arming");++state.generation;
+    auto& evidence=component::hold_detail::evidence;
+    const auto epoch=trial.epoch;
+    gears_hand_stream::Context blocked{};blocked.action_epoch=epoch;blocked.observed_ms=GetTickCount64();
+    blocked.idle_ready=false;blocked.clean=false;
+    observe_xr_policy(blocked,nullptr,blocked.observed_ms);
+    if(!state.written_ok||state.written_epoch!=epoch||state.written_lease!=component::hand_lease||
+       state.written_sequence!=plan.ticket.sequence||state.written_revision!=plan.revision||
+       !current||!current->outer()||written.pc!=current->object||
+       !component::lease.has_snapshot()||!component::lease.dirty()||component::lease.faulted()||
+       component::lease.revoked_mask()||!trial.lease.dirty()||trial.lease.faulted()||
+       trial.applied_mask!=mask||trial.epoch!=plan.context.action_epoch||
+       !active_visible.load(std::memory_order_acquire)||trial.ended||
+       stop_requested.load(std::memory_order_acquire)||shutdown_requested.load(std::memory_order_acquire)||
+       blocked.observed_ms<trial.began||blocked.observed_ms>trial.deadline){
+        finish(L"hold_arm_written_or_identity_unknown");return;
+    }
+    evidence.key=component::lease.key();evidence.original=component::lease.original_value();
+    evidence.owned=component::lease.owned_value();evidence.geometry=component::target_geometry;
+    evidence.certificate=plan.ticket.certificate;
+    if(!copy_hand(written,evidence.hand_written)){finish(L"hold_hand_written_capacity_unknown");return;}
+    evidence.sequence=plan.ticket.sequence;evidence.revision=plan.revision;
+    evidence.lease=component::hand_lease;evidence.mask=mask;evidence.epoch=epoch;
+    evidence.dirty=component::lease.dirty_mask();evidence.owned_mask=component::lease.owned_mask();
+    evidence.revoked=component::lease.revoked_mask();
+    evidence.baseline_packed=component::baseline_absolute_storage;evidence.target_packed=component::target_absolute_storage;
+    if(!evidence.written.valid||!evidence.geometry.known||
+       !gears_weapon::mesh_component_exact(evidence.written.raw.value,evidence.owned)||
+       !(evidence.written.raw.key==evidence.key)||!same_asset(evidence.written.asset)){
+        finish(L"hold_arm_incomplete_written");return;
+    }
+    state.pc=current->object;state.function=current->function;state.epoch=epoch;state.mask=mask;
+    state.deadline=trial.deadline;state.began=trial.began;
+    state.hand_setters=trial.setter_calls;state.hand_writes=trial.target_writes;
+    state.component_setters=component::setter_calls;
+    state.arming=false;state.armed=true;set_reason(L"armed");
+    safe_to_unload.store(false,std::memory_order_release);
+}
+bool pre_tick(){
+    if(!state.closed)return false;
+    if(!state.armed||!live(state.generation)){finish(L"hold_pre_cancel_or_watchdog");return true;}
+    const auto generation=state.generation;
+    const bool hand_before=trial.lease.dirty();
+    if(!state.hand_restore_observed)state.hand_before=hand_before;
+    bool restored=true;
+    if(hand_before){
+        component_names::Scope names_scope(false);
+        component_names::Scope hand_names_scope(true);
+        restored=restore(L"hold_pre_tick_hand_restore");
+    }
+    if(!state.hand_restore_observed){state.hand_after=trial.lease.dirty();state.hand_restore_observed=true;}
+    publish_journals();
+    if(!restored||trial.lease.dirty()||!live(generation)){finish(L"hold_hand_restore_or_callback_cancel");return true;}
+    trial.tick_epoch=trial.epoch;return true;
+}
+bool post_tick(){
+    if(!state.closed)return false;
+    if(!state.armed||!live(state.generation))finish(L"hold_post_cancel_or_watchdog");
+    return true; // Closed/aborted also never reaches reader, policy or acquire.
+}
+void before_original(Token& token,bool qualified){
+    if(!state.armed||!qualified||!token.outer())return;
+    if(current!=&token||token.object!=state.pc||token.function!=state.function||
+       state.dispatch||state.completed>=target_ticks||!live(state.generation)){
+        finish(L"hold_original_pre_identity_or_reentry");return;
+    }
+    auto& pair=component::hold_detail::evidence.pairs[state.completed];
+    pair.ordinal=state.completed+1;pair.serial=++state.dispatch_serial;pair.generation=state.generation;
+    pair.token=reinterpret_cast<uptr>(&token);pair.object=token.object;pair.function=token.function;
+    state.dispatch=&token;pair.entered=true;
+    observe(pair.before,pair.generation);
+    if(!pair.before.valid||state.dispatch!=&token||!live(pair.generation))
+        finish(L"hold_original_pre_unknown_or_changed");
+}
+void after_original(Token& token,bool qualified){
+    if(!qualified)return;
+    if(state.completed<target_ticks){
+        auto& returned_pair=component::hold_detail::evidence.pairs[state.completed];
+        if(returned_pair.entered&&returned_pair.token==reinterpret_cast<uptr>(&token))returned_pair.returned=true;
+    }
+    if(state.dispatch!=&token)return;
+    auto& pair=component::hold_detail::evidence.pairs[state.completed];
+    pair.returned=true;
+    observe(pair.after,pair.generation);
+    if(!pair.after.valid||state.dispatch!=&token||!live(pair.generation)){
+        finish(L"hold_original_post_unknown_or_changed");return;
+    }
+    pair.completed=true;state.dispatch=nullptr;++state.completed;
+    if(state.completed==target_ticks)finish(L"hold_two_original_dispatches_complete",true);
+}
+void token_exit(Token* token){
+    if(state.dispatch==token)finish(L"hold_original_post_missing");
+}
+void print_key(component::Key const& key,bool known){
+    for(unsigned i=0;i<9;++i){
+        fwprintf(log_file,L" key%u=",i);
+        if(known)component::asset_key_log(i<8?key.objects[i]:key.asset);else fwprintf(log_file,L"unknown");
+    }
+    for(unsigned i=0;i<4;++i){
+        fwprintf(log_file,L" slot%u=",i);
+        if(known)fwprintf(log_file,L"%llu",key.slots[i]);else fwprintf(log_file,L"unknown");
+    }
+}
+void print_observation(const wchar_t* phase,unsigned ordinal,component::hold_detail::Observation const& row){
+    fwprintf(log_file,L"hand_weapon_component_hold_observation schema=1 phase=%ls ordinal=%u attempted=%u "
+        L"read_known=%u raw_state_known=%u world_known=%u asset_known=%u packed_known=%u comparison_known=%u valid=%u "
+        L"metadata_known=%u ms_labels_known=%u qpc_begin_known=%u qpc_end_known=%u "
+        L"thread=%u epoch=%u begin_ms=%llu end_ms=%llu qpc_begin=%llu qpc_end=%llu mesh_tick=%d "
+        L"hand_dirty=%u component_fault=%u pending=%u owned=%u revoked=%u hand_setters=%u hand_target_writes=%u "
+        L"component_setters=%llu stop=%u shutdown=%u ended=%u non_atomic=1 observer_slot_getters_normally=12",
+        phase,ordinal,unsigned(row.attempted),unsigned(row.read_known),unsigned(row.raw.known),unsigned(row.world_known),
+        unsigned(row.asset_known),unsigned(row.packed_known),unsigned(row.comparison_known),unsigned(row.valid),
+        unsigned(row.thread!=0),unsigned(row.thread!=0),unsigned(row.qpc_begin!=0),unsigned(row.qpc_end!=0),
+        unsigned(row.thread),row.epoch,row.begin_ms,row.end_ms,row.qpc_begin,row.qpc_end,row.mesh_tick,
+        unsigned(row.hand_dirty),unsigned(row.component_fault),row.pending,row.owned,row.revoked,row.hand_setters,row.hand_writes,
+        row.component_setters,unsigned(row.stop),unsigned(row.shutdown),unsigned(row.ended));
+    if(row.comparison_known)fwprintf(log_file,L" exact=%u asset_match=%u",unsigned(row.exact),unsigned(row.asset_match));
+    else fwprintf(log_file,L" exact=unknown asset_match=unknown");
+    const bool raw_known=row.read_known&&row.raw.known;
+    if(raw_known)component::value(L"raw",row.raw.value);
+    else fwprintf(log_file,L" raw_absolute=unknown raw_translation=unknown raw_rotation=unknown");
+    print_key(row.raw.key,raw_known);
+    fwprintf(log_file,L" world_matrix=");
+    if(row.world_known){for(unsigned i=0;i<16;++i)fwprintf(log_file,L"%ls%.9g",i?L",":L"",double(row.matrix[i]));}
+    else fwprintf(log_file,L"unknown");
+    fwprintf(log_file,L" packed_absolute=");
+    if(row.packed_known)fwprintf(log_file,L"%08x:%08x:%08x",row.packed[0],row.packed[1],row.packed[2]);
+    else fwprintf(log_file,L"unknown");
+    component::asset_input_log(L"observed",row.asset,row.asset_known&&row.asset.known);
+    fwprintf(log_file,L"\n");
+}
+void dump(){
+    if(!state.closed||state.dumped||!trial.ended||current||dual_draining||state.observer_busy||
+       state.ending||journals_dirty()||!log_file)return;
+    state.dumped=true;
+    const auto& evidence=component::hold_detail::evidence;
+    fwprintf(log_file,L"hand_weapon_component_hold schema=1 selected_ticks=2 completed_ticks=%u two_pairs_complete=%u "
+        L"closed=1 armed=%u generation=%llu epoch=%u mask=%u deadline=%llu began=%llu "
+        L"hand_dirty_before=%u hand_dirty_after=%u drain_called=%u first_hand_result=%u first_component_result=%u "
+        L"last_hand_result=%u last_component_result=%u terminal_status=%u terminal_epoch=%u "
+        L"final_read_attempted=%u final_read_ok=%u final_original_exact=%u stop=%u shutdown=%u reason=%ls reason_truncated=%u "
+        L"observer_getters_are_engine_boundaries=1 non_atomic=1 engine_reconsumption_proved=0\n",
+        state.completed,unsigned(state.complete),unsigned(state.armed),state.generation,state.epoch,state.mask,
+        state.deadline,state.began,unsigned(state.hand_before),unsigned(state.hand_after),unsigned(state.drain_called),
+        unsigned(state.hand_result),unsigned(state.component_result),unsigned(state.last_hand_result),unsigned(state.last_component_result),
+        status.load(std::memory_order_acquire),trial.epoch,unsigned(evidence.final_read_attempted),
+        unsigned(evidence.final_read_ok),unsigned(evidence.final_read_ok&&evidence.final_read.known&&
+            evidence.final_read.key==evidence.key&&gears_weapon::mesh_component_exact(evidence.final_read.value,evidence.original)),
+        unsigned(stop_requested.load()),unsigned(shutdown_requested.load()),state.reason.data(),unsigned(state.reason_truncated));
+    const bool arm_known=state.pc!=0;
+    fwprintf(log_file,L"hand_weapon_component_hold_arm schema=1 lease=%u sequence=%llu revision=%llu epoch=%u mask=%u "
+        L"arm_known=%u "
+        L"hand_setter_baseline=%u hand_target_write_baseline=%u component_setter_baseline=%llu "
+        L"dirty_mask=%u owned_mask=%u revoked_mask=%u geometry_known=%u hand_written_known=%u "
+        L"baseline_packed=%08x:%08x:%08x target_packed=%08x:%08x:%08x",
+        evidence.lease,evidence.sequence,evidence.revision,evidence.epoch,evidence.mask,unsigned(arm_known),state.hand_setters,state.hand_writes,
+        state.component_setters,evidence.dirty,evidence.owned_mask,evidence.revoked,unsigned(evidence.geometry.known),
+        unsigned(evidence.hand_written.known),evidence.baseline_packed[0],evidence.baseline_packed[1],evidence.baseline_packed[2],
+        evidence.target_packed[0],evidence.target_packed[1],evidence.target_packed[2]);
+    if(arm_known){component::value(L"original",evidence.original);component::value(L"owned",evidence.owned);}
+    else fwprintf(log_file,L" original_absolute=unknown original_translation=unknown original_rotation=unknown "
+        L"owned_absolute=unknown owned_translation=unknown owned_rotation=unknown");
+    print_key(evidence.key,arm_known);
+    const auto& geometry=evidence.geometry;
+    if(geometry.known)fwprintf(log_file,L" model_position=%.17g,%.17g,%.17g model_rotation_radians=%.17g,%.17g,%.17g "
+        L"control_rotation_radians=%.17g,%.17g,%.17g",geometry.model.position.x,geometry.model.position.y,geometry.model.position.z,
+        geometry.model.rotation.pitch,geometry.model.rotation.yaw,geometry.model.rotation.roll,
+        geometry.control.pitch,geometry.control.yaw,geometry.control.roll);
+    else fwprintf(log_file,L" model_position=unknown model_rotation_radians=unknown control_rotation_radians=unknown");
+    component::asset_input_log(L"frozen",geometry.input,geometry.known&&geometry.input.known);fwprintf(log_file,L"\n");
+    print_observation(L"written",0,evidence.written);
+    // Raw POD copies include all keys, schema, original/owned bytes, D/C and
+    // historical certificate. Availability fields, size and encoding are explicit.
+    const auto hex=[](const wchar_t* label,const void* value,std::size_t bytes){
+        fwprintf(log_file,L"hand_weapon_component_hold_payload schema=1 label=%ls bytes=%zu encoding=native_pod_le hex=",label,bytes);
+        const auto* raw=static_cast<unsigned char const*>(value);
+        for(std::size_t i=0;i<bytes;++i)fwprintf(log_file,L"%02x",unsigned(raw[i]));
+        fwprintf(log_file,L"\n");
+    };
+    hex(L"arm_and_pairs",&evidence,sizeof(evidence));
+    for(unsigned i=0;i<target_ticks;++i){
+        const auto& pair=evidence.pairs[i];
+        fwprintf(log_file,L"hand_weapon_component_hold_pair schema=1 ordinal=%u serial=%llu generation=%llu "
+            L"token=%p object=%p function=%p entered=%u returned=%u complete=%u pre_attempted=%u pre_valid=%u "
+            L"post_attempted=%u post_valid=%u pre_begin_ms=%llu pre_end_ms=%llu post_begin_ms=%llu post_end_ms=%llu "
+            L"pre_mesh_tick=%d post_mesh_tick=%d pre_qpc_begin=%llu pre_qpc_end=%llu post_qpc_begin=%llu post_qpc_end=%llu\n",
+            i+1,pair.serial,pair.generation,reinterpret_cast<void*>(pair.token),reinterpret_cast<void*>(pair.object),
+            reinterpret_cast<void*>(pair.function),unsigned(pair.entered),unsigned(pair.returned),unsigned(pair.completed),
+            unsigned(pair.before.attempted),unsigned(pair.before.valid),unsigned(pair.after.attempted),unsigned(pair.after.valid),
+            pair.before.begin_ms,pair.before.end_ms,pair.after.begin_ms,pair.after.end_ms,pair.before.mesh_tick,pair.after.mesh_tick,
+            pair.before.qpc_begin,pair.before.qpc_end,pair.after.qpc_begin,pair.after.qpc_end);
+        print_observation(L"pre",i+1,pair.before);print_observation(L"post",i+1,pair.after);
+    }
+    fflush(log_file);
+}
+void reset(){state={};component::hold_detail::evidence={};}
+} // namespace component_hold
+// HOLD_IMPLEMENTATION_END
+#endif
