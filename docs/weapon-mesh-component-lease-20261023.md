@@ -1,6 +1,18 @@
 # 枪体组件变换的可恢复租约候选
 
-此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3的c局取得一次部分absolute标志更新及交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
+此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3的c局及R4/R5的d/e局取得部分组件更新与交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
+
+## R5购买版e：仍在旋转提交前超期
+
+R5封存 `analysis/hand-mesh-phase1-r5-candidates/b7edd9f7…5b46606/`含742源／161实际工件，PG `dde8242e…edc45133`、source.json SHA `67a931aca1f332b27f15270a5d8662d60ba3326d545195246b94269ed3bf73ab`。真实build base696892d、应用commit `09e7acb515dc3831916c3f884329489e594a3c46`与成功staged来源分别保留，未应用后重编。e只改OUT／TAG、pins与真实工件数；Popen0准备191依赖／26复制／24模块，186共用依赖及24模块与d全同，固定15s／256／3s reserve及三后台标志不改。
+
+购买版后台静音e/PID27852 Start0，以component_acquire_failed结束，手0写。固定首失败仍ordinal165／group4、auth known67／checks3／reject2：live_now332160546大于write_until332160537，超9ms；ticket_ms与plan_ms均332160437，context_ms332160531。NS／Policy／commit及后续Stop／Shutdown条件在该次被最早时限门短路，不能归因于未执行分支。d的ticket age125ms包含16ms ticket→plan间隔，其plan age109ms；e两者同为109ms，故25→9ms并不是可宣称加速16ms的对照性能证据。尚未证明本优化足以完成事务。
+
+组件终态与d同为acquired0／restored1／setter_calls4／fault1，最终dirty／owned／revoked0、safe1；partial pre_restore支持Absolute＋Translation改变、Rotation未调用且保持原值。独立raw基线／Start前／Shutdown后三份快照核对三组及九Key相同，8控件／44附件／两PG入口保持，Stop／Shutdown0。独立25项只读收尾通过；计数4不当作四个成功setter，未完成acquire或跨Tick运动。FPP49，GHW1 matched58／published46／rejected12，未单凭rejected计数归因；component／whole=false、Native entry verifier false、XR exit1／无提交图像继续保留。
+
+9个专属会话已静音，守护read／mute错误、restore_pending均0，精确游戏退出后Guard exit0。独立CIM确认owner55648／game27852／XR59712及Guard／launcher不在；旧d的55文件与7外部清单再次核对不变。e原receipt SHA `db7a409d65851e93222254549008ed7ec6d27388fcb7ac5ab9470c9246b16545`，PG log `fcc7ee57bacbd761179f7dae17d3acf2dffd34f12430eed50de655b39feebbda`，独立摘要 `9c3203e3fed4c20c5dc9d3d28ab44eac0b2b3a5029f09189f48b14c3b1f4cc60`；55文件封存SHA `9e1e6dbf97050ea33b9f02270d9868a04bc134c8578b3a1af42dd2ef0dfd20a2`另固定7外部证据，均位于ignored `analysis/hand-mesh-runtime-1023e/`。
+
+下一步只分析仍用原逐字名称读取的Args／schema、Forward snapshot／equipment gate及四槽路径；候选方向是限定前向调用栈的私有bulk scope，回滚关闭，不缓存元数据或减动态检查。当前尚无该R6源码／构建，100ms／同Plan／Stop边界继续保留。
 
 ## R5私有页内名称解析候选
 
