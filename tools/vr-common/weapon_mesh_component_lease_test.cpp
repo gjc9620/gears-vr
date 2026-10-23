@@ -278,6 +278,26 @@ void original_value_getter_alias_survives_clean_reacquisition(){
     CHECK(exact(lease.original_value(),next_original)&&lease.dirty_mask()==7&&lease.owned_mask()==7&&!lease.faulted());
     CHECK(lease.restore(b)&&exact(b.current.value,next_original)&&!lease.dirty()&&!lease.faulted());
 }
+void explicit_external_action_relinquishes_without_erasing_dirty(){
+    Backend b;Lease lease;
+    CHECK(lease.acquire(b.current.key,target(),b));
+    const auto writes=b.calls.size();
+    lease.relinquish();
+    CHECK(lease.dirty_mask()==7&&lease.owned_mask()==0&&lease.revoked_mask()==7&&lease.faulted());
+    b.current.value=foreign();CHECK(!lease.restore(b)&&b.calls.size()==writes);
+    b.current.value=target(); // A real action writes away and later returns: no ABA regrant.
+    CHECK(!lease.restore(b)&&lease.dirty_mask()==7&&b.calls.size()==writes&&!lease.reset());
+    b.current.value=original();
+    CHECK(lease.restore(b)&&!lease.dirty()&&lease.faulted()&&b.calls.size()==writes);
+    CHECK(lease.reset()&&!lease.faulted());
+
+    Backend nested;Lease recursive;
+    nested.after_write=[&](Backend&,int call){if(call==0)recursive.relinquish();};
+    CHECK(!recursive.acquire(nested.current.key,target(),nested));
+    CHECK(recursive.dirty_mask()==1&&recursive.owned_mask()==0&&recursive.revoked_mask()==1);
+    CHECK(nested.calls.size()==1&&!recursive.restore(nested)&&nested.calls.size()==1);
+    nested.current.value=original();CHECK(recursive.restore(nested)&&nested.calls.size()==1);
+}
 }
 int main(){
     happy_path_and_exact_bytes();no_op_and_unowned_foreign_fields();unknown_preflight_never_writes();
@@ -287,5 +307,6 @@ int main(){
     backend_rechecks_expected_value_and_key_before_writing();busy_and_reentrant_requests_cannot_replace_the_journal();
     earlier_group_returning_to_original_aborts_acquisition();caller_aliases_are_snapshotted();
     owned_value_getter_alias_survives_clean_reacquisition();original_value_getter_alias_survives_clean_reacquisition();
+    explicit_external_action_relinquishes_without_erasing_dirty();
     std::printf("weapon mesh component lease: %u CPU checks passed (partial calls, exact bytes, foreign fields, identity and cleanup)\n",checks);
 }

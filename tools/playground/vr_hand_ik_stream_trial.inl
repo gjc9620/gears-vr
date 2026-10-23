@@ -85,6 +85,34 @@ struct Trial {
 #endif
 };
 Trial trial{};
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+bool component_dirty();
+bool component_faulted();
+bool component_related(uptr);
+bool component_restore();
+bool component_owned();
+bool component_reset();
+void component_reset_binding(unsigned);
+void component_relinquish();
+void component_pre_restore();
+void component_log_written();
+void component_dump_end();
+bool component_apply(gears_hand_stream::Plan const&,gears_weapon::HandWorldFrame const&,Snapshot const&,unsigned,unsigned);
+bool dual_draining{},hand_writes_relinquished{};
+bool journals_dirty(){return trial.lease.dirty()||component_dirty();}
+void publish_journals(){safe_to_unload.store(!journals_dirty(),std::memory_order_release);}
+bool restore(const wchar_t*);
+bool drain_journals(const wchar_t* reason){
+    // Terminal producer state is deliberately absent from rollback admission.
+    if(dual_draining)return false;
+    dual_draining=true;
+    component_pre_restore();
+    const bool hand=restore(reason);
+    const bool component=component_restore(); // Always attempted, even after hand failure/end.
+    dual_draining=false;publish_journals();
+    return hand&&component&&!journals_dirty();
+}
+#endif
 
 bool diagnostic_event(){
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
@@ -513,6 +541,9 @@ struct Backend {
     }
     bool write_target(unsigned channel,policy::Target const& expected,policy::Target const& wanted);
     bool set_strength(unsigned channel,float strength){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        if(hand_writes_relinquished)return false;
+#endif
         handik::Control value{};if(!control(channel,value))return false;
         count_add(trial.setter_calls);return handik::set_strength(value.object,strength);
     }
@@ -522,6 +553,9 @@ bool write_bytes(uptr address,policy::Target const& wanted){
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 bool Backend::write_target(unsigned channel,policy::Target const& expected,policy::Target const& wanted){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(hand_writes_relinquished)return false;
+#endif
     policy::Value value{};if(!read(channel,value)||value.target!=expected)return false;
     const auto object=trial.lease_anchor.controls[indices[channel]].object;
     const auto property=playground::property(object,(channel&1)?L"BoneRotation":L"EffectorLocation");
@@ -642,7 +676,11 @@ void end(unsigned code,const wchar_t* reason){
 #endif
     // No terminal state authorizes another target. A partial acquisition must
     // never claim mask 3; dirty/faulted separately describe unresolved fields.
-    const bool clean=!trial.lease.dirty();
+    const bool clean=!trial.lease.dirty()
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        &&!component_dirty()
+#endif
+        ;
     if(!clean)code=8;
     safe_to_unload.store(clean,std::memory_order_release);status.store(code,std::memory_order_release);
     if(log_file){fwprintf(log_file,L"hand_ik_stream_trial_end status=%u leases=%u restored_leases=%u "
@@ -675,6 +713,9 @@ void end(unsigned code,const wchar_t* reason){
         trial.xr_equipment_changes,leases.load(),unsigned(trial.lease.dirty()),unsigned(trial.lease.faulted()));
         fflush(log_file);}
 #endif
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_dump_end();
 #endif
 }
 bool restore(const wchar_t* reason){
@@ -709,10 +750,24 @@ bool restore(const wchar_t* reason){
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
 // Game-thread hand journal readiness only. Stop/ended status must not prevent
 // the equipment owner from completing its original attachment restoration.
-bool equipment_ready(){return !trial.lease.dirty()&&!trial.lease.faulted();}
+bool equipment_ready(){return !trial.lease.dirty()
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    &&!component_dirty()
+#else
+    &&!trial.lease.faulted()
+#endif
+    ;}
 bool yield_for_equipment(const wchar_t* reason){
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
-    const bool dirty=trial.lease.dirty(),faulted=trial.lease.faulted();
+    const bool dirty=trial.lease.dirty()
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        ||component_dirty()
+#endif
+        ,faulted=trial.lease.faulted()
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        ||component_faulted()
+#endif
+        ;
     if(!used.load(std::memory_order_acquire)&&!dirty&&!faulted)return true;
     // Revoke geometry and all previously issued plans before rollback, even
     // when rollback fails. Never reopen a stopped trial or its write budget.
@@ -729,12 +784,19 @@ bool yield_for_equipment(const wchar_t* reason){
     blocked.clean=!dirty&&!faulted;
     observe_xr_policy(blocked,nullptr,blocked.observed_ms);
     for(auto& binding:trial.xr_binding){binding.reset();count_add(trial.xr_resets);}
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_reset_binding(3);
+#endif
     if(!trial.ended&&!stop_requested.load(std::memory_order_acquire)&&
        active_visible.load(std::memory_order_acquire)&&(trial.phase==1||trial.phase==2)){
         trial.phase=1;status=1;
     }
     if(dirty)count_add(trial.action_yields);
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    const bool restored=!dirty||drain_journals(reason?reason:L"equipment_boundary");
+#else
     const bool restored=!dirty||(!trial.releasing&&restore(reason?reason:L"equipment_boundary"));
+#endif
     // A diagnostic sample failure can end the hand trial after a verified
     // clean rollback. It must not strand the equipment owner's attachment.
     const bool ready=equipment_ready();
@@ -753,6 +815,9 @@ bool yield_for_equipment(const wchar_t* reason){
 }
 #endif
 bool related(uptr object){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(component_related(object))return true;
+#endif
     for(unsigned i=0;i<trial.action_object_count;++i)if(trial.action_objects[i]==object)return registered(object);
     if(!registered(object)||playground::deleted(object))return false;
     uptr pawn{};
@@ -762,11 +827,21 @@ bool related(uptr object){
         return handik::pointer(object,L"PawnOwner",pawn)&&pawn==trial.anchor.pawn;
     return false;
 }
-void before_action(uptr object,uptr function){
+void before_action(uptr object,uptr function
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    ,bool owned_invoke
+#endif
+){
     // Reject other threads before touching any non-atomic game-thread state.
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return;
+    if((!active_visible.load(std::memory_order_acquire)&&!journals_dirty())||
+       !trial.anchored||!registered(function)||!related(object))return;
+#else
     if(!active_visible.load(std::memory_order_acquire)||
        GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return;
     if(trial.releasing||!trial.anchored||!registered(function)||!related(object))return;
+#endif
     wchar_t label[96]{};if(!name(function,label,96))return;
     constexpr const wchar_t* actions[]={L"ServerUse",L"GrabPickup",L"ServerDictateSpecialMove",L"DoSpecialMove",
         L"EndSpecialMove",L"StartSpecialMove",L"StopSpecialMove",L"BodyStanceAnimEndNotification",L"OnAnimEnd",
@@ -779,6 +854,9 @@ void before_action(uptr object,uptr function){
         L"AttachWeaponToHand",L"DetachWeapon",L"AttachWeaponToSlot",L"DetachWeaponFromSlot",
         L"AttachComponent",L"AttachComponentToSocket",L"DetachComponent",L"DetachComponentFromSocket",
         L"ForceReload",L"Died",L"Destroyed",
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        L"SetAbsolute",L"SetTranslation",L"SetRotation",
+#endif
 #endif
         L"PlayCustomAnim",L"PlayCustomAnimByDuration",L"StopCustomAnim"};
     bool watched=false;for(const auto item:actions)if(!wcscmp(item,label)){watched=true;break;}
@@ -792,6 +870,15 @@ void before_action(uptr object,uptr function){
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     const bool dirty=trial.lease.dirty();
     const bool restored=yield_for_equipment(label);
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(!restored&&!owned_invoke){
+        // Original PE/CallFunction must keep consuming/forwarding its ABI.
+        // Relinquish before it runs; late ABA cannot resurrect rollback rights.
+        hand_writes_relinquished=true;component_relinquish();
+        if(!trial.ended)end(8,L"external_action_with_unclean_journals");
+        publish_journals();
+    }
+#endif
     if(log_file&&diagnostic_event()){fwprintf(log_file,L"hand_ik_stream_trial_action function=%ls epoch=%u "
         L"dirty_before=%u dirty_after=%u restored=%u equipment_phase=%u\n",label,trial.epoch,
         unsigned(dirty),unsigned(trial.lease.dirty()),unsigned(restored),trial.xr_equipment_phase);fflush(log_file);}
@@ -969,6 +1056,10 @@ void reset(){
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
     xr_bridge.close();xr_pending={};
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(journals_dirty()||!component_reset())return;
+    dual_draining=hand_writes_relinquished=false;
+#endif
     trial={};requested=false;stop_requested=false;used=false;shutdown_requested=false;
     active_visible=false;safe_to_unload=true;status=0;leases=0;handik::reset();
 }
@@ -978,7 +1069,12 @@ DWORD stop_and_wait(){
     const auto ready=[](){return safe_to_unload.load(std::memory_order_acquire)&&
         !requested.load(std::memory_order_acquire)&&!active_visible.load(std::memory_order_acquire);};
     const auto until=GetTickCount64()+2000;
-    while(!ready()&&status.load(std::memory_order_acquire)!=8&&GetTickCount64()<until)Sleep(1);
+    while(!ready()
+#if !defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+          &&status.load(std::memory_order_acquire)!=8
+#endif
+          &&GetTickCount64()<until)Sleep(1);
+
     return ready()?0:40;
 }
 } // namespace handstream

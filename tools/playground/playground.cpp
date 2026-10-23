@@ -34,6 +34,13 @@
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
 #include "../vr-common/hand_ik_stream_lease.h"
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+#include "../vr-common/weapon_mesh_component_lease.h"
+#include "../vr-common/weapon_mesh_follow.h"
+#if !defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+#error Phase1 component lease requires certified combined hands
+#endif
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
 #include "../vr-common/hand_stream_grip_binding.h"
@@ -153,7 +160,14 @@ void record(uptr object,uptr function){
 namespace handanim {unsigned bridge_before(Request*);void bridge_after(Request*,unsigned);}
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
-namespace handstream {void before_action(uptr,uptr);}
+namespace handstream {
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+void before_action(uptr,uptr,bool=false);
+bool bridge_before_allowed(uptr,uptr);
+#else
+void before_action(uptr,uptr);
+#endif
+}
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
 namespace vrequip {namespace stow {void before_action(uptr,uptr);}}
@@ -216,7 +230,11 @@ bool invoke_engine(Request* r){
 }
 bool invoke(Request* r){
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(r&&!handstream::bridge_before_allowed(r->object,r->function))return false;
+#else
     if(r)handstream::before_action(r->object,r->function);
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
     if(r)vrequip::stow::before_action(r->object,r->function);
@@ -254,6 +272,11 @@ bool invoke(Request* r){
 #endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "vr_fire_adapter.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+namespace handstream {
+#include "vr_hand_weapon_mesh_phase1.inl"
+}
 #endif
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;

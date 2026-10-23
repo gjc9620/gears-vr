@@ -111,6 +111,9 @@ gears_hand_stream::Context xr_context(Snapshot const& value,bool ready){
     return context;
 }
 void xr_reset_bindings(unsigned mask){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_reset_binding(mask);
+#endif
     for(unsigned hand=0;hand<2;++hand)if(mask&(1u<<hand)){
         trial.xr_binding[hand].reset();count_add(trial.xr_resets);
     }
@@ -240,6 +243,16 @@ void pre_tick(uptr,EquipmentEntryObservation const* entry){
 #else
 void pre_tick(uptr){
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return;
+    if(journals_dirty()){
+        if(!drain_journals(L"pre_tick_dual_drain")&&!trial.ended)end(8,L"dual_drain_failed");
+    }else publish_journals();
+    if(trial.ended){component_dump_end();return;}
+    if(journals_dirty()||component_faulted()){
+        end(journals_dirty()?8:7,L"component_restore_fault");component_dump_end();return;
+    }
+#endif
     if(!active_visible.load(std::memory_order_acquire)||trial.ended)return;
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
 #if !defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
@@ -276,6 +289,10 @@ void pre_tick(uptr){
 }
 void post_tick(uptr pc){
     if(requested.exchange(false,std::memory_order_acq_rel)){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        if(journals_dirty()||!component_reset()){end(8,L"component_start_not_clean");return;}
+        hand_writes_relinquished=false;
+#endif
         xr_bridge.close();trial={};trial.xr_start=xr_pending;
         trial.xr_world_time=xr_pending.baseline_world_time;
         trial.phase=1;trial.began=GetTickCount64();
@@ -508,6 +525,27 @@ void post_tick(uptr pc){
 #endif
         end(7,L"xr_receipt_or_log_expired_before_write");return;
     }
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    safe_to_unload.store(false,std::memory_order_release);
+    if(!component_apply(plan,frame,check,mask,lease)){
+        drain_journals(L"component_acquire_failed");
+        end(journals_dirty()?8:7,L"component_acquire_failed");return;
+    }
+    // The component setter may dispatch engine work. Reacquire the hand sample
+    // and certify this exact Plan after the entire component transaction.
+    Snapshot after_component{};
+    if(!handik::snapshot(pc,after_component)||!xr_identity(after_component)||
+       !after_component.action_idle||!handik::baseline_strengths(after_component)||
+       !handik::same_controls(check,after_component)||!slots_quiet(after_component)||
+       trial.tick_epoch!=trial.epoch||
+       !xr_equipment_gate(after_component,equipment_phase,L"after_component",EquipmentTiming::prewrite_phase)||
+       (equipment_phase==1&&(mask&2)&&!component_owned())||
+       authorize_current_xr_plan(plan,xr_context(after_component,trial.xr_ready),GetTickCount64())!=mask){
+        drain_journals(L"hand_reauthorize_after_component");
+        end(journals_dirty()?8:7,L"hand_reauthorize_after_component");return;
+    }
+    check=after_component;
+#endif
     trial.lease_anchor=check;Backend backend{};
     const unsigned channels=((mask&1)?12u:0u)|((mask&2)?3u:0u);
     bool acquired{};
@@ -518,6 +556,9 @@ void post_tick(uptr pc){
         acquired=trial.lease.acquire(channels,trial.targets,1.f,backend);
     }
     if(!acquired){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        drain_journals(L"hand_acquire_failed_after_component");
+#endif
         end(trial.lease.dirty()?8:7,L"xr_lease_acquisition_failed");return;
     }
     trial.applied_mask=mask;leases=lease;count_add(trial.xr_masks[mask]);
@@ -526,7 +567,15 @@ void post_tick(uptr pc){
 #endif
     Snapshot written{};
     if(!handik::snapshot(pc,written)||!same_layout(check,written)){
-        restore(L"xr_failed_written_snapshot");end(7,L"xr_written_snapshot_unknown");return;
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        drain_journals(L"xr_failed_written_snapshot");
+#else
+        restore(L"xr_failed_written_snapshot");
+#endif
+        end(7,L"xr_written_snapshot_unknown");return;
     }
     sample(L"written",written,lease,mask);
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_log_written();
+#endif
 }

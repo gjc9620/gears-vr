@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：同GHW1 phase1 Lancer枪体租约适配器R2已接独立分支，默认OFF且与旧writer互斥，三个setter与手IK消费同Plan并分别重验；ended后仍可双journal排水，真实动作未交还先撤权再保留ABI转发，自有请求未清则拒绝。Astra发现并复核修复InvManager换枪关联遗漏；staged三构建／pure278／真实提取生命周期41检查及相关反例通过。live ON在新目录仅编译一次，23导出与C1相同、4种拒配通过，742源前后一致；报告 `e32fb274…bf2d917`，DLL `25c9b9ed…7086ce2`。尚未运行此枪体候选或验证实际setter／跨Tick可见跟随，未启用普通启动器；详见 [组件适配器记录](../../weapon-mesh-component-lease-20261023.md)。
+
 2026-10-23：持续双手C1购买版后台静音PID6568完成262写／262恢复，超过17秒和256次后继续更新，第四ACK后baseline258再到262；22项组件审计及独立原日志数学／计数复算通过。首窗184次跨mesh Tick／368手样本，最大位置误差 `6.84221e-5` 原单位、完整旋转 `0.023209°`；184张GHW1证书、本局Native发布318及XR发布2741核对通过。Shutdown0、原8控件／44附件／两PG入口恢复；9会话已静音、Guard零修改／错误／待恢复，精确游戏退出后Guard exit0，独立CIM确认自有进程退出。原whole=false保留：8×8／GPU capture0／linked0／XR图像0及exit1、Native entry verifier false；晚段逐手几何、final-write NS、真实Quest与画面验收仍未覆盖。首次入口别名校验在one-shot／游戏创建前拒绝，原证据保留，修补后30 runner／46审计CPU检查及Popen0准备通过，唯一实际局使用准备 `16e8783d…dc3306`。原receipt `92d56bab…55cdec`／独立摘要 `466aa11d…b6f0ea3`，详见 [持续会话结果](../../hand-ik-xr-stream-trial-20261023.md)。
 
 2026-10-23：枪体组件可恢复租约新增纯C++候选，分组三absolute flags／Translation12／Rotation12，完整Key与expected重验、失败后读回、foreign／未知身份撤权、只读原值清账、sticky fault与其它owned组独立恢复。Astra发现并复核修复了两个公开getter作为wanted时的自身别名清零问题；修正版268项CPU断言、CTest1/1及两旧顺序反例通过，旧72文件保留。新CMake测试目标另在全新持续ON构建中执行一次、268检查通过，9份源码快照及旧C1工件核对无变化；集成报告 `ac7f10c2…0b4f59`，新持续DLL `425f6868…43e8a0a`，尚未运行新游戏。该组件不管理附件44字节，也未接游戏、射线或左手副握；combined与旧mesh-follow仍互斥。详情见 [枪体组件租约记录](../../weapon-mesh-component-lease-20261023.md)。

@@ -22,7 +22,8 @@ template<class Key> struct WeaponMeshComponentState {
 
 // Component fields only: this does not own or restore the pawn's attachment.
 // Key equality and backend authentication must cover the complete live object
-// generation and caller context, including relevant observed action boundaries.
+// generation and caller context. A bookkeeping action epoch need not be part
+// of a restore Key: relinquish explicitly fences an unclean original action.
 // All operations are serialized by the caller on the owning game thread.
 //
 // Backend contract:
@@ -106,6 +107,10 @@ private:
         faulted_=true;restore_owned(backend);return false;
     }
 public:
+    // A real original action must still be forwarded. Relinquish before that
+    // boundary when cleanup could not be proved: old owned bytes reappearing
+    // later cannot grant a rollback write. Exact originals may clear read-only.
+    void relinquish() noexcept {revoke_pending();}
     bool dirty() const noexcept {return pending_!=0;}
     bool faulted() const noexcept {return faulted_;}
     bool has_snapshot() const noexcept {return snapshot_;}
