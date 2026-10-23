@@ -133,3 +133,16 @@ Stop／Shutdown 均 0；8 控制、44 字节挂接、3 组件组与两原生入�
 后续候选仅缩小 fast lookup::named 为判断名称相等所需的读取上限：纯 query 字符循环最多 127 个 wchar_t，field／derives 每次遍历外计算长度，name 的上限为 query 长度＋真实 NUL 且最多 128。其他 name 调用仍默认 128；耗尽后补写的 NUL 仍返回 false，保留 _wcsicmp 的原大小写／locale 语义、FName 表／entry 身份、page／copy 失败检查。未缓存 name 索引、metadata 或校验成功；所有 current／getter／VM、原始 Plan／100ms、setter 和恢复保持。named 局部缓冲区仍清零，没有混入可选微改。
 
 25 个有界字符串／页模型场景、137 检查首次 /W4 /WX 编译和运行通过；覆盖前缀／长名／空／大小写／Unicode／UTF16／126–128／缺 NUL／跨页及保护页。Astra 窄审 3ee7d303…2050 无阻断，root 读完整实际差异并核对报告后应用 a505df6b…1339。短查询 copy 请求 256→8 字节、示例 field 1280→94 字节仅为 fixture 观测，尚非真实提速。较长不匹配名称会提前拒绝，可能少触碰后续 PAGE_GUARD 页；这会改变一次性 guard 消耗／访问轨迹，不声称这种状态下完整执行可观察等价，也没有补读或重试。证据位于忽略的 analysis/hand-mesh-bounded-name-match-20261023/，组合游戏验证待新候选。
+
+
+## 2026-10-23 — 有界名称候选完成三组枪体取得，末次票据复核仍超时
+
+PG 以 48e67ee 首次构建 efa21855…b850，23 导出及原配置保持；Native／XR 沿用前候选。冻结 bundle 2b8f3dea…180c，manifest 6f74966b…0a1f（774 源／27 依赖／40 工件）。q 只完成准备、没有运行；准备期间另一会话将共享默认启动器更新到 0.0.4 Dev，旧空闲 GUI 哈希因而拒绝。root 核实新 GUI 与该会话存档完全一致，再建 r，只改输出路径、tag、专用 build 路径和已核实的 GUI 哈希四项常量，函数／audit 与时限不变。该 GUI 随后实际启动了其他游戏，r 等其结束并连续三次空闲观察后才自动执行一次，没有中断其他进程。r 的 Native 仍为原私有 003 候选，不能将识别新 GUI 称为已验证 004 Native。
+
+r 的 Native／XR 短会话通过，50 个 projection layer、29 次 scene copy、约 0.534 秒；component／whole 仍失败，0 hand lease。此次三个组件组均已取得并临时设置，末次 group0 authorize 之前置条件拒绝，auth_rejected=2、owned／pending=7。原 ticket 年龄 110ms、原 Plan 年龄 94ms，write_until 来自原 ticket 的 100ms 期限，超出 10ms；authorize_ns／commit_ns 均未采样，不能以零值或另一时钟域推算原 stereo／input 年龄，也不把本次失败写成此前 group4 的 certificate_recent 拒绝。没有重锚时间或放宽原期限。
+
+固定桶记录 30 次 current 共 25.8583ms、14 次 read 共 23.6947ms，二者嵌套不可相加；120 次 slot 的 args／preflight／完整 run-invoke／post 分项为 0.1735／0.0388／0.1071／7.1174ms。initial＋三 snapshot 共 13.9590ms，首段开始至末 snapshot 跨度 44.2078ms。调用计数比 p 多，亦非受控 FPS 比较，只记录当前功能试验的实际数据。
+
+Stop／Shutdown 均 0，8 控制、44 字节挂接、3 组件组与两入口精确恢复；Native drain／entries restored、XR exit 0。root 独立核实 owner／game／XR 确切身份已退出，game exit 1；8 个音频 session 均已恢复，pending 0。工件／环境取证通过，15 项真实交互覆盖失败保留。r 的 105 份文件加 seal 封存，seal 0ff71057…9b17，root result f7a07f06…a39a；原 p 及默认启动器未改。
+
+另在忽略的 analysis/weapon-6dof-left-history-004-stage-20261023/ 保存 004 已完成左眼 history 修复的七文件三方 stage：base 为已发布 9ffa710，ours 为独立武器源，theirs 为另一会话已冻结源码。机械合并零冲突，双向逆合并恢复双方增量，Astra 20328f83…a59 窄审无阻断；保留独立手部发布／continuity 和 renderer 代码。影子目录按原配置加 GEARS_INDEPENDENT_LEFT_VIEW_HISTORY=ON 首次 configure／build 均通过（低优先级、parallel1），新 Native d54ecf18…82c9 保持 34 导出；九个相关 CPU 程序各一次全部通过，没有运行 GPU 自检或旧整套。root 逐项核实 774 原 WORK 输入、776 shadow 输入、18 MinHook、stage 七文件与九个 CPU 程序／日志哈希后，将七文件按字节应用 WORK，776 项均与已编译影子源相同。构建报告 9796510d…cb02、集成证明 921af848…1790。PG／XR 未重编，新的组合 bundle／实际运行尚待完成，不继承另一会话的画面验收；共享 J 与默认启动器未改。

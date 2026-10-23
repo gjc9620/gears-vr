@@ -1,5 +1,6 @@
 // No engine calls, IO, GPU waits or queued writer inside a closed world gate.
 bool world_old_state_retired(){
+    if(!left_view_history.retired())return false;
     const auto life=submitted_lifetime.snapshot();
     if(life.generation!=committed_world_generation.load()||!life.quiescing||!life.closed||life.pending||!life.claimed||
        life.stop_requested||life.permanent_closed||submit_retained.load())return false;
@@ -34,13 +35,15 @@ PendingFresh pending_world_fresh(const char*& failure_stage){
     if(gears_anchor::strict_guard(pending.anchor,safe_copy,anchor,stamp,&diagnostic))return PendingFresh::fresh;
     return diagnostic.timestamp_only?PendingFresh::transient:stale("anchor_after");
 }
-void reset_retired_view_state(){
+bool reset_retired_view_state(){
+    if(!left_view_history.reset())return false;
     state_attempted=state_created=state_release_started=state_release_returned=state_destroyed=0;
     state_delete_entered=state_original_preserved=0;state_temporary=0;
     state_delete_flags=state_delete_thread=0;state_delete_caller=0;
     submit_original_state=submit_root=0;submit_attempted=0;
     submit_owned_verified=submit_sources_released=submit_original_preserved=0;epoch_submit_total=0;
     // submit_retained must already be zero; never erase failed ownership proof.
+    return true;
 }
 #include "owned_world_handoff.inl"
 void advance_world_handoff(FILE* status){
@@ -105,7 +108,7 @@ void advance_world_handoff(FILE* status){
 #endif
         auto const& m=pending_world->metadata;
         expected_local=m.local_player;expected_pc=m.controller;expected_camera=m.camera;camera_cache=m.timestamp;camera_yaw=m.camera_yaw;
-        reset_retired_view_state();
+        if(!reset_retired_view_state()){request_session_stop(SessionStop::proof_failure);return false;}
         if(!stereo_gate.advance_world(minimum)){request_session_stop(SessionStop::proof_failure);return false;}
         if(!submitted_lifetime.reopen(destroyed)){request_session_stop(SessionStop::proof_failure);return false;}
         world_quiesce_token={};committed_world_generation=next;return true;

@@ -18,7 +18,7 @@ struct FixedOutputBounds {std::uint32_t width{},height{};};
 // Input slots remain padded at output_width/2 so Copy0 cannot overwrite Input1.
 struct RenderInputBounds {std::uint32_t width{},height{};bool packed{};};
 enum InputFailure:unsigned {read_failed=1,family_mismatch=2,missing_original_state=4,
-    missing_right_state=8,aliased_state=16,field140_nonzero=32,field418_nonzero=64};
+    missing_right_state=8,aliased_state=16,field140_nonzero=32,field418_nonzero=64,invalid_left_state=128};
 struct InputEvidence {bool read_succeeded{};unsigned failure_mask{};
     std::uintptr_t family{},source{},observed_family{},original_state{},right_state{},field140{},field418{};};
 struct Result {void* views[2]{};unsigned checks{},rejection{};bool cleanup_safe{},quarantined{};
@@ -34,7 +34,7 @@ inline bool map_outside_view(gears_source_map::Snapshot const& map,std::uintptr_
 inline Result create(API api,void* family,void* source,void* right_state,bool output_bounds=false,bool preserve_geometry=false,
     bool projection_control=false,gears_projection::Phase phase=gears_projection::Phase::a1,
     const gears_vr::StereoMatrices* stereo=nullptr,const FixedOutputBounds* fixed_output=nullptr,
-    const RenderInputBounds* render_input=nullptr,void* constructor_family=nullptr) {
+    const RenderInputBounds* render_input=nullptr,void* constructor_family=nullptr,void* left_state=nullptr) {
     // family authenticates the immutable original source. The caller-owned
     // constructor family must remain alive through renderer construction and clone release.
     // Its target may differ; never substitute it into the original-source guard.
@@ -67,6 +67,7 @@ inline Result create(API api,void* family,void* source,void* right_state,bool ou
         if(!right_state)evidence.failure_mask|=missing_right_state;
         // Two missing states are absence, not an alias between live states.
         if(right_state&&evidence.original_state&&right_state==original.pointer(8))evidence.failure_mask|=aliased_state;
+        if(left_state&&(left_state==original.pointer(8)||left_state==right_state))evidence.failure_mask|=invalid_left_state;
         if(evidence.field140)evidence.failure_mask|=field140_nonzero;
         if(evidence.field418)evidence.failure_mask|=field418_nonzero;
     }
@@ -124,7 +125,7 @@ inline Result create(API api,void* family,void* source,void* right_state,bool ou
     std::array<gears_source_args::Snapshot,2> outputs{};
     bool returned=true;
     for(unsigned i=0;i<2;++i) {
-        void* state=i?right_state:original.pointer(8);
+        void* state=i?right_state:(left_state?left_state:original.pointer(8));
         returned=returned && result.inputs[i].invoke(api.construct,result.views[i],output_family,state)==result.views[i];
         if(!returned || !api.read(outputs[i].bytes.data(),result.views[i],0x430)){result.rejection=6;return result;}
     }
@@ -133,7 +134,7 @@ inline Result create(API api,void* family,void* source,void* right_state,bool ou
     constexpr size_t arrays[]={0x380,0x390,0x3ec,0x400};
     for(unsigned i=0;i<2;++i) {
         auto& output=outputs[i];auto& input=result.inputs[i];
-        matching=matching && output.pointer(0)==output_family && output.pointer(8)==(i?right_state:original.pointer(8)) &&
+        matching=matching && output.pointer(0)==output_family && output.pointer(8)==(i?right_state:(left_state?left_state:original.pointer(8))) &&
             !memcmp(output.bytes.data()+0x48,input.bytes.data()+0x48,16) &&
             !memcmp(output.bytes.data()+0x70,input.bytes.data()+0x70,128);
         if((!maps&&output.pointer(0x140)) || output.pointer(0x418))safe=false;

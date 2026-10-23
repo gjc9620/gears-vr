@@ -665,6 +665,13 @@ double constructor_derived_error{};
 using StateFactoryFn=void*(__fastcall*)();
 using StateDeleteFn=void*(__fastcall*)(void*,unsigned);
 StateFactoryFn state_factory{};
+#include "independent_view_history.h"
+gears_view_history::State left_view_history;
+#if defined(GEARS_INDEPENDENT_LEFT_VIEW_HISTORY) && GEARS_INDEPENDENT_LEFT_VIEW_HISTORY
+constexpr bool independent_left_view_history=true;
+#else
+constexpr bool independent_left_view_history=false;
+#endif
 ConsumeFn state_release{};
 StateDeleteFn original_state_delete{};
 void* state_delete_target{};
@@ -984,6 +991,7 @@ void observe_session_owner(gears_session::OwnerState state) {
 void release_session_state_claim(bool claim) {
     if(claim&&state_created.load()==1&&!submit_retained.load()) {
         unsigned fresh=0;if(!state_release_started.compare_exchange_strong(fresh,1))return;
+        left_view_history.release(state_release);
         state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
     }
 }
@@ -1012,7 +1020,7 @@ struct SessionBuildScope {
     ~SessionBuildScope(){if(enabled){--session_build_depth;service_session_stop_native();}}
 };
 bool session_native_cleanup_ready() {
-    return submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&
+    return submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
         (!state_created.load()||(state_release_returned.load()==1&&state_destroyed.load()==1&&(state_delete_flags&1)));
 }
 bool session_cleanup_expired() {
@@ -1843,6 +1851,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
         static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()),
         static_cast<unsigned long long>(world_prepare_timestamp_request.load()));
+    left_view_history.print(output);
     fprintf(output,"world_handoff_supported=%u world_handoff_phase=%u world_handoff_commits=%llu world_quiesce_requested=%u state_release_started=%u epoch_submit_total=%llu ",
         world_handoff_supported?1:0,
         world_handoff_phase.load(),static_cast<unsigned long long>(world_handoff_commits.load()),world_quiesce_requested.load()?1:0,
@@ -2386,6 +2395,7 @@ void try_shadow_state(const Record& record) {
 }
 void* __fastcall hook_state_delete(void* state,unsigned flags) {
     Scope scope;if(!scope.world())return original_state_delete(state,flags);
+    const bool left_delete=left_view_history.begin_delete(state,flags);
     unsigned expected=0;
     const bool observe=reinterpret_cast<uintptr_t>(state)==state_temporary.load() && state_created.load()==1 &&
         state_delete_entered.compare_exchange_strong(expected,1);
@@ -2394,6 +2404,7 @@ void* __fastcall hook_state_delete(void* state,unsigned flags) {
     // The deleting wrapper has already released the storage. Only keep numeric
     // identities and completion metadata; never inspect this object afterward.
     if(observe)++state_destroyed;
+    if(left_delete)left_view_history.complete_delete();
     return result;
 }
 bool probe_renderer_pair(void* family,void* view) {
@@ -3089,6 +3100,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && !foreground() && !submit_background){note_world_progress(WorldProgress::foreground);return false;}
         if(submit_deadline && (now()>=submit_deadline || (!foreground() && !submit_background) || (GetAsyncKeyState(VK_F8)&0x8000))) {
             if(submitted_lifetime.close() && state_created.load() && !submit_retained.load()) {
+                left_view_history.release(state_release);
                 state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
             }
             return false;
@@ -3333,6 +3345,13 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         if(submit_pair_seconds&&!submit_deadline){submit_deadline=now()+static_cast<LONGLONG>(submit_pair_seconds)*qpc_frequency;
             if(stereo_gpu_publish)stereo_publish_deadline.store(submit_deadline);}
     }
+    void* left_state=nullptr;
+    if(independent_left_view_history&&!self_testing&&continuous_session&&stereo_xr&&!submit_mono_control&&!submit_duplicate_control){
+        if(!left_view_history.ensure(state_factory,safe_copy,state_expected_table,original_state,state_temporary.load())){
+            request_session_stop(SessionStop::proof_failure);service_session_stop_native();return false;
+        }
+        left_state=reinterpret_cast<void*>(left_view_history.pointer());
+    }
     gears_split_sources::API api{shadow_api.allocate,source_constructor,shadow_api.destroy,shadow_api.free,safe_copy};
     // Freeze once before either constructor. Registration commits the first origin.
     gears_projection::Metadata projection{};projection.enabled=projection_control;projection.pair_qpc=now();
@@ -3401,7 +3420,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     split_family=original_family_bytes;
     if(owned_scene_target)memcpy(split_family.data()+0x10,&owned_scene_target,sizeof(owned_scene_target));
     auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state,submit_output_bounds,submit_mono_control || submit_duplicate_control,projection_control,projection.phase,stereo_xr?&frame.expected:nullptr,
-        constructor_output,constructor_input,owned_scene_target?split_family.data():family);
+        constructor_output,constructor_input,owned_scene_target?split_family.data():family,left_state);
 #if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
     if(constructor_input&&sources.checks==63){
         if(!ngx_stereo_host::native_create_matches(native_source)){
@@ -3510,7 +3529,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         std::array<unsigned char,16> rectangle{};
         unsigned source_index=submit_mono_independent_state?1:i;
         verified=safe_copy(&owner,reinterpret_cast<void*>(built.family_views[i]),8) && owner==submit_root.load()+8 &&
-            safe_copy(&associated,reinterpret_cast<void*>(built.family_views[i]+8),8) && associated==(source_index?state_temporary.load():original_state) &&
+            safe_copy(&associated,reinterpret_cast<void*>(built.family_views[i]+8),8) && associated==(source_index?state_temporary.load():(left_state?reinterpret_cast<uintptr_t>(left_state):original_state)) &&
             safe_copy(&index,reinterpret_cast<void*>(built.family_views[i]+0xd24),4) && index==i &&
             safe_copy(matrix.data(),reinterpret_cast<void*>(built.family_views[i]+0x70),128) &&
             !memcmp(matrix.data(),sources.inputs[source_index].bytes.data()+0x70,128) &&
