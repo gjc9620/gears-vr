@@ -2,7 +2,7 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
-2026-10-23：持续双手候选已配套封存741份源码和78份工件，PG `425f6868…43e8a0a`／manifest `c8ad6f48…c1e981`，Native／XR／loader保持既有source 0身份。新一次性运行准备通过29项runner与46项审计CPU检查、189依赖认证及Popen0；准备SHA `76f4b387…18ac9cc`，尚未启动本轮游戏，等待另一会话测试自然退出。审计只验证首窗几何、跨过17秒及256次的持续循环和完整清理，不补造晚段几何、final-write NS或独立HandStop覆盖；后台静音与精确游戏退出后关闭Guard保持。详见 [持续候选准备](../../hand-ik-xr-stream-trial-20261023.md)。
+2026-10-23：持续双手C1购买版后台静音PID6568完成262写／262恢复，超过17秒和256次后继续更新，第四ACK后baseline258再到262；22项组件审计及独立原日志数学／计数复算通过。首窗184次跨mesh Tick／368手样本，最大位置误差 `6.84221e-5` 原单位、完整旋转 `0.023209°`；184张GHW1证书、本局Native发布318及XR发布2741核对通过。Shutdown0、原8控件／44附件／两PG入口恢复；9会话已静音、Guard零修改／错误／待恢复，精确游戏退出后Guard exit0，独立CIM确认自有进程退出。原whole=false保留：8×8／GPU capture0／linked0／XR图像0及exit1、Native entry verifier false；晚段逐手几何、final-write NS、真实Quest与画面验收仍未覆盖。首次入口别名校验在one-shot／游戏创建前拒绝，原证据保留，修补后30 runner／46审计CPU检查及Popen0准备通过，唯一实际局使用准备 `16e8783d…dc3306`。原receipt `92d56bab…55cdec`／独立摘要 `466aa11d…b6f0ea3`，详见 [持续会话结果](../../hand-ik-xr-stream-trial-20261023.md)。
 
 2026-10-23：枪体组件可恢复租约新增纯C++候选，分组三absolute flags／Translation12／Rotation12，完整Key与expected重验、失败后读回、foreign／未知身份撤权、只读原值清账、sticky fault与其它owned组独立恢复。Astra发现并复核修复了两个公开getter作为wanted时的自身别名清零问题；修正版268项CPU断言、CTest1/1及两旧顺序反例通过，旧72文件保留。新CMake测试目标另在全新持续ON构建中执行一次、268检查通过，9份源码快照及旧C1工件核对无变化；集成报告 `ac7f10c2…0b4f59`，新持续DLL `425f6868…43e8a0a`，尚未运行新游戏。该组件不管理附件44字节，也未接游戏、射线或左手副握；combined与旧mesh-follow仍互斥。详情见 [枪体组件租约记录](../../weapon-mesh-component-lease-20261023.md)。
 

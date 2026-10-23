@@ -2,6 +2,18 @@
 
 本记录属于 `codex/weapon-6dof` 独立开发分支。前一阶段的小幅合成手骨目标、原版近战交接和精确恢复已有购买版记录，见 [逐帧 IK 试验](hand-ik-stream-trial-20261023.md)。这里新增实际 GVE6 grip 世界姿态的消费路径。购买版后台两局已用模拟器、真实 OpenXR 客户端与 Native 串通双手数据和手骨写入／恢复；整局图像链未通过，不作为物理手柄或头显验收。
 
+## 持续会话购买版结果C1（2026-10-23）
+
+配套PG `425f6868…43e8a0a` 已在购买版自有PID6568完成一次后台静音运行，`persistent_loop_and_cleanup` 的22项组件断言及协调者独立原始日志复算通过。总计262次双手lease、262次恢复；其中首个录制窗口完整保存184次写入／跨mesh Tick／恢复，即368个手部样本，两手各181个非重绑样本。初始收枪后的响应为lease8–15，取回新绑定始于16；四次装备ACK仍为11→10→11→10。
+
+首次写入原始毫秒戳为317912156。在Status已累计257次时，实际Start后的观察时长为20.4925秒，首次写入被观察后为19.8543秒，同OS Tick差为20125ms，两个17秒门均通过。第四次ACK后保存baseline258，随后观察到262，取得至少四次新lease；没有延长60秒外部预算。晚段只凭原Status、新更新进展及终端计数证明循环继续，不补造晚段逐手几何、final-write源NS、原phase0全程分类或同时dirty证明；正常路径执行的是joint Shutdown，没有执行独立HandStop。
+
+协调者未导入审计模块，另从原始二进制target、UE旋转公式及跨Tick骨矩阵复算：位置误差最大 `6.84221e-5` 原始单位，归一化完整旋转角差最大 `0.023209°`；原审计角差最大 `0.023202°` 单独保留，均小于原0.1单位／0.1°门槛。刚体mount预测位置误差最大 `5.17e-9` 单位，录制written的receipt年龄为46–94ms；这些年龄不是final-write NS证明。184张记录证书均关联本局Native／XR身份，Native GHW1 matched318／published318／missing0／rejected0，XR发布2741／跳过0／tracker拒绝0。没有实际失追或reference-change覆盖，也未验证真实Quest跟踪。
+
+Shutdown返回0，hand终态6／safe_to_unload1，原8控件、附件44字节和PG两个入口32／64字节均恢复。9个专属音频会话原本已静音，Guard零写入／零恢复尝试／零错误／零待恢复，确认精确游戏退出后Guard exit0；独立CIM再次确认owner／game／XR／Guard均已退出。原整局仍为false：实际输出8×8、匹配来源3840×2160、GPU capture_attempts0／frame-link linked0／XR图层与复制0、XR exit1和Native独立entry verifier false均保留；Native自有cleanup为true。组件结果不构成画面链、头显、持续跨世界或完整6DoF验收。
+
+私有回执 `analysis/hand-continuous-runtime-1023a/receipt.json` SHA `92d56bab8cb0d609c3fa339648b8999eb7e8531f77f07eb759c89dc17255cdec`，组件审计 `165a18c0330d2f51ef0a89408ca672cf6a0437afde27a7cb426e4611bfb4c2bc`，独立摘要 `verification-summary.json` SHA `466aa11de4d9b4cf7fd7a988552756bfe74911847840212185e0eca59b6f0ea3`。PG原日志为 `85acef17…1e34d5`，音频原日志为 `303c8759…e596e5`。首次CLI在任何one-shot／game创建前被入口模块别名校验拒绝；原准备与错误另存，随后仅排除入口自身别名登记、仍固定入口文件与全部helper路径／SHA，30项runner检查和Astra复核通过。实际运行使用新准备SHA `16e8783dc514183dce9782b34eaa7b86938a712ce4d7333d8954549314dc3306`，没有把预启动拒绝记为游戏通过或覆盖原证据。
+
 ## source 0购买版联合结果h（2026-10-23）
 
 新的GHW1来源0候选已完成一次后台购买版测试：owner39432／game23528／XR44324，PG `fcaeca76…5e44e6d`，manifest `19af0b18…4b900ebd`。只在独立h目录准备和运行，没有改写f／g原始证据。运行前等待另一游戏／XR测试自然退出，实际入口重新核对空闲状态；Mute1／Behind1／ObserveOnly1、实体后台输入关闭，全程没有移动、放大或激活窗口。准备阶段Popen0，正式运行使用已核对的prep SHA `1564f4488db546e3893c74e459e339765802ae5c0b63ab368bb0428f30bd7a44`。独立预检不是缓存通行证：本局start_capture未传旧proof参数，仍走同次run_suite后才激活Native。
@@ -32,7 +44,7 @@
 
 集成组件租约测试目标后的持续候选另行封存为 `analysis/hand-continuous-candidates/7360f78c06442b4a2077fde94c7df553974312e2c89dc595e57588c5b79344dc/`，741份项目源码、78份工件及保存副本已逐项核对。PG为 `425f6868aef6d05b24ce153172386c8bb15f658348ad6950f4867f23443e8a0a`，manifest为 `c8ad6f48b9c97a41ccc9e78803c7d977f1f732943c4269f0bad5453a64c1e981`；Native／XR／loader仍为既有source 0配套身份，不以h的有限运行充当新候选验收。
 
-新的一次性运行目录 `analysis/hand-continuous-runtime-1023a/` 已完成29项runner边界检查、46项审计CPU检查，以及Popen调用数为0的准备，189份依赖与26份工件副本均已认证。准备SHA为 `76f4b387ee45387acd12ca8389c3fd5757bdf51b59b67abc015686f0a18ac9cc`。只读审阅修正了晚段游标上界，并让占用检查识别尚在等待的avp测试驱动；其他会话测试未结束前不启动本轮游戏。当前仍没有这一持续候选的实际游戏结果。
+新的一次性运行目录 `analysis/hand-continuous-runtime-1023a/` 初次完成29项runner边界检查、46项审计CPU检查，以及Popen调用数为0的准备，189份依赖与26份工件副本均已认证。初次准备SHA `76f4b387ee45387acd12ca8389c3fd5757bdf51b59b67abc015686f0a18ac9cc` 原字节保存于 `before-runner-alias-fix/`。只读审阅修正了晚段游标上界，并让占用检查识别尚在等待的avp测试驱动；等其他会话自然结束后，预启动别名门的修补另加1项检查，再按新准备进入唯一实际游戏局，结果见上方C1记录。
 
 审计范围固定为 `persistent_loop_and_cleanup`：首段仍要求完整逐lease几何；持续性另需首次真实写入的日志毫秒锚和观察后的单调锚均超过17秒、实际lease数超过256，第四次装备ACK之后再观察至少四次新lease，以及终端计数、字段和进程清理。晚段Status不充当晚段逐手几何、final-write源NS或同时dirty证明；正常路径只有一次joint Shutdown，不能写成执行过独立HandStop。外部测试总预算60秒，不为取得覆盖延长。后台三项Mute1／Behind1／ObserveOnly1及游戏精确退出后才关闭Guard的顺序保留，普通启动器声音设置不变。
 
