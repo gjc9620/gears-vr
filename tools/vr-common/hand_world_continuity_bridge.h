@@ -32,6 +32,35 @@ struct WorldPacket {
 static_assert(std::is_standard_layout_v<WorldPacket> && std::is_trivially_copyable_v<WorldPacket>);
 enum class WorldRead {none,baseline,received,rejected};
 
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+// Private consumer diagnostics. Bits only describe predicates actually run;
+// helper bits do not claim evaluation of their short-circuited subexpressions.
+enum class WorldRejectBranch:unsigned {none,consumer_or_mapping,lock,header,serial_regressed,frame};
+enum class WorldRejectCheck:unsigned {
+    consumer,mapped,locked,frequency_query,frequency_positive,magic,version,size,pid,game_start,
+    native_present,native_matches,frequency_matches,serial_available,serial_not_regressed,
+    frame_serial,frame_shape,frame_native,created_not_future,pose_recent,certificate_recent,count
+};
+// read_frequency means the original QPF call ran, not that its output is valid.
+enum WorldReadAvailable:unsigned {read_lock=1,read_packet=2,read_frequency=4,read_now=8,read_now_ns=16};
+struct WorldReadObservation {
+    unsigned evaluated{},passed{},available{};
+    DWORD lock_result{},expected_pid{};
+    BOOL frequency_result{};
+    std::int64_t frequency{},now_ns{};
+    std::uint64_t cursor_before{},cursor_after{},expected_game_start{},expected_native_started_qpc{},now{};
+};
+struct WorldReadRejection {
+    static constexpr unsigned schema=1;
+    unsigned size{sizeof(WorldReadRejection)},known{};
+    WorldRejectBranch branch{};
+    WorldReadObservation observation{};
+    WorldPacket packet{}; // Exact local copy, including padding; read_packet marks availability.
+};
+static_assert(std::is_standard_layout_v<WorldReadRejection> && std::is_trivially_copyable_v<WorldReadRejection>);
+static_assert(unsigned(WorldRejectCheck::count)<=32);
+#endif
+
 // Native and Playground live inside the same game process. This lane commits
 // its own serial/time with pose+certificate; it never reads GVE6 back to join
 // metadata, nor silently filters a consumed invalid packet into "no receipt".
@@ -49,6 +78,40 @@ class WorldBridge {
             p.native_started_qpc&&p.native_started_qpc==native_started_qpc_&&
             p.qpc_frequency==frequency.QuadPart&&p.latest_serial!=(std::numeric_limits<std::uint64_t>::max)();
     }
+
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    WorldReadRejection first_read_rejection_{}; // No mapping/producer ABI or packet change.
+    static bool observe(WorldReadObservation& o,WorldRejectCheck check,bool value,bool rejecting=false) noexcept {
+        const auto bit=1u<<unsigned(check);o.evaluated|=bit;
+        if(value!=rejecting)o.passed|=bit;
+        return value;
+    }
+    bool read_header_valid(WorldPacket const& p,WorldReadObservation& o) const noexcept {
+        LARGE_INTEGER frequency{};o.available|=read_frequency;
+        const bool valid=observe(o,WorldRejectCheck::frequency_query,
+                (o.frequency_result=QueryPerformanceFrequency(&frequency))!=FALSE)&&
+            observe(o,WorldRejectCheck::frequency_positive,frequency.QuadPart>0)&&
+            observe(o,WorldRejectCheck::magic,p.magic==WorldPacket::magic_value)&&
+            observe(o,WorldRejectCheck::version,p.version==WorldPacket::version_value)&&
+            observe(o,WorldRejectCheck::size,p.size==sizeof(WorldPacket))&&
+            observe(o,WorldRejectCheck::pid,p.game_pid==pid_)&&
+            observe(o,WorldRejectCheck::game_start,p.game_start==game_start_)&&
+            observe(o,WorldRejectCheck::native_present,p.native_started_qpc!=0)&&
+            observe(o,WorldRejectCheck::native_matches,p.native_started_qpc==native_started_qpc_)&&
+            observe(o,WorldRejectCheck::frequency_matches,p.qpc_frequency==frequency.QuadPart)&&
+            observe(o,WorldRejectCheck::serial_available,p.latest_serial!=(std::numeric_limits<std::uint64_t>::max)());
+        o.frequency=frequency.QuadPart;return valid;
+    }
+    WorldRead read_rejected(WorldRejectBranch branch,WorldReadObservation o,std::uint64_t cursor,
+            WorldPacket const* packet=nullptr) noexcept {
+        if(!first_read_rejection_.known){
+            o.cursor_after=cursor;first_read_rejection_.branch=branch;first_read_rejection_.observation=o;
+            if(packet)std::memcpy(&first_read_rejection_.packet,packet,sizeof(*packet));
+            first_read_rejection_.known=1;
+        }
+        return WorldRead::rejected;
+    }
+#endif
     DWORD lock_now() const noexcept {
         if(!mutex_)return WAIT_FAILED;
         const auto state=WaitForSingleObject(mutex_,0);
@@ -120,6 +183,43 @@ public:
         }
         ReleaseMutex(mutex_);return ok;
     }
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    WorldRead read(std::uint64_t& cursor,WorldFrame& out) noexcept {
+        out={};
+        WorldReadObservation o{};o.cursor_before=o.cursor_after=cursor;o.expected_pid=pid_;
+        o.expected_game_start=game_start_;o.expected_native_started_qpc=native_started_qpc_;
+        if(observe(o,WorldRejectCheck::consumer,producer_,true)||
+           observe(o,WorldRejectCheck::mapped,!data_,true))
+            return read_rejected(WorldRejectBranch::consumer_or_mapping,o,cursor);
+        const auto locked=lock_now();o.available|=read_lock;o.lock_result=locked;
+        if(observe(o,WorldRejectCheck::locked,locked!=WAIT_OBJECT_0,true))
+            return locked==WAIT_TIMEOUT?WorldRead::none:read_rejected(WorldRejectBranch::lock,o,cursor);
+        WorldPacket packet{};std::memcpy(&packet,data_,sizeof(packet));ReleaseMutex(mutex_);
+        o.available|=read_packet;
+        if(!read_header_valid(packet,o))return read_rejected(WorldRejectBranch::header,o,cursor,&packet);
+        if(cursor==(std::numeric_limits<std::uint64_t>::max)()){
+            cursor=packet.latest_serial;return WorldRead::baseline;
+        }
+        if(observe(o,WorldRejectCheck::serial_not_regressed,packet.latest_serial<cursor,true))
+            return read_rejected(WorldRejectBranch::serial_regressed,o,cursor,&packet);
+        if(packet.latest_serial==cursor)return WorldRead::none;
+        cursor=packet.latest_serial;
+        auto const& frame=packet.frame;const auto now=GetTickCount64();
+        const auto now_ns=gears_vr::monotonic_ns(); // After copying, never a caller's pre-read stamp.
+        o.available|=read_now|read_now_ns;o.now=now;o.now_ns=now_ns;
+        if(observe(o,WorldRejectCheck::frame_serial,frame.pose.serial!=cursor,true)||
+           observe(o,WorldRejectCheck::frame_shape,!world_frame_shape_valid(frame),true)||
+           observe(o,WorldRejectCheck::frame_native,frame.certificate.native_started_qpc!=native_started_qpc_,true)||
+           observe(o,WorldRejectCheck::created_not_future,now<frame.pose.created_ms,true)||
+           observe(o,WorldRejectCheck::pose_recent,now-frame.pose.created_ms>100,true)||
+           observe(o,WorldRejectCheck::certificate_recent,!certificate_recent(frame.certificate,now_ns),true))
+            return read_rejected(WorldRejectBranch::frame,o,cursor,&packet);
+        out=frame;return WorldRead::received;
+    }
+    WorldReadRejection const& first_read_rejection() const noexcept {return first_read_rejection_;}
+    // Explicit trial lifecycle reset; close/open do not erase a pending first rejection.
+    void reset_read_rejection() noexcept {first_read_rejection_={};}
+#else
     WorldRead read(std::uint64_t& cursor,WorldFrame& out) noexcept {
         out={};
         if(producer_||!data_)return WorldRead::rejected;
@@ -141,6 +241,7 @@ public:
            !certificate_recent(frame.certificate,now_ns))return WorldRead::rejected;
         out=frame;return WorldRead::received;
     }
+#endif
     void close() noexcept {
         if(data_)UnmapViewOfFile(data_);
         data_=nullptr;

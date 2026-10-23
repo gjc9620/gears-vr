@@ -136,6 +136,20 @@ void masks(Row& row) noexcept {
 }
 } // namespace component_trace
 namespace component {
+// First actual bind attempt only. Copies of existing locals are diagnostic;
+// bind, solve and initial_read_after_bind are not one atomic observation.
+struct FirstBindEvidence {
+    Key key{};
+    std::array<float,16> matrix{};
+    gears_vr::Viewpoint right_grip{},solved_pose{};
+    Value initial_read_after_bind{},quantized_wanted{};
+    int pawn_mesh_tick{},hand_mesh_tick{};
+    bool attempted{},dumped{},hand_mesh_tick_known{};
+    bool bind_return_known{},bind_result{},solve_return_known{},solve_result{};
+    bool initial_read_return_known{},initial_read_result{},initial_read_state_known{},quantized_wanted_known{};
+};
+FirstBindEvidence first_bind;
+void reset_first_bind(){first_bind={};}
 gears_weapon::WeaponMeshFollow mount;
 Key fixed_key{};
 bool key_known{},recorded{},terminal_dumped{},terminal_clean_dumped{};
@@ -383,6 +397,32 @@ void value(const wchar_t* label,Value const& value){
         unsigned(value.absolute[0]),unsigned(value.absolute[1]),unsigned(value.absolute[2]),label);
     bytes(value.translation);fwprintf(log_file,L" %ls_rotation=",label);bytes(value.rotation);
 }
+void dump_first_bind(bool clean){
+    if(!clean||dual_draining||component_trace::state.depth||!log_file||!first_bind.attempted||first_bind.dumped)return;
+    first_bind.dumped=true;auto const& row=first_bind;
+    fwprintf(log_file,L"hand_weapon_component_first_bind schema=1 bind_args_known=1 pawn_mesh_tick_known=1 "
+        L"pawn_mesh_tick=%d hand_mesh_tick_known=%u hand_mesh_tick=%d bind_return_known=%u bind_result=%u "
+        L"solve_return_known=%u solve_result=%u solve_pose_known=%u initial_read_after_bind_return_known=%u "
+        L"initial_read_after_bind_result=%u initial_read_after_bind_state_known=%u quantized_wanted_known=%u "
+        L"synchronized=0 grants_write_authority=0 initial_read_after_bind_not_atomic=1",
+        row.pawn_mesh_tick,unsigned(row.hand_mesh_tick_known),row.hand_mesh_tick,unsigned(row.bind_return_known),unsigned(row.bind_result),
+        unsigned(row.solve_return_known),unsigned(row.solve_result),unsigned(row.solve_return_known&&row.solve_result),
+        unsigned(row.initial_read_return_known),unsigned(row.initial_read_result),unsigned(row.initial_read_state_known),unsigned(row.quantized_wanted_known));
+    for(unsigned i=0;i<9;++i){const auto& object=i<8?row.key.objects[i]:row.key.asset;
+        fwprintf(log_file,L" key%u=%llx:%llx:%llx:%u:%u:%u key%u_reserved=%u",i,object.address,object.object_class,object.outer,
+            object.index,object.name_index,object.name_number,i,object.reserved);}
+    for(unsigned i=0;i<4;++i)fwprintf(log_file,L" slot%u=%llu",i,row.key.slots[i]);
+    fwprintf(log_file,L" right_grip=%.17g,%.17g,%.17g,%.17g,%.17g,%.17g solved_pose=%.17g,%.17g,%.17g,%.17g,%.17g,%.17g",
+        row.right_grip.position.x,row.right_grip.position.y,row.right_grip.position.z,
+        row.right_grip.rotation.pitch,row.right_grip.rotation.yaw,row.right_grip.rotation.roll,
+        row.solved_pose.position.x,row.solved_pose.position.y,row.solved_pose.position.z,
+        row.solved_pose.rotation.pitch,row.solved_pose.rotation.yaw,row.solved_pose.rotation.roll);
+    freehands::print_matrix(L"bind_matrix",row.matrix);
+    fwprintf(log_file,L" bind_matrix_hex=");auto const* raw=reinterpret_cast<unsigned char const*>(row.matrix.data());
+    for(unsigned i=0;i<16*sizeof(float);++i)fwprintf(log_file,L"%02x",unsigned(raw[i]));
+    value(L"initial_read_after_bind",row.initial_read_after_bind);value(L"quantized_wanted",row.quantized_wanted);
+    fwprintf(log_file,L"\n");fflush(log_file);
+}
 void log(const wchar_t* phase){
     if(!recorded||!log_file)return;
     State readback{};const bool known=read(lease.key(),readback);
@@ -459,7 +499,7 @@ bool component_restore(){
 }
 bool component_reset(){
     if(!component::lease.reset())return false;
-    component_trace::reset();component_cost::reset();component_tail_cost::reset();
+    component_trace::reset();component_cost::reset();component_tail_cost::reset();component::reset_first_bind();
     component::mount.reset();component::fixed_key={};component::key_known=component::recorded=false;
     component::terminal_dumped=component::terminal_clean_dumped=false;
     component::acquired=component::restored=component::setter_calls=component::relinquished=0;
@@ -467,8 +507,10 @@ bool component_reset(){
 }
 void component_dump_end(){
     if(!trial.ended||!log_file)return;
-    component_cost::dump(!journals_dirty());
+    const bool first_bind_clean=!journals_dirty();
+    component_cost::dump(first_bind_clean);
     component_tail_cost::dump(!journals_dirty());
+    component::dump_first_bind(first_bind_clean);
     component_trace::DumpAtExit trace_dump;
     const bool clean=!component_dirty();
     if(component::terminal_dumped&&(!clean||component::terminal_clean_dumped))return;
@@ -500,11 +542,31 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
         component::fixed_key=key;component::key_known=true;
         std::array<float,16> matrix{};int tick{};
         if(!component_trace::gate(component_trace::Stage::world,component::world(key,matrix,tick)))return false;
-        if(!component::mount.bound()&&!component_trace::gate(component_trace::Stage::mount_bind,component::mount.bind(frame.right,matrix,false)))return false;
+        bool record_first_bind{};
+        if(!component::mount.bound()){
+            record_first_bind=!component::first_bind.attempted;
+            if(record_first_bind){
+                auto& evidence=component::first_bind;evidence.attempted=true;
+                evidence.matrix=matrix;evidence.key=key;evidence.right_grip=frame.right;
+                evidence.pawn_mesh_tick=tick;evidence.hand_mesh_tick=hand.mesh_tick;evidence.hand_mesh_tick_known=hand.mesh_tick_known;
+            }
+            const bool bound=component::mount.bind(frame.right,matrix,false);
+            if(record_first_bind){component::first_bind.bind_return_known=true;component::first_bind.bind_result=bound;}
+            if(!component_trace::gate(component_trace::Stage::mount_bind,bound))return false;
+        }
         gears_vr::Viewpoint pose{};
-        if(!component_trace::gate(component_trace::Stage::mount_solve,component::mount.solve(frame.right,pose)))return false;
+        const bool solved=component::mount.solve(frame.right,pose);
+        if(record_first_bind){
+            component::first_bind.solve_return_known=true;component::first_bind.solve_result=solved;component::first_bind.solved_pose=pose;
+        }
+        if(!component_trace::gate(component_trace::Stage::mount_solve,solved))return false;
         component::State before{};
-        if(!component_trace::gate(component_trace::Stage::initial_read,component::read(key,before,true)))return false;
+        const bool initial_read=component::read(key,before,true);
+        if(record_first_bind){
+            component::first_bind.initial_read_return_known=true;component::first_bind.initial_read_result=initial_read;
+            component::first_bind.initial_read_state_known=before.known;component::first_bind.initial_read_after_bind=before.value;
+        }
+        if(!component_trace::gate(component_trace::Stage::initial_read,initial_read))return false;
         wanted=before.value;wanted.absolute[0]=wanted.absolute[1]=true;
         std::array<uptr,3> flag_addresses{};std::array<unsigned,3> flag_masks{};
         if(!component_trace::gate(component_trace::Stage::absolute_storage,
@@ -518,6 +580,7 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
         const playground::Rotation rotation{gears_vr::to_rotator_units(pose.rotation.pitch),
             gears_vr::to_rotator_units(pose.rotation.yaw),gears_vr::to_rotator_units(pose.rotation.roll)};
         std::memcpy(wanted.translation.data(),&position,12);std::memcpy(wanted.rotation.data(),&rotation,12);
+        if(record_first_bind){component::first_bind.quantized_wanted=wanted;component::first_bind.quantized_wanted_known=true;}
     }
     component::Forward forward{plan,mask,{}};component::Backend backend{key,&forward};
     component::target=wanted;component::hand_lease=lease_number;component::plan_sequence=plan.ticket.sequence;

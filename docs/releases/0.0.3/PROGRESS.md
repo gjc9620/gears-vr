@@ -182,3 +182,9 @@ t 首次取得并恢复一次联合 hand lease；双手 setter_calls=8、target_
 独立按 t 的冻结 parser／math 复算：下一 Tick 双手位置残差均为 7.629e-6 原始单位，完整旋转右手 0.019797°、左手 0.005469°，均在原 0.1 阈值内。枪体同 Tick written 对目标为位置 0／完整旋转 0.002990°，到下一 Tick pre_restore 为位置 0.000492／完整旋转 **90.010196°**；约等于局部轴变为 [-written.Y, written.X, written.Z]，该模型余差 0.014516°。两次组件属性字节相同，首 bind 输入矩阵未单独记录，同 Tick LocalToWorld 可能仍是旧值；故不能宣称首绑定正确、持续几何通过，亦不能把此旋转问题归因为 reader 拒绝。只读报告 5ea9ccce…b405 位于 t 目录之外，原封存工件哈希保持。
 
 Native／XR 实际通过 60 projection layer、33 scene copy、约 0.658 秒有效提交，left_history 创建／释放／销毁均 1、failure 0，drain／entries restored 和 XR exit 0。这是短会话功能与生命周期证据，不能替代闪烁图像、FPS 或头显验收。Stop／Shutdown 均 0；8 控件、44 字节挂接、3 组件组、两入口逐字恢复，8 音频 session 恢复／pending 0。精确身份 owner 9000／game 23536／XR 29924 均终止，game exit 1。13 项实际交互／覆盖断言仍失败。t 的 107 文件加 seal 封存，seal 07fb240d…2c35、root result 235746d0…52e0；未重跑游戏或修改原失败审计。默认产物与公开包未安装候选。
+
+## 2026-10-24 — 读取拒绝与首次枪体绑定的有界诊断
+
+根据 t 缺失的证据，只新增三个私有源的诊断。GHW1 reader 固定保存第一次 rejected 的原分支、实际执行／通过掩码、cursor、原锁与时钟结果及可用性；仅对已有本地 packet 保存完整 336 字节，清理后输出一次。宏 OFF 的原 read 签名／正文逐字相同、整类非空行相同，packet 和 open／publish／close 保持。首次实际 mount.bind 单独锁定既有 matrix、完整 Key、右 grip、pawn mesh TickTag 和已有 hand snapshot tick；同次 acquire 的 bind／solve／initial_read_after_bind 返回及量化目标分别标 known。不同阶段不作原子同时值，记录不能授予写权。两记录在原成功 reset 后清零、沿既有清理结束出口输出，保留原短路、时钟调用、100ms、VM 与恢复次序；新增固定复制仍会占用 CPU，不声称性能改善或失败原因已修复。
+
+reader 首次严格 CPU 编译／运行通过 34 场景／366 项对照检查，首 bind 首次通过 11 场景／60 项；没有重跑原 suite 或构建主 DLL。producer c191a821…5f32／d4ebaa06…6728，Astra 组合窄审 463a2d5b…d6e3 无阻断。协调者核对两报告的 50 份工件、完整 776 源及两个 patch，按字节应用三份源码，其余 773 项保持，应用证明 843e50c1…8aff 位于忽略的 analysis/hand-mesh-diagnostics-integration-20261024/。u 入口另在 Native 启动与手部 Start 之前，通过既有 typed reader 独立观察资产 Origin／RotOrigin，保存身份、schema、原字节与错误；缺失或不合法保持 unknown，不填零、不作为验收条件或 bind 当刻值。此入口新增 9 项有限离线检查通过，Astra b89a37ff…5552 无阻断。下一步 PG-only 构建和实际读取仍待执行，尚未新增游戏或几何通过结果。

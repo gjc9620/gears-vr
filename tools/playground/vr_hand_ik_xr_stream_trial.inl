@@ -11,6 +11,50 @@ constexpr unsigned xr_max_leases=256;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
 // Read-only diagnostics. No getter, receipt, clock, atomic, or authorization is
 // sampled here. One pinned first rejection and 63 tail rows share 64 slots.
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+namespace world_reader_diagnostic {
+bool dumped{};
+constexpr const wchar_t* branches[]={L"none",L"consumer_or_mapping",L"lock",L"header",L"serial_regressed",L"frame"};
+constexpr const wchar_t* checks[]={L"consumer",L"mapped",L"locked",L"frequency_query",L"frequency_positive",L"magic",L"version",L"size",
+    L"pid",L"game_start",L"native_present",L"native_matches",L"frequency_matches",L"serial_available",L"serial_not_regressed",
+    L"frame_serial",L"frame_shape",L"frame_native",L"created_not_future",L"pose_recent",L"certificate_recent"};
+static_assert(sizeof(checks)/sizeof(*checks)==unsigned(gears_hand_continuity::WorldRejectCheck::count));
+void reset(){xr_bridge.reset_read_rejection();dumped=false;}
+void dump(){
+    if(dumped||!trial.ended||journals_dirty()||dual_draining||!log_file)return;
+    dumped=true;
+    auto const& r=xr_bridge.first_read_rejection();auto const& o=r.observation;
+    fwprintf(log_file,L"hand_world_reader_rejection_begin schema=%u capacity=1 record_size=%u packet_size=%zu known=%u "
+        L"branch=%ls evaluated=%08x passed=%08x available=%08x cursor_before=%llu cursor_after=%llu "
+        L"expected_pid=%lu expected_game_start=%llu expected_native_started_qpc=%llu "
+        L"lock_known=%u lock_result=%lu packet_available=%u frequency_call_known=%u frequency_value_known=%u frequency_result=%d frequency=%lld "
+        L"now_known=%u now=%llu now_ns_known=%u now_ns=%lld clocks_resampled=0 helper_subchecks_known=0\n",
+        r.schema,r.size,sizeof(r.packet),r.known,branches[unsigned(r.branch)],o.evaluated,o.passed,o.available,
+        o.cursor_before,o.cursor_after,o.expected_pid,o.expected_game_start,o.expected_native_started_qpc,
+        unsigned((o.available&gears_hand_continuity::read_lock)!=0),o.lock_result,
+        unsigned((o.available&gears_hand_continuity::read_packet)!=0),unsigned((o.available&gears_hand_continuity::read_frequency)!=0),
+        unsigned((o.available&gears_hand_continuity::read_frequency)!=0&&o.frequency_result!=FALSE),
+        o.frequency_result,o.frequency,unsigned((o.available&gears_hand_continuity::read_now)!=0),o.now,
+        unsigned((o.available&gears_hand_continuity::read_now_ns)!=0),o.now_ns);
+    fwprintf(log_file,L"hand_world_reader_rejection_checks schema=1");
+    for(unsigned i=0;i<unsigned(gears_hand_continuity::WorldRejectCheck::count);++i)
+        fwprintf(log_file,L" %ls=%u%u",checks[i],unsigned((o.evaluated&(1u<<i))!=0),unsigned((o.passed&(1u<<i))!=0));
+    fwprintf(log_file,L"\n");
+    if(o.available&gears_hand_continuity::read_packet){
+        auto const& p=r.packet;
+        fwprintf(log_file,L"hand_world_reader_rejection_packet schema=1 magic=%08x version=%u size=%u latest_serial=%llu "
+            L"pose_serial=%llu created_ms=%llu sequence=%llu stereo_ns=%lld input_ns=%lld hex=",
+            p.magic,p.version,p.size,p.latest_serial,p.frame.pose.serial,p.frame.pose.created_ms,p.frame.pose.sequence,
+            p.frame.certificate.stereo_received_ns,p.frame.certificate.input_received_ns);
+        auto const* bytes=reinterpret_cast<unsigned char const*>(&p);
+        for(std::size_t i=0;i<sizeof(p);++i)fwprintf(log_file,L"%02x",unsigned(bytes[i]));
+        fwprintf(log_file,L"\n");
+    }
+    fwprintf(log_file,L"hand_world_reader_rejection_end schema=1\n");fflush(log_file);
+}
+} // namespace world_reader_diagnostic
+#endif
+
 namespace component_trace {
 using Value=gears_weapon::WeaponMeshComponentValue;
 enum class Stage:unsigned {
@@ -95,7 +139,11 @@ void begin(){
     state.enabled=true;
     if(state.last_auth_known)authorization(state.last_auth);
 }
-void reset(){state={};}
+void reset(){state={};
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    world_reader_diagnostic::reset();
+#endif
+}
 void print_value(const wchar_t* label,Value const& value){
     fwprintf(log_file,L" %ls_absolute=%u%u%u %ls_translation=",label,unsigned(value.absolute[0]),unsigned(value.absolute[1]),unsigned(value.absolute[2]),label);
     for(auto byte:value.translation)fwprintf(log_file,L"%02x",unsigned(byte));
@@ -118,6 +166,9 @@ void print(Row const& row,const wchar_t* kind){
         auth.authorize_ns,auth.commit_ns,auth.ticket_ms,auth.plan_ms,auth.context_ms,auth.stereo_ns,auth.input_ns,auth.mask,auth.result);
 }
 void dump(){
+#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+    world_reader_diagnostic::dump();
+#endif
     if(!state.enabled||state.dumped||state.depth||dual_draining||!log_file)return;
     state.dumped=true;
     fwprintf(log_file,L"hand_weapon_component_gate_begin schema=1 capacity=64 pinned_first=1 count=%u seen=%llu overwritten=%llu "
