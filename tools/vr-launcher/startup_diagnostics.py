@@ -11,7 +11,7 @@ import struct
 import sys
 import time
 
-VERSION = '0.0.3'
+VERSION = '0.0.4-dev'
 REVISION = 'startup-diagnostics-1'
 MAX_TRACE_BYTES = 128 * 1024
 CONTEXT_FILES = ('GearsVR Launcher.exe', 'tools/vr-launcher/launcher.py',
@@ -201,6 +201,22 @@ class StartupTrace:
                     values['prime_status'] = prime_status(self.status_path, self.prime_started_wall_ns, self.observation.pid)
         except Exception:
             values['process'] = {'state':'unavailable'}
+        # Keep the earliest startup failure even if later cleanup also fails or
+        # the bounded timeline has filled. This receipt is never overwritten.
+        if self.path is not None:
+            destination=self.path.with_name(self.path.name+'.first-failure.json')
+            temporary=destination.with_name(destination.name+'.'+str(os.getpid())+'.tmp')
+            try:
+                row=dict(schema=1,kind='startup_diagnostic',event='failure',phase=self.phase,
+                         attempt_id=self.attempt_id,elapsed_ms=round((time.perf_counter_ns()-self.started_ns)/1e6,3),**values)
+                with temporary.open('w',encoding='utf-8') as stream:
+                    json.dump(row,stream);stream.flush();os.fsync(stream.fileno())
+                try:os.link(temporary,destination)
+                except FileExistsError:pass
+            except Exception:pass
+            finally:
+                try:temporary.unlink(missing_ok=True)
+                except OSError:pass
         self.emit('failure', **values)
 
     def close(self):

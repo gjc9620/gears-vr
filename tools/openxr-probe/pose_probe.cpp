@@ -28,6 +28,8 @@
 #include "menu_display_reader.h"
 #include "xr_wait_diagnostics.h"
 #include "xr_delivery_counter.h"
+#include "../vr-common/support_diagnostics.h"
+ID3D12Device* support_device{}; // Observed only while the owning local device is alive.
 
 using Microsoft::WRL::ComPtr;
 XrInstance instance = XR_NULL_HANDLE;
@@ -37,13 +39,17 @@ XrSpace view_space = XR_NULL_HANDLE;
 bool xr_gpu_teardown_unsafe=false;
 void xr_check(XrResult result, const char* action) {
     if (XR_FAILED(result)) {
+        gears_support::begin(stdout,"xr","first_failure");fprintf(stdout,"\"error_domain\":\"openxr\",\"error_code\":%d,\"action\":",int(result));gears_support::text(stdout,action);fprintf(stdout,"}\n");fflush(stdout);
         char text[XR_MAX_RESULT_STRING_SIZE]{};
         if(instance) xrResultToString(instance,result,text);
         throw std::runtime_error(std::string(action)+": "+text+" ("+std::to_string(result)+")");
     }
 }
 void dx_check(HRESULT result, const char* action) {
-    if (FAILED(result)) throw std::runtime_error(std::string(action)+": "+std::to_string(result));
+    if (FAILED(result)) {
+        gears_support::begin(stdout,"xr","first_failure");fprintf(stdout,"\"error_domain\":\"graphics\",\"hresult\":%ld,\"device_removed_reason\":%ld,\"action\":",result,support_device?support_device->GetDeviceRemovedReason():S_OK);gears_support::text(stdout,action);fprintf(stdout,"}\n");fflush(stdout);
+        throw std::runtime_error(std::string(action)+": "+std::to_string(result));
+    }
 }
 #include "test_pattern.h"
 #include "game_screen.h"
@@ -471,6 +477,9 @@ int main(int argc, char** argv) {
             throw std::runtime_error("Synthetic input requires verified Meta simulator runtime and loaded Operator layer");
         XrSystemGetInfo system_info{XR_TYPE_SYSTEM_GET_INFO};system_info.formFactor=XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
         XrSystemId system{};xr_check(xrGetSystem(instance,&system_info,&system),"xrGetSystem");
+        {XrSystemProperties observed{XR_TYPE_SYSTEM_PROPERTIES};if(XR_SUCCEEDED(xrGetSystemProperties(instance,system,&observed)))
+            gears_support::system(stdout,observed.systemName,observed.vendorId,observed.trackingProperties.positionTracking==XR_TRUE,
+                observed.trackingProperties.orientationTracking==XR_TRUE,observed.graphicsProperties.maxSwapchainImageWidth,observed.graphicsProperties.maxSwapchainImageHeight);}
         gears_eye_chain::Limits stereo_limits{};
         if(stereo_game_pid) {
             XrSystemProperties system_properties{XR_TYPE_SYSTEM_PROPERTIES};
@@ -504,11 +513,13 @@ int main(int argc, char** argv) {
         xr_check(xrGetInstanceProcAddr(instance,"xrGetD3D12GraphicsRequirementsKHR",reinterpret_cast<PFN_xrVoidFunction*>(&requirements_fn)),"requirements function");
         XrGraphicsRequirementsD3D12KHR requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_D3D12_KHR};
         xr_check(requirements_fn(instance,system,&requirements),"D3D12 requirements");
+        gears_support::adapter(stdout,"xr",requirements.adapterLuid,"adapter_required");
         ComPtr<IDXGIFactory4> factory;dx_check(CreateDXGIFactory1(IID_PPV_ARGS(&factory)),"DXGI factory");
         ComPtr<IDXGIAdapter1> adapter;dx_check(factory->EnumAdapterByLuid(requirements.adapterLuid,IID_PPV_ARGS(&adapter)),"runtime adapter");
         ComPtr<ID3D12Device> device;
         shutdown_diagnostics::initialization("d3d12_create_device_enter");
         dx_check(D3D12CreateDevice(adapter.Get(),requirements.minFeatureLevel,IID_PPV_ARGS(&device)),"D3D12 device");
+        support_device=device.Get();gears_support::adapter(stdout,"xr",device->GetAdapterLuid());
         shutdown_diagnostics::initialization("d3d12_create_device_completed");
         D3D12_COMMAND_QUEUE_DESC desc{};ComPtr<ID3D12CommandQueue> queue;
         dx_check(device->CreateCommandQueue(&desc,IID_PPV_ARGS(&queue)),"D3D12 queue");
@@ -1166,7 +1177,7 @@ int main(int argc, char** argv) {
         }
         fclose(csv);const int code=frames && display_ok && shutdown_completed?0:1;
         shutdown_diagnostics::marker("main_return_pending",true,code);return code;
-    }catch(std::exception const& error) {fprintf(stderr,"Pose probe error: %s\n",error.what());
+    }catch(std::exception const& error) {support_device=nullptr;fprintf(stderr,"Pose probe error: %s\n",error.what());fflush(stderr);
         outage.dump();
         image_tickets.dump();
         shutdown_diagnostics::marker("main_exception_handler");

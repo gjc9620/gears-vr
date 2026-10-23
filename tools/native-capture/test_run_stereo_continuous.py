@@ -628,8 +628,10 @@ class ContinuousTests(unittest.TestCase):
                 checks+=1
                 return checks==cancel_at
             with mock.patch.object(runner,'ROOT',root),mock.patch.object(runner.subprocess,'Popen',side_effect=spawn) as popen, \
+                 mock.patch.object(runner,'SupportJournal') as support, \
                  mock.patch.object(runner.subprocess,'run',side_effect=native) as native_run, \
                  mock.patch.object(runner,'read_session_status',side_effect=stages),contextlib.redirect_stdout(io.StringIO()):
+                support.return_value.start.return_value.close.return_value={}
                 code=runner.run_session(args,control,on_report=report,cancel_requested=cancelled if cancel_at else None,
                                         before_native_activation=startup_callback)
             state=json.loads(pathlib.Path(reports[0]).read_text())

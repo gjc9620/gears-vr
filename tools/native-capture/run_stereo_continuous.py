@@ -22,6 +22,7 @@ import uuid
 from run_stereo_probe import ROOT, complete_csv_rows, collect_xr_evidence
 from camera_closer_options import camera_closer_metres
 from session_telemetry import SessionTelemetry
+from support_diagnostics import SupportJournal
 
 class WindowsControl:
     def __init__(self):
@@ -528,7 +529,11 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
            'limits':'Explicit persistent session lifecycle; exit0 does not assert uninterrupted frame rate or physical headset acceptance.'}
     state.update({key:getattr(args,key) for key in ('hud_element_scale','hud_center_scale') if getattr(args,key,None) is not None})
     state['diagnostics_artifacts']=getattr(args,'diagnostics_artifacts',{})
-    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None;right_stick_policy=None
+    state['requested_configuration']={key:getattr(args,key) for key in
+        ('render_scale','stereo_units_per_metre','camera_closer_metres','first_person_preview','right_stick_deadzone_percent',
+         'hud_horizontal_fov_degrees','hud_element_scale','hud_center_scale')
+        if isinstance(getattr(args,key,None),(bool,int,float))}
+    child=None;activation_attempted=False;menu_monitor=None;world_monitor=None;world_log=None;telemetry=None;path_center=None;right_stick_policy=None;support=None
     state['path_choice_center_enabled']=bool(getattr(args,'path_choice_center',False))
     native_status=args.build_dir.resolve()/'session-status.txt'
     floor=0
@@ -553,6 +558,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
         state['owner_identity']=control.identity(os.getpid());state['game_identity']=control.identity(args.pid)
         floor=native_status.stat().st_mtime_ns if native_status.exists() else 0
         if not state['game_identity'] or not state['owner_identity']:raise RuntimeError('Live owner/game identity required')
+        support=SupportJournal(prefix,state['game_identity'],args.build_dir.resolve(),owner=state['owner_identity']).start()
         telemetry=SessionTelemetry(prefix.with_suffix('.telemetry.jsonl'),prefix.with_suffix('.csv'),
             args.build_dir.resolve()/'swapchain-output-status.txt',state['game_identity'],state['owner_identity'])
         state['diagnostics']=telemetry.summary()
@@ -574,6 +580,7 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                 state['xr_owned_pid']=child.pid
                 state['xr_identity']=control.identity(child.pid)
                 if not state['xr_identity']:raise RuntimeError('Owned XR identity could not be established')
+                support.bind_xr(state['xr_identity'])
                 write_state(state_path,state)
                 deadline=time.monotonic()+args.startup_timeout
                 while time.monotonic()<deadline and child.poll() is None:
@@ -660,7 +667,12 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     if cancel_requested and cancel_requested():
                         state['stop_requested_by']='launcher_cancel';break
                     status=read_session_status(native_status,args.pid,floor)
-                    if status and status.get('phase')!='running':break
+                    if status and status.get('phase')!='running':
+                        state['stop_requested_by']='native_'+status.get('reason','unknown')
+                        support.write('controller','native_stop_observed',reason=status.get('reason'),phase=status.get('phase'))
+                        if status.get('reason') in ('proof_failure','owner_error'):
+                            support.failure('native','native_stop',status.get('reason'))
+                        break
                     checked_identity(control,state['game_identity'])
                     if menu_monitor:menu_monitor.poll()
                     if path_center:
@@ -677,11 +689,16 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
                     ordinary_interval=.1 if getattr(args,'movie_display',False) else .25
                     if world_monitor:world_monitor.wait(ordinary_interval)
                     else:time.sleep(ordinary_interval)
+                if child.poll() is not None and not state.get('stop_requested_by'):
+                    state['stop_requested_by']='xr_process_exit'
+                    support.write('controller','child_exit',exit_code=child.returncode)
+                    if child.returncode:support.failure('xr','process_exit','XR child exited',exit_code=child.returncode)
             except StartupCancelled:
                 state['stop_requested_by']='startup_cancel'
             except KeyboardInterrupt:
                 state['stop_requested_by']='keyboard_interrupt'
             except Exception as error:
+                if support:support.failure('controller','session_exception',repr(error),phase=state.get('phase'))
                 state['error']=repr(error)
             finally:
                 if right_stick_policy:
@@ -766,8 +783,14 @@ def run_session(args,control=None,on_report=None,cancel_requested=None,before_na
             and (child is None or xr_shutdown) and not state.get('error') and not state.get('xr_cleanup_error'))
         state['phase']='cancelled' if state['startup_cancelled'] else 'stopped' if state['passed'] else 'incomplete'
     except Exception as error:
+        if support:support.failure('controller','owner_exception',repr(error),phase=state.get('phase'))
         state['error']=repr(error);state['phase']='incomplete'
     finally:
+        if support:
+            if state.get('error'):support.failure('controller','session_error',state['error'])
+            for key in ('native_cleanup_error','xr_cleanup_error'):
+                if state.get(key):support.failure('controller',key,state[key])
+            state['support_diagnostics']=support.close()
         if telemetry:
             telemetry.close(state['phase'],passed=state.get('passed',False),native_cleanup_verified=state.get('native_cleanup_verified',False),
                 xr_exit_code=state.get('xr_exit_code'),error=state.get('error'))

@@ -21,6 +21,8 @@
 #include "../vr-common/stereo_ticket_store.h"
 #include "render_cost.h"
 #include "atomic_status_file.h"
+#include "../vr-common/support_diagnostics.h"
+gears_support::Recorder support_diagnostics;
 #include "resource_resize_probe.h"
 #include "swapchain_resize_mode.h"
 #include "swapchain_startup_trace.h"
@@ -624,6 +626,13 @@ double constructor_derived_error{};
 using StateFactoryFn=void*(__fastcall*)();
 using StateDeleteFn=void*(__fastcall*)(void*,unsigned);
 StateFactoryFn state_factory{};
+#include "independent_view_history.h"
+gears_view_history::State left_view_history;
+#if defined(GEARS_INDEPENDENT_LEFT_VIEW_HISTORY) && GEARS_INDEPENDENT_LEFT_VIEW_HISTORY
+constexpr bool independent_left_view_history=true;
+#else
+constexpr bool independent_left_view_history=false;
+#endif
 ConsumeFn state_release{};
 StateDeleteFn original_state_delete{};
 void* state_delete_target{};
@@ -909,6 +918,7 @@ void request_session_stop_at(SessionStop reason,const char* source_file,unsigned
     // Publish the complete first-request record. __FILE__ has static lifetime;
     // later requests lose the phase CAS and cannot overwrite these fields.
     session_stop_recorded.store(true,std::memory_order_release);
+    support_diagnostics.stop(static_cast<unsigned>(reason),source_line);
     // The Lifetime mutex serializes this barrier with begin. It grants no claim.
     submitted_lifetime.request_stop();
 }
@@ -943,6 +953,7 @@ void observe_session_owner(gears_session::OwnerState state) {
 void release_session_state_claim(bool claim) {
     if(claim&&state_created.load()==1&&!submit_retained.load()) {
         unsigned fresh=0;if(!state_release_started.compare_exchange_strong(fresh,1))return;
+        left_view_history.release(state_release);
         state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
     }
 }
@@ -971,7 +982,7 @@ struct SessionBuildScope {
     ~SessionBuildScope(){if(enabled){--session_build_depth;service_session_stop_native();}}
 };
 bool session_native_cleanup_ready() {
-    return submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&
+    return submitted_lifetime.is_closed()&&!submitted_lifetime.pending()&&!submit_retained.load()&&left_view_history.retired()&&
         (!state_created.load()||(state_release_returned.load()==1&&state_destroyed.load()==1&&(state_delete_flags&1)));
 }
 bool session_cleanup_expired() {
@@ -1313,6 +1324,9 @@ void remember_swapchain(unsigned method,IUnknown* input,IDXGISwapChain* chain) {
     gears_swapchain_binding::Binding binding{chain_id,canonical_identity(queue),reinterpret_cast<uintptr_t>(desc.OutputWindow),
         desc.BufferDesc.Width,desc.BufferDesc.Height,method};
     bool accepted=swapchain_bindings.bind(binding,owner==GetCurrentProcessId(),queue->GetDesc().Type==D3D12_COMMAND_LIST_TYPE_DIRECT);
+    ID3D12Device* support_device{};LUID support_luid{};bool support_adapter=SUCCEEDED(queue->GetDevice(IID_PPV_ARGS(&support_device)));
+    if(support_adapter){support_luid=support_device->GetAdapterLuid();support_device->Release();}
+    support_diagnostics.event(2,chain_id,desc.BufferDesc.Width,desc.BufferDesc.Height,unsigned(desc.BufferDesc.Format),desc.BufferCount,S_OK,accepted?1:0,support_luid,support_adapter);
     if(accepted&&!hold_binding(chain,queue)){swapchain_bindings.invalidate();accepted=false;}
     queue->Release();
     if(!accepted)return;
@@ -1327,6 +1341,7 @@ HRESULT STDMETHODCALLTYPE hook_create_swapchain(IDXGIFactory* factory,IUnknown* 
     Scope scope;
     const auto startup=gears_swapchain_startup::begin_factory(gears_swapchain_startup::create_legacy,factory,input,nullptr,desc,sizeof(*desc),nullptr,nullptr,out,_ReturnAddress(),prime_recording.load(),recording.load());
     auto result=original_create_swapchain(factory,input,desc,out);
+    support_diagnostics.event(1,0,0,0,0,0,result);
     IDXGISwapChain* chain{};if(SUCCEEDED(result)&&out&&safe_copy(&chain,out,sizeof(chain)))remember_swapchain(1,input,chain);
     gears_swapchain_startup::finish(startup,result,chain);
     return result;
@@ -1336,6 +1351,7 @@ HRESULT STDMETHODCALLTYPE hook_create_hwnd(IDXGIFactory2* factory,IUnknown* inpu
     Scope scope;
     const auto startup=gears_swapchain_startup::begin_factory(gears_swapchain_startup::create_hwnd,factory,input,window,desc,sizeof(*desc),full,restrict_output,out,_ReturnAddress(),prime_recording.load(),recording.load());
     auto result=original_create_hwnd(factory,input,window,desc,full,restrict_output,out);
+    support_diagnostics.event(1,0,0,0,0,0,result);
     IDXGISwapChain1* chain{};if(SUCCEEDED(result)&&out&&safe_copy(&chain,out,sizeof(chain)))remember_swapchain(2,input,chain);
     gears_swapchain_startup::finish(startup,result,chain);
     return result;
@@ -1345,6 +1361,7 @@ HRESULT STDMETHODCALLTYPE hook_create_composition(IDXGIFactory2* factory,IUnknow
     Scope scope;
     const auto startup=gears_swapchain_startup::begin_factory(gears_swapchain_startup::create_composition,factory,input,nullptr,desc,sizeof(*desc),nullptr,restrict_output,out,_ReturnAddress(),prime_recording.load(),recording.load());
     auto result=original_create_composition(factory,input,desc,restrict_output,out);
+    support_diagnostics.event(1,0,0,0,0,0,result);
     IDXGISwapChain1* chain{};if(SUCCEEDED(result)&&out&&safe_copy(&chain,out,sizeof(chain)))remember_swapchain(3,input,chain);
     gears_swapchain_startup::finish(startup,result,chain);
     return result;
@@ -1566,6 +1583,7 @@ void observe_frame_present(IDXGISwapChain* chain,UINT flags,gears_outage::Sample
     if(!frame_link_diagnostics || !recording.load())return;
     owned_scene_gpu::present();
     auto identity=canonical_identity(chain);auto binding=swapchain_bindings.registered(identity);
+    support_diagnostics.present(identity,flags,binding.chain!=0,binding.resizing);
     if(!binding.chain){++frame_counts.unbound;frame_link.invalidate();frame_link.present(0,0);ngx_output_pixels::end_ticket(0,false);retire_stereo_window();frame_target_stats.clear_bindings();
         if(outage_diagnostics.load())outage_draws={};return;}
     if(binding.resizing){frame_link.invalidate_all();ngx_output_pixels::end_ticket(0,false);retire_stereo_window();frame_target_stats.clear_bindings();return;}
@@ -1712,6 +1730,7 @@ bool close_stereo_publisher() {
     return drained&&closed;
 }
 void write_session_status(bool resources_retained=true,bool entries_restored=false) {
+    if(!self_testing&&directory[0]){wchar_t support_path[MAX_PATH];swprintf_s(support_path,L"%s\\support-native-%lu.jsonl",directory,GetCurrentProcessId());support_diagnostics.flush(support_path);}
     resources_retained=resources_retained||native_surface_probe_retained();
     resources_retained=resources_retained||native_owned_probe_retained();
     resources_retained=resources_retained||native_owned_scene_retained();
@@ -1749,6 +1768,8 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         now(),qpc_frequency,frame_link_diagnostics?1u:0u,frame_counts.presents.load(),
         frame_counts.tests.load(),frame_counts.present_failed.load());
     owned_scene_gpu::print_progress(output);
+    fprintf(output,"support_capture_attempts=%llu support_capture_skipped=%llu support_publisher_state=%u support_publisher_busy=%u support_frame_unbound=%llu support_frame_changed=%llu ",
+        stereo_publish_counts.capture_attempts.load(),stereo_publish_counts.capture_skipped.load(),stereo_publisher.state.load(),stereo_publisher.busy.load(),frame_counts.unbound.load(),frame_counts.changed.load());
     native_owned_scene_progress(output);
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
     const auto mirror=desktop_mirror.status();
@@ -1773,6 +1794,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
         static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()),
         static_cast<unsigned long long>(world_prepare_timestamp_request.load()));
+    left_view_history.print(output);
     fprintf(output,"world_handoff_supported=%u world_handoff_phase=%u world_handoff_commits=%llu world_quiesce_requested=%u state_release_started=%u epoch_submit_total=%llu ",
         world_handoff_supported?1:0,
         world_handoff_phase.load(),static_cast<unsigned long long>(world_handoff_commits.load()),world_quiesce_requested.load()?1:0,
@@ -2316,6 +2338,7 @@ void try_shadow_state(const Record& record) {
 }
 void* __fastcall hook_state_delete(void* state,unsigned flags) {
     Scope scope;if(!scope.world())return original_state_delete(state,flags);
+    const bool left_delete=left_view_history.begin_delete(state,flags);
     unsigned expected=0;
     const bool observe=reinterpret_cast<uintptr_t>(state)==state_temporary.load() && state_created.load()==1 &&
         state_delete_entered.compare_exchange_strong(expected,1);
@@ -2324,6 +2347,7 @@ void* __fastcall hook_state_delete(void* state,unsigned flags) {
     // The deleting wrapper has already released the storage. Only keep numeric
     // identities and completion metadata; never inspect this object afterward.
     if(observe)++state_destroyed;
+    if(left_delete)left_view_history.complete_delete();
     return result;
 }
 bool probe_renderer_pair(void* family,void* view) {
@@ -3019,6 +3043,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         if(!(continuous_session?state_created.load()!=0:submit_deadline!=0) && !foreground() && !submit_background){note_world_progress(WorldProgress::foreground);return false;}
         if(submit_deadline && (now()>=submit_deadline || (!foreground() && !submit_background) || (GetAsyncKeyState(VK_F8)&0x8000))) {
             if(submitted_lifetime.close() && state_created.load() && !submit_retained.load()) {
+                left_view_history.release(state_release);
                 state_release(reinterpret_cast<void*>(state_temporary.load()));state_release_returned=1;
             }
             return false;
@@ -3122,6 +3147,13 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         if(submit_pair_seconds&&!submit_deadline){submit_deadline=now()+static_cast<LONGLONG>(submit_pair_seconds)*qpc_frequency;
             if(stereo_gpu_publish)stereo_publish_deadline.store(submit_deadline);}
     }
+    void* left_state=nullptr;
+    if(independent_left_view_history&&!self_testing&&continuous_session&&stereo_xr&&!submit_mono_control&&!submit_duplicate_control){
+        if(!left_view_history.ensure(state_factory,safe_copy,state_expected_table,original_state,state_temporary.load())){
+            request_session_stop(SessionStop::proof_failure);service_session_stop_native();return false;
+        }
+        left_state=reinterpret_cast<void*>(left_view_history.pointer());
+    }
     gears_split_sources::API api{shadow_api.allocate,source_constructor,shadow_api.destroy,shadow_api.free,safe_copy};
     // Freeze once before either constructor. Registration commits the first origin.
     gears_projection::Metadata projection{};projection.enabled=projection_control;projection.pair_qpc=now();
@@ -3190,7 +3222,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     split_family=original_family_bytes;
     if(owned_scene_target)memcpy(split_family.data()+0x10,&owned_scene_target,sizeof(owned_scene_target));
     auto sources=gears_split_sources::create(api,family,reinterpret_cast<void*>(input.family_views[0]),state,submit_output_bounds,submit_mono_control || submit_duplicate_control,projection_control,projection.phase,stereo_xr?&frame.expected:nullptr,
-        constructor_output,constructor_input,owned_scene_target?split_family.data():family);
+        constructor_output,constructor_input,owned_scene_target?split_family.data():family,left_state);
 #if defined(GEARS_NGX_STEREO_HOST_OBSERVER) && GEARS_NGX_STEREO_HOST_OBSERVER
     if(constructor_input&&sources.checks==63){
         if(!ngx_stereo_host::native_create_matches(native_source)){
@@ -3299,7 +3331,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         std::array<unsigned char,16> rectangle{};
         unsigned source_index=submit_mono_independent_state?1:i;
         verified=safe_copy(&owner,reinterpret_cast<void*>(built.family_views[i]),8) && owner==submit_root.load()+8 &&
-            safe_copy(&associated,reinterpret_cast<void*>(built.family_views[i]+8),8) && associated==(source_index?state_temporary.load():original_state) &&
+            safe_copy(&associated,reinterpret_cast<void*>(built.family_views[i]+8),8) && associated==(source_index?state_temporary.load():(left_state?reinterpret_cast<uintptr_t>(left_state):original_state)) &&
             safe_copy(&index,reinterpret_cast<void*>(built.family_views[i]+0xd24),4) && index==i &&
             safe_copy(matrix.data(),reinterpret_cast<void*>(built.family_views[i]+0x70),128) &&
             !memcmp(matrix.data(),sources.inputs[source_index].bytes.data()+0x70,128) &&
@@ -3595,6 +3627,7 @@ bool desktop_mirror_present(IDXGISwapChain* chain,UINT flags){
 #endif
 }
 HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT flags) {
+    support_diagnostics.entry(false);
     final_transfer_live::normalizer::boundary();
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_present(chain,interval,flags);}auto frame_guard=frame_lock();
     FramePresentScope frame_present;
@@ -3611,6 +3644,8 @@ HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT 
     if(frame_interval)desktop_mirror_present(chain,flags);
     if(diagnostic)diagnostic->original_begin_qpc=now();
     HRESULT result=original_present(chain,interval,flags);
+    if(FAILED(result)){const auto id=canonical_identity(chain);support_diagnostics.failure(id,result);ID3D12Device* observed{};
+        if(SUCCEEDED(chain->GetDevice(IID_PPV_ARGS(&observed)))){support_diagnostics.event(9,id,0,0,0,0,observed->GetDeviceRemovedReason());observed->Release();}}
     if(diagnostic)outage_finish(*diagnostic,now(),result);
     frame_inside_original_present=saved_inside_present;
     if(frame_interval)retire_original_present_interval();
@@ -3620,6 +3655,7 @@ HRESULT STDMETHODCALLTYPE hook_present(IDXGISwapChain* chain,UINT interval,UINT 
     enqueue(record);return result;
 }
 HRESULT STDMETHODCALLTYPE hook_present1(IDXGISwapChain1* chain,UINT interval,UINT flags,const DXGI_PRESENT_PARAMETERS* params) {
+    support_diagnostics.entry(true);
     final_transfer_live::normalizer::boundary();
     Scope scope;if(!scope.world()){auto unknown=frame_lock();frame_link.invalidate();return original_present1(chain,interval,flags,params);}auto frame_guard=frame_lock();
     FramePresentScope frame_present;
@@ -3640,6 +3676,8 @@ HRESULT STDMETHODCALLTYPE hook_present1(IDXGISwapChain1* chain,UINT interval,UIN
 #endif
     if(diagnostic)diagnostic->original_begin_qpc=now();
     HRESULT result=original_present1(chain,interval,flags,mirrored?&full_update:params);
+    if(FAILED(result)){const auto id=canonical_identity(chain);support_diagnostics.failure(id,result);ID3D12Device* observed{};
+        if(SUCCEEDED(chain->GetDevice(IID_PPV_ARGS(&observed)))){support_diagnostics.event(9,id,0,0,0,0,observed->GetDeviceRemovedReason());observed->Release();}}
     if(diagnostic)outage_finish(*diagnostic,now(),result);
     frame_inside_original_present=saved_inside_present;
     if(frame_interval)retire_original_present_interval();

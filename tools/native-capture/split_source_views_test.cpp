@@ -474,5 +474,20 @@ int main() {
     if(!release(api,result))return 66;
     clear_fixture_maps();map_test_enabled=false;
     if(map_nodes_allocated!=map_nodes_freed||map_buckets_allocated!=map_buckets_freed)return 50;
-    printf("Split sources: first-guard evidence, map copy/independence/after ownership+read failure/source mutation, rectangles and quarantine passed\n");return 0;
+    // Each VR eye can keep history independent from the original mono view.
+    memcpy(source,original.data(),sizeof(source));
+    auto separate=[&](void* left){return create(api,family,source,reinterpret_cast<void*>(0x2000),
+        false,false,false,Phase::a1,nullptr,nullptr,nullptr,nullptr,left);};
+    result=separate(reinterpret_cast<void*>(0x3000));
+    uintptr_t left_history{},right_history{};
+    if(result.checks!=63||!read(&left_history,static_cast<unsigned char*>(result.views[0])+8,8)||
+       !read(&right_history,static_cast<unsigned char*>(result.views[1])+8,8)||
+       left_history!=0x3000||right_history!=0x2000||memcmp(source,original.data(),sizeof(source))||!release(api,result))return 71;
+    const auto before_left_guards=allocations;
+    for(auto alias:{0x1000,0x2000}){
+        result=separate(reinterpret_cast<void*>(static_cast<uintptr_t>(alias)));
+        if(result.rejection!=1||result.input_evidence.failure_mask!=invalid_left_state||
+           result.checks||allocations!=before_left_guards||result.views[0]||result.views[1])return 72;
+    }
+    printf("Split sources: independent eye histories, original preservation, aliases, maps, geometry and quarantine passed\n");return 0;
 }

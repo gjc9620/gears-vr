@@ -41,6 +41,11 @@ class BundleTests(unittest.TestCase):
         self.no_process = mock.patch.object(bundle.subprocess, 'run', side_effect=AssertionError('no process expected'))
         self.no_process.start()
         self.addCleanup(self.no_process.stop)
+        inventory = mock.patch.object(bundle, '_openxr_inventory', return_value={'available':False})
+        inventory.start()
+        self.addCleanup(inventory.stop)
+        software=mock.patch.object(bundle,'_software_inventory',return_value={'available':False})
+        software.start();self.addCleanup(software.stop)
 
     def session(self, number=1, phase='running', **extra):
         path = self.runtime / f'continuous-stereo-{100+number}-20261017-12000{number}-{number:08x}.json'
@@ -238,7 +243,7 @@ class BundleTests(unittest.TestCase):
         broken = self.session(1)
         broken.write_text('{')
         large = self.session(2)
-        large.write_text('x'*(bundle.MAX_INPUT_BYTES+1))
+        large.write_text('x'*(bundle.MAX_DEBUG_INPUT_BYTES+1))
         valid = self.session(3, 'incomplete')
         valid.with_suffix('.menu.jsonl').write_text(json.dumps({'sequence':1,'reason':'valid',
             'state_evidence':{'top':{'tag':'DeltaPause','address':'0x1234'}}})+'\n{"partial":')
@@ -625,6 +630,21 @@ class BundleTests(unittest.TestCase):
         self.assertNotIn('PRIVATE', raw); self.assertNotIn('PrivateUser', raw)
         self.assertNotIn('partial', raw)
 
+    def test_full_startup_timeline_exports_durable_failure_before_later_cleanup(self):
+        path=self.startup(1,[]);path.unlink()
+        trace=bundle.startup_diagnostics.StartupTrace(path,attempt_id=f'{1:032x}')
+        with mock.patch.object(bundle.startup_diagnostics,'MAX_TRACE_BYTES',1):
+            trace.begin('target_priming');trace.failure(RuntimeError('original activation failure'))
+            trace.begin('cleanup');trace.failure(RuntimeError('later cleanup failure'))
+        trace.close();self.export()
+        _,raw,docs=self.read_zip()
+        attempt=docs['startup-attempts.json']['attempts'][0]
+        self.assertEqual(attempt['events'],[])
+        self.assertEqual(attempt['first_failure']['phase'],'target_priming')
+        self.assertIn('original activation failure',attempt['first_failure']['error'])
+        self.assertIn('First failure: RuntimeError',raw)
+        self.assertNotIn('later cleanup failure',raw)
+
     def test_startup_reparse_candidates_and_bad_context_are_omitted(self):
         path = self.startup(1, [])
         info = path.lstat()
@@ -648,6 +668,210 @@ class BundleTests(unittest.TestCase):
         self.assertFalse(docs['startup-attempts.json']['history_available'])
         self.assertEqual(docs['startup-attempts.json']['attempts'], [])
         self.assertEqual(docs['build-info.json']['diagnostics_revision'], 'startup-diagnostics-1')
+        self.assertEqual(docs['build-info.json']['version'], bundle.startup_diagnostics.VERSION)
+
+    def test_single_report_keeps_activation_cause_capture_status_and_original_stop(self):
+        path = self.session(phase='incomplete', stop_requested_by='launcher_cancel',
+            native_started=True, native_status={'phase':'incomplete', 'reason':'proof_failure',
+                'capture_attempts':'2', 'capture_skipped':'1', 'busy':'1', 'published':'0',
+                'frame_link_unbound':'7', 'module_base':'0x140000000', 'raw_bytes':'498b00498bc8'},
+            native_command=['C:/Users/PrivateUser/private.py'],
+            session_exit_evidence={'loss_observed':False, 'shutdown_completed':True})
+        path.with_suffix('.native-start.log').write_text(
+            '{"native_prepare_stage":"certificate_acquisition_including_retry","elapsed_ms":123}\n'
+            'Traceback (most recent call last):\n'
+            '  File "C:\\Users\\PrivateUser\\Mod\\start_capture.py", line 42, in activate\n'
+            'RuntimeError: GPU capture failed HRESULT=0x887A0005 pointer=0x12345678 rva=0x00112233 token=SECRET_TOKEN\n'
+            'PROPRIETARY_NATIVE_CODE\n', encoding='utf-8')
+        path.with_suffix('.session-status.txt').write_text(
+            'continuous_session=1 phase=incomplete reason=proof_failure cleanup_timeout=1 published=0 '
+            'owner_pid=201 owner_creation_time=134000000000000001 path_trial_compiled=1 '
+            'owned_ui_command_stage=3 module_base=0x140000000 owner_username=PrivateUser\ncomplete=1\n')
+        path.with_suffix('.native-status.txt').write_text(
+            'stereo_gpu_publish enabled=1 capture_attempts=2 capture_skipped=1 busy=1 published=0 '
+            'capture_result=0x887A0005 resource=0x12345678\n'
+            'frame_link presents=1 unbound=7 changed=1\n')
+        path.with_suffix('.stdout.txt').write_text(
+            'runtime_name=SteamVR/OpenXR runtime_version=281474976710656 simulator_operator=0\n'
+            '{"session_exit_evidence":true,"loss_observed":false,"shutdown_completed":true}\n')
+        self.export()
+        names, raw, docs = self.read_zip()
+        debug = docs['debug/session-1.json']
+        self.assertEqual(debug['controller']['stop_requested_by'], 'launcher_cancel')
+        self.assertEqual(debug['controller']['native_status']['capture_attempts'], 2)
+        activation = debug['artifacts']['.native-start.log']
+        self.assertEqual(activation['status'], 'complete')
+        self.assertIn('0x887A0005', str(activation['records']))
+        self.assertIn('GPU capture failed', str(activation['records']))
+        self.assertEqual(activation['records'][2]['file'], 'start_capture.py')
+        status = debug['artifacts']['.session-status.txt']['records'][0]
+        self.assertEqual(status['reason'], 'proof_failure')
+        self.assertEqual(status['path_trial_compiled'], 1)
+        self.assertEqual(status['owned_ui_command_stage'], 3)
+        self.assertEqual(debug['artifacts']['.native-status.txt']['records'][1]['unbound'], 7)
+        self.assertEqual(docs['sessions/session-1.json']['runtime']['runtime_name'], 'SteamVR/OpenXR')
+        self.assertEqual(docs['manifest.json']['export_revision'], bundle.EXPORT_REVISION)
+        self.assertEqual(docs['manifest.json']['artifact_coverage']['debug/session-1.json']
+                         ['.native-start.log']['status'], 'complete')
+        for private in ('PrivateUser', 'SECRET_TOKEN', 'PROPRIETARY_NATIVE_CODE', '0x140000000',
+                        '0x12345678', '0x00112233', '498b00498bc8', 'native_command'):
+            self.assertNotIn(private, raw)
+
+    def test_current_csv_columns_and_future_columns_do_not_discard_all_evidence(self):
+        path = self.session()
+        path.with_suffix('.csv').write_text(
+            'frame,predicted_time,head_x,xr_distinct_stereo_submissions,transport_ready_deferred,future_metric\n'
+            '1,1000000000,987.12345,0,4,PRIVATE_TEXT\n'
+            '2,1020000000,987.12345,0,5,PRIVATE_TEXT\n'
+            '3,invalid,987.12345,0,6,PRIVATE_TEXT\n')
+        self.export()
+        names, raw, docs = self.read_zip()
+        self.assertIn('sessions/session-1.csv', names)
+        self.assertEqual(docs['sessions/session-1.json']['csv']['rows'], 2)
+        self.assertEqual(docs['sessions/session-1.json']['csv']['invalid_rows'], 1)
+        records = docs['debug/session-1.json']['artifacts']['.csv']['records']
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[-1]['transport_ready_deferred'], 5)
+        self.assertNotIn('PRIVATE_TEXT', raw)
+        self.assertNotIn('987.12345', raw)
+        self.assertNotIn('"head_x"', raw)
+
+    def test_detailed_evidence_reports_gaps_and_keeps_first_failure_and_end(self):
+        path = self.session()
+        target = path.with_suffix('.stderr.txt')
+        target.write_text('RuntimeError: first_failure\n' + 'UNRELATED_PRIVATE_TEXT\n' * 4000 +
+                          'PermissionError: final_failure\n')
+        with mock.patch.object(bundle, 'MAX_DEBUG_INPUT_BYTES', 70000):
+            self.export()
+        _, raw, docs = self.read_zip()
+        artifact = docs['debug/session-1.json']['artifacts']['.stderr.txt']
+        self.assertEqual(artifact['status'], 'truncated')
+        self.assertEqual(len(artifact['byte_ranges']), 2)
+        self.assertIn('first_failure', raw)
+        self.assertIn('final_failure', raw)
+        self.assertNotIn('UNRELATED_PRIVATE_TEXT', raw)
+        self.assertLess(artifact['read_bytes'], artifact['source_bytes'])
+
+    def test_large_controller_and_detailed_native_paths_are_not_silently_lost(self):
+        path = self.session(stop_requested_by='keyboard_interrupt', padding='x' * (bundle.MAX_INPUT_BYTES + 10))
+        path.with_suffix('.native-start.log').write_text('TimeoutError: Camera preparation deadline\n')
+        self.export()
+        _, raw, docs = self.read_zip()
+        self.assertTrue(docs['sessions/session-1.json']['recognized'])
+        self.assertEqual(docs['debug/session-1.json']['controller']['stop_requested_by'], 'keyboard_interrupt')
+        self.assertIn('Camera preparation deadline', raw)
+        self.assertNotIn('"padding"', raw)
+        self.assertEqual(docs['debug/session-1.json']['artifacts']['.native-status.txt']['status'], 'missing')
+
+    def test_openxr_inventory_is_separate_export_time_curated_context(self):
+        self.session()
+        provider = lambda: {'available':True, 'environment_override_present':False,
+            'username':'PrivateUser', 'registrations':[{'source':'HKLM64', 'kind':'implicit_layer',
+                'manifest_status':'readable', 'library_name':'ExampleLayer.dll', 'layer_name':'ExampleLayer',
+                'registered_enabled':True, 'disabled_by_environment':False, 'manifest_sha256':'b'*64,
+                'library_path':'C:/Users/PrivateUser/private.dll', 'serial':'PRIVATE_SERIAL'}]}
+        self.export(openxr_reader=provider)
+        _, raw, docs = self.read_zip()
+        inventory = docs['openxr-environment.json']
+        self.assertTrue(inventory['observed_at_export'])
+        self.assertEqual(inventory['registrations'][0]['library_name'], 'ExampleLayer.dll')
+        self.assertTrue(inventory['registrations'][0]['registered_enabled'])
+        self.assertNotIn('PrivateUser', raw)
+        self.assertNotIn('PRIVATE_SERIAL', raw)
+        self.assertNotIn('openxr-environment', str(docs['sessions/session-1.json']))
+
+    def test_history_capacity_keeps_newest_candidates_instead_of_first_directory_entries(self):
+        sessions = [self.session(number) for number in range(1, 7)]
+        for number in range(1, 7):
+            self.startup(number, [dict(event='begin', phase='launch_script', elapsed_ms=number)])
+        with os.scandir(self.runtime) as scan:
+            entries = sorted(list(scan), key=lambda entry:entry.name)
+        with mock.patch.object(bundle.os, 'scandir') as scan, mock.patch.object(bundle, 'MAX_CANDIDATES', 3):
+            scan.return_value.__enter__.return_value = entries
+            collector = bundle.Collector(self.root)
+            self.assertEqual(collector.sessions(), list(reversed(sessions[-3:])))
+            attempts = bundle._startup_attempts(collector)['attempts']
+        self.assertEqual([attempt['events'][0]['elapsed_ms'] for attempt in attempts], [6, 5, 4])
+
+    def test_record_limit_keeps_middle_failure_and_reports_omissions(self):
+        path = self.session()
+        records = [dict(event='sample', observed_ns=index) for index in range(100)]
+        records[50] = dict(event='capture_failed', error='middle_failure', observed_ns=50)
+        path.with_suffix('.telemetry.jsonl').write_text(''.join(json.dumps(row)+'\n' for row in records))
+        with mock.patch.object(bundle, 'MAX_DEBUG_RECORDS', 16):
+            self.export()
+        _, _, docs = self.read_zip()
+        artifact = docs['debug/session-1.json']['artifacts']['.telemetry.jsonl']
+        self.assertEqual(artifact['status'], 'truncated')
+        self.assertEqual(artifact['retained_records'], 16)
+        self.assertEqual(artifact['omitted_records'], 84)
+        self.assertEqual(artifact['omitted_error_records'], 0)
+        self.assertEqual(artifact['records'][0]['observed_ns'], 0)
+        self.assertEqual(artifact['records'][-1]['observed_ns'], 99)
+        self.assertIn('middle_failure', str(artifact['records']))
+
+    def test_archive_budget_trims_history_but_keeps_activation_status_and_middle_error(self):
+        path = self.session(stop_requested_by='launcher_cancel')
+        path.with_suffix('.native-start.log').write_text('RuntimeError: original_activation_failure\n')
+        path.with_suffix('.native-status.txt').write_text('capture_attempts=7 published=0 busy=1\n')
+        records = [dict(event='sample', observed_ns=index, message='sample ' + 'x'*1000) for index in range(1000)]
+        records[500] = dict(event='capture_failed', error='capture_failure_in_middle', observed_ns=500)
+        path.with_suffix('.telemetry.jsonl').write_text(''.join(json.dumps(row)+'\n' for row in records))
+        with mock.patch.object(bundle, 'MAX_ARCHIVE_BYTES', 512*1024):
+            self.export()
+            _, raw, docs = self.read_zip()
+        artifact = docs['debug/session-1.json']['artifacts']['.telemetry.jsonl']
+        self.assertEqual(artifact['status'], 'truncated_for_archive_budget')
+        self.assertGreater(artifact['omitted_records'], 0)
+        self.assertEqual(artifact['omitted_error_records'], 0)
+        self.assertIn('capture_failure_in_middle', str(artifact['records']))
+        self.assertIn('original_activation_failure', raw)
+        self.assertEqual(docs['debug/session-1.json']['artifacts']['.native-status.txt']['records'][0]['capture_attempts'], 7)
+
+    def test_telemetry_unavailable_identity_and_read_errors_survive_summary_and_extended_export(self):
+        path = self.session()
+        rows = [dict(event='sample', observed_ns=1,
+                     source_states=dict(native='first_sample', xr='fresh', render='fresh')),
+                dict(event='sample', observed_ns=2,
+                     source_states=dict(native='unchanged', xr='counter_reset', render='unavailable')),
+                dict(event='sample', observed_ns=3,
+                     source_states=dict(native='identity_mismatch_or_unavailable', xr='unavailable',
+                                        render='PRIVATE_STATE', account='PRIVATE_ACCOUNT'),
+                     source_errors=dict(xr='PermissionError', render='PRIVATE_ERROR', account='PRIVATE_ACCOUNT'))]
+        path.with_suffix('.telemetry.jsonl').write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        self.export()
+        _, raw, docs = self.read_zip()
+        for history in (docs['sessions/session-1.json']['telemetry'],
+                        docs['debug/session-1.json']['artifacts']['.telemetry.jsonl']['records']):
+            self.assertEqual(history[0]['source_states']['native'], 'first_sample')
+            self.assertEqual(history[1]['source_states']['native'], 'unchanged')
+            self.assertEqual(history[1]['source_states']['xr'], 'counter_reset')
+            self.assertEqual(history[2]['source_states']['native'], 'identity_mismatch_or_unavailable')
+            self.assertEqual(history[2]['source_errors'], dict(xr='PermissionError', render='unknown_exception_type'))
+        self.assertNotIn('PRIVATE', raw)
+
+    def test_support_runtime_environment_loaded_modules_and_first_failure_survive_export(self):
+        path=self.session(support_diagnostics=dict(worker_joined=True,first_failure_available=True))
+        rows=[dict(role='xr',event='system',system_name='Test Headset',vendor_id=12,position_tracking_supported=True),
+              dict(role='native',event='adapter',adapter_luid_high=1,adapter_luid_low=2,adapter_name='Test GPU'),
+              dict(role='controller',event='adapter_comparison',adapter_match=True),
+              dict(role='game',event='loaded_modules',modules=[dict(module_name='openxr_loader.dll',file_version='1.2.3.4')],total_modules_observed=50),
+              dict(role='native',event='graphics_snapshot',present_entries=100,chains=[dict(chain_id=1,generation=2,presents=90,width=640,height=480)]),
+              dict(role='controller',event='first_failure',message='original failure',category='native_activation')]
+        for row in rows:row.update(support_diagnostics=True,schema=1,private_path='C:/Users/PRIVATE/file',password='PRIVATE')
+        path.with_suffix('.support.jsonl').write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        path.with_suffix('.first-failure.json').write_text(json.dumps(rows[-1]))
+        path.with_suffix('.native-live-status.txt').write_text('published=0 support_capture_attempts=10 support_frame_unbound=7\n')
+        self.export();_,raw,docs=self.read_zip()
+        artifacts=docs['debug/session-1.json']['artifacts'];evidence=artifacts['.support.jsonl']['records']
+        self.assertEqual(evidence[0]['system_name'],'Test Headset')
+        self.assertEqual(evidence[1]['adapter_luid_low'],2)
+        self.assertTrue(evidence[2]['adapter_match'])
+        self.assertEqual(evidence[3]['modules'][0]['file_version'],'1.2.3.4')
+        self.assertEqual(evidence[4]['chains'][0]['generation'],2)
+        self.assertEqual(artifacts['.first-failure.json']['records'][0]['category'],'native_activation')
+        self.assertEqual(artifacts['.native-live-status.txt']['records'][0]['support_capture_attempts'],10)
+        self.assertNotIn('PRIVATE',raw)
 
 
 if __name__ == '__main__':

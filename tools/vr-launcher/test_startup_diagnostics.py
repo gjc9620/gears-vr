@@ -15,6 +15,18 @@ import startup_diagnostics as diagnostics
 
 
 class StartupDiagnosticsTests(unittest.TestCase):
+    def test_first_failure_survives_full_timeline_and_later_cleanup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'startup.jsonl';trace=diagnostics.StartupTrace(path,attempt_id='a'*32)
+            with mock.patch.object(diagnostics,'MAX_TRACE_BYTES',1):
+                trace.failure(RuntimeError('original activation failure'))
+                trace.failure(RuntimeError('later cleanup failure'))
+            first=json.loads(path.with_name(path.name+'.first-failure.json').read_text())
+            self.assertIn('original activation failure',first['error'])
+            self.assertNotIn('later cleanup failure',first['error'])
+            self.assertEqual(first['attempt_id'],'a'*32)
+            trace.close()
+
     def child_identity(self, child):
         kernel = ctypes.WinDLL('kernel32', use_last_error=True)
         kernel.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4
@@ -139,7 +151,7 @@ class StartupDiagnosticsTests(unittest.TestCase):
             (root/'tools/vr-launcher/launcher.py').write_text('fixture')
             with mock.patch.dict(os.environ, {'PASSWORD':'PRIVATE_SECRET', 'XR_RUNTIME_JSON':'C:/PrivateUser/runtime.json'}):
                 value = diagnostics.context(root, {'native_sha256':'a'*64, 'game_path':'PRIVATE_GAME_PATH'})
-            self.assertEqual(value['version'], '0.0.3')
+            self.assertEqual(value['version'], '0.0.4-dev')
             self.assertEqual(value['runtime_selection'], 'override')
             self.assertEqual(value['steam_app_id'], '2523720')
             self.assertIn('tools/vr-launcher/launcher.py', value['script_hashes'])
