@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：j在外部游戏退出后调用一次入口，正式零售EXE验证已过，但游戏创建前被多个用户INI的旧身份识别拒绝；无birth／Guard／Native／XR及手／枪写入，owner／子进程退出、私有INI及正式EXE／配置不变，51文件＋3元数据封存。已最小带入当前默认启动器已有的离线Steam身份fallback，仍须活体且稳定的客户端与唯一离线选择，不猜账户或改登录状态；19项检查及真实受保护配置只读status通过。未移入无关UI／安装绑定，未改共享默认文件；742冻结源、R8 DLL与Native／XR不变，下一入口使用新编号，未取得R8实际跟枪效果。
+
 2026-10-23：R8按应用commit319a3bc封存742源／164工件，manifest `9d70b035…45dd168`，Native／XR沿用R7。h等待期间修正测试入口把无子进程GUI当owner的误拦：精确路径／SHA＋完整进程亲缘证明才例外，真实游戏、CLI／AVP／XR等仍拦，两次启动前检查保持；13边界检查与独立窄审通过。i实际入口因原零售工作副本路径已不存在，在validate_game、创建instance或启动任何游戏前拒绝；手／枪0写、owner退出，失败56文件封存，未改写为枪体通过。新j固定现存Steam-managed零售安装，增加EXE／配置pin，已有194依赖／26复制／24模块Popen0准备；只做核心文件只读校验，未重开兼容调查或重跑旧套。尚无真实R8枪体效果，普通启动器与冻结Native／XR保持。
 
 2026-10-23：R8仅把既有私有名称读取scope覆盖component初始准备块，在lease.acquire前结束；早返恢复父TLS、faulted入口和invoke／rollback旧范围保持，wanted仅纯声明外提。原getter／调用顺序、R7计时、同Plan与100ms均不变。实际提取58场景4,818检查、Astra窄审及唯一严格ON构建首编首跑通过，23导出与R7同，DLL `a0551696…afded5aa`；OFF／default完整EP原bytes相等，未重编或重跑旧套。协调者核对742源＋16vendor、60支持工件、实际MSVC工程／输入路径／PE导出及旧R7和g封存后按字节应用一源，复用成功staged DLL。报告 `f163b548…d9a9731b`／应用复核 `3e25cb3a…308cc8d`，真实build base96622b6；root证据map形状错误在写入前拒绝并留存，修正后通过。尚无R8实际游戏局，不宣称解决g源证书超期，Native／XR与普通启动器保持。详见[组件适配器记录](../../weapon-mesh-component-lease-20261023.md)。

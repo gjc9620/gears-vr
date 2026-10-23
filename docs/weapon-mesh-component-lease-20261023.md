@@ -4,6 +4,10 @@
 
 ## R8初始准备块名称读取候选
 
+j等待进程35024在真实外部游戏退出后仅调用一次入口；游戏创建前又在graphics_policy.locate拒绝多个用户INI，未产生birth、Guard、Native、XR或手／枪写入。保留receipt SHA `3ff5831bddacdd1f0d4a64f81647b6ce445a8b33ede1dee3ae71ccc2bf385c3f`，51文件＋3份隔离实例元数据封存SHA `4f407623e726f416ba34a0c6279350de210b679fa41e116ddd2d19de1a56dc2f`；owner／预约子进程已退出，测试私有INI、正式EXE与shipped config均原字节不变。
+
+根因是该分支工具尚无当前默认启动器已有的离线Steam身份fallback。只移入已有steam_account helper和active_steam_id的零DWORD分支：仍优先在线账户；离线须活体Steam进程、稳定注册表及有界选择元数据、唯一且一致的离线标记，模糊／变化继续拒绝。没有移入无关UI或共享安装绑定，没有改共享启动器和配置。19项相关CPU检查通过，受保护实例的只读status已选择对应文件，两个INI原bytes不变；742冻结项目源与Native／XR保持，下一实际入口需新编号，当前仍无R8枪体／GPU／头显通过结论。
+
 R8已在干净应用commit `319a3bc151af49913a4b2b2d164e59c7d0d2bef7`封存742源／164工件，source manifest SHA `9d70b0354fc7c43f1b1926d4bf5c29050a27d47a1317f10f98ada02bf45dd168`，Native／XR／loader沿用R7。h准备后先等待外部启动器；只读核实发现无子工作进程的GUI被旧inventory误判为活跃owner。新i入口只对精确路径＋固定SHA、完整PID／Parent库存且无后代的已知GUI例外，其他游戏、CLI owner、AVP、XR／Guard／quiet照旧拦截，启动前仍两次检查。13项受影响边界检查与独立源码窄审通过；原流程／15s／256／3s reserve／动作／恢复均按字节或AST与h相同，不构成整段原子互斥。
 
 i实际入口在instance.prepare的validate_game即拒绝：原工作零售副本路径已不存在，未创建instance、游戏、Guard、Native或XR，手／枪0写。owner38020退出已核实，原receipt SHA `54cf1c09d04a105f21b36db6da304afc4ca6efae4432a9e1a0442cec56f022a2`，56文件封存SHA `6be6f705b869b2e7657afc88f48888d0779725c491d5c2be5a7e2910e843e534`；不将此前共享配置变更造成的准备拒绝算作游戏重试。后续新j入口固定现存Steam-managed零售EXE，不使用历史目录fallback，实际EXE与shipped config新增为依赖；核心EXE／配置只读校验通过，没有重做全3609文件兼容调查。j准备194依赖／26复制／24模块，Popen0，13项未改helper检查继承不重跑；尚待最终入口复核和一局真实R8测试，普通启动器及冻结Native／XR不变。

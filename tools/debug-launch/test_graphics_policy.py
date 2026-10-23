@@ -42,8 +42,21 @@ class GraphicsPolicyTests(unittest.TestCase):
                                      ('1234', winreg.REG_SZ, None),
                                      (0x100000000, winreg.REG_DWORD, None)):
             with mock.patch.object(winreg, 'OpenKey'), \
-                    mock.patch.object(winreg, 'QueryValueEx', return_value=(value, kind)):
+                    mock.patch.object(winreg, 'QueryValueEx', return_value=(value, kind)), \
+                    mock.patch.object(policy.steam_account, 'offline_steam_id', return_value=None):
                 self.assertEqual(policy.active_steam_id(), expected)
+
+    def test_online_account_wins_and_only_zero_dword_can_use_offline_fallback(self):
+        import winreg
+        for value, kind, expected, calls in ((1234, winreg.REG_DWORD, '76561197960266962', 0),
+                                             (0, winreg.REG_DWORD, '76561197960266963', 1),
+                                             ('0', winreg.REG_SZ, None, 0),
+                                             (False, winreg.REG_DWORD, None, 0)):
+            with mock.patch.object(winreg, 'OpenKey'), \
+                    mock.patch.object(winreg, 'QueryValueEx', return_value=(value, kind)), \
+                    mock.patch.object(policy.steam_account, 'offline_steam_id', return_value='76561197960266963') as offline:
+                self.assertEqual(policy.active_steam_id(), expected)
+                self.assertEqual(offline.call_count, calls)
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

@@ -6,19 +6,22 @@ import pathlib
 import re
 import subprocess
 import instance_policy
+import steam_account
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 STATE = (instance_policy.context() / 'graphics-policy') if instance_policy.context() else ROOT / 'analysis/graphics-policy'
 
 
 def active_steam_id():
-    """Read only the signed-in account number, never credentials or login files."""
+    """Prefer the online account, then a verified offline client selection."""
     import winreg
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam\ActiveProcess') as key:
             account, kind = winreg.QueryValueEx(key, 'ActiveUser')
         if kind == winreg.REG_DWORD and type(account) is int and 0 < account <= 0xffffffff:
             return str(0x0110000100000000 | account)
+        if kind == winreg.REG_DWORD and type(account) is int and account == 0:
+            return steam_account.offline_steam_id()
     except OSError:
         pass
     return None
