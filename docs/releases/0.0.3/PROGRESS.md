@@ -354,3 +354,5 @@ CONT源码经root逐项审查后原字节复制五份文件，779源中其余774
 所有早期失败保留：attempt1的命令包装在编译器前失败；attempt2的CASE6测试替身过早触发状态变化，修正为实际读取顺序后，attempt3的dispatch完整通过。attempt3的lifecycle在/WX下因std::find的有符号字面量产生C4389编译失败；仅改五个unsigned后缀，在attempt4单独编译和执行通过，没有重跑已通过的dispatch。生产五源、提取片段和断言语义没有因这项修正变化。
 
 默认OFF预处理首组仅三个格式差异导致严格对比失败，原件保留；修正格式后新一组两次/EP均0，完整复合输入的非空行字节一致，proof d7fd0c49…020。该证据只覆盖源文本，非完整TU／ABI或运行证明。CONT仍是一个有限Lancer owner区间，完整PG构建、实际更新与原生消费、全武器、0.7真实伤害和头显未验收，未集成默认启动器。
+
+随后以e30e9a30…ce49源码完成一次完整PG configure／build／exports及私有冻结，原W4／WX、C++17、EHsc与MT保持，23导出相同。PG9c86ef31…c021、manifest9ffbdec0…a4d、bundle0b9b8910…cb80；779源、27依赖、333工件／1140实体经root完整核对，父170份非PG工件逐字保留，Native／XR／loader与CPU工具没有重建。新候选没有继承HOLD运行验收，也没有安装到默认入口。新的AB单区间更新测试源码及8类fixture已准备并独立源审通过；实际游戏测试尚未启动。
