@@ -420,7 +420,7 @@ bool component_faulted(){return component::lease.faulted();}
 bool component_owned(){
     component::State state{};
     if(component_faulted()||!component::lease.has_snapshot()||
-       !component::read(component::lease.key(),state)||
+       !component_tail_cost::test(component_tail_cost::Stage::owned_read,[&]{return component::read(component::lease.key(),state);})||
        !gears_weapon::mesh_component_exact(state.value,component::lease.owned_value())){
         component::lease.relinquish();return false;
     }
@@ -457,7 +457,7 @@ bool component_restore(){
 }
 bool component_reset(){
     if(!component::lease.reset())return false;
-    component_trace::reset();component_cost::reset();
+    component_trace::reset();component_cost::reset();component_tail_cost::reset();
     component::mount.reset();component::fixed_key={};component::key_known=component::recorded=false;
     component::terminal_dumped=component::terminal_clean_dumped=false;
     component::acquired=component::restored=component::setter_calls=component::relinquished=0;
@@ -466,6 +466,7 @@ bool component_reset(){
 void component_dump_end(){
     if(!trial.ended||!log_file)return;
     component_cost::dump(!journals_dirty());
+    component_tail_cost::dump(!journals_dirty());
     component_trace::DumpAtExit trace_dump;
     const bool clean=!component_dirty();
     if(component::terminal_dumped&&(!clean||component::terminal_clean_dumped))return;

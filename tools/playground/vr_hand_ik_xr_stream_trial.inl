@@ -130,6 +130,89 @@ void dump(){
 }
 struct DumpAtExit {~DumpAtExit(){dump();}};
 } // namespace component_trace
+
+// Separate from component_cost's acquisition-owned aggregates. These fixed
+// rows only observe the post-component short circuit; QPC grants no authority.
+namespace component_tail_cost {
+enum class Stage:unsigned {snapshot,guards,owned,owned_read,authorize,count};
+constexpr unsigned capacity=8,stage_count=unsigned(Stage::count);
+constexpr const wchar_t* names[]={L"snapshot",L"guards",L"component_owned",L"owned_live_read",L"authorize"};
+static_assert(sizeof(names)/sizeof(*names)==stage_count);
+struct Row {
+    std::uint64_t sequence{},revision{};
+    unsigned lease{},phase{},mask{},ran{},result_known{},passed{},qpc_known{};
+    std::array<std::uint64_t,stage_count> begin{},finish{};
+    bool closed{};
+};
+struct State {
+    std::array<Row,capacity> rows{};
+    std::uint64_t seen{},dropped{};
+    unsigned count{},open{};
+    bool dumped{},counter_saturated{};
+};
+State state;
+thread_local Row* active{};
+std::uint64_t stamp() noexcept {
+    LARGE_INTEGER value{};
+    return QueryPerformanceCounter(&value)&&value.QuadPart>0?std::uint64_t(value.QuadPart):0;
+}
+void increment(std::uint64_t& value) noexcept {
+    if(value!=UINT64_MAX)++value;else state.counter_saturated=true;
+}
+void reset(){state={};active=nullptr;}
+struct Attempt {
+    Row* saved;Row* row{};
+    Attempt(std::uint64_t sequence,std::uint64_t revision,unsigned lease,unsigned phase,unsigned mask):saved(active){
+        active=nullptr;
+        if(saved||state.dumped)return;
+        increment(state.seen);
+        if(state.count==capacity){increment(state.dropped);return;}
+        row=&state.rows[state.count++];row->sequence=sequence;row->revision=revision;
+        row->lease=lease;row->phase=phase;row->mask=mask;active=row;++state.open;
+    }
+    ~Attempt(){if(row){row->closed=true;--state.open;}active=saved;}
+    Attempt(Attempt const&)=delete;Attempt& operator=(Attempt const&)=delete;
+};
+struct Span {
+    Row* row{};unsigned index{},bit{};
+    explicit Span(Stage stage){
+        index=unsigned(stage);if(!active||index>=stage_count)return;
+        bit=1u<<index;if(active->ran&bit)return;
+        row=active;row->ran|=bit;row->begin[index]=stamp();
+    }
+    void close(bool known,bool result){
+        if(!row)return;
+        row->finish[index]=stamp();
+        if(row->begin[index]&&row->finish[index]>=row->begin[index])row->qpc_known|=bit;
+        if(known)row->result_known|=bit;if(result)row->passed|=bit;row=nullptr;
+    }
+    void finish(bool result){close(true,result);}
+    ~Span(){close(false,false);}
+    Span(Span const&)=delete;Span& operator=(Span const&)=delete;
+};
+template<class F>bool test(Stage stage,F&& call){
+    Span span(stage);const bool result=call();span.finish(result);return result;
+}
+void dump(bool clean){
+    if(!clean||!state.count||state.dumped||state.open||active||dual_draining||!log_file)return;
+    state.dumped=true;LARGE_INTEGER value{};
+    const std::uint64_t frequency=QueryPerformanceFrequency(&value)&&value.QuadPart>0?std::uint64_t(value.QuadPart):0;
+    fwprintf(log_file,L"hand_weapon_component_tail_cost_begin schema=1 capacity=%u count=%u seen=%llu dropped=%llu "
+        L"frequency=%llu counter_saturated=%u nested_not_additive=1 extra_getters=0 extra_authorizations=0\n",
+        capacity,state.count,state.seen,state.dropped,frequency,unsigned(state.counter_saturated));
+    for(unsigned i=0;i<state.count;++i){const auto& row=state.rows[i];
+        for(unsigned j=0;j<stage_count;++j){const unsigned bit=1u<<j;
+            fwprintf(log_file,L"hand_weapon_component_tail_cost schema=1 row=%u stage=%ls lease=%u phase=%u mask=%u "
+                L"sequence=%llu revision=%llu ran=%u result_known=%u result=%u closed=%u qpc_known=%u clock_known=%u "
+                L"begin_qpc=%llu finish_qpc=%llu frequency=%llu\n",i,names[j],row.lease,row.phase,row.mask,
+                row.sequence,row.revision,unsigned((row.ran&bit)!=0),unsigned((row.result_known&bit)!=0),
+                unsigned((row.passed&bit)!=0),unsigned(row.closed),unsigned((row.qpc_known&bit)!=0),
+                unsigned(frequency&&(row.qpc_known&bit)),row.begin[j],row.finish[j],frequency);
+        }
+    }
+    fwprintf(log_file,L"hand_weapon_component_tail_cost_end schema=1\n");fflush(log_file);
+}
+} // namespace component_tail_cost
 #endif
 
 unsigned authorize_xr_plan(gears_hand_stream::Plan const& plan,
@@ -690,13 +773,24 @@ void post_tick(uptr pc){
     // The component setter may dispatch engine work. Reacquire the hand sample
     // and certify this exact Plan after the entire component transaction.
     Snapshot after_component{};
-    if(!handik::snapshot(pc,after_component)||!xr_identity(after_component)||
-       !after_component.action_idle||!handik::baseline_strengths(after_component)||
-       !handik::same_controls(check,after_component)||!slots_quiet(after_component)||
-       trial.tick_epoch!=trial.epoch||
-       !xr_equipment_gate(after_component,equipment_phase,L"after_component",EquipmentTiming::prewrite_phase)||
-       (equipment_phase==1&&(mask&2)&&!component_owned())||
-       authorize_current_xr_plan(plan,xr_context(after_component,trial.xr_ready),GetTickCount64())!=mask){
+    bool after_component_valid{};
+    {
+        component_tail_cost::Attempt timing(plan.ticket.sequence,plan.revision,lease,equipment_phase,mask);
+        after_component_valid=
+            component_tail_cost::test(component_tail_cost::Stage::snapshot,[&]{return handik::snapshot(pc,after_component);})&&
+            component_tail_cost::test(component_tail_cost::Stage::guards,[&]{
+                return !(!xr_identity(after_component)||!after_component.action_idle||!handik::baseline_strengths(after_component)||
+                    !handik::same_controls(check,after_component)||!slots_quiet(after_component)||
+                    trial.tick_epoch!=trial.epoch||
+                    !xr_equipment_gate(after_component,equipment_phase,L"after_component",EquipmentTiming::prewrite_phase));
+            })&&
+            (!(equipment_phase==1&&(mask&2))||
+                component_tail_cost::test(component_tail_cost::Stage::owned,[&]{return component_owned();}))&&
+            component_tail_cost::test(component_tail_cost::Stage::authorize,[&]{
+                return authorize_current_xr_plan(plan,xr_context(after_component,trial.xr_ready),GetTickCount64())==mask;
+            });
+    }
+    if(!after_component_valid){
         drain_journals(L"hand_reauthorize_after_component");
         end(journals_dirty()?8:7,L"hand_reauthorize_after_component");return;
     }

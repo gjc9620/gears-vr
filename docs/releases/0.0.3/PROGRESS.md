@@ -146,3 +146,9 @@ r 的 Native／XR 短会话通过，50 个 projection layer、29 次 scene copy�
 Stop／Shutdown 均 0，8 控制、44 字节挂接、3 组件组与两入口精确恢复；Native drain／entries restored、XR exit 0。root 独立核实 owner／game／XR 确切身份已退出，game exit 1；8 个音频 session 均已恢复，pending 0。工件／环境取证通过，15 项真实交互覆盖失败保留。r 的 105 份文件加 seal 封存，seal 0ff71057…9b17，root result f7a07f06…a39a；原 p 及默认启动器未改。
 
 另在忽略的 analysis/weapon-6dof-left-history-004-stage-20261023/ 保存 004 已完成左眼 history 修复的七文件三方 stage：base 为已发布 9ffa710，ours 为独立武器源，theirs 为另一会话已冻结源码。机械合并零冲突，双向逆合并恢复双方增量，Astra 20328f83…a59 窄审无阻断；保留独立手部发布／continuity 和 renderer 代码。影子目录按原配置加 GEARS_INDEPENDENT_LEFT_VIEW_HISTORY=ON 首次 configure／build 均通过（低优先级、parallel1），新 Native d54ecf18…82c9 保持 34 导出；九个相关 CPU 程序各一次全部通过，没有运行 GPU 自检或旧整套。root 逐项核实 774 原 WORK 输入、776 shadow 输入、18 MinHook、stage 七文件与九个 CPU 程序／日志哈希后，将七文件按字节应用 WORK，776 项均与已编译影子源相同。构建报告 9796510d…cb02、集成证明 921af848…1790。PG／XR 未重编，新的组合 bundle／实际运行尚待完成，不继承另一会话的画面验收；共享 J 与默认启动器未改。
+
+## 2026-10-24 — 最终手部复核的固定尾段计时
+
+Astra 对 r 的原源码链复核确认，after_component Snapshot.ms 采样时距原 cutoff 尚余 6ms，其后 identity／baseline／same-controls／slots／phase gate 及 component_owned 的完整实时 read 继续执行，到最终采样又前进 16ms。component_owned 默认 fast=false，位于原 acquisition 桶之外，不能将 16ms 全归于某项。为区分它们，仅添加固定 8 个 attempt × 5 stage：snapshot、原 guards、条件 owned、内嵌 owned_live_read 和原 final authorize；保持调用／短路顺序、原时间实参、100ms、全部 getter／VM 与恢复，不扩 parsing scope、不改 fast=false。容量满仅丢诊断，父／子段不可相加，仅 clean 且没有打开的 attempt 时从既有结束 dump 输出。
+
+原／新真实片段抽取的 24 场景／276 项 CPU 检查在 /W4 /WX /Od 下通过，覆盖拒绝点、跳过、异常展开、时钟失败／倒退、容量和饱和；Astra b85ee92f…779e 源审无阻断，producer 0a4afedb…a6be3。两项编译前 harness 设置错误及首次测试 wrapper 的未使用参数告警保留，修正不涉及 stage。root 核实原件、stage、全部报告／日志及完整 776 源，再按字节应用两份 PG 源；其余 774 源保持。尚未进行新的 PG 链接或游戏运行，不能据此声称超时已修复。
