@@ -1490,3 +1490,10 @@ SteamVR正常重启后18:45:46日志确认加载krvr_native、HmdDriver::Activat
 ## 2026-10-24 补记 — HOLD 私有构建与初始预检结果
 
 默认OFF的两Tick观察候选完整PG构建、冻结及779源闭包核对通过，未集成默认入口。z实际购买版后台运行在初始只读component snapshot的0x60对象头双读检查拒绝，尚未Start或进入HOLD／后续continuous Native-XR；前期Native预留hooks已启用。缺初始component基准，三组恢复只能保持unknown；8控制器、44字节挂接、原入口及8音频session恢复通过，root独立确认确切自有进程退出。z封存85项含seal edf7f29f…5d5e，失败不改写。新入口将处理有限完整快照重读，原guard与写入流程保持；持续6DoF、单双手实际伤害、图像／头显仍未验收，详细来源见0.0.3后续记录。本补记不构成0.1.0发布。
+
+
+## 2026-10-24 补记 — 两 Tick 有限持有数据完整外部重审通过
+
+相同私有DLL的新aa入口实际完成一次联合应用、两对原版PlayerTick持有与末尾恢复；hold期间component新增setter0，raw3／8控制器／44挂接／入口／8音频session恢复一致，确切自有进程退出。Native／XR独立通过，仍无头显或连续更新结论。初始snapshot新增有限重读的14类／114检查首轮通过，实际仅第1次成功，未演练追加尝试。
+
+原审计误将异步GT begin限制在同步Start返回前，aa原receipt／audit失败及115项封存保持，seal1b991cc4…7fb1。另建外部auditor，按原Start请求一秒armdeadline修正时间门，11新场景／24检查首轮通过；同一封存数据的一次完整离线重审e42febd5…c038六项均过，未再启动游戏或改写原结果。默认入口未安装试验，下一步只准备默认OFF连续组件接线；持续6DoF、伤害倍率、全武器及头显仍待实现／验收。详细来源见0.0.3后续记录，本补记不构成0.1.0发布。

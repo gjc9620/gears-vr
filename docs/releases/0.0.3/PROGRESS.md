@@ -327,3 +327,20 @@ Shutdown返回0；8控制器、44字节挂接及两处hook入口前后原字节�
 z共84份证据加seal，seal edf7f29f…5d5e、result e2c82a33…ef60、receipt bbeaaf25…f0a1、独立诊断e6b4a0c5…e555。root collector没有改写既有证据或重跑游戏。下一步仅在新aa入口为这一初始只读位置增加最多3次完整快照重读；每次保留原身份、typed schema与来源guard，只有snapshot阶段的精确原异常可追加，不重做任何准备或写入，也不新建期限。两Tick、运动、图像和头显结论仍待实测。
 
 单双手伤害规则的Astra有界复核5bce308d…4a8c确认候选位置：即时命中在原版伤害修饰后、原整数转换前；投射物在首次可能致伤前关联开火快照。现有回调的Result ABI、实际射击边界与投射物生命周期仍未认证，不能仅靠扳机状态或弹体返回后打标实现正确倍率；实际伤害接线继续待做。
+
+
+## 2026-10-24 — aa 完成两 Tick 持有，独立修正审计后完整重审通过
+
+新aa入口仅新增initial_component_snapshot并替换初始一处调用，OUT／TAG独立；原58定义AST保持，整个run逆变换一致，旧post-Shutdown helper不变。最多3次完整snapshot，只在snapshot阶段的精确PreflightError与精确header文案相符时重读；每次使用同Bridge／Reader／identity／profile的新helper，保留before guards，完整返回后才执行after guards并发布全值。失败partial不拼接、不作基准，不重做准备或写入；此时原Budget与Native启动deadline尚未创建，只有同步调用次数上限，不宣称硬抢占。实际preflight及旧内存fixture定义的新14类／114检查首轮通过，CPU00efd3bb…900d；source63c14b61…084a、peer144127fe…df52。producer总结5419d40a…424c保留一次因root已合法推进prepare而触发的旧metadata前提拒绝，不属于CPU或运行失败。
+
+相同D66d冻结候选、PGa60c17ac…7094未重建。aa prep62452dbf…00df6及207依赖／26复制／24实际模块经root核对；三次连续空闲后运行一次静音／behind／observe-only购买版，实体后台输入关闭。初始快照第1次完整成功，未触发追加重读，不回填z缺失基准。Start／Stop／Shutdown均0，terminal5／lease1约在原外部Budget开始0.456秒后被观察。手部lease／restore各1、setter8；枪体acquire／restore各1、setter6、fault0。记录两对最外原版PlayerTick完整返回，枪体在观察期间追加setter0，完整owned raw3／Key／asset schema保持；前后同一对的mesh_tick与矩阵未变化，两对分别为2382／2383。这支持有限字段持有，不证明原PlayerTick消费了矩阵或持续新目标更新。
+
+三组枪组件、8控制器、44字节挂接和两个入口独立恢复一致；8音频session恢复且pending／read_failed／mute_failed为0。Native／XR独立子会话通过61层、51次拷贝、跨度0.6560021秒，XR exit0；不作FPS／GPU／头显结论。root以creation time独立确认owner／game／XR退出，game exit1按实记录。aa共114证据加seal，seal1b991cc4…7fb1、resulta421a17f…3530b、receipt5538e971…8a3f。
+
+原d291审计在时间门早停：host Start前／返回标签均50540984，而GT began50541000，晚16ms；原deadline50556000正好是began+15000。Start冻结实现仅设置requested，GT post_tick随后消费，原304请求由同一start_tick+1000给出armdeadline。因此要求began不晚于同步返回时刻没有producer契约依据。原正式receipt／383650bb…c4b审计保持失败，不能只凭terminal5跳过后续项目。
+
+新外部auditor4b5d0b62…70fe0f只改该门：request<=return，request<=GT begin<=request+1000，拒绝溢出／bool，不从return刷新原armdeadline；其余30定义AST保持，原15秒和100ms不变。新增11场景／24检查首轮通过，含1000／1001边界、晚返回不刷新及下游journal损坏拒绝；未复跑原39方法。源审27f3922d…6b92、root33de52cd…af59通过；源文本逆变换只对规范化LF成立，新auditor CRLF不冒称raw相同。
+
+随后对已封存aa只执行一次外部离线完整重审：e42febd5…c038的scalar／独立component／two_dispatch_retention／terminal_journals／controls-attachment-hooks／owned_cleanup六项全部通过，retention与cleanup为true。重审前后原115项完整闭包保持，没有再开游戏或改写旧结果；新解释只在外部工件。完整运动、全武器、引擎矩阵重消费、头显与实际0.7伤害仍未完成。
+
+Astra201127a4…a378澄清generic Permit只禁止成功返回后到setter之间再有引擎边界，允许callback内部保留完整VM检查；最后getter后的direct身份／expected／schema／asset／实际callee-params与owner状态必须重核，原MS／NS授权最后执行。后续最小接线计划226e1cb2…b867保留组件先更新、手部后应用的真实clean语义、busy动作的journal与原ABI转发；已授权单独默认OFF源码stage，尚未应用、测试、构建或运行，不将HOLD结果扩大为连续owner通过。
