@@ -117,3 +117,13 @@ Astra 后续核对 n 的拒绝位 1024 为 commit 时的 certificate_recent：�
 25 个稳定及失败等价场景、2 个额外 class 变化拒绝场景共 160 项 CPU 检查在 /W4 /WX 下通过；新增 class 变化拒绝不是对任意并发 metadata 修改的原／新等价保证。为明确加入 missing 解析计数断言，窄 target 两次构建／运行都通过，旧套件未重跑。Astra 窄审 f8e666cc…04b9 无阻断，root 读完整 diff 并核对原件／stage／报告后按字节应用 0aa6294b…d5d0；root 首次误读短报告顶层 passed 字段，在源码写入前失败，随后按实际 CPU 结果结构核对，错误保留。非零查找 2→1，missing 保持 2→2，两个 live 位读保留；没有新 RE。来源在忽略的 analysis/hand-mesh-object-key-property-20261023/。
 
 此前小字段 coalesce 的 PG 已首次构建并冻结 e9c1b79b…93ea（774／27／34），但 o 未 prepare 或进入游戏；因 read 字段段包络较小，下一实际会话将同时验证本热点优化。不得把 o 的编译／冻结称为运行通过。组合候选仍需首次真实交接、运动／取放覆盖及完整清理验证。
+
+## 2026-10-23 — 组合热点优化的实际后台结果
+
+以 d171f6e 首次构建 PG 44884632…0091，仍为原配置与 23 导出，仅相对上一私有候选改变 phase1 一个源文件；冻结新 bundle e1cad4d1…e7cb，manifest ef232989…d314（774 源／27 依赖／37 工件）。p 入口只绑定常量／专用路径并继承全部原时限、source0、物理后台手柄关闭及 behind／observe-only／mute；准备后 root 核对 209 依赖、25 复制和 24 实际模块，空闲后只运行一次。
+
+p 的 Native／XR 短会话通过，71 projection layer、43 scene copy、约 0.767 秒有效提交；component／whole 仍失败、0 hand lease，Rotation authorize 再拒绝 bit10 certificate_recent。commit 时原始 stereo 102.8284ms、input 102.8032ms；tick 票据 93ms，截止余 7ms 不覆盖源过期。原时限未放宽，旋转调用未执行。
+
+与 n 相同调用计数下，本轮 28 次 current 总计 33.8867ms（n 41.8484），13 次 read 总计 31.9711ms（n 40.6419），112 次 slot args／preflight／run-invoke／post 分项 0.1670／0.0385／0.1149／6.4742ms。嵌套总段不可相加；这是两个功能会话的具体观测，不是稳定性能或 FPS 比较。原 initial＋三 snapshot 合计 14.5073ms、跨度 53.1420ms；仍需继续减少重复遍历，不能将局部提速称为交互通过。
+
+Stop／Shutdown 均 0；8 控制、44 字节挂接、3 组件组与两原生入口精确恢复，Native drain／entries restored、XR exit 0。确切创建时间独立核对 owner／game／XR 已退出，game exit 1；8 个音频 session 全部恢复，pending 0。工件／环境取证通过，15 项交互覆盖失败保留。p 共 122 份文件加 seal，seal b6af1935…bc31、root result 02c192ee…aafe，未重试本会话、未改 n 或默认启动器。下一候选只评估有界字符串匹配等不缓存 game metadata／成功结果的解析优化。
