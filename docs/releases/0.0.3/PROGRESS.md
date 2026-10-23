@@ -374,3 +374,13 @@ AB共142项含seal87067093…3109，root-result dd795275…6e7，全部闭包核
 root与独立源码审查通过；实际边界、资格条件和原恢复片段的生命周期测试14类／426检查首轮strict compile／run均0，含18种拒绝变体、snapshot与dirty独立、旧单参语义、后续纯Policy新票及begun阶段一次交还。CPU44109b61…1a38；未变dispatch11类／138不重跑，明确只沿用旧attempt3中通过的dispatch项，aggregate cd55d5ed…33a4为25类／564检查。纯Policy与component snapshot／restore等host seam不当作真实certified XR或引擎资格。
 
 新OFF唯一pair两次/EP均0，26配置／15ON／11OFF、CONT与HOLD都undefined，完整非空行字节相等，proof35b32c68…1105。两侧同一受CONT保护include及全部移除签名清单相同；不是完整TU／ABI证明。root源审845ea1d7…a8aa7、独立ab3bf94b…b6a7、集成ba24778d…748b及原字节复制9bd15bcb…f1f2通过。源码已应用，修后完整PG构建与新AC实际测试尚待进行；AB失败保持封存，默认入口未安装试验。
+
+## 2026-10-24 — ac记录到同一持枪区间的新姿态更新，计划停止验收仍失败
+
+以修后提交f9145bfe…8ba完成一次完整PG严格构建与23导出核对，PG868b898d…9b6；父332份非PG工件原字节保留，Native／XR／loader没有重建。私有bundle2ffd36c1…e14a、manifest30f9fc8b…50a，779源／27依赖／401工件／1208实体经root闭包核对，报告486dd6df…99。默认入口未安装。AC运行与审计逻辑保持AB，仅绑定新候选和输出身份；已通过的8类helper结果沿用，未重复执行。208依赖、26复制、24实际模块准备通过，prep63ee41af…953；三次空闲后唯一一局继续mute／behind／observe-only，关闭物理后台手柄。
+
+实际Start0，初始0→1的clean交接成功。同一个owner记录acquire_attempts=1、update_attempts=4、commits=5、component restore=1、setter=10；双手lease／restore各5、setter与target write各40。P0与P1各发送一次并取得新ACK，后续新源样本、双手目标和枪体回读属于同一完整Key、首次原值与资产身份，changed_owner_update子断言通过，记录到两组相邻变化。5次提交包含没有变化的提交，不能称为5个不同姿态，也不构成原生消费或画面流畅度证明。
+
+主机在phase2／lease5时请求计划停止，Stop0、Shutdown0；最终raw327687为5个lease／phase7，原因continuous_post_tick_without_fresh_joint_commit，first_failure_known=1／first_failure=7、dirty=0／faulted=0／safe=1。原scope／update／cleanup整体判断均保持false。终止tick2449／attempt6实际上已有新serial33／sequence840、Plan revision33／accept_mask3，final_auth_called=0；源码与日志推断相关出口是首次prewrite授权返回0后静默返回，再由PostTick析构保守记7。该次授权的准确拒绝位已被恢复阶段环形日志覆盖；Stop store时刻未记录，不能凭主机调用相近就认定停止竞态，也不能断言TTL过期。窄审394010e0…7632仅提出后续局部捕获本调用原拒绝分类，不重标AC，不按晚到Stop抹掉其他失败。
+
+root独立核对三组组件raw、8控制器、44字节挂接和入口恢复，8音频session已恢复且pending／read_failed／mute_failed均0；按精确PID与creation time只读确认owner／game／XR全部退出。Native／XR独立子会话97层／54拷贝、跨度1.0544409秒、最大提交间隔14.5587ms通过，XR exit0；不作为FPS或头显验收。AC原receipt f7648519…5e6、正式失败审计和110项封存保持，seal1720be63…cc26、root-result e15c1004…f1a；没有自动重放。下一步只修正有直接证据的写前取消分类，保留未知、时钟／Policy拒绝和既有失败的7／8，以及原100ms、15秒／256和恢复顺序。全武器、实际0.7伤害与头显仍待完成。
