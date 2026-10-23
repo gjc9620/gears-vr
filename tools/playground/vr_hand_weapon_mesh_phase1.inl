@@ -16,6 +16,14 @@ struct Key {
 };
 using State=gears_weapon::WeaponMeshComponentState<Key>;
 gears_weapon::WeaponMeshComponentLease<Key> lease;
+} // namespace component
+namespace component_trace {
+void masks(Row& row) noexcept {
+    row.pending=component::lease.dirty_mask();row.owned=component::lease.owned_mask();row.revoked=component::lease.revoked_mask();
+    row.snapshot=component::lease.has_snapshot();row.faulted=component::lease.faulted();
+}
+} // namespace component_trace
+namespace component {
 gears_weapon::WeaponMeshFollow mount;
 Key fixed_key{};
 bool key_known{},recorded{},terminal_dumped{},terminal_clean_dumped{};
@@ -135,65 +143,98 @@ struct Forward {
     unsigned mask;
     gears_hand_stream::Context context{};
     bool prepare(Key const& key){
+        using component_trace::gate;using component_trace::Stage;
         Snapshot hand{};
-        if(trial.ended||trial.xr_equipment_phase!=1||trial.epoch!=plan.context.action_epoch||
-           trial.tick_epoch!=trial.epoch||!handik::snapshot(key.objects[2].address,hand)||
-           !xr_identity(hand)||!hand.action_idle||!handik::baseline_strengths(hand)||!slots_quiet(hand)||
-           !xr_equipment_gate(hand,1,L"component_setter",EquipmentTiming::prewrite_phase))return false;
-        context=xr_context(hand,trial.xr_ready);return true;
+        if(!gate(Stage::prepare_ended,!trial.ended)||!gate(Stage::prepare_phase,trial.xr_equipment_phase==1)||
+           !gate(Stage::prepare_epoch,trial.epoch==plan.context.action_epoch)||!gate(Stage::prepare_tick,trial.tick_epoch==trial.epoch)||
+           !gate(Stage::prepare_snapshot,handik::snapshot(key.objects[2].address,hand))||
+           !gate(Stage::prepare_identity,xr_identity(hand))||!gate(Stage::prepare_idle,hand.action_idle)||
+           !gate(Stage::prepare_baseline,handik::baseline_strengths(hand))||!gate(Stage::prepare_quiet,slots_quiet(hand))||
+           !gate(Stage::prepare_equipment,xr_equipment_gate(hand,1,L"component_setter",EquipmentTiming::prewrite_phase)))return false;
+        context=xr_context(hand,trial.xr_ready);gate(Stage::prepare_context,true);return true;
     }
     bool authorize(){
-        return !trial.ended&&trial.xr_equipment_phase==1&&trial.tick_epoch==trial.epoch&&
-            trial.epoch==plan.context.action_epoch&&(mask&2)&&
-            authorize_current_xr_plan(plan,context,GetTickCount64())==mask;
+        using component_trace::gate;using component_trace::Stage;
+        return gate(Stage::authorize_ended,!trial.ended)&&gate(Stage::authorize_phase,trial.xr_equipment_phase==1)&&
+            gate(Stage::authorize_tick,trial.tick_epoch==trial.epoch)&&gate(Stage::authorize_epoch,trial.epoch==plan.context.action_epoch)&&
+            gate(Stage::authorize_hand,(mask&2)!=0)&&
+            gate(Stage::authorize,authorize_current_xr_plan(plan,context,GetTickCount64())==mask);
     }
 };
 struct Backend {
     Key expected_key{};
     Forward* forward{}; // nullptr is rollback, authenticated by old Key/value only.
-    bool read(State& state){return component::read(expected_key,state);}
+    bool read(State& state){
+        component_trace::Scope scope;
+        const bool ok=component::read(expected_key,state);
+        const auto saved=component_trace::state.meta;
+        component_trace::state.meta.forward=forward!=nullptr;
+        if(!component_trace::state.meta.group)component_trace::state.meta.expected=lease.owned_value();
+        component_trace::Row row{};row.stage=component_trace::Stage::backend_read;row.passed=ok;
+        row.read_executed=true;row.read_known=state.known;row.key_equal=state.key==expected_key;
+        row.read_value=state.value;row.compare_known=lease.has_snapshot()&&state.known;
+        if(row.compare_known)row.mismatch=component_trace::mismatch(state.value,component_trace::state.meta.expected);
+        component_trace::add(row);
+        // Only pure acquisition reads have no setter group, a forward guard,
+        // a baseline snapshot and no earlier fault. Their expected full value
+        // is the journal's current owned value. Rollback is deliberately excluded.
+        if(ok&&state.known&&row.key_equal&&!component_trace::state.meta.group&&forward&&lease.has_snapshot()&&!lease.faulted()){
+            row.stage=component_trace::Stage::pure_acquire_value;row.passed=row.mismatch==0;component_trace::add(row);
+        }
+        component_trace::state.meta=saved;return ok;
+    }
     bool schema(playground::Args& call,unsigned group){
-        if(!call.valid||!registered(call.r.function)||call.r.size!=12||
-           !playground::named(get<uptr>(call.r.function+0x50),L"Function")||
-           get<unsigned short>(call.r.function+0x108)!=0xffff)return false;
-        // Validate the actual instance's resolved native wrapper, without
-        // inventing an index/address from the old MagazineMesh-only evidence.
+        using component_trace::gate;using component_trace::Stage;
+        if(!gate(Stage::schema_valid,call.valid)||!gate(Stage::schema_registered,registered(call.r.function))||
+           !gate(Stage::schema_size,call.r.size==12)||
+           !gate(Stage::schema_class,playground::named(get<uptr>(call.r.function+0x50),L"Function"))||
+           !gate(Stage::schema_return,get<unsigned short>(call.r.function+0x108)==0xffff))return false;
         const auto native=get<uptr>(call.r.function+0x114);
-        if(native<base+0x1000||native>=base+0x131b000)return false;
+        if(!gate(Stage::schema_native,native>=base+0x1000&&native<base+0x131b000))return false;
         if(group==1){
-            if(stow::parameters(call)!=3)return false;
+            if(!gate(Stage::schema_count,stow::parameters(call)==3))return false;
             const wchar_t* fields[]={L"NewAbsoluteTranslation",L"NewAbsoluteRotation",L"NewAbsoluteScale"};
             for(unsigned i=0;i<3;++i){
-                if(!stow::argument(call,fields[i],L"BoolProperty",4,i*4,0x80))return false;
+                if(!gate(Stage::schema_bool_argument,stow::argument(call,fields[i],L"BoolProperty",4,i*4,0x80),i))return false;
                 const auto mask=get<unsigned>(call.prop(fields[i])+0xd0);
-                if(!mask||(mask&(mask-1)))return false;
+                if(!gate(Stage::schema_bool_mask,mask&&!(mask&(mask-1)),i,mask))return false;
             }
-            return true; // classification deliberately accepts OptionalParm (0x90).
+            return true;
         }
         const auto field=group==2?L"NewTranslation":L"NewRotation";
-        return stow::parameters(call)==1&&stow::argument(call,field,L"StructProperty",12,0,0x80)&&
-            triple_schema(call.prop(field),group==4);
+        return gate(Stage::schema_count,stow::parameters(call)==1)&&
+            gate(Stage::schema_struct_argument,stow::argument(call,field,L"StructProperty",12,0,0x80))&&
+            gate(Stage::schema_triple,triple_schema(call.prop(field),group==4));
     }
     bool set(Key const& key,Value const& expected,Value const& wanted,unsigned group){
-        if(!(key==expected_key))return false;
+        using component_trace::gate;using component_trace::Stage;
+        component_trace::SetScope scope(group,forward!=nullptr,expected,wanted,
+            (component_trace::mismatch(wanted,lease.original_value())&group)==0);
+        if(!gate(Stage::set_key,key==expected_key))return false;
         const wchar_t* function=group==1?L"SetAbsolute":group==2?L"SetTranslation":L"SetRotation";
         playground::Args call(key.objects[7].address,function);
         if(!schema(call,group))return false;
         if(group==1){
             call.flag(L"NewAbsoluteTranslation",wanted.absolute[0]);
             call.flag(L"NewAbsoluteRotation",wanted.absolute[1]);call.flag(L"NewAbsoluteScale",wanted.absolute[2]);
-        }else if(!call.bytes(group==2?L"NewTranslation":L"NewRotation",
-                  group==2?wanted.translation.data():wanted.rotation.data(),12))return false;
+        }else if(!gate(Stage::set_bytes,call.bytes(group==2?L"NewTranslation":L"NewRotation",
+                  group==2?wanted.translation.data():wanted.rotation.data(),12)))return false;
         State before{};
-        if(!read(before)||!gears_weapon::mesh_component_exact(before.value,expected))return false;
+        if(!gate(Stage::set_read_before,read(before))||
+           !gate(Stage::set_expected_before,gears_weapon::mesh_component_exact(before.value,expected),0,
+                 component_trace::mismatch(before.value,expected)))return false;
         if(forward&&!forward->prepare(key))return false;
-        // Revalidate the entire old instance/value and actual schema after all
-        // engine getters, then authorize the same Plan last. No new receipt.
-        if(!read(before)||!gears_weapon::mesh_component_exact(before.value,expected)||!schema(call,group)||
+        if(!gate(Stage::set_read_after,read(before))||
+           !gate(Stage::set_expected_after,gears_weapon::mesh_component_exact(before.value,expected),0,
+                 component_trace::mismatch(before.value,expected))||!schema(call,group)||
            (forward&&!forward->authorize()))return false;
-        if(!(lease.owned_mask()&group))return false; // Reentrant action may have revoked this transaction.
+        if(!gate(Stage::set_owned,(lease.owned_mask()&group)!=0))return false;
         SelfScope self_call(call.r.object,call.r.function);count_add(setter_calls);
-        return call.run(); // Never interpret a native void/RAX as success.
+        component_trace::Row attempt{};attempt.stage=Stage::call_begin;attempt.passed=true;attempt.call_attempted=true;component_trace::add(attempt);
+        const bool called=call.run();
+        component_trace::Row result{};result.stage=Stage::call_end;result.passed=called;
+        result.call_attempted=result.call_return_known=true;result.call_returned=called;component_trace::add(result);
+        return called;
     }
     bool set_absolute(Key const& key,Value const& expected,Absolute const& wanted){
         auto value=expected;value.absolute=wanted;return set(key,expected,value,1);
@@ -276,14 +317,16 @@ void component_pre_restore(){if(component_dirty())component::log(L"pre_restore")
 void component_log_written(){if(component_dirty())component::log(L"written");}
 bool component_restore(){
     if(!component_dirty())return true;
+    component_trace::Scope trace_scope;component_trace::gate(component_trace::Stage::restore_enter,true);
     component::Backend backend{component::lease.key(),nullptr};
     const bool clean=component::lease.restore(backend);
     if(clean)count_add(component::restored);
     component::recorded=false;publish_journals();
-    return clean&&!component_faulted();
+    return component_trace::gate(component_trace::Stage::restore_result,clean&&!component_faulted(),unsigned(clean));
 }
 bool component_reset(){
     if(!component::lease.reset())return false;
+    component_trace::reset();
     component::mount.reset();component::fixed_key={};component::key_known=component::recorded=false;
     component::terminal_dumped=component::terminal_clean_dumped=false;
     component::acquired=component::restored=component::setter_calls=component::relinquished=0;
@@ -291,6 +334,7 @@ bool component_reset(){
 }
 void component_dump_end(){
     if(!trial.ended||!log_file)return;
+    component_trace::DumpAtExit trace_dump;
     const bool clean=!component_dirty();
     if(component::terminal_dumped&&(!clean||component::terminal_clean_dumped))return;
     component::terminal_dumped=true;if(clean)component::terminal_clean_dumped=true;
@@ -305,20 +349,25 @@ void component_dump_end(){
 bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorldFrame const& frame,
                      Snapshot const& hand,unsigned mask,unsigned lease_number){
     if(trial.xr_equipment_phase!=1||!(mask&2))return !component_dirty();
+    component_trace::begin();component_trace::Scope trace_scope;
+    component_trace::gate(component_trace::Stage::acquire_enter,true);
     component::Key key{};
-    if(!component::capture(hand,key)||component_dirty()||component_faulted())return false;
-    if(component::key_known&&!(key==component::fixed_key))return false;
+    if(!component_trace::gate(component_trace::Stage::capture,component::capture(hand,key))||
+       !component_trace::gate(component_trace::Stage::component_clean,!component_dirty())||
+       !component_trace::gate(component_trace::Stage::component_not_faulted,!component_faulted()))return false;
+    if(component::key_known&&!component_trace::gate(component_trace::Stage::key_match,key==component::fixed_key))return false;
     component::fixed_key=key;component::key_known=true;
     std::array<float,16> matrix{};int tick{};
-    if(!component::world(key,matrix,tick))return false;
-    if(!component::mount.bound()&&!component::mount.bind(frame.right,matrix,false))return false;
+    if(!component_trace::gate(component_trace::Stage::world,component::world(key,matrix,tick)))return false;
+    if(!component::mount.bound()&&!component_trace::gate(component_trace::Stage::mount_bind,component::mount.bind(frame.right,matrix,false)))return false;
     gears_vr::Viewpoint pose{};
-    if(!component::mount.solve(frame.right,pose))return false;
+    if(!component_trace::gate(component_trace::Stage::mount_solve,component::mount.solve(frame.right,pose)))return false;
     component::State before{};
-    if(!component::read(key,before))return false;
+    if(!component_trace::gate(component_trace::Stage::initial_read,component::read(key,before)))return false;
     auto wanted=before.value;wanted.absolute[0]=wanted.absolute[1]=true;
     std::array<uptr,3> flag_addresses{};std::array<unsigned,3> flag_masks{};
-    if(!component::absolute_storage(key,component::baseline_absolute_storage,&flag_addresses,&flag_masks))return false;
+    if(!component_trace::gate(component_trace::Stage::absolute_storage,
+        component::absolute_storage(key,component::baseline_absolute_storage,&flag_addresses,&flag_masks)))return false;
     component::target_absolute_storage=component::baseline_absolute_storage;
     for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)if(flag_addresses[i]==flag_addresses[j]){
         auto& bits=component::target_absolute_storage[i];
@@ -338,6 +387,7 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
     component::recorded=true;
 #endif
     const bool ok=component::lease.acquire(key,wanted,backend);
+    component_trace::gate(component_trace::Stage::acquire_result,ok);
     if(ok)count_add(component::acquired);
     return ok;
 }

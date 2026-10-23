@@ -8,8 +8,154 @@ gears_weapon::EquipmentIntentBridge xr_bridge;
 gears_hand_xr_trial::Start xr_pending{};
 constexpr unsigned xr_max_leases=256;
 
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+// Read-only diagnostics. No getter, receipt, clock, atomic, or authorization is
+// sampled here. One pinned first rejection and 63 tail rows share 64 slots.
+namespace component_trace {
+using Value=gears_weapon::WeaponMeshComponentValue;
+enum class Stage:unsigned {
+    acquire_enter,capture,key_match,world,mount_bind,mount_solve,initial_read,absolute_storage,acquire_result,
+    backend_read,set_key,schema_valid,schema_registered,schema_size,schema_class,schema_return,
+    schema_native,schema_count,schema_bool_argument,schema_bool_mask,schema_struct_argument,schema_triple,
+    set_bytes,set_read_before,set_expected_before,prepare_ended,prepare_phase,prepare_epoch,prepare_tick,
+    prepare_snapshot,prepare_identity,prepare_idle,prepare_baseline,prepare_quiet,prepare_equipment,prepare_context,
+    set_read_after,set_expected_after,authorize_ended,authorize_phase,authorize_tick,authorize_epoch,authorize_hand,
+    authorize,set_owned,call_begin,call_end,restore_enter,restore_result,write_until,component_clean,component_not_faulted,pure_acquire_value,count
+};
+constexpr const wchar_t* names[]={
+    L"acquire_enter",L"capture",L"key_match",L"world",L"mount_bind",L"mount_solve",L"initial_read",L"absolute_storage",L"acquire_result",
+    L"backend_read",L"set_key",L"schema_valid",L"schema_registered",L"schema_size",L"schema_class",L"schema_return",
+    L"schema_native",L"schema_count",L"schema_bool_argument",L"schema_bool_mask",L"schema_struct_argument",L"schema_triple",
+    L"set_bytes",L"set_read_before",L"set_expected_before",L"prepare_ended",L"prepare_phase",L"prepare_epoch",L"prepare_tick",
+    L"prepare_snapshot",L"prepare_identity",L"prepare_idle",L"prepare_baseline",L"prepare_quiet",L"prepare_equipment",L"prepare_context",
+    L"set_read_after",L"set_expected_after",L"authorize_ended",L"authorize_phase",L"authorize_tick",L"authorize_epoch",L"authorize_hand",
+    L"authorize",L"set_owned",L"call_begin",L"call_end",L"restore_enter",L"restore_result",L"write_until",L"component_clean",L"component_not_faulted",L"pure_acquire_value"
+};
+static_assert(sizeof(names)/sizeof(*names)==unsigned(Stage::count));
+struct Auth {
+    // known: args1/live2/authorize_ns4/policy_mask8/commit_ms16/commit_ns32/cutoff64.
+    unsigned known{},checked{},rejected{},mask{},result{};
+    std::uint64_t now{},live_now{},commit_now{},write_until{},ticket_ms{},plan_ms{},context_ms{};
+    std::int64_t authorize_ns{},commit_ns{},stereo_ns{},input_ns{};
+};
+struct Meta {unsigned group{};bool forward{},wanted_known{},wanted_original{};Value expected{},wanted{};};
+struct Row {
+    std::uint64_t ordinal{};
+    Stage stage{};unsigned detail{},bits{},pending{},owned{},revoked{},mismatch{};
+    bool passed{},snapshot{},faulted{},read_executed{},read_known{},key_equal{},compare_known{};
+    bool call_attempted{},call_return_known{},call_returned{},auth_known{};
+    Meta meta{};Value read_value{};Auth auth{};
+};
+void masks(Row&) noexcept; // Defined beside the private component journal.
+struct State {
+    std::array<Row,64> rows{};
+    Meta meta{};Auth last_auth{};
+    std::uint64_t seen{},overwritten{};
+    unsigned count{},next{},depth{};
+    bool enabled{},first_known{},last_auth_known{},dumped{},counter_saturated{};
+};
+State state;
+unsigned mismatch(Value const& a,Value const& b) noexcept {
+    return (a.absolute==b.absolute?0u:1u)|(a.translation==b.translation?0u:2u)|(a.rotation==b.rotation?0u:4u);
+}
+void add(Row row){
+    if(!state.enabled||state.dumped)return;
+    if(state.seen!=UINT64_MAX)++state.seen;else state.counter_saturated=true;
+    row.ordinal=state.seen;row.meta=state.meta;masks(row);
+    if(!row.passed&&!state.first_known){state.rows[0]=row;state.first_known=true;}
+    state.rows[1+state.next]=row;state.next=(state.next+1)%63;
+    if(state.count<63)++state.count;
+    else if(state.overwritten!=UINT64_MAX)++state.overwritten;else state.counter_saturated=true;
+}
+bool gate(Stage stage,bool passed,unsigned detail=0,unsigned bits=0){
+    Row row{};row.stage=stage;row.passed=passed;row.detail=detail;row.bits=bits;add(row);return passed;
+}
+void authorization(Auth const& value,Stage stage=Stage::authorize){
+    state.last_auth=value;state.last_auth_known=true;
+    Row row{};row.stage=stage;row.passed=value.result!=0;row.auth_known=true;row.auth=value;add(row);
+}
+bool rejected(Auth& auth,unsigned check,bool value){
+    auth.checked|=1u<<check;if(value)auth.rejected|=1u<<check;return value;
+}
+struct AuthEnd {Auth& row;~AuthEnd(){authorization(row);}};
+struct Scope {
+    Scope(){++state.depth;}
+    ~Scope(){--state.depth;}
+};
+struct SetScope {
+    Meta saved;
+    SetScope(unsigned group,bool forward,Value const& expected,Value const& wanted,bool wanted_original):saved(state.meta){
+        ++state.depth;state.meta={group,forward,true,wanted_original,expected,wanted};
+    }
+    ~SetScope(){state.meta=saved;--state.depth;}
+};
+void begin(){
+    if(state.enabled)return;
+    state.enabled=true;
+    if(state.last_auth_known)authorization(state.last_auth);
+}
+void reset(){state={};}
+void print_value(const wchar_t* label,Value const& value){
+    fwprintf(log_file,L" %ls_absolute=%u%u%u %ls_translation=",label,unsigned(value.absolute[0]),unsigned(value.absolute[1]),unsigned(value.absolute[2]),label);
+    for(auto byte:value.translation)fwprintf(log_file,L"%02x",unsigned(byte));
+    fwprintf(log_file,L" %ls_rotation=",label);for(auto byte:value.rotation)fwprintf(log_file,L"%02x",unsigned(byte));
+}
+void print(Row const& row,const wchar_t* kind){
+    fwprintf(log_file,L"hand_weapon_component_gate schema=1 kind=%ls ordinal=%llu stage=%ls group=%u detail=%u bits=%u passed=%u "
+        L"forward_present=%u wanted_is_original_known=%u wanted_is_original=%u read_executed=%u read_known=%u key_equal=%u "
+        L"compare_known=%u mismatch_mask=%u snapshot=%u pending_mask=%u owned_mask=%u revoked_mask=%u faulted=%u "
+        L"call_attempted=%u call_return_known=%u call_returned=%u auth_known=%u",
+        kind,row.ordinal,names[unsigned(row.stage)],row.meta.group,row.detail,row.bits,unsigned(row.passed),unsigned(row.meta.forward),
+        unsigned(row.meta.wanted_known),unsigned(row.meta.wanted_original),unsigned(row.read_executed),unsigned(row.read_known),unsigned(row.key_equal),
+        unsigned(row.compare_known),row.mismatch,unsigned(row.snapshot),row.pending,row.owned,row.revoked,unsigned(row.faulted),
+        unsigned(row.call_attempted),unsigned(row.call_return_known),unsigned(row.call_returned),unsigned(row.auth_known));
+    print_value(L"expected",row.meta.expected);print_value(L"wanted",row.meta.wanted);print_value(L"read",row.read_value);
+    auto const& auth=row.auth;
+    fwprintf(log_file,L" auth_fields_known=%u auth_checks_known=%u auth_rejected=%u now=%llu live_now=%llu commit_now=%llu "
+        L"write_until=%llu authorize_ns=%lld commit_ns=%lld ticket_ms=%llu plan_ms=%llu context_ms=%llu stereo_ns=%lld input_ns=%lld "
+        L"policy_mask=%u returned_mask=%u\n",auth.known,auth.checked,auth.rejected,auth.now,auth.live_now,auth.commit_now,auth.write_until,
+        auth.authorize_ns,auth.commit_ns,auth.ticket_ms,auth.plan_ms,auth.context_ms,auth.stereo_ns,auth.input_ns,auth.mask,auth.result);
+}
+void dump(){
+    if(!state.enabled||state.dumped||state.depth||dual_draining||!log_file)return;
+    state.dumped=true;
+    fwprintf(log_file,L"hand_weapon_component_gate_begin schema=1 capacity=64 pinned_first=1 count=%u seen=%llu overwritten=%llu "
+        L"first_failure_known=%u counter_saturated=%u clocks_resampled=0 extra_authorizations=0\n",
+        state.count,state.seen,state.overwritten,unsigned(state.first_known),unsigned(state.counter_saturated));
+    if(state.first_known)print(state.rows[0],L"first_failure");
+    const unsigned start=state.count==63?state.next:0;
+    for(unsigned i=0;i<state.count;++i)print(state.rows[1+(start+i)%63],L"event");
+    fwprintf(log_file,L"hand_weapon_component_gate_end schema=1\n");fflush(log_file);
+}
+struct DumpAtExit {~DumpAtExit(){dump();}};
+} // namespace component_trace
+#endif
+
 unsigned authorize_xr_plan(gears_hand_stream::Plan const& plan,
     gears_hand_stream::Context const& context,std::uint64_t now,std::uint64_t write_until){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_trace::Auth trace{};component_trace::AuthEnd trace_end{trace};
+    trace.known=1|64;trace.now=now;trace.write_until=write_until;
+    trace.ticket_ms=plan.ticket.created_ms;trace.plan_ms=plan.context.observed_ms;trace.context_ms=context.observed_ms;
+    trace.stereo_ns=plan.ticket.certificate.stereo_received_ns;trace.input_ns=plan.ticket.certificate.input_received_ns;
+    const auto live_now=GetTickCount64();trace.live_now=live_now;trace.known|=2;
+    if(component_trace::rejected(trace,0,live_now<now)||component_trace::rejected(trace,1,live_now>write_until)||
+       component_trace::rejected(trace,2,stop_requested.load(std::memory_order_acquire))||
+       component_trace::rejected(trace,3,shutdown_requested.load(std::memory_order_acquire)))return 0;
+    const auto authorize_ns=gears_vr::monotonic_ns();trace.authorize_ns=authorize_ns;trace.known|=4;
+    const auto mask=trial.xr_policy.authorize_certified(plan,context,live_now,authorize_ns);trace.mask=mask;trace.known|=8;
+    const auto commit_now=GetTickCount64();trace.commit_now=commit_now;trace.known|=16;
+    const auto commit_ns=gears_vr::monotonic_ns();trace.commit_ns=commit_ns;trace.known|=32;
+    if(component_trace::rejected(trace,4,commit_now<live_now)||component_trace::rejected(trace,5,commit_ns<authorize_ns)||
+       component_trace::rejected(trace,6,commit_now>write_until)||
+       component_trace::rejected(trace,7,!gears_hand_stream::recent(plan.ticket.created_ms,commit_now))||
+       component_trace::rejected(trace,8,!gears_hand_stream::recent(plan.context.observed_ms,commit_now))||
+       component_trace::rejected(trace,9,!gears_hand_stream::recent(context.observed_ms,commit_now))||
+       component_trace::rejected(trace,10,!gears_hand_continuity::certificate_recent(plan.ticket.certificate,commit_ns))||
+       component_trace::rejected(trace,11,stop_requested.load(std::memory_order_acquire))||
+       component_trace::rejected(trace,12,shutdown_requested.load(std::memory_order_acquire)))return 0;
+    trace.result=mask;return mask;
+#else
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     const auto live_now=GetTickCount64();
     if(live_now<now||live_now>write_until||stop_requested.load(std::memory_order_acquire)||
@@ -31,13 +177,22 @@ unsigned authorize_xr_plan(gears_hand_stream::Plan const& plan,
     (void)write_until;
     return trial.xr_policy.authorize(plan,context,now);
 #endif
+#endif
 }
 unsigned authorize_current_xr_plan(gears_hand_stream::Plan const& plan,
     gears_hand_stream::Context const& context,std::uint64_t now){
     auto write_until=trial.deadline;
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
     if(!gears_hand_session::write_until(plan.ticket.created_ms,plan.context.observed_ms,
-        context.observed_ms,write_until))return 0;
+        context.observed_ms,write_until)){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        component_trace::Auth trace{};trace.known=1;trace.now=now;
+        trace.ticket_ms=plan.ticket.created_ms;trace.plan_ms=plan.context.observed_ms;trace.context_ms=context.observed_ms;
+        trace.stereo_ns=plan.ticket.certificate.stereo_received_ns;trace.input_ns=plan.ticket.certificate.input_received_ns;
+        component_trace::authorization(trace,component_trace::Stage::write_until);
+#endif
+        return 0;
+    }
 #endif
     return authorize_xr_plan(plan,context,now,write_until);
 }

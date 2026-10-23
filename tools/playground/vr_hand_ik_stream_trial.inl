@@ -110,6 +110,7 @@ bool drain_journals(const wchar_t* reason){
     const bool hand=restore(reason);
     const bool component=component_restore(); // Always attempted, even after hand failure/end.
     dual_draining=false;publish_journals();
+    if(trial.ended)component_dump_end(); // Diagnostic retry after both journals have been attempted.
     return hand&&component&&!journals_dirty();
 }
 #endif

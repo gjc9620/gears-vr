@@ -2,6 +2,20 @@
 
 此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3的c局取得一次部分absolute标志更新及交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
 
+## R4首失败诊断候选
+
+R4只改三份私有适配源码，保持原100ms、同Plan最终认证、逐setter schema／完整Key／expected检查、原返回值、短路顺序、真实hook转发及unsafe卸载规则。它不修复c的运行根因，仅增加固定首失败和63条有序尾部记录；字段来自原有game读取、原有clock／atomic与授权调用，不额外重采样或续龄。输出为独立gate前缀，原written／pre_restore／end schema不变。
+
+Astra复核修正两项诊断缺口。纯lease组前或组后值不符可能发生在read返回true之后；现仅对ok／known／完整Key相等、group0／forward／已有snapshot／无旧fault的既有读值比较owned，先固定失败，排除setter内部正常旧值及内部／外部回滚。dump同时等待组件depth与dual_draining归零；第三源只在双journal均已尝试、发布状态后增加终端重试，覆盖非Tick动作及clean-ended后立即Shutdown，不依赖下一个Tick。DumpAtExit在旧terminal重复提前返回前构造，不需要改旧terminal标志。
+
+实际函数提取使用合成backend：Auth274项／16case、Backend69项／12case、Drain10项通过。原R3与R4的时钟、Policy、Stop／Shutdown及backend调用序列相同；覆盖Rotation返回成功但无效果、超过63行的两组清理、次生回滚认证失败、组前foreign、false有／无写、skip组与正常original清账。这些结果不是实际游戏调用证明。
+
+ON实际发生两次编译尝试。首次在严格W4／WX下因新增SetScope参数original遮蔽现有全局变量而C4459失败，无DLL；首次源码、命令、输入与失败日志保留在on-attempt-1。仅将该参数及其绑定使用改名wanted_original，机械替回可重建Astra已审原文件完整SHA；第二次成功。成功DLL SHA `a8276f74e247454a98a695d57d0a5817524c8f164b8d7e9657a1fa36167c1af8`，实际项目为Level4／WX／EHsc／C++17，23导出与R3相同。default的MSVC预处理输出原字节相同；combined ON／phase1 OFF仅空行及同一个write_until失败return花括号差异，窄归一化后相同，没有重复这两种构建。末次改名在被移除的私有块中，不重复预处理。
+
+报告 `analysis/hand-mesh-first-failure-20261023/report.json` SHA `62c328320c5c8bc7e67b600e0eed750a6cfe84bee6ec377c12f1138fef29475e`；协调者核对742项目源、16vendor、76份支持工件、真实PE／编译项目、旧R3封存及57个c证据文件后按字节应用三源，应用复核SHA `09c77441d00113e9758c87e355477bd0c04ae9b988962e6d4e7478c89eeb206e`。live742与成功staged编译输入全部相同，可复用该DLL；没有应用后重编，构建base为 `17709c39fc62991351eb1261965c6158b4a4091d`，三处staged差异和后续应用commit必须分开记录。common pure lease未改。
+
+R4尚无实际游戏结果。下一局继续购买版、静音／置后／只读输出，独立保留实际失败及清理回执；不能以本诊断CPU／编译通过替代枪体跨Tick运动、最终图像或头显验收。
+
 ## R3分类前置候选
 
 R3只修改 `vr_hand_ik_stream_trial.inl` 和 `vr_hand_weapon_mesh_phase1.inl`：共用原46个动作名，只有注册有效、名称读取成功且明确不在该集合中的调用才跳过组件关联查询。GT检查和owned invoke的一次性self token仍在最前；真实PE／CallFunction不消费token，名称未知保留原处理，InvManager切槽／完整八对象关联、失败双drain和转发前撤权均不减少。未缓存跨回调的关联结果，也未改Policy／WorldBridge／Session／100ms或任何同Plan最后写入门。
