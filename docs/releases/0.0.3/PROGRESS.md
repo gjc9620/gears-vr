@@ -63,3 +63,13 @@ Astra 对 Native／XR 源码与两份 CMake 的双向增量保留窄审通过，
 失败证据封存为 k 的 139 个文件，seal `866e9347…1e99`，协调者结果 `ff884bd6…3c8`；原 j 的 51 份封存文件仍逐一匹配。独立退出核对第一次误把仍被句柄引用的已退出进程对象当作仍在运行，已改用 Windows 的 signaled 终止状态核实，并保留这项核对错误说明，没有因此重启游戏。私有候选的 774 源／26 工件保持，未重编已成功的三个组件。
 
 运行结束后另一个会话切换了共享 `J:\gearsVr` 的分支，原 k 准备时依赖的五份共享配置／Python 输入发生变化或移除。没有恢复或改写该会话的文件。后续 l 改用本独立 worktree 的 Bridge／Resolver 和从已发布提交逐字冻结的 manifest，配置也从 k 实际使用的私有副本冻结，以免测试再次依赖其他会话的分支切换。l 是新的单次入口，k 的失败记录不复用、不重写。
+
+## 2026-10-23 — 独立入口完成预留与 Lancer 基线，继续修正激活参数
+
+仅补建缺少的 `GraphicsMenuLockTest` target，首次成功，原 Native／XR／PG 和 14 个已通过 CPU 程序未重编或重跑。新私有 bundle `5ae4697c…82101`，manifest `6572c317…475ba`，保留 774 源／27 依赖及原 26 工件，新增该自检程序和来源报告两项。l 的两 graphics 参数与 WORK 模块／冻结配置接线通过 54 项必要 runner／idle 检查；协调者确认仅五个既有函数和一个新 helper 改动，清理、15 秒时限、256 次上限及 audit 函数保持。实际准备绑定 209 依赖、25 复制、24 个加载模块和 15 个来源，未再读取共享 J 的可变 Python、manifest 或配置。root 的后续绑定仅改常量，函数／class AST 不变。
+
+l 后台实测已成功通过原生预留，完整回执确认 4 项图形保护、0 项 scene 钩子及确切 PG 预留；进入场景后完成原版 Lancer 准备、库存和八个控制器／武器组件的基线。随后 Native 正式激活失败：`vr_dof_identity configuration=0 runtime_owned_transport=0`，状态记录 `hook installation failed disable_status=0 active=0`。这次实际启动了 XR 并发布 3,935 个 hand-continuity 样本，但没有提交游戏场景层，也没有进入 hand trial；component 和 whole session 都保持失败，不能用 XR 样本数替代手部应用证明。
+
+退出时 `PlaygroundShutdown=0`，八控制器、44 字节挂接和三组武器组件原始状态逐一相符，原生 CallFunction 入口恢复记录保留。8 个游戏音频会话已静音并恢复，`restore_pending=0`，未修改普通启动器音量。协调者核实确切 game／owner／XR 均不在运行；游戏退出码 1，本次没有把它写成正常 exit 0 或完整 Native cleanup 通过。l 的 96 份文件封存，seal `4c2300ba…0142a`，结果 `9275a7d2…6b02b`，原始外部 Native／XR 状态、CSV、stdout、stderr 及回执均复制保存。
+
+直接原因由原源码链确认：测试的 session 参数遗漏 `render_scale`，XR 因而没有 `--render-scale`，不会发布 `RenderSizeBridge`；新 Native 的 owned transport 必须取得当前分辨率信息，故在代码段哈希校验之前就短路拒绝。`runtime_ranges_match=0` 在这里不能当作游戏二进制哈希不匹配。下一独立 m 入口从已冻结配置传入该参数，沿用相同候选与检查器，不关闭发布版 VR DOF 或运行时分辨率机制。此前对已结束 agent 使用普通消息没有启动新的复核任务，root 已纠正为正式 follow-up；l 的实际放行依据是协调者源码与实物复核，没有虚构一次未执行的 Astra 通过报告。
