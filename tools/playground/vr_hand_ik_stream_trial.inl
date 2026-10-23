@@ -8,6 +8,16 @@ using handik::Snapshot;
 constexpr std::array<unsigned,4> indices{{2,3,6,7}}; // R position/rotation, L position/rotation.
 std::atomic<bool> requested{},stop_requested{},used{},safe_to_unload{true},shutdown_requested{},active_visible{};
 std::atomic<unsigned> status{},leases{};
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+bool counters_saturated{};
+#endif
+template<class T> void count_add(T& value,T amount=T{1}){
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    if(!gears_hand_session::saturating_add(value,amount))counters_saturated=true;
+#else
+    value+=amount;
+#endif
+}
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
 // Private, game-thread-only measurement. These counters never participate in
 // permission decisions, and no measured span writes or flushes diagnostic text.
@@ -19,13 +29,13 @@ enum class EquipmentTiming:unsigned {
 constexpr unsigned equipment_timing_count=unsigned(EquipmentTiming::count);
 struct EquipmentTimingStat {
     std::uint64_t count{},sum{},maximum{};
-    void add(std::uint64_t value){++count;sum+=value;maximum=(std::max)(maximum,value);}
+    void add(std::uint64_t value){count_add(count);count_add(sum,value);maximum=(std::max)(maximum,value);}
 };
 struct EquipmentAgeStat {
     EquipmentTimingStat past;
     std::uint64_t future{};
     void add(gears_hand_stream::ObserveAge const& age){
-        if(age.known){if(age.future)++future;else past.add(age.ms);}
+        if(age.known){if(age.future)count_add(future);else past.add(age.ms);}
     }
 };
 struct EquipmentReasonStat {
@@ -68,9 +78,22 @@ struct Trial {
 #endif
     bool xr_open{},xr_ready{};
     float xr_world_time{};
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    gears_hand_session::Session session;
+    bool record_lease{},terminal_restore_recorded{};
+#endif
 #endif
 };
 Trial trial{};
+
+bool diagnostic_event(){
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
+    return trial.session.diagnostic_event(GetTickCount64());
+#else
+    return true;
+#endif
+}
 
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
 // Bounded observation buffer only. It has its own receipt cursor and never
@@ -347,7 +370,7 @@ void timing_begin(){
 void timing_record(EquipmentTiming stage,unsigned phase,std::uint64_t begin,std::uint64_t finish){
     auto& timing=trial.timing;
     if(timing.dumped)return;
-    if(!begin||finish<begin){++timing.invalid_clock;return;}
+    if(!begin||finish<begin){count_add(timing.invalid_clock);return;}
     timing.spans[phase][unsigned(stage)].add(finish-begin);
 }
 struct EquipmentTimingScope {
@@ -357,7 +380,7 @@ struct EquipmentTimingScope {
     bool active{};
     explicit EquipmentTimingScope(EquipmentTiming value,bool measure=true):stage(value){
         active=measure&&timing_active();
-        if(active){phase=timing_phase();begin=timing_clock();++trial.timing.open_scopes;}
+        if(active){phase=timing_phase();begin=timing_clock();count_add(trial.timing.open_scopes);}
     }
     ~EquipmentTimingScope(){
         if(active){timing_record(stage,phase,begin,timing_clock());--trial.timing.open_scopes;}
@@ -367,21 +390,21 @@ void timing_pre_restore(){
     if(!timing_active())return;
     auto& timing=trial.timing;
     // A missing next observation is left visibly incomplete, never fabricated.
-    timing.pending_restore=timing_clock();timing.pending_phase=timing_phase();++timing.interval_started;
+    timing.pending_restore=timing_clock();timing.pending_phase=timing_phase();count_add(timing.interval_started);
 }
 void timing_observation(){
     auto& timing=trial.timing;
     if(!timing.pending_restore)return;
     timing_record(EquipmentTiming::pre_restore_to_observe,timing.pending_phase,
         timing.pending_restore,timing_clock());
-    timing.pending_restore=0;++timing.interval_completed;
+    timing.pending_restore=0;count_add(timing.interval_completed);
 }
 void timing_policy(gears_hand_stream::ObserveDiagnostic const& diagnostic){
     if(!trial.timing.frequency||trial.timing.dumped)return;
     for(unsigned reason=0;reason<gears_hand_stream::observe_reason_count;++reason){
         const auto mask=diagnostic.reason_masks[reason];
         if(!mask||mask>3)continue;
-        auto& value=trial.timing.reasons[timing_phase()][reason];++value.masks[mask];
+        auto& value=trial.timing.reasons[timing_phase()][reason];count_add(value.masks[mask]);
         for(unsigned hand=0;hand<2;++hand)value.old_ticket[hand].add(diagnostic.old_ticket_age[hand]);
         value.context.add(diagnostic.context_age);value.previous_context.add(diagnostic.previous_context_age);
         value.new_ticket.add(diagnostic.new_ticket_age);
@@ -491,7 +514,7 @@ struct Backend {
     bool write_target(unsigned channel,policy::Target const& expected,policy::Target const& wanted);
     bool set_strength(unsigned channel,float strength){
         handik::Control value{};if(!control(channel,value))return false;
-        ++trial.setter_calls;return handik::set_strength(value.object,strength);
+        count_add(trial.setter_calls);return handik::set_strength(value.object,strength);
     }
 };
 bool write_bytes(uptr address,policy::Target const& wanted){
@@ -503,7 +526,7 @@ bool Backend::write_target(unsigned channel,policy::Target const& expected,polic
     const auto object=trial.lease_anchor.controls[indices[channel]].object;
     const auto property=playground::property(object,(channel&1)?L"BoneRotation":L"EffectorLocation");
     if(!registered(property))return false;
-    ++trial.target_writes;
+    count_add(trial.target_writes);
     if(!write_bytes(object+get<unsigned>(property+0x94),wanted))return false;
     return read(channel,value)&&value.target==wanted;
 }
@@ -529,7 +552,7 @@ void watch(uptr object){
 }
 bool quiet_reject(int index,handanim::Slot const& slot,int child,const wchar_t* reason){
     const auto now=GetTickCount64();
-    if(!log_file||now<trial.next_slot_log)return false;
+    if(!log_file||now<trial.next_slot_log||!diagnostic_event())return false;
     trial.next_slot_log=now+250;wchar_t node[96]{};handanim::text(slot.node_name,node,96);
     fwprintf(log_file,L"hand_ik_stream_trial_slot_wait index=%d node=%ls child=%d reason=%ls "
         L"known=%u component=%p total=%.9g blend=%.9g pending=%.9g playing=%u "
@@ -563,7 +586,7 @@ bool slots_quiet(Snapshot const& value){
             if(n&&!policy::custom_child_zero_pose(child.known,child.weight,child.total,child.target,child.playing))
                 return quiet_reject(i,slot,n,L"custom_child_not_quiet_or_unknown");
         }
-        ++trial.quiet_slots;
+        count_add(trial.quiet_slots);
     }
     // NodeTotalWeight is the parent pose weight; PendingBlendOutTime retains
     // durations/-1. Neither means that a custom child is still playing.
@@ -590,12 +613,16 @@ bool matrix_pose(std::array<float,16> const& value,gears_vr::Viewpoint& out){
 }
 void sample(const wchar_t* phase,Snapshot const& value,unsigned lease,unsigned mask){
     if(!log_file)return;
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    if(!trial.record_lease)return;
+#endif
+    const auto sample_number=trial.samples;count_add(trial.samples);
     LARGE_INTEGER stamp{};QueryPerformanceCounter(&stamp);
     fwprintf(log_file,L"hand_ik_stream_trial_sample phase=%ls lease=%u segment=%u sample=%u "
         L"sequence=%llu qpc=%lld ms=%llu world_time=%.9g last_render_time=%.9g "
         L"mesh_tick_known=%u mesh_tick=%d action_idle=%u action_epoch=%u "
         L"trial_apply_mask=%u ownership_proved=0",
-        phase,lease,(lease-1)/8,trial.samples++,trial.sequence,stamp.QuadPart,value.ms,
+        phase,lease,(lease-1)/8,sample_number,trial.sequence,stamp.QuadPart,value.ms,
         value.world_time,value.last_render_time,unsigned(value.mesh_tick_known),value.mesh_tick,
         unsigned(value.action_idle),trial.epoch,mask);
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
@@ -610,6 +637,9 @@ void sample(const wchar_t* phase,Snapshot const& value,unsigned lease,unsigned m
 void end(unsigned code,const wchar_t* reason){
     if(trial.ended)return;
     trial.ended=true;trial.phase=0;requested=false;active_visible=false;
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    trial.session.end();
+#endif
     // No terminal state authorizes another target. A partial acquisition must
     // never claim mask 3; dirty/faulted separately describe unresolved fields.
     const bool clean=!trial.lease.dirty();
@@ -623,6 +653,13 @@ void end(unsigned code,const wchar_t* reason){
         unsigned(trial.melee_seen),unsigned(trial.slot_play_seen),unsigned(trial.resumed),
         trial.setter_calls,trial.target_writes,0u,unsigned(!clean),unsigned(trial.lease.faulted()),unsigned(clean),reason);
         fflush(log_file);}
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    if(log_file){fwprintf(log_file,L"hand_ik_continuous_session_end schema=1 leases=%u restored=%u "
+        L"recorded_leases=%u diagnostic_events=%u event_limit=%u counters_saturated=%u "
+        L"dirty=%u faulted=%u same_instance_only=1 ownership_proved=0\n",leases.load(),trial.restored,
+        trial.session.recorded_leases(),trial.session.diagnostic_events(),gears_hand_session::event_limit,
+        unsigned(counters_saturated),unsigned(!clean),unsigned(trial.lease.faulted()));fflush(log_file);}
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
     if(log_file){fwprintf(log_file,L"hand_ik_xr_stream_end fresh=%u missing=%u binding_resets=%u "
         L"bindings=%u left_leases=%u right_leases=%u both_leases=%u "
@@ -647,13 +684,24 @@ bool restore(const wchar_t* reason){
 #endif
     trial.releasing=true;
     const auto lease=leases.load();Snapshot current{};
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    const bool terminal=(stop_requested.load(std::memory_order_acquire)||
+        shutdown_requested.load(std::memory_order_acquire))&&!trial.terminal_restore_recorded;
+    const bool log_restore=trial.record_lease||terminal||diagnostic_event();
+    if(terminal)trial.terminal_restore_recorded=true;
+#else
+    constexpr bool log_restore=true;
+#endif
     const bool sampled=handik::snapshot(trial.lease_anchor.pc,current);
     if(sampled)sample(L"pre_restore",current,lease,trial.applied_mask);
     Backend backend{};
     const bool clean=trial.lease.restore(backend);trial.releasing=false;
-    if(clean)++trial.restored;
-    if(log_file){fwprintf(log_file,L"hand_ik_stream_trial_restore lease=%u dirty_before=1 dirty_after=%u "
+    if(clean)count_add(trial.restored);
+    if(log_file&&log_restore){fwprintf(log_file,L"hand_ik_stream_trial_restore lease=%u dirty_before=1 dirty_after=%u "
         L"restored=%u reason=%ls\n",lease,unsigned(!clean),unsigned(clean),reason);fflush(log_file);}
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    trial.record_lease=false;
+#endif
     if(!clean||trial.lease.faulted()){end(clean?7:8,L"lease_restore_unverified_or_faulted");return false;}
     if(!sampled){end(7,L"restored_but_pre_restore_sample_unknown");return false;}
     return true;
@@ -668,29 +716,39 @@ bool yield_for_equipment(const wchar_t* reason){
     if(!used.load(std::memory_order_acquire)&&!dirty&&!faulted)return true;
     // Revoke geometry and all previously issued plans before rollback, even
     // when rollback fails. Never reopen a stopped trial or its write budget.
-    ++trial.epoch;trial.stability.reset();trial.xr_ready=false;
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    const bool epoch_available=trial.epoch!=std::numeric_limits<unsigned>::max();
+    if(!epoch_available)stop_requested.store(true,std::memory_order_release);
+    else ++trial.epoch;
+#else
+    ++trial.epoch;
+#endif
+    trial.stability.reset();trial.xr_ready=false;
     gears_hand_stream::Context blocked{};
     blocked.action_epoch=trial.epoch;blocked.observed_ms=GetTickCount64();
     blocked.clean=!dirty&&!faulted;
     observe_xr_policy(blocked,nullptr,blocked.observed_ms);
-    for(auto& binding:trial.xr_binding){binding.reset();++trial.xr_resets;}
+    for(auto& binding:trial.xr_binding){binding.reset();count_add(trial.xr_resets);}
     if(!trial.ended&&!stop_requested.load(std::memory_order_acquire)&&
        active_visible.load(std::memory_order_acquire)&&(trial.phase==1||trial.phase==2)){
         trial.phase=1;status=1;
     }
-    if(dirty)++trial.action_yields;
+    if(dirty)count_add(trial.action_yields);
     const bool restored=!dirty||(!trial.releasing&&restore(reason?reason:L"equipment_boundary"));
     // A diagnostic sample failure can end the hand trial after a verified
     // clean rollback. It must not strand the equipment owner's attachment.
     const bool ready=equipment_ready();
     if(!trial.lease.dirty())trial.applied_mask=0;
-    if(log_file){fwprintf(log_file,L"hand_ik_equipment_yield reason=%ls equipment_phase=%u "
+    if(log_file&&diagnostic_event()){fwprintf(log_file,L"hand_ik_equipment_yield reason=%ls equipment_phase=%u "
         L"epoch=%u dirty_before=%u faulted_before=%u dirty_after=%u faulted_after=%u "
         L"restored=%u helper_clean=%u bindings_cleared=3 leases=%u stopped=%u ended=%u\n",
         reason?reason:L"equipment_boundary",trial.xr_equipment_phase,trial.epoch,unsigned(dirty),unsigned(faulted),
         unsigned(trial.lease.dirty()),unsigned(trial.lease.faulted()),unsigned(restored),unsigned(ready),
         leases.load(),unsigned(stop_requested.load(std::memory_order_acquire)),unsigned(trial.ended));
         fflush(log_file);}
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    if(!epoch_available&&!trial.ended)end(ready?7u:8u,L"xr_action_epoch_exhausted");
+#endif
     return ready;
 }
 #endif
@@ -734,7 +792,7 @@ void before_action(uptr object,uptr function){
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     const bool dirty=trial.lease.dirty();
     const bool restored=yield_for_equipment(label);
-    if(log_file){fwprintf(log_file,L"hand_ik_stream_trial_action function=%ls epoch=%u "
+    if(log_file&&diagnostic_event()){fwprintf(log_file,L"hand_ik_stream_trial_action function=%ls epoch=%u "
         L"dirty_before=%u dirty_after=%u restored=%u equipment_phase=%u\n",label,trial.epoch,
         unsigned(dirty),unsigned(trial.lease.dirty()),unsigned(restored),trial.xr_equipment_phase);fflush(log_file);}
 #else

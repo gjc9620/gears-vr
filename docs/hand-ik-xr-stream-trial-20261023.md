@@ -16,6 +16,18 @@
 
 ## 接线与临时绑定
 
+### 固定实例持续会话源码候选（2026-10-23，CPU验证）
+
+`GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL` 默认OFF，须certified＋combined。它不新增骨骼writer、不改304-byte Start或原导出，也不允许同一次模块生命周期重复Start；仅把原15秒／256次的录制寿命与固定实例会话寿命分开。持续循环仍在每次原Tick前恢复，原动作先撤Plan、清绑定再恢复，冻结对象／武器／世界／Native身份变化即结束，不自动跨实例接回。公开FreeHandControl的ownership／apply门保持关闭。
+
+每次授权仍有有限的 `write_until = min(ticket.created_ms + 100, plan.context.observed_ms + 100, current_context.observed_ms + 100)`；任一加法溢出拒绝。它不来自now续期，有限模式仍传原trial.deadline。helper授权前后两次截止检查、MS／NS倒退、三份Context／ticket年龄、双source NS、最后Stop／Shutdown均无条件保留；首Tick arm_deadline仍有效。停止完整诊断后，快照、原装备三次认证、最后authorize、journal获取及恢复照常执行。lease／动作epoch耗尽会终止；统计饱和；持续模式的16-bit Status lease字段钳到65535，不回绕。
+
+完整pose／bone只在前15秒／256次诊断预留内输出；`recorded_leases`含可能的planned-only预留，不能当成实际写入数。slot／action／equipment／restore等热事件另限1024；stow Backend.read只加同一日志门，原读取、expected认证和返回值不变。终态及固定大小timing块保留一次，日志FILE和ferror处理未被伪造或关闭。
+
+连续ON、联合OFF和普通默认版构建均通过；root独立核对7份实际源码、三份DLL及PE导出，ON／OFF导出相同，默认版没有手部／stow私有导出。机械提取真实提交helper的旧有限31场景、持续21场景，以及真实yield／phase资格块4场景通过；这些调度检查stub掉Policy授权，不能冒充Policy或实际游戏验收。原Policy25／certified12及Start／Lease／刚体绑定检查另行通过；新Session CPU及缺certified／combined两拒配通过。Astra复核发现装备phase变化路径中，epoch耗尽的clean-but-ended可被后续资格失败写回等待状态；现已在yield返回后立即检查ended并返回，4场景覆盖终态7、dirty故障8及正常交还，Astra再次复核闭合。
+
+私有验证报告为 `analysis/hand-continuous-session-20261023/report.json`，SHA256 `27be235f1b603dee79f8139367fa87649cae37c065396e3d107bd1198a361e6c`；ON DLL `172f215325a916a007d01635b1592a64648c38de57c3f7e73ca681dee6937ec3`，联合OFF `31076d2e02251850f567712ecf3082015ed146f83ea68d6c079465e5e3438f34`，默认 `059746ddf5200fc9d2bf35a52fdb9b1edefd6b131b92b47d0193cfe1f344af7e`。报告自身SHA只在外部记录，不放入自身hash表；14份记录hash和源码／产物独立回读通过。旧h及旧CPU报告不改写。本候选尚未运行新游戏局；h的有限组件通过不能代替越过录制预算后的实际持续运行、可见手部或头显验收。
+
 ### 后续 GHW1 连续性候选（2026-10-23，默认关闭）
 
 运行前更正：当前连续host的wire profile固定为runtime source 0，并拒绝simulator-operator模式；`GEARS_PLAYGROUND_VR_R2_SIM_TEST` 是另一路可选调试入口，不能据此选择本通道来源。提交 `911c172` 将PG初始化固定为 `StereoSource::RuntimeTracked`；真实初始化块提取回归在该宏为1时验证source 0 baseline→binding和source 1拒绝。来源0只描述wire profile，不能据此称为物理跟踪。新的PG三种构建、11项组件检查、4项配置拒绝、31项真实提交helper场景与两项删guard变异检查通过。737份源码与新PG已配套封存为 `analysis/hand-continuity-candidates/222a9b2f5538a42777003485c6c6d9289be7bd4a74e2efdd69d011204467bae2/`，基线 `911c172`，manifest SHA256 `19af0b187e5cdcf4984e87f144aee5d0293d2ae71a43b5215e5953ed4b900ebd`；PG SHA256 `fcaeca76e1e680d0620ed7398936f5627f7a473f4419188b79a60eecc5e44e6d`，Native／XR分别保持 `ecd30c01…`／`886362d5…`。旧b28封存不改写，后续h必须使用新source 0封存。

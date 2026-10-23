@@ -39,6 +39,12 @@
 #include "../vr-common/hand_stream_grip_binding.h"
 #include "../vr-common/hand_stream_ticket_policy.h"
 #include "hand_ik_xr_stream_request.h"
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+#include "hand_stream_session.h"
+#if !defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+#error Continuous hand session requires certified combined hands
+#endif
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
 #include "../vr-common/hand_world_continuity_bridge.h"
 #endif
@@ -741,7 +747,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkControlledTrialSta
 }
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
-// Private single-use recording only; public hand ownership remains unproved.
+// One private Start per module lifetime; public hand ownership remains unproved.
+// The opt-in continuous build changes lifetime, never this frozen Start ABI.
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkXrStreamTrialStart(void* argument){
 #else
@@ -770,8 +777,13 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkStreamTrialStop(vo
     LifecycleScope lifecycle;return handstream::stop_and_wait();
 }
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkStreamTrialStatus(void*){
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    return DWORD(gears_hand_session::status_leases(handstream::leases.load(std::memory_order_acquire))<<16)|
+        DWORD(handstream::status.load(std::memory_order_acquire));
+#else
     return DWORD((handstream::leases.load(std::memory_order_acquire)&0xffff)<<16)|
         DWORD(handstream::status.load(std::memory_order_acquire));
+#endif
 }
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_INTENT_TEST)

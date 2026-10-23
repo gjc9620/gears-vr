@@ -192,7 +192,11 @@ struct Backend {
     bool enforce_expected{};
     bool read(gears_weapon::StowState<Key>& out){
         const bool ok=read_state(out)&&(!enforce_expected||out.key==expected);
-        if(log_file){
+        if(log_file
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+           &&handstream::diagnostic_event()
+#endif
+        ){
             fwprintf(log_file,L"equipment_stow_state read=%u ready=%u attachment=%u epoch=%llu "
                 L"pawn=%p weapon=%p pawn_mesh=%p weapon_mesh=%p original_hand_pose=",
                 unsigned(ok),unsigned(out.ready),unsigned(out.attachment),out.key.epoch,

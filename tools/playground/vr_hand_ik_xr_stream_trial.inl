@@ -9,18 +9,18 @@ gears_hand_xr_trial::Start xr_pending{};
 constexpr unsigned xr_max_leases=256;
 
 unsigned authorize_xr_plan(gears_hand_stream::Plan const& plan,
-    gears_hand_stream::Context const& context,std::uint64_t now){
+    gears_hand_stream::Context const& context,std::uint64_t now,std::uint64_t write_until){
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     const auto live_now=GetTickCount64();
-    if(live_now<now||live_now>trial.deadline||stop_requested.load(std::memory_order_acquire)||
+    if(live_now<now||live_now>write_until||stop_requested.load(std::memory_order_acquire)||
        shutdown_requested.load(std::memory_order_acquire))return 0;
     const auto authorize_ns=gears_vr::monotonic_ns();
     const auto mask=trial.xr_policy.authorize_certified(plan,context,live_now,authorize_ns);
     const auto commit_now=GetTickCount64();
     const auto commit_ns=gears_vr::monotonic_ns();
-    // Authorization can itself be descheduled. The finite trial's last
-    // explicit commit decision also observes its stop/deadline boundaries.
-    if(commit_now<live_now||commit_ns<authorize_ns||commit_now>trial.deadline||
+    // Authorization can itself be descheduled. The last explicit commit
+    // decision observes the same finite cutoff, Stop and clock boundaries.
+    if(commit_now<live_now||commit_ns<authorize_ns||commit_now>write_until||
        !gears_hand_stream::recent(plan.ticket.created_ms,commit_now)||
        !gears_hand_stream::recent(plan.context.observed_ms,commit_now)||
        !gears_hand_stream::recent(context.observed_ms,commit_now)||
@@ -28,8 +28,18 @@ unsigned authorize_xr_plan(gears_hand_stream::Plan const& plan,
        stop_requested.load(std::memory_order_acquire)||shutdown_requested.load(std::memory_order_acquire))return 0;
     return mask;
 #else
+    (void)write_until;
     return trial.xr_policy.authorize(plan,context,now);
 #endif
+}
+unsigned authorize_current_xr_plan(gears_hand_stream::Plan const& plan,
+    gears_hand_stream::Context const& context,std::uint64_t now){
+    auto write_until=trial.deadline;
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    if(!gears_hand_session::write_until(plan.ticket.created_ms,plan.context.observed_ms,
+        context.observed_ms,write_until))return 0;
+#endif
+    return authorize_xr_plan(plan,context,now,write_until);
 }
 
 bool prepare_xr_request(void* argument){
@@ -76,7 +86,7 @@ bool xr_equipment_gate(Snapshot const& value,unsigned expected,const wchar_t* st
     const unsigned current=vrequip::hand_equipment_phase(value.pc,value.pawn,value.weapon);
     if(expected&&expected<=2&&trial.xr_equipment_phase==expected&&current==expected)return true;
     const bool clean=yield_for_equipment(stage);
-    if(log_file){fwprintf(log_file,L"hand_ik_equipment_gate stage=%ls expected_phase=%u current_phase=%u "
+    if(log_file&&diagnostic_event()){fwprintf(log_file,L"hand_ik_equipment_gate stage=%ls expected_phase=%u current_phase=%u "
         L"saved_phase=%u hand_clean=%u writes=0 epoch=%u\n",stage,expected,current,
         trial.xr_equipment_phase,unsigned(clean),trial.epoch);fflush(log_file);}
     return false;
@@ -102,7 +112,7 @@ gears_hand_stream::Context xr_context(Snapshot const& value,bool ready){
 }
 void xr_reset_bindings(unsigned mask){
     for(unsigned hand=0;hand<2;++hand)if(mask&(1u<<hand)){
-        trial.xr_binding[hand].reset();++trial.xr_resets;
+        trial.xr_binding[hand].reset();count_add(trial.xr_resets);
     }
 }
 #if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
@@ -194,6 +204,9 @@ void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigne
 #endif
 ){
     if(!log_file)return;
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    if(!trial.record_lease)return;
+#endif
     fwprintf(log_file,L"hand_ik_xr_stream_pose lease=%u serial=%llu sequence=%llu session=%llu "
         L"space_epoch=%llu input_epoch=%llu world_generation=%llu created_ms=%llu "
         L"units_per_metre=%.9g tracked_mask=%u planned_mask=%u bind_mask=%u",
@@ -265,7 +278,14 @@ void post_tick(uptr pc){
     if(requested.exchange(false,std::memory_order_acq_rel)){
         xr_bridge.close();trial={};trial.xr_start=xr_pending;
         trial.xr_world_time=xr_pending.baseline_world_time;
-        trial.phase=1;trial.began=GetTickCount64();trial.deadline=trial.began+15000;
+        trial.phase=1;trial.began=GetTickCount64();
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+        if(trial.began>std::numeric_limits<std::uint64_t>::max()-gears_hand_session::recording_ms){
+            end(7,L"xr_session_start_clock_exhausted");return;
+        }
+        trial.session.begin(trial.began);counters_saturated=false;
+#endif
+        trial.deadline=trial.began+15000;
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
         // The continuous host admits the runtime wire profile. The unrelated
         // optional R2 test path does not select this hand stream's provenance.
@@ -284,18 +304,33 @@ void post_tick(uptr pc){
 #else
             L"GVE6_grip_world "
 #endif
-            L"max_leases=%u head_controllers_untouched=1 force_evaluation=0 ownership_proved=0 "
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+            L"recording_max_leases=%u continuous_session=1 "
+#else
+            L"max_leases=%u "
+#endif
+            L"head_controllers_untouched=1 force_evaluation=0 ownership_proved=0 "
             L"external_frozen_native_epoch=%llu native_started_qpc=%llu world_handoff_supported=0\n",
             xr_max_leases,trial.xr_start.expected_native_world_generation,trial.xr_start.native_started_qpc);
             fflush(log_file);}
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
         if(log_file){fwprintf(log_file,L"hand_ik_equipment_begin original_hand_phase=1 owned_detached_phase=2 "
-            L"blocked_phase=0 max_leases=%u budget_ms=15000 ownership_proved=0\n",xr_max_leases);fflush(log_file);}
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+            L"blocked_phase=0 recording_max_leases=%u recording_ms=15000 session_lifetime=explicit_stop ownership_proved=0\n",
+#else
+            L"blocked_phase=0 max_leases=%u budget_ms=15000 ownership_proved=0\n",
+#endif
+            xr_max_leases);fflush(log_file);}
 #endif
     }
     if(!active_visible.load(std::memory_order_acquire)||trial.ended||!trial.phase)return;
     const auto now=GetTickCount64();
     if(stop_requested.load(std::memory_order_acquire)){end(6,L"xr_stopped_in_clean_phase");return;}
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    if(!trial.session.running(now,false,shutdown_requested.load(std::memory_order_acquire))){
+        end(7,L"xr_continuous_session_ended_or_clock_reversed");return;
+    }
+#else
     if(now>trial.deadline){end(7,L"xr_bounded_trial_timeout");return;}
     if(leases.load()>=xr_max_leases){
         // Original actions during the final observation can reset readiness,
@@ -304,6 +339,7 @@ void post_tick(uptr pc){
         if(now-trial.final_ms>=250)end(5,L"bounded_xr_dual_hand_recording_complete");
         return;
     }
+#endif
     Snapshot value{};bool known{};
     {
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
@@ -327,8 +363,9 @@ void post_tick(uptr pc){
     if(equipment_changed){
         const auto previous=trial.xr_equipment_phase;
         const bool clean=yield_for_equipment(L"equipment_phase_changed");
-        trial.xr_equipment_phase=equipment_phase;++trial.xr_equipment_changes;
-        if(log_file){fwprintf(log_file,L"hand_ik_equipment_phase previous=%u current=%u hand_clean=%u "
+        if(trial.ended)return; // A clean rollback may still terminate the session.
+        trial.xr_equipment_phase=equipment_phase;count_add(trial.xr_equipment_changes);
+        if(log_file&&diagnostic_event()){fwprintf(log_file,L"hand_ik_equipment_phase previous=%u current=%u hand_clean=%u "
             L"epoch=%u leases=%u consume_blocked_baseline=1 writes=0\n",previous,equipment_phase,
             unsigned(clean),trial.epoch,leases.load());fflush(log_file);}
         if(!clean){if(!trial.ended)end(trial.lease.dirty()?8:7,L"equipment_phase_handback_failed");return;}
@@ -377,7 +414,7 @@ void post_tick(uptr pc){
 #endif
     gears_hand_stream::Ticket ticket{};
     if(fresh){
-        ++trial.xr_fresh;
+        count_add(trial.xr_fresh);
         if(frame.world_generation!=trial.xr_start.expected_native_world_generation){
             end(7,L"xr_native_epoch_changed");return;
         }
@@ -388,7 +425,7 @@ void post_tick(uptr pc){
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
         ticket.certificate=continuous_frame.certificate;
 #endif
-    }else ++trial.xr_none;
+    }else count_add(trial.xr_none);
     const auto context=xr_context(value,qualified&&trial.xr_ready);
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     timing_observation();
@@ -407,10 +444,15 @@ void post_tick(uptr pc){
            !trial.xr_policy.commit_binding(plan,1u<<hand)){
             end(7,L"xr_grip_to_bone_binding_rejected");return;
         }
-        ++trial.xr_binds;
+        count_add(trial.xr_binds);
     }
     if(!xr_targets(frame,plan.accept_mask)){end(7,L"xr_bone_target_invalid");return;}
     trial.sequence=frame.sequence;
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    if(leases.load(std::memory_order_acquire)==std::numeric_limits<unsigned>::max()){
+        end(7,L"xr_lease_counter_exhausted");return;
+    }
+#endif
     const auto lease=leases.load()+1;
     Snapshot check{};
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
@@ -427,12 +469,15 @@ void post_tick(uptr pc){
     }
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     const auto authorize_context=xr_context(check,trial.xr_ready);
-    const unsigned mask=authorize_xr_plan(plan,authorize_context,GetTickCount64());
+    const unsigned mask=authorize_current_xr_plan(plan,authorize_context,GetTickCount64());
 #else
-    const unsigned mask=authorize_xr_plan(plan,xr_context(check,trial.xr_ready),GetTickCount64());
+    const unsigned mask=authorize_current_xr_plan(plan,xr_context(check,trial.xr_ready),GetTickCount64());
 #endif
     if(!mask)return;
     if(!log_file||ferror(log_file)){end(7,L"xr_log_unavailable_before_write");return;}
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    trial.record_lease=trial.session.record_lease(GetTickCount64());
+#endif
     {
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
         EquipmentTimingScope timing(EquipmentTiming::write_evidence);
@@ -452,12 +497,14 @@ void post_tick(uptr pc){
 #endif
     const auto write_now=GetTickCount64();
     if(stop_requested.load(std::memory_order_acquire)){end(6,L"xr_stopped_before_write");return;}
+#if !defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
     if(write_now>trial.deadline){end(7,L"xr_deadline_before_write");return;}
+#endif
     if(ferror(log_file)||trial.tick_epoch!=trial.epoch||
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
-       authorize_xr_plan(plan,final_context,write_now)!=mask){
+       authorize_current_xr_plan(plan,final_context,write_now)!=mask){
 #else
-       authorize_xr_plan(plan,xr_context(check,trial.xr_ready),write_now)!=mask){
+       authorize_current_xr_plan(plan,xr_context(check,trial.xr_ready),write_now)!=mask){
 #endif
         end(7,L"xr_receipt_or_log_expired_before_write");return;
     }
@@ -473,7 +520,7 @@ void post_tick(uptr pc){
     if(!acquired){
         end(trial.lease.dirty()?8:7,L"xr_lease_acquisition_failed");return;
     }
-    trial.applied_mask=mask;leases=lease;++trial.xr_masks[mask];
+    trial.applied_mask=mask;leases=lease;count_add(trial.xr_masks[mask]);
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     EquipmentTimingScope timing(EquipmentTiming::written_snapshot_evidence);
 #endif
