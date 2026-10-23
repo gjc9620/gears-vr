@@ -210,3 +210,13 @@ u 的封存 root result.failure 将历史首次授权拒绝误写成末次停止
 纯 helper 33／107、实时资产接线 19／43、同帧诊断 29／119 及新几何审计 34／37 的有限验证均通过；各自实际首次 fixture 编译或 patch 包装失败照实保留。新 schema2 审计将 raw C 的字节配方与物理 D 的跨 Tick 方向及刚体 mount 分开，原 0.1 和两个移动阶段各至少 8 次响应等门限保持。Astra 独立复核资产接线、Sol 独立复核诊断均无阻断；root 核对 61 份 producer 工件和全部原 776 源，仅修改 4 源并新增 1 header，其余 772 项保持。应用证明 ec4f5fa1…c140，源树 44a43c9c…d6b9。root 首次合并前 guard 因 include 锚点出现两次而拒绝，未写生产文件；改用唯一的完整私有 include 块后完成应用。PG-only 构建及补偿后的实际几何、持续运动和整局覆盖仍待本轮后续执行，没有安装默认入口。
 
 首次完整 PG TU 严格构建在 configure 通过后失败：新 geometry_log 参数与 log 局部变量 observed 遮蔽主文件原有全局 observed，/WX 将 C4459 视为错误。原 source／build／日志 3f6be687…a705 全部保留，尚未启动游戏。仅将两处局部作用域内共 10 个标识符改为 asset_observation，字符串与 observed 日志前缀保持；逆向标识符替换可逐字还原原源码，不降低警告等级。下一次使用全新构建目录，有限 CPU 不因此重复执行。
+
+## 2026-10-24 — 九次联合接管的枪体几何通过，恢复阶段仍挤占原票据
+
+仅修正两个局部名称后，在全新 b 目录第二次完整 PG TU 严格 configure／build 通过，23 个导出保持。新 PG 5ce968c6…b082，组合 manifest e6a66bb8…d1a6，源提交 367cc463…2f9a；777 源、27 依赖、87 工件／892 实体经 root 核对，父候选的 66 份非 PG 工件逐字保留，Native／XR／loader 未重建，默认入口未安装。第一次严格 TU 失败的 source、配置和日志保留，未降低警告级别或重复旧 CPU suite。root 首次核对组合 closure 只因 Windows 依赖路径分隔符与 as_posix 不同而拒绝，统一比较键后全部通过，未改清单或工件字节。
+
+全新 v 一次性入口在三次空闲观察后进行购买版后台测试，仍为静音、窗口置后、tiny-output 只观察、实体手柄后台输入关闭。实际完成双手 lease／restore 各 9 次、72 次手部 setter，枪体 acquire／restore 各 9 次、54 次 setter，dirty／fault／relinquish 均 0。新 schema2 原 raw 协议、实时资产输入及 9 个 later-Tick 枪体矩阵通过；相对未量化物理 D 的最大完整旋转误差 0.02611015°、最大位置误差 0.00817397 原始单位，均在原 0.1 门限内，u 中约 90° 的旋转偏差在这些实测样本中消除。此结果只覆盖当前 Lancer 资产和有限姿态，模拟器没有独立控制器 roll 输入，不等于全部姿态、其他武器或头显可见性验收。
+
+基线阶段完成 4 个 later-Tick 样本，随后发送了 4 条双手移动命令；原每阶段至少 8 次运动响应、收枪和取回等覆盖仍未完成，整局保留 7 项真实失败。第 10 次写入前，实际 terminal row 为 tick2394／site1／serial43／sequence958；这次原授权 checked=3、rejected=2，ticket 年龄 110ms、超出截止 10ms，NS 与 policy 后续阶段未执行。新三边界记录将该帧 pre 到原双 journal drain 后的区间测为 69.3372ms；这是整个恢复分支的观测，尚不能直接归因于单个 setter 或将嵌套桶相加。下一步核对恢复和预恢复证据中的名称解析开销，保留原 getter、guards、恢复次序及原 100ms，不刷新票据或用新时钟代替原始源。
+
+Native／XR 此局通过 219 层／66 次场景拷贝、跨度 2.4120402 秒、最大提交间隔 13.3935ms；left history 完整创建／释放／销毁各 1、失败 0。该提交记录不作 FPS 或闪烁图像验收。Stop／Shutdown 均返回 0，8 控制、44 字节挂接、3 raw 组件组和两个入口逐字恢复；root 以确切出生身份独立确认 owner／game／XR 退出，game exit1。8 个音频 session 全恢复、pending／read_failed／mute_failed 为 0。v 的 128 文件加 seal 已核对，seal dc73fa08…a8bb，root result 7b8da069…08e0；新的 root collector 将历史 first_failure 与真正 terminal ring 分开，未重用 u 的错误归因。补偿后的持续运动、暂收返回和全武器功能仍未通过。
