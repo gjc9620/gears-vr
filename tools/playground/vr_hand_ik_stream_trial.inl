@@ -1087,10 +1087,10 @@ bool normal_tick(){
 PostTick::~PostTick(){
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     if(state.begun&&!state.terminal&&!committed){
-        const bool pending=suspending&&pause_pending();
+        const bool pause_deferred=suspending&&pause_pending();
         const bool clean_wait=waiting&&(state.interval==Interval::waiting||state.interval==Interval::suspended)&&!journals_dirty()&&
             !state.failure_known&&!state.cleanup_failed&&!trial.lease.faulted()&&!component_faulted();
-        if(!pending&&!clean_wait)end(7,L"continuous_post_tick_without_fresh_joint_commit");
+        if(!pause_deferred&&!clean_wait)end(7,L"continuous_post_tick_without_fresh_joint_commit");
     }
 #else
     if(state.begun&&!state.terminal&&(state.closed||!committed))end(7,L"continuous_post_tick_without_fresh_joint_commit");
