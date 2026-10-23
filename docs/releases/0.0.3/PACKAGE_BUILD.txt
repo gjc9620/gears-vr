@@ -1,0 +1,64 @@
+GearsVR 0.0.3 — 发布构建记录
+2026-10-23
+
+发布
+https://github.com/gjc9620/gears-vr/releases/tag/v0.0.3
+源码提交：39d35bcbc0705b1310b1d37a38bb2578c8407b19（公开main，799个文件）。
+本地开发归档：94822f09a046fab86e9298132fa953330657697f（codex/0.0.3）。
+原codex/0.1.0已按用户要求删除；分支切换前154个工作文件保持，旧提交及963d965检查点保留。
+
+交付物
+releases/0.0.3/GearsVR-0.0.3.zip
+14,551,352字节，725成员，724项库存记录，载荷42,774,742字节。
+SHA256 b9068e926db17a3f95f323e3e8c05ebd0c91c405483cf126d784eaac19cdd0e2
+同目录README.txt、RELEASE_NOTES.txt、SHA256SUMS.txt；中英文CHANGELOG已更新。
+
+冻结组件
+Native：build-avp90-two-slot-ready1/GearsCaptureAvp90TwoSlot.dll
+SHA256 7571fee615d413b7250bed794d2917d79e9aed7fe1da52d07f5098e76756bab9
+XR：build-runtime-colors1/OpenXRPoseProbe.exe
+SHA256 58ef6c397af8facc5ae50c8adba659005a13efd603e7bcfee73ba890d1e2539a
+Playground：build-playground6/Release/GearsPlayground.dll
+SHA256 a7b4f3fbe1a900afb5222d5a7ba463bb19bad0cb8b1c859485354e703a4c0535
+GUI：45cf2da24a390e31b5956d8c1d8ae75e1b6bd8158b93aeaa68a547cebe487fb6
+
+已等待用户指定会话完成颜色回滚及25项XR/GPU、99项启动器相关检查后才冻结。
+VDXR恢复支持源UNORM时的直拷；SteamVR按已观察到的格式列表保留sRGB转换兼容。
+本次没有重编native/XR/Playground，没有使用被替换的统一sRGB候选。
+公开native/XR来源分别为analysis/fps-avp90-two-slot-ready-source与analysis/xr-original-colors-source-a；共享头文件一致。
+运行Python从最终默认脚本冻结；公开源码58个运行模块与ZIP语义逐一匹配。
+本地归档还保存原工作区开发源，发行二进制的严格来源以上述冻结源与独立公开提交为准。
+
+配置与库存
+游戏路径为空，英文、系统OpenXR、Render scale 1.0、第一人称切换能力启用、右摇杆死区2%。
+每次新游戏初始第三人称；L3+R3或E+R切换。无本机路径历史、账号绑定、游戏、存档、截图、运行记录、逆向衍生物或数据库。
+保留Python及MinHook/OpenXR/pefile许可证。按固定白名单逐文件校验ZIP长度、SHA256与库存。
+
+验证
+冻结运行源98项debug-launch、217项vr-launcher通过，共315项。
+公开源码对应315项检查、GUI编译与隐藏自检通过；CMake预设由实际冻结构建缓存的功能开关生成。
+干净stage和最终中文/空格目录解压均以随包Python -I/-B通过库存、模块来源、PE依赖和manifest检查。
+最终解压GUI自检明确选择解压目录内Python；带Zone.Identifier下载标记的脚本在PythonCheckOnly模式通过。
+包内23项原生启动自检通过；无会话导出与不存在EXE的真实失败CLI/增强日志导出通过，版本0.0.3且bundled_python=true。
+所有QA运行文件只在忽略目录，不回收到整包。没有为本次打包另启游戏。
+GitHub上传摘要、公开重新下载的ZIP及SHA256SUMS均与本地一致；远端799个源码blob与审计库存一致，v0.0.3为latest。
+原v0.0.1/v0.0.2标签、Release正文、资产ID/大小/SHA256保持；本地原包、0.0.2分支和963d965检查点保留。
+
+集成
+根目录正常启动器同步0.0.3；旧GUI保存在忽略的发布工作目录，未关闭仍在运行的用户窗口或游戏。
+用户配置前后完整哈希一致，当前默认manifest保持回滚后的冻结值。下一次打开启动器使用新版GUI。
+
+验收与已知问题
+用户确认上下机枪当前延迟已可接受，发布说明写减少切换等待；不宣称完全无延迟。
+第一人称/Playground沿用已有游戏和模拟器证据，各修复保持具体GPU/头显验收边界，不扩展为全部硬件/章节通过。
+局部左眼闪白按用户要求记录并暂缓修复；原颜色无闪烁的用户反馈保留，不把回滚或离屏检查当根因已修复证明。
+DLSS/DLAA关闭，不含6DoF体感持枪/装填，不承诺90FPS；后续章节未全部验证。
+
+本地证据（不发布）
+analysis/github-publish-0.0.3/branch-rename.json
+analysis/github-publish-0.0.3/frozen-inputs.json
+analysis/github-publish-0.0.3/source-export-audit.json
+analysis/github-publish-0.0.3/final-package-audit.json
+analysis/github-publish-0.0.3/local-promotion.json
+analysis/github-publish-0.0.3/publication-receipt.json
+最终解压QA：J:\gearsVr\analysis\github-publish-0.0.3\final-qa-b9c779c8

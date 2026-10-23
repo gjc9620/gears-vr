@@ -25,6 +25,11 @@ public:
     }
 };
 struct Result {gears_vr::StereoMatrix view{};gears_vr::Vector origin{};};
+enum class CameraMode {unchanged,preview,native_scope};
+inline CameraMode camera_mode(bool requested,bool ordinary,bool weapon_known,bool sniper,bool zoomed){
+    if(!requested||!ordinary||!weapon_known)return CameraMode::unchanged;
+    return sniper&&zoomed?CameraMode::native_scope:CameraMode::preview;
+}
 inline bool prepare(gears_vr::StereoMatrix const& original,gears_vr::Vector pawn_eye,
                     double units_per_metre,Result& out){
     using namespace gears_vr;

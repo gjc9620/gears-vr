@@ -443,9 +443,9 @@ public:
         source_generation=source.generation();
         uint32_t count{};xr_check(xrEnumerateSwapchainFormats(session,0,&count,nullptr),"game formats");
         std::vector<int64_t> formats(count);xr_check(xrEnumerateSwapchainFormats(session,count,&count,formats.data()),"read game formats");
-        for(auto candidate:{DXGI_FORMAT_B8G8R8A8_UNORM,DXGI_FORMAT_R8G8B8A8_UNORM})
-            if(std::find(formats.begin(),formats.end(),int64_t(candidate))!=formats.end()){format=candidate;break;}
-        if(!format)throw std::runtime_error("No game display swapchain format");
+        format=menu_swapchain_format::choose(formats);
+        if(!format)throw std::runtime_error("No 8-bit game display swapchain format");
+        printf("{\"xr_color_policy\":\"%s\",\"path\":\"window_game\",\"selected_format\":%u}\n",menu_swapchain_format::srgb(format)?"srgb":"unorm",unsigned(format));fflush(stdout);
         create_display_chain();
         dx_check(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,IID_PPV_ARGS(&allocator)),"game allocator");
         dx_check(device->CreateCommandList(0,D3D12_COMMAND_LIST_TYPE_DIRECT,allocator.Get(),nullptr,IID_PPV_ARGS(&commands)),"game commands");dx_check(commands->Close(),"game initial close");
@@ -525,7 +525,7 @@ public:
                 for(unsigned y=0;y<source.height;++y) {
                     auto* dst=static_cast<unsigned char*>(mapped)+footprint.Offset+size_t(y)*footprint.Footprint.RowPitch;
                     const auto* src=source.pixels.data()+size_t(y)*source.width*4;
-                    menu_pixels::upload_row(dst,src,source.width,format==DXGI_FORMAT_R8G8B8A8_UNORM);
+                    menu_pixels::upload_row(dst,src,source.width,menu_swapchain_format::rgba(format));
                 }
                 upload->Unmap(0,nullptr);
                 uint32_t index{};XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};xr_check(xrAcquireSwapchainImage(chain,&acquire,&index),"acquire game image");
@@ -559,7 +559,7 @@ public:
                     gpu_pixels_verified=true;
                     for(unsigned y=0;y<source.height;++y)for(unsigned x=0;x<source.width;++x) {
                         const auto* pixel=static_cast<const unsigned char*>(data)+footprint.Offset+size_t(y)*footprint.Footprint.RowPitch+x*4;
-                        unsigned char rgb[3]={pixel[format==DXGI_FORMAT_B8G8R8A8_UNORM?2:0],pixel[1],pixel[format==DXGI_FORMAT_B8G8R8A8_UNORM?0:2]};
+                        unsigned char rgb[3]={pixel[menu_swapchain_format::bgra(format)?2:0],pixel[1],pixel[menu_swapchain_format::bgra(format)?0:2]};
                         const auto* original=source.pixels.data()+(size_t(y)*source.width+x)*4;
                         if(rgb[0]!=original[2] || rgb[1]!=original[1] || rgb[2]!=original[0] || pixel[3]!=255)gpu_pixels_verified=false;
                         fwrite(rgb,1,3,file);

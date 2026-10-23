@@ -120,6 +120,9 @@ class StartupDiagnosticsTests(unittest.TestCase):
                 'prime_entry before=488bc45356574154415541564157\n'
                 'graphics_prime_admission rejected=1 reason=7 policy_reason=2 window=0x987654\n'
                 'prime_setup_failed\ncapturing pid=55 lifetime=owner\n')
+            # Windows file timestamps can lag time.time_ns() within one clock
+            # tick. Bind this fresh fixture to its recorded mtime explicitly.
+            start = path.stat().st_mtime_ns
             value = diagnostics.prime_status(path, start, 55)
             self.assertEqual(value['state'], 'captured')
             self.assertTrue(value['pid_verified']); self.assertTrue(value['setup_failed'])
@@ -136,7 +139,7 @@ class StartupDiagnosticsTests(unittest.TestCase):
             (root/'tools/vr-launcher/launcher.py').write_text('fixture')
             with mock.patch.dict(os.environ, {'PASSWORD':'PRIVATE_SECRET', 'XR_RUNTIME_JSON':'C:/PrivateUser/runtime.json'}):
                 value = diagnostics.context(root, {'native_sha256':'a'*64, 'game_path':'PRIVATE_GAME_PATH'})
-            self.assertEqual(value['version'], '0.0.2')
+            self.assertEqual(value['version'], '0.0.3')
             self.assertEqual(value['runtime_selection'], 'override')
             self.assertEqual(value['steam_app_id'], '2523720')
             self.assertIn('tools/vr-launcher/launcher.py', value['script_hashes'])

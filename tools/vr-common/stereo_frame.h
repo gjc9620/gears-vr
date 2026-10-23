@@ -91,12 +91,21 @@ class StereoGate {
     std::optional<StereoSample> last_;
     std::optional<Pose> reference_;
     std::uint64_t reference_generation_{};
+    std::int64_t minimum_sample_ns_{};
     bool recenter_pending_{};
     ReferenceContinuityCounter continuity_;
 public:
-    void reset(){continuity_.boundary();last_.reset();reference_.reset();reference_generation_=0;recenter_pending_=false;}
+    void reset(){continuity_.boundary();last_.reset();reference_.reset();reference_generation_=0;minimum_sample_ns_=0;recenter_pending_=false;}
     void request_recenter(){continuity_.boundary();recenter_pending_=true;}
     ReferenceContinuity continuity() const noexcept {return continuity_.snapshot(reference_.has_value(),recenter_pending_);}
+    // A native world commit retains session/replay guards. Its old XR sample
+    // must not consume the pending recenter or allocate a new-world renderer.
+    bool advance_world(std::int64_t minimum_sample_ns){
+        if(minimum_sample_ns<=minimum_sample_ns_)return false;
+        // Old-world hand continuity must end before a fresh heading arrives.
+        continuity_.boundary();
+        minimum_sample_ns_=minimum_sample_ns;recenter_pending_=true;return true;
+    }
     StereoResult update(StereoSample const& s,std::int64_t now_ns,bool allow_sim=false) {
         auto reject=[&](StereoStatus status){StereoResult result;result.status=status;
             if(status!=StereoStatus::stale)continuity_.break_observed();
@@ -124,6 +133,7 @@ public:
             return reject(StereoStatus::stale);
         }
         if(!stereo_geometry_valid(s))return reject(StereoStatus::invalid);
+        if(s.received_ns<=minimum_sample_ns_)return reject(StereoStatus::stale);
         const bool new_space=last_&&s.space_epoch!=last_->space_epoch;
         if(new_space){continuity_.boundary();reference_.reset();} // No old-origin reference survives this boundary.
         bool first=!reference_,recentered=false,deferred=false;

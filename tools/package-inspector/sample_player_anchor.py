@@ -52,7 +52,7 @@ class AnchorSampler:
         pc=self.fresh(self.controller)
         self._property('controller_pawn',pc['cls'],'Pawn','ObjectProperty')
         self.pawn=self.pointer(self.controller,'controller_pawn')
-        pawn=self.fresh(self.pawn)
+        pawn=self.controlled_identity(pc)
         self.validate_controlled(pawn)
         self._property('pawn_controller',pawn['cls'],'Controller','ObjectProperty')
         self._property('pawn_location',pawn['cls'],'Location','StructProperty','Vector')
@@ -82,6 +82,9 @@ class AnchorSampler:
             'candidate_eye_formula':'Pawn.Location + (0,0,EyeHeight); hypothesis only',
             'renderer_alignment_verified':False,'standing_verified':False,
             'limits':'Timestamp/identity bracketing is not an atomic engine snapshot or renderer alignment proof.'}
+
+    def controlled_identity(self,controller):
+        return self.fresh(self.pawn)
 
     def validate_controlled(self,pawn):
         if not self.derives(pawn['cls'],'WarPawn'):

@@ -12,7 +12,7 @@ def fixture():
     r._field_hint_links=None
     memory={0x180:0x200,0x268:0x300,0x368:0}
     r.u64=mock.Mock(side_effect=lambda a:memory[a])
-    r.identity=mock.Mock(side_effect=lambda a:dict(address=a,outer=0x100,name=str(a)))
+    r.identity=mock.Mock(side_effect=lambda a,**kwargs:dict(address=a,outer=0x100,name=str(a)))
     return r,memory
 
 
@@ -72,7 +72,7 @@ class FieldHintTests(unittest.TestCase):
         for reason in ('cycle','owner'):
             r,memory=fixture();r.begin_discovery_field_hints()
             if reason=='cycle':memory[0x368]=0x200
-            else:r.identity.side_effect=lambda a:dict(address=a,outer=0x900)
+            else:r.identity.side_effect=lambda a,**kwargs:dict(address=a,outer=0x900)
             with self.subTest(reason=reason),self.assertRaises(RuntimeError):list(r.fields(0x100))
 
     def test_nested_scope_rejected_without_losing_outer_guard(self):

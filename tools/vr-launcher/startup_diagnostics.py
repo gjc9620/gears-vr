@@ -11,14 +11,15 @@ import struct
 import sys
 import time
 
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 REVISION = 'startup-diagnostics-1'
 MAX_TRACE_BYTES = 128 * 1024
 CONTEXT_FILES = ('GearsVR Launcher.exe', 'tools/vr-launcher/launcher.py',
                  'tools/vr-launcher/startup_diagnostics.py', 'tools/vr-launcher/diagnostics_bundle.py',
                  'tools/native-capture/launch_reserve.py', 'tools/debug-launch/Start-DebugGame.ps1',
                  'tools/debug-launch/game_install.py', 'tools/debug-launch/background_launch.py',
-                 'tools/debug-launch/quiet_launch.py')
+                 'tools/debug-launch/quiet_launch.py', 'tools/debug-launch/graphics_policy.py',
+                 'tools/debug-launch/steam_account.py')
 PHASES = ('launcher_subprocess', 'reservation', 'game_validation', 'selftests', 'launch_script',
           'loader_dependencies', 'dll_load', 'reserve_trampolines', 'reserve_mask',
           'entry_verification', 'target_priming', 'prime_readiness', 'reservation_complete')

@@ -17,6 +17,20 @@ int main(){
     assert(toggle.update(true,true,false,790)&&!toggle.requested());
     assert(toggle.update(true,false,true,800,true)&&toggle.requested());
     assert(!toggle.update(false,false,true,801,true)&&toggle.requested());
+    // User sequence: rifle preview -> unzoomed sniper -> native scope ->
+    // unzoomed sniper. Weapon switches/zoom never erase the requested mode.
+    assert(camera_mode(toggle.requested(),true,true,false,false)==CameraMode::preview);
+    assert(camera_mode(toggle.requested(),true,true,true,false)==CameraMode::preview);
+    assert(camera_mode(toggle.requested(),true,true,true,true)==CameraMode::native_scope);
+    assert(camera_mode(toggle.requested(),true,true,true,false)==CameraMode::preview&&toggle.requested());
+    assert(camera_mode(toggle.requested(),true,false,true,false)==CameraMode::unchanged&&toggle.requested());
+    assert(camera_mode(toggle.requested(),false,true,true,false)==CameraMode::unchanged&&toggle.requested());
+    assert(toggle.update(true,false,true,900,true)&&!toggle.requested());
+    assert(camera_mode(toggle.requested(),true,true,true,false)==CameraMode::unchanged);
+    // E+R while holding a sniper takes the same neutral/80ms edge as a rifle.
+    assert(!toggle.update(true,false,true,1000));assert(!toggle.update(true,true,false,1010));
+    assert(toggle.update(true,true,false,1090)&&toggle.requested());
+    assert(camera_mode(toggle.requested(),true,true,true,false)==CameraMode::preview);
     using namespace gears_vr;
     Vector eye{1000,-2000,60};Result result{};
     for(double yaw:{-3.,-.7,0.,1.,3.})for(double pitch:{-.8,0.,.8})for(double roll:{-.4,0.,.4}){

@@ -5,15 +5,17 @@
 
 int main(){
     using namespace transition_card_layout;
-    for(auto selected:{DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM}){
+    for(auto selected:{DXGI_FORMAT_R8G8B8A8_UNORM,DXGI_FORMAT_B8G8R8A8_UNORM,
+                       DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,DXGI_FORMAT_B8G8R8A8_UNORM_SRGB}){
         D3D12_RESOURCE_DESC desc{};desc.Dimension=D3D12_RESOURCE_DIMENSION_TEXTURE2D;
         desc.Width=513;desc.Height=3;desc.DepthOrArraySize=desc.MipLevels=1;desc.SampleDesc.Count=1;desc.Format=selected;
         assert(valid_image(desc,selected,513,3));
-        desc.Format=selected==DXGI_FORMAT_R8G8B8A8_UNORM?DXGI_FORMAT_R8G8B8A8_TYPELESS:DXGI_FORMAT_B8G8R8A8_TYPELESS;
+        desc.Format=menu_swapchain_format::rgba(selected)?DXGI_FORMAT_R8G8B8A8_TYPELESS:DXGI_FORMAT_B8G8R8A8_TYPELESS;
         assert(valid_image(desc,selected,513,3));
-        desc.Format=selected==DXGI_FORMAT_R8G8B8A8_UNORM?DXGI_FORMAT_B8G8R8A8_TYPELESS:DXGI_FORMAT_R8G8B8A8_TYPELESS;
+        desc.Format=menu_swapchain_format::rgba(selected)?DXGI_FORMAT_B8G8R8A8_TYPELESS:DXGI_FORMAT_R8G8B8A8_TYPELESS;
         assert(!valid_image(desc,selected,513,3));
-        desc.Format=DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;assert(!valid_image(desc,selected,513,3));
+        desc.Format=selected==DXGI_FORMAT_R8G8B8A8_UNORM_SRGB?DXGI_FORMAT_R8G8B8A8_UNORM:DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        assert(!valid_image(desc,selected,513,3));
         desc.Format=DXGI_FORMAT_R16G16B16A16_FLOAT;assert(!valid_image(desc,selected,513,3));
         desc.Format=selected;desc.Width=512;assert(!valid_image(desc,selected,513,3));desc.Width=513;
         desc.DepthOrArraySize=2;assert(!valid_image(desc,selected,513,3));desc.DepthOrArraySize=1;

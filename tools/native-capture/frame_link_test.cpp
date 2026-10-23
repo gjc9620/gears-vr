@@ -228,7 +228,43 @@ static void owned_retirement_cases() {
         CHECK(t->advance_world_epoch(1,2));CHECK(!t->birth_owned_output(target,queue,10,4,true,true));
     }
 }
+static void identity_index_cases() {
+    auto storage=std::make_unique<Tracker>();auto& t=*storage;
+    constexpr unsigned used=512;
+    std::array<ListRef,used> old{};
+    for(unsigned i=0;i<used;++i){
+        const Identity identity=0x10000u+static_cast<Identity>(i)*0x1000u;
+        old[i]=t.reset_success(identity);
+        CHECK(old[i].identity==identity&&old[i].generation);
+    }
+    // Reverse lookups, collisions, repeated Reset and stale generations.
+    for(unsigned i=used;i-- >0;){
+        auto current=t.current(old[i].identity);
+        CHECK(current.identity==old[i].identity&&current.generation==old[i].generation);
+        auto fresh=t.reset_success(old[i].identity);
+        CHECK(fresh.identity==old[i].identity&&fresh.generation>old[i].generation);
+        current=t.current(old[i].identity);
+        CHECK(current.generation==fresh.generation);
+        old[i]=fresh;
+    }
+    t.invalidate_list(old[0].identity);
+    CHECK(!t.current(old[0].identity).identity);
+    auto restored=t.reset_success(old[0].identity);
+    CHECK(restored.generation>old[0].generation);
+    CHECK(t.current(old[0].identity).generation==restored.generation);
+    t.retire_present_interval(); // Drops the live prefix without clearing the advisory cache.
+    CHECK(!t.current(restored.identity).identity);
+    auto reused=t.reset_success(restored.identity);
+    CHECK(reused.generation>restored.generation);
+    CHECK(t.current(reused.identity).generation==reused.generation);
+    t.invalidate_all();
+    CHECK(!t.current(reused.identity).identity);
+    auto created=t.create_success(reused.identity,true);
+    CHECK(created.generation>reused.generation);
+    CHECK(t.current(created.identity).generation==created.generation);
+}
 int main() {
+    identity_index_cases();
     owned_retirement_cases();
     {
         auto storage = std::make_unique<Tracker>(); auto& t = *storage; auto a = t.reset_success(1);

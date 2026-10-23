@@ -11,14 +11,14 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-RELEASE_VERSIONS = ('0.0.1', '0.0.2')
+RELEASE_VERSIONS = ('0.0.1', '0.0.2', '0.0.3')
 PROJECT_MODULES = {
     'vr-launcher': 'launcher menu_navigation stage_portable portable_preflight diagnostics_bundle startup_diagnostics game_audio_guard playground_loader',
     'playground': 'runtime',
-    'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy tiny_output_recovery instance_policy',
+    'debug-launch': 'game_install background_launch quiet_launch configure_startup graphics_policy steam_account tiny_output_recovery instance_policy',
     'game-io': 'background_input game_io menu_state menu_control movie_state scene_owner_snapshot',
     'package-inspector': 'runtime_probe resolve_camera inspect_ui_state sample_player_anchor',
-    'native-capture': ('anchor_config cinematic_anchor mounted_context mounted_read_pass crosshair_assignment_config hook_entry_attestation camera_closer_options right_stick_policy '
+    'native-capture': ('anchor_config cinematic_anchor mounted_context mounted_read_pass crosshair_assignment_config hook_entry_attestation native_class_discovery camera_closer_options right_stick_policy '
         'launch_reserve menu_display_monitor prime_owner run_stereo_continuous run_stereo_probe startup_selftests '
         'session_telemetry start_capture ui_observer_config verify_stopped weapon_calibration world_rebind world_rebind_monitor world_rebind_runtime '
         'path_choice_center_monitor path_choice_layout path_choice_trial_config '
@@ -189,6 +189,16 @@ def stage(root, python_root, destination, *, manifest_path=None, launcher_path=N
             metadata.update(baseline_version='0.0.1',
                 acceptance_scope='Gameplay/headset reports refer to the unchanged 0.0.1 renderer; 0.0.2 startup verified separately')
             metadata['limits'].append('0.0.2 physical-headset regression pending')
+        if release_version == '0.0.3':
+            metadata.update(baseline_version='0.0.2',
+                user_reported_acceptance=['Mounted machine-gun transition delay is acceptable to the user'],
+                acceptance_scope='First-person and Playground have game/simulator evidence; individual fixes and sRGB output retain their documented headset validation limits',
+                limits=['First-person preview is experimental; no motion-controller aiming or physical reloading',
+                        'Mounted transitions improved; zero delay is not claimed',
+                        'Occasional local white flashes at the left-eye edge remain under investigation',
+                        'DLSS / DLAA disabled in the normal launcher',
+                        'Later chapters not fully verified',
+                        'Offline preflight does not certify all gameplay/headset behavior'])
     if alias is not None: generated[alias] = manifest
     for relative, value in generated.items():
         target = contained(destination, relative); target.parent.mkdir(parents=True, exist_ok=True)

@@ -406,6 +406,18 @@ template<class Read> bool guard(Config const& startup,Read read,Anchor& out,std:
     out=anchor;stamp=observed;result.reason=GuardReason::success;return finish(true);
 }
 struct BoundedGuardDiagnostic {unsigned attempts{};std::uint64_t elapsed_ms{};GuardReason reason{GuardReason::deadline};GuardDiagnostic last{};};
+inline bool timestamp_retryable(GuardDiagnostic const& diagnostic) noexcept {
+    return diagnostic.timestamp_only&&
+        (diagnostic.reason==GuardReason::strict_timestamp_changed||diagnostic.reason==GuardReason::final_timestamp_changed);
+}
+// Only a rejected, completed timestamp bracket may authorize fresh acquisition.
+// A late success, missing attempt or structural/read failure remains a hard
+// rejection. This never accepts the failed guard's Anchor or timestamp outputs.
+inline bool bounded_timestamp_retryable(BoundedGuardDiagnostic const& diagnostic) noexcept {
+    return diagnostic.attempts>0&&diagnostic.attempts<=5&&timestamp_retryable(diagnostic.last)&&
+        ((diagnostic.reason==GuardReason::attempt_limit&&diagnostic.attempts==5&&diagnostic.elapsed_ms<200)||
+         (diagnostic.reason==GuardReason::deadline&&diagnostic.elapsed_ms>=200));
+}
 // Startup-only. Render guards remain single attempts. Reject even a late success
 // without committing outputs. Injectable clock/sleep keep CPU tests deterministic.
 template<class Read,class Now,class Wait> bool bounded_guard(Config const& c,Read read,Now now_ms,Wait wait_ms,

@@ -152,7 +152,10 @@ def render_size_info(manifest,scale,root=ROOT):
 
 
 def settings(config,manifest,root=ROOT):
-    if set(config)-{'game_path','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language','hud_element_scale','hud_center_scale','camera_closer_metres','render_scale','first_person_preview','right_stick_deadzone_percent'}:raise ValueError('Unknown configuration field')
+    # History is GUI metadata, not another source for the selected executable.
+    # Per-install settings bindings are validated by graphics_policy.locate().
+    unknown=set(config)-{'game_path','game_path_history','game_settings_paths','stereo_units_per_metre','hud_horizontal_fov_degrees','launcher_language','hud_element_scale','hud_center_scale','camera_closer_metres','render_scale','first_person_preview','right_stick_deadzone_percent'}
+    if unknown:raise ValueError('Unknown configuration field: '+', '.join(sorted(unknown)))
     gameplay_controls(config,manifest)
     camera_closer(config,manifest)
     render_scale(config,manifest)
@@ -161,10 +164,12 @@ def settings(config,manifest,root=ROOT):
     hud_horizontal_fov(config,manifest)
     hud_layout(config,manifest)
     if manifest.get('schema')!=1:raise ValueError('Unsupported manifest schema')
-    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'armspan_startup_calibration','startup_menu','startup_selftests_prelaunch','graphics_startup_lock','graphics_menu_lock','experimental_preserve_upscaler','playground_menu')):
+    if any(type(manifest.get(key,False)) is not bool for key in (*SESSION_OPTIONS,'armspan_startup_calibration','startup_menu','startup_selftests_prelaunch','graphics_startup_lock','graphics_menu_lock','experimental_preserve_upscaler','playground_menu','playground_early_reserve')):
         raise ValueError('Manifest session options must be boolean')
     if manifest.get('playground_menu',False) and not manifest.get('startup_menu',False):
         raise ValueError('Playground menu requires owned startup')
+    if manifest.get('playground_early_reserve',False) and not manifest.get('playground_menu',False):
+        raise ValueError('Playground early reservation requires the playground component')
     if manifest.get('experimental_preserve_upscaler',False) and any(manifest.get(key,False) for key in ('graphics_startup_lock','graphics_menu_lock')):
         raise ValueError('Experimental preserve upscaler conflicts with graphics locks')
     if manifest.get('startup_selftests_prelaunch',False) and not manifest.get('startup_menu',False):
@@ -306,6 +311,11 @@ class Backend:
              '--dll-name',manifest['native_dll'],'--prime-targets','--check-shadow-state','--check-mask-control','--check-frame-link',
              '--launch-receipt',str(receipt),'--startup-diagnostics',str(trace_path)]
         if game_path is not None:cmd+=['--game-path',str(game_path)]
+        if manifest.get('playground_early_reserve',False):
+            from playground_loader import artifact
+            artifact(manifest)
+            cmd+=['--playground-build',manifest['playground_build'],'--playground-dll',manifest['playground_dll'],
+                  '--playground-sha256',manifest['playground_sha256']]
         if foreground:cmd+=['--foreground']
         if manifest.get('experimental_preserve_upscaler',False):cmd+=['--experimental-preserve-upscaler']
         if owner:
@@ -320,7 +330,7 @@ class Backend:
             with log.open('a',encoding='utf-8') as stream:stream.write('\n'+json.dumps({'reservation_failure_cleanup':cleanup})+'\n')
             return cleanup
         try:
-            result=subprocess.run(cmd,capture_output=True,text=True,encoding='utf-8',errors='replace',env=dict(os.environ,PYTHONIOENCODING='utf-8'),timeout=120,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+            result=subprocess.run(cmd,capture_output=True,text=True,encoding='utf-8',errors='replace',env=dict(os.environ,PYTHONIOENCODING='utf-8'),timeout=150 if manifest.get('playground_early_reserve',False) else 120,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         except subprocess.TimeoutExpired as error:
             def decoded(value):return value.decode('utf-8',errors='replace') if isinstance(value,bytes) else value or ''
             log.write_text(decoded(error.stdout)+'\n'+decoded(error.stderr),encoding='utf-8')
@@ -369,6 +379,16 @@ class Backend:
             raw=encoded(proof)
             with path.open('xb') as stream:stream.write(raw)
             report['startup_selftest_handshake']=dict(path=str(path),digest=hashlib.sha256(raw).hexdigest(),nonce=preflight_nonce)
+        if manifest.get('playground_early_reserve',False):
+            early=report.get('playground_reservation')
+            if not isinstance(early,dict) or type(early.get('reserved')) is not bool or early.get('entry_restored') is not True:
+                raise RuntimeError('Playground reservation proof rejected')
+            if early['reserved']:
+                from playground_loader import artifact
+                if (early.get('hook_enabled') is not False or early.get('pid')!=accepted['pid'] or
+                    early.get('sha256')!=manifest['playground_sha256'] or pathlib.Path(early.get('dll','')).resolve()!=artifact(manifest)):
+                    raise RuntimeError('Playground reservation artifact/identity mismatch')
+                self.playground_reservation=(dict(manifest),dict(accepted))
         return report
     def close_uninjected_reservation(self,receipt,selected,*,clock=time.monotonic,sleep=time.sleep):
         if not receipt.exists():return {'status':'no_birth_receipt'}
@@ -460,8 +480,12 @@ class Backend:
         return start(manifest,identity,check_live=check_live,
                      attach=lambda bridge:setattr(self,'playground_bridge',bridge))
     def finish_playground(self):
-        from playground_loader import finish
-        return finish(getattr(self,'playground_bridge',None))
+        from playground_loader import finish,finish_reservation
+        bridge=getattr(self,'playground_bridge',None)
+        if bridge is not None:return finish(bridge)
+        reservation=getattr(self,'playground_reservation',None)
+        if reservation is not None:return finish_reservation(*reservation)
+        return finish(None)
     def finish_owned_prime(self,manifest,identity,owner):
         if self.control.identity(identity['pid']) is None:return {'game_exited':True}
         self.runner.checked_identity(self.control,identity)

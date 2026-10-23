@@ -2,12 +2,13 @@
 #include <d3d12.h>
 #include <cstdint>
 #include <limits>
+#include "menu_swapchain_format.h"
 
 namespace transition_card_layout {
 inline bool matching_format(DXGI_FORMAT resource,DXGI_FORMAT selected) noexcept {
-    return (selected==DXGI_FORMAT_R8G8B8A8_UNORM&&
+    return (menu_swapchain_format::rgba(selected)&&
             (resource==selected||resource==DXGI_FORMAT_R8G8B8A8_TYPELESS))||
-           (selected==DXGI_FORMAT_B8G8R8A8_UNORM&&
+           (menu_swapchain_format::bgra(selected)&&
             (resource==selected||resource==DXGI_FORMAT_B8G8R8A8_TYPELESS));
 }
 inline bool valid_image(D3D12_RESOURCE_DESC const& desc,DXGI_FORMAT selected,

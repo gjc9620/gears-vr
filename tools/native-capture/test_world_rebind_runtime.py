@@ -1,5 +1,6 @@
 """Production adapter ownership and manifest trust tests; no live process."""
 import copy
+from collections.abc import Mapping
 import json
 from pathlib import Path
 import tempfile
@@ -8,6 +9,7 @@ import unittest
 from unittest import mock
 
 import world_rebind_runtime as runtime
+from world_rebind import freeze
 from world_rebind_monitor import PreparedRebind
 
 
@@ -25,6 +27,116 @@ def initial_guard():
 
 
 class Tests(unittest.TestCase):
+    def test_preparation_reads_only_operational_metadata_and_keeps_original_publication(self):
+        fixture,value,candidate=self._mounted_candidate();original=freeze(candidate.anchor_metadata);reads=[]
+        class Tracked(Mapping):
+            def __getitem__(self,key):reads.append(key);return original[key]
+            def __iter__(self):return iter(original)
+            def __len__(self):return len(original)
+        candidate.anchor_metadata=Tracked();candidate.current_camera=freeze(candidate.current_camera)
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=self.adapter(directory);adapter.game=dict(adapter.game,pid=fixture.pid);adapter.profile=fixture.profile
+            with mock.patch.object(runtime,'HookEntryAttestation'),mock.patch.object(runtime,'build_candidate',return_value=candidate),\
+                 mock.patch.object(runtime,'publish_candidate') as publish,mock.patch.object(runtime,'snapshot',wraps=runtime.snapshot) as snapshot:
+                actual,receipt=adapter.prepare_changed(1,3,lambda _:True,lambda:None)
+            self.assertEqual(actual,receipt.snapshot);self.assertEqual(reads,['config','certificate_final_guard'])
+            publish.assert_called_once_with(candidate,receipt.path)
+            copied=snapshot.call_args.args[0];selected=value['roles']['controller'];before=original['config']['identities'][selected]['number']
+            roles=copy.deepcopy(adapter._camera_roles);copied['identities'][selected]['number']+=100
+            self.assertEqual(original['config']['identities'][selected]['number'],before)
+            self.assertEqual(adapter._camera_roles,roles)
+            self.assertIn('guard_acquisitions',original)
+
+    def test_rejected_snapshot_does_not_copy_diagnostics_or_read_final_hint_guard(self):
+        fixture,value,candidate=self._mounted_candidate();original=freeze(candidate.anchor_metadata);reads=[]
+        class Tracked(Mapping):
+            def __getitem__(self,key):reads.append(key);return original[key]
+            def __iter__(self):return iter(original)
+            def __len__(self):return len(original)
+        candidate.anchor_metadata=Tracked()
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=self.adapter(directory);adapter.game=dict(adapter.game,pid=fixture.pid);adapter.profile=fixture.profile
+            with mock.patch.object(runtime,'HookEntryAttestation'),mock.patch.object(runtime,'build_candidate',return_value=candidate),\
+                 mock.patch.object(runtime,'publish_candidate') as publish:
+                actual,receipt=adapter.prepare_changed(1,3,lambda _:False,lambda:None)
+            self.assertEqual(actual,runtime.snapshot(value));self.assertIsNone(receipt);self.assertEqual(reads,['config'])
+            publish.assert_not_called();self.assertIsNone(adapter._camera_hint)
+
+    def _mounted_candidate(self):
+        from test_mounted_integration import MountedUIFixture
+        from anchor_config import build_anchor_config
+        import cinematic_anchor
+        fixture=MountedUIFixture();fixture.p=SimpleNamespace(close=mock.Mock())
+        with mock.patch.object(cinematic_anchor,'BOOL_CODE',tuple(fixture.code)):
+            config,metadata=build_anchor_config(fixture,cinematic_camera=True)
+        return fixture,config,SimpleNamespace(current_camera=fixture.resolve(),anchor_metadata=metadata)
+
+    def test_prepared_candidate_seeds_next_fresh_discovery_and_keeps_dismount_live(self):
+        import cinematic_anchor
+        fixture,value,candidate=self._mounted_candidate()
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=self.adapter(directory);adapter.game=dict(adapter.game,pid=fixture.pid)
+            adapter.profile=fixture.profile;adapter._native_discovery=None
+            with mock.patch.object(runtime,'HookEntryAttestation'),mock.patch.object(runtime,'build_candidate',return_value=candidate),\
+                 mock.patch.object(runtime,'publish_candidate') as publish:
+                first,receipt=adapter.prepare_changed(1,3,lambda _:True,lambda:None)
+            self.assertEqual(receipt.snapshot,first);publish.assert_called_once()
+            hint=copy.deepcopy(adapter._camera_hint);roles=copy.deepcopy(adapter._camera_roles)
+            self.assertIsNotNone(hint);self.assertEqual(len(roles),3)
+            candidate.current_camera['camera_address']='0xdead'
+            candidate.anchor_metadata['certificate_final_guard']['camera']['number']+=7
+            self.assertEqual(adapter._camera_hint,hint);self.assertEqual(adapter._camera_roles,roles)
+            with mock.patch.object(fixture,'prepare',create=True) as prepare,\
+                 mock.patch.object(fixture,'resolve',wraps=fixture.resolve) as resolve,\
+                 mock.patch.object(runtime,'Resolver',return_value=fixture),\
+                 mock.patch.object(cinematic_anchor,'BOOL_CODE',tuple(fixture.code)):
+                self.assertEqual(adapter._preparation_camera(fixture),hint)
+                fixture.dismount();normal=adapter.observe(lambda:None)
+            self.assertFalse(normal.mounted_context);self.assertNotEqual(normal.pawn,first.pawn)
+            self.assertEqual(prepare.call_count,2);resolve.assert_not_called();fixture.p.close.assert_called_once()
+
+    def test_prepared_hint_rechecks_same_address_role_generations_before_reuse(self):
+        for name in ('controller','camera','local_player'):
+            fixture,value,candidate=self._mounted_candidate()
+            with tempfile.TemporaryDirectory() as directory:
+                adapter=self.adapter(directory);adapter.game=dict(adapter.game,pid=fixture.pid)
+                adapter.profile=fixture.profile;adapter._native_discovery=None
+                self.assertTrue(adapter._remember_prepared_camera(candidate,value))
+                selected=value['identities'][value['roles'][name]]
+                fixture.word(selected['address']+76,selected['number']+1)
+                with mock.patch.object(fixture,'prepare',create=True),mock.patch.object(fixture,'resolve',wraps=fixture.resolve) as resolve:
+                    with self.assertRaises(runtime.DiscoveryRegistryChanged):adapter._preparation_camera(fixture)
+                    self.assertIsNone(adapter._camera_hint);self.assertIsNone(adapter._camera_roles)
+                    adapter._preparation_camera(fixture);resolve.assert_called_once()
+
+    def test_optional_prepared_hint_rejects_missing_or_inconsistent_metadata(self):
+        fixture,value,original=self._mounted_candidate()
+        for fault in ('missing_camera','missing_guard','pid','module','hash','name_index','role'):
+            candidate=copy.deepcopy(original)
+            if fault=='missing_camera':del candidate.current_camera
+            if fault=='missing_guard':del candidate.anchor_metadata['certificate_final_guard']
+            if fault=='pid':candidate.current_camera['pid']+=1
+            if fault=='module':candidate.current_camera['module_base']=hex(fixture.base+4096)
+            if fault=='hash':candidate.current_camera['sha256']='b'*64
+            if fault=='name_index':candidate.anchor_metadata['certificate_final_guard']['camera']['name_index']+=1
+            if fault=='role':candidate.anchor_metadata['certificate_final_guard']['camera']['address']+=8
+            with tempfile.TemporaryDirectory() as directory:
+                adapter=self.adapter(directory);adapter.game=dict(adapter.game,pid=fixture.pid);adapter.profile=fixture.profile
+                adapter._camera_hint={'old':True};adapter._camera_roles={'old':True}
+                self.assertFalse(adapter._remember_prepared_camera(candidate,value),fault)
+                self.assertIsNone(adapter._camera_hint,fault);self.assertIsNone(adapter._camera_roles,fault)
+
+    def test_rejected_snapshot_does_not_seed_new_discovery_hints(self):
+        fixture,value,candidate=self._mounted_candidate()
+        with tempfile.TemporaryDirectory() as directory:
+            adapter=self.adapter(directory);adapter.game=dict(adapter.game,pid=fixture.pid);adapter.profile=fixture.profile
+            with mock.patch.object(runtime,'HookEntryAttestation'),mock.patch.object(runtime,'build_candidate',return_value=candidate),\
+                 mock.patch.object(runtime,'publish_candidate') as publish,\
+                 mock.patch.object(adapter,'_remember_prepared_camera',wraps=adapter._remember_prepared_camera) as remember:
+                actual,receipt=adapter.prepare_changed(1,3,lambda _:False,lambda:None)
+            self.assertEqual(actual,runtime.snapshot(value));self.assertIsNone(receipt)
+            publish.assert_not_called();remember.assert_not_called();self.assertIsNone(adapter._camera_hint)
+
     def test_topology_hint_only_reads_two_links_and_always_closes(self):
         import struct
         with tempfile.TemporaryDirectory() as directory:

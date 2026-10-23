@@ -1,0 +1,25 @@
+GearsVR 0.0.3 — First-person preview, Playground and compatibility
+2026-10-23
+
+- Add switchable first-person preview: L3 + R3 on a gamepad or E + R on the keyboard. Unscoped sniper weapons can use the preview; the original scoped camera is preserved.
+- Add right-stick deadzone control, 0–50 percent, default 2 percent.
+- Add happyotaku playground to the main menu: eleven weapons/throwables, six respawning targets, a mounted gun and unlimited reserve ammo, with normal and active reloads.
+- Remember up to ten game paths in an editable dropdown, with browsing and autocomplete.
+- Improve cover-aim state handling and add the missing binocular sniper-scope material route.
+- Improve mounted-gun/world recovery and stereo frame tracking/transfer. The user considers the current mounted transition delay acceptable; zero delay and 90 FPS are not claimed.
+- Improve Steam online/offline settings selection and per-installation configuration handling, including compatible versions found "elsewhere". 😉
+- Include SteamVR menu-format compatibility. Final XR color behavior follows the verified rollback described in the release build record.
+- Retain the 0.0.2 startup compatibility, Unicode-path and bounded diagnostic-export fixes; launcher and startup reports now identify as 0.0.3.
+
+This is the development content previously called 0.1.0, released under 0.0.3 at the user's request. It does not include experimental DLSS, full 6DoF weapon handling or physical reloading.
+First-person and Playground have recorded game/simulator evidence; individual fixes retain their documented headset/graphics acceptance boundaries. Later chapters and all hardware/runtime combinations have not been verified. A local left-eye-edge white-flash report remains tracked; no complete physical-headset fix is claimed by color selection or offline tests alone.
+See README.txt for installation, controls, updating and reporting problems.
+
+
+简体中文
+
+0.0.3 新增第一／第三人称切换预览、右摇杆死区、happyotaku playground及游戏路径历史。改善掩体瞄准和狙击镜，优化上下机枪／场景恢复及双目帧传输，并补齐SteamVR菜单格式兼容。
+改善 Steam 在线／离线启动体验，也顺手照顾了一下玩家从“其他地方”找来的兼容版本。😉
+上下机枪当前延迟用户反馈已可接受，“完全无延迟”保留为后续优化目标。最终颜色路径以回滚完成后核验的发行组件为准。
+沿用0.0.2启动兼容、中文路径和诊断导出修复；本版不含DLSS实验、6DoF体感持枪或体感装填。第一人称／测试场及各项修复的实际验证范围保持；后续章节和全部头显组合未全部验证，左眼边缘局部闪白仍需跟踪。
+此前0.1.0开发内容按用户要求改以0.0.3发布，功能范围保持。安装、按键、更新及日志导出见README.txt。

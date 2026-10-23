@@ -60,8 +60,9 @@ static StereoImageTicket ticket(unsigned id){StereoImageTicket t{};t.id=id;auto&
 static bool same_ticket(StereoImageTicket const&a,StereoImageTicket const&b){if(a.id!=b.id||!stereo_same(a.sample,b.sample))return false;
     for(unsigned i=0;i<2;++i)if(a.rect[i].x!=b.rect[i].x||a.rect[i].y!=b.rect[i].y||a.rect[i].width!=b.rect[i].width||a.rect[i].height!=b.rect[i].height)return false;return true;}
 struct Metadata {HANDLE map{};GpuPacket* packet{};
-    Metadata(){map=OpenFileMappingW(FILE_MAP_READ,FALSE,gpu_name(GetCurrentProcessId(),L"metadata").c_str());
-        require(map!=nullptr,"metadata map");packet=static_cast<GpuPacket*>(MapViewOfFile(map,FILE_MAP_READ,0,0,sizeof(GpuPacket)));require(packet!=nullptr,"metadata view");}
+    Metadata(bool writable=false){const auto access=writable?FILE_MAP_ALL_ACCESS:FILE_MAP_READ;
+        map=OpenFileMappingW(access,FALSE,gpu_name(GetCurrentProcessId(),L"metadata").c_str());
+        require(map!=nullptr,"metadata map");packet=static_cast<GpuPacket*>(MapViewOfFile(map,access,0,0,sizeof(GpuPacket)));require(packet!=nullptr,"metadata view");}
     ~Metadata(){if(packet)UnmapViewOfFile(packet);if(map)CloseHandle(map);}};
 static void rejects(GPU& gpu){auto source=texture(gpu.device.Get());GpuPublisher p;
     require(!p.bind_resource(nullptr,source.Get(),1,D3D12_RESOURCE_STATE_COMMON),"null queue accepted");
@@ -121,8 +122,7 @@ static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
         require(!publisher.try_idle(idle_before)&&idle_before.valid&&idle_before.serial==frame&&
             idle_before.ready_completed>=frame&&idle_before.done_completed<frame,"producer drain falsely proved receiver idle");
         require(receiver.acquire(gpu.queue.Get())&&same_ticket(receiver.ticket(),expected),"private copied ticket");
-        auto busy_ticket=ticket(frame+10);require(!publisher.capture_resource(retained_source,7,idle,busy_ticket,&trace)&&
-            trace.reason==GpuCaptureReason::consumer_not_done&&same_ticket(receiver.ticket(),expected)&&same_ticket(metadata.packet->ticket,expected),"busy overwrote ticket");
+        require(!receiver.acquire(gpu.queue.Get())&&same_ticket(receiver.ticket(),expected),"pending acquisition replaced frozen ticket");
         gpu.begin();gpu_barrier(gpu.list.Get(),receiver.texture.Get(),D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_COPY_SOURCE);
         D3D12_TEXTURE_COPY_LOCATION dst{},src{};dst.pResource=readback.Get();dst.Type=D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;dst.PlacedFootprint=fp;
         src.pResource=receiver.texture.Get();src.Type=D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;gpu.list->CopyTextureRegion(&dst,0,0,0,&src,nullptr);
@@ -210,9 +210,20 @@ static void exercise(GPU& gpu,D3D12_RESOURCE_STATES idle){
     require(!publisher.capture_resource(other.Get(),8,idle,ticket(4),&detached)&&detached.reason==GpuCaptureReason::owned_binding_mismatch,"old unbound source admitted");
     require(!publisher.capture_resource(replacement.Get(),7,idle,ticket(4),&detached)&&detached.reason==GpuCaptureReason::owned_binding_mismatch,"old generation admitted");
     auto stale=ticket(3);stale.sample.received_ns=1000000004;
-    require(!publisher.capture_resource(replacement.Get(),8,idle,stale,&detached)&&detached.reason==GpuCaptureReason::ticket_invalid,"retired ticket reused");
-    stale=ticket(4);stale.sample.received_ns=1000000003;
-    require(!publisher.capture_resource(replacement.Get(),8,idle,stale,&detached)&&detached.reason==GpuCaptureReason::ticket_invalid,"old-world sample reused");
+    require(!publisher.capture_resource(replacement.Get(),8,idle,stale,&detached)&&detached.reason==GpuCaptureReason::ticket_invalid&&
+        !gpu_capture_recoverable(detached,false),"retired ticket became recoverable");
+    for(auto received:{1000000002LL,1000000003LL}){
+        stale=ticket(4);stale.sample.received_ns=received;
+        const auto sequence=metadata.packet->sequence;const auto frozen=metadata.packet->ticket;
+        require(!publisher.capture_resource(replacement.Get(),8,idle,stale,&detached)&&
+            detached.reason==GpuCaptureReason::world_sample_stale&&gpu_capture_recoverable(detached,false)&&
+            publisher.state==2&&metadata.packet->sequence==sequence&&same_ticket(metadata.packet->ticket,frozen),
+            "pre-commit pose changed image slot or stopped publication");
+        stale.rect[1].x=31;
+        require(!publisher.capture_resource(replacement.Get(),8,idle,stale,&detached)&&
+            detached.reason==GpuCaptureReason::ticket_invalid&&!gpu_capture_recoverable(detached,false),
+            "stale pose masked invalid eye geometry");
+    }
     require(publisher.capture_resource(replacement.Get(),8,idle,ticket(4)),"new-world publication");
     require(gpu.finish(),"new-world producer completion");publisher.poll();
     require(receiver.acquire(gpu.queue.Get())&&receiver.acquired_world_generation()==2&&
@@ -250,10 +261,12 @@ static void world_epoch_policy(){
     world=gpu_world_state(&packet);require(!gpu_world_image_current(world,2,10)&&gpu_world_image_current(world,2,11),"world boundary not exclusive");
     packet.version=gpu_packet_version-1;require(!gpu_world_state(&packet).valid,"old world ABI accepted");
 }
+#include "two_slot_ownership_test.inl"
 int main(){try{
     world_epoch_policy();
     ComPtr<ID3D12Debug> debug;const bool enabled=SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)));if(enabled)debug->EnableDebugLayer();
     printf("{\"debug_layer\":%s}\n",enabled?"true":"false");GPU gpu;rejects(gpu);
     for(auto state:{D3D12_RESOURCE_STATE_COMMON,D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE})exercise(gpu,state);
+    two_slot_ownership(gpu);
     puts("OwnedGpuShareTest passed");return 0;
 }catch(std::exception const& error){fprintf(stderr,"OwnedGpuShareTest failed: %s\n",error.what());return 1;}}
