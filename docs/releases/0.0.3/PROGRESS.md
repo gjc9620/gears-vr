@@ -344,3 +344,13 @@ z共84份证据加seal，seal edf7f29f…5d5e、result e2c82a33…ef60、receipt
 随后对已封存aa只执行一次外部离线完整重审：e42febd5…c038的scalar／独立component／two_dispatch_retention／terminal_journals／controls-attachment-hooks／owned_cleanup六项全部通过，retention与cleanup为true。重审前后原115项完整闭包保持，没有再开游戏或改写旧结果；新解释只在外部工件。完整运动、全武器、引擎矩阵重消费、头显与实际0.7伤害仍未完成。
 
 Astra201127a4…a378澄清generic Permit只禁止成功返回后到setter之间再有引擎边界，允许callback内部保留完整VM检查；最后getter后的direct身份／expected／schema／asset／实际callee-params与owner状态必须重核，原MS／NS授权最后执行。后续最小接线计划226e1cb2…b867保留组件先更新、手部后应用的真实clean语义、busy动作的journal与原ABI转发；已授权单独默认OFF源码stage，尚未应用、测试、构建或运行，不将HOLD结果扩大为连续owner通过。
+
+## 2026-10-24 — 连续枪体更新接线通过主机检查并加入武器分支
+
+CONT源码经root逐项审查后原字节复制五份文件，779源中其余774份保持，源树cb90d655…1ba3。新开关默认OFF，与HOLD互斥；四参Backend在实际PE／Native dispatch前执行显式Permit，最后一次引擎检查后重新核对完整身份、原始字段、手部状态、资产schema和实际12字节参数，再执行原MS／NS授权。每帧冻结完整输入，保留首次原值，动作／停止即时关闭写入权，busy期间延后完整恢复；恢复仍先手部再枪体，失败不自动反复写入或重开区间。
+
+实际源码片段的dispatch测试11类／138检查通过，包括原值A→B→C后恢复A、晚到状态变化、schema和参数重编码、原100ms、真实SEH与递归dispatch。lifecycle测试10类／149检查通过，包括动作交还、setter内关闭、内部回滚、递归结束、恢复次序及只完成一次drain／finalize。合计21类／287检查，aggregate8ef6296a…bf8；root集成审查309e2a91…992a、复制回执cb1f2d3d…1d39。
+
+所有早期失败保留：attempt1的命令包装在编译器前失败；attempt2的CASE6测试替身过早触发状态变化，修正为实际读取顺序后，attempt3的dispatch完整通过。attempt3的lifecycle在/WX下因std::find的有符号字面量产生C4389编译失败；仅改五个unsigned后缀，在attempt4单独编译和执行通过，没有重跑已通过的dispatch。生产五源、提取片段和断言语义没有因这项修正变化。
+
+默认OFF预处理首组仅三个格式差异导致严格对比失败，原件保留；修正格式后新一组两次/EP均0，完整复合输入的非空行字节一致，proof d7fd0c49…020。该证据只覆盖源文本，非完整TU／ABI或运行证明。CONT仍是一个有限Lancer owner区间，完整PG构建、实际更新与原生消费、全武器、0.7真实伤害和头显未验收，未集成默认启动器。

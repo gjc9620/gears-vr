@@ -127,7 +127,11 @@ struct Key {
     }
 };
 using State=gears_weapon::WeaponMeshComponentState<Key>;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+gears_weapon::WeaponMeshComponentContinuousLease<Key> lease;
+#else
 gears_weapon::WeaponMeshComponentLease<Key> lease;
+#endif
 } // namespace component
 namespace component_trace {
 void masks(Row& row) noexcept {
@@ -395,12 +399,128 @@ Evidence evidence;
 } // namespace hold_detail
 // HOLD_EVIDENCE_END
 #endif
+
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+// No engine call. These rechecks do not make the preceding getter observations
+// atomic, do not substitute raw slots, and do not exclude write-and-return ABA.
+bool current_direct(Key const& expected){
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
+    for(auto const& old:expected.objects){
+        stow::ObjectKey found{};
+        if(!lookup::object_key(old.address,found)||std::memcmp(&old,&found,sizeof(old)))return false;
+    }
+    stow::ObjectKey asset{};
+    if(!lookup::object_key(expected.asset.address,asset)||std::memcmp(&asset,&expected.asset,sizeof(asset)))return false;
+    const auto address=[&](unsigned i){return expected.objects[i].address;};
+    uptr pointer{};
+    if(!lookup::pointer(address(2),L"WorldInfo",pointer)||pointer!=address(0)||
+       !lookup::pointer(address(2),L"Pawn",pointer)||pointer!=address(3)||
+       !lookup::pointer(address(3),L"Controller",pointer)||pointer!=address(2)||
+       !lookup::pointer(address(3),L"InvManager",pointer)||pointer!=address(4)||
+       !lookup::pointer(address(3),L"Mesh",pointer,true)||pointer!=address(5)||
+       !lookup::pointer(address(3),L"Weapon",pointer)||pointer!=address(6)||
+       !lookup::pointer(address(6),L"Instigator",pointer)||pointer!=address(3)||
+       !lookup::pointer(address(6),L"Mesh",pointer,true)||pointer!=address(7)||
+       !lookup::pointer(address(7),L"SkeletalMesh",pointer)||pointer!=expected.asset.address)return false;
+    for(unsigned i:{0u,2u,3u}){
+        uptr outer{};if(!copy(&outer,address(i)+0x40,sizeof(outer))||outer!=address(1))return false;
+    }
+    return lookup::instance(address(6),L"Weap_AssaultRifle")&&
+        lookup::instance(address(7),L"SkeletalMeshComponent")&&
+        lookup::instance(expected.asset.address,L"SkeletalMesh")&&lookup::named(expected.asset.address,L"COGAssaultRifle");
+}
+bool read_direct(Key const& key,State& out){
+    out={};if(!current_direct(key))return false;
+    const auto mesh=key.objects[7].address;
+    const wchar_t* fields[]={L"AbsoluteTranslation",L"AbsoluteRotation",L"AbsoluteScale"};
+    for(unsigned i=0;i<3;++i)if(!lookup::boolean(mesh,fields[i],out.value.absolute[i]))return false;
+    const auto translation=lookup::property(mesh,L"Translation"),rotation=lookup::property(mesh,L"Rotation");
+    if(!triple_schema(translation,false)||!triple_schema(rotation,true)||
+       !lookup::field_at(mesh,translation,L"StructProperty",out.value.translation.data(),12)||
+       !lookup::field_at(mesh,rotation,L"StructProperty",out.value.rotation.data(),12))return false;
+    std::array<float,3> position{};std::memcpy(position.data(),out.value.translation.data(),12);
+    for(float x:position)if(!std::isfinite(x)||std::abs(x)>1e7f)return false;
+    if(!current_direct(key))return false;
+    out.key=key;out.known=true;return true;
+}
+// read_control/read_lists are the existing non-VM typed readers. The semantic
+// getters and bone queries remain in the original full prepare snapshot; their
+// sequential observations are not relabeled as newly sampled or atomic here.
+bool hand_direct_matches(Snapshot const& sampled){
+    if(!trial.anchored||sampled.pc!=trial.anchor.pc||sampled.pawn!=trial.anchor.pawn||
+       sampled.mesh!=trial.anchor.mesh||sampled.weapon!=trial.anchor.weapon)return false;
+    uptr asset{},tree{};
+    if(!lookup::pointer(sampled.mesh,L"Animations",tree)||tree!=sampled.tree||
+       !lookup::pointer(sampled.mesh,L"SkeletalMesh",asset))return false;
+    std::size_t at{};
+    const auto take=[&](void* to,std::size_t bytes){
+        if(at>sampled.identity.size()||bytes>sampled.identity.size()-at)return false;
+        std::memcpy(to,sampled.identity.data()+at,bytes);at+=bytes;return true;
+    };
+    for(uptr object:{uptr(trial.xr_start.objects[gears_hand_xr_trial::world_info].address),sampled.pc,
+                    sampled.pawn,sampled.mesh,sampled.tree,sampled.weapon,asset}){
+        stow::ObjectKey expected{},live{};Name n{};
+        if(!take(&expected.address,sizeof(expected.address))||!take(&expected.index,sizeof(expected.index))||
+           !take(&expected.outer,sizeof(expected.outer))||!take(&n,sizeof(n))||
+           !take(&expected.object_class,sizeof(expected.object_class)))return false;
+        expected.name_index=n.index;expected.name_number=n.number;
+        if(expected.address!=object||!lookup::object_key(object,live)||std::memcmp(&live,&expected,sizeof(live)))return false;
+    }
+    int left{},right{};bool hidden{},live_hidden{};
+    if(!take(&left,sizeof(left))||!take(&right,sizeof(right))||!take(&hidden,sizeof(hidden))||left!=11||right!=35||
+       !lookup::boolean(sampled.mesh,L"bIgnoreControllersWhenNotRendered",live_hidden)||hidden!=live_hidden)return false;
+    Snapshot layout{};layout.pc=sampled.pc;layout.pawn=sampled.pawn;layout.mesh=sampled.mesh;layout.tree=sampled.tree;
+    for(unsigned i=0;i<8;++i){
+        auto& value=layout.controls[i];auto const& old=sampled.controls[i];
+        if(!handik::read_control(sampled.pawn,sampled.mesh,sampled.tree,i,value)||value.object!=old.object||value.fixed!=old.fixed||
+           !gears_hand_ik::exact(value.strength,old.strength)||!gears_hand_ik::exact(value.effector,old.effector)||
+           std::memcmp(&value.rotation,&old.rotation,sizeof(value.rotation)))return false;
+    }
+    if(!handik::read_lists(layout)||layout.identity.size()!=sampled.identity.size()-at||
+       !std::equal(layout.identity.begin(),layout.identity.end(),sampled.identity.begin()+at))return false;
+    int health{},ignore{};std::uint8_t special{};
+    if(!lookup::field(sampled.pawn,L"Health",L"IntProperty",&health,4)||health<=0||
+       !lookup::field(sampled.mesh,L"bIgnoreControllers",L"IntProperty",&ignore,4)||ignore||
+       !lookup::field(sampled.pawn,L"SpecialMove",L"ByteProperty",&special,1)||special)return false;
+    for(const auto label:{L"bSwitchingWeapons",L"bDoingMeleeAttack",L"bDoingSpecialAttackMove",L"bIsMirrored",L"bWantsToMelee"}){
+        bool active{};if(!lookup::boolean(sampled.pawn,label,active)||active)return false;
+    }
+    return true;
+}
+struct UpdateFrame {
+    gears_hand_stream::Plan plan{};
+    Key key{};AssetInput asset{};
+    unsigned mask{},epoch{},hand_restored{},hand_setters{},hand_writes{},hand_leases{};
+};
+static_assert(std::is_trivially_copyable<UpdateFrame>::value,"Continuous update owns a plain immutable value frame");
+bool same_update_frame(UpdateFrame const& a,UpdateFrame const& b){
+    const auto context=[](gears_hand_stream::Context const& x,gears_hand_stream::Context const& y){
+        return gears_hand_stream::same(x.game,y.game)&&x.expected_native_world_generation==y.expected_native_world_generation&&
+            x.action_epoch==y.action_epoch&&x.observed_ms==y.observed_ms&&x.idle_ready==y.idle_ready&&x.clean==y.clean;
+    };
+    auto const& x=a.plan;auto const& y=b.plan;
+    return context(x.context,y.context)&&gears_hand_stream::same(x.ticket.stream,y.ticket.stream)&&
+        x.ticket.serial==y.ticket.serial&&x.ticket.sequence==y.ticket.sequence&&x.ticket.created_ms==y.ticket.created_ms&&
+        x.ticket.controller==y.ticket.controller&&x.ticket.pawn==y.ticket.pawn&&x.ticket.weapon==y.ticket.weapon&&
+        x.ticket.units_per_metre==y.ticket.units_per_metre&&x.ticket.valid_mask==y.ticket.valid_mask&&
+        gears_hand_continuity::same_certificate(x.ticket.certificate,y.ticket.certificate)&&
+        x.revision==y.revision&&x.observed_now==y.observed_now&&x.accept_mask==y.accept_mask&&x.bind_mask==y.bind_mask&&
+        x.reset_binding_mask==y.reset_binding_mask&&x.restore_mask==y.restore_mask&&x.baseline_mask==y.baseline_mask&&
+        x.has_ticket==y.has_ticket&&a.key==b.key&&same_asset_identity_schema(a.asset,b.asset)&&
+        a.asset.origin==b.asset.origin&&a.asset.rotation==b.asset.rotation&&a.mask==b.mask&&a.epoch==b.epoch&&
+        a.hand_restored==b.hand_restored&&a.hand_setters==b.hand_setters&&a.hand_writes==b.hand_writes&&a.hand_leases==b.hand_leases;
+}
+#endif
+
 struct Forward {
     gears_hand_stream::Plan const& plan;
     unsigned mask;
     gears_hand_stream::Context context{};
     Key const& expected_key;
     AssetInput const& asset_input;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    Snapshot prepared_hand{};
+#endif
     bool prepare(Key const& key){
         using component_trace::gate;using component_trace::Stage;
         Snapshot hand{};
@@ -411,7 +531,13 @@ struct Forward {
            !gate(Stage::prepare_identity,xr_identity(hand))||!gate(Stage::prepare_idle,hand.action_idle)||
            !gate(Stage::prepare_baseline,handik::baseline_strengths(hand))||!gate(Stage::prepare_quiet,slots_quiet(hand))||
            !gate(Stage::prepare_equipment,xr_equipment_gate(hand,1,L"component_setter",EquipmentTiming::prewrite_phase)))return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+        context=xr_context(hand,trial.xr_ready);
+        prepared_hand=hand;
+        gate(Stage::prepare_context,true);return true;
+#else
         context=xr_context(hand,trial.xr_ready);gate(Stage::prepare_context,true);return true;
+#endif
     }
     bool authorize(){
         using component_trace::gate;using component_trace::Stage;
@@ -424,10 +550,53 @@ struct Forward {
             gate(Stage::authorize,authorize_current_xr_plan(plan,context,GetTickCount64())==mask);
     }
 };
+
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+struct ContinuousAuthorize {
+    Forward& forward;
+    UpdateFrame const& expected_frame;
+    ComponentPreparedCall const* prepared{}; // Only bound during this synchronous callback; never TLS.
+    bool active{};
+    bool operator()(UpdateFrame const&,Key const&,Value const&,Value const&,unsigned);
+};
+// Only diagnostic/TLS values. No row, journal, result, context or clock is reset.
+struct ForwardDiagnostics {
+    unsigned depth{component_trace::state.depth};
+    component_trace::Meta meta{component_trace::state.meta};
+    bool names{component_names::enabled},paused{component_cost::invoke_paused};
+    bool snapshot{component_cost::snapshot_owner},aggregate{component_cost::aggregate_owner},slot{component_cost::slot_owner};
+    unsigned snapshot_group{component_cost::snapshot_group},aggregate_group{component_cost::aggregate_group};
+    void restore()const noexcept {
+        component_trace::state.depth=depth;component_trace::state.meta=meta;
+        component_names::enabled=names;component_cost::invoke_paused=paused;
+        component_cost::snapshot_owner=snapshot;component_cost::snapshot_group=snapshot_group;
+        component_cost::aggregate_owner=aggregate;component_cost::aggregate_group=aggregate_group;component_cost::slot_owner=slot;
+    }
+};
+static_assert(std::is_trivially_destructible<ForwardDiagnostics>::value,"SEH helper has no unwinding local");
+template<class Permit>
+bool component_callback_permit(Permit& permit,ContinuousAuthorize& authorize,ComponentPreparedCall const& view){
+    const ForwardDiagnostics diagnostic_entry{};
+    const auto saved_prepared=authorize.prepared;const bool saved_active=authorize.active;
+    __try{
+        authorize.prepared=&view;
+        return permit();
+    }__finally{
+        // SEH continues to the selected invoke's original __except. Restore
+        // before bridge_after; normal true has exactly the same scoped values.
+        authorize.prepared=saved_prepared;authorize.active=saved_active;
+        diagnostic_entry.restore();
+    }
+}
+#endif
+
 struct Backend {
     Key expected_key{};
     Forward* forward{}; // nullptr is rollback, authenticated by old Key/value only.
     bool restore_names{}; // Explicit null-forward restore only; names algorithm, no fast read or authority.
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    ContinuousAuthorize* continuous_authorize{};
+#endif
     bool read(State& state){
         component_names::Scope names_scope(forward ? !lease.faulted() : restore_names);
         component_cost::Owner cost_owner(component_trace::state.meta.group,forward&&!lease.faulted());
@@ -479,6 +648,9 @@ struct Backend {
             gate(Stage::schema_triple,triple_schema(call.prop(field),group==4));
     }
     bool set(Key const& key,Value const& expected,Value const& wanted,unsigned group){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+        if(forward)return false; // Three arguments are exclusively original-byte handback.
+#endif
         component_names::Scope names_scope(forward ? !lease.faulted() : restore_names);
         using component_trace::gate;using component_trace::Stage;
         component_trace::SetScope scope(group,forward!=nullptr,expected,wanted,
@@ -509,6 +681,56 @@ struct Backend {
         result.call_attempted=result.call_return_known=true;result.call_returned=called;component_trace::add(result);
         return called;
     }
+
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    template<class Permit>bool set_forward(Key const& key,Value const& expected,Value const& wanted,unsigned group,Permit& permit){
+        if(!forward||!continuous_authorize||component_continuous::state.closed||trial.ended)return false;
+        component_names::Scope names_scope(!lease.faulted());
+        using component_trace::gate;using component_trace::Stage;
+        component_trace::SetScope scope(group,true,expected,wanted,
+            (component_trace::mismatch(wanted,lease.original_value())&group)==0);
+        if(!gate(Stage::set_key,key==expected_key))return false;
+        const wchar_t* function=group==1?L"SetAbsolute":group==2?L"SetTranslation":L"SetRotation";
+        playground::Args call(key.objects[7].address,function);
+        if(!schema(call,group))return false;
+        if(group==1){
+            call.flag(L"NewAbsoluteTranslation",wanted.absolute[0]);
+            call.flag(L"NewAbsoluteRotation",wanted.absolute[1]);call.flag(L"NewAbsoluteScale",wanted.absolute[2]);
+        }else if(!gate(Stage::set_bytes,call.bytes(group==2?L"NewTranslation":L"NewRotation",
+                  group==2?wanted.translation.data():wanted.rotation.data(),12)))return false;
+        struct Call {
+            Permit& permit;ContinuousAuthorize& authorize;
+            static bool consume(void* opaque,ComponentPreparedCall const& view) noexcept {
+                auto& binding_state=*static_cast<Call*>(opaque);
+                if(binding_state.authorize.prepared||binding_state.authorize.active)return false;
+                try{return component_callback_permit(binding_state.permit,binding_state.authorize,view);}
+                catch(...){return false;}
+            }
+        } binding{permit,*continuous_authorize};
+        ComponentForwardGate final_gate(call.r,&binding,&Call::consume);
+        SelfScope self_call(call.r.object,call.r.function);count_add(setter_calls);
+        component_trace::Row attempt{};attempt.stage=Stage::call_begin;attempt.passed=true;attempt.call_attempted=true;component_trace::add(attempt);
+        const ForwardDiagnostics invoke_entry{};
+        const bool called=invoke_component_forward(&call.r,final_gate);
+        // The selected invoke may return false through SEH without unwinding
+        // a callback-local C++ binding. Never retain a borrowed stack call-view.
+        continuous_authorize->prepared=nullptr;continuous_authorize->active=false;
+        invoke_entry.restore();
+        component_trace::Row result{};result.stage=Stage::call_end;result.passed=called;
+        result.call_attempted=result.call_return_known=true;result.call_returned=called;component_trace::add(result);
+        return called;
+    }
+    template<class Permit>bool set_absolute(Key const& key,Value const& expected,Absolute const& wanted,Permit& permit){
+        auto value=expected;value.absolute=wanted;return set_forward(key,expected,value,1,permit);
+    }
+    template<class Permit>bool set_translation(Key const& key,Value const& expected,Bytes const& wanted,Permit& permit){
+        auto value=expected;value.translation=wanted;return set_forward(key,expected,value,2,permit);
+    }
+    template<class Permit>bool set_rotation(Key const& key,Value const& expected,Bytes const& wanted,Permit& permit){
+        auto value=expected;value.rotation=wanted;return set_forward(key,expected,value,4,permit);
+    }
+#endif
+
     bool set_absolute(Key const& key,Value const& expected,Absolute const& wanted){
         auto value=expected;value.absolute=wanted;return set(key,expected,value,1);
     }
@@ -519,6 +741,63 @@ struct Backend {
         auto value=expected;value.rotation=wanted;return set(key,expected,value,4);
     }
 };
+
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+bool ContinuousAuthorize::operator()(UpdateFrame const& frame,Key const& key,Value const& previous,Value const& proposed,unsigned group){
+    if(active||!component_forward_open()||trial.ended||lease.forward_stopped()||lease.faulted()||
+       lease.relinquished()||!lease.has_snapshot())return false;
+    struct Active {bool& flag;explicit Active(bool& value):flag(value){flag=true;}~Active(){flag=false;}} callback(active);
+    // Frame is the generic owner's independent value copy. No mutable global
+    // target/context is substituted for this Tick's source timestamps or keys.
+    if(!same_update_frame(frame,expected_frame)||!(key==frame.key)||
+       (group!=0&&group!=1&&group!=2&&group!=4))return false;
+    if(group&&(!prepared||!prepared->request))return false;
+    if(!group&&prepared)return false;
+    component_names::Scope names_scope(!lease.faulted());
+    Backend checks{key,&forward,false,this};
+    using component_trace::gate;using component_trace::Stage;
+    State before{};
+    if(!gate(Stage::set_read_before,checks.read(before))||!before.known||!(before.key==key)||
+       !gate(Stage::set_expected_before,gears_weapon::mesh_component_exact(before.value,previous),0,
+             component_trace::mismatch(before.value,previous))||!forward.prepare(key)||
+       !gate(Stage::set_read_after,checks.read(before))||!before.known||!(before.key==key)||
+       !gate(Stage::set_expected_after,gears_weapon::mesh_component_exact(before.value,previous),0,
+             component_trace::mismatch(before.value,previous)))return false;
+    // The preceding read's LAST current performs the original four slot VM
+    // calls. Everything below is non-invoking, followed by the original clocks.
+    State final_value{};
+    if(!read_direct(key,final_value)||!final_value.known||!(final_value.key==key)||
+       !gears_weapon::mesh_component_exact(final_value.value,previous)||
+       !hand_direct_matches(forward.prepared_hand)||!asset_input_matches(key,frame.asset))return false;
+    if(group){
+        const auto& request=*prepared->request;
+        if(request.object!=key.objects[7].address||request.size!=12)return false;
+        const wchar_t* function=group==1?L"SetAbsolute":group==2?L"SetTranslation":L"SetRotation";
+        playground::Args schema_call(key.objects[7].address,function);
+        if(!checks.schema(schema_call,group)||schema_call.r.function!=request.function)return false;
+        if(group==1){
+            schema_call.flag(L"NewAbsoluteTranslation",proposed.absolute[0]);
+            schema_call.flag(L"NewAbsoluteRotation",proposed.absolute[1]);schema_call.flag(L"NewAbsoluteScale",proposed.absolute[2]);
+        }else if(!schema_call.bytes(group==2?L"NewTranslation":L"NewRotation",
+                 group==2?proposed.translation.data():proposed.rotation.data(),12))return false;
+        if(!schema_call.valid||std::memcmp(schema_call.r.params,request.params,12)||!prepared->matches())return false;
+    }
+    if(!component_forward_open()||trial.ended||!active_visible.load(std::memory_order_acquire)||
+       GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire)||trial.xr_equipment_phase!=1||trial.phase!=2||
+       trial.epoch!=frame.epoch||trial.tick_epoch!=frame.epoch||trial.epoch!=frame.plan.context.action_epoch||
+       !trial.xr_ready||trial.lease.dirty()||trial.lease.faulted()||hand_writes_relinquished||
+       trial.restored!=frame.hand_restored||trial.setter_calls!=frame.hand_setters||trial.target_writes!=frame.hand_writes||
+       leases.load(std::memory_order_acquire)!=frame.hand_leases||!lease.has_snapshot()||!(lease.key()==key)||
+       lease.forward_stopped()||lease.faulted()||lease.relinquished()||lease.revoked_mask()||
+       !gears_weapon::mesh_component_exact(lease.owned_value(),previous)||
+       (group&&!(lease.owned_mask()&group))||stop_requested.load(std::memory_order_acquire)||
+       shutdown_requested.load(std::memory_order_acquire))return false;
+    // No VM/getter/hook after this original MS/NS decision. Generic Permit then
+    // rechecks stopped/faulted and the explicit stack gate dispatches this call.
+    return forward.authorize();
+}
+#endif
+
 void bytes(Bytes const& value){for(auto byte:value)fwprintf(log_file,L"%02x",unsigned(byte));}
 void value(const wchar_t* label,Value const& value){
     fwprintf(log_file,L" %ls_absolute=%u%u%u %ls_translation=",label,
@@ -676,7 +955,17 @@ bool component_related(uptr object){
     return (vrequip::stow::pointer(trial.anchor.pawn,L"InvManager",inv)&&object==inv)||
         (vrequip::stow::pointer(trial.anchor.weapon,L"Mesh",mesh,true)&&object==mesh);
 }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+void component_reset_binding(unsigned mask){
+    if((mask&2)&&component_continuous::state.begun&&!component_continuous::state.closed){
+        component_continuous::close(L"continuous_right_binding_reset",true);
+        end(7,L"continuous_right_binding_reset");
+    }
+    if(mask&2)component::mount.reset();
+}
+#else
 void component_reset_binding(unsigned mask){if(mask&2)component::mount.reset();}
+#endif
 void component_relinquish(){
     component::lease.relinquish();component::mount.reset();count_add(component::relinquished);
 }
@@ -684,17 +973,38 @@ void component_pre_restore(){if(component_dirty()){
     component_names::Scope names_scope(true);component::log(L"pre_restore");
 }}
 void component_log_written(){if(component_dirty())component::log(L"written");}
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+void component_cancel_forward(){component::lease.cancel_forward();}
+bool component_has_interval(){return component::lease.has_snapshot();}
+bool component_forward_open(){return !component_continuous::state.closed&&!component_continuous::state.terminal;}
+#endif
 bool component_restore(){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    component::lease.cancel_forward();
+    if(!component_dirty())return !component_faulted();
+#else
     if(!component_dirty())return true;
+#endif
     component_trace::Scope trace_scope;component_trace::gate(component_trace::Stage::restore_enter,true);
     component::Backend backend{component::lease.key(),nullptr,true};
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    const bool clean=component::lease.yield(backend);
+#else
     const bool clean=component::lease.restore(backend);
+#endif
     if(clean)count_add(component::restored);
     component::recorded=false;publish_journals();
     return component_trace::gate(component_trace::Stage::restore_result,clean&&!component_faulted(),unsigned(clean));
 }
 bool component_reset(){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(component_continuous::state.operation_depth||component_continuous::state.action_depth||
+       component_continuous::state.finishing||dual_draining||trial.releasing)return false;
+#endif
     if(!component::lease.reset())return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    component_continuous::state={};
+#endif
     component_trace::reset();component_cost::reset();component_tail_cost::reset();component::reset_first_bind();
     component::target_geometry={};
     component::mount.reset();component::fixed_key={};component::key_known=component::recorded=false;
@@ -704,6 +1014,10 @@ bool component_reset(){
 }
 void component_dump_end(){
     if(!trial.ended||!log_file)return;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(component_continuous::state.operation_depth||component_continuous::state.action_depth||
+       component_continuous::state.finishing||trial.releasing||dual_draining||!component_continuous::state.finalized)return;
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     component_hold::dump();
 #endif
@@ -725,7 +1039,13 @@ void component_dump_end(){
 }
 bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorldFrame const& frame,
                      Snapshot const& hand,unsigned mask,unsigned lease_number){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    component_continuous::Operation operation;
+    if(!component_forward_open()||trial.ended||trial.lease.dirty()||trial.lease.faulted())return false;
+    if(trial.xr_equipment_phase!=1||!(mask&2))return !component_continuous::state.begun&&!component_dirty();
+#else
     if(trial.xr_equipment_phase!=1||!(mask&2))return !component_dirty();
+#endif
     component_cost::begin(plan.ticket.sequence,plan.revision,lease_number);
     component_cost::Span initial_cost(component_cost::Kind::initial,0,!component::lease.faulted());
     component_trace::begin();component_trace::Scope trace_scope;
@@ -737,7 +1057,12 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
         component_names::Scope names_scope(!component::lease.faulted());
         component_cost::Owner cost_owner(0,!component::lease.faulted());
         if(!component_trace::gate(component_trace::Stage::capture,component::capture(hand,key))||
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+            !component_trace::gate(component_trace::Stage::component_clean,
+                !component::lease.has_snapshot()||(!component::lease.forward_stopped()&&!component::lease.revoked_mask()))||
+#else
            !component_trace::gate(component_trace::Stage::component_clean,!component_dirty())||
+#endif
            !component_trace::gate(component_trace::Stage::component_not_faulted,!component_faulted()))return false;
         if(component::key_known&&!component_trace::gate(component_trace::Stage::key_match,key==component::fixed_key))return false;
         component::fixed_key=key;component::key_known=true;
@@ -768,6 +1093,10 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
             component::first_bind.initial_read_state_known=before.known;component::first_bind.initial_read_after_bind=before.value;
         }
         if(!component_trace::gate(component_trace::Stage::initial_read,initial_read))return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+        if(component::lease.has_snapshot()&&(!(key==component::lease.key())||!before.known||
+           !gears_weapon::mesh_component_exact(before.value,component::lease.owned_value())))return false;
+#endif
         if(!component::read_asset_input(key,geometry.input)||!component::zero_asset_origin(geometry.input))return false;
         std::array<std::int32_t,3> rot_origin{};std::memcpy(rot_origin.data(),geometry.input.rotation.data(),12);
         geometry.model=pose;
@@ -775,9 +1104,17 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
         geometry.known=true;
         wanted=before.value;wanted.absolute[0]=wanted.absolute[1]=true;
         std::array<uptr,3> flag_addresses{};std::array<unsigned,3> flag_masks{};
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+        std::array<unsigned,3> update_storage{};
+        if(!component_trace::gate(component_trace::Stage::absolute_storage,
+            component::absolute_storage(key,update_storage,&flag_addresses,&flag_masks,true)))return false;
+        if(!component::lease.has_snapshot())component::baseline_absolute_storage=update_storage;
+        component::target_absolute_storage=update_storage;
+#else
         if(!component_trace::gate(component_trace::Stage::absolute_storage,
             component::absolute_storage(key,component::baseline_absolute_storage,&flag_addresses,&flag_masks,true)))return false;
         component::target_absolute_storage=component::baseline_absolute_storage;
+#endif
         for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)if(flag_addresses[i]==flag_addresses[j]){
             auto& bits=component::target_absolute_storage[i];
             bits=wanted.absolute[j]?bits|flag_masks[j]:bits&~flag_masks[j];
@@ -788,7 +1125,14 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
         std::memcpy(wanted.translation.data(),&position,12);std::memcpy(wanted.rotation.data(),&rotation,12);
         if(record_first_bind){component::first_bind.quantized_wanted=wanted;component::first_bind.quantized_wanted_known=true;}
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    const component::UpdateFrame update_frame{plan,key,geometry.input,mask,trial.epoch,trial.restored,
+        trial.setter_calls,trial.target_writes,leases.load(std::memory_order_acquire)};
+    component::Forward forward{update_frame.plan,update_frame.mask,{},update_frame.key,update_frame.asset};
+    component::Backend backend{update_frame.key,&forward};
+#else
     component::Forward forward{plan,mask,{},key,geometry.input};component::Backend backend{key,&forward};
+#endif
     component::target_geometry=geometry;
     component::target=wanted;component::hand_lease=lease_number;component::plan_sequence=plan.ticket.sequence;
     component::plan_revision=plan.revision;component::action_epoch=plan.context.action_epoch;
@@ -799,11 +1143,64 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
     component::recorded=true;
 #endif
     initial_cost.finish(true);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    component::ContinuousAuthorize authorize{forward,update_frame};backend.continuous_authorize=&authorize;
+    component_continuous::state.begun=true;
+    const bool updating=component::lease.has_snapshot();
+    if(updating)count_add(component_continuous::state.update_attempts);else count_add(component_continuous::state.acquire_attempts);
+    const bool ok=updating?component::lease.update(key,wanted,update_frame,authorize,backend):
+        component::lease.acquire(key,wanted,update_frame,authorize,backend);
+    if(ok)count_add(component_continuous::state.commits);
+#else
     const bool ok=component::lease.acquire(key,wanted,backend);
+#endif
     component_trace::gate(component_trace::Stage::acquire_result,ok);
     if(ok)count_add(component::acquired);
     return ok;
 }
+
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+bool component_after_hand(Snapshot const& before,Snapshot const& written,unsigned mask,unsigned number,
+                          unsigned setters_before,unsigned writes_before,std::array<policy::Target,4> const& targets){
+    if(!component_forward_open()||trial.ended||trial.epoch!=component::action_epoch||trial.tick_epoch!=trial.epoch||
+       trial.xr_equipment_phase!=1||!mask||!(mask&2)||trial.applied_mask!=mask||leases.load()!=number||
+       !trial.lease.dirty()||trial.lease.faulted()||hand_writes_relinquished||
+       stop_requested.load(std::memory_order_acquire)||shutdown_requested.load(std::memory_order_acquire)||
+       trial.targets!=targets||!same_layout(before,written)||!xr_identity(written))return false;
+    const unsigned channels=((mask&1)?12u:0u)|((mask&2)?3u:0u);
+    unsigned count{};for(unsigned i=0;i<4;++i)if(channels&(1u<<i))++count;
+    const auto last=std::numeric_limits<unsigned>::max();
+    if(setters_before>last-count||writes_before>last-count||trial.setter_calls!=setters_before+count||
+       trial.target_writes!=writes_before+count)return false;
+    for(unsigned i=0;i<8;++i){
+        auto const& value=written.controls[i];auto const& old=before.controls[i];
+        unsigned selected=4;for(unsigned channel=0;channel<4;++channel)
+            if(indices[channel]==i&&(channels&(1u<<channel)))selected=channel;
+        if(selected==4){
+            if(!gears_hand_ik::exact(value.strength,old.strength)||!gears_hand_ik::exact(value.effector,old.effector)||
+               std::memcmp(&value.rotation,&old.rotation,sizeof(value.rotation)))return false;
+        }else{
+            if(!gears_hand_ik::exact(value.strength,gears_hand_ik::Triple{{1.f,1.f,0.f}}))return false;
+            policy::Target target{};
+            if(selected&1){
+                std::memcpy(target.data(),&value.rotation,12);
+                if(!gears_hand_ik::exact(value.effector,old.effector))return false;
+            }else{
+                std::memcpy(target.data(),value.effector.data(),12);
+                if(std::memcmp(&value.rotation,&old.rotation,sizeof(value.rotation)))return false;
+            }
+            if(target!=targets[selected])return false;
+        }
+    }
+    component::State live{};
+    return component::hand_direct_matches(written)&&component::read_direct(component::lease.key(),live)&&live.known&&
+        live.key==component::lease.key()&&!component::lease.forward_stopped()&&!component_faulted()&&
+        !component::lease.revoked_mask()&&gears_weapon::mesh_component_exact(live.value,component::lease.owned_value())&&
+        component::asset_input_matches(component::lease.key(),component::target_geometry.input)&&
+        component_forward_open()&&!trial.ended;
+}
+#endif
+
 bool bridge_before_allowed(uptr object,uptr function){
     // Foreign threads cannot read the private GT state or borrow its token.
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;

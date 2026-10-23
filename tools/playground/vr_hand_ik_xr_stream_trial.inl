@@ -747,16 +747,26 @@ void pre_tick(uptr){
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     if(component_hold::pre_tick())return;
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(!component_continuous::normal_tick())return;
+#else
     if(journals_dirty()){
         if(!drain_journals(L"pre_tick_dual_drain",true)&&!trial.ended)end(8,L"dual_drain_failed");
     }else publish_journals();
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     tick_diagnostic.stamp(tick_boundary_diagnostic::Boundary::after_drain);
 #endif
     if(trial.ended){component_dump_end();return;}
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(trial.lease.dirty()||trial.lease.faulted()||component_faulted()){
+        end(journals_dirty()?8:7,L"component_restore_fault");component_dump_end();return;
+    }
+#else
     if(journals_dirty()||component_faulted()){
         end(journals_dirty()?8:7,L"component_restore_fault");component_dump_end();return;
     }
+#endif
 #endif
     if(!active_visible.load(std::memory_order_acquire)||trial.ended)return;
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
@@ -856,8 +866,16 @@ void post_tick(uptr pc){
             xr_max_leases);fflush(log_file);}
 #endif
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    component_continuous::PostTick continuous_tick;
+#endif
     if(!active_visible.load(std::memory_order_acquire)||trial.ended||!trial.phase)return;
     const auto now=GetTickCount64();
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(!component_forward_open()){end(7,L"continuous_writer_closed");return;}
+    // This one diagnostic interval cannot outlive the original finite capture.
+    if(now>trial.deadline||leases.load()>=xr_max_leases){end(5,L"continuous_component_interval_complete");return;}
+#endif
     if(stop_requested.load(std::memory_order_acquire)){end(6,L"xr_stopped_in_clean_phase");return;}
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
     if(!trial.session.running(now,false,shutdown_requested.load(std::memory_order_acquire))){
@@ -981,6 +999,12 @@ void post_tick(uptr pc){
     tick_diagnostic.plan(plan);
 #endif
     xr_reset_bindings(plan.reset_binding_mask);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(!component_forward_open()||trial.ended)return;
+    if(component_continuous::state.begun&&!(plan.accept_mask&2)){
+        end(7,L"continuous_no_fresh_right_plan");return;
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     if(trial.xr_policy.certified_failed()){
         yield_for_equipment(L"xr_continuity_certificate_rejected");
@@ -1110,15 +1134,35 @@ void post_tick(uptr pc){
     }
     check=after_component;
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(!component_forward_open()||trial.ended||trial.tick_epoch!=trial.epoch||
+       trial.lease.dirty()||trial.lease.faulted()||stop_requested.load(std::memory_order_acquire)||
+       shutdown_requested.load(std::memory_order_acquire)){
+        end(journals_dirty()?8u:7u,L"continuous_closed_before_hand_apply");return;
+    }
+    const auto hand_setters_before=trial.setter_calls,hand_writes_before=trial.target_writes;
+    const auto hand_targets=trial.targets;
+#endif
     trial.lease_anchor=check;Backend backend{};
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    backend.forward_write=true;backend.forward_epoch=trial.epoch;
+#endif
     const unsigned channels=((mask&1)?12u:0u)|((mask&2)?3u:0u);
     bool acquired{};
     {
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
         EquipmentTimingScope timing(EquipmentTiming::lease_acquire);
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+        component_continuous::Operation operation;
+#endif
         acquired=trial.lease.acquire(channels,trial.targets,1.f,backend);
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(!component_forward_open()||trial.ended){
+        if(!trial.ended)end(7,L"continuous_closed_during_hand_apply");return;
+    }
+#endif
     if(!acquired){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
         drain_journals(L"hand_acquire_failed_after_component");
@@ -1138,9 +1182,20 @@ void post_tick(uptr pc){
 #endif
         end(7,L"xr_written_snapshot_unknown");return;
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(component_continuous::state.begun&&
+       !component_after_hand(check,written,mask,lease,hand_setters_before,hand_writes_before,hand_targets)){
+        drain_journals(L"continuous_written_joint_journal_changed");
+        end(journals_dirty()?8u:7u,L"continuous_written_joint_journal_changed");return;
+    }
+#endif
     sample(L"written",written,lease,mask);
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     component_log_written();
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(!component_forward_open()||trial.ended){end(7,L"continuous_closed_during_written_evidence");return;}
+    continuous_tick.committed=true;
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     component_hold::arm(plan,mask,written);
 #endif

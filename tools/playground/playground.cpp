@@ -32,6 +32,12 @@
 #if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
 #include "../vr-common/hand_ik_controlled_trial_policy.h"
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+#error Continuous component requires certified combined continuous phase1 hands and excludes HOLD
+#endif
+#include "../vr-common/weapon_component_continuous_lease.h"
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
 #if !defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
 #error Component HOLD requires certified combined continuous phase1 hands
@@ -477,6 +483,355 @@ bool invoke(Request* r){
 #endif
     return result;
 }
+// Revision 2. Insert after unchanged invoke(Request*) and before playground_controller.inl.
+// Only the three supported component setters; old revision 4ebb was not tested.
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+
+bool component_forward_read_bytes(uptr object,uptr offset,void* output,std::size_t bytes) noexcept {
+    constexpr uptr maximum=~uptr{0};
+    return object&&bytes&&offset<=maximum-object&&bytes-1<=maximum-(object+offset)&&
+        copy(output,object+offset,bytes);
+}
+template<class T> bool component_forward_read_at(uptr object,uptr offset,T& value) noexcept {
+    return component_forward_read_bytes(object,offset,&value,sizeof(value));
+}
+bool component_forward_registered(uptr object,unsigned& index) noexcept {
+    Array objects{};uptr found{};
+    return component_forward_read_at(base,0x1c24730,objects)&&
+        objects.data&&objects.count>1000&&objects.count<=objects.capacity&&objects.capacity<4000000&&
+        component_forward_read_at(object,8,index)&&index<unsigned(objects.count)&&
+        component_forward_read_at(objects.data,uptr(index)*8,found)&&found==object;
+}
+
+struct ComponentPreparedObject {
+    uptr address{},klass{},outer{};
+    unsigned index{},reserved{};
+    Name name{};
+    bool read(uptr object) noexcept {
+        address=object;reserved=0;unsigned class_index{},outer_index{},last_index{};
+        return component_forward_registered(object,index)&&
+            component_forward_read_at(object,0x40,outer)&&
+            component_forward_read_at(object,0x48,name)&&
+            component_forward_read_at(object,0x50,klass)&&
+            component_forward_registered(klass,class_index)&&component_forward_registered(outer,outer_index)&&
+            component_forward_registered(object,last_index)&&last_index==index;
+    }
+    bool same(ComponentPreparedObject const& other) const noexcept {
+        return address==other.address&&klass==other.klass&&outer==other.outer&&index==other.index&&
+            reserved==other.reserved&&name.index==other.name.index&&name.number==other.name.number;
+    }
+};
+template<std::size_t N>
+bool component_forward_named(ComponentPreparedObject const& object,wchar_t const (&expected)[N]) noexcept {
+    static_assert(N>0&&N<=96);
+    Array names{};uptr entry{};unsigned index{};
+    if(!component_forward_read_at(base,0x1c34800,names)||!names.data||names.count<1000||
+       names.count>names.capacity||names.capacity>4000000||object.name.index>=unsigned(names.count)||
+       !component_forward_read_at(names.data,uptr(object.name.index)*8,entry)||!entry||
+       !component_forward_read_at(entry,0,index)||index!=object.name.index)return false;
+    wchar_t label[N]{};
+    for(std::size_t i=0;i<N;++i)
+        if(!component_forward_read_at(entry,20+uptr(i)*sizeof(wchar_t),label[i]))return false;
+    return !std::memcmp(label,expected,sizeof(label)); // Includes the real terminating NUL.
+}
+enum class ComponentPreparedKind {boolean,structure,real,integer};
+bool component_forward_kind(ComponentPreparedObject const& type,ComponentPreparedKind kind) noexcept {
+    if(kind==ComponentPreparedKind::boolean)return component_forward_named(type,L"BoolProperty");
+    if(kind==ComponentPreparedKind::structure)return component_forward_named(type,L"StructProperty");
+    if(kind==ComponentPreparedKind::real)return component_forward_named(type,L"FloatProperty");
+    return component_forward_named(type,L"IntProperty");
+}
+
+// 0x70..0x98 is the existing preflight's exact common property metadata range.
+// Typed +0xd0 reads are separate: 4 bytes for BoolProperty, 8 for StructProperty.
+struct ComponentPreparedField {
+    ComponentPreparedObject identity{},type{};
+    uptr next{};
+    unsigned char metadata[0x28]{};
+    unsigned dimension{},element_bytes{},offset{};
+    unsigned long long flags{};
+    bool read(uptr property,ComponentPreparedKind kind) noexcept {
+        if(!identity.read(property)||!type.read(identity.klass)||!component_forward_kind(type,kind)||
+           !component_forward_read_bytes(property,0x70,metadata,sizeof(metadata))||
+           !component_forward_read_at(property,0x68,next))return false;
+        std::memcpy(&dimension,metadata,4);std::memcpy(&element_bytes,metadata+4,4);
+        std::memcpy(&flags,metadata+8,8);std::memcpy(&offset,metadata+0x24,4);
+        return true;
+    }
+    bool same(ComponentPreparedField const& other) const noexcept {
+        return identity.same(other.identity)&&type.same(other.type)&&next==other.next&&
+            !std::memcmp(metadata,other.metadata,sizeof(metadata));
+    }
+};
+struct ComponentPreparedProperty:ComponentPreparedField {
+    unsigned bool_mask{};
+    uptr struct_target{};
+    bool read(uptr property,bool boolean) noexcept {
+        if(!ComponentPreparedField::read(property,boolean?ComponentPreparedKind::boolean:ComponentPreparedKind::structure))
+            return false;
+        if(boolean)return component_forward_read_at(property,0xd0,bool_mask)&&bool_mask&&!(bool_mask&(bool_mask-1));
+        return component_forward_read_at(property,0xd0,struct_target)&&struct_target;
+    }
+    bool same(ComponentPreparedProperty const& other) const noexcept {
+        return ComponentPreparedField::same(other)&&bool_mask==other.bool_mask&&struct_target==other.struct_target;
+    }
+};
+struct ComponentPreparedStructNode {
+    ComponentPreparedObject identity{},type{};
+    uptr super{},head{};
+    unsigned bytes{};
+    bool read(uptr structure) noexcept {
+        return identity.read(structure)&&type.read(identity.klass)&&
+            component_forward_read_at(structure,0x60,super)&&
+            component_forward_read_at(structure,0x80,head)&&
+            component_forward_read_at(structure,0x88,bytes);
+    }
+    bool same(ComponentPreparedStructNode const& other) const noexcept {
+        return identity.same(other.identity)&&type.same(other.type)&&super==other.super&&head==other.head&&bytes==other.bytes;
+    }
+};
+// Bounded metadata description only for Vector/Rotator's three four-byte fields.
+// Parent traversal uses the same +0x60/+0x80/+0x68 links as playground::field.
+// No unknown/extra member or incomplete traversal is accepted as a layout.
+struct ComponentPreparedTriple {
+    ComponentPreparedStructNode parents[40]{};
+    ComponentPreparedField members[3]{};
+    std::size_t parent_count{},member_count{};
+    unsigned member_mask{};
+    bool read(uptr structure,bool rotation) noexcept {
+        auto current=structure;
+        while(current){
+            if(parent_count>=40||!parents[parent_count].read(current))return false;
+            auto const& parent=parents[parent_count];
+            if(!parent_count&&(parent.bytes!=12||
+               !(rotation?component_forward_named(parent.identity,L"Rotator"):component_forward_named(parent.identity,L"Vector"))))
+                return false;
+            auto field=parent.head;
+            while(field){
+                if(member_count>=3||!members[member_count].read(field,
+                   rotation?ComponentPreparedKind::integer:ComponentPreparedKind::real))return false;
+                auto const& member=members[member_count];
+                unsigned ordinal=3;
+                if(rotation){
+                    if(component_forward_named(member.identity,L"Pitch"))ordinal=0;
+                    else if(component_forward_named(member.identity,L"Yaw"))ordinal=1;
+                    else if(component_forward_named(member.identity,L"Roll"))ordinal=2;
+                }else{
+                    if(component_forward_named(member.identity,L"X"))ordinal=0;
+                    else if(component_forward_named(member.identity,L"Y"))ordinal=1;
+                    else if(component_forward_named(member.identity,L"Z"))ordinal=2;
+                }
+                if(ordinal>=3||(member_mask&(1u<<ordinal))||member.dimension!=1||
+                   member.element_bytes!=4||member.offset!=ordinal*4)return false;
+                member_mask|=1u<<ordinal;field=member.next;++member_count;
+            }
+            current=parent.super;++parent_count;
+        }
+        return parent_count&&member_count==3&&member_mask==7;
+    }
+    bool same(ComponentPreparedTriple const& other) const noexcept {
+        if(parent_count!=other.parent_count||member_count!=other.member_count||member_mask!=other.member_mask)return false;
+        for(std::size_t i=0;i<parent_count;++i)if(!parents[i].same(other.parents[i]))return false;
+        for(std::size_t i=0;i<member_count;++i)if(!members[i].same(other.members[i]))return false;
+        return true;
+    }
+};
+
+struct ComponentPreparedCall {
+    Request const* request{};
+    uptr module_base{},field_head{},native_function{};
+    Event process_event{};
+    ComponentPreparedObject object{},function{},function_class{};
+    unsigned size{},group{};
+    unsigned short parameter_bytes{},native_index{},return_offset{};
+    unsigned char parameters[12]{};
+    unsigned char function_header[0x120]{};
+    ComponentPreparedProperty fields[3]{};
+    ComponentPreparedTriple triple{};
+    std::size_t field_count{};
+    bool ready{};
+
+    // A descriptor is comparison evidence, never permission. matches() must run
+    // after the callback's LAST VM and before its original final clock checks.
+    bool prepare(Request const& value) noexcept {
+        if(request||ready)return false;
+        request=&value;
+        uptr object_address{},function_address{};
+        if(!copy(&module_base,reinterpret_cast<uptr>(&base),sizeof(module_base))||
+           !module_base||module_base>(~uptr{0})-0x1c34800||
+           !copy(&process_event,reinterpret_cast<uptr>(&original),sizeof(process_event))||!process_event||
+           !copy(&size,reinterpret_cast<uptr>(&value.size),sizeof(size))||size!=sizeof(parameters)||
+           !copy(&object_address,reinterpret_cast<uptr>(&value.object),sizeof(object_address))||
+           !copy(&function_address,reinterpret_cast<uptr>(&value.function),sizeof(function_address))||
+           !copy(parameters,reinterpret_cast<uptr>(value.params),sizeof(parameters))||
+           !object.read(object_address)||!function.read(function_address)||
+           !function_class.read(function.klass)||!component_forward_named(function_class,L"Function"))return false;
+        if(component_forward_named(function,L"SetAbsolute"))group=1;
+        else if(component_forward_named(function,L"SetTranslation"))group=2;
+        else if(component_forward_named(function,L"SetRotation"))group=4;
+        else return false;
+        // Full 0x120 reads are evidenced for these three actual setter instances
+        // by MeshPreflight.function_snapshot and the sealed AA setter schemas.
+        if(!component_forward_read_bytes(function_address,0,function_header,sizeof(function_header)))return false;
+        std::memcpy(&parameter_bytes,function_header+0x106,2);
+        std::memcpy(&native_index,function_header+0xf8,2);
+        std::memcpy(&return_offset,function_header+0x108,2);
+        std::memcpy(&native_function,function_header+0x114,8);
+        std::memcpy(&field_head,function_header+0x80,8);
+        unsigned header_index{};Name header_name{};uptr header_outer{},header_class{};
+        std::memcpy(&header_index,function_header+8,4);
+        std::memcpy(&header_outer,function_header+0x40,8);
+        std::memcpy(&header_name,function_header+0x48,8);
+        std::memcpy(&header_class,function_header+0x50,8);
+        if(header_index!=function.index||header_outer!=function.outer||header_class!=function.klass||
+           header_name.index!=function.name.index||header_name.number!=function.name.number||
+           parameter_bytes!=12||return_offset!=0xffff||native_function<module_base+0x1000||
+           native_function>=module_base+0x131b000)return false;
+        const std::size_t expected_fields=group==1?3:1;
+        auto field=field_head;
+        while(field){
+            if(field_count>=expected_fields||!fields[field_count].read(field,group==1))return false;
+            auto const& item=fields[field_count];
+            if(item.dimension!=1||(item.flags&0x580)!=0x80||
+               item.element_bytes!=(group==1?4u:12u)||item.offset!=(group==1?unsigned(field_count)*4:0u))return false;
+            if(group==1){
+                const bool named=field_count==0?component_forward_named(item.identity,L"NewAbsoluteTranslation"):
+                    field_count==1?component_forward_named(item.identity,L"NewAbsoluteRotation"):
+                    component_forward_named(item.identity,L"NewAbsoluteScale");
+                if(!named)return false;
+            }else if(!(group==2?component_forward_named(item.identity,L"NewTranslation"):
+                       component_forward_named(item.identity,L"NewRotation"))||
+                     !triple.read(item.struct_target,group==4))return false;
+            field=item.next;++field_count;
+        }
+        if(field_count!=expected_fields)return false;
+        unsigned char header_after[0x120]{};
+        if(!component_forward_read_bytes(function_address,0,header_after,sizeof(header_after))||
+           std::memcmp(header_after,function_header,sizeof(function_header)))return false;
+        ready=true;return true;
+    }
+
+    bool matches() const noexcept {
+        if(!ready||!request)return false;
+        ComponentPreparedCall current{};
+        if(!current.prepare(*request)||current.request!=request||current.module_base!=module_base||
+           current.process_event!=process_event||!current.object.same(object)||
+           !current.function.same(function)||!current.function_class.same(function_class)||
+           current.size!=size||current.group!=group||current.parameter_bytes!=parameter_bytes||
+           current.native_index!=native_index||current.return_offset!=return_offset||
+           current.native_function!=native_function||current.field_head!=field_head||
+           current.field_count!=field_count||std::memcmp(current.parameters,parameters,sizeof(parameters))||
+           std::memcmp(current.function_header,function_header,sizeof(function_header))||
+           !current.triple.same(triple))return false;
+        for(std::size_t i=0;i<field_count;++i)if(!current.fields[i].same(fields[i]))return false;
+        return true;
+    }
+};
+
+
+struct ComponentForwardGate {
+    using Callback=bool(*)(void*,ComponentPreparedCall const&) noexcept;
+private:
+    Request const* request_{};
+    void* state_{};
+    Callback callback_{};
+    bool entered_{},used_{},in_progress_{},invalid_{};
+public:
+    ComponentForwardGate(Request const& request,void* state,Callback callback) noexcept:
+        request_(&request),state_(state),callback_(callback){}
+    ComponentForwardGate(ComponentForwardGate const&)=delete;
+    ComponentForwardGate& operator=(ComponentForwardGate const&)=delete;
+    ComponentForwardGate(ComponentForwardGate&&)=delete;
+    ComponentForwardGate& operator=(ComponentForwardGate&&)=delete;
+    bool enter_route(Request const* request) noexcept {
+        if(!request||request!=request_||!state_||!callback_||entered_||used_||in_progress_||invalid_){
+            invalid_=true;return false;
+        }
+        entered_=true;return true;
+    }
+    bool belongs_to(Request const* request) const noexcept {
+        return entered_&&request&&request==request_&&state_&&callback_&&!used_&&!in_progress_&&!invalid_;
+    }
+    bool authorize_once(Request const& request,ComponentPreparedCall const& prepared) noexcept {
+        if(!belongs_to(&request)||prepared.request!=&request||!prepared.ready){invalid_=true;return false;}
+        used_=true;in_progress_=true;
+        const bool allowed=callback_(state_,prepared);
+        in_progress_=false;
+        return allowed&&!invalid_;
+    }
+};
+
+// No RAII objects with non-trivial destructors in this SEH function. The caller
+// owns names/InvokePause/probe pairing and the gate's lifetime on its own stack.
+bool invoke_component_forward_engine(Request* request,ComponentForwardGate& gate){
+    if(!gate.belongs_to(request))return false;
+    ComponentPreparedCall prepared{};
+    if(!prepared.prepare(*request))return false;
+    __try{
+        if(!prepared.native_index){
+            if(!gate.authorize_once(*request,prepared))return false;
+            prepared.process_event(prepared.object.address,prepared.function.address,request->params);
+            return true;
+        }
+        struct Frame {
+            uptr vtable;unsigned long long tag;unsigned line,position;
+            uptr node,object;unsigned char* code;void* locals;uptr previous,out;
+        } frame{prepared.module_base+0x133bcb0,1,1,1,prepared.function.address,prepared.object.address,
+            nullptr,request->params,0,0};
+        static_assert(offsetof(Frame,node)==0x18&&offsetof(Frame,code)==0x28&&offsetof(Frame,locals)==0x30);
+        unsigned char code[1024]{};std::size_t used{};
+        struct Out {uptr property,address,next;};Out outputs[64]{};std::size_t output_count{};
+        for(std::size_t i=0;i<prepared.field_count;++i){
+            auto const& field=prepared.fields[i];
+            if((field.flags&0x480)==0x80){
+                if(used+9>=sizeof(code))return false;
+                code[used++]=0x29;std::memcpy(code+used,&field.identity.address,8);used+=8;
+                if(field.flags&0x100){
+                    if(field.offset>=prepared.size||output_count>=64)return false;
+                    outputs[output_count]={field.identity.address,reinterpret_cast<uptr>(request->params+field.offset),0};
+                    if(output_count)outputs[output_count-1].next=reinterpret_cast<uptr>(&outputs[output_count]);
+                    ++output_count;
+                }
+            }
+        }
+        code[used++]=0x16;code[used++]=0x53;frame.code=code;
+        frame.out=output_count?reinterpret_cast<uptr>(outputs):0;
+        using Native=void(__fastcall*)(uptr,Frame*,void*);
+        if(!gate.authorize_once(*request,prepared))return false;
+        reinterpret_cast<Native>(prepared.native_function)(prepared.object.address,&frame,
+            prepared.return_offset==0xffff?nullptr:request->params+prepared.return_offset);
+        return true;
+    }
+    __except(EXCEPTION_EXECUTE_HANDLER){return false;}
+}
+
+bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
+    if(!gate.enter_route(request))return false;
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_names::Scope names_scope(false);
+    component_cost::InvokePause cost_pause;
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(request&&!handstream::bridge_before_allowed(request->object,request->function))return false;
+#else
+    if(request)handstream::before_action(request->object,request->function);
+#endif
+#endif
+#if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+    if(request)vrequip::stow::before_action(request->object,request->function);
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+    const auto observation=handanim::bridge_before(request);
+#endif
+    const auto result=invoke_component_forward_engine(request,gate);
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
+    handanim::bridge_after(request,observation);
+#endif
+    return result;
+}
+#endif // GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL
 #include "playground_controller.inl"
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
 #include "hand_animation_probe.inl"

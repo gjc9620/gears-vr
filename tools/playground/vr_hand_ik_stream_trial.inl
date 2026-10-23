@@ -100,8 +100,57 @@ void component_dump_end();
 bool component_apply(gears_hand_stream::Plan const&,gears_weapon::HandWorldFrame const&,Snapshot const&,unsigned,unsigned);
 bool dual_draining{},hand_writes_relinquished{};
 bool journals_dirty(){return trial.lease.dirty()||component_dirty();}
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+bool component_safe_to_unload();
+void publish_journals(){safe_to_unload.store(component_safe_to_unload(),std::memory_order_release);}
+#else
 void publish_journals(){safe_to_unload.store(!journals_dirty(),std::memory_order_release);}
+#endif
 bool restore(const wchar_t*);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+void component_cancel_forward();
+bool component_has_interval();
+bool component_forward_open();
+bool component_after_hand(Snapshot const&,Snapshot const&,unsigned,unsigned,unsigned,unsigned,
+                          std::array<policy::Target,4> const&);
+void end(unsigned,const wchar_t*);
+namespace component_continuous {
+// Adapter lifecycle only. These flags never replace a Plan, raw read or Permit.
+struct State {
+    bool begun{},closed{},deferred{},finishing{},terminal{},finalized{},cleanup_failed{},failure_known{};
+    bool drain_attempted{},last_drain_result{};
+    unsigned operation_depth{},action_depth{},terminal_code{},first_failure{};
+    std::uint64_t acquire_attempts{},update_attempts{},commits{};
+    std::array<wchar_t,96> reason{},failure_reason{};
+};
+State state;
+void close(const wchar_t*,bool force=false);
+bool finish();
+void request_terminal(unsigned,const wchar_t*);
+void terminal(unsigned,const wchar_t*);
+bool normal_tick();
+struct Operation {
+    Operation(){++state.operation_depth;safe_to_unload.store(false,std::memory_order_release);}
+    ~Operation(){--state.operation_depth;if(!state.operation_depth){finish();publish_journals();}}
+    Operation(Operation const&)=delete;Operation& operator=(Operation const&)=delete;
+};
+struct PostTick {
+    bool committed{};
+    PostTick(){++state.operation_depth;safe_to_unload.store(false,std::memory_order_release);}
+    ~PostTick();
+};
+struct Action {
+    Action(){++state.action_depth;safe_to_unload.store(false,std::memory_order_release);}
+    ~Action(){--state.action_depth;if(!state.action_depth){finish();publish_journals();}}
+    Action(Action const&)=delete;Action& operator=(Action const&)=delete;
+};
+} // namespace component_continuous
+bool component_safe_to_unload(){
+    return !journals_dirty()&&!component_continuous::state.operation_depth&&!component_continuous::state.action_depth&&
+        !component_continuous::state.finishing&&(!component_continuous::state.terminal||component_continuous::state.finalized)&&
+        !trial.releasing&&!dual_draining;
+}
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
 // HOLD_STATE_BEGIN: private diagnostic, not an authority or a new lease.
 namespace component_hold {
@@ -157,6 +206,15 @@ bool drain_journals(const wchar_t* reason,bool hand_restore_names=false){
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     component_hold::cancel(reason);
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    component_continuous::close(reason,true);
+    // No recursive restore on a live hand/generic-owner stack. Retain journals.
+    if(component_continuous::state.operation_depth||trial.releasing||dual_draining){
+        component_continuous::state.deferred=true;return false;
+    }
+    if(component_continuous::state.drain_attempted)return component_continuous::state.last_drain_result;
+    component_continuous::state.drain_attempted=true;
+#endif
     // Terminal producer state is deliberately absent from rollback admission.
     if(dual_draining)return false;
     dual_draining=true;
@@ -175,7 +233,14 @@ bool drain_journals(const wchar_t* reason,bool hand_restore_names=false){
 #endif
     dual_draining=false;publish_journals();
     if(trial.ended)component_dump_end(); // Diagnostic retry after both journals have been attempted.
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    const bool verified=hand&&component&&!journals_dirty()&&!trial.lease.faulted()&&!component_faulted();
+    component_continuous::state.last_drain_result=verified;
+    if(!verified)component_continuous::state.cleanup_failed=true;
+    return verified;
+#else
     return hand&&component&&!journals_dirty();
+#endif
 }
 #endif
 
@@ -588,6 +653,15 @@ bool same_layout(Snapshot const& a,Snapshot const& b){
 // Only identity/layout and this lease's dynamic fields participate in rollback.
 // New melee/action/weapon flags cannot prevent restoration of unchanged tails.
 struct Backend {
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    bool forward_write{};unsigned forward_epoch{};
+    bool forward_allowed()const {
+        if(!forward_write||trial.lease.faulted()||trial.releasing)return true;
+        return !component_continuous::state.closed&&!trial.ended&&trial.epoch==forward_epoch&&
+            trial.tick_epoch==forward_epoch&&!stop_requested.load(std::memory_order_acquire)&&
+            !shutdown_requested.load(std::memory_order_acquire);
+    }
+#endif
     bool control(unsigned channel,handik::Control& out){
         if(channel>=indices.size())return false;
         const auto& anchor=trial.lease_anchor;
@@ -609,7 +683,13 @@ struct Backend {
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
         if(hand_writes_relinquished)return false;
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+        if(!forward_allowed())return false;
+#endif
         handik::Control value{};if(!control(channel,value))return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+        if(!forward_allowed())return false;
+#endif
         count_add(trial.setter_calls);return handik::set_strength(value.object,strength);
     }
 };
@@ -621,7 +701,13 @@ bool Backend::write_target(unsigned channel,policy::Target const& expected,polic
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(hand_writes_relinquished)return false;
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(!forward_allowed())return false;
+#endif
     policy::Value value{};if(!read(channel,value)||value.target!=expected)return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(!forward_allowed())return false;
+#endif
     const auto object=trial.lease_anchor.controls[indices[channel]].object;
     const auto property=playground::property(object,(channel&1)?L"BoneRotation":L"EffectorLocation");
     if(!registered(property))return false;
@@ -734,6 +820,9 @@ void sample(const wchar_t* phase,Snapshot const& value,unsigned lease,unsigned m
     fwprintf(log_file,L"\n");fflush(log_file);
 }
 void end(unsigned code,const wchar_t* reason){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    component_continuous::terminal(code,reason);
+#else
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     component_hold::before_end(reason);
 #endif
@@ -793,7 +882,145 @@ void end(unsigned code,const wchar_t* reason){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     component_dump_end();
 #endif
+#endif
 }
+
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+namespace component_continuous {
+void remember(std::array<wchar_t,96>& out,const wchar_t* value){
+    out={};if(!value)return;
+    for(std::size_t i=0;i+1<out.size()&&value[i];++i)out[i]=value[i];
+}
+void close(const wchar_t* reason,bool force){
+    if(!force&&!state.begun)return;
+    if(!state.closed){state.closed=true;remember(state.reason,reason);}
+    component_cancel_forward();
+    if(journals_dirty())state.deferred=true;
+}
+void record_failure(unsigned code,const wchar_t* reason){
+    if(code>=7&&!state.failure_known){
+        state.failure_known=true;state.first_failure=code;remember(state.failure_reason,reason);
+    }
+}
+void finalize(){
+    if(state.finalized||!state.terminal||state.finishing||state.operation_depth||state.action_depth||trial.releasing||dual_draining)return;
+    state.finalized=true;
+    const bool clean=!journals_dirty();
+    unsigned code=state.failure_known?state.first_failure:state.terminal_code;
+    if((state.cleanup_failed||trial.lease.faulted()||component_faulted())&&code<7)code=7;
+    if(!clean)code=8;
+    const wchar_t* reason=state.failure_known?state.failure_reason.data():state.reason.data();
+    safe_to_unload.store(clean,std::memory_order_release);status.store(code,std::memory_order_release);
+    if(log_file){fwprintf(log_file,L"hand_weapon_component_continuous_end schema=1 acquire_attempts=%llu update_attempts=%llu "
+        L"commits=%llu closed=%u drain_attempted=%u drain_result=%u cleanup_failed=%u first_failure_known=%u first_failure=%u "
+        L"dirty=%u faulted=%u safe_to_unload=%u single_interval=1 hand_restore_each_tick=1 component_restore_at_close=1 "
+        L"consumer_proved=0\n",state.acquire_attempts,state.update_attempts,state.commits,unsigned(state.closed),
+        unsigned(state.drain_attempted),unsigned(state.last_drain_result),unsigned(state.cleanup_failed),unsigned(state.failure_known),
+        state.first_failure,unsigned(!clean),unsigned(trial.lease.faulted()||component_faulted()),unsigned(clean));fflush(log_file);}
+    if(log_file){fwprintf(log_file,L"hand_ik_stream_trial_end status=%u leases=%u restored_leases=%u "
+        L"action_yields=%u immediate_action_test=%u original_melee_seen=%u original_slot_play_seen=%u "
+        L"resumed=%u setter_calls=%u target_writes=%u "
+        L"trial_apply_mask=%u dirty=%u faulted=%u safe_to_unload=%u ownership_proved=0 reason=%ls\n",
+        code,leases.load(),trial.restored,trial.action_yields,unsigned(trial.immediate_test),
+        unsigned(trial.melee_seen),unsigned(trial.slot_play_seen),unsigned(trial.resumed),
+        trial.setter_calls,trial.target_writes,0u,unsigned(!clean),unsigned(trial.lease.faulted()),unsigned(clean),reason);
+        fflush(log_file);}
+#if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
+    if(log_file){fwprintf(log_file,L"hand_ik_continuous_session_end schema=1 leases=%u restored=%u "
+        L"recorded_leases=%u diagnostic_events=%u event_limit=%u counters_saturated=%u "
+        L"dirty=%u faulted=%u same_instance_only=1 ownership_proved=0\n",leases.load(),trial.restored,
+        trial.session.recorded_leases(),trial.session.diagnostic_events(),gears_hand_session::event_limit,
+        unsigned(counters_saturated),unsigned(!clean),unsigned(trial.lease.faulted()));fflush(log_file);}
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+    if(log_file){fwprintf(log_file,L"hand_ik_xr_stream_end fresh=%u missing=%u binding_resets=%u "
+        L"bindings=%u left_leases=%u right_leases=%u both_leases=%u "
+        L"external_frozen_native_epoch=%llu native_started_qpc=%llu "
+        L"world_handoff_supported=0 ownership_proved=0\n",
+        trial.xr_fresh,trial.xr_none,trial.xr_resets,trial.xr_binds,
+        trial.xr_masks[1],trial.xr_masks[2],trial.xr_masks[3],
+        trial.xr_start.expected_native_world_generation,trial.xr_start.native_started_qpc);
+        fflush(log_file);}
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    if(log_file){fwprintf(log_file,L"hand_ik_equipment_end equipment_phase=%u phase_changes=%u "
+        L"leases=%u dirty=%u faulted=%u ownership_proved=0\n",trial.xr_equipment_phase,
+        trial.xr_equipment_changes,leases.load(),unsigned(trial.lease.dirty()),unsigned(trial.lease.faulted()));
+        fflush(log_file);}
+#endif
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_dump_end();
+#endif
+}
+bool finish(){
+    if(state.finalized)return state.last_drain_result&&!journals_dirty()&&!state.cleanup_failed;
+    if(!state.deferred&&!state.terminal)return !journals_dirty();
+    if(state.finishing||state.operation_depth||state.action_depth||trial.releasing||dual_draining)return false;
+    state.finishing=true;
+    // Even a clean hand is not a reason to skip the retained component journal.
+    bool restored{};
+    if(state.drain_attempted)restored=state.last_drain_result;
+    else if(!journals_dirty()){
+        state.drain_attempted=true;state.last_drain_result=true;restored=true;
+    }else restored=drain_journals(L"continuous_closed_interval");
+    state.deferred=false;
+    if(!restored||trial.lease.faulted()||component_faulted()){
+        state.cleanup_failed=true;record_failure(journals_dirty()?8u:7u,L"continuous_handback_failed");
+    }
+    state.finishing=false;
+    if(state.terminal)finalize();
+    return restored&&!journals_dirty()&&!state.cleanup_failed&&!trial.lease.faulted()&&!component_faulted();
+}
+void request_terminal(unsigned code,const wchar_t* reason){
+    record_failure(code,reason);
+    if(!state.terminal){
+        state.terminal=true;state.terminal_code=code;remember(state.reason,reason);
+        trial.ended=true;trial.phase=0;requested=false;active_visible=false;
+        trial.session.end();
+    }
+    close(reason,true);state.deferred=true;
+}
+void terminal(unsigned code,const wchar_t* reason){
+    request_terminal(code,reason);
+    finish();
+}
+bool normal_tick(){
+    if(state.closed||trial.ended||stop_requested.load(std::memory_order_acquire)||
+       shutdown_requested.load(std::memory_order_acquire)||trial.lease.faulted()||component_faulted()){
+        if(!state.terminal){
+            const unsigned code=(stop_requested.load(std::memory_order_acquire)||
+                shutdown_requested.load(std::memory_order_acquire))?6u:7u;
+            end(code,L"continuous_pre_tick_closed");
+        }else{state.deferred=true;finish();}
+        return false;
+    }
+    if(state.operation_depth||trial.releasing||dual_draining){
+        end(8,L"continuous_recursive_pre_tick");return false;
+    }
+    Operation operation;
+    bool hand=true;
+    dual_draining=true;
+    {
+        component_names::Scope names_scope(true);
+        hand=restore(L"continuous_pre_tick_hand_only");
+    }
+    dual_draining=false;
+    if(!hand||trial.lease.dirty()||trial.lease.faulted())end(8,L"continuous_hand_restore_failed");
+    if(trial.ended||state.closed)return false;
+    if(component_has_interval()&&!component_owned()){
+        end(journals_dirty()?8u:7u,L"continuous_retained_component_changed");return false;
+    }
+    if(trial.ended||state.closed||trial.lease.dirty()||trial.lease.faulted()||component_faulted())return false;
+    publish_journals();return true;
+}
+PostTick::~PostTick(){
+    if(state.begun&&!state.terminal&&(state.closed||!committed))end(7,L"continuous_post_tick_without_fresh_joint_commit");
+    --state.operation_depth;
+    if(!state.operation_depth){finish();publish_journals();}
+}
+} // namespace component_continuous
+#endif
+
 bool restore(const wchar_t* reason){
     if(!trial.lease.dirty())return true;
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
@@ -845,6 +1072,10 @@ bool yield_for_equipment(const wchar_t* reason){
 #endif
         ;
     if(!used.load(std::memory_order_acquire)&&!dirty&&!faulted)return true;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(component_continuous::state.begun)
+        component_continuous::request_terminal(7,reason?reason:L"equipment_boundary");
+#endif
     // Revoke geometry and all previously issued plans before rollback, even
     // when rollback fails. Never reopen a stopped trial or its write budget.
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
@@ -890,7 +1121,18 @@ bool yield_for_equipment(const wchar_t* reason){
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
     if(!epoch_available&&!trial.ended)end(ready?7u:8u,L"xr_action_epoch_exhausted");
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    if(!restored||trial.lease.faulted()||component_faulted()){
+        component_continuous::state.cleanup_failed=true;
+        component_continuous::record_failure(ready?7u:8u,L"continuous_equipment_handback_failed");
+    }
+    // Clean attachment restoration remains admissible even after a sticky
+    // experiment fault. A busy stack is never reported as synchronous handback.
+    if(component_continuous::state.terminal)component_continuous::finish();
+    return ready&&!component_continuous::state.operation_depth&&!trial.releasing&&!dual_draining;
+#else
     return ready;
+#endif
 }
 #endif
 bool related(uptr object){
@@ -952,6 +1194,10 @@ void before_action(uptr object,uptr function
     }
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(!component_action_name(label)||!related(object))return;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    component_continuous::Action continuous_action;
+    component_continuous::request_terminal(7,label);
+#endif
 #else
     constexpr const wchar_t* actions[]={L"ServerUse",L"GrabPickup",L"ServerDictateSpecialMove",L"DoSpecialMove",
         L"EndSpecialMove",L"StartSpecialMove",L"StopSpecialMove",L"BodyStanceAnimEndNotification",L"OnAnimEnd",
@@ -1170,6 +1416,9 @@ void reset(){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(journals_dirty()||!component_reset())return;
     dual_draining=hand_writes_relinquished=false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+    component_continuous::state={};
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     component_hold::reset();
 #endif
