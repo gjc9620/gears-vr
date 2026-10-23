@@ -91,3 +91,13 @@ Astra 对超时调用顺序的诊断 `f9ef058c…d49f` 表明，不能给同一�
 根据 m 实际首次 acquisition 的严格 100ms 超时，在现有 component_cost 诊断中追加 6 类 × 4 组的固定 24 桶，覆盖 current/read 总段及原有 GetWeaponInSlot 的 Args、preflight、run/invoke 和结果检查。保留原 64 行、所有真实 getter 次数／短路／顺序、原始 Plan 与证书时间、setter 授权及恢复；没有热路径文本和额外游戏调用。统计累计到首次故障或原有 stop dump，可能跨多个 acquisition，没有独立 lease 标记；嵌套统计不可相加，run/invoke 包含现有 guards/wrappers。
 
 独立 stage 的真实 PG TU 在同 26 项配置和 /W4 /WX 下首次 object 编译通过，实际抽取计时器的 15 场景／91 检查通过。Astra 窄审 5bf582db…3e76 无阻断，root 核对三份原件／stage／复核哈希后应用。本次尚未链接新主 DLL 或采集真实引擎分段耗时；不能据此判定瓶颈或认为 100ms 问题已修。原 m、父 bundle 和默认启动器保持。证据保存在忽略的 analysis/hand-mesh-component-cost-next-20261023/。
+
+## 2026-10-23 — 分段计时的实际后台结果
+
+计时版 PG 首次链接通过（f02e9fb0…6c04），保持原 26 个配置、23 个导出；Native／XR／loader／helper 沿用。以提交 1ca7404 冻结 774 源／27 依赖／31 工件的新私有 bundle 0ee39924…0408，manifest e53eb246…06c5，未替换默认启动器。n 入口仅绑定常量和专用 build 路径，audit 同步固定实际 31 工件且保留唯一性／SHA／构建开关校验；旧整套 mock／CPU 未重跑。root 准备核对首次误把结构化 source_profile 当作整数，纠正为候选的 hand source 字段后通过；入口、prep 和旧证据未改，未因此重试游戏。
+
+n 实际 Steam 后台会话的 Native／XR 再次通过：57 个 projection layer、30 次 scene copy、约 0.621 秒有效提交；这仅是短会话功能证据。component／whole 仍失败，零 hand lease：Rotation 的 authorize 拒绝位为 1024；tick Plan 年龄 94ms，原始 stereo 源在 authorize 时已 109.0792ms。没有延长 100ms 或重锚原始证书时间。
+
+新增固定桶均有有效时钟且未饱和：28 次 current 总计 41.8484ms，13 次 read 总计 40.6419ms；二者嵌套不可相加。112 次 slot getter 的 Args／preflight／完整 run-invoke／postresult 分项分别为 0.1714／0.0401／0.1050／6.7963ms。原始 initial＋三个 snapshot 合计 15.8540ms，初段开始至末 snapshot 跨度 62.8192ms。数据支持继续减少身份／属性反复遍历，不能把真实 getter 执行体当作主要瓶颈，亦不构成 FPS 结论。
+
+失败 Stop／Shutdown 均为 0，原始 8 控制、44 字节 attachment、3 组件组逐字恢复，CallFunction／ProcessEvent 入口精确恢复；Native drain／entries restored、XR exit 0，独立确切创建时间核对原 owner／game／XR 已退出，game exit 1。8 个音频 session 静音并全部恢复，pending 0。修正后的 audit 工件／环境取证通过，保留 15 项真实交互覆盖失败。n 共 108 份证据加 seal，seal 2aea7640…ed40，root result e08025e3…5249；未重开或改写 m。下一步仅对确定的局部 metadata 重复查询做等价优化，不跳过 current/getter 或放宽授权。
