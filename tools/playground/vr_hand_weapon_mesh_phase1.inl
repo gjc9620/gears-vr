@@ -345,21 +345,14 @@ bool bridge_before_allowed(uptr object,uptr function){
     // Foreign threads cannot read the private GT state or borrow its token.
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
     if(component::consume_self(object,function))return true;
+    // Only a registered, successfully named, known non-boundary call bypasses
+    // related-object lookup. Unknown calls keep the original fallback below.
+    wchar_t passive_name[96]{};
+    if(registered(function)&&name(function,passive_name,96)&&!component_action_name(passive_name))return true;
     before_action(object,function,true);
     // Only related mutating action requests are blocked, not passive getters.
     // before_action synchronously drains/revokes its Plan for all watched names.
     if(!related(object)||!registered(function))return true;
     wchar_t label[96]{};if(!name(function,label,96))return false;
-    const wchar_t* mutations[]={L"ServerUse",L"GrabPickup",L"ServerDictateSpecialMove",L"DoSpecialMove",
-        L"EndSpecialMove",L"StartSpecialMove",L"StopSpecialMove",L"BodyStanceAnimEndNotification",L"OnAnimEnd",
-        L"PlayBodyStance",L"PlayBodyStanceByDuration",L"SetBodyStance",L"StopBodyStance",L"StopAllBodyStances",
-        L"StartMeleeAttack",L"StopMeleeAttack",L"ForceStopMeleeAttack",L"ForciblyStopMeleeAttack",
-        L"ClientStopMeleeAttack",L"MeleeAttackStarted",L"MeleeAttackEnded",L"BeginState",L"EndState",
-        L"SetAbsolute",L"SetTranslation",L"SetRotation",L"SetWeaponTemporarilyHolstered",
-        L"SetWeaponFromSlot",L"SetCurrentWeapon",L"AttachWeaponToHand",L"DetachWeapon",L"AttachWeaponToSlot",
-        L"DetachWeaponFromSlot",L"AttachComponent",L"AttachComponentToSocket",L"DetachComponent",L"DetachComponentFromSocket",
-        L"HolsterWeaponTemporarily",L"ChangedWeapon",L"ClientWeaponSet",L"ForceReload",L"Died",L"Destroyed",
-        L"PlayCustomAnim",L"PlayCustomAnimByDuration",L"StopCustomAnim"};
-    for(auto mutation:mutations)if(!wcscmp(label,mutation))return equipment_ready();
-    return true;
+    return !component_action_name(label)||equipment_ready();
 }

@@ -827,6 +827,27 @@ bool related(uptr object){
         return handik::pointer(object,L"PawnOwner",pawn)&&pawn==trial.anchor.pawn;
     return false;
 }
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+// Pure name classification only. It grants no object association or mutation.
+bool component_action_name(const wchar_t* label) noexcept {
+    constexpr const wchar_t* actions[]={
+        L"ServerUse",L"GrabPickup",L"ServerDictateSpecialMove",L"DoSpecialMove",
+        L"EndSpecialMove",L"StartSpecialMove",L"StopSpecialMove",L"BodyStanceAnimEndNotification",
+        L"OnAnimEnd",L"PlayBodyStance",L"PlayBodyStanceByDuration",L"SetBodyStance",
+        L"StopBodyStance",L"StopAllBodyStances",L"StartMeleeAttack",L"StopMeleeAttack",
+        L"ForceStopMeleeAttack",L"ForciblyStopMeleeAttack",L"ClientStopMeleeAttack",L"MeleeAttackStarted",
+        L"MeleeAttackEnded",L"BeginState",L"EndState",L"SetWeaponTemporarilyHolstered",
+        L"HolsterWeaponTemporarily",L"SetWeaponFromSlot",L"SetCurrentWeapon",L"ChangedWeapon",
+        L"ClientWeaponSet",L"AttachWeaponToHand",L"DetachWeapon",L"AttachWeaponToSlot",
+        L"DetachWeaponFromSlot",L"AttachComponent",L"AttachComponentToSocket",L"DetachComponent",
+        L"DetachComponentFromSocket",L"ForceReload",L"Died",L"Destroyed",
+        L"SetAbsolute",L"SetTranslation",L"SetRotation",L"PlayCustomAnim",
+        L"PlayCustomAnimByDuration",L"StopCustomAnim"
+    };
+    for(const auto item:actions)if(!wcscmp(item,label))return true;
+    return false;
+}
+#endif
 void before_action(uptr object,uptr function
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     ,bool owned_invoke
@@ -836,13 +857,23 @@ void before_action(uptr object,uptr function
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return;
     if((!active_visible.load(std::memory_order_acquire)&&!journals_dirty())||
-       !trial.anchored||!registered(function)||!related(object))return;
+       !trial.anchored||!registered(function))return;
 #else
     if(!active_visible.load(std::memory_order_acquire)||
        GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return;
     if(trial.releasing||!trial.anchored||!registered(function)||!related(object))return;
 #endif
-    wchar_t label[96]{};if(!name(function,label,96))return;
+    wchar_t label[96]{};
+    if(!name(function,label,96)){
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        // Unknown names retain the original related-object fallback handling.
+        (void)related(object);
+#endif
+        return;
+    }
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    if(!component_action_name(label)||!related(object))return;
+#else
     constexpr const wchar_t* actions[]={L"ServerUse",L"GrabPickup",L"ServerDictateSpecialMove",L"DoSpecialMove",
         L"EndSpecialMove",L"StartSpecialMove",L"StopSpecialMove",L"BodyStanceAnimEndNotification",L"OnAnimEnd",
         L"PlayBodyStance",L"PlayBodyStanceByDuration",L"SetBodyStance",L"StopBodyStance",L"StopAllBodyStances",
@@ -861,6 +892,7 @@ void before_action(uptr object,uptr function
         L"PlayCustomAnim",L"PlayCustomAnimByDuration",L"StopCustomAnim"};
     bool watched=false;for(const auto item:actions)if(!wcscmp(item,label)){watched=true;break;}
     if(!watched)return;
+#endif
     if(trial.phase==3&&(!wcscmp(label,L"PlayCustomAnim")||!wcscmp(label,L"PlayCustomAnimByDuration")))
         trial.slot_play_seen=true;
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)

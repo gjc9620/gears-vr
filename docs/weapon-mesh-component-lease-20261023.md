@@ -2,6 +2,16 @@
 
 此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2已进行两次购买版测试，均未进入枪体写入；现有结果只支持真实结构读取和零写入后的清理。公开手部或枪体写权限仍未授予，普通启动器未启用。
 
+## R3分类前置候选
+
+R3只修改 `vr_hand_ik_stream_trial.inl` 和 `vr_hand_weapon_mesh_phase1.inl`：共用原46个动作名，只有注册有效、名称读取成功且明确不在该集合中的调用才跳过组件关联查询。GT检查和owned invoke的一次性self token仍在最前；真实PE／CallFunction不消费token，名称未知保留原处理，InvManager切槽／完整八对象关联、失败双drain和转发前撤权均不减少。未缓存跨回调的关联结果，也未改Policy／WorldBridge／Session／100ms或任何同Plan最后写入门。
+
+Astra逐集合及两文件差异复核无阻断。实际提取入口的合成backend回归548项通过；机械换回R2两段admission后，“被动getter不产生fallback属性查询”的断言失败，rc1。staged ON Release只构建一次，实际项目为Level4／WX／EHsc／C++17，23导出与R2相同，DLL SHA `64956c118f5b36131f664016f8df8f81e2c68b4b48c4c69731580a3114c47689`。default的实际MSVC预处理输出原字节相同；combined ON／phase1 OFF只有空行及同一个失败return的花括号差异，明确窄归一化后相同，没有重复OFF/default构建。
+
+协调者核对报告、实际742项目源及16 vendor、25份支持工件、原live742和旧证据后按字节应用两源，应用后live742全部匹配真实staged编译输入；因此可复用该DLL，未再编译相同输入。报告 `analysis/hand-mesh-passive-classification-20261023/report.json` SHA `bfcecb70a96ca565a0b79db601eaa2afdab679e39007546609ff05aa35b9e94c`，应用复核 `coordinator-apply-review.json` SHA `1d94db80ffa0e06fd92b878fb1d39089a913237e32bb00c018122d5d7a002515`。构建时base为 `a8532ce12724a972730b0f56e83aca095b607fd6`，当时两份staged源与base不同；后续提交／封存必须保留这一来源事实。
+
+R3尚未运行新游戏局。这些结果支持减少无关读取及源码边界等价，不能证明b的最终拒绝只有耗时这一原因，也不能声称实际枪体跟随或写后恢复已经通过。
+
 ## R2购买版测试结果
 
 两次均使用原封存 DLL `25c9b9ed…7086ce2` 和742份源码，强制 Mute1／Behind1／ObserveOnly1，物理手柄后台输入关闭。每局有独立目录和一次性入口，没有覆盖失败回执或自动重复原版拾取／装备调用。

@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：R3仅在两处手部／枪体动作入口前移纯名称分类，成功解析的非动作getter不再做组件关联查询，共用原46动作集合；GT、一次性self token、unknown fallback、InvManager／八对象边界及双journal交还均保留，Policy／Bridge／100ms／最后授权不改。Astra窄复核无阻断，实际函数提取548检查通过，替回R2 admission的反例rc1捕获多余getter读取。staged ON严格构建一次，DLL `64956c11…4c47689`／23导出通过；default实际MSVC预处理原字节相同，combined ON／phase1 OFF仅空行与相同return花括号，窄归一化相同，故未重编这两种配置。协调者核对742源＋16vendor／25份支持工件后按字节应用两源；live742与实际编译输入完全匹配，直接复用该DLL，不重复编译同样输入。报告 `bfcecb70…b9e94c`／应用复核 `1d94db80…002515`。尚无R3实际游戏局，a／b失败及普通启动器保持原结果。
+
 2026-10-23：R2 Lancer 枪体候选两局购买版后台静音测试均未取得实际写入，原失败不改。a/PID17996 在独立基线读取器多查不存在的 `Weapon.WeaponMesh` 时停止，尚未 Start；新 b 读取器仅删除该多余查询，保留真正 `Weapon.Mesh`、八条 links 与九个 Key，38 helper／35 runner／56 audit CPU 检查通过。b/PID27712 已读取真实原枪、资源和三个 setter schema，Start0，但首次写入前授权未通过，最终以 `xr_certified_pose_rejected` 结束，手与枪均为0 leases／0 setters。38次 prewrite 表示已产生可接受 Plan，不能误称未绑定；最终 bridge rejected 的分支／包时间未记录，不能断言唯一原因。原8控件／44附件／两PG入口均保持，b 三组组件原值及完整身份亦保持；两个 Shutdown0。两局静音守护各匹配9会话，读／静音错误和待恢复均0，精确游戏退出后Guard exit0，独立CIM确认自有进程消失。a／b独立只读收尾分别20／19项通过，只证明本次失败与清理，不是枪体跟随通过；摘要 `cd6e54c2…ea3bfbf`／`22dfb6e4…7c60e39`，原receipt `26cc4852…341ceec`／`9e894c07…1ef6775`。已定位新增hook在名称分类之前对普通getter反复查询组件关联；正在独立副本缩减这项无副作用读取，不放宽100ms或动作边界，尚无修复后实测。
 
 2026-10-23：同GHW1 phase1 Lancer枪体租约适配器R2已接独立分支，默认OFF且与旧writer互斥，三个setter与手IK消费同Plan并分别重验；ended后仍可双journal排水，真实动作未交还先撤权再保留ABI转发，自有请求未清则拒绝。Astra发现并复核修复InvManager换枪关联遗漏；staged三构建／pure278／真实提取生命周期41检查及相关反例通过。live ON在新目录仅编译一次，23导出与C1相同、4种拒配通过，742源前后一致；报告 `e32fb274…bf2d917`，DLL `25c9b9ed…7086ce2`。尚未运行此枪体候选或验证实际setter／跨Tick可见跟随，未启用普通启动器；详见 [组件适配器记录](../../weapon-mesh-component-lease-20261023.md)。
