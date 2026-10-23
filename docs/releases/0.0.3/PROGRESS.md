@@ -280,3 +280,26 @@ Astra 独立诊断 8d0bbf1f…884c 以完整授权 NS 与 tail QPC 夹取确认�
 实际原完整MeshPreflight.snapshot与既有内存fixture的首轮17类／60检查通过，覆盖churn后成功、持续失败、typed／identity／link拒绝、预算不足、晚结果与partial丢弃。producer078a3a31…0c3c、Astra177f5b74…1634通过；root独立AST核对新增一个inline helper、仅run函数改变，其余53既有定义保持，包括Budget创建点、prepare／verify、原raw比较及清理helpers。root第一次重核历史输入因刚应用的独立XR C++源码增量而拒绝，已保留该只读guard失败；改按旧冻结源与已批准应用证明核对该项，所有Python／helper／runner实际输入仍匹配，没有重跑旧suite或改写producer历史。
 
 y的runner e50712bc…40dc、audit4e2be1f6…fde1、prep69c06d71…355e已绑定并核209依赖／26复制／24实际模块；绑定阶段55个runner与25个audit定义逐一保持stage AST。新的后台等待程序已启动，要求三次连续空闲后才进入一次性测试，并再次核原prep；保持mute／behind／observe-only、禁实体后台手柄和无自动重试。实际观察到另一组game／launcher／XR／audio仍活动，本轮准备核验时尚未启动自己的游戏，未干预外部进程。此处记录的是准备与活等待，不是y运行通过；之后以新receipt和封存为准。
+## 2026-10-24 — 手恢复候选实际运行结束，持续持枪协议转入离线实现
+
+已准备的 y 一次性入口在连续三次空闲观察后运行一次购买版，waiter 正常结束并返回真实失败码 1。保持静音、窗口置后、tiny-output 只观察和实体手柄后台输入关闭。双手完整 lease／restore 各 1、setter8；枪体完整 acquired=1、restored=2、setter10。第二次尝试只写入 Absolute 与 Translation，在 Rotation/group4 实际调用前拒绝，随后恢复两组，故恢复次数多于完整接管次数；不得以 acquired==restored 为原协议不变量。终局 hand faulted=0、component faulted=1，dirty／owned／revoked 均0、safe_to_unload=1，故障与清理结果分别保留。
+
+actual terminal 为 tick2485／site0／attempt2／serial35／sequence829／revision28。其 postflush 完整授权仍为 PASS，checked8191／rejected0；随后组件 group4 ordinal441 以相同原 ticket、Plan、stereo／input 时间关联到该帧，而非仅凭 pinned first_failure 标签归因。失败授权 known127／checked2047／rejected1024，commit 时 stereo 源龄102.1423ms、input102.1273ms；MS ticket年龄94ms、截止仍余6ms，后续 policy 未执行。该 Tick pre→drain34.6887ms，其中本局唯一手恢复span5.7297ms，其余28.9590ms只是剩余恢复窗口；drain→post1.9459ms、post→reader时钟6.0702ms。postflush commit 时原 stereo源龄59.5865ms，至 group4 commit 又过42.5558ms。保留原始100ms、时钟、Plan、getter、guards及恢复顺序，不以跨局差值宣称确定节省。
+
+退出后新观察 helper 在第1次完整快照即成功，三组raw组件、8控制、44字节挂接和两个入口独立恢复相符；没有执行第2／3次快照，不将本局写成瞬态重试恢复实证，也不回填x的未知快照。正式审计仍有11项失败，component_protocol先因未完成第二lease的样本不满足完整录制协议拒绝，component_rows未生成，几何样本数及误差仍unknown。一次成功的later-Tick日志pair可供独立数学诊断，但不能升级正式几何、持续运动、收枪与取回或全武器验收。
+
+Native／XR子会话通过81层、58次场景拷贝、跨度0.8871504秒、最大提交间隔14.7458ms；left history各阶段1、失败0，仅记录提交与生命周期，不作FPS／GPU图像／头显验收。Stop／Shutdown均0，确切owner23108／game43000／XR48368以出生身份独立检查退出，game Wait0／exit1；8音频session恢复，pending／read_failed／mute_failed均0。root collector首次执行通过并封存105证据加seal，逐项hash／size／集合闭包核对，seal e1975344…b05b、result79a0f8f4…5e7eb、原receipt7711fb45…25ab。x及此前封存不改写，未重复游戏或旧suite，默认入口未安装。
+
+Astra独立时序报告d8a7fefb…1640核对封存及9份冻结源码，明确第二次tail／第二次hand lease均未执行，checks11／12短路保持unknown。几何只读复核901aad27…27e3仅从第一组written→pre_restore的Tick2486→2487重算：位置残差0.000305182原始单位、对未量化D的完整旋转残差0.01398066°；actual raw C=[-1367,-5062,988]，资产O=[0,-16384,0]。这不是正式审计通过；第二次只有两组写入的partial行，枪矩阵与第一组pre_restore逐字相同，不能算新几何响应。两份外部报告均核105成员及seal，未改封存或重跑正式审计。
+
+当前继续实现独立的continuous component owner：首次保存原始journal，逐帧用新的不可变frame授权owned→owned更新，取消／失追／动作时恢复。它不会跳过旧clean-only policy伪造干净状态；forward Backend必须在实际setter前调用新的四参permit，不能用旧三参setter的提前授权替代。部分写入、混合／未知字节、ABA、递归取消与撤权均需有限CPU验证，之后再做受控跨Tick持有实证。此时仍只有离线stage，尚未接入生产、构建新PG或运行持有试验。
+
+## 2026-10-24 — 持续组件协议及真实类测试入库，运行适配仍待验证
+
+新增 `tools/vr-common/weapon_component_continuous_lease.h`，首次保存原始字节后允许owned→owned更新，每次独立复制输入frame和目标值；单独记录pending／revoked与forward停止状态。每次更新有group0准入，实际变更的组分别使用四参Backend和单次final permit，三参接口仅用于恢复。部分setter返回false时按真实回读区分未写、完整写或混合／未知，撤权后旧值回现不会恢复写权限；cancel保留可认证的恢复权，relinquish保留未清journal，reset拒绝dirty／busy。不会把仍持有的组件伪装成旧policy的clean。
+
+真实新类的有限CPU fixture首次strict MSVC／C++17编译和唯一执行通过30场景／1326检查；输入别名变更、逐组拒绝、三种部分写、未知身份／读取、已观察ABA、取消／撤权／递归、permit缺失／重复和恢复均有实际类场景。producer3f9924cd…0054，header3b1d9bf3…60b2，test343c0d57…6568，run.log d5e906f1…09f8。Astra独立窄审00e8e39d…5a00通过、无阻断，核对4份编译输入逐字一致，没有复跑CPU。generic C++不能证明真实setter物理位置或深拷贝输入，尚无engine Backend；未观察的write-and-return ABA仍不可仅凭key／value检出，no-change准入亦不证明返回全过程满足100ms或持有字段安全。
+
+root核producer21份支持工件、Astra pins及原冻结777源，按原raw字节加入header与同字节测试，CMake只新增对应target和strict选项两行，原776源保持。工作源现779项，before6cf1b603…5435、applied0c6583c2…9dd1；新增header未被运行代码include，旧lease／policy／PG／Native／XR／默认入口保持，没有重建或重复旧suite。该次入库只提供可供后续适配的协议代码，不等于游戏内持续持枪、性能或头显通过。
+
+同时对已有全量KB作有界查询，核对4份保存脚本：instant hit存在GetFireModeDamage→原int转换→TakeDamage的候选边界，Gnasher有自己的transient damage覆盖，投射物另走spawn／Init。来源注记4d8fcef1…718a仅是历史导出候选，含未解决token／type标记；未打开IDA或新增反编译，没有认证当前Result ABI、舍入、投射物伤害入口或实际0.7倍结算。单双手新规则继续标为设计确认、运行接线待做。
