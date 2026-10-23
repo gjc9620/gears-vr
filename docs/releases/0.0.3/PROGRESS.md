@@ -43,3 +43,13 @@ Astra 对 Native／XR 源码与两份 CMake 的双向增量保留窄审通过，
 私有单眼矩阵转换及单 source 准备部件通过独立窄审，具体行为见[武器交互设计](../../weapon-6dof-interaction-design-20261022.md)。单眼转换首个 CPU 构建／运行完成 114 场景、22,204 检查、3,040 个独立世界点，并对实际旧 pair 实现作 143 次返回／全输出对照；单 source 的合成构造／所有权／回收检查为 30 场景、978 检查。前者报告 `df15bed3…d02f`／Astra `fc412c68…7f02`／root `c7032782…6426`，后者 `95235b23…7145`／Astra `62bec571…dc49`／root `6eff862a…74fa`，分别保存在忽略的 `analysis/longshot-single-eye-matrices-20261023/` 和 `analysis/longshot-single-source-20261023/`。
 
 单眼补丁私有重建的 CRLF 字节证明失败、协调者把虚拟输入清单的根目录误读导致的只读核对失败、单 source 构建后的 PowerShell 元数据写入错误均保留，成功 CPU 程序未因此重编／重跑。两部件均未应用到 Native；真实 state／family／目标生命周期、原生间接资源析构语义、单 view 提交、GPU 与镜片画面仍待实现和验证，不构成真实瞄准镜完成。
+
+## 2026-10-23 — 合并后私有候选重建及测试排队
+
+以合并提交 `b83909f5929d236a01ac6d770e15545b34dcc30c` 新冻结 774 个 authored 输入，另存 18 个 MinHook 与 9 个 OpenXR SDK 依赖。Native 继承发布版全部 72 项 GEARS 配置后叠加 free-hand observer／continuity，XR 继承发布版 3 项后叠加 continuity，Playground 保留原 R8 的 26 项；没有带入 Longshot 私有 stage。三个独立组件各首次构建通过，Native `08212497…76e4f`、XR `0463e75f…32eff`、PG `88173598…aaf79`，loader 保持 `66946ea6…32df`。14 个必要纯 CPU 程序各运行一次通过，PG 23 个实际导出与旧 R8 名称一致；尚未执行完整 CaptureSelfTest／GPU 或游戏会话。封尾路径表示检查及旧导出 JSON 格式比较的修正记录保留，没有重编成功产物或重复 CPU。
+
+协调者核对 774 源／27 依赖、实际编译项目和缓存、19 个直接构建产物及 PE 导出后，按字节复制为新私有 bundle `47f9ef19…26495`，manifest `fb9e8b54…1821a`，共 26 份运行／来源工件。只为受限预留接口另置专用 `tools/playground/build-hand-mesh-post003/Release` DLL，原构建到保存名称仅改 basename。普通启动器、默认 Native／XR／PG 和公开包未安装或替换。原始构建、root 冻结核对在忽略的 `analysis/hand-mesh-post003-candidate-20261023/`。
+
+新的 k 入口经 Astra 发现并修正两项接线问题：完整 reservation 回执应从生产者实际 `WORK/analysis/runtime` 读取，并在得到确切 birth identity 后就确定真实 PG 日志路径，以便 attach／Enable／arena 早期失败也能在游戏退出后归档。修前失败报告 `c25643c4…780b1` 保留，修后窄审 `4aa728c5…09067` 通过。root 只绑定常量且逐函数／class AST 不变；最终 runner `b53e8b71…4f18b`、audit `00a9feef…14131`，绑定后的 runner＋idle 52 项及 audit 58 个纯 mock 检查通过。这些 mock 结果不构成实际手／枪或整局通过。
+
+新 `analysis/hand-mesh-runtime-1023k/prep.json` 摘要 `738f5fde…096d1` 已复核，绑定 210 依赖、24 份复制、24 个实际加载模块和 8 个 helper 来源，保留 source0、R2／L2 模式关闭、禁物理后台手柄、behind／observe-only／mute。当前发现另一局游戏及其 launcher／XR／audio worker 正在运行，未干预。已排队一项自有后台等待（初始 owner PID 44968），要求连续三次空闲、再次校验同一 prep 后才进入单次运行；源码或配置漂移会拒绝，不自动重试已进入的会话。排队时本分支尚未启动新游戏／模拟器；实际结果以后续 receipt 为准。等待状态及可取消标记仅在该忽略目录，未形成新的发布或头显验收。
