@@ -48,12 +48,20 @@ bool name_value(const wchar_t* wanted,Name& out){
        names.capacity>4000000)return false;
     const auto chars=wcslen(wanted)+1;
     if(chars<2||chars>64)return false;
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+    component_cost::Scan cost_scan(names.count);
+#endif
     for(int i=0;i<names.count;++i){
         const auto entry=get<uptr>(names.data+size_t(i)*8);
         if(!entry||get<unsigned>(entry)!=unsigned(i))continue;
         wchar_t value[64]{};
+#if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+        if(copy(value,entry+20,chars*sizeof(wchar_t))&&
+           !std::memcmp(value,wanted,chars*sizeof(wchar_t))){cost_scan.hit(i);out={unsigned(i),0};return true;}
+#else
         if(copy(value,entry+20,chars*sizeof(wchar_t))&&
            !std::memcmp(value,wanted,chars*sizeof(wchar_t))){out={unsigned(i),0};return true;}
+#endif
     }
     return false;
 }

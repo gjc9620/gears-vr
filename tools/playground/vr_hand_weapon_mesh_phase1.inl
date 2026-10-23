@@ -233,7 +233,8 @@ struct Forward {
         Snapshot hand{};
         if(!gate(Stage::prepare_ended,!trial.ended)||!gate(Stage::prepare_phase,trial.xr_equipment_phase==1)||
            !gate(Stage::prepare_epoch,trial.epoch==plan.context.action_epoch)||!gate(Stage::prepare_tick,trial.tick_epoch==trial.epoch)||
-           !gate(Stage::prepare_snapshot,handik::snapshot(key.objects[2].address,hand))||
+           !gate(Stage::prepare_snapshot,component_cost::snapshot(component_trace::state.meta.group,
+               component_trace::state.meta.forward,lease.faulted(),[&](){return handik::snapshot(key.objects[2].address,hand);}))||
            !gate(Stage::prepare_identity,xr_identity(hand))||!gate(Stage::prepare_idle,hand.action_idle)||
            !gate(Stage::prepare_baseline,handik::baseline_strengths(hand))||!gate(Stage::prepare_quiet,slots_quiet(hand))||
            !gate(Stage::prepare_equipment,xr_equipment_gate(hand,1,L"component_setter",EquipmentTiming::prewrite_phase)))return false;
@@ -414,7 +415,7 @@ bool component_restore(){
 }
 bool component_reset(){
     if(!component::lease.reset())return false;
-    component_trace::reset();
+    component_trace::reset();component_cost::reset();
     component::mount.reset();component::fixed_key={};component::key_known=component::recorded=false;
     component::terminal_dumped=component::terminal_clean_dumped=false;
     component::acquired=component::restored=component::setter_calls=component::relinquished=0;
@@ -422,6 +423,7 @@ bool component_reset(){
 }
 void component_dump_end(){
     if(!trial.ended||!log_file)return;
+    component_cost::dump(!journals_dirty());
     component_trace::DumpAtExit trace_dump;
     const bool clean=!component_dirty();
     if(component::terminal_dumped&&(!clean||component::terminal_clean_dumped))return;
@@ -437,6 +439,8 @@ void component_dump_end(){
 bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorldFrame const& frame,
                      Snapshot const& hand,unsigned mask,unsigned lease_number){
     if(trial.xr_equipment_phase!=1||!(mask&2))return !component_dirty();
+    component_cost::begin(plan.ticket.sequence,plan.revision,lease_number);
+    component_cost::Span initial_cost(component_cost::Kind::initial,0,!component::lease.faulted());
     component_trace::begin();component_trace::Scope trace_scope;
     component_trace::gate(component_trace::Stage::acquire_enter,true);
     component::Key key{};
@@ -474,6 +478,7 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
 #else
     component::recorded=true;
 #endif
+    initial_cost.finish(true);
     const bool ok=component::lease.acquire(key,wanted,backend);
     component_trace::gate(component_trace::Stage::acquire_result,ok);
     if(ok)count_add(component::acquired);

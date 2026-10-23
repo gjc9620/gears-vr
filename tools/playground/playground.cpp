@@ -167,6 +167,116 @@ bool text(uptr from,wchar_t* out,size_t count){
     out[count-1]=0;return false;
 }
 } // namespace component_names
+// Three nested diagnostic spans only. These clocks and results never grant
+// authority. Rows reserve bounded storage; no diagnostic text is written here.
+namespace component_cost {
+enum class Kind:unsigned {initial,snapshot,name_scan};
+constexpr unsigned capacity=64;
+struct Row {
+    Kind kind{};unsigned group{},lease{};
+    std::uint64_t sequence{},revision{},begin{},finish{};
+    int names_count{},hit_index{};
+    bool closed{},clock_known{},result_known{},result{},count_known{},hit_known{};
+};
+struct State {
+    std::array<Row,capacity> rows{};
+    unsigned count{},open{},initial_open{},lease{};
+    std::uint64_t frequency{},sequence{},revision{};
+    bool enabled{},pending{},frozen{},full{},dumped{};
+};
+State state;
+thread_local bool invoke_paused{},snapshot_owner{};
+thread_local unsigned snapshot_group{};
+std::uint64_t stamp() noexcept {
+    LARGE_INTEGER value{};
+    return QueryPerformanceCounter(&value)&&value.QuadPart>0?std::uint64_t(value.QuadPart):0;
+}
+void reset(){state={};snapshot_owner=invoke_paused=false;snapshot_group=0;}
+void begin(std::uint64_t sequence,std::uint64_t revision,unsigned lease){
+    if(invoke_paused||state.pending||state.frozen||state.dumped||state.open)return;
+    if(!state.enabled){
+        state.enabled=true;LARGE_INTEGER frequency{};
+        if(QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0)state.frequency=std::uint64_t(frequency.QuadPart);
+    }
+    state.sequence=sequence;state.revision=revision;state.lease=lease;
+}
+void freeze_if_closed(){if(state.pending&&!state.open)state.frozen=true;}
+void failure(bool forward,bool faulted){
+    if(invoke_paused||faulted||(!forward&&!state.initial_open)||!state.enabled||state.pending||state.frozen||state.dumped)return;
+    state.pending=true;freeze_if_closed();
+}
+struct Span {
+    unsigned index=capacity;
+    explicit Span(Kind kind,unsigned group,bool eligible=true){
+        // Callers on other threads have no active snapshot owner. Return before
+        // touching the game-thread-only aggregate when the owner is absent.
+        if(!eligible)return;
+        if(invoke_paused||!state.enabled||state.pending||state.frozen||state.dumped)return;
+        if(state.count==capacity){state.full=true;return;}
+        index=state.count++;
+        auto& row=state.rows[index];row.kind=kind;row.group=group;row.lease=state.lease;
+        row.sequence=state.sequence;row.revision=state.revision;row.begin=stamp();
+        ++state.open;if(kind==Kind::initial)++state.initial_open;
+    }
+    void close(bool result_known,bool result){
+        if(index==capacity)return;
+        auto& row=state.rows[index];row.finish=stamp();row.closed=true;
+        row.clock_known=state.frequency&&row.begin&&row.finish>=row.begin;
+        row.result_known=result_known;row.result=result;
+        --state.open;if(row.kind==Kind::initial)--state.initial_open;
+        index=capacity;freeze_if_closed();
+    }
+    void finish(bool result){close(true,result);}
+    ~Span(){close(false,false);}
+    Span(Span const&)=delete;Span& operator=(Span const&)=delete;
+};
+struct InvokePause {
+    bool saved;
+    InvokePause():saved(invoke_paused){invoke_paused=true;}
+    ~InvokePause(){invoke_paused=saved;}
+    InvokePause(InvokePause const&)=delete;InvokePause& operator=(InvokePause const&)=delete;
+};
+struct SnapshotOwner {
+    bool saved;unsigned saved_group;
+    SnapshotOwner(unsigned group,bool eligible):saved(snapshot_owner),saved_group(snapshot_group){
+        snapshot_owner=eligible&&!invoke_paused;snapshot_group=snapshot_owner?group:0;
+    }
+    ~SnapshotOwner(){snapshot_owner=saved;snapshot_group=saved_group;}
+    SnapshotOwner(SnapshotOwner const&)=delete;SnapshotOwner& operator=(SnapshotOwner const&)=delete;
+};
+template<class F>bool snapshot(unsigned group,bool forward,bool faulted,F&& call){
+    SnapshotOwner owner(group,forward&&!faulted);
+    Span span(Kind::snapshot,group,snapshot_owner);
+    const bool result=call();span.finish(result);return result;
+}
+struct Scan {
+    Span span;bool found{};
+    explicit Scan(int count):span(Kind::name_scan,snapshot_group,snapshot_owner&&!invoke_paused){
+        if(span.index!=capacity){auto& row=state.rows[span.index];row.count_known=true;row.names_count=count;}
+    }
+    void hit(int index){
+        found=true;
+        if(span.index!=capacity){auto& row=state.rows[span.index];row.hit_known=true;row.hit_index=index;}
+    }
+    ~Scan(){span.finish(found);}
+    Scan(Scan const&)=delete;Scan& operator=(Scan const&)=delete;
+};
+void dump(bool clean){
+    if(!clean||invoke_paused||!state.enabled||state.dumped||state.open||!log_file)return;
+    state.dumped=true;
+    fwprintf(log_file,L"hand_weapon_component_cost_begin schema=1 capacity=%u count=%u frequency=%llu "
+        L"pending=%u frozen=%u full=%u nested_not_additive=1 extra_getters=0\n",capacity,state.count,state.frequency,
+        unsigned(state.pending),unsigned(state.frozen),unsigned(state.full));
+    for(unsigned i=0;i<state.count;++i){const auto& row=state.rows[i];
+        fwprintf(log_file,L"hand_weapon_component_cost schema=1 row=%u kind=%u group=%u lease=%u sequence=%llu revision=%llu "
+            L"begin_qpc=%llu finish_qpc=%llu closed=%u clock_known=%u result_known=%u result=%u "
+            L"names_count_known=%u names_count=%d hit_known=%u hit_index=%d\n",i,unsigned(row.kind),row.group,row.lease,
+            row.sequence,row.revision,row.begin,row.finish,unsigned(row.closed),unsigned(row.clock_known),
+            unsigned(row.result_known),unsigned(row.result),unsigned(row.count_known),row.names_count,unsigned(row.hit_known),row.hit_index);
+    }
+    fwprintf(log_file,L"hand_weapon_component_cost_end schema=1\n");fflush(log_file);
+}
+} // namespace component_cost
 #endif
 bool name(uptr object,wchar_t* out,size_t count){
     if(!object||!count)return false;
@@ -266,6 +376,7 @@ bool invoke_engine(Request* r){
 bool invoke(Request* r){
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     component_names::Scope names_scope(false);
+    component_cost::InvokePause cost_pause;
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)

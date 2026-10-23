@@ -62,6 +62,7 @@ void add(Row row){
     if(!state.enabled||state.dumped)return;
     if(state.seen!=UINT64_MAX)++state.seen;else state.counter_saturated=true;
     row.ordinal=state.seen;row.meta=state.meta;masks(row);
+    if(!row.passed)component_cost::failure(row.meta.forward,row.faulted);
     if(!row.passed&&!state.first_known){state.rows[0]=row;state.first_known=true;}
     state.rows[1+state.next]=row;state.next=(state.next+1)%63;
     if(state.count<63)++state.count;

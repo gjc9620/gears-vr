@@ -2,6 +2,16 @@
 
 此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3至R6的c／d／e／f局取得部分组件更新与交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
 
+## R7三类分项计时候选
+
+R7仅新增诊断，未作第三次解析优化。固定64行记录component_apply在phase／右手早返后的初始块，正常路径止于lease.acquire之前；原Forward.prepare短路位置中的snapshot整体；该snapshot内左右手name_value扫描。扫描只带已有names.count与命中index／结果，不逐entry计时或新增getter。记录lease／sequence／revision／group及clock known，snapshot与扫描为inclusive嵌套项，不能相加当总耗时。
+
+invoke全段暂停子owner，fault／null不采前向样本；首次合格失败先置pending，已开span闭合后才frozen，避免early return或失败snapshot丢失退栈计时。QPC／QPF失败、零／负值与倒退仅记unknown，容量满只停诊断，不改变原返回、资格、时钟权限或恢复。终端要求双journal clean且open0，沿原drain／preTick重试，在旧terminal flag早返前只输出一次；热路径不写文本或flush。Name扫描原copy／memcmp条件、原engine／Stop调用及100ms短路保持。
+
+实际wrapper提取59断言13场景、独立actual helper合成时钟163断言18场景均首编首跑成功，Astra源码窄审无阻断。PG ON唯一严格W4／WX／EHsc／C++17构建成功，23导出与R6相同；DLL SHA `ba40192d041168f15a54fc5afc4e9ddacb738bb85cdc59386cee10afec8fe1b7`。OFF／default两完整EP仅空白行不同，其余行bytes相等，未重编这两配置，未重跑R6页／租约／动态套。真实build base `2327f5259df8a61f82effaaadf6a82b46bed2e47`，742项目源／16vendor构建前后不变。
+
+协调者核对60支持工件、742源／16vendor、实际MSVC工程／路径／PE导出及旧f的60份证据后应用4源；当前742与成功编译输入按字节相同，直接复用staged DLL，无应用后重编。报告SHA `b711a32ad11ff1cb02c9aa333ab95500cfabff057c9e0b3b1bc934221c48f46e`，Astra review `2f0f10f5bbd10d15b7bf6eee893557dea36926418d979ff30cce9d8b12b9ffa4`，应用复核 `1762a05302f77788aa9cd495a89ecb73388ff90fb3ac75fd3331915ff8dc0fe2`，均在ignored `analysis/hand-component-timing-20261023/`。尚无本轮实际计时、性能或枪体跟随通过结论；旧f失败、Native／XR、公开写权限与普通启动器保持。
+
 ## R6购买版f：仍超期，下一步先分项计时
 
 R6封存 `analysis/hand-mesh-phase1-r6-candidates/c7faadd2…350aa2b/`含742源／161实际工件，PG `8079a0d3…5cefdbb8`、manifest SHA `08c4bf810c1ca57b8421396da579b52843616aad93e88ffd98739c88965986c6`；build base41d7c96与应用commit `4d00626`分别保留，没有应用后重编。f入口仅OUT／TAG与候选pins相对e改变，工件数仍161；两项受影响入口检查通过。Popen0准备191依赖／26复制／24模块，186共用依赖及24模块与e同源同SHA，15s／256／3s reserve、Mute1／Behind1／ObserveOnly1与物理后台输入关闭不变。
