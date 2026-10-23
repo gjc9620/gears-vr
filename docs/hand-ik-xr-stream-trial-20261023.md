@@ -28,6 +28,14 @@
 
 私有验证报告为 `analysis/hand-continuous-session-20261023/report.json`，SHA256 `27be235f1b603dee79f8139367fa87649cae37c065396e3d107bd1198a361e6c`；ON DLL `172f215325a916a007d01635b1592a64648c38de57c3f7e73ca681dee6937ec3`，联合OFF `31076d2e02251850f567712ecf3082015ed146f83ea68d6c079465e5e3438f34`，默认 `059746ddf5200fc9d2bf35a52fdb9b1edefd6b131b92b47d0193cfe1f344af7e`。报告自身SHA只在外部记录，不放入自身hash表；14份记录hash和源码／产物独立回读通过。旧h及旧CPU报告不改写。本候选尚未运行新游戏局；h的有限组件通过不能代替越过录制预算后的实际持续运行、可见手部或头显验收。
 
+### 持续运行候选的配套封存与准备（2026-10-23）
+
+集成组件租约测试目标后的持续候选另行封存为 `analysis/hand-continuous-candidates/7360f78c06442b4a2077fde94c7df553974312e2c89dc595e57588c5b79344dc/`，741份项目源码、78份工件及保存副本已逐项核对。PG为 `425f6868aef6d05b24ce153172386c8bb15f658348ad6950f4867f23443e8a0a`，manifest为 `c8ad6f48b9c97a41ccc9e78803c7d977f1f732943c4269f0bad5453a64c1e981`；Native／XR／loader仍为既有source 0配套身份，不以h的有限运行充当新候选验收。
+
+新的一次性运行目录 `analysis/hand-continuous-runtime-1023a/` 已完成29项runner边界检查、46项审计CPU检查，以及Popen调用数为0的准备，189份依赖与26份工件副本均已认证。准备SHA为 `76f4b387ee45387acd12ca8389c3fd5757bdf51b59b67abc015686f0a18ac9cc`。只读审阅修正了晚段游标上界，并让占用检查识别尚在等待的avp测试驱动；其他会话测试未结束前不启动本轮游戏。当前仍没有这一持续候选的实际游戏结果。
+
+审计范围固定为 `persistent_loop_and_cleanup`：首段仍要求完整逐lease几何；持续性另需首次真实写入的日志毫秒锚和观察后的单调锚均超过17秒、实际lease数超过256，第四次装备ACK之后再观察至少四次新lease，以及终端计数、字段和进程清理。晚段Status不充当晚段逐手几何、final-write源NS或同时dirty证明；正常路径只有一次joint Shutdown，不能写成执行过独立HandStop。外部测试总预算60秒，不为取得覆盖延长。后台三项Mute1／Behind1／ObserveOnly1及游戏精确退出后才关闭Guard的顺序保留，普通启动器声音设置不变。
+
 ### 后续 GHW1 连续性候选（2026-10-23，默认关闭）
 
 运行前更正：当前连续host的wire profile固定为runtime source 0，并拒绝simulator-operator模式；`GEARS_PLAYGROUND_VR_R2_SIM_TEST` 是另一路可选调试入口，不能据此选择本通道来源。提交 `911c172` 将PG初始化固定为 `StereoSource::RuntimeTracked`；真实初始化块提取回归在该宏为1时验证source 0 baseline→binding和source 1拒绝。来源0只描述wire profile，不能据此称为物理跟踪。新的PG三种构建、11项组件检查、4项配置拒绝、31项真实提交helper场景与两项删guard变异检查通过。737份源码与新PG已配套封存为 `analysis/hand-continuity-candidates/222a9b2f5538a42777003485c6c6d9289be7bd4a74e2efdd69d011204467bae2/`，基线 `911c172`，manifest SHA256 `19af0b187e5cdcf4984e87f144aee5d0293d2ae71a43b5215e5953ed4b900ebd`；PG SHA256 `fcaeca76e1e680d0620ed7398936f5627f7a473f4419188b79a60eecc5e44e6d`，Native／XR分别保持 `ecd30c01…`／`886362d5…`。旧b28封存不改写，后续h必须使用新source 0封存。

@@ -2,6 +2,8 @@
 
 ## 武器 6DoF 独立分支（2026-10-22）
 
+2026-10-23：持续双手候选已配套封存741份源码和78份工件，PG `425f6868…43e8a0a`／manifest `c8ad6f48…c1e981`，Native／XR／loader保持既有source 0身份。新一次性运行准备通过29项runner与46项审计CPU检查、189依赖认证及Popen0；准备SHA `76f4b387…18ac9cc`，尚未启动本轮游戏，等待另一会话测试自然退出。审计只验证首窗几何、跨过17秒及256次的持续循环和完整清理，不补造晚段几何、final-write NS或独立HandStop覆盖；后台静音与精确游戏退出后关闭Guard保持。详见 [持续候选准备](../../hand-ik-xr-stream-trial-20261023.md)。
+
 2026-10-23：枪体组件可恢复租约新增纯C++候选，分组三absolute flags／Translation12／Rotation12，完整Key与expected重验、失败后读回、foreign／未知身份撤权、只读原值清账、sticky fault与其它owned组独立恢复。Astra发现并复核修复了两个公开getter作为wanted时的自身别名清零问题；修正版268项CPU断言、CTest1/1及两旧顺序反例通过，旧72文件保留。新CMake测试目标另在全新持续ON构建中执行一次、268检查通过，9份源码快照及旧C1工件核对无变化；集成报告 `ac7f10c2…0b4f59`，新持续DLL `425f6868…43e8a0a`，尚未运行新游戏。该组件不管理附件44字节，也未接游戏、射线或左手副握；combined与旧mesh-follow仍互斥。详情见 [枪体组件租约记录](../../weapon-mesh-component-lease-20261023.md)。
 
 2026-10-23：持续双手源码候选已完成CPU验证，新增默认OFF的 `GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL`，要求certified＋combined。它把同一次固定实例Start的寿命与15秒／256次诊断预算分开，不新增writer或改变304-byte Start；每张Plan仍由三个原时间戳checked加100ms后的最小截止时间约束，全部最后提交检查、逐Tick恢复、动作交还及身份失效处理保留。热事件另限1024，诊断停止不停止认证；权威计数耗尽终止、统计饱和、Status计数钳位。ON／联合OFF／普通默认三构建、旧有限helper31场景／持续21场景／真实yield与phase块4场景、新Session及原Policy／Lease／Start／绑定检查通过；两种缺前置拒配通过。Astra发现的clean-but-ended后被资格分支覆盖为等待状态已修复并复核。验证报告 `analysis/hand-continuous-session-20261023/report.json` SHA `27be235f…361e6c`，ON DLL `172f2153…937ec3`。本候选尚未运行新游戏局，不能以h的限时结果代替持续运行验收；公开ownership／apply和普通启动器不变。
