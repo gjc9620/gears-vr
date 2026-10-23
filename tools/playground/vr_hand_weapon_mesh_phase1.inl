@@ -444,31 +444,35 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
     component_trace::begin();component_trace::Scope trace_scope;
     component_trace::gate(component_trace::Stage::acquire_enter,true);
     component::Key key{};
-    if(!component_trace::gate(component_trace::Stage::capture,component::capture(hand,key))||
-       !component_trace::gate(component_trace::Stage::component_clean,!component_dirty())||
-       !component_trace::gate(component_trace::Stage::component_not_faulted,!component_faulted()))return false;
-    if(component::key_known&&!component_trace::gate(component_trace::Stage::key_match,key==component::fixed_key))return false;
-    component::fixed_key=key;component::key_known=true;
-    std::array<float,16> matrix{};int tick{};
-    if(!component_trace::gate(component_trace::Stage::world,component::world(key,matrix,tick)))return false;
-    if(!component::mount.bound()&&!component_trace::gate(component_trace::Stage::mount_bind,component::mount.bind(frame.right,matrix,false)))return false;
-    gears_vr::Viewpoint pose{};
-    if(!component_trace::gate(component_trace::Stage::mount_solve,component::mount.solve(frame.right,pose)))return false;
-    component::State before{};
-    if(!component_trace::gate(component_trace::Stage::initial_read,component::read(key,before,true)))return false;
-    auto wanted=before.value;wanted.absolute[0]=wanted.absolute[1]=true;
-    std::array<uptr,3> flag_addresses{};std::array<unsigned,3> flag_masks{};
-    if(!component_trace::gate(component_trace::Stage::absolute_storage,
-        component::absolute_storage(key,component::baseline_absolute_storage,&flag_addresses,&flag_masks,true)))return false;
-    component::target_absolute_storage=component::baseline_absolute_storage;
-    for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)if(flag_addresses[i]==flag_addresses[j]){
-        auto& bits=component::target_absolute_storage[i];
-        bits=wanted.absolute[j]?bits|flag_masks[j]:bits&~flag_masks[j];
+    component::Value wanted{};
+    {
+        component_names::Scope names_scope(!component::lease.faulted());
+        if(!component_trace::gate(component_trace::Stage::capture,component::capture(hand,key))||
+           !component_trace::gate(component_trace::Stage::component_clean,!component_dirty())||
+           !component_trace::gate(component_trace::Stage::component_not_faulted,!component_faulted()))return false;
+        if(component::key_known&&!component_trace::gate(component_trace::Stage::key_match,key==component::fixed_key))return false;
+        component::fixed_key=key;component::key_known=true;
+        std::array<float,16> matrix{};int tick{};
+        if(!component_trace::gate(component_trace::Stage::world,component::world(key,matrix,tick)))return false;
+        if(!component::mount.bound()&&!component_trace::gate(component_trace::Stage::mount_bind,component::mount.bind(frame.right,matrix,false)))return false;
+        gears_vr::Viewpoint pose{};
+        if(!component_trace::gate(component_trace::Stage::mount_solve,component::mount.solve(frame.right,pose)))return false;
+        component::State before{};
+        if(!component_trace::gate(component_trace::Stage::initial_read,component::read(key,before,true)))return false;
+        wanted=before.value;wanted.absolute[0]=wanted.absolute[1]=true;
+        std::array<uptr,3> flag_addresses{};std::array<unsigned,3> flag_masks{};
+        if(!component_trace::gate(component_trace::Stage::absolute_storage,
+            component::absolute_storage(key,component::baseline_absolute_storage,&flag_addresses,&flag_masks,true)))return false;
+        component::target_absolute_storage=component::baseline_absolute_storage;
+        for(unsigned i=0;i<3;++i)for(unsigned j=0;j<3;++j)if(flag_addresses[i]==flag_addresses[j]){
+            auto& bits=component::target_absolute_storage[i];
+            bits=wanted.absolute[j]?bits|flag_masks[j]:bits&~flag_masks[j];
+        }
+        const playground::Vector position{float(pose.position.x),float(pose.position.y),float(pose.position.z)};
+        const playground::Rotation rotation{gears_vr::to_rotator_units(pose.rotation.pitch),
+            gears_vr::to_rotator_units(pose.rotation.yaw),gears_vr::to_rotator_units(pose.rotation.roll)};
+        std::memcpy(wanted.translation.data(),&position,12);std::memcpy(wanted.rotation.data(),&rotation,12);
     }
-    const playground::Vector position{float(pose.position.x),float(pose.position.y),float(pose.position.z)};
-    const playground::Rotation rotation{gears_vr::to_rotator_units(pose.rotation.pitch),
-        gears_vr::to_rotator_units(pose.rotation.yaw),gears_vr::to_rotator_units(pose.rotation.roll)};
-    std::memcpy(wanted.translation.data(),&position,12);std::memcpy(wanted.rotation.data(),&rotation,12);
     component::Forward forward{plan,mask,{}};component::Backend backend{key,&forward};
     component::target=wanted;component::hand_lease=lease_number;component::plan_sequence=plan.ticket.sequence;
     component::plan_revision=plan.revision;component::action_epoch=plan.context.action_epoch;

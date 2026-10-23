@@ -2,6 +2,14 @@
 
 此记录属于 `codex/weapon-6dof`。当前包含纯C++组件及默认关闭的同GHW1枪体适配器。R2两局未进入枪体写入；R3至R7的c至g局取得部分组件更新与交还，完整枪体跟随仍未通过。公开手部或枪体写权限仍未授予，普通启动器未启用。
 
+## R8初始准备块名称读取候选
+
+唯一源码变化在component_apply：已有component_names::Scope从capture前覆盖world、mount、initial_read、absolute_storage及目标构造，在Forward／Backend、initial_cost.finish和lease.acquire前析构。wanted仅外提纯声明，原位置赋值；全部早返恢复父TLS，faulted入口关闭，invoke全段及内部失败／外部回滚保持旧范围。R7三个计时跨度、原getter／first-match／动态检查顺序、同Plan和100ms均不变，不新增缓存。
+
+实际完整component_apply／Scope／invoke提取58场景4,818检查首编首跑通过，Astra独立窄审通过；ON唯一严格W4／WX／EHsc／C++17构建首次成功，23导出与R7相同。OFF与default完整实际EP原bytes完全相等，未重编；未重跑旧counter、页／租约／几何套件。成功DLL SHA `a05516969ddd8400b1c0dcfa4aee997821d7312c69e96a3ff9f96668afded5aa`，真实build base `96622b61fa334a647dbca8feebf43d5c1466b514`，742项目源／16vendor前后相同。协调者核对60支持工件、MSVC实际设置／路径／PE导出、旧R7冻结输入与g封存57文件＋7外部证据后按字节应用一源，直接复用已编译DLL，无同输入重编。
+
+报告SHA `f163b548e6700373eb2149e021ec911ba7422081a25a5a37ebfec236d9a9731b`，Astra `0d30f4f2049be8e3634c4913e6082c0a5a931b69adb69418e0aa2ca4fa9d85ab`，应用复核 `3e25cb3ade51855cb9ead50793a69ac3aac423dd4b3126ea368443c26308cc8d`，位于ignored `analysis/hand-component-initial-scope-20261023/`。root首次应用脚本误把嵌套g_evidence当平铺map，在任何live写入前拒绝；原脚本及失败记录保留，修正证据路径展开后通过，未改候选或重编。当前尚无R8实际游戏局，不能承诺解决g的103.9ms源证书拒绝，普通启动器与Native／XR保持。
+
 ## R7购买版g：源证书提交拒绝与三类实际成本
 
 R7封存 `analysis/hand-mesh-phase1-r7-candidates/a7bbc8bc…f4ad4fc/`含742源／162工件，PG `ba40192d…ec8fe1b7`，source manifest SHA `11113b4c9de9bb107602e60aa7f92962bbd7e3c91ed7ef8edc5f7156b8973cf8`；真实build base2327f52、应用commit432dd53分开，未应用后重编。g入口仅OUT／TAG、pins与工件数161→162变化；受影响两入口检查通过，Popen0准备191依赖／26复制／24模块，186共用依赖与模块均和f同源同SHA。15s／256／3s reserve及Mute1／Behind1／ObserveOnly1、后台物理输入关闭保持。
