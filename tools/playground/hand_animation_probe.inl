@@ -445,10 +445,12 @@ Token enter(uptr object,uptr function,void* params,Source source,uptr caller=0){
     }
     return token;
 }
-void leave(Token const& token,uptr object,uptr function,void* params,uptr caller=0){
-    if(!token)return;
+bool leave(Token const& token,uptr object,uptr function,void* params,uptr caller=0){
+    if(!token)return true;
     emit_event(token,object,function,params,L"post",caller);
-    if(probe.ledger.leave(token)&&token.source==Source::call_function)++probe.call_completed;
+    const bool token_closed=probe.ledger.leave(token);
+    if(token_closed&&token.source==Source::call_function)++probe.call_completed;
+    return token_closed;
 }
 struct HookScope {
     uptr object{},function{};void* params{};Token token{};

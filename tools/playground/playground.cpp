@@ -10,6 +10,18 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
+#if !defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+#error ActionGate requires the existing hand/call registration
+#endif
+#include "../vr-common/weapon_action_gate.h"
+namespace {namespace weaponaction {
+gears_weapon_hand::Reply attach(void*) noexcept;
+bool detached() noexcept;
+bool ready() noexcept;
+bool local_quiescent() noexcept;
+}}
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
 #if !defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL) || defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
 #error Initial Native fire/result subscriber requires ShotScope and excludes stream/stow animation handoff
@@ -965,6 +977,12 @@ namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::Equipment
 namespace handstream {
 #include "vr_hand_weapon_mesh_phase1.inl"
 }
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+#include "weapon_action_handoff.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
+#include "weapon_action_subscriber.inl"
 #endif
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;

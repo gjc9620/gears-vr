@@ -18,6 +18,9 @@
 #if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
 #include "../vr-common/weapon_call_boundary.h"
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
+#include "../vr-common/weapon_action_gate.h"
+#endif
 #ifdef NDEBUG
 #error WeaponHandClientOfflineTest requires active assertions
 #endif
@@ -41,6 +44,13 @@ namespace vrequip {gears_weapon::WeaponEquipmentModel model;}
 #include "weapon_grip_damage_metadata.inl"
 #if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
 namespace weaponcall {
+gears_weapon_hand::Reply attach(void*) noexcept;
+bool detached() noexcept;
+bool local_quiescent() noexcept;
+}
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
+namespace weaponaction {
 gears_weapon_hand::Reply attach(void*) noexcept;
 bool detached() noexcept;
 bool local_quiescent() noexcept;
