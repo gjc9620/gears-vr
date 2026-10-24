@@ -590,3 +590,13 @@ AS实测补记：提交 `c7ad8ac1…e1b8f` 的786源／27依赖／583工件候�
 该局正式失败由测试host的Path.read_bytes(session-status.txt)抛PermissionError errno13触发，原freshness fail-closed策略停止并清理；未记录底层Win32错误，不能声称已证实sharing lock。Stop后游戏status6／xr_stopped_after_restore，component／hand无sticky故障，0移动命令，正式passed／cleanup仍false。独立8控件／3组件／44挂接恢复、Stop0／Shutdown0、音频8会话恢复pending0及确切自有owner／game／XR消失核对通过，Native／XR子会话独立通过。70文件封存 `09bb303a…f2460`、root结果 `15da86dc…696bb` 在忽略的 `analysis/hand-mesh-runtime-1024as/`，不改写。
 
 下一AT只修测试读取路径：复用现已固定哈希的run_stereo_continuous.open_session_status（Windows share read/write/delete，同一个完整发布代次），通过buffer返回原始bytes以保留严格UTF8检查，原worker／进程身份／report／audio与freshness／预算／异常拒绝全部保留，不增加重试或缓存。实际提取read_status与真实Windows文件句柄／原freshness的8项检查通过，结果 `bf2235f3…21bbf` 在忽略的 `analysis/hand-status-shared-read-20261024at/`。首轮fixture误用MoveFileEx替换被持有文件，2项WinError5失败；原fixture／错误保留，R2仅修publisher为实际AtomicFile的SetFileInformationByHandle(FileRenameInfoEx,REPLACE_IF_EXISTS|POSIX_SEMANTICS)，8项首次R2通过。未改候选binary／Native／XR／源786或旧freshness政策，没有以测试变更冒称原PermissionError根因已证实；尚未实际运行AT。
+
+## 2026-10-24 — AT 原共享状态读取器接入后的实际再测试
+
+仅更换host的read_status文件打开表达式，使用原固定哈希run_stereo_continuous.open_session_status并从buffer取原bytes，反向还原该表达式后runner函数／类AST与AS完全相同；未改原freshness／重试／命令／预算／身份／清理或任何候选binary。源786／依赖27／Native／XR／PG直接复用AS已冻结构建，没有重复构建或重跑593／659等旧检查。786源／27依赖／599工件候选 `0dd4cbed…6a9af`，manifest `a80dd31b…1aa0`，DLL仍 `86b5f64b…45f26`，三次新鲜空闲后唯一静音置后购买版运行。新reader8项实际文件与原strict freshness检查的fixture修正事实保持前条记录，不当作首次全绿。
+
+本局未出现PermissionError，但不能据此证明AS底层I/O原因或普遍修复。原post-component NS交还再次实际命中并clean_close1，之后7次hand-only应用／7恢复，原setter／target56；46末端行／23对样本、7完整末端lease、28 prepare字段写／最后观察56，tail审计通过。14份未移动初始手势原0.1门限内，最大位置0.00006394598原始单位、旋转0.02719499°；依然0命令，无大伸手／渲染／头显或末端独立贡献证明。
+
+第二次acquire的seq822／rev33／lease8／interval2在group2平移之前失败，实际ordinal674 known127／checked2047／rejected1024、mask0。MS票龄93ms距原cutoff7ms，commit的stereo／input源龄104.1106／104.0945ms。此前group0／1授权返回3；该组prepare及hand_direct也通过，但实际最终check10拒绝，check11／12与Policy内部首因不作补证。三次prepare7.1589／6.9913／6.9017ms、hand_direct2.2561／2.1890／2.3512ms，包含原VM且不属于受控提速对比。部分component失败仍按原合同latch fault，没有事后清除；新增post-component交还并未覆盖这条callback内失败。
+
+累计组件2次尝试／1提交／2恢复、setter9，component fault／cleanup_failed1、最终dirty／owned／revoked0；正式passed／cleanup仍false，Stop0／Shutdown0。独立8控件typed观察／3组件／44挂接与入口恢复、音频8会话恢复pending0和确切自有进程退出通过；Native／XR子会话独立通过。77文件封存 `976d820e…6ba3`、root结果 `30d1c96a…ac948` 在忽略的 `analysis/hand-mesh-runtime-1024at/`，不改写。已将这次实际callback前NS拒绝与原generic fault合同交给Astra有界审查，要求不能事后清fault／放宽写权限；若无安全取消前提则只选具体读成本优化，尚无新接线。完整6DoF／0.7真实伤害／全武器／头显仍未完成，无默认安装。
