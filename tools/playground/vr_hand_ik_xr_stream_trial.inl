@@ -104,6 +104,10 @@ struct State {
     std::uint64_t seen{},overwritten{};
     unsigned count{},next{},depth{};
     bool enabled{},first_known{},last_auth_known{},dumped{},counter_saturated{};
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    Row first_authorization_rejection{};
+    bool first_authorization_known{};
+#endif
 };
 State state;
 unsigned mismatch(Value const& a,Value const& b) noexcept {
@@ -113,8 +117,21 @@ void add(Row row){
     if(!state.enabled||state.dumped)return;
     if(state.seen!=UINT64_MAX)++state.seen;else state.counter_saturated=true;
     row.ordinal=state.seen;row.meta=state.meta;masks(row);
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    // Backend::read returns its real `ok`. Its extra pure_acquire_value row
+    // compares the generic journal's not-yet-published owned tuple with an
+    // intermediate setter readback. That comparison is not a failed call or
+    // permit; retain it in the ring without freezing away the actual failure.
+    const bool boundary_failure=!row.passed&&row.stage!=Stage::pure_acquire_value;
+    if(row.auth_known&&!row.auth.result&&!state.first_authorization_known){
+        state.first_authorization_rejection=row;state.first_authorization_known=true;
+    }
+    if(boundary_failure)component_cost::failure(row.meta.forward,row.faulted);
+    if(boundary_failure&&!state.first_known){state.rows[0]=row;state.first_known=true;}
+#else
     if(!row.passed)component_cost::failure(row.meta.forward,row.faulted);
     if(!row.passed&&!state.first_known){state.rows[0]=row;state.first_known=true;}
+#endif
     state.rows[1+state.next]=row;state.next=(state.next+1)%63;
     if(state.count<63)++state.count;
     else if(state.overwritten!=UINT64_MAX)++state.overwritten;else state.counter_saturated=true;
@@ -185,6 +202,11 @@ void dump(){
         L"first_failure_known=%u counter_saturated=%u clocks_resampled=0 extra_authorizations=0\n",
         state.count,state.seen,state.overwritten,unsigned(state.first_known),unsigned(state.counter_saturated));
     if(state.first_known)print(state.rows[0],L"first_failure");
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    fwprintf(log_file,L"hand_weapon_component_authorization_pin schema=1 capacity=1 known=%u "
+        L"clocks_resampled=0 extra_authorizations=0 grants_write_authority=0\n",unsigned(state.first_authorization_known));
+    if(state.first_authorization_known)print(state.first_authorization_rejection,L"first_authorization_rejection");
+#endif
     const unsigned start=state.count==63?state.next:0;
     for(unsigned i=0;i<state.count;++i)print(state.rows[1+(start+i)%63],L"event");
     fwprintf(log_file,L"hand_weapon_component_gate_end schema=1\n");fflush(log_file);

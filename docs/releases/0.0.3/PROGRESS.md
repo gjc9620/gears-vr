@@ -500,3 +500,11 @@ AL实际运行补记：源码提交 `b8bd6abb…eb98` 后，唯一修后候选�
 这局在更早的 `component_acquire_failed` 终态8停止：组件1次acquire尝试、0次提交、5次setter尝试、恢复计数1，faulted与cleanup_failed保持1，最终dirty／owned／revoked均0；不能把恢复计数称作成功提交。hand leases／setter／target和扩展字段写入均0、姿态命令0，没有进入after-component授权，新early cutoff交还分支与独立首包都未被实际触发。最后保留的prewrite Auth为3／无拒绝，实际失败事件被后续恢复日志覆盖；中间pure_acquire_value差异记录也不能用作具体失败原因。目前不将失败归因于某个时钟或reader步骤。
 
 独立8控件（含完整新增typed观察）、3组component、44字节挂接前后相同，入口无恢复错误；failure Stop0／Shutdown0，音频8会话恢复且pending0，确切owner／game／XR均不存在。正式passed／cleanup_passed仍false；独立Native／XR子会话通过且XR exit0不替代该结论。AL79文件封存 `ad31db33…a6c3ee`，root-result `f04b25a7…3986d`，回执位于忽略的 `analysis/hand-mesh-runtime-1024al/`。下一步先保留组件内部实际授权拒绝及完整成本，保留门限，不直接扩展暂停分类；无默认安装、物理位置、后坐力或完整12武器验收。
+
+## 2026-10-24 — AM 首次实际授权拒绝与完整成本保留
+
+仅在默认关闭的TAIL候选内修正诊断：`Backend::read` 实际仍返回其 `ok`，额外 `pure_acquire_value` 比较的是generic journal尚未发布的新owned tuple，可能在自身setter读回中间态出现差异。原诊断将该比较直接当成首个失败并冻结成本，导致后续真正拒绝被恢复环覆盖。新版本仍把比较原样放入63行环，但首个实际边界失败和成本冻结只采用真实gate／调用／授权失败；实际返回值、原授权和字段写入逻辑不变。另加独立capacity1的首个Auth拒绝完整副本，保存原ordinal、setter上下文、journal mask与全部原时间／结果字段；环覆盖和晚到拒绝不替换它，原清理后dump新增明确capacity／known标记，没有额外采钟或授权调用。
+
+两份完整实际cost／trace namespace与真实组件值类型直接进入有限fixture。新4类／225项检查通过，覆盖中间比较仍可见但不提前冻结、实际AuthEnd与既有开span关闭后冻结、不同schema首故障／首Auth、400多条后续记录覆盖、计数饱和、disabled／begin replay／dumped／reset、原wide dump与新增零采钟。QPC、mask提供器及无关诊断reset／dump是明确host服务，不是游戏ownership或writer证据。首轮fixture严格编译因host变量ticks遮蔽原源码局部被/WX拒绝，未执行检查；保留错误，R2仅改host变量三个同名token并逆向逐字核对，实际片段未改。结果 `c879838c…fc441` 在忽略的 `analysis/hand-auth-pin-cpu-20261024am-r2/`，旧315／198／370／539项未重跑。
+
+冻结786源／27依赖，唯一完整PG严格构建、23导出及新OFF五实际运行源/EP非空行比较通过，DLL `f0433810…90c1`，build结果 `47e66fca…e75e` 在忽略的 `analysis/hand-auth-pin-build-20261024am/`。本补记时尚未运行AM购买版局，没有证明AL拒绝的具体原因或解决手部位置；不放宽100ms、不更新旧Plan、不扩大暂停分类，不重建Native／XR／loader或安装默认入口。
