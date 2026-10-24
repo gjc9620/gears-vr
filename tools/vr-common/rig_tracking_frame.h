@@ -77,12 +77,16 @@ inline bool observed_valid(ObservedContinuity const& c) noexcept {
 inline bool producer_empty(ProducerContinuity const& c) noexcept {
     return !c.stream&&!c.tracking[0]&&!c.tracking[1];
 }
-inline bool frame_valid(Frame const& f,std::int64_t now,std::uint64_t age,bool allow_sim=false) noexcept {
+namespace detail {
+// One data policy for public V1 and the distinct Native-owned snapshot type.
+// Size/version and external registration authentication belong to the wrapper.
+template<class Payload>
+inline bool payload_valid(Payload const& f,std::int64_t now,std::uint64_t age,bool allow_sim) noexcept {
     using namespace gears_vr;
-    if(f.size!=sizeof(f)||f.abi_version!=version||f.status!=Status::ready||
+    if(f.status!=Status::ready||
        (f.flags&~(controllers_matched|producer_continuity_available|cover_key_known))||
        (f.view_policy&~(first_person|cover|run_stabilized|camera_closer))||f.reserved||
-       !f.native.game_pid||!f.native.game_thread||!f.native.game_start||!f.native.native_started_qpc||!f.native.registration_cookie||
+       !f.native.game_pid||!f.native.game_thread||!f.native.game_start||!f.native.native_started_qpc||
        !f.publication_sequence||!f.scene_invocation||!f.world_generation||!f.binding_generation||!f.reference_generation||
        !f.published_ns||f.scene_qpc<=0||f.qpc_frequency<=0||!observed_valid(f.observed)||
        !f.native_reference.epoch||f.native_reference.flags!=reference_stable||f.native_reference.reserved||
@@ -109,6 +113,38 @@ inline bool frame_valid(Frame const& f,std::int64_t now,std::uint64_t age,bool a
         if(!(f.flags&controllers_matched)||!controller_pose_usable(h.grip,h.grip_flags,h.grip_active)||!stereo_pose_valid(f.world_grip[i]))return false;
     }
     return true;
+}
+// Copy only shared data fields, including nested object representations. Never
+// copy a type's size/version, a registration cookie or internal latch metadata.
+// This is a pure projection helper, not a validator or an authorization step.
+template<class From,class To>
+inline void copy_payload(From const& from,To& to) noexcept {
+    const auto member=[](auto const& source,auto& destination) noexcept {
+        using Source=std::remove_cv_t<std::remove_reference_t<decltype(source)>>;
+        using Destination=std::remove_reference_t<decltype(destination)>;
+        static_assert(std::is_same_v<Source,Destination>&&std::is_trivially_copyable_v<Source>);
+        std::memcpy(&destination,&source,sizeof(destination));
+    };
+    member(from.status,to.status);member(from.flags,to.flags);
+    member(from.native.game_pid,to.native.game_pid);member(from.native.game_thread,to.native.game_thread);
+    member(from.native.game_start,to.native.game_start);member(from.native.native_started_qpc,to.native.native_started_qpc);
+    member(from.publication_sequence,to.publication_sequence);member(from.scene_invocation,to.scene_invocation);
+    member(from.world_generation,to.world_generation);member(from.binding_generation,to.binding_generation);
+    member(from.reference_generation,to.reference_generation);member(from.published_ns,to.published_ns);
+    member(from.scene_qpc,to.scene_qpc);member(from.qpc_frequency,to.qpc_frequency);
+    member(from.observed,to.observed);member(from.producer,to.producer);member(from.native_reference,to.native_reference);
+    member(from.controller_publisher_pid,to.controller_publisher_pid);member(from.view_policy,to.view_policy);
+    member(from.controller_publisher_start,to.controller_publisher_start);
+    member(from.world,to.world);member(from.controller,to.controller);member(from.pawn,to.pawn);member(from.mesh,to.mesh);
+    member(from.weapon,to.weapon);member(from.cover_link,to.cover_link);member(from.cover_slot,to.cover_slot);member(from.cover_type,to.cover_type);
+    member(from.units_per_metre,to.units_per_metre);member(from.source_view,to.source_view);member(from.base_view,to.base_view);
+    member(from.reference,to.reference);member(from.stereo,to.stereo);member(from.controllers,to.controllers);
+    member(from.world_pose_mask,to.world_pose_mask);member(from.reserved,to.reserved);
+    member(from.world_head,to.world_head);member(from.world_grip,to.world_grip);
+}
+} // namespace detail
+inline bool frame_valid(Frame const& f,std::int64_t now,std::uint64_t age,bool allow_sim=false) noexcept {
+    return f.size==sizeof(f)&&f.abi_version==version&&f.native.registration_cookie&&detail::payload_valid(f,now,age,allow_sim);
 }
 #if defined(_WIN32)
 using Read=Reply(__cdecl*)(ReadRequest const*,Frame*) noexcept;
