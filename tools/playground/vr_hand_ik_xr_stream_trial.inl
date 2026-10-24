@@ -108,7 +108,7 @@ struct CallbackSpan {
 struct CallbackRow {
     unsigned group{};CallbackSite site{};
     bool closed{},result{},auth_known{};
-    Auth auth{};CallbackSpan prepare{},hand_direct{};
+    Auth auth{};CallbackSpan read_before{},prepare{},read_after{},hand_direct{};
 };
 constexpr unsigned callback_capacity=16;
 struct Attempt {
@@ -231,10 +231,17 @@ struct CallbackScope {
         site(value);
         if(index==callback_capacity)return operation();
         auto& row=state.attempt.callbacks[index];
-        auto& span=value==CallbackSite::prepare?row.prepare:row.hand_direct;
-        span.begin=component_cost::stamp();
+        CallbackSpan* span{};
+        switch(value){
+        case CallbackSite::read_before:span=&row.read_before;break;
+        case CallbackSite::prepare:span=&row.prepare;break;
+        case CallbackSite::read_after:span=&row.read_after;break;
+        case CallbackSite::hand_direct:span=&row.hand_direct;break;
+        default:return operation(); // Unmeasured sites never borrow a span or clock.
+        }
+        span->begin=component_cost::stamp();
         const bool result=operation();
-        span.finish=component_cost::stamp();span.closed=true;span.result=result;return result;
+        span->finish=component_cost::stamp();span->closed=true;span->result=result;return result;
     }
     bool finish(bool result) noexcept {
         if(index<callback_capacity){auto& row=state.attempt.callbacks[index];row.closed=true;row.result=result;}
@@ -303,12 +310,16 @@ void dump(){
             fwprintf(log_file,L"hand_weapon_component_callback schema=1 row=%u group=%u site=%u closed=%u result=%u "
                 L"prepare_begin=%llu prepare_finish=%llu prepare_closed=%u prepare_result=%u "
                 L"hand_direct_begin=%llu hand_direct_finish=%llu hand_direct_closed=%u hand_direct_result=%u "
+                L"read_before_begin=%llu read_before_finish=%llu read_before_closed=%u read_before_result=%u "
+                L"read_after_begin=%llu read_after_finish=%llu read_after_closed=%u read_after_result=%u "
                 L"auth_known=%u auth_fields_known=%u auth_checks_known=%u auth_rejected=%u now=%llu live_now=%llu "
                 L"commit_now=%llu write_until=%llu authorize_ns=%lld commit_ns=%lld ticket_ms=%llu plan_ms=%llu "
                 L"context_ms=%llu stereo_ns=%lld input_ns=%lld policy_mask=%u returned_mask=%u\n",
                 i,row.group,unsigned(row.site),unsigned(row.closed),unsigned(row.result),row.prepare.begin,row.prepare.finish,
                 unsigned(row.prepare.closed),unsigned(row.prepare.result),row.hand_direct.begin,row.hand_direct.finish,
-                unsigned(row.hand_direct.closed),unsigned(row.hand_direct.result),unsigned(row.auth_known),
+                unsigned(row.hand_direct.closed),unsigned(row.hand_direct.result),row.read_before.begin,row.read_before.finish,
+                unsigned(row.read_before.closed),unsigned(row.read_before.result),row.read_after.begin,row.read_after.finish,
+                unsigned(row.read_after.closed),unsigned(row.read_after.result),unsigned(row.auth_known),
                 auth.known,auth.checked,auth.rejected,auth.now,auth.live_now,auth.commit_now,auth.write_until,auth.authorize_ns,
                 auth.commit_ns,auth.ticket_ms,auth.plan_ms,auth.context_ms,auth.stereo_ns,auth.input_ns,auth.mask,auth.result);
         }

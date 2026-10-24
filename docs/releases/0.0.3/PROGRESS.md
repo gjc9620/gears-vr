@@ -630,3 +630,11 @@ AV实测补记：提交 `f68be0d3…715d` 的786源／27依赖／623工件候选
 第二次acquire seq822／rev34／lease8／interval2的group0／1／2原授权均通过，group4在ordinal724最终check10 NS拒绝，known127／checked2047／rejected1024／mask0；MS票龄93ms、距原截止7ms，commit stereo／input源龄116.2897／116.2737ms。四段prepare6.9852／6.5731／6.5220／6.6998ms，hand_direct2.0578／2.1360／1.9898／1.9756ms，均返回true；它们不是受控提速比较，未隔离Name读取。后续checks11／12和Policy内部完整原因不补证。原generic fault保持，累计组件2尝试／1提交／2恢复、setter11、fault／cleanup_failed1，最终dirty／owned／revoked0；正式passed／cleanup仍false。无访问文件错误不能证明普遍I/O修复。
 
 独立8控制器typed观察／3组件／44挂接、入口恢复、Stop0／Shutdown0、音频8会话恢复pending0及确切自有owner／game／XR退出均核对通过；Native／XR子会话独立通过。59文件封存 `627b8fa5…2cdd`、root结果 `bebcc4f8…630a` 位于忽略的 `analysis/hand-mesh-runtime-1024av/`，原失败及前序封存不改写。候选没有默认安装。下一步向Astra提出一个有界整段输入预算问题：只在无写preflight后的合法位置消费真正更新的完整packet并新建Plan是否成立，必须保留pose／证书／目标一致，不跨VM借metadata、不在部分写中换Plan、不续期旧Plan、不改100ms或generic拒绝。尚未接线，完整目标、真实0.7伤害、其余全武器和头显仍未完成。
+
+## 2026-10-24 — AW 两次原 component 回调读取的固定计时
+
+Astra整段预算审查 `7b5b6341…856` 否决仅后读packet或后采钟重建Plan：同serial返回none，证书源时间不变；当前发布依赖接受的renderer/family提交，没有同PlayerTick内必有新完整包的证据；callback中Plan／pose／target／journal已属同一事务。AV postflush至最终拒绝68.4411ms，扣除已测initial／prepare／hand_direct尚余28.8042ms，只是窗口差值，不能当作某函数成本。因此本次只给原ContinuousAuthorize的两次checks.read增加各一对QPC，不变调用／gate／比较／短路／VM pause。CallbackRow新增两个固定span，measure显式区分read_before／prepare／read_after／hand_direct，其他site不采钟、不借旧span。最终原authorize之后、析构和SEH finally不添时钟，dump追加八字段，旧字段相对顺序保持。Astra四输入窄审 `e55a6f14…8b93` 通过；不称性能修复。
+
+实际cost／完整trace／finally和两读取调用块进入10类／137项检查。首次fixture编译因host的State与导入State歧义及checks计数器遮蔽失败，原代码／日志保留，未执行该exe；R2只把host读取类型放入内层namespace并改host计数器名，四段实际源码字节不变，严格编译运行通过。覆盖四span独立、未知site／inactive不添时钟、原调用和短路次数、真假读与后续比较分离、未知Auth不借旧值、Windows SEH保持未闭span、原finally恢复index以及实际wide dump字段值。QPC和read／prepare为显式host服务，不是原引擎成本；结果 `7b603ac1…f52d` 在忽略的 `analysis/hand-callback-read-cpu-20261024aw-r2/`，首次失败另在无r2目录。
+
+冻结786源／27依赖，唯一完整PG严格构建、23导出及七实际运行源OFF一组两次/EP非空行相等通过，DLL `b10adbd5…86ba`、build结果 `1345e877…d59c` 在忽略的 `analysis/hand-callback-read-build-20261024aw/`。其余未变旧套件不重跑。本条记录时尚未实际购买版计时，没有新包／旧Plan续期、权限／setter／恢复／100ms／0.1门限改动，无默认安装或真实0.7伤害、完整运动／全武器／头显通过。

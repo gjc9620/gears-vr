@@ -789,12 +789,12 @@ bool ContinuousAuthorize::operator()(UpdateFrame const& frame,Key const& key,Val
     component_trace::CallbackScope diagnostic(group);
     State before{};
     diagnostic.site(CallbackSite::read_before);
-    if(!gate(Stage::set_read_before,checks.read(before))||!before.known||!(before.key==key)||
+    if(!gate(Stage::set_read_before,diagnostic.measure(CallbackSite::read_before,[&](){return checks.read(before);}))||!before.known||!(before.key==key)||
        !gate(Stage::set_expected_before,gears_weapon::mesh_component_exact(before.value,previous),0,
              component_trace::mismatch(before.value,previous)))return diagnostic.finish(false);
     if(!diagnostic.measure(CallbackSite::prepare,[&](){return forward.prepare(key);}))return diagnostic.finish(false);
     diagnostic.site(CallbackSite::read_after);
-    if(!gate(Stage::set_read_after,checks.read(before))||!before.known||!(before.key==key)||
+    if(!gate(Stage::set_read_after,diagnostic.measure(CallbackSite::read_after,[&](){return checks.read(before);}))||!before.known||!(before.key==key)||
        !gate(Stage::set_expected_after,gears_weapon::mesh_component_exact(before.value,previous),0,
              component_trace::mismatch(before.value,previous)))return diagnostic.finish(false);
     // Both explicit spans close before the original authority clocks. The
