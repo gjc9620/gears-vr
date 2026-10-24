@@ -690,3 +690,9 @@ BA实测补记：d71ac22源码冻结为788源／27依赖／659工件候选4a7ec1
 三次新鲜空闲后唯一新候选静音置后购买版局，原版Lancer held再次false→true→false，触发／释放约0.2796s，自然记录4次getter、4对完整raw4，前后session／schema保持、无gap／unknown，正式只读采样及独立cleanup均通过。实际每份metadata为35身份／32名字／14结构／5函数字段，接收者继承7级；返回属性完整路径Core.FloatProperty，ReturnValue flags0x580、dim1／width4，函数parameter_bytes24／return_offset20／extent36。两入参为HitLocation（结构大小12，offset0）和HitActor（Object大小8，offset12）；offset20只记录，不加到Result，不从RAX或caller参数区取值。后值按任意raw32保留，尚未认证原生类型／Result所有权、调用与实际射击／伤害包归属，更没有乘0.7。
 
 原朝向精确恢复、Stop／Shutdown0、原32／64字节入口、确切自有游戏退出与音频8会话恢复pending0通过；19文件封存24f3435a…33b28，汇总c969653a…1fffd位于忽略的 analysis/weapon-grip-damage-result-evidence-20261024ba/。后续另有非自有游戏活动，未干预或借用其内存，不再启动额外实机局。没有跨局性能结论、Native／XR图像或头显验收；下一步绑定真实caller／开火／结算身份，再实现枪械0.7／1.0且只应用一次，手抛Bolo／Smoke继续排除。完整双手、全武器与默认集成仍未完成。
+
+## 2026-10-24 — 后台测试固定 0.4 渲染比例
+
+按用户要求，后续自主后台测试采用每边0.4的渲染比例，继续静音、窗口置后和tiny-output只读观察。新增纯规划器 `tools/test-support/background_render_policy.py`，并接入 `tools/multi-instance/start.py` 的 `prepare(..., background_test=True)`；`--playtest` 自动启用。仅在新私有实例内设置render_scale并调整EngineUserSettings的8个ClientSettings启动尺寸，先验证所有计划、保留原始INI，再写私有副本；缺失、重复或未知尺寸语法会中止启动。普通实例、用户配置及已封存历史输入保持原样。XR测试仍须传递 `--render-scale 0.4`，不通过移动或缩放现有窗口实现。
+
+精确启动器比例校验与两个真实历史INI副本的字节逆变换通过；实际prepare函数的本地文件模型覆盖普通路径不变、后台0.4与两份原INI完整备份、第二份非法INI在任何计划写入和manifest发布前拒绝，三类检查通过。游戏验证／置后构建检查在该模型中是明确host服务，不算实机验证。记录位于忽略的 `analysis/background-test-scale-20261024bb/` 和 `analysis/background-test-scale-integration-20261024bb/`。本次没有启动游戏，实际渲染尺寸尚待下次空闲运行核对；不据此声称FPS、GPU或头显通过，完整6DoF目标仍未完成。

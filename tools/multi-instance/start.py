@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/debug-launch'))
 from background_launch import verify_test_behind_build
 from game_install import validate_game
+sys.path.insert(0, str(ROOT / 'tools/test-support'))
+import background_render_policy
 
 
 def digest(raw):
@@ -31,7 +33,7 @@ def copy_stable(source, target):
     return digest(raw)
 
 
-def prepare(name, manifest_path, config_path):
+def prepare(name, manifest_path, config_path, *, background_test=False):
     if not re.fullmatch(r'[a-z0-9_-]{1,40}', name):
         raise ValueError('Instance name must contain 1-40 lowercase letters, digits, - or _')
     selected = ROOT / 'analysis/instances' / name
@@ -39,6 +41,8 @@ def prepare(name, manifest_path, config_path):
         raise RuntimeError('Instance directory already exists; choose a fresh name: ' + name)
     manifest = json.loads(manifest_path.read_text(encoding='utf-8-sig'))
     config = json.loads(config_path.read_text(encoding='utf-8-sig'))
+    if background_test:
+        config = background_render_policy.configuration(config)
     game = validate_game(manifest['game_path'], expected=manifest['game_sha256'])
     quiet = ROOT / 'tools/quiet-startup/build-instance4'
     verify_test_behind_build(quiet)
@@ -72,6 +76,38 @@ def prepare(name, manifest_path, config_path):
     for p in native.iterdir():
         if p.is_file() and p.suffix.lower() in ('.exe', '.dll'):
             copied['native/' + p.name] = dict(source=str(p), sha256=copy_stable(p, selected / 'native' / p.name))
+    render_policy = None
+    if background_test:
+        # These are fresh private copies. Validate every plan before changing any
+        # INI, and preserve the copied bytes independently of the running game.
+        plans = []
+        for relative, origin in copied.items():
+            target = selected / relative
+            if (target.parent == selected / 'LocalAppData/Coalition/WarGame/Config'
+                    and target.name.lower().endswith('engineusersettings.ini')):
+                raw = target.read_bytes()
+                if digest(raw) != origin['sha256']:
+                    raise RuntimeError('Private startup copy changed before render planning')
+                scaled, dimensions = background_render_policy.startup_ini(raw)
+                plans.append((relative, target, raw, scaled, dimensions))
+        if not plans:
+            raise RuntimeError('No private EngineUserSettings startup dimensions; background launch refused')
+        originals = selected / 'test-render-originals'
+        originals.mkdir()
+        files = []
+        for index, (relative, target, raw, scaled, dimensions) in enumerate(plans):
+            snapshot = originals / f'{index:02d}.ini'
+            with snapshot.open('xb') as stream:
+                stream.write(raw)
+            if snapshot.read_bytes() != raw or target.read_bytes() != raw:
+                raise RuntimeError('Private startup bytes changed before render apply')
+            target.write_bytes(scaled)
+            if target.read_bytes() != scaled:
+                raise RuntimeError('Private startup render verification failed')
+            files.append(dict(path=relative, original_snapshot=str(snapshot.relative_to(selected)),
+                              before_sha256=digest(raw), after_sha256=digest(scaled), dimensions=dimensions))
+        render_policy = dict(render_scale=background_render_policy.RENDER_SCALE,
+                             private_startup_files=files, actual_render_size_verified=False)
     manifest.update(native_build=str(selected / 'native'), gpu_snapshot=False)
     # All automatic checks use the existing test-only simulator; normal player
     # runtime selection is left to the ordinary launcher.
@@ -80,6 +116,8 @@ def prepare(name, manifest_path, config_path):
     proof = dict(schema=1, name=name, root=str(selected), original_localappdata=str(original),
                  game_path=str(game), game_logs=str(game.parent.parent / 'WarGame/Logs'),
                  quiet_build=str(quiet), copied=copied, game_exe_modified=False)
+    if render_policy is not None:
+        proof['test_render_policy'] = render_policy
     (selected / 'instance.json').write_text(json.dumps(proof, indent=2), encoding='utf-8')
     return selected, proof
 
@@ -96,7 +134,7 @@ def main():
     args = parser.parse_args()
     if not 1 <= args.seconds <= 21600:
         parser.error('seconds must be between 1 and 21600')
-    selected, proof = prepare(args.name, args.manifest, args.config)
+    selected, proof = prepare(args.name, args.manifest, args.config, background_test=args.playtest)
     if args.prepare_only:
         print(json.dumps(dict(root=str(selected), launched=False)))
         return
