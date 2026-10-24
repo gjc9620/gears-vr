@@ -128,6 +128,112 @@ bool deleted(uptr object){
     const auto p=property(object,L"bDeleteMe");
     return p&&(get<unsigned>(object+get<unsigned>(p+0x94))&get<unsigned>(p+0xd0));
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+namespace tail_delete_lookup {
+// One observe owns this bounded workspace. A saved negative lookup is usable
+// only after every byte on its first-match search path is read again. Neither
+// a missing descriptor nor the object's current deleted bit is cached.
+constexpr unsigned class_capacity=16,read_capacity=4096,read_bytes=20;
+struct Read {uptr address;unsigned size;unsigned char bytes[read_bytes];};
+struct Witness {uptr root;unsigned first,count;};
+struct Lookup {
+    std::array<Read,read_capacity> reads; // Written slots only; no bulk zero-fill.
+    std::array<Witness,class_capacity> witnesses;
+    unsigned used{},count{};bool failed{};
+    template<class T>bool read(uptr object,std::size_t offset,T& value){
+        static_assert(sizeof(T)<=read_bytes,"bounded raw dependency");
+        if(used==read_capacity)return false; // Ineligible before a new read.
+        if(!object||offset>UINTPTR_MAX-object||sizeof(T)-1>UINTPTR_MAX-(object+offset)||
+           !copy(&value,object+offset,sizeof(T))){failed=true;return false;}
+        auto& item=reads[used++];item.address=object+offset;item.size=unsigned(sizeof(T));
+        std::memcpy(item.bytes,&value,sizeof(T));return true;
+    }
+    bool text(uptr address,wchar_t (&value)[10],bool& terminated){
+        const auto page=component_names::page_bytes();
+        if(!page){failed=true;return false;}
+        for(std::size_t at=0;at<10;){
+            if(used==read_capacity)return false;
+            if(!address||at*sizeof(wchar_t)>UINTPTR_MAX-address){failed=true;return false;}
+            const auto source=address+at*sizeof(wchar_t);
+            auto chars=(std::min)(std::size_t(10)-at,(page-std::size_t(source%page))/sizeof(wchar_t));
+            if(!chars)chars=1;
+            const auto bytes=chars*sizeof(wchar_t);
+            if(bytes-1>UINTPTR_MAX-source||!copy(value+at,source,bytes)){failed=true;return false;}
+            auto& item=reads[used++];item.address=source;item.size=unsigned(bytes);
+            std::memcpy(item.bytes,value+at,bytes);
+            for(std::size_t i=0;i<chars;++i)if(!value[at+i]){terminated=true;return true;}
+            at+=chars;
+        }
+        // Keep the actual tenth wchar. Normal name() clears it on a long
+        // prefix; saving that artificial NUL could hide a later exact match.
+        terminated=false;return true;
+    }
+    bool negative(uptr root){
+        Array names{};
+        if(!read(base,0x1c34800,names))return false;
+        if(!names.data||names.count<1000||names.count>names.capacity||names.capacity>4000000){failed=true;return false;}
+        // Bind the actual root identity as well as its complete search path.
+        uptr pointer{};unsigned index{};Name object_name{};
+        if(!read(root,0,pointer)||!read(root,8,index)||!read(root,0x40,pointer)||
+           !read(root,0x48,object_name)||!read(root,0x50,pointer))return false;
+        auto cls=root;
+        for(unsigned depth=0;cls&&depth<40;++depth){
+            uptr f{};if(!read(cls,0x80,f))return false;
+            unsigned n{};
+            for(;f&&n<4096;++n){
+                Name label{};uptr entry{};unsigned entry_index{};
+                if(!read(f,0x48,label))return false;
+                if(label.index>=unsigned(names.count)){failed=true;return false;}
+                if(!read(names.data,std::size_t(label.index)*8,entry))return false;
+                if(!entry){failed=true;return false;}
+                if(!read(entry,0,entry_index))return false;
+                if(entry_index!=label.index){failed=true;return false;}
+                wchar_t value[10];bool terminated{};
+                if(entry>UINTPTR_MAX-20){failed=true;return false;}
+                if(!text(entry+20,value,terminated))return false;
+                if(terminated&&!_wcsicmp(value,L"bDeleteMe"))return false; // Original positive live path.
+                uptr next{};if(!read(f,0x68,next))return false;f=next;
+            }
+            if(f)return false; // Truncation is not a negative proof.
+            uptr parent{};if(!read(cls,0x60,parent))return false;cls=parent;
+        }
+        return cls==0; // A class cycle/limit is ineligible, never proved absent.
+    }
+    bool validate(unsigned first,unsigned finish){
+        for(unsigned i=first;i<finish;++i){
+            auto const& item=reads[i];unsigned char live[read_bytes];
+            if(!copy(live,item.address,item.size)||std::memcmp(live,item.bytes,item.size)){
+                failed=true;return false;
+            }
+        }
+        return true;
+    }
+    bool alive(uptr object){
+        if(failed)return false;
+        if(!component_names::enabled)return !deleted(object);
+        // Preserve the original deleted -> property per-object registration
+        // checks, then read this object's current class, never a saved class.
+        if(!registered(object)||!registered(object))return false;
+        uptr cls{};
+        if(object>UINTPTR_MAX-0x50||!copy(&cls,object+0x50,sizeof(cls))){failed=true;return false;}
+        for(unsigned i=0;i<count;++i){
+            auto const& witness=witnesses[i];
+            if(witness.root==cls)return validate(witness.first,witness.first+witness.count);
+        }
+        if(count==class_capacity)return !deleted(object);
+        const auto first=used;
+        if(!negative(cls)){
+            used=first;
+            if(failed)return false; // Unknown cannot be retried back into admission.
+            return !deleted(object); // Positive/resource/limit: original live path.
+        }
+        if(!validate(first,used))return false;
+        witnesses[count++]={cls,first,used-first};return true;
+    }
+};
+} // namespace tail_delete_lookup
+using TailDeletionLookup=tail_delete_lookup::Lookup;
+#endif
 struct Args {
     Request r{};bool valid{};
     Args(uptr object,const wchar_t* fn){

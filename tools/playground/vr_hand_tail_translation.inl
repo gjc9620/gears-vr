@@ -14,9 +14,9 @@ struct Identity {
     uptr address{},vtable{},outer{},object_class{};
     unsigned index{};Name name{};
 };
-bool identity(uptr object,Identity& result){
+bool identity(uptr object,Identity& result,playground::TailDeletionLookup& deletion){
     if(!object||(object&7)||object>UINTPTR_MAX-0x58||!registered(object)||
-       playground::deleted(object))return false;
+       !deletion.alive(object))return false;
     Identity value{};value.address=object;
     if(!copy(&value.vtable,object,sizeof(value.vtable))||!value.vtable||
        !copy(&value.index,object+8,sizeof(value.index))||
@@ -48,10 +48,10 @@ struct Property {
     uptr reference{};std::uint32_t mask{};
 };
 bool property_at(uptr address,const wchar_t* kind,Kind expected,
-              unsigned bytes,unsigned extent,Property& result){
+              unsigned bytes,unsigned extent,Property& result,playground::TailDeletionLookup& deletion){
     Property value{};value.kind=expected;
-    if(!identity(address,value.object)||address>UINTPTR_MAX-0xd8||
-       !identity(value.object.object_class,value.type)||!playground::named(value.type.address,kind)||
+    if(!identity(address,value.object,deletion)||address>UINTPTR_MAX-0xd8||
+       !identity(value.object.object_class,value.type,deletion)||!playground::named(value.type.address,kind)||
        !copy(&value.dimension,address+0x70,sizeof(value.dimension))||value.dimension!=1||
        !copy(&value.bytes,address+0x74,sizeof(value.bytes))||value.bytes!=bytes||
        !copy(&value.offset,address+0x94,sizeof(value.offset))||
@@ -87,8 +87,9 @@ bool same_schema(Observed const& a,Observed const& b){
 }
 bool observe(uptr control,Observed& out){
     out=Observed{};
+    playground::TailDeletionLookup deletion; // No state survives this observe.
     Observed result{};detail::Identity owner{},owner_class{};unsigned extent{};
-    if(!detail::identity(control,owner)||!detail::identity(owner.object_class,owner_class)||
+    if(!detail::identity(control,owner,deletion)||!detail::identity(owner.object_class,owner_class,deletion)||
        !playground::named(owner_class.address,L"SkelControlSingleBone")||
        !detail::storage_bytes(owner_class.address,extent)||extent>4096||control>UINTPTR_MAX-extent)return false;
     constexpr const wchar_t* labels[]={L"BoneTranslation",L"BoneTranslationSpace",
@@ -106,16 +107,16 @@ bool observe(uptr control,Observed& out){
     std::array<detail::Property,11> fields{};
     for(unsigned i=0;i<fields.size();++i){
         if(!detail::property_at(field_addresses[i],kinds[i],expected[i],sizes[i],extent,
-                             fields[i]))return false;
+                             fields[i],deletion))return false;
         for(unsigned j=0;j<i;++j)if(!detail::compatible(fields[i],fields[j]))return false;
     }
     if(fields[3].offset!=fields[4].offset||fields[1].reference!=fields[5].reference)return false;
     detail::Identity vector{},vector_class{},space_enum{},enum_class{};unsigned vector_bytes{};
-    if(!detail::identity(fields[0].reference,vector)||!playground::named(vector.address,L"Vector")||
-       !detail::identity(vector.object_class,vector_class)||
+    if(!detail::identity(fields[0].reference,vector,deletion)||!playground::named(vector.address,L"Vector")||
+       !detail::identity(vector.object_class,vector_class,deletion)||
        !detail::storage_bytes(vector.address,vector_bytes)||vector_bytes!=12||
-       !detail::identity(fields[1].reference,space_enum)||
-       !detail::identity(space_enum.object_class,enum_class)||
+       !detail::identity(fields[1].reference,space_enum,deletion)||
+       !detail::identity(space_enum.object_class,enum_class,deletion)||
        !playground::named(space_enum.address,L"EBoneControlSpace")||
        !playground::named(enum_class.address,L"Enum"))return false;
     constexpr const wchar_t* components[]={L"X",L"Y",L"Z"};
@@ -124,7 +125,7 @@ bool observe(uptr control,Observed& out){
     std::array<detail::Property,3> members{};
     for(unsigned i=0;i<members.size();++i)
         if(!detail::property_at(member_addresses[i],L"FloatProperty",Kind::floating,4,12,
-                             members[i])||members[i].offset!=i*4||
+                             members[i],deletion)||members[i].offset!=i*4||
            members[i].object.outer!=vector.address)return false;
     const unsigned schema_version=1;
     detail::append(result.schema,schema_version);
@@ -153,8 +154,8 @@ bool observe(uptr control,Observed& out){
     if(!playground::fields(owner_class.address,labels,last_fields)||last_fields!=field_addresses||
        !playground::fields(vector.address,components,last_members)||last_members!=member_addresses)return false;
     detail::Identity last_owner{},last_class{};unsigned last_extent{};
-    if(!detail::identity(control,last_owner)||!detail::same_identity(owner,last_owner)||
-       !detail::identity(owner_class.address,last_class)||!detail::same_identity(owner_class,last_class)||
+    if(!detail::identity(control,last_owner,deletion)||!detail::same_identity(owner,last_owner)||
+       !detail::identity(owner_class.address,last_class,deletion)||!detail::same_identity(owner_class,last_class)||
        !detail::storage_bytes(owner_class.address,last_extent)||last_extent!=extent)return false;
     // Sequential observations are not an atomic snapshot or a write permit.
     out=std::move(result);return true;

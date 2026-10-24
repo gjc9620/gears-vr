@@ -546,3 +546,11 @@ AO实测补记：提交 `64bbe76c…9003` 的786源／27依赖／559工件候选
 累计组件2次acquire尝试／1提交／2恢复／setter尝试9，fault与cleanup_failed保持1，最终dirty／owned／revoked0；8移动命令未开始，正式passed／cleanup仍false。独立8控件／3组件／44挂接恢复，入口无恢复错误，failure Stop0／Shutdown0，音频8会话恢复／pending0，确切自有owner／game／XR均不存在。独立Native／XR通过不替代正式失败。59文件封存 `952075aa…2f08a`、root结果 `f9f40e2e…0c1fc` 在忽略的 `analysis/hand-mesh-runtime-1024ao/`，额外初始手样本一次离线审计保存在独立root目录。下一步由Astra就同次观察中重复live删除／身份反射的具体等价优化作有界审查；不加TTL、不续旧Plan、不清fault，不扩大暂停分类。无默认安装、0.7伤害接线或头显通过。
 
 Astra后续只读建议 `48286dbb…8512f` 已给出一个尚未实现的候选：仅在单次observe栈内，对重复同类 `bDeleteMe` 查找保存有界完整路径比较材料，每次仍实读class／children／super、field next／FName、当前GNames entry与必要原始名称字节，重新证明当前不存在；正匹配保留原live descriptor／mask／对象bit路径。现有field()==0混合未命中与失败，不能直接缓存为absence；未知／路径变化必须拒绝本次观察，不能重建再准入。原Snapshot缺少首匹配完整路径，不能跨VM借旧地址跳过查找。该报告未改源码、运行测试／游戏或承诺收益，位于忽略的 `analysis/hand-tail-next-cost-review-20261024ao/review.json`。root另核对AM／AN／AO共77／97／59份封存文件未变、当前786源与最新严格构建相同；不把候选方案算已完成修复。
+
+## 2026-10-24 — AP 同次观察的实时删除查找路径校验
+
+TAIL默认关闭路径新增一个observe栈内Lookup，显式传入原36次identity，原注册／header／typed／schema与末尾重新查找保持。它仅对完整已知且再次校验的 `bDeleteMe` 未命中记录比较材料；每次复用实读全部root身份、class children／super、field next／FName、GNames Array／entry指针／index与实际名称字节。第10个原始wchar保留，避免将长名末尾人工清零误作真实NUL；未知或任一字节变化锁存failed，本次不能fallback重建。正匹配以及未发布凭据前的资源／层级上限走原deleted实时descriptor／mask／对象bit路径；不跨observe／VM／Tick保存状态、删除结果或权限，不改变原100ms／原动作／精度。Astra三源窄审 `98aec17a…75f95` 通过，并明确Win64栈空间约131,344字节、完整Array和已复制NUL后字节变化会额外保守拒绝，不称完全等价或已提速。
+
+9段完整实际name／registered／field／property／deleted／Lookup等源码在独立本地GObjects／GNames数组和对齐节点上执行，新8类／405项检查首轮严格编译运行通过，结果 `d4b4de2d…26566a` 在忽略的 `analysis/hand-tail-delete-cpu-20261024ap/`。覆盖完整实时负路径、当前正匹配offset／mask／对象bit和早期遮蔽、层级／root／FName／entry／文字改变后完整恢复仍拒绝、首读与warm未知、真实第10wchar变NUL、实际PAGE_NOACCESS后缀、容量／循环／disabled原路径，以及当前registry／class与独立新observe寿命。实际算法未替换为catalogue，但本地数据布局及计数／拒读copy是明确host服务，真实SEH／VirtualAlloc页面不等于真实游戏注册表或性能证据。有限同一fixture仅核对实时复用读数少于原逐项查找，没有给出毫秒承诺。
+
+冻结786源／27依赖，唯一完整PG严格构建／23导出、六实际运行源的OFF一组两次/EP非空行相等，以及受影响actual reader／最终SEH目标16类／207项回归均通过。DLL `cfd25b0c…8bf5c`、build结果 `09f0b3aa…36bc` 在忽略的 `analysis/hand-tail-delete-build-20261024ap/`；reader目标的删除／地址查找仍是显式catalogue服务，不能代替405项新路径检查。未重做未变的53／55／225／315／370／539项。此记录时尚未游戏验证，实际节省量与完整8命令／大幅伸手仍未证明；旧AO失败封存不改，无Native／XR／loader重建、默认安装或真实0.7伤害接线。
