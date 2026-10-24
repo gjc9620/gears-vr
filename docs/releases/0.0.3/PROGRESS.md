@@ -530,3 +530,11 @@ AN实测补记：源码 `e5fbcb1b…384a` 的786源／27依赖／547工件私有
 新增失败副本这次实际捕获了停止原因：首个acquire的seq755／rev23／lease1／interval1，第0／1／2组三次原最终授权返回3，最后group4旋转的原授权在ordinal192返回0，known67／checked3／rejected2，now=live69612484大于write_until69612475（原ticket69612375＋100ms）；没有进入后续NS／Policy阶段。四次prepare实际分别7.7695／8.2188／7.6974／7.8021ms，最终hand_direct分别2.4990／2.5722／2.5055／2.6687ms，原initial为4.9035ms。prepare含原VM，不能将其全算末端reader；这些阶段不与旧嵌套聚合相加。此次明确是实际部分acquire最后旋转前授权截止，并不回填AL／AM当时未保存的具体原因。
 
 该局组件1尝试／0提交／1恢复、setter尝试5，fault与cleanup_failed保留1，最终dirty／owned／revoked0；双手／新增字段零写、0移动命令，正式passed／cleanup与tail审计均false。独立8控件含typed观察、3组件和44字节挂接前后相同，入口恢复无错误，failure Stop0／Shutdown0；8音频会话恢复且pending0，确切owner／game／XR均不存在。独立Native／XR子会话通过不替代正式失败。97文件封存 `cd40f4a9…858fd`、root结果 `11d59a63…bc655` 在忽略的 `analysis/hand-mesh-runtime-1024an/`，不再改写。下一步只优化单次末端观察的重复first-match查找，保留所有实时identity／deleted／typed检查和原100ms，不增加暂停／重试授权分类，不清除真实fault或降低动作／精度。0.7伤害、全武器与头显仍未完成，无默认安装。
+
+## 2026-10-24 — AO 单次末端观察的 first-match 地址批查
+
+默认关闭TAIL内，新增只返回本次局部地址的 `playground::fields<N>`：原子类优先／链内首同名顺序、40层／每层4096项与大小写规则保持，不按kind跳过错误首匹配，缺项／null查询时输出全零。候选名一次解析后匹配尚未找到的标签；优化名称scope未启用时沿用128字读取，启用时取本组最长查询上限，实际page-aware NUL读取不变。原11个control descriptor与3个Vector成员逐项交给原 typed validator（只移出地址定位），36次live identity／deleted及布局、掩码、重叠、Enum、raw值和末尾owner／class／extent均保留。原始值观察后再独立遍历两组字段，必须与前次地址一致；不跨observe／invoke／Tick缓存成功、缺失或权限，仍非原子观察。Astra计划源审 `359c39fa…7ca6` 和实际三文件窄审 `0f62b951…5e54` 明确绑定各自基线／活动源，未将后改稿冒充早先已审。
+
+真实原／新resolver与named／page text的5段逐字源码进入8类／53项新主机检查，首轮严格编译运行通过，结果 `27705d8e…f76d` 在忽略的 `analysis/hand-tail-batch-cpu-20261024ao/`。覆盖子类／链内遮蔽、重复查询、错误首类型不能跳过、缺失／null／不可读／无NUL名字、scope=false、真实PAGE_NOACCESS边界、原40／4096边界与循环、不同调用的新链／名称及无部分发布。有限示例的名称解析由逐项9次减少为批查4次，只说明工作量减少，未证明毫秒节省。UObject到名称的catalogue和本地节点是明确host服务，不能证明真实FName注册ABI。
+
+冻结786源／27依赖，唯一完整PG严格构建／23导出通过；新OFF一对/EP将controller也按真实include边加入，六份实际运行源的非空行相等。DLL `a96aedd0…cdc2`，build结果 `4f2a278a…7746` 在忽略的 `analysis/hand-tail-batch-build-20261024ao/`。实际reader／最终SEH writer目标因受影响而重做一次回归，新16类／207项通过，新增原raw读取期间control／Vector首匹配改变或消失后的拒绝；fields仍是明确catalogue seam，实际批查由独立53项覆盖。未重复未改的225／315／370／539项。此时尚未游戏验证，不能承诺100ms内完成、自由伸手或实际画面通过；原AN失败封存不改，无Native／XR／loader重建、默认安装或0.7真实伤害接线。

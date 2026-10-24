@@ -47,9 +47,8 @@ struct Property {
     Kind kind{};unsigned dimension{},bytes{},offset{};
     uptr reference{};std::uint32_t mask{};
 };
-bool property(uptr container,const wchar_t* label,const wchar_t* kind,Kind expected,
+bool property_at(uptr address,const wchar_t* kind,Kind expected,
               unsigned bytes,unsigned extent,Property& result){
-    const auto address=playground::field(container,label);
     Property value{};value.kind=expected;
     if(!identity(address,value.object)||address>UINTPTR_MAX-0xd8||
        !identity(value.object.object_class,value.type)||!playground::named(value.type.address,kind)||
@@ -102,9 +101,11 @@ bool observe(uptr control,Observed& out){
     constexpr Kind expected[]={Kind::vector,Kind::byte,Kind::name,Kind::boolean,Kind::boolean,
         Kind::byte,Kind::boolean,Kind::boolean,Kind::floating,Kind::floating,Kind::floating};
     constexpr unsigned sizes[]={12,1,8,4,4,1,4,4,4,4,4};
+    std::array<uptr,11> field_addresses{};
+    if(!playground::fields(owner_class.address,labels,field_addresses))return false;
     std::array<detail::Property,11> fields{};
     for(unsigned i=0;i<fields.size();++i){
-        if(!detail::property(owner_class.address,labels[i],kinds[i],expected[i],sizes[i],extent,
+        if(!detail::property_at(field_addresses[i],kinds[i],expected[i],sizes[i],extent,
                              fields[i]))return false;
         for(unsigned j=0;j<i;++j)if(!detail::compatible(fields[i],fields[j]))return false;
     }
@@ -118,9 +119,11 @@ bool observe(uptr control,Observed& out){
        !playground::named(space_enum.address,L"EBoneControlSpace")||
        !playground::named(enum_class.address,L"Enum"))return false;
     constexpr const wchar_t* components[]={L"X",L"Y",L"Z"};
+    std::array<uptr,3> member_addresses{};
+    if(!playground::fields(vector.address,components,member_addresses))return false;
     std::array<detail::Property,3> members{};
     for(unsigned i=0;i<members.size();++i)
-        if(!detail::property(vector.address,components[i],L"FloatProperty",Kind::floating,4,12,
+        if(!detail::property_at(member_addresses[i],L"FloatProperty",Kind::floating,4,12,
                              members[i])||members[i].offset!=i*4||
            members[i].object.outer!=vector.address)return false;
     const unsigned schema_version=1;
@@ -144,6 +147,11 @@ bool observe(uptr control,Observed& out){
     result.value.flags=result.raw_flags&(result.apply_mask|result.add_mask);
     // No strength value is sampled here. The actual compare-write must read
     // these three live addresses and prove exact +0 immediately before writing.
+    // Fresh first-match walks must still agree after typed/raw observation;
+    // comparing cached addresses to themselves would miss a changed field link.
+    std::array<uptr,11> last_fields{};std::array<uptr,3> last_members{};
+    if(!playground::fields(owner_class.address,labels,last_fields)||last_fields!=field_addresses||
+       !playground::fields(vector.address,components,last_members)||last_members!=member_addresses)return false;
     detail::Identity last_owner{},last_class{};unsigned last_extent{};
     if(!detail::identity(control,last_owner)||!detail::same_identity(owner,last_owner)||
        !detail::identity(owner_class.address,last_class)||!detail::same_identity(owner_class,last_class)||

@@ -80,6 +80,33 @@ uptr field(uptr cls,const wchar_t* value,const wchar_t* kind=nullptr){
     }
     return 0;
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+// Addresses only, local to one non-invoking observation. Match the original
+// untyped field's first name in derived-to-base order, even for a bad type.
+// Descriptor validation and a fresh final resolution remain the caller's job.
+template<std::size_t N>
+bool fields(uptr cls,const wchar_t* const (&labels)[N],std::array<uptr,N>& out){
+    out={};std::array<uptr,N> found{};std::size_t remaining=N,limit=1;
+    for(auto label:labels){
+        if(!label)return false;
+        limit=(std::max)(limit,component_names::query_limit(label));
+    }
+    if(!component_names::enabled)limit=128;
+    for(unsigned depth=0;cls&&depth<40;++depth,cls=get<uptr>(cls+0x60)){
+        auto f=get<uptr>(cls+0x80);
+        for(unsigned n=0;f&&n<4096;++n,f=get<uptr>(f+0x68)){
+            wchar_t text[128]{};
+            if(!name(f,text,limit))continue;
+            for(std::size_t i=0;i<N;++i){
+                if(found[i]||_wcsicmp(text,labels[i]))continue;
+                found[i]=f;--remaining;
+            }
+            if(!remaining){out=found;return true;}
+        }
+    }
+    return false;
+}
+#endif
 uptr property(uptr object,const wchar_t* value){return registered(object)?field(get<uptr>(object+0x50),value):0;}
 uptr pointer(uptr object,const wchar_t* value){const auto p=property(object,value);return p?get<uptr>(object+get<unsigned>(p+0x94)):0;}
 template<class T>T scalar(uptr object,const wchar_t* value){const auto p=property(object,value);return p?get<T>(object+get<unsigned>(p+0x94)):T{};}

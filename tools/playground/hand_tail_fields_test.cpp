@@ -41,6 +41,7 @@ struct Memory {
     std::array<uptr,3> watched_strengths{};
     unsigned strength_reads{};
     uptr denied_copy{};
+    uptr rebind_on_copy{},rebind_to{};unsigned rebind_index{};
     uptr address(unsigned node)const{return reinterpret_cast<uptr>(blocks[node].bytes.data());}
     template<class T>void store(unsigned node,std::size_t offset,T const& value){
         if(offset>node_bytes||sizeof(T)>node_bytes-offset)std::abort();
@@ -64,6 +65,10 @@ bool copy(void* destination,uptr source,std::size_t bytes){
         for(const auto strength_address:current_memory->watched_strengths)
             if(source==strength_address)++current_memory->strength_reads;
         if(source==current_memory->denied_copy)return false;
+        if(source==current_memory->rebind_on_copy){
+            current_memory->rebind_on_copy=0;
+            current_memory->bindings[current_memory->rebind_index].property=current_memory->rebind_to;
+        }
     }
     __try{std::memcpy(destination,reinterpret_cast<void const*>(source),bytes);return true;}
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
@@ -74,6 +79,14 @@ uptr field(uptr owner,const wchar_t* label){
     for(auto const& binding:current_memory->bindings)
         if(binding.owner==owner&&!_wcsicmp(binding.label,label))return binding.property;
     return 0;
+}
+// Explicit catalogue resolution seam, as with field above. The actual engine
+// first-match batch implementation has its own old/new resolver fixture.
+template<std::size_t N>
+bool fields(uptr owner,const wchar_t* const (&labels)[N],std::array<uptr,N>& out){
+    out={};std::array<uptr,N> values{};
+    for(std::size_t i=0;i<N;++i)if(!(values[i]=field(owner,labels[i])))return false;
+    out=values;return true;
 }
 bool named(uptr object,const wchar_t* label){
     if(!registered(object))return false;
@@ -208,6 +221,17 @@ void valid_observation(){
         sample.value.space_bone[7]==0x88u,"raw translation/space/Name bytes preserved without geometry qualification");
     require(!sample.schema.empty()&&fixture.memory.bindings.size()==14,"eleven properties and three Vector members");
     require(fixture.memory.strength_reads==0,"observer never reads strength values");
+}
+void fresh_resolution_rejections(){
+    begin_case("fresh control and Vector field resolution rejects changed first match");Fixture fixture;
+    for(const auto index:{0u,11u,13u}){
+        variant=index;fixture.reset();const auto original=fixture.snapshot();
+        fixture.memory.rebind_index=index;
+        fixture.memory.rebind_on_copy=fixture.control()+translation_offset;
+        fixture.memory.rebind_to=index==11u?0:fixture.memory.address(wrong_type);
+        require_rejected(fixture,"post-descriptor first-match address changed or disappeared");
+        require(fixture.snapshot()==original,"read-only rejection changes no control bytes");
+    }
 }
 void schema_values(){
     begin_case("schema comparison ignores values but not masks/addresses");Fixture fixture;const auto before=fixture.read();
@@ -423,7 +447,7 @@ void inaccessible_rejections(){
 }
 } // namespace
 int main(){
-    valid_observation();schema_values();schema_identity_changes();enum_rejections();vector_rejections();
+    valid_observation();fresh_resolution_rejections();schema_values();schema_identity_changes();enum_rejections();vector_rejections();
     bool_rejections();bounds_and_overlap();strength_metadata_and_values();rejection_publication();
     four_field_writes();fresh_zero_rejections();expected_rejections();packed_live_bits();
     helper_shape_rejections();inaccessible_rejections();

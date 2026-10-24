@@ -1539,3 +1539,5 @@ AL实测补记：b8bd6abb…eb98的唯一修后静音后台局在更早component
 AN源码补记：默认关闭TAIL内加入每次真实acquire／update失败上下文及原prepare／hand_direct两个显式计时点，均在原授权时钟前结束；不解除invoke暂停或改变权限／写入／恢复。实际cost／trace和SEH finally的新6类／55项CPU检查、完整严格PG／23导出及OFF源码对比通过，DLL4d50dff8…8604；尚未游戏验证，不构成自由伸手、0.7伤害或头显完成。详细边界和host服务见0.0.3后续进度，本补记不构成0.1.0发布。
 
 AN实测补记：唯一静音后台局实际捕获首个component acquire最后group4旋转前授权截止：原前三组Auth3，末组known67／checked3／rejected2，now69612484>原ticket＋100ms截止69612475。四次原prepare约7.7–8.2ms、最终hand_direct约2.5–2.7ms，尚未隔离具体reader成本。组件0提交／1恢复，原fault保持，双手与扩展字段零写、0移动命令，正式流程／清理仍false；独立字段／音频恢复、自有进程退出核对通过，97文件封存cd40f4a9…858fd。下一步单次观察内批查first-match地址，保留实时typed／删除检查及原门限，无默认安装；不回填AL／AM未知原因或构成头显／伤害验收，详见0.0.3后续进度。本补记不构成0.1.0发布。
+
+AO源码补记：默认关闭TAIL的同次observe改为两组首同名地址批查，再保留全部原live typed／deleted等检查，raw观察后独立重查两组地址并比较，未增加跨调用缓存或放宽权限。Astra实际三文件源审通过；真实原／新resolver和page text新8类／53项检查、实际受影响reader／SEH目标16类／207项回归、完整PG严格构建／23导出及含controller的六实际运行源OFF对比通过，DLL a96aedd0…cdc2。尚未实际游戏验证，不承诺毫秒节省、100ms通过或完整伸手／伤害／头显验收，默认入口未安装。详细证据与host边界见0.0.3后续进度，本补记不构成0.1.0发布。
