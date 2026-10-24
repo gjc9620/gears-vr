@@ -97,6 +97,28 @@ struct Row {
     bool call_attempted{},call_return_known{},call_returned{},auth_known{};
     Meta meta{};Value read_value{};Auth auth{};
 };
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+// One real acquire/update, independent of the earlier recoverable Auth pin.
+// No clocks at scope exit or after the final authority decision.
+enum class CallbackSite:unsigned {read_before,prepare,read_after,component_direct,hand_direct,asset,schema,state,authorization};
+struct CallbackSpan {
+    std::uint64_t begin{},finish{};
+    bool closed{},result{};
+};
+struct CallbackRow {
+    unsigned group{};CallbackSite site{};
+    bool closed{},result{},auth_known{};
+    Auth auth{};CallbackSpan prepare{},hand_direct{};
+};
+constexpr unsigned callback_capacity=16;
+struct Attempt {
+    std::uint64_t sequence{},revision{},interval{},frequency{};
+    unsigned lease{},count{},seen{};
+    bool updating{},closed{},result{},failure_known{},full{};
+    Row first_failure{};
+    std::array<CallbackRow,callback_capacity> callbacks{};
+};
+#endif
 void masks(Row&) noexcept; // Defined beside the private component journal.
 struct State {
     std::array<Row,64> rows{};
@@ -107,6 +129,9 @@ struct State {
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
     Row first_authorization_rejection{};
     bool first_authorization_known{};
+    Attempt attempt{},failed_attempt{};
+    unsigned callback_index{callback_capacity};
+    bool attempt_active{},failed_attempt_known{};
 #endif
 };
 State state;
@@ -123,6 +148,9 @@ void add(Row row){
     // intermediate setter readback. That comparison is not a failed call or
     // permit; retain it in the ring without freezing away the actual failure.
     const bool boundary_failure=!row.passed&&row.stage!=Stage::pure_acquire_value;
+    if(boundary_failure&&state.attempt_active&&!state.attempt.failure_known){
+        state.attempt.first_failure=row;state.attempt.failure_known=true;
+    }
     if(row.auth_known&&!row.auth.result&&!state.first_authorization_known){
         state.first_authorization_rejection=row;state.first_authorization_known=true;
     }
@@ -140,6 +168,12 @@ bool gate(Stage stage,bool passed,unsigned detail=0,unsigned bits=0){
     Row row{};row.stage=stage;row.passed=passed;row.detail=detail;row.bits=bits;add(row);return passed;
 }
 void authorization(Auth const& value,Stage stage=Stage::authorize){
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    if(state.attempt_active&&state.callback_index<state.attempt.count){
+        auto& callback=state.attempt.callbacks[state.callback_index];
+        if(callback.site==CallbackSite::authorization){callback.auth=value;callback.auth_known=true;}
+    }
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     if(observed_authorization){observed_authorization->value=value;observed_authorization->known=true;}
 #endif
@@ -161,6 +195,55 @@ struct SetScope {
     }
     ~SetScope(){state.meta=saved;--state.depth;}
 };
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+struct AttemptScope {
+    bool admitted{};
+    AttemptScope(std::uint64_t sequence,std::uint64_t revision,unsigned lease,std::uint64_t interval,bool updating){
+        if(!state.enabled||state.dumped||state.attempt_active||state.failed_attempt_known)return;
+        admitted=true;state.attempt={};state.attempt.sequence=sequence;state.attempt.revision=revision;
+        state.attempt.lease=lease;state.attempt.interval=interval;state.attempt.updating=updating;
+        state.attempt.frequency=component_cost::state.frequency;
+        state.callback_index=callback_capacity;state.attempt_active=true;
+    }
+    void close(bool known,bool result) noexcept {
+        if(!admitted)return;
+        state.attempt.closed=known;state.attempt.result=result;
+        if(!known||!result){state.failed_attempt=state.attempt;state.failed_attempt_known=true;}
+        state.callback_index=callback_capacity;state.attempt_active=false;admitted=false;
+    }
+    void finish(bool result) noexcept {close(true,result);}
+    ~AttemptScope(){close(false,false);}
+    AttemptScope(AttemptScope const&)=delete;AttemptScope& operator=(AttemptScope const&)=delete;
+};
+// This index is also restored by the original callback SEH finally. An
+// interrupted span remains unclosed/unknown; finally never samples a clock.
+struct CallbackScope {
+    unsigned saved{state.callback_index},index{callback_capacity};
+    explicit CallbackScope(unsigned group){
+        if(!state.attempt_active||state.dumped||saved!=callback_capacity)return;
+        auto& attempt=state.attempt;
+        if(attempt.seen!=UINT_MAX)++attempt.seen;
+        if(attempt.count==callback_capacity){attempt.full=true;return;}
+        index=attempt.count++;attempt.callbacks[index].group=group;state.callback_index=index;
+    }
+    void site(CallbackSite value) noexcept {if(index<callback_capacity)state.attempt.callbacks[index].site=value;}
+    template<class F>bool measure(CallbackSite value,F&& operation){
+        site(value);
+        if(index==callback_capacity)return operation();
+        auto& row=state.attempt.callbacks[index];
+        auto& span=value==CallbackSite::prepare?row.prepare:row.hand_direct;
+        span.begin=component_cost::stamp();
+        const bool result=operation();
+        span.finish=component_cost::stamp();span.closed=true;span.result=result;return result;
+    }
+    bool finish(bool result) noexcept {
+        if(index<callback_capacity){auto& row=state.attempt.callbacks[index];row.closed=true;row.result=result;}
+        return result;
+    }
+    ~CallbackScope(){state.callback_index=saved;}
+    CallbackScope(CallbackScope const&)=delete;CallbackScope& operator=(CallbackScope const&)=delete;
+};
+#endif
 void begin(){
     if(state.enabled)return;
     state.enabled=true;
@@ -206,6 +289,30 @@ void dump(){
     fwprintf(log_file,L"hand_weapon_component_authorization_pin schema=1 capacity=1 known=%u "
         L"clocks_resampled=0 extra_authorizations=0 grants_write_authority=0\n",unsigned(state.first_authorization_known));
     if(state.first_authorization_known)print(state.first_authorization_rejection,L"first_authorization_rejection");
+    auto const& attempt=state.failed_attempt;
+    fwprintf(log_file,L"hand_weapon_component_failed_attempt schema=1 capacity=1 known=%u sequence=%llu revision=%llu "
+        L"lease=%u interval=%llu updating=%u closed=%u result=%u first_failure_known=%u callback_capacity=%u callback_count=%u "
+        L"callback_seen=%u callback_full=%u frequency=%llu authority_clocks_added=0 grants_write_authority=0\n",
+        unsigned(state.failed_attempt_known),attempt.sequence,attempt.revision,attempt.lease,attempt.interval,
+        unsigned(attempt.updating),unsigned(attempt.closed),unsigned(attempt.result),unsigned(attempt.failure_known),
+        callback_capacity,attempt.count,attempt.seen,unsigned(attempt.full),attempt.frequency);
+    if(state.failed_attempt_known){
+        if(attempt.failure_known)print(attempt.first_failure,L"failed_attempt_first_failure");
+        for(unsigned i=0;i<attempt.count;++i){
+            auto const& row=attempt.callbacks[i];auto const& auth=row.auth;
+            fwprintf(log_file,L"hand_weapon_component_callback schema=1 row=%u group=%u site=%u closed=%u result=%u "
+                L"prepare_begin=%llu prepare_finish=%llu prepare_closed=%u prepare_result=%u "
+                L"hand_direct_begin=%llu hand_direct_finish=%llu hand_direct_closed=%u hand_direct_result=%u "
+                L"auth_known=%u auth_fields_known=%u auth_checks_known=%u auth_rejected=%u now=%llu live_now=%llu "
+                L"commit_now=%llu write_until=%llu authorize_ns=%lld commit_ns=%lld ticket_ms=%llu plan_ms=%llu "
+                L"context_ms=%llu stereo_ns=%lld input_ns=%lld policy_mask=%u returned_mask=%u\n",
+                i,row.group,unsigned(row.site),unsigned(row.closed),unsigned(row.result),row.prepare.begin,row.prepare.finish,
+                unsigned(row.prepare.closed),unsigned(row.prepare.result),row.hand_direct.begin,row.hand_direct.finish,
+                unsigned(row.hand_direct.closed),unsigned(row.hand_direct.result),unsigned(row.auth_known),
+                auth.known,auth.checked,auth.rejected,auth.now,auth.live_now,auth.commit_now,auth.write_until,auth.authorize_ns,
+                auth.commit_ns,auth.ticket_ms,auth.plan_ms,auth.context_ms,auth.stereo_ns,auth.input_ns,auth.mask,auth.result);
+        }
+    }
 #endif
     const unsigned start=state.count==63?state.next:0;
     for(unsigned i=0;i<state.count;++i)print(state.rows[1+(start+i)%63],L"event");

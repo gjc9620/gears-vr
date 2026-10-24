@@ -508,3 +508,19 @@ AL实际运行补记：源码提交 `b8bd6abb…eb98` 后，唯一修后候选�
 两份完整实际cost／trace namespace与真实组件值类型直接进入有限fixture。新4类／225项检查通过，覆盖中间比较仍可见但不提前冻结、实际AuthEnd与既有开span关闭后冻结、不同schema首故障／首Auth、400多条后续记录覆盖、计数饱和、disabled／begin replay／dumped／reset、原wide dump与新增零采钟。QPC、mask提供器及无关诊断reset／dump是明确host服务，不是游戏ownership或writer证据。首轮fixture严格编译因host变量ticks遮蔽原源码局部被/WX拒绝，未执行检查；保留错误，R2仅改host变量三个同名token并逆向逐字核对，实际片段未改。结果 `c879838c…fc441` 在忽略的 `analysis/hand-auth-pin-cpu-20261024am-r2/`，旧315／198／370／539项未重跑。
 
 冻结786源／27依赖，唯一完整PG严格构建、23导出及新OFF五实际运行源/EP非空行比较通过，DLL `f0433810…90c1`，build结果 `47e66fca…e75e` 在忽略的 `analysis/hand-auth-pin-build-20261024am/`。本补记时尚未运行AM购买版局，没有证明AL拒绝的具体原因或解决手部位置；不放宽100ms、不更新旧Plan、不扩大暂停分类，不重建Native／XR／loader或安装默认入口。
+
+AM实际运行补记：提交 `d3285c90…b3f8` 的786源／27依赖／535工件私有候选 `02a2598f…44d2`，在三次新鲜空闲确认后仅启动一次静音／behind／observe-only的Steam购买版测试，物理后台手柄输入关闭，原15s外部预算、3s清理预留、8命令及0.1单位／0.1°保留。首个枪体提交后，原后置授权实际记录 known67／checked3／rejected2，seq752／rev24，now=live68706015、write_until68706006，返回0；新限定分支请求age交还并完成clean_close1。其后实际双手hand_only应用7次／恢复7次，setter／target均56；末端字段46行／23对／7个完整lease审计通过，prepare写28次、最后总写56次，8份外部typed观察均通过。
+
+第二次枪体取得控制仍以 `component_acquire_failed` 终态8停止：intervals2、acquire尝试2、update尝试0、commit1，累计component acquired1／restored2／setter尝试9，faulted与cleanup_failed均1，最终dirty／owned／revoked0。首次Auth pin为ordinal198／seq752／rev24，是前一个已经恢复的拒绝；终止发生于seq821／rev32，最后postflush授权通过，不可借首pin代替后一次具体原因。原8条移动命令均未开始。直接调用未改的原hand_samples审计器，一次离线读取原日志得7组同Tick之后样本、14个手部结果，全部在原门限内，最大位置0.0000247956单位、旋转0.0299503°；这些只有初始未变化手势，原Limb和末端位置同时工作，不能隔离新平移消费或证明此前大幅伸手问题、蒙皮／画面与完整移动通过。
+
+原正式passed／cleanup_passed均false。独立完整8控件、3组件和44字节挂接前后相等，入口恢复无错误；failure Stop0／Shutdown0，8音频会话恢复且pending0，确切owner／game／XR均退出。Native／XR子会话通过不替代整体结论。77文件封存 `95598b2b…13c`、root结果 `1629c18a…f216`，在忽略的 `analysis/hand-mesh-runtime-1024am/`，后续没有改写该目录。hand样本补证在独立 `analysis/hand-auth-pin-runtime-root-20261024am/hand-sample-result.json`。
+
+原initial两个实际时段4.6996／4.9053ms；旧group0的current／read聚合是嵌套跨attempt数据，不能相加或当作末端reader独占成本。Astra有界只读源审 `cf7d3f28…e2cb` 确认实际ContinuousAuthorize位于原invoke_paused保护内，因此旧计时未覆盖原prepare和最终hand_direct_matches。建议保留每次真实acquire／update的失败上下文，在这两个原表达式单独计时，均在原授权时钟之前结束；不解除全局invoke暂停、不重授权、不在成功授权至setter之间新增计时。源审未写代码或运行测试。单双手0.7／1.0仍只有规格与静态伤害路径证据，无默认安装、全武器或头显验收。
+
+## 2026-10-24 — AN 本次枪体失败记录与原回调定点计时
+
+仅在TAIL默认关闭分支内增加一个固定失败操作副本及每操作最多16条callback记录：实际acquire／update前清空并绑定原sequence／revision／lease／interval，false返回后冻结该次首个真实失败和callback；首次全session Auth pin仍单独保留。callback的Auth只在本次原authorization表达式实际执行时复制，前置失败明确unknown，授权PASS后的dispatch失败独立保留，恢复环与后续调用不能替换失败副本。原prepare与hand_direct_matches各增加一个显式QPC对，含原VM的prepare不标为纯reader；两段计时均在原最终授权时钟前关闭。Scope结束、原SEH finally和dump不采钟，异常保留未完成字段并恢复index；不解除invoke_paused、增添getter／授权、缓存类型、改变写入／恢复／Plan或放宽门限。OFF callback保留原完整定义。
+
+新6类／55项主机检查首次严格编译运行通过，直接使用完整实际cost／trace namespace和实际ForwardDiagnostics／component_callback_permit。覆盖先前可恢复拒绝与后次失败隔离、两段恰好4次QPC、旧pause保持、前置拒绝不借旧Auth、授权通过后dispatch失败、真实Windows RaiseException穿过实际SEH finally后的unknown与下次callback、容量／嵌套／reset及真实wide dump。时钟／mask／无关诊断服务和只供finally使用的Permit／两成员ContinuousAuthorize是显式host服务，不是实际引擎callback执行。CPU结果 `49ac51e2…1870` 位于忽略的 `analysis/hand-component-attempt-cpu-20261024an/`，旧225／315／198／370／539项未重跑。
+
+冻结786源／27依赖，唯一新完整PG严格构建／23导出及OFF五实际运行源两次/EP非空行相等均通过，DLL `4d50dff8…8604`，build结果 `ce0be602…3523` 位于忽略的 `analysis/hand-component-attempt-build-20261024an/`。本条记录时尚未实际运行该候选；未知终止原因与100ms成本仍待新局验证，没有reader优化、Native／XR／loader重建或默认安装。
