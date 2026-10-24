@@ -470,6 +470,24 @@ bool hand_direct_matches(Snapshot const& sampled){
     if(!take(&left,sizeof(left))||!take(&right,sizeof(right))||!take(&hidden,sizeof(hidden))||left!=11||right!=35||
        !lookup::boolean(sampled.mesh,L"bIgnoreControllersWhenNotRendered",live_hidden)||hidden!=live_hidden)return false;
     Snapshot layout{};layout.pc=sampled.pc;layout.pawn=sampled.pawn;layout.mesh=sampled.mesh;layout.tree=sampled.tree;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    // PAWN_CACHE_DIRECT_BEGIN
+    {
+        handik::PawnControlFields cached(sampled.pawn,sampled.mesh,sampled.tree);
+        if(!cached.begin())return false;
+        for(unsigned i=0;i<8;++i){
+            auto& value=layout.controls[i];auto const& old=sampled.controls[i];
+            if(!handik::read_control(sampled.pawn,sampled.mesh,sampled.tree,i,value,&cached.fields)||value.object!=old.object||value.fixed!=old.fixed||
+               !gears_hand_ik::exact(value.strength,old.strength)||!gears_hand_ik::exact(value.effector,old.effector)||
+               std::memcmp(&value.rotation,&old.rotation,sizeof(value.rotation)))return false;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+            if(!gears_hand_tail_translation::exact(value.translation.value,old.translation.value))return false;
+#endif
+        }
+        if(!cached.finish())return false;
+    }
+    // PAWN_CACHE_DIRECT_END
+#else
     for(unsigned i=0;i<8;++i){
         auto& value=layout.controls[i];auto const& old=sampled.controls[i];
         if(!handik::read_control(sampled.pawn,sampled.mesh,sampled.tree,i,value)||value.object!=old.object||value.fixed!=old.fixed||
@@ -479,6 +497,7 @@ bool hand_direct_matches(Snapshot const& sampled){
         if(!gears_hand_tail_translation::exact(value.translation.value,old.translation.value))return false;
 #endif
     }
+#endif
     if(!handik::read_lists(layout)||layout.identity.size()!=sampled.identity.size()-at||
        !std::equal(layout.identity.begin(),layout.identity.end(),sampled.identity.begin()+at))return false;
     int health{},ignore{};std::uint8_t special{};

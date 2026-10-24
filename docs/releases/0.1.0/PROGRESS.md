@@ -1559,3 +1559,5 @@ AS源码补记：只为原post-component127／2047／1024、mask0且授权采样
 AS实测补记：已实际命中新NS交还、component1提交／1恢复且clean_close1，之后新输入完成5手lease／恢复，末端审计和10份初始手势原门限通过；host读session-status遇PermissionError errno13而停止，正式流程仍失败、0命令，底层Win32原因未知。原字段／音频／自有进程退出核对通过，70文件封存09bb303a…f2460。下一AT仅复用已有shared-generation reader返回原始bytes，8项文件／freshness检查通过，未改binary或异常／年龄政策，尚未游戏运行。详细失败与fixture修正证据见0.0.3后续进度，本补记不构成0.1.0发布。
 
 AT实测补记：只改host共享状态读取一处，实际二进制／786源／全部门限保持AS，未重复构建。购买版未见上一局访问错误，NS交还clean_close1后7次手应用／恢复，tail审计和14份初始手势门限通过；第二次acquire group2仍因NS check10源龄104.1106ms拒绝，原component fault保留，0动作命令，正式流程／清理失败。独立原字段／音频／自有进程退出核对通过，77文件封存976d820e…6ba3。后续原callback内拒绝是否可安全取消／或继续减读成本的源审尚未接线，不改变完整目标、真实0.7伤害及头显未完成状态。详见0.0.3后续进度，本补记不构成0.1.0发布。
+
+AU源码补记：generic拒绝合同保持；仅对snapshot和hand_direct各连续8控制器作独立pawn cache首尾地址批查，原实时typed指针／control检查不减，不跨VM。batch边界失败显式沿用3／7实际pending撤权，单项失败保留原index。Astra窄审、新实际两调用块／撤权7类／182项检查、严格完整PG／23导出及六源OFF对比通过，DLLb3fbdd54…e3df5；phase1换行统一、不称raw字节相同。尚未实际游戏验证或完成大伸手／真实0.7伤害／头显，无默认安装。来源与host边界详见0.0.3后续进度，本补记不构成0.1.0发布。

@@ -600,3 +600,13 @@ AS实测补记：提交 `c7ad8ac1…e1b8f` 的786源／27依赖／583工件候�
 第二次acquire的seq822／rev33／lease8／interval2在group2平移之前失败，实际ordinal674 known127／checked2047／rejected1024、mask0。MS票龄93ms距原cutoff7ms，commit的stereo／input源龄104.1106／104.0945ms。此前group0／1授权返回3；该组prepare及hand_direct也通过，但实际最终check10拒绝，check11／12与Policy内部首因不作补证。三次prepare7.1589／6.9913／6.9017ms、hand_direct2.2561／2.1890／2.3512ms，包含原VM且不属于受控提速对比。部分component失败仍按原合同latch fault，没有事后清除；新增post-component交还并未覆盖这条callback内失败。
 
 累计组件2次尝试／1提交／2恢复、setter9，component fault／cleanup_failed1、最终dirty／owned／revoked0；正式passed／cleanup仍false，Stop0／Shutdown0。独立8控件typed观察／3组件／44挂接与入口恢复、音频8会话恢复pending0和确切自有进程退出通过；Native／XR子会话独立通过。77文件封存 `976d820e…6ba3`、root结果 `30d1c96a…ac948` 在忽略的 `analysis/hand-mesh-runtime-1024at/`，不改写。已将这次实际callback前NS拒绝与原generic fault合同交给Astra有界审查，要求不能事后清fault／放宽写权限；若无安全取消前提则只选具体读成本优化，尚无新接线。完整6DoF／0.7真实伤害／全武器／头显仍未完成，无默认安装。
+
+## 2026-10-24 — AU 连续八控制器的 pawn 缓存地址批查
+
+Astra对AT具体callback NS失败和generic Permit／lease合同的12输入审查 `a116871c…bdda` 明确：Permit拒绝之后原update_impl仍读回／settle，再因valid_once=false调用reject锁stopped＋faulted；callback内cancel／suspend或busy时递归yield均不能安全绕开，假报success也无效。因此不把已锁存失败改成可恢复暂停，下一步只减重复读取。报告位于忽略的 `analysis/hand-component-ns-next-review-20261024at/`。
+
+TAIL内新增PawnControlFields，复用已有ControlFields<8>仅保存八个pawn cache的首匹配地址。snapshot在两个MatchRefBone调用之后建立局部块，八次read_control结束即重新解析并销毁，早于read_lists和GetBoneMatrix；hand_direct_matches有独立局部块。每项仍实时注册／class／kind／size／offset／存储范围及指针读取，原control身份／布局／值／比较顺序不删；独立Backend等调用不传该局部指针，继续原查找。batch begin／finish失败发生在原TailRead之外，显式对3／7调用既有tail_observation_failed，实际anchor／pending过滤仍执行；正常单项失败仍只原index撤权，正常比较失败不发明新的TailRead失败。无跨VM／callback／Tick缓存或Plan／Permit／setter／100ms／恢复合同更动。Astra实际8输入窄审 `bfca93c2…8079` 通过；IK保持CRLF，phase1由LF统一为CRLF，不称后者raw字节未变。
+
+22段实际读取／名称／注册／两调用块／tail_observation_failed源码与实际尾Value头进入7类／182项受影响检查，首次严格编译运行通过，结果 `de380939…bdd8` 位于忽略的 `analysis/hand-pawn-cache-cpu-20261024au/`。覆盖八控制器原新完整输出、初始缺项／未知／失注册导致匹配pending尾部撤权、所有cache实时类型／大小／offset／指针读失败、首同名错误类型、批查后描述符变更、末尾class／地址／注册变化、原单项与比较短路、当前anchor／pending过滤、恢复字节不能抹撤权及新调用不借旧成功。tail观察和layout／value、pending／anchor存储是显式host服务；实际撤权函数体执行并只作机械重命名以便统计，不冒称原引擎或完整ownership。fixture新函数有条件签名，首次机械brace提取未涵盖互斥头；在任何编译前保留初稿并改为连续完整#if/#else源码区间，未动生产。有限8字段fixture名称解析468→448只是工作量，不是耗时承诺。
+
+冻结786源／27依赖，唯一完整PG严格构建／23导出与六实际运行源OFF一组两次/EP非空行相等通过。DLL `b3fbdd54…e3df5`、build结果 `28a2287f…d2b55` 在忽略的 `analysis/hand-pawn-cache-build-20261024au/`；未重跑未变的593／659／207等旧套件。本条记录时尚未购买版运行，完整8命令／大伸手仍未证明；原时间／精度保持、未清fault，无默认安装／Native／XR／loader重建、0.7真实伤害或全武器／头显通过。

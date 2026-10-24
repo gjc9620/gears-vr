@@ -246,8 +246,29 @@ template<std::size_t N>struct ControlFields {
             registered(object)&&get<uptr>(object+0x50)==cls;
     }
 };
+constexpr const wchar_t* pawn_control_labels[]={L"IKBoneCtrl_RightHand",L"IKBoneRotCtrl_RightHand",
+    L"IKCtrl_RightHand",L"IKRotCtrl_RightHand",L"IKBoneCtrl_LeftHand",
+    L"IKBoneRotCtrl_LeftHand",L"IKCtrl_LeftHand",L"IKRotCtrl_LeftHand"};
+// Only the continuous eight-read interval owns these addresses. Initial/final
+// batch failures are outside each control's TailRead, so revoke both matching
+// pending tails explicitly. Ordinary control failures keep their own guard.
+struct PawnControlFields {
+    ControlFields<8> fields;uptr mesh{},tree{};
+    PawnControlFields(uptr pawn,uptr owner_mesh,uptr owner_tree):fields(pawn,pawn_control_labels),mesh(owner_mesh),tree(owner_tree){}
+    bool failed()const{
+        handstream::tail_observation_failed(fields.object,mesh,tree,3);
+        handstream::tail_observation_failed(fields.object,mesh,tree,7);
+        return false;
+    }
+    bool begin(){return fields.begin()||failed();}
+    bool finish()const{return fields.finish()||failed();}
+};
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+bool read_control(uptr pawn,uptr mesh,uptr tree,unsigned index,Control& out,ControlFields<8> const* pawn_fields=nullptr){
+#else
 bool read_control(uptr pawn,uptr mesh,uptr tree,unsigned index,Control& out){
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
     struct TailRead {
         uptr pawn,mesh,tree;unsigned index;bool complete{};
@@ -263,7 +284,13 @@ bool read_control(uptr pawn,uptr mesh,uptr tree,unsigned index,Control& out){
         L"IK_RightHand",L"IKRot_RightHand",L"IKBone_LeftHand",L"IKBoneRot_LeftHand",
         L"IK_LeftHand",L"IKRot_LeftHand"};
     const bool rotation=(index&1)!=0,tail=(index%4)>=2,left=index>=4;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    const bool cached=pawn_fields?(pawn_fields->object==pawn&&pawn_fields->pointer(caches[index],out.object)):
+        pointer(pawn,caches[index],out.object);
+    if(!cached)return false;
+#else
     if(!pointer(pawn,caches[index],out.object))return false;
+#endif
     mark(L"control_class_or_owner",out.object,caches[index],rotation?L"SkelControlSingleBone":L"SkelControlLimb");
     rejection.related=tree;rejection.raw=get<uptr>(out.object+0x40);
     if(!playground::instance(out.object,rotation?L"SkelControlSingleBone":L"SkelControlLimb")||
@@ -513,7 +540,19 @@ bool read_snapshot(uptr pc,Snapshot& out){
     const bool right_known=freehands::bone_index(out.mesh,L"b_MF_Hand_R",right);rejection.observed=right;
     if(!right_known||right!=35)return false;
     append(out.identity,left);append(out.identity,right);append(out.identity,ignore_hidden);
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    // PAWN_CACHE_SNAPSHOT_BEGIN
+    {
+        PawnControlFields cached(out.pawn,out.mesh,out.tree);
+        if(!cached.begin())return false;
+        for(unsigned i=0;i<8;++i)
+            if(!read_control(out.pawn,out.mesh,out.tree,i,out.controls[i],&cached.fields))return false;
+        if(!cached.finish())return false;
+    }
+    // PAWN_CACHE_SNAPSHOT_END
+#else
     for(unsigned i=0;i<8;++i)if(!read_control(out.pawn,out.mesh,out.tree,i,out.controls[i]))return false;
+#endif
     if(!read_lists(out)||!checked_field(uptr(game.world),L"TimeSeconds",L"FloatProperty",
           &out.world_time,sizeof(float))||!std::isfinite(out.world_time)||
        !checked_field(out.mesh,L"LastRenderTime",L"FloatProperty",&out.last_render_time,sizeof(float))||
