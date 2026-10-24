@@ -37,6 +37,17 @@ RUNTIME_RESOURCE_LAYOUTS = {
     'bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4':
         ((0x2013000, 0x226cc), (0x1eae000, 0xb37e8)),
 }
+# AR-A8 observed this ONE file-only field in an otherwise identical section.
+# No initialized disk bytes belong to this section. The virtual span, flags,
+# every other header byte and all current getter code still need exact checks.
+# This records an observed runtime layout, not its writer or a general mask.
+# PE field meaning: https://learn.microsoft.com/en-us/windows/win32/debug/pe-format
+RUNTIME_EMPTY_RAW_POINTERS = {
+    'bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4':
+        (12, dict(name='.themida', rva=33775616, size=24985600,
+                  virtual_size=24985600, raw_size=0, raw_pointer=11354624,
+                  characteristics=3758096480), 0),
+}
 
 
 class SubmitFailure(RuntimeError):
@@ -303,6 +314,27 @@ def _pe_layout(raw, disk_size):
                 directory_offsets=directory_offsets, directory_sections=directory_sections)
 
 
+def _reviewed_runtime_section_headers(module, disk, live, live_headers):
+    reviewed = RUNTIME_EMPTY_RAW_POINTERS.get(module['sha256'])
+    if reviewed is None:
+        return live_headers, []
+    index, expected, runtime_pointer = reviewed
+    observed = dict(expected, raw_pointer=runtime_pointer)
+    if (len(disk['sections']) <= index or len(live['sections']) <= index or
+            disk['sections'][index] != expected or live['sections'][index] != observed):
+        return live_headers, []
+    pe = struct.unpack_from('<I', module['headers'], 0x3c)[0]
+    optional_size = struct.unpack_from('<H', module['headers'], pe + 20)[0]
+    offset = pe + 24 + optional_size + index * 40 + 20
+    if offset + 4 > len(live_headers):
+        raise RuntimeError('Reviewed empty-section header field outside live header')
+    normalized = bytearray(live_headers)
+    struct.pack_into('<I', normalized, offset, expected['raw_pointer'])
+    return bytes(normalized), [dict(section=index, name=expected['name'], field='PointerToRawData',
+                                  offset=offset, disk=expected['raw_pointer'], live=runtime_pointer,
+                                  initialized_disk_bytes=0, virtual_layout_unchanged=True)]
+
+
 def _module(q, bridge, game):
     module = bridge.module
     if (q.r.base != module['base'] or q.r.profile['sha256'] != module['sha256'] or
@@ -315,11 +347,13 @@ def _module(q, bridge, game):
     # closing boundary, including after private request write and GT completion.
     live_headers = q.read(module['base'], len(disk_headers))
     live = _pe_layout(live_headers, module['disk_size'])
-    if (disk['fields'] != live['fields'] or disk['sections'] != live['sections'] or
+    comparable_headers, section_adaptations = _reviewed_runtime_section_headers(module, disk, live, live_headers)
+    comparable = _pe_layout(comparable_headers, module['disk_size'])
+    if (disk['fields'] != live['fields'] or disk['sections'] != comparable['sections'] or
             module['size'] != disk['fields']['size_of_image'] or module['sections'] != disk['sections'] or
             not 0 < module['base'] < (1 << 64) - module['size']):
-        # Preserve the fail-closed predicate. A blanket error lost the exact
-        # changed field when a real preflight failed, preventing localization.
+        # Keep exact diagnostics, including differences outside the reviewed
+        # single-field layout. Do not silently broaden a runtime adaptation.
         fields = {key: dict(disk=value, live=live['fields'].get(key))
                   for key, value in disk['fields'].items() if live['fields'].get(key) != value}
         sections = []
@@ -337,7 +371,7 @@ def _module(q, bridge, game):
         raise RuntimeError('Bone current module PE identity/section layout differs: ' +
                            json.dumps(differences, separators=(',', ':'), sort_keys=True))
     offset = disk['directory_offsets']['resource']
-    if disk_headers[:offset] != live_headers[:offset] or disk_headers[offset + 8:] != live_headers[offset + 8:]:
+    if disk_headers[:offset] != comparable_headers[:offset] or disk_headers[offset + 8:] != comparable_headers[offset + 8:]:
         raise RuntimeError('Bone current module immutable PE header bytes differ')
     policy = 'unchanged_disk_resource'
     if disk['directories']['resource'] != live['directories']['resource']:
@@ -351,7 +385,10 @@ def _module(q, bridge, game):
     result.update(disk_sha256=module['sha256'], sha256_scope='on_disk_executable',
                   pe_validation=dict(disk_header_sha256=hashlib.sha256(disk_headers).hexdigest(),
                                      live_header_sha256=hashlib.sha256(live_headers).hexdigest(),
-                                     non_resource_header_bytes_equal=True, fields=live['fields'],
+                                     non_resource_header_bytes_equal=(disk_headers[:offset] == live_headers[:offset] and
+                                                                      disk_headers[offset + 8:] == live_headers[offset + 8:]),
+                                     reviewed_non_resource_header_bytes_equal=True,
+                                     empty_raw_pointer_adaptations=section_adaptations, fields=live['fields'],
                                      disk_import=dict(zip(('rva', 'size'), disk['directories']['import'])),
                                      live_import=dict(zip(('rva', 'size'), live['directories']['import'])),
                                      disk_resource=dict(zip(('rva', 'size'), disk['directories']['resource'])),

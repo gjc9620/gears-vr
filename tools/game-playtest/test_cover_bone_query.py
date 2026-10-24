@@ -150,6 +150,35 @@ class BoneMemory(AnimationMemory):
         struct.pack_into('<II', live, 0x118, 0x1eae000, 0xb37e8)
         self.put(self.BASE, live)
 
+    def reviewed_empty_raw_pointer_layout(self, *, resources=False):
+        # Synthetic PE rows; only the purchased hash and one observed row's
+        # scalars are from AR-A8. No shipped header or code bytes are embedded.
+        self.profile['sha256'] = self.module['sha256'] = self.certificates['game_sha256'] = (
+            'bdc6705d18ddb335b767df0b38e256ba5da0f49449c8970b302118bb7a4a8fa4')
+        sections = copy.deepcopy(self.module['sections'])
+        for i in range(2, 12):
+            sections.append(dict(name='.p' + str(i), rva=0x10000 + i * 0x1000,
+                                 size=0x1000, virtual_size=0x1000, raw_size=0,
+                                 raw_pointer=0, characteristics=0xc0000040))
+        sections.append(dict(name='.themida', rva=33775616, size=24985600,
+                             virtual_size=24985600, raw_size=0, raw_pointer=11354624,
+                             characteristics=3758096480))
+        if resources:
+            sections.extend([dict(name='.unpack', rva=0x1eae000, size=0xb37e8, virtual_size=0xb37e8,
+                                  raw_size=0, raw_pointer=0, characteristics=0x40000040),
+                             dict(name='.rsrc', rva=0x2013000, size=0x23000, virtual_size=0x23000,
+                                  raw_size=0, raw_pointer=0, characteristics=0x40000040)])
+        self.module['sections'] = sections
+        self.module['size'] = 73691136
+        self.header, self.module['disk_size'] = pe_headers(sections, image_size=self.module['size'],
+                                                         resource_directory=(0x2013000, 0x226cc) if resources else (0, 0))
+        self.module['headers'] = self.header
+        live = bytearray(self.header)
+        struct.pack_into('<I', live, 0x188 + 12 * 40 + 20, 0)
+        if resources:
+            struct.pack_into('<II', live, 0x118, 0x1eae000, 0xb37e8)
+        self.put(self.BASE, live)
+
     def add_property(self, owner, name, kind, offset, size, **kwargs):
         super().add_property(owner, name, kind, offset, size, **kwargs)
         if hasattr(self, 'kind_classes'):
@@ -306,6 +335,78 @@ class BoneQueryTests(unittest.TestCase):
         # No opaque pose data or guessed native bone-name table is read.
         self.assertFalse(any(address == f.arrays[f.MESH, 'SpaceBases'] for address, _ in f.read_counts))
         self.assertFalse(any(address == f.arrays[f.ASSET, 'RefSkeleton'] for address, _ in f.read_counts))
+
+    def test_reviewed_empty_raw_pointer_preserves_exact_live_receipt(self):
+        f = BoneMemory()
+        f.reviewed_empty_raw_pointer_layout()
+        row = self.result(f, True, ['root'])
+        evidence = row['calls'][0]['function']['source']['module']['pe_validation']
+        self.assertFalse(evidence['non_resource_header_bytes_equal'])
+        self.assertTrue(evidence['reviewed_non_resource_header_bytes_equal'])
+        self.assertEqual(evidence['empty_raw_pointer_adaptations'], [
+            dict(section=12, name='.themida', field='PointerToRawData', offset=0x188 + 12 * 40 + 20,
+                 disk=11354624, live=0, initialized_disk_bytes=0, virtual_layout_unchanged=True)])
+        self.assertNotEqual(evidence['disk_header_sha256'], evidence['live_header_sha256'])
+        self.assertTrue(evidence['live_header_closing_reread_required'])
+
+    def test_empty_raw_pointer_and_reviewed_resource_relocation_are_independent(self):
+        f = BoneMemory()
+        f.reviewed_empty_raw_pointer_layout(resources=True)
+        row = self.result(f, True, ['root'])
+        evidence = row['calls'][0]['function']['source']['module']['pe_validation']
+        self.assertEqual(evidence['resource_policy'], 'reviewed_runtime_resource_relocation')
+        self.assertEqual(len(evidence['empty_raw_pointer_adaptations']), 1)
+
+    def test_empty_raw_pointer_never_masks_unknown_hash_or_other_section_fields(self):
+        changes = [('hash', None, None, None), ('pointer', 20, 'I', 512), ('raw_size', 16, 'I', 512),
+                   ('virtual_size', 8, 'I', 24981504), ('rva', 12, 'I', 33779712),
+                   ('flags', 36, 'I', 0x60000020), ('name', 0, 'B', ord('X')),
+                   ('other_pointer', None, None, None), ('header_padding', None, None, None)]
+        for label, offset, fmt, value in changes:
+            with self.subTest(label=label):
+                f = BoneMemory()
+                f.reviewed_empty_raw_pointer_layout()
+                if label == 'hash':
+                    f.profile['sha256'] = f.module['sha256'] = f.certificates['game_sha256'] = 'c' * 64
+                elif label == 'other_pointer':
+                    f.put(f.BASE + 0x19c, struct.pack('<I', 0x600))
+                elif label == 'header_padding':
+                    f.put(f.BASE + 0x3ff, b'X')
+                else:
+                    f.put(f.BASE + 0x188 + 12 * 40 + offset, struct.pack('<' + fmt, value))
+                self.result(f, False, ['root'])
+                self.assertFalse(f.bridges[0].allocations)
+                self.assertFalse(f.bridges[0].submissions)
+
+    def test_empty_raw_pointer_requires_the_exact_recorded_disk_row(self):
+        f = BoneMemory()
+        f.reviewed_empty_raw_pointer_layout()
+        f.module['sections'][12]['raw_pointer'] += 512
+        f.header, f.module['disk_size'] = pe_headers(f.module['sections'], image_size=f.module['size'])
+        f.module['headers'] = f.header
+        live = bytearray(f.header)
+        struct.pack_into('<I', live, 0x188 + 12 * 40 + 20, 0)
+        f.put(f.BASE, live)
+        self.result(f, False, ['root'])
+        self.assertFalse(f.bridges[0].submissions)
+
+    def test_empty_raw_pointer_live_bytes_must_not_change_during_a_getter(self):
+        f = BoneMemory()
+        f.reviewed_empty_raw_pointer_layout()
+        def configure(bridge):
+            bridge.on_submit = lambda *_: f.put(f.BASE + 0x188 + 12 * 40 + 20, struct.pack('<I', 11354624))
+        f.configure_bridge = configure
+        row = self.result(f, False, ['root'])
+        self.assertEqual(len(f.bridges[0].submissions), 1)
+        self.assertEqual(len(f.bridges[0].freed), 1)
+        self.assertFalse(row['bones'])
+
+    def test_empty_raw_pointer_does_not_authorize_mismatched_current_getter_code(self):
+        f = BoneMemory()
+        f.reviewed_empty_raw_pointer_layout()
+        f.put(f.BASE + 0x1000 + 31, b'X')
+        self.result(f, False, ['root'])
+        self.assertFalse(f.bridges[0].submissions)
 
     def test_reviewed_runtime_resource_relocation_preserves_disk_and_live_provenance(self):
         for relocated in (False, True):
