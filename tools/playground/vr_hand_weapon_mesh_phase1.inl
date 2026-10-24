@@ -475,6 +475,9 @@ bool hand_direct_matches(Snapshot const& sampled){
         if(!handik::read_control(sampled.pawn,sampled.mesh,sampled.tree,i,value)||value.object!=old.object||value.fixed!=old.fixed||
            !gears_hand_ik::exact(value.strength,old.strength)||!gears_hand_ik::exact(value.effector,old.effector)||
            std::memcmp(&value.rotation,&old.rotation,sizeof(value.rotation)))return false;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+        if(!gears_hand_tail_translation::exact(value.translation.value,old.translation.value))return false;
+#endif
     }
     if(!handik::read_lists(layout)||layout.identity.size()!=sampled.identity.size()-at||
        !std::equal(layout.identity.begin(),layout.identity.end(),sampled.identity.begin()+at))return false;
@@ -1238,6 +1241,9 @@ bool component_hand_values_match(Snapshot const& before,Snapshot const& written,
     const auto last=std::numeric_limits<unsigned>::max();
     if(setters_before>last-count||writes_before>last-count||trial.setter_calls!=setters_before+count||
        trial.target_writes!=writes_before+count)return false;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    if(!tail_values_match(before,written,mask))return false;
+#endif
     for(unsigned i=0;i<8;++i){
         auto const& value=written.controls[i];auto const& old=before.controls[i];
         unsigned selected=4;for(unsigned channel=0;channel<4;++channel)

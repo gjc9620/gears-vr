@@ -43,8 +43,19 @@
 #error Component HOLD requires certified combined continuous phase1 hands
 #endif
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL) && (!defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || !defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL))
+#error Hand tail translation requires persistent certified hand streaming
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
 #include "../vr-common/hand_ik_stream_lease.h"
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+#if !defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+#error Hand tail translation requires the fixed-instance persistent component session
+#endif
+#include "../vr-common/hand_ik_tail_lease.h"
+#include "hand_tail_compare_write.h"
+#include <new>
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
 #include "../vr-common/weapon_mesh_component_lease.h"
 #include "../vr-common/weapon_mesh_follow.h"
@@ -843,6 +854,14 @@ bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
 #include "vr_free_hands.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+#include "vr_hand_tail_translation.inl"
+namespace handstream {
+bool tail_value_allowed(unsigned,uptr,handtail::Observed const&);
+bool tail_layout_allowed(unsigned,uptr,std::vector<unsigned char> const&);
+void tail_observation_failed(uptr,uptr,uptr,unsigned);
+}
+#endif
 #include "vr_hand_ik_trial.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)

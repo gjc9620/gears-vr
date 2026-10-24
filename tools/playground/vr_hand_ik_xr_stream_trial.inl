@@ -848,7 +848,13 @@ void post_tick(uptr pc){
 #endif
         hand_writes_relinquished=false;
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+        xr_bridge.close();
+        if(!clear_tail_trial()){end(8,L"tail_start_not_quiescent");return;}
+        trial.xr_start=xr_pending;
+#else
         xr_bridge.close();trial={};trial.xr_start=xr_pending;
+#endif
         trial.xr_world_time=xr_pending.baseline_world_time;
         trial.phase=1;trial.began=GetTickCount64();
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
@@ -1294,6 +1300,9 @@ void post_tick(uptr pc){
     const auto hand_targets=trial.targets;
 #endif
     trial.lease_anchor=check;Backend backend{};
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    backend.tail_plan=&plan;backend.tail_context=xr_context(check,trial.xr_ready);backend.tail_mask=mask;
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
     backend.forward_write=true;backend.forward_epoch=trial.epoch;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)

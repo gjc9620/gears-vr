@@ -89,7 +89,12 @@ struct Trial {
     std::uint64_t began{},deadline{},action_ms{},final_ms{},next_wait{},next_slot_log{},sequence{};
     Snapshot previous{},anchor{},lease_anchor{};
     gears_hand_ik::StabilityGate stability;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    gears_hand_ik_tail::Lease lease;
+    unsigned tail_field_writes{},tail_writes_at_begin{},tail_revoked_mask{};
+#else
     policy::Lease lease;
+#endif
     gears_weapon::FreeHandControl consumer;
     std::array<gears_vr::Viewpoint,2> bind{};
     std::array<policy::Target,4> targets{};
@@ -207,6 +212,16 @@ bool component_safe_to_unload(){
     return !journals_dirty()&&!component_continuous::state.operation_depth&&!component_continuous::state.action_depth&&
         !component_continuous::state.finishing&&(!component_continuous::state.terminal||component_continuous::state.finalized)&&
         !trial.releasing&&!dual_draining;
+}
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+// The only two live reset sites first drain/reset the component owner. Never
+// assign or destroy a pending noncopyable hand journal, even on a fresh Start.
+bool clear_tail_trial(){
+    auto const& state=component_continuous::state;
+    if(trial.lease.dirty()||trial.lease.busy()||trial.lease.restoring()||trial.releasing||
+       component_dirty()||state.operation_depth||state.action_depth||state.finishing||dual_draining)return false;
+    trial.~Trial();::new(static_cast<void*>(&trial)) Trial{};return true;
 }
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
@@ -727,16 +742,85 @@ bool same_layout(Snapshot const& a,Snapshot const& b){
         if(a.controls[i].object!=b.controls[i].object||a.controls[i].fixed!=b.controls[i].fixed)return false;
     return true;
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+// Ordinary snapshots can observe a rejection before Extra's own read path.
+// Retain that observation for this exact pending hand; matching bytes later
+// cannot regain permission. Only a full quiescent session reset clears it.
+void tail_observation_failed(uptr pawn,uptr mesh,uptr tree,unsigned index){
+    if(index!=3&&index!=7)return;
+    const unsigned hand=index==3?0u:1u;
+    if(pawn==trial.lease_anchor.pawn&&mesh==trial.lease_anchor.mesh&&tree==trial.lease_anchor.tree&&
+       trial.lease.translation().pending_fields(hand))trial.tail_revoked_mask|=1u<<hand;
+}
+bool tail_layout_allowed(unsigned index,uptr object,std::vector<unsigned char> const& fixed){
+    if(index!=3&&index!=7)return false;
+    const unsigned hand=index==3?0u:1u;
+    if(!trial.lease.translation().pending_fields(hand))return true;
+    auto const& baseline_control=trial.lease_anchor.controls[index];
+    return !(trial.tail_revoked_mask&(1u<<hand))&&object==baseline_control.object&&fixed==baseline_control.fixed;
+}
+bool tail_value_allowed(unsigned index,uptr object,handtail::Observed const& sighting){
+    if(index!=3&&index!=7)return false;
+    const unsigned hand=index==3?0u:1u;
+    auto const& extra=trial.lease.translation();
+    if(extra.pending_fields(hand)){
+        if(trial.tail_revoked_mask&(1u<<hand))return false;
+        auto const& baseline_control=trial.lease_anchor.controls[index];
+        return object==baseline_control.object&&handtail::same_schema(sighting,baseline_control.translation)&&
+            extra.accepts(hand,sighting.value);
+    }
+    Name space_bone{};std::memcpy(&space_bone,sighting.value.space_bone.data(),sizeof(space_bone));
+    const std::array<unsigned char,12> zero{};
+    return sighting.value.translation==zero&&sighting.value.space==0&&sighting.value.flags==0&&
+        handik::name_is(space_bone,L"None");
+}
+unsigned authorize_current_xr_plan(gears_hand_stream::Plan const&,gears_hand_stream::Context const&,std::uint64_t);
+bool tail_values_match(Snapshot const& before,Snapshot const& written,unsigned mask){
+    const unsigned hands=((mask&1)?2u:0u)|((mask&2)?1u:0u);
+    auto const& extra=trial.lease.translation();
+    if(extra.selected_mask()!=hands||!extra.prepared()||extra.faulted()||trial.tail_revoked_mask)return false;
+    unsigned writes{};
+    for(unsigned i=0;i<8;++i){
+        auto const& old=before.controls[i].translation;auto const& value=written.controls[i].translation;
+        const unsigned hand=i==3?0u:i==7?1u:2u;
+        if(hand<2&&(hands&(1u<<hand))){
+            const auto saved_value=extra.original(hand),owned=extra.owned(hand);
+            if(!saved_value||!owned||!handtail::same_schema(old,value)||
+               !gears_hand_tail_translation::exact(old.value,*saved_value)||
+               !gears_hand_tail_translation::exact(value.value,*owned))return false;
+            for(unsigned fields=extra.selected_fields(hand);fields;fields>>=1)writes+=fields&1u;
+        }else if(!gears_hand_tail_translation::exact(old.value,value.value))return false;
+    }
+    return trial.tail_writes_at_begin<=std::numeric_limits<unsigned>::max()-writes&&
+        trial.tail_field_writes==trial.tail_writes_at_begin+writes;
+}
+#endif
 // Only identity/layout and this lease's dynamic fields participate in rollback.
 // New melee/action/weapon flags cannot prevent restoration of unchanged tails.
 struct Backend {
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    gears_hand_stream::Plan const* tail_plan{};
+    gears_hand_stream::Context tail_context{};
+    unsigned tail_mask{};
+    bool tail_wanted(unsigned,std::array<policy::Target,4> const&,
+                     std::array<gears_hand_tail_translation::Value,2>&);
+    bool tail_forward_allowed()const;
+    bool tail_read(unsigned,gears_hand_tail_translation::Value&,gears_hand_tail_translation::Strength&);
+    bool tail_write_field(unsigned,gears_hand_tail_translation::Field,
+                          gears_hand_tail_translation::FieldValue const&,gears_hand_tail_translation::FieldValue const&);
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
     bool forward_write{};unsigned forward_epoch{};
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     component_continuous::Mode forward_mode{component_continuous::Mode::joint};
 #endif
     bool forward_allowed()const {
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+        if(!forward_write||trial.releasing||trial.lease.restoring()||trial.lease.primary_faulted())return true;
+        if(trial.lease.faulted()||trial.tail_revoked_mask)return false;
+#else
         if(!forward_write||trial.lease.faulted()||trial.releasing)return true;
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
         const bool writer_open=forward_mode==component_continuous::Mode::hand_only?
             component_continuous::state.hand_only_journal&&component_hand_only_ready():!component_continuous::state.closed;
@@ -745,7 +829,12 @@ struct Backend {
         return !component_continuous::state.closed&&!trial.ended&&trial.epoch==forward_epoch&&
 #endif
             trial.tick_epoch==forward_epoch&&!stop_requested.load(std::memory_order_acquire)&&
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+            !shutdown_requested.load(std::memory_order_acquire)&&tail_plan&&tail_mask&&
+            authorize_current_xr_plan(*tail_plan,tail_context,GetTickCount64())==tail_mask;
+#else
             !shutdown_requested.load(std::memory_order_acquire);
+#endif
     }
 #endif
     bool control(unsigned channel,handik::Control& out){
@@ -754,8 +843,15 @@ struct Backend {
         for(const auto object:{anchor.pawn,anchor.mesh,anchor.tree})
             if(!registered(object)||playground::deleted(object))return false;
         const auto index=indices[channel];
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+        const bool known=handik::read_control(anchor.pawn,anchor.mesh,anchor.tree,index,out)&&
+            out.object==anchor.controls[index].object&&out.fixed==anchor.controls[index].fixed;
+        if(!known)tail_observation_failed(anchor.pawn,anchor.mesh,anchor.tree,index);
+        return known;
+#else
         return handik::read_control(anchor.pawn,anchor.mesh,anchor.tree,index,out)&&
             out.object==anchor.controls[index].object&&out.fixed==anchor.controls[index].fixed;
+#endif
     }
     bool read(unsigned channel,policy::Value& out){
         handik::Control value{};if(!control(channel,value))return false;
@@ -816,6 +912,9 @@ bool target_layout(uptr object,bool rotation){
     }
     return true;
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+#include "vr_hand_tail_backend.inl"
+#endif
 void watch(uptr object){
     if(!object)return;
     for(unsigned i=0;i<trial.action_object_count;++i)if(trial.action_objects[i]==object)return;
@@ -903,6 +1002,21 @@ void sample(const wchar_t* phase,Snapshot const& value,unsigned lease,unsigned m
     freehands::print_matrix(L"right",value.right);
     for(unsigned i=0;i<4;++i){fwprintf(log_file,L" target%u=",i);
         for(const auto byte:trial.targets[i])fwprintf(log_file,L"%02x",unsigned(byte));}
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    fwprintf(log_file,L"\n");
+    for(const unsigned index:{3u,7u}){
+        auto const& tail_fields=value.controls[index].translation;
+        const unsigned hand=index==3?0u:1u;
+        fwprintf(log_file,L"hand_tail_translation_sample schema=1 phase=%ls lease=%u control=%u "
+            L"sample=%u epoch=%u selected=%u pending=%u raw_flags=%u apply_mask=%u add_mask=%u space=%u translation=",
+            phase,lease,index,sample_number,trial.epoch,trial.lease.translation().selected_mask(),
+            trial.lease.translation().pending_fields(hand),tail_fields.raw_flags,tail_fields.apply_mask,tail_fields.add_mask,unsigned(tail_fields.value.space));
+        for(const auto byte:tail_fields.value.translation)fwprintf(log_file,L"%02x",unsigned(byte));
+        fwprintf(log_file,L" space_bone=");
+        for(const auto byte:tail_fields.value.space_bone)fwprintf(log_file,L"%02x",unsigned(byte));
+        fwprintf(log_file,L" flags=%u field_writes=%u\n",tail_fields.value.flags,trial.tail_field_writes);
+    }
+#endif
     fwprintf(log_file,L"\n");fflush(log_file);
 }
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
@@ -1792,7 +1906,12 @@ void reset(){
     component_hold::reset();
 #endif
 #endif
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    if(!clear_tail_trial())return;
+    requested=false;stop_requested=false;used=false;shutdown_requested=false;
+#else
     trial={};requested=false;stop_requested=false;used=false;shutdown_requested=false;
+#endif
     active_visible=false;safe_to_unload=true;status=0;leases=0;handik::reset();
 }
 DWORD stop_and_wait(){

@@ -10,6 +10,9 @@ struct Control {
     Triple strength{},effector{};
     playground::Rotation rotation{};
     std::vector<unsigned char> fixed;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    handtail::Observed translation;
+#endif
 };
 struct Snapshot {
     uptr pc{},pawn{},mesh{},tree{},weapon{};
@@ -181,6 +184,12 @@ bool weapon_active(uptr weapon){
         name_is(call.output<Name>(),L"Active");
 }
 bool read_control(uptr pawn,uptr mesh,uptr tree,unsigned index,Control& out){
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    struct TailRead {
+        uptr pawn,mesh,tree;unsigned index;bool complete{};
+        ~TailRead(){if(!complete)handstream::tail_observation_failed(pawn,mesh,tree,index);}
+    } tail_read_guard{pawn,mesh,tree,index};
+#endif
     rejection.control=int(index);
     mark(L"control_cache",pawn,L"cached_hand_control");
     constexpr const wchar_t* caches[]={L"IKBoneCtrl_RightHand",L"IKBoneRotCtrl_RightHand",
@@ -226,7 +235,18 @@ bool read_control(uptr pawn,uptr mesh,uptr tree,unsigned index,Control& out){
            !name_is(bone,tail?L"None":left?L"b_MF_IK_Hand_L":L"b_MF_IK_Hand_R")||
            !checked_bool(out.object,L"bAddRotation",add)||add||
            !checked_bool(out.object,L"bApplyRotation",apply)||!apply||
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+           !checked_bool(out.object,L"bApplyTranslation",translate))return false;
+        if(!handtail::observe(out.object,out.translation)||
+           (tail&&!handstream::tail_value_allowed(index,out.object,out.translation)))return false;
+        // Keep real values separately. Only the same owned whole tuple can
+        // normalize this one formerly fixed flag while the lease is active.
+        append(out.fixed,out.translation.schema.size());
+        out.fixed.insert(out.fixed.end(),out.translation.schema.begin(),out.translation.schema.end());
+        if(tail)translate=false;
+#else
            !checked_bool(out.object,L"bApplyTranslation",translate)||(tail&&translate))return false;
+#endif
         append(out.fixed,space);append(out.fixed,bone);
         append(out.fixed,add);append(out.fixed,apply);append(out.fixed,translate);
     }else{
@@ -248,6 +268,10 @@ bool read_control(uptr pawn,uptr mesh,uptr tree,unsigned index,Control& out){
         append(out.fixed,space);append(out.fixed,bone);append(out.fixed,joint);
         append(out.fixed,joint_space);append(out.fixed,joint_bone);append(out.fixed,take);append(out.fixed,maintain);
     }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    if((index==3||index==7)&&!handstream::tail_layout_allowed(index,out.object,out.fixed))return false;
+    tail_read_guard.complete=true;
+#endif
     return true;
 }
 bool read_lists(Snapshot& out){
@@ -367,6 +391,9 @@ bool same_controls(Snapshot const& a,Snapshot const& b,bool skip_right=false){
     if(a.identity!=b.identity)return false;
     for(unsigned i=0;i<8;++i){
         if(a.controls[i].fixed!=b.controls[i].fixed)return false;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+        if(!gears_hand_tail_translation::exact(a.controls[i].translation.value,b.controls[i].translation.value))return false;
+#endif
         if(skip_right&&i==right_ik)continue;
         if(!gears_hand_ik::exact(a.controls[i].strength,b.controls[i].strength)||
            !gears_hand_ik::exact(a.controls[i].effector,b.controls[i].effector)||

@@ -462,3 +462,13 @@ AI 在原有 hand_reauthorize_after_component 步骤以终态8停止：初始／
 新增 `hand_tail_translation_lease.h` 保存两个手的原值、owned、单步暂态与部分写 pending，在精确+0强度下按字段准备与反向恢复；未知或外部值永久撤销该手 journal 的恢复写权限，另一手仍须尝试清理。`hand_ik_tail_lease.h` 将它与原四通道 Lease 组合，先准备扩展字段再激活，始终先恢复原通道再恢复扩展；最后一个setter中的重入／上下文关闭也不能被正确数值读回掩盖。真实 backend 仍须逐次认证对象／schema／原Plan／mask和expected字节，不能用aggregate fault借用primary内部回滚的写入旁路。
 
 root与Astra完成源码审查后，仅构建并运行新增实际CMake目标 HandTailTranslationLeaseTest 一次，C++17／W4／WX／EHsc／MT 与实际Release工程核对，28类／370项检查通过。测试直接使用三个实际头文件及声明过的内存服务，覆盖false-before／after、四字段未知／外部／torn、精确+0、共享字保留、输入冻结、单双手、嵌套恢复、最后setter和双层清理。冻结782源／27依赖；结果 `ef3c3b38…0a01` 保存在忽略的 `analysis/hand-tail-policy-build-20261024ai/`。旧539项和已通过OFF／PG构建未重复执行。当前只新增两个策略、单一测试和CMake注册，没有游戏写入接线、Native／XR重建或默认安装；物理位置修复、0.7伤害和完整12武器仍未完成。
+
+## 2026-10-24 — AJ 末端位置覆盖接线与严格构建，运行验证待做
+
+新 `GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL` 默认关闭，仅允许已认证的固定实例 PERSISTENT 组合。实际 reader 逐次解析11个属性、Vector三成员与共同Enum，冻结对象和属性身份、大小／维数／偏移／mask，并校验字段边界与交叠；三个强度地址也属于schema。实际偏移与位值来自当前metadata，没有写死AI所见偏移或mask。末端真实平移值独立保存在Control中，只有同一journal整tuple被接受后才归一化原fixed标志；原Limb位置通道和四通道setter／target计数保持。新增字段另行计数，最终逐手检查原值／owned／未选中值和完整fixed。
+
+实际 backend 先在零强度准备位置和位，再激活原通道；恢复始终先原通道后扩展。每次forward继续认证同一Plan／context／mask、原100ms、epoch与Stop，恢复不以过期forward权限阻断，也不跳过typed identity和expected检查。最终SEH写入立即从三个实际强度地址重读精确+0，只比较本字段，packedword只写两个选定位并保留当前其他位。原动作入口、hand→component清理和正常interval保留；两个完整Trial重建入口拒绝dirty／busy／恢复中与活跃operation。第一次源审发现普通snapshot外部拒绝没有锁存，失败报告保留；修后同一pending hand的早返、类型／tuple／完整fixed拒绝以及Backend后置拒绝都会锁存撤权，晚到相同值不能复权，另一健康手仍尝试恢复。Astra修后源码审查 `558a3a3d…0082` 通过，这不是运行证明。
+
+冻结786作者源／27依赖后，首次新开关OFF五份实际运行源的两次/EP非空行字节比较通过；首次完整严格构建因新局部名遮蔽已有original／observed而被/WX拒绝，字段测试未执行。原源码、日志和失败保留。R2仅改三文件局部标识符，逐行逆向替换与首次冻结文本完全一致；新OFF对比再次通过，完整PG及HandTailFieldsTest严格构建通过，C++17／W4／WX／EHsc／MT与实际两个Release工程核对，23个导出保持，DLL `459e0f67…934bf`。
+
+实际reader和最后compare-write直接由独立内存测试include，15类／198项检查通过；覆盖非历史偏移／mask、schema和身份变化、坏Enum／Vector／Bool／字段交叠、未知结果不发布、四字段精确写入、三个强度晚到非零／-0／NaN、stale expected、共享字新变化位保留，以及本进程PAGE_NOACCESS／空地址拒绝。registry／名称／field／copy-denial是明确的模拟服务，未证明游戏UObject ABI、完整Backend生命周期或物理显示。R2结果 `0e57ad3e…3a9a2` 在忽略的 `analysis/hand-tail-engine-build-20261024aj-r2/`。原370项与旧539项未重复；未启动新游戏、重建Native／XR／loader或安装默认入口。后续必须以新候选验证后续Tick手掌、原动作恢复、手臂蒙皮、手—枪与后坐力；完整12武器和真实0.7伤害仍未完成。
