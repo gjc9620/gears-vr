@@ -1,5 +1,6 @@
 #pragma once
 #include "../vr-common/weapon_hand_participant.h"
+#include "../vr-common/weapon_call_boundary.h"
 #include <atomic>
 #include <chrono>
 #include <cstring>
@@ -15,6 +16,20 @@
 // Transport/lifetime only: no arbiter, logical-input adapter, token allocator,
 // engine call or game-memory access. The Native Scene caller owns eligibility.
 namespace gears_weapon_hand {
+namespace call=::gears_weapon_call;
+class Broker;
+// Native stack token only. PG receives notice/state, never this enclosing POD.
+// The caller must keep its code-residency admission across original and invoke
+// finish_call from __finally even when begin_call's notification faulted.
+struct CallScope {
+    Broker* owner{};CallScope* previous{};std::uintptr_t address{};
+    std::uint64_t token{};std::uint32_t thread{};
+    bool active{},attempted{},notification_fault{};
+    call::Registration registration{};
+    call::Invocation invocation{},notice{};
+    call::State state{};
+};
+static_assert(std::is_standard_layout_v<CallScope>&&std::is_trivially_copyable_v<CallScope>&&std::is_trivially_destructible_v<CallScope>);
 // Ready still requires a valid per-frame prepare. Unavailable (including an
 // uncollected registration) MUST NOT be converted into an empty/free hand.
 enum class Availability {ready,absent_quiescent,unavailable};
@@ -35,6 +50,11 @@ struct BrokerBackend {
     bool (*prepare)(void*,Registration const&,Frame*,Proposal*,std::uint32_t&) noexcept{};
     bool (*commit)(void*,Registration const&,Frame*,Proposal*,Decision*,std::uint32_t&) noexcept{};
     bool (*invalidate)(void*,Registration const&,Invalidation*) noexcept{};
+    // Auxiliary callbacks share the EXISTING pin. No second module ref or owner.
+    bool (*call_module)(void*,call::Registration const&,ModulePin) noexcept{};
+    bool (*call_begin)(void*,call::Registration const&,call::Invocation*,call::State*) noexcept{};
+    bool (*call_returned)(void*,call::Registration const&,call::Invocation*,call::State*,std::uint64_t,std::uint32_t&) noexcept{};
+    bool (*call_unwind)(void*,call::Registration const&,call::Invocation*,call::State*,call::UnwindReason,std::uint32_t&) noexcept{};
 };
 
 namespace weapon_broker_win32 {
@@ -123,10 +143,46 @@ inline bool invalidate(void*,Registration const& r,Invalidation* message) noexce
     r.invalidate(r.context,message);return true;
 #endif
 }
+inline bool call_module(void*,call::Registration const& r,ModulePin pin_value) noexcept {
+#if defined(_WIN32)
+    std::uintptr_t module{};
+    return pin_value.handle&&pin_value.handle==pin_value.module&&
+        executable_image(reinterpret_cast<std::uintptr_t>(r.begin),module)&&module==pin_value.module&&
+        executable_image(reinterpret_cast<std::uintptr_t>(r.returned),module)&&module==pin_value.module&&
+        executable_image(reinterpret_cast<std::uintptr_t>(r.unwind),module)&&module==pin_value.module;
+#else
+    (void)r;(void)pin_value;return false;
+#endif
+}
+inline bool call_begin(void*,call::Registration const& r,call::Invocation* invocation,call::State* state) noexcept {
+#if defined(_WIN32) && defined(_MSC_VER)
+    __try {r.begin(r.context,invocation,state);return true;}
+    __except(filter(GetExceptionCode())){return false;}
+#else
+    r.begin(r.context,invocation,state);return true;
+#endif
+}
+inline bool call_returned(void*,call::Registration const& r,call::Invocation* invocation,call::State* state,std::uint64_t rax,std::uint32_t& result) noexcept {
+#if defined(_WIN32) && defined(_MSC_VER)
+    __try {result=static_cast<std::uint32_t>(r.returned(r.context,invocation,state,rax));return true;}
+    __except(filter(GetExceptionCode())){return false;}
+#else
+    result=static_cast<std::uint32_t>(r.returned(r.context,invocation,state,rax));return true;
+#endif
+}
+inline bool call_unwind(void*,call::Registration const& r,call::Invocation* invocation,call::State* state,call::UnwindReason reason,std::uint32_t& result) noexcept {
+#if defined(_WIN32) && defined(_MSC_VER)
+    __try {result=static_cast<std::uint32_t>(r.unwind(r.context,invocation,state,reason));return true;}
+    __except(filter(GetExceptionCode())){return false;}
+#else
+    result=static_cast<std::uint32_t>(r.unwind(r.context,invocation,state,reason));return true;
+#endif
+}
 } // namespace weapon_broker_win32
 inline BrokerBackend weapon_hand_win32_backend() noexcept {
     return {nullptr,weapon_broker_win32::pin,weapon_broker_win32::unpin,weapon_broker_win32::clock_ns,
-        weapon_broker_win32::thread,weapon_broker_win32::prepare,weapon_broker_win32::commit,weapon_broker_win32::invalidate};
+        weapon_broker_win32::thread,weapon_broker_win32::prepare,weapon_broker_win32::commit,weapon_broker_win32::invalidate,
+        weapon_broker_win32::call_module,weapon_broker_win32::call_begin,weapon_broker_win32::call_returned,weapon_broker_win32::call_unwind};
 }
 
 class Broker {
@@ -137,14 +193,18 @@ class Broker {
         ~CallbackMark(){current_=previous;}
     };
     inline static thread_local CallbackMark* current_{};
+    inline static thread_local CallScope* call_top_{};
     struct InvalidateCall {Registration registration{};Invalidation message{};bool needed{};};
     BrokerSession session_;BrokerBackend backend_;std::mutex mutex_;
     std::atomic<State> state_{State::empty};
     std::atomic<Availability> availability_{Availability::absent_quiescent};
     std::atomic<std::uint64_t> revision_{1},cookie_{};
     std::atomic<unsigned> callbacks_{},transactions_{};
+    std::atomic<unsigned> aux_scopes_{};
+    std::atomic<bool> aux_debt_{},call_attached_{};
     std::atomic<bool> authorization_{},pin_retained_{};
     Registration registration_{};ModulePin pin_{};
+    call::Registration call_registration_{};std::uint64_t next_call_id_{1};
     std::uint64_t next_cookie_{1},transaction_revision_{},operation_epoch_{1};
     std::uint32_t game_thread_{};unsigned normal_calls_{};
     bool published_{},cancel_registration_{},stopping_{},phase_invalid_{},invalidate_running_{},invalidate_done_{true},invalidate_failed_{};
@@ -188,10 +248,10 @@ class Broker {
         revision_.store(old+1,std::memory_order_release);return true;
     }
     void refresh_locked() noexcept {
-        if(state_.load()==State::draining&&!callbacks_.load()&&!transactions_.load()&&invalidate_done_&&!invalidate_running_&&!final_invalidate_)
+        if(state_.load()==State::draining&&!callbacks_.load()&&!transactions_.load()&&!aux_scopes_.load()&&!aux_debt_.load()&&invalidate_done_&&!invalidate_running_&&!final_invalidate_)
             state_.store(State::quiescent,std::memory_order_release);
         const auto s=state_.load();
-        availability_.store(s==State::empty?Availability::absent_quiescent:
+        availability_.store(s==State::empty&&!aux_scopes_.load()&&!aux_debt_.load()?Availability::absent_quiescent:
             s==State::active&&!phase_invalid_?Availability::ready:Availability::unavailable,std::memory_order_release);
     }
     void invalidate_locked(InvalidateReason reason,bool hard,InvalidateCall& call,bool retry=false) noexcept {
@@ -274,6 +334,45 @@ class Broker {
         }
         return true;
     }
+    void auxiliary_unknown() noexcept {
+        // Own lock failures / corrupted Native token cannot be certified away.
+        aux_debt_.store(true,std::memory_order_release);authorization_.store(false,std::memory_order_release);
+        state_.store(State::draining,std::memory_order_release);availability_.store(Availability::unavailable,std::memory_order_release);
+    }
+    void auxiliary_terminal() noexcept {
+        aux_debt_.store(true,std::memory_order_release);
+        try {InvalidateCall invalidation{};
+            {std::lock_guard<std::mutex> lock(mutex_);invalidate_locked(InvalidateReason::callback_fault,true,invalidation);refresh_locked();}
+            run_invalidate(invalidation);
+        }catch(...){auxiliary_unknown();}
+    }
+    // kind: 0 pre, 1 returned, 2 unwind. No lock/CallbackMark spans original.
+    bool call_notice(CallScope& scope,unsigned kind,std::uint64_t rax,call::UnwindReason reason,std::uint32_t& end) noexcept {
+        bool counted=false;
+        try {
+            {std::lock_guard<std::mutex> lock(mutex_);++callbacks_;++normal_calls_;counted=true;
+                if(phase_invalid_){final_invalidate_=true;invalidate_done_=false;}}
+            snapshot(scope.notice,scope.invocation);bool ok{},violated{};
+            {CallbackMark mark(this);
+                if(kind==0)ok=backend_.call_begin(backend_.context,scope.registration,&scope.notice,&scope.state);
+                else if(kind==1)ok=backend_.call_returned(backend_.context,scope.registration,&scope.notice,&scope.state,rax,end);
+                else ok=backend_.call_unwind(backend_.context,scope.registration,&scope.notice,&scope.state,reason,end);
+                violated=mark.violated;
+            }
+            const bool valid=ok&&!violated&&call::same(scope.notice,scope.invocation)&&(kind==0||end<=unsigned(call::End::unresolved));
+            InvalidateCall invalidation{};
+            {std::lock_guard<std::mutex> lock(mutex_);--callbacks_;--normal_calls_;counted=false;
+                if(!valid){scope.notification_fault=true;aux_debt_.store(true);invalidate_locked(InvalidateReason::callback_fault,true,invalidation);}
+                if(phase_invalid_&&final_invalidate_&&!invalidate_running_&&!invalidate_failed_)
+                    invalidate_locked(phase_reason_,state_.load()==State::draining,invalidation);
+                refresh_locked();}
+            run_invalidate(invalidation);return valid;
+        }catch(...){
+            // A failed own accounting lock leaves an explicit permanent debt;
+            // never invent a balanced decrement after an uncertain operation.
+            (void)counted;scope.notification_fault=true;auxiliary_unknown();return false;
+        }
+    }
 public:
     // Construct on a stable Native session; the explicit owner worker is the
     // ONLY thread allowed to release a module ref. No destructor auto-unpins.
@@ -286,12 +385,75 @@ public:
     bool authorized() const noexcept {return authorization_.load(std::memory_order_acquire);}
     unsigned pending_callbacks() const noexcept {return callbacks_.load(std::memory_order_acquire);}
     unsigned pending_transactions() const noexcept {return transactions_.load(std::memory_order_acquire);}
+    unsigned pending_aux_scopes() const noexcept {return aux_scopes_.load(std::memory_order_acquire);}
+    bool aux_debt() const noexcept {return aux_debt_.load(std::memory_order_acquire);}
+    bool call_attached() const noexcept {return call_attached_.load(std::memory_order_acquire);}
     bool pin_retained() const noexcept {return pin_retained_.load(std::memory_order_acquire);}
     // Transport quiescence only: no callback or frozen-frame obligation. The
     // void atomic invalidate is NOT a receipt for PG's game-resource restore.
-    bool quiescent() const noexcept {const auto s=state_.load();return s==State::empty||s==State::quiescent;}
+    bool quiescent() const noexcept {const auto s=state_.load();return (s==State::empty||s==State::quiescent)&&!callbacks_.load()&&!transactions_.load()&&!aux_scopes_.load()&&!aux_debt_.load();}
     bool draining() const noexcept {const auto s=state_.load();return s==State::draining||s==State::quiescent||s==State::collecting;}
-    bool pending() const noexcept {const auto s=state_.load();return callbacks_.load()||transactions_.load()||(s!=State::empty&&s!=State::active);}
+    bool pending() const noexcept {const auto s=state_.load();return callbacks_.load()||transactions_.load()||aux_scopes_.load()||aux_debt_.load()||(s!=State::empty&&s!=State::active);}
+
+    Reply attach_call_participant(call::Registration const* input,RegistrationResult* output,bool wrapper_owned) {
+        if(reentrant())return Reply::reentrant;
+        call::Registration r{};RegistrationResult result{};
+        if(!wrapper_owned||!weapon_broker_win32::copy(&r,input,sizeof(r))||!weapon_broker_win32::copy(&result,output,sizeof(result))||
+           !call::registration_shape_valid(r)||result.size!=sizeof(result)||result.abi_version!=version||
+           !backend_.call_module||!backend_.call_begin||!backend_.call_returned||!backend_.call_unwind)return Reply::invalid;
+        std::lock_guard<std::mutex> lock(mutex_);
+        if(!published_||r.hand_cookie!=cookie_.load()||r.native_started_qpc!=session_.native_started_qpc)return Reply::wrong_cookie;
+        if(stopping_||state_.load()!=State::active||aux_debt_.load())return Reply::draining;
+        if(r.context!=registration_.context||!backend_.call_module(backend_.context,r,pin_))return Reply::invalid;
+        if(call_attached_.load()&&!call::same(r,call_registration_))return Reply::busy;
+        result.cookie=cookie_.load();result.native_started_qpc=session_.native_started_qpc;
+        if(!weapon_broker_win32::copy(output,&result,sizeof(result)))return Reply::invalid;
+        call_registration_=r;call_attached_.store(true,std::memory_order_release);return Reply::accepted;
+    }
+
+    bool begin_call(std::uintptr_t self,std::uintptr_t caller_frame,std::uintptr_t result,std::uintptr_t callee,CallScope& scope) noexcept {
+        if(reentrant()){auxiliary_unknown();return false;}
+        try {
+            bool bad=false;
+            {std::lock_guard<std::mutex> lock(mutex_);
+                if(!published_||!call_attached_.load()||stopping_||aux_debt_.load()||state_.load()!=State::active)return false;
+                if(scope.active||scope.owner||scope.address||scope.token)bad=true;
+                unsigned depth=0;for(auto* p=call_top_;p;p=p->previous){if(p==&scope||++depth>=64){bad=true;break;}}
+                if(bad){/* Preserve the prior token; it remains owed. */}
+                else if(!backend_.thread(backend_.context)||next_call_id_==(std::numeric_limits<std::uint64_t>::max)()||
+                        aux_scopes_.load()==(std::numeric_limits<unsigned>::max)())bad=true;
+                else {
+                    scope={};scope.owner=this;scope.previous=call_top_;scope.address=reinterpret_cast<std::uintptr_t>(&scope);
+                    scope.token=next_call_id_++;scope.thread=backend_.thread(backend_.context);scope.registration=call_registration_;
+                    scope.invocation.hand_cookie=cookie_.load();scope.invocation.native_started_qpc=session_.native_started_qpc;
+                    scope.invocation.call_id=scope.token;scope.invocation.thread_id=scope.thread;
+                    scope.invocation.self=self;scope.invocation.caller_frame=caller_frame;scope.invocation.result=result;scope.invocation.callee=callee;
+                    scope.active=scope.attempted=true;call_top_=&scope;++aux_scopes_;
+                }
+            }
+            if(bad){auxiliary_terminal();return false;}
+            std::uint32_t ignored{};(void)call_notice(scope,0,0,call::UnwindReason::notification_fault,ignored);return true;
+        }catch(...){auxiliary_unknown();return scope.active&&scope.owner==this&&scope.address==reinterpret_cast<std::uintptr_t>(&scope);}
+    }
+
+    void finish_call(CallScope& scope,bool original_returned,std::uint64_t rax) noexcept {
+        if(!scope.active)return;
+        if(reentrant()){auxiliary_unknown();return;}
+        try {
+            if(scope.owner!=this||scope.address!=reinterpret_cast<std::uintptr_t>(&scope)||!scope.token||
+               scope.token!=scope.invocation.call_id||scope.thread!=backend_.thread(backend_.context)||call_top_!=&scope){auxiliary_terminal();return;}
+            std::uint32_t end=unsigned(call::End::unresolved);bool valid{};
+            if(scope.notification_fault)valid=call_notice(scope,2,0,call::UnwindReason::notification_fault,end);
+            else if(original_returned){
+                valid=call_notice(scope,1,rax,call::UnwindReason::original_exception,end);
+                if(!valid){std::uint32_t ignored=unsigned(call::End::unresolved);(void)call_notice(scope,2,0,call::UnwindReason::notification_fault,ignored);}
+            }else valid=call_notice(scope,2,0,call::UnwindReason::original_exception,end);
+            if(!valid||scope.notification_fault||end!=unsigned(call::End::closed))auxiliary_terminal();
+            {std::lock_guard<std::mutex> lock(mutex_);call_top_=scope.previous;scope.active=false;--aux_scopes_;refresh_locked();}
+            // Keep owner/token as a consumed receipt: accidental reuse is not a
+            // second pre or a second end. A new wrapper invocation uses fresh {}.
+        }catch(...){auxiliary_unknown();}
+    }
 
     Reply register_participant(Registration const* input,RegistrationResult* output) {
         if(reentrant())return Reply::reentrant;
@@ -303,7 +465,7 @@ public:
         std::uint64_t reserved_cookie{};
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            if(stopping_)return Reply::draining;
+            if(stopping_||aux_debt_.load())return Reply::draining;
             if(state_.load()!=State::empty)return Reply::busy;
             if(next_cookie_==(std::numeric_limits<std::uint64_t>::max)()||revision_.load()==(std::numeric_limits<std::uint64_t>::max)())return Reply::invalid;
             reserved_cookie=next_cookie_++;state_.store(State::registering);cancel_registration_=false;phase_invalid_=false;refresh_locked();
@@ -457,15 +619,15 @@ public:
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if(game_thread_==session_.owner_worker_thread)return Reply::invalid;
-            refresh_locked();if(state_.load()==State::empty)return Reply::quiescent;
-            if(state_.load()!=State::quiescent)return Reply::draining;
+            refresh_locked();if(state_.load()==State::empty)return aux_scopes_.load()||aux_debt_.load()?Reply::draining:Reply::quiescent;
+            if(state_.load()!=State::quiescent||aux_scopes_.load()||aux_debt_.load())return Reply::draining;
             held=pin_;state_.store(State::collecting);refresh_locked();
         }
         const bool released=!held.handle||backend_.unpin(backend_.context,held);
         std::lock_guard<std::mutex> lock(mutex_);
         if(!released){state_.store(State::quiescent);refresh_locked();return Reply::unavailable;}
         remember_retired_locked();
-        pin_={};registration_={};published_=false;cookie_.store(0);pin_retained_.store(false);authorization_.store(false);
+        pin_={};registration_={};call_registration_={};call_attached_.store(false);published_=false;cookie_.store(0);pin_retained_.store(false);authorization_.store(false);
         phase_invalid_=invalidate_running_=invalidate_failed_=final_invalidate_=false;invalidate_done_=true;have_attempt_=have_commit_=false;
         state_.store(State::empty);refresh_locked();return Reply::quiescent;
     }

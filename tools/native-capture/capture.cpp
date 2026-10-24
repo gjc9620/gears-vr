@@ -909,7 +909,11 @@ const char* path_position_stop_file{};
 unsigned path_position_stop_line{};
 #endif
 namespace cover_body_live {void request_drain();bool draining();bool drain_failed();unsigned pending_count();}
-namespace weapon_hand_runtime {void request_stop() noexcept;bool cleanup_ready() noexcept;bool retained() noexcept;void summary(FILE*) noexcept;}
+namespace weapon_hand_runtime {
+void request_stop() noexcept;bool cleanup_ready() noexcept;bool retained() noexcept;void summary(FILE*) noexcept;
+bool begin_call(uintptr_t,uintptr_t,uintptr_t,uintptr_t,gears_weapon_hand::CallScope&) noexcept;
+void finish_call(gears_weapon_hand::CallScope&,bool,uint64_t) noexcept;
+}
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 std::atomic<unsigned> cover_body_stop_record{};
 SessionStop cover_body_stop_reason=SessionStop::none;
@@ -1247,6 +1251,7 @@ struct Scope {
 };
 #include "graphics_lock_observer.inl"
 bool read_attested_hook_entry(void* output,void const* source,size_t size);
+#include "weapon_call_live.inl"
 #include "ui_observer_hooks.inl"
 #include "first_person_live.inl"
 #include "path_choice_close_observer.inl"
@@ -4832,6 +4837,10 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: cover input prototype requires the camera preview, top live target and explicit measured height curve\n");fclose(status);return 2;}
     if(!weapon_hand_runtime::configure(ini,status)){
         fprintf(status,"rejected: weapon hand participant requires compiled Scene support and continuous stereo anchors\n");fclose(status);return 2;}
+#if !defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) || !GEARS_UI_CALL_BOUNDARY_OBSERVER
+    if(weapon_hand_runtime::enabled){
+        fprintf(status,"rejected: weapon hand participant requires the single compiled CallFunction owner\n");fclose(status);return 2;}
+#endif
     if(ui_observer_enabled&&(!ui_reserved||!continuous_session||!anchor_observer_enabled||!load_ui_config(ini))){
         fprintf(status,"rejected: UI observer requires reserved entries, continuous stereo and fresh UI identities\n");fclose(status);return 2;}
     crosshair_live::enabled=GetPrivateProfileIntW(L"Capture",L"crosshair_assignment_observer",0,ini)==1;
@@ -5096,7 +5105,10 @@ DWORD WINAPI worker(void*) {
         install(path_choice_close_observer::target,reinterpret_cast<void*>(path_choice_close_observer::hook),reinterpret_cast<void**>(&path_choice_close_observer::original));
 #endif
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
-    if(ok&&(ui_observer_enabled||cover_call_live::enabled))ok=install(ui_call_boundary::target,reinterpret_cast<void*>(ui_call_boundary::hook),reinterpret_cast<void**>(&ui_call_boundary::original));
+    if(ok&&(ui_observer_enabled||cover_call_live::enabled||weapon_hand_runtime::enabled)){
+        ok=install(ui_call_boundary::target,reinterpret_cast<void*>(ui_call_boundary::hook),reinterpret_cast<void**>(&ui_call_boundary::original));
+        weapon_call_live::owned.store(ok,std::memory_order_release);
+    }
 #endif
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
     if(ok&&cover_body_live::enabled)for(unsigned i=0;i<cover_body_live::targets.size()&&ok;++i)
@@ -5157,6 +5169,7 @@ DWORD WINAPI worker(void*) {
     if(!ok) {
         session_activation_gate.close();
         ngx_mv_target_capture::close();ngx_mv_descriptor_capture::close();
+        weapon_call_live::owned.store(false,std::memory_order_release);
         recording=false;MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
         close_quad_source_events();
         close_first_view_mask_events();
@@ -5271,6 +5284,7 @@ DWORD WINAPI worker(void*) {
     death_hdr_pixels::stop();
     ngx_output_pixels::stop();
     owned_source_pixels::stop();
+    weapon_call_live::owned.store(false,std::memory_order_release);
     MH_STATUS disabled=MH_DisableHook(MH_ALL_HOOKS);
     recording=false;
     for(unsigned i=0;i<100 && active.load();++i) Sleep(10);
@@ -5482,6 +5496,10 @@ extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrRegiste
 }
 extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrUnregisterWeaponHandParticipantV1(uint64_t cookie) noexcept {
     return weapon_hand_runtime::unregister(cookie);
+}
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachWeaponCallBoundaryV1(
+    gears_weapon_call::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
+    return weapon_hand_runtime::attach_call_participant(registration,result,weapon_call_live::owned.load(std::memory_order_acquire));
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*) {
     // CPU-only: actual production stop/native destroy helpers with fake native

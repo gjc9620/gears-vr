@@ -3,6 +3,7 @@
 // register. This module creates one stable Broker, never an input/hand owner.
 namespace weapon_hand_runtime {
 namespace api=::gears_weapon_hand;
+namespace call_api=::gears_weapon_call;
 bool enabled{}; // Startup-only configuration; immutable after configure.
 namespace detail {
 alignas(api::Broker) unsigned char storage[sizeof(api::Broker)]{};
@@ -13,7 +14,7 @@ bool configuration_seen{},configuration_ok{};unsigned configuration_request{};
 std::atomic<bool> configured{},enabled_snapshot{},admission_closed{true},stop_requested{},unknown_fault{};
 std::atomic<unsigned long long> calls{},configure_rejected{},initialize_attempts{},initialize_rejected{},
     register_attempts{},register_accepted{},register_rejected{},unregister_attempts{},stop_requests{},worker_ticks{},
-    wrong_worker_ticks{},collect_attempts{},collect_failed{},faults{};
+    wrong_worker_ticks{},collect_attempts{},collect_failed{},faults{},call_attach_attempts{},call_attach_accepted{},call_begin_attempts{},call_begin_admitted{},call_finishes{};
 struct Call {
     Call() noexcept {++calls;}~Call(){--calls;}
     Call(Call const&)=delete;Call& operator=(Call const&)=delete;
@@ -129,6 +130,38 @@ api::Reply unregister(std::uint64_t cookie) noexcept {
     try {return b->unregister(cookie);}catch(...){detail::fault();return api::Reply::invalid;}
 }
 
+api::Reply attach_call_participant(call_api::Registration const* input,api::RegistrationResult* output,bool wrapper_owned) noexcept {
+    detail::Call call;++detail::call_attach_attempts;
+    if(detail::admission_closed.load()||detail::stop_requested.load())return detail::stop_requested.load()?api::Reply::draining:api::Reply::unavailable;
+    auto* b=current();if(!b)return api::Reply::unavailable;
+    call_api::Registration registration{};api::RegistrationResult result{};
+    if(!api::weapon_broker_win32::copy(&registration,input,sizeof(registration))||
+       !api::weapon_broker_win32::copy(&result,output,sizeof(result))){detail::fault();return api::Reply::invalid;}
+    try {
+        const auto reply=b->attach_call_participant(&registration,&result,wrapper_owned);
+        if(reply==api::Reply::accepted){
+            if(!api::weapon_broker_win32::copy(output,&result,sizeof(result))){detail::fault();return api::Reply::invalid;}
+            ++detail::call_attach_accepted;
+        }
+        return reply;
+    }catch(...){detail::fault();return api::Reply::invalid;}
+}
+
+bool begin_call(std::uintptr_t self,std::uintptr_t caller_frame,std::uintptr_t result,std::uintptr_t callee,api::CallScope& scope) noexcept {
+    detail::Call call;++detail::call_begin_attempts;
+    if(detail::admission_closed.load()||detail::stop_requested.load())return false;
+    auto* b=current();if(!b)return false;
+    const bool admitted=b->begin_call(self,caller_frame,result,callee,scope);
+    if(admitted)++detail::call_begin_admitted;return admitted;
+}
+// Always finish the already-admitted stack token, including stop/disable and
+// original-exception paths. No enabled/admission test may suppress its notice.
+void finish_call(api::CallScope& scope,bool original_returned,std::uint64_t rax) noexcept {
+    detail::Call call;if(!scope.active)return;++detail::call_finishes;
+    auto* b=current();if(!b||scope.owner!=b){detail::fault();return;}
+    b->finish_call(scope,original_returned,rax);
+}
+
 void request_stop() noexcept {
     detail::Call call;++detail::stop_requests;
     detail::stop_requested.store(true);detail::admission_closed.store(true);
@@ -154,11 +187,11 @@ void worker_tick() noexcept {
 
 bool retained() noexcept {
     if(detail::unknown_fault.load()||detail::calls.load())return true;
-    auto* b=current();return b&&(b->cookie()||b->pin_retained()||b->pending_callbacks()||b->pending_transactions()||b->pending());
+    auto* b=current();return b&&(b->cookie()||b->pin_retained()||b->pending_callbacks()||b->pending_transactions()||b->pending_aux_scopes()||b->aux_debt()||b->pending());
 }
 bool cleanup_ready() noexcept {
     if(!detail::admission_closed.load()||detail::unknown_fault.load()||detail::calls.load())return false;
-    auto* b=current();return !b||(!b->cookie()&&!b->pin_retained()&&!b->pending_callbacks()&&!b->pending_transactions()&&!b->pending()&&
+    auto* b=current();return !b||(!b->cookie()&&!b->pin_retained()&&!b->pending_callbacks()&&!b->pending_transactions()&&!b->pending_aux_scopes()&&!b->aux_debt()&&!b->pending()&&
         b->availability()==api::Availability::absent_quiescent);
 }
 void summary(FILE* file) noexcept {
@@ -170,5 +203,7 @@ void summary(FILE* file) noexcept {
         static_cast<unsigned long long>(b?b->cookie():0),static_cast<unsigned long long>(b?b->lifecycle_revision():0),unsigned(b?b->availability():api::Availability::absent_quiescent),
         b?b->pending_callbacks():0,b?b->pending_transactions():0,unsigned(b&&b->pin_retained()),binding.game_pid,
         static_cast<unsigned long long>(binding.game_start),static_cast<unsigned long long>(binding.native_started_qpc),binding.owner_worker_thread);
+    std::fprintf(file,"weapon_call_attached=%u weapon_call_aux_scopes=%u weapon_call_sticky_debt=%u weapon_call_attach_attempts=%llu weapon_call_attach_accepted=%llu weapon_call_begin_attempts=%llu weapon_call_begin_admitted=%llu weapon_call_finishes=%llu ",
+        unsigned(b&&b->call_attached()),b?b->pending_aux_scopes():0,unsigned(b&&b->aux_debt()),detail::call_attach_attempts.load(),detail::call_attach_accepted.load(),detail::call_begin_attempts.load(),detail::call_begin_admitted.load(),detail::call_finishes.load());
 }
 } // namespace weapon_hand_runtime

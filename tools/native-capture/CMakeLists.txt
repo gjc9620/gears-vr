@@ -101,7 +101,9 @@ if(MSVC AND WIN32)
     target_compile_options(WeaponHandRuntimeDisabledTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
     foreach(HAND_MODE IN ITEMS disabled unknown lifecycle prepare-gap register-race initialize-race
             fault-input fault-output factory-fault callback-fault unpin-failure summary-race
-            reentrant-stop configure-repeat before-init)
+            reentrant-stop configure-repeat before-init
+            aux-normal aux-exception aux-prepare-gap aux-unregister
+            aux-fault-pre aux-fault-returned aux-mutated aux-unresolved)
         add_test(NAME WeaponHandRuntime-${HAND_MODE} COMMAND WeaponHandRuntimeTest ${HAND_MODE})
     endforeach()
     foreach(HAND_MODE IN ITEMS disabled unknown)
@@ -850,6 +852,11 @@ target_compile_options(OriginTrialTest PRIVATE /W4 /EHsc)
 add_executable(UiObserverTest ui_observer_test.cpp)
 add_executable(UiCallBoundaryTest ui_call_boundary_test.cpp)
 target_compile_options(UiCallBoundaryTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+if(MSVC AND WIN32)
+    add_executable(UiCallBoundarySehTest ui_call_boundary_seh_test.cpp)
+    target_compile_options(UiCallBoundarySehTest PRIVATE /W4 /WX /EHsc /UNDEBUG /O2)
+    add_test(NAME UiCallBoundarySehTest COMMAND UiCallBoundarySehTest)
+endif()
 target_compile_options(UiObserverTest PRIVATE /W4 /EHsc /UNDEBUG)
 add_executable(GraphicsLockTest graphics_lock_test.cpp)
 target_compile_options(GraphicsLockTest PRIVATE /W4 /EHsc /UNDEBUG)

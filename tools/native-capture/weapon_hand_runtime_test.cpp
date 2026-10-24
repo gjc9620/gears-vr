@@ -19,6 +19,8 @@ struct Fake {
     bool unpin_ok=true,prepare_fault{},invalidate_fault{},reenter_stop{},factory_fault{};
     unsigned barrier_phase{};HANDLE entered{},resume{};
     w::Reply prepare_reply=w::Reply::accepted;
+    unsigned aux_pres{},aux_returns{},aux_unwinds{},aux_mode{};
+    gears_weapon_call::Invocation aux_invocation{};gears_weapon_call::UnwindReason aux_reason{};
     static bool pin(void*,w::Registration const&,w::ModulePin&) noexcept;
     static bool unpin(void*,w::ModulePin) noexcept;
     static std::int64_t clock(void*) noexcept;
@@ -26,6 +28,10 @@ struct Fake {
     static std::uint32_t prepare(void*,w::Frame const*,w::Proposal*) noexcept;
     static std::uint32_t commit(void*,w::Frame const*,w::Proposal const*,w::Decision const*) noexcept;
     static void invalidate(void*,w::Invalidation const*) noexcept;
+    static bool call_module(void*,gears_weapon_call::Registration const&,w::ModulePin) noexcept;
+    static void call_pre(void*,gears_weapon_call::Invocation const*,gears_weapon_call::State*) noexcept;
+    static gears_weapon_call::End call_returned(void*,gears_weapon_call::Invocation const*,gears_weapon_call::State*,std::uint64_t) noexcept;
+    static gears_weapon_call::End call_unwind(void*,gears_weapon_call::Invocation const*,gears_weapon_call::State*,gears_weapon_call::UnwindReason) noexcept;
     void barrier(unsigned phase) noexcept {if(barrier_phase==phase){SetEvent(entered);if(WaitForSingleObject(resume,3000)!=WAIT_OBJECT_0)++violations;}}
     void start(unsigned phase){barrier_phase=phase;entered=CreateEventW(nullptr,TRUE,FALSE,nullptr);resume=CreateEventW(nullptr,TRUE,FALSE,nullptr);C(entered&&resume);}
     void end(){CloseHandle(entered);CloseHandle(resume);barrier_phase=0;entered=resume=nullptr;}
@@ -39,7 +45,7 @@ namespace runtime=weapon_hand_runtime;
 bool Fake::pin(void*,w::Registration const&,w::ModulePin& pin_value) noexcept {++fake.pins;fake.barrier(1);pin_value={0x9000,0x9000};return true;}
 bool Fake::unpin(void*,w::ModulePin pin_value) noexcept {
     ++fake.unpins;auto* b=runtime::current();
-    if(test_thread!=worker||pin_value.handle!=0x9000||!b||b->pending_callbacks()||b->pending_transactions())++fake.violations;
+    if(test_thread!=worker||pin_value.handle!=0x9000||!b||b->pending_callbacks()||b->pending_transactions()||b->pending_aux_scopes()||b->aux_debt())++fake.violations;
     return fake.unpin_ok;
 }
 std::int64_t Fake::clock(void*) noexcept {return fake.stamp.load();}
@@ -53,7 +59,8 @@ std::uint32_t Fake::commit(void*,w::Frame const*,w::Proposal const*,w::Decision 
 void Fake::invalidate(void*,w::Invalidation const*) noexcept {++fake.invalidations;if(fake.invalidate_fault)RaiseException(0xe042c031,0,0,nullptr);}
 w::BrokerBackend fake_backend(){
     fake.barrier(2);if(fake.factory_fault)throw OwnFault{};
-    return {nullptr,Fake::pin,Fake::unpin,Fake::clock,Fake::thread,w::weapon_broker_win32::prepare,w::weapon_broker_win32::commit,w::weapon_broker_win32::invalidate};
+    return {nullptr,Fake::pin,Fake::unpin,Fake::clock,Fake::thread,w::weapon_broker_win32::prepare,w::weapon_broker_win32::commit,w::weapon_broker_win32::invalidate,
+        Fake::call_module,w::weapon_broker_win32::call_begin,w::weapon_broker_win32::call_returned,w::weapon_broker_win32::call_unwind};
 }
 bool configure(unsigned request=1,unsigned mask=7){
     continuous_session=(mask&1)!=0;stereo_xr=(mask&2)!=0;anchor_observer_enabled=(mask&4)!=0;
@@ -160,6 +167,7 @@ void reentrant_stop(){
     C(runtime::current()->prepare(f,p)==w::Reply::invalid&&runtime::retained());test_thread=worker;runtime::worker_tick();
     C(runtime::cleanup_ready()&&!runtime::retained()&&fake.unpins==1);
 }
+#include "weapon_hand_call_runtime_test.inl"
 int main(int argc,char** argv){
     const char* mode=argc>1?argv[1]:"disabled";
     if(std::strcmp(mode,"mask")==0){unsigned mask=argc>2?unsigned(std::strtoul(argv[2],nullptr,10)):0;bool expected=false;
@@ -182,6 +190,7 @@ int main(int argc,char** argv){
     else if(std::strcmp(mode,"reentrant-stop")==0)reentrant_stop();
     else if(std::strcmp(mode,"configure-repeat")==0){C(configure());C(configure());C(!configure(1,3));C(runtime::enabled&&!runtime::current());C(configure());C(runtime::initialize(400,500,worker));finish();}
     else if(std::strcmp(mode,"before-init")==0){C(configure());runtime::request_stop();C(!runtime::initialize(400,500,worker)&&!runtime::current()&&runtime::cleanup_ready());}
+    else if(std::strncmp(mode,"aux-",4)==0)auxiliary_runtime(mode);
     else {C(false);}
     std::printf("weapon_hand_runtime %s: %u checks, %u failures\n",mode,checks,failures);return failures?1:0;
 }

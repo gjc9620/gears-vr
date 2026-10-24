@@ -417,9 +417,11 @@ void retired_cookie_tests(){
         C(fresh.availability()==w::Availability::absent_quiescent&&other.pins==0&&other.invalidations==0);
     }
 }
+#include "weapon_hand_call_broker_test.inl"
 } // namespace
 int main(){
     registration_tests();normal_and_retry_tests();temporary_loss_tests();bad_callback_tests();
     bad_frame_and_decision_tests();transaction_drain_tests();concurrent_tests();clock_thread_and_pin_tests();retired_cookie_tests();
+    auxiliary_tests();
     std::printf("weapon_hand_broker: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }

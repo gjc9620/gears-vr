@@ -1,6 +1,8 @@
 // Included after UiInvocation and ui_invocation_current. No geometry publication,
 // parent token changes, or delayed frame consumers are permitted here.
 #include "ui_call_boundary.h"
+#include <new>
+#include <type_traits>
 namespace ui_call_boundary {
 inline constexpr auto entry_bytes=gears_ui_call_boundary::entry_bytes;
 #if defined(GEARS_UI_CALL_BOUNDARY_OBSERVER) && GEARS_UI_CALL_BOUNDARY_OBSERVER
@@ -31,15 +33,46 @@ bool selected_entry(gears_ui::Config const& c,unsigned index,uintptr_t self){
         read.field(entry,c.identities[s.function].address,0x114)&&entry==c.base+gears_ui::binding_rvas[0]&&
         gears_ui::live_scope_object(c,read,index,self);
 }
-uintptr_t __fastcall hook(void* self,void* caller_frame,void* result,void* callee){
-    Scope scope;if(!scope.world()||!recording.load())return original(self,caller_frame,result,callee);
-    cover_call_live::CallScope cover(self,caller_frame,result,callee);
-    auto native=[&]{const uintptr_t value=original(self,caller_frame,result,callee);cover.returned(value);return value;};
+// /EHsc does not destroy automatic C++ objects when the game raises SEH.
+// Only this trivially destructible storage crosses the outer __try. A non-null
+// object pointer records a completed placement construction, including on
+// branches that construct only a prefix of the observer scopes.
+template<class T> struct HookSlot {alignas(T) unsigned char storage[sizeof(T)];T* object;};
+struct HookState {
+    HookSlot<Scope> scope;
+    HookSlot<cover_call_live::CallScope> cover;
+    HookSlot<ui_logical_group_live::ChildScope> logical;
+    HookSlot<gears_ui_call_boundary::Nest> nest;
+    Row row;Row* saved_row;bool row_installed;
+};
+static_assert(std::is_trivially_destructible_v<HookState>&&std::is_trivially_copyable_v<HookState>);
+template<class T> void destroy_slot(HookSlot<T>& slot){
+    if(slot.object){auto* object=slot.object;slot.object=nullptr;object->~T();}
+}
+void destroy_hook_state(HookState& state){
+    // Exact reverse of construction/publication. In particular, nested calls
+    // restore the parent's row before its Nest and logical child are exposed.
+    if(state.row_installed){current_row=state.saved_row;state.row_installed=false;}
+    destroy_slot(state.nest);destroy_slot(state.logical);destroy_slot(state.cover);destroy_slot(state.scope);
+}
+uintptr_t invoke_original(HookState& state,void* self,void* caller_frame,void* result,void* callee){
+    // One trampoline call site for every branch. Its opaque RAX bits and the
+    // four arguments are forwarded unchanged; no exception handler wraps it.
+    const uintptr_t value=weapon_call_live::invoke(original,self,caller_frame,result,callee);
+    if(state.cover.object)state.cover.object->returned(value);
+    return value;
+}
+uintptr_t hook_body(HookState& state,void* self,void* caller_frame,void* result,void* callee){
+    state.scope.object=::new(static_cast<void*>(state.scope.storage)) Scope;
+    if(!state.scope.object->world()||!recording.load())return invoke_original(state,self,caller_frame,result,callee);
+    state.cover.object=::new(static_cast<void*>(state.cover.storage)) cover_call_live::CallScope(self,caller_frame,result,callee);
+    auto native=[&]{return invoke_original(state,self,caller_frame,result,callee);};
     if(!ui_observer_enabled)return native();
-    ui_logical_group_live::ChildScope logical(self,caller_frame,callee,
+    state.logical.object=::new(static_cast<void*>(state.logical.storage)) ui_logical_group_live::ChildScope(self,caller_frame,callee,
         ui_logical_group_live::boundary_candidate()&&ui_invocation.frozen&&ui_invocation_current());
-    auto invoke=[&]{return logical.invoke(native);};
-    ++calls;gears_ui_call_boundary::Nest nest(nesting);
+    auto invoke=[&]{return state.logical.object->invoke(native);};
+    ++calls;state.nest.object=::new(static_cast<void*>(state.nest.storage)) gears_ui_call_boundary::Nest(nesting);
+    auto& nest=*state.nest.object;
     // Pointer-only frozen candidate lookup precedes expensive parent validation.
     constexpr unsigned no_candidate=(std::numeric_limits<unsigned>::max)();
     auto const* config=ui_invocation.frozen;unsigned candidate=no_candidate;
@@ -53,18 +86,23 @@ uintptr_t __fastcall hook(void* self,void* caller_frame,void* result,void* calle
     if(!gears_ui_call_boundary::selected_depth(nesting)){++rejected;++depth_rejected;return invoke();}
     if(!ui_invocation.context.kind||!ui_invocation.sequence||!ui_invocation_current()||
        !selected_entry(*config,candidate,reinterpret_cast<uintptr_t>(self))){++rejected;return invoke();}
-    Row row{};row.child={++accepted,ui_invocation.sequence,nest.saved?nest.saved->id:0,
+    auto& row=state.row;row.child={++accepted,ui_invocation.sequence,nest.saved?nest.saved->id:0,
         reinterpret_cast<uintptr_t>(self),reinterpret_cast<uintptr_t>(caller_frame),reinterpret_cast<uintptr_t>(callee),candidate,nesting.depth};
     row.result_address=reinterpret_cast<uintptr_t>(result);row.thread=GetCurrentThreadId();row.enter=now();
     row.before_valid=gears_ui_call_boundary::frame(safe_copy,row.child.caller,row.before);
     nest.select(&row.child);
-    struct RowRestore {Row* saved=current_row;~RowRestore(){current_row=saved;}} restore;
-    current_row=&row;
+    state.saved_row=current_row;state.row_installed=true;current_row=&row;
     // Return semantics remain unproven. Forward the original RAX bits unchanged.
     const uintptr_t value=invoke();
     row.exit=now();row.after_valid=gears_ui_call_boundary::frame(safe_copy,row.child.caller,row.after);row.returned=true;++completed;
     {std::lock_guard<std::mutex> lock(mutex);
         if(!samples.append(row,row.draws[0]||row.draws[1]||row.draws[2]))++rows_dropped;}
+    return value;
+}
+uintptr_t __fastcall hook(void* self,void* caller_frame,void* result,void* callee){
+    HookState state{};uintptr_t value{};
+    __try {value=hook_body(state,self,caller_frame,result,callee);}
+    __finally {destroy_hook_state(state);}
     return value;
 }
 void canvas(unsigned draw,void* frame,gears_ui::ScopeContext const& selected,uintptr_t matched_frame){
