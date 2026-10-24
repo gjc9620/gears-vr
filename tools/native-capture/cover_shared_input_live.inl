@@ -24,6 +24,46 @@ struct Diagnostics {
 bool have_previous{},interrupted=true,cached_owned{},cached_action_fallback{};
 gears_vr::StereoResult cached_stereo{};
 gears_vr::StereoMatrix cached_view{};
+// Data-only receipt of the ONE original matching_input selection. Reader-side
+// ticket checks are atomic; the bundle itself is copied only under stereo_mutex.
+struct TrackingBundle {
+    binding::Binding actor{};neutral::EyeSample eye{};gears_vr::StereoResult stereo{};
+    gears_vr::ControllerInputFrame hands{};
+    gears_hand_continuity::TrackedInput continuity{};
+    uint64_t ticket{},lifecycle{},publisher_pid{},publisher_start{},invocation{};
+    int64_t scene_qpc{},family_qpc{},renderer_qpc{};unsigned thread{};
+    bool available{},matched{},cover_known{},continuity_known{};
+} tracking;
+gears_hand_continuity::InputBridge continuity_bridge;
+bool continuity_enabled{},continuity_open{},continuity_attempted{};uint64_t continuity_last_open{},continuity_pid{},continuity_start{};
+void select_continuity(TrackingBundle& selected,int64_t stamp){
+    if(!continuity_enabled)return;
+    if(!selected.matched||!selected.available){continuity_bridge.close();continuity_open=false;return;}
+    if(continuity_open&&(continuity_pid!=selected.publisher_pid||continuity_start!=selected.publisher_start)){
+        continuity_bridge.close();continuity_open=false;continuity_attempted=false;}
+    const auto clock=GetTickCount64();
+    if(!continuity_open&&(!continuity_attempted||clock<continuity_last_open||clock-continuity_last_open>=1000)){
+        continuity_attempted=true;continuity_last_open=clock;continuity_open=continuity_bridge.open(GetCurrentProcessId(),false);
+        continuity_pid=selected.publisher_pid;continuity_start=selected.publisher_start;}
+    gears_hand_continuity::TrackedInput companion{};gears_hand_continuity::Publisher publisher{};
+    if(continuity_open&&continuity_bridge.read_matching(selected.stereo.sample,stamp,companion,publisher,simulator_operator)&&
+       publisher.pid==selected.publisher_pid&&publisher.start==selected.publisher_start&&gears_hand_continuity::same_input(companion.input,selected.hands)){
+        selected.continuity=companion;selected.continuity_known=true;}
+}
+std::atomic<uint64_t> tracking_revision{1};std::atomic<bool> tracking_exhausted{};
+bool tracking_ticket_current(uint64_t ticket){return ticket&&!tracking_exhausted.load()&&ticket==tracking_revision.load();}
+void clear_tracking(){
+    auto value=tracking_revision.load();if(value==UINT64_MAX)tracking_exhausted=true;else tracking_revision=value+1;
+    tracking={};
+}
+bool tracking_for(gears_anchor::Receipt const* scene,gears_vr::StereoResult const& stereo,TrackingBundle& out){
+    if(!scene||!tracking.available||!tracking_ticket_current(tracking.ticket)||tracking.lifecycle!=diagnostics.lifecycle||
+       tracking.invocation!=scene->invocation||tracking.thread!=scene->thread||tracking.scene_qpc!=scene->scene_qpc||
+       tracking.family_qpc!=scene->family_qpc||tracking.renderer_qpc!=scene->renderer_qpc||
+       memcmp(&tracking.stereo,&stereo,sizeof stereo)||!binding::same_key(tracking.actor,previous.actor)||
+       tracking.actor.special_move!=previous.actor.special_move)return false;
+    out=tracking;return true;
+}
 
 wire::ObjectIdentity object(gears_anchor::Identity const& id){
     if(!id.address)return {};
@@ -37,6 +77,7 @@ bool same_eye(neutral::EyeSample const& a,neutral::EyeSample const& b){return ca
     a.pawn_location.x==b.pawn_location.x&&a.pawn_location.y==b.pawn_location.y&&a.pawn_location.z==b.pawn_location.z&&
     a.neutral_eye_world.x==b.neutral_eye_world.x&&a.neutral_eye_world.y==b.neutral_eye_world.y&&a.neutral_eye_world.z==b.neutral_eye_world.z;}
 void invalidate(wire::InvalidateReason reason) noexcept {
+    clear_tracking();
     interrupted=true;cached_owned=cached_action_fallback=false;
     try{input::participant.invalidate(input::left_hand_owner);
         if(auto* broker=runtime::current();broker&&!broker->action_barrier())broker->invalidate(reason);
@@ -73,7 +114,7 @@ struct Pending {
     }}
 };
 bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gears_vr::StereoResult const& stereo){
-    if(!runtime::enabled)return input::enabled?input::prepare(scene,view,stereo):camera::prepare(scene,view);
+    if(!runtime::enabled){clear_tracking();return input::enabled?input::prepare(scene,view,stereo):camera::prepare(scene,view);}
     ++diagnostics.attempts;if(input::enabled)++input::diagnostics.attempts;bool owned{};
     try{
         neutral::EyeSample eye{};
@@ -110,6 +151,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
             gears_vr::monotonic_ns()-stereo.sample.received_ns<=100000000;
         const bool exact_cache=exact_view&&previous.revision==broker->lifecycle_revision();
         if(action_refresh){
+            clear_tracking();
             auto fallback=input::diagnostics.latest;
             input::participant.invalidate(input::left_hand_owner);
             interrupted=true;++diagnostics.action_revoked;
@@ -139,6 +181,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
             ++diagnostics.rejected;invalidate(wire::InvalidateReason::context_lost);return owned;
         }
         diagnostics.frame=scene->invocation;
+        clear_tracking();
         if(!cover)++diagnostics.outside_cover;
         Snapshot next{};next.actor=actor;next.eye=eye;next.cover=cover;
         next.session=stereo.sample.session;next.space=stereo.sample.space_epoch;next.reference=stereo.reference_generation;
@@ -152,6 +195,14 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         if(!epochs(next)){++diagnostics.rejected;invalidate(wire::InvalidateReason::context_lost);return owned;}
         const auto stamp=gears_vr::monotonic_ns();gears_vr::ControllerInputFrame hands{};
         const bool matched=input::matching_input(stereo,stamp,hands);
+        TrackingBundle selection{};selection.actor=actor;selection.eye=eye;memcpy(&selection.stereo,&stereo,sizeof stereo);
+        selection.hands=matched?hands:gears_vr::ControllerInputFrame{};selection.matched=matched;
+        selection.available=!matched||input::controllers.publisher_identity(selection.publisher_pid,selection.publisher_start);
+        selection.available=selection.available&&selection.publisher_pid<=UINT32_MAX;
+        select_continuity(selection,stamp);
+        selection.cover_known=cover;selection.invocation=scene->invocation;selection.thread=scene->thread;
+        selection.scene_qpc=scene->scene_qpc;selection.family_qpc=scene->family_qpc;selection.renderer_qpc=scene->renderer_qpc;
+        selection.lifecycle=diagnostics.lifecycle;selection.ticket=tracking_revision.load();
         if(matched)++input::diagnostics.matched;else ++input::diagnostics.missing;
         gears_vr::CoverTrackingBasis axes{};
         if(!gears_vr::cover_tracking_basis(stereo.reference,axes)){
@@ -231,6 +282,7 @@ bool prepare(gears_anchor::Receipt const* scene,gears_vr::StereoMatrix& view,gea
         }
         cached_owned=owned;cached_action_fallback=false;cached_view=view;memcpy(&cached_stereo,&stereo,sizeof stereo);
         if(!action_current()&&!action_blocked){interrupted=true;cached_owned=false;}
+        if(!interrupted&&selection.available&&tracking_ticket_current(selection.ticket))tracking=selection;
         return owned;
     }catch(...){++diagnostics.rejected;invalidate(wire::InvalidateReason::context_lost);return owned;}
 }
@@ -242,5 +294,5 @@ void summary(FILE* file){
     fprintf(file,"shared_hand_physical_fallback=%llu shared_hand_action_revoked=%llu shared_hand_action_blocked=%llu shared_hand_action_raced=%llu ",
         diagnostics.physical_fallback,diagnostics.action_revoked,diagnostics.action_blocked,diagnostics.action_raced);
 }
-void close(){std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);invalidate(wire::InvalidateReason::native_stopping);}
+void close(){std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);invalidate(wire::InvalidateReason::native_stopping);continuity_bridge.close();continuity_open=continuity_attempted=false;continuity_pid=continuity_start=continuity_last_open=0;}
 } // namespace cover_shared_input_live

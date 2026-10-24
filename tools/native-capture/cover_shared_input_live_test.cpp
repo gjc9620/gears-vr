@@ -14,6 +14,7 @@
 #include "anchor_observer.h"
 #include "../vr-common/pose_bridge.h"
 #include "../vr-common/controller_input_bridge.h"
+#include "../vr-common/controller_continuity_bridge.h"
 #include "../vr-common/cover_input_owner.h"
 #include "../vr-common/weapon_hand_owner_adapter.h" // MUST be global, as in capture.
 #include "weapon_hand_broker.h"
@@ -77,12 +78,12 @@ struct Binding {
 };
 enum class Reason {ready,body_unavailable};Reason last_reason=Reason::ready;
 const char* reason_name(Reason reason){return reason==Reason::ready?"ready":"body_unavailable";}
-Binding actor{};bool available=true;
+Binding actor{};bool available=true;unsigned sample_calls{};void (*sample_hook)(unsigned){};
 bool same_key(Binding const& a,Binding const& b){return a.context_valid&&b.context_valid&&a.weapon_known&&b.weapon_known&&
     a.world_generation&&a.world_generation==b.world_generation&&gears_anchor::equal_identity(a.controller,b.controller)&&
     gears_anchor::equal_identity(a.pawn,b.pawn)&&gears_anchor::equal_identity(a.mesh,b.mesh)&&
     gears_anchor::equal_identity(a.world,b.world)&&gears_anchor::equal_identity(a.weapon,b.weapon);}
-bool sample(gears_anchor::Receipt const* scene,Binding& out){if(!scene||!available){last_reason=Reason::body_unavailable;return false;}
+bool sample(gears_anchor::Receipt const* scene,Binding& out){++sample_calls;if(sample_hook)sample_hook(sample_calls);if(!scene||!available){last_reason=Reason::body_unavailable;return false;}
     out=actor;out.scene_invocation=scene->invocation;last_reason=Reason::ready;return true;}
 }
 constexpr unsigned worker_thread=0xfffffff0u;thread_local bool as_worker=false;
@@ -363,10 +364,19 @@ void action_race(bool at_commit){
     pg.revoke_prepare=pg.revoke_commit=false;release();const auto before=pg.grants;step(.3,.8f);
     C(pg.grants==before+1&&runtime::broker.authorized());finish();
 }
+void tracking_bundle(){
+    setup(false);attach();release();shared::TrackingBundle selected{};
+    C(shared::tracking_for(&scene,stereo,selected)&&selected.matched&&selected.publisher_pid==GetCurrentProcessId());
+    const auto ticket=selected.ticket;const auto stamp=selected.hands.received_ns;const auto prepares=pg.prepares,commits=pg.commits;
+    input::controllers.close();input::bridge_open=false;C(!run());shared::TrackingBundle again{};
+    C(shared::tracking_for(&scene,stereo,again)&&again.ticket==ticket&&again.hands.received_ns==stamp&&!input::bridge_open);
+    C(pg.prepares==prepares&&pg.commits==commits);stereo.sample.head.position.x+=.1;C(!run());
+    C(!shared::tracking_for(&scene,stereo,again)&&!shared::tracking_ticket_current(ticket));finish();
+}
 } // namespace
 int main(int argc,char** argv){
     const char* mode=argc>1?argv[1]:"outside";
-    if(!std::strcmp(mode,"outside"))outside();else if(!std::strcmp(mode,"cover"))cover();
+    if(!std::strcmp(mode,"tracking"))tracking_bundle();else if(!std::strcmp(mode,"outside"))outside();else if(!std::strcmp(mode,"cover"))cover();
     else if(!std::strcmp(mode,"prepare-rejected"))rejection(true);else if(!std::strcmp(mode,"commit-rejected"))rejection(false);
     else if(!std::strcmp(mode,"barrier"))barrier(argc>2?argv[2]:"weapon");
     else if(!std::strcmp(mode,"retry"))retry(argc>2?argv[2]:"exact");
