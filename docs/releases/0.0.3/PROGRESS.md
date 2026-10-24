@@ -638,3 +638,9 @@ Astra整段预算审查 `7b5b6341…856` 否决仅后读packet或后采钟重建
 实际cost／完整trace／finally和两读取调用块进入10类／137项检查。首次fixture编译因host的State与导入State歧义及checks计数器遮蔽失败，原代码／日志保留，未执行该exe；R2只把host读取类型放入内层namespace并改host计数器名，四段实际源码字节不变，严格编译运行通过。覆盖四span独立、未知site／inactive不添时钟、原调用和短路次数、真假读与后续比较分离、未知Auth不借旧值、Windows SEH保持未闭span、原finally恢复index以及实际wide dump字段值。QPC和read／prepare为显式host服务，不是原引擎成本；结果 `7b603ac1…f52d` 在忽略的 `analysis/hand-callback-read-cpu-20261024aw-r2/`，首次失败另在无r2目录。
 
 冻结786源／27依赖，唯一完整PG严格构建、23导出及七实际运行源OFF一组两次/EP非空行相等通过，DLL `b10adbd5…86ba`、build结果 `1345e877…d59c` 在忽略的 `analysis/hand-callback-read-build-20261024aw/`。其余未变旧套件不重跑。本条记录时尚未实际购买版计时，没有新包／旧Plan续期、权限／setter／恢复／100ms／0.1门限改动，无默认安装或真实0.7伤害、完整运动／全武器／头显通过。
+
+AW实测补记：提交 `1448030` 的786源／27依赖／635工件候选 `5f6994fd…4344`，manifest `1309ad5f…fbc3`；runner全部函数／类AST与AV相同。三次新鲜空闲后唯一原协议静音置后购买版局，首次原MS交还clean_close1，之后7手应用／7恢复、原setter／target56，末端46行／23对／7完整lease、prepare字段28／最后观察56，末端审计通过。14份未移动初始手势原0.1门限内，最大位置0.00002861023原始单位、旋转0.02157564°；仍0移动命令，无大伸手／蒙皮／GPU或头显证明。
+
+第二次acquire seq815／rev33／lease8／interval2，group0／1／2通过，group4 ordinal724在原早期MS check1拒绝：known67／checked3／rejected2、mask0；live_now距ticket109ms、比原cutoff晚9ms。commit_now／authorize_ns／commit_ns仍0，后续Policy和NS检查未执行，不能再称本局最终NS拒绝。四组新增read_before实测1.4473／1.5416／1.4049／1.4802ms，read_after1.4532／1.4610／1.4014／1.5402ms，均closed和原bool true，合计11.7298ms；prepare6.9330／6.9164／6.7226／6.8304ms、hand_direct2.3653／2.1035／2.0869／2.1511ms。仅是该局单次真实测量，无受控提速结论。原generic故障锁存，组件2尝试／1提交／2恢复、setter11、fault／cleanup_failed1，最终dirty／owned／revoked0；正式passed／cleanup仍false。
+
+独立8控制器／3组件／44挂接／入口恢复、Stop0／Shutdown0、音频8恢复pending0、确切自有owner／game／XR退出均通过，Native／XR子会话独立通过。77文件封存 `6c0eb53b…965f`、root结果 `a0e8aaec…28e3` 在忽略的 `analysis/hand-mesh-runtime-1024aw/`，保留原失败。下一最小候选的Astra静态建议 `3ca7d9f7…1db2d` 只合并pawn的Controller／InvManager／Mesh／Weapon四个地址查找，scope在PC两项后结束于weapon／slot VM前；保留lookup::field_at全部严格检查、精确ComponentProperty及原非fast／未启用names路径，不承诺耗时收益。本条记录时该优化尚未接线，完整目标、真实0.7伤害和默认／全武器／头显仍未完成。
