@@ -88,7 +88,7 @@ bool sample(gears_anchor::Receipt const* scene,Binding& out){if(!scene||!availab
 constexpr unsigned worker_thread=0xfffffff0u;thread_local bool as_worker=false;
 struct PG {
     unsigned pins{},unpins{},prepares{},commits{},invalidations{},violations{},grants{};
-    bool unpin_ok=true,candidates=true;
+    bool unpin_ok=true,candidates=true,revoke_prepare=false,revoke_commit=false;
     w::Reply prepare_reply=w::Reply::accepted,commit_reply=w::Reply::accepted;
     w::Frame last_frame{};w::Proposal last_proposal{};w::Decision last_decision{};w::Lease incumbent{};
     static bool pin(void*,w::Registration const&,w::ModulePin& value) noexcept;
@@ -98,8 +98,20 @@ struct PG {
     static std::uint32_t prepare(void*,w::Frame const*,w::Proposal*) noexcept;
     static std::uint32_t commit(void*,w::Frame const*,w::Proposal const*,w::Decision const*) noexcept;
     static void invalidate(void*,w::Invalidation const*) noexcept;
+    static bool call_module(void*,gears_weapon_call::Registration const&,w::ModulePin) noexcept {return true;}
+    static bool action_module(void*,gears_weapon_action::Registration const&,w::ModulePin) noexcept {return true;}
+    static void call_begin(void*,gears_weapon_call::Invocation const*,gears_weapon_call::State*) noexcept {}
+    static gears_weapon_call::End call_end(void*,gears_weapon_call::Invocation const*,gears_weapon_call::State*,uint64_t) noexcept {return gears_weapon_call::End::closed;}
+    static gears_weapon_call::End call_unwind(void*,gears_weapon_call::Invocation const*,gears_weapon_call::State*,gears_weapon_call::UnwindReason) noexcept {return gears_weapon_call::End::closed;}
+    static gears_weapon_action::BeginReply action_begin(void*,gears_weapon_action::Invocation const*,gears_weapon_action::State*) noexcept {return gears_weapon_action::BeginReply::unrelated;}
+    static gears_weapon_action::End action_end(void*,gears_weapon_action::Invocation const*,gears_weapon_action::State*,uint64_t) noexcept {return gears_weapon_action::End::closed;}
+    static gears_weapon_action::End action_unwind(void*,gears_weapon_action::Invocation const*,gears_weapon_action::State*,gears_weapon_action::UnwindReason) noexcept {return gears_weapon_action::End::closed;}
 } pg;
-w::BrokerBackend backend(){return {nullptr,PG::pin,PG::unpin,PG::clock,PG::thread,w::weapon_broker_win32::prepare,w::weapon_broker_win32::commit,w::weapon_broker_win32::invalidate};}
+w::BrokerBackend backend(){
+    w::BrokerBackend b{nullptr,PG::pin,PG::unpin,PG::clock,PG::thread,w::weapon_broker_win32::prepare,w::weapon_broker_win32::commit,w::weapon_broker_win32::invalidate};
+    b.call_module=PG::call_module;b.call_begin=w::weapon_broker_win32::call_begin;b.call_returned=w::weapon_broker_win32::call_returned;b.call_unwind=w::weapon_broker_win32::call_unwind;
+    b.action_module=PG::action_module;b.action_begin=w::weapon_broker_win32::action_begin;b.action_returned=w::weapon_broker_win32::action_returned;b.action_unwind=w::weapon_broker_win32::action_unwind;return b;
+}
 namespace weapon_hand_runtime {
 bool enabled=true;
 const w::BrokerSession binding{GetCurrentProcessId(),worker_thread,400,500};
@@ -109,15 +121,23 @@ void request_stop() noexcept {try{broker.invalidate(w::InvalidateReason::native_
 }
 bool PG::pin(void*,w::Registration const&,w::ModulePin& value) noexcept {++pg.pins;value={0x9000,0x9000};return true;}
 bool PG::unpin(void*,w::ModulePin value) noexcept {++pg.unpins;if(!as_worker||value.handle!=0x9000||weapon_hand_runtime::broker.pending_callbacks()||weapon_hand_runtime::broker.pending_transactions())++pg.violations;return pg.unpin_ok;}
+void revoke(w::Frame const& frame){
+    gears_weapon_boundary::Request r{};r.source=gears_weapon_boundary::Source::process_event;r.flags=gears_weapon_boundary::related;
+    r.hand_cookie=frame.key.registration_cookie;r.native_started_qpc=frame.key.native_started_qpc;
+    r.context=reinterpret_cast<uintptr_t>(&pg);r.object=frame.pawn.address;r.function=0x7000;r.thread_id=GetCurrentThreadId();
+    const auto before=weapon_hand_runtime::broker.action_generation();uint64_t generation{};
+    C(weapon_hand_runtime::broker.revoke_action(r,generation)==w::Reply::accepted&&generation>before);
+    C(!weapon_hand_runtime::broker.authorized());
+}
 std::uint32_t PG::prepare(void*,w::Frame const* frame,w::Proposal* proposal) noexcept {
     ++pg.prepares;pg.last_frame=*frame;*proposal={};proposal->key=frame->key;proposal->nonce=frame->key.frame*17+1;
     proposal->support=pg.candidates?1u:0u;if(pg.incumbent.lifecycle==frame->key.lifecycle)proposal->incumbents[0]=pg.incumbent;
-    pg.last_proposal=*proposal;return unsigned(pg.prepare_reply);
+    pg.last_proposal=*proposal;if(pg.revoke_prepare)revoke(*frame);return unsigned(pg.prepare_reply);
 }
 std::uint32_t PG::commit(void*,w::Frame const* frame,w::Proposal const* proposal,w::Decision const* decision) noexcept {
     ++pg.commits;pg.last_frame=*frame;pg.last_proposal=*proposal;pg.last_decision=*decision;
     if(pg.commit_reply==w::Reply::accepted){pg.incumbent=decision->lease;if(decision->new_grant)++pg.grants;}
-    return unsigned(pg.commit_reply);
+    if(pg.revoke_commit)revoke(*frame);return unsigned(pg.commit_reply);
 }
 void PG::invalidate(void*,w::Invalidation const*) noexcept {++pg.invalidations;pg.incumbent={};}
 #include "cover_shared_input_live.inl"
@@ -290,11 +310,58 @@ void held_fallback(){
     hands.hands[0].grip.position.y-=.2;result=common_step(0,.8f,true);C(close_enough(result.interaction.offset.up,.2));
     result=common_step(0,0,true);C(!result.interaction.owns_left_hand&&close_enough(result.interaction.offset.up,.2));
     hands.hands[0].grip.position.y-=.3;
+    // Action revocation drops the hand lease, while the separately committed
+    // virtual displacement remains available for fresh Scene certification.
+    input::participant.invalidate(input::left_hand_owner);
     result=common_step(.3,0,false,gears_vr::CoverWeaponState::blocked);
     C(!result.accepted&&result.view_valid&&result.body_weight_valid&&!result.interaction.owns_left_hand);
     C(close_enough(result.interaction.offset.up,.2)&&close_enough(result.physical.up,.3));
     C(close_enough(result.view.base_eye_world.z,-20)&&close_enough(result.requested_up_metres,.5)&&close_enough(result.requested_up_weight,.75));
     C(input::publish(&scene,neutral::eye,float(result.requested_up_weight))&&close_enough(body::latest.u,.75));finish();
+}
+void action_cache(bool external,bool revise=false){
+    setup(true);if(external)C(runtime::broker.configure_engine_restore(true));attach();release();step(.3,.8f);
+    if(external){
+        w::RegistrationResult result{};gears_weapon_call::Registration c{};c.hand_cookie=cookie;c.native_started_qpc=500;c.context=&pg;
+        c.begin=PG::call_begin;c.returned=PG::call_end;c.unwind=PG::call_unwind;
+        C(runtime::broker.attach_call_participant(&c,&result,true)==w::Reply::accepted);
+        gears_weapon_action::Registration a{};a.hand_cookie=cookie;a.native_started_qpc=500;a.context=&pg;
+        a.begin=PG::action_begin;a.returned=PG::action_end;a.unwind=PG::action_unwind;
+        C(runtime::broker.attach_action_gate(&a,&result,true)==w::Reply::accepted);
+    }
+    C(runtime::broker.authorized());const auto grants=pg.grants;const auto prepares=pg.prepares,commits=pg.commits;
+    const auto old_generation=runtime::broker.action_generation();revoke(pg.last_frame);
+    if(revise)runtime::broker.invalidate(w::InvalidateReason::context_lost);
+    gears_weapon_boundary::State state{};gears_weapon_boundary::Receipt receipt{};
+    if(external){
+        gears_weapon_boundary::Request r{};r.source=gears_weapon_boundary::Source::owned_bridge;r.flags=gears_weapon_boundary::related;
+        r.hand_cookie=cookie;r.native_started_qpc=500;r.context=reinterpret_cast<uintptr_t>(&pg);r.object=0x3000;r.function=0x7000;r.thread_id=GetCurrentThreadId();
+        C(runtime::broker.open_boundary(r,state,receipt,reinterpret_cast<uintptr_t>(&state))==w::Reply::accepted);
+        C(runtime::broker.action_barrier());
+    }
+    C(run());C(pg.prepares==prepares&&pg.commits==commits&&pg.grants==grants);
+    C(shared::previous.action_generation>old_generation&&shared::previous.action_blocked);
+    C(!input::diagnostics.latest.accepted&&input::diagnostics.latest.view_valid&&input::diagnostics.latest.body_weight_valid);
+    C(!input::diagnostics.latest.interaction.owns_left_hand&&close_enough(body::latest.u,.5));
+    const auto published=body::published;const auto retries=shared::diagnostics.retries;
+    C(run());C(body::published==published&&shared::diagnostics.retries==retries+1&&pg.prepares==prepares);
+    if(external){
+        C(step(.35,.8f));C(pg.prepares==prepares&&pg.commits==commits&&pg.grants==grants);
+        C(!input::diagnostics.latest.accepted&&input::diagnostics.latest.view_valid&&close_enough(body::latest.u,.5625));
+        gears_weapon_boundary::Finish f{};f.flags=gears_weapon_boundary::stage_closed|gears_weapon_boundary::handback_complete;
+        C(runtime::broker.close_boundary(state,receipt,f,reinterpret_cast<uintptr_t>(&state))==gears_weapon_boundary::End::closed);
+        C(!runtime::broker.action_barrier());const auto before=pg.prepares;C(run());C(pg.prepares==before&&!input::diagnostics.latest.accepted);
+    }
+    step(.3,.8f);C(pg.grants==grants&&!pg.last_decision.new_grant);release();step(.3,.8f);
+    C(pg.grants==grants+1&&pg.last_decision.new_grant&&runtime::broker.authorized());finish();
+}
+void action_race(bool at_commit){
+    setup(true);attach();release();if(at_commit)pg.revoke_commit=true;else pg.revoke_prepare=true;
+    C(step(.3,.8f));C(!runtime::broker.authorized()&&!input::diagnostics.latest.accepted);
+    C(input::diagnostics.latest.view_valid&&input::diagnostics.latest.body_weight_valid&&close_enough(body::latest.u,.5));
+    C(!input::diagnostics.latest.interaction.owns_left_hand&&runtime::broker.pending_transactions()==0);
+    pg.revoke_prepare=pg.revoke_commit=false;release();const auto before=pg.grants;step(.3,.8f);
+    C(pg.grants==before+1&&runtime::broker.authorized());finish();
 }
 } // namespace
 int main(int argc,char** argv){
@@ -306,6 +373,9 @@ int main(int argc,char** argv){
     else if(!std::strcmp(mode,"absent"))absence(false);else if(!std::strcmp(mode,"blocked"))absence(true);
     else if(!std::strcmp(mode,"gap-stop"))pending_gap(true);else if(!std::strcmp(mode,"gap-unregister"))pending_gap(false);
     else if(!std::strcmp(mode,"source1-outside"))outside(true);else if(!std::strcmp(mode,"source1-cover"))cover(true);
-    else if(!std::strcmp(mode,"source1-disallowed"))source_disallowed();else if(!std::strcmp(mode,"held-fallback"))held_fallback();else C(false);
+    else if(!std::strcmp(mode,"source1-disallowed"))source_disallowed();else if(!std::strcmp(mode,"held-fallback"))held_fallback();
+    else if(!std::strcmp(mode,"action-revoke"))action_cache(false);else if(!std::strcmp(mode,"action-external"))action_cache(true);
+    else if(!std::strcmp(mode,"action-revoke-revision"))action_cache(false,true);
+    else if(!std::strcmp(mode,"action-prepare-race"))action_race(false);else if(!std::strcmp(mode,"action-commit-race"))action_race(true);else C(false);
     std::printf("cover_shared_input_live %s: %u checks, %u failures\n",mode,checks,failures);return failures?1:0;
 }

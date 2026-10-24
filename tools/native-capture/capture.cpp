@@ -919,7 +919,9 @@ unsigned path_position_stop_line{};
 namespace cover_body_live {void request_drain();bool draining();bool drain_failed();unsigned pending_count();}
 namespace weapon_hand_runtime {
 void request_stop() noexcept;bool cleanup_ready() noexcept;bool retained() noexcept;void summary(FILE*) noexcept;
-bool begin_call(uintptr_t,uintptr_t,uintptr_t,uintptr_t,gears_weapon_hand::CallScope&) noexcept;
+bool begin_action(uintptr_t,uintptr_t,uintptr_t,uintptr_t,gears_weapon_hand::ActionScope&) noexcept;
+void finish_action(gears_weapon_hand::ActionScope&,bool,uint64_t) noexcept;
+bool begin_call(uintptr_t,uintptr_t,uintptr_t,uintptr_t,gears_weapon_hand::CallScope&,gears_weapon_hand::ActionScope const*) noexcept;
 void finish_call(gears_weapon_hand::CallScope&,bool,uint64_t) noexcept;
 }
 namespace cover_geometry_observer_live {void print(FILE*);void summary(FILE*);}
@@ -5547,6 +5549,22 @@ extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrUnregis
 extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachWeaponCallBoundaryV1(
     gears_weapon_call::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
     return weapon_hand_runtime::attach_call_participant(registration,result,weapon_call_live::owned.load(std::memory_order_acquire));
+}
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrAttachWeaponActionGateV1(
+    gears_weapon_action::Registration const* registration,gears_weapon_hand::RegistrationResult* result) noexcept {
+    return weapon_hand_runtime::attach_action_gate(registration,result,weapon_call_live::owned.load(std::memory_order_acquire));
+}
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrRevokeWeaponActionV1(
+    gears_weapon_boundary::Request const* request,uint64_t* generation) noexcept {
+    return weapon_hand_runtime::revoke_action(request,generation);
+}
+extern "C" __declspec(dllexport) gears_weapon_hand::Reply __cdecl GearsVrOpenWeaponActionBoundaryV1(
+    gears_weapon_boundary::Request const* request,gears_weapon_boundary::State* state,gears_weapon_boundary::Receipt* receipt) noexcept {
+    return weapon_hand_runtime::open_boundary(request,state,receipt);
+}
+extern "C" __declspec(dllexport) gears_weapon_boundary::End __cdecl GearsVrCloseWeaponActionBoundaryV1(
+    gears_weapon_boundary::State* state,gears_weapon_boundary::Receipt const* receipt,gears_weapon_boundary::Finish const* finish) noexcept {
+    return weapon_hand_runtime::close_boundary(state,receipt,finish);
 }
 extern "C" __declspec(dllexport) DWORD WINAPI GearsCaptureContinuousCheck(void*) {
     // CPU-only: actual production stop/native destroy helpers with fake native

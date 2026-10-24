@@ -36,7 +36,8 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     target_compile_options(CoverSharedInputLiveTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
     add_test(NAME CoverSharedInputLiveTest COMMAND CoverSharedInputLiveTest outside)
     foreach(SHARED_MODE IN ITEMS cover prepare-rejected commit-rejected absent blocked gap-stop gap-unregister
-            source1-outside source1-cover source1-disallowed held-fallback)
+            source1-outside source1-cover source1-disallowed held-fallback
+            action-revoke action-external action-prepare-race action-commit-race action-revoke-revision)
         add_test(NAME CoverSharedInput-${SHARED_MODE} COMMAND CoverSharedInputLiveTest ${SHARED_MODE})
     endforeach()
     foreach(SHARED_BARRIER IN ITEMS weapon world pawn reference recenter registration revision)
@@ -99,6 +100,23 @@ if(MSVC AND WIN32)
     add_executable(NativeActionContextTest native_action_context_test.cpp)
     target_compile_options(NativeActionContextTest PRIVATE /W4 /WX /EHsc /UNDEBUG /O2)
     add_test(NAME NativeActionContextTest COMMAND NativeActionContextTest)
+    add_executable(WeaponActionBoundaryStateTest weapon_action_boundary_state_test.cpp)
+    set_property(TARGET WeaponActionBoundaryStateTest PROPERTY MSVC_RUNTIME_LIBRARY MultiThreaded)
+    target_compile_options(WeaponActionBoundaryStateTest PRIVATE /W4 /WX /EHsc /UNDEBUG /O2)
+    add_test(NAME WeaponActionBoundaryStateTest COMMAND WeaponActionBoundaryStateTest)
+    add_executable(WeaponActionProviderTest weapon_action_provider_test.cpp)
+    set_property(TARGET WeaponActionProviderTest PROPERTY MSVC_RUNTIME_LIBRARY MultiThreaded)
+    target_compile_definitions(WeaponActionProviderTest PRIVATE GEARS_COVER_BODY_PROTOTYPE=1)
+    target_compile_options(WeaponActionProviderTest PRIVATE /W4 /WX /EHsc /UNDEBUG /O2)
+    add_test(NAME WeaponActionProvider-classify COMMAND WeaponActionProviderTest classify)
+    foreach(ACTION_MODE IN ITEMS normal related nested external external-stop generation unknown pre-fault end-fault
+            mutation unresolved wrong-close output-fault unsafe stop-begin stop-original original-exception v1-reenter
+            noauth-gt clean-noauth oldframe-gap external-obligation external-copy external-duplicate fast-input-fault
+            fast-output-fault fast-unresolved fast-invalid output-overlap frame-reenter invalidate-reenter frame-external
+            end-reenter end-mutation unwind-mutation unwind-fault unknown-end end-unresolved noauth-reenter
+            deferred-frame deferred-stop stop-related none-commits scope-copy scope-thread scope-lifo scope-capacity)
+        add_test(NAME WeaponActionProvider-${ACTION_MODE} COMMAND WeaponActionProviderTest ${ACTION_MODE})
+    endforeach()
     add_executable(WeaponHandRuntimeTest weapon_hand_runtime_test.cpp)
     target_compile_definitions(WeaponHandRuntimeTest PRIVATE GEARS_COVER_BODY_PROTOTYPE=1)
     target_compile_options(WeaponHandRuntimeTest PRIVATE /W4 /WX /EHsc /UNDEBUG)

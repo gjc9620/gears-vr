@@ -123,11 +123,14 @@ int MH_CreateHook(void*,void*,void**){return 1;}
 // the entire begin-original-end gap, including all UI admission branches.
 namespace gears_weapon_hand {
 struct CallScope {CallScope* previous;uintptr_t args[4];unsigned id;bool active;};
+struct ActionScope {bool active;bool revoke_owner_cache;};
 }
 namespace weapon_hand_runtime {
 thread_local gears_weapon_hand::CallScope* current_call{};
 unsigned begun{},finished{},returned_calls{},unwound_calls{},pending{};
-bool begin_call(uintptr_t self,uintptr_t caller,uintptr_t result,uintptr_t callee,gears_weapon_hand::CallScope& scope) noexcept {
+bool begin_action(uintptr_t,uintptr_t,uintptr_t,uintptr_t,gears_weapon_hand::ActionScope& scope) noexcept {scope.active=true;return true;}
+void finish_action(gears_weapon_hand::ActionScope& scope,bool,uint64_t) noexcept {scope.active=false;}
+bool begin_call(uintptr_t self,uintptr_t caller,uintptr_t result,uintptr_t callee,gears_weapon_hand::CallScope& scope,gears_weapon_hand::ActionScope const* =nullptr) noexcept {
     CHECK(!scope.active);scope={current_call,{self,caller,result,callee},++begun,true};
     current_call=&scope;++pending;return true;
 }
