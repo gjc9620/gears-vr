@@ -418,3 +418,20 @@ root已读新增路径并核对其余775份作者源原字节不变。新OFF唯�
 本轮另完成12种武器的接线边界与伤害属性静态复核。扩武器还受库存挂接、固定Marcus八控件、同实例Start及非零Origin等条件限制，不能只放宽枪名；Hammerburst作为下一种普通手持枪仍须自己的实际资源和恢复证据。伤害表确认base／Gnasher getter返回为浮点属性，表内序列化Offset不等于运行时ABI；Gnasher实际脚本候选先汇总一发的命中再结算。单双手0.7／1.0仍属已确认需求，实际返回值与逐发／投射物归属尚待接线，不宣称真实伤害已改变。
 
 随后受影响生命周期主机检查首编首跑均0：7类／505项，CPU result a1bfe680…5162，fixture root审a0f908cd…364f。17个实际源码片段与38份完整输入逐字绑定，使用实际hand Lease／Backend、certified Policy和Session；覆盖正常action交还／fresh rearm、busy原动作撤权、PostTick延后单次drain、真实no-receipt历史年龄、fault不可复活、Stop及15秒／256录制与寿命分离。组件物理恢复、asset／stability与原动作正文仍为声明的host服务，admission_probe没有执行真实A2 acquire／setter，也不是完整诊断ring或引擎消费证明。没有重跑旧suite／通过的OFF对比，没有启动游戏。组件暂停时的独立自由双手已形成原三inl内的最小接线计划；后续必须处理手部新journal不能被旧组件drain成功记录跳过，再做实际联调。另将设计表中武器1与原库存编号分清：VR右肩武器1对应原库存槽3，手枪为0、手雷为1、左肩武器2为2，与已有body_slots实现一致。
+
+
+## 2026-10-24 — 组件暂停时的独立双手接线及 AF 实测边界
+
+源码提交 `8d1675561c5df0a1bbbf1cfb56ecc382b7948611` 在原三份 inl 中区分 joint／hand_only。已持有的组件须先完整交还；健康 waiting／suspended 状态下的新认证 Plan 可只更新双手，不调用组件 apply／owned 或伪增组件 commit。完整八控件写后核对、原100ms及同一Plan重验保留。手部新清理义务在 acquire 前登记，两个旧 drain 成功记忆均不能覆盖它；pre_tick 完成手恢复并退出 Operation 后，才在零深度重新准备组件。真正失败／撤权仍为 sticky，未知或失败的 joint 不会降级为 hand_only。
+
+AF 三源 root 审查、原字节片段提取通过，CMake沿AE不变。关闭新开关的一组两次MSVC /EP均0，完整非空行源文本一致，proof `97be603d…d901`；完整私有PG严格构建通过，23导出保持，DLL `b5d1f458…c62d0`。受影响7类／539项主机检查通过，实际26片段／51输入，CPU `2f9c5a9b…b28a9f`。首次host编译因case内 next 隐藏同main外层 next 的C4456被WX拒绝，未运行main；原失败保留，新目录只改两个局部标识符后编跑均0。组件实际引擎操作、反射、资产和原动作正文仍有明示host服务，不能将该结果当真实再次取得枪体的证明。未重跑旧宽suite、AE录制循环或通过的OFF／build。
+
+新私有候选bundle `d8b429cf…500f9`、manifest `75047f92…3c567` 冻结779源、27依赖、489工件／1296实体；Native／XR／loader保持AD原字节，未安装默认入口。后台runner新增三阶段：原持枪右手P0/P1、收枪后左右手各P0/P1、取回后的新epoch持枪P0/P1，仍是一套原15秒预算、两次在局tap及一次计划Stop／Shutdown。ACK后以原QPC整数ns公式建立固定源时序界限，input_ns／stereo_ns必须均越过它，排除旧输入在ACK后才打印。14项新离线helper检查通过，仅含合成验证器数据，不是新游戏证据。
+
+三次新鲜空闲观察后唯一AF购买版后台局使用mute／behind／observe-only、物理后台手柄关闭。实际Start0，原持枪interval取得1次、更新4次、提交5次、恢复1次；双手应用／恢复16／16，其中hand_only提交11次。原持枪两条命令和收枪阶段四条命令各有独占fresh ACK及更晚源帧；当前槽stow10和return11实际ACK均有。取回后的joint等待被auditor对unused equipment_stow_state中合法空 original_hand_pose= 的过度解析拒绝，未完成后两条命令和计划正常结束。原scope／正式审计保持false；异常路径Stop0、Shutdown0、日志终态6且无failure／dirty／fault。原回执、失败审计与84项封存保持，seal `a293f407…35e73`、root-result `77dcad21…bd3f`。
+
+root独立核对组件三组raw、完整8控件、44字节挂接和入口恢复；8音频session恢复、pending为0。Win32按精确PID／creation time只读确认owner／游戏／XR均退出，未干预外部进程或窗口。Native／XR独立子会话通过、XR exit0，不扩大为6DoF或头显通过。AF失败原因是host读取诊断的异常；这不表示实体手骨已经达到目标。
+
+对原AF日志再算11个hand-only样本、22个手部配对，6个位置配对超过原0.1单位门限：左P0连续四Tick误差约3.13–3.27，右P1连续两Tick约2.92–3.07；最大3.268784原始单位，本局100单位／米即约3.27厘米。旋转最大0.020772°，bind／initial和另一些姿态接近浮点误差。selected6子集的最大3.181473不能替代整段最大值。当前同epoch8／后续bind_mask0、pre_restore比written晚一mesh Tick、另一手正确，支持可达范围限制的假设，尚缺同帧肩／肘数据，不能定为已证IK根因。派生只读摘要 `cbbc7b52…07d5` 位于 ignored `analysis/weapon-component-persistent-hand-only-root-review-20261024af/af-hand-reach-boundary.json`。
+
+AG审计器仅收集本scope实际使用的phase／tap／end三类额外行，忽略未用于证明的stow调试行；PERSIST精确字段及原检查保持。新8项窄回归重现原拒绝、确认修复、继续拒绝关键字段缺失／重复／空值，并确认AF不能冒充完整往返，旧84项原字节保持。AG仍authorized=false、未prepare／游戏，先处理物理位置偏差，不靠缩小P0/P1或放宽0.1门限刷通过。下一步用现有合法GetBoneMatrix只补同Tick肩—肘—手链，检验目标半径、两段臂长与实际伸直方向；实际再次取得枪体、完整动画接管、全12武器、0.7伤害与头显均未完成。
