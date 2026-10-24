@@ -435,3 +435,20 @@ root独立核对组件三组raw、完整8控件、44字节挂接和入口恢复�
 对原AF日志再算11个hand-only样本、22个手部配对，6个位置配对超过原0.1单位门限：左P0连续四Tick误差约3.13–3.27，右P1连续两Tick约2.92–3.07；最大3.268784原始单位，本局100单位／米即约3.27厘米。旋转最大0.020772°，bind／initial和另一些姿态接近浮点误差。selected6子集的最大3.181473不能替代整段最大值。当前同epoch8／后续bind_mask0、pre_restore比written晚一mesh Tick、另一手正确，支持可达范围限制的假设，尚缺同帧肩／肘数据，不能定为已证IK根因。派生只读摘要 `cbbc7b52…07d5` 位于 ignored `analysis/weapon-component-persistent-hand-only-root-review-20261024af/af-hand-reach-boundary.json`。
 
 AG审计器仅收集本scope实际使用的phase／tap／end三类额外行，忽略未用于证明的stow调试行；PERSIST精确字段及原检查保持。新8项窄回归重现原拒绝、确认修复、继续拒绝关键字段缺失／重复／空值，并确认AF不能冒充完整往返，旧84项原字节保持。AG仍authorized=false、未prepare／游戏，先处理物理位置偏差，不靠缩小P0/P1或放宽0.1门限刷通过。下一步用现有合法GetBoneMatrix只补同Tick肩—肘—手链，检验目标半径、两段臂长与实际伸直方向；实际再次取得枪体、完整动画接管、全12武器、0.7伤害与头显均未完成。
+
+
+## 2026-10-24 — AH 同帧肩肘诊断确认手部可达边界，物理精度仍失败
+
+源码提交 `353f989016e69df26eddd322562d97d89123f39e` 只在原 stream／phase1 中新增默认关闭 PERSISTENT 诊断，193 行插入，其他 777 份作者源保持。整会话最多 16 条 POD，在实际成功 pre_restore 样本之后，通过现有 MatchRefBone／GetBoneMatrix 读取肩肘，逐次核对实际索引、七项身份、lease／sequence／epoch 和首尾 Tick；unknown、失败或重入只放弃诊断，原 lease.restore 必然继续。原动作 hook、100ms、15s、动作、目标、门限和 writer 不变。静态父链与非原子读取限制明示，未猜测伸长字段或改手臂。
+
+原包中当前 Marcus 的 115 条 RefSkeleton 记录已离线严格验证，左右手分别经前臂连到上臂，Armroll 为旁支。首次读器因四个眉毛骨带 FName instance number 而拒绝，原失败／源码保留；私有 R2 按现有 tag reader 的编号规则解码，所有姿态、父索引、实际直接子数与完整名称唯一性通过。没有修改生产武器模型读器、导出几何或等同静态与实时资产字节，派生数据仅留在忽略的 analysis。
+
+root 源审 `06bf5166…b4a29`、关闭开关的一组两次 /EP 完整非空行字节对比 `56c86a29…f123` 通过；完整 PG 严格构建通过，C++17／W4／WX／EHsc／MT 与实际工程核对，23 导出保持，DLL `bbf89d05…b2642`。未重跑 AF 已通过的 7 类／539 项生命周期 CPU，也不把旧结果称为新诊断的 CPU 证明。Native／XR／loader未重建，默认启动器未安装。最终私有 bundle `063fa1dd…01c6f`／manifest `aa3a85ad…9cef9` 冻结 779 源、27 依赖和 498 工件；第一次 manifest 把 DLL 输出名混入功能开关表，被 prepare 拒绝，原候选保留。修正后缺少 test-plan 的第二次 prepare 拒绝也保留；补齐后 prep `25d55384…83910` 通过，两次均未启动游戏，未重复编译。
+
+三次新鲜空闲后只运行一局购买版，mute／behind／observe-only、物理后台输入关闭。原 8 条姿态命令、收枪10／取回11及独立 preStart latch 完成；双手 lease21／restore21，hand_only11，枪体两区间累计10提交／2恢复；计划 Stop0、独立 Shutdown0、终态6，无 first_failure／dirty／fault。修后的空诊断字段解析通过，本次正式审计仍为 false：部分实际 later-Tick 手骨未达到原0.1位置门限，不因命令流程完成而提升验收。
+
+新增11行均 status10／known63、四个 per-bone mask均15，和原pre_restore手矩阵、目标、身份与Tick关联。22个手部结果中6个超限，6个均与实测肩中心的臂链最大长度径向投影吻合：最大位置偏差 `4.1072294549` 原始单位（本局约4.11厘米），最大径向预测偏差 `0.0001223167` 单位。支持手臂可达限制这一几何解释；实时父子边和原生求解器内部截断未因此证明，物理修复尚未实现。保留原P0／P1、0.1位置／0.1°旋转与原时限，不能缩动作或放宽门限取通过。
+
+正式 cleanup_passed=true；三组组件、完整8控件、44字节挂接、入口恢复，8音频会话恢复且pending0。原Native／XR独立子会话passed与XR exit0分开保留，root只读Win32核对确切owner／game／XR均不存在。后处理记录器曾把 acquired 错当区间数，首个断言失败保留；按现有计数语义核对 acquired=10提交、restored=2区间后记录成功，不改原游戏审计。AH93文件封存 `2eac19f5…3952b`，root-result `4600defc…b373`，实际几何在忽略的 `analysis/hand-reach-root-review-20261024ah/actual-reach-result.json`；旧AF84项封存和AG离线结果均不改。
+
+后续最小候选为单独默认关闭的尾部 SingleBone 世界位置实验，先取得实际平移字段、空间／加法模式与 Bool mask 的 typed schema，再把原值、owned值与部分写 pending 纳入完整扩展 journal；不能只放宽 bApplyTranslation 检查，也不能替换原 Limb 位置通道。必须验证动作前恢复、原Plan、精确写后值、手—枪关系、前臂蒙皮及后坐力，再决定臂长校准。全部12种武器、体感装填与真实0.7／1.0伤害入口仍未完成，本记录不构成发布或头显验收。
