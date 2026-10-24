@@ -301,6 +301,9 @@ bool triple_schema(uptr property,bool rotation){
     }
     return true;
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+#include "hand_component_value_read.inl"
+#endif
 // Geometry input only. These copies own no asset fields or component groups.
 // Descriptors are resolved afresh inside one non-engine local read; retained
 // identities/layouts are comparison evidence, never reusable property handles.
@@ -383,6 +386,12 @@ bool read(Key const& key,State& out,bool fast=false){
     out={};
     if(!current(key,fast))return false;
     const auto mesh=key.objects[7].address;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    if(fast){
+        if(!read_mesh_values(mesh,out.value))return false;
+        out.key=key;out.known=true;return current(key,fast);
+    }
+#endif
     for(unsigned i=0;i<3;++i){
         const wchar_t* fields[]={L"AbsoluteTranslation",L"AbsoluteRotation",L"AbsoluteScale"};
         if(!(fast?lookup::boolean(mesh,fields[i],out.value.absolute[i]):stow::boolean(mesh,fields[i],out.value.absolute[i])))return false;
@@ -482,6 +491,9 @@ bool current_direct(Key const& expected){
 bool read_direct(Key const& key,State& out){
     out={};if(!current_direct(key))return false;
     const auto mesh=key.objects[7].address;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    if(!read_mesh_values(mesh,out.value))return false;
+#else
     const wchar_t* fields[]={L"AbsoluteTranslation",L"AbsoluteRotation",L"AbsoluteScale"};
     for(unsigned i=0;i<3;++i)if(!lookup::boolean(mesh,fields[i],out.value.absolute[i]))return false;
     const auto translation=lookup::property(mesh,L"Translation"),rotation=lookup::property(mesh,L"Rotation");
@@ -490,6 +502,7 @@ bool read_direct(Key const& key,State& out){
        !lookup::field_at(mesh,rotation,L"StructProperty",out.value.rotation.data(),12))return false;
     std::array<float,3> position{};std::memcpy(position.data(),out.value.translation.data(),12);
     for(float x:position)if(!std::isfinite(x)||std::abs(x)>1e7f)return false;
+#endif
     if(!current_direct(key))return false;
     out.key=key;out.known=true;return true;
 }

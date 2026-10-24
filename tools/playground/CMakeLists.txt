@@ -268,6 +268,8 @@ add_executable(HandTailTranslationLeaseTest ../vr-common/hand_tail_translation_l
 target_compile_options(HandTailTranslationLeaseTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(HandTailFieldsTest hand_tail_fields_test.cpp)
 target_compile_options(HandTailFieldsTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(HandComponentValueReadTest hand_component_value_read_test.cpp)
+target_compile_options(HandComponentValueReadTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(HandStreamGripBindingTest ../vr-common/hand_stream_grip_binding_test.cpp)
 target_compile_options(HandStreamGripBindingTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(HandStreamTicketPolicyTest ../vr-common/hand_stream_ticket_policy_test.cpp)
