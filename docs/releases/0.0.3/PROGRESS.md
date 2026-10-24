@@ -616,3 +616,11 @@ AU实测补记：提交 `0f13a451…327f8` 的786源／27依赖／611工件候�
 第二次acquire的seq820／rev33／lease8／interval2，group0／1原授权3，group2平移前ordinal674最终check10 NS拒绝，known127／checked2047／rejected1024／mask0。MS票龄94ms距原截止6ms，commit stereo／input源龄105.7948／105.7696ms，原后续Stop／Shutdown和Policy内部首因不补证。prepare实际7.1184／7.3903／6.6690ms、hand_direct2.1116／2.0113／1.9956ms，三个段均返回true；不是受控比较，没有独占字段扫描计时，不能认为AU已证明提速或足够解决100ms。原generic拒绝锁存保持，累计组件2尝试／1提交／2恢复、setter9、fault／cleanup_failed1，最终dirty／owned／revoked0，正式passed／cleanup仍false。
 
 独立8控件typed观察／3组件／44挂接和入口恢复、Stop0／Shutdown0、音频8会话恢复pending0、自有owner／game／XR退出均核对通过，Native／XR子会话独立通过。65文件封存 `12159b1f…479b9`、root结果 `28318a7b…b3d5d` 在忽略的 `analysis/hand-mesh-runtime-1024au/`，保持原失败与前序封存。当前新增批查仍保留于私有候选，没有默认安装。下一步只审查固定骨名FName参数取得的成本：name_value当前每次完整扫描GNames，snapshot左右各调用一次，但现有计时未隔离该段，不能称已测最大瓶颈。已将“只缓存当前验证过的参数值、保持原MatchRefBone调用与11／35结果检查”的语义／首匹配／未知读问题交给Astra短审；尚未接线，无新RE／测试或100ms改动。完整功能、真实0.7伤害与头显仍未完成。
+
+## 2026-10-24 — AV 实时动画列表的骨骼名称参数
+
+Astra 对固定 FName 缓存的审查 `94b2864a…4f617` 给出反例：较早的同名项变更或恢复可读时，表头及缓存项均可不变，原全表扫描却会选另一个索引。未实施跨调用缓存。TAIL 内改为在每侧原 MatchRefBone 前，从当前 typed SkelControlLists[0／2].BoneName 取得参数；保留六列表／115索引、11→0／35→2映射、inner／字段类型、大小／stride／offset及当前 pawn→mesh→tree 和注册 cache head 相等检查。Name 使用同一份 copy-known GNames 做原严格 bounds、number0、index／entry header及完整含NUL精确文本校验；左右不借用描述符或结果，各保留一次原 typed VM 和11／35结果检查，后续完整八控制器／read_lists／GetBoneMatrix不动。这是明确的实时列表参数来源变更，不声称与全局首次同文匹配语义等价；原字符串探针仍用原全表扫描。
+
+初稿严格表头后又调用较弱 name_is 重读表的缺口由 Astra 指出，并在任何编译前改成同表 known-copy校验，初稿与修正记录均保留。最初生成器因 freehands 实际为LF而不是假定CRLF，在生产写入前断言失败；R2保留 freehands LF、IK CRLF完成。最终窄审 `b9138a84…2779` 无剩余阻断，可精确局部逆变换恢复两原文件。24段实际 Name／typed Args／Request／list／两查询调用块在本地 GObjects／GNames和真实SEH copy上执行，9类／88项检查首次严格编译运行通过，结果 `a7e9afb0…c5ee` 位于忽略的 `analysis/hand-live-bone-cpu-20261024av/`。覆盖数组／布局／类型／map／head错误、未知和index0 header、大小写／Unicode／NUL、左VM期间变更后右侧重读、原11／35与失败不重试、全局早同名反例及后续完整链仍拒绝。native invoke为显式Name→返回值host服务，未宣称真实引擎ABI；同表读取不是原子快照。
+
+冻结786源／27依赖，唯一完整PG严格构建、23导出及七实际运行源OFF一组两次/EP非空行相等通过；DLL `9a57a3dc…b843`、build结果 `03f83482…c8a2` 在忽略的 `analysis/hand-live-bone-build-20261024av/`。未重跑未变旧套件，未修改时钟、Plan、Permit、恢复合同或100ms／0.1门限。本条记录时购买版尚未测试，名称扫描在AU未被独立计时，不承诺性能收益；尚无默认安装、Native／XR／loader重建、实际0.7伤害或完整全武器／头显通过。

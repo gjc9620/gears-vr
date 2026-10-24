@@ -504,6 +504,72 @@ bool read_lists(Snapshot& out){
     }
     return true;
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+// Read one hand's current animation-tree argument immediately before its
+// original MatchRefBone call. No address, descriptor or result is retained
+// across a VM call. The later full read_lists/control snapshot is unchanged.
+// This deliberately selects the live list's FName, not the first equal text
+// found by the standalone probe's global name-table scan.
+bool hand_bone_index(Snapshot const& out,bool left,int& result){
+    rejection.control=-1;
+    const auto wanted=left?L"b_MF_Hand_L":L"b_MF_Hand_R";
+    uptr mesh{},tree{},expected_head{};
+    if(!registered(out.pawn)||!registered(out.mesh)||!registered(out.tree)||
+       !pointer(out.pawn,L"Mesh",mesh,true)||mesh!=out.mesh||
+       !pointer(out.mesh,L"Animations",tree)||tree!=out.tree||
+       get<uptr>(out.tree+0x40)!=out.mesh)return false;
+    Array lists{},indices{};
+    const auto property=playground::property(out.tree,L"SkelControlLists");
+    const auto index_property=playground::property(out.mesh,L"SkelControlIndex");
+    if(!checked_field(out.tree,L"SkelControlLists",L"ArrayProperty",&lists,sizeof(lists))||
+       !checked_field(out.mesh,L"SkelControlIndex",L"ArrayProperty",&indices,sizeof(indices)))return false;
+    mark(L"control_list_bounds",out.tree,L"SkelControlLists");
+    rejection.expected=6;rejection.observed=lists.count;rejection.extra=lists.capacity;rejection.related=lists.data;
+    if(!lists.data||lists.count!=6||lists.capacity<6||lists.capacity>64)return false;
+    mark(L"control_index_bounds",out.mesh,L"SkelControlIndex");
+    rejection.expected=115;rejection.observed=indices.count;rejection.extra=indices.capacity;rejection.related=indices.data;
+    if(!indices.data||indices.count!=115||indices.capacity<115||indices.capacity>512)return false;
+    mark(L"control_list_inner_type",out.tree,L"SkelControlLists");
+    const auto inner=get<uptr>(property+0xd0),index_inner=get<uptr>(index_property+0xd0);
+    if(!registered(inner)||!playground::named(get<uptr>(inner+0x50),L"StructProperty")||
+       !registered(index_inner)||!playground::named(get<uptr>(index_inner+0x50),L"ByteProperty")||
+       get<unsigned>(index_inner+0x74)!=1)return false;
+    mark(L"control_list_element",inner,L"StructProperty");
+    const auto element=get<uptr>(inner+0xd0);rejection.related=element;
+    if(!registered(element))return false;
+    const auto stride=get<unsigned>(element+0x88);
+    const auto bone_property=playground::field(element,L"BoneName",L"NameProperty");
+    const auto head_property=playground::field(element,L"ControlHead",L"ObjectProperty");
+    mark(L"control_list_layout",element,L"BoneName_ControlHead");rejection.observed=int(stride);
+    if(stride<16||stride>64||!bone_property||!head_property||
+       get<unsigned>(bone_property+0x74)!=8||get<unsigned>(head_property+0x74)!=8)return false;
+    const auto bone_offset=get<unsigned>(bone_property+0x94),head_offset=get<unsigned>(head_property+0x94);
+    if(bone_offset>stride-8||head_offset>stride-8)return false;
+    std::array<unsigned char,115> index_values{};
+    mark(L"control_index_values",out.mesh,L"SkelControlIndex");rejection.related=indices.data;
+    if(!copy(index_values.data(),indices.data,index_values.size())||index_values[11]!=0||index_values[35]!=2)return false;
+    const auto entry=lists.data+size_t(left?0:2)*stride;
+    Name bone{};uptr head{};
+    mark(L"control_list_entry",out.tree,L"SkelControlLists");rejection.observed=left?0:2;
+    if(!copy(&bone,entry+bone_offset,sizeof(bone))||!copy(&head,entry+head_offset,sizeof(head))||
+       !pointer(out.pawn,left?L"IKBoneCtrl_LeftHand":L"IKBoneCtrl_RightHand",expected_head)||
+       !expected_head||!registered(expected_head)||head!=expected_head)return false;
+    // Preserve the original name scan's table bounds as well as the list
+    // reader's exact number-zero, entry-index, text and NUL checks.
+    Array names{};uptr name_entry{};unsigned entry_index{};
+    const auto chars=wcslen(wanted)+1;wchar_t text[64]{};
+    if(bone.number||chars<2||chars>64||!copy(&names,base+0x1c34800,sizeof(names))||
+       !names.data||names.count<1000||names.count>names.capacity||names.capacity>4000000||
+       bone.index>=unsigned(names.count)||
+       !copy(&name_entry,names.data+size_t(bone.index)*8,sizeof(name_entry))||!name_entry||
+       !copy(&entry_index,name_entry,sizeof(entry_index))||entry_index!=bone.index||
+       !copy(text,name_entry+20,chars*sizeof(wchar_t))||
+       std::memcmp(text,wanted,chars*sizeof(wchar_t)))return false;
+    mark(L"bone_index",out.mesh,wanted);rejection.expected=left?11:35;
+    rejection.function=playground::field(get<uptr>(out.mesh+0x50),L"MatchRefBone",L"Function");
+    return freehands::bone_index_value(out.mesh,bone,result);
+}
+#endif
 bool read_snapshot(uptr pc,Snapshot& out){
     out={};gears_weapon::FreeHandGameState game{};unsigned known{};std::uint8_t special{};
     rejection={};mark(L"player_state",pc,L"owned_arena_game_state");
@@ -533,11 +599,19 @@ bool read_snapshot(uptr pc,Snapshot& out){
     int left{},right{};
     rejection.control=-1;mark(L"bone_index",out.mesh,L"b_MF_Hand_L");rejection.expected=11;
     rejection.function=playground::field(get<uptr>(out.mesh+0x50),L"MatchRefBone",L"Function");
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    const bool left_known=hand_bone_index(out,true,left);rejection.observed=left;
+#else
     const bool left_known=freehands::bone_index(out.mesh,L"b_MF_Hand_L",left);rejection.observed=left;
+#endif
     if(!left_known||left!=11)return false;
     mark(L"bone_index",out.mesh,L"b_MF_Hand_R");rejection.expected=35;
     rejection.function=playground::field(get<uptr>(out.mesh+0x50),L"MatchRefBone",L"Function");
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    const bool right_known=hand_bone_index(out,false,right);rejection.observed=right;
+#else
     const bool right_known=freehands::bone_index(out.mesh,L"b_MF_Hand_R",right);rejection.observed=right;
+#endif
     if(!right_known||right!=35)return false;
     append(out.identity,left);append(out.identity,right);append(out.identity,ignore_hidden);
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)

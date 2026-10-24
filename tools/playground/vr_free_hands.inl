@@ -83,6 +83,19 @@ bool bone_index(uptr mesh,const wchar_t* wanted,int& out){
        !call.set(L"BoneName",bone).run())return false;
     out=call.output<int>();return out>=0&&out<256;
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+// The caller supplies a freshly validated live control-list BoneName. This
+// does not replace the standalone probe's global first-match name scan.
+bool bone_index_value(uptr mesh,Name bone,int& out){
+    // MatchRefBone/GetBoneMatrix are the already used read-only support-probe
+    // boundary. Check the current instance's reflected signature again.
+    playground::Args call(mesh,L"MatchRefBone");
+    if(!argument(call,L"BoneName",L"NameProperty",sizeof(Name))||
+       !argument(call,L"ReturnValue",L"IntProperty",sizeof(int))||
+       !call.set(L"BoneName",bone).run())return false;
+    out=call.output<int>();return out>=0&&out<256;
+}
+#endif
 bool bone_matrix(uptr mesh,int index,std::array<float,16>& out){
     playground::Args call(mesh,L"GetBoneMatrix");
     if(index<0||!argument(call,L"BoneIndex",L"IntProperty",sizeof(int))||
