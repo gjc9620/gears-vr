@@ -768,3 +768,9 @@ Shutdown先取得exact-cookie quiescent，失败返回53并保留状态／引用
 已有双手／组件／writer全选项合并PG与ShotScope开启、Raw／writer关闭的最小PG均构建通过；合并DLL为0d927319…11c7d，保留原26导出。全部私有选项OFF的main预处理，以及ShotScope OFF的实际call／writer源预处理均与BF一致，两次新预处理一致；没有声称完整EquipmentObserve开启配置逐字等价。最终14项源码／全部日志及产物hash经Astra复核匹配，审查1af93c63…5e70a。证据位于忽略的 `analysis/weapon-shot-scope-build-20261024bg/` 与 `analysis/weapon-shot-scope-review-20261024bg/`。没有启动游戏／XR、占用测试窗口或安装默认版本。
 
 与掩体确认正常UI的Native也拥有CallFunction同一入口，不能同时启用PG第二patch。UIoff私有配置只能作限定验证；下一步由Native唯一wrapper提供同hand cookie的版本化pre／normal／unwind通知，Native保留original恰好一次、四参／RAX／异常，PG订阅现有作用域与writer，pin／drain涵盖pre→original→end整个间隙与未清债务。该共享入口接线、实际注册／Scene抓握、每枪mount、投射物、完整全武器手部／换弹／瞄准／体感交互、默认合流与GPU／Quest验收仍未完成。后续自动测试继续每边0.4、静音、behind及tiny-output只读，完整6DoF目标保持active。
+
+## 2026-10-24 — BH1 唯一调用入口补充契约
+
+与掩体冻结独立 `weapon_call_boundary.h` v1（4a406b5f…fcc7），原hand V1字节保持05911c55…cc34。72B Invocation由Native在pre前分配非复用call_id并冻结exact hand cookie／Native incarnation／thread和原四参；128B Native栈上opaque journal跨越original间隙；64B registration同hand context／同已pin PG image一次immutable attach，完全一致重试幂等，无独立detach。Native唯一wrapper负责original恰好一次及四参／RAX／原异常，三通知为begin／returned／unwind。soft loss仍发嵌套begin，hard stop不能丢已有end；unregister／retired quiescent包含整段transaction及未清债务。只有通知正常完成且精确End::closed才结清，未知枚举或任意通知fault形成sticky debt，后续closed不能冲销。Astra指出未知枚举边界已补齐并复核通过（2dcc053e…e8f8），实际严格CL语法与全部布局静态断言通过。证据在忽略的 `analysis/weapon-call-boundary-build-20261024bh/` 与 `analysis/weapon-call-boundary-review-20261024bh/`。
+
+此时仅冻结契约，Native host由掩体会话接线、PG subscriber由武器会话接线，未声明跨DLL或游戏通过。旧handstream／stow的同步restore不能直接塞进无引擎调用的通知；最初subscriber配置须明确限制这些选项，不能静默丢掉动画交还覆盖，完整手部合流仍须后续解决。没有启动游戏／XR或默认替换；完整6DoF目标继续active。
