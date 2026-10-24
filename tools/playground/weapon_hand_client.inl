@@ -102,6 +102,7 @@ template<std::size_t N>bool pointer(meta::Reader& r,uptr address,wchar_t const (
                                   uptr expected,meta::PointerField& out,bool component=false) noexcept {
     return read_pointer(r,address,label,out,component)&&out.value==expected;
 }
+#include "weapon_hand_pawn_read.inl"
 // Fresh reflection is intentionally bounded and read-only. It does not use
 // get<T>'s unreadable-as-zero fallback, nor vrequip::snapshot's engine queries.
 bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noexcept {
@@ -121,20 +122,22 @@ bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noe
        !derives(r,f.pawn.address,L"WarPawn",L"WarfareGame")||
        !derives(r,f.world.address,L"WorldInfo",L"Engine")||
        !derives(r,f.mesh.address,L"SkeletalMeshComponent",L"Engine"))return false;
-    std::array<meta::PointerField,6> links{};
+    std::array<meta::PointerField,6> links{};PawnObserveFields pawn_fields;
     if(!pointer(r,f.controller.address,L"Pawn",f.pawn.address,links[0])||
        !pointer(r,f.controller.address,L"WorldInfo",f.world.address,links[1])||
-       !pointer(r,f.pawn.address,L"Controller",f.controller.address,links[2])||
-       !pointer(r,f.pawn.address,L"Mesh",f.mesh.address,links[3],true)||
-       !pointer(r,f.pawn.address,L"Weapon",f.weapon.address,links[4]))return false;
+       !pawn_fields.begin(r,f.pawn.address)||
+       !pawn_fields.pointer(r,PawnObserveFields::controller_link,f.controller.address,links[2])||
+       !pawn_fields.pointer(r,PawnObserveFields::mesh_link,f.mesh.address,links[3])||
+       !pawn_fields.pointer(r,PawnObserveFields::weapon_link,f.weapon.address,links[4]))return false;
     if(f.weapon.address&&(!derives(r,f.weapon.address,L"WarWeapon",L"WarfareGame")||
        !pointer(r,f.weapon.address,L"Instigator",f.pawn.address,links[5])))return false;
     std::array<BoolField,6> flags{};
     const std::array<uptr,4> actors{f.world.address,f.controller.address,f.pawn.address,f.weapon.address};
     for(std::size_t i=0;i<actors.size();++i)if(actors[i]&&
-       (!boolean(r,actors[i],L"bDeleteMe",flags[i])||(flags[i].bits&flags[i].mask)))return false;
-    if(!boolean(r,f.pawn.address,L"bSwitchingWeapons",flags[4])||
-       !boolean(r,f.pawn.address,L"bNoWeaponFiring",flags[5]))return false;
+       (!(i==2?pawn_fields.boolean(r,PawnObserveFields::deleted_flag,flags[i]):boolean(r,actors[i],L"bDeleteMe",flags[i]))||
+        (flags[i].bits&flags[i].mask)))return false;
+    if(!pawn_fields.boolean(r,PawnObserveFields::switching_flag,flags[4])||
+       !pawn_fields.boolean(r,PawnObserveFields::no_firing_flag,flags[5]))return false;
     abi::GripGameState game{};game.known=true;
     game.main_hand_held=f.weapon.address&&vrequip::model.held_for(f.world.address,f.pawn.address,f.weapon.address)&&
         held_binding.known&&held_binding.generation&&held_binding.generation==vrequip::model.hold_generation()&&
@@ -150,6 +153,8 @@ bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noe
     // Until an actual per-asset controller/palm mount is certified, no support
     // candidate is invented from temporary mesh-follow calibration.
     game.mount_known=false;
+    // Close the local search binding before all original final rereads.
+    if(!pawn_fields.finish(r))return false;
     const auto identities=schema.identity_count,structures=schema.structure_count;
     for(U32 i=0;i<identities;++i){U32 slot{};if(!r.identity(schema.identities[i].address,slot)||slot!=i)return false;}
     for(U32 i=0;i<structures;++i){meta::Structure fresh{};
