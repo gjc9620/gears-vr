@@ -27,7 +27,7 @@ constexpr unsigned node_limit=4,child_limit=32,row_limit=128;
 constexpr std::array<float,7> steps{{0.f,.25f,.5f,.75f,1.f,.5f,0.f}};
 ULONGLONG last_advance{},last_layout_attempt{};
 unsigned next_step{},layout_attempts{};
-bool injecting{};
+bool injecting{},withdrawing{};
 std::atomic<bool> layout_ready{};
 std::atomic<bool> external_change{};
 const wchar_t* layout_failure=L"not_attempted";
@@ -182,8 +182,8 @@ void propagation(Journal& j){
         row(4,j,j.previous_child,j.previous_incoming,j.previous_weight,total);
     j.previous_child=-1;
 }
-void restore_all(){
-    for(auto& j:journals){if(!j.used||!any(j))continue;
+void restore_journals(uintptr_t self,bool all){
+    for(auto& j:journals){if(!j.used||!any(j)||(!all&&j.id.address!=self))continue;
         gears_anchor::Registry registry{};uintptr_t slot{},pawn{},owner{},mesh{},world{},table{};
         if(!read(registry,metadata.objects_header)||!cohort(registry,registry)||j.id.index>=unsigned(registry.count)||!read(slot,registry.data+uintptr_t(j.id.index)*8)){stopping=true;continue;}
         // Only a positive loss/change of this registered object identity can
@@ -208,21 +208,38 @@ void restore_all(){
     }
     recount();
 }
+void restore_all(){restore_journals(0,true);}
+void restore_matching(uintptr_t self){restore_journals(self,false);}
 struct Tick {uintptr_t node{},pawn{},mesh{},world{};gears_anchor::Identity id{};Children children{};uint64_t generation{};bool injected{};};
 thread_local Tick tick{};
 void events(){
     const auto clock=GetTickCount64();
-    if(reset_event&&WaitForSingleObject(reset_event,0)==WAIT_OBJECT_0){injecting=false;next_step=0;step=0;}
+    if(reset_event&&WaitForSingleObject(reset_event,0)==WAIT_OBJECT_0){injecting=false;withdrawing=true;next_step=0;step=0;}
     if(stopping.load()){injecting=false;return;}
-    if(advance_event&&WaitForSingleObject(advance_event,0)==WAIT_OBJECT_0){step=next_step;next_step=(next_step+1)%unsigned(steps.size());last_advance=clock;injecting=true;timed_out=false;}
-    if(injecting&&clock-last_advance>=10000){injecting=false;timed_out=true;}
+    // Preserve a queued Advance until every old owned field has been released.
+    if(!withdrawing&&advance_event&&WaitForSingleObject(advance_event,0)==WAIT_OBJECT_0){step=next_step;next_step=(next_step+1)%unsigned(steps.size());last_advance=clock;injecting=true;timed_out=false;}
+    if(injecting&&clock-last_advance>=10000){injecting=false;withdrawing=true;timed_out=true;}
+}
+// Call only on the already-bound native tick thread. Normal entries release
+// their own previous injection; only an explicit withdrawal may release peers.
+void service_entry(uintptr_t self){
+    events();
+    if(stopping.load()||withdrawing){
+        restore_all();tick={};
+        if(!pending.load())withdrawing=false;
+    }else{
+        restore_matching(self);
+        if(tick.node==self)tick={};
+    }
 }
 void blend_before(uintptr_t self){
+    if(!enabled)return;
     Scope scope;std::lock_guard<std::mutex> lock(mutex);++blend_calls;
     const unsigned thread=GetCurrentThreadId();if(game_thread.load()&&game_thread.load()!=thread){++rejected;return;}
-    // Restoration precedes qualification of this entry and remains available
-    // after recording/admission stop. Only the immutable captured cohort is used.
-    restore_all();tick={};events();
+    const bool bound=game_thread.load()!=0;
+    // Restoration precedes this receiver's qualification. An unrelated NPC
+    // must neither restore another node's weights nor clear its TLS context.
+    if(bound)service_entry(self);
     // Startup precedes campaign/world recovery. Before any actual write, a new
     // admitted anchor cohort may replace our unused certificate. Once written,
     // a generation change retains pending until actual identity loss/change and
@@ -246,15 +263,18 @@ void blend_before(uintptr_t self){
        !field(ct,binding.pawn.address,layout.cover)||ct!=2||!field(sm,binding.pawn.address,layout.special)||sm!=0||
        !field(world,binding.pawn.address,layout.world)||!identity(world,world_id,true)||world_id.outer!=binding.level||
        !children_at(self,children)||!children_at(self,after)||!equal(children,after)){++rejected;return;}
-    if(!game_thread.load())game_thread=thread;
+    if(!game_thread.load()){game_thread=thread;service_entry(self);}
     tick={self,binding.pawn.address,mesh,world,id,children,initial_world,false};
 }
 void child_before(uintptr_t self,int child,float incoming){
+    if(!enabled||tick.node!=self)return;
     Scope scope;std::lock_guard<std::mutex> lock(mutex);++child_calls;
     if(!enabled||game_thread.load()!=GetCurrentThreadId()||tick.node!=self||tick.generation!=committed_world_generation.load()||
        !scope.world()||!recording.load()||!std::isfinite(incoming)||incoming<=0||incoming>2)return;
     Journal* journal{};for(auto& j:journals)if(j.used&&same(j.id,tick.id)){journal=&j;break;}
-    events();if(!injecting||stopping.load()||external_change)return;
+    events();
+    if(stopping.load()||withdrawing){restore_all();tick={};if(!pending.load())withdrawing=false;return;}
+    if(!injecting||external_change)return;
     Children current{};uintptr_t owner{},mesh{},world{},pawn_mesh{};unsigned char ct{},sm{};gears_anchor::PawnBinding binding{};
     if(!own_entries()||(!tick.injected&&!metadata_current(false))||!gears_anchor::capture_pawn_binding(metadata,safe_copy,binding)||binding.cinematic||binding.unpossessed||binding.pawn.address!=tick.pawn||
        !field(owner,self,layout.owner)||owner!=tick.pawn||!field(mesh,self,layout.skel)||mesh!=tick.mesh||!field(pawn_mesh,tick.pawn,layout.mesh)||pawn_mesh!=tick.mesh||
@@ -286,7 +306,10 @@ void child_before(uintptr_t self,int child,float incoming){
         row(0,*journal,child,incoming,weight,total);journal->previous_child=child;journal->previous_incoming=incoming;journal->previous_weight=weight;}}
 }
 extern "C" void GearsCoverBlendBefore(uintptr_t self,float,float){try{blend_before(self);}catch(...){failed=true;stopping=true;}}
-extern "C" void GearsCoverChildBefore(uintptr_t self,int child,float incoming){try{child_before(self,child,incoming);}catch(...){failed=true;stopping=true;}}
+extern "C" void GearsCoverChildBefore(uintptr_t self,int child,float incoming){
+    if(!enabled||tick.node!=self)return;
+    try{child_before(self,child,incoming);}catch(...){failed=true;stopping=true;}
+}
 bool reserve(){
     if(reserved)return false;
     for(unsigned i=0;i<2;++i){targets[i]=reinterpret_cast<void*>(base+rvas[i]);std::array<unsigned char,32> before{},after{};

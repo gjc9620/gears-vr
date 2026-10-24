@@ -27,7 +27,8 @@ std::atomic<uint64_t> committed_world_generation{1};
 std::atomic<bool> recording{true};
 bool continuous_session=true,anchor_observer_enabled=true;
 gears_anchor::Config anchor_config;
-struct Scope {bool world()const{return true;}};
+unsigned scope_entries{};
+struct Scope {Scope(){++scope_entries;}bool world()const{return true;}};
 uintptr_t denied{},changing_text{};unsigned text_reads{};
 bool safe_copy(void* out,void const* from,size_t n){
  auto a=reinterpret_cast<uintptr_t>(from);if(a==denied)return false;
@@ -64,8 +65,25 @@ void setup(){
  b::journals={};auto& j=b::journals[0];j.used=true;C(b::identity(node,j.id,true));j.pawn=pawn;j.mesh=mesh;j.world=fixture_world;j.generation=1;j.children=children;j.installed_step=2;
  for(unsigned i=0;i<5;++i){float native=i==0?1.f:0.f,installed=i==0||i==4?.5f:0.f;put(records+uintptr_t(i)*0x44+0x10,installed);put(records+uintptr_t(i)*0x44+0x14,123.25f);memcpy(&j.native[i],&native,4);memcpy(&j.installed[i],&installed,4);j.owned[i]=i==0||i==4;}
  b::stopping=false;b::failed=false;b::external_change=false;b::drain_tick=0;b::writes=2;b::restores=0;b::retired=0;b::external=0;b::row_count=0;b::step_rows={};b::recount();denied=changing_text=0;text_reads=0;committed_world_generation=1;
+ b::enabled=false;b::game_thread=0;b::tick={};b::injecting=false;b::withdrawing=false;b::timed_out=false;b::last_advance=0;b::next_step=0;b::step=0;scope_entries=0;
 }
 float weight(unsigned i){float v{};memcpy(&v,reinterpret_cast<void*>(records+uintptr_t(i)*0x44+0x10),4);return v;}
+void bind_target(){
+ b::enabled=true;b::game_thread=GetCurrentThreadId();b::step=2;b::injecting=true;b::last_advance=GetTickCount64();
+ b::tick={node,pawn,mesh,fixture_world,b::journals[0].id,b::journals[0].children,1,true};
+}
+uintptr_t npc_node(){
+ gears_anchor::Registry objects{},names{};memcpy(&objects,reinterpret_cast<void*>(b::metadata.objects_header),sizeof objects);memcpy(&names,reinterpret_cast<void*>(b::metadata.names_header),sizeof names);
+ auto object=[&](uintptr_t address,unsigned index,uintptr_t cls,uintptr_t outer,const wchar_t* label){
+  put(address+8,index);put(address+72,index);put(address+76,0u);put(address+80,cls);put(address+64,outer);put(objects.data+uintptr_t(index)*8,address);
+  auto entry=arena+0x20000+uintptr_t(index)*0x200;put(names.data+uintptr_t(index)*8,entry);put(entry,index);std::array<wchar_t,64> text{};std::copy_n(label,wcslen(label)+1,text.begin());put(entry+20,text);
+ };
+ const auto cover_class=b::journals[0].id.cls,npc=arena+0x32000,npc_pawn=arena+0x36000,npc_mesh=arena+0x36400;
+ object(cover_class,10,arena+0x49f00,0,L"WarAnim_CoverBlend");
+ object(npc_pawn,11,b::metadata.identities[b::metadata.role_pawn].cls,b::metadata.identities[b::metadata.role_level].address,L"NPC_Pawn");
+ object(npc_mesh,12,arena+0x49e00,npc_pawn,L"NPC_Mesh");object(npc,8,cover_class,npc_mesh,L"NPC_CoverBlend");
+ put(npc,base+0x13d0080);put(npc+0x128,npc_pawn);put(npc+0x60,npc_mesh);return npc;
+}
 int main(){
  arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,1024*1024,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
  // Owned fields restore; native TotalWeight stays untouched.
@@ -113,5 +131,45 @@ int main(){
  DWORD old_protection{};C(VirtualProtect(reinterpret_cast<void*>(arena+0x52000),4096,PAGE_READONLY,&old_protection)!=0);
  b::child_before(node,0,1.f);C(b::writes==1&&b::restores==1&&!b::pending_count()&&b::failed.load()&&weight(0)==1&&weight(4)==0);
  DWORD ignored_protection{};C(VirtualProtect(reinterpret_cast<void*>(arena+0x52000),4096,old_protection,&ignored_protection)!=0);
+ // Normal NPC entries leave another node's installed Weight and TLS context
+ // intact until the target's own next entry, independent of NPC qualification.
+ setup();bind_target();auto npc=npc_node();auto saved_tick=b::tick;
+ b::blend_before(npc);C(b::pending_count()==2&&b::restores==0&&weight(0)==.5f&&weight(4)==.5f);
+ C(b::tick.node==saved_tick.node&&b::tick.pawn==saved_tick.pawn&&b::tick.generation==saved_tick.generation&&b::tick.injected);
+ b::blend_before(node);C(!b::pending_count()&&b::restores==2&&weight(0)==1&&weight(4)==0);C(!b::tick.node);
+
+ // Both the C entry and direct helper must reject unrelated child receivers
+ // before Scope, mutex, and selected-call counting.
+ setup();bind_target();npc=npc_node();auto old_calls=b::child_calls;auto old_scopes=scope_entries;
+ b::child_before(npc,0,1.f);b::GearsCoverChildBefore(npc,0,1.f);
+ C(b::child_calls==old_calls&&scope_entries==old_scopes);C(b::pending_count()==2&&b::restores==0&&b::tick.node==node);
+ b::enabled=false;b::child_before(node,0,1.f);b::GearsCoverChildBefore(node,0,1.f);C(b::child_calls==old_calls&&scope_entries==old_scopes);
+ b::enabled=true;b::child_before(node,0,0.f);C(b::child_calls==old_calls+1&&scope_entries==old_scopes+1);C(b::pending_count()==2&&weight(0)==.5f);
+
+ // Reset is an explicit all-node withdrawal, but only an already-bound thread
+ // may consume it. The queued event survives unknown/wrong-thread entries.
+ setup();bind_target();npc=npc_node();b::reset_event=CreateEventW(nullptr,FALSE,TRUE,nullptr);C(b::reset_event!=nullptr);b::game_thread=0;
+ b::blend_before(npc);C(b::pending_count()==2&&b::restores==0&&!b::game_thread.load()&&b::tick.node==node);
+ b::game_thread=GetCurrentThreadId()+1;b::blend_before(npc);C(b::pending_count()==2&&b::restores==0&&b::tick.node==node);
+ b::game_thread=GetCurrentThreadId();b::blend_before(npc);C(!b::pending_count()&&b::restores==2&&!b::injecting&&!b::withdrawing&&!b::tick.node);
+ C(CloseHandle(b::reset_event)!=0);b::reset_event=nullptr;
+
+ // Expiry and stop/drain also service peers on the bound thread. Neither path
+ // treats a still-live old instance in a changed world as restored/retired.
+ setup();bind_target();npc=npc_node();b::last_advance=GetTickCount64()-10001;b::blend_before(npc);
+ C(!b::pending_count()&&b::restores==2&&b::timed_out.load()&&!b::injecting&&!b::withdrawing);
+ setup();bind_target();npc=npc_node();b::request_drain();b::blend_before(npc);C(!b::pending_count()&&b::restores==2&&b::stopping.load());
+ setup();bind_target();npc=npc_node();committed_world_generation=2;b::request_drain();b::blend_before(npc);
+ C(b::pending_count()==2&&b::restores==0&&b::retired==0&&weight(0)==.5f);b::drain_tick=GetTickCount64()-5001;C(b::drain_failed()&&b::pending_count()==2);
+ memcpy(&registry,reinterpret_cast<void*>(b::metadata.objects_header),sizeof registry);put(registry.data+uintptr_t(b::journals[0].id.index)*8,uintptr_t(0));b::blend_before(npc);
+ C(!b::pending_count()&&b::retired==2&&b::restores==0);
+
+ // A withdrawal blocked by unknown storage keeps the journal and a queued
+ // Advance. It cannot inject a new step over an unreleased old field.
+ setup();bind_target();npc=npc_node();replacement={records+0x1000,5,5};put(node+0xe4,replacement);
+ b::reset_event=CreateEventW(nullptr,FALSE,TRUE,nullptr);b::advance_event=CreateEventW(nullptr,FALSE,TRUE,nullptr);C(b::reset_event&&b::advance_event);
+ b::blend_before(npc);C(b::pending_count()==2&&b::restores==0&&b::retired==0&&b::withdrawing&&b::stopping.load()&&!b::injecting);
+ C(WaitForSingleObject(b::advance_event,0)==WAIT_OBJECT_0);C(CloseHandle(b::reset_event)!=0);C(CloseHandle(b::advance_event)!=0);b::reset_event=b::advance_event=nullptr;
+
  C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);printf("cover_body_live_journal: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }
