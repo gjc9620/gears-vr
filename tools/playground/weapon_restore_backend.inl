@@ -25,11 +25,16 @@ inline ForwardDisarm prepare_forward_no_engine(weaponaction_handoff::Seen const&
         }
         hand::trial.stability.reset();hand::trial.consumer.reset();
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
-        hand::trial.xr_ready=false;gears_hand_stream::Context blocked{};blocked.action_epoch=hand::trial.epoch;
+        hand::trial.xr_ready=false;
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+        hand::trial.xr_policy.revoke();
+#else
+        gears_hand_stream::Context blocked{};blocked.action_epoch=hand::trial.epoch;
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
         (void)hand::trial.xr_policy.observe_certified(blocked,nullptr,0,0);
 #else
         (void)hand::trial.xr_policy.observe(blocked,nullptr,0);
+#endif
 #endif
         for(auto& binding:hand::trial.xr_binding)binding.reset();
 #endif

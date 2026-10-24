@@ -146,6 +146,19 @@ bool local_quiescent() noexcept;
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
 #include "../vr-common/hand_stream_grip_binding.h"
 #include "../vr-common/hand_stream_ticket_policy.h"
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+#include "../vr-common/hand_rig_ticket_policy.h"
+#include "../vr-common/rig_tracking_reader.h"
+#include "hand_rig_connect_request.h"
+#include "../vr-common/weapon_boundary_admission.h"
+namespace {namespace handrig {
+gears_weapon_hand::Reply attach(void*,std::uint64_t,std::uint32_t) noexcept;
+void seal() noexcept;
+bool quiescent() noexcept;
+bool detached() noexcept;
+gears_rig_tracking::ReadResult read(gears_rig_tracking::Frame&,std::uint64_t) noexcept;
+}}
+#endif
 #include "hand_ik_xr_stream_request.h"
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
 #include "hand_stream_session.h"
@@ -1013,6 +1026,9 @@ namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::Equipment
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
 #include "weapon_hand_client.inl"
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+#include "hand_rig_client.inl"
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
 #include "weapon_shot_scope.inl"
@@ -1886,6 +1902,23 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStart(void* na
     if(weaponhand::current_gt(nullptr))return unsigned(gears_weapon_hand::Reply::reentrant);
     LifecycleScope lifecycle;return unsigned(weaponhand::start(static_cast<HMODULE>(native_module)));
 }
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandRigConnect(void* argument){
+    using Reply=gears_weapon_hand::Reply;
+    if(weaponhand::current_gt(nullptr))return unsigned(Reply::reentrant);
+    LifecycleScope lifecycle;
+    gears_hand_rig_trial::Connect value{};
+    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||!playground::ready||
+       !freehands::test_environment()||
+       !copy(&value,reinterpret_cast<uptr>(argument),sizeof(value))||!gears_hand_rig_trial::shape(value))
+        return unsigned(Reply::invalid);
+    const auto reply=weaponhand::start(reinterpret_cast<HMODULE>(value.native_module));
+    if(reply==Reply::accepted&&weaponhand::client.native_started_qpc()!=value.native_started_qpc){
+        weaponhand::stop();return unsigned(Reply::wrong_cookie);
+    }
+    return unsigned(reply);
+}
+#endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStop(void*){
     if(weaponhand::current_gt(nullptr))return unsigned(gears_weapon_hand::Reply::reentrant);
     LifecycleScope lifecycle;return unsigned(weaponhand::stop());

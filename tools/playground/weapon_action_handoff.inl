@@ -120,6 +120,9 @@ inline void revoke_no_engine(Seen const& seen) noexcept {
         hand::trial.stability.reset();hand::trial.consumer.reset();
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
         hand::trial.xr_ready=false;
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+        hand::trial.xr_policy.revoke();
+#else
         gears_hand_stream::Context blocked{};blocked.action_epoch=hand::trial.epoch;
         // Zero is an explicitly unusable observation, never a fresh clock or
         // ticket. Call only the pure policy, not its PG timing/log wrapper.
@@ -127,6 +130,7 @@ inline void revoke_no_engine(Seen const& seen) noexcept {
         (void)hand::trial.xr_policy.observe_certified(blocked,nullptr,0,0);
 #else
         (void)hand::trial.xr_policy.observe(blocked,nullptr,0);
+#endif
 #endif
         for(auto& binding:hand::trial.xr_binding)binding.reset();
 #endif

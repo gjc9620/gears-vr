@@ -1,6 +1,8 @@
 // Included inside handstream. This private alternative reads fresh world-hand
 // receipts; the synthetic trajectory and automatic melee dispatch are absent.
-#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+#include "hand_rig_stream_source.inl"
+#elif defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
 gears_hand_continuity::WorldBridge xr_bridge;
 #else
 gears_weapon::EquipmentIntentBridge xr_bridge;
@@ -11,7 +13,9 @@ constexpr unsigned xr_max_leases=256;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
 // Read-only diagnostics. No getter, receipt, clock, atomic, or authorization is
 // sampled here. One pinned first rejection and 63 tail rows share 64 slots.
-#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+namespace world_reader_diagnostic {void reset(){} void dump(){}}
+#elif defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
 namespace world_reader_diagnostic {
 bool dumped{};
 constexpr const wchar_t* branches[]={L"none",L"consumer_or_mapping",L"lock",L"header",L"serial_regressed",L"frame"};
@@ -338,12 +342,14 @@ struct DumpAtExit {~DumpAtExit(){dump();}};
 namespace tick_boundary_diagnostic {
 enum class Boundary:unsigned {pre_entry,after_drain,post_entry,count};
 constexpr unsigned capacity=8,boundaries=unsigned(Boundary::count);
+#if !defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
 struct Source {
     std::uint64_t serial{},sequence{},created_ms{},session{},space_epoch{},input_epoch{},world_generation{};
     std::uintptr_t controller{},pawn{},weapon{};
     unsigned valid_mask{},grip_down_mask{};
     gears_hand_continuity::Certificate certificate{};
 };
+#endif
 struct Row {
     std::uint64_t generation{},tick{},parent_tick{},qpc[boundaries]{},snapshot_ms{};
     uptr object{},function{},pc{},pawn{},mesh{},weapon{};
@@ -351,9 +357,14 @@ struct Row {
     int mesh_tick{};float world_time{};
     bool closed{},terminal{},snapshot_known{},mesh_tick_known{},plan_known{},attempt_known{};
     bool read_outcome_known{},final_auth_called{},final_auth_known{};
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    gears_rig_tracking::Frame rig{};gears_rig_tracking::ReadResult rig_read{};
+#else
     gears_hand_continuity::WorldRead read_result{};
     gears_hand_continuity::WorldReadSuccess success{};
-    Source source{};gears_hand_stream::Plan plan_value{};
+    Source source{};
+#endif
+    gears_hand_stream::Plan plan_value{};
     component_trace::Auth final_auth{};unsigned final_result{};
 };
 struct State {
@@ -405,6 +416,13 @@ struct Token {
         row.pc=value.pc;row.pawn=value.pawn;row.mesh=value.mesh;row.weapon=value.weapon;
         row.epoch=trial.epoch;row.tick_epoch=trial.tick_epoch;row.phase=trial.phase;
     }
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    void read(gears_rig_tracking::ReadResult const& result,gears_rig_tracking::Frame const& frame) noexcept {
+        if(!writable())return;
+        row.read_outcome_known=true;row.rig_read=result;
+        if(rig_source::received(result))row.rig=frame;
+    }
+#else
     void read(gears_hand_continuity::WorldRead result,gears_hand_continuity::WorldReadSuccess const& success,
               gears_hand_continuity::WorldFrame const& frame) noexcept {
         if(!writable())return;
@@ -414,6 +432,7 @@ struct Token {
         row.source={p.serial,p.sequence,p.created_ms,p.session,p.space_epoch,p.input_epoch,p.world_generation,
             p.controller,p.pawn,p.weapon,unsigned(p.valid_mask),unsigned(p.grip_down_mask),frame.certificate};
     }
+#endif
     void plan(gears_hand_stream::Plan const& value) noexcept {
         if(writable()){row.plan_known=true;row.plan_value=value;}
     }
@@ -479,6 +498,21 @@ void flush(){
         state.open,state.reset_open,unsigned(state.counter_saturated),frequency);
     const unsigned start=state.count==capacity?state.next:0;
     for(unsigned i=0;i<state.count;++i){
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+        auto const& r=state.rows[(start+i)%capacity];auto const& p=r.plan_value;auto const& a=r.final_auth;
+        fwprintf(log_file,L"hand_tick_boundary_rig schema=1 continuity=RigV1 generation=%llu tick=%llu parent_tick=%llu "
+            L"closed=%u terminal=%u terminal_site=%u pre_qpc=%llu drain_qpc=%llu post_qpc=%llu "
+            L"snapshot_known=%u snapshot_ms=%llu mesh_tick_known=%u mesh_tick=%d read_known=%u reply=%u failure=%u "
+            L"plan_known=%u revision=%llu plan_serial=%llu plan_sequence=%llu accept_mask=%u bind_mask=%u reset_mask=%u "
+            L"final_auth_called=%u final_auth_known=%u auth_fields_known=%u auth_checked=%u auth_rejected=%u "
+            L"auth_stereo_ns=%lld auth_input_ns=%lld returned_mask=%u current_tick_equivalence=0\n",
+            r.generation,r.tick,r.parent_tick,unsigned(r.closed),unsigned(r.terminal),r.terminal_site,r.qpc[0],r.qpc[1],r.qpc[2],
+            unsigned(r.snapshot_known),r.snapshot_ms,unsigned(r.mesh_tick_known),r.mesh_tick,unsigned(r.read_outcome_known),
+            unsigned(r.rig_read.reply),unsigned(r.rig_read.failure),unsigned(r.plan_known),p.revision,p.ticket.serial,p.ticket.sequence,
+            p.accept_mask,p.bind_mask,p.reset_binding_mask,unsigned(r.final_auth_called),unsigned(r.final_auth_known),
+            a.known,a.checked,a.rejected,a.stereo_ns,a.input_ns,r.final_result);
+        if(rig_source::received(r.rig_read))rig_source::log_receipt(r.rig,L"tick_read",p.observed_now,r.rig_read.observed_ns);
+#else
         auto const& r=state.rows[(start+i)%capacity];auto const& s=r.source;auto const& c=s.certificate;
         auto const& p=r.plan_value;auto const& a=r.final_auth;
         fwprintf(log_file,L"hand_tick_boundary schema=1 generation=%llu tick=%llu parent_tick=%llu object=%p function=%p "
@@ -507,6 +541,7 @@ void flush(){
             p.ticket.created_ms,p.accept_mask,p.bind_mask,p.reset_binding_mask,unsigned(r.final_auth_called),unsigned(r.final_auth_known),
             a.known,a.checked,a.rejected,a.now,a.live_now,a.commit_now,a.write_until,a.authorize_ns,a.commit_ns,a.ticket_ms,a.plan_ms,
             a.context_ms,a.stereo_ns,a.input_ns,a.mask,a.result,r.final_result);
+#endif
     }
     fwprintf(log_file,L"hand_tick_boundary_end schema=1\n");fflush(log_file);
 }
@@ -637,8 +672,44 @@ void dump(bool clean){
 } // namespace component_tail_cost
 #endif
 
-unsigned authorize_xr_plan(gears_hand_stream::Plan const& plan,
-    gears_hand_stream::Context const& context,std::uint64_t now,std::uint64_t write_until){
+unsigned authorize_xr_plan(XrPlan const& plan,
+    XrContext const& context,std::uint64_t now,std::uint64_t write_until){
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return 0;
+    component_trace::Auth trace{};component_trace::AuthEnd trace_end{trace};
+    trace.known=1|64;trace.now=now;trace.write_until=write_until;
+    trace.ticket_ms=plan.ticket.created_ms;trace.plan_ms=plan.context.observed_ms;trace.context_ms=context.observed_ms;
+    trace.stereo_ns=plan.frame.stereo.received_ns;trace.input_ns=plan.frame.controllers.received_ns;
+    const auto live_now=GetTickCount64();trace.live_now=live_now;trace.known|=2;
+    if(component_trace::rejected(trace,0,live_now<now)||component_trace::rejected(trace,1,live_now>write_until)||
+       component_trace::rejected(trace,2,stop_requested.load(std::memory_order_acquire))||
+       component_trace::rejected(trace,3,shutdown_requested.load(std::memory_order_acquire))){
+        trial.xr_policy.revoke();return 0;
+    }
+    gears_rig_tracking::Frame live{};
+    const auto read=rig_source::read(live,plan.frame.publication_sequence?plan.frame.publication_sequence-1:0);
+    // Re-read local identity/action generation after the Native call as well;
+    // neither its return nor the lifetime admission freezes the PG context.
+    auto live_context=rig_source::live_context(context);
+    const auto authorize_ns=gears_vr::monotonic_ns();trace.authorize_ns=authorize_ns;trace.known|=4;
+    // min-publication admits a reader candidate only. Typed policy requires
+    // the entire live receipt to equal this Plan, including exact publication.
+    const auto mask=trial.xr_policy.authorize(plan,live_context,rig_source::received(read)?&live:nullptr,
+        GetTickCount64(),authorize_ns);trace.mask=mask;trace.known|=8;
+    const auto commit_now=GetTickCount64();trace.commit_now=commit_now;trace.known|=16;
+    const auto commit_ns=gears_vr::monotonic_ns();trace.commit_ns=commit_ns;trace.known|=32;
+    if(component_trace::rejected(trace,4,commit_now<live_now)||component_trace::rejected(trace,5,commit_ns<authorize_ns)||
+       component_trace::rejected(trace,6,commit_now>write_until)||
+       component_trace::rejected(trace,7,!gears_hand_stream::recent(plan.ticket.created_ms,commit_now))||
+       component_trace::rejected(trace,8,!gears_hand_stream::recent(plan.context.observed_ms,commit_now))||
+       component_trace::rejected(trace,9,!gears_hand_stream::recent(context.observed_ms,commit_now))||
+       component_trace::rejected(trace,10,!rig_source::recent(plan.frame,commit_ns))||
+       component_trace::rejected(trace,11,stop_requested.load(std::memory_order_acquire))||
+       component_trace::rejected(trace,12,shutdown_requested.load(std::memory_order_acquire))){
+        trial.xr_policy.revoke();return 0;
+    }
+    trace.result=mask;return mask;
+#else
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     component_trace::Auth trace{};component_trace::AuthEnd trace_end{trace};
     trace.known=1|64;trace.now=now;trace.write_until=write_until;
@@ -684,9 +755,13 @@ unsigned authorize_xr_plan(gears_hand_stream::Plan const& plan,
     return trial.xr_policy.authorize(plan,context,now);
 #endif
 #endif
+#endif
 }
-unsigned authorize_current_xr_plan(gears_hand_stream::Plan const& plan,
-    gears_hand_stream::Context const& context,std::uint64_t now){
+unsigned authorize_current_xr_plan(XrPlan const& plan,
+    XrContext const& context,std::uint64_t now){
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return 0;
+#endif
     if(!weaponrestore::healthy())return 0;
     auto write_until=trial.deadline;
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
@@ -695,7 +770,12 @@ unsigned authorize_current_xr_plan(gears_hand_stream::Plan const& plan,
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
         component_trace::Auth trace{};trace.known=1;trace.now=now;
         trace.ticket_ms=plan.ticket.created_ms;trace.plan_ms=plan.context.observed_ms;trace.context_ms=context.observed_ms;
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+        trace.stereo_ns=plan.frame.stereo.received_ns;trace.input_ns=plan.frame.controllers.received_ns;
+        trial.xr_policy.revoke();
+#else
         trace.stereo_ns=plan.ticket.certificate.stereo_received_ns;trace.input_ns=plan.ticket.certificate.input_received_ns;
+#endif
         component_trace::authorization(trace,component_trace::Stage::write_until);
 #endif
         return 0;
@@ -703,6 +783,11 @@ unsigned authorize_current_xr_plan(gears_hand_stream::Plan const& plan,
 #endif
     return authorize_xr_plan(plan,context,now,write_until);
 }
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+unsigned authorize_current_xr_plan(gears_hand_stream::Plan const&,gears_hand_stream::Context const&,std::uint64_t){
+    return 0; // Legacy component plans have no typed Rig sidecar or authority.
+}
+#endif
 
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
 // POST_COMPONENT_CUTOFF_CLASSIFY_BEGIN
@@ -711,6 +796,9 @@ unsigned authorize_current_xr_plan(gears_hand_stream::Plan const& plan,
 // them or supplies a new receipt, clock, permission or session/recording start.
 bool post_component_cutoff_expired(component_trace::AuthObservation const& observation,
     gears_hand_stream::Plan const& plan,gears_hand_stream::Context const& context,unsigned mask){
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    (void)observation;(void)plan;(void)context;(void)mask;return false;
+#else
     auto const& auth=observation.value;
     if(!observation.known||auth.known!=67u||auth.checked!=3u||auth.rejected!=2u||auth.mask||auth.result||
        auth.commit_now||auth.authorize_ns||auth.commit_ns||!mask||(mask&~3u)||!(mask&2u)||
@@ -727,6 +815,7 @@ bool post_component_cutoff_expired(component_trace::AuthObservation const& obser
     std::uint64_t cutoff{};
     return gears_hand_session::write_until(auth.ticket_ms,auth.plan_ms,auth.context_ms,cutoff)&&
         auth.write_until==cutoff&&auth.live_now>cutoff;
+#endif
 }
 // A different, exact recorded outcome: source times were already older than
 // 100ms at the original NS authorization. Policy's internal cause and the
@@ -734,6 +823,9 @@ bool post_component_cutoff_expired(component_trace::AuthObservation const& obser
 // pause_ready independently checks current health and cancellation below.
 bool post_component_ns_source_expired(component_trace::AuthObservation const& observation,
     gears_hand_stream::Plan const& plan,gears_hand_stream::Context const& context,unsigned mask){
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    (void)observation;(void)plan;(void)context;(void)mask;return false;
+#else
     auto const& auth=observation.value;auto const& certificate=plan.ticket.certificate;
     if(!observation.known||auth.known!=127u||auth.checked!=2047u||auth.rejected!=1024u||auth.mask||auth.result||
        !mask||(mask&~3u)||!(mask&2u)||!plan.has_ticket||!plan.revision||plan.accept_mask!=mask||
@@ -755,6 +847,7 @@ bool post_component_ns_source_expired(component_trace::AuthObservation const& ob
         gears_hand_stream::recent(auth.plan_ms,auth.commit_now)&&
         gears_hand_stream::recent(auth.context_ms,auth.commit_now)&&
         (auth.authorize_ns-auth.stereo_ns>100000000ll||auth.authorize_ns-auth.input_ns>100000000ll);
+#endif
 }
 struct PostComponentHandStamp {
     unsigned setters{},targets{},restores{},extras{},applied{},hand_leases{};
@@ -766,6 +859,9 @@ PostComponentHandStamp post_component_hand_stamp(){
 bool post_component_pause_ready(PostComponentHandStamp const& before,
     gears_hand_stream::Plan const& plan,gears_hand_stream::Context const& context,unsigned mask,
     component_continuous::Mode mode,unsigned equipment_phase){
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    (void)before;(void)plan;(void)context;(void)mask;(void)mode;(void)equipment_phase;return false;
+#else
     auto const after=post_component_hand_stamp();auto const& lifecycle=component_continuous::state;
     if(!mask||(mask&~3u)||!(mask&2u)||mode!=component_continuous::Mode::joint||equipment_phase!=1||trial.xr_equipment_phase!=1||
        !active_visible.load(std::memory_order_acquire)||GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire)||
@@ -784,6 +880,7 @@ bool post_component_pause_ready(PostComponentHandStamp const& before,
     for(unsigned hand=0;hand<2;++hand)
         if((mask&(1u<<hand))&&!trial.xr_binding[hand].bound())return false;
     return true;
+#endif
 }
 // POST_COMPONENT_CUTOFF_CLASSIFY_END
 #endif
@@ -866,14 +963,14 @@ bool xr_equipment_gate(Snapshot const& value,unsigned expected,const wchar_t* st
     return false;
 }
 #endif
-gears_hand_stream::Context xr_context(Snapshot const& value,bool ready){
+XrContext xr_context(Snapshot const& value,bool ready){
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     // Context construction must not repeat engine queries. The observed,
     // prewrite and post-flush gates already authenticate equipment explicitly;
     // action epochs and the final authorize still reject any intervening yield.
     ready=ready&&trial.xr_ready;
 #endif
-    gears_hand_stream::Context context{};
+    XrContext context{};
     context.game={trial.xr_start.objects[gears_hand_xr_trial::world_info].address,
         value.pc,value.pawn,value.mesh,value.weapon};
     context.expected_native_world_generation=trial.xr_start.expected_native_world_generation;
@@ -881,6 +978,12 @@ gears_hand_stream::Context xr_context(Snapshot const& value,bool ready){
     context.idle_ready=ready;context.clean=!trial.lease.dirty();
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     context.clean=context.clean&&!trial.lease.faulted();
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    context.game_thread=GetCurrentThreadId();context.input_revision=std::uint64_t(trial.epoch)+1;
+    // Real fresh object headers/link reads. Start addresses are only an
+    // expected fixed-arena baseline, never an invented ObjectIdentity.
+    if(!rig_source::objects(context))context.idle_ready=false;
 #endif
     return context;
 }
@@ -976,7 +1079,9 @@ bool xr_targets(gears_weapon::HandWorldFrame const& frame,unsigned mask){
     return true;
 }
 void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigned bind_mask
-#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    ,XrPlan const& rig_plan
+#elif defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     ,gears_hand_continuity::Certificate const& certificate
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
@@ -1008,7 +1113,12 @@ void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigne
             target.position.x,target.position.y,target.position.z,
             target.rotation.pitch,target.rotation.yaw,target.rotation.roll);
     }
-#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    fwprintf(log_file,L" continuity=RigV1 publication=%llu scene=%llu receipt_ns=%lld "
+        L"stereo_age_ns=%llu input_age_ns=%llu created_ms_is_local_receipt=1 handworld_adapter_only=1 current_tick_equivalence=0",
+        rig_plan.frame.publication_sequence,rig_plan.frame.scene_invocation,rig_plan.observed_ns,
+        rig_plan.source_age_ns[0],rig_plan.source_age_ns[1]);
+#elif defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     fwprintf(log_file,L" continuity=GHW1 native_activation=%llu xr_pid=%llu xr_start=%llu "
         L"stream_epoch=%llu reference_epoch=%llu reference_generation=%llu "
         L"left_loss_epoch=%llu right_loss_epoch=%llu source=%u profile_generation=%llu "
@@ -1017,7 +1127,11 @@ void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigne
         certificate.reference_generation,certificate.tracking_epoch[0],certificate.tracking_epoch[1],
         certificate.source,certificate.profile_generation,certificate.stereo_received_ns,certificate.input_received_ns);
 #endif
-    fwprintf(log_file,L"\n");fflush(log_file);
+    fwprintf(log_file,L"\n");
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    rig_source::log_receipt(rig_plan.frame,L"before_write",rig_plan.observed_now,rig_plan.observed_ns);
+#endif
+    fflush(log_file);
 }
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
 #if defined(GEARS_PLAYGROUND_HAND_TRANSPORT_LIVENESS_TRIAL)
@@ -1116,7 +1230,9 @@ void post_tick(uptr pc){
         hand_writes_relinquished=false;
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+#if !defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
         xr_bridge.close();
+#endif
         if(!clear_tail_trial()){end(8,L"tail_start_not_quiescent");return;}
         trial.xr_start=xr_pending;
 #else
@@ -1140,16 +1256,20 @@ void post_tick(uptr pc){
 #else
         constexpr unsigned continuity_source=static_cast<unsigned>(gears_vr::StereoSource::RuntimeTracked);
 #endif
+#if !defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
         if(!trial.xr_policy.enable_certified_calibration(trial.xr_start.native_started_qpc,continuity_source)){
             end(7,L"xr_certified_policy_initialization_rejected");return;
         }
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
         timing_begin();
 #endif
         if(trial.began>trial.xr_start.arm_deadline_ms){end(7,L"xr_arm_deadline_expired_before_tick");return;}
         if(log_file){fwprintf(log_file,L"hand_ik_stream_trial_begin source="
-#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+            L"RigV1_grip_world continuity=RigV1 prepared_scene_may_precede_tick=1 "
+#elif defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
             L"GHW1_grip_world "
 #else
             L"GVE6_grip_world "
@@ -1282,6 +1402,32 @@ void post_tick(uptr pc){
         component_continuous::state.resume_stable=trial.stability.observe(now,true,handik::same_controls(trial.previous,value));
 #endif
     trial.previous=value;
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    gears_rig_tracking::Frame rig_frame{};
+    const auto read_result=rig_source::read(rig_frame,trial.xr_policy.publication_cursor());
+    const bool fresh=rig_source::received(read_result);
+    tick_diagnostic.read(read_result,rig_frame);
+    if(read_result.reply==gears_rig_tracking::Reply::invalid||read_result.reply==gears_rig_tracking::Reply::wrong_cookie){
+        yield_for_equipment(L"xr_rig_read_rejected");
+        if(!trial.ended)end(7,L"xr_rig_read_rejected");return;
+    }
+    gears_weapon::HandWorldFrame frame{}; // Geometry/log adapter only, never a GHW1 certificate.
+    const auto receipt_ms=GetTickCount64();
+    if(fresh){
+        count_add(trial.xr_fresh);
+        if(!rig_source::enable(rig_frame)||!rig_source::geometry(rig_frame,receipt_ms,frame)){
+            yield_for_equipment(L"xr_rig_initialization_or_geometry_rejected");
+            if(!trial.ended)end(7,L"xr_rig_initialization_or_geometry_rejected");return;
+        }
+        trial.xr_open=true;
+    }else count_add(trial.xr_none);
+    const auto context=xr_context(value,qualified&&trial.xr_ready);
+#if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
+    timing_observation();
+#endif
+    const auto plan=observe_xr_policy(context,fresh?&rig_frame:nullptr,receipt_ms,true);
+    trial.xr_cursor=trial.xr_policy.publication_cursor();
+#else
     if(!trial.xr_open&&now>=trial.xr_next_open){
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
         trial.xr_open=xr_bridge.open(false,trial.xr_start.native_started_qpc);trial.xr_next_open=now+250;
@@ -1329,6 +1475,7 @@ void post_tick(uptr pc){
     timing_observation();
 #endif
     const auto plan=observe_xr_policy(context,fresh?&ticket:nullptr,GetTickCount64(),true);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     tick_diagnostic.plan(plan);
 #endif
@@ -1343,7 +1490,12 @@ void post_tick(uptr pc){
     }
 #endif
 #endif
-#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    if(trial.xr_policy.failed()){
+        yield_for_equipment(L"xr_rig_policy_rejected");
+        if(!trial.ended)end(7,L"xr_rig_policy_rejected");return;
+    }
+#elif defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     if(trial.xr_policy.certified_failed()){
         yield_for_equipment(L"xr_continuity_certificate_rejected");
         if(!trial.ended)end(7,L"xr_continuity_certificate_rejected");return;
@@ -1475,7 +1627,9 @@ void post_tick(uptr pc){
 #endif
         sample(L"before",value,lease,0);
         xr_log_pose(frame,mask,plan.bind_mask
-#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+            ,plan
+#elif defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
             ,continuous_frame.certificate
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
@@ -1544,7 +1698,7 @@ void post_tick(uptr pc){
     bool after_component_valid{};
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
     component_trace::AuthObservation after_component_authorization{};
-    gears_hand_stream::Context after_component_context{};
+    XrContext after_component_context{};
 #endif
     {
         component_tail_cost::Attempt timing(plan.ticket.sequence,plan.revision,lease,equipment_phase,mask);
@@ -1676,6 +1830,15 @@ void post_tick(uptr pc){
 #endif
         drain_journals(L"continuous_written_joint_journal_changed");
         end(journals_dirty()?8u:7u,L"continuous_written_joint_journal_changed");return;
+    }
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    // The written snapshot may itself dispatch getters. Recheck the exact
+    // live Rig after the hand-only journal/value proof, with the original
+    // pre-acquire clean context; do not retimestamp it to hide elapsed age.
+    if(authorize_current_xr_plan(plan,backend.tail_context,GetTickCount64())!=mask){
+        drain_journals(L"rig_changed_during_written_snapshot");
+        end(journals_dirty()?8u:7u,L"rig_changed_during_written_snapshot");return;
     }
 #endif
     sample(L"written",written,lease,mask);

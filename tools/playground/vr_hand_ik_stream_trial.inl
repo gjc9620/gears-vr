@@ -5,6 +5,17 @@
 namespace handstream {
 namespace policy=gears_hand_ik_stream;
 using handik::Snapshot;
+#if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+using XrPlan=gears_hand_rig::RigPlan;
+using XrContext=gears_hand_rig::RigContext;
+using XrReceipt=gears_rig_tracking::Frame;
+#else
+using XrPlan=gears_hand_stream::Plan;
+using XrContext=gears_hand_stream::Context;
+using XrReceipt=gears_hand_stream::Ticket;
+#endif
+#endif
 constexpr std::array<unsigned,4> indices{{2,3,6,7}}; // R position/rotation, L position/rotation.
 std::atomic<bool> requested{},stop_requested{},used{},safe_to_unload{true},shutdown_requested{},active_visible{};
 std::atomic<unsigned> status{},leases{};
@@ -105,7 +116,12 @@ struct Trial {
     unsigned action_object_count{};
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
     gears_hand_xr_trial::Start xr_start{};
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    gears_hand_rig::RigPolicy xr_policy;
+    bool xr_rig_enabled{};
+#else
     gears_hand_stream::Policy xr_policy;
+#endif
     std::array<gears_hand_stream::GripHandBinding,2> xr_binding{};
     std::array<gears_vr::Viewpoint,2> xr_grips{},xr_targets{};
     std::uint64_t xr_next_open{},xr_cursor{UINT64_MAX};
@@ -720,14 +736,22 @@ void timing_dump_if_ended(){
 struct EquipmentTimingHookScope {~EquipmentTimingHookScope(){timing_dump_if_ended();}};
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
-gears_hand_stream::Plan observe_xr_policy(gears_hand_stream::Context const& context,
-    gears_hand_stream::Ticket const* fresh,std::uint64_t now,bool regular=false){
+XrPlan observe_xr_policy(XrContext const& context,
+    XrReceipt const* fresh,std::uint64_t now,bool regular=false){
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL) && !defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     const auto before=trial.xr_policy.continuity_snapshot(now);
 #else
     (void)regular;
 #endif
-#if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    // Action/equipment handback may occur before the first actual Rig read.
+    // Do not consume Policy's one-time enable state with a synthetic receipt.
+    if(!trial.xr_rig_enabled){
+        XrPlan blocked{};blocked.context=context;blocked.rig_context=context;
+        blocked.observed_now=now;blocked.restore_mask=3;return blocked;
+    }
+    const auto plan=trial.xr_policy.observe(context,fresh,now,gears_vr::monotonic_ns());
+#elif defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     const auto plan=trial.xr_policy.observe_certified(context,fresh,now,gears_vr::monotonic_ns());
 #else
     const auto plan=trial.xr_policy.observe(context,fresh,now);
@@ -740,6 +764,16 @@ gears_hand_stream::Plan observe_xr_policy(gears_hand_stream::Context const& cont
 #endif
     return plan;
 }
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+// Existing action/component invalidation calls carry no source receipt. They
+// may revoke a typed Plan but cannot manufacture one from a legacy Context.
+XrPlan observe_xr_policy(gears_hand_stream::Context const& blocked,std::nullptr_t,
+                        std::uint64_t now,bool regular=false){
+    XrContext context{};static_cast<gears_hand_stream::Context&>(context)=blocked;
+    context.game_thread=GetCurrentThreadId();context.input_revision=std::uint64_t(trial.epoch)+1;
+    return observe_xr_policy(context,static_cast<XrReceipt const*>(nullptr),now,regular);
+}
+#endif
 #endif
 bool same_layout(Snapshot const& a,Snapshot const& b){
     if(a.identity!=b.identity)return false;
@@ -779,7 +813,12 @@ bool tail_value_allowed(unsigned index,uptr object,handtail::Observed const& sig
     return sighting.value.translation==zero&&sighting.value.space==0&&sighting.value.flags==0&&
         handik::name_is(space_bone,L"None");
 }
+unsigned authorize_current_xr_plan(XrPlan const&,XrContext const&,std::uint64_t);
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+// The component path is not part of the independent Rig writer. A sliced old
+// Plan is never upgraded back into a typed receipt.
 unsigned authorize_current_xr_plan(gears_hand_stream::Plan const&,gears_hand_stream::Context const&,std::uint64_t);
+#endif
 bool tail_values_match(Snapshot const& before,Snapshot const& written,unsigned mask){
     const unsigned hands=((mask&1)?2u:0u)|((mask&2)?1u:0u);
     auto const& extra=trial.lease.translation();
@@ -804,8 +843,8 @@ bool tail_values_match(Snapshot const& before,Snapshot const& written,unsigned m
 // New melee/action/weapon flags cannot prevent restoration of unchanged tails.
 struct Backend {
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
-    gears_hand_stream::Plan const* tail_plan{};
-    gears_hand_stream::Context tail_context{};
+    XrPlan const* tail_plan{};
+    XrContext tail_context{};
     unsigned tail_mask{};
     bool tail_wanted(unsigned,std::array<policy::Target,4> const&,
                      std::array<gears_hand_tail_translation::Value,2>&);
@@ -1183,6 +1222,9 @@ void dump(bool clean){
 } // namespace reach_diagnostic
 #endif
 void end(unsigned code,const wchar_t* reason){
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    trial.xr_policy.stop();
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
     component_continuous::terminal(code,reason);
 #else
@@ -1379,6 +1421,9 @@ bool finish(){
     return restored&&!journals_dirty()&&!state.cleanup_failed&&!trial.lease.faulted()&&!component_faulted();
 }
 void request_terminal(unsigned code,const wchar_t* reason){
+#if defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
+    trial.xr_policy.stop();
+#endif
     record_failure(code,reason);
     if(!state.terminal){
         state.terminal=true;state.terminal_code=code;remember(state.reason,reason);
@@ -1802,7 +1847,11 @@ void post_tick(uptr pc){
 void reset(){
     if(!weaponrestore::healthy())return;
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
+#if !defined(GEARS_PLAYGROUND_HAND_RIG_TRACKING_TRIAL)
     xr_bridge.close();xr_pending={};
+#else
+    trial.xr_policy.stop();xr_pending={};
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(journals_dirty()||!component_reset())return;
