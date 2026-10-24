@@ -684,3 +684,9 @@ AZ-r2自然经过4次GetFireModeDamage原调用，原返回均完成、同代ses
 BA仅修改读取器的单类兄弟字段查找上限512→4096，参照既有反射发现的4096项规模；原function字段64／parent40／固定Snapshot33208字节、身份／注册／首同名／类型／范围／循环与最终复核全部不变，没有写游戏伤害或输入。raw逆变换与CRLF保持。实际完整reader和原SEH copy在本地合成元数据上新增8类／42项首次严格编译运行通过，覆盖长链600、恰好4096／4097边界、长链循环、晚到的错误同名类型、失注册及最后指针变更；未重跑旧18类。结果在 analysis/weapon-grip-damage-search-cpu-20261024ba/。唯一完整PG严格构建、23导出与11实际运行源OFF一组两次/EP对比通过，DLL87ad5e25…59f17、build结果37d22a60…3a743；此条记录时修订读取器尚未购买版运行，没有性能或原生ABI结论。
 
 用户进一步确认：0.7／1.0只用于玩家枪械射击，包括Boomshot／Torque Bow等发射的投射物；手抛Bolo／Smoke保持原版伤害与效果。设计与验收项已同步。实际倍率仍未接线；双手／枪体完整运动、全武器装填／交互、普通启动器集成与GPU／Quest／头显验收均未完成，完整目标继续active。
+
+BA实测补记：d71ac22源码冻结为788源／27依赖／659工件候选4a7ec186…84663，manifest cc9d5a91…50c17，DLL87ad5e25…59f17；沿用原Native／XR／loader，只替换PG并增加5份BA证明。新runner与AZ-r2反向替换候选／路径／hash／工件数后原字节相同，原R2协议、时限、Stop／Shutdown和恢复均未改变；日志审计器只更新reader源pin，解析／判定代码与已通过16项的原件完全相同，不重跑旧逻辑检查。
+
+三次新鲜空闲后唯一新候选静音置后购买版局，原版Lancer held再次false→true→false，触发／释放约0.2796s，自然记录4次getter、4对完整raw4，前后session／schema保持、无gap／unknown，正式只读采样及独立cleanup均通过。实际每份metadata为35身份／32名字／14结构／5函数字段，接收者继承7级；返回属性完整路径Core.FloatProperty，ReturnValue flags0x580、dim1／width4，函数parameter_bytes24／return_offset20／extent36。两入参为HitLocation（结构大小12，offset0）和HitActor（Object大小8，offset12）；offset20只记录，不加到Result，不从RAX或caller参数区取值。后值按任意raw32保留，尚未认证原生类型／Result所有权、调用与实际射击／伤害包归属，更没有乘0.7。
+
+原朝向精确恢复、Stop／Shutdown0、原32／64字节入口、确切自有游戏退出与音频8会话恢复pending0通过；19文件封存24f3435a…33b28，汇总c969653a…1fffd位于忽略的 analysis/weapon-grip-damage-result-evidence-20261024ba/。后续另有非自有游戏活动，未干预或借用其内存，不再启动额外实机局。没有跨局性能结论、Native／XR图像或头显验收；下一步绑定真实caller／开火／结算身份，再实现枪械0.7／1.0且只应用一次，手抛Bolo／Smoke继续排除。完整双手、全武器与默认集成仍未完成。
