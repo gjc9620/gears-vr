@@ -16,6 +16,10 @@ constexpr std::array<std::array<unsigned char,32>,2> signatures{{
 std::array<void*,2> targets{},detours{{reinterpret_cast<void*>(GearsCoverBlendTickHook),reinterpret_cast<void*>(GearsCoverChildPropagateHook)}};
 std::array<void**,2> originals{{&GearsCoverBlendOriginal,&GearsCoverChildOriginal}};
 bool reserved{},enabled{};
+enum class PoseProfile {top,side};
+PoseProfile pose_profile=PoseProfile::top; // Immutable after configure.
+constexpr unsigned endpoint_for(PoseProfile profile){return profile==PoseProfile::side?5u:4u;}
+const char* profile_name(PoseProfile profile){return profile==PoseProfile::side?"side":"top";}
 bool own_entries(); // Defined after the existing immutable hook-entry manifest.
 HANDLE advance_event{},reset_event{};
 gears_anchor::Config metadata{}; // Immutable startup certificate, not a mutable world pointer.
@@ -155,7 +159,7 @@ struct Journal {
     // stop while one parent is still propagating / testing its native result.
     bool round_open{},propagating{};
     unsigned injections{},write_count{},restore_count{},retire_count{};
-    unsigned installed_step{};
+    unsigned installed_step{},endpoint=4;
     std::array<std::array<unsigned,7>,7> logged{};
     std::array<unsigned,7> step_injections{},step_writes{},step_restores{};
     int previous_child=-1;float previous_incoming{},previous_weight{};
@@ -167,7 +171,7 @@ std::array<unsigned,7> step_rows{}; // Reserve room for every later Advance step
 void row(unsigned kind_value,Journal& j,int child=-1,float incoming=0,float weight=0,float total=0){
     const unsigned sample_step=j.installed_step;
     const bool child_row=kind_value==0||kind_value>=4;
-    if(child_row&&child!=0&&child!=4)return;
+    if(child_row&&child!=0&&child!=int(j.endpoint))return;
     auto& logged=j.logged[sample_step][kind_value];const unsigned limit=child_row?2:1;
     if(logged>=limit)return;++logged;
     if(step_rows[sample_step]>=18||row_count==rows.size()){++rows_dropped;return;}++step_rows[sample_step];
@@ -196,7 +200,7 @@ void phase_rows(Journal& j,unsigned kind_value){
     // Kinds 5/6 are phase samples, not another propagation receipt: no incoming
     // argument is assigned to them and their predicted value is intentionally 0.
     if(j.logged[j.installed_step][kind_value]>=2)return;
-    for(unsigned i:{0u,4u}){float weight{},total{};
+    for(unsigned i:{0u,j.endpoint}){float weight{},total{};
         if(field(weight,j.children.data+uintptr_t(i)*0x44,layout.weight)&&field(total,j.children.data+uintptr_t(i)*0x44,layout.total))row(kind_value,j,int(i),0,weight,total);}
 }
 bool journal_current(Journal& j){
@@ -314,7 +318,7 @@ void blend_before(uintptr_t self,Scope const& scope){
     if(!metadata_current()||!field(pawn_mesh,binding.pawn.address,layout.mesh)||pawn_mesh!=mesh||!identity(mesh,mesh_id,true)||
        !field(ct,binding.pawn.address,layout.cover)||ct!=2||!field(sm,binding.pawn.address,layout.special)||sm!=0||
        !field(world,binding.pawn.address,layout.world)||!identity(world,world_id,true)||world_id.outer!=binding.level||
-       !children_at(self,children)||!children_at(self,after)||!equal(children,after)){++rejected;return;}
+       !children_at(self,children)||children.count<=int(endpoint_for(pose_profile))||!children_at(self,after)||!equal(children,after)){++rejected;return;}
     if(!game_thread.load()){game_thread=thread;service_entry(self);}
     tick={self,binding.pawn.address,mesh,world,id,children,initial_world,false};
 }
@@ -340,19 +344,20 @@ void child_before(uintptr_t self,int child,float incoming,Scope const& scope,Cal
     if(!own_entries()||(!tick.injected&&!metadata_current(false))||!gears_anchor::capture_pawn_binding(metadata,safe_copy,binding)||binding.cinematic||binding.unpossessed||binding.pawn.address!=tick.pawn||
        !field(owner,self,layout.owner)||owner!=tick.pawn||!field(mesh,self,layout.skel)||mesh!=tick.mesh||!field(pawn_mesh,tick.pawn,layout.mesh)||pawn_mesh!=tick.mesh||
        !field(world,tick.pawn,layout.world)||world!=tick.world||!field(ct,tick.pawn,layout.cover)||ct!=2||!field(sm,tick.pawn,layout.special)||sm!=0||
-       !children_at(self,current)||!equal(current,tick.children)){++rejected;if(tick.injected)poison();return;}
+       !children_at(self,current)||current.count<=int(endpoint_for(pose_profile))||!equal(current,tick.children)){++rejected;if(tick.injected)poison();return;}
     if(child<0||child>=current.count)return;
     if(!tick.injected){
         unsigned first=child_limit;std::array<uint32_t,child_limit> native{};std::array<uintptr_t,child_limit> animations{};
         for(unsigned i=0;i<unsigned(current.count);++i){float weight{};
             if(!field(animations[i],current.data+uintptr_t(i)*0x44,layout.anim)||!field(weight,current.data+uintptr_t(i)*0x44,layout.weight)||!std::isfinite(weight)||weight<0||weight>1)return;
             if(animations[i]&&first==child_limit)first=i;memcpy(&native[i],&weight,4);}
-        if(first!=unsigned(child)||!animations[0]||!animations[4])return;
+        const unsigned endpoint=endpoint_for(pose_profile);
+        if(first!=unsigned(child)||!animations[0]||!animations[endpoint])return;
         if(!journal){for(auto& j:journals)if(!j.used){journal=&j;j.used=true;j.id=tick.id;break;}}
         if(!journal||any(*journal)||journal->round_open){++rejected;return;}
-        auto& j=*journal;j.pawn=tick.pawn;j.mesh=tick.mesh;j.world=tick.world;j.generation=tick.generation;j.children=current;j.native=native;j.installed_step=step.load();
+        auto& j=*journal;j.pawn=tick.pawn;j.mesh=tick.mesh;j.world=tick.world;j.generation=tick.generation;j.children=current;j.native=native;j.installed_step=step.load();j.endpoint=endpoint;
         j.native_visible.fill(false);
-        for(unsigned i=0;i<unsigned(current.count);++i){float weight=i==0?1.f-steps[step.load()]:(i==4?steps[step.load()]:0.f);memcpy(&j.installed[i],&weight,4);}
+        for(unsigned i=0;i<unsigned(current.count);++i){float weight=i==0?1.f-steps[j.installed_step]:(i==j.endpoint?steps[j.installed_step]:0.f);memcpy(&j.installed[i],&weight,4);}
         // A final header/identity bracket before the first field CAS.
         gears_anchor::Identity again{};Children after{};
         if(!identity(self,again,true)||!same(again,j.id)||!children_at(self,after)||!equal(current,after))return;
@@ -487,7 +492,15 @@ bool reserve(){
     reserved=true;return true;
 }
 bool reserved_target(void* target){return reserved&&(target==targets[0]||target==targets[1]);}
+bool read_profile(const wchar_t* ini,PoseProfile& out){
+    wchar_t text[16]{};const auto length=GetPrivateProfileStringW(L"CoverBodyPrototype",L"pose_profile",L"top",text,16,ini);
+    if(!length||length>=15)return false;
+    if(!wcscmp(text,L"top")){out=PoseProfile::top;return true;}
+    if(!wcscmp(text,L"side")){out=PoseProfile::side;return true;}
+    return false;
+}
 bool configure(const wchar_t* ini,FILE* file){
+    PoseProfile profile{};if(!read_profile(ini,profile))return false;
     const auto requested=GetPrivateProfileIntW(L"CoverBodyPrototype",L"enabled",0,ini);if(!requested)return true;
     if(requested!=1||enabled||!reserved||!continuous_session||!anchor_observer_enabled)return false;
     metadata=anchor_config;initial_world=committed_world_generation.load();
@@ -496,20 +509,20 @@ bool configure(const wchar_t* ini,FILE* file){
     auto event=[&](HANDLE& handle,const wchar_t* action){swprintf_s(name,L"Local\\GearsVR.CoverBodyPrototype.%s.%lu",action,GetCurrentProcessId());SetLastError(0);
         handle=CreateEventW(nullptr,FALSE,FALSE,name);const auto error=GetLastError();return handle&&error!=ERROR_ALREADY_EXISTS;};
     if(!event(advance_event,L"Advance")||!event(reset_event,L"Reset")){if(advance_event)CloseHandle(advance_event);if(reset_event)CloseHandle(reset_event);advance_event=reset_event=nullptr;return false;}
-    enabled=true;fprintf(file,"cover_body_config enabled=1 experimental=1 reflected_lookup=actual_receiver bounded_nodes=4 cover_type=2 special_move=0 positive_incoming_only=1 advance_timeout_ms=10000 stop_drain_ms=5000 native_post_weight_separation=1 firing_acceptance=0\n");return true;
+    pose_profile=profile;enabled=true;fprintf(file,"cover_body_config enabled=1 experimental=1 pose_profile=%s endpoint_child=%u reflected_lookup=actual_receiver bounded_nodes=4 cover_type=2 special_move=0 positive_incoming_only=1 advance_timeout_ms=10000 stop_drain_ms=5000 native_post_weight_separation=1 mirror_written=0 side_direction_acceptance=0 two_dimensional_blend=0 firing_acceptance=0\n",profile_name(pose_profile),endpoint_for(pose_profile));return true;
 }
 void request_drain(){if(!enabled)return;std::lock_guard<std::mutex> lock(mutex);stopping=true;ULONGLONG empty{};drain_tick.compare_exchange_strong(empty,GetTickCount64());}
 unsigned pending_count(){return pending.load()+in_flight.load()+transactions.load();}
 bool draining(){return enabled&&pending_count()&&GetTickCount64()-drain_tick.load()<5000;}
 bool drain_failed(){return enabled&&stopping.load()&&drain_tick.load()&&pending_count()&&!draining();}
 bool proof_failed(){return failed.load()||external_change.load();}
-void progress(FILE* file){fprintf(file,"cover_body_enabled=%u cover_body_layout_ready=%u cover_body_pending=%u cover_body_pending_fields=%u cover_body_pending_nodes=%u cover_body_in_flight=%u cover_body_transactions=%u cover_body_stopping=%u cover_body_failed=%u cover_body_step=%u ",enabled?1:0,layout_ready.load()?1:0,pending_count(),pending.load(),pending_nodes.load(),in_flight.load(),transactions.load(),stopping.load()?1:0,failed.load()?1:0,step.load());}
+void progress(FILE* file){fprintf(file,"cover_body_enabled=%u cover_body_pose_profile=%s cover_body_endpoint_child=%u cover_body_layout_ready=%u cover_body_pending=%u cover_body_pending_fields=%u cover_body_pending_nodes=%u cover_body_in_flight=%u cover_body_transactions=%u cover_body_stopping=%u cover_body_failed=%u cover_body_step=%u ",enabled?1:0,profile_name(pose_profile),endpoint_for(pose_profile),layout_ready.load()?1:0,pending_count(),pending.load(),pending_nodes.load(),in_flight.load(),transactions.load(),stopping.load()?1:0,failed.load()?1:0,step.load());}
 void print(FILE* file,bool disabled){
     std::lock_guard<std::mutex> lock(mutex);progress(file);
     fprintf(file,"cover_body compiled=1 layout_ready=%u layout_attempts=%u layout_failure=%ls metadata_sources=%u metadata_identities=%u prewrite_rebinds=%llu blend_calls=%llu child_calls=%llu child_posts=%llu native_posts=%llu pose_rearms=%llu abandoned=%llu reentries=%llu rejected=%llu writes=%llu restores=%llu retired_fields=%llu external_changes=%llu timeout=%u rows=%u dropped=%llu native_post_weight_separation=1 firing_acceptance=0 gpu_or_exposure_acceptance=0\n",
         layout_ready?1:0,layout_attempts,layout_failure,layout.source_count,layout.id_count,prewrite_rebinds,blend_calls,child_calls,child_posts,native_posts,pose_rearms,abandoned,reentries,rejected,writes,restores,retired,external,timed_out.load()?1:0,row_count,rows_dropped);
     for(unsigned i=0;i<journals.size();++i){auto const& j=journals[i];if(j.used){unsigned native_fields{};for(unsigned n=0;n<child_limit;++n)if(j.owned[n]&&j.native_visible[n])++native_fields;
-        fprintf(file,"cover_body_node index=%u node=%p pawn=%p mesh=%p world=%p generation=%llu injections=%u writes=%u restores=%u retired=%u pending=%u round_open=%u propagating=%u native_visible_fields=%u\n",i,reinterpret_cast<void*>(j.id.address),reinterpret_cast<void*>(j.pawn),reinterpret_cast<void*>(j.mesh),reinterpret_cast<void*>(j.world),j.generation,j.injections,j.write_count,j.restore_count,j.retire_count,any(j)?1:0,j.round_open?1:0,j.propagating?1:0,native_fields);}}
+        fprintf(file,"cover_body_node index=%u node=%p pawn=%p mesh=%p world=%p generation=%llu endpoint_child=%u injections=%u writes=%u restores=%u retired=%u pending=%u round_open=%u propagating=%u native_visible_fields=%u\n",i,reinterpret_cast<void*>(j.id.address),reinterpret_cast<void*>(j.pawn),reinterpret_cast<void*>(j.mesh),reinterpret_cast<void*>(j.world),j.generation,j.endpoint,j.injections,j.write_count,j.restore_count,j.retire_count,any(j)?1:0,j.round_open?1:0,j.propagating?1:0,native_fields);}}
     for(unsigned i=0;i<journals.size();++i){auto const& j=journals[i];if(j.used)for(unsigned s=0;s<steps.size();++s)
         fprintf(file,"cover_body_step node_index=%u step=%u u=%.9g injections=%u writes=%u restores=%u\n",i,s,steps[s],j.step_injections[s],j.step_writes[s],j.step_restores[s]);}
     for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];fprintf(file,"cover_body_row index=%u qpc=%lld node=%p world=%llu thread=%u kind=%u step=%u u=%.9g child=%d incoming=%.9g weight=%.9g child_total=%.9g predicted=%.9g total_sample_is_after_previous_native_call=%u native_post=%u pose_rearm=%u\n",i,r.qpc,reinterpret_cast<void*>(r.node),r.world,r.thread,r.kind,r.step,r.u,r.child,r.incoming,r.weight,r.total,r.predicted,r.kind==4?1:0,r.kind==5?1:0,r.kind==6?1:0);}
@@ -519,7 +532,8 @@ void print(FILE* file,bool disabled){
 constexpr bool enabled=false;
 bool reserve(){return true;}
 bool reserved_target(void*){return false;}
-bool configure(const wchar_t* ini,FILE*){return GetPrivateProfileIntW(L"CoverBodyPrototype",L"enabled",0,ini)==0;}
+bool configure(const wchar_t* ini,FILE*){wchar_t profile[2]{};return GetPrivateProfileIntW(L"CoverBodyPrototype",L"enabled",0,ini)==0&&
+    GetPrivateProfileStringW(L"CoverBodyPrototype",L"pose_profile",L"",profile,2,ini)==0;}
 void request_drain(){}
 bool draining(){return false;}
 bool drain_failed(){return false;}

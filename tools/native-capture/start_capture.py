@@ -629,6 +629,8 @@ def main():
         # Test-only opt-in; ordinary startup has no body-prototype INI section.
         if os.environ.get('GEARSVR_TEST_COVER_BODY_PROTOTYPE')=='1':
             config+='\n[CoverBodyPrototype]\nenabled=1\n'
+            if os.environ.get('GEARSVR_TEST_COVER_BODY_SIDE_PROTOTYPE')=='1':
+                config+='pose_profile=side\n'
         # Test-only opt-in; ordinary startup has no cover-camera INI section.
         if os.environ.get('GEARSVR_TEST_COVER_CAMERA_PREVIEW')=='1':
             config+='\n[CoverCameraPreview]\nenabled=1\n'

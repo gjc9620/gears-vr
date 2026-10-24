@@ -1,5 +1,6 @@
 // Repeatable synthetic cleanup regression tests. No game process, snapshots,
-// files, hook installation or engine calls are used. All object/registry names
+// hook installation or engine calls are used. Configuration uses an owned
+// temporary INI and this test process's events. All object/registry names
 // and addresses below belong to the private VirtualAlloc fixture.
 //
 // Compile the tested module even when the product CMake option is OFF. World
@@ -59,6 +60,7 @@ unsigned checks{},failures{};
 #define C(x) do{++checks;if(!(x)){++failures;printf("FAIL %u: %s\n",__LINE__,#x);}}while(0)
 uintptr_t arena{},node{},pawn{},mesh{},fixture_world{},records{},node_text{};
 b::Call fixture_parent{};
+unsigned fixture_endpoint=4;
 template<class T>void put(uintptr_t a,T const& v){memcpy(reinterpret_cast<void*>(a),&v,sizeof v);}
 void setup(){
  memset(reinterpret_cast<void*>(arena),0,1024*1024);b::metadata={};auto& c=b::metadata;
@@ -82,6 +84,7 @@ void setup(){
  b::calls={};b::call_depth=0;b::current_blend=nullptr;b::transactions=0;b::in_flight=0;fixture_parent={};
  b::child_posts=b::native_posts=b::pose_rearms=b::abandoned=b::reentries=0;b::layout_ready=false;b::initial_world=1;
  throw_scope=false;throwing_read=0;
+ b::pose_profile=b::PoseProfile::top;fixture_endpoint=4;
 }
 float weight(unsigned i){float v{};memcpy(&v,reinterpret_cast<void*>(records+uintptr_t(i)*0x44+0x10),4);return v;}
 void bind_target(){
@@ -127,7 +130,7 @@ void phase(unsigned value){
 }
 DWORD WINAPI stop_at_phase(void*){
  barrier_wait_ok=WaitForSingleObject(phase_entered,2000)==WAIT_OBJECT_0;if(!barrier_wait_ok)return 1;
- {std::lock_guard<std::mutex> lock(b::mutex);barrier_fields=b::pending.load();barrier_busy=b::pending_count();barrier_w0=weight(0);barrier_w4=weight(4);}
+ {std::lock_guard<std::mutex> lock(b::mutex);barrier_fields=b::pending.load();barrier_busy=b::pending_count();barrier_w0=weight(0);barrier_w4=weight(fixture_endpoint);}
  b::request_drain();
  gears_world::EpochGate::CloseToken close{};barrier_gate_blocked=!world_gate.try_close(close);if(!barrier_gate_blocked)world_gate.open(close);
  barrier_draining=b::draining();if(barrier_timeout){b::drain_tick=GetTickCount64()-5001;barrier_failed=b::drain_failed();}
@@ -139,39 +142,45 @@ void synthetic_child(b::CallPacket* packet){
  const auto index=unsigned(packet->gpr[2]);float incoming{};memcpy(&incoming,packet->xmm[2].data(),4);
  C(active.load()>0&&b::in_flight.load()>0);C(scope_live>0||!b::enabled||!scope_admitted);
  float total=incoming*weight(index);put(records+uintptr_t(index)*0x44+0x14,total);
- if(original_depth==1&&((mode==Mode::seh_after_first&&index==0)||(mode==Mode::seh_after_last&&index==4)))RaiseException(synthetic_exception,0,0,nullptr);
+ if(original_depth==1&&((mode==Mode::seh_after_first&&index==0)||(mode==Mode::seh_after_last&&index==fixture_endpoint)))RaiseException(synthetic_exception,0,0,nullptr);
  if(original_depth==1&&mode==Mode::cpp_after_first&&index==0)throw SyntheticCpp{0xaabbccdd};
 }
 void invoke_child(uintptr_t self,int index){auto p=packet_for(self,index);b::GearsCoverInvokeProtected(&p,1);}
+void invoke_tail(uintptr_t self){
+ b::Children header{};memcpy(&header,reinterpret_cast<void*>(node+b::layout.children),sizeof header);
+ for(int i=1;i<header.count&&i<int(b::child_limit);++i){uintptr_t anim{};memcpy(&anim,reinterpret_cast<void*>(records+uintptr_t(i)*0x44+b::layout.anim),sizeof anim);if(anim)invoke_child(self,i);}
+}
 void synthetic_blend(b::CallPacket* packet){
  ++original_blends;const auto self=uintptr_t(packet->gpr[1]);
  C(active.load()>0&&b::in_flight.load()>0);C(scope_live>0||!b::enabled);
  if(self!=node){invoke_child(self,0);return;}
  ++original_depth;
  if(mode==Mode::seh_before)RaiseException(synthetic_exception,0,0,nullptr);
- if(original_depth>1){invoke_child(self,0);invoke_child(self,4);--original_depth;return;}
+ if(original_depth>1){invoke_child(self,0);invoke_tail(self);--original_depth;return;}
  invoke_child(self,0);phase(1);
- if(mode==Mode::npc){const auto before=scope_entries;auto p=packet_for(other_node);b::GearsCoverInvokeProtected(&p,0);C(scope_entries==before+1);C(weight(0)==.5f&&weight(4)==.5f&&b::tick.node==node);}
+ if(mode==Mode::npc){const auto before=scope_entries;auto p=packet_for(other_node);b::GearsCoverInvokeProtected(&p,0);C(scope_entries==before+1);C(weight(0)==.5f&&weight(fixture_endpoint)==.5f&&b::tick.node==node);}
  if(mode==Mode::reset_npc){C(SetEvent(b::reset_event)!=0);C(SetEvent(b::advance_event)!=0);auto p=packet_for(other_node);b::GearsCoverInvokeProtected(&p,0);C(b::withdrawing&&b::rounds_open());}
- if(mode==Mode::reentrant){auto p=packet_for(node);b::GearsCoverInvokeProtected(&p,0);C(weight(0)==.5f&&weight(4)==.5f&&b::tick.node==node);}
+ if(mode==Mode::reentrant){auto p=packet_for(node);b::GearsCoverInvokeProtected(&p,0);C(weight(0)==.5f&&weight(fixture_endpoint)==.5f&&b::tick.node==node);}
  if(mode==Mode::reset){C(SetEvent(b::reset_event)!=0);}
  if(mode==Mode::expiry)b::last_advance=GetTickCount64()-10001;
  if(mode==Mode::out_of_order)invoke_child(self,0);
- invoke_child(self,4);
+ invoke_tail(self);
  // This models the native CoverBlend post test. Weight must be native here;
  // TotalWeight must remain the sole original child propagation's W product.
  native_test_weight=weight(0);native_test_transition=native_test_weight<.999f;++native_test_count;
- memcpy(&total_first,reinterpret_cast<void*>(records+0x14),4);memcpy(&total_last,reinterpret_cast<void*>(records+4*0x44+0x14),4);
- C(b::transactions.load()>0||!b::enabled||!scope_admitted);C(scope_live>0||!b::enabled);phase(2);
- if(mode==Mode::external_post)put(records+4*0x44+0x10,.33f);
+ memcpy(&total_first,reinterpret_cast<void*>(records+0x14),4);memcpy(&total_last,reinterpret_cast<void*>(records+uintptr_t(fixture_endpoint)*0x44+0x14),4);
+ C(b::transactions.load()>0||!b::enabled||!scope_admitted||!b::current_blend||!b::current_blend->selected);C(scope_live>0||!b::enabled);phase(2);
+ if(mode==Mode::external_post)put(records+uintptr_t(fixture_endpoint)*0x44+0x10,.33f);
  if(mode==Mode::own_post||mode==Mode::own_post_seh)throwing_read=node+8;
  if(mode==Mode::own_post_seh)RaiseException(synthetic_exception,0,0,nullptr);
  --original_depth;
 }
-void prepare_round(unsigned target_step=2){
+void prepare_round(unsigned target_step=2,b::PoseProfile profile=b::PoseProfile::top){
  setup();b::restore_all();other_node=npc_node();put(fixture_world+64,b::metadata.identities[b::metadata.role_level].address);
+ b::pose_profile=profile;fixture_endpoint=b::endpoint_for(profile);
+ if(profile==b::PoseProfile::side){b::Children header{records,6,6};put(node+0xe4,header);b::journals[0].children=header;}
  b::layout.special=0x119;put(pawn+0x119,static_cast<unsigned char>(0));b::layout_ready=true;b::initial_world=1;anchor_config=b::metadata;
- put(records+8,arena+0x3c000);put(records+4*0x44+8,arena+0x3c400);
+ put(records+8,arena+0x3c000);put(records+uintptr_t(fixture_endpoint)*0x44+8,arena+0x3c400);
  b::enabled=true;b::game_thread=GetCurrentThreadId();b::injecting=true;b::last_advance=GetTickCount64();b::step=target_step;
  b::writes=b::restores=b::external=b::blend_calls=b::child_calls=0;
  b::GearsCoverBlendOriginal=reinterpret_cast<void*>(&synthetic_blend);b::GearsCoverChildOriginal=reinterpret_cast<void*>(&synthetic_child);
@@ -188,8 +197,8 @@ void balanced(){C(!active.load()&&!scope_live&&!b::call_depth&&!b::current_blend
  gears_world::EpochGate::CloseToken close{};C(world_gate.try_close(close));C(world_gate.open(close));}
 void unlocked(){const bool acquired=b::mutex.try_lock();C(acquired);if(acquired)b::mutex.unlock();}
 void forward_only(b::CallPacket*){++original_blends;C(active.load()>0&&b::in_flight.load()>0);}
-void phase_stop(unsigned target_step,unsigned at,bool unknown_header=false,bool timeout=false){
- prepare_round(target_step);barrier_phase=at;barrier_unknown_header=unknown_header;barrier_timeout=timeout;
+void phase_stop(unsigned target_step,unsigned at,bool unknown_header=false,bool timeout=false,b::PoseProfile profile=b::PoseProfile::top){
+ prepare_round(target_step,profile);barrier_phase=at;barrier_unknown_header=unknown_header;barrier_timeout=timeout;
  phase_entered=CreateEventW(nullptr,FALSE,FALSE,nullptr);phase_release=CreateEventW(nullptr,FALSE,FALSE,nullptr);C(phase_entered&&phase_release);
  auto worker=CreateThread(nullptr,0,stop_at_phase,nullptr,0,nullptr);C(worker!=nullptr);invoke_round();C(WaitForSingleObject(worker,2000)==WAIT_OBJECT_0);C(barrier_wait_ok);
  C(CloseHandle(worker)!=0);C(CloseHandle(phase_entered)!=0);C(CloseHandle(phase_release)!=0);phase_entered=phase_release=nullptr;barrier_phase=0;
@@ -198,10 +207,10 @@ void phase_stop(unsigned target_step,unsigned at,bool unknown_header=false,bool 
  if(at==1&&target_step==2)C(barrier_w0==.5f&&barrier_w4==.5f&&barrier_fields==2);
  if(at==2)C(barrier_w0==1&&barrier_w4==0&&barrier_fields==(target_step?2u:0u));
  if(unknown_header){
-  C(b::pending.load()==2&&b::pending_count()==2&&b::journals[0].native_visible[0]&&b::journals[0].native_visible[4]);
-  b::drain_tick=GetTickCount64()-5001;C(b::drain_failed());C(weight(0)==1&&weight(4)==0);
+  C(b::pending.load()==2&&b::pending_count()==2&&b::journals[0].native_visible[0]&&b::journals[0].native_visible[fixture_endpoint]);
+  b::drain_tick=GetTickCount64()-5001;C(b::drain_failed());C(weight(0)==1&&weight(fixture_endpoint)==0);
   put(node+0xe4,b::journals[0].children);before_blend(other_node);C(!b::pending_count()&&b::restores==2&&!b::retired);
- }else C(!b::pending_count()&&weight(0)==1&&weight(4)==0);
+ }else C(!b::pending_count()&&weight(0)==1&&weight(fixture_endpoint)==0);
 }
 void protected_tests(){
  // Normal parent post sees native weights; pose evaluation receives W after
@@ -263,6 +272,60 @@ void protected_tests(){
  before_blend(other_node);C(!b::pending_count()&&b::restores==2);
  prepare_round();mode=Mode::own_post_seh;C(catch_round());balanced();unlocked();C(b::failed.load()&&original_blends==1&&original_children==2&&!b::pose_rearms&&b::pending_count()==2&&weight(0)==1&&weight(4)==0);
  before_blend(other_node);C(!b::pending_count()&&b::restores==2);
+}
+void side_profile_tests(){
+ constexpr auto side=b::PoseProfile::side;
+ // Even with all six children nonnull, exactly W0/W5 receive the pose. The
+ // sole original propagation owns TotalWeight, including each zero peer.
+ prepare_round(2,side);
+ for(unsigned i=0;i<6;++i){put(records+uintptr_t(i)*0x44+8,arena+0x3c000+uintptr_t(i)*0x100);put(records+uintptr_t(i)*0x44+0x3c,0x12345670u+i);}
+ std::array<unsigned char,0x400> pawn_before{},node_before{};std::array<unsigned char,6*0x44> expected_records{};
+ memcpy(pawn_before.data(),reinterpret_cast<void*>(pawn),pawn_before.size());memcpy(node_before.data(),reinterpret_cast<void*>(node),node_before.size());memcpy(expected_records.data(),reinterpret_cast<void*>(records),expected_records.size());
+ for(unsigned i=0;i<6;++i){float w=i==0||i==5?.5f:0.f,total=.8f*w;memcpy(expected_records.data()+i*0x44+0x10,&w,4);memcpy(expected_records.data()+i*0x44+0x14,&total,4);}
+ invoke_round();balanced();C(original_blends==1&&original_children==6&&b::child_calls==6&&b::child_posts==6);
+ C(native_test_count==1&&native_test_weight==1&&!native_test_transition&&total_first==.4f&&total_last==.4f);
+ C(weight(0)==.5f&&weight(5)==.5f&&weight(4)==0&&b::pending_count()==2&&b::journals[0].endpoint==5&&b::native_posts==1&&b::pose_rearms==1);
+ C(!memcmp(pawn_before.data(),reinterpret_cast<void*>(pawn),pawn_before.size())&&!memcmp(node_before.data(),reinterpret_cast<void*>(node),node_before.size()));
+ C(!memcmp(expected_records.data(),reinterpret_cast<void*>(records),expected_records.size()));
+ before_blend(other_node);C(b::pending_count()==2&&weight(5)==.5f);b::request_drain();before_blend(other_node);C(!b::pending_count()&&weight(0)==1&&weight(5)==0);
+ // Every experimental step retains endpoint-5 post/pose rows. Top child 4,
+ // peer flags/mirroring and unrelated TotalWeights are never pose targets.
+ prepare_round(0,side);
+ for(unsigned s=0;s<b::steps.size();++s){b::step=s;invoke_round();balanced();C(original_blends==s+1&&original_children==2*(s+1));C(native_test_weight==1&&!native_test_transition&&weight(0)==1.f-b::steps[s]&&weight(5)==b::steps[s]&&weight(4)==0);}
+ C(b::row_count<=126&&!b::rows_dropped&&!b::pending_count());
+ for(unsigned s=0;s<b::steps.size();++s){C(b::journals[0].logged[s][5]==2&&b::journals[0].logged[s][6]==2);
+  for(unsigned i=0;i<b::row_count;++i){auto const& r=b::rows[i];if(r.step!=s||r.kind<4)continue;C(r.child==0||r.child==5);if(r.kind==5)C(r.weight==(r.child==0?1.f:0.f));if(r.kind==6)C(r.weight==(r.child==0?1.f-b::steps[s]:b::steps[s]));}}
+ // Side qualification cannot write with only five children or a missing
+ // endpoint Anim, even though top's existing child 4 is still present.
+ prepare_round(2,side);put(node+0xe4,b::Children{records,5,5});invoke_round();balanced();C(!b::writes&&!b::pending_count()&&weight(0)==1&&weight(5)==0);
+ prepare_round(2,side);put(records+5*0x44+8,uintptr_t(0));put(records+4*0x44+8,arena+0x3c400);invoke_round();balanced();C(!b::writes&&!b::pending_count()&&weight(0)==1&&weight(5)==0&&original_children==2);
+ // Native post sees the actual captured baseline, including a baseline that
+ // already favors side. We neither force a transition result nor change CA/CD.
+ prepare_round(2,side);put(records+0x10,.25f);put(records+5*0x44+0x10,.75f);invoke_round();balanced();C(native_test_weight==.25f&&native_test_transition&&weight(0)==.5f&&weight(5)==.5f);
+ b::request_drain();before_blend(other_node);C(!b::pending_count()&&weight(0)==.25f&&weight(5)==.75f);
+ // The same stop barriers retain logical pending through the original/post
+ // window. Unknown storage keeps responsibility, including after timeout.
+ phase_stop(2,1,false,false,side);phase_stop(2,2,false,false,side);phase_stop(0,2,false,false,side);phase_stop(2,2,true,true,side);
+ prepare_round(2,side);mode=Mode::reset;b::reset_event=CreateEventW(nullptr,FALSE,FALSE,nullptr);C(b::reset_event!=nullptr);invoke_round();balanced();C(!b::pending_count()&&!b::pose_rearms&&weight(0)==1&&weight(5)==0&&total_first==.4f&&total_last==.4f);C(CloseHandle(b::reset_event)!=0);b::reset_event=nullptr;
+ prepare_round(2,side);mode=Mode::expiry;invoke_round();balanced();C(b::timed_out.load()&&!b::pending_count()&&!b::pose_rearms&&weight(0)==1&&weight(5)==0);
+ prepare_round(2,side);mode=Mode::external_post;invoke_round();balanced();C(b::external_change.load()&&b::external==1&&!b::pending_count()&&weight(0)==1&&weight(5)==.33f&&!b::pose_rearms);
+ prepare_round(2,side);mode=Mode::seh_after_last;C(catch_round());balanced();C(b::failed.load()&&b::stopping.load()&&!b::pending_count()&&!b::pose_rearms&&weight(0)==1&&weight(5)==0);
+ // A still-live old instance after world change remains pending in side too.
+ prepare_round(2,side);invoke_round();committed_world_generation=2;b::request_drain();before_blend(other_node);C(b::pending_count()==2&&!b::retired&&weight(0)==.5f&&weight(5)==.5f);
+ b::drain_tick=GetTickCount64()-5001;C(b::drain_failed());committed_world_generation=1;before_blend(other_node);C(!b::pending_count()&&weight(0)==1&&weight(5)==0);
+}
+void profile_configuration_tests(){
+ setup();b::restore_all();anchor_config=b::metadata;b::reserved=true;
+ wchar_t directory[MAX_PATH]{},ini[MAX_PATH]{};C(GetTempPathW(MAX_PATH,directory)>0);C(GetTempFileNameW(directory,L"gbs",0,ini)!=0);FILE* log{};C(tmpfile_s(&log)==0&&log);
+ auto value=[&](const wchar_t* key,const wchar_t* text){C(WritePrivateProfileStringW(L"CoverBodyPrototype",key,text,ini)!=0);};
+ value(L"enabled",L"1");b::PoseProfile parsed=b::PoseProfile::side;C(b::read_profile(ini,parsed)&&parsed==b::PoseProfile::top);
+ for(const wchar_t* text:{L"left",L"right",L"SIDE",L"sideways",L"side0123456789012345",L""}){value(L"pose_profile",text);C(!b::configure(ini,log)&&!b::enabled&&!b::advance_event&&!b::reset_event);}
+ value(L"enabled",L"0");value(L"pose_profile",L"left");C(!b::configure(ini,log)&&!b::enabled);value(L"enabled",L"1");
+ value(L"pose_profile",L"side");C(b::configure(ini,log)&&b::enabled&&b::pose_profile==b::PoseProfile::side&&b::endpoint_for(b::pose_profile)==5&&b::advance_event&&b::reset_event);
+ C(!b::configure(ini,log));b::print(log,true);C(!b::advance_event&&!b::reset_event);b::enabled=false;
+ value(L"pose_profile",L"top");C(b::configure(ini,log)&&b::pose_profile==b::PoseProfile::top&&b::endpoint_for(b::pose_profile)==4);b::print(log,true);C(!b::advance_event&&!b::reset_event);b::enabled=false;
+ value(L"pose_profile",nullptr);C(b::configure(ini,log)&&b::pose_profile==b::PoseProfile::top);b::print(log,true);b::enabled=false;
+ C(fclose(log)==0);C(DeleteFileW(ini)!=0);b::reserved=false;
 }
 int main(){
  arena=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,1024*1024,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE));if(!arena)return 99;
@@ -352,5 +415,9 @@ int main(){
  C(WaitForSingleObject(b::advance_event,0)==WAIT_OBJECT_0);C(CloseHandle(b::reset_event)!=0);C(CloseHandle(b::advance_event)!=0);b::reset_event=b::advance_event=nullptr;
 
  protected_tests();
- C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);printf("cover_body_live_journal: %u checks, %u failures\n",checks,failures);return failures?1:0;
+ const auto legacy_checks=checks;side_profile_tests();profile_configuration_tests();
+ const auto added_checks=checks-legacy_checks;
+ C(VirtualFree(reinterpret_cast<void*>(arena),0,MEM_RELEASE)!=0);
+ printf("cover_body_live_journal: legacy_checks=%u side_and_config_checks=%u\n",legacy_checks+1,added_checks);
+ printf("cover_body_live_journal: %u checks, %u failures\n",checks,failures);return failures?1:0;
 }
