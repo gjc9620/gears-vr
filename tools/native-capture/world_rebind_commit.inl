@@ -73,7 +73,7 @@ void advance_world_handoff(FILE* status){
     struct Reopen {gears_world::EpochGate::CloseToken token;~Reopen(){if(!world_gate.open(token))std::terminate();}} reopen{closed};
     std::unique_lock<std::recursive_mutex> native_lock(session_native_mutex,std::try_to_lock);
     std::unique_lock<FrameHookMutex> frame_lock_guard(frame_hook_mutex,std::try_to_lock);
-    std::unique_lock<std::mutex> stereo_lock(stereo_mutex,std::try_to_lock);
+    std::unique_lock<decltype(stereo_mutex)> stereo_lock(stereo_mutex,std::try_to_lock);
     if(!native_lock.owns_lock()||!frame_lock_guard.owns_lock()||!stereo_lock.owns_lock()||
        !world_old_state_retired()||!frame_link.world_handoff_ready(previous,next))return;
 #if defined(GEARS_OWNED_WORLD_HANDOFF) && GEARS_OWNED_WORLD_HANDOFF

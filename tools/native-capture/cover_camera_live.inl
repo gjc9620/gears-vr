@@ -136,7 +136,7 @@ void summary(FILE* file){
         fprintf(file,"cover_camera_neutral_origin=%.9g,%.9g,%.9g cover_camera_fixed_forward=%.9g,%.9g,%.9g cover_camera_original_eye_height=%.9g cover_camera_head_index=%d cover_camera_world=%llu cover_camera_slot=%d ",
             row.neutral_eye.x,row.neutral_eye.y,row.neutral_eye.z,row.forward.x,row.forward.y,row.forward.z,row.original_eye_height,row.head_index,static_cast<unsigned long long>(row.world),row.slot);}
 }
-void progress(FILE* file){std::lock_guard<std::mutex> lock(stereo_mutex);summary(file);}
+void progress(FILE* file){std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);summary(file);}
 void print(FILE* file){
     summary(file);fprintf(file,"\ncover_camera_policy experimental=1 facing_policy=neutral_pawn_yaw_plus_pi mesh_body_facing_verified=0 collision_verified=0 aim_modified=0 virtual_offset_right=0 virtual_offset_up=0 hmd_application=stereo_ticket_only entry_transition_acceptance=0 gameplay_acceptance=0 calibrations_retained=%u calibration_dropped=%llu\n",diagnostics.calibration_count,diagnostics.calibration_dropped);
     for(unsigned i=0;i<diagnostics.calibration_count;++i){auto const& row=diagnostics.calibrations[i];

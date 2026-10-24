@@ -157,7 +157,7 @@ void summary(FILE* file){
         r.physical.right,r.physical.up,r.physical.forward,r.requested_up_metres,r.requested_up_weight,unsigned(diagnostics.hand_world_valid),diagnostics.hand_world.x,diagnostics.hand_world.y,diagnostics.hand_world.z);
     fprintf(file,"cover_input_camera_frame_aligned=%u ",unsigned(camera_frame_aligned()));
 }
-void progress(FILE* file){std::lock_guard<std::mutex> lock(stereo_mutex);summary(file);}
+void progress(FILE* file){std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);summary(file);}
 void print(FILE* file){summary(file);fprintf(file,"\n");}
-void close(){std::lock_guard<std::mutex> lock(stereo_mutex);controllers.close();bridge_open=false;interrupted=true;}
+void close(){std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);controllers.close();bridge_open=false;interrupted=true;}
 } // namespace cover_input_live

@@ -201,5 +201,5 @@ void summary(FILE* file){
         diagnostics.last_prepare,diagnostics.last_commit,binding::reason_name(diagnostics.binding_reason));
     fprintf(file,"shared_hand_physical_fallback=%llu ",diagnostics.physical_fallback);
 }
-void close(){std::lock_guard<std::mutex> lock(stereo_mutex);invalidate(wire::InvalidateReason::native_stopping);}
+void close(){std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);invalidate(wire::InvalidateReason::native_stopping);}
 } // namespace cover_shared_input_live

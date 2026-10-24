@@ -78,6 +78,7 @@ gears_support::Recorder support_diagnostics;
 #include "../vr-common/cover_view.h"
 #include "../vr-common/cover_input_owner.h"
 #include "../vr-common/cover_body_target.h"
+#include "native_scene_boundary.h"
 #include "../vr-common/controller_input_bridge.h"
 #include "weapon_hand_broker.h"
 #include "cover_surface_getters.h"
@@ -334,7 +335,7 @@ double camera_closer_metres{};
 std::atomic<unsigned long long> camera_closer_applied{},camera_closer_inactive{},camera_closer_rejected{};
 gears_vr::StereoBridge stereo_bridge;
 gears_vr::StereoGate stereo_gate;
-std::mutex stereo_mutex;
+gears_native_context::StereoMutex stereo_mutex;
 std::atomic<bool> outage_diagnostics{false};
 gears_outage::ActivitySnapshot outage_built;
 gears_outage::Window outage_window;
@@ -1114,7 +1115,7 @@ void stereo_observe(unsigned stage,uintptr_t renderer,const std::array<uintptr_t
         matching=gears_projection::matches(projection,ticket.expected.projection[i],stage==3) && matching;
         r8[i]=projection[8]-ticket.expected.projection[i][8];r9[i]=projection[9]-ticket.expected.projection[i][9];
     }
-    std::lock_guard<std::mutex> lock(stereo_mutex);auto& a=stereo_aggregates[stage];
+    std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);auto& a=stereo_aggregates[stage];
     if(!a.count){a.first=a.last=timestamp;a.sequence_first=a.sequence_last=ticket.sample.sequence;
         a.ticket_first=a.ticket_last=ticket.id;
         a.residual8_min=a.residual8_max=r8;a.residual9_min=a.residual9_max=r9;}
@@ -1197,7 +1198,7 @@ void record_stereo_reference(const gears_submitted::FrameTicket& frame,long long
 }
 void print_stereo(FILE* file) {
     if(!stereo_xr)return;
-    std::lock_guard<std::mutex> lock(stereo_mutex);
+    std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);
     first_person_live::print(file);
     cover_camera_live::print(file);
     cover_input_live::print(file);
@@ -1833,7 +1834,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     path_choice_layout_observer::progress(output);
     path_choice_close_observer::progress(output);
     cover_body_live::progress(output);
-    {std::lock_guard<std::mutex> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);}
+    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);}
     weapon_hand_runtime::summary(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
@@ -1986,7 +1987,7 @@ void print_anchor(FILE* status,bool hooks_disabled){
 void print_origin_trial(FILE* status,bool hooks_disabled){
     if(!origin_trial_enabled){fprintf(status,"origin_trial enabled=0\n");return;}
     if(recording.load()||active.load()||!hooks_disabled){fprintf(status,"origin_trial enabled=1 available=0\n");return;}
-    std::lock_guard<std::mutex> lock(stereo_mutex);
+    std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);
     fprintf(status,"origin_trial enabled=1 available=1 schema=1 epoch_qpc=%lld frequency=%lld prepare_failed=%llu commit_failed=%llu duplicate_stages=%llu capacity_per_phase=12 sample_period_seconds=1 original_source_write_intended=0\n",
         origin_trial.epoch_qpc(),qpc_frequency,origin_prepare_failed.load(),origin_commit_failed.load(),origin_duplicate_stages);
     auto matrix=[&](const char* name,const void* bytes){fprintf(status," %s=",name);
@@ -3162,7 +3163,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
     if(stereo_xr){
         // Read once per attempted pair; both constructors and all later stages
         // use this frozen ticket, never a second live sample.
-        std::lock_guard<std::mutex> lock(stereo_mutex);gears_vr::StereoSample sample{};
+        std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);gears_vr::StereoSample sample{};
         poll_stereo_recenter();
         if(!stereo_bridge.read(sample)){++stereo_rejections[8];if(weapon_hand_runtime::enabled)cover_shared_input_live::invalidate(gears_weapon_hand::InvalidateReason::input_lost);return false;}
 #if defined(GEARS_RUNTIME_RENDER_SIZE) && GEARS_RUNTIME_RENDER_SIZE
@@ -3380,7 +3381,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
                 reinterpret_cast<uintptr_t>(sources.views[0]),reinterpret_cast<uintptr_t>(sources.views[1]));
         }
     }
-    if(stereo_xr&&frame.enabled){std::lock_guard<std::mutex> lock(stereo_mutex);auto timestamp=now();
+    if(stereo_xr&&frame.enabled){std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);auto timestamp=now();
         record_stereo_reference(frame,timestamp);
         if(!stereo_accepted){stereo_first_sample=frame.sample;stereo_reference=frame_reference;stereo_first_qpc=timestamp;stereo_first_ticket=frame.id;}
         ++stereo_accepted;stereo_last_sample=frame.sample;stereo_last_qpc=timestamp;stereo_last_ticket=frame.id;}
@@ -3520,7 +3521,7 @@ void* __fastcall hook_renderer(void* destination,void* family,void* canvas,void*
     }
     return result;
 }
-void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation,void* viewport,void* drawer) {
+void* __fastcall hook_scene_body(void* local,void* family,Vec* position,Rot* rotation,void* viewport,void* drawer) {
     Scope scope;if(!scope.world())return original_scene(local,family,position,rotation,viewport,drawer);service_session_stop_native();auto record=start_record(1,local,_ReturnAddress());
     auto crosshair_evidence=crosshair_live::scene(local);
     const bool anchor_observing=anchor_observer_enabled&&recording.load();
@@ -3590,6 +3591,13 @@ void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation
     scene_local=saved_local;scene_rotation=saved_rotation;scene_delta=saved_delta;
     scene_phase=saved_phase;scene_translation=saved_translation;scene_rotation_delta=saved_rotation_delta;
     enqueue(record);return result;
+}
+void* marked_scene_body(gears_native_context::SceneArguments const& args){
+    return hook_scene_body(args.local,args.family,static_cast<Vec*>(args.position),static_cast<Rot*>(args.rotation),args.viewport,args.drawer);
+}
+void* __fastcall hook_scene(void* local,void* family,Vec* position,Rot* rotation,void* viewport,void* drawer){
+    const gears_native_context::SceneArguments args{local,family,position,rotation,viewport,drawer};
+    return gears_native_context::invoke_scene(marked_scene_body,args);
 }
 void __fastcall hook_event(void* pc,Vec* position,Rot* rotation) {
     Scope scope;if(!scope.world())return original_event(pc,position,rotation);auto record=start_record(2,pc,_ReturnAddress());
