@@ -30,6 +30,15 @@ bool seal_session_hook_manifest(FILE* status){
         if(!found){fprintf(status,"hook_entry_manifest available=0 missing_ui_call_boundary=1\n");return false;}
     }
 #endif
+#if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
+    if(cover_body_live::enabled)for(unsigned i=0;i<cover_body_live::targets.size();++i){bool found=false;
+        for(unsigned j=0;j<hook_entry_proof_count;++j){auto const& proof=hook_entry_proofs[j];
+            if(proof.target==reinterpret_cast<uintptr_t>(cover_body_live::targets[i])&&
+               proof.detour==reinterpret_cast<uintptr_t>(cover_body_live::detours[i])&&
+               proof.original32==cover_body_live::signatures[i])found=true;}
+        if(!found){fprintf(status,"hook_entry_manifest available=0 missing_cover_body=%u\n",i);return false;}
+    }
+#endif
     FILETIME creation{},exit{},kernel{},user{};
     if(!hook_entry_proof_count||!GetProcessTimes(GetCurrentProcess(),&creation,&exit,&kernel,&user))return false;
     wchar_t temporary[MAX_PATH]{},destination[MAX_PATH]{};
