@@ -22,6 +22,11 @@
 #include "../vr-common/stereo_ticket_store.h"
 #include "render_cost.h"
 #include "atomic_status_file.h"
+#include "../vr-common/support_startup_trace.h"
+gears_startup::Trace support_startup;
+void support_status_io(const char* stage,bool entering,bool good,int crt_error,DWORD winerror) {
+    support_startup.record(stage,entering?"enter":"exit",good,crt_error,winerror);
+}
 #include "../vr-common/support_diagnostics.h"
 gears_support::Recorder support_diagnostics;
 #include "resource_resize_probe.h"
@@ -1337,10 +1342,14 @@ void write_swapchain_output_status(bool sample,const char* phase) {
     // Diagnostic only: query retained chain identities, never retain backbuffers
     // or invoke window operations. One writer spans prime -> native handoff.
     static std::mutex output_mutex;
+    support_startup.record("swapchain_writer_mutex","enter");
     std::lock_guard<std::mutex> writer(output_mutex);
+    support_startup.record("swapchain_writer_mutex","exit");
     std::array<gears_vr::ComPtr<IUnknown>,8> owners;
     if(sample){
+        support_startup.record("swapchain_binding_mutex","enter");
         std::lock_guard<std::mutex> lock(binding_owner_mutex);
+        support_startup.record("swapchain_binding_mutex","exit");
         for(size_t i=0;i<binding_owners.size();++i)if(binding_owners[i].chain){
             binding_owners[i].chain->AddRef();owners[i].Attach(binding_owners[i].chain);
         }
@@ -1353,7 +1362,10 @@ void write_swapchain_output_status(bool sample,const char* phase) {
     // even if cleanup releases the original binding while a query is in flight.
     for(auto const& owner:owners)if(owner){
         gears_vr::ComPtr<IDXGISwapChain> chain;DXGI_SWAP_CHAIN_DESC desc{};
-        if(FAILED(owner->QueryInterface(IID_PPV_ARGS(&chain)))||FAILED(chain->GetDesc(&desc)))continue;
+        const auto queried=support_startup.call("swapchain_query_interface",[&]{return owner->QueryInterface(IID_PPV_ARGS(&chain));});
+        if(FAILED(queried))continue;
+        const auto described=support_startup.call("swapchain_get_desc",[&]{return chain->GetDesc(&desc);});
+        if(FAILED(described))continue;
         DWORD pid{};if(desc.OutputWindow)GetWindowThreadProcessId(desc.OutputWindow,&pid);
         if(pid!=GetCurrentProcessId()||!desc.BufferDesc.Width||!desc.BufferDesc.Height||!desc.BufferCount)continue;
         ++candidates;identity=reinterpret_cast<uintptr_t>(owner.Get());window=reinterpret_cast<uintptr_t>(desc.OutputWindow);
@@ -1367,15 +1379,22 @@ void write_swapchain_output_status(bool sample,const char* phase) {
     auto slash=wcsrchr(path,L'\\');if(!slash)return;
     wcscpy_s(slash+1,MAX_PATH-static_cast<size_t>(slash+1-path),L"swapchain-output-status.txt");
     wchar_t temporary[MAX_PATH];if(swprintf_s(temporary,L"%s.tmp",path)<0)return;
-    FILE* output=_wfsopen(temporary,L"w",_SH_DENYWR);if(!output)return;
+    support_startup.record("swapchain_file_open","enter");
+    FILE* output=_wfsopen(temporary,L"w",_SH_DENYWR);
+    support_startup.record("swapchain_file_open","exit",output!=nullptr,output?0:errno);if(!output)return;
     fprintf(output,"schema=1 pid=%lu creation_time=%llu phase=%s valid=%u candidates=%u hwnd=%llu chain=%llu width=%u height=%u windowed=%u qpc=%lld qpc_frequency=%lld complete=1\n",
         GetCurrentProcessId(),creation_time,phase,valid?1u:0u,candidates,
         static_cast<unsigned long long>(valid?window:0),static_cast<unsigned long long>(valid?identity:0),
         valid?width:0,valid?height:0,valid&&windowed?1u:0u,qpc.QuadPart,frequency.QuadPart);
-    const bool written=fflush(output)==0;const bool closed=fclose(output)==0;
+    support_startup.record("swapchain_file_flush","enter");const bool written=fflush(output)==0;
+    support_startup.record("swapchain_file_flush","exit",written,written?0:errno);
+    support_startup.record("swapchain_file_close","enter");const bool closed=fclose(output)==0;
+    support_startup.record("swapchain_file_close","exit",closed,closed?0:errno);
     // A reader that holds the old file without delete sharing can defer this
     // update; consumers must reject stale QPC evidence in that case.
-    if(written&&closed)MoveFileExW(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH);
+    if(written&&closed){support_startup.record("swapchain_file_replace","enter");
+        const bool replaced=MoveFileExW(temporary,path,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=FALSE;
+        support_startup.record("swapchain_file_replace","exit",replaced,0,replaced?0:GetLastError());}
 }
 void frame_seen_list(uintptr_t identity) {
     if(!identity)return;
@@ -1800,18 +1819,20 @@ bool close_stereo_publisher() {
     return drained&&closed;
 }
 void write_session_status(bool resources_retained=true,bool entries_restored=false) {
-    if(!self_testing&&directory[0]){wchar_t support_path[MAX_PATH];swprintf_s(support_path,L"%s\\support-native-%lu.jsonl",directory,GetCurrentProcessId());support_diagnostics.flush(support_path);}
-    resources_retained=resources_retained||native_surface_probe_retained();
-    resources_retained=resources_retained||native_owned_probe_retained();
-    resources_retained=resources_retained||native_owned_scene_retained();
+    support_startup.record("session_status","enter");
+    if(!self_testing&&directory[0]){wchar_t support_path[MAX_PATH];swprintf_s(support_path,L"%s\\support-native-%lu.jsonl",directory,GetCurrentProcessId());support_startup.call("graphics_journal_flush",[&]{support_diagnostics.flush(support_path);});}
+    resources_retained=resources_retained||support_startup.call("native_surface_probe_retained",[&]{return native_surface_probe_retained();});
+    resources_retained=resources_retained||support_startup.call("native_owned_probe_retained",[&]{return native_owned_probe_retained();});
+    resources_retained=resources_retained||support_startup.call("native_owned_scene_retained",[&]{return native_owned_scene_retained();});
     resources_retained=resources_retained||cover_body_live::pending_count()!=0;
     resources_retained=resources_retained||weapon_hand_runtime::retained();
-    if(!continuous_session)return;
-    write_swapchain_output_status(recording.load()&&session_phase.load()==SessionPhase::running,"running");
+    if(!continuous_session){support_startup.record("session_status","exit");return;}
+    support_startup.call("swapchain_status",[&]{write_swapchain_output_status(recording.load()&&session_phase.load()==SessionPhase::running,"running");});
     wchar_t path[MAX_PATH];swprintf_s(path,L"%s\\session-status.txt",directory);
-    gears_status::AtomicFile publication(path);
+    gears_status::FileApi status_api{};status_api.observe=support_status_io;
+    gears_status::AtomicFile publication(path,status_api);
     FILE* output=publication.get();
-    if(!output){session_status_available=false;return;}
+    if(!output){session_status_available=false;support_startup.record("session_status","exit",false);return;}
     const char* phases[]={"running","stop_requested","native_closed","draining","stopped"};
     const char* reasons[]={"none","event","f8","focus_lost","proof_failure","owner_exited","owner_error"};
     auto phase=session_phase.load();auto reason=session_reason.load();
@@ -1825,14 +1846,14 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         resources_retained?1:0,entries_restored?1:0,session_native_services.load(),session_cancelled_builds.load(),stereo_publisher.frames.load(),simulator_operator);
     fprintf(output,"profile_consume_thread=%lu ",gears_render_cost::first_thread.load(std::memory_order_relaxed));
     fprintf(output,"activation_ready_qpc=%lld activation_qpc_frequency=%lld ",session_activation_ready_qpc.load(),qpc_frequency);
-    ui_scene_trial_live::progress(output);
-    owned_ui_live::progress(output);
+    support_startup.call("ui_scene_trial_live_progress",[&]{ui_scene_trial_live::progress(output);});
+    support_startup.call("owned_ui_live_progress",[&]{owned_ui_live::progress(output);});
 #if defined(GEARS_OWNED_UI_MATERIAL) && GEARS_OWNED_UI_MATERIAL
-    owned_material::progress(output);
+    support_startup.call("owned_material_progress",[&]{owned_material::progress(output);});
 #endif
-    path_choice_position_live::progress(output);
-    path_choice_layout_observer::progress(output);
-    path_choice_close_observer::progress(output);
+    support_startup.call("path_choice_position_live_progress",[&]{path_choice_position_live::progress(output);});
+    support_startup.call("path_choice_layout_observer_progress",[&]{path_choice_layout_observer::progress(output);});
+    support_startup.call("path_choice_close_observer_progress",[&]{path_choice_close_observer::progress(output);});
     cover_body_live::progress(output);
     {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);}
     weapon_hand_runtime::summary(output);
@@ -1842,12 +1863,12 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     fprintf(output,"telemetry_schema=1 telemetry_qpc=%lld telemetry_qpc_frequency=%lld telemetry_present_enabled=%u telemetry_present_calls=%llu telemetry_present_tests=%llu telemetry_present_failures=%llu ",
         now(),qpc_frequency,frame_link_diagnostics?1u:0u,frame_counts.presents.load(),
         frame_counts.tests.load(),frame_counts.present_failed.load());
-    owned_scene_gpu::print_progress(output);
+    support_startup.call("owned_scene_gpu_print_progress",[&]{owned_scene_gpu::print_progress(output);});
     fprintf(output,"support_capture_attempts=%llu support_capture_skipped=%llu support_publisher_state=%u support_publisher_busy=%u support_frame_unbound=%llu support_frame_changed=%llu ",
         stereo_publish_counts.capture_attempts.load(),stereo_publish_counts.capture_skipped.load(),stereo_publisher.state.load(),stereo_publisher.busy.load(),frame_counts.unbound.load(),frame_counts.changed.load());
-    native_owned_scene_progress(output);
+    support_startup.call("native_owned_scene_progress",[&]{native_owned_scene_progress(output);});
 #if defined(GEARS_DESKTOP_MIRROR) && GEARS_DESKTOP_MIRROR
-    const auto mirror=desktop_mirror.status();
+    const auto mirror=support_startup.call("desktop_mirror_status",[&]{return desktop_mirror.status();});
     fprintf(output,"mirror_state=%u mirror_captures=%llu mirror_presents=%llu mirror_stale=%llu mirror_busy=%llu mirror_inventory_rejected=%llu mirror_timeouts=%llu mirror_reason=%u mirror_held=%u mirror_format=%u mirror_async=%u mirror_pending_draws=%u mirror_wait_ns=%llu mirror_max_wait_ns=%llu ",
         mirror.state,mirror.captures,mirror.presents,mirror.stale,mirror.busy,mirror_inventory_rejected.load(),mirror.timeouts,static_cast<unsigned>(mirror.reason),mirror.destination_held?1:0,mirror.destination_format,
         gears_vr::DesktopMirror::asynchronous?1:0,mirror.pending_draws,mirror.wait_ns,mirror.max_wait_ns);
@@ -1861,26 +1882,27 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
         anchor_observer_enabled?1:0,anchor_submission_matched.load(),anchor_submission_rejected.load());
     fprintf(output,"unpossessed_submitted=%u unpossessed_first_ticket=%llu unpossessed_last_ticket=%llu ",
         unpossessed_submission_count.load(),unpossessed_first_ticket.load(),unpossessed_last_ticket.load());
-    death_source_live::progress(output);
-    death_hdr_pixels::progress(output);
-    vr_dof_compat::progress(output);
-    dlss_output_control::progress(output);
+    support_startup.call("death_source_live_progress",[&]{death_source_live::progress(output);});
+    support_startup.call("death_hdr_pixels_progress",[&]{death_hdr_pixels::progress(output);});
+    support_startup.call("vr_dof_compat_progress",[&]{vr_dof_compat::progress(output);});
+    support_startup.call("dlss_output_control_progress",[&]{dlss_output_control::progress(output);});
     fprintf(output,"world_generation=%llu world_candidate_generation=%llu world_prepare_requests=%llu world_prepare_rejected=%llu world_prepare_timestamp_request=%llu ",
         static_cast<unsigned long long>(frame_link.world_epoch()),static_cast<unsigned long long>(world_candidate_generation.load()),
         static_cast<unsigned long long>(world_prepare_requests.load()),static_cast<unsigned long long>(world_prepare_rejected.load()),
         static_cast<unsigned long long>(world_prepare_timestamp_request.load()));
-    left_view_history.print(output);
+    support_startup.call("left_view_history_print",[&]{left_view_history.print(output);});
     fprintf(output,"world_handoff_supported=%u world_handoff_phase=%u world_handoff_commits=%llu world_quiesce_requested=%u state_release_started=%u epoch_submit_total=%llu ",
         world_handoff_supported?1:0,
         world_handoff_phase.load(),static_cast<unsigned long long>(world_handoff_commits.load()),world_quiesce_requested.load()?1:0,
         state_release_started.load(),static_cast<unsigned long long>(epoch_submit_total.load()));
-    print_world_progress(output);
+    support_startup.call("print_world_progress",[&]{print_world_progress(output);});
     fprintf(output,"owner_pid=%lu owner_creation_time=%llu stop_reason=%s owner_exit_observed=%u owner_error_observed=%u\n",session_owner_pid,
         static_cast<unsigned long long>(session_owner_creation_time),reasons[static_cast<unsigned>(reason)],
         session_owner_exit_observed.load()?1:0,session_owner_error_observed.load()?1:0);
-    ngx_output_pixels::print_control(output);
+    support_startup.call("ngx_output_pixels_print_control",[&]{ngx_output_pixels::print_control(output);});
     fprintf(output,"complete=1\n"); // Last field, after every diagnostic producer.
     session_status_available=publication.commit();
+    support_startup.record("session_status","exit",session_status_available);
 }
 void print_anchor(FILE* status,bool hooks_disabled){
     fprintf(status,"anchor_submission_guard required=%u matched=%llu rejected=%llu policy=skip_unassociated_candidate\n",
@@ -4768,6 +4790,7 @@ void reset_world_thread_context(){
     reset_ui_world_tls();
 }
 DWORD WINAPI worker(void*) {
+    support_startup.initialize(directory);support_startup.record("worker_bootstrap","enter");
     desktop_mirror_readback::start_worker();
     ngx_mv_compute_capture::register_worker();
     ngx_root_signature_capture::register_worker();
@@ -5210,10 +5233,13 @@ DWORD WINAPI worker(void*) {
             const bool identified=GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user)!=FALSE;
             if(weapon_hand_runtime::enabled&&!weapon_hand_runtime::initialize(identified?gears_session::creation_time(created):0,uint64_t(session_started_qpc),GetCurrentThreadId()))
                 request_session_stop(SessionStop::proof_failure);}
+        support_startup.record("first_status","enter");
         write_session_status();
+        support_startup.record("first_status","exit",session_status_available);
         WorldRebindPrepareRequest world_rebind_request;
         if(!session_status_available||!stop_event)request_session_stop(SessionStop::proof_failure);
-        publish_session_activation_ready(session_status_available&&stop_event);
+        support_startup.call("publish_activation_ready",[&]{publish_session_activation_ready(session_status_available&&stop_event);});
+        support_startup.record("worker_bootstrap","exit");
         ULONGLONG next_status=0;
         gears_world::StatusCadence world_status;
         for(;;){

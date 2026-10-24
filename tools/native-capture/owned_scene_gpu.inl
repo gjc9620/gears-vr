@@ -628,12 +628,14 @@ void handoff_recreated(){
  handoff_prepared=handoff_gpu_drained=handoff_tracker_retired=handoff_rearmed=handoff_fault=false;
 }
 void print_progress(FILE* file){
- std::lock_guard<FrameHookMutex> lock(frame_hook_mutex);
+ auto lock=support_startup.acquire("owned_gpu_frame_lock",frame_hook_mutex);
+ const bool pending=support_startup.call("owned_gpu_pending_query",[&]{return tracker.has_unsubmitted_owned_events(resource);});
+ support_startup.record("owned_gpu_status_output","enter");
 #if defined(GEARS_NGX_OWNED_SCENE_TRIAL) && GEARS_NGX_OWNED_SCENE_TRIAL
  fprintf(file,"ngx_owned_candidate_discarded=%llu ",ngx_candidate_discarded);
 #endif
  fprintf(file,"owned_shutdown_started=%u owned_shutdown_closed=%u owned_shutdown_fence=%u owned_shutdown_hr=%ld owned_shutdown_unsubmitted=%u ",
-  shutdown_started?1:0,shutdown_closed?1:0,shutdown_fence.state(),long(shutdown_fence.error()),tracker.has_unsubmitted_owned_events(resource)?1:0);
+  shutdown_started?1:0,shutdown_closed?1:0,shutdown_fence.state(),long(shutdown_fence.error()),pending?1:0);
  fprintf(file,"owned_resource_cycles=%llu owned_resource_frames=%llu owned_handoff_prepared=%u owned_handoff_retired=%u owned_handoff_fault=%u ",
   resource_cycles,resource_consumed,unsigned(handoff_prepared),unsigned(handoff_tracker_retired),unsigned(handoff_fault));
 #if defined(GEARS_OWNED_SUBTITLE_PIXELS) && GEARS_OWNED_SUBTITLE_PIXELS
@@ -650,7 +652,9 @@ void print_progress(FILE* file){
  // can retain GPU resources, so keep the first list-creation fault in the
  // continuously written session status as well.
  {
-  std::lock_guard<std::mutex> failure_lock(list_creation_failure_mutex);
+  support_startup.record("owned_gpu_status_output","exit");
+  auto failure_lock=support_startup.acquire("owned_gpu_failure_lock",list_creation_failure_mutex);
+  support_startup.record("owned_gpu_failure_output","enter");
   const auto& f=list_creation_failure;
   fprintf(file,"owned_list_creation_count=%u owned_list_creation_closed=%u owned_list_creation_active=%u owned_list_creation_highwater=%u owned_list_creation_retired=%llu owned_list_creation_repeats=%llu owned_list_failure_subtype=%u owned_list_failure_hr=%08lx owned_list_failure_object=%llx owned_list_failure_identity=%llx owned_list_failure_open=%u owned_list_failure_count=%u owned_list_failure_tracker_called=%u owned_list_failure_before_active=%zu owned_list_failure_after_active=%zu owned_list_failure_before_overflow=%llu owned_list_failure_after_overflow=%llu ",
    list_creation_count,list_creation_closed,list_creation_active,list_creation_highwater,
@@ -658,6 +662,7 @@ void print_progress(FILE* file){
    static_cast<unsigned long long>(f.object),static_cast<unsigned long long>(f.identity),
    f.open?1u:0u,f.count,f.tracker_called?1u:0u,f.before.active_lists,f.after.active_lists,
    static_cast<unsigned long long>(f.before.list_overflow),static_cast<unsigned long long>(f.after.list_overflow));
+  support_startup.record("owned_gpu_failure_output","exit");
  }
 }
 void print(FILE* file){

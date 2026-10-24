@@ -1176,3 +1176,7 @@ add_test(NAME NgxMvComputeBindingTest COMMAND NgxMvComputeBindingTest)
 add_executable(NgxRootSignatureProvenanceTest ngx_root_signature_provenance_test.cpp)
 target_compile_options(NgxRootSignatureProvenanceTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_test(NAME NgxRootSignatureProvenanceTest COMMAND NgxRootSignatureProvenanceTest)
+
+add_executable(SupportStartupTraceTest ../vr-common/support_startup_trace_test.cpp)
+target_compile_options(SupportStartupTraceTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+target_compile_definitions(SupportStartupTraceTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
