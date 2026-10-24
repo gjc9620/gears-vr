@@ -995,6 +995,12 @@ void component_cancel_forward(){component::lease.cancel_forward();}
 bool component_has_interval(){return component::lease.has_snapshot();}
 bool component_forward_open(){return !component_continuous::state.closed&&!component_continuous::state.terminal;}
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+bool component_pause_owner_healthy(){
+    return component::lease.has_snapshot()&&!component::lease.forward_stopped()&&!component::lease.faulted()&&
+        !component::lease.relinquished()&&!component::lease.revoked_mask()&&component::mount.bound();
+}
+#endif
 bool component_hand_only_ready(){
     auto const& lifecycle=component_continuous::state;
     const bool waiting=lifecycle.interval==component_continuous::Interval::waiting&&!lifecycle.closed;

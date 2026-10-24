@@ -398,6 +398,12 @@ struct State {
     std::uint64_t seen{},dropped{};
     unsigned count{},open{};
     bool dumped{},counter_saturated{};
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    component_trace::AuthObservation first_post_authorization{};
+    std::uint64_t rejected_post_authorizations{},post_sequence{},post_revision{};
+    unsigned post_lease{},post_phase{},post_mask{};
+    bool post_rejection_known{},post_cutoff_expired{},post_pause_requested{};
+#endif
 };
 State state;
 thread_local Row* active{};
@@ -442,6 +448,18 @@ struct Span {
 template<class F>bool test(Stage stage,F&& call){
     Span span(stage);const bool result=call();span.finish(result);return result;
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+void rejected_authorization(component_trace::AuthObservation const& observation,
+    gears_hand_stream::Plan const& plan,unsigned lease,unsigned phase,unsigned mask,bool expired,bool paused){
+    if(!observation.known||observation.value.result==mask)return;
+    increment(state.rejected_post_authorizations);
+    if(state.post_rejection_known)return;
+    state.post_rejection_known=true;state.first_post_authorization=observation;
+    state.post_sequence=plan.ticket.sequence;state.post_revision=plan.revision;
+    state.post_lease=lease;state.post_phase=phase;state.post_mask=mask;
+    state.post_cutoff_expired=expired;state.post_pause_requested=paused;
+}
+#endif
 void dump(bool clean){
     if(!clean||!state.count||state.dumped||state.open||active||dual_draining||!log_file)return;
     state.dumped=true;LARGE_INTEGER value{};
@@ -459,6 +477,21 @@ void dump(bool clean){
                 unsigned(frequency&&(row.qpc_known&bit)),row.begin[j],row.finish[j],frequency);
         }
     }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    if(state.post_rejection_known){
+        auto const& auth=state.first_post_authorization.value;
+        fwprintf(log_file,L"hand_post_component_authorization_rejection schema=1 count=%llu "
+            L"sequence=%llu revision=%llu lease=%u phase=%u intended_mask=%u observation_known=%u "
+            L"early_cutoff_expired=%u pause_requested=%u policy_checks_complete=0 grants_write_authority=0 "
+            L"auth_fields_known=%u auth_checked=%u auth_rejected=%u now=%llu live_now=%llu commit_now=%llu "
+            L"write_until=%llu authorize_ns=%lld commit_ns=%lld ticket_ms=%llu plan_ms=%llu context_ms=%llu "
+            L"stereo_ns=%lld input_ns=%lld policy_mask=%u returned_mask=%u\n",
+            state.rejected_post_authorizations,state.post_sequence,state.post_revision,state.post_lease,state.post_phase,state.post_mask,
+            unsigned(state.first_post_authorization.known),unsigned(state.post_cutoff_expired),unsigned(state.post_pause_requested),
+            auth.known,auth.checked,auth.rejected,auth.now,auth.live_now,auth.commit_now,auth.write_until,
+            auth.authorize_ns,auth.commit_ns,auth.ticket_ms,auth.plan_ms,auth.context_ms,auth.stereo_ns,auth.input_ns,auth.mask,auth.result);
+    }
+#endif
     fwprintf(log_file,L"hand_weapon_component_tail_cost_end schema=1\n");fflush(log_file);
 }
 } // namespace component_tail_cost
@@ -529,6 +562,62 @@ unsigned authorize_current_xr_plan(gears_hand_stream::Plan const& plan,
 #endif
     return authorize_xr_plan(plan,context,now,write_until);
 }
+
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+// POST_COMPONENT_CUTOFF_CLASSIFY_BEGIN
+// A recorded early cutoff permits only ordered handback. The policy, Stop and
+// shutdown branches after that cutoff were not reached; this never certifies
+// them or supplies a new receipt, clock, permission or session/recording start.
+bool post_component_cutoff_expired(component_trace::AuthObservation const& observation,
+    gears_hand_stream::Plan const& plan,gears_hand_stream::Context const& context,unsigned mask){
+    auto const& auth=observation.value;
+    if(!observation.known||auth.known!=67u||auth.checked!=3u||auth.rejected!=2u||auth.mask||auth.result||
+       auth.commit_now||auth.authorize_ns||auth.commit_ns||!mask||(mask&~3u)||!(mask&2u)||
+       !plan.has_ticket||!plan.revision||plan.accept_mask!=mask||!plan.context.idle_ready||!plan.context.clean||
+       !context.idle_ready||!context.clean||!gears_hand_stream::same(plan.context.game,context.game)||
+       plan.context.expected_native_world_generation!=context.expected_native_world_generation||
+       plan.context.action_epoch!=context.action_epoch||context.observed_ms<plan.context.observed_ms||
+       auth.ticket_ms!=plan.ticket.created_ms||
+       auth.plan_ms!=plan.context.observed_ms||auth.context_ms!=context.observed_ms||
+       auth.stereo_ns!=plan.ticket.certificate.stereo_received_ns||
+       auth.input_ns!=plan.ticket.certificate.input_received_ns||
+       auth.live_now<auth.now||plan.observed_now>auth.now||auth.ticket_ms>auth.now||
+       auth.plan_ms>auth.now||auth.context_ms>auth.now)return false;
+    std::uint64_t cutoff{};
+    return gears_hand_session::write_until(auth.ticket_ms,auth.plan_ms,auth.context_ms,cutoff)&&
+        auth.write_until==cutoff&&auth.live_now>cutoff;
+}
+struct PostComponentHandStamp {
+    unsigned setters{},targets{},restores{},extras{},applied{},hand_leases{};
+};
+PostComponentHandStamp post_component_hand_stamp(){
+    return {trial.setter_calls,trial.target_writes,trial.restored,trial.tail_field_writes,
+        trial.applied_mask,leases.load(std::memory_order_acquire)};
+}
+bool post_component_pause_ready(PostComponentHandStamp const& before,
+    gears_hand_stream::Plan const& plan,gears_hand_stream::Context const& context,unsigned mask,
+    component_continuous::Mode mode,unsigned equipment_phase){
+    auto const after=post_component_hand_stamp();auto const& lifecycle=component_continuous::state;
+    if(!mask||(mask&~3u)||!(mask&2u)||mode!=component_continuous::Mode::joint||equipment_phase!=1||trial.xr_equipment_phase!=1||
+       !active_visible.load(std::memory_order_acquire)||GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire)||
+       !component_forward_open()||!component_pause_owner_healthy()||trial.ended||trial.phase!=2||!trial.xr_ready||!trial.anchored||
+       trial.epoch!=plan.context.action_epoch||trial.tick_epoch!=trial.epoch||context.action_epoch!=trial.epoch||
+       trial.xr_policy.certified_failed()||(trial.xr_policy.bound_mask()&mask)!=mask||
+       trial.lease.dirty()||trial.lease.faulted()||trial.lease.busy()||trial.lease.restoring()||
+       trial.releasing||dual_draining||hand_writes_relinquished||trial.tail_revoked_mask||component_faulted()||
+       !lifecycle.begun||!lifecycle.resume_stable||!lifecycle.interval_id||
+       lifecycle.interval!=component_continuous::Interval::owned||lifecycle.closed||lifecycle.terminal||
+       lifecycle.failure_known||lifecycle.cleanup_failed||lifecycle.deferred||lifecycle.finishing||
+       lifecycle.action_depth||!lifecycle.operation_depth||lifecycle.drain_attempted||lifecycle.hand_only_journal||!component_has_interval()||
+       before.setters!=after.setters||before.targets!=after.targets||before.restores!=after.restores||
+       before.extras!=after.extras||before.applied!=after.applied||before.hand_leases!=after.hand_leases||
+       stop_requested.load(std::memory_order_acquire)||shutdown_requested.load(std::memory_order_acquire))return false;
+    for(unsigned hand=0;hand<2;++hand)
+        if((mask&(1u<<hand))&&!trial.xr_binding[hand].bound())return false;
+    return true;
+}
+// POST_COMPONENT_CUTOFF_CLASSIFY_END
+#endif
 
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
 // Classification of this original call only; no pose/write authority or new clock.
@@ -1248,6 +1337,9 @@ void post_tick(uptr pc){
     component_names::Scope restore_prefix_names_scope(prefix_names_scope.saved);
 #endif
     safe_to_unload.store(false,std::memory_order_release);
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    const auto before_component_hand=post_component_hand_stamp();
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     if(continuous_tick.mode==component_continuous::Mode::joint)
 #endif
@@ -1259,6 +1351,10 @@ void post_tick(uptr pc){
     // and certify this exact Plan after the entire component transaction.
     Snapshot after_component{};
     bool after_component_valid{};
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    component_trace::AuthObservation after_component_authorization{};
+    gears_hand_stream::Context after_component_context{};
+#endif
     {
         component_tail_cost::Attempt timing(plan.ticket.sequence,plan.revision,lease,equipment_phase,mask);
         component_names::Scope names_scope(equipment_phase==1&&(mask&2));
@@ -1277,10 +1373,32 @@ void post_tick(uptr pc){
 #endif
                 component_tail_cost::test(component_tail_cost::Stage::owned,[&]{return component_owned(true);}))&&
             component_tail_cost::test(component_tail_cost::Stage::authorize,[&]{
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+                after_component_context=xr_context(after_component,trial.xr_ready);
+                struct Capture {
+                    component_trace::AuthObservation* previous;
+                    explicit Capture(component_trace::AuthObservation& destination):previous(component_trace::observed_authorization){
+                        component_trace::observed_authorization=&destination;
+                    }
+                    ~Capture(){component_trace::observed_authorization=previous;}
+                } capture(after_component_authorization);
+                return authorize_current_xr_plan(plan,after_component_context,GetTickCount64())==mask;
+#else
                 return authorize_current_xr_plan(plan,xr_context(after_component,trial.xr_ready),GetTickCount64())==mask;
+#endif
             });
     }
     if(!after_component_valid){
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+        const bool cutoff_expired=post_component_cutoff_expired(after_component_authorization,plan,after_component_context,mask);
+        bool pause_requested{};
+        if(cutoff_expired&&post_component_pause_ready(before_component_hand,plan,after_component_context,mask,continuous_tick.mode,equipment_phase)){
+            component_continuous::suspend_interval(L"persistent_post_component_cutoff",true);
+            pause_requested=component_continuous::pause_pending();
+        }
+        component_tail_cost::rejected_authorization(after_component_authorization,plan,lease,equipment_phase,mask,cutoff_expired,pause_requested);
+        if(pause_requested){continuous_tick.suspending=true;return;}
+#endif
         drain_journals(L"hand_reauthorize_after_component");
         end(journals_dirty()?8:7,L"hand_reauthorize_after_component");return;
     }

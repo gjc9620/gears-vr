@@ -152,6 +152,9 @@ bool component_forward_open();
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
 bool component_resume_interval();
 bool component_hand_only_ready();
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+bool component_pause_owner_healthy();
+#endif
 bool component_after_hand_only(Snapshot const&,Snapshot const&,unsigned,unsigned,unsigned,unsigned,unsigned,
                                std::array<policy::Target,4> const&);
 #endif

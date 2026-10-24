@@ -472,3 +472,25 @@ root与Astra完成源码审查后，仅构建并运行新增实际CMake目标 Ha
 冻结786作者源／27依赖后，首次新开关OFF五份实际运行源的两次/EP非空行字节比较通过；首次完整严格构建因新局部名遮蔽已有original／observed而被/WX拒绝，字段测试未执行。原源码、日志和失败保留。R2仅改三文件局部标识符，逐行逆向替换与首次冻结文本完全一致；新OFF对比再次通过，完整PG及HandTailFieldsTest严格构建通过，C++17／W4／WX／EHsc／MT与实际两个Release工程核对，23个导出保持，DLL `459e0f67…934bf`。
 
 实际reader和最后compare-write直接由独立内存测试include，15类／198项检查通过；覆盖非历史偏移／mask、schema和身份变化、坏Enum／Vector／Bool／字段交叠、未知结果不发布、四字段精确写入、三个强度晚到非零／-0／NaN、stale expected、共享字新变化位保留，以及本进程PAGE_NOACCESS／空地址拒绝。registry／名称／field／copy-denial是明确的模拟服务，未证明游戏UObject ABI、完整Backend生命周期或物理显示。R2结果 `0e57ad3e…3a9a2` 在忽略的 `analysis/hand-tail-engine-build-20261024aj-r2/`。原370项与旧539项未重复；未启动新游戏、重建Native／XR／loader或安装默认入口。后续必须以新候选验证后续Tick手掌、原动作恢复、手臂蒙皮、手—枪与后坐力；完整12武器和真实0.7伤害仍未完成。
+
+## 2026-10-24 — AK 新候选首次运行：后置授权拒绝，手骨零写入
+
+冻结 AJ 严格 DLL `459e0f67…934bf`，786 作者源／27 依赖／509 候选文件，保留旧 Native／XR／loader。新审计器逐包验证位置目标、选手 mask、部分写 journal、独立计数和共享字其他位；先完整校验八份实际类型观察，才在内存副本中精确移除八个新键交给原严格核心，其他键及全部旧断言保持。46 项离线检查通过，其中实际已存类型观察与合成审计包不构成游戏证据。root 首次检查脚本误计函数数量而失败：实际是 16 函数及 1 类，13 函数及该类原样保留、另两正文保留为别名；首份失败保留，仅修正计数再做 AST 比较，45 项已通过的实际审计检查没有重复执行。
+
+三次新鲜空闲清单后，只运行一次静音、behind、observe-only 的 Steam 购买版，物理后台手柄输入关闭。首个 component interval 提交一次后，尾部 snapshot、guards、component_owned 与其 live_read 均返回真，随后同一 Plan 的 authorize 返回零，以 `hand_reauthorize_after_component`／终态8结束；没有执行8条姿态命令，hand leases／setter／target／新增平移写入均为0。同一 QPC 来源的记录显示，尾 snapshot 入口证书源龄约101.3501ms、authorize入口约110.6981ms，原100ms条件已不可能满足；精确 Auth 包被后续恢复事件覆盖，不能将时间推导冒充实际第一个 reject bit，也没有证明是新 reader 的特定操作造成超时。
+
+独立比较确认完整8控件连同八份类型观察前后相等，3组component与44字节挂接恢复、无入口恢复错误；component累计1提交／1恢复、failure Stop0／Shutdown0、音频8恢复且pending0。确切owner／game／XR只读核对均不存在，独立Native／XR子会话通过且XR exit0。正式 passed=false、cleanup_passed=false 原样保留：失败fallback没有正常计划Stop的完整顺序，零完成手部lease不通过新增采样审计。AK75文件封存 `8ada9ae7…93e40`，root-result `a8a60e82…fde82`，私有记录在忽略的 `analysis/hand-mesh-runtime-1024ak/`。
+
+后续检查原输入过期后的有序恢复／新票据重接与拒绝原因保留，不能放宽100ms、把新票据塞入旧Plan或重启原15s预算。本局没有验证末端平移的原生消费或解决伸手位置；未安装默认启动器，全部12武器、真实0.7／1.0伤害与头显验收仍未完成。
+
+## 2026-10-24 — AL 限定后置截止交还，修后运行待做
+
+仅在现有 TAIL 实验开关内加入原授权观察与交还分支。捕获原调用一次的 Auth，TLS 立即还原；只分类实际 `known67/checked3/rejected2`、零返回且后续时钟尚未执行的早期 cutoff 过期，同原 Plan／context／证书时间和最早三戳+100 截止精确匹配，拒绝未来／倒退时间。它只允许有序交还，不代表未执行的 policy 条件通过。实际 snapshot／guards／component_owned 均先通过、joint phase1、原 owner／mount／epoch／ready／绑定／Stop 等仍健康，本次手骨和扩展写入／恢复／lease计数均未变，才请求既有 age suspend；只有 pause_pending 成立才 suspending 返回，不标 committed。原 PostTick 零depth 后才按原顺序恢复，失败仍 sticky；新 Tick 仍须新 Plan、稳定门及原身份／资产检查。
+
+Astra 源审发现并修正两点：原 restore 保留历史 applied_mask，因此只比较前后相同，不要求零；后置 context 不得早于 Plan context。独立首拒绝包保存在八行计时容量之外，记录来源、原字段和是否请求暂停，仅经原清理后的 dump 输出；不把它误称最后一次终止原因。没有 reader 优化、增加授权调用／getters／时钟、票据替换、记录期重启或默认行为变更。源审 `3a2d55b7…a31b` 通过。此前15s／256在persistent模式中是记录封顶；实际runner仍保留原15s外部预算与3s清理预留，不扩大任何一项。
+
+一次新受影响 fixture 严格编译运行通过12类／315项，22个实际源码片段及6份完整输入逐字绑定，包含真实 Policy首绑3、真实原授权短路、历史applied3、context倒退、其他Auth拒绝、手部计数／owner撤权、动作／Stop、原 suspend／PostTick／finish 的零depth与失败sticky。时钟／lease方法／受控drain／计数finalize仍是声明过的主机服务，未覆盖原生writer恢复、完整finalize或整个XR回调。CPU结果 `f7c2c414…a0f8c` 位于忽略的 `analysis/hand-tail-post-cutoff-cpu-20261024al/`；原198／370／539通过项未重跑。
+
+冻结786源／27依赖，唯一新OFF两次/EP的五份实际运行源非空行相等；完整PG严格构建与23导出均通过，DLL `884d9f0b…9356a`。root构建记录器在最后源树复核处误用路径下标而报错，四条实际构建／OFF／导出命令均已返回0；首次错误保留，仅修正记录环节并核对冻结与实际源字节，不重复构建／预处理／CPU。最终结果 `d35b1905…85c95` 在忽略的 `analysis/hand-tail-post-cutoff-build-20261024al/result-r2.json`。修后候选尚未运行游戏，不声称解决100ms耗时来源、手掌位置或实际平移消费；无Native／XR／loader重建或默认安装。
+
+并行有界伤害证据盘点仅使用33份已存直接输入，定位瞬发原 getter 经原修改／整数转换到 TakeDamage，以及 Gnasher按命中对象汇总和投射物返回前Init／爆炸多目标的关联边界；实际 ReturnParm／Result ABI与逐发身份未证实，未写0.7 hook。报告 `846c15a8…68e29` 位于忽略的 `analysis/weapon-grip-damage-evidence-20261024ak/`，不是实际伤害验证。
