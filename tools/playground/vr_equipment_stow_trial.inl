@@ -321,10 +321,12 @@ bool acquire(Key const& expected,ULONGLONG until){
         reinterpret_cast<void*>(expected.objects[6].address),epoch);fflush(log_file);}
     return ok;
 }
-void finish_pending(bool success,const wchar_t* reason,WeaponState state){
+struct PendingFinishResult {bool completed{},hands_clean{};};
+PendingFinishResult finish_pending_checked(bool success,const wchar_t* reason,WeaponState state){
     const auto slot=pending_slot;
-    if(slot>=4)return;
-    if(!success&&!yield_hands(reason))stop_requested=true;
+    if(slot>=4)return {};
+    const bool hands_clean=success||yield_hands(reason);
+    if(!hands_clean)stop_requested=true;
     const auto weapon=pending.key().objects[6].address;
     if(success)model=pending_model;else model.reset();
     const unsigned result=success?10u:12u;
@@ -343,6 +345,10 @@ void finish_pending(bool success,const wchar_t* reason,WeaponState state){
     pending_slot=4;pending_down_mask=0;pending_until=0;pending_model.reset();pending_from_grip=false;
     switch_requests.complete();
     pending_visible.store(false,std::memory_order_release);
+    return {true,hands_clean};
+}
+void finish_pending(bool success,const wchar_t* reason,WeaponState state){
+    (void)finish_pending_checked(success,reason,state);
 }
 enum class Transition:unsigned {failed,complete,deferred};
 Transition transition(uptr pc,gears_weapon::EquipmentSnapshot const& game,bool holster,
@@ -435,11 +441,12 @@ bool related(uptr object){
     return playground::instance(object,L"WarSpecialMove")&&
         pointer(object,L"PawnOwner",owner)&&owner==playground::arena_pawn;
 }
-void before_action(uptr object,uptr function){
+enum class BeforeActionOutcome {ignored,pending_state_exempt,clean,unresolved};
+BeforeActionOutcome before_action_checked(uptr object,uptr function){
     if((!dirty_visible.load(std::memory_order_acquire)&&!pending_visible.load(std::memory_order_acquire))||
        GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire)||mutating||
-       (!lease.dirty()&&!pending.active())||!registered(function)||!related(object))return;
-    wchar_t label[96]{};if(!name(function,label,96))return;
+       (!lease.dirty()&&!pending.active())||!registered(function)||!related(object))return BeforeActionOutcome::ignored;
+    wchar_t label[96]{};if(!name(function,label,96))return BeforeActionOutcome::ignored;
     constexpr const wchar_t* actions[]={L"SetWeaponTemporarilyHolstered",L"HolsterWeaponTemporarily",
         L"SetWeaponFromSlot",L"SetCurrentWeapon",L"ChangedWeapon",L"ClientWeaponSet",
         L"AttachWeaponToHand",L"DetachWeapon",L"AttachWeaponToSlot",L"DetachWeaponFromSlot",
@@ -450,7 +457,7 @@ void before_action(uptr object,uptr function){
         L"BeginState",L"EndState",L"ForceReload",L"Died",L"Destroyed"};
     bool watched=false;for(const auto action:actions)if(!wcscmp(label,action)){watched=true;break;}
     if(pending.active()&&(!wcscmp(label,L"ButtonPress")||!wcscmp(label,L"ButtonRelease")))watched=true;
-    if(!watched)return;
+    if(!watched)return BeforeActionOutcome::ignored;
     if(pending.active()){
         // Only this Hammerburst's natural firing state exit may finish while
         // waiting. A similarly named action on Pawn/PC is not an exemption.
@@ -461,16 +468,23 @@ void before_action(uptr object,uptr function){
             if(can_wait(object,state)){
                 if(log_file){fwprintf(log_file,L"equipment_stow_pending_state function=%ls state=%u epoch=%llu\n",
                     label,unsigned(state),epoch);fflush(log_file);}
-                return;
+                return BeforeActionOutcome::pending_state_exempt;
             }
         }
-        finish_pending(false,label,WeaponState::unknown);++epoch;
-        return;
+        const auto finished=finish_pending_checked(false,label,WeaponState::unknown);++epoch;
+        return finished.completed&&finished.hands_clean&&!pending.active()&&pending_slot==4&&
+            !pending_visible.load(std::memory_order_acquire)&&!lease.dirty()&&!lease.faulted()&&
+            !dirty_visible.load(std::memory_order_acquire)?BeforeActionOutcome::clean:BeforeActionOutcome::unresolved;
     }
     const bool restored=restore(L"before_original_action");
     ++epoch; // This lease is never reopened after handing control to the game.
     if(log_file){fwprintf(log_file,L"equipment_stow_action function=%ls restored=%u dirty=%u epoch=%llu\n",
         label,unsigned(restored),unsigned(lease.dirty()),epoch);fflush(log_file);}
+    return restored&&!lease.dirty()&&!lease.faulted()&&!dirty_visible.load(std::memory_order_acquire)&&
+        !pending.active()&&!pending_visible.load(std::memory_order_acquire)?BeforeActionOutcome::clean:BeforeActionOutcome::unresolved;
+}
+void before_action(uptr object,uptr function){
+    (void)before_action_checked(object,function);
 }
 void tick(){
     if(!lease.dirty())return;

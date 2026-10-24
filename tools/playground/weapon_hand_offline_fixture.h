@@ -21,6 +21,9 @@
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
 #include "../vr-common/weapon_action_gate.h"
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+#include "../vr-common/weapon_boundary_admission.h"
+#endif
 #ifdef NDEBUG
 #error WeaponHandClientOfflineTest requires active assertions
 #endif
@@ -52,6 +55,14 @@ bool local_quiescent() noexcept;
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
 namespace weaponaction {
 gears_weapon_hand::Reply attach(void*) noexcept;
+bool detached() noexcept;
+bool local_quiescent() noexcept;
+}
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+namespace weaponboundary {
+gears_weapon_hand::Reply attach(void*) noexcept;
+void seal() noexcept;
 bool detached() noexcept;
 bool local_quiescent() noexcept;
 }

@@ -237,6 +237,10 @@ abi::Reply start(HMODULE requested) noexcept {
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
     if(!executable(GetProcAddress(held,gears_weapon_action::attach_export),held)){FreeLibrary(held);return abi::Reply::unavailable;}
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+    for(auto export_name:{gears_weapon_boundary::revoke_export,gears_weapon_boundary::open_export,gears_weapon_boundary::close_export})
+        if(!executable(GetProcAddress(held,export_name),held)){FreeLibrary(held);return abi::Reply::unavailable;}
+#endif
     FILETIME created{},exited{},kernel{},user{};
     if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user)){FreeLibrary(held);return abi::Reply::unavailable;}
     const auto birth=(std::uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime;
@@ -253,6 +257,9 @@ abi::Reply start(HMODULE requested) noexcept {
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
         if(attached==abi::Reply::accepted)attached=weaponaction::attach(held);
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+        if(attached==abi::Reply::accepted)attached=weaponboundary::attach(held);
+#endif
         if(attached!=abi::Reply::accepted)client.begin_disconnect();
         return attached;
     }
@@ -260,8 +267,15 @@ abi::Reply start(HMODULE requested) noexcept {
     return outcome;
 }
 abi::Reply stop() noexcept {
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+    if(current_gt(nullptr))return abi::Reply::reentrant;
+    weaponboundary::seal();
+#endif
     const auto begun=client.begin_disconnect();
     if(begun==abi::Reply::quiescent){
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+        if(!weaponboundary::local_quiescent())return abi::Reply::draining;
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
         if(!weaponaction::local_quiescent())return abi::Reply::draining;
 #endif
@@ -270,6 +284,9 @@ abi::Reply stop() noexcept {
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
         if(!weaponaction::detached())return abi::Reply::draining;
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+        if(!weaponboundary::detached())return abi::Reply::draining;
 #endif
         if(native_module){
             if(!FreeLibrary(native_module))return abi::Reply::unavailable;
@@ -290,6 +307,9 @@ abi::Reply stop() noexcept {
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
     if(!weaponaction::local_quiescent())return abi::Reply::draining;
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+    if(!weaponboundary::local_quiescent())return abi::Reply::draining;
+#endif
     const auto finished=client.finish_disconnect(cookie);
     if(finished!=abi::Reply::quiescent)return finished;
 #if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
@@ -297,6 +317,9 @@ abi::Reply stop() noexcept {
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
     if(!weaponaction::detached())return abi::Reply::draining;
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+    if(!weaponboundary::detached())return abi::Reply::draining;
 #endif
     if(!FreeLibrary(native_module))return abi::Reply::unavailable;
     native_module=nullptr;host_unregister=nullptr;native_quiescent=false;return abi::Reply::quiescent;

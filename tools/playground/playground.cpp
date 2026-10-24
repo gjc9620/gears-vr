@@ -10,6 +10,18 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+#if !defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
+#error External boundary requires the existing hand/call/Gate registration
+#endif
+#include "../vr-common/weapon_boundary_admission.h"
+namespace {namespace weaponboundary {
+gears_weapon_hand::Reply attach(void*) noexcept;
+void seal() noexcept;
+bool detached() noexcept;
+bool local_quiescent() noexcept;
+}}
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
 #if !defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
 #error ActionGate requires the existing hand/call registration
@@ -983,6 +995,9 @@ namespace handstream {
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
 #include "weapon_action_subscriber.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+#include "weapon_action_boundary_client.inl"
 #endif
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
