@@ -531,7 +531,7 @@ struct State {
     component_trace::AuthObservation first_post_authorization{};
     std::uint64_t rejected_post_authorizations{},post_sequence{},post_revision{};
     unsigned post_lease{},post_phase{},post_mask{};
-    bool post_rejection_known{},post_cutoff_expired{},post_pause_requested{};
+    bool post_rejection_known{},post_cutoff_expired{},post_pause_requested{},post_ns_source_expired{};
 #endif
 };
 State state;
@@ -579,14 +579,14 @@ template<class F>bool test(Stage stage,F&& call){
 }
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
 void rejected_authorization(component_trace::AuthObservation const& observation,
-    gears_hand_stream::Plan const& plan,unsigned lease,unsigned phase,unsigned mask,bool expired,bool paused){
+    gears_hand_stream::Plan const& plan,unsigned lease,unsigned phase,unsigned mask,bool expired,bool paused,bool ns_expired=false){
     if(!observation.known||observation.value.result==mask)return;
     increment(state.rejected_post_authorizations);
     if(state.post_rejection_known)return;
     state.post_rejection_known=true;state.first_post_authorization=observation;
     state.post_sequence=plan.ticket.sequence;state.post_revision=plan.revision;
     state.post_lease=lease;state.post_phase=phase;state.post_mask=mask;
-    state.post_cutoff_expired=expired;state.post_pause_requested=paused;
+    state.post_cutoff_expired=expired;state.post_pause_requested=paused;state.post_ns_source_expired=ns_expired;
 }
 #endif
 void dump(bool clean){
@@ -611,12 +611,12 @@ void dump(bool clean){
         auto const& auth=state.first_post_authorization.value;
         fwprintf(log_file,L"hand_post_component_authorization_rejection schema=1 count=%llu "
             L"sequence=%llu revision=%llu lease=%u phase=%u intended_mask=%u observation_known=%u "
-            L"early_cutoff_expired=%u pause_requested=%u policy_checks_complete=0 grants_write_authority=0 "
+            L"early_cutoff_expired=%u ns_source_expired=%u pause_requested=%u policy_checks_complete=0 grants_write_authority=0 "
             L"auth_fields_known=%u auth_checked=%u auth_rejected=%u now=%llu live_now=%llu commit_now=%llu "
             L"write_until=%llu authorize_ns=%lld commit_ns=%lld ticket_ms=%llu plan_ms=%llu context_ms=%llu "
             L"stereo_ns=%lld input_ns=%lld policy_mask=%u returned_mask=%u\n",
             state.rejected_post_authorizations,state.post_sequence,state.post_revision,state.post_lease,state.post_phase,state.post_mask,
-            unsigned(state.first_post_authorization.known),unsigned(state.post_cutoff_expired),unsigned(state.post_pause_requested),
+            unsigned(state.first_post_authorization.known),unsigned(state.post_cutoff_expired),unsigned(state.post_ns_source_expired),unsigned(state.post_pause_requested),
             auth.known,auth.checked,auth.rejected,auth.now,auth.live_now,auth.commit_now,auth.write_until,
             auth.authorize_ns,auth.commit_ns,auth.ticket_ms,auth.plan_ms,auth.context_ms,auth.stereo_ns,auth.input_ns,auth.mask,auth.result);
     }
@@ -715,6 +715,34 @@ bool post_component_cutoff_expired(component_trace::AuthObservation const& obser
     std::uint64_t cutoff{};
     return gears_hand_session::write_until(auth.ticket_ms,auth.plan_ms,auth.context_ms,cutoff)&&
         auth.write_until==cutoff&&auth.live_now>cutoff;
+}
+// A different, exact recorded outcome: source times were already older than
+// 100ms at the original NS authorization. Policy's internal cause and the
+// later Stop/Shutdown branches remain unknown. This permits handback only;
+// pause_ready independently checks current health and cancellation below.
+bool post_component_ns_source_expired(component_trace::AuthObservation const& observation,
+    gears_hand_stream::Plan const& plan,gears_hand_stream::Context const& context,unsigned mask){
+    auto const& auth=observation.value;auto const& certificate=plan.ticket.certificate;
+    if(!observation.known||auth.known!=127u||auth.checked!=2047u||auth.rejected!=1024u||auth.mask||auth.result||
+       !mask||(mask&~3u)||!(mask&2u)||!plan.has_ticket||!plan.revision||plan.accept_mask!=mask||
+       !plan.context.idle_ready||!plan.context.clean||!context.idle_ready||!context.clean||
+       !gears_hand_stream::same(plan.context.game,context.game)||
+       plan.context.expected_native_world_generation!=context.expected_native_world_generation||
+       plan.context.action_epoch!=context.action_epoch||context.observed_ms<plan.context.observed_ms||
+       auth.ticket_ms!=plan.ticket.created_ms||auth.plan_ms!=plan.context.observed_ms||
+       auth.context_ms!=context.observed_ms||auth.stereo_ns!=certificate.stereo_received_ns||
+       auth.input_ns!=certificate.input_received_ns||!gears_hand_continuity::certificate_shape_valid(certificate)||
+       auth.live_now<auth.now||auth.commit_now<auth.live_now||plan.observed_now>auth.now||
+       auth.ticket_ms>auth.now||auth.plan_ms>auth.now||auth.context_ms>auth.now||
+       auth.authorize_ns<=0||auth.commit_ns<auth.authorize_ns||
+       auth.stereo_ns>auth.authorize_ns||auth.input_ns>auth.authorize_ns)return false;
+    std::uint64_t cutoff{};
+    return gears_hand_session::write_until(auth.ticket_ms,auth.plan_ms,auth.context_ms,cutoff)&&
+        auth.write_until==cutoff&&auth.commit_now<=cutoff&&
+        gears_hand_stream::recent(auth.ticket_ms,auth.commit_now)&&
+        gears_hand_stream::recent(auth.plan_ms,auth.commit_now)&&
+        gears_hand_stream::recent(auth.context_ms,auth.commit_now)&&
+        (auth.authorize_ns-auth.stereo_ns>100000000ll||auth.authorize_ns-auth.input_ns>100000000ll);
 }
 struct PostComponentHandStamp {
     unsigned setters{},targets{},restores{},extras{},applied{},hand_leases{};
@@ -1520,12 +1548,13 @@ void post_tick(uptr pc){
     if(!after_component_valid){
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
         const bool cutoff_expired=post_component_cutoff_expired(after_component_authorization,plan,after_component_context,mask);
+        const bool ns_expired=post_component_ns_source_expired(after_component_authorization,plan,after_component_context,mask);
         bool pause_requested{};
-        if(cutoff_expired&&post_component_pause_ready(before_component_hand,plan,after_component_context,mask,continuous_tick.mode,equipment_phase)){
-            component_continuous::suspend_interval(L"persistent_post_component_cutoff",true);
+        if((cutoff_expired||ns_expired)&&post_component_pause_ready(before_component_hand,plan,after_component_context,mask,continuous_tick.mode,equipment_phase)){
+            component_continuous::suspend_interval(ns_expired?L"persistent_post_component_ns_source":L"persistent_post_component_cutoff",true);
             pause_requested=component_continuous::pause_pending();
         }
-        component_tail_cost::rejected_authorization(after_component_authorization,plan,lease,equipment_phase,mask,cutoff_expired,pause_requested);
+        component_tail_cost::rejected_authorization(after_component_authorization,plan,lease,equipment_phase,mask,cutoff_expired,pause_requested,ns_expired);
         if(pause_requested){continuous_tick.suspending=true;return;}
 #endif
         drain_journals(L"hand_reauthorize_after_component");

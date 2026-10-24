@@ -576,3 +576,11 @@ AR 实测补记：提交 `2407537e…819c1` 的786源／27依赖／571工件候�
 原 post-component 分段实测 snapshot3.5781ms、guards4.3191ms、component_owned1.9017ms，后者内含 owned_live_read1.4641ms；authorize0.0021ms，嵌套不重复相加。acquire实际返回成功，因此新 failed-attempt 记录保持unknown0且没有四组callback失败副本是预期；本局没有成功操作定点段的副本，不能补造prepare／hand_direct耗时或从跨局数据宣称优化收益。现有仅MS早期过期的交还分支未命中，正式reason为hand_reauthorize_after_component。
 
 组件1提交／1恢复、setter6，fault／dirty／owned／revoked／cleanup_failed均0；双手零写、0移动命令，原正式passed／cleanup／tail审计仍false。独立8控件typed观察／3组件／44挂接前后相同，入口恢复无错，failure Stop0／Shutdown0，音频8会话恢复／pending0，确切自有owner／game／XR均不存在；独立Native／XR通过不替代正式失败。59文件封存 `6c75cd25…33d96`、root结果 `22977e10…fae57` 位于忽略的 `analysis/hand-mesh-runtime-1024ar/`，额外解释留在独立root目录，不改原始证据。已把具体post-component NS过期与未完成Policy检查问题交给Astra有界审查，尚无新恢复接线；无默认安装、真实0.7伤害／全武器／头显完成。
+
+## 2026-10-24 — AS 已证实 post-component NS 源超龄的有序交还
+
+AR 的明确 check10 拒绝之后，Astra 十输入有界建议 `1ff48d71…6feaf` 与实际实现八输入窄审 `eea19057…9a0bb` 支持一个仅供交还的分支。新增独立 `post_component_ns_source_expired`：只接收实际 known127／checked2047／rejected1024、mask0／result0，逐项比对原Plan／context／截止与源时间，检查证书形状、正数／无未来／无倒退、原三项MS新鲜度和精确截止，且至少一个源在原authorize_ns时已经严格超过100ms。它不接收只在commit间隙超龄或非零Policy mask的其他情况。NS条件与原完整pause_ready联用；当前Stop／Shutdown、真实线程、epoch、绑定、健康owner／journal与手／extra计数未变仍必须通过，只能suspend_interval(true)，pause_pending成立后返回原PostTick零depth恢复。原早期MS分类、实际授权／手写／committed／录制起点不改变，不能称原Policy内部已通过，也不清fault或让旧Plan重试。
+
+固定诊断新增ns_source_expired，保留早期MS字段和policy_checks_complete=0／grants_write_authority=0。原XR混合换行被统一CRLF，旧函数只在归一化换行后完全相同，不声称raw源码字节相同。实际两authorizer／AuthEnd、新旧classifier／pause_ready、完整原失败分支及PostTick／finish等23段源码进入16类／593项受影响检查，首次严格编译运行通过。覆盖原MS／健康／lifecycle12类和新增NS源单侧或双侧超龄、100ms／+1ns、未来／倒退／形状／packet／Plan错配、current Stop／部分手写、实际分支延后恢复、无新时钟／授权调用、失败sticky及旧Plan仍拒绝。Policy／Plan／Certificate／Session实际头与代码执行；lease／mount／trace sink、失败诊断收集和drain／finalize是明确host服务，不冒称引擎恢复或全Policy原因已知。准备报告在首次编译前仅修正host中两个不同array类型的auto声明，原报告保留，最终root-review与runner绑定新fixture，没有编译失败重试。结果 `7847fd8b…eac85` 位于忽略的 `analysis/hand-post-ns-cpu-20261024as/`。
+
+冻结786源／27依赖，唯一完整PG严格构建／23导出与六实际运行源OFF一组两次/EP非空行相等通过；DLL `86b5f64b…45f26`、构建结果 `a3b5f87f…733a` 在忽略的 `analysis/hand-post-ns-build-20261024as/`。未变的原tail reader／SEH、control8／659与其余旧检查不重复。本条记录时尚未实际游戏验证，交还成功不保证下一输入能完成联合手写，也不解决读取成本或大伸手几何；原8命令／15s预算／100ms／0.1门限仍保持。无默认安装、Native／XR／loader重建、实际0.7伤害或完整全武器／头显通过。
