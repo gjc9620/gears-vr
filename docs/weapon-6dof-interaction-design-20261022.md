@@ -115,6 +115,8 @@
 
 后续已存证据盘点定位到瞬发候选链 `FireAmmunition → InstantFire → ProcessInstantHit_Internal → GetFireModeDamage → 原整数转换 → TakeDamage`；实际权威单发身份和返回缓冲仍需只读验证。投射物的 `Init` 在原发射函数返回前执行，爆炸也可对多个目标结算，不能等发射函数返回后才关联本发握持快照，也不能用整个投射物的一次性标志代替每个实际伤害包的防重复处理。这些是接线边界，尚未改变实际伤害。
 
+进一步核对保存的原版脚本：`WarAI_Drone.CheckNearMiss` 也会调用 `GetFireModeDamage`，将结果用于 AI 的近失弹响应。因此不能仅按 getter 名称全局应用倍率；即时命中需要与实际结算调用者及开火状态关联，保留不属于实际伤害结算的查询语义。新增默认关闭的直接 caller 观察器已完成严格构建、本地检查和一次购买版只读运行：原版 R2 自然产生5次查询，5对上下文均来自 `WarWeapon.ProcessInstantHit_Internal`；原Result地址在每次pre／post均等于当时记录的caller.locals＋164，当前持久函数元数据该处为4字节的 `DamageDealt`，完整类型路径 `Core.FloatProperty`。这记录了存储位置关联，仍不等于逐发身份或0.7写入通过；没有读取已经结束调用的frame或locals内容。后台游戏视口实际返回1536×864，符合私有3840×2160按每边0.4的启动计划，继续静音和窗口置后；这次没有XR／GPU目标或头显验收。
+
 
 现有 GVE6 左右手世界位姿新增默认关闭的 `GEARS_PLAYGROUND_FREE_HANDS_PROBE` 消费者：保留同一 XR 票据的双手位置、旋转和会话／参考空间／输入／游戏世界代次，游戏线程按当前玩家与骨骼身份做有界只读采样。独立状态机在任一手失追时保留另一手目标，拾取／近战／固定切枪由原动画接管，动作退出后只接受新票据；测试覆盖 GVE6 共享内存实际传输。自有购买版后台测试场 PID 56756 的 160 帧只读探针均取得左右手骨矩阵，左手 `b_MF_Hand_L=11`、右手 `b_MF_Hand_R=35`，角色骨骼控制索引长 115、动画控制列表 6 条；没有 XR 姿态，写入和 `apply_mask` 均为 0。回执留在忽略的 `analysis/free-hands-probe-runtime-1022a.json`，音频与游戏进程已恢复／退出。
 

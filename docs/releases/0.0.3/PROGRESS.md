@@ -704,3 +704,15 @@ BA实测补记：d71ac22源码冻结为788源／27依赖／659工件候选4a7ec1
 新增默认OFF开关 `GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE`，依赖原raw Result观察器。仅在原记录行的pre／正常返回post采集直接caller FFrame、完整身份／Name外链、脚本范围内最多64字节原始窗口，以及caller／callee的原始flags／native index／exec地址。locals和previous只记录地址，不解参数或追栈；不新增hook、原函数调用、时钟、引擎调用或游戏内存写入。读失败清空部分payload并独立报unknown，不改变原raw4采样和异常收尾；输出使用新前缀，不修改原日志协议。固定Snapshot12848字节，最终重读身份、frame、代码、函数字段和表头后才发布。
 
 实际完整context／metadata reader与原SEH copy在本地模型中首次严格编译运行通过10类／70项，覆盖真实不可读页、边界、完整输出和读取期间变化；不是零售ABI或开火证明。789源／27依赖的唯一完整PG严格构建、23导出、旧11／新12份实际运行源在新开关OFF的一组两次/EP非空行相等通过，DLL c19daba1…36d69；三份旧源raw逆变换精确相等。记录在忽略的 `analysis/weapon-grip-call-context-cpu-20261024bc/` 与 `analysis/weapon-grip-call-context-build-20261024bc/`。此条记录时尚未购买版运行，不安装默认启动器，实际0.7伤害、双手完整运动、全武器和GPU／头显仍未完成。
+
+BC候选准备补记：提交ca62520冻结为789源／27依赖／664工件候选9155f252…6dc77，manifest672e30fb…1ab4a6，保留658份旧工件，仅替换PG并增加5份本轮证明；Native／XR／loader保持原件。原raw4审计器只更新结果探针源pin，解析／判定字节不变；新caller审计器对实际C++本地dump作显式人工pre/post配对，完整图／窗口、缺失记录、错误关联和unknown共5类检查通过，不当作零售配对。独立runner已准备，包含启动前私有0.4配置、原始INI备份、当前原生函数字节比对及原版视口尺寸查询；原R2次数、5秒episode和恢复流程保留。两次启动前检查均发现其他会话的实际游戏／worker而拒绝，未创建自有游戏或run-started回执，不算两次实机试验。候选、准备和拒绝记录均保留，尚无本轮实机结果。
+
+新增有界脚本证据确认WarAI_Drone.CheckNearMiss也调用GetFireModeDamage，进一步说明不能仅按getter名全局乘0.7；已同步设计。原ProjectileFire／ProjectileFireSimple仍在返回前Spawn并Init，延迟投射物的开火时状态需求不变。证据仅为已保存UnrealScript反编译，含未解析标记，不冒充当前native调用证明。已核实人类在“规划 6DoF 掩体系统”会话的直接协调授权，并与该会话约定先由其完成body3、清理后明确释放，再运行本候选；两个worktree和所有权接口尚未合流。
+
+BC实测补记：保持候选和已封存准备不变，另在 `analysis/weapon-grip-call-runtime-1024bc-r2/` 准备root只读的持久caller函数元数据关联：原Shutdown之后、确切自有游戏退出之前双读注册UFunction字段，与调用期间复制的frame／窗口／Result地址作数值比较，不读已失效栈。菜单明确释放且三次新鲜空闲检查后启动唯一静音置后购买版局（自有GOW54960）。启动前原生函数两个已知chunk共3012字节与历史组合hash e7b80c3c…1b1c4c完全相同；这是本次当前字节比对，不再仅凭RVA相同。原版GameViewportClient.GetViewportSize的已验证Vector2D输出为1536×864，与两份私有INI的0.4计划一致；没有窗口移动／调整或XR启动，不能外推GPU内部目标／性能／头显。
+
+唯一原R2按下／松开，held false→true→false，整段至释放约0.3807秒，原episode期限未变；5次自然getter、5对完整raw4、5对直接caller上下文均通过，未称5发子弹。全部caller完整路径为WarfareGame.WarWeapon.ProcessInstantHit_Internal，code offset pre322／post379，callee native index0、flags0x24102。注册caller函数extent168，DamageDealt是offset164、dim1／width4的Core.FloatProperty；10份pre／post地址关系均为Result＝captured caller.locals＋164。它与callee返回属性、原版视口X／Y成员使用同一个本次运行时Core.FloatProperty类地址；这只作结构身份关联，不把任意raw4解成伤害，亦不改变旧探针typed_candidate=false／native_return_type_proved=0的声明。下一步应将同次调用的这些条件变成倍率写入资格，并接有效握持状态、原整数转换和实际伤害结算验证，不再只按getter名字过滤。
+
+Stop0／Shutdown0、朝向精确恢复、CallFunction32字节与ProcessEvent64字节恢复、确切自有游戏／owner退出、音频8会话恢复pending0均核对通过；原10份配置／存档hash保持，两份私有INI修改前原字节另存。正式passed只涵盖本轮只读观察，实际0.7写入、单发身份、全武器／完整自由手／默认集成与GPU／头显仍未完成。30文件封存9216bffd…1f365e、回执9c47ce1e…370a09，汇总在忽略的 `analysis/weapon-grip-call-closeout-20261024bc/`。窗口已明确交回掩体与菜单排队，后续不叠开游戏。
+
+跨会话接口补记：controller v3的frame／bridge／bridge test三文件与da775ed7及掩体副本完全同字节，已交付准确hash、XR独立子组件来源及真实构建flags，供其在最新menu XR上增量合流，不用旧二进制覆盖默认。当前武器尚无完成的support／ammo／magazine统一交互租约owner；已明确区分IK／组件恢复lease、只读support probe及Lancer弹匣实验状态。建议共同启用时复用单个Native GT左手仲裁实例和版本化request/result，不各自创建owner，CallFunction同地址也需统一dispatcher；目前没有因此宣称运行时合流完成。
