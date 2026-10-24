@@ -726,3 +726,11 @@ Stop0／Shutdown0、朝向精确恢复、CallFunction32字节与ProcessEvent64�
 这一阶段输入是明确标记、在observer epoch冻结的single／two／unknown／excluded测试fixture，尚未接真实抓握或逐发身份。日志使用schema2区分写入前raw记录与独立writer记录，并明确actual_grip_adapter=0、authoritative_shot_proved=0、projectile_supported=0；旧schema1只读证据保留。Astra源码审查未发现本范围内的具体误写／崩溃／token泄漏问题。实际metadata／context／observer／writer／CallFunction helper源码在本地模型通过10类／144项严格检查，包括同地址多调用、嵌套getter、near-miss、完整类型拒绝、调用中fixture变化、反射变化、原SEH传播、字节竞争及真实只读页写故障；这是实际hook/CAS路径的CPU检查，原引擎元数据／回调仍是明确本地模型。
 
 790源／27依赖的PG完整严格构建通过，23导出保持；新开关OFF的旧12／新13份实际运行源经两次/EP非空文本精确一致。增加fresh caller自身klass完整Core.Function链接复核后，CPU10类／144项重跑及严格构建再次通过；最终DLL为f0c62da7…33190c。验证器的头文件/OFF格式检查、首次严格构建命名警告及本地fixture对齐警告的失败记录均保留，修正后才通过。证据位于忽略的 `analysis/weapon-grip-damage-write-build-20261024bd-r5/`、`analysis/weapon-grip-damage-write-cpu-20261024bd/` 和 `analysis/weapon-grip-damage-write-review-20261024bd/`。此条记录时尚未在零售版执行写入；真实握持、逐发快照、投射物、最终伤害验收、全武器／自由手／默认集成及GPU／头显仍未完成。
+
+BD零售补记：提交6536805的候选e2d4925a…0e30已完成唯一实际运行，默认Native／XR／loader仍保持原件。Astra复核driver保留一次原R2按下／释放、原绝对5秒episode判定、pending请求不覆盖／重放、独立清理及确切进程退出；输入测试fixture与写入scope明确。r1只prepare，r2实例名超过原40字符限制、在创建游戏／guard之前拒绝，保留失败收据；相同driver字节改用35字符TAG的BD-r3才启动游戏，没有重复原射击episode。
+
+零售原R2的自然开火链产生4次完整getter调用，4次均通过实时局部字段资格、对比原post字节的一次四字节CAS和精确读回。例20.52553939819336→14.367877006530762、20.446746826171875→14.312722206115723，均为float32原值乘float32(0.7)；calls2–4复用相同Result地址仍各自处理一次。raw4、caller context与独立writer协议审计全部通过。4次getter不等于4发，也没有以地面Trace或写入局部变量证明最终敌人生命值／TakeDamage结算。输入仍是observer epoch冻结的显式single fixture；真实有效双手状态、逐发身份和投射物未因此获得验收。
+
+原GameViewportClient查询确认实际1536×864，与私有3840×2160每边0.4一致；未启动XR，不据此声明GPU双眼target或性能／头显通过。episode至release约0.275秒，Stop0／Shutdown0、朝向精确恢复、CallFunction32／ProcessEvent64原字节恢复、确切自有游戏及owner退出均通过；音频9会话恢复pending0，原10配置／存档hash不变。窗口已明确交回掩体，不并发运行。回执54011376…e5845，28文件封存62d87636…2d10a，汇总b3109532…91d2b，证据位于忽略的 `analysis/weapon-grip-write-runtime-1024bd-r3/` 与 `analysis/weapon-grip-damage-write-closeout-20261024bd/`。
+
+下一步接真实主手归属／副手抓握与权威每发执行快照，移出诊断容量限制，再接ProjectileFire原调用前的launch／Init归属和延迟／多目标伤害。共用掩体Native GT唯一左手owner，不另建PG仲裁器；Bolo／Smoke手抛效果保持原版。完整6DoF目标继续active，未安装此受控实验到默认启动器，仍须保留全武器、手部运动、换弹、瞄准／弹道、默认合流及GPU／头显验收工作。
