@@ -18,6 +18,11 @@
 #define GEARS_PLAYGROUND_RESTORE_STAGE_CORE 1
 #include "../vr-common/weapon_action_boundary.h"
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+#if !defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL) || !defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL) || !defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL) || !defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+#error Gate restoration requires the exact Native Gate, entry integration and restore core
+#endif
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #if !defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
 #error External boundary requires the existing hand/call/Gate registration
@@ -1059,6 +1064,9 @@ namespace handstream {
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
 void __fastcall event_hook_legacy(uptr,uptr,void*);
 #include "weapon_action_entry.inl"
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+#include "weapon_gate_restore_authority.inl"
+#endif
 void __fastcall event_hook_legacy(uptr object,uptr function,void* params){
     const auto original_dispatch=&weaponentry::legacy_original;
 #else

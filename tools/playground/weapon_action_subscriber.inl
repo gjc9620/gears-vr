@@ -1,6 +1,12 @@
 // Private supplement: Native still owns the only CallFunction hook/original.
 // STREAM/STOW remain disabled until their independent PE/bridge pre-action
 // permission and no-engine handback paths are connected and validated.
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+namespace weapongaterestore {
+gears_weapon_action::BeginReply restore(void*,gears_weapon_action::Invocation const*,gears_weapon_action::State*) noexcept;
+void poison_no_engine() noexcept;
+}
+#endif
 namespace weaponaction {
 namespace actionabi=gears_weapon_action;
 namespace handabi=gears_weapon_hand;
@@ -10,8 +16,16 @@ constexpr unsigned maximum_depth=128;
 enum Flags:unsigned {created=1,leased=2,linked=4,ignored=8,begin_done=16,
     observer_attempted=32,observer_done=64,observer_close_attempted=128,observer_closed=256,
     unresolved=512,link_left=1024,transaction_left=2048,callback_left=4096,closed=8192,
-    transaction_release_attempted=16384,callback_release_attempted=32768};
+    transaction_release_attempted=16384,callback_release_attempted=32768
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+    ,restore_claimed=65536,restore_closed=131072,restore_complete=262144,restore_exempt=524288
+#endif
+};
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+constexpr unsigned all_flags=1048575;
+#else
 constexpr unsigned all_flags=65535;
+#endif
 struct Journal {
     actionabi::Invocation call{};
     handanim::Token observer{};
@@ -29,9 +43,15 @@ Journal load(actionabi::State const* state) noexcept {
 }
 void poison() noexcept {
     faulted.store(true,std::memory_order_release);
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+    // A failed Gate notification must also permanently fence the real writers.
+    // The backend definition follows this include; this entry is POD-only.
+    weapongaterestore::poison_no_engine();
+#else
     auto registration=weaponhand::client.registration();handabi::Invalidation message{};
     message.registration_cookie=weaponhand::client.cookie();message.native_started_qpc=weaponhand::client.native_started_qpc();
     message.reason=handabi::InvalidateReason::callback_fault;registration.invalidate(registration.context,&message);
+#endif
 }
 template<class T>bool release_count(std::atomic<T>& count) noexcept {
     auto value=count.load(std::memory_order_acquire);
@@ -72,7 +92,15 @@ actionabi::BeginReply begin_body(void* context,actionabi::Invocation const* call
     if(depth>=maximum_depth){mark_unresolved(state);return actionabi::BeginReply::handback_unresolved;}
     journal.prior_state=reinterpret_cast<std::uintptr_t>(top);journal.depth=depth+1;journal.flags|=linked;
     store(state,journal);top=state;++depth;
-#if defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+    const auto handback=weapongaterestore::restore(context,call,state);
+    // The restore adapter updates this SAME Native-owned Journal. A stale
+    // begin-local copy must never erase its one-shot/closed result bits.
+    journal=load(state);
+    if(handback==actionabi::BeginReply::handback_unresolved){
+        journal.flags|=ignored|begin_done|unresolved;store(state,journal);poison();return handback;
+    }
+#elif defined(GEARS_PLAYGROUND_WEAPON_ACTION_ENTRY_TRIAL)
     // This is always the independent NoAuth CF path. Neither Native's outer
     // flag nor an owned bridge's consumed self token is inherited here.
     if(weaponhand::current_gt(nullptr)&&call->hand_cookie==weaponhand::client.cookie()&&
@@ -93,7 +121,12 @@ actionabi::BeginReply begin_body(void* context,actionabi::Invocation const* call
     }
 #endif
     if(!enabled.load(std::memory_order_acquire)||!weaponhand::current_gt(nullptr)||!matches(*call)){
-        journal.flags|=ignored|begin_done;store(state,journal);return actionabi::BeginReply::unrelated;
+        journal.flags|=ignored|begin_done;store(state,journal);
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+        return handback;
+#else
+        return actionabi::BeginReply::unrelated;
+#endif
     }
     if((call->flags&actionabi::engine_calls_allowed)&&journal.depth!=1){
         mark_unresolved(state);return actionabi::BeginReply::handback_unresolved;
@@ -104,16 +137,39 @@ actionabi::BeginReply begin_body(void* context,actionabi::Invocation const* call
     journal.flags|=observer_attempted;store(state,journal);
     journal.observer=handanim::enter(call->self,call->callee,nullptr,handanim::Source::call_function,call->caller_frame);
     journal.flags|=observer_done|begin_done;store(state,journal);
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+    return handback;
+#else
     return actionabi::BeginReply::unrelated;
+#endif
 }
-actionabi::BeginReply __cdecl begin(void* context,actionabi::Invocation const* call,actionabi::State* state) noexcept {
-    // This catch surrounds this callback's C++ work only. The actual game
-    // original is invoked later by Native, entirely outside this catch.
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+actionabi::BeginReply begin_cpp(void* context,actionabi::Invocation const* call,actionabi::State* state) noexcept {
     try{return begin_body(context,call,state);}
     catch(...){mark_unresolved(state);return actionabi::BeginReply::handback_unresolved;}
 }
+#endif
+actionabi::BeginReply __cdecl begin(void* context,actionabi::Invocation const* call,actionabi::State* state) noexcept {
+    // This catch surrounds this callback's C++ work only. The actual game
+    // original is invoked later by Native, entirely outside this catch.
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+    __try{return begin_cpp(context,call,state);}
+    __except(weaponrestore::exception_filter(GetExceptionCode())){
+        mark_unresolved(state);return actionabi::BeginReply::handback_unresolved;
+    }
+#else
+    try{return begin_body(context,call,state);}
+    catch(...){mark_unresolved(state);return actionabi::BeginReply::handback_unresolved;}
+#endif
+}
 bool cleanup(Journal& journal,actionabi::State* state) noexcept {
     bool clean=(journal.flags&begin_done)&&!(journal.flags&unresolved);
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+    if((journal.flags&restore_claimed)&&
+       ((journal.flags&(restore_closed|restore_complete))!=(restore_closed|restore_complete)))clean=false;
+    if((journal.flags&(restore_closed|restore_complete|restore_exempt))&&!(journal.flags&restore_claimed))clean=false;
+    if((journal.flags&restore_exempt)&&!(journal.flags&restore_complete))clean=false;
+#endif
     if((journal.flags&observer_attempted)&&!(journal.flags&observer_done))clean=false;
     if(journal.observer&&!(journal.flags&observer_closed))clean=false;
     if((journal.flags&linked)&&!(journal.flags&link_left)){

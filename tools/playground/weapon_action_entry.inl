@@ -34,6 +34,16 @@ inline void poison(Entry& entry) noexcept {
 inline void cancel_post(Entry& entry) noexcept {
     if(revocations==UINT64_MAX)poison(entry);else ++revocations;
 }
+#if defined(GEARS_PLAYGROUND_WEAPON_GATE_RESTORE_TRIAL)
+// Gate owns its own whole-gap journal. Cancel post work without creating an
+// external Entry/Receipt or pretending the CF notice was an owned bridge.
+inline bool cancel_gate_post() noexcept {
+    if(revocations==UINT64_MAX){
+        weaponrestore::BoundaryBackend backend{};weaponrestore::poison(backend);return false;
+    }
+    ++revocations;return true;
+}
+#endif
 inline bool no_engine_handback(weaponaction_handoff::Seen const& seen) noexcept {
     if(!seen.gt||seen.unknown_name)return false;
     if((seen.hands_required&&(seen.hands_dirty||seen.component_dirty||seen.hands_restoration_busy))||
