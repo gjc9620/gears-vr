@@ -183,6 +183,70 @@ bool weapon_active(uptr weapon){
         get<unsigned>(call.prop(L"ReturnValue")+0x94)==0&&call.run()&&
         name_is(call.output<Name>(),L"Active");
 }
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+// Resolve addresses only for one non-invoking control read. Every descriptor
+// and value remains live; no result or authority survives this stack object.
+template<std::size_t N>struct ControlFields {
+    uptr object{},cls{};
+    const wchar_t* const (&labels)[N];
+    std::array<uptr,N> addresses{};
+    ControlFields(uptr owner,const wchar_t* const (&names)[N]):object(owner),labels(names){}
+    bool begin(){
+        mark(L"control_field_addresses",object,L"hand_control_fields");
+        if(!registered(object))return false;
+        cls=get<uptr>(object+0x50);rejection.related=cls;
+        return playground::fields(cls,labels,addresses)&&registered(object)&&get<uptr>(object+0x50)==cls;
+    }
+    uptr property(const wchar_t* label)const{
+        if(!registered(object)||get<uptr>(object+0x50)!=cls)return 0;
+        for(std::size_t i=0;i<N;++i)if(!_wcsicmp(labels[i],label))return addresses[i];
+        return 0;
+    }
+    bool read_field(const wchar_t* label,const wchar_t* kind,void* value,unsigned bytes)const{
+        const auto p=property(label);
+        if(!p||get<unsigned>(p+0x74)!=bytes||!playground::named(get<uptr>(p+0x50),kind))return false;
+        const auto offset=get<unsigned>(p+0x94);
+        const auto size=get<unsigned>(get<uptr>(object+0x50)+0x88);
+        return offset<=size&&bytes<=size-offset&&copy(value,object+offset,bytes);
+    }
+    bool checked_field(const wchar_t* label,const wchar_t* kind,void* value,unsigned bytes)const{
+        mark(L"property",object,label,kind,bytes);
+        rejection.read_ok=read_field(label,kind,value,bytes);
+        if(rejection.read_ok)std::memcpy(&rejection.raw,value,(std::min)(size_t(bytes),sizeof(rejection.raw)));
+        return rejection.read_ok;
+    }
+    bool checked_bool(const wchar_t* label,bool& value)const{
+        mark(L"bool_property",object,label,L"BoolProperty",4);
+        unsigned bits{};
+        if(!read_field(label,L"BoolProperty",&bits,sizeof(bits)))return false;
+        const auto p=property(label);
+        if(!p)return false;
+        const auto mask=get<unsigned>(p+0xd0);
+        if(!mask||(mask&(mask-1)))return false;
+        value=(bits&mask)!=0;rejection.read_ok=true;rejection.raw=value?1:0;
+        return true;
+    }
+    bool pointer(const wchar_t* label,uptr& value,bool component=false)const{
+        const bool ok=checked_field(label,L"ObjectProperty",&value,sizeof(value))||
+            (component&&checked_field(label,L"ComponentProperty",&value,sizeof(value)));
+        if(ok)rejection.related=value;
+        return ok;
+    }
+    bool structure(const wchar_t* label,const wchar_t* type,void* value,unsigned bytes)const{
+        mark(L"struct_type",object,label,type,bytes);
+        const auto p=property(label),inner=p?get<uptr>(p+0xd0):0;
+        rejection.related=inner;
+        return registered(inner)&&playground::named(inner,type)&&checked_field(label,L"StructProperty",value,bytes);
+    }
+    bool finish()const{
+        mark(L"control_field_addresses",object,L"hand_control_fields");
+        rejection.related=cls;std::array<uptr,N> current{};
+        return registered(object)&&get<uptr>(object+0x50)==cls&&
+            playground::fields(cls,labels,current)&&current==addresses&&
+            registered(object)&&get<uptr>(object+0x50)==cls;
+    }
+};
+#endif
 bool read_control(uptr pawn,uptr mesh,uptr tree,unsigned index,Control& out){
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
     struct TailRead {
@@ -205,6 +269,92 @@ bool read_control(uptr pawn,uptr mesh,uptr tree,unsigned index,Control& out){
     if(!playground::instance(out.object,rotation?L"SkelControlSingleBone":L"SkelControlLimb")||
        !playground::named(get<uptr>(out.object+0x50),rotation?L"SkelControlSingleBone":L"SkelControlLimb")||
        get<uptr>(out.object+0x40)!=tree||!identity(out.object,out.fixed))return false;
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+    const auto read_values=[&](auto const& labels){
+        ControlFields fields(out.object,labels);
+        if(!fields.begin())return false;
+        uptr component{},next{};Name control_name{};
+        if(!fields.pointer(L"SkelComponent",component,true)||component!=mesh||
+           !fields.pointer(L"NextControl",next)||
+           !fields.checked_field(L"ControlName",L"NameProperty",&control_name,sizeof(control_name))||
+           !name_is(control_name,names[index]))return false;
+        append(out.fixed,component);append(out.fixed,next);append(out.fixed,control_name);
+        constexpr const wchar_t* strengths[]={L"ControlStrength",L"StrengthTarget",L"BlendTimeToGo"};
+        for(unsigned i=0;i<3;++i)if(!fields.checked_field(strengths[i],L"FloatProperty",
+            &out.strength[i],sizeof(float))||!std::isfinite(out.strength[i]))return false;
+        for(const auto field:{L"BlendInTime",L"BlendOutTime"}){
+            float value{};
+            if(!fields.checked_field(field,L"FloatProperty",&value,sizeof(value))||
+               !std::isfinite(value)||value<0||value>10)return false;
+            append(out.fixed,value);
+        }
+        for(const auto field:{L"bSetStrengthFromAnimNode",L"bPropagateSetActive",L"bIgnoreWhenNotRendered"}){
+            bool value{};
+            if(!fields.checked_bool(field,value)||value)return false;
+            append(out.fixed,value);
+        }
+        std::uint8_t space{};Name bone{};
+        if(rotation){
+            bool add{},apply{},translate{};
+            if(!fields.structure(L"BoneRotation",L"Rotator",&out.rotation,sizeof(out.rotation))||
+               !fields.checked_field(L"BoneRotationSpace",L"ByteProperty",&space,1)||
+               space!=(tail?0:5)||!fields.checked_field(L"RotationSpaceBoneName",
+                   L"NameProperty",&bone,sizeof(bone))||
+               !name_is(bone,tail?L"None":left?L"b_MF_IK_Hand_L":L"b_MF_IK_Hand_R")||
+               !fields.checked_bool(L"bAddRotation",add)||add||
+               !fields.checked_bool(L"bApplyRotation",apply)||!apply||
+#if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
+               !fields.checked_bool(L"bApplyTranslation",translate))return false;
+            if(!handtail::observe(out.object,out.translation)||
+               (tail&&!handstream::tail_value_allowed(index,out.object,out.translation)))return false;
+            // Keep real values separately. Only the same owned whole tuple can
+            // normalize this one formerly fixed flag while the lease is active.
+            append(out.fixed,out.translation.schema.size());
+            out.fixed.insert(out.fixed.end(),out.translation.schema.begin(),out.translation.schema.end());
+            if(tail)translate=false;
+#else
+               !fields.checked_bool(L"bApplyTranslation",translate)||(tail&&translate))return false;
+#endif
+            append(out.fixed,space);append(out.fixed,bone);
+            append(out.fixed,add);append(out.fixed,apply);append(out.fixed,translate);
+        }else{
+            Triple joint{};std::uint8_t joint_space{};Name joint_bone{};bool take{},maintain{};
+            if(!fields.structure(L"EffectorLocation",L"Vector",out.effector.data(),sizeof(out.effector))||
+               !gears_hand_ik::finite(out.effector)||
+               !fields.checked_field(L"EffectorLocationSpace",L"ByteProperty",&space,1)||
+               space!=(tail?0:5)||!fields.checked_field(L"EffectorSpaceBoneName",
+                   L"NameProperty",&bone,sizeof(bone))||
+               !name_is(bone,tail?L"None":left?L"b_MF_IK_Hand_L":L"b_MF_IK_Hand_R")||
+               !fields.structure(L"JointTargetLocation",L"Vector",joint.data(),sizeof(joint))||
+               !gears_hand_ik::finite(joint)||
+               !fields.checked_field(L"JointTargetLocationSpace",L"ByteProperty",&joint_space,1)||
+               joint_space!=5||!fields.checked_field(L"JointTargetSpaceBoneName",
+                   L"NameProperty",&joint_bone,sizeof(joint_bone))||
+               !name_is(joint_bone,left?L"b_MF_Forearm_L":L"b_MF_Forearm_R")||
+               !fields.checked_bool(L"bTakeRotationFromEffectorSpace",take)||take||
+               !fields.checked_bool(L"bMaintainEffectorRelRot",maintain)||maintain)return false;
+            append(out.fixed,space);append(out.fixed,bone);append(out.fixed,joint);
+            append(out.fixed,joint_space);append(out.fixed,joint_bone);append(out.fixed,take);append(out.fixed,maintain);
+        }
+        return fields.finish();
+    };
+    if(rotation){
+        constexpr const wchar_t* labels[]={L"SkelComponent",L"NextControl",L"ControlName",
+            L"ControlStrength",L"StrengthTarget",L"BlendTimeToGo",L"BlendInTime",L"BlendOutTime",
+            L"bSetStrengthFromAnimNode",L"bPropagateSetActive",L"bIgnoreWhenNotRendered",
+            L"BoneRotation",L"BoneRotationSpace",L"RotationSpaceBoneName",L"bAddRotation",
+            L"bApplyRotation",L"bApplyTranslation"};
+        if(!read_values(labels))return false;
+    }else{
+        constexpr const wchar_t* labels[]={L"SkelComponent",L"NextControl",L"ControlName",
+            L"ControlStrength",L"StrengthTarget",L"BlendTimeToGo",L"BlendInTime",L"BlendOutTime",
+            L"bSetStrengthFromAnimNode",L"bPropagateSetActive",L"bIgnoreWhenNotRendered",
+            L"EffectorLocation",L"EffectorLocationSpace",L"EffectorSpaceBoneName",L"JointTargetLocation",
+            L"JointTargetLocationSpace",L"JointTargetSpaceBoneName",L"bTakeRotationFromEffectorSpace",
+            L"bMaintainEffectorRelRot"};
+        if(!read_values(labels))return false;
+    }
+#else
     uptr component{},next{};Name control_name{};
     if(!pointer(out.object,L"SkelComponent",component,true)||component!=mesh||
        !pointer(out.object,L"NextControl",next)||
@@ -268,6 +418,7 @@ bool read_control(uptr pawn,uptr mesh,uptr tree,unsigned index,Control& out){
         append(out.fixed,space);append(out.fixed,bone);append(out.fixed,joint);
         append(out.fixed,joint_space);append(out.fixed,joint_bone);append(out.fixed,take);append(out.fixed,maintain);
     }
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
     if((index==3||index==7)&&!handstream::tail_layout_allowed(index,out.object,out.fixed))return false;
     tail_read_guard.complete=true;

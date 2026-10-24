@@ -562,3 +562,11 @@ AP实测补记：提交 `bb542b15…48bed` 的786源／27依赖／571工件候�
 下一候选收敛补记：Astra七输入有界源审 `0f9d42ae…2c5b1` 建议只批量定位每次read_control的17个SingleBone或19个Limb字段，再按原顺序进行每项注册／类型／offset／size／值／bool mask／结构类型检查，末尾独立重查地址与当前class后才完成原TailRead。静态成功八控件约200–208次字段名称遍历可改为16次批查，但没有毫秒收益证明；暂不合并pawn cache八项。报告在忽略的 `analysis/hand-control-batch-next-review-20261024ap/review.json`，未写源码／测试或运行游戏。
 
 为控制候选复杂度，root已撤下AP新增约131KB删除查找工作区及其reader／fixture接线，保留AO地址批查、原live deleted和AN失败／计时诊断。撤回依据是收益尚未确立且存在额外保守拒绝与栈成本，不是宣称已证明零收益。三份生产源按已冻结AO原字节恢复，786源逐一与AO已通过的严格构建输入相等；没有重做旧构建／检查，没有修改AP候选、73份失败封存或任何公开包。恢复证明 `c50cde8a…5e83f` 在忽略的 `analysis/hand-control-batch-prepare-20261024aq/restore-source-result.json`。原控制器17／19字段的新接线尚未编写／验证；完整6DoF、真实0.7伤害、默认安装和头显仍未完成。
+
+## 2026-10-24 — AR 同次原控制器读取的 17／19 项地址批查
+
+TAIL 默认关闭路径内新增小型 `ControlFields<N>`，仅保存一次非调用读取的初始 class 与首匹配地址。八个 pawn cache 仍原样读取，原 instance／owner／identity 先执行；SingleBone 17 项、Limb 19 项各批查一次后，原顺序逐项 registered、实时 kind／size／offset／class extent、copy、finite／range／Name／space、bool bits 后实时 mask、struct inner 注册／类型及 ObjectProperty→ComponentProperty 回退均保持。尾部再次完整解析并比对地址与当前 class，成功后才进入原 tail_layout_allowed 和 TailRead.complete；失败仍触发原撤权析构。无跨 control／调用／VM／Tick 状态、getter／写入／时钟／授权变化。缺项可能更早拒绝、名称读取顺序变化、地址相等不是全量描述符快照／原子性证明等限制明确保留。
+
+Astra 对原／新实际源的窄审 `d62d118c…b6fb` 未发现具体阻断。18 段实际原／新 read_control、registered／name／字段解析及逐项校验源码在本地 GObjects／GNames 布局上执行，新 8 类／659 项检查首次严格编译运行通过，结果 `82ce1597…7e2` 位于忽略的 `analysis/hand-control-batch-cpu-20261024ar/`。覆盖全部八控制器输出／原拒绝字段、继承／错误首匹配／ComponentProperty 回退、缺项、真实 PAGE_NOACCESS 名称边界、copy 未知、类型／大小／offset／mask／inner／值／身份错误、初始批查后实时描述符改变、末尾地址／class 变化先于 tail 布局拒绝，以及新调用不借旧成功。原实际尾观察／lease 策略在本 fixture 是显式有限服务；copy 只增加拒读／计数／单次变更注入并经过真实 SEH，不能称原生引擎执行。有限 Limb 例字段名解析从 295 次降为 60 次，仅为工作量计数，非耗时结果。
+
+786 源／27 依赖冻结，唯一完整 PG 严格构建、23 导出及六实际运行源 OFF 一组两次 /EP 非空行相等均通过。DLL `589cc44b…14c5d`，构建结果 `482253f5…6626` 位于忽略的 `analysis/hand-control-batch-build-20261024ar/`；未变的 reader／最终 SEH 16／207、resolver 8／53 及其他旧检查直接沿用，未重复执行。此记录时尚未运行实际游戏；保留原 8 命令、15s 外部预算／3s 清理、100ms 和 0.1 单位／0.1°，收益与完整伸手仍待验证。无 Native／XR／loader 重建或默认安装，真实 0.7 伤害、其余全武器与头显仍未完成。
