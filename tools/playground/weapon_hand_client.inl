@@ -106,6 +106,9 @@ template<std::size_t N>bool pointer(meta::Reader& r,uptr address,wchar_t const (
 // Fresh reflection is intentionally bounded and read-only. It does not use
 // get<T>'s unreadable-as-zero fallback, nor vrequip::snapshot's engine queries.
 bool observe(void*,abi::Frame const& f,std::int64_t,abi::GripGameState& out) noexcept {
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+    if(!weaponrestore::healthy())return false;
+#endif
     out={};if(!enabled.load(std::memory_order_acquire)||!current_gt(nullptr))return false;
 #if defined(GEARS_PLAYGROUND_WEAPON_MESH_FOLLOW_TEST)
     // The old trial has its own support latch. Never report an empty hand
@@ -273,6 +276,9 @@ abi::Reply stop() noexcept {
 #endif
     const auto begun=client.begin_disconnect();
     if(begun==abi::Reply::quiescent){
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+        if(!weaponrestore::healthy())return abi::Reply::draining;
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
         if(!weaponboundary::local_quiescent())return abi::Reply::draining;
 #endif
@@ -309,6 +315,9 @@ abi::Reply stop() noexcept {
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
     if(!weaponboundary::local_quiescent())return abi::Reply::draining;
+#endif
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+    if(!weaponrestore::healthy())return abi::Reply::draining;
 #endif
     const auto finished=client.finish_disconnect(cookie);
     if(finished!=abi::Reply::quiescent)return finished;

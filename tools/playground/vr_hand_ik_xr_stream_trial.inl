@@ -687,6 +687,7 @@ unsigned authorize_xr_plan(gears_hand_stream::Plan const& plan,
 }
 unsigned authorize_current_xr_plan(gears_hand_stream::Plan const& plan,
     gears_hand_stream::Context const& context,std::uint64_t now){
+    if(!weaponrestore::healthy())return 0;
     auto write_until=trial.deadline;
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
     if(!gears_hand_session::write_until(plan.ticket.created_ms,plan.context.observed_ms,
@@ -1025,6 +1026,7 @@ void pre_tick(uptr,EquipmentEntryObservation const* entry){
 void pre_tick(uptr){
 #endif
 #endif
+    if(!weaponrestore::healthy())return;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
@@ -1090,9 +1092,11 @@ void pre_tick(uptr){
 }
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL) && defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
 void post_tick(uptr pc,tick_boundary_diagnostic::Token& tick_diagnostic){
+    if(!weaponrestore::healthy())return;
     tick_diagnostic.stamp(tick_boundary_diagnostic::Boundary::post_entry);
 #else
 void post_tick(uptr pc){
+    if(!weaponrestore::healthy())return;
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     if(component_hold::post_tick())return;

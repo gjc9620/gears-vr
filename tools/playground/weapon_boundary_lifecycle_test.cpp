@@ -2,6 +2,14 @@
 // and an owned kernel32 module reference. No Native provider or game runs.
 #include "../vr-common/weapon_shot_scope.h"
 #include "../vr-common/hand_animation_observation.h"
+#include <windows.h>
+#include <atomic>
+#include <type_traits>
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+namespace {
+#include "weapon_restore_stage.inl"
+}
+#endif
 #include "weapon_hand_offline_fixture.h"
 namespace {
 std::atomic<unsigned> callbacks{};
@@ -23,6 +31,11 @@ gears_weapon_boundary::End close(gears_weapon_boundary::State*,gears_weapon_boun
 }
 int main(int argc,char** argv){
     assert(argc<=2);const bool retain_fault=argc==2&&std::strcmp(argv[1],"faulted")==0;
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+    const bool stage_fault=argc==2&&std::strcmp(argv[1],"stage_faulted")==0;
+#else
+    const bool stage_fault=false;
+#endif
     game_thread.store(0);
     assert(weaponhand::start(GetModuleHandleW(L"kernel32.dll"))==abi::Reply::unavailable);
     assert(!weaponhand::native_module&&weaponhand::client.phase()==abi::ClientPhase::off);
@@ -43,17 +56,39 @@ int main(int argc,char** argv){
     const auto api=weaponboundary::admission.view(entry);assert(api);
     gears_weapon_boundary::Request request{};gears_weapon_boundary::State state{};gears_weapon_boundary::Receipt native_receipt{};
     assert(api->open(&request,&state,&native_receipt)==abi::Reply::unavailable&&!native_receipt.flags);
+    gears_weapon_boundary::Request accepted_request{};
+    accepted_request.source=gears_weapon_boundary::Source::process_event;accepted_request.flags=gears_weapon_boundary::related;
+    accepted_request.hand_cookie=33;accepted_request.native_started_qpc=22;
+    accepted_request.context=reinterpret_cast<uptr>(&weaponhand::client);accepted_request.object=0x111;accepted_request.function=0x222;
+    accepted_request.thread_id=GetCurrentThreadId();
+    gears_weapon_boundary::Receipt accepted_receipt{};accepted_receipt.hand_cookie=33;accepted_receipt.native_started_qpc=22;
+    accepted_receipt.scope_id=77;accepted_receipt.revocation_generation=8;accepted_receipt.thread_id=GetCurrentThreadId();
+    accepted_receipt.flags=gears_weapon_boundary::scope_active|gears_weapon_boundary::engine_calls_allowed;
+    game_thread.store(GetCurrentThreadId());
+    assert(weaponboundary::grant_matches(entry,accepted_request,accepted_receipt,abi::Reply::accepted));
+    auto wrong_receipt=accepted_receipt;wrong_receipt.hand_cookie=34;
+    assert(!weaponboundary::grant_matches(entry,accepted_request,wrong_receipt,abi::Reply::accepted));
+    game_thread.store(0);
     assert(weaponhand::stop()==abi::Reply::draining);
     assert(unregistrations==1&&weaponhand::native_quiescent&&weaponhand::native_module==held);
     assert(weaponhand::client.phase()==abi::ClientPhase::draining); // clear_gt/finish_disconnect did not run.
+    game_thread.store(GetCurrentThreadId());
+    assert(!weaponhand::client.registration_alive(33,22));
+    assert(weaponboundary::grant_matches(entry,accepted_request,accepted_receipt,abi::Reply::accepted));
+    game_thread.store(0);
     gears_weapon_boundary::Admission::Entry denied{};assert(!weaponboundary::admission.acquire(denied));
     std::uint64_t generation{};assert(api->revoke(&request,&generation)==abi::Reply::accepted&&generation==8);
     if(retain_fault)weaponboundary::admission.quarantine();
     assert(weaponboundary::admission.release(entry));
-    if(retain_fault){
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+    if(stage_fault)weaponrestore::sticky_fault.store(true,std::memory_order_release);
+#endif
+    if(retain_fault||stage_fault){
         assert(weaponhand::stop()==abi::Reply::draining&&unregistrations==1);
         assert(weaponhand::client.phase()==abi::ClientPhase::draining&&weaponhand::native_module==held);
-        assert(!weaponboundary::admission.in_flight()&&!weaponboundary::local_quiescent());
+        assert(!weaponboundary::admission.in_flight());
+        if(retain_fault)assert(!weaponboundary::local_quiescent());
+        if(stage_fault)assert(weaponboundary::local_quiescent()); // Independent stage debt still blocks finish_disconnect.
         std::puts("WeaponBoundaryLifecycleTest faulted passed: zero local count cannot erase sticky debt or release Native/client state");
         return 0; // Retain uncertain module/context until this fixture process exits.
     }

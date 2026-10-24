@@ -739,6 +739,7 @@ struct Backend {
             gate(Stage::schema_triple,triple_schema(call.prop(field),group==4));
     }
     bool set(Key const& key,Value const& expected,Value const& wanted,unsigned group){
+        if(!weaponrestore::healthy())return false;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
         if(forward)return false; // Three arguments are exclusively original-byte handback.
 #endif
@@ -764,7 +765,7 @@ struct Backend {
            !gate(Stage::set_expected_after,gears_weapon::mesh_component_exact(before.value,expected),0,
                  component_trace::mismatch(before.value,expected))||!schema(call,group)||
            (forward&&!forward->authorize()))return false;
-        if(!gate(Stage::set_owned,(lease.owned_mask()&group)!=0))return false;
+        if(!gate(Stage::set_owned,(lease.owned_mask()&group)!=0)||!weaponrestore::healthy())return false;
         SelfScope self_call(call.r.object,call.r.function);count_add(setter_calls);
         component_trace::Row attempt{};attempt.stage=Stage::call_begin;attempt.passed=true;attempt.call_attempted=true;component_trace::add(attempt);
         const bool called=call.run();
@@ -1201,6 +1202,7 @@ bool component_resume_interval(){
 #endif
 #endif
 bool component_restore(){
+    if(!weaponrestore::healthy())return false;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
     component::lease.cancel_forward();
     if(!component_dirty())return !component_faulted();
@@ -1219,6 +1221,7 @@ bool component_restore(){
     return component_trace::gate(component_trace::Stage::restore_result,clean&&!component_faulted(),unsigned(clean));
 }
 bool component_reset(){
+    if(!weaponrestore::healthy())return false;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
     if(component_continuous::state.operation_depth||component_continuous::state.action_depth||
        component_continuous::state.finishing||dual_draining||trial.releasing)return false;

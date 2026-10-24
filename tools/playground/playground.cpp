@@ -10,11 +10,17 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <type_traits>
+#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST) || defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
+#define GEARS_PLAYGROUND_RESTORE_STAGE_CORE 1
+#include "../vr-common/weapon_action_boundary.h"
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #if !defined(GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL)
 #error External boundary requires the existing hand/call/Gate registration
 #endif
 #include "../vr-common/weapon_boundary_admission.h"
+#include "../vr-common/weapon_boundary_state_pool.h"
 namespace {namespace weaponboundary {
 gears_weapon_hand::Reply attach(void*) noexcept;
 void seal() noexcept;
@@ -212,6 +218,9 @@ struct LifecycleScope {
 };
 std::atomic<unsigned> callbacks{};
 thread_local bool inside{};
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+#include "weapon_restore_stage.inl"
+#endif
 FILE* log_file{};
 std::array<uptr,256> observed{};unsigned observed_count{};
 SRWLOCK log_lock=SRWLOCK_INIT;
@@ -540,6 +549,9 @@ bool invoke_engine(Request* r){
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 bool invoke(Request* r){
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+    if(!weaponrestore::healthy())return false;
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     component_names::Scope names_scope(false);
     component_cost::InvokePause cost_pause;
@@ -557,7 +569,11 @@ bool invoke(Request* r){
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     const auto observation=handanim::bridge_before(r);
 #endif
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+    const auto result=weaponrestore::healthy()&&invoke_engine(r);
+#else
     const auto result=invoke_engine(r);
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     handanim::bridge_after(r,observation);
 #endif
@@ -833,11 +849,11 @@ public:
         return entered_&&request&&request==request_&&state_&&callback_&&!used_&&!in_progress_&&!invalid_;
     }
     bool authorize_once(Request const& request,ComponentPreparedCall const& prepared) noexcept {
-        if(!belongs_to(&request)||prepared.request!=&request||!prepared.ready){invalid_=true;return false;}
+        if(!weaponrestore::healthy()||!belongs_to(&request)||prepared.request!=&request||!prepared.ready){invalid_=true;return false;}
         used_=true;in_progress_=true;
         const bool allowed=callback_(state_,prepared);
         in_progress_=false;
-        return allowed&&!invalid_;
+        return allowed&&!invalid_&&weaponrestore::healthy();
     }
 };
 
@@ -886,6 +902,7 @@ bool invoke_component_forward_engine(Request* request,ComponentForwardGate& gate
 }
 
 bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
+    if(!weaponrestore::healthy())return false;
     if(!gate.enter_route(request))return false;
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return false;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
@@ -998,6 +1015,9 @@ namespace handstream {
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #include "weapon_action_boundary_client.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+#include "weapon_restore_backend.inl"
 #endif
 void __fastcall event_hook(uptr object,uptr function,void* params){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
@@ -1536,7 +1556,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkXrStreamTrialStart
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundHandIkStreamTrialStart(void*){
 #endif
     LifecycleScope lifecycle;
-    if(!enabled.load(std::memory_order_acquire)||!playground::automatic||!playground::ready||
+    if(!weaponrestore::healthy()||!enabled.load(std::memory_order_acquire)||!playground::automatic||!playground::ready||
        !freehands::test_environment()||!handanimcall::reserved||!log_file||ferror(log_file)||
        handstream::shutdown_requested.load(std::memory_order_acquire))return 1;
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)

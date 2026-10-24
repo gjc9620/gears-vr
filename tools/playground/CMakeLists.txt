@@ -248,6 +248,10 @@ if(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
     add_executable(WeaponBoundaryLifecycleTest weapon_boundary_lifecycle_test.cpp)
     target_compile_definitions(WeaponBoundaryLifecycleTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL=1 GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL=1 GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL=1)
     target_compile_options(WeaponBoundaryLifecycleTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+    target_compile_definitions(WeaponBoundaryLifecycleTest PRIVATE GEARS_PLAYGROUND_RESTORE_STAGE_CORE=1)
+    add_executable(WeaponBoundaryTransportTest weapon_boundary_transport_test.cpp)
+    target_compile_definitions(WeaponBoundaryTransportTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL=1 GEARS_PLAYGROUND_WEAPON_ACTION_GATE_TRIAL=1 GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL=1 GEARS_PLAYGROUND_RESTORE_STAGE_CORE=1)
+    target_compile_options(WeaponBoundaryTransportTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 endif()
 if(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
     if(GEARS_PLAYGROUND_HAND_IK_TRIAL OR GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2 OR
@@ -294,6 +298,21 @@ add_executable(HandComponentValueReadTest hand_component_value_read_test.cpp)
 target_compile_options(HandComponentValueReadTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 add_executable(BoundaryAdmissionTest ../vr-common/weapon_boundary_admission_test.cpp)
 target_compile_options(BoundaryAdmissionTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(BoundaryStatePoolTest ../vr-common/weapon_boundary_state_pool_test.cpp)
+target_compile_definitions(BoundaryStatePoolTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(BoundaryStatePoolTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(WeaponRestoreStageTest weapon_restore_stage_test.cpp)
+target_compile_definitions(WeaponRestoreStageTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(WeaponRestoreStageTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
+add_executable(WeaponRestoreBackendTest weapon_restore_backend_test.cpp)
+target_compile_definitions(WeaponRestoreBackendTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX
+    GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL=1 GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL=1
+    GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL=1 GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL=1
+    GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL=1 GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL=1
+    GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL=1 GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST=1
+    GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL=1 GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL=1
+    GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL=1)
+target_compile_options(WeaponRestoreBackendTest PRIVATE /W4 /WX /EHsc /UNDEBUG)
 foreach(profile IN ITEMS Phase1 Legacy)
     add_executable(HandActionBefore${profile}Test hand_action_before_test.cpp)
     target_compile_definitions(HandActionBefore${profile}Test PRIVATE GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL=1)

@@ -31,6 +31,9 @@ void before_action_impl(uptr object,uptr function,ActionAttempt& attempt
     ,bool owned_invoke
 #endif
 ){
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+    if(!weaponrestore::healthy())return;
+#endif
     // Reject other threads before touching any non-atomic game-thread state.
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire))return;
@@ -133,6 +136,9 @@ BeforeActionOutcome before_action_checked(uptr object,uptr function
     ,bool owned_invoke=false
 #endif
 ){
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+    if(!weaponrestore::healthy())return BeforeActionOutcome::unresolved;
+#endif
     ActionAttempt attempt{};
     before_action_impl(object,function,attempt
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)

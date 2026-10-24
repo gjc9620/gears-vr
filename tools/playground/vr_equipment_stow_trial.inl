@@ -211,6 +211,7 @@ struct Backend {
         return ok;
     }
     bool set_holstered(bool value){
+        if(!weaponrestore::healthy())return false;
         // Only the same game-thread lease may reach this original helper.
         if(value&&(shutdown_requested.load()||stop_requested.load()))return false;
         playground::Args call(playground::arena_pawn,L"SetWeaponTemporarilyHolstered");
@@ -235,7 +236,7 @@ struct Backend {
         // acquire pre-journals dirty before entering this backend. If no true
         // was attempted, a newly detached mesh must never grant rollback false.
         if(!allowed)lease.revoke();
-        const bool called=allowed&&call.run();
+        const bool called=allowed&&weaponrestore::healthy()&&call.run();
         if(log_file){fwprintf(log_file,L"equipment_stow_helper phase=after holstered=%u called=%u epoch=%llu commit_allowed=%u\n",
             unsigned(value),unsigned(called),epoch,unsigned(allowed));fflush(log_file);}
         return called;
@@ -243,6 +244,7 @@ struct Backend {
 };
 void publish(){dirty_visible.store(lease.dirty(),std::memory_order_release);}
 bool restore(const wchar_t* reason){
+    if(!weaponrestore::healthy())return false;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     component_names::Scope names_scope(false);
 #endif
@@ -295,6 +297,7 @@ bool can_wait(uptr weapon,WeaponState state){
          (state==WeaponState::firing||state==WeaponState::burst_delay));
 }
 bool commit_allowed(Key const& expected,ULONGLONG until){
+    if(!weaponrestore::healthy())return false;
     gears_weapon::StowState<Key> current{};
     gears_weapon::EquipmentSnapshot fresh{};const wchar_t* error{};unsigned down_mask{};
     if(!read_state(current)||!(current.key==expected)||
@@ -305,13 +308,14 @@ bool commit_allowed(Key const& expected,ULONGLONG until){
        current.attachment!=gears_weapon::StowAttachment::original_hand)return false;
     // This final decision is the commit point. A later Stop observes dirty
     // and drains its restore before hooks can be disabled.
-    return !stop_requested.load()&&!shutdown_requested.load()&&GetTickCount64()<until
+    return weaponrestore::healthy()&&!stop_requested.load()&&!shutdown_requested.load()&&GetTickCount64()<until
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
         &&handstream::equipment_ready()
 #endif
         ;
 }
 bool acquire(Key const& expected,ULONGLONG until){
+    if(!weaponrestore::healthy())return false;
     Backend backend{expected,until,true};
     const bool ok=lease.acquire(backend);publish();
     if(ok){deadline=GetTickCount64()+10000;status=5;}
@@ -443,6 +447,9 @@ bool related(uptr object){
 }
 enum class BeforeActionOutcome {ignored,pending_state_exempt,clean,unresolved};
 BeforeActionOutcome before_action_checked(uptr object,uptr function){
+#if defined(GEARS_PLAYGROUND_RESTORE_STAGE_CORE)
+    if(!weaponrestore::healthy())return BeforeActionOutcome::unresolved;
+#endif
     if((!dirty_visible.load(std::memory_order_acquire)&&!pending_visible.load(std::memory_order_acquire))||
        GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire)||mutating||
        (!lease.dirty()&&!pending.active())||!registered(function)||!related(object))return BeforeActionOutcome::ignored;
@@ -506,6 +513,7 @@ void tick(){
         relinquish_original_hand(L"original_hand_already_restored");
 }
 void reset(){
+    if(!weaponrestore::healthy())return;
     if(!lease.reset())return;
     pending.reset();pending_model.reset();pending_slot=4;pending_down_mask=0;pending_until=0;pending_from_grip=false;
     dirty_visible=false;pending_visible=false;stop_requested=false;shutdown_requested=false;status=0;
@@ -515,6 +523,7 @@ void reset(){
 } // namespace stow
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
 unsigned hand_equipment_phase(uptr pc,uptr pawn,uptr weapon){
+    if(!weaponrestore::healthy())return 0;
     // This is private evidence for the same fixed arena, not a new public
     // animation ownership bit. A bare detached component grants no authority.
     if(GetCurrentThreadId()!=game_thread.load()||pc!=playground::arena_pc||
@@ -576,7 +585,7 @@ unsigned hand_equipment_phase(uptr pc,uptr pawn,uptr weapon){
 }
 #endif
 bool stow_fire_permitted(uptr pc,uptr weapon){
-    return !stow::shutdown_requested.load()&&!stow::stop_requested.load()&&
+    return weaponrestore::healthy()&&!stow::shutdown_requested.load()&&!stow::stop_requested.load()&&
         !stow::yielding&&!stow::pending_visible.load()&&
         !stow::lease.dirty()&&!stow::lease.faulted()&&playground::ready&&test_environment()&&
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)

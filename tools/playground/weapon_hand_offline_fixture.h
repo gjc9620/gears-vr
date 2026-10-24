@@ -23,6 +23,7 @@
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_ACTION_BOUNDARY_TRIAL)
 #include "../vr-common/weapon_boundary_admission.h"
+#include "../vr-common/weapon_boundary_state_pool.h"
 #endif
 #ifdef NDEBUG
 #error WeaponHandClientOfflineTest requires active assertions

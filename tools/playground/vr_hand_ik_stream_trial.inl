@@ -142,7 +142,7 @@ bool journals_dirty(){return trial.lease.dirty()||component_dirty();}
 bool component_safe_to_unload();
 void publish_journals(){safe_to_unload.store(component_safe_to_unload(),std::memory_order_release);}
 #else
-void publish_journals(){safe_to_unload.store(!journals_dirty(),std::memory_order_release);}
+void publish_journals(){safe_to_unload.store(weaponrestore::healthy()&&!journals_dirty(),std::memory_order_release);}
 #endif
 bool restore(const wchar_t*);
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
@@ -212,7 +212,7 @@ struct Action {
 };
 } // namespace component_continuous
 bool component_safe_to_unload(){
-    return !journals_dirty()&&!component_continuous::state.operation_depth&&!component_continuous::state.action_depth&&
+    return weaponrestore::healthy()&&!journals_dirty()&&!component_continuous::state.operation_depth&&!component_continuous::state.action_depth&&
         !component_continuous::state.finishing&&(!component_continuous::state.terminal||component_continuous::state.finalized)&&
         !trial.releasing&&!dual_draining;
 }
@@ -221,6 +221,7 @@ bool component_safe_to_unload(){
 // The only two live reset sites first drain/reset the component owner. Never
 // assign or destroy a pending noncopyable hand journal, even on a fresh Start.
 bool clear_tail_trial(){
+    if(!weaponrestore::healthy())return false;
     auto const& state=component_continuous::state;
     if(trial.lease.dirty()||trial.lease.busy()||trial.lease.restoring()||trial.releasing||
        component_dirty()||state.operation_depth||state.action_depth||state.finishing||dual_draining)return false;
@@ -276,6 +277,7 @@ void reset();
 // HOLD_STATE_END
 #endif
 bool drain_journals(const wchar_t* reason,bool hand_restore_names=false){
+    if(!weaponrestore::healthy())return false;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     component_names::Scope names_scope(false);
 #endif
@@ -818,6 +820,7 @@ struct Backend {
     component_continuous::Mode forward_mode{component_continuous::Mode::joint};
 #endif
     bool forward_allowed()const {
+        if(!weaponrestore::healthy())return false;
 #if defined(GEARS_PLAYGROUND_HAND_TAIL_TRANSLATION_TRIAL)
         if(!forward_write||trial.releasing||trial.lease.restoring()||trial.lease.primary_faulted())return true;
         if(trial.lease.faulted()||trial.tail_revoked_mask)return false;
@@ -865,6 +868,7 @@ struct Backend {
     }
     bool write_target(unsigned channel,policy::Target const& expected,policy::Target const& wanted);
     bool set_strength(unsigned channel,float strength){
+        if(!weaponrestore::healthy())return false;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
         if(hand_writes_relinquished)return false;
 #endif
@@ -875,6 +879,7 @@ struct Backend {
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
         if(!forward_allowed())return false;
 #endif
+        if(!weaponrestore::healthy())return false;
         count_add(trial.setter_calls);return handik::set_strength(value.object,strength);
     }
 };
@@ -883,6 +888,7 @@ bool write_bytes(uptr address,policy::Target const& wanted){
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 bool Backend::write_target(unsigned channel,policy::Target const& expected,policy::Target const& wanted){
+    if(!weaponrestore::healthy())return false;
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
     if(hand_writes_relinquished)return false;
 #endif
@@ -895,7 +901,7 @@ bool Backend::write_target(unsigned channel,policy::Target const& expected,polic
 #endif
     const auto object=trial.lease_anchor.controls[indices[channel]].object;
     const auto property=playground::property(object,(channel&1)?L"BoneRotation":L"EffectorLocation");
-    if(!registered(property))return false;
+    if(!registered(property)||!weaponrestore::healthy())return false;
     count_add(trial.target_writes);
     if(!write_bytes(object+get<unsigned>(property+0x94),wanted))return false;
     return read(channel,value)&&value.target==wanted;
@@ -1278,7 +1284,7 @@ void record_failure(unsigned code,const wchar_t* reason){
 void finalize(){
     if(state.finalized||!state.terminal||state.finishing||state.operation_depth||state.action_depth||trial.releasing||dual_draining)return;
     state.finalized=true;
-    const bool clean=!journals_dirty();
+    const bool clean=weaponrestore::healthy()&&!journals_dirty();
     unsigned code=state.failure_known?state.first_failure:state.terminal_code;
     if((state.cleanup_failed||trial.lease.faulted()||component_faulted())&&code<7)code=7;
     if(!clean)code=8;
@@ -1335,6 +1341,7 @@ void finalize(){
 #endif
 }
 bool finish(){
+    if(!weaponrestore::healthy())return false;
     if(state.finalized)return state.last_drain_result&&!journals_dirty()&&!state.cleanup_failed;
     if(!state.deferred&&!state.terminal)return !journals_dirty();
     if(state.finishing||state.operation_depth||state.action_depth||trial.releasing||dual_draining)return false;
@@ -1385,6 +1392,7 @@ void terminal(unsigned code,const wchar_t* reason){
     finish();
 }
 bool normal_tick(){
+    if(!weaponrestore::healthy())return false;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     if(trial.ended||state.terminal||stop_requested.load(std::memory_order_acquire)||
        shutdown_requested.load(std::memory_order_acquire)||trial.lease.faulted()||component_faulted()){
@@ -1457,6 +1465,7 @@ PostTick::~PostTick(){
 #endif
 
 bool restore(const wchar_t* reason){
+    if(!weaponrestore::healthy())return false;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     if(!trial.lease.dirty()&&!trial.lease.faulted()&&!hand_writes_relinquished)
         component_continuous::state.hand_only_journal=false;
@@ -1686,6 +1695,7 @@ void immediate_action(){
     if(!trial.immediate_test)end(7,L"immediate_action_handback_failed");
 }
 void pre_tick(uptr){
+    if(!weaponrestore::healthy())return;
     if(!active_visible.load(std::memory_order_acquire)||trial.ended)return;
     if(trial.lease.dirty()&&!restore(L"pre_tick"))return;
     if(stop_requested.load(std::memory_order_acquire)){end(6,L"stopped_after_restore");return;}
@@ -1699,6 +1709,7 @@ void pre_tick(uptr){
     }
 }
 void post_tick(uptr pc){
+    if(!weaponrestore::healthy())return;
     if(requested.exchange(false,std::memory_order_acq_rel)){
         trial={};trial.phase=1;trial.began=GetTickCount64();trial.deadline=trial.began+30000;
         if(log_file){fwprintf(log_file,L"hand_ik_stream_trial_begin source=synthetic_bone_world trajectory=all_axes "
@@ -1778,6 +1789,7 @@ void post_tick(uptr pc){
 #include "vr_hand_ik_xr_stream_trial.inl"
 #endif
 void reset(){
+    if(!weaponrestore::healthy())return;
 #if defined(GEARS_PLAYGROUND_HAND_IK_XR_STREAM_TRIAL)
     xr_bridge.close();xr_pending={};
 #endif
@@ -1802,7 +1814,7 @@ void reset(){
 DWORD stop_and_wait(){
     stop_requested.store(true,std::memory_order_release);
     if(game_thread.load(std::memory_order_acquire)==GetCurrentThreadId())return 41;
-    const auto ready=[](){return safe_to_unload.load(std::memory_order_acquire)&&
+    const auto ready=[](){return weaponrestore::healthy()&&safe_to_unload.load(std::memory_order_acquire)&&
         !requested.load(std::memory_order_acquire)&&!active_visible.load(std::memory_order_acquire);};
     const auto until=GetTickCount64()+2000;
     while(!ready()
