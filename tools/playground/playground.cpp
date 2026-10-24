@@ -10,6 +10,13 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+#if !defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE) || !defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#error Damage Result observer requires both existing animation observation boundaries
+#endif
+#include <cstddef>
+#include <type_traits>
+#endif
 #include "MinHook.h"
 #if defined(GEARS_PLAYGROUND_HAND_IK_TRIAL) && defined(GEARS_PLAYGROUND_HAND_IK_CONTROLLED_TRIAL)
 #error The single-pulse and controlled IK candidates cannot be combined
@@ -844,6 +851,10 @@ bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
 }
 #endif // GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL
 #include "playground_controller.inl"
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+#include "weapon_grip_damage_metadata.inl"
+#include "weapon_grip_damage_result_probe.inl"
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
 #include "hand_animation_probe.inl"
 #endif
@@ -1131,6 +1142,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundReserve(void*){
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     LifecycleScope lifecycle;
     if(enabled.load())return 0;
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+    if(callbacks.load(std::memory_order_acquire))return 31;
+    gripdamage::callbacks_drained();
+    if(!gripdamage::reset_drained())return 32;
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
     handanim::reset();
 #endif
@@ -1828,6 +1844,10 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     // All callbacks are drained. Finalize the read-only observation before
     // closing its log; no game-thread cleanup or engine call is required.
     if(handanim::probe.active)handanim::finish(4,L"shutdown");
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+    gripdamage::callbacks_drained();
+    if(!gripdamage::reset_drained())return 32;
+#endif
     handanim::reset();
 #endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)

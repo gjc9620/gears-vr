@@ -7,6 +7,17 @@ using Exec=uptr(__fastcall*)(uptr,uptr,uptr,uptr);
 Exec original{};
 bool reserved{};
 uptr target{};
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+// POD-only SEH helper: close the new observer on unwind without swallowing it.
+// The original outer Active/handanim exception behavior is not changed.
+uptr invoke_observed(uptr self,uptr caller,uptr result,uptr callee){
+    const auto token=gripdamage::enter(self,caller,result,callee);
+    uptr value{};bool returned{};
+    __try{value=original(self,caller,result,callee);returned=true;}
+    __finally{gripdamage::leave(token,returned);}
+    return value;
+}
+#endif
 uptr __fastcall hook(uptr self,uptr caller,uptr result,uptr callee){
     struct Active {Active(){++callbacks;}~Active(){--callbacks;}} active;
 #if defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL)
@@ -16,7 +27,11 @@ uptr __fastcall hook(uptr self,uptr caller,uptr result,uptr callee){
     vrequip::stow::before_action(self,callee);
 #endif
     const auto token=handanim::enter(self,callee,nullptr,handanim::Source::call_function,caller);
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+    const auto value=invoke_observed(self,caller,result,callee);
+#else
     const auto value=original(self,caller,result,callee);
+#endif
     handanim::leave(token,self,callee,nullptr,caller);
     return value; // RAX bits have no inferred semantic meaning here.
 }

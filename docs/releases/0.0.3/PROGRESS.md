@@ -660,3 +660,15 @@ AX实测补记：提交 `fc92520` 的786源／27依赖／647工件候选 `4d3d0f
 独立8控制器typed观察／3组件／44挂接和入口恢复前后相符，Stop0／Shutdown0、音频8恢复pending0、确切自有owner／game／XR均退出；Native／XR子会话独立通过。78文件封存 `3b4e5fce…dd7f9`、root结果 `b0e227ce…b544` 位于忽略的 `analysis/hand-mesh-runtime-1024ax/`，保留原失败，不为获取通过而重复启动。完整运动仍未解决，无默认安装或全武器／头显通过。
 
 并行推进用户新增的单双手伤害要求：已有静态证据和本轮有界KB查询仍不能证明当前零售版Result ABI、逐发／弹丸／投射物归属。Astra只读探针方案 `d260e44e…11b1c` 建议复用同一次四参数CallFunction原调用，在固定POD中保存完整身份、实时唯一Float ReturnParm布局、原Result地址的前后4字节与同代调用配对；不使用caller参数区、RAX或Result+ReturnOffset，不写游戏内存。方案本条记录时尚未实现或运行，不代表0.7／1.0倍率生效；枪体时序与完整功能继续保留为未完成项。
+
+## 2026-10-24 — AY 原伤害结果的默认关闭只读采样
+
+为接用户确认的单手0.7／有效双手1.0规则，新增独立默认OFF开关 `GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE`，依赖现有两个动画观察开关。只在原四参数CallFunction同一次调用周围采样，原before-action／handanim顺序、四参数、调用次数和返回位保持。完整有界copy-known身份／Name外链、receiver继承和实时pawn.Weapon／weapon.Instigator、函数子字段链及唯一ReturnParm的flags／dimension／width／offset／ParamSize／extent进入固定POD；局部首尾复核后只发布完整布局，失败只给阶段／原因。Result只取原地址4字节，不加返回offset、不借caller／RAX；这一层没有乘0.7、引擎调用或游戏内存写入。
+
+Astra发现初稿仅凭leaf FloatProperty便标typed的缺口：现有保存证据及有界KB查询没有绑定完整原生类型身份，不能猜Core包路径。因此修后只保留完整身份与任意raw4位型；`stable_layout_candidate`只表示同代session、前后元数据和读取稳定，`typed_candidate`固定false，输出 `native_return_type_proved=0`，不把NaN／Infinity位型解成浮点。真正Result ABI、getter实际是否经过边界、最终TakeDamage与单发／同发弹丸／投射物归属仍待购买版验证。最终源审 `4cfdcb7f…cc83` 通过，只是有界只读源审，不是伤害实现或零售类型证明。
+
+新记录器64行／8层，同代call／parent／depth配对，容量不覆盖open行。POD-only `__try/__finally` helper让异常只记incomplete并收尾新栈，不抑制异常、不伪造post；原外层Active／旧handanim的SEH生命周期没有因此修复。Stop／limit仅冻结录入，已进入token照常收尾；GT pump在inactive早退前，queued Start在旧记录drain／dump前不exchange／reset，Shutdown在原禁钩且全局callbacks为零后无条件处理pending。候选getter仅新增一次OS采钟，与原observer截止比较，不新建期限，不参与100ms写权限。四旧源只加新guard；首次生成器误统一旧LF／mixed EOL，原raw逆变换失败保留，恢复原行EOL后四件raw inverse全等（`306eff09…c0c0`）。
+
+两个独立本地CPU fixture均由助手只准备、root审查后首次严格编译运行通过：记录器33类／727项、metadata reader18类／594项。前者直接使用实际完整POD／dump、原hook／SEH helper、finish／post_tick和实际Ledger，candidate／read／same与无关snapshot／指针为明确host服务；后者include完整实际reader和原SEH copy，只用本进程GObjects／GNames／元数据及声明的after-copy变更，覆盖身份／首同名拒绝、完整布局／extent、fresh变更／同代配对、未知／边界／真实PAGE_NOACCESS。容量内部子场景不冒充完整read，Core名字只是构造模型。Snapshot实际33208字节；不证明零售ABI、Result、全局Shutdown或性能。R1输入保持，R2准备器一次文本替换断言失败单独保留；未发生编译或CPU失败。实际结果在忽略的 `analysis/weapon-grip-damage-recorder-cpu-20261024ay-r2/attempt1/` 与 `analysis/weapon-grip-damage-metadata-cpu-20261024ay/attempt1/`，准备报告保留其生成时未执行事实。
+
+冻结788源／27依赖，唯一完整PG严格构建、23导出及新开关OFF一组两次/EP对比通过：展开9份原运行源与11份新运行源，覆盖实际handanim／call及两新文件，仅额外两项正guard标准头include，同条件非空行相等。DLL `3e2c6035…5ab6`、build结果 `a375078f…74ac8`；不重跑未变旧套件、不重建Native／XR／loader。root复核788当前源与冻结源、27依赖及两套实际结果一致，总记录 `c0fe1e37…5e77d` 在忽略的 `analysis/weapon-grip-damage-closeout-20261024ay/`。本阶段没有启动新游戏或安装普通启动器；AX枪体时序、完整伸手、全12武器、真实0.7伤害和GPU／Quest／头显仍未完成，完整目标继续active。

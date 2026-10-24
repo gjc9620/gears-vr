@@ -291,6 +291,9 @@ void emit_snapshot(Snapshot const& value,const wchar_t* phase,unsigned call){
     }
 }
 void finish(unsigned code,const wchar_t* reason){
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+    gripdamage::freeze(code);
+#endif
     probe.active=false;active_visible.store(false,std::memory_order_release);
     status.store(code,std::memory_order_release);
     if(log_file){
@@ -476,15 +479,28 @@ void reset(){
     probe={};bridge_stack={};bridge_depth=0;
 }
 void post_tick(uptr pc){
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+    // Flush frozen POD even when the original animation probe is now inactive.
+    gripdamage::pump();
+#endif
     if(stop_requested.exchange(false,std::memory_order_acq_rel)){
         requested=false;if(probe.active)finish(4,L"explicit_stop");
         else {active_visible.store(false,std::memory_order_release);status.store(4,std::memory_order_release);}
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+    // Preserve a queued Start until the previous recorded callbacks drain.
+    if(requested.load(std::memory_order_acquire)&&!gripdamage::can_begin())return;
+#endif
     if(requested.exchange(false,std::memory_order_acq_rel)){
         probe={};probe.fields.reserve(max_fields);probe.functions.reserve(max_functions);frames=0;
         probe.pc=pc;probe.pawn=playground::arena_pawn;probe.world=playground::arena_world;
         probe.mesh=playground::pointer(probe.pawn,L"Mesh");probe.tree=playground::pointer(probe.mesh,L"Animations");
         probe.active=true;probe.deadline=GetTickCount64()+gears_hand_animation::duration_ms;
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+        if(!gripdamage::begin(probe.world,probe.pc,probe.pawn,probe.deadline)){
+            finish(5,L"damage_observer_pending");return;
+        }
+#endif
         active_visible.store(true,std::memory_order_release);
         if(log_file){fwprintf(log_file,L"hand_animation_probe_begin schema=1 pc=%p pawn=%p world=%p mesh=%p tree=%p "
             L"duration_ms=%llu frame_limit=%u call_limit=%u depth_limit=%u slot_limit=%u child_limit=%u "
