@@ -12,9 +12,22 @@ uptr target{};
 // The original outer Active/handanim exception behavior is not changed.
 uptr invoke_observed(uptr self,uptr caller,uptr result,uptr callee){
     const auto token=gripdamage::enter(self,caller,result,callee);
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
+    gripdamage_write::enter(token);
+#endif
     uptr value{};bool returned{};
     __try{value=original(self,caller,result,callee);returned=true;}
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
+    __finally{
+        gripdamage::leave(token,returned);
+        if(!returned)gripdamage_write::abandon(token);
+    }
+    // Only a normal original return reaches the bounded write. No exception
+    // from the original is caught, retried or converted into a return value.
+    gripdamage_write::complete(token);
+#else
     __finally{gripdamage::leave(token,returned);}
+#endif
     return value;
 }
 #endif

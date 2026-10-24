@@ -10,6 +10,13 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
+#include <cwchar>
+#include <initializer_list>
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL) && !defined(GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE)
+#error Damage write trial requires the existing Result and caller context observers
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE) && !defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
 #error Damage caller context requires the existing raw Result observer
 #endif
@@ -859,7 +866,17 @@ bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE)
 #include "weapon_grip_call_context.inl"
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
+namespace gripdamage_write {
+void begin(unsigned) noexcept;
+void dump();
+bool reset_drained() noexcept;
+}
+#endif
 #include "weapon_grip_damage_result_probe.inl"
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
+#include "weapon_grip_damage_write_trial.inl"
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
 #include "hand_animation_probe.inl"

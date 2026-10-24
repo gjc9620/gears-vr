@@ -716,3 +716,13 @@ BC实测补记：保持候选和已封存准备不变，另在 `analysis/weapon-
 Stop0／Shutdown0、朝向精确恢复、CallFunction32字节与ProcessEvent64字节恢复、确切自有游戏／owner退出、音频8会话恢复pending0均核对通过；原10份配置／存档hash保持，两份私有INI修改前原字节另存。正式passed只涵盖本轮只读观察，实际0.7写入、单发身份、全武器／完整自由手／默认集成与GPU／头显仍未完成。30文件封存9216bffd…1f365e、回执9c47ce1e…370a09，汇总在忽略的 `analysis/weapon-grip-call-closeout-20261024bc/`。窗口已明确交回掩体与菜单排队，后续不叠开游戏。
 
 跨会话接口补记：controller v3的frame／bridge／bridge test三文件与da775ed7及掩体副本完全同字节，已交付准确hash、XR独立子组件来源及真实构建flags，供其在最新menu XR上增量合流，不用旧二进制覆盖默认。当前武器尚无完成的support／ammo／magazine统一交互租约owner；已明确区分IK／组件恢复lease、只读support probe及Lancer弹匣实验状态。建议共同启用时复用单个Native GT左手仲裁实例和版本化request/result，不各自创建owner，CallFunction同地址也需统一dispatcher；目前没有因此宣称运行时合流完成。
+
+## 2026-10-24 — BD 同次原调用内的受控伤害写入
+
+根据BC零售证据与Astra Max的有界审查，开始实际倍率写入，不再扩大native／GPU只读证明。新增默认OFF的 `GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL`：仅在原游戏线程、受保护测试环境及显式运行开关下，接受AssaultRifle原WarWeapon getter由 `ProcessInstantHit_Internal` 直接调用的已知脚本位置。实时反射唯一、未重叠、四字节且完整类型为Core.FloatProperty的DamageDealt局部字段，核对当前武器／Instigator、完整注册路径、原分派、正常PC322→379及Result等于locals加反射偏移；不对Result增加ReturnOffset。
+
+原函数仍以四个原参数执行一次，RAX位型原样返回。仅正常返回后对有限非负float计算0.7f，以对比原post字节的受保护原子四字节操作尝试写入一次，原版后续int转换保持。双手／未知／排除状态保留原字节；异常传播时只关闭记录，不读写post Result。每次调用使用generation／call token，允许原版复用同一Result地址，重复complete不再写。比较失败、写故障或读回不确定后关闭本候选后续写入，不重试或回滚失效栈地址。
+
+这一阶段输入是明确标记、在observer epoch冻结的single／two／unknown／excluded测试fixture，尚未接真实抓握或逐发身份。日志使用schema2区分写入前raw记录与独立writer记录，并明确actual_grip_adapter=0、authoritative_shot_proved=0、projectile_supported=0；旧schema1只读证据保留。Astra源码审查未发现本范围内的具体误写／崩溃／token泄漏问题。实际metadata／context／observer／writer／CallFunction helper源码在本地模型通过10类／144项严格检查，包括同地址多调用、嵌套getter、near-miss、完整类型拒绝、调用中fixture变化、反射变化、原SEH传播、字节竞争及真实只读页写故障；这是实际hook/CAS路径的CPU检查，原引擎元数据／回调仍是明确本地模型。
+
+790源／27依赖的PG完整严格构建通过，23导出保持；新开关OFF的旧12／新13份实际运行源经两次/EP非空文本精确一致。DLL为51cbeb9e…7d46d4。验证器的头文件/OFF格式检查、首次严格构建命名警告及本地fixture对齐警告的失败记录均保留，修正后才通过。证据位于忽略的 `analysis/weapon-grip-damage-write-build-20261024bd-r4/`、`analysis/weapon-grip-damage-write-cpu-20261024bd/` 和 `analysis/weapon-grip-damage-write-review-20261024bd/`。此条记录时尚未在零售版执行写入；真实握持、逐发快照、投射物、最终伤害验收、全武器／自由手／默认集成及GPU／头显仍未完成。

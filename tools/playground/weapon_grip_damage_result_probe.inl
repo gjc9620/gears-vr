@@ -42,6 +42,9 @@ bool begin(uptr world,uptr pc,uptr pawn,ULONGLONG deadline) noexcept{
     if(!can_begin())return false;
     std::memset(&state,0,sizeof(state));
     state.generation=++generation;state.world=world;state.pc=pc;state.pawn=pawn;state.deadline=deadline;
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
+    gripdamage_write::begin(state.generation);
+#endif
     state.admitting=true;return true;
 }
 bool environment() noexcept{
@@ -120,9 +123,16 @@ void leave(Token const& token,bool returned) noexcept{
 void dump_metadata(gripdamage_metadata::Snapshot const&,unsigned,const wchar_t*);
 void pump(){
     if(!state.pending||state.dumped||state.depth||state.admitting||!log_file)return;
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
+    fwprintf(log_file,L"weapon_grip_damage_probe_begin schema=2 generation=%u world=%p pc=%p pawn=%p "
+        L"capacity=%u depth_limit=%u result_bytes=4 pre_is_uninitialized_storage=1 "
+        L"result_offset_applied=0 rax_interpreted=0 authoritative_shot_proved=0 "
+        L"raw_result_stage=before_trial_write separate_writer_records=1 observer_writes=0\n",
+#else
     fwprintf(log_file,L"weapon_grip_damage_probe_begin schema=1 generation=%u world=%p pc=%p pawn=%p "
         L"capacity=%u depth_limit=%u result_bytes=4 pre_is_uninitialized_storage=1 "
         L"result_offset_applied=0 rax_interpreted=0 native_return_type_proved=0 authoritative_shot_proved=0 multiplier_applied=0 observer_writes=0\n",
+#endif
         state.generation,reinterpret_cast<void*>(state.world),reinterpret_cast<void*>(state.pc),
         reinterpret_cast<void*>(state.pawn),capacity,depth_limit);
     for(unsigned i=0;i<state.count;++i){
@@ -149,6 +159,9 @@ void pump(){
         L"observer_writes=0 actual_damage_acceptance=0\n",state.generation,state.finish_code,state.count,state.depth,
         state.filtered_unknown,state.schema_unknown,state.gap_count,unsigned(state.capacity_gap),
         unsigned(state.depth_gap),unsigned(state.pairing_gap));
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
+    gripdamage_write::dump();
+#endif
     fflush(log_file);state.dumped=true;
 }
 // Only the lifecycle owner may call this after disabling hooks and observing
@@ -165,6 +178,9 @@ void callbacks_drained(){
 }
 bool reset_drained() noexcept{
     if(state.depth||state.admitting||(state.pending&&!state.dumped))return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
+    if(!gripdamage_write::reset_drained())return false;
+#endif
     std::memset(&state,0,sizeof(state));return true;
 }
 void dump_property(gripdamage_metadata::Property const& p,unsigned call,const wchar_t* phase,
