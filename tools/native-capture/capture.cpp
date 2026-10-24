@@ -77,6 +77,7 @@ gears_support::Recorder support_diagnostics;
 #include "camera_closer.h"
 #include "../vr-common/cover_view.h"
 #include "../vr-common/cover_input_owner.h"
+#include "../vr-common/cover_body_target.h"
 #include "../vr-common/controller_input_bridge.h"
 #include "weapon_hand_broker.h"
 #include "cover_surface_getters.h"
@@ -916,6 +917,7 @@ bool begin_call(uintptr_t,uintptr_t,uintptr_t,uintptr_t,gears_weapon_hand::CallS
 void finish_call(gears_weapon_hand::CallScope&,bool,uint64_t) noexcept;
 }
 namespace cover_geometry_observer_live {void print(FILE*);void summary(FILE*);}
+namespace cover_full_goal_live {void summary(FILE*);}
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 std::atomic<unsigned> cover_body_stop_record{};
 SessionStop cover_body_stop_reason=SessionStop::none;
@@ -1200,6 +1202,7 @@ void print_stereo(FILE* file) {
     cover_camera_live::print(file);
     cover_input_live::print(file);
     cover_geometry_observer_live::print(file);
+    cover_full_goal_live::summary(file);fprintf(file,"\n");
     cover_shared_input_live::summary(file);weapon_hand_runtime::summary(file);fprintf(file,"\n");
 #if defined(GEARS_SIXDOF_TICKET_DIAGNOSTICS) && GEARS_SIXDOF_TICKET_DIAGNOSTICS
     // Final requests remain serviceable even if rendering stopped immediately
@@ -1267,6 +1270,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "cover_input_live.inl"
 #include "weapon_hand_runtime.inl"
 #include "cover_shared_input_live.inl"
+#include "cover_full_goal_live.inl"
 uintptr_t canonical_identity(IUnknown* object) {
     IUnknown* identity{};
     if(!object || FAILED(object->QueryInterface(IID_PPV_ARGS(&identity))))return 0;
@@ -1829,7 +1833,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     path_choice_layout_observer::progress(output);
     path_choice_close_observer::progress(output);
     cover_body_live::progress(output);
-    {std::lock_guard<std::mutex> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);}
+    {std::lock_guard<std::mutex> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);}
     weapon_hand_runtime::summary(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
@@ -3184,6 +3188,7 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
         }
         const bool first_person_view_owned=first_person_live::prepare(anchor,view);
         const bool cover_view_owned=cover_shared_input_live::prepare(anchor,view,result);
+        cover_full_goal_live::prepare(anchor,result);
         cover_geometry_observer_live::observe(anchor);
         if(camera_closer_metres>0&&!first_person_view_owned&&!cover_view_owned){
             const bool gameplay=anchor&&!anchor->anchor.unpossessed&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&

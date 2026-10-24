@@ -318,7 +318,24 @@ def _module(q, bridge, game):
     if (disk['fields'] != live['fields'] or disk['sections'] != live['sections'] or
             module['size'] != disk['fields']['size_of_image'] or module['sections'] != disk['sections'] or
             not 0 < module['base'] < (1 << 64) - module['size']):
-        raise RuntimeError('Bone current module PE identity/section layout differs')
+        # Preserve the fail-closed predicate. A blanket error lost the exact
+        # changed field when a real preflight failed, preventing localization.
+        fields = {key: dict(disk=value, live=live['fields'].get(key))
+                  for key, value in disk['fields'].items() if live['fields'].get(key) != value}
+        sections = []
+        for index in range(max(len(disk['sections']), len(live['sections']))):
+            expected = disk['sections'][index] if index < len(disk['sections']) else None
+            observed = live['sections'][index] if index < len(live['sections']) else None
+            if expected != observed:
+                sections.append(dict(index=index, disk=expected, live=observed))
+        differences = dict(fields=fields, changed_section_count=len(sections), sections=sections[:8],
+                           supplied_size=module['size'], disk_image_size=disk['fields']['size_of_image'],
+                           supplied_sections_match_disk=module['sections'] == disk['sections'],
+                           base_range_valid=0 < module['base'] < (1 << 64) - module['size'],
+                           disk_header_sha256=hashlib.sha256(disk_headers).hexdigest(),
+                           live_header_sha256=hashlib.sha256(live_headers).hexdigest())
+        raise RuntimeError('Bone current module PE identity/section layout differs: ' +
+                           json.dumps(differences, separators=(',', ':'), sort_keys=True))
     offset = disk['directory_offsets']['resource']
     if disk_headers[:offset] != live_headers[:offset] or disk_headers[offset + 8:] != live_headers[offset + 8:]:
         raise RuntimeError('Bone current module immutable PE header bytes differ')
