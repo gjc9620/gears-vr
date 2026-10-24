@@ -558,3 +558,7 @@ TAIL默认关闭路径新增一个observe栈内Lookup，显式传入原36次iden
 AP实测补记：提交 `bb542b15…48bed` 的786源／27依赖／571工件候选 `372235cd…68cf8`，按原三次新鲜空闲、静音置后／observe-only、物理后台输入关闭及原15s／8命令／0.1门限运行一次购买版测试。首次acquire的四组prepare和hand_direct均返回通过；原授权第0／1／2组返回3，最后group4旋转的ordinal192实际记录known127／checked2047／rejected1024，最终check10 NS新鲜度拒绝。MS now=live=commit71090640≤write_until71090646，票龄94ms；实际commit的stereo／input源龄分别104.0706／104.0464ms。四次prepare7.5043／7.3323／7.4895／7.8116ms，最终hand_direct2.5122／2.4755／2.4778／2.4913ms，没有逐Lookup启用／命中计数，且不是与AO受控比较，不能认为该候选已提速或定位了独占瓶颈。
 
 组件1次acquire尝试／0提交／1恢复／setter尝试5，fault和cleanup_failed保留，最终dirty／owned／revoked0；双手与新增字段零写、0移动命令，正式passed／cleanup／tail审计仍false。独立完整8控件typed观察、3组件和44字节挂接恢复，入口无恢复错误，failure Stop0／Shutdown0，8音频会话恢复且pending0，确切自有owner／game／XR均不存在；独立Native／XR子会话通过不替代正式失败。73文件封存 `e0fae948…177ad`、root结果 `359506f7…def1e` 在忽略的 `analysis/hand-mesh-runtime-1024ap/`，不再改写。准备与最终校验通过不能证明每条新Lookup路径都实际启用，当前证据只确认整段未达到原目标。
+
+下一候选收敛补记：Astra七输入有界源审 `0f9d42ae…2c5b1` 建议只批量定位每次read_control的17个SingleBone或19个Limb字段，再按原顺序进行每项注册／类型／offset／size／值／bool mask／结构类型检查，末尾独立重查地址与当前class后才完成原TailRead。静态成功八控件约200–208次字段名称遍历可改为16次批查，但没有毫秒收益证明；暂不合并pawn cache八项。报告在忽略的 `analysis/hand-control-batch-next-review-20261024ap/review.json`，未写源码／测试或运行游戏。
+
+为控制候选复杂度，root已撤下AP新增约131KB删除查找工作区及其reader／fixture接线，保留AO地址批查、原live deleted和AN失败／计时诊断。撤回依据是收益尚未确立且存在额外保守拒绝与栈成本，不是宣称已证明零收益。三份生产源按已冻结AO原字节恢复，786源逐一与AO已通过的严格构建输入相等；没有重做旧构建／检查，没有修改AP候选、73份失败封存或任何公开包。恢复证明 `c50cde8a…5e83f` 在忽略的 `analysis/hand-control-batch-prepare-20261024aq/restore-source-result.json`。原控制器17／19字段的新接线尚未编写／验证；完整6DoF、真实0.7伤害、默认安装和头显仍未完成。

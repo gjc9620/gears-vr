@@ -101,9 +101,6 @@ bool deleted(uptr object){
         if(current_memory->address(node)==object)return current_memory->deleted[node];
     return true;
 }
-// Deletion is another explicit catalogue service here. The actual bounded
-// live search-path implementation is exercised by its independent fixture.
-struct TailDeletionLookup {bool alive(uptr object){return !deleted(object);}};
 } // namespace playground
 
 // No rewritten/extracted observer or compare-write implementation.
