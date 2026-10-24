@@ -672,3 +672,15 @@ Astra发现初稿仅凭leaf FloatProperty便标typed的缺口：现有保存证�
 两个独立本地CPU fixture均由助手只准备、root审查后首次严格编译运行通过：记录器33类／727项、metadata reader18类／594项。前者直接使用实际完整POD／dump、原hook／SEH helper、finish／post_tick和实际Ledger，candidate／read／same与无关snapshot／指针为明确host服务；后者include完整实际reader和原SEH copy，只用本进程GObjects／GNames／元数据及声明的after-copy变更，覆盖身份／首同名拒绝、完整布局／extent、fresh变更／同代配对、未知／边界／真实PAGE_NOACCESS。容量内部子场景不冒充完整read，Core名字只是构造模型。Snapshot实际33208字节；不证明零售ABI、Result、全局Shutdown或性能。R1输入保持，R2准备器一次文本替换断言失败单独保留；未发生编译或CPU失败。实际结果在忽略的 `analysis/weapon-grip-damage-recorder-cpu-20261024ay-r2/attempt1/` 与 `analysis/weapon-grip-damage-metadata-cpu-20261024ay/attempt1/`，准备报告保留其生成时未执行事实。
 
 冻结788源／27依赖，唯一完整PG严格构建、23导出及新开关OFF一组两次/EP对比通过：展开9份原运行源与11份新运行源，覆盖实际handanim／call及两新文件，仅额外两项正guard标准头include，同条件非空行相等。DLL `3e2c6035…5ab6`、build结果 `a375078f…74ac8`；不重跑未变旧套件、不重建Native／XR／loader。root复核788当前源与冻结源、27依赖及两套实际结果一致，总记录 `c0fe1e37…5e77d` 在忽略的 `analysis/weapon-grip-damage-closeout-20261024ay/`。本阶段没有启动新游戏或安装普通启动器；AX枪体时序、完整伸手、全12武器、真实0.7伤害和GPU／Quest／头显仍未完成，完整目标继续active。
+
+## 2026-10-24 — AZ 原版 R2 的真实伤害查询观察与 BA 字段链修正
+
+AZ 冻结 AY 原探针为独立788源／27依赖／654工件候选 a7ec72cb…353be，manifest 7e8eeda7…a0662，DLL保持3e2c6035…5ab6；Native／XR／loader未重建。新增纯日志审计器的16个人工合成方法首次通过，完整字段表／外链／flags／布局与unknown均按实际格式核对；只声称日志完整性，不解码float、不证明Result所有权或逐发身份。结果位于忽略的 analysis/weapon-grip-damage-audit-root-20261024az/，没有重跑未变旧套件。
+
+两次全新私有存档／配置、静音置后购买版运行各先通过三次新鲜空闲检查。首局在按R2和启动观察器之前因误向PC查bNoWeaponFiring而停止，未伪装成字段false；保存的Pawn／Weapon脚本说明该字段属于Pawn。AZ-r2只把这一处对象参数pc改为pawn，raw逆变换可恢复原脚本，旧局23文件封存03c12d42…00a17保持。修正局原版Lancer R2经ButtonPress／ButtonRelease，typed held实际false→true→false，整个触发／释放约0.2663s；只调用这一种入口，没有直接调用getter／伤害函数或启动VrFire、handstream、Native／XR会话。原SetRotation与同世界Trace仅证明命中准备，不证明实际射线或逐发命中。
+
+AZ-r2自然经过4次GetFireModeDamage原调用，原返回均完成、同代session保持，记录无gap；8个pre／post元数据均为stage6 pawn_weapon、reason19 field_limit、ordinal512，因此0个有效raw4对，审计为protocol_valid但incomplete，正式passed仍false。它证明这次观察点可达，不能解释为4发子弹或已知零伤害。原朝向精确恢复、Stop／Shutdown0、两入口原字节、自有游戏退出和8音频会话恢复pending0均独立通过；19文件封存c202517a…74503。具体回执、原日志和失败保留在忽略的 analysis/weapon-grip-damage-runtime-1024az/ 与其-r2目录。
+
+BA仅修改读取器的单类兄弟字段查找上限512→4096，参照既有反射发现的4096项规模；原function字段64／parent40／固定Snapshot33208字节、身份／注册／首同名／类型／范围／循环与最终复核全部不变，没有写游戏伤害或输入。raw逆变换与CRLF保持。实际完整reader和原SEH copy在本地合成元数据上新增8类／42项首次严格编译运行通过，覆盖长链600、恰好4096／4097边界、长链循环、晚到的错误同名类型、失注册及最后指针变更；未重跑旧18类。结果在 analysis/weapon-grip-damage-search-cpu-20261024ba/。唯一完整PG严格构建、23导出与11实际运行源OFF一组两次/EP对比通过，DLL87ad5e25…59f17、build结果37d22a60…3a743；此条记录时修订读取器尚未购买版运行，没有性能或原生ABI结论。
+
+用户进一步确认：0.7／1.0只用于玩家枪械射击，包括Boomshot／Torque Bow等发射的投射物；手抛Bolo／Smoke保持原版伤害与效果。设计与验收项已同步。实际倍率仍未接线；双手／枪体完整运动、全武器装填／交互、普通启动器集成与GPU／Quest／头显验收均未完成，完整目标继续active。

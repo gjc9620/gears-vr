@@ -6,7 +6,7 @@ namespace gripdamage_metadata {
 using U32=std::uint32_t;
 using U64=std::uint64_t;
 constexpr U32 max_identities=192,max_names=96,max_name_units=96;
-constexpr U32 max_outer=12,max_parents=40,max_structures=80,max_fields=64,max_search=512;
+constexpr U32 max_outer=12,max_parents=40,max_structures=80,max_fields=64,max_search=4096;
 constexpr U32 invalid_slot=~U32(0);
 enum class Stage:U32 {none,tables,filter,receiver,function_path,inheritance,pawn_weapon,instigator,function_fields,final_check};
 enum class Reason:U32 {
