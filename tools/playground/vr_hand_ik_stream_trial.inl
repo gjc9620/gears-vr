@@ -1429,11 +1429,21 @@ bool normal_tick(){
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     } // Hand restore and any deferred cleanup finish before the zero-depth reset.
     if(trial.ended||state.terminal)return false;
+#if defined(GEARS_PLAYGROUND_HAND_INDEPENDENT_MOTION_TRIAL)
+    // A clean suspended component stays suspended. In this private profile
+    // the existing hand-only readiness proof replaces component resumption.
+    if(!component_hand_only_ready()||trial.lease.dirty()){
+        end(journals_dirty()?8u:7u,L"independent_hand_only_not_clean");return false;
+    }
+    publish_journals();return true;
+#else
     if(state.interval==Interval::suspended&&!component_resume_interval()){
         end(journals_dirty()?8u:7u,L"persistent_interval_reset_rejected");return false;
     }
     Operation retained_operation;
 #endif
+#endif
+#if !defined(GEARS_PLAYGROUND_HAND_INDEPENDENT_MOTION_TRIAL)
     if(trial.ended||state.closed)return false;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     if(state.interval==Interval::owned&&(!component_has_interval()||!component_owned())){
@@ -1444,6 +1454,7 @@ bool normal_tick(){
     }
     if(trial.ended||state.closed||trial.lease.dirty()||trial.lease.faulted()||component_faulted())return false;
     publish_journals();return true;
+#endif
 }
 PostTick::~PostTick(){
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)

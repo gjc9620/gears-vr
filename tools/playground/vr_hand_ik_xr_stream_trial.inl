@@ -811,6 +811,12 @@ bool persistent_hand_prewrite_cancelled(component_trace::AuthObservation const& 
 #endif
 
 bool prepare_xr_request(void* argument){
+#if defined(GEARS_PLAYGROUND_HAND_INDEPENDENT_MOTION_TRIAL)
+    wchar_t motion[4]{},source[4]{};
+    if(GetEnvironmentVariableW(L"GEARSVR_TEST_HAND_INDEPENDENT_MOTION",motion,4)!=1||motion[0]!=L'1'||
+       GetEnvironmentVariableW(L"GEARSVR_TEST_HAND_MOTION_SOURCE",source,4)!=1||
+       source[0]!=L'0'+GEARS_PLAYGROUND_HAND_MOTION_EXPECTED_SOURCE)return false;
+#endif
     gears_hand_xr_trial::Start value{};
     LARGE_INTEGER now{},frequency{};QueryPerformanceCounter(&now);QueryPerformanceFrequency(&frequency);
     if(!copy(&value,reinterpret_cast<uptr>(argument),sizeof(value))||
@@ -1126,9 +1132,14 @@ void post_tick(uptr pc){
 #endif
         trial.deadline=trial.began+15000;
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
-        // The continuous host admits the runtime wire profile. The unrelated
-        // optional R2 test path does not select this hand stream's provenance.
+        // The unrelated optional R2 test path never selects provenance. The
+        // private movement profile binds one explicit producer source instead.
+#if defined(GEARS_PLAYGROUND_HAND_INDEPENDENT_MOTION_TRIAL)
+        constexpr unsigned continuity_source=GEARS_PLAYGROUND_HAND_MOTION_EXPECTED_SOURCE;
+        static_assert(continuity_source<=1);
+#else
         constexpr unsigned continuity_source=static_cast<unsigned>(gears_vr::StereoSource::RuntimeTracked);
+#endif
         if(!trial.xr_policy.enable_certified_calibration(trial.xr_start.native_started_qpc,continuity_source)){
             end(7,L"xr_certified_policy_initialization_rejected");return;
         }
@@ -1151,6 +1162,10 @@ void post_tick(uptr pc){
             L"head_controllers_untouched=1 force_evaluation=0 ownership_proved=0 "
             L"external_frozen_native_epoch=%llu native_started_qpc=%llu world_handoff_supported=0\n",
             xr_max_leases,trial.xr_start.expected_native_world_generation,trial.xr_start.native_started_qpc);
+#if defined(GEARS_PLAYGROUND_HAND_INDEPENDENT_MOTION_TRIAL)
+            fwprintf(log_file,L"hand_independent_motion_profile schema=1 enabled=1 component_writes=0 expected_source=%u "
+                L"hand_only_phases=1,2 source_age_limit_ns=100000000 residual_limit_unchanged=1\n",continuity_source);
+#endif
             fflush(log_file);}
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
         if(log_file){fwprintf(log_file,L"hand_ik_equipment_begin original_hand_phase=1 owned_detached_phase=2 "
@@ -1339,8 +1354,12 @@ void post_tick(uptr pc){
     if(component_continuous::state.hand_only_journal){
         end(journals_dirty()?8u:7u,L"persistent_previous_hand_journal_pending");return;
     }
+#if defined(GEARS_PLAYGROUND_HAND_INDEPENDENT_MOTION_TRIAL)
+    constexpr bool joint_ready=false; // Same hand journals; never acquire/update the gun component.
+#else
     const bool joint_ready=component_forward_open()&&(plan.accept_mask&2)&&equipment_phase==1&&
         component_continuous::state.resume_stable;
+#endif
     if(!joint_ready){
         if(component_continuous::state.interval==component_continuous::Interval::owned){
             if(!component_forward_open()){end(7,L"persistent_writer_closed_without_pause");return;}
