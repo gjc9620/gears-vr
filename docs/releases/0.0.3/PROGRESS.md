@@ -524,3 +524,9 @@ AM实际运行补记：提交 `d3285c90…b3f8` 的786源／27依赖／535工件
 新6类／55项主机检查首次严格编译运行通过，直接使用完整实际cost／trace namespace和实际ForwardDiagnostics／component_callback_permit。覆盖先前可恢复拒绝与后次失败隔离、两段恰好4次QPC、旧pause保持、前置拒绝不借旧Auth、授权通过后dispatch失败、真实Windows RaiseException穿过实际SEH finally后的unknown与下次callback、容量／嵌套／reset及真实wide dump。时钟／mask／无关诊断服务和只供finally使用的Permit／两成员ContinuousAuthorize是显式host服务，不是实际引擎callback执行。CPU结果 `49ac51e2…1870` 位于忽略的 `analysis/hand-component-attempt-cpu-20261024an/`，旧225／315／198／370／539项未重跑。
 
 冻结786源／27依赖，唯一新完整PG严格构建／23导出及OFF五实际运行源两次/EP非空行相等均通过，DLL `4d50dff8…8604`，build结果 `ce0be602…3523` 位于忽略的 `analysis/hand-component-attempt-build-20261024an/`。本条记录时尚未实际运行该候选；未知终止原因与100ms成本仍待新局验证，没有reader优化、Native／XR／loader重建或默认安装。
+
+AN实测补记：源码 `e5fbcb1b…384a` 的786源／27依赖／547工件私有候选 `aea8eff8…75a1`，按三次新鲜空闲后只进行一次原8命令／15s预算／3s清理预留的静音置后购买版测试。准备脚本生成器首轮仅因一段说明文字的大小写断言停止，未写候选／prepare或启动游戏；保留错误，修正生成器后执行首次实际候选构建与prepare。runner全部函数／类AST与AM相同，原审计器及此前46项检查原样沿用，只有目录／tag与保留诊断前缀不同。Astra源码窄审 `cdaf6895…cef8e` 对两个源码pin通过，实测前root复核与实际源／冻结786份逐一相同。
+
+新增失败副本这次实际捕获了停止原因：首个acquire的seq755／rev23／lease1／interval1，第0／1／2组三次原最终授权返回3，最后group4旋转的原授权在ordinal192返回0，known67／checked3／rejected2，now=live69612484大于write_until69612475（原ticket69612375＋100ms）；没有进入后续NS／Policy阶段。四次prepare实际分别7.7695／8.2188／7.6974／7.8021ms，最终hand_direct分别2.4990／2.5722／2.5055／2.6687ms，原initial为4.9035ms。prepare含原VM，不能将其全算末端reader；这些阶段不与旧嵌套聚合相加。此次明确是实际部分acquire最后旋转前授权截止，并不回填AL／AM当时未保存的具体原因。
+
+该局组件1尝试／0提交／1恢复、setter尝试5，fault与cleanup_failed保留1，最终dirty／owned／revoked0；双手／新增字段零写、0移动命令，正式passed／cleanup与tail审计均false。独立8控件含typed观察、3组件和44字节挂接前后相同，入口恢复无错误，failure Stop0／Shutdown0；8音频会话恢复且pending0，确切owner／game／XR均不存在。独立Native／XR子会话通过不替代正式失败。97文件封存 `cd40f4a9…858fd`、root结果 `11d59a63…bc655` 在忽略的 `analysis/hand-mesh-runtime-1024an/`，不再改写。下一步只优化单次末端观察的重复first-match查找，保留所有实时identity／deleted／typed检查和原100ms，不增加暂停／重试授权分类，不清除真实fault或降低动作／精度。0.7伤害、全武器与头显仍未完成，无默认安装。
