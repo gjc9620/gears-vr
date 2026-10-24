@@ -652,3 +652,11 @@ AW实测补记：提交 `1448030` 的786源／27依赖／635工件候选 `5f6994
 mono只准备5份原始输入／27实际raw片段／36pins，root审查后唯一严格编译运行首次通过12类／131项；实际结果与准备时未执行报告分开保留，在忽略的 `analysis/hand-pawn-link-cpu-20261024ax/`。包括真实lookup／playground批查／stow fallback／SEH copy和原新九关联后缀，覆盖继承／大小写／首错误类型、精确component类型、维度／注册／边界／未知／错值、begin后metadata变化、finish前class或地址替换、当前新调用重读、PC／pawn／weapon短路及真实保护页Name边界。宏只机械改copy／pointer函数名以统计，实际body执行；完整GT／身份前门、slot VM与engine不在此fixture范围，不作假成功服务或性能证明。
 
 冻结786源／27依赖，唯一完整PG严格构建、23导出与七实际运行源OFF一组两次/EP非空行相等通过，DLL `14555b80…e5105`、build结果 `a11ff380…f3c1d` 在忽略的 `analysis/hand-pawn-link-build-20261024ax/`。构建与CPU独立进行，运行前须两者通过；未重跑未变旧套件。本条记录时购买版尚未运行，AW的11.7298ms是整个两read总成本，未隔离pawn4，不承诺本候选可省多少或完整8动作通过。无默认安装／Native／XR／loader重建，真实0.7伤害和完整全武器／头显仍待接线与验收。
+
+AX实测补记：提交 `fc92520` 的786源／27依赖／647工件候选 `4d3d0f3b…9afc`，manifest `7f3ef2ca…35f5`，runner全部函数／类AST与AW相同，保留原shared-status reader。三次新鲜空闲后唯一原协议静音置后购买版局，首次原NS交还clean_close1，随后7次hand-only应用／7恢复、原setter／target56，末端46行／23对／7完整lease、prepare字段28／最后观察56，末端审计通过。14份未移动初始手势均在原0.1单位／0.1°内，最大位置0.00006151015原始单位、旋转0.02463807°；仍0移动命令，不证明大伸手／蒙皮／末端覆盖独立贡献或GPU／头显通过。
+
+第二次acquire seq814／rev34／lease8／interval2，group0／1通过，group2 ordinal674在平移最终原NS check10拒绝：known127／checked2047／rejected1024、mask0；MS票龄78ms、距其截止仍有22ms，commit时stereo／input源龄100.4253／100.4112ms。三组回调的两原read均closed且返回true：read_before1.3524／1.3800／1.3260ms、read_after1.3402／1.3198／1.3621ms；prepare6.5683／6.7105／6.5050ms，hand_direct3.3145／2.1886／2.0588ms。各值属于该局单次观测，跨局没有受控比较，也未隔离pawn4独占成本；不能称性能修复。后续checks11／12和Policy内部原因仍未证明。原generic故障锁存，组件2尝试／1提交／2恢复、setter9、fault／cleanup_failed1，最终dirty／owned／revoked0；正式passed／cleanup仍false。
+
+独立8控制器typed观察／3组件／44挂接和入口恢复前后相符，Stop0／Shutdown0、音频8恢复pending0、确切自有owner／game／XR均退出；Native／XR子会话独立通过。78文件封存 `3b4e5fce…dd7f9`、root结果 `b0e227ce…b544` 位于忽略的 `analysis/hand-mesh-runtime-1024ax/`，保留原失败，不为获取通过而重复启动。完整运动仍未解决，无默认安装或全武器／头显通过。
+
+并行推进用户新增的单双手伤害要求：已有静态证据和本轮有界KB查询仍不能证明当前零售版Result ABI、逐发／弹丸／投射物归属。Astra只读探针方案 `d260e44e…11b1c` 建议复用同一次四参数CallFunction原调用，在固定POD中保存完整身份、实时唯一Float ReturnParm布局、原Result地址的前后4字节与同代调用配对；不使用caller参数区、RAX或Result+ReturnOffset，不写游戏内存。方案本条记录时尚未实现或运行，不代表0.7／1.0倍率生效；枪体时序与完整功能继续保留为未完成项。
