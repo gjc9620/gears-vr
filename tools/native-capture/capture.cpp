@@ -90,6 +90,7 @@ gears_support::Recorder support_diagnostics;
 #include "../vr-common/weapon_hand_owner_adapter.h"
 #include <new>
 #include "first_person_view.h"
+#include "run_camera_stabilizer.h"
 #include "first_person_weapon.h"
 #if defined(GEARS_COVER_CALL_OBSERVER) && GEARS_COVER_CALL_OBSERVER
 #include "cover_call_wire.h"
@@ -1170,6 +1171,7 @@ void print_stereo_pose(FILE* file,const gears_vr::Pose& pose) {
 }
 unsigned foreground();
 namespace first_person_live {void print(FILE*);void close();}
+namespace run_camera_live {void print(FILE*);void summary(FILE*);}
 namespace cover_camera_live {void print(FILE*);}
 namespace cover_input_live {void print(FILE*);}
 namespace cover_shared_input_live {void summary(FILE*);}
@@ -1207,6 +1209,7 @@ void print_stereo(FILE* file) {
     if(!stereo_xr)return;
     std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);
     first_person_live::print(file);
+    run_camera_live::print(file);
     cover_camera_live::print(file);
     cover_input_live::print(file);
     cover_geometry_observer_live::print(file);
@@ -1271,6 +1274,7 @@ bool read_attested_hook_entry(void* output,void const* source,size_t size);
 #include "path_choice_close_observer.inl"
 #include "cover_body_live.inl"
 #include "weapon_hand_scene_binding.inl"
+#include "run_camera_live.inl"
 #include "cover_neutral_eye_live.inl"
 #include "cover_camera_live.inl"
 #include "cover_geometry_live.inl"
@@ -1857,7 +1861,7 @@ void write_session_status(bool resources_retained=true,bool entries_restored=fal
     support_startup.call("path_choice_layout_observer_progress",[&]{path_choice_layout_observer::progress(output);});
     support_startup.call("path_choice_close_observer_progress",[&]{path_choice_close_observer::progress(output);});
     cover_body_live::progress(output);
-    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);}
+    {std::lock_guard<decltype(stereo_mutex)> lock(stereo_mutex);cover_camera_live::summary(output);cover_input_live::summary(output);cover_shared_input_live::summary(output);cover_geometry_observer_live::summary(output);cover_full_goal_live::summary(output);run_camera_live::summary(output);}
     weapon_hand_runtime::summary(output);
     // Diagnostic rates use this sample's QPC, not the owner's polling time.
     // Existing bound/top-level Present observations exclude DXGI_PRESENT_TEST
@@ -3212,10 +3216,13 @@ bool try_submit_pair(void* destination,void* family,void* canvas,void* transform
             view=frame.origin.base;
         }
         const bool first_person_view_owned=first_person_live::prepare(anchor,view);
+        const bool run_view_owned=first_person_live::ordinary(anchor)?
+            run_camera_live::prepare(anchor,result,view,first_person_live::preview_current):
+            (run_camera_live::enabled?run_camera_live::decline(8):false);
         const bool cover_view_owned=cover_shared_input_live::prepare(anchor,view,result);
         cover_full_goal_live::prepare(anchor,result);
         cover_geometry_observer_live::observe(anchor);
-        if(camera_closer_metres>0&&!first_person_view_owned&&!cover_view_owned){
+        if(camera_closer_metres>0&&!first_person_view_owned&&!run_view_owned&&!cover_view_owned){
             const bool gameplay=anchor&&!anchor->anchor.unpossessed&&anchor_config.cinematic_enabled&&!anchor_config.mounted_enabled&&
                 !anchor->anchor.cinematic&&anchor->anchor.target_identity.address==anchor->anchor.pawn;
             gears_vr::Vector pawn_eye{};
@@ -4875,6 +4882,8 @@ DWORD WINAPI worker(void*) {
         fprintf(status,"rejected: cover call observer requires a current passive certificate\n");fclose(status);return 2;}
     if(!cover_body_live::configure(ini,status)){
         fprintf(status,"rejected: cover body prototype requires compiled support, early reservations and current anchors\n");fclose(status);return 2;}
+    if(!run_camera_live::configure(ini,status)){
+        fprintf(status,"rejected: run camera stabilizer requires compiled Scene support and continuous stereo anchors\n");fclose(status);return 2;}
     if(!cover_camera_live::configure(ini,status)){
         fprintf(status,"rejected: cover camera preview requires continuous stereo XR and enabled body prototype\n");fclose(status);return 2;}
     if(!cover_input_live::configure(ini,status)){
