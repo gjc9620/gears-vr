@@ -629,6 +629,9 @@ def main():
         # Test-only opt-in; ordinary startup has no body-prototype INI section.
         if os.environ.get('GEARSVR_TEST_COVER_BODY_PROTOTYPE')=='1':
             config+='\n[CoverBodyPrototype]\nenabled=1\n'
+        # Test-only opt-in; ordinary startup has no cover-camera INI section.
+        if os.environ.get('GEARSVR_TEST_COVER_CAMERA_PREVIEW')=='1':
+            config+='\n[CoverCameraPreview]\nenabled=1\n'
         dll.with_name('capture.ini').write_text(config,encoding='utf-16')
         check_preparation()
         # GetProcAddress may forward LoadLibraryW into KernelBase. Identify its
