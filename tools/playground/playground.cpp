@@ -10,6 +10,18 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+#if !defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL) || defined(GEARS_PLAYGROUND_HAND_IK_STREAM_TRIAL) || defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
+#error Initial Native fire/result subscriber requires ShotScope and excludes stream/stow animation handoff
+#endif
+#include "../vr-common/weapon_call_boundary.h"
+namespace {namespace weaponcall {
+gears_weapon_hand::Reply attach(void*) noexcept;
+bool detached() noexcept;
+bool ready() noexcept;
+bool local_quiescent() noexcept;
+}}
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
 #if !defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL) || !defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
 #error Fire-invocation scope requires the shared-hand client and existing CallFunction owner
@@ -908,7 +920,7 @@ bool reset_drained() noexcept;
 #if defined(GEARS_PLAYGROUND_HAND_ANIMATION_PROBE)
 #include "hand_animation_probe.inl"
 #endif
-#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE) && !defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
 #include "hand_animation_call_probe.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_FREE_HANDS_PROBE) || defined(GEARS_PLAYGROUND_HAND_IK_HELPERS)
@@ -942,6 +954,9 @@ namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::Equipment
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_SHOT_SCOPE_TRIAL)
 #include "weapon_shot_scope.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+#include "weapon_call_subscriber.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "vr_fire_adapter.inl"
@@ -1184,7 +1199,7 @@ static DWORD reserve_playground_hook(){
         if(log_file){fwprintf(log_file,L"relay_range_rejected delta=%lld\n",delta);fclose(log_file);log_file=nullptr;}
         return 7;
     }
-#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE) && !defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
     if(!handanimcall::reserve()){
         handanimcall::remove();MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8));MH_Uninitialize();
         if(log_file){fwprintf(log_file,L"hand_animation_call_hook_reservation_failed\n");fclose(log_file);log_file=nullptr;}
@@ -1256,14 +1271,14 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     if(!registered(get<uptr>(get<Array>(base+0x1c24730).data+8)))return 1;
     const auto reserved=reserve_playground_hook();if(reserved)return reserved;
     enabled.store(true,std::memory_order_release);
-#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE) && !defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
     const auto activated=MH_EnableHook(MH_ALL_HOOKS);
 #else
     const auto activated=MH_EnableHook(reinterpret_cast<void*>(base+0x1d8dd8));
 #endif
     if(activated!=MH_OK){
         enabled.store(false);
-#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE) && !defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
         const auto disabled=MH_DisableHook(MH_ALL_HOOKS);
         if(disabled!=MH_OK&&disabled!=MH_ERROR_DISABLED)return 31;
         const auto until=GetTickCount64()+2000;
@@ -1914,7 +1929,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     enabled.store(false,std::memory_order_release);
     if(auto r=pending.exchange(nullptr))InterlockedExchange(&r->state,-2);
     if(hook_created){
-#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE) && !defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
         const auto disabled=MH_DisableHook(MH_ALL_HOOKS);
 #else
         const auto disabled=MH_DisableHook(reinterpret_cast<void*>(base+0x1d8dd8));
@@ -1989,7 +2004,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     vrequip::lancer_magazine_status.store(0,std::memory_order_release);
 #endif
     if(hook_created){
-#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE)
+#if defined(GEARS_PLAYGROUND_HAND_ANIMATION_CALL_PROBE) && !defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
         if(!handanimcall::remove())return 33;
 #endif
         if(MH_RemoveHook(reinterpret_cast<void*>(base+0x1d8dd8))!=MH_OK)return 3;

@@ -17,6 +17,39 @@ namespace playground {bool automatic=true,ready=true;uptr arena_pc{},arena_world
 namespace gripdamage_write {void begin(unsigned) noexcept;void dump();bool reset_drained() noexcept;}
 #include "weapon_grip_damage_result_probe.inl"
 #include "weapon_grip_damage_write_trial.inl"
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+#include "weapon_call_subscriber.inl"
+using TestOriginal=uptr(__fastcall*)(uptr,uptr,uptr,uptr);
+TestOriginal test_original{};
+uptr call_boundary(uptr self,uptr caller,uptr output,uptr callee){
+    // This is an explicit local Host model, not the actual Native wrapper.
+    static std::uint64_t next_call=1;
+    gears_weapon_call::Invocation call{};call.hand_cookie=weaponhand::client.cookie();
+    call.native_started_qpc=weaponhand::client.native_started_qpc();call.call_id=next_call++;
+    call.thread_id=GetCurrentThreadId();call.self=self;call.caller_frame=caller;call.result=output;call.callee=callee;
+    const auto before=callbacks.load();gears_weapon_call::State state{};
+    weaponcall::begin(&weaponhand::client,&call,&state);
+    assert(callbacks.load()==before+1&&weaponcall::transactions.load()==before+1);
+    uptr value{};bool returned{};
+    __try{value=test_original(self,caller,output,callee);returned=true;}
+    __finally{
+        const auto end=returned?weaponcall::returned(&weaponhand::client,&call,&state,value):
+            weaponcall::unwind(&weaponhand::client,&call,&state,gears_weapon_call::UnwindReason::original_exception);
+        assert(end==gears_weapon_call::End::closed&&callbacks.load()==before&&weaponcall::transactions.load()==before);
+        // A repeat cleanup notification cannot re-scale or decrement twice.
+        const auto again=returned?weaponcall::returned(&weaponhand::client,&call,&state,value):
+            weaponcall::unwind(&weaponhand::client,&call,&state,gears_weapon_call::UnwindReason::original_exception);
+        assert(again==gears_weapon_call::End::closed);
+        assert(callbacks.load()==before&&weaponcall::transactions.load()==before);
+    }
+    return value;
+}
+bool exception_forwarded(uptr self,uptr caller,uptr output,uptr callee){
+    __try{call_boundary(self,caller,output,callee);}
+    __except(GetExceptionCode()==0xe1234567ul?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH){return true;}
+    return false;
+}
+#else
 constexpr int MH_OK=0;
 int MH_CreateHook(void*,void*,void**){return 1;}
 int MH_RemoveHook(void*){return 1;}
@@ -26,8 +59,10 @@ unsigned enter(uptr,uptr,void*,Source,uptr){return 1;}
 void leave(unsigned,uptr,uptr,void*,uptr){}
 }
 #include "hand_animation_call_probe.inl"
+uptr call_boundary(uptr self,uptr caller,uptr output,uptr callee){return handanimcall::hook(self,caller,output,callee);}
+#endif
 struct alignas(8) Frame {std::array<unsigned char,64> bytes{};};
-enum class Scenario {normal,soft_loss,terminal,unknown_nested};
+enum class Scenario {normal,soft_loss,terminal,unknown_nested,soft_unknown_nested,original_exception};
 struct Run:Memory {
     gears_vr::LeftHandInteractionOwner owner;abi::Registration registration{};abi::Frame owner_frame{};
     std::array<std::array<unsigned char,128>,5> scripts{};std::array<unsigned char,1421> damage_script{};
@@ -99,30 +134,40 @@ struct Run:Memory {
         assert(gripdamage::begin(world,pc,pawn,GetTickCount64()+5000));
         body(0,fire_ammo,0);body(1,war_fn,frame_address(0));body(2,engine_fn,frame_address(1));body(3,pih,frame_address(2));
         put(frame_address(3),0x30,reinterpret_cast<uptr>(locals.data()));current=this;
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+        test_original=original;
+        // The local Host's accepted attach is modeled here. It does not prove
+        // real DLL exports, loader module pins or the Native registration code.
+        weaponcall::attached_native.store(22);weaponcall::attached_cookie.store(cookie);
+#else
         handanimcall::original=original;
+#endif
     }
     ~Run(){
         assert(!callbacks.load()&&weaponshot::stack.drained());gripdamage::callbacks_drained();assert(gripdamage::reset_drained());
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+        assert(weaponcall::local_quiescent()&&weaponcall::detached());
+#endif
         game_thread.store(0);assert(weaponhand::client.begin_disconnect()==abi::Reply::draining);
         assert(weaponhand::client.finish_disconnect(cookie)==abi::Reply::quiescent);
         playground::arena_pc=playground::arena_world=playground::arena_pawn=0;current=nullptr;
     }
     uptr emit(){
         put(frame_address(3),0x28,reinterpret_cast<uptr>(damage_script.data())+322);
-        return handanimcall::hook(weapon,frame_address(3),result(),getter);
+        return call_boundary(weapon,frame_address(3),result(),getter);
     }
     static uptr __fastcall original(uptr self,uptr caller,uptr output,uptr callee){
         auto& r=*current;++r.originals;assert(self==r.weapon&&callbacks.load());
         if(callee==r.war_fn){
             assert(caller==r.frame_address(0));
-            assert(handanimcall::hook(self,r.frame_address(1),output,r.engine_fn)==0x8877665544332211ull);
+            assert(call_boundary(self,r.frame_address(1),output,r.engine_fn)==0x8877665544332211ull);
             return 0x1122334455667788ull;
         }
         if(callee==r.engine_fn){
             assert(caller==r.frame_address(1));
             for(unsigned i=0;i<4;++i){
-                if(i==1&&r.scenario==Scenario::unknown_nested){
-                    assert(handanimcall::hook(self,r.frame_address(2),output,r.unknown)==0xaabbccddull);
+                if(i==1&&(r.scenario==Scenario::unknown_nested||r.scenario==Scenario::soft_unknown_nested)){
+                    assert(call_boundary(self,r.frame_address(2),output,r.unknown)==0xaabbccddull);
                 }else assert(r.emit()==0xfedcba9876543210ull);
                 r.values[i]=get<float>(r.result(),0);++r.emitted;
                 if(!i){
@@ -130,7 +175,7 @@ struct Run:Memory {
                         abi::Proposal rejected{};
                         assert(r.registration.prepare(r.registration.context,&r.owner_frame,&rejected)==unsigned(abi::Reply::unavailable));
                     }else r.scene();
-                    if(r.scenario==Scenario::soft_loss)r.invalidate(abi::InvalidateReason::input_lost);
+                    if(r.scenario==Scenario::soft_loss||r.scenario==Scenario::soft_unknown_nested)r.invalidate(abi::InvalidateReason::input_lost);
                 }
             }
             return 0x8877665544332211ull;
@@ -138,14 +183,35 @@ struct Run:Memory {
         if(callee==r.unknown){assert(r.emit()==0xfedcba9876543210ull);return 0xaabbccddull;}
         assert(callee==r.getter&&caller==r.frame_address(3)&&output==r.result());++r.getters;
         put(output,0,100.0f);put(caller,0x28,reinterpret_cast<uptr>(r.damage_script.data())+379);
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+        if(r.scenario==Scenario::original_exception)RaiseException(0xe1234567ul,0,0,nullptr);
+#endif
         if(r.scenario==Scenario::terminal&&r.getters==1)r.invalidate(abi::InvalidateReason::native_stopping);
         return 0xfedcba9876543210ull;
     }
     void run(){
-        assert(handanimcall::hook(weapon,frame_address(0),result(),war_fn)==0x1122334455667788ull);
-        assert(getters==4&&emitted==4&&gripdamage::state.count==4&&!callbacks.load()&&weaponshot::stack.drained());
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+        if(scenario==Scenario::original_exception){
+            assert(exception_forwarded(weapon,frame_address(0),result(),war_fn));
+            assert(getters==1&&!callbacks.load()&&weaponshot::stack.drained()&&weaponcall::local_quiescent());
+            assert(gripdamage::state.depth==0&&gripdamage::state.rows[0].closed&&gripdamage::state.rows[0].incomplete);
+            assert(!gripdamage_write::state.rows[0].attempted&&gripdamage_write::state.rows[0].outcome==gripdamage_write::Outcome::unwind);
+            std::puts("subscriber original SEH forwarded; all nested scopes and raw/write tokens closed");return;
+        }
+#endif
+        assert(call_boundary(weapon,frame_address(0),result(),war_fn)==0x1122334455667788ull);
+        unsigned expected_rows=4;
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+        // Terminal stop closes new subscriber admission; original getters still
+        // run, but only the already-entered first raw observation is recorded.
+        if(scenario==Scenario::terminal)expected_rows=1;
+#endif
+        if(getters!=4||emitted!=4||gripdamage::state.count!=expected_rows||callbacks.load()||!weaponshot::stack.drained())
+            std::fprintf(stderr,"scenario=%u getters=%u emitted=%u rows=%u expected=%u callbacks=%u depth=%u\n",
+                unsigned(scenario),getters,emitted,gripdamage::state.count,expected_rows,callbacks.load(),weaponshot::stack.depth());
+        assert(getters==4&&emitted==4&&gripdamage::state.count==expected_rows&&!callbacks.load()&&weaponshot::stack.drained());
         for(unsigned i=0;i<4;++i){
-            const bool scaled=scenario!=Scenario::terminal&&!(scenario==Scenario::unknown_nested&&i==1);
+            const bool scaled=scenario!=Scenario::terminal&&!((scenario==Scenario::unknown_nested||scenario==Scenario::soft_unknown_nested)&&i==1);
             assert(values[i]==(scaled?70.0f:100.0f));auto const& entry=gripdamage_write::state.rows[i];
             if(scaled){
                 assert(entry.attempted&&entry.exchanged&&entry.outcome==gripdamage_write::Outcome::applied);
@@ -153,7 +219,7 @@ struct Run:Memory {
                 if(!frozen_shot)frozen_shot=entry.packet.shot;assert(frozen_shot==entry.packet.shot);
             }else assert(!entry.attempted);
         }
-        if(scenario==Scenario::soft_loss)assert(!weaponhand::client.armed()&&weaponhand::client.registration_alive(cookie,22));
+        if(scenario==Scenario::soft_loss||scenario==Scenario::soft_unknown_nested)assert(!weaponhand::client.armed()&&weaponhand::client.registration_alive(cookie,22));
         if(scenario==Scenario::terminal)assert(weaponhand::client.phase()==abi::ClientPhase::active&&!weaponhand::client.registration_alive(cookie,22));
         assert(emit()==0xfedcba9876543210ull&&get<float>(result(),0)==100.0f); // No old-shot borrowing after return.
         assert(!gripdamage_write::state.rows[4].attempted);
@@ -169,6 +235,15 @@ int main(){
     for(auto scenario:{Scenario::normal,Scenario::soft_loss,Scenario::terminal,Scenario::unknown_nested}){
         auto run=std::make_unique<Run>(scenario);run->run();
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+    for(auto scenario:{Scenario::soft_unknown_nested,Scenario::original_exception}){
+        auto run=std::make_unique<Run>(scenario);run->run();
+    }
+#endif
     std::fclose(log_file);log_file=nullptr;
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+    std::puts("WeaponCallSubscriberOfflineTest passed: 6 scenarios; actual PG subscriber/client/owner/entry/writer with a local Native Host model and artificial memory only");
+#else
     std::puts("WeaponShotScopeOfflineTest passed: 4 integrated scenarios; actual client/owner/entry/hook/writer on artificial memory only");
+#endif
 }

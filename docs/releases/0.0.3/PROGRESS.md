@@ -774,3 +774,17 @@ Shutdown先取得exact-cookie quiescent，失败返回53并保留状态／引用
 与掩体冻结独立 `weapon_call_boundary.h` v1（4a406b5f…fcc7），原hand V1字节保持05911c55…cc34。72B Invocation由Native在pre前分配非复用call_id并冻结exact hand cookie／Native incarnation／thread和原四参；128B Native栈上opaque journal跨越original间隙；64B registration同hand context／同已pin PG image一次immutable attach，完全一致重试幂等，无独立detach。Native唯一wrapper负责original恰好一次及四参／RAX／原异常，三通知为begin／returned／unwind。soft loss仍发嵌套begin，hard stop不能丢已有end；unregister／retired quiescent包含整段transaction及未清债务。只有通知正常完成且精确End::closed才结清，未知枚举或任意通知fault形成sticky debt，后续closed不能冲销。Astra指出未知枚举边界已补齐并复核通过（2dcc053e…e8f8），实际严格CL语法与全部布局静态断言通过。证据在忽略的 `analysis/weapon-call-boundary-build-20261024bh/` 与 `analysis/weapon-call-boundary-review-20261024bh/`。
 
 此时仅冻结契约，Native host由掩体会话接线、PG subscriber由武器会话接线，未声明跨DLL或游戏通过。旧handstream／stow的同步restore不能直接塞进无引擎调用的通知；最初subscriber配置须明确限制这些选项，不能静默丢掉动画交还覆盖，完整手部合流仍须后续解决。没有启动游戏／XR或默认替换；完整6DoF目标继续active。
+
+## 2026-10-24 — BH2 武器侧唯一入口订阅与整段事务清理
+
+新增默认OFF的 `GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL`。此配置完全不编译／reserve／启停／remove PG旧CallFunction hook，只管理原ProcessEvent入口；从同一已持有Native image解析新Attach导出，hand成功注册后绑定同cookie／incarnation／context的通知。接受回执尺寸／版本／exact pair均须匹配，异常或不明确回执保留引用并停止授权；attach失败后仍须原exact-cookie unregister排空，不能当未注册直接释放。初版CMake／源码明确拒绝stream／stow，保留原完整手部实验候选，尚未把其同步引擎restore迁入通知。
+
+Native栈opaque State内的120B POD Journal保存完整Invocation、scope／raw token和阶段；PG callbacks及独立transactions计数覆盖original间隙。State须全128B为零才可begin，end核对全部原参数／key和实际线程。正常returned先raw leave／确认闭合，再writer complete，finally退出scope；原异常只走unwind、放弃writer。重复end不会再次CAS或减计数。部分begin故障、token未保存、错配结束、未知阶段或未清scope均拒绝本地quiescent；notification_fault即使计数清零仍sticky，后续closed不能清除。Stop在phase off／Native引用为空时也先检查本地债务。Native transaction lease仍须覆盖begin之前与end完全返回之后两端，PG计数不能替代Host pin／drain。
+
+最终严格PG full-attempt4及Raw／writer关闭的minimal-attempt2构建通过，生产subscriber的6种完整人工链路、4种RawOFF独立进程协议检查、原4种hook链路和21类adapter回归全部返回0。新增soft loss后未知嵌套仍遮蔽外层，以及原SEH穿过本地Host finally、所有嵌套scope／raw／writer关闭；故障协议实际注入部分begin SEH并保留未清存储至测试进程退出，不制造Native quiescent。没有以这些本地Host证据声明真实Native模块注册／卸载或零售异常验收。full首次失败为Host错误要求terminal后继续记录四条raw，修正为仅首个已入场记录，原四个getter仍执行、全部100且无CAS；失败收据保留。
+
+默认全OFF、BG全部选项开启但Subscriber OFF、独立client Subscriber OFF三组原／新／重读预处理相同。首次OFF对比仅同一if表达式分行而失败，恢复原行后通过；没有放宽归一化掩盖差异。Subscriber ON预处理没有旧CallFunction namespace／reservation，Native attach可见，PG只启用自身ProcessEvent地址。最终full4 DLL为6157a180…5c69，独立导出检查确认该profile应有的20个控制导出；数量少于旧完整候选来自明确未启用的stream／stow等选项，不是默认包替换。完整13项源码、9日志、5产物和最小配置再次核对hash，ABI仍4a406b5f…fcc7／hand V1仍05911c55…cc34。Astra源审及最终限定复核57b501ea…64e9，收据与封板位于忽略的 `analysis/weapon-call-boundary-build-20261024bh/`、`analysis/weapon-call-boundary-review-20261024bh/`。
+
+额外语义核对保留当前已发Shot冻结：现Native broker的input_lost／context_lost在同一loss phase会合并为一次通知，不能仅按reason枚举名推定为独立送达的旧Shot硬撤权票据。旧Shot仍须实时完整对象关联／实际body／脚本及nonterminal注册成立，新根仍须fresh snapshot，terminal拒写；没有证明真实InstantFire内该交错可达，不新增context epoch或改ABI。此处只读说明56912c3a…bba7，不作新运行结论。
+
+本轮没有启动游戏／XR、占用测试窗口或安装默认版本。掩体正在交付Native9唯一wrapper的正式及显式sim候选，下一次真实跨DLL短测须使用新PG与对应Native／XR冻结pin，继续每边0.4、静音、置后和tiny只读，不能继承旧PG参考hash。真实owner／握持／mount、全武器、投射物／延迟结算、手部动画交还、默认合流及GPU／Quest验收仍未完成，完整6DoF目标继续active。

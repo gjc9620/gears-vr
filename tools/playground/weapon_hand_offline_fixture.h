@@ -15,6 +15,9 @@
 #include <type_traits>
 #include "../vr-common/weapon_hand_client.h"
 #include "../vr-common/weapon_equipment_model.h"
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+#include "../vr-common/weapon_call_boundary.h"
+#endif
 #ifdef NDEBUG
 #error WeaponHandClientOfflineTest requires active assertions
 #endif
@@ -36,6 +39,13 @@ bool copy(void* out,uptr from,std::size_t bytes){
 namespace playground {uptr arena_pawn{};}
 namespace vrequip {gears_weapon::WeaponEquipmentModel model;}
 #include "weapon_grip_damage_metadata.inl"
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+namespace weaponcall {
+gears_weapon_hand::Reply attach(void*) noexcept;
+bool detached() noexcept;
+bool local_quiescent() noexcept;
+}
+#endif
 #include "weapon_hand_client.inl"
 namespace meta=gripdamage_metadata;
 namespace abi=gears_weapon_hand;

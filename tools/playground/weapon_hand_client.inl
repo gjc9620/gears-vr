@@ -226,6 +226,9 @@ abi::Reply start(HMODULE requested) noexcept {
     if(held!=requested||!executable(register_address,held)||!executable(unregister_address,held)){
         FreeLibrary(held);return abi::Reply::unavailable;
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+    if(!executable(GetProcAddress(held,gears_weapon_call::attach_export),held)){FreeLibrary(held);return abi::Reply::unavailable;}
+#endif
     FILETIME created{},exited{},kernel{},user{};
     if(!GetProcessTimes(GetCurrentProcess(),&created,&exited,&kernel,&user)){FreeLibrary(held);return abi::Reply::unavailable;}
     const auto birth=(std::uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime;
@@ -236,11 +239,21 @@ abi::Reply start(HMODULE requested) noexcept {
     const auto completed=call_register(reinterpret_cast<abi::Register>(register_address),&registration,&result,reply);
     const auto outcome=client.connected(reply,result,completed);
     if(client.phase()==abi::ClientPhase::off){FreeLibrary(native_module);native_module=nullptr;host_unregister=nullptr;}
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+    if(outcome==abi::Reply::accepted){
+        const auto attached=weaponcall::attach(held);
+        if(attached!=abi::Reply::accepted)client.begin_disconnect();
+        return attached;
+    }
+#endif
     return outcome;
 }
 abi::Reply stop() noexcept {
     const auto begun=client.begin_disconnect();
     if(begun==abi::Reply::quiescent){
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+        if(!weaponcall::detached())return abi::Reply::draining;
+#endif
         if(native_module){
             if(!FreeLibrary(native_module))return abi::Reply::unavailable;
             native_module=nullptr;host_unregister=nullptr;native_quiescent=false;
@@ -254,8 +267,14 @@ abi::Reply stop() noexcept {
         if(reply!=abi::Reply::quiescent)return reply;
         native_quiescent=true;
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+    if(!weaponcall::local_quiescent())return abi::Reply::draining;
+#endif
     const auto finished=client.finish_disconnect(cookie);
     if(finished!=abi::Reply::quiescent)return finished;
+#if defined(GEARS_PLAYGROUND_WEAPON_CALL_SUBSCRIBER_TRIAL)
+    if(!weaponcall::detached())return abi::Reply::draining;
+#endif
     if(!FreeLibrary(native_module))return abi::Reply::unavailable;
     native_module=nullptr;host_unregister=nullptr;native_quiescent=false;return abi::Reply::quiescent;
 }
