@@ -71,6 +71,7 @@ bool qualify(gripdamage::Row const& row,bool after,Gate& out) noexcept {
     auto workspace=schema;metadata::Reader reader{workspace,metadata::Stage::final_check};
     if(!path(reader,c.frame.node,{L"ProcessInstantHit_Internal",L"WarWeapon",L"WarfareGame"})||
        !path(reader,workspace.identities[workspace.function_identity].klass,{L"Function",L"Core"})||
+       !path(reader,workspace.identities[reader.locate(c.frame.node)].klass,{L"Function",L"Core"})||
        !path(reader,c.identities[c.node_type].address,{L"Function",L"Core"})||
        !path(reader,row.callee,{L"GetFireModeDamage",L"WarWeapon",L"WarfareGame"})||
        !path(reader,workspace.identities[workspace.owner_identity].klass,{L"Class",L"Core"})||
