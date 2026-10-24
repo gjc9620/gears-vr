@@ -887,6 +887,9 @@ void log(const wchar_t* phase){
         certificate.tracking_epoch[0],certificate.tracking_epoch[1],certificate.source,
         certificate.profile_generation,certificate.stereo_received_ns,certificate.input_received_ns,
         lease.dirty_mask(),lease.owned_mask(),lease.revoked_mask());
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    fwprintf(log_file,L" component_interval=%llu",component_continuous::state.interval_id);
+#endif
     for(unsigned i=0;i<9;++i){const auto& object=i<8?lease.key().objects[i]:lease.key().asset;
         fwprintf(log_file,L" key%u=%llx:%llx:%llx:%u:%u:%u",i,object.address,object.object_class,object.outer,
             object.index,object.name_index,object.name_number);}
@@ -989,13 +992,24 @@ void component_cancel_forward(){component::lease.cancel_forward();}
 bool component_has_interval(){return component::lease.has_snapshot();}
 bool component_forward_open(){return !component_continuous::state.closed&&!component_continuous::state.terminal;}
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+bool component_hand_only_ready(){
+    auto const& lifecycle=component_continuous::state;
+    const bool waiting=lifecycle.interval==component_continuous::Interval::waiting&&!lifecycle.closed;
+    const bool suspended=lifecycle.interval==component_continuous::Interval::suspended&&lifecycle.closed&&
+        lifecycle.drain_attempted&&lifecycle.last_drain_result;
+    return (waiting||suspended)&&!lifecycle.terminal&&!lifecycle.failure_known&&!lifecycle.cleanup_failed&&
+        !lifecycle.deferred&&!lifecycle.finishing&&!lifecycle.action_depth&&!trial.releasing&&!dual_draining&&
+        !component_dirty()&&!component_faulted()&&!trial.lease.faulted()&&!hand_writes_relinquished&&
+        !component::lease.relinquished()&&!component::lease.revoked_mask()&&!trial.ended&&
+        !stop_requested.load(std::memory_order_acquire)&&!shutdown_requested.load(std::memory_order_acquire);
+}
 bool component_resume_interval(){
     auto& lifecycle=component_continuous::state;
     if(GetCurrentThreadId()!=game_thread.load(std::memory_order_acquire)||
        lifecycle.interval!=component_continuous::Interval::suspended||!lifecycle.closed||
        lifecycle.terminal||trial.ended||lifecycle.failure_known||lifecycle.cleanup_failed||
        lifecycle.operation_depth||lifecycle.action_depth||lifecycle.finishing||dual_draining||trial.releasing||
-       !lifecycle.drain_attempted||!lifecycle.last_drain_result||journals_dirty()||
+       !lifecycle.drain_attempted||!lifecycle.last_drain_result||lifecycle.hand_only_journal||journals_dirty()||
        trial.lease.faulted()||component_faulted()||hand_writes_relinquished||
        component::lease.relinquished()||component::lease.revoked_mask()||
        stop_requested.load(std::memory_order_acquire)||shutdown_requested.load(std::memory_order_acquire))return false;
@@ -1212,13 +1226,10 @@ bool component_apply(gears_hand_stream::Plan const& plan,gears_weapon::HandWorld
 }
 
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
-bool component_after_hand(Snapshot const& before,Snapshot const& written,unsigned mask,unsigned number,
-                          unsigned setters_before,unsigned writes_before,std::array<policy::Target,4> const& targets){
-    if(!component_forward_open()||trial.ended||trial.epoch!=component::action_epoch||trial.tick_epoch!=trial.epoch||
-       trial.xr_equipment_phase!=1||!mask||!(mask&2)||trial.applied_mask!=mask||leases.load()!=number||
-       !trial.lease.dirty()||trial.lease.faulted()||hand_writes_relinquished||
-       stop_requested.load(std::memory_order_acquire)||shutdown_requested.load(std::memory_order_acquire)||
-       trial.targets!=targets||!same_layout(before,written)||!xr_identity(written))return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+// Shared exact hand readback; component ownership is checked by the caller.
+bool component_hand_values_match(Snapshot const& before,Snapshot const& written,unsigned mask,
+                                unsigned setters_before,unsigned writes_before,std::array<policy::Target,4> const& targets){
     const unsigned channels=((mask&1)?12u:0u)|((mask&2)?3u:0u);
     unsigned count{};for(unsigned i=0;i<4;++i)if(channels&(1u<<i))++count;
     const auto last=std::numeric_limits<unsigned>::max();
@@ -1244,8 +1255,61 @@ bool component_after_hand(Snapshot const& before,Snapshot const& written,unsigne
             if(target!=targets[selected])return false;
         }
     }
+    return component::hand_direct_matches(written);
+}
+bool component_after_hand_only(Snapshot const& before,Snapshot const& written,unsigned epoch,unsigned mask,unsigned number,
+                               unsigned setters_before,unsigned writes_before,std::array<policy::Target,4> const& targets){
+    if(!component_hand_only_ready()||!component_continuous::state.hand_only_journal||
+       trial.epoch!=epoch||trial.tick_epoch!=epoch||!mask||(mask&~3u)||trial.applied_mask!=mask||leases.load()!=number||
+       !trial.lease.dirty()||trial.lease.faulted()||hand_writes_relinquished||
+       stop_requested.load(std::memory_order_acquire)||shutdown_requested.load(std::memory_order_acquire)||
+       trial.targets!=targets||!same_layout(before,written)||!xr_identity(written))return false;
+    return component_hand_values_match(before,written,mask,setters_before,writes_before,targets)&&
+        component_hand_only_ready()&&trial.epoch==epoch&&trial.tick_epoch==epoch;
+}
+#endif
+bool component_after_hand(Snapshot const& before,Snapshot const& written,unsigned mask,unsigned number,
+                          unsigned setters_before,unsigned writes_before,std::array<policy::Target,4> const& targets){
+    if(!component_forward_open()||trial.ended||trial.epoch!=component::action_epoch||trial.tick_epoch!=trial.epoch||
+       trial.xr_equipment_phase!=1||!mask||!(mask&2)||trial.applied_mask!=mask||leases.load()!=number||
+       !trial.lease.dirty()||trial.lease.faulted()||hand_writes_relinquished||
+       stop_requested.load(std::memory_order_acquire)||shutdown_requested.load(std::memory_order_acquire)||
+       trial.targets!=targets||!same_layout(before,written)||!xr_identity(written))return false;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(!component_hand_values_match(before,written,mask,setters_before,writes_before,targets))return false;
+#else
+    const unsigned channels=((mask&1)?12u:0u)|((mask&2)?3u:0u);
+    unsigned count{};for(unsigned i=0;i<4;++i)if(channels&(1u<<i))++count;
+    const auto last=std::numeric_limits<unsigned>::max();
+    if(setters_before>last-count||writes_before>last-count||trial.setter_calls!=setters_before+count||
+       trial.target_writes!=writes_before+count)return false;
+    for(unsigned i=0;i<8;++i){
+        auto const& value=written.controls[i];auto const& old=before.controls[i];
+        unsigned selected=4;for(unsigned channel=0;channel<4;++channel)
+            if(indices[channel]==i&&(channels&(1u<<channel)))selected=channel;
+        if(selected==4){
+            if(!gears_hand_ik::exact(value.strength,old.strength)||!gears_hand_ik::exact(value.effector,old.effector)||
+               std::memcmp(&value.rotation,&old.rotation,sizeof(value.rotation)))return false;
+        }else{
+            if(!gears_hand_ik::exact(value.strength,gears_hand_ik::Triple{{1.f,1.f,0.f}}))return false;
+            policy::Target target{};
+            if(selected&1){
+                std::memcpy(target.data(),&value.rotation,12);
+                if(!gears_hand_ik::exact(value.effector,old.effector))return false;
+            }else{
+                std::memcpy(target.data(),value.effector.data(),12);
+                if(std::memcmp(&value.rotation,&old.rotation,sizeof(value.rotation)))return false;
+            }
+            if(target!=targets[selected])return false;
+        }
+    }
+#endif
     component::State live{};
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    return component::read_direct(component::lease.key(),live)&&live.known&&
+#else
     return component::hand_direct_matches(written)&&component::read_direct(component::lease.key(),live)&&live.known&&
+#endif
         live.key==component::lease.key()&&!component::lease.forward_stopped()&&!component_faulted()&&
         !component::lease.revoked_mask()&&gears_weapon::mesh_component_exact(live.value,component::lease.owned_value())&&
         component::asset_input_matches(component::lease.key(),component::target_geometry.input)&&

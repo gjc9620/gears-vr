@@ -113,6 +113,9 @@ bool component_has_interval();
 bool component_forward_open();
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
 bool component_resume_interval();
+bool component_hand_only_ready();
+bool component_after_hand_only(Snapshot const&,Snapshot const&,unsigned,unsigned,unsigned,unsigned,unsigned,
+                               std::array<policy::Target,4> const&);
 #endif
 bool component_after_hand(Snapshot const&,Snapshot const&,unsigned,unsigned,unsigned,unsigned,
                           std::array<policy::Target,4> const&);
@@ -122,6 +125,7 @@ namespace component_continuous {
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
 enum class Interval {waiting,owned,closing,suspended};
 enum class Pause {none,age,boundary};
+enum class Mode {joint,hand_only};
 #endif
 struct State {
     bool begun{},closed{},deferred{},finishing{},terminal{},finalized{},cleanup_failed{},failure_known{};
@@ -130,8 +134,8 @@ struct State {
     std::uint64_t acquire_attempts{},update_attempts{},commits{};
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     Interval interval{Interval::waiting};Pause pause{Pause::none};
-    bool resume_stable{};
-    std::uint64_t interval_id{},clean_closes{},last_clean_interval{};
+    bool resume_stable{},hand_only_journal{},hand_only_started{};
+    std::uint64_t interval_id{},clean_closes{},last_clean_interval{},hand_only_commits{};
 #endif
     std::array<wchar_t,96> reason{},failure_reason{};
 };
@@ -154,6 +158,8 @@ struct PostTick {
     bool committed{};
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     bool waiting{},suspending{}; // Set only at a classified no-write branch.
+    Mode mode{Mode::joint};bool hand_committed{};
+    bool forward_open()const {return mode==Mode::hand_only?component_hand_only_ready():component_forward_open();}
 #endif
     PostTick(){++state.operation_depth;safe_to_unload.store(false,std::memory_order_release);}
     ~PostTick();
@@ -231,8 +237,27 @@ bool drain_journals(const wchar_t* reason,bool hand_restore_names=false){
     if(component_continuous::state.operation_depth||trial.releasing||dual_draining){
         component_continuous::state.deferred=true;return false;
     }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    auto& lifecycle=component_continuous::state;
+    if(lifecycle.drain_attempted){
+        if(!lifecycle.last_drain_result||lifecycle.cleanup_failed)return false;
+        if(!lifecycle.hand_only_journal){
+            const bool still_clean=!journals_dirty()&&!trial.lease.faulted()&&!component_faulted();
+            if(!still_clean){lifecycle.last_drain_result=false;lifecycle.cleanup_failed=true;}
+            return still_clean;
+        }
+        // A successful older component close does not cover this new hand journal.
+        if(component_dirty()||component_faulted()){
+            lifecycle.last_drain_result=false;lifecycle.cleanup_failed=true;return false;
+        }
+    }
+#else
     if(component_continuous::state.drain_attempted)return component_continuous::state.last_drain_result;
+#endif
     component_continuous::state.drain_attempted=true;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    component_continuous::state.last_drain_result=false;
+#endif
 #endif
     // Terminal producer state is deliberately absent from rollback admission.
     if(dual_draining)return false;
@@ -674,9 +699,18 @@ bool same_layout(Snapshot const& a,Snapshot const& b){
 struct Backend {
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
     bool forward_write{};unsigned forward_epoch{};
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    component_continuous::Mode forward_mode{component_continuous::Mode::joint};
+#endif
     bool forward_allowed()const {
         if(!forward_write||trial.lease.faulted()||trial.releasing)return true;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+        const bool writer_open=forward_mode==component_continuous::Mode::hand_only?
+            component_continuous::state.hand_only_journal&&component_hand_only_ready():!component_continuous::state.closed;
+        return writer_open&&!trial.ended&&trial.epoch==forward_epoch&&
+#else
         return !component_continuous::state.closed&&!trial.ended&&trial.epoch==forward_epoch&&
+#endif
             trial.tick_epoch==forward_epoch&&!stop_requested.load(std::memory_order_acquire)&&
             !shutdown_requested.load(std::memory_order_acquire);
     }
@@ -949,9 +983,10 @@ void finalize(){
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     if(log_file){fwprintf(log_file,L"hand_weapon_component_persistent_end schema=1 intervals=%llu clean_closes=%llu "
         L"acquire_attempts=%llu update_attempts=%llu commits=%llu cleanup_failed=%u first_failure_known=%u first_failure=%u "
-        L"dirty=%u faulted=%u safe_to_unload=%u consumer_proved=0\n",state.interval_id,state.clean_closes,
+        L"dirty=%u faulted=%u safe_to_unload=%u hand_only_commits=%llu consumer_proved=0\n",state.interval_id,state.clean_closes,
         state.acquire_attempts,state.update_attempts,state.commits,unsigned(state.cleanup_failed),unsigned(state.failure_known),
-        state.first_failure,unsigned(!clean),unsigned(trial.lease.faulted()||component_faulted()),unsigned(clean));fflush(log_file);}
+        state.first_failure,unsigned(!clean),unsigned(trial.lease.faulted()||component_faulted()),unsigned(clean),
+        state.hand_only_commits);fflush(log_file);}
 #else
     if(log_file){fwprintf(log_file,L"hand_weapon_component_continuous_end schema=1 acquire_attempts=%llu update_attempts=%llu "
         L"commits=%llu closed=%u drain_attempted=%u drain_result=%u cleanup_failed=%u first_failure_known=%u first_failure=%u "
@@ -1002,7 +1037,13 @@ bool finish(){
     state.finishing=true;
     // Even a clean hand is not a reason to skip the retained component journal.
     bool restored{};
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(state.drain_attempted&&(!state.last_drain_result||state.cleanup_failed))restored=false;
+    else if(state.hand_only_journal)restored=drain_journals(L"continuous_closed_hand_only");
+    else if(state.drain_attempted)restored=state.last_drain_result&&!journals_dirty();
+#else
     if(state.drain_attempted)restored=state.last_drain_result;
+#endif
     else if(!journals_dirty()){
         state.drain_attempted=true;state.last_drain_result=true;restored=true;
     }else restored=drain_journals(L"continuous_closed_interval");
@@ -1060,9 +1101,9 @@ bool normal_tick(){
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     if((state.interval==Interval::closing||state.deferred)&&!finish())return false;
     if(trial.ended||state.terminal)return false;
-    if(state.interval==Interval::suspended&&!component_resume_interval()){
-        end(journals_dirty()?8u:7u,L"persistent_interval_reset_rejected");return false;
-    }
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    {
 #endif
     Operation operation;
     bool hand=true;
@@ -1073,6 +1114,14 @@ bool normal_tick(){
     }
     dual_draining=false;
     if(!hand||trial.lease.dirty()||trial.lease.faulted())end(8,L"continuous_hand_restore_failed");
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    } // Hand restore and any deferred cleanup finish before the zero-depth reset.
+    if(trial.ended||state.terminal)return false;
+    if(state.interval==Interval::suspended&&!component_resume_interval()){
+        end(journals_dirty()?8u:7u,L"persistent_interval_reset_rejected");return false;
+    }
+    Operation retained_operation;
+#endif
     if(trial.ended||state.closed)return false;
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
     if(state.interval==Interval::owned&&(!component_has_interval()||!component_owned())){
@@ -1086,11 +1135,13 @@ bool normal_tick(){
 }
 PostTick::~PostTick(){
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
-    if(state.begun&&!state.terminal&&!committed){
+    if((state.begun||state.hand_only_started)&&!state.terminal&&!committed){
         const bool pause_deferred=suspending&&pause_pending();
         const bool clean_wait=waiting&&(state.interval==Interval::waiting||state.interval==Interval::suspended)&&!journals_dirty()&&
-            !state.failure_known&&!state.cleanup_failed&&!trial.lease.faulted()&&!component_faulted();
-        if(!pause_deferred&&!clean_wait)end(7,L"continuous_post_tick_without_fresh_joint_commit");
+            !state.hand_only_journal&&!state.failure_known&&!state.cleanup_failed&&!trial.lease.faulted()&&!component_faulted();
+        const bool verified_hand=hand_committed&&mode==Mode::hand_only&&state.hand_only_journal&&
+            trial.lease.dirty()&&component_hand_only_ready();
+        if(!pause_deferred&&!clean_wait&&!verified_hand)end(7,L"continuous_post_tick_without_fresh_joint_commit");
     }
 #else
     if(state.begun&&!state.terminal&&(state.closed||!committed))end(7,L"continuous_post_tick_without_fresh_joint_commit");
@@ -1102,6 +1153,10 @@ PostTick::~PostTick(){
 #endif
 
 bool restore(const wchar_t* reason){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(!trial.lease.dirty()&&!trial.lease.faulted()&&!hand_writes_relinquished)
+        component_continuous::state.hand_only_journal=false;
+#endif
     if(!trial.lease.dirty())return true;
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     EquipmentTimingScope timing(EquipmentTiming::restore);
@@ -1125,6 +1180,15 @@ bool restore(const wchar_t* reason){
         L"restored=%u reason=%ls\n",lease,unsigned(!clean),unsigned(clean),reason);fflush(log_file);}
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
     trial.record_lease=false;
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(component_continuous::state.hand_only_journal){
+        if(clean&&!trial.lease.faulted()&&sampled)component_continuous::state.hand_only_journal=false;
+        else{
+            component_continuous::state.cleanup_failed=true;
+            component_continuous::state.last_drain_result=false;
+        }
+    }
 #endif
     if(!clean||trial.lease.faulted()){end(clean?7:8,L"lease_restore_unverified_or_faulted");return false;}
     if(!sampled){end(7,L"restored_but_pre_restore_sample_unknown");return false;}

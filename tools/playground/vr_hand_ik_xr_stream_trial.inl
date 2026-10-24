@@ -540,6 +540,16 @@ bool continuous_prewrite_cancelled(component_trace::AuthObservation const& obser
     if(auth.known!=127u||!(auth.mask&2u)||(auth.mask&~3u)||(auth.mask&~intended_mask))return false;
     return (auth.checked==4095u&&auth.rejected==2048u)||(auth.checked==8191u&&auth.rejected==4096u);
 }
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+bool persistent_hand_prewrite_cancelled(component_trace::AuthObservation const& observation,unsigned intended_mask) noexcept {
+    auto const& auth=observation.value;
+    if(!observation.known||auth.result||!intended_mask||(intended_mask&~3u))return false;
+    if(auth.known==67u&&auth.mask==0u)
+        return (auth.checked==7u&&auth.rejected==4u)||(auth.checked==15u&&auth.rejected==8u);
+    if(auth.known!=127u||!auth.mask||(auth.mask&~3u)||(auth.mask&~intended_mask))return false;
+    return (auth.checked==4095u&&auth.rejected==2048u)||(auth.checked==8191u&&auth.rejected==4096u);
+}
+#endif
 #endif
 
 bool prepare_xr_request(void* argument){
@@ -705,6 +715,9 @@ void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigne
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
     ,gears_hand_continuity::Certificate const& certificate
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    ,component_continuous::Mode write_mode
+#endif
 ){
     if(!log_file)return;
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
@@ -717,6 +730,10 @@ void xr_log_pose(gears_weapon::HandWorldFrame const& frame,unsigned mask,unsigne
         frame.world_generation,frame.created_ms,frame.units_per_metre,unsigned(frame.valid_mask),mask,bind_mask);
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     fwprintf(log_file,L" equipment_phase=%u action_epoch=%u",trial.xr_equipment_phase,trial.epoch);
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    fwprintf(log_file,L" hand_only=%u component_interval=%llu",
+        unsigned(write_mode==component_continuous::Mode::hand_only),component_continuous::state.interval_id);
 #endif
     for(unsigned hand=0;hand<2;++hand){
         const auto& grip=trial.xr_grips[hand];const auto& target=trial.xr_targets[hand];
@@ -1051,24 +1068,27 @@ void post_tick(uptr pc){
     }
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
-    if(!component_forward_open()){
-        if(component_continuous::pause_pending()){continuous_tick.suspending=true;return;}
-        // A quiescent action in original PlayerTick can already have drained
-        // both journals. Only next pre_tick may reset that closed interval.
-        if(component_continuous::state.interval==component_continuous::Interval::suspended&&
-           !journals_dirty()&&!trial.lease.faulted()&&!component_faulted()&&
-           !component_continuous::state.failure_known&&!component_continuous::state.cleanup_failed){
-            continuous_tick.waiting=true;return;
-        }
-        end(7,L"persistent_writer_closed_without_pause");return;
+    if(component_continuous::pause_pending()){continuous_tick.suspending=true;return;}
+    if(component_continuous::state.hand_only_journal){
+        end(journals_dirty()?8u:7u,L"persistent_previous_hand_journal_pending");return;
     }
-    if(!(plan.accept_mask&2)||equipment_phase!=1||!component_continuous::state.resume_stable){
+    const bool joint_ready=component_forward_open()&&(plan.accept_mask&2)&&equipment_phase==1&&
+        component_continuous::state.resume_stable;
+    if(!joint_ready){
         if(component_continuous::state.interval==component_continuous::Interval::owned){
+            if(!component_forward_open()){end(7,L"persistent_writer_closed_without_pause");return;}
             const bool age_only=!fresh&&qualified&&trial.xr_ready&&!(plan.reset_binding_mask&2);
             component_continuous::suspend_interval(age_only?L"persistent_no_receipt":L"persistent_right_not_ready",age_only);
-            continuous_tick.suspending=true;
-        }else continuous_tick.waiting=true;
-        return;
+            continuous_tick.suspending=true;return; // No hand writes before component handback completes.
+        }
+        if(!component_hand_only_ready()||trial.lease.dirty()||component_continuous::state.hand_only_journal){
+            end(journals_dirty()?8u:7u,L"persistent_hand_only_not_clean");return;
+        }
+        if(!plan.accept_mask){continuous_tick.waiting=true;return;}
+        if(!fresh||(plan.accept_mask&~3u)||(equipment_phase!=1&&equipment_phase!=2)){
+            end(7,L"persistent_hand_only_plan_invalid");return;
+        }
+        continuous_tick.mode=component_continuous::Mode::hand_only;
     }
 #endif
     if(!plan.accept_mask)return;
@@ -1125,7 +1145,13 @@ void post_tick(uptr pc){
         mask=authorize_current_xr_plan(plan,authorize_context,GetTickCount64());
     } // Restore the caller's observer before any diagnostic, end or drain.
     if(!mask){
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+        const bool cancel_only=continuous_tick.mode==component_continuous::Mode::hand_only?
+            persistent_hand_prewrite_cancelled(prewrite_authorization,plan.accept_mask):
+            continuous_prewrite_cancelled(prewrite_authorization,plan.accept_mask);
+#else
         const bool cancel_only=continuous_prewrite_cancelled(prewrite_authorization,plan.accept_mask);
+#endif
         if(log_file){
             auto const& auth_packet=prewrite_authorization.value;
             fwprintf(log_file,L"hand_weapon_component_prewrite_rejection schema=1 observation_known=%u "
@@ -1148,6 +1174,11 @@ void post_tick(uptr pc){
 #endif
     if(!mask)return;
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if((mask&~3u)||(continuous_tick.mode==component_continuous::Mode::joint&&!(mask&2u))){
+        end(7,L"persistent_joint_right_not_authorized");return;
+    }
+#endif
     if(!log_file||ferror(log_file)){end(7,L"xr_log_unavailable_before_write");return;}
 #if defined(GEARS_PLAYGROUND_HAND_CONTINUOUS_SESSION_TRIAL)
     trial.record_lease=trial.session.record_lease(GetTickCount64());
@@ -1160,6 +1191,9 @@ void post_tick(uptr pc){
         xr_log_pose(frame,mask,plan.bind_mask
 #if defined(GEARS_PLAYGROUND_HAND_CERTIFIED_CONTINUITY_TRIAL)
             ,continuous_frame.certificate
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+            ,continuous_tick.mode
 #endif
         );
     }
@@ -1208,6 +1242,9 @@ void post_tick(uptr pc){
     component_names::Scope restore_prefix_names_scope(prefix_names_scope.saved);
 #endif
     safe_to_unload.store(false,std::memory_order_release);
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(continuous_tick.mode==component_continuous::Mode::joint)
+#endif
     if(!component_apply(plan,frame,check,mask,lease)){
         drain_journals(L"component_acquire_failed");
         end(journals_dirty()?8:7,L"component_acquire_failed");return;
@@ -1227,7 +1264,11 @@ void post_tick(uptr pc){
                     trial.tick_epoch!=trial.epoch||
                     !xr_equipment_gate(after_component,equipment_phase,L"after_component",EquipmentTiming::prewrite_phase));
             })&&
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+            (continuous_tick.mode!=component_continuous::Mode::joint||
+#else
             (!(equipment_phase==1&&(mask&2))||
+#endif
                 component_tail_cost::test(component_tail_cost::Stage::owned,[&]{return component_owned(true);}))&&
             component_tail_cost::test(component_tail_cost::Stage::authorize,[&]{
                 return authorize_current_xr_plan(plan,xr_context(after_component,trial.xr_ready),GetTickCount64())==mask;
@@ -1240,7 +1281,11 @@ void post_tick(uptr pc){
     check=after_component;
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(!continuous_tick.forward_open()||trial.ended||trial.tick_epoch!=trial.epoch||
+#else
     if(!component_forward_open()||trial.ended||trial.tick_epoch!=trial.epoch||
+#endif
        trial.lease.dirty()||trial.lease.faulted()||stop_requested.load(std::memory_order_acquire)||
        shutdown_requested.load(std::memory_order_acquire)){
         end(journals_dirty()?8u:7u,L"continuous_closed_before_hand_apply");return;
@@ -1251,6 +1296,15 @@ void post_tick(uptr pc){
     trial.lease_anchor=check;Backend backend{};
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
     backend.forward_write=true;backend.forward_epoch=trial.epoch;
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    backend.forward_mode=continuous_tick.mode;
+    if(continuous_tick.mode==component_continuous::Mode::hand_only){
+        if(component_continuous::state.hand_only_journal){end(8,L"persistent_hand_journal_already_pending");return;}
+        // Set before acquire so failed/partial acquisitions have the same cleanup duty.
+        component_continuous::state.hand_only_journal=true;
+        component_continuous::state.hand_only_started=true;
+    }
+#endif
 #endif
     const unsigned channels=((mask&1)?12u:0u)|((mask&2)?3u:0u);
     bool acquired{};
@@ -1264,7 +1318,11 @@ void post_tick(uptr pc){
         acquired=trial.lease.acquire(channels,trial.targets,1.f,backend);
     }
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(!continuous_tick.forward_open()||trial.ended){
+#else
     if(!component_forward_open()||trial.ended){
+#endif
         if(!trial.ended)end(7,L"continuous_closed_during_hand_apply");return;
     }
 #endif
@@ -1288,18 +1346,36 @@ void post_tick(uptr pc){
         end(7,L"xr_written_snapshot_unknown");return;
     }
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    const bool written_hand_valid=continuous_tick.mode==component_continuous::Mode::hand_only?
+        component_after_hand_only(check,written,backend.forward_epoch,mask,lease,hand_setters_before,hand_writes_before,hand_targets):
+        component_continuous::state.begun&&component_after_hand(check,written,mask,lease,hand_setters_before,hand_writes_before,hand_targets);
+    if(!written_hand_valid){
+#else
     if(component_continuous::state.begun&&
        !component_after_hand(check,written,mask,lease,hand_setters_before,hand_writes_before,hand_targets)){
+#endif
         drain_journals(L"continuous_written_joint_journal_changed");
         end(journals_dirty()?8u:7u,L"continuous_written_joint_journal_changed");return;
     }
 #endif
     sample(L"written",written,lease,mask);
 #if defined(GEARS_PLAYGROUND_HAND_WEAPON_MESH_PHASE1_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(continuous_tick.mode==component_continuous::Mode::joint)
+#endif
     component_log_written();
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL)
+#if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_PERSISTENT_SESSION_TRIAL)
+    if(!continuous_tick.forward_open()||trial.ended){end(7,L"continuous_closed_during_written_evidence");return;}
+    if(continuous_tick.mode==component_continuous::Mode::hand_only){
+        count_add(component_continuous::state.hand_only_commits);continuous_tick.hand_committed=true;
+    }
+    else continuous_tick.committed=true;
+#else
     if(!component_forward_open()||trial.ended){end(7,L"continuous_closed_during_written_evidence");return;}
     continuous_tick.committed=true;
+#endif
 #endif
 #if defined(GEARS_PLAYGROUND_WEAPON_COMPONENT_HOLD_TRIAL)
     component_hold::arm(plan,mask,written);
