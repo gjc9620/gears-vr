@@ -744,3 +744,15 @@ BD零售补记：提交6536805的候选e2d4925a…0e30已完成唯一实际运�
 Astra初审指出两个具体P2：正确Frame／Proposal上的假grant未绑定逻辑press，以及append覆盖Native已有cover holder；已修复并保留原反例，复核关闭F1/F2。实际common源码和共享owner在明确本地Host模型通过15类严格检查，涵盖原样Frame／Proposal假grant、真实ammo占用、retained冲突、cover合并、失跟踪、代次变化、重新抓握及grenade passthrough。直接CL检查通过后，真实CMake配置／WeaponSupportGripTest目标构建／运行均0；测试源码禁止NDEBUG，确保断言有效。第一次Host遗漏space_epoch的失败记录保留。证据位于忽略的 `analysis/weapon-support-grip-cpu-20261024be/`、`analysis/weapon-support-grip-cmake-20261024be/`、`analysis/weapon-support-grip-review-20261024be/`。这些不是实际游戏抓握、真实模型mount或头显验收；本轮没有启动游戏，默认Native／XR／loader未替换。
 
 每发入口的有界审查确认可复用现有四参CallFunction owner，在WarWeapon.InstantFire／ProjectileFire原调用前冻结GripSnapshot；已认证的显式super调用复用同shot，各即时命中packet仍独立处理。保存脚本的Engine.InstantFire ImpactList循环及ProjectileFire Spawn→Init→return顺序要求支持同发多包和返回前投射物绑定。Gnasher CustomFire／FireAllPellets与queued client hit另有入口，不能把trigger边沿或getter次数当每发。此处是接线依据，尚未实现完整ShotScope／projectile registry；完整6DoF目标继续active。
+
+## 2026-10-24 — BF 武器侧同步回调客户端与主手归属
+
+新增默认OFF的 `GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL`。实际PG客户端先持有指定已加载Native模块的普通loader引用，只连接同一image的v1注册／卸载导出，不猜测模块名或地址。注册回执认证cookie／Native incarnation后才开放prepare／commit，早到回调不可发布。GT try-gate、同Frame／Proposal／nonce、原子失效epoch、时效与实际游戏状态重读共同保护GripSnapshot；任意线程invalidate只改原子量。异常accepted回执或调用故障进入quarantine，wrong_cookie或draining都不当作卸载许可，没有第二个左手arbiter。
+
+Shutdown先取得exact-cookie quiescent，失败返回53并保留状态／引用，随后仍须停用hook与排空PG callbacks。Astra指出本地reader在取得try-gate前也可能暂停，因此明确：Native quiescent只允许重置私有状态，static client及代码保留至外层PG hook admission停止且独立callback drain完成。当前尚无射击snapshot consumer，后续必须放在已有CallFunction Active lease内。与掩体侧对齐了成功collect后的有界exact-cookie quiescent tombstone，旧回执不能停用新注册；Native全Scene／导出正式构建尚待交付，未声称跨DLL实际运行通过。
+
+新adapter不调用vrequip::snapshot的引擎查询，不使用get<T>的不可读归零；现场验证完整world／PC／pawn／mesh／weapon身份及双向关联，严格读取Core.BoolProperty、Core.ObjectProperty与Pawn.Mesh的Core.ComponentProperty。回调不调用引擎、写对象、记录日志或等待。主手来自右Grip按一下锁定的装备模型，不要求持续捏住RGrip。Astra指出初版只按武器地址认证而忽略旧model的world／pawn；修正为held_for与每次成功拿枪的非复用hold_generation，Full HoldBinding只由真实unholster／switch equipped／deferred成功提交采集，先清旧绑定，捕获失败保持Unknown。reset／stow／switch／finish_pickup不能复活旧授权；未认证的pickup完成保持Unknown，实际拾取动画桥接仍待接线。Mesh类型与主握绑定两项P2已由Astra复核关闭。
+
+实际CMake严格构建／运行通过14类client与唯一shared-owner本地模型、21类直接包含生产PG adapter及实际SEH copy／metadata reader的人工内存检查，并通过修改后的原装备模型回归。覆盖早到回调、并发失效、重入、drain、过期／换枪、已知false与不可读、第一同名错误类型、ComponentProperty、完整身份替换、跨world、reset／pickup代次及失败捕获。继承BD已有双手／组件／伤害writer全部开关再启用client的完整PG严格构建通过，保留原23导出并仅新增3个client控制导出，DLL 0de80ced…fadd9。全部私有开关OFF的原／新源及两次新预处理输出一致；此比较不覆盖开启EquipmentObserve的配置。前两次合并构建driver选错历史命令／源目录的失败收据保留，未运行游戏或修改历史源。证据位于忽略的 `analysis/weapon-hand-client-build-20261024bf/` 与 `analysis/weapon-hand-client-review-20261024bf/`，末次复核dc7579b2…89e32。
+
+本轮没有启动游戏／XR或替换默认Native／XR／loader；后台每边0.4、静音、behind、tiny-output只读政策继续适用。实际per-asset controller／palm mount尚未认证，adapter明确mount_known=false，不能把暂时mesh跟随或IK显示认作真实双手支撑。实际ammo／magazine participant、逐发ShotScope／投射物、伤害consumer、完整自由手与全武器交互、默认合流及GPU／Quest验收仍未完成。原single fixture的受控0.7证明未因此变为真实抓握／逐发验收，完整6DoF目标继续active。

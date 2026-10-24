@@ -10,6 +10,16 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+#if !defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
+#error Shared weapon-hand participant requires the latched equipment model
+#endif
+#include <chrono>
+#include <cwchar>
+#include <cstddef>
+#include <type_traits>
+#include "../vr-common/weapon_hand_client.h"
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_WRITE_TRIAL)
 #include <cwchar>
 #include <initializer_list>
@@ -861,8 +871,10 @@ bool invoke_component_forward(Request* request,ComponentForwardGate& gate){
 }
 #endif // GEARS_PLAYGROUND_WEAPON_COMPONENT_CONTINUOUS_TRIAL
 #include "playground_controller.inl"
-#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE) || defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
 #include "weapon_grip_damage_metadata.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_CALL_CONTEXT_PROBE)
 #include "weapon_grip_call_context.inl"
 #endif
@@ -905,7 +917,13 @@ void tail_observation_failed(uptr,uptr,uptr,unsigned);
 #include "vr_hand_ik_stream_trial.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_OBSERVE)
+#if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+namespace weaponhand {void equipment_hold_committed(uptr,gears_weapon::EquipmentSnapshot const&) noexcept;}
+#endif
 #include "vr_equipment_snapshot.inl"
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+#include "weapon_hand_client.inl"
 #endif
 #if defined(GEARS_PLAYGROUND_EXPERIMENTAL_VR_R2)
 #include "vr_fire_adapter.inl"
@@ -1165,6 +1183,9 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundReserve(void*){
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundInitialize(void*){
     LifecycleScope lifecycle;
     if(enabled.load())return 0;
+#if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+    if(weaponhand::client.phase()!=gears_weapon_hand::ClientPhase::off||weaponhand::native_module)return 53;
+#endif
 #if defined(GEARS_PLAYGROUND_WEAPON_GRIP_DAMAGE_RESULT_PROBE)
     if(callbacks.load(std::memory_order_acquire))return 31;
     gripdamage::callbacks_drained();
@@ -1738,7 +1759,24 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundVrAimStatus(void*){
 }
 #endif
 #endif
+#if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStart(void* native_module){
+    if(weaponhand::current_gt(nullptr))return unsigned(gears_weapon_hand::Reply::reentrant);
+    LifecycleScope lifecycle;return unsigned(weaponhand::start(static_cast<HMODULE>(native_module)));
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStop(void*){
+    if(weaponhand::current_gt(nullptr))return unsigned(gears_weapon_hand::Reply::reentrant);
+    LifecycleScope lifecycle;return unsigned(weaponhand::stop());
+}
+extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundWeaponHandStatus(void*){
+    return unsigned(weaponhand::client.phase())|(weaponhand::client.armed()?0x100u:0u);
+}
+#endif
 extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
+#if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+    // Never acquire a loader/lifecycle lock or unregister from a GT callback.
+    if(weaponhand::current_gt(nullptr))return 53;
+#endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_STOW_TEST)
     // Do not acquire the lifecycle lock while the other caller may be holding
     // it and waiting for this game-thread callback to return.
@@ -1770,6 +1808,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI PlaygroundShutdown(void*){
     }
 #endif
     LifecycleScope lifecycle;
+#if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+    if(weaponhand::stop()!=gears_weapon_hand::Reply::quiescent)return 53;
+    // client remains static/alive through the existing hook-disable and PG
+    // callbacks drain below. Native quiescence alone never permits PG unload.
+#endif
 #if defined(GEARS_PLAYGROUND_HAND_EQUIPMENT_COMBINED_TRIAL)
     // Stop both producers before either drain. Hand restoration precedes the
     // attachment helper, including the game-thread cleanup path.

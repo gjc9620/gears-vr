@@ -422,6 +422,9 @@ bool advance_pending(uptr pc){
     const bool success=outcome==gears_weapon::StowPendingResult::ready&&
         acquire(pending.key(),pending_until);
     finish_pending(success,outcome==gears_weapon::StowPendingResult::ready?L"ready":L"cancelled",state);
+#if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+    if(success)weaponhand::equipment_hold_committed(pc,fresh);
+#endif
     return true;
 }
 bool related(uptr object){

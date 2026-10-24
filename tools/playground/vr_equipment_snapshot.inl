@@ -674,6 +674,10 @@ void tick(uptr pc){
     }
     else{
         [[maybe_unused]] const auto equipment_observation=model.observe(game);
+#if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+        if(equipment_observation.event==gears_weapon::EquipmentEvent::equipped)
+            weaponhand::equipment_hold_committed(pc,game);
+#endif
 #if defined(GEARS_PLAYGROUND_EQUIPMENT_SWITCH_TEST)
         if(equipment_observation.event==gears_weapon::EquipmentEvent::equipped){
             switch_deadline=0;
@@ -804,6 +808,10 @@ void tick(uptr pc){
                 }
 #else
                 model=proposed;status=5;
+#endif
+#if defined(GEARS_PLAYGROUND_WEAPON_HAND_PARTICIPANT_TRIAL)
+                if(decision.event==gears_weapon::EquipmentEvent::request_unholster&&(status==5||status==11))
+                    weaponhand::equipment_hold_committed(pc,game);
 #endif
             }
             else if(decision.event==gears_weapon::EquipmentEvent::request_original_switch){

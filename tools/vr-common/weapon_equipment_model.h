@@ -1,6 +1,7 @@
 #pragma once
 #include "body_slots.h"
 #include <array>
+#include <atomic>
 #include <cstdint>
 
 namespace gears_weapon {
@@ -36,6 +37,19 @@ struct EquipmentDecision {
     std::uint64_t weapon{};
 };
 
+namespace equipment_detail {
+// Copies of a proposed model may consume an ID without committing it. IDs are
+// never reused by reset, stow, pickup or a different model instance.
+inline std::atomic<std::uint64_t> next_hold{1};
+inline std::uint64_t new_hold() noexcept {
+    auto value=next_hold.load(std::memory_order_relaxed);
+    while(value&&value!=~std::uint64_t(0)){
+        if(next_hold.compare_exchange_weak(value,value+1,std::memory_order_relaxed))return value;
+    }
+    return 0;
+}
+}
+
 // Right-grip presses are momentary; this model latches the held weapon until
 // the player places it at its original slot. The live adapter must execute
 // original inventory switching, weapon display, firing gate and sound only
@@ -44,9 +58,15 @@ class WeaponEquipmentModel {
     enum class Phase : std::uint8_t { neutral,held,switching,pickup };
     Phase phase_{Phase::neutral};
     std::uint64_t world_{},pawn_{},weapon_{},previous_weapon_{};
+    std::uint64_t hold_generation_{};
     std::uint8_t slot_{4};
 
-    void clear_hold() noexcept {phase_=Phase::neutral;weapon_=previous_weapon_=0;slot_=4;}
+    void clear_hold() noexcept {phase_=Phase::neutral;weapon_=previous_weapon_=hold_generation_=0;slot_=4;}
+    bool become_held() noexcept {
+        const auto generation=equipment_detail::new_hold();
+        if(!generation){clear_hold();return false;}
+        hold_generation_=generation;phase_=Phase::held;return true;
+    }
     bool same_player(EquipmentSnapshot const& game) const noexcept {
         return game.valid()&&game.world==world_&&game.pawn==pawn_;
     }
@@ -56,6 +76,10 @@ public:
     bool animation_owns_hands() const noexcept {return phase_==Phase::pickup;}
     bool switch_pending() const noexcept {return phase_==Phase::switching;}
     std::uint64_t held_weapon() const noexcept {return held()?weapon_:0;}
+    std::uint64_t hold_generation() const noexcept {return held()?hold_generation_:0;}
+    bool held_for(std::uint64_t world,std::uint64_t pawn,std::uint64_t weapon) const noexcept {
+        return held()&&world_==world&&pawn_==pawn&&weapon_==weapon;
+    }
     std::uint8_t held_slot() const noexcept {return held()?slot_:4;}
 
     EquipmentDecision observe(EquipmentSnapshot const& game) noexcept {
@@ -75,7 +99,8 @@ public:
             if(game.current_weapon==weapon_){
                 if(game.animation_busy)
                     return {EquipmentEvent::waiting_for_animation,slot_,weapon_};
-                phase_=Phase::held;previous_weapon_=0;
+                if(!become_held())return {EquipmentEvent::interrupted};
+                previous_weapon_=0;
                 return {EquipmentEvent::equipped,slot_,weapon_};
             }
             if(game.current_weapon&&game.current_weapon!=previous_weapon_&&
@@ -116,10 +141,11 @@ public:
            (*slot==1&&(!game.throwable_count_known||!game.throwable_count)))
             return {EquipmentEvent::empty_slot,*slot};
         if(game.current_weapon==item){
-            phase_=Phase::held;slot_=*slot;weapon_=item;previous_weapon_=0;
+            if(!become_held())return {EquipmentEvent::interrupted};
+            slot_=*slot;weapon_=item;previous_weapon_=0;
             return {EquipmentEvent::request_unholster,*slot,item};
         }
-        phase_=Phase::switching;slot_=*slot;weapon_=item;
+        phase_=Phase::switching;hold_generation_=0;slot_=*slot;weapon_=item;
         previous_weapon_=game.current_weapon;
         return {EquipmentEvent::request_original_switch,*slot,item};
     }
@@ -143,7 +169,8 @@ public:
            game.animation_busy||!game.current_weapon||
            game.weapon_in_slot[inventory_slot]!=game.current_weapon)
             return {};
-        phase_=Phase::held;slot_=inventory_slot;weapon_=game.current_weapon;
+        if(!become_held())return {EquipmentEvent::interrupted};
+        slot_=inventory_slot;weapon_=game.current_weapon;
         return {EquipmentEvent::equipped,slot_,weapon_};
     }
 };
