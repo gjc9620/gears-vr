@@ -2,9 +2,13 @@
 OPTION CASEMAP:NONE
 
 EXTERN GearsCoverTestBefore:PROC
+EXTERN GearsCoverTestAfter:PROC
+EXTERN GearsCoverTestInOriginal:PROC
 EXTERN gCoverTestInput:BYTE
 EXTERN gCoverTestBefore:BYTE
 EXTERN gCoverTestTarget:BYTE
+EXTERN gCoverTestReturned:BYTE
+EXTERN gCoverTestOutput:BYTE
 EXTERN gCoverTestHook:QWORD
 EXTERN gCoverTestDriverRsp:QWORD
 EXTERN gCoverTestRequestedFlags:QWORD
@@ -85,24 +89,67 @@ ENDM
 TEST_BEFORE GearsCoverBlendBefore, 0
 TEST_BEFORE GearsCoverChildBefore, 1
 
+PUBLIC GearsCoverTestAfterCallback
+GearsCoverTestAfterCallback PROC FRAME
+    push rbp
+    .pushreg rbp
+    lea rsp, [rsp - 030h]
+    .allocstack 030h
+    lea rbp, [rsp + 030h]
+    .setframe rbp, 030h
+    .endprolog
+    call GearsCoverTestAfter
+    ; Deliberately destroy the original's saved outputs after normal post.
+    pcmpeqd xmm0, xmm0
+    pxor xmm1, xmm1
+    pcmpeqd xmm2, xmm2
+    pxor xmm3, xmm3
+    pcmpeqd xmm4, xmm4
+    pxor xmm5, xmm5
+    mov rcx, 1111111111111111h
+    mov rdx, 2222222222222222h
+    mov r8,  3333333333333333h
+    mov r9,  4444444444444444h
+    mov r10, 5555555555555555h
+    mov r11, 6666666666666666h
+    xor eax, eax
+    lea rsp, [rbp]
+    pop rbp
+    ret
+GearsCoverTestAfterCallback ENDP
+
 TEST_TARGET MACRO Name:REQ, Kind:REQ
     PUBLIC Name
-Name PROC
-    SNAPSHOT gCoverTestTarget, 0
-    mov rax, [rsp + 008h]
-    mov [gCoverTestShadow + 000h], rax
-    mov rax, [rsp + 010h]
-    mov [gCoverTestShadow + 008h], rax
-    mov rax, [rsp + 018h]
-    mov [gCoverTestShadow + 010h], rax
-    mov rax, [rsp + 020h]
-    mov [gCoverTestShadow + 018h], rax
+Name PROC FRAME
+    push rbp
+    .pushreg rbp
+    lea rsp, [rsp - 030h]
+    .allocstack 030h
+    lea rbp, [rsp + 030h]
+    .setframe rbp, 030h
+    .endprolog
+    SNAPSHOT gCoverTestTarget, 038h
     inc DWORD PTR [gCoverTestOriginalCalls]
     mov DWORD PTR [gCoverTestOriginalKind], Kind
+    mov ecx, Kind
+    call GearsCoverTestInOriginal
     mov rax, [gCoverTestReturnRax]
-    movdqu xmm0, XMMWORD PTR [gCoverTestReturnXmm0]
+    mov rcx, QWORD PTR [gCoverTestOutput + 008h]
+    mov rdx, QWORD PTR [gCoverTestOutput + 010h]
+    mov r8,  QWORD PTR [gCoverTestOutput + 018h]
+    mov r9,  QWORD PTR [gCoverTestOutput + 020h]
+    mov r10, QWORD PTR [gCoverTestOutput + 028h]
+    mov r11, QWORD PTR [gCoverTestOutput + 030h]
+    movdqu xmm0, XMMWORD PTR [gCoverTestOutput + 060h]
+    movdqu xmm1, XMMWORD PTR [gCoverTestOutput + 070h]
+    movdqu xmm2, XMMWORD PTR [gCoverTestOutput + 080h]
+    movdqu xmm3, XMMWORD PTR [gCoverTestOutput + 090h]
+    movdqu xmm4, XMMWORD PTR [gCoverTestOutput + 0a0h]
+    movdqu xmm5, XMMWORD PTR [gCoverTestOutput + 0b0h]
     push QWORD PTR [gCoverTestReturnFlags]
     popfq
+    lea rsp, [rbp]
+    pop rbp
     ret
 Name ENDP
 ENDM
@@ -154,6 +201,15 @@ GearsCoverTestAfterCall LABEL BYTE
     movdqu XMMWORD PTR [gCoverTestGotXmm0], xmm0
     pushfq
     pop QWORD PTR [gCoverTestGotFlags]
+    SNAPSHOT gCoverTestReturned, 0
+    mov rax, [rsp + 000h]
+    mov [gCoverTestShadow + 000h], rax
+    mov rax, [rsp + 008h]
+    mov [gCoverTestShadow + 008h], rax
+    mov rax, [rsp + 010h]
+    mov [gCoverTestShadow + 010h], rax
+    mov rax, [rsp + 018h]
+    mov [gCoverTestShadow + 018h], rax
     lea rsp, [rbp]
     pop rbp
     ret

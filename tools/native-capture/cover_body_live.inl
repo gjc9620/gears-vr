@@ -1,6 +1,7 @@
 // Explicit experimental body-pose writer. Included after Scope/safe_copy.
 // Retail metadata is discovered only along an authenticated hook receiver and
 // the current controlled Pawn's class chains. No registry-wide object scan.
+#include <new>
 namespace cover_body_live {
 #if defined(GEARS_COVER_BODY_PROTOTYPE) && GEARS_COVER_BODY_PROTOTYPE
 extern "C" void GearsCoverBlendTickHook();
@@ -21,6 +22,9 @@ gears_anchor::Config metadata{}; // Immutable startup certificate, not a mutable
 uint64_t initial_world{};
 std::mutex mutex;
 std::atomic<unsigned> pending{},pending_nodes{},game_thread{},step{};
+// A temporarily native Weight is still logically owned. In addition, every
+// wrapper (even an unadmitted one) retains code residency across its original.
+std::atomic<unsigned> in_flight{},transactions{};
 std::atomic<bool> stopping{},failed{},timed_out{};
 std::atomic<ULONGLONG> drain_tick{};
 constexpr unsigned node_limit=4,child_limit=32,row_limit=128;
@@ -32,6 +36,7 @@ std::atomic<bool> layout_ready{};
 std::atomic<bool> external_change{};
 const wchar_t* layout_failure=L"not_attempted";
 unsigned long long blend_calls{},child_calls{},rejected{},writes{},restores{},retired{},external{},rows_dropped{},prewrite_rebinds{};
+unsigned long long child_posts{},native_posts{},pose_rearms{},abandoned{},reentries{};
 
 template<class T> bool read(T& out,uintptr_t address){return address&&address<=UINTPTR_MAX-sizeof(T)&&safe_copy(&out,reinterpret_cast<void const*>(address),sizeof(T));}
 template<class T> bool field(T& out,uintptr_t address,unsigned offset){return address<=UINTPTR_MAX-offset&&read(out,address+offset);}
@@ -145,9 +150,13 @@ bool equal(Children const& a,Children const& b){return a.data==b.data&&a.count==
 struct Journal {
     bool used{};gears_anchor::Identity id{};uintptr_t pawn{},mesh{},world{};uint64_t generation{};Children children{};
     std::array<uint32_t,child_limit> native{},installed{};std::array<bool,child_limit> owned{};
+    std::array<bool,child_limit> native_visible{};
+    // Do not service this journal from an NPC/nested entry or an asynchronous
+    // stop while one parent is still propagating / testing its native result.
+    bool round_open{},propagating{};
     unsigned injections{},write_count{},restore_count{},retire_count{};
     unsigned installed_step{};
-    std::array<std::array<unsigned,5>,7> logged{};
+    std::array<std::array<unsigned,7>,7> logged{};
     std::array<unsigned,7> step_injections{},step_writes{},step_restores{};
     int previous_child=-1;float previous_incoming{},previous_weight{};
 };
@@ -157,8 +166,9 @@ std::array<Row,row_limit> rows{};unsigned row_count{};
 std::array<unsigned,7> step_rows{}; // Reserve room for every later Advance step.
 void row(unsigned kind_value,Journal& j,int child=-1,float incoming=0,float weight=0,float total=0){
     const unsigned sample_step=j.installed_step;
-    if((kind_value==0||kind_value==4)&&child!=0&&child!=4)return;
-    auto& logged=j.logged[sample_step][kind_value];const unsigned limit=(kind_value==0||kind_value==4)?2:1;
+    const bool child_row=kind_value==0||kind_value>=4;
+    if(child_row&&child!=0&&child!=4)return;
+    auto& logged=j.logged[sample_step][kind_value];const unsigned limit=child_row?2:1;
     if(logged>=limit)return;++logged;
     if(step_rows[sample_step]>=18||row_count==rows.size()){++rows_dropped;return;}++step_rows[sample_step];
     rows[row_count++]={now(),j.id.address,j.generation,GetCurrentThreadId(),kind_value,sample_step,child,steps[sample_step],incoming,weight,total,incoming*weight};
@@ -175,43 +185,85 @@ __declspec(noinline) bool exchange(uintptr_t address,uint32_t expected,uint32_t 
     __except(EXCEPTION_EXECUTE_HANDLER){return false;}
 }
 bool any(Journal const& j){for(bool value:j.owned)if(value)return true;return false;}
-void retire(Journal& j){for(auto& owned:j.owned)if(owned){owned=false;++retired;++j.retire_count;}j.previous_child=-1;row(3,j);}
+void retire(Journal& j){for(auto& owned:j.owned)if(owned){owned=false;++retired;++j.retire_count;}j.native_visible.fill(false);j.previous_child=-1;row(3,j);}
 void propagation(Journal& j){
     if(j.previous_child<0)return;Children current{};float total{};
     if(children_at(j.id.address,current)&&equal(current,j.children)&&field(total,j.children.data+uintptr_t(j.previous_child)*0x44,layout.total))
         row(4,j,j.previous_child,j.previous_incoming,j.previous_weight,total);
     j.previous_child=-1;
 }
-void restore_journals(uintptr_t self,bool all){
-    for(auto& j:journals){if(!j.used||!any(j)||(!all&&j.id.address!=self))continue;
+void phase_rows(Journal& j,unsigned kind_value){
+    // Kinds 5/6 are phase samples, not another propagation receipt: no incoming
+    // argument is assigned to them and their predicted value is intentionally 0.
+    if(j.logged[j.installed_step][kind_value]>=2)return;
+    for(unsigned i:{0u,4u}){float weight{},total{};
+        if(field(weight,j.children.data+uintptr_t(i)*0x44,layout.weight)&&field(total,j.children.data+uintptr_t(i)*0x44,layout.total))row(kind_value,j,int(i),0,weight,total);}
+}
+bool journal_current(Journal& j){
         gears_anchor::Registry registry{};uintptr_t slot{},pawn{},owner{},mesh{},world{},table{};
-        if(!read(registry,metadata.objects_header)||!cohort(registry,registry)||j.id.index>=unsigned(registry.count)||!read(slot,registry.data+uintptr_t(j.id.index)*8)){stopping=true;continue;}
+        if(!read(registry,metadata.objects_header)||!cohort(registry,registry)||j.id.index>=unsigned(registry.count)||!read(slot,registry.data+uintptr_t(j.id.index)*8)){stopping=true;return false;}
         // Only a positive loss/change of this registered object identity can
         // retire ownership. A different world, possession, link or storage
         // header does not prove the old object/allocation has ceased to live.
-        if(slot!=j.id.address){retire(j);continue;}
-        gears_anchor::Identity id{};if(!identity(j.id.address,id)){stopping=true;continue;}if(!same(id,j.id)){retire(j);continue;}
-        if(j.generation!=committed_world_generation.load()){stopping=true;continue;}
+        if(slot!=j.id.address){retire(j);return false;}
+        gears_anchor::Identity id{};if(!identity(j.id.address,id)){stopping=true;return false;}if(!same(id,j.id)){retire(j);return false;}
+        if(j.generation!=committed_world_generation.load()){stopping=true;return false;}
         if(!field(pawn,metadata.identities[metadata.role_controller].address,metadata.controller_pawn)||!field(owner,j.id.address,layout.owner)||
-           !field(mesh,j.id.address,layout.skel)||!field(world,j.pawn,layout.world)||!read(table,j.id.address)){stopping=true;continue;}
-        if(pawn!=j.pawn||owner!=j.pawn||mesh!=j.mesh||world!=j.world||table!=base+0x13d0080){stopping=true;continue;}
-        Children current{};if(!field(current,j.id.address,layout.children)||!equal(current,j.children)){stopping=true;continue;}
-        if(!metadata_current(false)||!own_entries()){stopping=true;continue;}
-        gears_anchor::PawnBinding binding{};if(!gears_anchor::capture_pawn_binding(metadata,safe_copy,binding)||binding.unpossessed||binding.cinematic||binding.pawn.address!=j.pawn){stopping=true;continue;}
-        propagation(j);
-        for(unsigned i=0;i<unsigned(j.children.count);++i)if(j.owned[i]){
-            uint32_t observed{};const auto address=j.children.data+uintptr_t(i)*0x44+layout.weight;
+           !field(mesh,j.id.address,layout.skel)||!field(world,j.pawn,layout.world)||!read(table,j.id.address)){stopping=true;return false;}
+        if(pawn!=j.pawn||owner!=j.pawn||mesh!=j.mesh||world!=j.world||table!=base+0x13d0080){stopping=true;return false;}
+        Children current{};if(!field(current,j.id.address,layout.children)||!equal(current,j.children)){stopping=true;return false;}
+        if(!metadata_current(false)||!own_entries()){stopping=true;return false;}
+        gears_anchor::PawnBinding binding{};if(!gears_anchor::capture_pawn_binding(metadata,safe_copy,binding)||binding.unpossessed||binding.cinematic||binding.pawn.address!=j.pawn){stopping=true;return false;}
+        return true;
+}
+// retain=true is the native-post window, not a completed restoration. Keep the
+// exact field obligations even though their current expected bytes are native.
+bool native_weights(Journal& j,bool retain){
+    if(!journal_current(j))return false;
+    propagation(j);
+    for(unsigned i=0;i<unsigned(j.children.count);++i)if(j.owned[i]){
+        uint32_t observed{};const auto address=j.children.data+uintptr_t(i)*0x44+layout.weight;
+        if(j.native_visible[i]){
+            if(!read(observed,address)){failed=true;stopping=true;continue;}
+            if(observed!=j.native[i]){j.owned[i]=false;++external;external_change=true;stopping=true;}
+            else if(!retain)j.owned[i]=false;
+        }else{
             if(!exchange(address,j.installed[i],j.native[i],observed)){failed=true;stopping=true;continue;}
-            j.owned[i]=false;if(observed==j.installed[i]){++restores;++j.restore_count;++j.step_restores[j.installed_step];}else{++external;external_change=true;stopping=true;}
+            if(observed==j.installed[i]){j.native_visible[i]=true;if(!retain)j.owned[i]=false;++restores;++j.restore_count;++j.step_restores[j.installed_step];}
+            else{j.owned[i]=false;++external;external_change=true;stopping=true;}
         }
-        row(2,j);
+    }
+    row(2,j);recount();return true;
+}
+void restore_journals(uintptr_t self,bool all){
+    for(auto& j:journals){if(!j.used||!any(j)||j.round_open||(!all&&j.id.address!=self))continue;
+        native_weights(j,false);
     }
     recount();
 }
 void restore_all(){restore_journals(0,true);}
 void restore_matching(uintptr_t self){restore_journals(self,false);}
-struct Tick {uintptr_t node{},pawn{},mesh{},world{};gears_anchor::Identity id{};Children children{};uint64_t generation{};bool injected{};};
+struct Tick {
+    uintptr_t node{},pawn{},mesh{},world{};gears_anchor::Identity id{};Children children{};uint64_t generation{};bool injected{};
+    Journal* journal{};std::array<uintptr_t,child_limit> animations{};int next_child=-1,last_child=-1;bool propagated{};
+};
 thread_local Tick tick{};
+// POD exchanged with MASM: exactly these two register-only retail ABIs. The
+// wrapper gives the original fresh shadow space; it does not forward stack
+// parameters, the caller's RSP, return address, or home-space contents.
+struct alignas(16) CallPacket {std::array<uint64_t,7> gpr{};uint64_t flags{};std::array<std::array<unsigned char,16>,6> xmm{};};
+static_assert(sizeof(CallPacket)==0xa0&&offsetof(CallPacket,flags)==0x38&&offsetof(CallPacket,xmm)==0x40);
+struct Call {
+    bool live{},selected{},tracked_child{},poisoned{},finished{};unsigned kind{};uintptr_t self{};int child=-1;
+    Tick saved_tick{};Call* previous_blend{};Call* parent{};
+    alignas(Scope) std::array<unsigned char,sizeof(Scope)> scope_storage{};Scope* scope{};
+};
+constexpr unsigned call_limit=16;
+thread_local std::array<Call,call_limit> calls{};
+thread_local unsigned call_depth{};
+thread_local Call* current_blend{};
+void poison(){failed=true;stopping=true;if(current_blend)current_blend->poisoned=true;}
+bool rounds_open(){for(auto const& j:journals)if(j.round_open)return true;return false;}
 void events(){
     const auto clock=GetTickCount64();
     if(reset_event&&WaitForSingleObject(reset_event,0)==WAIT_OBJECT_0){injecting=false;withdrawing=true;next_step=0;step=0;}
@@ -226,20 +278,20 @@ void service_entry(uintptr_t self){
     events();
     if(stopping.load()||withdrawing){
         restore_all();tick={};
-        if(!pending.load())withdrawing=false;
+        if(!pending.load()&&!rounds_open())withdrawing=false;
     }else{
         restore_matching(self);
         if(tick.node==self)tick={};
     }
 }
-void blend_before(uintptr_t self){
+void blend_before(uintptr_t self,Scope const& scope){
     if(!enabled)return;
-    Scope scope;std::lock_guard<std::mutex> lock(mutex);++blend_calls;
+    ++blend_calls;
     const unsigned thread=GetCurrentThreadId();if(game_thread.load()&&game_thread.load()!=thread){++rejected;return;}
     const bool bound=game_thread.load()!=0;
     // Restoration precedes this receiver's qualification. An unrelated NPC
     // must neither restore another node's weights nor clear its TLS context.
-    if(bound)service_entry(self);
+    if(bound&&scope.world())service_entry(self);
     // Startup precedes campaign/world recovery. Before any actual write, a new
     // admitted anchor cohort may replace our unused certificate. Once written,
     // a generation change retains pending until actual identity loss/change and
@@ -266,22 +318,30 @@ void blend_before(uintptr_t self){
     if(!game_thread.load()){game_thread=thread;service_entry(self);}
     tick={self,binding.pawn.address,mesh,world,id,children,initial_world,false};
 }
-void child_before(uintptr_t self,int child,float incoming){
-    if(!enabled||tick.node!=self)return;
-    Scope scope;std::lock_guard<std::mutex> lock(mutex);++child_calls;
-    if(!enabled||game_thread.load()!=GetCurrentThreadId()||tick.node!=self||tick.generation!=committed_world_generation.load()||
-       !scope.world()||!recording.load()||!std::isfinite(incoming)||incoming<=0||incoming>2)return;
-    Journal* journal{};for(auto& j:journals)if(j.used&&same(j.id,tick.id)){journal=&j;break;}
+bool animations_current(){
+    Children current{};if(!children_at(tick.node,current)||!equal(current,tick.children))return false;
+    for(unsigned i=0;i<unsigned(current.count);++i){uintptr_t anim{};if(!field(anim,current.data+uintptr_t(i)*0x44,layout.anim)||anim!=tick.animations[i])return false;}
+    return true;
+}
+void child_before(uintptr_t self,int child,float incoming,Scope const& scope,Call& call){
+    if(!enabled||!current_blend||!current_blend->selected||tick.node!=self)return;
+    ++child_calls;
     events();
-    if(stopping.load()||withdrawing){restore_all();tick={};if(!pending.load())withdrawing=false;return;}
-    if(!injecting||external_change)return;
+    if(!enabled||game_thread.load()!=GetCurrentThreadId()||tick.node!=self||tick.generation!=committed_world_generation.load()||
+       !scope.world()||!recording.load()||!std::isfinite(incoming)||incoming<=0||incoming>2){if(tick.injected)poison();return;}
+    Journal* journal{};for(auto& j:journals)if(j.used&&same(j.id,tick.id)){journal=&j;break;}
+    // Once a round has begun, a stop/Reset/expiry only prevents its rearm. It
+    // must not mix W and native weights within the original propagation loop.
+    if(!tick.injected){
+        if(stopping.load()||withdrawing){restore_all();if(!pending.load()&&!rounds_open())withdrawing=false;return;}
+        if(!injecting||external_change)return;
+    }
     Children current{};uintptr_t owner{},mesh{},world{},pawn_mesh{};unsigned char ct{},sm{};gears_anchor::PawnBinding binding{};
     if(!own_entries()||(!tick.injected&&!metadata_current(false))||!gears_anchor::capture_pawn_binding(metadata,safe_copy,binding)||binding.cinematic||binding.unpossessed||binding.pawn.address!=tick.pawn||
        !field(owner,self,layout.owner)||owner!=tick.pawn||!field(mesh,self,layout.skel)||mesh!=tick.mesh||!field(pawn_mesh,tick.pawn,layout.mesh)||pawn_mesh!=tick.mesh||
        !field(world,tick.pawn,layout.world)||world!=tick.world||!field(ct,tick.pawn,layout.cover)||ct!=2||!field(sm,tick.pawn,layout.special)||sm!=0||
-       !children_at(self,current)||!equal(current,tick.children)){++rejected;return;}
+       !children_at(self,current)||!equal(current,tick.children)){++rejected;if(tick.injected)poison();return;}
     if(child<0||child>=current.count)return;
-    if(journal)propagation(*journal);
     if(!tick.injected){
         unsigned first=child_limit;std::array<uint32_t,child_limit> native{};std::array<uintptr_t,child_limit> animations{};
         for(unsigned i=0;i<unsigned(current.count);++i){float weight{};
@@ -289,8 +349,9 @@ void child_before(uintptr_t self,int child,float incoming){
             if(animations[i]&&first==child_limit)first=i;memcpy(&native[i],&weight,4);}
         if(first!=unsigned(child)||!animations[0]||!animations[4])return;
         if(!journal){for(auto& j:journals)if(!j.used){journal=&j;j.used=true;j.id=tick.id;break;}}
-        if(!journal||any(*journal)){++rejected;return;}
+        if(!journal||any(*journal)||journal->round_open){++rejected;return;}
         auto& j=*journal;j.pawn=tick.pawn;j.mesh=tick.mesh;j.world=tick.world;j.generation=tick.generation;j.children=current;j.native=native;j.installed_step=step.load();
+        j.native_visible.fill(false);
         for(unsigned i=0;i<unsigned(current.count);++i){float weight=i==0?1.f-steps[step.load()]:(i==4?steps[step.load()]:0.f);memcpy(&j.installed[i],&weight,4);}
         // A final header/identity bracket before the first field CAS.
         gears_anchor::Identity again{};Children after{};
@@ -299,16 +360,124 @@ void child_before(uintptr_t self,int child,float incoming){
             uint32_t observed{};if(!exchange(current.data+uintptr_t(i)*0x44+layout.weight,j.native[i],j.installed[i],observed)){failed=true;stopping=true;break;}
             if(observed!=j.native[i]){external_change=true;++external;stopping=true;break;}j.owned[i]=true;++writes;++j.write_count;++j.step_writes[j.installed_step];
         }
-        tick.injected=true;++j.injections;++j.step_injections[j.installed_step];recount();row(1,j);
-        if(stopping.load()){restore_all();return;}
+        recount();
+        if(stopping.load()){native_weights(j,false);return;}
+        tick.injected=true;tick.journal=&j;tick.animations=animations;tick.next_child=child;
+        for(unsigned i=0;i<unsigned(current.count);++i)if(animations[i])tick.last_child=int(i);
+        j.round_open=j.propagating=true;++j.injections;++j.step_injections[j.installed_step];row(1,j);
     }
+    if(!journal||tick.journal!=journal||child!=tick.next_child||!animations_current()){++rejected;poison();return;}
+    call.tracked_child=true;call.child=child;
     if(journal){float weight{},total{};if(field(weight,current.data+uintptr_t(child)*0x44,layout.weight)&&field(total,current.data+uintptr_t(child)*0x44,layout.total)){
         row(0,*journal,child,incoming,weight,total);journal->previous_child=child;journal->previous_incoming=incoming;journal->previous_weight=weight;}}
 }
-extern "C" void GearsCoverBlendBefore(uintptr_t self,float,float){try{blend_before(self);}catch(...){failed=true;stopping=true;}}
-extern "C" void GearsCoverChildBefore(uintptr_t self,int child,float incoming){
-    if(!enabled||tick.node!=self)return;
-    try{child_before(self,child,incoming);}catch(...){failed=true;stopping=true;}
+void child_after(Call& call,bool returned){
+    if(!call.tracked_child)return;
+    ++child_posts;
+    if(!returned||call.parent!=current_blend||!current_blend||tick.node!=call.self||!tick.journal||
+       !tick.journal->round_open||call.child!=tick.next_child||!animations_current()){poison();return;}
+    auto& j=*tick.journal;propagation(j);
+    if(call.child==tick.last_child){
+        // The sole native FA680 invocation for the last nonnull child has
+        // completed. Native CoverBlend post-tests must now see its own weights.
+        if(!native_weights(j,true)){poison();return;}
+        for(unsigned i=0;i<unsigned(j.children.count);++i)if(j.owned[i]&&!j.native_visible[i]){poison();return;}
+        j.propagating=false;tick.propagated=true;tick.next_child=-1;++native_posts;phase_rows(j,5);
+    }else{
+        tick.next_child=-1;for(int i=call.child+1;i<j.children.count;++i)if(tick.animations[unsigned(i)]){tick.next_child=i;break;}
+        if(tick.next_child<0)poison();
+    }
+}
+void rearm(Journal& j){
+    if(!journal_current(j))return;
+    unsigned char ct{},sm{};
+    if(!field(ct,j.pawn,layout.cover)||ct!=2||!field(sm,j.pawn,layout.special)||sm!=0){stopping=true;native_weights(j,false);return;}
+    for(unsigned i=0;i<unsigned(j.children.count);++i)if(j.owned[i]){
+        if(!j.native_visible[i]){poison();break;}
+        uint32_t observed{};
+        if(!exchange(j.children.data+uintptr_t(i)*0x44+layout.weight,j.native[i],j.installed[i],observed)){poison();break;}
+        if(observed!=j.native[i]){j.owned[i]=false;++external;external_change=true;stopping=true;break;}
+        j.native_visible[i]=false;++writes;++j.write_count;++j.step_writes[j.installed_step];
+    }
+    if(stopping.load()||external_change)native_weights(j,false);else{++pose_rearms;phase_rows(j,6);}
+    recount();
+}
+Call* token_call(uintptr_t token){
+    if(!token||!call_depth)return nullptr;
+    auto* call=&calls[call_depth-1];return call->live&&reinterpret_cast<uintptr_t>(call)==token?call:nullptr;
+}
+// Called inside the protected wrapper. Publishing the token before construction
+// lets its finally release a completed Scope even if later preparation raises.
+void begin_call(CallPacket const& packet,unsigned kind,uintptr_t& token){
+    const auto self=uintptr_t(packet.gpr[1]);
+    if(!enabled)return;
+    // Global FA680 hot path: no Scope, mutex, or selected-call count for peers.
+    if(kind==1&&(!current_blend||!current_blend->selected||tick.node!=self))return;
+    if(call_depth==call_limit){poison();return;}
+    auto& c=calls[call_depth++];c=Call{};c.live=true;c.kind=kind;c.self=self;c.parent=current_blend;
+    token=reinterpret_cast<uintptr_t>(&c);
+    if(!kind){c.saved_tick=tick;c.previous_blend=current_blend;current_blend=&c;tick={};}
+    c.scope=new(c.scope_storage.data()) Scope;
+    std::lock_guard<std::mutex> lock(mutex);
+    if(!kind){
+        // A reentrant call of the same receiver may execute its original once,
+        // but cannot restore/reinject its parent's journal or arm a pose rearm.
+        for(auto* p=c.previous_blend;p;p=p->previous_blend)if(p->self==self){p->poisoned=true;++reentries;poison();return;}
+        blend_before(self,*c.scope);c.selected=tick.node==self;
+        if(c.selected)++transactions;
+    }else{
+        float incoming{};memcpy(&incoming,packet.xmm[2].data(),4);
+        child_before(self,static_cast<int32_t>(packet.gpr[2]),incoming,*c.scope,c);
+    }
+}
+void finish_call(uintptr_t token,bool returned){
+    auto* c=token_call(token);if(!c)return;
+    std::lock_guard<std::mutex> lock(mutex);
+    if(c->kind){child_after(*c,returned);c->finished=true;return;}
+    if(c!=current_blend){poison();return;}
+    if(c->selected&&!returned){++abandoned;poison();}
+    if(c->selected&&tick.journal&&tick.journal->round_open){
+        auto& j=*tick.journal;events();
+        if(!tick.propagated){if(returned)++abandoned;poison();}
+        if(returned&&tick.propagated&&!c->poisoned&&!stopping.load()&&!withdrawing&&injecting&&!external_change)rearm(j);
+        else native_weights(j,false);
+        j.propagating=j.round_open=false;recount();
+    }
+    c->finished=true;
+}
+void release_call(uintptr_t token){
+    auto* c=token_call(token);if(!c){if(token)poison();return;}
+    // No engine write is attempted here. An unexpected post failure leaves its
+    // exact journal for a later bound-thread conditional restore / explicit fail.
+    if(!c->finished){poison();if(!c->kind&&tick.journal)tick.journal->propagating=tick.journal->round_open=false;}
+    if(!c->kind){if(c->selected)--transactions;tick=c->saved_tick;current_blend=c->previous_blend;}
+    if(c->scope){c->scope->~Scope();c->scope=nullptr;}c->live=false;--call_depth;
+}
+// These C++ guards never enclose the original. Ordinary helper/lock exceptions
+// unwind their RAII locks before fail-stop. Foreign-address SEH is contained
+// only inside safe_copy/exchange; an unexpected SEH under a C++ lock is NOT
+// swallowed by an outer __except, which would skip /EHsc lock destruction.
+void begin_guarded(CallPacket const& packet,unsigned kind,uintptr_t& token){
+    try{begin_call(packet,kind,token);}catch(...){failed=true;stopping=true;}
+}
+void finish_guarded(uintptr_t token,bool returned){
+    try{finish_call(token,returned);}catch(...){failed=true;stopping=true;}
+}
+// /EHsc includes /EHc; explicitly permit exceptions across these C-linkage
+// bridges instead of letting the compiler assume an engine call cannot throw.
+extern "C" void GearsCoverRawInvoke(CallPacket*,void*) noexcept(false);
+extern "C" __declspec(noinline) void GearsCoverInvokeProtected(CallPacket* packet,unsigned kind) noexcept(false){
+    uintptr_t token{};bool returned{};++active;++in_flight;
+    __try{
+        begin_guarded(*packet,kind,token);
+        GearsCoverRawInvoke(packet,kind?GearsCoverChildOriginal:GearsCoverBlendOriginal);
+        returned=true;
+    }__finally{
+        // Compiler-generated UHandler metadata owns exceptional cleanup. Scope
+        // and residency remain alive through both the original and normal post.
+        __try{finish_guarded(token,returned&&!AbnormalTermination());}
+        __finally{release_call(token);--in_flight;--active;}
+    }
 }
 bool reserve(){
     if(reserved)return false;
@@ -327,23 +496,24 @@ bool configure(const wchar_t* ini,FILE* file){
     auto event=[&](HANDLE& handle,const wchar_t* action){swprintf_s(name,L"Local\\GearsVR.CoverBodyPrototype.%s.%lu",action,GetCurrentProcessId());SetLastError(0);
         handle=CreateEventW(nullptr,FALSE,FALSE,name);const auto error=GetLastError();return handle&&error!=ERROR_ALREADY_EXISTS;};
     if(!event(advance_event,L"Advance")||!event(reset_event,L"Reset")){if(advance_event)CloseHandle(advance_event);if(reset_event)CloseHandle(reset_event);advance_event=reset_event=nullptr;return false;}
-    enabled=true;fprintf(file,"cover_body_config enabled=1 experimental=1 reflected_lookup=actual_receiver bounded_nodes=4 cover_type=2 special_move=0 positive_incoming_only=1 advance_timeout_ms=10000 stop_drain_ms=5000 half_weights_may_delay_transition_and_firing=1\n");return true;
+    enabled=true;fprintf(file,"cover_body_config enabled=1 experimental=1 reflected_lookup=actual_receiver bounded_nodes=4 cover_type=2 special_move=0 positive_incoming_only=1 advance_timeout_ms=10000 stop_drain_ms=5000 native_post_weight_separation=1 firing_acceptance=0\n");return true;
 }
 void request_drain(){if(!enabled)return;std::lock_guard<std::mutex> lock(mutex);stopping=true;ULONGLONG empty{};drain_tick.compare_exchange_strong(empty,GetTickCount64());}
-bool draining(){return enabled&&pending.load()&&GetTickCount64()-drain_tick.load()<5000;}
-bool drain_failed(){return enabled&&stopping.load()&&drain_tick.load()&&pending.load()&&!draining();}
+unsigned pending_count(){return pending.load()+in_flight.load()+transactions.load();}
+bool draining(){return enabled&&pending_count()&&GetTickCount64()-drain_tick.load()<5000;}
+bool drain_failed(){return enabled&&stopping.load()&&drain_tick.load()&&pending_count()&&!draining();}
 bool proof_failed(){return failed.load()||external_change.load();}
-unsigned pending_count(){return pending.load();}
-void progress(FILE* file){fprintf(file,"cover_body_enabled=%u cover_body_layout_ready=%u cover_body_pending=%u cover_body_pending_nodes=%u cover_body_stopping=%u cover_body_failed=%u cover_body_step=%u ",enabled?1:0,layout_ready.load()?1:0,pending.load(),pending_nodes.load(),stopping.load()?1:0,failed.load()?1:0,step.load());}
+void progress(FILE* file){fprintf(file,"cover_body_enabled=%u cover_body_layout_ready=%u cover_body_pending=%u cover_body_pending_fields=%u cover_body_pending_nodes=%u cover_body_in_flight=%u cover_body_transactions=%u cover_body_stopping=%u cover_body_failed=%u cover_body_step=%u ",enabled?1:0,layout_ready.load()?1:0,pending_count(),pending.load(),pending_nodes.load(),in_flight.load(),transactions.load(),stopping.load()?1:0,failed.load()?1:0,step.load());}
 void print(FILE* file,bool disabled){
     std::lock_guard<std::mutex> lock(mutex);progress(file);
-    fprintf(file,"cover_body compiled=1 layout_ready=%u layout_attempts=%u layout_failure=%ls metadata_sources=%u metadata_identities=%u prewrite_rebinds=%llu blend_calls=%llu child_calls=%llu rejected=%llu writes=%llu restores=%llu retired_fields=%llu external_changes=%llu timeout=%u rows=%u dropped=%llu half_weights_may_delay_transition_and_firing=1 gpu_or_exposure_acceptance=0\n",
-        layout_ready?1:0,layout_attempts,layout_failure,layout.source_count,layout.id_count,prewrite_rebinds,blend_calls,child_calls,rejected,writes,restores,retired,external,timed_out.load()?1:0,row_count,rows_dropped);
-    for(unsigned i=0;i<journals.size();++i){auto const& j=journals[i];if(j.used)fprintf(file,"cover_body_node index=%u node=%p pawn=%p mesh=%p world=%p generation=%llu injections=%u writes=%u restores=%u retired=%u pending=%u\n",i,reinterpret_cast<void*>(j.id.address),reinterpret_cast<void*>(j.pawn),reinterpret_cast<void*>(j.mesh),reinterpret_cast<void*>(j.world),j.generation,j.injections,j.write_count,j.restore_count,j.retire_count,any(j)?1:0);}
+    fprintf(file,"cover_body compiled=1 layout_ready=%u layout_attempts=%u layout_failure=%ls metadata_sources=%u metadata_identities=%u prewrite_rebinds=%llu blend_calls=%llu child_calls=%llu child_posts=%llu native_posts=%llu pose_rearms=%llu abandoned=%llu reentries=%llu rejected=%llu writes=%llu restores=%llu retired_fields=%llu external_changes=%llu timeout=%u rows=%u dropped=%llu native_post_weight_separation=1 firing_acceptance=0 gpu_or_exposure_acceptance=0\n",
+        layout_ready?1:0,layout_attempts,layout_failure,layout.source_count,layout.id_count,prewrite_rebinds,blend_calls,child_calls,child_posts,native_posts,pose_rearms,abandoned,reentries,rejected,writes,restores,retired,external,timed_out.load()?1:0,row_count,rows_dropped);
+    for(unsigned i=0;i<journals.size();++i){auto const& j=journals[i];if(j.used){unsigned native_fields{};for(unsigned n=0;n<child_limit;++n)if(j.owned[n]&&j.native_visible[n])++native_fields;
+        fprintf(file,"cover_body_node index=%u node=%p pawn=%p mesh=%p world=%p generation=%llu injections=%u writes=%u restores=%u retired=%u pending=%u round_open=%u propagating=%u native_visible_fields=%u\n",i,reinterpret_cast<void*>(j.id.address),reinterpret_cast<void*>(j.pawn),reinterpret_cast<void*>(j.mesh),reinterpret_cast<void*>(j.world),j.generation,j.injections,j.write_count,j.restore_count,j.retire_count,any(j)?1:0,j.round_open?1:0,j.propagating?1:0,native_fields);}}
     for(unsigned i=0;i<journals.size();++i){auto const& j=journals[i];if(j.used)for(unsigned s=0;s<steps.size();++s)
         fprintf(file,"cover_body_step node_index=%u step=%u u=%.9g injections=%u writes=%u restores=%u\n",i,s,steps[s],j.step_injections[s],j.step_writes[s],j.step_restores[s]);}
-    for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];fprintf(file,"cover_body_row index=%u qpc=%lld node=%p world=%llu thread=%u kind=%u step=%u u=%.9g child=%d incoming=%.9g weight=%.9g child_total=%.9g predicted=%.9g total_sample_is_after_previous_native_call=%u\n",i,r.qpc,reinterpret_cast<void*>(r.node),r.world,r.thread,r.kind,r.step,r.u,r.child,r.incoming,r.weight,r.total,r.predicted,r.kind==4?1:0);}
-    if(disabled&&!pending.load()){if(advance_event){CloseHandle(advance_event);advance_event=nullptr;}if(reset_event){CloseHandle(reset_event);reset_event=nullptr;}}
+    for(unsigned i=0;i<row_count;++i){auto const& r=rows[i];fprintf(file,"cover_body_row index=%u qpc=%lld node=%p world=%llu thread=%u kind=%u step=%u u=%.9g child=%d incoming=%.9g weight=%.9g child_total=%.9g predicted=%.9g total_sample_is_after_previous_native_call=%u native_post=%u pose_rearm=%u\n",i,r.qpc,reinterpret_cast<void*>(r.node),r.world,r.thread,r.kind,r.step,r.u,r.child,r.incoming,r.weight,r.total,r.predicted,r.kind==4?1:0,r.kind==5?1:0,r.kind==6?1:0);}
+    if(disabled&&!pending_count()){if(advance_event){CloseHandle(advance_event);advance_event=nullptr;}if(reset_event){CloseHandle(reset_event);reset_event=nullptr;}}
 }
 #else
 constexpr bool enabled=false;

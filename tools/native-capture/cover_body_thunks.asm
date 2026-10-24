@@ -1,21 +1,56 @@
-; Windows x64 pre-only observers. No return type or stack argument is decoded.
-; The callbacks must obey the Windows x64 ABI (including nonvolatile registers).
-; No install, target discovery, patching, or exception handler is provided here.
+; Windows x64 wrappers for exactly the two certified register-only cover ABIs:
+; Blend(self RCX, float XMM1, float XMM2), Child(self RCX, int EDX, float XMM2).
+; They do NOT forward arbitrary stack arguments, home contents, the caller's
+; original RSP, or its return address. Original return GPRs/XMM0..5/flags survive
+; our post callback. Compiler-generated __try/__finally in InvokeProtected owns
+; normal/exceptional cleanup; these assembly frames use standard unwind codes.
 OPTION CASEMAP:NONE
 
-EXTERN GearsCoverBlendBefore:PROC
-EXTERN GearsCoverChildBefore:PROC
-EXTERN GearsCoverBlendOriginal:QWORD
-EXTERN GearsCoverChildOriginal:QWORD
+EXTERN GearsCoverInvokeProtected:PROC
 
 .code
 
-; RBP permits a normal Windows epilog without changing restored flags. It also
-; gives the unwinder a stable frame during the balanced PUSHFQ/POP pairs in the
-; body. LEA in the prolog is deliberate: SUB would destroy the incoming flags.
-; The allocation is described by UWOP_ALLOC_LARGE; it does not need SUB to run.
-; Layout: 00..1f callback shadow, 20..57 GPRs, 58 flags, 60..bf XMM0..5.
-COVER_PRE_THUNK MACRO HookName:REQ, BeforeName:REQ, OriginalName:REQ
+; CallPacket: 00..37 RAX/RCX/RDX/R8/R9/R10/R11, 38 flags, 40..9f XMM0..5.
+; Neither macro changes arithmetic flags. RBX/RSP addressing never aliases the
+; scratch PUSHFQ/POP below the frame or the original/callback shadow space.
+SAVE_PACKET MACRO Base:REQ, Delta:REQ
+    mov [Base + Delta + 000h], rax
+    mov [Base + Delta + 008h], rcx
+    mov [Base + Delta + 010h], rdx
+    mov [Base + Delta + 018h], r8
+    mov [Base + Delta + 020h], r9
+    mov [Base + Delta + 028h], r10
+    mov [Base + Delta + 030h], r11
+    pushfq
+    pop rax
+    mov [Base + Delta + 038h], rax
+    movdqu [Base + Delta + 040h], xmm0
+    movdqu [Base + Delta + 050h], xmm1
+    movdqu [Base + Delta + 060h], xmm2
+    movdqu [Base + Delta + 070h], xmm3
+    movdqu [Base + Delta + 080h], xmm4
+    movdqu [Base + Delta + 090h], xmm5
+ENDM
+
+LOAD_PACKET MACRO Base:REQ, Delta:REQ
+    movdqu xmm0, [Base + Delta + 040h]
+    movdqu xmm1, [Base + Delta + 050h]
+    movdqu xmm2, [Base + Delta + 060h]
+    movdqu xmm3, [Base + Delta + 070h]
+    movdqu xmm4, [Base + Delta + 080h]
+    movdqu xmm5, [Base + Delta + 090h]
+    push QWORD PTR [Base + Delta + 038h]
+    popfq
+    mov rax, [Base + Delta + 000h]
+    mov rcx, [Base + Delta + 008h]
+    mov rdx, [Base + Delta + 010h]
+    mov r8,  [Base + Delta + 018h]
+    mov r9,  [Base + Delta + 020h]
+    mov r10, [Base + Delta + 028h]
+    mov r11, [Base + Delta + 030h]
+ENDM
+
+COVER_THUNK MACRO HookName:REQ, Kind:REQ
     PUBLIC HookName
 HookName PROC FRAME
     push rbp
@@ -26,53 +61,45 @@ HookName PROC FRAME
     .setframe rbp, 0c0h
     .endprolog
 
-    mov [rsp + 020h], rax
-    mov [rsp + 028h], rcx
-    mov [rsp + 030h], rdx
-    mov [rsp + 038h], r8
-    mov [rsp + 040h], r9
-    mov [rsp + 048h], r10
-    mov [rsp + 050h], r11
-    pushfq
-    pop rax
-    mov [rsp + 058h], rax
-    movdqu [rsp + 060h], xmm0
-    movdqu [rsp + 070h], xmm1
-    movdqu [rsp + 080h], xmm2
-    movdqu [rsp + 090h], xmm3
-    movdqu [rsp + 0a0h], xmm4
-    movdqu [rsp + 0b0h], xmm5
-
-    ; Original RCX/RDX/R8/R9 and positional XMM arguments remain in place.
-    ; RSP is 16-byte aligned, with 32 bytes of fresh callback shadow space.
-    call BeforeName
-
-    movdqu xmm0, [rsp + 060h]
-    movdqu xmm1, [rsp + 070h]
-    movdqu xmm2, [rsp + 080h]
-    movdqu xmm3, [rsp + 090h]
-    movdqu xmm4, [rsp + 0a0h]
-    movdqu xmm5, [rsp + 0b0h]
-    push QWORD PTR [rsp + 058h]
-    popfq
-    mov rax, [rsp + 020h]
-    mov rcx, [rsp + 028h]
-    mov rdx, [rsp + 030h]
-    mov r8, [rsp + 038h]
-    mov r9, [rsp + 040h]
-    mov r10, [rsp + 048h]
-    mov r11, [rsp + 050h]
-
-    ; This is a recognized frame-register epilog. No instruction below changes
-    ; flags. The original sees the original stack, return address, and arguments;
-    ; its RAX/XMM0 return (of any type) returns directly to the original caller.
+    ; 20 bytes of callback shadow, followed by the A0-byte POD packet.
+    SAVE_PACKET rsp, 020h
+    lea rcx, [rsp + 020h]
+    mov edx, Kind
+    call GearsCoverInvokeProtected
+    LOAD_PACKET rsp, 020h
     lea rsp, [rbp]
     pop rbp
-    jmp QWORD PTR [OriginalName]
+    ret
 HookName ENDP
 ENDM
 
-COVER_PRE_THUNK GearsCoverBlendTickHook, GearsCoverBlendBefore, GearsCoverBlendOriginal
-COVER_PRE_THUNK GearsCoverChildPropagateHook, GearsCoverChildBefore, GearsCoverChildOriginal
+COVER_THUNK GearsCoverBlendTickHook, 0
+COVER_THUNK GearsCoverChildPropagateHook, 1
+
+; Invoke once from within the compiler-owned protected region. RBX holds the
+; packet across the original and is restored by this routine's unwind metadata.
+; A fresh 32-byte shadow area belongs to this one original call. Saving outputs
+; is the first operation after CALL, before any C++ code or flag-changing test.
+PUBLIC GearsCoverRawInvoke
+GearsCoverRawInvoke PROC FRAME
+    push rbp
+    .pushreg rbp
+    push rbx
+    .pushreg rbx
+    lea rsp, [rsp - 038h]
+    .allocstack 038h
+    lea rbp, [rsp + 030h]
+    .setframe rbp, 030h
+    .endprolog
+    mov rbx, rcx
+    mov [rsp + 020h], rdx
+    LOAD_PACKET rbx, 0
+    call QWORD PTR [rsp + 020h]
+    SAVE_PACKET rbx, 0
+    lea rsp, [rbp + 008h]
+    pop rbx
+    pop rbp
+    ret
+GearsCoverRawInvoke ENDP
 
 END

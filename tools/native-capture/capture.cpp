@@ -1224,9 +1224,9 @@ void reset_world_thread_context();
 // a concurrent permanent policy fault wins via Lifetime's stop/reopen barrier.
 struct Scope {
     gears_world::RecursiveAdmission admission{world_thread,world_gate};
-    Scope(){++active;if(admission&&world_thread.depth==1){const auto generation=committed_world_generation.load();
+    Scope(){++active;try{if(admission&&world_thread.depth==1){const auto generation=committed_world_generation.load();
         if(thread_world_generation&&thread_world_generation!=generation)reset_world_thread_context();
-        thread_world_generation=generation;}}
+        thread_world_generation=generation;}}catch(...){--active;throw;}}
     ~Scope(){--active;}
     bool world()const{return bool(admission);}
 };
