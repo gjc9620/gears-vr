@@ -1,5 +1,7 @@
 import unittest
 import struct
+import copy
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from world_state import Query, objective_fingerprint, select_hostile, registry_append_only, combat_control, squad_hostility, hostile, render_hint
@@ -164,6 +166,120 @@ class WorldStateTests(unittest.TestCase):
             result = render_hint(q, pawn, world)
             self.assertIs(result['recently_rendered'], expected)
             self.assertIs(result['line_of_sight_verified'], False)
+
+
+class ClosingDiagnosticTests(unittest.TestCase):
+    @staticmethod
+    def legacy(q, *, allow_registry_growth=False):
+        q.observer.verify()
+        if (any(q.s.fresh(p) != v for p, v in q.identities.items()) or
+                any(q.r.read(p, n) != raw for (p, n), raw in q.metadata.items()) or
+                any(not (current == raw or (allow_registry_growth and registry_append_only(raw, current)))
+                    for p, raw in q.headers for current in (q.r.read(p, len(raw)),))):
+            raise RuntimeError('World-state metadata/registry changed at closing boundary')
+
+    def fixture(self, failure=None):
+        q = Query.__new__(Query)
+        q.identities = {11: dict(address=11, index=1), 12: dict(address=12, index=2)}
+        q.metadata = {(21, 2): b'ab', (22, 2): b'cd'}
+        q.headers = [(31, struct.pack('<Qii', 1000, 10, 100)),
+                     (32, struct.pack('<Qii', 2000, 20, 100))]
+        values = dict(q.metadata)
+        values.update({(p, len(raw)): raw for p, raw in q.headers})
+        identities = copy.deepcopy(q.identities)
+        if failure in (11, 12):
+            identities[failure]['index'] += 1
+        elif failure in (21, 22):
+            values[failure, 2] = b'xx'
+        elif failure in (31, 32):
+            pointer, count, capacity = struct.unpack('<Qii', values[failure, 16])
+            values[failure, 16] = struct.pack('<Qii', pointer, count + 1, capacity)
+        events = []
+        def verify():
+            events.append(('verify',))
+        def fresh(address):
+            events.append(('fresh', address))
+            return copy.deepcopy(identities[address])
+        def read(address, size):
+            events.append(('read', address, size))
+            return values[address, size]
+        q.observer = SimpleNamespace(verify=verify)
+        q.s, q.r = SimpleNamespace(fresh=fresh), SimpleNamespace(read=read)
+        return q, events, values
+
+    def test_first_failure_order_read_count_and_exact_exception_match_legacy(self):
+        for failure in (None, 11, 12, 21, 22, 31, 32):
+            for allow in (False, True):
+                old, before, _ = self.fixture(failure)
+                current, after, _ = self.fixture(failure)
+                errors = []
+                for function, q in ((self.legacy, old), (Query.finish, current)):
+                    try:
+                        function(q, allow_registry_growth=allow)
+                        errors.append(None)
+                    except Exception as error:
+                        errors.append((type(error), str(error)))
+                with self.subTest(failure=failure, allow=allow):
+                    self.assertEqual(before, after)
+                    self.assertEqual(errors[0], errors[1])
+                    if errors[1]:
+                        self.assertEqual(current.closing_rejection['address'], failure)
+                    else:
+                        self.assertIsNone(current.closing_rejection)
+
+    def test_identity_first_failure_cannot_be_overwritten_by_later_metadata(self):
+        q, events, values = self.fixture(11)
+        values[21, 2] = b'xx'
+        with self.assertRaisesRegex(RuntimeError, '^World-state metadata/registry changed at closing boundary$'):
+            q.finish()
+        self.assertEqual(events, [('verify',), ('fresh', 11)])
+        self.assertEqual(q.closing_rejection, dict(kind='identity', address=11, size=None,
+                         before=dict(address=11, index=1), after=dict(address=11, index=2)))
+
+    def test_metadata_failure_records_exact_bytes_without_header_read(self):
+        q, events, _ = self.fixture(22)
+        with self.assertRaises(RuntimeError):
+            q.finish()
+        self.assertEqual(q.closing_rejection, dict(kind='metadata', address=22, size=2,
+                         before='6364', after='7878'))
+        self.assertFalse(any(event[0] == 'read' and event[1] in (31, 32) for event in events))
+
+    def test_registry_count_growth_is_strict_by_default_with_exact_tuple(self):
+        q, events, _ = self.fixture(31)
+        with self.assertRaises(RuntimeError):
+            q.finish()
+        rejection = q.closing_rejection
+        self.assertEqual(rejection['kind'], 'registry')
+        self.assertEqual(rejection['before_header'], dict(data=1000, count=10, capacity=100))
+        self.assertEqual(rejection['after_header'], dict(data=1000, count=11, capacity=100))
+        self.assertEqual(events[-1], ('read', 31, 16))
+        q.finish(allow_registry_growth=True)
+        self.assertIsNone(q.closing_rejection)
+
+    def test_growth_permission_and_rejections_match_legacy_for_all_header_changes(self):
+        for pointer, count, capacity in ((1000, 10, 100), (1000, 11, 100), (1001, 11, 100),
+                                         (1000, 9, 100), (1000, 11, 101), (1000, 101, 100)):
+            for allow in (False, True):
+                old, a, values_a = self.fixture()
+                current, b, values_b = self.fixture()
+                values_a[31, 16] = values_b[31, 16] = struct.pack('<Qii', pointer, count, capacity)
+                errors = []
+                for function, q in ((self.legacy, old), (Query.finish, current)):
+                    try:
+                        function(q, allow_registry_growth=allow)
+                        errors.append(None)
+                    except Exception as error:
+                        errors.append((type(error), str(error)))
+                self.assertEqual(errors[0], errors[1])
+                self.assertEqual(a, b)
+
+    def test_short_header_diagnostic_does_not_replace_original_strict_error(self):
+        q, _, values = self.fixture()
+        values[31, 16] = b'ab'
+        with self.assertRaisesRegex(RuntimeError, '^World-state metadata/registry changed at closing boundary$'):
+            q.finish()
+        self.assertEqual(q.closing_rejection['after'], '6162')
+        self.assertIsNone(q.closing_rejection['after_header'])
 
 
 if __name__ == '__main__':
